@@ -1171,20 +1171,23 @@ contre le meilleur remplaçant de chaque cible, à budget croissant :
 | nappe — generic | 0,212 | 0,174 | 0,182 |
 | nappe — pcmhybrid | **0,133** | **0,120** | **0,117** |
 | cloche — generic | 0,223 | 0,223 | **0,117** |
-| cloche — ms20 | **0,183** | **0,140** | — |
+| cloche — ms20 | **0,183** | **0,140** | **0,103** |
 
 Trois faits en sortent. Le generic est la seule machine qui PROFITE d'un
 espace élargi sur la basse (−31 %, jusqu'à passer devant le ms20 à 20 axes) ;
-les machines étroites se DILUENT au contraire quand on leur ouvre trop d'axes
-(ms20 sur la basse : 0,072 → 0,144 — soixante itérations dans vingt dimensions
-cherchent moins bien que quarante dans douze) ; et le verdict dépend de la
-famille : à leurs meilleurs budgets respectifs, les machines de caractère
-restent devant sur les deux cibles soustractives (0,072 contre 0,132 ; 0,117
-contre 0,174), tandis que sur la cloche FM — hors de leur famille — le generic
-à espace ouvert descend à 0,117, sous le meilleur ms20 connu (0,140, son run à
-20 axes restant à mesurer). Le plafond de six dimensions pénalise bien le
-generic structurellement ; le lever ne paie que là où aucune machine du parc
-n'a la signature de la cible — ce qui est, précisément, son périmètre.
+les machines étroites PEUVENT au contraire se diluer quand on leur ouvre trop
+d'axes (ms20 sur la basse : 0,072 → 0,144 — soixante itérations dans vingt
+dimensions cherchent moins bien que quarante dans douze ; mais le même ms20
+profite du même élargissement sur la cloche, 0,140 → 0,103 : la dilution
+dépend de la cible, elle n'est pas une loi) ; et à leurs meilleurs budgets
+respectifs, les machines de caractère restent devant sur les trois cibles
+(0,072 contre 0,132 ; 0,117 contre 0,174 ; 0,103 contre 0,117). Le plafond de
+six dimensions pénalise bien le generic structurellement — il est la seule
+machine dont la distance ne descend QUE si on l'élève — mais le lever ne
+suffit pas à le faire gagner sur de l'audio propre : sur ces cibles-là, la
+signature de la vraie famille l'emporte, et le terrain du generic reste celui
+que la chaîne complète a montré — l'audio séparé, sans machine d'origine dans
+le parc.
 
 **3. La chaîne complète, avant et après.** Même vérité terrain jouée en
 morceau (basse + nappe mixées), puis `reconstruire.py` de bout en bout :
