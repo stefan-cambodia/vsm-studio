@@ -1,0 +1,1572 @@
+#include "vsm/panels/MachinePanel.h"
+#include <algorithm>
+
+namespace vsm::panels {
+
+namespace {
+
+using S = ControlStyle;
+
+PanelControl control(std::string parameter, std::string caption, S style, int column, int row,
+                      int columnSpan = 1, int rowSpan = 1) {
+    PanelControl c;
+    c.parameterName = std::move(parameter);
+    c.caption = std::move(caption);
+    c.style = style;
+    c.column = column;
+    c.row = row;
+    c.columnSpan = columnSpan;
+    c.rowSpan = rowSpan;
+    return c;
+}
+
+// ---------------------------------------------------------------------------
+// Minimoog-style
+//
+// La façade d'origine se lit de gauche à droite comme le signal : banc
+// d'oscillateurs, mélangeur, modifieurs (filtre puis enveloppes), sortie.
+// C'est cette lecture qui fait qu'on sait s'en servir sans mode d'emploi, et
+// c'est elle qu'on reproduit -- pas une image du panneau.
+//
+// Châssis bois, panneau anthracite, sérigraphie claire : les trois traits
+// visuels qui font reconnaître la machine au premier coup d'œil.
+// ---------------------------------------------------------------------------
+MachinePanel makeMinimoog() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.minimoog";
+    panel.displayName = "Minimoog-style";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#2A2724";
+    panel.sectionColour = "#1E1C1A";
+    panel.textColour = "#E6E1D6";
+    panel.knobColour = "#1C1A18"; // boutons noirs sur panneau anthracite
+    panel.gridColumns = 16;
+    panel.gridRows = 6;
+
+    PanelSection oscillators;
+    oscillators.title = "OSCILLATOR BANK";
+    oscillators.accentColour = "#C8A24D";
+    oscillators.column = 0; oscillators.row = 0; oscillators.columnSpan = 5; oscillators.rowSpan = 4;
+    oscillators.controls = {
+        control("Osc1 Waveform", "OSC 1 WAVE", S::Selector, 0, 0),
+        control("Osc2 Waveform", "OSC 2 WAVE", S::Selector, 0, 1),
+        control("Osc3 Waveform", "OSC 3 WAVE", S::Selector, 0, 2),
+        // Le désaccord ne concerne que les oscillateurs 2 et 3 : sur la
+        // machine d'origine, l'oscillateur 1 sert de référence d'accord.
+        control("Osc2 Detune", "OSC 2 FREQ", S::Knob, 1, 1),
+        control("Osc3 Detune", "OSC 3 FREQ", S::Knob, 1, 2),
+    };
+
+    PanelSection mixer;
+    mixer.title = "MIXER";
+    mixer.accentColour = "#C8A24D";
+    mixer.column = 5; mixer.row = 0; mixer.columnSpan = 2; mixer.rowSpan = 4;
+    mixer.controls = {
+        control("Osc1 Level", "OSC 1", S::Knob, 0, 0),
+        control("Osc2 Level", "OSC 2", S::Knob, 1, 0),
+        control("Osc3 Level", "OSC 3", S::Knob, 0, 1),
+        control("Noise Level", "NOISE", S::Knob, 1, 1),
+    };
+
+    PanelSection modifiers;
+    modifiers.title = "MODIFIERS";
+    modifiers.accentColour = "#C8A24D";
+    modifiers.column = 7; modifiers.row = 0; modifiers.columnSpan = 9; modifiers.rowSpan = 4;
+    modifiers.controls = {
+        // Le gros potentiomètre de coupure est LE geste de cette machine :
+        // il est plus grand que les autres, comme sur l'original.
+        control("Filter Cutoff", "CUTOFF FREQUENCY", S::LargeKnob, 0, 0, 2, 2),
+        control("Filter Resonance", "EMPHASIS", S::Knob, 2, 0),
+        control("Filter Env Amount", "AMOUNT OF CONTOUR", S::Knob, 3, 0),
+        control("Filter Key Track", "KEY TRACK", S::Knob, 4, 0),
+        control("Filter Drive", "DRIVE", S::Knob, 5, 0),
+        control("Filter Attack", "FILTER ATTACK", S::Knob, 3, 1),
+        control("Filter Decay", "FILTER DECAY", S::Knob, 4, 1),
+        control("Filter Sustain", "FILTER SUSTAIN", S::Knob, 5, 1),
+        control("Amp Attack", "LOUDNESS ATTACK", S::Knob, 6, 0),
+        control("Amp Decay", "LOUDNESS DECAY", S::Knob, 7, 0),
+        control("Amp Sustain", "LOUDNESS SUSTAIN", S::Knob, 6, 1),
+    };
+
+    PanelSection controllers;
+    controllers.title = "CONTROLLERS";
+    controllers.accentColour = "#8A8892";
+    controllers.column = 0; controllers.row = 4; controllers.columnSpan = 16; controllers.rowSpan = 2;
+    controllers.contentColumns = 8; // deux commandes à gauche, comme les molettes de l'original
+    controllers.controls = {
+        control("Glide Time", "GLIDE", S::Knob, 0, 0),
+        control("Analog Character", "ANALOG DRIFT", S::Knob, 1, 0),
+    };
+
+    panel.sections = {oscillators, mixer, modifiers, controllers};
+    return panel;
+}
+
+// ---------------------------------------------------------------------------
+// TB-303-style
+//
+// Une seule rangée de potentiomètres sur un boîtier plat argenté : la machine
+// tient dans un geste, et c'est justement ce qui a fait son usage. On garde
+// donc la rangée unique plutôt que de « mieux » ranger les commandes.
+// ---------------------------------------------------------------------------
+MachinePanel makeTb303() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.tb303";
+    panel.displayName = "TB-303-style";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#9A9A97";
+    panel.sectionColour = "#8C8C89";
+    panel.textColour = "#1A1A1A";
+    panel.knobColour = "#2A2A2C"; // boutons noirs sur boîtier argenté
+    panel.gridColumns = 8;
+    panel.gridRows = 3;
+
+    PanelSection main;
+    main.title = "SYNTHESIZER";
+    main.accentColour = "#C4462F"; // le liseré rouge-orangé caractéristique
+    main.column = 0; main.row = 0; main.columnSpan = 8; main.rowSpan = 2;
+    main.controls = {
+        control("Waveform", "WAVEFORM", S::Toggle, 0, 0),
+        control("Cutoff", "CUT OFF FREQ", S::Knob, 1, 0),
+        control("Resonance", "RESONANCE", S::Knob, 2, 0),
+        control("Env Mod", "ENV MOD", S::Knob, 3, 0),
+        control("Decay", "DECAY", S::Knob, 4, 0),
+        control("Accent", "ACCENT", S::Knob, 5, 0),
+        control("Glide Time", "SLIDE TIME", S::Knob, 6, 0),
+    };
+
+    PanelSection setup;
+    setup.title = "RÉGLAGES";
+    setup.accentColour = "#5A5A57";
+    setup.column = 0; setup.row = 2; setup.columnSpan = 8; setup.rowSpan = 1;
+    setup.contentColumns = 8;
+    setup.controls = {
+        control("Accent Threshold", "ACCENT THRESHOLD", S::Knob, 0, 0),
+        control("Analog Character", "ANALOG DRIFT", S::Knob, 1, 0),
+    };
+
+    // L'éditeur de motif : sur la machine d'origine, c'est par lui qu'on
+    // écrit la musique -- les potentiomètres ne font que la colorer.
+    panel.sequencer.kind = SequencerKind::MonoPattern;
+    panel.sequencer.title = "PATTERN";
+    panel.sequencer.stepCount = 16;
+    panel.sequencer.defaultNote = 36;
+    panel.sequencer.rowSpan = 2;
+    panel.gridRows += panel.sequencer.rowSpan;
+
+    panel.sections = {main, setup};
+    return panel;
+}
+
+// ---------------------------------------------------------------------------
+// TR-808-style
+//
+// Ici la disposition EST l'instrument : une colonne de commandes par pièce de
+// batterie, alignées sous leur nom, plus l'accent à part. Regrouper « tous les
+// niveaux » puis « tous les decays » serait plus compact et rendrait la
+// machine inutilisable -- on règle une pièce, pas une catégorie.
+// ---------------------------------------------------------------------------
+MachinePanel makeTr808() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.tr808";
+    panel.displayName = "TR-808-style";
+    panel.chassis = Chassis::Plastic;
+    panel.panelColour = "#3A3A3C";
+    panel.sectionColour = "#2C2C2E";
+    panel.textColour = "#EDEDE8";
+    panel.knobColour = "#DCD6C8"; // boutons crème, comme les commandes de la machine d'origine
+    panel.gridColumns = 12;
+    panel.gridRows = 5;
+
+    auto voiceSection = [](std::string title, std::string accent, int column, int span,
+                            std::vector<PanelControl> controls) {
+        PanelSection section;
+        section.title = std::move(title);
+        section.accentColour = std::move(accent);
+        section.column = column;
+        section.row = 0;
+        section.columnSpan = span;
+        section.rowSpan = 3;
+        section.controls = std::move(controls);
+        return section;
+    };
+
+    // Le nuancier de la machine : orange, jaune, ocre, blanc cassé -- couleurs
+    // qui séparaient les familles de pièces sur le panneau d'origine.
+    const std::string orange = "#D96C2C";
+    const std::string yellow = "#D9B23A";
+    const std::string cream = "#D8D2C4";
+
+    panel.sections = {
+        voiceSection("BASS DRUM", orange, 0, 3, {
+            control("Kick Level", "LEVEL", S::Knob, 0, 0),
+            control("Kick Tune", "TONE", S::Knob, 1, 0),
+            control("Kick Decay", "DECAY", S::Knob, 2, 0),
+        }),
+        voiceSection("SNARE DRUM", orange, 3, 3, {
+            control("Snare Level", "LEVEL", S::Knob, 0, 0),
+            control("Snare Tune", "TONE", S::Knob, 1, 0),
+            control("Snare Decay", "DECAY", S::Knob, 2, 0),
+            control("Snare Snappy", "SNAPPY", S::Knob, 1, 1),
+        }),
+        voiceSection("CYMBAL / HAT", yellow, 6, 3, {
+            control("Closed Hat Level", "CH LEVEL", S::Knob, 0, 0),
+            control("Closed Hat Decay", "CH DECAY", S::Knob, 1, 0),
+            control("Open Hat Level", "OH LEVEL", S::Knob, 0, 1),
+            control("Open Hat Decay", "OH DECAY", S::Knob, 1, 1),
+        }),
+        voiceSection("CLAP / COWBELL", cream, 9, 3, {
+            control("Clap Level", "CP LEVEL", S::Knob, 0, 0),
+            control("Clap Decay", "CP DECAY", S::Knob, 1, 0),
+            control("Cowbell Level", "CB LEVEL", S::Knob, 0, 1),
+            control("Cowbell Tune", "CB TUNE", S::Knob, 1, 1),
+        }),
+    };
+
+    PanelSection accent;
+    accent.title = "ACCENT";
+    accent.accentColour = "#C4462F";
+    accent.column = 0; accent.row = 3; accent.columnSpan = 3; accent.rowSpan = 2;
+    accent.contentColumns = 2; // un seul bouton, à gauche -- pas étalé sur toute la largeur
+    accent.controls = { control("Accent", "ACCENT", S::Knob, 0, 0) };
+    panel.sections.push_back(accent);
+
+    // Les seize pas, une ligne par pièce : c'est l'instrument lui-même.
+    panel.sequencer.kind = SequencerKind::DrumGrid;
+    panel.sequencer.title = "RHYTHM PATTERN";
+    panel.sequencer.stepCount = 16;
+    panel.sequencer.rowSpan = 3;
+    panel.sequencer.lanes = {
+        {"BASS DRUM", 36}, {"SNARE", 38}, {"CLAP", 39},
+        {"CLOSED HAT", 42}, {"OPEN HAT", 46}, {"COWBELL", 56},
+    };
+    panel.gridRows += panel.sequencer.rowSpan;
+    return panel;
+}
+
+
+// ---------------------------------------------------------------------------
+// TR-909-style
+//
+// Même principe que le TR-808 -- une colonne de commandes par pièce -- mais la
+// machine est plus fournie (attaque de grosse caisse, toms, crash) et son
+// panneau est plus clair, avec le liseré orange/rouge qui sépare les groupes.
+// La grille de pas partage les mêmes seize boutons colorés par quatre.
+// ---------------------------------------------------------------------------
+MachinePanel makeTr909() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.tr909";
+    panel.displayName = "TR-909-style";
+    panel.chassis = Chassis::Plastic;
+    panel.panelColour = "#43444A";
+    panel.sectionColour = "#33343A";
+    panel.textColour = "#EFEFEA";
+    panel.knobColour = "#D9D4C8";
+    panel.gridColumns = 15;
+    panel.gridRows = 5;
+
+    auto voice = [](std::string title, std::string accent, int column, int span,
+                     std::vector<PanelControl> controls) {
+        PanelSection section;
+        section.title = std::move(title);
+        section.accentColour = std::move(accent);
+        section.column = column;
+        section.row = 0;
+        section.columnSpan = span;
+        section.rowSpan = 3;
+        section.controls = std::move(controls);
+        return section;
+    };
+
+    const std::string red = "#C4462F";
+    const std::string orange = "#E08A2E";
+    const std::string steel = "#9FB0C0";
+
+    panel.sections = {
+        voice("BASS DRUM", red, 0, 4, {
+            control("Kick Level", "LEVEL", S::Knob, 0, 0),
+            control("Kick Tune", "TUNE", S::Knob, 1, 0),
+            control("Kick Attack", "ATTACK", S::Knob, 0, 1),
+            control("Kick Decay", "DECAY", S::Knob, 1, 1),
+        }),
+        voice("SNARE DRUM", red, 4, 4, {
+            control("Snare Level", "LEVEL", S::Knob, 0, 0),
+            control("Snare Tune", "TUNE", S::Knob, 1, 0),
+            control("Snare Snappy", "SNAPPY", S::Knob, 0, 1),
+            control("Snare Decay", "DECAY", S::Knob, 1, 1),
+        }),
+        voice("TOM / CLAP", orange, 8, 4, {
+            control("Tom Level", "TOM LEVEL", S::Knob, 0, 0),
+            control("Tom Tune", "TOM TUNE", S::Knob, 1, 0),
+            control("Tom Decay", "TOM DECAY", S::Knob, 0, 1),
+            control("Clap Level", "CLAP LEVEL", S::Knob, 1, 1),
+            control("Clap Decay", "CLAP DECAY", S::Knob, 2, 1),
+        }),
+        voice("CYMBAL / HAT", steel, 12, 3, {
+            control("Closed Hat Level", "CH LEVEL", S::Knob, 0, 0),
+            control("Open Hat Level", "OH LEVEL", S::Knob, 1, 0),
+            control("Closed Hat Decay", "CH DECAY", S::Knob, 0, 1),
+            control("Open Hat Decay", "OH DECAY", S::Knob, 1, 1),
+            control("Crash Level", "CRASH", S::Knob, 2, 0),
+            control("Crash Decay", "CR DECAY", S::Knob, 2, 1),
+        }),
+    };
+
+    PanelSection accent;
+    accent.title = "ACCENT";
+    accent.accentColour = red;
+    accent.column = 0; accent.row = 3; accent.columnSpan = 3; accent.rowSpan = 2;
+    accent.contentColumns = 2;
+    accent.controls = { control("Accent", "ACCENT", S::Knob, 0, 0) };
+    panel.sections.push_back(accent);
+
+    panel.sequencer.kind = SequencerKind::DrumGrid;
+    panel.sequencer.title = "RHYTHM PATTERN";
+    panel.sequencer.stepCount = 16;
+    panel.sequencer.rowSpan = 3;
+    panel.sequencer.lanes = {
+        {"BASS DRUM", 36}, {"SNARE", 38}, {"CLAP", 39}, {"LOW TOM", 45},
+        {"CLOSED HAT", 42}, {"OPEN HAT", 46}, {"CRASH", 49},
+    };
+    panel.gridRows += panel.sequencer.rowSpan;
+    return panel;
+}
+
+// ---------------------------------------------------------------------------
+// SH-101-style
+//
+// Le premier panneau à CURSEURS du projet : sur cette machine, tout se règle
+// par de petits faders alignés, et c'est ce qui la rend lisible d'un regard --
+// on voit la forme du son avant de lire les intitulés. Boîtier coloré (gris,
+// bleu ou rouge selon les séries), sérigraphie claire.
+// ---------------------------------------------------------------------------
+MachinePanel makeSh101() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.sh101";
+    panel.displayName = "SH-101-style";
+    panel.chassis = Chassis::Plastic;
+    panel.panelColour = "#4A5560";
+    panel.sectionColour = "#3B444E";
+    panel.textColour = "#EDEFF2";
+    panel.knobColour = "#20242A";
+    panel.gridColumns = 16;
+    panel.gridRows = 5;
+
+    PanelSection source;
+    source.title = "SOURCE MIXER";
+    source.accentColour = "#E0A33C";
+    source.column = 0; source.row = 0; source.columnSpan = 5; source.rowSpan = 5;
+    source.controls = {
+        control("Saw Level", "SAW", S::VerticalSlider, 0, 0),
+        control("Pulse Level", "PULSE", S::VerticalSlider, 1, 0),
+        control("Sub Level", "SUB", S::VerticalSlider, 2, 0),
+        control("Noise Level", "NOISE", S::VerticalSlider, 3, 0),
+        control("Sub Type", "SUB TYPE", S::Selector, 4, 0),
+        control("Analog Character", "ANALOG DRIFT", S::Knob, 4, 1),
+    };
+
+    PanelSection modulation;
+    modulation.title = "LFO / PWM";
+    modulation.accentColour = "#79B4D0";
+    modulation.column = 5; modulation.row = 0; modulation.columnSpan = 4; modulation.rowSpan = 5;
+    modulation.controls = {
+        control("LFO Rate", "RATE", S::VerticalSlider, 0, 0),
+        control("LFO Pitch Amount", "TO PITCH", S::VerticalSlider, 1, 0),
+        control("LFO Filter Amount", "TO VCF", S::VerticalSlider, 2, 0),
+        control("PWM LFO Amount", "TO PWM", S::VerticalSlider, 3, 0),
+        control("LFO Waveform", "LFO WAVE", S::Selector, 0, 1),
+        control("Pulse Width", "PULSE WIDTH", S::Knob, 1, 1),
+    };
+
+    PanelSection filter;
+    filter.title = "VCF";
+    filter.accentColour = "#E0A33C";
+    filter.column = 9; filter.row = 0; filter.columnSpan = 4; filter.rowSpan = 5;
+    filter.controls = {
+        control("Filter Cutoff", "CUTOFF", S::VerticalSlider, 0, 0),
+        control("Filter Resonance", "RESONANCE", S::VerticalSlider, 1, 0),
+        control("Filter Env Amount", "ENV", S::VerticalSlider, 2, 0),
+        control("Filter Key Track", "KYBD", S::VerticalSlider, 3, 0),
+    };
+
+    PanelSection envelope;
+    envelope.title = "ENV / VCA";
+    envelope.accentColour = "#79B4D0";
+    envelope.column = 13; envelope.row = 0; envelope.columnSpan = 3; envelope.rowSpan = 5;
+    envelope.controls = {
+        control("Env Attack", "A", S::VerticalSlider, 0, 0),
+        control("Env Decay", "D", S::VerticalSlider, 1, 0),
+        control("Env Sustain", "S", S::VerticalSlider, 2, 0),
+        control("Env Release", "R", S::VerticalSlider, 0, 1),
+        control("VCA Mode", "VCA", S::Selector, 1, 1),
+        control("Glide Time", "PORTAMENTO", S::Knob, 2, 1),
+    };
+
+    panel.sections = {source, modulation, filter, envelope};
+    return panel;
+}
+
+
+// ---------------------------------------------------------------------------
+// Juno-106-style
+//
+// Machine à CURSEURS : DCO, HPF, VCF, VCA et enveloppe s'alignent de gauche à
+// droite, chacun sa colonne de faders. Panneau noir, sérigraphie et liserés
+// bleutés, potentiomètres uniquement là où l'original en a un (le chorus est
+// un sélecteur, pas un curseur).
+// ---------------------------------------------------------------------------
+MachinePanel makeJuno106() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.juno106";
+    panel.displayName = "Juno-106-style";
+    panel.chassis = Chassis::Plastic;
+    panel.panelColour = "#25262B";
+    panel.sectionColour = "#1B1C20";
+    panel.textColour = "#E9EBEF";
+    panel.knobColour = "#3A3C42";
+    panel.gridColumns = 18;
+    panel.gridRows = 6;
+
+    PanelSection lfo;
+    lfo.title = "LFO";
+    lfo.accentColour = "#5FA8D3";
+    lfo.column = 0; lfo.row = 0; lfo.columnSpan = 3; lfo.rowSpan = 6;
+    lfo.controls = {
+        control("LFO Rate", "RATE", S::VerticalSlider, 0, 0),
+        control("LFO Delay", "DELAY", S::VerticalSlider, 1, 0),
+        control("LFO Pitch Amount", "TO DCO", S::VerticalSlider, 2, 0),
+    };
+
+    PanelSection dco;
+    dco.title = "DCO";
+    dco.accentColour = "#E2B04A";
+    dco.column = 3; dco.row = 0; dco.columnSpan = 5; dco.rowSpan = 6;
+    dco.controls = {
+        control("DCO Saw Level", "SAW", S::VerticalSlider, 0, 0),
+        control("DCO Pulse Level", "PULSE", S::VerticalSlider, 1, 0),
+        control("DCO Sub Level", "SUB", S::VerticalSlider, 2, 0),
+        control("Noise Level", "NOISE", S::VerticalSlider, 3, 0),
+        control("Pulse Width", "PWM", S::VerticalSlider, 4, 0),
+        control("PWM LFO Amount", "PWM LFO", S::Knob, 4, 1),
+    };
+
+    PanelSection filter;
+    filter.title = "HPF / VCF";
+    filter.accentColour = "#E2B04A";
+    filter.column = 8; filter.row = 0; filter.columnSpan = 6; filter.rowSpan = 6;
+    filter.controls = {
+        control("HPF Cutoff", "HPF", S::VerticalSlider, 0, 0),
+        control("VCF Cutoff", "FREQ", S::VerticalSlider, 1, 0),
+        control("VCF Resonance", "RES", S::VerticalSlider, 2, 0),
+        control("VCF Env Amount", "ENV", S::VerticalSlider, 3, 0),
+        control("VCF LFO Amount", "LFO", S::VerticalSlider, 4, 0),
+        control("VCF Key Track", "KYBD", S::VerticalSlider, 5, 0),
+    };
+
+    PanelSection envelope;
+    envelope.title = "ENV / CHORUS";
+    envelope.accentColour = "#5FA8D3";
+    envelope.column = 14; envelope.row = 0; envelope.columnSpan = 4; envelope.rowSpan = 6;
+    envelope.controls = {
+        control("Env Attack", "A", S::VerticalSlider, 0, 0),
+        control("Env Decay", "D", S::VerticalSlider, 1, 0),
+        control("Env Sustain", "S", S::VerticalSlider, 2, 0),
+        control("Env Release", "R", S::VerticalSlider, 3, 0),
+        control("Chorus Mode", "CHORUS", S::Selector, 0, 1),
+        control("Analog Character", "ANALOG DRIFT", S::Knob, 1, 1),
+    };
+
+    panel.sections = {lfo, dco, filter, envelope};
+    return panel;
+}
+
+// ---------------------------------------------------------------------------
+// Jupiter-8-style
+//
+// Le grand frère : deux VCO complets, cross-mod et sync, deux enveloppes.
+// Panneau sombre, curseurs à capuchons colorés -- bleu pour la modulation,
+// orange pour le son -- qui séparent les fonctions à l'œil nu.
+// ---------------------------------------------------------------------------
+MachinePanel makeJupiter8() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.jupiter8";
+    panel.displayName = "Jupiter-8-style";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#26272C";
+    panel.sectionColour = "#1C1D21";
+    panel.textColour = "#EAECF0";
+    panel.knobColour = "#33353B";
+    panel.gridColumns = 20;
+    panel.gridRows = 7;
+
+    PanelSection lfo;
+    lfo.title = "LFO / MOD";
+    lfo.accentColour = "#5FA8D3";
+    lfo.column = 0; lfo.row = 0; lfo.columnSpan = 4; lfo.rowSpan = 7;
+    lfo.controls = {
+        control("LFO Rate", "RATE", S::VerticalSlider, 0, 0),
+        control("LFO to Pitch", "TO VCO", S::VerticalSlider, 1, 0),
+        control("LFO to Filter", "TO VCF", S::VerticalSlider, 2, 0),
+        control("LFO to PWM", "TO PWM", S::VerticalSlider, 3, 0),
+    };
+
+    PanelSection oscillators;
+    oscillators.title = "VCO 1 / VCO 2";
+    oscillators.accentColour = "#E2803C";
+    oscillators.column = 4; oscillators.row = 0; oscillators.columnSpan = 6; oscillators.rowSpan = 7;
+    oscillators.controls = {
+        control("VCO-1 Level", "VCO 1", S::VerticalSlider, 0, 0),
+        control("VCO-1 Shape", "SHAPE 1", S::Selector, 1, 0),
+        control("VCO-1 Pulse Width", "PW 1", S::Knob, 2, 0),
+        control("VCO-2 Level", "VCO 2", S::VerticalSlider, 3, 0),
+        control("VCO-2 Shape", "SHAPE 2", S::Selector, 4, 0),
+        control("VCO-2 Pulse Width", "PW 2", S::Knob, 5, 0),
+        control("VCO-2 Detune", "DETUNE", S::Knob, 3, 1),
+        control("Cross Mod", "CROSS MOD", S::Knob, 4, 1),
+        control("Sync", "SYNC", S::Toggle, 5, 1),
+    };
+
+    PanelSection filter;
+    filter.title = "HPF / VCF";
+    filter.accentColour = "#E2803C";
+    filter.column = 10; filter.row = 0; filter.columnSpan = 5; filter.rowSpan = 7;
+    filter.controls = {
+        control("HPF Cutoff", "HPF", S::VerticalSlider, 0, 0),
+        control("Filter Cutoff", "FREQ", S::VerticalSlider, 1, 0),
+        control("Filter Resonance", "RES", S::VerticalSlider, 2, 0),
+        control("Filter Env Amount", "ENV", S::VerticalSlider, 3, 0),
+        control("Filter Key Track", "KYBD", S::VerticalSlider, 4, 0),
+    };
+
+    PanelSection envelopes;
+    envelopes.title = "ENV 1 / ENV 2";
+    envelopes.accentColour = "#5FA8D3";
+    envelopes.column = 15; envelopes.row = 0; envelopes.columnSpan = 5; envelopes.rowSpan = 7;
+    envelopes.controls = {
+        control("Env 1 Attack", "A1", S::VerticalSlider, 0, 0),
+        control("Env 1 Decay", "D1", S::VerticalSlider, 1, 0),
+        control("Env 1 Sustain", "S1", S::VerticalSlider, 2, 0),
+        control("Env 1 Release", "R1", S::VerticalSlider, 3, 0),
+        control("Env 2 Attack", "A2", S::VerticalSlider, 0, 1),
+        control("Env 2 Decay", "D2", S::VerticalSlider, 1, 1),
+        control("Env 2 Sustain", "S2", S::VerticalSlider, 2, 1),
+        control("Env 2 Release", "R2", S::VerticalSlider, 3, 1),
+        control("Chorus Mode", "CHORUS", S::Selector, 4, 0),
+        control("Analog Character", "DRIFT", S::Knob, 4, 1),
+    };
+
+    panel.sections = {lfo, oscillators, filter, envelopes};
+    return panel;
+}
+
+// ---------------------------------------------------------------------------
+// Prophet-style
+//
+// Flancs de bois, panneau noir, tout au potentiomètre : oscillateur A,
+// oscillateur B, mélangeur, filtre, deux enveloppes, et surtout le bloc
+// POLY-MOD, la particularité de la machine -- deux sources (enveloppe de
+// filtre, oscillateur B) routées vers trois destinations.
+// ---------------------------------------------------------------------------
+MachinePanel makeProphet() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.prophet";
+    panel.displayName = "Prophet-style";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#232326";
+    panel.sectionColour = "#1A1A1D";
+    panel.textColour = "#E8E6E0";
+    panel.knobColour = "#1A1A1C";
+    panel.gridColumns = 20;
+    panel.gridRows = 4;
+
+    PanelSection polyMod;
+    polyMod.title = "POLY-MOD";
+    polyMod.accentColour = "#C86A4A";
+    polyMod.column = 0; polyMod.row = 0; polyMod.columnSpan = 5; polyMod.rowSpan = 4;
+    polyMod.controls = {
+        control("PolyMod Filt Env", "SOURCE : FILT ENV", S::Knob, 0, 0),
+        control("PolyMod Osc B", "SOURCE : OSC B", S::Knob, 1, 0),
+        control("PolyMod to Freq A", "TO FREQ A", S::Knob, 0, 1),
+        control("PolyMod to PW A", "TO PW A", S::Knob, 1, 1),
+        control("PolyMod to Filter", "TO FILTER", S::Knob, 2, 1),
+    };
+
+    PanelSection oscillators;
+    oscillators.title = "OSCILLATOR A / B";
+    oscillators.accentColour = "#D8B25A";
+    oscillators.column = 5; oscillators.row = 0; oscillators.columnSpan = 6; oscillators.rowSpan = 4;
+    oscillators.controls = {
+        control("Osc A Level", "A LEVEL", S::Knob, 0, 0),
+        control("Osc A Shape", "A SHAPE", S::Selector, 1, 0),
+        control("Osc A Pulse Width", "A PW", S::Knob, 2, 0),
+        control("Sync", "SYNC", S::Toggle, 3, 0),
+        control("Osc B Level", "B LEVEL", S::Knob, 0, 1),
+        control("Osc B Shape", "B SHAPE", S::Selector, 1, 1),
+        control("Osc B Pulse Width", "B PW", S::Knob, 2, 1),
+        control("Osc B Detune", "B DETUNE", S::Knob, 3, 1),
+    };
+
+    PanelSection filter;
+    filter.title = "FILTER";
+    filter.accentColour = "#D8B25A";
+    filter.column = 11; filter.row = 0; filter.columnSpan = 5; filter.rowSpan = 4;
+    filter.controls = {
+        control("Filter Cutoff", "CUTOFF", S::LargeKnob, 0, 0, 2, 2),
+        control("Filter Resonance", "RESONANCE", S::Knob, 2, 0),
+        control("Filter Env Amount", "ENV AMOUNT", S::Knob, 3, 0),
+        control("Filter Key Track", "KEYBOARD", S::Knob, 2, 1),
+        control("LFO Rate", "LFO RATE", S::Knob, 3, 1),
+        control("LFO to Pitch", "LFO TO OSC", S::Knob, 0, 2),
+        control("LFO to Filter", "LFO TO VCF", S::Knob, 1, 2),
+        control("Analog Character", "DRIFT", S::Knob, 2, 2),
+    };
+
+    PanelSection envelopes;
+    envelopes.title = "FILTER ENV / AMP ENV";
+    envelopes.accentColour = "#8FA9C0";
+    envelopes.column = 16; envelopes.row = 0; envelopes.columnSpan = 4; envelopes.rowSpan = 4;
+    envelopes.controls = {
+        control("Filter Attack", "F ATTACK", S::Knob, 0, 0),
+        control("Filter Decay", "F DECAY", S::Knob, 1, 0),
+        control("Filter Sustain", "F SUSTAIN", S::Knob, 2, 0),
+        control("Filter Release", "F RELEASE", S::Knob, 3, 0),
+        control("Amp Attack", "A ATTACK", S::Knob, 0, 1),
+        control("Amp Decay", "A DECAY", S::Knob, 1, 1),
+        control("Amp Sustain", "A SUSTAIN", S::Knob, 2, 1),
+        control("Amp Release", "A RELEASE", S::Knob, 3, 1),
+    };
+
+    panel.sections = {polyMod, oscillators, filter, envelopes};
+    return panel;
+}
+
+// ---------------------------------------------------------------------------
+// MS-20-style
+//
+// Panneau sombre à sérigraphie blanche, et sa signature : DEUX filtres
+// séparés (passe-haut et passe-bas), chacun avec sa propre résonance,
+// présentés côte à côte comme sur la machine -- c'est ce qui permet le
+// balayage en bande passante qui la caractérise.
+// ---------------------------------------------------------------------------
+MachinePanel makeMs20() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.ms20";
+    panel.displayName = "MS-20-style";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#2E2F33";
+    panel.sectionColour = "#232428";
+    panel.textColour = "#F0F0EC";
+    panel.knobColour = "#1C1D20";
+    panel.gridColumns = 16;
+    panel.gridRows = 4;
+
+    PanelSection oscillators;
+    oscillators.title = "VCO 1 / VCO 2";
+    oscillators.accentColour = "#D7DADF";
+    oscillators.column = 0; oscillators.row = 0; oscillators.columnSpan = 5; oscillators.rowSpan = 4;
+    oscillators.controls = {
+        control("VCO-1 Level", "VCO 1 LEVEL", S::Knob, 0, 0),
+        control("VCO-1 Shape", "VCO 1 WAVE", S::Selector, 1, 0),
+        control("VCO-1 Pulse Width", "VCO 1 PW", S::Knob, 2, 0),
+        control("VCO-2 Level", "VCO 2 LEVEL", S::Knob, 0, 1),
+        control("VCO-2 Shape", "VCO 2 WAVE", S::Selector, 1, 1),
+        control("VCO-2 Pitch", "VCO 2 PITCH", S::Knob, 2, 1),
+        control("Noise Level", "NOISE", S::Knob, 0, 2),
+        control("Glide Time", "PORTAMENTO", S::Knob, 1, 2),
+        control("Analog Character", "DRIFT", S::Knob, 2, 2),
+    };
+
+    PanelSection filters;
+    filters.title = "HIGH PASS / LOW PASS";
+    filters.accentColour = "#E0C25A";
+    filters.column = 5; filters.row = 0; filters.columnSpan = 6; filters.rowSpan = 4;
+    filters.controls = {
+        control("HPF Cutoff", "HPF CUTOFF", S::Knob, 0, 0),
+        control("HPF Resonance", "HPF PEAK", S::Knob, 1, 0),
+        control("LPF Cutoff", "LPF CUTOFF", S::LargeKnob, 2, 0, 2, 2),
+        control("LPF Resonance", "LPF PEAK", S::Knob, 0, 1),
+        control("Filter Drive", "DRIVE", S::Knob, 1, 1),
+        control("EG to LPF", "EG TO LPF", S::Knob, 0, 2),
+    };
+
+    PanelSection modulation;
+    modulation.title = "MG / EG";
+    modulation.accentColour = "#7FB2C8";
+    modulation.column = 11; modulation.row = 0; modulation.columnSpan = 5; modulation.rowSpan = 4;
+    modulation.controls = {
+        control("MG Rate", "MG FREQUENCY", S::Knob, 0, 0),
+        control("MG Waveform", "MG WAVEFORM", S::Selector, 1, 0),
+        control("MG to Pitch", "MG TO VCO", S::Knob, 2, 0),
+        control("MG to LPF", "MG TO VCF", S::Knob, 3, 0),
+        control("Amp Attack", "ATTACK", S::Knob, 0, 1),
+        control("Amp Decay", "DECAY", S::Knob, 1, 1),
+        control("Amp Sustain", "SUSTAIN", S::Knob, 2, 1),
+        control("Amp Release", "RELEASE", S::Knob, 3, 1),
+    };
+
+    panel.sections = {oscillators, filters, modulation};
+    return panel;
+}
+
+// ---------------------------------------------------------------------------
+// ARP-Odyssey-style
+//
+// Panneau noir à curseurs plats et sérigraphie dorée. Duophonique : ses deux
+// oscillateurs suivent les touches grave et aiguë, d'où le ring mod placé
+// juste à côté d'eux -- il n'a de sens qu'avec les deux.
+// ---------------------------------------------------------------------------
+MachinePanel makeArpOdyssey() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.arpodyssey";
+    panel.displayName = "ARP-Odyssey-style";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#1F1F22";
+    panel.sectionColour = "#17171A";
+    panel.textColour = "#E7D9A8";
+    panel.knobColour = "#2C2C30";
+    panel.gridColumns = 18;
+    panel.gridRows = 6;
+
+    PanelSection oscillators;
+    oscillators.title = "VCO 1 / VCO 2 / RING";
+    oscillators.accentColour = "#D9B75A";
+    oscillators.column = 0; oscillators.row = 0; oscillators.columnSpan = 7; oscillators.rowSpan = 6;
+    oscillators.controls = {
+        control("VCO-1 Level", "VCO 1", S::VerticalSlider, 0, 0),
+        control("VCO-2 Level", "VCO 2", S::VerticalSlider, 1, 0),
+        control("Ring Mod Level", "RING MOD", S::VerticalSlider, 2, 0),
+        control("Noise Level", "NOISE", S::VerticalSlider, 3, 0),
+        control("VCO-1 Shape", "WAVE 1", S::Selector, 4, 0),
+        control("VCO-2 Shape", "WAVE 2", S::Selector, 5, 0),
+        control("VCO-1 Pulse Width", "PW 1", S::Knob, 4, 1),
+        control("VCO-2 Pulse Width", "PW 2", S::Knob, 5, 1),
+        control("VCO-2 Detune", "DETUNE", S::Knob, 6, 0),
+        control("Sync", "SYNC", S::Toggle, 6, 1),
+    };
+
+    PanelSection filter;
+    filter.title = "FILTER";
+    filter.accentColour = "#D9B75A";
+    filter.column = 7; filter.row = 0; filter.columnSpan = 5; filter.rowSpan = 6;
+    filter.controls = {
+        control("HPF Cutoff", "HPF", S::VerticalSlider, 0, 0),
+        control("Filter Cutoff", "CUTOFF", S::VerticalSlider, 1, 0),
+        control("Filter Resonance", "RESONANCE", S::VerticalSlider, 2, 0),
+        control("Filter Env Amount", "ENV", S::VerticalSlider, 3, 0),
+        control("Filter Key Track", "KYBD", S::VerticalSlider, 4, 0),
+    };
+
+    PanelSection modulation;
+    modulation.title = "LFO / ADSR";
+    modulation.accentColour = "#8FB4C4";
+    modulation.column = 12; modulation.row = 0; modulation.columnSpan = 6; modulation.rowSpan = 6;
+    modulation.controls = {
+        control("LFO Rate", "LFO RATE", S::VerticalSlider, 0, 0),
+        control("LFO to Pitch", "TO VCO", S::VerticalSlider, 1, 0),
+        control("LFO to Filter", "TO VCF", S::VerticalSlider, 2, 0),
+        control("Amp Attack", "A", S::VerticalSlider, 3, 0),
+        control("Amp Decay", "D", S::VerticalSlider, 4, 0),
+        control("Amp Sustain", "S", S::VerticalSlider, 5, 0),
+        control("Amp Release", "R", S::VerticalSlider, 0, 1),
+        control("LFO Waveform", "LFO WAVE", S::Selector, 1, 1),
+        control("Glide Time", "PORTAMENTO", S::Knob, 2, 1),
+        control("Analog Character", "DRIFT", S::Knob, 3, 1),
+    };
+
+    panel.sections = {oscillators, filter, modulation};
+    return panel;
+}
+
+// ---------------------------------------------------------------------------
+// DX7-style
+//
+// Cas à part, et il faut le dire franchement : la machine d'origine n'a
+// quasiment aucune commande visible -- un clavier à membrane, un afficheur de
+// deux lignes, un curseur de données, et TOUT passe par des menus. Reproduire
+// ça littéralement donnerait une façade fidèle et inutilisable, où régler un
+// opérateur demanderait dix pressions.
+//
+// La façade retenue montre donc ce que la machine CACHE : la matrice des six
+// opérateurs, un par colonne, avec ses paramètres alignés en rangées. C'est la
+// convention de tous les éditeurs FM depuis quarante ans, et c'est la seule
+// disposition qui rende la synthèse FM lisible -- on compare deux opérateurs
+// d'un coup d'œil au lieu de les visiter l'un après l'autre.
+// ---------------------------------------------------------------------------
+MachinePanel makeDx7() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.dx7";
+    panel.displayName = "DX7-style";
+    panel.chassis = Chassis::Plastic;
+    panel.panelColour = "#3B3A38";
+    panel.sectionColour = "#2C2B29";
+    panel.textColour = "#E9E4D8";
+    panel.knobColour = "#22211F";
+    panel.gridColumns = 16;
+    panel.gridRows = 8;
+
+    PanelSection global;
+    global.title = "ALGORITHM / GLOBAL";
+    global.accentColour = "#7FA8B8";
+    global.column = 0; global.row = 0; global.columnSpan = 4; global.rowSpan = 8;
+    global.controls = {
+        control("Algorithm", "ALGORITHM", S::LargeKnob, 0, 0, 2, 2),
+        control("Feedback", "FEEDBACK", S::Knob, 2, 0),
+        control("LFO Rate", "LFO RATE", S::Knob, 2, 1),
+        control("LFO to Pitch", "LFO TO PITCH", S::Knob, 0, 2),
+        control("Velocity Sens", "VELOCITY", S::Knob, 1, 2),
+        control("Key Level Scaling", "KEY SCALING", S::Knob, 2, 2),
+        control("Pitch Env Amount", "PITCH ENV", S::Knob, 0, 3),
+        control("Pitch Env Time", "PITCH TIME", S::Knob, 1, 3),
+        control("Analog Character", "DRIFT", S::Knob, 2, 3),
+    };
+    panel.sections.push_back(global);
+
+    // Un bloc par opérateur : six colonnes identiques, ce qui permet de
+    // comparer les opérateurs entre eux -- c'est tout l'intérêt de la matrice.
+    const char* operatorAccents[6] = {"#D98C3C", "#D9A83C", "#C8C05A", "#8FBF7A", "#7FA8B8", "#9B8FC0"};
+    for (int op = 1; op <= 6; ++op) {
+        PanelSection section;
+        section.title = "OP " + std::to_string(op);
+        section.accentColour = operatorAccents[op - 1];
+        section.column = 4 + (op - 1) * 2;
+        section.row = 0;
+        section.columnSpan = 2;
+        section.rowSpan = 8;
+        const std::string prefix = "Op" + std::to_string(op) + " ";
+        section.controls = {
+            control(prefix + "Ratio", "RATIO", S::Knob, 0, 0),
+            control(prefix + "Level", "LEVEL", S::Knob, 1, 0),
+            control(prefix + "Attack", "A", S::Knob, 0, 1),
+            control(prefix + "Decay", "D", S::Knob, 1, 1),
+            control(prefix + "Sustain", "S", S::Knob, 0, 2),
+            control(prefix + "Release", "R", S::Knob, 1, 2),
+            control(prefix + "Fixed", "FIXED", S::Toggle, 0, 3),
+        };
+        panel.sections.push_back(section);
+    }
+    return panel;
+}
+
+// ---------------------------------------------------------------------------
+// Sampler — 16 emplacements
+//
+// Façade de boîte à rythmes plutôt que de sampler à écran : une colonne par
+// emplacement, ses réglages dessous, et la grille de pas en bas. C'est la
+// disposition qui correspond à l'usage visé (rejouer des coups découpés d'un
+// enregistrement), et celle où l'on règle une pièce plutôt qu'une catégorie.
+//
+// POURQUOI SEIZE TIENNENT ALORS QUE HUIT SEMBLAIENT DÉJÀ BEAUCOUP. La version
+// précédente s'arrêtait à huit parce que seize emplacements à sept paramètres
+// font cent douze commandes -- illisibles alignées. Le nombre de commandes par
+// emplacement est donc réduit à QUATRE : celles qu'on joue. Seize fois quatre
+// font soixante-quatre, ce qu'une boîte à rythmes affiche couramment.
+//
+// Les trois autres (note de déclenchement, point de départ, groupe de coupure)
+// sont des réglages de CONFIGURATION, posés une fois par l'analyse ou par le
+// panneau générique, pas des gestes de jeu. Ils sont déclarés omis, avec leur
+// raison, comme l'exige le cahier des charges.
+// ---------------------------------------------------------------------------
+MachinePanel makeSampler() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.sampler";
+    panel.displayName = "Sampler";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#33363C";
+    panel.sectionColour = "#282B30";
+    panel.textColour = "#EDEEF0";
+    panel.knobColour = "#1E2024";
+    panel.gridColumns = 16;
+    panel.gridRows = 4;
+
+    // Deux rangées de huit. Les couleurs suivent les FAMILLES de pièces, comme
+    // les capuchons colorés d'une boîte à rythmes : on repère la grosse caisse
+    // ou les charlestons sans lire les étiquettes.
+    const char* accents[16] = {
+        "#D96C2C", "#D96C2C",                       // 1-2  : peaux graves
+        "#D9B23A", "#D9B23A",                       // 3-4  : charlestons
+        "#8FBF7A", "#8FBF7A",                       // 5-6  : claps et toms
+        "#7FA8B8", "#7FA8B8",                       // 7-8  : cymbales
+        "#C4788F", "#C4788F", "#C4788F", "#C4788F", // 9-12 : toms
+        "#9B8FD9", "#9B8FD9", "#9B8FD9", "#9B8FD9", // 13-16: percussions
+    };
+    for (int slot = 0; slot < 16; ++slot) {
+        PanelSection section;
+        section.title = "SLOT " + std::to_string(slot + 1);
+        section.accentColour = accents[slot];
+        section.column = (slot % 8) * 2;
+        section.row = (slot / 8) * 2;
+        section.columnSpan = 2;
+        section.rowSpan = 2;
+        const std::string prefix = "Slot " + std::to_string(slot + 1) + " ";
+        // Deux par deux plutôt qu'en ligne : à deux colonnes de large, quatre
+        // commandes alignées seraient minuscules.
+        section.controls = {
+            control(prefix + "Level", "LVL", S::Knob, 0, 0),
+            control(prefix + "Tune", "TUNE", S::Knob, 1, 0),
+            control(prefix + "Decay", "DEC", S::Knob, 0, 1),
+            control(prefix + "Pan", "PAN", S::Knob, 1, 1),
+        };
+        panel.sections.push_back(section);
+    }
+
+    panel.omittedParameters = {
+        {"Master Level", "réglé au mixer, comme le volume de toute autre piste"},
+    };
+    for (int slot = 1; slot <= 16; ++slot) {
+        const std::string prefix = "Slot " + std::to_string(slot) + " ";
+        panel.omittedParameters.emplace_back(
+            prefix + "Note", "mapping : posé une fois par l'analyse ou le panneau générique");
+        panel.omittedParameters.emplace_back(
+            prefix + "Start", "réglage de configuration, pas un geste de jeu");
+        panel.omittedParameters.emplace_back(
+            prefix + "Choke", "groupe de coupure : configuration du kit, réglée une fois");
+    }
+
+    // La grille de pas ne montre que les HUIT PREMIERS emplacements, et c'est
+    // délibéré : seize lignes de seize pas rendraient la grille illisible, et
+    // les huit premiers portent la convention General MIDI -- grosse caisse,
+    // caisse claire, charlestons -- c'est-à-dire ce qu'on programme au pas.
+    // Les emplacements 9 à 16 se jouent depuis le piano roll.
+    panel.sequencer.kind = SequencerKind::DrumGrid;
+    panel.sequencer.title = "PATTERN";
+    panel.sequencer.stepCount = 16;
+    panel.sequencer.rowSpan = 3;
+    panel.sequencer.lanes = {
+        {"SLOT 1", 36}, {"SLOT 2", 38}, {"SLOT 3", 42}, {"SLOT 4", 46},
+        {"SLOT 5", 39}, {"SLOT 6", 45}, {"SLOT 7", 49}, {"SLOT 8", 51},
+    };
+    panel.gridRows += panel.sequencer.rowSpan;
+    return panel;
+}
+
+// ---------------------------------------------------------------------------
+// Piano électrique à lames
+//
+// La façade d'origine n'est pas celle d'un synthétiseur : sur l'instrument
+// réel, TOUT le réglage tient en cinq commandes sur le préampli de la valise
+// (grave, aigu, intensité et vitesse du vibrato, volume) -- le reste du son
+// vient de la mécanique, réglée au tournevis par le technicien.
+//
+// C'est cette hiérarchie qu'on reproduit, et non une rangée uniforme : le bloc
+// PREAMP tient la place et la disposition du panneau réel, et les réglages de
+// mécanique (marteaux, lames, micros) sont regroupés à part sous le nom que
+// leur donne le manuel d'entretien -- « VOICING ». Un pianiste retrouve ses
+// cinq gestes ; qui veut changer l'instrument passe par le bloc d'à côté.
+//
+// Châssis bois, tolex noir, sérigraphie et logo rouge orangé.
+// ---------------------------------------------------------------------------
+MachinePanel makeEPiano() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.epiano";
+    panel.displayName = "Electric Piano (lames)";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#1B1A19";
+    panel.sectionColour = "#131211";
+    panel.textColour = "#E6E1D8";
+    panel.knobColour = "#C9C3B6";
+    panel.gridColumns = 16;
+    panel.gridRows = 4;
+
+    // Mécanique : ce que le technicien règle sous le couvercle.
+    PanelSection voicing;
+    voicing.title = "VOICING";
+    voicing.accentColour = "#C4392B";
+    voicing.column = 0; voicing.row = 0; voicing.columnSpan = 6; voicing.rowSpan = 4;
+    voicing.controls = {
+        control("Hammer Hardness", "HAMMER", S::Knob, 0, 0),
+        control("Hammer Noise", "KNOCK", S::Knob, 1, 0),
+        control("Bell Level", "BELL", S::Knob, 2, 0),
+        control("Tine Decay", "TINE DECAY", S::Knob, 0, 1),
+        control("Release", "DAMPER", S::Knob, 1, 1),
+        control("Character", "AGE", S::Knob, 2, 1),
+    };
+
+    // Micros : distance et niveau d'attaque, les deux gestes qui font passer
+    // du son doux au son mordant.
+    PanelSection pickup;
+    pickup.title = "PICKUPS";
+    pickup.accentColour = "#C4392B";
+    pickup.column = 6; pickup.row = 0; pickup.columnSpan = 3; pickup.rowSpan = 4;
+    pickup.controls = {
+        control("Pickup Drive", "DRIVE", S::Knob, 0, 0),
+        control("Velocity Sensitivity", "TOUCH", S::Knob, 0, 1),
+    };
+
+    // Préampli de la valise : la façade réelle, avec ses proportions.
+    PanelSection preamp;
+    preamp.title = "PREAMP";
+    preamp.accentColour = "#D8B45A";
+    preamp.column = 9; preamp.row = 0; preamp.columnSpan = 7; preamp.rowSpan = 4;
+    preamp.controls = {
+        // rowSpan 2 : sur le préampli réel les curseurs occupent toute la
+        // hauteur du panneau. Les laisser sur une demi-hauteur creusait un
+        // vide sous eux et les faisait passer pour des commandes secondaires.
+        control("Tone Bass", "BASS", S::VerticalSlider, 0, 0, 1, 2),
+        control("Tone Treble", "TREBLE", S::VerticalSlider, 1, 0, 1, 2),
+        control("Tremolo Depth", "INTENSITY", S::VerticalSlider, 2, 0, 1, 2),
+        control("Tremolo Rate", "SPEED", S::VerticalSlider, 3, 0, 1, 2),
+        control("Output Level", "VOLUME", S::VerticalSlider, 4, 0, 1, 2),
+        control("Tremolo Stereo", "STEREO", S::Knob, 5, 0),
+        control("Analog Character", "AGE DRIFT", S::Knob, 5, 1),
+    };
+
+    panel.sections = {voicing, pickup, preamp};
+    return panel;
+}
+
+// ---------------------------------------------------------------------------
+// Polyphonique américain à filtre 2 pôles
+//
+// Panneau noir, capuchons de curseurs crème, sérigraphie orangée : la machine
+// se reconnaît à ce contraste avant même qu'on lise un nom de bloc.
+//
+// La disposition suit celle de l'original, qui est aussi celle du signal :
+// CONTROL (la modulation, tout à gauche, parce qu'elle arrose tout le reste),
+// puis les deux oscillateurs, le filtre, ses deux enveloppes, et enfin la
+// section de jeu. Le pupitre réel met la pente du filtre et l'unisson sur des
+// interrupteurs, pas des potentiomètres : ce sont des choix, pas des dosages.
+// ---------------------------------------------------------------------------
+MachinePanel makeObx() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.obx";
+    panel.displayName = "OB-X-style";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#161617";
+    panel.sectionColour = "#0F0F10";
+    panel.textColour = "#EDE7DA";
+    panel.knobColour = "#DFD8C6";
+    panel.gridColumns = 20;
+    panel.gridRows = 6;
+
+    // Note de disposition : les curseurs portent rowSpan 2 pour occuper toute
+    // la hauteur de leur bloc, et les commandes à positions discrètes
+    // (formes d'onde, interrupteurs) sont posées dans une colonne à part.
+    // C'est ce que fait le pupitre d'origine, et ça donne à l'œil le même
+    // repère : ce qui est haut se dose, ce qui est petit se choisit.
+    PanelSection control_;
+    control_.title = "CONTROL";
+    control_.accentColour = "#D9722E";
+    control_.column = 0; control_.row = 0; control_.columnSpan = 4; control_.rowSpan = 6;
+    control_.controls = {
+        control("LFO Rate", "RATE", S::VerticalSlider, 0, 0, 1, 2),
+        control("LFO to Pitch", "FREQ", S::VerticalSlider, 1, 0, 1, 2),
+        control("LFO to PWM", "PWM", S::VerticalSlider, 2, 0, 1, 2),
+        control("LFO Waveform", "WAVE", S::Selector, 3, 0),
+        control("LFO to Filter", "FILTER", S::Knob, 3, 1),
+    };
+
+    PanelSection osc1;
+    osc1.title = "OSCILLATOR 1";
+    osc1.accentColour = "#E8C24A";
+    osc1.column = 4; osc1.row = 0; osc1.columnSpan = 3; osc1.rowSpan = 6;
+    osc1.controls = {
+        control("Osc1 Level", "LEVEL", S::VerticalSlider, 0, 0, 1, 2),
+        control("Osc1 Pulse Width", "PW", S::VerticalSlider, 1, 0, 1, 2),
+        control("Osc1 Shape", "WAVE", S::Selector, 2, 0),
+    };
+
+    PanelSection osc2;
+    osc2.title = "OSCILLATOR 2";
+    osc2.accentColour = "#E8C24A";
+    osc2.column = 7; osc2.row = 0; osc2.columnSpan = 3; osc2.rowSpan = 6;
+    osc2.controls = {
+        control("Osc2 Level", "LEVEL", S::VerticalSlider, 0, 0, 1, 2),
+        control("Osc2 Pulse Width", "PW", S::VerticalSlider, 1, 0, 1, 2),
+        control("Osc2 Shape", "WAVE", S::Selector, 2, 0),
+        control("Osc2 Detune", "DETUNE", S::Knob, 2, 1),
+        control("Sync", "SYNC", S::Toggle, 3, 0),
+    };
+
+    PanelSection filter;
+    filter.title = "FILTER";
+    filter.accentColour = "#D9722E";
+    filter.column = 10; filter.row = 0; filter.columnSpan = 4; filter.rowSpan = 6;
+    filter.controls = {
+        control("Filter Cutoff", "FREQUENCY", S::VerticalSlider, 0, 0, 1, 2),
+        control("Filter Resonance", "RESONANCE", S::VerticalSlider, 1, 0, 1, 2),
+        control("Filter Env Amount", "ENV AMT", S::VerticalSlider, 2, 0, 1, 2),
+        control("Filter Key Track", "TRACK", S::VerticalSlider, 3, 0, 1, 2),
+        control("Filter Slope", "4-POLE", S::Toggle, 4, 0),
+        control("Velocity to Filter", "VELOCITY", S::Knob, 4, 1),
+    };
+
+    // Les deux enveloppes gardent leurs quatre curseurs alignés sur une seule
+    // rangée, comme sur l'original : A-D-S-R se lit de gauche à droite, et
+    // c'est ce que la main cherche.
+    PanelSection filterEnv;
+    filterEnv.title = "FILTER ENVELOPE";
+    filterEnv.accentColour = "#8FA9C9";
+    filterEnv.column = 14; filterEnv.row = 0; filterEnv.columnSpan = 2; filterEnv.rowSpan = 6;
+    filterEnv.controls = {
+        control("Filter Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
+        control("Filter Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
+        control("Filter Sustain", "S", S::VerticalSlider, 2, 0, 1, 2),
+        control("Filter Release", "R", S::VerticalSlider, 3, 0, 1, 2),
+    };
+
+    PanelSection ampEnv;
+    ampEnv.title = "AMP ENVELOPE";
+    ampEnv.accentColour = "#8FA9C9";
+    ampEnv.column = 16; ampEnv.row = 0; ampEnv.columnSpan = 2; ampEnv.rowSpan = 6;
+    ampEnv.controls = {
+        control("Amp Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
+        control("Amp Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
+        control("Amp Sustain", "S", S::VerticalSlider, 2, 0, 1, 2),
+        control("Amp Release", "R", S::VerticalSlider, 3, 0, 1, 2),
+    };
+
+    PanelSection performance;
+    performance.title = "MANUAL";
+    performance.accentColour = "#D9722E";
+    performance.column = 18; performance.row = 0; performance.columnSpan = 2; performance.rowSpan = 6;
+    performance.controls = {
+        control("Unison", "UNISON", S::Toggle, 0, 0),
+        control("Unison Detune", "DETUNE", S::Knob, 1, 0),
+        control("Analog Character", "ANALOG", S::Knob, 0, 1, 2, 1),
+    };
+
+    panel.sections = {control_, osc1, osc2, filter, filterEnv, ampEnv, performance};
+    return panel;
+}
+
+// ---------------------------------------------------------------------------
+// Lead supersaw
+//
+// La machine d'origine est un synthé de scène des années 1990 : plastique
+// bleu-gris, sérigraphie blanche, écran et pavé de sélection. Rien à voir
+// avec les façades de bois et de tôle du reste du parc, et c'est voulu -- on
+// doit voir au premier regard qu'on a changé d'époque.
+//
+// La disposition met le bloc SUPER SAW EN PREMIER et lui donne la place la
+// plus grande, alors que le filtre passe après. C'est l'inverse de toutes les
+// autres façades du projet, et c'est justement ce qui est fidèle : sur cette
+// machine le timbre se règle au désaccord, pas à la coupure.
+// ---------------------------------------------------------------------------
+MachinePanel makeSupersaw() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.supersaw";
+    panel.displayName = "Supersaw Lead";
+    panel.chassis = Chassis::Plastic;
+    panel.panelColour = "#2E3540";
+    panel.sectionColour = "#242A33";
+    panel.textColour = "#F0F3F7";
+    panel.knobColour = "#C8CDD4";
+    panel.gridColumns = 18;
+    panel.gridRows = 6;
+
+    // Le bloc qui fait le son : deux grands potentiomètres, comme sur
+    // l'original où ils sont les seuls de cette taille.
+    PanelSection superSaw;
+    superSaw.title = "SUPER SAW";
+    superSaw.accentColour = "#4FC3E8";
+    superSaw.column = 0; superSaw.row = 0; superSaw.columnSpan = 5; superSaw.rowSpan = 6;
+    superSaw.controls = {
+        control("Detune", "DETUNE", S::LargeKnob, 0, 0),
+        control("Mix", "MIX", S::LargeKnob, 1, 0),
+        control("Stereo Spread", "SPREAD", S::Knob, 0, 1),
+        control("Pitch HPF", "HPF", S::Knob, 1, 1),
+    };
+
+    PanelSection oscillator;
+    oscillator.title = "OSC";
+    oscillator.accentColour = "#4FC3E8";
+    oscillator.column = 5; oscillator.row = 0; oscillator.columnSpan = 2; oscillator.rowSpan = 6;
+    oscillator.controls = {
+        control("Sub Level", "SUB", S::Knob, 0, 0),
+        control("Noise Level", "NOISE", S::Knob, 0, 1),
+    };
+
+    PanelSection filter;
+    filter.title = "FILTER";
+    filter.accentColour = "#E8A33D";
+    filter.column = 7; filter.row = 0; filter.columnSpan = 4; filter.rowSpan = 6;
+    filter.controls = {
+        control("Filter Cutoff", "CUTOFF", S::VerticalSlider, 0, 0, 1, 2),
+        control("Filter Resonance", "RESO", S::VerticalSlider, 1, 0, 1, 2),
+        control("Filter Env Amount", "ENV", S::VerticalSlider, 2, 0, 1, 2),
+        control("Filter Key Track", "KEY", S::Knob, 3, 0),
+        control("Velocity to Filter", "VELO", S::Knob, 3, 1),
+    };
+
+    PanelSection filterEnv;
+    filterEnv.title = "FILTER ENV";
+    filterEnv.accentColour = "#8FA9C9";
+    filterEnv.column = 11; filterEnv.row = 0; filterEnv.columnSpan = 2; filterEnv.rowSpan = 6;
+    filterEnv.controls = {
+        control("Filter Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
+        control("Filter Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
+        control("Filter Sustain", "S", S::VerticalSlider, 2, 0, 1, 2),
+        control("Filter Release", "R", S::VerticalSlider, 3, 0, 1, 2),
+    };
+
+    PanelSection ampEnv;
+    ampEnv.title = "AMP ENV";
+    ampEnv.accentColour = "#8FA9C9";
+    ampEnv.column = 13; ampEnv.row = 0; ampEnv.columnSpan = 2; ampEnv.rowSpan = 6;
+    ampEnv.controls = {
+        control("Amp Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
+        control("Amp Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
+        control("Amp Sustain", "S", S::VerticalSlider, 2, 0, 1, 2),
+        control("Amp Release", "R", S::VerticalSlider, 3, 0, 1, 2),
+    };
+
+    PanelSection performance;
+    performance.title = "LFO / PLAY";
+    performance.accentColour = "#4FC3E8";
+    performance.column = 15; performance.row = 0; performance.columnSpan = 3; performance.rowSpan = 6;
+    performance.controls = {
+        control("LFO Rate", "RATE", S::Knob, 0, 0),
+        control("LFO to Pitch", "PITCH", S::Knob, 1, 0),
+        control("LFO to Filter", "FILTER", S::Knob, 2, 0),
+        control("Glide", "PORTAMENTO", S::Knob, 0, 1),
+        control("Analog Character", "DRIFT", S::Knob, 1, 1),
+    };
+
+    panel.sections = {superSaw, oscillator, filter, filterEnv, ampEnv, performance};
+    return panel;
+}
+
+// ---------------------------------------------------------------------------
+// Synthé à table d'ondes
+//
+// Les machines de cette famille sont des instruments de laboratoire devenus
+// instruments de scène : façade sombre, sérigraphie fine, et un bloc WAVE mis
+// en avant là où les autres mettent le filtre. La disposition le dit
+// franchement -- la table est la source du son, le filtre ne vient qu'après,
+// et ce n'est pas lui qu'on règle en premier.
+//
+// Le bloc WAVE reçoit SA PROPRE enveloppe, à côté de lui et non rangée avec
+// les deux autres : c'est la commande de mouvement de l'instrument, et la
+// façade doit le montrer.
+// ---------------------------------------------------------------------------
+MachinePanel makeWavetable() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.wavetable";
+    panel.displayName = "Wavetable Synth";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#1E1F24";
+    panel.sectionColour = "#16171B";
+    panel.textColour = "#DFE3EA";
+    panel.knobColour = "#2A2C33";
+    panel.gridColumns = 20;
+    panel.gridRows = 6;
+
+    PanelSection wave;
+    wave.title = "WAVE";
+    wave.accentColour = "#7BD389";
+    wave.column = 0; wave.row = 0; wave.columnSpan = 5; wave.rowSpan = 6;
+    wave.controls = {
+        control("Wavetable", "TABLE", S::Selector, 0, 0),
+        control("Position", "POSITION", S::LargeKnob, 1, 0),
+        control("Wave Env Amount", "ENV AMT", S::Knob, 0, 1),
+        control("LFO to Position", "LFO AMT", S::Knob, 1, 1),
+    };
+
+    // L'enveloppe de la table, à côté de la table : c'est elle qui fait le
+    // mouvement, elle ne se range pas avec les enveloppes de service.
+    PanelSection waveEnv;
+    waveEnv.title = "WAVE ENVELOPE";
+    waveEnv.accentColour = "#7BD389";
+    waveEnv.column = 5; waveEnv.row = 0; waveEnv.columnSpan = 3; waveEnv.rowSpan = 6;
+    waveEnv.controls = {
+        control("Wave Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
+        control("Wave Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
+        control("Wave Sustain", "S", S::VerticalSlider, 2, 0, 1, 2),
+        control("Wave Release", "R", S::VerticalSlider, 3, 0, 1, 2),
+    };
+
+    PanelSection oscB;
+    oscB.title = "OSC B";
+    oscB.accentColour = "#7BD389";
+    oscB.column = 8; oscB.row = 0; oscB.columnSpan = 2; oscB.rowSpan = 6;
+    oscB.controls = {
+        control("Osc B Level", "LEVEL", S::Knob, 0, 0),
+        control("Osc B Detune", "DETUNE", S::Knob, 1, 0),
+        control("Osc B Position", "POS OFF", S::Knob, 0, 1),
+        control("Noise Level", "NOISE", S::Knob, 1, 1),
+    };
+
+    PanelSection filter;
+    filter.title = "FILTER";
+    filter.accentColour = "#E0A458";
+    filter.column = 10; filter.row = 0; filter.columnSpan = 3; filter.rowSpan = 6;
+    filter.controls = {
+        control("Filter Cutoff", "CUTOFF", S::VerticalSlider, 0, 0, 1, 2),
+        control("Filter Resonance", "RESO", S::VerticalSlider, 1, 0, 1, 2),
+        control("Filter Env Amount", "ENV", S::VerticalSlider, 2, 0, 1, 2),
+        control("Filter Key Track", "KEY", S::Knob, 3, 0),
+        control("Velocity to Filter", "VELO", S::Knob, 3, 1),
+    };
+
+    PanelSection filterEnv;
+    filterEnv.title = "FILTER ENV";
+    filterEnv.accentColour = "#8FA9C9";
+    filterEnv.column = 13; filterEnv.row = 0; filterEnv.columnSpan = 2; filterEnv.rowSpan = 6;
+    filterEnv.controls = {
+        control("Filter Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
+        control("Filter Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
+        control("Filter Sustain", "S", S::VerticalSlider, 2, 0, 1, 2),
+        control("Filter Release", "R", S::VerticalSlider, 3, 0, 1, 2),
+    };
+
+    PanelSection ampEnv;
+    ampEnv.title = "AMP ENV";
+    ampEnv.accentColour = "#8FA9C9";
+    ampEnv.column = 15; ampEnv.row = 0; ampEnv.columnSpan = 2; ampEnv.rowSpan = 6;
+    ampEnv.controls = {
+        control("Amp Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
+        control("Amp Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
+        control("Amp Sustain", "S", S::VerticalSlider, 2, 0, 1, 2),
+        control("Amp Release", "R", S::VerticalSlider, 3, 0, 1, 2),
+    };
+
+    PanelSection modulation;
+    modulation.title = "LFO";
+    modulation.accentColour = "#7BD389";
+    modulation.column = 17; modulation.row = 0; modulation.columnSpan = 3; modulation.rowSpan = 6;
+    modulation.controls = {
+        control("LFO Rate", "RATE", S::Knob, 0, 0),
+        control("LFO to Filter", "FILTER", S::Knob, 1, 0),
+        control("LFO to Pitch", "PITCH", S::Knob, 0, 1),
+        control("Analog Character", "DRIFT", S::Knob, 1, 1),
+    };
+
+    panel.sections = {wave, waveEnv, oscB, filter, filterEnv, ampEnv, modulation};
+    return panel;
+}
+
+// ---------------------------------------------------------------------------
+// Hybride PCM + synthé
+//
+// Les machines de cette génération abandonnent les potentiomètres pour un
+// écran et quelques boutons : gris clair, sérigraphie discrète, esthétique de
+// matériel professionnel plutôt que d'instrument. On garde des commandes
+// visibles -- une façade à un seul écran serait injouable -- mais on reprend
+// la palette et la sobriété.
+//
+// La disposition suit les DEUX COUCHES, séparées à l'œil : le bloc PARTIAL A
+// (l'attaque échantillonnée) puis PARTIAL B (le corps synthétique), avec la
+// STRUCTURE qui les relie posée entre les deux. C'est ainsi que le manuel de
+// ces machines présente le son, et c'est ce qui rend la façade lisible.
+// ---------------------------------------------------------------------------
+MachinePanel makePcmHybrid() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.pcmhybrid";
+    panel.displayName = "PCM + Synth Hybrid";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#3C3E42";
+    panel.sectionColour = "#313337";
+    panel.textColour = "#E8E9EB";
+    panel.knobColour = "#202225";
+    panel.gridColumns = 20;
+    panel.gridRows = 6;
+
+    PanelSection attack;
+    attack.title = "PARTIAL A - PCM ATTACK";
+    attack.accentColour = "#C8553D";
+    attack.column = 0; attack.row = 0; attack.columnSpan = 6; attack.rowSpan = 6;
+    attack.controls = {
+        control("Attack Sample", "SAMPLE", S::Selector, 0, 0),
+        control("Attack Level", "LEVEL", S::Knob, 1, 0),
+        control("Attack Decay", "DECAY", S::Knob, 2, 0),
+        control("Attack Tune", "TUNE", S::Knob, 0, 1),
+        control("Attack Tone", "TONE", S::Knob, 1, 1),
+        control("Velocity to Attack", "VELOCITY", S::Knob, 2, 1),
+    };
+
+    // La structure, entre les deux couches : c'est elle qui dit comment elles
+    // se combinent, et elle change la machine du tout au tout.
+    PanelSection structure;
+    structure.title = "STRUCTURE";
+    structure.accentColour = "#E8B84B";
+    structure.column = 6; structure.row = 0; structure.columnSpan = 2; structure.rowSpan = 6;
+    structure.controls = {
+        control("Structure", "RING MOD", S::Toggle, 0, 0),
+    };
+
+    PanelSection tone;
+    tone.title = "PARTIAL B - SYNTH";
+    tone.accentColour = "#4E8098";
+    tone.column = 8; tone.row = 0; tone.columnSpan = 3; tone.rowSpan = 6;
+    tone.controls = {
+        control("Tone Shape", "WAVE", S::Selector, 0, 0),
+        control("Tone Level", "LEVEL", S::Knob, 1, 0),
+        control("Tone Detune", "DETUNE", S::Knob, 0, 1),
+    };
+
+    PanelSection filter;
+    filter.title = "TVF";
+    filter.accentColour = "#E8B84B";
+    filter.column = 11; filter.row = 0; filter.columnSpan = 3; filter.rowSpan = 6;
+    filter.controls = {
+        control("Filter Cutoff", "CUTOFF", S::VerticalSlider, 0, 0, 1, 2),
+        control("Filter Resonance", "RESO", S::VerticalSlider, 1, 0, 1, 2),
+        control("Filter Env Amount", "ENV", S::VerticalSlider, 2, 0, 1, 2),
+        control("Filter Key Track", "KEY", S::Knob, 3, 0),
+        control("Velocity to Filter", "VELO", S::Knob, 3, 1),
+    };
+
+    PanelSection filterEnv;
+    filterEnv.title = "TVF ENV";
+    filterEnv.accentColour = "#8FA9C9";
+    filterEnv.column = 14; filterEnv.row = 0; filterEnv.columnSpan = 2; filterEnv.rowSpan = 6;
+    filterEnv.controls = {
+        control("Filter Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
+        control("Filter Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
+        control("Filter Sustain", "S", S::VerticalSlider, 2, 0, 1, 2),
+        control("Filter Release", "R", S::VerticalSlider, 3, 0, 1, 2),
+    };
+
+    PanelSection ampEnv;
+    ampEnv.title = "TVA ENV";
+    ampEnv.accentColour = "#8FA9C9";
+    ampEnv.column = 16; ampEnv.row = 0; ampEnv.columnSpan = 2; ampEnv.rowSpan = 6;
+    ampEnv.controls = {
+        control("Amp Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
+        control("Amp Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
+        control("Amp Sustain", "S", S::VerticalSlider, 2, 0, 1, 2),
+        control("Amp Release", "R", S::VerticalSlider, 3, 0, 1, 2),
+    };
+
+    PanelSection modulation;
+    modulation.title = "LFO";
+    modulation.accentColour = "#4E8098";
+    modulation.column = 18; modulation.row = 0; modulation.columnSpan = 2; modulation.rowSpan = 6;
+    modulation.controls = {
+        control("LFO Rate", "RATE", S::Knob, 0, 0),
+        control("LFO to Pitch", "PITCH", S::Knob, 1, 0),
+        control("LFO to Filter", "FILTER", S::Knob, 0, 1),
+        control("Analog Character", "DRIFT", S::Knob, 1, 1),
+    };
+
+    panel.sections = {attack, structure, tone, filter, filterEnv, ampEnv, modulation};
+    return panel;
+}
+
+// ---------------------------------------------------------------------------
+// Orgue à roues phoniques
+//
+// La façade de cet instrument n'a AUCUN potentiomètre : elle a des TIRETTES,
+// qu'on tire vers soi, et leur position se lit d'un coup d'œil comme un
+// graphique du spectre. C'est le geste central de l'instrument, et un
+// panneau de boutons ronds serait faux même si tous les paramètres y étaient.
+//
+// Les couleurs des tirettes sont codées sur la machine d'origine, et elles
+// ne sont pas décoratives : BLANC pour les rangs de la série harmonique
+// (16', 8', 4', 2', 1'), NOIR pour les rangs « en quinte » (5⅓', 2⅔', 1⅗',
+// 1⅓') qui sonnent faux sur un accord, et BRUN pour les deux graves. Un
+// organiste lit ses réglages avec ce code ; on le reproduit avec les liserés
+// des blocs, faute de pouvoir colorer les commandes une à une.
+//
+// Bois foncé, panneau brun-noir : l'instrument est un meuble avant d'être une
+// machine.
+// ---------------------------------------------------------------------------
+MachinePanel makeTonewheel() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.tonewheel";
+    panel.displayName = "Tonewheel Organ";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#2A211B";
+    panel.sectionColour = "#1E1712";
+    panel.textColour = "#EDE4D3";
+    panel.knobColour = "#D8CFBC";
+    panel.gridColumns = 18;
+    panel.gridRows = 6;
+
+    // Les deux tirettes graves : brunes sur la machine d'origine.
+    PanelSection sub;
+    sub.title = "SUB";
+    sub.accentColour = "#8A5A34";
+    sub.column = 0; sub.row = 0; sub.columnSpan = 3; sub.rowSpan = 6;
+    sub.controls = {
+        control("Drawbar 16", "16'", S::VerticalSlider, 0, 0, 1, 2),
+        control("Drawbar 5 1/3", "5 1/3'", S::VerticalSlider, 1, 0, 1, 2),
+    };
+
+    // Les sept tirettes de la série : blanches et noires mêlées, mais toutes
+    // du même bloc sur la machine -- on ne les sépare donc pas.
+    PanelSection drawbars;
+    drawbars.title = "DRAWBARS";
+    drawbars.accentColour = "#D8CFBC";
+    drawbars.column = 3; drawbars.row = 0; drawbars.columnSpan = 7; drawbars.rowSpan = 6;
+    drawbars.controls = {
+        control("Drawbar 8", "8'", S::VerticalSlider, 0, 0, 1, 2),
+        control("Drawbar 4", "4'", S::VerticalSlider, 1, 0, 1, 2),
+        control("Drawbar 2 2/3", "2 2/3'", S::VerticalSlider, 2, 0, 1, 2),
+        control("Drawbar 2", "2'", S::VerticalSlider, 3, 0, 1, 2),
+        control("Drawbar 1 3/5", "1 3/5'", S::VerticalSlider, 4, 0, 1, 2),
+        control("Drawbar 1 1/3", "1 1/3'", S::VerticalSlider, 5, 0, 1, 2),
+        control("Drawbar 1", "1'", S::VerticalSlider, 6, 0, 1, 2),
+    };
+
+    PanelSection percussion;
+    percussion.title = "PERCUSSION";
+    percussion.accentColour = "#C4462F";
+    percussion.column = 10; percussion.row = 0; percussion.columnSpan = 3; percussion.rowSpan = 6;
+    percussion.controls = {
+        control("Percussion Level", "ON / SOFT", S::Knob, 0, 0),
+        control("Percussion Harmonic", "2ND / 3RD", S::Toggle, 1, 0),
+        control("Percussion Decay", "DECAY", S::Knob, 0, 1),
+        control("Key Click", "KEY CLICK", S::Knob, 1, 1),
+    };
+
+    PanelSection vibrato;
+    vibrato.title = "VIBRATO";
+    vibrato.accentColour = "#5E7F9B";
+    vibrato.column = 13; vibrato.row = 0; vibrato.columnSpan = 2; vibrato.rowSpan = 6;
+    vibrato.controls = {
+        control("Vibrato Depth", "DEPTH", S::Knob, 0, 0),
+        control("Vibrato Rate", "RATE", S::Knob, 0, 1),
+    };
+
+    // Le rotatif n'est pas un effet ajouté : sans lui cet instrument ne
+    // ressemble à rien de ce qu'on connaît. Il a donc son bloc sur la façade,
+    // et pas une place dans une chaîne d'effets.
+    PanelSection rotary;
+    rotary.title = "ROTARY";
+    rotary.accentColour = "#C4462F";
+    rotary.column = 15; rotary.row = 0; rotary.columnSpan = 3; rotary.rowSpan = 6;
+    rotary.controls = {
+        control("Rotary Fast", "SLOW / FAST", S::Toggle, 0, 0),
+        control("Rotary Depth", "DEPTH", S::Knob, 1, 0),
+        control("Rotary Balance", "HORN / DRUM", S::Knob, 0, 1),
+        control("Overdrive", "DRIVE", S::Knob, 1, 1),
+        control("Output Level", "VOLUME", S::Knob, 2, 0),
+    };
+
+    panel.sections = {sub, drawbars, percussion, vibrato, rotary};
+    return panel;
+}
+
+const std::vector<MachinePanel>& panels() {
+    static const std::vector<MachinePanel> all = {
+        makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
+        makeJuno106(), makeJupiter8(), makeProphet(), makeMs20(), makeArpOdyssey(), makeDx7(), makeSampler(),
+        makeEPiano(), makeObx(), makeSupersaw(), makeWavetable(), makePcmHybrid(), makeTonewheel()
+    };
+    return all;
+}
+
+} // namespace
+
+const MachinePanel* findMachinePanel(const std::string& pluginId) {
+    for (const auto& panel : panels())
+        if (panel.pluginId == pluginId) return &panel;
+    return nullptr;
+}
+
+std::vector<std::string> machinePanelIds() {
+    std::vector<std::string> ids;
+    ids.reserve(panels().size());
+    for (const auto& panel : panels()) ids.push_back(panel.pluginId);
+    return ids;
+}
+
+std::vector<PanelControl> allControls(const MachinePanel& panel) {
+    std::vector<PanelControl> controls;
+    for (const auto& section : panel.sections)
+        controls.insert(controls.end(), section.controls.begin(), section.controls.end());
+    return controls;
+}
+
+} // namespace vsm::panels

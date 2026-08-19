@@ -1,0 +1,19 @@
+{
+  "fidelity": "derived",
+  "format": "vsm-synth-preset",
+  "machineName": "TB-303-style Acid Synth",
+  "name": "Acid Lead",
+  "parameters": {
+    "accent.amount": 0.7,
+    "accent.threshold": 100,
+    "envelope.1.decay": 0.28,
+    "filter.1.cutoff": 620,
+    "filter.1.envAmount": 0.75,
+    "filter.1.resonance": 0.82,
+    "oscillator.1.waveform": 0,
+    "voice.analogCharacter": 0.3,
+    "voice.glideTime": 0.06
+  },
+  "pluginId": "vsm.tb303",
+  "version": 1
+}

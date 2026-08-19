@@ -1,0 +1,42 @@
+# Audio Analyzer / Synth Patch Reconstructor
+#
+# Installation :
+#
+#     python -m venv .venv
+#     .venv/bin/python -m pip install -r requirements.txt
+#     .venv/bin/python -m pip install --no-deps basic-pitch==0.4.0
+#
+# IMPORTANT : basic-pitch DOIT être installé avec --no-deps.
+# Sur Linux + Python >= 3.12, ses métadonnées exigent
+# tensorflow<2.15.1, qui n'a pas de wheel pour ces versions de
+# Python et provoque une compilation de numpy 1.x qui échoue.
+# Le paquet fonctionne parfaitement avec le backend ONNX :
+# onnxruntime (ci-dessous) charge le modèle nmp.onnx fourni
+# dans le wheel de basic-pitch.
+#
+# Les dépendances réelles de basic-pitch (hors tensorflow) sont
+# listées dans la section "basic-pitch runtime" plus bas.
+
+# --- Analyse audio ---------------------------------------------
+librosa>=1.0.0
+numpy>=2.0
+scipy>=1.15
+soundfile>=0.13
+
+# --- Entrée (téléchargement d'URL) -----------------------------
+requests>=2.32
+
+# --- Séparation de sources (Demucs) ----------------------------
+torch>=2.6
+torchaudio>=2.6
+demucs>=4.1.0
+
+# --- Transcription MIDI (basic-pitch, backend ONNX) ------------
+onnxruntime>=1.20
+
+# --- basic-pitch runtime (installé sans ses métadonnées) -------
+pretty_midi>=0.2.10
+mir_eval>=0.7
+resampy>=0.4.2
+scikit-learn>=1.5
+typing-extensions

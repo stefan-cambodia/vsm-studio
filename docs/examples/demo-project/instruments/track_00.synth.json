@@ -1,0 +1,19 @@
+{
+  "fidelity": "derived",
+  "format": "vsm-synth-preset",
+  "machineName": "TB-303-style Acid Synth",
+  "name": "Acid depuis Python",
+  "parameters": {
+    "accent.amount": 0.8,
+    "accent.threshold": 100,
+    "envelope.1.decay": 0.3,
+    "filter.1.cutoff": 480.0,
+    "filter.1.envAmount": 0.85,
+    "filter.1.resonance": 0.9,
+    "oscillator.1.waveform": 0,
+    "voice.analogCharacter": 0.3,
+    "voice.glideTime": 0.06
+  },
+  "pluginId": "vsm.tb303",
+  "version": 1
+}

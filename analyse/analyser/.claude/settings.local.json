@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(timeout 300 .venv/bin/python -m pip install --no-deps basic-pitch)",
+      "Bash(.venv/bin/python -c ' *)",
+      "Bash(timeout 580 .venv/bin/python main.py /tmp/claude-1000/-home-stefan-videcode-muz-detect-analyser/26ce3bba-e758-4740-a2ea-1c803cfda3c5/scratchpad/test_song.wav --no-demucs --output /tmp/claude-1000/-home-stefan-videcode-muz-detect-analyser/26ce3bba-e758-4740-a2ea-1c803cfda3c5/scratchpad/out --clean-output --max-notes 2 --max-iterations 3 --device cpu)",
+      "Bash(timeout 590 .venv/bin/python main.py /tmp/claude-1000/-home-stefan-videcode-muz-detect-analyser/26ce3bba-e758-4740-a2ea-1c803cfda3c5/scratchpad/test_song.wav --output /tmp/claude-1000/-home-stefan-videcode-muz-detect-analyser/26ce3bba-e758-4740-a2ea-1c803cfda3c5/scratchpad/out3 --clean-output --no-midi --max-notes 2 --max-iterations 3 --device cpu)",
+      "Bash(timeout 590 .venv/bin/python main.py /tmp/claude-1000/-home-stefan-videcode-muz-detect-analyser/26ce3bba-e758-4740-a2ea-1c803cfda3c5/scratchpad/test_song.wav --output /tmp/claude-1000/-home-stefan-videcode-muz-detect-analyser/26ce3bba-e758-4740-a2ea-1c803cfda3c5/scratchpad/out4 --clean-output --no-midi --no-demucs --max-notes 1 --max-iterations 2 --device cpu)",
+      "Bash(timeout 590 .venv/bin/python -c ' *)",
+      "Bash(timeout 590 .venv/bin/python main.py /tmp/claude-1000/-home-stefan-videcode-muz-detect-analyser/26ce3bba-e758-4740-a2ea-1c803cfda3c5/scratchpad/melody.wav --output /tmp/claude-1000/-home-stefan-videcode-muz-detect-analyser/26ce3bba-e758-4740-a2ea-1c803cfda3c5/scratchpad/out5 --clean-output --no-midi --max-notes 1 --max-iterations 3 --device cpu)"
+    ]
+  }
+}

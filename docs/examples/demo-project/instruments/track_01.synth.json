@@ -1,0 +1,30 @@
+{
+  "fidelity": "derived",
+  "format": "vsm-synth-preset",
+  "machineName": "TR-909-style Drum Machine",
+  "name": "Drums",
+  "parameters": {
+    "accent.amount": 0.5,
+    "drum.clap.decay": 0.2,
+    "drum.clap.level": 0.8,
+    "drum.closedHat.decay": 0.06,
+    "drum.closedHat.level": 0.7,
+    "drum.crash.decay": 1.4,
+    "drum.crash.level": 0.6,
+    "drum.kick.attack": 0.5,
+    "drum.kick.decay": 0.32,
+    "drum.kick.level": 0.9,
+    "drum.kick.tune": 55,
+    "drum.openHat.decay": 0.4,
+    "drum.openHat.level": 0.7,
+    "drum.snare.decay": 0.18,
+    "drum.snare.level": 0.8,
+    "drum.snare.snappy": 0.78,
+    "drum.snare.tune": 190,
+    "drum.tom.decay": 0.4,
+    "drum.tom.level": 0.8,
+    "drum.tom.tune": 100
+  },
+  "pluginId": "vsm.tr909",
+  "version": 1
+}

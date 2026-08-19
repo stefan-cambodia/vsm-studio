@@ -1,0 +1,73 @@
+#pragma once
+#include <JuceHeader.h>
+#include "vsm/sequencer/Project.h"
+#include <functional>
+
+// Ligne représentant une piste. Volontairement "bête" : elle lit/écrit
+// directement les champs de vsm::sequencer::Track qu'on lui passe, et
+// notifie le parent des changements via des callbacks — aucune logique de
+// mixage réelle ici (ça viendra avec le Mixer / AudioEngine en Phase 2).
+class TrackRowComponent : public juce::Component {
+public:
+    TrackRowComponent(vsm::sequencer::Track& track, size_t trackIndex);
+
+    void paint(juce::Graphics&) override;
+    void resized() override;
+    void mouseDown(const juce::MouseEvent&) override { if (onSelected) onSelected(index_); }
+
+    std::function<void(size_t)> onSelected;
+    std::function<void()> onChanged; // mute/solo/volume/pan modifiés -> reconstruire le scheduler
+    std::function<void(size_t, const std::string&)> onInstrumentChanged; // trackIndex, pluginId ("" = aucun)
+
+    void setSelected(bool selected) { selected_ = selected; repaint(); }
+
+private:
+    vsm::sequencer::Track& track_;
+    size_t index_;
+    bool selected_ = false;
+
+    juce::Label nameLabel_;
+    juce::Label channelLabel_;
+    juce::ComboBox instrumentBox_; // rempli depuis PluginRegistry::listAvailable()
+    juce::TextButton muteButton_ { "M" };
+    juce::TextButton soloButton_ { "S" };
+    juce::TextButton armButton_  { "R" };
+    juce::Slider volumeSlider_;
+    juce::Slider panSlider_;
+};
+
+/// Liste verticale de pistes (Track Editor, section 4). Reconstruit ses
+/// lignes à partir du Project quand loadProject() est appelé (ex : après
+/// un import MIDI).
+class TrackListComponent : public juce::Component {
+public:
+    TrackListComponent();
+
+    void loadProject(vsm::sequencer::Project& project);
+    void resized() override;
+    void paint(juce::Graphics&) override;
+
+    std::function<void(size_t)> onTrackSelected;
+    std::function<void()> onTracksChanged;
+    std::function<void(size_t, const std::string&)> onInstrumentChanged;
+    std::function<void()> onAddTrack;          // bouton "+ Ajouter une piste"
+    std::function<void(size_t)> onRemoveTrack; // bouton "Supprimer" (piste sélectionnée)
+
+    size_t selectedTrackIndex() const { return selectedIndex_; }
+
+    /// Sélectionne une piste par index (met à jour l'état visuel et notifie
+    /// via onTrackSelected). Sans effet si l'index est hors bornes.
+    void selectTrackIndex(size_t idx);
+
+private:
+    vsm::sequencer::Project* project_ = nullptr;
+    juce::OwnedArray<TrackRowComponent> rows_;
+    juce::Viewport viewport_;
+    juce::Component rowContainer_;
+    juce::TextButton addButton_ { "+ Ajouter une piste" };
+    juce::TextButton removeButton_ { "Supprimer" };
+    size_t selectedIndex_ = 0;
+
+    static constexpr int kRowHeight = 88;
+    static constexpr int kToolbarHeight = 36;
+};

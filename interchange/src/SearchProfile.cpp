@@ -1,0 +1,380 @@
+#include "vsm/interchange/SearchProfile.h"
+#include <algorithm>
+#include <cmath>
+#include <cstdlib>
+
+namespace vsm::interchange {
+
+namespace {
+
+/// Règle appliquée à une FAMILLE de paramètres, reconnue à la FORME
+/// CANONIQUE de son identité sémantique : les segments purement numériques y
+/// sont remplacés par « # ». `filter.1.cutoff` et `filter.2.cutoff` partagent
+/// donc la forme `filter.#.cutoff` et la même règle, quelle que soit la
+/// machine -- c'est tout l'intérêt d'avoir des identités sémantiques.
+///
+/// Une première version filtrait sur le dernier segment de l'identifiant.
+/// Elle ratait les familles dont le numéro est EN DERNIER : `organ.drawbar.1`
+/// se terminait par « 1 », si bien que les neuf tirettes de l'orgue -- tout
+/// son timbre -- n'entraient pas dans l'espace de recherche.
+struct Rule {
+    const char* pattern;     ///< forme canonique exacte, ex. « filter.#.cutoff »
+    float low, high;         ///< bornes utiles ; 0/0 = reprendre celles du paramètre
+    SearchScale scale;
+    float importance;
+};
+
+/// Numéro d'INSTANCE d'un identifiant : le premier segment numérique.
+/// `envelope.2.attack` -> 2, `filter.1.cutoff` -> 1, `voice.unison` -> 1.
+int instanceOf(const std::string& semanticId) {
+    size_t begin = 0;
+    while (begin <= semanticId.size()) {
+        size_t end = semanticId.find('.', begin);
+        if (end == std::string::npos) end = semanticId.size();
+        bool numeric = end > begin;
+        for (size_t i = begin; i < end; ++i)
+            if (semanticId[i] < '0' || semanticId[i] > '9') { numeric = false; break; }
+        if (numeric) return std::atoi(semanticId.substr(begin, end - begin).c_str());
+        if (end == semanticId.size()) break;
+        begin = end + 1;
+    }
+    return 1;
+}
+
+/// Forme canonique d'un identifiant sémantique : segments numériques -> « # ».
+std::string canonicalise(const std::string& semanticId) {
+    std::string out;
+    out.reserve(semanticId.size());
+    size_t begin = 0;
+    while (begin <= semanticId.size()) {
+        size_t end = semanticId.find('.', begin);
+        if (end == std::string::npos) end = semanticId.size();
+        const std::string segment = semanticId.substr(begin, end - begin);
+        bool numeric = !segment.empty();
+        for (char c : segment)
+            if (c < '0' || c > '9') { numeric = false; break; }
+        if (!out.empty()) out.push_back('.');
+        out += numeric ? "#" : segment;
+        if (end == semanticId.size()) break;
+        begin = end + 1;
+    }
+    return out;
+}
+
+/// TABLE DES RÈGLES.
+///
+/// Les bornes sont des bornes UTILES : elles disent où il vaut la peine de
+/// chercher, pas ce que la machine accepte. Elles sont ensuite rognées aux
+/// bornes réelles du paramètre, si bien qu'une machine dont la coupure
+/// s'arrête à 8 kHz ne se verra jamais proposer 12 kHz.
+///
+/// `0, 0` signifie « reprendre les bornes réelles du paramètre ».
+///
+/// RÈGLE POUR CHOISIR : une fenêtre utile fixe n'est légitime que pour une
+/// grandeur à UNITÉ ABSOLUE, partagée par toutes les machines -- des hertz,
+/// des secondes. 900 Hz veut dire la même chose partout, et chercher au-delà
+/// de 12 kHz ne sert nulle part.
+///
+/// Pour tout le reste, c'est la plage DÉCLARÉE qui fait foi. La résonance en
+/// est l'exemple, et il a coûté une régression mesurée : elle va de 0 à 4,2
+/// sur le Minimoog et de 0 à 1 sur la TB-303. Une fenêtre fixe à 0..0,8
+/// rendait donc INATTEIGNABLE la valeur 2,2 d'une cible Minimoog ; la
+/// recherche compensait en faussant la coupure (1190 Hz pour 900 visés) et
+/// l'enveloppe, et la distance finale passait de 0,51 à 1,30. Une mauvaise
+/// borne est pire que pas de dimension du tout.
+///
+/// Les importances suivent une hiérarchie défendable : ce qui détermine le
+/// TIMBRE d'abord, puis l'ENVELOPPE (ce qui sépare un pincement d'une nappe),
+/// puis les modulations, enfin le détail. Elles servent à choisir les N
+/// dimensions à chercher quand le budget est court -- ce ne sont PAS des
+/// poids dans la distance, qui se mesure sur le son et sur rien d'autre.
+constexpr Rule kRules[] = {
+    // --- Ce qui fait le timbre, par ordre d'effet ----------------------------
+    {"filter.#.cutoff",                   80.0f, 12000.0f, SearchScale::Logarithmic, 1.00f},
+    {"organ.drawbar.#",                    0.0f,     0.0f, SearchScale::Linear,      0.95f},
+    {"oscillator.#.wavePosition",          0.0f,     1.0f, SearchScale::Linear,      0.95f},
+    {"oscillator.supersaw.detune",         0.0f,     1.0f, SearchScale::Linear,      0.92f},
+    {"fm.algorithm",                       0.0f,     0.0f, SearchScale::Linear,      0.90f},
+    {"fm.operator.#.ratio",                0.0f,     0.0f, SearchScale::Linear,      0.88f},
+    {"fm.operator.#.level",                0.0f,     1.0f, SearchScale::Linear,      0.82f},
+    {"sample.#.select",                    0.0f,     0.0f, SearchScale::Linear,      0.85f},
+    {"filter.#.resonance",                 0.0f,     0.0f, SearchScale::Linear,      0.80f}, // plage déclarée : 0..1 ici, 0..4,2 là
+    {"filter.#.envAmount",                -1.0f,     1.0f, SearchScale::Linear,      0.78f},
+    {"oscillator.supersaw.mix",            0.0f,     1.0f, SearchScale::Linear,      0.76f},
+    {"epiano.bellLevel",                   0.0f,     1.0f, SearchScale::Linear,      0.76f},
+    {"epiano.tineDecay",                   0.0f,     0.0f, SearchScale::Linear,      0.76f},
+    {"drum.kick.decay",                    0.0f,     0.0f, SearchScale::Linear,      0.75f},
+    {"drum.snare.decay",                   0.0f,     0.0f, SearchScale::Linear,      0.75f},
+    {"drum.tom.decay",                     0.0f,     0.0f, SearchScale::Linear,      0.75f},
+    {"drum.clap.decay",                    0.0f,     0.0f, SearchScale::Linear,      0.72f},
+    {"drum.closedHat.decay",               0.0f,     0.0f, SearchScale::Linear,      0.72f},
+    {"drum.openHat.decay",                 0.0f,     0.0f, SearchScale::Linear,      0.72f},
+    {"drum.crash.decay",                   0.0f,     0.0f, SearchScale::Linear,      0.72f},
+    {"oscillator.#.wavetable",             0.0f,     0.0f, SearchScale::Linear,      0.72f},
+    {"oscillator.#.waveform",              0.0f,     0.0f, SearchScale::Linear,      0.70f},
+    {"voice.structure",                    0.0f,     0.0f, SearchScale::Linear,      0.70f},
+    {"epiano.hammerHardness",              0.0f,     1.0f, SearchScale::Linear,      0.70f},
+    {"sample.#.tone",                      0.0f,     1.0f, SearchScale::Linear,      0.70f},
+    {"drum.kick.tune",                     0.0f,     0.0f, SearchScale::Linear,      0.70f},
+    {"drum.snare.tune",                    0.0f,     0.0f, SearchScale::Linear,      0.70f},
+    {"drum.tom.tune",                      0.0f,     0.0f, SearchScale::Linear,      0.70f},
+    {"drum.cowbell.tune",                  0.0f,     0.0f, SearchScale::Linear,      0.66f},
+    {"drum.kick.level",                    0.0f,     1.0f, SearchScale::Linear,      0.68f},
+    {"drum.snare.level",                   0.0f,     1.0f, SearchScale::Linear,      0.68f},
+    {"drum.tom.level",                     0.0f,     1.0f, SearchScale::Linear,      0.66f},
+    {"drum.clap.level",                    0.0f,     1.0f, SearchScale::Linear,      0.66f},
+    {"drum.closedHat.level",               0.0f,     1.0f, SearchScale::Linear,      0.66f},
+    {"drum.openHat.level",                 0.0f,     1.0f, SearchScale::Linear,      0.66f},
+    {"drum.crash.level",                   0.0f,     1.0f, SearchScale::Linear,      0.64f},
+    {"drum.cowbell.level",                 0.0f,     1.0f, SearchScale::Linear,      0.64f},
+    {"drum.snare.snappy",                  0.0f,     1.0f, SearchScale::Linear,      0.62f},
+    {"drum.kick.attack",                   0.0f,     1.0f, SearchScale::Linear,      0.60f},
+    {"oscillator.#.level",                 0.0f,     1.0f, SearchScale::Linear,      0.65f},
+    {"oscillator.#.sawLevel",              0.0f,     1.0f, SearchScale::Linear,      0.65f},
+    {"oscillator.#.pulseLevel",            0.0f,     1.0f, SearchScale::Linear,      0.65f},
+    {"oscillator.#.subLevel",              0.0f,     1.0f, SearchScale::Linear,      0.60f},
+    {"epiano.pickupDrive",                 0.0f,     1.0f, SearchScale::Linear,      0.65f},
+    {"sample.#.level",                     0.0f,     1.0f, SearchScale::Linear,      0.64f},
+    {"sample.#.decay",                     0.0f,     0.0f, SearchScale::Logarithmic, 0.60f},
+    {"sample.#.tune",                      0.0f,     0.0f, SearchScale::Linear,      0.55f},
+    // Les emplacements du sampler SE CHERCHENT, contrairement à leur mapping :
+    // une fois le coup découpé et posé, son accord et sa décroissance sont
+    // exactement ce qui reste à ajuster pour coller à la cible.
+    {"sampler.slot.#.decay",               0.0f,     0.0f, SearchScale::Linear,      0.70f},
+    {"sampler.slot.#.tune",                0.0f,     0.0f, SearchScale::Linear,      0.66f},
+    {"sampler.slot.#.level",               0.0f,     1.0f, SearchScale::Linear,      0.60f},
+    {"epiano.hammerNoise",                 0.0f,     1.0f, SearchScale::Linear,      0.58f},
+    {"oscillator.sub.level",               0.0f,     1.0f, SearchScale::Linear,      0.58f},
+    {"oscillator.sub.type",                0.0f,     0.0f, SearchScale::Linear,      0.45f},
+    {"oscillator.noise.level",             0.0f,     1.0f, SearchScale::Linear,      0.55f},
+    {"oscillator.#.pulseWidth",            0.1f,     0.9f, SearchScale::Linear,      0.55f},
+    {"tone.bass",                          0.0f,     0.0f, SearchScale::Linear,      0.55f},
+    {"tone.treble",                        0.0f,     0.0f, SearchScale::Linear,      0.55f},
+    {"filter.#.drive",                     0.0f,     0.0f, SearchScale::Linear,      0.52f},
+    {"filter.#.slope",                     0.0f,     0.0f, SearchScale::Linear,      0.50f},
+    {"oscillator.crossMod",                0.0f,     0.0f, SearchScale::Linear,      0.50f},
+    {"oscillator.ringMod",                 0.0f,     0.0f, SearchScale::Linear,      0.50f},
+    {"oscillator.#.sync",                  0.0f,     0.0f, SearchScale::Linear,      0.50f},
+    {"oscillator.#.detune",                0.0f,     0.0f, SearchScale::Linear,      0.50f}, // demi-tons : ±1 sur l'un, ±12 sur l'autre
+    {"oscillator.#.pitch",                 0.0f,     0.0f, SearchScale::Linear,      0.48f},
+    {"voice.unison",                       0.0f,     0.0f, SearchScale::Linear,      0.48f},
+    {"voice.unisonDetune",                 0.0f,     1.0f, SearchScale::Linear,      0.48f},
+    {"epiano.character",                   0.0f,     1.0f, SearchScale::Linear,      0.45f},
+    {"organ.percussion.level",             0.0f,     1.0f, SearchScale::Linear,      0.50f},
+    {"organ.percussion.decay",             0.0f,     0.0f, SearchScale::Logarithmic, 0.48f},
+    {"organ.percussion.harmonic",          0.0f,     0.0f, SearchScale::Linear,      0.44f},
+    {"organ.keyClick",                     0.0f,     1.0f, SearchScale::Linear,      0.42f},
+    {"accent.amount",                      0.0f,     1.0f, SearchScale::Linear,      0.42f},
+    {"accent.threshold",                   0.0f,     0.0f, SearchScale::Linear,      0.35f},
+
+    // --- Enveloppes : ce qui sépare un pincement d'une nappe ------------------
+    {"envelope.#.attack",                  0.001f,   0.6f, SearchScale::Logarithmic, 0.90f},
+    {"envelope.#.decay",                   0.02f,    2.0f, SearchScale::Logarithmic, 0.85f},
+    {"envelope.#.sustain",                 0.0f,     1.0f, SearchScale::Linear,      0.85f},
+    {"envelope.#.release",                 0.02f,    2.5f, SearchScale::Logarithmic, 0.60f},
+    {"envelope.#.amount",                 -1.0f,     1.0f, SearchScale::Linear,      0.60f},
+    {"envelope.#.time",                    0.001f,   2.0f, SearchScale::Logarithmic, 0.60f},
+    {"envelope.#.mode",                    0.0f,     0.0f, SearchScale::Linear,      0.40f},
+    {"oscillator.#.wavePositionEnvAmount",-1.0f,     1.0f, SearchScale::Linear,      0.80f},
+    {"fm.operator.#.attack",               0.001f,   0.6f, SearchScale::Logarithmic, 0.62f},
+    {"fm.operator.#.decay",                0.02f,    2.0f, SearchScale::Logarithmic, 0.60f},
+    {"fm.operator.#.sustain",              0.0f,     1.0f, SearchScale::Linear,      0.60f},
+    {"fm.operator.#.release",              0.02f,    2.5f, SearchScale::Logarithmic, 0.45f},
+    {"fm.operator.#.fixedFrequency",       0.0f,     0.0f, SearchScale::Linear,      0.35f},
+    {"fm.feedback",                        0.0f,     1.0f, SearchScale::Linear,      0.55f},
+    {"fm.keyLevelScaling",                 0.0f,     1.0f, SearchScale::Linear,      0.30f},
+
+    // --- Modulation : utile, rarement décisive pour approcher une cible -------
+    {"filter.#.keyTrack",                  0.0f,     1.0f, SearchScale::Linear,      0.40f},
+    {"filter.#.velocityAmount",            0.0f,     1.0f, SearchScale::Linear,      0.35f},
+    {"sample.#.velocityAmount",            0.0f,     1.0f, SearchScale::Linear,      0.35f},
+    {"voice.velocitySensitivity",          0.0f,     1.0f, SearchScale::Linear,      0.35f},
+    {"lfo.#.toWavePosition",               0.0f,     1.0f, SearchScale::Linear,      0.32f},
+    {"lfo.#.rate",                         0.1f,    12.0f, SearchScale::Logarithmic, 0.30f},
+    {"lfo.#.toFilter",                     0.0f,     1.0f, SearchScale::Linear,      0.25f},
+    {"lfo.#.toPulseWidth",                 0.0f,     1.0f, SearchScale::Linear,      0.22f},
+    {"lfo.#.toPitch",                      0.0f,     0.5f, SearchScale::Linear,      0.20f},
+    {"lfo.#.waveform",                     0.0f,     0.0f, SearchScale::Linear,      0.20f},
+    {"lfo.#.delay",                        0.0f,     0.0f, SearchScale::Linear,      0.15f},
+    {"polyMod.toFilterCutoff",             0.0f,     1.0f, SearchScale::Linear,      0.34f},
+    {"polyMod.toOscAFrequency",            0.0f,     1.0f, SearchScale::Linear,      0.32f},
+    {"polyMod.toOscAPulseWidth",           0.0f,     1.0f, SearchScale::Linear,      0.30f},
+    {"polyMod.sourceFilterEnv",            0.0f,     0.0f, SearchScale::Linear,      0.28f},
+    {"polyMod.sourceOscB",                 0.0f,     0.0f, SearchScale::Linear,      0.28f},
+
+    // --- Effets intégrés à une machine ---------------------------------------
+    // Ceux d'un piano électrique ou d'un orgue ne sont PAS accessoires : le
+    // trémolo et le rotatif font partie de l'instrument. Ceux d'une chaîne
+    // d'effets séparée n'apparaissent jamais ici, puisqu'on construit le
+    // profil d'une machine.
+    {"effect.tremolo.depth",               0.0f,     1.0f, SearchScale::Linear,      0.45f},
+    {"effect.tremolo.rate",                0.5f,    12.0f, SearchScale::Logarithmic, 0.42f},
+    {"effect.tremolo.stereo",              0.0f,     1.0f, SearchScale::Linear,      0.25f},
+    {"effect.rotary.depth",                0.0f,     1.0f, SearchScale::Linear,      0.35f},
+    {"effect.rotary.balance",              0.0f,     1.0f, SearchScale::Linear,      0.35f},
+    {"effect.vibrato.depth",               0.0f,     1.0f, SearchScale::Linear,      0.30f},
+    {"effect.vibrato.rate",                3.0f,     9.0f, SearchScale::Logarithmic, 0.25f},
+    {"effect.chorus.mode",                 0.0f,     0.0f, SearchScale::Linear,      0.38f},
+    {"effect.drive.amount",                0.0f,     1.0f, SearchScale::Linear,      0.35f},
+};
+
+/// Paramètres EXCLUS de la recherche, avec la raison. Les exclure n'est pas
+/// une commodité : les laisser dégraderait activement le résultat.
+struct Exclusion { const char* pattern; const char* reason; };
+
+constexpr Exclusion kExclusions[] = {
+    {"voice.analogCharacter",
+     "ajoute du bruit aléatoire : l'optimiseur le pousserait à zéro pour "
+     "réduire la distance, ce qui n'est pas un réglage plus juste mais une "
+     "machine plus morte"},
+    {"output.level",
+     "un volume ne rapproche d'aucune cible : la distance est mesurée sur des "
+     "grandeurs normalisées, et l'optimiseur y gaspillerait une dimension"},
+    {"output.stereoWidth",
+     "même raison : une note isolée se compare en mono"},
+    {"voice.glide",
+     "s'entend ENTRE deux notes ; la recherche rend une note isolée"},
+    {"voice.glideTime",
+     "même raison que le glissando lui-même"},
+    {"effect.rotary.fast",
+     "commande de jeu (lent/rapide), pas un réglage de timbre"},
+    {"sampler.slot.#.note",
+     "mapping : quelle touche déclenche l'emplacement. Le chercher ferait "
+     "taire le son au lieu de l'ajuster"},
+    {"sampler.slot.#.start",
+     "point de départ dans le fichier : réglage de découpe, posé par "
+     "l'analyse qui a fait la découpe"},
+    {"sampler.slot.#.chokeGroup",
+     "groupe de coupure : configuration du kit, sans effet sur un coup isolé"},
+    {"sampler.slot.#.pan",
+     "placement stéréo d'un kit ; une note isolée se compare en mono"},
+};
+
+bool isExcluded(const std::string& canonicalId) {
+    for (const auto& exclusion : kExclusions)
+        if (canonicalId == exclusion.pattern) return true;
+    return false;
+}
+
+const Rule* findRule(const std::string& canonicalId) {
+    for (const auto& rule : kRules)
+        if (canonicalId == rule.pattern) return &rule;
+    return nullptr;
+}
+
+} // namespace
+
+const char* searchScaleName(SearchScale scale) {
+    return scale == SearchScale::Logarithmic ? "log" : "linear";
+}
+
+std::vector<SearchDimension> SearchProfile::topDimensions(size_t count) const {
+    // Le profil est déjà trié par importance décroissante à la construction.
+    const size_t take = std::min(count, dimensions_.size());
+    return std::vector<SearchDimension>(dimensions_.begin(),
+                                         dimensions_.begin() + static_cast<long>(take));
+}
+
+const SearchDimension* SearchProfile::find(const std::string& semanticId) const {
+    for (const auto& dimension : dimensions_)
+        if (dimension.semanticId == semanticId) return &dimension;
+    return nullptr;
+}
+
+JsonValue SearchProfile::toJson() const {
+    JsonValue root = JsonValue::makeObject();
+    root.set("machine", JsonValue::makeString(pluginId_));
+    JsonValue list = JsonValue::makeArray();
+    for (const auto& dimension : dimensions_) {
+        JsonValue entry = JsonValue::makeObject();
+        entry.set("id", JsonValue::makeString(dimension.semanticId));
+        entry.set("low", JsonValue::makeFloat(dimension.low));
+        entry.set("high", JsonValue::makeFloat(dimension.high));
+        entry.set("scale", JsonValue::makeString(searchScaleName(dimension.scale)));
+        entry.set("importance", JsonValue::makeFloat(dimension.importance));
+        if (!dimension.unit.empty()) entry.set("unit", JsonValue::makeString(dimension.unit));
+        list.append(std::move(entry));
+    }
+    root.set("dimensions", std::move(list));
+    return root;
+}
+
+SearchProfile buildSearchProfile(const std::string& pluginId) {
+    const SemanticProfile semantic = buildSemanticProfile(pluginId);
+    if (semantic.empty()) return {};
+
+    std::vector<SearchDimension> dimensions;
+    for (const auto& parameter : semantic.parameters()) {
+        if (parameter.semanticId.empty()) continue;
+        const std::string canonicalId = canonicalise(parameter.semanticId);
+        if (isExcluded(canonicalId)) continue;
+        const Rule* rule = findRule(canonicalId);
+        // Aucune règle : le paramètre n'est PAS cherché. C'est un choix, pas
+        // un oubli -- une famille qu'on n'a pas su classer serait cherchée à
+        // l'aveugle, ce qui coûte du budget sans rapprocher de la cible.
+        if (rule == nullptr) continue;
+
+        SearchDimension dimension;
+        dimension.semanticId = parameter.semanticId;
+        dimension.scale = rule->scale;
+        dimension.unit = parameter.unit;
+
+        // DÉCOTE PAR NUMÉRO D'INSTANCE. La règle porte sur la forme canonique,
+        // où le numéro a disparu : `envelope.1.attack` et `envelope.2.attack`
+        // reçoivent donc la même importance de base. Or, par convention du
+        // projet, l'instance 1 est la PRINCIPALE -- enveloppe d'amplitude,
+        // filtre principal, oscillateur principal -- et les suivantes sont des
+        // modulations ou des étages secondaires.
+        //
+        // Mesuré, sur une cible produite par le Minimoog : sans cette décote,
+        // les deux enveloppes d'attaque occupaient les rangs 2 et 3 et
+        // EXPULSAIENT la résonance du filtre de l'espace cherché. Le résultat
+        // trouvait la coupure à 907 Hz pour 900 visés, mais laissait la
+        // résonance à sa valeur par défaut, loin de la cible.
+        const int instance = instanceOf(parameter.semanticId);
+        const float decay = 1.0f - 0.12f * static_cast<float>(std::max(0, instance - 1));
+        dimension.importance = rule->importance * std::max(0.25f, decay);
+
+        // Une règle à bornes nulles signifie « reprendre les bornes réelles du
+        // paramètre ». C'est le cas des grandeurs DISCRÈTES (choix de forme
+        // d'onde, de table, de tirette) et de celles dont l'étendue utile
+        // dépend entièrement de la machine : la borner à l'aveugle en
+        // interdirait des valeurs légitimes.
+        const bool useDeclaredRange = (rule->low == 0.0f && rule->high == 0.0f);
+        if (useDeclaredRange) {
+            dimension.low = parameter.minimum;
+            dimension.high = parameter.maximum;
+        } else {
+            // ROGNAGE aux bornes réelles : une borne utile qui sortirait de ce
+            // que la machine accepte produirait des valeurs refusées ou
+            // écrêtées, et l'optimiseur explorerait un plateau.
+            dimension.low = std::max(rule->low, parameter.minimum);
+            dimension.high = std::min(rule->high, parameter.maximum);
+        }
+
+        // Une dimension sans étendue n'est pas une dimension : la chercher
+        // reviendrait à dépenser du budget pour une constante.
+        if (!(dimension.high > dimension.low)) continue;
+
+        // Une échelle logarithmique exige une borne basse strictement
+        // positive. Plutôt que de refuser la dimension, on relève la borne :
+        // c'est ce que fait déjà toute recherche de fréquence sérieuse.
+        if (dimension.scale == SearchScale::Logarithmic && dimension.low <= 0.0f)
+            dimension.low = std::max(1e-4f, dimension.high * 1e-4f);
+
+        dimensions.push_back(std::move(dimension));
+    }
+
+    // Tri par importance décroissante, puis par identifiant pour que l'ordre
+    // soit STABLE : deux exécutions doivent proposer les mêmes dimensions dans
+    // le même ordre, sans quoi la recherche ne serait pas reproductible.
+    std::sort(dimensions.begin(), dimensions.end(),
+              [](const SearchDimension& a, const SearchDimension& b) {
+                  if (a.importance != b.importance) return a.importance > b.importance;
+                  return a.semanticId < b.semanticId;
+              });
+
+    return SearchProfile(pluginId, std::move(dimensions));
+}
+
+} // namespace vsm::interchange

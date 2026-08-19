@@ -1,0 +1,42 @@
+# --- Compilation -------------------------------------------------------------
+# Les dossiers de build sont entièrement reproductibles depuis les sources et
+# pèsent plus d'un gigaoctet (JUCE y est récupéré et compilé).
+build/
+build-*/
+cmake-build-*/
+
+# --- Binaires livrés à la racine --------------------------------------------
+# Produits par la compilation et recopiés ici pour être lancés facilement. Ce
+# sont des ARTEFACTS : les versionner ferait grossir l'historique de treize
+# mégaoctets à chaque compilation, pour un contenu qu'on peut toujours refaire.
+/vsm-studio
+/vsm-render
+/vsm-instruments.clap
+*.clap
+
+# --- Environnement Python ---------------------------------------------------
+# 5,4 Go de dépendances (torch, onnxruntime, demucs...). Elles se réinstallent
+# avec `analyse/requirements.txt`, qui est versionné, lui.
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# --- Sorties de travail ------------------------------------------------------
+# Reconstructions, rendus, aperçus : tout cela se régénère, et un WAV n'a rien
+# à faire dans un historique de code.
+*.wav
+*.mp3
+*.flac
+!docs/examples/**/*.wav
+reconstruction/
+*.png
+!docs/**/*.png
+
+# --- Système ----------------------------------------------------------------
+.DS_Store
+Thumbs.db
+*.swp
+*~

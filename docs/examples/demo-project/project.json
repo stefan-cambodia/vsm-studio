@@ -1,0 +1,71 @@
+{
+  "format": "vsm-project",
+  "midi": {
+    "file": "midi/arrangement.mid"
+  },
+  "title": "Demo Acid",
+  "tracks": [
+    {
+      "channel": 0,
+      "color": "#FF6B9BFF",
+      "effects": [],
+      "instrument": {
+        "preferredPlugin": "vsm.tb303",
+        "preset": "instruments/track_00.synth.json"
+      },
+      "mix": {
+        "muted": false,
+        "pan": 0,
+        "sends": [
+          0,
+          0
+        ],
+        "solo": false,
+        "volume": 0.9
+      },
+      "name": "Acid Bass"
+    },
+    {
+      "channel": 9,
+      "color": "#FF6B9BFF",
+      "effects": [],
+      "instrument": {
+        "preferredPlugin": "vsm.tr909",
+        "preset": "instruments/track_01.synth.json"
+      },
+      "mix": {
+        "muted": false,
+        "pan": 0,
+        "sends": [
+          0,
+          0
+        ],
+        "solo": false,
+        "volume": 1
+      },
+      "name": "Drums"
+    }
+  ],
+  "transport": {
+    "loop": {
+      "enabled": false,
+      "endTick": 0,
+      "startTick": 0
+    },
+    "tempoChanges": [
+      {
+        "bpm": 130,
+        "tick": 0
+      }
+    ],
+    "ticksPerQuarterNote": 480,
+    "timeSignatures": [
+      {
+        "denominator": 4,
+        "numerator": 4,
+        "tick": 0
+      }
+    ]
+  },
+  "version": 1
+}

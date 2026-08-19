@@ -1,0 +1,258 @@
+#include "MixerComponent.h"
+#include "LookAndFeel/VsmLookAndFeel.h"
+#include <cmath>
+
+using vsm::audio::engine::MasterBus;
+
+namespace {
+float gainToDb(float g) { return g > 1.0e-5f ? 20.0f * std::log10(g) : -60.0f; }
+float dbToGain(float db) { return std::pow(10.0f, db / 20.0f); }
+} // namespace
+
+// ============================================================ ChannelStrip
+
+ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index)
+    : track_(track), index_(index) {
+    nameLabel_.setText(track_.name.empty() ? "Track" : track_.name, juce::dontSendNotification);
+    nameLabel_.setJustificationType(juce::Justification::centred);
+    nameLabel_.setColour(juce::Label::textColourId, vsm::ui::Palette::textPrimary);
+    nameLabel_.setFont(juce::Font(juce::FontOptions(12.0f).withStyle("Bold")));
+    addAndMakeVisible(nameLabel_);
+
+    volume_.setSliderStyle(juce::Slider::LinearVertical);
+    volume_.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 56, 16);
+    volume_.setRange(-60.0, 6.0, 0.1);
+    volume_.setSkewFactorFromMidPoint(-12.0);
+    volume_.setValue(gainToDb(track_.volume), juce::dontSendNotification);
+    volume_.setTextValueSuffix(" dB");
+    volume_.onValueChange = [this] {
+        track_.volume = dbToGain(static_cast<float>(volume_.getValue()));
+        if (onMixChanged) onMixChanged();
+    };
+    addAndMakeVisible(volume_);
+
+    pan_.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+    pan_.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    pan_.setRange(-1.0, 1.0, 0.01);
+    pan_.setValue(track_.pan, juce::dontSendNotification);
+    pan_.onValueChange = [this] {
+        track_.pan = static_cast<float>(pan_.getValue());
+        if (onMixChanged) onMixChanged();
+    };
+    addAndMakeVisible(pan_);
+
+    auto setupSend = [this](juce::Slider& s, int bus) {
+        s.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+        s.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+        s.setRange(0.0, 1.0, 0.01);
+        s.setValue(track_.sendLevels[static_cast<size_t>(bus)], juce::dontSendNotification);
+        s.onValueChange = [this, &s, bus] {
+            track_.sendLevels[static_cast<size_t>(bus)] = static_cast<float>(s.getValue());
+            if (onMixChanged) onMixChanged();
+        };
+        addAndMakeVisible(s);
+    };
+    setupSend(sendA_, 0);
+    setupSend(sendB_, 1);
+
+    mute_.setClickingTogglesState(true);
+    mute_.setToggleState(track_.muted, juce::dontSendNotification);
+    mute_.setColour(juce::TextButton::buttonOnColourId, vsm::ui::Palette::accentRed);
+    mute_.onClick = [this] {
+        track_.muted = mute_.getToggleState();
+        if (onMixChanged) onMixChanged();
+    };
+    addAndMakeVisible(mute_);
+
+    solo_.setClickingTogglesState(true);
+    solo_.setToggleState(track_.solo, juce::dontSendNotification);
+    solo_.setColour(juce::TextButton::buttonOnColourId, vsm::ui::Palette::accentAmber);
+    solo_.onClick = [this] {
+        track_.solo = solo_.getToggleState();
+        if (onMixChanged) onMixChanged();
+    };
+    addAndMakeVisible(solo_);
+
+    addAndMakeVisible(meter_);
+}
+
+void ChannelStrip::paint(juce::Graphics& g) {
+    g.setColour(vsm::ui::Palette::panel);
+    g.fillRoundedRectangle(getLocalBounds().toFloat().reduced(2.0f), 4.0f);
+    // Bandeau couleur de la piste en haut.
+    g.setColour(juce::Colour(track_.colorRgba));
+    g.fillRoundedRectangle(getLocalBounds().toFloat().reduced(2.0f).removeFromTop(4.0f), 2.0f);
+}
+
+void ChannelStrip::resized() {
+    auto r = getLocalBounds().reduced(4);
+    r.removeFromTop(4); // bandeau couleur
+    nameLabel_.setBounds(r.removeFromTop(18));
+    pan_.setBounds(r.removeFromTop(34).reduced(6, 2));
+
+    // Deux petits knobs de send (A/B).
+    auto sendRow = r.removeFromTop(28);
+    sendA_.setBounds(sendRow.removeFromLeft(sendRow.getWidth() / 2).reduced(4, 1));
+    sendB_.setBounds(sendRow.reduced(4, 1));
+
+    auto bottom = r.removeFromBottom(22);
+    mute_.setBounds(bottom.removeFromLeft(bottom.getWidth() / 2).reduced(1));
+    solo_.setBounds(bottom.reduced(1));
+
+    // Fader + mètre côte à côte.
+    auto meterArea = r.removeFromRight(10);
+    meter_.setBounds(meterArea.reduced(0, 2));
+    volume_.setBounds(r);
+}
+
+// ============================================================= MasterStrip
+
+MasterStrip::MasterStrip() {
+    titleLabel_.setText("MASTER", juce::dontSendNotification);
+    titleLabel_.setJustificationType(juce::Justification::centred);
+    titleLabel_.setColour(juce::Label::textColourId, vsm::ui::Palette::textPrimary);
+    titleLabel_.setFont(juce::Font(juce::FontOptions(12.0f).withStyle("Bold")));
+    addAndMakeVisible(titleLabel_);
+
+    enableButton_.setClickingTogglesState(true);
+    enableButton_.setColour(juce::TextButton::buttonOnColourId, vsm::ui::Palette::accentTeal);
+    enableButton_.onClick = [this] {
+        if (onMasterEnable) onMasterEnable(enableButton_.getToggleState());
+    };
+    addAndMakeVisible(enableButton_);
+
+    addKnob(MasterBus::kLowShelfGainDb, "LOW", -18.0f, 18.0f, 0.0f, " dB");
+    addKnob(MasterBus::kMidGainDb, "MID", -18.0f, 18.0f, 0.0f, " dB");
+    addKnob(MasterBus::kHighShelfGainDb, "HIGH", -18.0f, 18.0f, 0.0f, " dB");
+    addKnob(MasterBus::kCompThresholdDb, "COMP", -48.0f, 0.0f, 0.0f, " dB");
+    addKnob(MasterBus::kCompRatio, "RATIO", 1.0f, 20.0f, 2.0f, ":1");
+    addKnob(MasterBus::kSaturationDrive, "SAT", 0.0f, 1.0f, 0.0f, "");
+    addKnob(MasterBus::kLimiterCeilingDb, "CEIL", -12.0f, 0.0f, -0.3f, " dB");
+
+    lufsLabel_.setText("-inf LUFS", juce::dontSendNotification);
+    lufsLabel_.setJustificationType(juce::Justification::centred);
+    lufsLabel_.setColour(juce::Label::textColourId, vsm::ui::Palette::textSecondary);
+    lufsLabel_.setFont(juce::Font(juce::FontOptions(11.0f)));
+    addAndMakeVisible(lufsLabel_);
+
+    addAndMakeVisible(meter_);
+}
+
+juce::Slider& MasterStrip::addKnob(vsm::audio::plugin::ParamId id, const juce::String& label,
+                                   float min, float max, float def, const juce::String& suffix) {
+    Knob k;
+    k.id = id;
+    k.slider = std::make_unique<juce::Slider>();
+    k.slider->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+    k.slider->setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    k.slider->setRange(min, max, (max - min) / 1000.0);
+    k.slider->setValue(def, juce::dontSendNotification);
+    k.slider->setTextValueSuffix(suffix);
+    const auto pid = id;
+    juce::Slider* raw = k.slider.get();
+    raw->onValueChange = [this, raw, pid] {
+        if (onMasterParam) onMasterParam(pid, static_cast<float>(raw->getValue()));
+    };
+    addAndMakeVisible(*k.slider);
+
+    k.label = std::make_unique<juce::Label>();
+    k.label->setText(label, juce::dontSendNotification);
+    k.label->setJustificationType(juce::Justification::centred);
+    k.label->setColour(juce::Label::textColourId, vsm::ui::Palette::textSecondary);
+    k.label->setFont(juce::Font(juce::FontOptions(9.5f)));
+    addAndMakeVisible(*k.label);
+
+    knobs_.push_back(std::move(k));
+    return *knobs_.back().slider;
+}
+
+void MasterStrip::syncFromEngine() {
+    if (masterParamProvider) {
+        for (auto& k : knobs_)
+            k.slider->setValue(masterParamProvider(k.id), juce::dontSendNotification);
+        enableButton_.setToggleState(masterParamProvider(MasterBus::kEnabled) >= 0.5f,
+                                     juce::dontSendNotification);
+    }
+}
+
+void MasterStrip::paint(juce::Graphics& g) {
+    g.setColour(vsm::ui::Palette::panelRaised);
+    g.fillRoundedRectangle(getLocalBounds().toFloat().reduced(2.0f), 4.0f);
+    g.setColour(vsm::ui::Palette::border);
+    g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(2.0f), 4.0f, 1.0f);
+}
+
+void MasterStrip::resized() {
+    auto r = getLocalBounds().reduced(6);
+    titleLabel_.setBounds(r.removeFromTop(18));
+    enableButton_.setBounds(r.removeFromTop(22).reduced(8, 2));
+    r.removeFromTop(4);
+
+    // Grille de knobs 2 colonnes.
+    auto meterArea = r.removeFromRight(12);
+    meter_.setBounds(meterArea.reduced(0, 2));
+    lufsLabel_.setBounds(getLocalBounds().reduced(6).removeFromBottom(16));
+    r.removeFromBottom(18);
+
+    const int cols = 2;
+    const int knobH = 46;
+    for (size_t i = 0; i < knobs_.size(); ++i) {
+        const int col = static_cast<int>(i) % cols;
+        const int row = static_cast<int>(i) / cols;
+        const int cw = r.getWidth() / cols;
+        juce::Rectangle<int> cell(r.getX() + col * cw, r.getY() + row * knobH, cw, knobH);
+        knobs_[i].label->setBounds(cell.removeFromBottom(12));
+        knobs_[i].slider->setBounds(cell.reduced(2));
+    }
+}
+
+// =========================================================== MixerComponent
+
+MixerComponent::MixerComponent() {
+    addAndMakeVisible(viewport_);
+    viewport_.setViewedComponent(&stripContainer_, false);
+    viewport_.setScrollBarsShown(false, true);
+    addAndMakeVisible(master_);
+}
+
+void MixerComponent::setProject(vsm::sequencer::Project* project) {
+    project_ = project;
+    strips_.clear();
+    if (project_ != nullptr) {
+        for (size_t i = 0; i < project_->tracks.size(); ++i) {
+            auto* strip = new ChannelStrip(project_->tracks[i], i);
+            strip->onMixChanged = [this] { if (onMixChanged) onMixChanged(); };
+            stripContainer_.addAndMakeVisible(strip);
+            strips_.add(strip);
+        }
+    }
+    master_.onMasterParam = [this](vsm::audio::plugin::ParamId id, float v) {
+        if (onMasterParam) onMasterParam(id, v);
+    };
+    master_.onMasterEnable = [this](bool on) { if (onMasterEnable) onMasterEnable(on); };
+    master_.masterParamProvider = masterParamProvider;
+    master_.syncFromEngine();
+    resized();
+}
+
+void MixerComponent::updateMeters(const std::function<float(size_t)>& trackPeak,
+                                  double masterLufs, float masterPeak) {
+    for (int i = 0; i < strips_.size(); ++i)
+        strips_[i]->setMeterLevel(trackPeak(static_cast<size_t>(i)));
+    master_.setMeters(masterLufs, masterPeak);
+}
+
+void MixerComponent::paint(juce::Graphics& g) {
+    g.fillAll(vsm::ui::Palette::background);
+}
+
+void MixerComponent::resized() {
+    auto r = getLocalBounds();
+    master_.setBounds(r.removeFromRight(kMasterWidth));
+    viewport_.setBounds(r);
+
+    const int n = strips_.size();
+    stripContainer_.setSize(juce::jmax(r.getWidth(), n * kStripWidth), r.getHeight() - 12);
+    for (int i = 0; i < n; ++i)
+        strips_[i]->setBounds(i * kStripWidth, 0, kStripWidth, stripContainer_.getHeight());
+}
