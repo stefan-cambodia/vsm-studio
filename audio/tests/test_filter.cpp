@@ -1,4 +1,5 @@
 #include "TestFramework.h"
+#include "vsm/util/DeterministicRng.h"
 #include "vsm/audio/dsp/Filter.h"
 #include "vsm/audio/dsp/Oscillator.h"
 #include <cmath>
@@ -76,4 +77,33 @@ VSM_TEST(filter_settles_to_silence_after_impulse) {
     float last = 0.0f;
     for (int i = 0; i < 48000; ++i) last = filter.process(0.0f);
     VSM_ASSERT(std::abs(last) < 1e-6f);
+}
+
+VSM_TEST(state_variable_filter_multi_output_matches_the_single_outputs) {
+    // Les trois sorties rendues d'un coup doivent être EXACTEMENT celles que
+    // rendrait le filtre réglé sur chaque mode -- sinon une machine qui fond
+    // d'un type à l'autre n'entendrait pas ce que les autres entendent.
+    //
+    // La comparaison se fait sur TROIS FILTRES SÉPARÉS, un par mode : les
+    // interroger tour à tour sur un seul filtre ferait avancer son état trois
+    // fois par échantillon, ce qui reviendrait à le faire tourner à triple
+    // fréquence. C'est précisément le piège que `processMulti` supprime.
+    vsm::audio::dsp::StateVariableFilter multi, low, band, high;
+    for (auto* f : {&multi, &low, &band, &high}) {
+        f->setSampleRate(48000.0);
+        f->setCutoffHz(1200.0f);
+        f->setResonance(2.5f);
+    }
+    low.setMode(vsm::audio::dsp::StateVariableFilter::Mode::LowPass);
+    band.setMode(vsm::audio::dsp::StateVariableFilter::Mode::BandPass);
+    high.setMode(vsm::audio::dsp::StateVariableFilter::Mode::HighPass);
+
+    vsm::util::DeterministicRng rng{0x5A5A5A5AULL};
+    for (int i = 0; i < 4096; ++i) {
+        const float entree = rng.nextBipolar();
+        const auto trois = multi.processMulti(entree);
+        VSM_ASSERT_NEAR(trois.lowPass, low.process(entree), 1e-6);
+        VSM_ASSERT_NEAR(trois.bandPass, band.process(entree), 1e-6);
+        VSM_ASSERT_NEAR(trois.highPass, high.process(entree), 1e-6);
+    }
 }

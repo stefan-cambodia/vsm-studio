@@ -47,7 +47,7 @@ est donc levée, et la **Phase 7 a commencé** :
 | **P2** | `ParameterDescriptor` + identités sémantiques | **Fait** — 308 paramètres annotés (12 machines + 9 effets), 3 tests de cohérence (complétude, unicité, sens transversal) |
 | **P3** | `*.synth.json` | **Fait** — écriture/lecture versionnées, rapport d'application explicite, exemple dans `docs/examples/` |
 | **P4** | `project.json` | **Fait** — transport, pistes, mixage, effets ; référence le MIDI sans recopier les notes ; chemins portables imposés ; instrument manquant signalé, jamais substitué |
-| **P5** | adaptateur CLAP | **Fait** — `vsm-instruments.clap` expose les 11 machines ; enveloppe le DSP natif, rendu identique à l'échantillon près (testé) |
+| **P5** | adaptateur CLAP | **Fait** — `vsm-instruments.clap` expose les machines du registre (11 à l'époque ; l'énumération manuelle a depuis été remplacée par une interrogation du registre, après que huit machines ajoutées sont restées invisibles aux hôtes) ; enveloppe le DSP natif, rendu identique à l'échantillon près (testé) |
 | **P6** | hôte CLAP | **Fait** — un `.clap` externe est chargé et présenté comme `ISynthPlugin` : ProcessGraph et l'UI inchangés |
 | **P9** | API locale (Mode B) | **Fait, sous la forme la plus simple qui tienne** : `vsm-render --serve` lit des requêtes JSON ligne à ligne sur l'entrée standard. Pas de port, pas d'authentification, pas de serveur à laisser tourner -- les deux programmes sont sur la même machine. Pont Python dans `analyse/analyzer/vsm_engine.py` |
 | **P7** | import d'un dossier de projet | **Fait** — `loadProjectBundle`/`saveProjectBundle` : project.json + MIDI + presets, dégradation honnête (preset ou instrument manquant signalé, jamais substitué) |

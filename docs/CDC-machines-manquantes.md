@@ -105,6 +105,20 @@ BRUIT (blanc/rose)      ─┘                    │                │
    logarithmique) et importance relative de chaque paramètre, exposés au projet
    d'analyse pour qu'il n'ait pas à les deviner (voir §6).
 
+> **État au 19/08/2026 : fait.** La machine existe (`vsm.generic`), 40
+> paramètres et 8 voix, avec sa façade, ses identités sémantiques, son profil
+> de recherche et son empreinte de non-régression. Les quatre exigences
+> ci-dessus ont chacune leurs tests dans `audio/tests/test_generic_synth.cpp`.
+> Une brique partagée a dû s'ouvrir pour la servir :
+> `StateVariableFilter::processMulti()` rend les trois sorties du filtre en un
+> seul pas d'état, ce sans quoi le fondu continu entre types de filtre ferait
+> tourner le filtre à triple fréquence. Voir la section 31 d'`ARCHITECTURE.md`.
+>
+> **Non retenu, et écrit plutôt que découvert plus tard** : la courbe
+> d'enveloppe (linéaire ↔ exponentielle) du tableau ci-dessus n'est pas
+> exposée ; les deux ADSR emploient la courbe partagée du parc. C'est une
+> dimension de moins pour la recherche.
+
 ## 4. Machine 2 — `vsm.sampler` : lecteur d'échantillons
 
 **Intention.** La seule façon honnête de reproduire une source acoustique.
@@ -117,13 +131,17 @@ découpe les coups : ces extraits **sont** les échantillons. La reconstruction
 devient alors quasi exacte pour tout le percussif — et la batterie est
 justement ce que la synthèse reproduit le plus mal.
 
-> **État au 19/08/2026 : fait, en version 8 emplacements.** La machine existe
+> **État : fait, en version 16 emplacements.** La machine existe
 > (`vsm.sampler`), avec sa façade, ses identités sémantiques, son empreinte et
-> son accès depuis le service de rendu. Les 16 emplacements prévus ci-dessous
-> attendent que la façade sache en sélectionner un : seize colonnes de sept
-> réglages afficheraient 112 commandes illisibles. Le filtre passe-bas par
-> emplacement n'a pas été retenu non plus — pour rejouer un coup découpé, il
-> n'apporte rien et triplerait le panneau.
+> son accès depuis le service de rendu. Les seize emplacements prévus ci-dessous
+> y sont : le blocage n'était pas la mémoire mais l'AFFICHAGE — seize
+> emplacements à sept réglages font cent douze commandes, illisibles alignées.
+> Il a été levé en ne montrant que les quatre réglages qui se JOUENT (niveau,
+> accord, décroissance, panoramique) ; les trois autres (note de déclenchement,
+> point de départ, groupe de coupure) sont des réglages de configuration, posés
+> une fois, déclarés omis avec leur raison. Le filtre passe-bas par emplacement
+> n'a pas été retenu — pour rejouer un coup découpé, il n'apporte rien et
+> triplerait le panneau.
 
 **Architecture** : 16 emplacements, un échantillon par emplacement (mono ou
 stéréo, chargé depuis un WAV), et par emplacement : note de déclenchement,
@@ -150,6 +168,45 @@ pas — la façade des TR, sans leur synthèse spécifique.
 À trancher au moment de l'écrire : **profil du sampler** (moins de code, moins
 de tests) ou **machine distincte** (façade plus juste). Le CDC de la §7 de
 [`CDC-nouvelle-machine.md`](CDC-nouvelle-machine.md) s'applique dans les deux cas.
+
+> **Tranché : aucune des deux. `vsm.drumkit` ne sera pas écrit, parce que
+> `vsm.sampler` EST déjà cette machine.** En reprenant point par point ce que
+> le paragraphe ci-dessus demande, le sampler livrait déjà tout sauf un
+> détail :
+>
+> | Ce que le §5 demande | État dans `vsm.sampler` |
+> |---|---|
+> | 8 à 16 pièces | seize emplacements |
+> | une colonne de réglages par pièce | seize sections de quatre réglages |
+> | grille de 16 pas | `SequencerKind::DrumGrid`, seize pas |
+> | mapping de boîte à rythmes | la note SÉLECTIONNE la pièce, elle ne transpose pas |
+> | notes par défaut | la convention General MIDI de la batterie |
+> | charleston ouverte/fermée | groupes de coupure |
+> | « sans leur synthèse spécifique » | des échantillons, justement |
+>
+> Il manquait le NOM DES PIÈCES : la façade disait « SLOT 3 » là où une boîte à
+> rythmes dit « HH CL ». C'est ce qui a été corrigé, et c'est tout ce qu'il
+> fallait.
+>
+> **Pourquoi ne pas l'écrire quand même.** Une seconde machine aurait partagé
+> le moteur, les paramètres, les identités sémantiques et la façade de la
+> première : elle aurait coûté une empreinte de plus, une table sémantique
+> identique de plus, une batterie de tests de plus, et une entrée de plus dans
+> chaque liste de choix — pour un changement d'étiquettes. Le §7 de ce même
+> document met en garde contre exactement cela : « elles élargissent le
+> catalogue, pas la couverture ». Le §0 de
+> [`CDC-nouvelle-machine.md`](CDC-nouvelle-machine.md) dit la même chose depuis
+> l'autre bout : une machine se déclare, elle ne se duplique pas.
+>
+> **Ce que la décision coûte, et qui est écrit plutôt que caché.** Les noms de
+> pièces affichés sont ceux que la convention General MIDI met à ces notes PAR
+> DÉFAUT ; un emplacement dont on change la note de déclenchement porte alors
+> une étiquette inexacte. C'est la limite assumée d'un kit dont les pièces
+> restent réassignables — le numéro d'emplacement, lui, reste en tête du titre
+> et ne ment jamais. Par ailleurs la grille de pas ne programme que les huit
+> premières pièces ; les seize se déclenchent, mais les toms et percussions se
+> jouent depuis le piano roll, faute de quoi seize lignes de seize pas seraient
+> illisibles.
 
 ---
 
@@ -190,20 +247,36 @@ presque pas la reconstruction. Elles élargissent le catalogue, pas la couvertur
 En plus du CDC général :
 
 ```
-[ ] vsm.generic : à réglages neutres, spectre propre (test)
-[ ] vsm.generic : monotonie vérifiée sur coupure, résonance, drive (tests)
-[ ] vsm.generic : formes d'onde et type de filtre CONTINUS, sans palier
-[ ] vsm.sampler : chargement hors thread audio, publication atomique
-[ ] vsm.sampler : échantillon manquant signalé, jamais substitué
-[ ] vsm.sampler : chemins relatifs dans l'état sauvegardé
-[ ] Profil de recherche déclaré et lisible depuis interchange/
-[ ] Preuve de bout en bout : un stem réel reconstruit, distance mesurée AVANT
-    et APRÈS l'ajout, chiffres publiés dans ARCHITECTURE.md
+[x] vsm.generic : à réglages neutres, spectre propre (test)
+[x] vsm.generic : monotonie vérifiée sur coupure, résonance, drive (tests)
+[x] vsm.generic : formes d'onde et type de filtre CONTINUS, sans palier
+[x] vsm.sampler : chargement hors thread audio, publication atomique
+[x] vsm.sampler : échantillon manquant signalé, jamais substitué
+[x] vsm.sampler : chemins relatifs dans l'état sauvegardé
+[x] Profil de recherche déclaré et lisible depuis interchange/
+[x] Preuve de bout en bout : un stem réel reconstruit, distance mesurée AVANT
+    et APRÈS l'ajout, chiffres publiés dans ARCHITECTURE.md (§31)
 ```
 
 Le dernier point est le seul qui compte vraiment : ces machines existent pour
 faire baisser une distance mesurable. Si elle ne baisse pas, elles n'ont pas
 tenu leur promesse, et il faudra le dire.
+
+> **Mesuré, et le voici dit (chiffres complets dans ARCHITECTURE.md §31).**
+> Pour `vsm.sampler`, la promesse est tenue depuis sa livraison : un coup
+> découpé rejoué corrèle à 1,0000 avec l'original. Pour `vsm.generic`, le
+> verdict est en deux moitiés. Sur de l'audio PROPRE produit par une machine
+> du parc, la distance ne baisse pas : la machine d'origine gagne toujours, et
+> le generic ne fait ni mieux ni pire (il ne vole jamais l'identification —
+> le risque symétrique, écarté par la mesure). Sur l'audio réellement à
+> reconstruire — un stem passé par la séparation, teinté d'artefacts, sans
+> machine d'origine évidente — le generic GAGNE le stem de basse (0,139 contre
+> 0,149 au meilleur sans lui, la vraie machine hors podium). La neutralité
+> paie exactement là où ce cahier des charges la destinait, et pas ailleurs.
+> S'y ajoute une dépendance mesurée au budget de recherche : le generic est la
+> seule machine à profiter d'un espace élargi (0,190 → 0,132 en passant de 6 à
+> 20 axes sur la basse), pendant que les machines étroites s'y diluent — le
+> plafond de six dimensions du budget par défaut le pénalise structurellement.
 
 ---
 
@@ -228,7 +301,7 @@ Deux critères, à ne pas confondre :
 | Soustractif, filtre en échelle | Minimoog, TB-303, SH-101, Juno-106, Jupiter-8, Prophet | **saturé** — six machines s'y partagent le même filtre |
 | Soustractif, filtre à variable d'état | MS-20 (double HPF+LPF), ARP Odyssey | couvert |
 | FM | DX7 (6 opérateurs) | couvert |
-| Échantillons | Sampler | couvert (8 emplacements) |
+| Échantillons | Sampler | couvert (16 emplacements, façade de boîte à rythmes) |
 | Percussions analogiques | TR-808, TR-909 | couvert |
 | Table d'ondes | `vsm.wavetable` (4 tables × 8 formes, anti-repliement par niveaux) | **fait** |
 | Hybride PCM + soustractif | `vsm.pcmhybrid` (5 transitoires engendrés + attaque chargeable) | **fait** |

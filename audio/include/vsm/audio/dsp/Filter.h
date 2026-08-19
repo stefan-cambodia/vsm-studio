@@ -47,6 +47,28 @@ public:
 
     void reset() { ic1eq_ = ic2eq_ = 0.0f; }
 
+    /// Les TROIS sorties du filtre en un seul pas d'état.
+    ///
+    /// POURQUOI CETTE MÉTHODE EXISTE : une topologie à variable d'état calcule
+    /// naturellement le passe-bas, le passe-bande et le passe-haut en même
+    /// temps ; `process()` n'en rend qu'un et jette les deux autres. Une
+    /// machine qui veut FONDRE d'un type à l'autre en a besoin des trois --
+    /// et appeler `process()` trois fois ferait avancer l'état trois fois par
+    /// échantillon, c'est-à-dire tourner le filtre à triple fréquence.
+    ///
+    /// C'est le même piège que celui rencontré sur la cascade 24 dB/oct de
+    /// l'OB-X, et il est ici rendu impossible.
+    struct MultiOutput { float lowPass, bandPass, highPass; };
+
+    MultiOutput processMulti(float input) {
+        const float v3 = input - ic2eq_;
+        const float v1 = a1_ * ic1eq_ + a2_ * v3;
+        const float v2 = ic2eq_ + a2_ * ic1eq_ + a3_ * v3;
+        ic1eq_ = flushDenormalToZero(2.0f * v1 - ic1eq_);
+        ic2eq_ = flushDenormalToZero(2.0f * v2 - ic2eq_);
+        return {v2, v1, input - k_ * v1 - v2};
+    }
+
     float process(float input) {
         float v3 = input - ic2eq_;
         float v1 = a1_ * ic1eq_ + a2_ * v3;

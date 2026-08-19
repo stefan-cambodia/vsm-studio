@@ -488,7 +488,7 @@ _FALLBACK_MACHINES = [
     "vsm.minimoog", "vsm.tb303", "vsm.juno106", "vsm.jupiter8", "vsm.prophet",
     "vsm.sh101", "vsm.ms20", "vsm.arpodyssey", "vsm.dx7", "vsm.tr808", "vsm.tr909",
     "vsm.sampler", "vsm.epiano", "vsm.obx", "vsm.supersaw", "vsm.wavetable",
-    "vsm.pcmhybrid", "vsm.tonewheel",
+    "vsm.pcmhybrid", "vsm.tonewheel", "vsm.generic",
 ]
 
 

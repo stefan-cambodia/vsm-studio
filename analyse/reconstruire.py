@@ -36,7 +36,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from analyzer.vsm_engine import VsmEngine, VsmEngineError
+from analyzer.vsm_engine import VsmEngine, VsmEngineError, find_vsm_render
 from analyzer.vsm_drumkit import build_drum_kit, drum_kit_track
 from analyzer.vsm_project_export import ExportNote, ExportTrack, write_project_bundle
 from analyzer.vsm_reconstruct import (
@@ -268,7 +268,11 @@ def main() -> int:
         # --- rendu et distance ------------------------------------------------
         print("[5/5] Rendu du projet et mesure")
         rendu = sortie / "reconstruit.wav"
-        moteur_chemin = args.moteur or "vsm-render"
+        # Résolu par la MÊME recherche que le moteur de la boucle : la version
+        # précédente tentait « vsm-render » par le PATH et échouait à la toute
+        # dernière étape -- après plusieurs minutes de recherche de patch, la
+        # chaîne rendait tout SAUF le chiffre qu'elle promettait.
+        moteur_chemin = str(find_vsm_render(args.moteur))
         try:
             subprocess.run(
                 [moteur_chemin, str(sortie), str(rendu),

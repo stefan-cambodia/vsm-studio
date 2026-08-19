@@ -8,6 +8,7 @@
 #include "vsm/interchange/SynthPreset.h"
 #include <algorithm>
 #include <cmath>
+#include <set>
 #include <vector>
 
 // L'adaptateur (P5) et l'hôte (P6) se valident MUTUELLEMENT : l'hôte charge le
@@ -41,19 +42,32 @@ vsm::audio::plugin::ParamId paramIdBySemantic(const std::string& machineId, cons
 } // namespace
 
 VSM_TEST(adapter_exposes_every_machine) {
+    // « Every machine » se vérifie contre LE REGISTRE, pas contre un nombre.
+    // La première version de ce test se contentait de « >= 11 » : huit
+    // machines ont été ajoutées au DAW sans jamais apparaître dans les hôtes
+    // CLAP, et le test est resté vert pendant tout ce temps. Un seuil ne
+    // prouve pas une énumération ; une comparaison ensembliste, si.
     std::string error;
     const auto plugins = scanClapFile(adapterPath(), error);
     VSM_ASSERT(error.empty());
-    VSM_ASSERT(plugins.size() >= 11); // toutes les machines à hauteur + les boîtes à rythmes
 
-    bool foundMinimoog = false;
+    std::set<std::string> exposed;
     for (const auto& info : plugins) {
         VSM_ASSERT(!info.id.empty());
         VSM_ASSERT(!info.name.empty());
         VSM_ASSERT_EQ(info.vendor, std::string("VSM Studio"));
-        if (info.id == "com.vsmstudio.minimoog") foundMinimoog = true;
+        exposed.insert(info.id);
     }
-    VSM_ASSERT(foundMinimoog);
+
+    vsm::audio::plugin::registerBuiltInPlugins();
+    size_t expected = 0;
+    for (const auto& [machineId, displayName] : vsm::audio::plugin::PluginRegistry::instance().listAvailable()) {
+        if (machineId == "vsm.testtone") continue; // outil de test, volontairement absent
+        ++expected;
+        VSM_ASSERT(exposed.count(vsm::interchange::clapPluginId(machineId)) == 1);
+    }
+    VSM_ASSERT_EQ(exposed.size(), expected);
+    VSM_ASSERT(exposed.count("com.vsmstudio.testtone") == 0);
 }
 
 VSM_TEST(host_loads_a_plugin_and_sees_its_parameters) {

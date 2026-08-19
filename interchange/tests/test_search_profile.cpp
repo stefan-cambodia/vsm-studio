@@ -227,3 +227,74 @@ VSM_TEST(the_amplitude_envelope_outranks_the_modulation_envelopes) {
         if (dimension.semanticId == "filter.1.resonance") resonanceIsSearched = true;
     VSM_ASSERT(resonanceIsSearched);
 }
+
+VSM_TEST(the_neutral_machine_is_searched_on_its_continuous_dimensions) {
+    // La machine neutre existe POUR être cherchée : c'est son seul argument
+    // face aux machines de caractère. Deux propriétés de son profil décident
+    // de tout, et une régression sur l'une des deux la ramènerait au rang
+    // d'une machine de caractère de plus.
+    const SearchProfile generic = profileFor("vsm.generic");
+    VSM_ASSERT(!generic.empty());
+
+    // 1. La forme d'onde et le type de filtre sont CHERCHÉS, sur toute leur
+    //    plage. Les exclure -- ou les borner -- rendrait inatteignables des
+    //    timbres entiers, alors que ce sont justement les deux axes que cette
+    //    machine rend continus et qu'aucune autre n'offre.
+    const SearchDimension* shape = generic.find("oscillator.1.shape");
+    VSM_ASSERT(shape != nullptr);
+    VSM_ASSERT_NEAR(shape->low, 0.0f, 1e-6);
+    VSM_ASSERT_NEAR(shape->high, 3.0f, 1e-6);   // sinus -> triangle -> scie -> carré
+
+    const SearchDimension* type = generic.find("filter.1.type");
+    VSM_ASSERT(type != nullptr);
+    VSM_ASSERT_NEAR(type->low, 0.0f, 1e-6);
+    VSM_ASSERT_NEAR(type->high, 2.0f, 1e-6);    // passe-bas -> passe-bande -> passe-haut
+
+    // 2. Ces deux axes sont cherchés LINÉAIREMENT. Une échelle logarithmique
+    //    n'a de sens que pour une grandeur physique dont l'oreille perçoit les
+    //    rapports (hertz, secondes) ; sur un fondu de formes, elle écraserait
+    //    tout un côté du parcours.
+    VSM_ASSERT(shape->scale == SearchScale::Linear);
+    VSM_ASSERT(type->scale == SearchScale::Linear);
+
+    // La coupure reste le premier axe -- la machine est soustractive avant
+    // d'être morphable, et la chercher d'abord sur la forme d'onde
+    // gaspillerait le budget sur l'axe le moins décisif.
+    VSM_ASSERT_EQ(generic.dimensions().front().semanticId, std::string("filter.1.cutoff"));
+    VSM_ASSERT(shape->importance >= 0.9f);
+}
+
+VSM_TEST(a_corrective_high_pass_is_never_searched_like_a_main_filter) {
+    // Le défaut, mesuré avant correction : « filter.2.cutoff » ne disait pas
+    // le TYPE du filtre, si bien que le coupe-bas du Juno-106 -- une commande
+    // mineure, un simple sélecteur de graves sur la machine d'origine --
+    // héritait de l'importance du filtre principal et occupait le rang 3 de
+    // l'espace cherché. La correction distingue les correcteurs
+    // (« filter.hp.cutoff ») des vrais seconds filtres.
+    for (const char* machine : {"vsm.juno106", "vsm.jupiter8", "vsm.arpodyssey", "vsm.supersaw"}) {
+        const SearchProfile profile = profileFor(machine);
+        const SearchDimension* corrector = profile.find("filter.hp.cutoff");
+        VSM_ASSERT(corrector != nullptr);
+        VSM_ASSERT(profile.find("filter.2.cutoff") == nullptr);
+
+        // Le correcteur reste cherchable (il sculpte les graves), mais il ne
+        // doit plus expulser la résonance ou l'enveloppe de l'espace utile.
+        const auto& all = profile.dimensions();
+        size_t rank = 0;
+        for (size_t i = 0; i < all.size(); ++i)
+            if (all[i].semanticId == "filter.hp.cutoff") rank = i + 1;
+        VSM_ASSERT(rank > 6);
+        VSM_ASSERT(corrector->importance < 0.6f);
+        // Une fréquence se cherche en logarithmique, correcteur ou pas.
+        VSM_ASSERT(corrector->scale == SearchScale::Logarithmic);
+    }
+
+    // Le MS-20 est l'exception qui prouve la règle : son HPF est RÉSONANT,
+    // c'est un second filtre à part entière, et il garde son identité
+    // d'instance et son rang de vrai filtre.
+    const SearchProfile ms20 = profileFor("vsm.ms20");
+    const SearchDimension* hpf = ms20.find("filter.2.cutoff");
+    VSM_ASSERT(hpf != nullptr);
+    VSM_ASSERT(ms20.find("filter.hp.cutoff") == nullptr);
+    VSM_ASSERT(hpf->importance > 0.8f);
+}

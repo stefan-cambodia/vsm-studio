@@ -69,6 +69,53 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Analog Character", "voice.analogCharacter"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.generic ---
+    // Machine NEUTRE : ses identités sont volontairement les plus canoniques
+    // du vocabulaire, sans aucun identifiant qui lui soit propre. C'est ce qui
+    // permet à un patch trouvé sur elle d'être transposé vers n'importe quelle
+    // machine de caractère, et réciproquement.
+    {"vsm.generic", {
+        {"Osc1 Shape", "oscillator.1.shape"},
+        {"Osc1 Level", "oscillator.1.level"},
+        {"Osc1 Pulse Width", "oscillator.1.pulseWidth"},
+        {"Osc2 Shape", "oscillator.2.shape"},
+        {"Osc2 Level", "oscillator.2.level"},
+        {"Osc2 Pulse Width", "oscillator.2.pulseWidth"},
+        {"Osc2 Detune", "oscillator.2.detune"},
+        {"Osc2 Octave", "oscillator.2.octave"},
+        {"Sub Level", "oscillator.sub.level"},
+        {"Sub Shape", "oscillator.sub.shape"},
+        {"Noise Level", "oscillator.noise.level"},
+        {"Noise Colour", "oscillator.noise.colour"},
+        {"Filter Type", "filter.1.type"},
+        {"Filter Cutoff", "filter.1.cutoff"},
+        {"Filter Resonance", "filter.1.resonance"},
+        {"Filter Slope", "filter.1.slope"},
+        {"Filter Env Amount", "filter.1.envAmount"},
+        {"Filter Key Track", "filter.1.keyTrack"},
+        {"Amp Attack", "envelope.1.attack"},
+        {"Amp Decay", "envelope.1.decay"},
+        {"Amp Sustain", "envelope.1.sustain"},
+        {"Amp Release", "envelope.1.release"},
+        {"Filter Attack", "envelope.2.attack"},
+        {"Filter Decay", "envelope.2.decay"},
+        {"Filter Sustain", "envelope.2.sustain"},
+        {"Filter Release", "envelope.2.release"},
+        {"LFO1 Rate", "lfo.1.rate"},
+        {"LFO1 Shape", "lfo.1.waveform"},
+        {"LFO1 to Pitch", "lfo.1.toPitch"},
+        {"LFO1 to Filter", "lfo.1.toFilter"},
+        {"LFO1 to Amp", "lfo.1.toAmp"},
+        {"LFO1 to PWM", "lfo.1.toPulseWidth"},
+        {"LFO2 Rate", "lfo.2.rate"},
+        {"LFO2 Shape", "lfo.2.waveform"},
+        {"LFO2 to Pitch", "lfo.2.toPitch"},
+        {"LFO2 to Filter", "lfo.2.toFilter"},
+        {"Velocity to Filter", "filter.1.velocityAmount"},
+        {"Velocity to Amp", "voice.velocitySensitivity"},
+        {"Drive", "output.drive"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.tonewheel ---
     // Les tirettes sont numérotées par RANG HARMONIQUE et non par leur
     // longueur de tuyau : « drawbar.16 » se lirait comme un numéro d'ordre,
@@ -164,7 +211,15 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Stereo Spread", "output.stereoWidth"},
         {"Sub Level", "oscillator.sub.level"},
         {"Noise Level", "oscillator.noise.level"},
-        {"Pitch HPF", "filter.2.cutoff"},
+        // « filter.hp.cutoff » et non « filter.2.cutoff » : ce coupe-bas est
+        // un CORRECTEUR DE TIMBRE, pas un second filtre. L'écrire comme une
+        // deuxième instance lui donnait presque l'importance du filtre
+        // principal dans l'espace de recherche (rang 3 sur le Juno-106,
+        // mesuré), alors qu'il n'est qu'une commande mineure. Le TYPE dans
+        // l'identifiant dit ce que le numéro d'instance ne sait pas dire.
+        // Seul le MS-20 garde « filter.2.* » : son HPF est résonant, c'est un
+        // vrai second filtre, la moitié de l'identité de la machine.
+        {"Pitch HPF", "filter.hp.cutoff"},
         {"Filter Cutoff", "filter.1.cutoff"},
         {"Filter Resonance", "filter.1.resonance"},
         {"Filter Env Amount", "filter.1.envAmount"},
@@ -226,6 +281,10 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"VCO-2 Shape", "oscillator.2.waveform"},
         {"VCO-2 Pitch", "oscillator.2.pitch"},
         {"Noise Level", "oscillator.noise.level"},
+        // Le HPF du MS-20 reste « filter.2.* » là où les autres machines
+        // disent « filter.hp.* » : ici il est RÉSONANT et sculpte le timbre à
+        // égalité avec le passe-bas -- c'est un second filtre à part entière,
+        // pas un correcteur (voir le commentaire du supersaw).
         {"HPF Cutoff", "filter.2.cutoff"},
         {"HPF Resonance", "filter.2.resonance"},
         {"LPF Cutoff", "filter.1.cutoff"},
@@ -255,7 +314,7 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Ring Mod Level", "oscillator.ringMod"},
         {"Noise Level", "oscillator.noise.level"},
         {"Sync", "oscillator.2.sync"},
-        {"HPF Cutoff", "filter.2.cutoff"},
+        {"HPF Cutoff", "filter.hp.cutoff"},
         {"Filter Cutoff", "filter.1.cutoff"},
         {"Filter Resonance", "filter.1.resonance"},
         {"Filter Env Amount", "filter.1.envAmount"},
@@ -410,7 +469,7 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"VCO-2 Detune", "oscillator.2.detune"},
         {"Cross Mod", "oscillator.crossMod"},
         {"Sync", "oscillator.2.sync"},
-        {"HPF Cutoff", "filter.2.cutoff"},
+        {"HPF Cutoff", "filter.hp.cutoff"},
         {"Filter Cutoff", "filter.1.cutoff"},
         {"Filter Resonance", "filter.1.resonance"},
         {"Filter Env Amount", "filter.1.envAmount"},
@@ -453,7 +512,7 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"LFO Rate", "lfo.1.rate"},
         {"LFO Delay", "lfo.1.delay"},
         {"LFO Pitch Amount", "lfo.1.toPitch"},
-        {"HPF Cutoff", "filter.2.cutoff"},
+        {"HPF Cutoff", "filter.hp.cutoff"},
         {"VCF Cutoff", "filter.1.cutoff"},
         {"VCF Resonance", "filter.1.resonance"},
         {"VCF Env Amount", "filter.1.envAmount"},

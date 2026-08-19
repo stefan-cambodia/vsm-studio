@@ -4,39 +4,41 @@ Séquenceur MIDI + rack de synthétiseurs vintage virtuels. Voir
 [`ARCHITECTURE.md`](ARCHITECTURE.md) pour la conception complète et l'état
 d'avancement détaillé par phase.
 
-**État actuel** : le moteur MIDI (`core/`, 70 tests) et le moteur audio
-temps réel (`audio/`, 311 tests, dont un test de concurrence réel vérifié
-sous ThreadSanitizer) sont implémentés et **entièrement testés** — 490
-tests, tous verts, zéro warning. Les 12 machines (Minimoog, TB-303,
-Juno-106, TR-808, TR-909, SH-101, Prophet, Jupiter-8, ARP Odyssey, MS-20,
-DX7 + le synthé de test) ont chacune une **empreinte de non-régression
-audio** qui fige leur rendu. Les **phases 1 à 6 sont terminées** : la dernière
-a apporté un banc de mesure CPU, un filtre vectorisé (SIMD) sur les machines
-polyphoniques et une horloge de lecture unique — le graphe complet à 16 pistes
-tourne 1,40x plus vite qu'au début de la phase, sans que le son bouge (les
-empreintes de non-régression le vérifient à chaque build). La **phase 7
-(interopérabilité) est démarrée** : la couche `interchange/` donne à chaque
-paramètre de chaque machine une identité sémantique stable
-(`filter.1.cutoff`...), et lit/écrit des presets `*.synth.json` ainsi que des
-projets `project.json` qu'un outil extérieur — un script Python d'analyse, par
-exemple — peut produire sans rien connaître du code du DAW. Exemples de
-fichiers dans [`docs/examples/`](docs/examples).
+**État actuel** : le moteur MIDI (`core/`, 81 tests) et le moteur audio
+temps réel (`audio/`, 461 tests, dont un test de concurrence réel vérifié
+sous ThreadSanitizer) sont implémentés et **entièrement testés** — 655
+tests, tous verts, zéro warning. Les 19 machines (Minimoog, TB-303, Juno-106,
+TR-808, TR-909, SH-101, Prophet, Jupiter-8, ARP Odyssey, MS-20, DX7, sampler
+16 emplacements, e-piano, OB-X, supersaw, table d'ondes, hybride PCM, orgue à
+roues phoniques, Generic Synth + le synthé de test) ont chacune une
+**empreinte de non-régression audio** qui fige leur rendu. **Toutes les phases
+des feuilles de route sont terminées** (1 à 6 : moteur, machines, optimisation
+SIMD ; 7 : interopérabilité sémantique, CLAP ; 8 à 11 : reconstruction
+WAV → MIDI + patchs, voir [`docs/ROADMAP-fusion.md`](docs/ROADMAP-fusion.md)).
+La couche `interchange/` donne à chaque paramètre de chaque machine une
+identité sémantique stable (`filter.1.cutoff`...), et lit/écrit des presets
+`*.synth.json` ainsi que des projets `project.json` qu'un outil extérieur — le
+projet d'analyse `analyse/`, par exemple — peut produire sans rien connaître
+du code du DAW. Exemples de fichiers dans [`docs/examples/`](docs/examples).
 
 ## Façades « façon hardware »
 
-**Les onze machines** ont leur propre façade, avec la disposition de
+**Les dix-neuf machines** ont leur propre façade, avec la disposition de
 l'original : trajet du signal du Minimoog, rangée unique du TB-303, colonne
-par pièce des TR-808/909, curseurs du Juno-106, du Jupiter-8, du SH-101 et de
-l'ARP Odyssey, double filtre du MS-20, bloc Poly-Mod du Prophet, matrice des
-six opérateurs du DX7. Aperçus : [`docs/images/panels/`](docs/images/panels).
+par pièce des TR-808/909 et du sampler-boîte à rythmes, curseurs du Juno-106,
+du Jupiter-8, du SH-101 et de l'ARP Odyssey, double filtre du MS-20, bloc
+Poly-Mod du Prophet, matrice des six opérateurs du DX7, tirettes de l'orgue à
+roues phoniques -- et le synoptique gris volontairement neutre du Generic
+Synth, seule façade du parc qui ne reproduit aucun instrument. Aperçus :
+[`docs/images/panels/`](docs/images/panels).
 
 Le **séquenceur à pas** des machines qui en ont un (TR-808, TB-303) est
 intégré à la façade : clic pour allumer un pas, Maj+clic pour l'accentuer,
 Alt+clic pour un slide, molette pour la hauteur sur un motif mélodique. La
 grille édite directement les notes de la piste — c'est la même musique que
-celle du piano roll, vue autrement. Les autres
-machines gardent le panneau générique (un potentiomètre par paramètre), qui
-reste aussi le filet de sécurité pour les plugins CLAP tiers.
+celle du piano roll, vue autrement. Seul le synthé de test garde le panneau
+générique (un potentiomètre par paramètre), qui reste aussi le filet de
+sécurité pour les plugins CLAP tiers.
 
 Pour regarder une façade sans lancer l'application :
 

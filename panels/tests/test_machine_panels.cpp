@@ -191,3 +191,55 @@ VSM_TEST(each_panel_keeps_the_layout_of_its_original) {
     }
     VSM_ASSERT(kickSectionHoldsAllKickControls);
 }
+
+VSM_TEST(the_sampler_is_the_drum_machine_of_the_park) {
+    // Ce test tient une DÉCISION, pas seulement une mise en page : le cahier
+    // des charges prévoyait une boîte à rythmes générique (`vsm.drumkit`), et
+    // elle n'a pas été écrite parce que le sampler l'était déjà. Ce qui rend
+    // cette décision vraie tient à la façade -- si elle redevenait une grille
+    // de « SLOT 1..16 », le parc n'aurait plus de boîte à rythmes du tout et
+    // personne ne s'en apercevrait.
+    const MachinePanel& sampler = *findMachinePanel("vsm.sampler");
+
+    // Une colonne par PIÈCE, chacune avec ses propres réglages -- surtout pas
+    // un bloc « tous les niveaux » puis un bloc « tous les accords », qui
+    // serait plus compact et rendrait l'instrument injouable.
+    size_t pieceSections = 0;
+    for (const auto& section : sampler.sections) {
+        size_t own = 0;
+        const std::string prefix = "Slot " + std::to_string(pieceSections + 1) + " ";
+        for (const auto& control : section.controls)
+            if (control.parameterName.rfind(prefix, 0) == 0) ++own;
+        if (own == section.controls.size() && own > 0) ++pieceSections;
+    }
+    VSM_ASSERT_EQ(pieceSections, size_t(16));
+
+    // Chaque section porte SON NUMÉRO puis LE NOM DE SA PIÈCE. Le numéro fait
+    // le lien avec les paramètres (« Slot 3 Level ») et avec l'emplacement où
+    // l'analyse dépose son échantillon ; le nom dit ce que la convention
+    // General MIDI met là. L'un sans l'autre casse la moitié du lien.
+    VSM_ASSERT_EQ(sampler.sections[0].title, std::string("1 KICK"));
+    VSM_ASSERT_EQ(sampler.sections[1].title, std::string("2 SNARE"));
+    VSM_ASSERT_EQ(sampler.sections[2].title, std::string("3 HH CL"));
+    for (size_t i = 0; i < 16; ++i) {
+        const std::string& title = sampler.sections[i].title;
+        const std::string number = std::to_string(i + 1);
+        VSM_ASSERT(title.rfind(number + " ", 0) == 0);   // le numéro, en tête
+        VSM_ASSERT(title.size() > number.size() + 1);    // et un nom derrière
+    }
+
+    // Le séquenceur intégré : sur une boîte à rythmes il n'est pas un
+    // accessoire, il EST l'instrument. Ses lignes portent des noms de pièces,
+    // et ses notes suivent la convention General MIDI -- c'est ce qui fait
+    // qu'un MIDI de batterie transcrit tombe sur les bonnes lignes.
+    VSM_ASSERT(sampler.sequencer.kind == SequencerKind::DrumGrid);
+    VSM_ASSERT_EQ(sampler.sequencer.stepCount, 16);
+    VSM_ASSERT_EQ(sampler.sequencer.lanes.size(), size_t(8));
+    VSM_ASSERT_EQ(sampler.sequencer.lanes[0].first, std::string("KICK"));
+    VSM_ASSERT_EQ(sampler.sequencer.lanes[0].second, 36);   // GM : grosse caisse
+    VSM_ASSERT_EQ(sampler.sequencer.lanes[1].second, 38);   // GM : caisse claire
+    VSM_ASSERT_EQ(sampler.sequencer.lanes[2].second, 42);   // GM : charleston fermée
+    VSM_ASSERT_EQ(sampler.sequencer.lanes[3].second, 46);   // GM : charleston ouverte
+    for (const auto& lane : sampler.sequencer.lanes)
+        VSM_ASSERT(lane.first.rfind("SLOT", 0) != 0);       // jamais un numéro nu
+}

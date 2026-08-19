@@ -18,6 +18,7 @@
 #include "wavetable/WavetableSynth.h"
 #include "pcmhybrid/PcmHybridSynth.h"
 #include "tonewheel/TonewheelOrgan.h"
+#include "generic/GenericSynth.h"
 
 namespace vsm::audio::plugin {
 
@@ -105,6 +106,10 @@ void registerBuiltInPlugins() {
     {
         vsm::plugins::tonewheel::TonewheelOrgan forceLinkTonewheel;
         (void)forceLinkTonewheel;
+    }
+    {
+        vsm::plugins::generic::GenericSynth forceLinkGeneric;
+        (void)forceLinkGeneric;
     }
 }
 

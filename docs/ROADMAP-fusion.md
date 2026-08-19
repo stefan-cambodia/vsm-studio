@@ -40,11 +40,11 @@ client, jamais une dépendance.
 
 **Acquis, mesuré :**
 
-- 18 machines (+ tonalité d'essai), 9 effets, moteur temps réel, 588 tests
+- 19 machines (+ tonalité d'essai), 9 effets, moteur temps réel, 655 tests
   verts, zéro warning.
-- Piano roll complet, façades « façon hardware » pour les 18 machines,
+- Piano roll complet, façades « façon hardware » pour les 19 machines,
   séquenceurs à pas pour celles qui en ont un.
-- Interop : identités sémantiques (~470 paramètres), presets `*.synth.json`,
+- Interop : identités sémantiques (495 paramètres), presets `*.synth.json`,
   projets `project.json`, rendu hors ligne `vsm-render`, adaptateur et hôte
   CLAP.
 - Pont Python : rendu d'une note par le moteur réel en ~10 ms, déterministe au
@@ -145,16 +145,39 @@ perd. Le choix de machine est donc **limité par le budget**, pas par la
 description des machines -- ce qui place le correctif en phase 10 et le chiffre
 noir sur blanc.
 
-**Un défaut du vocabulaire sémantique, révélé au passage.** `filter.N.cutoff`
-ne dit pas le TYPE du filtre. Sur le Juno-106, le coupe-bas (`filter.2.cutoff`,
-une commande mineure) reçoit donc presque la même importance que le passe-bas
-principal et occupe le rang 3 de l'espace cherché. Corriger demandera de
-distinguer les types dans la table sémantique, ce qui touche ses tests de
-complétude : à faire, mais pas en passant.
+**Un défaut du vocabulaire sémantique, révélé au passage — corrigé depuis.**
+`filter.N.cutoff` ne disait pas le TYPE du filtre. Sur le Juno-106, le
+coupe-bas (`filter.2.cutoff`, une commande mineure) recevait donc presque la
+même importance que le passe-bas principal et occupait le rang 3 de l'espace
+cherché.
+
+La correction distingue les types là où c'est le type qui compte : les
+coupe-bas CORRECTEURS (Juno-106, Jupiter-8, ARP Odyssey, supersaw) s'écrivent
+désormais `filter.hp.cutoff` et descendent au rang qui est le leur (13e sur le
+Juno, importance 0,52) ; la résonance et l'enveloppe du filtre principal
+rentrent du même coup dans l'espace réellement cherché. Le MS-20 est l'unique
+exception, voulue : son HPF est RÉSONANT, second filtre à part entière, et
+garde `filter.2.*` avec son rang de vrai filtre (3e). Un test verrouille les
+deux côtés de la distinction.
+
+Le renommage est un changement CASSANT, fait sciemment : les `clap_id` de ces
+quatre paramètres changent, et un preset ancien qui portait `filter.2.cutoff`
+pour l'une de ces machines est désormais signalé « non pris en charge » --
+signalé, pas ignoré : le rapport d'application le nomme.
 
 **La séparation en stems n'est pas un confort.** Le même mélange traité en une
 seule piste (`--sans-separation`) donne une distance de 12,3 au lieu de 0,67 :
 une machine ne reproduit pas deux instruments à la fois.
+
+**Depuis : la vérité terrain a été rejouée avec `vsm.generic` dans le parc**
+(chiffres complets dans ARCHITECTURE.md §31), et la mesure a corrigé deux
+défauts de la chaîne elle-même : l'étape finale cherchait `vsm-render` par le
+PATH et échouait après des minutes de calcul (résolution par
+`find_vsm_render`) ; et la séparation demucs gardait son défaut `shifts=1`, un
+décalage aléatoire non seedé qui rendait deux exécutions incomparables — 101
+notes transcrites contre 156 sur le même fichier. Elle est désormais
+déterministe (`shifts=0`), ce qui est la condition de toute comparaison
+avant/après.
 
 ### Étape 9.5 — la batterie passe par le sampler
 

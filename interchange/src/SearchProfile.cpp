@@ -111,6 +111,17 @@ constexpr Rule kRules[] = {
     {"drum.openHat.decay",                 0.0f,     0.0f, SearchScale::Linear,      0.72f},
     {"drum.crash.decay",                   0.0f,     0.0f, SearchScale::Linear,      0.72f},
     {"oscillator.#.wavetable",             0.0f,     0.0f, SearchScale::Linear,      0.72f},
+    // Familles propres à la machine NEUTRE. Elles sont CONTINUES par
+    // construction, ce qui les rend particulièrement rentables à chercher :
+    // une forme d'onde morphable explore tout le passage sinus-carré sans le
+    // moindre palier, là où un sélecteur discret bloquerait la descente.
+    {"oscillator.#.shape",                 0.0f,     3.0f, SearchScale::Linear,      0.92f},
+    {"filter.#.type",                      0.0f,     2.0f, SearchScale::Linear,      0.86f},
+    {"output.drive",                       0.0f,     1.0f, SearchScale::Linear,      0.62f},
+    {"oscillator.noise.colour",            0.0f,     1.0f, SearchScale::Linear,      0.45f},
+    {"oscillator.sub.shape",               0.0f,     1.0f, SearchScale::Linear,      0.42f},
+    {"oscillator.#.octave",                0.0f,     0.0f, SearchScale::Linear,      0.46f},
+    {"lfo.#.toAmp",                        0.0f,     1.0f, SearchScale::Linear,      0.22f},
     {"oscillator.#.waveform",              0.0f,     0.0f, SearchScale::Linear,      0.70f},
     {"voice.structure",                    0.0f,     0.0f, SearchScale::Linear,      0.70f},
     {"epiano.hammerHardness",              0.0f,     1.0f, SearchScale::Linear,      0.70f},
@@ -150,6 +161,15 @@ constexpr Rule kRules[] = {
     {"oscillator.#.pulseWidth",            0.1f,     0.9f, SearchScale::Linear,      0.55f},
     {"tone.bass",                          0.0f,     0.0f, SearchScale::Linear,      0.55f},
     {"tone.treble",                        0.0f,     0.0f, SearchScale::Linear,      0.55f},
+    // Coupe-bas CORRECTEUR (Juno-106, Jupiter-8, ARP, supersaw). Longtemps
+    // écrit « filter.2.cutoff », il héritait de l'importance du filtre
+    // principal (1,00 moins la décote d'instance, soit 0,88) et occupait le
+    // rang 3 de l'espace cherché du Juno-106 -- pour une commande qui, sur la
+    // machine d'origine, est un simple sélecteur de graves. Le TYPE dans
+    // l'identifiant permet enfin de le classer pour ce qu'il est. Le HPF
+    // résonant du MS-20 reste « filter.2.cutoff » et garde son rang de vrai
+    // filtre.
+    {"filter.hp.cutoff",                   0.0f,     0.0f, SearchScale::Logarithmic, 0.52f},
     {"filter.#.drive",                     0.0f,     0.0f, SearchScale::Linear,      0.52f},
     {"filter.#.slope",                     0.0f,     0.0f, SearchScale::Linear,      0.50f},
     {"oscillator.crossMod",                0.0f,     0.0f, SearchScale::Linear,      0.50f},

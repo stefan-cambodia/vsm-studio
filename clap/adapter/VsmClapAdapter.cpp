@@ -32,11 +32,31 @@ using vsm::interchange::ClapParameterMapping;
 
 /// Machines exposées. Les instruments à hauteur d'abord : ce sont ceux qu'un
 /// hôte attend en premier dans sa liste.
+/// Machines exposées à l'hôte : TOUT ce que le registre sait instancier,
+/// interrogé au chargement -- jamais une liste écrite ici.
+///
+/// La première version énumérait onze machines à la main, et le défaut est
+/// resté invisible pendant huit ajouts : le sampler, l'e-piano, l'OB-X, le
+/// supersaw, la table d'ondes, l'hybride PCM, l'orgue et le synthé neutre
+/// existaient dans le DAW mais pas dans les hôtes CLAP, sans erreur ni
+/// avertissement nulle part. Le pont Python avait déjà rencontré -- et
+/// corrigé -- exactement ce piège (`available_machines()` interroge le
+/// moteur) ; la leçon vaut des deux côtés.
 const std::vector<std::string>& exposedMachines() {
-    static const std::vector<std::string> machines = {
-        "vsm.minimoog", "vsm.tb303", "vsm.juno106", "vsm.jupiter8", "vsm.prophet",
-        "vsm.sh101", "vsm.ms20", "vsm.arpodyssey", "vsm.dx7", "vsm.tr808", "vsm.tr909",
-    };
+    static const std::vector<std::string> machines = [] {
+        vsm::audio::plugin::registerBuiltInPlugins();
+        std::vector<std::string> ids;
+        for (const auto& [id, name] : vsm::audio::plugin::PluginRegistry::instance().listAvailable()) {
+            // Le générateur de tonalité est un outil de test du moteur, pas un
+            // instrument : l'exposer encombrerait la liste de l'hôte.
+            if (id == "vsm.testtone") continue;
+            ids.push_back(id);
+        }
+        // Le registre est une table de hachage : sans tri, l'ordre changerait
+        // d'un chargement à l'autre, et la liste de plugins de l'hôte avec.
+        std::sort(ids.begin(), ids.end());
+        return ids;
+    }();
     return machines;
 }
 

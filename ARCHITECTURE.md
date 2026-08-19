@@ -19,7 +19,7 @@ les 2 VCO suivent les touches grave/aiguë, ring mod, sample & hold),
 système d'algorithmes, feedback, enveloppes par opérateur, sensibilité
 vélocité) sont tous faits. La **Phase 6 est ENTAMÉE** : les **tests de
 non-régression audio par machine** sont en place (section 9 bis) -- chacune des
-12 machines a désormais une empreinte de rendu figée, qui détecte toute dérive
+19 machines a désormais une empreinte de rendu figée, qui détecte toute dérive
 du son y compris causée par une brique DSP partagée modifiée pour une AUTRE
 machine. La **Phase 6 est CLOSE** : banc de mesure CPU (§ 9 ter), profiling
 intra-DSP (§ 9 quater), **SIMD entre voix** sur les trois machines
@@ -30,7 +30,7 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **381 tests moteur** (70 core + 311 audio,
+écoute au clic, et toute la logique testée hors JUCE. Total : **542 tests moteur** (81 core + 461 audio,
 tous verts, zéro warning, y compris sous les flags stricts type-JUCE
 `-Wfloat-equal -Wsign-conversion -Wshadow`) + application complète compilée et
 liée. Rendus réels vérifiables : `minimoog_demo.wav`,
@@ -321,11 +321,11 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 381 tests moteur, tous verts
+### Bilan actuel : 542 tests moteur, tous verts
 
-- **70 tests `vsm_core`** (dont 36 pour l'édition du piano roll : opérations de
+- **81 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir),
-  **311 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
+  **461 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
   scalaire, indépendance des lignes, bornes de l'approximation de tanh ; et la
   boucle : rebouclage échantillon-exact, notes relâchées au saut) : chorus BBD, Juno-106,
   bus master (biquad/compresseur/limiteur à plafond garanti/LUFS), oversampler,
@@ -735,7 +735,8 @@ un couplage par le NOM du paramètre -- précisément ce que le projet garde
 stable, déjà verrouillé par les tests `..._parameter_list_size` de chaque
 machine.
 
-**308 paramètres** (12 machines + 9 effets) ont reçu une identité, dont
+**495 paramètres** (19 machines + 9 effets, 308 à l'époque des 12 machines)
+ont reçu une identité, dont
 `accent.amount` pour le TB-303 ou `fm.operator.3.ratio` pour le DX7 : le
 vocabulaire commun couvre ce qui est commun, et le reste est déclaré tel quel
 plutôt que forcé dans une case qui ne lui va pas.
@@ -879,8 +880,16 @@ MIDI, deux presets), rendu en une commande.
 
 Deux directions, et une propriété commune : **le DSP n'est écrit qu'une fois**.
 
-**P5, l'adaptateur** (`clap/adapter/`) expose les 11 machines VSM comme un
-plugin CLAP (`vsm-instruments.clap`). Il **enveloppe** `ISynthPlugin`, il ne le
+**P5, l'adaptateur** (`clap/adapter/`) expose les machines VSM comme un
+plugin CLAP (`vsm-instruments.clap`) -- TOUTES les machines du registre, hors
+générateur de tonalité d'essai, interrogé au chargement. La première version
+énumérait onze machines à la main, et le défaut est resté invisible pendant
+huit ajouts : le sampler, l'e-piano, l'OB-X, le supersaw, la table d'ondes,
+l'hybride PCM, l'orgue et le synthé neutre existaient dans le DAW mais pas
+dans les hôtes CLAP -- sans erreur nulle part, parce que le test de couverture
+se contentait de « au moins 11 ». Le test compare désormais l'ENSEMBLE exposé
+à l'ensemble enregistré, ce qui rend l'oubli du prochain ajout impossible.
+L'adaptateur **enveloppe** `ISynthPlugin`, il ne le
 réimplémente pas -- toute autre approche donnerait deux versions du même
 instrument qui finiraient par sonner différemment, sans que l'utilisateur
 sache laquelle est la bonne. Un test compare les deux chemins échantillon par
@@ -903,7 +912,8 @@ utilisateur se mettrait à automatiser la résonance à la place de la coupure,
 sans erreur ni avertissement, des mois plus tard. Le `clap_id` est donc un
 hachage FNV-1a de l'identifiant SÉMANTIQUE : tant que `filter.1.cutoff` désigne
 la même chose, son identifiant ne bouge pas. Le prix (risque de collision) est
-**vérifié** sur les 308 paramètres, pas supposé, et trois valeurs sont **gelées
+**vérifié** sur tous les paramètres du parc (495 aujourd'hui), pas supposé,
+et trois valeurs sont **gelées
 par test** -- si ce test casse, le correctif est de restaurer le hachage, jamais
 de mettre à jour les nombres.
 
@@ -921,7 +931,7 @@ est vert.
 **Compilation : `-DVSM_BUILD_CLAP=ON`, désactivée par défaut.** C'est la seule
 partie du projet qui exige un téléchargement (le SDK CLAP, en-têtes seuls, via
 FetchContent). Vérifié : le build par défaut ne crée aucun `_deps/` et passe
-ses 433 tests hors ligne. Activer CLAP impose aussi le code indépendant de la
+ses 644 tests hors ligne. Activer CLAP impose aussi le code indépendant de la
 position (`-fPIC`) aux bibliothèques statiques -- un module partagé ne peut pas
 lier autre chose.
 
@@ -962,10 +972,38 @@ selon la touche produirait n'importe quoi -- et les notes par défaut suivent la
 convention General MIDI, pour qu'un MIDI de batterie transcrit tombe
 directement sur les bons emplacements.
 
-**Portée assumée : 8 emplacements**, là où le cahier des charges en prévoit 16.
-Les huit de plus attendent que la façade sache sélectionner un emplacement :
-seize colonnes de sept réglages afficheraient 112 commandes illisibles. C'est
-une limite écrite, pas un oubli.
+**Seize emplacements, et le blocage était l'AFFICHAGE.** La première version
+s'arrêtait à huit, non par manque de place en mémoire mais parce que seize
+emplacements à sept réglages font cent douze commandes, illisibles alignées. Le
+blocage a donc été levé là où il était : la façade montre les seize pièces en
+deux rangées de huit, réduites aux quatre réglages qui SE JOUENT (niveau,
+accord, décroissance, panoramique). Les trois autres — note de déclenchement,
+point de départ, groupe de coupure — sont des réglages de configuration, posés
+une fois par l'analyse ; ils restent accessibles par le panneau générique et
+sont déclarés omis, avec leur raison.
+
+**C'est aussi ce qui rend `vsm.drumkit` inutile à écrire.** Le §5 de
+`docs/CDC-machines-manquantes.md` prévoyait une boîte à rythmes générique — 8 à
+16 pièces, une colonne de réglages par pièce, grille de 16 pas, la façade des TR
+sans leur synthèse — en laissant ouvert le choix entre un profil du sampler et
+une machine distincte. En reprenant la liste point par point, le sampler la
+remplissait déjà en entier : seize pièces, seize sections de quatre réglages,
+une grille de seize pas, la note qui SÉLECTIONNE la pièce au lieu de la
+transposer, les notes par défaut de la convention General MIDI, et les groupes
+de coupure pour la charleston. Il manquait le NOM DES PIÈCES, la façade disant
+« SLOT 3 » là où une boîte à rythmes dit « HH CL ».
+
+Ce nom a été ajouté, et rien d'autre. Une seconde machine aurait partagé le
+moteur, les paramètres, les identités sémantiques et la façade de la première,
+pour coûter une empreinte, une table sémantique et une batterie de tests
+supplémentaires — un changement d'étiquettes payé au prix d'une machine. Le
+numéro d'emplacement reste en tête du titre (« 3 HH CL ») parce que les
+paramètres s'appellent `Slot 3 Level` et que l'analyse écrit dans
+l'emplacement 3 : le nom dit ce que General MIDI met là par défaut, le numéro
+dit ce qu'on règle. Un emplacement réassigné à une autre note porte donc une
+étiquette inexacte — limite assumée d'un kit dont les pièces sont
+réassignables. Et la grille ne programme que les huit premières : les seize se
+déclenchent, les toms et percussions se jouent au piano roll.
 
 **Contraintes tenues**
 
@@ -993,6 +1031,195 @@ voir qu'un `ISynthPlugin`.
 Le service de rendu accepte désormais un champ `samples` : c'est ce qui rend le
 sampler utilisable depuis le projet d'analyse, sans lequel la machine la plus
 utile à la reconstruction serait restée hors de portée.
+
+---
+
+## 31. `vsm.generic` — une machine sans caractère, faite pour être ajustée
+
+**Le problème qu'elle résout.** Les dix-huit autres machines du parc sont des
+personnages : le drive du ladder Moog, la dérive analogique, le chorus BBD du
+Juno sont présents *quoi qu'on règle*. C'est leur raison d'être quand on joue,
+et c'est un défaut quand on cherche : si le son cible ne les a pas, aucun jeu
+de paramètres ne l'atteindra. Mesuré sur une cible pourtant rendue par le
+Minimoog lui-même, la recherche de patch converge vers 1125 Hz de coupure pour
+une cible à 900 Hz, et 1,18 de résonance pour 2,2. Le pipeline fonctionne :
+c'est l'espace qui est difficile. `vsm.generic` est la machine qu'on ajoute
+pour que cet espace cesse de l'être — quarante paramètres, huit voix, aucune
+signature sonore propre.
+
+**Quatre exigences, chacune contre un obstacle mesuré de l'optimisation.**
+Elles n'ont de sens que pour cette machine, et chacune a ses tests.
+
+1. **Continuité.** Tout ce qui peut être continu l'est, *forme d'onde et type
+   de filtre compris*. Un sélecteur discret creuse une falaise dans la fonction
+   de coût, où une recherche par descente se bloque. La forme d'onde est donc
+   un nombre de 0 à 3 (sinus → triangle → dent de scie → carré) et le type de
+   filtre un nombre de 0 à 2 (passe-bas → passe-bande → passe-haut). Les tests
+   balaient finement les deux et refusent tout écart entre voisins nettement
+   plus grand que l'écart médian.
+2. **Neutralité au repos.** Ce qui est réglé à zéro disparaît vraiment : à
+   drive nul la saturation est *rigoureusement* l'identité, sources muettes
+   n'ajoutent *rien*, et à réglages neutres sur forme sinusoïdale le spectre ne
+   porte pas de partiel parasite. Trois tests le vérifient à 1e-12 près.
+3. **Monotonie.** Ouvrir la coupure augmente le contenu aigu, monter la
+   résonance accentue la bande, monter le drive ajoute des harmoniques —
+   toujours, sans retournement. Un paramètre non monotone piège toute descente,
+   qui s'arrête au premier retournement en croyant tenir un optimum.
+4. **Découplage.** Un paramètre agit sur une dimension et une seule. Là où le
+   couplage est physique, il est **compensé**, et la compensation est mesurée
+   plutôt que déduite (voir plus bas).
+
+**Un oscillateur morphable, une seule phase.** Les quatre formes sont calculées
+à la *même* phase puis fondues deux à deux. Quatre oscillateurs indépendants
+qu'on mélangerait auraient des phases distinctes : à fréquence égale, deux
+formes déphasées se peignent au lieu de se fondre, et le fondu ferait entendre
+un creux là où il ne devrait rien faire. La dent de scie et le carré gardent la
+correction polyBLEP du reste du parc — sans elle la machine deviendrait
+d'autant plus fausse qu'on monte dans l'aigu, exactement le contraire de ce
+qu'on attend d'un instrument de mesure.
+
+**Une brique partagée a dû s'ouvrir : `StateVariableFilter::processMulti()`.**
+Une topologie à variable d'état calcule le passe-bas, le passe-bande et le
+passe-haut *dans le même pas d'état* ; `process()` en rendait un et jetait les
+deux autres. Fondre continûment d'un type à l'autre exige les trois — et les
+obtenir par trois appels ferait avancer l'état trois fois par échantillon,
+c'est-à-dire tourner le filtre à triple fréquence. C'est le même piège que
+celui rencontré sur la cascade 24 dB/oct de l'OB-X ; il est désormais rendu
+impossible, et un test compare les trois sorties simultanées à celles de trois
+filtres réglés séparément, échantillon par échantillon.
+
+**La compensation résonance → niveau, et pourquoi son exposant est mesuré.**
+Un filtre à variable d'état amplifie autour de sa coupure quand le Q monte ;
+sans correction, tourner la résonance monterait aussi le volume et l'optimiseur
+confondrait les deux effets. Une première version divisait par la racine du Q —
+la correction théorique du pic — et faisait **chuter** le niveau d'un facteur
+2,8 : la compensation était pire que le couplage. La hausse du niveau *global*
+est en effet bien plus faible que celle du pic, puisque seule une bande étroite
+est accentuée. Mesuré sur une dent de scie filtrée à 2 kHz, le niveau efficace
+passe de 0,170 à 0,206 quand la résonance va de 0 à 1, soit +21 % : l'exposant
+retenu (0,08) vient de cette mesure, et deux tests vérifient que ni la
+résonance ni le drive ne déplacent le niveau d'ensemble.
+
+**Le profil de recherche est déclaré, pas deviné.** Les familles propres à
+cette machine (`oscillator.#.shape`, `filter.#.type`, `output.drive`,
+`oscillator.noise.colour`…) reçoivent leurs bornes utiles, leur échelle et leur
+importance dans `interchange/src/SearchProfile.cpp`. Les deux premières sont
+déclarées très rentables à chercher (0,92 et 0,86) : étant continues par
+construction, elles explorent tout le passage sinus → carré ou passe-bas →
+passe-haut sans le moindre palier, là où un sélecteur discret bloquerait la
+descente. Le projet
+d'analyse n'a donc rien à coder en dur pour s'en servir.
+
+**Ses identités sémantiques sont volontairement les plus canoniques du
+vocabulaire** — `oscillator.1.shape`, `filter.1.cutoff`, `envelope.2.attack` —
+et aucune ne lui est propre. C'est ce qui permet à un patch trouvé sur elle
+d'être transposé vers une machine de caractère, et réciproquement.
+
+**Sa façade est la seule du parc à ne ressembler à aucune machine**, parce
+qu'elle n'en imite aucune : gris neutre, sérigraphie sobre, aucune couleur de
+caractère. Elle reproduit un **schéma** et non un instrument, et la lecture va
+de gauche à droite le long du signal — sources, filtre, enveloppes, modulation,
+sortie — comme un synoptique de manuel. On doit voir au premier regard qu'on
+est devant un outil.
+
+**Ce qui reste ouvert et assumé.** La courbe d'enveloppe (linéaire ↔
+exponentielle) figurait au cahier des charges et n'est pas exposée : les deux
+ADSR emploient la courbe partagée du parc. C'est une dimension de moins pour la
+recherche, écrite ici plutôt que découverte plus tard.
+
+### La promesse, mesurée : avant / après, chiffres publiés
+
+Le cahier des charges exige de mesurer la distance AVANT et APRÈS l'ajout de
+la machine, et de publier les chiffres « flatteurs ou non ». Les voici — ils ne
+sont pas flatteurs partout, et c'est précisément ce qui les rend utilisables.
+
+**Protocole.** Trois cibles-vérité rendues par des machines du parc, patchs
+connus du seul auteur du test : une basse SH-101 (coupure 900 Hz, résonance
+2,2), une nappe Juno-106 (chorus actif), une cloche DX7. Recherche sur les
+seize machines mélodiques, présélection DÉSACTIVÉE (chaque machine reçoit le
+même budget complet, sans quoi comparer leurs distances ne voudrait rien
+dire), 20 itérations, métrique v2.
+
+**1. Le choix de machine, avant et après.** « Avant » = la meilleure machine
+hors `vsm.generic` ; « après » = avec elle dans les candidates.
+
+| Cible | Vraie machine | Avant | Après | `vsm.generic` |
+|---|---|---|---|---|
+| basse SH-101 | `vsm.sh101` | sh101, 0,055 | sh101, 0,055 | 0,190 (9e/16) |
+| nappe Juno-106 | `vsm.juno106` | juno106, 0,109 | juno106, 0,109 | 0,212 (10e/16) |
+| cloche DX7 | `vsm.dx7` | dx7, 0,114 | dx7, 0,114 | 0,223 (3e/16) |
+
+Deux lectures. **Le risque est écarté** : la machine neutre ne vole jamais
+l'identification à la vraie machine — c'était le danger principal, une machine
+qui gagne en distance ce qu'elle fait perdre en « quel synthé est-ce ? ».
+**Le gain est nul sur ces cibles** : quand la cible a été produite par une
+machine du parc, cette machine gagne, et c'est le résultat attendu. En
+retirant la vraie machine (le vrai cas de reconstruction : la cible n'a pas de
+machine exacte), le generic finit 8e, 9e et **2e** sur quinze — la seule
+percée est la cloche FM, hors de la famille soustractive.
+
+**2. Le budget de recherche est une partie de l'explication — pas toute.**
+Hypothèse testée : la recherche n'explore que les six axes les plus
+importants ; or le generic en a quarante, et tout ce qui fait sa largeur
+(deuxième oscillateur, sub, bruit, LFO, drive) n'est jamais touché. Mesuré
+contre le meilleur remplaçant de chaque cible, à budget croissant :
+
+| Cible / budget | 6 axes, 20 itér. | 12 axes, 40 itér. | 20 axes, 60 itér. |
+|---|---|---|---|
+| basse — generic | 0,190 | 0,170 | **0,132** |
+| basse — ms20 | **0,098** | **0,072** | 0,144 |
+| nappe — generic | 0,212 | 0,174 | 0,182 |
+| nappe — pcmhybrid | **0,133** | **0,120** | **0,117** |
+| cloche — generic | 0,223 | 0,223 | **0,117** |
+| cloche — ms20 | **0,183** | **0,140** | — |
+
+Trois faits en sortent. Le generic est la seule machine qui PROFITE d'un
+espace élargi sur la basse (−31 %, jusqu'à passer devant le ms20 à 20 axes) ;
+les machines étroites se DILUENT au contraire quand on leur ouvre trop d'axes
+(ms20 sur la basse : 0,072 → 0,144 — soixante itérations dans vingt dimensions
+cherchent moins bien que quarante dans douze) ; et le verdict dépend de la
+famille : à leurs meilleurs budgets respectifs, les machines de caractère
+restent devant sur les deux cibles soustractives (0,072 contre 0,132 ; 0,117
+contre 0,174), tandis que sur la cloche FM — hors de leur famille — le generic
+à espace ouvert descend à 0,117, sous le meilleur ms20 connu (0,140, son run à
+20 axes restant à mesurer). Le plafond de six dimensions pénalise bien le
+generic structurellement ; le lever ne paie que là où aucune machine du parc
+n'a la signature de la cible — ce qui est, précisément, son périmètre.
+
+**3. La chaîne complète, avant et après.** Même vérité terrain jouée en
+morceau (basse + nappe mixées), puis `reconstruire.py` de bout en bout :
+séparation, transcription, recherche. Sur le stem de basse SÉPARÉ, le generic
+**gagne** : 0,139 contre 0,149 au meilleur sans lui — et la vraie machine
+(sh101) n'est même pas sur le podium. Sur les stems PROPRES (sans séparation),
+à l'inverse, le generic ne monte sur aucun podium. Sur la basse, le résultat
+avec ou sans lui est identique au chiffre près (arpodyssey 0,053 et distance
+globale 4,5567 dans les deux cas — l'égalité exacte est aussi la preuve que la
+chaîne, une fois la séparation seedée, est redevenue déterministe). Sur la
+nappe, la mesure attrape un effet plus fin : sans generic, le pcmhybrid gagne
+à 0,128 ; avec, le generic l'ÉVINCE de la présélection — les finalistes sont
+en nombre fixe — et le meilleur restant fait 0,131. Ajouter une candidate ne
+vole donc jamais l'identification, mais peut coûter une place de finaliste à
+la machine qui aurait gagné : c'est le prix, petit et désormais chiffré
+(+0,003 ici), de toute présélection à budget constant — `shortlist=0` le
+supprime quand l'exactitude prime sur le temps.
+
+La lecture d'ensemble est cohérente : sur de l'audio propre sorti d'une
+machine du parc, les machines de caractère gagnent — rien d'étonnant, la cible
+EST leur signature. C'est sur l'audio réellement à reconstruire — séparé,
+teinté d'artefacts, sans machine d'origine dans le parc — que la neutralité
+paie, parce qu'aucune signature ne colle et que la machine ajustable s'approche
+le plus. C'est exactement le périmètre que le cahier des charges lui donnait.
+
+**Ce que la mesure a rapporté d'autre — et qui vaut plus que les tableaux.**
+Trois défauts de la chaîne, invisibles sans elle : l'étape finale de
+`reconstruire.py` cherchait `vsm-render` dans le PATH et échouait après des
+minutes de calcul (corrigé : résolution par `find_vsm_render`) ; la séparation
+demucs gardait son défaut `shifts=1`, un décalage aléatoire NON SEEDÉ qui
+rendait deux exécutions incomparables — 101 notes transcrites contre 156 sur
+le même fichier (corrigé : `shifts=0`, documenté) ; et l'adaptateur CLAP
+exposait une liste de machines écrite en dur, en retard de huit machines sur
+le registre (corrigé, avec un test ensembliste). Une promesse qu'on mesure
+rend la chaîne honnête bien au-delà du chiffre qu'on cherchait.
 
 ---
 
@@ -1082,11 +1309,11 @@ pas -- elle l'ignore et la laisse intacte), et écrire un motif ne remplace que
 Les boutons de pas sont colorés **par groupes de quatre**, comme sur les
 machines d'origine : c'est ce qui permet de compter les temps sans les compter.
 
-### État : les onze machines ont leur façade
+### État : les dix-neuf machines ont leur façade
 
 | Machine | Forme de la façade |
 |---|---|
-| Sampler | une colonne par emplacement, grille de 16 pas ; les réglages de mapping sont déclarés omis |
+| Sampler | une colonne par PIÈCE NOMMÉE (« 1 KICK », « 3 HH CL »...), grille de 16 pas ; les réglages de mapping sont déclarés omis — c'est la boîte à rythmes générique du parc, voir §30 |
 | Minimoog | banc à trajet de signal (oscillateurs -> mixage -> modifieurs), flancs bois, gros bouton de coupure |
 | TB-303 | rangée unique sur boîtier argenté, liseré rouge, + éditeur de motif |
 | TR-808 / TR-909 | une colonne de commandes PAR PIÈCE, code couleur par famille, + grille de 16 pas |
@@ -1097,6 +1324,13 @@ machines d'origine : c'est ce qui permet de compter les temps sans les compter.
 | MS-20 | ses DEUX filtres côte à côte, comme sur la machine |
 | ARP Odyssey | curseurs plats, sérigraphie dorée, ring mod près des VCO |
 | DX7 | matrice des six opérateurs, un par colonne |
+| E-Piano | trois blocs d'un piano de scène : VOICING (marteau, cloche, lames), PICKUPS (drive, touch), préampli à curseurs avec trémolo |
+| OB-X | curseurs sur noir aux liserés crème et ambre, trajet CONTROL -> OSC -> FILTER, bloc MANUAL (unisson, détune), commutateur 2/4 pôles |
+| Supersaw | le désaccord et le mélange en gros boutons -- les deux commandes qui font le son |
+| Wavetable | table et position en gros boutons, enveloppe d'onde dédiée à côté du filtre |
+| PCM Hybrid | attaque PCM à gauche, bloc STRUCTURE (ring mod) au centre, partiel synthétique et TVF/TVA à droite -- la lecture du D-50 |
+| Tonewheel | neuf tirettes VERTICALES numérotées par longueur de tuyau, percussion, vibrato, cabine rotative |
+| Generic Synth | synoptique gris neutre, signal de gauche à droite -- la seule façade du parc qui ne reproduit AUCUN instrument, voir §31 |
 
 Le **DX7 est un cas à part, et il faut le dire franchement** : la machine
 d'origine n'a presque aucune commande visible -- clavier à membrane, afficheur

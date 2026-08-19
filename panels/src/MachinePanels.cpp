@@ -881,6 +881,25 @@ MachinePanel makeSampler() {
     // Deux rangées de huit. Les couleurs suivent les FAMILLES de pièces, comme
     // les capuchons colorés d'une boîte à rythmes : on repère la grosse caisse
     // ou les charlestons sans lire les étiquettes.
+    //
+    // CHAQUE EMPLACEMENT PORTE LE NOM DE SA PIÈCE, et pas seulement son
+    // numéro. C'est ce qui manquait pour que cette machine SOIT la boîte à
+    // rythmes générique du cahier des charges (« vsm.drumkit », §5 de
+    // docs/CDC-machines-manquantes.md) plutôt qu'une machine de plus à écrire
+    // à côté : tout le reste y était déjà -- seize pièces, une colonne de
+    // réglages par pièce, grille de seize pas, groupes de coupure.
+    //
+    // Le NUMÉRO RESTE EN TÊTE du titre, et ce n'est pas décoratif : les
+    // paramètres s'appellent « Slot 3 Level », l'analyse écrit dans
+    // l'emplacement 3, et un titre qui ne dirait que « HH CL » couperait le
+    // lien entre ce qu'on voit et ce qu'on règle. Le nom dit ce que la
+    // convention General MIDI met là PAR DÉFAUT ; changer la note de
+    // déclenchement d'un emplacement le rend inexact, ce qui est la limite
+    // assumée d'un kit dont les pièces sont réassignables.
+    const char* pieces[16] = {
+        "KICK", "SNARE", "HH CL", "HH OP", "CLAP", "LO TOM", "CRASH", "RIDE",
+        "FLOOR", "HI FLR", "MID TOM", "HI TOM", "RIM", "SNARE 2", "BELL", "COWBELL",
+    };
     const char* accents[16] = {
         "#D96C2C", "#D96C2C",                       // 1-2  : peaux graves
         "#D9B23A", "#D9B23A",                       // 3-4  : charlestons
@@ -891,7 +910,7 @@ MachinePanel makeSampler() {
     };
     for (int slot = 0; slot < 16; ++slot) {
         PanelSection section;
-        section.title = "SLOT " + std::to_string(slot + 1);
+        section.title = std::to_string(slot + 1) + " " + pieces[slot];
         section.accentColour = accents[slot];
         section.column = (slot % 8) * 2;
         section.row = (slot / 8) * 2;
@@ -926,14 +945,17 @@ MachinePanel makeSampler() {
     // délibéré : seize lignes de seize pas rendraient la grille illisible, et
     // les huit premiers portent la convention General MIDI -- grosse caisse,
     // caisse claire, charlestons -- c'est-à-dire ce qu'on programme au pas.
-    // Les emplacements 9 à 16 se jouent depuis le piano roll.
+    // Les emplacements 9 à 16 (toms, percussions) se jouent depuis le piano
+    // roll. C'est la seule concession faite au « 8 à 16 pièces » du cahier des
+    // charges, et elle est du côté de la LISIBILITÉ, pas de la capacité : les
+    // seize pièces se déclenchent, huit seulement se programment au pas.
     panel.sequencer.kind = SequencerKind::DrumGrid;
     panel.sequencer.title = "PATTERN";
     panel.sequencer.stepCount = 16;
     panel.sequencer.rowSpan = 3;
     panel.sequencer.lanes = {
-        {"SLOT 1", 36}, {"SLOT 2", 38}, {"SLOT 3", 42}, {"SLOT 4", 46},
-        {"SLOT 5", 39}, {"SLOT 6", 45}, {"SLOT 7", 49}, {"SLOT 8", 51},
+        {"KICK", 36}, {"SNARE", 38}, {"HH CL", 42}, {"HH OP", 46},
+        {"CLAP", 39}, {"LO TOM", 45}, {"CRASH", 49}, {"RIDE", 51},
     };
     panel.gridRows += panel.sequencer.rowSpan;
     return panel;
@@ -1538,11 +1560,132 @@ MachinePanel makeTonewheel() {
     return panel;
 }
 
+// ---------------------------------------------------------------------------
+// Synthé neutre
+//
+// Cette façade ne ressemble à aucune machine, et c'est la seule du parc dans
+// ce cas. Les autres reproduisent un instrument ; celle-ci reproduit un
+// SCHÉMA -- gris neutre, sérigraphie sobre, aucune couleur de caractère. On
+// doit voir au premier regard qu'on est devant un outil, pas devant un
+// instrument qui a une histoire.
+//
+// La disposition suit le signal de gauche à droite, comme un synoptique :
+// sources, filtre, enveloppes, modulation, sortie. C'est la lecture la plus
+// neutre possible, celle d'un manuel.
+// ---------------------------------------------------------------------------
+MachinePanel makeGeneric() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.generic";
+    panel.displayName = "Generic Synth";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#2C2E31";
+    panel.sectionColour = "#232528";
+    panel.textColour = "#DDE0E4";
+    panel.knobColour = "#8C9096";
+    panel.gridColumns = 24;
+    panel.gridRows = 6;
+
+    PanelSection sources;
+    sources.title = "SOURCES";
+    sources.accentColour = "#7E8A96";
+    sources.column = 0; sources.row = 0; sources.columnSpan = 7; sources.rowSpan = 6;
+    sources.controls = {
+        // La forme est un potentiomètre CONTINU et non un sélecteur : c'est
+        // l'exigence centrale de cette machine, et la façade doit le dire.
+        control("Osc1 Shape", "SHAPE 1", S::LargeKnob, 0, 0),
+        control("Osc1 Level", "LVL 1", S::Knob, 1, 0),
+        control("Osc1 Pulse Width", "PW 1", S::Knob, 2, 0),
+        control("Osc2 Shape", "SHAPE 2", S::LargeKnob, 0, 1),
+        control("Osc2 Level", "LVL 2", S::Knob, 1, 1),
+        control("Osc2 Pulse Width", "PW 2", S::Knob, 2, 1),
+        control("Osc2 Detune", "DETUNE", S::Knob, 3, 0),
+        control("Osc2 Octave", "OCTAVE", S::Knob, 3, 1),
+        control("Sub Level", "SUB", S::Knob, 4, 0),
+        control("Sub Shape", "SUB SH", S::Knob, 4, 1),
+        control("Noise Level", "NOISE", S::Knob, 5, 0),
+        control("Noise Colour", "COLOUR", S::Knob, 5, 1),
+    };
+
+    PanelSection filter;
+    filter.title = "FILTER";
+    filter.accentColour = "#7E8A96";
+    filter.column = 7; filter.row = 0; filter.columnSpan = 5; filter.rowSpan = 6;
+    filter.controls = {
+        // Le type aussi est continu : LP -> BP -> HP sans palier.
+        control("Filter Type", "TYPE", S::LargeKnob, 0, 0),
+        control("Filter Cutoff", "CUTOFF", S::VerticalSlider, 1, 0, 1, 2),
+        control("Filter Resonance", "RESO", S::VerticalSlider, 2, 0, 1, 2),
+        control("Filter Env Amount", "ENV", S::VerticalSlider, 3, 0, 1, 2),
+        control("Filter Key Track", "KEY", S::Knob, 0, 1),
+        control("Filter Slope", "4-POLE", S::Toggle, 4, 0),
+        control("Velocity to Filter", "VELO", S::Knob, 4, 1),
+    };
+
+    PanelSection ampEnv;
+    ampEnv.title = "AMP ENV";
+    ampEnv.accentColour = "#8FA9C9";
+    ampEnv.column = 12; ampEnv.row = 0; ampEnv.columnSpan = 2; ampEnv.rowSpan = 6;
+    ampEnv.controls = {
+        control("Amp Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
+        control("Amp Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
+        control("Amp Sustain", "S", S::VerticalSlider, 2, 0, 1, 2),
+        control("Amp Release", "R", S::VerticalSlider, 3, 0, 1, 2),
+    };
+
+    PanelSection filterEnv;
+    filterEnv.title = "FILTER ENV";
+    filterEnv.accentColour = "#8FA9C9";
+    filterEnv.column = 14; filterEnv.row = 0; filterEnv.columnSpan = 2; filterEnv.rowSpan = 6;
+    filterEnv.controls = {
+        control("Filter Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
+        control("Filter Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
+        control("Filter Sustain", "S", S::VerticalSlider, 2, 0, 1, 2),
+        control("Filter Release", "R", S::VerticalSlider, 3, 0, 1, 2),
+    };
+
+    PanelSection lfo1;
+    lfo1.title = "LFO 1";
+    lfo1.accentColour = "#9FA6AD";
+    lfo1.column = 16; lfo1.row = 0; lfo1.columnSpan = 3; lfo1.rowSpan = 6;
+    lfo1.controls = {
+        control("LFO1 Rate", "RATE", S::Knob, 0, 0),
+        control("LFO1 Shape", "SHAPE", S::Knob, 1, 0),
+        control("LFO1 to Pitch", "PITCH", S::Knob, 2, 0),
+        control("LFO1 to Filter", "FILTER", S::Knob, 0, 1),
+        control("LFO1 to Amp", "AMP", S::Knob, 1, 1),
+        control("LFO1 to PWM", "PWM", S::Knob, 2, 1),
+    };
+
+    PanelSection lfo2;
+    lfo2.title = "LFO 2";
+    lfo2.accentColour = "#9FA6AD";
+    lfo2.column = 19; lfo2.row = 0; lfo2.columnSpan = 2; lfo2.rowSpan = 6;
+    lfo2.controls = {
+        control("LFO2 Rate", "RATE", S::Knob, 0, 0),
+        control("LFO2 Shape", "SHAPE", S::Knob, 1, 0),
+        control("LFO2 to Pitch", "PITCH", S::Knob, 0, 1),
+        control("LFO2 to Filter", "FILTER", S::Knob, 1, 1),
+    };
+
+    PanelSection output;
+    output.title = "OUTPUT";
+    output.accentColour = "#7E8A96";
+    output.column = 21; output.row = 0; output.columnSpan = 3; output.rowSpan = 6;
+    output.controls = {
+        control("Drive", "DRIVE", S::Knob, 0, 0),
+        control("Output Level", "LEVEL", S::Knob, 1, 0),
+        control("Velocity to Amp", "VELO AMP", S::Knob, 0, 1),
+    };
+
+    panel.sections = {sources, filter, ampEnv, filterEnv, lfo1, lfo2, output};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
         makeJuno106(), makeJupiter8(), makeProphet(), makeMs20(), makeArpOdyssey(), makeDx7(), makeSampler(),
-        makeEPiano(), makeObx(), makeSupersaw(), makeWavetable(), makePcmHybrid(), makeTonewheel()
+        makeEPiano(), makeObx(), makeSupersaw(), makeWavetable(), makePcmHybrid(), makeTonewheel(), makeGeneric()
     };
     return all;
 }
