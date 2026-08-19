@@ -70,6 +70,40 @@ FALLBACK_SUBTRACTIVE_SPACE: List[SearchParameter] = [
 # augmentant `max_iterations` du même mouvement.
 DEFAULT_MAX_DIMENSIONS = 6
 
+# Nombre de dimensions pour la PASSE FINALE de `choose_machine` -- celle qui
+# règle les finalistes, pas celle qui les classe. Mesuré (deux graines par
+# point, 20 itérations fixes, trois cibles-vérité, quatre machines de largeurs
+# différentes ; la population de scipy croissant avec la dimension, ouvrir 10
+# axes coûte ~1,6x le temps de 6) :
+#
+#                          6 axes      10 axes     14 axes
+#     dx7    / cloche      0,112       0,075       0,081     <- -33 %
+#     dx7    / nappe       0,341       0,209       0,219     <- -39 %
+#     ms20   / basse       0,098       0,074       0,078     <- -24 %
+#     ms20   / nappe       0,248       0,215       0,180
+#     ms20   / cloche      0,182       0,154       0,152
+#     generic/ basse       0,180       0,169       0,184
+#     generic/ nappe       0,180       0,176       0,188
+#     generic/ cloche      0,223       0,248       0,241     <- régression
+#     dx7    / basse       0,110       0,133       0,142     <- régression
+#     pcm    / basse       0,181       0,185       0,152
+#     pcm    / nappe       0,133       0,130       0,133
+#     pcm    / cloche      0,420       0,420       0,424
+#
+# Lecture : 10 axes gagnent dans 8 cellules sur 12, et les gains majeurs vont
+# aux machines cherchées DANS leur famille -- c'est-à-dire aux futures
+# gagnantes, celles dont la distance décide du verdict. Les trois régressions
+# touchent des machines hors de leur famille, qui ne gagnaient jamais : sur
+# ces mesures, aucun verdict de `choose_machine` ne s'inverse. Quatorze axes
+# n'apportent plus rien et coûtent 2,3x.
+#
+# D'où la règle en deux étages : le DÉGROSSISSAGE garde 6 axes (classer
+# demande moins de précision que régler, et c'est la passe multipliée par
+# toutes les candidates), la PASSE FINALE en ouvre 10 (payé sur les seuls
+# finalistes). Un appelant qui passe `max_dimensions` explicitement garde la
+# même valeur pour les deux passes, comme avant.
+FINALIST_MAX_DIMENSIONS = 10
+
 
 def search_space_for_machine(
     machine: str,
@@ -340,6 +374,13 @@ def choose_machine(
         # le temps de l'extrait, soit un facteur deux au mieux.
         brouillon_kwargs = dict(kwargs)
         brouillon_kwargs["max_iterations"] = draft_iterations
+        # Classer demande moins de précision que régler : le dégrossissage
+        # reste à 6 axes même quand la passe finale en ouvre 10 (voir
+        # FINALIST_MAX_DIMENSIONS). C'est la passe payée par TOUTES les
+        # candidates ; l'élargir coûterait 1,6x sur tout le monde pour
+        # améliorer un classement qui résiste déjà à bien pire (mesuré à
+        # l'étape 10 : l'ordre tient même sur un extrait à moitié plus court).
+        brouillon_kwargs.setdefault("max_dimensions", DEFAULT_MAX_DIMENSIONS)
         brouillon = []
         for machine in candidates:
             try:
@@ -355,10 +396,15 @@ def choose_machine(
             brouillon.sort()
             candidates = [machine for _, machine in brouillon[:shortlist]]
 
+    finale_kwargs = dict(kwargs)
+    # La passe finale ouvre 10 axes (mesuré : voir FINALIST_MAX_DIMENSIONS).
+    # Un appelant qui a fixé `max_dimensions` garde sa valeur pour les deux
+    # passes -- une expérience qui compare des budgets doit pouvoir tout figer.
+    finale_kwargs.setdefault("max_dimensions", FINALIST_MAX_DIMENSIONS)
     results = [
         optimize_patch_for_machine(
             target_audio, midi_note, machine, engine, sample_rate=sample_rate,
-            metric=metric, gate=gate, **kwargs
+            metric=metric, gate=gate, **finale_kwargs
         )
         for machine in candidates
     ]

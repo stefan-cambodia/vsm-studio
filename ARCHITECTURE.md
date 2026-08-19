@@ -1213,6 +1213,24 @@ teinté d'artefacts, sans machine d'origine dans le parc — que la neutralité
 paie, parce qu'aucune signature ne colle et que la machine ajustable s'approche
 le plus. C'est exactement le périmètre que le cahier des charges lui donnait.
 
+**Suite donnée (règle à deux étages, mesurée).** Le balayage complémentaire —
+quatre machines de largeurs différentes (21 à 50 dimensions déclarées), trois
+cibles, deux graines, itérations FIGÉES au défaut de la chaîne — a tranché ce
+que l'expérience de budget laissait ouvert : à itérations fixes, ouvrir 10
+axes gagne dans 8 cellules sur 12, et les gains majeurs (DX7 sur sa cloche :
+0,112 → 0,075 ; MS-20 sur la basse : 0,098 → 0,074) vont aux machines
+cherchées DANS leur famille, c'est-à-dire aux futures gagnantes ; les trois
+régressions touchent des machines hors famille qui ne gagnaient jamais, si
+bien qu'aucun verdict ne s'inverse. Quatorze axes n'apportent plus rien. Le
+generic, lui, ne profite presque pas des axes seuls : ses gains d'hier
+venaient du couple axes × itérations — l'hypothèse « le plafond de six le
+bride » était à moitié vraie, et la mesure a corrigé l'autre moitié. D'où la
+règle adoptée dans `choose_machine` : 6 axes pour DÉGROSSIR (la passe payée
+par toutes les candidates), 10 pour RÉGLER les finalistes (+60 % sur cette
+passe seule). Vérifié de bout en bout : la cloche DX7 passe de 0,114 à 0,075,
+marge doublée sur le second. Tableau complet et lecture détaillée dans
+`vsm_patch_optimizer.py`, sous `FINALIST_MAX_DIMENSIONS`.
+
 **Ce que la mesure a rapporté d'autre — et qui vaut plus que les tableaux.**
 Trois défauts de la chaîne, invisibles sans elle : l'étape finale de
 `reconstruire.py` cherchait `vsm-render` dans le PATH et échouait après des

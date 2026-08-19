@@ -136,7 +136,7 @@ def reconstruct_stem(
     sample_rate: int = 44100,
     machines: Optional[Sequence[str]] = None,
     max_iterations: int = 20,
-    max_dimensions: int = 6,
+    max_dimensions: Optional[int] = None,
     metric: str = "v2",
 ) -> Optional[StemReconstruction]:
     """
@@ -165,7 +165,9 @@ def reconstruct_stem(
         metric=metric,
         gate=gate,
         max_iterations=max_iterations,
-        max_dimensions=max_dimensions,
+        # None laisse `choose_machine` appliquer sa règle à deux étages :
+        # 6 axes pour classer, 10 pour régler les finalistes (mesuré).
+        **({"max_dimensions": max_dimensions} if max_dimensions is not None else {}),
     )
     return StemReconstruction(
         name=name,
