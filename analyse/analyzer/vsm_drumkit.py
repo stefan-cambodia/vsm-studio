@@ -432,6 +432,48 @@ def _write_wav(chemin: Path, audio: np.ndarray, sample_rate: int, gain: float = 
         fichier.writeframes((sortie * 32767).astype("<i2").tobytes())
 
 
+def _decay_end(extrait: np.ndarray, sample_rate: int) -> int:
+    """
+    Longueur utile d'un coup anormalement long : jusqu'à la fin de SA
+    décroissance.
+
+    N'agit que sur les tranches de plus de 0,6 s -- le cas « onset suivant
+    manqué » : une fuite de voix dans le stem de batterie n'a pas d'attaque,
+    et la tranche embarquait jusqu'à 1,2 s d'autre chose (mesuré : une
+    « caisse claire » de 1 235 ms qui rejouait un bout du morceau à chaque
+    frappe). Les tranches courtes, bien bornées par l'onset suivant, restent
+    intactes -- elles sonnaient juste.
+
+    La coupe se fait à la REMONTÉE : après la crête du coup, l'enveloppe
+    décroît ; l'endroit où elle repasse 6 dB AU-DESSUS de son minimum courant
+    est l'endroit où autre chose entre. Un seuil absolu (-30 dB de la crête)
+    ne mordait pas : dans un stem dense, il n'y a jamais 50 ms de calme.
+    """
+    if extrait.size <= int(0.6 * sample_rate):
+        return extrait.size
+    fenetre = max(1, int(0.010 * sample_rate))
+    enveloppe = np.sqrt(np.convolve(extrait.astype(np.float64) ** 2,
+                                     np.ones(fenetre) / fenetre, mode="same"))
+    pic = int(np.argmax(enveloppe))
+    minimum = float(enveloppe[pic])
+    garde = pic + int(0.080 * sample_rate)  # laisser vivre le corps du coup
+    for i in range(pic, enveloppe.size):
+        minimum = min(minimum, float(enveloppe[i]))
+        if i > garde and enveloppe[i] > minimum * 2.0:
+            return i
+    # Ni remontée ni borne : l'enveloppe est un PLATEAU -- du contenu soutenu
+    # (nappe de bruit, fuite), pas la queue d'un coup. Un vrai coup long (une
+    # cymbale) décroît et passe sous -20 dB de sa crête : on coupe là. Un
+    # plateau qui ne descend jamais est coupé à 0,6 s -- mesuré : la
+    # « percussion » de House Of God restait à 1 223 ms parce que rien dans sa
+    # tranche ne ressemblait à une extinction.
+    seuil = float(np.max(enveloppe)) * 0.1
+    sous = np.nonzero(enveloppe[garde:] < seuil)[0]
+    if sous.size:
+        return garde + int(sous[0])
+    return int(0.6 * sample_rate)
+
+
 def build_drum_kit(
     audio: np.ndarray,
     sample_rate: int,
@@ -507,6 +549,19 @@ def build_drum_kit(
     paires = [(a, max(0, min(a, r))) for a, r in zip(attaques, recalees) if a >= 0]
     if not paires:
         return None
+    # FUSION DES ONSETS JUMEAUX (< 35 ms). Le détecteur produit parfois deux
+    # attaques à 25-30 ms sur un même coup ; la seconde, faite de la traîne de
+    # la première, se classait dans un gabarit-variante et déclenchait un FLA
+    # -- deux échantillons presque identiques à 30 ms d'écart, entendu comme
+    # « les pièces ne jouent pas au bon endroit ». À 140 BPM la double-croche
+    # fait 107 ms : rien de musical ne vit sous 35 ms, on garde le premier.
+    fenetre_fla = int(0.035 * sample_rate)
+    fusionnees = [paires[0]]
+    for a, r in paires[1:]:
+        if a - fusionnees[-1][0] < fenetre_fla:
+            continue
+        fusionnees.append((a, r))
+    paires = fusionnees
     instants = [a for a, _ in paires]
     decoupe_de = {a: d for a, d in paires}
 
@@ -527,13 +582,29 @@ def build_drum_kit(
     parts = _assign_hits(empreintes, gabarits)
     noms = _name_templates(gabarits, sample_rate)
 
-    # Frappes de chaque pièce : part suffisante de la nouveauté de l'attaque.
+    # UNE PIÈCE PAR FRAPPE : celle qui explique le mieux la nouveauté.
+    #
+    # L'histoire de cette règle est une paire d'échecs mesurés. La version
+    # multi-étiquettes (toute pièce à part >= ASSIGN_SHARE) faisait tirer les
+    # gabarits-variantes ensemble : 187 co-frappes sur House Of God, toutes au
+    # même instant, entendues comme « les pièces ne jouent pas au bon
+    # endroit ». La version « paire autorisée si gabarits dissemblables »
+    # n'a rien filtré : les variantes SONT dissemblables en nouveauté --
+    # c'est pour cela qu'elles ont formé leur propre gabarit. Et le cas
+    # légitime que la paire devait servir -- kick et charleston frappés
+    # ensemble -- ne se produit presque jamais en pratique (1 co-frappe sur
+    # tout le morceau) : la nouveauté du kick écrase la part de la charleston.
+    # Une frappe, une pièce ; la simultanéité vécue reste servie par
+    # l'échantillon lui-même, qui contient ce qui sonnait à cet instant.
     detections: Dict[str, Tuple[int, List[int]]] = {}
+    frappes_par_gabarit: Dict[int, List[int]] = {k: [] for k in range(len(gabarits))}
+    for i, instant in enumerate(instants):
+        meilleur = int(np.argmax(parts[i]))
+        if parts[i, meilleur] >= ASSIGN_SHARE:
+            frappes_par_gabarit[meilleur].append(instant)
     for index, (famille, note) in enumerate(noms):
-        debuts = [instant for i, instant in enumerate(instants)
-                  if parts[i, index] >= ASSIGN_SHARE]
-        if debuts:
-            detections.setdefault(famille, (note, debuts))
+        if frappes_par_gabarit[index]:
+            detections.setdefault(famille, (note, frappes_par_gabarit[index]))
 
     if not detections:
         return None
@@ -569,6 +640,14 @@ def build_drum_kit(
         for index, debut in enumerate(debuts):
             fin = debuts[index + 1] if index + 1 < len(debuts) else audio.size
             fin = min(int(fin), int(debut) + int(MAX_HIT_SECONDS * sample_rate), audio.size)
+            # COUPE À L'EXTINCTION, en plus du prochain onset : le prochain
+            # onset DÉTECTÉ peut être loin (une fuite de voix dans le stem de
+            # batterie n'a pas d'attaque), et la tranche embarquait alors
+            # jusqu'à 1,2 s d'autre chose -- mesuré sur House Of God : la
+            # « caisse claire » de 1 235 ms rejouait un bout du morceau à
+            # chaque frappe. On coupe quand l'enveloppe reste 50 ms sous
+            # -30 dB de la crête du coup.
+            fin = int(debut) + _decay_end(audio[int(debut):fin], sample_rate)
             # Découpe au point RECALÉ : partir de l'instant d'attaque
             # amputerait la montée, c'est-à-dire ce qui fait reconnaître la
             # frappe.
