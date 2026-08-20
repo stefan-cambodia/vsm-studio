@@ -40,7 +40,7 @@ client, jamais une dépendance.
 
 **Acquis, mesuré :**
 
-- 19 machines (+ tonalité d'essai), 9 effets, moteur temps réel, 655 tests
+- 19 machines (+ tonalité d'essai), 9 effets, moteur temps réel, 658 tests
   verts, zéro warning.
 - Piano roll complet, façades « façon hardware » pour les 19 machines,
   séquenceurs à pas pour celles qui en ont un.
@@ -61,9 +61,22 @@ client, jamais une dépendance.
   ajoutées, voir [`CDC-machines-manquantes.md`](CDC-machines-manquantes.md)),
   mais **basse, guitare et cordes réelles** passent toujours par le sampler
   faute de modèle dédié.
-- Une recherche coûte ~13 s par note et par machine au budget par défaut, ~43 s
-  au budget quadruplé. Un morceau en compte des centaines : c'est l'objet de
-  la phase 10.
+- ~~Une recherche coûte ~13 s par note et par machine~~ — **traité par la
+  phase 10**, mais le coût reste réel et il faut le dire : la présélection à
+  deux étages le divise par deux à verdict identique (343 s → 174 s sur quinze
+  machines), et un stem entier demande aujourd'hui ~350 s au budget par défaut,
+  ~960 s à 60 itérations. Un morceau de quatre stems se reconstruit donc en
+  ~16 min au défaut et ~40 min au budget élevé.
+- **Le budget de recherche change les distances d'un facteur deux** (basse :
+  0,103 à 20 itérations, 0,053 à 60) : deux mesures ne se comparent que si
+  elles ont le même budget. Il est pour cela inscrit dans chaque
+  `rapport.json`, au même titre que la métrique.
+
+**Où en est la feuille de route :** les phases 8 à 11 sont TOUTES closes — la
+couverture des sources, la reconstruction d'un morceau entier, l'efficacité de
+la recherche et le bouclage dans le DAW. Ce qui reste ouvert n'est plus une
+étape planifiée mais les limites énumérées ci-dessus et le §6, « ce qui n'est
+pas au programme, et pourquoi ».
 
 ---
 
@@ -75,8 +88,59 @@ client, jamais une dépendance.
 |---|---|---|
 | ~~8.1~~ | ~~`vsm.sampler`~~ **fait, seize emplacements** | un stem de batterie découpé par `analyse/` se rejoue et la distance à l'original est mesurée |
 | ~~8.2~~ | ~~Profil de recherche déclaré par machine~~ **fait** — `interchange/SearchProfile`, exposé par `vsm-render --serve` (`query: searchProfile`), consommé par `VsmEngine.search_profile` | l'optimiseur ne code plus aucune borne ; mesure A/B publiée ci-dessus |
-| 8.3 | `vsm.generic` (synthé neutre, paramètres continus et monotones) | sur cinq stems synthétiques, distance **inférieure** à la meilleure machine de caractère |
-| 8.4 | `vsm.drumkit` (profil batterie du sampler) | façade à colonnes + grille 16 pas, sur le moteur du sampler |
+| ~~8.3~~ | ~~`vsm.generic`~~ **fait** — DSP, tests, identités sémantiques, façade, empreinte | critère d'origine **NON tenu tel qu'écrit**, et c'est mesuré : voir ci-dessous |
+| ~~8.4~~ | ~~`vsm.drumkit`~~ **ne sera pas écrit** — `vsm.sampler` EST déjà cette machine | décision tranchée et motivée dans [`CDC-machines-manquantes.md`](CDC-machines-manquantes.md) §5 |
+
+**Phase 8 close.** Les quatre étapes sont réglées, deux par du code livré, une
+par une mesure qui contredit son propre critère, une par un refus argumenté.
+
+### 8.3 — le critère demandait la mauvaise chose, et la mesure l'a dit
+
+Le critère écrit était : « sur cinq stems synthétiques, distance INFÉRIEURE à
+la meilleure machine de caractère ». Il n'est pas tenu, et il ne DEVAIT pas
+l'être — chiffres complets dans ARCHITECTURE.md §31 :
+
+- sur de l'audio **propre** sorti d'une machine du parc, la machine d'origine
+  gagne toujours ; le generic ne monte sur aucun podium. C'est attendu : la
+  cible EST la signature de cette machine-là ;
+- sur l'audio **réellement à reconstruire** — un stem passé par la séparation,
+  teinté d'artefacts, sans machine d'origine évidente — le generic **gagne** le
+  stem de basse : 0,139 contre 0,149 au meilleur sans lui, la vraie machine
+  (sh101) même pas sur le podium.
+
+La machine tient donc sa promesse exactement là où le cahier des charges la
+destinait, et le critère se trompait de terrain : il mesurait sur du son propre
+une machine faite pour du son sale. Il est remplacé par celui-ci, qui est celui
+qu'on vérifie désormais : **sur un stem séparé, battre la meilleure machine de
+caractère.**
+
+Deux effets de bord mesurés, à ne pas oublier : le generic est la seule machine
+qui PROFITE d'un espace élargi (0,190 → 0,132 sur la basse en passant de 6 à
+20 axes), donc le plafond de six dimensions du budget par défaut le pénalise
+structurellement ; et ajouter une candidate ne vole jamais l'identification,
+mais peut coûter une place de finaliste à la machine qui aurait gagné
+(+0,003 sur la nappe) — `shortlist=0` le supprime quand l'exactitude prime.
+
+### 8.4 — la machine existait déjà sous un autre nom
+
+`vsm.drumkit` devait être « 8 à 16 pièces, une colonne de réglages par pièce,
+grille de 16 pas ». En allant l'écrire, on a constaté que `vsm.sampler` livrait
+déjà chacun de ces points : seize emplacements, seize sections de quatre
+réglages, grille de seize pas, mapping où la note SÉLECTIONNE la pièce au lieu
+de transposer, notes par défaut de la convention General MIDI, groupes de
+coupure pour la charleston. Il manquait le NOM DES PIÈCES — la façade disait
+« SLOT 3 » là où une boîte à rythmes dit « HH CL ». C'est ce qui a été corrigé,
+et c'est tout ce qu'il fallait.
+
+Une seconde machine aurait partagé moteur, paramètres, identités sémantiques et
+façade avec la première, pour un changement d'étiquettes : une empreinte de
+plus, une table sémantique identique de plus, une suite de tests de plus, une
+entrée de plus dans chaque liste de choix. C'est précisément ce contre quoi le
+§7 du cahier des charges met en garde — « elles élargissent le catalogue, pas
+la couverture ». Limite assumée et écrite : les noms affichés sont ceux que la
+convention General MIDI met à ces notes PAR DÉFAUT, donc un emplacement dont on
+change la note de déclenchement porte une étiquette inexacte ; le numéro
+d'emplacement, lui, ne ment jamais.
 
 Détail des exigences : [`CDC-machines-manquantes.md`](CDC-machines-manquantes.md).
 Obligations générales : [`CDC-nouvelle-machine.md`](CDC-nouvelle-machine.md).
