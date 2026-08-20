@@ -5,7 +5,12 @@ namespace vsm::app::ui {
 namespace {
 constexpr const char* kSettingsFile = "VintageSynthMidiStudio";
 constexpr const char* kKey          = "uiScale";
-constexpr float       kDefault      = 1.0f;
+// 150 % PAR DÉFAUT, et ce n'est pas un chiffre choisi au jugé : les tailles
+// d'origine (9 à 12 points) se sont révélées trop petites à lire à l'usage,
+// et 150 % est le palier retenu après comparaison de rendus côte à côte. Un
+// réglage d'accessibilité qu'il faut d'abord aller chercher dans un menu ne
+// sert pas celui qui en a besoin.
+constexpr float       kDefault      = 1.5f;
 } // namespace
 
 const juce::Array<float>& UiScale::steps() {

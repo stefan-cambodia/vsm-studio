@@ -205,7 +205,9 @@ menu Édition — qui est littéralement le même menu.
 
 ### Taille de l'interface
 
-*Affichage ▸ Taille de l'interface* propose 100, 125, 150, 175 et 200 %. Le
+*Affichage ▸ Taille de l'interface* propose 100, 125, 150, 175 et 200 %, et
+démarre à **150 %** — les tailles d'origine (9 à 12 points) se sont révélées
+trop petites à lire. Le
 facteur agrandit le texte ET les cases dans le même rapport : la mise en page
 ne bouge pas et aucune légende n'est tronquée — ce qui arriverait en grossissant
 la police seule, puisque les façades de machines calculent la taille de leurs
