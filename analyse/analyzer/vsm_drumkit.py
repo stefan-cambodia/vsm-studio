@@ -9,13 +9,47 @@ le dire.
 LE PRINCIPE, et pourquoi il fonctionne là où la synthèse échoue : on ne cherche
 pas à *fabriquer* le son d'une caisse claire, on RÉUTILISE celle de
 l'enregistrement. Le stem est découpé en coups, les coups sont regroupés par
-famille, et un représentant de chaque famille devient un échantillon du kit.
-La reconstruction du percussif devient alors quasi exacte -- c'est le seul
-endroit de la chaîne où l'on peut viser cela.
+pièce, et un représentant de chaque pièce devient un échantillon du kit.
+
+LE CLASSEMENT SE FAIT PAR GABARITS APPRIS, et c'est la troisième architecture
+de ce module -- chacune tuée par une mesure. Le spectre global par coup
+échouait sur les frappes simultanées (un spectre mélangé ne se classe pas).
+La part d'énergie par bande de fréquences, qui l'a remplacé, s'est INVERSÉE
+sur le premier morceau de club réel : la queue d'un kick de house couvre
+toutes les frappes suivantes, si bien qu'à l'instant d'une charleston la
+bande grave domine (classée kick) et qu'à l'instant d'un vrai kick le clic
+d'attaque pousse le médium (classé caisse claire). Mesuré deux fois : 811
+frappes sur 813 en « kick » sur House Of God (D.H.S., 1995), puis
+l'inversion exacte sur un motif-vérité rendu par la TR-909 du parc.
+
+L'architecture actuelle mesure la NOUVEAUTÉ de chaque attaque -- spectre
+juste après moins spectre juste avant, borné à zéro : ce qui sonnait déjà
+s'annule, ne reste que la pièce frappée --, regroupe ces empreintes en
+gabarits (au meneur, déterministe), élague les gabarits qui ne sont que la
+somme d'autres (des coïncidences apprises, pas des pièces), décompose chaque
+attaque en parts de gabarits (moindres carrés positifs : une attaque peut
+être kick ET charleston), et nomme chaque gabarit par la répartition mesurée
+de son énergie. Sur les motifs-vérité TR-808/909, le passage de l'ancien au
+nouveau classement donne :
+
+    pièce      avant (A/909)          après (A/909)   avant (B/808)   après (B/808)
+    kick       0/16, 48 inventées     16/16, 3 inv.   0/16, 19 inv.   16/16, 1 inv.
+    hihat      62/64 (instants faux)  46/64, 0 inv.   16/16, 11 inv.  16/16, 0 inv.
+
+CE QUE LE CLASSEMENT NE SAIT PAS FAIRE, mesuré aussi : une pièce qui ne
+frappe JAMAIS seule -- la caisse claire d'un morceau de club vit sur un kick,
+toujours -- est invisible dans les empreintes (similarité kick-seul contre
+kick+caisse : 0,947, identique à la variabilité interne du kick, en linéaire
+comme en logarithmique). Elle reste FUSIONNÉE avec sa porteuse, et c'est
+moins grave qu'il n'y paraît : l'échantillon mixte prélevé sur ces frappes
+contient LES DEUX pièces, et les rejoue aux bons instants. Seule l'étiquette
+ment un peu ; le son, non. Même statut pour les gabarits « fantômes »
+occasionnels (une charleston teintée d'une queue de caisse claire) : leur
+échantillon vient de leurs propres frappes, le rendu reste juste.
 
 CE QU'ON NE FAIT PAS, et pourquoi :
 
-  - On ne moyenne PAS les coups d'une même famille. Deux coups ne sont jamais
+  - On ne moyenne PAS les coups d'une même pièce. Deux coups ne sont jamais
     alignés à l'échantillon près ; les moyenner effacerait précisément
     l'attaque, c'est-à-dire ce qui fait reconnaître une percussion.
   - On ne prend pas non plus le coup le plus FORT : c'est souvent un accent,
@@ -80,40 +114,15 @@ class DrumKit:
     warnings: List[str] = field(default_factory=list)
 
 
-# Bandes de détection. Une batterie se lit par bandes, pas par spectre global :
-# la grosse caisse vit sous 150 Hz, la caisse claire dans le médium, les
-# cymbales au-dessus de 5 kHz. Chacune reçoit sa propre détection d'attaques.
-#
-# POURQUOI PAS UN SPECTRE GLOBAL PAR COUP -- c'est la première version, et elle
-# échouait franchement. Quand la grosse caisse et la charleston frappent
-# ENSEMBLE, il n'y a qu'une attaque, et son spectre mêlé bascule vers l'aigu :
-# sur un motif de quatre mesures contenant 8 grosses caisses, 8 caisses claires
-# et 32 charlestons, la détection globale ne trouvait que 30 coups, dont AUCUNE
-# grosse caisse et AUCUNE caisse claire. Un spectre mélangé ne se classe pas.
-DETECTION_BANDS: List[Tuple[str, float, float, int]] = [
-    # (famille, fréquence basse, fréquence haute, note MIDI)
-    ("kick", 20.0, 150.0, 36),
-    ("snare", 180.0, 2500.0, 38),
-    ("hihat", 5000.0, 16000.0, 42),
-]
-
-# Écart, dans la distribution des niveaux, au-delà duquel on considère qu'il
-# sépare « la pièce est frappée » de « la pièce résonne encore ». Voir
-# `_hits_from_levels` : c'est le cœur de la détection, et le chiffre est
-# mesuré, pas choisi.
-LEVEL_GAP_THRESHOLD = 0.15
-
-# Plancher de niveau : en dessous, l'énergie de la bande à cette attaque est
-# une fuite d'une autre pièce, pas une frappe.
-LEVEL_FLOOR = 0.25
-
-# Une bande dont la crête n'atteint pas cette part de la bande la plus forte
-# n'est pas jouée du tout -- et on ne l'invente pas.
-BAND_PRESENCE_RATIO = 0.02
-
-# Deux attaques plus proches que cela sont considérées SIMULTANÉES : c'est le
-# seuil en deçà duquel l'oreille n'entend plus deux frappes mais une seule.
-SIMULTANEITY_SECONDS = 0.03
+# Ordre d'affichage des familles dans le kit : les pièces porteuses du motif
+# d'abord. Les bandes de fréquences qui vivaient ici ont eu deux vies : elles
+# ont d'abord DÉTECTÉ (une part d'énergie par bande et par attaque), puis la
+# mesure a montré que ce critère s'INVERSAIT sur un kick qui résonne -- voir
+# l'en-tête du module -- et la détection est passée aux gabarits appris
+# (_novelty_fingerprints et la suite). Les familles ne servent plus qu'à trier
+# et à nommer.
+FAMILY_ORDER: List[str] = ["kick", "kick2", "snare", "snare2", "hihat",
+                            "openhat", "pedalhat", "percussion", "tom", "cymbal"]
 
 # Fenêtres de la mesure de montée, autour de l'instant d'attaque.
 #
@@ -138,105 +147,232 @@ STFT_WINDOW = 1024
 STFT_HOP = 128
 
 
-def _band_envelopes(
-    audio: np.ndarray, sample_rate: int, bandes: Sequence[Tuple[float, float]]
-) -> List[np.ndarray]:
+def _log_band_spectrogram(audio: np.ndarray, sample_rate: int) -> Tuple[np.ndarray, int]:
     """
-    Enveloppe d'énergie de chaque bande, dans le temps.
+    Spectrogramme en 24 bandes LOGARITHMIQUES (40 Hz - 16 kHz).
 
-    POURQUOI UN SPECTROGRAMME ET PAS UN FILTRE. La première version filtrait
-    chaque bande par transformée sur le FICHIER ENTIER, en mettant à zéro les
-    fréquences hors bande. C'est un mur de briques en fréquence -- donc un
-    étalement dans le temps : chaque transitoire se répand sur des centaines de
-    millisecondes.
-
-    L'effet était mesurable et il a coûté deux itérations : dans la bande
-    aiguë, l'énergie devenait CONTINUE, si bien que le rapport « après/avant »
-    valait 1 à chaque frappe et que la charleston n'était détectée que 12 fois
-    sur 32. Un spectrogramme, lui, mesure l'énergie là où elle est.
+    C'est la matière première des empreintes de nouveauté : assez de bandes
+    pour séparer un clap d'une caisse claire, échelle log parce que l'oreille
+    compare des rapports de fréquence.
     """
-    spectre = np.abs(
-        np.fft.rfft(
-            np.lib.stride_tricks.sliding_window_view(audio, STFT_WINDOW)[::STFT_HOP]
-            * np.hanning(STFT_WINDOW),
-            axis=1,
-        )
-    )
+    fenetres = np.lib.stride_tricks.sliding_window_view(audio, STFT_WINDOW)[::STFT_HOP]
+    spectre = np.abs(np.fft.rfft(fenetres * np.hanning(STFT_WINDOW), axis=1))
     frequences = np.fft.rfftfreq(STFT_WINDOW, 1.0 / sample_rate)
-    enveloppes = []
-    for basse, haute in bandes:
-        masque = (frequences >= basse) & (frequences < haute)
-        enveloppes.append(np.sqrt(np.sum(spectre[:, masque] ** 2, axis=1)))
-    return enveloppes
+    bornes = np.geomspace(40.0, min(16000.0, sample_rate / 2.0 - 1.0), 25)
+    bandes = np.stack([
+        np.sqrt(np.sum(spectre[:, (frequences >= bornes[i]) & (frequences < bornes[i + 1])] ** 2, axis=1))
+        for i in range(len(bornes) - 1)
+    ], axis=1)
+    return bandes, STFT_HOP
 
 
-def _hits_from_levels(niveaux: np.ndarray) -> np.ndarray:
+def _novelty_fingerprints(
+    bandes: np.ndarray,
+    instants: Sequence[int],
+    sample_rate: int,
+) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Décide, pour une bande, à quelles attaques la pièce est FRAPPÉE.
+    Empreinte de NOUVEAUTÉ de chaque attaque : ce qui APPARAÎT à cet instant.
 
-    `niveaux` est la PART de cette bande dans l'énergie de chaque attaque.
+    C'est la pièce maîtresse du classement, et elle répond à un échec mesuré
+    deux fois -- sur House Of God (811 frappes sur 813 classées grosse caisse)
+    puis sur un motif-vérité rendu par la TR-909, où le critère précédent
+    s'INVERSAIT : les temps (vrais kicks) partaient en caisse claire, les
+    doubles-croches de charleston en grosse caisse. La cause : la part
+    d'énergie d'une bande mesure ce qui RÉSONNE -- la queue d'un kick de club
+    couvre toutes les frappes suivantes -- et non ce qui FRAPPE.
 
-    Le critère qui marche, et pourquoi les autres échouent. On a essayé, dans
-    l'ordre, de classer le spectre de chaque coup, puis de détecter les
-    attaques bande par bande, puis de mesurer une MONTÉE d'énergie à chaque
-    attaque. Les trois butent sur le même écueil : une pièce jouée EN CONTINU
-    ne monte pas, elle ne s'arrête jamais. Sur un motif de charleston à la
-    double-croche, le test de montée n'en voyait que 12 sur 32.
-
-    Ce qui distingue vraiment, c'est la FORME DE LA DISTRIBUTION des niveaux de
-    la bande, relevés à chaque attaque :
-
-      - une pièce jouée par intermittence donne une distribution BIMODALE, avec
-        un écart franc entre « frappée » et « résonne encore » ;
-      - une pièce jouée à chaque temps donne une distribution CONTINUE.
-
-    On coupe donc au plus grand écart -- s'il est franc. S'il ne l'est pas,
-    c'est que la pièce joue partout, et on garde tout ce qui dépasse le
-    plancher.
-
-    CE QUE CETTE RÈGLE NE SAIT PAS FAIRE, et il faut le dire précisément.
-    Mesuré sur deux motifs de quatre mesures joués par une boîte à rythmes :
-
-        motif                      grosse caisse   caisse claire   charleston
-        charleston à la double     8 / 8           8 / 8            8 / 32
-        charleston aux contretemps 8 / 8           8 / 8            8 / 16
-
-    La grosse caisse et la caisse claire sont exactes dans les deux cas ; la
-    charleston est SOUS-détectée. C'est le compromis retenu, et il est
-    délibéré : une frappe manquante s'entend comme un motif plus clairsemé,
-    une frappe inventée s'entend comme une faute. Une version antérieure,
-    fondée sur le niveau des bandes plutôt que sur leur part, trouvait les 32
-    charlestons du premier motif mais en inventait 16 dans le second.
-
-    La cause est physique et non réglable : la caisse claire d'une boîte à
-    rythmes est faite de bruit, et son énergie entre 5 et 16 kHz atteint celle
-    d'une charleston. Les séparer demande des gabarits spectraux -- une
-    décomposition en familles apprises --, c'est-à-dire une autre technique,
-    pas un seuil mieux choisi.
+    La nouveauté (spectre juste après MOINS spectre juste avant, borné à zéro)
+    annule les queues par construction : ce qui sonnait déjà avant l'attaque
+    disparaît de la soustraction. Ne reste que la pièce frappée.
     """
-    if niveaux.size == 0:
-        return np.zeros(0, dtype=bool)
-    maximum = float(np.max(niveaux))
-    if maximum <= 0.0:
-        return np.zeros(niveaux.size, dtype=bool)
+    def trame(echantillon: int) -> int:
+        # même correction de centrage que le reste du module
+        return max(0, (echantillon - STFT_WINDOW // 2) // STFT_HOP)
 
-    relatifs = niveaux / maximum
-    ordre = np.argsort(relatifs)[::-1]
-    tries = relatifs[ordre]
+    empreintes, energies = [], []
+    for instant in instants:
+        avant = bandes[trame(instant + int(BEFORE_WINDOW[0] * sample_rate)):
+                        trame(instant + int(BEFORE_WINDOW[1] * sample_rate)) + 1]
+        apres = bandes[trame(instant + int(0.002 * sample_rate)):
+                        trame(instant + int(AFTER_WINDOW[1] * sample_rate)) + 1]
+        # Le fond est la MOYENNE d'avant, et le choix est mesuré dans les
+        # deux sens. Le MAX d'avant supprimait bien le gabarit fantôme
+        # « charleston + queue de caisse claire » (la queue bruiteuse d'une
+        # caisse claire scintille, et son pic repassait pour de la
+        # nouveauté)... mais il effaçait aussi les charlestons jouées en
+        # continu : face au max de la charleston précédente, la nouvelle ne
+        # dépassait plus (rappel 5/64 contre 46/64). C'est la leçon
+        # historique du module -- une pièce jouée en continu ne monte pas --
+        # retrouvée par la mesure. On garde la moyenne, et on assume le
+        # fantôme occasionnel : son échantillon est prélevé sur SES propres
+        # frappes, il rejoue donc le bon son aux bons instants, seule son
+        # étiquette est de trop.
+        fond = np.mean(avant, axis=0) if avant.size else np.zeros(bandes.shape[1])
+        pic = np.max(apres, axis=0) if apres.size else np.zeros(bandes.shape[1])
+        nouveaute = np.maximum(pic - fond, 0.0)
+        energie = float(np.linalg.norm(nouveaute))
+        empreintes.append(nouveaute / (energie + 1e-12))
+        energies.append(energie)
+    return np.stack(empreintes), np.asarray(energies)
 
-    # Plus grand écart entre deux niveaux consécutifs, en ignorant la position 0
-    # (couper là voudrait dire « une seule frappe », ce qui n'arrive pas sur un
-    # stem de batterie).
-    ecarts = tries[:-1] - tries[1:]
-    coupe = int(np.argmax(ecarts)) if ecarts.size else -1
-    plus_grand = float(ecarts[coupe]) if coupe >= 0 else 0.0
 
-    garde = np.zeros(niveaux.size, dtype=bool)
-    if plus_grand > LEVEL_GAP_THRESHOLD:
-        garde[ordre[: coupe + 1]] = True
-    else:
-        garde[relatifs > LEVEL_FLOOR] = True
-    return garde
+# Similarité en deçà de laquelle deux attaques sont des pièces DIFFÉRENTES.
+# Mesuré sur les motifs-vérité : à 0,90 la TR-909 éclatait en gabarits
+# redondants ; à 0,60 kick et charleston fusionnaient. Entre 0,70 et 0,85 le
+# banc rend les mêmes gabarits, le choix au centre de la zone stable.
+TEMPLATE_SIMILARITY = 0.78
+
+# Un gabarit doit expliquer au moins cette part de la nouveauté d'une attaque
+# pour que la pièce soit dite FRAPPÉE à cet instant. Bas = des frappes
+# inventées ; haut = la pièce discrète d'un coup simultané disparaît.
+ASSIGN_SHARE = 0.30
+
+# Part au-delà de laquelle une frappe est PURE : une seule pièce y sonne, on
+# peut y prélever un échantillon sans emporter les autres.
+PURE_SHARE = 0.85
+
+# Nombre maximal de pièces apprises. Huit : ce que la façade du sampler
+# programme au pas, et déjà plus qu'un kit de club courant.
+MAX_TEMPLATES = 8
+
+
+def _learn_templates(empreintes: np.ndarray, energies: np.ndarray) -> np.ndarray:
+    """
+    Apprend les gabarits de pièces par regroupement DÉTERMINISTE.
+
+    Regroupement « au meneur » : les attaques sont visitées par nouveauté
+    décroissante ; chacune rejoint le gabarit le plus proche si la similarité
+    cosinus dépasse TEMPLATE_SIMILARITY, sinon elle en fonde un nouveau.
+    Aucun tirage au sort nulle part -- deux exécutions rendent les mêmes
+    gabarits, condition de toute comparaison avant/après.
+
+    Deux passes de raffinage ré-affectent chaque attaque au gabarit recalculé :
+    le meneur initial est un accent, pas forcément un centre.
+    """
+    ordre = np.argsort(-energies, kind="stable")
+    centres: List[np.ndarray] = []
+    for i in ordre:
+        e = empreintes[i]
+        if centres:
+            similarites = [float(np.dot(e, c) / (np.linalg.norm(c) + 1e-12)) for c in centres]
+            meilleur = int(np.argmax(similarites))
+            if similarites[meilleur] >= TEMPLATE_SIMILARITY:
+                centres[meilleur] = centres[meilleur] + e
+                continue
+        if len(centres) < MAX_TEMPLATES:
+            centres.append(e.copy())
+    for _ in range(2):
+        normalises = [c / (np.linalg.norm(c) + 1e-12) for c in centres]
+        sommes = [np.zeros_like(empreintes[0]) for _ in centres]
+        comptes = [0] * len(centres)
+        for i in ordre:
+            similarites = [float(np.dot(empreintes[i], n)) for n in normalises]
+            meilleur = int(np.argmax(similarites))
+            sommes[meilleur] += empreintes[i]
+            comptes[meilleur] += 1
+        centres = [somme for somme, compte in zip(sommes, comptes) if compte > 0]
+    return np.stack([c / (np.linalg.norm(c) + 1e-12) for c in centres])
+
+
+# Résidu en deçà duquel un gabarit s'explique comme SOMME des autres : ce
+# n'est alors pas une pièce, c'est une coïncidence apprise (kick et charleston
+# frappés ensemble assez souvent pour fonder leur propre groupe). Mesuré sur
+# le motif-vérité TR-909 : le gabarit fantôme « queue de kick + charleston »
+# porte un résidu de 0,38, les vraies pièces restent au-dessus de 0,75.
+MIXTURE_RESIDUAL = 0.55
+
+def _prune_mixtures(gabarits: np.ndarray) -> np.ndarray:
+    """
+    Retire les gabarits qui ne sont que la SOMME d'autres gabarits.
+
+    Kick et charleston frappés ensemble assez souvent fondent leur propre
+    groupe -- une coïncidence apprise, pas une pièce. Mesuré sur le
+    motif-vérité TR-909 : le gabarit fantôme « queue de kick + charleston »
+    porte un résidu de 0,45 face aux vrais gabarits, les vraies pièces
+    restent au-dessus de 0,60.
+    """
+    from scipy.optimize import nnls
+
+    garde = list(range(len(gabarits)))
+    change = True
+    while change and len(garde) > 2:
+        change = False
+        for candidat in list(garde):
+            autres = [i for i in garde if i != candidat]
+            poids, residu = nnls(gabarits[autres].T, gabarits[candidat])
+            if residu < MIXTURE_RESIDUAL and poids.sum() > 0.0:
+                garde.remove(candidat)
+                change = True
+                break
+    return gabarits[garde]
+
+
+def _assign_hits(empreintes: np.ndarray, gabarits: np.ndarray) -> np.ndarray:
+    """
+    Parts de chaque gabarit dans chaque attaque, par moindres carrés POSITIFS.
+
+    C'est la « décomposition en familles apprises » que la limite documentée
+    du critère précédent appelait : une attaque où kick et charleston frappent
+    ENSEMBLE s'explique comme somme des deux gabarits, et chacun reçoit sa
+    part -- là où un classement à pièce unique devait choisir.
+    """
+    from scipy.optimize import nnls
+
+    parts = np.zeros((empreintes.shape[0], gabarits.shape[0]))
+    for i, e in enumerate(empreintes):
+        poids, _ = nnls(gabarits.T, e)
+        total = float(poids.sum())
+        if total > 0.0:
+            parts[i] = poids / total
+    return parts
+
+
+def _name_templates(gabarits: np.ndarray, sample_rate: int) -> List[Tuple[str, int]]:
+    """
+    Nomme chaque gabarit d'après la RÉPARTITION de son énergie de nouveauté.
+
+    Les seuils sont MESURÉS sur les motifs-vérité TR-808/909, pas choisis :
+
+        gabarit             part >= 3,5 kHz   part >= 1 kHz
+        charlestons             0,72-0,95       0,84-0,95
+        caisse claire           0,35            0,68
+        kicks (et variantes)    0,00-0,06       0,00-0,16
+
+    Le PIC seul trompait deux fois : le clic d'attaque du kick 808 culmine à
+    203 Hz (sa fondamentale de 50 Hz s'annule avec la queue du kick précédent
+    dans la nouveauté), et une somme par zones inégales en largeur faisait
+    gagner le médium. Les parts d'énergie au-dessus de 1 et 3,5 kHz, elles,
+    séparent les trois familles avec une marge d'un facteur deux.
+
+    Un même timbre peut fonder PLUSIEURS gabarits (le premier kick d'un
+    morceau n'a pas de queue à soustraire, il garde ses graves) : les doublons
+    d'une famille reçoivent les notes voisines de la convention General MIDI,
+    pour que le projet exporté garde des noms vrais.
+    """
+    familles: List[Tuple[str, int]] = []
+    reserves: Dict[str, List[Tuple[str, int]]] = {
+        "kick": [("kick", 36), ("kick2", 35)],
+        "snare": [("snare", 38), ("snare2", 40)],
+        "hihat": [("hihat", 42), ("openhat", 46), ("pedalhat", 44)],
+    }
+    divers = [("percussion", 39), ("tom", 45), ("cymbal", 49), ("tom2", 47), ("tom3", 50)]
+    bornes = np.geomspace(40.0, min(16000.0, sample_rate / 2.0 - 1.0), 25)
+    centres_bandes = np.sqrt(bornes[:-1] * bornes[1:])
+    for gabarit in gabarits:
+        energie = gabarit * gabarit
+        total = float(energie.sum()) + 1e-12
+        part_1k = float(energie[centres_bandes >= 1000.0].sum()) / total
+        part_3k5 = float(energie[centres_bandes >= 3500.0].sum()) / total
+        if part_3k5 >= 0.5:
+            famille = "hihat"
+        elif part_1k >= 0.35:
+            famille = "snare"
+        else:
+            famille = "kick"
+        pool = reserves[famille]
+        familles.append(pool.pop(0) if pool else (divers.pop(0) if divers else (famille, 36)))
+    return familles
 
 
 def _hit_features(extrait: np.ndarray, sample_rate: int) -> np.ndarray:
@@ -374,72 +510,45 @@ def build_drum_kit(
     instants = [a for a, _ in paires]
     decoupe_de = {a: d for a, d in paires}
 
-    enveloppes = _band_envelopes(
-        audio, sample_rate, [(basse, haute) for _, basse, haute, _ in DETECTION_BANDS]
-    )
-
-    def trame_de(echantillon: int) -> int:
-        # Une trame COMMENCE à l'échantillon qu'elle indexe et couvre la
-        # fenêtre entière : son contenu est donc centré une demi-fenêtre plus
-        # loin. Oublier ce décalage donnait 23 ms de regard EN AVANT, si bien
-        # que la fenêtre précédant l'attaque contenait déjà l'attaque.
-        return (echantillon - STFT_WINDOW // 2) // STFT_HOP
-
-    def energie(enveloppe: np.ndarray, centre: int, bornes: Tuple[float, float]) -> float:
-        debut = max(0, trame_de(centre + int(bornes[0] * sample_rate)))
-        fin = min(enveloppe.size, trame_de(centre + int(bornes[1] * sample_rate)) + 1)
-        if fin <= debut:
-            return 0.0
-        return float(np.max(enveloppe[debut:fin]))
-
-    cretes = [float(np.max(e)) for e in enveloppes]
-    crete_maximale = max(cretes) if cretes else 0.0
-
-    # PART DE CHAQUE BANDE dans l'énergie de l'attaque, et non son niveau brut.
+    # --- classement par GABARITS APPRIS --------------------------------------
     #
-    # C'est la mesure qui distingue réellement les pièces, et le niveau ne le
-    # fait pas : une caisse claire de boîte à rythmes est faite de bruit, et
-    # son énergie entre 5 et 16 kHz atteint celle d'une charleston. Mesuré sur
-    # un motif où la charleston ne joue QUE les contretemps, aucun seuil de
-    # niveau ne séparait les deux -- la distribution allait de 1,00 à 0,29 sans
-    # le moindre palier. Rapportée à l'énergie totale de l'attaque, en
-    # revanche, la grosse caisse et la caisse claire se détachent exactement,
-    # dans ce motif comme dans celui où la charleston joue partout.
-    niveaux_par_bande = np.array(
-        [[energie(enveloppes[i], instant, AFTER_WINDOW) for i in range(len(DETECTION_BANDS))]
-         for instant in instants]
-    )
-    totaux = np.maximum(niveaux_par_bande.sum(axis=1, keepdims=True), 1e-12)
-    parts = niveaux_par_bande / totaux
+    # L'empreinte de nouveauté de chaque attaque (voir _novelty_fingerprints)
+    # est regroupée en gabarits de pièces, puis chaque attaque est décomposée
+    # en parts de gabarits. Une attaque peut appartenir à PLUSIEURS pièces --
+    # kick et charleston frappent ensemble sur tous les temps d'un morceau de
+    # club -- et c'est la part de chaque gabarit qui le dit, plus un seuil par
+    # bande de fréquences.
+    bandes_log, _ = _log_band_spectrogram(audio, sample_rate)
+    empreintes, energies = _novelty_fingerprints(bandes_log, instants, sample_rate)
+    if not np.any(energies > 0.0):
+        return None
+    gabarits = _learn_templates(empreintes, energies)
+    gabarits = _prune_mixtures(gabarits)
+    parts = _assign_hits(empreintes, gabarits)
+    noms = _name_templates(gabarits, sample_rate)
 
-    detections: Dict[str, Tuple[int, np.ndarray, List[int]]] = {}
-    for index, (famille, basse, haute, note) in enumerate(DETECTION_BANDS):
-        if crete_maximale <= 0.0 or cretes[index] < crete_maximale * BAND_PRESENCE_RATIO:
-            continue  # bande muette : cette pièce n'est pas jouée, et on ne l'invente pas
-        enveloppe = enveloppes[index]
-        garde = _hits_from_levels(parts[:, index])
-        debuts = [instant for instant, retenu in zip(instants, garde) if retenu]
+    # Frappes de chaque pièce : part suffisante de la nouveauté de l'attaque.
+    detections: Dict[str, Tuple[int, List[int]]] = {}
+    for index, (famille, note) in enumerate(noms):
+        debuts = [instant for i, instant in enumerate(instants)
+                  if parts[i, index] >= ASSIGN_SHARE]
         if debuts:
-            detections[famille] = (note, enveloppe, debuts)
+            detections.setdefault(famille, (note, debuts))
 
     if not detections:
         return None
 
     # --- coups isolés ---------------------------------------------------------
-    # L'échantillon d'une famille doit venir d'une frappe où AUCUNE autre pièce
-    # ne sonne : prélever une grosse caisse pendant une charleston mettrait la
-    # charleston dans l'échantillon de grosse caisse, et on l'entendrait à
-    # chaque frappe du kit reconstruit.
-    tous_les_debuts = {f: set(d) for f, (_, _, d) in detections.items()}
-    fenetre = int(SIMULTANEITY_SECONDS * sample_rate)
+    # L'échantillon d'une pièce doit venir d'une frappe où elle sonne SEULE :
+    # prélever une grosse caisse pendant une charleston mettrait la charleston
+    # dans l'échantillon, et on l'entendrait à chaque frappe du kit. La pureté
+    # se lit directement dans les parts de la décomposition.
+    part_de = {(int(instant), famille): float(parts[i, index])
+               for i, instant in enumerate(instants)
+               for index, (famille, _) in enumerate(noms)}
 
     def est_isole(famille: str, debut: int) -> bool:
-        for autre, debuts in tous_les_debuts.items():
-            if autre == famille:
-                continue
-            if any(abs(d - debut) < fenetre for d in debuts):
-                return False
-        return True
+        return part_de.get((int(debut), famille), 0.0) >= PURE_SHARE
 
     crete_globale = float(np.max(np.abs(audio))) or 1.0
     # Facteur commun à tout le kit : la frappe la plus forte du stem sort à
@@ -451,11 +560,11 @@ def build_drum_kit(
     emplacements: List[DrumSlot] = []
     avertissements: List[str] = []
 
-    ordre = {nom: rang for rang, (nom, *_) in enumerate(DETECTION_BANDS)}
+    ordre = {nom: rang for rang, nom in enumerate(FAMILY_ORDER)}
     familles = sorted(detections.items(),
-                      key=lambda item: (-len(item[1][2]), ordre.get(item[0], 99)))[:max_slots]
+                      key=lambda item: (-len(item[1][1]), ordre.get(item[0], 99)))[:max_slots]
 
-    for position, (famille, (note, bande, debuts)) in enumerate(familles):
+    for position, (famille, (note, debuts)) in enumerate(familles):
         extraits, cretes, instants = [], [], []
         for index, debut in enumerate(debuts):
             fin = debuts[index + 1] if index + 1 < len(debuts) else audio.size
