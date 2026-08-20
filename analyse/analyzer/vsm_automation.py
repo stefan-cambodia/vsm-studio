@@ -207,13 +207,18 @@ def map_trend_to_cutoff(
 
 
 def cutoff_bounds(engine: VsmEngine, machine: str) -> Optional[Tuple[float, float]]:
-    """Bornes RÉELLES de `filter.1.cutoff`, ou None si la machine n'en a pas."""
-    try:
-        for parametre in engine.parameters(machine):
-            if parametre.get("id") == "filter.1.cutoff":
-                return float(parametre["min"]), float(parametre["max"])
-    except Exception:
-        return None
+    """
+    Bornes RÉELLES de `filter.1.cutoff`, ou None si la machine n'en a pas.
+
+    Ne CACHE PAS les erreurs : une première version avalait toute exception
+    dans un `except` muet, et « le moteur a répondu de travers » s'imprimait
+    « la machine n'a pas de coupure » -- un mensonge de diagnostic. Si la
+    consultation échoue, l'exception remonte et l'appelant la met dans son
+    motif.
+    """
+    for parametre in engine.parameters(machine):
+        if parametre.get("id") == "filter.1.cutoff":
+            return float(parametre["min"]), float(parametre["max"])
     return None
 
 
@@ -260,7 +265,10 @@ def try_cutoff_automation(
     de la piste (toutes ses notes, pas un extrait). Quand elle ne l'est pas,
     `motif` dit POURQUOI -- la chaîne ne saute rien en silence.
     """
-    bornes = cutoff_bounds(engine, track.machine)
+    try:
+        bornes = cutoff_bounds(engine, track.machine)
+    except Exception as erreur:
+        return None, None, None, f"lecture des paramètres impossible : {erreur}"
     if bornes is None:
         return None, None, None, "la machine n'a pas de coupure"
     if track.parameters.get("filter.1.cutoff") is None:
