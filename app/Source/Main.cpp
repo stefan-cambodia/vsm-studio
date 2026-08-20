@@ -1,6 +1,7 @@
 #include <JuceHeader.h>
 #include "MainComponent.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
+#include "ui/UiScale.h"
 
 // ---------------------------------------------------------------------------
 // Application JUCE (voir ARCHITECTURE.md pour l'architecture complète).
@@ -29,6 +30,13 @@ public:
         // ligne (voir TrackListComponent.cpp) pour peupler le combo
         // "instrument" avec les plugins RÉELLEMENT disponibles.
         vsm::audio::plugin::registerBuiltInPlugins();
+
+        // AVANT la première fenêtre : le facteur d'échelle détermine leur
+        // taille physique, et JUCE ne redimensionne pas rétroactivement ce
+        // qui existe déjà. Réglage conservé d'une exécution à l'autre --
+        // voir ui/UiScale.h.
+        vsm::app::ui::UiScale::applySavedAtStartup();
+
         mainWindow.reset(new MainWindow(getApplicationName()));
     }
 

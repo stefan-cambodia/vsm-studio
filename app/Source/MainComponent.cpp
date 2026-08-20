@@ -13,6 +13,7 @@
 #include "vsm/interchange/ReconstructionReport.h"
 #include "vsm/interchange/SynthPreset.h"
 #include "vsm/audio/io/WavFileReader.h"
+#include "ui/UiScale.h"
 
 using namespace vsm::sequencer;
 using namespace vsm::midi;
@@ -344,6 +345,23 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuViewPianoRoll, "Piano Roll", true, pianoRollWindow_.isVisible());
             menu.addItem(kMenuViewSynthRack, "Synth Rack", true, synthRackWindow_.isVisible());
             menu.addItem(kMenuViewMixer, "Mixer", true, mixerWindow_.isVisible());
+            menu.addSeparator();
+            {
+                // TAILLE DE L'INTERFACE. Le facteur agrandit texte ET cases
+                // dans le même rapport (voir ui/UiScale.h) : c'est la seule
+                // façon d'agrandir l'écriture sans tronquer les légendes des
+                // façades, qui sont dimensionnées d'après leur case.
+                juce::PopupMenu tailles;
+                const auto& paliers = vsm::app::ui::UiScale::steps();
+                const float actuelle = vsm::app::ui::UiScale::current();
+                for (int i = 0; i < paliers.size(); ++i) {
+                    tailles.addItem(kMenuViewScaleFirst + i,
+                                    vsm::app::ui::UiScale::label(paliers[i]),
+                                    true,
+                                    std::abs(paliers[i] - actuelle) < 1.0e-3f);
+                }
+                menu.addSubMenu("Taille de l'interface", tailles);
+            }
             break;
         case 4:
             menu.addItem(kMenuHelpAbout, "A propos de Vintage Synth MIDI Studio");
@@ -386,7 +404,13 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuViewSynthRack: togglePanel(synthRackWindow_); break;
         case kMenuViewMixer:     togglePanel(mixerWindow_); break;
         case kMenuHelpAbout:     showAboutDialog(); break;
-        default: break;
+        default:
+            if (menuItemID >= kMenuViewScaleFirst && menuItemID <= kMenuViewScaleLast) {
+                const auto& paliers = vsm::app::ui::UiScale::steps();
+                const int index = menuItemID - kMenuViewScaleFirst;
+                if (index < paliers.size()) setUiScale(paliers[index]);
+            }
+            break;
     }
 }
 
@@ -394,6 +418,28 @@ void MainComponent::togglePanel(PanelWindow& window) {
     bool newVisible = !window.isVisible();
     window.setVisible(newVisible);
     if (newVisible) window.toFront(true);
+}
+
+void MainComponent::setUiScale(float factor) {
+    vsm::app::ui::UiScale::apply(factor);
+
+    // Les fenêtres déjà à l'écran gardent leur taille EN POINTS ; le facteur
+    // ne change que leur rendu. Il reste à les remettre dans l'écran : à
+    // 200 %, une fenêtre qui touchait déjà le bord déborderait, et
+    // l'utilisateur ne pourrait plus la ramener. On le fait pour la fenêtre
+    // socle et pour chaque panneau flottant.
+    for (auto* fenetre : { static_cast<juce::Component*>(getTopLevelComponent()),
+                            static_cast<juce::Component*>(&trackListWindow_),
+                            static_cast<juce::Component*>(&pianoRollWindow_),
+                            static_cast<juce::Component*>(&synthRackWindow_),
+                            static_cast<juce::Component*>(&mixerWindow_) }) {
+        if (fenetre == nullptr || !fenetre->isOnDesktop()) continue;
+        if (auto* peer = fenetre->getPeer())
+            peer->setBounds(peer->getBounds().constrainedWithin(
+                                juce::Desktop::getInstance().getDisplays()
+                                    .getPrimaryDisplay()->userArea),
+                            false);
+    }
 }
 
 void MainComponent::showAboutDialog() {

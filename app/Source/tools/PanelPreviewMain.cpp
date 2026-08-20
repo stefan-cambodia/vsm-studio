@@ -7,7 +7,15 @@
 // permet de le vérifier à chaque changement, y compris sur une machine sans
 // serveur graphique.
 //
-//   vsm-panel-preview <dossier-de-sortie> [largeur]
+//   vsm-panel-preview <dossier-de-sortie> [largeur] [échelle]
+//
+// L'ÉCHELLE reproduit hors écran ce que fait le réglage « Taille de
+// l'interface » du menu Affichage (voir ui/UiScale.h) : la façade garde
+// exactement la même mise en page, rendue plus grand. Ce n'est PAS la même
+// chose qu'augmenter la largeur -- une façade plus large recalcule ses cases
+// et rebute ses légendes sur leur plafond de 11 points, alors que l'échelle
+// grossit ces 11 points eux-mêmes. C'est précisément ce qu'il faut pouvoir
+// comparer côte à côte quand on juge de la lisibilité.
 
 #include <JuceHeader.h>
 #include "../ui/machines/MachinePanelComponent.h"
@@ -23,13 +31,16 @@
 int main(int argc, char** argv) {
     juce::ScopedJuceInitialiser_GUI juceInit;
     if (argc < 2) {
-        std::fprintf(stderr, "Usage : vsm-panel-preview <dossier-de-sortie> [largeur]\n");
+        std::fprintf(stderr,
+                     "Usage : vsm-panel-preview <dossier-de-sortie> [largeur] [échelle]\n");
         return 1;
     }
     const juce::File outputFolder =
         juce::File::getCurrentWorkingDirectory().getChildFile(juce::String(argv[1]));
     outputFolder.createDirectory();
     const int width = argc >= 3 ? juce::jmax(320, std::atoi(argv[2])) : 1100;
+    const double scale =
+        argc >= 4 ? juce::jlimit(0.5, 4.0, std::atof(argv[3])) : 1.0;
 
     vsm::audio::plugin::registerBuiltInPlugins();
     int rendered = 0;
@@ -77,9 +88,17 @@ int main(int argc, char** argv) {
         const int height = static_cast<int>(std::lround(static_cast<double>(width) / component.aspectRatio()));
         component.setBounds(0, 0, width, height);
 
-        juce::Image image(juce::Image::ARGB, width, height, true);
+        // L'image est plus grande d'un facteur `scale`, et le dessin y est
+        // transformé d'autant : la façade n'apprend rien du changement, ses
+        // cases et ses polices gardent leurs valeurs -- seul le rendu final
+        // grossit. C'est exactement ce que fait l'échelle de l'application.
+        const int imageWidth  = static_cast<int>(std::lround(width * scale));
+        const int imageHeight = static_cast<int>(std::lround(height * scale));
+        juce::Image image(juce::Image::ARGB, imageWidth, imageHeight, true);
         {
             juce::Graphics g(image);
+            if (scale != 1.0)
+                g.addTransform(juce::AffineTransform::scale(static_cast<float>(scale)));
             component.paintEntireComponent(g, true);
         }
 
@@ -88,7 +107,8 @@ int main(int argc, char** argv) {
         juce::FileOutputStream stream(file);
         juce::PNGImageFormat png;
         if (stream.openedOk() && png.writeImageToStream(image, stream)) {
-            std::printf("%s (%d x %d)\n", file.getFullPathName().toRawUTF8(), width, height);
+            std::printf("%s (%d x %d, échelle %.2f)\n",
+                        file.getFullPathName().toRawUTF8(), imageWidth, imageHeight, scale);
             ++rendered;
         }
     }

@@ -203,6 +203,22 @@ Toutes ces opérations vivent dans `core/` (testées sans interface graphique) e
 sont accessibles au clavier, par la barre d'outils, par clic droit et par le
 menu Édition — qui est littéralement le même menu.
 
+### Taille de l'interface
+
+*Affichage ▸ Taille de l'interface* propose 100, 125, 150, 175 et 200 %. Le
+facteur agrandit le texte ET les cases dans le même rapport : la mise en page
+ne bouge pas et aucune légende n'est tronquée — ce qui arriverait en grossissant
+la police seule, puisque les façades de machines calculent la taille de leurs
+légendes d'après la hauteur de leur case. Le réglage est conservé d'une
+exécution à l'autre.
+
+Pour juger sans lancer l'application, l'aperçu hors écran accepte la même
+échelle :
+
+```bash
+./build/app/vsm-panel-preview_artefacts/RelWithDebInfo/vsm-panel-preview /tmp/apercu 1100 1.5
+```
+
 ## Où va le projet
 
 Les phases 1 à 7 sont terminées (moteur, machines, interface, interopérabilité).

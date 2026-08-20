@@ -80,6 +80,10 @@ private:
         kMenuViewPianoRoll,
         kMenuViewSynthRack,
         kMenuViewMixer,
+        // Un identifiant par palier d'échelle, attribué à la suite :
+        // kMenuViewScaleFirst + index dans UiScale::steps().
+        kMenuViewScaleFirst,
+        kMenuViewScaleLast = kMenuViewScaleFirst + 15,
         kMenuHelpAbout,
     };
 
@@ -104,6 +108,8 @@ private:
     void togglePanel(PanelWindow& window);
     void showAboutDialog();
     void showAudioSettings();
+    /// Change la taille de toute l'interface, et l'enregistre.
+    void setUiScale(float factor);
 
     VsmLookAndFeel lookAndFeel_;
 
