@@ -846,9 +846,16 @@ APPRISE SUR LA MACHINE ELLE-MÊME (deux rendus aux bornes, interpolation
 log-log — l'hypothèse « centroïde = coupure » était trois fois trop plate),
 puis la met à l'épreuve : deux mini-projets rendus par `vsm-render`, avec et
 sans la courbe, et la courbe n'est GARDÉE que si la distance mesurée baisse.
-Contrôles : sur une cible balayée connue, la courbe est gardée (5,25 → 3,24) ;
-sur une cible statique, elle est rejetée par la mesure (elle aurait coûté
-4,49). L'heuristique propose, le chiffre dispose.
+La calibration se fait AUTOUR DU POINT DE FONCTIONNEMENT (base ÷4 à ×4) et
+non aux bornes : à 20 Hz un filtre est muet et le centroïde mesuré est celui
+du bruit numérique. Elle accepte les pentes INVERSÉES, parce que la mesure en
+a trouvé une : sur un patch au type de filtre continu réglé vers le
+passe-bande, monter la coupure assombrit la note (424 Hz → centroïde 2672 ;
+6776 Hz → 1242). Et quand la coupure ne pilote pas le timbre sous le patch
+trouvé — le cas du stem de basse de House Of God, mesuré à la note médiane —
+l'automation est déclinée EN LE DISANT, motif imprimé. Contrôles : cible
+balayée connue, courbe gardée (5,25 → 3,85) ; cible statique, rejetée par la
+mesure (elle aurait coûté 6,59). L'heuristique propose, le chiffre dispose.
 
 ### Dossier de projet et reconstruction hors ligne (P7-P8)
 

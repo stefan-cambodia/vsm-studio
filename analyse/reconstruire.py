@@ -268,7 +268,7 @@ def main() -> int:
             # mesuré par la même distance que tout le reste, jamais supposé.
             audio_stem = audio_par_stem.get(stem.name)
             if audio_stem is not None:
-                courbe, d_sans, d_avec = try_cutoff_automation(
+                courbe, d_sans, d_avec, motif = try_cutoff_automation(
                     audio_stem, SAMPLE_RATE, piste, moteur)
                 if courbe is not None:
                     piste.automation["filter.1.cutoff"] = courbe
@@ -276,7 +276,9 @@ def main() -> int:
                           f"({len(courbe)} points, distance {d_sans:.3f} -> {d_avec:.3f})")
                 elif d_sans is not None:
                     print(f"      {stem.name:8s} : automation de coupure rejetée "
-                          f"({d_sans:.3f} -> {d_avec:.3f}, elle n'aide pas)")
+                          f"({d_sans:.3f} -> {d_avec:.3f}, {motif})")
+                else:
+                    print(f"      {stem.name:8s} : automation de coupure non tentée ({motif})")
             pistes_export.append(piste)
         pistes_export += pistes_batterie
         rapport = write_project_bundle(pistes_export, sortie, title=entree.stem, tempo=args.tempo)

@@ -140,8 +140,20 @@ def calibrate_centroid_to_cutoff(
     interpolation log-log. Deux rendus d'une seconde, et plus aucune
     hypothèse sur la pente.
     """
-    bas = dict(parameters); bas["filter.1.cutoff"] = cutoff_low
-    haut = dict(parameters); haut["filter.1.cutoff"] = cutoff_high
+    # Calibrer AUTOUR DU POINT DE FONCTIONNEMENT, jamais aux bornes : à la
+    # borne basse d'un filtre grand ouvert (20 Hz), le rendu est quasi muet et
+    # le centroïde mesuré est celui du bruit numérique -- large bande, donc
+    # HAUT, et la calibration concluait « la coupure ne pilote rien » sur une
+    # machine où elle pilote tout. Un facteur quatre de part et d'autre de la
+    # coupure trouvée couvre la zone où la courbe vivra, et l'interpolation
+    # log-log extrapole le reste ; les valeurs écrites restent bornées au réel.
+    base = float(parameters.get("filter.1.cutoff", 0.0)) or (cutoff_low * cutoff_high) ** 0.5
+    cal_bas = float(np.clip(base / 4.0, cutoff_low, cutoff_high))
+    cal_haut = float(np.clip(base * 4.0, cutoff_low, cutoff_high))
+    if cal_haut < cal_bas * 2.0:
+        return None
+    bas = dict(parameters); bas["filter.1.cutoff"] = cal_bas
+    haut = dict(parameters); haut["filter.1.cutoff"] = cal_haut
     try:
         rendu_bas = engine.render_note(machine, bas, midi_note=midi_note,
                                         duration=1.0, sample_rate=sample_rate)
@@ -151,17 +163,36 @@ def calibrate_centroid_to_cutoff(
         return None
     c_bas = _median_centroid(rendu_bas, sample_rate)
     c_haut = _median_centroid(rendu_haut, sample_rate)
-    if c_bas <= 0.0 or c_haut <= c_bas * 1.05:
-        return None  # la coupure ne pilote pas le centroïde sur cette machine
-    return c_bas, c_haut, cutoff_low, cutoff_high
+    if c_bas <= 0.0 or c_haut <= 0.0:
+        return None
+    # La pente peut être NÉGATIVE, et c'est une découverte de la mesure : sur
+    # un type de filtre continu réglé vers le passe-bande, monter la coupure
+    # ASSOMBRIT la note (mesuré sur un patch trouvé par la recherche :
+    # 424 Hz -> centroïde 2672, 6776 Hz -> centroïde 1242). La relation
+    # inversée reste une relation ; l'interpolation log-log la suit telle
+    # quelle, et l'épreuve A/B tranche comme pour tout le monde. On ne refuse
+    # que l'ABSENCE de relation : moins de la moitié d'une octave de centroïde
+    # entre les deux bornes de calibration.
+    rapport = c_haut / c_bas
+    if 1.0 / 1.4 < rapport < 1.4:
+        return None  # la coupure ne pilote pas le centroïde sous ce patch
+    return c_bas, c_haut, cal_bas, cal_haut
 
 
 def map_trend_to_cutoff(
     trend: Sequence[Tuple[float, float]],
     calibration: Tuple[float, float, float, float],
+    limites: Optional[Tuple[float, float]] = None,
 ) -> List[Tuple[float, float]]:
-    """Traduit la tendance de centroïde en coupure, par la relation apprise."""
+    """
+    Traduit la tendance de centroïde en coupure, par la relation apprise.
+
+    `limites` : les bornes RÉELLES du paramètre. La calibration est locale
+    (autour du point de fonctionnement) ; la droite log-log extrapole au-delà,
+    et l'écrêtage final se fait sur ce que la machine accepte vraiment.
+    """
     c_bas, c_haut, cut_bas, cut_haut = calibration
+    borne_bas, borne_haut = limites if limites else (cut_bas, cut_haut)
     log_c = (np.log(c_bas), np.log(c_haut))
     log_cut = (np.log(max(cut_bas, 1.0)), np.log(cut_haut))
     pente = (log_cut[1] - log_cut[0]) / (log_c[1] - log_c[0])
@@ -170,7 +201,7 @@ def map_trend_to_cutoff(
         if centroide <= 0.0:
             continue
         log_valeur = log_cut[0] + pente * (np.log(centroide) - log_c[0])
-        coupure = float(np.clip(np.exp(log_valeur), cut_bas, cut_haut))
+        coupure = float(np.clip(np.exp(log_valeur), borne_bas, borne_haut))
         points.append((seconde, coupure))
     return points
 
@@ -222,38 +253,38 @@ def try_cutoff_automation(
     engine: VsmEngine,
 ) -> Tuple[Optional[List[Tuple[float, float]]], Optional[float], Optional[float]]:
     """
-    Met la courbe à l'épreuve : (courbe, distance sans, distance avec).
+    Met la courbe à l'épreuve : (courbe, distance sans, distance avec, motif).
 
     La courbe n'est renvoyée que si elle RAPPROCHE le rendu du stem, mesuré
     par la même distance que tout le reste de la chaîne, sur le rendu complet
-    de la piste (toutes ses notes, pas un extrait). Sinon (None, sans, avec)
-    dit pourquoi elle a été rejetée -- l'appelant peut l'imprimer.
+    de la piste (toutes ses notes, pas un extrait). Quand elle ne l'est pas,
+    `motif` dit POURQUOI -- la chaîne ne saute rien en silence.
     """
     bornes = cutoff_bounds(engine, track.machine)
     if bornes is None:
-        return None, None, None
+        return None, None, None, "la machine n'a pas de coupure"
     if track.parameters.get("filter.1.cutoff") is None:
-        return None, None, None
+        return None, None, None, "le patch ne règle pas la coupure"
     if not track.notes:
-        return None, None, None
+        return None, None, None, "aucune note"
 
     fin_des_notes = max(n.start + n.duration for n in track.notes)
     tendance = extract_centroid_trend(stem_audio, sample_rate, until_seconds=fin_des_notes)
     if len(tendance) < 4:
-        return None, None, None
+        return None, None, None, "stem trop court"
     valeurs = [c for _, c in tendance]
     if max(valeurs) < min(valeurs) * 1.1:
-        return None, None, None  # le stem ne bouge pas : rien à écrire
+        return None, None, None, "le stem ne bouge pas"
 
     notes_medianes = sorted(n.note for n in track.notes)
     calibration = calibrate_centroid_to_cutoff(
         engine, track.machine, track.parameters,
         notes_medianes[len(notes_medianes) // 2], bornes[0], bornes[1], sample_rate)
     if calibration is None:
-        return None, None, None
-    courbe = map_trend_to_cutoff(tendance, calibration)
+        return None, None, None, "la coupure ne pilote pas le timbre sous ce patch"
+    courbe = map_trend_to_cutoff(tendance, calibration, limites=bornes)
     if not courbe:
-        return None, None, None
+        return None, None, None, "courbe vide"
 
     duree = stem_audio.size / float(sample_rate)
     with tempfile.TemporaryDirectory(prefix="vsm-ab-") as dossier:
@@ -263,13 +294,13 @@ def try_cutoff_automation(
         avec_track.automation["filter.1.cutoff"] = courbe
         avec = _render_track(avec_track, Path(dossier) / "avec", duree, sample_rate)
     if sans is None or avec is None:
-        return None, None, None
+        return None, None, None, "rendu A/B impossible"
 
     n = min(stem_audio.size, sans.size, avec.size)
     if n == 0:
-        return None, None, None
+        return None, None, None, "rendu vide"
     distance_sans = float(audio_distance(stem_audio[:n], sans[:n], sample_rate))
     distance_avec = float(audio_distance(stem_audio[:n], avec[:n], sample_rate))
     if distance_avec < distance_sans:
-        return courbe, distance_sans, distance_avec
-    return None, distance_sans, distance_avec
+        return courbe, distance_sans, distance_avec, "gardée"
+    return None, distance_sans, distance_avec, "elle n'aide pas"
