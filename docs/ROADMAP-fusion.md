@@ -185,12 +185,16 @@ La chaîne a été confrontée à un enregistrement du commerce — de l'acid ho
 le terrain rêvé du parc — et chaque faiblesse trouvée a été corrigée puis
 re-mesurée, en six passes. Bilan chiffré :
 
-| Stem | Première passe | Dernière passe |
+| Stem | Première passe | Sixième passe |
 |---|---|---|
 | basse | generic, d=0,131 | generic, **d=0,053** |
 | batterie | 813 frappes dans UNE pièce | **6 pièces**, 1001 frappes, échantillons isolés |
 | nappes | generic, d=0,221 | epiano, d=0,180 |
 | voix | ms20, d=0,143 | ms20, d=0,113 |
+
+Ces deux colonnes ne sont PAS au même budget de recherche : la première passe
+tournait au défaut (20 itérations), la sixième à 60. Le rapport ne l'écrivait
+pas alors ; il l'écrit désormais, et la septième passe raconte pourquoi.
 
 Les volumes de pistes sont désormais MESURÉS (rendu solo contre RMS du stem :
 1,31 / 0,66 / 1,06 / 0,96 au lieu de 0,9 partout), et l'automation de coupure
@@ -203,9 +207,90 @@ deux exécutions complètes confirme le déterminisme de toute la chaîne.
 Ce que ce morceau a rapporté au projet dépasse ses propres chiffres : le
 classement de batterie par gabarits (l'inversion kick/charleston n'était
 visible que sur un vrai kick de club), la règle de recherche à deux étages,
-le calage des volumes, quatre défauts de chaîne corrigés (chemin du moteur à
+le calage des volumes, cinq défauts de chaîne corrigés (chemin du moteur à
 l'étape finale, séparation non seedée, export hors de la vie du moteur,
-exceptions muettes) — chacun committé avec sa mesure.
+exceptions muettes, budget de recherche absent du rapport) — chacun committé
+avec sa mesure.
+
+### Septième passe : la batterie joue au bon endroit, et un défaut de méthode
+
+L'oreille de l'utilisateur avait entendu deux choses sur la sixième passe :
+« les pièces ne jouent pas au bon endroit » et « un son bizarre qui n'a rien à
+faire là ». Chacune avait une cause mesurable ; voici ce que le correctif a
+donné, à **budget de recherche égal** (60 itérations, comme la sixième passe) :
+
+| | v6 | v7 |
+|---|---|---|
+| frappes de batterie | 1 001 | **809** |
+| instants distincts | 812 | 809 |
+| **co-frappes** (deux pièces au même instant) | **188** | **0** |
+| `snare.wav` | 1 235 ms | **348 ms** |
+| `percussion.wav` | 1 223 ms | **784 ms** |
+| `kick.wav` / `hihat.wav` | 488 / 464 ms | inchangés à la ms |
+| basse, nappes, voix | 0,053 / 0,180 / 0,113 | **identiques à la 4e décimale** |
+| **DISTANCE GLOBALE** | 5,827 | **2,974** (silence : 54,7) |
+
+Les 188 co-frappes tombaient toutes au même instant qu'une frappe voisine :
+l'affectation multi-étiquettes faisait tirer ENSEMBLE les gabarits-variantes
+d'une même pièce. La règle est devenue « une frappe, une pièce » — celle qui
+explique le mieux la nouveauté de l'attaque. Les trois instants perdus sont des
+onsets jumeaux (< 35 ms) fusionnés, qui produisaient des fla.
+
+**Le gain est bien celui de la batterie, et rien d'autre.** Les trois stems
+mélodiques sont reproduits au chiffre près, volumes et refus d'automation
+compris ; l'écart global vient donc entièrement de la piste corrigée. Mesuré
+directement, cette piste rendue SEULE contre son propre stem, à niveau efficace
+identique (0,0980 contre 0,0985) :
+
+| | distance à son stem | référence |
+|---|---|---|
+| v6 | 6,065 | silence : 53,63 |
+| **v7** | **2,877** | — |
+
+#### Le défaut de méthode : un budget qu'aucun rapport n'écrivait
+
+Cette septième passe avait d'abord été lancée au budget PAR DÉFAUT (20
+itérations), et ses stems mélodiques semblaient tous s'être DÉGRADÉS alors que
+le correctif ne touchait que la batterie : basse 0,053 → 0,103, nappes 0,180 →
+0,210, voix 0,113 → 0,135. Le soupçon était sérieux — une chaîne non
+déterministe rendrait toute comparaison avant/après sans valeur, et le
+déterminisme est un invariant déclaré du projet.
+
+Chaque étage a donc été vérifié séparément, et chacun a tenu :
+
+| étage | vérification | résultat |
+|---|---|---|
+| séparation | deux passes demucs sur le même fichier | 4 stems identiques **au bit près** |
+| transcription | deux passes basic-pitch | 217 notes, même signature |
+| note de référence | l'extrait de cible choisi | identique au bit près |
+| moteur | deux rendus du même patch | identiques |
+| recherche | deux fois le même optimiseur | même patch, mêmes 756 évaluations |
+| stem complet | deux `reconstruct_stem` | même verdict, même podium |
+
+La cause était dans la COMMANDE, pas dans le code :
+
+| budget de recherche | distance de la basse |
+|---|---|
+| 20 itérations (le défaut) | 0,1031 |
+| 40 | 0,0577 |
+| **60** | **0,0532** ← la valeur de la sixième passe, à la 4e décimale |
+| 80 | 0,0516 |
+
+La sixième passe avait tourné à `--iterations 60`, la septième au défaut de 20.
+Rien dans les deux `rapport.json` ne le disait, et deux chiffres incomparables
+ont été mis côte à côte pendant une demi-heure d'enquête.
+
+Le correctif est celui qui existait déjà pour la métrique : **le budget est
+inscrit dans le rapport** (`"iterations"`) et affiché dans le résumé. La leçon
+généralise ce que l'étape 10.3 avait appris — une distance n'est un chiffre que
+si l'on sait à quelles conditions elle a été obtenue, et le budget en fait
+partie au même titre que la métrique.
+
+Une remarque qui vaut pour la suite : au budget par défaut, le rendu de la
+basse est si faible que le calage de volume BUTE SUR SA BORNE (0,90 → 2,50
+« borné », pour un rapport visé de 3,59). C'est un signal, et il est écrit dans
+le journal : quand un volume est borné, c'est presque toujours que la
+reconstruction en amont a échoué, pas qu'il faut amplifier davantage.
 
 ### Étape 9.5 — la batterie passe par le sampler
 

@@ -202,6 +202,7 @@ def write_reconstruction_report(
     path: Path,
     global_distance: Optional[float] = None,
     metric: str = "v2",
+    iterations: Optional[int] = None,
 ) -> None:
     """
     Écrit le rapport de reconstruction (étape 9.3).
@@ -219,6 +220,17 @@ def write_reconstruction_report(
         # pas laquelle a servi inviterait à confronter des chiffres qui n'ont
         # rien à voir.
         "metric": metric,
+        # LE BUDGET DE RECHERCHE, inscrit pour la même raison que la métrique,
+        # et pour une raison APPRISE : deux passes sur House Of God ont été
+        # comparées stem à stem alors qu'elles n'avaient pas tourné au même
+        # budget (60 itérations contre 20). Rien dans les rapports ne le
+        # disait, et l'écart -- basse 0,053 contre 0,103 -- s'est d'abord lu
+        # comme un non-déterminisme de la chaîne. Il a fallu vérifier la
+        # séparation, la transcription, le moteur et l'optimiseur un par un
+        # pour retrouver la vraie cause. Le budget est un paramètre de la
+        # mesure au même titre que la métrique : deux distances obtenues à
+        # des budgets différents ne se comparent pas.
+        "iterations": iterations,
         "globalDistance": global_distance,
         "stems": [
             {

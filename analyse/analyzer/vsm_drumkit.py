@@ -645,8 +645,9 @@ def build_drum_kit(
             # batterie n'a pas d'attaque), et la tranche embarquait alors
             # jusqu'à 1,2 s d'autre chose -- mesuré sur House Of God : la
             # « caisse claire » de 1 235 ms rejouait un bout du morceau à
-            # chaque frappe. On coupe quand l'enveloppe reste 50 ms sous
-            # -30 dB de la crête du coup.
+            # chaque frappe. La règle exacte est dans `_decay_end` : la
+            # remontée de l'enveloppe au-dessus de son minimum courant, et
+            # non un seuil absolu -- qui ne mord pas dans un stem dense.
             fin = int(debut) + _decay_end(audio[int(debut):fin], sample_rate)
             # Découpe au point RECALÉ : partir de l'instant d'attaque
             # amputerait la montée, c'est-à-dire ce qui fait reconnaître la

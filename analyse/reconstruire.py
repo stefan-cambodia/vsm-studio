@@ -291,7 +291,8 @@ def main() -> int:
             for ligne in match_track_levels(pistes_export, audio_par_stem, sortie, SAMPLE_RATE):
                 print(f"      {ligne}")
         rapport = write_project_bundle(pistes_export, sortie, title=entree.stem, tempo=args.tempo)
-        write_reconstruction_report(reconstruits, sortie / "rapport.json", metric=args.metrique)
+        write_reconstruction_report(reconstruits, sortie / "rapport.json",
+                                    metric=args.metrique, iterations=args.iterations)
         print(f"      {rapport['tracks']} piste(s), {rapport['notes']} note(s)")
 
         # --- rendu et distance ------------------------------------------------
@@ -316,7 +317,8 @@ def main() -> int:
         distance = reconstruction_distance(melange, reconstruit, SAMPLE_RATE)
         silence = reconstruction_distance(melange, np.zeros_like(melange), SAMPLE_RATE)
         write_reconstruction_report(reconstruits, sortie / "rapport.json",
-                                    global_distance=distance, metric=args.metrique)
+                                    global_distance=distance, metric=args.metrique,
+                                    iterations=args.iterations)
 
         # Comparaison : original à gauche, reconstruction à droite. C'est
         # l'écoute qui tranche, pas le chiffre -- le chiffre dit seulement où
@@ -324,7 +326,8 @@ def main() -> int:
         ecrire_wav(sortie / "comparaison.wav", [melange, reconstruit])
 
         print()
-        print(f"  DISTANCE GLOBALE : {distance:.4f}  (métrique {args.metrique})")
+        print(f"  DISTANCE GLOBALE : {distance:.4f}  "
+              f"(métrique {args.metrique}, budget {args.iterations} itérations)")
         print(f"  (pour situer : la distance de l'original au silence vaut {silence:.1f})")
         print(f"  projet    : {sortie}/project.json")
         print(f"  rapport   : {sortie}/rapport.json")
