@@ -179,6 +179,34 @@ notes transcrites contre 156 sur le même fichier. Elle est désormais
 déterministe (`shifts=0`), ce qui est la condition de toute comparaison
 avant/après.
 
+### Premier morceau réel de bout en bout : House Of God (D.H.S., 1995)
+
+La chaîne a été confrontée à un enregistrement du commerce — de l'acid house,
+le terrain rêvé du parc — et chaque faiblesse trouvée a été corrigée puis
+re-mesurée, en six passes. Bilan chiffré :
+
+| Stem | Première passe | Dernière passe |
+|---|---|---|
+| basse | generic, d=0,131 | generic, **d=0,053** |
+| batterie | 813 frappes dans UNE pièce | **6 pièces**, 1001 frappes, échantillons isolés |
+| nappes | generic, d=0,221 | epiano, d=0,180 |
+| voix | ms20, d=0,143 | ms20, d=0,113 |
+
+Les volumes de pistes sont désormais MESURÉS (rendu solo contre RMS du stem :
+1,31 / 0,66 / 1,06 / 0,96 au lieu de 0,9 partout), et l'automation de coupure
+a été mise à l'épreuve stem par stem — et DÉCLINÉE partout sur ce morceau,
+chaque refus avec son motif mesuré : le patch de basse trouvé ne répond pas à
+la coupure (quasi passe-bande), l'e-piano n'en a pas, et sur la voix l'A/B a
+tranché (4,324 → 4,358). Une reconstruction identique à la 4e décimale sur
+deux exécutions complètes confirme le déterminisme de toute la chaîne.
+
+Ce que ce morceau a rapporté au projet dépasse ses propres chiffres : le
+classement de batterie par gabarits (l'inversion kick/charleston n'était
+visible que sur un vrai kick de club), la règle de recherche à deux étages,
+le calage des volumes, quatre défauts de chaîne corrigés (chemin du moteur à
+l'étape finale, séparation non seedée, export hors de la vie du moteur,
+exceptions muettes) — chacun committé avec sa mesure.
+
 ### Étape 9.5 — la batterie passe par le sampler
 
 Le format de projet ne savait pas transporter d'échantillons : un projet
