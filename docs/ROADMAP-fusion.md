@@ -712,15 +712,93 @@ maintenant exposée (`saveClapState` / `loadClapState`), et trois tests
 - **Une API réseau.** Le tube JSON suffit et supprime tout un pan de problèmes
   (port, authentification, cycle de vie). À rouvrir seulement si les deux
   programmes doivent un jour tourner sur deux machines.
-- **Un modèle appris de bout en bout (audio → paramètres).** Séduisant, mais il
-  faudrait un corpus étiqueté que personne n'a ; et le moteur, lui, sait déjà
-  produire des paires (paramètres → audio) à volonté. C'est la piste à garder
-  en réserve : générer un corpus **avec le moteur** pour entraîner un
-  estimateur qui donnerait le point de départ de la recherche (10.2).
+- ~~**Un modèle appris de bout en bout (audio → paramètres).**~~ — **piste
+  menée jusqu'au bout, MESURÉE, et refusée.** Détail et chiffres ci-dessous ;
+  code conservé et documenté dans `analyse/analyzer/vsm_corpus.py`.
 
 ---
 
-## 7. Invariants à vérifier à chaque étape
+## 7. Le modèle appris : ce que la mesure a répondu
+
+Le corpus étiqueté « que personne n'a », le moteur le fabrique pour rien :
+**9 755 exemples utilisables en quatre minutes** (tirage uniforme dans l'espace
+que la machine déclare, rendu par le moteur réel, descripteurs calculés). Cette
+moitié de la promesse est tenue sans réserve.
+
+### L'estimateur apprend réellement quelque chose
+
+Sur 120 cibles d'épreuve rendues par `vsm.generic` lui-même, distance médiane
+du patch prédit — sans aucune recherche :
+
+| | distance médiane | mieux que le hasard |
+|---|---|---|
+| tirage au hasard | 0,5208 | — |
+| **ridge** | **0,1798** | 91 % du temps |
+| forêt aléatoire | 0,1825 | 97 % |
+| perceptron | 0,1867 | 95 % |
+
+### Mais il ne remplace pas la recherche, et ne l'accélère pas seul
+
+Sur 14 cibles, à 10 axes. La colonne qui compte est la dernière : une médiane
+qui s'améliore alors qu'on ne gagne qu'une fois sur deux n'est pas un gain,
+c'est du bruit — la leçon exacte de l'étape 10.2.
+
+| régime | distance médiane | temps | bat la recherche |
+|---|---|---|---|
+| A — prédiction seule | 0,2223 | **0,0 s** | 7 % |
+| B — recherche 20 it. (référence) | 0,0515 | 31,0 s | — |
+| C — boîte ±0,15, 5 it. | 0,0597 | 8,7 s | 29 % |
+| D — boîte ±0,15, 20 it. | 0,0433 | 30,6 s | 50 % |
+
+La **boîte** est le seul angle que 10.2 ne pouvait pas essayer : elle disposait
+d'un point, qui se dilue dans une population de trente-six ; on tient ici une
+région, ce qui réduit le problème au lieu d'en déplacer le départ. D régresse
+pourtant jusqu'à **5,1×** quand la prédiction est mauvaise : elle enferme alors
+la recherche loin de la solution.
+
+### Le garde-fou marche : la prédiction sait dire si on peut la croire
+
+Sa propre distance à la cible — un rendu, ~12 ms — est corrélée à **−0,66** au
+gain qu'elle apportera. En ne resserrant que sous un seuil de 0,25 :
+
+| régime prudent | distance médiane | contre B | pire régression | temps |
+|---|---|---|---|---|
+| boîte 20 it. si sûr | **0,0406** | **−21 %** | 1,4× | 31,0 s |
+| boîte 5 it. si sûr | 0,0514 | identique | 1,7× | **18,3 s** (1,7× plus vite) |
+
+Deux points de fonctionnement parfaitement utilisables… sur des cibles que la
+machine sait produire.
+
+### Ce qui tue la piste : le fossé de domaine
+
+Sur 9 cibles **réelles** — extraits des stems séparés de House Of God, avec
+leurs artefacts et leurs fuites d'autres instruments :
+
+| régime | distance médiane | contre B | pire |
+|---|---|---|---|
+| A — prédiction seule | 0,2708 | **+37 %** | 5,9× |
+| D — boîte sans garde-fou | 0,2032 | +3 % | 1,3× |
+| **D — prudent** | **0,1974** | **identique à B** | 1,0× |
+
+Le garde-fou refuse de resserrer sur **8 cibles réelles sur 9** : la méthode ne
+nuit pas, elle se ramène simplement à la recherche ordinaire. Et la cause n'est
+pas un défaut de modèle mais une impossibilité de principe : le corpus ne
+contient que des sons que la machine sait produire, alors qu'un stem séparé est
+un son qu'AUCUNE machine ne produit. On demande à l'estimateur d'inverser une
+application en dehors de son image.
+
+### À quelle condition rouvrir le dossier
+
+Il faudrait un corpus qui contienne la **dégradation** et pas seulement le son
+propre : rendre le patch, le mélanger à d'autres stems, faire repasser le tout
+par demucs, et étiqueter le résultat avec le patch d'origine. C'est faisable, et
+c'est cher — une séparation par exemple, contre 25 ms aujourd'hui. Tant que ce
+corpus-là n'existe pas, l'estimateur restera un bon inverseur de ce que le
+moteur produit et un mauvais lecteur de ce qu'un disque contient.
+
+---
+
+## 8. Invariants à vérifier à chaque étape
 
 Ils ont tenu jusqu'ici ; ils doivent continuer.
 
