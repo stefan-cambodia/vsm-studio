@@ -1,4 +1,5 @@
 #include "vsm/interchange/OfflineReconstruction.h"
+#include "vsm/audio/engine/AutomationLane.h"
 #include "vsm/audio/engine/OfflineRenderer.h"
 #include "vsm/audio/engine/ProcessGraph.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
@@ -76,6 +77,48 @@ RenderResult renderBundleToWav(const LoadedBundle& bundle, const std::string& wa
         if (!sampleReport.failures.empty())
             result.warnings.push_back("Piste " + std::to_string(i) + " : " + sampleReport.summary());
     }
+
+    // AUTOMATION. Les courbes du document ciblent des identités SÉMANTIQUES ;
+    // le moteur, lui, parle en ParamId. La résolution se fait ici, une fois,
+    // et jamais en silence : une courbe qui vise un paramètre que la machine
+    // n'a pas est RAPPORTÉE, pas ignorée -- une automation muette qui ne dit
+    // pas pourquoi est exactement le genre de panne que ce projet refuse.
+    std::vector<vsm::audio::engine::AutomationLane> automationLanes;
+    for (size_t i = 0; i < bundle.document.tracks.size() && i < ProcessGraph::kMaxTracks; ++i) {
+        const auto& documentTrack = bundle.document.tracks[i];
+        if (documentTrack.automation.empty()) continue;
+        if (i >= bundle.project.tracks.size()) continue;
+        const std::string& pluginId = bundle.project.tracks[i].instrumentId;
+        if (pluginId.empty()) {
+            result.warnings.push_back("Piste " + std::to_string(i) +
+                                       " : automation sans instrument, ignorée");
+            continue;
+        }
+        const SemanticProfile profile = buildSemanticProfile(pluginId);
+        for (const auto& lane : documentTrack.automation) {
+            const ParameterDescriptor* descriptor = profile.findBySemanticId(lane.parameter);
+            if (descriptor == nullptr) {
+                result.warnings.push_back("Piste " + std::to_string(i) + " : automation « " +
+                                           lane.parameter + " » : la machine n'a pas ce paramètre");
+                continue;
+            }
+            vsm::audio::engine::AutomationLane engineLane;
+            engineLane.targetTrackIndex = i;
+            engineLane.targetParam = descriptor->paramId;
+            for (const auto& point : lane.points) {
+                // Bornée à la plage RÉELLE du paramètre : une valeur hors
+                // bornes serait écrêtée par la machine de toute façon, mais
+                // l'écrêter ici garde l'interpolation dans le vrai espace.
+                const float value = std::clamp(point.value, descriptor->minimum, descriptor->maximum);
+                engineLane.addPoint(static_cast<vsm::midi::Tick>(point.tick), value,
+                                     point.step ? vsm::audio::engine::AutomationCurve::Step
+                                                : vsm::audio::engine::AutomationCurve::Linear);
+            }
+            automationLanes.push_back(std::move(engineLane));
+        }
+    }
+    if (!automationLanes.empty())
+        graph.setAutomationLanes(std::move(automationLanes));
 
     // Durée : jusqu'à la dernière note, plus une queue pour ne pas couper les
     // résonances. Un projet vide produit tout de même un fichier valide (la

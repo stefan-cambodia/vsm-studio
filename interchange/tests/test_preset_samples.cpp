@@ -4,9 +4,11 @@
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include "vsm/interchange/OfflineReconstruction.h"
 #include "vsm/interchange/ProjectBundle.h"
+#include "vsm/interchange/ProjectDocument.h"
 #include "vsm/interchange/SynthPreset.h"
 #include <cmath>
 #include <filesystem>
+#include <fstream>
 #include <string>
 #include <vector>
 
@@ -270,5 +272,122 @@ VSM_TEST(opening_a_bundle_applies_presets_and_samples_like_the_application_does)
         echantillonsCharges += charges.loaded.size();
     }
     VSM_ASSERT_EQ(echantillonsCharges, size_t(1)); // celui du kit, et lui seul
+    fs::remove_all(folder);
+}
+
+
+VSM_TEST(automation_in_a_project_actually_moves_the_parameter) {
+    // La preuve AUDIBLE, pas seulement structurelle : une rampe de coupure
+    // écrite dans project.json doit rendre la fin du son plus brillante que
+    // le début. Sans application de l'automation, un filtre à 250 Hz reste à
+    // 250 Hz et les deux moitiés se ressemblent.
+    const fs::path folder = scratchFolder("automation");
+    fs::create_directories(folder);
+
+    vsm::sequencer::Project project;
+    project.tracks.emplace_back();
+    project.tracks[0].name = "Basse";
+    project.tracks[0].instrumentId = "vsm.tb303";
+    vsm::sequencer::Note note;
+    note.startTick = 0;
+    note.endTick = 4 * 480;      // 2 s à 120 BPM
+    note.number = 33;
+    note.velocity = 100;
+    project.tracks[0].notes.push_back(note);
+    const BundleSaveResult saved = saveProjectBundle(project, folder.string(), {});
+    VSM_ASSERT(saved.success);
+
+    // La rampe est ajoutée EN RELISANT le fichier, comme le ferait la chaîne
+    // d'analyse : c'est le format qui est testé, pas une structure en mémoire.
+    std::string texte, erreur;
+    VSM_ASSERT(readTextFile((folder / "project.json").string(), texte, erreur));
+    ProjectLoadResult charge = parseProjectDocument(texte);
+    VSM_ASSERT(charge.success);
+    ProjectAutomationLane lane;
+    lane.parameter = "filter.1.cutoff";
+    lane.points = {{0, 250.0f, false}, {4 * 480, 5000.0f, false}};
+    charge.document.tracks[0].automation.push_back(lane);
+    VSM_ASSERT(writeTextFile((folder / "project.json").string(),
+                              projectDocumentToJson(charge.document).toString(2), erreur));
+
+    RenderOptions options;
+    options.sampleRate = 48000.0;
+    options.tailSeconds = 0.1;
+    const RenderResult rendu =
+        renderProjectFolderToWav(folder.string(), (folder / "sortie.wav").string(), options);
+    VSM_ASSERT(rendu.success);
+    VSM_ASSERT(rendu.peakLevel > 0.01f);
+
+    // Brillance des deux moitiés, par différences premières sur le WAV rendu.
+    std::string texteWav;
+    std::vector<float> gauche;
+    {
+        // lecture 16 bits du WAV écrit par le rendu
+        std::ifstream fichier((folder / "sortie.wav").string(), std::ios::binary);
+        VSM_ASSERT(fichier.good());
+        std::vector<char> octets((std::istreambuf_iterator<char>(fichier)),
+                                  std::istreambuf_iterator<char>());
+        const size_t entete = 44; // en-tête canonique écrit par WavFileWriter
+        VSM_ASSERT(octets.size() > entete);
+        // float32 stéréo entrelacé (format d'écriture du rendu) : voir
+        // RenderOptions/WavFileWriter. On lit le canal gauche.
+        const float* donnees = reinterpret_cast<const float*>(octets.data() + entete);
+        const size_t nombre = (octets.size() - entete) / sizeof(float);
+        for (size_t i = 0; i + 1 < nombre; i += 2) gauche.push_back(donnees[i]);
+    }
+    VSM_ASSERT(gauche.size() > 48000);
+    // Brillance NORMALISÉE par l'énergie (part d'aigu) : la 303 est à
+    // décroissance, son niveau tombe pendant la note -- une brillance brute
+    // confondrait « plus aigu » et « plus fort », et une première version de
+    // ce test s'y est laissé prendre.
+    auto tilt = [&](size_t debut, size_t fin) {
+        double d2 = 0.0, energie = 0.0;
+        for (size_t i = debut + 1; i < fin && i < gauche.size(); ++i) {
+            const double d = static_cast<double>(gauche[i]) - gauche[i - 1];
+            d2 += d * d;
+            energie += static_cast<double>(gauche[i]) * gauche[i];
+        }
+        return d2 / (energie + 1e-12);
+    };
+    const size_t demi = gauche.size() / 2;
+    const double avant = tilt(0, demi);
+    const double apres = tilt(demi, gauche.size());
+    // La rampe monte de 250 Hz à 5 kHz : la part d'aigu de la seconde moitié
+    // doit être NETTEMENT plus haute. Sans automation appliquée, la coupure
+    // reste au preset et ce rapport vaut ~1.
+    VSM_ASSERT(apres > avant * 2.0);
+
+    fs::remove_all(folder);
+}
+
+VSM_TEST(automation_targeting_a_missing_parameter_is_reported) {
+    const fs::path folder = scratchFolder("automation-inconnue");
+    fs::create_directories(folder);
+    vsm::sequencer::Project project;
+    project.tracks.emplace_back();
+    project.tracks[0].instrumentId = "vsm.tb303";
+    VSM_ASSERT(saveProjectBundle(project, folder.string(), {}).success);
+
+    std::string texte, erreur;
+    VSM_ASSERT(readTextFile((folder / "project.json").string(), texte, erreur));
+    ProjectLoadResult charge = parseProjectDocument(texte);
+    VSM_ASSERT(charge.success);
+    ProjectAutomationLane lane;
+    lane.parameter = "fm.operator.3.ratio"; // la TB-303 n'a pas d'opérateur FM
+    lane.points = {{0, 1.0f, false}};
+    charge.document.tracks[0].automation.push_back(lane);
+    VSM_ASSERT(writeTextFile((folder / "project.json").string(),
+                              projectDocumentToJson(charge.document).toString(2), erreur));
+
+    RenderOptions options;
+    options.sampleRate = 48000.0;
+    const RenderResult rendu =
+        renderProjectFolderToWav(folder.string(), (folder / "sortie.wav").string(), options);
+    VSM_ASSERT(rendu.success);
+    bool signale = false;
+    for (const auto& avertissement : rendu.warnings)
+        if (avertissement.find("fm.operator.3.ratio") != std::string::npos) signale = true;
+    VSM_ASSERT(signale); // rapportée, jamais ignorée en silence
+
     fs::remove_all(folder);
 }

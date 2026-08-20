@@ -271,3 +271,40 @@ VSM_TEST(effects_are_described_semantically_on_a_track) {
     VSM_ASSERT_EQ(loaded.document.tracks[0].effects[0].type, std::string("reverb"));
     VSM_ASSERT_NEAR(loaded.document.tracks[0].effects[0].parameters.at("effect.reverb.mix"), 0.35f, 1e-6);
 }
+
+
+VSM_TEST(automation_round_trips_and_stays_optional) {
+    // L'automation est un champ FACULTATIF : un document sans elle doit
+    // produire exactement le JSON d'avant (aucune clé nouvelle), et un projet
+    // ancien doit se charger sans rien remarquer. Avec elle, ticks, valeurs
+    // en unités réelles et paliers doivent survivre à l'aller-retour.
+    ProjectDocument document = documentFromProject(buildProject());
+    const std::string sans = projectDocumentToJson(document).toString();
+    VSM_ASSERT(sans.find("automation") == std::string::npos);
+    VSM_ASSERT(parseProjectDocument(sans).success);
+
+    ProjectAutomationLane lane;
+    lane.parameter = "filter.1.cutoff";
+    lane.points = {{0, 220.0f, false}, {960, 4800.0f, false}, {1920, 350.0f, true}};
+    document.tracks[0].automation.push_back(lane);
+
+    const ProjectLoadResult loaded =
+        parseProjectDocument(projectDocumentToJson(document).toString());
+    VSM_ASSERT(loaded.success);
+    const auto& copie = loaded.document.tracks[0].automation;
+    VSM_ASSERT_EQ(copie.size(), size_t(1));
+    VSM_ASSERT_EQ(copie[0].parameter, std::string("filter.1.cutoff"));
+    VSM_ASSERT_EQ(copie[0].points.size(), size_t(3));
+    VSM_ASSERT_EQ(copie[0].points[1].tick, int64_t(960));
+    VSM_ASSERT_NEAR(copie[0].points[1].value, 4800.0f, 1e-3);
+    VSM_ASSERT(!copie[0].points[1].step);
+    VSM_ASSERT(copie[0].points[2].step);
+
+    // Une courbe sans cible ou sans point ne commande rien : filtrée à la
+    // lecture, pas traînée jusqu'au rendu.
+    document.tracks[0].automation.push_back(ProjectAutomationLane{});
+    const ProjectLoadResult filtre =
+        parseProjectDocument(projectDocumentToJson(document).toString());
+    VSM_ASSERT(filtre.success);
+    VSM_ASSERT_EQ(filtre.document.tracks[0].automation.size(), size_t(1));
+}

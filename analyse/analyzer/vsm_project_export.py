@@ -30,7 +30,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import mido
 
@@ -80,6 +80,12 @@ class ExportTrack:
     samples: Dict[int, str] = field(default_factory=dict)
     distance: Optional[float] = None
     machine_display_name: str = ""
+    # Courbes d'automation : « identité sémantique -> [(seconde, valeur)] »,
+    # valeurs en UNITÉS RÉELLES (Hz, secondes). C'est par là que l'analyse
+    # écrit « la coupure suit cette trajectoire » -- un patch figé ne dit
+    # qu'une moyenne, et le caractère d'un morceau vit souvent dans le
+    # mouvement. Converties en ticks à l'écriture, comme les notes.
+    automation: Dict[str, List[Tuple[float, float]]] = field(default_factory=dict)
 
 
 def _preset_document(track: ExportTrack, name: str) -> dict:
@@ -233,6 +239,20 @@ def write_project_bundle(
             }
         else:
             unassigned.append(track.name)
+
+        if track.automation and track.machine:
+            ticks_par_seconde = TICKS_PER_QUARTER_NOTE * tempo / 60.0
+            entry["automation"] = [
+                {
+                    "parameter": semantic_id,
+                    "points": [
+                        {"tick": int(round(seconde * ticks_par_seconde)), "value": float(valeur)}
+                        for seconde, valeur in points
+                    ],
+                }
+                for semantic_id, points in sorted(track.automation.items())
+                if points
+            ]
 
         document_tracks.append(entry)
 

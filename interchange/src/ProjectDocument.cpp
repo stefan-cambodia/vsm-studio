@@ -274,6 +274,27 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         }
         entry.set("effects", std::move(effects));
 
+        // L'automation n'est écrite QUE si elle existe : un projet sans
+        // automation garde exactement le fichier qu'il a toujours eu.
+        if (!track.automation.empty()) {
+            JsonValue lanes = JsonValue::makeArray();
+            for (const auto& lane : track.automation) {
+                JsonValue entree = JsonValue::makeObject();
+                entree.set("parameter", JsonValue::makeString(lane.parameter));
+                JsonValue points = JsonValue::makeArray();
+                for (const auto& point : lane.points) {
+                    JsonValue p = JsonValue::makeObject();
+                    p.set("tick", JsonValue::makeFloat(static_cast<double>(point.tick)));
+                    p.set("value", JsonValue::makeFloat(point.value));
+                    if (point.step) p.set("step", JsonValue::makeBoolean(true));
+                    points.append(std::move(p));
+                }
+                entree.set("points", std::move(points));
+                lanes.append(std::move(entree));
+            }
+            entry.set("automation", std::move(lanes));
+        }
+
         tracks.append(std::move(entry));
     }
     root.set("tracks", std::move(tracks));
@@ -355,6 +376,22 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
             for (const auto& [semanticId, value] : fx["parameters"].members())
                 if (value.isNumber()) effect.parameters[semanticId] = static_cast<float>(value.asNumber());
             if (!effect.type.empty()) track.effects.push_back(std::move(effect));
+        }
+
+        for (const auto& laneJson : entry["automation"].elements()) {
+            ProjectAutomationLane lane;
+            lane.parameter = laneJson["parameter"].asString();
+            for (const auto& pointJson : laneJson["points"].elements()) {
+                ProjectAutomationPoint point;
+                point.tick = static_cast<int64_t>(pointJson["tick"].asNumber(0.0));
+                point.value = static_cast<float>(pointJson["value"].asNumber(0.0));
+                point.step = pointJson["step"].asBoolean(false);
+                lane.points.push_back(point);
+            }
+            // Une courbe sans cible ou sans point ne commande rien : refusée
+            // à la lecture plutôt que traînée jusqu'au rendu.
+            if (!lane.parameter.empty() && !lane.points.empty())
+                track.automation.push_back(std::move(lane));
         }
         document.tracks.push_back(std::move(track));
     }

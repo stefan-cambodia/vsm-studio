@@ -36,6 +36,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from analyzer.vsm_automation import try_cutoff_automation
 from analyzer.vsm_engine import VsmEngine, VsmEngineError, find_vsm_render
 from analyzer.vsm_drumkit import build_drum_kit, drum_kit_track
 from analyzer.vsm_project_export import ExportNote, ExportTrack, write_project_bundle
@@ -195,6 +196,7 @@ def main() -> int:
             print(f"[3/5] {len(candidates)} machine(s) candidate(s)")
 
             reconstruits = []
+            audio_par_stem: Dict[str, np.ndarray] = {}
             pistes_batterie: List[ExportTrack] = []
             for nom, chemin in sorted(pistes.items()):
                 # La batterie n'est pas cherchée par optimisation : son timbre
@@ -245,6 +247,7 @@ def main() -> int:
                 print(f"      {nom:8s} : {resultat.machine:14s} d={resultat.distance:.3f} "
                       f"({len(notes)} notes, {time.perf_counter()-debut:.0f} s) — {podium}")
                 reconstruits.append(resultat)
+                audio_par_stem[resultat.name] = audio
 
         if not reconstruits and not pistes_batterie:
             print("[ERREUR] aucune piste reconstruite")
@@ -252,15 +255,30 @@ def main() -> int:
 
         # --- export ----------------------------------------------------------
         print(f"[4/5] Écriture du projet dans {sortie}")
-        pistes_export = [
-            ExportTrack(
+        pistes_export = []
+        for stem in reconstruits:
+            piste = ExportTrack(
                 name=stem.name,
                 machine=stem.machine,
                 parameters=stem.parameters,
                 notes=[ExportNote(n.note, n.velocity, n.start, n.duration) for n in stem.notes],
             )
-            for stem in reconstruits
-        ] + pistes_batterie
+            # AUTOMATION DE COUPURE : la trajectoire de brillance du stem,
+            # gardée seulement si elle RAPPROCHE le rendu complet du stem --
+            # mesuré par la même distance que tout le reste, jamais supposé.
+            audio_stem = audio_par_stem.get(stem.name)
+            if audio_stem is not None:
+                courbe, d_sans, d_avec = try_cutoff_automation(
+                    audio_stem, SAMPLE_RATE, piste, moteur)
+                if courbe is not None:
+                    piste.automation["filter.1.cutoff"] = courbe
+                    print(f"      {stem.name:8s} : automation de coupure GARDÉE "
+                          f"({len(courbe)} points, distance {d_sans:.3f} -> {d_avec:.3f})")
+                elif d_sans is not None:
+                    print(f"      {stem.name:8s} : automation de coupure rejetée "
+                          f"({d_sans:.3f} -> {d_avec:.3f}, elle n'aide pas)")
+            pistes_export.append(piste)
+        pistes_export += pistes_batterie
         rapport = write_project_bundle(pistes_export, sortie, title=entree.stem, tempo=args.tempo)
         write_reconstruction_report(reconstruits, sortie / "rapport.json", metric=args.metrique)
         print(f"      {rapport['tracks']} piste(s), {rapport['notes']} note(s)")

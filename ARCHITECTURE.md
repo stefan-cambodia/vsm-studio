@@ -822,6 +822,34 @@ Le fichier parle en **BPM** (lisible) là où le moteur travaille en
 microsecondes par noire ; un test vérifie que l'aller-retour ne décale pas le
 tempo, sur sept tempos usuels.
 
+### L'automation voyage dans le projet (suite de P4)
+
+Le format `project.json` transporte désormais des COURBES D'AUTOMATION par
+piste : un paramètre visé par son identité sémantique, des points
+`(tick, valeur)` en unités réelles, des segments linéaires ou en palier. Champ
+facultatif — un projet sans automation garde exactement le fichier qu'il a
+toujours eu. Le rendu hors ligne résout l'identité vers le paramètre de la
+machine et pousse les courbes dans le `ProcessGraph`, qui les applique en
+sous-blocs de 64 échantillons ; une courbe visant un paramètre que la machine
+n'a pas est rapportée, jamais ignorée. Un test rend une rampe de coupure
+écrite dans le JSON et vérifie que la seconde moitié du son est réellement
+plus brillante — la preuve audible, pas seulement structurelle.
+
+**Ce que la chaîne d'analyse en fait.** Un patch figé ne dit qu'une moyenne,
+et le caractère d'un morceau vit souvent dans le mouvement — la coupure qui
+balaye est l'âme d'une ligne acide. `analyse/analyzer/vsm_automation.py`
+extrait la TENDANCE du centroïde spectral du stem (lissage médian d'une
+seconde : le mouvement interne des notes appartient aux enveloppes de la
+machine, l'écrire en automation l'appliquerait deux fois — mesuré : la courbe
+par trame AGGRAVAIT la distance), la traduit en coupure par une relation
+APPRISE SUR LA MACHINE ELLE-MÊME (deux rendus aux bornes, interpolation
+log-log — l'hypothèse « centroïde = coupure » était trois fois trop plate),
+puis la met à l'épreuve : deux mini-projets rendus par `vsm-render`, avec et
+sans la courbe, et la courbe n'est GARDÉE que si la distance mesurée baisse.
+Contrôles : sur une cible balayée connue, la courbe est gardée (5,25 → 3,24) ;
+sur une cible statique, elle est rejetée par la mesure (elle aurait coûté
+4,49). L'heuristique propose, le chiffre dispose.
+
 ### Dossier de projet et reconstruction hors ligne (P7-P8)
 
 Le « Mode A » de la roadmap, et le premier bout de chaîne complet entre le

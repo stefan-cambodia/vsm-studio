@@ -49,6 +49,29 @@ struct ProjectEffect {
     std::map<std::string, float> parameters; ///< semanticId -> valeur
 };
 
+/// Un point d'automation. `tick` est dans la résolution du transport (la même
+/// que le MIDI et la boucle) ; `value` est en UNITÉS RÉELLES (Hz, secondes),
+/// jamais en normalisé -- la règle de tout le format. `step` dit que le
+/// segment PARTANT de ce point est un palier, pas une rampe.
+struct ProjectAutomationPoint {
+    int64_t tick = 0;
+    float value = 0.0f;
+    bool step = false;
+};
+
+/// Une courbe d'automation d'une piste, ciblant un paramètre par son identité
+/// SÉMANTIQUE (« filter.1.cutoff ») : c'est ce qui permet à la chaîne
+/// d'analyse d'écrire « la coupure suit cette trajectoire » sans connaître la
+/// machine, et au projet de survivre à un changement de machine.
+///
+/// Champ FACULTATIF du format (comme `samples` dans les presets) : un projet
+/// sans automation reste identique octet pour octet, et un projet ancien se
+/// charge sans rien remarquer.
+struct ProjectAutomationLane {
+    std::string parameter;
+    std::vector<ProjectAutomationPoint> points;
+};
+
 struct ProjectTrack {
     std::string name;
     int channel = 0;
@@ -66,6 +89,7 @@ struct ProjectTrack {
     bool solo = false;
     std::array<float, 2> sendLevels{{0.0f, 0.0f}};
     std::vector<ProjectEffect> effects;
+    std::vector<ProjectAutomationLane> automation;
 };
 
 struct ProjectDocument {
