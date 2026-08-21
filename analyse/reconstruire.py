@@ -39,7 +39,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from analyzer.vsm_automation import try_cutoff_automation
 from analyzer.vsm_levels import match_track_levels
 from analyzer.vsm_engine import VsmEngine, VsmEngineError, find_vsm_render
-from analyzer.vsm_drumkit import build_drum_kit, drum_kit_track
+from analyzer.vsm_drumkit import (build_drum_kit, drum_kit_track,
+                                  modelled_drum_track, vocal_sampler_track)
 from analyzer.vsm_project_export import ExportNote, ExportTrack, write_project_bundle
 from analyzer.vsm_reconstruct import (
     StemNote,
@@ -137,7 +138,12 @@ def main() -> int:
     parseur.add_argument("--sortie", default="reconstruction", help="dossier de sortie")
     parseur.add_argument("--batterie", action="store_true",
                          help="traiter l'entrée comme un stem de batterie : découpe en coups "
-                              "et rejeu par le sampler, sans recherche de patch")
+                              "et rejeu par la batterie modélisée, sans recherche de patch")
+    parseur.add_argument("--batterie-echantillonnee", action="store_true",
+                         help="rejouer la batterie par le SAMPLER, avec les coups découpés "
+                              "dans l'enregistrement, au lieu de la batterie modélisée. "
+                              "C'est l'ancien comportement ; il reste accessible parce qu'il "
+                              "est plus fidèle au coup enregistré, et moins réglable.")
     parseur.add_argument("--sans-separation", action="store_true",
                          help="ne pas séparer en stems : traiter le fichier comme une seule piste")
     parseur.add_argument("--modele", default="htdemucs", help="modèle de séparation")
@@ -151,6 +157,16 @@ def main() -> int:
     parseur.add_argument("--metrique", default="v2", choices=("v1", "v2"),
                          help="métrique de comparaison (défaut v2 ; v1 pour rejouer "
                               "d'anciennes mesures — les deux ne se comparent pas)")
+    parseur.add_argument("--finalistes", type=int, default=None,
+                         help="nombre de machines retenues après le dégrossissage "
+                              "(défaut : la moitié). 0 DÉSACTIVE la présélection : "
+                              "chaque candidate reçoit le budget complet. Plus lent, "
+                              "mais c'est le seul réglage sous lequel les distances de "
+                              "toutes les machines se comparent -- une candidate écartée "
+                              "au dégrossissage n'a pas de score comparable aux autres.")
+    parseur.add_argument("--garder-stems", default=None,
+                         help="dossier où conserver les stems séparés, pour rejouer une "
+                              "mesure sans repayer la séparation")
     parseur.add_argument("--moteur", default=None, help="chemin de vsm-render")
     args = parseur.parse_args()
 
@@ -169,6 +185,11 @@ def main() -> int:
     print(f"      {duree:.1f} s, {melange.size} échantillons")
 
     with tempfile.TemporaryDirectory() as temporaire:
+        if args.garder_stems:
+            # Conserver les stems permet de rejouer une mesure sans repayer la
+            # séparation, qui coûte quatre minutes sur un morceau de quatre.
+            temporaire = str(Path(args.garder_stems).expanduser())
+            Path(temporaire).mkdir(parents=True, exist_ok=True)
         # --- séparation -------------------------------------------------------
         if args.sans_separation:
             print("[2/5] Séparation désactivée : une seule piste")
@@ -200,15 +221,35 @@ def main() -> int:
             audio_par_stem: Dict[str, np.ndarray] = {}
             pistes_batterie: List[ExportTrack] = []
             for nom, chemin in sorted(pistes.items()):
-                # La batterie n'est pas cherchée par optimisation : son timbre
-                # ne s'approche pas avec un synthé. Elle attend le sampler
-                # (étape 8.4), et on le dit plutôt que de produire une piste
-                # fausse.
+                # RÉPARTITION DE LA VERSION FINALE : le sampler n'est QUE pour
+                # la voix. La batterie, elle, a désormais sa propre machine.
+                #
+                # La voix ne se synthétise pas — le § 6 de la feuille de route
+                # le dit depuis le début, et chercher un patch dessus produisait
+                # un chiffre (obx, d=0,196 sur Children) qui ne voulait rien
+                # dire : ce n'est pas parce qu'un OB-X approche le spectre d'une
+                # voix qu'il chante. Le stem vocal est donc REPORTÉ tel quel
+                # dans le sampler, et c'est dit pour ce que c'est.
+                if nom == "vocals":
+                    audio_voix = charger_audio(chemin)
+                    piste_voix = vocal_sampler_track(
+                        audio_voix, SAMPLE_RATE, sortie / "samples", name="Voix")
+                    if piste_voix is None:
+                        print(f"      {nom:8s} : stem vocal vide, piste ignorée")
+                        continue
+                    duree = piste_voix.notes[0].duration
+                    print(f"      {nom:8s} : sampler, report intégral ({duree:.0f} s) "
+                          f"— la voix n'est pas reconstruite, elle est reportée")
+                    pistes_batterie.append(piste_voix)
+                    audio_par_stem["Voix"] = audio_voix
+                    continue
+
+                # La batterie : les frappes sont détectées et classées comme
+                # avant, mais elles pilotent `vsm.drums`, qui MODÉLISE peaux et
+                # métal, au lieu de charger des coups découpés. On y gagne un
+                # kit réglable, on y perd la fidélité littérale au coup
+                # enregistré ; le compromis est mesuré, pas supposé.
                 if nom == "drums" or args.batterie:
-                    # Le stem de batterie ne passe PAS par la recherche de
-                    # patch : aucune machine du parc ne reproduit une batterie
-                    # enregistrée par synthèse. Il passe par le sampler, qui
-                    # rejoue les coups découpés dans l'enregistrement lui-même.
                     audio_batterie = charger_audio(chemin)
                     kit = build_drum_kit(audio_batterie, SAMPLE_RATE, sortie / "samples")
                     if kit is None:
@@ -217,11 +258,17 @@ def main() -> int:
                     detail = " ".join(
                         f"{s.family}={s.hit_count}" for s in kit.slots
                     )
-                    print(f"      {nom:8s} : sampler, {len(kit.slots)} pièce(s), "
+                    if args.batterie_echantillonnee:
+                        piste = drum_kit_track(kit, name="Batterie")
+                        moyen = "sampler"
+                    else:
+                        piste = modelled_drum_track(kit, name="Batterie")
+                        moyen = "vsm.drums"
+                    print(f"      {nom:8s} : {moyen}, {len(kit.slots)} pièce(s), "
                           f"{kit.total_hits} frappe(s) — {detail}")
                     for avertissement in kit.warnings:
                         print(f"                 ! {avertissement}")
-                    pistes_batterie.append(drum_kit_track(kit, name="Batterie"))
+                    pistes_batterie.append(piste)
                     audio_par_stem["Batterie"] = audio_batterie
                     continue
 
@@ -238,6 +285,7 @@ def main() -> int:
                     machines=candidates,
                     max_iterations=args.iterations,
                     metric=args.metrique,
+                    shortlist=args.finalistes,
                 )
                 if resultat is None:
                     print(f"      {nom:8s} : aucune note exploitable")
@@ -314,8 +362,10 @@ def main() -> int:
             return 4
 
         reconstruit = lire_wav(rendu)
-        distance = reconstruction_distance(melange, reconstruit, SAMPLE_RATE)
-        silence = reconstruction_distance(melange, np.zeros_like(melange), SAMPLE_RATE)
+        distance = reconstruction_distance(melange, reconstruit, SAMPLE_RATE,
+                                           metric=args.metrique)
+        silence = reconstruction_distance(melange, np.zeros_like(melange), SAMPLE_RATE,
+                                          metric=args.metrique)
         write_reconstruction_report(reconstruits, sortie / "rapport.json",
                                     global_distance=distance, metric=args.metrique,
                                     iterations=args.iterations)

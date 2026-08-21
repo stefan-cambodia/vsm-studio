@@ -1772,11 +1772,273 @@ MachinePanel makeString() {
     return panel;
 }
 
+// ---------------------------------------------------------------------------
+// Piano acoustique
+//
+// Pas de façade d'origine à copier : un piano n'a pas de panneau, il a un
+// couvercle. La disposition suit donc, comme pour la corde, le trajet
+// PHYSIQUE — le marteau, les cordes, la table, la salle — qui est aussi
+// l'ordre dans lequel un technicien intervient. Bois sombre, laiton : la
+// matière dit l'instrument sans emprunter de marque.
+// ---------------------------------------------------------------------------
+MachinePanel makePiano() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.piano";
+    panel.displayName = "Piano (cordes frappées)";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#1A1512";
+    panel.sectionColour = "#120E0C";
+    panel.textColour = "#F0E7D8";
+    panel.knobColour = "#C7A05A";
+    panel.gridColumns = 18;
+    panel.gridRows = 4;
+
+    PanelSection hammer;
+    hammer.title = "HAMMER";
+    hammer.accentColour = "#C7A05A";
+    hammer.column = 0; hammer.row = 0; hammer.columnSpan = 4; hammer.rowSpan = 4;
+    hammer.controls = {
+        control("Hammer Hardness", "FELT", S::LargeKnob, 0, 0),
+        control("Hammer Position", "STRIKE", S::Knob, 1, 0),
+        control("Velocity Sensitivity", "TOUCH", S::Knob, 0, 1),
+    };
+
+    PanelSection strings;
+    strings.title = "STRINGS";
+    strings.accentColour = "#C7A05A";
+    strings.column = 4; strings.row = 0; strings.columnSpan = 5; strings.rowSpan = 4;
+    strings.controls = {
+        control("String Decay", "DECAY", S::VerticalSlider, 0, 0, 1, 2),
+        control("String Damping", "DAMPING", S::VerticalSlider, 1, 0, 1, 2),
+        control("Inharmonicity", "STIFFNESS", S::VerticalSlider, 2, 0, 1, 2),
+        control("Unison Detune", "UNISON", S::VerticalSlider, 3, 0, 1, 2),
+    };
+
+    // L'étouffoir et la pédale vont ensemble : ce sont les deux faces du même
+    // mécanisme, et les séparer rendrait la pédale incompréhensible.
+    PanelSection damper;
+    damper.title = "DAMPER";
+    damper.accentColour = "#8E6B3A";
+    damper.column = 9; damper.row = 0; damper.columnSpan = 3; damper.rowSpan = 4;
+    damper.controls = {
+        control("Release", "DAMPER", S::Knob, 0, 0),
+        control("Sustain Pedal", "PEDAL", S::Toggle, 0, 1),
+    };
+
+    PanelSection board;
+    board.title = "SOUNDBOARD";
+    board.accentColour = "#8E6B3A";
+    board.column = 12; board.row = 0; board.columnSpan = 3; board.rowSpan = 4;
+    board.controls = {
+        control("Soundboard Level", "LEVEL", S::Knob, 0, 0),
+        control("Soundboard Size", "SIZE", S::Knob, 0, 1),
+    };
+
+    PanelSection output;
+    output.title = "OUTPUT";
+    output.accentColour = "#C7A05A";
+    output.column = 15; output.row = 0; output.columnSpan = 3; output.rowSpan = 4;
+    output.controls = {
+        control("Tone Bass", "BASS", S::Knob, 0, 0),
+        control("Tone Treble", "TREBLE", S::Knob, 1, 0),
+        control("Stereo Spread", "SPREAD", S::Knob, 0, 1),
+        control("Output Level", "VOLUME", S::Knob, 1, 1),
+    };
+    panel.omittedParameters = {
+        {"Analog Character", "dérive d'accord très lente, commune à tout le parc : "
+                             "elle se règle une fois et ne se joue pas"},
+    };
+
+    panel.sections = {hammer, strings, damper, board, output};
+    return panel;
+}
+
+// ---------------------------------------------------------------------------
+// Batterie acoustique
+//
+// Ici il y a bien une disposition d'origine à suivre, et c'est celle des
+// boîtes à rythmes du parc : UNE COLONNE PAR PIÈCE, code couleur par famille.
+// Regrouper « tous les niveaux » puis « tous les decays » serait plus compact
+// et rendrait l'instrument inutilisable -- on règle une caisse claire, pas une
+// rangée de potentiomètres.
+// ---------------------------------------------------------------------------
+MachinePanel makeDrums() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.drums";
+    panel.displayName = "Drums (batterie acoustique)";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#232021";
+    panel.sectionColour = "#1A1718";
+    panel.textColour = "#EDE6DC";
+    panel.knobColour = "#B9B2A6";
+    panel.gridColumns = 20;
+    panel.gridRows = 4;
+
+    PanelSection kick;
+    kick.title = "KICK";
+    kick.accentColour = "#C4562B";
+    kick.column = 0; kick.row = 0; kick.columnSpan = 4; kick.rowSpan = 4;
+    kick.controls = {
+        control("Kick Level", "LEVEL", S::Knob, 0, 0),
+        control("Kick Tune", "TUNE", S::Knob, 1, 0),
+        control("Kick Decay", "DECAY", S::Knob, 0, 1),
+        control("Kick Beater", "BEATER", S::Knob, 1, 1),
+    };
+
+    PanelSection snare;
+    snare.title = "SNARE";
+    snare.accentColour = "#D8A13F";
+    snare.column = 4; snare.row = 0; snare.columnSpan = 4; snare.rowSpan = 4;
+    snare.controls = {
+        control("Snare Level", "LEVEL", S::Knob, 0, 0),
+        control("Snare Tune", "TUNE", S::Knob, 1, 0),
+        control("Snare Decay", "DECAY", S::Knob, 0, 1),
+        control("Snare Wires", "SNARES", S::Knob, 1, 1),
+    };
+
+    PanelSection toms;
+    toms.title = "TOMS";
+    toms.accentColour = "#C4562B";
+    toms.column = 8; toms.row = 0; toms.columnSpan = 3; toms.rowSpan = 4;
+    toms.controls = {
+        control("Tom Level", "LEVEL", S::Knob, 0, 0),
+        control("Tom Tune", "TUNE", S::Knob, 1, 0),
+        control("Tom Decay", "DECAY", S::Knob, 0, 1),
+    };
+
+    PanelSection hats;
+    hats.title = "HI-HAT";
+    hats.accentColour = "#7FA8C4";
+    hats.column = 11; hats.row = 0; hats.columnSpan = 3; hats.rowSpan = 4;
+    hats.controls = {
+        control("Closed Hat Level", "CL LVL", S::Knob, 0, 0),
+        control("Closed Hat Decay", "CL DEC", S::Knob, 1, 0),
+        control("Open Hat Level", "OP LVL", S::Knob, 0, 1),
+        control("Open Hat Decay", "OP DEC", S::Knob, 1, 1),
+    };
+
+    PanelSection cymbals;
+    cymbals.title = "CYMBALS";
+    cymbals.accentColour = "#7FA8C4";
+    cymbals.column = 14; cymbals.row = 0; cymbals.columnSpan = 3; cymbals.rowSpan = 4;
+    cymbals.controls = {
+        control("Ride Level", "RIDE", S::Knob, 0, 0),
+        control("Ride Decay", "RD DEC", S::Knob, 1, 0),
+        control("Crash Level", "CRASH", S::Knob, 0, 1),
+        control("Crash Decay", "CR DEC", S::Knob, 1, 1),
+    };
+
+    // La pièce n'est pas un effet ajouté : sans elle un kit modélisé sonne
+    // électronique. Elle a donc sa place sur la façade, pas dans un rack.
+    PanelSection room;
+    room.title = "ROOM";
+    room.accentColour = "#8E9B7A";
+    room.column = 17; room.row = 0; room.columnSpan = 3; room.rowSpan = 4;
+    room.controls = {
+        control("Room Level", "LEVEL", S::Knob, 0, 0),
+        control("Room Size", "SIZE", S::Knob, 1, 0),
+        control("Output Level", "VOLUME", S::Knob, 0, 1),
+    };
+
+    panel.sequencer.kind = SequencerKind::DrumGrid;
+    panel.sequencer.title = "PATTERN";
+    panel.sequencer.stepCount = 16;
+    panel.sequencer.rowSpan = 4;
+    panel.sequencer.lanes = {
+        {"KICK", 36}, {"SNARE", 38}, {"HH CL", 42}, {"HH OP", 46},
+        {"TOM L", 41}, {"TOM M", 45}, {"TOM H", 48}, {"RIDE", 51},
+    };
+    // La grille s'AJOUTE sous les commandes, elle ne se glisse pas dedans :
+    // sans cette ligne, elle se dessinait par-dessus la seconde rangée de
+    // potentiomètres. Le rendu l'a montré, aucun test ne pouvait le voir.
+    panel.gridRows += panel.sequencer.rowSpan;
+
+    panel.sections = {kick, snare, toms, hats, cymbals, room};
+    return panel;
+}
+
+// ---------------------------------------------------------------------------
+// Vents
+//
+// Là encore, aucune façade d'origine : une clarinette n'a pas de boutons. La
+// lecture suit le souffle -- l'embouchure, le tuyau, le pavillon, puis ce que
+// le musicien ajoute par-dessus (le vibrato). Laiton sur noir.
+// ---------------------------------------------------------------------------
+MachinePanel makeWind() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.wind";
+    panel.displayName = "Wind (anche et lèvres)";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#1C1B19";
+    panel.sectionColour = "#141311";
+    panel.textColour = "#F2E9D6";
+    panel.knobColour = "#D0AC63";
+    panel.gridColumns = 16;
+    panel.gridRows = 4;
+
+    PanelSection mouth;
+    mouth.title = "MOUTHPIECE";
+    mouth.accentColour = "#D0AC63";
+    mouth.column = 0; mouth.row = 0; mouth.columnSpan = 5; mouth.rowSpan = 4;
+    mouth.controls = {
+        control("Breath Pressure", "BREATH", S::LargeKnob, 0, 0),
+        control("Reed Stiffness", "REED", S::Knob, 1, 0),
+        control("Breath Noise", "AIR", S::Knob, 2, 0),
+        control("Velocity Sensitivity", "TOUCH", S::Knob, 1, 1),
+    };
+
+    PanelSection bore;
+    bore.title = "BORE";
+    bore.accentColour = "#B08A4E";
+    bore.column = 5; bore.row = 0; bore.columnSpan = 3; bore.rowSpan = 4;
+    bore.controls = {
+        control("Bell Damping", "BELL", S::Knob, 0, 0),
+        control("Brassiness", "BRASS", S::Knob, 0, 1),
+    };
+
+    PanelSection envelope;
+    envelope.title = "ARTICULATION";
+    envelope.accentColour = "#8FA9C9";
+    envelope.column = 8; envelope.row = 0; envelope.columnSpan = 3; envelope.rowSpan = 4;
+    envelope.controls = {
+        control("Attack", "TONGUE", S::VerticalSlider, 0, 0, 1, 2),
+        control("Release", "RELEASE", S::VerticalSlider, 1, 0, 1, 2),
+    };
+
+    PanelSection vibrato;
+    vibrato.title = "VIBRATO";
+    vibrato.accentColour = "#8FA9C9";
+    vibrato.column = 11; vibrato.row = 0; vibrato.columnSpan = 3; vibrato.rowSpan = 4;
+    vibrato.controls = {
+        control("Vibrato Depth", "DEPTH", S::Knob, 0, 0),
+        control("Vibrato Rate", "RATE", S::Knob, 1, 0),
+        control("Vibrato Delay", "DELAY", S::Knob, 0, 1),
+    };
+
+    PanelSection output;
+    output.title = "OUTPUT";
+    output.accentColour = "#D0AC63";
+    output.column = 14; output.row = 0; output.columnSpan = 2; output.rowSpan = 4;
+    output.controls = {
+        control("Tone Bass", "BASS", S::Knob, 0, 0),
+        control("Tone Treble", "TREBLE", S::Knob, 0, 1),
+        control("Output Level", "VOLUME", S::Knob, 1, 0),
+    };
+    panel.omittedParameters = {
+        {"Analog Character", "instabilité d'intonation très lente, commune au parc : "
+                             "elle se règle une fois et ne se joue pas"},
+    };
+
+    panel.sections = {mouth, bore, envelope, vibrato, output};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
         makeJuno106(), makeJupiter8(), makeProphet(), makeMs20(), makeArpOdyssey(), makeDx7(), makeSampler(),
-        makeEPiano(), makeObx(), makeSupersaw(), makeWavetable(), makePcmHybrid(), makeTonewheel(), makeGeneric(), makeString()
+        makeEPiano(), makeObx(), makeSupersaw(), makeWavetable(), makePcmHybrid(), makeTonewheel(), makeGeneric(), makeString(),
+        makePiano(), makeDrums(), makeWind()
     };
     return all;
 }

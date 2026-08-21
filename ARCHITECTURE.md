@@ -19,7 +19,7 @@ les 2 VCO suivent les touches grave/aiguë, ring mod, sample & hold),
 système d'algorithmes, feedback, enveloppes par opérateur, sensibilité
 vélocité) sont tous faits. La **Phase 6 est ENTAMÉE** : les **tests de
 non-régression audio par machine** sont en place (section 9 bis) -- chacune des
-20 machines a désormais une empreinte de rendu figée, qui détecte toute dérive
+23 machines a désormais une empreinte de rendu figée, qui détecte toute dérive
 du son y compris causée par une brique DSP partagée modifiée pour une AUTRE
 machine. La **Phase 6 est CLOSE** : banc de mesure CPU (§ 9 ter), profiling
 intra-DSP (§ 9 quater), **SIMD entre voix** sur les trois machines
@@ -30,7 +30,7 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **676 tests moteur** (81 core + 478 audio
+écoute au clic, et toute la logique testée hors JUCE. Total : **725 tests moteur** (81 core + 527 audio
 + 95 interchange + 11 CLAP + 11 façades,
 tous verts, zéro warning, y compris sous les flags stricts type-JUCE
 `-Wfloat-equal -Wsign-conversion -Wshadow`) + application complète compilée et
@@ -322,11 +322,11 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 676 tests moteur, tous verts
+### Bilan actuel : 725 tests moteur, tous verts
 
 - **81 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir),
-  **478 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
+  **527 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
   scalaire, indépendance des lignes, bornes de l'approximation de tanh ; et la
   boucle : rebouclage échantillon-exact, notes relâchées au saut) : chorus BBD, Juno-106,
   bus master (biquad/compresseur/limiteur à plafond garanti/LUFS), oversampler,
@@ -736,7 +736,7 @@ un couplage par le NOM du paramètre -- précisément ce que le projet garde
 stable, déjà verrouillé par les tests `..._parameter_list_size` de chaque
 machine.
 
-**510 paramètres** (20 machines + 9 effets, 308 à l'époque des 12 machines)
+**563 paramètres** (23 machines + 9 effets, 308 à l'époque des 12 machines)
 ont reçu une identité, dont
 `accent.amount` pour le TB-303 ou `fm.operator.3.ratio` pour le DX7 : le
 vocabulaire commun couvre ce qui est commun, et le reste est déclaré tel quel
@@ -948,7 +948,7 @@ utilisateur se mettrait à automatiser la résonance à la place de la coupure,
 sans erreur ni avertissement, des mois plus tard. Le `clap_id` est donc un
 hachage FNV-1a de l'identifiant SÉMANTIQUE : tant que `filter.1.cutoff` désigne
 la même chose, son identifiant ne bouge pas. Le prix (risque de collision) est
-**vérifié** sur tous les paramètres du parc (510 aujourd'hui), pas supposé,
+**vérifié** sur tous les paramètres du parc (563 aujourd'hui), pas supposé,
 et trois valeurs sont **gelées
 par test** -- si ce test casse, le correctif est de restaurer le hachage, jamais
 de mettre à jour les nombres.
@@ -1530,6 +1530,290 @@ la moindre commande. `every_registered_machine_has_a_panel` comble le trou
 
 ---
 
+## 33. La version finale du parc : trois machines, et le sampler rendu à la voix
+
+**La décision qui commande tout le reste.** Le sampler servait de repli
+universel : batterie découpée, et tout ce qu'aucune machine ne savait faire. Il
+est désormais **réservé à la voix**. Ce n'est pas un détail d'organisation,
+c'est ce qui a ouvert trois trous d'un coup — la batterie acoustique perdait sa
+seule réponse, le piano acoustique aussi (il était déclaré « hors de portée
+sans bibliothèque d'échantillons »), et les cuivres et bois n'en avaient jamais
+eu. Trois machines les comblent.
+
+| Machine | Famille ouverte | Ce qu'elle rend jouable |
+|---|---|---|
+| `vsm.piano` | cordes FRAPPÉES | le stem `piano_or_keys` acoustique |
+| `vsm.drums` | membranes et métal | le stem `drums` sans échantillon |
+| `vsm.wind` | anche et lèvres | clarinette et cuivres |
+
+### La brique s'est ouverte avant la deuxième machine
+
+`vsm.piano` a besoin EXACTEMENT de la boucle de `vsm.string` : une ligne à
+retard, un amortissement, une dispersion, un retard fractionnaire, un gain. La
+recopier aurait donné deux exemplaires d'une même physique, qui divergent
+toujours à la longue — le § 8.4 du cahier des charges met en garde contre
+précisément cela. La boucle est donc sortie dans
+`dsp/StringWaveguide.h`, et les deux machines la partagent.
+
+**La preuve que l'extraction était fidèle n'est pas une relecture, c'est
+l'empreinte** : `vsm.string` a gardé la sienne au bit près à travers le
+refactoring. C'est exactement le service que ces empreintes rendent, et c'est
+la deuxième fois qu'il paie.
+
+`vsm.wind`, lui, ne la partage PAS, et le dire est aussi important : sa
+réflexion est INVERSANTE (une corde ne l'est jamais), il n'a pas de dispersion
+(un tuyau d'air n'est pas raide), et sa perte n'est pas un amortissement
+interne mais un rayonnement au pavillon. Partager aurait demandé d'ajouter à la
+corde trois options dont elle n'a que faire.
+
+### `vsm.piano` — le marteau porte la loi expressive
+
+Ce qui sépare un piano d'une corde pincée tient en trois points, et aucun n'est
+un réglage de timbre :
+
+1. **La durée de contact du marteau décroît quand on frappe fort.** Or elle
+   fixe la coupure du spectre injecté : frapper fort OUVRE LE TIMBRE, pas
+   seulement le volume. Cette loi sort de la physique du modèle ; aucune
+   enveloppe de filtre n'a à la simuler. C'est le test
+   `piano_striking_harder_opens_the_timbre_not_only_the_level` qui la verrouille.
+2. **Deux cordes par note, légèrement désaccordées.** Ce n'est pas un chorus :
+   c'est ce qui donne la **décroissance en deux temps** — chute rapide, puis
+   longue traîne faible. Une corde seule donne une exponentielle unique, qui
+   s'entend aussitôt comme « pas un piano ». La traîne est obtenue en donnant à
+   la seconde corde un T60 plus long (×1,35), ce qui est l'effet audible du
+   couplage au chevalet sans le mécanisme.
+3. **Le marteau frappe au huitième de la corde**, ce qui pose un noeud sur le
+   8e harmonique et le supprime — la raison pour laquelle un piano ne sonne pas
+   dur. Le peigne du guide d'ondes le produit seul dès qu'on lui donne la
+   position.
+
+**Ses identités sémantiques sont presque toutes celles de `vsm.string`**, et
+c'est voulu : le point de contact et la dureté de l'excitation sont la même
+notion qu'on frappe ou qu'on pince, la raideur et la décroissance sont celles
+de la corde, la table d'harmonie est le corps. Un seul identifiant lui est
+propre — `piano.sustainPedal` — parce que rien d'autre au parc n'a d'étouffoir.
+Il est **exclu de la recherche** : c'est une commande de jeu, binaire, et la
+chercher reviendrait à demander à l'optimiseur de choisir entre deux falaises.
+
+### `vsm.drums` — une peau n'est pas une sinusoïde
+
+Le parc avait déjà deux boîtes à rythmes ; elles synthétisent des percussions
+ÉLECTRONIQUES, et c'est ce qu'on leur demande. Une batterie acoustique est
+autre chose, et la différence tient en une phrase : **les modes d'une membrane
+sont inharmoniques**. Une corde vibre sur des multiples entiers ; une peau
+circulaire vibre sur les zéros de Bessel — 1,000 / 1,593 / 2,135 / 2,295 — et
+ce sont ces rapports irrationnels qu'on entend comme « peau » plutôt que comme
+« note ». Un banc modal les produit directement.
+
+Trois conséquences que le modèle donne gratuitement : les modes hauts meurent
+avant le fondamental (un coup est riche trente millisecondes puis devient un
+bourdonnement) ; frapper fort réveille les modes hauts, donc la vélocité change
+le TIMBRE ; et le métal, lui, reçoit des rapports volontairement sans commune
+mesure, pour qu'aucune hauteur ne s'installe.
+
+**La pièce fait partie de l'instrument.** C'est ce qui trahit le plus vite un
+kit modélisé : sans ambiance il sonne « électronique », quelle que soit la
+qualité des peaux. Deux peignes et un passe-tout suffisent à poser un lieu — ce
+n'est pas une réverbération et ne prétend pas l'être ; la vraie réverbération
+du projet reste un effet d'insert. À `Room Level = 0` la machine est
+exactement sèche et mono, et un test le vérifie à 1e-9.
+
+**Un défaut trouvé par la mesure, pas par relecture** : le groupe de coupure
+n'étouffait que le BRUIT de la charleston ouverte, pas son cluster métallique,
+qui continuait de sonner par-dessus la fermée. Mesuré : 43 % d'énergie
+restante là où on en attendait 5 %. Deux positions d'un même instrument ne
+peuvent pas sonner ensemble ; le banc modal a reçu son `choke()`.
+
+### `vsm.wind` — ce qui marche, et ce qui ne marche pas
+
+Une valve non linéaire — anche de bois ou lèvres de cuivre — entretient un
+tuyau. Ce n'est pas une enveloppe qui module un oscillateur : le souffle ouvre
+la valve, l'onde part, revient, et c'est la pression de retour qui la referme.
+L'oscillation naît de ce dialogue, et l'attaque, l'accroche, le petit retard
+d'établissement sont dans la physique.
+
+**Ce qu'elle couvre : les perces cylindriques — la clarinette, et en première
+approximation les cuivres.** Un tuyau cylindrique fermé côté valve ne résonne
+que sur les harmoniques impaires ; c'est le creux caractéristique de la
+clarinette et son saut à la douzième.
+
+**Ce qu'elle ne couvre pas : les perces coniques (saxophone, hautbois) et les
+flûtes.** Ce n'est pas faute d'avoir essayé, et le tableau qui suit est le
+résultat de l'expérience — quatre topologies de boucle, la même anche :
+
+| topologie | résultat |
+|---|---|
+| cylindre, réflexion inversante, D/2 | **oscille**, harmoniques impaires |
+| non inversante, D | ne s'amorce pas |
+| non inversante, D, + dérivateur | diverge |
+| inversante, D/2, + dérivateur | diverge |
+
+La raison est structurelle et mérite d'être écrite pour qu'on n'y revienne pas :
+une boucle à réflexion inversante et demi-longueur impose `x(t + T/2) = −x(t)`.
+Cette **symétrie demi-onde interdit mathématiquement les harmoniques paires**,
+quel que soit le filtre placé dans la boucle. Ce qui la casserait est la
+réflexion à l'apex d'un cône, qui n'est pas un changement de signe mais un
+filtre du premier ordre ; les deux topologies essayées dans cette direction
+divergent, faute d'un gain de boucle borné.
+
+**Un réglage a été RETIRÉ à cause de cette mesure.** `Bore Shape` prétendait
+fondre du cylindre au cône par un évasement (passe-tout à coefficient positif,
+qui allonge le chemin des aigus). Mesuré sur toute sa course : la deuxième
+harmonique reste à 0,0001 contre 0,041 pour la troisième. **Le réglage ne
+faisait rien.** Un réglage qui ne fait rien est pire qu'un réglage absent : il
+ment à qui le tourne, et il coûte une dimension à la recherche. Il a été
+supprimé, et la machine est passée de seize à quinze paramètres.
+
+### La chaîne suit : la batterie sort du sampler, la voix y entre
+
+`reconstruire.py` routait `drums` vers le sampler et cherchait un patch de
+synthé sur `vocals`. Les deux sont inversés.
+
+**La voix ne se reconstruit pas, elle se REPORTE.** Le § 6 de la feuille de
+route le dit depuis le début — « hors de portée d'une synthèse par machine ; la
+séparation la rend déjà disponible en audio, c'est le mieux qu'on puisse en
+faire honnêtement ». La chaîne, elle, cherchait quand même un patch dessus et
+publiait un chiffre : sur Children, `vsm.obx` à 0,196. Ce chiffre était pire
+qu'inutile, il était trompeur — ce n'est pas parce qu'un OB-X approche le
+spectre moyen d'une voix qu'il chante. Le stem vocal devient donc **un
+échantillon, joué tel quel**, et le journal le dit dans ces termes : « la voix
+n'est pas reconstruite, elle est reportée ».
+
+**La batterie passe à `vsm.drums`.** La détection de frappes et le classement
+par familles ne changent pas d'une ligne : c'est le même travail, mais son
+résultat pilote des NOTES au lieu de charger des échantillons. On y gagne un
+kit réglable — accorder la caisse claire, ouvrir la pièce, allonger la
+charleston — là où un coup découpé était figé ; on y perd la fidélité littérale
+au coup enregistré. L'ancien comportement reste accessible par
+`--batterie-echantillonnee`, parce qu'il est plus fidèle et moins réglable, et
+que le choix dépend de ce qu'on veut faire du projet.
+
+### Ce que la première exécution complète a trouvé, et qui n'était pas prévu
+
+Trois défauts, dont deux qu'aucun test unitaire ne pouvait voir.
+
+**1. Le `gate` pouvait dépasser 1 — révélé par le champ ajouté la veille.** La
+leçon du § 32 (« une distance n'est un chiffre que si l'on sait à quelles
+conditions elle a été obtenue ») avait fait inscrire le `gate` dans
+`rapport.json`. Première exécution, premier stem : `gate = 1,9978`. La cause
+est simple et le champ l'a rendue visible en une seconde — l'extrait est
+plafonné à 1,5 s, la durée de la note choisie ne l'est pas, donc une note de
+trois secondes donnait « tenue pendant 200 % de l'extrait ». Borné à 1. C'est
+la meilleure justification possible pour ce champ : il a servi le lendemain.
+
+**2. La batterie modélisée était trois fois trop faible.** Le calage
+automatique des volumes demandait un facteur 4,3 pour la rattraper et BUTAIT
+sur sa borne de 2,5 : la piste restait deux fois trop faible dans le mélange.
+La cause était un critère de calibration trop sévère que je m'étais donné —
+« les neuf pièces frappées ensemble à vélocité 127 restent sous 1,0 ». Mesuré
+sur un motif ordinaire, et comparé au parc :
+
+| | pic sur un motif | rms | pic, neuf pièces ensemble |
+|---|---|---|---|
+| `vsm.drums` (gain 0,19) | 0,376 | 0,079 | 0,916 |
+| `vsm.tr909` | 0,894 | 0,234 | **1,761** |
+| `vsm.tr808` | 0,746 | 0,271 | **1,451** |
+
+Les deux boîtes du parc dépassent elles aussi 1,0 sur ce cas artificiel, qui
+n'arrive dans aucun motif. Le garantir coûtait un facteur trois de niveau
+utile. Le gain est passé à 0,42 — motif à 0,832 de crête, niveau efficace dans
+la fourchette du parc — et **le test a changé de critère en même temps que le
+code** : il verrouille désormais un motif réel, avec un plancher autant qu'un
+plafond, parce qu'une batterie trop faible est un défaut aussi réel qu'une
+batterie qui écrête.
+
+**3. `vsm.piano` n'a pas survécu à la présélection.** Avec dix-neuf candidates,
+le dégrossissage n'en garde que dix, sur 0,4 s d'extrait et un budget réduit —
+et le piano n'était pas dedans. Le § 31 avait déjà chiffré ce risque
+(« ajouter une candidate ne vole jamais l'identification, mais peut coûter une
+place de finaliste ») ; ici la victime est la candidate elle-même. C'est
+pourquoi `reconstruire.py` reçoit `--finalistes`, qui expose le réglage jusque
+sur la ligne de commande : **`--finalistes 0` est le seul régime sous lequel
+les distances de toutes les machines se comparent**, et c'est celui qu'il faut
+employer pour mesurer, jamais celui du travail courant.
+
+### L'épreuve : *Children* (Robert Miles, 1996), avant et après
+
+Un morceau du commerce, quatre stems, la chaîne complète — séparation,
+transcription, recherche, rendu, mesure. Le morceau a été choisi pour ce qu'il
+met en jeu : **un piano au premier plan**, une batterie de dance, une basse et
+des nappes. C'est-à-dire, précisément, ce que les trois machines visent.
+
+**Ce que la chaîne retient, avant et après :**
+
+| stem | avant | après |
+|---|---|---|
+| basse | `vsm.generic` d=0,175 | `vsm.generic` d=0,175 — **identique** |
+| nappes/piano | `vsm.string` d=0,203 | `vsm.string` d=0,203 — **identique** |
+| batterie | sampler, 5 pièces, 1092 frappes | **`vsm.drums`**, mêmes 5 pièces, mêmes 1092 frappes |
+| voix | `vsm.obx` d=0,196 | **report intégral** par le sampler |
+
+Que la basse et les nappes soient identiques au millième n'est pas un détail :
+c'est la preuve qu'ajouter trois machines au parc n'a rien déplacé de ce qui
+marchait, et que la chaîne est restée déterministe.
+
+**La distance globale, et ce qu'elle coûte :**
+
+| projet | distance (v2) |
+|---|---|
+| AVANT — batterie échantillonnée, voix cherchée | **0,1982** |
+| HYBRIDE — tout d'après, batterie d'avant | 0,2033 |
+| APRÈS — batterie modélisée, voix reportée | **0,2169** |
+
+L'hybride n'existe que pour attribuer : il ne diffère d'APRÈS que par la piste
+de batterie, et d'AVANT que par la voix. L'écart total (+0,0187, soit +9,4 %)
+se répartit donc sans ambiguïté :
+
+- **la batterie modélisée coûte +0,0136**, les trois quarts ;
+- **le report de la voix coûte +0,0051**, le quart restant.
+
+Confirmé sur la piste seule, contre son propre stem et à niveau efficace égalisé :
+
+| batterie | distance au stem `drums` |
+|---|---|
+| échantillonnée (les coups du disque) | **0,1722** |
+| modélisée (`vsm.drums`) | 0,2029 |
+| silence | 0,9360 |
+
+**Ce résultat était inévitable, et il faut le dire dans ce sens-là.** Rejouer
+les coups découpés DANS l'enregistrement ne peut pas être battu par un modèle :
+c'est la copie contre la ressemblance. Demander « le sampler seulement pour la
+voix » revient donc à échanger, sciemment, un peu de distance contre une
+batterie entièrement MODÉLISÉE — accordable, réglable, indépendante du fichier
+source, et qui n'a plus besoin qu'on découpe le disque pour sonner. Le prix est
+de 18 % sur la piste, 6,7 % sur le morceau. Il est écrit ici plutôt que caché,
+et `--batterie-echantillonnee` le rend réversible en une option.
+
+Quant à la voix, son report est bien plus FIDÈLE que le patch qu'on cherchait
+avant (0,065 contre 0,196, mesuré sur la piste seule) ; s'il coûte tout de même
+0,005 sur le mélange, c'est que la voix de ce morceau est très en retrait
+(niveau efficace 0,0033 contre 0,156 pour la batterie) et qu'aucune des deux
+versions ne pèse lourd dans la mesure globale. Le gain est réel, il est
+simplement invisible à cette échelle.
+
+### Un chiffre qui mentait sur ses conditions, trouvé en chemin
+
+En mesurant l'attribution ci-dessus, l'écart AVANT/APRÈS ne concordait pas :
+la chaîne annonçait 5,01 puis 8,09, quand la mesure directe donnait 0,198 puis
+0,217. Les deux sont justes — ils ne sont pas dans la même métrique.
+
+`reconstruction_distance` appelait `audio_distance`, c'est-à-dire la **v1**,
+quoi qu'on ait demandé, pendant que le résumé imprimait « métrique v2 » et que
+`rapport.json` l'inscrivait. **Toutes les distances GLOBALES publiées jusqu'ici
+sont des v1 mal étiquetées** ; les distances par stem, elles, ont toujours été
+celles qu'elles annonçaient. Le § 10.3 avait pourtant établi que les deux ne
+sont pas du même ordre et ne se comparent pas.
+
+C'est la troisième fois que ce projet se fait prendre par la même chose — la
+métrique au § 10.3, le budget à la septième passe de House Of God, le `gate` au
+§ 32 — mais c'est la première fois que le défaut est dans le code qui PUBLIE le
+chiffre, et non dans la façon de le lire. Corrigé : le paramètre est transmis.
+Conséquence à retenir pour la lecture de l'historique : les distances globales
+des sections antérieures (0,670 sur la vérité terrain, 2,974 sur House Of God
+v7, 5,01 ici) sont des v1, et elles ne se comparent qu'entre elles.
+
+---
+
 ## 29. Façades « façon hardware », machine par machine (sections 6 et 21)
 
 Le panneau générique (un potentiomètre par paramètre) reste le filet de
@@ -1616,11 +1900,14 @@ pas -- elle l'ignore et la laisse intacte), et écrire un motif ne remplace que
 Les boutons de pas sont colorés **par groupes de quatre**, comme sur les
 machines d'origine : c'est ce qui permet de compter les temps sans les compter.
 
-### État : les vingt machines ont leur façade
+### État : les vingt-trois machines ont leur façade
 
 | Machine | Forme de la façade |
 |---|---|
 | String | trajet PHYSIQUE du signal (EXCITATION -> ARCHET -> CORDE -> CAISSE -> SORTIE) ; aucune machine d'origine à copier, voir §32 |
+| Piano | même principe : MARTEAU -> CORDES -> ÉTOUFFOIR -> TABLE -> SORTIE, voir §33 |
+| Drums | une colonne par PIÈCE et grille de 16 pas, comme les TR du parc -- c'est bien la disposition d'origine ici |
+| Wind | le trajet du souffle : EMBOUCHURE -> PERCE -> ARTICULATION -> VIBRATO -> SORTIE |
 | Sampler | une colonne par PIÈCE NOMMÉE (« 1 KICK », « 3 HH CL »...), grille de 16 pas ; les réglages de mapping sont déclarés omis — c'est la boîte à rythmes générique du parc, voir §30 |
 | Minimoog | banc à trajet de signal (oscillateurs -> mixage -> modifieurs), flancs bois, gros bouton de coupure |
 | TB-303 | rangée unique sur boîtier argenté, liseré rouge, + éditeur de motif |

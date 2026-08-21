@@ -31,6 +31,7 @@ from typing import Dict, List, Optional, Sequence
 import numpy as np
 
 from .audio_distance import audio_distance
+from .audio_distance_v2 import audio_distance_v2
 from .vsm_engine import VsmEngine, VsmEngineError, available_machines
 from .vsm_patch_optimizer import choose_machine, optimize_patch_for_machine
 from .vsm_project_export import ExportNote, ExportTrack, write_project_bundle
@@ -43,7 +44,7 @@ from .vsm_project_export import ExportNote, ExportTrack, write_project_bundle
 # Elle n'est PAS écrite en dur au sens où on l'entend d'habitude : elle est
 # filtrée à partir de ce que le moteur déclare savoir instancier, si bien
 # qu'une machine ajoutée au DAW entre automatiquement dans le choix.
-_NON_MELODIC = {"vsm.testtone", "vsm.tr808", "vsm.tr909", "vsm.sampler"}
+_NON_MELODIC = {"vsm.testtone", "vsm.tr808", "vsm.tr909", "vsm.sampler", "vsm.drums"}
 
 
 @dataclass
@@ -133,7 +134,16 @@ def _representative_note(
     excerpt = audio[start:start + length]
     if excerpt.size < sample_rate // 10:
         return None
-    return chosen, excerpt, float(chosen.duration) / max(1e-6, duree)
+    # `gate` est une PROPORTION de l'extrait : elle ne peut pas dépasser 1.
+    #
+    # Sans cette borne elle le pouvait, et c'est le fait de l'INSCRIRE dans le
+    # rapport qui l'a révélé -- première exécution, premier stem, `gate` à
+    # 1,9978. La cause : l'extrait est plafonné à 1,5 s, mais pas la durée de
+    # la note choisie ; une note de trois secondes donnait donc « tenue pendant
+    # 200 % de l'extrait ». Le sens s'inverse : au-delà de 1, la note est tenue
+    # PENDANT TOUT l'extrait, ce que 1 exprime déjà.
+    gate = float(chosen.duration) / max(1e-6, duree)
+    return chosen, excerpt, min(1.0, gate)
 
 
 def reconstruct_stem(
@@ -146,6 +156,7 @@ def reconstruct_stem(
     max_iterations: int = 20,
     max_dimensions: Optional[int] = None,
     metric: str = "v2",
+    shortlist: Optional[int] = None,
 ) -> Optional[StemReconstruction]:
     """
     Trouve la machine et le patch qui approchent le mieux ce stem.
@@ -173,6 +184,11 @@ def reconstruct_stem(
         metric=metric,
         gate=gate,
         max_iterations=max_iterations,
+        # None laisse `choose_machine` appliquer sa règle par défaut : la
+        # moitié des candidates en finale. La passer explicitement sert aux
+        # MESURES, où une candidate écartée au dégrossissage n'aurait pas de
+        # score comparable aux autres.
+        **({"shortlist": shortlist} if shortlist is not None else {}),
         # None laisse `choose_machine` appliquer sa règle à deux étages :
         # 6 axes pour classer, 10 pour régler les finalistes (mesuré).
         **({"max_dimensions": max_dimensions} if max_dimensions is not None else {}),
@@ -192,6 +208,7 @@ def reconstruction_distance(
     original: np.ndarray,
     reconstructed: np.ndarray,
     sample_rate: int,
+    metric: str = "v2",
 ) -> float:
     """
     Distance entre l'original et la reconstruction, sur la même durée.
@@ -199,11 +216,21 @@ def reconstruction_distance(
     Les deux signaux sont tronqués à la plus courte longueur : comparer des
     durées différentes ferait passer un simple décalage pour une erreur de
     timbre.
+
+    `metric` EST UN PARAMÈTRE, et il ne l'était pas. Cette fonction appelait
+    `audio_distance` -- la v1 -- quoi qu'on ait demandé, pendant que le résumé
+    imprimait « métrique v2 » et que le rapport l'inscrivait. Toutes les
+    distances GLOBALES publiées jusqu'ici sont donc des v1 mal étiquetées ; les
+    distances par stem, elles, ont toujours été celles qu'elles annonçaient.
+    C'est exactement le défaut que le § 32 décrit -- un chiffre présenté sous
+    des conditions qui ne sont pas les siennes -- et il était dans le code qui
+    publie le chiffre le plus visible de toute la chaîne.
     """
     length = min(original.size, reconstructed.size)
     if length == 0:
         return float("inf")
-    return float(audio_distance(original[:length], reconstructed[:length], sample_rate))
+    mesure = audio_distance_v2 if metric == "v2" else audio_distance
+    return float(mesure(original[:length], reconstructed[:length], sample_rate))
 
 
 def write_reconstruction_report(

@@ -127,6 +127,22 @@ constexpr Rule kRules[] = {
     {"string.bodySize",                    0.0f,     1.0f, SearchScale::Linear,      0.58f},
     {"string.bowPressure",                 0.0f,     1.0f, SearchScale::Linear,      0.55f},
     {"string.bowSpeed",                    0.0f,     1.0f, SearchScale::Linear,      0.45f},
+    // Famille du VENT (vsm.wind). Comme sur la corde, ce qui fait le timbre
+    // est d'abord ce qui se perd (le rayonnement au pavillon) et la raideur de
+    // ce qui entretient (l'anche ou les lèvres) ; la pression de souffle vient
+    // juste après, parce qu'elle change le spectre autant que le niveau.
+    {"wind.bellDamping",                   0.0f,     1.0f, SearchScale::Linear,      0.96f},
+    {"wind.reedStiffness",                 0.0f,     1.0f, SearchScale::Linear,      0.92f},
+    {"wind.breathPressure",                0.1f,     1.0f, SearchScale::Linear,      0.86f},
+    {"wind.brassiness",                    0.0f,     1.0f, SearchScale::Linear,      0.72f},
+    {"wind.breathNoise",                   0.0f,     1.0f, SearchScale::Linear,      0.52f},
+    // Percussions modélisées : la pièce compte AUTANT que les pièces, parce
+    // que c'est elle qui sépare le plus sûrement un kit acoustique d'un kit
+    // électronique.
+    {"drum.room.level",                    0.0f,     1.0f, SearchScale::Linear,      0.72f},
+    {"drum.room.size",                     0.0f,     1.0f, SearchScale::Linear,      0.60f},
+    {"drum.ride.decay",                    0.0f,     0.0f, SearchScale::Linear,      0.72f},
+    {"drum.ride.level",                    0.0f,     1.0f, SearchScale::Linear,      0.64f},
     // Familles propres à la machine NEUTRE. Elles sont CONTINUES par
     // construction, ce qui les rend particulièrement rentables à chercher :
     // une forme d'onde morphable explore tout le passage sinus-carré sans le
@@ -274,6 +290,10 @@ constexpr Exclusion kExclusions[] = {
      "même raison que le glissando lui-même"},
     {"effect.rotary.fast",
      "commande de jeu (lent/rapide), pas un réglage de timbre"},
+    {"piano.sustainPedal",
+     "commande de JEU, et binaire : la chercher reviendrait à demander à "
+     "l'optimiseur de choisir entre deux falaises, alors que la pédale se joue "
+     "au pied pendant le morceau et n'appartient pas au patch"},
     {"sampler.slot.#.note",
      "mapping : quelle touche déclenche l'emplacement. Le chercher ferait "
      "taire le son au lieu de l'ajuster"},

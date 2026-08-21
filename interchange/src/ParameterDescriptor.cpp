@@ -93,6 +93,80 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Analog Character", "voice.analogCharacter"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.piano ---
+    // Ses identités sont presque toutes CELLES DE `vsm.string`, et c'est
+    // voulu : les deux machines partagent la même boucle physique
+    // (`dsp/StringWaveguide.h`), et un patch de corde doit pouvoir voyager
+    // vers le piano. Le point de contact et la dureté de l'excitation sont la
+    // même notion, qu'on frappe ou qu'on pince ; la raideur, la décroissance
+    // et l'amortissement sont ceux de la corde ; la table d'harmonie est le
+    // corps. Un seul identifiant lui est propre, parce que rien d'autre au
+    // parc n'a d'étouffoir.
+    {"vsm.piano", {
+        {"Hammer Hardness", "string.pickHardness"},
+        {"Hammer Position", "string.pickPosition"},
+        {"Velocity Sensitivity", "voice.velocitySensitivity"},
+        {"Unison Detune", "voice.unisonDetune"},
+        {"Inharmonicity", "string.stiffness"},
+        {"String Decay", "string.decay"},
+        {"String Damping", "string.damping"},
+        {"Release", "envelope.1.release"},
+        {"Sustain Pedal", "piano.sustainPedal"},
+        {"Soundboard Level", "string.bodyLevel"},
+        {"Soundboard Size", "string.bodySize"},
+        {"Tone Bass", "tone.bass"},
+        {"Tone Treble", "tone.treble"},
+        {"Stereo Spread", "output.stereoWidth"},
+        {"Analog Character", "voice.analogCharacter"},
+        {"Output Level", "output.level"},
+    }},
+    // --- vsm.drums ---
+    // Le vocabulaire de percussion du parc (`drum.kick.*`, `drum.snare.*`...)
+    // est repris tel quel : une grosse caisse est une grosse caisse, qu'elle
+    // soit synthétisée par une 808 ou modélisée par une peau. C'est ce qui
+    // permet à un motif écrit pour une TR de s'appliquer ici sans traduction.
+    {"vsm.drums", {
+        {"Kick Level", "drum.kick.level"},
+        {"Kick Tune", "drum.kick.tune"},
+        {"Kick Decay", "drum.kick.decay"},
+        {"Kick Beater", "drum.kick.attack"},
+        {"Snare Level", "drum.snare.level"},
+        {"Snare Tune", "drum.snare.tune"},
+        {"Snare Decay", "drum.snare.decay"},
+        {"Snare Wires", "drum.snare.snappy"},
+        {"Tom Level", "drum.tom.level"},
+        {"Tom Tune", "drum.tom.tune"},
+        {"Tom Decay", "drum.tom.decay"},
+        {"Closed Hat Level", "drum.closedHat.level"},
+        {"Closed Hat Decay", "drum.closedHat.decay"},
+        {"Open Hat Level", "drum.openHat.level"},
+        {"Open Hat Decay", "drum.openHat.decay"},
+        {"Ride Level", "drum.ride.level"},
+        {"Ride Decay", "drum.ride.decay"},
+        {"Crash Level", "drum.crash.level"},
+        {"Crash Decay", "drum.crash.decay"},
+        {"Room Level", "drum.room.level"},
+        {"Room Size", "drum.room.size"},
+        {"Output Level", "output.level"},
+    }},
+    // --- vsm.wind ---
+    {"vsm.wind", {
+        {"Breath Pressure", "wind.breathPressure"},
+        {"Reed Stiffness", "wind.reedStiffness"},
+        {"Brassiness", "wind.brassiness"},
+        {"Breath Noise", "wind.breathNoise"},
+        {"Bell Damping", "wind.bellDamping"},
+        {"Attack", "envelope.1.attack"},
+        {"Release", "envelope.1.release"},
+        {"Vibrato Rate", "effect.vibrato.rate"},
+        {"Vibrato Depth", "effect.vibrato.depth"},
+        {"Vibrato Delay", "lfo.1.delay"},
+        {"Tone Bass", "tone.bass"},
+        {"Tone Treble", "tone.treble"},
+        {"Velocity Sensitivity", "voice.velocitySensitivity"},
+        {"Analog Character", "voice.analogCharacter"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.generic ---
     // Machine NEUTRE : ses identités sont volontairement les plus canoniques
     // du vocabulaire, sans aucun identifiant qui lui soit propre. C'est ce qui

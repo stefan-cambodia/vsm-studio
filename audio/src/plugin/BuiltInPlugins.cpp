@@ -20,6 +20,9 @@
 #include "tonewheel/TonewheelOrgan.h"
 #include "generic/GenericSynth.h"
 #include "string/StringSynth.h"
+#include "piano/PianoSynth.h"
+#include "drums/DrumsSynth.h"
+#include "wind/WindSynth.h"
 
 namespace vsm::audio::plugin {
 
@@ -115,6 +118,18 @@ void registerBuiltInPlugins() {
     {
         vsm::plugins::string_machine::StringSynth forceLinkString;
         (void)forceLinkString;
+    }
+    {
+        vsm::plugins::piano::PianoSynth forceLinkPiano;
+        (void)forceLinkPiano;
+    }
+    {
+        vsm::plugins::drums::DrumsSynth forceLinkDrums;
+        (void)forceLinkDrums;
+    }
+    {
+        vsm::plugins::wind::WindSynth forceLinkWind;
+        (void)forceLinkWind;
     }
 }
 

@@ -40,11 +40,11 @@ client, jamais une dépendance.
 
 **Acquis, mesuré :**
 
-- 20 machines (+ tonalité d'essai), 9 effets, moteur temps réel, 676 tests
+- 23 machines (+ tonalité d'essai), 9 effets, moteur temps réel, 725 tests
   verts, zéro warning.
-- Piano roll complet, façades « façon hardware » pour les 20 machines,
+- Piano roll complet, façades « façon hardware » pour les 23 machines,
   séquenceurs à pas pour celles qui en ont un.
-- Interop : identités sémantiques (510 paramètres), presets `*.synth.json`,
+- Interop : identités sémantiques (563 paramètres), presets `*.synth.json`,
   projets `project.json`, rendu hors ligne `vsm-render`, adaptateur et hôte
   CLAP.
 - Pont Python : rendu d'une note par le moteur réel en ~10 ms, déterministe au
@@ -71,9 +71,18 @@ client, jamais une dépendance.
   soustractif plie son enveloppe spectrale aussi longtemps qu'on lui paie des
   évaluations. La couverture est acquise ; la victoire est conditionnelle, et
   la condition est écrite.
-- Il ne reste qu'une case vide au tableau de couverture des sources : les
-  **cuivres et les bois**, qui demanderaient un modèle à anche ou à lèvre — ni
-  une corde ni une lame ne les produit.
+- ~~Il ne reste qu'une case vide au tableau de couverture des sources : les
+  cuivres et les bois~~ — **traité par `vsm.wind`**, mais à MOITIÉ, et la
+  moitié manquante est mesurée : les perces cylindriques (clarinette, et en
+  première approximation les cuivres) sont couvertes ; les perces coniques
+  (saxophone, hautbois) et les flûtes ne le sont pas. La raison est
+  structurelle et vérifiée sur quatre topologies de boucle : une réflexion
+  inversante à demi-longueur impose la symétrie demi-onde, qui interdit
+  mathématiquement les harmoniques paires. Détail dans ARCHITECTURE.md § 33.
+- **Le sampler n'est plus un repli universel : il est réservé à la voix.**
+  C'est ce qui a rendu nécessaires `vsm.piano` et `vsm.drums`, et ce qui donne
+  au parc sa forme finale — chaque source a une machine qui la MODÉLISE, sauf
+  la voix, qui est reportée telle quelle et présentée comme telle.
 - ~~Une recherche coûte ~13 s par note et par machine~~ — **traité par la
   phase 10**, mais le coût reste réel et il faut le dire : la présélection à
   deux étages le divise par deux à verdict identique (343 s → 174 s sur quinze

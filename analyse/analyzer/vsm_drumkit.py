@@ -748,3 +748,126 @@ def drum_kit_track(kit: DrumKit, name: str = "Batterie") -> ExportTrack:
         samples=echantillons,
         machine_display_name="Sampler (8 emplacements)",
     )
+
+
+# ---------------------------------------------------------------------------
+# Batterie MODÉLISÉE, et voix échantillonnée : la répartition décidée pour la
+# version finale.
+#
+# Jusqu'ici le sampler servait de repli universel — batterie découpée, et tout
+# ce qu'aucune machine ne savait faire. La règle est désormais tranchée : LE
+# SAMPLER N'EST QUE POUR LA VOIX. Deux conséquences, et les deux fonctions
+# ci-dessous les portent.
+#
+#   - La batterie passe à `vsm.drums`, qui la MODÉLISE (peaux inharmoniques,
+#     métal, pièce). La détection de frappes et le classement par familles ne
+#     changent pas d'un iota : c'est le même travail, mais son résultat pilote
+#     des notes au lieu de charger des échantillons. On y gagne une batterie
+#     RÉGLABLE — accorder la caisse claire, ouvrir la pièce — là où un
+#     échantillon découpé était figé, et on y perd la fidélité littérale au
+#     coup enregistré. Le compromis est assumé et il est mesuré (ARCHITECTURE.md
+#     § 33).
+#   - La voix, elle, ne se synthétise pas. Le § 6 de la feuille de route le dit
+#     depuis longtemps : « hors de portée d'une synthèse par machine ; la
+#     séparation la rend déjà disponible en audio, c'est le mieux qu'on puisse
+#     en faire honnêtement ». Le stem vocal devient donc UN échantillon, joué
+#     tel quel. Ce n'est pas une reconstruction, c'est un report — et l'appeler
+#     autrement serait mentir.
+
+# Note de déclenchement de `vsm.drums` pour chaque famille détectée, en
+# convention General MIDI. `percussion` n'a pas d'équivalent dans un kit
+# modélisé à sept pièces : elle tombe sur le tom aigu, ce qui est faux mais
+# audible au bon endroit, plutôt que d'être perdue.
+MODELLED_DRUM_NOTES: Dict[str, int] = {
+    "kick": 36, "kick2": 36,
+    "snare": 38, "snare2": 38,
+    "hihat": 42, "pedalhat": 44, "openhat": 46,
+    "tom": 45, "percussion": 48, "cymbal": 51,
+}
+
+
+def modelled_drum_track(kit: DrumKit, name: str = "Batterie") -> ExportTrack:
+    """
+    Transforme un kit détecté en piste `vsm.drums` — modélisée, sans échantillon.
+
+    Les instants et les vélocités sont ceux qu'a trouvés la détection ; seule
+    la façon de les jouer change.
+    """
+    notes: List[ExportNote] = []
+    for emplacement in kit.slots:
+        note = MODELLED_DRUM_NOTES.get(emplacement.family)
+        if note is None:
+            continue
+        for instant, velocite in zip(emplacement.onsets, emplacement.velocities):
+            notes.append(ExportNote(note=note, velocity=velocite,
+                                     start=instant, duration=0.05))
+    notes.sort(key=lambda n: n.start)
+    return ExportTrack(
+        name=name,
+        machine="vsm.drums",
+        parameters={},
+        notes=notes,
+        is_drums=True,
+        machine_display_name="Drums (batterie acoustique)",
+    )
+
+
+def vocal_sampler_track(
+    audio: np.ndarray,
+    sample_rate: int,
+    dossier_samples: Path,
+    name: str = "Voix",
+) -> Optional[ExportTrack]:
+    """
+    Le stem vocal, reporté tel quel dans le sampler.
+
+    UN échantillon, UNE note au début du morceau. Le découper en phrases
+    donnerait un projet plus « musical » à regarder et introduirait des coutures
+    audibles pour rien : ce qu'on veut ici, c'est que la voix soit exactement
+    la voix.
+
+    La décroissance est réglée à 0 — jouer l'échantillon entier — et l'accord à
+    0 : toute transposition serait une altération de l'enregistrement.
+    """
+    if audio.size < sample_rate // 10:
+        return None
+    crete = float(np.max(np.abs(audio))) if audio.size else 0.0
+    if crete < 1e-4:
+        return None
+    dossier_samples.mkdir(parents=True, exist_ok=True)
+    chemin = dossier_samples / "voix.wav"
+    # Gain 1 : on ne normalise pas. Le niveau de la piste est calé plus tard,
+    # sur le stem lui-même, comme pour toutes les autres.
+    _write_wav(chemin, audio, sample_rate, gain=1.0)
+    # NIVEAU : le report doit sortir du sampler à l'identique, et deux facteurs
+    # l'en empêchent si on n'y prend pas garde. Mesuré sur le stem vocal de
+    # Children : écrit à 0,00334 de niveau efficace, il ressortait à 0,0012,
+    # soit 2,8 fois trop faible -- au point que le calage automatique des
+    # volumes butait sur sa borne et laissait la voix trop en retrait.
+    #
+    #   - la VÉLOCITÉ multiplie le niveau (100/127 = 0,79) : on joue donc à 127 ;
+    #   - le panoramique est à PUISSANCE CONSTANTE, ce qui coûte 0,707 au
+    #     centre : le niveau d'emplacement le compense exactement.
+    #
+    # Ce n'est pas un défaut du sampler -- les deux comportements sont justes
+    # pour un kit, où l'on veut jouer sur la vélocité et placer les pièces. Ils
+    # ne conviennent simplement pas à un report intégral, qui ne doit rien
+    # ajouter ni retrancher.
+    parametres = {
+        "sampler.slot.1.note": 60.0,
+        "sampler.slot.1.level": 1.0 / 0.70710678,
+        "sampler.slot.1.decay": 0.0,
+        "sampler.slot.1.tune": 0.0,
+        "sampler.slot.1.start": 0.0,
+        "sampler.slot.1.pan": 0.0,
+    }
+    return ExportTrack(
+        name=name,
+        machine="vsm.sampler",
+        parameters=parametres,
+        notes=[ExportNote(note=60, velocity=127, start=0.0,
+                          duration=float(audio.size) / float(sample_rate))],
+        is_drums=True,
+        samples={0: f"samples/{chemin.name}"},
+        machine_display_name="Sampler (16 emplacements)",
+    )

@@ -25,12 +25,14 @@ Il classe ce qu'il entend en : `bass`, `synth_bass`, `synth_lead`, `synth_pad`,
 | `synth_pad`, `synth` poly | Juno-106, Jupiter-8, Prophet, ARP | **couvert** |
 | Timbres FM (cloches, e-piano FM, basses métalliques) | DX7 | **couvert** |
 | Batterie électronique | TR-808, TR-909 | **couvert** si le morceau utilise ces machines |
-| Batterie acoustique | `vsm.sampler` | **couvert** — les coups découpés du stem SONT les échantillons |
+| Batterie acoustique | `vsm.drums` | **couvert** — peaux inharmoniques, métal, pièce (§ 11) |
 | Basse électrique, guitare | `vsm.string` | **couvert** — corde pincée, guide d'ondes (§ 10) |
-| Piano, orgue, claviers acoustiques | `vsm.epiano`, `vsm.tonewheel` | **couvert** pour l'électromécanique ; le piano acoustique reste hors de portée sans bibliothèque |
+| Piano acoustique | `vsm.piano` | **couvert** — cordes frappées, même guide d'ondes (§ 11) |
+| Orgue, claviers électromécaniques | `vsm.epiano`, `vsm.tonewheel` | **couvert** |
 | Cordes | `vsm.string` | **couvert** — corde frottée, même machine (§ 10) |
-| **Cuivres, bois** | — | **non couvert** — ni corde ni lame : il faudrait un modèle à anche/lèvre |
-| **Voix** | — | hors périmètre, et honnêtement hors de portée |
+| Cuivres, bois à perce CYLINDRIQUE | `vsm.wind` | **couvert** — anche et lèvres (§ 11) |
+| **Saxophone, hautbois, flûte** | — | **non couvert** — perce conique et jet d'air, mesuré hors de portée du modèle actuel (§ 11) |
+| **Voix** | `vsm.sampler` | **reportée, jamais reconstruite** — et c'est le seul emploi du sampler dans la version finale |
 
 Or un morceau réel donne presque toujours un stem `drums` acoustique et un
 stem `bass` joué sur un instrument, pas sur un TB-303. **Les trois quarts des

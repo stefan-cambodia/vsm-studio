@@ -3,6 +3,7 @@
 #include "vsm/audio/dsp/Biquad.h"
 #include "vsm/audio/dsp/Constants.h"
 #include "vsm/audio/dsp/DenormalGuard.h"
+#include "vsm/audio/dsp/StringWaveguide.h"
 #include "vsm/audio/engine/VoiceManager.h"
 #include "vsm/audio/plugin/ISynthPlugin.h"
 #include "vsm/util/DeterministicRng.h"
@@ -10,7 +11,6 @@
 #include <atomic>
 #include <cmath>
 #include <cstddef>
-#include <vector>
 
 namespace vsm::plugins::string_machine {
 
@@ -28,51 +28,16 @@ namespace vsm::plugins::string_machine {
 ///
 /// LE MODÈLE
 ///
-///     excitation ──> [ position de pincement : 1 - z^-pD ]
+///     excitation ──> [ point de contact : 1 - z^-pD ]
 ///                          │
 ///                          v
-///          ┌──> ligne à retard (N échantillons) ──> retard fractionnaire ──┐
-///          │                                                              │
-///          └── gain de boucle <── dispersion (raideur) <── amortissement <─┘
-///                                                                         │
-///                                                    corps (résonances) <──┘
+///                 `dsp::StringWaveguide` ──> corps (résonances)
 ///
-/// Une seule ligne à retard porte l'aller-retour de l'onde. La boucle contient
-/// quatre organes, et chacun répond à un paramètre que le musicien connaît :
-///
-///  1. **Amortissement** — un filtre passe-bas d'ordre un, `(1-b)x[n] + b
-///     x[n-1]`. Il vaut exactement 1 en continu, ce qui est la condition pour
-///     que « String Decay » soit vraiment le T60 du fondamental et pas une
-///     approximation.
-///  2. **Raideur** — trois passe-tout d'ordre un. Une corde raide (une corde
-///     de basse filée, un piano grave) transmet les aigus PLUS VITE que les
-///     graves : ses partiels ne tombent pas sur des multiples entiers, ils
-///     sont progressivement trop hauts. Sans ce terme, une basse sonne comme
-///     une harpe.
-///
-///     Le coefficient de ces passe-tout DÉPEND DE LA NOTE, et c'est la
-///     mesure qui l'a imposé. Un coefficient fixe donne une inharmonicité
-///     qui suit la fréquence ABSOLUE, pas le rang du partiel : à -0,55, le
-///     16e partiel d'un la 440 monte de 39 cents mais celui d'un mi grave à
-///     82 Hz de 0,5 cent — c'est-à-dire rien, précisément sur les cordes
-///     graves où la raideur s'entend le plus. Pire pour la recherche : à
-///     coefficient proportionnel au réglage, les trois premiers quarts de la
-///     course du bouton ne produisaient AUCUN effet audible sur une basse,
-///     soit exactement la falaise que le § 3 de CDC-machines-manquantes
-///     interdit.
-///
-///     Le coefficient est donc résolu pour que l'inharmonicité VISÉE au 16e
-///     partiel soit linéaire dans le réglage : 0 à 25 cents. La loi
-///     `|a| = exp(-k · w16)` avec `k = 3,26 · cents^-0,368` a été obtenue en
-///     inversant numériquement la réponse du peigne (le facteur k s'est
-///     révélé indépendant de la note à 1 % près sur cinq octaves, ce qui est
-///     ce qui rend la formule utilisable). La justesse du fondamental n'en
-///     souffre pas : l'erreur mesurée reste sous 0,2 cent.
-///  3. **Retard fractionnaire** — un passe-tout d'ordre un accordé pour que la
-///     boucle fasse exactement SR/f0. Sans lui, la hauteur se quantifierait à
-///     l'échantillon près : à 4 kHz, un échantillon de retard vaut plus d'un
-///     demi-ton.
-///  4. **Gain de boucle** — la décroissance, calculée depuis le T60 demandé.
+/// La boucle elle-même — amortissement, raideur, retard fractionnaire, gain —
+/// vit dans `dsp/StringWaveguide.h`, qu'elle partage avec `vsm.piano` : c'est
+/// la MÊME physique, et deux copies d'une même physique divergent toujours.
+/// Ce qui reste ici est ce qui distingue cette machine : comment on excite la
+/// corde, et ce qui rayonne ensuite.
 ///
 /// DEUX EXCITATIONS, ET UN FONDU CONTINU ENTRE ELLES
 ///
@@ -101,21 +66,17 @@ namespace vsm::plugins::string_machine {
 ///
 /// APPROXIMATIONS ASSUMÉES (§ 8 de CDC-nouvelle-machine.md, § 27
 /// d'ARCHITECTURE.md) — aucune mesure n'a été faite sur un instrument réel,
-/// le statut honnête est « dérivé » :
+/// le statut honnête est « dérivé ». Celles de la BOUCLE (ligne à retard
+/// unique, raideur rognée dans l'aigu) sont documentées dans
+/// `dsp/StringWaveguide.h` ; celles qui appartiennent à cette machine :
 ///
-///  - **Une seule ligne à retard**, là où la physique en demande deux (onde
-///    montante et onde descendante). L'archet agit donc sur l'onde résultante
-///    et non sur une jonction entre deux ondes ; le cycle d'adhérence-
-///    décrochement est conservé, sa forme d'onde exacte non.
+///  - **L'archet agit sur l'onde résultante** et non sur une jonction entre
+///    deux ondes : le cycle d'adhérence-décrochement est conservé, sa forme
+///    d'onde exacte non.
 ///  - **Corps en résonances série** et non en modes couplés : trois cloches
 ///    de Biquad qui colorent, pas une caisse qui rayonne. À `Body Level = 0`
-///    la machine est exactement transparente, ce qui est ce dont une basse
-///    électrique a besoin.
-///  - **Raideur rognée dans l'aigu** : le retard qu'exigent les passe-tout de
-///    dispersion ne peut pas dépasser 40 % de la boucle, faute de quoi une
-///    note très aiguë n'aurait plus de ligne à retard du tout. La raideur
-///    demandée est donc réduite au-dessus d'environ 1 kHz — la note reste
-///    juste, elle est seulement moins inharmonique que réglée.
+///    la machine est exactement transparente, ce dont une basse électrique a
+///    besoin.
 ///  - **Chaque note repart d'une corde au repos** : on ne modélise pas le
 ///    repincement d'une corde qui vibre encore.
 class StringVoice {
@@ -151,22 +112,6 @@ public:
     float render(const Params& p);
 
 private:
-    /// Passe-tout d'ordre un, H(z) = (a + z^-1) / (1 + a z^-1).
-    /// Retard de phase en continu : (1-a)/(1+a).
-    struct Allpass {
-        float a = 0.0f, x1 = 0.0f, y1 = 0.0f;
-        void reset() { x1 = y1 = 0.0f; }
-        float process(float x) {
-            const float y = a * x + x1 - a * y1;
-            x1 = x;
-            y1 = y;
-            return y;
-        }
-    };
-
-    /// Retard de phase en continu d'un passe-tout de coefficient `a`.
-    static float allpassDelay(float a) { return (1.0f - a) / (1.0f + a); }
-
     /// Table de friction de l'archet : coefficient de réflexion en fonction de
     /// la vitesse relative archet/corde. Forme empirique en |v|^-4, adhérence
     /// totale près de zéro puis décrochement — c'est le cycle de Helmholtz.
@@ -177,16 +122,8 @@ private:
     }
 
     double sampleRate_ = 48000.0;
-    std::vector<float> line_;
-    size_t writeIndex_ = 0;
-    size_t delaySamples_ = 100;      ///< partie entière N de la boucle
-    size_t pickOffset_ = 20;         ///< point d'injection, en échantillons
-    float loopGain_ = 0.999f;
-    float dampingB_ = 0.2f;
-    float dampingState_ = 0.0f;
-    static constexpr int kDispersionStages = 3;
-    Allpass tuning_{};
-    std::array<Allpass, kDispersionStages> dispersion_{};
+    vsm::audio::dsp::StringWaveguide string_;
+    size_t contactOffset_ = 20;      ///< point d'attaque, en échantillons
 
     int pluckRemaining_ = 0;
     int pluckLength_ = 1;

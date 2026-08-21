@@ -5,13 +5,14 @@ Séquenceur MIDI + rack de synthétiseurs vintage virtuels. Voir
 d'avancement détaillé par phase.
 
 **État actuel** : le moteur MIDI (`core/`, 81 tests) et le moteur audio
-temps réel (`audio/`, 478 tests, dont un test de concurrence réel vérifié
-sous ThreadSanitizer) sont implémentés et **entièrement testés** — 676
-tests, tous verts, zéro warning. Les 20 machines (Minimoog, TB-303, Juno-106,
+temps réel (`audio/`, 527 tests, dont un test de concurrence réel vérifié
+sous ThreadSanitizer) sont implémentés et **entièrement testés** — 725
+tests, tous verts, zéro warning. Les 23 machines (Minimoog, TB-303, Juno-106,
 TR-808, TR-909, SH-101, Prophet, Jupiter-8, ARP Odyssey, MS-20, DX7, sampler
 16 emplacements, e-piano, OB-X, supersaw, table d'ondes, hybride PCM, orgue à
 roues phoniques, Generic Synth, String — corde pincée et frottée par guide
-d'ondes — + le synthé de test) ont chacune une
+d'ondes —, Piano — cordes frappées —, Drums — batterie acoustique modélisée —,
+Wind — anche et lèvres — + le synthé de test) ont chacune une
 **empreinte de non-régression audio** qui fige leur rendu. **Toutes les phases
 des feuilles de route sont terminées** (1 à 6 : moteur, machines, optimisation
 SIMD ; 7 : interopérabilité sémantique, CLAP ; 8 à 11 : reconstruction
@@ -24,14 +25,15 @@ du code du DAW. Exemples de fichiers dans [`docs/examples/`](docs/examples).
 
 ## Façades « façon hardware »
 
-**Les vingt machines** ont leur propre façade, avec la disposition de
+**Les vingt-trois machines** ont leur propre façade, avec la disposition de
 l'original : trajet du signal du Minimoog, rangée unique du TB-303, colonne
 par pièce des TR-808/909 et du sampler-boîte à rythmes, curseurs du Juno-106,
 du Jupiter-8, du SH-101 et de l'ARP Odyssey, double filtre du MS-20, bloc
 Poly-Mod du Prophet, matrice des six opérateurs du DX7, tirettes de l'orgue à
-roues phoniques -- le synoptique gris volontairement neutre du Generic Synth
-et le trajet physique de la corde du String, les deux seules façades du parc
-qui ne reproduisent aucun instrument existant. Aperçus :
+roues phoniques, colonne par pièce de la batterie acoustique -- et, pour les
+machines de modélisation physique qui n'ont jamais eu de façade canonique
+(String, Piano, Wind), le trajet du signal lui-même, faute d'original à
+imiter. Aperçus :
 [`docs/images/panels/`](docs/images/panels).
 
 Le **séquenceur à pas** des machines qui en ont un (TR-808, TB-303) est

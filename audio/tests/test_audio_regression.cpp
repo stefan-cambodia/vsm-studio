@@ -405,6 +405,9 @@ VSM_TEST(regression_pcmhybrid)  { checkMachine("vsm.pcmhybrid"); }
 VSM_TEST(regression_tonewheel)  { checkMachine("vsm.tonewheel"); }
 VSM_TEST(regression_generic)    { checkMachine("vsm.generic"); }
 VSM_TEST(regression_string)     { checkMachine("vsm.string"); }
+VSM_TEST(regression_piano)      { checkMachine("vsm.piano"); }
+VSM_TEST(regression_drums)      { checkMachine("vsm.drums"); }
+VSM_TEST(regression_wind)       { checkMachine("vsm.wind"); }
 
 /// Le rendu doit être reproductible À L'IDENTIQUE d'une instance à l'autre :
 /// c'est la condition pour que l'empreinte ci-dessus ait un sens. Vérifié ici

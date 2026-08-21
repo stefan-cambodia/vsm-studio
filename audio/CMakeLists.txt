@@ -27,6 +27,9 @@ add_library(vsm_audio STATIC
     plugins/tonewheel/TonewheelOrgan.cpp
     plugins/generic/GenericSynth.cpp
     plugins/string/StringSynth.cpp
+    plugins/piano/PianoSynth.cpp
+    plugins/drums/DrumsSynth.cpp
+    plugins/wind/WindSynth.cpp
 )
 
 target_include_directories(vsm_audio PUBLIC include)
@@ -105,6 +108,9 @@ if (VSM_BUILD_TESTS)
         tests/test_tonewheel_organ.cpp
         tests/test_generic_synth.cpp
         tests/test_string_synth.cpp
+        tests/test_piano_synth.cpp
+        tests/test_drums_synth.cpp
+        tests/test_wind_synth.cpp
         tests/test_midi_learn.cpp
         tests/test_effect_routing.cpp
         tests/test_more_effects.cpp

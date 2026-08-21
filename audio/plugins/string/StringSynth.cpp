@@ -26,18 +26,15 @@ float noteToHz(uint8_t note, float driftSemis) {
 
 void StringVoice::prepare(double sampleRate, uint64_t seed) {
     sampleRate_ = sampleRate;
-    // Capacité : l'aller-retour de la note la plus grave, plus la marge des
-    // organes de boucle. Réservée ICI, jamais dans process().
-    const size_t capacity = static_cast<size_t>(sampleRate / static_cast<double>(kLowestHz)) + 8;
-    line_.assign(capacity, 0.0f);
-    writeIndex_ = 0;
+    // La ligne est réservée ICI, pour la note la plus grave qu'on accepte de
+    // tenir. Le do -1 du MIDI est à 8,18 Hz : en dessous, une corde n'est plus
+    // une corde, et la mémoire serait réservée pour rien.
+    string_.prepare(sampleRate, kLowestHz);
     rng_ = vsm::util::DeterministicRng(seed);
     drift_.setSampleRate(sampleRate);
     drift_.setSeed(seed ^ 0x51DEULL);
     drift_.setRateHz(0.05f);
-    tuning_.reset();
-    for (auto& stage : dispersion_) stage.reset();
-    dampingState_ = pickLpState_ = pickLpState2_ = dcX1_ = dcY1_ = level_ = 0.0f;
+    pickLpState_ = pickLpState2_ = dcX1_ = dcY1_ = level_ = 0.0f;
     active_ = released_ = false;
 }
 
@@ -47,11 +44,8 @@ void StringVoice::noteOn(uint8_t channel, uint8_t note, uint8_t velocity) {
     velocity_ = velocity;
     // La corde repart au repos : effacer coûte un memset, jamais une
     // allocation. Garder l'ancien contenu ferait claquer une voix volée.
-    std::fill(line_.begin(), line_.end(), 0.0f);
-    writeIndex_ = 0;
-    tuning_.reset();
-    for (auto& stage : dispersion_) stage.reset();
-    dampingState_ = pickLpState_ = pickLpState2_ = dcX1_ = dcY1_ = 0.0f;
+    string_.reset();
+    pickLpState_ = pickLpState2_ = dcX1_ = dcY1_ = 0.0f;
     level_ = 1.0f;
     active_ = true;
     released_ = false;
@@ -63,64 +57,19 @@ void StringVoice::noteOn(uint8_t channel, uint8_t note, uint8_t velocity) {
 
 void StringVoice::updateTuning(const Params& p) {
     const float driftSemis = drift_.nextValue() * 0.06f;
-    const float hz = std::clamp(noteToHz(note_, driftSemis), kLowestHz, static_cast<float>(sampleRate_) * 0.25f);
-    const float totalDelay = static_cast<float>(sampleRate_) / hz;
+    const float hz = std::clamp(noteToHz(note_, driftSemis), kLowestHz,
+                                static_cast<float>(sampleRate_) * 0.25f);
 
-    // 1. Amortissement. b = 0 laisse passer tout l'aigu (corde métallique
-    //    nue), b = 0,5 tue Nyquist en un tour (corde en boyau, étouffée).
-    //    Le gain en continu vaut 1 quel que soit b : c'est ce qui rend le
-    //    T60 demandé exact sur le fondamental.
-    dampingB_ = 0.02f + 0.47f * std::clamp(p.damping, 0.0f, 1.0f);
-
-    // 2. Raideur. Coefficient négatif : les graves sont retardés davantage
-    //    que les aigus, donc les partiels montent — c'est l'inharmonicité
-    //    d'une corde filée. Le coefficient dépend de la NOTE, pour que le
-    //    réglage vaille la même chose d'un bout à l'autre du clavier ; le
-    //    pourquoi et la loi sont dans l'en-tête, ils viennent d'une mesure.
-    const float stiffness = std::clamp(p.stiffness, 0.0f, 1.0f);
-    float a = 0.0f;
-    if (stiffness > 1.0e-3f) {
-        const float targetCents = 25.0f * stiffness;
-        const float k = 3.26f * std::pow(targetCents, -0.368f);
-        const float omega16 = 32.0f * static_cast<float>(kPi) * hz / static_cast<float>(sampleRate_);
-        a = -std::min(0.95f, std::exp(-k * omega16));
-    }
-    float dispersionDelay = static_cast<float>(kDispersionStages) * allpassDelay(a);
-    // Le retard réclamé par la dispersion est plafonné à 40 % de la boucle,
-    // sans quoi une note très aiguë n'aurait plus de ligne à retard du tout
-    // (approximation documentée dans l'en-tête).
-    const float budget = 0.40f * totalDelay;
-    if (dispersionDelay > budget) {
-        const float perStage = std::max(1.0f, budget / static_cast<float>(kDispersionStages));
-        a = (1.0f - perStage) / (1.0f + perStage);
-        dispersionDelay = static_cast<float>(kDispersionStages) * perStage;
-    }
-    for (auto& stage : dispersion_) stage.a = a;
-
-    // 3. Retard fractionnaire : ce qui reste après les organes de boucle est
-    //    partagé entre une partie entière et un passe-tout accordé. On vise
-    //    une fraction dans [0,5 ; 1,5), là où ce passe-tout est le plus fidèle.
-    const float remainder = totalDelay - dampingB_ - dispersionDelay;
-    float integerPart = std::floor(remainder - 0.5f);
-    if (integerPart < 2.0f) integerPart = 2.0f;
-    const float maxInteger = static_cast<float>(line_.size() - 2);
-    if (integerPart > maxInteger) integerPart = maxInteger;
-    const float fraction = std::max(0.05f, remainder - integerPart);
-    delaySamples_ = static_cast<size_t>(integerPart);
-    tuning_.a = (1.0f - fraction) / (1.0f + fraction);
+    // Lever le doigt étouffe la corde : ce n'est pas une enveloppe qui se
+    // ferme, c'est la boucle qui perd davantage à chaque tour.
+    const float t60 = std::max(0.02f, released_ ? p.releaseSeconds : p.decaySeconds);
+    string_.setTuning(hz, p.damping, p.stiffness, t60);
 
     // Point de pincement. Le peigne « 1 - z^-pD » annule les harmoniques
     // multiples de 1/p : pincer au milieu (p = 0,5) supprime les harmoniques
     // paires et creuse le son, pincer près du chevalet (p petit) les garde
     // toutes et donne le son nasillard d'un médiator au bord.
-    const float position = std::clamp(p.pickPosition, 0.02f, 0.5f);
-    pickOffset_ = std::clamp(static_cast<size_t>(position * totalDelay),
-                             size_t{1}, delaySamples_ - 1);
-
-    // 4. Gain de boucle depuis le T60 demandé : g^(SR*T60/D) = 10^-3.
-    const float t60 = std::max(0.02f, released_ ? p.releaseSeconds : p.decaySeconds);
-    loopGain_ = std::pow(10.0f, -3.0f * totalDelay / (static_cast<float>(sampleRate_) * t60));
-    loopGain_ = std::min(loopGain_, 0.99999f);
+    contactOffset_ = string_.contactOffset(p.pickPosition);
 
     // Longueur de la salve : UNE PÉRIODE, c'est-à-dire la corde entière.
     //
@@ -130,9 +79,8 @@ void StringVoice::updateTuning(const Params& p) {
     // 5 ms n'a presque pas d'énergie en dessous de 200 Hz. Sur un violoncelle
     // pizzicato à 73 Hz, le fondamental de la machine ne sortait même pas dans
     // les huit plus fortes raies du spectre. Le pincement d'une corde met en
-    // mouvement TOUTE sa longueur : la salve dure donc un aller-retour.
-    pluckLength_ = std::clamp(static_cast<int>(totalDelay), 8,
-                              static_cast<int>(line_.size()));
+    // mouvement TOUTE sa longueur : la salve dure un aller-retour.
+    pluckLength_ = std::max(8, static_cast<int>(string_.loopDelay()));
     // Coupure de la salve, en échelle géométrique : de 45 Hz (le pouce, sous
     // le fondamental de toute corde grave, donc pente en 1/n² sur toute
     // l'étendue) à 5 kHz (le médiator dur). Deux pôles, pour la pente de
@@ -166,16 +114,7 @@ void StringVoice::updateTuning(const Params& p) {
 float StringVoice::render(const Params& p) {
     if (!active_) return 0.0f;
 
-    const size_t capacity = line_.size();
-    const size_t readIndex = (writeIndex_ + capacity - delaySamples_) % capacity;
-
-    // --- la boucle ---------------------------------------------------------
-    const float delayed = line_[readIndex];
-    const float damped = (1.0f - dampingB_) * delayed + dampingB_ * dampingState_;
-    dampingState_ = delayed;
-    float dispersed = damped;
-    for (auto& stage : dispersion_) dispersed = stage.process(dispersed);
-    const float looped = tuning_.process(dispersed) * loopGain_;
+    const float looped = string_.advance();
 
     // --- excitation --------------------------------------------------------
     float drive = 0.0f;
@@ -186,6 +125,7 @@ float StringVoice::render(const Params& p) {
         // symétrique (demi-cosinus) mettrait la moitié de la salve à monter et
         // effacerait l'attaque. La montée existe tout de même, faute de quoi
         // le premier échantillon serait un clic sans rapport avec la corde.
+        //
         // La longueur est recalculée à chaque bloc (la dérive fait bouger la
         // période) : borner la phase évite qu'un raccourcissement en cours de
         // salve la fasse sortir de [0, 1] et retourne le signe de la fenêtre.
@@ -208,21 +148,7 @@ float StringVoice::render(const Params& p) {
         drive += bowGain_ * bowFriction(relative, slope) * relative;
     }
 
-    // Injection en un point de la corde : le signal entre en phase au point
-    // de contact et en opposition à sa symétrie, ce qui EST le peigne de
-    // position de pincement — pas une imitation par filtre.
-    float value = looped + drive;
-    if (!isSameValue(drive, 0.0f)) {
-        const size_t opposite = (writeIndex_ + capacity - pickOffset_) % capacity;
-        line_[opposite] -= drive;
-    }
-
-    // Garde-fou : l'archet est une boucle de réaction, et une boucle de
-    // réaction doit être bornée quelque part. Jamais atteint aux réglages
-    // utiles ; il empêche une divergence de sortir en NaN.
-    value = std::clamp(value, -4.0f, 4.0f);
-    line_[writeIndex_] = value;
-    writeIndex_ = (writeIndex_ + 1) % capacity;
+    const float value = string_.inject(looped, drive, contactOffset_);
 
     // Bloqueur de continu : la table de friction n'est pas symétrique et
     // laisserait une composante continue qui mangerait la dynamique.
