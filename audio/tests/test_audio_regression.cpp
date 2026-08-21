@@ -404,6 +404,7 @@ VSM_TEST(regression_wavetable)  { checkMachine("vsm.wavetable"); }
 VSM_TEST(regression_pcmhybrid)  { checkMachine("vsm.pcmhybrid"); }
 VSM_TEST(regression_tonewheel)  { checkMachine("vsm.tonewheel"); }
 VSM_TEST(regression_generic)    { checkMachine("vsm.generic"); }
+VSM_TEST(regression_string)     { checkMachine("vsm.string"); }
 
 /// Le rendu doit être reproductible À L'IDENTIQUE d'une instance à l'autre :
 /// c'est la condition pour que l'empreinte ci-dessus ait un sens. Vérifié ici

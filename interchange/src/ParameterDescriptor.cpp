@@ -69,6 +69,30 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Analog Character", "voice.analogCharacter"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.string ---
+    // Machine de MODÉLISATION PHYSIQUE : ses identités décrivent une corde,
+    // pas une chaîne soustractive. Rien ici ne se traduit en `oscillator.*`
+    // ou `filter.*` sans mentir -- une corde n'a ni oscillateur ni filtre,
+    // elle a une longueur, une raideur et un point de contact. Les seules
+    // identités réutilisées sont celles qui gardent leur sens partout :
+    // le relâchement, la sensibilité à la vélocité, la sortie.
+    {"vsm.string", {
+        {"Pick Position", "string.pickPosition"},
+        {"Pick Hardness", "string.pickHardness"},
+        {"Excitation", "string.excitation"},
+        {"Bow Pressure", "string.bowPressure"},
+        {"Bow Speed", "string.bowSpeed"},
+        {"String Decay", "string.decay"},
+        {"String Damping", "string.damping"},
+        {"Stiffness", "string.stiffness"},
+        {"Release", "envelope.1.release"},
+        {"Body Level", "string.bodyLevel"},
+        {"Body Size", "string.bodySize"},
+        {"Velocity Sensitivity", "voice.velocitySensitivity"},
+        {"Drive", "output.drive"},
+        {"Analog Character", "voice.analogCharacter"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.generic ---
     // Machine NEUTRE : ses identités sont volontairement les plus canoniques
     // du vocabulaire, sans aucun identifiant qui lui soit propre. C'est ce qui

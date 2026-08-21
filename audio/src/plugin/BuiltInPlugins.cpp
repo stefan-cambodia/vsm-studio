@@ -19,6 +19,7 @@
 #include "pcmhybrid/PcmHybridSynth.h"
 #include "tonewheel/TonewheelOrgan.h"
 #include "generic/GenericSynth.h"
+#include "string/StringSynth.h"
 
 namespace vsm::audio::plugin {
 
@@ -110,6 +111,10 @@ void registerBuiltInPlugins() {
     {
         vsm::plugins::generic::GenericSynth forceLinkGeneric;
         (void)forceLinkGeneric;
+    }
+    {
+        vsm::plugins::string_machine::StringSynth forceLinkString;
+        (void)forceLinkString;
     }
 }
 

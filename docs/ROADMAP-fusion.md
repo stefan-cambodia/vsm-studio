@@ -40,11 +40,11 @@ client, jamais une dépendance.
 
 **Acquis, mesuré :**
 
-- 19 machines (+ tonalité d'essai), 9 effets, moteur temps réel, 658 tests
+- 20 machines (+ tonalité d'essai), 9 effets, moteur temps réel, 676 tests
   verts, zéro warning.
-- Piano roll complet, façades « façon hardware » pour les 19 machines,
+- Piano roll complet, façades « façon hardware » pour les 20 machines,
   séquenceurs à pas pour celles qui en ont un.
-- Interop : identités sémantiques (495 paramètres), presets `*.synth.json`,
+- Interop : identités sémantiques (510 paramètres), presets `*.synth.json`,
   projets `project.json`, rendu hors ligne `vsm-render`, adaptateur et hôte
   CLAP.
 - Pont Python : rendu d'une note par le moteur réel en ~10 ms, déterministe au
@@ -57,10 +57,23 @@ client, jamais une dépendance.
   l'espace écrit en dur : distance médiane **0,625 → 0,368**, et **0,029** en
   quadruplant le budget, avec la coupure retrouvée à 884 / 899 / 908 Hz pour
   900 visés (contre 864 / 827 / 1228 avec l'ancien espace).
-- La couverture instrumentale s'est comblée côté synthèse (six machines
-  ajoutées, voir [`CDC-machines-manquantes.md`](CDC-machines-manquantes.md)),
-  mais **basse, guitare et cordes réelles** passent toujours par le sampler
-  faute de modèle dédié.
+- ~~La couverture instrumentale s'est comblée côté synthèse, mais basse,
+  guitare et cordes réelles passent toujours par le sampler faute de modèle
+  dédié~~ — **levé par `vsm.string`** (§ 10 de
+  [`CDC-machines-manquantes.md`](CDC-machines-manquantes.md), chiffres dans
+  ARCHITECTURE.md § 32). La corde — pincée ET frottée — est modélisée par
+  guide d'ondes. Sur un violoncelle à l'archet réel, cherchée parmi les
+  dix-sept machines mélodiques sans présélection, elle arrive **première au
+  budget par défaut** (0,1225 contre 0,1310, sur les trois graines) et **perd à
+  60 itérations** (0,1190 contre 0,0865 au SH-101, sur les trois graines
+  aussi) : ses dix axes sont contraints par la physique, elle les épuise vite
+  et bute sur un plafond que la recherche ne peut pas franchir, là où un
+  soustractif plie son enveloppe spectrale aussi longtemps qu'on lui paie des
+  évaluations. La couverture est acquise ; la victoire est conditionnelle, et
+  la condition est écrite.
+- Il ne reste qu'une case vide au tableau de couverture des sources : les
+  **cuivres et les bois**, qui demanderaient un modèle à anche ou à lèvre — ni
+  une corde ni une lame ne les produit.
 - ~~Une recherche coûte ~13 s par note et par machine~~ — **traité par la
   phase 10**, mais le coût reste réel et il faut le dire : la présélection à
   deux étages le divise par deux à verdict identique (343 s → 174 s sur quinze
@@ -77,6 +90,27 @@ couverture des sources, la reconstruction d'un morceau entier, l'efficacité de
 la recherche et le bouclage dans le DAW. Ce qui reste ouvert n'est plus une
 étape planifiée mais les limites énumérées ci-dessus et le §6, « ce qui n'est
 pas au programme, et pourquoi ».
+
+**Une leçon de méthode s'ajoute aux précédentes, et elle a failli coûter une
+fausse conclusion.** La mesure d'acceptation de `vsm.string` a d'abord classé
+la machine 14e sur 17 sur une cible qui est LITTÉRALEMENT une corde. Trois
+défauts réels du modèle sont sortis de l'enquête ; mais le gros de l'écart
+venait du protocole : le `gate` — la proportion de l'extrait pendant laquelle
+la note est tenue — valait 0,95 face à une cible qui se tait à 0,24. Chaque
+candidate jouait donc pendant 0,95 s contre une cible éteinte depuis 0,24 s,
+ce qui pénalise spécifiquement tout modèle **entretenu** (l'archet, l'orgue),
+incapable de s'arrêter tant que la touche est tenue, là où un soustractif
+referme simplement son enveloppe. Le classement mesurait la résistance à une
+erreur de protocole, pas les machines. Corrigé, la même machine au même budget
+et à la même graine passe de 0,2456 à 0,1225 et prend la première place.
+C'est la même règle qu'au § 10.3 et à la septième passe de House Of God, sous
+une troisième forme : **une distance n'est un chiffre que si l'on sait à
+quelles conditions elle a été obtenue** — et le `gate` en fait partie au même
+titre que la métrique et le budget. Le correctif est donc le même que les deux
+fois précédentes : le `gate` de chaque stem est désormais **inscrit dans
+`rapport.json`**, à côté de sa distance. Il y est par stem et non en tête du
+document, parce qu'il dépend de la note de référence choisie et diffère donc
+d'un stem à l'autre.
 
 ---
 

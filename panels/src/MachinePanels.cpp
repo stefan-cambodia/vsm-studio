@@ -1681,11 +1681,102 @@ MachinePanel makeGeneric() {
     return panel;
 }
 
+// ---------------------------------------------------------------------------
+// Corde pincée / frottée
+//
+// Il n'y a pas de machine d'origine à copier : la modélisation physique n'a
+// jamais eu de façade canonique, et prétendre en imiter une serait inventer
+// un souvenir. La règle du § 5 du cahier des charges prévoit ce cas et donne
+// la solution : à défaut d'un original, la disposition suit LE TRAJET DU
+// SIGNAL — ici le trajet PHYSIQUE, qui est aussi celui que le musicien
+// parcourt en pensée : on excite quelque part, la corde répond, la caisse
+// rayonne, l'ampli sort.
+//
+//     EXCITATION  ->  ARCHET  ->  CORDE  ->  CAISSE  ->  SORTIE
+//
+// Le bois du châssis et le laiton des commandes disent de quelle famille
+// d'instruments il s'agit, sans emprunter à personne.
+// ---------------------------------------------------------------------------
+MachinePanel makeString() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.string";
+    panel.displayName = "String (corde pincée / frottée)";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#241C15";
+    panel.sectionColour = "#1A140F";
+    panel.textColour = "#EFE3D0";
+    panel.knobColour = "#C9A567";
+    panel.gridColumns = 18;
+    panel.gridRows = 4;
+
+    // Le geste : où l'on touche la corde, et avec quoi. « BLEND » est
+    // volontairement un potentiomètre et non un interrupteur : le passage du
+    // médiator à l'archet est CONTINU dans cette machine, et une façade qui
+    // montrerait deux positions mentirait sur ce qu'elle commande.
+    PanelSection excitation;
+    excitation.title = "EXCITATION";
+    excitation.accentColour = "#C9A567";
+    excitation.column = 0; excitation.row = 0; excitation.columnSpan = 5; excitation.rowSpan = 4;
+    excitation.controls = {
+        control("Excitation", "PLUCK / BOW", S::LargeKnob, 0, 0),
+        control("Pick Position", "POSITION", S::Knob, 1, 0),
+        control("Pick Hardness", "HARDNESS", S::Knob, 2, 0),
+        control("Velocity Sensitivity", "TOUCH", S::Knob, 0, 1),
+    };
+
+    // L'archet a ses deux gestes propres : appuyer et tirer. Ils ne servent
+    // qu'en position « bow », et rester groupés le dit mieux qu'une note.
+    PanelSection bow;
+    bow.title = "BOW";
+    bow.accentColour = "#B08A4E";
+    bow.column = 5; bow.row = 0; bow.columnSpan = 3; bow.rowSpan = 4;
+    bow.controls = {
+        control("Bow Pressure", "PRESSURE", S::Knob, 0, 0),
+        control("Bow Speed", "SPEED", S::Knob, 0, 1),
+    };
+
+    // La corde elle-même : ce qui se perd à chaque aller-retour, et sa
+    // raideur. Curseurs, parce que ce sont des grandeurs qu'on règle en
+    // regardant leur position relative — comme sur une table d'harmonie.
+    PanelSection stringSection;
+    stringSection.title = "STRING";
+    stringSection.accentColour = "#C9A567";
+    stringSection.column = 8; stringSection.row = 0; stringSection.columnSpan = 4; stringSection.rowSpan = 4;
+    stringSection.controls = {
+        control("String Decay", "DECAY", S::VerticalSlider, 0, 0, 1, 2),
+        control("String Damping", "DAMPING", S::VerticalSlider, 1, 0, 1, 2),
+        control("Stiffness", "STIFFNESS", S::VerticalSlider, 2, 0, 1, 2),
+        control("Release", "DAMPER", S::VerticalSlider, 3, 0, 1, 2),
+    };
+
+    PanelSection body;
+    body.title = "BODY";
+    body.accentColour = "#8E6B3A";
+    body.column = 12; body.row = 0; body.columnSpan = 3; body.rowSpan = 4;
+    body.controls = {
+        control("Body Level", "LEVEL", S::Knob, 0, 0),
+        control("Body Size", "SIZE", S::Knob, 0, 1),
+    };
+
+    PanelSection output;
+    output.title = "OUTPUT";
+    output.accentColour = "#C9A567";
+    output.column = 15; output.row = 0; output.columnSpan = 3; output.rowSpan = 4;
+    output.controls = {
+        control("Drive", "DRIVE", S::Knob, 0, 0),
+        control("Analog Character", "AGE", S::Knob, 1, 0),
+        control("Output Level", "VOLUME", S::Knob, 0, 1),
+    };
+
+    panel.sections = {excitation, bow, stringSection, body, output};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
         makeJuno106(), makeJupiter8(), makeProphet(), makeMs20(), makeArpOdyssey(), makeDx7(), makeSampler(),
-        makeEPiano(), makeObx(), makeSupersaw(), makeWavetable(), makePcmHybrid(), makeTonewheel(), makeGeneric()
+        makeEPiano(), makeObx(), makeSupersaw(), makeWavetable(), makePcmHybrid(), makeTonewheel(), makeGeneric(), makeString()
     };
     return all;
 }

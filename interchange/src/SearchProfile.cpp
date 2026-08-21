@@ -111,6 +111,22 @@ constexpr Rule kRules[] = {
     {"drum.openHat.decay",                 0.0f,     0.0f, SearchScale::Linear,      0.72f},
     {"drum.crash.decay",                   0.0f,     0.0f, SearchScale::Linear,      0.72f},
     {"oscillator.#.wavetable",             0.0f,     0.0f, SearchScale::Linear,      0.72f},
+    // Famille de la CORDE (vsm.string). L'ordre n'est pas celui d'un
+    // soustractif : sur une corde, ce qui fait le timbre est d'abord ce qui
+    // se PERD à chaque aller-retour (l'amortissement, puis la durée), ensuite
+    // seulement la manière dont on l'excite. L'amortissement y joue le rôle
+    // que la coupure joue ailleurs — c'est le seul réglage qui change la
+    // couleur du son tenu — d'où une importance du même ordre.
+    {"string.damping",                     0.0f,     1.0f, SearchScale::Linear,      0.98f},
+    {"string.decay",                       0.15f,   12.0f, SearchScale::Logarithmic, 0.90f},
+    {"string.excitation",                  0.0f,     1.0f, SearchScale::Linear,      0.88f},
+    {"string.pickPosition",                0.0f,     0.0f, SearchScale::Linear,      0.82f},
+    {"string.pickHardness",                0.0f,     1.0f, SearchScale::Linear,      0.74f},
+    {"string.bodyLevel",                   0.0f,     1.0f, SearchScale::Linear,      0.70f},
+    {"string.stiffness",                   0.0f,     1.0f, SearchScale::Linear,      0.62f},
+    {"string.bodySize",                    0.0f,     1.0f, SearchScale::Linear,      0.58f},
+    {"string.bowPressure",                 0.0f,     1.0f, SearchScale::Linear,      0.55f},
+    {"string.bowSpeed",                    0.0f,     1.0f, SearchScale::Linear,      0.45f},
     // Familles propres à la machine NEUTRE. Elles sont CONTINUES par
     // construction, ce qui les rend particulièrement rentables à chercher :
     // une forme d'onde morphable explore tout le passage sinus-carré sans le

@@ -25,15 +25,26 @@ Il classe ce qu'il entend en : `bass`, `synth_bass`, `synth_lead`, `synth_pad`,
 | `synth_pad`, `synth` poly | Juno-106, Jupiter-8, Prophet, ARP | **couvert** |
 | Timbres FM (cloches, e-piano FM, basses métalliques) | DX7 | **couvert** |
 | Batterie électronique | TR-808, TR-909 | **couvert** si le morceau utilise ces machines |
-| **Batterie acoustique** | — | **non couvert** |
-| **Basse électrique, guitare** | — | **non couvert** |
-| **Piano, orgue, claviers acoustiques** | — | **non couvert** |
-| **Cordes, cuivres, bois** | — | **non couvert** |
+| Batterie acoustique | `vsm.sampler` | **couvert** — les coups découpés du stem SONT les échantillons |
+| Basse électrique, guitare | `vsm.string` | **couvert** — corde pincée, guide d'ondes (§ 10) |
+| Piano, orgue, claviers acoustiques | `vsm.epiano`, `vsm.tonewheel` | **couvert** pour l'électromécanique ; le piano acoustique reste hors de portée sans bibliothèque |
+| Cordes | `vsm.string` | **couvert** — corde frottée, même machine (§ 10) |
+| **Cuivres, bois** | — | **non couvert** — ni corde ni lame : il faudrait un modèle à anche/lèvre |
 | **Voix** | — | hors périmètre, et honnêtement hors de portée |
 
 Or un morceau réel donne presque toujours un stem `drums` acoustique et un
 stem `bass` joué sur un instrument, pas sur un TB-303. **Les trois quarts des
 stems d'un enregistrement courant n'ont aujourd'hui aucune machine cible.**
+
+> **État : le tableau ci-dessus a été remis à jour, et il ne reste qu'une case
+> vide.** `vsm.sampler` a couvert le percussif, `vsm.epiano` et
+> `vsm.tonewheel` l'électromécanique, `vsm.string` la corde — pincée comme
+> frottée. Les cuivres et les bois restent seuls non couverts : ni une corde ni
+> une lame ne les produit, il leur faudrait un modèle à anche ou à lèvre. La
+> phrase « les trois quarts des stems n'ont aucune machine cible » n'est plus
+> vraie, et c'est ce document qui la portait : elle est conservée telle quelle
+> ci-dessus parce qu'elle dit ce qu'ON CROYAIT au départ, et l'encadré dit ce
+> que la suite a donné.
 
 ## 2. Le second problème, moins visible : les machines de caractère résistent à la recherche
 
@@ -256,6 +267,11 @@ En plus du CDC général :
 [x] Profil de recherche déclaré et lisible depuis interchange/
 [x] Preuve de bout en bout : un stem réel reconstruit, distance mesurée AVANT
     et APRÈS l'ajout, chiffres publiés dans ARCHITECTURE.md (§31)
+[x] vsm.string : justesse du guide d'ondes vérifiée sur cinq octaves (test)
+[x] vsm.string : le point de pincement annule les harmoniques qu'il doit (test)
+[x] vsm.string : l'archet ENTRETIENT là où le pincement s'éteint (test)
+[x] vsm.string : distance à une cible réelle mesurée AVANT et APRÈS, publiée
+    dans ARCHITECTURE.md (§32)
 ```
 
 Le dernier point est le seul qui compte vraiment : ces machines existent pour
@@ -308,6 +324,7 @@ Deux critères, à ne pas confondre :
 | Supersaw / unisson massif | `vsm.supersaw` (7 scies, courbes de désaccord et de mélange) | **fait** |
 | Électromécanique | `vsm.epiano` (lames), `vsm.tonewheel` (roues phoniques + rotatif) | **fait** |
 | Filtre à 2 pôles, poly « brass » | `vsm.obx` | **fait** |
+| **Modélisation physique, guide d'ondes** | `vsm.string` (corde pincée et frottée) | **fait** — voir § 10 |
 
 ### Proposition, par ordre de rendement
 
@@ -371,3 +388,104 @@ entiers n'ont aucune machine cible. Les rangs 2, 4 et 5 élargissent surtout la
 palette de jeu — utiles, mais à ne pas confondre avec un gain de reconstruction.
 La règle du §7 reste valable : mesurer la distance **avant et après**, et
 publier le chiffre.
+
+---
+
+## 10. Machine 4 — `vsm.string` : la corde, pincée et frottée
+
+**Pourquoi elle, et pourquoi maintenant.** Après les six machines du § 9, il
+restait exactement une limite écrite au § 1 de
+[`ROADMAP-fusion.md`](ROADMAP-fusion.md) : « basse, guitare et cordes réelles
+passent toujours par le sampler faute de modèle dédié ». Trois des sources du
+tableau du § 1 n'avaient aucune machine cible, et elles ont ceci de commun
+qu'elles sont toutes **une corde**. Le § 7 met en garde contre l'ajout de
+machines de caractère, « qui élargissent le catalogue, pas la couverture » :
+celle-ci fait l'inverse. Elle ouvre une famille de synthèse absente du parc —
+la modélisation physique par guide d'ondes — et c'est la seule qui puisse
+répondre honnêtement à un stem de corde jouée.
+
+**Le principe.** Une onde qui fait des aller-retour dans une ligne à retard de
+longueur `SR/f0`, et qui perd un peu à chaque tour. Ce qu'elle perd fait la
+décroissance ; ce qu'elle perd **dans l'aigu d'abord** fait le timbre ; la
+vitesse à laquelle les aigus la parcourent fait l'inharmonicité d'une corde
+raide. Rien de tout cela ne s'obtient avec un oscillateur et un filtre : une
+corde n'a ni l'un ni l'autre, elle a une longueur, une raideur et un point de
+contact.
+
+**Deux excitations, un fondu continu.** Le pincement rend son énergie d'un
+coup ; l'archet en fournit tant qu'il frotte, par un cycle d'adhérence et de
+décrochement qu'aucune enveloppe n'imite. `Excitation` passe de l'un à l'autre
+**sans palier** — exigence n° 1 du § 3, qui vaut ici pour la même raison : la
+machine est faite pour être cherchée, et un sélecteur discret creuse une
+falaise dans la fonction de coût.
+
+**Exigences propres à cette machine** :
+
+1. **Justesse.** La hauteur naît de la longueur de la boucle, qui n'est pas un
+   nombre entier d'échantillons. Un retard fractionnaire est donc obligatoire :
+   à 4 kHz, un échantillon de retard vaut plus d'un demi-ton. Testé de la note
+   28 à la note 76 ; erreur mesurée sous 0,2 cent.
+2. **Le réglage de raideur doit valoir la même chose d'un bout à l'autre du
+   clavier.** À coefficient de dispersion fixe, l'inharmonicité suit la
+   fréquence absolue et non le rang du partiel : elle disparaît sur les cordes
+   graves, c'est-à-dire là où elle s'entend le plus. Le coefficient dépend donc
+   de la note, et il est résolu pour que l'effet soit linéaire dans le réglage.
+3. **Le pincement doit avoir la pente d'un triangle.** Le point d'injection
+   produit le facteur `sin(n·pi·p)` de la corde idéale ; il manque le 1/n² du
+   déplacement triangulaire. Sans lui, le second harmonique sort plus fort que
+   le fondamental, ce qu'aucun instrument à cordes ne fait.
+4. **Transparence de la caisse au repos.** Une basse électrique n'a pas de
+   caisse : à `Body Level = 0`, la machine doit être exactement transparente.
+5. **Profil de recherche déclaré**, comme au § 6.
+
+> **État : fait.** La machine existe (`vsm.string`), quinze paramètres et huit
+> voix, avec ses seize tests, ses identités sémantiques, son profil de
+> recherche, sa façade et son empreinte. Les exigences 1 à 4 ont chacune leur
+> test dans `audio/tests/test_string_synth.cpp`.
+>
+> **La promesse est tenue AU BUDGET DE LA CHAÎNE, et elle ne l'est plus à
+> budget triplé** (chiffres complets dans ARCHITECTURE.md § 32). Sur un
+> violoncelle à l'archet RÉEL, cherchée parmi les dix-sept machines mélodiques
+> sans présélection : au budget par défaut (20 itérations, celui que
+> `reconstruire.py` emploie), `vsm.string` arrive **première** sur les trois
+> graines — 0,1225 contre 0,1310 au meilleur du parc sans elle. À 60
+> itérations, elle **perd** sur les trois : le SH-101 descend à 0,0865 quand
+> elle plafonne à 0,1190.
+>
+> La raison n'est pas un défaut de convergence, c'est un PLAFOND PHYSIQUE : ses
+> dix axes sont peu nombreux et fortement contraints — une corde ne peut pas
+> produire n'importe quel spectre, c'est ce qui en fait un modèle — donc la
+> recherche les épuise vite. De 20 à 60 itérations, elle gagne 10 % quand un
+> soustractif en gagne 36. C'est le symétrique exact de ce que le § 3 disait de
+> `vsm.generic` : la neutralité s'achète avec du budget, la fidélité physique se
+> paie d'avance.
+>
+> Deux résultats à ne pas perdre de vue pour autant. Elle est de loin la plus
+> **stable** des candidates (±7 % sur six recherches, contre un facteur deux
+> pour le SH-101) : un classement de machines vaut mieux avec une candidate
+> dont le verdict ne dépend pas de la graine. Et sur une cible à l'archet, les
+> six recherches indépendantes ont toutes retenu `string.excitation` entre 0,956
+> et 0,999 — c'est-à-dire **l'archet**, jamais le pincement. Aucune distance ne
+> dit à l'optimiseur ce qu'est un archet : il l'a trouvé parce que le modèle en
+> contient un.
+>
+> **Ce que la mesure n'établit pas**, et qu'il faut dire : une cible, un
+> instrument. La chaîne complète (`reconstruire.py` de bout en bout, séparation
+> et transcription comprises) n'a pas pu être rejouée, faute de la pile
+> d'analyse lourde sur la machine où la mesure a été faite. C'est la moitié
+> manquante de la preuve.
+>
+> **Ce que la mesure a coûté et rapporté.** Elle a d'abord donné le résultat
+> INVERSE (14e sur 17), et l'enquête a trouvé trois vrais défauts du modèle —
+> la dispersion à coefficient fixe, la salve de pincement trop courte pour
+> exciter une corde grave, la pente en 1/n² absente — puis un quatrième défaut
+> qui n'était pas dans la machine du tout : le `gate` du protocole valait 0,95
+> pour une cible qui se tait à 0,24. Une distance n'est un chiffre que si l'on
+> sait à quelles conditions elle a été obtenue ; la métrique et le budget
+> étaient déjà inscrits dans les rapports, le `gate` ne l'était nulle part.
+>
+> **Non retenu, et écrit plutôt que découvert plus tard** : l'archet n'a pas de
+> temps de montée réglable (une dimension de recherche économisée, un handicap
+> réel sur les attaques lentes) ; le corps est une coloration en résonances
+> série, pas une caisse qui rayonne ; et une seule ligne à retard porte
+> l'aller-retour là où la physique en demande deux.

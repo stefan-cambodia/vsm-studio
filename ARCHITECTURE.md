@@ -19,7 +19,7 @@ les 2 VCO suivent les touches grave/aiguë, ring mod, sample & hold),
 système d'algorithmes, feedback, enveloppes par opérateur, sensibilité
 vélocité) sont tous faits. La **Phase 6 est ENTAMÉE** : les **tests de
 non-régression audio par machine** sont en place (section 9 bis) -- chacune des
-19 machines a désormais une empreinte de rendu figée, qui détecte toute dérive
+20 machines a désormais une empreinte de rendu figée, qui détecte toute dérive
 du son y compris causée par une brique DSP partagée modifiée pour une AUTRE
 machine. La **Phase 6 est CLOSE** : banc de mesure CPU (§ 9 ter), profiling
 intra-DSP (§ 9 quater), **SIMD entre voix** sur les trois machines
@@ -30,7 +30,8 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **542 tests moteur** (81 core + 461 audio,
+écoute au clic, et toute la logique testée hors JUCE. Total : **676 tests moteur** (81 core + 478 audio
++ 95 interchange + 11 CLAP + 11 façades,
 tous verts, zéro warning, y compris sous les flags stricts type-JUCE
 `-Wfloat-equal -Wsign-conversion -Wshadow`) + application complète compilée et
 liée. Rendus réels vérifiables : `minimoog_demo.wav`,
@@ -321,11 +322,11 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 542 tests moteur, tous verts
+### Bilan actuel : 676 tests moteur, tous verts
 
 - **81 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir),
-  **461 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
+  **478 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
   scalaire, indépendance des lignes, bornes de l'approximation de tanh ; et la
   boucle : rebouclage échantillon-exact, notes relâchées au saut) : chorus BBD, Juno-106,
   bus master (biquad/compresseur/limiteur à plafond garanti/LUFS), oversampler,
@@ -735,7 +736,7 @@ un couplage par le NOM du paramètre -- précisément ce que le projet garde
 stable, déjà verrouillé par les tests `..._parameter_list_size` de chaque
 machine.
 
-**495 paramètres** (19 machines + 9 effets, 308 à l'époque des 12 machines)
+**510 paramètres** (20 machines + 9 effets, 308 à l'époque des 12 machines)
 ont reçu une identité, dont
 `accent.amount` pour le TB-303 ou `fm.operator.3.ratio` pour le DX7 : le
 vocabulaire commun couvre ce qui est commun, et le reste est déclaré tel quel
@@ -947,7 +948,7 @@ utilisateur se mettrait à automatiser la résonance à la place de la coupure,
 sans erreur ni avertissement, des mois plus tard. Le `clap_id` est donc un
 hachage FNV-1a de l'identifiant SÉMANTIQUE : tant que `filter.1.cutoff` désigne
 la même chose, son identifiant ne bouge pas. Le prix (risque de collision) est
-**vérifié** sur tous les paramètres du parc (495 aujourd'hui), pas supposé,
+**vérifié** sur tous les paramètres du parc (510 aujourd'hui), pas supposé,
 et trois valeurs sont **gelées
 par test** -- si ce test casse, le correctif est de restaurer le hachage, jamais
 de mettre à jour les nombres.
@@ -1279,6 +1280,256 @@ rend la chaîne honnête bien au-delà du chiffre qu'on cherchait.
 
 ---
 
+## 32. `vsm.string` — la corde, et la dernière case de couverture
+
+**Le problème qu'elle résout.** C'était la dernière limite encore écrite au
+§ 1 de [`docs/ROADMAP-fusion.md`](docs/ROADMAP-fusion.md) : « basse, guitare et
+cordes réelles passent toujours par le sampler faute de modèle dédié ». Le § 1
+de [`docs/CDC-machines-manquantes.md`](docs/CDC-machines-manquantes.md) marque
+trois sources NON COUVERTES — basse électrique, guitare, cordes — et c'est la
+seule case restée vide après les six machines du § 9. Ce n'est donc pas une
+machine de caractère de plus, contre lesquelles le § 7 du même document met en
+garde : elle ouvre une **famille de synthèse absente du parc**, la modélisation
+physique par guide d'ondes, qui est la seule à pouvoir répondre honnêtement à
+un stem de corde jouée. Quinze paramètres, huit voix.
+
+**Le modèle.** Une seule ligne à retard porte l'aller-retour de l'onde. La
+boucle contient quatre organes, chacun répondant à un geste que le musicien
+connaît :
+
+```
+excitation ──> [ point de contact : 1 - z^-pD ]
+                     │
+                     v
+     ┌──> ligne à retard (N) ──> retard fractionnaire ──┐
+     │                                                  │
+     └── gain de boucle <── dispersion <── amortissement ┘
+                                                        │
+                                     corps (résonances) <┘
+```
+
+1. **Amortissement** — passe-bas d'ordre un `(1-b)x[n] + b·x[n-1]`. Son gain
+   vaut *exactement* 1 en continu, ce qui est la condition pour que
+   « String Decay » soit vraiment le T60 du fondamental et non une
+   approximation.
+2. **Raideur** — trois passe-tout d'ordre un. Une corde raide transmet les
+   aigus plus vite que les graves : ses partiels montent.
+3. **Retard fractionnaire** — un passe-tout accordé pour que la boucle fasse
+   exactement SR/f0. Sans lui la hauteur se quantifierait à l'échantillon
+   près : à 4 kHz, un échantillon vaut plus d'un demi-ton. Mesuré : erreur
+   inférieure à 0,2 cent sur cinq octaves, et un test la vérifie de la note 28
+   à la note 76.
+4. **Gain de boucle** — la décroissance, calculée depuis le T60 demandé.
+
+Deux excitations partagent cette boucle, et le paramètre `Excitation` fond de
+l'une à l'autre **sans palier** : le pincement (salve de bruit injectée en un
+point) et l'archet (force de frottement continue, table de friction en
+stick-slip). La continuité est délibérée — cette machine est faite pour être
+CHERCHÉE, et un sélecteur discret creuse une falaise dans la fonction de coût
+(§ 3 de `CDC-machines-manquantes.md`).
+
+### Trois corrections que seule la mesure pouvait imposer
+
+Aucune n'était visible en lisant le code ; chacune vient d'un chiffre.
+
+**1. Le coefficient de dispersion doit dépendre de la note.** À coefficient
+fixe, l'inharmonicité suit la fréquence ABSOLUE et non le rang du partiel : à
+−0,55, le 16e partiel d'un la 440 monte de 39 cents, celui d'un mi grave à
+82 Hz de **0,5 cent** — c'est-à-dire rien, précisément sur les cordes graves où
+la raideur s'entend le plus. Pire pour la recherche : en rendant le coefficient
+proportionnel au réglage, les trois premiers quarts de la course du bouton ne
+produisaient **aucun effet audible** sur une basse (mesuré : +0,0, +0,0, +0,4
+cent pour les réglages 0,25, 0,50 et 0,75) — la falaise même que la machine
+devait éviter. Le coefficient est donc résolu pour que l'inharmonicité visée au
+16e partiel soit LINÉAIRE dans le réglage, de 0 à 25 cents. La loi
+`|a| = exp(−k·ω16)` avec `k = 3,26·cents^−0,368` vient de l'inversion numérique
+de la réponse du peigne ; le facteur k s'est révélé indépendant de la note à
+1 % près sur cinq octaves, ce qui est ce qui rend la formule utilisable.
+
+**2. Le pincement doit avoir la pente d'un triangle, pas celle d'un bruit.**
+Le point d'injection produit à lui seul le peigne `1 − z^−pD`, c'est-à-dire le
+facteur `sin(nπp)` de la corde idéale. Il manquait l'autre moitié : le
+déplacement initial d'une corde pincée est un TRIANGLE, dont le contenu
+harmonique décroît en 1/n², soit −12 dB par octave. Sans cette pente, le second
+harmonique sortait plus fort que le fondamental — profil harmonique mesuré
+0,77 / 1,00 / 0,75 là où un violoncelle réel donne 1,00 / 0,29 / 0,19. Aucun
+instrument à cordes ne fait cela. La salve passe désormais par **deux**
+passe-bas d'ordre un, dont la coupure est ce que règle « Pick Hardness ».
+
+**3. La salve dure une PÉRIODE, pas 5 ms.** Une salve courte à durée fixe
+paraissait plus « médiator ». Elle est en réalité incapable d'exciter une corde
+grave : une fenêtre de 5 ms n'a presque pas d'énergie sous 200 Hz. Sur un
+violoncelle à 73 Hz, le fondamental de la machine ne sortait même pas dans les
+huit plus fortes raies de son spectre. Le pincement met en mouvement TOUTE la
+longueur de la corde : la salve dure un aller-retour. Après correction, le
+profil harmonique passe à 1,00 / 0,57 / 0,07 sur un réglage doux — enfin celui
+d'une corde.
+
+### La promesse, mesurée : avant / après, chiffres publiés
+
+**Protocole.** Cible **réelle** : `cello.wav`, un violoncelle à l'archet
+(ré 2, 73,4 Hz) — montée en 200 ms, archet levé vers 0,24 s, extinction libre
+jusqu'à 1 s ; le centroïde part à 3,7 kHz (le crin qui mord) et retombe à
+500 Hz. C'est une corde frottée d'instrument acoustique, l'une des trois
+sources que le § 1 marque « non couvert ». Recherche sur les **17 machines
+mélodiques**, présélection DÉSACTIVÉE (chaque machine reçoit le même budget
+complet, sans quoi comparer leurs distances ne voudrait rien dire), 10 axes,
+métrique v2, `gate` réglé sur celui de la cible. « Avant » = la meilleure
+machine hors `vsm.string` ; « après » = avec elle dans les candidates. Les deux
+colonnes sortent de la MÊME série de recherches, ce qui rend la comparaison
+exacte. Trois graines, deux budgets — parce qu'un seul chiffre ne prouve rien.
+
+**1. Au budget par défaut de la chaîne (20 itérations), la machine gagne.**
+Classement complet sur 17 machines, graine 1234 :
+
+| rang | machine | distance |
+|---|---|---|
+| **1** | **`vsm.string`** | **0,1225** |
+| 2 | jupiter8 | 0,1310 |
+| 3 | sh101 | 0,1373 |
+| 4 | prophet | 0,1454 |
+| 5 | wavetable | 0,1475 |
+| 6 | generic | 0,1476 |
+
+puis pcmhybrid 0,1491 · obx 0,1514 · minimoog 0,1559 · juno106 0,1598 ·
+arpodyssey 0,1644 · ms20 0,1890 · supersaw 0,1979 · dx7 0,2007 · tb303 0,2398 ·
+epiano 0,2448 · tonewheel 0,4279.
+
+**2. À budget triplé, elle perd — et c'est le résultat le plus instructif des
+deux.** Six recherches, trois graines, deux budgets :
+
+| budget | graine | `vsm.string` | meilleur sans elle | verdict |
+|---|---|---|---|---|
+| 20 itér. | 1234 | **0,1225** | jupiter8 0,1310 | **gagne** |
+| 20 itér. | 7 | **0,1287** | jupiter8 0,1375 | **gagne** |
+| 20 itér. | 99 | **0,1274** | prophet 0,1343 | **gagne** |
+| 60 itér. | 1234 | 0,1190 | sh101 **0,0865** | perd |
+| 60 itér. | 7 | 0,1151 | sh101 **0,0968** | perd |
+| 60 itér. | 99 | 0,1124 | jupiter8 **0,1071** | perd |
+
+**Ce que le budget révèle : la machine sature, les soustractifs non.** En
+passant de 20 à 60 itérations, la médiane de `vsm.string` gagne **−10 %**
+(0,1274 → 0,1151) quand celle du SH-101 gagne **−36 %** (0,1496 → 0,0968) et
+celle du Jupiter-8 **−27 %**. Ce n'est pas un défaut de convergence : c'est un
+PLAFOND PHYSIQUE. Les dix axes de la corde sont peu nombreux et fortement
+contraints — une corde ne peut pas produire n'importe quel spectre, c'est
+précisément ce qui en fait un modèle — donc la recherche les épuise vite et
+bute sur ce que la physique autorise. Un soustractif, lui, peut plier son
+enveloppe spectrale indéfiniment vers la cible pour peu qu'on lui paie les
+évaluations, sans jamais se soucier de ce qu'une corde ferait.
+
+C'est le symétrique exact de ce que le § 31 avait mesuré sur `vsm.generic` —
+« la seule machine qui PROFITE d'un espace élargi ». Ici c'est la machine qui
+en profite le MOINS, et pour la même raison retournée : la neutralité s'achète
+avec du budget, la fidélité physique se paie d'avance.
+
+**Trois conséquences, à ne pas confondre.**
+
+- **La couverture est acquise, la victoire est conditionnelle.** Au budget que
+  `reconstruire.py` emploie réellement, un stem de corde retient enfin une
+  machine qui le modélise, et le chiffre baisse. Au budget élevé du 6e passage
+  de House Of God, un soustractif bien réglé passe devant : dire l'inverse
+  serait choisir la mesure qui arrange.
+- **Elle est la plus STABLE du lot**, et cela ne se voit que sur trois graines :
+  sur les six recherches, `vsm.string` varie de 0,1124 à 0,1287 (±7 %) quand le
+  SH-101 va de 0,0865 à 0,1778 (×2,05). Une machine dont le verdict ne dépend
+  pas de la graine vaut mieux, pour un classement de machines, qu'une machine
+  qui gagne parfois très bien et parfois pas du tout.
+- **Le modèle a identifié la bonne physique, seul et six fois sur six.** Sur
+  une cible à l'archet, les six recherches indépendantes ont toutes retenu
+  `string.excitation` entre **0,956 et 0,999** — c'est-à-dire l'archet, jamais
+  le pincement — depuis six populations initiales différentes. Aucune distance
+  ne dit à l'optimiseur ce qu'est un archet ; il l'a trouvé parce que le modèle
+  en contient un. C'est le seul résultat de cette page qu'un ajustement de
+  spectre ne pouvait pas produire par hasard.
+
+**Portée de la mesure, et ce qu'elle n'établit pas.** Une cible, un instrument,
+deux budgets, trois graines. Elle établit que la case de couverture est
+réellement comblée et que le modèle est physiquement pertinent ; elle
+n'établit pas un classement général, et surtout pas que la modélisation
+physique batte la synthèse soustractive sur les cordes en général. La chaîne
+complète (`reconstruire.py` de bout en bout sur un morceau, séparation et
+transcription comprises) n'a PAS pu être rejouée ici, faute de la pile
+d'analyse lourde (demucs, basic-pitch) sur cette machine : c'est la moitié
+manquante de la preuve, et elle est écrite comme telle plutôt que passée sous
+silence.
+
+### Le défaut de méthode : un `gate` qui mentait, et ce qu'il a failli faire conclure
+
+Cette mesure a d'abord donné le résultat INVERSE. Les chiffres, avec leurs
+conditions — puisque c'est tout le sujet de cette section :
+
+| conditions | `vsm.string` | meilleur du parc | rang |
+|---|---|---|---|
+| 4 itér., `gate` 0,95, DSP avant corrections 2 et 3 | 0,2456 | minimoog 0,1266 | 14/17 |
+| 4 itér., `gate` 0,95, DSP corrigé | 0,2199 | minimoog 0,1266 | 12/17 |
+| 20 itér., `gate` 0,95, DSP corrigé | 0,1912 | wavetable 0,0836 | — |
+| **20 itér., `gate` 0,24, DSP corrigé** | **0,1225** | jupiter8 0,1310 | **1/17** |
+
+Le soupçon portait naturellement sur la machine — un modèle physique qui perd
+contre un Jupiter-8 sur un violoncelle est un modèle suspect. Deux des trois
+corrections DSP ci-dessus sont sorties de cette enquête et étaient bien réelles
+(elles valent 0,2456 → 0,2199 à conditions égales). Mais le gros de l'écart
+venait d'ailleurs :
+
+`gate` est la proportion de l'extrait pendant laquelle la note est TENUE, et il
+doit valoir celui de la cible. Il était réglé à 0,95 alors que le violoncelle
+se tait à 0,24 s sur 1,0 s. Chaque candidate jouait donc pendant 0,95 s face à
+une cible éteinte depuis 0,24 s — ce qui pénalise spécifiquement tout modèle
+**entretenu** (l'archet, l'orgue), incapable de s'arrêter tant que la touche est
+tenue, là où un soustractif referme simplement son enveloppe. Le classement
+n'était pas celui des machines, c'était celui de leur capacité à survivre à une
+erreur de protocole. Corrigé à 0,24, la même machine, le même budget et la même
+graine donnent 0,1225 et la première place — soit un facteur 1,6 sur la
+distance, obtenu sans toucher une ligne de DSP.
+
+C'est la même leçon qu'au § 10.3 et à la septième passe de House Of God, sous
+une troisième forme : **une distance n'est un chiffre que si l'on sait à quelles
+conditions elle a été obtenue.** La métrique était inscrite dans le rapport, le
+budget aussi depuis la septième passe ; le `gate`, lui, ne l'était nulle part —
+et il vaut ici plus que les trois corrections de DSP réunies.
+
+### Ce qui est assumé, et écrit plutôt que découvert plus tard
+
+- **Une seule ligne à retard**, là où la physique en demande deux (onde montante
+  et onde descendante). L'archet agit donc sur l'onde résultante et non sur une
+  jonction entre deux ondes : le cycle d'adhérence-décrochement est conservé,
+  sa forme d'onde exacte non.
+- **Corps en résonances série** et non en modes couplés : trois cloches de
+  Biquad qui colorent, pas une caisse qui rayonne. À `Body Level = 0` la machine
+  est exactement transparente — ce dont une basse électrique a besoin.
+- **Raideur rognée dans l'aigu** : le retard qu'exigent les passe-tout de
+  dispersion ne peut pas dépasser 40 % de la boucle, faute de quoi une note très
+  aiguë n'aurait plus de ligne à retard. Au-dessus d'environ 1 kHz la raideur
+  demandée est donc réduite ; la note reste juste, elle est seulement moins
+  inharmonique que réglée.
+- **Chaque note repart d'une corde au repos** : on ne modélise pas le
+  repincement d'une corde qui vibre encore.
+- **L'archet n'a pas de temps de montée réglable.** Sur la cible mesurée, dont
+  l'attaque dure 200 ms, c'est un handicap face aux machines qui ont un
+  `envelope.1.attack` dans leur espace de recherche — et c'est un candidat
+  sérieux pour expliquer le plafond constaté à budget élevé. Un seizième
+  paramètre coûterait une dimension à la recherche ; le compromis est celui-là,
+  il est chiffré, et il devra se rouvrir si une seconde cible confirme le
+  plafond.
+- **Aucune mesure n'a été faite sur un instrument réel** : le statut honnête est
+  « dérivé », jamais « mesuré », comme pour toutes les machines du parc.
+
+**Sa façade ne copie aucune machine d'origine**, parce que la modélisation
+physique n'en a jamais eu de canonique : prétendre en imiter une serait inventer
+un souvenir. Le § 5 de `CDC-nouvelle-machine.md` prévoit ce cas — à défaut
+d'original, la disposition suit le trajet du signal. Ici c'est le trajet
+PHYSIQUE, qui est aussi celui que le musicien parcourt en pensée :
+EXCITATION → ARCHET → CORDE → CAISSE → SORTIE.
+
+**Un test manquait au parc, et cette machine l'a révélé.** `panels/` vérifiait
+qu'aucune façade ne vise une machine inexistante, mais pas l'inverse : une
+machine SANS façade passait en silence, et l'instrument aurait été jouable sans
+la moindre commande. `every_registered_machine_has_a_panel` comble le trou
+(vérifié en le retirant : le test échoue bien).
+
+---
+
 ## 29. Façades « façon hardware », machine par machine (sections 6 et 21)
 
 Le panneau générique (un potentiomètre par paramètre) reste le filet de
@@ -1365,10 +1616,11 @@ pas -- elle l'ignore et la laisse intacte), et écrire un motif ne remplace que
 Les boutons de pas sont colorés **par groupes de quatre**, comme sur les
 machines d'origine : c'est ce qui permet de compter les temps sans les compter.
 
-### État : les dix-neuf machines ont leur façade
+### État : les vingt machines ont leur façade
 
 | Machine | Forme de la façade |
 |---|---|
+| String | trajet PHYSIQUE du signal (EXCITATION -> ARCHET -> CORDE -> CAISSE -> SORTIE) ; aucune machine d'origine à copier, voir §32 |
 | Sampler | une colonne par PIÈCE NOMMÉE (« 1 KICK », « 3 HH CL »...), grille de 16 pas ; les réglages de mapping sont déclarés omis — c'est la boîte à rythmes générique du parc, voir §30 |
 | Minimoog | banc à trajet de signal (oscillateurs -> mixage -> modifieurs), flancs bois, gros bouton de coupure |
 | TB-303 | rangée unique sur boîtier argenté, liseré rouge, + éditeur de motif |

@@ -38,6 +38,25 @@ VSM_TEST(every_panel_targets_an_existing_machine) {
     VSM_ASSERT(findMachinePanel("vsm.machine-inexistante") == nullptr);
 }
 
+VSM_TEST(every_registered_machine_has_a_panel) {
+    // Le miroir de `every_panel_targets_an_existing_machine`, et il manquait :
+    // ce test-là interdit une façade orpheline, celui-ci interdit une machine
+    // SANS façade. Sans lui, ajouter une machine et oublier son panneau donne
+    // un instrument jouable mais sans commandes — exactement l'« incomplète en
+    // silence » contre laquelle le § 0 de CDC-nouvelle-machine.md met en garde,
+    // et qu'aucun autre test n'attrapait.
+    //
+    // La tonalité d'essai est la seule exception, et elle est de nature :
+    // c'est un générateur de vérification, pas un instrument à jouer.
+    vsm::audio::plugin::registerBuiltInPlugins();
+    for (const auto& [id, displayName] : vsm::audio::plugin::PluginRegistry::instance().listAvailable()) {
+        (void)displayName;
+        if (id == "vsm.testtone") continue;
+        if (findMachinePanel(id) != nullptr) continue;
+        throw vsm::test::AssertionFailure("machine " + id + " enregistrée sans façade");
+    }
+}
+
 VSM_TEST(no_control_points_at_a_parameter_that_does_not_exist) {
     // Le test qui empêche une façade de pourrir en silence : si un paramètre
     // est renommé dans une machine, la commande correspondante deviendrait un

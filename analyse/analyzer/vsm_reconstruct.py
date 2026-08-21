@@ -72,6 +72,14 @@ class StemReconstruction:
     # un choix sans ses concurrents n'est pas un choix, c'est une affirmation.
     considered: List[tuple]
     is_drums: bool = False
+    # `gate` : la proportion de l'extrait pendant laquelle la note de référence
+    # était TENUE. Conservé parce qu'il conditionne la distance au même titre
+    # que la métrique et le budget -- mesuré sur un violoncelle à l'archet, le
+    # faire passer de 0,95 à sa vraie valeur 0,24 change la distance d'un
+    # facteur 1,6 et INVERSE le classement des machines, sans toucher une
+    # ligne de DSP (ARCHITECTURE.md § 32). Deux distances obtenues à des
+    # `gate` différents ne se comparent pas.
+    gate: Optional[float] = None
 
 
 def melodic_machines(engine: VsmEngine) -> List[str]:
@@ -176,6 +184,7 @@ def reconstruct_stem(
         distance=best.distance,
         notes=list(notes),
         considered=[(r.machine, r.distance) for r in everyone],
+        gate=gate,
     )
 
 
@@ -238,6 +247,9 @@ def write_reconstruction_report(
                 "machine": stem.machine,
                 "distance": stem.distance,
                 "notes": len(stem.notes),
+                # Troisième condition de la mesure, après la métrique et le
+                # budget : voir le commentaire du champ `gate`.
+                "gate": None if stem.gate is None else round(float(stem.gate), 4),
                 # Confiance NOTE PAR NOTE, appariée côté DAW par hauteur et
                 # instant (jamais par position dans la liste : une note
                 # ajoutée ou déplacée décalerait tout sans rien signaler).

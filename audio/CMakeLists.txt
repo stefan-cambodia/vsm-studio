@@ -26,6 +26,7 @@ add_library(vsm_audio STATIC
     plugins/pcmhybrid/PcmHybridSynth.cpp
     plugins/tonewheel/TonewheelOrgan.cpp
     plugins/generic/GenericSynth.cpp
+    plugins/string/StringSynth.cpp
 )
 
 target_include_directories(vsm_audio PUBLIC include)
@@ -103,6 +104,7 @@ if (VSM_BUILD_TESTS)
         tests/test_pcmhybrid_synth.cpp
         tests/test_tonewheel_organ.cpp
         tests/test_generic_synth.cpp
+        tests/test_string_synth.cpp
         tests/test_midi_learn.cpp
         tests/test_effect_routing.cpp
         tests/test_more_effects.cpp
