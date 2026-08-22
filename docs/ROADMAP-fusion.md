@@ -683,6 +683,64 @@ le même projet sur LE MÊME graphe ne donne pas le même son -- les instruments
 gardent leur état d'un rendu à l'autre. La comparaison doit se faire entre deux
 graphes neufs, et c'est vérifié pour soi-même.
 
+#### Le fichier d'origine n'est pas toujours un WAV
+
+Le chargement n'acceptait que le WAV, parce que `WavFileReader` est le seul
+lecteur du moteur -- et il est le seul parce que `audio/` n'a **aucune
+dépendance**, règle qui ne se négocie pas. Or la chaîne d'analyse part de
+fichiers du commerce, c'est-à-dire de **MP3** : comparer un morceau à sa
+reconstruction obligeait donc à le convertir à la main d'abord, pour une
+fonction dont tout l'intérêt est l'immédiateté.
+
+Le décodage a été ajouté **dans `app/`**, pas dans `audio/`. C'est le seul
+endroit où il peut vivre sans rien coûter : JUCE est déjà là, son
+`AudioFormatManager` lit WAV, AIFF, FLAC, Ogg Vorbis et MP3, et le moteur reçoit
+exactement ce qu'il recevait avant -- un `SampleBuffer` en float, déjà décodé.
+Conséquence assumée : `vsm-render` et les tests, qui ignorent JUCE, restent au
+WAV. C'est cohérent, ce sont des chemins de calcul et non des points d'entrée
+d'utilisateur.
+
+Trois décisions valent d'être écrites :
+
+- **Le MP3 se demande explicitement.** JUCE laisse `JUCE_USE_MP3AUDIOFORMAT` à
+  0 et l'assortit d'un avertissement sur d'éventuels brevets tiers. C'est un
+  avertissement de 2012 ; les derniers brevets MP3 ont expiré en 2017, et le
+  décodeur est du code source livré avec JUCE. Le drapeau est activé dans
+  `app/CMakeLists.txt`, avec cette raison écrite à côté.
+- **La liste des formats n'est écrite nulle part.** Le filtre du sélecteur de
+  fichiers et le message d'erreur interrogent le gestionnaire de formats.
+  Recopier la liste à la main la ferait mentir le jour où une option de
+  compilation changerait : on proposerait un format qu'on refuserait ensuite.
+- **Un WAV passe d'abord par le lecteur du moteur.** Il est strict par choix et
+  ses refus sont explicites ; ce chemin-là est déjà testé et ne change pas. S'il
+  refuse, JUCE est essayé à son tour, et en cas d'échec des deux **le message
+  porte les deux refus** -- celui qui explique vraiment est parfois le premier.
+
+**Un décalage aurait tout faussé, et il a été mesuré.** Un MP3 porte un silence
+d'amorce que les décodeurs ne retirent pas tous de la même façon ; la piste de
+référence, elle, joue à partir de zéro. Un original décalé de quelques dizaines
+de millisecondes ferait paraître fausse une reconstruction juste -- exactement
+le genre de panne silencieuse que ce projet refuse. Vérifié sur *Children
+(Dream Version)*, en comparant le tampon décodé par JUCE à celui du décodeur de
+la chaîne d'analyse (`librosa`) : **décalage nul, au sample près**, premier
+échantillon audible au même index (47679) chez les deux. Les 14 976
+échantillons de plus que rend JUCE (0,34 s) sont en QUEUE, pas en tête.
+
+Cette mesure a demandé un outil, qui reste :
+
+```bash
+cmake --build build --target vsm-audio-import-check
+./build/app/vsm-audio-import-check_artefacts/RelWithDebInfo/vsm-audio-import-check morceau.mp3
+#   OK  morceau.mp3
+#       decodeur MP3 file, 44.1 kHz, stereo, 3:52, 10250496 echantillons, crete 0.970
+```
+
+Il appelle **le code du menu Fichier**, sans écran ni carte son, et `--wav` écrit
+le tampon décodé pour qu'on puisse le comparer ailleurs. Même raison d'être que
+`vsm-panel-preview` : ce qu'on ne peut pas regarder, on ne peut pas le juger --
+et le chargement d'un fichier est du code d'interface, qu'aucun test unitaire du
+moteur n'atteindra jamais.
+
 ### 11.3 — voir où la transcription a hésité
 
 L'information existait déjà et s'arrêtait au bord du fichier : le transcripteur

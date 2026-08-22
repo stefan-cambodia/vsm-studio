@@ -136,6 +136,12 @@ private:
     AutomationComponent automation_;
     EffectChainComponent effectChain_;
     juce::TabbedComponent bottomTabs_ { juce::TabbedButtonBar::TabsAtTop };
+    /// Ce qui est chargé en référence, en clair : nom du fichier, décodeur,
+    /// fréquence, canaux, durée. Rempli au chargement, affiché dans le menu
+    /// Fichier -- un MP3 décodé sonne comme un WAV, et il faut bien un endroit
+    /// où lire lequel des deux on écoute.
+    juce::String referenceDescription_;
+
     juce::Label mixerPlaceholder_;
     juce::Label automationPlaceholder_;
     juce::Label midiCcPlaceholder_;

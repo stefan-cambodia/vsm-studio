@@ -25,6 +25,7 @@ target_sources(VintageSynthMidiStudio PRIVATE
     Source/Main.cpp
     Source/MainComponent.cpp
     Source/audio/AudioEngine.cpp
+    Source/audio/ReferenceAudioLoader.cpp
     Source/ui/PanelWindow.cpp
     Source/ui/TransportBarComponent.cpp
     Source/ui/TrackListComponent.cpp
@@ -47,6 +48,22 @@ target_compile_definitions(VintageSynthMidiStudio PRIVATE
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
     JUCE_STRICT_REFCOUNTEDPOINTER=1
+    # DÉCODEUR MP3 de JUCE, pour la piste de référence A/B.
+    #
+    # POURQUOI IL FAUT LE DEMANDER. `registerBasicFormats()` inscrit WAV et
+    # AIFF toujours, FLAC et Ogg Vorbis par défaut, mais PAS le MP3 : JUCE le
+    # laisse désactivé et l'assortit d'un avertissement (« at your own risk »)
+    # à propos de brevets tiers. C'est un avertissement de 2012 ; les derniers
+    # brevets MP3 ont expiré en 2017, et le décodeur est du code source livré
+    # avec JUCE, sans binaire ni service extérieur.
+    #
+    # POURQUOI ON LE VEUT. La chaîne d'analyse part de fichiers du commerce,
+    # qui sont des MP3 -- refuser le format obligerait à convertir chaque
+    # morceau à la main avant de pouvoir le comparer à sa reconstruction.
+    # Décoder ici ne coûte AUCUNE dépendance nouvelle : le dépôt se compile
+    # toujours hors ligne, JUCE mis à part, et le moteur audio ignore tout de
+    # cette histoire.
+    JUCE_USE_MP3AUDIOFORMAT=1
 )
 
 target_link_libraries(VintageSynthMidiStudio
@@ -109,3 +126,29 @@ target_link_libraries(vsm-pianoroll-preview PRIVATE
 )
 juce_generate_juce_header(vsm-pianoroll-preview)
 
+
+# --- Vérification du chargement d'un enregistrement d'origine ---------------
+# Le chargement de la référence A/B est du code d'interface, et l'interface ne
+# se teste pas sans écran -- mais ce qu'on veut savoir de lui (ce fichier
+# est-il décodé, à quelle fréquence, sur quelle durée) ne demande aucune
+# fenêtre. Cet outil appelle EXACTEMENT le code du menu Fichier, hors écran,
+# sur les fichiers qu'on lui donne.
+juce_add_console_app(vsm-audio-import-check PRODUCT_NAME "vsm-audio-import-check")
+target_sources(vsm-audio-import-check PRIVATE
+    Source/tools/AudioImportCheckMain.cpp
+    Source/audio/ReferenceAudioLoader.cpp
+)
+target_include_directories(vsm-audio-import-check PRIVATE Source)
+target_compile_definitions(vsm-audio-import-check PRIVATE
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_STANDALONE_APPLICATION=1
+    # Même décodeur que l'application : vérifier autre chose que ce qui tourne
+    # dans l'interface ne vérifierait rien.
+    JUCE_USE_MP3AUDIOFORMAT=1
+)
+target_link_libraries(vsm-audio-import-check PRIVATE
+    vsm_audio
+    juce::juce_audio_formats
+)
+juce_generate_juce_header(vsm-audio-import-check)

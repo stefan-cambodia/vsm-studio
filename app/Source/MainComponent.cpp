@@ -12,6 +12,7 @@
 #include "vsm/interchange/ProjectBundle.h"
 #include "vsm/interchange/ReconstructionReport.h"
 #include "vsm/interchange/SynthPreset.h"
+#include "audio/ReferenceAudioLoader.h"
 #include "vsm/audio/io/WavFileReader.h"
 #include "ui/UiScale.h"
 
@@ -315,6 +316,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 const bool aUneReference = audioEngine_.processGraph().referenceTrack().hasAudio();
                 const auto mode = audioEngine_.processGraph().referenceTrack().mode();
                 using Mode = vsm::audio::engine::ReferenceTrack::Mode;
+                if (aUneReference && referenceDescription_.isNotEmpty()) {
+                    menu.addSectionHeader(referenceDescription_);
+                }
                 menu.addItem(kMenuFileReferenceOff, "Ecoute : reconstruction", aUneReference,
                               mode == Mode::Off);
                 menu.addItem(kMenuFileReferenceMix, "Ecoute : les deux", aUneReference,
@@ -660,8 +664,12 @@ void MainComponent::openProjectBundle() {
 }
 
 void MainComponent::loadReferenceAudio() {
+    // Les formats proposés sont ceux que le décodeur sait REELLEMENT lire :
+    // la liste vient de lui, elle n'est pas recopiée ici. Proposer un format
+    // qu'on refuserait ensuite serait la pire façon de le supporter.
     auto chooser = std::make_shared<juce::FileChooser>(
-        "Charger l'enregistrement d'origine...", juce::File(), "*.wav");
+        "Charger l'enregistrement d'origine (" + vsm::app::referenceAudioFormatList() + ")...",
+        juce::File(), vsm::app::referenceAudioFilePatterns());
     const auto chooserFlags = juce::FileBrowserComponent::openMode
                             | juce::FileBrowserComponent::canSelectFiles;
 
@@ -669,17 +677,29 @@ void MainComponent::loadReferenceAudio() {
         const juce::File file = fc.getResult();
         if (file == juce::File()) return;
 
-        // LECTURE DU FICHIER ICI, sur le thread de l'interface. Le tampon est
+        // LECTURE ET DÉCODAGE ICI, sur le thread de l'interface. Le tampon est
         // ensuite publié par échange atomique : le thread audio ne fait que
         // lire un pointeur déjà valide.
-        auto result = vsm::audio::io::WavFileReader::readFile(file.getFullPathName().toStdString());
+        auto result = vsm::app::loadReferenceAudioFile(file);
         if (!result.success || result.buffer.empty()) {
             juce::AlertWindow::showMessageBoxAsync(
                 juce::AlertWindow::WarningIcon, "Enregistrement illisible",
-                juce::String::fromUTF8(result.error.empty()
-                    ? "fichier sans echantillon" : result.error.c_str()));
+                result.error.isEmpty() ? juce::String("fichier sans echantillon") : result.error);
             return;
         }
+
+        // CE QU'ON A CHARGÉ, ÉCRIT QUELQUE PART. Un MP3 décodé, un FLAC et un
+        // WAV donnent le même tampon flottant : rien, à l'écoute, ne dit par
+        // quel décodeur on est passé ni à quelle fréquence le fichier était.
+        // Le menu le rappelle, parce que comparer sans savoir à quoi, c'est
+        // comparer pour rien.
+        const double duree = static_cast<double>(result.buffer.numFrames())
+                           / juce::jmax(1.0, result.buffer.sampleRate);
+        referenceDescription_ = file.getFileName() + "  --  " + result.decoder + ", "
+                              + juce::String(result.buffer.sampleRate / 1000.0, 1) + " kHz, "
+                              + (result.buffer.isStereo() ? "stereo, " : "mono, ")
+                              + juce::String(static_cast<int>(duree) / 60) + ":"
+                              + juce::String(static_cast<int>(duree) % 60).paddedLeft('0', 2);
 
         auto& reference = audioEngine_.processGraph().referenceTrack();
         reference.setAudio(std::make_shared<const vsm::audio::io::SampleBuffer>(std::move(result.buffer)));
