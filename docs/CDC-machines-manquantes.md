@@ -491,3 +491,87 @@ falaise dans la fonction de coût.
 > réel sur les attaques lentes) ; le corps est une coloration en résonances
 > série, pas une caisse qui rayonne ; et une seule ligne à retard porte
 > l'aller-retour là où la physique en demande deux.
+
+---
+
+## 11. Machines 5, 6 et 7 — `vsm.piano`, `vsm.drums`, `vsm.wind`
+
+Cette section existait comme RENVOI avant d'exister comme texte : le tableau du
+§ 1 y pointait quatre fois pendant qu'elle manquait. Elle est écrite ici pour
+que le renvoi cesse de mentir, et **elle ne redit pas ce qu'ARCHITECTURE.md
+§ 33 dit déjà**. Le détail — la loi du marteau, les zéros de Bessel, les quatre
+topologies de boucle — vit là-bas et nulle part ailleurs : deux exposés de la
+même physique divergeraient, et c'est la faute que le § 8.4 reproche au reste
+du projet.
+
+**Ce qui a rendu ces trois machines nécessaires** est une décision, pas un
+manque : le sampler a cessé d'être le repli universel pour être **réservé à la
+voix** (§ 4 et ARCHITECTURE.md § 33). Trois trous se sont ouverts d'un coup —
+la batterie acoustique perdait sa seule réponse, le piano acoustique aussi (il
+était déclaré « hors de portée sans bibliothèque d'échantillons »), et les
+cuivres et les bois n'en avaient jamais eu.
+
+| Machine | Famille ouverte | Source du tableau du § 1 |
+|---|---|---|
+| `vsm.piano` | cordes FRAPPÉES | `piano_or_keys` acoustique |
+| `vsm.drums` | membranes inharmoniques et métal | `drums` sans échantillon |
+| `vsm.wind` | anche et lèvres, perce cylindrique | clarinette, cuivres |
+
+**Ce qu'elles doivent au § 7, qui les déconseillait.** Le § 7 met en garde
+contre l'ajout de machines : « elles élargissent le catalogue, pas la
+couverture ». Ces trois-là font l'inverse, pour la raison exacte que le § 10
+donnait déjà pour `vsm.string` — elles ouvrent des FAMILLES DE SYNTHÈSE
+absentes du parc (banc modal inharmonique, guide d'ondes à réflexion
+inversante), pas des variantes d'un soustractif qu'on possède en huit
+exemplaires. Le garde-fou du § 7 reste valable, et il vaut toujours contre une
+neuvième machine de caractère.
+
+**La brique partagée, et la preuve qu'elle l'est fidèlement.** `vsm.piano`
+emploie EXACTEMENT la boucle de `vsm.string`, sortie dans
+`dsp/StringWaveguide.h` plutôt que recopiée. La preuve que l'extraction n'a
+rien changé n'est pas une relecture, c'est l'empreinte : `vsm.string` a gardé
+la sienne AU BIT PRÈS à travers le refactoring. `vsm.wind`, lui, ne la partage
+pas, et le dire compte autant — sa réflexion est inversante, il n'a pas de
+dispersion, et sa perte est un rayonnement au pavillon.
+
+### La case qui reste vide, et pourquoi elle ne se comble pas par un réglage
+
+**Saxophone, hautbois, flûte.** C'est la dernière ligne sans machine du tableau
+du § 1, et **ce n'est pas un défaut de réglage de `vsm.wind`** : c'est sa
+topologie. Une réflexion inversante à demi-longueur impose la symétrie
+demi-onde, qui **interdit mathématiquement les harmoniques paires** — or c'est
+précisément d'elles qu'un saxophone tire son timbre. Vérifié sur quatre
+topologies de boucle avec la même anche (tableau dans ARCHITECTURE.md § 33) ;
+aucune ne donne à la fois l'oscillation et les paires.
+
+**Ce qu'il faudrait, et ce que ça vaut.** Un résonateur CONIQUE, c'est-à-dire
+une autre machine, pas une option de celle-ci : la perce conique se comporte
+en tuyau ouvert (série harmonique complète) et la flûte n'a pas d'anche du tout
+mais un jet d'air instable. Deux modèles, donc, ou un modèle à deux régimes.
+
+**Décision, et elle est de ne pas le faire maintenant.** Le § 7 demande de
+juger une machine sur la COUVERTURE qu'elle ajoute, pas sur le catalogue.
+
+Il faut d'abord écarter un mauvais argument, parce qu'il se présente tout seul :
+« aucune catégorie ne désignerait un bois conique ». C'est faux pour la chaîne
+de reconstruction. Les neuf catégories du § 1 viennent de `classify_stems`, que
+seul `main.py` emploie ; `reconstruire.py` **ne classe rien** — il met TOUTES
+les machines mélodiques en concurrence sur chaque stem et laisse l'arbitrage sur
+la piste trancher à la distance mesurée. Une machine conique serait donc
+essayée d'office, sans qu'on ait à lui construire un aiguillage.
+
+Le vrai motif est ailleurs, et c'est le motif habituel de ce document : **rien
+ne l'a encore mesurée comme manquante.** Toutes les distances publiées portent
+sur *Children* et *House Of God*, deux morceaux sans bois conique. Construire
+le résonateur maintenant, ce serait payer une machine entière — DSP, identités
+sémantiques, profil de recherche, façade, tests, empreinte (§ 10 de
+`CDC-nouvelle-machine.md`) — sur la foi d'un raisonnement, quand tout le reste
+du parc a été justifié par un chiffre. Le § 10 rappelle ce que ça coûte de
+faire l'inverse : `vsm.string` a d'abord donné le résultat INVERSE de celui
+qu'on attendait, et il a fallu la mesure pour trouver ses quatre vrais défauts.
+
+**À rouvrir dès qu'un morceau à saxophone, hautbois ou flûte sera passé dans la
+chaîne et que le stem correspondant sera mesuré comme mal servi** — la
+condition est vérifiable, et elle est peu coûteuse à remplir : il suffit d'un
+morceau et d'une exécution. Ce jour-là, c'est ce paragraphe qu'il faudra venir
+corriger, avec le chiffre qui l'aura montré.

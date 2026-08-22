@@ -824,19 +824,36 @@ essai : recopier le stem vocal entier à chaque rendu coûtait des dizaines de
 mégaoctets pour un fichier identique — la leçon que `vsm_track_arbitration`
 avait déjà payée d'un « No space left on device ».
 
-**2. Un quart des frappes de batterie disparaissait du projet.**
+**2. Des frappes de batterie pouvaient disparaître du projet.**
 `_name_templates` puise les noms des gabarits excédentaires dans un vivier
 (`percussion`, `tom`, `cymbal`, `tom2`, `tom3`) ; `MODELLED_DRUM_NOTES` n'en
 connaissait que trois, et `modelled_drum_track` sautait les autres **en
-silence**. Mesuré sur un kit de huit gabarits : 12 notes écrites sur 16
-détectées. Le chemin sampler, lui, les jouait toutes — passer la batterie
-modélisée par défaut perdait donc de la musique que la détection avait trouvée.
+silence**. Le chemin sampler, lui, les jouait toutes — la batterie modélisée
+par défaut pouvait donc perdre de la musique que la détection avait trouvée.
+
+**CE QU'IL FAUT DIRE SUR L'AMPLEUR, parce que la première version de ce
+paragraphe l'a exagérée.** « Un quart des frappes » venait d'un kit de huit
+gabarits construit À LA MAIN pour le test (12 notes sur 16), pas d'un morceau.
+Vérification faite sur le stem de batterie de *Children* : **cinq gabarits, 1
+092 frappes, aucune perdue** — le vivier n'est entamé que de deux noms, et
+`tom2` n'est atteint qu'au quatrième débordement. Les réserves totalisent sept
+noms pour `MAX_TEMPLATES = 8` : il faut donc une classification très
+déséquilibrée (six gabarits tombant dans la même famille) pour perdre quoi que
+ce soit. Le défaut est réel et le correctif reste juste ; sa portée est
+CONDITIONNELLE, et un chiffre mesuré sur un kit fabriqué n'est pas un chiffre
+mesuré sur un morceau. C'est exactement la confusion que ce document reproche
+ailleurs aux distances obtenues à des budgets différents.
+
+Le gain vérifié sur *Children* est donc ailleurs, et plus modeste : les dix
+voix de `vsm.drums` deviennent atteignables (le crash et le tom grave ne
+l'étaient d'aucune façon), et la famille `percussion` passe de la note 48 au
+49 — un timbre qui change, pas une frappe qui revient.
 Le vivier ne porte aucun sens timbral (un quatrième gabarit de charleston
 s'appelle `percussion`), et le seul choix qui vaille est de ne pas faire tomber
 deux gabarits distincts sur la même voix : les cinq noms reçoivent les cinq
-voix que les réserves ne prennent pas. Les dix voix de `vsm.drums` deviennent
-atteignables — le crash (49) et le tom grave (41) ne l'étaient d'aucune façon.
-Et une famille inconnue est désormais **jouée et dite**, jamais sautée.
+voix que les réserves ne prennent pas, une pour une. Et une famille inconnue
+est désormais **jouée et dite**, jamais sautée — c'est cette partie-là du
+correctif qui garantit qu'aucun vivier futur ne pourra rejouer la panne.
 
 **3. `--sans-arbitrage` désactivait deux étapes.** Le réglage sur la piste était
 écrit sous le `else` de l'arbitrage : il disparaissait avec lui, et un stem dont
