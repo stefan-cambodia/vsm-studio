@@ -90,6 +90,27 @@ with VsmEngine(sample_rate=44100) as engine:
 Un rendu coûte ~10 ms, avec un audio identique au bit près pour deux requêtes
 identiques. Détails et mesures : [`analyse/PONT-VSM.md`](analyse/PONT-VSM.md).
 
+### Ce que la chaîne juge, et dans quel ordre
+
+La recherche de patch travaille sur **une note** — la plus longue du stem —
+parce que chercher sur chacune coûterait des heures. Mesuré, ce critère ne
+suffit pas à CHOISIR une machine : sur la basse de *Children*, un `vsm.piano`
+avec son patch d'usine bat de 39 % le `vsm.generic` réglé sur mesure que la
+recherche retenait. La chaîne enchaîne donc trois verdicts, du plus étroit au
+plus large, et chacun peut défaire le précédent :
+
+1. **la note** choisit un patch, par machine (`--iterations`) ;
+2. **la piste entière** choisit la machine, puis règle son patch — patchs
+   cherchés et patchs d'usine remis en concurrence (`--budget-piste`) ;
+3. **le mélange** tranche en dernier : une amélioration de piste n'est gardée
+   que si elle rapproche le morceau, parce que les stems d'une séparation ne se
+   rendorment pas exactement dans l'original.
+
+Chaque étape se désactive (`--sans-arbitrage`, `--sans-reglage-piste`) : c'est
+ainsi qu'on attribue un écart à une étape et non à un ensemble. `--stems`
+reprend des stems déjà séparés pour ne pas repayer la séparation à chaque
+mesure. Le détail, les chiffres et les impasses : `ARCHITECTURE.md` § 34.
+
 ## Rendre un projet sans interface (`vsm-render`)
 
 Un dossier de projet (`project.json` + `midi/` + `instruments/`) se rend en
@@ -223,6 +244,25 @@ Pour juger sans lancer l'application, l'aperçu hors écran accepte la même
 
 ```bash
 ./build/app/vsm-panel-preview_artefacts/RelWithDebInfo/vsm-panel-preview /tmp/apercu 1100 1.5
+```
+
+## Écouter l'original en regard de la reconstruction
+
+*Fichier ▸ Charger l'original (référence A/B)* ajoute l'enregistrement de départ
+comme piste de référence, et le menu permet de passer à volonté de la
+reconstruction seule aux deux ensemble, puis à l'original seul. La référence est
+rééchantillonnée si besoin, elle passe après le bus master (le traitement de la
+reconstruction ne doit pas colorer le modèle) et **elle ne part jamais dans
+l'export**.
+
+Formats acceptés : **WAV, AIFF, FLAC, Ogg Vorbis et MP3**. Le décodage a lieu
+dans la couche interface, avec ce que JUCE apporte déjà : le moteur audio garde
+ses zéro dépendance et ne connaît toujours que le WAV. Pour vérifier ce que
+l'application fera d'un fichier, sans lancer de fenêtre :
+
+```bash
+cmake --build build --target vsm-audio-import-check
+./build/app/vsm-audio-import-check_artefacts/RelWithDebInfo/vsm-audio-import-check morceau.mp3
 ```
 
 ## Où va le projet

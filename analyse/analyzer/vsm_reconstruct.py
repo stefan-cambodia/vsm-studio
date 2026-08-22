@@ -24,7 +24,7 @@ publiée le dira, et c'est justement pour cela qu'elle est publiée.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 
@@ -81,6 +81,28 @@ class StemReconstruction:
     # ligne de DSP (ARCHITECTURE.md § 32). Deux distances obtenues à des
     # `gate` différents ne se comparent pas.
     gate: Optional[float] = None
+    # Le patch trouvé pour CHAQUE candidate, et pas seulement pour la gagnante.
+    # C'est ce qui permet à l'arbitrage sur la piste entière de rejuger toutes
+    # les propositions au lieu de la seule qu'un critère « une note » avait
+    # retenue -- et ce critère, mesuré, ne classe pas dans le même ordre que la
+    # piste (voir `vsm_track_arbitration`).
+    patches: Dict[str, Dict[str, float]] = field(default_factory=dict)
+    # Ce qu'a donné l'arbitrage sur la piste entière, quand il a eu lieu.
+    # `distance` reste la distance SUR UNE NOTE : les deux ne se comparent pas,
+    # et les confondre serait exactement le défaut que le § 32 décrit.
+    track_distance: Optional[float] = None
+    track_considered: List[tuple] = field(default_factory=list)
+    # Le patch d'AVANT le réglage sur la piste. Conservé parce que le verdict
+    # du mélange doit pouvoir revenir dessus : un réglage qui rapproche la piste
+    # peut éloigner le morceau.
+    #
+    # Il vient de l'arbitrage quand celui-ci a rendu un verdict -- d'où le nom
+    # -- mais PLUS SEULEMENT : le réglage sur la piste ne dépend plus de
+    # l'arbitrage, donc avec `--sans-arbitrage`, ou sur un stem que l'arbitrage
+    # n'a pas su départager, ce champ porte le patch de la RECHERCHE. Dans les
+    # deux cas il dit la même chose -- « l'état d'où le réglage est parti » --
+    # et c'est ce que le verdict du mélange doit pouvoir reprendre.
+    arbitration_parameters: Optional[Dict[str, float]] = None
 
 
 def melodic_machines(engine: VsmEngine) -> List[str]:
@@ -201,6 +223,7 @@ def reconstruct_stem(
         notes=list(notes),
         considered=[(r.machine, r.distance) for r in everyone],
         gate=gate,
+        patches={r.machine: dict(r.parameters) for r in everyone},
     )
 
 
@@ -287,6 +310,14 @@ def write_reconstruction_report(
                         "confidence": round(float(note.confidence), 4),
                     }
                     for note in stem.notes
+                ],
+                # Distance de la PISTE ENTIÈRE au stem, pour la machine
+                # retenue -- la seule des deux qui dise ce qu'on entendra.
+                # `distance` juste au-dessus porte sur une note.
+                "trackDistance": stem.track_distance,
+                "trackArbitration": [
+                    {"machine": machine, "origin": origin, "distance": distance}
+                    for machine, origin, distance in stem.track_considered
                 ],
                 "consideredMachines": [
                     {"machine": machine, "distance": distance}

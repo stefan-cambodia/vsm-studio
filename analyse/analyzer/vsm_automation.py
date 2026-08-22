@@ -35,6 +35,7 @@ import numpy as np
 
 from .audio_distance import audio_distance
 from .vsm_engine import VsmEngine, find_vsm_render
+from .vsm_offline_render import render_track_offline
 from .vsm_project_export import ExportNote, ExportTrack, write_project_bundle
 
 # Points par seconde de la courbe écrite. Deux suffisent : un balayage de
@@ -224,31 +225,15 @@ def cutoff_bounds(engine: VsmEngine, machine: str) -> Optional[Tuple[float, floa
 
 def _render_track(track: ExportTrack, folder: Path, duration: float,
                    sample_rate: int) -> Optional[np.ndarray]:
-    """Rend une piste seule par le VRAI moteur hors ligne (`vsm-render`)."""
-    write_project_bundle([track], folder, title="ab-automation")
-    sortie = folder / "rendu.wav"
-    try:
-        subprocess.run(
-            [str(find_vsm_render(None)), str(folder), str(sortie),
-             "--sample-rate", str(sample_rate),
-             "--duration", str(duration), "--quiet"],
-            check=True, capture_output=True,
-        )
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return None
-    donnees = sortie.read_bytes()
-    position, data = 12, None
-    while position < len(donnees) - 8:
-        bloc = donnees[position:position + 4]
-        taille = int.from_bytes(donnees[position + 4:position + 8], "little")
-        if bloc == b"data":
-            data = donnees[position + 8:position + 8 + taille]
-            break
-        position += 8 + taille + (taille & 1)
-    if data is None:
-        return None
-    stereo = np.frombuffer(data, dtype="<f4")
-    return stereo.reshape(-1, 2).mean(axis=1).astype(np.float32)
+    """
+    Rend une piste seule par le VRAI moteur hors ligne (`vsm-render`).
+
+    Le rendu lui-même vit dans `vsm_offline_render`, partagé avec l'arbitrage
+    de machine : deux copies de ce code divergeraient un jour, et les deux
+    mesures cesseraient sans bruit de se comparer.
+    """
+    return render_track_offline(track, folder, sample_rate, duration=duration,
+                                title="ab-automation")
 
 
 def try_cutoff_automation(

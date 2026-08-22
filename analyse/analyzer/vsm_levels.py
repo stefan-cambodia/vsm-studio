@@ -30,11 +30,36 @@ from .vsm_automation import _render_track
 from .vsm_project_export import ExportTrack
 
 # Bornes du volume corrigé. Le mixeur applique un gain linéaire sans borne,
-# mais un rapport extrême dit presque toujours « le rendu est quasi muet »
-# (échec silencieux quelque part) plutôt que « il faut amplifier vingt fois »
-# -- on borne, et on le DIT dans le rapport.
+# mais un rapport extrême dit parfois « le rendu est quasi muet » (échec
+# silencieux quelque part) plutôt que « il faut amplifier sept fois » -- on
+# borne, et on le DIT dans le rapport.
+#
+# LE PLAFOND EST PASSÉ DE 2,5 À 10, ET LA MESURE L'A IMPOSÉ. Sur *Children
+# (Dream Version)*, la basse demande un facteur 6,7 : la machine qui la joue
+# (`vsm.piano`, retenue par l'arbitrage sur la piste) est simplement une
+# machine peu bruyante dans le grave, pas un rendu raté -- le vrai cas
+# « rendu muet » est déjà attrapé par SILENT_RMS, plus bas, qui est le garde
+# dont on a besoin. Bornée à 2,5, la piste restait 2,7 fois trop faible :
+#
+# | volume de la basse | distance globale (v2) |
+# |---|---|
+# | 2,5 (le plafond d'avant) | 0,2608 |
+# | 4 | 0,2443 |
+# | 5 | 0,2355 |
+# | 6,7 (le facteur demandé) | 0,2246 |
+#
+# Le plafond coûtait donc 14 % de distance sur le morceau entier. Et il faut
+# dire l'envers : avec la basse PRÉCÉDENTE (`vsm.generic`, timbre faux), le
+# même facteur DÉGRADAIT le résultat (0,2672 -> 0,2792). Le plafond compensait
+# un mauvais patch au lieu de le corriger -- une piste juste veut son niveau,
+# une piste fausse veut être refaite.
+#
+# CE QUE ÇA COÛTE : 840 échantillons écrêtés sur 10,25 millions (0,008 % de la
+# piste) contre 22 auparavant. C'est écrit ici plutôt que découvert plus tard ;
+# la parade, si cela devient audible, est de baisser le master, pas de remettre
+# les pistes au mauvais niveau les unes par rapport aux autres.
 VOLUME_MIN = 0.02
-VOLUME_MAX = 2.5
+VOLUME_MAX = 10.0
 
 # En deçà de ce niveau efficace, un rendu est considéré muet : caler un volume
 # sur du silence amplifierait du bruit, pas de la musique.

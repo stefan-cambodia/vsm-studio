@@ -1812,6 +1812,380 @@ Conséquence à retenir pour la lecture de l'historique : les distances globales
 des sections antérieures (0,670 sur la vérité terrain, 2,974 sur House Of God
 v7, 5,01 ici) sont des v1, et elles ne se comparent qu'entre elles.
 
+### `--sans-sampler` : interdire l'échantillon sur tout un morceau
+
+La règle de la version finale — « le sampler n'est QUE pour la voix » — reste
+le défaut, et elle est bonne : la voix ne se synthétise pas. Mais elle rend le
+projet **dépendant du disque d'origine**, puisqu'une de ses pistes contient un
+morceau de l'enregistrement. Qui veut un projet entièrement rejouable, réglable
+et détachable de sa source doit pouvoir dire « que des synthés », et le payer en
+connaissance de cause. C'est ce que fait `--sans-sampler` :
+
+- le stem `vocals` repasse par la recherche de patch, comme n'importe quel
+  autre stem ;
+- `build_drum_kit(..., write_samples=False)` fait la même détection, le même
+  classement, les mêmes instants et les mêmes vélocités, mais **n'écrit pas les
+  WAV découpés** : un projet qui ne charge aucun échantillon ne doit pas
+  traîner un dossier `samples/` qui laisse croire le contraire ;
+- `--sans-sampler` avec `--batterie-echantillonnee` est refusé avec sa raison,
+  plutôt que silencieusement arbitré : la batterie échantillonnée EST le
+  sampler.
+
+**Ce que l'interdiction coûte, sur *Children (Dream Version)*.** Le morceau
+entier, quatre stems, tempo mesuré à 138 BPM, métrique v2, budget 20 :
+
+| stem | machine retenue | distance | podium |
+|---|---|---|---|
+| bass | `vsm.generic` | 0,175 | generic 0,18 / string 0,21 / obx 0,24 |
+| other | `vsm.string` | 0,203 | string 0,20 / ms20 0,21 / dx7 0,23 |
+| vocals | `vsm.wind` | 0,164 | wind 0,16 / obx 0,20 / generic 0,21 |
+| drums | `vsm.drums` | — | 5 pièces, 1092 frappes, aucun échantillon écrit |
+
+**Distance globale : 0,2672.** Et l'attribution, faite par ablation sur ce
+rendu-là plutôt que supposée :
+
+| variante | distance (v2) |
+|---|---|
+| livré — quatre pistes, que des synthés | **0,2672** |
+| piste de voix coupée | 0,2663 |
+| voix REPORTÉE telle quelle (mesure seule, pas livrée) | 0,2682 |
+| silence | 0,9674 |
+
+**Sur ce morceau, l'interdiction ne coûte rien de mesurable.** Le stem `vocals`
+de *Children* est du résidu de séparation — 0,0033 de niveau efficace contre
+0,156 pour la batterie — et le rendu ne bouge pas de plus d'un millième selon
+qu'on y met un `vsm.wind`, l'enregistrement lui-même, ou rien. La piste
+synthétisée est même très légèrement défavorable (+0,0009) ; elle est conservée
+parce que la contrainte demande un projet à quatre pistes de synthèse, et le
+chiffre est écrit plutôt que tu. **Ce résultat ne se généralise pas** : il tient
+à ce que ce morceau-ci n'a pratiquement pas de chant, et un morceau chanté
+paierait l'interdiction au prix fort.
+
+**Un défaut soupçonné, et démenti par la mesure.** Le calage automatique des
+volumes demande un facteur 7,7 pour la basse et **butte sur sa borne de 2,5** :
+le patch `vsm.generic` retenu sort à 0,0113 de niveau efficace quand son stem
+est à 0,0867. La borne a donc été soupçonnée de peser sur la distance globale,
+par analogie avec la batterie trois fois trop faible du § précédent. Rendu avec
+le facteur réellement demandé, **c'est pire** : 0,2792 contre 0,2672. La borne
+protège ici au lieu de nuire — une piste calée au niveau efficace de son stem
+n'est pas une piste calée au bon niveau dans le mélange, dès lors que son timbre
+ne recouvre pas celui de l'original. Le soupçon est écrit avec son démenti,
+parce que l'intuition était raisonnable et qu'elle était fausse.
+
+**Ce qui n'est pas comparable.** Les distances PAR STEM ci-dessus sont
+identiques au millième à celles du tableau AVANT/APRÈS plus haut : c'est le même
+fichier, et la chaîne est restée déterministe. La distance GLOBALE, elle, ne se
+compare pas à 0,2169 en l'état — cette mesure-là n'a pas laissé d'artefact sur
+disque, et la seule façon honnête de l'opposer à 0,2672 serait de refaire tourner
+la variante AVEC sampler de bout en bout sur ce même fichier. Ce n'est pas fait,
+et c'est dit plutôt que comblé par une hypothèse.
+
+---
+
+## 34. Ce qu'on juge n'était pas ce qu'on écoute : la piste, puis le mélange
+
+Point de départ : *Children (Dream Version)* reconstruit à **0,2672**, et
+l'utilisateur qui dit « on est encore loin, et ce morceau ne devrait pas être
+compliqué ». Il avait raison sur les deux points, et chercher où l'écart se
+logeait a mis au jour un défaut de MÉTHODE, pas un défaut de machine.
+
+### D'abord mesurer où ça casse, et non ce qu'on suppose
+
+Chaque piste rendue seule, contre son propre stem :
+
+| piste | machine | distance à son stem | (silence) |
+|---|---|---|---|
+| **bass** | `vsm.generic` | **0,4614** | 0,9272 |
+| vocals | `vsm.wind` | 0,3972 | 0,8373 |
+| other | `vsm.string` | 0,2701 | 0,9368 |
+| Batterie | `vsm.drums` | 0,2165 | 0,9360 |
+
+La basse est à mi-chemin du silence. Premier soupçon, raisonnable : la
+transcription, qui ajoute des octaves fantômes (le stem tourne sur 29 / 34 / 37,
+le MIDI ajoute 41 / 46 / 49). **Démenti par la mesure**, à patch constant :
+
+| notes | nombre | distance |
+|---|---|---|
+| transcription par défaut | 833 | **0,4614** |
+| doublures d'octave retirées | 624 | 0,4714 |
+| réduite à une voix (la plus grave) | 568 | 0,4736 |
+| plafond de fréquence à 300 Hz | 832 | 0,4616 |
+
+Toutes les « corrections » sont pires. Ce n'était pas les notes.
+
+### Le défaut : la machine était choisie sur UNE note
+
+La piste de basse rendue par les dix-neuf machines, **patch d'usine, sans
+aucune recherche** :
+
+| machine, patch d'usine | distance |
+|---|---|
+| **`vsm.piano`** | **0,2820** |
+| `vsm.dx7` | 0,3874 |
+| `vsm.tonewheel` | 0,4110 |
+| … | |
+| `vsm.generic` (la machine retenue) | 1,5374 |
+| *`vsm.generic` avec son patch cherché* | *0,4614* |
+
+Une machine que la recherche n'avait pas retenue, avec le patch qu'elle a en
+sortant de boîte, fait **39 % mieux** que la gagnante réglée sur mesure. Ce
+n'est pas un défaut de l'optimiseur : la recherche choisit sur la note la plus
+longue du stem, parce que chercher sur chacune coûterait des heures.
+L'hypothèse « les notes d'un même instrument partagent leur timbre » tient pour
+RÉGLER un patch ; elle ne tient pas pour CHOISIR une machine. Les deux critères
+ne classent pas dans le même ordre, et c'est le second qu'on écoute. À noter :
+`--finalistes 0` n'y aurait rien changé — le défaut est dans le critère, pas
+dans la présélection.
+
+### Trois étapes ajoutées, et ce que chacune a rapporté
+
+**1. L'arbitrage sur la piste** (`analyzer/vsm_track_arbitration.py`). Après la
+recherche, la piste ENTIÈRE est rendue avec le patch trouvé de chaque machine
+*et* avec le patch d'usine de chaque machine ; on garde la meilleure. Le patch
+d'usine est dans la liste précisément parce que le cas ci-dessus s'est produit.
+
+| piste | recherche (une note) | arbitrage (la piste) |
+|---|---|---|
+| bass | `vsm.generic` 0,461 | **`vsm.piano`** d'usine 0,282 |
+| other | `vsm.string` 0,270 | **`vsm.ms20`** d'usine 0,250 |
+| vocals | `vsm.wind` cherché 0,395 | `vsm.wind` **d'usine** 0,346 |
+
+Le cas `vocals` est le plus parlant : même machine, et c'est le patch réglé sur
+une note qui perd contre le patch sorti de boîte.
+
+**2. Le plafond de volume, relevé de 2,5 à 10.** L'arbitrage n'a d'abord rendu
+que 0,2672 → 0,2608 sur le morceau, alors que les pistes gagnaient 39 % et 7 %.
+Le calage butait sur sa borne : la basse demande un facteur 6,7 et n'en recevait
+que 2,5.
+
+| volume de la basse | distance du morceau |
+|---|---|
+| 2,5 (l'ancien plafond) | 0,2608 |
+| 4 | 0,2443 |
+| 5 | 0,2355 |
+| 6,7 (le facteur demandé) | **0,2246** |
+
+Le plafond coûtait 14 %. **Et son envers a été mesuré aussi** : avec la basse
+précédente (`vsm.generic`, timbre faux), ce même facteur DÉGRADAIT le résultat
+(0,2672 → 0,2792). Le plafond compensait un mauvais patch au lieu de le
+corriger. Une piste juste veut son niveau ; une piste fausse veut être refaite.
+
+**3. Le réglage du patch sur la piste** (`analyzer/vsm_track_refine.py`) : une
+descente par coordonnées, axe par axe dans l'ordre d'importance que la machine
+déclare, deux passes (large puis resserrée), une valeur gardée seulement si elle
+rapproche le rendu complet. Elle améliore franchement chaque piste — et **elle
+éloigne le morceau**.
+
+### Le résultat qui a demandé une quatrième étape
+
+| | pistes contre leurs stems | le MORCEAU |
+|---|---|---|
+| arbitrage seul | basse 0,282 · other 0,250 · voix 0,346 | **0,2246** |
+| + réglage libre | 0,206 · 0,246 · 0,168 | 0,2519 |
+| + réglage contraint en niveau | 0,216 · 0,246 · 0,168 | 0,2380 |
+
+Première cause, trouvée et corrigée : **la distance est insensible au niveau**,
+donc la descente n'a aucune raison de préserver le volume de sortie. Sur la
+basse elle a trouvé un patch meilleur de 27 % en timbre et deux fois plus faible
+(0,0117 → 0,0060) ; le calage réclamait ×13, butait, et l'écrêtage passait de
+840 à 8 519 échantillons. D'où la contrainte, aux deux étapes : un candidat dont
+le niveau ne pourra plus être rattrapé (`0,9 × rms_stem / rms_rendu > 10`, la
+formule exacte du calage avec sa borne) est refusé là où l'on sait encore
+pourquoi.
+
+Mais la contrainte ne récupère que la moitié de l'écart. **Le reste n'est pas
+une affaire de volume** : les stems d'une séparation ne se rendorment pas
+exactement dans l'original -- ils se recouvrent et fuient l'un dans l'autre --
+et rien ne garantit qu'une piste plus proche de SON stem donne un mélange plus
+proche du MORCEAU. C'est la leçon centrale de cette section, et elle vaut pour
+toute la chaîne : **une piste jugée seule et une piste dans un mélange ne sont
+pas le même objectif.**
+
+**4. Le verdict du mélange** (`analyzer/vsm_mix_verdict.py`). Pour chaque piste
+ayant deux propositions, le projet complet est rendu avec l'une puis avec
+l'autre — volume recalé à chaque fois, sans quoi on comparerait deux patchs au
+mauvais niveau — et l'on garde celle qui rapproche du morceau, en disant ce
+qu'on écarte. C'est mot pour mot la règle de l'automation de coupure (« gardée
+seulement si elle RAPPROCHE le rendu »), remontée d'un cran. Le réglage ne peut
+donc plus dégrader le résultat : au pire il est refusé piste par piste.
+
+### Ce que ça coûte, et deux limites assumées
+
+| opération | coût mesuré (morceau de 4 min) |
+|---|---|
+| un rendu de piste | 1,4 s |
+| une distance v2 sur la piste entière | **3,7 s** |
+| une distance v2 sur 30 s | 0,35 s |
+| un rendu de projet complet | ~5 s |
+
+C'est la DISTANCE qui domine, pas le rendu. L'arbitrage coûte donc ~3 min par
+stem (38 candidates), le réglage ~3 min (40 évaluations, budget exposé par
+`--budget-piste`), le verdict ~10 s par proposition.
+
+Deux limites, écrites plutôt que découvertes plus tard : le réglage ne traite
+que la machine GAGNANTE (régler les trois premières et les redépartager
+coûterait trois fois plus pour un gain non mesuré), et le verdict est GLOUTON
+piste par piste (les huit combinaisons de trois pistes coûteraient huit rendus
+au lieu de six, gain non mesuré non plus).
+
+### Un piège d'exécution qui a tué la première tentative
+
+L'arbitrage gardait ses trente-huit rendus. Un rendu de quatre minutes en stéréo
+flottante pèse 82 Mo : 3 Go par stem, dans un `/tmp` qui est un disque **en
+mémoire** de 7,7 Go sur cette machine. `No space left on device`, après que
+l'arbitrage de la basse eut abouti. Chaque candidate est désormais rendue dans
+le même dossier et son WAV effacé sitôt lu : l'empreinte est celle d'un seul
+rendu, quel que soit le nombre de candidates. La leçon n'est pas « nettoyer ses
+fichiers » mais : **une étape qui multiplie les rendus multiplie aussi leur
+poids, et un disque en mémoire ne pardonne pas.**
+
+### Deux options de plus sur `reconstruire.py`
+
+- `--stems <dossier>` reprend des stems déjà séparés. Refaire trois minutes de
+  séparation pour comparer deux réglages de la SUITE de la chaîne ne mesure rien
+  de plus, et rend les deux passes moins comparables si le modèle change.
+- `--sans-arbitrage` et `--sans-reglage-piste` rendent les comportements
+  d'avant, parce que c'est ainsi qu'on attribue un écart à une étape et non à
+  un ensemble.
+
+### La cible ne change pas : 64 % du coût d'une évaluation, rendus
+
+Les trois nouvelles étapes recalculaient les descripteurs de LA CIBLE à chaque
+évaluation, alors que le stem ne bouge jamais d'une candidate à l'autre : sur
+38 candidates d'arbitrage puis 40 évaluations de réglage, c'était 77 fois le
+même travail. La leçon existait déjà dans le dépôt -- `vsm_distance_cache` l'a
+tirée pour des cibles d'une SECONDE -- et elle n'avait pas été appliquée à des
+cibles de quatre MINUTES, là où elle vaut cent fois plus.
+
+| | valeur rendue | temps |
+|---|---|---|
+| calcul direct | 1,931979 | 5,55 s |
+| cible en cache | 1,931979 | **2,02 s** |
+
+**L'écart des valeurs est nul au dernier chiffre**, et c'est la condition qui
+compte : une optimisation qui déplacerait la distance d'un millième rendrait
+incomparables les passes d'avant et d'après, c'est-à-dire tous les tableaux de
+cette section. Mesuré à l'usage : réglage d'un stem en 111 s au lieu de 230.
+
+### Un réglage figé sans être mesuré : le nombre d'AXES
+
+La descente n'explorait que les **8 premiers axes** déclarés par la machine.
+C'est un chiffre que j'avais choisi, pas mesuré. `vsm.drums` en déclare **21**
+-- un accord, une extinction et un niveau par pièce, plus la salle -- donc
+treize restaient à leur valeur d'usine sans que personne les ait jugés, sur la
+piste qui pèse le plus lourd du mélange. Exposé en `--axes-piste`, et la mesure
+est sans appel :
+
+| batterie, réglage sur la piste | distance à son stem |
+|---|---|
+| 8 axes, 40 évaluations | 0,219 → **0,219** (rien) |
+| 16 axes, 126 évaluations | 0,219 → **0,189** |
+
+Et les axes qui l'ont fait bouger sont les **`level`** pièce par pièce, classés
+au-delà du huitième rang d'importance : invisibles à l'ancienne descente par
+construction. Même effet sur la basse : 0,216 à budget 40, **0,199** à budget
+150.
+
+### Séparer en six sources : mesuré, et refusé
+
+`htdemucs_6s` sort un stem de piano et un de guitare en plus des quatre
+habituels. Sur un morceau dont le piano est la signature, c'était le levier le
+plus prometteur de la file. Il coûte :
+
+| séparation | distance du morceau |
+|---|---|
+| `htdemucs`, 4 sources | **0,2190** |
+| `htdemucs_6s`, 6 sources | 0,2325 |
+
+La cause se lit dans les stems, pas dans la chaîne : **le modèle à six sources
+sépare moins bien la batterie** (son stem part de 0,279 au lieu de 0,219 à
+niveau efficace identique), et la batterie est la source dominante (0,156
+contre 0,011 pour le prétendu piano). On dégrade la source qui pèse pour gagner
+deux pistes maigres. Le verdict du mélange l'a d'ailleurs dit à sa façon : il a
+refusé **cinq réglages sur six** dans cette passe.
+
+Deux observations qui valent d'être gardées :
+
+- **ce que la séparation appelle « piano » n'est pas un piano.** Sur ce morceau
+  le stem porte 0,0113 de niveau efficace, et l'arbitrage le fait jouer par
+  `vsm.wind` -- une machine à anche -- devant `vsm.piano`, qui n'est même pas au
+  podium. Pendant ce temps la BASSE, elle, est jouée par `vsm.piano`. Les
+  étiquettes de la séparation ne disent rien de ce qu'il faut pour rejouer le
+  contenu ;
+- **c'est dans cette passe que des patchs CHERCHÉS ont gagné l'arbitrage** pour
+  la première fois (guitare, `other`, voix), là où les patchs d'usine
+  l'emportaient partout ailleurs. La recherche sur une note n'est donc pas
+  inutile : elle est insuffisante à décider seule, ce qui est une conclusion
+  plus juste que « elle se trompe ».
+
+### Le stem « piano » repris seul : mesuré aussi, et refusé aussi
+
+Le recul de la passe à six sources venait de la BATTERIE, pas du piano. On peut
+donc ne prendre du modèle à six sources que ce qu'on lui demandait : un jeu de
+stems **hybride** — `drums`, `bass`, `vocals` de `htdemucs`, le `piano` de
+`htdemucs_6s`, et `other` de `htdemucs` MOINS ce piano, pour que rien ne soit
+compté deux fois. Le contrôle qui rend l'opération honnête : la somme des cinq
+stems hybrides moins la somme des quatre d'origine vaut **0,00e+00** — on n'a ni
+ajouté ni perdu de matière, seulement sorti le piano de son fourre-tout.
+
+| stems | distance du morceau |
+|---|---|
+| 4 sources | **0,2190** |
+| hybride, piano extrait | 0,2210 |
+| 6 sources entières | 0,2325 |
+
+L'hybride récupère bien les trois quarts du recul (0,2325 → 0,2210), ce qui
+confirme le diagnostic. Mais l'extraction elle-même coûte **+0,0020** : elle
+retire 0,005 à `other`, qui devient plus difficile, et rend une piste à 0,174
+qui ne pèse que 0,0113 de niveau efficace. Le levier est refusé sur son chiffre,
+pas sur un principe.
+
+### Bilan de la file : ce qui a marché, ce qui n'a pas marché
+
+| passe | ce qui change | distance |
+|---|---|---|
+| v1 | recherche sur une note (état d'avant) | 0,2672 |
+| v2 | + arbitrage sur la piste | 0,2608 |
+| v3 | + réglage du patch, libre | 0,2519 |
+| v4 | + réglage contraint en niveau | 0,2380 |
+| v5 | + verdict du mélange (plafond de volume levé) | 0,2204 |
+| v6 | + réglage de la batterie | 0,2190 |
+| v7 | séparation à six sources | 0,2325 |
+| v9 | stems hybrides, piano extrait | 0,2210 |
+| **v8** | **+ budget élargi (150 évaluations, 16 axes)** | **0,2101** |
+
+**De 0,2672 à 0,2101, soit −21 %**, sans ajouter une seule machine ni changer
+une ligne de DSP : uniquement en changeant CE QU'ON JUGE et QUAND.
+
+Trois leviers ont payé (arbitrage sur la piste, verdict du mélange, budget
+élargi), deux ont été refusés sur leur chiffre (six sources, piano extrait), et
+un troisième — le réglage des patchs mélodiques — n'a jamais été gardé par le
+verdict du mélange sur AUCUNE des trois dernières passes, alors qu'il améliore
+toujours la piste contre son stem.
+
+**Ce dernier point est la règle à retenir de toute cette section, et elle se
+répète assez pour ne plus être une anecdote : régler un patch mélodique contre
+son stem n'aide pas le mélange ; régler la batterie l'aide.** L'explication
+tient à la séparation elle-même — les stems mélodiques se recouvrent et fuient
+les uns dans les autres, tandis que la batterie occupe un domaine
+temps-fréquence que rien d'autre n'occupe. Son stem est presque le vrai signal ;
+les autres n'en sont qu'une estimation. À la passe 8, le réglage de la batterie
+rapporte à lui seul 0,0146 sur le morceau, et les trois réglages mélodiques sont
+écartés.
+
+### Un preset ne doit dépendre de rien
+
+Conséquence inattendue de l'arbitrage : quand un patch d'USINE gagne, le
+dictionnaire de paramètres est vide, et le preset écrit ne dit rien. Le son du
+projet dépendrait alors des valeurs par défaut de la machine **au moment où on
+l'ouvre** — le jour où un défaut change, le morceau change sans que rien ne le
+signale. C'est exactement la divergence silencieuse que ce dépôt refuse
+partout ailleurs, et elle était entrée par la porte de derrière.
+
+Les presets écrivent désormais les valeurs RÉSOLUES : les défauts de la machine,
+surchargés par le patch retenu. Vérifié sur le projet livré — 16 à 23 paramètres
+inscrits par piste au lieu de 0 à 8, et le rendu **identique octet pour octet**.
+
 ---
 
 ## 29. Façades « façon hardware », machine par machine (sections 6 et 21)

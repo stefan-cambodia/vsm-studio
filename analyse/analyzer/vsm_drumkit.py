@@ -480,6 +480,7 @@ def build_drum_kit(
     samples_folder: Path,
     relative_prefix: str = "samples",
     max_slots: int = 16,
+    write_samples: bool = True,
 ) -> Optional[DrumKit]:
     """
     Découpe un stem de batterie en kit jouable par le sampler.
@@ -490,6 +491,12 @@ def build_drum_kit(
 
     Renvoie None si aucun coup n'est détecté -- ce qui est DIT par l'appelant,
     jamais compensé par un kit inventé.
+
+    `write_samples=False` fait tout le travail SAUF écrire les WAV découpés :
+    la détection, le classement, les instants et les vélocités sont identiques,
+    et le kit reste jouable par `modelled_drum_track`. C'est ce qu'il faut quand
+    le sampler est interdit -- écrire des échantillons que rien ne charge
+    laisserait croire, en ouvrant le projet, qu'il en dépend.
 
     OÙ SE SITUE LA LIMITE AUJOURD'HUI. Le sampler accepte seize emplacements et
     sa façade sait les montrer ; ce n'est donc plus le moteur qui borne le kit,
@@ -675,7 +682,8 @@ def build_drum_kit(
         representatif = extraits[candidats[_medoid_index(empreintes)]]
 
         nom_fichier = f"{famille}.wav"
-        _write_wav(samples_folder / nom_fichier, representatif, sample_rate, gain_du_kit)
+        if write_samples:
+            _write_wav(samples_folder / nom_fichier, representatif, sample_rate, gain_du_kit)
 
         emplacements.append(
             DrumSlot(
@@ -778,11 +786,38 @@ def drum_kit_track(kit: DrumKit, name: str = "Batterie") -> ExportTrack:
 # convention General MIDI. `percussion` n'a pas d'équivalent dans un kit
 # modélisé à sept pièces : elle tombe sur le tom aigu, ce qui est faux mais
 # audible au bon endroit, plutôt que d'être perdue.
+# Correspondance famille détectée -> note de `vsm.drums`.
+#
+# ELLE DOIT ÊTRE TOTALE, et elle ne l'était pas : `_name_templates` puise les
+# noms des gabarits excédentaires dans son vivier `divers` -- `percussion`,
+# `tom`, `cymbal`, `tom2`, `tom3` -- et les deux derniers ne figuraient pas
+# ici. `modelled_drum_track` les ignorait alors en silence : sur un kit de huit
+# gabarits, toutes les frappes d'un `tom2` disparaissaient du projet sans une
+# ligne pour le dire. Le chemin sampler, lui, les jouait (il suit
+# `emplacement.midi_note`) -- passer la batterie modélisée par défaut perdait
+# donc de la musique, ce qui est exactement la panne muette que ce projet
+# refuse partout ailleurs.
+#
+# LE VIVIER `divers` NE PORTE AUCUN SENS TIMBRAL : c'est une réserve de noms
+# tirée dans l'ordre quand la famille d'un gabarit a épuisé la sienne. Un
+# quatrième gabarit classé « charleston » s'appelle `percussion` sans être une
+# percussion. Le seul choix qui vaille est donc de ne PAS faire tomber deux
+# gabarits distincts sur la même voix : ils y additionneraient deux timbres que
+# la détection avait justement séparés. Les cinq noms du vivier reçoivent les
+# cinq voix que les réserves ne prennent pas -- correspondance un pour un, et
+# les dix voix de la machine deviennent atteignables, alors que la caisse
+# claire d'accompagnement (49) et le tom grave (41) ne l'étaient d'aucune
+# façon.
+#
+# `kick2` et `snare2` restent REPLIÉS sur la voix de leur famille : ce sont
+# deux gabarits du même instrument (le premier coup d'un morceau n'a pas de
+# queue à soustraire et fonde son propre gabarit), pas deux pièces du kit.
 MODELLED_DRUM_NOTES: Dict[str, int] = {
     "kick": 36, "kick2": 36,
     "snare": 38, "snare2": 38,
     "hihat": 42, "pedalhat": 44, "openhat": 46,
-    "tom": 45, "percussion": 48, "cymbal": 51,
+    # Le vivier `divers`, dans l'ordre où il est tiré, sur les cinq voix libres.
+    "percussion": 49, "tom": 45, "cymbal": 51, "tom2": 48, "tom3": 41,
 }
 
 
@@ -797,7 +832,18 @@ def modelled_drum_track(kit: DrumKit, name: str = "Batterie") -> ExportTrack:
     for emplacement in kit.slots:
         note = MODELLED_DRUM_NOTES.get(emplacement.family)
         if note is None:
-            continue
+            # UNE FAMILLE INCONNUE SE JOUE QUAND MÊME, ET SE DIT. Sauter la
+            # pièce ferait disparaître ses frappes du projet sans trace ; on la
+            # rabat sur la note que la détection lui avait attribuée -- elle
+            # vient de la convention General MIDI et vaut mieux que rien -- et
+            # on l'inscrit dans les avertissements du kit, que l'appelant
+            # imprime. Un kit incomplet est acceptable ; un kit incomplet en
+            # silence ne l'est pas.
+            note = int(emplacement.midi_note)
+            kit.warnings.append(
+                f"{emplacement.family} : famille sans voix déclarée dans vsm.drums, "
+                f"jouée sur la note {note} ({emplacement.hit_count} frappe(s))"
+            )
         for instant, velocite in zip(emplacement.onsets, emplacement.velocities):
             notes.append(ExportNote(note=note, velocity=velocite,
                                      start=instant, duration=0.05))

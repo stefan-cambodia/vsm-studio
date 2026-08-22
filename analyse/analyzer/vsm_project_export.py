@@ -47,6 +47,12 @@ _TRACK_COLOURS = [
 ]
 
 
+# Volume par défaut d'une piste écrite par la chaîne. Il est nommé parce que
+# le réglage sur la piste doit savoir de quel niveau le calage partira pour
+# juger si un patch pourra encore être rattrapé.
+DEFAULT_TRACK_VOLUME = 0.9
+
+
 @dataclass
 class ExportNote:
     """Une note, en SECONDES -- l'unité que produit l'analyse."""
@@ -71,7 +77,7 @@ class ExportTrack:
     parameters: Dict[str, float] = field(default_factory=dict)
     notes: List[ExportNote] = field(default_factory=list)
     channel: int = 0
-    volume: float = 0.9
+    volume: float = DEFAULT_TRACK_VOLUME
     pan: float = 0.0
     is_drums: bool = False
     # Échantillons à charger dans la machine (sampler) : « emplacement ->

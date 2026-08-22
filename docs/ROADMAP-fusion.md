@@ -802,6 +802,71 @@ maintenant exposée (`saveClapState` / `loadClapState`), et trois tests
 
 ---
 
+## 5 bis. Quatre pannes muettes de la chaîne d'analyse
+
+Les trois verdicts (note, piste, mélange) étaient en place et mesurés ; une
+relecture complète du diff a montré que **trois d'entre eux ne jugeaient pas ce
+qu'ils croyaient juger**. Aucune de ces pannes ne produit d'erreur : chacune
+rend un chiffre plausible, et c'est ce qui les rendait coûteuses. Elles sont
+corrigées, et écrites ici parce qu'elles disent toutes la même chose — *une
+étape qui échoue à moitié est pire qu'une étape qui échoue*.
+
+**1. Le verdict du mélange se prononçait sur un mélange sans la voix.**
+`vsm_mix_verdict._render_project` écrivait le mini-projet dans un dossier de
+travail sans y recopier les échantillons, que les pistes de sampler désignent
+par chemin RELATIF au projet. Le report vocal — la piste la plus présente du
+mélange — était donc absent des deux variantes comparées. `vsm-render` ne s'en
+plaint que par un avertissement sur la sortie d'erreur, et `capture_output`
+l'avalait : rendu réussi, code de retour 0, piste muette. `match_track_levels`
+faisait déjà cette recopie avant son rendu solo ; la règle manquait ici seule.
+Au passage, les variantes partagent désormais UN dossier au lieu d'un par
+essai : recopier le stem vocal entier à chaque rendu coûtait des dizaines de
+mégaoctets pour un fichier identique — la leçon que `vsm_track_arbitration`
+avait déjà payée d'un « No space left on device ».
+
+**2. Un quart des frappes de batterie disparaissait du projet.**
+`_name_templates` puise les noms des gabarits excédentaires dans un vivier
+(`percussion`, `tom`, `cymbal`, `tom2`, `tom3`) ; `MODELLED_DRUM_NOTES` n'en
+connaissait que trois, et `modelled_drum_track` sautait les autres **en
+silence**. Mesuré sur un kit de huit gabarits : 12 notes écrites sur 16
+détectées. Le chemin sampler, lui, les jouait toutes — passer la batterie
+modélisée par défaut perdait donc de la musique que la détection avait trouvée.
+Le vivier ne porte aucun sens timbral (un quatrième gabarit de charleston
+s'appelle `percussion`), et le seul choix qui vaille est de ne pas faire tomber
+deux gabarits distincts sur la même voix : les cinq noms reçoivent les cinq
+voix que les réserves ne prennent pas. Les dix voix de `vsm.drums` deviennent
+atteignables — le crash (49) et le tom grave (41) ne l'étaient d'aucune façon.
+Et une famille inconnue est désormais **jouée et dite**, jamais sautée.
+
+**3. `--sans-arbitrage` désactivait deux étapes.** Le réglage sur la piste était
+écrit sous le `else` de l'arbitrage : il disparaissait avec lui, et un stem dont
+l'arbitrage ne rendait aucun verdict n'était pas réglé non plus. Le README
+promet l'inverse — « chaque étape se désactive : c'est ainsi qu'on attribue un
+écart à une étape et non à un ensemble » — et c'est la promesse qui a raison,
+parce que sans elle **aucune mesure ne peut dire laquelle des deux étapes a
+produit un gain**. Les deux options sont maintenant indépendantes, ce qui rend
+mesurable tout le travail d'optimisation à venir sur cette partie de la chaîne.
+
+**4. `rapport.json` publiait des patchs absents du projet.** Le verdict du
+mélange REMPLACE le dictionnaire de paramètres de la piste au lieu de le
+modifier ; le `StemReconstruction`, qui partageait l'objet au départ, gardait
+donc le patch d'avant. Quand le mélange revenait au patch de l'arbitrage, le
+rapport publiait le patch affiné et sa `trackDistance` : des chiffres pour un
+réglage que le projet ne contient pas, c'est-à-dire la pire sorte — ceux qu'on
+croit vérifiés. La resynchronisation a lieu avant l'écriture, et **avant** la
+résolution des défauts : le rapport dit ce que la chaîne a DÉCIDÉ, pas les
+vingt valeurs d'usine que l'écriture du preset y ajoute ensuite pour le figer.
+
+**Ce qui reste ouvert, et n'est pas corrigé ici.** Le garde-fou de niveau de
+`vsm_track_arbitration` et `vsm_track_refine` compare le niveau efficace du stem
+ENTIER à celui d'un rendu qui s'arrête à la dernière note plus deux secondes,
+alors que `match_track_levels` rend sur toute la durée du stem. Sur une piste
+qui se tait avant la fin, le garde sous-estime le facteur qui sera réellement
+demandé et laisse donc passer des candidates qui buteront sur `VOLUME_MAX` —
+exactement le cas qu'il a été écrit pour attraper. Le corriger demande de rendre
+à durée imposée, donc de refaire les mesures du § 34 : à faire d'un bloc, avec
+les chiffres, plutôt qu'à moitié.
+
 ## 6. Ce qui n'est pas au programme, et pourquoi
 
 - **Reconstruire la voix.** Hors de portée d'une synthèse par machine ; la
