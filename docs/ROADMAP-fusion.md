@@ -824,6 +824,35 @@ essai : recopier le stem vocal entier à chaque rendu coûtait des dizaines de
 mégaoctets pour un fichier identique — la leçon que `vsm_track_arbitration`
 avait déjà payée d'un « No space left on device ».
 
+**REPRODUIT ET CHIFFRÉ, et le chiffre modère la conclusion.** Un projet de deux
+pistes (la voix au sampler, la batterie modélisée) monté sur les stems de
+*Children*, rendu deux fois et comparé à la somme des stems :
+
+| ce que le verdict rendait | distance au mélange | niveau efficace |
+|---|---|---|
+| sans les échantillons (avant) | 0,4815 | 0,07941 |
+| avec les échantillons (après) | **0,4641** | 0,07945 |
+
+Le mécanisme est confirmé exactement tel qu'il était soupçonné : `vsm-render`
+rend **code de retour 0** et une seule ligne sur la sortie d'erreur — « Piste 0 :
+0 échantillon(s) chargé(s), 1 en échec » — que `capture_output` avalait. La
+cible du verdict était donc fausse de 0,0174, soit 3,6 %.
+
+**Ce que cela n'établit PAS, et il faut le dire avant que quelqu'un le déduise.**
+Le verdict compare DEUX variantes rendues de la même façon : un biais commun aux
+deux se soustrait en grande partie, et rien ici ne montre qu'une décision ait
+été renversée. Ce qui est corrigé, c'est que la comparaison se fait désormais
+sur le mélange qu'on écoutera au lieu d'un mélange amputé — la conséquence sur
+le VERDICT reste non mesurée, et le sera le jour où la chaîne tournera de bout
+en bout sur la version 3:52 qui a servi aux mesures du § 34 et qui n'est pas sur
+cette machine.
+
+Deux remarques à ne pas perdre : le niveau ne bouge que de 0,1 %, parce que le
+stem vocal de *Children* porte peu d'énergie — sur un morceau chanté, l'écart
+serait tout autre ; et les distances sont hautes (0,46) parce que deux pistes
+sur quatre sont comparées au mélange entier, ce qui est sans effet sur la
+COMPARAISON mais interdit de rapprocher ces chiffres de ceux du § 34.
+
 **2. Des frappes de batterie pouvaient disparaître du projet.**
 `_name_templates` puise les noms des gabarits excédentaires dans un vivier
 (`percussion`, `tom`, `cymbal`, `tom2`, `tom3`) ; `MODELLED_DRUM_NOTES` n'en
