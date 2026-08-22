@@ -55,11 +55,35 @@ from .vsm_project_export import ExportTrack, write_project_bundle
 
 
 @dataclass
+class MixAlternative:
+    """
+    Une proposition concurrente pour une piste, telle que le mélange la jugera.
+
+    `machine` vide veut dire « garder la machine en place et ne changer que le
+    patch » -- le cas du patch d'avant réglage. Non vide, c'est une AUTRE
+    machine, et c'est le seul endroit de la chaîne où un choix de machine peut
+    encore être défait.
+    """
+    parameters: Dict[str, float]
+    label: str
+    machine: str = ""
+    # La distance de PISTE de cette proposition, quand on la connaît. Elle
+    # voyage avec elle pour que le rapport puisse suivre la décision : c'est la
+    # TROISIÈME fois qu'un champ du rapport reste sur le patch écarté (voir
+    # § 5 bis et § 5 quater), et à chaque fois parce qu'un chiffre était rangé
+    # ailleurs que la décision qu'il décrit.
+    track_distance: Optional[float] = None
+
+
+@dataclass
 class MixDecision:
     track: str
-    kept: str            # "réglage" ou "arbitrage"
-    distance_kept: float
-    distance_other: float
+    kept: str                              # libellé de la proposition retenue
+    distance_kept: float                   # distance du MÉLANGE
+    rejected: List[Tuple[str, float]]      # (libellé, distance) des écartées
+    # Distance de PISTE de ce qui a été retenu, ou None si l'état courant l'a
+    # emporté (l'appelant sait alors qu'il n'a rien à changer).
+    kept_track_distance: Optional[float] = None
 
 
 def _copy_samples(tracks: Sequence[ExportTrack], samples_root: Path, folder: Path) -> None:
@@ -107,7 +131,7 @@ def _render_project(tracks: Sequence[ExportTrack], folder: Path, sample_rate: in
 
 def keep_what_helps_the_mix(
     tracks: List[ExportTrack],
-    alternatives: Dict[str, Dict[str, float]],
+    alternatives: Dict[str, Sequence[MixAlternative]],
     mixture: np.ndarray,
     stems_audio: Dict[str, np.ndarray],
     samples_root: Path,
@@ -118,14 +142,22 @@ def keep_what_helps_the_mix(
     binary: Optional[str] = None,
 ) -> List[MixDecision]:
     """
-    Tranche piste par piste entre le patch courant et son alternative.
+    Tranche piste par piste entre l'état courant et ses concurrentes.
 
-    `tracks` est modifié EN PLACE : à la sortie, chaque piste porte le patch et
-    le volume de la variante retenue. `alternatives` donne, par nom de piste, le
-    patch concurrent -- typiquement celui d'avant le réglage.
+    `tracks` est modifié EN PLACE : à la sortie, chaque piste porte la machine,
+    le patch et le volume de la variante retenue. `alternatives` donne, par nom
+    de piste, les propositions à mettre en concurrence.
 
-    Renvoie une décision par piste examinée, pour que le journal puisse dire ce
-    qui a été gardé ET ce qui a été écarté, avec les deux chiffres.
+    UNE ALTERNATIVE PEUT CHANGER LA MACHINE, et c'est nouveau. Le verdict ne
+    savait défaire qu'un RÉGLAGE : sa seule concurrente était le patch d'avant
+    réglage de la même machine. Mesuré sur Children v11, cette limite coûte
+    cher -- l'arbitrage y a départagé `vsm.ms20` et `vsm.string` à un MILLIÈME
+    (0,260 contre 0,261), s'est trompé, et plus rien en aval ne pouvait le
+    rattraper : 0,2976 au lieu de 0,2815. Une égalité mal tranchée était
+    définitive. Elle ne l'est plus.
+
+    Renvoie une décision par piste examinée, avec ce qui a été gardé ET tout ce
+    qui a été écarté, chiffres à l'appui.
     """
     from .vsm_distance_cache import CachedTargetDistance, CachedTargetDistanceV2
 
@@ -153,23 +185,46 @@ def keep_what_helps_the_mix(
         return float(mesurer(rendu))
 
     for track in tracks:
-        autre = alternatives.get(track.name)
-        if autre is None or dict(autre) == dict(track.parameters):
+        propositions = list(alternatives.get(track.name) or ())
+        if not propositions:
             continue
 
-        courant_params, courant_volume = dict(track.parameters), float(track.volume)
+        etat_courant = (track.machine, dict(track.parameters), float(track.volume))
         d_courant = distance_du_projet()
+        meilleur = ("réglage", d_courant, etat_courant, None)
+        ecartees: List[Tuple[str, float]] = []
 
-        # Le VOLUME est recalé pour la variante : deux patchs de niveaux
-        # différents comparés au même volume ne compareraient pas les patchs.
-        track.parameters = dict(autre)
-        match_track_levels([track], stems_audio, samples_root, sample_rate)
-        d_autre = distance_du_projet()
+        for proposition in propositions:
+            machine_visee = proposition.machine or etat_courant[0]
+            if (machine_visee == etat_courant[0]
+                    and dict(proposition.parameters) == etat_courant[1]):
+                continue                       # rien à départager
 
-        if d_autre < d_courant - 1e-6:
-            decisions.append(MixDecision(track.name, "arbitrage", d_autre, d_courant))
-        else:
-            track.parameters, track.volume = courant_params, courant_volume
-            decisions.append(MixDecision(track.name, "réglage", d_courant, d_autre))
+            track.machine = machine_visee
+            track.parameters = dict(proposition.parameters)
+            # Le nom d'affichage suit la machine, sinon le projet annoncerait
+            # l'ancienne dans son interface.
+            if machine_visee != etat_courant[0]:
+                track.machine_display_name = ""
+            # Le VOLUME est recalé pour chaque variante : deux patchs de
+            # niveaux différents comparés au même volume ne compareraient pas
+            # les patchs.
+            match_track_levels([track], stems_audio, samples_root, sample_rate)
+            distance = distance_du_projet()
+
+            if distance < meilleur[1] - 1e-6:
+                ecartees.append((meilleur[0], meilleur[1]))
+                meilleur = (proposition.label, distance,
+                            (track.machine, dict(track.parameters), float(track.volume)),
+                            proposition.track_distance)
+            else:
+                ecartees.append((proposition.label, distance))
+
+        track.machine, track.parameters, track.volume = (
+            meilleur[2][0], dict(meilleur[2][1]), meilleur[2][2])
+        if track.machine != etat_courant[0]:
+            track.machine_display_name = ""
+        decisions.append(MixDecision(track.name, meilleur[0], meilleur[1], ecartees,
+                                     meilleur[3]))
 
     return decisions

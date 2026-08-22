@@ -39,13 +39,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from analyzer.vsm_automation import try_cutoff_automation
 from analyzer.vsm_levels import VOLUME_MAX, match_track_levels
-from analyzer.vsm_mix_verdict import keep_what_helps_the_mix
+from analyzer.vsm_mix_verdict import MixAlternative, keep_what_helps_the_mix
 from analyzer.vsm_engine import VsmEngine, VsmEngineError, find_vsm_render
 from analyzer.vsm_drumkit import (build_drum_kit, drum_kit_track,
                                   modelled_drum_track, vocal_sampler_track)
 from analyzer.vsm_project_export import (DEFAULT_TRACK_VOLUME, ExportNote, ExportTrack,
                                           write_project_bundle)
-from analyzer.vsm_track_arbitration import arbitrate_on_track, build_candidates
+from analyzer.vsm_track_arbitration import (arbitrate_on_track, build_candidates,
+                                             close_runner_up)
 from analyzer.vsm_track_refine import refine_patch_on_track
 from analyzer.vsm_reconstruct import (
     StemNote,
@@ -286,6 +287,11 @@ def main() -> int:
             # mélodiques la portent dans leur `StemReconstruction` ; la
             # batterie, qui n'en a pas, passe par ce dictionnaire.
             patchs_avant_reglage: Dict[str, Dict[str, float]] = {}
+            # La machine SECONDE de l'arbitrage, quand elle est à portée. C'est
+            # la seule façon qu'une égalité mal tranchée cesse d'être
+            # définitive : le verdict du mélange ne savait défaire qu'un
+            # réglage, jamais une machine.
+            machines_secondes: Dict[str, MixAlternative] = {}
             audio_par_stem: Dict[str, np.ndarray] = {}
             pistes_batterie: List[ExportTrack] = []
             for nom, chemin in sorted(pistes.items()):
@@ -470,6 +476,18 @@ def main() -> int:
                               + f" [{time.perf_counter()-depart_arbitrage:.0f} s] — {classement}")
                         print(f"                 (* = patch d'usine)")
 
+                        seconde = close_runner_up(verdicts)
+                        if seconde is not None:
+                            machines_secondes[nom] = MixAlternative(
+                                parameters=dict(seconde.parameters),
+                                label=f"machine seconde ({seconde.machine})",
+                                machine=seconde.machine,
+                                track_distance=seconde.distance)
+                            ecart = (seconde.distance - gagnant.distance) / max(1e-9, gagnant.distance)
+                            print(f"      {nom:8s} : arbitrage SERRÉ — {seconde.machine} "
+                                  f"à {ecart*100:.1f} % ({seconde.distance:.3f}), remise en jeu "
+                                  f"au verdict du mélange")
+
                 # RÉGLAGE SUR LA PISTE, ET IL NE DÉPEND PLUS DE L'ARBITRAGE.
                 # Les réglages retenus viennent encore d'UNE note (ou de
                 # l'usine) ; on les rejuge sur la piste entière, par une
@@ -571,20 +589,33 @@ def main() -> int:
             # son stem peut éloigner le morceau : les stems ne se rendorment pas
             # exactement dans l'original. On ne garde donc que ce qui rapproche
             # ce qu'on écoute, et on DIT ce qui a été écarté.
-            alternatives = {stem.name: stem.arbitration_parameters
-                            for stem in reconstruits
-                            if stem.arbitration_parameters is not None}
-            alternatives.update(patchs_avant_reglage)
+            distances_retenues: Dict[str, float] = {}
+            alternatives: Dict[str, List[MixAlternative]] = {}
+            for stem in reconstruits:
+                if stem.arbitration_parameters is not None:
+                    alternatives.setdefault(stem.name, []).append(
+                        MixAlternative(parameters=dict(stem.arbitration_parameters),
+                                       label="arbitrage",
+                                       track_distance=stem.arbitration_distance))
+            for nom_piste, patch in patchs_avant_reglage.items():
+                alternatives.setdefault(nom_piste, []).append(
+                    MixAlternative(parameters=dict(patch), label="avant réglage"))
+            for nom_piste, seconde in machines_secondes.items():
+                alternatives.setdefault(nom_piste, []).append(seconde)
             if alternatives:
                 decisions = keep_what_helps_the_mix(
                     pistes_export, alternatives, melange, audio_par_stem, sortie,
                     workdir=Path(temporaire) / "verdict",
                     sample_rate=SAMPLE_RATE, metric=args.metrique,
                     tempo=args.tempo, binary=args.moteur)
+                distances_retenues = {d.track: d.kept_track_distance
+                                      for d in decisions
+                                      if d.kept_track_distance is not None}
                 for decision in decisions:
+                    ecartees = ", ".join(f"{lib} {d:.4f}" for lib, d in decision.rejected)
                     print(f"      {decision.track:8s} : verdict du mélange -> "
-                          f"{decision.kept} ({decision.distance_kept:.4f} contre "
-                          f"{decision.distance_other:.4f})")
+                          f"{decision.kept} ({decision.distance_kept:.4f})"
+                          + (f" — écartées : {ecartees}" if ecartees else ""))
             # LE RAPPORT DOIT DÉCRIRE LE PROJET QU'ON ÉCRIT, et il ne le
             # faisait plus. `keep_what_helps_the_mix` REMPLACE le dictionnaire
             # de paramètres de la piste (`track.parameters = ...`) au lieu de le
@@ -604,6 +635,7 @@ def main() -> int:
                 piste_finale = par_nom.get(stem.name)
                 if piste_finale is None:
                     continue
+                stem.machine = piste_finale.machine
                 stem.parameters = dict(piste_finale.parameters)
                 # ET LA DISTANCE DE PISTE AVEC, sans quoi le rapport publierait
                 # le chiffre du patch ÉCARTÉ. Vérifié sur Children v10 : le
@@ -612,10 +644,9 @@ def main() -> int:
                 # 0,2174 -- les scores du réglage que le mélange venait de
                 # refuser. Corriger `parameters` sans corriger ce chiffre ne
                 # faisait que déplacer le mensonge d'un champ.
-                if (stem.arbitration_parameters is not None
-                        and stem.arbitration_distance is not None
-                        and dict(stem.arbitration_parameters) == dict(piste_finale.parameters)):
-                    stem.track_distance = stem.arbitration_distance
+                retenue = distances_retenues.get(stem.name)
+                if retenue is not None:
+                    stem.track_distance = retenue
 
             # UN PRESET NE DOIT DÉPENDRE DE RIEN. Quand l'arbitrage ou le
             # verdict retiennent un patch d'USINE, le dictionnaire de paramètres

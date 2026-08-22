@@ -59,6 +59,44 @@ from .vsm_project_export import ExportNote, ExportTrack
 ORIGINE_CHERCHE = "patch cherché"
 ORIGINE_USINE = "patch d'usine"
 
+# ÉCART EN DEÇÀ DUQUEL DEUX MACHINES NE SONT PAS DÉPARTAGÉES.
+#
+# Mesuré, et c'est ce qui a rendu ce seuil nécessaire : sur le stem `other` de
+# *Children*, l'arbitrage sépare `vsm.ms20` de `vsm.string` par UN MILLIÈME
+# (0,260 contre 0,261). À cette marge, un simple changement de protocole -- le
+# passage au rendu à durée imposée -- suffit à les intervertir, et le mauvais
+# choix coûtait 0,016 sur le morceau entier sans que rien en aval puisse le
+# rattraper.
+#
+# 2 % en RELATIF, et non une valeur absolue : les distances ne vivent pas dans
+# la même plage d'un stem à l'autre, et un seuil absolu serait tantôt muet
+# tantôt bavard. Ce n'est pas un réglage fin -- c'est une déclaration
+# d'ignorance : « sous cet écart, je ne sais pas laquelle est la meilleure, que
+# le mélange tranche ».
+CLOSE_MARGIN = 0.02
+
+
+def close_runner_up(verdicts: Sequence["TrackVerdict"],
+                    margin: float = CLOSE_MARGIN) -> Optional["TrackVerdict"]:
+    """
+    La meilleure candidate d'une AUTRE machine que la gagnante, si elle est à
+    portée de `margin` (relatif). Renvoie None s'il n'y en a pas, ce qui est le
+    cas courant : la plupart du temps l'arbitrage tranche nettement.
+
+    Une autre MACHINE, pas un autre patch : un second patch de la gagnante ne
+    répare pas un mauvais choix de machine, et c'est ce choix-là que le verdict
+    du mélange ne savait pas défaire.
+    """
+    if len(verdicts) < 2:
+        return None
+    gagnante = verdicts[0]
+    seuil = gagnante.distance * (1.0 + margin)
+    for v in verdicts[1:]:
+        if v.machine == gagnante.machine:
+            continue
+        return v if v.distance <= seuil else None
+    return None
+
 
 @dataclass
 class TrackCandidate:

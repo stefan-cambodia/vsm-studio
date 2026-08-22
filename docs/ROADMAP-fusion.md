@@ -1028,6 +1028,58 @@ les deux premières est sous un seuil (ici 0,001). C'est le seul moyen qu'une
 le reste — sur ce morceau, il devrait ramener `other` à `vsm.string` et la
 distance globale vers 0,2815.
 
+## 5 quinquies. Une égalité n'est plus définitive : le verdict peut changer de machine
+
+Le § 5 quater se terminait sur une prédiction falsifiable — « donner au verdict
+du mélange la machine SECONDE de l'arbitrage comme alternative devrait ramener
+`other` à `vsm.string` et la distance vers 0,2815 ». C'est fait, et c'est
+mesuré.
+
+**Ce qui change.** L'arbitrage signale désormais une ÉGALITÉ quand la deuxième
+machine est à moins de 2 % de la première (`CLOSE_MARGIN`), et cette seconde est
+remise en jeu au verdict du mélange. Le verdict, lui, sait maintenant changer de
+MACHINE et plus seulement de patch : c'était sa limite, et elle était invisible
+tant que l'arbitrage tombait juste.
+
+Le seuil est RELATIF et non absolu, parce que les distances ne vivent pas dans
+la même plage d'un stem à l'autre. Ce n'est pas un réglage fin, c'est une
+déclaration d'ignorance : « sous cet écart, je ne sais pas laquelle est la
+meilleure, que le mélange tranche ».
+
+**Trois passes, mêmes stems, même source, une seule différence à chaque fois :**
+
+| | garde-fou de niveau | égalité rattrapable | distance globale |
+|---|---|---|---|
+| v10 | faux | non | 0,2815 |
+| v11 | corrigé | non | 0,2976 |
+| **v12** | **corrigé** | **oui** | **0,2817** |
+
+Le journal de v12 dit la mécanique en trois lignes :
+
+```
+other : arbitrage piste CHANGE vsm.ms20 (patch d'usine) D=0,260 — ms20=0,260*, string=0,261
+other : arbitrage SERRÉ — vsm.string à 0,1 % (0,261), remise en jeu au verdict du mélange
+other : verdict du mélange -> machine seconde (vsm.string) (0,2817)
+        — écartées : réglage 0,3045, arbitrage 0,2976
+```
+
+**Ce que ça établit.** La correction du garde-fou ne coûte plus rien : les
+0,0161 qu'elle avait coûtés en v11 sont récupérés, et cette fois SANS s'appuyer
+sur un défaut. La chaîne n'est plus l'otage d'un millième : quand l'arbitrage
+hésite, il le DIT et le mélange tranche. Sur la basse, où l'écart à la seconde
+est de 45 %, rien ne se déclenche — le mécanisme ne coûte un rendu de plus que
+là où il y a vraiment un doute.
+
+**Et un troisième champ qui ne suivait pas la décision.** `trackDistance`
+annonçait 0,2523 pour `other` — le score du réglage de `vsm.ms20` — alors que
+le projet porte `vsm.string`. C'est la troisième fois que ce défaut se
+présente (§ 5 bis pour `parameters`, § 5 quater pour la distance après revenue
+à l'arbitrage), et toujours pour la même raison : un chiffre rangé ailleurs que
+la décision qu'il décrit. Il voyage désormais AVEC la proposition
+(`MixAlternative.track_distance`), et le verdict renvoie celui qu'il a retenu.
+Le `rapport.json` de v12 sur le disque porte encore l'ancienne valeur : il a été
+écrit avant ce correctif.
+
 ## 6. Ce qui n'est pas au programme, et pourquoi
 
 - **Reconstruire la voix.** Hors de portée d'une synthèse par machine ; la
