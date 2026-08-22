@@ -976,6 +976,58 @@ réglage que le verdict venait justement d'écarter. La resynchronisation du
 déplacer le mensonge d'un champ. La distance de piste suit désormais le patch
 retenu.
 
+## 5 quater. Le garde-fou de niveau corrigé, et ce que la correction a révélé
+
+Le § 5 bis laissait ouvert un défaut : le garde-fou « ce patch peut-il encore
+atteindre le niveau de son stem ? » comparait le niveau efficace du stem ENTIER
+à celui d'un rendu qui s'arrêtait à la dernière note plus deux secondes de
+queue, alors que `match_track_levels` rend, lui, toute la durée du stem. Deux
+mesures sur des terrains différents. Corrigé : l'arbitrage et le réglage rendent
+désormais à DURÉE IMPOSÉE, comme le calage des volumes.
+
+**Mesuré en A/B strict** — mêmes stems (repris de v10), même source, mêmes
+réglages, la correction pour seule différence :
+
+| | v10 (avant) | v11 (après) |
+|---|---|---|
+| arbitrage `other` | `vsm.string` 0,257 | `vsm.ms20` 0,260 (string à 0,261) |
+| réglage `other` | 0,257 → **0,217** | 0,260 → 0,252 |
+| arbitrage `bass` | `vsm.piano` 0,275 | `vsm.piano` 0,273 |
+| réglage `bass` | 0,275 → 0,199 | 0,273 → 0,198 |
+| **distance globale** | **0,2815** | 0,2976 |
+
+**La correction coûte 0,0161, et il faut dire exactement d'où ça vient.** Elle
+n'a rien mal jugé : sur la basse elle reproduit v10 au millième près. Tout
+l'écart tient à `other`, où elle a fait basculer une ÉGALITÉ — `ms20` à 0,260
+contre `string` à 0,261, un millième — et où `ms20`, une fois retenu, se règle
+beaucoup moins bien (0,252 contre 0,217).
+
+**Ce que ça apprend, et qui vaut plus que le garde-fou.**
+
+1. **Le verdict de l'arbitrage sur `other` n'est pas robuste.** Un millième
+   d'écart entre les deux premières, et un changement de protocole de cette
+   taille suffit à les intervertir. Aucune décision de machine ne devrait être
+   lue comme acquise à cette marge-là.
+2. **Le verdict du mélange peut défaire un RÉGLAGE, jamais une MACHINE.** Sa
+   seule alternative est le patch d'avant réglage de la MÊME machine. Quand
+   l'arbitrage se trompe de machine à un millième près, plus rien en aval ne
+   peut le rattraper : c'est exactement ce qui s'est produit ici, et c'est la
+   faiblesse structurelle que cette mesure met au jour.
+
+**Décision : la correction est GARDÉE malgré le chiffre.** L'ancien garde-fou
+comparait deux grandeurs qui ne se comparent pas ; le remettre serait remettre
+un défaut connu au motif qu'un tirage à pile ou face est tombé du bon côté une
+fois. La durée imposée rend de plus la distance d'arbitrage plus fidèle : elle
+couvre tout le stem au lieu de s'arrêter à la dernière note. Le prix est écrit
+ici, il est d'une seule mesure sur un seul morceau, et il est ATTRIBUÉ.
+
+**À faire ensuite, et c'est la vraie leçon** : donner au verdict du mélange la
+machine SECONDE de l'arbitrage comme alternative, au moins quand l'écart entre
+les deux premières est sous un seuil (ici 0,001). C'est le seul moyen qu'une
+égalité mal tranchée cesse d'être définitive, et cela se mesure exactement comme
+le reste — sur ce morceau, il devrait ramener `other` à `vsm.string` et la
+distance globale vers 0,2815.
+
 ## 6. Ce qui n'est pas au programme, et pourquoi
 
 - **Reconstruire la voix.** Hors de portée d'une synthèse par machine ; la

@@ -128,6 +128,19 @@ def arbitrate_on_track(
     fabrique = CachedTargetDistanceV2 if metric == "v2" else CachedTargetDistance
     mesurer = fabrique(np.asarray(stem_audio), sample_rate)
 
+    # DURÉE IMPOSÉE, ET C'EST LE GARDE-FOU DE NIVEAU QUI L'EXIGE. Sans elle,
+    # `vsm-render` s'arrête à la dernière note plus deux secondes de queue,
+    # alors que `stem_rms` porte sur le stem ENTIER et que `match_track_levels`
+    # rendra, lui, toute la durée du stem. Sur une piste qui se tait avant la
+    # fin, le rendu court n'a pas la traîne de silence : son niveau efficace est
+    # surestimé, le facteur de volume prévu est sous-estimé, et des candidates
+    # qui buteront sur VOLUME_MAX passent le filtre -- le cas même qu'il devait
+    # attraper. La durée imposée met les deux mesures sur le même terrain.
+    #
+    # Elle change aussi la DISTANCE, et en mieux : la comparaison couvre
+    # désormais tout le stem au lieu de s'arrêter à la dernière note.
+    duree = float(np.asarray(stem_audio).size) / float(sample_rate) if sample_rate else None
+
     verdicts: List[TrackVerdict] = []
     exportables = list(notes)
     workdir = Path(workdir)
@@ -140,8 +153,8 @@ def arbitrate_on_track(
     for candidate in candidates:
         piste = ExportTrack(name=name, machine=candidate.machine,
                             parameters=dict(candidate.parameters), notes=exportables)
-        rendu = render_track_offline(piste, dossier, sample_rate, tempo=tempo, binary=binary,
-                                     title=f"arbitrage-{name}")
+        rendu = render_track_offline(piste, dossier, sample_rate, duration=duree,
+                                     tempo=tempo, binary=binary, title=f"arbitrage-{name}")
         # Effacé tout de suite : il a déjà été lu en mémoire, et le garder ne
         # servirait qu'à saturer le disque au trente-huitième.
         (dossier / "rendu.wav").unlink(missing_ok=True)

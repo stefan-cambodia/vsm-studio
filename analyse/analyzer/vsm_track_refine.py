@@ -140,6 +140,9 @@ def refine_patch_on_track(
     dossier = workdir / "reglage"
     dossier.mkdir(parents=True, exist_ok=True)
 
+    # Durée imposée : même raison qu'à l'arbitrage (voir `vsm_track_arbitration`).
+    duree = float(np.asarray(stem_audio).size) / float(sample_rate) if sample_rate else None
+
     cache: Dict[tuple, float] = {}
     compteur = {"n": 0}
 
@@ -151,8 +154,8 @@ def refine_patch_on_track(
             return None
         piste = ExportTrack(name=name, machine=machine, parameters=dict(valeurs),
                             notes=list(notes))
-        rendu = render_track_offline(piste, dossier, sample_rate, tempo=tempo, binary=binary,
-                                     title=f"reglage-{name}")
+        rendu = render_track_offline(piste, dossier, sample_rate, duration=duree,
+                                     tempo=tempo, binary=binary, title=f"reglage-{name}")
         (dossier / "rendu.wav").unlink(missing_ok=True)
         compteur["n"] += 1
         if rendu is None or rendu.size == 0:
