@@ -1656,6 +1656,46 @@ réflexion à l'apex d'un cône, qui n'est pas un changement de signe mais un
 filtre du premier ordre ; les deux topologies essayées dans cette direction
 divergent, faute d'un gain de boucle borné.
 
+> **REPRIS DEPUIS, ET LE VERDICT « HORS DE PORTÉE » NE TIENT PLUS.** Le tableau
+> ci-dessus reste exact, mais sa conclusion était trop large. Trois mesures
+> l'ont corrigée, et elles sont conservées ici parce qu'elles coûtent cher à
+> refaire (le prototype vit dans `audio/plugins/cone/`, hors build) :
+>
+> 1. **Un banc modal ne peut pas s'amorcer, et c'est structurel.** Des
+>    résonateurs à `n·f0` portent bien la série complète et sont bornés par
+>    construction — les deux qualités qui manquaient. Mais la phase d'un
+>    deux-pôles va de 0° au continu à −90° à sa résonance : la condition de
+>    Barkhausen n'est satisfaite QU'AU CONTINU, où le gain vaut 0,43. Mesuré :
+>    salve à 4,19 puis décroissance jusqu'à 0,0013. **Un instrument à anche
+>    oscille parce que sa perce est un RETARD** ; sans retard, pas
+>    d'auto-oscillation, quelle que soit la finesse du banc.
+> 2. **Le « ne s'amorce pas » de la topologie non inversante était un défaut de
+>    gain, pas de topologie.** Une première version injectait un DÉBIT
+>    (`flow = anche(Δp)·souffle`), dont la contribution au gain de boucle ne
+>    vaut que 0,22. La formulation par DIFFUSION de `vsm.wind`
+>    (`p = souffle + (retour − souffle)·anche`) en apporte ~0,7, tendant vers 1
+>    à la butée de la valve.
+> 3. **Le filtre d'apex doit être un passe-haut À UN PÔLE, pas un dérivateur.**
+>    C'est là qu'était la divergence : un dérivateur a un gain qui croît sans
+>    limite, un passe-haut a le même zéro au continu et plafonne à 1. Sans ce
+>    zéro, la boucle non inversante a un gain positif au continu et s'y
+>    installe — la valve retombe dans sa zone linéaire et la note s'éteint
+>    (rms 0,059 → 0,00003 en trois fenêtres). Avec lui, **la boucle tient** :
+>    rms 0,160 stable sur douze fenêtres, sans dérive continue, et la série
+>    harmonique est COMPLÈTE (h1 0,55 · h2 1,00 · h3 0,48 · h4 0,36) — les
+>    rangs pairs que le cylindre ne peut pas produire.
+>
+> **Ce qui reste, et pourquoi la machine n'est pas livrée.** Le cycle limite
+> n'est pas régulé sur tout l'espace des réglages : à faible raideur d'anche la
+> note s'éteint, et sans borne douce à l'injection certains réglages montaient
+> jusqu'à l'écrêtage. Une machine qui se tait sur une partie de son espace est
+> un PLATEAU pour la recherche de patch, ce que le § 3 du cahier des charges
+> refuse explicitement. Le § 10 de `CDC-nouvelle-machine.md` est clair : « une
+> case non cochée n'est pas un détail à finir plus tard ». Elle n'est donc ni
+> enregistrée ni compilée, et la case « saxophone, hautbois, flûte » du tableau
+> de couverture reste vide — mais elle est désormais vide par manque de
+> RÉGULATION, plus par impossibilité.
+
 **Un réglage a été RETIRÉ à cause de cette mesure.** `Bore Shape` prétendait
 fondre du cylindre au cône par un évasement (passe-tout à coefficient positif,
 qui allonge le chemin des aigus). Mesuré sur toute sa course : la deuxième
