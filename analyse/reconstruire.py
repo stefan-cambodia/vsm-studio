@@ -487,6 +487,7 @@ def main() -> int:
                 if not args.sans_reglage_piste:
                     depart_reglage = time.perf_counter()
                     resultat.arbitration_parameters = dict(resultat.parameters)
+                    resultat.arbitration_distance = resultat.track_distance
                     affine = refine_patch_on_track(
                         machine=resultat.machine,
                         parameters=resultat.parameters,
@@ -601,8 +602,20 @@ def main() -> int:
             par_nom = {piste.name: piste for piste in pistes_export}
             for stem in reconstruits:
                 piste_finale = par_nom.get(stem.name)
-                if piste_finale is not None:
-                    stem.parameters = dict(piste_finale.parameters)
+                if piste_finale is None:
+                    continue
+                stem.parameters = dict(piste_finale.parameters)
+                # ET LA DISTANCE DE PISTE AVEC, sans quoi le rapport publierait
+                # le chiffre du patch ÉCARTÉ. Vérifié sur Children v10 : le
+                # verdict avait ramené `bass` et `other` au patch de
+                # l'arbitrage, et `trackDistance` annonçait encore 0,1986 et
+                # 0,2174 -- les scores du réglage que le mélange venait de
+                # refuser. Corriger `parameters` sans corriger ce chiffre ne
+                # faisait que déplacer le mensonge d'un champ.
+                if (stem.arbitration_parameters is not None
+                        and stem.arbitration_distance is not None
+                        and dict(stem.arbitration_parameters) == dict(piste_finale.parameters)):
+                    stem.track_distance = stem.arbitration_distance
 
             # UN PRESET NE DOIT DÉPENDRE DE RIEN. Quand l'arbitrage ou le
             # verdict retiennent un patch d'USINE, le dictionnaire de paramètres

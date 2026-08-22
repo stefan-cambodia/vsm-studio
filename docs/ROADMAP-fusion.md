@@ -913,6 +913,69 @@ exactement le cas qu'il a été écrit pour attraper. Le corriger demande de ren
 à durée imposée, donc de refaire les mesures du § 34 : à faire d'un bloc, avec
 les chiffres, plutôt qu'à moitié.
 
+## 5 ter. Children v10 : la chaîne entière, sampler compris
+
+Première exécution de bout en bout avec le SAMPLER AUTORISÉ — donc avec la voix
+reportée telle quelle, ce qu'aucune des passes v7 à v9 n'avait fait (toutes
+tournaient `--sans-sampler`). C'est aussi la première fois que le verdict du
+mélange rend un projet contenant réellement une piste de sampler, c'est-à-dire
+la première fois qu'il juge sur le mélange complet.
+
+**Protocole.** Face A du vinyle (`A. Robert Miles - Children.mp3`, 455,7 s),
+séparation faite par la chaîne elle-même — et non des stems repris, pour que la
+source et les stems soient du même enregistrement. Métrique v2, 20 itérations,
+`--budget-piste 40`, `--axes-piste 8`. Durée totale : **2 925 s** (49 min).
+
+| étape | bass | other |
+|---|---|---|
+| recherche (UNE note) | `vsm.string` 0,196 | `vsm.generic` 0,241 |
+| la même sur la PISTE entière | 0,698 | — |
+| arbitrage sur la piste | **`vsm.piano`, patch d'USINE, 0,275** | **`vsm.string`, patch cherché, 0,257** |
+| réglage sur la piste | 0,199 | 0,217 |
+| verdict du mélange | **revient à l'arbitrage** | **revient à l'arbitrage** |
+
+**L'arbitrage a changé la machine sur les deux stems mélodiques**, et sur la
+basse il l'a fait de la façon la plus nette qui soit : la gagnante de la
+recherche, jugée sur la piste entière, fait 0,698 quand une machine que la
+recherche n'avait pas retenue fait 0,275 AVEC SON PATCH D'USINE. C'est le même
+résultat que celui qui a motivé l'étape, retrouvé sur une autre version du
+morceau — 0,275 ici contre 0,282 sur l'édition 3:52 du § 34.
+
+**Le verdict du mélange a défait deux réglages sur trois**, et le chiffre dit
+pourquoi il existe :
+
+| | distance du MORCEAU |
+|---|---|
+| après réglage des pistes | 0,3390 |
+| basse ramenée à l'arbitrage | 0,3074 |
+| `other` ramené à l'arbitrage | **0,2815** |
+| batterie : réglage CONSERVÉ | 0,2815 (contre 0,4926 sans) |
+
+Les deux pistes mélodiques s'étaient rapprochées de LEUR stem en éloignant le
+morceau ; la batterie, elle, gagne 0,21 et son réglage est gardé. Une piste
+jugée seule et une piste dans un mélange ne sont pas le même objectif, et c'est
+mesuré pour la troisième fois.
+
+**DISTANCE GLOBALE : 0,2815** (v2, 20 itérations ; l'original au silence vaut
+1,0). Le projet compte 4 pistes et 7 655 notes : `vsm.piano` (basse),
+`vsm.string` (other), `vsm.drums` (batterie), `vsm.sampler` (voix).
+
+**Le plafond de volume à 10 a servi ici**, et pas qu'un peu : la basse demande
+un facteur **8,74**. À l'ancien plafond de 2,5 elle serait restée trois fois et
+demie trop faible dans le mélange.
+
+**Ce que cette mesure ne permet PAS de dire.** Elle ne se compare ni aux passes
+v7–v9 (qui n'avaient pas le sampler, ni les mêmes stems), ni aux chiffres du
+§ 34 (édition 3:52, absente de cette machine). C'est un point de départ propre
+pour la configuration « sampler autorisé », et rien de plus.
+
+**Un défaut trouvé en la vérifiant.** Le rapport publiait encore un
+`trackDistance` de 0,1986 pour la basse et 0,2174 pour `other` — les scores du
+réglage que le verdict venait justement d'écarter. La resynchronisation du
+§ 5 bis corrigeait `parameters` sans corriger ce chiffre : elle ne faisait que
+déplacer le mensonge d'un champ. La distance de piste suit désormais le patch
+retenu.
+
 ## 6. Ce qui n'est pas au programme, et pourquoi
 
 - **Reconstruire la voix.** Hors de portée d'une synthèse par machine ; la

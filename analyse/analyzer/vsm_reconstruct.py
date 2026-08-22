@@ -103,6 +103,10 @@ class StemReconstruction:
     # deux cas il dit la même chose -- « l'état d'où le réglage est parti » --
     # et c'est ce que le verdict du mélange doit pouvoir reprendre.
     arbitration_parameters: Optional[Dict[str, float]] = None
+    # La distance de piste qui va AVEC `arbitration_parameters`. Sans elle, un
+    # patch repris par le verdict du mélange se retrouvait publié avec la
+    # distance de celui qu'on venait d'écarter.
+    arbitration_distance: Optional[float] = None
 
 
 def melodic_machines(engine: VsmEngine) -> List[str]:
