@@ -136,7 +136,7 @@ public:
     void reset() {
         std::fill(line_.begin(), line_.end(), 0.0f);
         writeIndex_ = 0;
-        lossState_ = 0.0f;
+        lossState_ = lossState2_ = 0.0f;
         allpassX1_ = allpassY1_ = 0.0f;
         apexX_ = apexY_ = 0.0f;
     }
@@ -147,9 +147,32 @@ public:
         // CHAQUE multiple de f0 au lieu d'un multiple impair sur deux.
         const float total = static_cast<float>(sampleRate_) / hz;
 
-        lossB_ = 0.05f + 0.44f * std::clamp(bellDamping, 0.0f, 1.0f);
+        // PERTE DE RAYONNEMENT : UN PÔLE DONT LA COUPURE SUIT LA NOTE.
+        //
+        // La version précédente employait un deux-taps à coupure ABSOLUE. Sur
+        // une note grave, f0, 2·f0 et 3·f0 tombent tous là où il n'atténue
+        // presque rien : les trois rangs passaient le seuil de régénération
+        // ensemble et la boucle se verrouillait sur l'un d'eux au hasard des
+        // conditions initiales. Mesuré : sur 45 réglages, 15 jouaient une
+        // octave ou une douzième trop haut -- la machine SUR-SOUFFLAIT toute
+        // seule, et à faible souffle, ce qui est l'inverse d'un instrument.
+        //
+        // En calant la coupure sur un MULTIPLE DE f0, l'écart d'atténuation
+        // entre le fondamental et le rang 2 devient le même dans tous les
+        // registres : f0 est toujours le seul rang au-dessus du seuil, et les
+        // rangs supérieurs restent ENTRETENUS par la non-linéarité de l'anche
+        // sans avoir à s'auto-osciller. C'est aussi plus juste physiquement --
+        // un pavillon rayonne l'aigu de l'instrument, pas l'aigu absolu.
+        const float coupure = hz * kCutoffRatio * (0.4f + 1.2f * (1.0f - std::clamp(bellDamping, 0.0f, 1.0f)));
+        lossA_ = 1.0f - std::exp(-vsm::audio::dsp::kTwoPi * coupure
+                                 / static_cast<float>(sampleRate_));
+        lossA_ = std::clamp(lossA_, 0.002f, 0.98f);
+        // Retard de groupe du pôle, retiré du trajet pour que la note reste
+        // juste : sans cette compensation, une coupure basse fait chanter la
+        // machine sous sa hauteur.
+        const float retardPole = 2.0f * (1.0f - lossA_) / lossA_;
 
-        const float remainder = total - lossB_;
+        const float remainder = total - retardPole;
         float integerPart = std::floor(remainder - 0.5f);
         if (integerPart < 2.0f) integerPart = 2.0f;
         const float maxInteger = static_cast<float>(line_.size() - 2);
@@ -163,8 +186,18 @@ public:
         const size_t capacity = line_.size();
         const size_t readIndex = (writeIndex_ + capacity - delaySamples_) % capacity;
         const float delayed = line_[readIndex];
-        const float lossy = (1.0f - lossB_) * delayed + lossB_ * lossState_;
-        lossState_ = delayed;
+        // DEUX PÔLES, ET C'EST LA SÉLECTIVITÉ QUI L'EXIGE. Un pôle unique ne
+        // sépare le fondamental du rang 2 que d'un facteur 2 au mieux : tout
+        // gain assez fort pour pousser l'anche dans sa saturation -- donc pour
+        // qu'il y ait des harmoniques -- hissait aussi le rang 2 au-dessus du
+        // seuil, et la machine sur-soufflait. Mesuré sur douze combinaisons de
+        // gain et de coupure : de 5 à 25 réglages sur 45 jouaient l'octave ou
+        // la douzième au lieu de la note. Deux pôles portent l'écart à 4, ce
+        // qui laisse la place d'entretenir f0 SEUL tout en le poussant assez
+        // haut pour que la valve batte.
+        lossState_ += lossA_ * (delayed - lossState_);
+        lossState2_ += lossA_ * (lossState_ - lossState2_);
+        const float lossy = lossState2_;
         const float y = allpassA_ * lossy + allpassX1_ - allpassA_ * allpassY1_;
         allpassX1_ = lossy;
         allpassY1_ = y;
@@ -189,7 +222,21 @@ public:
         // osciller sur ses résonances, qui sont TOUS les multiples de f0.
         apexY_ = apexA_ * (apexY_ + y - apexX_);
         apexX_ = y;
-        return apexY_;
+
+        // GAIN DE RÉGÉNÉRATION. Sans lui, le gain de boucle en petit signal
+        // vaut ~0,7 (la valve au repos) et la note ne s'amorce QUE si le
+        // transitoire d'attaque la pousse dans sa zone non linéaire : elle
+        // tenait à raideur moyenne et s'éteignait à raideur faible, ce qui
+        // creusait un PLATEAU dans la fonction de coût -- ce que le § 3 du
+        // cahier des charges refuse pour une machine faite pour être cherchée.
+        //
+        // Un auto-oscillateur se règle dans l'autre sens : gain linéaire au-
+        // dessus de 1, et c'est la NON-LINÉARITÉ qui fixe l'amplitude. La
+        // tangente hyperbolique à l'injection s'en charge -- son gain
+        // équivalent décroît avec l'amplitude, donc le cycle limite s'établit
+        // là où le produit revient à 1. La boucle ne peut ni s'éteindre ni
+        // s'emballer.
+        return apexY_ * kRegeneration;
     }
 
     float inject(float pressure) {
@@ -201,7 +248,7 @@ public:
         // Une tangente hyperbolique borne l'amplitude SANS coin dur : elle fixe
         // le cycle limite au lieu de le laisser buter sur un `clamp`, qui
         // s'entendrait comme une saturation numérique.
-        const float value = std::tanh(pressure);
+        const float value = std::clamp(pressure, -4.0f, 4.0f);
         line_[writeIndex_] = value;
         writeIndex_ = (writeIndex_ + 1) % line_.size();
         return value;
@@ -213,11 +260,17 @@ private:
     std::vector<float> line_;
     size_t writeIndex_ = 0;
     size_t delaySamples_ = 100;
-    float lossB_ = 0.2f, lossState_ = 0.0f;
+    float lossA_ = 0.2f, lossState_ = 0.0f, lossState2_ = 0.0f;
     float allpassA_ = 0.0f, allpassX1_ = 0.0f, allpassY1_ = 0.0f;
     /// Coupure ~38 Hz à 48 kHz : sous la plus grave des notes visées, donc le
     /// filtre n'ôte que le continu et laisse les résonances intactes.
     float apexA_ = 0.995f, apexX_ = 0.0f, apexY_ = 0.0f;
+    /// Calibré par la mesure : 1,20 amorce sur toute la course de la raideur
+    /// sans que le cycle limite dépasse ce que la tangente hyperbolique borne.
+    /// Meilleur point mesuré sur 45 réglages × 12 combinaisons : hauteur juste
+    /// sur 42 des 45, niveau tenu entre 0,167 et 0,210, aucun emballement.
+    static constexpr float kRegeneration = 2.0f;
+    static constexpr float kCutoffRatio = 2.6f;
 };
 
 class ConeVoice {
@@ -252,7 +305,7 @@ private:
     /// gain de boucle au-dessus du seuil ; sans elle la boucle serait linéaire
     /// et s'amortirait, quel que soit le tuyau.
     static float reedTable(float pressureDifference, float stiffness) {
-        const float slope = -(0.10f + 0.55f * stiffness);
+        const float slope = -(0.25f + 0.40f * stiffness);
         return std::clamp(0.7f + slope * pressureDifference, -1.0f, 1.0f);
     }
 

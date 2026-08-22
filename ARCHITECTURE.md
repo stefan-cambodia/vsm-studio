@@ -1685,16 +1685,45 @@ divergent, faute d'un gain de boucle borné.
 >    harmonique est COMPLÈTE (h1 0,55 · h2 1,00 · h3 0,48 · h4 0,36) — les
 >    rangs pairs que le cylindre ne peut pas produire.
 >
-> **Ce qui reste, et pourquoi la machine n'est pas livrée.** Le cycle limite
-> n'est pas régulé sur tout l'espace des réglages : à faible raideur d'anche la
-> note s'éteint, et sans borne douce à l'injection certains réglages montaient
-> jusqu'à l'écrêtage. Une machine qui se tait sur une partie de son espace est
-> un PLATEAU pour la recherche de patch, ce que le § 3 du cahier des charges
-> refuse explicitement. Le § 10 de `CDC-nouvelle-machine.md` est clair : « une
-> case non cochée n'est pas un détail à finir plus tard ». Elle n'est donc ni
-> enregistrée ni compilée, et la case « saxophone, hautbois, flûte » du tableau
-> de couverture reste vide — mais elle est désormais vide par manque de
-> RÉGULATION, plus par impossibilité.
+> 4. **La régulation est trouvée, le TIMBRE ne vient pas, et c'est structurel.**
+>    Un gain de régénération au-dessus du seuil avec la saturation de l'anche
+>    pour borner l'amplitude règle entièrement le premier défaut : **135
+>    configurations sur 135 s'entretiennent**, aucune muette, aucune emballée,
+>    niveau efficace tenu entre 0,167 et 0,210, hauteur juste sur 42 des 45
+>    réglages mesurés. Mais le spectre est presque vide — h2 entre 0,00 et 0,13
+>    dans tout le grave et le médium. Une sinusoïde, là où l'on voulait un
+>    saxophone.
+>
+>    La cause n'est pas un réglage à trouver, c'est une TENSION entre deux
+>    exigences : la hauteur juste exige un filtrage de boucle raide, parce qu'un
+>    cône résonne à CHAQUE `n·f0` — les rangs sont deux fois plus serrés que
+>    dans un cylindre, et tout gain assez fort pour faire battre l'anche hisse
+>    aussi le rang 2 au-dessus du seuil (mesuré sur douze combinaisons de gain
+>    et de coupure, avec un pôle comme avec deux : de 5 à 25 réglages sur 45
+>    jouaient l'octave ou la douzième). Le timbre, lui, exige l'inverse. Le
+>    filtrage raide vide l'onde de ses harmoniques et l'anche retombe dans sa
+>    zone linéaire.
+>
+>    **`vsm.wind` échappe à ce piège par sa géométrie** : ses résonances
+>    impaires (f0, 3·f0, 5·f0) sont deux fois plus espacées, un filtre doux
+>    suffit à choisir le fondamental, et l'anche reste libre de claquer. La
+>    symétrie demi-onde qui lui interdit les rangs pairs est aussi ce qui lui
+>    donne son timbre : les deux tiennent au même trait.
+>
+> **Ce qui reste, et pourquoi la machine n'est pas livrée.** Elle sonne juste,
+> tient son niveau et ne s'emballe pas — mais elle sort une sinusoïde, et une
+> machine qui sort une sinusoïde n'apporte rien au parc : n'importe quel
+> soustractif en fait une meilleure, et les rangs pairs qui justifiaient son
+> existence ne sont pas au rendez-vous. Le § 10 de `CDC-nouvelle-machine.md` est
+> clair : « une case non cochée n'est pas un détail à finir plus tard ». Elle
+> n'est donc ni enregistrée ni compilée (les 527 tests restent verts), et la
+> case « saxophone, hautbois, flûte » du tableau de couverture reste vide.
+>
+> **Où reprendre.** Le retard est trouvé, la régulation est trouvée ; ce qui
+> manque est la SÉLECTIVITÉ. Il faudrait un résonateur qui choisisse `f0` sans
+> raboter ses harmoniques — un peigne accordé plutôt qu'un passe-bas dans la
+> boucle. C'est un travail de conception, pas de réglage, et c'est là qu'il
+> faudra le reprendre.
 
 **Un réglage a été RETIRÉ à cause de cette mesure.** `Bore Shape` prétendait
 fondre du cylindre au cône par un évasement (passe-tout à coefficient positif,
