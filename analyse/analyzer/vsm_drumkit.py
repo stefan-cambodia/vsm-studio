@@ -821,6 +821,84 @@ MODELLED_DRUM_NOTES: Dict[str, int] = {
 }
 
 
+# Correspondance famille -> note pour les BOÎTES À RYTHMES du parc.
+#
+# Les deux machines suivent la convention General MIDI (TR909Synth.h l. 276,
+# TR808Synth.h l. 247) : kick 36, caisse claire 38, clap 39, charleston fermée
+# 42, ouverte 46. Ce sont EXACTEMENT les notes que la détection attribue déjà
+# aux familles, si bien que la « traduction » que `reconstruire.py` disait non
+# mesurée se réduit à quatre renvois : la pédale (44), que ni l'une ni l'autre
+# n'a, devient charleston fermée ; les variantes kick2/snare2 rejoignent leur
+# pièce ; et ce qu'une machine n'a pas (toms sur la 808, cloche sur la 909)
+# est rabattu sur ce qu'elle a de plus proche -- en le DISANT.
+DRUM_MACHINE_NOTES: Dict[str, Dict[str, int]] = {
+    "vsm.tr909": {
+        "kick": 36, "kick2": 36, "snare": 38, "snare2": 38,
+        "hihat": 42, "pedalhat": 42, "openhat": 46,
+        "percussion": 39, "tom": 45, "tom2": 47, "tom3": 50, "cymbal": 49,
+    },
+    "vsm.tr808": {
+        "kick": 36, "kick2": 36, "snare": 38, "snare2": 38,
+        "hihat": 42, "pedalhat": 42, "openhat": 46,
+        "percussion": 39, "cymbal": 46,
+        # La 808 n'a pas de toms dans cette implémentation : ils vont au clap,
+        # la pièce la plus proche en fonction (un coup sec et court), et le kit
+        # le dit dans ses avertissements.
+        "tom": 39, "tom2": 39, "tom3": 39,
+    },
+}
+DRUM_MACHINE_DISPLAY: Dict[str, str] = {
+    "vsm.tr909": "TR-909-style Drum Machine",
+    "vsm.tr808": "TR-808-style Drum Machine",
+}
+
+
+def drum_machine_track(kit: DrumKit, machine: str, name: str = "Batterie") -> ExportTrack:
+    """
+    Le kit détecté joué par une BOÎTE À RYTHMES du parc, patch d'usine.
+
+    POURQUOI CETTE PISTE EXISTE. `reconstruire.py` ne faisait concourir que
+    `vsm.drums`, au motif écrit qu'elle « n'avait pas de concurrente crédible ».
+    Sur un morceau de techno de 1993, la concurrente crédible est la TR-909 du
+    parc -- et c'est une oreille, pas une mesure, qui l'a dit (feuille de route
+    § 5 septies) : aucun chiffre ne peut désigner une 909 tant qu'elle n'est
+    pas dans la course. Cette fonction l'y met, avec la même règle que pour
+    les stems mélodiques -- toutes les machines en concurrence, l'arbitrage sur
+    la piste tranche.
+
+    Les instants et les vélocités sont ceux de la détection ; seule la machine
+    change. Une famille que la machine n'a pas est rabattue et DITE.
+    """
+    if machine not in DRUM_MACHINE_NOTES:
+        raise ValueError(f"pas de correspondance de notes pour « {machine} »")
+    table = DRUM_MACHINE_NOTES[machine]
+    notes: List[ExportNote] = []
+    for emplacement in kit.slots:
+        note = table.get(emplacement.family)
+        if note is None:
+            note = int(emplacement.midi_note)
+            kit.warnings.append(
+                f"{emplacement.family} : famille sans voix sur {machine}, "
+                f"jouée sur la note {note} ({emplacement.hit_count} frappe(s))"
+            )
+        elif emplacement.family.startswith("tom") and machine == "vsm.tr808":
+            kit.warnings.append(
+                f"{emplacement.family} : la TR-808 n'a pas de toms, rabattu sur le clap "
+                f"({emplacement.hit_count} frappe(s))"
+            )
+        for instant, velocite in zip(emplacement.onsets, emplacement.velocities):
+            notes.append(ExportNote(note=note, velocity=velocite, start=instant, duration=0.05))
+    notes.sort(key=lambda n: n.start)
+    return ExportTrack(
+        name=name,
+        machine=machine,
+        parameters={},
+        notes=notes,
+        is_drums=True,
+        machine_display_name=DRUM_MACHINE_DISPLAY.get(machine, machine),
+    )
+
+
 def modelled_drum_track(kit: DrumKit, name: str = "Batterie") -> ExportTrack:
     """
     Transforme un kit détecté en piste `vsm.drums` — modélisée, sans échantillon.

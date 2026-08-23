@@ -41,12 +41,12 @@ from analyzer.vsm_automation import try_cutoff_automation
 from analyzer.vsm_levels import VOLUME_MAX, match_track_levels
 from analyzer.vsm_mix_verdict import MixAlternative, keep_what_helps_the_mix
 from analyzer.vsm_engine import VsmEngine, VsmEngineError, find_vsm_render
-from analyzer.vsm_drumkit import (build_drum_kit, drum_kit_track,
+from analyzer.vsm_drumkit import (build_drum_kit, drum_kit_track, drum_machine_track,
                                   modelled_drum_track, vocal_sampler_track)
 from analyzer.vsm_project_export import (DEFAULT_TRACK_VOLUME, ExportNote, ExportTrack,
                                           write_project_bundle)
-from analyzer.vsm_track_arbitration import (arbitrate_on_track, build_candidates,
-                                             close_runner_up)
+from analyzer.vsm_track_arbitration import (ORIGINE_USINE, TrackCandidate, arbitrate_on_track,
+                                             build_candidates, close_runner_up)
 from analyzer.vsm_track_refine import refine_patch_on_track
 
 
@@ -197,6 +197,10 @@ def main() -> int:
     parseur.add_argument("--machines", default="",
                          help="liste de machines candidates, séparées par des virgules "
                               "(défaut : toutes les mélodiques du moteur)")
+    parseur.add_argument("--sans-arbitrage-batterie", action="store_true",
+                          help="ne pas faire concourir les boîtes à rythmes du parc (TR-909, "
+                               "TR-808) contre la batterie modélisée sur le stem de batterie. "
+                               "C'est l'ancien comportement ; il reste accessible pour comparer")
     parseur.add_argument("--sans-arbitrage", action="store_true",
                          help="ne pas rejuger les candidates sur la PISTE ENTIÈRE. "
                               "Par défaut, la chaîne rend la piste complète avec le "
@@ -399,6 +403,56 @@ def main() -> int:
                           f"{kit.total_hits} frappe(s) — {detail}")
                     for avertissement in kit.warnings:
                         print(f"                 ! {avertissement}")
+
+                    # ARBITRAGE DE LA BATTERIE : les boîtes à rythmes du parc
+                    # concourent. Jusqu'ici cette piste était la SEULE à
+                    # échapper à la règle « toutes les machines en lice,
+                    # l'arbitrage tranche », au motif que `vsm.drums` n'avait
+                    # « pas de concurrente crédible ». Sur un morceau de techno
+                    # de 1993, la concurrente crédible est la TR-909 -- et c'est
+                    # une oreille qui l'a dit, parce qu'aucun chiffre ne peut
+                    # désigner une 909 tant qu'elle n'est pas dans la course.
+                    # Les instants et les vélocités sont les mêmes pour toutes ;
+                    # seule la machine change, et la piste entière juge.
+                    if not args.sans_arbitrage and moyen == "vsm.drums" and not args.sans_arbitrage_batterie:
+                        depart_arb = time.perf_counter()
+                        rivales = [drum_machine_track(kit, m, name="Batterie")
+                                   for m in ("vsm.tr909", "vsm.tr808")]
+                        candidates_batterie = [
+                            TrackCandidate(piste.machine, dict(piste.parameters), ORIGINE_USINE)
+                        ] + [TrackCandidate(r.machine, {}, ORIGINE_USINE) for r in rivales]
+                        notes_batterie = list(piste.notes)
+                        # Chaque rivale a SES notes (la correspondance de notes
+                        # diffère d'une machine à l'autre) : l'arbitrage
+                        # générique partage les notes entre candidates, on le
+                        # fait donc ici machine par machine, avec la même
+                        # mesure et la même règle de niveau.
+                        verdicts_batterie = []
+                        for candidate, notes_de in zip(
+                                candidates_batterie, [notes_batterie] + [r.notes for r in rivales]):
+                            v = arbitrate_on_track(
+                                notes=notes_de, stem_audio=audio_batterie,
+                                candidates=[candidate],
+                                workdir=Path(temporaire) / "arbitrage" / "batterie" / candidate.machine,
+                                sample_rate=SAMPLE_RATE, metric=args.metrique, tempo=args.tempo,
+                                binary=args.moteur, name="Batterie",
+                                stem_rms=float(np.sqrt(np.mean(np.square(
+                                    audio_batterie.astype(np.float64))))) if audio_batterie.size else None,
+                                base_volume=DEFAULT_TRACK_VOLUME, max_volume=VOLUME_MAX)
+                            verdicts_batterie.extend(v)
+                        verdicts_batterie.sort(key=lambda v: v.distance)
+                        podium = ", ".join(f"{v.machine.split('.')[-1]}={v.distance:.3f}"
+                                           for v in verdicts_batterie[:3])
+                        if verdicts_batterie and verdicts_batterie[0].machine != piste.machine:
+                            gagnante = verdicts_batterie[0].machine
+                            piste = next(r for r in rivales if r.machine == gagnante)
+                            moyen = gagnante
+                            print(f"      {nom:8s} : arbitrage batterie CHANGE {gagnante} "
+                                  f"D={verdicts_batterie[0].distance:.3f} "
+                                  f"[{time.perf_counter()-depart_arb:.0f} s] — {podium}")
+                        else:
+                            print(f"      {nom:8s} : arbitrage batterie garde vsm.drums "
+                                  f"[{time.perf_counter()-depart_arb:.0f} s] — {podium}")
                     # LA BATTERIE SE RÈGLE AUSSI, et c'est le dernier endroit
                     # de la chaîne où un patch restait celui d'usine sans que
                     # personne l'ait jugé. Elle pèse pourtant le plus lourd dans

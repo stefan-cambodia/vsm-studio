@@ -68,3 +68,38 @@ def banc_batterie_les_instants_sont_retrouves_meme_si_le_nom_est_faux():
         assert_true(trouvees_quelque_part >= 0.9 * f.attendues,
                     f"{f.famille} : les INSTANTS sont justes "
                     f"({trouvees_quelque_part}/{f.attendues} trouvées sous un nom ou un autre)")
+
+
+@test
+def batterie_les_boites_a_rythmes_jouent_le_kit_detecte():
+    """Le kit découvert doit se rejouer sur la TR-909 et la TR-808 avec les
+    MÊMES instants et vélocités que sur vsm.drums : seule la machine change,
+    et c'est la condition pour que l'arbitrage compare des machines et non des
+    transcriptions."""
+    from analyzer.vsm_drumkit import (DRUM_MACHINE_NOTES, DrumKit, DrumSlot,
+                                      drum_machine_track, modelled_drum_track)
+    kit = DrumKit(slots=[
+        DrumSlot("kick", 0, 36, "k.wav", onsets=[0.0, 0.5, 1.0], velocities=[110, 100, 120], hit_count=3),
+        DrumSlot("hihat", 1, 42, "h.wav", onsets=[0.25, 0.75], velocities=[90, 80], hit_count=2),
+        DrumSlot("pedalhat", 2, 44, "p.wav", onsets=[1.25], velocities=[70], hit_count=1),
+        DrumSlot("tom", 3, 45, "t.wav", onsets=[1.5], velocities=[100], hit_count=1),
+    ], sample_rate=44100, total_hits=7)
+    reference = modelled_drum_track(kit)
+    for machine in ("vsm.tr909", "vsm.tr808"):
+        piste = drum_machine_track(kit, machine)
+        assert_equal(piste.machine, machine, "la machine est celle demandée")
+        assert_equal(len(piste.notes), len(reference.notes), f"{machine} : même nombre de frappes")
+        assert_equal([n.start for n in piste.notes], [n.start for n in reference.notes],
+                     f"{machine} : mêmes instants")
+        assert_equal([n.velocity for n in piste.notes], [n.velocity for n in reference.notes],
+                     f"{machine} : mêmes vélocités")
+        assert_true(all(n.note in DRUM_MACHINE_NOTES[machine].values() for n in piste.notes),
+                    f"{machine} : chaque note est une voix de la machine")
+    # La pédale n'existe sur aucune des deux : elle devient charleston fermée.
+    p909 = drum_machine_track(kit, "vsm.tr909")
+    assert_true(42 in [n.note for n in p909.notes if abs(n.start - 1.25) < 1e-9],
+                "pedalhat -> charleston fermée (42)")
+    # La 808 n'a pas de toms : rabattu ET dit.
+    kit.warnings.clear()
+    drum_machine_track(kit, "vsm.tr808")
+    assert_true(any("toms" in w for w in kit.warnings), "le rabattement des toms est DIT")

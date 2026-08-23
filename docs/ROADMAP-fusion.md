@@ -1314,6 +1314,78 @@ cordes frappées, devant tous les soustractifs. Sur un piano il battait le piano
 remarquablement bonne, soit la métrique a un faible pour elle, et les deux
 lectures demandent la même chose : l'écoute.
 
+### L'écoute est venue, et elle dit trois choses que le rapport ne montrait pas
+
+Une écoute INFORMÉE de *B4 Wuz Then* par l'utilisateur (23/08/2026) — la seule
+vérité terrain que ce morceau aura jamais, puisque ses stems originaux
+n'existent pas. Ce qu'elle entend, et ce que la chaîne avait répondu :
+
+| stem | l'oreille | la chaîne (premier passage) |
+|---|---|---|
+| batterie | **TR-909**, très probable — kick sec, hats filtrés, open hat court, swing | `vsm.drums` (modélisée acoustique), **sans arbitrage** |
+| basse | synthé analogique, **SH-101** en premier, Juno-106 possible ; *pas* une 303 | `vsm.obx` ; SH-101 **26e sur 27**, Juno **éliminé « trop faible ×10,6 »** |
+| nappes | Juno-106 en premier, Alpha Juno, SH-101 — froid, métallique, Detroit/Chicago | `vsm.piano` ; Juno **3e** avec son patch d'usine (0,2787 contre 0,2544), mais son patch *cherché* fait 0,5028 |
+| production | sample-based en partie (piano et string synthesizer crédités sur l'album) ; compacte, rugueuse, **dynamique limitée** | — |
+
+**1. La batterie n'a jamais eu sa chance, et c'est écrit dans le code.** Le
+commentaire de `reconstruire.py` dit : *« pas d'arbitrage : `vsm.drums` n'a pas
+de concurrente crédible ici »*. Sur un morceau de techno de 1993, la concurrente
+crédible est la **TR-909 du parc**, et la chaîne ne l'essaie jamais — ni elle ni
+la TR-808. La batterie est le seul stem qui échappe à la règle « toutes les
+machines en concurrence, l'arbitrage tranche ». C'est un trou de COUVERTURE, pas
+un défaut de mesure, et seule une oreille pouvait le nommer : aucun chiffre ne
+dit « cette batterie est une 909 » tant que la 909 n'est pas dans la course.
+Ce qu'il faudrait : faire concourir `vsm.tr909` et `vsm.tr808` sur le stem de
+batterie, avec les frappes du kit découvert traduites vers leurs notes — la
+traduction que le commentaire disait non mesurée.
+
+**2. Sur la basse et les nappes, les candidates de l'oreille ont été écartées
+AVANT de concourir — par les deux défauts corrigés au § 5 bis (panne n° 6) et
+ci-dessus (borne de niveau).** La SH-101 n'a jamais eu de patch cherché (pas
+finaliste d'une recherche faite contre une note fantôme) ; le patch cherché du
+Juno a été tué pour niveau sur la basse et rendu PIRE que l'usine sur les nappes
+(0,5028 contre 0,2787). L'oreille ne dit donc pas que la chaîne s'est trompée de
+machine : elle dit que la chaîne n'a pas MESURÉ les bonnes. Le rejeu avec les
+deux correctifs est la suite directe.
+
+**3. La « surprise » `vsm.piano` sur les nappes n'en est peut-être pas une.**
+L'album crédite un piano et un *string synthesizer*. La chaîne entend peut-être
+du piano parce qu'il y en a. Ce n'est pas tranché — l'oreille entend surtout du
+Juno —, mais la lecture « la métrique a un faible pour `vsm.piano` » n'est plus
+la seule.
+
+**Ce que la 909 a donné une fois dans la course (23/08, soir).** Les boîtes à
+rythmes du parc concourent désormais sur le stem de batterie
+(`drum_machine_track`, arbitrage dans `reconstruire.py`,
+`--sans-arbitrage-batterie` pour l'ancien comportement). La « traduction » que
+le commentaire disait non mesurée était triviale : les deux machines suivent
+General MIDI, exactement les notes que la détection attribue déjà. Sur le stem
+de batterie de *B4 Wuz Then*, patchs d'usine, piste entière :
+
+| machine | distance |
+|---|---|
+| `vsm.drums` (modélisée acoustique) | 0,5728 |
+| `vsm.tr909` | 0,3556 |
+| **`vsm.tr808`** | **0,2507** |
+
+Les deux boîtes écrasent la batterie acoustique d'un facteur deux : le trou de
+couverture nommé par l'oreille est confirmé par le chiffre. Entre les deux, la
+mesure préfère la **808** là où l'oreille dit « clairement 909 ». Deux lectures,
+et aucune n'est tranchée : les patchs d'usine ne sont pas les réglages du
+morceau (l'oreille décrit un kick 909 à decay moyen et des hats filtrés, et le
+réglage sur la piste peut renverser l'ordre) ; ou la mesure entend autre chose
+que l'oreille. Le réglage de `vsm.drums` sur la piste, lui, passe de 0,573 à
+0,357 — il rattrape la 909 d'usine, pas la 808 — en poussant une pièce à
+`level=0` : il fait taire ce qui gêne, ce qui dit assez où il plafonne.
+
+**Et une phrase de l'écoute vaut pour tout le projet** : *« ne mets pas trop de
+hi-fi : le caractère du morceau vient du côté compact, rugueux, limité en
+dynamique de la production de l'époque. »* C'est, dit par une oreille, le fossé
+de domaine que deux mesures indépendantes ont trouvé (§ 7 et
+`ROADMAP-apprentissage.md`) : le parc produit des sons propres, un disque
+contient une PRODUCTION. Une reconstruction qui vise le disque doit un jour
+modéliser la production — pas seulement les machines.
+
 ---
 
 ## 6. Ce qui n'est pas au programme, et pourquoi
