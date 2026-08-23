@@ -1532,6 +1532,24 @@ La chaîne reste en v2 par défaut (`--metrique v3` l'active) tant que v3 n'a pa
 cibles de l'étape 10.3 — et la règle du § 10.3 vaut sans exception : une
 distance v3 ne se compare qu'à une distance v3.
 
+**Premier banc rejoué — les quatre cibles de l'étape 10.3 : v3 ne dégrade
+rien.** Même graine, même budget (12 itérations), cinq machines en lice :
+
+| cible | rang v2 | rang v3 | d(vraie) v2 | d(vraie) v3 |
+|---|---|---|---|---|
+| SH-101 | 1/5 | 1/5 | 0,054 | 0,045 |
+| Juno-106 | 2/5 | 2/5 | 0,112 | 0,112 |
+| DX7 | 1/5 | 1/5 | 0,046 | 0,046 |
+| orgue à roues | 1/5 | 1/5 | 0,018 | 0,018 |
+
+Trois distances sur quatre sont STRICTEMENT identiques : à la note 52
+(≈ 165 Hz) ces cibles n'ont pas de grave, le terme de hauteur est nul par
+construction, et v3 = v2. C'est ce que le banc devait d'abord vérifier — que le
+terme se tait là où il n'a rien à dire. Seule la SH-101, qui a du sub, bouge,
+et dans le bon sens. Le Juno à 2/5 est le cas documenté de la nappe sans trait
+distinctif (un Jupiter-8 produit la même), inchangé. *Children* en v2 et v3 à
+code identique est en cours ; c'est lui qui dira si v3 peut devenir le défaut.
+
 **Et une phrase de l'écoute vaut pour tout le projet** : *« ne mets pas trop de
 hi-fi : le caractère du morceau vient du côté compact, rugueux, limité en
 dynamique de la production de l'époque. »* C'est, dit par une oreille, le fossé
