@@ -1396,6 +1396,22 @@ que l'oreille. Le réglage de `vsm.drums` sur la piste, lui, passe de 0,573 à
 0,357 — il rattrape la 909 d'usine, pas la 808 — en poussant une pièce à
 `level=0` : il fait taire ce qui gêne, ce qui dit assez où il plafonne.
 
+**La chaîne complète avec les boîtes en lice : 0,2490.** Trois passages du même
+morceau, mêmes options, seuls les correctifs changeant :
+
+| passage | global | batterie | basse | nappes |
+|---|---|---|---|---|
+| premier | 0,4290 | `vsm.drums` | `obx` | `piano` |
+| note qui sonne + borne | 0,4088 | `vsm.drums` | `supersaw` | `jupiter8` |
+| **+ boîtes à rythmes en lice** | **0,2490** | **`tr808`**, réglée 0,251 → 0,209 | `supersaw` | `jupiter8` |
+
+La batterie est le stem le plus lourd du mélange, et c'est là que le gain est
+venu : **−39 % en un seul changement**, le plus gros écart mesuré sur ce projet
+depuis l'arbitrage sur la piste lui-même. Le commentaire « pas de concurrente
+crédible » avait coûté 0,16 de distance globale sur un morceau de techno — et
+il a fallu une oreille pour le voir, parce qu'aucune mesure ne pouvait
+désigner une machine absente de la course.
+
 **Et une phrase de l'écoute vaut pour tout le projet** : *« ne mets pas trop de
 hi-fi : le caractère du morceau vient du côté compact, rugueux, limité en
 dynamique de la production de l'époque. »* C'est, dit par une oreille, le fossé
