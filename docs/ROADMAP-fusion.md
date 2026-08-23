@@ -1412,6 +1412,33 @@ crédible » avait coûté 0,16 de distance globale sur un morceau de techno —
 il a fallu une oreille pour le voir, parce qu'aucune mesure ne pouvait
 désigner une machine absente de la course.
 
+**808 ou 909, à armes égales.** L'oreille disait « clairement 909 » ; la mesure
+d'usine disait 808. Les deux ont été RÉGLÉES sur la piste, même kit, mêmes
+frappes, même budget (40 évaluations) :
+
+| machine | usine | réglée | ce que le réglage a fait |
+|---|---|---|---|
+| `vsm.tr909` | 0,3556 | 0,2913 | kick tune 30, kick decay 1,2 (le max), snare decay 0,05 |
+| **`vsm.tr808`** | 0,2507 | **0,2086** | kick tune 30, level 1, decay 0,196, hat decay 0,08 |
+
+Le réglage gagne 17-18 % sur chacune et ne renverse pas l'ordre : la 808 reste
+devant de 28 %. Ce n'était donc pas un effet des patchs d'usine. La chaîne
+règle désormais la seconde boîte quand l'écart d'usine est sous 50 %
+(`CLOSE_MARGIN_BATTERIE`) — une machine réglée contre une machine d'usine
+n'est pas une comparaison.
+
+**Mais un fait dans ces patchs met la MESURE en cause, pas les machines.** Les
+deux réglages ont poussé `drum.kick.tune` à **30 Hz, la borne basse de
+l'espace**. Or le kick réel du stem culmine à **59 Hz**, avec 73 % de son énergie
+grave entre 55 et 120 Hz et moins de 2 % sous 40. Le réglage sur la piste
+préfère donc un kick PLUS BAS que l'original — et une butée atteinte par deux
+machines différentes n'est pas une coïncidence. Deux lectures : la métrique v2
+récompense le sub au-delà de ce qu'il pèse à l'oreille ; ou `tune` sur un kick
+à glissando ne désigne pas le fondamental tenu mais le point d'arrivée, et la
+mesure aligne autre chose que le pic. L'oreille qui entend une 909 là où la
+mesure entend une 808 pourrait tenir là. Non tranché ; c'est la mesure à faire
+avant de croire la 808.
+
 **Et une phrase de l'écoute vaut pour tout le projet** : *« ne mets pas trop de
 hi-fi : le caractère du morceau vient du côté compact, rugueux, limité en
 dynamique de la production de l'époque. »* C'est, dit par une oreille, le fossé

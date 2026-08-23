@@ -47,6 +47,13 @@ from analyzer.vsm_project_export import (DEFAULT_TRACK_VOLUME, ExportNote, Expor
                                           write_project_bundle)
 from analyzer.vsm_track_arbitration import (ORIGINE_USINE, TrackCandidate, arbitrate_on_track,
                                              build_candidates, close_runner_up)
+
+# Marge de l'égalité serrée pour la BATTERIE. Plus large que les 2 % des stems
+# mélodiques, et la raison est mesurée : les patchs d'usine des boîtes à rythmes
+# sont loin des réglages d'un morceau (la 808 d'usine à 0,251 descend à 0,209
+# réglée, soit 17 %), donc un écart d'usine de 40 % peut se refermer au réglage.
+# Le coût est borné : une seconde boîte réglée, c'est 40 évaluations de plus.
+CLOSE_MARGIN_BATTERIE = 0.50
 from analyzer.vsm_track_refine import refine_patch_on_track
 
 
@@ -421,6 +428,8 @@ def main() -> int:
                     for avertissement in kit.warnings:
                         print(f"                 ! {avertissement}")
 
+                    seconde_batterie = None
+                    rivales = []
                     # ARBITRAGE DE LA BATTERIE : les boîtes à rythmes du parc
                     # concourent. Jusqu'ici cette piste était la SEULE à
                     # échapper à la règle « toutes les machines en lice,
@@ -470,6 +479,20 @@ def main() -> int:
                         else:
                             print(f"      {nom:8s} : arbitrage batterie garde vsm.drums "
                                   f"[{time.perf_counter()-depart_arb:.0f} s] — {podium}")
+                        # LA SECONDE BOÎTE EST RÉGLÉE AUSSI quand l'écart est
+                        # serré -- la même règle que les stems mélodiques
+                        # (§ 5 quinquies), parce que comparer une machine
+                        # réglée à une machine d'usine n'est pas une
+                        # comparaison. Mesuré sur B4 Wuz Then : la 808 d'usine
+                        # battait la 909 d'usine (0,251 contre 0,356), et une
+                        # oreille disait 909 ; seul un réglage des deux tranche.
+                        seconde_batterie = close_runner_up(verdicts_batterie,
+                                                           margin=CLOSE_MARGIN_BATTERIE)
+                        if seconde_batterie is not None:
+                            print(f"      {nom:8s} : arbitrage batterie SERRÉ — "
+                                  f"{seconde_batterie.machine} à "
+                                  f"{100*(seconde_batterie.distance/verdicts_batterie[0].distance-1):.0f} % "
+                                  f"({seconde_batterie.distance:.3f}), réglée elle aussi")
                     # LA BATTERIE SE RÈGLE AUSSI, et c'est le dernier endroit
                     # de la chaîne où un patch restait celui d'usine sans que
                     # personne l'ait jugé. Elle pèse pourtant le plus lourd dans
@@ -517,6 +540,35 @@ def main() -> int:
                                   f"{affine.start_distance:.3f} -> {affine.distance:.3f} "
                                   f"({affine.evaluations} évaluations, "
                                   f"{time.perf_counter()-depart_reglage:.0f} s) — {bouges}")
+
+                        # La SECONDE boîte, réglée avec le même budget : la
+                        # meilleure des deux RÉGLÉES l'emporte. Une machine
+                        # réglée contre une machine d'usine n'est pas une
+                        # comparaison.
+                        if seconde_batterie is not None and affine is not None:
+                            rivale = next(r for r in rivales if r.machine == seconde_batterie.machine)
+                            depart_seconde = time.perf_counter()
+                            affine_seconde = refine_patch_on_track(
+                                machine=rivale.machine, parameters={}, notes=rivale.notes,
+                                stem_audio=audio_batterie, engine=moteur,
+                                workdir=Path(temporaire) / "reglage" / (nom + "-seconde"),
+                                sample_rate=SAMPLE_RATE, budget=args.budget_piste,
+                                axes=args.axes_piste, metric=args.metrique, tempo=args.tempo,
+                                binary=args.moteur, name=rivale.name,
+                                stem_rms=float(np.sqrt(np.mean(np.square(
+                                    audio_batterie.astype(np.float64))))) if audio_batterie.size else None,
+                                base_volume=DEFAULT_TRACK_VOLUME, max_volume=VOLUME_MAX)
+                            if affine_seconde is not None:
+                                gagne = affine_seconde.distance < affine.distance - 1e-6
+                                print(f"      {nom:8s} : seconde boîte {rivale.machine} réglée "
+                                      f"{affine_seconde.start_distance:.3f} -> {affine_seconde.distance:.3f} "
+                                      f"({time.perf_counter()-depart_seconde:.0f} s) — "
+                                      f"{'elle PASSE DEVANT' if gagne else 'la première tient'} "
+                                      f"({affine.distance:.3f})")
+                                if gagne:
+                                    rivale.parameters = dict(affine_seconde.parameters)
+                                    piste = rivale
+                                    moyen = rivale.machine
 
                     pistes_batterie.append(piste)
                     audio_par_stem["Batterie"] = audio_batterie
