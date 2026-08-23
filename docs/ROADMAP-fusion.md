@@ -1318,6 +1318,22 @@ c'est cher — une séparation par exemple, contre 25 ms aujourd'hui. Tant que c
 corpus-là n'existe pas, l'estimateur restera un bon inverseur de ce que le
 moteur produit et un mauvais lecteur de ce qu'un disque contient.
 
+> **CONFIRMÉ PAR UN SECOND CHEMIN, INDÉPENDANT (23/08/2026).** La phase A1 de
+> [`ROADMAP-apprentissage.md`](ROADMAP-apprentissage.md) a entraîné un
+> CLASSIFIEUR — un autre objet, une autre tâche, un autre corpus — et il bute au
+> même endroit : 99,9 % de bonne machine dans le top 3 sur ce que le moteur
+> produit, et sur un piano réel il annonce `vsm.sh101` avec un score de 1,00.
+>
+> Surtout, l'objection évidente a été éprouvée et écartée. On pouvait croire que
+> l'augmentation synthétique du corpus comblerait le fossé ; elle a été mesurée,
+> puis RENFORCÉE (la fuite ×4, la compression ×3), et le résultat sur un
+> enregistrement réel n'a pas bougé d'un cran — rang médian identique de la
+> machine que l'arbitrage retient. **Dégrader synthétiquement un rendu moteur
+> n'en fait pas un disque**, quelle que soit la dose.
+>
+> La condition de réouverture écrite ci-dessus n'est donc plus une intuition :
+> c'est la seule piste que deux mesures indépendantes laissent debout.
+
 ---
 
 ## 8. Invariants à vérifier à chaque étape

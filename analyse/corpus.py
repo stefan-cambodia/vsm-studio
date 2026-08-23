@@ -41,6 +41,7 @@ from analyzer.vsm_corpus_build import (AUGMENTATIONS, GrilleDeNotes, LotDeCorpus
                                         Manifeste, NOM_FUITE, genere_lot,
                                         machine_fingerprint, machines_de_recherche,
                                         nouveau_manifeste, verifie_fraicheur)
+from analyzer.vsm_engine import Note
 from analyzer.vsm_engine import VsmEngine, VsmEngineError
 from analyzer.vsm_patch_optimizer import search_space_for_machine
 from analyzer.vsm_corpus_build import graine_de_machine
@@ -127,6 +128,23 @@ def main() -> int:
         print("[3/3] Génération")
         depart_total = time.perf_counter()
         engendres_total = 0
+
+        # VIVIER DE FUITE : quelques rendus d'AUTRES machines, pour que
+        # l'augmentation « fuite » mélange le timbre d'un instrument que la
+        # machine en cours ne produit pas. La première version rejouait le rendu
+        # précédent de la même machine — un écho, pas une fuite, et la mesure
+        # l'a dit (0,054 écart-type de déplacement, quasiment rien).
+        vivier: list = []
+        if NOM_FUITE in augmentations:
+            print("      vivier de fuite : quelques rendus d'autres machines")
+            for machine in machines[:6]:
+                try:
+                    vivier.append(moteur.render(
+                        machine, {}, [Note(52, 100, 0.0, 0.7)], 1.0,
+                        sample_rate=arguments.sample_rate))
+                except VsmEngineError:
+                    continue
+            print(f"      {len(vivier)} son(s) au vivier")
         for machine in machines:
             dossier = sortie / machine
             dossier.mkdir(parents=True, exist_ok=True)
@@ -165,6 +183,10 @@ def main() -> int:
                     augmentations=augmentations,
                     proportion_augmentee=arguments.proportion_augmentee,
                     fuite_precedente=fuite,
+                    # La machine en cours est RETIRÉE du vivier : se faire fuir
+                    # sur soi-même serait exactement le défaut qu'on corrige.
+                    vivier_de_fuite=[son for autre, son in zip(machines, vivier)
+                                     if autre != machine],
                     decalage_patch=numero * arguments.taille_lot,
                     progression=lambda message: print(f"      {message}", end="\r", flush=True))
                 lot.enregistre(chemin)

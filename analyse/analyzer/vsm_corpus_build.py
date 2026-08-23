@@ -132,18 +132,50 @@ def _reverberation(audio: np.ndarray, sample_rate: int, rng: np.random.Generator
 
 
 def _compression(audio: np.ndarray, sample_rate: int, rng: np.random.Generator) -> np.ndarray:
-    """Compression statique à genou doux — pas de détecteur, pas d'état : ce
-    qu'on cherche est l'ÉCRASEMENT de la dynamique, pas la fidélité à un
-    compresseur particulier."""
-    del sample_rate
-    seuil = float(rng.uniform(0.15, 0.5))
-    rapport = float(rng.uniform(2.0, 8.0))
-    amplitude = np.abs(audio)
-    au_dessus = np.maximum(amplitude - seuil, 0.0)
-    reduit = seuil + au_dessus / rapport
-    gain = np.divide(reduit, np.maximum(amplitude, 1e-9),
-                     out=np.ones_like(amplitude), where=amplitude > seuil)
-    return (audio * gain).astype(np.float32)
+    """Compression avec DÉTECTEUR — et le détecteur est tout le sujet.
+
+    La première version était statique : une courbe appliquée échantillon par
+    échantillon. Mesurée, elle déplaçait le descripteur de **0,018 écart-type**,
+    c'est-à-dire rien. La raison est simple une fois écrite : une courbe sans
+    mémoire ne touche que les crêtes, alors que ce qu'un compresseur fait
+    réellement — et ce que la métrique regarde, à travers seize des
+    quarante-trois descripteurs — c'est écraser l'ENVELOPPE dans le temps.
+
+    Détecteur d'enveloppe à attaque et relâchement, donc, avec un `makeup` qui
+    remet le niveau : sans lui on mesurerait une baisse de volume, pas une
+    compression.
+
+    LE CORRECTIF N'A PAS SUFFI, ET C'EST ÉCRIT ICI PLUTÔT QUE TU : le
+    déplacement passe de 0,018 à **0,039 écart-type**. Deux fois mieux, et
+    toujours presque rien — à comparer aux 0,32 du bruit. Cette augmentation
+    reste donc la plus faible des six, et si l'on veut un jour qu'elle compte,
+    ce n'est pas le détecteur qu'il faudra retoucher mais la question de savoir
+    si ces descripteurs-là voient la dynamique du tout.
+    """
+    seuil = float(rng.uniform(0.05, 0.25))
+    rapport = float(rng.uniform(3.0, 12.0))
+    attaque = float(rng.uniform(0.001, 0.020))
+    relachement = float(rng.uniform(0.05, 0.40))
+    coefficient_attaque = float(np.exp(-1.0 / max(1.0, attaque * sample_rate)))
+    coefficient_relachement = float(np.exp(-1.0 / max(1.0, relachement * sample_rate)))
+
+    amplitude = np.abs(audio.astype(np.float64))
+    enveloppe = np.empty_like(amplitude)
+    suivi = 0.0
+    for i, valeur in enumerate(amplitude):
+        coefficient = coefficient_attaque if valeur > suivi else coefficient_relachement
+        suivi = coefficient * suivi + (1.0 - coefficient) * valeur
+        enveloppe[i] = suivi
+
+    au_dessus = np.maximum(enveloppe - seuil, 0.0)
+    cible = seuil + au_dessus / rapport
+    gain = np.divide(cible, np.maximum(enveloppe, 1e-9),
+                     out=np.ones_like(enveloppe), where=enveloppe > seuil)
+    comprime = audio.astype(np.float64) * gain
+
+    rms_avant = float(np.sqrt(np.mean(audio.astype(np.float64) ** 2))) or 1e-9
+    rms_apres = float(np.sqrt(np.mean(comprime ** 2))) or 1e-9
+    return (comprime * (rms_avant / rms_apres)).astype(np.float32)
 
 
 def _bruit(audio: np.ndarray, sample_rate: int, rng: np.random.Generator) -> np.ndarray:
@@ -186,7 +218,21 @@ NOM_FUITE = "fuite"
 
 
 def applique_fuite(audio: np.ndarray, fuite: np.ndarray, rng: np.random.Generator) -> np.ndarray:
-    """Mélange un autre rendu à bas niveau : ce que demucs laisse passer.
+    """Mélange le rendu d'une AUTRE machine à bas niveau : ce que demucs laisse
+    passer.
+
+    CE QUI COMPTE EST QUE LE SON MÊLÉ SOIT VRAIMENT AUTRE, et la mesure a
+    corrigé au passage l'explication qu'on en donnait. La première version
+    mélangeait le rendu PRÉCÉDENT — c'est-à-dire, dans la boucle des notes, une
+    note voisine du MÊME patch. Ce n'était pas une fuite, c'était un écho, et
+    son déplacement du descripteur valait **0,054 écart-type**, quasiment rien.
+
+    On a d'abord cru que le remède était « prendre une autre MACHINE ». Mesuré :
+    une autre machine déplace de **0,148 σ**… et un autre PATCH de la même
+    machine de **0,152 σ**. La cause n'était donc pas l'identité de la machine
+    mais la PROXIMITÉ du son mêlé. Prendre une autre machine reste le bon choix
+    — c'est ce qu'une séparation laisse réellement passer — mais il fallait
+    écrire la vraie raison plutôt que celle qui semblait évidente.
 
     Le niveau est tiré entre −30 et −14 dB, ce qui couvre ce qu'on observe sur
     les stems réels — assez pour salir les descripteurs, pas assez pour que
@@ -323,6 +369,7 @@ def genere_lot(
     augmentations: Sequence[str] = (),
     proportion_augmentee: float = 0.5,
     fuite_precedente: Optional[np.ndarray] = None,
+    vivier_de_fuite: Sequence[np.ndarray] = (),
     decalage_patch: int = 0,
     progression: Optional[Callable[[str], None]] = None,
 ) -> LotDeCorpus:
@@ -398,12 +445,19 @@ def genere_lot(
             choix = float(rng_augmentation.random())
             if (choisies or fuite_active) and doit_degrader:
                 possibles = list(choisies)
-                if fuite_active and dernier_rendu is not None and dernier_rendu.size:
+                # La fuite n'est proposée QUE si l'on dispose du son d'une autre
+                # machine. À défaut, on ne la remplace pas par un écho du rendu
+                # précédent : une augmentation qui ne dégrade pas ce qu'elle
+                # prétend dégrader vaut moins que son absence, parce qu'elle
+                # occupe la place dans le tirage ET dans le compte.
+                if fuite_active and vivier_de_fuite:
                     possibles.append(None)  # marqueur de la fuite
                 if possibles:
                     tirage = possibles[min(int(choix * len(possibles)), len(possibles) - 1)]
                     if tirage is None:
-                        travail = applique_fuite(audio, dernier_rendu, rng_augmentation)
+                        intrus = vivier_de_fuite[int(choix * len(vivier_de_fuite))
+                                                 % len(vivier_de_fuite)]
+                        travail = applique_fuite(audio, intrus, rng_augmentation)
                         nom_augmentation = NOM_FUITE
                     else:
                         travail = tirage.applique(audio, sample_rate, rng_augmentation)

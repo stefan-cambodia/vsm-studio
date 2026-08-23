@@ -154,7 +154,7 @@ lieu de la remplacer, et c'est écrit.
 > produit et mauvais sur ce qu'un DISQUE contient. C'est mot pour mot le fossé
 > de domaine qui avait tué l'estimateur de paramètres.
 
-### A0.4 — l'A/B des augmentations : elles marchent, et elles ne servent pas
+### A0.4 — l'A/B des augmentations : elles marchent, et elles ne comblent pas le fossé
 
 Le § 7 annonçait l'augmentation comme la parade au fossé de domaine, et le
 § 7 lui-même demandait l'A/B. Il est fait, et il donne deux réponses opposées
@@ -209,12 +209,59 @@ augmentations ne servent pas »* mais **« celles-ci ne dégradent presque rien,
 même ainsi le fossé ne se comble pas »** — ce ne sont pas les mêmes phrases, et
 la première fermerait à tort une piste que la seconde laisse ouverte.
 
-**Ce qu'il faudrait avant de conclure sur l'augmentation.** La `fuite` mélange
-le rendu PRÉCÉDENT DE LA MÊME MACHINE, souvent le même patch : ce n'est pas une
-fuite, c'est un écho. Une vraie fuite vient d'un autre instrument. La
-`compression` est statique et sans détecteur. Corriger ces deux-là, remesurer,
-et alors seulement dire si la parade du § 7 tient. En l'état, **le § 7 est
-mesuré insuffisant à cette dose, et la cause est en partie la dose elle-même.**
+**Ce qu'il fallait avant de conclure : les deux augmentations molles corrigées,
+et remesurer.** C'est fait, et la réponse est nette.
+
+`fuite` mélangeait le rendu PRÉCÉDENT DE LA MÊME MACHINE, souvent du même patch :
+un écho, pas une fuite. Elle prend désormais le rendu d'une autre machine.
+`compression` était une courbe sans mémoire ; elle a maintenant un détecteur
+d'enveloppe à attaque et relâchement. Les deux mordent nettement plus :
+
+| augmentation | v1 | **v2** |
+|---|---|---|
+| fuite | 0,054 σ | **0,215 σ** (×4) |
+| compression | 0,018 σ | **0,053 σ** (×3) |
+| bruit | 0,359 σ | 0,362 σ |
+| réverbération | 0,093 σ | 0,102 σ |
+| désaccord | 0,074 σ | 0,083 σ |
+| égaliseur | 0,060 σ | 0,070 σ |
+
+*(La ligne « (sec) » du tableau brut affiche 0,012 σ : 95 % des exemples non
+dégradés de v2 sont STRICTEMENT identiques à ceux du corpus sec, et les 5 %
+restants sont un résidu d'alignement du tirage — pas une dégradation.)*
+
+**Et sur la colonne qui décide, rien ne bouge :**
+
+| entraîné sur | abstentions (40 extraits) | confiantes à tort | rang médian de `vsm.piano` |
+|---|---|---|---|
+| corpus sec | 31/40 | 6 | **15** |
+| augmenté v1 (molles) | 30/40 | 7 | **15** |
+| augmenté v2 (mordantes) | 31/40 | 8 | **15** |
+
+Le rang médian de la machine que l'arbitrage retient réellement est **identique
+aux trois** : la vue que le modèle a d'un piano réel ne bouge pas d'un cran quand
+on quadruple la force des dégradations.
+
+### Verdict sur la parade du § 7
+
+**Elle est mesurée insuffisante, et pas parce que la dose était trop faible** —
+c'était l'hypothèse de repli, elle est éprouvée et écartée. Un corpus de rendus
+moteur, si dégradé soit-il SYNTHÉTIQUEMENT, n'enseigne pas ce qu'un disque
+contient.
+
+C'est le même mur, mesuré une seconde fois par un chemin indépendant, que celui
+du § 7 de [`ROADMAP-fusion.md`](ROADMAP-fusion.md) sur l'estimateur de
+paramètres. Et cela renforce la condition de réouverture qui y est écrite :
+**il faudrait un corpus qui contienne la dégradation RÉELLE** — rendre le patch,
+le mélanger à d'autres stems, faire repasser le tout par demucs, et étiqueter le
+résultat avec le patch d'origine. Ce n'est plus une intuition : deux objets
+d'apprentissage différents, entraînés sur deux corpus différents, butent au même
+endroit pour la même raison.
+
+Ce que l'augmentation apporte reste vrai et n'est pas rien : **une robustesse
+gratuite aux dégradations qu'elle contient** (93,6 % → 99,0 % sur l'épreuve
+dégradée, sans rien perdre sur le son propre). Elle est donc conservée. Elle ne
+doit simplement plus être présentée comme la parade au fossé de domaine.
 
 ## Phase A2 — Les gabarits de batterie appris
 
