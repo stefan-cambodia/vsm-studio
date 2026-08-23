@@ -29,7 +29,8 @@ def main() -> int:
                                          formatter_class=argparse.RawDescriptionHelpFormatter)
     analyseur.add_argument("--sortie", type=Path, default=Path("modeles/frappes.joblib"))
     analyseur.add_argument("--graine", type=int, default=20260823)
-    analyseur.add_argument("--seuil", type=float, default=0.5)
+    analyseur.add_argument("--seuil", type=float, default=None,
+                            help="seuil de décision (défaut : SEUIL_DECISION, balayé au banc)")
     arguments = analyseur.parse_args()
 
     with VsmEngine(sample_rate=44100) as moteur:
@@ -39,7 +40,8 @@ def main() -> int:
         print(f"\n      {len(corpus.X)} exemples, {len(set(corpus.situations))} situations")
 
         print("[2/3] Entraînement, épreuve sur des situations jamais vues")
-        modele, mesures = entraine_frappes(corpus, graine=arguments.graine, seuil=arguments.seuil)
+        modele, mesures = entraine_frappes(corpus, graine=arguments.graine,
+                                           **({'seuil': arguments.seuil} if arguments.seuil is not None else {}))
         for piece, m in mesures["parPiece"].items():
             print(f"      {piece:8s} rappel {m['rappel']:.1%}  précision {m['precision']:.1%}")
 

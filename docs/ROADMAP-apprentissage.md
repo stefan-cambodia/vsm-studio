@@ -406,13 +406,37 @@ tombent de 15 à 4 et la charleston monte de 33 à 44 — mieux, pas fini : les
 vingt charlestons restantes sont celles qui tombent SUR un kick, et le modèle
 les voit parfois comme le kick seul.
 
-**Ce qui ne bouge pas, et pourquoi** : la caisse claire reste à 0/8 sur les deux
-motifs. Elle ne frappe jamais seule ici — toujours sur un kick — et ni les
-gabarits ni le modèle ne la séparent de sa porteuse. C'est la limite documentée
-de `vsm_drumkit.py` (similarité kick-seul / kick+caisse : 0,947), et le corpus
-de co-frappes ne l'a pas levée à cette dose. Ce n'est pas grave pour le SON
-(l'échantillon prélevé contient les deux pièces) ; c'est faux pour l'ÉTIQUETTE,
-et pour une boîte à rythmes qui rejoue le kit, l'étiquette devient le son.
+**La caisse claire sur le kick : une faute de protocole, puis un demi-résultat.**
+Elle restait à 0/8 sur les deux motifs, et le modèle la voyait pourtant — à
+0,47, 0,21 — sous le seuil. La raison était dans MA coupure : « kick+snare
+ensemble » n'était qu'UNE situation, donc entière d'un seul côté, et le tirage
+l'avait mise dans l'épreuve. Le modèle n'avait jamais vu une caisse claire sur
+un kick à l'entraînement, et la reconnaissait à 0,47 quand même. C'était
+méritoire, ce n'était pas le test voulu.
+
+Les co-frappes sont désormais déclinées à trois ÉQUILIBRES (égal, l'une en
+retrait, l'autre en retrait — dans un morceau de club la caisse claire est le
+plus souvent SOUS le kick), et un garde-fou interdit qu'une paire soit entière
+à l'écart. Le seuil de décision a été BALAYÉ au banc plutôt que choisi : les
+sorties sont presque toujours proches de 0 ou 1, il ne pèse que sur les
+co-frappes, et **aucune frappe n'est jamais perdue** quel que soit le seuil.
+0,25 est la valeur mesurée (0,3, essayé « pour la marge », tombait du mauvais
+côté d'une frappe). Le banc, après :
+
+| motif | pièce | sans modèle | **avec modèle** |
+|---|---|---|---|
+| double-croche (909) | kick | 16/16, 15 inventés | 16/16, **8** inventés |
+| | snare | 0/8 | **3/8** |
+| | hihat | 33/64 | **40/64** |
+| contretemps (808) | kick | 16/16, 8 inventés | 16/16, **0** inventé |
+| | snare | 0/8 | **2/8** |
+| | hihat | 8/16 | **16/16** |
+
+La caisse claire sort de zéro ; la charleston sur le motif A recule de 44 à
+40 ; rien n'est perdu. C'est un demi-résultat et il est écrit comme tel : la
+similarité kick-seul / kick+caisse de 0,947 documentée dans `vsm_drumkit.py`
+n'est pas levée, elle est entamée. Pour une boîte à rythmes qui rejoue le kit,
+l'étiquette devient le son, et 2/8 de caisses claires, c'est un motif qui boite.
 
 **Dans la chaîne** : `reconstruire.py --classifieur-batterie MODÈLE`. Sans
 modèle, rien ne change — le nommage actuel reste le repli.

@@ -146,13 +146,26 @@ def engendre_corpus_frappes(engine: VsmEngine, sample_rate: int = 44100,
                                                   duree, sample_rate=sample_rate)
                             ajoute(audio, 0.1 + d, [b], machine, f"{b} après {a} ({d*1000:.0f} ms)")
                 # 3. CO-FRAPPES : A et B au même instant — les deux sont nouvelles.
+                #
+                # À PLUSIEURS ÉQUILIBRES, et la situation porte l'équilibre.
+                # Une première version n'avait qu'un « kick+snare ensemble »,
+                # à vélocités égales : une seule situation, donc entière d'un
+                # seul côté de la coupure -- et elle est tombée dans l'épreuve.
+                # Le modèle n'avait JAMAIS vu une caisse claire sur un kick à
+                # l'entraînement, et la reconnaissait pourtant à 0,47 sur le
+                # banc. C'était méritoire et ce n'était pas le test voulu. Les
+                # équilibres déclinent la situation, et dans un morceau de
+                # club la caisse claire est le plus souvent SOUS le kick.
                 for i, a in enumerate(pieces):
                     for b in pieces[i + 1:]:
-                        audio = engine.render(machine, patch,
-                                              [Note(notes[a], velocite, 0.1, 0.05),
-                                               Note(notes[b], velocite, 0.1, 0.05)],
-                                              duree, sample_rate=sample_rate)
-                        ajoute(audio, 0.1, [a, b], machine, f"{a}+{b} ensemble")
+                        for vel_a, vel_b, equilibre in ((velocite, velocite, "égal"),
+                                                        (velocite, max(40, velocite - 40), f"{b} en retrait"),
+                                                        (max(40, velocite - 40), velocite, f"{a} en retrait")):
+                            audio = engine.render(machine, patch,
+                                                  [Note(notes[a], vel_a, 0.1, 0.05),
+                                                   Note(notes[b], vel_b, 0.1, 0.05)],
+                                                  duree, sample_rate=sample_rate)
+                            ajoute(audio, 0.1, [a, b], machine, f"{a}+{b} ensemble ({equilibre})")
             if progression:
                 progression(f"{machine} : {len(X)} exemples")
     return CorpusFrappes(np.stack(X), np.stack(Y), machines, situations)
@@ -198,7 +211,18 @@ class ClassifieurFrappes:
                                   dict(d.get("mesures", {})))
 
 
-def entraine_frappes(corpus: CorpusFrappes, graine: int = 20260823, seuil: float = 0.5,
+# SEUIL DE DÉCISION, balayé au banc plutôt que choisi. Les sorties du modèle
+# sont presque toujours proches de 0 ou de 1, et le seuil ne pèse que sur les
+# co-frappes à l'équilibre : à 0,25 le motif aux contretemps rend 16/16 et zéro
+# kick inventé, à 0,35 il en perd une. Aucune frappe n'est JAMAIS perdue, quel
+# que soit le seuil -- le modèle n'ajoute que des étiquettes --, donc le coût
+# d'un seuil bas est borné. 0,25 est la valeur mesurée ; 0,3 a été essayé
+# « pour la marge » et tombait du mauvais côté de la frappe qui sépare 16/16 de
+# 15/16. Un réglage se prend là où la mesure le met, pas à côté.
+SEUIL_DECISION = 0.25
+
+
+def entraine_frappes(corpus: CorpusFrappes, graine: int = 20260823, seuil: float = SEUIL_DECISION,
                      part_epreuve: float = 0.25) -> Tuple[ClassifieurFrappes, Dict[str, object]]:
     """Un modèle binaire par pièce, éprouvé sur des SITUATIONS jamais vues.
 
@@ -213,6 +237,26 @@ def entraine_frappes(corpus: CorpusFrappes, graine: int = 20260823, seuil: float
     situations = sorted(set(corpus.situations))
     rng.shuffle(situations)
     epreuve_situations = set(situations[:max(1, int(len(situations) * part_epreuve))])
+    # GARDE-FOU : une PAIRE de pièces ne doit jamais être entièrement à l'écart.
+    # Les co-frappes d'une paire sont trois situations (trois équilibres) ;
+    # si le tirage les met toutes trois dans l'épreuve, le modèle n'apprend
+    # jamais que ces deux pièces peuvent frapper ensemble. C'est arrivé, et
+    # c'est écrit ci-dessus.
+    def paire_de(situation: str) -> Optional[str]:
+        return situation.split(" ensemble")[0] if " ensemble" in situation else None
+    paires_epreuve: Dict[str, List[str]] = {}
+    for sit in epreuve_situations:
+        p = paire_de(sit)
+        if p:
+            paires_epreuve.setdefault(p, []).append(sit)
+    toutes = {}
+    for sit in situations:
+        p = paire_de(sit)
+        if p:
+            toutes.setdefault(p, []).append(sit)
+    for p, sits in paires_epreuve.items():
+        if len(sits) == len(toutes.get(p, [])):
+            epreuve_situations.discard(sorted(sits)[0])  # on en rend une à l'entraînement
     masque_epreuve = np.array([s in epreuve_situations for s in corpus.situations])
 
     X = corpus.X.astype(np.float64)
