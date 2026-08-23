@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import subprocess
 import shutil
 from dataclasses import dataclass
@@ -223,17 +224,47 @@ class VsmEngine:
     def profile_for(self, machine: str) -> Optional[str]:
         """Chemin du profil à employer pour cette machine, ou None.
 
-        Le choix est le PREMIER profil valide installé, et il est mémorisé pour
-        la durée du moteur : deux rendus de la même exécution doivent porter le
-        même profil, sans quoi deux distances de la même série ne se
-        comparent plus -- c'est la leçon du § 10.3 de la feuille de route,
-        appliquée à une condition de plus.
+        Le choix est mémorisé pour la durée du moteur : deux rendus de la même
+        exécution doivent porter le même profil, sans quoi deux distances de la
+        même série ne se comparent plus -- c'est la leçon du § 10.3 de la
+        feuille de route, appliquée à une condition de plus.
+
+        QUEL PROFIL, ET POURQUOI C'EST DIT. La première version prenait « le
+        premier profil valide », c'est-à-dire le premier par ORDRE ALPHABÉTIQUE
+        de nom de fichier. Installer une seconde banque de piano (« YDP-Grand »,
+        qui se classe avant « piano-salamander ») a donc changé en silence ce
+        que `vsm.multisample` jouait -- et le classifieur entraîné la veille a
+        été refusé pour péremption, à juste titre, sans que personne ait décidé
+        quoi que ce soit. Le mécanisme de péremption a fait son travail ; le
+        choix silencieux, lui, était le défaut.
+
+        Désormais : `VSM_PROFIL` (variable d'environnement, nom déclaré ou nom
+        de fichier) désigne le profil ; à défaut, le premier est pris ET LE
+        CHOIX EST IMPRIMÉ s'il y en avait plusieurs, avec la liste des autres.
         """
         if machine not in _MACHINES_A_PROFIL:
             return None
         if self._profile_choice is None:
             valides = [p for p in self.profiles() if not p.get("error")]
-            self._profile_choice = str(valides[0]["path"]) if valides else ""
+            voulu = os.environ.get("VSM_PROFIL", "").strip()
+            choisi = None
+            if voulu:
+                for p in valides:
+                    if p.get("name") == voulu or str(p.get("path", "")).endswith(voulu):
+                        choisi = p
+                        break
+                if choisi is None:
+                    print(f"      profil « {voulu} » (VSM_PROFIL) introuvable parmi "
+                          f"{', '.join(str(p.get('name')) for p in valides) or 'aucun'} "
+                          f"-- repli sur le premier")
+            if choisi is None and valides:
+                choisi = valides[0]
+                if len(valides) > 1:
+                    autres = ", ".join(str(p.get("name")) for p in valides[1:])
+                    print(f"      {len(valides)} profils installés : « {choisi.get('name')} » "
+                          f"retenu (le premier) ; les autres ({autres}) ne seront pas "
+                          f"essayés. VSM_PROFIL=nom pour en choisir un.")
+            self._profile_choice = str(choisi["path"]) if choisi else ""
         return self._profile_choice or None
 
     def search_profile(self, machine: str) -> List["SearchDimension"]:

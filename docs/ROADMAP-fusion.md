@@ -1223,6 +1223,46 @@ c'est ce paragraphe qu'il faudra venir corriger ce jour-là.
 
 ---
 
+## 5 septies. Le gagnant d'une note ne tient pas la piste : mesuré deux fois sur un morceau
+
+*B4 Wuz Then* (synthés, 354 s, quatre stems) est le premier morceau passé dans la
+chaîne depuis que l'arbitrage NOMME les candidates qu'il écarte (§ 5 bis, panne
+n° 5). Ce que la ligne nouvelle a montré, sur les DEUX stems mélodiques :
+
+| stem | gagnant sur une note | sur la piste entière | retenu à l'arbitrage |
+|---|---|---|---|
+| `bass` | `vsm.wind` 0,247 | **« trop faible, il faudrait ×42 »** | `vsm.obx` 0,206 |
+| `other` | `vsm.supersaw` 0,329 | **« trop faible, il faudrait ×42,5 »** ; `ms20` ×413 | `vsm.piano` 0,254 |
+
+Le patch qui gagne la recherche sur une note **ne peut pas atteindre le niveau de
+son stem** sur la piste entière — quarante fois trop faible, deux fois sur deux.
+La cause est structurelle, et connue : la distance est insensible au niveau (une
+machine ne doit pas gagner parce qu'elle sort plus fort), donc la recherche sur
+une note est libre de retenir un patch quasi muet dont le TIMBRE colle. Sur la
+piste, le calage des volumes bute sur son plafond (×10), et la candidate tombe.
+
+Jusqu'ici cette chute était SILENCIEUSE — la candidate disparaissait du tableau
+sans un mot — si bien qu'on ne savait pas qu'elle se produisait à chaque fois. Ce
+n'est pas un cas marginal : c'est le comportement normal de la recherche par
+note, et le § 34 d'ARCHITECTURE.md l'avait vu sous un autre angle (« le critère
+une note ne classe pas dans le même ordre que la piste »). Le chiffre ×42 donne
+la forme exacte du désaccord : ce n'est pas un ordre différent, c'est un gagnant
+INUTILISABLE.
+
+**Ce que ça suggère, sans le trancher ici** : borner le niveau de sortie des
+patchs DÈS la recherche sur une note (rejeter ce qui ne pourrait pas atteindre
+le stem), plutôt que de laisser l'arbitrage le découvrir. La mesure à faire est
+un A/B avec et sans cette borne, sur ce morceau et sur *Children*.
+
+**Et une surprise à écouter avant de la croire** : sur le stem `other` — des
+nappes de synthé —, l'arbitrage retient `vsm.piano`, la machine MODÉLISÉE de
+cordes frappées, devant tous les soustractifs. Sur un piano il battait le piano
+échantillonné ; sur des nappes il bat les synthés. Soit cette machine est
+remarquablement bonne, soit la métrique a un faible pour elle, et les deux
+lectures demandent la même chose : l'écoute.
+
+---
+
 ## 6. Ce qui n'est pas au programme, et pourquoi
 
 - **Reconstruire la voix.** Hors de portée d'une synthèse par machine ; la

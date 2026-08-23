@@ -242,6 +242,37 @@ Le rang médian de la machine que l'arbitrage retient réellement est **identiqu
 aux trois** : la vue que le modèle a d'un piano réel ne bouge pas d'un cran quand
 on quadruple la force des dégradations.
 
+### Le contrôle qui manquait : un morceau de SYNTHÉS
+
+Toutes les mesures ci-dessus portaient sur un piano — un son hors du parc. Une
+objection restait donc ouverte : le classifieur échouerait-il parce que la
+cible est acoustique ? Un morceau de synthés (*B4 Wuz Then*, 354 s, quatre
+stems) y répond, stem par stem, après séparation :
+
+| stem | extraits sonores | abstentions | distance médiane au corpus |
+|---|---|---|---|
+| `bass` | 70 | **96 %** | 5,21 |
+| `other` (nappes, leads) | 117 | **100 %** | 6,47 |
+| *Clair de Lune, piano, pour situer* | *40* | *78 %* | *5,17* |
+
+Un stem de synthés — des sons que le parc sait produire — est **aussi loin du
+corpus qu'un piano acoustique**. L'objection tombe : le classifieur n'échoue pas
+parce que le piano est hors parc, il échoue parce qu'un **stem séparé** est hors
+domaine, quel que soit l'instrument. C'est mot pour mot la phrase du § 7 de
+`ROADMAP-fusion.md` : *un stem séparé est un son qu'aucune machine ne produit*.
+
+Et les trois fois sur soixante-dix où il s'est prononcé sur la basse, il a dit
+`vsm.sh101` à 0,99 ; l'arbitrage sur la piste a retenu `vsm.obx` à 0,206. Faux
+les trois fois, avec un score de 0,99.
+
+**Un incident au passage, et il est rassurant.** La chaîne a REFUSÉ le
+classifieur : installer une seconde banque de piano avait changé en silence le
+profil que `vsm.multisample` charge (ordre alphabétique), donc son empreinte, et
+le modèle entraîné sur l'ancien son a été écarté — la chaîne continuant sans lui,
+en le disant. La péremption (A0.3) a fait son travail en conditions réelles, sans
+qu'on l'ait provoquée. Le choix silencieux du profil, lui, était un défaut :
+corrigé (`VSM_PROFIL`, et le choix est imprimé quand il y en a plusieurs).
+
 ### Verdict sur la parade du § 7
 
 **Elle est mesurée insuffisante, et pas parce que la dose était trop faible** —
