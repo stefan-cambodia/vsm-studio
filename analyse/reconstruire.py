@@ -184,6 +184,11 @@ def main() -> int:
                                "Son avis est CONSIGNÉ dans le rapport ; par défaut il ne change "
                                "rien au verdict — mesuré, il place la gagnante réelle au rang "
                                "médian 16 sur 20 sur un piano")
+    parseur.add_argument("--classifieur-batterie", default=None,
+                          help="modèle de classification des FRAPPES (phase A2). Il décide, "
+                               "attaque par attaque, quelles pièces frappent — plusieurs à la "
+                               "fois s'il le faut. Mesuré au banc : charleston seule 16/16 au "
+                               "lieu de 8/16, zéro kick inventé au lieu de 8")
     parseur.add_argument("--preselection-apprise", type=int, default=0,
                           help="ne chercher que les N premières machines du classifieur. "
                                "0 = désactivé, et c'est le défaut : la mesure ne le recommande "
@@ -334,6 +339,17 @@ def main() -> int:
             elif args.sans_apprentissage:
                 print("      --sans-apprentissage : aucun modèle appris n'est consulté")
 
+            modele_frappes = None
+            if args.classifieur_batterie and not args.sans_apprentissage:
+                from analyzer.vsm_drum_corpus import ClassifieurFrappes
+
+                try:
+                    modele_frappes = ClassifieurFrappes.relit(args.classifieur_batterie)
+                    print(f"      classifieur de frappes du {modele_frappes.date}, "
+                          f"pièces : {', '.join(modele_frappes.pieces)}")
+                except Exception as erreur:  # noqa: BLE001
+                    print(f"      classifieur de frappes illisible ({type(erreur).__name__}) — ignoré")
+
             candidates = ([m.strip() for m in args.machines.split(",") if m.strip()]
                           or melodic_machines(moteur))
             print(f"[3/5] {len(candidates)} machine(s) candidate(s)")
@@ -386,7 +402,8 @@ def main() -> int:
                 if nom == "drums" or args.batterie:
                     audio_batterie = charger_audio(chemin)
                     kit = build_drum_kit(audio_batterie, SAMPLE_RATE, sortie / "samples",
-                                         write_samples=not args.sans_sampler)
+                                         write_samples=not args.sans_sampler,
+                                         hit_classifier=modele_frappes)
                     if kit is None:
                         print(f"      {nom:8s} : aucun coup détecté, piste ignorée")
                         continue

@@ -367,6 +367,56 @@ nommage actuel reste en place et l'échec est documenté avec ses chiffres.
 > claire seule », à décalages connus — peut la reconnaître dans le spectre brut.
 > C'est l'objet A2.1, et le banc lui donnera son verdict.
 
+### A2.1 et A2.2 — le classifieur de frappes, et le banc dit oui
+
+`analyse/analyzer/vsm_drum_corpus.py`, commande `analyse/classifieur_batterie.py`.
+
+**Le corpus** : frappes engendrées par les trois boîtes du parc (TR-909,
+TR-808, `vsm.drums`), cinq variantes de réglage, deux vélocités — chaque pièce
+SEULE, puis chaque paire SUPERPOSÉE à six décalages connus (94 à 273 ms, de la
+double-croche à 160 BPM à la croche à 110), puis chaque paire EN CO-FRAPPE.
+**4 710 exemples en 28 secondes**, 196 situations, étiquetés par construction :
+à l'instant de la seconde frappe, quelle pièce est nouvelle ? C'est ce que le
+§ 5 demandait, et pour la première fois on sait précisément quels cas mettre
+dedans.
+
+**Le descripteur** n'est pas la nouveauté : c'est le COUPLE (moyenne d'avant,
+pic d'après) plus leur RAPPORT bande par bande. Une charleston sur une queue de
+caisse claire ne fait pas monter l'aigu au-dessus de la moyenne d'avant, mais
+elle l'empêche de descendre — et ça se lit dans le rapport, pas dans la
+soustraction.
+
+**Le modèle** : un classifieur binaire par pièce, gradient boosting CPU, coupé
+par SITUATION (une situation entière d'un seul côté, sinon le score mentirait
+vers le haut). Sur les situations jamais vues : kick 100 %, clap 97 %, tom
+100 %, charleston 76 % de rappel.
+
+**Le banc, qui seul compte :**
+
+| motif | pièce | sans modèle | **avec modèle** |
+|---|---|---|---|
+| double-croche (909) | kick | 16/16, **15** inventés | 16/16, **4** inventés |
+| | hihat | 33/64 | **44/64** |
+| contretemps (808) | kick | 16/16, **8** inventés | 16/16, **0** inventé |
+| | hihat | **8/16** | **16/16** |
+
+**Le critère A2.2 reformulé est atteint sur le motif B** : charleston seule
+16/16, zéro kick inventé, aucune frappe perdue. Sur A, les kicks inventés
+tombent de 15 à 4 et la charleston monte de 33 à 44 — mieux, pas fini : les
+vingt charlestons restantes sont celles qui tombent SUR un kick, et le modèle
+les voit parfois comme le kick seul.
+
+**Ce qui ne bouge pas, et pourquoi** : la caisse claire reste à 0/8 sur les deux
+motifs. Elle ne frappe jamais seule ici — toujours sur un kick — et ni les
+gabarits ni le modèle ne la séparent de sa porteuse. C'est la limite documentée
+de `vsm_drumkit.py` (similarité kick-seul / kick+caisse : 0,947), et le corpus
+de co-frappes ne l'a pas levée à cette dose. Ce n'est pas grave pour le SON
+(l'échantillon prélevé contient les deux pièces) ; c'est faux pour l'ÉTIQUETTE,
+et pour une boîte à rythmes qui rejoue le kit, l'étiquette devient le son.
+
+**Dans la chaîne** : `reconstruire.py --classifieur-batterie MODÈLE`. Sans
+modèle, rien ne change — le nommage actuel reste le repli.
+
 ## Phase A3 — L'estimateur de paramètres
 
 La plus risquée ; n'entre en chaîne que si son A/B global est positif.

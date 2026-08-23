@@ -103,3 +103,50 @@ def batterie_les_boites_a_rythmes_jouent_le_kit_detecte():
     kit.warnings.clear()
     drum_machine_track(kit, "vsm.tr808")
     assert_true(any("toms" in w for w in kit.warnings), "le rabattement des toms est DIT")
+
+
+@test
+def frappes_le_classifieur_lit_le_couple_avant_apres():
+    """Le descripteur d'une frappe est le COUPLE (avant, après) plus leur
+    rapport — et c'est le rapport qui voit ce que la nouveauté ne voit pas."""
+    from analyzer.vsm_drum_corpus import descripteurs_frappe
+    sr = 44100
+    rng = np.random.default_rng(1)
+    audio = (rng.standard_normal(sr) * 0.01).astype(np.float32)
+    # Un coup net à 0,5 s.
+    audio[int(0.5 * sr):int(0.5 * sr) + 2000] += (rng.standard_normal(2000) * 0.3).astype(np.float32)
+    v = descripteurs_frappe(audio, int(0.5 * sr), sr)
+    assert_true(v is not None and v.shape == (72,), "24 bandes × (avant, après, rapport)")
+    assert_true(float(v[48:].mean()) > 0.0, "le rapport après/avant est positif sur un coup")
+
+
+@test
+def frappes_le_corpus_etiquette_par_construction_et_se_coupe_par_situation():
+    from analyzer.vsm_drum_corpus import (DECALAGES, NOTES_PAR_MACHINE, PIECES,
+                                          engendre_corpus_frappes, entraine_frappes)
+    # Un corpus RÉDUIT : une machine, pour que le test reste court.
+    import analyzer.vsm_drum_corpus as mod
+    sauvegarde = dict(mod.NOTES_PAR_MACHINE)
+    mod.NOTES_PAR_MACHINE = {"vsm.tr808": sauvegarde["vsm.tr808"]}
+    try:
+        with VsmEngine(sample_rate=44100) as moteur:
+            corpus = engendre_corpus_frappes(moteur, graine=3)
+    finally:
+        mod.NOTES_PAR_MACHINE = sauvegarde
+    assert_true(len(corpus.X) > 200, f"{len(corpus.X)} exemples")
+    assert_equal(corpus.Y.shape[1], len(PIECES), "une colonne par pièce")
+    # Les superpositions existent, et elles n'étiquettent QUE la pièce nouvelle.
+    superposees = [i for i, s in enumerate(corpus.situations) if " après " in s]
+    assert_true(len(superposees) > 50, "des superpositions construites")
+    assert_true(all(corpus.Y[i].sum() == 1.0 for i in superposees),
+                "à l'instant de la seconde frappe, UNE seule pièce est nouvelle")
+    ensemble = [i for i, s in enumerate(corpus.situations) if "ensemble" in s]
+    assert_true(all(corpus.Y[i].sum() == 2.0 for i in ensemble), "co-frappe : deux pièces nouvelles")
+
+    clf, mesures = entraine_frappes(corpus, graine=3)
+    # La coupure est par SITUATION : aucune situation d'épreuve à l'entraînement.
+    epreuve = set(mesures["situationsEpreuve"])
+    assert_true(epreuve, "des situations tenues à l'écart")
+    assert_true(mesures["exemples"]["epreuve"] > 0, "l'épreuve n'est pas vide")
+    # Le kick seul doit être reconnu, même sur ce petit corpus.
+    assert_true(mesures["parPiece"]["kick"]["rappel"] > 0.8, "le kick se reconnaît")

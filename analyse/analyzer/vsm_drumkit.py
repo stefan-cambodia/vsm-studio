@@ -481,6 +481,7 @@ def build_drum_kit(
     relative_prefix: str = "samples",
     max_slots: int = 16,
     write_samples: bool = True,
+    hit_classifier: Optional[object] = None,
 ) -> Optional[DrumKit]:
     """
     Découpe un stem de batterie en kit jouable par le sampler.
@@ -612,6 +613,52 @@ def build_drum_kit(
     for index, (famille, note) in enumerate(noms):
         if frappes_par_gabarit[index]:
             detections.setdefault(famille, (note, frappes_par_gabarit[index]))
+
+    # --- CLASSIFIEUR DE FRAPPES APPRIS (phase A2), s'il y en a un ------------
+    #
+    # Ce qu'il corrige est mesuré au banc (`vsm_drum_bench`) : une charleston
+    # qui suit une caisse claire n'a PAS de nouveauté -- la queue de bruit de
+    # la caisse claire est encore plus forte dans l'aigu avant la charleston
+    # qu'au moment où elle frappe, et « après moins avant » efface tout. Elle
+    # finit rangée avec les kicks. L'information existe dans le COUPLE (avant,
+    # après), et c'est ce couple que le modèle a appris à lire, sur des
+    # superpositions construites à décalages connus.
+    #
+    # Il ne remplace pas la détection des attaques ni les gabarits (qui
+    # servent encore à choisir l'échantillon de chaque pièce) : il décide,
+    # attaque par attaque, QUELLES pièces frappent ici -- plusieurs à la fois
+    # s'il le faut, ce que « une pièce par frappe » ne pouvait pas. Sans
+    # modèle, rien ne change : le repli est le nommage ci-dessus.
+    if hit_classifier is not None:
+        from .vsm_drum_corpus import _fenetres
+
+        notes_gm = {"kick": 36, "snare": 38, "hihat": 42, "openhat": 46, "clap": 39, "tom": 45}
+        apprises: Dict[str, List[int]] = {}
+        for instant in instants:
+            descripteur = _fenetres(bandes_log, int(instant), sample_rate)
+            if descripteur is None:
+                continue
+            for piece, _ in hit_classifier.pieces_a(descripteur):
+                apprises.setdefault(piece, []).append(int(instant))
+        if apprises:
+            # Le modèle remplace l'attribution, et les familles qu'il nomme
+            # reçoivent leur note General MIDI. Ce qu'il n'a pas nommé (aucune
+            # pièce ne passe le seuil) n'est pas jeté : ces attaques gardent
+            # l'attribution par gabarit -- une frappe sans étiquette vaut mieux
+            # qu'une frappe perdue.
+            etiquetees = {t for ts in apprises.values() for t in ts}
+            reliquat: Dict[str, Tuple[int, List[int]]] = {}
+            for famille, (note, debuts) in detections.items():
+                restants = [d for d in debuts if int(d) not in etiquetees]
+                if restants:
+                    reliquat[famille] = (note, restants)
+            detections = {piece: (notes_gm[piece], sorted(ts)) for piece, ts in apprises.items()}
+            for famille, (note, debuts) in reliquat.items():
+                if famille in detections:
+                    detections[famille] = (detections[famille][0],
+                                           sorted(detections[famille][1] + debuts))
+                else:
+                    detections[famille] = (note, debuts)
 
     if not detections:
         return None
