@@ -339,6 +339,33 @@ nommage actuel reste en place et l'échec est documenté avec ses chiffres.
 > Les critères A2.2 et A2.3 se reformulent donc contre ce banc : *charleston
 > seule nommée charleston sur B : 16/16 (aujourd'hui 8/16) ; kicks inventés sur
 > A : 0 (aujourd'hui 15)*, sans qu'aucune frappe ne soit perdue.
+>
+> **Le mécanisme exact, trouvé avec le banc, et il confirme le § 1.3 du cahier
+> au lieu de le contredire.** Sur le motif B, les charlestons mal nommées sont
+> exactement **une sur deux : celles qui suivent un temps avec caisse claire**.
+> Leur empreinte de nouveauté est GRAVE (part ≥ 3,5 kHz : 0,00-0,06) là où les
+> autres sont aiguës (0,78-0,83). La nouveauté est « après moins avant, borné à
+> zéro » ; or la queue de bruit de la caisse claire 808 est encore PLUS FORTE
+> dans l'aigu quarante millisecondes avant la charleston qu'au moment où elle
+> frappe. La soustraction annule donc tout l'aigu de la charleston — il ne reste
+> qu'un résidu grave, rangé avec les kicks. Ce n'est pas le nommage qui se
+> trompe : le gabarit « kick2 » EST grave. C'est l'empreinte qui est muette.
+>
+> **Quatre estimations du fond éprouvées, aucune ne sauve la charleston** :
+>
+> | fond | B, charleston | A, kicks inventés |
+> |---|---|---|
+> | moyenne (actuel) | 8/16 | 15 |
+> | minimum | 9/16 | 16 |
+> | dernière trame | 0/16 | 25 |
+> | tendance extrapolée | 0/16 | 16 |
+>
+> C'est donc bien, comme le § 1.3 l'écrivait avant toute mesure, « une autre
+> technique et non un seuil mieux choisi » : une charleston qui suit une caisse
+> claire n'a PAS de nouveauté, et seul un gabarit appris sur des SUPERPOSITIONS
+> CONSTRUITES — « queue de caisse claire + charleston » contre « queue de caisse
+> claire seule », à décalages connus — peut la reconnaître dans le spectre brut.
+> C'est l'objet A2.1, et le banc lui donnera son verdict.
 
 ## Phase A3 — L'estimateur de paramètres
 
