@@ -8,6 +8,7 @@
 #include <array>
 #include <atomic>
 #include <cmath>
+#include <cstdint>
 #include <vector>
 
 namespace vsm::plugins::tonewheel {
@@ -61,9 +62,32 @@ public:
     /// échantillon, avant de lire les roues : elles sont partagées.
     void advance();
 
-    /// Valeur courante d'une roue.
+    /// Valeur courante d'une roue, CALCULÉE À LA DEMANDE.
+    ///
+    /// POURQUOI PARESSEUSEMENT, ET CE QUE ÇA A COÛTÉ DE NE PAS L'ÊTRE. La
+    /// version précédente calculait les quatre-vingt-onze sinus à chaque
+    /// échantillon, dans `advance()`. C'est fidèle au mécanisme — les roues
+    /// tournent toutes, en permanence, qu'on les écoute ou non — mais une roue
+    /// que personne ne lit ne contribue à rien, et le prix était mesurable :
+    /// **25,9 ms par rendu de 0,6 s contre 2,6 ms pour un Minimoog**, soit dix
+    /// fois le parc. Ce n'est pas un détail de banc d'essai : la recherche de
+    /// patch paie ce facteur dix à chaque évaluation, et la génération du
+    /// corpus d'apprentissage l'a rendu visible en tombant à 25 exemples par
+    /// seconde contre 98 en moyenne.
+    ///
+    /// CE QUI EST PRÉSERVÉ, ET C'EST LA CONDITION : les phases avancent
+    /// TOUJOURS toutes (une addition, pas un sinus), si bien qu'une roue qu'on
+    /// se met à lire au milieu d'un morceau a exactement la phase qu'elle
+    /// aurait eue. Le sinus rendu est le même, du même argument : le rendu est
+    /// identique AU BIT PRÈS, ce que son empreinte de non-régression prouve.
     float wheel(int index) const {
-        return (index >= 0 && index < kWheelCount) ? wheelValue_[static_cast<size_t>(index)] : 0.0f;
+        if (index < 0 || index >= kWheelCount) return 0.0f;
+        const auto position = static_cast<size_t>(index);
+        if (stampOfValue_[position] != stamp_) {
+            wheelValue_[position] = static_cast<float>(std::sin(phase_[position] * 6.283185307179586));
+            stampOfValue_[position] = stamp_;
+        }
+        return wheelValue_[position];
     }
 
     /// Numéro de roue pour une note et un rang de tirette. Renvoie -1 si le
@@ -76,7 +100,11 @@ private:
     double sampleRate_ = 48000.0;
     std::array<double, kWheelCount> phase_{};
     std::array<double, kWheelCount> increment_{};
-    std::array<float, kWheelCount> wheelValue_{};
+    /// Cache d'un échantillon : `stamp_` change à chaque `advance()`, ce qui
+    /// invalide toutes les valeurs d'un coup sans avoir à les parcourir.
+    mutable std::array<float, kWheelCount> wheelValue_{};
+    mutable std::array<uint64_t, kWheelCount> stampOfValue_{};
+    uint64_t stamp_ = 1;
 };
 
 /// Haut-parleur rotatif à deux rotors.

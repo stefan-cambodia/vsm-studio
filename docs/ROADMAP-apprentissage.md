@@ -29,6 +29,47 @@ n'est rejouable.
 moins d'une nuit, et sa taille/coût réels remplacent les ordres de grandeur
 du CDC §3.
 
+> **A0 EST FAITE, ET LE COÛT EST MESURÉ (23/08/2026).** Le socle vit dans
+> `analyse/analyzer/vsm_corpus_build.py`, la commande est `analyse/corpus.py`,
+> et douze tests (`analyse/tests/test_corpus.py`) tiennent les deux exigences
+> marquées « testé ».
+>
+> | | mesuré |
+> |---|---|
+> | débit | **98 exemples/s** (31 972 exemples, 20 machines, 326 s) |
+> | à 10 000 patchs par machine | **27 min par machine**, **9,1 h** pour les vingt |
+> | estimation du CDC § 3 | « ≈ 20 min par machine » — juste |
+>
+> Le critère « moins d'une nuit » est donc tenu, mais de peu : neuf heures pour
+> vingt machines, et le parc ne fera que grandir. Une anomalie est relevée au
+> passage et attend son enquête : **`vsm.tonewheel` rend à 25/s** contre 98 en
+> moyenne, quatre fois plus lent que tout le reste du parc.
+>
+> **Trois écarts au cahier, tranchés en écrivant :**
+>
+> 1. **Le corpus prend 20 machines, pas 15.** Le § 3 parlait de « 15 machines
+>    de recherche » ; le moteur en déclare 25, dont 20 candidates mélodiques.
+>    Ce sont celles-là que le corpus peuple : le synthé de test et les boîtes à
+>    rythmes y ajouteraient des classes que personne n'a à reconnaître sur un
+>    stem mélodique, et les percussions relèvent d'A2, qui a son propre corpus.
+> 2. **L'empreinte est calculée EN FAISANT JOUER la machine**, pas en lisant
+>    `audio/tests/audio_fingerprints.inc` — l'exigence n° 3 du § 3 interdit
+>    toute ligne nouvelle côté C++. Bénéfice non prévu : elle capte aussi le
+>    PROFIL installé. Retirer le profil de `vsm.multisample` fait passer son
+>    corpus en « invérifiable », ce qu'une table du dépôt n'aurait pas su dire.
+> 3. **La péremption a TROIS réponses, pas deux** : à jour, périmé, et
+>    *invérifiable* (le moteur ne sait plus faire jouer la machine). Confondre
+>    les deux dernières laisserait passer pour « à jour » un corpus qu'on ne
+>    peut plus vérifier.
+>
+> **Un piège évité, et il valait la peine.** La graine par machine dérivait de
+> `hash(nom)`. Python randomise le hachage des chaînes à chaque démarrage : deux
+> générations « à la même graine » auraient tiré des patchs différents. Un
+> corpus qu'on CROIT regénérable et qui ne l'est pas est pire qu'un corpus non
+> regénérable — rien ne le signale, et toutes les mesures faites dessus
+> deviennent incomparables en silence. Remplacé par un SHA-256 tronqué, et un
+> test verrouille la valeur.
+
 ## Phase A1 — Le classifieur de machine
 
 | Étape | Contenu | Terminé quand |
@@ -42,6 +83,80 @@ du CDC §3.
 réduite par le classement quasi gratuit, **sans qu'aucun verdict du banc ne se
 dégrade**. Si un verdict se dégrade, le classifieur nourrit la shortlist au
 lieu de la remplacer, et c'est écrit.
+
+> **A1.1 EST ATTEINTE. A1.2 NE L'EST PAS. ET A1.3 EST TRANCHÉE PAR LA MESURE,
+> AVANT MÊME D'ÊTRE ÉCRITE (23/08/2026).**
+>
+> Corpus de 95 894 exemples (20 machines, 300 patchs, 16 notes par patch, moitié
+> augmentés). Modèle : gradient boosting par histogrammes, CPU, 25 s
+> d'entraînement. Épreuve sur des **patchs jamais vus**.
+>
+> **A1.1 — sur ce que le moteur produit : atteinte, et largement.**
+>
+> | | top 1 | top 3 | top 5 |
+> |---|---|---|---|
+> | tous les exemples | 94,8 % | 99,2 % | 99,7 % |
+> | hors indistinguables | **98,5 %** | **99,9 %** | 100,0 % |
+>
+> 24,5 % des exemples sont déclarés indistinguables — le son le plus proche du
+> corpus vient d'une AUTRE machine —, et les confusions sont exactement celles
+> que le § 1.4 annonçait : `minimoog ↔ prophet`, `juno106 ↔ arpodyssey`,
+> `jupiter8 → juno106`. Plusieurs soustractifs produisent le même son ; le
+> modèle ne fera pas mieux que le signal, et c'était écrit avant de mesurer.
+>
+> **A1.2 — sur un piano réel : le mécanisme du § 4 est insuffisant, mesuré.**
+>
+> Le § 4 propose deux garde-fous : un seuil sur le score, un rayon de nouveauté.
+> Éprouvés sur *Clair de Lune* (20 extraits d'une seconde) :
+>
+> - **le seuil de score ne sert à rien.** Un classifieur à ensemble fermé
+>   choisit toujours l'une de ses vingt classes, et il est confiant : sur un
+>   piano, il a annoncé `vsm.sh101` avec un score de **1,00**. Aucun seuil
+>   raisonnable n'attrape cela ;
+> - **le rayon marche, mais son calibrage d'origine était faux.** Posé au
+>   quantile 99,5 % du corpus (6,95), il n'écartait que **1,7 %** du réel. Les
+>   distributions se séparent pourtant nettement — médiane 2,22 pour le corpus,
+>   5,17 pour le réel : l'erreur était de calibrer sur le corpus SEUL, ce qui
+>   répond à « où finit le corpus » quand la question est « où finit le parc ».
+>
+> Le rayon est passé au quantile 90 % (3,72), et le choix se justifie par une
+> **asymétrie** : un refus abusif coûte du TEMPS — la chaîne retombe sur la
+> présélection d'aujourd'hui —, une désignation abusive coûte un VERDICT, et
+> celui-là se propage sans que personne le voie.
+>
+> | rayon | abstentions sur le piano réel | refus abusifs sur le corpus |
+> |---|---|---|
+> | 6,95 (quantile 99,5 %) | 1,7 % | 0,7 % |
+> | **3,72 (quantile 90 %)** | **75 %** | 10 % |
+>
+> Il reste **quatre désignations confiantes sur vingt** (jusqu'à `vsm.sh101` à
+> 0,96 et `vsm.pcmhybrid` à 0,99) sur une source acoustique. **A1.2 n'est donc
+> pas atteinte**, et le § 4 ne se contente pas d'un progrès : il dit que ce cas
+> serait « le pire résultat possible de ce projet ».
+>
+> **A1.3 — le classifieur ne doit PAS remplacer la présélection, et la mesure
+> le dit sans ambiguïté.** Sur *Clair de Lune*, l'arbitrage sur la piste retient
+> `vsm.piano`. Le classifieur, lui, la place au **rang médian 16 sur 20**, et
+> dans son top 5 seulement **12 %** du temps :
+>
+> | machine | rang médian | dans le top 5 |
+> |---|---|---|
+> | `vsm.sh101` (que le classifieur préfère) | 2 | 52 % |
+> | `vsm.multisample` | 11 | 28 % |
+> | **`vsm.piano` (la gagnante réelle)** | **16** | **12 %** |
+>
+> Un dégrossissage à cinq machines aurait donc **éliminé la gagnante**. Le
+> critère de phase prévoyait ce cas et sa conséquence : *« le classifieur
+> nourrit la shortlist au lieu de la remplacer, et c'est écrit »*. C'est écrit.
+>
+> **Ce que tout cela dit, et c'est la même chose qu'au § 7 de
+> `ROADMAP-fusion.md`.** Le classifieur est excellent sur ce que le MOTEUR
+> produit et mauvais sur ce qu'un DISQUE contient. C'est mot pour mot le fossé
+> de domaine qui avait tué l'estimateur de paramètres. Les augmentations du § 7
+> étaient la parade annoncée ; à cette dose (six dégradations, la moitié des
+> exemples), **elles ne suffisent pas**. La prochaine mesure à faire est l'A/B
+> que le § 7 prévoit — corpus sec contre corpus augmenté, même épreuve — pour
+> savoir si elles servent un peu, beaucoup, ou pas du tout.
 
 ## Phase A2 — Les gabarits de batterie appris
 

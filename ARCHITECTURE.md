@@ -322,7 +322,7 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 756 tests moteur, tous verts
+### Bilan actuel : 756 tests moteur + 18 tests d'analyse, tous verts
 
 - **81 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir),
@@ -2254,6 +2254,41 @@ partout ailleurs, et elle était entrée par la porte de derrière.
 Les presets écrivent désormais les valeurs RÉSOLUES : les défauts de la machine,
 surchargés par le patch retenu. Vérifié sur le projet livré — 16 à 23 paramètres
 inscrits par piste au lieu de 0 à 8, et le rendu **identique octet pour octet**.
+
+---
+
+## 34 bis. `vsm.tonewheel` — quatre-vingt-onze sinus par échantillon, dont neuf servaient
+
+Trouvé en engendrant le corpus d'apprentissage (phase A0), qui mesure le débit
+machine par machine : l'orgue tombait à **25 exemples par seconde contre 98 en
+moyenne**. Vérifié au rendu isolé, l'écart était pire encore.
+
+| | rendu de 0,6 s |
+|---|---|
+| `vsm.tonewheel`, avant | **25,9 ms** |
+| `vsm.minimoog`, pour situer | 2,6 ms |
+| `vsm.tonewheel`, après | **4,9 ms** |
+| `vsm.tonewheel`, après, accord de six notes | 7,5 ms |
+
+**La cause.** `TonewheelGenerator::advance()` calculait le sinus des
+quatre-vingt-onze roues à CHAQUE échantillon. C'est fidèle au mécanisme — les
+roues d'un Hammond tournent en permanence, qu'on les écoute ou non — mais une
+roue que personne ne lit ne contribue à rien, et une note n'en lit que neuf, une
+par tirette.
+
+**Le correctif, et sa condition.** Le sinus est calculé À LA DEMANDE, avec un
+cache d'un échantillon qu'un compteur invalide d'un coup. Les phases, elles,
+continuent d'avancer TOUTES — une addition par roue, pas un sinus — si bien
+qu'une roue qu'on se met à lire au milieu d'un morceau a exactement la phase
+qu'elle aurait eue. Le rendu est donc **identique au bit près**, et c'est
+l'empreinte de non-régression de la machine qui le prouve, pas une relecture.
+
+**Ce que ça change au-delà du corpus.** La recherche de patch payait ce facteur
+dix à chaque évaluation : l'orgue coûtait dix fois un Minimoog pour être comparé
+à lui. Un banc de mesure qui n'existait pas — la génération d'un corpus, machine
+par machine, avec son débit publié — a suffi à rendre visible un défaut que des
+mois d'usage n'avaient pas montré. C'est l'argument le plus solide en faveur de
+ces bancs : ils trouvent ce qu'on ne cherchait pas.
 
 ---
 

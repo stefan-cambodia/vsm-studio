@@ -53,16 +53,21 @@ void TonewheelGenerator::reset() {
     for (int i = 0; i < kWheelCount; ++i) {
         phase_[static_cast<size_t>(i)] = std::fmod(static_cast<double>(i) * 0.6180339887, 1.0);
         wheelValue_[static_cast<size_t>(i)] = 0.0f;
+        stampOfValue_[static_cast<size_t>(i)] = 0;
     }
+    stamp_ = 1;
 }
 
 void TonewheelGenerator::advance() {
+    // Les phases avancent TOUTES : c'est ce qui garde une roue au bon endroit
+    // le jour où on se met à la lire. Le sinus, lui, attend qu'on le demande —
+    // voir `wheel()` pour le chiffre qui a motivé ce changement.
     for (int i = 0; i < kWheelCount; ++i) {
         const auto index = static_cast<size_t>(i);
         phase_[index] += increment_[index];
         if (phase_[index] >= 1.0) phase_[index] -= 1.0;
-        wheelValue_[index] = static_cast<float>(std::sin(phase_[index] * kTwoPi));
     }
+    ++stamp_; // invalide le cache d'un coup, sans parcourir les 91 roues
 }
 
 int TonewheelGenerator::wheelFor(int note, int drawbar) {

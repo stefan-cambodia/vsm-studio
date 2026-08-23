@@ -383,6 +383,18 @@ le voie — la confusion décibels / centibels ci-dessous en est la démonstrati
 L'invariant qui comptait est intact : `core/` et `audio/` ignorent tout du SF2,
 le DAW ne charge jamais qu'un profil, et le moteur reste sans format tiers.
 
+> **Cette raison a cessé d'être vraie le jour même, et il faut le dire.** La
+> phase A0 de [`ROADMAP-apprentissage.md`](ROADMAP-apprentissage.md) exige des
+> tests Python (« testé » y figure deux fois), et un cadre maison sans
+> dépendance a donc été écrit — `analyse/tests/`. L'argument « il n'existe pas
+> d'infrastructure de test Python » ne tient donc plus tel quel. La décision est
+> maintenue, pour une raison qui, elle, reste vraie : le test d'aller-retour
+> exerce en UN SEUL processus la conversion, l'écriture du profil, sa relecture
+> par le chargeur du DAW et le rendu par la machine. Écrit en Python, il
+> s'arrêterait au fichier produit et ne dirait rien de ce que le moteur en
+> fait. Si la question se rouvre un jour, c'est cet argument-là qu'il faudra
+> réfuter, pas celui de l'outillage.
+
 ### Décision 9 — le SF2 minimal est ENGENDRÉ, pas commis
 
 Le § 8.6 prévoyait de commettre un petit SF2. Il est **écrit par le code**
