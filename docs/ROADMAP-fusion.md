@@ -822,7 +822,7 @@ maintenant exposée (`saveClapState` / `loadClapState`), et trois tests
 
 ---
 
-## 5 bis. Cinq pannes muettes de la chaîne d'analyse
+## 5 bis. Six pannes muettes de la chaîne d'analyse
 
 > **Une cinquième s'est ajoutée en août 2026, et elle a la même forme que les
 > quatre autres** — voir la fin de cette section. Le fait qu'elle soit apparue
@@ -967,6 +967,39 @@ faudra la même enquête.
 > *Un résultat qui manque à un tableau ressemble en tout point à un résultat
 > qu'on n'a pas voulu.* C'est la forme que prennent toutes les pannes de cette
 > section, et la seule défense est de rendre l'absence bruyante.
+
+### 6. La note de référence tombait dans un silence, et vingt machines ont été jugées sur rien
+
+Trouvée en cherchant pourquoi le gagnant d'une note (§ 5 septies) était
+quarante-deux fois trop faible sur la piste. La borne de niveau ajoutée à la
+recherche ne changeait rien — et pour cause : **la cible était muette**.
+
+`_representative_note` prend la note la plus LONGUE du stem, parce qu'elle
+montre le mieux l'entretien et l'extinction. Sur la basse de *B4 Wuz Then*, la
+plus longue était une « note » de 3,68 s à MIDI 34 dans les premières secondes
+du morceau — là où le stem séparé ne contient qu'un souffle : RMS 0,00008,
+**onze cents fois sous le niveau du stem**. Un artefact de Basic Pitch, qui a
+entendu un grave tenu dans un résidu de séparation. Quarante des notes du stem
+étaient dans ce cas.
+
+Toute la recherche par note — vingt machines, vingt fois vingt itérations — s'est
+donc faite contre du silence. Un patch quasi muet l'a gagnée (`vsm.wind`,
+0,2455, **le meilleur des vingt**), et il était inutilisable sur la piste. Le
+chiffre était plausible, la chaîne a continué, et l'arbitrage a rattrapé le
+verdict final sans que personne sache que toute la première étape avait été
+jetée.
+
+**Le correctif** : la note de référence doit SONNER — au moins un dixième du
+niveau efficace du stem pendant sa durée. Le seuil est large, il écarte le
+silence et pas une note douce. Quand la plus longue est écartée, la chaîne le
+DIT. Sur cette basse, la référence passe de la note fantôme à une vraie note de
+0,99 s à 0,1265 de RMS.
+
+**La leçon dépasse ce stem.** Jusqu'ici, « la note la plus longue » était tenue
+pour une propriété du MORCEAU. C'est une propriété de la TRANSCRIPTION, et une
+transcription invente. Toute étape qui choisit une note d'après ses seuls
+attributs MIDI — durée, hauteur, vélocité — sans vérifier dans l'audio qu'elle
+existe, refera cette erreur.
 
 ---
 
@@ -1249,10 +1282,30 @@ une note ne classe pas dans le même ordre que la piste »). Le chiffre ×42 don
 la forme exacte du désaccord : ce n'est pas un ordre différent, c'est un gagnant
 INUTILISABLE.
 
-**Ce que ça suggère, sans le trancher ici** : borner le niveau de sortie des
-patchs DÈS la recherche sur une note (rejeter ce qui ne pourrait pas atteindre
-le stem), plutôt que de laisser l'arbitrage le découvrir. La mesure à faire est
-un A/B avec et sans cette borne, sur ce morceau et sur *Children*.
+**Borner le niveau DÈS la recherche par note — fait, et mesuré.** La même règle
+que la piste (un patch qu'il faudrait amplifier au-delà de `VOLUME_MAX` n'est
+pas un candidat), appliquée là où le défaut naît, avec une pénalité croissante
+plutôt qu'une falaise pour que l'évolution différentielle garde une pente. A/B
+sur la basse de *B4 Wuz Then*, cible saine (voir la panne n° 6 du § 5 bis),
+mêmes huit machines, même graine :
+
+| | gagnant sur une note | gain nécessaire | |
+|---|---|---|---|
+| sans borne | `vsm.ms20`, 0,2277 | **×2 110** | inutilisable |
+| **avec borne** | **`vsm.obx`, 0,2691** | **×2,1** | tient |
+
+La distance sur une note MONTE — on interdit des patchs, c'est attendu — mais le
+gagnant avec borne est exactement celui que l'arbitrage sur la piste avait fini
+par retenir après avoir jeté le gagnant muet. La recherche donne d'entrée la
+réponse que la piste aurait imposée, au lieu de dépenser son budget sur un patch
+qu'elle rejettera. La borne est active par défaut ; `level_bound=False` rend
+l'ancien comportement pour les mesures.
+
+Un point à ne pas confondre : cette borne et la panne n° 6 sont DEUX défauts
+distincts. La note fantôme rendait la cible muette ; la borne protège d'un
+candidat muet face à une cible qui sonne. Le ×2 110 ci-dessus a été mesuré
+APRÈS la correction de la note fantôme — la borne était nécessaire même sur une
+cible saine.
 
 **Et une surprise à écouter avant de la croire** : sur le stem `other` — des
 nappes de synthé —, l'arbitrage retient `vsm.piano`, la machine MODÉLISÉE de

@@ -171,6 +171,11 @@ class PatchSearchResult:
     distance: float
     evaluations: int
     audio: np.ndarray
+    # Évaluations rejetées par la borne de niveau. Publié pour qu'on sache
+    # combien de l'espace est inutilisable -- si c'est la moitié, la recherche
+    # paie la moitié de son budget à découvrir ce qu'une borne sur le paramètre
+    # de sortie lui aurait dit d'avance.
+    rejected_for_level: int = 0
 
 
 def optimize_patch_for_machine(
@@ -189,6 +194,7 @@ def optimize_patch_for_machine(
     gate: float = 0.75,
     guided: bool = False,
     guided_fraction: float = 0.0,
+    max_gain: Optional[float] = None,
 ) -> PatchSearchResult:
     """
     Cherche les réglages de `machine` qui reproduisent `target_audio`.
@@ -210,6 +216,20 @@ def optimize_patch_for_machine(
 
     `seed` est fixé par défaut : deux recherches identiques doivent donner le
     même patch, sans quoi comparer deux machines ne voudrait rien dire.
+
+    `max_gain` : BORNE DE NIVEAU. Un candidat dont le niveau efficace est si bas
+    qu'il faudrait l'amplifier de plus de `max_gain` pour rejoindre la cible
+    est REJETÉ, comme l'est déjà une candidate sur la piste entière
+    (`vsm_track_arbitration`, `vsm_track_refine`). La règle est la même, elle
+    est simplement appliquée là où le défaut naît.
+
+    POURQUOI ELLE MANQUAIT, ET CE QUE ÇA COÛTAIT. La distance est insensible au
+    niveau — à raison : une machine ne doit pas gagner parce qu'elle sort plus
+    fort. Mais sans borne, la recherche est libre de retenir un patch quasi
+    muet dont le TIMBRE colle. Mesuré sur *B4 Wuz Then*, deux stems sur deux :
+    le gagnant sur une note était « trop faible, il faudrait ×42 » sur la piste,
+    et tombait à l'arbitrage — la recherche avait dépensé tout son budget sur
+    un patch inutilisable. `None` conserve l'ancien comportement, pour l'A/B.
     """
     if space is None:
         space = search_space_for_machine(machine, engine, max_dimensions=max_dimensions)
@@ -226,9 +246,11 @@ def optimize_patch_for_machine(
     # les deux ne donnent pas les mêmes chiffres et ne se comparent pas.
     fabrique = CachedTargetDistanceV2 if metric == "v2" else CachedTargetDistance
     distance_to_target = fabrique(target_audio, sample_rate)
+    target_rms = float(np.sqrt(np.mean(np.asarray(target_audio, dtype=np.float64) ** 2)))
+    rejected_for_level = 0
 
     def cost(vector: np.ndarray) -> float:
-        nonlocal evaluations
+        nonlocal evaluations, rejected_for_level
         evaluations += 1
         parameters = _vector_to_parameters(space, vector)
         if fixed_parameters:
@@ -242,6 +264,17 @@ def optimize_patch_for_machine(
             return 1e6  # une requête refusée ne doit pas interrompre la recherche
         if candidate.size == 0:
             return 1e6
+        if max_gain is not None and target_rms > 0.0:
+            candidate_rms = float(np.sqrt(np.mean(candidate.astype(np.float64) ** 2)))
+            needed = target_rms / max(candidate_rms, 1e-12)
+            if needed > max_gain:
+                # PÉNALITÉ CROISSANTE plutôt qu'une falaise : l'évolution
+                # différentielle a besoin d'une pente pour sortir d'une région,
+                # et une falaise à 1e6 sur la moitié de l'espace la laisserait
+                # errer sans information. Le rejet reste franc (toujours au-delà
+                # de toute distance réelle), mais il dit DANS QUELLE DIRECTION.
+                rejected_for_level += 1
+                return 10.0 + float(np.log(needed / max_gain))
         return float(distance_to_target(candidate))
 
     # AMORCE GUIDÉE (étape 10.2 de la feuille de route) : ESSAYÉE, MESURÉE,
@@ -299,6 +332,7 @@ def optimize_patch_for_machine(
         distance=float(result.fun),
         evaluations=evaluations,
         audio=audio,
+        rejected_for_level=rejected_for_level,
     )
 
 

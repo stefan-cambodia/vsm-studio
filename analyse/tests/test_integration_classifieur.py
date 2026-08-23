@@ -122,3 +122,74 @@ def integration_la_preselection_apprise_doit_etre_DEMANDEE():
     else:
         assert_true(len(restreint.considered) < len(complet.considered),
                     "demandée, la présélection écarte réellement des candidates")
+
+
+@test
+def recherche_la_borne_de_niveau_rejette_les_patchs_inaudibles():
+    """Le gagnant d'une note doit pouvoir tenir la piste. Sans borne, la
+    recherche est libre de retenir un patch quasi muet dont le timbre colle ;
+    mesuré sur B4 Wuz Then, c'est arrivé deux stems sur deux (« ×42 »)."""
+    from analyzer.vsm_patch_optimizer import optimize_patch_for_machine
+    with VsmEngine(sample_rate=SR) as moteur:
+        # Cible FORTE : une note de Minimoog, oscillateur 1 à fond.
+        #
+        # `oscillator.1.level` et non `output.level` : le Minimoog n'a PAS de
+        # niveau de sortie, et le service le dit (« paramètre ignoré, absent de
+        # cette machine »). Une première version du test le passait quand même
+        # et mesurait un rendu IDENTIQUE à tous les niveaux — le test échouait,
+        # et c'est lui qui avait raison.
+        muets = {"oscillator.2.level": 0.0, "oscillator.3.level": 0.0,
+                 "oscillator.noise.level": 0.0}
+        cible = moteur.render("vsm.minimoog", {"oscillator.1.level": 1.0, **muets},
+                              [Note(48, 120, 0.0, 0.6)], 0.8)
+        # On force la recherche sur ce seul axe de NIVEAU : le timbre est le bon
+        # par construction, seul le niveau peut faire échouer.
+        from analyzer.vsm_patch_optimizer import SearchParameter
+        espace = [SearchParameter("oscillator.1.level", 0.0, 1.0)]
+        sans = optimize_patch_for_machine(cible, 48, "vsm.minimoog", moteur, sample_rate=SR,
+                                          space=espace, max_iterations=3, population=4,
+                                          gate=0.75, fixed_parameters=muets, max_gain=None)
+        avec = optimize_patch_for_machine(cible, 48, "vsm.minimoog", moteur, sample_rate=SR,
+                                          space=espace, max_iterations=3, population=4,
+                                          gate=0.75, fixed_parameters=muets,
+                                          max_gain=VOLUME_MAX_POUR_TEST)
+    assert_equal(sans.rejected_for_level, 0, "sans borne, rien n'est rejeté")
+    assert_true(avec.rejected_for_level > 0,
+                "avec borne, les niveaux quasi nuls de l'espace DOIVENT être rejetés")
+    rms_cible = float(np.sqrt(np.mean(cible ** 2)))
+    rms_avec = float(np.sqrt(np.mean(avec.audio ** 2)))
+    assert_true(rms_cible / max(rms_avec, 1e-12) <= VOLUME_MAX_POUR_TEST,
+                "le gagnant AVEC borne tient le niveau de la cible")
+
+
+VOLUME_MAX_POUR_TEST = 10.0 / 0.9
+
+
+@test
+def reference_une_note_transcrite_dans_le_silence_n_est_pas_retenue():
+    """Panne muette n° 6. Sur la basse de B4 Wuz Then, la note la plus longue
+    (3,68 s) tombait dans un silence du stem — un artefact de transcription — et
+    toute la recherche s'est faite contre rien. La référence doit SONNER."""
+    from analyzer.vsm_reconstruct import _representative_note
+    sr = SR
+    audio = np.zeros(int(6.0 * sr), dtype=np.float32)
+    # Une vraie note de 0,8 s entre 2,0 et 2,8 s ; le reste est silence.
+    debut, fin = int(2.0 * sr), int(2.8 * sr)
+    t = np.arange(fin - debut) / sr
+    audio[debut:fin] = (0.3 * np.sin(2 * np.pi * 110 * t)).astype(np.float32)
+    # La « longue » ne doit pas CHEVAUCHER la vraie note, sinon son segment
+    # sonne par procuration — une première version du test faisait exactement
+    # cette erreur, et le test échouait pour une raison qui n'était pas celle
+    # qu'il voulait éprouver.
+    notes = [StemNote(note=33, velocity=100, start=3.0, duration=2.9),   # « longue », dans le silence
+             StemNote(note=45, velocity=100, start=2.0, duration=0.8)]   # courte, mais elle sonne
+    ref, excerpt, gate = _representative_note(audio, notes, sr)
+    assert_equal(ref.note, 45, "la note qui SONNE est retenue, pas la plus longue")
+    assert_true(float(np.sqrt(np.mean(excerpt ** 2))) > 0.05, "l'extrait cible n'est pas du silence")
+
+    # Et si TOUTES les notes tombent dans le silence, on ne fabrique pas une
+    # référence : on garde l'ancien comportement (la plus longue) plutôt que de
+    # rendre None — le stem a des notes, la chaîne le DIRA par la distance.
+    muet = np.zeros(int(6.0 * sr), dtype=np.float32)
+    ref2, _, _ = _representative_note(muet, notes, sr)
+    assert_equal(ref2.note, 33, "sans aucune note sonore, repli sur la plus longue")

@@ -38,7 +38,9 @@ from .vsm_engine import (
     VsmEngineError,
     available_machines,
 )
+from .vsm_levels import VOLUME_MAX
 from .vsm_patch_optimizer import choose_machine, optimize_patch_for_machine
+from .vsm_project_export import DEFAULT_TRACK_VOLUME
 from .vsm_project_export import ExportNote, ExportTrack, write_project_bundle
 
 # Machines proposées par défaut pour un stem MÉLODIQUE. La liste exclut les
@@ -166,6 +168,44 @@ def _representative_note(
     usable = [n for n in notes if n.duration > 0.15]
     if not usable:
         return None
+
+    # LA NOTE DOIT SONNER, et il a fallu un morceau réel pour s'en apercevoir.
+    #
+    # Sur la basse de *B4 Wuz Then*, la note la plus longue était une « note »
+    # de 3,68 s à MIDI 34 dans les premières secondes, là où le stem est
+    # SILENCIEUX : RMS 0,00008, onze cents fois sous le niveau du stem. Un
+    # artefact de transcription — Basic Pitch a entendu un grave tenu dans un
+    # souffle de séparation. Toute la recherche par note, sur les vingt
+    # machines, s'est donc faite contre du silence ; un patch muet l'a gagnée
+    # (`vsm.wind`, 0,2455, le meilleur des vingt) ; et il était quarante-deux
+    # fois trop faible sur la piste. La borne de niveau de la recherche ne peut
+    # rien contre une cible muette : la cible était fausse, pas le candidat.
+    #
+    # On ne retient donc que les notes pendant lesquelles le stem SONNE — au
+    # moins un dixième de son niveau efficace global. Le seuil est large : il
+    # écarte le silence, pas une note douce. Et c'est la panne muette n° 6
+    # (ROADMAP-fusion § 5 bis) : aucun message, un chiffre plausible, et un
+    # stem entier jugé sur une erreur.
+    stem_rms = float(np.sqrt(np.mean(np.asarray(audio, dtype=np.float64) ** 2)))
+    if stem_rms > 0.0:
+        def sonne(n: StemNote) -> bool:
+            debut = int(n.start * sample_rate)
+            fin = min(len(audio), int((n.start + n.duration) * sample_rate))
+            if fin - debut < 8:
+                return False
+            segment = np.asarray(audio[debut:fin], dtype=np.float64)
+            return float(np.sqrt(np.mean(segment ** 2))) >= 0.1 * stem_rms
+
+        sonores = [n for n in usable if sonne(n)]
+        if len(sonores) < len(usable):
+            ecartees = len(usable) - len(sonores)
+            plus_longue = max(usable, key=lambda n: n.duration)
+            if plus_longue not in sonores:
+                print(f"      note de référence : la plus longue ({plus_longue.duration:.2f} s, "
+                      f"MIDI {plus_longue.note}) tombe dans un SILENCE du stem — écartée, "
+                      f"avec {ecartees - 1} autre(s)")
+        if sonores:
+            usable = sonores
     chosen = max(usable, key=lambda n: n.duration)
 
     # L'EXTRAIT DÉBORDE APRÈS LE RELÂCHEMENT, et ce n'est pas un détail.
@@ -219,6 +259,7 @@ def reconstruct_stem(
     shortlist: Optional[int] = None,
     classifieur: Optional[object] = None,
     preselection_apprise: int = 0,
+    level_bound: bool = True,
 ) -> Optional[StemReconstruction]:
     """
     Trouve la machine et le patch qui approchent le mieux ce stem.
@@ -292,6 +333,13 @@ def reconstruct_stem(
         # None laisse `choose_machine` appliquer sa règle à deux étages :
         # 6 axes pour classer, 10 pour régler les finalistes (mesuré).
         **({"max_dimensions": max_dimensions} if max_dimensions is not None else {}),
+        # BORNE DE NIVEAU, la même que sur la piste (VOLUME_MAX / volume de
+        # base) : un patch qu'il faudrait amplifier davantage ne sera jamais
+        # retenu à l'arbitrage, donc le chercher est du budget perdu. Mesuré sur
+        # B4 Wuz Then AVANT cette borne : deux gagnants sur deux étaient « trop
+        # faibles, ×42 ». `level_bound=False` rend l'ancien comportement, pour
+        # l'A/B.
+        **({"max_gain": VOLUME_MAX / DEFAULT_TRACK_VOLUME} if level_bound else {}),
     )
     return StemReconstruction(
         name=name,
