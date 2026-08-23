@@ -410,6 +410,7 @@ def write_reconstruction_report(
     global_distance: Optional[float] = None,
     metric: str = "v2",
     iterations: Optional[int] = None,
+    provenance: Optional[Dict[str, object]] = None,
 ) -> None:
     """
     Écrit le rapport de reconstruction (étape 9.3).
@@ -427,6 +428,12 @@ def write_reconstruction_report(
         # pas laquelle a servi inviterait à confronter des chiffres qui n'ont
         # rien à voir.
         "metric": metric,
+        # PROVENANCE (phase A4.2) : les modèles appris qui ont été consultés --
+        # ou leur absence, dite --, les options qui conditionnent le résultat
+        # au même titre que la métrique et le budget, et le commit du code.
+        # Un rapport qui ne dit pas tout cela ne se rejoue pas, et un rapport
+        # qui ne se rejoue pas ne se compare à rien.
+        **({"provenance": provenance} if provenance else {}),
         # LE BUDGET DE RECHERCHE, inscrit pour la même raison que la métrique,
         # et pour une raison APPRISE : deux passes sur House Of God ont été
         # comparées stem à stem alors qu'elles n'avaient pas tourné au même

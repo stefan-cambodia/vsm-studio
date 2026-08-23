@@ -24,6 +24,7 @@ La distance publiée le dira, et c'est pour cela qu'elle est publiée.
 from __future__ import annotations
 
 import argparse
+import os
 import struct
 import subprocess
 import sys
@@ -55,6 +56,39 @@ from analyzer.vsm_track_arbitration import (ORIGINE_USINE, TrackCandidate, arbit
 # Le coût est borné : une seconde boîte réglée, c'est 40 évaluations de plus.
 CLOSE_MARGIN_BATTERIE = 0.50
 from analyzer.vsm_track_refine import refine_patch_on_track
+
+
+def provenance(args, classifieur, frappes) -> dict:
+    """Ce qu'il faut savoir pour REJOUER ce rapport (phase A4.2)."""
+    import subprocess
+
+    try:
+        commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True,
+                                text=True, timeout=5, check=True,
+                                cwd=str(Path(__file__).resolve().parent.parent)).stdout.strip()
+    except Exception:  # noqa: BLE001 - hors dépôt, ou git absent : on le dit
+        commit = ""
+    return {
+        "commit": commit,
+        "options": {
+            "separation": not args.sans_separation,
+            "sampler": not args.sans_sampler,
+            "arbitrage": not args.sans_arbitrage,
+            "arbitrageBatterie": not args.sans_arbitrage_batterie,
+            "reglagePiste": not args.sans_reglage_piste,
+            "budgetPiste": args.budget_piste,
+            "axesPiste": args.axes_piste,
+            "finalistes": args.finalistes,
+            "preselectionApprise": args.preselection_apprise,
+        },
+        # Les modèles CONSULTÉS, avec leur date d'entraînement -- ou « aucun »,
+        # qui est une information et non une absence d'information.
+        "modeles": {
+            "classifieurMachine": (classifieur.date if classifieur is not None else "aucun"),
+            "classifieurFrappes": (frappes.date if frappes is not None else "aucun"),
+        },
+        "profilMultisample": os.environ.get("VSM_PROFIL", "") or "(premier installé)",
+    }
 
 
 def profil_de(moteur, machine: str) -> str:
@@ -863,7 +897,8 @@ def main() -> int:
 
         rapport = write_project_bundle(pistes_export, sortie, title=entree.stem, tempo=args.tempo)
         write_reconstruction_report(reconstruits, sortie / "rapport.json",
-                                    metric=args.metrique, iterations=args.iterations)
+                                    metric=args.metrique, iterations=args.iterations,
+                                    provenance=provenance(args, modele_classifieur, modele_frappes))
         print(f"      {rapport['tracks']} piste(s), {rapport['notes']} note(s)")
 
         # --- rendu et distance ------------------------------------------------

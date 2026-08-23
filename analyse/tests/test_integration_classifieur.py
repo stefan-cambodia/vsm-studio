@@ -193,3 +193,29 @@ def reference_une_note_transcrite_dans_le_silence_n_est_pas_retenue():
     muet = np.zeros(int(6.0 * sr), dtype=np.float32)
     ref2, _, _ = _representative_note(muet, notes, sr)
     assert_equal(ref2.note, 33, "sans aucune note sonore, repli sur la plus longue")
+
+
+@test
+def rapport_porte_sa_provenance():
+    """A4.2 : un rapport qui ne dit pas avec quels modèles, quelles options et
+    quel code il a été produit ne se rejoue pas -- et ne se compare à rien."""
+    import json, tempfile
+    from analyzer.vsm_reconstruct import StemReconstruction, write_reconstruction_report
+    stem = StemReconstruction(name="essai", machine="vsm.minimoog", parameters={}, distance=0.1,
+                              notes=[StemNote(60, 100, 0.0, 0.5)], considered=[("vsm.minimoog", 0.1)])
+    prov = {"commit": "abc123", "options": {"budgetPiste": 40},
+            "modeles": {"classifieurMachine": "aucun", "classifieurFrappes": "2026-08-23"}}
+    with tempfile.TemporaryDirectory() as d:
+        chemin = Path(d) / "rapport.json"
+        write_reconstruction_report([stem], chemin, metric="v3", iterations=20, provenance=prov)
+        r = json.loads(chemin.read_text(encoding="utf-8"))
+    assert_equal(r["metric"], "v3", "la métrique est inscrite")
+    assert_equal(r["provenance"]["commit"], "abc123", "le commit est inscrit")
+    assert_equal(r["provenance"]["modeles"]["classifieurMachine"], "aucun",
+                 "« aucun » est une information, pas une absence")
+    # Sans provenance, le rapport reste lisible et ne porte pas la clé.
+    with tempfile.TemporaryDirectory() as d:
+        chemin = Path(d) / "rapport.json"
+        write_reconstruction_report([stem], chemin, metric="v2")
+        r = json.loads(chemin.read_text(encoding="utf-8"))
+    assert_true("provenance" not in r, "pas de provenance inventée")

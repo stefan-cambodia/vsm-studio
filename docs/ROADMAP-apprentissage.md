@@ -462,6 +462,17 @@ c'est un résultat, pas une honte.
 |---|---|---|
 | A4.1 | Modèles versionnés, chargés et vérifiés (empreintes) au démarrage | modèle absent ou périmé → repli chaîne actuelle, dit et daté |
 | A4.2 | `rapport.json` : versions de corpus/modèles, abstentions et resserrements avec motifs | deux exécutions complètes → rapports identiques à la 4e décimale (le déterminisme de House Of God, préservé) |
+
+> **A4.2 — fait (23/08).** Le rapport porte une clé `provenance` : le commit du
+> code, les options qui conditionnent le résultat (séparation, sampler,
+> arbitrages, réglage et son budget, finalistes, présélection apprise), les
+> modèles consultés avec leur date d'entraînement — ou « aucun », qui est une
+> information et non une absence d'information — et le profil multi-échantillons
+> désigné. Les abstentions et classements du classifieur de machine étaient déjà
+> par stem (`classifierRanking`, `classifierAbstention`). Le déterminisme à la
+> 4e décimale n'est pas remesuré ici ; il l'a été sur B4 Wuz Then, dont les
+> trois passages ont rendu des recherches par note identiques à la quatrième
+> décimale à code égal.
 | A4.3 | `--sans-apprentissage` | reproduit exactement la chaîne d'aujourd'hui ; sert de témoin dans tous les A/B |
 
 ## Phase A5 — Validation : un morceau de musique classique
