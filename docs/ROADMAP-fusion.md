@@ -40,9 +40,9 @@ client, jamais une dépendance.
 
 **Acquis, mesuré :**
 
-- 23 machines (+ tonalité d'essai), 9 effets, moteur temps réel, 725 tests
+- 24 machines (+ tonalité d'essai), 9 effets, moteur temps réel, 756 tests
   verts, zéro warning.
-- Piano roll complet, façades « façon hardware » pour les 23 machines,
+- Piano roll complet, façades « façon hardware » pour les 24 machines,
   séquenceurs à pas pour celles qui en ont un.
 - Interop : identités sémantiques (563 paramètres), presets `*.synth.json`,
   projets `project.json`, rendu hors ligne `vsm-render`, adaptateur et hôte
@@ -79,6 +79,11 @@ client, jamais une dépendance.
   structurelle et vérifiée sur quatre topologies de boucle : une réflexion
   inversante à demi-longueur impose la symétrie demi-onde, qui interdit
   mathématiquement les harmoniques paires. Détail dans ARCHITECTURE.md § 33.
+  **Le verdict « hors de portée » ne tient plus, et le § 33 le dit** : un
+  prototype conique (`audio/plugins/cone/`, hors build) sonne juste, tient son
+  niveau et porte la série harmonique complète. Ce qui manque n'est plus la
+  possibilité mais la SÉLECTIVITÉ — un résonateur qui choisisse `f0` sans
+  raboter ses harmoniques. Travail de conception, pas de réglage.
 - **Le sampler n'est plus un repli universel : il est réservé à la voix.**
   C'est ce qui a rendu nécessaires `vsm.piano` et `vsm.drums`, et ce qui donne
   au parc sa forme finale — chaque source a une machine qui la MODÉLISE, sauf
@@ -93,6 +98,21 @@ client, jamais une dépendance.
   0,103 à 20 itérations, 0,053 à 60) : deux mesures ne se comparent que si
   elles ont le même budget. Il est pour cela inscrit dans chaque
   `rapport.json`, au même titre que la métrique.
+
+- ~~Aucune route honnête pour un instrument ACOUSTIQUE mélodique~~ — **ouverte
+  par `vsm.multisample`** (§ 5 sexies ci-dessous, détail dans ARCHITECTURE.md
+  § 35). Le constat qui l'a rendue nécessaire est une photo-finish, pas un
+  raisonnement : sur *Clair de Lune* (piano seul, 2219 notes), les huit
+  premières machines du parc finissent entre **0,2590 et 0,3217** — six pour
+  cent d'écart, c'est-à-dire aucune information. La distance globale (1,639)
+  était rattrapée non par le patch mais par l'automation de coupure, 8,34 →
+  1,64 en six cent six points : **le parc compensait au lieu de reproduire.**
+  La machine est livrée, testée et mesurée — **et le banc de clôture dit qu'elle
+  n'apporte rien sur ce morceau** : 0,2159 avec elle, 0,2159 sans, à conditions
+  strictement identiques. La couverture est ouverte (l'orchestre General MIDI
+  arrive par l'import SoundFont) ; la victoire sur le piano n'est pas acquise,
+  et le § 5 sexies dit pourquoi elle ne le sera peut-être jamais par ce
+  chemin-là.
 
 **Où en est la feuille de route :** les phases 8 à 11 sont TOUTES closes — la
 couverture des sources, la reconstruction d'un morceau entier, l'efficacité de
@@ -802,7 +822,13 @@ maintenant exposée (`saveClapState` / `loadClapState`), et trois tests
 
 ---
 
-## 5 bis. Quatre pannes muettes de la chaîne d'analyse
+## 5 bis. Cinq pannes muettes de la chaîne d'analyse
+
+> **Une cinquième s'est ajoutée en août 2026, et elle a la même forme que les
+> quatre autres** — voir la fin de cette section. Le fait qu'elle soit apparue
+> APRÈS cette relecture complète est en soi le résultat : ce n'est pas un type
+> de faute qu'on élimine une fois, c'est un type de faute contre lequel il faut
+> une DISCIPLINE — ici, « une candidate écartée est nommée avec sa raison ».
 
 Les trois verdicts (note, piste, mélange) étaient en place et mesurés ; une
 relecture complète du diff a montré que **trois d'entre eux ne jugeaient pas ce
@@ -912,6 +938,37 @@ demandé et laisse donc passer des candidates qui buteront sur `VOLUME_MAX` —
 exactement le cas qu'il a été écrit pour attraper. Le corriger demande de rendre
 à durée imposée, donc de refaire les mesures du § 34 : à faire d'un bloc, avec
 les chiffres, plutôt qu'à moitié.
+
+### 5. Une candidate écartée disparaissait du tableau sans un mot
+
+Trouvée en cherchant pourquoi `vsm.multisample` n'apparaissait **nulle part**
+dans la reconstruction de *Clair de Lune* : ni dans les dix finalistes, ni dans
+les vingt-neuf lignes du tableau d'arbitrage. Elle n'avait pas perdu — elle
+n'avait pas été mesurée.
+
+**La cause.** L'arbitrage sur la piste, le réglage sur la piste et le verdict du
+mélange ne passent pas par le service de rendu mais par un rendu de PROJET hors
+ligne. Le projet qu'ils écrivaient ne portait pas le champ `profile` ; la
+machine y était donc sans zones, donc muette ; le garde-fou de niveau voyait un
+RMS nul et écartait la candidate. C'est exactement la panne n° 1 sous une autre
+forme — une donnée externe désignée par référence, oubliée à la recopie — et
+elle est réapparue parce que le correctif d'alors visait les ÉCHANTILLONS du
+sampler, pas la catégorie « donnée externe d'une piste ».
+
+**Le correctif qui compte n'est pas le premier.** Le profil suit désormais la
+machine dans tous les rendus hors ligne, verdict du mélange compris — c'est le
+seul endroit de la chaîne où une piste CHANGE de machine, donc le seul où un
+profil peut se retrouver attaché à la mauvaise. Mais la vraie leçon est
+ailleurs : **une candidate écartée est maintenant NOMMÉE, avec sa raison**
+(« rendu vide », « silence », « trop faible, il faudrait ×N »). Sans cette
+ligne, la prochaine donnée externe oubliée produira le même silence, et il
+faudra la même enquête.
+
+> *Un résultat qui manque à un tableau ressemble en tout point à un résultat
+> qu'on n'a pas voulu.* C'est la forme que prennent toutes les pannes de cette
+> section, et la seule défense est de rendre l'absence bruyante.
+
+---
 
 ## 5 ter. Children v10 : la chaîne entière, sampler compris
 
@@ -1079,6 +1136,92 @@ la décision qu'il décrit. Il voyage désormais AVEC la proposition
 (`MixAlternative.track_distance`), et le verdict renvoie celui qu'il a retenu.
 Le `rapport.json` de v12 sur le disque porte encore l'ancienne valeur : il a été
 écrit avant ce correctif.
+
+## 5 sexies. Le parc compensait au lieu de reproduire : `vsm.multisample`
+
+*Clair de Lune* est le premier morceau de piano SEUL passé dans la chaîne, et
+c'est ce qui a rendu le trou visible. Sur les morceaux précédents — *House Of
+God*, *Children* — le piano n'était jamais isolé, et une approximation de timbre
+se noyait dans le mélange. Seul, il ne se noie plus.
+
+**Le chiffre qui a décidé.** Huit machines entre 0,2590 (`vsm.supersaw`) et
+0,3217 (`vsm.tonewheel`). Un classement dont l'écart total vaut six pour cent
+n'est pas un classement : c'est la mesure disant « aucune de ces machines n'est
+la bonne réponse ». Et la distance globale de 1,639 se lisait mal tant qu'on ne
+regardait pas d'où elle venait : l'automation de coupure la faisait tomber de
+8,34 à 1,64 avec six cent six points. Autrement dit, la reconstruction
+réussissait en **corrigeant en continu** un timbre qu'elle n'avait pas su
+choisir.
+
+**La réponse est une machine, pas une par instrument.** Un lecteur
+multi-échantillons couvre le piano maintenant et, par l'import SoundFont,
+l'orchestre General MIDI entier ensuite — sans une ligne de DSP nouvelle. C'est
+le choix inverse de `vsm.string`, `vsm.piano` et `vsm.wind`, et les deux
+coexistent sans se contredire : la modélisation physique donne l'EXPRESSIVITÉ,
+le report d'échantillon donne la COUVERTURE. Le § 6 ci-dessous met en garde
+contre les machines qui « élargissent le catalogue, pas la couverture » ;
+celle-ci fait l'inverse, et c'est mesurable.
+
+**La leçon de méthode, et elle est nouvelle.** Les leçons précédentes portaient
+toutes sur les conditions d'une mesure — la métrique (§ 10.3), le budget, le
+`gate`. Celle-ci porte sur ce qu'une mesure SERRÉE veut dire. Huit machines à
+six pour cent les unes des autres se lisent spontanément comme « le supersaw
+gagne » ; elles disent en réalité « la question n'a pas de réponse dans ce
+parc ». **Un classement dont l'étendue est du même ordre que son bruit n'est pas
+un classement, c'est un constat d'absence** — et le bon geste n'est pas de
+choisir le premier, c'est d'aller chercher ce qui manque.
+
+Un second garde-fou en est sorti, et il vaut pour toute machine future qui
+dépendrait d'une donnée installée : **sans profil, la machine ne rend pas du
+silence, elle est refusée.** Une machine muette ne perd pas la comparaison, elle
+la fausse — sur une cible douce, elle gagne. La chaîne l'écarte de ses
+candidates en le disant, et le pont refuse la requête. Un refus se lit ; un zéro
+se mesure, et se publie.
+
+**Le banc a été rejoué, et il dit NON.** Le même morceau, le même code, les
+mêmes options, seul le dossier de profils changeant :
+
+| | distance globale | machine retenue |
+|---|---|---|
+| sans `vsm.multisample` | **0,2159** | `vsm.piano` |
+| avec `vsm.multisample` | **0,2159** | `vsm.piano` |
+
+Écart nul. La machine finit 7e sur 30 à l'arbitrage (0,3571) et ne survit pas à
+la présélection de la recherche par note. **Sur ce morceau, elle n'apporte
+rien**, et le § 1 du cahier des charges garde donc sa question ouverte.
+
+**Deux leçons, et la seconde vaut pour tout le projet.**
+
+*La première* : le premier rejeu avait donné 0,2159 contre 1,639 — sept fois
+mieux — et ce chiffre ne valait rien. Le rapport de référence avait été produit
+SANS l'arbitrage de piste, et la machine n'avait même pas participé à la
+mesure. C'est la quatrième forme de la règle du § 10.3 : *une distance n'est un
+chiffre que si l'on sait à quelles conditions elle a été obtenue* — et elle vaut
+**aussi contre soi-même**, quand le chiffre va dans le sens qu'on espérait. Le
+seul protocole recevable pour juger un ajout est un COUPLE à conditions
+identiques, avec et sans.
+
+*La seconde* : trois causes mécaniques ont été éprouvées et écartées — la
+troncature des échantillons (discontinuité à −49 dB), le double comptage de la
+dynamique (0,3568 → 0,3571 sur toute la course du réglage), l'absence de
+production (la réverbération dégrade les deux rendus de +14 % et +12 %) — et la
+métrique s'est montrée capable de désigner la bonne machine quand la cible est
+son propre rendu (0,0000 contre 0,1648 au second). Le résultat n'est donc pas un
+artefact. Ce qui reste est plus intéressant : **la transcription plafonne tout.**
+Les 2219 notes ont des vélocités comprises entre 61 et 116 — la dynamique est
+écrasée, la couche la plus douce du profil n'est jamais atteinte — et les notes
+elles-mêmes sont approchées. Un timbre FIDÈLE rend ces erreurs audibles, là où un
+timbre générique les fond. *Une machine peut perdre pour avoir été trop
+reconnaissable*, et aucune amélioration du parc ne le corrigera : c'est l'étape
+d'avant qu'il faudrait améliorer.
+
+**À quelle condition rouvrir le dossier** : une cible dont on CONNAÎT le MIDI
+exact — une prise Disklavier, ou un rendu de banque tierce à partir d'un MIDI
+publié. La transcription sortirait alors de l'équation, et l'on saurait si la
+machine perd sur le timbre ou sur les notes. C'est peu coûteux à remplir, et
+c'est ce paragraphe qu'il faudra venir corriger ce jour-là.
+
+---
 
 ## 6. Ce qui n'est pas au programme, et pourquoi
 

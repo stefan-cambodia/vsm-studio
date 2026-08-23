@@ -6,6 +6,7 @@ add_library(vsm_audio STATIC
     src/effect/EffectFactory.cpp
     src/engine/OfflineRenderer.cpp
     src/plugin/BuiltInPlugins.cpp
+    src/plugin/MultisampleSampleCache.cpp
     plugins/testtone/TestToneSynth.cpp
     plugins/minimoog/MinimoogSynth.cpp
     plugins/tb303/TB303Synth.cpp
@@ -30,6 +31,7 @@ add_library(vsm_audio STATIC
     plugins/piano/PianoSynth.cpp
     plugins/drums/DrumsSynth.cpp
     plugins/wind/WindSynth.cpp
+    plugins/multisample/MultisampleSynth.cpp
 )
 
 target_include_directories(vsm_audio PUBLIC include)
@@ -111,6 +113,7 @@ if (VSM_BUILD_TESTS)
         tests/test_piano_synth.cpp
         tests/test_drums_synth.cpp
         tests/test_wind_synth.cpp
+        tests/test_multisample_synth.cpp
         tests/test_midi_learn.cpp
         tests/test_effect_routing.cpp
         tests/test_more_effects.cpp

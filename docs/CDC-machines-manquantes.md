@@ -27,12 +27,25 @@ Il classe ce qu'il entend en : `bass`, `synth_bass`, `synth_lead`, `synth_pad`,
 | Batterie électronique | TR-808, TR-909 | **couvert** si le morceau utilise ces machines |
 | Batterie acoustique | `vsm.drums` | **couvert** — peaux inharmoniques, métal, pièce (§ 11) |
 | Basse électrique, guitare | `vsm.string` | **couvert** — corde pincée, guide d'ondes (§ 10) |
-| Piano acoustique | `vsm.piano` | **couvert** — cordes frappées, même guide d'ondes (§ 11) |
+| Piano acoustique | `vsm.piano` (modélisé), `vsm.multisample` (échantillonné) | **couvert deux fois, et il a fallu les deux** — voir l'encadré ci-dessous |
 | Orgue, claviers électromécaniques | `vsm.epiano`, `vsm.tonewheel` | **couvert** |
 | Cordes | `vsm.string` | **couvert** — corde frottée, même machine (§ 10) |
 | Cuivres, bois à perce CYLINDRIQUE | `vsm.wind` | **couvert** — anche et lèvres (§ 11) |
-| **Saxophone, hautbois, flûte** | — | **non couvert** — perce conique et jet d'air, mesuré hors de portée du modèle actuel (§ 11) |
+| **Saxophone, hautbois, flûte** | — | **non couvert** — perce conique et jet d'air. Plus « hors de portée » depuis les mesures du prototype conique : ce qui manque est la SÉLECTIVITÉ, pas la possibilité (ARCHITECTURE.md § 33) |
 | **Voix** | `vsm.sampler` | **reportée, jamais reconstruite** — et c'est le seul emploi du sampler dans la version finale |
+
+> **Pourquoi le piano acoustique a DEUX machines, et ce que ça a coûté de
+> l'apprendre.** *Clair de Lune* est le premier morceau de piano SEUL passé dans
+> la chaîne (23/08/2026). `vsm.piano`, la machine modélisée faite pour cette
+> case, **n'a pas survécu à la présélection** : les huit finalistes étaient tous
+> des soustractifs et des tables d'ondes, entre 0,2590 et 0,3217 — six pour cent
+> d'écart, c'est-à-dire aucune information. La case était cochée depuis des mois
+> sur la foi d'un raisonnement (« des cordes frappées, donc un guide d'ondes »)
+> et non d'une mesure sur un morceau réel. Elle l'est maintenant, et la réponse
+> est que la modélisation donne l'EXPRESSIVITÉ tandis que le report
+> d'échantillons donne la COUVERTURE : ce sont deux besoins, pas deux candidats
+> pour le même. Détail et suite dans
+> [`CDC-multisample.md`](CDC-multisample.md).
 
 Or un morceau réel donne presque toujours un stem `drums` acoustique et un
 stem `bass` joué sur un instrument, pas sur un TB-303. **Les trois quarts des

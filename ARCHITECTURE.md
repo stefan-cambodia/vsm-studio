@@ -30,8 +30,8 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **725 tests moteur** (81 core + 527 audio
-+ 95 interchange + 11 CLAP + 11 façades,
+écoute au clic, et toute la logique testée hors JUCE. Total : **756 tests moteur** (81 core + 543 audio
++ 110 interchange + 11 CLAP + 11 façades,
 tous verts, zéro warning, y compris sous les flags stricts type-JUCE
 `-Wfloat-equal -Wsign-conversion -Wshadow`) + application complète compilée et
 liée. Rendus réels vérifiables : `minimoog_demo.wav`,
@@ -322,11 +322,11 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 725 tests moteur, tous verts
+### Bilan actuel : 756 tests moteur, tous verts
 
 - **81 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir),
-  **527 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
+  **543 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
   scalaire, indépendance des lignes, bornes de l'approximation de tanh ; et la
   boucle : rebouclage échantillon-exact, notes relâchées au saut) : chorus BBD, Juno-106,
   bus master (biquad/compresseur/limiteur à plafond garanti/LUFS), oversampler,
@@ -2254,6 +2254,277 @@ partout ailleurs, et elle était entrée par la porte de derrière.
 Les presets écrivent désormais les valeurs RÉSOLUES : les défauts de la machine,
 surchargés par le patch retenu. Vérifié sur le projet livré — 16 à 23 paramètres
 inscrits par piste au lieu de 0 à 8, et le rendu **identique octet pour octet**.
+
+---
+
+## 35. `vsm.multisample` — l'acoustique par report, et ce que la mesure exigeait
+
+**Ce qui a rendu cette machine nécessaire n'est pas un raisonnement, c'est une
+photo-finish.** *Clair de Lune* (piano seul, 311 s, 2219 notes), reconstruit le
+23/08/2026 par la chaîne complète (`--sans-separation`, métrique v2) :
+
+| machine | distance |
+|---|---|
+| `vsm.supersaw` | **0,2590** |
+| `vsm.generic` | 0,2649 |
+| `vsm.minimoog` | 0,2703 |
+| `vsm.obx` | 0,2707 |
+| `vsm.pcmhybrid` | 0,2727 |
+| `vsm.wavetable` | 0,2897 |
+| `vsm.jupiter8` | 0,2970 |
+| `vsm.tonewheel` | 0,3217 |
+
+Six pour cent séparent la première de la huitième. Ce n'est pas un classement,
+c'est une absence d'information : **aucune machine du parc ne ressemble à un
+piano, et toutes s'en écartent autant.** La distance globale du morceau valait
+1,639, dont l'essentiel récupéré non par le patch mais par l'automation de
+coupure — 8,34 → 1,64 en six cent six points. Le parc COMPENSAIT au lieu de
+REPRODUIRE, et l'écoute le confirme : les notes et le geste y sont, le timbre
+non.
+
+**La réponse est UNE machine, pas une par instrument.** Un lecteur
+multi-échantillons couvre le piano aujourd'hui et, par l'import SoundFont,
+l'orchestre General MIDI entier demain — sans une ligne de DSP nouvelle. C'est
+le choix inverse de `vsm.string`, `vsm.piano` et `vsm.wind`, et les deux se
+justifient : la modélisation physique donne l'EXPRESSIVITÉ (un archet qui
+appuie, une anche qui claque), le report d'échantillon donne la COUVERTURE. Le
+§ 27 autorise explicitement le second à condition de le dire, et c'est ce que
+fait cette section.
+
+### Ce qu'elle n'est pas : `vsm.sampler` élargi
+
+Le sampler est **percussif par construction** : seize emplacements, déclenchés
+par note fixe, sans transposition ni couche de vélocité — parce que transposer
+un coup de caisse claire selon la touche produirait n'importe quoi. Sa façade
+et son § 30 sont pensés batterie. L'étendre le dénaturerait. `vsm.multisample`
+prend l'hypothèse inverse : la note **sélectionne une zone ET la transpose**, la
+vélocité **choisit une couche**. Ce qu'elle lui emprunte, en revanche, elle
+l'emprunte tel quel : chargement hors thread audio, publication par échange
+atomique de `shared_ptr`, échantillon manquant SIGNALÉ et jamais substitué.
+
+### La chaîne, et les trois pièges qu'elle contient
+
+```
+note MIDI + vélocité
+      │   première zone du profil qui les contient  (l'ORDRE fait foi)
+      v
+  lecture repitchée, interpolation cubique Catmull-Rom
+      │   boucle de tenue repliée AU NIVEAU DES PRISES, pas seulement du curseur
+      v
+  enveloppe (attaque, tenue à 1, relâchement) — PAS de décroissance imposée
+      v
+  niveau · vélocité · passe-bas doux, neutre EXACTEMENT à fond
+```
+
+1. **Le rapport des fréquences d'échantillonnage.** Un fichier à 44,1 kHz relu
+   tel quel par un moteur à 48 kHz sonne un demi-ton trop bas. C'est la panne la
+   plus courante d'un lecteur d'échantillons et elle est **silencieuse** : tout
+   joue, tout est faux. Un test la couvre en mesurant la hauteur rendue à
+   ±5 cents, fichier à 44,1 kHz compris.
+2. **La boucle et l'interpolation.** Replier seulement le curseur ne suffit
+   pas : les quatre prises de Catmull-Rom déborderaient de la fin du fichier et
+   liraient des zéros, ce qui produit exactement le clic que la boucle existe
+   pour éviter. C'est `frameAt()` qui replie, prise par prise. Vérifié par
+   continuité d'énergie sur quatre secondes de tenue et par une borne sur le pas
+   d'échantillon.
+3. **Pas de décroissance dans l'enveloppe.** Sur un instrument échantillonné,
+   la décroissance est DANS le fichier. En imposer une par-dessus revient à
+   amortir deux fois — c'est précisément ce qui fait sonner « synthétique » un
+   lecteur d'échantillons mal réglé. L'enveloppe se réduit donc à attaque,
+   tenue à 1, relâchement.
+
+### Deux refus, qui sont le cœur de son honnêteté
+
+**Une note hors zone ne sonne pas, et ne consomme pas de voix.** Emprunter la
+zone voisine ferait jouer un son faux que personne ne rattacherait au trou dans
+le profil. Le trou reste donc audible comme un trou.
+
+**Sans profil, la machine est muette — et le service de rendu REFUSE de la
+rendre.** C'est le point le moins évident et le plus important : une machine
+muette ne perd pas la comparaison, elle la **fausse**, en gagnant sur toutes les
+cibles douces. Une distance mesurée contre du silence est un chiffre, et un
+chiffre faux coûte plus cher qu'une erreur franche. La chaîne d'analyse écarte
+donc la machine de ses candidates tant qu'aucun profil n'est installé, **en le
+disant**, et le pont refuse la requête plutôt que de rendre zéro.
+
+### Le réglage de timbre est neutre EXACTEMENT, pas presque
+
+Un passe-bas laissé actif « très haut » reste mesurable : à 20 kHz sur un signal
+à 260 Hz il déphase encore. Le rendu par défaut porterait une couleur que
+personne n'a demandée, et l'empreinte de non-régression mesurerait ce filtre au
+lieu de mesurer le lecteur. Bouton à fond veut donc dire **chemin direct**. Le
+test le vérifie de la façon la plus stricte possible : joué à sa note racine, à
+la fréquence du moteur, sans vélocité ni accord, le lecteur rend le FICHIER,
+échantillon pour échantillon, à 10⁻⁶ près.
+
+### Un cache d'échantillons, sans lequel la machine était incherchable
+
+Le service de rendu crée une instance NEUVE par requête — c'est ce qui garantit
+que deux rendus identiques donnent le même son (§ 28), et il ne faut pas y
+toucher. Mais installer un profil de piano, c'est décoder cent vingt fichiers et
+deux cent trente mégaoctets :
+
+| | coût d'une évaluation |
+|---|---|
+| `vsm.minimoog` | 4,1 ms |
+| `vsm.multisample`, profil rechargé à chaque rendu | **123,9 ms** |
+| `vsm.multisample`, échantillons décodés mis en cache | **2,0 ms** |
+
+Une machine trente fois plus chère que les autres ne se cherche pas : la
+présélection l'écarte au premier tour, et son absence se lit comme un mauvais
+résultat. `MultisampleSampleCache` partage donc les échantillons DÉCODÉS entre
+les instances successives, et **rien d'autre** — jamais de l'état de machine.
+C'est la condition à laquelle il est acceptable, et un test la vérifie : le
+rendu est identique **au bit près** avec cache et sans.
+
+### Le format de profil vit dans `interchange/`, jamais dans `audio/`
+
+L'invariant est net : le moteur ne connaît aucun format d'échange. La machine
+reçoit donc des ZONES — structures nues décrites par `IMultisampleBank` — et n'a
+jamais entendu parler de JSON. Ce n'est pas une élégance : c'est ce qui permettra
+d'ajouter les round-robin, les échantillons de relâchement et un jour le SFZ
+**sans recompiler ni reregresser une seule machine**.
+
+Le format `*.profile.json` vérifie à la lecture, et refuse plutôt qu'il
+n'interprète : format et version contrôlés, chemins d'échantillons
+obligatoirement relatifs (un chemin absolu rend un projet non transportable),
+étendues non vides, points de boucle cohérents avec la longueur du fichier,
+budget mémoire de 256 Mo. **L'attribution est obligatoire** : une banque dont on
+ne sait pas sous quelle licence elle circule n'est pas chargée « en attendant »
+(§ 28). Et tout champ inconnu est **nommé** dans le rapport de chargement —
+règle mise en place ici, sur le format natif où elle est facile à vérifier,
+avant que l'import SoundFont n'en ait besoin pour ses générateurs exotiques.
+
+### Approximations assumées de la v1
+
+| Omis | Pourquoi, et ce qu'il faudrait pour le lever |
+|---|---|
+| **Pédale forte (CC64)** | `ISynthPlugin` transporte NoteOn/NoteOff, pas les CC. Moins grave qu'il n'y paraît **pour la reconstruction** : la transcription inscrit déjà la pédale dans la DURÉE des notes (les 2219 notes de Clair de Lune la portent). Pour le jeu au clavier, la limite est réelle. Étendre le contrat aux CC datés au sample est une décision de MOTEUR, à prendre séparément — pas en contrebande d'une machine. |
+| Échantillons de relâchement | une couche de plus par zone ; le budget mémoire décide |
+| Round-robin | demande un état par note, donc un rendu non déterministe à graine égale — à peser contre l'invariant de déterminisme |
+| Streaming disque | le préchargement tient dans 256 Mo pour un piano ; un orchestre entier ne tiendra pas, et c'est là qu'il faudra le faire |
+| Résonance sympathique | c'est de la modélisation, pas de la lecture — elle appartient à `vsm.piano` |
+
+### Le profil piano, et ce que la banque réelle a répondu
+
+Installé par `tools/installer-profil-piano.py` depuis **Salamander Grand Piano
+V3** (Alexander Holm, CC-BY 3.0), archive 44,1 kHz / 16 bits (412 Mo, empreinte
+SHA-256 épinglée dans l'outil). La banque contient 480 échantillons utiles :
+**trente notes racines** — un échantillon tous les trois demi-tons, de A0 à C8 —
+et **seize couches de vélocité**. Le profil en retient quatre couches et toutes
+les racines, tronquées à six secondes : **120 zones, 229 Mo en mémoire** pour un
+budget de 256.
+
+Elle contient aussi des échantillons de RELÂCHEMENT (`rel79.wav`) et
+d'HARMONIQUES (`harmSA4.wav`). Ils sont ignorés, et le motif de nommage de
+l'outil est ancré pour qu'ils le soient explicitement : c'est l'omission
+déclarée de la v1, pas un oubli.
+
+**Justesse, mesurée sur les soixante et une notes de 36 à 96, jouées isolément**
+(pic spectral cherché dans une fenêtre de ±6 % autour du fondamental attendu) :
+
+| | écart au tempérament égal |
+|---|---|
+| médiane | **5,8 cents** |
+| maximum | 20,5 cents (notes 95-96, extrême aigu) |
+| extrême grave (37-39) | −16 à −18 cents |
+
+Ces écarts ne sont pas une erreur de repitch : c'est **l'accord étiré** d'un
+piano réel, dont les partiels graves sont bas et l'aigu haut par inharmonicité
+des cordes. Un lecteur d'échantillons juste au cent près rendrait un piano moins
+fidèle, pas plus. La vérification du repitch au sens strict — ±5 cents — se fait
+donc sur une sinusoïde de référence, dans les tests, où la question a un sens.
+
+**Coutures aux frontières de zones**, mesurées par le rapport
+centroïde spectral / fondamental sur la gamme chromatique 48-84 :
+
+| | écart relatif d'une note à la suivante |
+|---|---|
+| à l'intérieur d'une zone | **0,5 %** |
+| à une frontière de zone | **13,1 %** |
+| gradient NATUREL du piano entre deux racines (3 demi-tons) | **13,2 %** |
+
+Le chiffre qui compte est le troisième. La couture n'AJOUTE rien : elle
+concentre en un pas le gradient que l'instrument parcourt naturellement en
+trois demi-tons, parce que la banque n'a pas d'échantillon intermédiaire à
+offrir. Descendre à un échantillon par demi-ton lisserait la marche — et
+triplerait la mémoire, sans que rien n'ait encore montré que la marche
+s'entende. C'est mesuré, c'est écrit, et c'est là qu'il faudra revenir si
+l'écoute dit le contraire.
+
+### L'import SoundFont : cent vingt-huit instruments d'un coup
+
+Un lecteur multi-échantillons sans banque est un moteur sans carburant. Le SF2
+est le seul format d'instrument échantillonné dont il existe des banques libres
+COMPLÈTES et attribuables — FluidR3, GeneralUser GS —, et le lire ouvre
+l'orchestre General MIDI entier sans une ligne de DSP nouvelle.
+
+**Ce qui est lu, et ce qui ne l'est pas.** Le format déclare une soixantaine de
+« générateurs » ; une petite dizaine décrit un instrument échantillonné (zones
+de notes et de vélocités, note racine, accord, boucle, atténuation, enveloppe de
+volume), le reste décrit une synthèse soustractive complète — filtre, LFO,
+enveloppe de modulation — que cette machine ne possède pas. Les générateurs non
+appliqués sont **imprimés à la conversion, un par un, avec leur nombre
+d'occurrences**. Une banque dont le caractère tient à son filtre se convertirait
+sinon en silence, et personne ne saurait pourquoi elle sonne plat.
+
+**Où vit ce code.** L'outil est `tools/vsm-sf2` ; la LECTURE est dans
+`interchange/`, parce que dans ce projet tout format a des tests et qu'il
+n'existe pas d'infrastructure de test Python. Un analyseur de format sans tests
+est précisément la pièce qui se met à mal interpréter un champ sans que personne
+ne le voie — l'atténuation SF2 est en **centibels**, et la confondre avec des
+décibels donne des couches douces dix fois trop faibles. C'est un test qui l'a
+attrapée. `core/` et `audio/` ignorent tout du SF2 ; le DAW ne charge jamais
+qu'un profil.
+
+**Ce que le format de profil ne sait pas dire.** L'enveloppe de volume du SF2
+n'a pas sa place dans le profil, qui n'a pas d'enveloppe par zone. L'outil écrit
+donc à côté un preset `*.synth.json` — un format qui existe déjà — portant
+`envelope.1.{attack,release}` et désignant le profil par son nom. Rien n'est
+perdu en silence : ce qui n'entre pas dans le profil entre dans le preset, et ce
+qui n'entre nulle part est imprimé.
+
+**Le SF2 d'essai est ENGENDRÉ, pas commis.** Un binaire commis est opaque :
+quand un test échoue, on ne sait pas si la faute est au lecteur ou au fichier.
+Ici le contenu attendu est du code relisible, et le test compare la lecture à ce
+que l'écriture a voulu dire — zone globale d'instrument comprise, qui est la
+construction qu'emploie toute banque réelle.
+
+### Le banc de clôture : la machine n'apporte rien sur *Clair de Lune*
+
+Il faut l'écrire ici, à côté de la description de la machine, parce que c'est ce
+qu'un lecteur doit savoir avant de s'en servir. Mesuré à conditions strictement
+identiques — même morceau, même code, mêmes options, seul le dossier de profils
+changeant :
+
+| | distance globale | machine retenue |
+|---|---|---|
+| sans `vsm.multisample` | **0,2159** | `vsm.piano` |
+| avec `vsm.multisample` | **0,2159** | `vsm.piano` |
+
+Elle finit **7e sur 30** au tableau d'arbitrage (0,3571, patch d'usine) et ne
+survit pas à la présélection de la recherche par note. Trois causes mécaniques
+ont été éprouvées et écartées — troncature (−49 dB de discontinuité), double
+comptage de la dynamique (un millième d'écart sur toute la course du réglage),
+absence de production (la réverbération dégrade les deux rendus) — et la
+métrique désigne bien la machine quand la cible est son propre rendu (0,0000
+contre 0,1648 au second). Le détail et les trois lectures encore ouvertes sont
+dans [`docs/CDC-multisample.md`](docs/CDC-multisample.md) § 11 ; la leçon
+générale est au § 5 sexies de la feuille de route.
+
+Ce que la machine apporte, à ce stade, est donc la **couverture** — un lecteur
+d'échantillons honnête, et l'orchestre General MIDI par l'import SoundFont — pas
+une victoire mesurée sur le piano.
+
+### Ce que la façade montre, et pourquoi elle est pauvre
+
+Les autres machines portent leur timbre dans leurs commandes. Ici le timbre est
+dans les échantillons, et la façade n'a rien à en dire. Lui inventer une rangée
+de potentiomètres « pour faire riche » serait le mensonge que le § 29 reproche
+aux façades décoratives. Elle montre donc **ce qui se joue** : programme,
+toucher, accord, articulation, sortie — sept commandes, aucune omise. Le reste
+— zones, couches, boucles — appartient au PROFIL, c'est-à-dire à un fichier, pas
+à un bouton.
 
 ---
 

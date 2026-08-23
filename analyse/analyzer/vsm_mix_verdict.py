@@ -140,6 +140,7 @@ def keep_what_helps_the_mix(
     metric: str = "v2",
     tempo: float = 120.0,
     binary: Optional[str] = None,
+    profiles: Optional[Dict[str, str]] = None,
 ) -> List[MixDecision]:
     """
     Tranche piste par piste entre l'état courant et ses concurrentes.
@@ -189,7 +190,8 @@ def keep_what_helps_the_mix(
         if not propositions:
             continue
 
-        etat_courant = (track.machine, dict(track.parameters), float(track.volume))
+        etat_courant = (track.machine, dict(track.parameters), float(track.volume),
+                        str(track.profile))
         d_courant = distance_du_projet()
         meilleur = ("réglage", d_courant, etat_courant, None)
         ecartees: List[Tuple[str, float]] = []
@@ -202,6 +204,13 @@ def keep_what_helps_the_mix(
 
             track.machine = machine_visee
             track.parameters = dict(proposition.parameters)
+            # Le PROFIL suit la machine, comme le nom d'affichage : c'est le
+            # seul endroit de la chaîne où une piste change de machine, donc le
+            # seul où un profil peut se retrouver attaché à la mauvaise. Une
+            # piste qui deviendrait `vsm.multisample` en gardant le profil vide
+            # rendrait du silence, et le verdict compterait ce silence comme un
+            # résultat.
+            track.profile = (profiles or {}).get(machine_visee, "")
             # Le nom d'affichage suit la machine, sinon le projet annoncerait
             # l'ancienne dans son interface.
             if machine_visee != etat_courant[0]:
@@ -215,13 +224,14 @@ def keep_what_helps_the_mix(
             if distance < meilleur[1] - 1e-6:
                 ecartees.append((meilleur[0], meilleur[1]))
                 meilleur = (proposition.label, distance,
-                            (track.machine, dict(track.parameters), float(track.volume)),
+                            (track.machine, dict(track.parameters), float(track.volume),
+                             str(track.profile)),
                             proposition.track_distance)
             else:
                 ecartees.append((proposition.label, distance))
 
-        track.machine, track.parameters, track.volume = (
-            meilleur[2][0], dict(meilleur[2][1]), meilleur[2][2])
+        track.machine, track.parameters, track.volume, track.profile = (
+            meilleur[2][0], dict(meilleur[2][1]), meilleur[2][2], meilleur[2][3])
         if track.machine != etat_courant[0]:
             track.machine_display_name = ""
         decisions.append(MixDecision(track.name, meilleur[0], meilleur[1], ecartees,

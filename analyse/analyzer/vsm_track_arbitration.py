@@ -103,6 +103,11 @@ class TrackCandidate:
     machine: str
     parameters: Dict[str, float]
     origin: str
+    # NOM du profil multi-échantillons, pour les machines qui en exigent un.
+    # Sans lui, le rendu hors ligne de la piste est MUET -- la machine n'a
+    # aucune zone -- et la candidate se fait écarter pour une raison qui n'a
+    # rien à voir avec son timbre.
+    profile: str = ""
 
 
 @dataclass
@@ -116,6 +121,7 @@ class TrackVerdict:
 def build_candidates(
     searched: Sequence[Tuple[str, Dict[str, float]]],
     factory_machines: Sequence[str],
+    profiles: Optional[Dict[str, str]] = None,
 ) -> List[TrackCandidate]:
     """
     La liste des candidates : les patchs trouvés, plus les patchs d'usine.
@@ -123,11 +129,19 @@ def build_candidates(
     Une machine peut donc apparaître deux fois, avec deux patchs différents.
     C'est voulu : ce sont deux propositions distinctes, et les départager est
     exactement ce qu'on demande à cette étape.
+
+    `profiles` associe une machine au NOM de son profil multi-échantillons.
+    L'oublier ne se voyait PAS : le rendu hors ligne sortait du silence, le
+    garde-fou de niveau écartait la candidate, et elle disparaissait du tableau
+    d'arbitrage sans un mot -- exactement la panne muette que le § 5 bis de la
+    feuille de route interdit.
     """
-    candidates = [TrackCandidate(machine, dict(parameters), ORIGINE_CHERCHE)
+    profiles = profiles or {}
+    candidates = [TrackCandidate(machine, dict(parameters), ORIGINE_CHERCHE,
+                                 profiles.get(machine, ""))
                   for machine, parameters in searched]
     for machine in factory_machines:
-        candidates.append(TrackCandidate(machine, {}, ORIGINE_USINE))
+        candidates.append(TrackCandidate(machine, {}, ORIGINE_USINE, profiles.get(machine, "")))
     return candidates
 
 
@@ -180,6 +194,7 @@ def arbitrate_on_track(
     duree = float(np.asarray(stem_audio).size) / float(sample_rate) if sample_rate else None
 
     verdicts: List[TrackVerdict] = []
+    ecartees: List[Tuple[str, str, str]] = []
     exportables = list(notes)
     workdir = Path(workdir)
 
@@ -190,13 +205,20 @@ def arbitrate_on_track(
 
     for candidate in candidates:
         piste = ExportTrack(name=name, machine=candidate.machine,
-                            parameters=dict(candidate.parameters), notes=exportables)
+                            parameters=dict(candidate.parameters), notes=exportables,
+                            profile=candidate.profile)
         rendu = render_track_offline(piste, dossier, sample_rate, duration=duree,
                                      tempo=tempo, binary=binary, title=f"arbitrage-{name}")
         # Effacé tout de suite : il a déjà été lu en mémoire, et le garder ne
         # servirait qu'à saturer le disque au trente-huitième.
         (dossier / "rendu.wav").unlink(missing_ok=True)
         if rendu is None or rendu.size == 0:
+            # ABANDON DIT, jamais tu. Un rendu vide vient soit d'un moteur qui a
+            # refusé la requête, soit d'une machine sans sa donnée -- et dans les
+            # deux cas la candidate disparaît du tableau pour une raison qui n'a
+            # rien à voir avec son timbre. Le lecteur du tableau doit pouvoir
+            # faire la différence entre « mauvaise » et « pas mesurée ».
+            ecartees.append((candidate.machine, candidate.origin, "rendu vide"))
             continue
         # Une candidate qui ne pourra pas atteindre le niveau de son stem n'est
         # pas une candidate : le calage des volumes buterait sur son plafond et
@@ -206,10 +228,17 @@ def arbitrate_on_track(
         if stem_rms is not None and stem_rms > 0.0:
             rms_rendu = float(np.sqrt(np.mean(np.square(rendu.astype(np.float64)))))
             if rms_rendu <= 0.0 or base_volume * stem_rms / rms_rendu > max_volume:
+                raison = ("silence" if rms_rendu <= 0.0
+                          else f"trop faible, il faudrait ×{base_volume * stem_rms / rms_rendu:.1f}")
+                ecartees.append((candidate.machine, candidate.origin, raison))
                 continue
         distance = float(mesurer(rendu))
         verdicts.append(TrackVerdict(candidate.machine, dict(candidate.parameters),
                                      candidate.origin, distance))
 
     verdicts.sort(key=lambda v: v.distance)
+    if ecartees:
+        print(f"      {name}  : {len(ecartees)} candidate(s) non mesurée(s) — "
+              + ", ".join(f"{machine} ({origine}, {raison})"
+                          for machine, origine, raison in ecartees))
     return verdicts

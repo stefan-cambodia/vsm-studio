@@ -1,5 +1,6 @@
 #include "TestFramework.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
+#include "../plugins/multisample/MultisampleSynth.h"
 #include "../plugins/sampler/SamplerSynth.h"
 #include <algorithm>
 #include <cmath>
@@ -243,6 +244,83 @@ void computeSpectrum(const std::vector<float>& x, float (&bandsOut)[kNumBands], 
 /// synthétique DÉTERMINISTE -- généré ici, jamais lu depuis un fichier, pour
 /// que le test ne dépende d'aucune donnée externe.
 void prepareMachineForFingerprint(const std::string& pluginId, vsm::audio::plugin::ISynthPlugin& plugin) {
+    if (pluginId == "vsm.multisample") {
+        // Même raison que le sampler, et une exigence de plus : l'empreinte doit
+        // exercer ce qui distingue CETTE machine -- le choix de zone selon la
+        // note, le choix de couche selon la vélocité, le repitch et la boucle de
+        // tenue. Le profil est donc engendré ici, avec deux zones de notes, deux
+        // couches de vélocité de part et d'autre de 100 (la phrase mélodique joue
+        // 100, 127 et 90, donc les deux couches servent), et une boucle calée sur
+        // un nombre ENTIER de périodes.
+        //
+        // ENGENDRÉ, JAMAIS LU : le cahier des charges de la machine interdit que
+        // l'empreinte dépende d'une banque téléchargée. Une empreinte qui exige
+        // une installation n'est pas une empreinte, c'est une panne de CI.
+        auto& machine = dynamic_cast<vsm::plugins::multisample::MultisampleSynth&>(plugin);
+        auto profile = std::make_shared<vsm::plugins::multisample::LoadedProfile>();
+        profile->name = "Empreinte";
+        profile->attribution = "engendré par les tests";
+        profile->programNames = {"Empreinte"};
+
+        struct Decl { int lo, hi, root, loVel, hiVel; double frequency, damping, level; bool loop; };
+        const Decl declarations[] = {
+            {40, 59, 50,   1,  99, 150.0, 1.5, 0.30, true},
+            {40, 59, 50, 100, 127, 150.0, 0.8, 0.62, true},
+            {60, 79, 66,   1,  99, 375.0, 4.0, 0.30, false},
+            {60, 79, 66, 100, 127, 375.0, 2.5, 0.62, false},
+        };
+        for (const auto& declaration : declarations) {
+            vsm::plugins::multisample::LoadedZone zone;
+            zone.lowNote = declaration.lo;
+            zone.highNote = declaration.hi;
+            zone.lowVelocity = declaration.loVel;
+            zone.highVelocity = declaration.hiVel;
+            zone.rootNote = declaration.root;
+            zone.level = static_cast<float>(declaration.level);
+
+            auto buffer = std::make_shared<vsm::audio::io::SampleBuffer>();
+            buffer->sampleRate = kSampleRate;
+            buffer->left.resize(9600);
+            buffer->right.resize(9600);
+            for (size_t i = 0; i < buffer->left.size(); ++i) {
+                const double t = static_cast<double>(i) / kSampleRate;
+                const double phase = 2.0 * std::acos(-1.0) * declaration.frequency * t;
+                // Une harmonique trois discrète : de quoi rendre l'empreinte
+                // spectrale sensible au filtre de timbre et à l'interpolation.
+                const double value = (std::sin(phase) + 0.25 * std::sin(3.0 * phase))
+                                     * std::exp(-declaration.damping * t);
+                buffer->left[i] = static_cast<float>(value);
+                // Canal droit très légèrement décalé : la largeur stéréo fait
+                // partie de l'empreinte, et un lecteur qui perdrait le canal
+                // droit passerait sinon inaperçu.
+                buffer->right[i] = static_cast<float>(value * 0.92);
+            }
+            // NORMALISÉ à un pic de 1, comme l'est toute banque publiée. Sans
+            // cela, la somme de deux notes tenues dépasserait la pleine échelle
+            // et l'empreinte figerait un écrêtage plutôt qu'un rendu.
+            float peak = 0.0f;
+            for (float value : buffer->left) peak = std::max(peak, std::abs(value));
+            if (peak > 0.0f) {
+                const float normalisation = 1.0f / peak;
+                for (auto& value : buffer->left) value *= normalisation;
+                for (auto& value : buffer->right) value *= normalisation;
+            }
+
+            zone.sample = buffer;
+            zone.relativePath = "empreinte.wav";
+            if (declaration.loop) {
+                // 150 Hz à 48 kHz : trois cent vingt trames par période. La
+                // boucle couvre dix périodes exactes.
+                zone.loopEnabled = true;
+                zone.loopStart = 3200;
+                zone.loopEnd = 6400;
+            }
+            profile->zones.push_back(std::move(zone));
+        }
+        machine.setProfile(std::move(profile));
+        return;
+    }
+
     if (pluginId != "vsm.sampler") return;
 
     auto& sampler = dynamic_cast<vsm::plugins::sampler::SamplerSynth&>(plugin);
@@ -402,6 +480,7 @@ VSM_TEST(regression_obx)        { checkMachine("vsm.obx"); }
 VSM_TEST(regression_supersaw)   { checkMachine("vsm.supersaw"); }
 VSM_TEST(regression_wavetable)  { checkMachine("vsm.wavetable"); }
 VSM_TEST(regression_pcmhybrid)  { checkMachine("vsm.pcmhybrid"); }
+VSM_TEST(regression_multisample){ checkMachine("vsm.multisample"); }
 VSM_TEST(regression_tonewheel)  { checkMachine("vsm.tonewheel"); }
 VSM_TEST(regression_generic)    { checkMachine("vsm.generic"); }
 VSM_TEST(regression_string)     { checkMachine("vsm.string"); }

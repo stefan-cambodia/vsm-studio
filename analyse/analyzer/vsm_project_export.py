@@ -84,6 +84,12 @@ class ExportTrack:
     # chemin ». C'est par là que passent les coups de batterie découpés dans
     # l'enregistrement d'origine.
     samples: Dict[int, str] = field(default_factory=dict)
+    # PROFIL multi-échantillons, désigné par son NOM et non par un chemin.
+    # Un profil de piano pèse deux cents mégaoctets : le recopier dans chaque
+    # projet exporté serait absurde, et un chemin absolu ne s'ouvrirait que sur
+    # la machine qui l'a écrit. Le projet dit donc « le profil qui s'appelle
+    # ainsi », et le DAW le résout parmi les profils installés.
+    profile: str = ""
     distance: Optional[float] = None
     machine_display_name: str = ""
     # Courbes d'automation : « identité sémantique -> [(seconde, valeur)] »,
@@ -115,6 +121,8 @@ def _preset_document(track: ExportTrack, name: str) -> dict:
         document["samples"] = {
             str(int(slot)): str(path) for slot, path in sorted(track.samples.items())
         }
+    if track.profile:
+        document["profile"] = track.profile
     return document
 
 

@@ -2033,12 +2033,74 @@ MachinePanel makeWind() {
     return panel;
 }
 
+/// `vsm.multisample` -- une façade DÉLIBÉRÉMENT PAUVRE, et c'est le sujet.
+///
+/// Les autres machines du parc portent leur timbre dans leurs commandes : on
+/// tourne la coupure et le son change de nature. Ici, le timbre est dans les
+/// échantillons, et la façade n'a rien à en dire. Lui inventer une rangée de
+/// potentiomètres pour « faire riche » serait exactement le mensonge que le
+/// § 29 d'ARCHITECTURE.md reproche aux façades décoratives : des commandes qui
+/// ne font presque rien, sur une machine dont l'essentiel se joue ailleurs.
+///
+/// Ce que la façade montre est donc CE QUI SE JOUE : le programme choisi, la
+/// réponse au toucher, l'articulation, et la sortie. Le reste -- les zones,
+/// les couches, les boucles -- appartient au PROFIL, c'est-à-dire à un
+/// fichier, pas à un bouton. Le bandeau de la machine affiche le nom du profil
+/// installé et son attribution ; à défaut, il dit qu'aucun profil n'est
+/// installé, plutôt que de laisser croire à une panne.
+MachinePanel makeMultisample() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.multisample";
+    panel.displayName = "Multisample (acoustique échantillonné)";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#221A14";
+    panel.sectionColour = "#191310";
+    panel.textColour = "#F0E4D2";
+    panel.knobColour = "#C9A227";
+    panel.gridColumns = 12;
+    panel.gridRows = 4;
+
+    PanelSection instrument;
+    instrument.title = "INSTRUMENT";
+    instrument.accentColour = "#C9A227";
+    instrument.column = 0; instrument.row = 0; instrument.columnSpan = 4; instrument.rowSpan = 4;
+    instrument.contentColumns = 2;
+    instrument.controls = {
+        control("Program", "PROGRAM", S::Selector, 0, 0, 2, 1),
+        control("Tune", "TUNE", S::Knob, 0, 1),
+        control("Velocity Amount", "TOUCH", S::Knob, 1, 1),
+    };
+
+    PanelSection articulation;
+    articulation.title = "ARTICULATION";
+    articulation.accentColour = "#9FB4C7";
+    articulation.column = 4; articulation.row = 0; articulation.columnSpan = 4; articulation.rowSpan = 4;
+    articulation.contentColumns = 2;
+    articulation.controls = {
+        control("Attack", "ATTACK", S::VerticalSlider, 0, 0, 1, 2),
+        control("Release", "RELEASE", S::VerticalSlider, 1, 0, 1, 2),
+    };
+
+    PanelSection output;
+    output.title = "OUTPUT";
+    output.accentColour = "#C9A227";
+    output.column = 8; output.row = 0; output.columnSpan = 4; output.rowSpan = 4;
+    output.contentColumns = 2;
+    output.controls = {
+        control("Tone Cutoff", "TONE", S::LargeKnob, 0, 0),
+        control("Output Level", "VOLUME", S::Knob, 1, 0),
+    };
+
+    panel.sections = {instrument, articulation, output};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
         makeJuno106(), makeJupiter8(), makeProphet(), makeMs20(), makeArpOdyssey(), makeDx7(), makeSampler(),
         makeEPiano(), makeObx(), makeSupersaw(), makeWavetable(), makePcmHybrid(), makeTonewheel(), makeGeneric(), makeString(),
-        makePiano(), makeDrums(), makeWind()
+        makePiano(), makeDrums(), makeWind(), makeMultisample()
     };
     return all;
 }

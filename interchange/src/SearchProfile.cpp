@@ -268,6 +268,12 @@ constexpr Rule kRules[] = {
     {"effect.vibrato.rate",                3.0f,     9.0f, SearchScale::Logarithmic, 0.25f},
     {"effect.chorus.mode",                 0.0f,     0.0f, SearchScale::Linear,      0.38f},
     {"effect.drive.amount",                0.0f,     1.0f, SearchScale::Linear,      0.35f},
+    // Accord global, en cents. Cherchable et UTILE : une banque enregistrée
+    // instrument par instrument n'est jamais parfaitement d'accord avec
+    // elle-même, et quelques cents suffisent à creuser la distance sur une
+    // cible tenue. Bornes du paramètre (0/0), échelle linéaire -- le cent EST
+    // déjà une échelle logarithmique de fréquence.
+    {"output.tune",                        0.0f,     0.0f, SearchScale::Linear,      0.55f},
 };
 
 /// Paramètres EXCLUS de la recherche, avec la raison. Les exclure n'est pas
@@ -304,6 +310,12 @@ constexpr Exclusion kExclusions[] = {
      "groupe de coupure : configuration du kit, sans effet sur un coup isolé"},
     {"sampler.slot.#.pan",
      "placement stéréo d'un kit ; une note isolée se compare en mono"},
+    {"sample.program",
+     "choix d'INSTRUMENT dans le profil, et il est discret : entre le programme "
+     "40 et le 41 il n'y a pas de continuum mais deux sons sans rapport. "
+     "L'évolution différentielle interpole ses candidats ; sur une falaise "
+     "pareille elle ne descend pas, elle tire au sort. C'est le classifieur ou "
+     "l'utilisateur qui choisit l'instrument, la recherche cale l'habillage"},
 };
 
 bool isExcluded(const std::string& canonicalId) {

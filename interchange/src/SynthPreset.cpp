@@ -1,9 +1,11 @@
 #include "vsm/interchange/SynthPreset.h"
+#include "vsm/interchange/MultisampleProfile.h"
 #include "vsm/audio/plugin/ISampleLoader.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <filesystem>
+#include <vector>
 #include <sstream>
 
 namespace vsm::interchange {
@@ -118,6 +120,9 @@ JsonValue synthPresetToJson(const SynthPreset& preset) {
             samples.set(std::to_string(slot), JsonValue::makeString(path));
         root.set("samples", std::move(samples));
     }
+    if (!preset.profile.empty()) {
+        root.set("profile", JsonValue::makeString(preset.profile));
+    }
     return root;
 }
 
@@ -165,6 +170,8 @@ SynthPresetLoadResult synthPresetFromJson(const JsonValue& json) {
 
     // Échantillons : champ facultatif. Absent = preset sans échantillon, ce
     // qui est le cas de toutes les machines sauf celles qui en lisent.
+    if (json["profile"].isString()) preset.profile = json["profile"].asString();
+
     const JsonValue& samples = json["samples"];
     if (samples.isObject()) {
         for (const auto& [slotText, path] : samples.members()) {
@@ -206,6 +213,70 @@ SampleLoadReport applyPresetSamples(const SynthPreset& preset,
                                      vsm::audio::plugin::ISynthPlugin& plugin,
                                      const std::string& baseFolder) {
     SampleLoadReport report;
+
+    // Le PROFIL multi-échantillons passe par la même porte que les
+    // échantillons, et pour la même raison : c'est une donnée externe désignée
+    // par un chemin relatif, que `setParameter` ne sait pas transporter. Il est
+    // traité d'abord, parce qu'une machine à profil n'a pas d'emplacements.
+    if (!preset.profile.empty()) {
+        auto* bank = dynamic_cast<vsm::audio::plugin::IMultisampleBank*>(&plugin);
+        if (bank == nullptr) {
+            report.failures.push_back(
+                "la machine \"" + preset.pluginId + "\" n'accepte pas de profil "
+                "multi-échantillons, « " + preset.profile + " » ignoré");
+        } else if (std::filesystem::path(preset.profile).is_absolute()) {
+            report.failures.push_back("profil : chemin absolu refusé (« " + preset.profile
+                                       + " ») -- un projet doit rester transportable");
+        } else {
+            // RÉSOLUTION EN TROIS TEMPS, et c'est une décision de format.
+            //
+            // Un profil de piano pèse deux cents mégaoctets : le recopier dans
+            // chaque projet exporté serait absurde, et l'y désigner par un
+            // chemin absolu rendrait le projet non transportable. Un projet dit
+            // donc soit « le profil qui est DANS mon dossier » (chemin relatif,
+            // pour un profil que le projet embarque vraiment), soit « le profil
+            // INSTALLÉ qui s'appelle ainsi » -- et l'ouvrir sur une autre
+            // machine marche pourvu que la banque y soit installée.
+            std::vector<std::string> tentatives;
+            std::string resolu;
+
+            const std::string local = (std::filesystem::path(baseFolder) / preset.profile).string();
+            tentatives.push_back(local);
+            if (std::filesystem::exists(local)) {
+                resolu = local;
+            } else {
+                const std::string installe =
+                    (std::filesystem::path(multisampleProfileFolder()) / preset.profile).string();
+                tentatives.push_back(installe);
+                if (std::filesystem::exists(installe)) {
+                    resolu = installe;
+                } else {
+                    // Dernier recours : le NOM déclaré par un profil installé.
+                    for (const auto& candidat : installedMultisampleProfiles()) {
+                        if (candidat.error.empty() && candidat.name == preset.profile) {
+                            resolu = candidat.path;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (resolu.empty()) {
+                std::string detail = "profil « " + preset.profile + " » introuvable. Cherché : ";
+                for (size_t i = 0; i < tentatives.size(); ++i)
+                    detail += (i ? ", " : "") + tentatives[i];
+                detail += ", et parmi les profils installés de " + multisampleProfileFolder();
+                report.failures.push_back(detail);
+            } else {
+                const auto applied = applyMultisampleProfile(plugin, resolu);
+                if (applied.error.empty())
+                    report.loaded.emplace_back(-1, preset.profile);
+                else
+                    report.failures.push_back("profil (« " + preset.profile + " ») : " + applied.error);
+            }
+        }
+    }
+
     if (preset.samples.empty()) return report;
 
     // La capacité de charger des échantillons est une interface À PART : le

@@ -105,6 +105,7 @@ def refine_patch_on_track(
     stem_rms: Optional[float] = None,
     base_volume: float = 0.9,
     max_volume: float = 10.0,
+    profile: str = "",
 ) -> Optional[RefineOutcome]:
     """
     Affine `parameters` pour `machine` en jugeant sur la piste entière.
@@ -152,8 +153,11 @@ def refine_patch_on_track(
             return cache[cle]
         if compteur["n"] >= budget:
             return None
+        # Le PROFIL suit la machine jusqu'ici : sans lui, le rendu hors ligne
+        # est muet, chaque évaluation vaut l'infini, et le réglage conclut « rien
+        # ne rapproche » alors qu'il n'a jamais entendu la machine.
         piste = ExportTrack(name=name, machine=machine, parameters=dict(valeurs),
-                            notes=list(notes))
+                            notes=list(notes), profile=profile)
         rendu = render_track_offline(piste, dossier, sample_rate, duration=duree,
                                      tempo=tempo, binary=binary, title=f"reglage-{name}")
         (dossier / "rendu.wav").unlink(missing_ok=True)

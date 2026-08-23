@@ -127,6 +127,9 @@ class VsmEngine:
         self.sample_rate = sample_rate
         self.block_size = block_size
         self._request_id = 0
+        # Profil multi-échantillons retenu pour toute la durée du moteur.
+        # `None` = pas encore demandé, `""` = demandé et aucun installé.
+        self._profile_choice: Optional[str] = None
         self._process = subprocess.Popen(
             [str(self.binary), "--serve"],
             stdin=subprocess.PIPE,
@@ -200,6 +203,39 @@ class VsmEngine:
         """Machines que le moteur sait réellement instancier."""
         return list(self._query({"query": "machines", "_expect": "machines"})["machines"])
 
+    # --- profils multi-échantillons -------------------------------------
+    #
+    # POURQUOI C'EST LE MOTEUR QU'ON INTERROGE, et pas un dossier lu ici : la
+    # règle « le moteur est la source de vérité du rendu » (feuille de route
+    # § 0) vaut aussi pour ce qu'il sait charger. Une découverte faite côté
+    # Python pourrait retenir un profil que le moteur refuse -- et l'écart ne
+    # se verrait qu'au moment où toutes les distances seraient déjà fausses.
+
+    def profiles(self) -> List[Dict[str, object]]:
+        """Profils multi-échantillons installés, tels que le moteur les voit."""
+        try:
+            return list(self._query({"query": "profiles", "_expect": "profiles"})["profiles"])
+        except VsmEngineError:
+            # Moteur plus ancien que cette consultation : pas de profil, dit
+            # franchement plutôt que déguisé en liste vide silencieuse.
+            return []
+
+    def profile_for(self, machine: str) -> Optional[str]:
+        """Chemin du profil à employer pour cette machine, ou None.
+
+        Le choix est le PREMIER profil valide installé, et il est mémorisé pour
+        la durée du moteur : deux rendus de la même exécution doivent porter le
+        même profil, sans quoi deux distances de la même série ne se
+        comparent plus -- c'est la leçon du § 10.3 de la feuille de route,
+        appliquée à une condition de plus.
+        """
+        if machine not in _MACHINES_A_PROFIL:
+            return None
+        if self._profile_choice is None:
+            valides = [p for p in self.profiles() if not p.get("error")]
+            self._profile_choice = str(valides[0]["path"]) if valides else ""
+        return self._profile_choice or None
+
     def search_profile(self, machine: str) -> List["SearchDimension"]:
         """
         Espace de recherche DÉCLARÉ PAR LE MOTEUR pour cette machine.
@@ -271,6 +307,9 @@ class VsmEngine:
             ],
             "returnAudio": "base64-f32-mono",
         }
+        profile = self.profile_for(machine)
+        if profile:
+            request["profile"] = profile
         if samples:
             # Échantillons à charger dans la machine (sampler) : c'est ainsi
             # qu'un coup découpé d'un enregistrement se rejoue tel quel.
@@ -332,6 +371,9 @@ class VsmEngine:
             ],
             "returnAudio": "base64-f32-mono",
         }
+        profile = self.profile_for(machine)
+        if profile:
+            request["profile"] = profile
         if samples:
             request["samples"] = {str(int(slot)): str(path) for slot, path in samples.items()}
 
@@ -484,6 +526,12 @@ def synthesize_note_vsm(
 # (tests hors ligne, documentation). Elle est forcément en retard sur le DAW --
 # c'est pourquoi elle n'est plus la source de vérité : `available_machines`
 # interroge le moteur dès qu'il y en a un.
+# Machines qui n'ont AUCUN son tant qu'un profil n'est pas installé. Elles ne
+# sont pas des candidates par défaut : sans profil elles rendent du silence, et
+# une distance mesurée contre du silence est un chiffre faux -- sur une cible
+# douce, la machine muette gagnerait.
+_MACHINES_A_PROFIL = {"vsm.multisample"}
+
 _FALLBACK_MACHINES = [
     "vsm.minimoog", "vsm.tb303", "vsm.juno106", "vsm.jupiter8", "vsm.prophet",
     "vsm.sh101", "vsm.ms20", "vsm.arpodyssey", "vsm.dx7", "vsm.tr808", "vsm.tr909",

@@ -1,4 +1,5 @@
 #include "vsm/interchange/PatchRenderService.h"
+#include "vsm/interchange/MultisampleProfile.h"
 #include "vsm/interchange/SearchProfile.h"
 #include "vsm/interchange/ParameterDescriptor.h"
 #include "vsm/audio/io/WavFileWriter.h"
@@ -101,6 +102,8 @@ PatchRequestParseResult parsePatchRequest(const std::string& jsonLine) {
     for (const auto& [semanticId, value] : json["parameters"].members())
         if (value.isNumber()) request.parameters.emplace_back(semanticId, static_cast<float>(value.asNumber()));
 
+    request.profilePath = json["profile"].asString();
+
     for (const auto& [slotText, path] : json["samples"].members()) {
         if (!path.isString()) continue;
         request.samples.emplace_back(std::atoi(slotText.c_str()), path.asString());
@@ -152,6 +155,16 @@ struct PatchRenderService::Impl {
     /// Le profil sémantique, lui, reste en cache : le construire instancie la
     /// machine et parcourt sa table de paramètres.
     std::map<std::string, SemanticProfile> profiles;
+
+    /// Échantillons décodés, PARTAGÉS entre les instances successives. C'est le
+    /// seul état qui survive d'une requête à l'autre, et il ne porte que de la
+    /// DONNÉE, jamais de l'état de machine : le déterminisme énoncé ci-dessus
+    /// tient donc toujours, ce qu'un test vérifie. Sans lui, installer un
+    /// profil de piano coûtait 124 ms par rendu contre 4 ms pour un
+    /// soustractif — trente fois le prix d'une évaluation, et une machine
+    /// qu'on ne pouvait pas chercher.
+    vsm::audio::plugin::MultisampleSampleCache multisampleSamples;
+
     std::vector<float> left, right;
     std::vector<MidiNoteEvent> events;
 };
@@ -230,6 +243,31 @@ PatchRenderResponse PatchRenderService::render(const PatchRenderRequest& request
                                                  buildSemanticProfile(request.machineId)).first;
     // Chargement des échantillons AVANT les paramètres : un emplacement vide
     // ignorerait son accord et son enveloppe.
+    // Le PROFIL d'abord : sans lui, la machine multi-échantillons n'a aucune
+    // zone, donc aucune note ne sonne et les paramètres s'appliqueraient à du
+    // vide. C'est aussi le seul endroit où l'on peut refuser proprement.
+    if (auto* bank = dynamic_cast<vsm::audio::plugin::IMultisampleBank*>(&machine); bank != nullptr) {
+        if (request.profilePath.empty()) {
+            // REFUS, et pas un rendu silencieux : une distance calculée contre
+            // du silence est un chiffre, et un chiffre faux est pire que pas de
+            // chiffre du tout.
+            response.error = "la machine « " + request.machineId
+                           + " » exige un profil : ajouter le champ « profile » à la requête "
+                             "(voir la consultation « profiles » pour la liste des profils installés)";
+            return response;
+        }
+        const auto applied = applyMultisampleProfile(machine, request.profilePath,
+                                                     &impl_->multisampleSamples);
+        if (!applied.error.empty()) {
+            response.error = "profil refusé : " + applied.error;
+            return response;
+        }
+        for (const auto& field : applied.ignored)
+            response.warnings.push_back("champ de profil ignoré : " + field);
+    } else if (!request.profilePath.empty()) {
+        response.warnings.push_back("cette machine ne lit pas de profil : " + request.machineId);
+    }
+
     if (!request.samples.empty()) {
         auto* loader = dynamic_cast<vsm::audio::plugin::ISampleLoader*>(&machine);
         if (loader == nullptr) {
@@ -359,6 +397,25 @@ bool handleQuery(const JsonValue& json, std::ostream& output) {
             if (id.rfind("vsm.", 0) == 0) list.append(JsonValue::makeString(id));
         reply.set("ok", JsonValue::makeBoolean(true));
         reply.set("machines", std::move(list));
+    } else if (query == "profiles") {
+        // Ce que la chaîne d'analyse consulte pour savoir si `vsm.multisample`
+        // est utilisable. Sans profil installé, la machine ne doit PAS entrer
+        // dans les candidates : elle rendrait du silence et gagnerait sur les
+        // cibles douces, ce qui serait un faux verdict.
+        JsonValue list = JsonValue::makeArray();
+        for (const auto& installed : installedMultisampleProfiles()) {
+            JsonValue entry = JsonValue::makeObject();
+            entry.set("path", JsonValue::makeString(installed.path));
+            entry.set("name", JsonValue::makeString(installed.name));
+            entry.set("zones", JsonValue::makeNumber(installed.zoneCount));
+            if (!installed.attribution.empty())
+                entry.set("attribution", JsonValue::makeString(installed.attribution));
+            if (!installed.error.empty()) entry.set("error", JsonValue::makeString(installed.error));
+            list.append(std::move(entry));
+        }
+        reply.set("ok", JsonValue::makeBoolean(true));
+        reply.set("folder", JsonValue::makeString(multisampleProfileFolder()));
+        reply.set("profiles", std::move(list));
     } else if (query == "searchProfile") {
         const std::string machine = json["machine"].asString();
         const SearchProfile profile = buildSearchProfile(machine);

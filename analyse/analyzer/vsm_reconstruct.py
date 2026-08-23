@@ -32,7 +32,12 @@ import numpy as np
 
 from .audio_distance import audio_distance
 from .audio_distance_v2 import audio_distance_v2
-from .vsm_engine import VsmEngine, VsmEngineError, available_machines
+from .vsm_engine import (
+    _MACHINES_A_PROFIL,
+    VsmEngine,
+    VsmEngineError,
+    available_machines,
+)
 from .vsm_patch_optimizer import choose_machine, optimize_patch_for_machine
 from .vsm_project_export import ExportNote, ExportTrack, write_project_bundle
 
@@ -73,6 +78,13 @@ class StemReconstruction:
     # un choix sans ses concurrents n'est pas un choix, c'est une affirmation.
     considered: List[tuple]
     is_drums: bool = False
+    # NOM du profil multi-échantillons employé, pour les machines qui en
+    # exigent un. Inscrit dans le projet exporté par son NOM et non par un
+    # chemin : le profil pèse deux cents mégaoctets, on ne le recopie pas dans
+    # chaque projet, et un chemin absolu ne s'ouvrirait que sur le poste qui
+    # l'a écrit.
+    profile: str = ""
+
     # `gate` : la proportion de l'extrait pendant laquelle la note de référence
     # était TENUE. Conservé parce qu'il conditionne la distance au même titre
     # que la métrique et le budget -- mesuré sur un violoncelle à l'archet, le
@@ -110,8 +122,25 @@ class StemReconstruction:
 
 
 def melodic_machines(engine: VsmEngine) -> List[str]:
-    """Machines mélodiques que le moteur sait réellement instancier."""
-    return [m for m in available_machines(engine) if m not in _NON_MELODIC]
+    """Machines mélodiques que le moteur sait réellement instancier.
+
+    Une machine à PROFIL (`vsm.multisample`) n'entre dans la liste que si un
+    profil est installé, et son absence est DITE. Sans profil, elle rendrait du
+    silence : elle ne perdrait pas la comparaison, elle la fausserait, en
+    gagnant sur toutes les cibles douces. Le § 7 du cahier des charges de la
+    machine demande exactement cela -- « absente des candidates en le disant ».
+    """
+    machines = [m for m in available_machines(engine) if m not in _NON_MELODIC]
+
+    utilisables = []
+    for machine in machines:
+        if machine in _MACHINES_A_PROFIL and engine is not None:
+            if engine.profile_for(machine) is None:
+                print(f"  {machine} écartée : aucun profil installé "
+                      f"(voir tools/installer-profil-piano.py)")
+                continue
+        utilisables.append(machine)
+    return utilisables
 
 
 def _representative_note(
@@ -228,7 +257,26 @@ def reconstruct_stem(
         considered=[(r.machine, r.distance) for r in everyone],
         gate=gate,
         patches={r.machine: dict(r.parameters) for r in everyone},
+        profile=_profile_name(engine, best.machine),
     )
+
+
+def _profile_name(engine: VsmEngine, machine: str) -> str:
+    """Nom du profil employé par cette machine, ou chaîne vide.
+
+    C'est le NOM déclaré par le profil, pas son chemin : c'est lui que le projet
+    exporté inscrira, et c'est ce qui permet d'ouvrir le projet sur un autre
+    poste pourvu que la banque y soit installée.
+    """
+    if machine not in _MACHINES_A_PROFIL or engine is None:
+        return ""
+    chemin = engine.profile_for(machine)
+    if not chemin:
+        return ""
+    for profil in engine.profiles():
+        if profil.get("path") == chemin:
+            return str(profil.get("name") or "")
+    return ""
 
 
 def reconstruction_distance(
@@ -351,6 +399,7 @@ def export_reconstruction(
             parameters=stem.parameters,
             notes=[ExportNote(n.note, n.velocity, n.start, n.duration) for n in stem.notes],
             is_drums=stem.is_drums,
+            profile=stem.profile,
         )
         for stem in stems
     ]

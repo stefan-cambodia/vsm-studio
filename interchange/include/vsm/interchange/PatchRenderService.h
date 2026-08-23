@@ -47,6 +47,12 @@ struct PatchRenderRequest {
     /// machine dont la reconstruction a le plus besoin, puisque l'analyse
     /// découpe elle-même les coups à rejouer.
     std::vector<std::pair<int, std::string>> samples;
+    /// PROFIL multi-échantillons à installer avant le rendu, pour les machines
+    /// qui en lisent un. Explicite, jamais deviné : une machine à profil qui
+    /// choisirait toute seule « le premier profil installé » rendrait des
+    /// mesures dépendantes de ce qui traîne dans un dossier, et deux
+    /// exécutions sur deux postes ne se compareraient plus.
+    std::string profilePath;
     /// Chemin WAV de sortie (facultatif). Vide + `returnAudio` = audio renvoyé
     /// dans la réponse.
     std::string outputPath;

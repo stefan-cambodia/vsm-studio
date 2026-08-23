@@ -56,6 +56,19 @@ struct SynthPreset {
     /// échantillons dont il ne saurait rien faire.
     std::map<int, std::string> samples;
 
+    /// PROFIL multi-échantillons de la machine, chemin RELATIF au dossier de
+    /// projet -- même règle et même raison que `samples` ci-dessus.
+    ///
+    /// Champ distinct plutôt qu'un emplacement de `samples` : un profil n'est
+    /// pas un échantillon mais un fichier qui en DÉCLARE des centaines, avec
+    /// leurs zones. Le confondre avec un emplacement obligerait le lecteur à
+    /// deviner de quoi il s'agit d'après l'extension, ce qui est exactement le
+    /// genre d'ambiguïté qu'un format versionné existe pour éviter.
+    ///
+    /// FACULTATIF : un preset qui n'en déclare pas reste valide et se lit à
+    /// l'identique, donc son ajout ne change pas le numéro de version.
+    std::string profile;
+
     float valueOr(const std::string& semanticId, float fallback) const;
 };
 

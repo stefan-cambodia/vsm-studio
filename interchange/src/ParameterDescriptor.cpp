@@ -167,6 +167,22 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Analog Character", "voice.analogCharacter"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.multisample ---
+    // Peu de paramètres, et TOUS canoniques : le timbre de cette machine vient
+    // des échantillons, pas des réglages. `voice.velocitySensitivity` est
+    // réemployée telle quelle plutôt qu'une identité neuve : elle dit déjà
+    // « la vélocité agit-elle sur la dynamique », et en inventer une seconde
+    // pour la même chose est exactement la faute que le § 8.4 de la feuille de
+    // route reproche au reste du projet.
+    {"vsm.multisample", {
+        {"Program", "sample.program"},
+        {"Tune", "output.tune"},
+        {"Attack", "envelope.1.attack"},
+        {"Release", "envelope.1.release"},
+        {"Tone Cutoff", "filter.1.cutoff"},
+        {"Velocity Amount", "voice.velocitySensitivity"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.generic ---
     // Machine NEUTRE : ses identités sont volontairement les plus canoniques
     // du vocabulaire, sans aucun identifiant qui lui soit propre. C'est ce qui

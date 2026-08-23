@@ -48,6 +48,27 @@ from analyzer.vsm_project_export import (DEFAULT_TRACK_VOLUME, ExportNote, Expor
 from analyzer.vsm_track_arbitration import (arbitrate_on_track, build_candidates,
                                              close_runner_up)
 from analyzer.vsm_track_refine import refine_patch_on_track
+
+
+def profil_de(moteur, machine: str) -> str:
+    """Nom du profil multi-échantillons de `machine`, ou chaîne vide.
+
+    C'est le NOM déclaré par le profil, pas son chemin : c'est lui que porte un
+    projet exporté, et c'est ce qui permet de l'ouvrir sur un autre poste pourvu
+    que la banque y soit installée.
+    """
+    if moteur is None:
+        return ""
+    try:
+        chemin = moteur.profile_for(machine)
+    except Exception:
+        return ""
+    if not chemin:
+        return ""
+    for profil in moteur.profiles():
+        if profil.get("path") == chemin:
+            return str(profil.get("name") or "")
+    return ""
 from analyzer.vsm_reconstruct import (
     StemNote,
     export_reconstruction,
@@ -426,11 +447,18 @@ def main() -> int:
                 # c'est le second qu'on écoute.
                 if not args.sans_arbitrage:
                     depart_arbitrage = time.perf_counter()
+                    # Le PROFIL suit la machine dans tous les rendus hors ligne.
+                    # L'oublier ne se voyait pas : la piste sortait muette, le
+                    # garde-fou de niveau écartait la candidate, et elle
+                    # disparaissait du tableau sans un mot.
+                    profils = {m: nom_profil for m in candidates
+                               if (nom_profil := profil_de(moteur, m))}
                     verdicts = arbitrate_on_track(
                         notes=[ExportNote(n.note, n.velocity, n.start, n.duration)
                                for n in resultat.notes],
                         stem_audio=audio,
-                        candidates=build_candidates(list(resultat.patches.items()), candidates),
+                        candidates=build_candidates(list(resultat.patches.items()), candidates,
+                                                     profils),
                         workdir=Path(temporaire) / "arbitrage" / nom,
                         sample_rate=SAMPLE_RATE,
                         metric=args.metrique,
@@ -525,6 +553,7 @@ def main() -> int:
                             audio.astype(np.float64))))) if audio.size else None,
                         base_volume=DEFAULT_TRACK_VOLUME,
                         max_volume=VOLUME_MAX,
+                        profile=profil_de(moteur, resultat.machine),
                     )
                     if affine is None:
                         print(f"      {nom:8s} : réglage piste non tenté "
@@ -558,6 +587,7 @@ def main() -> int:
                     machine=stem.machine,
                     parameters=stem.parameters,
                     notes=[ExportNote(n.note, n.velocity, n.start, n.duration) for n in stem.notes],
+                    profile=stem.profile or profil_de(moteur, stem.machine),
                 )
                 # AUTOMATION DE COUPURE : la trajectoire de brillance du stem,
                 # gardée seulement si elle RAPPROCHE le rendu complet du stem --
@@ -607,7 +637,9 @@ def main() -> int:
                     pistes_export, alternatives, melange, audio_par_stem, sortie,
                     workdir=Path(temporaire) / "verdict",
                     sample_rate=SAMPLE_RATE, metric=args.metrique,
-                    tempo=args.tempo, binary=args.moteur)
+                    tempo=args.tempo, binary=args.moteur,
+                    profiles={m: nom for m in melodic_machines(moteur)
+                              if (nom := profil_de(moteur, m))})
                 distances_retenues = {d.track: d.kept_track_distance
                                       for d in decisions
                                       if d.kept_track_distance is not None}

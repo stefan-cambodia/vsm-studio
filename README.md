@@ -5,14 +5,15 @@ Séquenceur MIDI + rack de synthétiseurs vintage virtuels. Voir
 d'avancement détaillé par phase.
 
 **État actuel** : le moteur MIDI (`core/`, 81 tests) et le moteur audio
-temps réel (`audio/`, 527 tests, dont un test de concurrence réel vérifié
-sous ThreadSanitizer) sont implémentés et **entièrement testés** — 725
-tests, tous verts, zéro warning. Les 23 machines (Minimoog, TB-303, Juno-106,
+temps réel (`audio/`, 543 tests, dont un test de concurrence réel vérifié
+sous ThreadSanitizer) sont implémentés et **entièrement testés** — 756
+tests, tous verts, zéro warning. Les 24 machines (Minimoog, TB-303, Juno-106,
 TR-808, TR-909, SH-101, Prophet, Jupiter-8, ARP Odyssey, MS-20, DX7, sampler
 16 emplacements, e-piano, OB-X, supersaw, table d'ondes, hybride PCM, orgue à
 roues phoniques, Generic Synth, String — corde pincée et frottée par guide
 d'ondes —, Piano — cordes frappées —, Drums — batterie acoustique modélisée —,
-Wind — anche et lèvres — + le synthé de test) ont chacune une
+Wind — anche et lèvres —, Multisample — l'acoustique reportée par
+échantillons, profils installables — + le synthé de test) ont chacune une
 **empreinte de non-régression audio** qui fige leur rendu. **Toutes les phases
 des feuilles de route sont terminées** (1 à 6 : moteur, machines, optimisation
 SIMD ; 7 : interopérabilité sémantique, CLAP ; 8 à 11 : reconstruction
@@ -25,7 +26,7 @@ du code du DAW. Exemples de fichiers dans [`docs/examples/`](docs/examples).
 
 ## Façades « façon hardware »
 
-**Les vingt-trois machines** ont leur propre façade, avec la disposition de
+**Les vingt-quatre machines** ont leur propre façade, avec la disposition de
 l'original : trajet du signal du Minimoog, rangée unique du TB-303, colonne
 par pièce des TR-808/909 et du sampler-boîte à rythmes, curseurs du Juno-106,
 du Jupiter-8, du SH-101 et de l'ARP Odyssey, double filtre du MS-20, bloc
@@ -278,6 +279,40 @@ MIDI + patchs rejouables, et mesurer l'écart.
 - [`docs/CDC-machines-manquantes.md`](docs/CDC-machines-manquantes.md) — ce qui
   manque pour reconstruire des enregistrements réels, et pourquoi ce ne sont pas
   d'autres machines de caractère.
+- [`docs/CDC-multisample.md`](docs/CDC-multisample.md) — `vsm.multisample` :
+  l'acoustique mélodique par report d'échantillons, le format de profil, et
+  l'installation d'une banque libre.
+
+### Installer un profil de piano
+
+Aucune banque d'échantillons n'est commise dans le dépôt : elles s'installent.
+
+```bash
+analyse/.venv/bin/python tools/installer-profil-piano.py --banque salamander
+```
+
+L'outil télécharge Salamander Grand Piano V3 (CC-BY 3.0, 412 Mo), **vérifie son
+empreinte SHA-256**, en extrait un sous-ensemble tenant dans le budget mémoire,
+écrit le profil et son fichier d'attribution. Sans profil installé,
+`vsm.multisample` est silencieuse et la chaîne d'analyse l'écarte de ses
+candidates en le disant — elle ne rend jamais un son de repli.
+
+### Installer un instrument depuis une banque SoundFont
+
+```bash
+cmake --build build --target vsm-sf2
+./build/tools/vsm-sf2 --lister BANQUE.sf2
+./build/tools/vsm-sf2 --convertir BANQUE.sf2 --programme 40 --duree-max 6
+```
+
+Le premier appel liste les presets (banque, programme, nom) ; le second en
+convertit un en profil. L'outil **imprime les générateurs SF2 qu'il n'applique
+pas** — filtre, LFO, enveloppes de modulation : cette machine lit des
+échantillons, elle ne synthétise pas — et **refuse de convertir une banque dont
+la licence n'est écrite ni dans le fichier ni sur la ligne de commande**.
+
+La conversion se fait une fois, à l'installation : le DAW ne charge jamais qu'un
+profil, jamais un SF2.
 
 ## Structure du projet
 
