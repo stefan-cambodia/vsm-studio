@@ -1354,6 +1354,24 @@ du piano parce qu'il y en a. Ce n'est pas tranché — l'oreille entend surtout 
 Juno —, mais la lecture « la métrique a un faible pour `vsm.piano` » n'est plus
 la seule.
 
+**Le rejeu avec les deux correctifs (note qui sonne, borne de niveau) :
+0,4088 contre 0,4290**, et le changement qui compte n'est pas le chiffre :
+
+| stem | premier passage | avec les correctifs | l'oreille |
+|---|---|---|---|
+| nappes | `vsm.piano` 0,254 | **`jupiter8` 0,278 / `juno106` 0,279**, égalité à 0,2 % | Juno-106 |
+| basse | `obx` 0,184 | `supersaw` 0,212 | SH-101, Juno |
+
+Sur les nappes, le piano a disparu du podium : une fois la recherche saine, la
+chaîne arrive sur deux polysynthés Roland à égalité — la famille que l'oreille
+entend. L'arbitrage a déclaré l'égalité serrée (§ 5 quinquies) et remis le Juno
+en jeu au verdict du mélange ; le Jupiter l'a emporté de 0,4 %. **L'oreille et
+la mesure convergent.** Sur la basse, non : `supersaw`, moins bon que l'OB-X du
+premier passage, et la SH-101 nulle part au sommet — le stem où elles restent
+en désaccord, et la preuve que les correctifs rendent la recherche par note
+SAINE sans rendre son verdict MEILLEUR. (Ce rejeu jouait encore `vsm.drums` :
+il a été lancé avant l'arbitrage batterie ci-dessous.)
+
 **Ce que la 909 a donné une fois dans la course (23/08, soir).** Les boîtes à
 rythmes du parc concourent désormais sur le stem de batterie
 (`drum_machine_track`, arbitrage dans `reconstruire.py`,
