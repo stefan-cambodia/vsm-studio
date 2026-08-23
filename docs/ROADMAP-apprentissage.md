@@ -309,6 +309,37 @@ Indépendante d'A1/A3 ; peut commencer dès A0.1 (les frappes générées suffis
 seuil mieux choisi ») est levée, motifs-vérité à l'appui. En cas d'échec, le
 nommage actuel reste en place et l'échec est documenté avec ses chiffres.
 
+> **A2.0 — LE JUGE EXISTE ENFIN COMME SCRIPT (23/08/2026).** Les motifs-vérité
+> du § 9.5 avaient été mesurés à la main, à trois architectures d'intervalle, et
+> les chiffres se contredisaient déjà : ce cahier écrit « 8/32 aujourd'hui » là
+> où l'en-tête de `vsm_drumkit.py` mesure 46/64. `analyse/banc_batterie.py`
+> (module `vsm_drum_bench.py`, quatre tests) rejoue les deux motifs en une
+> commande, et c'est ce tableau — et lui seul — qui dit désormais où en est le
+> détecteur. **Point de départ mesuré, tolérance 30 ms, 140 BPM :**
+>
+> | motif | pièce | retrouvées | inventées | confondues avec |
+> |---|---|---|---|---|
+> | double-croche (TR-909) | kick | 16/16 | **15** | — |
+> | | snare | **0/8** | 0 | kick ×8 |
+> | | hihat | 33/64 | 0 | kick ×31 |
+> | contretemps (TR-808) | kick | 16/16 | **8** | — |
+> | | snare | **0/8** | 0 | kick ×8 |
+> | | hihat | 8/16 | 0 | kick ×8 |
+>
+> **La lecture qui oriente A2** : les INSTANTS sont justes — 64 et 32 frappes
+> détectées, exactement le compte — et c'est le NOMMAGE qui défaille. Sur le
+> motif B, huit charlestons qui frappent SEULES, sans aucune autre pièce
+> dessous, sont nommées « kick ». Ce n'est pas une frappe manquante ni une
+> frappe inventée, c'est une frappe mal nommée, et le banc la compte à part
+> (« confondues avec »), parce que ce n'est pas le même défaut. La caisse
+> claire, qui ne frappe jamais seule sur ces motifs, reste fusionnée à sa
+> porteuse — la limite documentée du module, et elle est hors de portée d'un
+> nommage appris tant qu'elle n'a pas d'empreinte propre.
+>
+> Les critères A2.2 et A2.3 se reformulent donc contre ce banc : *charleston
+> seule nommée charleston sur B : 16/16 (aujourd'hui 8/16) ; kicks inventés sur
+> A : 0 (aujourd'hui 15)*, sans qu'aucune frappe ne soit perdue.
+
 ## Phase A3 — L'estimateur de paramètres
 
 La plus risquée ; n'entre en chaîne que si son A/B global est positif.
