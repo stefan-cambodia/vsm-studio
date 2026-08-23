@@ -1439,6 +1439,50 @@ mesure aligne autre chose que le pic. L'oreille qui entend une 909 là où la
 mesure entend une 808 pourrait tenir là. Non tranché ; c'est la mesure à faire
 avant de croire la 808.
 
+**La mesure est faite, en deux temps, et elle tranche contre la métrique.**
+
+*Premier temps — cible contrôlée.* Une TR-808 dont le kick est à 60 Hz, sur
+deux mesures ; des candidats identiques dont seul `kick.tune` varie :
+
+| tune | 30 | 40 | 50 | 55 | **60** | 65 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|---|---|
+| 808 | 0,043 | 0,034 | 0,026 | 0,019 | **0,000** | 0,017 | 0,016 | 0,027 | 0,028 |
+| 909 | 0,044 | 0,030 | 0,024 | 0,016 | **0,000** | 0,017 | 0,012 | 0,021 | 0,025 |
+
+Minimum exact à 60, et 30 est LE PIRE. Quand tout le reste est égal, la
+métrique lit l'accord du kick. L'hypothèse « biaisée vers le sub » est rejetée.
+
+*Second temps — le stem réel.* Le patch 808 réglé, seul `kick.tune` varie, contre
+la piste entière puis contre UNE frappe de kick réel isolée (pic mesuré à 59 Hz) :
+
+| tune | 30 | 40 | 50 | 60 | 70 | 90 |
+|---|---|---|---|---|---|---|
+| piste entière | **0,2086** | 0,2163 | 0,2153 | 0,2219 | 0,2251 | 0,2256 |
+| une frappe isolée | **0,5807** | 0,6017 | 0,5866 | **0,6212** | 0,6110 | 0,6068 |
+
+Même sur une seule frappe dont le fondamental est à 59 Hz, la métrique préfère
+30 Hz et trouve 60 Hz **le pire**. Le réglage n'a pas fait d'erreur : il a suivi
+la mesure. C'est la mesure qui ne lit pas le grave d'un VRAI kick.
+
+**Pourquoi, et c'est structurel.** Les sept termes de v2 — centroïde, largeur,
+roll-off, planéité, MFCC, enveloppe, contraste — sont des statistiques de FORME
+spectrale ; aucun ne mesure une HAUTEUR. Quand tout le reste est égal (808
+contre 808), la forme suit l'accord et le minimum tombe juste. Sur un kick réel
+— compressé, cliqué, 28 % de son énergie entre 90 et 120 Hz —, un 808 à 30 Hz
+avec sa longue queue ressemble davantage *en silhouette* qu'un 808 à 60 Hz, même
+si sa hauteur est fausse. L'oreille entend une hauteur ; la métrique entend une
+silhouette.
+
+**Ce que ça change.** Le verdict « 808 devant 909 » sur ce morceau n'est plus
+une mesure de laquelle des deux est la bonne : c'est une mesure de laquelle a la
+silhouette la plus proche, ce qui n'est pas la même question — et l'oreille
+qui dit 909 n'est contredite par rien de solide. Ce que la métrique devrait
+avoir pour trancher est un terme de hauteur pour les sons percussifs graves (la
+position du pic sous 150 Hz, en rapport de fréquences). C'est un changement de
+MÉTRIQUE, donc une v3, et les règles du § 10.3 valent : deux métriques ne se
+comparent pas, et toute mesure publiée porte la sienne. Ce n'est pas fait ici ;
+c'est écrit pour que ce le soit en connaissance de cause.
+
 **Et une phrase de l'écoute vaut pour tout le projet** : *« ne mets pas trop de
 hi-fi : le caractère du morceau vient du côté compact, rugueux, limité en
 dynamique de la production de l'époque. »* C'est, dit par une oreille, le fossé
