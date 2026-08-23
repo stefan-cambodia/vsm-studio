@@ -51,7 +51,7 @@ import numpy as np
 from .vsm_engine import find_vsm_render
 from .vsm_levels import match_track_levels
 from .vsm_offline_render import read_render_wav
-from .vsm_project_export import ExportTrack, write_project_bundle
+from .vsm_project_export import ExportNote, ExportTrack, write_project_bundle
 
 
 @dataclass
@@ -67,6 +67,13 @@ class MixAlternative:
     parameters: Dict[str, float]
     label: str
     machine: str = ""
+    # NOTES propres à la proposition, quand la machine en a d'autres. Pour un
+    # stem mélodique, toutes les machines jouent les mêmes notes et ce champ
+    # reste None. Pour la BATTERIE, la correspondance famille -> note diffère
+    # d'une boîte à l'autre (la 909 a un clap en 39, vsm.drums une percussion
+    # en 49) : remettre vsm.drums en jeu avec les notes de la 909 ferait taire
+    # des pièces, et le verdict jugerait un kit amputé.
+    notes: Optional[List[ExportNote]] = None
     # La distance de PISTE de cette proposition, quand on la connaît. Elle
     # voyage avec elle pour que le rapport puisse suivre la décision : c'est la
     # TROISIÈME fois qu'un champ du rapport reste sur le patch écarté (voir
@@ -191,7 +198,7 @@ def keep_what_helps_the_mix(
             continue
 
         etat_courant = (track.machine, dict(track.parameters), float(track.volume),
-                        str(track.profile))
+                        str(track.profile), list(track.notes))
         d_courant = distance_du_projet()
         meilleur = ("réglage", d_courant, etat_courant, None)
         ecartees: List[Tuple[str, float]] = []
@@ -204,6 +211,8 @@ def keep_what_helps_the_mix(
 
             track.machine = machine_visee
             track.parameters = dict(proposition.parameters)
+            track.notes = (list(proposition.notes) if proposition.notes is not None
+                           else list(etat_courant[4]))
             # Le PROFIL suit la machine, comme le nom d'affichage : c'est le
             # seul endroit de la chaîne où une piste change de machine, donc le
             # seul où un profil peut se retrouver attaché à la mauvaise. Une
@@ -225,13 +234,14 @@ def keep_what_helps_the_mix(
                 ecartees.append((meilleur[0], meilleur[1]))
                 meilleur = (proposition.label, distance,
                             (track.machine, dict(track.parameters), float(track.volume),
-                             str(track.profile)),
+                             str(track.profile), list(track.notes)),
                             proposition.track_distance)
             else:
                 ecartees.append((proposition.label, distance))
 
         track.machine, track.parameters, track.volume, track.profile = (
             meilleur[2][0], dict(meilleur[2][1]), meilleur[2][2], meilleur[2][3])
+        track.notes = list(meilleur[2][4])
         if track.machine != etat_courant[0]:
             track.machine_display_name = ""
         decisions.append(MixDecision(track.name, meilleur[0], meilleur[1], ecartees,

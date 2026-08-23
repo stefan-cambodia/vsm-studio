@@ -411,6 +411,8 @@ def write_reconstruction_report(
     metric: str = "v2",
     iterations: Optional[int] = None,
     provenance: Optional[Dict[str, object]] = None,
+    drums: Optional[Dict[str, object]] = None,
+    mix_verdict: Optional[Sequence[Dict[str, object]]] = None,
 ) -> None:
     """
     Écrit le rapport de reconstruction (étape 9.3).
@@ -446,6 +448,17 @@ def write_reconstruction_report(
         # des budgets différents ne se comparent pas.
         "iterations": iterations,
         "globalDistance": global_distance,
+        # LA BATTERIE, qui n'est pas un `StemReconstruction` (elle ne passe
+        # pas par la recherche de patch) et qui manquait au rapport : machine
+        # retenue, pièces détectées, arbitrage entre les boîtes, réglages et
+        # distance de piste. C'est la piste la plus lourde du mélange, et ses
+        # décisions n'existaient que sur la sortie standard.
+        **({"drums": drums} if drums else {}),
+        # LE VERDICT DU MÉLANGE, piste par piste : ce qui a été gardé et ce
+        # qui a été écarté, avec la distance du MÉLANGE pour chacun. Il
+        # n'était qu'imprimé ; or c'est la dernière décision de la chaîne,
+        # et celle qui peut défaire toutes les autres.
+        **({"mixVerdict": list(mix_verdict)} if mix_verdict else {}),
         "stems": [
             {
                 "name": stem.name,

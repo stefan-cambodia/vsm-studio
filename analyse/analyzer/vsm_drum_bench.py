@@ -24,6 +24,13 @@ LES DEUX MOTIFS sont ceux du § 9.5, pour que les chiffres se comparent :
       2 et 4 (8), charleston sur les contretemps seulement (16). Aucune
       charleston ne coïncide avec une autre pièce : le cas facile, qui sert de
       témoin.
+  C — « familles » (A2.3) : grosse caisse sur 1 et 3 (8), CLAP seul sur 2 et
+      4 (8), charleston aux contretemps (16), deux TOMS sur le « e » et le
+      « a » du quatrième temps de chaque mesure (8). Chaque clap et chaque tom
+      frappe SEUL -- sur la queue de la pièce précédente, comme dans un
+      morceau, mais sans personne dessous : ce motif ne juge pas la
+      superposition, il juge si le détecteur sait NOMMER au-delà des trois
+      familles historiques.
 
 UNE FRAPPE EST « RETROUVÉE » si le détecteur en a placé une de la bonne famille
 à moins de `TOLERANCE` secondes. Une frappe détectée sans contrepartie dans
@@ -94,7 +101,23 @@ def motif_contretemps(machine: str = "vsm.tr808") -> Motif:
     )
 
 
-MOTIFS = (motif_double_croche, motif_contretemps)
+def motif_familles(machine: str = "vsm.tr909") -> Motif:
+    temps = _temps(subdivision=1)
+    croches = _temps(subdivision=2)
+    seizieme = _temps(subdivision=4)
+    return Motif(
+        nom="familles",
+        machine=machine,
+        frappes={
+            "kick": tuple(t for i, t in enumerate(temps) if i % 4 in (0, 2)),
+            "clap": tuple(t for i, t in enumerate(temps) if i % 4 in (1, 3)),
+            "hihat": tuple(t for i, t in enumerate(croches) if i % 2 == 1),
+            "tom": tuple(t for i, t in enumerate(seizieme) if i % 16 in (13, 15)),
+        },
+    )
+
+
+MOTIFS = (motif_double_croche, motif_contretemps, motif_familles)
 
 
 def rend_motif(motif: Motif, engine: VsmEngine, sample_rate: int = 44100,
@@ -143,13 +166,17 @@ def _famille_canonique(nom: str) -> str:
 
 
 def juge(motif: Motif, engine: VsmEngine, sample_rate: int = 44100,
-         audio: Optional[np.ndarray] = None) -> ScoreMotif:
-    """Rend le motif, le passe dans `build_drum_kit`, et compte."""
+         audio: Optional[np.ndarray] = None, hit_classifier=None) -> ScoreMotif:
+    """Rend le motif, le passe dans `build_drum_kit`, et compte.
+
+    `hit_classifier` : le classifieur de frappes (A2), s'il y en a un ; sans
+    lui, c'est le nommage par gabarit qui est jugé."""
     if audio is None:
         audio = rend_motif(motif, engine, sample_rate)
 
     with tempfile.TemporaryDirectory(prefix="vsm-banc-batterie-") as dossier:
-        kit = build_drum_kit(audio, sample_rate, Path(dossier), write_samples=False)
+        kit = build_drum_kit(audio, sample_rate, Path(dossier), write_samples=False,
+                             hit_classifier=hit_classifier)
 
     detectees: Dict[str, List[float]] = {}
     frappes_total = 0

@@ -441,6 +441,76 @@ l'étiquette devient le son, et 2/8 de caisses claires, c'est un motif qui boite
 **Dans la chaîne** : `reconstruire.py --classifieur-batterie MODÈLE`. Sans
 modèle, rien ne change — le nommage actuel reste le repli.
 
+### A2.3 — un troisième motif, et le modèle doit voir ce que le détecteur voit
+
+Le critère « toms/percussions/claps nommables » n'avait pas de juge : les deux
+motifs du § 9.5 n'ont que trois familles. Le banc en a un troisième,
+**C — « familles »** (TR-909) : kick sur 1 et 3, CLAP seul sur 2 et 4,
+charleston aux contretemps, deux TOMS seuls sur le « e » et le « a » du
+quatrième temps. Chaque clap et chaque tom frappe seul : ce motif ne juge pas
+la superposition, il juge le nommage au-delà des trois familles. Et
+`banc_batterie.py --classifieur-batterie MODÈLE` juge enfin AVEC le modèle —
+jusqu'ici seule la commande d'entraînement le faisait.
+
+**Premier passage : clap 8/8, tom 0/8 — et le modèle avait raison.** Sans
+modèle, les claps sont nommés snare et les toms kick (le gabarit ne connaît
+pas ces familles). Avec le modèle, clap 8/8 ; mais tom 0/8, rabattus en
+« kick2 ». Interrogé à l'instant EXACT de chaque tom, le modèle répondait
+pourtant « tom » à 0,98-0,99. Le mécanisme : le détecteur place l'attaque
+d'un tom de 909 — attaque lente — **11 à 16 ms après la note**, et à cet
+instant-là le modèle ne reconnaît plus rien (aucune pièce au seuil), donc le
+gabarit reprend la main. La fenêtre « avant » du descripteur s'arrête 8 ms
+avant l'instant lu : lue 16 ms en retard, elle contient l'attaque, et le
+rapport après/avant s'effondre. Le modèle était entraîné sur la partition ;
+il doit l'être sur ce que le détecteur lui donne.
+
+**Le corpus décrit donc chaque frappe à son instant ET en retard**
+(`RETARDS`), et le retard a été BALAYÉ au banc plutôt que choisi — parce que
+la réponse n'est pas monotone :
+
+| retards (ms) | A snare | A hihat | A kicks inv. | B snare | B hihat | B kicks inv. | C tom | C hihat | C kicks inv. |
+|---|---|---|---|---|---|---|---|---|---|
+| 0 (avant) | 3/8 | 40/64 | 8 | 2/8 | **16/16** | **0** | 0/8 | 15/16 | 7 |
+| 0, 8 | 7/8 | 34/64 | 14 | 8/8 | 8/16 | 8 | 1/8 | 11/16 | 6 |
+| 0, 12 | 8/8 | 35/64 | 13 | 8/8 | 8/16 | 8 | 7/8 | 12/16 | 0 |
+| **0, 16** | **8/8** | **40/64** | **8** | **8/8** | 15/16 | 1 | **7/8** | 13/16 | **0** |
+| 0, 20 | 8/8 | 40/64 | 8 | 8/8 | 11/16 | 5 | 7/8 | 12/16 | 0 |
+| 0, 8, 16 | 8/8 | 39/64 | 9 | 8/8 | 8/16 | 8 | 6/8 | 13/16 | 1 |
+| 0, 16, 24 | 8/8 | 40/64 | 8 | 8/8 | 12/16 | 4 | 7/8 | 14/16 | 0 |
+
+**Ce que le tableau dit, et ce qu'il ne dit pas.** La lecture en retard
+n'a pas seulement sauvé les toms : elle a donné la CAISSE CLAIRE SOUS LE KICK,
+8/8 sur les deux motifs là où elle plafonnait à 3/8 et 2/8 — la similarité
+0,947 kick-seul / kick+caisse de `vsm_drumkit.py`, « entamée » au paragraphe
+précédent, est LEVÉE : la caisse claire est plus lisible 16 ms après l'attaque
+du kick qu'à l'attaque même. Mais 16 ms est une **crête, pas un plateau** :
+à 12 et à 20, la charleston du motif B retombe (8/16, 11/16) et des kicks
+s'inventent. Ce qui tient à toute valeur (kick, snare, clap, tom : probabilité
+≥ 0,98 aux instants détectés, mesurée) n'est pas ce qui bascule (la charleston
+après une caisse claire : médiane 0,85, premier quartile 0,57, une à 0,04).
+La charleston reste la pièce fragile du nommage appris ; le reste ne l'est
+plus. Le modèle est au format v2 (empreintes, voir A4.1), 45 s à refaire.
+
+**Le banc, après (modèle `RETARDS = (0, 16 ms)`) :**
+
+| motif | pièce | sans modèle | **avec modèle** |
+|---|---|---|---|
+| double-croche (909) | kick | 16/16, 15 inventés | 16/16, **8** inventés |
+| | snare | 0/8 | **8/8** |
+| | hihat | 33/64 | **40/64** |
+| contretemps (808) | kick | 16/16, 8 inventés | 16/16, **1** inventé |
+| | snare | 0/8 | **8/8** |
+| | hihat | 8/16 | **15/16** |
+| familles (909) | kick | 8/8, 7 inventés | 8/8, **0** inventé |
+| | clap | 0/8 (nommés snare) | **8/8** |
+| | hihat | 9/16 | **13/16**, 1 inventé |
+| | tom | 0/8 (nommés kick) | **7/8** |
+
+A2.3 est atteinte : contretemps 15/16 (> 14/16), claps et toms nommés. Les
+percussions au sens large (cymbales, rimshot, cowbell) ne sont pas dans le
+corpus, donc pas nommables : le modèle ne nomme que ce qu'il a entendu, et
+c'est écrit dans `PIECES`.
+
 ## Phase A3 — L'estimateur de paramètres
 
 La plus risquée ; n'entre en chaîne que si son A/B global est positif.
@@ -474,6 +544,52 @@ c'est un résultat, pas une honte.
 > trois passages ont rendu des recherches par note identiques à la quatrième
 > décimale à code égal.
 | A4.3 | `--sans-apprentissage` | reproduit exactement la chaîne d'aujourd'hui ; sert de témoin dans tous les A/B |
+
+> **A4 EST FAITE, ET A4.2 NE L'ÉTAIT PAS (24/08/2026).**
+>
+> **A4.2 — la provenance n'existait pas sur disque.** `reconstruire.py` écrit
+> le rapport DEUX fois : une première avant le rendu, une seconde après, pour y
+> ajouter la distance globale. Seule la première recevait la provenance ; la
+> seconde écrasait le fichier sans elle. Le rapport final — le seul qu'on lit
+> — ne disait ni commit, ni options, ni modèles, et la ligne « A4.2 — fait »
+> ci-dessus décrivait un résultat qui n'existait pas. Un test le vérifiait sur
+> la fonction d'écriture, pas sur le fichier que la chaîne laisse ; c'est le
+> fichier qui est maintenant relu (test `sans_apprentissage_reproduit_…`).
+> Au passage, le commit est suivi d'un `+` quand l'arbre de travail d'`analyse/`
+> est modifié : un rapport qui annoncerait le commit nu sur un code différent
+> ne se rejouerait sur rien.
+>
+> **Et le rapport ne parlait pas de la batterie.** `stems` ne listait que les
+> stems mélodiques : la piste la plus lourde du mélange — arbitrée entre trois
+> boîtes, réglée, départagée au verdict du mélange — n'y laissait aucune
+> trace, et le verdict du mélange lui-même n'était qu'imprimé. Le rapport porte
+> désormais `drums` (machine retenue, pièces, arbitrage, réglages, distance de
+> piste) et `mixVerdict` (par piste : ce qui est gardé, ce qui est écarté, avec
+> la distance du MÉLANGE pour chacun). L'invariant « toute décision … versionnée
+> dans rapport.json » n'était pas tenu pour la décision la plus coûteuse.
+>
+> **A4.1 — le classifieur de frappes n'était pas vérifié.** Le classifieur de
+> machine rejouait ses empreintes au chargement ; celui de frappes était chargé
+> tel quel. Or il est entraîné sur les kicks de trois boîtes : qu'un kick de
+> 909 change, et il nomme des kicks de 909 d'hier. L'empreinte mélodique
+> (`machine_fingerprint`, notes 60 et 72) ne convenait pas — sur une boîte à
+> rythmes ces notes tombent sur un emplacement vide ou une seule pièce — ; une
+> empreinte de KIT (`empreinte_batterie`, chaque pièce jouée, patch d'usine)
+> est inscrite au modèle (format v2), rejouée au chargement, et le modèle est
+> REFUSÉ s'il est périmé ou invérifiable — un modèle v1, sans empreinte, est
+> invérifiable, donc refusé ; il se refait en 45 s. Trois tests.
+>
+> **A4.3 — le témoin est testé.** Avec un modèle SUR la ligne de commande et
+> `--sans-apprentissage`, le rapport est identique au chiffre près à celui
+> d'une chaîne sans modèle, provenance mise à part (elle dit « aucun », ce qui
+> est l'information attendue). Le même test vérifie au passage que deux
+> exécutions de la chaîne rendent le même rapport — le déterminisme d'A4.2,
+> mesuré cette fois.
+>
+> **Et les modèles ont un domicile.** Ils vivaient dans un dossier temporaire
+> de session (tmpfs) : un redémarrage les aurait effacés, avec les trois corpus
+> de l'A/B. `modeles/` et `corpus/` à la racine du dépôt, ignorés par git
+> (regénérables, graines fixées), sont désormais ce que le README annonce.
 
 ## Phase A5 — Validation : un morceau de musique classique
 

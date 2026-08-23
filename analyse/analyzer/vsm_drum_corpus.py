@@ -28,6 +28,7 @@ toujours le nommage actuel : sans modèle, rien ne change.
 
 from __future__ import annotations
 
+import hashlib
 import platform
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -39,7 +40,10 @@ from .vsm_drumkit import AFTER_WINDOW, BEFORE_WINDOW, STFT_HOP, STFT_WINDOW, _lo
 from .vsm_engine import Note, VsmEngine
 
 FORMAT_MODELE = "vsm-classifieur-batterie"
-VERSION_MODELE = 1
+# v2 : le modèle porte l'EMPREINTE des boîtes qui l'ont entraîné (A4.1). Un
+# modèle v1 n'en a pas : il est invérifiable, donc refusé -- il se refait en
+# trente secondes, et un modèle qu'on ne peut pas vérifier n'a pas à classer.
+VERSION_MODELE = 2
 
 # Les pièces que le modèle sait nommer, et leur note sur chaque boîte. Le
 # pedalhat (44) n'existe que sur vsm.drums ; il est une charleston fermée pour
@@ -51,10 +55,50 @@ NOTES_PAR_MACHINE: Dict[str, Dict[str, int]] = {
     "vsm.drums": {"kick": 36, "snare": 38, "hihat": 42, "openhat": 46, "tom": 45},
 }
 
+def empreinte_batterie(engine: VsmEngine, machine: str, sample_rate: int = 44100) -> str:
+    """SHA-256 du kit d'une boîte à rythmes, patch d'usine, chaque pièce jouée.
+
+    C'est la contrepartie, pour les boîtes, de `machine_fingerprint` du corpus
+    mélodique : celle-ci joue une PHRASE (notes 60 et 72), qui sur une boîte à
+    rythmes tombe sur des emplacements vides ou sur une seule pièce, et ne
+    capterait pas un kick qui change. On joue donc ici les notes du kit lui-
+    même. Chaîne vide si le moteur refuse la machine -- invérifiable, ce qui
+    n'est pas « à jour ».
+    """
+    notes_kit = NOTES_PAR_MACHINE.get(machine, {})
+    notes = [Note(n, 100, 0.1 + 0.3 * i, 0.05) for i, n in enumerate(sorted(notes_kit.values()))]
+    if not notes:
+        return ""
+    try:
+        audio = engine.render(machine, {}, notes, 0.1 + 0.3 * len(notes) + 0.6,
+                              sample_rate=sample_rate)
+    except Exception:  # noqa: BLE001 — le moteur ne sait pas la faire jouer
+        return ""
+    if audio.size == 0:
+        return ""
+    return hashlib.sha256(np.asarray(audio, dtype="<f4").tobytes()).hexdigest()
+
+
 # Décalages entre la première frappe et la seconde, en secondes. Ils couvrent
 # la double-croche à 160 BPM (94 ms) jusqu'à la croche à 110 (273 ms) — la
 # plage où la queue de la première frappe recouvre encore la seconde.
 DECALAGES: Tuple[float, ...] = (0.094, 0.125, 0.150, 0.187, 0.214, 0.273)
+
+# RETARDS de lecture, en secondes : chaque frappe du corpus est décrite à son
+# instant exact ET en retard, parce que c'est ce que le détecteur donne. Mesuré
+# au banc (motif C) : sur un tom de 909, à l'attaque lente, le détecteur place
+# l'attaque 11 à 16 ms après la note ; un modèle entraîné à l'instant exact n'y
+# reconnaissait RIEN (0/8, rabattus en « kick2 » par le gabarit) alors qu'il
+# nommait le même tom à 0,98 à l'instant juste. Le modèle doit voir ce que le
+# détecteur voit, pas ce que la partition dit.
+#
+# La valeur est BALAYÉE au banc, pas choisie, et la réponse n'est pas monotone
+# (tableau dans ROADMAP-apprentissage, A2.3) : 16 ms donne toms 7/8 et -- gain
+# non cherché -- la caisse claire sous le kick à 8/8 sur les deux motifs (elle
+# plafonnait à 3/8) ; 8 et 12 ms font retomber la charleston du motif B à
+# 8/16, 20 ms à 11/16. C'est une crête : la charleston après une caisse claire
+# reste la pièce fragile, les autres tiennent à ≥ 0,98 aux instants détectés.
+RETARDS: Tuple[float, ...] = (0.0, 0.016)
 
 
 def _fenetres(bandes: np.ndarray, instant: int, sample_rate: int) -> Optional[np.ndarray]:
@@ -94,6 +138,9 @@ class CorpusFrappes:
     machines: List[str]
     situations: List[str]        # « seule », « après kick », « sur queue de snare »…
     pieces: Tuple[str, ...] = PIECES
+    # Empreinte de chaque boîte AU MOMENT DE LA GÉNÉRATION, transmise au
+    # modèle : c'est elle que `verifie_fraicheur` rejouera.
+    empreintes: Dict[str, str] = field(default_factory=dict)
 
 
 def engendre_corpus_frappes(engine: VsmEngine, sample_rate: int = 44100,
@@ -103,15 +150,17 @@ def engendre_corpus_frappes(engine: VsmEngine, sample_rate: int = 44100,
     X, Y, machines, situations = [], [], [], []
     index = {p: i for i, p in enumerate(PIECES)}
     duree = 0.8
+    empreintes = {m: empreinte_batterie(engine, m, sample_rate) for m in NOTES_PAR_MACHINE}
 
     def ajoute(audio: np.ndarray, instant_s: float, nouvelles: Sequence[str], machine: str, situation: str):
-        v = descripteurs_frappe(audio, int(instant_s * sample_rate), sample_rate)
-        if v is None:
-            return
         y = np.zeros(len(PIECES), dtype=np.float32)
         for p in nouvelles:
             y[index[p]] = 1.0
-        X.append(v); Y.append(y); machines.append(machine); situations.append(situation)
+        for retard in RETARDS:
+            v = descripteurs_frappe(audio, int((instant_s + retard) * sample_rate), sample_rate)
+            if v is None:
+                continue
+            X.append(v); Y.append(y); machines.append(machine); situations.append(situation)
 
     for machine, notes in NOTES_PAR_MACHINE.items():
         pieces = list(notes)
@@ -168,7 +217,7 @@ def engendre_corpus_frappes(engine: VsmEngine, sample_rate: int = 44100,
                             ajoute(audio, 0.1, [a, b], machine, f"{a}+{b} ensemble ({equilibre})")
             if progression:
                 progression(f"{machine} : {len(X)} exemples")
-    return CorpusFrappes(np.stack(X), np.stack(Y), machines, situations)
+    return CorpusFrappes(np.stack(X), np.stack(Y), machines, situations, empreintes=empreintes)
 
 
 @dataclass
@@ -181,6 +230,29 @@ class ClassifieurFrappes:
     date: str
     versions: Dict[str, str]
     mesures: Dict[str, object] = field(default_factory=dict)
+    # Empreinte de chaque boîte au moment de l'entraînement : c'est ce qui
+    # permet de REFUSER le modèle le jour où un kick change (A4.1).
+    empreintes: Dict[str, str] = field(default_factory=dict)
+
+    def verifie_fraicheur(self, engine: VsmEngine, sample_rate: int = 44100):
+        """Le son des boîtes a-t-il bougé depuis l'entraînement ?
+
+        Même verdict à trois réponses que le corpus mélodique (à jour, périmé,
+        invérifiable) : un modèle sans empreinte est invérifiable, et
+        l'invérifiable n'est pas l'à-jour.
+        """
+        from .vsm_corpus_build import Peremption
+
+        if not self.empreintes:
+            return Peremption((), tuple(sorted(NOTES_PAR_MACHINE)))
+        perimees, invérifiables = [], []
+        for machine, attendue in sorted(self.empreintes.items()):
+            obtenue = empreinte_batterie(engine, machine, sample_rate)
+            if not obtenue:
+                invérifiables.append(machine)
+            elif obtenue != attendue:
+                perimees.append(machine)
+        return Peremption(tuple(perimees), tuple(invérifiables))
 
     def pieces_a(self, descripteur: np.ndarray) -> List[Tuple[str, float]]:
         """Pièces qui frappent à cet instant, avec leur probabilité. Vide si
@@ -198,7 +270,8 @@ class ClassifieurFrappes:
         joblib.dump({"format": FORMAT_MODELE, "version": VERSION_MODELE,
                      "pieces": self.pieces, "moyenne": self.moyenne, "echelle": self.echelle,
                      "modeles": self.modeles, "seuil": self.seuil, "date": self.date,
-                     "versions": self.versions, "mesures": self.mesures}, chemin)
+                     "versions": self.versions, "mesures": self.mesures,
+                     "empreintes": self.empreintes}, chemin)
 
     @staticmethod
     def relit(chemin) -> "ClassifieurFrappes":
@@ -208,7 +281,7 @@ class ClassifieurFrappes:
             raise ValueError(f"modèle de batterie inattendu : {d.get('format')!r} v{d.get('version')}")
         return ClassifieurFrappes(tuple(d["pieces"]), d["moyenne"], d["echelle"], d["modeles"],
                                   float(d["seuil"]), str(d["date"]), dict(d["versions"]),
-                                  dict(d.get("mesures", {})))
+                                  dict(d.get("mesures", {})), dict(d.get("empreintes", {})))
 
 
 # SEUIL DE DÉCISION, balayé au banc plutôt que choisi. Les sorties du modèle
@@ -223,7 +296,8 @@ SEUIL_DECISION = 0.25
 
 
 def entraine_frappes(corpus: CorpusFrappes, graine: int = 20260823, seuil: float = SEUIL_DECISION,
-                     part_epreuve: float = 0.25) -> Tuple[ClassifieurFrappes, Dict[str, object]]:
+                     part_epreuve: float = 0.25, iterations: int = 150,
+                     ) -> Tuple[ClassifieurFrappes, Dict[str, object]]:
     """Un modèle binaire par pièce, éprouvé sur des SITUATIONS jamais vues.
 
     La coupure se fait par SITUATION (« hihat après snare (214 ms) » entier d'un
@@ -270,7 +344,7 @@ def entraine_frappes(corpus: CorpusFrappes, graine: int = 20260823, seuil: float
         y = corpus.Y[:, i]
         if y[~masque_epreuve].sum() == 0 or (1 - y[~masque_epreuve]).sum() == 0:
             continue
-        m = HistGradientBoostingClassifier(random_state=graine, max_iter=150)
+        m = HistGradientBoostingClassifier(random_state=graine, max_iter=iterations)
         m.fit(Z[~masque_epreuve], y[~masque_epreuve])
         modeles[p] = m
         if masque_epreuve.any():
@@ -285,5 +359,6 @@ def entraine_frappes(corpus: CorpusFrappes, graine: int = 20260823, seuil: float
     clf = ClassifieurFrappes(tuple(p for p in corpus.pieces if p in modeles), moyenne, echelle, modeles,
                              seuil, datetime.now(timezone.utc).isoformat(timespec="seconds"),
                              {"python": platform.python_version(), "numpy": np.__version__,
-                              "sklearn": sklearn.__version__}, mesures)
+                              "sklearn": sklearn.__version__}, mesures,
+                             dict(corpus.empreintes))
     return clf, mesures

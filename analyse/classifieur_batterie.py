@@ -48,13 +48,7 @@ def main() -> int:
         print("[3/3] Le banc des motifs-vérité, sans puis avec le modèle")
         audios = [(fab(), bench.rend_motif(fab(), moteur)) for fab in bench.MOTIFS]
         sans = [bench.juge(m, moteur, audio=a) for m, a in audios]
-        original = bench.build_drum_kit
-        bench.build_drum_kit = lambda audio, sr, folder, **kw: original(
-            audio, sr, folder, **{**kw, "hit_classifier": modele})
-        try:
-            avec = [bench.juge(m, moteur, audio=a) for m, a in audios]
-        finally:
-            bench.build_drum_kit = original
+        avec = [bench.juge(m, moteur, audio=a, hit_classifier=modele) for m, a in audios]
 
     print(f"\n      {'motif':<14} {'pièce':<7} {'sans modèle':>18} {'avec modèle':>18}")
     for s_sans, s_avec in zip(sans, avec):

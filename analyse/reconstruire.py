@@ -32,7 +32,7 @@ import tempfile
 import time
 import wave
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -63,9 +63,17 @@ def provenance(args, classifieur, frappes) -> dict:
     import subprocess
 
     try:
+        racine = str(Path(__file__).resolve().parent.parent)
         commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True,
-                                text=True, timeout=5, check=True,
-                                cwd=str(Path(__file__).resolve().parent.parent)).stdout.strip()
+                                text=True, timeout=5, check=True, cwd=racine).stdout.strip()
+        # UN ARBRE MODIFIÉ N'EST PAS CE COMMIT. Un rapport produit avec des
+        # changements non commités qui annoncerait le commit nu se rejouerait
+        # sur un autre code sans que rien ne le dise ; le « + » le dit.
+        modifie = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no", "--",
+                                  "analyse"], capture_output=True, text=True, timeout=5,
+                                 check=True, cwd=racine).stdout.strip()
+        if modifie:
+            commit += "+"
     except Exception:  # noqa: BLE001 - hors dépôt, ou git absent : on le dit
         commit = ""
     return {
@@ -386,10 +394,20 @@ def main() -> int:
 
                 try:
                     modele_frappes = ClassifieurFrappes.relit(args.classifieur_batterie)
-                    print(f"      classifieur de frappes du {modele_frappes.date}, "
-                          f"pièces : {', '.join(modele_frappes.pieces)}")
+                    # VÉRIFIÉ comme l'autre (A4.1) : un kick de 909 qui change
+                    # rend périmé un modèle qui nomme des kicks de 909.
+                    verdict = modele_frappes.verifie_fraicheur(moteur, SAMPLE_RATE)
+                    if not verdict.frais:
+                        print(f"      classifieur de frappes du {modele_frappes.date} REFUSÉ — "
+                              f"{verdict.resume()}")
+                        print("      la batterie est nommée SANS lui, exactement comme avant")
+                        modele_frappes = None
+                    else:
+                        print(f"      classifieur de frappes du {modele_frappes.date}, "
+                              f"pièces : {', '.join(modele_frappes.pieces)}, empreintes vérifiées")
                 except Exception as erreur:  # noqa: BLE001
                     print(f"      classifieur de frappes illisible ({type(erreur).__name__}) — ignoré")
+                    modele_frappes = None
 
             candidates = ([m.strip() for m in args.machines.split(",") if m.strip()]
                           or melodic_machines(moteur))
@@ -408,9 +426,10 @@ def main() -> int:
             # la seule façon qu'une égalité mal tranchée cesse d'être
             # définitive : le verdict du mélange ne savait défaire qu'un
             # réglage, jamais une machine.
-            machines_secondes: Dict[str, MixAlternative] = {}
+            machines_secondes: Dict[str, List[MixAlternative]] = {}
             audio_par_stem: Dict[str, np.ndarray] = {}
             pistes_batterie: List[ExportTrack] = []
+            rapport_batterie: Optional[Dict[str, object]] = None
             for nom, chemin in sorted(pistes.items()):
                 # RÉPARTITION DE LA VERSION FINALE : le sampler n'est QUE pour
                 # la voix. La batterie, elle, a désormais sa propre machine.
@@ -461,9 +480,33 @@ def main() -> int:
                           f"{kit.total_hits} frappe(s) — {detail}")
                     for avertissement in kit.warnings:
                         print(f"                 ! {avertissement}")
+                    # CE QUE LE RAPPORT DIRA DE LA BATTERIE. Jusqu'ici elle
+                    # n'y figurait pas : `rapport.json` ne listait que les
+                    # stems mélodiques, et la piste la plus lourde du mélange
+                    # -- arbitrée, réglée, départagée -- n'y laissait aucune
+                    # trace. Un rapport qui tait la décision la plus coûteuse
+                    # n'est pas un rapport.
+                    rapport_batterie = {
+                        "machine": piste.machine,
+                        "means": moyen,
+                        "hits": int(kit.total_hits),
+                        "pieces": [{"family": s.family, "hits": int(s.hit_count)}
+                                   for s in kit.slots],
+                        "warnings": list(kit.warnings),
+                        "trackArbitration": [],
+                        "refinements": [],
+                    }
 
-                    seconde_batterie = None
-                    rivales = []
+                    rms_batterie = (float(np.sqrt(np.mean(np.square(
+                        audio_batterie.astype(np.float64))))) if audio_batterie.size else None)
+                    # Les candidates EN LICE, par machine, chacune avec SES
+                    # notes : la correspondance famille -> note diffère d'une
+                    # boîte à l'autre (la 909 a un clap en 39, `vsm.drums` une
+                    # percussion en 49), et une candidate jouée avec les notes
+                    # d'une autre serait un kit amputé.
+                    en_lice: Dict[str, ExportTrack] = {piste.machine: piste}
+                    a_regler: List[str] = [piste.machine]
+                    verdicts_batterie = []
                     # ARBITRAGE DE LA BATTERIE : les boîtes à rythmes du parc
                     # concourent. Jusqu'ici cette piste était la SEULE à
                     # échapper à la règle « toutes les machines en lice,
@@ -476,36 +519,30 @@ def main() -> int:
                     # seule la machine change, et la piste entière juge.
                     if not args.sans_arbitrage and moyen == "vsm.drums" and not args.sans_arbitrage_batterie:
                         depart_arb = time.perf_counter()
-                        rivales = [drum_machine_track(kit, m, name="Batterie")
-                                   for m in ("vsm.tr909", "vsm.tr808")]
-                        candidates_batterie = [
-                            TrackCandidate(piste.machine, dict(piste.parameters), ORIGINE_USINE)
-                        ] + [TrackCandidate(r.machine, {}, ORIGINE_USINE) for r in rivales]
-                        notes_batterie = list(piste.notes)
-                        # Chaque rivale a SES notes (la correspondance de notes
-                        # diffère d'une machine à l'autre) : l'arbitrage
-                        # générique partage les notes entre candidates, on le
-                        # fait donc ici machine par machine, avec la même
-                        # mesure et la même règle de niveau.
-                        verdicts_batterie = []
-                        for candidate, notes_de in zip(
-                                candidates_batterie, [notes_batterie] + [r.notes for r in rivales]):
-                            v = arbitrate_on_track(
-                                notes=notes_de, stem_audio=audio_batterie,
-                                candidates=[candidate],
-                                workdir=Path(temporaire) / "arbitrage" / "batterie" / candidate.machine,
+                        for m in ("vsm.tr909", "vsm.tr808"):
+                            en_lice[m] = drum_machine_track(kit, m, name="Batterie")
+                        # L'arbitrage générique partage les notes entre
+                        # candidates ; on le fait donc ici machine par machine,
+                        # avec la même mesure et la même règle de niveau.
+                        for m, candidate in en_lice.items():
+                            verdicts_batterie.extend(arbitrate_on_track(
+                                notes=list(candidate.notes), stem_audio=audio_batterie,
+                                candidates=[TrackCandidate(m, dict(candidate.parameters),
+                                                           ORIGINE_USINE)],
+                                workdir=Path(temporaire) / "arbitrage" / "batterie" / m,
                                 sample_rate=SAMPLE_RATE, metric=args.metrique, tempo=args.tempo,
                                 binary=args.moteur, name="Batterie",
-                                stem_rms=float(np.sqrt(np.mean(np.square(
-                                    audio_batterie.astype(np.float64))))) if audio_batterie.size else None,
-                                base_volume=DEFAULT_TRACK_VOLUME, max_volume=VOLUME_MAX)
-                            verdicts_batterie.extend(v)
+                                stem_rms=rms_batterie,
+                                base_volume=DEFAULT_TRACK_VOLUME, max_volume=VOLUME_MAX))
                         verdicts_batterie.sort(key=lambda v: v.distance)
+                        rapport_batterie["trackArbitration"] = [
+                            {"machine": v.machine, "origin": v.origin, "distance": v.distance}
+                            for v in verdicts_batterie]
                         podium = ", ".join(f"{v.machine.split('.')[-1]}={v.distance:.3f}"
                                            for v in verdicts_batterie[:3])
                         if verdicts_batterie and verdicts_batterie[0].machine != piste.machine:
                             gagnante = verdicts_batterie[0].machine
-                            piste = next(r for r in rivales if r.machine == gagnante)
+                            piste = en_lice[gagnante]
                             moyen = gagnante
                             print(f"      {nom:8s} : arbitrage batterie CHANGE {gagnante} "
                                   f"D={verdicts_batterie[0].distance:.3f} "
@@ -513,97 +550,98 @@ def main() -> int:
                         else:
                             print(f"      {nom:8s} : arbitrage batterie garde vsm.drums "
                                   f"[{time.perf_counter()-depart_arb:.0f} s] — {podium}")
-                        # LA SECONDE BOÎTE EST RÉGLÉE AUSSI quand l'écart est
-                        # serré -- la même règle que les stems mélodiques
-                        # (§ 5 quinquies), parce que comparer une machine
-                        # réglée à une machine d'usine n'est pas une
-                        # comparaison. Mesuré sur B4 Wuz Then : la 808 d'usine
-                        # battait la 909 d'usine (0,251 contre 0,356), et une
-                        # oreille disait 909 ; seul un réglage des deux tranche.
-                        seconde_batterie = close_runner_up(verdicts_batterie,
-                                                           margin=CLOSE_MARGIN_BATTERIE)
-                        if seconde_batterie is not None:
-                            print(f"      {nom:8s} : arbitrage batterie SERRÉ — "
-                                  f"{seconde_batterie.machine} à "
-                                  f"{100*(seconde_batterie.distance/verdicts_batterie[0].distance-1):.0f} % "
-                                  f"({seconde_batterie.distance:.3f}), réglée elle aussi")
+                        # TOUTE BOÎTE À PORTÉE EST RÉGLÉE AUSSI -- la même règle
+                        # que les stems mélodiques (§ 5 quinquies), parce que
+                        # comparer une machine réglée à une machine d'usine
+                        # n'est pas une comparaison. Mesuré sur B4 Wuz Then : la
+                        # 808 d'usine battait la 909 d'usine (0,251 contre
+                        # 0,356), et une oreille disait 909 ; seul un réglage
+                        # des deux tranche. Et sur Children, la batterie
+                        # MODÉLISÉE : écartée sur la piste (0,426 contre 0,301),
+                        # elle descendait réglée à 0,211 -- à portée de la 909
+                        # réglée (0,164) -- et le mélange la préférait (0,28
+                        # contre 0,34) sans que personne ne puisse comparer,
+                        # puisqu'elle n'était plus nulle part.
+                        a_regler = [piste.machine]
+                        if verdicts_batterie:
+                            seuil_serre = verdicts_batterie[0].distance * (1.0 + CLOSE_MARGIN_BATTERIE)
+                            for v in verdicts_batterie[1:]:
+                                if v.machine in a_regler or v.distance > seuil_serre:
+                                    continue
+                                a_regler.append(v.machine)
+                                print(f"      {nom:8s} : arbitrage batterie SERRÉ — "
+                                      f"{v.machine} à "
+                                      f"{100*(v.distance/verdicts_batterie[0].distance-1):.0f} % "
+                                      f"({v.distance:.3f}), réglée elle aussi")
                     # LA BATTERIE SE RÈGLE AUSSI, et c'est le dernier endroit
                     # de la chaîne où un patch restait celui d'usine sans que
                     # personne l'ait jugé. Elle pèse pourtant le plus lourd dans
                     # le mélange (niveau efficace 0,156 sur Children, contre
                     # 0,087 pour la basse) : la laisser hors du réglage revenait
                     # à soigner les pistes qu'on entend le moins.
-                    #
-                    # Pas d'ARBITRAGE en revanche : `vsm.drums` n'a pas de
-                    # concurrente crédible ici. Les deux boîtes à rythmes du
-                    # parc n'ont ni la même correspondance de notes ni les mêmes
-                    # pièces, et les mettre en lice demanderait une traduction
-                    # dont l'effet n'est pas mesuré.
+                    reglees: Dict[str, Tuple[ExportTrack, float, Dict[str, float]]] = {}
                     if not args.sans_reglage_piste and piste.machine != "vsm.sampler":
-                        depart_reglage = time.perf_counter()
-                        patchs_avant_reglage[piste.name] = dict(piste.parameters)
-                        affine = refine_patch_on_track(
-                            machine=piste.machine,
-                            parameters=piste.parameters,
-                            notes=piste.notes,
-                            stem_audio=audio_batterie,
-                            engine=moteur,
-                            workdir=Path(temporaire) / "reglage" / nom,
-                            sample_rate=SAMPLE_RATE,
-                            budget=args.budget_piste,
-                            axes=args.axes_piste,
-                            metric=args.metrique,
-                            tempo=args.tempo,
-                            binary=args.moteur,
-                            name=piste.name,
-                            stem_rms=float(np.sqrt(np.mean(np.square(
-                                audio_batterie.astype(np.float64))))) if audio_batterie.size else None,
-                            base_volume=DEFAULT_TRACK_VOLUME,
-                            max_volume=VOLUME_MAX,
-                        )
-                        if affine is None:
-                            print(f"      {nom:8s} : réglage piste non tenté "
-                                  f"(la machine ne déclare aucun axe)")
-                        else:
-                            piste.parameters = dict(affine.parameters)
+                        for m in a_regler:
+                            candidate = en_lice[m]
+                            depart_reglage = time.perf_counter()
+                            patch_usine = dict(candidate.parameters)
+                            affine = refine_patch_on_track(
+                                machine=m, parameters=candidate.parameters,
+                                notes=candidate.notes, stem_audio=audio_batterie,
+                                engine=moteur,
+                                workdir=Path(temporaire) / "reglage" / (nom if m == piste.machine
+                                                                        else f"{nom}-{m}"),
+                                sample_rate=SAMPLE_RATE, budget=args.budget_piste,
+                                axes=args.axes_piste, metric=args.metrique, tempo=args.tempo,
+                                binary=args.moteur, name=candidate.name,
+                                stem_rms=rms_batterie,
+                                base_volume=DEFAULT_TRACK_VOLUME, max_volume=VOLUME_MAX)
+                            if affine is None:
+                                print(f"      {nom:8s} : réglage piste de {m} non tenté "
+                                      f"(la machine ne déclare aucun axe)")
+                                continue
+                            candidate.parameters = dict(affine.parameters)
+                            reglees[m] = (candidate, float(affine.distance), patch_usine)
+                            rapport_batterie["refinements"].append({
+                                "machine": m, "before": affine.start_distance,
+                                "after": affine.distance, "evaluations": affine.evaluations})
                             bouges = ", ".join(
                                 f"{axe.split('.')[-1]}={valeur:.3g}"
                                 for axe, valeur, _ in affine.improvements[-4:]
                             ) or "aucun axe retenu"
-                            print(f"      {nom:8s} : réglage piste "
+                            qui = "" if m == piste.machine else f"{m} "
+                            print(f"      {nom:8s} : réglage piste {qui}"
                                   f"{affine.start_distance:.3f} -> {affine.distance:.3f} "
                                   f"({affine.evaluations} évaluations, "
                                   f"{time.perf_counter()-depart_reglage:.0f} s) — {bouges}")
 
-                        # La SECONDE boîte, réglée avec le même budget : la
-                        # meilleure des deux RÉGLÉES l'emporte. Une machine
-                        # réglée contre une machine d'usine n'est pas une
-                        # comparaison.
-                        if seconde_batterie is not None and affine is not None:
-                            rivale = next(r for r in rivales if r.machine == seconde_batterie.machine)
-                            depart_seconde = time.perf_counter()
-                            affine_seconde = refine_patch_on_track(
-                                machine=rivale.machine, parameters={}, notes=rivale.notes,
-                                stem_audio=audio_batterie, engine=moteur,
-                                workdir=Path(temporaire) / "reglage" / (nom + "-seconde"),
-                                sample_rate=SAMPLE_RATE, budget=args.budget_piste,
-                                axes=args.axes_piste, metric=args.metrique, tempo=args.tempo,
-                                binary=args.moteur, name=rivale.name,
-                                stem_rms=float(np.sqrt(np.mean(np.square(
-                                    audio_batterie.astype(np.float64))))) if audio_batterie.size else None,
-                                base_volume=DEFAULT_TRACK_VOLUME, max_volume=VOLUME_MAX)
-                            if affine_seconde is not None:
-                                gagne = affine_seconde.distance < affine.distance - 1e-6
-                                print(f"      {nom:8s} : seconde boîte {rivale.machine} réglée "
-                                      f"{affine_seconde.start_distance:.3f} -> {affine_seconde.distance:.3f} "
-                                      f"({time.perf_counter()-depart_seconde:.0f} s) — "
-                                      f"{'elle PASSE DEVANT' if gagne else 'la première tient'} "
-                                      f"({affine.distance:.3f})")
-                                if gagne:
-                                    rivale.parameters = dict(affine_seconde.parameters)
-                                    piste = rivale
-                                    moyen = rivale.machine
-
+                    # LA MEILLEURE DES RÉGLÉES PREND LA PISTE, et les autres
+                    # RÉGLÉES restent en jeu au verdict du mélange : la piste
+                    # a tranché entre elles, mais la piste ne juge pas ce qu'on
+                    # écoute.
+                    if reglees:
+                        meilleure = min(reglees, key=lambda m: reglees[m][1])
+                        if meilleure != piste.machine:
+                            contre = (f" ({reglees[meilleure][1]:.3f} contre "
+                                      f"{reglees[piste.machine][1]:.3f})"
+                                      if piste.machine in reglees else "")
+                            print(f"      {nom:8s} : {meilleure} réglée PASSE DEVANT{contre}")
+                            piste = reglees[meilleure][0]
+                            moyen = meilleure
+                        patchs_avant_reglage[piste.name] = dict(reglees[meilleure][2])
+                        rapport_batterie["trackDistance"] = reglees[meilleure][1]
+                        for m, (candidate, d, _) in reglees.items():
+                            if m == meilleure:
+                                continue
+                            machines_secondes.setdefault("Batterie", []).append(MixAlternative(
+                                parameters=dict(candidate.parameters),
+                                label=f"{'batterie modélisée' if m == 'vsm.drums' else 'seconde boîte'} "
+                                      f"({m}) réglée",
+                                machine=m, notes=list(candidate.notes), track_distance=d))
+                    elif verdicts_batterie:
+                        rapport_batterie["trackDistance"] = verdicts_batterie[0].distance
+                    rapport_batterie["machine"] = piste.machine
+                    rapport_batterie["means"] = moyen
                     pistes_batterie.append(piste)
                     audio_par_stem["Batterie"] = audio_batterie
                     continue
@@ -700,11 +738,11 @@ def main() -> int:
 
                         seconde = close_runner_up(verdicts)
                         if seconde is not None:
-                            machines_secondes[nom] = MixAlternative(
+                            machines_secondes.setdefault(nom, []).append(MixAlternative(
                                 parameters=dict(seconde.parameters),
                                 label=f"machine seconde ({seconde.machine})",
                                 machine=seconde.machine,
-                                track_distance=seconde.distance)
+                                track_distance=seconde.distance))
                             ecart = (seconde.distance - gagnant.distance) / max(1e-9, gagnant.distance)
                             print(f"      {nom:8s} : arbitrage SERRÉ — {seconde.machine} "
                                   f"à {ecart*100:.1f} % ({seconde.distance:.3f}), remise en jeu "
@@ -815,6 +853,7 @@ def main() -> int:
             # ce qu'on écoute, et on DIT ce qui a été écarté.
             distances_retenues: Dict[str, float] = {}
             alternatives: Dict[str, List[MixAlternative]] = {}
+            verdict_melange: List[Dict[str, object]] = []
             for stem in reconstruits:
                 if stem.arbitration_parameters is not None:
                     alternatives.setdefault(stem.name, []).append(
@@ -824,8 +863,8 @@ def main() -> int:
             for nom_piste, patch in patchs_avant_reglage.items():
                 alternatives.setdefault(nom_piste, []).append(
                     MixAlternative(parameters=dict(patch), label="avant réglage"))
-            for nom_piste, seconde in machines_secondes.items():
-                alternatives.setdefault(nom_piste, []).append(seconde)
+            for nom_piste, secondes in machines_secondes.items():
+                alternatives.setdefault(nom_piste, []).extend(secondes)
             if alternatives:
                 decisions = keep_what_helps_the_mix(
                     pistes_export, alternatives, melange, audio_par_stem, sortie,
@@ -842,6 +881,11 @@ def main() -> int:
                     print(f"      {decision.track:8s} : verdict du mélange -> "
                           f"{decision.kept} ({decision.distance_kept:.4f})"
                           + (f" — écartées : {ecartees}" if ecartees else ""))
+                    verdict_melange.append({
+                        "track": decision.track, "kept": decision.kept,
+                        "mixDistance": decision.distance_kept,
+                        "rejected": [{"label": lib, "mixDistance": d}
+                                     for lib, d in decision.rejected]})
             # LE RAPPORT DOIT DÉCRIRE LE PROJET QU'ON ÉCRIT, et il ne le
             # faisait plus. `keep_what_helps_the_mix` REMPLACE le dictionnaire
             # de paramètres de la piste (`track.parameters = ...`) au lieu de le
@@ -873,6 +917,16 @@ def main() -> int:
                 retenue = distances_retenues.get(stem.name)
                 if retenue is not None:
                     stem.track_distance = retenue
+            # LA BATTERIE AUSSI : le verdict du mélange peut lui avoir rendu
+            # une autre boîte, et le rapport doit décrire celle qu'on écrit.
+            if rapport_batterie is not None and "Batterie" in par_nom:
+                piste_finale = par_nom["Batterie"]
+                rapport_batterie["machine"] = piste_finale.machine
+                rapport_batterie["parameters"] = {k: float(v) for k, v
+                                                  in sorted(piste_finale.parameters.items())}
+                retenue = distances_retenues.get("Batterie")
+                if retenue is not None:
+                    rapport_batterie["trackDistance"] = retenue
 
             # UN PRESET NE DOIT DÉPENDRE DE RIEN. Quand l'arbitrage ou le
             # verdict retiennent un patch d'USINE, le dictionnaire de paramètres
@@ -896,9 +950,20 @@ def main() -> int:
                 piste.parameters = defauts
 
         rapport = write_project_bundle(pistes_export, sortie, title=entree.stem, tempo=args.tempo)
+        # TOUT CE QUE LE RAPPORT PORTE EN PLUS DES STEMS, réuni UNE fois et
+        # passé aux DEUX écritures. La première version ne passait la
+        # provenance qu'à la première : la seconde, celle qui ajoute la
+        # distance globale, écrasait le fichier sans elle, et le rapport final
+        # -- le seul qu'on lit -- ne disait ni commit, ni options, ni modèles.
+        # A4.2 était « fait » et son résultat n'existait pas sur disque.
+        complements = dict(
+            provenance=provenance(args, modele_classifieur, modele_frappes),
+            drums=rapport_batterie,
+            mix_verdict=verdict_melange or None,
+        )
         write_reconstruction_report(reconstruits, sortie / "rapport.json",
                                     metric=args.metrique, iterations=args.iterations,
-                                    provenance=provenance(args, modele_classifieur, modele_frappes))
+                                    **complements)
         print(f"      {rapport['tracks']} piste(s), {rapport['notes']} note(s)")
 
         # --- rendu et distance ------------------------------------------------
@@ -926,7 +991,7 @@ def main() -> int:
                                           metric=args.metrique)
         write_reconstruction_report(reconstruits, sortie / "rapport.json",
                                     global_distance=distance, metric=args.metrique,
-                                    iterations=args.iterations)
+                                    iterations=args.iterations, **complements)
 
         # Comparaison : original à gauche, reconstruction à droite. C'est
         # l'écoute qui tranche, pas le chiffre -- le chiffre dit seulement où

@@ -114,17 +114,20 @@ mesure. Le détail, les chiffres et les impasses : `ARCHITECTURE.md` § 34.
 
 **La batterie concourt aussi.** Le stem de batterie est découpé en kit, puis
 rejoué par `vsm.drums` (modélisée) ET par les boîtes à rythmes du parc (TR-909,
-TR-808), la piste entière tranche, et les deux premières sont réglées quand
-l'écart est serré. Sur un morceau de techno de 1993, faire entrer les boîtes dans
-la course a fait passer la distance globale de 0,4088 à 0,2490 — et il a fallu
-une oreille pour remarquer qu'elles n'y étaient pas (`--sans-arbitrage-batterie`
-rend l'ancien comportement).
+TR-808), la piste entière tranche, toutes celles à portée sont réglées, la
+meilleure réglée prend la piste et les autres réglées restent en jeu au verdict
+du mélange — avec leurs propres notes, puisque chaque boîte a les siennes. Sur
+un morceau de techno de 1993, faire entrer les boîtes dans la course a fait
+passer la distance globale de 0,4088 à 0,2490 — et il a fallu une oreille pour
+remarquer qu'elles n'y étaient pas (`--sans-arbitrage-batterie` rend l'ancien
+comportement).
 
 **La métrique se choisit, et s'inscrit.** `--metrique v2` (défaut) ou `v3`, qui
 ajoute un terme de HAUTEUR pour les sons graves — sans lui, un kick réel à 59 Hz
 était jugé plus proche d'un 808 à 30 Hz qu'à 60. Deux métriques ne se comparent
-pas ; chaque `rapport.json` porte la sienne, son budget, et sa `provenance`
-(commit, options, modèles consultés).
+pas ; chaque `rapport.json` porte la sienne, son budget, sa `provenance`
+(commit, options, modèles consultés), la batterie (`drums` : pièces, arbitrage,
+réglages) et le verdict du mélange (`mixVerdict` : gardé, écarté, chiffres).
 
 ### Apprendre les sonorités du parc (`docs/CDC-apprentissage.md`)
 
@@ -136,13 +139,15 @@ publie son coût et sa mesure :
 analyse/.venv/bin/python analyse/corpus.py --sortie corpus/          # A0 : ~27 min par machine à 10 000 patchs
 analyse/.venv/bin/python analyse/classifieur.py --corpus corpus/ --sortie modeles/classifieur.joblib   # A1
 analyse/.venv/bin/python analyse/classifieur_batterie.py --sortie modeles/frappes.joblib             # A2
-analyse/.venv/bin/python analyse/banc_batterie.py                    # le juge de la batterie, rejouable
+analyse/.venv/bin/python analyse/banc_batterie.py [--classifieur-batterie modeles/frappes.joblib]  # le juge de la batterie, rejouable
 analyse/.venv/bin/python analyse/tests/run.py                        # les tests Python, sans dépendance
 ```
 
 Les modèles sont des **conseillers** : ils ne produisent jamais une seconde
 d'audio, et ils sont REFUSÉS au chargement si le son d'une machine a changé
-depuis leur entraînement (empreintes rejouées, pas supposées).
+depuis leur entraînement (empreintes rejouées, pas supposées — les deux
+modèles, le classifieur de frappes compris). `corpus/` et `modeles/` sont
+ignorés par git : ils se refont à l'identique.
 
 - `--classifieur MODÈLE` : l'avis du classifieur de machine est consigné dans le
   rapport, à côté de la mesure — jamais à sa place. Mesuré : il reconnaît le
@@ -150,8 +155,9 @@ depuis leur entraînement (empreintes rejouées, pas supposées).
   16/20 pour la gagnante réelle sur un piano) ; `--preselection-apprise N` le
   laisse dégrossir quand même, et l'aide dit que la mesure ne le recommande pas.
 - `--classifieur-batterie MODÈLE` : le classifieur de frappes décide, attaque
-  par attaque, quelles pièces frappent. Mesuré au banc : charleston seule 16/16
-  au lieu de 8/16, zéro kick inventé au lieu de 8, aucune frappe perdue.
+  par attaque, quelles pièces frappent. Mesuré au banc (trois motifs) : caisse
+  claire sous le kick 8/8 au lieu de 0/8, charleston seule 15/16 au lieu de
+  8/16, claps 8/8 et toms 7/8 au lieu de 0, aucune frappe perdue.
 - `--sans-apprentissage` : le témoin, aucun modèle consulté.
 
 Les résultats, les chiffres et ce qui a été rejeté :

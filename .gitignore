@@ -40,3 +40,11 @@ reconstruction/
 Thumbs.db
 *.swp
 *~
+
+# --- Apprentissage -----------------------------------------------------------
+# Corpus engendrés par le moteur et modèles entraînés dessus : regénérables à
+# l'identique (graines fixées, empreintes vérifiées), et lourds. Les commandes
+# qui les refont sont dans le README ; leur coût mesuré est dans
+# docs/ROADMAP-apprentissage.md.
+corpus/
+modeles/
