@@ -188,7 +188,7 @@ une banque téléchargée, qui ne doit jamais conditionner les tests.
 |---|---|---|---|
 | M1 | Moteur multisample + format de profil + profil piano (Salamander) | la reconstruction AVEC la machine bat la même SANS, à conditions identiques ; A/B écouté | **livré et MESURÉ, non clos** : écart 0,0000 sur *Clair de Lune* — §11 |
 | M2 | Outil de conversion SF2 + profils orchestre (FluidR3) | un stem de cordes réelles reconstruit passe par la machine et bat toute machine de caractère, mesuré | **outil livré**, banque orchestre non mesurée — §12 |
-| M3 | Intégration analyse/apprentissage (candidates, corpus, classifieur) | la route « acoustique » du classifieur aboutit ici ; abstention réservée à l'inconnu véritable | **bloqué** : `CDC-apprentissage.md` est cité par ce document mais n'existe pas dans le dépôt |
+| M3 | Intégration analyse/apprentissage (candidates, corpus, classifieur) | la route « acoustique » du classifieur aboutit ici ; abstention réservée à l'inconnu véritable | **débloqué** : `CDC-apprentissage.md` et `ROADMAP-apprentissage.md` sont installés (23/08). M3 suit désormais les phases A0-A5 de cette feuille, et la route d'abstention est tranchée par l'amendement du § 4 de ce cahier |
 
 **Sur le critère de clôture de M1, une précision qui a coûté une fausse
 conclusion.** Le premier rejeu a donné 0,2159 contre 1,639, soit sept fois

@@ -279,6 +279,12 @@ MIDI + patchs rejouables, et mesurer l'écart.
 - [`docs/CDC-machines-manquantes.md`](docs/CDC-machines-manquantes.md) — ce qui
   manque pour reconstruire des enregistrements réels, et pourquoi ce ne sont pas
   d'autres machines de caractère.
+- [`docs/CDC-apprentissage.md`](docs/CDC-apprentissage.md) — apprendre à
+  reconnaître les sonorités du parc : corpus engendré par le moteur,
+  classifieur de machine, gabarits de batterie, estimateur de paramètres. Les
+  modèles CONSEILLENT ; ils ne produisent jamais une seconde d'audio.
+- [`docs/ROADMAP-apprentissage.md`](docs/ROADMAP-apprentissage.md) — le
+  découpage en phases A0 à A5, du gain le plus sûr au plus risqué.
 - [`docs/CDC-multisample.md`](docs/CDC-multisample.md) — `vsm.multisample` :
   l'acoustique mélodique par report d'échantillons, le format de profil, et
   l'installation d'une banque libre.
