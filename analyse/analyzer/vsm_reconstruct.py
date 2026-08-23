@@ -84,6 +84,11 @@ class StemReconstruction:
     # chaque projet, et un chemin absolu ne s'ouvrirait que sur le poste qui
     # l'a écrit.
     profile: str = ""
+    # AVIS du classifieur appris, consigné dans le rapport. Il ne change rien
+    # au verdict par défaut : le publier à côté de la mesure est justement ce
+    # qui permettra, un jour, de savoir s'il mérite qu'on le suive.
+    classifier_ranking: List[tuple] = field(default_factory=list)
+    classifier_abstention: str = ""
 
     # `gate` : la proportion de l'extrait pendant laquelle la note de référence
     # était TENUE. Conservé parce qu'il conditionne la distance au même titre
@@ -212,6 +217,8 @@ def reconstruct_stem(
     max_dimensions: Optional[int] = None,
     metric: str = "v2",
     shortlist: Optional[int] = None,
+    classifieur: Optional[object] = None,
+    preselection_apprise: int = 0,
 ) -> Optional[StemReconstruction]:
     """
     Trouve la machine et le patch qui approchent le mieux ce stem.
@@ -230,6 +237,44 @@ def reconstruct_stem(
     reference, excerpt, gate = picked
 
     candidates = list(machines) if machines else melodic_machines(engine)
+
+    # AVIS DU CLASSIFIEUR (phase A1). Par défaut il est CONSIGNÉ, pas suivi :
+    # mesuré sur Clair de Lune, il place `vsm.piano` — la machine que
+    # l'arbitrage retient réellement — au rang médian 16 sur 20. Un
+    # dégrossissage sur son classement aurait éliminé la gagnante.
+    #
+    # Le publier quand même a un intérêt : chaque exécution accumule une
+    # comparaison entre ce que le modèle croit et ce que la mesure trouve, et
+    # c'est de ces comparaisons-là que sortira le jour où on pourra s'y fier.
+    # Le suivre reste possible (`preselection_apprise`), à la main, et il est
+    # dit que la mesure ne le recommande pas.
+    avis_classement: List[tuple] = []
+    avis_abstention = ""
+    if classifieur is not None:
+        try:
+            from .vsm_corpus import descriptors
+
+            vecteur = descriptors(excerpt, sample_rate, reference.note, gate,
+                                   len(excerpt) / float(sample_rate))
+            avis_classement, avis_abstention = classifieur.classe(vecteur, k=len(candidates))
+        except Exception as erreur:  # noqa: BLE001 — un avis ne doit jamais faire échouer une reconstruction
+            avis_abstention = f"classifieur inutilisable : {type(erreur).__name__}"
+
+        if avis_abstention:
+            print(f"      {name:8s} : classifieur — {avis_abstention}")
+        else:
+            podium = ", ".join(f"{m.split('.')[-1]}={s:.2f}" for m, s in avis_classement[:3])
+            print(f"      {name:8s} : classifieur — {podium}")
+
+        if preselection_apprise > 0 and not avis_abstention:
+            retenues = [m for m, _ in avis_classement[:preselection_apprise]
+                        if m in candidates]
+            if retenues:
+                ecartees = [m for m in candidates if m not in retenues]
+                print(f"      {name:8s} : présélection APPRISE — {len(retenues)} retenue(s), "
+                      f"{len(ecartees)} écartée(s) sans être mesurée(s)")
+                candidates = retenues
+
     best, everyone = choose_machine(
         excerpt,
         reference.note,
@@ -258,6 +303,8 @@ def reconstruct_stem(
         gate=gate,
         patches={r.machine: dict(r.parameters) for r in everyone},
         profile=_profile_name(engine, best.machine),
+        classifier_ranking=[(m, float(s)) for m, s in avis_classement[:5]],
+        classifier_abstention=avis_abstention,
     )
 
 
@@ -376,6 +423,15 @@ def write_reconstruction_report(
                     for machine, distance in sorted(stem.considered, key=lambda x: x[1])
                 ],
                 "parameters": {k: float(v) for k, v in sorted(stem.parameters.items())},
+                # AVIS du classifieur appris, inscrit À CÔTÉ de la mesure et
+                # jamais à sa place. C'est l'accumulation de ces comparaisons —
+                # ce que le modèle croyait, ce que la mesure a trouvé — qui dira
+                # un jour s'il mérite qu'on le suive (§ 8.3 : rien de silencieux).
+                **({"classifierRanking": [{"machine": m, "score": s}
+                                           for m, s in stem.classifier_ranking]}
+                   if stem.classifier_ranking else {}),
+                **({"classifierAbstention": stem.classifier_abstention}
+                   if stem.classifier_abstention else {}),
             }
             for stem in stems
         ],

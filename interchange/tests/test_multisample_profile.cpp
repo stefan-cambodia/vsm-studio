@@ -398,3 +398,45 @@ VSM_TEST(multisample_sample_cache_changes_speed_not_sound) {
         VSM_ASSERT(sansCache[i] == avecCacheChaud[i]);
     }
 }
+
+/// Un profil dont le NOM est aussi celui de son dossier d'échantillons — ce que
+/// produit `vsm-sf2` — doit se résoudre vers le FICHIER, pas vers le dossier.
+///
+/// Trouvé en installant une deuxième banque de piano. La première n'avait pas
+/// la collision (« Salamander Grand Piano » contre le dossier
+/// « piano-salamander ») ; la seconde l'avait, et la machine rendait du silence
+/// sans un mot. Une seule banque d'essai n'aurait jamais montré ce défaut.
+VSM_TEST(multisample_profile_name_that_collides_with_a_folder_resolves_to_the_file) {
+    TempFolder banque("collision");
+    writeSine(banque.path / "echantillons" / "grave.wav", 130.81);
+    writeSine(banque.path / "echantillons" / "aigu.wav", 261.63);
+    writeText(banque.path / "Essai.profile.json", kMinimalProfile);
+    // Le piège : un DOSSIER portant exactement le nom déclaré du profil.
+    std::filesystem::create_directories(banque.path / "Essai");
+
+    TempFolder projet("collision-projet");
+    const std::string previous = std::getenv("VSM_PROFILS") ? std::getenv("VSM_PROFILS") : "";
+#ifdef _WIN32
+    _putenv_s("VSM_PROFILS", banque.path.string().c_str());
+#else
+    setenv("VSM_PROFILS", banque.path.string().c_str(), 1);
+#endif
+
+    SynthPreset preset;
+    preset.pluginId = "vsm.multisample";
+    preset.profile = "Essai";           // nom déclaré ET nom du dossier
+    auto synth = makeMultisample();
+    const auto report = applyPresetSamples(preset, *synth, projet.path.string());
+
+#ifdef _WIN32
+    _putenv_s("VSM_PROFILS", previous.c_str());
+#else
+    if (previous.empty()) unsetenv("VSM_PROFILS"); else setenv("VSM_PROFILS", previous.c_str(), 1);
+#endif
+
+    VSM_ASSERT(report.failures.empty());
+    VSM_ASSERT_EQ(report.loaded.size(), size_t(1));
+    auto* bank = dynamic_cast<vsm::audio::plugin::IMultisampleBank*>(synth.get());
+    VSM_ASSERT(bank != nullptr);
+    VSM_ASSERT_EQ(bank->zoneCount(), 2);
+}

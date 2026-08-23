@@ -537,9 +537,22 @@ n'est tranchée :
    joue une approximation de *Clair de Lune*. Un timbre fidèle rend les erreurs
    de notes AUDIBLES, là où un timbre générique les fond. Une machine peut donc
    perdre pour avoir été trop reconnaissable.
-2. **La cible n'est pas le piano de la banque.** Un Steinway de studio n'est pas
-   le Yamaha C5 de Salamander, et la métrique compare des descripteurs, pas des
-   catégories d'instrument.
+2. ~~**La cible n'est pas le piano de la banque.**~~ — **ÉPROUVÉE ET REJETÉE**
+   (23/08). Une seconde banque a été installée, par l'outil SF2 de M2 : YDP
+   Grand Piano (Yamaha Disklavier Pro, Zenph Studios / FreePats, CC-BY 3.0),
+   150 zones. Sur la même piste et la même mesure :
+
+   | | distance |
+   |---|---|
+   | `vsm.piano` (modélisé) | **0,2571** |
+   | `vsm.string` (corde frappée) | 0,3523 |
+   | `vsm.multisample` + Salamander (Yamaha C5) | 0,3571 |
+   | `vsm.multisample` + YDP (Disklavier Pro) | **0,4274** |
+
+   Deux pianos réels, enregistrés dans deux studios, sur deux instruments
+   différents — et le second fait ENCORE PIRE que le premier. Ce n'est donc pas
+   « le mauvais piano » : c'est le report d'échantillon lui-même qui perd sur
+   cette cible.
 3. **`vsm.piano` est peut-être simplement bon.** C'est la lecture la plus simple,
    et rien ne l'exclut.
 
@@ -551,3 +564,24 @@ timbre ou sur les notes. Tant que cette mesure n'existe pas, **le § 1 de ce
 cahier des charges garde sa question ouverte**, et `vsm.multisample` se justifie
 par la COUVERTURE qu'elle ouvre (l'orchestre General MIDI par M2) plutôt que par
 une victoire sur le piano.
+
+### Quatrième hypothèse rejetée, et un défaut trouvé en la testant
+
+Installer une deuxième banque a coûté une conversion et rapporté deux choses.
+
+**Le résultat** est au § 11 ci-dessus : le YDP Disklavier fait pire que le
+Salamander, donc l'écart ne tient pas au choix de l'instrument.
+
+**Le défaut** est plus utile encore, et il était INVISIBLE avec une seule
+banque. `vsm-sf2` écrit `X.profile.json` et pose ses échantillons dans un
+dossier `X`. La résolution d'un profil par son nom cherchait « existe-t-il
+quelque chose qui s'appelle X ? » — et trouvait le DOSSIER. Elle tentait alors
+de le lire comme un profil, échouait, et **la machine rendait du silence**. Le
+profil Salamander n'avait pas la collision (« Salamander Grand Piano » contre le
+dossier `piano-salamander`), si bien que tout marchait.
+
+Corrigé — on exige un FICHIER, pas une entrée quelconque — et un test le
+verrouille. La leçon est celle du § 5 bis de la feuille de route sous une forme
+de plus : *un banc à un seul cas ne teste pas ce qui distingue les cas.* Deux
+banques valent mieux qu'une, non pour la couverture, mais pour le défaut que la
+seconde révèle.

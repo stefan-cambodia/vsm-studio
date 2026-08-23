@@ -133,6 +133,7 @@ def main() -> int:
             espace = search_space_for_machine(machine, moteur)
             exemples, secondes = 0, 0.0
             engendres = 0
+            rejets: dict = {}
             fuite = None
             lots = max(1, (arguments.patchs + arguments.taille_lot - 1) // arguments.taille_lot)
             for numero in range(lots):
@@ -143,6 +144,8 @@ def main() -> int:
                     deja = LotDeCorpus.relit(chemin)
                     exemples += len(deja.X)
                     secondes += deja.seconds
+                    for raison, compte in deja.rejets.items():
+                        rejets[raison] = rejets.get(raison, 0) + compte
                     continue
                 patchs = min(arguments.taille_lot,
                              arguments.patchs - numero * arguments.taille_lot)
@@ -168,12 +171,24 @@ def main() -> int:
                 exemples += len(lot.X)
                 secondes += lot.seconds
                 engendres += len(lot.X)
+                for raison, compte in lot.rejets.items():
+                    rejets[raison] = rejets.get(raison, 0) + compte
             manifeste.exemples[machine] = exemples
             manifeste.secondes[machine] = round(secondes, 1)
             engendres_total += engendres
             repris = " (repris)" if engendres == 0 else ""
+            attendus = arguments.patchs * grille.rendus_par_patch()
             print(f"      {machine:20s} {exemples:7d} exemples  {secondes:7.0f} s"
                   f"  ({exemples / max(secondes, 1e-9):5.0f}/s){repris}")
+            if exemples < attendus:
+                # DIT, pas deviné : un corpus amputé en silence ressemble en
+                # tout point à un corpus qu'on a voulu plus petit.
+                manque = attendus - exemples
+                detail = ", ".join(f"{raison} ×{compte}"
+                                   for raison, compte in sorted(rejets.items(),
+                                                                key=lambda kv: -kv[1])[:3])
+                print(f"      {'':20s} {manque} manquant(s) sur {attendus}"
+                      + (f" — {detail}" if detail else " — raison non enregistrée"))
 
         manifeste.enregistre(sortie / "manifeste.json")
         total = time.perf_counter() - depart_total

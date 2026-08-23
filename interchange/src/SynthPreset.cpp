@@ -240,15 +240,22 @@ SampleLoadReport applyPresetSamples(const SynthPreset& preset,
             std::vector<std::string> tentatives;
             std::string resolu;
 
+            // `is_regular_file`, PAS `exists`. Un profil converti depuis un
+            // SoundFont s'appelle « X.profile.json » et pose ses échantillons
+            // dans un dossier « X » : chercher « X » par `exists` trouvait le
+            // DOSSIER, tentait de le lire comme un profil, échouait, et la
+            // machine rendait du silence. Trouvé en installant une deuxième
+            // banque de piano — la première n'avait pas la collision de noms,
+            // et le défaut serait resté invisible.
             const std::string local = (std::filesystem::path(baseFolder) / preset.profile).string();
             tentatives.push_back(local);
-            if (std::filesystem::exists(local)) {
+            if (std::filesystem::is_regular_file(local)) {
                 resolu = local;
             } else {
                 const std::string installe =
                     (std::filesystem::path(multisampleProfileFolder()) / preset.profile).string();
                 tentatives.push_back(installe);
-                if (std::filesystem::exists(installe)) {
+                if (std::filesystem::is_regular_file(installe)) {
                     resolu = installe;
                 } else {
                     // Dernier recours : le NOM déclaré par un profil installé.

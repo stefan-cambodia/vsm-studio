@@ -254,6 +254,11 @@ class LotDeCorpus:
     # l'épreuve, et son score serait faux vers le haut sans que rien ne le
     # montre. On découpe PAR PATCH, donc il faut le savoir.
     patchs: np.ndarray = field(default_factory=lambda: np.zeros(0, dtype=np.int32))
+    # POURQUOI DES EXEMPLES MANQUENT, quand il en manque. Un lot de 300 patchs
+    # × 16 notes devrait rendre 4 800 exemples ; s'il en rend 4 758, il faut
+    # pouvoir dire lesquels sont tombés et pourquoi, sans avoir à le deviner.
+    # C'est la règle « rien de silencieux » (§ 8.3) appliquée aux données.
+    rejets: Dict[str, int] = field(default_factory=dict)
     seconds: float = 0.0
 
     def enregistre(self, chemin: Path) -> None:
@@ -261,6 +266,7 @@ class LotDeCorpus:
             chemin, machine=self.machine, X=self.X, Y=self.Y,
             conditions=self.conditions, patchs=self.patchs,
             augmentations=np.asarray(self.augmentations, dtype=object),
+            rejets=np.asarray(json.dumps(self.rejets, ensure_ascii=False)),
             seconds=self.seconds)
 
     @staticmethod
@@ -272,6 +278,7 @@ class LotDeCorpus:
             patchs=donnees["patchs"] if "patchs" in donnees.files
                    else np.zeros(len(donnees["X"]), dtype=np.int32),
             augmentations=list(donnees["augmentations"]),
+            rejets=(json.loads(str(donnees["rejets"])) if "rejets" in donnees.files else {}),
             seconds=float(donnees["seconds"]))
 
 
@@ -325,7 +332,18 @@ def genere_lot(
     Elle n'est pas de 100 % — le modèle doit voir le son PROPRE aussi, sans quoi
     il apprendrait à reconnaître la dégradation autant que la machine.
     """
+    # DEUX FLUX ALÉATOIRES SÉPARÉS, et c'est indispensable à l'A/B du § 7.
+    #
+    # Avec un flux unique, le tirage des augmentations consomme des nombres, si
+    # bien qu'un corpus SEC et un corpus AUGMENTÉ engendrés « à la même graine »
+    # ne contiennent pas les mêmes patchs. Les comparer reviendrait alors à
+    # mesurer deux choses à la fois — l'effet des augmentations ET celui d'un
+    # échantillonnage différent de l'espace — sans pouvoir les démêler.
+    #
+    # Séparés, les patchs et les notes sont IDENTIQUES des deux côtés, et la
+    # seule différence entre les deux corpus est celle qu'on veut mesurer.
     rng = np.random.default_rng(graine)
+    rng_augmentation = np.random.default_rng(graine + 1_000_003)
     choisies = [AUGMENTATIONS_PAR_NOM[nom] for nom in augmentations
                 if nom in AUGMENTATIONS_PAR_NOM]
     fuite_active = NOM_FUITE in augmentations
@@ -335,6 +353,7 @@ def genere_lot(
     conditions: List[Tuple[float, float, float]] = []
     numeros: List[int] = []
     noms: List[str] = []
+    rejets: Dict[str, int] = {}
     dernier_rendu = fuite_precedente
     depart = time.perf_counter()
 
@@ -346,29 +365,48 @@ def genere_lot(
                 audio = engine.render_note(machine, parametres, midi_note=hauteur,
                                             duration=duree, velocity=velocite,
                                             gate=grille.gate, sample_rate=sample_rate)
-            except VsmEngineError:
+            except VsmEngineError as erreur:
                 # Une requête refusée ne doit pas interrompre des heures de
-                # génération ; l'exemple est simplement absent, et le compte
-                # final le dira.
+                # génération. L'exemple est absent, et la RAISON est comptée :
+                # un corpus amputé sans explication ne se distingue pas d'un
+                # corpus complet plus petit.
+                rejets["moteur : " + str(erreur)[:60]] = rejets.get(
+                    "moteur : " + str(erreur)[:60], 0) + 1
                 continue
-            if audio.size == 0 or not np.isfinite(audio).all():
+            except Exception as erreur:  # noqa: BLE001 — une génération dure des heures
+                rejets[f"exception {type(erreur).__name__}"] = rejets.get(
+                    f"exception {type(erreur).__name__}", 0) + 1
+                continue
+            if audio.size == 0:
+                rejets["rendu vide"] = rejets.get("rendu vide", 0) + 1
+                continue
+            if not np.isfinite(audio).all():
+                rejets["rendu non fini (NaN ou inf)"] = rejets.get("rendu non fini (NaN ou inf)", 0) + 1
                 continue
             if float(np.sqrt(np.mean(audio.astype(np.float64) ** 2))) < 1e-4:
+                # Inaudible : ses descripteurs décrivent du bruit numérique, pas
+                # le patch. L'apprendre associerait un vecteur de paramètres à
+                # des grandeurs qui n'en disent rien.
+                rejets["inaudible (RMS < 1e-4)"] = rejets.get("inaudible (RMS < 1e-4)", 0) + 1
                 continue
 
             nom_augmentation = ""
             travail = audio
-            if (choisies or fuite_active) and rng.random() < proportion_augmentee:
+            # Les deux tirages sont TOUJOURS consommés, même sans augmentation :
+            # c'est ce qui garde les deux flux alignés d'un corpus à l'autre.
+            doit_degrader = float(rng_augmentation.random()) < proportion_augmentee
+            choix = float(rng_augmentation.random())
+            if (choisies or fuite_active) and doit_degrader:
                 possibles = list(choisies)
                 if fuite_active and dernier_rendu is not None and dernier_rendu.size:
                     possibles.append(None)  # marqueur de la fuite
                 if possibles:
-                    tirage = possibles[int(rng.integers(len(possibles)))]
+                    tirage = possibles[min(int(choix * len(possibles)), len(possibles) - 1)]
                     if tirage is None:
-                        travail = applique_fuite(audio, dernier_rendu, rng)
+                        travail = applique_fuite(audio, dernier_rendu, rng_augmentation)
                         nom_augmentation = NOM_FUITE
                     else:
-                        travail = tirage.applique(audio, sample_rate, rng)
+                        travail = tirage.applique(audio, sample_rate, rng_augmentation)
                         nom_augmentation = tirage.nom
 
             X.append(descriptors(travail, sample_rate, hauteur, grille.gate, duree))
@@ -388,6 +426,7 @@ def genere_lot(
                        conditions=np.asarray(conditions, dtype=np.float32),
                        patchs=np.asarray(numeros, dtype=np.int32),
                        augmentations=noms,
+                       rejets=rejets,
                        seconds=time.perf_counter() - depart)
 
 

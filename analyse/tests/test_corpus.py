@@ -249,3 +249,26 @@ def corpus_les_machines_de_recherche_ont_toutes_un_espace():
         for machine in machines[:4]:
             assert_true(len(search_space_for_machine(machine, moteur)) > 0,
                         f"{machine} déclare un espace")
+
+
+@test
+def corpus_sec_et_augmente_contiennent_les_MEMES_patchs():
+    """La condition de l'A/B du § 7. Si le tirage des augmentations consommait
+    le même flux aléatoire que celui des patchs, un corpus sec et un corpus
+    augmenté « à la même graine » ne contiendraient pas les mêmes sons — et les
+    comparer mesurerait deux choses à la fois, sans pouvoir les démêler."""
+    with _moteur() as moteur:
+        espace = search_space_for_machine(MACHINE, moteur)
+        sec = genere_lot(MACHINE, espace, moteur, patchs=4, grille=GRILLE_ESSAI,
+                         graine=17, sample_rate=SR, augmentations=[])
+        augmente = genere_lot(MACHINE, espace, moteur, patchs=4, grille=GRILLE_ESSAI,
+                              graine=17, sample_rate=SR,
+                              augmentations=[a.nom for a in AUGMENTATIONS])
+    assert_equal(sec.Y.shape, augmente.Y.shape, "même nombre d'exemples")
+    assert_true(np.array_equal(sec.Y, augmente.Y), "MÊMES patchs des deux côtés")
+    assert_true(np.array_equal(sec.conditions, augmente.conditions), "mêmes notes jouées")
+    assert_true(np.array_equal(sec.patchs, augmente.patchs), "mêmes numéros de patch")
+    assert_true(all(nom == "" for nom in sec.augmentations), "le corpus sec est sec")
+    assert_true(any(nom for nom in augmente.augmentations), "l'autre est bien augmenté")
+    assert_true(not np.array_equal(sec.X, augmente.X),
+                "et les descripteurs, eux, DOIVENT différer")

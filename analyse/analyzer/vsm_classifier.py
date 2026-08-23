@@ -348,7 +348,15 @@ def entraine(corpus: CorpusCharge, graine: int = 20260823, part_epreuve: float =
     reference = ((X_entrainement - moyenne) / echelle)
     if len(reference) > 4000:
         reference = reference[rng.choice(len(reference), 4000, replace=False)]
-    normalise_epreuve = ((X_epreuve - moyenne) / echelle).astype(np.float32)[:4000]
+    # SOUS-ÉCHANTILLON TIRÉ AU SORT, et non les premiers venus. `coupe_par_patch`
+    # rend ses indices RANGÉS PAR CLASSE : prendre les quatre mille premiers ne
+    # calibrerait le rayon que sur les quatre ou cinq premières machines, et le
+    # rayon publié vaudrait pour elles seules. C'est le genre d'erreur qui ne
+    # produit pas de message : le chiffre sort, il est plausible, et il est faux.
+    tous = ((X_epreuve - moyenne) / echelle).astype(np.float32)
+    if len(tous) > 4000:
+        tous = tous[rng.choice(len(tous), 4000, replace=False)]
+    normalise_epreuve = tous
     reference32 = reference.astype(np.float32)
     normes_reference = np.einsum("ij,ij->i", reference32, reference32)
     plus_proches = []

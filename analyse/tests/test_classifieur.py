@@ -169,3 +169,22 @@ def classifieur_perime_est_refuse_et_non_applique():
         perime = classifieur.verifie_fraicheur(moteur, SR)
     assert_true(not perime.frais, "une empreinte qui a bougé doit être détectée")
     assert_equal(perime.perimees, ("vsm.dx7",), "la machine périmée est nommée")
+
+
+@test
+def classifieur_le_rayon_est_calibre_sur_TOUTES_les_machines():
+    """`coupe_par_patch` rend ses indices rangés par classe. Un sous-échantillon
+    pris « au début » ne verrait que les premières machines, et le rayon publié
+    ne vaudrait que pour elles — sans qu'aucun message ne le dise."""
+    corpus = charge_corpus(corpus_d_essai())
+    _, epreuve = coupe_par_patch(corpus, 0.25, 9)
+    classes = corpus.machines[epreuve]
+    # La propriété qui rend le piège possible : les indices SONT groupés.
+    changements = int(np.sum(classes[1:] != classes[:-1]))
+    assert_equal(changements, len(corpus.noms) - 1,
+                 "les indices d'épreuve sont bien rangés par classe — c'est ce qui "
+                 "rend un sous-échantillon « du début » trompeur")
+    # Et le rayon reste fini et strictement positif quel que soit le corpus.
+    classifieur, mesures = entraine(corpus, graine=9, part_epreuve=0.25)
+    assert_true(0.0 < mesures["rayonNouveaute"] < 1e6, "rayon exploitable")
+    assert_true(0.0 <= mesures["refusAbusifs"] <= 1.0, "taux de refus abusif publié")

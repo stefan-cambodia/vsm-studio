@@ -179,6 +179,18 @@ def main() -> int:
                               "machines de synthèse. À employer quand on veut un projet "
                               "entièrement rejouable sans le disque d'origine ; le prix "
                               "est une voix synthétisée, c'est-à-dire pas une voix.")
+    parseur.add_argument("--classifieur", default=None,
+                          help="chemin d'un modèle de classification de machine (phase A1). "
+                               "Son avis est CONSIGNÉ dans le rapport ; par défaut il ne change "
+                               "rien au verdict — mesuré, il place la gagnante réelle au rang "
+                               "médian 16 sur 20 sur un piano")
+    parseur.add_argument("--preselection-apprise", type=int, default=0,
+                          help="ne chercher que les N premières machines du classifieur. "
+                               "0 = désactivé, et c'est le défaut : la mesure ne le recommande "
+                               "PAS (voir docs/ROADMAP-apprentissage.md, A1.3)")
+    parseur.add_argument("--sans-apprentissage", action="store_true",
+                          help="ignorer tout modèle appris — le témoin A/B exigé par le § 8.2 "
+                               "du cahier des charges de l'apprentissage")
     parseur.add_argument("--sans-separation", action="store_true",
                          help="ne pas séparer en stems : traiter le fichier comme une seule piste")
     parseur.add_argument("--modele", default="htdemucs", help="modèle de séparation")
@@ -295,6 +307,29 @@ def main() -> int:
             return 2
 
         with moteur:
+            # MODÈLE APPRIS : chargé, VÉRIFIÉ, ou refusé — jamais appliqué au
+            # doute. Un modèle entraîné sur le son d'hier ne se trompe pas
+            # bruyamment : il classe plausiblement et faux.
+            modele_classifieur = None
+            if args.classifieur and not args.sans_apprentissage:
+                from analyzer.vsm_classifier import Classifieur
+
+                try:
+                    modele_classifieur = Classifieur.relit(Path(args.classifieur))
+                    verdict = modele_classifieur.verifie_fraicheur(moteur, SAMPLE_RATE)
+                    if not verdict.frais:
+                        print(f"      classifieur REFUSÉ — {verdict.resume()}")
+                        print("      la chaîne continue SANS lui, exactement comme avant")
+                        modele_classifieur = None
+                    else:
+                        print(f"      classifieur du {modele_classifieur.date}, "
+                              f"{len(modele_classifieur.noms)} machines, empreintes vérifiées")
+                except Exception as erreur:  # noqa: BLE001
+                    print(f"      classifieur illisible ({type(erreur).__name__}) — ignoré")
+                    modele_classifieur = None
+            elif args.sans_apprentissage:
+                print("      --sans-apprentissage : aucun modèle appris n'est consulté")
+
             candidates = ([m.strip() for m in args.machines.split(",") if m.strip()]
                           or melodic_machines(moteur))
             print(f"[3/5] {len(candidates)} machine(s) candidate(s)")
@@ -430,6 +465,8 @@ def main() -> int:
                     max_iterations=args.iterations,
                     metric=args.metrique,
                     shortlist=args.finalistes,
+                    classifieur=modele_classifieur,
+                    preselection_apprise=args.preselection_apprise,
                 )
                 if resultat is None:
                     print(f"      {nom:8s} : aucune note exploitable")
