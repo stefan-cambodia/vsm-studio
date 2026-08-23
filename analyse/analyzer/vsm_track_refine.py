@@ -114,11 +114,11 @@ def refine_patch_on_track(
     échoue -- ce qui est dit par l'appelant, jamais compensé par un patch
     inventé.
     """
-    from .vsm_distance_cache import CachedTargetDistance, CachedTargetDistanceV2
+    from .vsm_distance_cache import CachedTargetDistance, CachedTargetDistanceV2, cached_distance_for
 
     # Cible mise en cache : quarante évaluations contre le même stem, c'est
     # trente-neuf fois le même calcul évité (voir `vsm_track_arbitration`).
-    fabrique = CachedTargetDistanceV2 if metric == "v2" else CachedTargetDistance
+    fabrique = cached_distance_for(metric)
     mesurer = fabrique(np.asarray(stem_audio), sample_rate)
 
     try:

@@ -244,7 +244,7 @@ def main() -> int:
                          help="budget de recherche par machine (défaut 20). "
                               "Mesuré : le doubler change souvent la machine retenue.")
     parseur.add_argument("--tempo", type=float, default=120.0, help="tempo du projet écrit")
-    parseur.add_argument("--metrique", default="v2", choices=("v1", "v2"),
+    parseur.add_argument("--metrique", default="v2", choices=("v1", "v2", "v3"),
                          help="métrique de comparaison (défaut v2 ; v1 pour rejouer "
                               "d'anciennes mesures — les deux ne se comparent pas)")
     parseur.add_argument("--finalistes", type=int, default=None,

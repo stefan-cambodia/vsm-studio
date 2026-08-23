@@ -170,14 +170,14 @@ def arbitrate_on_track(
     insensible au niveau : une machine ne gagne pas parce qu'elle sort plus
     fort. Le calage des volumes vient plus tard, et sur le stem.
     """
-    from .vsm_distance_cache import CachedTargetDistance, CachedTargetDistanceV2
+    from .vsm_distance_cache import CachedTargetDistance, CachedTargetDistanceV2, cached_distance_for
 
     # LA CIBLE NE CHANGE PAS D'UNE CANDIDATE À L'AUTRE : ses descripteurs sont
     # calculés UNE fois. C'est la même leçon que `vsm_distance_cache` avait
     # tirée pour la recherche sur une note, et elle vaut d'autant plus ici que
     # la cible dure quatre minutes au lieu d'une seconde -- sur 38 candidates,
     # c'était 38 fois le même travail.
-    fabrique = CachedTargetDistanceV2 if metric == "v2" else CachedTargetDistance
+    fabrique = cached_distance_for(metric)
     mesurer = fabrique(np.asarray(stem_audio), sample_rate)
 
     # DURÉE IMPOSÉE, ET C'EST LE GARDE-FOU DE NIVEAU QUI L'EXIGE. Sans elle,

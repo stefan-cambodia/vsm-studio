@@ -160,11 +160,11 @@ def keep_what_helps_the_mix(
     Renvoie une décision par piste examinée, avec ce qui a été gardé ET tout ce
     qui a été écarté, chiffres à l'appui.
     """
-    from .vsm_distance_cache import CachedTargetDistance, CachedTargetDistanceV2
+    from .vsm_distance_cache import CachedTargetDistance, CachedTargetDistanceV2, cached_distance_for
 
     # Le MORCEAU est la cible, et il ne change pas : mis en cache comme partout
     # ailleurs dans la chaîne.
-    fabrique = CachedTargetDistanceV2 if metric == "v2" else CachedTargetDistance
+    fabrique = cached_distance_for(metric)
     mesurer = fabrique(np.asarray(mixture), sample_rate)
 
     workdir = Path(workdir)

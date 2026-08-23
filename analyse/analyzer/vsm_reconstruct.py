@@ -399,7 +399,8 @@ def reconstruction_distance(
     length = min(original.size, reconstructed.size)
     if length == 0:
         return float("inf")
-    mesure = audio_distance_v2 if metric == "v2" else audio_distance
+    from .vsm_distance_cache import cached_distance_for
+    mesure = lambda cible, cand, sr: cached_distance_for(metric)(cible, sr)(cand)
     return float(mesure(original[:length], reconstructed[:length], sample_rate))
 
 

@@ -1480,8 +1480,57 @@ qui dit 909 n'est contredite par rien de solide. Ce que la métrique devrait
 avoir pour trancher est un terme de hauteur pour les sons percussifs graves (la
 position du pic sous 150 Hz, en rapport de fréquences). C'est un changement de
 MÉTRIQUE, donc une v3, et les règles du § 10.3 valent : deux métriques ne se
-comparent pas, et toute mesure publiée porte la sienne. Ce n'est pas fait ici ;
-c'est écrit pour que ce le soit en connaissance de cause.
+comparent pas, et toute mesure publiée porte la sienne.
+
+### La métrique v3 : v2 plus un terme de hauteur, et rien d'autre
+
+`analyse/analyzer/audio_distance_v3.py`. Un terme de plus — la position du pic
+d'énergie sous 150 Hz, comparée en OCTAVES entre cible et candidat, poids 0,20
+comme l'enveloppe ou le contraste — et les sept termes de v2 inchangés, avec
+leurs poids. Le terme est NUL quand la cible n'a pas de grave (moins de 10 % de
+son énergie sous 150 Hz) : une nappe aiguë ne doit pas être jugée sur un bruit
+de fond, et dans ce cas **v3 = v2 exactement**, testé.
+
+Au passage, un défaut de structure corrigé : cinq modules choisissaient la
+métrique chacun par un `if metric == "v2"`, et une troisième version aurait été
+oubliée dans l'un d'eux sans que rien ne le dise. Une seule fabrique désormais
+(`cached_distance_for`), qui REFUSE une métrique inconnue plutôt que de se
+rabattre en silence.
+
+**Les deux tests qui ont condamné v2, rejoués en v3 :**
+
+| | v2 | **v3** |
+|---|---|---|
+| cible contrôlée (808 à 60 Hz), candidat à 30 Hz | 0,043 (le pire) | **0,218** (le pire, et plus nettement) |
+| cible contrôlée, candidat à 60 Hz | 0,000 | **0,000** |
+| frappe RÉELLE à 59 Hz, candidat à 30 Hz | **0,581 (le meilleur)** | **0,756 (le pire)** |
+| frappe réelle, candidat à 50 Hz (pic mesuré 54) | 0,587 | **0,614 (le meilleur)** |
+| frappe réelle, candidat à 60 Hz (pic mesuré 65) | 0,621 (le pire) | 0,646 |
+
+Sur la cible contrôlée, rien ne casse ; sur la frappe réelle, l'ordre se
+renverse exactement comme il le fallait. La métrique entend une hauteur.
+
+**Et sur la question qui a tout déclenché — 808 ou 909 — v3 répond « égalité ».**
+Les deux boîtes réglées sur la piste, même kit, même budget, jugées en v3 :
+
+| | v2 réglée | **v3 réglée** |
+|---|---|---|
+| `vsm.tr909` | 0,2913 | **0,2426** — `kick.tune` d'usine, intouché |
+| `vsm.tr808` | 0,2086 | **0,2399** — `kick.tune` passé de 30 à 50 |
+| écart | 28 % pour la 808 | **1,1 %** |
+
+Le terme de hauteur a ramené le kick de la 808 de sa butée à 30 Hz vers 50 (pic
+rendu 54 Hz, pour 59 réels) et a laissé celui de la 909 à l'usine, qui tombait
+déjà juste. Ce qui reste est une égalité à 1 %, sous la marge de 2 % de
+l'arbitrage serré. **La préférence nette de v2 pour la 808 était un artefact de
+silhouette** ; une fois la hauteur entendue, la mesure ne sait plus départager,
+et c'est la réponse honnête. L'oreille qui disait 909 n'est contredite par
+rien — elle a vu, avant la mesure, un défaut de la mesure.
+
+La chaîne reste en v2 par défaut (`--metrique v3` l'active) tant que v3 n'a pas
+été rejouée sur les bancs existants — *Children*, *House Of God*, les quatre
+cibles de l'étape 10.3 — et la règle du § 10.3 vaut sans exception : une
+distance v3 ne se compare qu'à une distance v3.
 
 **Et une phrase de l'écoute vaut pour tout le projet** : *« ne mets pas trop de
 hi-fi : le caractère du morceau vient du côté compact, rugueux, limité en

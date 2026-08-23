@@ -132,3 +132,63 @@ class CachedTargetDistanceV2:
     def __call__(self, candidate: np.ndarray) -> float:
         detail = self.terms(candidate)
         return self._combine(detail) if detail else 1e6
+
+
+class CachedTargetDistanceV3:
+    """Même service, pour la troisième version : les caractéristiques de la
+    cible -- hauteur grave comprise -- sont calculées une fois."""
+
+    def __init__(self, target: np.ndarray, sr: int):
+        from .audio_distance_v2 import spectral_contrast
+        from .audio_distance_v3 import combine, distance_terms, low_pitch
+
+        self.sr = sr
+        self.target = np.asarray(target)
+        self._features = spectral_features(self.target, sr)
+        self._envelope = envelope(self.target)
+        self._contrast = spectral_contrast(self.target, sr)
+        self._pitch = low_pitch(self.target, sr)
+        self._combine = combine
+        self._terms = distance_terms
+        self._contrast_of = spectral_contrast
+        self._pitch_of = low_pitch
+
+    def terms(self, candidate: np.ndarray) -> dict:
+        candidate = np.asarray(candidate)
+        length = min(len(self.target), len(candidate))
+        if length == 0:
+            return {}
+        target = self.target[:length]
+        candidate = candidate[:length]
+        entier = length == len(self.target)
+        return self._terms(
+            self._features if entier else spectral_features(target, self.sr),
+            spectral_features(candidate, self.sr),
+            self._envelope if entier else envelope(target), envelope(candidate),
+            self._contrast if entier else self._contrast_of(target, self.sr),
+            self._contrast_of(candidate, self.sr),
+            self._pitch if entier else self._pitch_of(target, self.sr),
+            self._pitch_of(candidate, self.sr),
+        )
+
+    def __call__(self, candidate: np.ndarray) -> float:
+        detail = self.terms(candidate)
+        return self._combine(detail) if detail else 1e6
+
+
+METRIQUES = ("v1", "v2", "v3")
+
+
+def cached_distance_for(metric: str):
+    """LA fabrique, et la seule : cinq modules choisissaient la métrique chacun
+    par un `if metric == "v2"`, si bien qu'une troisième version aurait été
+    oubliée dans l'un d'eux sans que rien ne le dise. Une métrique inconnue
+    est REFUSÉE, pas rabattue sur une autre -- une distance calculée avec la
+    mauvaise métrique est un chiffre qui ment."""
+    if metric == "v1":
+        return CachedTargetDistance
+    if metric == "v2":
+        return CachedTargetDistanceV2
+    if metric == "v3":
+        return CachedTargetDistanceV3
+    raise ValueError(f"métrique inconnue : « {metric} » (attendu : {', '.join(METRIQUES)})")

@@ -22,7 +22,7 @@ import numpy as np
 from scipy.optimize import differential_evolution
 
 from .audio_distance import audio_distance
-from .vsm_distance_cache import CachedTargetDistance, CachedTargetDistanceV2
+from .vsm_distance_cache import CachedTargetDistance, CachedTargetDistanceV2, cached_distance_for
 from .vsm_engine import SearchDimension, VsmEngine, VsmEngineError
 from .vsm_search_seed import guided_population, measure_target
 
@@ -244,7 +244,7 @@ def optimize_patch_for_machine(
     # des termes rendus comparables entre eux, plus un terme de contraste
     # spectral. « v1 » reste accessible pour rejouer les mesures antérieures --
     # les deux ne donnent pas les mêmes chiffres et ne se comparent pas.
-    fabrique = CachedTargetDistanceV2 if metric == "v2" else CachedTargetDistance
+    fabrique = cached_distance_for(metric)
     distance_to_target = fabrique(target_audio, sample_rate)
     target_rms = float(np.sqrt(np.mean(np.asarray(target_audio, dtype=np.float64) ** 2)))
     rejected_for_level = 0
