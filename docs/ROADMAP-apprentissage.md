@@ -152,11 +152,69 @@ lieu de la remplacer, et c'est écrit.
 > **Ce que tout cela dit, et c'est la même chose qu'au § 7 de
 > `ROADMAP-fusion.md`.** Le classifieur est excellent sur ce que le MOTEUR
 > produit et mauvais sur ce qu'un DISQUE contient. C'est mot pour mot le fossé
-> de domaine qui avait tué l'estimateur de paramètres. Les augmentations du § 7
-> étaient la parade annoncée ; à cette dose (six dégradations, la moitié des
-> exemples), **elles ne suffisent pas**. La prochaine mesure à faire est l'A/B
-> que le § 7 prévoit — corpus sec contre corpus augmenté, même épreuve — pour
-> savoir si elles servent un peu, beaucoup, ou pas du tout.
+> de domaine qui avait tué l'estimateur de paramètres.
+
+### A0.4 — l'A/B des augmentations : elles marchent, et elles ne servent pas
+
+Le § 7 annonçait l'augmentation comme la parade au fossé de domaine, et le
+§ 7 lui-même demandait l'A/B. Il est fait, et il donne deux réponses opposées
+qu'il faut énoncer toutes les deux.
+
+**Le protocole d'abord**, parce qu'il a fallu corriger le code pour qu'il ait un
+sens : le tirage des augmentations puisait dans le même flux aléatoire que celui
+des patchs, si bien qu'un corpus sec et un corpus augmenté « à la même graine »
+ne contenaient pas les mêmes sons. Les comparer aurait mesuré deux choses à la
+fois. Deux flux séparés depuis, et un test vérifie la propriété : **95 870
+exemples de part et d'autre, mêmes patchs, mêmes notes, seuls les descripteurs
+diffèrent.**
+
+**Première réponse : en domaine, l'augmentation fait exactement ce qu'on lui
+demande, et gratuitement.**
+
+| entraîné sur | épreuve sèche | épreuve augmentée |
+|---|---|---|
+| corpus sec | **99,7 %** | 93,6 % |
+| corpus augmenté | 99,6 % | **99,0 %** |
+
+Le modèle sec perd six points dès qu'on dégrade ; le modèle augmenté n'en perd
+presque aucun, et **ne paie rien** sur le son propre (99,6 contre 99,7). C'est un
+gain réel, et il faut le porter au crédit de la méthode.
+
+**Seconde réponse : sur un disque, cela ne change RIEN.**
+
+| entraîné sur | abstentions (40 extraits) | confiantes à tort | rang médian de `vsm.piano` |
+|---|---|---|---|
+| corpus sec | 31/40 | 6 | 15 |
+| corpus augmenté | 30/40 | 7 | 15 |
+
+À un extrait près, dans le mauvais sens. **Les augmentations rendent le modèle
+robuste aux dégradations qu'elles contiennent, pas à un enregistrement réel.**
+
+**Et une mesure explique une bonne part du résultat.** Combien chaque
+augmentation déplace-t-elle réellement le descripteur, en écarts-types du
+corpus ?
+
+| augmentation | déplacement |
+|---|---|
+| bruit | **0,359 σ** |
+| réverbération | 0,093 σ |
+| désaccord | 0,074 σ |
+| égaliseur | 0,060 σ |
+| **fuite** | **0,054 σ** |
+| **compression** | **0,018 σ** |
+
+Cinq des six ne déplacent presque rien. Le « corpus augmenté » est, pour
+l'essentiel, un corpus bruité. La conclusion honnête n'est donc pas *« les
+augmentations ne servent pas »* mais **« celles-ci ne dégradent presque rien, et
+même ainsi le fossé ne se comble pas »** — ce ne sont pas les mêmes phrases, et
+la première fermerait à tort une piste que la seconde laisse ouverte.
+
+**Ce qu'il faudrait avant de conclure sur l'augmentation.** La `fuite` mélange
+le rendu PRÉCÉDENT DE LA MÊME MACHINE, souvent le même patch : ce n'est pas une
+fuite, c'est un écho. Une vraie fuite vient d'un autre instrument. La
+`compression` est statique et sans détecteur. Corriger ces deux-là, remesurer,
+et alors seulement dire si la parade du § 7 tient. En l'état, **le § 7 est
+mesuré insuffisant à cette dose, et la cause est en partie la dose elle-même.**
 
 ## Phase A2 — Les gabarits de batterie appris
 
