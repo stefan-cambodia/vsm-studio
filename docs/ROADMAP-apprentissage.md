@@ -294,6 +294,24 @@ gratuite aux dégradations qu'elle contient** (93,6 % → 99,0 % sur l'épreuve
 dégradée, sans rien perdre sur le son propre). Elle est donc conservée. Elle ne
 doit simplement plus être présentée comme la parade au fossé de domaine.
 
+> **LA CONDITION DE RÉOUVERTURE A SON INSTRUMENT (28/08/2026), ET LA MESURE EST
+> EN COURS.** `analyse/corpus_separe.py` engendre le corpus que le § 7 réclame :
+> des rendus du moteur mélangés à de VRAIS stems séparés, repassés par demucs en
+> une seule passe, redécoupés et étiquetés avec le patch d'origine. Puis il
+> mesure trois classifieurs à coupure égale (sec, séparé, les deux) sur le
+> séparé tenu à l'écart et sur des SONDES réelles — un enregistrement, les notes
+> que la chaîne y a transcrites (lues dans le MIDI du projet), et la machine que
+> l'arbitrage y a retenue ; le rang médian de cette machine est le seul chiffre
+> qui dise si le modèle lit un disque.
+>
+> Protocole de la passe lancée : fond = *House Of God* (batterie, basse, voix) et
+> la batterie et la voix SEULES de *Children* (face A) et *B4 Wuz Then*, dont la
+> basse et « other » sont des sondes et ne doivent pas avoir servi de fond ;
+> 20 machines × 25 patchs × 4 conditions ; sondes : *Clair de Lune* → `vsm.piano`,
+> *B4* other → `vsm.jupiter8`, *B4* bass → `vsm.supersaw`, *Children* other →
+> `vsm.string`, *Children* bass → `vsm.piano`. Le résultat sera écrit ici ; s'il
+> ne referme pas le fossé, A3 n'a pas de corpus, et c'est un résultat.
+
 ## Phase A2 — Les gabarits de batterie appris
 
 Indépendante d'A1/A3 ; peut commencer dès A0.1 (les frappes générées suffisent).
