@@ -19,7 +19,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from analyzer import vsm_drum_bench as bench
-from analyzer import vsm_drumkit as dk
 from analyzer.vsm_drum_corpus import engendre_corpus_frappes, entraine_frappes
 from analyzer.vsm_engine import VsmEngine
 
@@ -51,8 +50,8 @@ def main() -> int:
         avec = [bench.juge(m, moteur, audio=a, hit_classifier=modele) for m, a in audios]
 
     print(f"\n      {'motif':<14} {'pièce':<7} {'sans modèle':>18} {'avec modèle':>18}")
-    for s_sans, s_avec in zip(sans, avec):
-        for f0, f1 in zip(s_sans.familles, s_avec.familles):
+    for s_sans, s_avec in zip(sans, avec, strict=True):
+        for f0, f1 in zip(s_sans.familles, s_avec.familles, strict=True):
             print(f"      {s_sans.motif:<14} {f0.famille:<7} "
                   f"{f0.retrouvees:>3}/{f0.attendues:<3} (+{f0.inventees:>2} inv.)   "
                   f"{f1.retrouvees:>3}/{f1.attendues:<3} (+{f1.inventees:>2} inv.)")

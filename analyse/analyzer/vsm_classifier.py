@@ -33,12 +33,11 @@ DEUX PIÈGES DE MÉTHODE, TRAITÉS ICI PLUTÔT QUE DÉCOUVERTS PLUS TARD :
 
 from __future__ import annotations
 
-import json
 import platform
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 
@@ -401,6 +400,6 @@ def matrice_de_confusion(corpus: CorpusCharge, classifieur: Classifieur,
     predits = classifieur.modele.predict(X)
     n = len(classifieur.noms)
     matrice = np.zeros((n, n), dtype=np.int32)
-    for vrai, predit in zip(corpus.machines[indices], predits):
+    for vrai, predit in zip(corpus.machines[indices], predits, strict=True):
         matrice[int(vrai), int(predit)] += 1
     return matrice

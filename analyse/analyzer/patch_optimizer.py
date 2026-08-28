@@ -1,4 +1,3 @@
-from dataclasses import replace
 
 import numpy as np
 from scipy.optimize import differential_evolution
@@ -91,7 +90,7 @@ def optimize_patch(
             f"[PATCH] optimisation waveform={waveform}"
         )
 
-        def objective(x):
+        def objective(x, waveform=waveform):
 
             params = vector_to_params(
                 waveform,

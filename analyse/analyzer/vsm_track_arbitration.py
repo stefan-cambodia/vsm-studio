@@ -44,7 +44,7 @@ seul rendu, quel que soit le nombre de candidates.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -170,7 +170,7 @@ def arbitrate_on_track(
     insensible au niveau : une machine ne gagne pas parce qu'elle sort plus
     fort. Le calage des volumes vient plus tard, et sur le stem.
     """
-    from .vsm_distance_cache import CachedTargetDistance, CachedTargetDistanceV2, cached_distance_for
+    from .vsm_distance_cache import cached_distance_for
 
     # LA CIBLE NE CHANGE PAS D'UNE CANDIDATE À L'AUTRE : ses descripteurs sont
     # calculés UNE fois. C'est la même leçon que `vsm_distance_cache` avait

@@ -139,9 +139,9 @@ def main() -> int:
             print("      vivier de fuite : quelques rendus d'autres machines")
             for machine in machines[:6]:
                 try:
-                    vivier.append(moteur.render(
+                    vivier.append((machine, moteur.render(
                         machine, {}, [Note(52, 100, 0.0, 0.7)], 1.0,
-                        sample_rate=arguments.sample_rate))
+                        sample_rate=arguments.sample_rate)))
                 except VsmEngineError:
                     continue
             print(f"      {len(vivier)} son(s) au vivier")
@@ -185,7 +185,7 @@ def main() -> int:
                     fuite_precedente=fuite,
                     # La machine en cours est RETIRÉE du vivier : se faire fuir
                     # sur soi-même serait exactement le défaut qu'on corrige.
-                    vivier_de_fuite=[son for autre, son in zip(machines, vivier)
+                    vivier_de_fuite=[son for autre, son in vivier
                                      if autre != machine],
                     decalage_patch=numero * arguments.taille_lot,
                     progression=lambda message: print(f"      {message}", end="\r", flush=True))

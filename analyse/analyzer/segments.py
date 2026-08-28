@@ -1,5 +1,4 @@
 import librosa
-import numpy as np
 
 
 def extract_note_audio(

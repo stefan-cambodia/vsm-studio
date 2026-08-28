@@ -36,7 +36,7 @@ def separate_audio(
 
     print("[DEMUCS] Séparation...")
 
-    origin, separated = separator.separate_audio_file(
+    _origin, separated = separator.separate_audio_file(
         Path(audio_path)
     )
 

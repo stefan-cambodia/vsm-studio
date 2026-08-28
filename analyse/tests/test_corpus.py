@@ -25,11 +25,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from framework import assert_equal, assert_near, assert_true, test  # noqa: E402
 
-from analyzer.vsm_corpus_build import (AUGMENTATIONS, AUGMENTATIONS_PAR_NOM, GrilleDeNotes,
+from analyzer.vsm_corpus_build import (AUGMENTATIONS, GrilleDeNotes,  # noqa: E402
                                         LotDeCorpus, Manifeste, NOM_FUITE, applique_fuite,
                                         genere_lot, graine_de_machine, machine_fingerprint,
                                         machines_de_recherche, nouveau_manifeste,
-                                        verifie_fraicheur)  # noqa: E402
+                                        verifie_fraicheur)
 from analyzer.vsm_engine import VsmEngine  # noqa: E402
 from analyzer.vsm_patch_optimizer import search_space_for_machine  # noqa: E402
 

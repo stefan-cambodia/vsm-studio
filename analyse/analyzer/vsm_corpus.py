@@ -197,7 +197,7 @@ def narrowed_space(space: Sequence[SearchParameter], centre: Sequence[float],
     facteur cinq.
     """
     resserre: List[SearchParameter] = []
-    for parametre, valeur in zip(space, centre):
+    for parametre, valeur in zip(space, centre, strict=True):
         bas = float(np.clip(valeur - radius, 0.0, 1.0))
         haut = float(np.clip(valeur + radius, 0.0, 1.0))
         if haut - bas < 1e-6:

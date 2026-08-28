@@ -271,7 +271,7 @@ def _learn_templates(empreintes: np.ndarray, energies: np.ndarray) -> np.ndarray
             meilleur = int(np.argmax(similarites))
             sommes[meilleur] += empreintes[i]
             comptes[meilleur] += 1
-        centres = [somme for somme, compte in zip(sommes, comptes) if compte > 0]
+        centres = [somme for somme, compte in zip(sommes, comptes, strict=True) if compte > 0]
     return np.stack([c / (np.linalg.norm(c) + 1e-12) for c in centres])
 
 
@@ -554,7 +554,7 @@ def build_drum_kit(
     recalees = [int(d) - marge for d in
                 librosa.frames_to_samples(librosa.onset.onset_backtrack(
                     trames, librosa.onset.onset_strength(y=rembourre, sr=sample_rate)))]
-    paires = [(a, max(0, min(a, r))) for a, r in zip(attaques, recalees) if a >= 0]
+    paires = [(a, max(0, min(a, r))) for a, r in zip(attaques, recalees, strict=True) if a >= 0]
     if not paires:
         return None
     # FUSION DES ONSETS JUMEAUX (< 35 ms). Le détecteur produit parfois deux
@@ -780,7 +780,7 @@ def drum_kit_track(kit: DrumKit, name: str = "Batterie") -> ExportTrack:
         parametres[f"sampler.slot.{numero}.decay"] = 0.0
         echantillons[emplacement.slot] = emplacement.sample_path
 
-        for instant, velocite in zip(emplacement.onsets, emplacement.velocities):
+        for instant, velocite in zip(emplacement.onsets, emplacement.velocities, strict=True):
             notes.append(
                 ExportNote(
                     note=emplacement.midi_note,
@@ -933,7 +933,7 @@ def drum_machine_track(kit: DrumKit, machine: str, name: str = "Batterie") -> Ex
                 f"{emplacement.family} : la TR-808 n'a pas de toms, rabattu sur le clap "
                 f"({emplacement.hit_count} frappe(s))"
             )
-        for instant, velocite in zip(emplacement.onsets, emplacement.velocities):
+        for instant, velocite in zip(emplacement.onsets, emplacement.velocities, strict=True):
             notes.append(ExportNote(note=note, velocity=velocite, start=instant, duration=0.05))
     notes.sort(key=lambda n: n.start)
     return ExportTrack(
@@ -969,7 +969,7 @@ def modelled_drum_track(kit: DrumKit, name: str = "Batterie") -> ExportTrack:
                 f"{emplacement.family} : famille sans voix déclarée dans vsm.drums, "
                 f"jouée sur la note {note} ({emplacement.hit_count} frappe(s))"
             )
-        for instant, velocite in zip(emplacement.onsets, emplacement.velocities):
+        for instant, velocite in zip(emplacement.onsets, emplacement.velocities, strict=True):
             notes.append(ExportNote(note=note, velocity=velocite,
                                      start=instant, duration=0.05))
     notes.sort(key=lambda n: n.start)

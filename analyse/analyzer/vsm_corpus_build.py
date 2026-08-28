@@ -41,7 +41,7 @@ import numpy as np
 
 from .vsm_corpus import descriptors
 from .vsm_engine import VsmEngine, VsmEngineError, Note
-from .vsm_patch_optimizer import SearchParameter, _vector_to_parameters, search_space_for_machine
+from .vsm_patch_optimizer import SearchParameter, _vector_to_parameters
 
 FORMAT_MANIFESTE = "vsm-corpus"
 VERSION_MANIFESTE = 1
@@ -401,7 +401,6 @@ def genere_lot(
     numeros: List[int] = []
     noms: List[str] = []
     rejets: Dict[str, int] = {}
-    dernier_rendu = fuite_precedente
     depart = time.perf_counter()
 
     for index in range(patchs):
@@ -468,7 +467,6 @@ def genere_lot(
             conditions.append((float(hauteur), float(duree), float(velocite)))
             numeros.append(decalage_patch + index)
             noms.append(nom_augmentation)
-            dernier_rendu = audio
 
         if progression is not None and (index + 1) % 25 == 0:
             progression(f"{machine} : {index + 1}/{patchs} patchs, {len(X)} exemples, "

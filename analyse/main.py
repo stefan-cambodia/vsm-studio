@@ -355,12 +355,12 @@ def configure_device(device_name: str):
 
         return "cpu"
 
-    except ImportError:
+    except ImportError as erreur:
 
         if device_name == "cuda":
             raise RuntimeError(
                 "PyTorch n'est pas installé."
-            )
+            ) from erreur
 
         return "cpu"
 

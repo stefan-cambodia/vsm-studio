@@ -84,7 +84,8 @@ class Vivier:
                     t = mono[debut:debut + n]
                     if t.size < n or float(np.sqrt(np.mean(t ** 2))) < 0.01:
                         continue      # un silence ne fait pas un fond
-                    tranches.append(t.copy()); origines.append(f"{dossier.name}/{nom}")
+                    tranches.append(t.copy())
+                    origines.append(f"{dossier.name}/{nom}")
         if not tranches:
             raise ValueError("aucune tranche de fond : les dossiers de stems sont vides")
         return Vivier(tranches, origines)
@@ -187,7 +188,8 @@ def engendre(engine: VsmEngine, vivier: Vivier, patchs_par_machine: int, sample_
                         continue
                     fond = vivier.fond(rng_fond, rms)
                     db = 20.0 * np.log10(float(np.sqrt(np.mean(fond ** 2))) / rms)
-                    secs.append(audio); fonds.append(fond)
+                    secs.append(audio)
+                    fonds.append(fond)
                     etiquettes.append((im, numero_patch, note, vel, db))
         if progression:
             progression(f"{machine} : {len(secs)} exemples rendus")
@@ -195,7 +197,7 @@ def engendre(engine: VsmEngine, vivier: Vivier, patchs_par_machine: int, sample_
     # UN SEUL FICHIER, une seule séparation.
     total = len(secs) * (n + gap)
     melange = np.zeros(total, dtype=np.float32)
-    for i, (s, f) in enumerate(zip(secs, fonds)):
+    for i, (s, f) in enumerate(zip(secs, fonds, strict=True)):
         melange[i * (n + gap):i * (n + gap) + n] = s + f
     crete = float(np.abs(melange).max()) or 1.0
     gain = min(1.0, 0.9 / crete)          # pas d'écrêtage ; le même gain pour tout
@@ -205,7 +207,7 @@ def engendre(engine: VsmEngine, vivier: Vivier, patchs_par_machine: int, sample_
     other = _separe_other(melange, sample_rate, dossier_travail)
 
     X_sec, X_sep, y, patchs, conditions, retrouve = [], [], [], [], [], []
-    for i, (s, f) in enumerate(zip(secs, fonds)):
+    for i, s in enumerate(secs):
         seg = np.asarray(other[i * (n + gap):i * (n + gap) + n], dtype=np.float32) / gain
         im, numero, note, vel, db = etiquettes[i]
         e_sec = float(np.sum(s.astype(np.float64) ** 2)) or 1e-12
@@ -214,7 +216,9 @@ def engendre(engine: VsmEngine, vivier: Vivier, patchs_par_machine: int, sample_
         part = float(np.dot(seg.astype(np.float64), s.astype(np.float64)) / e_sec)
         X_sec.append(descriptors(s, sample_rate, note, GATE, DUREE))
         X_sep.append(descriptors(seg, sample_rate, note, GATE, DUREE))
-        y.append(im); patchs.append(numero); conditions.append((note, vel, db))
+        y.append(im)
+        patchs.append(numero)
+        conditions.append((note, vel, db))
         retrouve.append(min(1.0, max(0.0, part)))
     return CorpusSepare(machines, np.asarray(X_sec), np.asarray(X_sep), np.asarray(y, dtype=np.int32),
                         np.asarray(patchs, dtype=np.int32), np.asarray(conditions, dtype=np.float32),
@@ -268,7 +272,9 @@ class ModeleSimple:
 def entraine_simple(X: np.ndarray, y: np.ndarray, noms: Sequence[str], graine: int) -> ModeleSimple:
     from sklearn.ensemble import HistGradientBoostingClassifier
 
-    moyenne = X.mean(axis=0); echelle = X.std(axis=0); echelle[echelle < 1e-9] = 1.0
+    moyenne = X.mean(axis=0)
+    echelle = X.std(axis=0)
+    echelle[echelle < 1e-9] = 1.0
     m = HistGradientBoostingClassifier(random_state=graine, max_iter=200)
     m.fit((X - moyenne) / echelle, y)
     return ModeleSimple(list(noms), moyenne, echelle, m)

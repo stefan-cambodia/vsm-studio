@@ -21,8 +21,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 import numpy as np
 from scipy.optimize import differential_evolution
 
-from .audio_distance import audio_distance
-from .vsm_distance_cache import CachedTargetDistance, CachedTargetDistanceV2, cached_distance_for
+from .vsm_distance_cache import cached_distance_for
 from .vsm_engine import SearchDimension, VsmEngine, VsmEngineError
 from .vsm_search_seed import guided_population, measure_target
 
@@ -151,7 +150,7 @@ def _vector_to_parameters(
     vector: np.ndarray,
 ) -> Dict[str, float]:
     values: Dict[str, float] = {}
-    for parameter, raw in zip(space, vector):
+    for parameter, raw in zip(space, vector, strict=True):
         if parameter.logarithmic:
             # Recherche en log : entre 80 Hz et 12 kHz, une recherche linéaire
             # passerait 99 % de son temps dans les aigus, où l'oreille entend

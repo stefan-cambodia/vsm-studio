@@ -1,6 +1,5 @@
 from pathlib import Path
 
-import librosa
 
 from .note_extraction import (
     extract_notes,

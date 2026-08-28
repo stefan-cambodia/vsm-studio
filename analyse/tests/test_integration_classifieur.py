@@ -26,8 +26,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from framework import assert_equal, assert_true, test  # noqa: E402
 
 from analyzer.vsm_classifier import charge_corpus, entraine  # noqa: E402
-from analyzer.vsm_corpus_build import (GrilleDeNotes, genere_lot, machine_fingerprint,
-                                        nouveau_manifeste)  # noqa: E402
+from analyzer.vsm_corpus_build import (GrilleDeNotes, genere_lot, machine_fingerprint,  # noqa: E402
+                                        nouveau_manifeste)
 from analyzer.vsm_engine import Note, VsmEngine  # noqa: E402
 from analyzer.vsm_patch_optimizer import search_space_for_machine  # noqa: E402
 from analyzer.vsm_reconstruct import StemNote, reconstruct_stem  # noqa: E402
@@ -183,7 +183,7 @@ def reference_une_note_transcrite_dans_le_silence_n_est_pas_retenue():
     # qu'il voulait éprouver.
     notes = [StemNote(note=33, velocity=100, start=3.0, duration=2.9),   # « longue », dans le silence
              StemNote(note=45, velocity=100, start=2.0, duration=0.8)]   # courte, mais elle sonne
-    ref, excerpt, gate = _representative_note(audio, notes, sr)
+    ref, excerpt, _gate = _representative_note(audio, notes, sr)
     assert_equal(ref.note, 45, "la note qui SONNE est retenue, pas la plus longue")
     assert_true(float(np.sqrt(np.mean(excerpt ** 2))) > 0.05, "l'extrait cible n'est pas du silence")
 
@@ -199,7 +199,8 @@ def reference_une_note_transcrite_dans_le_silence_n_est_pas_retenue():
 def rapport_porte_sa_provenance():
     """A4.2 : un rapport qui ne dit pas avec quels modèles, quelles options et
     quel code il a été produit ne se rejoue pas -- et ne se compare à rien."""
-    import json, tempfile
+    import json
+    import tempfile
     from analyzer.vsm_reconstruct import StemReconstruction, write_reconstruction_report
     stem = StemReconstruction(name="essai", machine="vsm.minimoog", parameters={}, distance=0.1,
                               notes=[StemNote(60, 100, 0.0, 0.5)], considered=[("vsm.minimoog", 0.1)])

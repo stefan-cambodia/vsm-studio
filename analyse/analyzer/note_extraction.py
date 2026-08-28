@@ -1,5 +1,3 @@
-import librosa
-import numpy as np
 
 from basic_pitch.inference import predict
 from basic_pitch import ICASSP_2022_MODEL_PATH
@@ -17,7 +15,7 @@ def extract_notes(
         "[NOTES] Analyse Basic Pitch..."
     )
 
-    model_output, midi_data, note_events = (
+    _, _, note_events = (
         predict(
             str(audio_path),
             model_or_model_path=(

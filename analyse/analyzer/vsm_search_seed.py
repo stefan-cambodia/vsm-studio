@@ -21,7 +21,7 @@ cas est donc « aussi bon qu'avant », et c'est ce que la mesure doit confirmer.
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, Optional, Sequence
 
 import numpy as np
 

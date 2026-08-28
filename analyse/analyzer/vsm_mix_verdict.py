@@ -44,7 +44,7 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -167,7 +167,7 @@ def keep_what_helps_the_mix(
     Renvoie une décision par piste examinée, avec ce qui a été gardé ET tout ce
     qui a été écarté, chiffres à l'appui.
     """
-    from .vsm_distance_cache import CachedTargetDistance, CachedTargetDistanceV2, cached_distance_for
+    from .vsm_distance_cache import cached_distance_for
 
     # Le MORCEAU est la cible, et il ne change pas : mis en cache comme partout
     # ailleurs dans la chaîne.

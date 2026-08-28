@@ -114,7 +114,7 @@ def refine_patch_on_track(
     échoue -- ce qui est dit par l'appelant, jamais compensé par un patch
     inventé.
     """
-    from .vsm_distance_cache import CachedTargetDistance, CachedTargetDistanceV2, cached_distance_for
+    from .vsm_distance_cache import cached_distance_for
 
     # Cible mise en cache : quarante évaluations contre le même stem, c'est
     # trente-neuf fois le même calcul évité (voir `vsm_track_arbitration`).
@@ -191,7 +191,7 @@ def refine_patch_on_track(
     # seconde resserre autour de ce qui a été retenu. Une seule passe large
     # rate les réglages fins ; une seule passe fine part d'un point qu'on n'a
     # pas de raison de croire bon.
-    for passe, span in enumerate((1.0, 0.35)):
+    for span in (1.0, 0.35):
         for dimension in profil[:axes]:
             if compteur["n"] >= budget:
                 break

@@ -160,7 +160,10 @@ def engendre_corpus_frappes(engine: VsmEngine, sample_rate: int = 44100,
             v = descripteurs_frappe(audio, int((instant_s + retard) * sample_rate), sample_rate)
             if v is None:
                 continue
-            X.append(v); Y.append(y); machines.append(machine); situations.append(situation)
+            X.append(v)
+            Y.append(y)
+            machines.append(machine)
+            situations.append(situation)
 
     for machine, notes in NOTES_PAR_MACHINE.items():
         pieces = list(notes)
@@ -335,7 +338,8 @@ def entraine_frappes(corpus: CorpusFrappes, graine: int = 20260823, seuil: float
 
     X = corpus.X.astype(np.float64)
     moyenne = X[~masque_epreuve].mean(axis=0)
-    echelle = X[~masque_epreuve].std(axis=0); echelle[echelle < 1e-9] = 1.0
+    echelle = X[~masque_epreuve].std(axis=0)
+    echelle[echelle < 1e-9] = 1.0
     Z = (X - moyenne) / echelle
 
     modeles: Dict[str, object] = {}
@@ -350,7 +354,8 @@ def entraine_frappes(corpus: CorpusFrappes, graine: int = 20260823, seuil: float
         if masque_epreuve.any():
             pred = (m.predict_proba(Z[masque_epreuve])[:, 1] >= seuil).astype(float)
             vrai = y[masque_epreuve]
-            tp = float(((pred == 1) & (vrai == 1)).sum()); fp = float(((pred == 1) & (vrai == 0)).sum())
+            tp = float(((pred == 1) & (vrai == 1)).sum())
+            fp = float(((pred == 1) & (vrai == 0)).sum())
             fn = float(((pred == 0) & (vrai == 1)).sum())
             mesures["parPiece"][p] = {"rappel": tp / max(tp + fn, 1), "precision": tp / max(tp + fp, 1),
                                       "positifs": int(vrai.sum())}

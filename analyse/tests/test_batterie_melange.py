@@ -23,8 +23,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from framework import assert_equal, assert_true, test  # noqa: E402
 
-from analyzer.vsm_drum_corpus import (NOTES_PAR_MACHINE, ClassifieurFrappes,
-                                      empreinte_batterie)  # noqa: E402
+from analyzer.vsm_drum_corpus import (NOTES_PAR_MACHINE, ClassifieurFrappes,  # noqa: E402
+                                      empreinte_batterie)
 from analyzer.vsm_engine import Note, VsmEngine  # noqa: E402
 from analyzer.vsm_mix_verdict import MixAlternative, keep_what_helps_the_mix  # noqa: E402
 from analyzer.vsm_project_export import ExportNote, ExportTrack  # noqa: E402
@@ -134,7 +134,9 @@ def sans_apprentissage_reproduit_la_chaine_sans_modele():
     modele.enregistre(dossier / "frappes.joblib")
     a = np.clip(np.asarray(audio, dtype=np.float64), -1, 1)
     with wave.open(str(dossier / "motif.wav"), "wb") as w:
-        w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR)
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(SR)
         w.writeframes((a * 32767).astype("<i2").tobytes())
 
     def chaine(*options):

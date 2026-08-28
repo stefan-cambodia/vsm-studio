@@ -19,10 +19,9 @@ l'oreille, aucune constante au jugé : le volume devient une mesure.
 from __future__ import annotations
 
 import shutil
-import subprocess
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Sequence
 
 import numpy as np
 

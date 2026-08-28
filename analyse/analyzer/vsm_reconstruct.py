@@ -30,16 +30,13 @@ from typing import Dict, List, Optional, Sequence
 
 import numpy as np
 
-from .audio_distance import audio_distance
-from .audio_distance_v2 import audio_distance_v2
 from .vsm_engine import (
     _MACHINES_A_PROFIL,
     VsmEngine,
-    VsmEngineError,
     available_machines,
 )
 from .vsm_levels import VOLUME_MAX
-from .vsm_patch_optimizer import choose_machine, optimize_patch_for_machine
+from .vsm_patch_optimizer import choose_machine
 from .vsm_project_export import DEFAULT_TRACK_VOLUME
 from .vsm_project_export import ExportNote, ExportTrack, write_project_bundle
 
@@ -400,7 +397,10 @@ def reconstruction_distance(
     if length == 0:
         return float("inf")
     from .vsm_distance_cache import cached_distance_for
-    mesure = lambda cible, cand, sr: cached_distance_for(metric)(cible, sr)(cand)
+
+    def mesure(cible, cand, sr):
+        return cached_distance_for(metric)(cible, sr)(cand)
+
     return float(mesure(original[:length], reconstructed[:length], sample_rate))
 
 

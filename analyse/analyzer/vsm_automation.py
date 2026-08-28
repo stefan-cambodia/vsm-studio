@@ -25,8 +25,6 @@ sera rejetée.
 
 from __future__ import annotations
 
-import json
-import subprocess
 import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -34,9 +32,9 @@ from typing import Dict, List, Optional, Sequence, Tuple
 import numpy as np
 
 from .audio_distance import audio_distance
-from .vsm_engine import VsmEngine, find_vsm_render
+from .vsm_engine import VsmEngine
 from .vsm_offline_render import render_track_offline
-from .vsm_project_export import ExportNote, ExportTrack, write_project_bundle
+from .vsm_project_export import ExportTrack
 
 # Points par seconde de la courbe écrite. Deux suffisent : un balayage de
 # filtre musical se joue à l'échelle du temps, pas de la double-croche, et le
@@ -153,8 +151,10 @@ def calibrate_centroid_to_cutoff(
     cal_haut = float(np.clip(base * 4.0, cutoff_low, cutoff_high))
     if cal_haut < cal_bas * 2.0:
         return None
-    bas = dict(parameters); bas["filter.1.cutoff"] = cal_bas
-    haut = dict(parameters); haut["filter.1.cutoff"] = cal_haut
+    bas = dict(parameters)
+    bas["filter.1.cutoff"] = cal_bas
+    haut = dict(parameters)
+    haut["filter.1.cutoff"] = cal_haut
     try:
         rendu_bas = engine.render_note(machine, bas, midi_note=midi_note,
                                         duration=1.0, sample_rate=sample_rate)

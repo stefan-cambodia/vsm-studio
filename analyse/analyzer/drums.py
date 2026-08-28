@@ -27,11 +27,6 @@ def detect_drums(audio_path: Path):
         wait=5,
     )
 
-    onset_times = librosa.frames_to_time(
-        peaks,
-        sr=sr,
-    )
-
     stft = np.abs(
         librosa.stft(
             y,

@@ -822,7 +822,7 @@ def arbitrer_sur_piste(ctx: Contexte, nom: str, stem: StemReconstruction, audio:
           f"{gagnant.machine} ({gagnant.origin}) D={gagnant.distance:.3f}"
           + (f" (la recherche donnait {avant:.3f})" if avant is not None else "")
           + f" [{time.perf_counter()-depart:.0f} s] — {classement}")
-    print(f"                 (* = patch d'usine)")
+    print("                 (* = patch d'usine)")
 
     seconde = close_runner_up(verdicts)
     if seconde is None:

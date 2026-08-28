@@ -29,10 +29,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from framework import assert_equal, assert_true, test  # noqa: E402
 
-from analyzer.vsm_classifier import (Classifieur, charge_corpus, coupe_par_patch,
-                                      entraine, matrice_de_confusion)  # noqa: E402
-from analyzer.vsm_corpus_build import (GrilleDeNotes, genere_lot, machine_fingerprint,
-                                        nouveau_manifeste)  # noqa: E402
+from analyzer.vsm_classifier import (Classifieur, charge_corpus, coupe_par_patch,  # noqa: E402
+                                      entraine, matrice_de_confusion)
+from analyzer.vsm_corpus_build import (GrilleDeNotes, genere_lot, machine_fingerprint,  # noqa: E402
+                                        nouveau_manifeste)
 from analyzer.vsm_engine import VsmEngine  # noqa: E402
 from analyzer.vsm_patch_optimizer import search_space_for_machine  # noqa: E402
 
@@ -124,7 +124,7 @@ def classifieur_s_abstient_devant_ce_qu_il_n_a_jamais_vu():
 
     # Un son du parc : le classement doit être utilisable.
     _, epreuve = coupe_par_patch(corpus, 0.25, 4)
-    classement, motif = classifieur.classe(corpus.X[epreuve[0]])
+    classement, _motif = classifieur.classe(corpus.X[epreuve[0]])
     assert_equal(len(classement), 3, "un score par machine (k borné par le parc)")
     assert_true(abs(sum(score for _, score in classement) - 1.0) < 1e-6,
                 "les probabilités somment à 1")
@@ -185,6 +185,6 @@ def classifieur_le_rayon_est_calibre_sur_TOUTES_les_machines():
                  "les indices d'épreuve sont bien rangés par classe — c'est ce qui "
                  "rend un sous-échantillon « du début » trompeur")
     # Et le rayon reste fini et strictement positif quel que soit le corpus.
-    classifieur, mesures = entraine(corpus, graine=9, part_epreuve=0.25)
+    _classifieur, mesures = entraine(corpus, graine=9, part_epreuve=0.25)
     assert_true(0.0 < mesures["rayonNouveaute"] < 1e6, "rayon exploitable")
     assert_true(0.0 <= mesures["refusAbusifs"] <= 1.0, "taux de refus abusif publié")

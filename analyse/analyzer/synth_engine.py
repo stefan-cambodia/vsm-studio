@@ -1,6 +1,4 @@
 from dataclasses import dataclass, asdict
-from typing import Dict
-import math
 
 import numpy as np
 from scipy import signal
@@ -45,8 +43,6 @@ def oscillator(
     phase : radians
     """
 
-    cycles = phase / (2.0 * np.pi)
-
     if waveform == "sine":
         return np.sin(phase)
 
@@ -85,8 +81,6 @@ def adsr(
     """
     Génère une enveloppe ADSR.
     """
-
-    total_time = length / sr
 
     attack = max(0.001, attack)
     decay = max(0.001, decay)
@@ -165,8 +159,6 @@ def lowpass(
             sr * 0.45,
         )
     )
-
-    q = 0.5 + resonance * 12.0
 
     b, a = signal.iirfilter(
         N=2,

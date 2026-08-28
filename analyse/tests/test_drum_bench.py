@@ -14,8 +14,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from framework import assert_equal, assert_true, test  # noqa: E402
 
-from analyzer.vsm_drum_bench import (BPM, TOLERANCE, motif_contretemps, motif_double_croche,
-                                      juge, rend_motif, _famille_canonique)  # noqa: E402
+from analyzer.vsm_drum_bench import (TOLERANCE, motif_contretemps, motif_double_croche,  # noqa: E402
+                                      juge, rend_motif, _famille_canonique)
 from analyzer.vsm_engine import VsmEngine  # noqa: E402
 
 
@@ -43,7 +43,7 @@ def banc_batterie_le_juge_est_deterministe():
         audio = rend_motif(motif, moteur)
         premier = juge(motif, moteur, audio=audio)
         second = juge(motif, moteur, audio=audio)
-    for x, y in zip(premier.familles, second.familles):
+    for x, y in zip(premier.familles, second.familles, strict=True):
         assert_equal((x.retrouvees, x.inventees), (y.retrouvees, y.inventees),
                      f"{x.famille} : même verdict deux fois")
 
@@ -122,7 +122,7 @@ def frappes_le_classifieur_lit_le_couple_avant_apres():
 
 @test
 def frappes_le_corpus_etiquette_par_construction_et_se_coupe_par_situation():
-    from analyzer.vsm_drum_corpus import (DECALAGES, NOTES_PAR_MACHINE, PIECES,
+    from analyzer.vsm_drum_corpus import (PIECES,
                                           engendre_corpus_frappes, entraine_frappes)
     # Un corpus RÉDUIT : une machine, pour que le test reste court.
     import analyzer.vsm_drum_corpus as mod
@@ -143,7 +143,7 @@ def frappes_le_corpus_etiquette_par_construction_et_se_coupe_par_situation():
     ensemble = [i for i, s in enumerate(corpus.situations) if "ensemble" in s]
     assert_true(all(corpus.Y[i].sum() == 2.0 for i in ensemble), "co-frappe : deux pièces nouvelles")
 
-    clf, mesures = entraine_frappes(corpus, graine=3)
+    _clf, mesures = entraine_frappes(corpus, graine=3)
     # La coupure est par SITUATION : aucune situation d'épreuve à l'entraînement.
     epreuve = set(mesures["situationsEpreuve"])
     assert_true(epreuve, "des situations tenues à l'écart")
