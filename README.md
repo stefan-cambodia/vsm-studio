@@ -161,6 +161,33 @@ ignorés par git : ils se refont à l'identique.
   8/16, claps 8/8 et toms 7/8 au lieu de 0, aucune frappe perdue.
 - `--sans-apprentissage` : le témoin, aucun modèle consulté.
 
+### La séparation tourne sur l'iGPU (2,8x), et rend les mêmes stems
+
+La machine de développement n'a pas de GPU NVIDIA : elle a un **iGPU Intel Arc**
+(Meteor Lake). `separation.py` choisit désormais `xpu`, puis `cuda`, puis `cpu`,
+et imprime ce qu'il a retenu. Mesuré sur les 5 min de *Clair de Lune*, même
+modèle, mêmes options, même environnement :
+
+| dorsal | séparation | stems |
+|---|---|---|
+| CPU (16 fils) | 89,6 s | référence |
+| **XPU (Intel Arc)** | **31,7 s** | corrélation 1,000000, écart maximal 4,2e-07 |
+
+Le gain n'est donc pas payé par un autre résultat : l'écart est l'arrondi du
+`float32`. Ce que ça demande côté installation est **entièrement en espace
+utilisateur** — aucun paquet système, aucun `sudo` :
+
+```bash
+analyse/.venv/bin/python -m pip install --index-url https://download.pytorch.org/whl/xpu \
+    "torch==2.13.0+xpu" "torchaudio==2.11.0+xpu"
+```
+
+Le suffixe `+xpu` est obligatoire : sans lui, pip voit la même version `2.13.0`
+que la variante CUDA déjà installée et ne fait rien. Et ce que le GPU accélère
+s'arrête là : la recherche de patch rend l'audio par `vsm-render`, le moteur C++
+du DAW, qui ne va pas sur GPU — sur une reconstruction complète, la séparation
+ne pèse qu'une petite part du temps total.
+
 `corpus_separe.py` n'entraîne rien qui serve dans la chaîne : c'est l'épreuve
 de la seule piste que deux mesures laissaient debout contre le fossé de domaine
 — rendre le patch, le mélanger à de vrais stems, repasser le tout par demucs,
