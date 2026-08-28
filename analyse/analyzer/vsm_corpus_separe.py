@@ -53,6 +53,10 @@ SILENCE = 0.3            # entre deux exemples dans le fichier concaténé
 # Rapport fond/synthé, en dB, tiré uniformément : le synthé est tantôt devant,
 # tantôt derrière le reste du morceau, comme dans un mélange réel.
 FOND_DB: Tuple[float, float] = (-6.0, 6.0)
+# Durée d'audio séparée d'un coup (voir `_separe_other`) : quatre minutes
+# tiennent sous le gigaoctet ; 43 minutes d'un bloc ont tué la première passe.
+TRANCHE_SEPARATION = 240.0
+MARGE_SEPARATION = 10.0   # séparée avec la tranche, puis jetée (voir `_separe_other`)
 
 
 @dataclass
@@ -203,8 +207,8 @@ def engendre(engine: VsmEngine, vivier: Vivier, patchs_par_machine: int, sample_
     gain = min(1.0, 0.9 / crete)          # pas d'écrêtage ; le même gain pour tout
     melange *= gain
     if progression:
-        progression(f"séparation de {total / sample_rate / 60:.1f} min d'audio en une passe")
-    other = _separe_other(melange, sample_rate, dossier_travail)
+        progression(f"séparation de {total / sample_rate / 60:.1f} min d'audio, par tranches de {TRANCHE_SEPARATION / 60:.0f} min")
+    other = _separe_other(melange, sample_rate, dossier_travail, pas=n + gap, progression=progression)
 
     X_sec, X_sep, y, patchs, conditions, retrouve = [], [], [], [], [], []
     for i, s in enumerate(secs):
@@ -225,15 +229,38 @@ def engendre(engine: VsmEngine, vivier: Vivier, patchs_par_machine: int, sample_
                         np.asarray(retrouve, dtype=np.float32), time.perf_counter() - depart, rejets)
 
 
-def _separe_other(melange: np.ndarray, sample_rate: int, dossier: Path) -> np.ndarray:
-    """Fait passer le mélange par demucs (shifts=0, comme la chaîne) et rend « other »."""
+def _separe_other(melange: np.ndarray, sample_rate: int, dossier: Path, pas: int,
+                  progression: Optional[Callable[[str], None]] = None) -> np.ndarray:
+    """Fait passer le mélange par demucs (shifts=0, comme la chaîne) et rend « other ».
+
+    PAR TRANCHES, ET POURQUOI. La première passe complète (20 machines, 43 min
+    d'audio) a été tuée par l'OOM-killer : `separate_tensor` tient en mémoire
+    l'entrée stéréo, sa copie normalisée, les QUATRE sources stéréo en sortie et
+    leur copie dénormalisée — plus de 10 Go pour 43 min, sur une machine de
+    15 Go sans GPU. Le fichier est donc découpé en tranches de
+    `TRANCHE_SEPARATION` secondes dont les bords tombent sur un SILENCE entre
+    deux exemples (`pas` = longueur d'un exemple + son silence), et chaque
+    tranche est séparée seule. La normalisation reste GLOBALE (moyenne et
+    écart-type du fichier entier, comme le ferait une passe unique) : seule la
+    grille des segments internes de demucs change, ce qui n'a pas plus de sens
+    dans un cas que dans l'autre. Le coût est le même, la mémoire est divisée
+    par le nombre de tranches.
+    """
     import torch
     from demucs.api import Separator
+    from demucs.apply import apply_model
 
     separator = Separator(model="htdemucs", device="cpu", progress=False, shifts=0)
-    stereo = torch.from_numpy(np.stack([melange, melange]))
-    _, sources = separator.separate_tensor(stereo, sr=sample_rate)
-    other = sources["other"].mean(dim=0).cpu().numpy()
+    modele = separator._model
+
+    def separer(stereo: torch.Tensor) -> torch.Tensor:
+        with torch.no_grad():
+            return apply_model(modele, stereo[None], segment=separator._segment, shifts=0, split=True,
+                               overlap=separator._overlap, device="cpu", num_workers=separator._jobs,
+                               progress=False)[0]
+
+    other = _separe_par_tranches(melange, sample_rate, pas, separer, list(modele.sources).index("other"),
+                                 progression)
     # Le fichier est conservé : c'est lui qui permet d'ÉCOUTER ce que le modèle
     # apprend, et de vérifier qu'un exemple est bien un synthé dans un mélange.
     dossier.mkdir(parents=True, exist_ok=True)
@@ -243,6 +270,33 @@ def _separe_other(melange: np.ndarray, sample_rate: int, dossier: Path) -> np.nd
         sf.write(str(dossier / "other.wav"), other, sample_rate)
     except Exception:  # noqa: BLE001 — l'écoute est un confort, pas la mesure
         pass
+    return other
+
+
+def _separe_par_tranches(melange: np.ndarray, sample_rate: int, pas: int,
+                         separer: Callable[["torch.Tensor"], "torch.Tensor"], indice_other: int,  # noqa: F821
+                         progression: Optional[Callable[[str], None]] = None) -> np.ndarray:
+    """Le découpage, séparé du modèle pour être testé sans lui : `separer`
+    reçoit un tenseur (2, T) NORMALISÉ et rend (sources, 2, T)."""
+    import torch
+
+    ref = torch.from_numpy(melange)
+    moyenne, ecart = ref.mean(), ref.std() + 1e-8
+    other = np.zeros_like(melange)
+    par_tranche = max(pas, (int(TRANCHE_SEPARATION * sample_rate) // pas) * pas)
+    marge = int(MARGE_SEPARATION * sample_rate)
+    bords = list(range(0, melange.size, par_tranche)) + [melange.size]
+    for k, (a, b) in enumerate(zip(bords[:-1], bords[1:], strict=True)):
+        # Une marge de chaque côté est séparée puis JETÉE : demucs voit ainsi
+        # le même voisinage qu'en passe unique, et l'effet de bord (mesuré :
+        # 2-3 exemples par bord à 0,7-0,85 de corrélation sans marge) disparaît.
+        debut, fin = max(0, a - marge), min(melange.size, b + marge)
+        stereo = torch.from_numpy(np.stack([melange[debut:fin], melange[debut:fin]]))
+        sortie = separer((stereo - moyenne) / ecart)
+        other[a:b] = (sortie[indice_other, :, a - debut:b - debut] * ecart + moyenne).mean(dim=0).cpu().numpy()
+        del sortie, stereo
+        if progression:
+            progression(f"séparation : tranche {k + 1}/{len(bords) - 1} ({(b - a) / sample_rate:.0f} s)")
     return other
 
 

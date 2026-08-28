@@ -83,3 +83,39 @@ def corpus_separe_la_sonde_relit_les_notes_du_midi_du_projet():
         assert_true(False, "une piste absente est une erreur")
     except ValueError:
         pass
+
+
+@test
+def corpus_separe_les_tranches_recollent_exactement_ce_que_le_modele_rend():
+    """Le découpage de la séparation (une passe de 43 min a tué la machine)
+    ne doit rien changer à ce que le modèle rend : avec un « modèle » qui
+    rend son entrée, la sortie recollée EST l'entrée, quelle que soit la
+    taille des tranches, et chaque appel reçoit tranche + marges, pas plus."""
+    import torch
+
+    from analyzer import vsm_corpus_separe as m
+    from analyzer.vsm_corpus_separe import _separe_par_tranches
+    sr = 1000
+    pas = 13                                     # exemple + silence, en échantillons
+    melange = np.random.default_rng(5).standard_normal(pas * 40).astype(np.float32)
+    appels: list = []
+
+    def identite(stereo: torch.Tensor) -> torch.Tensor:
+        appels.append(stereo.shape[1])
+        return torch.stack([torch.zeros_like(stereo), stereo, stereo * 2])   # « other » à l'indice 1
+
+    tranche, marge = m.TRANCHE_SEPARATION, m.MARGE_SEPARATION
+    try:
+        m.TRANCHE_SEPARATION, m.MARGE_SEPARATION = 0.1, 0.02       # 100 éch. → 7 exemples ; marge 20 éch.
+        other = _separe_par_tranches(melange, sr, pas, identite, indice_other=1)
+        assert_true(np.allclose(other, melange, atol=1e-5), "recollé = entrée, dénormalisation comprise")
+        assert_equal(len(appels), 6, "40 exemples par tranches de 7 : six appels")
+        assert_true(max(appels) <= 7 * pas + 2 * 20, f"un appel reçoit au plus tranche + deux marges ({max(appels)})")
+        assert_true(appels[0] == 7 * pas + 20, "la première tranche n'a de marge qu'à droite")
+        m.TRANCHE_SEPARATION = 1000.0
+        appels.clear()
+        seul = _separe_par_tranches(melange, sr, pas, identite, indice_other=1)
+        assert_equal(len(appels), 1, "assez grand : une seule passe")
+        assert_true(np.allclose(seul, other, atol=1e-5), "une passe ou six, même résultat")
+    finally:
+        m.TRANCHE_SEPARATION, m.MARGE_SEPARATION = tranche, marge
