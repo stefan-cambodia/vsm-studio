@@ -93,7 +93,15 @@ client, jamais une dépendance.
   deux étages le divise par deux à verdict identique (343 s → 174 s sur quinze
   machines), et un stem entier demande aujourd'hui ~350 s au budget par défaut,
   ~960 s à 60 itérations. Un morceau de quatre stems se reconstruit donc en
-  ~16 min au défaut et ~40 min au budget élevé.
+  ~16 min au défaut et ~40 min au budget élevé. **Mesuré depuis, de bout en
+  bout** : 1 382 s sur *Clair de Lune* (5 min) et 2 966 s sur *Sky and Sand*
+  (8 min 52), séparation, transcription, arbitrages et réglages compris — la
+  fourchette tient. **Et le GPU n'y changera presque rien** : la séparation est
+  la seule étape accélérable, elle est passée de 89,6 s à 31,7 s sur cinq
+  minutes d'audio depuis que `separation.py` sait choisir un iGPU Intel
+  (README, « la séparation tourne sur l'iGPU »), mais elle ne pesait que ~6 min
+  sur les 49 de *Sky and Sand*. Le temps est dans la recherche de patch, qui
+  rend l'audio par `vsm-render` et ne quittera pas le CPU.
 - **Le budget de recherche change les distances d'un facteur deux** (basse :
   0,103 à 20 itérations, 0,053 à 60) : deux mesures ne se comparent que si
   elles ont le même budget. Il est pour cela inscrit dans chaque

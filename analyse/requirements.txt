@@ -27,6 +27,32 @@ soundfile>=0.13
 requests>=2.32
 
 # --- Séparation de sources (Demucs) ----------------------------
+#
+# IMPORTANT : ces deux lignes installent la variante CUDA de torch,
+# qui est celle par défaut sur PyPI. Sur une machine SANS carte
+# NVIDIA, elle occupe 1,2 Go de noyaux inutilisables et la
+# séparation tourne sur le CPU.
+#
+# Sur un iGPU ou un GPU INTEL (Arc, Meteor Lake et suivants), la
+# séparation va 2,8x plus vite en rendant les mêmes stems
+# (89,6 s -> 31,7 s sur 5 min d'audio, corrélation 1,000000,
+# écart maximal 4,2e-07 -- l'arrondi du float32). Après
+# l'installation ci-dessous, remplacer torch par sa variante XPU :
+#
+#     .venv/bin/python -m pip install \
+#         --index-url https://download.pytorch.org/whl/xpu \
+#         "torch==2.13.0+xpu" "torchaudio==2.11.0+xpu"
+#
+# Le suffixe « +xpu » est OBLIGATOIRE : sans lui, pip voit la même
+# version que la variante CUDA déjà installée et ne fait rien.
+# Aucun paquet système n'est nécessaire, les paquets pip d'Intel
+# embarquent le runtime Level Zero.
+#
+# Pour vérifier laquelle est en place :
+#
+#     .venv/bin/python -c "import torch; print(torch.__version__, torch.xpu.is_available())"
+#
+# et, dans un journal de reconstruction, la ligne « device : ».
 torch>=2.6
 torchaudio>=2.6
 demucs>=4.1.0

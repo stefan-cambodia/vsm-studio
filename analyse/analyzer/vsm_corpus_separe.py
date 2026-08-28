@@ -252,6 +252,16 @@ def _separe_other(melange: np.ndarray, sample_rate: int, dossier: Path, pas: int
     from demucs.api import Separator
     from demucs.apply import apply_model
 
+    # POURQUOI « cpu » EN DUR, alors que la chaîne, elle, choisit l'iGPU.
+    # `separation.choisir_device()` rend « xpu » quand un GPU Intel est là, et
+    # la séparation de la chaîne y va 2,8x plus vite (README). Ici non, et ce
+    # n'est pas un oubli : le découpage en tranches ci-dessus existe parce
+    # qu'une passe de 43 min a été tuée par l'OOM-killer, et un iGPU partage la
+    # MÊME mémoire que le processeur. Passer cette fonction sur l'accélérateur
+    # sans refaire ce calcul de mémoire, c'est rejouer l'incident sur un tas
+    # plus petit. Le jour où on voudra le gain ici, il faudra remesurer la
+    # taille de tranche tenable en mémoire unifiée -- et alors seulement
+    # remplacer ces deux « cpu ».
     separator = Separator(model="htdemucs", device="cpu", progress=False, shifts=0)
     modele = separator._model
 

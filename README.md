@@ -129,6 +129,53 @@ pas ; chaque `rapport.json` porte la sienne, son budget, sa `provenance`
 (commit, options, modèles consultés), la batterie (`drums` : pièces, arbitrage,
 réglages) et le verdict du mélange (`mixVerdict` : gardé, écarté, chiffres).
 
+### La séparation tourne sur l'iGPU (2,8x), et rend les mêmes stems
+
+La séparation (demucs) est la seule étape de la chaîne qui sache utiliser un
+accélérateur. `analyse/analyzer/separation.py` choisit `xpu`, puis `cuda`, puis
+`cpu`, et **imprime au journal celui qu'il a retenu** — la ligne `device :` est
+le seul moyen de savoir, en relisant une exécution, sur quoi elle a tourné.
+
+Mesuré sur les 5 min de *Clair de Lune*, même modèle, mêmes options `shifts=0`,
+même environnement, sur un iGPU **Intel Arc** (Meteor Lake) :
+
+| dorsal | séparation | stems |
+|---|---|---|
+| CPU (16 fils) | 89,6 s | référence |
+| **XPU (Intel Arc)** | **31,7 s** | corrélation 1,000000, écart maximal 4,2e-07 |
+
+Le gain n'est pas payé par un autre résultat : l'écart est l'arrondi du
+`float32`. L'identité des stems a été vérifiée AVANT la durée, parce qu'une
+séparation deux fois plus rapide qui rendrait d'autres stems ne serait pas une
+accélération, ce serait une autre chaîne.
+
+**Ce que le GPU n'accélère pas, et c'est l'essentiel du temps.** La recherche de
+patch rend l'audio par `vsm-render`, le moteur C++ du DAW, qui ne va pas sur GPU.
+Sur *Sky and Sand* (8 min 52, quatre stems), la séparation pesait ~6 minutes sur
+49. Attendez-vous à quelques minutes gagnées par morceau, pas à une
+reconstruction trois fois plus rapide.
+
+**L'installation est entièrement en espace utilisateur** — aucun paquet système,
+aucun `sudo` : les paquets pip d'Intel (`intel-opencl-rt`, `intel-sycl-rt`,
+`dpcpp-cpp-rt`) embarquent le runtime Level Zero.
+
+```bash
+analyse/.venv/bin/python -m pip install --index-url https://download.pytorch.org/whl/xpu \
+    "torch==2.13.0+xpu" "torchaudio==2.11.0+xpu"
+analyse/.venv/bin/python -c "import torch; print(torch.xpu.is_available())"   # True attendu
+```
+
+**Le suffixe `+xpu` est obligatoire.** Sans lui, pip voit la même version
+`2.13.0` que la variante CUDA déjà installée, ne fait rien, et la séparation
+retombe sur le CPU sans le dire autrement que par sa ligne `device :`. C'est
+aussi pourquoi `analyse/requirements.txt` ne règle pas la question tout seul :
+il installe la variante par défaut de PyPI, qui est celle de CUDA. **Refaire le
+venv depuis `requirements.txt` défait donc cette bascule**, silencieusement.
+
+**Sur une machine sans matériel Intel**, rien à faire : `choisir_device()`
+retombe sur `cuda` s'il y a une carte NVIDIA, sinon sur `cpu`, et la chaîne rend
+les mêmes résultats — plus lentement.
+
 ### Apprendre les sonorités du parc (`docs/CDC-apprentissage.md`)
 
 Le moteur fabrique un corpus étiqueté pour rien : des milliers de paires
@@ -160,33 +207,6 @@ ignorés par git : ils se refont à l'identique.
   claire sous le kick 8/8 au lieu de 0/8, charleston seule 15/16 au lieu de
   8/16, claps 8/8 et toms 7/8 au lieu de 0, aucune frappe perdue.
 - `--sans-apprentissage` : le témoin, aucun modèle consulté.
-
-### La séparation tourne sur l'iGPU (2,8x), et rend les mêmes stems
-
-La machine de développement n'a pas de GPU NVIDIA : elle a un **iGPU Intel Arc**
-(Meteor Lake). `separation.py` choisit désormais `xpu`, puis `cuda`, puis `cpu`,
-et imprime ce qu'il a retenu. Mesuré sur les 5 min de *Clair de Lune*, même
-modèle, mêmes options, même environnement :
-
-| dorsal | séparation | stems |
-|---|---|---|
-| CPU (16 fils) | 89,6 s | référence |
-| **XPU (Intel Arc)** | **31,7 s** | corrélation 1,000000, écart maximal 4,2e-07 |
-
-Le gain n'est donc pas payé par un autre résultat : l'écart est l'arrondi du
-`float32`. Ce que ça demande côté installation est **entièrement en espace
-utilisateur** — aucun paquet système, aucun `sudo` :
-
-```bash
-analyse/.venv/bin/python -m pip install --index-url https://download.pytorch.org/whl/xpu \
-    "torch==2.13.0+xpu" "torchaudio==2.11.0+xpu"
-```
-
-Le suffixe `+xpu` est obligatoire : sans lui, pip voit la même version `2.13.0`
-que la variante CUDA déjà installée et ne fait rien. Et ce que le GPU accélère
-s'arrête là : la recherche de patch rend l'audio par `vsm-render`, le moteur C++
-du DAW, qui ne va pas sur GPU — sur une reconstruction complète, la séparation
-ne pèse qu'une petite part du temps total.
 
 `corpus_separe.py` n'entraîne rien qui serve dans la chaîne : c'est l'épreuve
 de la seule piste que deux mesures laissaient debout contre le fossé de domaine

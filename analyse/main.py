@@ -45,7 +45,7 @@ Usage :
 
     python main.py song.mp3 --no-midi
 
-    python main.py song.mp3 --device cpu
+    python main.py song.mp3 --device cpu     # ou xpu (GPU Intel), cuda, auto
 """
 
 from __future__ import annotations
@@ -305,9 +305,15 @@ def build_parser():
             "auto",
             "cpu",
             "cuda",
+            "xpu",
         ],
         default="auto",
-        help="Device utilisé lorsque supporté.",
+        help=(
+            "Device utilisé lorsque supporté. « auto » laisse la séparation "
+            "choisir (xpu, puis cuda, puis cpu) ; « xpu » désigne un GPU ou "
+            "iGPU Intel, sur lequel la séparation va ~2,8x plus vite en "
+            "rendant les mêmes stems."
+        ),
     )
 
     # --------------------------------------------------------
@@ -337,27 +343,41 @@ def build_parser():
 # ============================================================
 
 def configure_device(device_name: str):
+    """Le device demandé, VÉRIFIÉ, ou une erreur qui dit pourquoi.
+
+    « auto » rend None : le choix revient alors à `separation.choisir_device()`,
+    qui essaie xpu, puis cuda, puis cpu, et imprime ce qu'il retient.
+
+    Un accélérateur demandé et absent est une ERREUR, jamais un repli
+    silencieux : quelqu'un qui écrit --device xpu veut savoir qu'il ne l'a pas,
+    plutôt que d'attendre trois fois plus longtemps sans comprendre.
+    """
 
     if device_name == "auto":
         return None
 
+    accelerateurs = {
+        "cuda": ("CUDA", lambda t: t.cuda.is_available()),
+        "xpu": ("XPU (GPU Intel)", lambda t: hasattr(t, "xpu") and t.xpu.is_available()),
+    }
+
     try:
         import torch
 
-        if device_name == "cuda":
-
-            if not torch.cuda.is_available():
+        if device_name in accelerateurs:
+            libelle, disponible = accelerateurs[device_name]
+            if not disponible(torch):
                 raise RuntimeError(
-                    "CUDA demandé mais aucun GPU CUDA disponible."
+                    f"{libelle} demandé mais aucun matériel de ce type "
+                    f"n'est disponible."
                 )
-
-            return "cuda"
+            return device_name
 
         return "cpu"
 
     except ImportError as erreur:
 
-        if device_name == "cuda":
+        if device_name in accelerateurs:
             raise RuntimeError(
                 "PyTorch n'est pas installé."
             ) from erreur
