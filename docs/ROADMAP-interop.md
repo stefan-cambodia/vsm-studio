@@ -52,6 +52,7 @@ est donc levée, et la **Phase 7 a commencé** :
 | **P9** | API locale (Mode B) | **Fait, sous la forme la plus simple qui tienne** : `vsm-render --serve` lit des requêtes JSON ligne à ligne sur l'entrée standard. Pas de port, pas d'authentification, pas de serveur à laisser tourner -- les deux programmes sont sur la même machine. Pont Python dans `analyse/analyzer/vsm_engine.py` |
 | **P7** | import d'un dossier de projet | **Fait** — `loadProjectBundle`/`saveProjectBundle` : project.json + MIDI + presets, dégradation honnête (preset ou instrument manquant signalé, jamais substitué) |
 | **P8** | reconstruction hors ligne | **Fait** — `vsm-render <dossier> <sortie.wav>`, sans interface ni carte son ; rendu déterministe octet pour octet, via le même ProcessGraph que la lecture temps réel |
+| **P10** | boucle d'optimisation audio → Python → DAW → rendu → Python | **Fait, et c'est `reconstruire.py`** : la chaîne d'analyse rend chaque candidate par `vsm-render` et mesure la distance au stem, plusieurs milliers de fois par morceau. Le mode `--serve` de P9 est ce qui rend ce volume tenable (machines chargées une fois). Éprouvé de bout en bout le 29/08/2026, voir le § 9 |
 
 Les livrables se trouvent dans `interchange/` (`vsm_interchange`, 45 tests) et
 `tools/vsm-render`, plus `clap/` (adaptateur et hôte, 8 tests, option
@@ -213,3 +214,44 @@ et CLAP ; (5) `audio/` ignore Python et l'UI ; (6) un instrument s'ajoute sans
 toucher l'UI ; (7) paramètres identifiables sémantiquement ; (8) presets Python
 importables ; (9) leur MIDI lu par le moteur existant ; (10) projet importé rendu
 par `OfflineRenderer` ; (11) tests existants verts ; (12) approximations documentées.
+
+### Le critère est éprouvé sur un morceau réel (29/08/2026)
+
+Il ne l'avait jamais été sur un projet produit par la chaîne elle-même — les
+mesures portaient sur `docs/examples/demo-project`, écrit à la main. *Sky and
+Sand* (Fritz Kalkbrenner, 8 min 52) est passé par la flèche entière : audio →
+`reconstruire.py` → `arrangement.mid` + quatre `*.synth.json` + `project.json`
+→ `vsm-render` → WAV.
+
+| ce qui est vérifié | résultat |
+|---|---|
+| le dossier de projet se charge et se rend | **4/4 pistes sonorisées**, 534,167 s, code de sortie 0 |
+| déterminisme (deux rendus du même dossier) | **identiques octet pour octet** |
+| le rendu hors ligne EST celui de la chaîne | corrélation 1,000000, **écart maximal 0,00** |
+
+La troisième ligne est la seule qui n'allait pas de soi : elle dit que le WAV
+qu'un tiers obtiendra en rendant le dossier est **le même échantillon pour
+échantillon** que celui sur lequel la chaîne a calculé sa distance publiée. Le
+chiffre du `rapport.json` porte donc sur un objet reproductible par quelqu'un
+d'autre, et c'est tout l'intérêt d'écrire un dossier de projet plutôt qu'un WAV.
+
+**Deux pièges rencontrés en le vérifiant, et ils valent d'être écrits.**
+
+*La fréquence d'échantillonnage fait partie des conditions d'une mesure.*
+`vsm-render` rend à **48 000 Hz par défaut**, la chaîne d'analyse travaille à
+44 100. Comparés tels quels, les deux rendus donnent une corrélation de
+**0,0002** — c'est-à-dire aucun rapport — alors qu'ils sont identiques à taux
+égal. Rien n'est faux dans les deux programmes ; c'est la comparaison qui l'est.
+C'est la règle du § 10.3 de `ROADMAP-fusion.md` sous une forme de plus, après la
+métrique, le budget et le `gate` : **une distance n'est un chiffre que si l'on
+sait à quelles conditions elle a été obtenue**, et le taux d'échantillonnage en
+fait partie. Passer `--sample-rate 44100` pour rejouer une mesure de la chaîne.
+
+*Un binaire périmé ne se signale pas comme périmé.* Un `vsm-render` d'août
+traînait à la racine du dépôt (ignoré par git, reliquat local). Il charge le
+projet, avertit « Instrument manquant : vsm.multisample », rend une piste
+SILENCIEUSE — la piste mélodique principale du morceau — et sort avec le code
+**0**. L'avertissement est correct et le comportement conforme au § 5 (« jamais
+de substitution silencieuse ») ; il reste qu'un rendu réussi peut être un rendu
+amputé. Le binaire à employer est `build/tools/vsm-render`, celui que
+`find_vsm_render` retient, et c'est celui que le README nomme.

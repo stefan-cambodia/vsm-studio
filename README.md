@@ -236,7 +236,15 @@ Le rendu emprunte exactement le même chemin de calcul que la lecture dans
 l'application, et il est déterministe : deux appels sur les mêmes fichiers
 produisent deux WAV identiques octet pour octet. Un instrument ou un preset
 manquant n'interrompt pas le rendu mais apparaît en avertissement — jamais de
-substitution silencieuse.
+substitution silencieuse. **Un rendu réussi peut donc être un rendu amputé** :
+le code de sortie vaut 0 et la ligne « n/n piste(s) sonorisée(s) » est le seul
+endroit qui le dise.
+
+**Le taux d'échantillonnage fait partie des conditions d'une mesure.** Par
+défaut ce rendu est à 48 000 Hz, quand la chaîne d'analyse travaille à 44 100 :
+comparés tels quels, deux rendus du MÊME projet donnent une corrélation de
+0,0002, et à taux égal ils sont identiques à l'échantillon près. Pour rejouer
+une mesure de `reconstruire.py`, passer `--sample-rate 44100`.
 
 Boucle typique côté Python : écrire/modifier `instruments/track_00.synth.json`
 (les paramètres y portent des noms stables comme `filter.1.cutoff`), appeler
