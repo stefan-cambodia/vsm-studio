@@ -169,6 +169,38 @@ une sortie d'**abstention** : « aucune machine du parc » (→ route sampler).
      inchangés ou meilleurs, temps de présélection mesuré avant/après ;
   4. sur des stems acoustiques (violon, piano — hors parc) : abstention.
 
+> **CE QUE LE CRITÈRE 4 A DONNÉ, ET LA LIMITE QU'IL RENCONTRE (29/08/2026,
+> phase A5.2).** Vingt extraits d'une seconde de *Clair de Lune* et de chacun
+> des quatre stems que la séparation en tire : **90 % d'abstention** sur
+> l'enregistrement (75 % à la première mesure du 23/08), et **aucune**
+> désignation confiante sur les trois stems qui sont des ARTEFACTS de la
+> séparation — la basse, la batterie et la voix que demucs invente à partir
+> d'un piano seul. La batterie fantôme s'abstient 6 fois sur 6. Le modèle ne
+> prétend pas reconnaître ce qui n'existe pas, et c'est le comportement que ce
+> paragraphe demandait.
+>
+> **Le critère n'est pourtant pas atteint, et la raison est structurelle.**
+> `vsm.sh101` est encore désigné **à 1,00** sur un piano acoustique. Le rayon
+> de nouveauté attrape 90 % des cas et ne peut pas attraper le dernier :
+> resserré, il refuserait le corpus lui-même (déjà 10 % de refus abusifs). Ce
+> qui manque n'est pas un réglage mais une **classe « aucune »** — un
+> classifieur à ensemble fermé choisit toujours l'une de ses classes, et rien
+> ne l'empêche d'en être certain. Or cette classe ne peut pas être peuplée par
+> le moteur, qui ne sait produire que ce qui EST dans le parc. C'est le fossé
+> de domaine du § 7 de `ROADMAP-fusion.md`, rencontré ici par une troisième
+> porte, après l'estimateur de paramètres et le corpus passé par la séparation.
+> **La conséquence pratique est déjà en place et doit le rester** : l'avis du
+> classifieur est consigné, jamais appliqué ; c'est l'arbitrage sur la piste
+> qui tranche.
+>
+> **Et une leçon d'exploitation, qui a failli coûter 27 minutes.** Le modèle a
+> été REFUSÉ au chargement pendant la passe A5.1, périmé pour une seule
+> machine. Le réflexe est de réengendrer le corpus ; c'était inutile — le
+> corpus le plus récent portait déjà l'empreinte du moteur d'aujourd'hui, et
+> 28 secondes de réentraînement ont suffi. **La péremption dit QUE le modèle
+> est à refaire ; elle ne dit pas AVEC QUOI.** Vérifier les corpus disponibles
+> (`corpus.py --verifier`) avant d'en fabriquer un.
+
 ---
 
 ## 5. Objet 3 — les gabarits de batterie appris
@@ -298,6 +330,37 @@ dit vrai — abstentions motivées, distances publiées, confiances par note dan
 le piano roll — et une écoute A/B qui ne surprend pas celui qui a lu le
 rapport. Si le classifieur y classe un violon en MS-20 avec assurance, le §4
 a échoué, quel que soit son score sur corpus.
+
+> **CE QUE LE BANC A DONNÉ (29/08/2026).** Les trois attentes ci-dessus ont été
+> écrites avant de mesurer ; voici ce qu'elles sont devenues, dans l'ordre.
+>
+> **La première est DÉPASSÉE, et par le mauvais côté.** « Un orchestre sortira
+> essentiellement en *autres*, peu séparé » supposait que demucs sépare mal.
+> Sur un piano SEUL, il fait pire que mal séparer : il **invente deux
+> instruments**. Le stem `drums` contient 1 852 frappes que la chaîne nomme en
+> quatre pièces, et le stem `bass` reçoit `vsm.wind` à 0,101 — la meilleure
+> distance de note du morceau, obtenue sur ce qui n'est pas un instrument. Le
+> verdict du mélange GARDE la batterie fantôme, parce qu'elle rapproche
+> réellement le mélange (0,3746 contre 0,3821 sans elle). Ce n'est pas une
+> défaillance de la chaîne : elle reconstruit fidèlement ce qu'on lui donne, et
+> on lui a donné des artefacts. **L'attente à écrire pour la prochaine fois
+> n'est donc pas « la séparation sera grossière » mais « la séparation
+> HALLUCINE des sources, et la chaîne les reconstruira consciencieusement ».**
+>
+> **La deuxième est tenue** : abstention à 90 %, route acoustique empruntée —
+> l'arbitrage retient `vsm.piano`, la machine modélisée, sur le stem qui porte
+> le piano.
+>
+> **La troisième est tenue aussi, et c'est la plus coûteuse** : 2 225 notes
+> transcrites sur le stem `other`, et c'est la transcription qui plafonne le
+> résultat, comme le § 5 sexies de `ROADMAP-fusion.md` l'avait établi sur ce
+> même morceau.
+>
+> **Le succès du banc, tel que ce paragraphe le définit, est atteint pour le
+> rapport et pas encore pour l'écoute** : `rapport.json` porte sa provenance,
+> ses abstentions, son verdict de mélange piste par piste et le nom de ce qui a
+> été écarté. L'écoute A/B (A5.3) demande une oreille et reste à faire ; la
+> seule chose que le rapport ne dit pas d'avance, c'est ce qu'elle entendra.
 
 ---
 

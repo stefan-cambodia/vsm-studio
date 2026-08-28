@@ -425,6 +425,35 @@ doit simplement plus être présentée comme la parade au fossé de domaine.
 > Le code de la mesure reste (`corpus_separe.py`, 4 tests) : c'est lui qui
 > devra être rejoué si un jour un corpus d'une autre nature — des disques
 > dont on connaît la machine — existe.
+>
+> **UNE SIXIÈME ET UNE SEPTIÈME SONDE, SUR UN MORCEAU QUE LE VERDICT N'AVAIT
+> JAMAIS VU (29/08/2026).** Le verdict ci-dessus contenait une prédiction sans
+> le dire : *le corpus séparé n'aide que sur un stem de BASSE, et nuit
+> ailleurs.* Elle reposait sur cinq sondes tirées de trois morceaux. *Sky and
+> Sand* (Fritz Kalkbrenner) est passé dans la chaîne pour d'autres raisons ;
+> ses deux stems mélodiques ont été versés au protocole, avec la machine que
+> l'arbitrage y retient (`other` → `vsm.multisample`, `bass` →
+> `vsm.wavetable`) et les notes du MIDI reconstruit. Mêmes trois modèles,
+> même corpus à 100 patchs, aucun réentraînement particulier :
+>
+> | sonde (machine retenue) | sec | séparé | sec + séparé |
+> |---|---|---|---|
+> | *Sky* other (`vsm.multisample`) | **5** / 55 % | 8 / 30 % | 14 / 0 % |
+> | *Sky* bass (`vsm.wavetable`) | 14 / 0 % | **5** / 55 % | **5** / 55 % |
+>
+> **La prédiction tient, et à l'unité près.** Le stem de basse passe du rang
+> 14 au rang 5 et de 0 à 55 % dans le top 5 — exactement ce qu'avait fait la
+> basse de *B4* (16 → 5, 0 → 55 %) ; le stem « other » recule (5 → 8). Somme
+> des rangs sur les sept sondes : **64** pour le sec, 67 pour le séparé, 78
+> pour les deux. Rien ne bouge, sur un morceau électronique de 2010 qui n'a
+> rien à voir avec les trois précédents.
+>
+> Ce que cela ajoute au verdict n'est pas un chiffre de plus : c'est qu'il a
+> **prédit** le résultat d'une mesure qui n'était pas faite. Le corpus séparé
+> apprend le résidu que demucs laisse d'un synthé de basse ; là où le stem est
+> une basse, il gagne, ailleurs il perd, et cela se reproduit sur commande. La
+> clôture d'A3 ne repose donc plus sur une constatation mais sur une régularité
+> vérifiée hors de son échantillon.
 
 ## Phase A2 — Les gabarits de batterie appris
 
@@ -733,8 +762,8 @@ CDC §10 — cette phase vérifie qu'elles se réalisent, pas qu'on les contourn
 |---|---|---|
 | A5.1 | Reconstruction de bout en bout (`reconstruire.py`) sur l'enregistrement choisi | la chaîne va au bout ; `rapport.json` et `comparaison.wav` produits |
 | A5.2 | Vérification des abstentions | les sources acoustiques passent par abstention → sampler, chacune avec sa mesure ; aucune machine de caractère « confiante » sur un instrument d'orchestre |
-| A5.3 | Écoute et correction dans le DAW | projet ouvert (11.1), A/B contre l'original (11.2), notes douteuses marquées (11.3) ; ce que l'oreille trouve que le rapport ne disait pas devient une entrée de ce tableau |
-| A5.4 | Bilan | distances par stem publiées, passes documentées comme pour House Of God ; les leçons remontent dans les CDC |
+| A5.3 | Écoute et correction dans le DAW | projet ouvert (11.1), A/B contre l'original (11.2), notes douteuses marquées (11.3) ; ce que l'oreille trouve que le rapport ne disait pas devient une entrée de ce tableau — **préparée, l'écoute reste à faire** |
+| A5.4 | Bilan | distances par stem publiées, passes documentées comme pour House Of God ; les leçons remontent dans les CDC — **fait** |
 
 **Critère de phase** : un rapport qui dit vrai et une écoute qui ne surprend
 pas son lecteur. Une distance élevée honnêtement expliquée vaut mieux qu'une
@@ -794,6 +823,56 @@ petite distance obtenue en trichant sur ce qu'on mesure.
 > vaut ici comme ailleurs — une distance n'est un chiffre que si l'on sait à
 > quelles conditions elle a été obtenue. Le rapport porte les siennes.
 
+> **A5.3 — CE QUE LE RAPPORT DONNE À L'OREILLE, ET CE QU'IL NE PEUT PAS
+> FAIRE À SA PLACE.** L'étape demande une écoute dans le DAW ; ce qui peut
+> être préparé l'a été. Le projet s'ouvre (`reconstruction/travail/cdl-a5/`,
+> quatre pistes : `bass`, `other`, `Batterie`, `Voix`), `comparaison.wav`
+> porte l'original à gauche et la reconstruction à droite, et les
+> **confiances par note** sont dans le rapport, une par note, prêtes pour le
+> marquage du piano roll (§ 11.3 de `ROADMAP-fusion.md`) :
+>
+> | piste | notes | médiane | 1er quartile | sous 0,50 |
+> |---|---|---|---|---|
+> | `bass` (le stem halluciné) | 736 | 0,449 | 0,387 | **498 (68 %)** |
+> | `other` (le piano) | 2 225 | 0,536 | 0,435 | 881 (40 %) |
+>
+> **Le transcripteur se méfie le plus de la piste qui n'existe pas.** Les deux
+> tiers des notes du stem `bass` sont sous 0,50, contre 40 % sur le piano. La
+> chaîne portait donc déjà, sans qu'on le lui demande, le signal qui permet à
+> une oreille de trouver l'hallucination : il suffit d'aller aux notes
+> douteuses, ce que le piano roll sait faire depuis le § 11.3. L'écoute
+> elle-même reste à faire et demande une oreille ; c'est la seule chose de
+> cette phase qu'aucune mesure ne remplace.
+>
+> **A5.4 — BILAN.** Les distances, à conditions écrites (métrique v2, 20
+> itérations, budget de piste 40 sur 8 axes, séparation htdemucs `shifts=0`,
+> arbitrage et réglage actifs, présélection apprise désactivée) :
+>
+> | piste | machine retenue | distance de piste | ce que le mélange en fait |
+> |---|---|---|---|
+> | `bass` | `vsm.wind` | 0,151 après réglage | gardé (0,4266) |
+> | `other` | `vsm.piano` (patch d'usine) | 0,244 après réglage | **arbitrage** gardé (0,3821) |
+> | `Batterie` | `vsm.drums` | 0,224 après réglage | **avant réglage** gardé (0,3746) |
+> | `Voix` | sampler | — | report intégral |
+> | **morceau** | | | **0,3746** |
+>
+> **Les quatre leçons, et elles sont remontées dans les cahiers des charges.**
+> (1) La séparation ne se contente pas de mal séparer un enregistrement hors
+> de son domaine : elle HALLUCINE des sources, et la chaîne les reconstruit
+> consciencieusement — c'est l'attente à écrire pour le prochain banc, à la
+> place de « un orchestre sortira essentiellement en autres ». (2) Le rayon
+> d'abstention a arrêté une désignation à 0,96 sur un piano : il gagne sa
+> place, et le modèle reste consultatif. (3) La péremption par empreinte dit
+> QUE le modèle est à refaire, pas AVEC QUOI — vérifier les corpus
+> disponibles avant d'en fabriquer un a économisé 27 minutes contre 28
+> secondes. (4) Ce qui plafonne le résultat sur ce morceau n'est ni le parc ni
+> la recherche mais la TRANSCRIPTION, comme le § 5 sexies de
+> `ROADMAP-fusion.md` l'avait établi ; les confiances par note le disent
+> maintenant chiffre en main.
+>
+> **La phase A5 est donc close pour tout ce qu'une mesure peut clore**, et il
+> reste exactement une chose : écouter.
+
 > **A5.2 — MESURÉE, ET LE CRITÈRE N'EST PAS ATTEINT : IL RESTE UNE
 > DÉSIGNATION CONFIANTE (29/08/2026).** Le modèle a d'abord été réentraîné,
 > et l'enquête sur son refus vaut d'être écrite : **le corpus n'était pas
@@ -843,6 +922,46 @@ petite distance obtenue en trichant sur ce qu'on mesure.
 > à ensemble fermé, c'est-à-dire une classe « aucune », qu'aucun corpus de
 > rendus ne peut peupler. C'est, une troisième fois et par une troisième
 > porte, le fossé de domaine du § 7 de `ROADMAP-fusion.md`.
+>
+> **ET LA MÊME QUESTION POSÉE À LA CHAÎNE, QUI EST LE SEUL ENDROIT OÙ ELLE
+> COMPTE, DONNE UNE AUTRE RÉPONSE.** La passe A5.1 avait tourné sans
+> classifieur (refusé). Elle a été REJOUÉE avec le modèle réentraîné, en
+> reprenant les stems déjà séparés (`--stems`) pour que rien d'autre ne
+> change. Résultat, sur les deux stems mélodiques :
+>
+> ```
+> bass  : classifieur — aucune machine du parc ne convient : ce son est à 5.28 du corpus, au-delà du rayon 3.77
+> other : classifieur — aucune machine du parc ne convient : ce son est à 6.37 du corpus, au-delà du rayon 3.77
+> ```
+>
+> **Abstention 2 sur 2**, et le rapport porte enfin la provenance du modèle
+> (`classifieurMachine: 2026-08-28T17:50:18+00:00`) avec, pour chaque stem, le
+> classement que le modèle AURAIT rendu. C'est là que la mesure devient
+> intéressante : sur le stem `other` — le piano — ce classement commence par
+> **`vsm.juno106` à 0,96**. Une désignation confiante, sur un piano
+> acoustique, **arrêtée par le rayon**. Le garde-fou ne fait pas de la
+> figuration : il attrape exactement le cas que le § 4 du cahier appelle le
+> pire résultat possible du projet.
+>
+> **Les deux mesures ne se contredisent pas, elles ne portent pas sur la même
+> chose**, et la différence est la fenêtre du descripteur. Par extraits d'une
+> seconde tirés au fil du morceau, le modèle est confiant une fois sur vingt
+> et le rayon laisse passer ce cas-là. À l'endroit où la chaîne l'interroge
+> vraiment — la note de référence du stem, la plus longue —, il s'abstient
+> deux fois sur deux. **A5.2 est donc atteinte pour la CHAÎNE et pas pour le
+> MODÈLE** : aucune machine de caractère n'est désignée sur cet enregistrement
+> par la chaîne, et le modèle reste capable d'une certitude à 1,00 si on
+> l'interroge ailleurs. C'est écrit dans cet ordre parce que c'est le seul
+> honnête : ce qui protège le verdict n'est pas la qualité du modèle, c'est
+> qu'on ne le laisse pas décider.
+>
+> **Et le déterminisme d'A4.2 est remesuré au passage** : deux passes du même
+> morceau, l'une sans modèle et l'autre avec, rendent la MÊME distance globale
+> (0,374584 des deux côtés), les mêmes machines (`vsm.wind`, `vsm.piano`,
+> `vsm.drums`) et la même distance de batterie (0,223792). L'invariant « sans
+> modèle sur disque, la chaîne = la chaîne d'aujourd'hui » vaut donc aussi
+> dans l'autre sens : **avec** modèle et sans présélection apprise, elle ne
+> bouge pas d'un chiffre.
 
 ---
 
