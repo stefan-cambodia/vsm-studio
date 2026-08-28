@@ -58,6 +58,8 @@ MainComponent::MainComponent()
 
     transportBar_.onOpenMidiFile = [this] { openMidiFile(); };
     transportBar_.onExportMidiFile = [this] { exportMidiFile(); };
+    transportBar_.onCycleListening = [this] { cycleReferenceMode(); };
+    refreshListeningIndicator();
 
     trackList_.onTrackSelected = [this](size_t idx) {
         pianoRoll_.setActiveTrackIndex(idx);
@@ -213,6 +215,12 @@ void MainComponent::resized() {
 }
 
 void MainComponent::showFloatingPanels() {
+    // Raccourcis globaux : chaque fenêtre flottante remonte ses touches non
+    // consommées ici (voir keyPressed). Idempotent : JUCE ignore un écouteur
+    // déjà inscrit.
+    for (auto* fenetre : { &trackListWindow_, &pianoRollWindow_, &synthRackWindow_, &mixerWindow_ })
+        fenetre->addKeyListener(this);
+    addKeyListener(this);
     // Appelée par Main.cpp APRÈS que la fenêtre socle a été positionnée à
     // l'écran (centreWithSize + setVisible) : avant ça, getScreenBounds()
     // renverrait des coordonnées non définies (la fenêtre n'existe pas
@@ -325,6 +333,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                               mode == Mode::Mix);
                 menu.addItem(kMenuFileReferenceSolo, "Écoute : original", aUneReference,
                               mode == Mode::Solo);
+                menu.addItem(kMenuFileReferenceCycle, "Basculer l'écoute A/B (touche R)", aUneReference);
             }
             menu.addItem(kMenuFileExport, "Exporter MIDI...");
             menu.addItem(kMenuFileExportWav, "Exporter audio (WAV)...");
@@ -397,6 +406,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             setReferenceMode(vsm::audio::engine::ReferenceTrack::Mode::Mix); break;
         case kMenuFileReferenceSolo:
             setReferenceMode(vsm::audio::engine::ReferenceTrack::Mode::Solo); break;
+        case kMenuFileReferenceCycle: cycleReferenceMode(); break;
         case kMenuFileExport:    exportMidiFile(); break;
         case kMenuFileExportWav: exportAudioFile(); break;
         case kMenuFileAudioSettings: showAudioSettings(); break;
@@ -707,11 +717,49 @@ void MainComponent::loadReferenceAudio() {
         // sans l'entendre serait un geste pour rien, et le menu permet de
         // revenir à la reconstruction seule.
         reference.setMode(vsm::audio::engine::ReferenceTrack::Mode::Mix);
+        refreshListeningIndicator();
     });
 }
 
 void MainComponent::setReferenceMode(vsm::audio::engine::ReferenceTrack::Mode mode) {
     audioEngine_.processGraph().referenceTrack().setMode(mode);
+    refreshListeningIndicator();
+}
+
+void MainComponent::cycleReferenceMode() {
+    using Mode = vsm::audio::engine::ReferenceTrack::Mode;
+    auto& reference = audioEngine_.processGraph().referenceTrack();
+    if (!reference.hasAudio()) return;          // rien à comparer : la touche ne fait rien, et le bouton est grisé
+    switch (reference.mode()) {
+        case Mode::Off:  setReferenceMode(Mode::Mix);  break;
+        case Mode::Mix:  setReferenceMode(Mode::Solo); break;
+        case Mode::Solo: setReferenceMode(Mode::Off);  break;
+    }
+}
+
+void MainComponent::refreshListeningIndicator() {
+    using Mode = vsm::audio::engine::ReferenceTrack::Mode;
+    const auto& reference = audioEngine_.processGraph().referenceTrack();
+    if (!reference.hasAudio()) {
+        transportBar_.setListening("Écoute A/B : pas d'original", false, false);
+        return;
+    }
+    switch (reference.mode()) {
+        case Mode::Off:  transportBar_.setListening("Écoute : reconstruction", true, false); break;
+        case Mode::Mix:  transportBar_.setListening("Écoute : les deux", true, true); break;
+        case Mode::Solo: transportBar_.setListening("Écoute : original", true, true); break;
+    }
+}
+
+bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
+    const auto mods = key.getModifiers();
+    if (mods.isCommandDown() || mods.isCtrlDown() || mods.isAltDown()) return false;
+    switch (key.getKeyCode()) {
+        // R comme « référence » : la bascule A/B, depuis n'importe quelle
+        // fenêtre -- on compare en regardant le piano roll, pas le menu.
+        case 'r': case 'R': cycleReferenceMode(); return true;
+        default: return false;
+    }
 }
 
 void MainComponent::newProject() {

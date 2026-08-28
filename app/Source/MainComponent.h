@@ -36,6 +36,7 @@
 class MainComponent : public juce::Component,
                        public vsm::sequencer::IMidiEventSink,
                        public juce::MenuBarModel,
+                       private juce::KeyListener,
                        private juce::Timer {
 public:
     MainComponent();
@@ -70,6 +71,7 @@ private:
         kMenuFileReferenceOff,
         kMenuFileReferenceMix,
         kMenuFileReferenceSolo,
+        kMenuFileReferenceCycle,
         kMenuFileExport,
         kMenuFileExportWav,
         kMenuFileAudioSettings,
@@ -97,6 +99,19 @@ private:
     /// l'écoute A/B (étape 11.2).
     void loadReferenceAudio();
     void setReferenceMode(vsm::audio::engine::ReferenceTrack::Mode mode);
+    /// Reconstruction -> les deux -> original -> reconstruction. Touche R,
+    /// depuis n'importe quelle fenêtre, et bouton de la barre de transport.
+    void cycleReferenceMode();
+    /// Le bouton de transport et le menu disent le mode courant.
+    void refreshListeningIndicator();
+
+    // juce::KeyListener : les raccourcis GLOBAUX. Les panneaux sont des
+    // fenêtres séparées, donc une touche pressée dans le piano roll ne remonte
+    // jamais jusqu'ici par la hiérarchie des composants ; MainComponent
+    // s'inscrit comme écouteur sur chaque fenêtre, et reçoit ce que le
+    // composant qui a le focus n'a pas consommé.
+    bool keyPressed(const juce::KeyPress& key, juce::Component* origin) override;
+    using juce::Component::keyPressed;   // la surcharge du composant reste visible (sinon -Woverloaded-virtual)
     void newProject();
     void addTrack();
     void removeSelectedTrack();

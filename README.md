@@ -313,6 +313,12 @@ rééchantillonnée si besoin, elle passe après le bus master (le traitement de
 reconstruction ne doit pas colorer le modèle) et **elle ne part jamais dans
 l'export**.
 
+Pendant l'écoute, la barre de transport **dit ce qu'on entend** (*Écoute :
+reconstruction / les deux / original*, en ambre dès que l'original est
+audible) ; un clic sur ce bouton, ou la touche **R** depuis n'importe quelle
+fenêtre, passe au mode suivant — on compare en regardant le piano roll, pas
+le menu.
+
 Formats acceptés : **WAV, AIFF, FLAC, Ogg Vorbis et MP3**. Le décodage a lieu
 dans la couche interface, avec ce que JUCE apporte déjà : le moteur audio garde
 ses zéro dépendance et ne connaît toujours que le WAV. Pour vérifier ce que

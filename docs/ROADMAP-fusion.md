@@ -698,6 +698,18 @@ En mode « original seul », la reconstruction est tue *après* rendu et non en
 amont : les instruments continuent de tourner, donc revenir à la reconstruction
 ne produit ni silence ni claquement le temps qu'ils se remettent en marche.
 
+> **Savoir ce qu'on entend (28/08/2026).** Le mode d'écoute ne se lisait que
+> dans le menu *Fichier*, qui se referme : pendant une comparaison, rien à
+> l'écran ne disait si l'on jugeait la reconstruction ou l'original, et l'on
+> peut très bien corriger une note en écoutant la mauvaise version. La barre
+> de transport porte désormais un bouton qui DIT le mode (*Écoute :
+> reconstruction / les deux / original*, coloré dès que l'original est
+> audible, grisé tant qu'aucun original n'est chargé) et le fait tourner au
+> clic. La touche **R** fait de même depuis n'importe quelle fenêtre -- les
+> panneaux sont des fenêtres séparées, donc `MainComponent` s'inscrit comme
+> écouteur clavier sur chacune et reçoit ce que le composant focalisé n'a pas
+> consommé. C'est le geste qu'A5.3 répétera le plus.
+
 Huit tests couvrent l'ensemble. Un piège de test à retenir : rendre deux fois
 le même projet sur LE MÊME graphe ne donne pas le même son -- les instruments
 gardent leur état d'un rendu à l'autre. La comparaison doit se faire entre deux

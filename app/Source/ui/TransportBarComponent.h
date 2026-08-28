@@ -22,6 +22,14 @@ public:
     std::function<void()> onOpenMidiFile;
     std::function<void()> onExportMidiFile;
 
+    /// Écoute A/B (étape 11.2) : le bouton DIT ce qu'on entend -- reconstruction,
+    /// les deux, original -- et bascule au clic. Le menu Fichier le permettait
+    /// déjà, mais un menu se referme : pendant une écoute comparative, il faut
+    /// pouvoir lire d'un coup d'œil laquelle des deux versions joue, sinon on
+    /// juge la mauvaise. `active` colore le bouton quand l'original est audible.
+    void setListening(const juce::String& label, bool enabled, bool active);
+    std::function<void()> onCycleListening;
+
 private:
     void timerCallback() override; // rafraîchit l'affichage de la position de lecture
 
@@ -31,6 +39,7 @@ private:
     juce::TextButton stopButton_   { "Stop" };
     juce::TextButton recordButton_ { "Rec" };
     juce::TextButton loopButton_   { "Loop" };
+    juce::TextButton listenButton_ { "Écoute A/B : pas d'original" };
     juce::TextButton openButton_   { "Ouvrir MIDI..." };
     juce::TextButton exportButton_ { "Exporter MIDI..." };
 

@@ -9,6 +9,7 @@ TransportBarComponent::TransportBarComponent(RealtimeTransport& transport) : tra
     addAndMakeVisible(stopButton_);
     addAndMakeVisible(recordButton_);
     addAndMakeVisible(loopButton_);
+    addAndMakeVisible(listenButton_);
     addAndMakeVisible(openButton_);
     addAndMakeVisible(exportButton_);
 
@@ -28,6 +29,9 @@ TransportBarComponent::TransportBarComponent(RealtimeTransport& transport) : tra
         // par le Piano Roll (loop region visuel) ; ici on ne fait que
         // basculer l'état demandé par l'utilisateur.
     };
+    listenButton_.onClick = [this] { if (onCycleListening) onCycleListening(); };
+    listenButton_.setTooltip("Écoute A/B : reconstruction, les deux, original (touche R)");
+    setListening("Écoute A/B : pas d'original", false, false);
     openButton_.onClick = [this] { if (onOpenMidiFile) onOpenMidiFile(); };
     exportButton_.onClick = [this] { if (onExportMidiFile) onExportMidiFile(); };
 
@@ -60,6 +64,8 @@ void TransportBarComponent::resized() {
     transportArea.removeFromLeft(4);
     loopButton_.setBounds(transportArea.removeFromLeft(60));
 
+    area.removeFromLeft(12);
+    listenButton_.setBounds(area.removeFromLeft(230));
     area.removeFromLeft(16);
     positionLabel_.setBounds(area.removeFromLeft(140));
     area.removeFromLeft(16);
@@ -74,6 +80,13 @@ void TransportBarComponent::resized() {
     sampleRateLabel_.setBounds(area.removeFromRight(120));
     area.removeFromRight(8);
     cpuLabel_.setBounds(area.removeFromRight(90));
+}
+
+void TransportBarComponent::setListening(const juce::String& label, bool enabled, bool active) {
+    listenButton_.setButtonText(label);
+    listenButton_.setEnabled(enabled);
+    listenButton_.setColour(juce::TextButton::buttonColourId, active ? Palette::accentAmber : Palette::panelRaised);
+    listenButton_.setColour(juce::TextButton::textColourOffId, active ? juce::Colours::black : Palette::textPrimary);
 }
 
 void TransportBarComponent::setBpm(double bpm) {
