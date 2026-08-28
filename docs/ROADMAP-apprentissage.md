@@ -740,6 +740,110 @@ CDC §10 — cette phase vérifie qu'elles se réalisent, pas qu'on les contourn
 pas son lecteur. Une distance élevée honnêtement expliquée vaut mieux qu'une
 petite distance obtenue en trichant sur ce qu'on mesure.
 
+> **A5.1 EST FAITE, ET A5.2 EST BLOQUÉE PAR UN REFUS QUI EST UNE BONNE
+> NOUVELLE (29/08/2026).** *Clair de Lune* passé de bout en bout,
+> séparation comprise : `reconstruire.py ../sources/clairdelune.wav
+> --classifieur modeles/classifieur.joblib --classifieur-batterie
+> modeles/frappes.joblib`, commit `85a6420+`, métrique v2, 20 itérations,
+> budget de piste 40 sur 8 axes, arbitrage et réglage actifs, présélection
+> apprise désactivée. **1 382 s**, sortie dans
+> `reconstruction/travail/cdl-a5/` (projet, MIDI, rapport, `comparaison.wav`).
+> **Distance globale 0,3746.**
+>
+> | piste | recherche | arbitrage de piste | réglage | verdict du mélange |
+> |---|---|---|---|---|
+> | bass | `vsm.wind` 0,101 (736 notes) | confirme `vsm.wind` 0,335 | 0,335 → **0,151** | garde le réglage (0,4266) |
+> | other | `vsm.string` 0,240 (2 225 notes) | **CHANGE** pour `vsm.piano` d'usine 0,270 | 0,270 → 0,244 | garde l'arbitrage (0,3821) |
+> | Batterie | — | garde `vsm.drums` 0,253 (contre TR-909 0,399, TR-808 0,483) | 0,253 → 0,224 | garde **l'avant-réglage** (0,3746) |
+> | Voix | — | — | — | sampler, report intégral |
+>
+> **Le refus, d'abord, parce qu'il change le sort de la phase.** Le
+> classifieur de machine a été **REFUSÉ au chargement** : « périmé pour
+> `vsm.multisample` (leur son a changé depuis la génération) ». C'est le
+> mécanisme d'A4.1 qui se déclenche pour la première fois sur une exécution
+> réelle et non dans un test, et il fait exactement ce qui était écrit — la
+> chaîne continue sans lui, et le rapport porte `classifieurMachine:
+> "aucun"`, ce qui est une information et non une absence d'information.
+> Conséquence directe : **A5.2 n'a pas pu être mesurée**, puisqu'elle juge
+> les abstentions d'un modèle qui n'a pas parlé. Le corpus doit être
+> réengendré et le modèle réentraîné avant de reprendre A5.2 ; c'est le coût
+> normal d'une empreinte qui fait son travail, et il est préférable à un
+> modèle qui aurait répondu sur un parc qu'il ne connaît plus.
+>
+> **Le risque « séparation pop sur un orchestre » s'est réalisé, en pire que
+> prévu.** Le cahier annonçait « un orchestre sortira essentiellement en
+> autres, peu séparé ». Sur un piano SEUL, demucs ne se contente pas de mal
+> séparer : il **invente deux instruments**. Le stem `drums` contient
+> 1 852 frappes que la chaîne nomme en quatre pièces, et le stem `bass`
+> reçoit `vsm.wind` à 0,101 — la meilleure distance de note du morceau,
+> obtenue sur ce qui n'est pas un instrument. Le verdict du mélange, lui, ne
+> s'y trompe pas à moitié : il **garde** la batterie, parce que le résidu
+> perçussif d'un piano rapproche effectivement le mélange (0,3746 contre
+> 0,3821 sans). C'est le cas que le § 10 du cahier voulait voir écrit plutôt
+> que maquillé : **la chaîne reconstruit fidèlement les artefacts de la
+> séparation, et elle le dit dans son rapport.**
+>
+> **Et l'arbitrage de piste a de nouveau détrôné la recherche par note** :
+> sur `other`, `vsm.string` gagne la note (0,240) et perd la piste
+> (0,955 avec son patch cherché), où `vsm.piano` d'usine l'emporte à 0,270.
+> C'est la cinquième occurrence du § 5 septies de `ROADMAP-fusion.md`, et la
+> première sur un piano seul.
+>
+> Comparer 0,3746 aux 0,2159 et 1,639 des passes antérieures n'aurait aucun
+> sens : celles-ci ne passaient pas par la séparation, et la règle du § 10.3
+> vaut ici comme ailleurs — une distance n'est un chiffre que si l'on sait à
+> quelles conditions elle a été obtenue. Le rapport porte les siennes.
+
+> **A5.2 — MESURÉE, ET LE CRITÈRE N'EST PAS ATTEINT : IL RESTE UNE
+> DÉSIGNATION CONFIANTE (29/08/2026).** Le modèle a d'abord été réentraîné,
+> et l'enquête sur son refus vaut d'être écrite : **le corpus n'était pas
+> périmé, le modèle l'était.** Une seule empreinte différait — celle de
+> `vsm.multisample` — entre le modèle (`a9b40e1d…`) et le moteur d'aujourd'hui
+> (`1390126f…`), et `corpus/ab-augmente-v2` porte la seconde : il est déclaré
+> « à jour » par `corpus.py --verifier`, quand `ab-sec` et `ab-augmente`, plus
+> anciens, sont périmés. Le modèle en service avait donc été entraîné sur un
+> corpus dépassé alors qu'un corpus valable existait à côté. **28 secondes de
+> réentraînement**, pas les 27 minutes d'un corpus : top 1 93,8 %, top 3
+> 98,9 %, et hors indistinguables (26,3 %) top 3 **99,8 %** — A1.1 reste
+> atteint. La leçon est d'exploitation, pas de méthode : la péremption dit
+> QUE le modèle est à refaire, elle ne dit pas AVEC QUOI, et le corpus le plus
+> récent n'est pas forcément celui qui a servi.
+>
+> **La mesure**, vingt extraits d'une seconde également répartis sur
+> l'enregistrement et sur chacun des quatre stems que la séparation a tirés
+> d'un piano SEUL (les extraits silencieux ne sont pas classés, d'où les
+> totaux inégaux) ; « confiante » = score ≥ 0,90 :
+>
+> | source | abstentions | retenues | confiantes | distance médiane au corpus |
+> |---|---|---|---|---|
+> | original (piano seul) | 18/20 | 2 (`vsm.sh101`) | **1 — `vsm.sh101` à 1,00** | 5,45 |
+> | stem `other` (le piano) | 19/20 | 1 (`vsm.sh101`) | **1 — `vsm.sh101` à 0,94** | 5,56 |
+> | stem `bass` (artefact) | 2/3 | 1 (`vsm.sh101`) | 0 | 6,05 |
+> | stem `drums` (artefact) | **6/6** | 0 | 0 | 6,05 |
+> | stem `vocals` (artefact) | 7/9 | 2 (`vsm.ms20`) | 0 | 5,34 |
+>
+> **Ce qui marche.** L'abstention est passée de 75 % (A1.2, 23/08) à **90 %**
+> sur le même enregistrement, sans que le rayon change (3,77 contre 3,72 —
+> l'écart vient du réentraînement, pas d'un réglage). Le rayon fait ce pour
+> quoi il est là : la distance médiane du réel au corpus est de 5,3 à 6,1 pour
+> un rayon de 3,77, c'est-à-dire que le piano est franchement hors du parc, et
+> mesurément. Et les trois stems qui sont des ARTEFACTS de la séparation — la
+> basse, la batterie et la voix inventées à partir d'un piano — ne reçoivent
+> **aucune** désignation confiante ; la batterie fantôme s'abstient 6 fois sur
+> 6. Le modèle ne prétend pas reconnaître ce qui n'existe pas.
+>
+> **Ce qui ne marche pas, et c'est le critère.** `vsm.sh101` est désigné à
+> **1,00** sur un piano acoustique. C'est le même échec qu'en A1.2, à la même
+> machine, réduit en fréquence (1 cas sur 20 au lieu de 4) mais pas en nature :
+> un classifieur à ensemble fermé reste capable d'une certitude totale sur une
+> source qu'aucune de ses classes ne produit. **A5.2 n'est donc pas atteinte**,
+> et le § 4 du cahier ne se contente pas d'un progrès. Ce qui la sauverait
+> n'est pas un rayon plus serré — à 10 % de refus abusifs sur le corpus, il est
+> déjà au prix que l'asymétrie d'A1.2 justifie — mais un modèle qui ne soit pas
+> à ensemble fermé, c'est-à-dire une classe « aucune », qu'aucun corpus de
+> rendus ne peut peupler. C'est, une troisième fois et par une troisième
+> porte, le fossé de domaine du § 7 de `ROADMAP-fusion.md`.
+
 ---
 
 ## Risques nommés, et leur parade
