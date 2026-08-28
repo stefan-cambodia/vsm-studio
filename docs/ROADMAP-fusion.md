@@ -1707,6 +1707,22 @@ moteur produit et un mauvais lecteur de ce qu'un disque contient.
 > La condition de réouverture écrite ci-dessus n'est donc plus une intuition :
 > c'est la seule piste que deux mesures indépendantes laissent debout.
 
+> **LA CONDITION A ÉTÉ REMPLIE, ET ELLE NE ROUVRE PAS LE DOSSIER (28/08/2026).**
+> Le corpus décrit ci-dessus existe — `analyse/corpus_separe.py` : rendus du
+> parc mélangés à de vrais stems, repassés par demucs par tranches, étiquetés
+> avec le patch d'origine ; 7 990 exemples à 100 patchs par machine, en une
+> heure — et il a été mesuré contre cinq stems réels dont la chaîne a retenu
+> la machine. Un modèle entraîné dessus rattrape la moitié du fossé SUR CE
+> CORPUS (top 3 à patchs égaux : 39 % → 86 %) et ne lit pas mieux un disque
+> qu'un modèle entraîné sur le sec (somme des rangs médians de la machine
+> retenue : 45 pour le sec, 54 pour le séparé, à 100 patchs comme à 25). Ce
+> qu'il apprend, c'est le résidu que demucs laisse d'un synthé — et il en voit
+> un dans chaque stem réel. Le détail, les tableaux et le seul gain (un stem
+> de basse) sont dans [`ROADMAP-apprentissage.md`](ROADMAP-apprentissage.md),
+> phase A1. L'estimateur reste ce que ce paragraphe disait : un bon inverseur
+> de ce que le moteur produit. Il n'y a plus de condition de réouverture
+> écrite, parce qu'il n'y a plus de corpus fabricable qui la remplirait.
+
 ---
 
 ## 8. Invariants à vérifier à chaque étape

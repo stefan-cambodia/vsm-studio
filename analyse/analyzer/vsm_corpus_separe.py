@@ -14,9 +14,11 @@ fossé se referme, avant qu'une seule ligne de la phase A3 ne soit écrite.
 
 COMMENT C'EST PAYÉ. Une séparation par exemple coûterait des heures ; tous les
 exemples sont donc CONCATÉNÉS, séparés par des silences, en UN seul fichier
-que demucs traite une fois, et chaque stem « other » est redécoupé aux instants
-connus. Le fond de mélange vient de VRAIS stems séparés (batterie, basse,
-voix) de morceaux déjà passés dans la chaîne, tirés au sort et seedés.
+que demucs traite par tranches de quatre minutes (une passe de 43 min d'un
+bloc a été tuée par l'OOM-killer — voir `_separe_other`), et chaque stem
+« other » est redécoupé aux instants connus. Le fond de mélange vient de VRAIS
+stems séparés (batterie, basse, voix) de morceaux déjà passés dans la chaîne,
+tirés au sort et seedés.
 
 CE QUE LA MESURE COMPARE. Trois classifieurs, même modèle, même coupure par
 patch : entraîné sur le SEC, sur le SÉPARÉ, sur les deux. Jugés (1) sur le

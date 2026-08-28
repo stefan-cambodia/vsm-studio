@@ -140,6 +140,7 @@ analyse/.venv/bin/python analyse/corpus.py --sortie corpus/          # A0 : ~27 
 analyse/.venv/bin/python analyse/classifieur.py --corpus corpus/ --sortie modeles/classifieur.joblib   # A1
 analyse/.venv/bin/python analyse/classifieur_batterie.py --sortie modeles/frappes.joblib             # A2
 analyse/.venv/bin/python analyse/banc_batterie.py [--classifieur-batterie modeles/frappes.joblib]  # le juge de la batterie, rejouable
+analyse/.venv/bin/python analyse/corpus_separe.py --stems ... --sortie corpus/separe/separe.npz --sonde ...  # le corpus passé par demucs, et sa mesure
 analyse/.venv/bin/python analyse/tests/run.py                        # les tests Python, sans dépendance
 ```
 
@@ -159,6 +160,15 @@ ignorés par git : ils se refont à l'identique.
   claire sous le kick 8/8 au lieu de 0/8, charleston seule 15/16 au lieu de
   8/16, claps 8/8 et toms 7/8 au lieu de 0, aucune frappe perdue.
 - `--sans-apprentissage` : le témoin, aucun modèle consulté.
+
+`corpus_separe.py` n'entraîne rien qui serve dans la chaîne : c'est l'épreuve
+de la seule piste que deux mesures laissaient debout contre le fossé de domaine
+— rendre le patch, le mélanger à de vrais stems, repasser le tout par demucs,
+étiqueter avec le patch d'origine. Mesuré : un modèle entraîné sur ce corpus
+lit mieux un STEM DE BASSE réel (rang médian 14 → 4) et pas mieux un disque
+(trois sondes sur cinq reculent) ; il apprend les artefacts de la séparation,
+qui sont dedans, et pas la distance entre un vrai instrument et le parc, qui
+n'y est pas. Le tableau et ce qu'il ferme : la feuille de route.
 
 Les résultats, les chiffres et ce qui a été rejeté :
 [`docs/ROADMAP-apprentissage.md`](docs/ROADMAP-apprentissage.md).

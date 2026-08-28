@@ -294,23 +294,137 @@ gratuite aux dégradations qu'elle contient** (93,6 % → 99,0 % sur l'épreuve
 dégradée, sans rien perdre sur le son propre). Elle est donc conservée. Elle ne
 doit simplement plus être présentée comme la parade au fossé de domaine.
 
-> **LA CONDITION DE RÉOUVERTURE A SON INSTRUMENT (28/08/2026), ET LA MESURE EST
-> EN COURS.** `analyse/corpus_separe.py` engendre le corpus que le § 7 réclame :
-> des rendus du moteur mélangés à de VRAIS stems séparés, repassés par demucs en
-> une seule passe, redécoupés et étiquetés avec le patch d'origine. Puis il
-> mesure trois classifieurs à coupure égale (sec, séparé, les deux) sur le
-> séparé tenu à l'écart et sur des SONDES réelles — un enregistrement, les notes
-> que la chaîne y a transcrites (lues dans le MIDI du projet), et la machine que
-> l'arbitrage y a retenue ; le rang médian de cette machine est le seul chiffre
-> qui dise si le modèle lit un disque.
+> **LA CONDITION DE RÉOUVERTURE EST MESURÉE (28/08/2026) : LE CORPUS SÉPARÉ
+> APPREND LA SÉPARATION, PAS LE DISQUE.** `analyse/corpus_separe.py` engendre
+> le corpus que le § 7 réclame — des rendus du moteur mélangés à de VRAIS stems
+> séparés (batterie, basse, voix de *House Of God* ; batterie et voix SEULES de
+> *Children* et *B4 Wuz Then*), repassés par demucs, redécoupés et étiquetés
+> avec le patch d'origine — puis mesure trois classifieurs à coupure égale
+> (sec, séparé, les deux) sur le séparé tenu à l'écart et sur cinq SONDES
+> réelles : un enregistrement, les notes que la chaîne y a transcrites (lues
+> dans le MIDI du projet), et la machine que l'arbitrage y a retenue. Le rang
+> médian de cette machine, sur vingt extraits, est le seul chiffre qui dise si
+> le modèle lit un disque.
 >
-> Protocole de la passe lancée : fond = *House Of God* (batterie, basse, voix) et
-> la batterie et la voix SEULES de *Children* (face A) et *B4 Wuz Then*, dont la
-> basse et « other » sont des sondes et ne doivent pas avoir servi de fond ;
-> 20 machines × 25 patchs × 4 conditions ; sondes : *Clair de Lune* → `vsm.piano`,
-> *B4* other → `vsm.jupiter8`, *B4* bass → `vsm.supersaw`, *Children* other →
-> `vsm.string`, *Children* bass → `vsm.piano`. Le résultat sera écrit ici ; s'il
-> ne referme pas le fossé, A3 n'a pas de corpus, et c'est un résultat.
+> **Un incident d'abord, et il a coûté une nuit.** La première passe (20
+> machines × 25 patchs × 4 conditions, 43 min d'audio concaténé) a été tuée
+> par l'OOM-killer pendant la séparation : `separate_tensor` tient en mémoire
+> l'entrée, sa copie normalisée, les quatre sources et leur copie — plus de
+> 10 Go sur 15, sans GPU. La séparation se fait désormais par tranches de
+> quatre minutes bordées d'un silence entre deux exemples, avec dix secondes
+> de marge séparées puis jetées de chaque côté (sans marge, deux ou trois
+> exemples par bord tombaient à 0,7-0,85 de corrélation avec la passe unique ;
+> avec, ≥ 0,93 partout) ; 1,8 Go de RSS au plus, testé sans demucs. Corpus :
+> **1 992 exemples en 864 s** (8 rendus inaudibles rejetés), énergie du synthé
+> retrouvée dans « other » : médiane 0,97, quart inférieur 0,89.
+>
+> **Première réponse, en corpus : le fossé est mesuré, et le corpus séparé le
+> comble en partie — mais la séparation elle-même a un plafond.** Coupure par
+> patch, 396 exemples tenus à l'écart, mêmes patchs d'un côté et de l'autre :
+>
+> | entraîné sur | épreuve sèche top 1 / 3 | épreuve séparée top 1 / 3 |
+> |---|---|---|
+> | sec | **82 % / 94 %** | 25 % / 49 % |
+> | séparé | 56 % / 76 % | **56 % / 73 %** |
+> | sec + séparé | 80 % / 91 % | 55 % / 74 % |
+>
+> Le modèle sec perd la moitié de son top 3 dès que les MÊMES sons passent par
+> demucs (94 → 49) : c'est le fossé de domaine, chiffré pour la première fois
+> à patchs égaux. Entraîner sur le séparé en rattrape la moitié (49 → 73), et
+> « sec + séparé » garde les deux (91 sur le sec, 74 sur le séparé) sans rien
+> payer. Mais 56 % de top 1 est un PLAFOND DU DOMAINE, pas du corpus : par
+> machine, `vsm.pcmhybrid` tombe à 0 %, `vsm.obx` à 17 %, `vsm.prophet` à
+> 19 %, `vsm.ms20` à 21 % — même pour un modèle qui n'a vu que du séparé —
+> quand `vsm.piano` tient 94 %, `vsm.tonewheel` 95 %, `vsm.dx7` 93 %. **Un
+> stem séparé n'a plus l'identité de plusieurs soustractifs** ; ce n'est pas
+> une question d'apprentissage.
+>
+> Et un cas dit ce que le modèle apprend réellement : `vsm.sh101` ne laisse
+> que **23 %** de son énergie dans « other » (c'est une basse, demucs l'envoie
+> dans `bass`), et le modèle séparé la reconnaît pourtant à **100 %** — il a
+> appris le RÉSIDU que demucs laisse d'un synthé de basse, et c'est une
+> empreinte plus nette que le son lui-même.
+>
+> **Seconde réponse, sur les disques : non.** Rang médian de la machine que
+> l'arbitrage retient (1 = le modèle la met première), et part des extraits où
+> elle est dans le top 5 :
+>
+> | sonde (machine retenue) | sec | séparé | sec + séparé |
+> |---|---|---|---|
+> | *Clair de Lune* (`vsm.piano`) | **12** / 5 % | 16 / 15 % | 16 / 5 % |
+> | *B4* other (`vsm.jupiter8`) | **4** / 55 % | 12 / 25 % | 6 / 40 % |
+> | *B4* bass (`vsm.supersaw`) | 14 / 0 % | 4 / 85 % | **2** / 55 % |
+> | *Children* other (`vsm.string`) | **3** / 80 % | 8 / 25 % | 12 / 5 % |
+> | *Children* bass (`vsm.piano`) | 15 / 0 % | 17 / 0 % | 18 / 0 % |
+> | *somme des rangs* | **48** | 57 | 54 |
+>
+> Une sonde progresse spectaculairement — la basse de *B4* passe du rang 14 au
+> rang 4 (rang 2 avec les deux corpus), et de 0 à 85 % dans le top 5 — ; trois
+> reculent (*B4* other 4 → 12, *Children* other 3 → 8, *Clair de Lune*
+> 12 → 16) ; la cinquième reste au fond pour les trois modèles. Le total est
+> moins bon avec le corpus séparé qu'avec le sec.
+>
+> **Et la ligne qui explique le tableau : ce que le modèle séparé met en
+> PREMIER sur un disque.** Sur *B4* bass, *B4* other et *Children* other, sa
+> réponse la plus fréquente est **`vsm.sh101`** (7, 9 et 9 extraits sur 20) —
+> la machine du résidu. Il a appris qu'un stem où il manque du grave est un
+> synthé de basse passé par demucs, et il en voit un dans chaque stem réel.
+> Sur la basse de *B4*, où c'est à peu près vrai, il gagne ; ailleurs, il
+> perd. **Le corpus séparé enseigne les artefacts de la séparation, et rien
+> d'autre** — c'est exactement ce qu'il contient.
+>
+> **Ce que la « dégradation réelle » du § 7 est, alors.** Deux choses, et ce
+> corpus n'en porte qu'une. Les artefacts de demucs, d'abord : ils sont dedans,
+> et là où ils dominent (un stem de basse, le plus filtré des quatre), le gain
+> est net et mesuré. Puis la distance entre un instrument RÉEL dans un mixage
+> réel et ce que le parc en rend : elle n'y est pas, et un corpus de rendus ne
+> peut pas la contenir, parce que la machine « retenue » sur un disque n'est
+> jamais celle qui l'a fait — c'est la plus PROCHE que l'arbitrage ait
+> trouvée. Un piano Yamaha enregistré n'est pas `vsm.piano` ; la nappe de
+> *Children* n'est pas `vsm.string`. Le classifieur d'A1 apprend « quelle
+> machine a produit ce son », et sur un disque, la réponse vraie est
+> « aucune » — ce que l'abstention d'A1.2 dit déjà, dans 75 à 100 % des cas.
+>
+> **Verdict, à cette taille : la condition du § 7 est éprouvée et ne rouvre
+> pas A3.** Un modèle entraîné sur le séparé ne lit pas mieux un disque qu'un
+> modèle entraîné sur le sec ; il lit mieux un STEM DE BASSE, et c'est un
+> gain réel mais étroit, qui vaudrait pour la présélection d'une piste de
+> basse — pas pour un estimateur de paramètres, qui a besoin de l'identité
+> fine que la séparation détruit (0 % à 21 % pour quatre soustractifs).
+>
+> **L'hypothèse de repli — « 25 patchs par machine, c'est trop peu » — est
+> éprouvée, et le verdict est définitif.** Même protocole, mêmes sondes, à
+> **100 patchs** par machine : 7 990 exemples, 173 min d'audio séparé en
+> 3 708 s (énergie retrouvée : médiane 0,97, quart inférieur 0,83). En
+> corpus, quatre fois plus d'exemples font ce qu'on attend d'eux — le modèle
+> séparé passe de 56 à **69 %** de top 1 sur le séparé tenu à l'écart (86 %
+> en top 3), et « sec + séparé » tient 94 % sur le sec et 66 % sur le séparé.
+> Sur les disques, rien ne bouge :
+>
+> | sonde (machine retenue) | sec | séparé | sec + séparé |
+> |---|---|---|---|
+> | *Clair de Lune* (`vsm.piano`) | **12** / 0 % | **12** / 5 % | 16 / 0 % |
+> | *B4* other (`vsm.jupiter8`) | **3** / 70 % | 8 / 30 % | 7 / 30 % |
+> | *B4* bass (`vsm.supersaw`) | 16 / 0 % | 5 / 55 % | **4** / 60 % |
+> | *Children* other (`vsm.string`) | **2** / 95 % | 13 / 5 % | 16 / 0 % |
+> | *Children* bass (`vsm.piano`) | **12** / 0 % | 16 / 0 % | 16 / 0 % |
+> | *somme des rangs* | **45** | 54 | 59 |
+>
+> La somme des rangs, à 25 patchs : 48 / 57 / 54 ; à 100 : 45 / 54 / 59. Le
+> corpus séparé reste derrière le sec, de la même marge, et le seul gain
+> reste le même — un stem de basse (16 → 5). Le modèle sec, lui, profite des
+> 100 patchs sur les deux stems « other » (3 et 2), ce qui dit où la marge
+> restait : dans la couverture des patchs, pas dans le domaine. **A3 n'a pas
+> de corpus.** La « dégradation réelle » du § 7 qu'un corpus de rendus peut
+> contenir — les artefacts de demucs — est apprise, et elle n'est pas ce qui
+> sépare un rendu d'un disque. Ce qui l'en sépare, c'est que le disque n'a
+> pas été fait par le parc ; aucun étiquetage par le patch d'origine ne
+> contient cette information, parce qu'il n'y a pas de patch d'origine.
+> L'estimateur de paramètres est clos, avec deux mesures indépendantes
+> (ROADMAP-fusion § 7, ici) et l'épreuve de sa condition de réouverture.
+> Le code de la mesure reste (`corpus_separe.py`, 4 tests) : c'est lui qui
+> devra être rejoué si un jour un corpus d'une autre nature — des disques
+> dont on connaît la machine — existe.
 
 ## Phase A2 — Les gabarits de batterie appris
 
@@ -632,7 +746,7 @@ petite distance obtenue en trichant sur ce qu'on mesure.
 
 | Risque | Parade |
 |---|---|
-| Écart de domaine (corpus sec vs stems réels) | augmentations (A0.4) ; validation uniquement sur vérités terrain et morceaux réels |
+| Écart de domaine (corpus sec vs stems réels) | ~~augmentations (A0.4)~~ mesurées, elles ne le comblent pas ; ~~corpus passé par la séparation~~ mesuré, il ne le comble pas non plus (§ A1, 28/08) ; ce qui reste : l'abstention, et la validation uniquement sur vérités terrain et morceaux réels |
 | Modèles périmés quand une machine évolue | péremption par empreinte (A0.3), refus au chargement |
 | Classifieur confiant hors du parc | abstention obligatoire, testée sur sources acoustiques (A1.2) |
 | Timbres indistinguables | exclus du dénominateur, comptés à part (CDC §1.4) |
