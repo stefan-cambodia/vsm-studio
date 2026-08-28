@@ -311,7 +311,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // Écoute A/B : l'enregistrement d'origine en regard de la
             // reconstruction. Les trois modes sont dans le même menu, cochés,
             // pour qu'on voie d'un coup d'œil ce qu'on est en train d'écouter.
-            menu.addItem(kMenuFileLoadReference, "Charger l'original (reference A/B)...");
+            menu.addItem(kMenuFileLoadReference, "Charger l'original (référence A/B)...");
             {
                 const bool aUneReference = audioEngine_.processGraph().referenceTrack().hasAudio();
                 const auto mode = audioEngine_.processGraph().referenceTrack().mode();
@@ -319,17 +319,17 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 if (aUneReference && referenceDescription_.isNotEmpty()) {
                     menu.addSectionHeader(referenceDescription_);
                 }
-                menu.addItem(kMenuFileReferenceOff, "Ecoute : reconstruction", aUneReference,
+                menu.addItem(kMenuFileReferenceOff, "Écoute : reconstruction", aUneReference,
                               mode == Mode::Off);
-                menu.addItem(kMenuFileReferenceMix, "Ecoute : les deux", aUneReference,
+                menu.addItem(kMenuFileReferenceMix, "Écoute : les deux", aUneReference,
                               mode == Mode::Mix);
-                menu.addItem(kMenuFileReferenceSolo, "Ecoute : original", aUneReference,
+                menu.addItem(kMenuFileReferenceSolo, "Écoute : original", aUneReference,
                               mode == Mode::Solo);
             }
             menu.addItem(kMenuFileExport, "Exporter MIDI...");
             menu.addItem(kMenuFileExportWav, "Exporter audio (WAV)...");
             menu.addSeparator();
-            menu.addItem(kMenuFileAudioSettings, "Reglages audio...");
+            menu.addItem(kMenuFileAudioSettings, "Réglages audio...");
             menu.addSeparator();
             menu.addItem(kMenuFileQuit, "Quitter");
             break;
@@ -341,7 +341,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             break;
         case 2:
             menu.addItem(kMenuTrackAdd, "Ajouter une piste");
-            menu.addItem(kMenuTrackRemove, "Supprimer la piste selectionnee",
+            menu.addItem(kMenuTrackRemove, "Supprimer la piste sélectionnée",
                          !project_.tracks.empty());
             break;
         case 3:
@@ -368,7 +368,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             }
             break;
         case 4:
-            menu.addItem(kMenuHelpAbout, "A propos de Vintage Synth MIDI Studio");
+            menu.addItem(kMenuHelpAbout, "À propos de Vintage Synth MIDI Studio");
             break;
         default:
             break;
@@ -519,7 +519,7 @@ void MainComponent::showAudioSettings() {
 
     juce::DialogWindow::LaunchOptions options;
     options.content.setOwned(selector.release());
-    options.dialogTitle = "Reglages audio";
+    options.dialogTitle = "Réglages audio";
     options.dialogBackgroundColour = vsm::ui::Palette::background;
     options.escapeKeyTriggersCloseButton = true;
     options.useNativeTitleBar = true;
@@ -631,13 +631,13 @@ void MainComponent::openProjectBundle() {
                     vsm::interchange::applyNoteConfidences(lu.report, project_);
                 size_t douteuses = 0;
                 for (const auto& piste : project_.tracks)
-                    for (const auto& note : piste.notes)
-                        if (note.confidence < kDoubtfulNoteThreshold) ++douteuses;
+                    douteuses += vsm::sequencer::countDoubtfulNotes(piste.notes);
                 if (douteuses > 0)
                     rapport.add(juce::String(static_cast<int>(douteuses))
-                                + " note(s) signalee(s) comme douteuses sur "
+                                + " note(s) signalée(s) comme douteuses sur "
                                 + juce::String(static_cast<int>(marquees))
-                                + " transcrite(s) : elles sont marquees dans le piano roll");
+                                + " transcrite(s) : elles sont marquées dans le piano roll,"
+                                + " et la touche D y mène une par une");
                 // Le projet a changé : le piano roll doit relire les notes.
                 pianoRoll_.repaint();
             } else {

@@ -7,7 +7,12 @@
 // courte. C'est le même raisonnement que pour les façades de machines, et il a
 // déjà attrapé de vrais défauts là-bas.
 //
-//   vsm-pianoroll-preview <fichier-de-sortie.png> [largeur] [hauteur]
+//   vsm-pianoroll-preview <fichier-de-sortie.png> [largeur] [hauteur] [douteuse]
+//
+// Avec « douteuse », la première note douteuse est sélectionnée avant le rendu
+// (la touche D dans l'application) : c'est le cas où liseré de sélection et
+// marqueur de doute se superposent, et il faut VOIR que l'un ne masque pas
+// l'autre.
 
 #include <JuceHeader.h>
 #include "../ui/PianoRollComponent.h"
@@ -18,7 +23,7 @@
 int main(int argc, char** argv) {
     juce::ScopedJuceInitialiser_GUI juceInit;
     if (argc < 2) {
-        std::fprintf(stderr, "Usage : vsm-pianoroll-preview <sortie.png> [largeur] [hauteur]\n");
+        std::fprintf(stderr, "Usage : vsm-pianoroll-preview <sortie.png> [largeur] [hauteur] [douteuse]\n");
         return 1;
     }
     const juce::File output =
@@ -63,6 +68,7 @@ int main(int argc, char** argv) {
     pianoRoll.setProject(&project);
     pianoRoll.setActiveTrackIndex(0);
     pianoRoll.setSize(width, height);
+    if (argc >= 5 && juce::String(argv[4]) == "douteuse") pianoRoll.selectNextDoubtfulNote(true);
 
     juce::Image image(juce::Image::ARGB, width, height, true);
     { juce::Graphics g(image); pianoRoll.paintEntireComponent(g, true); }

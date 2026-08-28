@@ -163,4 +163,40 @@ struct SelectionStats {
 };
 SelectionStats computeSelectionStats(const std::vector<Note>& notes, const NoteSelection& selection);
 
+// ---------------------------------------------------------------------------
+// Notes douteuses (étape 11.3 de ROADMAP-fusion.md)
+//
+// La transcription rend une confiance par note ; le piano roll marque celles
+// qui passent sous le seuil. Sur un morceau de quelques milliers de notes,
+// les MARQUER ne suffit pas : il faut pouvoir y ALLER sans les chercher à
+// l'œil, une par une, dans l'ordre du morceau. La règle de parcours vit ici,
+// pas dans le composant : c'est une question d'ordre musical (quelle est la
+// note douteuse « suivante » ?), et elle se teste sans écran.
+// ---------------------------------------------------------------------------
+
+/// En dessous de cette confiance, une note est douteuse. 0,55 : au-dessus, la
+/// transcription est franche dans les cas mesurés ; en dessous, elle a hésité.
+/// Le seuil est ici, en un seul endroit, pour qu'il se règle sans chercher --
+/// le piano roll, la barre d'état et le rapport d'ouverture lisent tous
+/// celui-ci.
+inline constexpr float kDoubtfulNoteThreshold = 0.55f;
+
+bool isNoteDoubtful(const Note& note, float threshold = kDoubtfulNoteThreshold);
+size_t countDoubtfulNotes(const std::vector<Note>& notes, float threshold = kDoubtfulNoteThreshold);
+/// Toutes les notes douteuses de la piste (pour les écouter, les rendre
+/// muettes ou les supprimer d'un seul geste).
+NoteSelection selectDoubtfulNotes(const std::vector<Note>& notes, float threshold = kDoubtfulNoteThreshold);
+
+/// La note douteuse suivante (ou précédente) dans l'ordre du morceau -- tick
+/// de début, puis hauteur, puis identifiant, pour que l'ordre soit total.
+///
+/// Point de départ : la sélection, si elle en a une (la plus tardive vers
+/// l'avant, la plus précoce vers l'arrière) ; sinon la tête de lecture, et la
+/// première douteuse qui commence à la tête ou après est la « suivante ».
+/// Arrivé au bout, on repart de l'autre extrémité : appuyer encore fait le
+/// tour du morceau au lieu de ne rien faire. Rend 0 s'il n'y a aucune note
+/// douteuse (0 n'est jamais un identifiant de note).
+uint64_t nextDoubtfulNote(const std::vector<Note>& notes, const NoteSelection& selection,
+                          Tick playheadTick, bool forward, float threshold = kDoubtfulNoteThreshold);
+
 } // namespace vsm::sequencer

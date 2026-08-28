@@ -40,7 +40,7 @@ client, jamais une dépendance.
 
 **Acquis, mesuré :**
 
-- 24 machines (+ tonalité d'essai), 9 effets, moteur temps réel, 756 tests
+- 24 machines (+ tonalité d'essai), 9 effets, moteur temps réel, 760 tests
   verts, zéro warning.
 - Piano roll complet, façades « façon hardware » pour les 24 machines,
   séquenceurs à pas pour celles qui en ont un.
@@ -795,6 +795,30 @@ le modèle de celui des façades -- et il a payé immédiatement : le marqueur
 intégralement ; puis, une fois déplacé, il était trop transparent pour se voir.
 Deux défauts qu'aucun test ne pouvait attraper, dans du code qui compilait et
 paraissait juste.
+
+> **Y ALLER, pas seulement les voir (28/08/2026).** Marquer les notes
+> douteuses suffit sur huit notes de démonstration ; sur un morceau transcrit
+> -- 2 219 notes pour *Clair de Lune*, 4 230 sur la piste « other » de
+> *Children* -- il faut les parcourir sans les chercher à l'œil, et c'est ce
+> que la validation A5.3 demandera. La règle de parcours vit dans `core/`
+> (`nextDoubtfulNote`, `countDoubtfulNotes`, `selectDoubtfulNotes`, trois
+> tests) : ordre du morceau (début, hauteur, identifiant, pour que l'ordre
+> soit total), départ de la sélection ou sinon de la tête de lecture, et le
+> tour du morceau au bout plutôt que rien. Le seuil de doute a suivi : il est
+> dans le cœur, en un seul endroit, et le piano roll, la barre d'état et le
+> rapport d'ouverture lisent le même. Dans l'éditeur : **D** / **Maj+D**,
+> *Sélection ▸ Note douteuse suivante / précédente / Toutes*, et le compte des
+> douteuses restantes en barre d'état. La vue défile jusqu'à la note SANS
+> changer le zoom -- zoomer sur une seule note ferait perdre les voisines,
+> qui sont précisément ce qu'on compare pour la juger.
+>
+> L'aperçu hors écran a payé une troisième fois : avec `douteuse` en
+> argument, il sélectionne la première note douteuse avant le rendu, et elle
+> était **indiscernable** de la même note non sélectionnée -- contour de
+> sélection et marqueur de doute étaient tous deux ambre, et « D » produisait
+> donc une sélection invisible. La sélection porte désormais un halo clair à
+> l'EXTÉRIEUR du contour, d'une autre teinte, qui ne recouvre ni le liseré ni
+> la barre de doute.
 
 ### 11.4 — il n'y avait pas de second format à écrire
 

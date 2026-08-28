@@ -357,3 +357,70 @@ VSM_TEST(selection_stats_summarise_the_selection) {
     SelectionStats empty = computeSelectionStats(notes, NoteSelection{});
     VSM_ASSERT_EQ(empty.count, size_t{0});
 }
+
+// --- Notes douteuses -------------------------------------------------------
+
+namespace {
+/// Six notes, dont trois douteuses (ids 2, 4, 5) ; les ids 4 et 5 commencent
+/// au même tick, pour vérifier que l'ordre est total et stable.
+std::vector<Note> makeDoubtfulNotes() {
+    auto notes = makeNotes();                      // ids 1..4, ticks 0/480/960/1440
+    notes[1].confidence = 0.30f;                   // id 2 : douteuse
+    notes[3].confidence = 0.10f;                   // id 4 : douteuse
+    Note simultanee; simultanee.startTick = 1440; simultanee.endTick = 1900;
+    simultanee.number = 60; simultanee.id = 5; simultanee.confidence = 0.50f;   // douteuse, même tick que 4, plus grave
+    Note franche; franche.startTick = 2400; franche.endTick = 2800;
+    franche.number = 65; franche.id = 6; franche.confidence = 0.90f;
+    notes.push_back(simultanee);
+    notes.push_back(franche);
+    return notes;
+}
+} // namespace
+
+VSM_TEST(doubtful_notes_are_counted_and_selected_by_threshold) {
+    auto notes = makeDoubtfulNotes();
+    VSM_ASSERT_EQ(countDoubtfulNotes(notes), size_t{3});
+    VSM_ASSERT(selectDoubtfulNotes(notes) == (NoteSelection{2, 4, 5}));
+    // Une note pile au seuil n'est PAS douteuse (« en dessous », pas « au plus »).
+    Note limite; limite.id = 7; limite.confidence = kDoubtfulNoteThreshold;
+    VSM_ASSERT(!isNoteDoubtful(limite));
+    // Le seuil est un paramètre : à 0,95, la note franche à 0,90 devient douteuse.
+    VSM_ASSERT_EQ(countDoubtfulNotes(notes, 0.95f), size_t{4});
+    // Une piste saisie à la main (confiance 1 partout) n'a rien de douteux.
+    VSM_ASSERT_EQ(countDoubtfulNotes(makeNotes()), size_t{0});
+    VSM_ASSERT_EQ(nextDoubtfulNote(makeNotes(), {}, 0, true), uint64_t{0});
+}
+
+VSM_TEST(next_doubtful_note_walks_the_song_in_order_and_wraps) {
+    auto notes = makeDoubtfulNotes();
+    // Sans sélection, depuis le début : la première douteuse (id 2, tick 480).
+    VSM_ASSERT_EQ(nextDoubtfulNote(notes, {}, 0, true), uint64_t{2});
+    // Depuis une sélection : la suivante dans l'ordre. À 1440, la plus grave
+    // (id 5, do) vient avant la plus aiguë (id 4, do aigu).
+    VSM_ASSERT_EQ(nextDoubtfulNote(notes, {2}, 0, true), uint64_t{5});
+    VSM_ASSERT_EQ(nextDoubtfulNote(notes, {5}, 0, true), uint64_t{4});
+    // Au bout : on repart du début au lieu de rester bloqué.
+    VSM_ASSERT_EQ(nextDoubtfulNote(notes, {4}, 0, true), uint64_t{2});
+    // Une note franche sélectionnée sert aussi de point de départ.
+    VSM_ASSERT_EQ(nextDoubtfulNote(notes, {1}, 0, true), uint64_t{2});
+    VSM_ASSERT_EQ(nextDoubtfulNote(notes, {6}, 0, true), uint64_t{2});
+    // Une sélection multiple part de sa borne dans le sens du parcours.
+    VSM_ASSERT_EQ(nextDoubtfulNote(notes, {2, 5}, 0, true), uint64_t{4});
+    VSM_ASSERT_EQ(nextDoubtfulNote(notes, {2, 5}, 0, false), uint64_t{4});
+}
+
+VSM_TEST(next_doubtful_note_starts_from_the_playhead_and_goes_backwards) {
+    auto notes = makeDoubtfulNotes();
+    // La tête de lecture posée SUR une douteuse la désigne (« à partir d'ici »).
+    VSM_ASSERT_EQ(nextDoubtfulNote(notes, {}, 480, true), uint64_t{2});
+    VSM_ASSERT_EQ(nextDoubtfulNote(notes, {}, 481, true), uint64_t{5});
+    // Vers l'arrière depuis la tête : la dernière qui commence AVANT.
+    VSM_ASSERT_EQ(nextDoubtfulNote(notes, {}, 1440, false), uint64_t{2});
+    VSM_ASSERT_EQ(nextDoubtfulNote(notes, {}, 3000, false), uint64_t{4});
+    // Vers l'arrière depuis une sélection, et le tour par la fin.
+    VSM_ASSERT_EQ(nextDoubtfulNote(notes, {4}, 0, false), uint64_t{5});
+    VSM_ASSERT_EQ(nextDoubtfulNote(notes, {5}, 0, false), uint64_t{2});
+    VSM_ASSERT_EQ(nextDoubtfulNote(notes, {2}, 0, false), uint64_t{4});
+    // Avant la première, sans sélection : le tour aussi.
+    VSM_ASSERT_EQ(nextDoubtfulNote(notes, {}, 0, false), uint64_t{4});
+}

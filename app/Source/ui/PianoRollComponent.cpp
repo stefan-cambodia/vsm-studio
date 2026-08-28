@@ -23,6 +23,7 @@ enum ContextMenuId {
     kCtxUndo = 100, kCtxRedo,
     kCtxCut = 110, kCtxCopy, kCtxPaste, kCtxDelete, kCtxDuplicate,
     kCtxSelectAll = 120, kCtxSelectNone, kCtxSelectInvert, kCtxSelectSamePitch,
+    kCtxSelectNextDoubtful, kCtxSelectPrevDoubtful, kCtxSelectDoubtful,
     kCtxTransposeUp = 130, kCtxTransposeDown, kCtxOctaveUp, kCtxOctaveDown,
     kCtxQuantizeFull = 140, kCtxQuantizeHalf, kCtxQuantizeEnds, kCtxHumanize,
     kCtxLegato = 150, kCtxRemoveOverlaps, kCtxLengthToGrid, kCtxLengthDouble, kCtxLengthHalve,
@@ -336,6 +337,49 @@ void PianoRollComponent::selectSamePitch() {
     repaint();
 }
 
+size_t PianoRollComponent::doubtfulNoteCount() const {
+    const Track* track = activeTrack();
+    return track ? countDoubtfulNotes(track->notes) : 0;
+}
+
+void PianoRollComponent::selectDoubtfulNotes() {
+    if (Track* track = activeTrack()) selectedNoteIds_ = vsm::sequencer::selectDoubtfulNotes(track->notes);
+    notifyEditState();
+    repaint();
+}
+
+void PianoRollComponent::selectNextDoubtfulNote(bool forward) {
+    Track* track = activeTrack();
+    if (!track) return;
+    const uint64_t id = nextDoubtfulNote(track->notes, selectedNoteIds_, playheadTick_, forward);
+    if (id == 0) return;                     // aucune note douteuse : rien à faire, rien ne bouge
+    selectedNoteIds_ = {id};
+
+    // Amener la note dans la vue SANS toucher au zoom : zoomer sur une seule
+    // note (zoomToSelection) ferait perdre le contexte -- les notes autour,
+    // qui sont précisément ce qu'on compare pour juger si celle-ci est juste.
+    // On ne défile que si elle est hors champ, pour que le regard n'ait pas à
+    // repartir de zéro à chaque D.
+    const auto it = std::find_if(track->notes.begin(), track->notes.end(),
+                                 [id](const Note& n) { return n.id == id; });
+    if (it != track->notes.end()) {
+        const auto area = contentArea();
+        const float x = tickToX(it->startTick);
+        if (x < static_cast<float>(area.getX()) || x > static_cast<float>(area.getRight()) - 40.0f) {
+            const double visibleTicks = static_cast<double>(area.getWidth()) / pixelsPerTick_;
+            scrollTick_ = std::max<Tick>(0, it->startTick - static_cast<Tick>(visibleTicks * 0.15));
+        }
+        const int y = noteToY(it->number);
+        if (y < 0 || y + noteHeight_ > area.getHeight()) {
+            const int visibleRows = std::max(1, area.getHeight() / std::max(1, noteHeight_));
+            topNote_ = juce::jlimit(12, 127, static_cast<int>(it->number) + visibleRows / 2);
+        }
+        updateScrollBars();
+    }
+    notifyEditState();
+    repaint();
+}
+
 // ---------------------------------------------------------------------------
 // Édition
 //
@@ -638,6 +682,16 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
     selectMenu.addItem(kCtxSelectNone, "Tout désélectionner", sel);
     selectMenu.addItem(kCtxSelectInvert, "Inverser la sélection");
     selectMenu.addItem(kCtxSelectSamePitch, "Toutes les notes de même hauteur", sel);
+    // Les notes douteuses de la transcription (étape 11.3) : on y VA, une par
+    // une, au lieu de les chercher à l'œil sur un morceau entier.
+    const size_t douteuses = doubtfulNoteCount();
+    selectMenu.addSeparator();
+    selectMenu.addItem(kCtxSelectNextDoubtful, "Note douteuse suivante (D)", douteuses > 0);
+    selectMenu.addItem(kCtxSelectPrevDoubtful, "Note douteuse précédente (Maj+D)", douteuses > 0);
+    selectMenu.addItem(kCtxSelectDoubtful,
+                       douteuses > 0 ? "Toutes les notes douteuses (" + juce::String(static_cast<int>(douteuses)) + ")"
+                                     : juce::String("Toutes les notes douteuses"),
+                       douteuses > 0);
     menu.addSubMenu("Sélection", selectMenu);
 
     juce::PopupMenu pitchMenu;
@@ -719,6 +773,9 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         case kCtxSelectNone:       selectNone(); break;
         case kCtxSelectInvert:     invertSelection(); break;
         case kCtxSelectSamePitch:  selectSamePitch(); break;
+        case kCtxSelectNextDoubtful: selectNextDoubtfulNote(true); break;
+        case kCtxSelectPrevDoubtful: selectNextDoubtfulNote(false); break;
+        case kCtxSelectDoubtful:   selectDoubtfulNotes(); break;
         case kCtxTransposeUp:      transposeSelection(1); break;
         case kCtxTransposeDown:    transposeSelection(-1); break;
         case kCtxOctaveUp:         transposeSelection(12); break;
@@ -1159,6 +1216,10 @@ bool PianoRollComponent::keyPressed(const juce::KeyPress& key) {
         case '5': setTool(Tool::Glue);   return true;
         case '6': setTool(Tool::Mute);   return true;
         case 'g': case 'G': setSnapEnabled(!snapEnabled_); notifyEditState(); return true;
+        // D comme « douteuse » : la suivante, Maj+D la précédente. Sans
+        // modificateur, comme les outils : c'est un geste de relecture qu'on
+        // répète des dizaines de fois sur un morceau transcrit.
+        case 'd': case 'D': selectNextDoubtfulNote(!mods.isShiftDown()); return true;
         case '+': case '=': zoomHorizontally(1.25f); return true;
         case '-': case '_': zoomHorizontally(0.8f); return true;
         default: break;
@@ -1199,6 +1260,11 @@ void PianoRollComponent::updateStatusText(juce::Point<float> mousePos, bool mous
             if (text.isNotEmpty()) text << "   |   ";
             text << juce::String(static_cast<int>(track->notes.size())) << " note(s) sur la piste";
         }
+        // Le compte des notes douteuses reste affiché tant qu'il en reste :
+        // c'est le travail de relecture qu'il reste à faire, et « D » y mène.
+        if (const size_t douteuses = countDoubtfulNotes(track->notes); douteuses > 0)
+            text << "   |   " << juce::String(static_cast<int>(douteuses))
+                 << " douteuse(s) — D : la suivante";
     }
     onStatusChanged(text);
 }
@@ -1438,6 +1504,17 @@ void PianoRollComponent::drawNoteRectangle(juce::Graphics& g, const Note& note, 
         const float largeur = std::min(3.0f, rect.getWidth() * 0.5f);
         g.fillRect(juce::Rectangle<float>(rect.getX(), rect.getY() + 1.0f,
                                            largeur, rect.getHeight() - 2.0f));
+    }
+
+    // SÉLECTION : un halo clair AUTOUR du contour ambre. Le rendu hors écran
+    // l'a exigé : le contour de sélection et le marqueur de doute étaient tous
+    // deux ambre, et une note douteuse sélectionnée -- exactement ce que « D »
+    // produit -- ne se distinguait en rien de la même note non sélectionnée.
+    // Le halo est d'une autre teinte, et à l'EXTÉRIEUR : il ne recouvre ni le
+    // liseré ni la barre de doute, et il se voit sur une note de trois pixels.
+    if (selected) {
+        g.setColour(Palette::textPrimary.withAlpha(0.9f));
+        g.drawRoundedRectangle(rect.expanded(2.0f), 3.5f, 1.5f);
     }
 
 

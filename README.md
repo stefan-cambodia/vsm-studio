@@ -4,9 +4,9 @@ Séquenceur MIDI + rack de synthétiseurs vintage virtuels. Voir
 [`ARCHITECTURE.md`](ARCHITECTURE.md) pour la conception complète et l'état
 d'avancement détaillé par phase.
 
-**État actuel** : le moteur MIDI (`core/`, 81 tests) et le moteur audio
+**État actuel** : le moteur MIDI (`core/`, 84 tests) et le moteur audio
 temps réel (`audio/`, 543 tests, dont un test de concurrence réel vérifié
-sous ThreadSanitizer) sont implémentés et **entièrement testés** — 756
+sous ThreadSanitizer) sont implémentés et **entièrement testés** — 760
 tests, tous verts, zéro warning. Les 24 machines (Minimoog, TB-303, Juno-106,
 TR-808, TR-909, SH-101, Prophet, Jupiter-8, ARP Odyssey, MS-20, DX7, sampler
 16 emplacements, e-piano, OB-X, supersaw, table d'ondes, hybride PCM, orgue à
@@ -275,6 +275,12 @@ L'éditeur de notes couvre ce qu'on attend d'un séquenceur moderne :
   (Maj + glissé = région de boucle), notes fantômes des autres pistes.
 - **Notes muettes** : rendues silencieuses sans être supprimées (affichées
   hachurées) ; ni jouées ni exportées.
+- **Notes douteuses** : un projet reconstruit porte la confiance de la
+  transcription note par note, et celles qui passent sous le seuil sont
+  marquées d'un liseré ambre. La touche **D** mène à la suivante, **Maj+D** à la
+  précédente (la vue défile jusqu'à la note sans changer le zoom, et fait le
+  tour du morceau arrivée au bout) ; *Sélection ▸ Toutes les notes douteuses*
+  les prend d'un coup ; la barre d'état affiche combien il en reste.
 
 Toutes ces opérations vivent dans `core/` (testées sans interface graphique) et
 sont accessibles au clavier, par la barre d'outils, par clic droit et par le

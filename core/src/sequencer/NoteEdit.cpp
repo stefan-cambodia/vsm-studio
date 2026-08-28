@@ -516,4 +516,76 @@ SelectionStats computeSelectionStats(const std::vector<Note>& notes, const NoteS
     return stats;
 }
 
+
+// ---------------------------------------------------------------------------
+// Notes douteuses
+// ---------------------------------------------------------------------------
+
+bool isNoteDoubtful(const Note& note, float threshold) {
+    return note.confidence < threshold;
+}
+
+size_t countDoubtfulNotes(const std::vector<Note>& notes, float threshold) {
+    size_t count = 0;
+    for (const auto& n : notes)
+        if (isNoteDoubtful(n, threshold)) ++count;
+    return count;
+}
+
+NoteSelection selectDoubtfulNotes(const std::vector<Note>& notes, float threshold) {
+    NoteSelection result;
+    for (const auto& n : notes)
+        if (isNoteDoubtful(n, threshold)) result.insert(n.id);
+    return result;
+}
+
+namespace {
+
+/// Clé d'ordre total sur les notes : début, hauteur, identifiant.
+struct NoteOrderKey {
+    Tick start;
+    uint8_t number;
+    uint64_t id;
+    bool operator<(const NoteOrderKey& o) const {
+        if (start != o.start) return start < o.start;
+        if (number != o.number) return number < o.number;
+        return id < o.id;
+    }
+};
+
+NoteOrderKey keyOf(const Note& n) { return {n.startTick, n.number, n.id}; }
+
+} // namespace
+
+uint64_t nextDoubtfulNote(const std::vector<Note>& notes, const NoteSelection& selection,
+                          Tick playheadTick, bool forward, float threshold) {
+    // Le point de départ : la borne de la sélection dans le sens du parcours,
+    // sinon la tête de lecture. `inclusive` dit si une douteuse qui commence
+    // EXACTEMENT au point de départ compte : oui depuis la tête de lecture
+    // (« la douteuse à partir d'ici »), non depuis une sélection (sinon la
+    // note déjà sélectionnée serait rendue à nouveau, et on ne bougerait pas).
+    bool fromSelection = false;
+    NoteOrderKey origin{playheadTick, 0, 0};
+    for (const auto& n : notes) {
+        if (selection.count(n.id) == 0) continue;
+        const NoteOrderKey k = keyOf(n);
+        if (!fromSelection || (forward ? origin < k : k < origin)) origin = k;
+        fromSelection = true;
+    }
+
+    const Note* best = nullptr;       // la plus proche après (ou avant) l'origine
+    const Note* wrap = nullptr;       // la première (ou dernière) du morceau
+    for (const auto& n : notes) {
+        if (!isNoteDoubtful(n, threshold)) continue;
+        const NoteOrderKey k = keyOf(n);
+        bool beyond;
+        if (fromSelection) beyond = forward ? origin < k : k < origin;
+        else               beyond = forward ? n.startTick >= playheadTick : n.startTick < playheadTick;
+        if (beyond && (!best || (forward ? k < keyOf(*best) : keyOf(*best) < k))) best = &n;
+        if (!wrap || (forward ? k < keyOf(*wrap) : keyOf(*wrap) < k)) wrap = &n;
+    }
+    if (best) return best->id;
+    return wrap ? wrap->id : 0;
+}
+
 } // namespace vsm::sequencer

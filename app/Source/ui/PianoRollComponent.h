@@ -21,11 +21,11 @@
 // et aucune allocation n'a lieu dans paint()/mouseDrag() -- les seules
 // allocations suivent une action explicite de l'utilisateur (créer, coller,
 // annuler). Un projet de plusieurs dizaines de milliers de notes reste fluide.
-/// En dessous de cette confiance, une note est signalée comme douteuse dans le
-/// piano roll. 0,55 : au-dessus, la transcription est franche dans les cas
-/// mesurés ; en dessous, elle a hésité. Le seuil est ici, en un seul endroit,
-/// pour qu'il se règle sans chercher.
-inline constexpr float kDoubtfulNoteThreshold = 0.55f;
+/// Le seuil de doute vit dans le cœur (`vsm/sequencer/NoteEdit.h`), avec la
+/// règle de parcours « note douteuse suivante » : le composant ne fait que le
+/// dessiner. Alias pour le code de rendu, qui n'a pas à connaître l'espace de
+/// noms du séquenceur.
+using vsm::sequencer::kDoubtfulNoteThreshold;
 
 class PianoRollComponent : public juce::Component,
                             private juce::ScrollBar::Listener {
@@ -116,6 +116,12 @@ public:
     void selectNone();
     void invertSelection();
     void selectSamePitch();
+    /// Notes douteuses (étape 11.3) : celles sur lesquelles la transcription a
+    /// hésité. Y ALLER, une par une, dans l'ordre du morceau -- la vue défile
+    /// jusqu'à la note sans changer le zoom -- ou les prendre toutes.
+    void selectNextDoubtfulNote(bool forward);
+    void selectDoubtfulNotes();
+    size_t doubtfulNoteCount() const;
     bool hasSelection() const { return !selectedNoteIds_.empty(); }
 
     // --- Édition (barre d'outils, menu contextuel, raccourcis) ------------
