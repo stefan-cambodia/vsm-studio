@@ -899,7 +899,7 @@ pas seulement l'écouter.
 
 | Étape | Contenu | Terminé quand |
 |---|---|---|
-| D4.1 | **Égaliseur, compresseur, porte, limiteur enfichables par piste** — le DSP existe déjà dans `MasterBus`, il n'est pas exposé | quatre effets de plus dans `EffectFactory`, chacun conforme au CDC (identités sémantiques, façade, empreinte) |
+| D4.1 | **Égaliseur, compresseur, porte, limiteur enfichables par piste** — le DSP existe déjà dans `MasterBus`, il n'est pas exposé | quatre effets de plus dans `EffectFactory`, chacun conforme au CDC (identités sémantiques, façade, empreinte) — **fait** |
 | D4.2 | Bus de groupe et départs **libres** (aujourd'hui : deux, figés en dur sur Reverb et Delay dans le constructeur de `MainComponent`) | une réverbération se partage entre pistes ; le nombre de départs n'est plus une constante |
 | D4.3 | Départs pré/post-fader au choix (post-fader est codé en dur, `ProcessGraph.cpp:465`) | commutable par départ |
 | D4.4 | **Chaîne latérale** (*sidechain*) | le compresseur d'une piste écoute une autre piste — la signature même du genre que ce projet reconstruit |
@@ -910,6 +910,62 @@ pas seulement l'écouter.
 **Critère de phase** : le mixage fait dans l'application et le mixage fait par
 `analyse/` sur les mêmes stems donnent le même LUFS à 0,1 près. Les deux moitiés
 du projet mesureront enfin la même chose.
+
+> **D4.1 EST FAITE (29/08/2026).** Le DSP existait, entier et testé, et n'était
+> accessible QUE sur le master. Une console dont on ne peut pas égaliser une
+> piste n'est pas une console — c'est un bus de sortie avec des réglages. Le
+> mixage se fait piste par piste ; le master ne fait que terminer.
+>
+> **CE QUI A ÉTÉ ÉCRIT N'EST PAS DU TRAITEMENT, C'EST UN HABILLAGE.** `Biquad`,
+> `Compressor` et `Limiter` sont les mêmes classes que celles du bus master, aux
+> mêmes coefficients ; les rendre enfichables demandait une liste de paramètres,
+> des atomiques et un `process`. Recopier le DSP aurait donné deux compresseurs
+> à faire coïncider, et ils auraient fini par diverger. Seule la **porte
+> n'existait pas** : le master a un égaliseur, un compresseur, une saturation et
+> un limiteur, mais rien pour faire taire ce qui est sous un seuil.
+>
+> **QUATRE EFFETS ET NON UNE SEULE TRANCHE**, parce qu'une tranche unique
+> imposerait l'ordre égaliseur → compresseur → porte → limiteur à qui n'en veut
+> qu'un — et cet ordre n'est pas celui qu'on veut toujours : une porte se place
+> **avant** le compresseur pour ne pas ouvrir sur le souffle qu'il vient de
+> remonter. Quatre inserts se rangent dans l'ordre qu'on décide, comme les neuf
+> autres.
+>
+> **LA FAÇADE EST GRATUITE, ET CE N'EST PAS UN RACCOURCI** : `EffectChainComponent`
+> construit son interface depuis la `ParameterList` de l'effet. Un effet qui
+> déclare ses réglages a son panneau, ses noms et ses unités sans une ligne
+> d'interface — c'est la contrepartie du modèle de paramètres unique choisi en
+> Phase 2, et elle se touche ici pour la première fois.
+>
+> **LES EMPREINTES : LES EFFETS N'EN AVAIENT AUCUNE.** Les trente-quatre machines
+> étaient protégées de la dérive, les treize effets ne l'étaient pas — alors
+> qu'ils partagent leurs briques (`Biquad`, `Dynamics`) avec elles. Une dérive
+> dans l'une change le son de tout un mixage sans faire échouer un seul test de
+> propriété : « le compresseur réduit au-dessus du seuil » reste vrai qu'il
+> réduise de 3 ou de 6 dB. Le harnais existant a donc été étendu aux effets, et
+> **les treize** ont désormais leur empreinte, pas seulement les quatre
+> nouveaux.
+>
+> **DEUX FOIS OÙ LE HARNAIS A EU RAISON CONTRE CELUI QUI L'ÉCRIVAIT.** Le
+> garde-fou « empreinte transparente » — le pendant, pour un effet, de
+> l'empreinte muette d'une machine — a refusé la porte du premier coup : le
+> signal d'épreuve portait sur son canal droit une sinusoïde d'amplitude
+> **constante**, et les dynamiques de ce moteur étant stéréo-liées, cette petite
+> constante maintenait la porte grande ouverte d'un bout à l'autre. Puis la
+> calibration a montré qu'une dérive de +5 % sur la fréquence des biquads
+> faisait échouer deux **machines** et pas l'égaliseur, dont le réglage
+> d'épreuve était trop doux pour mordre. Les deux ont été corrigés, et les
+> réglages retenus sont mesurés :
+>
+> | Dérive injectée | Ce qui échoue |
+> |---|---|
+> | temps des dynamiques +3 % | rien (marge de bruit voulue) |
+> | temps des dynamiques +10 % | le compresseur |
+> | fréquence des biquads +5 % | l'égaliseur |
+>
+> Aucune de ces dérives ne faisait échouer le moindre test de propriété des
+> effets. C'est exactement le trou que ces empreintes comblent.
+
 
 ### Phase D5 — La vue d'arrangement
 

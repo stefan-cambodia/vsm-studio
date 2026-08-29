@@ -71,6 +71,83 @@ private:
     float gain_ = 1.0f;
 };
 
+/// PORTE DE BRUIT stéréo-liée (D4.1). Elle n'existait pas : la tranche master
+/// porte un égaliseur, un compresseur, une saturation et un limiteur, mais rien
+/// pour faire TAIRE ce qui est en dessous d'un seuil.
+///
+/// LES QUATRE TEMPS D'UNE PORTE, et pourquoi il en faut quatre. Un simple
+/// « si c'est faible, coupe » produit un hachage : le signal passe sans cesse
+/// de part et d'autre du seuil, et la porte bat. Il faut donc :
+///
+///  - une ATTAQUE, pour ouvrir sans claquer ;
+///  - un MAINTIEN (`hold`), qui garde la porte ouverte un temps minimum après
+///    le dernier dépassement -- c'est lui qui empêche le hachage sur une note
+///    tenue dont l'amplitude ondule autour du seuil ;
+///  - un RELÂCHEMENT, pour fermer sans couper la queue d'une résonance. C'est
+///    une CONSTANTE DE TEMPS et non un délai de fermeture -- il en faut trois
+///    ou quatre pour atteindre le plancher --, comme pour le compresseur
+///    ci-dessus : deux conventions dans le même fichier seraient un piège ;
+///  - une PLAGE (`range`), qui dit de combien on atténue au lieu de couper
+///    net. Une porte qui ferme complètement s'entend respirer ; une porte qui
+///    atténue de 20 dB fait le travail sans se faire remarquer.
+///
+/// RT-safe : aucun état alloué, aucune branche coûteuse dans la boucle.
+class NoiseGate {
+public:
+    void setSampleRate(double sampleRate) {
+        sampleRate_ = sampleRate > 0.0 ? sampleRate : 48000.0;
+        updateCoeffs();
+    }
+    void setThresholdDb(float db) { thresholdLin_ = std::pow(10.0f, db / 20.0f); }
+    void setAttackMs(float ms) { attackMs_ = std::max(0.01f, ms); updateCoeffs(); }
+    void setHoldMs(float ms) { holdMs_ = std::max(0.0f, ms); updateCoeffs(); }
+    void setReleaseMs(float ms) { releaseMs_ = std::max(1.0f, ms); updateCoeffs(); }
+    /// Atténuation quand la porte est fermée, en dB (négatif). 0 = la porte ne
+    /// fait rien ; -80 dB revient pratiquement à couper.
+    void setRangeDb(float db) { floorGain_ = std::pow(10.0f, std::min(0.0f, db) / 20.0f); }
+
+    void reset() { gain_ = 1.0f; holdRestant_ = 0; }
+
+    /// Traite un échantillon stéréo en place. Renvoie le gain appliqué
+    /// (1 = ouverte, `range` = fermée), pour un éventuel témoin.
+    float processStereo(float& l, float& r) {
+        const float detect = std::max(std::abs(l), std::abs(r));
+        if (detect >= thresholdLin_) {
+            holdRestant_ = holdEchantillons_;
+        } else if (holdRestant_ > 0) {
+            --holdRestant_;
+        }
+        // OUVERTE tant qu'on dépasse le seuil OU que le maintien court encore.
+        const float cible = (detect >= thresholdLin_ || holdRestant_ > 0) ? 1.0f : floorGain_;
+        const float coeff = (cible > gain_) ? attackCoeff_ : releaseCoeff_;
+        gain_ = flushDenormalToZero(gain_ + (cible - gain_) * coeff);
+        l *= gain_;
+        r *= gain_;
+        return gain_;
+    }
+
+private:
+    void updateCoeffs() {
+        attackCoeff_ = timeToCoeff(attackMs_);
+        releaseCoeff_ = timeToCoeff(releaseMs_);
+        holdEchantillons_ = static_cast<int>(sampleRate_ * holdMs_ / 1000.0);
+    }
+    float timeToCoeff(float ms) const {
+        if (ms <= 0.0f) return 1.0f;
+        const float samples = std::max(1.0f, static_cast<float>(sampleRate_) * ms / 1000.0f);
+        return 1.0f - std::exp(-1.0f / samples);
+    }
+
+    double sampleRate_ = 48000.0;
+    float thresholdLin_ = 0.01f;      // -40 dB
+    float attackMs_ = 1.0f, holdMs_ = 50.0f, releaseMs_ = 100.0f;
+    float floorGain_ = 0.0f;          // fermeture complète par défaut
+    float attackCoeff_ = 0.5f, releaseCoeff_ = 0.01f;
+    float gain_ = 1.0f;
+    int holdEchantillons_ = 2400;
+    int holdRestant_ = 0;
+};
+
 /// Limiteur brickwall stéréo-lié. Garantit |sortie| <= ceiling : l'attaque
 /// est instantanée (le gain est calculé sur l'échantillon courant et appliqué
 /// à CE MÊME échantillon), le relâchement est lissé pour éviter le pompage.

@@ -902,6 +902,39 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Sustain", "envelope.1.sustain"},
         {"Release", "envelope.1.release"},
     }},
+    // --- fx.eq / fx.compressor / fx.gate / fx.limiter (D4.1) ---
+    //
+    // Les quatre de la tranche. Leurs identités sont nommées par CE QU'ELLES
+    // FONT et non par la position du bouton : `analyse/` peut viser
+    // « effect.compressor.threshold » sans savoir combien de réglages
+    // l'effet porte ni dans quel ordre ils sont rangés.
+    {"fx.eq", {
+        {"Low Gain", "effect.eq.low.gain"},
+        {"Low Freq", "effect.eq.low.freq"},
+        {"Mid Freq", "effect.eq.mid.freq"},
+        {"Mid Gain", "effect.eq.mid.gain"},
+        {"Mid Q", "effect.eq.mid.q"},
+        {"High Gain", "effect.eq.high.gain"},
+        {"High Freq", "effect.eq.high.freq"},
+    }},
+    {"fx.compressor", {
+        {"Threshold", "effect.compressor.threshold"},
+        {"Ratio", "effect.compressor.ratio"},
+        {"Attack", "effect.compressor.attack"},
+        {"Release", "effect.compressor.release"},
+        {"Makeup", "effect.compressor.makeup"},
+    }},
+    {"fx.gate", {
+        {"Threshold", "effect.gate.threshold"},
+        {"Attack", "effect.gate.attack"},
+        {"Hold", "effect.gate.hold"},
+        {"Release", "effect.gate.release"},
+        {"Range", "effect.gate.range"},
+    }},
+    {"fx.limiter", {
+        {"Ceiling", "effect.limiter.ceiling"},
+        {"Release", "effect.limiter.release"},
+    }},
     // --- fx.filter ---
     {"fx.filter", {
         {"Cutoff", "effect.filter.cutoff"},

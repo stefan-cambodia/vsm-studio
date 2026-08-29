@@ -1,4 +1,5 @@
 #include "TestFramework.h"
+#include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include "../plugins/multisample/MultisampleSynth.h"
 #include "../plugins/sampler/SamplerSynth.h"
@@ -379,6 +380,32 @@ void prepareMachineForFingerprint(const std::string& pluginId, vsm::audio::plugi
 /// Rejoue la phrase bloc par bloc (comme le ferait le thread audio) et réduit
 /// le résultat à une empreinte. Vérifie au passage qu'aucun échantillon n'est
 /// NaN/inf et qu'aucune machine ne dépasse une amplitude aberrante.
+/// Réduit un rendu stéréo à son empreinte. EXTRAIT de `renderFingerprint`
+/// parce que les EFFETS s'empreignent aussi (D4.1) : deux calculs d'empreinte
+/// finiraient par diverger, et une empreinte d'effet qui ne mesurerait pas
+/// tout à fait la même chose qu'une empreinte de machine ne protégerait pas de
+/// la même façon.
+Fingerprint fingerprintOf(const std::vector<float>& left, const std::vector<float>& right) {
+    Fingerprint fp;
+    size_t stereoDiffs = 0, crossings = 0;
+    for (size_t i = 0; i < left.size(); ++i) {
+        VSM_ASSERT(std::isfinite(left[i]) && std::isfinite(right[i]));
+        fp.peak = std::max(fp.peak, std::max(std::abs(left[i]), std::abs(right[i])));
+        if (std::abs(left[i] - right[i]) > 1e-6f) ++stereoDiffs;
+        if (i > 0 && ((left[i - 1] < 0.0f) != (left[i] < 0.0f))) ++crossings;
+    }
+    VSM_ASSERT(fp.peak < 8.0f); // garde-fou : ce qui explose se voit tout de suite
+
+    fp.rms = rmsOf(left, 0, left.size());
+    const size_t windowSize = left.size() / kNumWindows;
+    for (int w = 0; w < kNumWindows; ++w)
+        fp.windowRms[w] = rmsOf(left, static_cast<size_t>(w) * windowSize, windowSize);
+    fp.zeroCrossingRate = static_cast<float>(crossings) / static_cast<float>(left.size());
+    fp.stereoDiffRatio = static_cast<float>(stereoDiffs) / static_cast<float>(left.size());
+    computeSpectrum(left, fp.bandEnergy, fp.spectralCentroidHz);
+    return fp;
+}
+
 Fingerprint renderFingerprint(const std::string& pluginId) {
     auto synth = PluginRegistry::instance().create(pluginId);
     VSM_ASSERT(synth != nullptr);
@@ -408,24 +435,7 @@ Fingerprint renderFingerprint(const std::string& pluginId) {
                        left.data() + start, right.data() + start, kBlockSize);
     }
 
-    Fingerprint fp;
-    size_t stereoDiffs = 0, crossings = 0;
-    for (size_t i = 0; i < left.size(); ++i) {
-        VSM_ASSERT(std::isfinite(left[i]) && std::isfinite(right[i]));
-        fp.peak = std::max(fp.peak, std::max(std::abs(left[i]), std::abs(right[i])));
-        if (std::abs(left[i] - right[i]) > 1e-6f) ++stereoDiffs;
-        if (i > 0 && ((left[i - 1] < 0.0f) != (left[i] < 0.0f))) ++crossings;
-    }
-    VSM_ASSERT(fp.peak < 8.0f); // garde-fou : une machine qui explose se voit tout de suite
-
-    fp.rms = rmsOf(left, 0, left.size());
-    const size_t windowSize = left.size() / kNumWindows;
-    for (int w = 0; w < kNumWindows; ++w)
-        fp.windowRms[w] = rmsOf(left, static_cast<size_t>(w) * windowSize, windowSize);
-    fp.zeroCrossingRate = static_cast<float>(crossings) / static_cast<float>(left.size());
-    fp.stereoDiffRatio = static_cast<float>(stereoDiffs) / static_cast<float>(left.size());
-    computeSpectrum(left, fp.bandEnergy, fp.spectralCentroidHz);
-    return fp;
+    return fingerprintOf(left, right);
 }
 
 bool regenMode() { return std::getenv("VSM_REGEN_AUDIO_FINGERPRINTS") != nullptr; }
@@ -508,6 +518,211 @@ void checkMachine(const char* pluginId) {
     expectClose("le centroïde spectral", fp.spectralCentroidHz, ref->spectralCentroidHz, kCentroidRelTol, kCentroidFloor);
 }
 
+// ---------------------------------------------------------------------------
+// EMPREINTES DES EFFETS D'INSERT (D4.1)
+//
+// Les machines étaient protégées de la dérive ; les treize effets ne l'étaient
+// pas. Or ils partagent des briques avec elles -- `Biquad`, `Dynamics`,
+// `DenormalGuard` -- et une dérive dans l'une de ces briques change le son de
+// tout un mixage sans faire échouer un seul test de propriété : « le
+// compresseur réduit au-dessus du seuil » reste vrai qu'il réduise de 3 ou de
+// 6 dB.
+//
+// LE SIGNAL D'ÉPREUVE EST FIXE et choisi pour faire réagir les quatre familles
+// d'effets : une attaque franche (les dynamiques), une tenue (les filtres et
+// les modulations), un passage faible (la porte) et une différence entre les
+// deux canaux (la largeur, le ping-pong, le chorus).
+//
+// LES RÉGLAGES SONT FIXES ET NON NEUTRES, et c'est la même leçon que
+// l'« empreinte muette » des machines : un égaliseur à 0 dB rend exactement son
+// entrée, et deux signaux identiques sont toujours égaux. Une empreinte prise
+// sur un effet qui ne fait rien passe tous les tests et ne protège de rien. On
+// place donc chaque réglage à 60 % de sa plage par défaut, et on VÉRIFIE que la
+// sortie diffère réellement de l'entrée. Cette vérification a immédiatement
+// trouvé la première des deux exceptions que la règle demande : voir
+// `prepareEffectForFingerprint`.
+//
+// CALIBRATION (mesurée en injectant de vraies dérives dans le DSP, puis en les
+// retirant -- pas des valeurs choisies au jugé), avec les réglages retenus :
+//   - temps des dynamiques +3 %  -> aucun effet en échec (marge de bruit voulue)
+//   - temps des dynamiques +10 % -> le compresseur
+//   - fréquence des biquads +5 % -> l'égaliseur
+// Aucune de ces trois dérives ne faisait échouer le moindre test de propriété
+// des effets : « le compresseur réduit au-dessus du seuil » reste vrai qu'il
+// réduise de 3 ou de 6 dB. C'est exactement le trou que ces empreintes
+// comblent.
+// ---------------------------------------------------------------------------
+
+constexpr int kEffectSamples = 24576;  // 0,5 s à 48 kHz, multiple du bloc
+static_assert(kEffectSamples % kBlockSize == 0, "le rendu se fait en blocs entiers");
+static_assert(kEffectSamples % kNumWindows == 0, "les fenêtres partitionnent le rendu");
+
+/// Le signal d'épreuve : quatre quarts, chacun destiné à réveiller une famille
+/// d'effets. Déterministe à l'échantillon près -- aucun aléatoire.
+void makeEffectProbe(std::vector<float>& left, std::vector<float>& right) {
+    left.assign(static_cast<size_t>(kEffectSamples), 0.0f);
+    right.assign(static_cast<size_t>(kEffectSamples), 0.0f);
+    const int quart = kEffectSamples / 4;
+    for (int i = 0; i < kEffectSamples; ++i) {
+        const double t = static_cast<double>(i) / kSampleRate;
+        // Le canal droit est le même signal DÉPHASÉ d'un quart de tour, jamais
+        // un signal ajouté : les effets qui touchent à l'image stéréo ont ainsi
+        // quelque chose à déplacer, mais un passage faible reste faible SUR LES
+        // DEUX canaux.
+        //
+        // Ce détail n'est pas cosmétique, et c'est le garde-fou de transparence
+        // qui l'a montré : une première version ajoutait au canal droit une
+        // sinusoïde d'amplitude CONSTANTE. Les dynamiques de ce moteur sont
+        // stéréo-liées -- elles détectent sur le maximum des deux canaux --,
+        // donc cette petite constante maintenait la porte grande ouverte d'un
+        // bout à l'autre, et son empreinte ne mesurait rigoureusement rien.
+        constexpr double kQuartDeTour = 1.5707963267948966;
+        auto echantillon = [&](double phase) {
+            if (i < quart) {
+                // 1. ATTAQUE : une impulsion franche suivie d'une décroissance
+                //    -- ce à quoi réagissent l'attaque du compresseur et le
+                //    limiteur.
+                const double env = std::exp(-static_cast<double>(i) / (kSampleRate * 0.03));
+                return std::sin(2.0 * M_PI * 440.0 * t + phase) * env * 0.9;
+            }
+            if (i < 2 * quart) {
+                // 2. TENUE riche : trois harmoniques, pour que les filtres et
+                //    les égaliseurs aient de quoi déplacer.
+                return std::sin(2.0 * M_PI * 220.0 * t + phase) * 0.4
+                     + std::sin(2.0 * M_PI * 1100.0 * t + phase) * 0.2
+                     + std::sin(2.0 * M_PI * 4400.0 * t + phase) * 0.1;
+            }
+            if (i < 3 * quart) {
+                // 3. PASSAGE FAIBLE : sous le seuil d'une porte, donc la partie
+                //    qu'elle doit taire.
+                return std::sin(2.0 * M_PI * 330.0 * t + phase) * 0.004;
+            }
+            // 4. RETOUR FORT, pour capturer la réouverture et le relâchement.
+            return std::sin(2.0 * M_PI * 660.0 * t + phase) * 0.6;
+        };
+        left[static_cast<size_t>(i)] = static_cast<float>(echantillon(0.0));
+        right[static_cast<size_t>(i)] =
+            static_cast<float>(echantillon(0.0) * 0.8 + echantillon(kQuartDeTour) * 0.2);
+    }
+}
+
+/// Le réglage d'épreuve d'un effet.
+///
+/// LE DÉFAUT EST UNIFORME -- 60 % de la plage de chaque paramètre -- et il
+/// convient à onze effets sur treize. Deux demandent mieux, et ce n'est pas un
+/// caprice : ce sont les DEUX MESURES DE CALIBRATION ci-dessous qui l'ont
+/// montré, en injectant de vraies dérives dans le DSP puis en les retirant.
+///
+///  - LA PORTE : ses plages sont des DURÉES, et 60 % d'un relâchement qui monte
+///    à deux secondes fait 1,2 s, plus long que tout le signal d'épreuve. La
+///    porte n'avait pas le temps de se fermer, ne changeait rien, et le
+///    garde-fou de transparence l'a refusée -- c'est lui qui a trouvé le
+///    problème, pas une relecture.
+///  - L'ÉGALISEUR : 60 % de ses plages donne trois corrections de +3,6 dB, trop
+///    douces pour qu'un déplacement de fréquence se voie. Mesuré : une dérive
+///    de +5 % sur la fréquence des biquads faisait échouer deux MACHINES et pas
+///    l'égaliseur. On lui donne donc des corrections franches et une cloche
+///    étroite, ce qu'on règle de toute façon sur une piste réelle.
+///
+/// C'est le pendant, côté effets, de `prepareMachineForFingerprint` : une
+/// empreinte n'a de valeur que si le réglage fait TRAVAILLER l'effet, et le
+/// vérifier demande de faire échouer le test exprès.
+void prepareEffectForFingerprint(const std::string& effectId,
+                                  vsm::audio::effect::IAudioEffect& effet) {
+    if (effectId == "gate") {
+        effet.setParameter(0, -30.0f);   // seuil : au-dessus du passage faible
+        effet.setParameter(1, 1.0f);     // attaque
+        effet.setParameter(2, 20.0f);    // maintien
+        effet.setParameter(3, 30.0f);    // relâchement, court devant l'épreuve
+        effet.setParameter(4, -40.0f);   // plage
+        return;
+    }
+    if (effectId == "eq") {
+        effet.setParameter(0, 12.0f);    // grave : +12 dB
+        effet.setParameter(1, 100.0f);   //         à 100 Hz
+        effet.setParameter(2, 1000.0f);  // medium : cloche à 1 kHz
+        effet.setParameter(3, -12.0f);   //          creusée de 12 dB
+        effet.setParameter(4, 4.0f);     //          et étroite (Q = 4)
+        effet.setParameter(5, 9.0f);     // aigu : +9 dB
+        effet.setParameter(6, 6000.0f);  //        à 6 kHz
+        return;
+    }
+    for (const auto& p : effet.parameterList())
+        effet.setParameter(p.id, p.minValue + 0.6f * (p.maxValue - p.minValue));
+}
+
+Fingerprint renderEffectFingerprint(const std::string& effectId, float* differenceRms = nullptr) {
+    auto effet = vsm::audio::effect::EffectFactory::create(effectId);
+    VSM_ASSERT(effet != nullptr);
+    effet->prepare(kSampleRate, kBlockSize);
+    prepareEffectForFingerprint(effectId, *effet);
+
+    std::vector<float> sec, secD, left, right;
+    makeEffectProbe(sec, secD);
+    left = sec;
+    right = secD;
+    for (int start = 0; start < kEffectSamples; start += kBlockSize)
+        effet->process(left.data() + start, right.data() + start, kBlockSize);
+
+    if (differenceRms != nullptr) {
+        double somme = 0.0;
+        for (size_t i = 0; i < left.size(); ++i) {
+            const double d = static_cast<double>(left[i]) - sec[i];
+            somme += d * d;
+        }
+        *differenceRms = static_cast<float>(std::sqrt(somme / static_cast<double>(left.size())));
+    }
+    return fingerprintOf(left, right);
+}
+
+const std::vector<Reference>& effectReferences() {
+    static const std::vector<Reference> table = {
+#include "effect_fingerprints.inc"
+    };
+    return table;
+}
+
+void checkEffect(const char* effectId) {
+    float difference = 0.0f;
+    const Fingerprint fp = renderEffectFingerprint(effectId, &difference);
+
+    // L'ÉQUIVALENT, POUR UN EFFET, DE L'EMPREINTE MUETTE D'UNE MACHINE : un
+    // effet qui rend son entrée telle quelle a une empreinte parfaitement
+    // stable et parfaitement inutile.
+    if (difference < 1.0e-4f)
+        throw vsm::test::AssertionFailure(
+            std::string("empreinte TRANSPARENTE pour ") + effectId +
+            " : avec son réglage d'épreuve, il ne change pas le signal. "
+            "Une empreinte qui ne mesure aucun traitement ne peut attraper aucune "
+            "régression -- vérifier les plages déclarées dans sa ParameterList.");
+
+    if (regenMode()) {
+        printReferenceLine(effectId, fp);
+        return;
+    }
+    const Fingerprint* ref = nullptr;
+    for (const auto& r : effectReferences())
+        if (std::string(effectId) == r.pluginId) ref = &r.fp;
+    if (ref == nullptr)
+        throw vsm::test::AssertionFailure(std::string("aucune empreinte de référence pour l'effet ")
+                                          + effectId + " -- régénérer avec VSM_REGEN_AUDIO_FINGERPRINTS=1");
+
+    expectClose("le pic", fp.peak, ref->peak, kRelTol, kAbsFloor);
+    expectClose("le RMS global", fp.rms, ref->rms, kRelTol, kAbsFloor);
+    for (int w = 0; w < kNumWindows; ++w) {
+        const std::string label = "le RMS de la fenêtre " + std::to_string(w);
+        expectClose(label.c_str(), fp.windowRms[w], ref->windowRms[w], kRelTol, kAbsFloor);
+    }
+    expectClose("le taux de passages par zéro", fp.zeroCrossingRate, ref->zeroCrossingRate, kZcrRelTol, kZcrFloor);
+    expectClose("le ratio stéréo", fp.stereoDiffRatio, ref->stereoDiffRatio, kStereoTol, kStereoFloor);
+    for (int b = 0; b < kNumBands; ++b) {
+        const std::string label = "l'énergie de la bande " + std::to_string(static_cast<int>(bandEdgeHz(b)))
+                                + "-" + std::to_string(static_cast<int>(bandEdgeHz(b + 1))) + " Hz";
+        expectClose(label.c_str(), fp.bandEnergy[b], ref->bandEnergy[b], kBandRelTol, kBandFloor);
+    }
+    expectClose("le centroïde spectral", fp.spectralCentroidHz, ref->spectralCentroidHz, kCentroidRelTol, kCentroidFloor);
+}
+
 } // namespace
 
 VSM_TEST(regression_minimoog)   { checkMachine("vsm.minimoog"); }
@@ -549,6 +764,36 @@ VSM_TEST(regression_stochastic) { checkMachine("vsm.stochastic"); }
 /// c'est la condition pour que l'empreinte ci-dessus ait un sens. Vérifié ici
 /// sur une machine à RNG (SH-101 : bruit + LFO sample & hold) plutôt que sur
 /// un cas facile.
+// Les treize effets d'insert, dans l'ordre de la fabrique.
+VSM_TEST(regression_fx_eq)         { checkEffect("eq"); }
+VSM_TEST(regression_fx_compressor) { checkEffect("compressor"); }
+VSM_TEST(regression_fx_gate)       { checkEffect("gate"); }
+VSM_TEST(regression_fx_limiter)    { checkEffect("limiter"); }
+VSM_TEST(regression_fx_filter)     { checkEffect("filter"); }
+VSM_TEST(regression_fx_distortion) { checkEffect("distortion"); }
+VSM_TEST(regression_fx_bitcrusher) { checkEffect("bitcrusher"); }
+VSM_TEST(regression_fx_chorus)     { checkEffect("chorus"); }
+VSM_TEST(regression_fx_flanger)    { checkEffect("flanger"); }
+VSM_TEST(regression_fx_phaser)     { checkEffect("phaser"); }
+VSM_TEST(regression_fx_delay)      { checkEffect("delay"); }
+VSM_TEST(regression_fx_reverb)     { checkEffect("reverb"); }
+VSM_TEST(regression_fx_tape)       { checkEffect("tape"); }
+
+VSM_TEST(regression_every_factory_effect_has_a_reference) {
+    // Le même garde-fou que pour les machines : un effet ajouté sans empreinte
+    // doit le DIRE, sinon il entre dans le parc sans protection et personne ne
+    // s'en aperçoit avant la première dérive.
+    for (const auto& info : vsm::audio::effect::EffectFactory::available()) {
+        bool trouve = false;
+        for (const auto& r : effectReferences())
+            if (info.id == r.pluginId) trouve = true;
+        if (regenMode()) { if (!trouve) std::printf("// effet sans référence : %s\n", info.id.c_str()); continue; }
+        if (!trouve)
+            throw vsm::test::AssertionFailure("effet sans empreinte de référence : " + info.id
+                                               + " -- régénérer avec VSM_REGEN_AUDIO_FINGERPRINTS=1");
+    }
+}
+
 VSM_TEST(regression_fingerprints_are_reproducible) {
     const Fingerprint a = renderFingerprint("vsm.sh101");
     const Fingerprint b = renderFingerprint("vsm.sh101");
