@@ -907,7 +907,11 @@ void ProcessGraph::renderTrackRange(const GraphSnapshot& snapshot, bool anySolo,
         // aussi des notes, et le graphe n'a pas à en décider.
         std::fill(scratchStereoL_.begin(), scratchStereoL_.begin() + sampleCount, 0.0f);
         std::fill(scratchStereoR_.begin(), scratchStereoR_.begin() + sampleCount, 0.0f);
-        if (instrument)
+        // UNE PISTE GELÉE NE FAIT PLUS TOURNER SON INSTRUMENT (D5.5) : c'est
+        // tout l'intérêt du gel, et c'est ce qui la fait « coûter le prix d'une
+        // lecture audio ». Son matériau reste dans la piste et revient au
+        // dégel ; seul le calcul s'arrête.
+        if (instrument && !track.frozen)
             instrument->process(scratchEvents_.data(), numEvents,
                                  scratchStereoL_.data(), scratchStereoR_.data(), sampleCount);
         if (audioSource && !audioSource->empty()) {
@@ -920,7 +924,10 @@ void ProcessGraph::renderTrackRange(const GraphSnapshot& snapshot, bool anySolo,
         }
 
         // Chaîne d'inserts (section 5) : TRACK -> SYNTH -> EFFECTS -> MIX.
-        auto chain = effectChains_[trackIndex].load(std::memory_order_acquire);
+        // LES INSERTS NON PLUS : ils sont DANS le fichier gelé, et les
+        // repasser dessus les appliquerait deux fois.
+        auto chain = track.frozen ? nullptr
+                                  : effectChains_[trackIndex].load(std::memory_order_acquire);
         if (chain) {
             for (const auto& fx : *chain) {
                 if (!fx) continue;

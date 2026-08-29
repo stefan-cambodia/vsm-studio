@@ -101,6 +101,7 @@ private:
         kMenuTrackAddAudio,
         kMenuTrackAddGroup,
         kMenuTrackRemove,
+        kMenuTrackFreeze,
         kMenuRecordCountInNone,
         kMenuRecordCountInOne,
         kMenuRecordCountInTwo,
@@ -270,6 +271,13 @@ private:
     /// rendait l'enregistrement audio de D3.4 inatteignable.
     void addTrack(vsm::sequencer::Track::Kind kind = vsm::sequencer::Track::Kind::Midi);
     void removeSelectedTrack();
+    /// GÈLE OU DÉGÈLE la piste sélectionnée (D5.5). Le gel rend ce qu'elle
+    /// produit dans un fichier du dossier de projet et cesse de le recalculer ;
+    /// le dégel efface le fichier et remet l'instrument en marche. Le matériau
+    /// n'est jamais détruit -- ce serait un report, pas un gel.
+    void toggleFreezeSelectedTrack();
+    /// Le dossier `gel/` du projet, où vont les rendus de pistes gelées.
+    juce::String frozenPathFor(size_t trackIndex) const;
     void exportMidiFile();
     void exportAudioFile();
     /// Republie tout ce qui dépend du projet. `stopPlayback` est faux après un

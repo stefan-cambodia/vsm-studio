@@ -190,6 +190,11 @@ ProjectDocument documentFromProject(const Project& project) {
         entry.outputGroup = track.outputGroup;
         entry.arrangementHeight = track.arrangementHeight;
         entry.folded = track.folded;
+        entry.frozen = track.frozen;
+        entry.frozenAudio.path = track.frozenAudio.path;
+        entry.frozenAudio.sampleRate = track.frozenAudio.sampleRate;
+        entry.frozenAudio.frames = track.frozenAudio.frames;
+        entry.frozenAudio.channels = track.frozenAudio.channels;
         if (track.kind == vsm::sequencer::Track::Kind::Group) {
             entry.kind = "group";
         } else if (track.kind == vsm::sequencer::Track::Kind::Audio) {
@@ -328,6 +333,9 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.outputGroup = source.outputGroup;
         target.arrangementHeight = source.arrangementHeight;
         target.folded = source.folded;
+        target.frozen = source.frozen;
+        target.frozenAudio = {source.frozenAudio.path, source.frozenAudio.sampleRate,
+                               source.frozenAudio.frames, source.frozenAudio.channels};
         target.audio = {source.audio.path, source.audio.sampleRate,
                          source.audio.frames, source.audio.channels};
         // Les prises, SANS leurs notes : celles-ci viennent de `prises.mid` et
@@ -508,6 +516,15 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         if (track.arrangementHeight != 56)
             entry.set("height", JsonValue::makeNumber(static_cast<double>(track.arrangementHeight)));
         if (track.folded) entry.set("folded", JsonValue::makeBoolean(true));
+        if (track.frozen || !track.frozenAudio.path.empty()) {
+            entry.set("frozen", JsonValue::makeBoolean(track.frozen));
+            JsonValue gel = JsonValue::makeObject();
+            gel.set("file", JsonValue::makeString(track.frozenAudio.path));
+            gel.set("sampleRate", JsonValue::makeNumber(track.frozenAudio.sampleRate));
+            gel.set("frames", JsonValue::makeNumber(static_cast<double>(track.frozenAudio.frames)));
+            gel.set("channels", JsonValue::makeNumber(track.frozenAudio.channels));
+            entry.set("frozenAudio", std::move(gel));
+        }
         if (!track.kind.empty() && track.kind != "midi") {
             entry.set("kind", JsonValue::makeString(track.kind));
             JsonValue source = JsonValue::makeObject();
@@ -701,6 +718,19 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         track.outputGroup = static_cast<int>(entry["output"].asNumber(-1.0));
         track.arrangementHeight = static_cast<int>(entry["height"].asNumber(56.0));
         track.folded = entry["folded"].asBoolean(false);
+        track.frozen = entry["frozen"].asBoolean(false);
+        if (entry["frozenAudio"].isObject()) {
+            track.frozenAudio.path = entry["frozenAudio"]["file"].asString();
+            // MÊME RÈGLE QUE PARTOUT : un chemin absolu est refusé, jamais
+            // réécrit -- c'est ce qui permet d'ouvrir le projet ailleurs.
+            if (!isPortableRelativePath(track.frozenAudio.path)) {
+                result.error = "chemin de gel non portable : \"" + track.frozenAudio.path + "\"";
+                return result;
+            }
+            track.frozenAudio.sampleRate = entry["frozenAudio"]["sampleRate"].asNumber(0.0);
+            track.frozenAudio.frames = static_cast<int64_t>(entry["frozenAudio"]["frames"].asNumber(0.0));
+            track.frozenAudio.channels = static_cast<int>(entry["frozenAudio"]["channels"].asNumber(0.0));
+        }
         if (entry["audio"].isObject()) {
             track.audio.path = entry["audio"]["file"].asString();
             // MÊME RÈGLE QUE POUR LES PRESETS, et pour la même raison : un

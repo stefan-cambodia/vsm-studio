@@ -166,6 +166,10 @@ struct ProjectTrack {
     /// exactement le fichier qu'elle avait.
     int arrangementHeight = 56;
     bool folded = false;
+    /// La piste est GELÉE et joue `frozenAudio` au lieu de son instrument
+    /// (D5.5). Facultatifs : une piste non gelée garde le fichier qu'elle avait.
+    bool frozen = false;
+    ProjectAudioSource frozenAudio;
     /// « midi » (défaut), « audio » ou « group ». Absent du fichier pour une piste MIDI :
     /// un projet qui n'a que des pistes MIDI garde octet pour octet le fichier
     /// qu'il avait avant que les pistes audio existent.

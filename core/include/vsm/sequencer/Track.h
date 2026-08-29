@@ -392,6 +392,21 @@ public:
     /// Le fichier que joue une piste audio. Vide sur une piste MIDI.
     AudioSource audio;
 
+    /// LA PISTE EST GELÉE (D5.5) : son instrument et ses inserts ne tournent
+    /// plus, et c'est `frozenAudio` qui est joué à leur place.
+    ///
+    /// CE QUI RESTE VIVANT, et c'est toute la différence entre geler et
+    /// reporter : le volume, le panoramique, les départs, le muet et le solo.
+    /// Une piste gelée se mixe exactement comme avant -- on a seulement cessé
+    /// de recalculer ce qui ne changeait plus. Reporter (*bounce*), lui,
+    /// remplace le matériau : c'est une décision, geler n'en est pas une.
+    ///
+    /// LE MATÉRIAU N'EST PAS DÉTRUIT : les notes, l'instrument et les inserts
+    /// restent dans la piste et reviennent au dégel. Un gel qui effacerait ce
+    /// qu'il remplace serait un report qui n'ose pas dire son nom.
+    bool frozen = false;
+    AudioSource frozenAudio;
+
     /// Les clips de la piste.
     ///
     /// **VIDE SIGNIFIE « AUCUNE DÉCOUPE »**, c'est-à-dire que la piste joue

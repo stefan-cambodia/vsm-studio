@@ -1,4 +1,5 @@
 #pragma once
+#include "vsm/audio/engine/OfflineRenderer.h"
 #include "vsm/interchange/ProjectBundle.h"
 #include "vsm/audio/io/WavFileWriter.h"
 #include <string>
@@ -52,6 +53,35 @@ struct RenderResult {
 /// machine cible est rapporté (jamais appliqué en douce).
 RenderResult renderBundleToWav(const LoadedBundle& bundle, const std::string& wavPath,
                                 const RenderOptions& options = {});
+
+/// Le même rendu, mais rendu EN MÉMOIRE. Séparé depuis que le gel d'une piste
+/// (D5.5) a besoin des échantillons sans avoir à écrire puis relire un fichier
+/// temporaire.
+RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
+                                   vsm::audio::engine::RenderedAudio& out,
+                                   const RenderOptions& options = {});
+
+/// GELER UNE PISTE (D5.5) : rendre ce qu'elle produit -- son instrument et ses
+/// inserts -- pour qu'on cesse de le recalculer.
+///
+/// CE QUI EST CAPTURÉ EST LE SIGNAL D'AVANT LE FADER : le volume, le
+/// panoramique, les départs, le muet et le solo doivent rester vivants, sinon
+/// geler serait reporter. Or le mixage applique sa loi de panoramique en même
+/// temps que le volume, et capturer le master les figerait dans le fichier.
+///
+/// D'OÙ DEUX RENDUS, ET CE N'EST PAS UNE RUSE. Aux extrémités, la loi de
+/// panoramique vaut EXACTEMENT 1 et 0 : rendre la piste seule, tournée à fond à
+/// gauche, donne le canal gauche INALTÉRÉ ; tournée à fond à droite, le canal
+/// droit. Aucune division, aucun arrondi, et le résultat est bit à bit celui
+/// que la piste produisait -- ce que le critère de l'étape demande en disant
+/// « sonne identique ».
+///
+/// La piste rendue est isolée de tout le reste : ni départs, ni groupe, ni
+/// tranche master, ni muet, ni solo. Ce qui l'entoure n'appartient pas à ce
+/// qu'on gèle.
+RenderResult renderTrackForFreeze(const LoadedBundle& bundle, size_t trackIndex,
+                                   vsm::audio::engine::RenderedAudio& out,
+                                   const RenderOptions& options = {});
 
 /// Enchaîne chargement et rendu -- la fonction qu'appelle l'outil en ligne de
 /// commande, et celle qu'un script Python pilote en pratique.

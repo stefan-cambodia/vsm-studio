@@ -638,12 +638,17 @@ void ArrangementComponent::paint(juce::Graphics& g) {
         // LA NATURE DE LA PISTE NE S'AFFICHE QUE SI LA PLACE EXISTE : sur une
         // piste pliée, le nom seul est ce qu'on est venu chercher.
         if (h >= 40) {
-            g.setColour(Palette::textSecondary);
+            // UNE PISTE GELÉE LE DIT (D5.5). Sans cela, on éditerait ses notes
+            // en se demandant pourquoi rien ne change : son instrument ne
+            // tourne plus, c'est son gel qu'on entend. Le mot plutôt qu'une
+            // icône, parce qu'il n'y a rien à deviner.
+            juce::String nature = track.kind == Track::Kind::Audio  ? "audio"
+                                : track.kind == Track::Kind::Group ? "groupe"
+                                                                   : "midi";
+            if (track.frozen) nature += u8" · gelé";
+            g.setColour(track.frozen ? Palette::accentTeal : Palette::textSecondary);
             g.setFont(juce::Font(juce::FontOptions(11.0f)));
-            g.drawText(track.kind == Track::Kind::Audio  ? "audio"
-                        : track.kind == Track::Kind::Group ? "groupe"
-                                                           : "midi",
-                        24, y + 22, kHeaderWidth - 30, 14, juce::Justification::centredLeft);
+            g.drawText(nature, 24, y + 22, kHeaderWidth - 30, 14, juce::Justification::centredLeft);
         }
 
         g.setColour(Palette::border);
@@ -659,9 +664,13 @@ void ArrangementComponent::paint(juce::Graphics& g) {
             juce::Rectangle<float> r(x1, static_cast<float>(y + 3),
                                       std::max(2.0f, x2 - x1), static_cast<float>(h - 7));
             const bool choisi = selection_.count(clip.id) > 0;
+            // LES CLIPS D'UNE PISTE GELÉE SONT ESTOMPÉS : ils décrivent encore
+            // le morceau, mais ce n'est plus eux qu'on entend. Les montrer
+            // pleins laisserait croire qu'on les édite.
+            const float opacite = track.frozen ? 0.35f : (clip.muted ? 0.25f : 0.75f);
             // UN CLIP MUET SE VOIT SANS DISPARAÎTRE : hachuré plutôt qu'effacé,
             // comme une note muette dans le piano roll.
-            g.setColour(juce::Colour(clip.colorRgba).withAlpha(clip.muted ? 0.25f : 0.75f));
+            g.setColour(juce::Colour(clip.colorRgba).withAlpha(opacite));
             g.fillRoundedRectangle(r, 3.0f);
             // UN CLIP QUI BOUCLE DOIT SE VOIR BOUCLER. Étiré au-delà de son
             // matériau, il répète sa fenêtre (D5.2) -- et dessiné comme un

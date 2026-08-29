@@ -98,6 +98,15 @@ int main(int argc, char** argv) {
                                 mesure, false, "", piste.colorRgba});
         projet.tracks.push_back(std::move(piste));
     }
+    // Une piste GELÉE, pour vérifier à l'oeil qu'elle se distingue d'une piste
+    // vivante : sans cela on éditerait ses notes en se demandant pourquoi rien
+    // ne change.
+    if (projet.tracks.size() > 1) {
+        projet.tracks[1].frozen = true;
+        projet.tracks[1].frozenAudio.path = "gel/piste-2.wav";
+        projet.tracks[1].frozenAudio.sampleRate = 48000.0;
+        projet.tracks[1].frozenAudio.frames = 48000 * 10;
+    }
     projet.assignClipIds();
 
     // UNE COURBE D'AUTOMATION sur la première piste : l'aperçu doit montrer

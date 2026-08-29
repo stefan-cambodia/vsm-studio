@@ -664,6 +664,17 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuTrackAddGroup, "Ajouter un groupe");
             menu.addItem(kMenuTrackRemove, u8"Supprimer la piste sélectionnée",
                          !project_.tracks.empty());
+            menu.addSeparator();
+            {
+                const size_t piste = trackList_.selectedTrackIndex();
+                const bool gelable = piste < project_.tracks.size()
+                                     && project_.tracks[piste].kind == Track::Kind::Midi;
+                const bool gelee = gelable && project_.tracks[piste].frozen;
+                menu.addItem(kMenuTrackFreeze,
+                              gelee ? u8"Dégeler la piste (l'instrument reprend)"
+                                    : u8"Geler la piste (l'instrument s'arrête)",
+                              gelable);
+            }
             break;
         case 3:
             // ENREGISTREMENT. Les deux réglages qui changent ce qu'une prise
@@ -912,6 +923,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuTrackAddAudio: addTrack(Track::Kind::Audio); break;
         case kMenuTrackAddGroup: addTrack(Track::Kind::Group); break;
         case kMenuTrackRemove:   removeSelectedTrack(); break;
+        case kMenuTrackFreeze:   toggleFreezeSelectedTrack(); break;
         case kMenuViewTracks:    togglePanel(trackListWindow_); break;
         case kMenuViewPianoRoll: togglePanel(pianoRollWindow_); break;
         case kMenuViewSynthRack: togglePanel(synthRackWindow_); break;
@@ -1582,7 +1594,11 @@ void MainComponent::loadAudioTracks() {
     juce::StringArray manquants;
     for (size_t i = 0; i < project_.tracks.size(); ++i) {
         const auto& track = project_.tracks[i];
-        if (track.kind != vsm::sequencer::Track::Kind::Audio || track.audio.empty()) {
+        // UNE PISTE GELÉE JOUE SON FICHIER DE GEL (D5.5), quelle que soit sa
+        // nature : c'est tout l'objet du gel. Une piste audio joue le sien.
+        const bool gelee = track.frozen && !track.frozenAudio.empty();
+        const auto& source = gelee ? track.frozenAudio : track.audio;
+        if ((!gelee && track.kind != vsm::sequencer::Track::Kind::Audio) || source.empty()) {
             audioEngine_.processGraph().setTrackAudio(i, nullptr);
             continue;
         }
@@ -1594,7 +1610,7 @@ void MainComponent::loadAudioTracks() {
             audioEngine_.processGraph().setTrackAudio(i, nullptr);
             continue;
         }
-        const juce::File fichier = currentProjectFolder_.getChildFile(track.audio.path);
+        const juce::File fichier = currentProjectFolder_.getChildFile(source.path);
         auto charge = vsm::audio::io::loadAudioTrack(fichier.getFullPathName().toStdString(), sr);
         if (!charge.success || !charge.source) {
             manquants.add(juce::String(track.name) + " : " + juce::String(charge.error));
@@ -1604,8 +1620,13 @@ void MainComponent::loadAudioTracks() {
         // La longueur vient du FICHIER CHARGÉ, pas de ce que le projet déclare :
         // quand les deux divergent, c'est le fichier qui a raison.
         vsm::sequencer::Track pourLesClips = track;
+        pourLesClips.audio = source;
+        pourLesClips.kind = vsm::sequencer::Track::Kind::Audio;   // pour spansFromTrack
         pourLesClips.audio.sampleRate = sr;
         pourLesClips.audio.frames = charge.source->frames();
+        // UN GEL N'EST PAS DÉCOUPÉ : il rend la piste entière, clips compris.
+        // Lui appliquer les clips de la piste les appliquerait DEUX fois.
+        if (gelee) pourLesClips.clips.clear();
         charge.source->clips = vsm::audio::engine::spansFromTrack(
             pourLesClips, sr, [this](int64_t tick) { return project_.ticksToSeconds(tick); });
         audioEngine_.processGraph().setTrackAudio(i, charge.source);
@@ -1773,6 +1794,88 @@ void MainComponent::removeSelectedTrack() {
         const size_t next = std::min(idx, project_.tracks.size() - 1);
         trackList_.selectTrackIndex(next);
     }
+}
+
+juce::String MainComponent::frozenPathFor(size_t trackIndex) const {
+    // Dans le DOSSIER DU PROJET, sous un chemin relatif, comme tout ce que le
+    // format référence : c'est ce qui permet d'ouvrir le projet ailleurs.
+    return "gel/piste-" + juce::String(static_cast<int>(trackIndex) + 1) + ".wav";
+}
+
+void MainComponent::toggleFreezeSelectedTrack() {
+    const size_t index = trackList_.selectedTrackIndex();
+    if (index >= project_.tracks.size()) return;
+    auto& piste = project_.tracks[index];
+
+    if (piste.frozen) {
+        // DÉGELER : l'instrument reprend, et le fichier s'en va. Le garder
+        // laisserait dans le dossier un rendu que plus rien ne référence, et
+        // qu'on retrouverait des mois plus tard sans savoir ce qu'il est.
+        beginProjectEdit(u8"Dégeler une piste");
+        if (currentProjectFolder_ != juce::File() && !piste.frozenAudio.path.empty())
+            currentProjectFolder_.getChildFile(juce::String(piste.frozenAudio.path)).deleteFile();
+        piste.frozen = false;
+        piste.frozenAudio = {};
+        rebuildFromProject(false);
+        return;
+    }
+
+    // GELER EXIGE UN DOSSIER DE PROJET, comme l'enregistrement audio et pour la
+    // même raison : le format range ses fichiers par chemin relatif.
+    if (currentProjectFolder_ == juce::File()) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Projet jamais enregistré",
+            juce::String(u8"Un gel est un FICHIER, et le format range les fichiers d'un projet "
+                          u8"par chemin relatif à son dossier. Enregistrez d'abord le projet "
+                          u8"(Ctrl+S) : le gel ira dans son sous-dossier gel/."));
+        return;
+    }
+
+    captureSessionIntoProject();
+    vsm::interchange::LoadedBundle bundle;
+    bundle.project = project_;
+    bundle.document = vsm::interchange::documentFromProject(project_);
+    bundle.folderPath = currentProjectFolder_.getFullPathName().toStdString();
+    if (!project_.tracks[index].instrumentId.empty())
+        if (auto* machine = audioEngine_.processGraph().trackInstrument(index))
+            bundle.presetsByTrack[index] = vsm::interchange::capturePreset(
+                *machine, project_.tracks[index].instrumentId, project_.tracks[index].name);
+
+    vsm::interchange::RenderOptions options;
+    options.sampleRate = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate()
+                                                                 : 48000.0;
+    options.blockSize = audioEngine_.currentBlockSize() > 0 ? audioEngine_.currentBlockSize() : 512;
+    options.format = vsm::audio::io::SampleFormat::Float32;
+
+    vsm::audio::engine::RenderedAudio gel;
+    const auto rendu = vsm::interchange::renderTrackForFreeze(bundle, index, gel, options);
+    if (!rendu.success) {
+        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                                                 u8"Gel impossible", rendu.error);
+        return;
+    }
+
+    const juce::String relatif = frozenPathFor(index);
+    const juce::File fichier = currentProjectFolder_.getChildFile(relatif);
+    fichier.getParentDirectory().createDirectory();
+    try {
+        vsm::audio::io::WavFileWriter::writeFile(gel.left.data(), gel.right.data(),
+                                                  gel.numFrames(), options.sampleRate,
+                                                  options.format,
+                                                  fichier.getFullPathName().toStdString());
+    } catch (const std::exception& e) {
+        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                                                 u8"Gel impossible", e.what());
+        return;
+    }
+
+    beginProjectEdit(u8"Geler une piste");
+    piste.frozen = true;
+    piste.frozenAudio.path = relatif.toStdString();
+    piste.frozenAudio.sampleRate = options.sampleRate;
+    piste.frozenAudio.frames = static_cast<int64_t>(gel.numFrames());
+    piste.frozenAudio.channels = 2;
+    rebuildFromProject(false);
 }
 
 void MainComponent::exportMidiFile() {

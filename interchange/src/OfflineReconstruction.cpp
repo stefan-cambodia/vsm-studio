@@ -28,8 +28,9 @@ std::string RenderResult::summary() const {
     return out.str();
 }
 
-RenderResult renderBundleToWav(const LoadedBundle& bundle, const std::string& wavPath,
-                                const RenderOptions& options) {
+RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
+                                   vsm::audio::engine::RenderedAudio& out,
+                                   const RenderOptions& options) {
     RenderResult result;
     result.trackCount = bundle.project.tracks.size();
 
@@ -228,18 +229,105 @@ RenderResult renderBundleToWav(const LoadedBundle& bundle, const std::string& wa
         result.peakLevel = std::max(result.peakLevel,
                                      std::max(std::abs(rendered.left[i]), std::abs(rendered.right[i])));
 
+    out = rendered;
+    result.success = true;
+    result.renderedSeconds = duration;
+    result.framesWritten = rendered.numFrames();
+    return result;
+}
+
+RenderResult renderBundleToWav(const LoadedBundle& bundle, const std::string& wavPath,
+                                const RenderOptions& options) {
+    // ÉCRIRE, C'EST RENDRE PUIS POSER SUR LE DISQUE. Les deux moitiés sont
+    // séparées depuis que le GEL (D5.5) a besoin de la première sans la
+    // seconde : il lui faut les échantillons, pas un fichier temporaire à
+    // relire aussitôt.
+    vsm::audio::engine::RenderedAudio rendered;
+    RenderResult result = renderBundleToBuffer(bundle, rendered, options);
+    if (!result.success) return result;
+
     try {
         vsm::audio::io::WavFileWriter::writeFile(rendered.left.data(), rendered.right.data(),
                                                   rendered.numFrames(), options.sampleRate,
                                                   options.format, wavPath);
     } catch (const std::exception& e) {
+        result.success = false;
         result.error = std::string("écriture WAV impossible : ") + e.what();
+    }
+    return result;
+}
+
+RenderResult renderTrackForFreeze(const LoadedBundle& bundle, size_t trackIndex,
+                                   vsm::audio::engine::RenderedAudio& out,
+                                   const RenderOptions& options) {
+    RenderResult result;
+    if (trackIndex >= bundle.project.tracks.size()) {
+        result.error = "piste inexistante";
         return result;
     }
 
-    result.success = true;
-    result.renderedSeconds = duration;
-    result.framesWritten = rendered.numFrames();
+    // LA PISTE, SEULE ET DÉBARRASSÉE DE CE QUI L'ENTOURE. Ni départs, ni
+    // groupe, ni tranche master, ni muet, ni solo : ce qui l'entoure
+    // n'appartient pas à ce qu'on gèle, et le laisser entrerait le mixage
+    // entier dans le fichier.
+    LoadedBundle isolee;
+    isolee.folderPath = bundle.folderPath;
+    isolee.project = bundle.project;
+    isolee.project.tracks.clear();
+    isolee.project.sends.clear();
+    isolee.project.masterParameters.clear();
+
+    vsm::sequencer::Track piste = bundle.project.tracks[trackIndex];
+    piste.muted = false;
+    piste.solo = false;
+    piste.outputGroup = -1;
+    piste.sendLevels.clear();
+    piste.volume = 1.0f;
+    // Une piste DÉJÀ gelée se regèle depuis son matériau, pas depuis son gel :
+    // sinon on empilerait des rendus de rendus.
+    piste.frozen = false;
+    isolee.project.tracks.push_back(std::move(piste));
+
+    // L'automation du VOLUME et du PANORAMIQUE reste vivante après le gel : la
+    // capturer la figerait dans le fichier ET continuerait de s'appliquer,
+    // c'est-à-dire deux fois. Le reste -- les réglages de machine et d'insert --
+    // est bien ce qu'on gèle, et doit donc être rendu.
+    auto& courbes = isolee.project.tracks[0].automation;
+    courbes.erase(std::remove_if(courbes.begin(), courbes.end(),
+                                  [](const vsm::sequencer::AutomationCurve& c) {
+                                      return c.parameter.rfind("mix.", 0) == 0
+                                          || c.parameter.rfind("master.", 0) == 0;
+                                  }),
+                   courbes.end());
+    isolee.document = documentFromProject(isolee.project);
+
+    auto preset = bundle.presetsByTrack.find(trackIndex);
+    if (preset != bundle.presetsByTrack.end()) isolee.presetsByTrack[0] = preset->second;
+
+    // DEUX RENDUS, AUX DEUX EXTRÊMES DU PANORAMIQUE. À -1 la loi vaut
+    // exactement (1, 0), à +1 exactement (0, 1) : chaque rendu livre donc UN
+    // canal inaltéré, sans division ni arrondi. Voir l'en-tête pour le pourquoi.
+    vsm::audio::engine::RenderedAudio gauche, droite;
+    isolee.project.tracks[0].pan = -1.0f;
+    result = renderBundleToBuffer(isolee, gauche, options);
+    if (!result.success) return result;
+    isolee.project.tracks[0].pan = 1.0f;
+    RenderResult second = renderBundleToBuffer(isolee, droite, options);
+    if (!second.success) return second;
+
+    out.left = std::move(gauche.left);
+    out.right = std::move(droite.right);
+    // Les deux rendus ont la même durée par construction ; on le VÉRIFIE
+    // plutôt que de le supposer, parce qu'un décalage d'un échantillon entre
+    // les deux canaux s'entendrait comme un déplacement de l'image stéréo.
+    const size_t taille = std::min(out.left.size(), out.right.size());
+    out.left.resize(taille);
+    out.right.resize(taille);
+    result.framesWritten = taille;
+    result.peakLevel = 0.0f;
+    for (size_t i = 0; i < taille; ++i)
+        result.peakLevel = std::max(result.peakLevel,
+                                     std::max(std::abs(out.left[i]), std::abs(out.right[i])));
     return result;
 }
 

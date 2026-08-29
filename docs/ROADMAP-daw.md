@@ -1241,7 +1241,7 @@ D1 a mis les clips dans le modèle ; ici on les rend manipulables.
 | D5.2 | Copier/coller/dupliquer, aimantation à la grille, boucle de clip par étirement | mêmes gestes et mêmes raccourcis que le piano roll — **fait** |
 | D5.3 | Pliage des pistes, hauteurs réglables, réordonnancement, couleurs choisies | l'écran tient 16 pistes — **fait** |
 | D5.4 | Automation dessinée **sur** l'arrangement, avec zoom et courbes | plus une lane isolée dans un onglet — **fait** |
-| D5.5 | Gel et report (*freeze* / *bounce*) d'une piste en audio | une piste gelée sonne identique et coûte le prix d'une lecture audio |
+| D5.5 | Gel et report (*freeze* / *bounce*) d'une piste en audio | une piste gelée sonne identique et coûte le prix d'une lecture audio — **fait** |
 | D5.6 | Gain, fondus et inversion de phase **réglés à la souris** sur le clip (venus de D2.4 : le modèle et le moteur les portent déjà) | un fondu se tire sur le coin du clip |
 | D5.7 | Forme d'onde dessinée dans le clip audio, avec cache d'aperçu (venue de D2.5) | 9 minutes s'affichent sans bloquer l'interface |
 
@@ -1431,6 +1431,54 @@ doubler une mesure, boucler quatre temps — se fait entièrement à la souris.
 > paramètre était écrit sur la piste et se superposait au nom du clip — les deux
 > devenaient illisibles. Il est maintenant dans l'en-tête, où il appartient de
 > toute façon, puisque c'est la piste qui décide quelle courbe elle montre.
+
+> **D5.5 EST FAITE (30/08/2026). « SONNE IDENTIQUE » EST UNE ÉGALITÉ, PAS UNE
+> FORMULE**, et elle est vérifiée **au bit près**.
+>
+> **CE QU'IL FALLAIT CAPTURER, ET LE PROBLÈME QUE ÇA POSE.** Un gel doit
+> contenir le signal d'AVANT le fader : le volume, le panoramique, les départs,
+> le muet et le solo restent vivants après le gel — sinon geler serait
+> reporter, et une piste gelée à mi-volume ne pourrait plus être remontée. Or le
+> mixage applique sa loi de panoramique en même temps que le volume : capturer
+> le master les figerait dans le fichier, et la piste subirait la loi **deux
+> fois**.
+>
+> **D'OÙ DEUX RENDUS, ET CE N'EST PAS UNE RUSE.** Aux extrémités, la loi de
+> panoramique vaut *exactement* 1 et 0 — mesuré : `pan = -1` donne (1 ; 0) et
+> `pan = +1` donne (-4,4 e-08 ; 1). Rendre la piste seule tournée à fond à
+> gauche livre donc le canal gauche **inaltéré**, à fond à droite le canal
+> droit. Aucune division, aucun arrondi, et le test compare avec `==` plutôt
+> qu'avec une tolérance.
+>
+> **CE QUI EST GELÉ CESSE DE TOURNER** : le moteur saute l'instrument ET les
+> inserts d'une piste gelée. Les repasser dessus les appliquerait deux fois,
+> puisqu'ils sont déjà dans le fichier — et c'est là qu'est le gain promis par
+> « coûte le prix d'une lecture audio ».
+>
+> **LE MATÉRIAU N'EST JAMAIS DÉTRUIT.** Notes, instrument, inserts et clips
+> restent dans la piste et reviennent au dégel. Un gel qui effacerait ce qu'il
+> remplace serait un report qui n'ose pas dire son nom. Regeler repart d'ailleurs
+> **du matériau** et non du gel précédent, sans quoi on empilerait des rendus de
+> rendus et le son dériverait à chaque gel sans que rien ne le dise.
+>
+> **TROIS PIÈGES ÉCARTÉS, chacun avec son test** : le fader, le muet et les
+> départs n'entrent pas dans le fichier ; l'automation du **mixage** non plus
+> (elle resterait vivante et s'appliquerait deux fois) alors que celle des
+> machines et des inserts, elle, est bien ce qu'on gèle ; et les **clips** ne
+> sont pas appliqués au gel, qui rend déjà la piste découpée.
+>
+> **UNE PISTE GELÉE LE DIT** — « midi · gelé » dans son en-tête, et ses clips
+> estompés. Sans cela, on éditerait ses notes en se demandant pourquoi rien ne
+> change : son instrument ne tourne plus, c'est son gel qu'on entend.
+>
+> **Geler exige un dossier de projet**, comme l'enregistrement audio et pour la
+> même raison : le format range ses fichiers par chemin relatif. Le dégel
+> **efface** le fichier — le garder laisserait dans le dossier un rendu que plus
+> rien ne référence, et qu'on retrouverait des mois plus tard sans savoir ce
+> qu'il est.
+>
+> Au passage, `renderBundleToWav` s'est scindé : rendre en mémoire et poser sur
+> le disque sont deux gestes, et le gel avait besoin du premier sans le second.
 
 
 ### Phase D6 — Exporter
