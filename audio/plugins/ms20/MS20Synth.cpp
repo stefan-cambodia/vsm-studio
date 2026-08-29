@@ -135,8 +135,9 @@ void MS20Synth::process(const MidiNoteEvent* events, int numEvents,
         const float vibratoSemis = mg * mgToPitch * kMgPitchRangeSemitones;
         const float base = noteNumber + pitchDriftSemis + vibratoSemis;
 
-        const float hz1 = 440.0f * std::exp2f((base - 69.0f) / 12.0f);
-        const float hz2 = 440.0f * std::exp2f((base + vco2Pitch - 69.0f) / 12.0f);
+        const float bend = bendSemitones_.load(std::memory_order_relaxed);
+        const float hz1 = 440.0f * std::exp2f((base + bend - 69.0f) / 12.0f);
+        const float hz2 = 440.0f * std::exp2f((base + vco2Pitch + bend - 69.0f) / 12.0f);
 
         vco1_.setFrequency(hz1);
         vco1_.setWaveform(vco1Wave(vco1Shape));
@@ -169,6 +170,12 @@ void MS20Synth::process(const MidiNoteEvent* events, int numEvents,
         outputL[i] = sample;
         outputR[i] = sample;
     }
+}
+
+bool MS20Synth::handleControlEvent(const MidiControlEvent& event) {
+    if (event.kind != MidiControlEvent::Kind::PitchBend) return false;
+    bendSemitones_.store(event.value, std::memory_order_relaxed);
+    return true;
 }
 
 void MS20Synth::setParameter(ParamId id, float value) {

@@ -165,6 +165,9 @@ revoir.
 [ ] Valeurs en unités physiques
 [ ] Batterie de tests §3 complète, dont AU MOINS un test du trait distinctif
 [ ] Chaque paramètre a une identité sémantique unique
+[ ] `handleControlEvent` traité : la machine honore la molette de hauteur et
+    les contrôleurs qui ont un sens pour elle, ou renvoie false en connaissance
+    de cause
 [ ] Façade décrite, chaque paramètre posé ou omis avec raison
 [ ] Séquenceur intégré si l'original en a un
 [ ] Aperçu PNG regardé, disposition fidèle à la machine d'origine
@@ -173,6 +176,17 @@ revoir.
 [ ] Zéro warning sous les flags stricts, toutes les suites vertes
 [ ] ARCHITECTURE.md mis à jour (compte de tests, section machine)
 ```
+
+**Sur la molette de hauteur et les contrôleurs.** Le moteur livre désormais aux
+machines tout le MIDI qui n'est pas une note (`MidiControlEvent`), et le défaut
+de `ISynthPlugin::handleControlEvent` est de répondre `false`. Répondre `false`
+est un choix parfaitement légitime -- une boîte à rythmes n'a que faire d'un
+pitch bend -- mais c'est un choix, pas un oubli : le moteur COMPTE ce qui a été
+refusé (`ProcessGraph::ignoredControlEvents()`), pour que l'interface puisse
+dire pourquoi une modulation ne s'entend pas. Les cinq machines à voix unique ou
+double du parc (Minimoog, TB-303, SH-101, MS-20, ARP Odyssey) l'honorent ; les
+polyphoniques restent à faire, machine par machine, et cette case est l'endroit
+où on s'en souvient.
 
 Une case non cochée n'est pas un détail à finir plus tard : c'est une machine
 qui se comportera correctement aujourd'hui et se dégradera en silence dans six

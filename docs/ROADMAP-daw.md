@@ -279,8 +279,49 @@ des phases suivantes veuillent dire quelque chose.
 > promet une fonction absente est pire que la fonction absente, parce qu'elle se
 > découvre en la cherchant.
 >
-> **Restent D0.5, D0.6 et D0.7** : le MIDI non-note qui n'atteint pas les
-> machines, la perte silencieuse d'événements sous charge, et l'annulation.
+> **D0.5 ET D0.6 SONT FAITES, D0.7 À MOITIÉ (29/08/2026).** 887 tests moteur
+> verts, 34 empreintes inchangées.
+>
+> **D0.5 — pourquoi un second flux plutôt qu'une énumération élargie.** Le
+> premier réflexe était d'ajouter des valeurs à `MidiNoteEvent::Kind`. Il aurait
+> été faux : **vingt-deux des trente-quatre machines** dispatchent leurs
+> événements en `if (kind == NoteOn && velocity > 0) ... else ...`, si bien que
+> chaque contrôleur reçu aurait **relâché une note**, dans vingt-deux machines à
+> la fois. Un type séparé (`MidiControlEvent`) et une méthode non pure dont le
+> défaut est « je ne sais pas faire » ne peuvent pas être mal interprétés : une
+> machine qui ne l'implémente pas se comporte exactement comme avant, au bit
+> près — ce que les 34 empreintes vérifient.
+>
+> L'unité livrée est **celle du musicien** : des demi-tons pour la molette, une
+> fraction de 0 à 1 pour le reste. Une machine n'a pas à connaître les 14 bits
+> signés du MIDI pour transposer, et la conversion se fait une seule fois, dans
+> le graphe.
+>
+> **Cinq machines répondent, et ce n'est pas un échantillon arbitraire** : les
+> quatre monophoniques du parc (Minimoog, TB-303, SH-101, MS-20) et la
+> duophonique (ARP Odyssey) — exactement celles dont le jeu dépend de la molette.
+> Les polyphoniques suivront machine par machine : une case a été ajoutée à la
+> liste de contrôle du § 10 de `CDC-nouvelle-machine.md`, qui est l'endroit où
+> ce projet range les obligations par machine.
+>
+> **La distinction qui fait tout** : une machine qui **ignore** un contrôleur
+> exerce un droit ; un moteur qui le **jette** cachait un défaut. Le moteur
+> compte désormais les deux (`ignoredControlEvents()`), et un test vérifie que
+> la TR-808 dit non plutôt que de faire semblant.
+>
+> **D0.6** : le plafond passe de 256 à 1024 événements par piste et par
+> sous-segment, et surtout le `break` muet devient un compteur
+> (`droppedNoteEvents()`). Le chiffre doit rester à zéro ; toute autre valeur
+> est un morceau qu'on n'entend pas en entier.
+>
+> **D0.7, la moitié faite** : la lane de vélocité passe par l'historique, une
+> fois par geste. Le défaut n'était pas seulement « ces éditions ne s'annulent
+> pas » : l'annulation travaillant par instantanés, annuler le geste **suivant**
+> restaurait un vecteur capturé avant les nuances peintes, qui disparaissaient
+> donc avec une action sans rapport. **Reste** l'annulation du mixage, des
+> effets et de l'ajout/suppression de piste, ainsi que la pile qui se vide au
+> changement de piste : c'est un historique transactionnel et global, et c'est
+> D1.5 qui le porte.
 
 ### Phase D1 — Le clip, dans le modèle, sans toucher un échantillon
 

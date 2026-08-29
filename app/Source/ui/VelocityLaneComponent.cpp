@@ -76,6 +76,10 @@ void VelocityLaneComponent::paint(juce::Graphics& g) {
 void VelocityLaneComponent::mouseDown(const juce::MouseEvent& event) {
     dragStart_ = event.position;
     lineMode_ = event.mods.isShiftDown();
+    // UNE SEULE FOIS, ICI : l'instantané est pris avant la première note
+    // touchée, et le glissement qui suit compte pour une seule action -- comme
+    // dans le piano roll.
+    pianoRoll_.beginExternalEdit(lineMode_ ? "Vélocité en ligne" : "Vélocité");
     if (!lineMode_) paintVelocityAt(event.position, true);
     repaint();
 }

@@ -84,6 +84,20 @@ public:
     using EffectChain = std::vector<std::shared_ptr<vsm::audio::effect::IAudioEffect>>;
     void setTrackEffectChain(size_t trackIndex, std::shared_ptr<const EffectChain> chain); // thread UI
 
+    /// Notes qui n'ont PAS été jouées faute de place dans le tableau de
+    /// travail d'un sous-segment. Doit rester à zéro ; toute autre valeur est
+    /// un morceau qu'on n'entend pas en entier.
+    uint64_t droppedNoteEvents() const { return droppedNoteEvents_.load(std::memory_order_relaxed); }
+    /// Événements de contrôle livrés à une machine qui a répondu « je ne sais
+    /// pas quoi en faire ». Ce n'est PAS une anomalie du moteur -- une boîte à
+    /// rythmes n'a que faire d'un pitch bend -- mais c'est ce qui permet à
+    /// l'interface de dire pourquoi une modulation ne s'entend pas.
+    uint64_t ignoredControlEvents() const { return ignoredControlEvents_.load(std::memory_order_relaxed); }
+    void resetEventCounters() {
+        droppedNoteEvents_.store(0, std::memory_order_relaxed);
+        ignoredControlEvents_.store(0, std::memory_order_relaxed);
+    }
+
     static constexpr size_t kNumSends = 2;
     /// Effet d'un bus auxiliaire (ex. reverb sur le send A). prepare() par
     /// l'appelant avant publication. Le signal de retour est ajouté au master.
@@ -240,8 +254,21 @@ private:
     };
     std::array<SendBus, kNumSends> sends_;
     std::array<std::vector<float>, kNumSends> sendL_, sendR_;
-    static constexpr int kMaxEventsPerBlock = 256;
+    /// Plafond du tableau de travail des événements de note, PAR PISTE ET PAR
+    /// SOUS-SEGMENT. Il existe parce que le chemin temps réel n'alloue pas.
+    /// Relevé de 256 à 1024 : à 48 kHz, un sous-segment d'automation dure
+    /// 1,3 ms, et 256 notes en 1,3 ms n'arrivent pas -- mais une piste de
+    /// batterie reconstruite porte plus de quatre mille notes, et un plafond
+    /// qu'on n'a jamais mesuré est un plafond dont on ignore s'il tient.
+    /// Depuis, le franchir est COMPTÉ (voir `droppedNoteEvents()`).
+    static constexpr int kMaxEventsPerBlock = 1024;
     std::vector<vsm::audio::plugin::MidiNoteEvent> scratchEvents_;
+
+    /// Ce que le moteur n'a pas pu jouer, et qu'il ne cache plus. Écrits
+    /// depuis le thread audio, lus par l'interface : `relaxed` suffit, aucune
+    /// autre donnée n'en dépend.
+    std::atomic<uint64_t> droppedNoteEvents_{0};
+    std::atomic<uint64_t> ignoredControlEvents_{0};
 
     static constexpr size_t kLiveQueueCapacity = 256;
     static constexpr size_t kMaxLiveEventsPerBlock = 64;

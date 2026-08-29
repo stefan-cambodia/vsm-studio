@@ -106,6 +106,22 @@ public:
     // --- Historique --------------------------------------------------------
     void undo();
     void redo();
+    /// Ouvre une action annulable pour un éditeur VOISIN qui modifie les mêmes
+    /// notes -- aujourd'hui la lane de vélocité.
+    ///
+    /// POURQUOI C'EST PUBLIC. La lane peignait les nuances directement dans
+    /// `note.velocity` sans jamais passer par l'historique : ces éditions
+    /// n'étaient pas annulables, et -- plus grave -- elles rendaient la pile
+    /// INCOHÉRENTE. L'annulation travaille par instantanés : annuler le geste
+    /// suivant restaurait un vecteur de notes capturé AVANT les nuances
+    /// peintes, qui disparaissaient donc en même temps qu'une action qui
+    /// n'avait rien à voir avec elles. Une pile d'annulation dans laquelle on
+    /// ne peut pas avoir confiance est pire qu'une absence d'annulation.
+    ///
+    /// À appeler une fois par GESTE, au mouseDown : un glissement continu est
+    /// une action, pas trois cents.
+    void beginExternalEdit(const juce::String& label) { beginEdit(label); }
+
     bool canUndo() const { return history_.canUndo(); }
     bool canRedo() const { return history_.canRedo(); }
     juce::String undoLabel() const { return juce::String(history_.undoLabel()); }

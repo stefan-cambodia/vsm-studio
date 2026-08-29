@@ -28,6 +28,20 @@ public:
     virtual void process(const MidiNoteEvent* events, int numEvents,
                           float* outputL, float* outputR, int numSamples) = 0;
 
+    /// Applique un événement de contrôle (pitch bend, molette, pression...).
+    ///
+    /// NON PURE, ET LE DÉFAUT EST « JE NE SAIS PAS FAIRE ». Une machine qui
+    /// n'implémente rien se comporte exactement comme avant -- mais le moteur
+    /// COMPTE ce qu'elle a refusé et le rapporte
+    /// (`ProcessGraph::ignoredControlEvents()`). C'est la différence entre une
+    /// machine qui ignore un contrôleur, ce qui est un choix légitime, et un
+    /// moteur qui le jette, ce qui était le cas jusqu'ici : le projet portait
+    /// des pitch bends, les écrivait dans le fichier, les exportait en SMF, et
+    /// aucun n'atteignait jamais un instrument.
+    ///
+    /// Renvoie true si l'événement a été pris en compte.
+    virtual bool handleControlEvent(const MidiControlEvent&) { return false; }
+
     virtual void setParameter(ParamId id, float value) = 0;
     virtual float getParameter(ParamId id) const = 0;
     virtual const ParameterList& parameterList() const = 0;

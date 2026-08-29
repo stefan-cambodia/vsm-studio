@@ -66,6 +66,13 @@ public:
     void process(const vsm::audio::plugin::MidiNoteEvent* events, int numEvents,
                  float* outputL, float* outputR, int numSamples) override;
 
+    /// Le pitch bend, en demi-tons, ajouté au numéro de note juste avant la
+    /// conversion en hertz -- donc AVANT le glide et la dérive analogique, qui
+    /// travaillent tous deux dans le même domaine. Le Minimoog avait sa molette
+    /// de hauteur à gauche du clavier, et c'est l'un des rares gestes sans
+    /// lesquels un solo de cette machine ne ressemble à rien.
+    bool handleControlEvent(const vsm::audio::plugin::MidiControlEvent& event) override;
+
     void setParameter(vsm::audio::plugin::ParamId id, float value) override;
     float getParameter(vsm::audio::plugin::ParamId id) const override;
     const vsm::audio::plugin::ParameterList& parameterList() const override;
@@ -94,6 +101,8 @@ private:
     vsm::audio::dsp::ParameterSmoother pitchGlide_; // domaine "numéro de note" (demi-tons)
     vsm::audio::dsp::AnalogDrift pitchDrift_;
     vsm::audio::dsp::AnalogDrift cutoffDrift_;
+
+    std::atomic<float> bendSemitones_{0.0f};
 
     vsm::audio::engine::MonoVoiceAllocator voiceAllocator_;
     uint8_t currentVelocity_ = 100;

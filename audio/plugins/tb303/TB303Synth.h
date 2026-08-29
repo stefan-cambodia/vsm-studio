@@ -59,6 +59,11 @@ public:
     void process(const vsm::audio::plugin::MidiNoteEvent* events, int numEvents,
                  float* outputL, float* outputR, int numSamples) override;
 
+    /// Molette de hauteur, en demi-tons, ajoutée au numéro de note avant
+    /// conversion en hertz -- donc après le glide et la dérive, dans le même
+    /// domaine qu'eux.
+    bool handleControlEvent(const vsm::audio::plugin::MidiControlEvent& event) override;
+
     void setParameter(vsm::audio::plugin::ParamId id, float value) override;
     float getParameter(vsm::audio::plugin::ParamId id) const override;
     const vsm::audio::plugin::ParameterList& parameterList() const override;
@@ -70,6 +75,8 @@ public:
     int activeVoiceCount() const override;
 
 private:
+    std::atomic<float> bendSemitones_{0.0f};
+
     void applyNoteEvent(const vsm::audio::plugin::MidiNoteEvent& ev);
     vsm::audio::dsp::Waveform waveformFromParam() const;
 

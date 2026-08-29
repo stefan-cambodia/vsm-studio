@@ -40,4 +40,35 @@ struct MidiNoteEvent {
     uint8_t velocity = 100;
 };
 
+/// Tout ce qui n'est PAS une note : pitch bend, contrôleurs continus,
+/// pression, changement de programme.
+///
+/// POURQUOI UN TYPE SÉPARÉ PLUTÔT QUE DEUX VALEURS DE PLUS DANS
+/// `MidiNoteEvent::Kind`. Vingt-deux des trente-quatre machines dispatchent
+/// leurs événements ainsi :
+///
+///     if (kind == Kind::NoteOn && velocity > 0) { ...déclencher... }
+///     else                                      { ...relâcher...   }
+///
+/// Élargir l'énumération ferait donc RELÂCHER UNE NOTE à chaque contrôleur
+/// reçu, dans vingt-deux machines à la fois, et il aurait fallu les relire
+/// toutes pour s'en assurer. Un second flux, ignoré par défaut, ne peut pas
+/// être mal interprété : une machine qui ne l'implémente pas se comporte
+/// exactement comme avant, au bit près.
+///
+/// L'UNITÉ EST CELLE DU MUSICIEN, pas celle du câble. `value` porte des
+/// DEMI-TONS pour le pitch bend et une fraction de 0 à 1 pour le reste : une
+/// machine n'a pas à connaître les 14 bits signés du MIDI pour transposer.
+struct MidiControlEvent {
+    enum class Kind : uint8_t { PitchBend, ControlChange, ChannelPressure, PolyPressure, ProgramChange };
+    Kind kind = Kind::ControlChange;
+    int sampleOffset = 0;
+    uint8_t channel = 0;
+    /// Numéro de contrôleur (ControlChange), numéro de note (PolyPressure),
+    /// numéro de programme (ProgramChange). Inutilisé ailleurs.
+    uint8_t index = 0;
+    /// Demi-tons pour PitchBend ; 0..1 pour les contrôleurs et les pressions.
+    float value = 0.0f;
+};
+
 } // namespace vsm::audio::plugin

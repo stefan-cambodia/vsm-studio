@@ -133,7 +133,7 @@ void TB303Synth::process(const MidiNoteEvent* events, int numEvents,
 
         float noteNumber = pitchGlide_.nextValue();
         float pitchDriftSemis = pitchDrift_.nextValue() * kMaxPitchDriftSemitones;
-        float hz = 440.0f * std::exp2f((noteNumber + pitchDriftSemis - 69.0f) / 12.0f);
+        float hz = 440.0f * std::exp2f((noteNumber + pitchDriftSemis + bendSemitones_.load(std::memory_order_relaxed) - 69.0f) / 12.0f);
         osc_.setFrequency(hz);
 
         float raw = osc_.nextSample();
@@ -155,6 +155,12 @@ void TB303Synth::process(const MidiNoteEvent* events, int numEvents,
         outputL[i] = sample;
         outputR[i] = sample;
     }
+}
+
+bool TB303Synth::handleControlEvent(const MidiControlEvent& event) {
+    if (event.kind != MidiControlEvent::Kind::PitchBend) return false;
+    bendSemitones_.store(event.value, std::memory_order_relaxed);
+    return true;
 }
 
 void TB303Synth::setParameter(ParamId id, float value) {

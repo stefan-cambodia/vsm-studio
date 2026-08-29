@@ -99,6 +99,7 @@ if (VSM_BUILD_TESTS)
         tests/test_master_dsp.cpp
         tests/test_master_bus.cpp
         tests/test_oversampler.cpp
+        tests/test_control_events.cpp
         tests/test_effects.cpp
         tests/test_tr808_synth.cpp
         tests/test_tr909_synth.cpp

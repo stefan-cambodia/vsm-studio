@@ -6,6 +6,11 @@
 
 namespace vsm::audio::engine {
 
+/// Plage du pitch bend, en demi-tons pour l'excursion maximale. Deux demi-tons
+/// est la convention par défaut depuis la General MIDI ; une machine qui
+/// voudrait autre chose le fera dans son `handleControlEvent`, pas ici.
+constexpr float kPitchBendRangeSemitones = 2.0f;
+
 using namespace vsm::audio::plugin;
 using namespace vsm::sequencer;
 using namespace vsm::midi;
@@ -409,34 +414,90 @@ void ProcessGraph::renderTrackRange(const GraphSnapshot& snapshot, bool anySolo,
         for (const auto& ev : snapshot.schedule) {
             if (ev.trackIndex != trackIndex) continue;
             if (ev.timeSeconds < rangeStartSeconds || ev.timeSeconds >= rangeEndSeconds) continue;
-            if (numEvents >= kMaxEventsPerBlock) break;
+            if (numEvents >= kMaxEventsPerBlock) {
+                // PLUS DE `break` MUET. Le plafond existe pour garder le
+                // tableau de travail à taille fixe (le chemin temps réel
+                // n'alloue pas) ; le franchir reste possible, mais il n'est
+                // plus permis qu'une note disparaisse sans que rien ne le
+                // dise. Le compteur est lu par l'interface.
+                droppedNoteEvents_.fetch_add(1, std::memory_order_relaxed);
+                break;
+            }
 
             MidiNoteEvent pluginEvent;
+            MidiControlEvent controlEvent;
             int sampleOffset = static_cast<int>(std::llround((ev.timeSeconds - rangeStartSeconds) * sampleRate_));
             pluginEvent.sampleOffset = std::clamp(sampleOffset, 0, sampleCount - 1);
+            controlEvent.sampleOffset = pluginEvent.sampleOffset;
 
-            bool recognized = std::visit([&pluginEvent](auto&& data) -> bool {
+            // Trois issues, et plus seulement deux : une note, un contrôle, ou
+            // un méta-événement qui n'a rien à faire dans une machine (tempo,
+            // nom de piste...). La troisième est la SEULE qu'on ait le droit
+            // d'écarter sans le dire.
+            enum class Issue { Note, Control, NotForTheMachine };
+            const Issue issue = std::visit([&pluginEvent, &controlEvent](auto&& data) -> Issue {
                 using T = std::decay_t<decltype(data)>;
                 if constexpr (std::is_same_v<T, NoteOnEvent>) {
                     pluginEvent.kind = MidiNoteEvent::Kind::NoteOn;
                     pluginEvent.channel = data.channel;
                     pluginEvent.note = data.note;
                     pluginEvent.velocity = data.velocity;
-                    return true;
+                    return Issue::Note;
                 } else if constexpr (std::is_same_v<T, NoteOffEvent>) {
                     pluginEvent.kind = MidiNoteEvent::Kind::NoteOff;
                     pluginEvent.channel = data.channel;
                     pluginEvent.note = data.note;
                     pluginEvent.velocity = data.velocity;
-                    return true;
+                    return Issue::Note;
+                } else if constexpr (std::is_same_v<T, PitchBendEvent>) {
+                    // Converti en DEMI-TONS ici, une fois : une machine n'a pas
+                    // à connaître les 14 bits signés du MIDI. La plage est de
+                    // +/- 2 demi-tons, la convention par défaut de tous les
+                    // instruments depuis la General MIDI.
+                    controlEvent.kind = MidiControlEvent::Kind::PitchBend;
+                    controlEvent.channel = data.channel;
+                    controlEvent.value = static_cast<float>(data.value) / 8192.0f * kPitchBendRangeSemitones;
+                    return Issue::Control;
+                } else if constexpr (std::is_same_v<T, ControlChangeEvent>) {
+                    controlEvent.kind = MidiControlEvent::Kind::ControlChange;
+                    controlEvent.channel = data.channel;
+                    controlEvent.index = data.controller;
+                    controlEvent.value = static_cast<float>(data.value) / 127.0f;
+                    return Issue::Control;
+                } else if constexpr (std::is_same_v<T, ChannelPressureEvent>) {
+                    controlEvent.kind = MidiControlEvent::Kind::ChannelPressure;
+                    controlEvent.channel = data.channel;
+                    controlEvent.value = static_cast<float>(data.pressure) / 127.0f;
+                    return Issue::Control;
+                } else if constexpr (std::is_same_v<T, PolyPressureEvent>) {
+                    controlEvent.kind = MidiControlEvent::Kind::PolyPressure;
+                    controlEvent.channel = data.channel;
+                    controlEvent.index = data.note;
+                    controlEvent.value = static_cast<float>(data.pressure) / 127.0f;
+                    return Issue::Control;
+                } else if constexpr (std::is_same_v<T, ProgramChangeEvent>) {
+                    controlEvent.kind = MidiControlEvent::Kind::ProgramChange;
+                    controlEvent.channel = data.channel;
+                    controlEvent.index = data.program;
+                    return Issue::Control;
                 }
-                return false;
+                return Issue::NotForTheMachine;
             }, ev.data);
 
-            if (recognized) {
+            if (issue == Issue::Note) {
                 soundingNotes_[trackIndex][pluginEvent.note] =
                     (pluginEvent.kind == MidiNoteEvent::Kind::NoteOn);
                 scratchEvents_[static_cast<size_t>(numEvents++)] = pluginEvent;
+            } else if (issue == Issue::Control) {
+                // Livré TOUT DE SUITE : les contrôles ne passent pas par le
+                // tableau d'événements de note, dont le contrat (et les
+                // vingt-deux machines qui le lisent) ne connaît que NoteOn et
+                // NoteOff. La granularité est celle du sous-segment
+                // d'automation, ~1,3 ms, et c'est la même que celle des
+                // paramètres automatisés -- une machine ne peut donc pas voir
+                // ses deux sources de modulation se contredire.
+                if (!instrument->handleControlEvent(controlEvent))
+                    ignoredControlEvents_.fetch_add(1, std::memory_order_relaxed);
             }
         }
 

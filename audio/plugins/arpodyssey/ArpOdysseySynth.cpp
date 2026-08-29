@@ -149,8 +149,9 @@ void ArpOdysseySynth::process(const MidiNoteEvent* events, int numEvents,
         const float d1 = pitchDrift1_.nextValue() * kMaxPitchDriftSemitones;
         const float d2 = pitchDrift2_.nextValue() * kMaxPitchDriftSemitones;
 
-        const float hz1 = 440.0f * std::exp2f((note1 + d1 + vibratoSemis - 69.0f) / 12.0f);
-        const float hz2 = 440.0f * std::exp2f((note2 + vco2Detune + d2 + vibratoSemis - 69.0f) / 12.0f);
+        const float bend = bendSemitones_.load(std::memory_order_relaxed);
+        const float hz1 = 440.0f * std::exp2f((note1 + d1 + vibratoSemis + bend - 69.0f) / 12.0f);
+        const float hz2 = 440.0f * std::exp2f((note2 + vco2Detune + d2 + vibratoSemis + bend - 69.0f) / 12.0f);
 
         // VCO-2 d'abord (source de sync).
         vco2_.setFrequency(hz2);
@@ -188,6 +189,12 @@ void ArpOdysseySynth::process(const MidiNoteEvent* events, int numEvents,
         outputL[i] = sample;
         outputR[i] = sample;
     }
+}
+
+bool ArpOdysseySynth::handleControlEvent(const MidiControlEvent& event) {
+    if (event.kind != MidiControlEvent::Kind::PitchBend) return false;
+    bendSemitones_.store(event.value, std::memory_order_relaxed);
+    return true;
 }
 
 void ArpOdysseySynth::setParameter(ParamId id, float value) {

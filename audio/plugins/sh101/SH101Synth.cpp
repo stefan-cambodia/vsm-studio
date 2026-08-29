@@ -137,7 +137,7 @@ void SH101Synth::process(const MidiNoteEvent* events, int numEvents,
         const float noteNumber = pitchGlide_.nextValue();
         const float pitchDriftSemis = pitchDrift_.nextValue() * kMaxPitchDriftSemitones;
         const float vibratoSemis = lfo * lfoPitchAmt * kLfoPitchRangeSemitones;
-        const float baseHz = 440.0f * std::exp2f((noteNumber + pitchDriftSemis + vibratoSemis - 69.0f) / 12.0f);
+        const float baseHz = 440.0f * std::exp2f((noteNumber + pitchDriftSemis + vibratoSemis + bendSemitones_.load(std::memory_order_relaxed) - 69.0f) / 12.0f);
 
         const float pw = std::clamp(pwBase + lfo * pwmAmount * 0.45f, 0.05f, 0.95f);
 
@@ -175,6 +175,12 @@ void SH101Synth::process(const MidiNoteEvent* events, int numEvents,
         outputL[i] = sample;
         outputR[i] = sample;
     }
+}
+
+bool SH101Synth::handleControlEvent(const MidiControlEvent& event) {
+    if (event.kind != MidiControlEvent::Kind::PitchBend) return false;
+    bendSemitones_.store(event.value, std::memory_order_relaxed);
+    return true;
 }
 
 void SH101Synth::setParameter(ParamId id, float value) {
