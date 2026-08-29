@@ -19,7 +19,15 @@ endif()
 # résolveurs s'enchaînent au lieu de s'écraser.
 if (TARGET vsm_vst3_host)
     target_link_libraries(vsm-render PRIVATE vsm_vst3_host)
-    target_compile_definitions(vsm-render PRIVATE VSM_WITH_VST3=1)
+    target_compile_definitions(vsm-render PRIVATE
+        VSM_WITH_VST3=1
+        # `vsm-render` n'a par ailleurs rien de JUCE : il lui faut les mêmes
+        # renoncements que l'application, sans quoi JUCE va chercher un
+        # navigateur et curl dans un outil qui rend des WAV.
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1
+    )
 endif()
 
 # `vsm-sf2` convertit une banque SoundFont en profil pour vsm.multisample. Outil

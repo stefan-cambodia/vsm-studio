@@ -48,7 +48,28 @@ std::unique_ptr<IAudioEffect> EffectFactory::create(const std::string& id) {
     if (id == "delay") return std::make_unique<Delay>();
     if (id == "reverb") return std::make_unique<Reverb>();
     if (id == "tape") return std::make_unique<TapeSaturation>();
+    // PAS UN EFFET INTERNE : on demande aux couches d'hébergement, s'il y en a
+    // une de posée. Sans elles, on rend nullptr comme avant, et l'appelant
+    // signale un effet inconnu -- jamais ne le remplace par un autre.
+    if (const auto& externe = externalResolver()) return externe(id);
     return nullptr;
 }
+
+namespace {
+/// LA VARIABLE EST LOCALE À UNE FONCTION, pas statique de fichier : l'ordre
+/// d'initialisation des statiques entre unités de traduction n'est pas défini,
+/// et une couche d'hébergement qui se poserait avant `main` écrirait dans un
+/// objet pas encore construit.
+AudioEffectFactoryById& resolverSlot() {
+    static AudioEffectFactoryById resolver;
+    return resolver;
+}
+} // namespace
+
+void EffectFactory::setExternalResolver(AudioEffectFactoryById resolver) {
+    resolverSlot() = std::move(resolver);
+}
+
+const AudioEffectFactoryById& EffectFactory::externalResolver() { return resolverSlot(); }
 
 } // namespace vsm::audio::effect

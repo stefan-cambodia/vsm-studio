@@ -1,6 +1,7 @@
 #include "TestFramework.h"
 #include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/interchange/EffectDescription.h"
+#include "vsm/interchange/ProjectDocument.h"
 
 using namespace vsm::interchange;
 using vsm::audio::effect::EffectFactory;
@@ -113,4 +114,66 @@ VSM_TEST(the_channel_strip_effects_land_on_the_right_knobs_after_a_reload) {
     VSM_ASSERT_NEAR(cible->getParameter(2), 175.0f, 1e-5);
     VSM_ASSERT_NEAR(cible->getParameter(3), 640.0f, 1e-5);
     VSM_ASSERT_NEAR(cible->getParameter(4), -18.0f, 1e-5);
+}
+
+// --- D7.3 : l'état d'un effet tiers traverse le fichier de projet ----------
+//
+// Un effet interne se décrit entièrement par ses paramètres nommés. Un effet
+// tiers, non : il porte des réponses impulsionnelles, des courbes, des tables
+// que rien dans le vocabulaire sémantique ne désigne. Ce que ces tests gardent
+// est que le champ prévu pour cela VOYAGE -- et qu'un projet sans plugin tiers
+// n'en porte aucune trace.
+
+VSM_TEST(a_native_effect_declares_no_native_state) {
+    auto reverb = EffectFactory::create("reverb");
+    VSM_ASSERT(reverb != nullptr);
+    // Vide veut dire « mon son EST ma table de paramètres », et c'est une
+    // propriété des treize effets internes qu'on ne veut pas perdre.
+    VSM_ASSERT(describeEffect("reverb", *reverb).nativeState.empty());
+}
+
+VSM_TEST(a_third_party_effect_state_survives_the_project_json) {
+    vsm::sequencer::Project projet;
+    vsm::sequencer::Track piste;
+    piste.name = "Voix";
+    vsm::sequencer::TrackEffect insert;
+    insert.type = "vst3:/opt/plugins/Convolver.vst3#4242";
+    insert.parameters["mix"] = 0.35f;
+    insert.nativeState = "Zm9yZXQtZGUtcGllcnJlcw==";
+    piste.effects.push_back(std::move(insert));
+    projet.tracks.push_back(std::move(piste));
+
+    const std::string texte =
+        projectDocumentToJson(documentFromProject(projet)).toString();
+    const auto relu = parseProjectDocument(texte);
+    VSM_ASSERT(relu.success);
+
+    vsm::sequencer::Project rendu;
+    rendu.tracks.resize(1);
+    applyDocumentToProject(relu.document, rendu);
+    VSM_ASSERT_EQ(rendu.tracks.size(), static_cast<size_t>(1));
+    VSM_ASSERT_EQ(rendu.tracks[0].effects.size(), static_cast<size_t>(1));
+    const auto& retrouve = rendu.tracks[0].effects[0];
+    VSM_ASSERT_EQ(retrouve.type, std::string("vst3:/opt/plugins/Convolver.vst3#4242"));
+    VSM_ASSERT_EQ(retrouve.nativeState, std::string("Zm9yZXQtZGUtcGllcnJlcw=="));
+    // LES DEUX COHABITENT : l'état natif ne remplace pas les valeurs nommées,
+    // qui restent lisibles et applicables ailleurs.
+    VSM_ASSERT_NEAR(retrouve.parameters.at("mix"), 0.35f, 1e-6);
+}
+
+VSM_TEST(a_project_without_third_party_effects_writes_no_native_state_field) {
+    vsm::sequencer::Project projet;
+    vsm::sequencer::Track piste;
+    vsm::sequencer::TrackEffect insert;
+    insert.type = "reverb";
+    insert.parameters["reverb.1.mix"] = 0.2f;
+    piste.effects.push_back(std::move(insert));
+    projet.tracks.push_back(std::move(piste));
+
+    const std::string texte =
+        projectDocumentToJson(documentFromProject(projet)).toString();
+    // Le fichier d'un morceau qui n'emploie que des effets internes reste
+    // exactement celui qu'il était : un champ facultatif qui apparaîtrait quand
+    // même ferait diverger tous les projets existants pour rien.
+    VSM_ASSERT(texte.find("nativeState") == std::string::npos);
 }

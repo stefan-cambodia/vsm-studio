@@ -1,4 +1,5 @@
 #include "ClapPluginHost.h"
+#include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 
 #include <clap/clap.h>
@@ -141,6 +142,251 @@ struct OutputEvents {
     }
 };
 
+
+/// Flux d'écriture CLAP au-dessus d'une chaîne.
+struct StringOutStream {
+    clap_ostream stream{};
+    std::string* text = nullptr;
+};
+
+int64_t writeToString(const clap_ostream* stream, const void* buffer, uint64_t size) {
+    auto* holder = static_cast<const StringOutStream*>(stream->ctx);
+    holder->text->append(static_cast<const char*>(buffer), static_cast<size_t>(size));
+    return static_cast<int64_t>(size);
+}
+
+/// Flux de lecture CLAP au-dessus d'une chaîne.
+struct StringInStream {
+    clap_istream stream{};
+    const std::string* text = nullptr;
+    size_t position = 0;
+};
+
+int64_t readFromString(const clap_istream* stream, void* buffer, uint64_t size) {
+    auto* holder = static_cast<StringInStream*>(stream->ctx);
+    const size_t reste = holder->text->size() - holder->position;
+    const size_t lu = std::min(static_cast<size_t>(size), reste);
+    std::memcpy(buffer, holder->text->data() + holder->position, lu);
+    holder->position += lu;
+    return static_cast<int64_t>(lu);
+}
+
+/// POSE UN LOT DE VALEURS DE PARAMÈTRES sur un plugin CLAP, hors traitement.
+///
+/// CLAP ne permet pas d'écrire un paramètre autrement que par un événement ;
+/// `params->flush()` existe exactement pour cela. Écrit UNE FOIS et partagé par
+/// l'instrument et l'effet : deux copies de cette mécanique -- une quinzaine de
+/// lignes de remplissage de structures C -- finiraient par diverger sur un
+/// détail que rien ne signalerait.
+void flushParameterValues(const clap_plugin* plugin, const clap_plugin_params* params,
+                           std::map<vsm::audio::plugin::ParamId, float>& pending) {
+    if (!params || pending.empty()) return;
+
+    std::vector<clap_event_param_value> values(pending.size());
+    std::vector<const clap_event_header*> headers;
+    headers.reserve(pending.size());
+
+    size_t index = 0;
+    for (const auto& [id, value] : pending) {
+        clap_event_param_value& event = values[index];
+        std::memset(&event, 0, sizeof(event));
+        event.header.size = sizeof(clap_event_param_value);
+        event.header.time = 0;
+        event.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+        event.header.type = CLAP_EVENT_PARAM_VALUE;
+        event.param_id = id;
+        event.cookie = nullptr;
+        event.note_id = -1;
+        event.port_index = -1;
+        event.channel = -1;
+        event.key = -1;
+        event.value = static_cast<double>(value);
+        headers.push_back(&event.header);
+        ++index;
+    }
+
+    struct Bridge { const std::vector<const clap_event_header*>* headers; };
+    Bridge bridge{&headers};
+    clap_input_events input{};
+    input.ctx = &bridge;
+    input.size = [](const clap_input_events* self) -> uint32_t {
+        return static_cast<uint32_t>(static_cast<const Bridge*>(self->ctx)->headers->size());
+    };
+    input.get = [](const clap_input_events* self, uint32_t i) -> const clap_event_header* {
+        const auto* headerList = static_cast<const Bridge*>(self->ctx)->headers;
+        return i < headerList->size() ? (*headerList)[i] : nullptr;
+    };
+
+    OutputEvents out;
+    out.prepare();
+    params->flush(plugin, &input, &out.output);
+    pending.clear();
+}
+
+/// Un plugin CLAP présenté au moteur VSM comme un insert.
+///
+/// CE QUI LE DISTINGUE DE `ClapInstrument` EST L'ENTRÉE, et c'est tout le sujet
+/// de D7.3 : `audio_inputs` cesse d'être `nullptr`. Un hôte sans entrées donne
+/// un effet qui se charge, s'affiche, expose ses paramètres -- et rend du
+/// silence, ce qui ne ressemble à une panne qu'une fois qu'on l'écoute.
+class ClapEffect : public vsm::audio::effect::IAudioEffect {
+public:
+    ClapEffect(std::shared_ptr<LoadedModule> module, const clap_plugin* plugin, std::string name)
+        : module_(std::move(module)), plugin_(plugin), name_(std::move(name)) {}
+
+    ~ClapEffect() override {
+        if (!plugin_) return;
+        if (activated_) { plugin_->stop_processing(plugin_); plugin_->deactivate(plugin_); }
+        plugin_->destroy(plugin_);
+    }
+
+    void prepareExtensions() {
+        params_ = static_cast<const clap_plugin_params*>(
+            plugin_->get_extension(plugin_, CLAP_EXT_PARAMS));
+        state_ = static_cast<const clap_plugin_state*>(
+            plugin_->get_extension(plugin_, CLAP_EXT_STATE));
+        buildParameterList();
+    }
+
+    void prepare(double sampleRate, int maxBlockSize) override {
+        if (activated_) {
+            plugin_->stop_processing(plugin_);
+            plugin_->deactivate(plugin_);
+            activated_ = false;
+        }
+        const uint32_t frames = static_cast<uint32_t>(std::max(1, maxBlockSize));
+        if (!plugin_->activate(plugin_, sampleRate, 1, frames)) return;
+        plugin_->start_processing(plugin_);
+        activated_ = true;
+
+        events_.prepare(1);   // un effet ne reçoit pas de notes
+        outputs_.prepare();
+        // LE TAMPON D'ENTRÉE EST À NOUS. CLAP autorise le traitement en place,
+        // mais ne l'impose pas : un plugin qui écrit sa sortie sans lire
+        // l'entrée effacerait le signal avant de l'avoir vu. On lui donne donc
+        // deux tampons distincts, et on relit le sien.
+        entreeGauche_.assign(frames, 0.0f);
+        entreeDroite_.assign(frames, 0.0f);
+        maxFrames_ = frames;
+    }
+
+    void reset() override {
+        if (activated_) plugin_->reset(plugin_);
+    }
+
+    void process(float* left, float* right, int numSamples) override {
+        if (!activated_ || numSamples <= 0) return;
+        if (static_cast<uint32_t>(numSamples) > maxFrames_) return; // signal laissé INTACT
+
+        std::copy_n(left, numSamples, entreeGauche_.data());
+        std::copy_n(right, numSamples, entreeDroite_.data());
+        events_.clear();
+
+        float* canauxEntree[2] = { entreeGauche_.data(), entreeDroite_.data() };
+        float* canauxSortie[2] = { left, right };
+        clap_audio_buffer entree{};
+        entree.data32 = canauxEntree;
+        entree.channel_count = 2;
+        clap_audio_buffer sortie{};
+        sortie.data32 = canauxSortie;
+        sortie.channel_count = 2;
+
+        clap_process process{};
+        process.steady_time = steadyTime_;
+        process.frames_count = static_cast<uint32_t>(numSamples);
+        process.audio_inputs = &entree;
+        process.audio_inputs_count = 1;
+        process.audio_outputs = &sortie;
+        process.audio_outputs_count = 1;
+        process.in_events = &events_.input;
+        process.out_events = &outputs_.output;
+
+        const clap_process_status statut = plugin_->process(plugin_, &process);
+        steadyTime_ += numSamples;
+
+        // CLAP_PROCESS_ERROR : le plugin dit n'avoir rien produit. On laisse
+        // alors passer le signal d'origine plutôt que d'écrire ce qu'il a
+        // laissé dans le tampon -- qui peut être n'importe quoi.
+        if (statut == CLAP_PROCESS_ERROR) {
+            std::copy_n(entreeGauche_.data(), numSamples, left);
+            std::copy_n(entreeDroite_.data(), numSamples, right);
+        }
+    }
+
+    void setParameter(vsm::audio::plugin::ParamId id, float value) override {
+        if (!params_) return;
+        pendingValues_[id] = value;
+        flushPending();
+    }
+
+    float getParameter(vsm::audio::plugin::ParamId id) const override {
+        if (!params_) return 0.0f;
+        double value = 0.0;
+        if (params_->get_value(plugin_, id, &value)) return static_cast<float>(value);
+        const auto it = pendingValues_.find(id);
+        return it == pendingValues_.end() ? 0.0f : it->second;
+    }
+
+    const vsm::audio::plugin::ParameterList& parameterList() const override { return parameters_; }
+
+    const char* effectName() const override { return name_.c_str(); }
+
+    std::string saveNativeState() const override {
+        if (!state_) return {};
+        std::string texte;
+        StringOutStream flux;
+        flux.text = &texte;
+        flux.stream.ctx = &flux;
+        flux.stream.write = writeToString;
+        if (!state_->save(plugin_, &flux.stream)) return {};
+        return texte;
+    }
+
+    bool loadNativeState(const std::string& texte) override {
+        if (!state_ || texte.empty()) return false;
+        StringInStream flux;
+        flux.text = &texte;
+        flux.stream.ctx = &flux;
+        flux.stream.read = readFromString;
+        return state_->load(plugin_, &flux.stream);
+    }
+
+private:
+    void buildParameterList() {
+        parameters_.clear();
+        if (!params_) return;
+        const uint32_t count = params_->count(plugin_);
+        parameters_.reserve(count);
+        for (uint32_t i = 0; i < count; ++i) {
+            clap_param_info info{};
+            if (!params_->get_info(plugin_, i, &info)) continue;
+            vsm::audio::plugin::ParameterInfo entree;
+            entree.id = info.id;
+            entree.name = info.name;
+            entree.minValue = static_cast<float>(info.min_value);
+            entree.maxValue = static_cast<float>(info.max_value);
+            entree.defaultValue = static_cast<float>(info.default_value);
+            parameters_.push_back(std::move(entree));
+        }
+    }
+
+    void flushPending() { flushParameterValues(plugin_, params_, pendingValues_); }
+
+    std::shared_ptr<LoadedModule> module_;
+    const clap_plugin* plugin_ = nullptr;
+    std::string name_;
+    const clap_plugin_params* params_ = nullptr;
+    const clap_plugin_state* state_ = nullptr;
+    vsm::audio::plugin::ParameterList parameters_;
+    EventList events_;
+    OutputEvents outputs_;
+    std::vector<float> entreeGauche_, entreeDroite_;
+    std::map<vsm::audio::plugin::ParamId, float> pendingValues_;
+    uint32_t maxFrames_ = 0;
+    int64_t steadyTime_ = 0;
+    bool activated_ = false;
+};
+
 /// Un plugin CLAP présenté au moteur VSM comme n'importe quelle machine native.
 class ClapInstrument : public ISynthPlugin {
 public:
@@ -258,50 +504,7 @@ private:
         }
     }
 
-    void flushPending() const {
-        if (!params_ || pendingValues_.empty()) return;
-        EventList list;
-        list.prepare(pendingValues_.size() + 1);
-        std::vector<clap_event_param_value> values(pendingValues_.size());
-        std::vector<const clap_event_header*> headers;
-        headers.reserve(pendingValues_.size());
-
-        size_t index = 0;
-        for (const auto& [id, value] : pendingValues_) {
-            clap_event_param_value& event = values[index];
-            std::memset(&event, 0, sizeof(event));
-            event.header.size = sizeof(clap_event_param_value);
-            event.header.time = 0;
-            event.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
-            event.header.type = CLAP_EVENT_PARAM_VALUE;
-            event.param_id = id;
-            event.cookie = nullptr;
-            event.note_id = -1;
-            event.port_index = -1;
-            event.channel = -1;
-            event.key = -1;
-            event.value = static_cast<double>(value);
-            headers.push_back(&event.header);
-            ++index;
-        }
-
-        struct Bridge { const std::vector<const clap_event_header*>* headers; };
-        Bridge bridge{&headers};
-        clap_input_events input{};
-        input.ctx = &bridge;
-        input.size = [](const clap_input_events* self) -> uint32_t {
-            return static_cast<uint32_t>(static_cast<const Bridge*>(self->ctx)->headers->size());
-        };
-        input.get = [](const clap_input_events* self, uint32_t i) -> const clap_event_header* {
-            const auto* headerList = static_cast<const Bridge*>(self->ctx)->headers;
-            return i < headerList->size() ? (*headerList)[i] : nullptr;
-        };
-
-        OutputEvents out;
-        out.prepare();
-        params_->flush(plugin_, &input, &out.output);
-        pendingValues_.clear();
-    }
+    void flushPending() const { flushParameterValues(plugin_, params_, pendingValues_); }
 
     std::shared_ptr<LoadedModule> module_;
     const clap_plugin* plugin_ = nullptr;
@@ -352,6 +555,23 @@ const clap_host& minimalHost() {
 
 } // namespace
 
+namespace {
+
+/// INSTRUMENT OU EFFET, LU DANS CE QUE LE PLUGIN DÉCLARE (D7.3). CLAP ne
+/// répond pas à la question par un booléen : il publie une liste de
+/// « features », et c'est la présence de `instrument` qui tranche. Deviner
+/// d'après le nom, ou d'après le nombre de ports audio, marcherait la plupart
+/// du temps -- et c'est exactement ce qui rend une telle heuristique
+/// dangereuse : elle échouerait sur le plugin qu'on n'a pas essayé.
+bool declareUnInstrument(const clap_plugin_descriptor* descriptor) {
+    if (!descriptor || !descriptor->features) return false;
+    for (const char* const* f = descriptor->features; *f != nullptr; ++f)
+        if (std::strcmp(*f, CLAP_PLUGIN_FEATURE_INSTRUMENT) == 0) return true;
+    return false;
+}
+
+} // namespace
+
 std::vector<ClapPluginInfo> scanClapFile(const std::string& clapFilePath, std::string& outError) {
     std::vector<ClapPluginInfo> found;
     auto module = LoadedModule::load(clapFilePath, outError);
@@ -367,6 +587,7 @@ std::vector<ClapPluginInfo> scanClapFile(const std::string& clapFilePath, std::s
         info.name = descriptor->name ? descriptor->name : "";
         info.vendor = descriptor->vendor ? descriptor->vendor : "";
         info.version = descriptor->version ? descriptor->version : "";
+        info.isInstrument = declareUnInstrument(descriptor);
         found.push_back(std::move(info));
     }
     return found;
@@ -386,9 +607,30 @@ vsm::audio::plugin::SynthPluginPtr createClapInstrument(const std::string& clapF
     for (uint32_t i = 0; i < count && !chosen; ++i) {
         const clap_plugin_descriptor* descriptor = factory->get_plugin_descriptor(factory, i);
         if (!descriptor) continue;
-        if (pluginId.empty() || (descriptor->id && pluginId == descriptor->id)) chosen = descriptor;
+        if (!pluginId.empty()) {
+            if (descriptor->id && pluginId == descriptor->id) chosen = descriptor;
+            continue;
+        }
+        // SANS IDENTIFIANT, LE PREMIER **INSTRUMENT** (D7.3) : depuis qu'un
+        // `.clap` peut aussi contenir des effets, prendre le premier plugin
+        // venu poserait un effet sur une piste, qui resterait muette.
+        if (declareUnInstrument(descriptor)) chosen = descriptor;
     }
-    if (!chosen) { outError = "plugin \"" + pluginId + "\" absent de " + clapFilePath; return nullptr; }
+    if (!chosen) {
+        outError = pluginId.empty()
+                       ? "ce fichier ne contient aucun instrument CLAP (que des effets ?)"
+                       : "plugin \"" + pluginId + "\" absent de " + clapFilePath;
+        return nullptr;
+    }
+    if (!declareUnInstrument(chosen)) {
+        // UN EFFET N'EST PAS UN INSTRUMENT. Le poser sur une piste comme s'il
+        // en était un donnerait du silence : il attend un signal que personne
+        // ne lui donne. Les inserts, eux, l'accueillent (voir
+        // `createClapEffect`).
+        outError = std::string("« ") + (chosen->name ? chosen->name : "")
+                   + " » est un effet, pas un instrument : posez-le en insert";
+        return nullptr;
+    }
 
     const clap_plugin* plugin = factory->create_plugin(factory, &minimalHost(), chosen->id);
     if (!plugin) { outError = "instanciation refusée par le plugin"; return nullptr; }
@@ -405,35 +647,57 @@ vsm::audio::plugin::SynthPluginPtr createClapInstrument(const std::string& clapF
     return instrument;
 }
 
+vsm::audio::effect::AudioEffectPtr createClapEffect(const std::string& clapFilePath,
+                                                     const std::string& pluginId,
+                                                     std::string& outError) {
+    auto module = LoadedModule::load(clapFilePath, outError);
+    if (!module) return nullptr;
+
+    const clap_plugin_factory* factory = module->factory();
+    const uint32_t count = factory->get_plugin_count(factory);
+    if (count == 0) { outError = "aucun plugin dans " + clapFilePath; return nullptr; }
+
+    const clap_plugin_descriptor* chosen = nullptr;
+    for (uint32_t i = 0; i < count && !chosen; ++i) {
+        const clap_plugin_descriptor* descriptor = factory->get_plugin_descriptor(factory, i);
+        if (!descriptor) continue;
+        if (!pluginId.empty()) {
+            if (descriptor->id && pluginId == descriptor->id) chosen = descriptor;
+            continue;
+        }
+        // SANS IDENTIFIANT, LE PREMIER **EFFET** : un fichier qui commence par
+        // un instrument donnerait sinon un insert qui ignore le signal, donc
+        // une piste muette à expliquer à l'oreille.
+        if (!declareUnInstrument(descriptor)) chosen = descriptor;
+    }
+    if (!chosen) {
+        outError = pluginId.empty() ? "ce fichier ne contient aucun effet CLAP"
+                                    : "plugin \"" + pluginId + "\" absent de " + clapFilePath;
+        return nullptr;
+    }
+    if (declareUnInstrument(chosen)) {
+        outError = std::string("« ") + (chosen->name ? chosen->name : "")
+                   + " » est un instrument, pas un effet : il ne lirait pas le signal "
+                     "de la piste";
+        return nullptr;
+    }
+
+    const clap_plugin* plugin = factory->create_plugin(factory, &minimalHost(), chosen->id);
+    if (!plugin) { outError = "instanciation refusée par le plugin"; return nullptr; }
+    if (!plugin->init(plugin)) {
+        plugin->destroy(plugin);
+        outError = "init() du plugin a échoué";
+        return nullptr;
+    }
+
+    auto effet = std::make_unique<ClapEffect>(std::move(module), plugin,
+                                               chosen->name ? chosen->name : "CLAP");
+    effet->prepareExtensions();
+    return effet;
+}
+
 namespace {
 
-/// Flux d'écriture CLAP au-dessus d'une chaîne.
-struct StringOutStream {
-    clap_ostream stream{};
-    std::string* text = nullptr;
-};
-
-int64_t writeToString(const clap_ostream* stream, const void* buffer, uint64_t size) {
-    auto* holder = static_cast<const StringOutStream*>(stream->ctx);
-    holder->text->append(static_cast<const char*>(buffer), static_cast<size_t>(size));
-    return static_cast<int64_t>(size);
-}
-
-/// Flux de lecture CLAP au-dessus d'une chaîne.
-struct StringInStream {
-    clap_istream stream{};
-    const std::string* text = nullptr;
-    size_t position = 0;
-};
-
-int64_t readFromString(const clap_istream* stream, void* buffer, uint64_t size) {
-    auto* holder = static_cast<StringInStream*>(stream->ctx);
-    const size_t reste = holder->text->size() - holder->position;
-    const size_t lu = std::min(static_cast<size_t>(size), reste);
-    std::memcpy(buffer, holder->text->data() + holder->position, lu);
-    holder->position += lu;
-    return static_cast<int64_t>(lu);
-}
 
 const ClapInstrument* asClapInstrument(vsm::audio::plugin::ISynthPlugin& instrument,
                                         std::string& outError) {
@@ -534,6 +798,20 @@ void installClapResolver() {
             // machines partagent, pour un cas sur trente-cinq.
             std::string erreur;
             return createClapInstrument(chemin, pluginId, erreur);
+        });
+
+    // ET LA FABRIQUE D'EFFETS (D7.3), par le même mécanisme et avec le même
+    // enchaînement : un `clap:` demandé comme insert charge le fichier et en
+    // prend l'EFFET, là où le registre de machines en prend l'instrument.
+    auto precedentEffet = vsm::audio::effect::EffectFactory::externalResolver();
+    vsm::audio::effect::EffectFactory::setExternalResolver(
+        [precedentEffet](const std::string& id) -> vsm::audio::effect::AudioEffectPtr {
+            std::string chemin, pluginId;
+            if (parseClapInstrumentId(id, chemin, pluginId)) {
+                std::string erreur;
+                return createClapEffect(chemin, pluginId, erreur);
+            }
+            return precedentEffet ? precedentEffet(id) : nullptr;
         });
 }
 

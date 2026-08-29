@@ -242,8 +242,25 @@ struct Marker {
 /// suit la piste : la suppression n'a plus rien à recalculer, et le bug ne
 /// peut pas revenir par inadvertance.
 struct TrackEffect {
-    std::string type;                        ///< identifiant EffectFactory ("reverb"...)
+    /// Identifiant `EffectFactory` : « reverb » pour un effet interne, ou
+    /// `clap:<chemin>#<id>` / `vst3:<chemin>#<id>` pour un effet qu'on n'a pas
+    /// écrit (D7.3). Le champ ne change pas de nature : c'est toujours une
+    /// chaîne que la fabrique sait lire, et `core/` continue de n'y voir qu'un
+    /// nom.
+    std::string type;
     std::map<std::string, float> parameters; ///< nom de paramètre -> valeur en unités réelles
+
+    /// ÉTAT NATIF D'UN EFFET TIERS (D7.3), tel que
+    /// `IAudioEffect::saveNativeState()` le rend -- du texte, en pratique du
+    /// base64. VIDE pour les treize effets internes, dont le son EST leur table
+    /// de paramètres.
+    ///
+    /// Même raison que pour les instruments (voir `SynthPreset::nativeState`) :
+    /// un effet tiers porte des réponses impulsionnelles chargées, des courbes
+    /// dessinées, des tables apprises, que rien dans le vocabulaire sémantique
+    /// ne désigne. Sans ce champ, rouvrir un morceau rendrait une
+    /// réverbération à convolution muette, ou une autre pièce.
+    std::string nativeState;
 };
 
 /// Un point d'automation. `value` est en UNITÉS RÉELLES (Hz, secondes), jamais

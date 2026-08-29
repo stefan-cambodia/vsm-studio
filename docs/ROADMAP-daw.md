@@ -1735,7 +1735,7 @@ L'hôte CLAP existe (`clap/host/`). Le marché, lui, est en VST3.
 |---|---|---|
 | D7.1 | Lier l'hôte CLAP à l'application — il est écrit, testé, et non branché | un `.clap` tiers se charge sur une piste — **fait** |
 | D7.2 | Hôte VST3 pour les instruments, présenté comme `ISynthPlugin` | un instrument tiers joue et se sauvegarde dans le projet — **fait** |
-| D7.3 | **Entrées audio dans l'hôte** pour héberger des effets (CLAP comme VST3) | insérables au même titre que les natifs |
+| D7.3 | **Entrées audio dans l'hôte** pour héberger des effets (CLAP comme VST3) | insérables au même titre que les natifs — **fait** |
 | D7.4 | Interface native du plugin dans une fenêtre ; transport transmis au plugin | affichée, redimensionnable, fermable sans perte d'état ; un delay synchronisé au tempo suit le tempo |
 | D7.5 | Balayage des plugins installés en tâche de fond | plugin fautif isolé et signalé, jamais fatal |
 
@@ -1850,6 +1850,67 @@ la règle déjà tenue pour les instruments VSM manquants (P4/P7 de
 > parce qu'aucun format de plugin ne publie ce chiffre. Zéro se lit comme « pas
 > d'information » ; un chiffre inventé ferait mentir l'affichage de charge, qui
 > existe précisément pour dire quand une machine sature.
+
+
+> **D7.3 EST FAITE (30/08/2026). LA DIFFÉRENCE ENTRE UN INSTRUMENT ET UN EFFET
+> TIENT EN UN MOT : L'ENTRÉE.** Les deux hôtes passaient délibérément
+> `audio_inputs = nullptr` — un instrument reçoit des notes et rend du son.
+> Un effet reçoit du son. C'est tout ce que le titre de l'étape veut dire, et
+> c'est ce qui manquait.
+>
+> **CE QU'UN HÔTE SANS ENTRÉES PRODUIT** : un effet qui se charge, s'affiche,
+> expose ses paramètres et rend du silence. Rien là-dedans ne ressemble à une
+> panne tant qu'on ne l'écoute pas. C'est pourquoi les deux effets d'essai
+> construits par ce dépôt **inversent le signe** du signal, et pourquoi les
+> tests comparent à une valeur **attendue** plutôt qu'à « quelque chose de non
+> nul » : un effet qui rendrait du bruit, du silence, ou son entrée intacte
+> échoue les trois fois, là où un test de non-silence n'en attraperait qu'un.
+>
+> **« INSÉRABLES AU MÊME TITRE QUE LES NATIFS » A DÉCIDÉ DU MÉCANISME.**
+> `EffectFactory` reçoit le même crochet de résolveur que `PluginRegistry` en
+> D7.1 : un identifiant `clap:` ou `vst3:` demandé comme insert charge le
+> fichier. Un identifiant interne (« reverb ») et un identifiant de plugin
+> entrent donc par **la même porte**, et l'interface les ajoute par le même
+> chemin — un second bouton « ajouter un plugin » à côté de « ajouter un effet »
+> aurait suggéré deux mécanismes à tenir d'accord l'un avec l'autre. Ils
+> apparaissent dans le même menu, sous la même liste.
+>
+> **UN INSTRUMENT N'EST PAS UN EFFET, ET LE REFUS EST DIT DANS LES DEUX SENS.**
+> Poser un effet sur une piste lui ferait attendre un signal que personne ne lui
+> donne ; poser un instrument en insert lui ferait ignorer celui qu'on lui
+> donne. Les deux rendent une piste muette, et les deux se découvriraient à
+> l'oreille. Côté VST3 la distinction est lue dans la description du plugin ;
+> côté CLAP, dans les « features » qu'il déclare — **jamais** devinée du nom ni
+> du nombre de ports audio : une heuristique marcherait la plupart du temps, et
+> c'est précisément ce qui la rend dangereuse.
+>
+> **L'ÉTAT NATIF SUIT, POUR LA MÊME RAISON QU'EN D7.2.** Un effet tiers porte
+> des réponses impulsionnelles chargées, des courbes dessinées, des tables
+> apprises. `IAudioEffect` gagne donc `saveNativeState()` / `loadNativeState()`
+> — **vides pour les treize effets internes** — et `TrackEffect` un champ
+> facultatif, écrit seulement quand il existe : un projet qui n'emploie que des
+> effets internes garde **exactement** le fichier qu'il avait, ce qu'un test
+> vérifie.
+>
+> **DEUX PLUGINS D'ESSAI DE PLUS, CONSTRUITS PAR CE DÉPÔT.** L'adaptateur CLAP
+> n'expose que des instruments : l'hôte d'effets n'avait rien à héberger.
+> Dépendre d'un effet installé sur la machine rendrait le test vert ou rouge
+> selon l'ordinateur. Le circuit reste donc fermé des deux côtés.
+>
+> **UNE MÉCANIQUE ÉCRITE DEUX FOIS A ÉTÉ RAMENÉE À UNE.** Poser un lot de
+> valeurs de paramètres sur un plugin CLAP demande une quinzaine de lignes de
+> remplissage de structures C ; l'instrument et l'effet la partagent désormais,
+> plutôt que d'en garder deux copies qui auraient fini par diverger sur un
+> détail que rien n'aurait signalé.
+>
+> **UN PIÈGE DE CONSTRUCTION, ET SA RAISON.** Un module JUCE n'est pas une
+> bibliothèque compilée à part : c'est une cible INTERFACE qui **ajoute ses
+> sources** à chaque cible qui la lie. `vsm_vst3_host` en bibliothèque statique
+> emportait donc une copie complète de `juce_audio_processors`, et
+> l'application, qui lie `juce_audio_utils`, une seconde — « définitions
+> multiples » sur des centaines de symboles. La couche est passée en INTERFACE :
+> sa source est compilée **une fois**, par la cible finale, avec la seule copie
+> de JUCE qu'elle possède déjà.
 
 
 ### Phase D8 — Tenir la charge

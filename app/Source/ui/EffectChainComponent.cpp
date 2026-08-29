@@ -22,36 +22,71 @@ EffectChainComponent::EffectChainComponent() {
     int id = 1;
     for (const auto& info : EffectFactory::available())
         addBox_.addItem(juce::String(info.displayName), id++);
+    prochainIdMenu_ = id;
     addBox_.setTextWhenNothingSelected("choisir un effet");
     addBox_.onChange = [this] {
-        const int idx = addBox_.getSelectedItemIndex();
-        Chain* chain = activeChain();
-        auto* described = activeDescription();
-        if (idx < 0 || chain == nullptr || described == nullptr) {
-            addBox_.setSelectedId(0, juce::dontSendNotification); return;
-        }
-        const auto& info = EffectFactory::available()[static_cast<size_t>(idx)];
-        if (onEditStarted) onEditStarted("Ajouter un effet");
-        auto fx = EffectFactory::create(info.id);
-        if (fx) {
-            fx->prepare(sampleRate_, blockSize_);     // prepare AVANT publication (thread UI)
-            // La description et l'instance sont poussées ENSEMBLE : leurs deux
-            // vecteurs restent index pour index alignés, ce qui est la seule
-            // chose qui permette de retrouver le type d'un effet vivant.
-            described->push_back(describeEffect(info.id, *fx));
-            chain->push_back(std::move(fx));
-            selectedEffect_ = static_cast<int>(chain->size()) - 1;
-            publishActiveChain();
-            rebuildEffectList();
-            rebuildParamControls();
-        }
+        const int selection = addBox_.getSelectedId();
         addBox_.setSelectedId(0, juce::dontSendNotification);
+        if (selection <= 0) return;
+
+        if (selection == idMenuPlugin_ && pluginEffectChooser_) {
+            pluginEffectChooser_([this](std::string effectId) {
+                if (effectId.empty()) return;
+                if (onEditStarted) onEditStarted("Ajouter un effet");
+                addEffectById(effectId);
+            });
+            return;
+        }
+
+        const size_t idx = static_cast<size_t>(selection - 1);
+        if (idx >= EffectFactory::available().size()) return;
+        if (onEditStarted) onEditStarted("Ajouter un effet");
+        addEffectById(EffectFactory::available()[idx].id);
     };
     addAndMakeVisible(addBox_);
 
     paramHeader_.setColour(juce::Label::textColourId, Palette::textSecondary);
     paramHeader_.setFont(juce::Font(juce::FontOptions(11.0f).withStyle("Bold")));
     addAndMakeVisible(paramHeader_);
+}
+
+void EffectChainComponent::setPluginEffectChooser(
+    std::function<void(std::function<void(std::string)>)> chooser) {
+    pluginEffectChooser_ = std::move(chooser);
+    if (!pluginEffectChooser_ || idMenuPlugin_ != 0) return;
+    // D7.3 : LES EFFETS DES AUTRES, DANS LE MÊME MENU ET AU MÊME RANG. Un
+    // second bouton « ajouter un plugin » à côté de « ajouter un effet »
+    // suggérerait deux mécanismes ; il n'y en a qu'un, et « insérables au même
+    // titre que les natifs » veut dire exactement cela.
+    idMenuPlugin_ = prochainIdMenu_;
+    addBox_.addSeparator();
+    addBox_.addItem(juce::String(u8"Un plugin (.clap / .vst3)..."), idMenuPlugin_);
+}
+
+bool EffectChainComponent::addEffectById(const std::string& effectId) {
+    Chain* chain = activeChain();
+    auto* described = activeDescription();
+    if (chain == nullptr || described == nullptr) return false;
+
+    // LA MÊME FABRIQUE POUR TOUT LE MONDE. Un identifiant interne (« reverb »)
+    // et un identifiant de plugin (« vst3:... ») entrent par la même porte :
+    // c'est ce qui fait qu'un effet tiers est insérable « au même titre » qu'un
+    // natif, plutôt que par un chemin parallèle qu'il faudrait tenir d'accord
+    // avec le premier.
+    auto fx = EffectFactory::create(effectId);
+    if (!fx) return false;
+
+    fx->prepare(sampleRate_, blockSize_);     // prepare AVANT publication (thread UI)
+    // La description et l'instance sont poussées ENSEMBLE : leurs deux vecteurs
+    // restent index pour index alignés, ce qui est la seule chose qui permette
+    // de retrouver le type d'un effet vivant.
+    described->push_back(describeEffect(effectId, *fx));
+    chain->push_back(std::move(fx));
+    selectedEffect_ = static_cast<int>(chain->size()) - 1;
+    publishActiveChain();
+    rebuildEffectList();
+    rebuildParamControls();
+    return true;
 }
 
 EffectChainComponent::Chain* EffectChainComponent::activeChain() {

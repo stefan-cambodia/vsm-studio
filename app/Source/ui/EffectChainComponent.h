@@ -67,6 +67,27 @@ public:
     /// Publie la chaîne (immuable) de la piste au moteur.
     std::function<void(size_t trackIndex, std::shared_ptr<const Chain>)> onChainChanged;
 
+    /// D7.3 : LAISSE L'UTILISATEUR DÉSIGNER UN EFFET QU'ON N'A PAS ÉCRIT, et
+    /// rappelle avec son identifiant (`clap:...` ou `vst3:...`).
+    ///
+    /// UN RAPPEL PLUTÔT QU'UN APPEL DIRECT, pour deux raisons. Le choix d'un
+    /// fichier est ASYNCHRONE dans JUCE, donc il ne peut pas rendre une valeur.
+    /// Et cette vue ne doit rien savoir de CLAP ni de VST3 : elle demande « un
+    /// identifiant d'effet », l'application sait où les trouver. Non renseigné
+    /// quand aucune couche d'hébergement n'est compilée -- l'entrée de menu
+    /// n'apparaît alors pas, plutôt que d'apparaître et de ne rien faire.
+    ///
+    /// UN ACCESSEUR ET NON UN CHAMP PUBLIC : le menu est construit une fois, et
+    /// il doit apprendre l'entrée supplémentaire AU MOMENT où le rappel arrive
+    /// -- c'est-à-dire après le constructeur. Un champ nu se serait posé trop
+    /// tard, et l'entrée n'aurait jamais paru.
+    void setPluginEffectChooser(std::function<void(std::function<void(std::string)>)> chooser);
+
+    /// Ajoute un effet par son identifiant de fabrique, interne ou tiers.
+    /// Rend faux si la fabrique ne sait pas le construire -- l'appelant le DIT,
+    /// il ne le remplace jamais par un autre effet.
+    bool addEffectById(const std::string& effectId);
+
 private:
     void rebuildEffectList();
     void rebuildParamControls();
@@ -78,6 +99,13 @@ private:
     std::vector<vsm::sequencer::TrackEffect>* activeDescription();
     /// Fabrique une chaîne vivante à partir d'une description, prête à publier.
     Chain buildChain(const std::vector<vsm::sequencer::TrackEffect>& described) const;
+
+    std::function<void(std::function<void(std::string)>)> pluginEffectChooser_;
+    /// L'identifiant de menu de l'entrée « un plugin », ou 0 tant qu'elle
+    /// n'existe pas.
+    int idMenuPlugin_ = 0;
+    /// Le prochain identifiant de menu libre, calculé au constructeur.
+    int prochainIdMenu_ = 1;
 
     vsm::sequencer::Project* project_ = nullptr;
     int activeTrack_ = -1;

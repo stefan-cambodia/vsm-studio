@@ -167,6 +167,15 @@ MainComponent::MainComponent()
     // chaînes part alors vers le moteur au lieu de tomber dans le vide.
     effectChain_.setProject(&project_);
 
+#if VSM_WITH_CLAP || VSM_WITH_VST3
+    // D7.3 : LA VUE DEMANDE « UN IDENTIFIANT D'EFFET », L'APPLICATION SAIT OÙ
+    // LES TROUVER. `EffectChainComponent` ne connaît ni CLAP ni VST3 -- elle
+    // sait seulement que la fabrique acceptera ce qu'on lui rendra.
+    effectChain_.setPluginEffectChooser([this](std::function<void(std::string)> quandChoisi) {
+        chooseThirdPartyEffect(std::move(quandChoisi));
+    });
+#endif
+
     // Les bus de départ viennent désormais DU PROJET (D4.2) : voir
     // `applySendBuses`, appelée par `rebuildFromProject`. Le projet vide de
     // démarrage reçoit les deux qu'on veut neuf fois sur dix -- un mixeur sans
@@ -1162,6 +1171,71 @@ void MainComponent::loadClapPluginOnSelectedTrack() {
                        trouves[static_cast<size_t>(choix) - 1].name);
             }), false);
     });
+#endif
+}
+
+void MainComponent::chooseThirdPartyEffect(std::function<void(std::string)> quandChoisi) {
+#if VSM_WITH_CLAP || VSM_WITH_VST3
+    // UN SEUL SÉLECTEUR POUR LES DEUX FORMATS. Demander d'abord « CLAP ou
+    // VST3 ? » ferait choisir une technologie avant de choisir un son ; le
+    // filtre du sélecteur accepte les deux extensions, et c'est le fichier
+    // désigné qui décide.
+    auto chooser = std::make_shared<juce::FileChooser>(
+        u8"Choisir un effet (.clap ou .vst3)...", juce::File(), "*.clap;*.vst3");
+    chooser->launchAsync(juce::FileBrowserComponent::openMode
+                             | juce::FileBrowserComponent::canSelectFiles
+                             | juce::FileBrowserComponent::canSelectDirectories,
+                          [this, chooser, quandChoisi](const juce::FileChooser& fc) {
+        const juce::File fichier = fc.getResult();
+        if (fichier == juce::File()) return;
+        const std::string chemin = fichier.getFullPathName().toStdString();
+
+        // CE QUI DÉCIDE EST L'EXTENSION DU FICHIER, pas une question posée à
+        // l'utilisateur. Un `.vst3` est un VST3, un `.clap` est un CLAP, et
+        // aucun des deux ne se déguise en l'autre.
+        std::string erreur;
+        std::string identifiant;
+        juce::String nomAffiche;
+
+#if VSM_WITH_VST3
+        if (fichier.getFileName().endsWithIgnoreCase(".vst3")) {
+            for (const auto& info : vsm::vst3::scanVst3File(chemin, erreur)) {
+                if (info.isInstrument) continue;   // un instrument n'est pas un insert
+                identifiant = vsm::vst3::vst3InstrumentId(chemin, info.id);
+                nomAffiche = juce::String(info.name);
+                break;
+            }
+            if (identifiant.empty() && erreur.empty())
+                erreur = "ce fichier ne contient que des instruments : "
+                         "posez-le sur une piste, pas en insert";
+        }
+#endif
+#if VSM_WITH_CLAP
+        if (identifiant.empty() && fichier.getFileName().endsWithIgnoreCase(".clap")) {
+            for (const auto& info : vsm::clap::scanClapFile(chemin, erreur)) {
+                if (info.isInstrument) continue;
+                identifiant = vsm::clap::clapInstrumentId(chemin, info.id);
+                nomAffiche = juce::String(info.name);
+                break;
+            }
+            if (identifiant.empty() && erreur.empty())
+                erreur = "ce fichier ne contient que des instruments : "
+                         "posez-le sur une piste, pas en insert";
+        }
+#endif
+
+        if (identifiant.empty()) {
+            juce::AlertWindow::showMessageBoxAsync(
+                juce::AlertWindow::WarningIcon, u8"Effet illisible",
+                juce::String(u8"Aucun effet n'a pu être chargé depuis ce fichier.\n\n")
+                    + juce::String(erreur));
+            return;
+        }
+        juce::ignoreUnused(nomAffiche);
+        quandChoisi(identifiant);
+    });
+#else
+    juce::ignoreUnused(quandChoisi);
 #endif
 }
 

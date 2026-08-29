@@ -78,8 +78,14 @@ struct ProjectTransport {
 };
 
 struct ProjectEffect {
-    std::string type;                       ///< identifiant EffectFactory ("reverb"...)
+    /// Identifiant `EffectFactory` : « reverb », ou `clap:`/`vst3:` pour un
+    /// effet qu'on n'a pas écrit (D7.3).
+    std::string type;
     std::map<std::string, float> parameters; ///< semanticId -> valeur
+    /// État natif d'un effet tiers (D7.3), en texte. Vide pour les effets
+    /// internes ; écrit seulement quand il existe, si bien qu'un projet sans
+    /// plugin tiers garde exactement le fichier qu'il avait.
+    std::string nativeState;
 };
 
 /// Un point d'automation. `tick` est dans la résolution du transport (la même

@@ -3,6 +3,7 @@
 #include "vsm/audio/engine/OfflineRenderer.h"
 #include "vsm/audio/engine/ProcessGraph.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
+#include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include "vsm/interchange/ClapParameterIds.h"
 #include "vsm/interchange/SynthPreset.h"
@@ -378,4 +379,110 @@ VSM_TEST(a_missing_clap_file_is_reported_absent_and_never_substituted) {
     installClapResolver();
     auto& registre = vsm::audio::plugin::PluginRegistry::instance();
     VSM_ASSERT(registre.create(clapInstrumentId("/nulle/part/absent.clap", "quoi")) == nullptr);
+}
+
+// --- D7.3 : les entrées audio, donc les effets ------------------------------
+//
+// Ce que ces tests doivent prouver n'est pas « un effet se charge » mais qu'il
+// REÇOIT LE SIGNAL DE LA PISTE. Un hôte sans entrées produit un effet qui se
+// charge, s'affiche, expose ses paramètres et rend du silence -- et rien de
+// tout cela ne ressemble à une panne tant qu'on ne l'écoute pas. L'effet
+// d'essai construit par ce dépôt inverse le signe : une transformation qui ne
+// peut pas se produire par hasard.
+
+namespace {
+const char* effetDEssai() { return VSM_CLAP_TEST_EFFECT_PATH; }
+} // namespace
+
+VSM_TEST(a_clap_file_says_whether_it_holds_instruments_or_effects) {
+    std::string erreur;
+    const auto effets = scanClapFile(effetDEssai(), erreur);
+    VSM_ASSERT(!effets.empty());
+    VSM_ASSERT(!effets[0].isInstrument);
+
+    const auto instruments = scanClapFile(adapterPath(), erreur);
+    VSM_ASSERT(!instruments.empty());
+    // LA DISTINCTION EST LUE DANS LES « FEATURES » que le plugin déclare, pas
+    // devinée du nom ni du nombre de ports : une heuristique marcherait la
+    // plupart du temps, et c'est ce qui la rend dangereuse.
+    VSM_ASSERT(instruments[0].isInstrument);
+}
+
+VSM_TEST(a_third_party_clap_effect_reads_the_signal_it_is_given) {
+    std::string erreur;
+    auto effet = createClapEffect(effetDEssai(), "", erreur);
+    VSM_ASSERT(effet != nullptr);
+    VSM_ASSERT(erreur.empty());
+    effet->prepare(48000.0, 256);
+
+    std::vector<float> gauche(256, 0.5f), droite(256, -0.25f);
+    effet->process(gauche.data(), droite.data(), 256);
+
+    // Comparaison à une valeur ATTENDUE, pas à « quelque chose de non nul » :
+    // un effet qui rendrait du bruit, du silence, ou son entrée intacte
+    // échouerait tous les trois ici.
+    for (int i = 0; i < 256; ++i) {
+        VSM_ASSERT_NEAR(gauche[i], -0.5f, 1e-5);
+        VSM_ASSERT_NEAR(droite[i], 0.25f, 1e-5);
+    }
+}
+
+VSM_TEST(a_clap_instrument_is_refused_as_an_insert_and_the_other_way_round) {
+    std::string erreur;
+    VSM_ASSERT(createClapEffect(adapterPath(), "", erreur) == nullptr);
+    VSM_ASSERT(!erreur.empty());
+
+    erreur.clear();
+    VSM_ASSERT(createClapInstrument(effetDEssai(), "", erreur) == nullptr);
+    VSM_ASSERT(!erreur.empty());
+}
+
+VSM_TEST(a_clap_effect_parameter_reaches_the_plugin) {
+    std::string erreur;
+    auto effet = createClapEffect(effetDEssai(), "", erreur);
+    VSM_ASSERT(effet != nullptr);
+    effet->prepare(48000.0, 256);
+    VSM_ASSERT(!effet->parameterList().empty());
+
+    const auto id = effet->parameterList()[0].id;
+    effet->setParameter(id, 0.5f);
+    VSM_ASSERT_NEAR(effet->getParameter(id), 0.5f, 1e-5);
+
+    // ET LE SON SUIT. Un paramètre qu'on peut relire mais qui ne change rien
+    // n'a pas atteint le plugin ; c'est précisément ce que `params->flush()`
+    // existe pour éviter, et ce qu'un test de lecture seule ne verrait pas.
+    std::vector<float> gauche(64, 1.0f), droite(64, 1.0f);
+    effet->process(gauche.data(), droite.data(), 64);
+    for (int i = 0; i < 64; ++i) VSM_ASSERT_NEAR(gauche[i], -0.5f, 1e-5);
+}
+
+VSM_TEST(a_clap_effects_state_survives_and_the_sound_follows) {
+    std::string erreur;
+    auto original = createClapEffect(effetDEssai(), "", erreur);
+    VSM_ASSERT(original != nullptr);
+    original->prepare(48000.0, 64);
+    original->setParameter(1, 0.25f);
+
+    const std::string etat = original->saveNativeState();
+    VSM_ASSERT(!etat.empty());
+
+    auto rouvert = createClapEffect(effetDEssai(), "", erreur);
+    VSM_ASSERT(rouvert != nullptr);
+    rouvert->prepare(48000.0, 64);
+    VSM_ASSERT(rouvert->loadNativeState(etat));
+
+    std::vector<float> gauche(64, 1.0f), droite(64, 1.0f);
+    rouvert->process(gauche.data(), droite.data(), 64);
+    for (int i = 0; i < 64; ++i) VSM_ASSERT_NEAR(gauche[i], -0.25f, 1e-5);
+}
+
+VSM_TEST(the_effect_factory_loads_a_clap_once_the_resolver_is_installed) {
+    installClapResolver();
+    auto effet = vsm::audio::effect::EffectFactory::create(clapInstrumentId(effetDEssai(), ""));
+    VSM_ASSERT(effet != nullptr);
+
+    // ET LES EFFETS INTERNES RÉPONDENT TOUJOURS : poser un résolveur ne doit
+    // rien retirer à ce qui marchait avant lui.
+    VSM_ASSERT(vsm::audio::effect::EffectFactory::create("delay") != nullptr);
+    VSM_ASSERT(vsm::audio::effect::EffectFactory::create("pas-un-effet") == nullptr);
 }

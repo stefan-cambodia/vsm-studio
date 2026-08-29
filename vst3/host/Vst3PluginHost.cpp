@@ -1,4 +1,5 @@
 #include "Vst3PluginHost.h"
+#include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -274,6 +275,134 @@ private:
     size_t enAttente_ = 0;
 };
 
+
+/// Un effet VST3 présenté comme un insert VSM.
+///
+/// CE QUI LE DISTINGUE DE `Vst3Instrument` EST L'ENTRÉE, et c'est tout le sujet
+/// de D7.3. Le tampon qu'on donne au plugin est REMPLI du signal de la piste
+/// avant l'appel, et relu après : un effet qui recevrait du silence rendrait du
+/// silence, ce qui est exactement la panne qu'un hôte sans entrées produit.
+class Vst3Effect final : public vsm::audio::effect::IAudioEffect {
+public:
+    Vst3Effect(std::unique_ptr<juce::AudioPluginInstance> instance, std::string nom)
+        : instance_(std::move(instance)), nom_(std::move(nom)) {}
+
+    ~Vst3Effect() override {
+        if (instance_) instance_->releaseResources();
+    }
+
+    void prepare(double sampleRate, int maxBlockSize) override {
+        if (!instance_) return;
+        maxBloc_ = std::max(1, maxBlockSize);
+
+        // ASSEZ DE CANAUX POUR L'ENTRÉE **ET** LA SORTIE. JUCE traite en place :
+        // un même tampon porte les deux, et le dimensionner sur la seule sortie
+        // tronquerait l'entrée d'un plugin qui en demande plus (une chaîne
+        // latérale, par exemple).
+        const int canaux = std::max({2, instance_->getTotalNumInputChannels(),
+                                      instance_->getTotalNumOutputChannels()});
+        tampon_.setSize(canaux, maxBloc_, false, true, false);
+        midi_.ensureSize(256);
+
+        instance_->setNonRealtime(false);
+        instance_->setRateAndBufferSizeDetails(sampleRate, maxBloc_);
+        instance_->prepareToPlay(sampleRate, maxBloc_);
+
+        parametres_.clear();
+        const auto& params = instance_->getParameters();
+        parametres_.reserve(static_cast<size_t>(params.size()));
+        for (int i = 0; i < params.size(); ++i) {
+            vsm::audio::plugin::ParameterInfo info;
+            info.id = static_cast<ParamId>(i);
+            info.name = params[i]->getName(64).toStdString();
+            info.minValue = 0.0f;
+            info.maxValue = 1.0f;
+            info.defaultValue = params[i]->getDefaultValue();
+            info.unit = params[i]->getLabel().toStdString();
+            parametres_.push_back(std::move(info));
+        }
+    }
+
+    void reset() override {
+        if (instance_) instance_->reset();
+    }
+
+    void process(float* left, float* right, int numSamples) override {
+        if (!instance_ || numSamples <= 0) return;
+        if (numSamples > maxBloc_) return; // on laisse passer le signal INTACT
+
+        tampon_.setSize(tampon_.getNumChannels(), numSamples, false, false, true);
+        tampon_.clear();
+        // L'ENTRÉE, LA VOICI. Un effet mono ne reçoit que le canal gauche ; le
+        // faire, c'est mieux que de lui donner un canal muet et de se demander
+        // ensuite pourquoi il ne réagit pas.
+        std::copy_n(left, numSamples, tampon_.getWritePointer(0));
+        if (tampon_.getNumChannels() > 1)
+            std::copy_n(right, numSamples, tampon_.getWritePointer(1));
+
+        midi_.clear();
+        instance_->processBlock(tampon_, midi_);
+
+        const int canaux = tampon_.getNumChannels();
+        std::copy_n(tampon_.getReadPointer(0), numSamples, left);
+        // UN EFFET MONO REND LE MÊME SIGNAL DES DEUX CÔTÉS plutôt que de laisser
+        // la droite intacte : garder l'original à droite et le traité à gauche
+        // donnerait une image stéréo que personne n'a demandée.
+        std::copy_n(tampon_.getReadPointer(canaux > 1 ? 1 : 0), numSamples, right);
+    }
+
+    void setParameter(ParamId id, float value) override {
+        if (!instance_) return;
+        const auto& params = instance_->getParameters();
+        if (static_cast<int>(id) >= params.size()) return;
+        params[static_cast<int>(id)]->setValue(std::clamp(value, 0.0f, 1.0f));
+    }
+
+    float getParameter(ParamId id) const override {
+        if (!instance_) return 0.0f;
+        const auto& params = instance_->getParameters();
+        if (static_cast<int>(id) >= params.size()) return 0.0f;
+        return params[static_cast<int>(id)]->getValue();
+    }
+
+    const vsm::audio::plugin::ParameterList& parameterList() const override { return parametres_; }
+
+    const char* effectName() const override { return nom_.c_str(); }
+
+    /// LE RETARD EST DEMANDÉ AU PLUGIN, pas supposé nul. Sans cela, insérer un
+    /// égaliseur à phase linéaire décalerait la piste sans que rien ne le dise
+    /// -- exactement la panne que D4.5 a corrigée pour les effets internes.
+    int latencySamples() const override {
+        return instance_ ? instance_->getLatencySamples() : 0;
+    }
+
+    std::string saveNativeState() const override {
+        if (!instance_) return {};
+        juce::MemoryBlock octets;
+        instance_->getStateInformation(octets);
+        if (octets.getSize() == 0) return {};
+        return juce::Base64::toBase64(octets.getData(), octets.getSize()).toStdString();
+    }
+
+    bool loadNativeState(const std::string& texte) override {
+        if (!instance_ || texte.empty()) return false;
+        juce::MemoryOutputStream flux;
+        if (!juce::Base64::convertFromBase64(flux, juce::String(texte))) return false;
+        instance_->setStateInformation(flux.getData(), static_cast<int>(flux.getDataSize()));
+        return true;
+    }
+
+private:
+    std::unique_ptr<juce::AudioPluginInstance> instance_;
+    std::string nom_;
+    juce::AudioBuffer<float> tampon_;
+    /// VIDE, ET PRÉSENT QUAND MÊME : `processBlock` en exige un, et le
+    /// réallouer à chaque bloc serait une allocation sur le thread audio.
+    juce::MidiBuffer midi_;
+    vsm::audio::plugin::ParameterList parametres_;
+    int maxBloc_ = 512;
+};
+
 } // namespace
 
 std::vector<Vst3PluginInfo> scanVst3File(const std::string& vst3Path, std::string& outError) {
@@ -355,6 +484,54 @@ vsm::audio::plugin::SynthPluginPtr createVst3Instrument(const std::string& vst3P
     return std::make_shared<Vst3Instrument>(std::move(instance), choisi->name.toStdString());
 }
 
+vsm::audio::effect::AudioEffectPtr createVst3Effect(const std::string& vst3Path,
+                                                     const std::string& pluginId,
+                                                     std::string& outError) {
+    ensureJuceIsUp();
+    outError.clear();
+
+    juce::OwnedArray<juce::PluginDescription> trouves;
+    format().findAllTypesForFile(trouves, juce::String(vst3Path));
+    if (trouves.isEmpty()) {
+        outError = "aucun plugin VST3 dans « " + vst3Path + " »";
+        return nullptr;
+    }
+
+    const juce::PluginDescription* choisi = nullptr;
+    for (const auto* description : trouves) {
+        if (!pluginId.empty()) {
+            if (identifiantDe(*description) == pluginId) { choisi = description; break; }
+            continue;
+        }
+        // SANS IDENTIFIANT, LE PREMIER **EFFET** -- symétrique de ce que fait
+        // `createVst3Instrument`, et pour la même raison : un fichier qui
+        // commence par un instrument donnerait sinon un insert qui ignore le
+        // signal, donc une piste muette à expliquer à l'oreille.
+        if (!description->isInstrument) { choisi = description; break; }
+    }
+    if (choisi == nullptr) {
+        outError = pluginId.empty()
+                       ? "ce fichier ne contient aucun effet VST3 (que des instruments ?)"
+                       : "aucun plugin d'identifiant « " + pluginId + " » dans ce fichier";
+        return nullptr;
+    }
+    if (choisi->isInstrument) {
+        outError = "« " + choisi->name.toStdString()
+                   + " » est un instrument, pas un effet : il ne lirait pas le signal "
+                     "de la piste";
+        return nullptr;
+    }
+
+    juce::String erreur;
+    auto instance = format().createInstanceFromDescription(*choisi, 48000.0, 512, erreur);
+    if (!instance) {
+        outError = erreur.isEmpty() ? std::string("instanciation refusée par le plugin")
+                                    : erreur.toStdString();
+        return nullptr;
+    }
+    return std::make_unique<Vst3Effect>(std::move(instance), choisi->name.toStdString());
+}
+
 std::string vst3InstrumentId(const std::string& vst3Path, const std::string& pluginId) {
     return std::string(kPrefix) + vst3Path + "#" + pluginId;
 }
@@ -393,6 +570,20 @@ void installVst3Resolver() {
                 return createVst3Instrument(chemin, pluginId, erreur);
             }
             return precedent ? precedent(id) : nullptr;
+        });
+
+    // ET LA FABRIQUE D'EFFETS (D7.3), par le même mécanisme et avec le même
+    // enchaînement : un `vst3:` demandé comme insert charge le fichier et en
+    // prend l'EFFET, là où le registre de machines en prend l'instrument.
+    auto precedentEffet = vsm::audio::effect::EffectFactory::externalResolver();
+    vsm::audio::effect::EffectFactory::setExternalResolver(
+        [precedentEffet](const std::string& id) -> vsm::audio::effect::AudioEffectPtr {
+            std::string chemin, pluginId;
+            if (parseVst3InstrumentId(id, chemin, pluginId)) {
+                std::string erreur;
+                return createVst3Effect(chemin, pluginId, erreur);
+            }
+            return precedentEffet ? precedentEffet(id) : nullptr;
         });
 }
 

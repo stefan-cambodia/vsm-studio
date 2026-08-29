@@ -1,4 +1,5 @@
 #pragma once
+#include "vsm/audio/effect/IAudioEffect.h"
 #include "vsm/audio/plugin/ISynthPlugin.h"
 #include <string>
 #include <vector>
@@ -45,6 +46,23 @@ struct Vst3PluginInfo {
 /// doit jamais faire tomber l'application qui le scanne.
 std::vector<Vst3PluginInfo> scanVst3File(const std::string& vst3Path, std::string& outError);
 
+/// Instancie un EFFET d'un fichier `.vst3` et l'expose comme insert VSM (D7.3).
+/// `pluginId` vide = le premier effet du fichier.
+///
+/// LA DIFFÉRENCE AVEC UN INSTRUMENT TIENT EN UN MOT : L'ENTRÉE. Un instrument
+/// reçoit des notes et rend du son ; un effet reçoit du son et en rend. C'est
+/// tout ce que « entrées audio dans l'hôte » veut dire, et c'est ce qui
+/// manquait -- l'hôte des instruments passait délibérément `audio_inputs =
+/// nullptr`.
+///
+/// Renvoie nullptr et remplit `outError` en cas d'échec, notamment si le plugin
+/// demandé est un INSTRUMENT : le poser dans une chaîne d'inserts le ferait
+/// ignorer le signal qu'on lui donne, et la piste deviendrait muette sans que
+/// rien ne l'explique.
+vsm::audio::effect::AudioEffectPtr createVst3Effect(const std::string& vst3Path,
+                                                     const std::string& pluginId,
+                                                     std::string& outError);
+
 /// Instancie un instrument d'un fichier `.vst3` et l'expose comme machine VSM.
 /// `pluginId` vide = le premier instrument du fichier.
 /// Renvoie nullptr et remplit `outError` en cas d'échec.
@@ -71,8 +89,14 @@ std::string vst3InstrumentId(const std::string& vst3Path, const std::string& plu
 bool parseVst3InstrumentId(const std::string& instrumentId, std::string& outPath,
                             std::string& outPluginId);
 
-/// Branche la couche VST3 dans le registre de machines : tout identifiant
-/// `vst3:...` demandé à `PluginRegistry::create` charge alors le fichier.
+/// Branche la couche VST3 dans le registre de machines ET dans la fabrique
+/// d'effets : tout identifiant `vst3:...` demandé à `PluginRegistry::create` ou
+/// à `EffectFactory::create` charge alors le fichier.
+///
+/// LE MÊME IDENTIFIANT SERT AUX DEUX, et ce n'est pas ambigu : un fichier
+/// `.vst3` dit lui-même de quoi il est fait, et on ne demande jamais un effet
+/// au registre des machines ni l'inverse. Deux formes d'identifiant auraient
+/// obligé l'utilisateur à savoir laquelle écrire.
 ///
 /// COHABITE AVEC CELUI DE CLAP. Le registre n'accepte qu'un résolveur ; celui
 /// que pose cette fonction essaie d'abord le sien, puis passe la main à celui

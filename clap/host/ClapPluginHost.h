@@ -1,4 +1,5 @@
 #pragma once
+#include "vsm/audio/effect/IAudioEffect.h"
 #include "vsm/audio/plugin/ISynthPlugin.h"
 #include <memory>
 #include <string>
@@ -26,6 +27,11 @@ struct ClapPluginInfo {
     std::string name;
     std::string vendor;
     std::string version;
+    /// VRAI pour un instrument, faux pour un effet (D7.3). Lu dans les
+    /// « features » que le plugin déclare, jamais deviné de son nom : poser un
+    /// effet là où une piste attend un instrument -- ou l'inverse -- donnerait
+    /// une piste muette qu'il faudrait expliquer à l'oreille.
+    bool isInstrument = false;
 };
 
 /// Liste les plugins contenus dans un fichier `.clap` (un fichier peut en
@@ -43,6 +49,20 @@ std::vector<ClapPluginInfo> scanClapFile(const std::string& clapFilePath, std::s
 vsm::audio::plugin::SynthPluginPtr createClapInstrument(const std::string& clapFilePath,
                                                          const std::string& pluginId,
                                                          std::string& outError);
+
+/// Instancie un EFFET d'un fichier `.clap` et l'expose comme insert VSM (D7.3).
+/// `pluginId` vide = le premier effet du fichier.
+///
+/// LA DIFFÉRENCE AVEC UN INSTRUMENT TIENT EN UN MOT : L'ENTRÉE. L'hôte des
+/// instruments passe délibérément `audio_inputs = nullptr` ; celui-ci donne au
+/// plugin le signal de la piste, et relit ce qu'il en a fait. C'est tout ce que
+/// « entrées audio dans l'hôte » veut dire.
+///
+/// Renvoie nullptr et remplit `outError` si le plugin demandé est un
+/// instrument : il ignorerait le signal, et la piste deviendrait muette.
+vsm::audio::effect::AudioEffectPtr createClapEffect(const std::string& clapFilePath,
+                                                     const std::string& pluginId,
+                                                     std::string& outError);
 
 /// Lit l'ÉTAT NATIF d'un plugin CLAP chargé par `createClapInstrument`.
 ///
@@ -88,8 +108,13 @@ std::string clapInstrumentId(const std::string& clapFilePath, const std::string&
 bool parseClapInstrumentId(const std::string& instrumentId, std::string& outFilePath,
                             std::string& outPluginId);
 
-/// Branche la couche CLAP dans le registre de machines : tout identifiant
-/// `clap:...` demandé à `PluginRegistry::create` charge alors le fichier.
+/// Branche la couche CLAP dans le registre de machines ET dans la fabrique
+/// d'effets : tout identifiant `clap:...` demandé à `PluginRegistry::create` ou
+/// à `EffectFactory::create` charge alors le fichier.
+///
+/// LE MÊME IDENTIFIANT SERT AUX DEUX, et ce n'est pas ambigu : un `.clap` dit
+/// lui-même de quoi il est fait, et on ne demande jamais un effet au registre
+/// des machines ni l'inverse.
 ///
 /// À APPELER UNE FOIS, au démarrage d'un programme qui veut des plugins tiers
 /// (l'application, `vsm-render`). Sans cet appel, rien ne change : les

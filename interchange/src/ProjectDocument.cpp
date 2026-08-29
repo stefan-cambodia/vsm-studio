@@ -185,6 +185,7 @@ ProjectDocument documentFromProject(const Project& project) {
             ProjectEffect described;
             described.type = effect.type;
             described.parameters = effect.parameters;
+            described.nativeState = effect.nativeState;
             entry.effects.push_back(std::move(described));
         }
         entry.outputGroup = track.outputGroup;
@@ -326,7 +327,7 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         // et les lui retirer au chargement serait une perte silencieuse.
         target.effects.clear();
         for (const auto& effect : source.effects)
-            target.effects.push_back({effect.type, effect.parameters});
+            target.effects.push_back({effect.type, effect.parameters, effect.nativeState});
         target.kind = source.kind == "audio"  ? Track::Kind::Audio
                     : source.kind == "group"  ? Track::Kind::Group
                                                : Track::Kind::Midi;
@@ -543,6 +544,11 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
             for (const auto& [semanticId, value] : effect.parameters)
                 parameters.set(semanticId, JsonValue::makeFloat(value));
             fx.set("parameters", std::move(parameters));
+            // ÉCRIT SEULEMENT S'IL EXISTE : c'est le seul champ illisible du
+            // fichier, et un projet sans plugin tiers n'a aucune raison d'en
+            // porter la trace.
+            if (!effect.nativeState.empty())
+                fx.set("nativeState", JsonValue::makeString(effect.nativeState));
             effects.append(std::move(fx));
         }
         entry.set("effects", std::move(effects));
@@ -751,6 +757,7 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
             effect.type = fx["type"].asString();
             for (const auto& [semanticId, value] : fx["parameters"].members())
                 if (value.isNumber()) effect.parameters[semanticId] = static_cast<float>(value.asNumber());
+            if (fx["nativeState"].isString()) effect.nativeState = fx["nativeState"].asString();
             if (!effect.type.empty()) track.effects.push_back(std::move(effect));
         }
 

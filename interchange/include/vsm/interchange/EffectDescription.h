@@ -35,6 +35,11 @@ struct EffectApplyReport {
     /// ignorés en silence : c'est le signe d'un projet écrit par une version
     /// différente, et l'utilisateur doit pouvoir l'apprendre.
     std::vector<std::string> unknownParameters;
+    /// D7.3 : l'état natif d'un effet tiers a-t-il été reposé ? Faux quand il
+    /// n'y en avait pas -- et aussi quand l'effet l'a REFUSÉ, ce que l'appelant
+    /// doit signaler : un état refusé laisse l'effet sur d'autres réglages,
+    /// donc sur un autre son.
+    bool nativeStateApplied = false;
 };
 
 /// Repose une description sur un effet vivant. L'effet doit être du type

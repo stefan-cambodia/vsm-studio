@@ -30,8 +30,8 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **1118 tests moteur** (160 core + 763 audio
-+ 160 interchange + 15 CLAP + 9 VST3 + 11 façades,
+écoute au clic, et toute la logique testée hors JUCE. Total : **1132 tests moteur** (160 core + 763 audio
++ 163 interchange + 21 CLAP + 14 VST3 + 11 façades,
 tous verts, zéro warning, y compris sous les flags stricts type-JUCE
 `-Wfloat-equal -Wsign-conversion -Wshadow`) + application complète compilée et
 liée. Rendus réels vérifiables : `minimoog_demo.wav`,
@@ -1087,6 +1087,17 @@ c'est une propriété qu'on ne voulait pas perdre. L'état natif est du **texte*
 n'a pas à apprendre à manipuler des octets pour une famille de machines sur
 trente-cinq. Il **s'ajoute** aux valeurs sémantiques, ne les remplace pas, et ne
 se repose jamais sur une autre machine que la sienne -- le refus est dit.
+
+**Les effets tiers passent par le même crochet, sur `EffectFactory` (D7.3).**
+La seule différence entre héberger un instrument et héberger un effet est
+l'ENTRÉE : les deux hôtes passaient `audio_inputs = nullptr`, ce qui donnait un
+effet qui se charge, s'affiche, expose ses paramètres et rend du silence. Un
+identifiant `clap:`/`vst3:` demandé comme insert charge désormais le fichier et
+en prend l'effet, là où le registre des machines en prend l'instrument -- même
+identifiant, et aucune ambiguïté puisqu'on ne demande jamais un effet au
+registre des machines ni l'inverse. Poser un instrument en insert, ou un effet
+sur une piste, est **refusé et dit** : les deux rendraient la piste muette, et
+les deux se découvriraient à l'oreille.
 
 **JUCE fait le travail d'hôte, et n'exige aucun téléchargement de plus** : JUCE 8
 embarque le SDK VST3. `JUCE_PLUGINHOST_VST3=1` est obligatoire et vérifié par un

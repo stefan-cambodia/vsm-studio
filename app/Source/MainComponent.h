@@ -297,6 +297,8 @@ private:
     void loadClapPluginOnSelectedTrack();
     /// D7.2 : charger un instrument VST3 tiers sur la piste sélectionnée.
     void loadVst3PluginOnSelectedTrack();
+    /// D7.3 : laisse choisir un EFFET tiers et rend son identifiant de fabrique.
+    void chooseThirdPartyEffect(std::function<void(std::string)> quandChoisi);
 
     void exportAudioFile();
     /// Un WAV par piste (D6.2).

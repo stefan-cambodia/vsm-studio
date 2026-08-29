@@ -58,6 +58,19 @@ else()
 endif()
 
 if (VSM_BUILD_TESTS)
+    # --- Un EFFET CLAP construit ici, pour tester l'hôte d'effets (D7.3) ----
+    # L'adaptateur ci-dessus n'expose que des INSTRUMENTS : l'hôte d'effets
+    # n'avait rien à héberger. Dépendre d'un effet CLAP installé sur la machine
+    # rendrait le test vert ou rouge selon l'ordinateur.
+    add_library(vsm_clap_test_effect MODULE tests/TestEffectPlugin.cpp)
+    set_target_properties(vsm_clap_test_effect PROPERTIES
+        OUTPUT_NAME "vsm-test-effect"
+        PREFIX ""
+        SUFFIX ".clap"
+    )
+    target_link_libraries(vsm_clap_test_effect PRIVATE clap)
+    target_compile_features(vsm_clap_test_effect PRIVATE cxx_std_20)
+
     add_executable(vsm_clap_tests
         tests/test_main.cpp
         tests/test_clap_roundtrip.cpp
@@ -66,9 +79,10 @@ if (VSM_BUILD_TESTS)
     target_include_directories(vsm_clap_tests PRIVATE tests)
     # Les tests chargent l'adaptateur que l'on vient de construire : ils
     # valident les deux moitiés l'une par l'autre, sans plugin tiers.
-    add_dependencies(vsm_clap_tests vsm_clap_adapter)
+    add_dependencies(vsm_clap_tests vsm_clap_adapter vsm_clap_test_effect)
     target_compile_definitions(vsm_clap_tests PRIVATE
-        VSM_CLAP_ADAPTER_PATH="$<TARGET_FILE:vsm_clap_adapter>")
+        VSM_CLAP_ADAPTER_PATH="$<TARGET_FILE:vsm_clap_adapter>"
+        VSM_CLAP_TEST_EFFECT_PATH="$<TARGET_FILE:vsm_clap_test_effect>")
 
     enable_testing()
     add_test(NAME vsm_clap_tests COMMAND vsm_clap_tests)

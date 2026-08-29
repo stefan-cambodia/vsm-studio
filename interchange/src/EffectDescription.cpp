@@ -36,6 +36,10 @@ TrackEffect describeEffect(const std::string& factoryTypeId,
     const SemanticProfile profile = buildSemanticProfile(effectSemanticPluginId(factoryTypeId));
     for (const auto& info : effect.parameterList())
         described.parameters[parameterKey(profile, info)] = effect.getParameter(info.id);
+    // D7.3 : ET CE QUE LA TABLE NE DIT PAS. Vide pour les effets internes ; un
+    // effet tiers, lui, n'a aucun profil sémantique ici, si bien que sans cet
+    // appel sa description serait un type et rien d'autre.
+    described.nativeState = effect.saveNativeState();
     return described;
 }
 
@@ -43,6 +47,13 @@ EffectApplyReport applyEffectDescription(const TrackEffect& described,
                                           vsm::audio::effect::IAudioEffect& effect) {
     EffectApplyReport report;
     const SemanticProfile profile = buildSemanticProfile(effectSemanticPluginId(described.type));
+
+    // D7.3 : L'ÉTAT NATIF D'ABORD, LES VALEURS NOMMÉES PAR-DESSUS. Même ordre
+    // et même raison que pour les machines (voir `applyPreset`) : l'état natif
+    // est l'instantané complet, les valeurs nommées en sont l'extrait qu'un
+    // humain ou un script a pu modifier exprès.
+    if (!described.nativeState.empty())
+        report.nativeStateApplied = effect.loadNativeState(described.nativeState);
 
     // On parcourt les paramètres de L'EFFET, pas ceux de la description : c'est
     // ce qui permet de nommer ensuite ce que la description contenait en trop.

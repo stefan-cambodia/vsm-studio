@@ -1,5 +1,6 @@
 #include "TestFramework.h"
 #include "Vst3PluginHost.h"
+#include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include "vsm/interchange/SynthPreset.h"
 #include <algorithm>
@@ -209,4 +210,103 @@ VSM_TEST(a_missing_vst3_is_reported_absent_and_never_substituted) {
     // ET LES MACHINES DU PARC RÉPONDENT TOUJOURS : poser un résolveur ne doit
     // rien retirer à ce qui marchait avant lui.
     VSM_ASSERT(registre.create("vsm.tb303") != nullptr);
+}
+
+// --- D7.3 : les entrées audio, donc les effets ------------------------------
+//
+// Ce que ces tests doivent prouver n'est pas « un effet se charge » mais qu'il
+// REÇOIT LE SIGNAL DE LA PISTE. Un hôte sans entrées produit un effet qui se
+// charge, s'affiche, expose ses paramètres et rend du silence -- et rien dans
+// tout cela ne ressemble à une panne tant qu'on ne l'écoute pas.
+
+namespace {
+
+const std::string& fichierDeLEffet() {
+    static const std::string chemin =
+        std::filesystem::path(VSM_VST3_TEST_EFFECT_BINARY_DIR)
+            .parent_path().parent_path().lexically_normal().string();
+    return chemin;
+}
+
+} // namespace
+
+VSM_TEST(a_vst3_effect_file_says_it_is_not_an_instrument) {
+    std::string erreur;
+    const auto trouves = scanVst3File(fichierDeLEffet(), erreur);
+    VSM_ASSERT(!trouves.empty());
+    VSM_ASSERT(!trouves[0].isInstrument);
+}
+
+VSM_TEST(a_third_party_effect_reads_the_signal_it_is_given) {
+    std::string erreur;
+    const auto effet = createVst3Effect(fichierDeLEffet(), "", erreur);
+    VSM_ASSERT(effet != nullptr);
+    VSM_ASSERT(erreur.empty());
+    effet->prepare(48000.0, 256);
+
+    std::vector<float> gauche(256, 0.0f), droite(256, 0.0f);
+    for (int i = 0; i < 256; ++i) {
+        gauche[i] = 0.5f;
+        droite[i] = -0.25f;
+    }
+    effet->process(gauche.data(), droite.data(), 256);
+
+    // L'EFFET DE TEST INVERSE LE SIGNE. Comparer à une valeur ATTENDUE et non à
+    // « quelque chose de non nul » : un effet qui rendrait du bruit, ou du
+    // silence, ou son entrée intacte, échouerait tous les trois ici, alors
+    // qu'un test de non-silence n'en attraperait qu'un.
+    for (int i = 0; i < 256; ++i) {
+        VSM_ASSERT_NEAR(gauche[i], -0.5f, 1e-5);
+        VSM_ASSERT_NEAR(droite[i], 0.25f, 1e-5);
+    }
+}
+
+VSM_TEST(an_instrument_is_refused_as_an_insert_and_the_other_way_round) {
+    // Poser un instrument dans une chaîne d'inserts lui ferait ignorer le
+    // signal : la piste deviendrait muette, et il faudrait le deviner à
+    // l'oreille. Le refus est dit dans les deux sens.
+    std::string erreur;
+    VSM_ASSERT(createVst3Effect(dossierDuPlugin(), "", erreur) == nullptr);
+    VSM_ASSERT(!erreur.empty());
+
+    erreur.clear();
+    VSM_ASSERT(createVst3Instrument(fichierDeLEffet(), "", erreur) == nullptr);
+    VSM_ASSERT(!erreur.empty());
+}
+
+VSM_TEST(the_effect_factory_loads_a_vst3_once_the_resolver_is_installed) {
+    installVst3Resolver();
+    const std::string id = vst3InstrumentId(fichierDeLEffet(), "");
+    auto effet = vsm::audio::effect::EffectFactory::create(id);
+    VSM_ASSERT(effet != nullptr);
+
+    // ET LES EFFETS INTERNES RÉPONDENT TOUJOURS : poser un résolveur ne doit
+    // rien retirer à ce qui marchait avant lui.
+    VSM_ASSERT(vsm::audio::effect::EffectFactory::create("reverb") != nullptr);
+    VSM_ASSERT(vsm::audio::effect::EffectFactory::create("cet-effet-n-existe-pas") == nullptr);
+}
+
+VSM_TEST(a_third_party_effects_state_survives_the_project_file) {
+    std::string erreur;
+    const auto original = createVst3Effect(fichierDeLEffet(), "", erreur);
+    VSM_ASSERT(original != nullptr);
+    original->prepare(48000.0, 256);
+    original->setParameter(0, 0.25f);
+
+    const std::string etat = original->saveNativeState();
+    VSM_ASSERT(!etat.empty());
+
+    const auto rouvert = createVst3Effect(fichierDeLEffet(), "", erreur);
+    VSM_ASSERT(rouvert != nullptr);
+    rouvert->prepare(48000.0, 256);
+    VSM_ASSERT(rouvert->loadNativeState(etat));
+    VSM_ASSERT_NEAR(rouvert->getParameter(0), 0.25f, 1e-3);
+
+    // ET LE SON SUIT, ce qui est la seule chose qui compte : un état reposé qui
+    // ne changerait pas ce qu'on entend n'aurait rien reposé du tout.
+    std::vector<float> gauche(64, 1.0f), droite(64, 1.0f);
+    rouvert->process(gauche.data(), droite.data(), 64);
+    std::vector<float> temoin(64, 1.0f), temoinD(64, 1.0f);
+    original->process(temoin.data(), temoinD.data(), 64);
+    for (int i = 0; i < 64; ++i) VSM_ASSERT_NEAR(gauche[i], temoin[i], 1e-6);
 }

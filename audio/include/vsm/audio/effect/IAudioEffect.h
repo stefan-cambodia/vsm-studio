@@ -1,6 +1,7 @@
 #pragma once
 #include "vsm/audio/plugin/ParameterTypes.h"
 #include <memory>
+#include <string>
 
 namespace vsm::audio::effect {
 
@@ -70,6 +71,20 @@ public:
     /// `ISynthPlugin::requiresRealtimeRender()` : même question, même raison,
     /// et c'est la phase D7 qui la rendra utile.
     virtual bool requiresRealtimeRender() const { return false; }
+
+    /// L'ÉTAT QUI NE TIENT PAS DANS UNE TABLE DE FLOTTANTS (D7.3). Vide pour
+    /// les treize effets internes, dont le son EST leur table de paramètres.
+    ///
+    /// Voir `ISynthPlugin::saveNativeState()` : même question, même raison, et
+    /// même réponse. Un effet tiers porte des réponses impulsionnelles
+    /// chargées, des courbes dessinées, des tables apprises, que rien dans le
+    /// vocabulaire sémantique ne désigne -- sans cela, rouvrir un morceau
+    /// rendrait une réverbération à convolution muette, ou une autre pièce.
+    virtual std::string saveNativeState() const { return {}; }
+    /// Restaure ce que `saveNativeState()` a produit. Faux si l'état est
+    /// refusé, et l'appelant DOIT le dire : un état refusé laisse l'effet sur
+    /// ses réglages précédents, donc sur un autre son.
+    virtual bool loadNativeState(const std::string&) { return false; }
 
 };
 
