@@ -338,3 +338,155 @@ VSM_TEST(process_graph_accepts_an_externally_created_instrument) {
     graph.setTrackInstrumentInstance(0, nullptr);
     VSM_ASSERT(graph.trackInstrument(0) == nullptr);
 }
+
+// --- D4.2 : les bus de GROUPE ----------------------------------------------
+
+namespace {
+using vsm::sequencer::Project;
+using vsm::sequencer::Track;
+
+/// Un projet à deux pistes qui jouent la même note, plus une piste de groupe.
+Project groupProject() {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    uint64_t ids = 1;
+    for (int i = 0; i < 2; ++i) {
+        Track t;
+        t.name = "Voix " + std::to_string(i + 1);
+        t.addNote(0, 480, 69, 100, 0, ids);
+        project.tracks.push_back(t);
+    }
+    Track groupe;
+    groupe.kind = Track::Kind::Group;
+    groupe.name = "Groupe";
+    project.tracks.push_back(groupe);
+    return project;
+}
+} // namespace
+
+VSM_TEST(a_group_passes_its_members_through_unchanged_when_it_is_neutral) {
+    // Router deux pistes dans un groupe à volume 1 et panoramique centré ne
+    // doit RIEN changer au mixage : c'est la condition pour que grouper ne soit
+    // jamais un choix qu'on paie.
+    vsm::sequencer::Project direct = groupProject();
+    ProcessGraph a;
+    a.prepare(8000.0, 256);
+    a.setTrackInstrument(0, "vsm.minimoog");
+    a.setTrackInstrument(1, "vsm.minimoog");
+    a.setProject(direct);
+    const auto sansGroupe = OfflineRenderer::render(a, 8000.0, 256, 1.0);
+
+    vsm::sequencer::Project groupe = groupProject();
+    groupe.tracks[0].outputGroup = 2;
+    groupe.tracks[1].outputGroup = 2;
+    ProcessGraph b;
+    b.prepare(8000.0, 256);
+    b.setTrackInstrument(0, "vsm.minimoog");
+    b.setTrackInstrument(1, "vsm.minimoog");
+    b.setProject(groupe);
+    const auto avecGroupe = OfflineRenderer::render(b, 8000.0, 256, 1.0);
+
+    VSM_ASSERT_EQ(sansGroupe.left.size(), avecGroupe.left.size());
+    for (size_t i = 0; i < sansGroupe.left.size(); ++i) {
+        VSM_ASSERT_NEAR(avecGroupe.left[i], sansGroupe.left[i], 1e-6f);
+        VSM_ASSERT_NEAR(avecGroupe.right[i], sansGroupe.right[i], 1e-6f);
+    }
+}
+
+VSM_TEST(a_group_fader_moves_all_its_members_at_once) {
+    // C'est toute la raison d'être d'un groupe : un fader pour huit micros de
+    // batterie, au lieu de huit gestes qu'on espère garder d'accord.
+    vsm::sequencer::Project projet = groupProject();
+    projet.tracks[0].outputGroup = 2;
+    projet.tracks[1].outputGroup = 2;
+    projet.tracks[2].volume = 0.25f;
+
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setTrackInstrument(0, "vsm.minimoog");
+    graph.setTrackInstrument(1, "vsm.minimoog");
+    graph.setProject(projet);
+    const float avecFader = peakOf(OfflineRenderer::render(graph, 8000.0, 256, 1.0).left);
+
+    vsm::sequencer::Project plein = groupProject();
+    plein.tracks[0].outputGroup = 2;
+    plein.tracks[1].outputGroup = 2;
+    ProcessGraph g2;
+    g2.prepare(8000.0, 256);
+    g2.setTrackInstrument(0, "vsm.minimoog");
+    g2.setTrackInstrument(1, "vsm.minimoog");
+    g2.setProject(plein);
+    const float sansFader = peakOf(OfflineRenderer::render(g2, 8000.0, 256, 1.0).left);
+
+    VSM_ASSERT(sansFader > 0.01f);
+    VSM_ASSERT_NEAR(avecFader, sansFader * 0.25f, sansFader * 0.02f);
+}
+
+VSM_TEST(a_muted_group_silences_its_members) {
+    vsm::sequencer::Project projet = groupProject();
+    projet.tracks[0].outputGroup = 2;
+    projet.tracks[1].outputGroup = 2;
+    projet.tracks[2].muted = true;
+
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setTrackInstrument(0, "vsm.minimoog");
+    graph.setTrackInstrument(1, "vsm.minimoog");
+    graph.setProject(projet);
+    VSM_ASSERT(peakOf(OfflineRenderer::render(graph, 8000.0, 256, 1.0).left) < 1e-5f);
+}
+
+VSM_TEST(a_group_insert_treats_the_whole_group_and_not_each_track) {
+    // Un gain de 0 sur le groupe éteint tout, y compris ce que les pistes
+    // avaient de plus fort : c'est ce qui prouve que l'insert est APRÈS la
+    // somme et non appliqué piste par piste.
+    vsm::sequencer::Project projet = groupProject();
+    projet.tracks[0].outputGroup = 2;
+    projet.tracks[1].outputGroup = 2;
+
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setTrackInstrument(0, "vsm.minimoog");
+    graph.setTrackInstrument(1, "vsm.minimoog");
+    graph.setProject(projet);
+    auto chain = std::make_shared<ProcessGraph::EffectChain>();
+    chain->push_back(std::make_shared<GainEffect>(0.0f));
+    graph.setTrackEffectChain(2, chain);   // l'insert est sur LE GROUPE
+    VSM_ASSERT(peakOf(OfflineRenderer::render(graph, 8000.0, 256, 1.0).left) < 1e-5f);
+}
+
+VSM_TEST(a_group_never_routes_into_another_group) {
+    // Les groupes imbriqués demanderaient un ordre topologique et une
+    // détection de cycle. Un routage de groupe vers groupe est donc IGNORÉ et
+    // part au master -- ce qui s'entend, là où une boucle ferait tourner le
+    // rendu en rond.
+    vsm::sequencer::Project projet = groupProject();
+    vsm::sequencer::Track second;
+    second.kind = vsm::sequencer::Track::Kind::Group;
+    second.name = "Groupe 2";
+    projet.tracks.push_back(second);       // index 3
+    projet.tracks[0].outputGroup = 2;
+    projet.tracks[2].outputGroup = 3;      // groupe -> groupe : ignoré
+
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setTrackInstrument(0, "vsm.minimoog");
+    graph.setProject(projet);
+    // Le son sort quand même : le groupe 1 a été envoyé au master.
+    VSM_ASSERT(peakOf(OfflineRenderer::render(graph, 8000.0, 256, 1.0).left) > 0.01f);
+}
+
+VSM_TEST(a_route_to_a_track_that_is_not_a_group_goes_to_the_master) {
+    // Un index qui ne désigne pas un groupe -- piste supprimée, projet écrit
+    // par une autre version -- ne doit pas faire disparaître le son.
+    vsm::sequencer::Project projet = groupProject();
+    projet.tracks[0].outputGroup = 1;      // la piste 1 n'est pas un groupe
+    projet.tracks[1].outputGroup = 99;     // hors bornes
+
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setTrackInstrument(0, "vsm.minimoog");
+    graph.setTrackInstrument(1, "vsm.minimoog");
+    graph.setProject(projet);
+    VSM_ASSERT(peakOf(OfflineRenderer::render(graph, 8000.0, 256, 1.0).left) > 0.01f);
+}

@@ -91,4 +91,42 @@ inline float mixStereoInto(const float* inL, const float* inR, int numSamples,
     return peak;
 }
 
+/// BALANCE stéréo : le pendant du panoramique pour un signal DÉJÀ stéréo.
+///
+/// LA DIFFÉRENCE N'EST PAS UN DÉTAIL, et c'est un test qui l'a montrée. La loi
+/// à puissance constante ci-dessus vaut 0,707 sur les DEUX canaux au centre :
+/// c'est ce qu'il faut pour placer une source dans un espace stéréo sans creux
+/// perçu. Mais un GROUPE reçoit un signal qui a déjà traversé cette loi, et la
+/// lui appliquer une seconde fois lui coûte encore 3 dB : router deux pistes
+/// dans un groupe neutre les rendait plus faibles que sans groupe. Grouper
+/// serait alors un choix qu'on paie, ce qui est inacceptable.
+///
+/// Une balance, elle, vaut UN au centre et ne fait qu'atténuer le canal opposé
+/// quand on tourne -- exactement ce que fait le potentiomètre de balance d'une
+/// tranche stéréo sur une console.
+inline void stereoBalance(float pan, float& gainL, float& gainR) {
+    const float p = std::clamp(pan, -1.0f, 1.0f);
+    gainL = p <= 0.0f ? 1.0f : 1.0f - p;
+    gainR = p >= 0.0f ? 1.0f : 1.0f + p;
+}
+
+/// Mélange un bloc stéréo dans un bus stéréo par BALANCE (voir ci-dessus) :
+/// neutre au centre, donc traversable sans perte.
+inline float mixStereoBalancedInto(const float* inL, const float* inR, int numSamples,
+                                    float volume, float pan, bool audible,
+                                    float* busL, float* busR) {
+    if (!audible || numSamples <= 0) return 0.0f;
+    float gainL, gainR;
+    stereoBalance(pan, gainL, gainR);
+    float peak = 0.0f;
+    for (int i = 0; i < numSamples; ++i) {
+        const float l = inL[i] * volume;
+        const float r = inR[i] * volume;
+        busL[i] += l * gainL;
+        busR[i] += r * gainR;
+        peak = std::max(peak, std::max(std::abs(l), std::abs(r)));
+    }
+    return peak;
+}
+
 } // namespace vsm::audio::engine

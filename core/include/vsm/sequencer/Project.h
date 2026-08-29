@@ -124,4 +124,20 @@ private:
     uint64_t nextNoteId_ = 1;
 };
 
+/// Supprime une piste ET RÉPARE LES ROUTAGES QUI LA SUIVENT.
+///
+/// POURQUOI CE N'EST PAS UN `erase` DANS L'INTERFACE. Supprimer une piste
+/// décale toutes les suivantes : un routage qui visait la piste 5 viserait la
+/// 4, et le mixage partirait dans un autre groupe sans qu'aucun réglage n'ait
+/// bougé. C'est exactement le défaut qui avait fait ranger les chaînes d'effets
+/// DANS la piste (voir `TrackEffect`), et il revient dès qu'une piste en
+/// référence une autre.
+///
+/// Les pistes qui allaient dans le groupe supprimé retournent au MASTER : c'est
+/// le seul choix qui ne fasse pas disparaître leur son.
+///
+/// Dans `core/` et non dans l'application, parce que c'est une règle du MODÈLE
+/// et qu'une règle qu'on ne peut pas tester n'est qu'une intention.
+void removeTrack(Project& project, size_t index);
+
 } // namespace vsm::sequencer

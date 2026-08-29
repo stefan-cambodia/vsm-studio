@@ -206,4 +206,15 @@ midi::Tick Project::lastUsedTick() const {
     return last;
 }
 
+void removeTrack(Project& project, size_t index) {
+    if (index >= project.tracks.size()) return;
+    project.tracks.erase(project.tracks.begin() + static_cast<std::ptrdiff_t>(index));
+    for (auto& piste : project.tracks) {
+        if (piste.outputGroup < 0) continue;
+        const size_t cible = static_cast<size_t>(piste.outputGroup);
+        if (cible == index) piste.outputGroup = -1;      // le groupe n'existe plus
+        else if (cible > index) piste.outputGroup -= 1;  // il a reculé d'un rang
+    }
+}
+
 } // namespace vsm::sequencer

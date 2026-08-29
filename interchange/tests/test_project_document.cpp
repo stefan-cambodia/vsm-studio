@@ -657,3 +657,43 @@ VSM_TEST(more_send_levels_than_buses_do_not_shift_onto_the_wrong_bus) {
     VSM_ASSERT_NEAR(restaure.tracks[0].sendLevel(2), 0.0f, 1e-6);
     VSM_ASSERT_NEAR(restaure.tracks[0].sendLevel(3), 0.9f, 1e-6);
 }
+
+VSM_TEST(a_group_track_and_its_routing_survive_the_round_trip) {
+    Project projet;
+    uint64_t ids = 1;
+    Track voix;
+    voix.name = "Voix";
+    voix.addNote(0, 480, 60, 100, 0, ids);
+    voix.outputGroup = 1;
+    projet.tracks.push_back(voix);
+
+    Track groupe;
+    groupe.kind = Track::Kind::Group;
+    groupe.name = "Chœurs";
+    groupe.volume = 0.7f;
+    projet.tracks.push_back(groupe);
+
+    const ProjectDocument document = documentFromProject(projet);
+    const ProjectLoadResult relu = parseProjectDocument(projectDocumentToJson(document).toString());
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT_EQ(relu.document.tracks[1].kind, std::string("group"));
+    VSM_ASSERT_EQ(relu.document.tracks[0].outputGroup, 1);
+
+    Project restaure;
+    restaure.tracks.emplace_back();
+    restaure.tracks.emplace_back();
+    applyDocumentToProject(relu.document, restaure);
+    VSM_ASSERT(restaure.tracks[1].kind == Track::Kind::Group);
+    VSM_ASSERT_EQ(restaure.tracks[0].outputGroup, 1);
+    VSM_ASSERT_NEAR(restaure.tracks[1].volume, 0.7f, 1e-6);
+}
+
+VSM_TEST(a_track_that_goes_to_the_master_writes_no_output_key) {
+    // Facultatif : une piste qui va au master garde le fichier qu'elle avait
+    // avant que les groupes existent.
+    Project projet;
+    projet.tracks.emplace_back();
+    const auto analyse = parseJson(projectDocumentToJson(documentFromProject(projet)).toString());
+    VSM_ASSERT(analyse.success);
+    VSM_ASSERT(!analyse.value["tracks"].at(0)["output"].isNumber());
+}

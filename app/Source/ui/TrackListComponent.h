@@ -2,6 +2,9 @@
 #include <JuceHeader.h>
 #include "vsm/sequencer/Project.h"
 #include <functional>
+#include <string>
+#include <utility>
+#include <vector>
 
 // Ligne représentant une piste. Volontairement "bête" : elle lit/écrit
 // directement les champs de vsm::sequencer::Track qu'on lui passe, et
@@ -9,7 +12,13 @@
 // mixage réelle ici (ça viendra avec le Mixer / AudioEngine en Phase 2).
 class TrackRowComponent : public juce::Component {
 public:
-    TrackRowComponent(vsm::sequencer::Track& track, size_t trackIndex);
+    /// `groupes` donne, pour chaque piste de groupe du projet, son index et son
+    /// nom : c'est ce que le sélecteur de sortie propose. Passé de l'extérieur
+    /// parce qu'une ligne ne connaît que SA piste -- lui donner le projet
+    /// entier pour lire la liste des groupes serait lui donner de quoi tout
+    /// modifier.
+    TrackRowComponent(vsm::sequencer::Track& track, size_t trackIndex,
+                       const std::vector<std::pair<int, std::string>>& groupes);
 
     void paint(juce::Graphics&) override;
     void resized() override;
@@ -21,6 +30,9 @@ public:
     /// planning de lecture ni au mixage, et republier le projet au moteur pour
     /// un bouton d'armement couperait le son à chaque clic.
     std::function<void()> onArmChanged;
+    /// La sortie de la piste a changé (master ou groupe) : le moteur doit
+    /// republier le projet pour que le routage prenne effet.
+    std::function<void()> onOutputChanged;
     std::function<void(size_t, const std::string&)> onInstrumentChanged; // trackIndex, pluginId ("" = aucun)
 
     void setSelected(bool selected) { selected_ = selected; repaint(); }
@@ -40,6 +52,7 @@ private:
     juce::Label channelLabel_;
     juce::ComboBox instrumentBox_; // rempli depuis PluginRegistry::listAvailable()
     juce::Label audioSourceLabel_; // à sa place, sur une piste audio
+    juce::ComboBox outputBox_;     // master ou groupe (D4.2)
     juce::TextButton muteButton_ { "M" };
     juce::TextButton soloButton_ { "S" };
     juce::TextButton armButton_  { "R" };
@@ -63,6 +76,8 @@ public:
     std::function<void(size_t, const std::string&)> onInstrumentChanged;
     /// L'armement d'une piste a changé (voir TrackRowComponent::onArmChanged).
     std::function<void()> onArmChanged;
+    /// La sortie d'une piste a changé (voir TrackRowComponent::onOutputChanged).
+    std::function<void()> onOutputChanged;
     std::function<void()> onAddTrack;          // bouton "+ Ajouter une piste"
     std::function<void(size_t)> onRemoveTrack; // bouton "Supprimer" (piste sélectionnée)
 

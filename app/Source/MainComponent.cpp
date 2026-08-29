@@ -222,6 +222,11 @@ MainComponent::MainComponent()
     // l'enregistrement ouvert : on aurait joué, et rien ne serait écrit.
     transportBar_.onStopPressed = [this] { stopRecording(); };
     trackList_.onArmChanged = [this] { refreshArmedTracks(); };
+    trackList_.onOutputChanged = [this] {
+        // Le routage est une donnée de mixage : il se republie sans interrompre
+        // la lecture, comme un fader.
+        mixDirty_ = true;
+    };
     transportBar_.onTempoChanged = [this](double bpm) {
         // LE TEMPO EST UNE DONNÉE DU PROJET, et le changer est une action
         // annulable comme les autres.
@@ -551,6 +556,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
         case 2:
             menu.addItem(kMenuTrackAdd, "Ajouter une piste MIDI");
             menu.addItem(kMenuTrackAddAudio, "Ajouter une piste audio");
+            menu.addItem(kMenuTrackAddGroup, "Ajouter un groupe");
             menu.addItem(kMenuTrackRemove, u8"Supprimer la piste sélectionnée",
                          !project_.tracks.empty());
             break;
@@ -782,6 +788,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuFileQuit:      juce::JUCEApplication::getInstance()->systemRequestedQuit(); break;
         case kMenuTrackAdd:      addTrack(Track::Kind::Midi); break;
         case kMenuTrackAddAudio: addTrack(Track::Kind::Audio); break;
+        case kMenuTrackAddGroup: addTrack(Track::Kind::Group); break;
         case kMenuTrackRemove:   removeSelectedTrack(); break;
         case kMenuViewTracks:    togglePanel(trackListWindow_); break;
         case kMenuViewPianoRoll: togglePanel(pianoRollWindow_); break;
@@ -1471,8 +1478,10 @@ void MainComponent::newProject() {
 
 void MainComponent::addTrack(Track::Kind kind) {
     const bool audio = kind == Track::Kind::Audio;
-    beginProjectEdit(audio ? juce::String(u8"Ajouter une piste audio")
-                            : juce::String(u8"Ajouter une piste"));
+    const bool groupe = kind == Track::Kind::Group;
+    beginProjectEdit(groupe ? juce::String(u8"Ajouter un groupe")
+                    : audio  ? juce::String(u8"Ajouter une piste audio")
+                              : juce::String(u8"Ajouter une piste"));
     // Palette de couleurs cyclique pour distinguer visuellement les pistes.
     static const uint32_t kColors[] = {
         0xffE3A24Du, 0xff6B9BFFu, 0xff8ED081u, 0xffD08BC8u, 0xffE0C15Au, 0xff7FD0C8u
@@ -1481,7 +1490,7 @@ void MainComponent::addTrack(Track::Kind kind) {
 
     Track t;
     t.kind = kind;
-    t.name = (audio ? "Audio " : "Piste ") + std::to_string(n + 1);
+    t.name = (groupe ? "Groupe " : audio ? "Audio " : "Piste ") + std::to_string(n + 1);
     t.channel = static_cast<uint8_t>(n % 16);      // canaux MIDI 1..16 en boucle
     t.colorRgba = kColors[n % (sizeof(kColors) / sizeof(kColors[0]))];
     // Pas d'instrument par défaut : l'utilisateur le choisit dans le combo de
@@ -1501,7 +1510,9 @@ void MainComponent::removeSelectedTrack() {
     // d'annulation qui ne défait rien.
     beginProjectEdit("Supprimer une piste");
 
-    project_.tracks.erase(project_.tracks.begin() + static_cast<std::ptrdiff_t>(idx));
+    // La suppression et la RÉPARATION DES ROUTAGES sont une règle du modèle,
+    // pas de l'interface : voir `vsm::sequencer::removeTrack`.
+    vsm::sequencer::removeTrack(project_, idx);
     rebuildFromProject();
 
     if (!project_.tracks.empty()) {

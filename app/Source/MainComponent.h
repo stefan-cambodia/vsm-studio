@@ -82,6 +82,7 @@ private:
         kMenuFileQuit,
         kMenuTrackAdd,
         kMenuTrackAddAudio,
+        kMenuTrackAddGroup,
         kMenuTrackRemove,
         kMenuRecordCountInNone,
         kMenuRecordCountInOne,

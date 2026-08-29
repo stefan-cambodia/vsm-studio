@@ -186,7 +186,10 @@ ProjectDocument documentFromProject(const Project& project) {
             described.parameters = effect.parameters;
             entry.effects.push_back(std::move(described));
         }
-        if (track.kind == vsm::sequencer::Track::Kind::Audio) {
+        entry.outputGroup = track.outputGroup;
+        if (track.kind == vsm::sequencer::Track::Kind::Group) {
+            entry.kind = "group";
+        } else if (track.kind == vsm::sequencer::Track::Kind::Audio) {
             entry.kind = "audio";
             entry.audio = {track.audio.path, track.audio.sampleRate,
                             track.audio.frames, track.audio.channels};
@@ -308,7 +311,10 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.effects.clear();
         for (const auto& effect : source.effects)
             target.effects.push_back({effect.type, effect.parameters});
-        target.kind = source.kind == "audio" ? Track::Kind::Audio : Track::Kind::Midi;
+        target.kind = source.kind == "audio"  ? Track::Kind::Audio
+                    : source.kind == "group"  ? Track::Kind::Group
+                                               : Track::Kind::Midi;
+        target.outputGroup = source.outputGroup;
         target.audio = {source.audio.path, source.audio.sampleRate,
                          source.audio.frames, source.audio.channels};
         // Les prises, SANS leurs notes : celles-ci viennent de `prises.mid` et
@@ -475,6 +481,10 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         mix.set("sends", std::move(sends));
         entry.set("mix", std::move(mix));
 
+        // Le routage n'est écrit que s'il dit quelque chose : une piste qui va
+        // au master garde le fichier qu'elle avait avant les groupes.
+        if (track.outputGroup >= 0)
+            entry.set("output", JsonValue::makeNumber(static_cast<double>(track.outputGroup)));
         if (!track.kind.empty() && track.kind != "midi") {
             entry.set("kind", JsonValue::makeString(track.kind));
             JsonValue source = JsonValue::makeObject();
@@ -664,6 +674,7 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
             track.sendLevels[i] = static_cast<float>(mix["sends"].at(i).asNumber(0.0));
 
         track.kind = entry["kind"].asString();
+        track.outputGroup = static_cast<int>(entry["output"].asNumber(-1.0));
         if (entry["audio"].isObject()) {
             track.audio.path = entry["audio"]["file"].asString();
             // MÊME RÈGLE QUE POUR LES PRESETS, et pour la même raison : un

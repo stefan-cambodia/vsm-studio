@@ -154,7 +154,11 @@ struct ProjectTake {
 };
 
 struct ProjectTrack {
-    /// « midi » (défaut) ou « audio ». Absent du fichier pour une piste MIDI :
+    /// Où va la sortie : index de la piste de GROUPE qui la reçoit, -1 pour le
+    /// master. Facultatif : absent vaut -1, donc les projets d'avant les
+    /// groupes se lisent inchangés.
+    int outputGroup = -1;
+    /// « midi » (défaut), « audio » ou « group ». Absent du fichier pour une piste MIDI :
     /// un projet qui n'a que des pistes MIDI garde octet pour octet le fichier
     /// qu'il avait avant que les pistes audio existent.
     std::string kind;

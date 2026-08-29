@@ -900,7 +900,7 @@ pas seulement l'écouter.
 | Étape | Contenu | Terminé quand |
 |---|---|---|
 | D4.1 | **Égaliseur, compresseur, porte, limiteur enfichables par piste** — le DSP existe déjà dans `MasterBus`, il n'est pas exposé | quatre effets de plus dans `EffectFactory`, chacun conforme au CDC (identités sémantiques, façade, empreinte) — **fait** |
-| D4.2 | Bus de groupe et départs **libres** (aujourd'hui : deux, figés en dur sur Reverb et Delay dans le constructeur de `MainComponent`) | une réverbération se partage entre pistes ; le nombre de départs n'est plus une constante |
+| D4.2 | Bus de groupe et départs **libres** (aujourd'hui : deux, figés en dur sur Reverb et Delay dans le constructeur de `MainComponent`) | une réverbération se partage entre pistes ; le nombre de départs n'est plus une constante — **fait** |
 | D4.3 | Départs pré/post-fader au choix (post-fader est codé en dur, `ProcessGraph.cpp:465`) | commutable par départ |
 | D4.4 | **Chaîne latérale** (*sidechain*) | le compresseur d'une piste écoute une autre piste — la signature même du genre que ce projet reconstruit |
 | D4.5 | **Compensation de latence (PDC)** : `ISynthPlugin` et `IAudioEffect` déclarent leur latence, le graphe la compense | insérer un effet à latence connue ne décale plus la piste ; test avec une latence artificielle et un `Oversampler` |
@@ -965,6 +965,65 @@ du projet mesureront enfin la même chose.
 >
 > Aucune de ces dérives ne faisait échouer le moindre test de propriété des
 > effets. C'est exactement le trou que ces empreintes comblent.
+
+> **D4.2 EST FAITE (29/08/2026).** Deux moitiés, et la première réparait plus
+> qu'une rigidité.
+>
+> **LES DÉPARTS ÉTAIENT DEUX, ET SURTOUT ILS ÉTAIENT INVISIBLES.** Le nombre
+> était une constante du moteur, les deux effets étaient figés dans le
+> constructeur de l'application sur une réverbération et un delay — et les
+> niveaux d'envoi, eux, ÉTAIENT sauvegardés. Un projet portait donc des réglages
+> qui pointaient vers deux effets que rien, ni le fichier ni l'interface, ne
+> nommait. Le projet déclare désormais SES bus, avec leur nom, leur effet et le
+> gain de leur retour ; le mixeur donne un bouton par bus nommé, et son
+> infobulle dit lequel.
+>
+> **RETIRER UN BUS DÉCALE LES NIVEAUX DES PISTES AVEC LUI.** Sans cela, le
+> départ qui visait le bus 2 viserait le bus 1 : la piste partirait dans le
+> mauvais effet sans qu'aucun bouton n'ait bougé. Le plafond de huit reste, mais
+> ce n'est plus le nombre : c'est la taille des tampons, que le chemin temps
+> réel n'alloue pas — et le franchir est **compté**.
+>
+> **UN PROJET D'AVANT QUI A DES NIVEAUX SANS BUS DÉCLARÉ retrouve les deux
+> siens**, parce que ces niveaux ont été écrits pour eux. Un projet sans bus ET
+> sans niveau n'a rien perdu : on le laisse tranquille, sinon les deux départs
+> reviendraient à chaque ouverture chez qui n'en veut aucun.
+>
+> **UN GROUPE EST UNE PISTE**, et ce n'est pas un raccourci : il a un nom, un
+> volume, un panoramique, un muet, un solo, une chaîne d'inserts, des départs et
+> une automation — exactement ce qu'a une piste. En faire un troisième objet
+> aurait obligé le mixeur, l'éditeur d'effets, l'automation et le format à
+> connaître deux choses là où une seule suffit. Le rendu se fait en **deux
+> passes** plutôt qu'en triant les pistes : l'ordre des pistes appartient à
+> l'utilisateur, pas au moteur.
+>
+> **UN GROUPE NE VA JAMAIS DANS UN GROUPE.** Les groupes imbriqués demanderaient
+> un ordre topologique et une détection de cycle pour un besoin que rien n'a
+> exprimé ; un seul niveau couvre l'usage réel (batterie, claviers, voix). Un
+> routage de groupe vers groupe est **ignoré et part au master**, ce qui
+> s'entend — là où une boucle ferait tourner le rendu en rond, littéralement.
+>
+> **UN TEST A TROUVÉ UNE FAUTE DE MIXAGE QUI SE SERAIT ENTENDUE.** Router deux
+> pistes dans un groupe neutre les rendait **3 dB plus faibles** que sans
+> groupe : la loi de panoramique à puissance constante vaut 0,707 sur les deux
+> canaux au centre, et le groupe l'appliquait une seconde fois. Grouper serait
+> devenu un choix qu'on paie. Un groupe reçoit un signal DÉJÀ stéréo : son
+> réglage n'est pas un panoramique mais une **balance**, qui vaut un au centre
+> et n'atténue que le canal opposé — ce que fait le potentiomètre de balance
+> d'une tranche stéréo sur une console. Un test vérifie désormais qu'un groupe
+> neutre est traversable **sans perte**.
+>
+> **LA SUPPRESSION D'UNE PISTE RÉPARE LES ROUTAGES**, et cette règle est dans
+> `core/` et non dans l'interface : un routage qui visait la piste 5 viserait la
+> 4, et le mixage partirait dans un autre groupe sans qu'aucun réglage n'ait
+> bougé. C'est le défaut qui avait déjà fait ranger les chaînes d'effets DANS la
+> piste ; il revient dès qu'une piste en référence une autre, et une règle qu'on
+> ne peut pas tester n'est qu'une intention.
+>
+> **Deux pièges tendus par le passage du tableau de deux au vecteur**, tous deux
+> attrapés par les tests existants : indexer un vecteur vide (segfault immédiat),
+> et borner la boucle de LECTURE par la taille du vecteur — qui part vide —, ce
+> qui faisait disparaître tous les niveaux d'envoi **en silence** au chargement.
 
 
 ### Phase D5 — La vue d'arrangement

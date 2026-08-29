@@ -1,4 +1,5 @@
 #include "TestFramework.h"
+#include "vsm/sequencer/Project.h"
 #include "vsm/sequencer/Track.h"
 #include <string>
 #include <vector>
@@ -174,4 +175,54 @@ VSM_TEST(audio_takes_share_one_file_and_differ_by_their_window) {
     selectTake(piste, 2);
     VSM_ASSERT_NEAR(piste.clips[0].sourceStartSeconds, 4.0, 1e-12);
     VSM_ASSERT_EQ(piste.clips[0].startTick, Tick(1920));   // toutes au même endroit
+}
+
+// --- D4.2 : suppression d'une piste et routages de groupe ------------------
+
+VSM_TEST(removing_a_track_renumbers_the_group_routings_that_follow_it) {
+    // LE PIÈGE : supprimer une piste décale toutes les suivantes, et un routage
+    // qui visait la piste 5 viserait la 4. Le mixage partirait dans un autre
+    // groupe sans qu'aucun réglage n'ait bougé -- le genre de défaut qu'on
+    // n'attribue jamais à la suppression qui l'a causé.
+    Project projet;
+    for (int i = 0; i < 5; ++i) projet.tracks.emplace_back();
+    projet.tracks[3].kind = Track::Kind::Group;
+    projet.tracks[3].name = "Batterie";
+    projet.tracks[4].kind = Track::Kind::Group;
+    projet.tracks[4].name = "Claviers";
+    projet.tracks[0].outputGroup = 3;   // vers Batterie
+    projet.tracks[1].outputGroup = 4;   // vers Claviers
+    projet.tracks[2].outputGroup = -1;  // vers le master
+
+    removeTrack(projet, 0);             // on retire la première piste
+
+    VSM_ASSERT_EQ(projet.tracks.size(), size_t(4));
+    // Batterie est passée de 3 à 2, Claviers de 4 à 3 : les routages suivent.
+    VSM_ASSERT_EQ(projet.tracks[0].outputGroup, 3);   // ex-piste 1 -> Claviers
+    VSM_ASSERT_EQ(projet.tracks[1].outputGroup, -1);  // ex-piste 2 -> master
+    VSM_ASSERT_EQ(projet.tracks[2].name, std::string("Batterie"));
+}
+
+VSM_TEST(removing_a_group_sends_its_members_back_to_the_master) {
+    // Le seul choix qui ne fasse pas disparaître leur son.
+    Project projet;
+    for (int i = 0; i < 3; ++i) projet.tracks.emplace_back();
+    projet.tracks[2].kind = Track::Kind::Group;
+    projet.tracks[0].outputGroup = 2;
+    projet.tracks[1].outputGroup = 2;
+
+    removeTrack(projet, 2);
+
+    VSM_ASSERT_EQ(projet.tracks.size(), size_t(2));
+    VSM_ASSERT_EQ(projet.tracks[0].outputGroup, -1);
+    VSM_ASSERT_EQ(projet.tracks[1].outputGroup, -1);
+}
+
+VSM_TEST(removing_a_track_out_of_range_changes_nothing) {
+    Project projet;
+    projet.tracks.emplace_back();
+    projet.tracks[0].outputGroup = 7;
+    removeTrack(projet, 42);
+    VSM_ASSERT_EQ(projet.tracks.size(), size_t(1));
+    VSM_ASSERT_EQ(projet.tracks[0].outputGroup, 7);
 }

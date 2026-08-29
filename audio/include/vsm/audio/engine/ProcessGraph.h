@@ -126,6 +126,16 @@ public:
     /// une longue, un delay, une chambre), et le franchir est COMPTÉ plutôt
     /// que d'être ignoré en silence.
     static constexpr size_t kMaxSends = 8;
+    /// PLAFOND du nombre de groupes qui peuvent recevoir des pistes, pour la
+    /// même raison que celui des départs : leurs tampons sont dimensionnés une
+    /// fois dans `prepare()`, le chemin temps réel n'allouant pas. Un projet
+    /// peut avoir davantage de PISTES de groupe ; au-delà du plafond, les
+    /// suivantes vont au master et c'est COMPTÉ.
+    static constexpr size_t kMaxGroups = 8;
+    /// Groupes qui n'ont pas pu recevoir leurs pistes faute de tampon. Doit
+    /// rester à zéro ; toute autre valeur est un routage qui ne fait pas ce
+    /// qu'il dit.
+    uint64_t droppedGroupBuses() const { return droppedGroupBuses_.load(std::memory_order_relaxed); }
     /// Nombre de bus réellement déclarés par le projet publié.
     size_t activeSendCount() const { return activeSends_.load(std::memory_order_acquire); }
     /// Nombre de fois qu'un projet a déclaré plus de départs que le plafond.
@@ -251,6 +261,16 @@ private:
                           int sampleStart, int sampleCount, double rangeStartSeconds,
                           float* outputL, float* outputR, bool includeScheduledEvents = true);
 
+    /// Traite les pistes de GROUPE une fois que tous leurs membres ont écrit
+    /// dans leur tampon : inserts du groupe, puis volume/panoramique, puis
+    /// mélange au master et alimentation des départs. Appelée une fois par
+    /// bloc, comme les bus de départ, et pour la même raison -- un insert de
+    /// groupe traite le groupe entier, pas chaque sous-segment d'automation.
+    void renderGroupBuses(const GraphSnapshot& snapshot, bool anySolo, int numSamples,
+                           float* outputL, float* outputR);
+    /// L'index du tampon de groupe d'une piste, ou -1 si elle va au master.
+    int groupBufferFor(const vsm::sequencer::Project& project, size_t trackIndex) const;
+
     double sampleRate_ = 48000.0;
     int maxBlockSize_ = 512;
     std::array<float, kMaxTracks> blockPeak_{}; // pic par piste, cumulé sur les sous-segments
@@ -300,6 +320,13 @@ private:
     std::array<SendBus, kMaxSends> sends_;
     std::array<std::vector<float>, kMaxSends> sendL_, sendR_;
     std::atomic<size_t> activeSends_{0};
+
+    // Tampons des groupes : une piste routée vers un groupe s'y mélange au lieu
+    // d'aller au master, et le groupe est traité APRÈS, une fois que tous ses
+    // membres ont écrit. D'où deux passes, et non un ordre de pistes malin :
+    // l'ordre des pistes appartient à l'utilisateur, pas au moteur.
+    std::array<std::vector<float>, kMaxGroups> groupL_, groupR_;
+    std::atomic<uint64_t> droppedGroupBuses_{0};
     /// Plafond du tableau de travail des événements de note, PAR PISTE ET PAR
     /// SOUS-SEGMENT. Il existe parce que le chemin temps réel n'alloue pas.
     /// Relevé de 256 à 1024 : à 48 kHz, un sous-segment d'automation dure

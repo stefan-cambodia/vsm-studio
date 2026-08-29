@@ -23,7 +23,8 @@ std::vector<std::pair<std::string, std::string>> availableInstruments() {
 // TrackRowComponent
 // ---------------------------------------------------------------------------
 
-TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex)
+TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
+                                      const std::vector<std::pair<int, std::string>>& groupes)
     : track_(track), index_(trackIndex), audio_(track.kind == Track::Kind::Audio) {
     addAndMakeVisible(nameLabel_);
     nameLabel_.setText(track_.name.empty() ? ("Piste " + std::to_string(trackIndex + 1)) : track_.name,
@@ -98,6 +99,28 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex)
                : "Armer la piste : elle recoit alors le clavier MIDI, "
                  "a l'ecoute comme a l'enregistrement.");
 
+    // OÙ VA CETTE PISTE (D4.2). Un groupe, lui, va toujours au master : les
+    // groupes imbriqués demanderaient un ordre topologique pour un besoin que
+    // rien n'a exprimé, et proposer le choix laisserait croire le contraire.
+    if (track_.kind != Track::Kind::Group) {
+        addAndMakeVisible(outputBox_);
+        outputBox_.addItem("-> Master", 1);
+        int selection = 1;
+        for (size_t i = 0; i < groupes.size(); ++i) {
+            outputBox_.addItem("-> " + juce::String(groupes[i].second), static_cast<int>(i) + 2);
+            if (groupes[i].first == track_.outputGroup) selection = static_cast<int>(i) + 2;
+        }
+        outputBox_.setSelectedId(selection, juce::dontSendNotification);
+        outputBox_.setTooltip("Ou va cette piste : le master, ou un groupe.");
+        outputBox_.onChange = [this, groupes] {
+            const int choix = outputBox_.getSelectedItemIndex();
+            track_.outputGroup = (choix <= 0 || choix > static_cast<int>(groupes.size()))
+                                     ? -1
+                                     : groupes[static_cast<size_t>(choix - 1)].first;
+            if (onOutputChanged) onOutputChanged();
+        };
+    }
+
     addAndMakeVisible(volumeSlider_);
     volumeSlider_.setSliderStyle(juce::Slider::LinearHorizontal);
     volumeSlider_.setRange(0.0, 1.5, 0.001);
@@ -166,6 +189,8 @@ void TrackRowComponent::resized() {
     volumeSlider_.setBounds(thirdRow.removeFromLeft(170));
     thirdRow.removeFromLeft(8);
     panSlider_.setBounds(thirdRow.removeFromLeft(90));
+    thirdRow.removeFromLeft(8);
+    if (track_.kind != Track::Kind::Group) outputBox_.setBounds(thirdRow.removeFromLeft(130));
 }
 
 // ---------------------------------------------------------------------------
@@ -197,8 +222,18 @@ void TrackListComponent::loadProject(Project& project) {
     rows_.clear();
     selectedIndex_ = 0;
 
+    // La liste des groupes, calculée UNE fois : chaque ligne la reçoit pour
+    // remplir son sélecteur de sortie.
+    std::vector<std::pair<int, std::string>> groupes;
+    for (size_t i = 0; i < project_->tracks.size(); ++i)
+        if (project_->tracks[i].kind == Track::Kind::Group)
+            groupes.emplace_back(static_cast<int>(i),
+                                  project_->tracks[i].name.empty()
+                                      ? "Groupe " + std::to_string(i + 1)
+                                      : project_->tracks[i].name);
+
     for (size_t i = 0; i < project_->tracks.size(); ++i) {
-        auto* row = rows_.add(new TrackRowComponent(project_->tracks[i], i));
+        auto* row = rows_.add(new TrackRowComponent(project_->tracks[i], i, groupes));
         rowContainer_.addAndMakeVisible(row);
         row->onSelected = [this](size_t idx) {
             selectedIndex_ = idx;
@@ -208,6 +243,7 @@ void TrackListComponent::loadProject(Project& project) {
         };
         row->onChanged = [this] { if (onTracksChanged) onTracksChanged(); };
         row->onArmChanged = [this] { if (onArmChanged) onArmChanged(); };
+        row->onOutputChanged = [this] { if (onOutputChanged) onOutputChanged(); };
         row->onInstrumentChanged = [this](size_t idx, const std::string& pluginId) {
             if (onInstrumentChanged) onInstrumentChanged(idx, pluginId);
         };

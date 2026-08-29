@@ -26,6 +26,10 @@ void ProcessGraph::prepare(double sampleRate, int maxBlockSize) {
         sendL_[b].assign(static_cast<size_t>(maxBlockSize_), 0.0f);
         sendR_[b].assign(static_cast<size_t>(maxBlockSize_), 0.0f);
     }
+    for (size_t g = 0; g < kMaxGroups; ++g) {
+        groupL_[g].assign(static_cast<size_t>(maxBlockSize_), 0.0f);
+        groupR_[g].assign(static_cast<size_t>(maxBlockSize_), 0.0f);
+    }
     scratchEvents_.assign(static_cast<size_t>(kMaxEventsPerBlock), MidiNoteEvent{});
     meters_.resetAll();
     masterBus_.prepare(sampleRate_, maxBlockSize_);
@@ -54,6 +58,11 @@ void ProcessGraph::setProject(const Project& project) {
     // Au-delà du plafond, on COMPTE plutôt que d'ignorer : un départ qu'on
     // aurait réglé et qui ne sonnerait pas est exactement le genre de silence
     // qu'on cherche des heures.
+    size_t groupes = 0;
+    for (const auto& t : project.tracks)
+        if (t.kind == vsm::sequencer::Track::Kind::Group) ++groupes;
+    if (groupes > kMaxGroups) droppedGroupBuses_.fetch_add(1, std::memory_order_relaxed);
+
     const size_t declares = project.sends.size();
     if (declares > kMaxSends) droppedSendBuses_.fetch_add(1, std::memory_order_relaxed);
     activeSends_.store(std::min(declares, kMaxSends), std::memory_order_release);
@@ -225,6 +234,10 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
             std::fill(sendL_[b].begin(), sendL_[b].begin() + idleSamples, 0.0f);
             std::fill(sendR_[b].begin(), sendR_[b].begin() + idleSamples, 0.0f);
         }
+        for (size_t g = 0; g < kMaxGroups; ++g) {
+            std::fill(groupL_[g].begin(), groupL_[g].begin() + idleSamples, 0.0f);
+            std::fill(groupR_[g].begin(), groupR_[g].begin() + idleSamples, 0.0f);
+        }
         blockPeak_.fill(0.0f);
 
         const bool idleAnySolo = std::any_of(idleSnapshot->project.tracks.begin(),
@@ -233,6 +246,11 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
         renderTrackRange(*idleSnapshot, idleAnySolo, 0, idleSamples,
                           currentSeconds_.load(std::memory_order_acquire), outputL, outputR,
                           /*includeScheduledEvents=*/false);
+        // Même à l'arrêt : une note d'écoute jouée sur une piste groupée doit
+        // sortir par son groupe, sinon elle serait muette là et audible en
+        // lecture, ce qui est le genre d'incohérence qu'on met une heure à
+        // comprendre.
+        renderGroupBuses(*idleSnapshot, idleAnySolo, idleSamples, outputL, outputR);
 
         for (size_t t = 0; t < kMaxTracks; ++t) meters_.reportPeak(t, blockPeak_[t]);
         for (size_t b = 0; b < actifs; ++b) {
@@ -277,6 +295,10 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
             std::fill(sendL_[b].begin(), sendL_[b].begin() + samplesToProcess, 0.0f);
             std::fill(sendR_[b].begin(), sendR_[b].begin() + samplesToProcess, 0.0f);
         }
+        for (size_t g = 0; g < kMaxGroups; ++g) {
+            std::fill(groupL_[g].begin(), groupL_[g].begin() + samplesToProcess, 0.0f);
+            std::fill(groupR_[g].begin(), groupR_[g].begin() + samplesToProcess, 0.0f);
+        }
         blockPeak_.fill(0.0f);
 
         // Découpage du bloc à la frontière de boucle, pour que le rebouclage
@@ -316,6 +338,12 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
             }
         }
         blockEndSeconds = spanStartSeconds;
+
+        // LES GROUPES, une fois que toutes leurs pistes ont écrit : leurs
+        // inserts traitent le groupe entier, puis il rejoint le master et
+        // alimente les départs. Avant la lecture des mètres, pour que le mètre
+        // d'un groupe montre ce qu'il envoie vraiment.
+        renderGroupBuses(*snapshot, anySolo, samplesToProcess, outputL, outputR);
 
         for (size_t t = 0; t < kMaxTracks; ++t) meters_.reportPeak(t, blockPeak_[t]);
 
@@ -423,6 +451,71 @@ void ProcessGraph::renderSpan(const GraphSnapshot& snapshot, bool anySolo, int s
         const double segStart = startSeconds + static_cast<double>(s) / sampleRate_;
         applyAutomationAt(segStart);
         renderTrackRange(snapshot, anySolo, sampleStart + s, count, segStart, outputL, outputR);
+    }
+}
+
+int ProcessGraph::groupBufferFor(const vsm::sequencer::Project& project, size_t trackIndex) const {
+    if (trackIndex >= project.tracks.size()) return -1;
+    const auto& track = project.tracks[trackIndex];
+    // UN GROUPE NE VA JAMAIS DANS UN GROUPE : un seul niveau, décidé dans
+    // `Track::outputGroup`. Sans cette ligne, un routage circulaire ferait
+    // tourner le rendu en rond -- littéralement.
+    if (track.kind == vsm::sequencer::Track::Kind::Group) return -1;
+    if (track.outputGroup < 0) return -1;
+    const size_t cible = static_cast<size_t>(track.outputGroup);
+    if (cible >= project.tracks.size()) return -1;
+    if (project.tracks[cible].kind != vsm::sequencer::Track::Kind::Group) return -1;
+
+    // Le tampon d'un groupe est son RANG PARMI LES GROUPES, et non son index de
+    // piste : huit tampons suffisent à huit groupes, où qu'ils se trouvent
+    // parmi cent pistes.
+    int rang = 0;
+    for (size_t i = 0; i < cible; ++i)
+        if (project.tracks[i].kind == vsm::sequencer::Track::Kind::Group) ++rang;
+    if (static_cast<size_t>(rang) >= kMaxGroups) return -1;
+    return rang;
+}
+
+void ProcessGraph::renderGroupBuses(const GraphSnapshot& snapshot, bool anySolo, int numSamples,
+                                     float* outputL, float* outputR) {
+    const auto& project = snapshot.project;
+    const size_t actifs = activeSends_.load(std::memory_order_acquire);
+    int rang = 0;
+    for (size_t trackIndex = 0; trackIndex < project.tracks.size() && trackIndex < kMaxTracks;
+         ++trackIndex) {
+        const auto& track = project.tracks[trackIndex];
+        if (track.kind != vsm::sequencer::Track::Kind::Group) continue;
+        if (static_cast<size_t>(rang) >= kMaxGroups) break;
+        const size_t g = static_cast<size_t>(rang++);
+
+        // Les inserts du groupe traitent ce que TOUS ses membres y ont versé.
+        auto chain = effectChains_[trackIndex].load(std::memory_order_acquire);
+        if (chain)
+            for (const auto& fx : *chain)
+                if (fx) fx->process(groupL_[g].data(), groupR_[g].data(), numSamples);
+
+        const bool audible = anySolo ? track.solo : !track.muted;
+        // BALANCE et non panoramique : le groupe reçoit un signal déjà stéréo,
+        // qui a déjà traversé la loi à puissance constante de ses pistes. La
+        // lui appliquer une seconde fois lui coûterait encore 3 dB, et grouper
+        // deviendrait un choix qu'on paie. Voir `stereoBalance`.
+        const float peak = mixStereoBalancedInto(groupL_[g].data(), groupR_[g].data(), numSamples,
+                                                  track.volume, track.pan, audible,
+                                                  outputL, outputR);
+        blockPeak_[trackIndex] = std::max(blockPeak_[trackIndex], peak);
+
+        // Un groupe alimente les départs comme une piste : c'est ce qui permet
+        // d'envoyer toute une batterie dans une réverbération d'un seul geste.
+        if (audible) {
+            for (size_t b = 0; b < actifs; ++b) {
+                const float lvl = track.sendLevel(b) * track.volume;
+                if (lvl <= 0.0f) continue;
+                for (int i = 0; i < numSamples; ++i) {
+                    sendL_[b][static_cast<size_t>(i)] += groupL_[g][static_cast<size_t>(i)] * lvl;
+                    sendR_[b][static_cast<size_t>(i)] += groupR_[g][static_cast<size_t>(i)] * lvl;
+                }
+            }
+        }
     }
 }
 
@@ -603,10 +696,15 @@ void ProcessGraph::renderTrackRange(const GraphSnapshot& snapshot, bool anySolo,
                 if (fx) fx->process(scratchStereoL_.data(), scratchStereoR_.data(), sampleCount);
         }
 
-        // Mixage vers le master (offset sampleStart pour les sous-segments).
+        // MIXAGE VERS SA DESTINATION : le master, ou le tampon d'un groupe. Le
+        // groupe sera traité en fin de bloc, quand tous ses membres y auront
+        // écrit -- voir `renderGroupBuses`.
+        const int groupe = groupBufferFor(project, trackIndex);
+        float* destL = groupe >= 0 ? groupL_[static_cast<size_t>(groupe)].data() : outputL;
+        float* destR = groupe >= 0 ? groupR_[static_cast<size_t>(groupe)].data() : outputR;
         float peak = mixStereoInto(scratchStereoL_.data(), scratchStereoR_.data(), sampleCount,
                                     track.volume, track.pan, audible,
-                                    outputL + sampleStart, outputR + sampleStart);
+                                    destL + sampleStart, destR + sampleStart);
         blockPeak_[trackIndex] = std::max(blockPeak_[trackIndex], peak);
 
         // Sends post-fader vers les bus auxiliaires (section 15).

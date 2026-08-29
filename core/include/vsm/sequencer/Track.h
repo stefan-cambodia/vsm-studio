@@ -249,7 +249,20 @@ public:
     /// solo, départs, inserts, automation, clips -- leur est commun, et c'est
     /// pourquoi il n'y a qu'une classe : une piste audio n'est pas une autre
     /// espèce d'objet, c'est une piste dont le matériau n'est pas des notes.
-    enum class Kind { Midi, Audio };
+    /// Une piste MIDI joue des notes, une piste audio joue un fichier, et une
+    /// piste de GROUPE ne joue rien du tout : elle reçoit d'autres pistes
+    /// (D4.2). C'est ce qui permet de traiter huit micros de batterie comme un
+    /// seul instrument -- un compresseur sur le groupe, un fader pour toute la
+    /// batterie -- au lieu de refaire huit fois le même geste et d'espérer
+    /// qu'ils restent d'accord.
+    ///
+    /// UN GROUPE EST UNE PISTE, et ce n'est pas un raccourci : il a un nom, un
+    /// volume, un panoramique, un muet, un solo, une chaîne d'inserts, des
+    /// départs et une courbe d'automation, c'est-à-dire exactement ce qu'a une
+    /// piste. En faire un troisième objet aurait obligé le mixeur, l'éditeur
+    /// d'effets, l'automation et le format à connaître deux choses là où une
+    /// seule suffit.
+    enum class Kind { Midi, Audio, Group };
     Kind kind = Kind::Midi;
 
     std::string name;
@@ -308,6 +321,24 @@ public:
         if (sendLevels.size() <= index) sendLevels.resize(index + 1, 0.0f);
         sendLevels[index] = value;
     }
+
+    /// OÙ VA LA SORTIE DE CETTE PISTE : l'index de la piste de GROUPE qui la
+    /// reçoit, ou -1 pour aller directement au master (D4.2).
+    ///
+    /// UN INDEX, ET LE PIÈGE QU'IL PORTE. Supprimer une piste décale toutes les
+    /// suivantes, et un routage qui visait la piste 5 viserait la 4 : le
+    /// mixage partirait ailleurs sans qu'aucun réglage n'ait bougé. C'est
+    /// exactement le défaut qui avait fait ranger les chaînes d'effets DANS la
+    /// piste (voir `TrackEffect`). Ici on ne peut pas l'éviter -- c'est une
+    /// référence d'une piste vers une autre --, alors on la répare : celui qui
+    /// supprime une piste renumérote les routages, et un test le vérifie.
+    ///
+    /// UN GROUPE NE VA JAMAIS DANS UN GROUPE. Les groupes imbriqués
+    /// demanderaient un ordre topologique et une détection de cycle pour un
+    /// besoin que rien n'a exprimé ; un seul niveau couvre l'usage réel
+    /// (batterie, claviers, voix). Le moteur ignore donc le routage d'une piste
+    /// de groupe et l'envoie au master.
+    int outputGroup = -1;
 
     /// Identifiant du plugin instrument assigné (vide = aucun). Résolu par
     /// le Synth Rack en Phase 2 via ISynthPlugin / PluginRegistry.
