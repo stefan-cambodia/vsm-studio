@@ -99,6 +99,14 @@ private:
         /// suite -- comme les paliers d'échelle du menu Affichage.
         kMenuRecordTakeFirst,
         kMenuRecordTakeLast = kMenuRecordTakeFirst + 63,
+        kMenuMixAddSend,
+        /// Un identifiant par bus, pour le retirer.
+        kMenuMixRemoveSendFirst,
+        kMenuMixRemoveSendLast = kMenuMixRemoveSendFirst + 7,
+        /// Vingt places par bus pour choisir son effet : treize aujourd'hui,
+        /// de la marge pour ceux qui viendront.
+        kMenuMixSendEffectFirst,
+        kMenuMixSendEffectLast = kMenuMixSendEffectFirst + 8 * 20 - 1,
         kMenuViewTracks,
         kMenuViewPianoRoll,
         kMenuViewSynthRack,
@@ -180,6 +188,23 @@ private:
     /// Republie les courbes du projet vers le moteur (chemin inverse du
     /// précédent), après un chargement.
     void applyAutomationFromProject();
+    /// Fabrique et publie les effets des bus de départ décrits par le projet.
+    ///
+    /// Ils étaient DEUX, figés en dur sur une réverbération et un delay dans ce
+    /// constructeur, et rien dans le projet ne disait ce que les boutons
+    /// « send » du mixeur alimentaient.
+    void applySendBuses();
+    /// Republie les bus au moteur ET reconstruit les boutons du mixeur : leur
+    /// nombre a pu changer, et une tranche garderait sinon un bouton vers un
+    /// bus disparu.
+    void sendBusesChanged();
+    /// Rend leurs deux bus aux projets d'avant D4.2 qui avaient des niveaux
+    /// d'envoi sans pouvoir dire vers quoi. Voir le .cpp pour la règle exacte.
+    void adoptDefaultSendsIfNeeded();
+    /// Le projet neuf reçoit deux départs, une réverbération et un delay : ce
+    /// sont ceux qu'on veut neuf fois sur dix, et un mixeur sans aucun départ
+    /// donnerait l'impression que la fonction a disparu.
+    static std::vector<vsm::sequencer::SendBusDescription> defaultSendBuses();
     /// Réaccorde tout ce qui dépend de la fréquence d'échantillonnage réelle
     /// du périphérique : chaînes d'inserts et effets de bus. Appelée quand la
     /// carte son change de régime -- 48 kHz était écrit en dur, ce qui rendait

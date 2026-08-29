@@ -146,19 +146,11 @@ MainComponent::MainComponent()
     // chaînes part alors vers le moteur au lieu de tomber dans le vide.
     effectChain_.setProject(&project_);
 
-    // Bus de sends par défaut : Reverb sur le send A, Delay sur le send B
-    // (préparés sur le thread UI avant publication). Les knobs "send" de
-    // chaque tranche du mixer y routent le signal.
-    {
-        auto reverb = std::make_shared<vsm::audio::effect::Reverb>();
-        reverb->prepare(48000.0, 512);
-        audioEngine_.processGraph().setSendEffect(0, reverb);
-        audioEngine_.processGraph().setSendReturn(0, 1.0f);
-        auto delay = std::make_shared<vsm::audio::effect::Delay>();
-        delay->prepare(48000.0, 512);
-        audioEngine_.processGraph().setSendEffect(1, delay);
-        audioEngine_.processGraph().setSendReturn(1, 1.0f);
-    }
+    // Les bus de départ viennent désormais DU PROJET (D4.2) : voir
+    // `applySendBuses`, appelée par `rebuildFromProject`. Le projet vide de
+    // démarrage reçoit les deux qu'on veut neuf fois sur dix -- un mixeur sans
+    // aucun départ donnerait l'impression que la fonction a disparu.
+    project_.sends = defaultSendBuses();
 
     // REPÈRES : posés sur la règle, nommés tout de suite. Un repère sans nom
     // ne repère rien, et c'est pourquoi l'interface demande le nom au moment de
@@ -509,7 +501,7 @@ void MainComponent::timerCallback() {
 // --- Menu ------------------------------------------------------------------
 
 juce::StringArray MainComponent::getMenuBarNames() {
-    return { "Fichier", u8"Édition", "Piste", "Enregistrement", "Affichage", "Aide" };
+    return { "Fichier", u8"Édition", "Piste", "Enregistrement", "Mixage", "Affichage", "Aide" };
 }
 
 juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce::String&) {
@@ -646,6 +638,36 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             }
             break;
         case 4:
+            // LE MIXAGE. Les bus de départ y sont NOMMÉS et leur effet s'y
+            // choisit : ils étaient deux, figés dans le code sur une
+            // réverbération et un delay, et rien -- ni le projet, ni
+            // l'interface -- ne disait ce que les boutons alimentaient.
+            {
+                menu.addSectionHeader(u8"Bus de départ");
+                const auto& effets = vsm::audio::effect::EffectFactory::available();
+                for (size_t bus = 0; bus < project_.sends.size() && bus < 8; ++bus) {
+                    const auto& decrit = project_.sends[bus];
+                    juce::PopupMenu sousMenu;
+                    for (size_t e = 0; e < effets.size() && e < 20; ++e)
+                        sousMenu.addItem(kMenuMixSendEffectFirst + static_cast<int>(bus * 20 + e),
+                                          effets[e].displayName, true,
+                                          effets[e].id == decrit.effectType);
+                    sousMenu.addSeparator();
+                    sousMenu.addItem(kMenuMixRemoveSendFirst + static_cast<int>(bus),
+                                      u8"Retirer ce bus");
+                    menu.addSubMenu(juce::String(decrit.name.empty() ? "Bus" : decrit.name)
+                                         + "  (" + juce::String(decrit.effectType) + ")",
+                                     sousMenu);
+                }
+                if (project_.sends.empty())
+                    menu.addItem(-1, u8"(aucun — les tranches n'ont pas de bouton de départ)",
+                                  false, false);
+                menu.addSeparator();
+                menu.addItem(kMenuMixAddSend, u8"Ajouter un bus de départ",
+                              project_.sends.size() < vsm::audio::engine::ProcessGraph::kMaxSends);
+            }
+            break;
+        case 5:
             menu.addItem(kMenuViewTracks, "Pistes", true, trackListWindow_.isVisible());
             menu.addItem(kMenuViewPianoRoll, "Piano Roll", true, pianoRollWindow_.isVisible());
             menu.addItem(kMenuViewSynthRack, "Synth Rack", true, synthRackWindow_.isVisible());
@@ -668,7 +690,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addSubMenu("Taille de l'interface", tailles);
             }
             break;
-        case 5:
+        case 6:
             menu.addItem(kMenuHelpAbout, u8"À propos de Vintage Synth MIDI Studio");
             break;
         default:
@@ -747,6 +769,16 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             vsm::app::ui::UiScale::properties().setValue("latenceAllerRetour", 0.0);
             break;
         case kMenuRecordQuantizeTake: quantizeLastTake(); break;
+        case kMenuMixAddSend: {
+            if (project_.sends.size() >= vsm::audio::engine::ProcessGraph::kMaxSends) break;
+            beginProjectEdit(u8"Ajouter un bus de départ");
+            vsm::sequencer::SendBusDescription bus;
+            bus.name = "Bus " + std::to_string(project_.sends.size() + 1);
+            bus.effectType = "reverb";
+            project_.sends.push_back(std::move(bus));
+            sendBusesChanged();
+            break;
+        }
         case kMenuFileQuit:      juce::JUCEApplication::getInstance()->systemRequestedQuit(); break;
         case kMenuTrackAdd:      addTrack(Track::Kind::Midi); break;
         case kMenuTrackAddAudio: addTrack(Track::Kind::Audio); break;
@@ -757,6 +789,38 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuViewMixer:     togglePanel(mixerWindow_); break;
         case kMenuHelpAbout:     showAboutDialog(); break;
         default:
+            if (menuItemID >= kMenuMixRemoveSendFirst && menuItemID <= kMenuMixRemoveSendLast) {
+                const size_t bus = static_cast<size_t>(menuItemID - kMenuMixRemoveSendFirst);
+                if (bus >= project_.sends.size()) break;
+                beginProjectEdit(u8"Retirer un bus de départ");
+                project_.sends.erase(project_.sends.begin() + static_cast<std::ptrdiff_t>(bus));
+                // LES NIVEAUX DES PISTES SUIVENT LE BUS RETIRÉ. Sans cela, le
+                // départ qui visait le bus 2 viserait le bus 1 après la
+                // suppression du 0 : la piste enverrait dans le mauvais effet
+                // sans qu'aucun bouton n'ait bougé.
+                for (auto& piste : project_.tracks)
+                    if (bus < piste.sendLevels.size())
+                        piste.sendLevels.erase(piste.sendLevels.begin()
+                                                + static_cast<std::ptrdiff_t>(bus));
+                sendBusesChanged();
+                break;
+            }
+            if (menuItemID >= kMenuMixSendEffectFirst && menuItemID <= kMenuMixSendEffectLast) {
+                const int offset = menuItemID - kMenuMixSendEffectFirst;
+                const size_t bus = static_cast<size_t>(offset / 20);
+                const size_t choix = static_cast<size_t>(offset % 20);
+                const auto& effets = vsm::audio::effect::EffectFactory::available();
+                if (bus >= project_.sends.size() || choix >= effets.size()) break;
+                beginProjectEdit(u8"Effet d'un bus de départ");
+                project_.sends[bus].effectType = effets[choix].id;
+                // Les réglages appartenaient à l'effet précédent : les garder
+                // reposerait des valeurs nommées pour un autre effet, qui les
+                // signalerait toutes comme inconnues.
+                project_.sends[bus].parameters.clear();
+                project_.sends[bus].name = effets[choix].displayName;
+                sendBusesChanged();
+                break;
+            }
             if (menuItemID >= kMenuViewScaleFirst && menuItemID <= kMenuViewScaleLast) {
                 const auto& paliers = vsm::app::ui::UiScale::steps();
                 const int index = menuItemID - kMenuViewScaleFirst;
@@ -1327,12 +1391,73 @@ void MainComponent::applyAudioConfig() {
     loadAudioTracks();
 
     // Les effets de bus : mêmes types, mêmes réglages, à la bonne fréquence.
-    for (int bus = 0; bus < 2; ++bus) {
-        auto fx = vsm::audio::effect::EffectFactory::create(bus == 0 ? "reverb" : "delay");
-        if (!fx) continue;
+    applySendBuses();
+}
+
+std::vector<vsm::sequencer::SendBusDescription> MainComponent::defaultSendBuses() {
+    std::vector<vsm::sequencer::SendBusDescription> bus;
+    vsm::sequencer::SendBusDescription reverb;
+    reverb.name = "Reverberation";
+    reverb.effectType = "reverb";
+    bus.push_back(std::move(reverb));
+    vsm::sequencer::SendBusDescription delay;
+    delay.name = "Delay";
+    delay.effectType = "delay";
+    bus.push_back(std::move(delay));
+    return bus;
+}
+
+void MainComponent::adoptDefaultSendsIfNeeded() {
+    if (!project_.sends.empty()) return;
+    // UN PROJET SANS BUS DÉCLARÉ QUI A POURTANT DES NIVEAUX D'ENVOI vient
+    // forcément d'AVANT D4.2 : les niveaux étaient sauvegardés, mais les deux
+    // effets qu'ils alimentaient étaient figés dans le code et n'étaient donc
+    // écrits nulle part. Lui rendre ces deux bus-là, c'est lui rendre le
+    // mixage qu'il avait ; ne rien faire le priverait en silence de sa
+    // réverbération.
+    //
+    // Un projet sans bus ET sans niveau, lui, n'a rien perdu : on le laisse
+    // tranquille, parce qu'un utilisateur a le droit de ne vouloir aucun
+    // départ et qu'ils reviendraient à chaque ouverture.
+    for (const auto& piste : project_.tracks)
+        for (float niveau : piste.sendLevels)
+            if (niveau > 0.0f) { project_.sends = defaultSendBuses(); return; }
+}
+
+void MainComponent::sendBusesChanged() {
+    applySendBuses();
+    mixer_.setProject(&project_);   // le nombre de boutons a pu changer
+    mixDirty_ = true;               // republie le projet (niveaux d'envoi) au moteur
+}
+
+void MainComponent::applySendBuses() {
+    const double sr = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate() : 48000.0;
+    const int blockSize = audioEngine_.currentBlockSize() > 0 ? audioEngine_.currentBlockSize() : 512;
+
+    for (size_t bus = 0; bus < vsm::audio::engine::ProcessGraph::kMaxSends; ++bus) {
+        if (bus >= project_.sends.size()) {
+            // AU-DELÀ DE CE QUE LE PROJET DÉCLARE, ON EFFACE. Laisser en place
+            // l'effet d'un bus supprimé le ferait revenir au chargement du
+            // projet suivant, sans que rien ne le mentionne.
+            audioEngine_.processGraph().setSendEffect(bus, nullptr);
+            continue;
+        }
+        const auto& decrit = project_.sends[bus];
+        auto fx = vsm::audio::effect::EffectFactory::create(decrit.effectType);
+        if (!fx) {
+            audioEngine_.processGraph().setSendEffect(bus, nullptr);
+            continue;
+        }
+        // Les réglages sont REPOSÉS depuis leurs identités sémantiques, comme
+        // pour les inserts : c'est ce qui les fait survivre à un changement de
+        // version de l'effet.
+        vsm::sequencer::TrackEffect described;
+        described.type = decrit.effectType;
+        described.parameters = decrit.parameters;
+        vsm::interchange::applyEffectDescription(described, *fx);
         fx->prepare(sr, blockSize);
-        audioEngine_.processGraph().setSendEffect(static_cast<size_t>(bus), std::move(fx));
-        audioEngine_.processGraph().setSendReturn(static_cast<size_t>(bus), 1.0f);
+        audioEngine_.processGraph().setSendEffect(bus, std::shared_ptr<vsm::audio::effect::IAudioEffect>(std::move(fx)));
+        audioEngine_.processGraph().setSendReturn(bus, decrit.returnGain);
     }
 }
 
@@ -1340,6 +1465,7 @@ void MainComponent::newProject() {
     history_.clear();   // l'annulation d'un autre morceau n'a aucun sens ici
     project_ = Project{};
     project_.title = "Nouveau projet";
+    project_.sends = defaultSendBuses();
     rebuildFromProject();
 }
 
@@ -1946,6 +2072,8 @@ void MainComponent::rebuildFromProject(bool stopPlayback) {
     if (!project_.masterParameters.empty())
         vsm::interchange::applyMasterDescription(project_.masterParameters,
                                                   audioEngine_.processGraph().masterBus());
+    adoptDefaultSendsIfNeeded();
+    applySendBuses();
     loadAudioTracks();
     effectChain_.rebuildFromProject();
     for (size_t i = project_.tracks.size(); i < maxAssignedTracks_; ++i)

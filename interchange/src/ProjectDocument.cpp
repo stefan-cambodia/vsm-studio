@@ -152,6 +152,8 @@ ProjectDocument documentFromProject(const Project& project) {
     document.transport.loopEnabled = project.loopEnabled;
     document.transport.loopStartTick = project.loopStartTick;
     document.transport.loopEndTick = project.loopEndTick;
+    for (const auto& bus : project.sends)
+        document.sends.push_back({bus.name, bus.effectType, bus.parameters, bus.returnGain});
     document.transport.punchEnabled = project.punchEnabled;
     document.transport.punchStartTick = project.punchStartTick;
     document.transport.punchEndTick = project.punchEndTick;
@@ -272,6 +274,9 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
     project.loopEnabled = document.transport.loopEnabled;
     project.loopStartTick = document.transport.loopStartTick;
     project.loopEndTick = document.transport.loopEndTick;
+    project.sends.clear();
+    for (const auto& bus : document.sends)
+        project.sends.push_back({bus.name, bus.effectType, bus.parameters, bus.returnGain});
     project.punchEnabled = document.transport.punchEnabled;
     project.punchStartTick = document.transport.punchStartTick;
     project.punchEndTick = document.transport.punchEndTick;
@@ -429,6 +434,24 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
     }
     transport.set("loop", std::move(loop));
     root.set("transport", std::move(transport));
+
+    // LES BUS DE DÉPART, écrits seulement s'il y en a : un projet qui n'en
+    // déclare pas garde le fichier qu'il avait avant qu'ils soient nommés.
+    if (!document.sends.empty()) {
+        JsonValue sends = JsonValue::makeArray();
+        for (const auto& bus : document.sends) {
+            JsonValue b = JsonValue::makeObject();
+            b.set("name", JsonValue::makeString(bus.name));
+            b.set("effect", JsonValue::makeString(bus.effectType));
+            b.set("returnGain", JsonValue::makeFloat(bus.returnGain));
+            JsonValue params = JsonValue::makeObject();
+            for (const auto& [semanticId, value] : bus.parameters)
+                params.set(semanticId, JsonValue::makeFloat(value));
+            b.set("parameters", std::move(params));
+            sends.append(std::move(b));
+        }
+        root.set("sends", std::move(sends));
+    }
 
     JsonValue tracks = JsonValue::makeArray();
     for (const auto& track : document.tracks) {
@@ -605,6 +628,16 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
     document.transport.punchStartTick = static_cast<int64_t>(punch["startTick"].asNumber(0.0));
     document.transport.punchEndTick = static_cast<int64_t>(punch["endTick"].asNumber(0.0));
 
+    for (const auto& busJson : json["sends"].elements()) {
+        ProjectSendBus bus;
+        bus.name = busJson["name"].asString();
+        bus.effectType = busJson["effect"].asString();
+        bus.returnGain = static_cast<float>(busJson["returnGain"].asNumber(1.0));
+        for (const auto& [semanticId, value] : busJson["parameters"].members())
+            if (value.isNumber()) bus.parameters[semanticId] = static_cast<float>(value.asNumber());
+        document.sends.push_back(std::move(bus));
+    }
+
     for (const auto& entry : json["tracks"].elements()) {
         ProjectTrack track;
         track.name = entry["name"].asString();
@@ -622,7 +655,12 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         track.pan = static_cast<float>(mix["pan"].asNumber(0.0));
         track.muted = mix["muted"].asBoolean(false);
         track.solo = mix["solo"].asBoolean(false);
-        for (size_t i = 0; i < track.sendLevels.size() && i < mix["sends"].size(); ++i)
+        // LA TAILLE VIENT DU FICHIER, et c'est un piège qu'a tendu le passage
+        // du tableau de deux au vecteur : borner la boucle par la taille du
+        // VECTEUR, qui part vide, ne lisait plus rien du tout et faisait
+        // disparaître tous les niveaux d'envoi en silence.
+        track.sendLevels.assign(mix["sends"].size(), 0.0f);
+        for (size_t i = 0; i < track.sendLevels.size(); ++i)
             track.sendLevels[i] = static_cast<float>(mix["sends"].at(i).asNumber(0.0));
 
         track.kind = entry["kind"].asString();

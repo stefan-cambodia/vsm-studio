@@ -1,5 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
+#include <string>
+#include <vector>
 #include "LookAndFeel/VsmLookAndFeel.h"
 #include "vsm/audio/engine/MasterBus.h"
 #include "vsm/sequencer/Project.h"
@@ -60,7 +62,12 @@ private:
 /// Tranche d'une piste.
 class ChannelStrip : public juce::Component {
 public:
-    ChannelStrip(vsm::sequencer::Track& track, size_t index);
+    /// `sendNames` donne un bouton par bus DÉCLARÉ par le projet, dans son
+    /// ordre. Deux boutons figés promettaient deux départs qui n'étaient écrits
+    /// nulle part et dont rien ne disait le contenu ; un bouton par bus nommé
+    /// dit ce qu'on alimente.
+    ChannelStrip(vsm::sequencer::Track& track, size_t index,
+                  const std::vector<std::string>& sendNames);
     void resized() override;
     void paint(juce::Graphics&) override;
     void setMeterLevel(float linearPeak) { meter_.setLevel(linearPeak); }
@@ -79,7 +86,9 @@ private:
     juce::Label nameLabel_;
     juce::Slider volume_;
     juce::Slider pan_;
-    juce::Slider sendA_, sendB_;
+    /// Un bouton par bus de départ du projet. `OwnedArray` et non deux membres :
+    /// leur nombre n'est plus connu à la compilation.
+    juce::OwnedArray<juce::Slider> sends_;
     juce::TextButton mute_ { "M" };
     juce::TextButton solo_ { "S" };
     LevelMeter meter_;

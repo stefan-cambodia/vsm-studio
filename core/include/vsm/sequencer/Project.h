@@ -10,6 +10,28 @@
 
 namespace vsm::sequencer {
 
+/// UN BUS DE DÉPART : un effet PARTAGÉ que toutes les pistes peuvent
+/// alimenter, et dont le retour est ajouté au mixage.
+///
+/// C'est ce qui distingue un départ d'un insert : une réverbération placée en
+/// insert sur six pistes, ce sont six réverbérations qui tournent et six
+/// espaces différents ; placée en départ, c'est UN espace dans lequel six
+/// pistes se trouvent. La différence s'entend, et elle coûte six fois moins
+/// cher à calculer.
+///
+/// L'effet est décrit -- un identifiant de fabrique et des valeurs nommées --
+/// et non instancié, pour la même raison que `TrackEffect` : `core/` ne
+/// connaît pas `audio/`, et le disque ne connaît que des noms et des nombres.
+struct SendBusDescription {
+    std::string name;
+    std::string effectType;                  ///< identifiant EffectFactory ("reverb"...)
+    std::map<std::string, float> parameters; ///< identité sémantique -> valeur réelle
+    /// Gain du RETOUR dans le mixage. Baisser le retour n'est pas la même
+    /// chose que baisser les départs : l'un change le niveau de l'effet pour
+    /// toutes les pistes d'un coup, l'autre change qui l'alimente.
+    float returnGain = 1.0f;
+};
+
 /// Modèle "métier" du morceau : c'est CE que le piano roll, le mixer et
 /// l'automation manipulent — jamais les octets bruts du fichier MIDI.
 ///
@@ -31,6 +53,19 @@ public:
 
     /// Repères nommés de la ligne de temps, triés par tick.
     std::vector<Marker> markers;
+
+    /// LES BUS DE DÉPART (sends) DU PROJET (D4.2).
+    ///
+    /// Ils étaient DEUX, figés dans le constructeur de l'application sur une
+    /// réverbération et un delay, et le nombre était une constante du moteur.
+    /// Ce n'était pas seulement rigide : c'était invisible, puisque rien dans
+    /// le projet ne disait ce que les deux boutons « send » de chaque tranche
+    /// alimentaient. Un projet déclare désormais SES bus, avec leur nom et
+    /// leur effet, et le fichier le dit.
+    ///
+    /// Vide = aucun départ, et les boutons correspondants n'existent pas dans
+    /// le mixeur -- plutôt que deux boutons qui n'envoient nulle part.
+    std::vector<SendBusDescription> sends;
 
     /// Région de boucle. Elle vivait jusqu'ici dans l'interface seule, ce qui
     /// la faisait disparaître à la fermeture alors que le format de projet

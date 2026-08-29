@@ -116,7 +116,22 @@ public:
         ignoredControlEvents_.store(0, std::memory_order_relaxed);
     }
 
-    static constexpr size_t kNumSends = 2;
+    /// PLAFOND du nombre de bus de départ, et non plus leur nombre (D4.2).
+    ///
+    /// Le nombre RÉEL vient du projet (`Project::sends`) : c'est lui qui décide
+    /// combien de départs existent, et lui qui dit ce que chacun contient. Ce
+    /// plafond ne subsiste que parce que le chemin temps réel n'alloue pas --
+    /// les tampons des bus sont dimensionnés une fois dans `prepare()`. Huit
+    /// est très au-delà de ce qu'un mixage demande (une réverbération courte,
+    /// une longue, un delay, une chambre), et le franchir est COMPTÉ plutôt
+    /// que d'être ignoré en silence.
+    static constexpr size_t kMaxSends = 8;
+    /// Nombre de bus réellement déclarés par le projet publié.
+    size_t activeSendCount() const { return activeSends_.load(std::memory_order_acquire); }
+    /// Nombre de fois qu'un projet a déclaré plus de départs que le plafond.
+    /// Doit rester à zéro ; toute autre valeur est un départ qu'on a réglé et
+    /// qui ne sonne pas.
+    uint64_t droppedSendBuses() const { return droppedSendBuses_.load(std::memory_order_relaxed); }
     /// Effet d'un bus auxiliaire (ex. reverb sur le send A). prepare() par
     /// l'appelant avant publication. Le signal de retour est ajouté au master.
     void setSendEffect(size_t busIndex, std::shared_ptr<vsm::audio::effect::IAudioEffect> effect); // thread UI
@@ -282,8 +297,9 @@ private:
         std::atomic<std::shared_ptr<vsm::audio::effect::IAudioEffect>> effect{nullptr};
         std::atomic<float> returnGain{1.0f};
     };
-    std::array<SendBus, kNumSends> sends_;
-    std::array<std::vector<float>, kNumSends> sendL_, sendR_;
+    std::array<SendBus, kMaxSends> sends_;
+    std::array<std::vector<float>, kMaxSends> sendL_, sendR_;
+    std::atomic<size_t> activeSends_{0};
     /// Plafond du tableau de travail des événements de note, PAR PISTE ET PAR
     /// SOUS-SEGMENT. Il existe parce que le chemin temps réel n'alloue pas.
     /// Relevé de 256 à 1024 : à 48 kHz, un sous-segment d'automation dure
@@ -302,6 +318,7 @@ private:
     Metronome metronome_;
     std::atomic<bool> metronomeEnabled_{false};
 
+    std::atomic<uint64_t> droppedSendBuses_{0};
     std::atomic<uint64_t> droppedNoteEvents_{0};
     std::atomic<uint64_t> ignoredControlEvents_{0};
 

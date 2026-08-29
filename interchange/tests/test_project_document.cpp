@@ -1,4 +1,5 @@
 #include "TestFramework.h"
+#include "vsm/interchange/Json.h"
 #include "vsm/interchange/ProjectDocument.h"
 #include <cmath>
 
@@ -87,7 +88,13 @@ VSM_TEST(project_document_round_trips_through_json) {
         VSM_ASSERT_NEAR(copy.tracks[i].volume, original.tracks[i].volume, 1e-6);
         VSM_ASSERT_NEAR(copy.tracks[i].pan, original.tracks[i].pan, 1e-6);
         VSM_ASSERT_EQ(copy.tracks[i].muted, original.tracks[i].muted);
-        VSM_ASSERT_NEAR(copy.tracks[i].sendLevels[0], original.tracks[i].sendLevels[0], 1e-6);
+        // Les niveaux d'envoi sont un VECTEUR depuis D4.2 : on compare la liste
+        // entière, pas son premier élément -- une piste peut n'en déclarer
+        // aucun, et l'indexer aveuglément était précisément le défaut que ce
+        // test a attrapé au moment du changement.
+        VSM_ASSERT_EQ(copy.tracks[i].sendLevels.size(), original.tracks[i].sendLevels.size());
+        for (size_t b = 0; b < copy.tracks[i].sendLevels.size(); ++b)
+            VSM_ASSERT_NEAR(copy.tracks[i].sendLevels[b], original.tracks[i].sendLevels[b], 1e-6);
     }
 }
 
@@ -562,4 +569,91 @@ VSM_TEST(an_absolute_audio_path_is_refused_like_an_absolute_preset_path) {
     const ProjectLoadResult result = parseProjectDocument(json);
     VSM_ASSERT(!result.success);
     VSM_ASSERT(result.error.find("non portable") != std::string::npos);
+}
+
+// --- D4.2 : les bus de départ ----------------------------------------------
+
+VSM_TEST(send_buses_survive_the_round_trip_with_their_effect_and_settings) {
+    // Ils étaient DEUX, figés dans le code sur une réverbération et un delay, et
+    // rien dans le projet ne disait ce que les boutons « send » alimentaient.
+    // Le fichier le dit maintenant, et c'est cela qu'on vérifie.
+    Project projet;
+    projet.tracks.emplace_back();
+    uint64_t ids = 1;
+    projet.tracks[0].addNote(0, 480, 60, 100, 0, ids);
+
+    vsm::sequencer::SendBusDescription salle;
+    salle.name = "Grande salle";
+    salle.effectType = "reverb";
+    salle.parameters["effect.reverb.size"] = 0.85f;
+    salle.returnGain = 0.6f;
+    projet.sends.push_back(salle);
+
+    vsm::sequencer::SendBusDescription echo;
+    echo.name = "Echo court";
+    echo.effectType = "delay";
+    projet.sends.push_back(echo);
+
+    projet.tracks[0].setSendLevel(1, 0.42f);
+
+    const ProjectDocument document = documentFromProject(projet);
+    const ProjectLoadResult relu = parseProjectDocument(projectDocumentToJson(document).toString());
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT_EQ(relu.document.sends.size(), size_t(2));
+    VSM_ASSERT_EQ(relu.document.sends[0].name, std::string("Grande salle"));
+    VSM_ASSERT_EQ(relu.document.sends[0].effectType, std::string("reverb"));
+    VSM_ASSERT_NEAR(relu.document.sends[0].returnGain, 0.6f, 1e-6);
+    VSM_ASSERT_NEAR(relu.document.sends[0].parameters.at("effect.reverb.size"), 0.85f, 1e-6);
+    VSM_ASSERT_EQ(relu.document.sends[1].effectType, std::string("delay"));
+
+    // Et les niveaux de la piste sont revenus sur le BON bus.
+    Project restaure;
+    restaure.tracks.emplace_back();
+    applyDocumentToProject(relu.document, restaure);
+    VSM_ASSERT_EQ(restaure.sends.size(), size_t(2));
+    VSM_ASSERT_NEAR(restaure.tracks[0].sendLevel(1), 0.42f, 1e-6);
+    VSM_ASSERT_NEAR(restaure.tracks[0].sendLevel(0), 0.0f, 1e-6);
+}
+
+VSM_TEST(a_project_without_send_buses_writes_no_sends_key) {
+    // Champ facultatif, comme les clips et les prises : un projet qui n'en
+    // déclare pas garde exactement le fichier qu'il avait.
+    //
+    // La vérification passe par le JSON ANALYSÉ et non par une recherche de
+    // texte : chaque piste écrit déjà ses NIVEAUX d'envoi sous la clé « sends »
+    // de son bloc de mixage, et chercher la chaîne dans le fichier entier
+    // trouve celle-là. Deux choses différentes portent le même nom à deux
+    // niveaux différents, et seule la structure les distingue.
+    Project projet;
+    projet.tracks.emplace_back();
+    const auto texte = projectDocumentToJson(documentFromProject(projet)).toString();
+    const auto analyse = parseJson(texte);
+    VSM_ASSERT(analyse.success);
+    VSM_ASSERT(!analyse.value["sends"].isArray());
+
+    projet.sends.push_back({"Un bus", "reverb", {}, 1.0f});
+    const auto avec = parseJson(projectDocumentToJson(documentFromProject(projet)).toString());
+    VSM_ASSERT(avec.success);
+    VSM_ASSERT(avec.value["sends"].isArray());
+    VSM_ASSERT_EQ(avec.value["sends"].size(), size_t(1));
+}
+
+VSM_TEST(more_send_levels_than_buses_do_not_shift_onto_the_wrong_bus) {
+    // Le vrai risque du passage à une liste : un niveau qui glisse d'un bus à
+    // l'autre s'entend, mais on cherche longtemps pourquoi une piste part dans
+    // le delay alors qu'on avait réglé la réverbération.
+    Project projet;
+    projet.tracks.emplace_back();
+    projet.sends.push_back({"Un seul", "reverb", {}, 1.0f});
+    projet.tracks[0].setSendLevel(0, 0.5f);
+    projet.tracks[0].setSendLevel(3, 0.9f);   // vers un bus qui n'existe pas
+
+    const ProjectDocument document = documentFromProject(projet);
+    Project restaure;
+    restaure.tracks.emplace_back();
+    applyDocumentToProject(document, restaure);
+    VSM_ASSERT_NEAR(restaure.tracks[0].sendLevel(0), 0.5f, 1e-6);
+    VSM_ASSERT_NEAR(restaure.tracks[0].sendLevel(1), 0.0f, 1e-6);
+    VSM_ASSERT_NEAR(restaure.tracks[0].sendLevel(2), 0.0f, 1e-6);
+    VSM_ASSERT_NEAR(restaure.tracks[0].sendLevel(3), 0.9f, 1e-6);
 }

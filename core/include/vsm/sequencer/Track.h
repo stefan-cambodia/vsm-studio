@@ -286,9 +286,28 @@ public:
     bool armed = false;
     float volume = 1.0f;  // gain linéaire, 1.0 = 0 dB
     float pan = 0.0f;      // -1 (gauche) .. +1 (droite)
-    /// Niveaux d'envoi vers les 2 bus auxiliaires (sends, section 15).
-    /// 0 = pas d'envoi. Portés par Track (donnée de mixage) comme volume/pan.
-    std::array<float, 2> sendLevels{{0.0f, 0.0f}};
+    /// Niveaux d'envoi vers les bus auxiliaires (sends). 0 = pas d'envoi.
+    /// Portés par Track (donnée de mixage) comme volume/pan.
+    ///
+    /// UN VECTEUR ET NON PLUS UN TABLEAU DE DEUX (D4.2). Le nombre de départs
+    /// était une constante du code : deux, figés sur une réverbération et un
+    /// delay. Une piste peut en avoir moins que le projet n'en déclare -- un
+    /// vecteur court vaut « pas d'envoi » sur les bus suivants, ce qui rend la
+    /// migration des projets existants vide et évite d'avoir à retailler
+    /// chaque piste quand on ajoute un bus.
+    std::vector<float> sendLevels;
+
+    /// Niveau d'envoi vers le bus `index`, ou zéro si la piste n'en déclare
+    /// pas autant. À employer partout plutôt qu'un accès direct : c'est ce qui
+    /// rend le vecteur court inoffensif.
+    float sendLevel(size_t index) const {
+        return index < sendLevels.size() ? sendLevels[index] : 0.0f;
+    }
+    /// Règle un niveau d'envoi, en allongeant le vecteur si besoin.
+    void setSendLevel(size_t index, float value) {
+        if (sendLevels.size() <= index) sendLevels.resize(index + 1, 0.0f);
+        sendLevels[index] = value;
+    }
 
     /// Identifiant du plugin instrument assigné (vide = aucun). Résolu par
     /// le Synth Rack en Phase 2 via ISynthPlugin / PluginRegistry.

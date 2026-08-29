@@ -11,7 +11,8 @@ float dbToGain(float db) { return std::pow(10.0f, db / 20.0f); }
 
 // ============================================================ ChannelStrip
 
-ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index)
+ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
+                            const std::vector<std::string>& sendNames)
     : track_(track), index_(index) {
     nameLabel_.setText(track_.name.empty() ? "Track" : track_.name, juce::dontSendNotification);
     nameLabel_.setJustificationType(juce::Justification::centred);
@@ -43,20 +44,24 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index)
     };
     addAndMakeVisible(pan_);
 
-    auto setupSend = [this](juce::Slider& s, int bus) {
-        s.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
-        s.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-        s.setRange(0.0, 1.0, 0.01);
-        s.setValue(track_.sendLevels[static_cast<size_t>(bus)], juce::dontSendNotification);
-        s.onDragStart = [this] { if (onMixEditStarted) onMixEditStarted(); };
-        s.onValueChange = [this, &s, bus] {
-            track_.sendLevels[static_cast<size_t>(bus)] = static_cast<float>(s.getValue());
+    // UN BOUTON PAR BUS DÉCLARÉ, et son infobulle dit lequel : « send A » et
+    // « send B » n'apprenaient rien, et le projet ne disait même pas ce qu'ils
+    // alimentaient.
+    for (size_t bus = 0; bus < sendNames.size(); ++bus) {
+        auto* s = new juce::Slider();
+        s->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+        s->setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+        s->setRange(0.0, 1.0, 0.01);
+        s->setValue(track_.sendLevel(bus), juce::dontSendNotification);
+        s->setTooltip(juce::String("Depart vers ") + juce::String(sendNames[bus]));
+        s->onDragStart = [this] { if (onMixEditStarted) onMixEditStarted(); };
+        s->onValueChange = [this, s, bus] {
+            track_.setSendLevel(bus, static_cast<float>(s->getValue()));
             if (onMixChanged) onMixChanged();
         };
         addAndMakeVisible(s);
-    };
-    setupSend(sendA_, 0);
-    setupSend(sendB_, 1);
+        sends_.add(s);
+    }
 
     mute_.setClickingTogglesState(true);
     mute_.setToggleState(track_.muted, juce::dontSendNotification);
@@ -95,8 +100,13 @@ void ChannelStrip::resized() {
 
     // Deux petits knobs de send (A/B).
     auto sendRow = r.removeFromTop(28);
-    sendA_.setBounds(sendRow.removeFromLeft(sendRow.getWidth() / 2).reduced(4, 1));
-    sendB_.setBounds(sendRow.reduced(4, 1));
+    // Les boutons se partagent la rangée à parts égales, quel qu'en soit le
+    // nombre. Aucun bus déclaré : aucune rangée, plutôt que deux boutons qui
+    // n'enverraient nulle part.
+    if (!sends_.isEmpty()) {
+        const int largeur = std::max(1, sendRow.getWidth() / sends_.size());
+        for (auto* s : sends_) s->setBounds(sendRow.removeFromLeft(largeur).reduced(2, 1));
+    }
 
     auto bottom = r.removeFromBottom(22);
     mute_.setBounds(bottom.removeFromLeft(bottom.getWidth() / 2).reduced(1));
@@ -221,9 +231,14 @@ MixerComponent::MixerComponent() {
 void MixerComponent::setProject(vsm::sequencer::Project* project) {
     project_ = project;
     strips_.clear();
+    std::vector<std::string> sendNames;
+    if (project_ != nullptr)
+        for (const auto& bus : project_->sends)
+            sendNames.push_back(bus.name.empty() ? "Bus " + std::to_string(sendNames.size() + 1)
+                                                  : bus.name);
     if (project_ != nullptr) {
         for (size_t i = 0; i < project_->tracks.size(); ++i) {
-            auto* strip = new ChannelStrip(project_->tracks[i], i);
+            auto* strip = new ChannelStrip(project_->tracks[i], i, sendNames);
             strip->onMixChanged = [this] { if (onMixChanged) onMixChanged(); };
             strip->onMixEditStarted = [this] { if (onMixEditStarted) onMixEditStarted(); };
             stripContainer_.addAndMakeVisible(strip);

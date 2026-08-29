@@ -22,7 +22,7 @@ void ProcessGraph::prepare(double sampleRate, int maxBlockSize) {
     scratchMonoL_.assign(static_cast<size_t>(maxBlockSize_), 0.0f);
     scratchStereoL_.assign(static_cast<size_t>(maxBlockSize_), 0.0f);
     scratchStereoR_.assign(static_cast<size_t>(maxBlockSize_), 0.0f);
-    for (size_t b = 0; b < kNumSends; ++b) {
+    for (size_t b = 0; b < kMaxSends; ++b) {
         sendL_[b].assign(static_cast<size_t>(maxBlockSize_), 0.0f);
         sendR_[b].assign(static_cast<size_t>(maxBlockSize_), 0.0f);
     }
@@ -48,6 +48,15 @@ void ProcessGraph::setProject(const Project& project) {
     snapshot->project = project;
     Tick endTick = project.lastUsedTick() + project.ticksPerQuarterNote;
     snapshot->schedule = PlaybackScheduler::build(project, 0, endTick);
+    // LE NOMBRE DE DÉPARTS VIENT DU PROJET, et il est publié avec lui : le lire
+    // dans le snapshot à chaque bloc obligerait le chemin audio à déréférencer
+    // le projet même quand il n'y a aucun départ, alors qu'un entier suffit.
+    // Au-delà du plafond, on COMPTE plutôt que d'ignorer : un départ qu'on
+    // aurait réglé et qui ne sonnerait pas est exactement le genre de silence
+    // qu'on cherche des heures.
+    const size_t declares = project.sends.size();
+    if (declares > kMaxSends) droppedSendBuses_.fetch_add(1, std::memory_order_relaxed);
+    activeSends_.store(std::min(declares, kMaxSends), std::memory_order_release);
     snapshot_.store(snapshot, std::memory_order_release);
 }
 
@@ -122,12 +131,12 @@ void ProcessGraph::setTrackEffectChain(size_t trackIndex, std::shared_ptr<const 
 }
 
 void ProcessGraph::setSendEffect(size_t busIndex, std::shared_ptr<vsm::audio::effect::IAudioEffect> effect) {
-    if (busIndex >= kNumSends) return;
+    if (busIndex >= kMaxSends) return;
     sends_[busIndex].effect.store(std::move(effect), std::memory_order_release);
 }
 
 void ProcessGraph::setSendReturn(size_t busIndex, float gain) {
-    if (busIndex >= kNumSends) return;
+    if (busIndex >= kMaxSends) return;
     sends_[busIndex].returnGain.store(gain, std::memory_order_release);
 }
 
@@ -210,8 +219,9 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
         auto idleSnapshot = snapshot_.load(std::memory_order_acquire);
         if (!idleSnapshot || idleSnapshot->project.tracks.empty()) return;
 
+        const size_t actifs = activeSends_.load(std::memory_order_acquire);
         const int idleSamples = std::min(numSamples, static_cast<int>(scratchMonoL_.size()));
-        for (size_t b = 0; b < kNumSends; ++b) {
+        for (size_t b = 0; b < actifs; ++b) {
             std::fill(sendL_[b].begin(), sendL_[b].begin() + idleSamples, 0.0f);
             std::fill(sendR_[b].begin(), sendR_[b].begin() + idleSamples, 0.0f);
         }
@@ -225,7 +235,7 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
                           /*includeScheduledEvents=*/false);
 
         for (size_t t = 0; t < kMaxTracks; ++t) meters_.reportPeak(t, blockPeak_[t]);
-        for (size_t b = 0; b < kNumSends; ++b) {
+        for (size_t b = 0; b < actifs; ++b) {
             auto fx = sends_[b].effect.load(std::memory_order_acquire);
             if (!fx) continue;
             fx->process(sendL_[b].data(), sendR_[b].data(), idleSamples);
@@ -245,6 +255,7 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
     // normal, prepare() a été appelé avec le block size réel du device, donc
     // ce clamp ne devrait jamais réellement raccourcir le rendu.
     const int samplesToProcess = std::min(numSamples, static_cast<int>(scratchMonoL_.size()));
+    const size_t actifs = activeSends_.load(std::memory_order_acquire);
 
     double blockStartSeconds = currentSeconds_.load(std::memory_order_acquire);
     const double blockDurationSeconds = static_cast<double>(samplesToProcess) / sampleRate_;
@@ -262,7 +273,7 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
                                     [](const Track& t) { return t.solo; });
 
         // Réinitialise les buffers de sends et les pics pour ce bloc.
-        for (size_t b = 0; b < kNumSends; ++b) {
+        for (size_t b = 0; b < actifs; ++b) {
             std::fill(sendL_[b].begin(), sendL_[b].begin() + samplesToProcess, 0.0f);
             std::fill(sendR_[b].begin(), sendR_[b].begin() + samplesToProcess, 0.0f);
         }
@@ -310,7 +321,7 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
 
         // Traite chaque bus de send par son effet, puis ajoute le retour au
         // master (avant la tranche master).
-        for (size_t b = 0; b < kNumSends; ++b) {
+        for (size_t b = 0; b < actifs; ++b) {
             auto fx = sends_[b].effect.load(std::memory_order_acquire);
             if (!fx) continue;
             fx->process(sendL_[b].data(), sendR_[b].data(), samplesToProcess);
@@ -599,9 +610,10 @@ void ProcessGraph::renderTrackRange(const GraphSnapshot& snapshot, bool anySolo,
         blockPeak_[trackIndex] = std::max(blockPeak_[trackIndex], peak);
 
         // Sends post-fader vers les bus auxiliaires (section 15).
+        const size_t actifs = activeSends_.load(std::memory_order_acquire);
         if (audible) {
-            for (size_t b = 0; b < kNumSends; ++b) {
-                const float lvl = track.sendLevels[b] * track.volume;
+            for (size_t b = 0; b < actifs; ++b) {
+                const float lvl = track.sendLevel(b) * track.volume;
                 if (lvl <= 0.0f) continue;
                 for (int i = 0; i < sampleCount; ++i) {
                     sendL_[b][static_cast<size_t>(sampleStart + i)] += scratchStereoL_[static_cast<size_t>(i)] * lvl;

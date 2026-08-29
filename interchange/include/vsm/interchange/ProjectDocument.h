@@ -47,6 +47,18 @@ inline constexpr int kOldestReadableProjectVersion = 1;
 struct ProjectTempoChange { int64_t tick = 0; double bpm = 120.0; };
 struct ProjectTimeSignature { int64_t tick = 0; int numerator = 4; int denominator = 4; };
 
+/// UN BUS DE DÉPART du projet (D4.2). Voir `vsm::sequencer::SendBusDescription`
+/// pour ce qui distingue un départ d'un insert.
+///
+/// Champ FACULTATIF du format : un projet qui n'en déclare pas garde exactement
+/// le fichier qu'il avait avant que les départs soient nommés.
+struct ProjectSendBus {
+    std::string name;
+    std::string effectType;
+    std::map<std::string, float> parameters;
+    float returnGain = 1.0f;
+};
+
 struct ProjectTransport {
     int ticksPerQuarterNote = 480;
     std::vector<ProjectTempoChange> tempoChanges;
@@ -161,7 +173,9 @@ struct ProjectTrack {
     float pan = 0.0f;
     bool muted = false;
     bool solo = false;
-    std::array<float, 2> sendLevels{{0.0f, 0.0f}};
+    /// Niveaux d'envoi, un par bus déclaré par le projet. Un vecteur plus
+    /// court que la liste des bus vaut « pas d'envoi » sur les suivants.
+    std::vector<float> sendLevels;
     std::vector<ProjectEffect> effects;
     std::vector<ProjectAutomationLane> automation;
     /// Champ FACULTATIF : une piste sans clip n'est pas découpée, et son
@@ -184,6 +198,8 @@ struct ProjectDocument {
     /// Chemin RELATIF du fichier MIDI qui porte les notes.
     std::string midiPath = "midi/arrangement.mid";
     ProjectTransport transport;
+    /// Les bus de départ partagés. Facultatif, comme les clips et les prises.
+    std::vector<ProjectSendBus> sends;
     std::vector<ProjectTrack> tracks;
     /// Repères nommés. Facultatif, comme les clips.
     std::vector<ProjectMarker> markers;

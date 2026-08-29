@@ -94,7 +94,10 @@ VSM_TEST(send_bus_adds_signal_to_master) {
     float noSend = renderPeak(project, nullptr);
 
     // Même projet, avec un send plein vers le bus 0 (effet pass-through).
-    project.tracks[0].sendLevels[0] = 1.0f;
+    // LE PROJET DÉCLARE SON BUS (D4.2) : le nombre de départs n'est plus une
+    // constante du moteur, c'est le morceau qui dit combien il en a.
+    project.sends.push_back({"A", "reverb", {}, 1.0f});
+    project.tracks[0].setSendLevel(0, 1.0f);
     ProcessGraph graph;
     graph.prepare(8000.0, 256);
     graph.setTrackInstrument(0, "vsm.minimoog");
@@ -105,6 +108,64 @@ VSM_TEST(send_bus_adds_signal_to_master) {
 
     // Le retour de send ajoute le signal -> master plus fort que sans send.
     VSM_ASSERT(peakOf(out.left) > noSend * 1.3f);
+}
+
+VSM_TEST(a_send_level_without_a_declared_bus_goes_nowhere) {
+    // LE CONTRAT DE D4.2 : un départ existe parce que le PROJET le déclare. Une
+    // piste qui garde un niveau d'envoi vers un bus disparu ne doit pas
+    // alimenter le bus suivant, qui contiendrait alors autre chose -- c'est le
+    // genre de décalage silencieux que le passage d'un tableau figé à une liste
+    // rend possible s'il n'est pas gardé.
+    auto project = oneNoteProject();
+    project.tracks[0].setSendLevel(0, 1.0f);   // niveau réglé, aucun bus déclaré
+    VSM_ASSERT(project.sends.empty());
+
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setTrackInstrument(0, "vsm.minimoog");
+    graph.setProject(project);
+    graph.setSendEffect(0, std::make_shared<GainEffect>(4.0f));   // gain énorme
+    graph.setSendReturn(0, 1.0f);
+    VSM_ASSERT_EQ(graph.activeSendCount(), size_t(0));
+    const auto avec = OfflineRenderer::render(graph, 8000.0, 256, 1.0);
+
+    const float sans = renderPeak(project, nullptr);
+    VSM_ASSERT_NEAR(peakOf(avec.left), sans, 1e-6f);
+}
+
+VSM_TEST(a_project_may_declare_more_than_two_sends) {
+    // « Le nombre de départs n'est plus une constante » : la vérification la
+    // plus directe du critère de l'étape.
+    auto project = oneNoteProject();
+    for (int i = 0; i < 5; ++i)
+        project.sends.push_back({"Bus " + std::to_string(i), "reverb", {}, 1.0f});
+    project.tracks[0].setSendLevel(4, 1.0f);   // le CINQUIÈME bus
+
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setTrackInstrument(0, "vsm.minimoog");
+    graph.setProject(project);
+    VSM_ASSERT_EQ(graph.activeSendCount(), size_t(5));
+    graph.setSendEffect(4, std::make_shared<GainEffect>(1.0f));
+    graph.setSendReturn(4, 1.0f);
+    const auto out = OfflineRenderer::render(graph, 8000.0, 256, 1.0);
+
+    VSM_ASSERT(peakOf(out.left) > renderPeak(project, nullptr) * 1.3f);
+    VSM_ASSERT_EQ(graph.droppedSendBuses(), uint64_t(0));
+}
+
+VSM_TEST(more_sends_than_the_ceiling_are_counted_not_swallowed) {
+    // Un départ qu'on aurait réglé et qui ne sonnerait pas est exactement le
+    // genre de silence qu'on cherche des heures.
+    auto project = oneNoteProject();
+    for (size_t i = 0; i < ProcessGraph::kMaxSends + 3; ++i)
+        project.sends.push_back({"Bus", "reverb", {}, 1.0f});
+
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setProject(project);
+    VSM_ASSERT_EQ(graph.activeSendCount(), ProcessGraph::kMaxSends);
+    VSM_ASSERT(graph.droppedSendBuses() > 0);
 }
 
 VSM_TEST(effect_routing_is_deterministic) {
