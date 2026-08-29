@@ -57,6 +57,62 @@ struct PolyAftertouchPoint  { Tick tick; uint8_t channel; uint8_t note; uint8_t 
 struct ChannelPressurePoint { Tick tick; uint8_t channel; uint8_t pressure; };
 struct ProgramChangePoint   { Tick tick; uint8_t channel; uint8_t program; };
 
+/// UN CLIP : une RÉGION du matériau de la piste, posée sur la ligne de temps.
+///
+/// LE CHOIX DE CONCEPTION, ET CELUI QUI A ÉTÉ ÉCARTÉ. Un clip pourrait être un
+/// CONTENEUR qui emporte ses notes : la piste ne serait plus qu'une liste de
+/// clips, chacun avec son propre vecteur de notes en ticks relatifs. C'est ce
+/// que fait Ableton. On a retenu l'autre modèle, celui de la RÉGION -- comme
+/// Pro Tools ou Logic : la piste garde son matériau sur une seule ligne de
+/// temps, et un clip est une fenêtre sur ce matériau, posée ailleurs.
+///
+/// Trois raisons, dans cet ordre :
+///
+///  1. **Un clip posé deux fois partage ses notes SANS QU'ON AIT RIEN À
+///     FAIRE.** Deux fenêtres sur le même matériau lisent les mêmes notes ;
+///     éditer l'une modifie l'autre parce qu'il n'y a jamais eu deux copies.
+///     Le modèle conteneur exige, lui, une indirection explicite (un « clip
+///     source » partagé et des « instances » qui le référencent) et tout le
+///     comptage de références qui va avec.
+///  2. **Aucune note ne change de place.** Le modèle conteneur oblige à
+///     réécrire les ticks de toutes les notes en relatif, donc à toucher les
+///     quatre-vingt-trois endroits qui les manipulent aujourd'hui, dont le
+///     piano roll entier -- pour un rendu qui doit rester identique au bit
+///     près. Beaucoup de risque, aucun gain audible.
+///  3. **Une piste SANS clip garde exactement le comportement qu'elle avait**
+///     (voir `Track::clips`), ce qui rend la migration des projets existants
+///     vide et les rend impossibles à casser.
+///
+/// Ce que ce modèle coûte, et qui est assumé : éditer les notes « dans » un
+/// clip posé ailleurs sur la ligne de temps édite le matériau À SA POSITION
+/// D'ORIGINE. C'est le comportement d'un éditeur de régions, et c'est celui
+/// qu'on veut ici -- un enregistrement reconstruit a UNE ligne de temps.
+struct Clip {
+    /// Début de la fenêtre DANS LE MATÉRIAU de la piste.
+    Tick sourceStart = 0;
+    /// Longueur de la fenêtre. Zéro signifie « jusqu'à la fin du matériau ».
+    Tick sourceLength = 0;
+    /// Où la fenêtre est POSÉE sur la ligne de temps.
+    Tick startTick = 0;
+    /// Durée jouée. Zéro = celle de la fenêtre. Plus longue que la fenêtre, le
+    /// clip la RÉPÈTE -- c'est la boucle de clip, et elle n'exige aucune copie.
+    Tick length = 0;
+    bool muted = false;
+    std::string name;
+    uint32_t colorRgba = 0xFF6B9BFFu;
+};
+
+/// Un repère nommé sur la ligne de temps (couplet, refrain, « ici ça coince »).
+///
+/// Le format MIDI en porte depuis toujours (méta-événements Marker et
+/// CuePoint) et ce projet les CONSERVAIT en octets opaques pour un export
+/// fidèle, sans jamais les montrer ni les écrire dans `project.json` : ils
+/// traversaient le logiciel sans exister pour lui.
+struct Marker {
+    Tick tick = 0;
+    std::string name;
+};
+
 /// Un effet d'insert, DÉCRIT et non instancié : un identifiant de fabrique et
 /// des valeurs de paramètres. `core/` ne connaît pas `audio/` et ne peut donc
 /// pas porter un `IAudioEffect` ; il porte ce qu'il faut pour en fabriquer un,
@@ -102,6 +158,9 @@ public:
     uint32_t colorRgba = 0xFF6B9BFFu; // ARGB, couleur par défaut (bleu doux)
     uint8_t channel = 0;              // 0-15
 
+    /// Le MATÉRIAU de la piste : toutes ses notes, sur une seule ligne de
+    /// temps, en ticks absolus. Les clips ci-dessous sont des fenêtres
+    /// dessus ; ils ne l'emportent pas.
     std::vector<Note> notes;
     std::vector<CcPoint> controlChanges;
     std::vector<PitchBendPoint> pitchBends;
@@ -127,6 +186,16 @@ public:
     /// le Synth Rack en Phase 2 via ISynthPlugin / PluginRegistry.
     std::string instrumentId;
     std::string presetId;
+
+    /// Les clips de la piste.
+    ///
+    /// **VIDE SIGNIFIE « AUCUNE DÉCOUPE »**, c'est-à-dire que la piste joue
+    /// tout son matériau à sa place -- exactement ce qu'elle faisait avant
+    /// que les clips existent. Ce n'est pas un cas particulier honteux : c'est
+    /// le sens littéral du mot. Une piste qu'on n'a pas découpée n'a pas de
+    /// clip, et un test vérifie que son rendu est identique au bit près à
+    /// celui d'avant.
+    std::vector<Clip> clips;
 
     /// Chaîne d'inserts et courbes d'automation de CETTE piste. Voir
     /// `TrackEffect` pour la raison -- non décorative -- de les ranger ici.

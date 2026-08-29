@@ -10,7 +10,12 @@
 ///
 /// Interactions : clic (ou glissé) = déplacer la tête de lecture ;
 /// Maj + glissé = définir la région de boucle ; double-clic = désactiver la
-/// boucle.
+/// boucle ; clic droit = poser ou retirer un repère.
+///
+/// LES REPÈRES SE DESSINENT ICI parce que c'est là qu'ils sont : sur la ligne
+/// de temps, et non dans une piste. Le format MIDI en porte depuis toujours et
+/// ce projet les conservait en octets opaques -- lus, réexportés fidèlement, et
+/// invisibles.
 class PianoRollRulerComponent : public juce::Component {
 public:
     explicit PianoRollRulerComponent(PianoRollComponent& pianoRoll);
@@ -23,6 +28,11 @@ public:
     void setLoopRegion(vsm::midi::Tick start, vsm::midi::Tick end, bool active);
 
     std::function<void(vsm::midi::Tick)> onPlayheadRequested;
+    /// Clic droit sur la règle : poser un repère à cet endroit. L'interface
+    /// demande son nom, parce qu'un repère sans nom ne repère rien.
+    std::function<void(vsm::midi::Tick)> onMarkerRequested;
+    /// Retirer le repère d'index donné.
+    std::function<void(size_t)> onMarkerRemoved;
     std::function<void(vsm::midi::Tick start, vsm::midi::Tick end, bool active)> onLoopRegionChanged;
 
 private:

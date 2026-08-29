@@ -87,8 +87,24 @@ Project Project::fromParsedFile(const ParsedFile& parsed) {
                 } else if constexpr (std::is_same_v<T, TrackNameEvent> ||
                                       std::is_same_v<T, EndOfTrackEvent>) {
                     // déjà géré (nom capturé par le parser / fin de piste implicite)
+                } else if constexpr (std::is_same_v<T, TextMetaEvent>) {
+                    // REPÈRES ET POINTS DE REPRISE (méta 0x06 et 0x07) : promus
+                    // au rang d'entités du projet au lieu d'être conservés en
+                    // octets opaques. Ils traversaient le logiciel sans exister
+                    // pour lui -- lus, réexportés fidèlement, et invisibles.
+                    //
+                    // Ils deviennent GLOBAUX, et c'est ce qu'ils sont
+                    // musicalement : « refrain » ne repère pas un endroit de la
+                    // piste de basse, il repère un endroit du morceau. Un
+                    // fichier qui en portait sur une piste autre que la
+                    // première les verra donc écrits sur la première au
+                    // réexport ; la position et le nom, eux, sont préservés.
+                    if (data.metaType == 0x06 || data.metaType == 0x07)
+                        project.markers.push_back({ev.tick, data.text});
+                    else
+                        track.miscEvents.push_back(ev);
                 } else {
-                    // TextMetaEvent, SysExEvent, UnknownMetaEvent : conservés tels quels
+                    // SysExEvent, UnknownMetaEvent : conservés tels quels
                     track.miscEvents.push_back(ev);
                 }
             }, ev.data);
@@ -165,6 +181,13 @@ ParsedFile Project::toParsedFile() const {
             events.push_back({pc.tick, ProgramChangeEvent{pc.channel, pc.program}});
         for (const auto& misc : t.miscEvents)
             events.push_back(misc);
+
+        // Les repères sont globaux : écrits une seule fois, sur la première
+        // piste. Les écrire sur chacune les multiplierait par le nombre de
+        // pistes à chaque aller-retour.
+        if (&t == &tracks.front())
+            for (const auto& marker : markers)
+                events.push_back({marker.tick, TextMetaEvent{0x06, marker.name}});
 
         std::stable_sort(events.begin(), events.end(),
                           [](const MidiEvent& a, const MidiEvent& b) { return a.tick < b.tick; });

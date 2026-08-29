@@ -414,3 +414,92 @@ VSM_TEST(a_track_without_an_instrument_still_keeps_its_effects) {
     VSM_ASSERT_EQ(rejoue.tracks[1].effects.size(), size_t(1));
     VSM_ASSERT_EQ(rejoue.tracks[1].effects[0].type, std::string("phaser"));
 }
+
+// --- D1.3 : la version 2, et la migration qui ne perd rien ------------------
+
+VSM_TEST(clips_and_markers_survive_the_trip_through_the_model) {
+    Project project = buildProject();
+    vsm::sequencer::Clip clip;
+    clip.sourceStart = 480; clip.sourceLength = 960;
+    clip.startTick = 1920; clip.length = 2880;   // bouclé trois fois
+    clip.muted = false; clip.name = "Refrain"; clip.colorRgba = 0xFF8ED081u;
+    project.tracks[0].clips.push_back(clip);
+    project.markers.push_back({0, "Intro"});
+    project.markers.push_back({1920, "Refrain"});
+
+    const ProjectLoadResult relu =
+        parseProjectDocument(projectDocumentToJson(documentFromProject(project)).toString());
+    VSM_ASSERT(relu.success);
+
+    Project rejoue = project;
+    for (auto& t : rejoue.tracks) t.clips.clear();
+    rejoue.markers.clear();
+    applyDocumentToProject(relu.document, rejoue);
+
+    VSM_ASSERT_EQ(rejoue.tracks[0].clips.size(), size_t(1));
+    const auto& c = rejoue.tracks[0].clips[0];
+    VSM_ASSERT_EQ(c.sourceStart, vsm::midi::Tick(480));
+    VSM_ASSERT_EQ(c.sourceLength, vsm::midi::Tick(960));
+    VSM_ASSERT_EQ(c.startTick, vsm::midi::Tick(1920));
+    VSM_ASSERT_EQ(c.length, vsm::midi::Tick(2880));
+    VSM_ASSERT_EQ(c.name, std::string("Refrain"));
+    VSM_ASSERT_EQ(c.colorRgba, 0xFF8ED081u);
+
+    VSM_ASSERT_EQ(rejoue.markers.size(), size_t(2));
+    VSM_ASSERT_EQ(rejoue.markers[1].tick, vsm::midi::Tick(1920));
+    VSM_ASSERT_EQ(rejoue.markers[1].name, std::string("Refrain"));
+}
+
+VSM_TEST(a_project_without_clips_writes_the_very_same_file_as_before) {
+    // La règle de tout le format : un champ facultatif absent ne s'écrit pas.
+    // Sans elle, la version 2 réécrirait chaque projet du dépôt avec des
+    // tableaux vides, et toute comparaison de fichiers deviendrait bruyante.
+    const std::string json = projectDocumentToJson(documentFromProject(buildProject())).toString();
+    VSM_ASSERT(json.find("\"clips\"") == std::string::npos);
+    VSM_ASSERT(json.find("\"markers\"") == std::string::npos);
+}
+
+VSM_TEST(a_version_1_project_loads_and_comes_back_as_version_2) {
+    // MIGRATION : une piste de la version 1 n'a pas de clip, c'est-à-dire
+    // qu'elle n'est pas découpée -- un état parfaitement représentable en
+    // version 2. La conversion est donc VIDE, ce qui est précisément ce qui la
+    // rend impossible à rater.
+    const std::string v1 = R"({
+      "format": "vsm-project",
+      "version": 1,
+      "title": "Ancien projet",
+      "midi": { "file": "midi/arrangement.mid" },
+      "transport": { "ticksPerQuarterNote": 480,
+                     "tempoChanges": [ { "tick": 0, "bpm": 100.0 } ] },
+      "tracks": [ { "name": "Basse", "channel": 1,
+                    "instrument": { "preferredPlugin": "vsm.tb303" },
+                    "mix": { "volume": 0.7, "pan": -0.2 } } ]
+    })";
+
+    const ProjectLoadResult ancien = parseProjectDocument(v1);
+    VSM_ASSERT(ancien.success);
+    VSM_ASSERT_EQ(ancien.document.tracks.size(), size_t(1));
+    VSM_ASSERT(ancien.document.tracks[0].clips.empty());
+    VSM_ASSERT_EQ(ancien.document.tracks[0].preferredPlugin, std::string("vsm.tb303"));
+
+    // Réécrit : il porte désormais la version courante, et rien n'a été perdu.
+    const std::string reecrit = projectDocumentToJson(ancien.document).toString();
+    VSM_ASSERT(reecrit.find("\"version\": 2") != std::string::npos
+               || reecrit.find("\"version\":2") != std::string::npos);
+    const ProjectLoadResult relu = parseProjectDocument(reecrit);
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT_EQ(relu.document.title, std::string("Ancien projet"));
+    VSM_ASSERT_EQ(relu.document.tracks.size(), size_t(1));
+    VSM_ASSERT_EQ(relu.document.transport.tempoChanges.size(), size_t(1));
+    VSM_ASSERT_EQ(relu.document.tracks[0].name, std::string("Basse"));
+    VSM_ASSERT_NEAR(relu.document.tracks[0].volume, 0.7f, 1e-6);
+    VSM_ASSERT_NEAR(relu.document.transport.tempoChanges[0].bpm, 100.0, 1e-9);
+}
+
+VSM_TEST(a_version_from_the_future_is_refused_not_guessed) {
+    const std::string futur = R"({"format":"vsm-project","version":99,"title":"X",
+                                   "midi":{"file":"midi/arrangement.mid"},"tracks":[]})";
+    const ProjectLoadResult result = parseProjectDocument(futur);
+    VSM_ASSERT(!result.success);
+    VSM_ASSERT(result.error.find("99") != std::string::npos);
+}

@@ -114,6 +114,7 @@ juce_add_console_app(vsm-pianoroll-preview PRODUCT_NAME "vsm-pianoroll-preview")
 target_sources(vsm-pianoroll-preview PRIVATE
     Source/tools/PianoRollPreviewMain.cpp
     Source/ui/PianoRollComponent.cpp
+    Source/ui/PianoRollRulerComponent.cpp
 )
 target_compile_definitions(vsm-pianoroll-preview PRIVATE
     JUCE_WEB_BROWSER=0

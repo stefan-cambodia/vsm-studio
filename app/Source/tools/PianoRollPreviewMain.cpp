@@ -16,6 +16,7 @@
 
 #include <JuceHeader.h>
 #include "../ui/PianoRollComponent.h"
+#include "../ui/PianoRollRulerComponent.h"
 #include "vsm/sequencer/Project.h"
 #include <cstdio>
 #include <cstdlib>
@@ -64,14 +65,41 @@ int main(int argc, char** argv) {
 
     project.tracks.push_back(track);
 
+    // REPÈRES : eux aussi sont une affaire de lisibilité. Un test peut vérifier
+    // qu'un repère est bien à son tick ; il ne dira pas si son nom reste lisible
+    // quand deux repères sont proches, ni si le fanion se distingue du triangle
+    // de la tête de lecture.
+    project.markers.push_back({0, "Intro"});
+    project.markers.push_back({960, "Refrain"});
+    project.markers.push_back({1440, "Pont"});
+
     PianoRollComponent pianoRoll;
     pianoRoll.setProject(&project);
     pianoRoll.setActiveTrackIndex(0);
-    pianoRoll.setSize(width, height);
+    constexpr int kRulerHeight = 26;
+    pianoRoll.setSize(width, height - kRulerHeight);
     if (argc >= 5 && juce::String(argv[4]) == "douteuse") pianoRoll.selectNextDoubtfulNote(true);
 
+    // La règle est rendue AU-DESSUS, comme dans l'application : c'est elle qui
+    // porte les repères, la tête de lecture et la région de boucle.
+    PianoRollRulerComponent ruler(pianoRoll);
+    ruler.setSize(width, kRulerHeight);
+
+    // Chaque composant est rendu dans SON image, puis les deux sont composées.
+    // Décaler l'origine d'un seul contexte ne suffit pas : paintEntireComponent
+    // rétablit le repère du composant, et les deux se dessinaient l'un sur
+    // l'autre en haut de l'image.
+    juce::Image imageRegle(juce::Image::ARGB, width, kRulerHeight, true);
+    { juce::Graphics g(imageRegle); ruler.paintEntireComponent(g, true); }
+    juce::Image imageRoll(juce::Image::ARGB, width, height - kRulerHeight, true);
+    { juce::Graphics g(imageRoll); pianoRoll.paintEntireComponent(g, true); }
+
     juce::Image image(juce::Image::ARGB, width, height, true);
-    { juce::Graphics g(image); pianoRoll.paintEntireComponent(g, true); }
+    {
+        juce::Graphics g(image);
+        g.drawImageAt(imageRegle, 0, 0);
+        g.drawImageAt(imageRoll, 0, kRulerHeight);
+    }
 
     juce::PNGImageFormat png;
     if (auto stream = std::unique_ptr<juce::FileOutputStream>(output.createOutputStream())) {

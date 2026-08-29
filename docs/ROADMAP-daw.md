@@ -365,6 +365,76 @@ phase du document qui ne se voie pas.
 sans changer une seule valeur d'échantillon. Si un octet bouge, la phase est
 fausse — c'est le principe des empreintes de machines, appliqué au projet.
 
+> **D1.1 À D1.4 SONT FAITES, ET LE CRITÈRE EST VÉRIFIÉ POUR DE VRAI
+> (29/08/2026).** 900 tests moteur verts.
+>
+> **La vérification n'est pas une promesse.** Le binaire `vsm-render` gelé au
+> début de la session — construit **avant** la moindre modification de D0 et de
+> D1 — a rendu les mêmes projets que le binaire d'aujourd'hui :
+>
+> | projet | résultat |
+> |---|---|
+> | `docs/examples/demo-project/` | **identique, octet pour octet** |
+> | `reconstruction/travail/sky-v4` (4 pistes, sampler de 47 Mo, batterie) | **identique, octet pour octet** |
+>
+> **LE CHOIX DE CONCEPTION, ET CELUI QUI A ÉTÉ ÉCARTÉ.** Un clip pouvait être un
+> **conteneur** qui emporte ses notes, comme chez Ableton : la piste ne serait
+> plus qu'une liste de clips, chacun avec son vecteur de notes en ticks
+> relatifs. On a retenu l'autre modèle, celui de la **région** — comme Pro Tools
+> ou Logic : la piste garde son matériau sur une seule ligne de temps, et un
+> clip est une **fenêtre** dessus, posée ailleurs. Trois raisons, dans cet
+> ordre :
+>
+> 1. **D1.2 tombe tout seul.** « Un même clip placé deux fois ne duplique pas
+>    ses notes ; éditer l'un modifie l'autre » : deux fenêtres sur le même
+>    matériau lisent les mêmes notes, il n'y a jamais eu deux copies. Le modèle
+>    conteneur exige une indirection explicite (un « clip source » partagé, des
+>    instances qui le référencent) et tout le comptage de références qui va
+>    avec.
+> 2. **Aucune note ne change de place.** Le modèle conteneur obligeait à
+>    réécrire tous les ticks en relatif, donc à toucher les **quatre-vingt-trois
+>    endroits** qui manipulent `track.notes` — dont le piano roll entier — pour
+>    un rendu qui doit rester identique au bit près. Beaucoup de risque, aucun
+>    gain audible.
+> 3. **Une piste sans clip garde exactement son comportement.** « Vide » ne veut
+>    pas dire « cas particulier » : il veut dire *pas de découpe*, ce qui est le
+>    sens littéral du mot. Et le planificateur n'a **pas** deux chemins : le cas
+>    sans découpe est la fenêtre identité, si bien que l'absence de régression
+>    est **démontrable** au lieu d'être promise — il n'y a pas de « chemin
+>    historique » à côté qui pourrait diverger à la première correction.
+>
+> Ce que ce modèle coûte, et qui est assumé : éditer les notes « dans » un clip
+> posé ailleurs édite le matériau **à sa position d'origine**. C'est le
+> comportement d'un éditeur de régions, et c'est celui qu'on veut ici — un
+> enregistrement reconstruit a UNE ligne de temps.
+>
+> **D1.3, la migration est vide, et c'est ce qui la rend sûre.** Une piste de la
+> version 1 n'a pas de clip, c'est-à-dire qu'elle n'est pas découpée : un état
+> parfaitement représentable en version 2. Rien à convertir, donc rien à rater.
+> Un fichier version 2 est en revanche **refusé** par un logiciel qui ne lit que
+> la 1 — refusé et non deviné, comme tout ce que ce format ne comprend pas. Et
+> un projet sans clip ni repère **écrit exactement le même fichier qu'avant**,
+> un test le vérifie octet par octet.
+>
+> **D1.4, les repères existaient sans exister.** Le format MIDI en porte depuis
+> toujours (méta 0x06 et 0x07) et ce projet les conservait en octets opaques
+> dans `Track::miscEvents` : lus, réexportés fidèlement, et **invisibles**. Ils
+> deviennent des entités du projet, **globales** — « refrain » ne repère pas un
+> endroit de la piste de basse, il repère un endroit du morceau. Un test vérifie
+> qu'ils **ne se multiplient pas** par le nombre de pistes à chaque
+> aller-retour, erreur qui ne se serait vue qu'au troisième enregistrement.
+>
+> **Et l'œil a servi, comme pour les façades.** L'outil d'aperçu hors écran rend
+> désormais la règle en plus du piano roll. Premier rendu : « Refrain » et
+> « Pont », trop proches au zoom courant, écrivaient **« Refrain Pont »** l'un
+> par-dessus l'autre, et le premier mangeait le numéro de mesure du second. La
+> place d'un nom s'arrête maintenant au repère suivant, avec un fond opaque
+> derrière ; quand il n'y a pas la place d'écrire, **on n'écrit pas** — le
+> fanion suffit à dire qu'il y a un repère là, un nom coupé à deux lettres ne
+> dit rien du tout.
+>
+> **Reste D1.5**, l'historique transactionnel et global.
+
 ### Phase D2 — La piste audio
 
 Ce qui débloque le fait du § 1.2 : la voix cesse d'être une note de sampler.

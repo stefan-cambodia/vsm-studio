@@ -41,6 +41,9 @@ public:
     void setProject(vsm::sequencer::Project* project);
     void setActiveTrackIndex(size_t trackIndex);
     vsm::sequencer::Track* activeTrack() const;
+    /// Le projet édité, pour ce qui n'appartient à aucune piste : les repères
+    /// de la ligne de temps, que la règle dessine.
+    vsm::sequencer::Project* project() const { return project_; }
 
     // --- Callbacks vers l'application ------------------------------------
     /// Les notes ont changé : reconstruire le planning de lecture.

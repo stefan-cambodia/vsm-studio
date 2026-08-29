@@ -42,6 +42,12 @@ public:
             pianoRoll_.setLoopRegion(start, end, active);
             if (pianoRoll_.onLoopRegionChanged) pianoRoll_.onLoopRegionChanged(start, end, active);
         };
+        ruler_.onMarkerRequested = [this](vsm::midi::Tick tick) {
+            if (onMarkerRequested) onMarkerRequested(tick);
+        };
+        ruler_.onMarkerRemoved = [this](size_t index) {
+            if (onMarkerRemoved) onMarkerRemoved(index);
+        };
         velocityLane_.onVelocityEdited = [this] {
             pianoRoll_.repaint();
             if (onVelocityEdited) onVelocityEdited();
@@ -56,6 +62,10 @@ public:
     }
 
     std::function<void()> onVelocityEdited;
+    /// Poser un repère à ce tick (l'application demande son nom), ou retirer
+    /// celui d'index donné.
+    std::function<void(vsm::midi::Tick)> onMarkerRequested;
+    std::function<void(size_t)> onMarkerRemoved;
 
     void resized() override {
         auto area = getLocalBounds();

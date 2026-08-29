@@ -31,7 +31,18 @@
 namespace vsm::interchange {
 
 inline constexpr const char* kProjectFormat = "vsm-project";
-inline constexpr int kProjectVersion = 1;
+/// VERSION 2 : les clips et les repères. La version 1 se lit toujours, et se
+/// convertit sans rien perdre -- une piste de la version 1 n'a pas de clip,
+/// c'est-à-dire qu'elle n'est pas découpée, ce qui est un état parfaitement
+/// représentable en version 2. La conversion est donc VIDE, et c'est exactement
+/// ce qui la rend impossible à rater.
+///
+/// Dans l'autre sens, un fichier version 2 est refusé par un logiciel qui ne
+/// lit que la 1 -- refusé et non deviné, comme tout ce que ce format ne
+/// comprend pas.
+inline constexpr int kProjectVersion = 2;
+/// La plus ancienne version qu'on sache encore lire.
+inline constexpr int kOldestReadableProjectVersion = 1;
 
 struct ProjectTempoChange { int64_t tick = 0; double bpm = 120.0; };
 struct ProjectTimeSignature { int64_t tick = 0; int numerator = 4; int denominator = 4; };
@@ -73,6 +84,24 @@ struct ProjectAutomationLane {
     std::vector<ProjectAutomationPoint> points;
 };
 
+/// Un clip : une région du matériau de la piste, posée sur la ligne de temps.
+/// Voir `vsm::sequencer::Clip` pour le raisonnement.
+struct ProjectClip {
+    int64_t sourceStart = 0;
+    int64_t sourceLength = 0;   ///< 0 = jusqu'à la fin du matériau
+    int64_t startTick = 0;
+    int64_t length = 0;         ///< 0 = celle de la fenêtre ; plus grande = boucle
+    bool muted = false;
+    std::string name;
+    uint32_t colorRgba = 0xFF6B9BFFu;
+};
+
+/// Un repère nommé sur la ligne de temps.
+struct ProjectMarker {
+    int64_t tick = 0;
+    std::string name;
+};
+
 struct ProjectTrack {
     std::string name;
     int channel = 0;
@@ -91,6 +120,9 @@ struct ProjectTrack {
     std::array<float, 2> sendLevels{{0.0f, 0.0f}};
     std::vector<ProjectEffect> effects;
     std::vector<ProjectAutomationLane> automation;
+    /// Champ FACULTATIF : une piste sans clip n'est pas découpée, et son
+    /// fichier reste identique octet pour octet à ce qu'il était.
+    std::vector<ProjectClip> clips;
 };
 
 struct ProjectDocument {
@@ -104,6 +136,8 @@ struct ProjectDocument {
     std::string midiPath = "midi/arrangement.mid";
     ProjectTransport transport;
     std::vector<ProjectTrack> tracks;
+    /// Repères nommés. Facultatif, comme les clips.
+    std::vector<ProjectMarker> markers;
 };
 
 /// Décrit un projet en mémoire (hors notes, qui partent dans le `.mid`).

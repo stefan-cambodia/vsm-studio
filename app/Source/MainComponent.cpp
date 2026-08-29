@@ -156,6 +156,35 @@ MainComponent::MainComponent()
         audioEngine_.processGraph().setSendReturn(1, 1.0f);
     }
 
+    // REPÈRES : posés sur la règle, nommés tout de suite. Un repère sans nom
+    // ne repère rien, et c'est pourquoi l'interface demande le nom au moment de
+    // la pose plutôt que d'en créer un « Repère 3 » à renommer plus tard.
+    pianoRollPanel_.onMarkerRequested = [this](vsm::midi::Tick tick) {
+        auto fenetre = std::make_shared<juce::AlertWindow>(
+            "Poser un repere", "Nom du repere :", juce::AlertWindow::NoIcon);
+        fenetre->addTextEditor("nom", "", "");
+        fenetre->addButton("Poser", 1, juce::KeyPress(juce::KeyPress::returnKey));
+        fenetre->addButton("Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+        fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+            [this, tick, fenetre](int resultat) {
+                const juce::String nom = fenetre->getTextEditorContents("nom").trim();
+                fenetre->exitModalState(resultat);
+                fenetre->setVisible(false);
+                if (resultat != 1 || nom.isEmpty()) return;
+                project_.markers.push_back({tick, nom.toStdString()});
+                std::sort(project_.markers.begin(), project_.markers.end(),
+                           [](const vsm::sequencer::Marker& a, const vsm::sequencer::Marker& b) {
+                               return a.tick < b.tick;
+                           });
+                pianoRollPanel_.refresh();
+            }), false);
+    };
+    pianoRollPanel_.onMarkerRemoved = [this](size_t index) {
+        if (index >= project_.markers.size()) return;
+        project_.markers.erase(project_.markers.begin() + static_cast<long>(index));
+        pianoRollPanel_.refresh();
+    };
+
     pianoRoll_.setProject(&project_);
     pianoRoll_.onNotesEdited = [this] { refreshTransportSchedule(); };
     synthRack_.onPatternEdited = [this] {

@@ -29,6 +29,9 @@ public:
     TimeSignatureMap timeSignatureMap;
     std::vector<Track> tracks;
 
+    /// Repères nommés de la ligne de temps, triés par tick.
+    std::vector<Marker> markers;
+
     /// Région de boucle. Elle vivait jusqu'ici dans l'interface seule, ce qui
     /// la faisait disparaître à la fermeture alors que le format de projet
     /// avait déjà un champ pour l'écrire : une donnée de morceau, au même

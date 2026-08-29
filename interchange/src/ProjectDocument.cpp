@@ -103,6 +103,8 @@ ProjectDocument documentFromProject(const Project& project) {
     for (const auto& change : project.timeSignatureMap.changes())
         document.transport.timeSignatures.push_back({change.tick, change.numerator,
                                                       1 << change.denominatorPow2});
+    for (const auto& marker : project.markers)
+        document.markers.push_back({marker.tick, marker.name});
     document.master = project.masterParameters;
     document.transport.loopEnabled = project.loopEnabled;
     document.transport.loopStartTick = project.loopStartTick;
@@ -136,6 +138,9 @@ ProjectDocument documentFromProject(const Project& project) {
             described.parameters = effect.parameters;
             entry.effects.push_back(std::move(described));
         }
+        for (const auto& clip : track.clips)
+            entry.clips.push_back({clip.sourceStart, clip.sourceLength, clip.startTick,
+                                    clip.length, clip.muted, clip.name, clip.colorRgba});
         for (const auto& curve : track.automation) {
             ProjectAutomationLane lane;
             lane.parameter = curve.parameter;
@@ -184,6 +189,11 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
                                                 denominatorToPow2(change.denominator));
     }
 
+    if (!document.markers.empty()) {
+        project.markers.clear();
+        for (const auto& marker : document.markers)
+            project.markers.push_back({marker.tick, marker.name});
+    }
     if (!document.master.empty()) project.masterParameters = document.master;
     project.loopEnabled = document.transport.loopEnabled;
     project.loopStartTick = document.transport.loopStartTick;
@@ -216,6 +226,10 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.effects.clear();
         for (const auto& effect : source.effects)
             target.effects.push_back({effect.type, effect.parameters});
+        target.clips.clear();
+        for (const auto& clip : source.clips)
+            target.clips.push_back({clip.sourceStart, clip.sourceLength, clip.startTick,
+                                     clip.length, clip.muted, clip.name, clip.colorRgba});
         target.automation.clear();
         for (const auto& lane : source.automation) {
             vsm::sequencer::AutomationCurve curve;
@@ -252,6 +266,17 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
 
     // Écrit SEULEMENT s'il y a quelque chose à écrire : un projet sans réglage
     // de master garde le fichier qu'il a toujours eu, octet pour octet.
+    if (!document.markers.empty()) {
+        JsonValue markers = JsonValue::makeArray();
+        for (const auto& marker : document.markers) {
+            JsonValue m = JsonValue::makeObject();
+            m.set("tick", JsonValue::makeNumber(static_cast<double>(marker.tick)));
+            m.set("name", JsonValue::makeString(marker.name));
+            markers.append(std::move(m));
+        }
+        root.set("markers", std::move(markers));
+    }
+
     if (!document.master.empty()) {
         JsonValue master = JsonValue::makeObject();
         for (const auto& [name, value] : document.master)
@@ -326,6 +351,24 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         }
         entry.set("effects", std::move(effects));
 
+        // Écrits SEULEMENT s'il y en a : une piste non découpée garde le
+        // fichier qu'elle a toujours eu.
+        if (!track.clips.empty()) {
+            JsonValue clips = JsonValue::makeArray();
+            for (const auto& clip : track.clips) {
+                JsonValue c = JsonValue::makeObject();
+                c.set("sourceStart", JsonValue::makeNumber(static_cast<double>(clip.sourceStart)));
+                c.set("sourceLength", JsonValue::makeNumber(static_cast<double>(clip.sourceLength)));
+                c.set("start", JsonValue::makeNumber(static_cast<double>(clip.startTick)));
+                c.set("length", JsonValue::makeNumber(static_cast<double>(clip.length)));
+                if (clip.muted) c.set("muted", JsonValue::makeBoolean(true));
+                if (!clip.name.empty()) c.set("name", JsonValue::makeString(clip.name));
+                c.set("color", JsonValue::makeString(colourToHex(clip.colorRgba)));
+                clips.append(std::move(c));
+            }
+            entry.set("clips", std::move(clips));
+        }
+
         // L'automation n'est écrite QUE si elle existe : un projet sans
         // automation garde exactement le fichier qu'il a toujours eu.
         if (!track.automation.empty()) {
@@ -363,14 +406,24 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         return result;
     }
     const int version = static_cast<int>(json["version"].asNumber(-1.0));
-    if (version != kProjectVersion) {
+    if (version < kOldestReadableProjectVersion || version > kProjectVersion) {
         result.error = "version de projet non prise en charge : " + std::to_string(version)
-                     + " (cette version du logiciel lit la " + std::to_string(kProjectVersion) + ")";
+                     + " (cette version du logiciel lit de la "
+                     + std::to_string(kOldestReadableProjectVersion) + " à la "
+                     + std::to_string(kProjectVersion) + ")";
         return result;
     }
 
     ProjectDocument document;
     document.title = json["title"].asString("Sans titre");
+    for (const auto& markerJson : json["markers"].elements()) {
+        ProjectMarker marker;
+        marker.tick = static_cast<int64_t>(markerJson["tick"].asNumber(0.0));
+        marker.name = markerJson["name"].asString();
+        // Un repère sans nom ne repère rien : filtré à la lecture plutôt que
+        // traîné jusqu'à l'écran.
+        if (!marker.name.empty()) document.markers.push_back(std::move(marker));
+    }
     for (const auto& [name, value] : json["master"].members())
         if (value.isNumber()) document.master[name] = static_cast<float>(value.asNumber());
     document.midiPath = json["midi"]["file"].asString("midi/arrangement.mid");
@@ -430,6 +483,18 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
             for (const auto& [semanticId, value] : fx["parameters"].members())
                 if (value.isNumber()) effect.parameters[semanticId] = static_cast<float>(value.asNumber());
             if (!effect.type.empty()) track.effects.push_back(std::move(effect));
+        }
+
+        for (const auto& clipJson : entry["clips"].elements()) {
+            ProjectClip clip;
+            clip.sourceStart = static_cast<int64_t>(clipJson["sourceStart"].asNumber(0.0));
+            clip.sourceLength = static_cast<int64_t>(clipJson["sourceLength"].asNumber(0.0));
+            clip.startTick = static_cast<int64_t>(clipJson["start"].asNumber(0.0));
+            clip.length = static_cast<int64_t>(clipJson["length"].asNumber(0.0));
+            clip.muted = clipJson["muted"].asBoolean(false);
+            clip.name = clipJson["name"].asString();
+            clip.colorRgba = colourFromHex(clipJson["color"].asString(), 0xFF6B9BFFu);
+            track.clips.push_back(std::move(clip));
         }
 
         for (const auto& laneJson : entry["automation"].elements()) {
