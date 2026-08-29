@@ -565,7 +565,7 @@ Un logiciel qui ne peut rien capter n'est pas un studio, c'est un lecteur.
 | D3.2 | Tempo **modifiable**, tap tempo, piste de tempo dessinée, **métronome** et décompte | on peut commencer un morceau à partir de rien, ce qui est impossible aujourd'hui |
 | D3.3 | Enregistrement MIDI temps réel : armement (`Track::armed` enfin lu), superposition, quantification après coup | jouer trois mesures les inscrit dans un clip — **fait** |
 | D3.4 | Enregistrement audio en flux sur disque pendant la lecture | 10 minutes s'enregistrent sans décrochage ; le fichier est relu tel quel — **fait** |
-| D3.5 | Punch in/out, enregistrement en boucle avec prises empilées | les prises se conservent et se choisissent |
+| D3.5 | Punch in/out, enregistrement en boucle avec prises empilées | les prises se conservent et se choisissent — **fait** |
 | D3.6 | Latence d'entrée **mesurée**, pas estimée, et compensée | une boucle physique enregistre à l'échantillon près ; le chiffre est publié |
 
 **Critère de phase** : on peut jouer une partie au clavier par-dessus une
@@ -760,6 +760,78 @@ pas seulement l'écouter.
 > chose qu'a montrée l'outil, et ce n'est pas un défaut de l'enregistreur mais
 > une boucle de test sans cadence. Aucun producteur réel n'est plus rapide que
 > la carte son.
+
+> **D3.5 EST FAITE (29/08/2026).** Le critère tient en cinq mots — « les prises
+> se conservent et se choisissent » — et c'est un choix de modèle qui les rend
+> possibles.
+>
+> **LE MODÈLE RETENU EST CELUI DU RANGEMENT, et celui qui a été écarté est celui
+> des N matériaux simultanés.** Une piste pourrait porter toutes ses prises en
+> permanence et n'en jouer qu'une : le planning, le piano roll, le rendu et
+> l'export devraient alors tous savoir laquelle, c'est-à-dire que chacun des
+> quatre-vingts endroits qui lisent `Track::notes` devrait poser la question.
+> Ici, la piste garde **un seul matériau courant** — exactement celui qu'elle a
+> toujours eu — et les prises inactives attendent à côté. Choisir une prise,
+> c'est ranger le matériau courant dans la prise à laquelle il appartient et
+> sortir celui de la prise voulue. Rien de ce qui lit une piste n'a eu à
+> changer, et `takes` vide veut dire « aucune prise empilée » : une piste qui
+> n'a jamais servi à un enregistrement empilé se comporte exactement comme
+> avant. C'est la même règle qui avait fait choisir le modèle de la **région**
+> pour les clips.
+>
+> **CE QUI ÉTAIT LÀ AVANT LA PREMIÈRE PRISE DEVIENT LA PRISE N° 0.** Sans cela,
+> le premier enregistrement empilé effacerait le matériau existant —
+> typiquement une partie reconstruite, c'est-à-dire ce qu'on avait de plus
+> précieux. Le coût assumé du modèle, écrit dans `Take` : éditer des notes
+> modifie la prise **active**, et seulement elle.
+>
+> **LE PIÈGE DE L'ENREGISTREMENT EN BOUCLE : deux passes occupent exactement les
+> mêmes positions.** La date d'une note ne dit donc pas à quelle passe elle
+> appartient, et sans rien de plus les passes formeraient une bouillie dont on
+> ne pourrait plus rien extraire. Le moteur **compte ses rebouclages**, le
+> compteur voyage dans l'ancre — avec la position, sous le même compteur de
+> version, parce que les deux doivent être vues ensemble — et chaque note capté
+> est estampillée de sa passe. Une note tenue par-dessus la couture se ferme à
+> la fin de **sa** passe, et son relâchement, qui appartient à la suivante, y
+> est ignoré faute d'enfoncement : chaque passe est un enregistrement complet en
+> elle-même.
+>
+> **UNE PASSE EN BOUCLE N'OUVRE PAS UN NOUVEAU FICHIER AUDIO.** Toutes les
+> passes partagent le fichier ouvert au début de la session, et chacune en est
+> une **fenêtre** — le modèle de la région, encore. Le découper au passage exact
+> de la boucle demanderait de fermer et rouvrir un fichier au seul endroit où il
+> ne faut surtout pas faire de pause.
+>
+> **LES NOTES DES PRISES VONT DANS UN FICHIER SÉPARÉ**, `midi/prises.mid`. Elles
+> ne peuvent pas aller dans `arrangement.mid` : celui-ci est ce qu'on **entend**,
+> et c'est aussi ce qu'on exporte pour l'ouvrir ailleurs. Y verser les passes
+> écartées en ferait une archive, et montrerait des pistes muettes à qui
+> l'ouvrirait. Deux fichiers, deux rôles : l'arrangement et le tiroir. Un projet
+> sans prise n'écrit pas le second, et un tiroir manquant **ouvre le morceau en
+> le disant** plutôt que de refuser — mais perdre des prises en silence serait
+> pire que ne pas les avoir gardées.
+>
+> **La région de punch est une donnée de MORCEAU**, pas un réglage de session :
+> on refait le même passage vingt fois, et la redéfinir à chaque ouverture
+> reviendrait à perdre l'endroit qu'on a mis dix minutes à cerner. Elle se
+> dessine **Alt + glisser sur la règle**, comme la boucle avec Maj, et elle est
+> peinte en rouge sur une bande basse — les deux régions se règlent souvent au
+> même endroit, et superposées à l'identique on ne saurait plus laquelle on
+> regarde. Les deux bornes sont respectées **à l'échantillon** des deux côtés :
+> le MIDI par les bornes du `MidiRecorder`, l'audio en tronquant la queue du
+> bloc comme il en tronquait déjà la tête.
+>
+> **Un défaut trouvé en écrivant, et corrigé : l'annulation ne couvrait que la
+> dernière passe.** L'instantané était pris à l'arrêt, alors que les passes
+> précédentes avaient déjà modifié le projet. Il est désormais pris à la
+> **première passe qui produit quelque chose** : annuler un enregistrement le
+> défait en entier, ce qui est la seule chose qu'on attende de cette commande.
+>
+> Vingt-quatre tests couvrent l'étape : sept sur le modèle de rangement (dont le
+> coût assumé — une correction reste sur la prise où on l'a faite), trois sur le
+> punch et les passes dans l'enregistreur, et six sur l'aller-retour disque,
+> dont celui qui vérifie que l'arrangement ne porte **jamais** les prises mises
+> de côté.
 
 ### Phase D4 — La console
 

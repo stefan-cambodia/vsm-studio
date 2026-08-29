@@ -250,6 +250,56 @@ Vérifié en imprimant les deux formes côte à côte : `u8"Édition Sél. Réta
 donne `Édition Sél. Rétablir`, `"Édition Sél. Rétablir"` donne
 `Ãdition SÃ©l. RÃ©tablir`.
 
+### 6 quater. Les prises empilées : le modèle du rangement (D3.5)
+
+Le critère de D3.5 tient en cinq mots — « les prises se conservent et se
+choisissent » — et deux modèles pouvaient les servir.
+
+Le premier, écarté : **la piste porte N matériaux en permanence et n'en joue
+qu'un**. Le planning, le piano roll, le rendu hors ligne et l'export devraient
+alors tous savoir lequel, c'est-à-dire que chacun des quatre-vingts endroits qui
+lisent `Track::notes` devrait poser la question.
+
+Le second, retenu : **le rangement**. La piste garde UN matériau courant —
+exactement celui qu'elle a toujours eu — et les prises inactives attendent à
+côté dans `Track::takes`. Choisir une prise, c'est ranger le matériau courant
+dans la prise à laquelle il appartient, puis sortir celui de la prise voulue.
+Rien de ce qui lit une piste n'a eu à changer, et `takes` vide veut dire « aucune
+prise empilée », donc une piste qui n'a jamais servi à un enregistrement empilé
+se comporte à l'identique. C'est la même règle qui avait fait choisir le modèle
+de la RÉGION pour les clips (voir `vsm::sequencer::Clip`).
+
+L'invariant qui compte : quand `activeTake` désigne une prise, le contenu de
+`takes[activeTake]` est **périmé** — la vérité est dans `notes`/`audio`/`clips`,
+et elle y sera rangée au prochain changement de prise. Dupliquer le matériau
+actif dans sa prise obligerait à tenir deux copies d'accord à chaque note
+déplacée.
+
+**Ce qui était là avant la première prise devient la prise n° 0**, faute de quoi
+le premier enregistrement empilé effacerait une partie reconstruite. Le coût
+assumé : une édition appartient à la prise sur laquelle on l'a faite.
+
+**Deux passes de boucle occupent exactement les mêmes positions sur la ligne de
+temps.** La date d'une note ne dit donc pas à quelle passe elle appartient. Le
+moteur compte ses rebouclages (`ProcessGraph::loopWrapCount`), le compteur
+voyage **dans l'ancre** — sous le même compteur de version que la position,
+parce que les deux doivent être vues ensemble — et chaque note captée est
+estampillée de sa passe. Une note tenue par-dessus la couture se ferme à la fin
+de sa passe ; son relâchement, qui appartient à la suivante, y est ignoré faute
+d'enfoncement.
+
+**Côté audio, une passe n'ouvre pas un nouveau fichier** : toutes partagent
+celui de la session, et chacune en est une fenêtre (`Clip::sourceStartSeconds`).
+Découper au passage exact de la boucle demanderait de fermer et rouvrir un
+fichier au seul endroit où il ne faut surtout pas faire de pause.
+
+**Les notes des prises vont dans `midi/prises.mid`**, séparé de
+`midi/arrangement.mid`. L'arrangement est ce qu'on entend et ce qu'on exporte ;
+y verser les passes écartées en ferait une archive, et montrerait des pistes
+muettes à qui l'ouvrirait ailleurs. Deux fichiers, deux rôles.
+
+---
+
 ### 6 ter. Dater une note jouée : l'ancre transport ↔ horloge système (D3.3)
 
 Trois horloges se rencontrent à l'enregistrement, et il faut les traduire l'une

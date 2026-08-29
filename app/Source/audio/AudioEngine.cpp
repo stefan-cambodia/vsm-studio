@@ -75,7 +75,9 @@ void AudioEngine::handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMe
                                           ? message.getTimeStamp()
                                           : juce::Time::getMillisecondCounterHiRes() * 0.001;
             vsm::sequencer::RecordedNoteEvent capture;
-            capture.seconds = transportSecondsAtClock(horodatage);
+            uint64_t passe = 0;
+            capture.seconds = transportSecondsAtClock(horodatage, &passe);
+            capture.pass = static_cast<uint32_t>(passe);
             capture.note = note;
             capture.velocity = velocity;
             capture.channel = static_cast<uint8_t>(juce::jlimit(1, 16, message.getChannel()) - 1);
@@ -180,11 +182,12 @@ void AudioEngine::publishTransportAnchor(double positionTransport) {
     anchorClockSeconds_.store(juce::Time::getMillisecondCounterHiRes() * 0.001,
                                std::memory_order_relaxed);
     anchorTransportSeconds_.store(positionTransport, std::memory_order_relaxed);
+    anchorLoopWraps_.store(graph_.loopWrapCount(), std::memory_order_relaxed);
     std::atomic_thread_fence(std::memory_order_release);
     anchorVersion_.store(version + 2, std::memory_order_relaxed);
 }
 
-double AudioEngine::transportSecondsAtClock(double clockSeconds) const {
+double AudioEngine::transportSecondsAtClock(double clockSeconds, uint64_t* passe) const {
     // Lecture d'une PAIRE cohérente : si le compteur a bougé pendant la
     // lecture, l'ancre a changé sous nos pieds et il faut recommencer. Quelques
     // essais suffisent -- le rédacteur n'écrit qu'une fois par bloc audio.
@@ -194,14 +197,17 @@ double AudioEngine::transportSecondsAtClock(double clockSeconds) const {
         std::atomic_thread_fence(std::memory_order_acquire);
         const double horloge = anchorClockSeconds_.load(std::memory_order_relaxed);
         const double transport = anchorTransportSeconds_.load(std::memory_order_relaxed);
+        const uint64_t passes = anchorLoopWraps_.load(std::memory_order_relaxed);
         std::atomic_thread_fence(std::memory_order_acquire);
         if (anchorVersion_.load(std::memory_order_relaxed) != avant) continue;
         if (horloge <= 0.0) break;          // aucun bloc audio n'a encore tourné
+        if (passe) *passe = passes;
         return transport + (clockSeconds - horloge)
                - declaredLatency_.load(std::memory_order_relaxed);
     }
     // Pas d'ancre utilisable : la position du transport, sans interpolation.
     // C'est moins précis, jamais faux.
+    if (passe) *passe = graph_.loopWrapCount();
     return graph_.currentSeconds();
 }
 
@@ -302,12 +308,24 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
                            : static_cast<int>(std::llround(avant));
         }
 
+        // LE POINT DE SORTIE, à l'échantillon lui aussi : le fichier s'arrête
+        // exactement là où la région de punch s'arrête, sans quoi la prise
+        // déborderait sur ce qu'on avait décidé de garder.
+        int fin = numSamples;
+        const double sortie = punchOutSeconds_.load(std::memory_order_relaxed);
+        if (std::isfinite(sortie) && frequence > 0.0) {
+            const double jusquA = (sortie - positionDebutBloc) * frequence;
+            if (jusquA <= 0.0) fin = 0;
+            else if (jusquA < static_cast<double>(numSamples))
+                fin = static_cast<int>(std::llround(jusquA));
+        }
+
         // `ThreadedWriter::write` n'accepte AUCUN canal nul, et exige exactement
         // le nombre de canaux du fichier. Si la carte a changé de configuration
         // sous nos pieds, on préfère compter un trou que d'écrire n'importe
         // quoi -- un fichier faux est plus difficile à diagnostiquer qu'un
         // fichier court.
-        if (decalage < numSamples && canaux > 0 && numInputChannels >= canaux) {
+        if (decalage < fin && canaux > 0 && numInputChannels >= canaux) {
             const float* canauxEcrits[2] = { nullptr, nullptr };
             bool complet = true;
             for (int c = 0; c < canaux && c < 2; ++c) {
@@ -315,7 +333,7 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
                 canauxEcrits[c] = inputChannelData[c] + decalage;
             }
             if (complet)
-                diskRecorder_.write(canauxEcrits, numSamples - decalage);
+                diskRecorder_.write(canauxEcrits, fin - decalage);
         }
     }
 

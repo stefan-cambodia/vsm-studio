@@ -5,6 +5,7 @@
 #include "DiskRecorder.h"
 #include "vsm/sequencer/MidiRecorder.h"
 #include <atomic>
+#include <limits>
 #include <mutex>
 #include <vector>
 
@@ -122,7 +123,14 @@ public:
     /// La position du transport correspondant à une heure système, par
     /// interpolation depuis la dernière ancre publiée par le thread audio.
     /// Publique pour être testable sans carte son.
-    double transportSecondsAtClock(double clockSeconds) const;
+    /// `passe`, s'il est fourni, reçoit le nombre de rebouclages au moment de
+    /// l'ancre : c'est ce qui range chaque note dans la bonne passe de boucle.
+    double transportSecondsAtClock(double clockSeconds, uint64_t* passe = nullptr) const;
+
+    /// Les bornes de la capture MIDI. Au-delà du point de sortie, on entend ce
+    /// qui était déjà là et on n'écrit plus rien -- c'est le « punch out ».
+    /// L'infini (le défaut) veut dire « jusqu'à ce qu'on arrête ».
+    void setRecordPunchOut(double seconds) { punchOutSeconds_.store(seconds, std::memory_order_release); }
 
     // --- Enregistrement AUDIO en flux sur disque (D3.4) --------------------
     //
@@ -192,6 +200,11 @@ private:
     std::atomic<uint32_t> anchorVersion_{0};
     std::atomic<double> anchorClockSeconds_{0.0};
     std::atomic<double> anchorTransportSeconds_{0.0};
+    /// Le nombre de rebouclages au moment de l'ancre. Il fait partie de l'ancre
+    /// et non d'une lecture séparée : la position et la passe doivent être vues
+    /// ENSEMBLE, sinon une note se retrouverait à la bonne date dans la
+    /// mauvaise prise.
+    std::atomic<uint64_t> anchorLoopWraps_{0};
     /// Thread audio uniquement. `positionTransport` est la position du DÉBUT du
     /// bloc, lue une seule fois par le rappel et partagée avec l'écriture sur
     /// disque -- la relire donnerait deux réponses différentes.
@@ -200,6 +213,7 @@ private:
     DiskRecorder diskRecorder_;
     std::atomic<bool> recordingAudio_{false};
     std::atomic<double> audioPunchSeconds_{0.0};
+    std::atomic<double> punchOutSeconds_{std::numeric_limits<double>::infinity()};
 
     // Repli pour un device de sortie mono (rare, mais ne doit jamais
     // crasher) : jamais alloué dans le callback, seulement ici à la

@@ -40,6 +40,18 @@ public:
     midi::Tick loopStartTick = 0;
     midi::Tick loopEndTick = 0;
 
+    /// RÉGION DE PUNCH (D3.5) : entre ces deux ticks, et seulement là,
+    /// l'enregistrement capte -- avant et après, on entend ce qui est déjà là.
+    ///
+    /// POURQUOI C'EST UNE DONNÉE DE MORCEAU et pas un réglage de session : on
+    /// refait le même passage vingt fois, et devoir le redéfinir à chaque
+    /// ouverture reviendrait à perdre l'endroit précis qu'on avait mis dix
+    /// minutes à cerner. C'est la même raison qui a fait entrer la boucle dans
+    /// le projet.
+    bool punchEnabled = false;
+    midi::Tick punchStartTick = 0;
+    midi::Tick punchEndTick = 0;
+
     /// Réglages de la tranche master (égaliseur, compresseur, saturation,
     /// largeur, limiteur), nommés et non numérotés, comme les effets de piste.
     /// Vide = la tranche garde ses valeurs d'usine.

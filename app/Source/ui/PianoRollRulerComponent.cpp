@@ -7,6 +7,13 @@ using namespace vsm::ui;
 PianoRollRulerComponent::PianoRollRulerComponent(PianoRollComponent& pianoRoll)
     : pianoRoll_(pianoRoll) {}
 
+void PianoRollRulerComponent::setPunchRegion(Tick start, Tick end, bool active) {
+    punchStart_ = start;
+    punchEnd_ = end;
+    punchActive_ = active;
+    repaint();
+}
+
 void PianoRollRulerComponent::setLoopRegion(Tick start, Tick end, bool active) {
     loopStart_ = start;
     loopEnd_ = end;
@@ -23,6 +30,18 @@ void PianoRollRulerComponent::paint(juce::Graphics& g) {
         const float x2 = pianoRoll_.tickToX(loopEnd_);
         g.setColour(Palette::accentTeal.withAlpha(0.30f));
         g.fillRect(juce::Rectangle<float>(x1, 0.0f, x2 - x1, static_cast<float>(bounds.getHeight())));
+    }
+
+    // LA RÉGION DE PUNCH, en rouge -- la couleur de l'enregistrement dans toute
+    // l'application -- et sur une bande basse plutôt qu'en pleine hauteur : les
+    // deux régions se règlent souvent au même endroit, et superposées à
+    // l'identique on ne saurait plus laquelle on regarde.
+    if (punchActive_ && punchEnd_ > punchStart_) {
+        const float x1 = pianoRoll_.tickToX(punchStart_);
+        const float x2 = pianoRoll_.tickToX(punchEnd_);
+        const float h = static_cast<float>(bounds.getHeight());
+        g.setColour(Palette::accentRed.withAlpha(0.35f));
+        g.fillRect(juce::Rectangle<float>(x1, h * 0.66f, x2 - x1, h * 0.34f));
     }
 
     // Graduations : une par mesure, avec son numéro ; les temps n'apparaissent
@@ -142,6 +161,17 @@ void PianoRollRulerComponent::mouseDown(const juce::MouseEvent& event) {
         repaint();
         return;
     }
+    // ALT : la région de PUNCH, comme Maj dessine la boucle. Deux régions, deux
+    // touches, deux couleurs -- on les règle souvent au même endroit sans
+    // qu'elles disent la même chose.
+    if (event.mods.isAltDown()) {
+        punchDragAnchor_ = tick;
+        punchStart_ = punchEnd_ = tick;
+        punchActive_ = true;
+        if (onPunchRegionChanged) onPunchRegionChanged(punchStart_, punchEnd_, punchActive_);
+        repaint();
+        return;
+    }
     if (onPlayheadRequested) onPlayheadRequested(tick);
 }
 
@@ -153,6 +183,13 @@ void PianoRollRulerComponent::mouseDrag(const juce::MouseEvent& event) {
         loopStart_ = std::min(loopDragAnchor_, tick);
         loopEnd_ = std::max(loopDragAnchor_, tick);
         if (onLoopRegionChanged) onLoopRegionChanged(loopStart_, loopEnd_, loopActive_);
+        repaint();
+        return;
+    }
+    if (event.mods.isAltDown()) {
+        punchStart_ = std::min(punchDragAnchor_, tick);
+        punchEnd_ = std::max(punchDragAnchor_, tick);
+        if (onPunchRegionChanged) onPunchRegionChanged(punchStart_, punchEnd_, punchActive_);
         repaint();
         return;
     }

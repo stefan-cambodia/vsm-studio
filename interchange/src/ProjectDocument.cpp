@@ -88,6 +88,49 @@ bool isPortableRelativePath(const std::string& path) {
     return true;
 }
 
+/// Un clip en JSON. EXTRAIT parce que les prises en portent aussi : deux
+/// écritures d'un même objet finiraient par diverger, et un clip de prise qui
+/// perdrait son fondu ne se remarquerait qu'à la relecture.
+JsonValue clipToJson(const ProjectClip& clip) {
+    JsonValue c = JsonValue::makeObject();
+    c.set("sourceStart", JsonValue::makeNumber(static_cast<double>(clip.sourceStart)));
+    c.set("sourceLength", JsonValue::makeNumber(static_cast<double>(clip.sourceLength)));
+    c.set("start", JsonValue::makeNumber(static_cast<double>(clip.startTick)));
+    c.set("length", JsonValue::makeNumber(static_cast<double>(clip.length)));
+    if (clip.muted) c.set("muted", JsonValue::makeBoolean(true));
+    if (!clip.name.empty()) c.set("name", JsonValue::makeString(clip.name));
+    c.set("color", JsonValue::makeString(colourToHex(clip.colorRgba)));
+    // Écrits seulement s'ils disent quelque chose : un clip MIDI ne porte pas
+    // de fenêtre en secondes ni de fondu.
+    if (clip.sourceStartSeconds != 0.0)
+        c.set("sourceStartSeconds", JsonValue::makeFloat(static_cast<float>(clip.sourceStartSeconds)));
+    if (clip.fadeInSeconds != 0.0)
+        c.set("fadeIn", JsonValue::makeFloat(static_cast<float>(clip.fadeInSeconds)));
+    if (clip.fadeOutSeconds != 0.0)
+        c.set("fadeOut", JsonValue::makeFloat(static_cast<float>(clip.fadeOutSeconds)));
+    if (clip.gain != 1.0f) c.set("gain", JsonValue::makeFloat(clip.gain));
+    if (clip.invertPhase) c.set("invertPhase", JsonValue::makeBoolean(true));
+    return c;
+}
+
+/// Un clip DEPUIS le JSON. Même raison que ci-dessus.
+ProjectClip clipFromJson(const JsonValue& clipJson) {
+    ProjectClip clip;
+    clip.sourceStart = static_cast<int64_t>(clipJson["sourceStart"].asNumber(0.0));
+    clip.sourceLength = static_cast<int64_t>(clipJson["sourceLength"].asNumber(0.0));
+    clip.startTick = static_cast<int64_t>(clipJson["start"].asNumber(0.0));
+    clip.length = static_cast<int64_t>(clipJson["length"].asNumber(0.0));
+    clip.muted = clipJson["muted"].asBoolean(false);
+    clip.name = clipJson["name"].asString();
+    clip.colorRgba = colourFromHex(clipJson["color"].asString(), 0xFF6B9BFFu);
+    clip.sourceStartSeconds = clipJson["sourceStartSeconds"].asNumber(0.0);
+    clip.fadeInSeconds = clipJson["fadeIn"].asNumber(0.0);
+    clip.fadeOutSeconds = clipJson["fadeOut"].asNumber(0.0);
+    clip.gain = static_cast<float>(clipJson["gain"].asNumber(1.0));
+    clip.invertPhase = clipJson["invertPhase"].asBoolean(false);
+    return clip;
+}
+
 // ---------------------------------------------------------------------------
 // Projet en mémoire -> document
 // ---------------------------------------------------------------------------
@@ -109,6 +152,9 @@ ProjectDocument documentFromProject(const Project& project) {
     document.transport.loopEnabled = project.loopEnabled;
     document.transport.loopStartTick = project.loopStartTick;
     document.transport.loopEndTick = project.loopEndTick;
+    document.transport.punchEnabled = project.punchEnabled;
+    document.transport.punchStartTick = project.punchStartTick;
+    document.transport.punchEndTick = project.punchEndTick;
 
     size_t index = 0;
     for (const auto& track : project.tracks) {
@@ -155,6 +201,27 @@ ProjectDocument documentFromProject(const Project& project) {
                 lane.points.push_back({point.tick, point.value, point.step});
             entry.automation.push_back(std::move(lane));
         }
+
+        // LES PRISES. Leurs NOTES ne sont pas décrites ici -- elles vont dans
+        // `midi/prises.mid`, comme celles de l'arrangement vont dans son propre
+        // `.mid` : c'est la règle du format, et `midiTrackIndex` est rempli par
+        // l'écrivain du dossier, qui seul sait combien de pistes ce fichier
+        // porte déjà.
+        for (const auto& take : track.takes) {
+            ProjectTake described;
+            described.name = take.name;
+            described.startTick = take.startTick;
+            described.endTick = take.endTick;
+            described.audio = {take.audio.path, take.audio.sampleRate,
+                                take.audio.frames, take.audio.channels};
+            for (const auto& clip : take.clips)
+                described.clips.push_back({clip.sourceStart, clip.sourceLength, clip.startTick,
+                                            clip.length, clip.muted, clip.name, clip.colorRgba,
+                                            clip.sourceStartSeconds, clip.fadeInSeconds,
+                                            clip.fadeOutSeconds, clip.gain, clip.invertPhase});
+            entry.takes.push_back(std::move(described));
+        }
+        entry.activeTake = track.activeTake;
 
         document.tracks.push_back(std::move(entry));
         ++index;
@@ -205,6 +272,9 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
     project.loopEnabled = document.transport.loopEnabled;
     project.loopStartTick = document.transport.loopStartTick;
     project.loopEndTick = document.transport.loopEndTick;
+    project.punchEnabled = document.transport.punchEnabled;
+    project.punchStartTick = document.transport.punchStartTick;
+    project.punchEndTick = document.transport.punchEndTick;
 
     if (document.tracks.size() != project.tracks.size()) {
         std::ostringstream warning;
@@ -236,6 +306,26 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.kind = source.kind == "audio" ? Track::Kind::Audio : Track::Kind::Midi;
         target.audio = {source.audio.path, source.audio.sampleRate,
                          source.audio.frames, source.audio.channels};
+        // Les prises, SANS leurs notes : celles-ci viennent de `prises.mid` et
+        // sont recollées par le lecteur de dossier, qui est le seul à l'avoir lu.
+        target.takes.clear();
+        for (const auto& take : source.takes) {
+            vsm::sequencer::Take restauree;
+            restauree.name = take.name;
+            restauree.startTick = take.startTick;
+            restauree.endTick = take.endTick;
+            restauree.audio = {take.audio.path, take.audio.sampleRate,
+                                take.audio.frames, take.audio.channels};
+            for (const auto& clip : take.clips)
+                restauree.clips.push_back({clip.sourceStart, clip.sourceLength, clip.startTick,
+                                            clip.length, clip.muted, clip.name, clip.colorRgba,
+                                            clip.sourceStartSeconds, clip.fadeInSeconds,
+                                            clip.fadeOutSeconds, clip.gain, clip.invertPhase});
+            target.takes.push_back(std::move(restauree));
+        }
+        target.activeTake = source.activeTake < static_cast<int>(target.takes.size())
+                                ? source.activeTake : -1;
+
         target.clips.clear();
         for (const auto& clip : source.clips)
             target.clips.push_back({clip.sourceStart, clip.sourceLength, clip.startTick,
@@ -326,6 +416,17 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
     loop.set("enabled", JsonValue::makeBoolean(document.transport.loopEnabled));
     loop.set("startTick", JsonValue::makeNumber(static_cast<double>(document.transport.loopStartTick)));
     loop.set("endTick", JsonValue::makeNumber(static_cast<double>(document.transport.loopEndTick)));
+    
+    // RÉGION DE PUNCH : écrite SEULEMENT si elle dit quelque chose, comme les
+    // clips et l'automation -- un projet qui n'en a pas garde exactement le
+    // fichier qu'il avait avant que le punch existe.
+    if (document.transport.punchEnabled || document.transport.punchEndTick > 0) {
+        JsonValue punch = JsonValue::makeObject();
+        punch.set("enabled", JsonValue::makeBoolean(document.transport.punchEnabled));
+        punch.set("startTick", JsonValue::makeNumber(static_cast<double>(document.transport.punchStartTick)));
+        punch.set("endTick", JsonValue::makeNumber(static_cast<double>(document.transport.punchEndTick)));
+        transport.set("punch", std::move(punch));
+    }
     transport.set("loop", std::move(loop));
     root.set("transport", std::move(transport));
 
@@ -377,28 +478,38 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         // fichier qu'elle a toujours eu.
         if (!track.clips.empty()) {
             JsonValue clips = JsonValue::makeArray();
-            for (const auto& clip : track.clips) {
-                JsonValue c = JsonValue::makeObject();
-                c.set("sourceStart", JsonValue::makeNumber(static_cast<double>(clip.sourceStart)));
-                c.set("sourceLength", JsonValue::makeNumber(static_cast<double>(clip.sourceLength)));
-                c.set("start", JsonValue::makeNumber(static_cast<double>(clip.startTick)));
-                c.set("length", JsonValue::makeNumber(static_cast<double>(clip.length)));
-                if (clip.muted) c.set("muted", JsonValue::makeBoolean(true));
-                if (!clip.name.empty()) c.set("name", JsonValue::makeString(clip.name));
-                c.set("color", JsonValue::makeString(colourToHex(clip.colorRgba)));
-                // Écrits seulement s'ils disent quelque chose : un clip MIDI ne
-                // porte pas de fenêtre en secondes ni de fondu.
-                if (clip.sourceStartSeconds != 0.0)
-                    c.set("sourceStartSeconds", JsonValue::makeFloat(static_cast<float>(clip.sourceStartSeconds)));
-                if (clip.fadeInSeconds != 0.0)
-                    c.set("fadeIn", JsonValue::makeFloat(static_cast<float>(clip.fadeInSeconds)));
-                if (clip.fadeOutSeconds != 0.0)
-                    c.set("fadeOut", JsonValue::makeFloat(static_cast<float>(clip.fadeOutSeconds)));
-                if (clip.gain != 1.0f) c.set("gain", JsonValue::makeFloat(clip.gain));
-                if (clip.invertPhase) c.set("invertPhase", JsonValue::makeBoolean(true));
-                clips.append(std::move(c));
-            }
+            for (const auto& clip : track.clips) clips.append(clipToJson(clip));
             entry.set("clips", std::move(clips));
+        }
+
+        // LES PRISES, écrites seulement s'il y en a. Leurs NOTES ne sont pas
+        // ici : elles sont dans `midi/prises.mid`, et `midiTrack` dit laquelle
+        // de ses pistes porte celles-ci.
+        if (!track.takes.empty()) {
+            JsonValue takes = JsonValue::makeArray();
+            for (const auto& take : track.takes) {
+                JsonValue t = JsonValue::makeObject();
+                t.set("name", JsonValue::makeString(take.name));
+                t.set("startTick", JsonValue::makeNumber(static_cast<double>(take.startTick)));
+                t.set("endTick", JsonValue::makeNumber(static_cast<double>(take.endTick)));
+                t.set("midiTrack", JsonValue::makeNumber(static_cast<double>(take.midiTrackIndex)));
+                if (!take.audio.path.empty()) {
+                    JsonValue source = JsonValue::makeObject();
+                    source.set("file", JsonValue::makeString(take.audio.path));
+                    source.set("sampleRate", JsonValue::makeNumber(take.audio.sampleRate));
+                    source.set("frames", JsonValue::makeNumber(static_cast<double>(take.audio.frames)));
+                    source.set("channels", JsonValue::makeNumber(take.audio.channels));
+                    t.set("audio", std::move(source));
+                }
+                if (!take.clips.empty()) {
+                    JsonValue clips = JsonValue::makeArray();
+                    for (const auto& clip : take.clips) clips.append(clipToJson(clip));
+                    t.set("clips", std::move(clips));
+                }
+                takes.append(std::move(t));
+            }
+            entry.set("takes", std::move(takes));
+            entry.set("activeTake", JsonValue::makeNumber(static_cast<double>(track.activeTake)));
         }
 
         // L'automation n'est écrite QUE si elle existe : un projet sans
@@ -489,6 +600,11 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
     document.transport.loopStartTick = static_cast<int64_t>(loop["startTick"].asNumber(0.0));
     document.transport.loopEndTick = static_cast<int64_t>(loop["endTick"].asNumber(0.0));
 
+    const JsonValue& punch = transport["punch"];
+    document.transport.punchEnabled = punch["enabled"].asBoolean(false);
+    document.transport.punchStartTick = static_cast<int64_t>(punch["startTick"].asNumber(0.0));
+    document.transport.punchEndTick = static_cast<int64_t>(punch["endTick"].asNumber(0.0));
+
     for (const auto& entry : json["tracks"].elements()) {
         ProjectTrack track;
         track.name = entry["name"].asString();
@@ -533,22 +649,35 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
             if (!effect.type.empty()) track.effects.push_back(std::move(effect));
         }
 
-        for (const auto& clipJson : entry["clips"].elements()) {
-            ProjectClip clip;
-            clip.sourceStart = static_cast<int64_t>(clipJson["sourceStart"].asNumber(0.0));
-            clip.sourceLength = static_cast<int64_t>(clipJson["sourceLength"].asNumber(0.0));
-            clip.startTick = static_cast<int64_t>(clipJson["start"].asNumber(0.0));
-            clip.length = static_cast<int64_t>(clipJson["length"].asNumber(0.0));
-            clip.muted = clipJson["muted"].asBoolean(false);
-            clip.name = clipJson["name"].asString();
-            clip.colorRgba = colourFromHex(clipJson["color"].asString(), 0xFF6B9BFFu);
-            clip.sourceStartSeconds = clipJson["sourceStartSeconds"].asNumber(0.0);
-            clip.fadeInSeconds = clipJson["fadeIn"].asNumber(0.0);
-            clip.fadeOutSeconds = clipJson["fadeOut"].asNumber(0.0);
-            clip.gain = static_cast<float>(clipJson["gain"].asNumber(1.0));
-            clip.invertPhase = clipJson["invertPhase"].asBoolean(false);
-            track.clips.push_back(std::move(clip));
+        for (const auto& clipJson : entry["clips"].elements())
+            track.clips.push_back(clipFromJson(clipJson));
+
+        // LES PRISES, sans leurs notes : celles-ci sont dans `midi/prises.mid`
+        // et sont recollées par le lecteur de dossier, seul à l'avoir ouvert.
+        for (const auto& takeJson : entry["takes"].elements()) {
+            ProjectTake take;
+            take.name = takeJson["name"].asString();
+            take.startTick = static_cast<int64_t>(takeJson["startTick"].asNumber(0.0));
+            take.endTick = static_cast<int64_t>(takeJson["endTick"].asNumber(0.0));
+            take.midiTrackIndex = static_cast<int>(takeJson["midiTrack"].asNumber(-1.0));
+            if (takeJson["audio"].isObject()) {
+                take.audio.path = takeJson["audio"]["file"].asString();
+                // MÊME RÈGLE QUE PARTOUT : un chemin absolu est refusé, jamais
+                // réécrit -- c'est ce qui permet d'ouvrir le projet ailleurs.
+                if (!isPortableRelativePath(take.audio.path)) {
+                    result.error = "chemin de prise non portable : \"" + take.audio.path + "\"";
+                    return result;
+                }
+                take.audio.sampleRate = takeJson["audio"]["sampleRate"].asNumber(0.0);
+                take.audio.frames = static_cast<int64_t>(takeJson["audio"]["frames"].asNumber(0.0));
+                take.audio.channels = static_cast<int>(takeJson["audio"]["channels"].asNumber(0.0));
+            }
+            for (const auto& clipJson : takeJson["clips"].elements())
+                take.clips.push_back(clipFromJson(clipJson));
+            track.takes.push_back(std::move(take));
         }
+        track.activeTake = static_cast<int>(entry["activeTake"].asNumber(-1.0));
+        if (track.activeTake >= static_cast<int>(track.takes.size())) track.activeTake = -1;
 
         for (const auto& laneJson : entry["automation"].elements()) {
             ProjectAutomationLane lane;

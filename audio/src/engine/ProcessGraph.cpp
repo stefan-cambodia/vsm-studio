@@ -147,6 +147,9 @@ void ProcessGraph::seekSeconds(double seconds) {
     // de référence ne rencontrent que du silence, et la boucle ne se referme
     // qu'une fois sa fin franchie.
     currentSeconds_.store(seconds, std::memory_order_release);
+    // Un déplacement de la tête de lecture recommence le compte des passes :
+    // ce qui précède appartient à un autre enregistrement.
+    loopWrapCount_.store(0, std::memory_order_release);
 }
 
 
@@ -291,6 +294,10 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
 
             if (loopActive && loopEnd > loopStart && spanStartSeconds >= loopEnd - 1.0e-12) {
                 spanStartSeconds = loopStart;
+                // La boucle vient de se refermer : on le COMPTE. C'est le seul
+                // moyen de distinguer deux passes d'enregistrement, qui occupent
+                // exactement les mêmes positions sur la ligne de temps.
+                loopWrapCount_.fetch_add(1, std::memory_order_release);
                 // Les notes encore tenues à la fin de la boucle n'auront jamais
                 // leur NoteOff (il se trouve après la frontière) : on les
                 // relâche au saut, sinon elles sonneraient indéfiniment.

@@ -8,21 +8,49 @@ namespace vsm::sequencer {
 
 using midi::Tick;
 
-void MidiRecorder::begin(double startSeconds) {
+void MidiRecorder::begin(double startSeconds, double endSeconds) {
     startSeconds_ = startSeconds;
+    endSeconds_ = endSeconds;
     events_.clear();
 }
 
 void MidiRecorder::push(const RecordedNoteEvent& event) {
-    if (event.seconds < startSeconds_) return;
+    // HORS DES BORNES, ON N'ÉCRIT PAS. Avant le point d'entrée c'est le
+    // décompte ; après le point de sortie c'est le « punch out », où l'on
+    // entend ce qui était déjà là. Dans les deux cas, jouer n'est pas
+    // enregistrer.
+    if (event.seconds < startSeconds_ || event.seconds > endSeconds_) return;
     events_.push_back(event);
+}
+
+bool MidiRecorder::hasPass(uint32_t pass) const {
+    for (const auto& ev : events_)
+        if (ev.pass == pass && ev.noteOn) return true;
+    return false;
 }
 
 std::vector<Note> MidiRecorder::finish(double endSeconds,
                                         const std::function<Tick(double)>& secondsToTicks,
                                         uint64_t& idCounter) const {
+    return apparier(events_, endSeconds, secondsToTicks, idCounter);
+}
+
+std::vector<Note> MidiRecorder::finishPass(uint32_t pass, double endSeconds,
+                                            const std::function<Tick(double)>& secondsToTicks,
+                                            uint64_t& idCounter) const {
+    std::vector<RecordedNoteEvent> deLaPasse;
+    deLaPasse.reserve(events_.size());
+    for (const auto& ev : events_)
+        if (ev.pass == pass) deLaPasse.push_back(ev);
+    return apparier(deLaPasse, endSeconds, secondsToTicks, idCounter);
+}
+
+std::vector<Note> MidiRecorder::apparier(const std::vector<RecordedNoteEvent>& evenements,
+                                          double endSeconds,
+                                          const std::function<Tick(double)>& secondsToTicks,
+                                          uint64_t& idCounter) const {
     std::vector<Note> notes;
-    if (events_.empty() || !secondsToTicks) return notes;
+    if (evenements.empty() || !secondsToTicks) return notes;
 
     // TRI STABLE, et il n'est pas décoratif. Les événements arrivent du thread
     // MIDI dans l'ordre, mais leur position est calculée par rapport à un
@@ -31,7 +59,7 @@ std::vector<Note> MidiRecorder::finish(double endSeconds,
     // inversés. Un tri STABLE remet l'ordre temporel sans jamais faire passer
     // un relâchement avant l'enfoncement qu'il ferme -- ce qu'un tri quelconque
     // ferait sur deux événements de même date.
-    std::vector<RecordedNoteEvent> tries = events_;
+    std::vector<RecordedNoteEvent> tries = evenements;
     std::stable_sort(tries.begin(), tries.end(),
                       [](const RecordedNoteEvent& a, const RecordedNoteEvent& b) {
                           return a.seconds < b.seconds;

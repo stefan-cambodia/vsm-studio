@@ -146,6 +146,52 @@ struct AudioSource {
     }
 };
 
+/// UNE PRISE CONSERVÉE : ce qu'une passe d'enregistrement a produit, gardé
+/// entier à côté des autres (D3.5).
+///
+/// LE CHOIX DE CONCEPTION, ET CELUI QUI A ÉTÉ ÉCARTÉ. Une piste pourrait porter
+/// N matériaux en permanence et n'en jouer qu'un : le planning, le piano roll,
+/// le rendu et l'export devraient alors tous savoir lequel, c'est-à-dire que
+/// chacun des quatre-vingts endroits qui lisent `Track::notes` devrait poser la
+/// question. On a retenu l'autre modèle, celui du RANGEMENT : la piste garde
+/// UN seul matériau courant -- exactement celui qu'elle a toujours eu -- et les
+/// prises inactives attendent à côté. Choisir une prise, c'est ranger le
+/// matériau courant dans la prise à laquelle il appartient et sortir celui de
+/// la prise voulue.
+///
+/// Trois raisons, dans cet ordre :
+///
+///  1. **Rien de ce qui lit une piste n'a besoin de changer.** Le planning,
+///     l'export MIDI, le rendu hors ligne et le piano roll voient le matériau
+///     courant et ne savent même pas que des prises existent. C'est la même
+///     règle qui avait fait choisir le modèle de la RÉGION pour les clips.
+///  2. **Une piste SANS prise se comporte exactement comme avant** (voir
+///     `Track::takes`) : `takes` vide veut dire « aucune prise empilée », pas
+///     « prise vide ». La migration des projets existants est donc vide.
+///  3. **Ce qui était là avant le premier enregistrement n'est jamais
+///     perdu** : il devient la prise n° 0. Une pile de prises dans laquelle le
+///     matériau d'origine aurait disparu serait un piège, pas une commodité.
+///
+/// Ce que ce modèle coûte, et qui est assumé : éditer des notes modifie la
+/// prise ACTIVE, et seulement elle. C'est le comportement attendu -- on corrige
+/// la prise qu'on écoute -- mais il faut le savoir avant d'aller chercher une
+/// correction dans une autre.
+struct Take {
+    std::string name;
+    /// Les bornes de la passe sur la ligne de temps. Elles servent à nommer et
+    /// à situer la prise ; le matériau, lui, est en ticks absolus comme
+    /// partout ailleurs.
+    Tick startTick = 0;
+    Tick endTick = 0;
+
+    /// Le matériau de la prise, dans les mêmes unités et le même format que
+    /// celui d'une piste -- puisque c'est exactement ce qu'il vient d'être, ou
+    /// ce qu'il redeviendra.
+    std::vector<Note> notes;
+    AudioSource audio;
+    std::vector<Clip> clips;
+};
+
 /// Un repère nommé sur la ligne de temps (couplet, refrain, « ici ça coince »).
 ///
 /// Le format MIDI en porte depuis toujours (méta-événements Marker et
@@ -267,6 +313,25 @@ public:
     std::vector<TrackEffect> effects;
     std::vector<AutomationCurve> automation;
 
+    /// Les prises empilées de la piste (D3.5).
+    ///
+    /// **VIDE SIGNIFIE « AUCUNE PRISE EMPILÉE »**, c'est-à-dire que la piste
+    /// n'a qu'un matériau et se comporte exactement comme avant que les prises
+    /// existent. Ce n'est pas un cas particulier : c'est le sens littéral du
+    /// mot. Voir `Take` pour le modèle retenu et celui qui a été écarté.
+    std::vector<Take> takes;
+
+    /// La prise dont le matériau est ACTUELLEMENT dans la piste, ou -1 si le
+    /// matériau courant n'appartient à aucune prise (le cas de toute piste qui
+    /// n'a jamais servi à un enregistrement empilé).
+    ///
+    /// L'invariant qui compte : quand `activeTake` désigne une prise, le
+    /// contenu de `takes[activeTake]` est PÉRIMÉ -- la vérité est dans
+    /// `notes`/`audio`/`clips`, et elle y sera rangée au prochain changement de
+    /// prise. Dupliquer le matériau actif dans sa prise obligerait à tenir deux
+    /// copies d'accord à chaque note déplacée.
+    int activeTake = -1;
+
     /// Trie toutes les lanes par tick croissant. À appeler après toute
     /// édition manuelle en dehors des méthodes utilitaires ci-dessous.
     void sortEvents();
@@ -275,5 +340,19 @@ public:
     Note& addNote(Tick start, Tick end, uint8_t number, uint8_t velocity,
                    uint8_t channelOverride, uint64_t& idCounter);
 };
+
+/// Empile une prise sur la piste et la rend active.
+///
+/// SI LA PISTE AVAIT DÉJÀ UN MATÉRIAU ET AUCUNE PRISE, ce matériau devient la
+/// prise n° 0 sous le nom donné par `nomDeLOrigine`. C'est la seule façon de
+/// ne rien perdre : sans cela, le premier enregistrement empilé effacerait ce
+/// qui était là -- typiquement une partie reconstruite, c'est-à-dire ce qu'on
+/// avait de plus précieux.
+void pushTake(Track& track, Take take, const std::string& nomDeLOrigine = "Origine");
+
+/// Rend active la prise `index`, en rangeant d'abord le matériau courant dans
+/// la prise à laquelle il appartient. Sans effet si l'index est hors bornes ou
+/// désigne déjà la prise active.
+void selectTake(Track& track, int index);
 
 } // namespace vsm::sequencer

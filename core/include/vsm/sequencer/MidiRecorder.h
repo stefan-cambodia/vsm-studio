@@ -2,6 +2,7 @@
 #include "vsm/sequencer/Track.h"
 #include <cstdint>
 #include <functional>
+#include <limits>
 #include <vector>
 
 namespace vsm::sequencer {
@@ -20,6 +21,14 @@ struct RecordedNoteEvent {
     uint8_t velocity = 100;
     uint8_t channel = 0;
     bool noteOn = true;
+    /// LE NUMÉRO DE PASSE, pour l'enregistrement en boucle (D3.5).
+    ///
+    /// Deux passes de boucle occupent EXACTEMENT les mêmes positions sur la
+    /// ligne de temps : la date d'une note ne dit donc pas à laquelle elle
+    /// appartient, et sans ce numéro les passes se mélangeraient en une
+    /// bouillie. Il est posé au moment de la capture, d'après le compteur de
+    /// rebouclages du moteur -- pas déduit après coup, ce qui serait impossible.
+    uint32_t pass = 0;
 };
 
 /// CE QU'ON FAIT DE CE QUI ÉTAIT DÉJÀ LÀ.
@@ -28,7 +37,15 @@ struct RecordedNoteEvent {
 /// ce qui permet de construire une partie en plusieurs passes -- la grosse
 /// caisse d'abord, la caisse claire par-dessus. `Replace` efface d'abord ce
 /// que la prise recouvre.
-enum class RecordMode { Overdub, Replace };
+enum class RecordMode {
+    Overdub,
+    Replace,
+    /// EMPILER : chaque passe devient une prise conservée, et la piste joue la
+    /// dernière. C'est le mode de l'enregistrement en boucle, où l'on refait le
+    /// même passage jusqu'à en tenir un bon -- superposer donnerait alors dix
+    /// couches simultanées, et remplacer effacerait la seule bonne.
+    Stack
+};
 
 /// L'ENREGISTREUR MIDI : il accumule des touches et rend des NOTES.
 ///
@@ -45,10 +62,14 @@ enum class RecordMode { Overdub, Replace };
 /// entièrement sans matériel, exactement comme `PlaybackScheduler`.
 class MidiRecorder {
 public:
-    /// Ouvre une prise. `startSeconds` est le POINT D'ENTRÉE : tout ce qui
-    /// arrive avant est écarté, ce qui est précisément ce qu'il faut pendant un
-    /// décompte -- on compte pour se caler, on ne joue pas encore.
-    void begin(double startSeconds);
+    /// Ouvre une prise entre deux bornes. `startSeconds` est le POINT
+    /// D'ENTRÉE : tout ce qui arrive avant est écarté, ce qui est précisément ce
+    /// qu'il faut pendant un décompte -- on compte pour se caler, on ne joue pas
+    /// encore. `endSeconds` est le POINT DE SORTIE (le « punch out ») : au-delà,
+    /// on entend ce qui était déjà là et on n'écrit plus rien. Par défaut il
+    /// n'y en a pas, et la prise dure jusqu'à ce qu'on l'arrête.
+    void begin(double startSeconds,
+                double endSeconds = std::numeric_limits<double>::infinity());
 
     /// Ajoute un événement. Ceux qui précèdent le point d'entrée sont ignorés
     /// en silence : ce n'est pas une perte, c'est la définition du point
@@ -58,6 +79,11 @@ public:
     bool empty() const { return events_.empty(); }
     size_t eventCount() const { return events_.size(); }
     double startSeconds() const { return startSeconds_; }
+    double endSeconds() const { return endSeconds_; }
+    /// Vrai si la passe donnée a capté quelque chose. Une passe de boucle
+    /// pendant laquelle on n'a rien joué ne doit pas produire une prise vide,
+    /// qu'il faudrait ensuite écarter à la main.
+    bool hasPass(uint32_t pass) const;
 
     /// Apparie tout et rend les notes de la prise, en TICKS.
     ///
@@ -72,8 +98,23 @@ public:
                               const std::function<midi::Tick(double)>& secondsToTicks,
                               uint64_t& idCounter) const;
 
+    /// Les notes d'UNE passe de boucle, et d'elle seule.
+    ///
+    /// Une note tenue par-dessus la frontière de boucle est fermée à la fin de
+    /// sa passe, et son relâchement -- qui appartient à la passe suivante --
+    /// est ignoré là-bas faute d'enfoncement. C'est exactement ce qu'on veut :
+    /// chaque passe est un enregistrement complet en lui-même.
+    std::vector<Note> finishPass(uint32_t pass, double endSeconds,
+                                  const std::function<midi::Tick(double)>& secondsToTicks,
+                                  uint64_t& idCounter) const;
+
 private:
+    std::vector<Note> apparier(const std::vector<RecordedNoteEvent>& evenements, double endSeconds,
+                                const std::function<midi::Tick(double)>& secondsToTicks,
+                                uint64_t& idCounter) const;
+
     double startSeconds_ = 0.0;
+    double endSeconds_ = std::numeric_limits<double>::infinity();
     std::vector<RecordedNoteEvent> events_;
 };
 

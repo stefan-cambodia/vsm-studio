@@ -42,6 +42,9 @@ public:
             pianoRoll_.setLoopRegion(start, end, active);
             if (pianoRoll_.onLoopRegionChanged) pianoRoll_.onLoopRegionChanged(start, end, active);
         };
+        ruler_.onPunchRegionChanged = [this](vsm::midi::Tick start, vsm::midi::Tick end, bool active) {
+            if (pianoRoll_.onPunchRegionChanged) pianoRoll_.onPunchRegionChanged(start, end, active);
+        };
         ruler_.onMarkerRequested = [this](vsm::midi::Tick tick) {
             if (onMarkerRequested) onMarkerRequested(tick);
         };
@@ -59,6 +62,12 @@ public:
     void refresh() {
         ruler_.repaint();
         toolbar_.refreshFromPianoRoll();
+    }
+
+    /// La région de punch appartient au PROJET : la règle la dessine, mais c'est
+    /// l'application qui la détient. Voir `vsm::sequencer::Project::punchEnabled`.
+    void setPunchRegion(vsm::midi::Tick start, vsm::midi::Tick end, bool active) {
+        ruler_.setPunchRegion(start, end, active);
     }
 
     std::function<void()> onVelocityEdited;

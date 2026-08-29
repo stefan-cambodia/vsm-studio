@@ -39,6 +39,7 @@ if (VSM_BUILD_TESTS)
         tests/test_project_history.cpp
         tests/test_transport.cpp
         tests/test_midi_recorder.cpp
+        tests/test_takes.cpp
     )
     target_link_libraries(vsm_core_tests PRIVATE vsm_core)
     target_include_directories(vsm_core_tests PRIVATE tests)

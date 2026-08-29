@@ -94,6 +94,41 @@ BundleLoadResult loadProjectBundle(const std::string& folderPath) {
     for (const auto& warning : result.bundle.report.warnings)
         result.warnings.push_back(warning);
 
+    // 3 bis. LES NOTES DES PRISES, recollées depuis leur fichier. Absent ou
+    // illisible, on continue en le DISANT : un projet dont le tiroir manque doit
+    // s'ouvrir avec son arrangement plutôt que refuser de s'ouvrir -- mais
+    // perdre des prises en silence serait pire que ne pas les avoir gardées.
+    {
+        bool desPrises = false;
+        for (const auto& piste : result.bundle.document.tracks)
+            if (!piste.takes.empty()) { desPrises = true; break; }
+        if (desPrises) {
+            const fs::path takesFile = resolve(folderPath, kTakesMidiPath);
+            if (!fs::exists(takesFile, code)) {
+                result.warnings.push_back(std::string("prises introuvables : ") + kTakesMidiPath
+                                           + " -- elles s'ouvrent vides");
+            } else {
+                try {
+                    const auto tiroir = Project::fromParsedFile(
+                        vsm::midi::MidiFileParser::parseFile(takesFile.string()));
+                    for (size_t t = 0; t < result.bundle.project.tracks.size()
+                                        && t < result.bundle.document.tracks.size(); ++t) {
+                        auto& piste = result.bundle.project.tracks[t];
+                        const auto& decrite = result.bundle.document.tracks[t];
+                        for (size_t k = 0; k < piste.takes.size() && k < decrite.takes.size(); ++k) {
+                            const int index = decrite.takes[k].midiTrackIndex;
+                            if (index < 0 || index >= static_cast<int>(tiroir.tracks.size())) continue;
+                            piste.takes[k].notes = tiroir.tracks[static_cast<size_t>(index)].notes;
+                        }
+                    }
+                } catch (const std::exception& e) {
+                    result.warnings.push_back(std::string("prises illisibles (")
+                                               + kTakesMidiPath + ") : " + e.what());
+                }
+            }
+        }
+    }
+
     // 4. Les presets -- absents ou illisibles, on continue en le disant : un
     // projet dont un preset manque doit s'ouvrir avec les réglages par défaut
     // plutôt que refuser de s'ouvrir entièrement.
@@ -137,6 +172,50 @@ BundleSaveResult saveProjectBundle(const Project& project, const std::string& fo
         return result;
     }
     result.writtenFiles.push_back(document.midiPath);
+
+    // 1 bis. LES NOTES DES PRISES CONSERVÉES, dans leur propre fichier.
+    //
+    // Elles ne peuvent pas aller dans l'arrangement : celui-ci est ce qu'on
+    // ENTEND, et c'est aussi ce qu'on exporte. Y verser les passes écartées en
+    // ferait une archive, et les montrerait comme des pistes muettes à qui
+    // l'ouvrirait ailleurs. On fabrique donc un SECOND projet, dont chaque
+    // piste est une prise, et on l'écrit avec le même écrivain -- il n'y a
+    // qu'un format de notes dans ce logiciel, et il est déjà testé.
+    {
+        Project tiroir;
+        tiroir.ticksPerQuarterNote = project.ticksPerQuarterNote;
+        tiroir.title = project.title + " (prises)";
+        for (size_t t = 0; t < project.tracks.size() && t < document.tracks.size(); ++t) {
+            const auto& piste = project.tracks[t];
+            for (size_t k = 0; k < piste.takes.size() && k < document.tracks[t].takes.size(); ++k) {
+                // Une prise SANS note -- une prise purement audio -- n'occupe
+                // aucune piste du fichier : `midiTrack` reste à -1, et le
+                // fichier ne porte pas de piste vide dont il faudrait ensuite
+                // expliquer la présence.
+                if (piste.takes[k].notes.empty()) {
+                    document.tracks[t].takes[k].midiTrackIndex = -1;
+                    continue;
+                }
+                vsm::sequencer::Track porteuse;
+                porteuse.name = piste.name + " / " + piste.takes[k].name;
+                porteuse.channel = piste.channel;
+                porteuse.notes = piste.takes[k].notes;
+                document.tracks[t].takes[k].midiTrackIndex = static_cast<int>(tiroir.tracks.size());
+                tiroir.tracks.push_back(std::move(porteuse));
+            }
+        }
+        if (!tiroir.tracks.empty()) {
+            const fs::path takesFile = resolve(folderPath, kTakesMidiPath);
+            fs::create_directories(takesFile.parent_path(), code);
+            try {
+                vsm::midi::MidiFileWriter::writeFile(tiroir.toParsedFile(), takesFile.string());
+            } catch (const std::exception& e) {
+                result.error = std::string("écriture des prises impossible : ") + e.what();
+                return result;
+            }
+            result.writtenFiles.push_back(kTakesMidiPath);
+        }
+    }
 
     // 2. Un preset par piste instrumentée.
     static std::once_flag registration;

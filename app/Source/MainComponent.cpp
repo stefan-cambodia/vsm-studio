@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/interchange/ParameterDescriptor.h"
 #include "vsm/interchange/EffectDescription.h"
@@ -256,6 +257,15 @@ MainComponent::MainComponent()
         pianoRoll_.setLoopRegion(start, end, active);
         pianoRollPanel_.refresh();
     };
+    pianoRoll_.onPunchRegionChanged = [this](vsm::midi::Tick start, vsm::midi::Tick end, bool active) {
+        // La région de punch est une DONNÉE DE MORCEAU : on refait le même
+        // passage vingt fois, et la redéfinir à chaque ouverture reviendrait à
+        // perdre l'endroit qu'on a mis dix minutes à cerner.
+        project_.punchStartTick = start;
+        project_.punchEndTick = end;
+        project_.punchEnabled = active && end > start;
+        pianoRollPanel_.refresh();
+    };
     pianoRoll_.onLoopRegionChanged = [this](vsm::midi::Tick start, vsm::midi::Tick end, bool active) {
         // Écrite dans le projet AUSSI : c'est une donnée de morceau, et elle
         // disparaissait à la fermeture alors que le format savait l'écrire.
@@ -276,9 +286,8 @@ MainComponent::MainComponent()
     {
         auto& reglages = vsm::app::ui::UiScale::properties();
         countInBars_ = juce::jlimit(0, 2, reglages.getIntValue("recordCountInBars", 1));
-        recordMode_ = reglages.getBoolValue("recordReplace", false)
-                          ? vsm::sequencer::RecordMode::Replace
-                          : vsm::sequencer::RecordMode::Overdub;
+        recordMode_ = static_cast<vsm::sequencer::RecordMode>(
+            juce::jlimit(0, 2, reglages.getIntValue("recordMode", 0)));
     }
 
     rebuildFromProject();
@@ -399,6 +408,7 @@ void MainComponent::timerCallback() {
     // ENREGISTREMENT : vider la file de capture à chaque tour, décompte
     // compris. `MidiRecorder` écarte lui-même ce qui précède le point d'entrée,
     // donc rien ne se perd et rien n'entre par erreur.
+    bool priseEmpilee = false;
     if (recordPhase_ != RecordPhase::Off) {
         drainRecording();
         if (recordPhase_ == RecordPhase::CountIn) {
@@ -417,6 +427,23 @@ void MainComponent::timerCallback() {
                 transportBar_.setCountIn(std::max(1, static_cast<int>(std::ceil(restant / parTemps))));
             }
         }
+        // ENREGISTREMENT EN BOUCLE : chaque rebouclage clôt une passe. On
+        // compare au compteur du MOTEUR plutôt qu'à la position affichée : la
+        // position revient en arrière, mais elle le fait entre deux tours de
+        // ce timer, et deux boucles courtes pourraient passer inaperçues.
+        if (recordPhase_ == RecordPhase::Recording
+            && recordMode_ == vsm::sequencer::RecordMode::Stack
+            && audioEngine_.processGraph().isLoopActive()) {
+            const uint64_t tours = audioEngine_.processGraph().loopWrapCount();
+            while (loopPassesClosed_ < tours) {
+                closePass(static_cast<uint32_t>(loopPassesClosed_),
+                           audioEngine_.processGraph().loopStartSeconds(),
+                           audioEngine_.processGraph().loopEndSeconds());
+                ++loopPassesClosed_;
+                priseEmpilee = true;
+            }
+        }
+
         // Une note jouée et perdue faute de place dans la file serait une
         // prise incomplète, et il n'est pas permis que ça arrive en silence.
         if (audioEngine_.droppedRecordedEvents() > 0 && !recordDropReported_) {
@@ -427,6 +454,14 @@ void MainComponent::timerCallback() {
                 u8"prise. Signalez-le -- ce n'est pas censé pouvoir arriver.");
         }
     }
+    // Une passe empilée a changé le matériau des pistes armées : il faut le
+    // republier, sans quoi la boucle suivante rejouerait la passe précédente.
+    if (priseEmpilee) {
+        audioEngine_.processGraph().setProject(project_);
+        pianoRollPanel_.refresh();
+        pianoRoll_.repaint();
+    }
+
     transportBar_.setInputLevel(audioEngine_.readInputPeak(),
                                  audioEngine_.currentInputChannels());
     pianoRoll_.setPlayheadTick(playhead);
@@ -538,12 +573,47 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                               true, recordMode_ == vsm::sequencer::RecordMode::Overdub);
                 menu.addItem(kMenuRecordReplace, "Remplacer",
                               true, recordMode_ == vsm::sequencer::RecordMode::Replace);
-                // UNE PISTE AUDIO PORTE UN SEUL FICHIER : une prise audio
-                // remplace toujours le matériau de sa piste, et le menu le dit
-                // plutôt que de laisser croire que le réglage ci-dessus la
-                // concerne. Les prises empilées sont l'objet de D3.5.
-                menu.addItem(-1, u8"(une prise audio remplace toujours son matériau)", false, false);
+                menu.addItem(kMenuRecordStack, u8"Empiler les prises",
+                              true, recordMode_ == vsm::sequencer::RecordMode::Stack);
+                // HORS DU MODE EMPILÉ, une prise audio remplace toujours le
+                // matériau de sa piste -- une piste audio porte un seul fichier.
+                // Le menu le dit plutôt que de laisser croire que
+                // « superposer » la concerne.
+                menu.addItem(-1, u8"(en boucle et en mode empilé, chaque passage "
+                                  u8"devient une prise)", false, false);
                 menu.addSeparator();
+
+                // LA RÉGION DE PUNCH : entre ces deux points, et seulement là,
+                // l'enregistrement capte. Elle se dessine à la souris sur la
+                // règle du piano roll avec Alt -- comme la boucle avec Maj --
+                // et le menu offre les deux gestes qu'on fait le plus souvent.
+                const bool punchPose = project_.punchEndTick > project_.punchStartTick;
+                menu.addSectionHeader(u8"Région de punch (Alt sur la règle)");
+                menu.addItem(kMenuRecordPunchToggle, u8"Active", punchPose, project_.punchEnabled);
+                menu.addItem(kMenuRecordPunchFromLoop, u8"La prendre sur la boucle",
+                              project_.loopEndTick > project_.loopStartTick);
+                menu.addItem(kMenuRecordPunchClear, u8"L'effacer", punchPose);
+                menu.addSeparator();
+
+                // LES PRISES DE LA PISTE SÉLECTIONNÉE. C'est le « se
+                // choisissent » du critère de D3.5 : sans ce menu, les prises
+                // seraient conservées et inatteignables.
+                const size_t pisteChoisie = trackList_.selectedTrackIndex();
+                if (pisteChoisie < project_.tracks.size()
+                    && !project_.tracks[pisteChoisie].takes.empty()) {
+                    const auto& prises = project_.tracks[pisteChoisie].takes;
+                    menu.addSectionHeader(juce::String(u8"Prises de « ")
+                                           + juce::String(project_.tracks[pisteChoisie].name)
+                                           + juce::String(u8" »"));
+                    for (size_t i = 0; i < prises.size() && i <= 63; ++i)
+                        menu.addItem(kMenuRecordTakeFirst + static_cast<int>(i),
+                                      juce::String(prises[i].name.empty()
+                                                       ? ("Prise " + std::to_string(i + 1))
+                                                       : prises[i].name),
+                                      true,
+                                      static_cast<int>(i) == project_.tracks[pisteChoisie].activeTake);
+                    menu.addSeparator();
+                }
                 menu.addItem(kMenuRecordQuantizeTake,
                               u8"Quantifier la dernière prise (grille du piano roll)",
                               !lastTake_.empty());
@@ -616,11 +686,34 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             break;
         case kMenuRecordOverdub:
         case kMenuRecordReplace:
-            recordMode_ = (menuItemID == kMenuRecordReplace)
-                              ? vsm::sequencer::RecordMode::Replace
-                              : vsm::sequencer::RecordMode::Overdub;
-            vsm::app::ui::UiScale::properties().setValue(
-                "recordReplace", recordMode_ == vsm::sequencer::RecordMode::Replace);
+        case kMenuRecordStack:
+            recordMode_ = menuItemID == kMenuRecordReplace ? vsm::sequencer::RecordMode::Replace
+                        : menuItemID == kMenuRecordStack   ? vsm::sequencer::RecordMode::Stack
+                                                            : vsm::sequencer::RecordMode::Overdub;
+            vsm::app::ui::UiScale::properties().setValue("recordMode",
+                                                          static_cast<int>(recordMode_));
+            break;
+        case kMenuRecordPunchToggle:
+            project_.punchEnabled = !project_.punchEnabled;
+            pianoRollPanel_.setPunchRegion(project_.punchStartTick, project_.punchEndTick,
+                                       project_.punchEnabled);
+            pianoRollPanel_.refresh();
+            break;
+        case kMenuRecordPunchFromLoop:
+            beginProjectEdit(u8"Région de punch");
+            project_.punchStartTick = project_.loopStartTick;
+            project_.punchEndTick = project_.loopEndTick;
+            project_.punchEnabled = project_.punchEndTick > project_.punchStartTick;
+            pianoRollPanel_.setPunchRegion(project_.punchStartTick, project_.punchEndTick,
+                                       project_.punchEnabled);
+            pianoRollPanel_.refresh();
+            break;
+        case kMenuRecordPunchClear:
+            beginProjectEdit(u8"Région de punch");
+            project_.punchEnabled = false;
+            project_.punchStartTick = project_.punchEndTick = 0;
+            pianoRollPanel_.setPunchRegion(0, 0, false);
+            pianoRollPanel_.refresh();
             break;
         case kMenuRecordQuantizeTake: quantizeLastTake(); break;
         case kMenuFileQuit:      juce::JUCEApplication::getInstance()->systemRequestedQuit(); break;
@@ -637,6 +730,18 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
                 const auto& paliers = vsm::app::ui::UiScale::steps();
                 const int index = menuItemID - kMenuViewScaleFirst;
                 if (index < paliers.size()) setUiScale(paliers[index]);
+                break;
+            }
+            // CHOISIR UNE PRISE. C'est le « se choisissent » du critère de
+            // D3.5 : la piste range son matériau courant dans la prise à
+            // laquelle il appartient, et sort celui de la prise demandée.
+            if (menuItemID >= kMenuRecordTakeFirst && menuItemID <= kMenuRecordTakeLast) {
+                const size_t piste = trackList_.selectedTrackIndex();
+                if (piste >= project_.tracks.size()) break;
+                beginProjectEdit(u8"Choisir une prise");
+                vsm::sequencer::selectTake(project_.tracks[piste],
+                                            menuItemID - kMenuRecordTakeFirst);
+                rebuildFromProject(false);
             }
             break;
     }
@@ -1338,6 +1443,77 @@ bool MainComponent::applyAudioTake(size_t trackIndex, const juce::File& fichier,
     return true;
 }
 
+void MainComponent::ouvrirLEditionDEnregistrement() {
+    if (recordEditOpened_) return;
+    recordEditOpened_ = true;
+    beginProjectEdit("Enregistrement");
+}
+
+double MainComponent::punchOutSeconds() const {
+    if (!project_.punchEnabled || project_.punchEndTick <= project_.punchStartTick)
+        return std::numeric_limits<double>::infinity();
+    return project_.ticksToSeconds(project_.punchEndTick);
+}
+
+void MainComponent::closePass(uint32_t passe, double debutSecondes, double finSecondes) {
+    // UNE PASSE QU'ON N'A PAS JOUÉE NE DEVIENT PAS UNE PRISE. Empiler des
+    // prises vides obligerait à les écarter une par une, et la pile ne
+    // servirait plus à rien.
+    const bool desNotes = recorder_.hasPass(passe);
+    const bool duSon = audioTakeTrack_ != static_cast<size_t>(-1);
+    if (!desNotes && !duSon) return;
+
+    const vsm::midi::Tick debutTick = project_.secondsToTicks(debutSecondes);
+    const vsm::midi::Tick finTick = project_.secondsToTicks(finSecondes);
+    const juce::String nom = "Prise " + juce::String(static_cast<int>(passe) + 1);
+
+    // L'INSTANTANÉ D'ANNULATION EST PRIS ICI, à la première passe qui produit
+    // quelque chose -- pas à l'arrêt. En boucle, les passes précédentes ont déjà
+    // modifié le projet quand on s'arrête : un instantané pris à ce moment-là ne
+    // permettrait de défaire que la dernière, et annuler un enregistrement doit
+    // le défaire EN ENTIER.
+    ouvrirLEditionDEnregistrement();
+
+    uint64_t compteur = project_.peekNextNoteId();
+    if (desNotes) for (size_t index : armedTrackIndices(Track::Kind::Midi)) {
+        if (index >= project_.tracks.size()) continue;
+        vsm::sequencer::Take prise;
+        prise.name = nom.toStdString();
+        prise.startTick = debutTick;
+        prise.endTick = finTick;
+        prise.notes = recorder_.finishPass(passe, finSecondes,
+                                            [this](double s) { return project_.secondsToTicks(s); },
+                                            compteur);
+        for (auto& note : prise.notes) note.channel = project_.tracks[index].channel;
+        vsm::sequencer::pushTake(project_.tracks[index], std::move(prise));
+    }
+    if (compteur > 0) project_.ensureNoteIdAbove(compteur - 1);
+
+    // LA PRISE AUDIO D'UNE PASSE EST UNE FENÊTRE, PAS UN FICHIER. Toutes les
+    // passes partagent le fichier ouvert au début de la session : le découper
+    // au passage exact de la boucle demanderait de fermer et rouvrir un fichier
+    // au seul endroit où il ne faut surtout pas faire de pause.
+    if (duSon && audioTakeTrack_ < project_.tracks.size()) {
+        vsm::sequencer::Take prise;
+        prise.name = nom.toStdString();
+        prise.startTick = debutTick;
+        prise.endTick = finTick;
+        prise.audio.path = audioTakeRelativePath_.toStdString();
+        prise.audio.sampleRate = audioEngine_.diskRecorder().sampleRate();
+        prise.audio.frames = audioEngine_.diskRecorder().framesWritten();
+        prise.audio.channels = audioEngine_.diskRecorder().channels();
+        vsm::sequencer::Clip clip;
+        clip.startTick = debutTick;
+        clip.length = finTick - debutTick;
+        clip.sourceStartSeconds =
+            std::max(0.0, debutSecondes - audioTakeSessionStartSeconds_)
+            + static_cast<double>(passe) * std::max(0.0, finSecondes - debutSecondes);
+        clip.name = nom.toStdString();
+        prise.clips.push_back(clip);
+        vsm::sequencer::pushTake(project_.tracks[audioTakeTrack_], std::move(prise));
+    }
+}
+
 void MainComponent::refreshArmedTracks() {
     const auto armees = armedTrackIndices();
     recordDeviceWasOpen_ = audioEngine_.isDeviceOpen();
@@ -1382,11 +1558,20 @@ void MainComponent::startRecording() {
     // déjà, on entre en marche (punch in) et il n'y a pas de décompte -- compter
     // par-dessus la musique qui joue n'aurait aucun sens.
     const bool dejaEnLecture = transport_.state() == TransportState::Playing;
-    punchTick_ = dejaEnLecture
-                     ? project_.secondsToTicks(std::max(0.0, audioEngine_.processGraph().currentSeconds()))
-                     : transport_.currentTick();
+    // LA RÉGION DE PUNCH L'EMPORTE quand elle est active : c'est tout son objet,
+    // refaire un passage précis sans avoir à viser la tête de lecture à la
+    // souris. Sans elle, le point d'entrée reste là où l'on est.
+    const bool punchDefini = project_.punchEnabled
+                             && project_.punchEndTick > project_.punchStartTick;
+    punchTick_ = punchDefini
+                     ? project_.punchStartTick
+                     : (dejaEnLecture
+                            ? project_.secondsToTicks(std::max(0.0, audioEngine_.processGraph().currentSeconds()))
+                            : transport_.currentTick());
     punchSeconds_ = project_.ticksToSeconds(punchTick_);
-    const double decompte = dejaEnLecture ? 0.0 : countInSeconds(punchTick_);
+    // Le décompte a encore un sens sur un punch : on entre en marche, mais on
+    // n'a pas forcément écouté ce qui précède.
+    const double decompte = (dejaEnLecture && !punchDefini) ? 0.0 : countInSeconds(punchTick_);
 
     // LA PRISE AUDIO, s'il y a une piste audio armée. Tout ce qui peut échouer
     // (pas de dossier de projet, pas d'entrée, fichier impossible à créer)
@@ -1430,9 +1615,13 @@ void MainComponent::startRecording() {
         audioTakeTrack_ = index;
     }
 
-    recorder_.begin(punchSeconds_);
+    recorder_.begin(punchSeconds_, punchOutSeconds());
+    audioEngine_.setRecordPunchOut(punchOutSeconds());
     recordDrain_.clear();
     recordDropReported_ = false;
+    recordEditOpened_ = false;
+    loopPassesClosed_ = 0;
+    audioTakeSessionStartSeconds_ = punchSeconds_;
     audioEngine_.setRecording(true);
     transportBar_.setRecording(true);
 
@@ -1505,10 +1694,42 @@ void MainComponent::stopRecording() {
     }
 
     // UNE SEULE ACTION ANNULABLE pour toute la prise, même si elle atterrit sur
-    // plusieurs pistes : annuler un enregistrement, c'est le défaire en entier.
-    beginProjectEdit("Enregistrement");
+    // plusieurs pistes et sur plusieurs passes de boucle : annuler un
+    // enregistrement, c'est le défaire en entier.
+    ouvrirLEditionDEnregistrement();
 
     const size_t audioTakeTrackApplique = audioTakeTrack_;
+
+    // MODE EMPILÉ : la dernière passe -- qui n'est pas forcément complète -- est
+    // une prise comme les autres, et le matériau de la piste ne se mélange à
+    // rien. Les passes précédentes ont déjà été empilées au fil des
+    // rebouclages.
+    if (recordMode_ == vsm::sequencer::RecordMode::Stack) {
+        closePass(static_cast<uint32_t>(loopPassesClosed_), punchSeconds_, finSecondes);
+        // TOUTES LES PASSES PARTAGENT UN FICHIER, dont la longueur définitive
+        // n'est connue qu'ici : chacune avait noté celle qu'il avait au moment
+        // où elle s'est fermée. Le projet écrirait sinon des longueurs fausses
+        // -- rattrapées au chargement, qui relit le fichier, mais fausses
+        // quand même sur le disque.
+        if (priseAudio && audioTakeTrackApplique < project_.tracks.size())
+            for (auto& prise : project_.tracks[audioTakeTrackApplique].takes)
+                if (!prise.audio.path.empty()) prise.audio.frames = tramesAudio;
+        audioTakeTrack_ = static_cast<size_t>(-1);
+        lastTake_.clear();
+        if (transport_.state() == TransportState::Playing)
+            audioEngine_.processGraph().setProject(project_);
+        else
+            refreshTransportSchedule();
+        if (priseAudio) {
+            loadAudioTracks();
+            trackList_.refreshTrackRow(audioTakeTrackApplique);
+        }
+        pianoRollPanel_.refresh();
+        pianoRoll_.repaint();
+        if (priseAudio && blocsPerdus > 0) signalerDisqueTropLent(blocsPerdus);
+        return;
+    }
+
     if (priseAudio) applyAudioTake(audioTakeTrack_, audioTakeFile_, tramesAudio);
     audioTakeTrack_ = static_cast<size_t>(-1);
 
@@ -1555,16 +1776,19 @@ void MainComponent::stopRecording() {
         pianoRoll_.selectNotes(lastTake_.front().second);
     }
 
+    if (priseAudio && blocsPerdus > 0) signalerDisqueTropLent(blocsPerdus);
+}
+
+void MainComponent::signalerDisqueTropLent(uint64_t blocsPerdus) {
     // UN TROU DANS LE FICHIER SE DIT. Le tampon d'une seconde n'est pas censé
-    // déborder ; s'il a débordé, le disque n'a pas suivi et la prise a perdu
-    // des échantillons -- une chose qu'on n'entend pas forcément à la première
+    // déborder ; s'il a débordé, le disque n'a pas suivi et la prise a perdu des
+    // échantillons -- une chose qu'on n'entend pas forcément à la première
     // écoute et qu'on découvrirait bien plus tard.
-    if (priseAudio && blocsPerdus > 0)
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::WarningIcon, u8"Le disque n'a pas suivi",
-            juce::String(u8"La prise a perdu ") + juce::String(static_cast<int>(blocsPerdus))
-                + juce::String(u8" bloc(s) : le fichier a des trous. Un disque plus rapide, "
-                                u8"ou une taille de bloc audio plus grande, y remédient."));
+    juce::AlertWindow::showMessageBoxAsync(
+        juce::AlertWindow::WarningIcon, u8"Le disque n'a pas suivi",
+        juce::String(u8"La prise a perdu ") + juce::String(static_cast<int>(blocsPerdus))
+            + juce::String(u8" bloc(s) : le fichier a des trous. Un disque plus rapide, "
+                            u8"ou une taille de bloc audio plus grande, y remédient."));
 }
 
 void MainComponent::quantizeLastTake() {
@@ -1632,6 +1856,8 @@ void MainComponent::rebuildFromProject(bool stopPlayback) {
         pianoRoll_.setLoopRegion(project_.loopStartTick, project_.loopEndTick, project_.loopEnabled);
     }
     transportBar_.setLooping(project_.loopEnabled);
+    pianoRollPanel_.setPunchRegion(project_.punchStartTick, project_.punchEndTick,
+                                    project_.punchEnabled);
 
     if (!project_.masterParameters.empty())
         vsm::interchange::applyMasterDescription(project_.masterParameters,

@@ -26,6 +26,17 @@ namespace vsm::interchange {
 /// dispersé dans le code finirait par diverger entre l'écriture et la lecture.
 inline constexpr const char* kProjectFileName = "project.json";
 inline constexpr const char* kDefaultMidiPath = "midi/arrangement.mid";
+/// LES NOTES DES PRISES CONSERVÉES (D3.5), dans un fichier SÉPARÉ.
+///
+/// Elles ne peuvent pas aller dans `arrangement.mid` : celui-ci est ce qu'on
+/// ENTEND, et c'est aussi ce qu'on exporte pour l'ouvrir ailleurs. Y verser
+/// toutes les passes qu'on a essayées et écartées ferait de l'arrangement une
+/// archive, et l'ouvrir dans un autre logiciel montrerait des pistes qui ne
+/// jouent pas. Deux fichiers, deux rôles : l'arrangement et le tiroir.
+///
+/// Absent quand aucune piste n'a de prise -- un projet qui n'en a pas garde
+/// exactement les fichiers qu'il avait.
+inline constexpr const char* kTakesMidiPath = "midi/prises.mid";
 inline constexpr const char* kInstrumentsFolder = "instruments";
 
 struct LoadedBundle {

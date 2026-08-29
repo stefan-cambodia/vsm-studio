@@ -159,6 +159,17 @@ public:
     // mille fois ne dérive donc pas d'un seul échantillon.
     void setLoopRegion(double startSeconds, double endSeconds, bool active); // thread UI
     bool isLoopActive() const { return loopActive_.load(std::memory_order_acquire); }
+    double loopStartSeconds() const { return loopStartSeconds_.load(std::memory_order_acquire); }
+    double loopEndSeconds() const { return loopEndSeconds_.load(std::memory_order_acquire); }
+
+    /// NOMBRE DE FOIS QUE LA BOUCLE S'EST REFERMÉE depuis le dernier `seekSeconds`.
+    ///
+    /// C'est ce qui rend l'enregistrement en boucle possible (D3.5). Une passe
+    /// et la suivante occupent EXACTEMENT les mêmes positions sur la ligne de
+    /// temps : la date d'une note ne dit donc pas à quelle passe elle
+    /// appartient, et deux passes se mélangeraient en une bouillie. Le
+    /// compteur, lui, les sépare sans ambiguïté.
+    uint64_t loopWrapCount() const { return loopWrapCount_.load(std::memory_order_acquire); }
 
     void seekSeconds(double seconds);  // thread UI
     void setPlaying(bool playing);     // thread UI
@@ -248,6 +259,7 @@ private:
     std::atomic<double> loopStartSeconds_{0.0};
     std::atomic<double> loopEndSeconds_{0.0};
     std::atomic<bool> loopActive_{false};
+    std::atomic<uint64_t> loopWrapCount_{0};
 
     // Notes actuellement tenues par chaque piste, suivies au fil des
     // événements envoyés aux instruments. Sert UNIQUEMENT au rebouclage : en

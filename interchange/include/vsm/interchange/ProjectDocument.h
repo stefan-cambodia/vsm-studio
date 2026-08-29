@@ -54,6 +54,12 @@ struct ProjectTransport {
     bool loopEnabled = false;
     int64_t loopStartTick = 0;
     int64_t loopEndTick = 0;
+    /// RÉGION DE PUNCH (D3.5) : entre ces deux ticks, et seulement là,
+    /// l'enregistrement capte. Champ FACULTATIF -- un projet qui n'en déclare
+    /// pas garde exactement le fichier qu'il avait.
+    bool punchEnabled = false;
+    int64_t punchStartTick = 0;
+    int64_t punchEndTick = 0;
 };
 
 struct ProjectEffect {
@@ -118,6 +124,23 @@ struct ProjectMarker {
     std::string name;
 };
 
+/// UNE PRISE CONSERVÉE (D3.5). Voir `vsm::sequencer::Take` pour le modèle.
+///
+/// SES NOTES NE SONT PAS ICI, et c'est la règle du format : les notes ont déjà
+/// un format universel et testé, elles vont dans un `.mid`. Celles des prises
+/// vont dans `midi/prises.mid` -- un fichier SÉPARÉ d'`arrangement.mid`, parce
+/// que l'arrangement doit rester ce qu'on entend et non l'archive de tout ce
+/// qu'on a essayé. `midiTrackIndex` dit quelle piste de `prises.mid` porte
+/// celles-ci ; -1 quand la prise n'a pas de notes (une prise purement audio).
+struct ProjectTake {
+    std::string name;
+    int64_t startTick = 0;
+    int64_t endTick = 0;
+    int midiTrackIndex = -1;
+    ProjectAudioSource audio;
+    std::vector<ProjectClip> clips;
+};
+
 struct ProjectTrack {
     /// « midi » (défaut) ou « audio ». Absent du fichier pour une piste MIDI :
     /// un projet qui n'a que des pistes MIDI garde octet pour octet le fichier
@@ -144,6 +167,11 @@ struct ProjectTrack {
     /// Champ FACULTATIF : une piste sans clip n'est pas découpée, et son
     /// fichier reste identique octet pour octet à ce qu'il était.
     std::vector<ProjectClip> clips;
+    /// Les prises empilées, et celle qui est active. Facultatifs comme les
+    /// clips : une piste qui n'a jamais servi à un enregistrement empilé
+    /// n'écrit rien de plus qu'avant.
+    std::vector<ProjectTake> takes;
+    int activeTake = -1;
 };
 
 struct ProjectDocument {

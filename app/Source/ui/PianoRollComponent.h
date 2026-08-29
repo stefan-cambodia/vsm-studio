@@ -58,6 +58,8 @@ public:
     std::function<void(vsm::midi::Tick)> onPlayheadRequested;
     /// La boucle a été redéfinie à la souris sur la règle.
     std::function<void(vsm::midi::Tick start, vsm::midi::Tick end, bool active)> onLoopRegionChanged;
+    /// La région de punch a été redéfinie à la souris (Alt sur la règle).
+    std::function<void(vsm::midi::Tick start, vsm::midi::Tick end, bool active)> onPunchRegionChanged;
     /// Quelque chose a changé qui affecte l'état des boutons (annuler/rétablir,
     /// outil courant, sélection vide ou non).
     std::function<void()> onEditStateChanged;

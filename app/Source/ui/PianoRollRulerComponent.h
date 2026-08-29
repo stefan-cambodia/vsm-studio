@@ -26,6 +26,10 @@ public:
     void mouseDoubleClick(const juce::MouseEvent&) override;
 
     void setLoopRegion(vsm::midi::Tick start, vsm::midi::Tick end, bool active);
+    /// RÉGION DE PUNCH (D3.5) : là où l'enregistrement capte, et nulle part
+    /// ailleurs. Dessinée en rouge, distincte de la boucle, parce qu'on les
+    /// règle souvent au même endroit sans qu'elles disent la même chose.
+    void setPunchRegion(vsm::midi::Tick start, vsm::midi::Tick end, bool active);
 
     std::function<void(vsm::midi::Tick)> onPlayheadRequested;
     /// Clic droit sur la règle : poser un repère à cet endroit. L'interface
@@ -34,10 +38,16 @@ public:
     /// Retirer le repère d'index donné.
     std::function<void(size_t)> onMarkerRemoved;
     std::function<void(vsm::midi::Tick start, vsm::midi::Tick end, bool active)> onLoopRegionChanged;
+    /// La région de punch a été dessinée à la souris (Alt + glisser).
+    std::function<void(vsm::midi::Tick start, vsm::midi::Tick end, bool active)> onPunchRegionChanged;
 
 private:
     PianoRollComponent& pianoRoll_;
     vsm::midi::Tick loopStart_ = 0, loopEnd_ = 0;
     bool loopActive_ = false;
     vsm::midi::Tick loopDragAnchor_ = 0;
+    vsm::midi::Tick punchStart_ = 0;
+    vsm::midi::Tick punchEnd_ = 0;
+    bool punchActive_ = false;
+    vsm::midi::Tick punchDragAnchor_ = 0;
 };

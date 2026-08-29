@@ -88,7 +88,15 @@ private:
         kMenuRecordCountInTwo,
         kMenuRecordOverdub,
         kMenuRecordReplace,
+        kMenuRecordStack,
         kMenuRecordQuantizeTake,
+        kMenuRecordPunchToggle,
+        kMenuRecordPunchFromLoop,
+        kMenuRecordPunchClear,
+        /// Un identifiant par prise de la piste sélectionnée, attribué à la
+        /// suite -- comme les paliers d'échelle du menu Affichage.
+        kMenuRecordTakeFirst,
+        kMenuRecordTakeLast = kMenuRecordTakeFirst + 63,
         kMenuViewTracks,
         kMenuViewPianoRoll,
         kMenuViewSynthRack,
@@ -135,6 +143,19 @@ private:
     /// Écrit la prise audio dans la piste : matériau et clip posé au point
     /// d'entrée. Rend faux si rien n'a été capté.
     bool applyAudioTake(size_t trackIndex, const juce::File& fichier, int64_t frames);
+    /// Ferme une passe et l'empile comme prise sur les pistes armées. Appelée à
+    /// chaque rebouclage pendant un enregistrement empilé, et une dernière fois
+    /// à l'arrêt pour la passe en cours -- qui n'est pas forcément complète.
+    void closePass(uint32_t passe, double debutSecondes, double finSecondes);
+    /// Le point de sortie de la prise en cours : la fin de la région de punch
+    /// si elle est active, sinon l'infini.
+    double punchOutSeconds() const;
+    /// Dit qu'un débordement du tampon d'écriture a troué le fichier.
+    void signalerDisqueTropLent(uint64_t blocsPerdus);
+    /// Ouvre l'action annulable de l'enregistrement, UNE seule fois par prise :
+    /// en boucle, les passes modifient le projet au fur et à mesure, et un
+    /// instantané pris à l'arrêt ne défairait que la dernière.
+    void ouvrirLEditionDEnregistrement();
 
 
     void openMidiFile();
@@ -239,9 +260,19 @@ private:
     std::vector<std::pair<size_t, vsm::sequencer::NoteSelection>> lastTake_;
     /// Tampon de drainage, réutilisé pour ne pas allouer à chaque tour du timer.
     std::vector<vsm::sequencer::RecordedNoteEvent> recordDrain_;
+    /// La passe de boucle en cours, et le nombre de rebouclages déjà traités :
+    /// c'est en comparant au compteur du moteur qu'on sait qu'une passe vient
+    /// de se terminer.
+    uint64_t loopPassesClosed_ = 0;
+    /// Le fichier d'une prise audio en boucle est UNIQUE pour toute la session
+    /// d'enregistrement ; chaque passe en est une fenêtre. On garde donc la
+    /// position du début de la session dans le fichier pour la calculer.
+    double audioTakeSessionStartSeconds_ = 0.0;
     /// Le débordement de la file de capture ne se dit qu'UNE fois par prise :
     /// une alerte par tour de timer serait un mur de fenêtres.
     bool recordDropReported_ = false;
+    /// L'action annulable de la prise en cours est-elle déjà ouverte.
+    bool recordEditOpened_ = false;
     /// Dernier état connu de la carte son, pour ne rafraîchir le bouton Rec
     /// que lorsqu'il change et non à chaque tour du timer.
     bool recordDeviceWasOpen_ = false;

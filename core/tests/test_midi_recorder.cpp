@@ -212,3 +212,74 @@ VSM_TEST(a_take_recorded_over_a_tempo_change_lands_on_the_right_ticks) {
     VSM_ASSERT_EQ(notes[0].startTick, Tick(1440));
     VSM_ASSERT_EQ(notes[0].endTick, Tick(1920));
 }
+
+// --- D3.5 : punch out et passes de boucle ----------------------------------
+
+VSM_TEST(nothing_is_written_after_the_punch_out_point) {
+    // Au-delà du point de sortie, on entend ce qui était déjà là. Jouer n'est
+    // pas enregistrer.
+    Project projet = projetDeReference();
+    MidiRecorder enregistreur;
+    enregistreur.begin(1.0, 2.0);
+    enregistreur.push({0.5, 60, 100, 0, true, 0});    // avant l'entrée
+    enregistreur.push({0.9, 60, 64, 0, false, 0});
+    enregistreur.push({1.5, 62, 100, 0, true, 0});    // dedans
+    enregistreur.push({1.8, 62, 64, 0, false, 0});
+    enregistreur.push({2.5, 64, 100, 0, true, 0});    // après la sortie
+    enregistreur.push({2.9, 64, 64, 0, false, 0});
+
+    uint64_t compteur = 1;
+    auto notes = enregistreur.finish(3.0, conversion(projet), compteur);
+    VSM_ASSERT_EQ(notes.size(), size_t(1));
+    VSM_ASSERT_EQ(int(notes[0].number), 62);
+}
+
+VSM_TEST(two_loop_passes_do_not_mix_even_at_the_same_positions) {
+    // LE PIÈGE DE L'ENREGISTREMENT EN BOUCLE : deux passes occupent exactement
+    // les mêmes positions sur la ligne de temps. Sans le numéro de passe, elles
+    // formeraient une bouillie dont on ne pourrait plus rien extraire.
+    Project projet = projetDeReference();
+    MidiRecorder enregistreur;
+    enregistreur.begin(0.0);
+    enregistreur.push({0.5, 60, 100, 0, true, 0});
+    enregistreur.push({0.9, 60, 64, 0, false, 0});
+    enregistreur.push({0.5, 67, 100, 0, true, 1});   // MÊME date, autre passe
+    enregistreur.push({0.9, 67, 64, 0, false, 1});
+    enregistreur.push({0.5, 72, 100, 0, true, 2});
+    enregistreur.push({0.9, 72, 64, 0, false, 2});
+
+    const int attendues[3] = {60, 67, 72};
+    uint64_t compteur = 1;
+    for (uint32_t passe = 0; passe < 3; ++passe) {
+        auto notes = enregistreur.finishPass(passe, 2.0, conversion(projet), compteur);
+        VSM_ASSERT_EQ(notes.size(), size_t(1));
+        VSM_ASSERT_EQ(notes[0].startTick, Tick(480));
+        VSM_ASSERT_EQ(int(notes[0].number), attendues[passe]);
+    }
+    // Et une passe qu'on n'a pas jouée ne produit rien : elle ne doit pas
+    // devenir une prise vide qu'il faudrait écarter à la main.
+    VSM_ASSERT(enregistreur.hasPass(1));
+    VSM_ASSERT(!enregistreur.hasPass(9));
+    auto vide = enregistreur.finishPass(9, 2.0, conversion(projet), compteur);
+    VSM_ASSERT(vide.empty());
+}
+
+VSM_TEST(a_note_held_across_the_loop_seam_closes_with_its_own_pass) {
+    // Chaque passe doit être un enregistrement complet en elle-même : la note
+    // tenue par-dessus la couture se ferme à la fin de SA passe, et son
+    // relâchement, qui appartient à la suivante, y est ignoré faute
+    // d'enfoncement.
+    Project projet = projetDeReference();
+    MidiRecorder enregistreur;
+    enregistreur.begin(0.0);
+    enregistreur.push({1.5, 60, 100, 0, true, 0});    // enfoncée en fin de passe 0
+    enregistreur.push({0.2, 60, 64, 0, false, 1});    // relâchée au début de la passe 1
+
+    uint64_t compteur = 1;
+    auto passe0 = enregistreur.finishPass(0, 2.0, conversion(projet), compteur);
+    VSM_ASSERT_EQ(passe0.size(), size_t(1));
+    VSM_ASSERT_EQ(passe0[0].endTick, Tick(1920));     // fermée au bout de la passe
+
+    auto passe1 = enregistreur.finishPass(1, 2.0, conversion(projet), compteur);
+    VSM_ASSERT(passe1.empty());                        // le relâchement orphelin est ignoré
+}
