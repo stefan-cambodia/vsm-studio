@@ -2,6 +2,7 @@ add_library(vsm_audio STATIC
     src/dsp/WaveTable.cpp
     src/io/WavFileWriter.cpp
     src/io/WavFileReader.cpp
+    src/engine/AudioTrackSource.cpp
     src/engine/ProcessGraph.cpp
     src/effect/EffectFactory.cpp
     src/engine/OfflineRenderer.cpp
@@ -99,6 +100,7 @@ if (VSM_BUILD_TESTS)
         tests/test_master_dsp.cpp
         tests/test_master_bus.cpp
         tests/test_oversampler.cpp
+        tests/test_audio_track.cpp
         tests/test_control_events.cpp
         tests/test_effects.cpp
         tests/test_tr808_synth.cpp

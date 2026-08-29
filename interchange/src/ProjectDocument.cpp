@@ -138,9 +138,16 @@ ProjectDocument documentFromProject(const Project& project) {
             described.parameters = effect.parameters;
             entry.effects.push_back(std::move(described));
         }
+        if (track.kind == vsm::sequencer::Track::Kind::Audio) {
+            entry.kind = "audio";
+            entry.audio = {track.audio.path, track.audio.sampleRate,
+                            track.audio.frames, track.audio.channels};
+        }
         for (const auto& clip : track.clips)
             entry.clips.push_back({clip.sourceStart, clip.sourceLength, clip.startTick,
-                                    clip.length, clip.muted, clip.name, clip.colorRgba});
+                                    clip.length, clip.muted, clip.name, clip.colorRgba,
+                                    clip.sourceStartSeconds, clip.fadeInSeconds,
+                                    clip.fadeOutSeconds, clip.gain, clip.invertPhase});
         for (const auto& curve : track.automation) {
             ProjectAutomationLane lane;
             lane.parameter = curve.parameter;
@@ -226,10 +233,15 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.effects.clear();
         for (const auto& effect : source.effects)
             target.effects.push_back({effect.type, effect.parameters});
+        target.kind = source.kind == "audio" ? Track::Kind::Audio : Track::Kind::Midi;
+        target.audio = {source.audio.path, source.audio.sampleRate,
+                         source.audio.frames, source.audio.channels};
         target.clips.clear();
         for (const auto& clip : source.clips)
             target.clips.push_back({clip.sourceStart, clip.sourceLength, clip.startTick,
-                                     clip.length, clip.muted, clip.name, clip.colorRgba});
+                                     clip.length, clip.muted, clip.name, clip.colorRgba,
+                                     clip.sourceStartSeconds, clip.fadeInSeconds,
+                                     clip.fadeOutSeconds, clip.gain, clip.invertPhase});
         target.automation.clear();
         for (const auto& lane : source.automation) {
             vsm::sequencer::AutomationCurve curve;
@@ -339,6 +351,16 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         mix.set("sends", std::move(sends));
         entry.set("mix", std::move(mix));
 
+        if (!track.kind.empty() && track.kind != "midi") {
+            entry.set("kind", JsonValue::makeString(track.kind));
+            JsonValue source = JsonValue::makeObject();
+            source.set("file", JsonValue::makeString(track.audio.path));
+            source.set("sampleRate", JsonValue::makeNumber(track.audio.sampleRate));
+            source.set("frames", JsonValue::makeNumber(static_cast<double>(track.audio.frames)));
+            source.set("channels", JsonValue::makeNumber(track.audio.channels));
+            entry.set("audio", std::move(source));
+        }
+
         JsonValue effects = JsonValue::makeArray();
         for (const auto& effect : track.effects) {
             JsonValue fx = JsonValue::makeObject();
@@ -364,6 +386,16 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
                 if (clip.muted) c.set("muted", JsonValue::makeBoolean(true));
                 if (!clip.name.empty()) c.set("name", JsonValue::makeString(clip.name));
                 c.set("color", JsonValue::makeString(colourToHex(clip.colorRgba)));
+                // Écrits seulement s'ils disent quelque chose : un clip MIDI ne
+                // porte pas de fenêtre en secondes ni de fondu.
+                if (clip.sourceStartSeconds != 0.0)
+                    c.set("sourceStartSeconds", JsonValue::makeFloat(static_cast<float>(clip.sourceStartSeconds)));
+                if (clip.fadeInSeconds != 0.0)
+                    c.set("fadeIn", JsonValue::makeFloat(static_cast<float>(clip.fadeInSeconds)));
+                if (clip.fadeOutSeconds != 0.0)
+                    c.set("fadeOut", JsonValue::makeFloat(static_cast<float>(clip.fadeOutSeconds)));
+                if (clip.gain != 1.0f) c.set("gain", JsonValue::makeFloat(clip.gain));
+                if (clip.invertPhase) c.set("invertPhase", JsonValue::makeBoolean(true));
                 clips.append(std::move(c));
             }
             entry.set("clips", std::move(clips));
@@ -477,6 +509,22 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         for (size_t i = 0; i < track.sendLevels.size() && i < mix["sends"].size(); ++i)
             track.sendLevels[i] = static_cast<float>(mix["sends"].at(i).asNumber(0.0));
 
+        track.kind = entry["kind"].asString();
+        if (entry["audio"].isObject()) {
+            track.audio.path = entry["audio"]["file"].asString();
+            // MÊME RÈGLE QUE POUR LES PRESETS, et pour la même raison : un
+            // projet doit s'ouvrir sur une autre machine. Un chemin absolu est
+            // refusé, jamais réécrit en douce -- réécrire reviendrait à
+            // deviner où le fichier a bien pu partir.
+            if (!isPortableRelativePath(track.audio.path)) {
+                result.error = "chemin audio non portable : \"" + track.audio.path + "\"";
+                return result;
+            }
+            track.audio.sampleRate = entry["audio"]["sampleRate"].asNumber(0.0);
+            track.audio.frames = static_cast<int64_t>(entry["audio"]["frames"].asNumber(0.0));
+            track.audio.channels = static_cast<int>(entry["audio"]["channels"].asNumber(0.0));
+        }
+
         for (const auto& fx : entry["effects"].elements()) {
             ProjectEffect effect;
             effect.type = fx["type"].asString();
@@ -494,6 +542,11 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
             clip.muted = clipJson["muted"].asBoolean(false);
             clip.name = clipJson["name"].asString();
             clip.colorRgba = colourFromHex(clipJson["color"].asString(), 0xFF6B9BFFu);
+            clip.sourceStartSeconds = clipJson["sourceStartSeconds"].asNumber(0.0);
+            clip.fadeInSeconds = clipJson["fadeIn"].asNumber(0.0);
+            clip.fadeOutSeconds = clipJson["fadeOut"].asNumber(0.0);
+            clip.gain = static_cast<float>(clipJson["gain"].asNumber(1.0));
+            clip.invertPhase = clipJson["invertPhase"].asBoolean(false);
             track.clips.push_back(std::move(clip));
         }
 

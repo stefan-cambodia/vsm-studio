@@ -503,3 +503,63 @@ VSM_TEST(a_version_from_the_future_is_refused_not_guessed) {
     VSM_ASSERT(!result.success);
     VSM_ASSERT(result.error.find("99") != std::string::npos);
 }
+
+// --- D2.1 : la piste audio dans le format -----------------------------------
+
+VSM_TEST(an_audio_track_survives_the_trip_through_the_model) {
+    Project project = buildProject();
+    Track voix;
+    voix.kind = Track::Kind::Audio;
+    voix.name = "Voix";
+    voix.audio = {"samples/voix.wav", 44100.0, 23468545, 2};
+    vsm::sequencer::Clip clip;
+    clip.startTick = 960;
+    clip.length = 1920;
+    clip.sourceStartSeconds = 12.5;
+    clip.fadeInSeconds = 0.02;
+    clip.fadeOutSeconds = 0.35;
+    clip.gain = 0.7f;
+    clip.invertPhase = true;
+    voix.clips.push_back(clip);
+    project.tracks.push_back(voix);
+
+    const ProjectLoadResult relu =
+        parseProjectDocument(projectDocumentToJson(documentFromProject(project)).toString());
+    VSM_ASSERT(relu.success);
+
+    Project rejoue = project;
+    rejoue.tracks.back() = Track{};
+    applyDocumentToProject(relu.document, rejoue);
+
+    const Track& piste = rejoue.tracks.back();
+    VSM_ASSERT(piste.kind == Track::Kind::Audio);
+    VSM_ASSERT_EQ(piste.audio.path, std::string("samples/voix.wav"));
+    VSM_ASSERT_EQ(piste.audio.frames, int64_t(23468545));
+    VSM_ASSERT_EQ(piste.audio.channels, 2);
+    VSM_ASSERT_NEAR(piste.audio.durationSeconds(), 532.16, 0.01);
+    VSM_ASSERT_EQ(piste.clips.size(), size_t(1));
+    VSM_ASSERT_NEAR(piste.clips[0].sourceStartSeconds, 12.5, 1e-9);
+    VSM_ASSERT_NEAR(piste.clips[0].fadeOutSeconds, 0.35, 1e-9);
+    VSM_ASSERT_NEAR(piste.clips[0].gain, 0.7f, 1e-6);
+    VSM_ASSERT(piste.clips[0].invertPhase);
+}
+
+VSM_TEST(a_midi_only_project_writes_no_audio_field_at_all) {
+    // La règle de tout le format : un champ facultatif absent ne s'écrit pas.
+    // Un projet sans piste audio doit garder, octet pour octet, le fichier
+    // qu'il avait avant que les pistes audio existent.
+    const std::string json = projectDocumentToJson(documentFromProject(buildProject())).toString();
+    VSM_ASSERT(json.find("\"kind\"") == std::string::npos);
+    VSM_ASSERT(json.find("\"audio\"") == std::string::npos);
+}
+
+VSM_TEST(an_absolute_audio_path_is_refused_like_an_absolute_preset_path) {
+    const std::string json = R"({"format":"vsm-project","version":2,"title":"X",
+        "midi":{"file":"midi/arrangement.mid"},
+        "tracks":[{"name":"Voix","kind":"audio",
+                    "audio":{"file":"/home/quelquun/voix.wav","sampleRate":44100,
+                              "frames":100,"channels":2}}]})";
+    const ProjectLoadResult result = parseProjectDocument(json);
+    VSM_ASSERT(!result.success);
+    VSM_ASSERT(result.error.find("non portable") != std::string::npos);
+}

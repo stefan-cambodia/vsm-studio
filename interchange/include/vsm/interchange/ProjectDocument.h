@@ -94,6 +94,22 @@ struct ProjectClip {
     bool muted = false;
     std::string name;
     uint32_t colorRgba = 0xFF6B9BFFu;
+    /// Clip AUDIO : la fenêtre dans le fichier est en SECONDES, parce qu'un
+    /// enregistrement ne suit pas le tempo. Voir `vsm::sequencer::Clip`.
+    double sourceStartSeconds = 0.0;
+    double fadeInSeconds = 0.0;
+    double fadeOutSeconds = 0.0;
+    float gain = 1.0f;
+    bool invertPhase = false;
+};
+
+/// Le fichier que joue une piste audio. `path` est RELATIF au dossier de
+/// projet, comme les presets : un chemin absolu est refusé, jamais réécrit.
+struct ProjectAudioSource {
+    std::string path;
+    double sampleRate = 0.0;
+    int64_t frames = 0;
+    int channels = 0;
 };
 
 /// Un repère nommé sur la ligne de temps.
@@ -103,6 +119,11 @@ struct ProjectMarker {
 };
 
 struct ProjectTrack {
+    /// « midi » (défaut) ou « audio ». Absent du fichier pour une piste MIDI :
+    /// un projet qui n'a que des pistes MIDI garde octet pour octet le fichier
+    /// qu'il avait avant que les pistes audio existent.
+    std::string kind;
+    ProjectAudioSource audio;
     std::string name;
     int channel = 0;
     uint32_t colorRgba = 0xFF6B9BFFu;

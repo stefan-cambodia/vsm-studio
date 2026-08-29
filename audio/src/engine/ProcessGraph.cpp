@@ -105,6 +105,11 @@ void ProcessGraph::setAutomationLanes(std::vector<AutomationLane> lanes) {
                             std::memory_order_release);
 }
 
+void ProcessGraph::setTrackAudio(size_t trackIndex, std::shared_ptr<const AudioTrackSource> source) {
+    if (trackIndex >= kMaxTracks) return;
+    audioSources_[trackIndex].store(std::move(source), std::memory_order_release);
+}
+
 void ProcessGraph::setTrackEffectChain(size_t trackIndex, std::shared_ptr<const EffectChain> chain) {
     if (trackIndex >= kMaxTracks) return;
     effectChains_[trackIndex].store(std::move(chain), std::memory_order_release);
@@ -360,7 +365,11 @@ void ProcessGraph::renderTrackRange(const GraphSnapshot& snapshot, bool anySolo,
 
     for (size_t trackIndex = 0; trackIndex < project.tracks.size() && trackIndex < kMaxTracks; ++trackIndex) {
         auto instrument = instruments_[trackIndex].load(std::memory_order_acquire);
-        if (!instrument) continue;
+        auto audioSource = audioSources_[trackIndex].load(std::memory_order_acquire);
+        // UNE PISTE AUDIO N'A PAS D'INSTRUMENT, et c'est normal : son matériau
+        // est un fichier. La condition portait sur le seul instrument, ce qui
+        // aurait fait sauter la piste entière en silence.
+        if (!instrument && !audioSource) continue;
 
         const Track& track = project.tracks[trackIndex];
         bool audible = anySolo ? track.solo : !track.muted;
@@ -501,11 +510,22 @@ void ProcessGraph::renderTrackRange(const GraphSnapshot& snapshot, bool anySolo,
             }
         }
 
-        // Rendu STÉRÉO de l'instrument (L/R séparés).
+        // Rendu STÉRÉO de la piste (L/R séparés) : un instrument, du matériau
+        // audio, ou les deux -- rien n'interdit à une piste audio de porter
+        // aussi des notes, et le graphe n'a pas à en décider.
         std::fill(scratchStereoL_.begin(), scratchStereoL_.begin() + sampleCount, 0.0f);
         std::fill(scratchStereoR_.begin(), scratchStereoR_.begin() + sampleCount, 0.0f);
-        instrument->process(scratchEvents_.data(), numEvents,
-                             scratchStereoL_.data(), scratchStereoR_.data(), sampleCount);
+        if (instrument)
+            instrument->process(scratchEvents_.data(), numEvents,
+                                 scratchStereoL_.data(), scratchStereoR_.data(), sampleCount);
+        if (audioSource && !audioSource->empty()) {
+            // La position sur la LIGNE DE TEMPS, en échantillons. Elle vient du
+            // temps du segment et non d'un compteur de blocs : c'est ce qui
+            // fait qu'un bouclage ou un saut de tête de lecture tombe juste.
+            const int64_t depart = static_cast<int64_t>(std::llround(rangeStartSeconds * sampleRate_));
+            audioSource->mixInto(scratchStereoL_.data(), scratchStereoR_.data(),
+                                  depart, sampleCount);
+        }
 
         // Chaîne d'inserts (section 5) : TRACK -> SYNTH -> EFFECTS -> MIX.
         auto chain = effectChains_[trackIndex].load(std::memory_order_acquire);

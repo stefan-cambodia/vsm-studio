@@ -106,6 +106,78 @@ def mesurer(piste: ExportTrack, stem: np.ndarray, dossier: Path, metrique: str,
     return float(cached_distance_for(metrique)(stem, SAMPLE_RATE)(rendu))
 
 
+# Les voix réellement disponibles sur chaque boîte, par RÔLE et non par nom de
+# famille. C'est la table qu'une attribution par le spectre a besoin de lire.
+ROLES: Dict[str, Dict[str, int]] = {
+    "vsm.tr808": {"kick": 36, "snare": 38, "clap": 39, "closedHat": 42,
+                   "openHat": 46, "cowbell": 56},
+    "vsm.tr909": {"kick": 36, "snare": 38, "clap": 39, "closedHat": 42,
+                   "openHat": 46, "crash": 49, "lowTom": 45, "midTom": 47, "hiTom": 50},
+}
+
+
+def role_par_profil(parts: List[float]) -> str:
+    """Le RÔLE d'une famille, déduit de son spectre et non de son nom.
+
+    Les seuils portent sur deux grandeurs seulement, parce que ce sont les deux
+    que l'oreille utilise pour ranger une pièce de batterie : la part de
+    l'énergie sous 200 Hz (une peau grave) et celle au-dessus de 2 kHz (du
+    métal ou du bruit). Le reste est du médium, et c'est là que vivent les
+    claps et les caisses claires.
+
+    Une famille SANS profil mesuré ne reçoit pas de rôle : on rend une chaîne
+    vide, et l'appelant retombe sur le nom. Deviner à partir de rien serait
+    exactement ce que ce travail cherche à supprimer.
+    """
+    if len(parts) < 6:
+        return ""
+    grave = parts[0] + parts[1]
+    aigu = parts[4] + parts[5]
+    if grave >= 0.50 and aigu < 0.20:
+        return "kick"
+    if aigu >= 0.40:
+        return "closedHat"
+    if aigu >= 0.20:
+        return "snare"
+    return "clap"
+
+
+def piste_par_profil(kit, machine: str, nom: str) -> ExportTrack:
+    """La même rythmique, chaque famille posée sur la voix que son SPECTRE désigne.
+
+    Quand deux familles réclament le même rôle, la seconde va sur la voix
+    voisine que la machine propose (une deuxième peau grave sur un tom, un
+    second bruit sur la charleston ouverte) plutôt que de s'empiler : deux
+    pièces différentes jouées par la même voix ne se distinguent plus, et le
+    motif perd sa texture.
+    """
+    voix = ROLES.get(machine, {})
+    voisins = {
+        "kick": ["kick", "lowTom", "midTom", "hiTom", "clap"],
+        "snare": ["snare", "clap", "midTom"],
+        "clap": ["clap", "snare", "cowbell"],
+        "closedHat": ["closedHat", "openHat", "crash"],
+    }
+    pris: set = set()
+    notes: List[ExportNote] = []
+    # Les familles les plus fournies choisissent en premier : c'est celle qui
+    # porte le motif qui doit avoir la voix juste.
+    for emplacement in sorted(kit.slots, key=lambda s: -s.hit_count):
+        role = role_par_profil(list(emplacement.band_shares))
+        note = None
+        for candidat in voisins.get(role, []):
+            if candidat in voix and candidat not in pris:
+                pris.add(candidat)
+                note = voix[candidat]
+                break
+        if note is None:
+            note = voix.get(role, int(emplacement.midi_note))
+        for instant, velocite in zip(emplacement.onsets, emplacement.velocities, strict=True):
+            notes.append(ExportNote(note=note, velocity=velocite, start=instant, duration=0.05))
+    notes.sort(key=lambda n: n.start)
+    return ExportTrack(name=nom, machine=machine, parameters={}, notes=notes, is_drums=True)
+
+
 def piste_avec_table(kit, machine: str, table: Dict[str, int], nom: str) -> ExportTrack:
     """La même rythmique, posée sur une table de correspondance choisie."""
     notes: List[ExportNote] = []
@@ -208,6 +280,8 @@ def main() -> int:
     candidates: List[tuple] = [
         ("sampler (vrais coups découpés)", drum_kit_track(frais(), name="Batterie")),
         ("vsm.tr808 (toms -> grosse caisse)", piste_avec_table(frais(), "vsm.tr808", vers_kick, "Batterie")),
+        ("vsm.tr808 (voix par le SPECTRE)", piste_par_profil(frais(), "vsm.tr808", "Batterie")),
+        ("vsm.tr909 (voix par le SPECTRE)", piste_par_profil(frais(), "vsm.tr909", "Batterie")),
         ("vsm.drums (patch VIDE, comme l'arbitrage)", drums_usine),
         ("vsm.drums (modélisée, usine)", modelled_drum_track(frais(), name="Batterie")),
         ("vsm.tr808 (usine, table actuelle)", drum_machine_track(frais(), "vsm.tr808", name="Batterie")),

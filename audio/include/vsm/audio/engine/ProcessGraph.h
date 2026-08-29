@@ -1,5 +1,6 @@
 #pragma once
 #include "vsm/audio/effect/IAudioEffect.h"
+#include "vsm/audio/engine/AudioTrackSource.h"
 #include "vsm/audio/engine/AutomationLane.h"
 #include "vsm/audio/engine/MasterBus.h"
 #include "vsm/audio/engine/ReferenceTrack.h"
@@ -83,6 +84,14 @@ public:
     /// audio). Publiée atomiquement (comme instruments_). nullptr = aucun.
     using EffectChain = std::vector<std::shared_ptr<vsm::audio::effect::IAudioEffect>>;
     void setTrackEffectChain(size_t trackIndex, std::shared_ptr<const EffectChain> chain); // thread UI
+
+    /// Le matériau audio d'une piste, déjà décodé et découpé en clips.
+    ///
+    /// Publié comme les chaînes d'effets : un pointeur partagé, échangé
+    /// atomiquement. Le thread audio ne fait que le lire ; le décodage, le
+    /// rééchantillonnage et la conversion des clips en échantillons ont eu lieu
+    /// sur le thread de l'interface. `nullptr` efface le matériau de la piste.
+    void setTrackAudio(size_t trackIndex, std::shared_ptr<const AudioTrackSource> source); // thread UI
 
     /// Notes qui n'ont PAS été jouées faute de place dans le tableau de
     /// travail d'un sous-segment. Doit rester à zéro ; toute autre valeur est
@@ -267,6 +276,8 @@ private:
     /// Ce que le moteur n'a pas pu jouer, et qu'il ne cache plus. Écrits
     /// depuis le thread audio, lus par l'interface : `relaxed` suffit, aucune
     /// autre donnée n'en dépend.
+    std::array<std::atomic<std::shared_ptr<const AudioTrackSource>>, kMaxTracks> audioSources_;
+
     std::atomic<uint64_t> droppedNoteEvents_{0};
     std::atomic<uint64_t> ignoredControlEvents_{0};
 

@@ -100,6 +100,50 @@ struct Clip {
     bool muted = false;
     std::string name;
     uint32_t colorRgba = 0xFF6B9BFFu;
+
+    /// POUR UN CLIP AUDIO : le décalage dans le FICHIER, en secondes.
+    ///
+    /// POURQUOI DES SECONDES ICI ALORS QUE TOUT LE RESTE EST EN TICKS. Un tick
+    /// est une position MUSICALE : le convertir en temps passe par la carte de
+    /// tempo, et suppose donc que le matériau suit le tempo. Une note le fait ;
+    /// un enregistrement, non -- pas tant que l'étirement temporel n'est pas
+    /// écrit (choix n° 3 du § 4 de `ROADMAP-daw.md`). Exprimer la fenêtre d'un
+    /// clip audio en ticks reviendrait à promettre un suivi de tempo qui
+    /// n'existe pas, et à décaler silencieusement le son au premier changement
+    /// de tempo. La POSITION du clip reste musicale (`startTick`), son CONTENU
+    /// est du temps réel.
+    double sourceStartSeconds = 0.0;
+    /// Fondus d'entrée et de sortie, en secondes. Zéro = attaque franche.
+    double fadeInSeconds = 0.0;
+    double fadeOutSeconds = 0.0;
+    /// Gain linéaire du clip, et inversion de phase -- les deux réglages sans
+    /// lesquels on ne peut pas monter deux prises l'une après l'autre.
+    float gain = 1.0f;
+    bool invertPhase = false;
+};
+
+/// LE MATÉRIAU D'UNE PISTE AUDIO : un fichier, et ce qu'il faut en savoir pour
+/// l'afficher et le placer sans avoir à l'ouvrir.
+///
+/// Le chemin est RELATIF au dossier de projet, comme les presets et les
+/// échantillons -- c'est ce qui permet à un projet de s'ouvrir sur une autre
+/// machine. Un chemin absolu est refusé par le format, pas silencieusement
+/// réécrit.
+///
+/// `sampleRate` et `frames` décrivent le fichier TEL QU'IL EST sur le disque,
+/// pas tel que la session le joue : c'est la seule façon de savoir qu'un
+/// rééchantillonnage est nécessaire, et de dessiner une forme d'onde à la
+/// bonne largeur avant que le fichier ne soit lu.
+struct AudioSource {
+    std::string path;
+    double sampleRate = 0.0;   ///< 0 = pas encore lue
+    int64_t frames = 0;        ///< longueur du fichier, en trames
+    int channels = 0;
+
+    bool empty() const { return path.empty(); }
+    double durationSeconds() const {
+        return sampleRate > 0.0 ? static_cast<double>(frames) / sampleRate : 0.0;
+    }
 };
 
 /// Un repère nommé sur la ligne de temps (couplet, refrain, « ici ça coince »).
@@ -154,6 +198,14 @@ struct AutomationCurve {
 /// est préparé ici mais activé en Phase 2 (Synth Rack).
 class Track {
 public:
+    /// Ce que la piste PORTE. Une piste MIDI joue des notes par un instrument ;
+    /// une piste audio joue un fichier. Le reste -- volume, panoramique, muet,
+    /// solo, départs, inserts, automation, clips -- leur est commun, et c'est
+    /// pourquoi il n'y a qu'une classe : une piste audio n'est pas une autre
+    /// espèce d'objet, c'est une piste dont le matériau n'est pas des notes.
+    enum class Kind { Midi, Audio };
+    Kind kind = Kind::Midi;
+
     std::string name;
     uint32_t colorRgba = 0xFF6B9BFFu; // ARGB, couleur par défaut (bleu doux)
     uint8_t channel = 0;              // 0-15
@@ -186,6 +238,9 @@ public:
     /// le Synth Rack en Phase 2 via ISynthPlugin / PluginRegistry.
     std::string instrumentId;
     std::string presetId;
+
+    /// Le fichier que joue une piste audio. Vide sur une piste MIDI.
+    AudioSource audio;
 
     /// Les clips de la piste.
     ///
