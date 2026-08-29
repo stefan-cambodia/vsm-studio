@@ -178,3 +178,48 @@ VSM_TEST(chorus_effect_creates_stereo_width) {
     VSM_ASSERT(anyDiff);
     VSM_ASSERT(peakOf(l) < 2.0f); // borné
 }
+
+// --- D0.4 : un temps en millisecondes est un temps, pas un nombre d'échantillons
+//
+// L'application préparait tous ses effets à 48 kHz ÉCRIT EN DUR, quelle que
+// soit la fréquence réelle de la carte son. Sur une carte à 44,1 kHz, un delay
+// réglé sur 500 ms durait 500 x 48000/44100 = 544 ms, et une réverbération
+// changeait de taille de pièce -- silencieusement, puisque rien ne compare un
+// réglage à ce qu'on entend. Ce test tient l'autre bout de la chaîne : à
+// n'importe quelle fréquence, l'effet PRÉPARÉ À CETTE FRÉQUENCE rend le temps
+// qu'on lui demande.
+VSM_TEST(a_delay_lasts_the_time_it_is_given_at_every_sample_rate) {
+    for (double sampleRate : {44100.0, 48000.0, 96000.0}) {
+        vsm::audio::effect::Delay delay;
+        delay.prepare(sampleRate, 512);
+        delay.setParameter(vsm::audio::effect::Delay::kTimeMs, 100.0f);
+        delay.setParameter(vsm::audio::effect::Delay::kFeedback, 0.0f);
+        delay.setParameter(vsm::audio::effect::Delay::kMix, 1.0f);   // 100 % traité
+        delay.setParameter(vsm::audio::effect::Delay::kPingPong, 0.0f);
+
+        // Une impulsion, puis du silence : on cherche où elle ressort.
+        const int total = static_cast<int>(sampleRate * 0.3);
+        std::vector<float> left(static_cast<size_t>(total), 0.0f);
+        std::vector<float> right(static_cast<size_t>(total), 0.0f);
+        left[0] = 1.0f;
+        right[0] = 1.0f;
+        for (int i = 0; i < total; i += 512) {
+            const int n = std::min(512, total - i);
+            delay.process(left.data() + i, right.data() + i, n);
+        }
+
+        int crete = 0;
+        float valeur = 0.0f;
+        // On saute les premiers échantillons : le passage direct de l'entrée
+        // n'est pas l'écho qu'on mesure.
+        for (int i = 16; i < total; ++i)
+            if (std::abs(left[static_cast<size_t>(i)]) > valeur) {
+                valeur = std::abs(left[static_cast<size_t>(i)]);
+                crete = i;
+            }
+
+        const double secondes = static_cast<double>(crete) / sampleRate;
+        VSM_ASSERT(valeur > 0.05f);                       // l'écho existe
+        VSM_ASSERT(std::abs(secondes - 0.100) < 0.005);   // et il tombe à 100 ms
+    }
+}

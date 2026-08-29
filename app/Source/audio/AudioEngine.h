@@ -35,6 +35,10 @@ public:
     juce::AudioDeviceManager& deviceManager() { return deviceManager_; }
 
     double currentSampleRate() const { return currentSampleRate_.load(std::memory_order_acquire); }
+    /// Taille de bloc réelle du périphérique. Les effets se préparent dessus :
+    /// un effet préparé pour 512 échantillons et nourri par blocs de 1024
+    /// déborderait ses lignes à retard.
+    int currentBlockSize() const { return currentBlockSize_.load(std::memory_order_acquire); }
     float currentCpuUsagePercent() const;
     juce::String lastError() const { return lastError_; }
     bool isDeviceOpen() const { return deviceManager_.getCurrentAudioDevice() != nullptr; }
@@ -66,6 +70,7 @@ private:
     vsm::audio::engine::ProcessGraph graph_;
     juce::AudioDeviceManager deviceManager_;
     std::atomic<double> currentSampleRate_{48000.0};
+    std::atomic<int> currentBlockSize_{512};
     juce::String lastError_;
 
     // MIDI Learn : accédé par le thread MIDI (handleIncomingMidiMessage) ET

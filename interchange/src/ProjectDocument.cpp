@@ -103,6 +103,10 @@ ProjectDocument documentFromProject(const Project& project) {
     for (const auto& change : project.timeSignatureMap.changes())
         document.transport.timeSignatures.push_back({change.tick, change.numerator,
                                                       1 << change.denominatorPow2});
+    document.master = project.masterParameters;
+    document.transport.loopEnabled = project.loopEnabled;
+    document.transport.loopStartTick = project.loopStartTick;
+    document.transport.loopEndTick = project.loopEndTick;
 
     size_t index = 0;
     for (const auto& track : project.tracks) {
@@ -121,6 +125,25 @@ ProjectDocument documentFromProject(const Project& project) {
         entry.muted = track.muted;
         entry.solo = track.solo;
         entry.sendLevels = track.sendLevels;
+
+        // Effets et automation : simple recopie, les deux modèles ayant
+        // désormais la même forme. Tant que `Track` ne les portait pas, ces
+        // deux boucles n'existaient pas -- et le format écrivait donc des
+        // tableaux vides sans que personne ne s'en aperçoive.
+        for (const auto& effect : track.effects) {
+            ProjectEffect described;
+            described.type = effect.type;
+            described.parameters = effect.parameters;
+            entry.effects.push_back(std::move(described));
+        }
+        for (const auto& curve : track.automation) {
+            ProjectAutomationLane lane;
+            lane.parameter = curve.parameter;
+            for (const auto& point : curve.points)
+                lane.points.push_back({point.tick, point.value, point.step});
+            entry.automation.push_back(std::move(lane));
+        }
+
         document.tracks.push_back(std::move(entry));
         ++index;
     }
@@ -161,6 +184,11 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
                                                 denominatorToPow2(change.denominator));
     }
 
+    if (!document.master.empty()) project.masterParameters = document.master;
+    project.loopEnabled = document.transport.loopEnabled;
+    project.loopStartTick = document.transport.loopStartTick;
+    project.loopEndTick = document.transport.loopEndTick;
+
     if (document.tracks.size() != project.tracks.size()) {
         std::ostringstream warning;
         warning << "Le projet décrit " << document.tracks.size() << " piste(s) mais le MIDI en contient "
@@ -181,6 +209,21 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.muted = source.muted;
         target.solo = source.solo;
         target.sendLevels = source.sendLevels;
+
+        // AVANT le `continue` ci-dessous, délibérément : une piste sans
+        // instrument peut parfaitement porter des effets et de l'automation,
+        // et les lui retirer au chargement serait une perte silencieuse.
+        target.effects.clear();
+        for (const auto& effect : source.effects)
+            target.effects.push_back({effect.type, effect.parameters});
+        target.automation.clear();
+        for (const auto& lane : source.automation) {
+            vsm::sequencer::AutomationCurve curve;
+            curve.parameter = lane.parameter;
+            for (const auto& point : lane.points)
+                curve.points.push_back({point.tick, point.value, point.step});
+            target.automation.push_back(std::move(curve));
+        }
 
         if (source.preferredPlugin.empty()) continue;
         if (pluginIsInstalled(source.preferredPlugin)) {
@@ -206,6 +249,15 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
     root.set("format", JsonValue::makeString(kProjectFormat));
     root.set("version", JsonValue::makeNumber(kProjectVersion));
     root.set("title", JsonValue::makeString(document.title));
+
+    // Écrit SEULEMENT s'il y a quelque chose à écrire : un projet sans réglage
+    // de master garde le fichier qu'il a toujours eu, octet pour octet.
+    if (!document.master.empty()) {
+        JsonValue master = JsonValue::makeObject();
+        for (const auto& [name, value] : document.master)
+            master.set(name, JsonValue::makeFloat(value));
+        root.set("master", std::move(master));
+    }
 
     JsonValue midi = JsonValue::makeObject();
     midi.set("file", JsonValue::makeString(document.midiPath));
@@ -319,6 +371,8 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
 
     ProjectDocument document;
     document.title = json["title"].asString("Sans titre");
+    for (const auto& [name, value] : json["master"].members())
+        if (value.isNumber()) document.master[name] = static_cast<float>(value.asNumber());
     document.midiPath = json["midi"]["file"].asString("midi/arrangement.mid");
     if (!isPortableRelativePath(document.midiPath)) {
         result.error = "chemin MIDI non portable : \"" + document.midiPath

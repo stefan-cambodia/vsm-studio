@@ -12,6 +12,7 @@ add_library(vsm_interchange STATIC
     src/SynthPreset.cpp
     src/SoundFont.cpp
     src/MultisampleProfile.cpp
+    src/EffectDescription.cpp
     src/ProjectDocument.cpp
     src/ProjectBundle.cpp
     src/OfflineReconstruction.cpp
@@ -37,6 +38,7 @@ if (VSM_BUILD_TESTS)
         tests/test_synth_preset.cpp
         tests/test_multisample_profile.cpp
         tests/test_soundfont.cpp
+        tests/test_effect_description.cpp
         tests/test_project_document.cpp
         tests/test_offline_reconstruction.cpp
         tests/test_clap_ids.cpp

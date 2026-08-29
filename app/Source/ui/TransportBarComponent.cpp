@@ -16,6 +16,15 @@ TransportBarComponent::TransportBarComponent(RealtimeTransport& transport) : tra
     loopButton_.setClickingTogglesState(true);
     recordButton_.setColour(juce::TextButton::buttonOnColourId, Palette::accentRed);
 
+    // L'ENREGISTREMENT N'EXISTE PAS ENCORE, ET LE BOUTON LE DIT. Il était
+    // affiché, coloré en rouge, et sans le moindre gestionnaire : une commande
+    // qui promet une fonction absente est pire que la fonction absente, parce
+    // qu'elle se découvre en la cherchant. Il redeviendra actif en D3 de
+    // docs/ROADMAP-daw.md, quand la carte son ouvrira des entrées.
+    recordButton_.setEnabled(false);
+    recordButton_.setTooltip("Enregistrement : pas encore implémenté "
+                              "(phase D3 de docs/ROADMAP-daw.md)");
+
     for (auto* label : { &positionLabel_, &bpmLabel_, &timeSigLabel_, &cpuLabel_, &sampleRateLabel_ }) {
         addAndMakeVisible(label);
         label->setJustificationType(juce::Justification::centredLeft);
@@ -25,10 +34,11 @@ TransportBarComponent::TransportBarComponent(RealtimeTransport& transport) : tra
     playButton_.onClick = [this] { transport_.play(); };
     stopButton_.onClick = [this] { transport_.stop(); };
     loopButton_.onClick = [this] {
-        // Le calcul réel de la région de boucle (bornes en ticks) est piloté
-        // par le Piano Roll (loop region visuel) ; ici on ne fait que
-        // basculer l'état demandé par l'utilisateur.
+        if (onLoopToggled) onLoopToggled(loopButton_.getToggleState());
     };
+    loopButton_.setTooltip("Boucle. La région se règle en tirant sur la règle "
+                            "du piano roll avec Maj ; sans région, la boucle "
+                            "couvre tout le morceau.");
     listenButton_.onClick = [this] { if (onCycleListening) onCycleListening(); };
     listenButton_.setTooltip("Écoute A/B : reconstruction, les deux, original (touche R)");
     setListening("Écoute A/B : pas d'original", false, false);
@@ -80,6 +90,10 @@ void TransportBarComponent::resized() {
     sampleRateLabel_.setBounds(area.removeFromRight(120));
     area.removeFromRight(8);
     cpuLabel_.setBounds(area.removeFromRight(90));
+}
+
+void TransportBarComponent::setLooping(bool active) {
+    loopButton_.setToggleState(active, juce::dontSendNotification);
 }
 
 void TransportBarComponent::setListening(const juce::String& label, bool enabled, bool active) {

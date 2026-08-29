@@ -2,6 +2,7 @@
 #include <array>
 #include "vsm/midi/MidiEvent.h"
 #include <cstdint>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -56,6 +57,41 @@ struct PolyAftertouchPoint  { Tick tick; uint8_t channel; uint8_t note; uint8_t 
 struct ChannelPressurePoint { Tick tick; uint8_t channel; uint8_t pressure; };
 struct ProgramChangePoint   { Tick tick; uint8_t channel; uint8_t program; };
 
+/// Un effet d'insert, DÉCRIT et non instancié : un identifiant de fabrique et
+/// des valeurs de paramètres. `core/` ne connaît pas `audio/` et ne peut donc
+/// pas porter un `IAudioEffect` ; il porte ce qu'il faut pour en fabriquer un,
+/// ce qui est exactement ce que le format de projet écrit sur le disque.
+///
+/// POURQUOI C'EST DANS LA PISTE, ET PAS À CÔTÉ. La première version rangeait
+/// les chaînes dans une `std::map<int, Chain>` **indexée par numéro de piste**,
+/// interne au composant d'interface. Supprimer une piste décalait toutes les
+/// suivantes et réaffectait les effets aux mauvaises pistes -- en silence, et
+/// sans que rien ne soit jamais sauvegardé. Rangée DANS la piste, la chaîne
+/// suit la piste : la suppression n'a plus rien à recalculer, et le bug ne
+/// peut pas revenir par inadvertance.
+struct TrackEffect {
+    std::string type;                        ///< identifiant EffectFactory ("reverb"...)
+    std::map<std::string, float> parameters; ///< nom de paramètre -> valeur en unités réelles
+};
+
+/// Un point d'automation. `value` est en UNITÉS RÉELLES (Hz, secondes), jamais
+/// en normalisé -- la règle de tout le projet. `step` dit que le segment
+/// PARTANT de ce point est un palier et non une rampe.
+struct AutomationPoint {
+    Tick tick = 0;
+    float value = 0.0f;
+    bool step = false;
+};
+
+/// Une courbe d'automation, ciblant un paramètre par son identité SÉMANTIQUE
+/// (« filter.1.cutoff ») : c'est ce qui permet à la courbe de survivre à un
+/// changement de machine, et à la chaîne d'analyse de l'écrire sans connaître
+/// le code du DAW. Rangée dans la piste pour la même raison que `TrackEffect`.
+struct AutomationCurve {
+    std::string parameter;
+    std::vector<AutomationPoint> points;
+};
+
 /// Une piste MIDI éditable : notes + lanes de contrôleurs, plus les
 /// attributs de mixage/routing exposés par le Track Editor (section 4 du
 /// cahier des charges). Le routing vers un synthé virtuel (`instrumentId`)
@@ -91,6 +127,11 @@ public:
     /// le Synth Rack en Phase 2 via ISynthPlugin / PluginRegistry.
     std::string instrumentId;
     std::string presetId;
+
+    /// Chaîne d'inserts et courbes d'automation de CETTE piste. Voir
+    /// `TrackEffect` pour la raison -- non décorative -- de les ranger ici.
+    std::vector<TrackEffect> effects;
+    std::vector<AutomationCurve> automation;
 
     /// Trie toutes les lanes par tick croissant. À appeler après toute
     /// édition manuelle en dehors des méthodes utilitaires ci-dessous.

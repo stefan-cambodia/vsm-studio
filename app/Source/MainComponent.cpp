@@ -9,6 +9,10 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include "vsm/audio/effect/EffectFactory.h"
+#include "vsm/interchange/ParameterDescriptor.h"
+#include "vsm/interchange/EffectDescription.h"
+#include "vsm/interchange/OfflineReconstruction.h"
 #include "vsm/interchange/ProjectBundle.h"
 #include "vsm/interchange/ReconstructionReport.h"
 #include "vsm/interchange/SynthPreset.h"
@@ -121,11 +125,15 @@ MainComponent::MainComponent()
         };
 
     // Éditeur de chaîne d'effets d'insert (dernière pièce UI de la Phase 2).
-    effectChain_.setAudioConfig(48000.0, 512);
+    // La chaîne est DÉCRITE dans la piste ; ce composant n'en garde rien.
     effectChain_.onChainChanged =
         [this](size_t track, std::shared_ptr<const EffectChainComponent::Chain> chain) {
             audioEngine_.processGraph().setTrackEffectChain(track, chain);
         };
+
+    // Le projet est donné APRÈS le rappel : la toute première publication des
+    // chaînes part alors vers le moteur au lieu de tomber dans le vide.
+    effectChain_.setProject(&project_);
 
     // Bus de sends par défaut : Reverb sur le send A, Delay sur le send B
     // (préparés sur le thread UI avant publication). Les knobs "send" de
@@ -168,10 +176,33 @@ MainComponent::MainComponent()
     // La région de boucle est publiée aux DEUX transports, dans leurs unités
     // respectives : l'horloge audio est celle qui reboucle réellement, le
     // transport MIDI la suit pour rester cohérent en mode sans carte son.
-    pianoRoll_.onLoopRegionChanged = [this](vsm::midi::Tick start, vsm::midi::Tick end, bool active) {
+    transportBar_.onLoopToggled = [this](bool active) {
+        // Sans région définie, boucler sur tout le morceau : demander à
+        // l'utilisateur de tirer d'abord sur une règle pour que le bouton
+        // serve à quelque chose reviendrait à le laisser inerte.
+        vsm::midi::Tick start = project_.loopStartTick;
+        vsm::midi::Tick end = project_.loopEndTick;
+        if (end <= start) { start = 0; end = project_.lastUsedTick(); }
+        if (end <= start) { transportBar_.setLooping(false); return; }  // projet vide
+        project_.loopEnabled = active;
+        project_.loopStartTick = start;
+        project_.loopEndTick = end;
         transport_.setLoopRegion(start, end, active);
         audioEngine_.processGraph().setLoopRegion(project_.ticksToSeconds(start),
                                                    project_.ticksToSeconds(end), active);
+        pianoRoll_.setLoopRegion(start, end, active);
+        pianoRollPanel_.refresh();
+    };
+    pianoRoll_.onLoopRegionChanged = [this](vsm::midi::Tick start, vsm::midi::Tick end, bool active) {
+        // Écrite dans le projet AUSSI : c'est une donnée de morceau, et elle
+        // disparaissait à la fermeture alors que le format savait l'écrire.
+        project_.loopEnabled = active;
+        project_.loopStartTick = start;
+        project_.loopEndTick = end;
+        transport_.setLoopRegion(start, end, active);
+        audioEngine_.processGraph().setLoopRegion(project_.ticksToSeconds(start),
+                                                   project_.ticksToSeconds(end), active);
+        transportBar_.setLooping(active);
         pianoRollPanel_.refresh();
     };
 
@@ -263,6 +294,10 @@ void MainComponent::timerCallback() {
     // ouverte : l'application doit rester utilisable (édition, défilement,
     // export) sur une machine sans audio, et c'est lui qui pilote encore la
     // sortie MIDI (IMidiEventSink).
+    // La carte son peut ouvrir à une autre fréquence que celle qu'on croit, et
+    // en changer en cours de route (réglages audio). Les effets suivent.
+    applyAudioConfig();
+
     const bool audioClockAvailable = audioEngine_.isDeviceOpen();
     const vsm::midi::Tick playhead =
         audioClockAvailable ? project_.secondsToTicks(audioEngine_.processGraph().currentSeconds())
@@ -315,6 +350,10 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuFileNewProject, "Nouveau projet");
             menu.addItem(kMenuFileOpen, "Ouvrir MIDI...");
             menu.addItem(kMenuFileOpenBundle, "Ouvrir un projet VSM...");
+            menu.addItem(kMenuFileSave, "Enregistrer" +
+                          juce::String(currentProjectFolder_ == juce::File() ? "..." : "")
+                          + " (Ctrl+S)");
+            menu.addItem(kMenuFileSaveAs, "Enregistrer sous...");
             menu.addSeparator();
             // Écoute A/B : l'enregistrement d'origine en regard de la
             // reconstruction. Les trois modes sont dans le même menu, cochés,
@@ -399,6 +438,8 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuFileNewProject: newProject(); break;
         case kMenuFileOpen:      openMidiFile(); break;
         case kMenuFileOpenBundle: openProjectBundle(); break;
+        case kMenuFileSave:      saveProject(); break;
+        case kMenuFileSaveAs:    saveProjectAs(); break;
         case kMenuFileLoadReference: loadReferenceAudio(); break;
         case kMenuFileReferenceOff:
             setReferenceMode(vsm::audio::engine::ReferenceTrack::Mode::Off); break;
@@ -472,45 +513,50 @@ void MainComponent::exportAudioFile() {
         juce::File file = fc.getResult();
         if (file == juce::File()) return;
 
-        // Graphe de rendu TEMPORAIRE, configuré à l'identique du projet : on
-        // ne touche pas au graphe temps réel qui alimente la carte son.
-        const double sr = 48000.0;
-        const int blockSize = 512;
-        vsm::audio::engine::ProcessGraph exportGraph;
-        exportGraph.prepare(sr, blockSize);
+        // L'EXPORT PASSE PAR LE MÊME CODE QUE `vsm-render`, et c'est la seule
+        // façon d'être sûr qu'il rende la même chose. La version précédente
+        // montait son propre graphe : elle y posait les instruments, le
+        // projet, l'automation et le master -- mais ni les inserts ni les
+        // départs. Le fichier exporté n'avait donc ni la réverbération ni le
+        // delay qu'on venait d'entendre, et rien ne le disait. Deux chemins de
+        // rendu, c'est deux vérités ; il n'y en a qu'un.
+        captureSessionIntoProject();
 
-        for (size_t i = 0; i < project_.tracks.size(); ++i)
-            exportGraph.setTrackInstrument(i, project_.tracks[i].instrumentId);
-        exportGraph.setProject(project_);
-        exportGraph.setAutomationLanes(currentAutomation_);
-
-        // Recopie les réglages du bus master depuis le graphe live.
-        auto& liveMaster = audioEngine_.processGraph().masterBus();
-        auto& exportMaster = exportGraph.masterBus();
-        for (vsm::audio::plugin::ParamId id = 0;
-             id < vsm::audio::engine::MasterBus::kNumParams; ++id)
-            exportMaster.setParameter(id, liveMaster.getParameter(id));
-
-        // Durée = fin de la dernière note + 2 s de traîne (releases/réverb).
-        vsm::midi::Tick maxTick = 0;
-        for (const auto& t : project_.tracks)
-            for (const auto& n : t.notes)
-                maxTick = std::max(maxTick, n.endTick);
-        double duration = maxTick > 0 ? project_.ticksToSeconds(maxTick) + 2.0 : 4.0;
-
-        try {
-            auto rendered = vsm::audio::engine::OfflineRenderer::render(exportGraph, sr, blockSize, duration);
-            vsm::audio::io::WavFileWriter::writeFile(
-                rendered.left.data(), rendered.right.data(), rendered.numFrames(),
-                sr, vsm::audio::io::SampleFormat::Int24, file.getFullPathName().toStdString());
-            juce::AlertWindow::showMessageBoxAsync(
-                juce::AlertWindow::InfoIcon, "Export audio termine",
-                "Rendu ecrit :\n" + file.getFullPathName() +
-                "\n\n" + juce::String(duration, 1) + " s, 48 kHz, 24-bit.");
-        } catch (const std::exception& e) {
-            juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
-                                                     "Erreur d'export audio", e.what());
+        vsm::interchange::LoadedBundle bundle;
+        bundle.project = project_;
+        bundle.document = vsm::interchange::documentFromProject(project_);
+        bundle.folderPath = currentProjectFolder_ == juce::File()
+                                ? std::string()
+                                : currentProjectFolder_.getFullPathName().toStdString();
+        for (size_t i = 0; i < project_.tracks.size(); ++i) {
+            if (project_.tracks[i].instrumentId.empty()) continue;
+            if (auto* plugin = audioEngine_.processGraph().trackInstrument(i))
+                bundle.presetsByTrack[i] = vsm::interchange::capturePreset(
+                    *plugin, project_.tracks[i].instrumentId, project_.tracks[i].name);
         }
+
+        vsm::interchange::RenderOptions options;
+        options.sampleRate = 48000.0;
+        options.blockSize = 512;
+        options.format = vsm::audio::io::SampleFormat::Int24;
+
+        const auto rendered = vsm::interchange::renderBundleToWav(
+            bundle, file.getFullPathName().toStdString(), options);
+        if (!rendered.success) {
+            juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                                                     "Erreur d'export audio", rendered.error);
+            return;
+        }
+
+        // Les avertissements du rendu sont MONTRÉS. Un export qui laisse une
+        // piste muette ou saute un effet doit le dire au moment où il le fait.
+        juce::String message = "Rendu écrit :\n" + file.getFullPathName() + "\n\n"
+                              + juce::String(rendered.renderedSeconds, 1) + " s, 48 kHz, 24 bits, crête "
+                              + juce::String(rendered.peakLevel, 3) + ".";
+        for (const auto& warning : rendered.warnings)
+            message += "\n" + juce::String(warning);
+        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon,
+                                                 "Export audio terminé", message);
     });
 }
 
@@ -584,6 +630,10 @@ void MainComponent::openProjectBundle() {
         project_ = loaded.bundle.project;
         if (project_.title.empty())
             project_.title = folder.getFileName().toStdString();
+        // Ctrl+S réécrira ICI, sans redemander où.
+        currentProjectFolder_ = folder;
+        if (auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
+            window->setName("Vintage Synth MIDI Studio -- " + folder.getFileName());
         // rebuildFromProject() assigne les instruments d'après le projet : les
         // machines n'existent donc PAS avant cet appel, et appliquer les
         // presets plus tôt reviendrait à les appliquer à rien.
@@ -753,12 +803,160 @@ void MainComponent::refreshListeningIndicator() {
 
 bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
     const auto mods = key.getModifiers();
+    // Ctrl+S est testé AVANT le filtre ci-dessous, qui rejette tout ce qui
+    // porte un modificateur.
+    if ((mods.isCommandDown() || mods.isCtrlDown())
+        && (key.getKeyCode() == 's' || key.getKeyCode() == 'S')) {
+        if (mods.isShiftDown()) saveProjectAs(); else saveProject();
+        return true;
+    }
     if (mods.isCommandDown() || mods.isCtrlDown() || mods.isAltDown()) return false;
     switch (key.getKeyCode()) {
+        // LA BARRE D'ESPACE LANCE ET ARRÊTE. Elle ne faisait rien, nulle part,
+        // alors que c'est le seul raccourci que tout musicien essaie en
+        // premier -- et qu'aucun autre raccourci de transport n'existait.
+        case ' ':
+            if (transport_.state() == vsm::sequencer::TransportState::Playing) transport_.stop();
+            else transport_.play();
+            return true;
         // R comme « référence » : la bascule A/B, depuis n'importe quelle
         // fenêtre -- on compare en regardant le piano roll, pas le menu.
         case 'r': case 'R': cycleReferenceMode(); return true;
         default: return false;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Enregistrer (D0.1 de docs/ROADMAP-daw.md)
+// ---------------------------------------------------------------------------
+//
+// `saveProjectBundle()` existait dans `interchange/` depuis la Phase 7 et
+// n'était appelée de nulle part : l'application savait OUVRIR un projet et pas
+// l'écrire. Tout ce qui n'était pas une note -- mixage, effets, automation,
+// boucle -- disparaissait à la fermeture, sans avertissement, et sans que le
+// menu Fichier laisse deviner qu'il manquait une entrée.
+
+void MainComponent::captureSessionIntoProject() {
+    // La tranche master : ses quatorze réglages ne vivaient que dans l'objet
+    // du moteur, donc ni sauvegardés ni transmis au rendu.
+    project_.masterParameters =
+        vsm::interchange::describeMasterBus(audioEngine_.processGraph().masterBus());
+
+    // Les effets sont déjà dans les pistes (écrits au fil des gestes par
+    // EffectChainComponent), la boucle aussi. Restent les courbes
+    // d'automation, que le moteur tient par NUMÉRO de paramètre alors que le
+    // disque les nomme par identité sémantique.
+    for (auto& track : project_.tracks) track.automation.clear();
+
+    for (const auto& lane : currentAutomation_) {
+        if (lane.targetTrackIndex >= project_.tracks.size()) continue;
+        auto& track = project_.tracks[lane.targetTrackIndex];
+        if (track.instrumentId.empty() || lane.points().empty()) continue;
+
+        const auto profile = vsm::interchange::buildSemanticProfile(track.instrumentId);
+        const auto* descriptor = profile.findByParamId(lane.targetParam);
+        // Sans identité sémantique, la courbe ne serait écrite que sous un
+        // NUMÉRO : une position dans une liste, qui désignerait un autre
+        // réglage dès qu'un paramètre serait intercalé. On préfère ne rien
+        // écrire plutôt qu'écrire une valeur qui se reposera ailleurs.
+        if (descriptor == nullptr || descriptor->semanticId.empty()) continue;
+
+        vsm::sequencer::AutomationCurve curve;
+        curve.parameter = descriptor->semanticId;
+        for (const auto& point : lane.points())
+            curve.points.push_back({point.tick, point.value,
+                                     point.curveToNext == vsm::audio::engine::AutomationCurve::Step});
+        track.automation.push_back(std::move(curve));
+    }
+}
+
+void MainComponent::applyAutomationFromProject() {
+    currentAutomation_.clear();
+    for (size_t i = 0; i < project_.tracks.size(); ++i) {
+        const auto& track = project_.tracks[i];
+        if (track.automation.empty() || track.instrumentId.empty()) continue;
+        const auto profile = vsm::interchange::buildSemanticProfile(track.instrumentId);
+        for (const auto& curve : track.automation) {
+            const auto* descriptor = profile.findBySemanticId(curve.parameter);
+            if (descriptor == nullptr) continue;   // paramètre inconnu de cette machine
+            vsm::audio::engine::AutomationLane lane;
+            lane.targetTrackIndex = i;
+            lane.targetParam = descriptor->paramId;
+            for (const auto& point : curve.points)
+                lane.addPoint(point.tick, point.value,
+                               point.step ? vsm::audio::engine::AutomationCurve::Step
+                                          : vsm::audio::engine::AutomationCurve::Linear);
+            currentAutomation_.push_back(std::move(lane));
+        }
+    }
+    audioEngine_.processGraph().setAutomationLanes(currentAutomation_);
+    automation_.setProject(&project_);
+}
+
+bool MainComponent::writeProjectTo(const juce::File& folder) {
+    captureSessionIntoProject();
+
+    // Les presets sont capturés depuis les machines VIVANTES : sans cela,
+    // `saveProjectBundle` retombe sur l'état PAR DÉFAUT de chaque machine et
+    // écrit un projet qui ne sonne pas comme celui qu'on vient de régler.
+    std::map<size_t, vsm::interchange::SynthPreset> presets;
+    for (size_t i = 0; i < project_.tracks.size(); ++i) {
+        const auto& track = project_.tracks[i];
+        if (track.instrumentId.empty()) continue;
+        if (auto* plugin = audioEngine_.processGraph().trackInstrument(i))
+            presets[i] = vsm::interchange::capturePreset(*plugin, track.instrumentId, track.name);
+    }
+
+    const auto result = vsm::interchange::saveProjectBundle(
+        project_, folder.getFullPathName().toStdString(), presets);
+    if (!result.success) {
+        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                                                "Enregistrement impossible", result.error);
+        return false;
+    }
+    currentProjectFolder_ = folder;
+    // Le nom du dossier passe dans le titre de la fenêtre : c'est le retour
+    // qu'attend un Ctrl+S, et il ne demande pas de cliquer pour disparaître.
+    if (auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
+        window->setName("Vintage Synth MIDI Studio -- " + folder.getFileName());
+    return true;
+}
+
+void MainComponent::saveProject() {
+    if (currentProjectFolder_ == juce::File()) { saveProjectAs(); return; }
+    writeProjectTo(currentProjectFolder_);
+}
+
+void MainComponent::saveProjectAs() {
+    auto chooser = std::make_shared<juce::FileChooser>(
+        "Enregistrer le projet VSM (dossier)...", currentProjectFolder_);
+    chooser->launchAsync(juce::FileBrowserComponent::saveMode
+                             | juce::FileBrowserComponent::canSelectDirectories,
+                          [this, chooser](const juce::FileChooser& fc) {
+        const juce::File folder = fc.getResult();
+        if (folder == juce::File()) return;
+        folder.createDirectory();
+        writeProjectTo(folder);
+    });
+}
+
+void MainComponent::applyAudioConfig() {
+    const double sr = audioEngine_.currentSampleRate();
+    if (sr <= 0.0 || std::abs(sr - appliedSampleRate_) < 1.0) return;
+    appliedSampleRate_ = sr;
+
+    // Les inserts : refabriqués depuis les descriptions, donc réglés ET
+    // préparés à la bonne fréquence.
+    const int blockSize = audioEngine_.currentBlockSize();
+    effectChain_.setAudioConfig(sr, blockSize);
+
+    // Les effets de bus : mêmes types, mêmes réglages, à la bonne fréquence.
+    for (int bus = 0; bus < 2; ++bus) {
+        auto fx = vsm::audio::effect::EffectFactory::create(bus == 0 ? "reverb" : "delay");
+        if (!fx) continue;
+        fx->prepare(sr, blockSize);
+        audioEngine_.processGraph().setSendEffect(static_cast<size_t>(bus), std::move(fx));
+        audioEngine_.processGraph().setSendReturn(static_cast<size_t>(bus), 1.0f);
     }
 }
 
@@ -845,6 +1043,26 @@ void MainComponent::rebuildFromProject() {
     for (size_t i = project_.tracks.size(); i < maxAssignedTracks_; ++i)
         audioEngine_.processGraph().setTrackInstrument(i, "");
     maxAssignedTracks_ = std::max(maxAssignedTracks_, project_.tracks.size());
+
+    // Les chaînes d'inserts sont refabriquées EN BLOC depuis les descriptions
+    // des pistes : après une suppression, aucune ne peut rester accrochée à un
+    // index qui désigne désormais une autre piste.
+    if (project_.loopEndTick > project_.loopStartTick) {
+        transport_.setLoopRegion(project_.loopStartTick, project_.loopEndTick, project_.loopEnabled);
+        audioEngine_.processGraph().setLoopRegion(project_.ticksToSeconds(project_.loopStartTick),
+                                                   project_.ticksToSeconds(project_.loopEndTick),
+                                                   project_.loopEnabled);
+        pianoRoll_.setLoopRegion(project_.loopStartTick, project_.loopEndTick, project_.loopEnabled);
+    }
+    transportBar_.setLooping(project_.loopEnabled);
+
+    if (!project_.masterParameters.empty())
+        vsm::interchange::applyMasterDescription(project_.masterParameters,
+                                                  audioEngine_.processGraph().masterBus());
+    effectChain_.rebuildFromProject();
+    for (size_t i = project_.tracks.size(); i < maxAssignedTracks_; ++i)
+        audioEngine_.processGraph().setTrackEffectChain(i, nullptr);
+    applyAutomationFromProject();
 
     refreshTransportSchedule();
     updateSynthRackForSelection();

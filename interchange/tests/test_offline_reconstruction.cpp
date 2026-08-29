@@ -1,5 +1,7 @@
 #include "TestFramework.h"
 #include "vsm/interchange/OfflineReconstruction.h"
+#include "vsm/audio/effect/EffectFactory.h"
+#include "vsm/interchange/EffectDescription.h"
 #include "vsm/interchange/ProjectBundle.h"
 #include <cmath>
 #include <cstdio>
@@ -214,4 +216,83 @@ VSM_TEST(render_duration_follows_the_content_and_the_requested_tail) {
     VSM_ASSERT(fixed.success);
     VSM_ASSERT_NEAR(fixed.renderedSeconds, 3.0, 1e-9);
     VSM_ASSERT_EQ(fixed.framesWritten, static_cast<size_t>(3.0 * 48000.0));
+}
+
+// --- D0.3 : le rendu contient ce que le projet décrit -----------------------
+//
+// Les inserts étaient écrits dans `project.json` et jamais posés sur le graphe
+// de rendu : un projet portant une distorsion se rendait proprement, sans le
+// moindre avertissement, et sans la distorsion. Ces deux tests comparent deux
+// rendus qui ne diffèrent que par ce que le projet décrit -- si l'effet n'est
+// pas appliqué, les deux fichiers sont identiques et le test tombe.
+
+namespace {
+
+/// Projet minimal qui SONNE : une machine simple, une note tenue.
+vsm::sequencer::Project projetQuiSonne() {
+    vsm::sequencer::Project project;
+    project.ticksPerQuarterNote = 480;
+    project.tempoMap.addTempoChange(0, 500000);
+    vsm::sequencer::Track track;
+    track.name = "Essai";
+    track.instrumentId = "vsm.minimoog";
+    uint64_t ids = 1;
+    track.addNote(0, 960, 60, 100, 0, ids);
+    project.tracks.push_back(track);
+    return project;
+}
+
+/// Rend le projet et rend son énergie totale, qui suffit à dire « ce n'est pas
+/// le même son » sans dépendre d'un échantillon particulier.
+double energieDuRendu(const vsm::sequencer::Project& project) {
+    vsm::interchange::LoadedBundle bundle;
+    bundle.project = project;
+    bundle.document = vsm::interchange::documentFromProject(project);
+
+    TempFolder dossier("rendu_effets");
+    vsm::interchange::RenderOptions options;
+    options.durationSeconds = 1.5;
+    const auto result =
+        vsm::interchange::renderBundleToWav(bundle, dossier.file("rendu.wav"), options);
+    VSM_ASSERT(result.success);
+    return static_cast<double>(result.peakLevel);
+}
+
+} // namespace
+
+VSM_TEST(an_insert_effect_described_by_the_project_is_actually_rendered) {
+    const vsm::sequencer::Project nu = projetQuiSonne();
+    const double creteNue = energieDuRendu(nu);
+    VSM_ASSERT(creteNue > 0.01);   // sans quoi le test ne prouverait rien
+
+    // Un passe-bas à 20 Hz, entièrement traité : il ne reste presque rien
+    // d'une note à 262 Hz. Les réglages sont posés UN PAR UN et nommés, et
+    // c'est délibéré : la première version poussait tous les paramètres à leur
+    // minimum, ce qui mettait aussi le mélange sec/traité à zéro -- l'effet
+    // était donc branché, appliqué, et parfaitement inaudible. Un test qui
+    // passe avec un effet transparent ne prouve rien.
+    vsm::sequencer::Project traite = nu;
+    auto filtre = vsm::audio::effect::EffectFactory::create("filter");
+    VSM_ASSERT(filtre != nullptr);
+    filtre->setParameter(0 /* Cutoff */, 20.0f);
+    filtre->setParameter(3 /* Mix */, 1.0f);
+    traite.tracks[0].effects.push_back(vsm::interchange::describeEffect("filter", *filtre));
+
+    const double creteTraitee = energieDuRendu(traite);
+    VSM_ASSERT(creteTraitee < creteNue * 0.5);
+}
+
+VSM_TEST(the_master_strip_described_by_the_project_is_actually_rendered) {
+    const vsm::sequencer::Project nu = projetQuiSonne();
+    const double creteNue = energieDuRendu(nu);
+
+    // Tranche master ACTIVÉE avec un limiteur bas : la crête doit descendre.
+    vsm::sequencer::Project mixe = nu;
+    vsm::audio::engine::MasterBus bus;
+    bus.setParameter(vsm::audio::engine::MasterBus::kEnabled, 1.0f);
+    bus.setParameter(vsm::audio::engine::MasterBus::kLimiterCeilingDb, -12.0f);
+    mixe.masterParameters = vsm::interchange::describeMasterBus(bus);
+
+    const double creteMixee = energieDuRendu(mixe);
+    VSM_ASSERT(creteMixee < creteNue);
 }

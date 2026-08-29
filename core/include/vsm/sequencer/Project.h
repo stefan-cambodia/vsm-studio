@@ -4,6 +4,7 @@
 #include "vsm/sequencer/TimeSignatureMap.h"
 #include "vsm/sequencer/Track.h"
 #include <cstdint>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -27,6 +28,24 @@ public:
     TempoMap tempoMap;
     TimeSignatureMap timeSignatureMap;
     std::vector<Track> tracks;
+
+    /// Région de boucle. Elle vivait jusqu'ici dans l'interface seule, ce qui
+    /// la faisait disparaître à la fermeture alors que le format de projet
+    /// avait déjà un champ pour l'écrire : une donnée de morceau, au même
+    /// titre que le tempo, rangée là où le morceau est rangé.
+    bool loopEnabled = false;
+    midi::Tick loopStartTick = 0;
+    midi::Tick loopEndTick = 0;
+
+    /// Réglages de la tranche master (égaliseur, compresseur, saturation,
+    /// largeur, limiteur), nommés et non numérotés, comme les effets de piste.
+    /// Vide = la tranche garde ses valeurs d'usine.
+    ///
+    /// POURQUOI ICI. Ils ne vivaient que dans l'objet `MasterBus` du moteur :
+    /// ni sauvegardés, ni écrits dans le fichier, ni transmis au rendu hors
+    /// ligne. Un morceau mixé se rouvrait donc avec un master d'usine, et son
+    /// export ne ressemblait pas à ce qu'on venait d'écouter.
+    std::map<std::string, float> masterParameters;
 
     static Project fromParsedFile(const midi::ParsedFile& parsed);
     midi::ParsedFile toParsedFile() const;

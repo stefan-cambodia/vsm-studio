@@ -67,7 +67,13 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex)
 
     muteButton_.onClick = [this] { track_.muted = muteButton_.getToggleState(); if (onChanged) onChanged(); };
     soloButton_.onClick = [this] { track_.solo = soloButton_.getToggleState(); if (onChanged) onChanged(); };
+    // `Track::armed` est écrit ici et n'est LU par personne : aucun chemin
+    // d'enregistrement n'existe encore. Le bouton reste donc désactivé et le
+    // dit, plutôt que de faire croire qu'une piste est prête à recevoir.
     armButton_.onClick = [this] { track_.armed = armButton_.getToggleState(); };
+    armButton_.setEnabled(false);
+    armButton_.setTooltip("Armement : pas encore implémenté "
+                           "(phase D3 de docs/ROADMAP-daw.md)");
 
     addAndMakeVisible(volumeSlider_);
     volumeSlider_.setSliderStyle(juce::Slider::LinearHorizontal);

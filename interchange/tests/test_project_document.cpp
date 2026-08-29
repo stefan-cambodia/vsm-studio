@@ -308,3 +308,109 @@ VSM_TEST(automation_round_trips_and_stays_optional) {
     VSM_ASSERT(filtre.success);
     VSM_ASSERT_EQ(filtre.document.tracks[0].automation.size(), size_t(1));
 }
+
+// --- D0.1 / D0.2 : ce que le modèle porte doit revenir du disque ------------
+//
+// Le format savait écrire les effets, l'automation et la boucle depuis le
+// début -- les tests ci-dessus le prouvent. Ce qui manquait était le maillon
+// d'avant : `Track` ne les portait pas, si bien que `documentFromProject()`
+// écrivait des tableaux vides et que l'application perdait tout à la
+// fermeture. Ces trois tests couvrent le trajet COMPLET, modèle -> document ->
+// JSON -> document -> modèle, qui est le seul dont l'utilisateur fasse
+// l'expérience.
+
+VSM_TEST(effects_and_automation_survive_the_trip_through_the_model) {
+    Project project = buildProject();
+    project.tracks[0].effects.push_back({"reverb", {{"reverb.1.mix", 0.35f},
+                                                     {"reverb.1.size", 0.8f}}});
+    project.tracks[0].effects.push_back({"delay", {{"delay.1.time", 0.375f}}});
+    vsm::sequencer::AutomationCurve curve;
+    curve.parameter = "filter.1.cutoff";
+    curve.points = {{0, 220.0f, false}, {960, 4800.0f, true}};
+    project.tracks[1].automation.push_back(curve);
+
+    const ProjectLoadResult relu =
+        parseProjectDocument(projectDocumentToJson(documentFromProject(project)).toString());
+    VSM_ASSERT(relu.success);
+
+    Project rejoue = project;          // mêmes pistes, mêmes notes
+    for (auto& track : rejoue.tracks) { track.effects.clear(); track.automation.clear(); }
+    applyDocumentToProject(relu.document, rejoue);
+
+    // L'ORDRE de la chaîne compte autant que son contenu : un delay avant une
+    // reverb ne sonne pas comme une reverb avant un delay.
+    VSM_ASSERT_EQ(rejoue.tracks[0].effects.size(), size_t(2));
+    VSM_ASSERT_EQ(rejoue.tracks[0].effects[0].type, std::string("reverb"));
+    VSM_ASSERT_EQ(rejoue.tracks[0].effects[1].type, std::string("delay"));
+    VSM_ASSERT_NEAR(rejoue.tracks[0].effects[0].parameters.at("reverb.1.mix"), 0.35f, 1e-6);
+    VSM_ASSERT_NEAR(rejoue.tracks[0].effects[1].parameters.at("delay.1.time"), 0.375f, 1e-6);
+
+    VSM_ASSERT_EQ(rejoue.tracks[1].automation.size(), size_t(1));
+    VSM_ASSERT_EQ(rejoue.tracks[1].automation[0].parameter, std::string("filter.1.cutoff"));
+    VSM_ASSERT_EQ(rejoue.tracks[1].automation[0].points.size(), size_t(2));
+    VSM_ASSERT_NEAR(rejoue.tracks[1].automation[0].points[1].value, 4800.0f, 1e-3);
+    VSM_ASSERT(rejoue.tracks[1].automation[0].points[1].step);
+}
+
+VSM_TEST(removing_a_track_takes_its_effects_with_it) {
+    // LA RÉGRESSION QUE CE TEST INTERDIT. Les chaînes vivaient dans une
+    // `std::map<int, Chain>` indexée par numéro de piste, hors du projet :
+    // supprimer la piste 0 laissait la chaîne de l'ancienne piste 1 sous
+    // l'index 1, désormais occupé par une AUTRE piste. Les effets changeaient
+    // de propriétaire en silence. Rangés dans la piste, ils la suivent.
+    Project project = buildProject();
+    project.tracks[0].effects.push_back({"distortion", {{"distortion.1.drive", 0.9f}}});
+    project.tracks[1].effects.push_back({"chorus", {{"chorus.1.depth", 0.2f}}});
+
+    project.tracks.erase(project.tracks.begin());
+
+    VSM_ASSERT_EQ(project.tracks.size(), size_t(1));
+    VSM_ASSERT_EQ(project.tracks[0].effects.size(), size_t(1));
+    VSM_ASSERT_EQ(project.tracks[0].effects[0].type, std::string("chorus"));
+
+    // Et la survie au disque vaut aussi après la suppression.
+    const ProjectLoadResult relu =
+        parseProjectDocument(projectDocumentToJson(documentFromProject(project)).toString());
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT_EQ(relu.document.tracks.size(), size_t(1));
+    VSM_ASSERT_EQ(relu.document.tracks[0].effects[0].type, std::string("chorus"));
+}
+
+VSM_TEST(the_loop_region_is_project_data_not_screen_state) {
+    Project project = buildProject();
+    project.loopEnabled = true;
+    project.loopStartTick = 1920;
+    project.loopEndTick = 3840;
+
+    const ProjectLoadResult relu =
+        parseProjectDocument(projectDocumentToJson(documentFromProject(project)).toString());
+    VSM_ASSERT(relu.success);
+
+    Project rejoue = project;
+    rejoue.loopEnabled = false;
+    rejoue.loopStartTick = 0;
+    rejoue.loopEndTick = 0;
+    applyDocumentToProject(relu.document, rejoue);
+
+    VSM_ASSERT(rejoue.loopEnabled);
+    VSM_ASSERT_EQ(rejoue.loopStartTick, vsm::midi::Tick(1920));
+    VSM_ASSERT_EQ(rejoue.loopEndTick, vsm::midi::Tick(3840));
+}
+
+// Une piste SANS instrument peut porter des effets : le chargement s'arrêtait
+// avant de les lire pour ces pistes-là, ce qui les aurait perdues sans bruit.
+VSM_TEST(a_track_without_an_instrument_still_keeps_its_effects) {
+    Project project = buildProject();
+    project.tracks[1].instrumentId.clear();
+    project.tracks[1].effects.push_back({"phaser", {{"phaser.1.rate", 0.5f}}});
+
+    const ProjectLoadResult relu =
+        parseProjectDocument(projectDocumentToJson(documentFromProject(project)).toString());
+    VSM_ASSERT(relu.success);
+
+    Project rejoue = project;
+    for (auto& track : rejoue.tracks) track.effects.clear();
+    applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT_EQ(rejoue.tracks[1].effects.size(), size_t(1));
+    VSM_ASSERT_EQ(rejoue.tracks[1].effects[0].type, std::string("phaser"));
+}

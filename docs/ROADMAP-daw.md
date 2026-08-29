@@ -233,6 +233,55 @@ Aucune commande morte, aucun réglage perdu, aucun export qui diffère de l'éco
 aucune donnée du projet qui ne sonne pas. C'est la condition pour que les mesures
 des phases suivantes veuillent dire quelque chose.
 
+> **D0.1 à D0.4 SONT FAITES, ET D0.8 POUR MOITIÉ (29/08/2026).** 883 tests
+> moteur verts, zéro avertissement, les 34 empreintes audio inchangées.
+>
+> **Ce qui a changé de place, et c'est le cœur de l'affaire.** Les effets et
+> l'automation vivaient dans des composants d'interface ; ils vivent désormais
+> dans la **piste** (`core/Track.h` : `TrackEffect`, `AutomationCurve`), et la
+> tranche master ainsi que la région de boucle dans le **projet**
+> (`core/Project.h`). Ce déplacement règle quatre défauts d'un coup, sans qu'il
+> reste de code pour les faire revenir :
+>
+> - le format savait écrire tout cela **depuis la Phase 7** — les tests
+>   `effects_are_described_semantically_on_a_track` et
+>   `automation_round_trips_and_stays_optional` le prouvaient déjà. Ce qui
+>   manquait était le maillon d'avant : `documentFromProject()` écrivait des
+>   tableaux **vides** parce que le modèle ne portait rien ;
+> - le décalage d'index disparaît **par construction** : une chaîne rangée dans
+>   la piste suit la piste, et supprimer une piste n'a plus rien à recalculer ;
+> - la fréquence d'échantillonnage réelle est appliquée aux inserts et aux bus
+>   (`AudioEngine::currentBlockSize()` a été ajouté pour préparer les effets à
+>   la bonne taille de bloc, pas seulement à la bonne fréquence) ;
+> - et l'export **emprunte le chemin de `vsm-render`** au lieu de monter son
+>   propre graphe.
+>
+> **Le rendu hors ligne mentait aussi, et personne ne l'avait vu.**
+> `renderBundleToWav()` — donc `vsm-render`, donc toute la chaîne de
+> reconstruction — appliquait les presets et l'automation, mais **ni les
+> inserts ni la tranche master**. Un projet portant une réverbération se rendait
+> sans elle, sans un avertissement. Corrigé à la racine : l'export de
+> l'application ne peut plus diverger du rendu hors ligne, puisque c'est le
+> même code.
+>
+> **Un test qui ne prouvait rien, attrapé au passage.** La première version du
+> test « un insert décrit est bien rendu » poussait tous les paramètres de
+> l'effet à leur **minimum** — ce qui met aussi le mélange sec/traité à zéro.
+> L'effet était branché, appliqué, et parfaitement inaudible : le test passait
+> avec ou sans le correctif. Remplacé par un passe-bas à 20 Hz entièrement
+> traité, réglé paramètre par paramètre et nommément.
+>
+> **Ce que D0.8 a rendu vrai** : la barre d'espace lance et arrête (elle ne
+> faisait rien, nulle part), et le bouton Loop boucle réellement — sans région
+> définie, sur tout le morceau, plutôt que d'exiger un geste que rien
+> n'indiquait. **Ce qu'elle a rendu honnête** : le bouton Rec et l'armement de
+> piste sont désactivés et disent pourquoi, en renvoyant à D3. Une commande qui
+> promet une fonction absente est pire que la fonction absente, parce qu'elle se
+> découvre en la cherchant.
+>
+> **Restent D0.5, D0.6 et D0.7** : le MIDI non-note qui n'atteint pas les
+> machines, la perte silencieuse d'événements sous charge, et l'annulation.
+
 ### Phase D1 — Le clip, dans le modèle, sans toucher un échantillon
 
 Le modèle doit apprendre qu'une piste est faite de **morceaux placés** et non

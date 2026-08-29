@@ -22,6 +22,15 @@ public:
     std::function<void()> onOpenMidiFile;
     std::function<void()> onExportMidiFile;
 
+    /// Bascule de la boucle. Le bouton portait un gestionnaire VIDE : il
+    /// s'allumait au clic et ne bouclait rien. La région, elle, ne s'obtenait
+    /// qu'en tirant sur la règle du piano roll avec la touche Maj -- geste que
+    /// rien n'indiquait.
+    std::function<void(bool)> onLoopToggled;
+    /// Reflète l'état réel de la boucle (l'utilisateur peut aussi la définir
+    /// depuis la règle).
+    void setLooping(bool active);
+
     /// Écoute A/B (étape 11.2) : le bouton DIT ce qu'on entend -- reconstruction,
     /// les deux, original -- et bascule au clic. Le menu Fichier le permettait
     /// déjà, mais un menu se referme : pendant une écoute comparative, il faut

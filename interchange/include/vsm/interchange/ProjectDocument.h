@@ -2,6 +2,7 @@
 #include "vsm/interchange/Json.h"
 #include "vsm/interchange/SynthPreset.h"
 #include "vsm/sequencer/Project.h"
+#include <map>
 #include <string>
 #include <vector>
 
@@ -94,6 +95,11 @@ struct ProjectTrack {
 
 struct ProjectDocument {
     std::string title = "Sans titre";
+    /// Réglages de la tranche master, par nom. Champ FACULTATIF du format,
+    /// comme `automation` : un projet qui n'en a pas garde exactement le
+    /// fichier qu'il a toujours eu, et un fichier ancien se charge sans rien
+    /// remarquer.
+    std::map<std::string, float> master;
     /// Chemin RELATIF du fichier MIDI qui porte les notes.
     std::string midiPath = "midi/arrangement.mid";
     ProjectTransport transport;

@@ -67,6 +67,8 @@ private:
         kMenuFileNewProject = 1,
         kMenuFileOpen,
         kMenuFileOpenBundle,
+        kMenuFileSave,
+        kMenuFileSaveAs,
         kMenuFileLoadReference,
         kMenuFileReferenceOff,
         kMenuFileReferenceMix,
@@ -92,6 +94,26 @@ private:
     void timerCallback() override; // playhead, sync Play/Stop, CPU/sample rate (thread UI uniquement)
 
     void openMidiFile();
+    /// Enregistre le projet dans son dossier courant, ou demande où si le
+    /// projet n'en a pas encore. Ctrl+S.
+    void saveProject();
+    void saveProjectAs();
+    /// Écrit réellement le dossier de projet. Rend faux et l'a déjà dit à
+    /// l'utilisateur en cas d'échec -- une sauvegarde qui échoue en silence
+    /// serait pire que pas de sauvegarde du tout.
+    bool writeProjectTo(const juce::File& folder);
+    /// Rassemble dans `project_` ce que la session tient ailleurs : les
+    /// courbes d'automation et la région de boucle. Les effets, eux, y sont
+    /// déjà -- ils y sont écrits au fil des gestes.
+    void captureSessionIntoProject();
+    /// Republie les courbes du projet vers le moteur (chemin inverse du
+    /// précédent), après un chargement.
+    void applyAutomationFromProject();
+    /// Réaccorde tout ce qui dépend de la fréquence d'échantillonnage réelle
+    /// du périphérique : chaînes d'inserts et effets de bus. Appelée quand la
+    /// carte son change de régime -- 48 kHz était écrit en dur, ce qui rendait
+    /// faux tous les temps de delay et de réverbération à 44,1 kHz.
+    void applyAudioConfig();
     /// Ouvre un DOSSIER de projet complet (project.json + MIDI + presets +
     /// échantillons) -- typiquement celui qu'écrit la chaîne d'analyse.
     void openProjectBundle();
@@ -156,6 +178,13 @@ private:
     /// Fichier -- un MP3 décodé sonne comme un WAV, et il faut bien un endroit
     /// où lire lequel des deux on écoute.
     juce::String referenceDescription_;
+
+    /// Dossier du projet ouvert (vide = jamais enregistré). Ce que « Ctrl+S »
+    /// réécrit sans rien demander.
+    juce::File currentProjectFolder_;
+    /// Dernière configuration audio appliquée aux effets, pour ne refabriquer
+    /// que lorsqu'elle change réellement.
+    double appliedSampleRate_ = 0.0;
 
     juce::Label mixerPlaceholder_;
     juce::Label automationPlaceholder_;

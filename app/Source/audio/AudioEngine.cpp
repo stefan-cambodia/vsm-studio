@@ -108,6 +108,7 @@ void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* device) {
     int bufferSize = device->getCurrentBufferSizeSamples();
 
     currentSampleRate_.store(sampleRate, std::memory_order_release);
+    currentBlockSize_.store(std::max(bufferSize, 1), std::memory_order_release);
     monoFallbackBuffer_.assign(static_cast<size_t>(std::max(bufferSize, 1)), 0.0f);
     graph_.prepare(sampleRate, bufferSize);
 }

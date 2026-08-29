@@ -1,5 +1,7 @@
 #include "vsm/interchange/OfflineReconstruction.h"
+#include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/audio/engine/AutomationLane.h"
+#include "vsm/interchange/EffectDescription.h"
 #include "vsm/audio/engine/OfflineRenderer.h"
 #include "vsm/audio/engine/ProcessGraph.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
@@ -77,6 +79,38 @@ RenderResult renderBundleToWav(const LoadedBundle& bundle, const std::string& wa
         if (!sampleReport.failures.empty())
             result.warnings.push_back("Piste " + std::to_string(i) + " : " + sampleReport.summary());
     }
+
+    // INSERTS. Ils étaient décrits dans `project.json` et jamais posés sur le
+    // graphe : un projet portant une réverbération se rendait sans elle, sans
+    // le moindre avertissement. Le fichier rendu ne correspondait donc pas au
+    // projet, et rien ne permettait de s'en apercevoir autrement qu'à
+    // l'oreille.
+    for (size_t i = 0; i < bundle.project.tracks.size() && i < ProcessGraph::kMaxTracks; ++i) {
+        const auto& described = bundle.project.tracks[i].effects;
+        if (described.empty()) continue;
+        auto chain = std::make_shared<ProcessGraph::EffectChain>();
+        for (const auto& entry : described) {
+            auto effect = vsm::audio::effect::EffectFactory::create(entry.type);
+            if (!effect) {
+                // Type inconnu : nommé, jamais remplacé par un autre effet.
+                result.warnings.push_back("Piste " + std::to_string(i) + " : effet « " + entry.type +
+                                           " » inconnu, non appliqué");
+                continue;
+            }
+            effect->prepare(options.sampleRate, options.blockSize);
+            const EffectApplyReport applyReport = applyEffectDescription(entry, *effect);
+            for (const auto& unknown : applyReport.unknownParameters)
+                result.warnings.push_back("Piste " + std::to_string(i) + " : effet « " + entry.type +
+                                           " », réglage inconnu « " + unknown + " »");
+            chain->push_back(std::move(effect));
+        }
+        graph.setTrackEffectChain(i, chain);
+    }
+
+    // TRANCHE MASTER. Même histoire : décrite dans le projet depuis qu'elle
+    // s'y écrit, et sans effet sur le rendu tant que personne ne la reposait.
+    if (!bundle.project.masterParameters.empty())
+        applyMasterDescription(bundle.project.masterParameters, graph.masterBus());
 
     // AUTOMATION. Les courbes du document ciblent des identités SÉMANTIQUES ;
     // le moteur, lui, parle en ParamId. La résolution se fait ici, une fois,
