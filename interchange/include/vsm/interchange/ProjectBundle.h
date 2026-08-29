@@ -80,6 +80,41 @@ BundleSaveResult saveProjectBundle(const vsm::sequencer::Project& project,
                                     const std::string& folderPath,
                                     const std::map<size_t, SynthPreset>& presetsByTrack = {});
 
+// --- D6.4 : un projet qui s'ouvre ailleurs ----------------------------------
+//
+// LE FORMAT ÉTAIT DÉJÀ PORTABLE ; L'ENREGISTREMENT NE L'ÉTAIT PAS. Tous les
+// chemins d'un projet sont relatifs à son dossier, et la lecture refuse même
+// un chemin absolu. Mais `saveProjectBundle` n'écrit que `project.json`, le
+// MIDI et les presets : il ne COPIE aucun média. Enregistrer sous un autre
+// dossier produisait donc un projet dont le `project.json` désignait des
+// fichiers restés dans l'ancien -- illisible sur une autre machine, et
+// silencieusement incomplet sur celle-ci.
+
+/// Tous les fichiers que le projet DÉSIGNE, en chemins relatifs et sans
+/// doublon : l'audio de chaque piste, son gel, l'audio de chaque prise, les
+/// échantillons et le profil de chaque preset.
+std::vector<std::string> referencedMediaPaths(const LoadedBundle& bundle);
+
+/// Ceux d'entre eux qui MANQUENT à côté du projet. Vide = le dossier s'ouvre
+/// ailleurs tel quel, ce qui est exactement le critère de D6.4.
+std::vector<std::string> missingMediaPaths(const LoadedBundle& bundle);
+
+struct StandaloneExportResult {
+    bool success = false;
+    std::string error;
+    std::vector<std::string> copiedFiles;
+    /// Référencés mais introuvables à la source : le dossier écrit est
+    /// incomplet, et il le DIT. Refuser d'écrire serait pire -- on perdrait
+    /// aussi les quinze pistes qui, elles, sont là.
+    std::vector<std::string> missing;
+};
+
+/// Écrit un dossier de projet AUTONOME : le projet, plus une copie de chaque
+/// média qu'il désigne. C'est `saveProjectBundle` suivi de la copie que
+/// celui-ci ne fait pas.
+StandaloneExportResult exportStandaloneProject(const LoadedBundle& bundle,
+                                                const std::string& destFolder);
+
 /// Lecture/écriture de fichiers texte, exposées parce que les outils en ligne
 /// de commande et les tests en ont besoin (et pour ne pas éparpiller trois
 /// variantes d'ouverture de fichier dans le projet).

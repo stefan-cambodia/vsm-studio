@@ -3,6 +3,7 @@
 #include "vsm/midi/MidiFileWriter.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <mutex>
@@ -256,6 +257,85 @@ BundleSaveResult saveProjectBundle(const Project& project, const std::string& fo
         return result;
     }
     result.writtenFiles.push_back(kProjectFileName);
+    result.success = true;
+    return result;
+}
+
+// --- D6.4 : rassembler ce que le projet désigne -----------------------------
+
+std::vector<std::string> referencedMediaPaths(const LoadedBundle& bundle) {
+    std::vector<std::string> chemins;
+    auto ajoute = [&chemins](const std::string& chemin) {
+        if (chemin.empty()) return;
+        if (std::find(chemins.begin(), chemins.end(), chemin) == chemins.end())
+            chemins.push_back(chemin);
+    };
+    for (const auto& piste : bundle.project.tracks) {
+        ajoute(piste.audio.path);
+        ajoute(piste.frozenAudio.path);
+        // LES PRISES COMPTENT AUTANT QUE CE QU'ON ENTEND. Une prise écartée
+        // est du travail : ne pas l'emporter reviendrait à décider à la place
+        // de l'utilisateur qu'il n'y reviendra pas.
+        for (const auto& prise : piste.takes) ajoute(prise.audio.path);
+    }
+    for (const auto& [index, preset] : bundle.presetsByTrack) {
+        (void)index;
+        for (const auto& [emplacement, chemin] : preset.samples) {
+            (void)emplacement;
+            ajoute(chemin);
+        }
+        ajoute(preset.profile);
+    }
+    return chemins;
+}
+
+std::vector<std::string> missingMediaPaths(const LoadedBundle& bundle) {
+    std::vector<std::string> manquants;
+    if (bundle.folderPath.empty()) return referencedMediaPaths(bundle);
+    for (const auto& relatif : referencedMediaPaths(bundle)) {
+        std::error_code code;
+        if (!std::filesystem::exists(std::filesystem::path(bundle.folderPath) / relatif, code))
+            manquants.push_back(relatif);
+    }
+    return manquants;
+}
+
+StandaloneExportResult exportStandaloneProject(const LoadedBundle& bundle,
+                                                const std::string& destFolder) {
+    StandaloneExportResult result;
+
+    const BundleSaveResult ecrit =
+        saveProjectBundle(bundle.project, destFolder, bundle.presetsByTrack);
+    if (!ecrit.success) {
+        result.error = ecrit.error;
+        return result;
+    }
+
+    const std::filesystem::path source = bundle.folderPath;
+    const std::filesystem::path destination = destFolder;
+    for (const auto& relatif : referencedMediaPaths(bundle)) {
+        std::error_code code;
+        const std::filesystem::path depuis = source / relatif;
+        if (bundle.folderPath.empty() || !std::filesystem::exists(depuis, code)) {
+            result.missing.push_back(relatif);
+            continue;
+        }
+        const std::filesystem::path vers = destination / relatif;
+        // EXPORTER SUR PLACE DOIT ÊTRE SANS EFFET, pas destructeur : sans ce
+        // test, `copy_file` sur lui-même vide le fichier.
+        if (std::filesystem::exists(vers, code)
+            && std::filesystem::equivalent(depuis, vers, code))
+            continue;
+        std::filesystem::create_directories(vers.parent_path(), code);
+        std::filesystem::copy_file(depuis, vers,
+                                    std::filesystem::copy_options::overwrite_existing, code);
+        if (code) {
+            result.error = "copie impossible de \"" + relatif + "\" : " + code.message();
+            return result;
+        }
+        result.copiedFiles.push_back(relatif);
+    }
+
     result.success = true;
     return result;
 }

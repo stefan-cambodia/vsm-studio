@@ -1559,7 +1559,7 @@ D0.3 a rendu l'export **honnête** ; ici on le rend complet.
 | D6.1 | Plage au choix (morceau, boucle, sélection), fréquence, profondeur, queue | plus de 48 kHz / 24 bits en dur — **fait** |
 | D6.2 | Export **stems** : une piste ou un bus par fichier | la somme des stems égale le mixage, vérifié par test — **fait** |
 | D6.3 | Export MIDI complet (aujourd'hui : perd `muted` et `confidence`) | relu ailleurs sans perte de tempo ni de signature — **fait** |
-| D6.4 | Export d'un **projet autonome** (dossier complet, échantillons compris) | s'ouvre sur une autre machine sans rien de manquant |
+| D6.4 | Export d'un **projet autonome** (dossier complet, échantillons compris) | s'ouvre sur une autre machine sans rien de manquant — **fait** |
 | D6.5 | Rendu en temps réel, requis dès qu'un plugin tiers l'exige | option explicite, jamais le défaut |
 
 **Critère de phase** : il n'y a toujours qu'**un seul rendu** dans ce projet.
@@ -1664,6 +1664,35 @@ L'application n'en invente pas un second ; elle expose celui de `vsm-render`.
 > sait dire, sont vérifiés sur des cartes à **plusieurs changements** — et pas
 > seulement en comparant les valeurs : le test vérifie qu'un même tick retombe
 > à la même seconde. Un tempo relu de travers ne se voit pas, il s'entend.
+
+
+> **D6.4 EST FAITE (30/08/2026). LE FORMAT ÉTAIT PORTABLE ; L'ENREGISTREMENT NE
+> L'ÉTAIT PAS.** Tous les chemins d'un projet sont relatifs à son dossier
+> depuis toujours, et la lecture refuse même un chemin absolu — l'étape avait
+> donc l'air à moitié faite. Elle ne l'était pas du tout :
+> `saveProjectBundle` n'écrit que `project.json`, le MIDI et les presets, et ne
+> **copie aucun média**. « Enregistrer sous » un autre dossier produisait un
+> `project.json` désignant des fichiers restés dans l'ancien : illisible sur une
+> autre machine, et silencieusement incomplet sur celle-ci.
+>
+> **LES PRISES ÉCARTÉES PARTENT AVEC.** Une prise qu'on n'a pas retenue reste
+> du travail ; ne pas l'emporter reviendrait à décider à la place de
+> l'utilisateur qu'il n'y reviendra pas.
+>
+> **CE QUI MANQUE EST NOMMÉ, ET LE DOSSIER EST ÉCRIT QUAND MÊME.** Refuser
+> d'écrire parce qu'un fichier sur seize est introuvable ferait perdre les
+> quinze autres. L'application le dit au moment où l'on enregistre, plutôt que
+> de le laisser découvrir en rouvrant le projet ailleurs.
+>
+> **EXPORTER SUR PLACE NE DÉTRUIT RIEN.** `copy_file` d'un fichier sur
+> lui-même le vide ; or enregistrer par-dessus son propre dossier est le geste
+> le plus fréquent qui soit (Ctrl+S). La copie reconnaît ce cas et ne fait
+> rien, et un test le garde — c'est celui où une erreur coûterait tout.
+>
+> **LE CRITÈRE EST VÉRIFIÉ COMME IL EST ÉCRIT** : le test ne se contente pas de
+> constater les copies, il **recharge le dossier écrit** et vérifie qu'il ne
+> manque plus rien. « S'ouvre ailleurs » ne se déduit pas d'une liste de
+> fichiers.
 
 
 ### Phase D7 — Héberger les plugins des autres

@@ -3,6 +3,7 @@
 #include "vsm/interchange/ProjectDocument.h"
 #include "vsm/sequencer/Track.h"
 #include <filesystem>
+#include <fstream>
 #include <string>
 
 using namespace vsm::interchange;
@@ -167,4 +168,97 @@ VSM_TEST(a_project_without_punch_keeps_the_file_it_always_had) {
     projet.punchEndTick = 480;
     const auto avecPunch = projectDocumentToJson(documentFromProject(projet)).toString();
     VSM_ASSERT(avecPunch.find("punch") != std::string::npos);
+}
+
+// --- D6.4 : un dossier de projet qui s'ouvre sur une autre machine ----------
+
+VSM_TEST(saving_elsewhere_takes_the_media_along) {
+    // LA PANNE : le format était portable, l'enregistrement ne l'était pas.
+    // Enregistrer sous un autre dossier écrivait un project.json qui désignait
+    // des fichiers restés dans l'ancien.
+    const fs::path source = dossierNeuf("autonome-source");
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    Track piste;
+    piste.name = "Voix";
+    piste.kind = Track::Kind::Audio;
+    piste.audio.path = "audio/voix.wav";
+    piste.audio.sampleRate = 48000.0;
+    piste.audio.frames = 4800;
+    piste.audio.channels = 2;
+    project.tracks.push_back(piste);
+    VSM_ASSERT(saveProjectBundle(project, source.string()).success);
+
+    // Le média, écrit à la main : ce que ferait l'enregistrement d'une prise.
+    const auto fichier = source / "audio" / "voix.wav";
+    fs::create_directories(fichier.parent_path());
+    { std::ofstream flux(fichier, std::ios::binary); flux << "RIFF----WAVEfmt "; }
+
+    const auto chargé = loadProjectBundle(source.string());
+    VSM_ASSERT(chargé.success);
+    VSM_ASSERT(missingMediaPaths(chargé.bundle).empty());
+
+    const fs::path destination = dossierNeuf("autonome-destination");
+    const auto exporté = exportStandaloneProject(chargé.bundle, destination.string());
+    VSM_ASSERT(exporté.success);
+    VSM_ASSERT(exporté.missing.empty());
+    VSM_ASSERT_EQ(exporté.copiedFiles.size(), static_cast<size_t>(1));
+    VSM_ASSERT(fs::exists(destination / "audio" / "voix.wav"));
+
+    // ET LE VRAI CRITÈRE : le dossier écrit se recharge, complet, tout seul.
+    const auto ailleurs = loadProjectBundle(destination.string());
+    VSM_ASSERT(ailleurs.success);
+    VSM_ASSERT(missingMediaPaths(ailleurs.bundle).empty());
+}
+
+VSM_TEST(a_missing_media_is_named_not_swallowed) {
+    const fs::path source = dossierNeuf("autonome-manquant");
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    Track piste;
+    piste.kind = Track::Kind::Audio;
+    piste.audio.path = "audio/introuvable.wav";
+    piste.audio.sampleRate = 48000.0;
+    piste.audio.frames = 100;
+    piste.audio.channels = 2;
+    project.tracks.push_back(piste);
+    VSM_ASSERT(saveProjectBundle(project, source.string()).success);
+
+    const auto chargé = loadProjectBundle(source.string());
+    VSM_ASSERT(chargé.success);
+    VSM_ASSERT_EQ(missingMediaPaths(chargé.bundle).size(), static_cast<size_t>(1));
+
+    const fs::path destination = dossierNeuf("autonome-manquant-dest");
+    const auto exporté = exportStandaloneProject(chargé.bundle, destination.string());
+    // ON ÉCRIT QUAND MÊME, et on nomme ce qui manque : refuser ferait perdre
+    // les pistes qui, elles, sont là.
+    VSM_ASSERT(exporté.success);
+    VSM_ASSERT_EQ(exporté.missing.size(), static_cast<size_t>(1));
+    VSM_ASSERT_EQ(exporté.missing[0], std::string("audio/introuvable.wav"));
+}
+
+VSM_TEST(exporting_a_project_onto_itself_does_not_empty_its_media) {
+    // `copy_file` sur lui-même vide le fichier. Enregistrer par-dessus son
+    // propre dossier est ce qu'on fait le plus souvent (Ctrl+S) : c'est le cas
+    // où une erreur coûterait tout.
+    const fs::path dossier = dossierNeuf("autonome-sur-place");
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    Track piste;
+    piste.kind = Track::Kind::Audio;
+    piste.audio.path = "audio/prise.wav";
+    piste.audio.sampleRate = 48000.0;
+    piste.audio.frames = 100;
+    piste.audio.channels = 2;
+    project.tracks.push_back(piste);
+    VSM_ASSERT(saveProjectBundle(project, dossier.string()).success);
+    const auto fichier = dossier / "audio" / "prise.wav";
+    fs::create_directories(fichier.parent_path());
+    { std::ofstream flux(fichier, std::ios::binary); flux << "des octets qui comptent"; }
+    const auto tailleAvant = fs::file_size(fichier);
+
+    const auto chargé = loadProjectBundle(dossier.string());
+    VSM_ASSERT(chargé.success);
+    VSM_ASSERT(exportStandaloneProject(chargé.bundle, dossier.string()).success);
+    VSM_ASSERT_EQ(fs::file_size(fichier), tailleAvant);
 }

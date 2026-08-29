@@ -1744,12 +1744,34 @@ bool MainComponent::writeProjectTo(const juce::File& folder) {
             presets[i] = vsm::interchange::capturePreset(*plugin, track.instrumentId, track.name);
     }
 
-    const auto result = vsm::interchange::saveProjectBundle(
-        project_, folder.getFullPathName().toStdString(), presets);
+    // D6.4 : ENREGISTRER, C'EST AUSSI EMPORTER LES MÉDIAS. `saveProjectBundle`
+    // n'écrit que le projet, le MIDI et les presets. Enregistrer SOUS un autre
+    // dossier produisait donc un `project.json` qui désignait des fichiers
+    // restés dans l'ancien : illisible sur une autre machine, et silencieusement
+    // incomplet sur celle-ci. Sur place, la copie se reconnaît et ne fait rien.
+    vsm::interchange::LoadedBundle aEcrire;
+    aEcrire.project = project_;
+    aEcrire.document = vsm::interchange::documentFromProject(project_);
+    aEcrire.folderPath = currentProjectFolder_ == juce::File()
+                             ? std::string()
+                             : currentProjectFolder_.getFullPathName().toStdString();
+    aEcrire.presetsByTrack = presets;
+
+    const auto result = vsm::interchange::exportStandaloneProject(
+        aEcrire, folder.getFullPathName().toStdString());
     if (!result.success) {
         juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
                                                 "Enregistrement impossible", result.error);
         return false;
+    }
+    // CE QUI MANQUE EST DIT AU MOMENT OÙ ON ENREGISTRE, pas découvert en
+    // rouvrant le projet ailleurs.
+    if (!result.missing.empty()) {
+        juce::String message(u8"Le projet est enregistré, mais ces fichiers qu'il désigne "
+                             u8"sont introuvables :\n");
+        for (const auto& manquant : result.missing) message += "\n" + juce::String(manquant);
+        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                                                 u8"Projet incomplet", message);
     }
     currentProjectFolder_ = folder;
     // Le nom du dossier passe dans le titre de la fenêtre : c'est le retour
