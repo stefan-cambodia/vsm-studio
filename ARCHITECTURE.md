@@ -30,7 +30,7 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **928 tests moteur** (98 core + 679 audio
+écoute au clic, et toute la logique testée hors JUCE. Total : **933 tests moteur** (98 core + 684 audio
 + 129 interchange + 11 CLAP + 11 façades,
 tous verts, zéro warning, y compris sous les flags stricts type-JUCE
 `-Wfloat-equal -Wsign-conversion -Wshadow`) + application complète compilée et
@@ -322,7 +322,7 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 928 tests moteur + 18 tests d'analyse, tous verts
+### Bilan actuel : 933 tests moteur + 18 tests d'analyse, tous verts
 
 - **84 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des

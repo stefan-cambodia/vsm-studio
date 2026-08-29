@@ -9,6 +9,8 @@ TransportBarComponent::TransportBarComponent(RealtimeTransport& transport) : tra
     addAndMakeVisible(stopButton_);
     addAndMakeVisible(recordButton_);
     addAndMakeVisible(loopButton_);
+    addAndMakeVisible(metronomeButton_);
+    addAndMakeVisible(tapButton_);
     addAndMakeVisible(listenButton_);
     addAndMakeVisible(openButton_);
     addAndMakeVisible(exportButton_);
@@ -39,6 +41,45 @@ TransportBarComponent::TransportBarComponent(RealtimeTransport& transport) : tra
     loopButton_.setTooltip("Boucle. La région se règle en tirant sur la règle "
                             "du piano roll avec Maj ; sans région, la boucle "
                             "couvre tout le morceau.");
+    metronomeButton_.setClickingTogglesState(true);
+    metronomeButton_.setColour(juce::TextButton::buttonOnColourId, Palette::accentTeal);
+    metronomeButton_.setTooltip("Metronome : un clic par temps, plus aigu sur le premier "
+                                 "de la mesure. Jamais present dans un export.");
+    metronomeButton_.onClick = [this] {
+        if (onMetronomeToggled) onMetronomeToggled(metronomeButton_.getToggleState());
+    };
+
+    // TAP TEMPO. La moyenne des intervalles des quatre dernières frappes : une
+    // seule mesure est trop bruyante pour être jouable, et davantage rendrait
+    // le bouton paresseux quand on cherche le tempo.
+    tapButton_.setTooltip("Frapper le tempo. Deux frappes suffisent ; une pause d'une "
+                           "seconde et demie recommence le compte.");
+    tapButton_.onClick = [this] {
+        const double maintenant = juce::Time::getMillisecondCounterHiRes() * 0.001;
+        if (!tapTimes_.isEmpty() && maintenant - tapTimes_.getLast() > 1.5)
+            tapTimes_.clear();     // on a hésité : on repart de zéro
+        tapTimes_.add(maintenant);
+        while (tapTimes_.size() > 5) tapTimes_.remove(0);
+        if (tapTimes_.size() < 2) return;
+        const double duree = tapTimes_.getLast() - tapTimes_.getFirst();
+        const double intervalle = duree / static_cast<double>(tapTimes_.size() - 1);
+        if (intervalle <= 0.0) return;
+        const double bpm = juce::jlimit(20.0, 300.0, 60.0 / intervalle);
+        setBpm(bpm);
+        if (onTempoChanged) onTempoChanged(bpm);
+    };
+
+    // LE TEMPO S'ÉDITE. Double-clic sur la valeur, ou la frapper au bouton.
+    bpmLabel_.setEditable(false, true, false);
+    bpmLabel_.setTooltip("Double-cliquer pour changer le tempo.");
+    bpmLabel_.onTextChange = [this] {
+        const double bpm = bpmLabel_.getText().retainCharacters("0123456789.").getDoubleValue();
+        if (bpm < 20.0 || bpm > 300.0) { setBpm(dernierBpm_); return; }   // valeur refusée, pas devinée
+        dernierBpm_ = bpm;
+        setBpm(bpm);
+        if (onTempoChanged) onTempoChanged(bpm);
+    };
+
     listenButton_.onClick = [this] { if (onCycleListening) onCycleListening(); };
     listenButton_.setTooltip("Écoute A/B : reconstruction, les deux, original (touche R)");
     setListening("Écoute A/B : pas d'original", false, false);
@@ -87,7 +128,9 @@ void TransportBarComponent::paint(juce::Graphics& g) {
 void TransportBarComponent::resized() {
     auto area = getLocalBounds().reduced(8, 6);
 
-    auto transportArea = area.removeFromLeft(320);
+    // Élargi : la rangée porte maintenant le métronome, le tap tempo et le
+    // témoin d'entrée en plus du transport.
+    auto transportArea = area.removeFromLeft(460);
     playButton_.setBounds(transportArea.removeFromLeft(70));
     transportArea.removeFromLeft(4);
     stopButton_.setBounds(transportArea.removeFromLeft(70));
@@ -95,6 +138,10 @@ void TransportBarComponent::resized() {
     recordButton_.setBounds(transportArea.removeFromLeft(60));
     transportArea.removeFromLeft(4);
     loopButton_.setBounds(transportArea.removeFromLeft(60));
+    transportArea.removeFromLeft(4);
+    metronomeButton_.setBounds(transportArea.removeFromLeft(56));
+    transportArea.removeFromLeft(4);
+    tapButton_.setBounds(transportArea.removeFromLeft(50));
     transportArea.removeFromLeft(6);
     inputMeterBounds_ = transportArea.removeFromLeft(10).reduced(0, 2);
 
@@ -145,6 +192,7 @@ void TransportBarComponent::setListening(const juce::String& label, bool enabled
 
 void TransportBarComponent::setBpm(double bpm) {
     bpm_ = bpm;
+    dernierBpm_ = bpm;
     bpmLabel_.setText(juce::String(bpm, 1) + " BPM", juce::dontSendNotification);
 }
 

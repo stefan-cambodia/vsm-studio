@@ -589,6 +589,31 @@ pas seulement l'écouter.
 > ne rien voir est le premier échec possible d'un enregistrement, et il n'a rien
 > à voir avec l'enregistrement : c'est la carte, le câble ou le canal. Un témoin
 > permanent sépare les deux questions avant qu'on ne les confonde.
+>
+> **D3.2 EST FAITE, sauf le décompte** (qui n'a de sens qu'avec
+> l'enregistrement, D3.3). Le tempo **s'édite** — il n'était qu'un `juce::Label`
+> jamais rendu éditable, dont la valeur venait du projet importé : on ne pouvait
+> donc pas commencer un morceau à partir de rien, ce qui est le premier geste
+> d'un studio. Il se frappe aussi au bouton **Tap** (moyenne des intervalles des
+> quatre dernières frappes ; une pause d'une seconde et demie recommence le
+> compte). Et le changer est une action **annulable**, comme le reste.
+>
+> **LE MÉTRONOME N'EST PAS UNE MACHINE DU PARC, ET C'EST RAISONNÉ.** Toutes les
+> autres sources de son de ce projet sont des instruments : elles reçoivent des
+> notes, se règlent, s'exportent en preset, figent leur rendu par une empreinte.
+> Le métronome n'est rien de cela — il ne joue pas de musique, il compte. Le
+> faire passer par une piste et un instrument obligerait à inventer des notes
+> absentes du morceau, à les écarter de l'export, et à expliquer pourquoi une
+> piste ne s'entend pas au rendu. Il vit donc dans le graphe, **après la tranche
+> master** comme la piste de référence : le faire passer par le compresseur
+> ferait plonger tout le mixage à chaque temps. Et il ne s'exporte **jamais** —
+> le rendu hors ligne monte son propre graphe et ne l'allume pas.
+>
+> Cinq tests le couvrent, dont deux sur le seul piège de la chose : un intervalle
+> qui commence entre deux temps ne doit pas en inventer un (sans quoi le
+> métronome battrait la mesure du **bloc audio** et non celle du morceau), et
+> deux blocs qui se suivent ne doivent pas compter deux fois le temps de leur
+> frontière.
 
 ### Phase D4 — La console
 

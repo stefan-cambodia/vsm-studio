@@ -1,6 +1,7 @@
 #pragma once
 #include "vsm/audio/effect/IAudioEffect.h"
 #include "vsm/audio/engine/AudioTrackSource.h"
+#include "vsm/audio/engine/Metronome.h"
 #include "vsm/audio/engine/AutomationLane.h"
 #include "vsm/audio/engine/MasterBus.h"
 #include "vsm/audio/engine/ReferenceTrack.h"
@@ -102,6 +103,14 @@ public:
     /// rythmes n'a que faire d'un pitch bend -- mais c'est ce qui permet à
     /// l'interface de dire pourquoi une modulation ne s'entend pas.
     uint64_t ignoredControlEvents() const { return ignoredControlEvents_.load(std::memory_order_relaxed); }
+    /// LE MÉTRONOME. Éteint par défaut, et il doit le rester pour le rendu
+    /// hors ligne : un clic dans un fichier exporté serait une faute grossière.
+    /// Le rendu hors ligne monte son propre graphe et ne l'allume jamais ;
+    /// c'est l'application qui décide, et elle seule.
+    void setMetronomeEnabled(bool on) { metronomeEnabled_.store(on, std::memory_order_relaxed); }
+    bool metronomeEnabled() const { return metronomeEnabled_.load(std::memory_order_relaxed); }
+    void setMetronomeLevel(float level) { metronome_.setLevel(level); }
+
     void resetEventCounters() {
         droppedNoteEvents_.store(0, std::memory_order_relaxed);
         ignoredControlEvents_.store(0, std::memory_order_relaxed);
@@ -277,6 +286,9 @@ private:
     /// depuis le thread audio, lus par l'interface : `relaxed` suffit, aucune
     /// autre donnée n'en dépend.
     std::array<std::atomic<std::shared_ptr<const AudioTrackSource>>, kMaxTracks> audioSources_;
+
+    Metronome metronome_;
+    std::atomic<bool> metronomeEnabled_{false};
 
     std::atomic<uint64_t> droppedNoteEvents_{0};
     std::atomic<uint64_t> ignoredControlEvents_{0};

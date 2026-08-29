@@ -219,6 +219,19 @@ MainComponent::MainComponent()
     // La région de boucle est publiée aux DEUX transports, dans leurs unités
     // respectives : l'horloge audio est celle qui reboucle réellement, le
     // transport MIDI la suit pour rester cohérent en mode sans carte son.
+    transportBar_.onMetronomeToggled = [this](bool actif) {
+        audioEngine_.processGraph().setMetronomeEnabled(actif);
+    };
+    transportBar_.onTempoChanged = [this](double bpm) {
+        // LE TEMPO EST UNE DONNÉE DU PROJET, et le changer est une action
+        // annulable comme les autres.
+        beginProjectEdit("Tempo");
+        project_.tempoMap.clearTempoChanges();
+        project_.tempoMap.addTempoChange(0, static_cast<uint32_t>(std::llround(60000000.0 / bpm)));
+        refreshTransportSchedule();
+        audioEngine_.processGraph().setProject(project_);
+        pianoRollPanel_.refresh();
+    };
     transportBar_.onLoopToggled = [this](bool active) {
         // Sans région définie, boucler sur tout le morceau : demander à
         // l'utilisateur de tirer d'abord sur une règle pour que le bouton

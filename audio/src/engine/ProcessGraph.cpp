@@ -305,6 +305,34 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
     // activée (bypass par défaut) -> comportement historique préservé.
     masterBus_.process(outputL, outputR, samplesToProcess);
 
+    // MÉTRONOME, mélangé APRÈS le master et pour la même raison que la piste de
+    // référence : il n'appartient pas au morceau. Le faire passer par le
+    // compresseur ferait plonger tout le mixage à chaque temps.
+    if (metronomeEnabled_.load(std::memory_order_relaxed)) {
+        const auto snapshot = snapshot_.load(std::memory_order_acquire);
+        if (snapshot) {
+            const Project& projet = snapshot->project;
+            // La position DU DÉBUT DU BLOC, celle qui vient d'être jouée --
+            // `currentSeconds_` a déjà avancé à la fin du bloc.
+            const double finSecondes = currentSeconds_.load(std::memory_order_acquire);
+            const double debutSecondes = std::max(
+                0.0, finSecondes - static_cast<double>(samplesToProcess) / sampleRate_);
+            const int64_t debutTick = projet.secondsToTicks(debutSecondes);
+            const int64_t finTick = projet.secondsToTicks(finSecondes);
+            const int numerateur = projet.timeSignatureMap.numeratorAt(debutTick);
+            forEachBeatInRange(debutTick, finTick, projet.ticksPerQuarterNote, numerateur,
+                                [&](int64_t tick, bool accent) {
+                                    (void)tick;
+                                    metronome_.trigger(accent);
+                                });
+        }
+        for (int i = 0; i < samplesToProcess; ++i) {
+            const float clic = metronome_.nextSample();
+            outputL[i] += clic;
+            outputR[i] += clic;
+        }
+    }
+
     // RÉFÉRENCE : mélangée APRÈS le master, et jamais avant. La tranche master
     // appartient à la reconstruction ; la faire agir sur l'enregistrement
     // d'origine reviendrait à comparer deux sons également traités au lieu de

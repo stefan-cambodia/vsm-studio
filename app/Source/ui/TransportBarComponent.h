@@ -27,6 +27,15 @@ public:
     /// qu'en tirant sur la règle du piano roll avec la touche Maj -- geste que
     /// rien n'indiquait.
     std::function<void(bool)> onLoopToggled;
+    /// Le tempo, changé à la main ou frappé au bouton « Tap ».
+    ///
+    /// Il était AFFICHÉ ET RIEN D'AUTRE : un `juce::Label` jamais rendu
+    /// éditable, dont la valeur venait du projet importé. On ne pouvait donc
+    /// pas commencer un morceau à partir de rien, ce qui est le premier geste
+    /// d'un studio.
+    std::function<void(double)> onTempoChanged;
+    /// Le métronome. Il n'existait pas.
+    std::function<void(bool)> onMetronomeToggled;
     /// Reflète l'état réel de la boucle (l'utilisateur peut aussi la définir
     /// depuis la règle).
     void setLooping(bool active);
@@ -56,6 +65,12 @@ private:
     juce::TextButton playButton_   { "Play" };
     juce::TextButton stopButton_   { "Stop" };
     juce::TextButton recordButton_ { "Rec" };
+    juce::TextButton metronomeButton_ { "Clic" };
+    juce::TextButton tapButton_ { "Tap" };
+    /// Instants des dernières frappes du bouton « Tap », pour en tirer un
+    /// tempo. Une frappe isolée ne dit rien ; il en faut au moins deux.
+    juce::Array<double> tapTimes_;
+    double dernierBpm_ = 120.0;
     float inputPeak_ = 0.0f;
     int inputChannels_ = 0;
     juce::Rectangle<int> inputMeterBounds_;
