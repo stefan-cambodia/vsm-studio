@@ -674,6 +674,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                               gelee ? u8"Dégeler la piste (l'instrument reprend)"
                                     : u8"Geler la piste (l'instrument s'arrête)",
                               gelable);
+                menu.addItem(kMenuTrackBounce, u8"Reporter la piste en audio (définitif)",
+                              gelable);
             }
             break;
         case 3:
@@ -924,6 +926,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuTrackAddGroup: addTrack(Track::Kind::Group); break;
         case kMenuTrackRemove:   removeSelectedTrack(); break;
         case kMenuTrackFreeze:   toggleFreezeSelectedTrack(); break;
+        case kMenuTrackBounce:   bounceSelectedTrack(); break;
         case kMenuViewTracks:    togglePanel(trackListWindow_); break;
         case kMenuViewPianoRoll: togglePanel(pianoRollWindow_); break;
         case kMenuViewSynthRack: togglePanel(synthRackWindow_); break;
@@ -1875,6 +1878,110 @@ void MainComponent::toggleFreezeSelectedTrack() {
     piste.frozenAudio.sampleRate = options.sampleRate;
     piste.frozenAudio.frames = static_cast<int64_t>(gel.numFrames());
     piste.frozenAudio.channels = 2;
+    rebuildFromProject(false);
+}
+
+void MainComponent::bounceSelectedTrack() {
+    const size_t index = trackList_.selectedTrackIndex();
+    if (index >= project_.tracks.size()) return;
+    if (project_.tracks[index].kind != Track::Kind::Midi) return;
+
+    if (currentProjectFolder_ == juce::File()) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Projet jamais enregistré",
+            juce::String(u8"Un report est un FICHIER, et le format range les fichiers d'un "
+                          u8"projet par chemin relatif à son dossier. Enregistrez d'abord le "
+                          u8"projet (Ctrl+S)."));
+        return;
+    }
+
+    // REPORTER EST UNE DÉCISION, GELER N'EN EST PAS UNE : le report remplace le
+    // matériau, et on le demande avant de le faire. L'annulation le rattrape
+    // dans la session, mais pas après une fermeture -- c'est exactement ce que
+    // veut dire « définitif », et le dire vaut mieux que de le découvrir.
+    juce::AlertWindow::showOkCancelBox(
+        juce::AlertWindow::QuestionIcon, u8"Reporter la piste en audio",
+        juce::String(u8"Les notes, l'instrument et les inserts de « ")
+            + juce::String(project_.tracks[index].name)
+            + juce::String(u8" » seront remplacés par leur rendu. C'est annulable tant que "
+                            u8"la session est ouverte, et définitif ensuite.\n\nPour un "
+                            u8"allègement réversible, préférez GELER la piste."),
+        u8"Reporter", "Annuler", nullptr,
+        juce::ModalCallbackFunction::create([this, index](int choix) {
+            if (choix == 0) return;
+            performBounce(index);
+        }));
+}
+
+void MainComponent::performBounce(size_t index) {
+    if (index >= project_.tracks.size()) return;
+
+    captureSessionIntoProject();
+    vsm::interchange::LoadedBundle bundle;
+    bundle.project = project_;
+    bundle.document = vsm::interchange::documentFromProject(project_);
+    bundle.folderPath = currentProjectFolder_.getFullPathName().toStdString();
+    if (!project_.tracks[index].instrumentId.empty())
+        if (auto* machine = audioEngine_.processGraph().trackInstrument(index))
+            bundle.presetsByTrack[index] = vsm::interchange::capturePreset(
+                *machine, project_.tracks[index].instrumentId, project_.tracks[index].name);
+
+    vsm::interchange::RenderOptions options;
+    options.sampleRate = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate()
+                                                                 : 48000.0;
+    options.blockSize = audioEngine_.currentBlockSize() > 0 ? audioEngine_.currentBlockSize() : 512;
+    options.format = vsm::audio::io::SampleFormat::Float32;
+
+    // LE MÊME RENDU QUE LE GEL, et c'est voulu : reporter et geler capturent
+    // exactement la même chose, et seule la suite diffère. Deux rendus
+    // différents finiraient par ne plus sonner pareil.
+    vsm::audio::engine::RenderedAudio rendu;
+    const auto resultat = vsm::interchange::renderTrackForFreeze(bundle, index, rendu, options);
+    if (!resultat.success) {
+        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                                                 u8"Report impossible", resultat.error);
+        return;
+    }
+
+    const juce::String relatif = "audio/report-piste-" + juce::String(static_cast<int>(index) + 1) + ".wav";
+    const juce::File fichier = currentProjectFolder_.getChildFile(relatif);
+    fichier.getParentDirectory().createDirectory();
+    try {
+        vsm::audio::io::WavFileWriter::writeFile(rendu.left.data(), rendu.right.data(),
+                                                  rendu.numFrames(), options.sampleRate,
+                                                  options.format,
+                                                  fichier.getFullPathName().toStdString());
+    } catch (const std::exception& e) {
+        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                                                 u8"Report impossible", e.what());
+        return;
+    }
+
+    beginProjectEdit(u8"Reporter une piste en audio");
+    auto& piste = project_.tracks[index];
+    piste.kind = Track::Kind::Audio;
+    piste.audio.path = relatif.toStdString();
+    piste.audio.sampleRate = options.sampleRate;
+    piste.audio.frames = static_cast<int64_t>(rendu.numFrames());
+    piste.audio.channels = 2;
+    // CE QUI EST DANS LE FICHIER N'A PLUS À TOURNER : notes, instrument,
+    // inserts et découpe sont désormais du son. Les garder les appliquerait
+    // une seconde fois, par-dessus leur propre rendu.
+    piste.notes.clear();
+    piste.instrumentId.clear();
+    piste.presetId.clear();
+    piste.effects.clear();
+    piste.clips.clear();
+    piste.frozen = false;
+    piste.frozenAudio = {};
+    // L'AUTOMATION DU MIXAGE SURVIT, celle des machines part avec elles : la
+    // première pilote encore quelque chose, la seconde ne vise plus rien.
+    piste.automation.erase(
+        std::remove_if(piste.automation.begin(), piste.automation.end(),
+                        [](const vsm::sequencer::AutomationCurve& c) {
+                            return c.parameter.rfind("mix.", 0) != 0;
+                        }),
+        piste.automation.end());
     rebuildFromProject(false);
 }
 

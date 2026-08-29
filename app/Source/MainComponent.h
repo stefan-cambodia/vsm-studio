@@ -102,6 +102,7 @@ private:
         kMenuTrackAddGroup,
         kMenuTrackRemove,
         kMenuTrackFreeze,
+        kMenuTrackBounce,
         kMenuRecordCountInNone,
         kMenuRecordCountInOne,
         kMenuRecordCountInTwo,
@@ -276,6 +277,12 @@ private:
     /// le dégel efface le fichier et remet l'instrument en marche. Le matériau
     /// n'est jamais détruit -- ce serait un report, pas un gel.
     void toggleFreezeSelectedTrack();
+    /// REPORTE la piste sélectionnée : son rendu REMPLACE son matériau, et elle
+    /// devient une piste audio. C'est le même rendu que le gel, suivi d'une
+    /// décision -- geler n'en est pas une, reporter en est une.
+    void bounceSelectedTrack();
+    /// Fait le report, une fois qu'il a été confirmé.
+    void performBounce(size_t trackIndex);
     /// Le dossier `gel/` du projet, où vont les rendus de pistes gelées.
     juce::String frozenPathFor(size_t trackIndex) const;
     void exportMidiFile();

@@ -238,3 +238,61 @@ VSM_TEST(the_bounds_of_an_empty_selection_are_reported_as_absent) {
     VSM_ASSERT(duplicateClips(clips, {}, 960, compteur).empty());
     VSM_ASSERT_EQ(clips.size(), size_t(1));
 }
+
+// --- D5.6 : fondus, gain et phase sur le clip -------------------------------
+
+VSM_TEST(a_fade_is_measured_in_seconds_and_pulled_from_the_corner) {
+    // Le fondu suit le SON, pas le tempo : accélérer un morceau ne doit pas
+    // raccourcir ses fondus. D'où des secondes dans le modèle, et une
+    // conversion à l'entrée.
+    std::vector<Clip> clips{clip(1, 960, 1920)};
+    setClipFadeIn(clips, 1, 1920, 100000, enSecondes);   // 960 ticks = 1 s
+    VSM_ASSERT_NEAR(clips[0].fadeInSeconds, 1.0, 1e-9);
+
+    setClipFadeOut(clips, 1, 2400, 100000, enSecondes);  // 480 ticks avant la fin
+    VSM_ASSERT_NEAR(clips[0].fadeOutSeconds, 0.5, 1e-9);
+}
+
+VSM_TEST(a_fade_never_runs_past_the_clip) {
+    // Au-delà, il mangerait ce qui vient après et ne s'entendrait plus comme un
+    // fondu.
+    std::vector<Clip> clips{clip(1, 0, 960)};
+    setClipFadeIn(clips, 1, 99999, 100000, enSecondes);
+    VSM_ASSERT_NEAR(clips[0].fadeInSeconds, 1.0, 1e-9);   // le clip entier, pas plus
+    setClipFadeIn(clips, 1, -5000, 100000, enSecondes);
+    VSM_ASSERT_NEAR(clips[0].fadeInSeconds, 0.0, 1e-9);
+    setClipFadeOut(clips, 1, -5000, 100000, enSecondes);
+    VSM_ASSERT_NEAR(clips[0].fadeOutSeconds, 1.0, 1e-9);
+}
+
+VSM_TEST(a_clip_gain_is_never_negative) {
+    // Une inversion de phase est un réglage à part : la confondre avec un gain
+    // négatif rendrait le bouton illisible -- on ne saurait plus si un clip est
+    // faible ou inversé.
+    std::vector<Clip> clips{clip(1, 0, 960)};
+    setClipGain(clips, {1}, 1.8f);
+    VSM_ASSERT_NEAR(clips[0].gain, 1.8f, 1e-6f);
+    setClipGain(clips, {1}, -2.0f);
+    VSM_ASSERT_NEAR(clips[0].gain, 0.0f, 1e-6f);
+}
+
+VSM_TEST(inverting_the_phase_toggles_each_clip_rather_than_aligning_them) {
+    // Inverser une sélection dont la moitié l'est déjà doit rendre l'autre
+    // moitié, pas tout aligner.
+    std::vector<Clip> clips{clip(1, 0, 480), clip(2, 480, 480)};
+    clips[1].invertPhase = true;
+    toggleClipPhase(clips, {1, 2});
+    VSM_ASSERT(clips[0].invertPhase);
+    VSM_ASSERT(!clips[1].invertPhase);
+}
+
+VSM_TEST(these_gestures_ignore_a_clip_that_is_not_there) {
+    std::vector<Clip> clips{clip(1, 0, 960)};
+    setClipFadeIn(clips, 999, 480, 100000, enSecondes);
+    setClipFadeOut(clips, 999, 480, 100000, enSecondes);
+    setClipGain(clips, {}, 0.5f);
+    toggleClipPhase(clips, {});
+    VSM_ASSERT_NEAR(clips[0].fadeInSeconds, 0.0, 1e-9);
+    VSM_ASSERT_NEAR(clips[0].gain, 1.0f, 1e-6f);
+    VSM_ASSERT(!clips[0].invertPhase);
+}

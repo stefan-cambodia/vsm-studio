@@ -78,8 +78,15 @@ int main(int argc, char** argv) {
             piste.audio.sampleRate = 48000.0;
             piste.audio.frames = 48000 * 12;
             piste.audio.channels = 2;
-            piste.clips.push_back({0, 0, mesure * 2, mesure * 3, false, "Prise 3",
-                                    modeles[p].couleur});
+            // Des FONDUS et une PHASE INVERSÉE, pour vérifier à l'oeil qu'ils se
+            // voient : un fondu réglé qui ne se dessinerait pas obligerait à
+            // écouter pour savoir s'il existe.
+            vsm::sequencer::Clip prise{0, 0, mesure * 2, mesure * 3, false, "Prise 3",
+                                        modeles[p].couleur};
+            prise.fadeInSeconds = 0.6;
+            prise.fadeOutSeconds = 1.2;
+            prise.invertPhase = true;
+            piste.clips.push_back(prise);
         }
         projet.tracks.push_back(std::move(piste));
     }

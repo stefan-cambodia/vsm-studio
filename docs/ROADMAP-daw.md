@@ -1242,7 +1242,7 @@ D1 a mis les clips dans le modèle ; ici on les rend manipulables.
 | D5.3 | Pliage des pistes, hauteurs réglables, réordonnancement, couleurs choisies | l'écran tient 16 pistes — **fait** |
 | D5.4 | Automation dessinée **sur** l'arrangement, avec zoom et courbes | plus une lane isolée dans un onglet — **fait** |
 | D5.5 | Gel et report (*freeze* / *bounce*) d'une piste en audio | une piste gelée sonne identique et coûte le prix d'une lecture audio — **fait** |
-| D5.6 | Gain, fondus et inversion de phase **réglés à la souris** sur le clip (venus de D2.4 : le modèle et le moteur les portent déjà) | un fondu se tire sur le coin du clip |
+| D5.6 | Gain, fondus et inversion de phase **réglés à la souris** sur le clip (venus de D2.4 : le modèle et le moteur les portent déjà) | un fondu se tire sur le coin du clip — **fait** |
 | D5.7 | Forme d'onde dessinée dans le clip audio, avec cache d'aperçu (venue de D2.5) | 9 minutes s'affichent sans bloquer l'interface |
 
 **Critère de phase** : arranger une reconstruction — déplacer un refrain,
@@ -1479,6 +1479,47 @@ doubler une mesure, boucler quatre temps — se fait entièrement à la souris.
 >
 > Au passage, `renderBundleToWav` s'est scindé : rendre en mémoire et poser sur
 > le disque sont deux gestes, et le gel avait besoin du premier sans le second.
+
+> **LE REPORT (*bounce*) COMPLÈTE L'ÉTAPE.** C'est le **même rendu** que le gel
+> — deux rendus différents finiraient par ne plus sonner pareil — suivi d'une
+> décision : le matériau est remplacé, la piste devient audio, et notes,
+> instrument, inserts et découpe s'en vont parce qu'ils sont désormais **dans le
+> fichier**. Les garder les appliquerait une seconde fois, par-dessus leur
+> propre rendu.
+>
+> **REPORTER SE DEMANDE, GELER NON.** Le report est annulable tant que la
+> session est ouverte et définitif ensuite : c'est exactement ce que veut dire
+> « définitif », et le dire vaut mieux que de le laisser découvrir. La demande
+> renvoie d'ailleurs vers le gel pour qui cherchait seulement à alléger.
+> **L'automation du mixage survit** au report, celle des machines part avec
+> elles : la première pilote encore quelque chose, la seconde ne vise plus rien.
+>
+> **D5.6 EST FAITE (30/08/2026).** Le modèle et le moteur portaient déjà les
+> fondus, le gain et l'inversion de phase depuis D2.4 ; rien ne permettait de
+> les toucher.
+>
+> **LE HAUT ET LE BAS D'UN MÊME BORD FONT DEUX CHOSES** : le coin du haut tire
+> un fondu, le bord redimensionne. C'est la convention de tous les séquenceurs,
+> et elle tient parce qu'un fondu se dessine justement depuis le haut du clip.
+> Chacun a son curseur — sans cela, rien ne distinguerait les huit pixels qui
+> tirent un fondu de ceux qui redimensionnent, et on découvrirait la différence
+> en la subissant.
+>
+> **UN FONDU SE MESURE EN SECONDES**, comme la fenêtre d'un clip audio et pour
+> la même raison : il suit le SON, pas le tempo. Accélérer un morceau ne doit
+> pas raccourcir ses fondus. Il ne dépasse jamais le clip — au-delà il mangerait
+> ce qui vient après et ne s'entendrait plus comme un fondu.
+>
+> **UN GAIN DE CLIP N'EST JAMAIS NÉGATIF.** L'inversion de phase est un réglage
+> à part, et la confondre avec un gain négatif rendrait le bouton illisible : on
+> ne saurait plus si un clip est faible ou inversé. L'inversion **bascule** par
+> clip plutôt que d'aligner la sélection — inverser une sélection dont la moitié
+> l'est déjà doit rendre l'autre moitié.
+>
+> **LES TROIS SE VOIENT** : les fondus en triangles sombres aux coins, la phase
+> inversée en liséré de tirets. Un réglage qui ne se dessinerait pas obligerait
+> à écouter pour savoir s'il existe, et deux clips identiques dont l'un est
+> inversé s'annulent en s'additionnant sans que rien d'autre ne le dise.
 
 
 ### Phase D6 — Exporter

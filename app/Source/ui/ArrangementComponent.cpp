@@ -236,7 +236,17 @@ Clip* ArrangementComponent::clipAt(juce::Point<float> point, size_t& trackIndex,
         const float x2 = tickToX(it->startTick + clipPlayedLength(*it, fin));
         if (point.x < x1 || point.x > x2) continue;
         trackIndex = static_cast<size_t>(piste);
-        if (point.x - x1 <= kBordSensible && x2 - x1 > 3 * kBordSensible) bord = Geste::BordGauche;
+        // LES COINS DU HAUT TIRENT LES FONDUS (D5.6), les bords redimensionnent.
+        // Le haut et le bas d'un même bord font deux choses : c'est la
+        // convention de tous les séquenceurs, et elle tient parce qu'un fondu
+        // se dessine justement depuis le haut du clip.
+        const float hautClip = static_cast<float>(trackTop(trackIndex) + 3);
+        const bool enHaut = point.y <= hautClip + 8.0f;
+        if (enHaut && point.x - x1 <= kBordSensible * 2.0f && x2 - x1 > 4 * kBordSensible)
+            bord = Geste::FonduEntree;
+        else if (enHaut && x2 - point.x <= kBordSensible * 2.0f && x2 - x1 > 4 * kBordSensible)
+            bord = Geste::FonduSortie;
+        else if (point.x - x1 <= kBordSensible && x2 - x1 > 3 * kBordSensible) bord = Geste::BordGauche;
         else if (x2 - point.x <= kBordSensible && x2 - x1 > 3 * kBordSensible) bord = Geste::BordDroit;
         return &(*it);
     }
@@ -395,9 +405,12 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
     geste_ = bord;
     gesteOrigine_ = xToTick(point.x);
     gesteDernier_ = gesteOrigine_;
+    clipFondu_ = clip->id;
     if (onEditStarted)
-        onEditStarted(bord == Geste::Deplacer ? juce::String(u8"Déplacer un clip")
-                                               : juce::String(u8"Redimensionner un clip"));
+        onEditStarted(bord == Geste::FonduEntree || bord == Geste::FonduSortie
+                          ? juce::String(u8"Fondu d'un clip")
+                      : bord == Geste::Deplacer ? juce::String(u8"Déplacer un clip")
+                                                 : juce::String(u8"Redimensionner un clip"));
     repaint();
 }
 
@@ -456,6 +469,23 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
     const int piste = trackAtY(event.position.y);
     juce::ignoreUnused(piste);
 
+    // LES FONDUS SE TIRENT EN ABSOLU, pas en relatif : le coin suit le
+    // pointeur, comme on l'attend d'une poignée qu'on tient.
+    if (geste_ == Geste::FonduEntree || geste_ == Geste::FonduSortie) {
+        const vsm::midi::Tick ou = xToTick(event.position.x);
+        auto conversion = [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); };
+        for (auto& track : project_->tracks) {
+            const vsm::midi::Tick fin = materialEnd(track);
+            if (geste_ == Geste::FonduEntree)
+                setClipFadeIn(track.clips, clipFondu_, ou, fin, conversion);
+            else
+                setClipFadeOut(track.clips, clipFondu_, ou, fin, conversion);
+        }
+        notifyChanged();
+        repaint();
+        return;
+    }
+
     // ON APPLIQUE LE DÉLTA DEPUIS LA DERNIÈRE POSITION, pas depuis l'origine :
     // les opérations de `ClipEdit` sont RELATIVES, et rejouer le geste entier à
     // chaque mouvement le doublerait.
@@ -477,6 +507,8 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
             case Geste::Hauteur:
             case Geste::Reordonner:
             case Geste::Point:
+            case Geste::FonduEntree:
+            case Geste::FonduSortie:
             case Geste::Aucun: break;
         }
     }
@@ -504,6 +536,11 @@ void ArrangementComponent::mouseMove(const juce::MouseEvent& event) {
 juce::MouseCursor ArrangementComponent::getMouseCursor() {
     if (survol_ == Geste::BordGauche || survol_ == Geste::BordDroit)
         return juce::MouseCursor::LeftRightResizeCursor;
+    // Le coin de fondu a son propre curseur : sans cela, rien ne distinguerait
+    // les huit pixels qui tirent un fondu de ceux qui redimensionnent, et on
+    // découvrirait la différence en la subissant.
+    if (survol_ == Geste::FonduEntree || survol_ == Geste::FonduSortie)
+        return juce::MouseCursor::TopLeftCornerResizeCursor;
     return juce::MouseCursor::NormalCursor;
 }
 
@@ -672,6 +709,40 @@ void ArrangementComponent::paint(juce::Graphics& g) {
             // comme une note muette dans le piano roll.
             g.setColour(juce::Colour(clip.colorRgba).withAlpha(opacite));
             g.fillRoundedRectangle(r, 3.0f);
+            // LES FONDUS SE VOIENT (D5.6) : deux triangles sombres aux coins.
+            // Un fondu réglé qui ne se dessinerait pas obligerait à écouter
+            // pour savoir s'il existe, et à deviner sa longueur.
+            const double dureeClip = project_->ticksToSeconds(clip.startTick
+                                                               + clipPlayedLength(clip, fin))
+                                    - project_->ticksToSeconds(clip.startTick);
+            if (dureeClip > 0.0) {
+                const float largeur = r.getWidth();
+                if (clip.fadeInSeconds > 0.0) {
+                    const float w = static_cast<float>(clip.fadeInSeconds / dureeClip) * largeur;
+                    juce::Path coin;
+                    coin.addTriangle(r.getX(), r.getY(), r.getX() + w, r.getY(),
+                                      r.getX(), r.getBottom());
+                    g.setColour(Palette::background.withAlpha(0.55f));
+                    g.fillPath(coin);
+                }
+                if (clip.fadeOutSeconds > 0.0) {
+                    const float w = static_cast<float>(clip.fadeOutSeconds / dureeClip) * largeur;
+                    juce::Path coin;
+                    coin.addTriangle(r.getRight(), r.getY(), r.getRight() - w, r.getY(),
+                                      r.getRight(), r.getBottom());
+                    g.setColour(Palette::background.withAlpha(0.55f));
+                    g.fillPath(coin);
+                }
+            }
+            // LA PHASE INVERSÉE SE VOIT AUSSI : un liséré en tirets. Deux clips
+            // identiques dont l'un est inversé s'annulent en s'additionnant, et
+            // rien d'autre ne le dirait.
+            if (clip.invertPhase) {
+                g.setColour(Palette::accentRed.withAlpha(0.9f));
+                for (float x = r.getX() + 2.0f; x < r.getRight() - 2.0f; x += 6.0f)
+                    g.fillRect(x, r.getBottom() - 3.0f, 3.0f, 2.0f);
+            }
+
             // UN CLIP QUI BOUCLE DOIT SE VOIR BOUCLER. Étiré au-delà de son
             // matériau, il répète sa fenêtre (D5.2) -- et dessiné comme un
             // simple rectangle plus long, il mentirait sur ce qu'il joue. Un

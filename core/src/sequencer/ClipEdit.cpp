@@ -86,6 +86,52 @@ void resizeClipsStart(std::vector<Clip>& clips, const ClipSelection& selection,
     }
 }
 
+void setClipFadeIn(std::vector<Clip>& clips, uint64_t clipId, Tick atTick, Tick materialEnd,
+                    const std::function<double(Tick)>& ticksToSeconds) {
+    if (!ticksToSeconds) return;
+    for (auto& clip : clips) {
+        if (clip.id != clipId) continue;
+        const Tick longueur = clipPlayedLength(clip, materialEnd);
+        // LE FONDU NE DÉPASSE JAMAIS LE CLIP : au-delà il mangerait ce qui
+        // vient après, et ne s'entendrait plus comme un fondu.
+        const Tick borne = std::clamp(atTick, clip.startTick, clip.startTick + longueur);
+        clip.fadeInSeconds =
+            std::max(0.0, ticksToSeconds(borne) - ticksToSeconds(clip.startTick));
+        return;
+    }
+}
+
+void setClipFadeOut(std::vector<Clip>& clips, uint64_t clipId, Tick atTick, Tick materialEnd,
+                     const std::function<double(Tick)>& ticksToSeconds) {
+    if (!ticksToSeconds) return;
+    for (auto& clip : clips) {
+        if (clip.id != clipId) continue;
+        const Tick longueur = clipPlayedLength(clip, materialEnd);
+        const Tick fin = clip.startTick + longueur;
+        const Tick borne = std::clamp(atTick, clip.startTick, fin);
+        clip.fadeOutSeconds = std::max(0.0, ticksToSeconds(fin) - ticksToSeconds(borne));
+        return;
+    }
+}
+
+void setClipGain(std::vector<Clip>& clips, const ClipSelection& selection, float gain) {
+    if (selection.empty()) return;
+    // JAMAIS NÉGATIF : une inversion de phase est un réglage à part, et la
+    // confondre avec un gain négatif rendrait le bouton illisible -- on ne
+    // saurait plus si un clip est faible ou inversé.
+    const float valeur = std::max(0.0f, gain);
+    for (auto& clip : clips)
+        if (selected(selection, clip)) clip.gain = valeur;
+}
+
+void toggleClipPhase(std::vector<Clip>& clips, const ClipSelection& selection) {
+    if (selection.empty()) return;
+    // BASCULE PAR CLIP et non « tous à vrai » : inverser une sélection dont la
+    // moitié l'est déjà doit rendre l'autre moitié, pas tout aligner.
+    for (auto& clip : clips)
+        if (selected(selection, clip)) clip.invertPhase = !clip.invertPhase;
+}
+
 bool clipSelectionBounds(const std::vector<Clip>& clips, const ClipSelection& selection,
                           Tick materialEnd, Tick& startTick, Tick& endTick) {
     bool trouve = false;

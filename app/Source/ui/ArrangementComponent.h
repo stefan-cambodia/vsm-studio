@@ -100,7 +100,8 @@ private:
     /// Ce qu'on est en train de faire à la souris. Un état explicite plutôt que
     /// trois booléens : « je déplace ET je redimensionne » n'existe pas, et
     /// l'écrire ainsi le rend impossible.
-    enum class Geste { Aucun, Deplacer, BordGauche, BordDroit, Hauteur, Reordonner, Point };
+    enum class Geste { Aucun, Deplacer, BordGauche, BordDroit, Hauteur, Reordonner, Point,
+                        FonduEntree, FonduSortie };
 
     float tickToX(vsm::midi::Tick tick) const;
     vsm::midi::Tick xToTick(float x) const;
@@ -116,6 +117,8 @@ private:
     juce::Rectangle<float> colourZone(size_t index) const;
     /// Le clip sous le point donné, et le bord qu'on y touche.
     vsm::sequencer::Clip* clipAt(juce::Point<float> point, size_t& trackIndex, Geste& bord);
+    /// Le clip saisi pour un fondu, pendant le geste.
+    uint64_t clipFondu_ = 0;
     vsm::midi::Tick materialEnd(const vsm::sequencer::Track& track) const;
     void notifyChanged();
 

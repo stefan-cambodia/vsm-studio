@@ -60,6 +60,30 @@ void resizeClipsEnd(std::vector<Clip>& clips, const ClipSelection& selection,
 ClipSelection duplicateClips(std::vector<Clip>& clips, const ClipSelection& selection,
                               Tick offsetTicks, uint64_t& idCounter);
 
+/// Tire le fondu d'ENTRÉE d'un clip jusqu'à `atTick` (D5.6).
+///
+/// Le fondu est en SECONDES dans le modèle -- comme la fenêtre d'un clip audio,
+/// et pour la même raison : un fondu suit le son, pas le tempo. Accélérer un
+/// morceau ne doit pas raccourcir ses fondus. D'où la conversion, passée par
+/// l'appelant comme partout ailleurs.
+///
+/// Le fondu ne dépasse jamais le clip : au-delà, il mangerait ce qui vient
+/// après et ne s'entendrait plus comme un fondu.
+void setClipFadeIn(std::vector<Clip>& clips, uint64_t clipId, Tick atTick, Tick materialEnd,
+                    const std::function<double(Tick)>& ticksToSeconds);
+
+/// Tire le fondu de SORTIE depuis `atTick` jusqu'à la fin du clip.
+void setClipFadeOut(std::vector<Clip>& clips, uint64_t clipId, Tick atTick, Tick materialEnd,
+                     const std::function<double(Tick)>& ticksToSeconds);
+
+/// Règle le gain des clips sélectionnés, en gain LINÉAIRE. Jamais négatif : une
+/// inversion de phase est un réglage à part (`Clip::invertPhase`), et la
+/// confondre avec un gain négatif rendrait le bouton illisible.
+void setClipGain(std::vector<Clip>& clips, const ClipSelection& selection, float gain);
+
+/// Inverse la phase des clips sélectionnés (bascule).
+void toggleClipPhase(std::vector<Clip>& clips, const ClipSelection& selection);
+
 /// Les bornes d'une sélection sur la ligne de temps, pour savoir de combien
 /// décaler une duplication. Rend faux si la sélection est vide.
 bool clipSelectionBounds(const std::vector<Clip>& clips, const ClipSelection& selection,
