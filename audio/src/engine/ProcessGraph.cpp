@@ -134,6 +134,33 @@ void ProcessGraph::clearAutomationLanes() {
 void ProcessGraph::setAutomationLanes(std::vector<AutomationLane> lanes) {
     automationLanes_.store(std::make_shared<std::vector<AutomationLane>>(std::move(lanes)),
                             std::memory_order_release);
+    refreshAutomationMask();
+}
+
+void ProcessGraph::refreshAutomationMask() {
+    // Le masque dit, pour chaque piste, QUELS réglages de mixage sont pilotés.
+    // Calculé ici, sur le thread UI, pour que le mixage n'ait qu'un entier à
+    // consulter par piste au lieu de parcourir toutes les courbes.
+    std::array<uint16_t, kMaxTracks> masque{};
+    auto lanes = automationLanes_.load(std::memory_order_acquire);
+    if (lanes) {
+        for (const auto& lane : *lanes) {
+            if (lane.targetTrackIndex >= kMaxTracks) continue;
+            switch (lane.target) {
+                case AutomationTarget::TrackVolume:
+                    masque[lane.targetTrackIndex] |= kAutoVolume; break;
+                case AutomationTarget::TrackPan:
+                    masque[lane.targetTrackIndex] |= kAutoPan; break;
+                case AutomationTarget::TrackSend:
+                    if (lane.targetSlot < kMaxSends)
+                        masque[lane.targetTrackIndex] |=
+                            static_cast<uint16_t>(1u << (kAutoSendFirst + lane.targetSlot));
+                    break;
+                default: break;
+            }
+        }
+    }
+    autoMask_ = masque;
 }
 
 void ProcessGraph::setTrackAudio(size_t trackIndex, std::shared_ptr<const AudioTrackSource> source) {
@@ -553,9 +580,40 @@ void ProcessGraph::renderSpan(const GraphSnapshot& snapshot, bool anySolo, int s
         if (!lanes) return;
         const Tick tick = snapshot.project.secondsToTicks(seconds);
         for (const auto& lane : *lanes) {
-            if (lane.targetTrackIndex >= kMaxTracks) continue;
-            auto instrument = instruments_[lane.targetTrackIndex].load(std::memory_order_acquire);
-            if (instrument) instrument->setParameter(lane.targetParam, lane.valueAt(tick));
+            const size_t t = lane.targetTrackIndex;
+            const float valeur = lane.valueAt(tick);
+            switch (lane.target) {
+                case AutomationTarget::InstrumentParam: {
+                    if (t >= kMaxTracks) break;
+                    auto instrument = instruments_[t].load(std::memory_order_acquire);
+                    if (instrument) instrument->setParameter(lane.targetParam, valeur);
+                    break;
+                }
+                case AutomationTarget::TrackVolume:
+                    if (t < kMaxTracks) autoVolume_[t] = valeur;
+                    break;
+                case AutomationTarget::TrackPan:
+                    if (t < kMaxTracks) autoPan_[t] = valeur;
+                    break;
+                case AutomationTarget::TrackSend:
+                    if (t < kMaxTracks && lane.targetSlot < kMaxSends)
+                        autoSend_[t][lane.targetSlot] = valeur;
+                    break;
+                case AutomationTarget::InsertParam: {
+                    if (t >= kMaxTracks) break;
+                    auto chain = effectChains_[t].load(std::memory_order_acquire);
+                    if (chain && lane.targetSlot < chain->size()) {
+                        const auto& fx = (*chain)[lane.targetSlot];
+                        if (fx) fx->setParameter(lane.targetParam, valeur);
+                    }
+                    break;
+                }
+                case AutomationTarget::MasterParam:
+                    // LA TRANCHE MASTER N'APPARTIENT À AUCUNE PISTE : l'index
+                    // de piste est ignoré, et c'est ce que dit `MasterParam`.
+                    masterBus_.setParameter(lane.targetParam, valeur);
+                    break;
+            }
         }
     };
 
@@ -857,8 +915,16 @@ void ProcessGraph::renderTrackRange(const GraphSnapshot& snapshot, bool anySolo,
         const int groupe = groupBufferFor(project, trackIndex);
         float* destL = groupe >= 0 ? groupL_[static_cast<size_t>(groupe)].data() : outputL;
         float* destR = groupe >= 0 ? groupR_[static_cast<size_t>(groupe)].data() : outputR;
+
+        // LE VOLUME ET LE PANORAMIQUE VIENNENT DE L'AUTOMATION QUAND ELLE LES
+        // PILOTE (D4.6), du projet sinon. Un entier consulté par piste, pas un
+        // parcours des courbes : voir `refreshAutomationMask`.
+        const uint16_t pilotes = autoMask_[trackIndex];
+        const float volume = (pilotes & kAutoVolume) ? autoVolume_[trackIndex] : track.volume;
+        const float pan = (pilotes & kAutoPan) ? autoPan_[trackIndex] : track.pan;
+
         float peak = mixStereoInto(scratchStereoL_.data(), scratchStereoR_.data(), sampleCount,
-                                    track.volume, track.pan, audible,
+                                    volume, pan, audible,
                                     destL + sampleStart, destR + sampleStart);
         blockPeak_[trackIndex] = std::max(blockPeak_[trackIndex], peak);
 
@@ -870,8 +936,16 @@ void ProcessGraph::renderTrackRange(const GraphSnapshot& snapshot, bool anySolo,
                 // PRÉ-FADER : le départ prélève AVANT le fader, donc le volume
                 // de la piste ne le multiplie pas. C'est ce qui permet
                 // d'envoyer une piste dans un effet sans l'entendre en direct.
-                const float apresFader = (preFader & (1u << b)) ? 1.0f : track.volume;
-                const float lvl = track.sendLevel(b) * apresFader;
+                //
+                // Le fader employé ici est celui de l'AUTOMATION quand elle le
+                // pilote : un fondu écrit en automation doit emporter les
+                // départs post-fader avec lui, comme le ferait la main sur le
+                // fader.
+                const float apresFader = (preFader & (1u << b)) ? 1.0f : volume;
+                const uint16_t bitDepart = static_cast<uint16_t>(1u << (kAutoSendFirst + b));
+                const float niveau = (pilotes & bitDepart) ? autoSend_[trackIndex][b]
+                                                            : track.sendLevel(b);
+                const float lvl = niveau * apresFader;
                 if (lvl <= 0.0f) continue;
                 for (int i = 0; i < sampleCount; ++i) {
                     sendL_[b][static_cast<size_t>(sampleStart + i)] += scratchStereoL_[static_cast<size_t>(i)] * lvl;

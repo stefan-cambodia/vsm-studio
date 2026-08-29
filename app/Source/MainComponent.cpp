@@ -1279,24 +1279,66 @@ void MainComponent::captureSessionIntoProject() {
     for (auto& track : project_.tracks) track.automation.clear();
 
     for (const auto& lane : currentAutomation_) {
-        if (lane.targetTrackIndex >= project_.tracks.size()) continue;
-        auto& track = project_.tracks[lane.targetTrackIndex];
-        if (track.instrumentId.empty() || lane.points().empty()) continue;
+        if (lane.points().empty()) continue;
 
-        const auto profile = vsm::interchange::buildSemanticProfile(track.instrumentId);
-        const auto* descriptor = profile.findByParamId(lane.targetParam);
-        // Sans identité sémantique, la courbe ne serait écrite que sous un
-        // NUMÉRO : une position dans une liste, qui désignerait un autre
-        // réglage dès qu'un paramètre serait intercalé. On préfère ne rien
-        // écrire plutôt qu'écrire une valeur qui se reposera ailleurs.
-        if (descriptor == nullptr || descriptor->semanticId.empty()) continue;
+        // LE NOM DE CE QUI EST PILOTÉ. Voir `vsm::sequencer::AutomationCurve`
+        // pour les conventions ; ici on les APPLIQUE, et une cible qu'on ne
+        // saurait pas nommer n'est pas écrite plutôt que d'être écrite sous un
+        // numéro qui désignerait autre chose à la relecture.
+        std::string nom;
+        using Cible = vsm::audio::engine::AutomationTarget;
+        switch (lane.target) {
+            case Cible::TrackVolume: nom = "mix.volume"; break;
+            case Cible::TrackPan:    nom = "mix.pan"; break;
+            case Cible::TrackSend:   nom = "mix.send." + std::to_string(lane.targetSlot + 1); break;
+            case Cible::MasterParam: {
+                const auto& liste = audioEngine_.processGraph().masterBus().parameterList();
+                for (const auto& info : liste)
+                    if (info.id == lane.targetParam) nom = "master." + info.name;
+                break;
+            }
+            case Cible::InsertParam: {
+                if (lane.targetTrackIndex >= project_.tracks.size()) break;
+                const auto& inserts = project_.tracks[lane.targetTrackIndex].effects;
+                if (lane.targetSlot >= inserts.size()) break;
+                auto fx = vsm::audio::effect::EffectFactory::create(inserts[lane.targetSlot].type);
+                if (!fx) break;
+                const auto profil = vsm::interchange::buildSemanticProfile(
+                    vsm::interchange::effectSemanticPluginId(inserts[lane.targetSlot].type));
+                const auto* d = profil.findByParamId(lane.targetParam);
+                if (d == nullptr || d->semanticId.empty()) break;
+                nom = "insert." + std::to_string(lane.targetSlot + 1) + "." + d->semanticId;
+                break;
+            }
+            case Cible::InstrumentParam: {
+                if (lane.targetTrackIndex >= project_.tracks.size()) break;
+                const auto& track = project_.tracks[lane.targetTrackIndex];
+                if (track.instrumentId.empty()) break;
+                const auto profil = vsm::interchange::buildSemanticProfile(track.instrumentId);
+                const auto* d = profil.findByParamId(lane.targetParam);
+                // Sans identité sémantique, la courbe ne serait écrite que sous
+                // un NUMÉRO : une position dans une liste, qui désignerait un
+                // autre réglage dès qu'un paramètre serait intercalé.
+                if (d != nullptr && !d->semanticId.empty()) nom = d->semanticId;
+                break;
+            }
+        }
+        if (nom.empty()) continue;
+
+        // LA COURBE SE RANGE DANS UNE PISTE, faute d'endroit qui n'appartienne
+        // à personne : celle qu'elle vise, ou la première pour le master. Le
+        // préfixe `master.` suffit à dire qu'elle ne concerne pas cette piste.
+        const size_t rangement = lane.target == Cible::MasterParam
+                                     ? 0
+                                     : lane.targetTrackIndex;
+        if (rangement >= project_.tracks.size()) continue;
 
         vsm::sequencer::AutomationCurve curve;
-        curve.parameter = descriptor->semanticId;
+        curve.parameter = nom;
         for (const auto& point : lane.points())
             curve.points.push_back({point.tick, point.value,
                                      point.curveToNext == vsm::audio::engine::AutomationCurve::Step});
-        track.automation.push_back(std::move(curve));
+        project_.tracks[rangement].automation.push_back(std::move(curve));
     }
 }
 
@@ -1304,14 +1346,71 @@ void MainComponent::applyAutomationFromProject() {
     currentAutomation_.clear();
     for (size_t i = 0; i < project_.tracks.size(); ++i) {
         const auto& track = project_.tracks[i];
-        if (track.automation.empty() || track.instrumentId.empty()) continue;
-        const auto profile = vsm::interchange::buildSemanticProfile(track.instrumentId);
         for (const auto& curve : track.automation) {
-            const auto* descriptor = profile.findBySemanticId(curve.parameter);
-            if (descriptor == nullptr) continue;   // paramètre inconnu de cette machine
+            if (curve.points.empty()) continue;
             vsm::audio::engine::AutomationLane lane;
             lane.targetTrackIndex = i;
-            lane.targetParam = descriptor->paramId;
+            using Cible = vsm::audio::engine::AutomationTarget;
+
+            // LA RÉSOLUTION DU NOM. Chaque préfixe désigne une famille ; sans
+            // préfixe connu, c'est un réglage de la machine de la piste, ce qui
+            // fait que les projets d'avant D4.6 se relisent inchangés.
+            bool resolue = false;
+            if (curve.parameter == "mix.volume") {
+                lane.target = Cible::TrackVolume;
+                resolue = true;
+            } else if (curve.parameter == "mix.pan") {
+                lane.target = Cible::TrackPan;
+                resolue = true;
+            } else if (curve.parameter.rfind("mix.send.", 0) == 0) {
+                const int numero = std::atoi(curve.parameter.substr(9).c_str());
+                if (numero >= 1 && numero <= static_cast<int>(
+                        vsm::audio::engine::ProcessGraph::kMaxSends)) {
+                    lane.target = Cible::TrackSend;
+                    lane.targetSlot = static_cast<size_t>(numero - 1);
+                    resolue = true;
+                }
+            } else if (curve.parameter.rfind("master.", 0) == 0) {
+                const std::string nom = curve.parameter.substr(7);
+                for (const auto& info : audioEngine_.processGraph().masterBus().parameterList())
+                    if (info.name == nom) {
+                        lane.target = Cible::MasterParam;
+                        lane.targetParam = info.id;
+                        resolue = true;
+                    }
+            } else if (curve.parameter.rfind("insert.", 0) == 0) {
+                const size_t point = curve.parameter.find('.', 7);
+                if (point != std::string::npos) {
+                    const int numero = std::atoi(curve.parameter.substr(7, point - 7).c_str());
+                    const std::string semantique = curve.parameter.substr(point + 1);
+                    const size_t slot = numero >= 1 ? static_cast<size_t>(numero - 1) : 0;
+                    if (numero >= 1 && slot < track.effects.size()) {
+                        const auto profil = vsm::interchange::buildSemanticProfile(
+                            vsm::interchange::effectSemanticPluginId(track.effects[slot].type));
+                        const auto* d = profil.findBySemanticId(semantique);
+                        if (d != nullptr) {
+                            lane.target = Cible::InsertParam;
+                            lane.targetSlot = slot;
+                            lane.targetParam = d->paramId;
+                            resolue = true;
+                        }
+                    }
+                }
+            } else if (!track.instrumentId.empty()) {
+                const auto profil = vsm::interchange::buildSemanticProfile(track.instrumentId);
+                const auto* d = profil.findBySemanticId(curve.parameter);
+                if (d != nullptr) {
+                    lane.target = Cible::InstrumentParam;
+                    lane.targetParam = d->paramId;
+                    resolue = true;
+                }
+            }
+            // UNE COURBE QU'ON NE SAIT PAS RÉSOUDRE EST LAISSÉE DANS LE PROJET
+            // et simplement pas jouée : elle vise une machine absente, un
+            // insert retiré ou une version différente. La supprimer ferait
+            // perdre le travail de l'utilisateur à la première ouverture.
+            if (!resolue) continue;
+
             for (const auto& point : curve.points)
                 lane.addPoint(point.tick, point.value,
                                point.step ? vsm::audio::engine::AutomationCurve::Step

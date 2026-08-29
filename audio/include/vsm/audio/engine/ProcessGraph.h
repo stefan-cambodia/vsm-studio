@@ -284,6 +284,29 @@ private:
     // un vecteur IMMUABLE ; l'UI publie une nouvelle liste à chaque édition.
     // Plus de course de données possible entre édition et lecture.
     std::atomic<std::shared_ptr<const std::vector<AutomationLane>>> automationLanes_;
+
+    // --- MIXAGE AUTOMATISÉ (D4.6) -----------------------------------------
+    //
+    // Le volume, le panoramique et les départs vivent dans le PROJET, que le
+    // thread audio ne lit qu'en lecture seule (c'est tout l'intérêt du
+    // snapshot). Une courbe qui les pilote ne peut donc pas les modifier là où
+    // ils sont : elle écrit dans ces surcharges, que le mixage consulte à la
+    // place quand la piste est automatisée.
+    //
+    // Écrites et lues par le SEUL thread audio, entre `applyAutomationAt` et le
+    // rendu du sous-segment qui suit : pas d'atomique nécessaire, et surtout
+    // pas de verrou.
+    std::array<float, kMaxTracks> autoVolume_{};
+    std::array<float, kMaxTracks> autoPan_{};
+    std::array<std::array<float, kMaxSends>, kMaxTracks> autoSend_{};
+    /// Quels réglages sont pilotés, par piste : bit 0 volume, bit 1
+    /// panoramique, bits 2..9 les huit départs. Calculé quand les courbes sont
+    /// publiées, pour que le mixage n'ait qu'un entier à consulter.
+    std::array<uint16_t, kMaxTracks> autoMask_{};
+    static constexpr uint16_t kAutoVolume = 1u << 0;
+    static constexpr uint16_t kAutoPan = 1u << 1;
+    static constexpr uint16_t kAutoSendFirst = 2;
+    void refreshAutomationMask();
     MeterBank meters_;
     MasterBus masterBus_;
     ReferenceTrack referenceTrack_;

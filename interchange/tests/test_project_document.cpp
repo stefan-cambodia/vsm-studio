@@ -723,3 +723,38 @@ VSM_TEST(a_track_that_goes_to_the_master_writes_no_output_key) {
     VSM_ASSERT(analyse.success);
     VSM_ASSERT(!analyse.value["tracks"].at(0)["output"].isNumber());
 }
+
+VSM_TEST(mix_automation_curves_survive_the_round_trip_under_their_own_names) {
+    // D4.6 : les courbes ne pilotent plus seulement des réglages de machine.
+    // Le format les nomme par des identités PRÉFIXÉES -- `mix.volume`,
+    // `mix.send.2`, `insert.1.…`, `master.…` -- pour qu'un nom ne puisse pas en
+    // désigner deux, et pour qu'on lise à l'œil ce qu'une courbe pilote.
+    Project projet;
+    projet.tracks.emplace_back();
+    uint64_t ids = 1;
+    projet.tracks[0].addNote(0, 480, 60, 100, 0, ids);
+
+    projet.tracks[0].automation.push_back({"mix.volume", {{0, 1.0f, false}, {960, 0.0f, false}}});
+    projet.tracks[0].automation.push_back({"mix.pan", {{0, -1.0f, false}}});
+    projet.tracks[0].automation.push_back({"mix.send.2", {{480, 0.5f, true}}});
+    projet.tracks[0].automation.push_back({"insert.1.effect.reverb.mix", {{0, 0.3f, false}}});
+    projet.tracks[0].automation.push_back({"master.Limiter Ceiling", {{0, -6.0f, false}}});
+
+    const ProjectDocument document = documentFromProject(projet);
+    const ProjectLoadResult relu = parseProjectDocument(projectDocumentToJson(document).toString());
+    VSM_ASSERT(relu.success);
+
+    Project restaure;
+    restaure.tracks.emplace_back();
+    applyDocumentToProject(relu.document, restaure);
+    const auto& courbes = restaure.tracks[0].automation;
+    VSM_ASSERT_EQ(courbes.size(), size_t(5));
+    VSM_ASSERT_EQ(courbes[0].parameter, std::string("mix.volume"));
+    VSM_ASSERT_EQ(courbes[0].points.size(), size_t(2));
+    VSM_ASSERT_NEAR(courbes[0].points[1].value, 0.0f, 1e-6);
+    VSM_ASSERT_EQ(courbes[2].parameter, std::string("mix.send.2"));
+    VSM_ASSERT(courbes[2].points[0].step);          // le palier survit
+    VSM_ASSERT_EQ(courbes[3].parameter, std::string("insert.1.effect.reverb.mix"));
+    VSM_ASSERT_EQ(courbes[4].parameter, std::string("master.Limiter Ceiling"));
+    VSM_ASSERT_NEAR(courbes[4].points[0].value, -6.0f, 1e-6);
+}

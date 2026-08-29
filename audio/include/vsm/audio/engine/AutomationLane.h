@@ -29,9 +29,27 @@ struct AutomationPoint {
 /// réel (ProcessGraph::processBlock). Un id d'instance plus riche (pour un
 /// futur multi-instruments par piste / sends) pourra remplacer ceci sans
 /// changer la logique d'interpolation ci-dessous.
+/// CE QU'UNE COURBE PILOTE (D4.6).
+///
+/// Jusqu'ici il n'y en avait qu'un seul : le paramètre d'un instrument. Un
+/// fondu — le geste d'automation le plus courant qui soit — était donc
+/// impossible à écrire, et le mixage tout entier échappait à l'automation
+/// alors que le format savait déjà l'écrire.
+enum class AutomationTarget {
+    InstrumentParam,  ///< un réglage de la machine de la piste (le cas historique)
+    TrackVolume,      ///< le fader de la piste
+    TrackPan,         ///< son panoramique
+    TrackSend,        ///< son niveau vers le bus `targetSlot`
+    InsertParam,      ///< un réglage de l'insert n° `targetSlot` de la piste
+    MasterParam,      ///< un réglage de la tranche master (la piste est ignorée)
+};
+
 class AutomationLane {
 public:
+    AutomationTarget target = AutomationTarget::InstrumentParam;
     size_t targetTrackIndex = 0;
+    /// Numéro de bus (pour `TrackSend`) ou d'insert (pour `InsertParam`).
+    size_t targetSlot = 0;
     vsm::audio::plugin::ParamId targetParam = 0;
 
     void addPoint(Tick tick, float value, AutomationCurve curve = AutomationCurve::Linear) {

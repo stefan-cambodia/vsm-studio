@@ -234,6 +234,30 @@ struct AutomationPoint {
 /// changement de machine, et à la chaîne d'analyse de l'écrire sans connaître
 /// le code du DAW. Rangée dans la piste pour la même raison que `TrackEffect`.
 struct AutomationCurve {
+    /// L'IDENTITÉ DE CE QUI EST PILOTÉ, et depuis D4.6 elle ne désigne plus
+    /// seulement un réglage de machine. Les conventions, toutes préfixées pour
+    /// qu'un nom ne puisse pas en désigner deux :
+    ///
+    ///  - `filter.1.cutoff`, `envelope.1.attack`... : un réglage de la MACHINE
+    ///    de la piste. C'est le cas historique, et il reste écrit tel quel --
+    ///    les projets existants se relisent sans rien remarquer.
+    ///  - `mix.volume` : le fader de la piste, en gain linéaire.
+    ///  - `mix.pan` : son panoramique, de -1 à +1.
+    ///  - `mix.send.1` .. `mix.send.8` : son niveau vers le bus de départ.
+    ///  - `insert.1.<identité>` : un réglage du PREMIER insert de la piste,
+    ///    nommé par sa propre identité sémantique -- par exemple
+    ///    `insert.1.effect.reverb.mix`. Le numéro est la position dans la
+    ///    chaîne, parce que rien d'autre ne distingue deux réverbérations sur
+    ///    la même piste.
+    ///  - `master.<nom>` : un réglage de la tranche master. La courbe est alors
+    ///    rangée dans la piste 0 faute d'endroit qui soit à personne, et le
+    ///    préfixe suffit à dire qu'elle ne la concerne pas.
+    ///
+    /// POURQUOI DES PRÉFIXES ET NON UN CHAMP « genre ». Un champ de plus
+    /// obligerait le format, le lecteur, l'écrivain et la chaîne d'analyse à
+    /// s'accorder sur une énumération ; un préfixe se lit, s'écrit et se
+    /// diagnostique à l'œil dans le fichier. C'est la même raison qui avait fait
+    /// choisir des identités sémantiques plutôt que des numéros.
     std::string parameter;
     std::vector<AutomationPoint> points;
 };

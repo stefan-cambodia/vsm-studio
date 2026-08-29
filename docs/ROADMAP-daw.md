@@ -904,7 +904,7 @@ pas seulement l'écouter.
 | D4.3 | Départs pré/post-fader au choix (post-fader est codé en dur, `ProcessGraph.cpp:465`) | commutable par départ — **fait** |
 | D4.4 | **Chaîne latérale** (*sidechain*) | le compresseur d'une piste écoute une autre piste — la signature même du genre que ce projet reconstruit — **fait** |
 | D4.5 | **Compensation de latence (PDC)** : `ISynthPlugin` et `IAudioEffect` déclarent leur latence, le graphe la compense | insérer un effet à latence connue ne décale plus la piste ; test avec une latence artificielle et un `Oversampler` — **fait** |
-| D4.6 | Automation de **tout** : volume, pan, départs, paramètres d'effets, master — aujourd'hui les paramètres d'instrument seulement (`ProcessGraph.cpp:325`) | un fondu écrit en automation s'entend |
+| D4.6 | Automation de **tout** : volume, pan, départs, paramètres d'effets, master — aujourd'hui les paramètres d'instrument seulement (`ProcessGraph.cpp:325`) | un fondu écrit en automation s'entend — **fait** |
 | D4.7 | Mesure : crête **et** RMS par piste, LUFS, corrélation de phase | affichés, et cohérents avec ce que `analyse/` mesure du même signal |
 
 **Critère de phase** : le mixage fait dans l'application et le mixage fait par
@@ -1133,6 +1133,42 @@ du projet mesureront enfin la même chose.
 > une ligne à retard vide. Le pion de test dimensionne désormais ses tampons dès
 > sa construction — un test doit échouer sur une assertion, pas sur un segment
 > de mémoire.
+
+> **D4.6 EST FAITE (30/08/2026).** Une courbe ne pouvait piloter qu'un réglage
+> de machine. Le **fondu** — le geste d'automation le plus courant qui soit —
+> était donc impossible à écrire, et tout le mixage échappait à l'automation
+> **alors que le format savait déjà l'écrire** : les courbes étaient rangées
+> dans la piste et sauvegardées, mais rien ne pouvait en viser autre chose
+> qu'un instrument.
+>
+> **DES PRÉFIXES, ET NON UN CHAMP « GENRE ».** Une courbe se nomme
+> `mix.volume`, `mix.pan`, `mix.send.2`, `insert.1.effect.reverb.mix` ou
+> `master.Limiter Ceiling` ; sans préfixe connu, c'est un réglage de la machine
+> de la piste — ce qui fait que **les projets d'avant se relisent inchangés**.
+> Un champ de plus obligerait le format, le lecteur, l'écrivain et la chaîne
+> d'analyse à s'accorder sur une énumération ; un préfixe se lit, s'écrit et se
+> diagnostique à l'œil dans le fichier. C'est la raison qui avait déjà fait
+> choisir des identités sémantiques plutôt que des numéros.
+>
+> **LE VOLUME ET LE PANORAMIQUE VIVENT DANS LE PROJET, que le thread audio ne
+> lit qu'en lecture seule** — c'est tout l'intérêt du snapshot. Une courbe ne
+> peut donc pas les modifier là où ils sont : elle écrit dans des **surcharges**
+> que le mixage consulte à la place, et un **masque d'un entier par piste** dit
+> lesquelles sont pilotées. Sans lui, le mixage devrait parcourir toutes les
+> courbes pour chaque piste et chaque sous-segment.
+>
+> **UN FONDU EMPORTE LES DÉPARTS POST-FADER AVEC LUI**, comme le ferait la main
+> sur le fader : le niveau employé pour les départs est celui de l'automation
+> quand elle le pilote. D4.3 et D4.6 devaient se rencontrer, et c'est ici.
+>
+> **UNE COURBE QU'ON NE SAIT PAS RÉSOUDRE EST LAISSÉE DANS LE PROJET** et
+> simplement pas jouée : elle vise une machine absente, un insert retiré, une
+> version différente. La supprimer ferait perdre le travail de l'utilisateur à
+> la première ouverture — et c'est exactement l'inverse de ce que ce projet
+> cherche à garantir.
+>
+> Six tests, dont celui qui est le critère : le fader descend de 1 à 0 sur une
+> seconde, et on mesure le début et la fin du rendu.
 
 
 ### Phase D5 — La vue d'arrangement

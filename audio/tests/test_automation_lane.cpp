@@ -1,7 +1,40 @@
 #include "TestFramework.h"
+#include "vsm/audio/effect/IAudioEffect.h"
 #include "vsm/audio/engine/AutomationLane.h"
+#include "vsm/audio/engine/OfflineRenderer.h"
+#include "vsm/audio/engine/ProcessGraph.h"
+#include "vsm/audio/plugin/BuiltInPlugins.h"
+#include "vsm/sequencer/Project.h"
+#include <algorithm>
+#include <cmath>
+#include <memory>
+#include <vector>
 
 using namespace vsm::audio::engine;
+
+namespace {
+/// Un gain, avec un paramètre pilotable : de quoi vérifier qu'une courbe
+/// atteint le BON insert d'une chaîne, et pas son voisin.
+class GainProbe : public vsm::audio::effect::IAudioEffect {
+public:
+    explicit GainProbe(float gain) {
+        parameterList_ = {{0, "Gain", 0.0f, 4.0f, gain, ""}};
+        gain_ = gain;
+    }
+    void prepare(double, int) override {}
+    void reset() override {}
+    void process(float* l, float* r, int n) override {
+        for (int i = 0; i < n; ++i) { l[i] *= gain_; r[i] *= gain_; }
+    }
+    void setParameter(vsm::audio::plugin::ParamId id, float v) override { if (id == 0) gain_ = v; }
+    float getParameter(vsm::audio::plugin::ParamId id) const override { return id == 0 ? gain_ : 0.0f; }
+    const vsm::audio::plugin::ParameterList& parameterList() const override { return parameterList_; }
+    const char* effectName() const override { return "GainProbe"; }
+private:
+    float gain_ = 1.0f;
+    vsm::audio::plugin::ParameterList parameterList_;
+};
+} // namespace
 
 VSM_TEST(automation_lane_empty_returns_zero) {
     AutomationLane lane;
@@ -138,4 +171,172 @@ VSM_TEST(process_graph_automation_is_subblock_accurate) {
     // découpage sous-bloc doit la faire monter vers 5000.
     (void)vsm::audio::engine::OfflineRenderer::render(graph, 48000.0, 1024, 0.02);
     VSM_ASSERT(inst->getParameter(cutoff) > 3000.0f);
+}
+
+// --- D4.6 : automation de TOUT ---------------------------------------------
+//
+// Jusqu'ici une courbe ne pouvait piloter qu'un réglage de machine. Le fondu --
+// le geste d'automation le plus courant qui soit -- était donc impossible à
+// écrire, et tout le mixage échappait à l'automation alors que le format savait
+// déjà l'écrire.
+
+namespace {
+using vsm::sequencer::Project;
+using vsm::sequencer::Track;
+
+Project noteProject(int pistes = 1) {
+    Project projet;
+    projet.ticksPerQuarterNote = 480;
+    uint64_t ids = 1;
+    for (int i = 0; i < pistes; ++i) {
+        Track t;
+        t.addNote(0, 1920, 60, 100, 0, ids);
+        projet.tracks.push_back(t);
+    }
+    return projet;
+}
+
+/// Crête d'une TRANCHE du rendu, en secondes.
+float peakBetween(const RenderedAudio& rendu, double sr, double debut, double fin) {
+    const size_t a = static_cast<size_t>(debut * sr);
+    const size_t b = std::min(rendu.left.size(), static_cast<size_t>(fin * sr));
+    float m = 0.0f;
+    for (size_t i = a; i < b; ++i) m = std::max(m, std::abs(rendu.left[i]));
+    return m;
+}
+} // namespace
+
+VSM_TEST(a_fade_written_in_automation_is_heard) {
+    // LE CRITÈRE DE L'ÉTAPE, littéralement : « un fondu écrit en automation
+    // s'entend ». Le fader descend de 1 à 0 sur une seconde ; on mesure le
+    // début et la fin.
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setTrackInstrument(0, "vsm.minimoog");
+    graph.setProject(noteProject());
+
+    AutomationLane fondu;
+    fondu.target = AutomationTarget::TrackVolume;
+    fondu.targetTrackIndex = 0;
+    fondu.addPoint(0, 1.0f);
+    fondu.addPoint(960, 0.0f);      // une seconde à 120 BPM avec ppq=480
+    graph.setAutomationLanes({fondu});
+
+    const auto rendu = OfflineRenderer::render(graph, 8000.0, 256, 1.0);
+    const float debut = peakBetween(rendu, 8000.0, 0.05, 0.20);
+    const float fin = peakBetween(rendu, 8000.0, 0.85, 0.99);
+    VSM_ASSERT(debut > 0.02f);
+    VSM_ASSERT(fin < debut * 0.25f);
+}
+
+VSM_TEST(automating_the_pan_moves_the_sound_across_the_stereo_field) {
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setTrackInstrument(0, "vsm.minimoog");
+    graph.setProject(noteProject());
+
+    AutomationLane balayage;
+    balayage.target = AutomationTarget::TrackPan;
+    balayage.targetTrackIndex = 0;
+    balayage.addPoint(0, -1.0f);    // tout à gauche
+    balayage.addPoint(960, 1.0f);   // tout à droite
+    graph.setAutomationLanes({balayage});
+
+    const auto rendu = OfflineRenderer::render(graph, 8000.0, 256, 1.0);
+    float gaucheDebut = 0.0f, droiteDebut = 0.0f, gaucheFin = 0.0f, droiteFin = 0.0f;
+    for (size_t i = 400; i < 1600; ++i) {
+        gaucheDebut = std::max(gaucheDebut, std::abs(rendu.left[i]));
+        droiteDebut = std::max(droiteDebut, std::abs(rendu.right[i]));
+    }
+    for (size_t i = 6800; i < 7900 && i < rendu.left.size(); ++i) {
+        gaucheFin = std::max(gaucheFin, std::abs(rendu.left[i]));
+        droiteFin = std::max(droiteFin, std::abs(rendu.right[i]));
+    }
+    VSM_ASSERT(gaucheDebut > droiteDebut * 4.0f);   // à gauche au départ
+    VSM_ASSERT(droiteFin > gaucheFin * 4.0f);       // à droite à l'arrivée
+}
+
+VSM_TEST(automating_a_send_level_changes_what_reaches_the_bus) {
+    auto rendre = [](float niveau) {
+        Project projet = noteProject();
+        vsm::sequencer::SendBusDescription bus;
+        bus.effectType = "reverb";
+        projet.sends.push_back(bus);
+
+        ProcessGraph graph;
+        graph.prepare(8000.0, 256);
+        graph.setTrackInstrument(0, "vsm.minimoog");
+        graph.setProject(projet);
+        graph.setSendEffect(0, std::make_shared<GainProbe>(1.0f));
+        graph.setSendReturn(0, 1.0f);
+        // La piste est muette au master : ce qui sort est UNIQUEMENT le retour
+        // du bus, donc exactement ce que le départ y a versé.
+        AutomationLane depart;
+        depart.target = AutomationTarget::TrackSend;
+        depart.targetTrackIndex = 0;
+        depart.targetSlot = 0;
+        depart.addPoint(0, niveau);
+        AutomationLane silence;
+        silence.target = AutomationTarget::TrackVolume;
+        silence.targetTrackIndex = 0;
+        silence.addPoint(0, 1.0f);
+        graph.setAutomationLanes({depart, silence});
+        const auto rendu = OfflineRenderer::render(graph, 8000.0, 256, 0.5);
+        float m = 0.0f;
+        for (float e : rendu.left) m = std::max(m, std::abs(e));
+        return m;
+    };
+    const float ferme = rendre(0.0f);
+    const float ouvert = rendre(1.0f);
+    VSM_ASSERT(ouvert > ferme * 1.3f);
+}
+
+VSM_TEST(automating_a_master_parameter_reaches_the_master_strip) {
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setTrackInstrument(0, "vsm.minimoog");
+    graph.setProject(noteProject());
+    graph.masterBus().setParameter(MasterBus::kEnabled, 1.0f);
+
+    AutomationLane plafond;
+    plafond.target = AutomationTarget::MasterParam;
+    plafond.targetParam = MasterBus::kLimiterCeilingDb;
+    plafond.addPoint(0, -24.0f);     // un plafond très bas, tenu
+    graph.setAutomationLanes({plafond});
+
+    const auto rendu = OfflineRenderer::render(graph, 8000.0, 256, 0.5);
+    float m = 0.0f;
+    for (float e : rendu.left) m = std::max(m, std::abs(e));
+    // -24 dB vaut 0,063 : le limiteur du master a bien reçu la consigne.
+    VSM_ASSERT(m <= 0.07f);
+    VSM_ASSERT(m > 0.0f);
+}
+
+VSM_TEST(automating_an_insert_parameter_reaches_that_insert_and_no_other) {
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setTrackInstrument(0, "vsm.minimoog");
+    graph.setProject(noteProject());
+
+    // Deux gains dans la chaîne : la courbe ne doit toucher que le second.
+    auto premier = std::make_shared<GainProbe>(1.0f);
+    auto second = std::make_shared<GainProbe>(1.0f);
+    auto chain = std::make_shared<ProcessGraph::EffectChain>();
+    chain->push_back(premier);
+    chain->push_back(second);
+    graph.setTrackEffectChain(0, chain);
+
+    AutomationLane courbe;
+    courbe.target = AutomationTarget::InsertParam;
+    courbe.targetTrackIndex = 0;
+    courbe.targetSlot = 1;              // le SECOND insert
+    courbe.targetParam = 0;             // son gain
+    courbe.addPoint(0, 0.0f);
+    graph.setAutomationLanes({courbe});
+
+    const auto rendu = OfflineRenderer::render(graph, 8000.0, 256, 0.4);
+    float m = 0.0f;
+    for (float e : rendu.left) m = std::max(m, std::abs(e));
+    VSM_ASSERT(m < 1e-5f);                              // le second a bien fermé
+    VSM_ASSERT_NEAR(premier->getParameter(0), 1.0f, 1e-6);   // le premier n'a pas bougé
 }
