@@ -499,6 +499,22 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Tom Decay", "drum.tom.decay"},
         {"Accent", "accent.amount"},
     }},
+    // --- vsm.divider ---
+    // Les REGISTRES prennent la grammaire de l'orgue (`organ.drawbar.*`), et
+    // c'est juste : ce sont des tirettes, et `vsm.tonewheel` en déclare déjà.
+    // L'ensemble est un chorus, donc `effect.chorus.depth` -- il est intégré à
+    // la machine, mais un outil extérieur doit pouvoir le reconnaître pour ce
+    // qu'il est.
+    {"vsm.divider", {
+        {"16' Level", "organ.drawbar.1"},
+        {"8' Level", "organ.drawbar.2"},
+        {"Ensemble", "effect.chorus.depth"},
+        {"Tone", "filter.1.cutoff"},
+        {"Attack", "envelope.1.attack"},
+        {"Release", "envelope.1.release"},
+        {"Analog Character", "voice.analogCharacter"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.phasedist ---
     // `phasedist.*` pour ce qui n'existe nulle part ailleurs -- déformer le
     // temps de lecture, et une résonance verrouillée sur un rang entier. Les

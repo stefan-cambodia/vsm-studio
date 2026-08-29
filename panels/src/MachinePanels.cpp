@@ -2651,13 +2651,88 @@ MachinePanel makePhaseDist() {
     return panel;
 }
 
+// ---------------------------------------------------------------------------
+// Divider
+//
+// Ces machines-là ONT une façade d'origine, et elle est célèbre : un long
+// bandeau plat, quelques bascules et deux ou trois potentiomètres, vinyle noir
+// et sérigraphie blanche. Rien à régler ou presque -- ce qui EST le sujet. Un
+// instrument à huit commandes se lit d'un coup d'oeil, et lui inventer des
+// blocs pour « faire riche » serait le mensonge que le § 29 reproche aux
+// façades décoratives.
+//
+// L'ENSEMBLE est en grand et à part, parce que c'est lui qu'on vient chercher :
+// une corde électronique sans son chorus n'est qu'un orgue pauvre.
+// ---------------------------------------------------------------------------
+MachinePanel makeDivider() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.divider";
+    panel.displayName = "Divider";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#1A1A1C";
+    panel.sectionColour = "#131315";
+    panel.textColour = "#F2F2EE";
+    panel.knobColour = "#E8E4D8";
+    panel.gridColumns = 12;
+    panel.gridRows = 4;
+
+    PanelSection registres;
+    registres.title = "REGISTRATION";
+    registres.accentColour = "#E8E4D8";
+    registres.column = 0; registres.row = 0; registres.columnSpan = 4; registres.rowSpan = 4;
+    registres.contentColumns = 2;
+    registres.controls = {
+        control("16' Level", "16'", S::VerticalSlider, 0, 0, 1, 2),
+        control("8' Level", "8'", S::VerticalSlider, 1, 0, 1, 2),
+    };
+
+    PanelSection ensemble;
+    ensemble.title = "ENSEMBLE";
+    ensemble.accentColour = "#4FA3C6";
+    ensemble.column = 4; ensemble.row = 0; ensemble.columnSpan = 3; ensemble.rowSpan = 4;
+    ensemble.contentColumns = 1;
+    ensemble.controls = {
+        control("Ensemble", "DEPTH", S::LargeKnob, 0, 0),
+    };
+
+    PanelSection couleur;
+    couleur.title = "TONE";
+    couleur.accentColour = "#E8E4D8";
+    couleur.column = 7; couleur.row = 0; couleur.columnSpan = 2; couleur.rowSpan = 4;
+    couleur.contentColumns = 1;
+    couleur.controls = {
+        control("Tone", "TONE", S::Knob, 0, 0),
+        control("Output Level", "VOLUME", S::Knob, 0, 1),
+    };
+
+    PanelSection enveloppe;
+    enveloppe.title = "ENVELOPE";
+    enveloppe.accentColour = "#8A8892";
+    enveloppe.column = 9; enveloppe.row = 0; enveloppe.columnSpan = 3; enveloppe.rowSpan = 4;
+    enveloppe.contentColumns = 2;
+    // DEUX COMMANDES, PAS QUATRE, et c'est une fidélité : ces machines n'ont ni
+    // déclin ni maintien réglables. Leur clavier ouvre et ferme des portes,
+    // rien de plus.
+    enveloppe.controls = {
+        control("Attack", "ATTACK", S::VerticalSlider, 0, 0, 1, 2),
+        control("Release", "RELEASE", S::VerticalSlider, 1, 0, 1, 2),
+    };
+
+    panel.omittedParameters = {
+        {"Analog Character", "la dérive des douze maîtres : elle est le caractère de "
+                             "cette machine et se règle une fois, elle ne se joue pas"},
+    };
+    panel.sections = {registres, ensemble, couleur, enveloppe};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
         makeJuno106(), makeJupiter8(), makeProphet(), makeMs20(), makeArpOdyssey(), makeDx7(), makeSampler(),
         makeEPiano(), makeObx(), makeSupersaw(), makeWavetable(), makePcmHybrid(), makeTonewheel(), makeGeneric(), makeString(),
         makePiano(), makeDrums(), makeWind(), makeMultisample(),
-        makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist()
+        makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider()
     };
     return all;
 }

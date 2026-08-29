@@ -541,6 +541,7 @@ VSM_TEST(regression_westcoast)  { checkMachine("vsm.westcoast"); }
 VSM_TEST(regression_fmdrums)    { checkMachine("vsm.fmdrums"); }
 VSM_TEST(regression_vocal)      { checkMachine("vsm.vocal"); }
 VSM_TEST(regression_phasedist)  { checkMachine("vsm.phasedist"); }
+VSM_TEST(regression_divider)    { checkMachine("vsm.divider"); }
 
 /// Le rendu doit être reproductible À L'IDENTIQUE d'une instance à l'autre :
 /// c'est la condition pour que l'empreinte ci-dessus ait un sens. Vérifié ici

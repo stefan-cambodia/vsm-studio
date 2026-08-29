@@ -29,6 +29,7 @@
 #include "fmdrums/FmDrumsSynth.h"
 #include "vocal/VocalSynth.h"
 #include "phasedist/PhaseDistSynth.h"
+#include "divider/DividerSynth.h"
 #include "multisample/MultisampleSynth.h"
 
 namespace vsm::audio::plugin {
@@ -149,6 +150,8 @@ void registerBuiltInPlugins() {
         (void)forceLinkVocal;
         vsm::plugins::phasedist::PhaseDistSynth forceLinkPhaseDist;
         (void)forceLinkPhaseDist;
+        vsm::plugins::divider::DividerSynth forceLinkDivider;
+        (void)forceLinkDivider;
     }
     {
         vsm::plugins::multisample::MultisampleSynth forceLinkMultisample;

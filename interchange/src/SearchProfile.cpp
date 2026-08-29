@@ -150,6 +150,15 @@ constexpr Rule kRules[] = {
     // dont la hauteur est balayée à l'attaque, se reconnaît d'abord à sa
     // queue. La barre (bois, claves) suit la même règle : sa hauteur EST son
     // identité, sa durée n'est qu'une nuance de frappe.
+    // CORDES ÉLECTRONIQUES (vsm.divider). L'ENSEMBLE vient en tête, et c'est
+    // propre à cette machine : sans son chorus, elle n'est qu'un orgue pauvre,
+    // et c'est lui qu'on reconnaît avant tout le reste. Les deux registres
+    // suivent -- ils font l'équilibre grave/aigu, ce qu'une coupure fait
+    // ailleurs. Le filtre global vient après : il n'a qu'un pôle de caractère,
+    // pas de résonance, et ne change pas la nature du son.
+    {"effect.chorus.depth",                0.0f,     1.0f, SearchScale::Linear,      0.94f},
+    {"organ.drawbar.1",                    0.0f,     1.0f, SearchScale::Linear,      0.82f},
+    {"organ.drawbar.2",                    0.0f,     1.0f, SearchScale::Linear,      0.82f},
     // DISTORSION DE PHASE (vsm.phasedist). La DÉFORMATION est à cette machine
     // ce que la coupure est à un soustractif : elle décide combien
     // d'harmoniques existent, et elle vient donc en tête, suivie de ce qui la

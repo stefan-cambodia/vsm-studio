@@ -30,7 +30,7 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **843 tests moteur** (84 core + 626 audio
+écoute au clic, et toute la logique testée hors JUCE. Total : **856 tests moteur** (84 core + 639 audio
 + 111 interchange + 11 CLAP + 11 façades,
 tous verts, zéro warning, y compris sous les flags stricts type-JUCE
 `-Wfloat-equal -Wsign-conversion -Wshadow`) + application complète compilée et
@@ -322,12 +322,12 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 843 tests moteur + 18 tests d'analyse, tous verts
+### Bilan actuel : 856 tests moteur + 18 tests d'analyse, tous verts
 
 - **84 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des
   notes douteuses de la transcription),
-  **626 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
+  **639 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
   scalaire, indépendance des lignes, bornes de l'approximation de tanh ; et la
   boucle : rebouclage échantillon-exact, notes relâchées au saut) : chorus BBD, Juno-106,
   bus master (biquad/compresseur/limiteur à plafond garanti/LUFS), oversampler,
@@ -2903,6 +2903,62 @@ de brisure est justement ce qui se règle, et un réglage continu est bien plus
 cherchable que huit courbes figées (§ 6 de `CDC-machines-manquantes.md`). Pas de
 modulation en anneau ni de bruit, deux modes annexes qui relèvent d'autres
 familles déjà présentes.
+
+---
+
+## 42. `vsm.divider` — une ARCHITECTURE que le parc n'avait pas
+
+**CE QUE TRENTE-DEUX MACHINES AVAIENT EN COMMUN SANS QU'ON LE REMARQUE.**
+Toutes, sans exception, donnent **un oscillateur par voix** : trois touches,
+trois oscillateurs libres. Les cordes électroniques des années 1970 — Solina,
+Logan, Elka — sont bâties à l'envers : **douze** oscillateurs seulement, un par
+nom de note, qui tournent EN PERMANENCE au sommet du clavier, et toutes les
+autres octaves sont obtenues en les DIVISANT par deux, par quatre, par huit, à
+coups de bascules. Une touche n'allume pas un oscillateur : elle ouvre une porte
+sur une fréquence qui existait déjà. Ce n'est pas une famille de timbres de
+plus, c'est une autre façon de construire un instrument.
+
+**LE TRAIT DISTINCTIF DÉCOULE DIRECTEMENT DE L'ARCHITECTURE, ET SE MESURE EN
+DEUX MOITIÉS.** Deux notes à l'octave viennent forcément du même maître : leur
+rapport est exactement deux, quelle que soit la dérive du composant, puisque la
+dérive est COMMUNE. Elles ne peuvent pas battre. Une quinte, elle, met en jeu
+deux maîtres différents qui dérivent chacun de leur côté. Avec la dérive poussée
+au maximum, le test vérifie que l'ondulation de l'octave reste sous 2 % pendant
+que la quinte bat au moins trois fois plus. **Sans la seconde moitié, le test
+passerait aussi sur une machine qui n'aurait tout simplement pas de dérive.**
+
+Un corollaire se vérifie au passage : les maîtres ne s'arrêtent jamais, donc
+rejouer la même note après un silence ne repart PAS de la même phase — alors que
+sur toute autre machine du parc, un oscillateur redémarre à zéro à chaque note.
+
+**LA MÊME ERREUR, DEUX FOIS, ET ELLE EST ÉCRITE DANS LE CODE.** Diviser la
+PHASE d'un oscillateur ne descend pas d'une octave. Une phase qui monte de 0 à 1
+à la fréquence du maître, divisée par huit, monte de 0 à 0,125 — à la MÊME
+fréquence, avec un huitième de l'amplitude. Mesuré : la dent de scie ne
+franchissait plus zéro du tout. Ce qu'une bascule divise, c'est la FRÉQUENCE. Je
+l'ai écrit une première fois sur le maître, corrigé, puis refait exactement au
+même endroit sur le registre de 16 pieds, où `phase × 0,5` produisait une onde
+qui ne passait jamais sous zéro — le test des registres l'a attrapée.
+
+**LE SON VIENT DE L'ENSEMBLE**, un chorus à trois lignes de retard modulées par
+trois oscillateurs lents de fréquences incommensurables. C'est un effet, mais il
+est INSÉPARABLE de la machine : sans lui, elle n'est qu'un orgue pauvre, et un
+test vérifie qu'il fait bien quelque chose (l'ondulation du niveau triple quand
+on l'ouvre). C'est pourquoi il est en grand et seul dans son bloc sur la façade.
+
+**LE NIVEAU EST CALIBRÉ SUR UN PIRE CAS QUI N'EXISTE QUE LÀ.** Cette machine est
+INTÉGRALEMENT polyphonique — toutes les touches à la fois — quand les autres
+plafonnent à huit voix. Vingt notes tenues avec deux registres ouverts sont donc
+un cas normal ici et impossible ailleurs, et le facteur est fixé pour que cet
+accord-là reste sous zéro dBFS. Une note seule y est plus discrète que sur un
+polyphonique du parc : c'est le prix d'une machine qui ne coupe jamais une voix,
+et il est assumé.
+
+**APPROXIMATIONS ASSUMÉES**, statut « dérivé » : les diviseurs sont parfaits (un
+vrai a de la gigue sur ses fronts) ; paraphonie fidèle — une attaque et une
+extinction, pas de filtre par voix, pas de maintien réglable, parce que ces
+machines n'en avaient pas ; deux registres au lieu de quatre, ceux qui font le
+son de cordes ; chorus interpolé linéairement là où un BBD a sa propre couleur.
 
 ---
 
