@@ -538,8 +538,22 @@ de la voix retombe à zéro note ; l'audio est sur une piste audio, à sa place.
 > nouveauté de la version 2** : un projet sans piste audio reste en version 1 et
 > s'ouvre partout.
 >
-> **Restent D2.4 (fondus et gain par clip côté interface — le modèle et le
-> moteur les portent déjà) et D2.5 (la forme d'onde dessinée).**
+> **D2.4 ET D2.5 SONT DÉPLACÉES DANS D5, ET VOICI POURQUOI.** Le gain, les
+> fondus et l'inversion de phase par clip existent dans le modèle, se
+> sérialisent et s'entendent au rendu ; ce qui manque est le moyen de les
+> RÉGLER, c'est-à-dire un clip qu'on puisse saisir. De même, une forme d'onde se
+> dessine sur une ligne de temps, et il n'y en a aucune : le piano roll montre
+> des notes, la liste de pistes est une pile de tranches sans axe temporel. Les
+> faire ici demanderait d'inventer une demi-vue d'arrangement qu'il faudrait
+> jeter en arrivant à D5. Elles y sont donc rattachées, nommément (D5.6 et
+> D5.7), plutôt que laissées cochées à moitié.
+>
+> **L'application charge et publie les pistes audio** au chargement d'un projet
+> et à chaque changement de fréquence de la carte son — le matériau est décodé
+> pour UNE fréquence, et le graphe n'en rééchantillonne pas en temps réel. Une
+> piste qui ne charge pas est **nommée dans une boîte de dialogue** : à
+> l'oreille, elle ne se distingue pas d'une piste dont on aurait baissé le
+> volume.
 
 ### Phase D3 — Enregistrer
 
@@ -585,6 +599,8 @@ D1 a mis les clips dans le modèle ; ici on les rend manipulables.
 | D5.3 | Pliage des pistes, hauteurs réglables, réordonnancement, couleurs choisies | l'écran tient 16 pistes |
 | D5.4 | Automation dessinée **sur** l'arrangement, avec zoom et courbes | plus une lane isolée dans un onglet |
 | D5.5 | Gel et report (*freeze* / *bounce*) d'une piste en audio | une piste gelée sonne identique et coûte le prix d'une lecture audio |
+| D5.6 | Gain, fondus et inversion de phase **réglés à la souris** sur le clip (venus de D2.4 : le modèle et le moteur les portent déjà) | un fondu se tire sur le coin du clip |
+| D5.7 | Forme d'onde dessinée dans le clip audio, avec cache d'aperçu (venue de D2.5) | 9 minutes s'affichent sans bloquer l'interface |
 
 **Critère de phase** : arranger une reconstruction — déplacer un refrain,
 doubler une mesure, boucler quatre temps — se fait entièrement à la souris.

@@ -17,6 +17,7 @@
 #include "vsm/interchange/ReconstructionReport.h"
 #include "vsm/interchange/SynthPreset.h"
 #include "audio/ReferenceAudioLoader.h"
+#include "vsm/audio/io/AudioTrackLoader.h"
 #include "vsm/audio/io/WavFileReader.h"
 #include "ui/UiScale.h"
 
@@ -984,6 +985,49 @@ void MainComponent::saveProjectAs() {
     });
 }
 
+void MainComponent::loadAudioTracks() {
+    const double sr = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate()
+                                                              : 48000.0;
+    juce::StringArray manquants;
+    for (size_t i = 0; i < project_.tracks.size(); ++i) {
+        const auto& track = project_.tracks[i];
+        if (track.kind != vsm::sequencer::Track::Kind::Audio || track.audio.empty()) {
+            audioEngine_.processGraph().setTrackAudio(i, nullptr);
+            continue;
+        }
+        // Le chemin est RELATIF au dossier du projet. Sans dossier -- projet
+        // jamais enregistré --, il n'y a rien à résoudre, et le dire vaut mieux
+        // que de chercher au hasard dans le dossier courant.
+        if (currentProjectFolder_ == juce::File()) {
+            manquants.add(juce::String(track.name) + " (projet jamais enregistre)");
+            audioEngine_.processGraph().setTrackAudio(i, nullptr);
+            continue;
+        }
+        const juce::File fichier = currentProjectFolder_.getChildFile(track.audio.path);
+        auto charge = vsm::audio::io::loadAudioTrack(fichier.getFullPathName().toStdString(), sr);
+        if (!charge.success || !charge.source) {
+            manquants.add(juce::String(track.name) + " : " + juce::String(charge.error));
+            audioEngine_.processGraph().setTrackAudio(i, nullptr);
+            continue;
+        }
+        // La longueur vient du FICHIER CHARGÉ, pas de ce que le projet déclare :
+        // quand les deux divergent, c'est le fichier qui a raison.
+        vsm::sequencer::Track pourLesClips = track;
+        pourLesClips.audio.sampleRate = sr;
+        pourLesClips.audio.frames = charge.source->frames();
+        charge.source->clips = vsm::audio::engine::spansFromTrack(
+            pourLesClips, sr, [this](int64_t tick) { return project_.ticksToSeconds(tick); });
+        audioEngine_.processGraph().setTrackAudio(i, charge.source);
+    }
+    // UNE PISTE AUDIO QUI NE CHARGE PAS NE SE DISTINGUE PAS, À L'OREILLE, D'UNE
+    // PISTE DONT ON AURAIT BAISSÉ LE VOLUME. Elle se dit donc, une fois, au
+    // lieu de laisser chercher.
+    if (!manquants.isEmpty())
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::WarningIcon, "Audio non chargé",
+            "Ces pistes audio n'ont pas pu être lues :\n\n" + manquants.joinIntoString("\n"));
+}
+
 void MainComponent::applyAudioConfig() {
     const double sr = audioEngine_.currentSampleRate();
     if (sr <= 0.0 || std::abs(sr - appliedSampleRate_) < 1.0) return;
@@ -993,6 +1037,11 @@ void MainComponent::applyAudioConfig() {
     // préparés à la bonne fréquence.
     const int blockSize = audioEngine_.currentBlockSize();
     effectChain_.setAudioConfig(sr, blockSize);
+
+    // Les pistes audio sont rééchantillonnées à la nouvelle fréquence : leur
+    // matériau est décodé pour UNE fréquence, et le graphe ne rééchantillonne
+    // pas en temps réel.
+    loadAudioTracks();
 
     // Les effets de bus : mêmes types, mêmes réglages, à la bonne fréquence.
     for (int bus = 0; bus < 2; ++bus) {
@@ -1124,6 +1173,7 @@ void MainComponent::rebuildFromProject(bool stopPlayback) {
     if (!project_.masterParameters.empty())
         vsm::interchange::applyMasterDescription(project_.masterParameters,
                                                   audioEngine_.processGraph().masterBus());
+    loadAudioTracks();
     effectChain_.rebuildFromProject();
     for (size_t i = project_.tracks.size(); i < maxAssignedTracks_; ++i)
         audioEngine_.processGraph().setTrackEffectChain(i, nullptr);

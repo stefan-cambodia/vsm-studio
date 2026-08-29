@@ -115,6 +115,13 @@ private:
     /// carte son change de régime -- 48 kHz était écrit en dur, ce qui rendait
     /// faux tous les temps de delay et de réverbération à 44,1 kHz.
     void applyAudioConfig();
+    /// Charge les fichiers des pistes audio et les publie au moteur.
+    ///
+    /// Sur le thread de l'interface, délibérément : décoder et rééchantillonner
+    /// n'a rien à faire dans le rappel audio. Une piste de neuf minutes fait
+    /// attendre l'interface le temps de la lire -- c'est visible, et c'est
+    /// préférable à un chargement partiel qui jouerait du silence sans le dire.
+    void loadAudioTracks();
     /// Ouvre un DOSSIER de projet complet (project.json + MIDI + presets +
     /// échantillons) -- typiquement celui qu'écrit la chaîne d'analyse.
     void openProjectBundle();
