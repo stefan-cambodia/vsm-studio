@@ -17,6 +17,9 @@
 #if VSM_WITH_CLAP
 #include "ClapPluginHost.h"
 #endif
+#if VSM_WITH_VST3
+#include "Vst3PluginHost.h"
+#endif
 #include "vsm/interchange/ProjectBundle.h"
 #include "vsm/interchange/ReconstructionReport.h"
 #include "vsm/interchange/SynthPreset.h"
@@ -44,6 +47,12 @@ MainComponent::MainComponent()
     // ligne -- continue de ne parler que d'identifiants d'instrument, sans
     // savoir que certains désignent des machines qu'on n'a pas écrites.
     vsm::clap::installClapResolver();
+#endif
+#if VSM_WITH_VST3
+    // D7.2 : ET LES INSTRUMENTS VST3. Les deux résolveurs s'ENCHAÎNENT au lieu
+    // de s'écraser, si bien que l'ordre de ces deux appels n'a aucune
+    // importance -- une règle d'ordre serait exactement ce qu'on oublierait.
+    vsm::vst3::installVst3Resolver();
 #endif
 
     juce::LookAndFeel::setDefaultLookAndFeel(&lookAndFeel_);
@@ -696,9 +705,16 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                               gelable);
                 menu.addItem(kMenuTrackBounce, u8"Reporter la piste en audio (définitif)",
                               gelable);
-#if VSM_WITH_CLAP
+#if VSM_WITH_CLAP || VSM_WITH_VST3
                 menu.addSeparator();
+#endif
+#if VSM_WITH_CLAP
                 menu.addItem(kMenuTrackClapPlugin, u8"Charger un plugin CLAP sur la piste...",
+                              piste < project_.tracks.size()
+                                  && project_.tracks[piste].kind == Track::Kind::Midi);
+#endif
+#if VSM_WITH_VST3
+                menu.addItem(kMenuTrackVst3Plugin, u8"Charger un instrument VST3 sur la piste...",
                               piste < project_.tracks.size()
                                   && project_.tracks[piste].kind == Track::Kind::Midi);
 #endif
@@ -956,6 +972,9 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
 #if VSM_WITH_CLAP
         case kMenuTrackClapPlugin: loadClapPluginOnSelectedTrack(); break;
 #endif
+#if VSM_WITH_VST3
+        case kMenuTrackVst3Plugin: loadVst3PluginOnSelectedTrack(); break;
+#endif
         case kMenuTrackBounce:   bounceSelectedTrack(); break;
         case kMenuViewTracks:    togglePanel(trackListWindow_); break;
         case kMenuViewPianoRoll: togglePanel(pianoRollWindow_); break;
@@ -1141,6 +1160,100 @@ void MainComponent::loadClapPluginOnSelectedTrack() {
                     || static_cast<size_t>(choix) > trouves.size()) return;
                 poser(trouves[static_cast<size_t>(choix) - 1].id,
                        trouves[static_cast<size_t>(choix) - 1].name);
+            }), false);
+    });
+#endif
+}
+
+void MainComponent::loadVst3PluginOnSelectedTrack() {
+#if VSM_WITH_VST3
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+
+    // LE DOSSIER PAR DÉFAUT EST CELUI OÙ LES VST3 VIVENT sur cette plateforme.
+    // Ouvrir sur la racine obligerait à retrouver un chemin que personne ne
+    // connaît par coeur.
+#if JUCE_LINUX
+    const juce::File depart("/usr/lib/vst3");
+#elif JUCE_MAC
+    const juce::File depart("/Library/Audio/Plug-Ins/VST3");
+#else
+    const juce::File depart("C:\\Program Files\\Common Files\\VST3");
+#endif
+
+    auto chooser = std::make_shared<juce::FileChooser>(
+        u8"Choisir un instrument VST3...", depart.isDirectory() ? depart : juce::File(),
+        "*.vst3");
+    chooser->launchAsync(juce::FileBrowserComponent::openMode
+                             | juce::FileBrowserComponent::canSelectFiles
+                             | juce::FileBrowserComponent::canSelectDirectories,
+                          [this, chooser, piste](const juce::FileChooser& fc) {
+        const juce::File fichier = fc.getResult();
+        if (fichier == juce::File()) return;
+
+        std::string erreur;
+        const auto trouves = vsm::vst3::scanVst3File(fichier.getFullPathName().toStdString(),
+                                                      erreur);
+        if (trouves.empty()) {
+            juce::AlertWindow::showMessageBoxAsync(
+                juce::AlertWindow::WarningIcon, u8"Plugin VST3 illisible",
+                juce::String(u8"Ce fichier n'a livré aucun plugin.\n\n") + juce::String(erreur));
+            return;
+        }
+
+        // ON NE PROPOSE QUE LES INSTRUMENTS. Un effet posé là où la piste
+        // attend un instrument donnerait du silence, et il faudrait le deviner
+        // à l'oreille. Les effets viendront en D7.3.
+        std::vector<vsm::vst3::Vst3PluginInfo> instruments;
+        for (const auto& info : trouves)
+            if (info.isInstrument) instruments.push_back(info);
+        if (instruments.empty()) {
+            juce::AlertWindow::showMessageBoxAsync(
+                juce::AlertWindow::WarningIcon, u8"Pas d'instrument dans ce fichier",
+                juce::String(u8"Ce fichier ne contient que des effets. Les héberger viendra "
+                             u8"avec l'etape D7.3."));
+            return;
+        }
+
+        auto poser = [this, piste, fichier](const std::string& pluginId,
+                                             const std::string& nomAffiche) {
+            beginProjectEdit(u8"Charger un instrument VST3");
+            auto& cible = project_.tracks[piste];
+            cible.instrumentId = vsm::vst3::vst3InstrumentId(
+                fichier.getFullPathName().toStdString(), pluginId);
+            // LE PRESET DE L'ANCIENNE MACHINE NE SUIT PAS : ses identités
+            // sémantiques ne veulent rien dire pour celle-ci.
+            cible.presetId.clear();
+            rebuildFromProject();
+            juce::AlertWindow::showMessageBoxAsync(
+                juce::AlertWindow::InfoIcon, u8"Instrument charge",
+                juce::String(nomAffiche) + juce::String(u8" joue maintenant sur la piste ")
+                    + juce::String(static_cast<int>(piste) + 1) + ".");
+        };
+
+        if (instruments.size() == 1) {
+            poser(instruments[0].id, instruments[0].name);
+            return;
+        }
+
+        auto fenetre = std::make_shared<juce::AlertWindow>(
+            u8"Plusieurs instruments dans ce fichier", u8"Lequel charger ?",
+            juce::AlertWindow::NoIcon);
+        juce::StringArray noms;
+        for (const auto& info : instruments)
+            noms.add(juce::String(info.name) + " -- " + juce::String(info.vendor));
+        fenetre->addComboBox("plugin", noms, u8"Instrument");
+        fenetre->addButton(u8"Charger", 1, juce::KeyPress(juce::KeyPress::returnKey));
+        fenetre->addButton(u8"Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+        fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+            [fenetre, instruments, poser](int resultat) {
+                const int choix = fenetre->getComboBoxComponent("plugin")->getSelectedId();
+                fenetre->exitModalState(resultat);
+                fenetre->setVisible(false);
+                if (resultat != 1 || choix < 1
+                    || static_cast<size_t>(choix) > instruments.size()) return;
+                poser(instruments[static_cast<size_t>(choix) - 1].id,
+                       instruments[static_cast<size_t>(choix) - 1].name);
             }), false);
     });
 #endif

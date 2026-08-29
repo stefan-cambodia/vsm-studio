@@ -28,6 +28,13 @@ SynthPreset capturePreset(const ISynthPlugin& plugin, const std::string& pluginI
         if (descriptor.semanticId.empty()) continue; // paramètre sans identité : jamais inventé
         preset.values[descriptor.semanticId] = plugin.getParameter(descriptor.paramId);
     }
+
+    // D7.2 : ET CE QUE LA TABLE NE DIT PAS. Vide pour les machines du parc, dont
+    // le son EST leur table de paramètres. Une machine tierce, elle, n'a aucun
+    // profil sémantique ici : sans cet appel, capturer son preset écrirait un
+    // fichier au nom juste et au contenu vide, et rouvrir le morceau donnerait
+    // un autre son sans que rien ne le signale.
+    preset.nativeState = plugin.saveNativeState();
     return preset;
 }
 
@@ -60,6 +67,8 @@ std::string PresetApplyReport::summary() const {
             first = false;
         }
     }
+    if (nativeStateApplied) out << ", état natif reposé";
+    if (!nativeStateDetail.empty()) out << ", " << nativeStateDetail;
     return out.str();
 }
 
@@ -67,6 +76,26 @@ PresetApplyReport applyPreset(const SynthPreset& preset, ISynthPlugin& plugin,
                                const std::string& targetPluginId) {
     PresetApplyReport report;
     const SemanticProfile profile = buildSemanticProfile(targetPluginId);
+
+    // D7.2 : L'ÉTAT NATIF D'ABORD, LES VALEURS SÉMANTIQUES PAR-DESSUS. L'état
+    // natif est l'instantané complet ; les valeurs nommées en sont un extrait,
+    // et sont aussi ce qu'un humain ou un script a pu MODIFIER dans le fichier.
+    // Les appliquer après, c'est faire gagner ce qui a été écrit exprès.
+    //
+    // ET SEULEMENT À LA MACHINE D'ORIGINE. Un état natif ne se transpose pas :
+    // reposer celui d'un plugin dans un autre serait refusé au mieux, mal
+    // interprété au pire. Le refus est DIT, jamais tu.
+    if (!preset.nativeState.empty()) {
+        if (!preset.pluginId.empty() && preset.pluginId != targetPluginId) {
+            report.nativeStateDetail = "état natif de « " + preset.pluginId
+                                       + " » non reposé sur « " + targetPluginId + " »";
+        } else if (plugin.loadNativeState(preset.nativeState)) {
+            report.nativeStateApplied = true;
+        } else {
+            report.nativeStateDetail = "la machine a refusé son état natif "
+                                        "(format ou version incompatible)";
+        }
+    }
 
     for (const auto& [semanticId, requested] : preset.values) {
         PresetApplyReport::Entry entry;
@@ -120,6 +149,14 @@ JsonValue synthPresetToJson(const SynthPreset& preset) {
             samples.set(std::to_string(slot), JsonValue::makeString(path));
         root.set("samples", std::move(samples));
     }
+    if (!preset.nativeState.empty()) {
+        // ÉCRIT EN DERNIER, ET SEULEMENT S'IL EXISTE : c'est le seul champ
+        // illisible du fichier, et il n'a aucune raison de s'interposer entre
+        // le nom de la machine et les réglages qu'un humain vient y relire.
+        root.set("nativeState", JsonValue::makeString(preset.nativeState));
+        root.set("nativeStateFormat", JsonValue::makeString(
+            preset.nativeStateFormat.empty() ? std::string("inconnu") : preset.nativeStateFormat));
+    }
     if (!preset.profile.empty()) {
         root.set("profile", JsonValue::makeString(preset.profile));
     }
@@ -171,6 +208,9 @@ SynthPresetLoadResult synthPresetFromJson(const JsonValue& json) {
     // Échantillons : champ facultatif. Absent = preset sans échantillon, ce
     // qui est le cas de toutes les machines sauf celles qui en lisent.
     if (json["profile"].isString()) preset.profile = json["profile"].asString();
+    if (json["nativeState"].isString()) preset.nativeState = json["nativeState"].asString();
+    if (json["nativeStateFormat"].isString())
+        preset.nativeStateFormat = json["nativeStateFormat"].asString();
 
     const JsonValue& samples = json["samples"];
     if (samples.isObject()) {

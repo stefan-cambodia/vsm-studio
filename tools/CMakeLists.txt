@@ -15,6 +15,13 @@ if (TARGET vsm_clap_host)
     target_compile_definitions(vsm-render PRIVATE VSM_WITH_CLAP=1)
 endif()
 
+# D7.2 : même chose pour l'hôte VST3. Les deux familles cohabitent -- leurs
+# résolveurs s'enchaînent au lieu de s'écraser.
+if (TARGET vsm_vst3_host)
+    target_link_libraries(vsm-render PRIVATE vsm_vst3_host)
+    target_compile_definitions(vsm-render PRIVATE VSM_WITH_VST3=1)
+endif()
+
 # `vsm-sf2` convertit une banque SoundFont en profil pour vsm.multisample. Outil
 # d'INSTALLATION, appelé une fois : le DAW, lui, ne charge jamais qu'un profil.
 add_executable(vsm-sf2 vsm_sf2_main.cpp)

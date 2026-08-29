@@ -109,6 +109,7 @@ private:
         kMenuTrackFreeze,
         kMenuTrackBounce,
         kMenuTrackClapPlugin,
+        kMenuTrackVst3Plugin,
         kMenuRecordCountInNone,
         kMenuRecordCountInOne,
         kMenuRecordCountInTwo,
@@ -294,6 +295,8 @@ private:
     void exportMidiFile();
     /// D7.1 : charger un plugin CLAP tiers sur la piste sélectionnée.
     void loadClapPluginOnSelectedTrack();
+    /// D7.2 : charger un instrument VST3 tiers sur la piste sélectionnée.
+    void loadVst3PluginOnSelectedTrack();
 
     void exportAudioFile();
     /// Un WAV par piste (D6.2).

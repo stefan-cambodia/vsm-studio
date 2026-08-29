@@ -1,6 +1,7 @@
 #pragma once
 #include "ParameterTypes.h"
 #include <memory>
+#include <string>
 
 namespace vsm::audio::plugin {
 
@@ -79,6 +80,35 @@ public:
     /// DIRE, plutôt que de rendre faux en silence -- exactement la raison
     /// d'être de `latencySamples()` juste au-dessus.
     virtual bool requiresRealtimeRender() const { return false; }
+
+    /// L'ÉTAT QUI NE TIENT PAS DANS UNE TABLE DE FLOTTANTS (D7.2).
+    ///
+    /// VIDE pour les trente-quatre machines du parc, et ce n'est pas un oubli :
+    /// leur son EST leur table de paramètres, `saveState()` la rend en entier,
+    /// et un preset sémantique la décrit dans des unités qu'un humain relit.
+    /// C'est une propriété qu'on ne veut pas perdre.
+    ///
+    /// LE CHAMP EXISTE POUR LES MACHINES QU'ON N'A PAS ÉCRITES. L'état d'un
+    /// plugin tiers ne se réduit pas à ses paramètres automatisables : il y a
+    /// des échantillons chargés, des matrices de modulation, des tables
+    /// dessinées à la main, des choses qu'aucun `ParamId` ne désigne. Un hôte
+    /// qui ne sauvegarderait que les paramètres rouvrirait le morceau avec un
+    /// autre son, sans le dire -- exactement l'échec que ce projet refuse.
+    ///
+    /// C'EST DU TEXTE, ET C'EST UNE DÉCISION. Les états natifs sont binaires ;
+    /// c'est à l'hôte qui les produit de les encoder (en base64, en pratique),
+    /// parce que la couche d'interopérabilité qui les écrira dans le projet ne
+    /// connaît que du JSON et ne doit pas apprendre à manipuler des octets pour
+    /// une famille de machines sur trente-cinq.
+    ///
+    /// Vide veut dire « je n'en ai pas », jamais « la sauvegarde a échoué » :
+    /// une machine qui échoue à se décrire doit le faire savoir autrement.
+    virtual std::string saveNativeState() const { return {}; }
+    /// Restaure ce que `saveNativeState()` a produit. Rend faux si l'état est
+    /// refusé -- et un état refusé laisse la machine sur ses réglages
+    /// précédents, ce qui produirait un son faux sans prévenir : l'appelant
+    /// DOIT le signaler.
+    virtual bool loadNativeState(const std::string&) { return false; }
 
 };
 

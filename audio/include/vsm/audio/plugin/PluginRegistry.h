@@ -46,6 +46,14 @@ public:
         externalResolver_ = std::move(resolver);
     }
 
+    /// LE RÉSOLVEUR EN PLACE, pour qu'une seconde famille de plugins puisse se
+    /// poser SANS effacer la première : elle enchaîne le sien devant celui-ci
+    /// (voir `installClapResolver` et `installVst3Resolver`). Un unique
+    /// résolveur qu'on écrase ferait disparaître CLAP ou VST3 selon l'ordre des
+    /// appels -- le genre de règle d'ordre que personne ne se rappelle et que
+    /// rien ne signale.
+    const SynthPluginFactoryById& externalResolver() const { return externalResolver_; }
+
     SynthPluginPtr create(const std::string& id) const {
         auto it = entries_.find(id);
         if (it != entries_.end()) return it->second.factory();

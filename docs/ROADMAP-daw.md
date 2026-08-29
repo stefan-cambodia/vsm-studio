@@ -1734,7 +1734,7 @@ L'hôte CLAP existe (`clap/host/`). Le marché, lui, est en VST3.
 | Étape | Contenu | Terminé quand |
 |---|---|---|
 | D7.1 | Lier l'hôte CLAP à l'application — il est écrit, testé, et non branché | un `.clap` tiers se charge sur une piste — **fait** |
-| D7.2 | Hôte VST3 pour les instruments, présenté comme `ISynthPlugin` | un instrument tiers joue et se sauvegarde dans le projet |
+| D7.2 | Hôte VST3 pour les instruments, présenté comme `ISynthPlugin` | un instrument tiers joue et se sauvegarde dans le projet — **fait** |
 | D7.3 | **Entrées audio dans l'hôte** pour héberger des effets (CLAP comme VST3) | insérables au même titre que les natifs |
 | D7.4 | Interface native du plugin dans une fenêtre ; transport transmis au plugin | affichée, redimensionnable, fermable sans perte d'état ; un delay synchronisé au tempo suit le tempo |
 | D7.5 | Balayage des plugins installés en tâche de fond | plugin fautif isolé et signalé, jamais fatal |
@@ -1784,6 +1784,72 @@ la règle déjà tenue pour les instruments VSM manquants (P4/P7 de
 > ligne de commande doivent accepter les mêmes projets ; sans cela, exporter
 > depuis l'une et depuis l'autre ne donnerait pas le même fichier — ce que le
 > critère de la phase D6 interdit.
+
+
+> **D7.2 EST FAITE (30/08/2026). LE MARCHÉ EST EN VST3, ET UN HÔTE QUI
+> N'ACCEPTERAIT QUE LE FORMAT QU'IL PRÉFÈRE N'HÉBERGERAIT PERSONNE.** La couche
+> a exactement la même forme que celle de CLAP : un plugin chargé est présenté
+> comme un `ISynthPlugin`, et le registre apprend une forme d'identifiant de
+> plus, `vst3:<chemin>#<identifiant>`. C'est la **deuxième** famille de machines
+> qu'on n'a pas écrites à passer par cette architecture sans la faire bouger —
+> et c'est la seule façon de savoir qu'elle tient.
+>
+> **AUCUN TÉLÉCHARGEMENT DE PLUS.** JUCE 8 embarque le SDK VST3 et
+> `juce_audio_processors` sait déjà héberger ; l'option `VSM_BUILD_VST3` n'exige
+> donc rien que l'application n'exige déjà. JUCE est désormais récupéré par le
+> `CMakeLists` racine plutôt que par `app/`, parce que `tools/` et `app/` lient
+> tous deux cette couche et qu'elle doit être définie avant eux.
+>
+> **`JUCE_PLUGINHOST_VST3=1` OU RIEN.** Sans cette définition, l'hôte de JUCE se
+> compile et ne trouve **jamais** aucun plugin — la pire des pannes, celle qui
+> ne dit rien. Un `#error` refuse la compilation plutôt que de livrer ça.
+>
+> **LES DEUX RÉSOLVEURS S'ENCHAÎNENT AU LIEU DE S'ÉCRASER.** Le registre n'en
+> accepte qu'un ; celui qui se pose garde celui d'avant et lui passe la main.
+> L'ordre des appels n'a donc aucune importance — une règle d'ordre serait
+> exactement ce que personne ne se rappellerait et que rien ne signalerait.
+>
+> **« SE SAUVEGARDE DANS LE PROJET » A OBLIGÉ À AJOUTER QUELQUE CHOSE, et c'est
+> le vrai sujet de l'étape.** L'état d'un plugin tiers ne se réduit pas à ses
+> paramètres automatisables : il y a des échantillons chargés, des matrices de
+> modulation, des tables dessinées à la main, que rien dans le vocabulaire
+> sémantique ne désigne. Un hôte qui ne sauvegarderait que les paramètres
+> rouvrirait le morceau avec un autre son, sans le dire. D'où
+> `ISynthPlugin::saveNativeState()` / `loadNativeState()` — **vides pour les
+> trente-quatre machines du parc**, dont le son EST leur table de paramètres, et
+> c'est une propriété qu'on ne voulait pas perdre en chemin.
+>
+> **C'EST DU TEXTE, ET C'EST UNE DÉCISION.** Les états natifs sont binaires ;
+> l'hôte qui les produit les encode (base64), parce que la couche
+> d'interopérabilité qui les écrit ne connaît que du JSON et ne doit pas
+> apprendre à manipuler des octets pour une famille de machines sur trente-cinq.
+>
+> **L'ÉTAT NATIF S'AJOUTE AUX VALEURS SÉMANTIQUES, IL NE LES REMPLACE PAS.** Le
+> premier ne se relit que par la même machine ; les secondes restent lisibles
+> par un humain et applicables à une autre. Perdre le premier rendrait le
+> morceau faux, perdre les secondes rendrait le fichier opaque. À la relecture,
+> l'état natif est reposé **d'abord** et les valeurs nommées par-dessus : ce
+> sont elles qu'un humain ou un script a pu modifier exprès dans le fichier.
+>
+> **ET JAMAIS SUR UNE AUTRE MACHINE** : un état natif ne se transpose pas, et le
+> refus est **dit** (`PresetApplyReport::nativeStateDetail`), jamais tu.
+>
+> **LE TEST EST FERMÉ SUR LUI-MÊME**, comme celui de CLAP : ce dépôt construit
+> un petit instrument VST3 dont l'état porte une valeur **qu'aucun paramètre
+> n'expose**. Sans cela, le test de sauvegarde passerait aussi pour un hôte qui
+> ne sauvegarderait que ses paramètres — c'est-à-dire pour la panne même qu'on
+> veut interdire. Aucun plugin tiers installé n'est nécessaire, et le jour où un
+> plugin tiers posera problème, on saura que le défaut vient de lui.
+>
+> **UN EFFET N'EST PAS UN INSTRUMENT** : la distinction est lue dans le fichier,
+> et l'application ne propose que les instruments. Poser un effet là où une
+> piste attend un instrument donnerait une piste muette qu'il faudrait deviner à
+> l'oreille. Les effets viendront en D7.3.
+>
+> **CE QUE L'HÔTE NE PRÉTEND PAS SAVOIR** : `activeVoiceCount()` rend zéro,
+> parce qu'aucun format de plugin ne publie ce chiffre. Zéro se lit comme « pas
+> d'information » ; un chiffre inventé ferait mentir l'affichage de charge, qui
+> existe précisément pour dire quand une machine sature.
 
 
 ### Phase D8 — Tenir la charge

@@ -4,15 +4,9 @@
 # (ALSA/X11/FreeType sous Linux, Xcode sous macOS, Visual Studio sous
 # Windows). Voir la note en tête de Source/Main.cpp.
 
-include(FetchContent)
-
-FetchContent_Declare(
-    JUCE
-    GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
-    GIT_TAG        8.0.4
-    GIT_SHALLOW    TRUE
-)
-FetchContent_MakeAvailable(JUCE)
+# JUCE est récupéré par le CMakeLists racine (voir `vsm_fetch_juce`) : la
+# couche VST3 en a besoin elle aussi, et elle est définie AVANT ce dossier.
+# Deux FetchContent pour la même dépendance se marcheraient dessus.
 
 juce_add_gui_app(VintageSynthMidiStudio
     PRODUCT_NAME "Vintage Synth MIDI Studio"
@@ -94,6 +88,13 @@ target_link_libraries(VintageSynthMidiStudio
 if (TARGET vsm_clap_host)
     target_link_libraries(VintageSynthMidiStudio PRIVATE vsm_clap_host)
     target_compile_definitions(VintageSynthMidiStudio PRIVATE VSM_WITH_CLAP=1)
+endif()
+
+# D7.2 : et l'hôte VST3, quand il est compilé. Même règle que pour CLAP -- sans
+# lui, l'application se compile et fonctionne à l'identique.
+if (TARGET vsm_vst3_host)
+    target_link_libraries(VintageSynthMidiStudio PRIVATE vsm_vst3_host)
+    target_compile_definitions(VintageSynthMidiStudio PRIVATE VSM_WITH_VST3=1)
 endif()
 
 juce_generate_juce_header(VintageSynthMidiStudio)

@@ -517,10 +517,16 @@ bool parseClapInstrumentId(const std::string& instrumentId, std::string& outFile
 }
 
 void installClapResolver() {
-    vsm::audio::plugin::PluginRegistry::instance().setExternalResolver(
-        [](const std::string& id) -> vsm::audio::plugin::SynthPluginPtr {
+    auto& registre = vsm::audio::plugin::PluginRegistry::instance();
+    // CELUI QUI ÉTAIT DÉJÀ LÀ EST GARDÉ (voir `installVst3Resolver`, D7.2) :
+    // deux familles de plugins doivent pouvoir cohabiter quel que soit l'ordre
+    // dans lequel elles se posent.
+    auto precedent = registre.externalResolver();
+    registre.setExternalResolver(
+        [precedent](const std::string& id) -> vsm::audio::plugin::SynthPluginPtr {
             std::string chemin, pluginId;
-            if (!parseClapInstrumentId(id, chemin, pluginId)) return nullptr;
+            if (!parseClapInstrumentId(id, chemin, pluginId))
+                return precedent ? precedent(id) : nullptr;
             // L'ERREUR EST AVALÉE ICI, et une seule fois : le registre ne rend
             // qu'un pointeur, et l'appelant a déjà tout ce qu'il faut pour
             // dire « instrument absent » sans le remplacer. Faire remonter le

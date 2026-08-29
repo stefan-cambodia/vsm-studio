@@ -69,6 +69,32 @@ struct SynthPreset {
     /// l'identique, donc son ajout ne change pas le numéro de version.
     std::string profile;
 
+    /// ÉTAT NATIF D'UNE MACHINE QU'ON N'A PAS ÉCRITE (D7.2), tel que
+    /// `ISynthPlugin::saveNativeState()` le rend -- du texte, en pratique du
+    /// base64.
+    ///
+    /// POURQUOI IL FAUT LE GARDER, alors que ce format existe précisément pour
+    /// ne PAS dépendre de l'état interne d'une machine. Parce que pour un
+    /// plugin tiers, la table de paramètres n'est pas son son : il y a des
+    /// échantillons chargés, des matrices de modulation, des tables dessinées
+    /// à la main, que rien dans le vocabulaire sémantique ne désigne. Sans ce
+    /// champ, rouvrir un morceau donnerait un autre son sans le dire.
+    ///
+    /// IL NE REMPLACE PAS `values`, IL S'AJOUTE. Les deux sont écrits quand
+    /// les deux existent : `values` reste lisible par un humain et applicable
+    /// à une AUTRE machine, l'état natif ne se relit que par la même. Perdre
+    /// le premier au profit du second rendrait le fichier opaque ; perdre le
+    /// second rendrait le morceau faux.
+    ///
+    /// FACULTATIF, et son ajout ne change donc pas le numéro de version : un
+    /// preset qui n'en déclare pas se lit à l'identique, et un lecteur ancien
+    /// ignore un état qu'il ne saurait de toute façon pas rendre à personne.
+    std::string nativeState;
+    /// À QUI cet état s'adresse, ex. "vst3". Un état natif appliqué à la
+    /// mauvaise famille de machine serait refusé au mieux, mal interprété au
+    /// pire ; le format se dit plutôt que de se deviner à l'usage.
+    std::string nativeStateFormat;
+
     float valueOr(const std::string& semanticId, float fallback) const;
 };
 
@@ -87,6 +113,17 @@ struct PresetApplyReport {
         std::string detail;          ///< explication quand ce n'est pas exact
     };
     std::vector<Entry> entries;
+
+    /// D7.2 : L'ÉTAT NATIF A-T-IL ÉTÉ REPOSÉ, et sinon pourquoi. Séparé des
+    /// `entries`, qui comptent des paramètres nommés : un état natif n'en est
+    /// pas un, et le glisser dans la liste fausserait les comptes que
+    /// l'interface affiche.
+    bool nativeStateApplied = false;
+    /// Vide quand il n'y avait rien à reposer. Renseigné dès qu'il y avait un
+    /// état et qu'il n'a PAS été appliqué -- refusé par la machine, ou destiné
+    /// à une autre. Un état natif silencieusement ignoré rouvrirait le morceau
+    /// avec un autre son.
+    std::string nativeStateDetail;
 
     size_t appliedCount() const;
     size_t unsupportedCount() const;

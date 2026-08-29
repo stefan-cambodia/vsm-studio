@@ -30,8 +30,8 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **933 tests moteur** (98 core + 684 audio
-+ 129 interchange + 11 CLAP + 11 façades,
+écoute au clic, et toute la logique testée hors JUCE. Total : **1118 tests moteur** (160 core + 763 audio
++ 160 interchange + 15 CLAP + 9 VST3 + 11 façades,
 tous verts, zéro warning, y compris sous les flags stricts type-JUCE
 `-Wfloat-equal -Wsign-conversion -Wshadow`) + application complète compilée et
 liée. Rendus réels vérifiables : `minimoog_demo.wav`,
@@ -1060,6 +1060,38 @@ spécifique à CLAP. La garantie « ajouter une machine ne touche ni le moteur n
 l'UI » (§ 22) vaut donc aussi pour les machines qu'on n'a pas écrites. Le seul
 ajout au moteur est `ProcessGraph::setTrackInstrumentInstance()`, qui accepte
 une instance déjà construite au lieu d'un identifiant de registre.
+
+### VST3 : héberger les instruments des autres (D7.2)
+
+`vst3/host/` charge un `.vst3` externe et le présente, lui aussi, **comme un
+`ISynthPlugin`**. La couche a délibérément la même forme que celle de CLAP, et
+c'est ce qui la rend intéressante : c'est la **deuxième** famille de machines
+qu'on n'a pas écrites à traverser cette architecture sans la faire bouger. Le
+moteur, le format de projet et le rendu hors ligne n'ont pas une ligne de plus.
+
+**Le registre apprend une forme d'identifiant, pas une dépendance.**
+`PluginRegistry` accepte un **résolveur** appelé quand l'identifiant demandé ne
+fait pas partie du parc ; `installClapResolver()` et `installVst3Resolver()` s'y
+posent. `audio/` continue donc d'ignorer jusqu'à l'existence de CLAP, de VST3 et
+de JUCE. Les deux résolveurs **s'enchaînent** au lieu de s'écraser : l'ordre des
+appels n'a aucune importance, ce qui évite une règle d'ordre que personne ne se
+rappellerait.
+
+**L'état d'un plugin tiers ne tient pas dans une table de flottants.** Il porte
+des échantillons chargés, des matrices de modulation, des tables dessinées à la
+main, que rien dans le vocabulaire sémantique ne désigne. D'où
+`ISynthPlugin::saveNativeState()` / `loadNativeState()` -- **vides pour les
+trente-quatre machines du parc**, dont le son EST leur table de paramètres, et
+c'est une propriété qu'on ne voulait pas perdre. L'état natif est du **texte**
+(base64 produit par l'hôte) : la couche d'interopérabilité n'écrit que du JSON et
+n'a pas à apprendre à manipuler des octets pour une famille de machines sur
+trente-cinq. Il **s'ajoute** aux valeurs sémantiques, ne les remplace pas, et ne
+se repose jamais sur une autre machine que la sienne -- le refus est dit.
+
+**JUCE fait le travail d'hôte, et n'exige aucun téléchargement de plus** : JUCE 8
+embarque le SDK VST3. `JUCE_PLUGINHOST_VST3=1` est obligatoire et vérifié par un
+`#error` : sans lui, l'hôte se compile et ne trouve jamais aucun plugin, ce qui
+est la pire des pannes.
 
 **Les identifiants de paramètres sont des hachages, pas des numéros d'ordre.**
 Un hôte mémorise les `clap_id` dans SES projets (automations, assignations de

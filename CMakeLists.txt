@@ -39,6 +39,31 @@ endif()
 # build ordinaire ni dans une CI, où il ne ferait qu'ajouter du temps et du
 # bruit (chiffres dépendants de la machine et de sa charge).
 option(VSM_BUILD_BENCH "Compiler le banc de mesure CPU du moteur audio (Phase 6)" OFF)
+
+# --- VST3 (D7.2) : héberger les instruments des autres -------------------
+# OFF par défaut, pour la même raison que CLAP : c'est la seule autre partie du
+# projet qui exige un téléchargement. Elle n'en exige toutefois PAS un de plus
+# quand l'application est compilée -- JUCE 8 embarque le SDK VST3, et
+# `juce_audio_processors` sait déjà héberger. Le marché est en VST3 ; refuser
+# de le lire au motif que CLAP est plus propre reviendrait à n'héberger
+# personne.
+option(VSM_BUILD_VST3 "Compiler l'hôte VST3 (nécessite JUCE, qui embarque le SDK VST3)" OFF)
+
+# JUCE, RÉCUPÉRÉ UNE SEULE FOIS ET ICI. Il servait jusqu'ici à `app/` seul, qui
+# le récupérait lui-même ; la couche VST3 en a besoin AVANT, puisque `tools/` et
+# `app/` la lient tous deux. Deux FetchContent pour la même dépendance se
+# marcheraient dessus.
+if (VSM_BUILD_APP OR VSM_BUILD_VST3)
+    include(FetchContent)
+    FetchContent_Declare(
+        JUCE
+        GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
+        GIT_TAG        8.0.4
+        GIT_SHALLOW    TRUE
+    )
+    FetchContent_MakeAvailable(JUCE)
+endif()
+
 add_subdirectory(core)
 
 # --- vsm_audio : moteur audio temps réel (Phase 2), aucune dépendance ----
@@ -60,8 +85,13 @@ if (VSM_BUILD_CLAP)
     add_subdirectory(clap)
 endif()
 
-# AVANT `tools` et `app` (D7.1) : tous deux lient l'hôte CLAP quand il existe,
-# et CMake exige que la cible soit déjà définie.
+# --- vst3 : hôte VST3 (D7.2) ---------------------------------------------
+if (VSM_BUILD_VST3)
+    add_subdirectory(vst3)
+endif()
+
+# AVANT `tools` et `app` (D7.1, D7.2) : tous deux lient les hôtes CLAP et VST3
+# quand ils existent, et CMake exige que la cible soit déjà définie.
 add_subdirectory(tools)
 
 

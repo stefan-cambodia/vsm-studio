@@ -2,6 +2,9 @@
 #if VSM_WITH_CLAP
 #include "ClapPluginHost.h"
 #endif
+#if VSM_WITH_VST3
+#include "Vst3PluginHost.h"
+#endif
 #include "vsm/interchange/PatchRenderService.h"
 #include <iostream>
 #include <cstdio>
@@ -74,6 +77,9 @@ int main(int argc, char** argv) {
     // D7.1 : les identifiants `clap:` deviennent chargeables. Une seule ligne,
     // et le rendu accepte les mêmes projets que l'application.
     vsm::clap::installClapResolver();
+#endif
+#if VSM_WITH_VST3
+    vsm::vst3::installVst3Resolver();
 #endif
     std::vector<std::string> positional;
     vsm::interchange::RenderOptions options;
