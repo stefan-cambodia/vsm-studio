@@ -30,7 +30,7 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **816 tests moteur** (84 core + 599 audio
+écoute au clic, et toute la logique testée hors JUCE. Total : **830 tests moteur** (84 core + 613 audio
 + 111 interchange + 11 CLAP + 11 façades,
 tous verts, zéro warning, y compris sous les flags stricts type-JUCE
 `-Wfloat-equal -Wsign-conversion -Wshadow`) + application complète compilée et
@@ -322,12 +322,12 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 816 tests moteur + 18 tests d'analyse, tous verts
+### Bilan actuel : 830 tests moteur + 18 tests d'analyse, tous verts
 
 - **84 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des
   notes douteuses de la transcription),
-  **599 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
+  **613 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
   scalaire, indépendance des lignes, bornes de l'approximation de tanh ; et la
   boucle : rebouclage échantillon-exact, notes relâchées au saut) : chorus BBD, Juno-106,
   bus master (biquad/compresseur/limiteur à plafond garanti/LUFS), oversampler,
@@ -2801,6 +2801,63 @@ juste après) ; et **une empreinte muette est maintenant une ERREUR**, refusée 
 l'écriture comme à la comparaison, avec un message qui dit où chercher. Les
 empreintes de `vsm.drums`, `vsm.perc` et `vsm.fmdrums` ont été régénérées : ce
 qu'elles mesurent a changé, et c'est un changement assumé.
+
+---
+
+## 40. `vsm.vocal` — la dernière case nommée du tableau de couverture
+
+**LE § 1 L'AVAIT ÉCRIT, ET C'ÉTAIT LA DERNIÈRE.** « Chaque source a une machine
+qui la MODÉLISE, **sauf la voix**, qui est reportée telle quelle et présentée
+comme telle. » C'était la dernière case atteignable du tableau — celle des bois
+coniques ayant été mesurée hors de portée quatre fois (§ 33 et `ConeSynth.h`).
+
+Reporter la voix reste le bon choix pour reconstruire un disque : une voix
+humaine n'est pas synthétisable à l'identique, et la chaîne le dit. Mais « pas à
+l'identique » n'est pas « pas du tout » : un chœur, une nappe vocale, un pad qui
+prononce une voyelle sont d'un usage courant, et le parc n'en produisait aucun.
+
+**LE TRAIT DISTINCTIF EST LA DÉFINITION MÊME D'UNE VOIX.** Les résonances du
+conduit vocal — les FORMANTS — ne suivent pas la note chantée : un même « a » à
+110 Hz et à 220 Hz a son premier formant au même endroit, vers 730 Hz. C'est ce
+qui fait qu'on reconnaît la voyelle indépendamment de la hauteur. Aucune machine
+du parc ne sait faire cela : un filtre soustractif n'a qu'UNE résonance, qui
+suit le clavier ou ne le suit pas, et ne peut pas tenir trois pics à des
+fréquences absolues pendant que le fondamental se déplace. Le test joue la même
+voyelle à une octave d'écart et vérifie qu'aux deux hauteurs l'énergie est dans
+la bande 600–900 Hz, et non dans la bande 1250–1700 où une transposition
+l'aurait mise.
+
+**LE MODÈLE : SOURCE-FILTRE**, celui de la phonétique depuis 1960. Une source
+glottique — une impulsion dont la largeur se règle, plus du souffle — traverse
+trois résonateurs accordés sur les formants de la voyelle. Cinq voyelles, et le
+réglage passe de l'une à l'autre EN CONTINU, en suivant le trapèze vocalique.
+Un second test le vérifie dans les deux sens : le « a » concentre son énergie
+entre 600 et 1200 Hz là où le « i » la met à 270 et 2290.
+
+**DEUX ERREURS DE MESURE DE MA PART, ÉCRITES DANS LE TEST PARCE QU'ELLES SE
+REFERAIENT.** La première version cherchait « la fréquence du maximum » dans une
+bande. Or le spectre d'une voix est un PEIGNE d'harmoniques espacées de f0 : un
+formant n'y apparaît pas comme un maximum à sa propre fréquence, mais comme un
+renforcement de l'harmonique la plus proche — et cette harmonique change quand
+la note change. Le test trouvait donc un écart de plus de cent hertz entre deux
+octaves alors que le formant n'avait pas bougé d'un seul. **L'énergie d'une
+bande, elle, est insensible à la position des dents du peigne.** La seconde
+erreur était de comparer une bande haute à elle-même pour séparer « a » et
+« i » : le troisième formant du « a » (2440 Hz) et le second du « i » (2290 Hz)
+y tombent tous les deux, et cette bande ne sépare rien. Ce qui sépare est le
+RAPPORT entre une bande basse et une bande haute.
+
+Une troisième assertion a été écrite puis RETIRÉE, et c'est écrit dans le test :
+comparer le rapport de deux bandes d'une hauteur à l'autre revenait à mesurer la
+chance qu'une harmonique tombe dans une fenêtre de 450 Hz. Elle aurait fait
+échouer le test pour une raison sans rapport avec ce qu'il prétend vérifier.
+
+**CE QUE CETTE MACHINE N'EST PAS**, et c'est écrit dans son en-tête : elle chante
+des voyelles, elle ne PARLE pas. Les consonnes demandent des transitoires et des
+occlusions, c'est-à-dire un modèle de geste et non de conduit. Trois formants au
+lieu des cinq utiles ; pas de nasalité, qui exigerait un anti-formant. Statut
+« dérivé » : les fréquences viennent des tables de phonétique publiées, aucune
+n'a été relevée sur un chanteur.
 
 ---
 

@@ -150,6 +150,16 @@ constexpr Rule kRules[] = {
     // dont la hauteur est balayée à l'attaque, se reconnaît d'abord à sa
     // queue. La barre (bois, claves) suit la même règle : sa hauteur EST son
     // identité, sa durée n'est qu'une nuance de frappe.
+    // VOIX (vsm.vocal). La VOYELLE d'abord, et de loin : c'est elle qui décide
+    // de quel son il s'agit, là où les autres machines ont une coupure. Le
+    // décalage du conduit suit -- il change la TAILLE du chanteur, ce qui
+    // s'entend immédiatement. La tension et le souffle colorent la source sans
+    // toucher aux formants : ils viennent après, et c'est la hiérarchie du
+    // modèle source-filtre lui-même.
+    {"vocal.vowel",                        0.0f,     4.0f, SearchScale::Linear,      0.98f},
+    {"vocal.formantShift",               -12.0f,    12.0f, SearchScale::Linear,      0.88f},
+    {"vocal.tension",                      0.0f,     1.0f, SearchScale::Linear,      0.66f},
+    {"vocal.breath",                       0.0f,     1.0f, SearchScale::Linear,      0.60f},
     // PERCUSSIONS FM (vsm.fmdrums). Le RAPPORT vient en tête, et devant la
     // durée : c'est lui qui décide si la pièce est harmonique ou métallique,
     // c'est-à-dire de quelle FAMILLE de son il s'agit. L'indice suit -- il dose

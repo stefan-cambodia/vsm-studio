@@ -499,6 +499,26 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Tom Decay", "drum.tom.decay"},
         {"Accent", "accent.amount"},
     }},
+    // --- vsm.vocal ---
+    // Une famille neuve (`vocal.*`) pour ce qu'aucune autre machine n'expose :
+    // une voyelle et la taille d'un conduit. Le reste est canonique -- une
+    // enveloppe est une enveloppe, un vibrato est un vibrato.
+    {"vsm.vocal", {
+        {"Vowel", "vocal.vowel"},
+        {"Formant Shift", "vocal.formantShift"},
+        {"Breath", "vocal.breath"},
+        {"Tension", "vocal.tension"},
+        {"Vibrato Rate", "effect.vibrato.rate"},
+        {"Vibrato Depth", "effect.vibrato.depth"},
+        {"Vibrato Delay", "lfo.1.delay"},
+        {"Amp Attack", "envelope.1.attack"},
+        {"Amp Decay", "envelope.1.decay"},
+        {"Amp Sustain", "envelope.1.sustain"},
+        {"Amp Release", "envelope.1.release"},
+        {"Velocity to Breath", "voice.velocitySensitivity"},
+        {"Analog Character", "voice.analogCharacter"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.fmdrums ---
     // La grammaire des boîtes du parc (`drum.<pièce>.<réglage>`), plus deux
     // identités neuves par pièce : le RAPPORT et l'INDICE de modulation, que

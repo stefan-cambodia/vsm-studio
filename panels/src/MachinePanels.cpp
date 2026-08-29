@@ -2483,13 +2483,94 @@ MachinePanel makeFmDrums() {
     return panel;
 }
 
+// ---------------------------------------------------------------------------
+// Vocal
+//
+// Aucune façade d'origine : personne n'a jamais fabriqué de synthétiseur vocal
+// à potentiomètres, et les rares tentatives étaient des ordinateurs. La
+// disposition suit donc le MODÈLE, qui est celui de la phonétique : à gauche la
+// SOURCE (la glotte -- tension, souffle), au centre le CONDUIT (la voyelle et
+// sa taille), à droite ce que le chanteur ajoute (le vibrato) puis la sortie.
+// C'est l'ordre dans lequel l'air traverse, et c'est le seul ordre défendable
+// quand il n'y a pas d'objet à copier.
+//
+// La commande VOYELLE est en grand et seule dans son bloc : sur cette machine,
+// elle joue le rôle que la coupure joue ailleurs, et tout le reste la colore.
+// Couleurs chair et bois sombre, loin des façades d'instruments électroniques.
+// ---------------------------------------------------------------------------
+MachinePanel makeVocal() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.vocal";
+    panel.displayName = "Vocal";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#2E2622";
+    panel.sectionColour = "#241D1A";
+    panel.textColour = "#F0DFD2";
+    panel.knobColour = "#C99B7E";
+    panel.gridColumns = 14;
+    panel.gridRows = 5;
+
+    PanelSection glotte;
+    glotte.title = "GLOTTIS";
+    glotte.accentColour = "#C4665A";
+    glotte.column = 0; glotte.row = 0; glotte.columnSpan = 3; glotte.rowSpan = 5;
+    glotte.contentColumns = 1;
+    glotte.controls = {
+        control("Tension", "TENSION", S::Knob, 0, 0),
+        control("Breath", "BREATH", S::Knob, 0, 1),
+    };
+
+    // LE BLOC QUI FAIT LA MACHINE : c'est ici qu'on choisit une voyelle et la
+    // taille de la gorge qui la prononce, et personne d'autre dans le parc ne
+    // sait faire ni l'un ni l'autre.
+    PanelSection conduit;
+    conduit.title = "VOCAL TRACT";
+    conduit.accentColour = "#D9A066";
+    conduit.column = 3; conduit.row = 0; conduit.columnSpan = 5; conduit.rowSpan = 5;
+    conduit.contentColumns = 2;
+    conduit.controls = {
+        control("Vowel", "A  E  I  O  U", S::LargeKnob, 0, 0, 1, 2),
+        control("Formant Shift", "TRACT SIZE", S::Knob, 1, 0),
+        control("Velocity to Breath", "TOUCH", S::Knob, 1, 1),
+    };
+
+    PanelSection vibrato;
+    vibrato.title = "VIBRATO";
+    vibrato.accentColour = "#8FA9C9";
+    vibrato.column = 8; vibrato.row = 0; vibrato.columnSpan = 3; vibrato.rowSpan = 5;
+    vibrato.controls = {
+        control("Vibrato Depth", "DEPTH", S::Knob, 0, 0),
+        control("Vibrato Rate", "RATE", S::Knob, 1, 0),
+        control("Vibrato Delay", "DELAY", S::Knob, 0, 1),
+        control("Output Level", "LEVEL", S::Knob, 1, 1),
+    };
+
+    PanelSection env;
+    env.title = "ENVELOPE";
+    env.accentColour = "#C4665A";
+    env.column = 11; env.row = 0; env.columnSpan = 3; env.rowSpan = 5;
+    env.controls = {
+        control("Amp Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
+        control("Amp Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
+        control("Amp Sustain", "S", S::VerticalSlider, 2, 0, 1, 2),
+        control("Amp Release", "R", S::VerticalSlider, 3, 0, 1, 2),
+    };
+
+    panel.omittedParameters = {
+        {"Analog Character", "instabilité d'intonation très lente, commune au parc : "
+                             "elle se règle une fois et ne se joue pas"},
+    };
+    panel.sections = {glotte, conduit, vibrato, env};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
         makeJuno106(), makeJupiter8(), makeProphet(), makeMs20(), makeArpOdyssey(), makeDx7(), makeSampler(),
         makeEPiano(), makeObx(), makeSupersaw(), makeWavetable(), makePcmHybrid(), makeTonewheel(), makeGeneric(), makeString(),
         makePiano(), makeDrums(), makeWind(), makeMultisample(),
-        makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums()
+        makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal()
     };
     return all;
 }

@@ -27,6 +27,7 @@
 #include "additive/AdditiveSynth.h"
 #include "westcoast/WestCoastSynth.h"
 #include "fmdrums/FmDrumsSynth.h"
+#include "vocal/VocalSynth.h"
 #include "multisample/MultisampleSynth.h"
 
 namespace vsm::audio::plugin {
@@ -143,6 +144,8 @@ void registerBuiltInPlugins() {
         (void)forceLinkWestCoast;
         vsm::plugins::fmdrums::FmDrumsSynth forceLinkFmDrums;
         (void)forceLinkFmDrums;
+        vsm::plugins::vocal::VocalSynth forceLinkVocal;
+        (void)forceLinkVocal;
     }
     {
         vsm::plugins::multisample::MultisampleSynth forceLinkMultisample;

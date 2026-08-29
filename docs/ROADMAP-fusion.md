@@ -98,7 +98,16 @@ client, jamais une dépendance.
   d'ondes inversant, non inversant, banc modal). Cette mesure est la quatrième.
   **La leçon vaut plus que la machine : une affirmation de gain écrite sans son
   chiffre finit par être crue.** Celle-ci l'a été pendant une semaine.
-- **Le sampler n'est plus un repli universel : il est réservé à la voix.**
+- ~~**Le sampler n'est plus un repli universel : il est réservé à la voix.**~~
+  — **la case est remplie (29/08/2026)** : `vsm.vocal` modélise le conduit
+  vocal (source glottique, trois formants, cinq voyelles en continu), et son
+  trait distinctif est la définition même d'une voix — les formants ne suivent
+  pas la note chantée, ce qu'aucun filtre du parc ne sait faire. Détail dans
+  ARCHITECTURE.md § 40. Le report par le sampler reste le bon choix pour
+  reconstruire un couplet, parce qu'une voix humaine n'est pas synthétisable à
+  l'identique ; ce que le parc gagne, c'est le TIMBRE vocal — un chœur, une
+  nappe, une voyelle tenue —, qu'il ne pouvait produire d'aucune façon.
+  Le paragraphe d'origine, qui reste vrai pour la reconstruction :
   C'est ce qui a rendu nécessaires `vsm.piano` et `vsm.drums`, et ce qui donne
   au parc sa forme finale — chaque source a une machine qui la MODÉLISE, sauf
   la voix, qui est reportée telle quelle et présentée comme telle.
