@@ -134,7 +134,7 @@ void StepSequencerComponent::paint(juce::Graphics& g) {
     if (!track_) {
         g.setColour(textColour_.withAlpha(0.5f));
         g.setFont(11.0f);
-        g.drawText(juce::String::fromUTF8("Sélectionnez une piste pour éditer le motif"), area.toNearestInt(),
+        g.drawText(juce::String::fromUTF8(u8"Sélectionnez une piste pour éditer le motif"), area.toNearestInt(),
                     juce::Justification::centred, false);
         return;
     }

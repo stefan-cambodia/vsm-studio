@@ -17,7 +17,7 @@ AutomationComponent::AutomationComponent() {
         rebuildParamBox();
     };
 
-    paramLabel_.setText("Paramètre", juce::dontSendNotification);
+    paramLabel_.setText(u8"Paramètre", juce::dontSendNotification);
     paramLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
     paramLabel_.setFont(juce::Font(juce::FontOptions(11.0f)));
     addAndMakeVisible(paramLabel_);

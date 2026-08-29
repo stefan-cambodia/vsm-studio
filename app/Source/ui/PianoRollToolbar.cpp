@@ -15,7 +15,8 @@ const std::vector<std::pair<NoteValue, const char*>>& gridChoices() {
     };
     return choices;
 }
-const char* kNoteNames[12] = { "Do", "Do#", "Ré", "Ré#", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "La#", "Si" };
+const char8_t* kNoteNames[12] = { u8"Do", u8"Do#", u8"Ré", u8"Ré#", u8"Mi", u8"Fa",
+                                  u8"Fa#", u8"Sol", u8"Sol#", u8"La", u8"La#", u8"Si" };
 } // namespace
 
 PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(pianoRoll) {
@@ -23,28 +24,28 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
         configureButton(button, tip);
         button.onClick = [this, t] { pianoRoll_.setTool(t); refreshFromPianoRoll(); };
     };
-    tool(selectTool_, PianoRollComponent::Tool::Select, "Sélection / déplacement (1)");
+    tool(selectTool_, PianoRollComponent::Tool::Select, u8"Sélection / déplacement (1)");
     tool(drawTool_,   PianoRollComponent::Tool::Draw,   "Dessiner des notes (2)");
     tool(eraseTool_,  PianoRollComponent::Tool::Erase,  "Effacer, y compris en balayant (3)");
     tool(splitTool_,  PianoRollComponent::Tool::Split,  "Couper une note au clic (4)");
-    tool(glueTool_,   PianoRollComponent::Tool::Glue,   "Coller une note à la suivante (5)");
+    tool(glueTool_,   PianoRollComponent::Tool::Glue,   u8"Coller une note à la suivante (5)");
     tool(muteTool_,   PianoRollComponent::Tool::Mute,   "Rendre une note muette (6)");
 
     configureButton(undoButton_, "Annuler (Ctrl+Z)");
     undoButton_.onClick = [this] { pianoRoll_.undo(); refreshFromPianoRoll(); };
-    configureButton(redoButton_, "Rétablir (Ctrl+Maj+Z)");
+    configureButton(redoButton_, u8"Rétablir (Ctrl+Maj+Z)");
     redoButton_.onClick = [this] { pianoRoll_.redo(); refreshFromPianoRoll(); };
 
-    configureButton(quantizeButton_, "Quantifier la sélection sur la grille (Ctrl+Q)");
+    configureButton(quantizeButton_, u8"Quantifier la sélection sur la grille (Ctrl+Q)");
     quantizeButton_.onClick = [this] { pianoRoll_.quantizeSelection(1.0f, false); refreshFromPianoRoll(); };
-    configureButton(legatoButton_, "Étendre chaque note jusqu'à la suivante (Ctrl+L)");
+    configureButton(legatoButton_, u8"Étendre chaque note jusqu'à la suivante (Ctrl+L)");
     legatoButton_.onClick = [this] { pianoRoll_.applyLegatoToSelection(); refreshFromPianoRoll(); };
-    configureButton(humanizeButton_, "Décaler légèrement timing et vélocité, de façon reproductible");
+    configureButton(humanizeButton_, u8"Décaler légèrement timing et vélocité, de façon reproductible");
     humanizeButton_.onClick = [this] {
         pianoRoll_.humanizeSelection(static_cast<float>(pianoRoll_.gridTicks()) * 0.12f, 12.0f);
         refreshFromPianoRoll();
     };
-    configureButton(chordButton_, "Insérer un accord à la tête de lecture");
+    configureButton(chordButton_, u8"Insérer un accord à la tête de lecture");
     chordButton_.onClick = [this] {
         juce::PopupMenu menu;
         const auto types = allChordTypes();
@@ -59,7 +60,7 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
                                 refreshFromPianoRoll();
                             });
     };
-    configureButton(moreButton_, "Toutes les opérations d'édition");
+    configureButton(moreButton_, u8"Toutes les opérations d'édition");
     moreButton_.onClick = [this] {
         pianoRoll_.buildContextMenu().showMenuAsync(
             juce::PopupMenu::Options().withTargetComponent(moreButton_),
@@ -68,7 +69,7 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
 
     configureButton(zoomInButton_, "Zoom avant (+)");
     zoomInButton_.onClick = [this] { pianoRoll_.zoomHorizontally(1.25f); };
-    configureButton(zoomOutButton_, "Zoom arrière (-)");
+    configureButton(zoomOutButton_, u8"Zoom arrière (-)");
     zoomOutButton_.onClick = [this] { pianoRoll_.zoomHorizontally(0.8f); };
     configureButton(zoomFitButton_, "Afficher toute la piste (Ctrl+0)");
     zoomFitButton_.onClick = [this] { pianoRoll_.zoomToFit(); };
@@ -93,7 +94,7 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
     addAndMakeVisible(gridModifierCombo_);
     gridModifierCombo_.addItem("Droit", 1);
     gridModifierCombo_.addItem("Triolet", 2);
-    gridModifierCombo_.addItem("Pointé", 3);
+    gridModifierCombo_.addItem(u8"Pointé", 3);
     gridModifierCombo_.setSelectedId(1, juce::dontSendNotification);
     gridModifierCombo_.onChange = [this] { applyGridFromCombos(); };
 
@@ -131,7 +132,7 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
     };
     label(gridLabel_, "Grille");
     label(swingLabel_, "Swing");
-    label(velocityLabel_, "Vél.");
+    label(velocityLabel_, u8"Vél.");
     label(scaleLabel_, "Gamme");
 
     refreshFromPianoRoll();

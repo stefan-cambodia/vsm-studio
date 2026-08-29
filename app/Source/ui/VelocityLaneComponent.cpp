@@ -27,7 +27,7 @@ void VelocityLaneComponent::paint(juce::Graphics& g) {
     if (!track) {
         g.setColour(Palette::textSecondary);
         g.setFont(12.0f);
-        g.drawText("Vélocité", getLocalBounds(), juce::Justification::centred);
+        g.drawText(u8"Vélocité", getLocalBounds(), juce::Justification::centred);
         return;
     }
 
@@ -44,7 +44,7 @@ void VelocityLaneComponent::paint(juce::Graphics& g) {
     g.fillRect(0, 0, pianoRoll_.keyboardWidth(), getHeight());
     g.setColour(Palette::textSecondary);
     g.setFont(11.0f);
-    g.drawText("Vél.", 4, 2, pianoRoll_.keyboardWidth() - 8, 14, juce::Justification::centredLeft);
+    g.drawText(u8"Vél.", 4, 2, pianoRoll_.keyboardWidth() - 8, 14, juce::Justification::centredLeft);
 
     const auto& selection = pianoRoll_.selectedNoteIds();
     const juce::Colour base = juce::Colour(track->colorRgba);
@@ -79,7 +79,7 @@ void VelocityLaneComponent::mouseDown(const juce::MouseEvent& event) {
     // UNE SEULE FOIS, ICI : l'instantané est pris avant la première note
     // touchée, et le glissement qui suit compte pour une seule action -- comme
     // dans le piano roll.
-    pianoRoll_.beginExternalEdit(lineMode_ ? "Vélocité en ligne" : "Vélocité");
+    pianoRoll_.beginExternalEdit(lineMode_ ? u8"Vélocité en ligne" : u8"Vélocité");
     if (!lineMode_) paintVelocityAt(event.position, true);
     repaint();
 }

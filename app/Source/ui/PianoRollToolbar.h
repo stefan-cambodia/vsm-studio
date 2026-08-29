@@ -28,13 +28,13 @@ private:
 
     PianoRollComponent& pianoRoll_;
 
-    juce::TextButton selectTool_ { "Sél." }, drawTool_ { "Dess." }, eraseTool_ { "Eff." },
+    juce::TextButton selectTool_ { u8"Sél." }, drawTool_ { "Dess." }, eraseTool_ { "Eff." },
                      splitTool_ { "Coup." }, glueTool_ { "Coll." }, muteTool_ { "Muet" };
-    juce::TextButton undoButton_ { "Annuler" }, redoButton_ { "Rétablir" };
+    juce::TextButton undoButton_ { "Annuler" }, redoButton_ { u8"Rétablir" };
     juce::TextButton quantizeButton_ { "Quantifier" }, legatoButton_ { "Legato" },
                      humanizeButton_ { "Humaniser" }, chordButton_ { "Accord" }, moreButton_ { "Plus..." };
     juce::TextButton zoomInButton_ { "+" }, zoomOutButton_ { "-" }, zoomFitButton_ { "Tout" };
-    juce::ToggleButton snapButton_ { "Aimant" }, ghostButton_ { "Fantômes" },
+    juce::ToggleButton snapButton_ { "Aimant" }, ghostButton_ { u8"Fantômes" },
                        followButton_ { "Suivre" }, scaleHighlightButton_ { "Gamme" };
 
     juce::ComboBox gridCombo_, gridModifierCombo_, scaleRootCombo_, scaleTypeCombo_;

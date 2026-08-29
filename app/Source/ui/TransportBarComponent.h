@@ -96,7 +96,7 @@ private:
     int inputChannels_ = 0;
     juce::Rectangle<int> inputMeterBounds_;
     juce::TextButton loopButton_   { "Loop" };
-    juce::TextButton listenButton_ { "Écoute A/B : pas d'original" };
+    juce::TextButton listenButton_ { u8"Écoute A/B : pas d'original" };
     juce::TextButton openButton_   { "Ouvrir MIDI..." };
     juce::TextButton exportButton_ { "Exporter MIDI..." };
 

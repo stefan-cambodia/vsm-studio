@@ -1,4 +1,20 @@
 #pragma once
+
+// ===========================================================================
+// LES ACCENTS S'ÉCRIVENT u8"..." — sans exception, dans tout `app/`.
+//
+// `juce::String(const char*)` traite CHAQUE OCTET comme un point de code
+// (du Latin-1) : les deux octets d'un « é » deviennent « Ã » et « © », et
+// l'étiquette s'affiche « RÃ©tablir » au lieu de « Rétablir ». Ce n'est pas un
+// problème de police ni de fichier source -- le source est bien en UTF-8.
+//
+// `u8"..."` est un `const char8_t*` en C++20, pour lequel JUCE a un
+// constructeur qui décode réellement l'UTF-8. Corollaire : `juce::String +
+// u8"..."` ne compile pas, il faut `+ juce::String(u8"...")` -- le compilateur
+// attrape donc ces sites au lieu de laisser passer une chaîne illisible.
+//
+// Voir ARCHITECTURE.md § 6 bis bis pour le détail et la vérification.
+// ===========================================================================
 #include <JuceHeader.h>
 
 // Palette et LookAndFeel partagés par toute l'application : évite le rendu

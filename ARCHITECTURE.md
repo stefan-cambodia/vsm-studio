@@ -218,6 +218,38 @@ ordonnanceur de pré-écoute. Le planning n'a aucun événement là, les clips a
 et la piste de référence n'y rencontrent que du silence, et le métronome y bat
 même s'il est éteint — un décompte qu'on n'entend pas ne compte rien.
 
+### 6 bis bis. Les accents de l'interface : `u8"..."` est OBLIGATOIRE
+
+Toutes les étiquettes accentuées de l'application s'affichaient **doublement
+encodées** : « Édition » sortait « Ãdition », « Rétablir » sortait
+« RÃ©tablir », « Sél. » sortait « SÃ©l. ». La moitié des libellés du logiciel
+était illisible, et depuis assez longtemps pour que plus personne ne le voie.
+
+La cause n'est pas le fichier source, qui est bien en UTF-8 : c'est JUCE.
+`juce::String::String(const char*)` construit la chaîne par
+`CharPointer_ASCII`, c'est-à-dire qu'il traite **chaque octet comme un point de
+code** — du Latin-1. Les deux octets `0xC3 0xA9` d'un « é » deviennent donc deux
+caractères, « Ã » et « © ». JUCE le dit lui-même dans un commentaire à cet
+endroit : une donnée 8 bits au-delà de 127 est ambiguë, et il faut être
+explicite.
+
+**La règle, donc : tout littéral de chaîne non ASCII destiné à `juce::String`
+s'écrit `u8"..."`.** En C++20 c'est un `const char8_t*`, pour lequel JUCE a un
+constructeur qui décode réellement l'UTF-8. Deux conséquences pratiques :
+
+- `juce::String + u8"..."` **ne compile pas** (il n'existe pas d'`operator+`
+  pour `const char8_t*`) : il faut écrire `+ juce::String(u8"...")`. C'est
+  pénible et c'est une bonne nouvelle — le compilateur attrape ces sites au lieu
+  de laisser passer une chaîne muette ;
+- une `std::string` convertie en `juce::String` est, elle, **correctement
+  décodée** (`String(const std::string&)` lit de l'UTF-8). Les libellés qui
+  viennent de `core/`, `panels/` ou `interchange/` n'ont jamais été touchés par
+  le défaut ; seuls les littéraux écrits dans `app/` l'étaient.
+
+Vérifié en imprimant les deux formes côte à côte : `u8"Édition Sél. Rétablir"`
+donne `Édition Sél. Rétablir`, `"Édition Sél. Rétablir"` donne
+`Ãdition SÃ©l. RÃ©tablir`.
+
 ### 6 ter. Dater une note jouée : l'ancre transport ↔ horloge système (D3.3)
 
 Trois horloges se rencontrent à l'enregistrement, et il faut les traduire l'une

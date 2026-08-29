@@ -26,7 +26,7 @@ public:
 
         statusLabel_.setColour(juce::Label::textColourId, vsm::ui::Palette::textSecondary);
         statusLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
-        statusLabel_.setText("Prêt", juce::dontSendNotification);
+        statusLabel_.setText(u8"Prêt", juce::dontSendNotification);
 
         pianoRoll_.onStatusChanged = [this](const juce::String& text) {
             statusLabel_.setText(text, juce::dontSendNotification);

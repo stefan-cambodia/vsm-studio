@@ -52,9 +52,9 @@ MainComponent::MainComponent()
         label->setJustificationType(juce::Justification::centred);
         label->setColour(juce::Label::textColourId, vsm::ui::Palette::textSecondary);
     }
-    mixerPlaceholder_.setText("MIXER — console de mixage (Phase 2 UI)", juce::dontSendNotification);
-    automationPlaceholder_.setText("AUTOMATION — lanes sample-accurate (Phase 2 UI)", juce::dontSendNotification);
-    midiCcPlaceholder_.setText("MIDI CC — vue dédiée (Phase 2 UI ; éditable dès maintenant via les lanes du piano roll)",
+    mixerPlaceholder_.setText(u8"MIXER — console de mixage (Phase 2 UI)", juce::dontSendNotification);
+    automationPlaceholder_.setText(u8"AUTOMATION — lanes sample-accurate (Phase 2 UI)", juce::dontSendNotification);
+    midiCcPlaceholder_.setText(u8"MIDI CC — vue dédiée (Phase 2 UI ; éditable dès maintenant via les lanes du piano roll)",
                                 juce::dontSendNotification);
     bottomTabs_.addTab("Mixer", vsm::ui::Palette::panel, &mixer_, false);
     bottomTabs_.addTab("Automation", vsm::ui::Palette::panel, &automation_, false);
@@ -422,9 +422,9 @@ void MainComponent::timerCallback() {
         if (audioEngine_.droppedRecordedEvents() > 0 && !recordDropReported_) {
             recordDropReported_ = true;
             juce::AlertWindow::showMessageBoxAsync(
-                juce::AlertWindow::WarningIcon, "Notes perdues à l'enregistrement",
-                "La file de capture a débordé : des notes jouées ne sont PAS dans la "
-                "prise. Signalez-le -- ce n'est pas censé pouvoir arriver.");
+                juce::AlertWindow::WarningIcon, u8"Notes perdues à l'enregistrement",
+                u8"La file de capture a débordé : des notes jouées ne sont PAS dans la "
+                u8"prise. Signalez-le -- ce n'est pas censé pouvoir arriver.");
         }
     }
     transportBar_.setInputLevel(audioEngine_.readInputPeak(),
@@ -470,7 +470,7 @@ void MainComponent::timerCallback() {
 // --- Menu ------------------------------------------------------------------
 
 juce::StringArray MainComponent::getMenuBarNames() {
-    return { "Fichier", "Édition", "Piste", "Enregistrement", "Affichage", "Aide" };
+    return { "Fichier", u8"Édition", "Piste", "Enregistrement", "Affichage", "Aide" };
 }
 
 juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce::String&) {
@@ -488,7 +488,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // Écoute A/B : l'enregistrement d'origine en regard de la
             // reconstruction. Les trois modes sont dans le même menu, cochés,
             // pour qu'on voie d'un coup d'œil ce qu'on est en train d'écouter.
-            menu.addItem(kMenuFileLoadReference, "Charger l'original (référence A/B)...");
+            menu.addItem(kMenuFileLoadReference, u8"Charger l'original (référence A/B)...");
             {
                 const bool aUneReference = audioEngine_.processGraph().referenceTrack().hasAudio();
                 const auto mode = audioEngine_.processGraph().referenceTrack().mode();
@@ -496,18 +496,18 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 if (aUneReference && referenceDescription_.isNotEmpty()) {
                     menu.addSectionHeader(referenceDescription_);
                 }
-                menu.addItem(kMenuFileReferenceOff, "Écoute : reconstruction", aUneReference,
+                menu.addItem(kMenuFileReferenceOff, u8"Écoute : reconstruction", aUneReference,
                               mode == Mode::Off);
-                menu.addItem(kMenuFileReferenceMix, "Écoute : les deux", aUneReference,
+                menu.addItem(kMenuFileReferenceMix, u8"Écoute : les deux", aUneReference,
                               mode == Mode::Mix);
-                menu.addItem(kMenuFileReferenceSolo, "Écoute : original", aUneReference,
+                menu.addItem(kMenuFileReferenceSolo, u8"Écoute : original", aUneReference,
                               mode == Mode::Solo);
-                menu.addItem(kMenuFileReferenceCycle, "Basculer l'écoute A/B (touche R)", aUneReference);
+                menu.addItem(kMenuFileReferenceCycle, u8"Basculer l'écoute A/B (touche R)", aUneReference);
             }
             menu.addItem(kMenuFileExport, "Exporter MIDI...");
             menu.addItem(kMenuFileExportWav, "Exporter audio (WAV)...");
             menu.addSeparator();
-            menu.addItem(kMenuFileAudioSettings, "Réglages audio...");
+            menu.addItem(kMenuFileAudioSettings, u8"Réglages audio...");
             menu.addSeparator();
             menu.addItem(kMenuFileQuit, "Quitter");
             break;
@@ -519,7 +519,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             break;
         case 2:
             menu.addItem(kMenuTrackAdd, "Ajouter une piste");
-            menu.addItem(kMenuTrackRemove, "Supprimer la piste sélectionnée",
+            menu.addItem(kMenuTrackRemove, u8"Supprimer la piste sélectionnée",
                          !project_.tracks.empty());
             break;
         case 3:
@@ -528,7 +528,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // qui était déjà là -- plus la quantification de la dernière prise.
             {
                 const int mesures = countInBars_;
-                menu.addSectionHeader("Décompte");
+                menu.addSectionHeader(u8"Décompte");
                 menu.addItem(kMenuRecordCountInNone, "Aucun", true, mesures == 0);
                 menu.addItem(kMenuRecordCountInOne, "1 mesure", true, mesures == 1);
                 menu.addItem(kMenuRecordCountInTwo, "2 mesures", true, mesures == 2);
@@ -539,7 +539,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                               true, recordMode_ == vsm::sequencer::RecordMode::Replace);
                 menu.addSeparator();
                 menu.addItem(kMenuRecordQuantizeTake,
-                              "Quantifier la dernière prise (grille du piano roll)",
+                              u8"Quantifier la dernière prise (grille du piano roll)",
                               !lastTake_.empty());
             }
             break;
@@ -567,7 +567,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             }
             break;
         case 5:
-            menu.addItem(kMenuHelpAbout, "À propos de Vintage Synth MIDI Studio");
+            menu.addItem(kMenuHelpAbout, u8"À propos de Vintage Synth MIDI Studio");
             break;
         default:
             break;
@@ -716,13 +716,13 @@ void MainComponent::exportAudioFile() {
 
         // Les avertissements du rendu sont MONTRÉS. Un export qui laisse une
         // piste muette ou saute un effet doit le dire au moment où il le fait.
-        juce::String message = "Rendu écrit :\n" + file.getFullPathName() + "\n\n"
-                              + juce::String(rendered.renderedSeconds, 1) + " s, 48 kHz, 24 bits, crête "
+        juce::String message = juce::String(u8"Rendu écrit :\n") + file.getFullPathName() + "\n\n"
+                              + juce::String(rendered.renderedSeconds, 1) + juce::String(u8" s, 48 kHz, 24 bits, crête ")
                               + juce::String(rendered.peakLevel, 3) + ".";
         for (const auto& warning : rendered.warnings)
             message += "\n" + juce::String(warning);
         juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon,
-                                                 "Export audio terminé", message);
+                                                 u8"Export audio terminé", message);
     });
 }
 
@@ -746,7 +746,7 @@ void MainComponent::showAudioSettings() {
 
     juce::DialogWindow::LaunchOptions options;
     options.content.setOwned(selector.release());
-    options.dialogTitle = "Réglages audio";
+    options.dialogTitle = u8"Réglages audio";
     options.dialogBackgroundColour = vsm::ui::Palette::background;
     options.escapeKeyTriggersCloseButton = true;
     options.useNativeTitleBar = true;
@@ -838,7 +838,7 @@ void MainComponent::openProjectBundle() {
             auto* instrument = audioEngine_.processGraph().trackInstrument(index);
             if (instrument == nullptr) {
                 rapport.add("Piste " + juce::String(static_cast<int>(index) + 1)
-                            + " : machine indisponible, preset non appliqué");
+                            + juce::String(u8" : machine indisponible, preset non appliqué"));
                 continue;
             }
             const auto applique = vsm::interchange::applyPreset(
@@ -878,10 +878,10 @@ void MainComponent::openProjectBundle() {
                     douteuses += vsm::sequencer::countDoubtfulNotes(piste.notes);
                 if (douteuses > 0)
                     rapport.add(juce::String(static_cast<int>(douteuses))
-                                + " note(s) signalée(s) comme douteuses sur "
+                                + juce::String(u8" note(s) signalée(s) comme douteuses sur ")
                                 + juce::String(static_cast<int>(marquees))
-                                + " transcrite(s) : elles sont marquées dans le piano roll,"
-                                + " et la touche D y mène une par une");
+                                + juce::String(u8" transcrite(s) : elles sont marquées dans le "
+                                                u8"piano roll, et la touche D y mène une par une"));
                 // Le projet a changé : le piano roll doit relire les notes.
                 pianoRoll_.repaint();
             } else {
@@ -975,13 +975,13 @@ void MainComponent::refreshListeningIndicator() {
     using Mode = vsm::audio::engine::ReferenceTrack::Mode;
     const auto& reference = audioEngine_.processGraph().referenceTrack();
     if (!reference.hasAudio()) {
-        transportBar_.setListening("Écoute A/B : pas d'original", false, false);
+        transportBar_.setListening(u8"Écoute A/B : pas d'original", false, false);
         return;
     }
     switch (reference.mode()) {
-        case Mode::Off:  transportBar_.setListening("Écoute : reconstruction", true, false); break;
-        case Mode::Mix:  transportBar_.setListening("Écoute : les deux", true, true); break;
-        case Mode::Solo: transportBar_.setListening("Écoute : original", true, true); break;
+        case Mode::Off:  transportBar_.setListening(u8"Écoute : reconstruction", true, false); break;
+        case Mode::Mix:  transportBar_.setListening(u8"Écoute : les deux", true, true); break;
+        case Mode::Solo: transportBar_.setListening(u8"Écoute : original", true, true); break;
     }
 }
 
@@ -1163,8 +1163,9 @@ void MainComponent::loadAudioTracks() {
     // lieu de laisser chercher.
     if (!manquants.isEmpty())
         juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::WarningIcon, "Audio non chargé",
-            "Ces pistes audio n'ont pas pu être lues :\n\n" + manquants.joinIntoString("\n"));
+            juce::AlertWindow::WarningIcon, u8"Audio non chargé",
+            juce::String(u8"Ces pistes audio n'ont pas pu être lues :\n\n")
+                + manquants.joinIntoString("\n"));
 }
 
 void MainComponent::applyAudioConfig() {
@@ -1303,12 +1304,12 @@ void MainComponent::startRecording() {
         transportBar_.setRecording(false);
         juce::AlertWindow::showMessageBoxAsync(
             juce::AlertWindow::InfoIcon,
-            armees.empty() ? "Aucune piste armée" : "Aucune carte son",
+            armees.empty() ? juce::String(u8"Aucune piste armée") : juce::String("Aucune carte son"),
             armees.empty()
                 ? "Armez au moins une piste (bouton R dans la liste des pistes) : "
-                  "sans elle, la prise n'aurait nulle part où aller."
+                  u8"sans elle, la prise n'aurait nulle part où aller."
                 : "Sans carte son ouverte, le transport n'avance pas et aucun clavier "
-                  "MIDI n'est écouté. Voir Fichier > Réglages audio.");
+                  u8"MIDI n'est écouté. Voir Fichier > Réglages audio.");
         return;
     }
     if (recordPhase_ != RecordPhase::Off) return;

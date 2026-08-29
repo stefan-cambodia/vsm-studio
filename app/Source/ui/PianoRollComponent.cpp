@@ -475,7 +475,7 @@ void PianoRollComponent::transposeSelection(int semitones) {
 void PianoRollComponent::nudgeSelection(int64_t deltaTicks) {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    beginEdit("Décaler");
+    beginEdit(u8"Décaler");
     nudgeNotes(track->notes, selectedNoteIds_, deltaTicks);
     notifyEdited();
 }
@@ -483,7 +483,7 @@ void PianoRollComponent::nudgeSelection(int64_t deltaTicks) {
 void PianoRollComponent::setSelectionLengthToGrid() {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    beginEdit("Durée = grille");
+    beginEdit(u8"Durée = grille");
     setNoteLengths(track->notes, selectedNoteIds_, gridTicks());
     notifyEdited();
 }
@@ -491,7 +491,7 @@ void PianoRollComponent::setSelectionLengthToGrid() {
 void PianoRollComponent::scaleSelectionLength(float factor) {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    beginEdit("Durée x" + juce::String(factor, 2));
+    beginEdit(juce::String(u8"Durée x") + juce::String(factor, 2));
     scaleNoteLengths(track->notes, selectedNoteIds_, factor);
     notifyEdited();
 }
@@ -589,7 +589,7 @@ void PianoRollComponent::joinSelection() {
 void PianoRollComponent::reverseSelection() {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.size() < 2) return;
-    beginEdit("Rétrograder");
+    beginEdit(u8"Rétrograder");
     reverseNotesInTime(track->notes, selectedNoteIds_);
     notifyEdited();
 }
@@ -611,7 +611,7 @@ void PianoRollComponent::selectNotes(const NoteSelection& ids) {
 void PianoRollComponent::setSelectionVelocity(uint8_t velocity) {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    beginEdit("Vélocité");
+    beginEdit(u8"Vélocité");
     setVelocity(track->notes, selectedNoteIds_, velocity);
     notifyEdited();
 }
@@ -619,7 +619,7 @@ void PianoRollComponent::setSelectionVelocity(uint8_t velocity) {
 void PianoRollComponent::scaleSelectionVelocity(float factor) {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    beginEdit("Vélocité x" + juce::String(factor, 2));
+    beginEdit(juce::String(u8"Vélocité x") + juce::String(factor, 2));
     scaleVelocity(track->notes, selectedNoteIds_, factor);
     notifyEdited();
 }
@@ -635,7 +635,7 @@ void PianoRollComponent::rampSelectionVelocity(uint8_t from, uint8_t to) {
 void PianoRollComponent::randomizeSelectionVelocity(int amount) {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    beginEdit("Vélocité aléatoire");
+    beginEdit(u8"Vélocité aléatoire");
     randomizeVelocity(track->notes, selectedNoteIds_, amount, 0xA11CEu);
     notifyEdited();
 }
@@ -643,7 +643,7 @@ void PianoRollComponent::randomizeSelectionVelocity(int amount) {
 void PianoRollComponent::constrainSelectionToScale() {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    beginEdit("Contraindre à la gamme");
+    beginEdit(u8"Contraindre à la gamme");
     constrainNotesToScale(track->notes, selectedNoteIds_, scale_);
     notifyEdited();
 }
@@ -659,7 +659,7 @@ void PianoRollComponent::toggleSelectionMuted() {
 void PianoRollComponent::arpeggiateSelection(ArpeggioMode mode) {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    beginEdit("Arpéger");
+    beginEdit(u8"Arpéger");
     arpeggiateNotes(track->notes, selectedNoteIds_, gridTicks(), mode);
     notifyEdited();
 }
@@ -667,7 +667,7 @@ void PianoRollComponent::arpeggiateSelection(ArpeggioMode mode) {
 void PianoRollComponent::insertChordAtPlayhead(ChordType type, uint8_t rootNote) {
     Track* track = activeTrack();
     if (!track || !project_) return;
-    beginEdit("Insérer accord");
+    beginEdit(u8"Insérer accord");
     uint64_t idCounter = project_->peekNextNoteId() - 1;
     NoteSelection created = insertChord(track->notes, snapTick(playheadTick_), gridTicks() * 4,
                                          rootNote, type, track->channel, defaultVelocity_, idCounter);
@@ -685,31 +685,31 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
     const bool sel = hasSelection();
 
     menu.addItem(kCtxUndo, "Annuler" + (canUndo() ? " : " + undoLabel() : juce::String()), canUndo());
-    menu.addItem(kCtxRedo, "Rétablir" + (canRedo() ? " : " + redoLabel() : juce::String()), canRedo());
+    menu.addItem(kCtxRedo, juce::String(u8"Rétablir") + (canRedo() ? " : " + redoLabel() : juce::String()), canRedo());
     menu.addSeparator();
     menu.addItem(kCtxCut, "Couper", sel);
     menu.addItem(kCtxCopy, "Copier", sel);
-    menu.addItem(kCtxPaste, "Coller à la tête de lecture", !clipboard_.empty());
+    menu.addItem(kCtxPaste, u8"Coller à la tête de lecture", !clipboard_.empty());
     menu.addItem(kCtxDuplicate, "Dupliquer", sel);
     menu.addItem(kCtxDelete, "Supprimer", sel);
     menu.addSeparator();
 
     juce::PopupMenu selectMenu;
-    selectMenu.addItem(kCtxSelectAll, "Tout sélectionner");
-    selectMenu.addItem(kCtxSelectNone, "Tout désélectionner", sel);
-    selectMenu.addItem(kCtxSelectInvert, "Inverser la sélection");
-    selectMenu.addItem(kCtxSelectSamePitch, "Toutes les notes de même hauteur", sel);
+    selectMenu.addItem(kCtxSelectAll, u8"Tout sélectionner");
+    selectMenu.addItem(kCtxSelectNone, u8"Tout désélectionner", sel);
+    selectMenu.addItem(kCtxSelectInvert, u8"Inverser la sélection");
+    selectMenu.addItem(kCtxSelectSamePitch, u8"Toutes les notes de même hauteur", sel);
     // Les notes douteuses de la transcription (étape 11.3) : on y VA, une par
     // une, au lieu de les chercher à l'œil sur un morceau entier.
     const size_t douteuses = doubtfulNoteCount();
     selectMenu.addSeparator();
     selectMenu.addItem(kCtxSelectNextDoubtful, "Note douteuse suivante (D)", douteuses > 0);
-    selectMenu.addItem(kCtxSelectPrevDoubtful, "Note douteuse précédente (Maj+D)", douteuses > 0);
+    selectMenu.addItem(kCtxSelectPrevDoubtful, u8"Note douteuse précédente (Maj+D)", douteuses > 0);
     selectMenu.addItem(kCtxSelectDoubtful,
                        douteuses > 0 ? "Toutes les notes douteuses (" + juce::String(static_cast<int>(douteuses)) + ")"
                                      : juce::String("Toutes les notes douteuses"),
                        douteuses > 0);
-    menu.addSubMenu("Sélection", selectMenu);
+    menu.addSubMenu(u8"Sélection", selectMenu);
 
     juce::PopupMenu pitchMenu;
     pitchMenu.addItem(kCtxTransposeUp, "Transposer +1 demi-ton", sel);
@@ -717,42 +717,42 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
     pitchMenu.addItem(kCtxOctaveUp, "Octave +", sel);
     pitchMenu.addItem(kCtxOctaveDown, "Octave -", sel);
     pitchMenu.addItem(kCtxMirror, "Miroir des hauteurs", sel);
-    pitchMenu.addItem(kCtxScaleConstrain, "Contraindre à la gamme", sel && scale_.type != ScaleType::Chromatic);
+    pitchMenu.addItem(kCtxScaleConstrain, u8"Contraindre à la gamme", sel && scale_.type != ScaleType::Chromatic);
     menu.addSubMenu("Hauteur", pitchMenu);
 
     juce::PopupMenu timeMenu;
     timeMenu.addItem(kCtxQuantizeFull, "Quantifier (100 %)", sel);
     timeMenu.addItem(kCtxQuantizeHalf, "Quantifier (50 %)", sel);
-    timeMenu.addItem(kCtxQuantizeEnds, "Quantifier début ET fin", sel);
+    timeMenu.addItem(kCtxQuantizeEnds, u8"Quantifier début ET fin", sel);
     timeMenu.addItem(kCtxHumanize, "Humaniser", sel);
     timeMenu.addSeparator();
-    timeMenu.addItem(kCtxLengthToGrid, "Durée = pas de grille", sel);
-    timeMenu.addItem(kCtxLengthDouble, "Durée x2", sel);
-    timeMenu.addItem(kCtxLengthHalve, "Durée /2", sel);
+    timeMenu.addItem(kCtxLengthToGrid, u8"Durée = pas de grille", sel);
+    timeMenu.addItem(kCtxLengthDouble, u8"Durée x2", sel);
+    timeMenu.addItem(kCtxLengthHalve, u8"Durée /2", sel);
     timeMenu.addItem(kCtxLegato, "Legato", sel);
     timeMenu.addItem(kCtxRemoveOverlaps, "Retirer les chevauchements", sel);
     timeMenu.addSeparator();
-    timeMenu.addItem(kCtxSplit, "Couper à la tête de lecture", sel);
+    timeMenu.addItem(kCtxSplit, u8"Couper à la tête de lecture", sel);
     timeMenu.addItem(kCtxJoin, "Fusionner", selectedNoteIds_.size() >= 2);
-    timeMenu.addItem(kCtxReverse, "Rétrograder", selectedNoteIds_.size() >= 2);
-    menu.addSubMenu("Temps et durée", timeMenu);
+    timeMenu.addItem(kCtxReverse, u8"Rétrograder", selectedNoteIds_.size() >= 2);
+    menu.addSubMenu(u8"Temps et durée", timeMenu);
 
     juce::PopupMenu velocityMenu;
-    velocityMenu.addItem(kCtxVelocityFull, "Vélocité 127", sel);
-    velocityMenu.addItem(kCtxVelocityHalf, "Vélocité 64", sel);
-    velocityMenu.addItem(kCtxVelocityUp, "Vélocité +10 %", sel);
-    velocityMenu.addItem(kCtxVelocityDown, "Vélocité -10 %", sel);
+    velocityMenu.addItem(kCtxVelocityFull, u8"Vélocité 127", sel);
+    velocityMenu.addItem(kCtxVelocityHalf, u8"Vélocité 64", sel);
+    velocityMenu.addItem(kCtxVelocityUp, u8"Vélocité +10 %", sel);
+    velocityMenu.addItem(kCtxVelocityDown, u8"Vélocité -10 %", sel);
     velocityMenu.addItem(kCtxVelocityRampUp, "Crescendo", sel);
     velocityMenu.addItem(kCtxVelocityRampDown, "Decrescendo", sel);
-    velocityMenu.addItem(kCtxVelocityRandom, "Aléatoire (±20)", sel);
-    menu.addSubMenu("Vélocité", velocityMenu);
+    velocityMenu.addItem(kCtxVelocityRandom, u8"Aléatoire (±20)", sel);
+    menu.addSubMenu(u8"Vélocité", velocityMenu);
 
     juce::PopupMenu arpMenu;
-    arpMenu.addItem(kCtxArpUp, "Arpéger : montant", sel);
-    arpMenu.addItem(kCtxArpDown, "Arpéger : descendant", sel);
-    arpMenu.addItem(kCtxArpUpDown, "Arpéger : aller-retour", sel);
-    arpMenu.addItem(kCtxArpRandom, "Arpéger : aléatoire", sel);
-    menu.addSubMenu("Arpèges", arpMenu);
+    arpMenu.addItem(kCtxArpUp, u8"Arpéger : montant", sel);
+    arpMenu.addItem(kCtxArpDown, u8"Arpéger : descendant", sel);
+    arpMenu.addItem(kCtxArpUpDown, u8"Arpéger : aller-retour", sel);
+    arpMenu.addItem(kCtxArpRandom, u8"Arpéger : aléatoire", sel);
+    menu.addSubMenu(u8"Arpèges", arpMenu);
 
     juce::PopupMenu chordMenu;
     const auto chordTypes = allChordTypes();
@@ -760,13 +760,13 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
         chordMenu.addItem(kCtxChordBase + static_cast<int>(i),
                            juce::String(chordTypeName(chordTypes[i])) + " sur " +
                            juce::String(noteNumberToName(static_cast<uint8_t>(60 + scale_.root))));
-    menu.addSubMenu("Insérer un accord", chordMenu);
+    menu.addSubMenu(u8"Insérer un accord", chordMenu);
 
     menu.addSeparator();
     menu.addItem(kCtxMute, "Rendre muet / audible", sel);
     menu.addSeparator();
     menu.addItem(kCtxZoomFit, "Zoom : tout voir");
-    menu.addItem(kCtxZoomSelection, "Zoom : sur la sélection", sel);
+    menu.addItem(kCtxZoomSelection, u8"Zoom : sur la sélection", sel);
     return menu;
 }
 
@@ -966,11 +966,11 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& event) {
 
         // L'état d'avant-glissement est mémorisé maintenant : le glissement
         // entier (déplacement continu) compte pour UNE seule annulation.
-        beginEdit(dragMode_ == DragMode::Move ? "Déplacer" : "Redimensionner");
+        beginEdit(dragMode_ == DragMode::Move ? juce::String(u8"Déplacer") : juce::String("Redimensionner"));
         startAudition(hit->number, hit->velocity);
     } else if (!hit && (tool_ == Tool::Draw || (tool_ == Tool::Select && !event.mods.isCommandDown()))) {
         // Création d'une note, puis glissement immédiat sur sa durée.
-        beginEdit("Créer une note");
+        beginEdit(u8"Créer une note");
         const Tick startTick = snapTick(xToTick(pos.x));
         const uint8_t noteNumber = yToNote(pos.y);
         Note newNote{startTick, startTick + gridTicks(), track->channel, noteNumber,
@@ -1270,9 +1270,9 @@ void PianoRollComponent::updateStatusText(juce::Point<float> mousePos, bool mous
         const SelectionStats stats = computeSelectionStats(track->notes, selectedNoteIds_);
         if (stats.count > 0) {
             if (text.isNotEmpty()) text << "   |   ";
-            text << juce::String(static_cast<int>(stats.count)) << " note(s) sélectionnée(s) : "
+            text << juce::String(static_cast<int>(stats.count)) << juce::String(u8" note(s) sélectionnée(s) : ")
                  << noteName(stats.lowestNote) << " - " << noteName(stats.highestNote)
-                 << ", vélocité moyenne " << juce::String(std::lround(stats.averageVelocity));
+                 << juce::String(u8", vélocité moyenne ") << juce::String(std::lround(stats.averageVelocity));
         } else {
             if (text.isNotEmpty()) text << "   |   ";
             text << juce::String(static_cast<int>(track->notes.size())) << " note(s) sur la piste";
@@ -1281,7 +1281,7 @@ void PianoRollComponent::updateStatusText(juce::Point<float> mousePos, bool mous
         // c'est le travail de relecture qu'il reste à faire, et « D » y mène.
         if (const size_t douteuses = countDoubtfulNotes(track->notes); douteuses > 0)
             text << "   |   " << juce::String(static_cast<int>(douteuses))
-                 << " douteuse(s) — D : la suivante";
+                 << juce::String(u8" douteuse(s) — D : la suivante");
     }
     onStatusChanged(text);
 }
@@ -1296,7 +1296,7 @@ void PianoRollComponent::paint(juce::Graphics& g) {
     if (!project_ || !activeTrack()) {
         g.setColour(Palette::textSecondary);
         g.setFont(16.0f);
-        g.drawText("Sélectionnez une piste pour éditer ses notes",
+        g.drawText(u8"Sélectionnez une piste pour éditer ses notes",
                     getLocalBounds(), juce::Justification::centred);
         return;
     }

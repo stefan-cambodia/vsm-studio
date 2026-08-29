@@ -44,8 +44,8 @@ TransportBarComponent::TransportBarComponent(RealtimeTransport& transport) : tra
     loopButton_.onClick = [this] {
         if (onLoopToggled) onLoopToggled(loopButton_.getToggleState());
     };
-    loopButton_.setTooltip("Boucle. La région se règle en tirant sur la règle "
-                            "du piano roll avec Maj ; sans région, la boucle "
+    loopButton_.setTooltip(u8"Boucle. La région se règle en tirant sur la règle "
+                            u8"du piano roll avec Maj ; sans région, la boucle "
                             "couvre tout le morceau.");
     metronomeButton_.setClickingTogglesState(true);
     metronomeButton_.setColour(juce::TextButton::buttonOnColourId, Palette::accentTeal);
@@ -87,8 +87,8 @@ TransportBarComponent::TransportBarComponent(RealtimeTransport& transport) : tra
     };
 
     listenButton_.onClick = [this] { if (onCycleListening) onCycleListening(); };
-    listenButton_.setTooltip("Écoute A/B : reconstruction, les deux, original (touche R)");
-    setListening("Écoute A/B : pas d'original", false, false);
+    listenButton_.setTooltip(u8"Écoute A/B : reconstruction, les deux, original (touche R)");
+    setListening(u8"Écoute A/B : pas d'original", false, false);
     openButton_.onClick = [this] { if (onOpenMidiFile) onOpenMidiFile(); };
     exportButton_.onClick = [this] { if (onExportMidiFile) onExportMidiFile(); };
 

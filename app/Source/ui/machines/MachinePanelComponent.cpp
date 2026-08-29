@@ -350,7 +350,7 @@ void MachinePanelComponent::paint(juce::Graphics& g) {
         g.fillAll(juce::Colour(0xff17171b));
         g.setColour(juce::Colours::grey);
         g.setFont(14.0f);
-        g.drawText("Aucune façade dédiée pour cette machine", getLocalBounds(), juce::Justification::centred);
+        g.drawText(u8"Aucune façade dédiée pour cette machine", getLocalBounds(), juce::Justification::centred);
         return;
     }
 
