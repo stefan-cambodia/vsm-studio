@@ -2760,6 +2760,41 @@ unique en bas de façade, qui ne parle que lorsqu'on règle quelque chose.
 
 Aperçus : [`docs/images/panels/`].
 
+**Et il faut vraiment REGARDER, la liste de contrôle le dit.** Sur la façade de
+`vsm.additive`, l'aperçu a montré ce qu'aucun test ne pouvait voir : un
+potentiomètre sérigraphié « PARTIALS » posé juste à côté d'un bloc intitulé
+« PARTIALS », qui se lit comme une erreur avant de se lire comme une commande.
+Le bouton s'appelle « COUNT » depuis. Au passage, la régénération a révélé que
+l'aperçu de `vsm.multisample` n'avait jamais été commité : les vingt-six
+machines à façade ont désormais leur image, et aucune des vingt-quatre
+existantes n'a bougé d'un pixel — ce qui confirme que le rendu est déterministe.
+
+### Les deux façades sans original : `vsm.perc` et `vsm.additive`
+
+Les machines du parc qui copient un objet réel ont une contrainte claire : les
+gestes doivent être là où l'original les met. Ces deux-là n'ont pas d'original,
+et la question devient « qu'est-ce que le musicien cherche en premier ? ».
+
+**`vsm.perc`** suit ce qu'un percussionniste a devant lui : les peaux à gauche,
+du grave à l'aigu (conga, bongo, timbale), les bois et les métaux à droite,
+les grains secoués au bout — l'ordre dans lequel on les frappe, pas l'ordre
+alphabétique. Trois familles, trois couleurs (terre cuite, miel, acier), et un
+châssis de BOIS plutôt que la tôle pliée des boîtes Roland : cette machine
+n'est pas de cette famille, et sa façade doit le dire avant qu'on ait lu une
+sérigraphie. Elle garde la grille de pas — on programme une clave comme on
+programme un charleston — avec ses treize lignes en numérotation General MIDI,
+rangées dans l'ordre de la façade.
+
+**`vsm.additive`** est disposée autour d'une absence : **il n'y a pas de
+coupure**. Sur un soustractif, l'œil va d'abord au gros potentiomètre de
+filtre ; ici, le geste central est la PENTE du spectre, qui joue exactement son
+rôle, et elle est donc seule et en grand, à gauche. Le second bloc porte les
+deux commandes qu'aucune autre machine du parc ne peut offrir — la balance
+impairs/pairs, qui creuse un spectre à trous, et la raideur, qui étire les
+rangs — et il est marqué d'un liseré différent : ces deux-là SONT la machine,
+les noyer parmi des réglages d'enveloppe l'aurait déguisée en soustractif de
+plus.
+
 ### Le séquenceur fait partie de la machine
 
 Sur une boîte à rythmes ou un TB-303, le séquenceur n'est pas un accessoire :

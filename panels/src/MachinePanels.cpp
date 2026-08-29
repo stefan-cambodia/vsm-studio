@@ -2095,12 +2095,205 @@ MachinePanel makeMultisample() {
     return panel;
 }
 
+// ---------------------------------------------------------------------------
+// Percussions à peaux et barres
+//
+// AUCUNE FAÇADE D'ORIGINE, et c'est le premier choix à faire : un conguero n'a
+// pas de potentiomètres. La disposition suit donc ce qu'un percussionniste a
+// devant lui -- les peaux à gauche, du plus grave au plus aigu, les métaux et
+// les bois à droite, les grains secoués au bout. C'est l'ordre dans lequel on
+// les frappe, pas l'ordre alphabétique.
+//
+// Bois clair et peau tendue plutôt que tôle pliée : cette machine n'est pas une
+// boîte à rythmes électronique, et sa façade doit le dire avant qu'on ait lu
+// une seule sérigraphie. La grille de pas est là quand même -- on programme
+// une clave comme on programme un charleston -- avec les treize pièces en
+// numérotation General MIDI.
+// ---------------------------------------------------------------------------
+MachinePanel makePerc() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.perc";
+    panel.displayName = "Percussion (peaux et barres)";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#3A2E24";
+    panel.sectionColour = "#2B211A";
+    panel.textColour = "#F0E4D2";
+    panel.knobColour = "#D9C7A8";
+    panel.gridColumns = 15;
+    panel.gridRows = 5;
+
+    auto piece = [](std::string title, std::string accent, int column, int span,
+                    std::vector<PanelControl> controls) {
+        PanelSection section;
+        section.title = std::move(title);
+        section.accentColour = std::move(accent);
+        section.column = column;
+        section.row = 0;
+        section.columnSpan = span;
+        section.rowSpan = 3;
+        section.controls = std::move(controls);
+        return section;
+    };
+
+    // Les peaux en terre cuite, les métaux en laiton, les bois en miel : trois
+    // familles, trois couleurs, reconnaissables sans lire.
+    const std::string peau = "#C1663A";
+    const std::string bois = "#D9A441";
+    const std::string metal = "#B9C2CC";
+
+    panel.sections = {
+        piece("CONGA", peau, 0, 3, {
+            control("Conga Level", "LEVEL", S::Knob, 0, 0),
+            control("Conga Tune", "TUNE", S::LargeKnob, 1, 0),
+            control("Conga Decay", "DECAY", S::Knob, 0, 1),
+        }),
+        piece("BONGO", peau, 3, 3, {
+            control("Bongo Level", "LEVEL", S::Knob, 0, 0),
+            control("Bongo Tune", "TUNE", S::Knob, 1, 0),
+            control("Bongo Decay", "DECAY", S::Knob, 0, 1),
+        }),
+        piece("TIMBALE", peau, 6, 3, {
+            control("Timbale Level", "LEVEL", S::Knob, 0, 0),
+            control("Timbale Tune", "TUNE", S::Knob, 1, 0),
+            control("Timbale Decay", "DECAY", S::Knob, 0, 1),
+        }),
+        piece("COWBELL / WOOD", bois, 9, 3, {
+            control("Cowbell Level", "BELL", S::Knob, 0, 0),
+            control("Cowbell Tune", "BELL TUNE", S::Knob, 1, 0),
+            control("Cowbell Decay", "BELL DEC", S::Knob, 2, 0),
+            control("Wood Level", "WOOD", S::Knob, 0, 1),
+            control("Wood Tune", "WOOD TUNE", S::Knob, 1, 1),
+            control("Wood Decay", "WOOD DEC", S::Knob, 2, 1),
+        }),
+        piece("SHAKEN", metal, 12, 3, {
+            control("Shaker Level", "SHAKER", S::Knob, 0, 0),
+            control("Shaker Tone", "TONE", S::Knob, 1, 0),
+            control("Shaker Decay", "DECAY", S::Knob, 0, 1),
+            control("Tambourine Level", "TAMB", S::Knob, 1, 1),
+            control("Tambourine Decay", "TAMB DEC", S::Knob, 2, 1),
+        }),
+    };
+
+    PanelSection accent;
+    accent.title = "ACCENT";
+    accent.accentColour = peau;
+    accent.column = 0; accent.row = 3; accent.columnSpan = 3; accent.rowSpan = 2;
+    accent.contentColumns = 2;
+    accent.controls = { control("Accent", "ACCENT", S::Knob, 0, 0) };
+    panel.sections.push_back(accent);
+
+    panel.sequencer.kind = SequencerKind::DrumGrid;
+    panel.sequencer.title = "PERCUSSION PATTERN";
+    panel.sequencer.stepCount = 16;
+    panel.sequencer.rowSpan = 3;
+    // Les treize pièces, en numérotation General MIDI. L'ordre des lignes est
+    // celui de la façade -- peaux du grave à l'aigu, puis bois, puis métaux --
+    // pour qu'on retrouve d'un regard, dans la grille, ce qu'on vient de régler.
+    panel.sequencer.lanes = {
+        {"LOW CONGA", 64}, {"HI CONGA", 63}, {"MUTE CONGA", 62},
+        {"LOW BONGO", 61}, {"HI BONGO", 60},
+        {"LOW TIMBALE", 66}, {"HI TIMBALE", 65},
+        {"COWBELL", 56}, {"CLAVES", 75}, {"LOW WOOD", 77}, {"HI WOOD", 76},
+        {"MARACAS", 70}, {"TAMBOURINE", 54},
+    };
+    // Les groupes de quatre reprennent les tons de la façade plutôt que le
+    // rouge/orange des boîtes Roland : la machine n'est pas de cette famille.
+    panel.sequencer.stepGroupColours = {"#C1663A", "#D9A441", "#B9C2CC", "#EADFCB"};
+    panel.gridRows += panel.sequencer.rowSpan;
+    return panel;
+}
+
+// ---------------------------------------------------------------------------
+// Additif
+//
+// Pas de façade d'origine non plus, et surtout pas de coupure : c'est ce qui
+// oriente toute la disposition. Sur un soustractif, l'œil va d'abord au gros
+// potentiomètre de filtre ; ici il n'y en a pas, et le geste central est la
+// PENTE du spectre -- elle joue exactement le rôle que la coupure joue
+// ailleurs. Elle est donc seule, en grand, à gauche.
+//
+// Vient ensuite ce qu'aucune autre machine ne sait faire : la balance
+// impairs/pairs, qui creuse un spectre à trous, et la raideur, qui étire les
+// rangs. Ces deux commandes SONT la machine, et la façade les met côte à côte
+// dans leur propre bloc plutôt que noyées parmi les réglages d'enveloppe.
+//
+// Anthracite et cuivre : un instrument de laboratoire, pas un objet de scène.
+// ---------------------------------------------------------------------------
+MachinePanel makeAdditive() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.additive";
+    panel.displayName = "Additive (le spectre rang par rang)";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#22252A";
+    panel.sectionColour = "#191C20";
+    panel.textColour = "#E4EAF0";
+    panel.knobColour = "#C89B5A";
+    panel.gridColumns = 15;
+    panel.gridRows = 4;
+
+    PanelSection spectre;
+    spectre.title = "SPECTRUM";
+    spectre.accentColour = "#C89B5A";
+    spectre.column = 0; spectre.row = 0; spectre.columnSpan = 5; spectre.rowSpan = 4;
+    spectre.controls = {
+        control("Spectral Tilt", "TILT", S::LargeKnob, 0, 0),
+        // « COUNT » et non « PARTIALS » : le bloc voisin s'appelle PARTIALS, et
+        // deux intitulés identiques à deux endroits différents se lisent comme
+        // une erreur avant de se lire comme une commande.
+        control("Partials", "COUNT", S::Knob, 1, 0),
+        control("Decay Tilt", "DAMPING", S::Knob, 0, 1),
+    };
+
+    // LE BLOC QUI JUSTIFIE LA MACHINE. Deux commandes, et aucune autre façade
+    // du parc n'en porte d'équivalent : c'est le seul endroit où l'on pose un
+    // spectre que nul filtre ne peut tailler.
+    PanelSection partiels;
+    partiels.title = "PARTIALS";
+    partiels.accentColour = "#7FB4C4";
+    partiels.column = 5; partiels.row = 0; partiels.columnSpan = 4; partiels.rowSpan = 4;
+    partiels.contentColumns = 2;
+    partiels.controls = {
+        control("Odd/Even Balance", "ODD / EVEN", S::LargeKnob, 0, 0),
+        control("Inharmonicity", "STRETCH", S::Knob, 1, 0),
+        control("Attack Spread", "SPREAD", S::Knob, 1, 1),
+    };
+
+    PanelSection enveloppe;
+    enveloppe.title = "ENVELOPE";
+    enveloppe.accentColour = "#8FA9C9";
+    enveloppe.column = 9; enveloppe.row = 0; enveloppe.columnSpan = 4; enveloppe.rowSpan = 4;
+    enveloppe.controls = {
+        control("Amp Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
+        control("Amp Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
+        control("Amp Sustain", "S", S::VerticalSlider, 2, 0, 1, 2),
+        control("Amp Release", "R", S::VerticalSlider, 3, 0, 1, 2),
+    };
+
+    PanelSection sortie;
+    sortie.title = "OUTPUT";
+    sortie.accentColour = "#C89B5A";
+    sortie.column = 13; sortie.row = 0; sortie.columnSpan = 2; sortie.rowSpan = 4;
+    sortie.controls = {
+        control("Velocity to Tilt", "TOUCH", S::Knob, 0, 0),
+        control("Output Level", "VOLUME", S::Knob, 0, 1),
+    };
+
+    panel.omittedParameters = {
+        {"Analog Character", "instabilité d'intonation très lente, commune au parc : "
+                             "elle se règle une fois et ne se joue pas"},
+    };
+
+    panel.sections = {spectre, partiels, enveloppe, sortie};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
         makeJuno106(), makeJupiter8(), makeProphet(), makeMs20(), makeArpOdyssey(), makeDx7(), makeSampler(),
         makeEPiano(), makeObx(), makeSupersaw(), makeWavetable(), makePcmHybrid(), makeTonewheel(), makeGeneric(), makeString(),
-        makePiano(), makeDrums(), makeWind(), makeMultisample()
+        makePiano(), makeDrums(), makeWind(), makeMultisample(),
+        makePerc(), makeAdditive()
     };
     return all;
 }
