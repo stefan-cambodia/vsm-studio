@@ -2564,13 +2564,100 @@ MachinePanel makeVocal() {
     return panel;
 }
 
+// ---------------------------------------------------------------------------
+// Phase Distortion
+//
+// Les machines d'origine étaient des claviers de grande série au panneau
+// minuscule : quelques boutons membrane et un afficheur. Copier ça donnerait
+// une façade illisible et fausse -- ce qui se jouait sur ces instruments se
+// réglait par menus, pas sous les doigts.
+//
+// La disposition suit donc ce que la machine FAIT : la déformation en grand à
+// gauche, avec ce qui la pilote dans le temps ; la résonance à part, parce
+// qu'elle ne sert que sur une partie du répertoire et qu'elle a sa propre
+// logique -- un RANG entier, pas une fréquence. Puis les deux enveloppes, celle
+// du timbre et celle du niveau, côte à côte : c'est le geste de ces machines,
+// et les voir ensemble est ce qui permet de le régler.
+//
+// Gris clair et bleu d'écran : ces instruments étaient numériques et s'en
+// vantaient.
+// ---------------------------------------------------------------------------
+MachinePanel makePhaseDist() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.phasedist";
+    panel.displayName = "Phase Distortion";
+    panel.chassis = Chassis::Plastic;
+    panel.panelColour = "#D5D7DA";
+    panel.sectionColour = "#C4C7CC";
+    panel.textColour = "#20242A";
+    panel.knobColour = "#3A4048";
+    panel.gridColumns = 15;
+    panel.gridRows = 5;
+
+    PanelSection dist;
+    dist.title = "PHASE DISTORTION";
+    dist.accentColour = "#2C6FB5";
+    dist.column = 0; dist.row = 0; dist.columnSpan = 4; dist.rowSpan = 5;
+    dist.contentColumns = 2;
+    dist.controls = {
+        control("Distortion", "AMOUNT", S::LargeKnob, 0, 0, 1, 2),
+        control("Env to Distortion", "ENV", S::Knob, 1, 0),
+        control("Velocity to Distortion", "TOUCH", S::Knob, 1, 1),
+    };
+
+    PanelSection reso;
+    reso.title = "RESONANCE";
+    reso.accentColour = "#B5502C";
+    reso.column = 4; reso.row = 0; reso.columnSpan = 3; reso.rowSpan = 5;
+    reso.contentColumns = 1;
+    reso.controls = {
+        control("Resonance", "DEPTH", S::Knob, 0, 0),
+        // SÉLECTEUR et non potentiomètre : ce réglage saute d'un rang entier à
+        // l'autre, il ne glisse pas. Le montrer comme un bouton continu ferait
+        // croire à une coupure de filtre, c'est-à-dire exactement ce que cette
+        // machine n'a pas.
+        control("Resonance Harmonic", "HARMONIC", S::Selector, 0, 1),
+    };
+
+    PanelSection timbre;
+    timbre.title = "TIMBRE ENVELOPE";
+    timbre.accentColour = "#2C6FB5";
+    timbre.column = 7; timbre.row = 0; timbre.columnSpan = 4; timbre.rowSpan = 5;
+    timbre.controls = {
+        control("Mod Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
+        control("Mod Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
+        control("Mod Sustain", "S", S::VerticalSlider, 2, 0, 1, 2),
+        control("Mod Release", "R", S::VerticalSlider, 3, 0, 1, 2),
+    };
+
+    PanelSection ampli;
+    ampli.title = "AMP ENVELOPE";
+    ampli.accentColour = "#4A5560";
+    ampli.column = 11; ampli.row = 0; ampli.columnSpan = 4; ampli.rowSpan = 5;
+    ampli.controls = {
+        control("Amp Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
+        control("Amp Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
+        control("Amp Sustain", "S", S::VerticalSlider, 2, 0, 1, 2),
+        control("Amp Release", "R", S::VerticalSlider, 3, 0, 1, 2),
+    };
+
+    panel.omittedParameters = {
+        {"Analog Character", "instabilité d'intonation très lente, commune au parc : "
+                             "elle se règle une fois et ne se joue pas"},
+        {"Output Level", "le niveau se règle à la tranche du mixeur, et cette façade "
+                         "n'a pas de place pour une commande que le mixeur porte déjà"},
+    };
+    panel.sections = {dist, reso, timbre, ampli};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
         makeJuno106(), makeJupiter8(), makeProphet(), makeMs20(), makeArpOdyssey(), makeDx7(), makeSampler(),
         makeEPiano(), makeObx(), makeSupersaw(), makeWavetable(), makePcmHybrid(), makeTonewheel(), makeGeneric(), makeString(),
         makePiano(), makeDrums(), makeWind(), makeMultisample(),
-        makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal()
+        makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist()
     };
     return all;
 }

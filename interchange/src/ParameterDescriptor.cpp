@@ -499,6 +499,29 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Tom Decay", "drum.tom.decay"},
         {"Accent", "accent.amount"},
     }},
+    // --- vsm.phasedist ---
+    // `phasedist.*` pour ce qui n'existe nulle part ailleurs -- déformer le
+    // temps de lecture, et une résonance verrouillée sur un rang entier. Les
+    // deux enveloppes prennent les identités canoniques : la seconde est bien
+    // une enveloppe de TIMBRE, celle que les autres machines branchent sur leur
+    // coupure, et `envelope.2.*` dit exactement cela.
+    {"vsm.phasedist", {
+        {"Distortion", "phasedist.amount"},
+        {"Env to Distortion", "phasedist.envAmount"},
+        {"Resonance", "phasedist.resonance"},
+        {"Resonance Harmonic", "phasedist.resonanceHarmonic"},
+        {"Mod Attack", "envelope.2.attack"},
+        {"Mod Decay", "envelope.2.decay"},
+        {"Mod Sustain", "envelope.2.sustain"},
+        {"Mod Release", "envelope.2.release"},
+        {"Amp Attack", "envelope.1.attack"},
+        {"Amp Decay", "envelope.1.decay"},
+        {"Amp Sustain", "envelope.1.sustain"},
+        {"Amp Release", "envelope.1.release"},
+        {"Velocity to Distortion", "voice.velocitySensitivity"},
+        {"Analog Character", "voice.analogCharacter"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.vocal ---
     // Une famille neuve (`vocal.*`) pour ce qu'aucune autre machine n'expose :
     // une voyelle et la taille d'un conduit. Le reste est canonique -- une

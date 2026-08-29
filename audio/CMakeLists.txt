@@ -36,6 +36,7 @@ add_library(vsm_audio STATIC
     plugins/westcoast/WestCoastSynth.cpp
     plugins/fmdrums/FmDrumsSynth.cpp
     plugins/vocal/VocalSynth.cpp
+    plugins/phasedist/PhaseDistSynth.cpp
     plugins/multisample/MultisampleSynth.cpp
 )
 
@@ -123,6 +124,7 @@ if (VSM_BUILD_TESTS)
         tests/test_westcoast_synth.cpp
         tests/test_fmdrums_synth.cpp
         tests/test_vocal_synth.cpp
+        tests/test_phasedist_synth.cpp
         tests/test_multisample_synth.cpp
         tests/test_midi_learn.cpp
         tests/test_effect_routing.cpp

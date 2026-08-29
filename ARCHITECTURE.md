@@ -30,7 +30,7 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **830 tests moteur** (84 core + 613 audio
+écoute au clic, et toute la logique testée hors JUCE. Total : **843 tests moteur** (84 core + 626 audio
 + 111 interchange + 11 CLAP + 11 façades,
 tous verts, zéro warning, y compris sous les flags stricts type-JUCE
 `-Wfloat-equal -Wsign-conversion -Wshadow`) + application complète compilée et
@@ -322,12 +322,12 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 830 tests moteur + 18 tests d'analyse, tous verts
+### Bilan actuel : 843 tests moteur + 18 tests d'analyse, tous verts
 
 - **84 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des
   notes douteuses de la transcription),
-  **613 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
+  **626 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
   scalaire, indépendance des lignes, bornes de l'approximation de tanh ; et la
   boucle : rebouclage échantillon-exact, notes relâchées au saut) : chorus BBD, Juno-106,
   bus master (biquad/compresseur/limiteur à plafond garanti/LUFS), oversampler,
@@ -2858,6 +2858,51 @@ occlusions, c'est-à-dire un modèle de geste et non de conduit. Trois formants 
 lieu des cinq utiles ; pas de nasalité, qui exigerait un anti-formant. Statut
 « dérivé » : les fréquences viennent des tables de phonétique publiées, aucune
 n'a été relevée sur un chanteur.
+
+---
+
+## 41. `vsm.phasedist` — déformer le TEMPS, pas l'amplitude
+
+**TROISIÈME FAÇON D'ENRICHIR UN SINUS, ET ELLE N'EST NI L'UNE NI L'AUTRE DES
+DEUX AUTRES.** `vsm.westcoast` PLIE : une fonction non linéaire de l'AMPLITUDE.
+`vsm.dx7` MODULE : un oscillateur en pilote un autre. Celle-ci lit une table de
+sinus à vitesse variable dans le cycle — vite au début, lentement ensuite. Le
+signal reste une sinusoïde parcourue ; c'est le temps qui est déformé.
+
+**LE TRAIT DISTINCTIF LA SÉPARE DU PLIEUR, ET IL SE MESURE EN DEUX CHIFFRES À LA
+FOIS.** Déformer la phase ne touche pas à l'amplitude : la lecture parcourt
+toujours toute la table. **Le timbre s'ouvre à niveau constant** — mesuré, le
+centroïde passe du rang 1 (un sinus pur, vérifié séparément) à plus du triple,
+pendant que la valeur efficace reste dans une fenêtre de ±15 %. Un plieur ne
+peut pas : il gagne ses harmoniques en poussant plus fort dans les replis, donc
+son niveau bouge nécessairement. Le test mesure les deux ensemble, parce que
+chacun pris seul ne prouverait rien.
+
+**LE SECOND TRAIT EST L'EXACT COMPLÉMENT DE `vsm.vocal`.** La forme dite
+« résonante » est un sinus rapide, à un multiple ENTIER de la note, fenêtré par
+une dent de scie à la fondamentale. Le pic obtenu ressemble à une résonance de
+filtre, mais il ne peut se placer qu'à `k × f0` : il SAUTE d'un rang à l'autre
+au lieu de glisser. Le test vérifie qu'à k = 3 et k = 7 le maximum tombe
+exactement sur ces rangs.
+
+Les deux machines couvrent donc les deux comportements possibles d'un pic
+spectral, et le parc n'en avait aucun : les formants de `vsm.vocal` restent à
+des fréquences ABSOLUES quand la note change ; cette résonance-ci suit la note
+en RAPPORT ENTIER. Aucune autre machine ne fait ni l'un ni l'autre.
+
+**LA FAÇADE DIT CETTE DIFFÉRENCE.** Le rang de résonance est un SÉLECTEUR et
+non un potentiomètre, parce qu'il saute d'un entier à l'autre : le montrer comme
+un bouton continu ferait croire à une coupure de filtre, c'est-à-dire
+exactement ce que cette machine n'a pas. Et les machines d'origine n'ont pas été
+copiées : c'étaient des claviers de grande série au panneau minuscule, où tout
+se réglait par menus. Copier ça donnerait une façade illisible et fausse.
+
+**APPROXIMATIONS ASSUMÉES**, statut « dérivé » : une seule courbe de déformation
+à un point de brisure, là où les machines d'origine en offraient huit — le point
+de brisure est justement ce qui se règle, et un réglage continu est bien plus
+cherchable que huit courbes figées (§ 6 de `CDC-machines-manquantes.md`). Pas de
+modulation en anneau ni de bruit, deux modes annexes qui relèvent d'autres
+familles déjà présentes.
 
 ---
 

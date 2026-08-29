@@ -150,6 +150,17 @@ constexpr Rule kRules[] = {
     // dont la hauteur est balayée à l'attaque, se reconnaît d'abord à sa
     // queue. La barre (bois, claves) suit la même règle : sa hauteur EST son
     // identité, sa durée n'est qu'une nuance de frappe.
+    // DISTORSION DE PHASE (vsm.phasedist). La DÉFORMATION est à cette machine
+    // ce que la coupure est à un soustractif : elle décide combien
+    // d'harmoniques existent, et elle vient donc en tête, suivie de ce qui la
+    // pilote dans le temps. La résonance vient après parce qu'elle ne sert que
+    // sur une partie du répertoire de la machine ; son RANG, lui, est discret
+    // par nature -- il saute d'un entier à l'autre -- donc moins rentable à
+    // chercher finement qu'un réglage continu.
+    {"phasedist.amount",                   0.0f,     1.0f, SearchScale::Linear,      0.96f},
+    {"phasedist.envAmount",                0.0f,     1.0f, SearchScale::Linear,      0.86f},
+    {"phasedist.resonance",                0.0f,     1.0f, SearchScale::Linear,      0.72f},
+    {"phasedist.resonanceHarmonic",        1.0f,    16.0f, SearchScale::Linear,      0.64f},
     // VOIX (vsm.vocal). La VOYELLE d'abord, et de loin : c'est elle qui décide
     // de quel son il s'agit, là où les autres machines ont une coupure. Le
     // décalage du conduit suit -- il change la TAILLE du chanteur, ce qui

@@ -55,6 +55,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, Iterator, List, Optional, Sequence, Tuple
 
+import math
+
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -156,31 +158,72 @@ def niveau_efficace(audio: np.ndarray) -> Optional[float]:
 # Transcription et séparation
 # ---------------------------------------------------------------------------
 
+def velocite_locale(audio: np.ndarray, debut: float, fenetre: float = 0.20) -> float:
+    """Niveau efficace du stem au moment où la note commence, sur `fenetre`.
+
+    C'est l'ATTAQUE qu'on mesure, pas la note entière : ce qui règle la
+    vélocité d'un instrument est la force du geste au départ, et une note
+    tenue qui s'éteint ne doit pas en être pénalisée.
+    """
+    i = int(debut * SAMPLE_RATE)
+    j = min(i + int(fenetre * SAMPLE_RATE), audio.size)
+    if i >= j:
+        return 0.0
+    return float(np.sqrt(np.mean(np.square(audio[i:j], dtype=np.float64))))
+
+
 def extraire_notes(chemin: Path) -> List[StemNote]:
     """
     Transcrit un fichier en notes.
 
-    La confiance rendue par le transcripteur sert de vélocité : une note
-    détectée de justesse ne doit pas sonner aussi fort qu'une note franche.
+    LA VÉLOCITÉ VIENT DE L'ÉNERGIE DU SON, PAS DE LA CONFIANCE DU
+    TRANSCRIPTEUR, et c'est un correctif mesuré. La version précédente posait
+    `velocity = 40 + 87 x confiance` avec ce raisonnement : « une note détectée
+    de justesse ne doit pas sonner aussi fort qu'une note franche ». C'est
+    plausible et c'est faux -- savoir QU'UNE note existe n'est pas savoir si
+    elle a été jouée fort. Le résultat était une dynamique écrasée : sur la
+    piste « other » de *Sky and Sand*, 4 280 notes entre 58 et 103 d'écart-type
+    7,9, quand le stem varie du simple au double. Le morceau reconstruit avait
+    donc les bonnes notes et pas le bon GESTE, ce qui s'entend immédiatement --
+    et ce que la métrique v2 ne voyait pas.
+
+    Mesuré sur cette piste, à notes, machine et durées identiques : l'accord
+    entre l'enveloppe du rendu et celle du stem passe de **0,361 à 0,508**.
+
+    La confiance garde son VRAI rôle, qui est le seul qu'elle puisse tenir :
+    signaler le doute à l'oreille dans le piano roll (§ 11.3 de
+    ROADMAP-fusion.md). Elle n'est plus confondue avec une nuance.
     """
     from analyzer.note_extraction import extract_notes
 
+    audio = charger_audio(chemin)
+    brutes = [b for b in extract_notes(chemin) if float(b["end"]) > float(b["start"])]
+    if not brutes:
+        return []
+
+    # RÉFÉRENCE AU 90e CENTILE, ET NON AU MAXIMUM : un seul transitoire -- un
+    # claquement, une saturation -- écraserait toutes les autres notes s'il
+    # servait d'étalon. Le 90e centile est la nuance forte du morceau.
+    niveaux = [velocite_locale(audio, float(b["start"])) for b in brutes]
+    positifs = [n for n in niveaux if n > 0.0]
+    reference = float(np.percentile(positifs, 90)) if positifs else 1.0
+
     notes = []
-    for brut in extract_notes(chemin):
-        duree = float(brut["end"]) - float(brut["start"])
-        if duree <= 0.0:
-            continue
+    for brut, niveau in zip(brutes, niveaux):
         confiance = float(brut.get("confidence", 0.8))
+        # RACINE CARRÉE : l'oreille entend le niveau en gros comme sa racine,
+        # et une échelle linéaire tasserait toutes les nuances moyennes vers le
+        # bas. Le plancher à 8 garde une note audible plutôt que muette : une
+        # note transcrite est une note qui a sonné.
+        part = min(niveau / reference, 1.0) if reference > 0.0 else 0.0
         notes.append(
             StemNote(
                 note=int(brut["midi"]),
-                velocity=max(1, min(127, int(40 + 87 * confiance))),
+                velocity=max(8, min(127, int(round(127.0 * math.sqrt(part))))),
                 start=float(brut["start"]),
-                duration=duree,
-                # La même confiance sert deux fois, et ce n'est pas un
-                # raccourci : elle règle la vélocité (une note à peine
-                # détectée a été jouée doucement) ET signale le doute à
-                # l'utilisateur dans le piano roll.
+                duration=float(brut["end"]) - float(brut["start"]),
+                # La confiance ne règle plus la vélocité : elle signale le doute
+                # dans le piano roll, et c'est tout ce qu'elle sait faire.
                 confidence=confiance,
             )
         )
