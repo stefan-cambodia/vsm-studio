@@ -499,6 +499,25 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Tom Decay", "drum.tom.decay"},
         {"Accent", "accent.amount"},
     }},
+    // --- vsm.psg ---
+    // `psg.*` pour ce qui n'a d'équivalent nulle part : une HORLOGE en hertz et
+    // une profondeur de volume en BITS. Ce sont les deux grandeurs qui font
+    // cette machine, et aucune identité existante ne les décrit -- les appeler
+    // « filtre » ou « accordage » mentirait sur leur nature.
+    {"vsm.psg", {
+        {"Clock", "psg.clock"},
+        {"Pulse Width", "oscillator.1.pulseWidth"},
+        {"Square Voices", "psg.squareVoices"},
+        {"Detune", "oscillator.2.detune"},
+        {"Noise Level", "oscillator.noise.level"},
+        {"Noise Period", "psg.noisePeriod"},
+        {"Volume Bits", "psg.volumeBits"},
+        {"Attack", "envelope.1.attack"},
+        {"Decay", "envelope.1.decay"},
+        {"Sustain", "envelope.1.sustain"},
+        {"Release", "envelope.1.release"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.divider ---
     // Les REGISTRES prennent la grammaire de l'orgue (`organ.drawbar.*`), et
     // c'est juste : ce sont des tirettes, et `vsm.tonewheel` en déclare déjà.

@@ -150,6 +150,16 @@ constexpr Rule kRules[] = {
     // dont la hauteur est balayée à l'attaque, se reconnaît d'abord à sa
     // queue. La barre (bois, claves) suit la même règle : sa hauteur EST son
     // identité, sa durée n'est qu'une nuance de frappe.
+    // PUCE 8 BITS (vsm.psg). L'HORLOGE en tête, et ce n'est pas un réglage
+    // d'accordage : elle décide de la GRILLE des fréquences atteignables, donc
+    // du désaccord caractéristique. Les bits de volume suivent -- ils font la
+    // granularité de la dynamique, ce qui s'entend autant que le timbre. Le
+    // rapport cyclique vient ensuite, puis le bruit, qui n'est là que sur une
+    // partie du répertoire.
+    {"psg.clock",                          0.0f,     0.0f, SearchScale::Logarithmic, 0.92f},
+    {"psg.volumeBits",                     1.0f,     8.0f, SearchScale::Linear,      0.80f},
+    {"psg.squareVoices",                   1.0f,     3.0f, SearchScale::Linear,      0.66f},
+    {"psg.noisePeriod",                    0.0f,     0.0f, SearchScale::Logarithmic, 0.58f},
     // CORDES ÉLECTRONIQUES (vsm.divider). L'ENSEMBLE vient en tête, et c'est
     // propre à cette machine : sans son chorus, elle n'est qu'un orgue pauvre,
     // et c'est lui qu'on reconnaît avant tout le reste. Les deux registres

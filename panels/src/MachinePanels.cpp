@@ -2726,13 +2726,91 @@ MachinePanel makeDivider() {
     return panel;
 }
 
+// ---------------------------------------------------------------------------
+// PSG
+//
+// Une puce n'a pas de façade : elle a des REGISTRES, qu'un programme écrit. La
+// disposition ne copie donc rien -- elle montre ce qu'on écrivait dans ces
+// registres, dans l'ordre où l'on y pensait : d'abord l'horloge et les bits,
+// qui décident de la GRILLE dans laquelle tout le reste tombe, puis les voix
+// carrées, puis le bruit, puis l'enveloppe.
+//
+// L'HORLOGE est en grand, et c'est le choix qui porte tout le reste : sur cette
+// machine, elle joue le rôle que la coupure joue sur un soustractif, sauf
+// qu'elle agit sur la JUSTESSE au lieu du timbre. La montrer petite, à côté
+// d'un rapport cyclique, laisserait croire à un réglage d'accordage fin.
+//
+// Vert phosphore sur gris de boîtier : ces puces vivaient derrière un écran.
+// ---------------------------------------------------------------------------
+MachinePanel makePsg() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.psg";
+    panel.displayName = "PSG";
+    panel.chassis = Chassis::Plastic;
+    panel.panelColour = "#2A2E2B";
+    panel.sectionColour = "#1F2320";
+    panel.textColour = "#D8E8D0";
+    panel.knobColour = "#8FCB7A";
+    panel.gridColumns = 14;
+    panel.gridRows = 4;
+
+    PanelSection puce;
+    puce.title = "CHIP";
+    puce.accentColour = "#8FCB7A";
+    puce.column = 0; puce.row = 0; puce.columnSpan = 4; puce.rowSpan = 4;
+    puce.contentColumns = 2;
+    puce.controls = {
+        control("Clock", "CLOCK", S::LargeKnob, 0, 0, 1, 2),
+        // SÉLECTEUR : une profondeur de volume est un nombre de BITS, donc un
+        // entier. Un potentiomètre continu ferait croire à un réglage de
+        // niveau, c'est-à-dire à autre chose.
+        control("Volume Bits", "BITS", S::Selector, 1, 0),
+        control("Output Level", "VOLUME", S::Knob, 1, 1),
+    };
+
+    PanelSection carre;
+    carre.title = "SQUARE";
+    carre.accentColour = "#7AB8CB";
+    carre.column = 4; carre.row = 0; carre.columnSpan = 4; carre.rowSpan = 4;
+    carre.contentColumns = 2;
+    carre.controls = {
+        control("Pulse Width", "WIDTH", S::Knob, 0, 0),
+        control("Square Voices", "VOICES", S::Selector, 1, 0),
+        control("Detune", "DETUNE", S::Knob, 0, 1),
+    };
+
+    PanelSection bruit;
+    bruit.title = "NOISE";
+    bruit.accentColour = "#CB9A7A";
+    bruit.column = 8; bruit.row = 0; bruit.columnSpan = 3; bruit.rowSpan = 4;
+    bruit.contentColumns = 1;
+    bruit.controls = {
+        control("Noise Level", "LEVEL", S::Knob, 0, 0),
+        control("Noise Period", "PERIOD", S::Knob, 0, 1),
+    };
+
+    PanelSection env;
+    env.title = "ENVELOPE";
+    env.accentColour = "#8FCB7A";
+    env.column = 11; env.row = 0; env.columnSpan = 3; env.rowSpan = 4;
+    env.controls = {
+        control("Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
+        control("Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
+        control("Sustain", "S", S::VerticalSlider, 2, 0, 1, 2),
+        control("Release", "R", S::VerticalSlider, 3, 0, 1, 2),
+    };
+
+    panel.sections = {puce, carre, bruit, env};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
         makeJuno106(), makeJupiter8(), makeProphet(), makeMs20(), makeArpOdyssey(), makeDx7(), makeSampler(),
         makeEPiano(), makeObx(), makeSupersaw(), makeWavetable(), makePcmHybrid(), makeTonewheel(), makeGeneric(), makeString(),
         makePiano(), makeDrums(), makeWind(), makeMultisample(),
-        makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider()
+        makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg()
     };
     return all;
 }

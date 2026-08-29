@@ -30,7 +30,7 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **856 tests moteur** (84 core + 639 audio
+écoute au clic, et toute la logique testée hors JUCE. Total : **871 tests moteur** (84 core + 654 audio
 + 111 interchange + 11 CLAP + 11 façades,
 tous verts, zéro warning, y compris sous les flags stricts type-JUCE
 `-Wfloat-equal -Wsign-conversion -Wshadow`) + application complète compilée et
@@ -322,12 +322,12 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 856 tests moteur + 18 tests d'analyse, tous verts
+### Bilan actuel : 871 tests moteur + 18 tests d'analyse, tous verts
 
 - **84 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des
   notes douteuses de la transcription),
-  **639 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
+  **654 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
   scalaire, indépendance des lignes, bornes de l'approximation de tanh ; et la
   boucle : rebouclage échantillon-exact, notes relâchées au saut) : chorus BBD, Juno-106,
   bus master (biquad/compresseur/limiteur à plafond garanti/LUFS), oversampler,
@@ -2959,6 +2959,62 @@ vrai a de la gigue sur ses fronts) ; paraphonie fidèle — une attaque et une
 extinction, pas de filtre par voix, pas de maintien réglable, parce que ces
 machines n'en avaient pas ; deux registres au lieu de quatre, ceux qui font le
 son de cordes ; chorus interpolé linéairement là où un BBD a sa propre couleur.
+
+---
+
+## 43. `vsm.psg` — la seule machine du parc qui joue FAUX, et par construction
+
+**CE QUE TRENTE-TROIS MACHINES FONT SANS QU'ON Y PENSE.** Toutes accordent une
+note en calculant sa fréquence en nombre flottant : elles sont justes au
+millième de cent près, et aucune ne peut être autre chose. Une puce sonore des
+années 1980 — AY-3-8910, SID, celle du NES — ne sait pas faire ça. Elle a une
+horloge fixe et un COMPTEUR ENTIER : la seule chose qu'on puisse lui écrire est
+une période, en nombre entier de cycles. La fréquence vaut donc
+`horloge / (16 × période)`, et il n'existe presque jamais d'entier qui tombe
+juste sur la note demandée.
+
+**C'EST CE DÉFAUT QUI FAIT LE SON.** Dans l'aigu, les périodes disponibles sont
+si espacées que deux notes voisines peuvent tomber sur le même entier — ou
+s'écarter d'un quart de ton. Ce n'est pas une approximation de modélisation :
+c'est le comportement de l'objet, et un musicien de cette époque composait AVEC.
+
+**LE TEST EST PRÉDICTIF, ET C'EST CE QUI LE REND SÉRIEUX.** La fonction
+`PsgVoice::quantifier` est publique justement pour que le test s'en serve à
+PRÉDIRE ce qu'il va mesurer : sur une note à 3 729 Hz, la fréquence rendue doit
+être `horloge / (16 × round(...))` à 1 % près, et NON la fréquence tempérée dont
+elle s'écarte de plus de 0,2 %. **Une machine dont on peut calculer le défaut
+d'avance est une machine dont le défaut est un modèle, pas un accident.**
+
+La seconde moitié est indispensable : sans elle, on aurait pu mesurer n'importe
+quel désaccord et l'appeler quantification. Une horloge plus rapide offre des
+périodes plus fines, donc une erreur plus petite — vérifié sur la formule ET sur
+le son rendu.
+
+**SECOND TRAIT : LA SORTIE EST DÉNOMBRABLE.** Ces puces avaient quatre bits de
+volume, seize marches. Une note tenue ne peut donc prendre qu'un nombre FINI de
+valeurs, et le test les COMPTE : à trois bits, au plus seize valeurs distinctes
+sur une onde carrée (deux par marche) ; à huit bits, strictement plus. Aucune
+autre machine du parc n'a de sortie qu'on puisse énumérer.
+
+**TROISIÈME DÉTAIL, ET IL TRAHIT CES PUCES** : le bruit sort d'un registre à
+décalage bouclé, donc il se RÉPÈTE. À période courte, on entend une hauteur
+dedans — c'est le « periodic noise » dont les musiciens se servaient comme d'une
+percussion accordable.
+
+**LA FAÇADE MET L'HORLOGE EN GRAND**, et c'est le choix qui porte tout le
+reste : elle joue ici le rôle que la coupure joue sur un soustractif, sauf
+qu'elle agit sur la JUSTESSE et non sur le timbre. La montrer petite, à côté
+d'un rapport cyclique, laisserait croire à un réglage d'accordage fin. Les bits
+de volume et le nombre de voix sont des SÉLECTEURS, pas des potentiomètres : ce
+sont des entiers.
+
+**APPROXIMATIONS ASSUMÉES**, statut « dérivé » : trois voix carrées et une de
+bruit, comme l'AY-3-8910 — modéliser aussi le SID et la puce du NES demanderait
+trois machines, et ce qu'elles ont en COMMUN (l'horloge entière, le volume à
+quatre bits) est ce qui les fait reconnaître. Pas de filtre, donc pas de SID :
+son filtre analogique relève du soustractif, que le parc couvre dix fois. Et le
+rendu n'est pas suréchantillonné — une onde carrée à fronts francs replie, ces
+puces repliaient aussi, et le choix est assumé plutôt que subi.
 
 ---
 
