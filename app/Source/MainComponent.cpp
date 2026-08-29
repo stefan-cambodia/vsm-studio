@@ -248,6 +248,14 @@ MainComponent::MainComponent()
     // deux réglages de grille dans deux vues du même morceau finiraient par se
     // contredire.
     arrangement_.gridProvider = [this] { return pianoRoll_.gridResolution(); };
+    arrangement_.waveformProvider = [this](size_t index)
+        -> std::shared_ptr<const std::vector<vsm::audio::io::PeakBin>> {
+        const auto it = waveformCache_.find(index);
+        return it == waveformCache_.end() ? nullptr : it->second;
+    };
+    arrangement_.sampleRateProvider = [this] {
+        return audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate() : 48000.0;
+    };
     // LES BORNES D'UN PARAMÈTRE AUTOMATISÉ (D5.4). Elles viennent des listes de
     // paramètres des machines et des effets, que la vue d'arrangement n'a pas à
     // connaître -- elle demande, l'application répond.
@@ -1595,6 +1603,7 @@ void MainComponent::loadAudioTracks() {
     const double sr = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate()
                                                               : 48000.0;
     juce::StringArray manquants;
+    waveformCache_.clear();
     for (size_t i = 0; i < project_.tracks.size(); ++i) {
         const auto& track = project_.tracks[i];
         // UNE PISTE GELÉE JOUE SON FICHIER DE GEL (D5.5), quelle que soit sa
@@ -1630,6 +1639,16 @@ void MainComponent::loadAudioTracks() {
         // UN GEL N'EST PAS DÉCOUPÉ : il rend la piste entière, clips compris.
         // Lui appliquer les clips de la piste les appliquerait DEUX fois.
         if (gelee) pourLesClips.clips.clear();
+        // LE CACHE D'APERÇU (D5.7), construit ici parce que les échantillons
+        // sont déjà là et déjà à la bonne fréquence. Le dessin ne les reverra
+        // jamais : il ne lira que ce cache.
+        waveformCache_[i] = std::make_shared<const std::vector<vsm::audio::io::PeakBin>>(
+            vsm::audio::io::computePeaks(charge.source->left.data(),
+                                          charge.source->right.empty()
+                                              ? charge.source->left.data()
+                                              : charge.source->right.data(),
+                                          charge.source->frames()));
+
         charge.source->clips = vsm::audio::engine::spansFromTrack(
             pourLesClips, sr, [this](int64_t tick) { return project_.ticksToSeconds(tick); });
         audioEngine_.processGraph().setTrackAudio(i, charge.source);

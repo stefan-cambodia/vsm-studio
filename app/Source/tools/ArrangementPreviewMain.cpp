@@ -13,7 +13,10 @@
 #include "ui/ArrangementComponent.h"
 #include "ui/LookAndFeel/VsmLookAndFeel.h"
 
+#include <cmath>
 #include <cstdio>
+#include <memory>
+#include <vector>
 
 int main(int argc, char** argv) {
     juce::ScopedJuceInitialiser_GUI juceInit;
@@ -123,7 +126,30 @@ int main(int argc, char** argv) {
         {"mix.volume", {{0, 1.0f, false}, {mesure * 2, 1.0f, false},
                          {mesure * 3, 0.15f, false}, {mesure * 4, 1.0f, false}}});
 
+    // UN CACHE D'APERÇU FABRIQUÉ POUR L'OCCASION : deux frappes et une tenue,
+    // pour vérifier à l'oeil que la forme d'onde dit bien ce qu'est le son --
+    // c'est tout l'argument de D5.7 contre un rectangle vide.
+    std::vector<float> son(static_cast<size_t>(48000 * 12), 0.0f);
+    for (size_t i = 0; i < son.size(); ++i) {
+        const double t = static_cast<double>(i) / 48000.0;
+        double enveloppe = 0.0;
+        if (t < 4.0) enveloppe = 0.25 + 0.2 * std::sin(t * 3.0);          // tenue
+        else if (t < 4.15) enveloppe = 0.95 * (1.0 - (t - 4.0) / 0.15);   // frappe
+        else if (t < 7.0) enveloppe = 0.18;
+        else if (t < 7.2) enveloppe = 0.8 * (1.0 - (t - 7.0) / 0.2);      // seconde frappe
+        else enveloppe = 0.05;
+        son[i] = static_cast<float>(std::sin(t * 900.0) * enveloppe);
+    }
+    const auto cacheApercu = std::make_shared<const std::vector<vsm::audio::io::PeakBin>>(
+        vsm::audio::io::computePeaks(son.data(), son.data(),
+                                      static_cast<int64_t>(son.size())));
+
     ArrangementComponent vue;
+    vue.waveformProvider = [&](size_t index)
+        -> std::shared_ptr<const std::vector<vsm::audio::io::PeakBin>> {
+        return index == 2 ? cacheApercu : nullptr;
+    };
+    vue.sampleRateProvider = [] { return 48000.0; };
     vue.automationRange = [](size_t, const std::string& p, float& mini, float& maxi) {
         if (p == "mix.volume") { mini = 0.0f; maxi = 1.5f; return true; }
         return false;

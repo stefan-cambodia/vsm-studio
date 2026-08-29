@@ -1243,7 +1243,7 @@ D1 a mis les clips dans le modèle ; ici on les rend manipulables.
 | D5.4 | Automation dessinée **sur** l'arrangement, avec zoom et courbes | plus une lane isolée dans un onglet — **fait** |
 | D5.5 | Gel et report (*freeze* / *bounce*) d'une piste en audio | une piste gelée sonne identique et coûte le prix d'une lecture audio — **fait** |
 | D5.6 | Gain, fondus et inversion de phase **réglés à la souris** sur le clip (venus de D2.4 : le modèle et le moteur les portent déjà) | un fondu se tire sur le coin du clip — **fait** |
-| D5.7 | Forme d'onde dessinée dans le clip audio, avec cache d'aperçu (venue de D2.5) | 9 minutes s'affichent sans bloquer l'interface |
+| D5.7 | Forme d'onde dessinée dans le clip audio, avec cache d'aperçu (venue de D2.5) | 9 minutes s'affichent sans bloquer l'interface — **fait** |
 
 **Critère de phase** : arranger une reconstruction — déplacer un refrain,
 doubler une mesure, boucler quatre temps — se fait entièrement à la souris.
@@ -1520,6 +1520,34 @@ doubler une mesure, boucler quatre temps — se fait entièrement à la souris.
 > inversée en liséré de tirets. Un réglage qui ne se dessinerait pas obligerait
 > à écouter pour savoir s'il existe, et deux clips identiques dont l'un est
 > inversé s'annulent en s'additionnant sans que rien d'autre ne le dise.
+
+
+> **D5.7 EST FAITE (30/08/2026). « SANS BLOQUER L'INTERFACE » SE JOUE AU
+> DESSIN, PAS AU CHARGEMENT.** La tentation était de lancer un thread de fond
+> pour calculer l'aperçu. Mesuré, il n'y avait rien à y gagner : neuf minutes de
+> stéréo coûtent **21 ms** de calcul de cache, une seule fois, par-dessus un
+> décodage qui en coûte cent fois plus et que ce projet fait déjà sur le thread
+> de l'interface. Un thread de plus n'aurait déplacé que ces 21 ms, contre une
+> synchronisation à tenir juste. Le cache se construit donc là où le fichier est
+> déjà décodé, dans `loadAudioTracks`.
+>
+> Ce qui aurait vraiment bloqué, c'est le **redessin** : il revient à chaque
+> déplacement de souris, et parcourir neuf minutes d'échantillons à chaque fois
+> aurait figé la vue. `peaksForRange` lit le cache, jamais le fichier : **0,08
+> ms par rafraîchissement**, indépendamment de la durée. C'est cela, le critère.
+>
+> **UN APERÇU GARDE LE MINIMUM *ET* LE MAXIMUM**, pas une amplitude. Un son
+> asymétrique — une caisse claire, une voix — n'est pas un ruban centré, et le
+> réduire à une valeur ferait mentir le dessin sur ce qu'on entend. Le dernier
+> paquet est gardé même incomplet : sinon la fin d'un fichier disparaîtrait.
+>
+> **CHAQUE COLONNE DE PIXEL A AU MOINS UN PAQUET.** Zoomé au maximum, plusieurs
+> colonnes tombent dans le même paquet ; sans cette garantie, la forme d'onde se
+> trouerait exactement là où l'on regarde de plus près.
+>
+> **LE DESSIN PART DE `sourceStartSeconds`.** Un clip rogné joue le milieu du
+> fichier : dessiner son début montrerait une forme qui ne correspond pas au
+> son, ce qui est pire que pas de forme du tout.
 
 
 ### Phase D6 — Exporter

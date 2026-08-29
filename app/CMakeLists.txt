@@ -242,6 +242,7 @@ target_compile_definitions(vsm-arrangement-preview PRIVATE
 )
 target_link_libraries(vsm-arrangement-preview PRIVATE
     vsm_core
+    vsm_audio
     juce::juce_gui_basics
     juce::juce_graphics
 )

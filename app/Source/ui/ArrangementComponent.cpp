@@ -709,6 +709,40 @@ void ArrangementComponent::paint(juce::Graphics& g) {
             // comme une note muette dans le piano roll.
             g.setColour(juce::Colour(clip.colorRgba).withAlpha(opacite));
             g.fillRoundedRectangle(r, 3.0f);
+            // LA FORME D'ONDE (D5.7), dessinée DANS le clip. Un rectangle de
+            // couleur dit où est le son ; la forme dit ce qu'il est -- où
+            // frappe la caisse claire, où la voix respire, où la prise est
+            // muette. C'est ce qu'on cherche en arrangeant.
+            if (track.kind == Track::Kind::Audio && waveformProvider && r.getWidth() > 4.0f
+                && r.getHeight() > 8.0f) {
+                if (auto cache = waveformProvider(i)) {
+                    const double sr = sampleRateProvider ? sampleRateProvider() : 48000.0;
+                    // LA FENÊTRE DU CLIP DANS LE FICHIER, en trames. Elle
+                    // commence à `sourceStartSeconds` : sans cela, un clip
+                    // rogné dessinerait le début du fichier au lieu de ce qu'il
+                    // joue -- une forme d'onde qui ne correspond pas au son est
+                    // pire que pas de forme du tout.
+                    const int64_t depart = static_cast<int64_t>(clip.sourceStartSeconds * sr);
+                    const double dureeSecondes =
+                        project_->ticksToSeconds(clip.startTick + clipPlayedLength(clip, fin))
+                        - project_->ticksToSeconds(clip.startTick);
+                    const int64_t arrivee = depart + static_cast<int64_t>(dureeSecondes * sr);
+                    const int colonnes = static_cast<int>(r.getWidth());
+
+                    const auto tracé = vsm::audio::io::peaksForRange(*cache, depart, arrivee,
+                                                                      colonnes);
+                    const float milieu = r.getCentreY();
+                    const float demi = r.getHeight() * 0.45f;
+                    g.setColour(Palette::background.withAlpha(0.72f));
+                    for (size_t c = 0; c < tracé.size(); ++c) {
+                        const float x = r.getX() + static_cast<float>(c);
+                        const float haut = milieu - tracé[c].maximum * demi * clip.gain;
+                        const float bas = milieu - tracé[c].minimum * demi * clip.gain;
+                        g.drawLine(x, std::min(haut, bas), x, std::max(haut, bas) + 0.5f, 1.0f);
+                    }
+                }
+            }
+
             // LES FONDUS SE VOIENT (D5.6) : deux triangles sombres aux coins.
             // Un fondu réglé qui ne se dessinerait pas obligerait à écouter
             // pour savoir s'il existe, et à deviner sa longueur.
@@ -722,7 +756,7 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                     juce::Path coin;
                     coin.addTriangle(r.getX(), r.getY(), r.getX() + w, r.getY(),
                                       r.getX(), r.getBottom());
-                    g.setColour(Palette::background.withAlpha(0.55f));
+                    g.setColour(Palette::background.withAlpha(0.72f));
                     g.fillPath(coin);
                 }
                 if (clip.fadeOutSeconds > 0.0) {
@@ -730,7 +764,7 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                     juce::Path coin;
                     coin.addTriangle(r.getRight(), r.getY(), r.getRight() - w, r.getY(),
                                       r.getRight(), r.getBottom());
-                    g.setColour(Palette::background.withAlpha(0.55f));
+                    g.setColour(Palette::background.withAlpha(0.72f));
                     g.fillPath(coin);
                 }
             }
@@ -751,7 +785,7 @@ void ArrangementComponent::paint(juce::Graphics& g) {
             const vsm::midi::Tick jouee = clipPlayedLength(clip, fin);
             const vsm::midi::Tick fenetre = clip.sourceLength > 0 ? clip.sourceLength : jouee;
             if (fenetre > 0 && jouee > fenetre) {
-                g.setColour(Palette::background.withAlpha(0.55f));
+                g.setColour(Palette::background.withAlpha(0.72f));
                 for (vsm::midi::Tick t = fenetre; t < jouee; t += fenetre) {
                     const float x = tickToX(clip.startTick + t);
                     if (x > r.getX() && x < r.getRight())

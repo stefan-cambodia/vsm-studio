@@ -1,6 +1,8 @@
 #pragma once
 #include <JuceHeader.h>
+#include "vsm/audio/io/WaveformPeaks.h"
 #include "vsm/sequencer/AutomationEdit.h"
+#include <memory>
 #include "vsm/sequencer/ClipEdit.h"
 #include "vsm/sequencer/Quantizer.h"
 #include "vsm/sequencer/Project.h"
@@ -61,6 +63,15 @@ public:
     bool automationVisible() const { return automationVisible_; }
     /// Choisit la courbe montrée sur une piste (index dans `Track::automation`).
     void showAutomationCurve(size_t trackIndex, int curveIndex);
+
+    /// LE CACHE D'APERÇU d'une piste audio (D5.7), ou nullptr s'il n'y en a
+    /// pas. Fourni par l'application : la vue ne lit aucun fichier -- c'est
+    /// exactement ce qui fait que neuf minutes s'affichent sans la bloquer.
+    std::function<std::shared_ptr<const std::vector<vsm::audio::io::PeakBin>>(size_t)>
+        waveformProvider;
+    /// La fréquence de la session, pour convertir la fenêtre d'un clip audio
+    /// (qui est en secondes) en trames du cache.
+    std::function<double()> sampleRateProvider;
 
     /// L'utilisateur a cliqué le bandeau de couleur d'une piste : c'est à
     /// l'application d'ouvrir le sélecteur, ce composant ne connaît pas JUCE

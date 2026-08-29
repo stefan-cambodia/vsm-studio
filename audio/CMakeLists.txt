@@ -3,6 +3,7 @@ add_library(vsm_audio STATIC
     src/io/WavFileWriter.cpp
     src/io/WavFileReader.cpp
     src/io/AudioTrackLoader.cpp
+    src/io/WaveformPeaks.cpp
     src/engine/AudioTrackSource.cpp
     src/engine/ProcessGraph.cpp
     src/effect/EffectFactory.cpp
@@ -106,6 +107,7 @@ if (VSM_BUILD_TESTS)
         tests/test_count_in.cpp
         tests/test_latency_probe.cpp
         tests/test_channel_strip.cpp
+        tests/test_waveform_peaks.cpp
         tests/test_control_events.cpp
         tests/test_effects.cpp
         tests/test_tr808_synth.cpp
