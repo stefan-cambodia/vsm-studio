@@ -323,6 +323,28 @@ des phases suivantes veuillent dire quelque chose.
 > changement de piste : c'est un historique transactionnel et global, et c'est
 > D1.5 qui le porte.
 
+> **BILAN DE LA PHASE D0 : LE CRITÈRE EST TENU.** Plus une commande morte —
+> celles qui ne peuvent pas encore être vraies sont désactivées et disent
+> pourquoi. Plus un réglage perdu : mixage, effets, automation, tranche master
+> et région de boucle sont dans le projet et reviennent du disque. Plus un
+> export qui diffère de l'écoute : il emprunte le chemin de `vsm-render`. Plus
+> une donnée qui ne sonne pas : le MIDI non-note atteint les machines, et ce
+> qu'une machine refuse est compté. **Deux restes, tous deux portés par une
+> phase ultérieure** : l'historique global (D1.5) et l'enregistrement lui-même
+> (D3).
+>
+> **Une leçon qui vaut pour la suite.** Trois des huit défauts venaient de la
+> même cause : une donnée qui n'avait qu'**une seule copie vivante**, hors du
+> projet — les chaînes d'effets dans un composant d'interface, l'automation
+> dans un vecteur du `MainComponent`, la tranche master dans l'objet du moteur.
+> Une donnée qui vit hors du projet n'est ni sauvegardée, ni exportée, ni
+> rechargée, et personne ne s'en aperçoit puisqu'elle est correcte à l'écran.
+> La règle qui en sort, et qui vaut pour toutes les phases suivantes : **si
+> l'utilisateur peut le régler, le projet doit le porter, et l'interface ne doit
+> en être qu'un reflet.**
+
+---
+
 ### Phase D1 — Le clip, dans le modèle, sans toucher un échantillon
 
 Le modèle doit apprendre qu'une piste est faite de **morceaux placés** et non

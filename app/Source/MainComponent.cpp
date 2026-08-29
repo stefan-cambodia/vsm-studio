@@ -122,6 +122,13 @@ MainComponent::MainComponent()
         [this](const std::vector<vsm::audio::engine::AutomationLane>& lanes) {
             currentAutomation_ = lanes;
             audioEngine_.processGraph().setAutomationLanes(lanes);
+            // ÉCRITE DANS LE PROJET TOUT DE SUITE, comme les effets. Sans
+            // cela, `rebuildFromProject()` -- qui repose les courbes DEPUIS le
+            // projet après un ajout ou une suppression de piste -- effacerait
+            // une automation dessinée et pas encore enregistrée. Une donnée
+            // qui n'a qu'une seule copie vivante finit toujours par être
+            // écrasée par celle qui en a deux.
+            captureSessionIntoProject();
         };
 
     // Éditeur de chaîne d'effets d'insert (dernière pièce UI de la Phase 2).
