@@ -65,6 +65,10 @@ void ProcessGraph::setProject(const Project& project) {
 
     const size_t declares = project.sends.size();
     if (declares > kMaxSends) droppedSendBuses_.fetch_add(1, std::memory_order_relaxed);
+    uint32_t masque = 0;
+    for (size_t b = 0; b < declares && b < kMaxSends; ++b)
+        if (project.sends[b].preFader) masque |= (1u << b);
+    preFaderMask_.store(masque, std::memory_order_release);
     activeSends_.store(std::min(declares, kMaxSends), std::memory_order_release);
     snapshot_.store(snapshot, std::memory_order_release);
 }
@@ -507,8 +511,10 @@ void ProcessGraph::renderGroupBuses(const GraphSnapshot& snapshot, bool anySolo,
         // Un groupe alimente les départs comme une piste : c'est ce qui permet
         // d'envoyer toute une batterie dans une réverbération d'un seul geste.
         if (audible) {
+            const uint32_t preFader = preFaderMask_.load(std::memory_order_acquire);
             for (size_t b = 0; b < actifs; ++b) {
-                const float lvl = track.sendLevel(b) * track.volume;
+                const float apresFader = (preFader & (1u << b)) ? 1.0f : track.volume;
+                const float lvl = track.sendLevel(b) * apresFader;
                 if (lvl <= 0.0f) continue;
                 for (int i = 0; i < numSamples; ++i) {
                     sendL_[b][static_cast<size_t>(i)] += groupL_[g][static_cast<size_t>(i)] * lvl;
@@ -709,9 +715,14 @@ void ProcessGraph::renderTrackRange(const GraphSnapshot& snapshot, bool anySolo,
 
         // Sends post-fader vers les bus auxiliaires (section 15).
         const size_t actifs = activeSends_.load(std::memory_order_acquire);
+        const uint32_t preFader = preFaderMask_.load(std::memory_order_acquire);
         if (audible) {
             for (size_t b = 0; b < actifs; ++b) {
-                const float lvl = track.sendLevel(b) * track.volume;
+                // PRÉ-FADER : le départ prélève AVANT le fader, donc le volume
+                // de la piste ne le multiplie pas. C'est ce qui permet
+                // d'envoyer une piste dans un effet sans l'entendre en direct.
+                const float apresFader = (preFader & (1u << b)) ? 1.0f : track.volume;
+                const float lvl = track.sendLevel(b) * apresFader;
                 if (lvl <= 0.0f) continue;
                 for (int i = 0; i < sampleCount; ++i) {
                     sendL_[b][static_cast<size_t>(sampleStart + i)] += scratchStereoL_[static_cast<size_t>(i)] * lvl;

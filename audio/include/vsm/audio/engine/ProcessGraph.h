@@ -320,6 +320,11 @@ private:
     std::array<SendBus, kMaxSends> sends_;
     std::array<std::vector<float>, kMaxSends> sendL_, sendR_;
     std::atomic<size_t> activeSends_{0};
+    /// Un bit par bus : 1 = pré-fader. Un masque plutôt qu'une lecture du
+    /// projet dans la boucle de mixage -- le chemin audio a déjà le snapshot
+    /// sous la main, mais un entier se lit une fois par bloc là où le vecteur
+    /// se relirait par piste et par sous-segment.
+    std::atomic<uint32_t> preFaderMask_{0};
 
     // Tampons des groupes : une piste routée vers un groupe s'y mélange au lieu
     // d'aller au master, et le groupe est traité APRÈS, une fois que tous ses

@@ -57,6 +57,9 @@ struct ProjectSendBus {
     std::string effectType;
     std::map<std::string, float> parameters;
     float returnGain = 1.0f;
+    /// Le départ prélève AVANT le fader de la piste. Voir
+    /// `vsm::sequencer::SendBusDescription::preFader`.
+    bool preFader = false;
 };
 
 struct ProjectTransport {

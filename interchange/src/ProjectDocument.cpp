@@ -153,7 +153,8 @@ ProjectDocument documentFromProject(const Project& project) {
     document.transport.loopStartTick = project.loopStartTick;
     document.transport.loopEndTick = project.loopEndTick;
     for (const auto& bus : project.sends)
-        document.sends.push_back({bus.name, bus.effectType, bus.parameters, bus.returnGain});
+        document.sends.push_back({bus.name, bus.effectType, bus.parameters, bus.returnGain,
+                                   bus.preFader});
     document.transport.punchEnabled = project.punchEnabled;
     document.transport.punchStartTick = project.punchStartTick;
     document.transport.punchEndTick = project.punchEndTick;
@@ -279,7 +280,8 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
     project.loopEndTick = document.transport.loopEndTick;
     project.sends.clear();
     for (const auto& bus : document.sends)
-        project.sends.push_back({bus.name, bus.effectType, bus.parameters, bus.returnGain});
+        project.sends.push_back({bus.name, bus.effectType, bus.parameters, bus.returnGain,
+                                  bus.preFader});
     project.punchEnabled = document.transport.punchEnabled;
     project.punchStartTick = document.transport.punchStartTick;
     project.punchEndTick = document.transport.punchEndTick;
@@ -450,6 +452,9 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
             b.set("name", JsonValue::makeString(bus.name));
             b.set("effect", JsonValue::makeString(bus.effectType));
             b.set("returnGain", JsonValue::makeFloat(bus.returnGain));
+            // Écrit seulement quand il dit quelque chose : post-fader est le
+            // défaut, et c'était le seul comportement possible avant D4.3.
+            if (bus.preFader) b.set("preFader", JsonValue::makeBoolean(true));
             JsonValue params = JsonValue::makeObject();
             for (const auto& [semanticId, value] : bus.parameters)
                 params.set(semanticId, JsonValue::makeFloat(value));
@@ -643,6 +648,7 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         bus.name = busJson["name"].asString();
         bus.effectType = busJson["effect"].asString();
         bus.returnGain = static_cast<float>(busJson["returnGain"].asNumber(1.0));
+        bus.preFader = busJson["preFader"].asBoolean(false);
         for (const auto& [semanticId, value] : busJson["parameters"].members())
             if (value.isNumber()) bus.parameters[semanticId] = static_cast<float>(value.asNumber());
         document.sends.push_back(std::move(bus));

@@ -658,6 +658,32 @@ VSM_TEST(more_send_levels_than_buses_do_not_shift_onto_the_wrong_bus) {
     VSM_ASSERT_NEAR(restaure.tracks[0].sendLevel(3), 0.9f, 1e-6);
 }
 
+VSM_TEST(the_pre_fader_switch_of_a_send_survives_the_round_trip) {
+    // Post-fader est le défaut et l'était de force avant D4.3 : le fichier ne
+    // porte donc la clé que lorsqu'elle dit quelque chose.
+    Project projet;
+    projet.tracks.emplace_back();
+    projet.sends.push_back({"Casque", "delay", {}, 1.0f, true});
+    projet.sends.push_back({"Salle", "reverb", {}, 1.0f, false});
+
+    const auto texte = projectDocumentToJson(documentFromProject(projet)).toString();
+    const auto analyse = parseJson(texte);
+    VSM_ASSERT(analyse.success);
+    VSM_ASSERT(analyse.value["sends"].at(0)["preFader"].asBoolean(false));
+    VSM_ASSERT(!analyse.value["sends"].at(1)["preFader"].isBoolean());
+
+    const ProjectLoadResult relu = parseProjectDocument(texte);
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT(relu.document.sends[0].preFader);
+    VSM_ASSERT(!relu.document.sends[1].preFader);
+
+    Project restaure;
+    restaure.tracks.emplace_back();
+    applyDocumentToProject(relu.document, restaure);
+    VSM_ASSERT(restaure.sends[0].preFader);
+    VSM_ASSERT(!restaure.sends[1].preFader);
+}
+
 VSM_TEST(a_group_track_and_its_routing_survive_the_round_trip) {
     Project projet;
     uint64_t ids = 1;

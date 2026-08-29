@@ -30,6 +30,25 @@ struct SendBusDescription {
     /// chose que baisser les départs : l'un change le niveau de l'effet pour
     /// toutes les pistes d'un coup, l'autre change qui l'alimente.
     float returnGain = 1.0f;
+
+    /// PRÉ-FADER : le départ prélève le signal AVANT le fader de la piste
+    /// (D4.3). Post-fader par défaut, ce qui était jusqu'ici codé en dur.
+    ///
+    /// CE QUE CHACUN VEUT DIRE, ET QUAND ON VEUT L'UN OU L'AUTRE. En
+    /// post-fader, baisser une piste baisse aussi ce qu'elle envoie : la
+    /// proportion d'effet reste constante, et c'est ce qu'on veut pour une
+    /// réverbération -- une piste qu'on retire du mixage ne doit pas laisser sa
+    /// réverbération toute seule. En pré-fader, le départ ignore le fader :
+    /// c'est ce qu'il faut pour un retour de casque, ou pour envoyer une piste
+    /// dans un effet SANS l'entendre en direct -- on descend le fader à zéro et
+    /// seul l'effet subsiste.
+    ///
+    /// C'EST UN RÉGLAGE DU BUS ET NON DE CHAQUE PISTE, comme sur une console où
+    /// un auxiliaire est câblé pré ou post pour tout le monde. Le rendre
+    /// indépendant par piste multiplierait les commutateurs par le nombre de
+    /// pistes pour un besoin que rien n'a exprimé, et le jour où il le sera, ce
+    /// champ deviendra le DÉFAUT du bus.
+    bool preFader = false;
 };
 
 /// Modèle "métier" du morceau : c'est CE que le piano roll, le mixer et

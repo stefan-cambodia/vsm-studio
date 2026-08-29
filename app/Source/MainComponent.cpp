@@ -659,6 +659,15 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                           effets[e].displayName, true,
                                           effets[e].id == decrit.effectType);
                     sousMenu.addSeparator();
+                    // PRÉ / POST-FADER (D4.3). Post-fader était codé en dur ;
+                    // l'infobulle du menu dit ce que chacun change, parce que
+                    // « pré-fader » n'apprend rien à qui ne le sait pas déjà.
+                    sousMenu.addItem(kMenuMixSendPreFaderFirst + static_cast<int>(bus),
+                                      decrit.preFader
+                                          ? u8"Pré-fader (le fader ne l'affecte pas)"
+                                          : u8"Post-fader (le fader l'emporte avec lui)",
+                                      true, decrit.preFader);
+                    sousMenu.addSeparator();
                     sousMenu.addItem(kMenuMixRemoveSendFirst + static_cast<int>(bus),
                                       u8"Retirer ce bus");
                     menu.addSubMenu(juce::String(decrit.name.empty() ? "Bus" : decrit.name)
@@ -809,6 +818,14 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
                     if (bus < piste.sendLevels.size())
                         piste.sendLevels.erase(piste.sendLevels.begin()
                                                 + static_cast<std::ptrdiff_t>(bus));
+                sendBusesChanged();
+                break;
+            }
+            if (menuItemID >= kMenuMixSendPreFaderFirst && menuItemID <= kMenuMixSendPreFaderLast) {
+                const size_t bus = static_cast<size_t>(menuItemID - kMenuMixSendPreFaderFirst);
+                if (bus >= project_.sends.size()) break;
+                beginProjectEdit(u8"Pré/post-fader d'un départ");
+                project_.sends[bus].preFader = !project_.sends[bus].preFader;
                 sendBusesChanged();
                 break;
             }

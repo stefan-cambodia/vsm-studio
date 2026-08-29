@@ -106,6 +106,9 @@ private:
         kMenuMixRemoveSendLast = kMenuMixRemoveSendFirst + 7,
         /// Vingt places par bus pour choisir son effet : treize aujourd'hui,
         /// de la marge pour ceux qui viendront.
+        /// Un identifiant par bus, pour le commuter pré/post-fader.
+        kMenuMixSendPreFaderFirst,
+        kMenuMixSendPreFaderLast = kMenuMixSendPreFaderFirst + 7,
         kMenuMixSendEffectFirst,
         kMenuMixSendEffectLast = kMenuMixSendEffectFirst + 8 * 20 - 1,
         kMenuViewTracks,

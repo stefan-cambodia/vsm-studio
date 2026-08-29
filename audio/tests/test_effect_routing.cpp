@@ -490,3 +490,83 @@ VSM_TEST(a_route_to_a_track_that_is_not_a_group_goes_to_the_master) {
     graph.setProject(projet);
     VSM_ASSERT(peakOf(OfflineRenderer::render(graph, 8000.0, 256, 1.0).left) > 0.01f);
 }
+
+// --- D4.3 : départs pré / post-fader ---------------------------------------
+
+namespace {
+/// Rend le pic du master pour un projet à un départ, avec le volume de piste
+/// et le mode de départ donnés. L'effet du bus est un gain neutre, de sorte que
+/// tout ce qu'on mesure vient du RETOUR.
+float peakWithSend(float trackVolume, bool preFader) {
+    vsm::sequencer::Project projet = oneNoteProject();
+    vsm::sequencer::SendBusDescription bus;
+    bus.name = "A";
+    bus.effectType = "reverb";
+    bus.preFader = preFader;
+    projet.sends.push_back(bus);
+    projet.tracks[0].setSendLevel(0, 1.0f);
+    projet.tracks[0].volume = trackVolume;
+
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setTrackInstrument(0, "vsm.minimoog");
+    graph.setProject(projet);
+    graph.setSendEffect(0, std::make_shared<GainEffect>(1.0f));
+    graph.setSendReturn(0, 1.0f);
+    return peakOf(OfflineRenderer::render(graph, 8000.0, 256, 1.0).left);
+}
+} // namespace
+
+VSM_TEST(a_post_fader_send_follows_the_fader) {
+    // Post-fader : baisser la piste baisse aussi ce qu'elle envoie, donc la
+    // proportion d'effet reste constante. C'est ce qu'on veut d'une
+    // réverbération -- une piste retirée du mixage ne doit pas laisser sa
+    // réverbération toute seule.
+    const float plein = peakWithSend(1.0f, false);
+    const float baisse = peakWithSend(0.25f, false);
+    VSM_ASSERT(plein > 0.01f);
+    // Tout est divisé par quatre : le direct comme le départ.
+    VSM_ASSERT_NEAR(baisse, plein * 0.25f, plein * 0.02f);
+}
+
+VSM_TEST(a_pre_fader_send_ignores_the_fader) {
+    // Pré-fader : le départ prélève avant le fader. C'est ce qu'il faut pour un
+    // retour de casque, ou pour envoyer une piste dans un effet SANS l'entendre
+    // en direct -- fader à zéro, seul l'effet subsiste.
+    const float plein = peakWithSend(1.0f, true);
+    const float baisse = peakWithSend(0.25f, true);
+    VSM_ASSERT(plein > 0.01f);
+    // Le direct a baissé, le départ non : le total reste bien au-dessus du
+    // quart qu'aurait donné un post-fader.
+    VSM_ASSERT(baisse > plein * 0.5f);
+}
+
+VSM_TEST(a_pre_fader_send_still_sounds_with_the_fader_at_zero) {
+    // Le cas qui justifie à lui seul l'existence du pré-fader.
+    const float muet = peakWithSend(0.0f, false);
+    const float prefader = peakWithSend(0.0f, true);
+    VSM_ASSERT(muet < 1e-6f);        // post-fader : plus rien du tout
+    VSM_ASSERT(prefader > 0.01f);    // pré-fader : l'effet subsiste
+}
+
+VSM_TEST(muting_a_track_silences_its_sends_pre_fader_included) {
+    // CHOIX ÉCRIT : le muet coupe TOUT, y compris les départs pré-fader. Une
+    // console les câble parfois avant le muet, mais dans cette application
+    // « muet » veut dire « je ne veux plus l'entendre », et une piste muette
+    // dont la réverbération continue de sonner serait déroutante.
+    vsm::sequencer::Project projet = oneNoteProject();
+    vsm::sequencer::SendBusDescription bus;
+    bus.effectType = "reverb";
+    bus.preFader = true;
+    projet.sends.push_back(bus);
+    projet.tracks[0].setSendLevel(0, 1.0f);
+    projet.tracks[0].muted = true;
+
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setTrackInstrument(0, "vsm.minimoog");
+    graph.setProject(projet);
+    graph.setSendEffect(0, std::make_shared<GainEffect>(1.0f));
+    graph.setSendReturn(0, 1.0f);
+    VSM_ASSERT(peakOf(OfflineRenderer::render(graph, 8000.0, 256, 1.0).left) < 1e-6f);
+}

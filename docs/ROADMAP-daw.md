@@ -901,7 +901,7 @@ pas seulement l'écouter.
 |---|---|---|
 | D4.1 | **Égaliseur, compresseur, porte, limiteur enfichables par piste** — le DSP existe déjà dans `MasterBus`, il n'est pas exposé | quatre effets de plus dans `EffectFactory`, chacun conforme au CDC (identités sémantiques, façade, empreinte) — **fait** |
 | D4.2 | Bus de groupe et départs **libres** (aujourd'hui : deux, figés en dur sur Reverb et Delay dans le constructeur de `MainComponent`) | une réverbération se partage entre pistes ; le nombre de départs n'est plus une constante — **fait** |
-| D4.3 | Départs pré/post-fader au choix (post-fader est codé en dur, `ProcessGraph.cpp:465`) | commutable par départ |
+| D4.3 | Départs pré/post-fader au choix (post-fader est codé en dur, `ProcessGraph.cpp:465`) | commutable par départ — **fait** |
 | D4.4 | **Chaîne latérale** (*sidechain*) | le compresseur d'une piste écoute une autre piste — la signature même du genre que ce projet reconstruit |
 | D4.5 | **Compensation de latence (PDC)** : `ISynthPlugin` et `IAudioEffect` déclarent leur latence, le graphe la compense | insérer un effet à latence connue ne décale plus la piste ; test avec une latence artificielle et un `Oversampler` |
 | D4.6 | Automation de **tout** : volume, pan, départs, paramètres d'effets, master — aujourd'hui les paramètres d'instrument seulement (`ProcessGraph.cpp:325`) | un fondu écrit en automation s'entend |
@@ -1024,6 +1024,35 @@ du projet mesureront enfin la même chose.
 > attrapés par les tests existants : indexer un vecteur vide (segfault immédiat),
 > et borner la boucle de LECTURE par la taille du vecteur — qui part vide —, ce
 > qui faisait disparaître tous les niveaux d'envoi **en silence** au chargement.
+
+> **D4.3 EST FAITE (29/08/2026).** Post-fader était le seul comportement
+> possible, écrit en dur dans la boucle de mixage.
+>
+> **CE QUE CHACUN VEUT DIRE.** En **post-fader**, baisser une piste baisse aussi
+> ce qu'elle envoie : la proportion d'effet reste constante, et c'est ce qu'on
+> veut d'une réverbération — une piste qu'on retire du mixage ne doit pas
+> laisser sa réverbération toute seule. En **pré-fader**, le départ ignore le
+> fader : c'est ce qu'il faut pour un retour de casque, ou pour envoyer une
+> piste dans un effet **sans l'entendre en direct** — on descend le fader à zéro
+> et seul l'effet subsiste. Ce dernier cas justifie à lui seul l'existence du
+> réglage, et il a son test.
+>
+> **C'EST UN RÉGLAGE DU BUS ET NON DE CHAQUE PISTE**, comme sur une console où
+> un auxiliaire est câblé pré ou post pour tout le monde — et c'est ce que dit
+> le critère, « commutable par départ ». Le rendre indépendant par piste
+> multiplierait les commutateurs par le nombre de pistes pour un besoin que rien
+> n'a exprimé ; le jour où il le sera, ce champ deviendra le **défaut** du bus.
+>
+> **LE MUET COUPE TOUT, PRÉ-FADER COMPRIS**, et c'est un choix écrit. Une
+> console câble parfois les départs pré-fader avant le muet ; ici, « muet » veut
+> dire « je ne veux plus l'entendre », et une piste muette dont la réverbération
+> continue de sonner serait déroutante.
+>
+> Le mode voyage jusqu'au chemin audio par un **masque d'un bit par bus** plutôt
+> que par une lecture du projet dans la boucle : le thread audio a le snapshot
+> sous la main, mais un entier se lit une fois par bloc là où le vecteur se
+> relirait par piste et par sous-segment. Les groupes obéissent au même masque —
+> un groupe alimente les départs comme une piste.
 
 
 ### Phase D5 — La vue d'arrangement
