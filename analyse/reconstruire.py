@@ -732,6 +732,17 @@ def regler_batterie(ctx: Contexte, nom: str, piste: ExportTrack, en_lice: Dict[s
     return reglees
 
 
+def _nom_courant(machine: str) -> str:
+    """Le nom sous lequel un avertissement peut désigner une machine.
+
+    Ils ne parlent pas tous d'`vsm.tr808` : certains disent « la TR-808 », qui
+    est ce qu'un musicien lit. Le filtre doit reconnaître les deux, sans quoi
+    il écarterait précisément les avertissements écrits pour être lus.
+    """
+    return {"vsm.tr808": "TR-808", "vsm.tr909": "TR-909",
+            "vsm.drums": "batterie modélisée"}.get(machine, machine)
+
+
 def reconstruire_batterie(ctx: Contexte, nom: str, chemin: Path) -> Optional[ResultatBatterie]:
     """Le stem de batterie : coups détectés et classés, puis rejoués.
 
@@ -756,8 +767,29 @@ def reconstruire_batterie(ctx: Contexte, nom: str, chemin: Path) -> Optional[Res
         moyen = "vsm.drums"
     print(f"      {nom:8s} : {moyen}, {len(kit.slots)} pièce(s), "
           f"{kit.total_hits} frappe(s) — {detail}")
+    # OÙ SE TROUVE L'ÉNERGIE DE CHAQUE FAMILLE. Un nom de famille est une
+    # étiquette -- elle vient d'un modèle appris, ou d'une liste de réserve
+    # quand le modèle n'a rien dit -- et rien ne la confrontait à ce qu'on
+    # entend. Sur ce morceau, une famille de 811 frappes nommée « tom » avait
+    # 69 % de son énergie sous 200 Hz : une grosse caisse, que la TR-808 jouait
+    # sur le clap faute d'avoir des toms. Le profil rend la contradiction
+    # visible en une ligne, au lieu de demander une enquête.
+    from analyzer.vsm_drumkit import describe_band_shares
+    for emplacement in kit.slots:
+        if emplacement.band_shares:
+            print(f"                 {emplacement.family:11s} "
+                  f"{describe_band_shares(emplacement.band_shares)}")
     for avertissement in kit.warnings:
         print(f"                 ! {avertissement}")
+    # CE QUI EST DIT ICI NE CONCERNE QUE LA DÉTECTION. Les avertissements des
+    # MACHINES -- une famille sans voix, des toms rabattus sur le clap --
+    # naissent plus bas, quand `drum_machine_track` pose les coups sur les
+    # notes de chaque boîte, c'est-à-dire APRÈS ce point. Ils n'étaient donc ni
+    # imprimés ni enregistrés : le rapport de *Sky and Sand* nomme `vsm.tr808`
+    # comme machine retenue et ne porte que les avertissements de `vsm.drums`,
+    # qui a perdu. On retient l'index pour dire, à la fin, ce que la machine
+    # RETENUE a dû concéder.
+    deja_dits = len(kit.warnings)
     # CE QUE LE RAPPORT DIRA DE LA BATTERIE. Longtemps elle n'y figurait pas :
     # `rapport.json` ne listait que les stems mélodiques, et la piste la plus
     # lourde du mélange -- arbitrée, réglée, départagée -- n'y laissait aucune
@@ -767,7 +799,9 @@ def reconstruire_batterie(ctx: Contexte, nom: str, chemin: Path) -> Optional[Res
         "machine": piste.machine,
         "means": moyen,
         "hits": int(kit.total_hits),
-        "pieces": [{"family": s.family, "hits": int(s.hit_count)} for s in kit.slots],
+        "pieces": [{"family": s.family, "hits": int(s.hit_count),
+                     "bandShares": [round(part, 4) for part in s.band_shares]}
+                    for s in kit.slots],
         "warnings": list(kit.warnings),
         "trackArbitration": [],
         "refinements": [],
@@ -810,6 +844,17 @@ def reconstruire_batterie(ctx: Contexte, nom: str, chemin: Path) -> Optional[Res
         rapport["trackDistance"] = verdicts[0].distance
     rapport["machine"] = piste.machine
     rapport["means"] = moyen
+
+    # LES CONCESSIONS DE LA MACHINE RETENUE, dites et enregistrées. Elles sont
+    # filtrées sur son nom : le kit a été posé sur trois boîtes pendant
+    # l'arbitrage, et lui rapporter les compromis des perdantes serait aussi
+    # trompeur que de n'en rapporter aucun.
+    nouveaux = kit.warnings[deja_dits:]
+    siennes = [a for a in nouveaux if piste.machine in a or _nom_courant(piste.machine) in a]
+    for avertissement in siennes:
+        print(f"                 ! {avertissement}")
+    rapport["warnings"] = list(kit.warnings[:deja_dits]) + siennes
+
     resultat.piste = piste
     return resultat
 

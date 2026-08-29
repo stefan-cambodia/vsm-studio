@@ -104,6 +104,22 @@ class DrumSlot:
     # l'échantillon a été prélevé. Zéro veut dire que l'échantillon contient
     # forcément les autres pièces, et l'appelant doit pouvoir le dire.
     isolated_hits: int = 0
+    # OÙ SE TROUVE L'ÉNERGIE de cette famille, en parts par bande, mesurée sur
+    # le STEM au moment de ses frappes et moyennée sur toutes.
+    #
+    # POURQUOI CE CHAMP EXISTE. Le nom d'une famille est une ÉTIQUETTE : elle
+    # vient d'un modèle appris ou, à court de noms, d'une liste de réserve.
+    # Rien ne la confrontait à ce qu'on entend. Sur *Sky and Sand*, une famille
+    # de 811 frappes nommée « tom » avait 69 % de son énergie sous 200 Hz --
+    # c'est une grosse caisse -- et la TR-808, qui n'a pas de toms, la jouait
+    # sur le CLAP : un grave posé sur une salve de bruit, pour un cinquième du
+    # morceau. Il a fallu une enquête pour l'apprendre ; ce champ le dit.
+    #
+    # Mesuré sur le stem et non sur l'échantillon prélevé : dans un morceau
+    # dense, aucun coup n'est isolé, et l'échantillon d'une famille contient
+    # les autres pièces. La MOYENNE sur des centaines de frappes garde ce qui
+    # leur est commun et efface ce qui ne l'est pas.
+    band_shares: List[float] = field(default_factory=list)
 
 
 @dataclass
@@ -123,6 +139,46 @@ class DrumKit:
 # et à nommer.
 FAMILY_ORDER: List[str] = ["kick", "kick2", "snare", "snare2", "hihat",
                             "openhat", "pedalhat", "percussion", "tom", "cymbal"]
+
+# Bandes du profil spectral d'une famille (`DrumSlot.band_shares`). Six suffisent
+# à trancher les questions qui se posent : est-ce un grave ou un aigu, une peau
+# ou du métal. Plus fin ne dirait rien de plus à qui lit un rapport.
+PROFILE_BANDS: List[Tuple[float, float]] = [
+    (20.0, 80.0), (80.0, 200.0), (200.0, 600.0),
+    (600.0, 2000.0), (2000.0, 6000.0), (6000.0, 16000.0),
+]
+
+
+def _band_shares(audio: np.ndarray, onsets: Sequence[float], sample_rate: int,
+                  max_hits: int = 400) -> List[float]:
+    """Parts d'énergie par bande, moyennées sur les frappes d'une famille."""
+    fenetre = 2048
+    if audio.size < fenetre or not len(onsets):
+        return []
+    freqs = np.fft.rfftfreq(fenetre, 1.0 / sample_rate)
+    fenetrage = np.hanning(fenetre)
+    cumul = np.zeros(freqs.size)
+    pris = 0
+    for instant in list(onsets)[:max_hits]:
+        debut = int(instant * sample_rate)
+        if debut < 0 or debut + fenetre > audio.size:
+            continue
+        cumul += np.abs(np.fft.rfft(audio[debut:debut + fenetre] * fenetrage))
+        pris += 1
+    if pris == 0:
+        return []
+    cumul /= pris
+    total = float(cumul.sum()) + 1e-12
+    return [float(cumul[(freqs >= bas) & (freqs < haut)].sum() / total)
+            for bas, haut in PROFILE_BANDS]
+
+
+def describe_band_shares(shares: Sequence[float]) -> str:
+    """Le profil en une ligne lisible, pour un journal ou un rapport."""
+    if not shares:
+        return "profil non mesuré"
+    etiquettes = ["20-80", "80-200", "200-600", "600-2k", "2k-6k", "6k-16k"]
+    return " ".join(f"{nom}={part*100:.0f}%" for nom, part in zip(etiquettes, shares))
 
 # Fenêtres de la mesure de montée, autour de l'instant d'attaque.
 #
@@ -748,6 +804,8 @@ def build_drum_kit(
                 ],
                 hit_count=len(extraits),
                 isolated_hits=len(isoles),
+                band_shares=_band_shares(audio, [d / sample_rate for d in instants],
+                                          sample_rate),
             )
         )
 
