@@ -112,7 +112,7 @@ def main() -> int:
                            help="dossier des stems séparés (défaut : PROJET/stems/stems)")
     analyseur.add_argument("--travail", type=Path, default=None,
                            help="où écrire les rendus intermédiaires")
-    analyseur.add_argument("--metrique", default="v2", choices=("v1", "v2", "v3"))
+    analyseur.add_argument("--metrique", default="v2", choices=("v1", "v2", "v3", "v4"))
     analyseur.add_argument("--moteur", default=None)
     arguments = analyseur.parse_args()
 

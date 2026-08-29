@@ -176,7 +176,55 @@ class CachedTargetDistanceV3:
         return self._combine(detail) if detail else 1e6
 
 
-METRIQUES = ("v1", "v2", "v3")
+class CachedTargetDistanceV4:
+    """Même service, pour la quatrième version : la cible -- caractéristiques,
+    enveloppe, contraste, hauteur grave -- est décrite une fois. Le facteur de
+    crête se déduit de l'enveloppe déjà calculée, il ne coûte rien de plus."""
+
+    def __init__(self, target: np.ndarray, sr: int):
+        from .audio_distance_v2 import spectral_contrast
+        from .audio_distance_v3 import low_pitch
+        from .audio_distance_v4 import combine, crest_factor, distance_terms
+
+        self.sr = sr
+        self.target = np.asarray(target)
+        self._features = spectral_features(self.target, sr)
+        self._envelope = envelope(self.target)
+        self._contrast = spectral_contrast(self.target, sr)
+        self._pitch = low_pitch(self.target, sr)
+        self._crest = crest_factor(self.target)
+        self._combine = combine
+        self._terms = distance_terms
+        self._contrast_of = spectral_contrast
+        self._pitch_of = low_pitch
+        self._crest_of = crest_factor
+
+    def terms(self, candidate: np.ndarray) -> dict:
+        candidate = np.asarray(candidate)
+        length = min(len(self.target), len(candidate))
+        if length == 0:
+            return {}
+        target = self.target[:length]
+        candidate = candidate[:length]
+        entier = length == len(self.target)
+        return self._terms(
+            self._features if entier else spectral_features(target, self.sr),
+            spectral_features(candidate, self.sr),
+            self._envelope if entier else envelope(target), envelope(candidate),
+            self._contrast if entier else self._contrast_of(target, self.sr),
+            self._contrast_of(candidate, self.sr),
+            self._pitch if entier else self._pitch_of(target, self.sr),
+            self._pitch_of(candidate, self.sr),
+            self._crest if entier else self._crest_of(target),
+            self._crest_of(candidate),
+        )
+
+    def __call__(self, candidate: np.ndarray) -> float:
+        detail = self.terms(candidate)
+        return self._combine(detail) if detail else 1e6
+
+
+METRIQUES = ("v1", "v2", "v3", "v4")
 
 
 def cached_distance_for(metric: str):
@@ -191,4 +239,6 @@ def cached_distance_for(metric: str):
         return CachedTargetDistanceV2
     if metric == "v3":
         return CachedTargetDistanceV3
+    if metric == "v4":
+        return CachedTargetDistanceV4
     raise ValueError(f"métrique inconnue : « {metric} » (attendu : {', '.join(METRIQUES)})")

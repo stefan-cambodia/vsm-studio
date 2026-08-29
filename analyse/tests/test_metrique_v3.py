@@ -75,7 +75,7 @@ def metrique_la_fabrique_refuse_l_inconnu():
     """Cinq modules choisissaient la métrique chacun par un `if` ; une
     troisième aurait été oubliée dans l'un d'eux. Une seule fabrique, qui
     REFUSE ce qu'elle ne connaît pas plutôt que de se rabattre en silence."""
-    assert_equal(METRIQUES, ("v1", "v2", "v3"), "les trois versions")
+    assert_equal(METRIQUES, ("v1", "v2", "v3", "v4"), "les quatre versions")
     for m in METRIQUES:
         assert_true(cached_distance_for(m) is not None, f"{m} existe")
-    assert_raises(ValueError, lambda: cached_distance_for("v4"), "v4 n'existe pas")
+    assert_raises(ValueError, lambda: cached_distance_for("v5"), "v5 n'existe pas")

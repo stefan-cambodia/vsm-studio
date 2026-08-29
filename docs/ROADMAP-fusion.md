@@ -1729,6 +1729,52 @@ métrique préfère, modélisée à extinctions courtes — parce que la seule q
 qui décide est : laquelle ressemble à l'original ? Une oreille tranche cela en
 deux minutes, aucune mesure disponible ici ne le fait.
 
+### La métrique v4 : v3 plus un terme de dynamique, et rien d'autre
+
+`analyse/analyzer/audio_distance_v4.py`. Un terme de plus — le FACTEUR DE CRÊTE
+de l'enveloppe, son maximum rapporté à sa valeur efficace, comparé en octaves
+entre cible et candidat, poids 0,20 comme l'enveloppe, le contraste ou la
+hauteur — et les huit termes de v3 inchangés, avec leurs poids.
+
+**Pourquoi v2 ne pouvait pas le voir, alors qu'elle a un terme « envelope ».**
+Ce terme compare des enveloppes NORMALISÉES (`normalize(rms)`, centrées
+réduites). La normalisation détruit exactement ce qui distingue une suite de
+frappes d'un bourdon de même énergie moyenne : le rapport entre les crêtes et le
+niveau courant. **v2 compare la FORME de l'enveloppe et jamais son RELIEF.**
+
+**Le balayage d'extinctions rejoué en v4**, sur le stem de batterie réel :
+
+| patch | v2 | **v4** | terme de dynamique | facteur de crête |
+|---|---|---|---|---|
+| kick 1,246 s (*retenu par v2*) | **0,2117** | 0,5194 | 1,053 | 1,371 |
+| kick 0,600 s | 0,2116 | 0,4882 | 0,898 | 1,528 |
+| **kick 0,300 s** | 0,2553 | **0,4878** | 0,677 | 1,779 |
+| kick 0,150 s | 0,3667 | 0,5417 | 0,390 | 2,172 |
+| kick 0,300 s + caisse claire | 0,2721 | 0,4952 | 0,630 | 1,839 |
+| *stem réel* | *0* | *0* | *0* | **2,846** |
+
+**L'ordre se renverse, et pas jusqu'à l'absurde.** v4 retient 0,300 s — une
+extinction quatre fois plus courte que celle de v2 — et REFUSE 0,150 s, où les
+termes spectraux se dégradent plus vite que le terme de dynamique ne s'améliore.
+C'est un compromis, pas une bascule : le terme tire dans un sens, les huit
+autres dans l'autre, et c'est ce qu'on demandait à une métrique.
+
+**Un défaut trouvé en l'écrivant, et c'est un test qui l'a attrapé.** La
+première version du terme réutilisait `audio_distance.envelope`, donc une
+enveloppe centrée réduite. Sur un bourdon — enveloppe presque plate — il ne
+reste qu'une ondulation minuscule que la division par l'écart-type ramène à
+l'unité : le « facteur de crête » obtenu valait **3,9 contre 2,5** pour de
+vraies frappes, l'inverse de la vérité. Le module calcule donc sa propre
+enveloppe, non normalisée. Quatre tests verrouillent le terme, dont deux qui
+n'ont besoin d'aucun moteur.
+
+**Ce que v4 coûte, et pourquoi elle n'est pas le défaut.** Elle change les
+verdicts partout où la dynamique compte, donc sur toutes les batteries. La règle
+du § 10.3 vaut sans exception : **toutes les distances publiées de ce projet
+sont en v2**, et une distance v4 ne se compare qu'à une distance v4. `--metrique
+v4` l'active ; elle ne deviendra le défaut qu'une fois rejouée sur les bancs
+existants, comme v3 avant elle.
+
 **La leçon de méthode, et c'est la sixième forme de celle du § 10.3.** Les
 précédentes disaient qu'une distance n'est un chiffre que si l'on sait à quelles
 conditions elle a été obtenue — la métrique, le budget, le `gate`, le taux

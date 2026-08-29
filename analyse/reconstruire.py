@@ -357,9 +357,12 @@ def construire_parseur() -> argparse.ArgumentParser:
                          help="budget de recherche par machine (défaut 20). "
                               "Mesuré : le doubler change souvent la machine retenue.")
     parseur.add_argument("--tempo", type=float, default=120.0, help="tempo du projet écrit")
-    parseur.add_argument("--metrique", default="v2", choices=("v1", "v2", "v3"),
+    parseur.add_argument("--metrique", default="v2", choices=("v1", "v2", "v3", "v4"),
                          help="métrique de comparaison (défaut v2 ; v1 pour rejouer "
-                              "d'anciennes mesures — les deux ne se comparent pas)")
+                              "d'anciennes mesures, v3 ajoute la hauteur des graves, "
+                              "v4 ajoute la DYNAMIQUE — mesuré : v2 récompense une "
+                              "batterie qui bourdonne. Deux métriques ne se comparent "
+                              "jamais entre elles)")
     parseur.add_argument("--finalistes", type=int, default=None,
                          help="nombre de machines retenues après le dégrossissage "
                               "(défaut : la moitié). 0 DÉSACTIVE la présélection : "
