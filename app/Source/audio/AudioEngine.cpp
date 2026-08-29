@@ -1,5 +1,6 @@
 #include "AudioEngine.h"
 #include <algorithm>
+#include <cmath>
 
 AudioEngine::AudioEngine() = default;
 
@@ -7,8 +8,22 @@ AudioEngine::~AudioEngine() {
     stop();
 }
 
-void AudioEngine::start() {
-    juce::String error = deviceManager_.initialise(0, 2, nullptr, true);
+void AudioEngine::start(const juce::XmlElement* etatSauvegarde) {
+    // DEUX ENTRÉES DEMANDÉES, ET C'EST NOUVEAU. Le moteur ouvrait la carte avec
+    // ZÉRO entrée : pas de capture, donc pas d'enregistrement, ni MIDI ni
+    // audio, et le rappel ignorait explicitement ses paramètres d'entrée. Un
+    // logiciel qui ne peut rien capter n'est pas un studio, c'est un lecteur.
+    //
+    // Les entrées sont DEMANDÉES et non exigées : une machine sans entrée doit
+    // rester utilisable pour éditer, mixer et exporter. Si la carte n'en donne
+    // aucune, `currentInputChannels()` vaut zéro et l'interface le dit, au lieu
+    // de laisser chercher pourquoi l'enregistrement ne marche pas.
+    juce::String error = deviceManager_.initialise(2, 2, etatSauvegarde, true);
+    if (error.isNotEmpty()) {
+        // Repli SANS entrée plutôt qu'aucun son du tout : c'est le cas d'une
+        // machine dont la carte n'expose que des sorties.
+        error = deviceManager_.initialise(0, 2, etatSauvegarde, true);
+    }
     if (error.isNotEmpty()) {
         lastError_ = error;
         return; // pas de device : l'app reste utilisable, juste sans son (voir isDeviceOpen())
@@ -109,6 +124,8 @@ void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* device) {
 
     currentSampleRate_.store(sampleRate, std::memory_order_release);
     currentBlockSize_.store(std::max(bufferSize, 1), std::memory_order_release);
+    currentInputChannels_.store(device->getActiveInputChannels().countNumberOfSetBits(),
+                                 std::memory_order_release);
     monoFallbackBuffer_.assign(static_cast<size_t>(std::max(bufferSize, 1)), 0.0f);
     graph_.prepare(sampleRate, bufferSize);
 }
@@ -118,10 +135,26 @@ void AudioEngine::audioDeviceStopped() {
     // simplement plus alimenté tant que le device n'est pas relancé.
 }
 
-void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* /*inputChannelData*/, int /*numInputChannels*/,
+void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChannelData, int numInputChannels,
                                                      float* const* outputChannelData, int numOutputChannels,
                                                      int numSamples, const juce::AudioIODeviceCallbackContext&) {
     if (numOutputChannels <= 0 || numSamples <= 0) return;
+
+    // NIVEAU D'ENTRÉE. Rien d'autre n'est fait de l'entrée pour l'instant -- la
+    // capture vers un fichier est D3.4 -- mais la mesurer est ce qui permet de
+    // brancher un micro et de VOIR qu'il arrive, avant d'espérer l'enregistrer.
+    // Une crête, un `std::atomic`, aucune allocation.
+    if (inputChannelData != nullptr && numInputChannels > 0) {
+        float crete = 0.0f;
+        for (int c = 0; c < numInputChannels; ++c) {
+            const float* canal = inputChannelData[c];
+            if (canal == nullptr) continue;
+            for (int i = 0; i < numSamples; ++i) crete = std::max(crete, std::abs(canal[i]));
+        }
+        float precedente = inputPeak_.load(std::memory_order_relaxed);
+        while (crete > precedente
+               && !inputPeak_.compare_exchange_weak(precedente, crete, std::memory_order_acq_rel)) {}
+    }
 
     float* left = outputChannelData[0];
     if (numOutputChannels >= 2 && outputChannelData[1] != nullptr) {

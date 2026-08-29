@@ -158,6 +158,8 @@ private:
     void togglePanel(PanelWindow& window);
     void showAboutDialog();
     void showAudioSettings();
+    /// Écrit le choix du périphérique audio dans les préférences.
+    void saveAudioDeviceState();
     /// Change la taille de toute l'interface, et l'enregistre.
     void setUiScale(float factor);
 

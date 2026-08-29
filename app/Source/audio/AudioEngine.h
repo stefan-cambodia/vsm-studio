@@ -26,7 +26,9 @@ public:
     /// callback. Ne lève jamais d'exception : en cas d'échec (pas de
     /// device disponible), journalise l'erreur et laisse l'app utilisable
     /// sans son plutôt que de planter -- voir lastError().
-    void start();
+    /// `etatSauvegarde` est l'état du sélecteur de périphérique conservé d'une
+    /// exécution à l'autre (peut être nul).
+    void start(const juce::XmlElement* etatSauvegarde = nullptr);
     void stop();
 
     vsm::audio::engine::ProcessGraph& processGraph() { return graph_; }
@@ -39,6 +41,15 @@ public:
     /// un effet préparé pour 512 échantillons et nourri par blocs de 1024
     /// déborderait ses lignes à retard.
     int currentBlockSize() const { return currentBlockSize_.load(std::memory_order_acquire); }
+
+    /// Niveau de crête de l'entrée depuis la dernière lecture, et remise à
+    /// zéro. Zéro veut dire « rien n'arrive » -- ce qui, sur une entrée
+    /// ouverte, est une information et non un défaut.
+    float readInputPeak() { return inputPeak_.exchange(0.0f, std::memory_order_acq_rel); }
+    /// Nombre de canaux d'entrée réellement ouverts. Zéro = la carte n'en a
+    /// pas donné, et l'enregistrement est impossible : il faut le DIRE, pas
+    /// laisser chercher.
+    int currentInputChannels() const { return currentInputChannels_.load(std::memory_order_acquire); }
     float currentCpuUsagePercent() const;
     juce::String lastError() const { return lastError_; }
     bool isDeviceOpen() const { return deviceManager_.getCurrentAudioDevice() != nullptr; }
@@ -71,6 +82,8 @@ private:
     juce::AudioDeviceManager deviceManager_;
     std::atomic<double> currentSampleRate_{48000.0};
     std::atomic<int> currentBlockSize_{512};
+    std::atomic<int> currentInputChannels_{0};
+    std::atomic<float> inputPeak_{0.0f};
     juce::String lastError_;
 
     // MIDI Learn : accédé par le thread MIDI (handleIncomingMidiMessage) ET

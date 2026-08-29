@@ -36,6 +36,15 @@ public:
     /// déjà, mais un menu se referme : pendant une écoute comparative, il faut
     /// pouvoir lire d'un coup d'œil laquelle des deux versions joue, sinon on
     /// juge la mauvaise. `active` colore le bouton quand l'original est audible.
+    /// Niveau de l'entrée audio, et nombre de canaux ouverts.
+    ///
+    /// POURQUOI C'EST DANS LA BARRE DE TRANSPORT, à côté du bouton Rec. Brancher
+    /// un micro et ne rien voir est le premier échec possible d'un
+    /// enregistrement, et il n'a rien à voir avec l'enregistrement lui-même :
+    /// c'est la carte, le câble, ou le canal. Un témoin permanent sépare les
+    /// deux questions avant qu'on ne les confonde.
+    void setInputLevel(float peak, int channels);
+
     void setListening(const juce::String& label, bool enabled, bool active);
     std::function<void()> onCycleListening;
 
@@ -47,6 +56,9 @@ private:
     juce::TextButton playButton_   { "Play" };
     juce::TextButton stopButton_   { "Stop" };
     juce::TextButton recordButton_ { "Rec" };
+    float inputPeak_ = 0.0f;
+    int inputChannels_ = 0;
+    juce::Rectangle<int> inputMeterBounds_;
     juce::TextButton loopButton_   { "Loop" };
     juce::TextButton listenButton_ { "Écoute A/B : pas d'original" };
     juce::TextButton openButton_   { "Ouvrir MIDI..." };

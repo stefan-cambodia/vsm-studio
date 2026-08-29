@@ -49,8 +49,14 @@ public:
     // Libellé d'un palier pour le menu (« 125 % »).
     static juce::String label(float factor);
 
-private:
+    // Le fichier de préférences de l'application, exposé parce qu'il n'y en a
+    // qu'un et que d'autres réglages doivent y vivre -- à commencer par le
+    // choix du périphérique audio, qui n'était pas conservé : le sélecteur
+    // était rouvert vierge à chaque lancement, et il fallait rechoisir sa carte
+    // à chaque fois.
     static juce::PropertiesFile& properties();
+
+private:
 };
 
 } // namespace vsm::app::ui

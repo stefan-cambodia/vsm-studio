@@ -250,7 +250,12 @@ MainComponent::MainComponent()
     };
 
     rebuildFromProject();
-    audioEngine_.start(); // ouvre le device par défaut ; échec silencieux et non bloquant
+    // Le périphérique retenu au dernier lancement, s'il y en a un.
+    {
+        auto etat = std::unique_ptr<juce::XmlElement>(
+            vsm::app::ui::UiScale::properties().getXmlValue("audioDeviceState"));
+        audioEngine_.start(etat.get()); // échec silencieux et non bloquant
+    }
 
 #if JUCE_MAC
     juce::MenuBarModel::setMacMainMenu(this);
@@ -265,6 +270,9 @@ MainComponent::MainComponent()
 }
 
 MainComponent::~MainComponent() {
+    // AVANT d'arrêter le moteur : une fois le périphérique fermé, il n'y a plus
+    // d'état à écrire.
+    saveAudioDeviceState();
     audioEngine_.stop(); // arrête le thread audio temps réel EN PREMIER, avant toute autre destruction
     stopTimer();
     transport_.stop();
@@ -345,6 +353,8 @@ void MainComponent::timerCallback() {
     const vsm::midi::Tick playhead =
         audioClockAvailable ? project_.secondsToTicks(audioEngine_.processGraph().currentSeconds())
                             : transport_.currentTick();
+    transportBar_.setInputLevel(audioEngine_.readInputPeak(),
+                                 audioEngine_.currentInputChannels());
     pianoRoll_.setPlayheadTick(playhead);
     synthRack_.setPlayheadTick(playhead); // éclaire le pas en cours sur les grilles
     pianoRollPanel_.refresh(); // règle + barre d'outils suivent la tête de lecture et l'historique
@@ -605,12 +615,17 @@ void MainComponent::exportAudioFile() {
 
 void MainComponent::showAudioSettings() {
     // Sélecteur de device/sample rate standard de JUCE, branché sur
-    // l'AudioDeviceManager du moteur (0 entrées, 2 sorties stéréo).
+    // l'AudioDeviceManager du moteur.
+    //
+    // LES ENTRÉES SONT DÉSORMAIS CHOISISSABLES, et les périphériques MIDI
+    // aussi. Le sélecteur était verrouillé à zéro entrée et sans onglet MIDI :
+    // même une fois le moteur capable de capter, l'utilisateur n'aurait eu
+    // aucun moyen de désigner d'où.
     auto selector = std::make_unique<juce::AudioDeviceSelectorComponent>(
         audioEngine_.deviceManager(),
-        0, 0,   // entrées min/max
+        0, 2,   // entrées min/max
         2, 2,   // sorties min/max
-        false,  // pas de sélection de canaux MIDI d'entrée ici
+        true,   // choix des entrées MIDI
         false,  // pas de sortie MIDI
         true,   // afficher le choix stéréo
         false); // vue avancée repliée
@@ -624,6 +639,17 @@ void MainComponent::showAudioSettings() {
     options.useNativeTitleBar = true;
     options.resizable = false;
     options.launchAsync(); // gère lui-même la durée de vie de la fenêtre
+}
+
+void MainComponent::saveAudioDeviceState() {
+    // LE CHOIX DU PÉRIPHÉRIQUE EST CONSERVÉ. Il ne l'était pas : `initialise`
+    // recevait un état sauvegardé nul et rien n'était jamais écrit, si bien
+    // qu'il fallait rechoisir sa carte, sa fréquence et sa taille de bloc à
+    // chaque lancement. Le fichier de préférences est celui de l'échelle
+    // d'interface -- il n'y en a qu'un, et c'est bien ainsi.
+    if (auto etat = std::unique_ptr<juce::XmlElement>(audioEngine_.deviceManager().createStateXml()))
+        vsm::app::ui::UiScale::properties().setValue("audioDeviceState", etat.get());
+    vsm::app::ui::UiScale::properties().saveIfNeeded();
 }
 
 // --- Fichier / projet --------------------------------------------------

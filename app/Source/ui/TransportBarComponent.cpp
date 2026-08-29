@@ -60,6 +60,28 @@ void TransportBarComponent::paint(juce::Graphics& g) {
     g.setColour(Palette::border);
     g.drawLine(0.0f, static_cast<float>(getHeight() - 1), static_cast<float>(getWidth()),
                static_cast<float>(getHeight() - 1), 1.0f);
+
+    // TÉMOIN D'ENTRÉE. Éteint et barré quand la carte n'ouvre aucune entrée :
+    // un bargraphe vide voudrait dire « rien n'arrive », ce qui n'est pas la
+    // même chose que « rien ne peut arriver ».
+    if (!inputMeterBounds_.isEmpty()) {
+        g.setColour(Palette::background);
+        g.fillRect(inputMeterBounds_);
+        g.setColour(Palette::border);
+        g.drawRect(inputMeterBounds_, 1);
+        if (inputChannels_ <= 0) {
+            g.setColour(Palette::textSecondary.withAlpha(0.5f));
+            g.drawLine(static_cast<float>(inputMeterBounds_.getX()),
+                       static_cast<float>(inputMeterBounds_.getBottom()),
+                       static_cast<float>(inputMeterBounds_.getRight()),
+                       static_cast<float>(inputMeterBounds_.getY()), 1.0f);
+        } else {
+            const int hauteur = static_cast<int>(
+                std::min(1.0f, inputPeak_) * static_cast<float>(inputMeterBounds_.getHeight()));
+            g.setColour(inputPeak_ > 0.98f ? Palette::accentRed : Palette::accentTeal);
+            g.fillRect(inputMeterBounds_.withTop(inputMeterBounds_.getBottom() - hauteur).reduced(1, 0));
+        }
+    }
 }
 
 void TransportBarComponent::resized() {
@@ -73,6 +95,8 @@ void TransportBarComponent::resized() {
     recordButton_.setBounds(transportArea.removeFromLeft(60));
     transportArea.removeFromLeft(4);
     loopButton_.setBounds(transportArea.removeFromLeft(60));
+    transportArea.removeFromLeft(6);
+    inputMeterBounds_ = transportArea.removeFromLeft(10).reduced(0, 2);
 
     area.removeFromLeft(12);
     listenButton_.setBounds(area.removeFromLeft(230));
@@ -90,6 +114,22 @@ void TransportBarComponent::resized() {
     sampleRateLabel_.setBounds(area.removeFromRight(120));
     area.removeFromRight(8);
     cpuLabel_.setBounds(area.removeFromRight(90));
+}
+
+void TransportBarComponent::setInputLevel(float peak, int channels) {
+    // Décroissance douce : une crête qui disparaît au bloc suivant ne se voit
+    // pas. On garde la plus forte des deux, puis on laisse retomber.
+    inputPeak_ = std::max(peak, inputPeak_ * 0.82f);
+    if (channels != inputChannels_) {
+        inputChannels_ = channels;
+        recordButton_.setTooltip(
+            channels > 0
+                ? juce::String(channels) + " entree(s) ouverte(s) — l'enregistrement "
+                  "lui-meme arrive en D3.3 de docs/ROADMAP-daw.md"
+                : "Aucune entree audio : la carte n'en donne pas. "
+                  "Voir Fichier > Reglages audio.");
+    }
+    repaint(inputMeterBounds_);
 }
 
 void TransportBarComponent::setLooping(bool active) {

@@ -572,6 +572,24 @@ Un logiciel qui ne peut rien capter n'est pas un studio, c'est un lecteur.
 reconstruction et la garder — c'est-à-dire faire de la musique dans le logiciel,
 pas seulement l'écouter.
 
+> **D3.1 EST FAITE (29/08/2026).** Le moteur demande **deux entrées** là où il
+> en ouvrait zéro, le sélecteur de périphérique les laisse choisir (et donne
+> enfin l'onglet MIDI), le choix du périphérique est **conservé** d'une
+> exécution à l'autre — il ne l'était pas, et il fallait rechoisir sa carte, sa
+> fréquence et sa taille de bloc à chaque lancement — et la barre de transport
+> porte un **témoin d'entrée** à côté du bouton Rec.
+>
+> **Les entrées sont DEMANDÉES, pas exigées.** Une machine dont la carte n'a que
+> des sorties doit rester utilisable pour éditer, mixer et exporter : le moteur
+> retente alors sans entrée. Mais il ne le cache pas — le témoin est **barré**
+> quand aucune entrée n'est ouverte, parce qu'un bargraphe vide dirait « rien
+> n'arrive », ce qui n'est pas « rien ne peut arriver ».
+>
+> **Pourquoi un témoin avant même de savoir enregistrer.** Brancher un micro et
+> ne rien voir est le premier échec possible d'un enregistrement, et il n'a rien
+> à voir avec l'enregistrement : c'est la carte, le câble ou le canal. Un témoin
+> permanent sépare les deux questions avant qu'on ne les confonde.
+
 ### Phase D4 — La console
 
 | Étape | Contenu | Terminé quand |
