@@ -2,6 +2,7 @@
 #include <JuceHeader.h>
 #include "vsm/audio/engine/MidiLearnMap.h"
 #include "vsm/audio/engine/ProcessGraph.h"
+#include "DiskRecorder.h"
 #include "vsm/sequencer/MidiRecorder.h"
 #include <atomic>
 #include <mutex>
@@ -123,6 +124,24 @@ public:
     /// Publique pour être testable sans carte son.
     double transportSecondsAtClock(double clockSeconds) const;
 
+    // --- Enregistrement AUDIO en flux sur disque (D3.4) --------------------
+    //
+    // Le pendant audio de ce qui précède, et il pose le problème inverse : le
+    // MIDI est un filet de données qu'on rattrape à l'arrêt, l'audio est un
+    // flot continu qu'il faut écrire PENDANT. Voir `DiskRecorder` pour la
+    // séparation thread audio / thread d'écriture.
+
+    /// Thread UI. Ouvre le fichier et arme la capture. `punchSeconds` est le
+    /// point d'entrée : rien n'est écrit avant, et le premier échantillon du
+    /// fichier est EXACTEMENT celui de ce point -- pas celui du début du bloc
+    /// qui le contient, sans quoi chaque prise commencerait avec un décalage
+    /// aléatoire pouvant aller jusqu'à une taille de bloc.
+    bool startAudioRecording(const juce::File& fichier, double punchSeconds, juce::String& erreur);
+    /// Thread UI. Ferme le fichier ; rend le nombre de trames écrites.
+    int64_t stopAudioRecording();
+    bool isRecordingAudio() const { return recordingAudio_.load(std::memory_order_acquire); }
+    const DiskRecorder& diskRecorder() const { return diskRecorder_; }
+
     // --- MIDI Learn --------------------------------------------------------
     // Arme l'apprentissage : le PROCHAIN CC reçu sera lié à `target`.
     void armMidiLearn(const vsm::audio::engine::MidiLearnTarget& target);
@@ -173,7 +192,14 @@ private:
     std::atomic<uint32_t> anchorVersion_{0};
     std::atomic<double> anchorClockSeconds_{0.0};
     std::atomic<double> anchorTransportSeconds_{0.0};
-    void publishTransportAnchor(); // thread audio uniquement
+    /// Thread audio uniquement. `positionTransport` est la position du DÉBUT du
+    /// bloc, lue une seule fois par le rappel et partagée avec l'écriture sur
+    /// disque -- la relire donnerait deux réponses différentes.
+    void publishTransportAnchor(double positionTransport);
+
+    DiskRecorder diskRecorder_;
+    std::atomic<bool> recordingAudio_{false};
+    std::atomic<double> audioPunchSeconds_{0.0};
 
     // Repli pour un device de sortie mono (rare, mais ne doit jamais
     // crasher) : jamais alloué dans le callback, seulement ici à la

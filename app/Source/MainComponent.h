@@ -81,6 +81,7 @@ private:
         kMenuFileAudioSettings,
         kMenuFileQuit,
         kMenuTrackAdd,
+        kMenuTrackAddAudio,
         kMenuTrackRemove,
         kMenuRecordCountInNone,
         kMenuRecordCountInOne,
@@ -125,6 +126,15 @@ private:
     void quantizeLastTake();
     /// Durée du décompte, en secondes, à la position d'entrée donnée.
     double countInSeconds(vsm::midi::Tick punchTick) const;
+    /// Les pistes armées, réparties par nature : les notes vont aux unes, le
+    /// fichier de la prise à l'autre.
+    std::vector<size_t> armedTrackIndices(vsm::sequencer::Track::Kind kind) const;
+    /// Un nom de fichier libre pour la prochaine prise, dans `audio/` du
+    /// dossier de projet. Rend un chemin RELATIF, comme le format l'exige.
+    juce::String nextTakeRelativePath(const juce::String& nomDePiste) const;
+    /// Écrit la prise audio dans la piste : matériau et clip posé au point
+    /// d'entrée. Rend faux si rien n'a été capté.
+    bool applyAudioTake(size_t trackIndex, const juce::File& fichier, int64_t frames);
 
 
     void openMidiFile();
@@ -176,7 +186,12 @@ private:
     bool keyPressed(const juce::KeyPress& key, juce::Component* origin) override;
     using juce::Component::keyPressed;   // la surcharge du composant reste visible (sinon -Woverloaded-virtual)
     void newProject();
-    void addTrack();
+    /// Ajoute une piste. Une piste AUDIO n'est pas une autre espèce d'objet :
+    /// c'est une piste dont le matériau est un fichier et non des notes (voir
+    /// `Track::Kind`). Il n'existait aucun moyen d'en créer une depuis
+    /// l'application -- elles ne pouvaient venir que d'un projet importé, ce qui
+    /// rendait l'enregistrement audio de D3.4 inatteignable.
+    void addTrack(vsm::sequencer::Track::Kind kind = vsm::sequencer::Track::Kind::Midi);
     void removeSelectedTrack();
     void exportMidiFile();
     void exportAudioFile();
@@ -230,6 +245,11 @@ private:
     /// Dernier état connu de la carte son, pour ne rafraîchir le bouton Rec
     /// que lorsqu'il change et non à chaque tour du timer.
     bool recordDeviceWasOpen_ = false;
+    /// La piste audio qui reçoit la prise en cours, et le fichier qu'on lui
+    /// écrit. `npos` quand la prise est purement MIDI.
+    size_t audioTakeTrack_ = static_cast<size_t>(-1);
+    juce::File audioTakeFile_;
+    juce::String audioTakeRelativePath_;
 
     std::vector<vsm::audio::engine::AutomationLane> currentAutomation_;
     bool mixDirty_ = false; // vol/pan/mute/solo modifiés -> republier le snapshot au timer

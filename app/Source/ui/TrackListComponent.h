@@ -24,15 +24,22 @@ public:
     std::function<void(size_t, const std::string&)> onInstrumentChanged; // trackIndex, pluginId ("" = aucun)
 
     void setSelected(bool selected) { selected_ = selected; repaint(); }
+    /// Réaffiche le fichier de la piste (sans effet sur une piste MIDI).
+    /// Appelée après une prise audio, qui vient de lui en donner un.
+    void refreshAudioSource();
 
 private:
     vsm::sequencer::Track& track_;
     size_t index_;
     bool selected_ = false;
+    /// Figé à la construction : la nature d'une piste ne change pas en cours de
+    /// route, et la ligne est reconstruite si le projet change.
+    const bool audio_;
 
     juce::Label nameLabel_;
     juce::Label channelLabel_;
     juce::ComboBox instrumentBox_; // rempli depuis PluginRegistry::listAvailable()
+    juce::Label audioSourceLabel_; // à sa place, sur une piste audio
     juce::TextButton muteButton_ { "M" };
     juce::TextButton soloButton_ { "S" };
     juce::TextButton armButton_  { "R" };
@@ -64,6 +71,11 @@ public:
     /// Sélectionne une piste par index (met à jour l'état visuel et notifie
     /// via onTrackSelected). Sans effet si l'index est hors bornes.
     void selectTrackIndex(size_t idx);
+
+    /// Réaffiche une seule ligne, sans reconstruire la liste -- reconstruire
+    /// remettrait la sélection et le défilement à zéro. Sert après une prise
+    /// audio, qui vient de donner un fichier à sa piste.
+    void refreshTrackRow(size_t idx);
 
 private:
     vsm::sequencer::Project* project_ = nullptr;

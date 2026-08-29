@@ -518,7 +518,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu = pianoRoll_.buildContextMenu();
             break;
         case 2:
-            menu.addItem(kMenuTrackAdd, "Ajouter une piste");
+            menu.addItem(kMenuTrackAdd, "Ajouter une piste MIDI");
+            menu.addItem(kMenuTrackAddAudio, "Ajouter une piste audio");
             menu.addItem(kMenuTrackRemove, u8"Supprimer la piste sélectionnée",
                          !project_.tracks.empty());
             break;
@@ -532,11 +533,16 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addItem(kMenuRecordCountInNone, "Aucun", true, mesures == 0);
                 menu.addItem(kMenuRecordCountInOne, "1 mesure", true, mesures == 1);
                 menu.addItem(kMenuRecordCountInTwo, "2 mesures", true, mesures == 2);
-                menu.addSectionHeader("Ce que fait la prise");
+                menu.addSectionHeader(u8"Ce que fait la prise MIDI");
                 menu.addItem(kMenuRecordOverdub, "Superposer",
                               true, recordMode_ == vsm::sequencer::RecordMode::Overdub);
                 menu.addItem(kMenuRecordReplace, "Remplacer",
                               true, recordMode_ == vsm::sequencer::RecordMode::Replace);
+                // UNE PISTE AUDIO PORTE UN SEUL FICHIER : une prise audio
+                // remplace toujours le matériau de sa piste, et le menu le dit
+                // plutôt que de laisser croire que le réglage ci-dessus la
+                // concerne. Les prises empilées sont l'objet de D3.5.
+                menu.addItem(-1, u8"(une prise audio remplace toujours son matériau)", false, false);
                 menu.addSeparator();
                 menu.addItem(kMenuRecordQuantizeTake,
                               u8"Quantifier la dernière prise (grille du piano roll)",
@@ -618,7 +624,8 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             break;
         case kMenuRecordQuantizeTake: quantizeLastTake(); break;
         case kMenuFileQuit:      juce::JUCEApplication::getInstance()->systemRequestedQuit(); break;
-        case kMenuTrackAdd:      addTrack(); break;
+        case kMenuTrackAdd:      addTrack(Track::Kind::Midi); break;
+        case kMenuTrackAddAudio: addTrack(Track::Kind::Audio); break;
         case kMenuTrackRemove:   removeSelectedTrack(); break;
         case kMenuViewTracks:    togglePanel(trackListWindow_); break;
         case kMenuViewPianoRoll: togglePanel(pianoRollWindow_); break;
@@ -1200,8 +1207,10 @@ void MainComponent::newProject() {
     rebuildFromProject();
 }
 
-void MainComponent::addTrack() {
-    beginProjectEdit("Ajouter une piste");
+void MainComponent::addTrack(Track::Kind kind) {
+    const bool audio = kind == Track::Kind::Audio;
+    beginProjectEdit(audio ? juce::String(u8"Ajouter une piste audio")
+                            : juce::String(u8"Ajouter une piste"));
     // Palette de couleurs cyclique pour distinguer visuellement les pistes.
     static const uint32_t kColors[] = {
         0xffE3A24Du, 0xff6B9BFFu, 0xff8ED081u, 0xffD08BC8u, 0xffE0C15Au, 0xff7FD0C8u
@@ -1209,7 +1218,8 @@ void MainComponent::addTrack() {
     const size_t n = project_.tracks.size();
 
     Track t;
-    t.name = "Piste " + std::to_string(n + 1);
+    t.kind = kind;
+    t.name = (audio ? "Audio " : "Piste ") + std::to_string(n + 1);
     t.channel = static_cast<uint8_t>(n % 16);      // canaux MIDI 1..16 en boucle
     t.colorRgba = kColors[n % (sizeof(kColors) / sizeof(kColors[0]))];
     // Pas d'instrument par défaut : l'utilisateur le choisit dans le combo de
@@ -1277,11 +1287,65 @@ std::vector<size_t> MainComponent::armedTrackIndices() const {
     return armees;
 }
 
+std::vector<size_t> MainComponent::armedTrackIndices(Track::Kind kind) const {
+    std::vector<size_t> armees;
+    for (size_t i = 0; i < project_.tracks.size() && i < vsm::audio::engine::ProcessGraph::kMaxTracks; ++i)
+        if (project_.tracks[i].armed && project_.tracks[i].kind == kind) armees.push_back(i);
+    return armees;
+}
+
+juce::String MainComponent::nextTakeRelativePath(const juce::String& nomDePiste) const {
+    // Un nom LISIBLE, et surtout LIBRE : on ne réutilise jamais celui d'une
+    // prise existante. Écraser une prise précédente parce qu'on a rearmé la
+    // même piste serait la faute la moins pardonnable d'un enregistreur.
+    juce::String base = nomDePiste.isEmpty() ? "prise" : nomDePiste;
+    base = base.retainCharacters("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_");
+    if (base.isEmpty()) base = "prise";
+    for (int n = 1; n < 10000; ++n) {
+        const juce::String relatif = "audio/" + base + "-" + juce::String(n) + ".wav";
+        if (!currentProjectFolder_.getChildFile(relatif).existsAsFile()) return relatif;
+    }
+    return "audio/" + base + "-" + juce::String(juce::Time::currentTimeMillis()) + ".wav";
+}
+
+bool MainComponent::applyAudioTake(size_t trackIndex, const juce::File& fichier, int64_t frames) {
+    if (trackIndex >= project_.tracks.size() || frames <= 0 || !fichier.existsAsFile()) return false;
+    Track& piste = project_.tracks[trackIndex];
+
+    // UNE PISTE AUDIO PORTE UN SEUL FICHIER (`Track::audio`), et c'est ce qui
+    // décide du comportement ici : une nouvelle prise REMPLACE le matériau de la
+    // piste, quel que soit le mode d'enregistrement. Superposer deux prises
+    // audio sur une même piste demanderait plusieurs matériaux par piste, ce que
+    // le modèle n'a pas -- c'est l'objet de D3.5, où les prises s'empilent et se
+    // choisissent. Le mode « superposer / remplacer » ne concerne donc que le
+    // MIDI, et le menu le dit.
+    piste.audio.path = audioTakeRelativePath_.toStdString();
+    piste.audio.sampleRate = audioEngine_.diskRecorder().sampleRate();
+    piste.audio.frames = frames;
+    piste.audio.channels = audioEngine_.diskRecorder().channels();
+
+    // Le clip est posé AU POINT D'ENTRÉE, et sa longueur est laissée à zéro --
+    // ce qui veut dire « jusqu'au bout du fichier » (voir `Clip::length`). Le
+    // premier échantillon du fichier est celui du point d'entrée : c'est le
+    // rappel audio qui s'en assure, à l'échantillon près.
+    piste.clips.clear();
+    vsm::sequencer::Clip clip;
+    clip.startTick = punchTick_;
+    clip.length = 0;
+    clip.name = juce::File(audioTakeRelativePath_).getFileNameWithoutExtension().toStdString();
+    clip.colorRgba = piste.colorRgba;
+    piste.clips.push_back(clip);
+    return true;
+}
+
 void MainComponent::refreshArmedTracks() {
-    auto armees = armedTrackIndices();
+    const auto armees = armedTrackIndices();
     recordDeviceWasOpen_ = audioEngine_.isDeviceOpen();
     transportBar_.setRecordAvailable(recordDeviceWasOpen_, static_cast<int>(armees.size()));
-    audioEngine_.setArmedTracks(std::move(armees));
+    // Seules les pistes MIDI reçoivent le clavier : une piste audio armée
+    // attend un signal, pas des notes, et lui en envoyer ne ferait rien de
+    // visible tout en laissant croire le contraire à la lecture du code.
+    audioEngine_.setArmedTracks(armedTrackIndices(Track::Kind::Midi));
 }
 
 double MainComponent::countInSeconds(vsm::midi::Tick punchTick) const {
@@ -1323,6 +1387,48 @@ void MainComponent::startRecording() {
                      : transport_.currentTick();
     punchSeconds_ = project_.ticksToSeconds(punchTick_);
     const double decompte = dejaEnLecture ? 0.0 : countInSeconds(punchTick_);
+
+    // LA PRISE AUDIO, s'il y a une piste audio armée. Tout ce qui peut échouer
+    // (pas de dossier de projet, pas d'entrée, fichier impossible à créer)
+    // échoue MAINTENANT, avant qu'on ait joué -- découvrir après trois minutes
+    // que rien n'a été écrit serait la pire façon de l'apprendre.
+    audioTakeTrack_ = static_cast<size_t>(-1);
+    audioTakeFile_ = juce::File();
+    audioTakeRelativePath_.clear();
+    auto armeesAudio = armedTrackIndices(Track::Kind::Audio);
+    if (armeesAudio.size() > 1) {
+        transportBar_.setRecording(false);
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Plusieurs pistes audio armées",
+            juce::String(u8"Une seule entrée, une seule prise : n'armez qu'une piste audio à "
+                          u8"la fois. Écrire le même signal dans deux fichiers ne ferait que "
+                          u8"doubler la place occupée."));
+        return;
+    }
+    if (!armeesAudio.empty()) {
+        if (currentProjectFolder_ == juce::File()) {
+            transportBar_.setRecording(false);
+            juce::AlertWindow::showMessageBoxAsync(
+                juce::AlertWindow::InfoIcon, u8"Projet jamais enregistré",
+                juce::String(u8"Une prise audio est un FICHIER, et le format range les fichiers "
+                              u8"d'un projet par chemin relatif à son dossier -- c'est ce qui "
+                              u8"permet d'ouvrir le projet sur une autre machine. Enregistrez "
+                              u8"d'abord le projet (Ctrl+S), la prise ira dans son sous-dossier "
+                              u8"audio/."));
+            return;
+        }
+        const size_t index = armeesAudio.front();
+        audioTakeRelativePath_ = nextTakeRelativePath(juce::String(project_.tracks[index].name));
+        audioTakeFile_ = currentProjectFolder_.getChildFile(audioTakeRelativePath_);
+        juce::String erreur;
+        if (!audioEngine_.startAudioRecording(audioTakeFile_, punchSeconds_, erreur)) {
+            transportBar_.setRecording(false);
+            juce::AlertWindow::showMessageBoxAsync(
+                juce::AlertWindow::WarningIcon, u8"Enregistrement audio impossible", erreur);
+            return;
+        }
+        audioTakeTrack_ = index;
+    }
 
     recorder_.begin(punchSeconds_);
     recordDrain_.clear();
@@ -1367,24 +1473,44 @@ void MainComponent::stopRecording() {
     transportBar_.setRecording(false);
     transportBar_.setCountIn(0);
 
+    // LE FICHIER SE FERME DANS TOUS LES CAS, décompte interrompu compris :
+    // laisser un rédacteur ouvert garderait le fichier verrouillé et le thread
+    // d'écriture au travail sur une prise que personne n'attend plus.
+    const int64_t tramesAudio = audioEngine_.stopAudioRecording();
+    const uint64_t blocsPerdus = audioEngine_.diskRecorder().droppedBlocks();
+
     // Arrêté pendant le décompte : il n'y a rien à écrire, et il ne faut
     // surtout pas laisser le moteur à une position négative.
     if (phase == RecordPhase::CountIn) {
         audioEngine_.processGraph().setPlaying(false);
         audioEngine_.processGraph().seekSeconds(punchSeconds_);
+        if (audioTakeFile_ != juce::File()) audioTakeFile_.deleteFile();  // prise vide
+        audioTakeTrack_ = static_cast<size_t>(-1);
         return;
     }
-    if (recorder_.empty()) return;
 
     const double finSecondes =
         std::max(punchSeconds_, audioEngine_.processGraph().currentSeconds());
     const vsm::midi::Tick finTick = project_.secondsToTicks(finSecondes);
-    auto armees = armedTrackIndices();
-    if (armees.empty()) return;
+    auto armees = armedTrackIndices(Track::Kind::Midi);
+    const bool priseAudio = audioTakeTrack_ != static_cast<size_t>(-1) && tramesAudio > 0;
+    const bool priseMidi = !recorder_.empty() && !armees.empty();
+
+    if (!priseMidi && !priseAudio) {
+        // Rien n'a été joué : pas de pas d'annulation pour un geste sans effet,
+        // et pas de fichier vide qui traîne dans le dossier du projet.
+        if (audioTakeFile_ != juce::File() && tramesAudio <= 0) audioTakeFile_.deleteFile();
+        audioTakeTrack_ = static_cast<size_t>(-1);
+        return;
+    }
 
     // UNE SEULE ACTION ANNULABLE pour toute la prise, même si elle atterrit sur
     // plusieurs pistes : annuler un enregistrement, c'est le défaire en entier.
     beginProjectEdit("Enregistrement");
+
+    const size_t audioTakeTrackApplique = audioTakeTrack_;
+    if (priseAudio) applyAudioTake(audioTakeTrack_, audioTakeFile_, tramesAudio);
+    audioTakeTrack_ = static_cast<size_t>(-1);
 
     lastTake_.clear();
     // Un SEUL compteur d'identifiants pour toutes les pistes armées : la même
@@ -1416,11 +1542,29 @@ void MainComponent::stopRecording() {
         audioEngine_.processGraph().setProject(project_);
     else
         refreshTransportSchedule();
+    // La prise audio n'est audible qu'une fois RELUE depuis le disque : c'est le
+    // même chemin que pour n'importe quel fichier du projet, et c'est aussi ce
+    // qui vérifie tout de suite que le fichier écrit est lisible.
+    if (priseAudio) {
+        loadAudioTracks();
+        trackList_.refreshTrackRow(audioTakeTrackApplique);
+    }
     pianoRollPanel_.refresh();
     if (!lastTake_.empty()) {
         trackList_.selectTrackIndex(lastTake_.front().first);
         pianoRoll_.selectNotes(lastTake_.front().second);
     }
+
+    // UN TROU DANS LE FICHIER SE DIT. Le tampon d'une seconde n'est pas censé
+    // déborder ; s'il a débordé, le disque n'a pas suivi et la prise a perdu
+    // des échantillons -- une chose qu'on n'entend pas forcément à la première
+    // écoute et qu'on découvrirait bien plus tard.
+    if (priseAudio && blocsPerdus > 0)
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::WarningIcon, u8"Le disque n'a pas suivi",
+            juce::String(u8"La prise a perdu ") + juce::String(static_cast<int>(blocsPerdus))
+                + juce::String(u8" bloc(s) : le fichier a des trous. Un disque plus rapide, "
+                                u8"ou une taille de bloc audio plus grande, y remédient."));
 }
 
 void MainComponent::quantizeLastTake() {

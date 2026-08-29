@@ -564,7 +564,7 @@ Un logiciel qui ne peut rien capter n'est pas un studio, c'est un lecteur.
 | D3.1 | Ouvrir le périphérique **avec des entrées**, choisir la source, écouter l'entrée, mémoriser le choix du périphérique | le niveau d'entrée s'affiche ; `AudioEngine.cpp:11` n'ouvre plus zéro entrée ; le réglage survit au redémarrage |
 | D3.2 | Tempo **modifiable**, tap tempo, piste de tempo dessinée, **métronome** et décompte | on peut commencer un morceau à partir de rien, ce qui est impossible aujourd'hui |
 | D3.3 | Enregistrement MIDI temps réel : armement (`Track::armed` enfin lu), superposition, quantification après coup | jouer trois mesures les inscrit dans un clip — **fait** |
-| D3.4 | Enregistrement audio en flux sur disque pendant la lecture | 10 minutes s'enregistrent sans décrochage ; le fichier est relu tel quel |
+| D3.4 | Enregistrement audio en flux sur disque pendant la lecture | 10 minutes s'enregistrent sans décrochage ; le fichier est relu tel quel — **fait** |
 | D3.5 | Punch in/out, enregistrement en boucle avec prises empilées | les prises se conservent et se choisissent |
 | D3.6 | Latence d'entrée **mesurée**, pas estimée, et compensée | une boucle physique enregistre à l'échantillon près ; le chiffre est publié |
 
@@ -692,6 +692,74 @@ pas seulement l'écouter.
 > plaignait parce qu'un clic faux ressemble à un clic. Et le champ
 > `Track::monitoring`, écrit par personne et lu par personne, a été **retiré** :
 > l'armement dit déjà « c'est cette piste qui écoute mon clavier ».
+
+> **D3.4 EST FAITE (29/08/2026).** L'entrée était MESURÉE depuis D3.1 — le
+> témoin de la barre de transport le montrait — mais rien n'en était fait. Elle
+> s'écrit désormais dans un fichier, pendant que ça joue.
+>
+> **LE PROBLÈME EST UN PROBLÈME DE THREADS, pas de format.** Le rappel audio
+> reçoit les échantillons d'entrée et doit rendre la main en quelques
+> millisecondes ; écrire un fichier depuis là — un appel système, une
+> allocation, l'attente d'un disque — produirait des craquements à la première
+> hésitation du système de fichiers. Un enregistrement de dix minutes ne peut
+> pas dépendre de la bonne humeur du noyau. Le thread audio ne fait donc que
+> **déposer** ses blocs dans une file d'une seconde, qu'un thread de fond
+> écrit. C'est `juce::AudioFormatWriter::ThreadedWriter`, **employé plutôt que
+> réécrit** : il fait partie de JUCE, il est éprouvé, et la règle n° 2 du § 0
+> n'interdit que les dépendances à **télécharger**. Ce qui est à nous, en
+> revanche, c'est l'accès : le canevas fourni par JUCE prend un verrou dans le
+> rappel audio, ce que ce projet ne s'autorise nulle part ; le rédacteur est
+> donc publié par un `std::atomic<std::shared_ptr<>>`, comme le graphe le fait
+> pour ses instruments.
+>
+> **LE POINT D'ENTRÉE EST RESPECTÉ À L'ÉCHANTILLON.** Il tombe où il tombe, y
+> compris au milieu d'un bloc : on n'écrit donc que la **queue** du bloc à
+> partir de lui. Commencer au début du bloc qui le contient donnerait à chaque
+> prise un décalage aléatoire allant jusqu'à 10,7 ms — le défaut même qu'on
+> avait évité côté MIDI avec l'ancre. Le premier échantillon du fichier est
+> celui du point d'entrée, ce qui permet de poser le clip **à** ce point, sans
+> décalage à corriger.
+>
+> **UNE PISTE AUDIO PORTE UN SEUL FICHIER**, et c'est ce qui décide du reste :
+> une nouvelle prise **remplace** le matériau de sa piste, quel que soit le mode
+> d'enregistrement. Superposer deux prises audio demanderait plusieurs matériaux
+> par piste, ce que le modèle n'a pas — c'est l'objet de **D3.5**, où les prises
+> s'empilent et se choisissent. Le menu *Enregistrement* le dit, plutôt que de
+> laisser croire que le réglage « superposer / remplacer » la concerne.
+>
+> **Trois refus, tous prononcés AVANT qu'on ait joué.** Découvrir après trois
+> minutes que rien n'a été écrit serait la pire façon de l'apprendre. Une prise
+> audio exige donc : une seule piste audio armée (une entrée, une prise), un
+> **projet déjà enregistré** (le format range les fichiers par chemin relatif à
+> son dossier, ce qui est la condition pour ouvrir le projet sur une autre
+> machine), et une entrée ouverte. Le nom de fichier est toujours **libre** :
+> écraser une prise parce qu'on a rearmé la même piste serait la faute la moins
+> pardonnable d'un enregistreur.
+>
+> **On pouvait enregistrer, mais pas créer de piste où le faire.** `Kind::Audio`
+> n'apparaissait que dans le chargement : les pistes audio ne pouvaient venir
+> que d'un projet importé. *Piste ▸ Ajouter une piste audio* existe désormais,
+> et une piste audio n'affiche plus de sélecteur d'instrument — lui promettre un
+> choix de machine sans effet serait mentir — mais **son fichier**, ou le fait
+> qu'elle n'en a pas encore, ce qui est exactement ce qu'on a besoin de savoir
+> avant d'appuyer sur Rec.
+>
+> **LE CRITÈRE EST VÉRIFIÉ, PAS AFFIRMÉ.** « Dix minutes sans décrochage, le
+> fichier relu tel quel » n'est pas une propriété qu'on lit dans le code : elle
+> dépend du disque, du tampon et du thread d'écriture. Elle ne demande en
+> revanche ni micro ni écran, puisqu'on peut fabriquer le signal d'entrée. D'où
+> `vsm-disk-record-check`, qui pousse un signal dont **chaque échantillon est
+> différent des autres** (une sinusoïde pure ne montrerait pas un décalage d'une
+> trame), à **vingt fois le temps réel** — vingt fois plus dur que l'usage, et
+> dix minutes se vérifient en trente secondes. Mesure du 29/08/2026 :
+> **600 s à 44,1 kHz par blocs de 256, zéro bloc perdu, 26 460 000 trames
+> relues, écart maximal 1,19 e-7** — soit le quantum de 24 bits, c'est-à-dire
+> exactement ce qui a été écrit.
+>
+> Pousser *sans* frein, en revanche, fait déborder le tampon : c'est la première
+> chose qu'a montrée l'outil, et ce n'est pas un défaut de l'enregistreur mais
+> une boucle de test sans cadence. Aucun producteur réel n'est plus rapide que
+> la carte son.
 
 ### Phase D4 — La console
 

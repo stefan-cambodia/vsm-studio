@@ -25,6 +25,7 @@ target_sources(VintageSynthMidiStudio PRIVATE
     Source/Main.cpp
     Source/MainComponent.cpp
     Source/audio/AudioEngine.cpp
+    Source/audio/DiskRecorder.cpp
     Source/audio/ReferenceAudioLoader.cpp
     Source/ui/PanelWindow.cpp
     Source/ui/TransportBarComponent.cpp
@@ -153,3 +154,25 @@ target_link_libraries(vsm-audio-import-check PRIVATE
     juce::juce_audio_formats
 )
 juce_generate_juce_header(vsm-audio-import-check)
+
+
+# --- Vérification de l'enregistrement audio en flux (D3.4) ------------------
+# Le critère de D3.4 est « 10 minutes s'enregistrent sans décrochage ; le
+# fichier est relu tel quel ». Ce n'est pas une propriété qu'on peut lire dans
+# le code : elle dépend du disque et du thread d'écriture. Elle ne demande en
+# revanche ni micro ni écran, puisqu'on peut fabriquer le signal d'entrée.
+juce_add_console_app(vsm-disk-record-check PRODUCT_NAME "vsm-disk-record-check")
+target_sources(vsm-disk-record-check PRIVATE
+    Source/tools/DiskRecordCheckMain.cpp
+    Source/audio/DiskRecorder.cpp
+)
+target_include_directories(vsm-disk-record-check PRIVATE Source)
+target_compile_definitions(vsm-disk-record-check PRIVATE
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_STANDALONE_APPLICATION=1
+)
+target_link_libraries(vsm-disk-record-check PRIVATE
+    juce::juce_audio_formats
+)
+juce_generate_juce_header(vsm-disk-record-check)

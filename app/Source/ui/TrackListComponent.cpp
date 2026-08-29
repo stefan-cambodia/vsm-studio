@@ -24,7 +24,7 @@ std::vector<std::pair<std::string, std::string>> availableInstruments() {
 // ---------------------------------------------------------------------------
 
 TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex)
-    : track_(track), index_(trackIndex) {
+    : track_(track), index_(trackIndex), audio_(track.kind == Track::Kind::Audio) {
     addAndMakeVisible(nameLabel_);
     nameLabel_.setText(track_.name.empty() ? ("Piste " + std::to_string(trackIndex + 1)) : track_.name,
                         juce::dontSendNotification);
@@ -32,28 +32,42 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex)
     nameLabel_.onTextChange = [this] { track_.name = nameLabel_.getText().toStdString(); };
 
     addAndMakeVisible(channelLabel_);
-    channelLabel_.setText("Ch " + juce::String(track_.channel + 1), juce::dontSendNotification);
+    channelLabel_.setText(audio_ ? juce::String("Audio")
+                                  : juce::String("Ch " + juce::String(track_.channel + 1)),
+                           juce::dontSendNotification);
     channelLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
     channelLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
 
-    addAndMakeVisible(instrumentBox_);
-    instrumentBox_.addItem("(Aucun)", 1);
-    auto instruments = availableInstruments();
-    int selectedId = 1;
-    for (int i = 0; i < static_cast<int>(instruments.size()); ++i) {
-        const auto& [pluginId, displayName] = instruments[static_cast<size_t>(i)];
-        instrumentBox_.addItem(displayName, i + 2); // id JUCE 1-based, 1 = "(Aucun)"
-        if (pluginId == track_.instrumentId) selectedId = i + 2;
+    // UNE PISTE AUDIO N'A PAS D'INSTRUMENT, et lui présenter un sélecteur de
+    // machine serait lui promettre un choix sans effet : son matériau est un
+    // fichier, pas des notes. Elle affiche donc ce fichier -- ou le fait qu'elle
+    // n'en a pas encore, ce qui est exactement ce qu'on a besoin de savoir avant
+    // d'appuyer sur Rec.
+    if (audio_) {
+        addAndMakeVisible(audioSourceLabel_);
+        audioSourceLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
+        audioSourceLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
+        refreshAudioSource();
+    } else {
+        addAndMakeVisible(instrumentBox_);
+        instrumentBox_.addItem("(Aucun)", 1);
+        auto instruments = availableInstruments();
+        int selectedId = 1;
+        for (int i = 0; i < static_cast<int>(instruments.size()); ++i) {
+            const auto& [pluginId, displayName] = instruments[static_cast<size_t>(i)];
+            instrumentBox_.addItem(displayName, i + 2); // id JUCE 1-based, 1 = "(Aucun)"
+            if (pluginId == track_.instrumentId) selectedId = i + 2;
+        }
+        instrumentBox_.setSelectedId(selectedId, juce::dontSendNotification);
+        instrumentBox_.onChange = [this, instruments] {
+            int idx = instrumentBox_.getSelectedItemIndex();
+            std::string pluginId = (idx <= 0 || idx > static_cast<int>(instruments.size()))
+                                        ? ""
+                                        : instruments[static_cast<size_t>(idx - 1)].first;
+            track_.instrumentId = pluginId;
+            if (onInstrumentChanged) onInstrumentChanged(index_, pluginId);
+        };
     }
-    instrumentBox_.setSelectedId(selectedId, juce::dontSendNotification);
-    instrumentBox_.onChange = [this, instruments] {
-        int idx = instrumentBox_.getSelectedItemIndex();
-        std::string pluginId = (idx <= 0 || idx > static_cast<int>(instruments.size()))
-                                    ? ""
-                                    : instruments[static_cast<size_t>(idx - 1)].first;
-        track_.instrumentId = pluginId;
-        if (onInstrumentChanged) onInstrumentChanged(index_, pluginId);
-    };
 
     addAndMakeVisible(muteButton_);
     addAndMakeVisible(soloButton_);
@@ -78,8 +92,11 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex)
         track_.armed = armButton_.getToggleState();
         if (onArmChanged) onArmChanged();
     };
-    armButton_.setTooltip("Armer la piste : elle recoit alors le clavier MIDI, "
-                           "a l'ecoute comme a l'enregistrement.");
+    armButton_.setTooltip(
+        audio_ ? "Armer la piste : la prochaine prise ecrit l'entree audio dans un "
+                 "fichier du dossier du projet. Une seule piste audio a la fois."
+               : "Armer la piste : elle recoit alors le clavier MIDI, "
+                 "a l'ecoute comme a l'enregistrement.");
 
     addAndMakeVisible(volumeSlider_);
     volumeSlider_.setSliderStyle(juce::Slider::LinearHorizontal);
@@ -96,6 +113,18 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex)
     panSlider_.onValueChange = [this] { track_.pan = static_cast<float>(panSlider_.getValue()); if (onChanged) onChanged(); };
 
     setInterceptsMouseClicks(true, true);
+}
+
+void TrackRowComponent::refreshAudioSource() {
+    if (!audio_) return;
+    const juce::String chemin(track_.audio.path);
+    audioSourceLabel_.setText(
+        chemin.isEmpty() ? juce::String(u8"(aucun fichier — armer et enregistrer)")
+                         : chemin.fromLastOccurrenceOf("/", false, false),
+        juce::dontSendNotification);
+    audioSourceLabel_.setTooltip(chemin.isEmpty()
+                                     ? juce::String(u8"Cette piste audio n'a pas encore de matériau.")
+                                     : chemin);
 }
 
 void TrackRowComponent::paint(juce::Graphics& g) {
@@ -123,7 +152,8 @@ void TrackRowComponent::resized() {
 
     area.removeFromTop(4);
     auto secondRow = area.removeFromTop(24);
-    instrumentBox_.setBounds(secondRow.removeFromLeft(170));
+    if (audio_) audioSourceLabel_.setBounds(secondRow.removeFromLeft(170));
+    else        instrumentBox_.setBounds(secondRow.removeFromLeft(170));
     secondRow.removeFromLeft(8);
     muteButton_.setBounds(secondRow.removeFromLeft(28));
     secondRow.removeFromLeft(4);
@@ -186,6 +216,11 @@ void TrackListComponent::loadProject(Project& project) {
     removeButton_.setEnabled(!rows_.isEmpty());
 
     resized();
+}
+
+void TrackListComponent::refreshTrackRow(size_t idx) {
+    if (idx >= static_cast<size_t>(rows_.size())) return;
+    rows_[static_cast<int>(idx)]->refreshAudioSource();
 }
 
 void TrackListComponent::selectTrackIndex(size_t idx) {

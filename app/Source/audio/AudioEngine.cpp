@@ -144,7 +144,30 @@ size_t AudioEngine::drainRecordedEvents(std::vector<vsm::sequencer::RecordedNote
     return ajoutes;
 }
 
-void AudioEngine::publishTransportAnchor() {
+bool AudioEngine::startAudioRecording(const juce::File& fichier, double punchSeconds,
+                                       juce::String& erreur) {
+    const int canaux = juce::jlimit(0, 2, currentInputChannels_.load(std::memory_order_acquire));
+    if (canaux <= 0) {
+        erreur = "Aucune entree audio ouverte : la carte n'en donne pas. "
+                 "Voir Fichier > Reglages audio.";
+        return false;
+    }
+    const double frequence = currentSampleRate_.load(std::memory_order_acquire);
+    audioPunchSeconds_.store(punchSeconds, std::memory_order_release);
+    if (!diskRecorder_.start(fichier, frequence, canaux, erreur)) return false;
+    recordingAudio_.store(true, std::memory_order_release);
+    return true;
+}
+
+int64_t AudioEngine::stopAudioRecording() {
+    // L'ORDRE COMPTE : on coupe d'abord le robinet côté thread audio, on ferme
+    // le fichier ensuite. L'inverse laisserait un bloc en vol écrire dans un
+    // rédacteur en train d'être détruit.
+    recordingAudio_.store(false, std::memory_order_release);
+    return diskRecorder_.stop();
+}
+
+void AudioEngine::publishTransportAnchor(double positionTransport) {
     // Un seul rédacteur (le thread audio), d'où le compteur impair pendant
     // l'écriture : le lecteur voit « en cours » et recommence.
     const uint32_t version = anchorVersion_.load(std::memory_order_relaxed);
@@ -156,7 +179,7 @@ void AudioEngine::publishTransportAnchor() {
     // la raison de son emploi ici plutôt qu'une autre.
     anchorClockSeconds_.store(juce::Time::getMillisecondCounterHiRes() * 0.001,
                                std::memory_order_relaxed);
-    anchorTransportSeconds_.store(graph_.currentSeconds(), std::memory_order_relaxed);
+    anchorTransportSeconds_.store(positionTransport, std::memory_order_relaxed);
     std::atomic_thread_fence(std::memory_order_release);
     anchorVersion_.store(version + 2, std::memory_order_relaxed);
 }
@@ -236,7 +259,10 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
 
     // L'ANCRE D'ABORD, avant que le bloc n'avance le transport : elle doit dire
     // « à cette heure-là, le transport en était LÀ », et non « il en sera là ».
-    publishTransportAnchor();
+    // La position du début du bloc est lue UNE fois ici et resservie plus bas :
+    // la relire après le rendu donnerait celle de la fin.
+    const double positionDebutBloc = graph_.currentSeconds();
+    publishTransportAnchor(positionDebutBloc);
 
     // NIVEAU D'ENTRÉE. Rien d'autre n'est fait de l'entrée pour l'instant -- la
     // capture vers un fichier est D3.4 -- mais la mesurer est ce qui permet de
@@ -252,6 +278,45 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
         float precedente = inputPeak_.load(std::memory_order_relaxed);
         while (crete > precedente
                && !inputPeak_.compare_exchange_weak(precedente, crete, std::memory_order_acq_rel)) {}
+    }
+
+    // ÉCRITURE DE LA PRISE AUDIO SUR LE DISQUE (D3.4). Rien de plus qu'un dépôt
+    // dans une file : le fichier est écrit par un autre thread (voir
+    // DiskRecorder), et ce rappel n'attend jamais le disque.
+    if (recordingAudio_.load(std::memory_order_acquire)
+        && inputChannelData != nullptr && numInputChannels > 0) {
+        const int canaux = diskRecorder_.channels();
+        const double frequence = currentSampleRate_.load(std::memory_order_relaxed);
+
+        // LE POINT D'ENTRÉE TOMBE OÙ IL TOMBE, y compris au milieu d'un bloc.
+        // On n'écrit donc que la QUEUE du bloc à partir de lui : commencer au
+        // début du bloc qui le contient donnerait à chaque prise un décalage
+        // aléatoire allant jusqu'à une taille de bloc, soit 10,7 ms -- le
+        // défaut même qu'on a évité côté MIDI avec l'ancre.
+        int decalage = 0;
+        const double punch = audioPunchSeconds_.load(std::memory_order_relaxed);
+        if (positionDebutBloc < punch && frequence > 0.0) {
+            const double avant = (punch - positionDebutBloc) * frequence;
+            decalage = avant >= static_cast<double>(numSamples)
+                           ? numSamples
+                           : static_cast<int>(std::llround(avant));
+        }
+
+        // `ThreadedWriter::write` n'accepte AUCUN canal nul, et exige exactement
+        // le nombre de canaux du fichier. Si la carte a changé de configuration
+        // sous nos pieds, on préfère compter un trou que d'écrire n'importe
+        // quoi -- un fichier faux est plus difficile à diagnostiquer qu'un
+        // fichier court.
+        if (decalage < numSamples && canaux > 0 && numInputChannels >= canaux) {
+            const float* canauxEcrits[2] = { nullptr, nullptr };
+            bool complet = true;
+            for (int c = 0; c < canaux && c < 2; ++c) {
+                if (inputChannelData[c] == nullptr) { complet = false; break; }
+                canauxEcrits[c] = inputChannelData[c] + decalage;
+            }
+            if (complet)
+                diskRecorder_.write(canauxEcrits, numSamples - decalage);
+        }
     }
 
     float* left = outputChannelData[0];
