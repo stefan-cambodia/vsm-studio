@@ -1,5 +1,7 @@
 #include "vsm/interchange/OfflineReconstruction.h"
 #include "vsm/audio/effect/EffectFactory.h"
+#include "vsm/audio/io/AudioTrackLoader.h"
+#include <filesystem>
 #include "vsm/audio/engine/AutomationLane.h"
 #include "vsm/interchange/EffectDescription.h"
 #include "vsm/audio/engine/OfflineRenderer.h"
@@ -46,8 +48,12 @@ RenderResult renderBundleToWav(const LoadedBundle& bundle, const std::string& wa
     for (size_t i = 0; i < bundle.project.tracks.size() && i < ProcessGraph::kMaxTracks; ++i) {
         const std::string& pluginId = bundle.project.tracks[i].instrumentId;
         if (pluginId.empty()) {
-            result.warnings.push_back("Piste " + std::to_string(i) + " (" + bundle.project.tracks[i].name +
-                                       ") : aucun instrument, elle restera silencieuse");
+            // UNE PISTE AUDIO N'A PAS D'INSTRUMENT, et ce n'est pas une
+            // anomalie : son matériau est un fichier. L'avertir de son silence
+            // serait faux, et noierait les vrais avertissements.
+            if (bundle.project.tracks[i].kind != vsm::sequencer::Track::Kind::Audio)
+                result.warnings.push_back("Piste " + std::to_string(i) + " (" + bundle.project.tracks[i].name +
+                                           ") : aucun instrument, elle restera silencieuse");
             continue;
         }
         graph.setTrackInstrument(i, pluginId);
@@ -78,6 +84,54 @@ RenderResult renderBundleToWav(const LoadedBundle& bundle, const std::string& wa
             applyPresetSamples(preset->second, *instrument, bundle.folderPath);
         if (!sampleReport.failures.empty())
             result.warnings.push_back("Piste " + std::to_string(i) + " : " + sampleReport.summary());
+    }
+
+    // PISTES AUDIO. Le fichier est décodé et rééchantillonné ICI, sur le thread
+    // appelant : le graphe ne lit jamais un fichier. Un chargement qui échoue
+    // est RAPPORTÉ -- une piste audio muette ne se distingue pas, à l'oreille,
+    // d'une piste dont on aurait baissé le volume, et c'est exactement le
+    // genre de panne que le § 5 bis interdit.
+    for (size_t i = 0; i < bundle.project.tracks.size() && i < ProcessGraph::kMaxTracks; ++i) {
+        const auto& track = bundle.project.tracks[i];
+        if (track.kind != vsm::sequencer::Track::Kind::Audio) continue;
+        if (track.audio.empty()) {
+            result.warnings.push_back("Piste " + std::to_string(i) + " (" + track.name +
+                                       ") : piste audio sans fichier, elle restera silencieuse");
+            continue;
+        }
+        // Chemin RELATIF au dossier de projet, comme les échantillons et les
+        // presets : c'est ce qui permet au dossier d'être ouvert ailleurs.
+        const std::string chemin =
+            (std::filesystem::path(bundle.folderPath) / track.audio.path).string();
+        auto charge = vsm::audio::io::loadAudioTrack(chemin, options.sampleRate);
+        if (!charge.success || !charge.source) {
+            result.warnings.push_back("Piste " + std::to_string(i) + " : " + charge.error);
+            continue;
+        }
+        if (charge.resampled)
+            result.warnings.push_back(
+                "Piste " + std::to_string(i) + " (" + track.name + ") : audio rééchantillonné de " +
+                std::to_string(static_cast<int>(charge.fileSampleRate)) + " à " +
+                std::to_string(static_cast<int>(charge.sessionSampleRate)) + " Hz");
+        // LA LONGUEUR VIENT DU FICHIER RÉELLEMENT CHARGÉ, et non du nombre de
+        // trames que le projet DÉCLARE. Les deux devraient coïncider ; quand
+        // ils divergent -- fichier remplacé, métadonnée écrite à la main, en-
+        // tête mal deviné -- c'est le fichier qui a raison, et faire confiance
+        // à la déclaration tronquait le son sans rien dire. Mesuré : une voix
+        // de 532 s déclarée à 266 s se coupait au milieu du morceau.
+        vsm::sequencer::Track pourLesClips = track;
+        pourLesClips.audio.sampleRate = options.sampleRate;
+        pourLesClips.audio.frames = charge.source->frames();
+        charge.source->clips = vsm::audio::engine::spansFromTrack(
+            pourLesClips, options.sampleRate,
+            [&](int64_t tick) { return bundle.project.ticksToSeconds(tick); });
+        if (charge.source->clips.empty()) {
+            result.warnings.push_back("Piste " + std::to_string(i) + " (" + track.name +
+                                       ") : aucun clip audio à jouer");
+            continue;
+        }
+        graph.setTrackAudio(i, charge.source);
+        ++result.tracksWithInstrument;
     }
 
     // INSERTS. Ils étaient décrits dans `project.json` et jamais posés sur le

@@ -90,6 +90,21 @@ class ExportTrack:
     # la machine qui l'a écrit. Le projet dit donc « le profil qui s'appelle
     # ainsi », et le DAW le résout parmi les profils installés.
     profile: str = ""
+    # PISTE AUDIO : un fichier au lieu de notes. `audio_path` est RELATIF au
+    # dossier de projet, comme les échantillons et les presets.
+    #
+    # POURQUOI CE CHEMIN EXISTE. La voix ne se synthétise pas -- le § 6 de la
+    # feuille de route le dit depuis le début -- et elle passait donc par le
+    # SAMPLER : une note MIDI unique déclenchant l'enregistrement entier. Sur
+    # *Sky and Sand*, cela donnait une piste de 8 min 52 et 47 Mo tenant dans
+    # un emplacement de boîte à rythmes, déclenché par UNE note. Ce n'était pas
+    # un choix de production : c'était le seul moyen de faire entrer de l'audio
+    # dans un DAW qui n'avait pas de piste pour en porter. Il en a une (phase
+    # D2 de `ROADMAP-daw.md`).
+    audio_path: str = ""
+    audio_sample_rate: float = 0.0
+    audio_frames: int = 0
+    audio_channels: int = 0
     distance: Optional[float] = None
     machine_display_name: str = ""
     # Courbes d'automation : « identité sémantique -> [(seconde, valeur)] »,
@@ -238,6 +253,15 @@ def write_project_bundle(
             },
         }
 
+        if track.audio_path:
+            entry["kind"] = "audio"
+            entry["audio"] = {
+                "file": track.audio_path,
+                "sampleRate": float(track.audio_sample_rate),
+                "frames": int(track.audio_frames),
+                "channels": int(track.audio_channels),
+            }
+
         if track.machine:
             preset_relative = f"instruments/track_{index:02d}.synth.json"
             preset_path = folder / preset_relative
@@ -251,7 +275,7 @@ def write_project_bundle(
                 "preferredPlugin": track.machine,
                 "preset": preset_relative,
             }
-        else:
+        elif not track.audio_path:
             unassigned.append(track.name)
 
         if track.automation and track.machine:
@@ -274,9 +298,15 @@ def write_project_bundle(
     _write_midi(tracks, folder / midi_relative, tempo)
     written.append(midi_relative)
 
+    # LA VERSION DIT CE QU'IL FAUT SAVOIR LIRE, et rien de plus. Les pistes
+    # audio sont une nouveauté de la version 2 du format ; un projet qui n'en a
+    # pas reste en version 1 et s'ouvre donc dans tout ce qui a jamais su lire
+    # un projet VSM. Écrire 2 partout par confort rendrait illisibles, sans
+    # aucune raison, des projets qui n'utilisent rien de nouveau.
+    version = 2 if any(entree.get("kind") == "audio" for entree in document_tracks) else 1
     document = {
         "format": "vsm-project",
-        "version": 1,
+        "version": version,
         "title": title,
         "midi": {"file": midi_relative},
         "transport": {

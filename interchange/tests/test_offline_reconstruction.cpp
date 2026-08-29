@@ -2,6 +2,7 @@
 #include "vsm/interchange/OfflineReconstruction.h"
 #include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/interchange/EffectDescription.h"
+#include "vsm/audio/io/WavFileWriter.h"
 #include "vsm/interchange/ProjectBundle.h"
 #include <cmath>
 #include <cstdio>
@@ -295,4 +296,81 @@ VSM_TEST(the_master_strip_described_by_the_project_is_actually_rendered) {
 
     const double creteMixee = energieDuRendu(mixe);
     VSM_ASSERT(creteMixee < creteNue);
+}
+
+// --- D2.6 : le rendu hors ligne joue les pistes audio -----------------------
+//
+// C'est ce qui rend le critère de la phase vérifiable : une reconstruction doit
+// se jouer ENTIÈRE, voix comprise, sans qu'une note de sampler porte un fichier
+// de 47 Mo.
+
+VSM_TEST(the_offline_render_plays_an_audio_track) {
+    TempFolder dossier("projet_audio");
+    std::filesystem::create_directories(dossier.file("samples"));
+
+    // Un fichier reconnaissable : une seconde de silence, puis une seconde de
+    // signal fort. On saura donc, en lisant le rendu, si le fichier a été posé
+    // au bon endroit ET s'il a été lu à la bonne vitesse.
+    constexpr double kSr = 48000.0;
+    std::vector<float> gauche(static_cast<size_t>(kSr * 2.0), 0.0f);
+    std::vector<float> droite(gauche.size(), 0.0f);
+    for (size_t i = static_cast<size_t>(kSr); i < gauche.size(); ++i) {
+        gauche[i] = 0.5f;
+        droite[i] = 0.5f;
+    }
+    vsm::audio::io::WavFileWriter::writeFile(gauche.data(), droite.data(), gauche.size(), kSr,
+                                              vsm::audio::io::SampleFormat::Float32,
+                                              dossier.file("samples/voix.wav"));
+
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    project.tempoMap.addTempoChange(0, 500000);      // 120 BPM : une noire = 0,5 s
+    Track voix;
+    voix.kind = Track::Kind::Audio;
+    voix.name = "Voix";
+    voix.audio = {"samples/voix.wav", kSr, static_cast<int64_t>(gauche.size()), 2};
+    project.tracks.push_back(voix);
+
+    LoadedBundle bundle;
+    bundle.project = project;
+    bundle.document = documentFromProject(project);
+    bundle.folderPath = dossier.str();
+
+    RenderOptions options;
+    options.sampleRate = kSr;
+    options.durationSeconds = 2.0;
+    const RenderResult result = renderBundleToWav(bundle, dossier.file("rendu.wav"), options);
+    VSM_ASSERT(result.success);
+    // La piste compte comme sonorisée : sans cela, un rendu muet passerait pour
+    // un projet sans instrument plutôt que pour une piste audio non chargée.
+    VSM_ASSERT_EQ(result.tracksWithInstrument, size_t(1));
+    VSM_ASSERT(result.peakLevel > 0.1f);
+}
+
+VSM_TEST(a_missing_audio_file_is_named_not_silently_ignored) {
+    TempFolder dossier("projet_audio_absent");
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    Track voix;
+    voix.kind = Track::Kind::Audio;
+    voix.name = "Voix";
+    voix.audio = {"samples/introuvable.wav", 48000.0, 48000, 2};
+    project.tracks.push_back(voix);
+
+    LoadedBundle bundle;
+    bundle.project = project;
+    bundle.document = documentFromProject(project);
+    bundle.folderPath = dossier.str();
+
+    RenderOptions options;
+    options.durationSeconds = 0.5;
+    const RenderResult result = renderBundleToWav(bundle, dossier.file("rendu.wav"), options);
+    // Le rendu ABOUTIT -- un projet incomplet doit s'ouvrir et se dire
+    // incomplet -- mais il NOMME ce qui manque.
+    VSM_ASSERT(result.success);
+    VSM_ASSERT(!result.warnings.empty());
+    bool nomme = false;
+    for (const auto& avertissement : result.warnings)
+        if (avertissement.find("introuvable.wav") != std::string::npos) nomme = true;
+    VSM_ASSERT(nomme);
 }

@@ -2,6 +2,7 @@ add_library(vsm_audio STATIC
     src/dsp/WaveTable.cpp
     src/io/WavFileWriter.cpp
     src/io/WavFileReader.cpp
+    src/io/AudioTrackLoader.cpp
     src/engine/AudioTrackSource.cpp
     src/engine/ProcessGraph.cpp
     src/effect/EffectFactory.cpp

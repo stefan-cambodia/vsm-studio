@@ -491,6 +491,56 @@ de *Sky and Sand* se charge dans l'application et **se joue entière, voix
 comprise, sans qu'aucune note de sampler ne porte un fichier de 47 Mo**. Le MIDI
 de la voix retombe à zéro note ; l'audio est sur une piste audio, à sa place.
 
+> **D2.1, D2.2, D2.3 ET D2.6 SONT FAITES, ET LE CRITÈRE EST MESURÉ
+> (29/08/2026).** 917 tests moteur verts.
+>
+> **La preuve tient en deux chiffres.** Le même morceau rendu deux fois — la
+> voix par l'ancien détour du sampler, puis la voix sur une vraie piste audio :
+>
+> | comparaison | écart maximal |
+> |---|---|
+> | piste audio contre report par sampler | **1,2 × 10⁻⁷** (l'epsilon du flottant) |
+> | piste audio contre la même piste coupée | **0,476** |
+>
+> Le premier chiffre dit que la piste audio reproduit le détour **au bit de
+> précision près** ; le second, qu'elle joue bel et bien — sans lui, le premier
+> ne prouverait rien, puisque deux silences se ressemblent aussi.
+>
+> **UN CHOIX D'UNITÉS QUI ÉVITE UNE PROMESSE FAUSSE.** Tout le modèle est en
+> ticks ; la fenêtre d'un clip audio est en **secondes**. Un tick est une
+> position *musicale* : le convertir passe par la carte de tempo, et suppose
+> donc que le matériau suit le tempo. Une note le fait, un enregistrement non —
+> pas tant que l'étirement temporel n'est pas écrit (choix n° 3 du § 4). La
+> position du clip reste musicale, son contenu est du temps réel.
+>
+> **DEUX PIÈGES ATTRAPÉS PAR L'ESSAI, ET AUCUN N'AURAIT FAIT DE BRUIT.**
+> D'abord, le graphe écartait toute piste sans instrument : une piste audio n'en
+> a pas et n'en aura jamais, et elle passait donc en silence. Ensuite, la
+> longueur par défaut d'un clip venait du nombre de trames que le projet
+> **déclare** ; sur un fichier dont l'en-tête avait été mal deviné, une voix de
+> 532 s déclarée à 266 s se coupait au milieu du morceau. Quand la déclaration
+> et le fichier divergent, c'est le fichier qui a raison.
+>
+> **Le préchargement en mémoire est un choix écrit** : 47 Mo sur le disque font
+> 190 Mo décodés en flottants stéréo, ce qui est tenable pour la poignée de
+> pistes que D2 doit débloquer. La diffusion depuis le disque — seule capable de
+> vingt pistes de neuf minutes — est **D8.2**, et elle ne changera que la classe
+> `AudioTrackSource`.
+>
+> **Le rééchantillonnage (D2.3) est une interpolation linéaire**, approximation
+> assumée et documentée : sur le rapport courant 44,1 → 48 kHz, l'erreur reste
+> sous le millième pour tout ce qui vit sous 10 kHz. Un noyau fenêtré fera mieux,
+> et il sera écrit avec l'étirement temporel plutôt qu'emprunté.
+>
+> **Côté chaîne d'analyse**, la voix s'écrit désormais comme piste audio ;
+> `--voix-sampler` rejoue l'ancien détour à l'identique, pour rouvrir un projet
+> ancien. Le format ne passe en version 2 **que si le projet utilise une
+> nouveauté de la version 2** : un projet sans piste audio reste en version 1 et
+> s'ouvre partout.
+>
+> **Restent D2.4 (fondus et gain par clip côté interface — le modèle et le
+> moteur les portent déjà) et D2.5 (la forme d'onde dessinée).**
+
 ### Phase D3 — Enregistrer
 
 Un logiciel qui ne peut rien capter n'est pas un studio, c'est un lecteur.

@@ -26,7 +26,7 @@ appelle :
 
     obtenir_stems          [2/5]  séparation, ou stems repris, ou mélange entier
     charger_classifieur(s)        les modèles appris, vérifiés ou refusés
-    reporter_voix                 le stem vocal, reporté tel quel au sampler
+    reporter_voix                 le stem vocal, reporté tel quel sur une piste audio
     reconstruire_batterie         détection des coups, arbitrage des boîtes, réglage
     reconstruire_stem_melodique   transcription, recherche de patch, arbitrage, réglage
     assembler_pistes       [4/5]  pistes d'export, automation de coupure, niveaux
@@ -63,7 +63,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from analyzer.vsm_automation import try_cutoff_automation  # noqa: E402
 from analyzer.vsm_drumkit import (build_drum_kit, drum_kit_track, drum_machine_track,  # noqa: E402
-                                  modelled_drum_track, vocal_sampler_track)
+                                  modelled_drum_track, vocal_audio_track,
+                                  vocal_sampler_track)
 from analyzer.vsm_engine import VsmEngine, find_vsm_render  # noqa: E402
 from analyzer.vsm_levels import VOLUME_MAX, match_track_levels  # noqa: E402
 from analyzer.vsm_mix_verdict import MixAlternative, keep_what_helps_the_mix  # noqa: E402
@@ -329,6 +330,12 @@ def construire_parseur() -> argparse.ArgumentParser:
     parseur.add_argument("--batterie", action="store_true",
                          help="traiter l'entrée comme un stem de batterie : découpe en coups "
                               "et rejeu par la batterie modélisée, sans recherche de patch")
+    parseur.add_argument("--voix-sampler", action="store_true",
+                         help="reporter la voix par le SAMPLER (une note déclenchant le "
+                              "fichier entier) au lieu d'une piste audio. C'est ce que la "
+                              "chaîne faisait faute de piste audio : sur Sky and Sand, "
+                              "8 min 52 et 47 Mo dans un emplacement de boîte à rythmes. "
+                              "Conservé pour rejouer un projet ancien à l'identique.")
     parseur.add_argument("--batterie-echantillonnee", action="store_true",
                          help="rejouer la batterie par le SAMPLER, avec les coups découpés "
                               "dans l'enregistrement, au lieu de la batterie modélisée. "
@@ -583,8 +590,9 @@ def charger_classifieur_frappes(args: argparse.Namespace, moteur: VsmEngine):
 # patch.
 # ---------------------------------------------------------------------------
 
-def reporter_voix(nom: str, chemin: Path, sortie: Path) -> Optional[Tuple[ExportTrack, np.ndarray]]:
-    """Le stem vocal, REPORTÉ tel quel dans le sampler.
+def reporter_voix(nom: str, chemin: Path, sortie: Path,
+                   par_sampler: bool = False) -> Optional[Tuple[ExportTrack, np.ndarray]]:
+    """Le stem vocal, REPORTÉ tel quel — sur une piste audio.
 
     La voix ne se synthétise pas — le § 6 de la feuille de route le dit depuis
     le début, et chercher un patch dessus produisait un chiffre (obx, d=0,196
@@ -592,12 +600,17 @@ def reporter_voix(nom: str, chemin: Path, sortie: Path) -> Optional[Tuple[Export
     approche le spectre d'une voix qu'il chante. C'est dit pour ce que c'est.
     """
     audio = charger_audio(chemin)
-    piste = vocal_sampler_track(audio, SAMPLE_RATE, sortie / "samples", name="Voix")
+    if par_sampler:
+        piste = vocal_sampler_track(audio, SAMPLE_RATE, sortie / "samples", name="Voix")
+        moyen = "sampler"
+    else:
+        piste = vocal_audio_track(audio, SAMPLE_RATE, sortie / "samples", name="Voix")
+        moyen = "piste audio"
     if piste is None:
         print(f"      {nom:8s} : stem vocal vide, piste ignorée")
         return None
-    duree = piste.notes[0].duration
-    print(f"      {nom:8s} : sampler, report intégral ({duree:.0f} s) "
+    duree = audio.size / SAMPLE_RATE
+    print(f"      {nom:8s} : {moyen}, report intégral ({duree:.0f} s) "
           f"— la voix n'est pas reconstruite, elle est reportée")
     return piste, audio
 
@@ -1014,7 +1027,7 @@ def reconstruire_les_stems(ctx: Contexte, pistes: Dict[str, Path]) -> Chantier:
     chantier = Chantier()
     for nom, chemin in sorted(pistes.items()):
         if nom == "vocals" and not args.sans_sampler:
-            voix = reporter_voix(nom, chemin, ctx.sortie)
+            voix = reporter_voix(nom, chemin, ctx.sortie, par_sampler=ctx.args.voix_sampler)
             if voix is not None:
                 piste, audio = voix
                 chantier.pistes_directes.append(piste)

@@ -1041,6 +1041,48 @@ def modelled_drum_track(kit: DrumKit, name: str = "Batterie") -> ExportTrack:
     )
 
 
+def vocal_audio_track(
+    audio: np.ndarray,
+    sample_rate: int,
+    dossier_samples: Path,
+    name: str = "Voix",
+    relative_prefix: str = "samples",
+) -> Optional[ExportTrack]:
+    """
+    Le stem vocal, posé sur une PISTE AUDIO.
+
+    C'est ce que la voix aurait toujours dû être. Faute d'une piste pour porter
+    un fichier, elle passait par le sampler : une note MIDI unique déclenchant
+    l'enregistrement entier -- sur *Sky and Sand*, 8 min 52 et 47 Mo dans un
+    emplacement de boîte à rythmes. Rien de tout cela n'était un choix de
+    production, et le § 6 de `ROADMAP-fusion.md` disait pourtant depuis le début
+    que la voix resterait de l'audio.
+
+    Aucune compensation de niveau ici, et c'est la différence essentielle avec
+    le report par sampler : une piste audio joue le fichier tel qu'il est. Le
+    sampler, lui, multipliait par la vélocité (100/127) et par le panoramique à
+    puissance constante (0,707), qu'il fallait annuler à la main -- deux
+    corrections justes pour un kit, absurdes pour un report intégral.
+    """
+    if audio.size < sample_rate // 10:
+        return None
+    if float(np.max(np.abs(audio))) < 1e-4:
+        return None
+    dossier_samples.mkdir(parents=True, exist_ok=True)
+    chemin = dossier_samples / "voix.wav"
+    _write_wav(chemin, audio, sample_rate, gain=1.0)
+    return ExportTrack(
+        name=name,
+        machine="",
+        parameters={},
+        notes=[],
+        audio_path=f"{relative_prefix}/voix.wav",
+        audio_sample_rate=float(sample_rate),
+        audio_frames=int(audio.size),
+        audio_channels=1,
+    )
+
+
 def vocal_sampler_track(
     audio: np.ndarray,
     sample_rate: int,
