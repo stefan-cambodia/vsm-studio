@@ -30,7 +30,7 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **760 tests moteur** (84 core + 543 audio
+écoute au clic, et toute la logique testée hors JUCE. Total : **775 tests moteur** (84 core + 558 audio
 + 111 interchange + 11 CLAP + 11 façades,
 tous verts, zéro warning, y compris sous les flags stricts type-JUCE
 `-Wfloat-equal -Wsign-conversion -Wshadow`) + application complète compilée et
@@ -322,12 +322,12 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 760 tests moteur + 18 tests d'analyse, tous verts
+### Bilan actuel : 775 tests moteur + 18 tests d'analyse, tous verts
 
 - **84 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des
   notes douteuses de la transcription),
-  **543 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
+  **558 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
   scalaire, indépendance des lignes, bornes de l'approximation de tanh ; et la
   boucle : rebouclage échantillon-exact, notes relâchées au saut) : chorus BBD, Juno-106,
   bus master (biquad/compresseur/limiteur à plafond garanti/LUFS), oversampler,
@@ -2561,6 +2561,81 @@ aux façades décoratives. Elle montre donc **ce qui se joue** : programme,
 toucher, accord, articulation, sortie — sept commandes, aucune omise. Le reste
 — zones, couches, boucles — appartient au PROFIL, c'est-à-dire à un fichier, pas
 à un bouton.
+
+---
+
+## 36. `vsm.perc` — les peaux et les barres, et pourquoi leurs modes sont irrationnels
+
+**LE TROU ÉTAIT MESURÉ AVANT QU'UNE LIGNE NE SOIT ÉCRITE.** Le § 7 de
+`docs/CDC-machines-manquantes.md` demande de juger une machine sur la COUVERTURE
+qu'elle ajoute, pas sur le catalogue, et interdit d'en construire une sur la foi
+d'un raisonnement. Celle-ci a deux chiffres derrière elle, tous deux tirés de
+morceaux réels :
+
+- sur *Sky and Sand*, la chaîne a imprimé « clap : famille sans voix déclarée
+  dans `vsm.drums`, jouée sur la note 39 (**559 frappes**) ». Le détecteur nomme
+  six familles ; `vsm.drums` n'en joue que cinq, la TR-808 non plus ;
+- au-delà de ces six, les percussions au sens large — congas, bongos, timbales,
+  cloche, claves, blocs de bois, shaker, tambourin — ne sont jouables par
+  **aucune** machine du parc, ni nommables par le détecteur (A2.3 de
+  `ROADMAP-apprentissage.md` : « le modèle ne nomme que ce qu'il a entendu »).
+  Une machine qui les joue est la condition pour que le corpus de frappes
+  puisse un jour les apprendre.
+
+**LE TRAIT DISTINCTIF, ET IL EST PHYSIQUE.** Les trois boîtes du parc
+fabriquent leurs peaux avec un sinus et une enveloppe de hauteur : leur spectre
+est harmonique, ou presque pur. Une membrane circulaire tendue ne l'est pas —
+ses modes sont les zéros de la fonction de Bessel J0, dans les rapports
+**1 ; 1,594 ; 2,136 ; 2,296**. Ces rapports IRRATIONNELS sont exactement ce qui
+fait qu'un tambour rend un *son* et non une *note*. Une barre libre aux deux
+bouts sonne, elle, à **1 ; 2,756 ; 5,404** : c'est le « toc » d'un bloc de bois.
+
+Mesuré sur un conga accordé à 200 Hz, amplitudes rapportées au fondamental :
+
+| fréquence | amplitude |
+|---|---|
+| f0 | 1,000 |
+| **1,593·f0** (2e mode de Bessel) | **0,301** |
+| **2·f0** (l'octave, qu'un oscillateur donnerait) | **0,000** |
+| 2,136·f0 (3e mode de Bessel) | 0,114 |
+
+L'octave est **absente**, et c'est tout le sujet : c'est elle qui trahirait un
+sinus déguisé en tambour. Deux tests la verrouillent
+(`perc_membrane_modes_are_inharmonic`, `perc_bar_modes_are_inharmonic`), et ils
+vérifient les deux moitiés de l'affirmation — le mode inharmonique est présent,
+l'harmonique entière ne l'est pas.
+
+**LE MODÈLE.** Chaque pièce est une somme de MODES, un mode étant un sinus qui
+décroît : c'est la définition de la réponse d'un objet linéaire percuté. La peau
+y ajoute un choc de main très court (6 ms de bruit filtré autour des modes) —
+sans lui, une membrane modale sonne comme une cloche douce, alors que ce qu'on
+reconnaît d'un tambour est d'abord son attaque. Le shaker et le tambourin ne
+sont pas modaux du tout : ce sont des dizaines de chocs minuscules, donc du
+bruit filtré, et prétendre le contraire serait de la décoration ; le tambourin
+s'en distingue par deux modes de cymbalette, et par rien d'autre.
+
+**TREIZE PIÈCES, EN NUMÉROTATION GENERAL MIDI SANS ÉCART** — tambourin 54,
+cloche 56, bongos 60-61, congas 62-64, timbales 65-66, maracas 70, claves 75,
+blocs 76-77. Un fichier MIDI écrit pour un module GM joue donc juste ici sans
+traduction.
+
+**UNE SATURATION EN SORTIE, ET ELLE EST ARGUMENTÉE.** Treize pièces frappées
+ensemble s'additionnent en phase : mesuré, la crête monte à **3,79**. Baisser le
+niveau d'autant rendrait la machine quatre fois plus faible que les autres sur
+une frappe isolée — c'est-à-dire sur le cas normal — pour protéger un cas qui ne
+se produit pas en musique. La sortie passe donc par une tangente hyperbolique,
+ce que fait le bus d'une boîte analogique : linéaire à 1 % près sous 0,2, elle
+ne peut mathématiquement pas dépasser 1. Une frappe seule y perd 6 % (0,439 →
+0,413, contre 0,472 à la TR-808 et 0,688 à la TR-909 : la machine ne gagne ni ne
+perd au volume) ; le pupitre entier y est comprimé au lieu d'écrêter.
+
+**CE QUE CETTE MACHINE N'EST PAS.** Aucune mesure sur un instrument réel n'a
+servi à la régler : statut « dérivé » au sens du § 8 de
+`CDC-nouvelle-machine.md`. Les rapports de modes viennent de la physique, les
+amplitudes et les durées sont choisies à l'oreille du modèle, pas relevées sur
+un conga. Et l'excitation est un instant, pas une main : un conga frappé du plat
+ou du bout des doigts n'excite pas les mêmes modes, mais le MIDI ne transporte
+pas ce geste — la vélocité n'en change que le niveau.
 
 ---
 

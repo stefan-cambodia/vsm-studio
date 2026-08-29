@@ -143,6 +143,32 @@ constexpr Rule kRules[] = {
     {"drum.room.size",                     0.0f,     1.0f, SearchScale::Linear,      0.60f},
     {"drum.ride.decay",                    0.0f,     0.0f, SearchScale::Linear,      0.72f},
     {"drum.ride.level",                    0.0f,     1.0f, SearchScale::Linear,      0.64f},
+    // PERCUSSIONS À PEAUX ET BARRES (vsm.perc). L'ordre suit celui des autres
+    // percussions, avec une exception assumée : sur un conga ou un bongo, la
+    // TENSION de la peau pèse plus que sa durée. Un tambour trop grave ne se
+    // rattrape pas en le raccourcissant, alors qu'un kick de boîte à rythmes,
+    // dont la hauteur est balayée à l'attaque, se reconnaît d'abord à sa
+    // queue. La barre (bois, claves) suit la même règle : sa hauteur EST son
+    // identité, sa durée n'est qu'une nuance de frappe.
+    {"drum.conga.tune",                    0.0f,     0.0f, SearchScale::Linear,      0.76f},
+    {"drum.bongo.tune",                    0.0f,     0.0f, SearchScale::Linear,      0.74f},
+    {"drum.timbale.tune",                  0.0f,     0.0f, SearchScale::Linear,      0.74f},
+    {"drum.woodblock.tune",                0.0f,     0.0f, SearchScale::Linear,      0.72f},
+    {"drum.conga.decay",                   0.0f,     0.0f, SearchScale::Linear,      0.70f},
+    {"drum.bongo.decay",                   0.0f,     0.0f, SearchScale::Linear,      0.68f},
+    {"drum.timbale.decay",                 0.0f,     0.0f, SearchScale::Linear,      0.68f},
+    {"drum.woodblock.decay",               0.0f,     0.0f, SearchScale::Linear,      0.66f},
+    // Le shaker n'a pas de hauteur : ce qui le décrit est la BANDE de son
+    // bruit, et elle joue ici le rôle qu'une coupure joue ailleurs.
+    {"drum.shaker.tone",                   0.0f,     0.0f, SearchScale::Linear,      0.70f},
+    {"drum.shaker.decay",                  0.0f,     0.0f, SearchScale::Linear,      0.64f},
+    {"drum.tambourine.decay",              0.0f,     0.0f, SearchScale::Linear,      0.62f},
+    {"drum.conga.level",                   0.0f,     1.0f, SearchScale::Linear,      0.66f},
+    {"drum.bongo.level",                   0.0f,     1.0f, SearchScale::Linear,      0.64f},
+    {"drum.timbale.level",                 0.0f,     1.0f, SearchScale::Linear,      0.64f},
+    {"drum.woodblock.level",               0.0f,     1.0f, SearchScale::Linear,      0.62f},
+    {"drum.shaker.level",                  0.0f,     1.0f, SearchScale::Linear,      0.60f},
+    {"drum.tambourine.level",              0.0f,     1.0f, SearchScale::Linear,      0.58f},
     // Familles propres à la machine NEUTRE. Elles sont CONTINUES par
     // construction, ce qui les rend particulièrement rentables à chercher :
     // une forme d'onde morphable explore tout le passage sinus-carré sans le

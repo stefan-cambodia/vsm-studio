@@ -31,6 +31,7 @@ add_library(vsm_audio STATIC
     plugins/piano/PianoSynth.cpp
     plugins/drums/DrumsSynth.cpp
     plugins/wind/WindSynth.cpp
+    plugins/perc/PercSynth.cpp
     plugins/multisample/MultisampleSynth.cpp
 )
 
@@ -113,6 +114,7 @@ if (VSM_BUILD_TESTS)
         tests/test_piano_synth.cpp
         tests/test_drums_synth.cpp
         tests/test_wind_synth.cpp
+        tests/test_perc_synth.cpp
         tests/test_multisample_synth.cpp
         tests/test_midi_learn.cpp
         tests/test_effect_routing.cpp

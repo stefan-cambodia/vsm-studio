@@ -499,6 +499,35 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Tom Decay", "drum.tom.decay"},
         {"Accent", "accent.amount"},
     }},
+    // --- vsm.perc ---
+    // MÊME GRAMMAIRE QUE LES BOÎTES À RYTHMES DU PARC : `drum.<pièce>.<réglage>`.
+    // Les pièces sont nouvelles -- aucune autre machine ne déclare de conga ni
+    // de claves -- mais les réglages portent les noms canoniques (`level`,
+    // `tune`, `decay`), pour qu'un outil qui sait accorder un tom sache
+    // accorder un conga sans rien apprendre.
+    {"vsm.perc", {
+        {"Conga Level", "drum.conga.level"},
+        {"Conga Tune", "drum.conga.tune"},
+        {"Conga Decay", "drum.conga.decay"},
+        {"Bongo Level", "drum.bongo.level"},
+        {"Bongo Tune", "drum.bongo.tune"},
+        {"Bongo Decay", "drum.bongo.decay"},
+        {"Timbale Level", "drum.timbale.level"},
+        {"Timbale Tune", "drum.timbale.tune"},
+        {"Timbale Decay", "drum.timbale.decay"},
+        {"Cowbell Level", "drum.cowbell.level"},
+        {"Cowbell Tune", "drum.cowbell.tune"},
+        {"Cowbell Decay", "drum.cowbell.decay"},
+        {"Wood Level", "drum.woodblock.level"},
+        {"Wood Tune", "drum.woodblock.tune"},
+        {"Wood Decay", "drum.woodblock.decay"},
+        {"Shaker Level", "drum.shaker.level"},
+        {"Shaker Tone", "drum.shaker.tone"},
+        {"Shaker Decay", "drum.shaker.decay"},
+        {"Tambourine Level", "drum.tambourine.level"},
+        {"Tambourine Decay", "drum.tambourine.decay"},
+        {"Accent", "accent.amount"},
+    }},
     // --- vsm.dx7 ---
     {"vsm.dx7", {
         {"Algorithm", "fm.algorithm"},
