@@ -398,7 +398,19 @@ void MachinePanelComponent::paint(juce::Graphics& g) {
         g.drawLine(area.getX() + 8.0f, area.getY() + 20.0f, area.getRight() - 8.0f, area.getY() + 20.0f, 0.8f);
     }
 
+    // LE NOM DE LA MACHINE, TENU À L'ÉCART DES FLANCS. Sur un châssis de bois,
+    // les joues latérales sont peintes par-dessus la façade : un nom aligné sur
+    // le bord droit du composant passait DESSOUS et se faisait couper -- vu sur
+    // l'aperçu de `vsm.westcoast`, où « West Coast » se lisait « West Coa ».
+    // La marge tient donc compte de la joue, et l'ellipse est autorisée : un
+    // nom trop long doit se terminer par des points de suspension, pas
+    // disparaître dans le décor.
+    const float cheek = panel_->chassis == Chassis::Wood
+                      ? std::min(26.0f, static_cast<float>(getWidth()) * 0.05f)
+                      : 0.0f;
     g.setColour(textColour.withAlpha(0.55f));
     g.setFont(juce::Font(juce::FontOptions(11.0f)));
-    g.drawText(toJuce(panel_->displayName), getLocalBounds().reduced(16, 6), juce::Justification::bottomRight, false);
+    g.drawText(toJuce(panel_->displayName),
+               getLocalBounds().reduced(16 + static_cast<int>(cheek), 6),
+               juce::Justification::bottomRight, true);
 }

@@ -166,11 +166,47 @@ std::vector<MidiNoteEvent> drumPhrase() {
     };
 }
 
+/// Phrase de PERCUSSIONS, pour les machines dont les pièces vivent dans la
+/// plage General MIDI (54 à 77) et non dans celle d'un kit de batterie (36 à
+/// 49). Sans elle, `vsm.perc` est muette pour les deux autres phrases : ses
+/// congas, bongos et claves ne sont ni des notes de gamme ni des notes de kit.
+std::vector<MidiNoteEvent> percussionPhrase() {
+    return {
+        noteOn(0, 64, 110),      // conga grave
+        noteOn(6000, 63, 100),   // conga aigu
+        noteOn(12000, 60, 100),  // bongo aigu
+        noteOn(18000, 56, 95),   // cloche
+        noteOn(24000, 64, 110),
+        noteOn(30000, 76, 100),  // bloc de bois
+        noteOn(36000, 70, 90),   // maracas
+        noteOn(42000, 54, 105),  // tambourin
+    };
+}
+
 /// Le sampler joue lui aussi la phrase rythmique : ses emplacements sont
 /// mappés par défaut sur les notes de batterie General MIDI, que la phrase
 /// mélodique n'atteindrait jamais.
+/// Les machines qu'on interroge avec une phrase de BATTERIE et non une phrase
+/// mélodique : leurs pièces vivent sur des numéros de note fixes, et leur jouer
+/// une gamme ne déclenche rien.
+///
+/// CETTE LISTE A DÉRIVÉ, et le défaut était muet. Elle ne contenait que la
+/// TR-808, la TR-909 et le sampler ; `vsm.drums` et `vsm.perc` recevaient donc
+/// une phrase mélodique, et n'ont sonné que par chance -- leurs pièces tombent
+/// sur des notes que la gamme traverse. `vsm.fmdrums`, dont les pièces sont
+/// entre 36 et 49, a rendu du SILENCE : son empreinte de référence était une
+/// suite de zéros, c'est-à-dire une empreinte qui ne peut RIEN attraper. D'où
+/// le garde-fou de `checkMachine` : une empreinte muette est désormais une
+/// erreur, pas une référence.
 bool isDrumMachine(const std::string& id) {
-    return id == "vsm.tr808" || id == "vsm.tr909" || id == "vsm.sampler";
+    return id == "vsm.tr808" || id == "vsm.tr909" || id == "vsm.sampler"
+        || id == "vsm.drums" || id == "vsm.fmdrums";
+}
+
+/// `vsm.perc` est la seule dont les pièces sont hors de la plage d'un kit : ses
+/// congas et ses claves suivent la numérotation General MIDI des percussions.
+bool isPercussionMachine(const std::string& id) {
+    return id == "vsm.perc";
 }
 
 float rmsOf(const std::vector<float>& b, size_t from, size_t count) {
@@ -349,7 +385,9 @@ Fingerprint renderFingerprint(const std::string& pluginId) {
     synth->initialize(kSampleRate, kBlockSize);
     prepareMachineForFingerprint(pluginId, *synth);
 
-    const auto events = isDrumMachine(pluginId) ? drumPhrase() : melodicPhrase();
+    const auto events = isPercussionMachine(pluginId) ? percussionPhrase()
+                      : isDrumMachine(pluginId) ? drumPhrase()
+                      : melodicPhrase();
 
     std::vector<float> left(static_cast<size_t>(kTotalSamples), 0.0f);
     std::vector<float> right(static_cast<size_t>(kTotalSamples), 0.0f);
@@ -434,6 +472,16 @@ void checkMachine(const char* pluginId) {
     VSM_ASSERT(PluginRegistry::instance().isRegistered(pluginId));
     const Fingerprint fp = renderFingerprint(pluginId);
 
+    // UNE EMPREINTE MUETTE NE PROTÈGE DE RIEN, et elle passe tous les tests :
+    // deux silences sont toujours égaux. C'est arrivé -- voir `isDrumMachine`.
+    // On refuse donc de l'écrire comme de la comparer, en disant pourquoi.
+    if (fp.peak < 1e-6f)
+        throw vsm::test::AssertionFailure(
+            std::string("empreinte MUETTE pour ") + pluginId +
+            " : la phrase de référence ne déclenche aucune note de cette machine. "
+            "Une empreinte de silence ne peut attraper aucune régression -- "
+            "vérifier `isDrumMachine` et les numéros de note de la machine.");
+
     if (regenMode()) {
         printReferenceLine(pluginId, fp);
         return;
@@ -489,6 +537,8 @@ VSM_TEST(regression_drums)      { checkMachine("vsm.drums"); }
 VSM_TEST(regression_wind)       { checkMachine("vsm.wind"); }
 VSM_TEST(regression_perc)       { checkMachine("vsm.perc"); }
 VSM_TEST(regression_additive)   { checkMachine("vsm.additive"); }
+VSM_TEST(regression_westcoast)  { checkMachine("vsm.westcoast"); }
+VSM_TEST(regression_fmdrums)    { checkMachine("vsm.fmdrums"); }
 
 /// Le rendu doit être reproductible À L'IDENTIQUE d'une instance à l'autre :
 /// c'est la condition pour que l'empreinte ci-dessus ait un sens. Vérifié ici

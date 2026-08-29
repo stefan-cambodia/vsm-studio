@@ -150,6 +150,29 @@ constexpr Rule kRules[] = {
     // dont la hauteur est balayée à l'attaque, se reconnaît d'abord à sa
     // queue. La barre (bois, claves) suit la même règle : sa hauteur EST son
     // identité, sa durée n'est qu'une nuance de frappe.
+    // PERCUSSIONS FM (vsm.fmdrums). Le RAPPORT vient en tête, et devant la
+    // durée : c'est lui qui décide si la pièce est harmonique ou métallique,
+    // c'est-à-dire de quelle FAMILLE de son il s'agit. L'indice suit -- il dose
+    // ce que le rapport a rendu possible. Sur les autres boîtes, l'ordre est
+    // l'inverse (la durée d'abord), parce qu'aucune n'a de rapport à régler.
+    {"drum.kick.fmRatio",                  0.0f,     0.0f, SearchScale::Linear,      0.88f},
+    {"drum.snare.fmRatio",                 0.0f,     0.0f, SearchScale::Linear,      0.84f},
+    {"drum.tom.fmRatio",                   0.0f,     0.0f, SearchScale::Linear,      0.80f},
+    {"drum.cowbell.fmRatio",               0.0f,     0.0f, SearchScale::Linear,      0.76f},
+    {"drum.kick.fmIndex",                  0.0f,     0.0f, SearchScale::Linear,      0.78f},
+    {"drum.snare.fmIndex",                 0.0f,     0.0f, SearchScale::Linear,      0.74f},
+    {"drum.tom.fmIndex",                   0.0f,     0.0f, SearchScale::Linear,      0.72f},
+    {"drum.cowbell.fmIndex",               0.0f,     0.0f, SearchScale::Linear,      0.70f},
+    {"drum.closedHat.tone",                0.0f,     0.0f, SearchScale::Logarithmic, 0.68f},
+    // SYNTHÈSE « CÔTE OUEST » (vsm.westcoast). Le pliage est à cette machine ce
+    // que la coupure est à un soustractif : c'est LUI qui décide combien
+    // d'harmoniques existent, et il vient donc en tête. La symétrie suit de
+    // près -- elle fait apparaître les rangs pairs, c'est-à-dire qu'elle change
+    // la NATURE du spectre et pas seulement sa richesse. La lenteur de la porte
+    // vient loin derrière : elle colore l'extinction, elle ne fait pas le son.
+    {"westcoast.fold",                     0.0f,     1.0f, SearchScale::Linear,      0.98f},
+    {"westcoast.foldSymmetry",             0.0f,     1.0f, SearchScale::Linear,      0.84f},
+    {"westcoast.gateLag",                  0.0f,     0.0f, SearchScale::Logarithmic, 0.56f},
     // SYNTHÈSE ADDITIVE (vsm.additive). L'ordre n'est pas celui d'un
     // soustractif, et pour une raison de fond : il n'y a pas de coupure ici.
     // Ce qui fait le timbre est d'abord la PENTE du spectre -- elle joue le

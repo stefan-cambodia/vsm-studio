@@ -2287,13 +2287,209 @@ MachinePanel makeAdditive() {
     return panel;
 }
 
+// ---------------------------------------------------------------------------
+// West Coast
+//
+// Une façade « côte ouest » ne ressemble à aucune façade Roland ou Moog, et ce
+// n'est pas une affaire de goût : ces machines sont des MODULES, et leur
+// panneau se lit de gauche à droite comme le signal circule -- l'oscillateur,
+// puis le plieur, puis la porte. La disposition suit ce chemin, et le PLIEUR
+// est au milieu, en grand, parce que c'est lui qui fait le son.
+//
+// Bois clair et sérigraphie sobre, comme les panneaux d'origine : ces
+// instruments ont l'air d'appareils de mesure, et c'est délibéré chez eux
+// aussi.
+// ---------------------------------------------------------------------------
+MachinePanel makeWestCoast() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.westcoast";
+    // Nom COURT : l'aperçu a montré que « West Coast (pliage et porte) » se
+    // faisait couper au bord droit du bandeau. Une façade dont le nom déborde
+    // dit d'emblée que personne ne l'a regardée.
+    panel.displayName = "West Coast";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#E4DCCB";
+    panel.sectionColour = "#D6CCB6";
+    panel.textColour = "#2A2620";
+    // Boutons SOMBRES sur façade claire : c'est la règle inverse du reste du
+    // parc, et c'est ce qui fait reconnaître ces machines de loin.
+    panel.knobColour = "#3A342B";
+    // 14 x 5 et non 14 x 4 : à quatre rangées, la façade est si plate (rapport
+    // 3,5) que le bandeau du nom se faisait couper au bord droit de l'aperçu.
+    // Une rangée de plus donne aussi des cases moins écrasées, et c'est visible.
+    panel.gridColumns = 14;
+    panel.gridRows = 5;
+
+    PanelSection osc;
+    osc.title = "COMPLEX OSCILLATOR";
+    osc.accentColour = "#7C6A4A";
+    osc.column = 0; osc.row = 0; osc.columnSpan = 3; osc.rowSpan = 5;
+    // UNE SEULE COLONNE, deux rangées. L'aperçu a montré pourquoi : deux
+    // commandes côte à côte dans un bloc large recevaient chacune une case
+    // énorme, et l'oscillateur -- qui n'est PAS le sujet de cette machine --
+    // écrasait visuellement le plieur, qui l'est.
+    osc.contentColumns = 1;
+    osc.controls = {
+        control("Mod Ratio", "RATIO", S::Knob, 0, 0),
+        control("Mod Depth", "MOD DEPTH", S::Knob, 0, 1),
+    };
+
+    // LE BLOC QUI FAIT LA MACHINE : c'est ici qu'on FABRIQUE des harmoniques,
+    // là où tout le reste du parc en enlève. Il est au centre et en grand.
+    PanelSection folder;
+    folder.title = "TIMBRE / FOLDER";
+    folder.accentColour = "#B4562F";
+    folder.column = 3; folder.row = 0; folder.columnSpan = 5; folder.rowSpan = 5;
+    folder.contentColumns = 2;
+    folder.controls = {
+        // FOLD occupe DEUX rangées : c'est la seule façon de le rendre plus
+        // gros que ses voisins, et il doit l'être -- sur une machine côte
+        // ouest, c'est lui qui décide combien d'harmoniques existent.
+        control("Fold", "FOLD", S::LargeKnob, 0, 0, 1, 2),
+        control("Fold Symmetry", "SYMMETRY", S::Knob, 1, 0),
+        control("Velocity to Fold", "TOUCH", S::Knob, 1, 1),
+    };
+
+    PanelSection gate;
+    gate.title = "LOW PASS GATE";
+    gate.accentColour = "#4A6B57";
+    gate.column = 8; gate.row = 0; gate.columnSpan = 3; gate.rowSpan = 5;
+    gate.controls = {
+        control("Gate Cutoff", "CUTOFF", S::Knob, 0, 0),
+        control("Gate Lag", "VACTROL", S::Knob, 1, 0),
+        control("Output Level", "LEVEL", S::Knob, 0, 1),
+    };
+
+    PanelSection env;
+    env.title = "ENVELOPE";
+    env.accentColour = "#7C6A4A";
+    env.column = 11; env.row = 0; env.columnSpan = 3; env.rowSpan = 5;
+    env.controls = {
+        control("Amp Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
+        control("Amp Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
+        control("Amp Sustain", "S", S::VerticalSlider, 2, 0, 1, 2),
+        control("Amp Release", "R", S::VerticalSlider, 3, 0, 1, 2),
+    };
+
+    panel.omittedParameters = {
+        {"Analog Character", "instabilité d'intonation très lente, commune au parc : "
+                             "elle se règle une fois et ne se joue pas"},
+    };
+    panel.sections = {osc, folder, gate, env};
+    return panel;
+}
+
+// ---------------------------------------------------------------------------
+// FM Drums
+//
+// Une colonne par pièce, comme les boîtes du parc -- mais chaque colonne porte
+// DEUX commandes que les autres n'ont pas : le rapport et l'indice. Elles sont
+// placées EN DESSOUS du couple hauteur/durée, parce que c'est l'ordre dans
+// lequel on règle une percussion FM : d'abord la note et sa longueur, ensuite
+// combien de métal on met dedans.
+//
+// Façade sombre et sérigraphie froide : ces boîtes étaient numériques, et
+// leurs panneaux le disaient.
+// ---------------------------------------------------------------------------
+MachinePanel makeFmDrums() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.fmdrums";
+    panel.displayName = "FM Drums (percussions métalliques)";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#232A31";
+    panel.sectionColour = "#1A2027";
+    panel.textColour = "#DCE6EF";
+    panel.knobColour = "#8FA6BC";
+    panel.gridColumns = 16;
+    panel.gridRows = 5;
+
+    auto piece = [](std::string title, std::string accent, int column, int span,
+                    std::vector<PanelControl> controls) {
+        PanelSection section;
+        section.title = std::move(title);
+        section.accentColour = std::move(accent);
+        section.column = column;
+        section.row = 0;
+        section.columnSpan = span;
+        section.rowSpan = 3;
+        section.controls = std::move(controls);
+        return section;
+    };
+
+    const std::string cyan = "#4FB0C6";
+    const std::string ambre = "#D2A24C";
+    const std::string acier = "#9BA9B8";
+
+    panel.sections = {
+        piece("BASS DRUM", cyan, 0, 4, {
+            control("Kick Level", "LEVEL", S::Knob, 0, 0),
+            control("Kick Tune", "TUNE", S::Knob, 1, 0),
+            control("Kick Decay", "DECAY", S::Knob, 2, 0),
+            control("Kick Ratio", "RATIO", S::Knob, 0, 1),
+            control("Kick Clang", "CLANG", S::LargeKnob, 1, 1),
+        }),
+        piece("SNARE / CLAP", cyan, 4, 4, {
+            control("Snare Level", "LEVEL", S::Knob, 0, 0),
+            control("Snare Tune", "TUNE", S::Knob, 1, 0),
+            control("Snare Decay", "DECAY", S::Knob, 2, 0),
+            control("Snare Ratio", "RATIO", S::Knob, 0, 1),
+            control("Snare Clang", "CLANG", S::Knob, 1, 1),
+            control("Clap Level", "CLAP", S::Knob, 2, 1),
+            control("Clap Decay", "CLAP DEC", S::Knob, 3, 1),
+        }),
+        // LES DIX COMMANDES DE LA CLOCHE ET DU TOM TIENNENT ICI, et pas
+        // ailleurs : l'aperçu a montré « BELL RATIO » et « BELL CLANG » posées
+        // dans le bloc HAT faute de place, ce qui range deux réglages de cloche
+        // sous un intitulé de charleston. Une façade qui ment sur ce qu'elle
+        // groupe est pire qu'une façade serrée.
+        piece("TOM / BELL", ambre, 8, 5, {
+            control("Tom Level", "TOM", S::Knob, 0, 0),
+            control("Tom Tune", "TOM TUNE", S::Knob, 1, 0),
+            control("Tom Decay", "TOM DEC", S::Knob, 2, 0),
+            control("Tom Ratio", "TOM RATIO", S::Knob, 3, 0),
+            control("Tom Clang", "TOM CLANG", S::Knob, 4, 0),
+            control("Bell Level", "BELL", S::Knob, 0, 1),
+            control("Bell Tune", "BELL TUNE", S::Knob, 1, 1),
+            control("Bell Decay", "BELL DEC", S::Knob, 2, 1),
+            control("Bell Ratio", "BELL RATIO", S::Knob, 3, 1),
+            control("Bell Clang", "BELL CLANG", S::Knob, 4, 1),
+        }),
+        piece("HAT", acier, 13, 3, {
+            control("Hat Level", "LEVEL", S::Knob, 0, 0),
+            control("Hat Tone", "TONE", S::Knob, 1, 0),
+            control("Closed Hat Decay", "CH DECAY", S::Knob, 0, 1),
+            control("Open Hat Decay", "OH DECAY", S::Knob, 1, 1),
+        }),
+    };
+
+    PanelSection accent;
+    accent.title = "ACCENT";
+    accent.accentColour = cyan;
+    accent.column = 0; accent.row = 3; accent.columnSpan = 3; accent.rowSpan = 2;
+    accent.contentColumns = 2;
+    accent.controls = { control("Accent", "ACCENT", S::Knob, 0, 0) };
+    panel.sections.push_back(accent);
+
+    panel.sequencer.kind = SequencerKind::DrumGrid;
+    panel.sequencer.title = "RHYTHM PATTERN";
+    panel.sequencer.stepCount = 16;
+    panel.sequencer.rowSpan = 3;
+    panel.sequencer.lanes = {
+        {"BASS DRUM", 36}, {"SNARE", 38}, {"CLAP", 39}, {"TOM", 45},
+        {"CLOSED HAT", 42}, {"OPEN HAT", 46}, {"BELL", 49},
+    };
+    panel.sequencer.stepGroupColours = {"#4FB0C6", "#D2A24C", "#9BA9B8", "#E6EDF3"};
+    panel.gridRows += panel.sequencer.rowSpan;
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
         makeJuno106(), makeJupiter8(), makeProphet(), makeMs20(), makeArpOdyssey(), makeDx7(), makeSampler(),
         makeEPiano(), makeObx(), makeSupersaw(), makeWavetable(), makePcmHybrid(), makeTonewheel(), makeGeneric(), makeString(),
         makePiano(), makeDrums(), makeWind(), makeMultisample(),
-        makePerc(), makeAdditive()
+        makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums()
     };
     return all;
 }

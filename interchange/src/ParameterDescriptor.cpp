@@ -499,6 +499,62 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Tom Decay", "drum.tom.decay"},
         {"Accent", "accent.amount"},
     }},
+    // --- vsm.fmdrums ---
+    // La grammaire des boîtes du parc (`drum.<pièce>.<réglage>`), plus deux
+    // identités neuves par pièce : le RAPPORT et l'INDICE de modulation, que
+    // personne d'autre n'expose sur une percussion. Un outil qui sait accorder
+    // un kick sait accorder celui-ci ; ce qu'il doit apprendre, ce sont les
+    // deux réglages qui font l'inharmonicité.
+    {"vsm.fmdrums", {
+        {"Kick Level", "drum.kick.level"},
+        {"Kick Tune", "drum.kick.tune"},
+        {"Kick Decay", "drum.kick.decay"},
+        {"Kick Ratio", "drum.kick.fmRatio"},
+        {"Kick Clang", "drum.kick.fmIndex"},
+        {"Snare Level", "drum.snare.level"},
+        {"Snare Tune", "drum.snare.tune"},
+        {"Snare Decay", "drum.snare.decay"},
+        {"Snare Ratio", "drum.snare.fmRatio"},
+        {"Snare Clang", "drum.snare.fmIndex"},
+        {"Tom Level", "drum.tom.level"},
+        {"Tom Tune", "drum.tom.tune"},
+        {"Tom Decay", "drum.tom.decay"},
+        {"Tom Ratio", "drum.tom.fmRatio"},
+        {"Tom Clang", "drum.tom.fmIndex"},
+        {"Bell Level", "drum.cowbell.level"},
+        {"Bell Tune", "drum.cowbell.tune"},
+        {"Bell Decay", "drum.cowbell.decay"},
+        {"Bell Ratio", "drum.cowbell.fmRatio"},
+        {"Bell Clang", "drum.cowbell.fmIndex"},
+        {"Hat Level", "drum.closedHat.level"},
+        {"Hat Tone", "drum.closedHat.tone"},
+        {"Closed Hat Decay", "drum.closedHat.decay"},
+        {"Open Hat Decay", "drum.openHat.decay"},
+        {"Clap Level", "drum.clap.level"},
+        {"Clap Decay", "drum.clap.decay"},
+        {"Accent", "accent.amount"},
+    }},
+    // --- vsm.westcoast ---
+    // Une famille d'identités neuve (`westcoast.*`) pour ce que personne
+    // d'autre ne fait -- plier une onde, et une porte qui couple volume et
+    // brillance --, et les identités canoniques pour le reste. `filter.1.cutoff`
+    // désigne bien la coupure de la porte : c'en est une, et un outil qui sait
+    // ouvrir un filtre saura ouvrir celle-ci.
+    {"vsm.westcoast", {
+        {"Fold", "westcoast.fold"},
+        {"Fold Symmetry", "westcoast.foldSymmetry"},
+        {"Mod Ratio", "oscillator.2.ratio"},
+        {"Mod Depth", "lfo.1.toPitch"},
+        {"Gate Cutoff", "filter.1.cutoff"},
+        {"Gate Lag", "westcoast.gateLag"},
+        {"Amp Attack", "envelope.1.attack"},
+        {"Amp Decay", "envelope.1.decay"},
+        {"Amp Sustain", "envelope.1.sustain"},
+        {"Amp Release", "envelope.1.release"},
+        {"Velocity to Fold", "voice.velocitySensitivity"},
+        {"Analog Character", "voice.analogCharacter"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.additive ---
     // UNE FAMILLE D'IDENTITÉS NEUVE (`additive.*`), et c'est justifié : aucune
     // autre machine n'expose un spectre rang par rang, donc aucune identité

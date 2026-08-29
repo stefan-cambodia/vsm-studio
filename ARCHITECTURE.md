@@ -30,7 +30,7 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **789 tests moteur** (84 core + 572 audio
+écoute au clic, et toute la logique testée hors JUCE. Total : **816 tests moteur** (84 core + 599 audio
 + 111 interchange + 11 CLAP + 11 façades,
 tous verts, zéro warning, y compris sous les flags stricts type-JUCE
 `-Wfloat-equal -Wsign-conversion -Wshadow`) + application complète compilée et
@@ -322,12 +322,12 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 789 tests moteur + 18 tests d'analyse, tous verts
+### Bilan actuel : 816 tests moteur + 18 tests d'analyse, tous verts
 
 - **84 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des
   notes douteuses de la transcription),
-  **572 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
+  **599 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
   scalaire, indépendance des lignes, bornes de l'approximation de tanh ; et la
   boucle : rebouclage échantillon-exact, notes relâchées au saut) : chorus BBD, Juno-106,
   bus master (biquad/compresseur/limiteur à plafond garanti/LUFS), oversampler,
@@ -2705,6 +2705,105 @@ raide, à un paramètre, et une cloche demanderait autant de réglages que de ra
 
 ---
 
+## 38. `vsm.westcoast` — ajouter des harmoniques au lieu d'en retirer
+
+**LA MOITIÉ DU MONDE MANQUAIT.** Le parc compte dix soustractifs, plus la table
+d'ondes et l'hybride PCM : douze machines qui partent d'une onde RICHE et lui
+enlèvent ce qu'on ne veut pas, au filtre. C'est l'école de la côte est. L'autre
+école fait l'inverse — partir d'un SINUS, l'onde la plus pauvre qui soit, et lui
+FABRIQUER des harmoniques par pliage — et le § 7 de
+`CDC-machines-manquantes.md` demande précisément d'ajouter des familles, pas des
+noms.
+
+**LE TRAIT DISTINCTIF EST UNE IMPOSSIBILITÉ POUR TOUT LE RESTE DU PARC.** Un
+filtre est une opération LINÉAIRE : il ne crée jamais une fréquence qui n'était
+pas là. Mesuré, à réglages égaux par ailleurs :
+
+| | rang 1 | rang 3 | rang 5 |
+|---|---|---|---|
+| pliage nul | 1,00 | **< 0,01** | **< 0,01** |
+| pliage maximal | 1,00 | **> 0,10** | > 0,02 |
+
+À gauche, un sinus ; à droite, un spectre. Aucun filtre ne fait ce passage, et
+c'est toute la définition de la synthèse par pliage. Un second réglage, la
+SYMÉTRIE, décale le signal avant les replis : un plieur symétrique a une
+fonction de transfert impaire et ne peut donner que des rangs impairs ; décalé,
+les rangs pairs apparaissent. Deux tests verrouillent les deux, chacun sur les
+deux bouts de la course.
+
+**LA PORTE PASSE-BAS, ET C'EST LE SECOND TRAIT.** Sur ces machines il n'y a pas
+un ampli d'un côté et un filtre de l'autre : un seul organe — une
+photorésistance chauffée par une lampe, le « vactrol » — baisse À LA FOIS le
+volume et la brillance, avec la lenteur d'un composant thermique. C'est pour
+cela qu'une note s'y éteint en devenant SOURDE. Une seule enveloppe commande
+donc les deux, lissée par une constante de temps réglable, et le test vérifie
+que le centroïde spectral descend pendant l'extinction — ce qu'un ampli seul ne
+produirait pas.
+
+**LE NIVEAU, CALIBRÉ SUR UNE NORME RELEVÉE.** Un accord de huit notes crête, sur
+les autres polyphoniques : Juno-106 0,944, Prophet 0,766, additif 0,736,
+Jupiter-8 0,567. Cette machine montait à **1,664** — elle aurait écrêté là où
+les autres ont de la marge. Une correction essayée d'abord n'a PAS suffi et
+c'est écrit dans le code : donner à chaque voix une phase de départ différente
+(ce qui est juste — huit oscillateurs libres ne sont jamais en phase) n'a fait
+passer l'accord que de 1,746 à 1,664, cinq pour cent. Sur une seconde, huit
+fréquences finissent par se croiser quel que soit leur point de départ. Le
+facteur de voix est donc calibré à part, ce qui met une note seule à 0,154 —
+exactement le Jupiter-8.
+
+---
+
+## 39. `vsm.fmdrums` — des percussions dont les partiels sont MOBILES
+
+**CE QUE LES QUATRE AUTRES ROUTES NE FONT PAS.** Le parc sait faire une batterie
+de quatre façons : analogique (TR-808, TR-909 : un sinus, une enveloppe de
+hauteur, du bruit — spectre harmonique ou presque pur), acoustique modélisée
+(`vsm.drums`), modale (`vsm.perc` : des partiels inharmoniques, mais FIXES,
+ceux d'une membrane), et le report d'échantillon. Manque ce qui a fait le son
+des boîtes numériques des années 80 : des percussions dont les partiels sont
+inharmoniques **et mobiles**.
+
+**POURQUOI LA FM, ET PAS AUTRE CHOSE.** Ses composantes tombent à
+`|porteuse ± n·modulante|` : un rapport non entier suffit pour que rien ne
+tombe sur la série harmonique, et l'indice étant sous enveloppe, **le spectre
+change pendant la frappe**. Les rapports par défaut sont 1,414 (racine de deux)
+et 1,618 (nombre d'or) — des irrationnels, qui ne peuvent être le rapport
+d'aucun couple d'harmoniques.
+
+Deux tests, pour les deux moitiés de l'affirmation. Le premier mesure la part
+d'énergie qui tombe SUR la série harmonique : elle passe de plus de 0,75 à
+rapport entier (2,0) à nettement moins à rapport irrationnel — c'est le rapport
+qui décide, pas le hasard d'un filtre. Le second vérifie que le métal S'EN VA
+avant la note : l'indice descend trois fois plus vite que l'amplitude, si bien
+que la frappe est métallique à l'attaque et se referme sur son fondamental. Un
+banc de modes fixes ne peut pas faire cela, et c'est ce qui sépare cette machine
+de `vsm.perc`.
+
+**UN CHOIX DE JUSTESSE, ÉCRIT PLUTÔT QUE CACHÉ** : les charlestons ne sont PAS
+en FM mais en bruit filtré. Une charleston FM sonne comme une cloche courte, ce
+qui n'est pas ce qu'on attend de la pièce qui marque le temps.
+
+**ET UN DÉFAUT DU BANC D'EMPREINTES, TROUVÉ PAR CETTE MACHINE.** Le banc joue
+une phrase MÉLODIQUE ou une phrase de BATTERIE selon une liste tenue à la main,
+`isDrumMachine`, qui avait dérivé : elle ne contenait que la TR-808, la TR-909
+et le sampler. `vsm.drums` et `vsm.perc` recevaient donc une gamme et n'ont
+sonné que par chance — leurs pièces tombent sur des notes que la gamme traverse.
+`vsm.fmdrums`, dont les pièces sont entre 36 et 49, a rendu du **silence** : son
+empreinte de référence était une suite de zéros, c'est-à-dire une empreinte
+qu'aucune régression ne peut faire échouer, et elle passait tous les tests
+puisque deux silences sont toujours égaux.
+
+Trois correctifs, et le troisième est le seul qui empêche que ça se reproduise :
+la liste couvre désormais les cinq boîtes de kit ; une **phrase de percussions**
+a été ajoutée pour `vsm.perc`, dont les congas et les claves ne sont ni des
+notes de gamme ni des notes de kit (le garde-fou l'a révélée muette elle aussi,
+juste après) ; et **une empreinte muette est maintenant une ERREUR**, refusée à
+l'écriture comme à la comparaison, avec un message qui dit où chercher. Les
+empreintes de `vsm.drums`, `vsm.perc` et `vsm.fmdrums` ont été régénérées : ce
+qu'elles mesurent a changé, et c'est un changement assumé.
+
+---
+
 ## 29. Façades « façon hardware », machine par machine (sections 6 et 21)
 
 Le panneau générique (un potentiomètre par paramètre) reste le filet de
@@ -2759,6 +2858,16 @@ INTERNE à chaque bloc (les commandes remplissent leur cadre), et un afficheur
 unique en bas de façade, qui ne parle que lorsqu'on règle quelque chose.
 
 Aperçus : [`docs/images/panels/`].
+
+**Un défaut du COMPOSANT trouvé par une nouvelle façade, et il touchait huit
+anciennes.** Sur un châssis de bois, les joues latérales sont peintes par-dessus
+la façade ; le nom de la machine, lui, était aligné sur le bord droit du
+composant — il passait donc DESSOUS et se faisait couper. Visible d'un coup sur
+`vsm.westcoast`, où « West Coast » se lisait « West Coa » ; discret mais présent
+sur les huit autres façades de bois, dont le nom mordait sur la joue. La marge
+tient désormais compte de la joue, et l'ellipse est autorisée : un nom trop long
+doit se terminer par des points de suspension, pas disparaître dans le décor.
+Les huit aperçus concernés ont été régénérés.
 
 **Et il faut vraiment REGARDER, la liste de contrôle le dit.** Sur la façade de
 `vsm.additive`, l'aperçu a montré ce qu'aucun test ne pouvait voir : un

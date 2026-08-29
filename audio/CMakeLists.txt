@@ -33,6 +33,8 @@ add_library(vsm_audio STATIC
     plugins/wind/WindSynth.cpp
     plugins/perc/PercSynth.cpp
     plugins/additive/AdditiveSynth.cpp
+    plugins/westcoast/WestCoastSynth.cpp
+    plugins/fmdrums/FmDrumsSynth.cpp
     plugins/multisample/MultisampleSynth.cpp
 )
 
@@ -117,6 +119,8 @@ if (VSM_BUILD_TESTS)
         tests/test_wind_synth.cpp
         tests/test_perc_synth.cpp
         tests/test_additive_synth.cpp
+        tests/test_westcoast_synth.cpp
+        tests/test_fmdrums_synth.cpp
         tests/test_multisample_synth.cpp
         tests/test_midi_learn.cpp
         tests/test_effect_routing.cpp
