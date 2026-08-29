@@ -3018,65 +3018,62 @@ puces repliaient aussi, et le choix est assumé plutôt que subi.
 
 ---
 
-## 44. La flûte : elle oscille enfin, et elle joue faux — résultat NÉGATIF
+## 44. La flûte : ce que je croyais être une oscillation était du CONTINU
 
-**CE QUI A ÉTÉ TENTÉ, ET POURQUOI CE N'ÉTAIT PAS UNE CINQUIÈME FOIS LA MÊME
-CHOSE.** La dernière ligne sans machine du tableau de couverture réunit trois
-instruments sous un même intitulé — « saxophone, hautbois, flûte » — et cette
-commodité de rédaction cache une différence de nature. Les deux premiers sont
-des ANCHES sur perce conique, et le prototype `vsm.cone` a échoué à les faire
-osciller par quatre routes (§ 33). La flûte n'a pas d'anche : son moteur est un
-JET d'air qui bascule contre un biseau. C'était donc un premier essai sur un
-autre problème, pas un cinquième sur le même.
+**UNE AFFIRMATION DE CETTE MÊME SECTION EST RETIRÉE, ET C'EST LE PLUS UTILE DE
+CE QUI SUIT.** Une première rédaction annonçait ici que le modèle de flûte
+« s'auto-oscille — niveau efficace 0,27 à 0,64, note qui tient, spectre riche »
+et qu'il ne lui manquait que la justesse. **C'était faux**, et c'est une mesure
+ultérieure, plus fine, qui l'a montré. Le paragraphe est corrigé plutôt
+qu'effacé : c'est exactement le défaut que ce document reproche à une session
+antérieure, qui avait écrit du prototype conique qu'il « sonne juste » sans
+jamais l'avoir mesuré.
 
-**LE MODÈLE MARCHE À MOITIÉ, ET LA MOITIÉ QUI MARCHE EST CELLE QUI AVAIT TOUJOURS
-MANQUÉ.** Deux lignes à retard — le tuyau (retard complet, boucle non
-inversante) et le jet (moitié moins) — avec une non-linéarité cubique. Mesuré,
-`audio/plugins/flute/` (hors build) :
+**CE QUI S'EST RÉELLEMENT PASSÉ.** Le modèle jet/tuyau produisait bien un signal
+fort (niveau efficace 0,27) dont l'autocorrélation trouvait une période propre,
+et dont on pouvait même corriger la justesse à quelques cents près. Mais
+l'analyse spectrale a fini par poser la seule bonne question — *où est
+l'énergie ?* — et la réponse était : **à 0 Hz**. La composante dominante était
+une composante CONTINUE. Chaque harmonique pesait 0,00004 quand le niveau global
+valait 0,27 : l'instrument sonnait « fort » sans qu'aucun rang ne soit audible.
 
-- **elle S'AUTO-OSCILLE**, ce que le prototype conique n'a jamais fait : niveau
-  efficace 0,27 à 0,64, note qui TIENT, spectre riche. Le cône, lui, rendait une
-  sinusoïde pure — un résonateur qui sonne, pas un instrument qui joue ;
-- **elle porte ses harmoniques PAIRES** : rang 2 à 0,046 et rang 4 à 0,154 du
-  fondamental, contre 0,001 et 0,004 pour `vsm.wind`, soit 30 à 45 fois plus.
-  C'est exactement la propriété qu'aucune machine du parc n'avait.
+**LA CAUSE EST STRUCTURELLE, ET ELLE EST INSTRUCTIVE.** Une boucle NON
+INVERSANTE fermée sur un passe-bas donne au continu le plus fort gain de tous :
+il s'accumule jusqu'à tout écraser. C'est propre à cette topologie -- la boucle
+inversante de `vsm.wind` ne peut pas avoir ce problème -- et c'est aussi
+physiquement interdit : un tuyau ouvert aux deux bouts a une pression nulle à
+ses extrémités, il ne peut pas porter de continu.
 
-**ET ELLE JOUE FAUX, CE QUI LA DISQUALIFIE.** La fréquence dominante n'est pas
-celle de la note demandée : elle s'accroche à un mode élevé de la boucle dès
-qu'on descend.
+**ET AVEC LE BLOQUEUR DE CONTINU, QUI EST OBLIGATOIRE, IL NE RESTE RIEN.** Le
+niveau efficace tombe de 0,27 à 0,005, et la fréquence produite se fige à
+1 412 Hz quelle que soit la note demandée. Balayé sur quatre gains de boucle
+(0,5 à 2,0) et trois amortissements : **la boucle ne s'entretient à aucun
+réglage**. Sans bruit d'amorçage, elle ne démarre même pas.
 
-| note demandée | attendu | produit | écart |
-|---|---|---|---|
-| 45 | 110 Hz | 1 206 Hz | **+41 demi-tons** |
-| 57 | 220 Hz | 664 Hz | **+19 demi-tons** |
-| 69 | 440 Hz | 428 Hz | −0,5 demi-ton |
+**CE QUE ÇA APPREND, ET QUI VAUT PLUS QUE LA MACHINE.** L'obstacle est donc le
+MÊME que celui du prototype conique — un gain de boucle sous le seuil — atteint
+par une topologie entièrement différente. Quatre routes à anche, puis une route
+à jet : le problème n'est pas la forme de la perce ni la nature de l'excitateur,
+c'est la formulation du COUPLAGE entre l'excitateur et la colonne d'air. La
+prochaine tentative devra commencer par là, et non par une cinquième topologie.
 
-Un instrument qui ne joue pas la note qu'on lui donne n'est pas livrable, quelle
-que soit la qualité de son timbre. La machine est donc SORTIE du build, comme le
-prototype conique, et le parc reste à 34 machines.
+**DEUX DÉFAUTS RÉELS CORRIGÉS EN CHEMIN, ET ILS RESTENT DANS LE SOURCE.** La
+table du jet bornait son entrée à ±1 avant d'appliquer `x - x³`, or ce polynôme
+S'ANNULE en ±1 : soufflée à fond, la machine ne rendait plus rien. Et le filtre
+de boucle avait une coupure fixe, ce qui laissait la boucle choisir son mode
+toute seule -- avec une coupure proportionnelle à `f0`, elle ne partait plus
++41 demi-tons au-dessus de la note. Les deux corrections sont justes ; elles ne
+suffisent simplement pas.
 
-**UN DÉFAUT RÉEL CORRIGÉ EN CHEMIN, ET IL VAUT D'ÊTRE LU.** La première table du
-jet bornait son ENTRÉE à ±1 avant d'appliquer `x - x³`. Or ce polynôme
-S'ANNULE en ±1 : soufflée à fond, la flûte ne rendait plus RIEN — mesuré, sortie
-nulle à pression 1,0, à toutes les hauteurs. Aucune flûte ne fait ça ; soufflée
-trop fort elle crie ou passe à l'octave, elle ne s'éteint pas. La correction est
-aussi la bonne physique : au-delà du sommet du polynôme, le débit du jet SATURE
-au lieu de redescendre.
+**LA MACHINE EST HORS BUILD**, comme le prototype conique, et le parc reste à
+34 machines. Le source vit dans `audio/plugins/flute/` avec toutes ces mesures.
 
-**CE QUI RESTE À FAIRE, ET IL EST PRÉCIS.** Le problème n'est plus
-l'auto-oscillation — elle est acquise — mais la SÉLECTION DE MODE : la boucle
-choisit son propre régime au lieu de celui qu'on lui demande. Ce qui manque est
-un mécanisme qui privilégie le premier mode dans le grave, c'est-à-dire ce
-qu'une vraie flûte obtient par la géométrie de sa fenêtre et l'angle du jet. Ce
-paragraphe est celui qu'il faudra venir corriger le jour où ce sera résolu, avec
-le chiffre qui l'aura montré.
-
-**LA LEÇON, ET ELLE VAUT PLUS QUE LA MACHINE.** Une session précédente avait
-écrit dans la feuille de route qu'un prototype conique « sonne juste, tient son
-niveau et porte la série harmonique complète » — trois affirmations, aucune
-mesure, toutes fausses. Le réflexe correct est celui-ci : mesurer AVANT
-d'annoncer, et publier le résultat négatif avec ses chiffres plutôt que de
-livrer une machine qui a l'air de marcher.
+**LA LEÇON DE MÉTHODE, ET ELLE EST POUR MOI.** « Ça sonne fort » n'est pas
+« ça oscille ». Un niveau efficace ne dit rien de la nature de ce qu'on entend,
+et une autocorrélation trouve une période même dans un signal qui n'en a pas de
+musicale. La question qui tranche est toujours la même : **où est l'énergie,
+rang par rang ?** Elle aurait coûté une mesure de plus, et elle a été posée
+trois itérations trop tard.
 
 ---
 

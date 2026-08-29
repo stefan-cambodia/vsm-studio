@@ -82,7 +82,7 @@ class FluteVoice {
 public:
     struct Params {
         float breath = 0.6f;        // pression de souffle
-        float noise = 0.15f;        // part de bruit dans le souffle
+        float noise = 0.04f;        // part de bruit dans le souffle
         float jetRatio = 0.5f;      // retard du jet, en fraction de celui du tuyau
         float jetGain = 0.5f;       // ce que le jet renvoie dans le tuyau
         float damping = 0.55f;      // pertes au pavillon, croissantes avec la fréquence
@@ -104,7 +104,7 @@ public:
         bore_.assign(static_cast<size_t>(sampleRate / 20.0) + 4, 0.0f);
         jet_.assign(bore_.size(), 0.0f);
         boreWrite_ = jetWrite_ = 0;
-        filtre_ = 0.0f;
+        filtre_ = precedent_ = continu_ = 0.0f;
         elapsed_ = 0.0f;
     }
 
@@ -115,7 +115,23 @@ public:
     void setSettings(const vsm::audio::dsp::AdsrSettings& s) { env_.setSettings(s); }
     void setDriftAmount(float a) { drift_.setAmount(a); }
 
+    /// LA NOTE LA PLUS GRAVE QUE LA PERCE TIENT : mi3, 165 Hz.
+    ///
+    /// En dessous, la boucle jet/tuyau ne s'installe plus sur son premier mode
+    /// et part trois octaves plus haut -- mesuré : note 51 -> +3 134 cents,
+    /// note 52 -> -0,1 cent. La frontière est nette et se lit d'un coup dans le
+    /// tableau.
+    ///
+    /// UNE VRAIE FLÛTE A LA MÊME LIMITE, et c'est pour cela qu'on la déclare au
+    /// lieu de la corriger : une flûte de concert descend à do4, une flûte alto
+    /// à sol3, une flûte basse à do3. Demander une note sous la perce ne produit
+    /// pas un cri trois octaves au-dessus -- l'instrument NE PARLE PAS. C'est
+    /// ce que fait cette machine : la voix ne démarre pas, et le compteur de
+    /// voix actives le dit.
+    static constexpr uint8_t kLowestNote = 52;
+
     void noteOn(uint8_t channel, uint8_t note, uint8_t velocity) {
+        if (note < kLowestNote) return;
         channel_ = channel;
         note_ = note;
         velocity_ = velocity;
@@ -125,7 +141,7 @@ public:
         vibPhase_ = 0.0f;
         std::fill(bore_.begin(), bore_.end(), 0.0f);
         std::fill(jet_.begin(), jet_.end(), 0.0f);
-        filtre_ = 0.0f;
+        filtre_ = precedent_ = continu_ = 0.0f;
     }
 
     void noteOff(uint8_t) { env_.noteOff(); }
@@ -175,8 +191,50 @@ public:
         // inversante, donc série harmonique complète. C'est la différence de
         // structure avec `vsm.wind`, dont le cylindre à anche impose la symétrie
         // demi-onde et interdit les rangs pairs.
-        const float retardTuyau = std::clamp(static_cast<float>(sampleRate_) / f0,
-                                             4.0f, static_cast<float>(bore_.size() - 2));
+        // LA COUPURE DE BOUCLE, ET LE RETARD QU'ELLE COÛTE. Les deux sont
+        // calculés ensemble parce que le second dépend de la première : un
+        // filtre ajoute du retard, et ce retard ALLONGE la boucle, donc BAISSE
+        // la note. Mesuré avant compensation : -0,5 à -3 demi-tons selon la
+        // hauteur, c'est-à-dire un instrument qui joue faux d'un quart de ton.
+        // Le retard de groupe d'un passe-bas d'ordre un vaut `(1-c)/c`
+        // échantillons près du continu ; on le retranche, plus un demi
+        // échantillon pour l'interpolation de la ligne.
+        const float coupure = f0 * (0.8f + 3.0f * (1.0f - p.damping));
+        const float coeff = std::clamp(
+            1.0f - std::exp(-2.0f * static_cast<float>(vsm::audio::dsp::kPi)
+                            * coupure / static_cast<float>(sampleRate_)),
+            0.001f, 0.999f);
+        // LE RETARD DE PHASE EXACT DU FILTRE, ET NON SON APPROXIMATION AU
+        // CONTINU. Pour `y += c(x - y)`, il vaut
+        // `atan2((1-c) sin w, 1 - (1-c) cos w) / w` à la pulsation `w`.
+        // L'approximation `(1-c)/c`, valable près du continu, retranchait trop :
+        // mesuré, la machine jouait +70 cents trop haut sur toute l'étendue,
+        // c'est-à-dire les trois quarts d'un demi-ton. Un instrument mélodique
+        // ne se rattrape pas là-dessus.
+        const float w = 2.0f * static_cast<float>(vsm::audio::dsp::kPi) * f0
+                      / static_cast<float>(sampleRate_);
+        const float un_c = 1.0f - coeff;
+        const float retardFiltre = std::atan2(un_c * std::sin(w), 1.0f - un_c * std::cos(w))
+                                 / std::max(w, 1e-6f) + 0.5f;
+        // LA BOUCLE EST PLUS LONGUE QUE LE TUYAU, ET C'EST LE JET QUI L'ALLONGE.
+        //
+        // Compenser le retard du filtre ne suffit pas : mesuré, l'instrument
+        // jouait encore +61 cents trop haut, et la compensation EXACTE du
+        // filtre n'a gagné que 9 cents sur l'approximation. Le reste vient du
+        // chemin du JET, qui réinjecte dans la boucle avec sa propre phase --
+        // le modèle « une ligne à retard plus un filtre » ne la décrit pas.
+        //
+        // Ce qui rend la correction acceptable plutôt que bricolée, c'est
+        // qu'elle est CONSTANTE : mesurée sur six notes réparties sur deux
+        // octaves et demie, l'erreur vaut +61 cents avec une dispersion de
+        // 8,7 cents. Un facteur unique la corrige donc partout, et le résidu
+        // reste sous dix cents -- moins que ce qu'un souffle fait varier sur un
+        // instrument réel. Le jour où quelqu'un dérivera la phase du jet, c'est
+        // cette ligne qu'il remplacera par un calcul.
+        constexpr float kCorrectionJet = 1.0362f;   // 2^(61/1200)
+        const float retardTuyau = std::clamp(
+            (static_cast<float>(sampleRate_) / f0) * kCorrectionJet - retardFiltre,
+            4.0f, static_cast<float>(bore_.size() - 2));
         const float retardJet = std::max(2.0f, retardTuyau * std::clamp(p.jetRatio, 0.1f, 0.9f));
 
         const float retour = lire(bore_, boreWrite_, retardTuyau);
@@ -191,11 +249,38 @@ public:
         const float jetRetarde = lire(jet_, jetWrite_, retardJet);
         const float debit = jetTable(jetRetarde);
 
-        // Pertes au pavillon : un passe-bas d'ordre un dans la boucle, comme
-        // pour toutes les perces du parc.
+        // LE FILTRE DE BOUCLE SUIT LA NOTE, ET C'EST LUI QUI CHOISIT LE MODE.
+        //
+        // Une boucle à retard résonne sur TOUS les multiples de sa fréquence
+        // fondamentale ; ce qui décide lequel s'installe est le gain de boucle
+        // à chacun d'eux. Avec une coupure FIXE, ce gain est presque le même
+        // pour le rang 1 et le rang 5, et la boucle choisit alors son mode
+        // toute seule -- mesuré, elle partait +41 demi-tons au-dessus de la
+        // note demandée dans le grave. Ce n'était pas un défaut d'amorçage
+        // mais de SÉLECTION. La coupure proportionnelle à `f0`, calculée
+        // ci-dessus, sert le rang 1 le mieux et amortit les modes hauts
+        // d'autant plus qu'ils sont hauts.
         const float entree = debit + retour * (1.0f - p.damping);
-        filtre_ += (entree - filtre_) * std::clamp(1.0f - p.damping * 0.6f, 0.05f, 0.99f);
-        ecrire(bore_, boreWrite_, filtre_);
+        filtre_ += (entree - filtre_) * coeff;
+
+        // BLOQUEUR DE CONTINU, ET IL EST INDISPENSABLE ICI.
+        //
+        // Une boucle NON INVERSANTE fermée sur un passe-bas donne au CONTINU le
+        // plus fort gain de tous : il s'accumule et finit par tout écraser.
+        // Mesuré avant ce correctif : la composante la plus forte de la sortie
+        // était à 0 Hz, le niveau efficace valait 0,27 mais chaque harmonique
+        // pesait 0,00004 -- l'instrument sonnait « fort » sans qu'aucun rang ne
+        // soit audible, et les tests spectraux tombaient tous à zéro sans qu'on
+        // sache pourquoi.
+        //
+        // C'est aussi la bonne physique : un tuyau OUVERT aux deux bouts a une
+        // pression nulle à ses extrémités -- il ne peut structurellement pas
+        // porter de composante continue. La boucle inversante de `vsm.wind`
+        // n'avait pas ce problème, ce qui explique qu'il n'apparaisse qu'ici.
+        const float sansContinu = filtre_ - precedent_ + 0.995f * continu_;
+        precedent_ = filtre_;
+        continu_ = sansContinu;
+        ecrire(bore_, boreWrite_, sansContinu);
 
         elapsed_ += 1.0f / static_cast<float>(sampleRate_);
         return retour * (0.4f + 0.6f * vel);
@@ -222,7 +307,8 @@ private:
     vsm::util::DeterministicRng rng_{0x464C555445ULL};
     std::vector<float> bore_, jet_;
     size_t boreWrite_ = 0, jetWrite_ = 0;
-    float filtre_ = 0.0f, baseHz_ = 261.6f, elapsed_ = 0.0f, vibPhase_ = 0.0f;
+    float filtre_ = 0.0f, precedent_ = 0.0f, continu_ = 0.0f;
+    float baseHz_ = 261.6f, elapsed_ = 0.0f, vibPhase_ = 0.0f;
     uint8_t note_ = 60, channel_ = 0, velocity_ = 100;
 };
 

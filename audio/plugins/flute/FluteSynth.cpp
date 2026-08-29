@@ -15,7 +15,7 @@ constexpr uint64_t kBaseSeed = 0x464C555445ULL; // "FLUTE"
 FluteSynth::FluteSynth() {
     parameterList_ = {
         {kBreath, "Breath Pressure", 0.0f, 1.0f, 0.6f, ""},
-        {kNoise, "Breath Noise", 0.0f, 1.0f, 0.15f, ""},
+        {kNoise, "Breath Noise", 0.0f, 1.0f, 0.04f, ""},
         {kJetRatio, "Jet Delay", 0.1f, 0.9f, 0.5f, ""},
         {kJetGain, "Jet Feedback", 0.0f, 2.0f, 0.5f, ""},
         {kDamping, "Bell Damping", 0.02f, 0.8f, 0.55f, ""},
