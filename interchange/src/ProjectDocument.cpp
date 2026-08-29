@@ -218,8 +218,15 @@ ProjectDocument documentFromProject(const Project& project) {
             described.name = take.name;
             described.startTick = take.startTick;
             described.endTick = take.endTick;
-            described.audio = {take.audio.path, take.audio.sampleRate,
-                                take.audio.frames, take.audio.channels};
+            // Champ par champ plutôt qu'un temporaire entre accolades : le
+            // compilateur ne voyait pas que la chaîne du temporaire était
+            // initialisée et prévenait d'une lecture douteuse. Une construction
+            // agrégée qui inquiète le compilateur n'est pas plus lisible qu'une
+            // affectation qui ne l'inquiète pas.
+            described.audio.path = take.audio.path;
+            described.audio.sampleRate = take.audio.sampleRate;
+            described.audio.frames = take.audio.frames;
+            described.audio.channels = take.audio.channels;
             for (const auto& clip : take.clips)
                 described.clips.push_back({clip.sourceStart, clip.sourceLength, clip.startTick,
                                             clip.length, clip.muted, clip.name, clip.colorRgba,
@@ -327,8 +334,10 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
             restauree.name = take.name;
             restauree.startTick = take.startTick;
             restauree.endTick = take.endTick;
-            restauree.audio = {take.audio.path, take.audio.sampleRate,
-                                take.audio.frames, take.audio.channels};
+            restauree.audio.path = take.audio.path;
+            restauree.audio.sampleRate = take.audio.sampleRate;
+            restauree.audio.frames = take.audio.frames;
+            restauree.audio.channels = take.audio.channels;
             for (const auto& clip : take.clips)
                 restauree.clips.push_back({clip.sourceStart, clip.sourceLength, clip.startTick,
                                             clip.length, clip.muted, clip.name, clip.colorRgba,

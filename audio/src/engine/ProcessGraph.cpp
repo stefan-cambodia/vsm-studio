@@ -71,7 +71,8 @@ void ProcessGraph::setProject(const Project& project) {
     preFaderMask_.store(masque, std::memory_order_release);
     activeSends_.store(std::min(declares, kMaxSends), std::memory_order_release);
     snapshot_.store(snapshot, std::memory_order_release);
-    refreshRenderOrder();   // les niveaux d'envoi ont pu changer
+    refreshRenderOrder();    // les niveaux d'envoi ont pu changer
+    refreshCompensation();   // le routage vers les groupes aussi
 }
 
 void ProcessGraph::setTrackInstrument(size_t trackIndex, const std::string& pluginId) {
@@ -85,6 +86,7 @@ void ProcessGraph::setTrackInstrument(size_t trackIndex, const std::string& plug
     auto plugin = PluginRegistry::instance().create(pluginId);
     if (plugin) plugin->initialize(sampleRate_, maxBlockSize_);
     instruments_[trackIndex].store(std::move(plugin), std::memory_order_release);
+    refreshCompensation();   // une machine peut déclarer une latence
 }
 
 void ProcessGraph::setTrackInstrumentInstance(size_t trackIndex, vsm::audio::plugin::SynthPluginPtr instrument,
@@ -142,9 +144,87 @@ void ProcessGraph::setTrackAudio(size_t trackIndex, std::shared_ptr<const AudioT
 void ProcessGraph::setTrackEffectChain(size_t trackIndex, std::shared_ptr<const EffectChain> chain) {
     if (trackIndex >= kMaxTracks) return;
     effectChains_[trackIndex].store(std::move(chain), std::memory_order_release);
-    // Une chaîne peut contenir un effet qui ÉCOUTE un bus : l'ordre de rendu
-    // en dépend.
+    // Une chaîne peut contenir un effet qui ÉCOUTE un bus (l'ordre de rendu en
+    // dépend) et un effet qui RETARDE (la compensation en dépend).
     refreshRenderOrder();
+    refreshCompensation();
+}
+
+void ProcessGraph::refreshCompensation() {
+    auto snapshot = snapshot_.load(std::memory_order_acquire);
+    if (!snapshot) { compensation_.store(nullptr, std::memory_order_release); return; }
+    const auto& project = snapshot->project;
+
+    // La latence PROPRE de chaque piste : son instrument, plus ses inserts.
+    std::array<int, kMaxTracks> propre{};
+    for (size_t t = 0; t < kMaxTracks; ++t) {
+        int total = 0;
+        if (auto instrument = instruments_[t].load(std::memory_order_acquire))
+            total += std::max(0, instrument->latencySamples());
+        if (auto chain = effectChains_[t].load(std::memory_order_acquire))
+            for (const auto& fx : *chain)
+                if (fx) total += std::max(0, fx->latencySamples());
+        propre[t] = total;
+    }
+
+    // La latence d'un CHEMIN : celle de la piste, plus celle du groupe qui la
+    // reçoit. Une piste groupée traverse deux chaînes avant le master, et ne
+    // compter que la sienne la laisserait décalée du retard de son groupe.
+    std::array<int, kMaxTracks> chemin{};
+    int maximum = 0;
+    for (size_t t = 0; t < project.tracks.size() && t < kMaxTracks; ++t) {
+        int total = propre[t];
+        const auto& piste = project.tracks[t];
+        if (piste.kind != vsm::sequencer::Track::Kind::Group && piste.outputGroup >= 0) {
+            const size_t g = static_cast<size_t>(piste.outputGroup);
+            if (g < project.tracks.size() && g < kMaxTracks
+                && project.tracks[g].kind == vsm::sequencer::Track::Kind::Group)
+                total += propre[g];
+        }
+        chemin[t] = total;
+        maximum = std::max(maximum, total);
+    }
+
+    // RIEN N'A DE LATENCE : aucun plan publié, et le rendu emprunte exactement
+    // le chemin qu'il avait -- pas une ligne à retard de longueur zéro à
+    // traverser pour rien.
+    if (maximum <= 0) { compensation_.store(nullptr, std::memory_order_release); return; }
+
+    auto plan = std::make_shared<Compensation>();
+    plan->graphLatency = maximum;
+    for (size_t t = 0; t < project.tracks.size() && t < kMaxTracks; ++t) {
+        // UNE PISTE DE GROUPE NE SE COMPENSE PAS ELLE-MÊME : ses membres sont
+        // déjà arrivés alignés, et sa propre chaîne retarde tout le monde de la
+        // même façon -- c'est pris en compte dans le chemin de ses membres.
+        if (project.tracks[t].kind == vsm::sequencer::Track::Kind::Group) continue;
+        const int retard = maximum - chemin[t];
+        if (retard <= 0) continue;
+        plan->delay[t] = retard;
+        plan->lineL[t].assign(static_cast<size_t>(retard), 0.0f);
+        plan->lineR[t].assign(static_cast<size_t>(retard), 0.0f);
+        plan->writePos[t] = 0;
+    }
+    compensation_.store(std::move(plan), std::memory_order_release);
+}
+
+void ProcessGraph::applyCompensation(Compensation& plan, size_t trackIndex,
+                                      float* left, float* right, int numSamples) {
+    const int retard = plan.delay[trackIndex];
+    if (retard <= 0) return;
+    auto& ligneL = plan.lineL[trackIndex];
+    auto& ligneR = plan.lineR[trackIndex];
+    if (ligneL.size() != static_cast<size_t>(retard)) return;   // plan incohérent : on ne touche à rien
+    int pos = plan.writePos[trackIndex];
+    for (int i = 0; i < numSamples; ++i) {
+        const float sortieL = ligneL[static_cast<size_t>(pos)];
+        const float sortieR = ligneR[static_cast<size_t>(pos)];
+        ligneL[static_cast<size_t>(pos)] = left[i];
+        ligneR[static_cast<size_t>(pos)] = right[i];
+        left[i] = sortieL;
+        right[i] = sortieR;
+        if (++pos >= retard) pos = 0;
+    }
+    plan.writePos[trackIndex] = pos;
 }
 
 void ProcessGraph::refreshRenderOrder() {
@@ -577,6 +657,7 @@ void ProcessGraph::renderTrackRange(const GraphSnapshot& snapshot, bool anySolo,
     // `refreshRenderOrder`). Une piste écoutée doit avoir versé dans son bus
     // avant que le compresseur qui l'écoute ne travaille.
     auto ordre = renderOrder_.load(std::memory_order_acquire);
+    auto compensation = compensation_.load(std::memory_order_acquire);
     const size_t combien = ordre ? ordre->size()
                                  : std::min(project.tracks.size(), kMaxTracks);
     for (size_t rang = 0; rang < combien; ++rang) {
@@ -762,6 +843,13 @@ void ProcessGraph::renderTrackRange(const GraphSnapshot& snapshot, bool anySolo,
                 fx->process(scratchStereoL_.data(), scratchStereoR_.data(), sampleCount);
             }
         }
+
+        // COMPENSATION DE LATENCE (D4.5), APRÈS la chaîne et AVANT le mixage :
+        // ce qu'on aligne est ce qui part vers le master et vers les départs,
+        // pas ce qui entre dans les effets.
+        if (compensation) applyCompensation(*compensation, trackIndex,
+                                             scratchStereoL_.data(), scratchStereoR_.data(),
+                                             sampleCount);
 
         // MIXAGE VERS SA DESTINATION : le master, ou le tampon d'un groupe. Le
         // groupe sera traité en fin de bloc, quand tous ses membres y auront

@@ -95,6 +95,10 @@ public:
     const vsm::audio::plugin::ParameterList& parameterList() const override { return parameterList_; }
     const char* effectName() const override { return "Distortion"; }
 
+    /// Il SURÉCHANTILLONNE (facteur 4), donc il retarde : seize échantillons,
+    /// que le graphe compense désormais (D4.5). Voir `Oversampler`.
+    int latencySamples() const override { return osL_.latencySamples(); }
+
 private:
     double sampleRate_ = 48000.0;
     int maxBlock_ = 1;

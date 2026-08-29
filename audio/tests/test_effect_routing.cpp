@@ -2,6 +2,7 @@
 #include "vsm/audio/plugin/BuiltInPlugins.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include "vsm/audio/effect/ChannelStrip.h"
+#include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/audio/effect/IAudioEffect.h"
 #include "vsm/audio/engine/OfflineRenderer.h"
 #include "vsm/audio/engine/ProcessGraph.h"
@@ -10,6 +11,7 @@
 #include <cmath>
 #include <cstdio>
 #include <memory>
+#include <vector>
 
 using namespace vsm::audio::engine;
 
@@ -687,4 +689,184 @@ VSM_TEST(without_a_sidechain_the_render_order_is_left_alone) {
     VSM_ASSERT_EQ(a.left.size(), b.left.size());
     for (size_t i = 0; i < a.left.size(); ++i)
         VSM_ASSERT_NEAR(a.left[i], b.left[i], 0.0f);   // au bit près
+}
+
+// --- D4.5 : compensation de latence (PDC) ----------------------------------
+
+namespace {
+/// Un effet qui RETARDE d'un nombre d'échantillons connu, et le déclare. Le
+/// pendant exact de ce que fait un suréchantillonneur, en tenant dans dix
+/// lignes : on éprouve la compensation, pas le filtre.
+class LatencyEffect : public vsm::audio::effect::IAudioEffect {
+public:
+    // Les lignes sont dimensionnées DÈS LA CONSTRUCTION, et pas seulement dans
+    // `prepare` : le graphe exige qu'un effet soit préparé avant d'être publié,
+    // mais un test qui l'oublie doit échouer sur une assertion, pas sur un
+    // segment de mémoire -- ce qui est arrivé en écrivant ces tests.
+    explicit LatencyEffect(int retard) : retard_(retard) { reset(); }
+    void prepare(double, int) override { reset(); }
+    void reset() override {
+        ligneL_.assign(static_cast<size_t>(std::max(1, retard_)), 0.0f);
+        ligneR_ = ligneL_;
+        pos_ = 0;
+    }
+    void process(float* l, float* r, int n) override {
+        if (retard_ <= 0) return;
+        for (int i = 0; i < n; ++i) {
+            const float sl = ligneL_[static_cast<size_t>(pos_)];
+            const float sr = ligneR_[static_cast<size_t>(pos_)];
+            ligneL_[static_cast<size_t>(pos_)] = l[i];
+            ligneR_[static_cast<size_t>(pos_)] = r[i];
+            l[i] = sl;
+            r[i] = sr;
+            if (++pos_ >= retard_) pos_ = 0;
+        }
+    }
+    void setParameter(vsm::audio::plugin::ParamId, float) override {}
+    float getParameter(vsm::audio::plugin::ParamId) const override { return 0.0f; }
+    const vsm::audio::plugin::ParameterList& parameterList() const override { return vide_; }
+    const char* effectName() const override { return "Latency"; }
+    int latencySamples() const override { return retard_; }
+
+private:
+    int retard_;
+    std::vector<float> ligneL_, ligneR_;
+    int pos_ = 0;
+    vsm::audio::plugin::ParameterList vide_;
+};
+
+/// Deux pistes qui jouent la MÊME note au même instant. Si elles restent
+/// alignées, leur somme est exactement le double d'une seule ; si l'une glisse,
+/// la somme n'est plus le double -- et c'est ce décalage qu'on mesure.
+vsm::sequencer::Project twinProject() {
+    vsm::sequencer::Project projet;
+    projet.ticksPerQuarterNote = 480;
+    uint64_t ids = 1;
+    for (int i = 0; i < 2; ++i) {
+        vsm::sequencer::Track t;
+        t.addNote(0, 960, 60, 100, 0, ids);
+        projet.tracks.push_back(t);
+    }
+    return projet;
+}
+} // namespace
+
+VSM_TEST(an_effect_with_latency_shifts_its_track_and_the_graph_says_so) {
+    // D'ABORD LE DÉFAUT, pour être sûr qu'on mesure quelque chose : sans plan
+    // de compensation, la piste retardée n'est plus en place.
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setTrackInstrument(0, "vsm.minimoog");
+    graph.setTrackInstrument(1, "vsm.minimoog");
+    graph.setProject(twinProject());
+    VSM_ASSERT_EQ(graph.graphLatencySamples(), 0);
+
+    auto chain = std::make_shared<ProcessGraph::EffectChain>();
+    auto retard = std::make_shared<LatencyEffect>(64);
+    retard->prepare(8000.0, 256);
+    chain->push_back(retard);
+    graph.setTrackEffectChain(0, chain);
+    // Le graphe DÉCLARE la latence de son chemin le plus long.
+    VSM_ASSERT_EQ(graph.graphLatencySamples(), 64);
+}
+
+VSM_TEST(the_graph_realigns_the_tracks_that_have_no_latency) {
+    // LE CRITÈRE DE L'ÉTAPE : insérer un effet à latence connue ne décale plus
+    // la piste. On le vérifie en comparant à un rendu où les DEUX pistes
+    // portent le même effet -- elles sont alors forcément alignées entre elles,
+    // et c'est la référence.
+    auto rendre = [](bool surLesDeux) {
+        ProcessGraph graph;
+        graph.prepare(8000.0, 256);
+        graph.setTrackInstrument(0, "vsm.minimoog");
+        graph.setTrackInstrument(1, "vsm.minimoog");
+        graph.setProject(twinProject());
+        auto faireRetard = [] {
+            auto fx = std::make_shared<LatencyEffect>(64);
+            fx->prepare(8000.0, 256);   // le graphe exige un effet préparé
+            return fx;
+        };
+        auto a = std::make_shared<ProcessGraph::EffectChain>();
+        a->push_back(faireRetard());
+        graph.setTrackEffectChain(0, a);
+        if (surLesDeux) {
+            auto b = std::make_shared<ProcessGraph::EffectChain>();
+            b->push_back(faireRetard());
+            graph.setTrackEffectChain(1, b);
+        }
+        return OfflineRenderer::render(graph, 8000.0, 256, 0.6);
+    };
+
+    const auto reference = rendre(true);    // les deux retardées : alignées
+    const auto compense = rendre(false);    // une seule : le graphe compense
+
+    VSM_ASSERT_EQ(reference.left.size(), compense.left.size());
+    for (size_t i = 0; i < reference.left.size(); ++i)
+        VSM_ASSERT_NEAR(compense.left[i], reference.left[i], 1e-6f);
+}
+
+VSM_TEST(the_oversampling_distortion_declares_its_sixteen_samples) {
+    // Le cas RÉEL que la roadmap demande : un effet du parc qui retarde parce
+    // qu'il suréchantillonne, et qui le dit au lieu de décaler en silence.
+    auto distorsion = vsm::audio::effect::EffectFactory::create("distortion");
+    VSM_ASSERT(distorsion != nullptr);
+    distorsion->prepare(48000.0, 256);
+    VSM_ASSERT_EQ(distorsion->latencySamples(), 16);
+
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setTrackInstrument(0, "vsm.minimoog");
+    graph.setTrackInstrument(1, "vsm.minimoog");
+    graph.setProject(twinProject());
+    auto chain = std::make_shared<ProcessGraph::EffectChain>();
+    chain->push_back(std::shared_ptr<vsm::audio::effect::IAudioEffect>(std::move(distorsion)));
+    graph.setTrackEffectChain(0, chain);
+    VSM_ASSERT_EQ(graph.graphLatencySamples(), 16);
+}
+
+VSM_TEST(latencies_add_up_along_a_chain) {
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setProject(twinProject());
+    auto chain = std::make_shared<ProcessGraph::EffectChain>();
+    chain->push_back(std::make_shared<LatencyEffect>(32));
+    chain->push_back(std::make_shared<LatencyEffect>(48));   // prêts dès la construction
+    graph.setTrackEffectChain(0, chain);
+    VSM_ASSERT_EQ(graph.graphLatencySamples(), 80);
+}
+
+VSM_TEST(a_group_insert_latency_counts_for_the_tracks_that_pass_through_it) {
+    // Une piste groupée traverse DEUX chaînes avant le master. Ne compter que
+    // la sienne la laisserait décalée du retard de son groupe -- un décalage
+    // qui n'apparaîtrait qu'en groupant, c'est-à-dire au moment où on
+    // soupçonnerait le moins l'insert.
+    vsm::sequencer::Project projet = twinProject();
+    vsm::sequencer::Track groupe;
+    groupe.kind = vsm::sequencer::Track::Kind::Group;
+    projet.tracks.push_back(groupe);      // index 2
+    projet.tracks[0].outputGroup = 2;     // la piste 0 passe par le groupe
+
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setProject(projet);
+    auto chain = std::make_shared<ProcessGraph::EffectChain>();
+    chain->push_back(std::make_shared<LatencyEffect>(40));
+    graph.setTrackEffectChain(2, chain);  // l'insert est sur LE GROUPE
+    // Le chemin de la piste 0 vaut 40 ; celui de la piste 1, zéro. Le maximum
+    // est donc 40, et c'est la piste 1 qu'il faut retarder.
+    VSM_ASSERT_EQ(graph.graphLatencySamples(), 40);
+}
+
+VSM_TEST(without_any_latency_no_compensation_plan_is_published) {
+    // Même garde-fou que pour l'ordre de rendu : pas une ligne à retard de
+    // longueur zéro à traverser pour rien, et le rendu reste au bit près celui
+    // qu'il était.
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setTrackInstrument(0, "vsm.minimoog");
+    graph.setProject(twinProject());
+    auto chain = std::make_shared<ProcessGraph::EffectChain>();
+    chain->push_back(std::make_shared<GainEffect>(0.5f));   // aucun retard
+    graph.setTrackEffectChain(0, chain);
+    VSM_ASSERT_EQ(graph.graphLatencySamples(), 0);
 }

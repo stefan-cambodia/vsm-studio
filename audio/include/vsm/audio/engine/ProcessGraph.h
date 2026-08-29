@@ -341,6 +341,47 @@ private:
     /// réponse peut bouger.
     void refreshRenderOrder();
 
+    // --- COMPENSATION DE LATENCE (PDC, D4.5) -------------------------------
+    //
+    // LE PROBLÈME. Un effet qui suréchantillonne filtre, et un filtre à phase
+    // linéaire retarde : insérer une distorsion sur une piste la décalait de
+    // seize échantillons. Le son restait juste, mais la piste n'était plus en
+    // place -- et deux prises censées coïncider cessaient de coïncider selon
+    // les effets qu'on leur avait mis. C'est le genre de défaut qu'on attribue
+    // à tout sauf à sa cause.
+    //
+    // LA SOLUTION, qui est celle de tous les séquenceurs : on ne peut pas
+    // AVANCER une piste, alors on RETARDE toutes les autres. Le graphe calcule
+    // la latence de chaque chemin, prend le maximum, et donne à chaque piste la
+    // différence.
+    struct Compensation {
+        int graphLatency = 0;                       ///< le maximum, en échantillons
+        std::array<int, kMaxTracks> delay{};        ///< retard à appliquer, par piste
+        /// Lignes à retard, une paire par piste retardée. Allouées sur le
+        /// thread UI et publiées entières ; le thread audio n'y écrit que des
+        /// échantillons, jamais leur taille.
+        std::array<std::vector<float>, kMaxTracks> lineL, lineR;
+        std::array<int, kMaxTracks> writePos{};
+    };
+    /// Le plan de compensation courant, ou nullptr quand rien n'a de latence --
+    /// et dans ce cas le rendu emprunte exactement le chemin qu'il avait.
+    std::atomic<std::shared_ptr<Compensation>> compensation_{nullptr};
+    /// Recalcule et publie le plan. Thread UI, comme l'ordre de rendu.
+    void refreshCompensation();
+    /// Applique le retard d'une piste à son bloc, en place.
+    void applyCompensation(Compensation& plan, size_t trackIndex, float* left, float* right,
+                            int numSamples);
+
+public:
+    /// Latence totale du graphe, en échantillons : le chemin le plus long, que
+    /// tous les autres rejoignent. Zéro tant qu'aucun effet n'en déclare.
+    int graphLatencySamples() const {
+        auto plan = compensation_.load(std::memory_order_acquire);
+        return plan ? plan->graphLatency : 0;
+    }
+
+private:
+
     // Tampons des groupes : une piste routée vers un groupe s'y mélange au lieu
     // d'aller au master, et le groupe est traité APRÈS, une fois que tous ses
     // membres ont écrit. D'où deux passes, et non un ordre de pistes malin :

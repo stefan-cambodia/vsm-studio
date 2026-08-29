@@ -55,6 +55,15 @@ public:
     /// CPU/voix (section 23) et pour avertir l'utilisateur en cas de
     /// surcharge polyphonique.
     virtual int activeVoiceCount() const = 0;
+    /// LE RETARD QUE CETTE MACHINE INTRODUIT, en échantillons (D4.5).
+    ///
+    /// Zéro par défaut, et c'est le cas des trente-quatre machines du parc :
+    /// elles rendent l'échantillon qu'elles viennent de calculer. Le champ
+    /// existe pour qu'une machine à traitement anticipé -- un vocodeur de
+    /// phase, un limiteur à lookahead -- puisse le DIRE au lieu de décaler sa
+    /// piste en silence.
+    virtual int latencySamples() const { return 0; }
+
 };
 
 using SynthPluginPtr = std::shared_ptr<ISynthPlugin>;

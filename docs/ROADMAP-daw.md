@@ -903,7 +903,7 @@ pas seulement l'écouter.
 | D4.2 | Bus de groupe et départs **libres** (aujourd'hui : deux, figés en dur sur Reverb et Delay dans le constructeur de `MainComponent`) | une réverbération se partage entre pistes ; le nombre de départs n'est plus une constante — **fait** |
 | D4.3 | Départs pré/post-fader au choix (post-fader est codé en dur, `ProcessGraph.cpp:465`) | commutable par départ — **fait** |
 | D4.4 | **Chaîne latérale** (*sidechain*) | le compresseur d'une piste écoute une autre piste — la signature même du genre que ce projet reconstruit — **fait** |
-| D4.5 | **Compensation de latence (PDC)** : `ISynthPlugin` et `IAudioEffect` déclarent leur latence, le graphe la compense | insérer un effet à latence connue ne décale plus la piste ; test avec une latence artificielle et un `Oversampler` |
+| D4.5 | **Compensation de latence (PDC)** : `ISynthPlugin` et `IAudioEffect` déclarent leur latence, le graphe la compense | insérer un effet à latence connue ne décale plus la piste ; test avec une latence artificielle et un `Oversampler` — **fait** |
 | D4.6 | Automation de **tout** : volume, pan, départs, paramètres d'effets, master — aujourd'hui les paramètres d'instrument seulement (`ProcessGraph.cpp:325`) | un fondu écrit en automation s'entend |
 | D4.7 | Mesure : crête **et** RMS par piste, LUFS, corrélation de phase | affichés, et cohérents avec ce que `analyse/` mesure du même signal |
 
@@ -1095,6 +1095,44 @@ du projet mesureront enfin la même chose.
 > sert qu'à faire écouter une piste ne doit pas s'entendre. Sans ce
 > commutateur, il aurait fallu choisir entre une réverbération parasite et pas
 > de chaîne latérale du tout.
+
+> **D4.5 EST FAITE (29/08/2026).** Le défaut était là depuis que la distorsion
+> suréchantillonne, et il ne s'annonçait pas.
+>
+> **CE QUI SE PASSAIT.** Un suréchantillonneur filtre, et un filtre à phase
+> linéaire retarde : la distorsion du parc décalait sa piste de **seize
+> échantillons**. Le son restait juste — c'est bien ce qui rend le défaut
+> pénible : la piste n'était plus en place, et deux prises censées coïncider
+> cessaient de coïncider **selon les effets qu'on leur avait mis**. On attribue
+> cela à tout sauf à sa cause.
+>
+> **ON NE PEUT PAS AVANCER UNE PISTE, ALORS ON RETARDE LES AUTRES.** Le graphe
+> calcule la latence de chaque chemin, prend le maximum, et donne à chacune la
+> différence. `IAudioEffect` et `ISynthPlugin` déclarent la leur — zéro par
+> défaut, donc les trente-quatre machines et douze effets sur treize sont
+> rigoureusement inchangés. Le seul chiffre réel du parc, seize échantillons,
+> est **calculé** par l'`Oversampler` à partir du nombre de coefficients de ses
+> deux filtres, et non écrit à la main quelque part.
+>
+> **UN CHEMIN, PAS UNE PISTE.** Une piste groupée traverse DEUX chaînes avant le
+> master : la sienne et celle de son groupe. Ne compter que la sienne la
+> laisserait décalée du retard de son groupe — un décalage qui n'apparaîtrait
+> qu'en groupant, c'est-à-dire au moment où l'on soupçonnerait le moins
+> l'insert. Un test le couvre.
+>
+> **AUCUNE LATENCE, AUCUN PLAN**, comme pour l'ordre de rendu de D4.4 : pas une
+> ligne à retard de longueur zéro à traverser pour rien, et le rendu reste
+> exactement celui qu'il était.
+>
+> Le test qui compte compare deux rendus : l'effet à latence sur **une** piste
+> (le graphe compense) et sur **les deux** (elles sont forcément alignées entre
+> elles, donc c'est la référence). Les deux sortent identiques.
+>
+> **Une leçon en passant, écrite dans le test** : le graphe exige qu'un effet
+> soit `prepare()`é avant d'être publié, et un test qui l'oubliait plantait dans
+> une ligne à retard vide. Le pion de test dimensionne désormais ses tampons dès
+> sa construction — un test doit échouer sur une assertion, pas sur un segment
+> de mémoire.
 
 
 ### Phase D5 — La vue d'arrangement

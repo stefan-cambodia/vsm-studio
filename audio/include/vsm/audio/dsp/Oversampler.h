@@ -135,6 +135,24 @@ public:
         reset();
     }
 
+    /// LE RETARD QU'IL INTRODUIT, en échantillons de la fréquence de BASE.
+    ///
+    /// Un filtre FIR à phase linéaire de `taps` coefficients retarde de
+    /// (taps-1)/2 échantillons -- à la fréquence où il travaille, c'est-à-dire
+    /// ici la fréquence suréchantillonnée. Il y en a DEUX, un à la montée et un
+    /// à la descente, d'où (taps-1) au total, ramené à la fréquence de base en
+    /// divisant par le facteur. Avec taps = 16f+1, cela fait exactement seize
+    /// échantillons, quel que soit le facteur.
+    ///
+    /// CE CHIFFRE N'ÉTAIT DÉCLARÉ NULLE PART, et c'est pour cela qu'insérer une
+    /// distorsion suréchantillonnée décalait la piste de seize échantillons
+    /// sans que rien ne le dise (D4.5).
+    int latencySamples() const {
+        if (factor_ <= 1) return 0;
+        const int taps = 16 * factor_ + 1;
+        return (taps - 1) / factor_;
+    }
+
     void reset() {
         up_.reset();
         down_.reset();

@@ -30,6 +30,19 @@ public:
 
     virtual const char* effectName() const = 0;
 
+    /// LE RETARD QUE CET EFFET INTRODUIT, en échantillons (D4.5).
+    ///
+    /// Zéro par défaut : la grande majorité des effets rend l'échantillon qu'on
+    /// vient de lui donner. Ceux qui suréchantillonnent, eux, filtrent -- et un
+    /// filtre à phase linéaire retarde. Tant que ce chiffre n'était déclaré
+    /// nulle part, insérer une distorsion suréchantillonnée décalait la piste
+    /// de seize échantillons SANS QUE RIEN NE LE DISE : le son restait juste,
+    /// mais la piste n'était plus en place, et deux prises censées coïncider
+    /// cessaient de coïncider selon les effets qu'on leur avait mis.
+    ///
+    /// À déclarer après `prepare()`, qui est ce qui fixe la valeur.
+    virtual int latencySamples() const { return 0; }
+
     // --- CHAÎNE LATÉRALE (sidechain, D4.4) --------------------------------
     //
     // DEUX MÉTHODES FACULTATIVES plutôt qu'un `process` élargi : douze effets
