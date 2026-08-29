@@ -39,6 +39,7 @@ target_sources(VintageSynthMidiStudio PRIVATE
     Source/ui/machines/StepSequencerComponent.cpp
     Source/ui/machines/HardwareLookAndFeel.cpp
     Source/ui/MixerComponent.cpp
+    Source/ui/ArrangementComponent.cpp
     Source/ui/AutomationComponent.cpp
     Source/ui/EffectChainComponent.cpp
     Source/ui/LookAndFeel/VsmLookAndFeel.cpp
@@ -222,3 +223,26 @@ target_link_libraries(vsm-measure PRIVATE
     juce::juce_audio_formats
 )
 juce_generate_juce_header(vsm-measure)
+
+
+# --- Aperçu de la vue d'arrangement, sans écran (D5.1) ----------------------
+# Même raison que vsm-pianoroll-preview : ce qu'on ne peut pas regarder, on ne
+# peut pas le juger. Une vue d'arrangement se juge d'abord à l'oeil.
+juce_add_console_app(vsm-arrangement-preview PRODUCT_NAME "vsm-arrangement-preview")
+target_sources(vsm-arrangement-preview PRIVATE
+    Source/tools/ArrangementPreviewMain.cpp
+    Source/ui/ArrangementComponent.cpp
+    Source/ui/LookAndFeel/VsmLookAndFeel.cpp
+)
+target_include_directories(vsm-arrangement-preview PRIVATE Source)
+target_compile_definitions(vsm-arrangement-preview PRIVATE
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_STANDALONE_APPLICATION=1
+)
+target_link_libraries(vsm-arrangement-preview PRIVATE
+    vsm_core
+    juce::juce_gui_basics
+    juce::juce_graphics
+)
+juce_generate_juce_header(vsm-arrangement-preview)

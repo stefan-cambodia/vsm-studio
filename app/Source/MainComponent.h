@@ -12,6 +12,7 @@
 #include "ui/PianoRollPanel.h"
 #include "ui/SynthRackComponent.h"
 #include "ui/MixerComponent.h"
+#include "ui/ArrangementComponent.h"
 #include "ui/AutomationComponent.h"
 #include "ui/EffectChainComponent.h"
 #include "ui/PanelWindow.h"
@@ -118,6 +119,7 @@ private:
         kMenuViewPianoRoll,
         kMenuViewSynthRack,
         kMenuViewMixer,
+        kMenuViewArrangement,
         // Un identifiant par palier d'échelle, attribué à la suite :
         // kMenuViewScaleFirst + index dans UiScale::steps().
         kMenuViewScaleFirst,
@@ -334,6 +336,9 @@ private:
     PianoRollPanel pianoRollPanel_;
     SynthRackComponent synthRack_;
 
+    /// LA VUE D'ARRANGEMENT (D5.1). Une fenêtre flottante comme les autres :
+    /// on arrange en la regardant à côté du piano roll, pas à sa place.
+    ArrangementComponent arrangement_;
     MixerComponent mixer_;
     AutomationComponent automation_;
     EffectChainComponent effectChain_;
@@ -359,6 +364,7 @@ private:
     PanelWindow pianoRollWindow_;
     PanelWindow synthRackWindow_;
     PanelWindow mixerWindow_;
+    PanelWindow arrangementWindow_;
 
 #if !JUCE_MAC
     // Sur macOS, le menu s'affiche dans la barre système (setMacMainMenu) ;

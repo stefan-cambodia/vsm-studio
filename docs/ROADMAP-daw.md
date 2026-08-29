@@ -1237,7 +1237,7 @@ D1 a mis les clips dans le modèle ; ici on les rend manipulables.
 
 | Étape | Contenu | Terminé quand |
 |---|---|---|
-| D5.1 | Ligne de temps multipiste : clips déplaçables, redimensionnables, coupables | à la souris, avec annulation |
+| D5.1 | Ligne de temps multipiste : clips déplaçables, redimensionnables, coupables | à la souris, avec annulation — **fait** |
 | D5.2 | Copier/coller/dupliquer, aimantation à la grille, boucle de clip par étirement | mêmes gestes et mêmes raccourcis que le piano roll |
 | D5.3 | Pliage des pistes, hauteurs réglables, réordonnancement, couleurs choisies | l'écran tient 16 pistes |
 | D5.4 | Automation dessinée **sur** l'arrangement, avec zoom et courbes | plus une lane isolée dans un onglet |
@@ -1247,6 +1247,63 @@ D1 a mis les clips dans le modèle ; ici on les rend manipulables.
 
 **Critère de phase** : arranger une reconstruction — déplacer un refrain,
 doubler une mesure, boucler quatre temps — se fait entièrement à la souris.
+
+> **D5.1 EST FAITE (30/08/2026).** D1 avait mis les clips dans le MODÈLE : ils
+> s'y rangeaient, s'y sauvegardaient et s'y jouaient, mais **rien ne permettait
+> de les toucher**. Déplacer un refrain demandait de déplacer chaque note qui le
+> compose.
+>
+> **LE COMPOSANT NE CONTIENT AUCUNE LOGIQUE DE MONTAGE.** Déplacer,
+> redimensionner et couper sont dans `vsm::sequencer::ClipEdit`, en fonctions
+> pures, éprouvées sans serveur graphique — douze tests. Dans le composant, ils
+> auraient été intestables : il aurait fallu un écran pour vérifier qu'un clip
+> coupé en deux rejoue exactement le même son.
+>
+> **CE QUI REND CES GESTES PARTICULIERS**, et qui vient tout droit du modèle de
+> la RÉGION choisi en D1 : un clip est une fenêtre sur le matériau, pas une
+> boîte qui l'emporte.
+>
+>  - **Déplacer** ne déplace aucune note : la fenêtre bouge, le matériau reste.
+>  - **Tirer le bord gauche** ne pousse pas le clip : cela rogne la tête, et ce
+>    qui reste demeure **exactement là où il était** sur la ligne de temps.
+>    C'est ce qu'on attend quand on rogne le début d'une prise, et c'est ce qui
+>    distingue une région d'une boîte.
+>  - **Couper** donne deux moitiés qui rejouent exactement ce que jouait
+>    l'original : la seconde reprend la fenêtre là où la première l'a laissée.
+>
+> **UN CLIP AUDIO A SA FENÊTRE EN SECONDES** (voir `Clip::sourceStartSeconds`),
+> et l'oublier serait un défaut discret : rogner le début d'une prise la
+> **décalerait** au lieu de la rogner — le clip commencerait plus tard en jouant
+> la même chose. Les opérations reçoivent donc la conversion tick → seconde, par
+> le même chemin que `spansFromTrack`.
+>
+> **LES FONDUS NE SE DUPLIQUENT PAS À LA COUPE** : le fondu d'entrée appartient
+> au début, celui de sortie à la fin. Les recopier sur les deux moitiés ferait
+> apparaître un **trou** au point de coupe, la première s'éteignant pendant que
+> la seconde monte.
+>
+> **UN CLIP GAGNE UN IDENTIFIANT**, comme les notes l'ont depuis toujours et
+> pour la même raison : couper un clip en insère un, et une sélection par indice
+> désignerait alors le voisin. Il n'est **pas sauvegardé** — rien d'autre ne
+> référence un clip, il n'a besoin d'être unique que pendant la session, et
+> l'écrire ferait grossir le format d'une donnée que personne ne relit.
+>
+> **ALT COUPE, plutôt qu'un OUTIL qu'on choisit et qu'on oublie de quitter.** Un
+> mode se laisse allumé, et le geste suivant fait autre chose que ce qu'on
+> croit ; un modificateur ne dure que le temps où on le tient. C'est la règle
+> déjà retenue pour la boucle (Maj) et le punch (Alt) sur la règle du piano roll.
+>
+> **L'aimantation est à la MESURE et non à la noire** : on arrange par mesures,
+> et un clip qui tomberait sur un temps quelconque ne serait presque jamais ce
+> qu'on voulait.
+>
+> **La vue se regarde sans écran**, par `vsm-arrangement-preview`, pour la même
+> raison que le piano roll et les façades : ce qu'on ne peut pas regarder, on ne
+> peut pas le juger. L'aperçu porte exprès les cas qui se jugent à l'œil — deux
+> clips bord à bord (le résultat d'une coupe) qui doivent se lire comme deux, un
+> clip muet qui doit se remarquer **sans disparaître**, et une piste de groupe
+> qui n'a pas de clip parce qu'elle n'a pas de matériau.
+
 
 ### Phase D6 — Exporter
 

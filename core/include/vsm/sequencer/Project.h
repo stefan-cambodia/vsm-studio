@@ -128,6 +128,17 @@ public:
     midi::Tick lastUsedTick() const;
 
     uint64_t nextNoteId() { return nextNoteId_++; }
+    /// Identifiants de CLIPS, comptés à part de ceux des notes : les deux ne se
+    /// rencontrent jamais, et un compteur commun laisserait croire qu'un clip
+    /// et une note pourraient être confondus.
+    uint64_t nextClipId() { return nextClipId_++; }
+    /// Donne un identifiant à tout clip qui n'en a pas encore. Appelée au
+    /// chargement d'un projet, dont le format n'écrit pas les identifiants.
+    void assignClipIds() {
+        for (auto& track : tracks)
+            for (auto& clip : track.clips)
+                if (clip.id == 0) clip.id = nextClipId();
+    }
 
     /// Prochain identifiant SANS le consommer. Utile avec les opérations de
     /// NoteEdit.h, qui prennent un compteur par référence et l'incrémentent
@@ -138,9 +149,12 @@ public:
     /// silencieusement la sélection et l'annulation.
     uint64_t peekNextNoteId() const { return nextNoteId_; }
     void ensureNoteIdAbove(uint64_t usedId) { if (nextNoteId_ <= usedId) nextNoteId_ = usedId + 1; }
+    uint64_t peekNextClipId() const { return nextClipId_; }
+    void ensureClipIdAbove(uint64_t usedId) { if (nextClipId_ <= usedId) nextClipId_ = usedId + 1; }
 
 private:
     uint64_t nextNoteId_ = 1;
+    uint64_t nextClipId_ = 1;
 };
 
 /// Supprime une piste ET RÉPARE LES ROUTAGES QUI LA SUIVENT.

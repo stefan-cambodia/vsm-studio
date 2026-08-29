@@ -33,7 +33,8 @@ MainComponent::MainComponent()
       trackListWindow_("Pistes", trackList_),
       pianoRollWindow_("Piano Roll", pianoRollPanel_),
       synthRackWindow_("Synth Rack", synthRack_),
-      mixerWindow_("Mixer", bottomTabs_) {
+      mixerWindow_("Mixer", bottomTabs_),
+      arrangementWindow_("Arrangement", arrangement_) {
     juce::LookAndFeel::setDefaultLookAndFeel(&lookAndFeel_);
 
     // Piste de démonstration visible dès le lancement (section 4 du cahier
@@ -222,6 +223,23 @@ MainComponent::MainComponent()
     // l'enregistrement ouvert : on aurait joué, et rien ne serait écrit.
     transportBar_.onStopPressed = [this] { stopRecording(); };
     trackList_.onArmChanged = [this] { refreshArmedTracks(); };
+
+    // LA VUE D'ARRANGEMENT (D5.1). Elle ne connaît que le projet et ses propres
+    // gestes ; c'est l'application qui sait ce qu'un geste coûte -- un pas
+    // d'annulation, une republication au moteur.
+    arrangement_.onEditStarted = [this](const juce::String& nom) { beginProjectEdit(nom); };
+    arrangement_.onClipsChanged = [this] {
+        // Les clips changent CE QUI EST JOUÉ : le planning du moteur et le
+        // matériau audio découpé doivent suivre, sans interrompre la lecture.
+        audioEngine_.processGraph().setProject(project_);
+        loadAudioTracks();
+        pianoRollPanel_.refresh();
+    };
+    arrangement_.onPlayheadRequested = [this](vsm::midi::Tick tick) {
+        transport_.seekToTick(tick);
+        audioEngine_.processGraph().seekSeconds(project_.ticksToSeconds(tick));
+    };
+    arrangement_.onTrackSelected = [this](size_t index) { trackList_.selectTrackIndex(index); };
     trackList_.onOutputChanged = [this] {
         // Le routage est une donnée de mixage : il se republie sans interrompre
         // la lecture, comme un fader.
@@ -342,7 +360,8 @@ void MainComponent::showFloatingPanels() {
     // Raccourcis globaux : chaque fenêtre flottante remonte ses touches non
     // consommées ici (voir keyPressed). Idempotent : JUCE ignore un écouteur
     // déjà inscrit.
-    for (auto* fenetre : { &trackListWindow_, &pianoRollWindow_, &synthRackWindow_, &mixerWindow_ })
+    for (auto* fenetre : { &trackListWindow_, &pianoRollWindow_, &synthRackWindow_, &mixerWindow_,
+                            &arrangementWindow_ })
         fenetre->addKeyListener(this);
     addKeyListener(this);
     // Appelée par Main.cpp APRÈS que la fenêtre socle a été positionnée à
@@ -363,6 +382,11 @@ void MainComponent::showFloatingPanels() {
     pianoRollWindow_.setBounds(screenArea.getX() + leftW + 20, topY, centerW, centerH);
     synthRackWindow_.setBounds(screenArea.getX() + leftW + centerW + 30, topY, rightW, centerH);
     mixerWindow_.setBounds(screenArea.getX() + 10, topY + centerH + 10, screenArea.getWidth() - 20, mixerH);
+    // L'ARRANGEMENT reprend la place du piano roll : les deux montrent le même
+    // morceau à deux échelles, et on passe de l'un à l'autre plutôt que de les
+    // regarder ensemble sur un écran qui n'en a pas la place. Masqué au
+    // démarrage -- le menu Affichage l'ouvre.
+    arrangementWindow_.setBounds(screenArea.getX() + leftW + 20, topY, centerW, centerH);
 
     trackListWindow_.setVisible(true);
     pianoRollWindow_.setVisible(true);
@@ -467,6 +491,7 @@ void MainComponent::timerCallback() {
                                  audioEngine_.currentInputChannels());
     pianoRoll_.setPlayheadTick(playhead);
     synthRack_.setPlayheadTick(playhead); // éclaire le pas en cours sur les grilles
+    arrangement_.setPlayheadTick(playhead);
     pianoRollPanel_.refresh(); // règle + barre d'outils suivent la tête de lecture et l'historique
 
     bool playing = (transport_.state() == TransportState::Playing);
@@ -700,6 +725,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuViewPianoRoll, "Piano Roll", true, pianoRollWindow_.isVisible());
             menu.addItem(kMenuViewSynthRack, "Synth Rack", true, synthRackWindow_.isVisible());
             menu.addItem(kMenuViewMixer, "Mixer", true, mixerWindow_.isVisible());
+            menu.addItem(kMenuViewArrangement, "Arrangement", true, arrangementWindow_.isVisible());
             menu.addSeparator();
             {
                 // TAILLE DE L'INTERFACE. Le facteur agrandit texte ET cases
@@ -816,6 +842,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuViewPianoRoll: togglePanel(pianoRollWindow_); break;
         case kMenuViewSynthRack: togglePanel(synthRackWindow_); break;
         case kMenuViewMixer:     togglePanel(mixerWindow_); break;
+        case kMenuViewArrangement: togglePanel(arrangementWindow_); break;
         case kMenuHelpAbout:     showAboutDialog(); break;
         default:
             if (menuItemID >= kMenuMixRemoveSendFirst && menuItemID <= kMenuMixRemoveSendLast) {
@@ -2228,6 +2255,7 @@ void MainComponent::rebuildFromProject(bool stopPlayback) {
         audioEngine_.processGraph().setTrackEffectChain(i, nullptr);
     applyAutomationFromProject();
 
+    arrangement_.setProject(&project_);
     refreshTransportSchedule();
     updateSynthRackForSelection();
     // L'armement suit le projet : après un chargement ou une suppression de

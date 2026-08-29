@@ -120,6 +120,26 @@ struct Clip {
     /// lesquels on ne peut pas monter deux prises l'une après l'autre.
     float gain = 1.0f;
     bool invertPhase = false;
+
+    /// IDENTIFIANT STABLE, pour que la sélection de la vue d'arrangement
+    /// survive aux gestes (D5.1).
+    ///
+    /// Un index ne le pourrait pas : couper un clip en insère un, et la
+    /// sélection désignerait alors le voisin. C'est exactement la raison qui
+    /// avait fait donner un `id` aux notes, et elle vaut ici pour les mêmes
+    /// gestes -- déplacer, redimensionner, couper.
+    ///
+    /// PLACÉ EN DERNIER, volontairement : tout le code existant construit un
+    /// Clip par agrégat positionnel (`{sourceStart, sourceLength, startTick,
+    /// length, muted, name, color, sourceStartSeconds, fadeIn, fadeOut, gain,
+    /// invertPhase}`), qui reste donc valide tel quel.
+    ///
+    /// PAS SAUVEGARDÉ, et c'est délibéré : rien d'autre ne référence un clip,
+    /// donc l'identifiant n'a besoin d'être unique que pendant la session. Il
+    /// est attribué au chargement, comme celui des notes venues d'un fichier
+    /// MIDI. L'écrire ferait grossir le format d'une donnée que personne ne
+    /// relit.
+    uint64_t id = 0;
 };
 
 /// LE MATÉRIAU D'UNE PISTE AUDIO : un fichier, et ce qu'il faut en savoir pour

@@ -8,6 +8,7 @@ add_library(vsm_core STATIC
     src/sequencer/Quantizer.cpp
     src/sequencer/NoteEdit.cpp
     src/sequencer/StepPattern.cpp
+    src/sequencer/ClipEdit.cpp
     src/sequencer/MidiRecorder.cpp
     src/sequencer/PlaybackScheduler.cpp
     src/sequencer/RealtimeTransport.cpp
@@ -40,6 +41,7 @@ if (VSM_BUILD_TESTS)
         tests/test_transport.cpp
         tests/test_midi_recorder.cpp
         tests/test_takes.cpp
+        tests/test_clip_edit.cpp
     )
     target_link_libraries(vsm_core_tests PRIVATE vsm_core)
     target_include_directories(vsm_core_tests PRIVATE tests)
