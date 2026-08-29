@@ -9,7 +9,9 @@
 #include "vsm/audio/plugin/BuiltInPlugins.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
+#include <cctype>
 #include <cmath>
+#include <map>
 #include <mutex>
 #include <sstream>
 
@@ -160,6 +162,37 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
             chain->push_back(std::move(effect));
         }
         graph.setTrackEffectChain(i, chain);
+    }
+
+    // BUS DE DÉPART (D4.2). MÊME HISTOIRE QUE LES INSERTS, ET TROUVÉE DE LA
+    // MÊME FAÇON -- en écrivant le test de D6.2, où le stem d'une piste qui
+    // envoie 40 % dans la réverbération sortait identique à celui d'une piste
+    // qui n'envoie rien.
+    //
+    // `setProject` posait bien les NIVEAUX de départ de chaque piste et le
+    // masque pré-fader, mais rien ne posait l'EFFET des bus : le signal partait
+    // dans un bus vide et disparaissait. Tout projet exporté depuis
+    // l'application perdait donc sa réverbération et son delay de départ, en
+    // silence -- exactement la panne que D0.3 avait corrigée pour les inserts,
+    // et qui attendait ici.
+    for (size_t bus = 0; bus < bundle.project.sends.size() && bus < ProcessGraph::kMaxSends; ++bus) {
+        const auto& decrit = bundle.project.sends[bus];
+        auto effect = vsm::audio::effect::EffectFactory::create(decrit.effectType);
+        if (!effect) {
+            result.warnings.push_back("Bus de départ « " + decrit.name + " » : effet « "
+                                       + decrit.effectType + " » inconnu, non appliqué");
+            continue;
+        }
+        vsm::sequencer::TrackEffect described;
+        described.type = decrit.effectType;
+        described.parameters = decrit.parameters;
+        const EffectApplyReport applyReport = applyEffectDescription(described, *effect);
+        for (const auto& unknown : applyReport.unknownParameters)
+            result.warnings.push_back("Bus de départ « " + decrit.name + " » : réglage inconnu « "
+                                       + unknown + " »");
+        effect->prepare(options.sampleRate, options.blockSize);
+        graph.setSendEffect(bus, std::shared_ptr<vsm::audio::effect::IAudioEffect>(std::move(effect)));
+        graph.setSendReturn(bus, decrit.returnGain);
     }
 
     // TRANCHE MASTER. Même histoire : décrite dans le projet depuis qu'elle
@@ -341,6 +374,151 @@ RenderResult renderTrackForFreeze(const LoadedBundle& bundle, size_t trackIndex,
     for (size_t i = 0; i < taille; ++i)
         result.peakLevel = std::max(result.peakLevel,
                                      std::max(std::abs(out.left[i]), std::abs(out.right[i])));
+    return result;
+}
+
+namespace {
+
+/// Un nom de fichier sûr tiré du nom de la piste : ni séparateur, ni accent
+/// perdu en route. Deux pistes homonymes existent (« Guitare » deux fois) et
+/// s'écraseraient l'une l'autre ; le numéro de piste les sépare, en tête pour
+/// que le dossier se lise dans l'ordre du mixeur.
+std::string stemFileName(size_t index, const std::string& name) {
+    std::string propre;
+    for (const char c : name) {
+        const unsigned char u = static_cast<unsigned char>(c);
+        if (u >= 0x80) { propre += '_'; continue; }
+        if (std::isalnum(u) || c == '-' || c == '_' || c == ' ') propre += c;
+        else propre += '_';
+    }
+    while (!propre.empty() && propre.back() == ' ') propre.pop_back();
+    if (propre.empty()) propre = "piste";
+    std::ostringstream flux;
+    flux << (index + 1 < 10 ? "0" : "") << (index + 1) << " - " << propre;
+    return flux.str();
+}
+
+} // namespace
+
+StemResult renderStems(const LoadedBundle& bundle, StemGranularity granularity,
+                        const RenderOptions& options) {
+    StemResult result;
+    const auto& project = bundle.project;
+    if (project.tracks.empty()) {
+        result.error = "aucune piste à exporter";
+        return result;
+    }
+
+    // CE QUI ROMPRAIT L'ÉGALITÉ EST ANNONCÉ D'ABORD. Un insert sur un bus de
+    // groupe réagit au groupe entier : rendre une de ses pistes seule ne lui
+    // présente pas le même signal, et la somme s'écarte. On le dit ; on ne
+    // refuse pas pour autant, parce que des stems légèrement disjoints restent
+    // utiles et que c'est à l'utilisateur de savoir.
+    for (size_t i = 0; i < project.tracks.size(); ++i) {
+        const auto& piste = project.tracks[i];
+        if (piste.kind == vsm::sequencer::Track::Kind::Group && !piste.effects.empty())
+            result.warnings.push_back("le groupe \"" + piste.name
+                                       + "\" porte des inserts : la somme des stems peut s'écarter du mixage");
+    }
+    if (!project.masterParameters.empty())
+        result.warnings.push_back(
+            "la tranche master n'est pas dans les stems (c'est voulu) : leur somme rend le "
+            "mixage AVANT master");
+
+    // QUI VA DANS QUEL FICHIER. En mode « pistes », chacune le sien ; en mode
+    // « groupes », toutes celles d'un groupe partagent le leur. Les bus de
+    // groupe eux-mêmes ne sont jamais un stem à part : ils sont TRAVERSÉS par
+    // les pistes qu'ils portent, et les compter en plus doublerait le son.
+    struct Sortie {
+        size_t indexRepresentant = 0;
+        std::string nom;
+        std::vector<size_t> pistes;
+    };
+    std::vector<Sortie> sorties;
+    std::map<int, size_t> parGroupe;
+    for (size_t i = 0; i < project.tracks.size(); ++i) {
+        const auto& piste = project.tracks[i];
+        if (piste.kind == vsm::sequencer::Track::Kind::Group) continue;
+        if (granularity == StemGranularity::Groups && piste.outputGroup >= 0) {
+            const auto trouve = parGroupe.find(piste.outputGroup);
+            if (trouve != parGroupe.end()) {
+                sorties[trouve->second].pistes.push_back(i);
+                continue;
+            }
+            const size_t bus = static_cast<size_t>(piste.outputGroup);
+            Sortie sortie;
+            sortie.indexRepresentant = bus < project.tracks.size() ? bus : i;
+            sortie.nom = bus < project.tracks.size() ? project.tracks[bus].name : piste.name;
+            sortie.pistes.push_back(i);
+            parGroupe[piste.outputGroup] = sorties.size();
+            sorties.push_back(std::move(sortie));
+            continue;
+        }
+        Sortie sortie;
+        sortie.indexRepresentant = i;
+        sortie.nom = piste.name;
+        sortie.pistes.push_back(i);
+        sorties.push_back(std::move(sortie));
+    }
+
+    for (const auto& sortie : sorties) {
+        LoadedBundle rendu = bundle;
+        // TOUT LE RESTE EST MUET -- et le muet coupe aussi les départs (D4.2),
+        // ce qui est exactement ce qu'il faut : sans cela, la réverbération des
+        // autres pistes se retrouverait dans chaque fichier.
+        //
+        // LES BUS DE GROUPE NE SONT JAMAIS COUPÉS : ils ne produisent rien
+        // par eux-mêmes, ils portent. Couper celui d'une piste rendrait son
+        // stem silencieux.
+        for (size_t i = 0; i < rendu.project.tracks.size(); ++i) {
+            auto& piste = rendu.project.tracks[i];
+            piste.solo = false;
+            if (piste.kind == vsm::sequencer::Track::Kind::Group) continue;
+            piste.muted = std::find(sortie.pistes.begin(), sortie.pistes.end(), i)
+                          == sortie.pistes.end()
+                          || project.tracks[i].muted;
+        }
+        // La tranche master retourne à l'usine, c'est-à-dire transparente :
+        // voir l'en-tête pour la raison, qui n'est pas une commodité.
+        rendu.project.masterParameters.clear();
+        rendu.document = documentFromProject(rendu.project);
+
+        Stem stem;
+        stem.name = stemFileName(sortie.indexRepresentant, sortie.nom);
+        stem.trackIndex = sortie.indexRepresentant;
+        const RenderResult un = renderBundleToBuffer(rendu, stem.audio, options);
+        if (!un.success) {
+            result.error = un.error;
+            return result;
+        }
+        result.renderedSeconds = un.renderedSeconds;
+        result.stems.push_back(std::move(stem));
+    }
+
+    result.success = true;
+    return result;
+}
+
+StemResult renderStemsToFolder(const LoadedBundle& bundle, const std::string& folderPath,
+                                StemGranularity granularity, const RenderOptions& options) {
+    StemResult result = renderStems(bundle, granularity, options);
+    if (!result.success) return result;
+
+    std::error_code code;
+    std::filesystem::create_directories(folderPath, code);
+    for (const auto& stem : result.stems) {
+        const std::string chemin =
+            (std::filesystem::path(folderPath) / (stem.name + ".wav")).string();
+        try {
+            vsm::audio::io::WavFileWriter::writeFile(stem.audio.left.data(), stem.audio.right.data(),
+                                                      stem.audio.numFrames(), options.sampleRate,
+                                                      options.format, chemin);
+        } catch (const std::exception& e) {
+            result.success = false;
+            result.error = std::string("écriture WAV impossible : ") + e.what();
+            return result;
+        }
+    }
     return result;
 }
 

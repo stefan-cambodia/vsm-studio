@@ -655,6 +655,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             }
             menu.addItem(kMenuFileExport, "Exporter MIDI...");
             menu.addItem(kMenuFileExportWav, "Exporter audio (WAV)...");
+            menu.addItem(kMenuFileExportStems, u8"Exporter les stems (un WAV par piste)...");
             menu.addSeparator();
             menu.addItem(kMenuFileAudioSettings, u8"Réglages audio...");
             menu.addSeparator();
@@ -874,6 +875,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuFileReferenceCycle: cycleReferenceMode(); break;
         case kMenuFileExport:    exportMidiFile(); break;
         case kMenuFileExportWav: exportAudioFile(); break;
+        case kMenuFileExportStems: exportStems(); break;
         case kMenuFileAudioSettings: showAudioSettings(); break;
         case kMenuRecordCountInNone:
         case kMenuRecordCountInOne:
@@ -1139,6 +1141,102 @@ void MainComponent::exportAudioFile() {
     }), false);
 }
 
+vsm::interchange::LoadedBundle MainComponent::bundleFromSession() {
+    // CE QUE LA SESSION CONTIENT, MIS EN FORME DE PROJET CHARGÉ -- la seule
+    // porte d'entrée du rendu. Écrit une fois plutôt que recopié dans chaque
+    // export : deux copies finiraient par diverger, et l'une des deux
+    // exporterait alors autre chose que ce qu'on entend.
+    vsm::interchange::LoadedBundle bundle;
+    bundle.project = project_;
+    bundle.document = vsm::interchange::documentFromProject(project_);
+    bundle.folderPath = currentProjectFolder_ == juce::File()
+                            ? std::string()
+                            : currentProjectFolder_.getFullPathName().toStdString();
+    for (size_t i = 0; i < project_.tracks.size(); ++i) {
+        if (project_.tracks[i].instrumentId.empty()) continue;
+        if (auto* plugin = audioEngine_.processGraph().trackInstrument(i))
+            bundle.presetsByTrack[i] = vsm::interchange::capturePreset(
+                *plugin, project_.tracks[i].instrumentId, project_.tracks[i].name);
+    }
+    return bundle;
+}
+
+void MainComponent::exportStems() {
+    auto fenetre = std::make_shared<juce::AlertWindow>(
+        u8"Exporter les stems", u8"Un fichier WAV par piste, dans un dossier.\n"
+        u8"La tranche master n'y est PAS : leur somme redonne le mixage tel qu'il\n"
+        u8"arrive au master. C'est ce qu'on attend de stems.",
+        juce::AlertWindow::NoIcon);
+
+    juce::StringArray granularites;
+    granularites.add(u8"Une piste par fichier");
+    granularites.add(u8"Un groupe par fichier");
+    fenetre->addComboBox("granularite", granularites, u8"Decoupage");
+    if (auto* box = fenetre->getComboBoxComponent("granularite"))
+        box->setSelectedId(1, juce::dontSendNotification);
+
+    juce::StringArray profondeurs;
+    profondeurs.add(u8"16 bits entiers");
+    profondeurs.add(u8"24 bits entiers");
+    profondeurs.add(u8"32 bits flottants");
+    fenetre->addComboBox("profondeur", profondeurs, u8"Profondeur");
+    // 24 BITS PAR DÉFAUT, comme pour le mixage : des stems destinés à être
+    // ADDITIONNÉS ailleurs perdent à passer par 16 bits, où le bruit de
+    // quantification de chaque fichier s'additionne aussi.
+    if (auto* box = fenetre->getComboBoxComponent("profondeur"))
+        box->setSelectedId(2, juce::dontSendNotification);
+
+    fenetre->addTextEditor("queue", "2.0", u8"Queue (secondes)");
+    fenetre->addButton(u8"Choisir le dossier...", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton(u8"Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+        [this, fenetre](int resultat) {
+        const int decoupage = fenetre->getComboBoxComponent("granularite")->getSelectedId();
+        const int profondeur = fenetre->getComboBoxComponent("profondeur")->getSelectedId();
+        const double queue = std::max(0.0, fenetre->getTextEditorContents("queue").getDoubleValue());
+        fenetre->exitModalState(resultat);
+        fenetre->setVisible(false);
+        if (resultat != 1) return;
+
+        vsm::interchange::RenderOptions options;
+        options.blockSize = 512;
+        options.tailSeconds = queue;
+        options.sampleRate = audioEngine_.currentSampleRate() > 0.0
+                                 ? audioEngine_.currentSampleRate() : 48000.0;
+        options.format = profondeur == 1 ? vsm::audio::io::SampleFormat::Int16
+                        : profondeur == 3 ? vsm::audio::io::SampleFormat::Float32
+                                          : vsm::audio::io::SampleFormat::Int24;
+        const auto granularite = decoupage == 2 ? vsm::interchange::StemGranularity::Groups
+                                                 : vsm::interchange::StemGranularity::Tracks;
+
+        auto chooser = std::make_shared<juce::FileChooser>(
+            u8"Dossier des stems...", juce::File(), "");
+        chooser->launchAsync(juce::FileBrowserComponent::saveMode
+                                 | juce::FileBrowserComponent::canSelectDirectories,
+                              [this, chooser, options, granularite](const juce::FileChooser& fc) {
+            const juce::File dossier = fc.getResult();
+            if (dossier == juce::File()) return;
+
+            captureSessionIntoProject();
+            const auto bundle = bundleFromSession();
+            const auto sortie = vsm::interchange::renderStemsToFolder(
+                bundle, dossier.getFullPathName().toStdString(), granularite, options);
+            if (!sortie.success) {
+                juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                                                         u8"Erreur d'export des stems", sortie.error);
+                return;
+            }
+            juce::String message = juce::String(sortie.stems.size())
+                                  + juce::String(u8" stems ecrits dans :\n")
+                                  + dossier.getFullPathName() + "\n";
+            for (const auto& stem : sortie.stems) message += "\n" + juce::String(stem.name) + ".wav";
+            for (const auto& warning : sortie.warnings) message += "\n\n" + juce::String(warning);
+            juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon,
+                                                     u8"Export des stems termine", message);
+        });
+    }), false);
+}
+
 void MainComponent::exportAudioWithOptions(const vsm::interchange::RenderOptions& options) {
     auto chooser = std::make_shared<juce::FileChooser>(
         "Exporter en audio WAV...", juce::File(), "*.wav");
@@ -1156,19 +1254,7 @@ void MainComponent::exportAudioWithOptions(const vsm::interchange::RenderOptions
         // delay qu'on venait d'entendre, et rien ne le disait. Deux chemins de
         // rendu, c'est deux vérités ; il n'y en a qu'un.
         captureSessionIntoProject();
-
-        vsm::interchange::LoadedBundle bundle;
-        bundle.project = project_;
-        bundle.document = vsm::interchange::documentFromProject(project_);
-        bundle.folderPath = currentProjectFolder_ == juce::File()
-                                ? std::string()
-                                : currentProjectFolder_.getFullPathName().toStdString();
-        for (size_t i = 0; i < project_.tracks.size(); ++i) {
-            if (project_.tracks[i].instrumentId.empty()) continue;
-            if (auto* plugin = audioEngine_.processGraph().trackInstrument(i))
-                bundle.presetsByTrack[i] = vsm::interchange::capturePreset(
-                    *plugin, project_.tracks[i].instrumentId, project_.tracks[i].name);
-        }
+        const vsm::interchange::LoadedBundle bundle = bundleFromSession();
 
         const auto rendered = vsm::interchange::renderBundleToWav(
             bundle, file.getFullPathName().toStdString(), options);

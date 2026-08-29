@@ -292,6 +292,167 @@ VSM_TEST(a_deduced_duration_is_measured_from_the_start_of_the_range) {
     VSM_ASSERT_NEAR(reste.renderedSeconds, total.renderedSeconds - 0.5, 1e-9);
 }
 
+// --- D6.2 : la somme des stems égale le mixage ------------------------------
+
+namespace {
+
+/// Un projet à trois pistes, panoramiquées et à des volumes différents, plus un
+/// départ de réverbération : de quoi que la somme veuille dire quelque chose.
+/// Une seule piste rendrait le test vrai par construction.
+Project buildStemProject() {
+    Project project;
+    project.title = "Test de stems";
+    project.ticksPerQuarterNote = 480;
+    vsm::sequencer::SendBusDescription reverb;
+    reverb.name = "Reverb";
+    reverb.effectType = "reverb";
+    project.sends.push_back(std::move(reverb));
+
+    uint64_t ids = 1;
+    Track basse;
+    basse.name = "Basse";
+    basse.channel = 0;
+    basse.instrumentId = "vsm.tb303";
+    basse.volume = 0.8f;
+    basse.pan = -0.4f;
+    for (int i = 0; i < 4; ++i)
+        basse.addNote(i * 240, i * 240 + 200, static_cast<uint8_t>(36 + i * 2), 110, 0, ids);
+    project.tracks.push_back(basse);
+
+    Track lead;
+    lead.name = "Lead";
+    lead.channel = 1;
+    lead.instrumentId = "vsm.tb303";
+    lead.volume = 0.6f;
+    lead.pan = 0.5f;
+    lead.setSendLevel(0, 0.4f);
+    for (int i = 0; i < 3; ++i)
+        lead.addNote(i * 320, i * 320 + 260, static_cast<uint8_t>(60 + i * 3), 90, 1, ids);
+    project.tracks.push_back(lead);
+
+    Track nappe;
+    nappe.name = "Nappe";
+    nappe.channel = 2;
+    nappe.instrumentId = "vsm.tb303";
+    nappe.volume = 1.0f;
+    nappe.addNote(0, 1400, 48, 70, 2, ids);
+    project.tracks.push_back(nappe);
+    return project;
+}
+
+} // namespace
+
+VSM_TEST(the_offline_render_carries_the_send_buses) {
+    // TROUVÉ EN ÉCRIVANT D6.2 : les niveaux de départ étaient bien posés, mais
+    // aucun effet ne l'était sur les bus. Tout ce qui partait vers la
+    // réverbération tombait dans un bus vide, et l'export perdait la
+    // réverbération sans rien dire. Le test compare deux rendus qui ne
+    // diffèrent QUE par le niveau de départ.
+    TempFolder avecDossier("depart-oui");
+    saveProjectBundle(buildStemProject(), avecDossier.str());
+    const auto avec = loadProjectBundle(avecDossier.str());
+    VSM_ASSERT(avec.success);
+
+    TempFolder sansDossier("depart-non");
+    Project sansDepart = buildStemProject();
+    sansDepart.tracks[1].setSendLevel(0, 0.0f);
+    saveProjectBundle(sansDepart, sansDossier.str());
+    const auto sans = loadProjectBundle(sansDossier.str());
+    VSM_ASSERT(sans.success);
+
+    RenderOptions options;
+    options.durationSeconds = 3.0;
+    vsm::audio::engine::RenderedAudio a, b;
+    VSM_ASSERT(renderBundleToBuffer(avec.bundle, a, options).success);
+    VSM_ASSERT(renderBundleToBuffer(sans.bundle, b, options).success);
+
+    double écart = 0.0;
+    for (size_t i = 0; i < a.numFrames(); ++i) écart += std::abs(a.left[i] - b.left[i]);
+    VSM_ASSERT(écart > 0.001);
+}
+
+VSM_TEST(the_sum_of_the_stems_is_the_mix) {
+    TempFolder folder("stems");
+    saveProjectBundle(buildStemProject(), folder.str());
+    const auto chargé = loadProjectBundle(folder.str());
+    VSM_ASSERT(chargé.success);
+
+    RenderOptions options;
+    options.durationSeconds = 3.0;
+
+    const StemResult stems = renderStems(chargé.bundle, StemGranularity::Tracks, options);
+    VSM_ASSERT(stems.success);
+    VSM_ASSERT_EQ(stems.stems.size(), static_cast<size_t>(3));
+
+    vsm::audio::engine::RenderedAudio mixage;
+    VSM_ASSERT(renderBundleToBuffer(chargé.bundle, mixage, options).success);
+
+    // LE MIXAGE N'EST PAS SILENCIEUX : sans cette vérification, un projet muet
+    // ferait passer le test en additionnant des zéros.
+    float crête = 0.0f;
+    for (const float v : mixage.left) crête = std::max(crête, std::abs(v));
+    VSM_ASSERT(crête > 0.01f);
+
+    for (size_t i = 0; i < mixage.numFrames(); ++i) {
+        float g = 0.0f, d = 0.0f;
+        for (const auto& stem : stems.stems) {
+            g += stem.audio.left[i];
+            d += stem.audio.right[i];
+        }
+        // Les mêmes opérations dans le même ordre : l'égalité est numérique,
+        // pas approchée. Une tolérance masquerait exactement le genre de faute
+        // que ce test existe pour attraper -- une piste oubliée à faible
+        // volume, un départ compté deux fois.
+        VSM_ASSERT_NEAR(g, mixage.left[i], 1e-6);
+        VSM_ASSERT_NEAR(d, mixage.right[i], 1e-6);
+    }
+}
+
+VSM_TEST(a_stem_carries_its_own_send_return) {
+    // Le stem du lead doit contenir SA réverbération, sinon il n'est pas
+    // utilisable seul -- c'est toute la différence avec le gel (D5.5).
+    TempFolder folder("stems-depart");
+    Project avec = buildStemProject();
+    saveProjectBundle(avec, folder.str());
+    const auto chargéAvec = loadProjectBundle(folder.str());
+    VSM_ASSERT(chargéAvec.success);
+
+    TempFolder sansDossier("stems-sans-depart");
+    Project sans = buildStemProject();
+    sans.tracks[1].setSendLevel(0, 0.0f);
+    saveProjectBundle(sans, sansDossier.str());
+    const auto chargéSans = loadProjectBundle(sansDossier.str());
+    VSM_ASSERT(chargéSans.success);
+
+    RenderOptions options;
+    options.durationSeconds = 3.0;
+    const StemResult a = renderStems(chargéAvec.bundle, StemGranularity::Tracks, options);
+    const StemResult b = renderStems(chargéSans.bundle, StemGranularity::Tracks, options);
+    VSM_ASSERT(a.success && b.success);
+
+    double écart = 0.0;
+    for (size_t i = 0; i < a.stems[1].audio.numFrames(); ++i)
+        écart += std::abs(a.stems[1].audio.left[i] - b.stems[1].audio.left[i]);
+    VSM_ASSERT(écart > 0.001);
+}
+
+VSM_TEST(stems_are_written_one_file_per_track_with_readable_names) {
+    TempFolder folder("stems-fichiers");
+    saveProjectBundle(buildStemProject(), folder.str());
+    const auto chargé = loadProjectBundle(folder.str());
+    VSM_ASSERT(chargé.success);
+
+    RenderOptions options;
+    options.durationSeconds = 1.0;
+    const std::string sortie = folder.file("stems");
+    const StemResult écrits =
+        renderStemsToFolder(chargé.bundle, sortie, StemGranularity::Tracks, options);
+    VSM_ASSERT(écrits.success);
+    VSM_ASSERT(std::filesystem::exists(std::filesystem::path(sortie) / "01 - Basse.wav"));
+    VSM_ASSERT(std::filesystem::exists(std::filesystem::path(sortie) / "02 - Lead.wav"));
+    VSM_ASSERT(std::filesystem::exists(std::filesystem::path(sortie) / "03 - Nappe.wav"));
+}
+
 // --- D0.3 : le rendu contient ce que le projet décrit -----------------------
 //
 // Les inserts étaient écrits dans `project.json` et jamais posés sur le graphe

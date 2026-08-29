@@ -99,6 +99,7 @@ private:
         kMenuFileReferenceCycle,
         kMenuFileExport,
         kMenuFileExportWav,
+        kMenuFileExportStems,
         kMenuFileAudioSettings,
         kMenuFileQuit,
         kMenuTrackAdd,
@@ -291,6 +292,10 @@ private:
     juce::String frozenPathFor(size_t trackIndex) const;
     void exportMidiFile();
     void exportAudioFile();
+    /// Un WAV par piste (D6.2).
+    void exportStems();
+    /// La session mise en forme de projet chargé, pour le rendu.
+    vsm::interchange::LoadedBundle bundleFromSession();
     /// La seconde moitié de l'export : choisir le fichier, puis rendre avec les
     /// options que l'utilisateur vient de fixer (D6.1).
     void exportAudioWithOptions(const vsm::interchange::RenderOptions& options);

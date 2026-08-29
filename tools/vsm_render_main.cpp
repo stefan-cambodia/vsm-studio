@@ -30,6 +30,10 @@ void printUsage() {
         "  --sample-rate <Hz>    fréquence d'échantillonnage (défaut : 48000)\n"
         "  --block-size <n>      taille de bloc du rendu (défaut : 512)\n"
         "  --tail <secondes>     silence ajouté après la dernière note (défaut : 2)\n"
+        "  --stems <dossier>     un WAV par piste au lieu d'un mixage ; le second\n"
+        "                        argument est alors ce dossier. La somme des stems\n"
+        "                        redonne le mixage AVANT la tranche master.\n"
+        "  --stems-par <mode>    piste (défaut) | groupe\n"
         "  --start <secondes>    début de la plage exportée (défaut : 0). Le rendu\n"
         "                        part toujours de zéro et la plage est découpée\n"
         "                        ensuite, pour que les queues et les compresseurs\n"
@@ -61,6 +65,8 @@ int main(int argc, char** argv) {
     std::vector<std::string> positional;
     vsm::interchange::RenderOptions options;
     bool quiet = false;
+    std::string stems;
+    vsm::interchange::StemGranularity granularite = vsm::interchange::StemGranularity::Tracks;
 
     // Mode service : détecté avant tout le reste, il ne partage aucun argument
     // avec le rendu de projet.
@@ -101,6 +107,20 @@ int main(int argc, char** argv) {
                 std::fprintf(stderr, "vsm-render : durée de queue invalide\n");
                 return 1;
             }
+        } else if (arg == "--stems") {
+            const char* value = next("--stems");
+            if (!value) return 1;
+            stems = value;
+        } else if (arg == "--stems-par") {
+            const char* value = next("--stems-par");
+            if (!value) return 1;
+            const std::string mode = value;
+            if (mode == "piste") granularite = vsm::interchange::StemGranularity::Tracks;
+            else if (mode == "groupe") granularite = vsm::interchange::StemGranularity::Groups;
+            else {
+                std::fprintf(stderr, "vsm-render : granularité inconnue \"%s\" (piste|groupe)\n", value);
+                return 1;
+            }
         } else if (arg == "--start") {
             const char* value = next("--start");
             if (!value || !parseDouble(value, options.startSeconds) || options.startSeconds < 0.0) {
@@ -134,6 +154,31 @@ int main(int argc, char** argv) {
     }
 
     if (positional.size() != 2) { printUsage(); return 1; }
+
+    // EXPORT PAR STEMS (D6.2) : le second argument devient un DOSSIER, un WAV
+    // par piste. Même moteur, même options de plage et de format -- il n'y a
+    // toujours qu'un seul rendu dans ce projet.
+    if (!stems.empty()) {
+        const auto chargé = vsm::interchange::loadProjectBundle(positional[0]);
+        if (!chargé.success) {
+            std::fprintf(stderr, "vsm-render : %s\n", chargé.error.c_str());
+            return 2;
+        }
+        const vsm::interchange::StemResult sortie =
+            vsm::interchange::renderStemsToFolder(chargé.bundle, positional[1], granularite, options);
+        for (const auto& warning : chargé.warnings)
+            std::fprintf(stderr, "avertissement : %s\n", warning.c_str());
+        for (const auto& warning : sortie.warnings)
+            std::fprintf(stderr, "avertissement : %s\n", warning.c_str());
+        if (!sortie.success) {
+            std::fprintf(stderr, "vsm-render : %s\n", sortie.error.c_str());
+            return 2;
+        }
+        if (!quiet)
+            std::printf("%zu stems écrits dans %s (%.2f s)\n", sortie.stems.size(),
+                         positional[1].c_str(), sortie.renderedSeconds);
+        return 0;
+    }
 
     const vsm::interchange::RenderResult result =
         vsm::interchange::renderProjectFolderToWav(positional[0], positional[1], options);

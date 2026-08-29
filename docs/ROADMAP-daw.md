@@ -1557,7 +1557,7 @@ D0.3 a rendu l'export **honnête** ; ici on le rend complet.
 | Étape | Contenu | Terminé quand |
 |---|---|---|
 | D6.1 | Plage au choix (morceau, boucle, sélection), fréquence, profondeur, queue | plus de 48 kHz / 24 bits en dur — **fait** |
-| D6.2 | Export **stems** : une piste ou un bus par fichier | la somme des stems égale le mixage, vérifié par test |
+| D6.2 | Export **stems** : une piste ou un bus par fichier | la somme des stems égale le mixage, vérifié par test — **fait** |
 | D6.3 | Export MIDI complet (aujourd'hui : perd `muted` et `confidence`) | relu ailleurs sans perte de tempo ni de signature |
 | D6.4 | Export d'un **projet autonome** (dossier complet, échantillons compris) | s'ouvre sur une autre machine sans rien de manquant |
 | D6.5 | Rendu en temps réel, requis dès qu'un plugin tiers l'exige | option explicite, jamais le défaut |
@@ -1594,6 +1594,44 @@ L'application n'en invente pas un second ; elle expose celui de `vsm-render`.
 >
 > **UN SEUL RENDU, TOUJOURS** : `vsm-render` reçoit la même option, `--start`.
 > L'application ne sait rien exporter que la ligne de commande ne sache faire.
+
+
+> **D6.2 EST FAITE (30/08/2026). UN STEM EST UNE CONTRIBUTION AU MIXAGE, PAS
+> UNE PISTE ISOLÉE.** Le stem de la voix porte son volume, son panoramique, ses
+> inserts **et la réverbération qu'elle envoie** : c'est ce qui le rend
+> utilisable seul chez quelqu'un d'autre. C'est exactement l'inverse du gel
+> (D5.5), qui capture la piste AVANT son fader pour que le mixage reste
+> vivant — les deux fonctions rendent la même piste et ne doivent surtout pas
+> rendre la même chose.
+>
+> **LA TRANCHE MASTER N'EST PAS DANS LES STEMS.** Un compresseur de master
+> réagit au mixage entier : il n'existe aucune façon de le répartir entre les
+> pistes, et l'appliquer à chaque fichier le ferait agir autant de fois qu'il y
+> a de stems. Ce qui est exporté est donc ce qui ARRIVE au master, et la somme
+> vaut le mixage avant master. C'est la seule égalité qui puisse être vraie, et
+> l'export le dit dans ses avertissements plutôt que de laisser croire à
+> l'autre.
+>
+> **CE QUI ROMPRAIT L'ÉGALITÉ EST ANNONCÉ, PAS INTERDIT** : un insert non
+> linéaire sur un bus de GROUPE réagit au groupe entier, donc ne se répartit pas
+> non plus. Le rendu avertit ; il ne refuse pas, parce que des stems légèrement
+> disjoints restent utiles et que c'est à l'utilisateur d'en décider.
+>
+> **UN BUS DE GROUPE N'EST JAMAIS UN STEM DE PLUS** : il est TRAVERSÉ par les
+> pistes qu'il porte. Le compter en supplément doublerait le son. Le mode « un
+> groupe par fichier » remplace ses pistes, il ne s'y ajoute pas — d'où la même
+> somme, avec moins de fichiers.
+>
+> **UNE PANNE TROUVÉE EN ÉCRIVANT LE TEST, ET QUI N'AVAIT RIEN À VOIR AVEC LES
+> STEMS.** Le stem d'une piste envoyant 40 % dans la réverbération sortait
+> identique à celui d'une piste n'envoyant rien. Cause : le rendu hors ligne
+> posait bien les NIVEAUX de départ de chaque piste et le masque pré-fader,
+> mais **aucun effet sur les bus de départ**. Tout ce qui partait vers un
+> départ tombait dans un bus vide. Autrement dit, depuis D4.2, **tout projet
+> exporté depuis l'application perdait sa réverbération et son delay de
+> départ**, en silence — la panne même que D0.3 avait corrigée pour les
+> inserts, restée intacte à côté. Corrigée dans `renderBundleToBuffer`, avec un
+> test qui compare deux rendus ne différant que par un niveau de départ.
 
 
 ### Phase D7 — Héberger les plugins des autres
