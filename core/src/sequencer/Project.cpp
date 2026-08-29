@@ -14,6 +14,150 @@ size_t slotFor(uint8_t channel, uint8_t note) {
 }
 } // namespace
 
+
+// --- D6.3 : ce que le SMF ne sait pas dire, écrit là où il l'ignorera --------
+//
+// LE PROBLÈME. Deux propriétés d'une note n'existent pas dans le format SMF :
+// `muted` (présente mais silencieuse) et `confidence` (le degré de certitude
+// d'une transcription). Jusqu'ici elles disparaissaient à l'export, sans
+// avertissement : exporter puis réimporter son propre morceau démuselait les
+// notes qu'on avait tues et effaçait le travail de vérification d'une
+// transcription. Un aller-retour qui perd du travail est un piège.
+//
+// CE QU'ON NE FAIT PAS. Écrire les notes muettes dans le flux de notes en les
+// marquant à côté : le fichier jouerait alors autre chose que ce qu'on entend
+// dans l'application, et tout autre logiciel les ferait sonner. La règle tient
+// et ne bouge pas -- LE FICHIER JOUE CE QU'ON ENTEND.
+//
+// CE QU'ON FAIT. Un événement méta 0x7F (Sequencer Specific), que la norme
+// réserve précisément à cela et que tout autre logiciel ignore : il n'y a rien
+// à comprendre dedans pour qui ne le connaît pas. On y écrit les notes muettes
+// EN ENTIER (elles ne sont nulle part ailleurs) et les confiances des notes qui
+// ne valent pas 1. Un aller-retour VSM -> .mid -> VSM redevient fidèle ; un
+// aller-retour VSM -> .mid -> autre logiciel n'y perd rien qu'il aurait pu
+// lire.
+namespace {
+
+constexpr uint8_t kVsmMetaType = 0x7F;
+/// 0x7D est l'identifiant « non commercial » que la norme MIDI laisse aux
+/// usages privés ; « VS » derrière lui suffit à ne pas confondre notre bloc
+/// avec celui d'un autre logiciel qui aurait fait le même choix.
+constexpr uint8_t kVsmSignature[3] = {0x7D, 'V', 'S'};
+constexpr uint8_t kVsmBlockVersion = 1;
+
+void pushBE32(std::vector<uint8_t>& out, uint32_t value) {
+    out.push_back(static_cast<uint8_t>((value >> 24) & 0xFF));
+    out.push_back(static_cast<uint8_t>((value >> 16) & 0xFF));
+    out.push_back(static_cast<uint8_t>((value >> 8) & 0xFF));
+    out.push_back(static_cast<uint8_t>(value & 0xFF));
+}
+
+uint32_t readBE32(const std::vector<uint8_t>& data, size_t& at) {
+    const uint32_t value = (static_cast<uint32_t>(data[at]) << 24)
+                          | (static_cast<uint32_t>(data[at + 1]) << 16)
+                          | (static_cast<uint32_t>(data[at + 2]) << 8)
+                          | static_cast<uint32_t>(data[at + 3]);
+    at += 4;
+    return value;
+}
+
+void pushConfidence(std::vector<uint8_t>& out, float confidence) {
+    const float borne = confidence < 0.0f ? 0.0f : (confidence > 1.0f ? 1.0f : confidence);
+    const uint16_t quantifiee = static_cast<uint16_t>(borne * 65535.0f + 0.5f);
+    out.push_back(static_cast<uint8_t>(quantifiee >> 8));
+    out.push_back(static_cast<uint8_t>(quantifiee & 0xFF));
+}
+
+float readConfidence(const std::vector<uint8_t>& data, size_t& at) {
+    const uint16_t quantifiee = static_cast<uint16_t>((data[at] << 8) | data[at + 1]);
+    at += 2;
+    return static_cast<float>(quantifiee) / 65535.0f;
+}
+
+/// Le bloc privé d'une piste, ou vide s'il n'y a rien à dire -- et alors aucun
+/// événement n'est écrit : un fichier sans note muette et sans transcription
+/// ne doit porter aucune trace de ce mécanisme.
+std::vector<uint8_t> encodeVsmNoteBlock(const Track& track) {
+    std::vector<uint8_t> muettes, confiances;
+    uint32_t nbMuettes = 0, nbConfiances = 0;
+    for (const auto& note : track.notes) {
+        if (note.muted) {
+            ++nbMuettes;
+            pushBE32(muettes, static_cast<uint32_t>(note.startTick));
+            pushBE32(muettes, static_cast<uint32_t>(note.endTick));
+            muettes.push_back(note.channel);
+            muettes.push_back(note.number);
+            muettes.push_back(note.velocity);
+            muettes.push_back(note.releaseVelocity);
+            pushConfidence(muettes, note.confidence);
+        } else if (note.confidence < 1.0f) {
+            // Une note SONNANTE est retrouvée par sa position, sa hauteur et
+            // son canal : elle est déjà dans le flux, on n'en réécrit pas la
+            // vélocité.
+            ++nbConfiances;
+            pushBE32(confiances, static_cast<uint32_t>(note.startTick));
+            confiances.push_back(note.channel);
+            confiances.push_back(note.number);
+            pushConfidence(confiances, note.confidence);
+        }
+    }
+    if (nbMuettes == 0 && nbConfiances == 0) return {};
+
+    std::vector<uint8_t> bloc(std::begin(kVsmSignature), std::end(kVsmSignature));
+    bloc.push_back(kVsmBlockVersion);
+    pushBE32(bloc, nbMuettes);
+    bloc.insert(bloc.end(), muettes.begin(), muettes.end());
+    pushBE32(bloc, nbConfiances);
+    bloc.insert(bloc.end(), confiances.begin(), confiances.end());
+    return bloc;
+}
+
+/// Vrai si l'événement est NOTRE bloc. Un 0x7F d'un autre logiciel doit
+/// continuer son chemin dans `miscEvents` : le réécrire tel quel est ce que
+/// fait déjà le reste du projet, et le manger ici l'effacerait.
+bool isVsmNoteBlock(const UnknownMetaEvent& meta) {
+    return meta.metaType == kVsmMetaType && meta.data.size() >= 8
+        && meta.data[0] == kVsmSignature[0] && meta.data[1] == kVsmSignature[1]
+        && meta.data[2] == kVsmSignature[2] && meta.data[3] == kVsmBlockVersion;
+}
+
+/// Repose `muted` et `confidence` sur une piste déjà reconstruite. Les notes
+/// muettes n'existant nulle part ailleurs, elles sont CRÉÉES ici.
+void applyVsmNoteBlock(const std::vector<uint8_t>& data, Track& track, Project& project) {
+    size_t at = 4;
+    if (at + 4 > data.size()) return;
+    const uint32_t nbMuettes = readBE32(data, at);
+    for (uint32_t i = 0; i < nbMuettes; ++i) {
+        if (at + 14 > data.size()) return;
+        Note note;
+        note.startTick = readBE32(data, at);
+        note.endTick = readBE32(data, at);
+        note.channel = data[at++];
+        note.number = data[at++];
+        note.velocity = data[at++];
+        note.releaseVelocity = data[at++];
+        note.confidence = readConfidence(data, at);
+        note.muted = true;
+        note.id = project.nextNoteId();
+        track.notes.push_back(note);
+    }
+    if (at + 4 > data.size()) return;
+    const uint32_t nbConfiances = readBE32(data, at);
+    for (uint32_t i = 0; i < nbConfiances; ++i) {
+        if (at + 8 > data.size()) return;
+        const Tick start = readBE32(data, at);
+        const uint8_t canal = data[at++];
+        const uint8_t numero = data[at++];
+        const float confiance = readConfidence(data, at);
+        for (auto& note : track.notes)
+            if (!note.muted && note.startTick == start && note.channel == canal
+                && note.number == numero)
+                note.confidence = confiance;
+    }
+}
+
+} // namespace
+
 Project Project::fromParsedFile(const ParsedFile& parsed) {
     Project project;
     project.exportFormat = parsed.format;
@@ -36,6 +180,7 @@ Project Project::fromParsedFile(const ParsedFile& parsed) {
 
         std::vector<std::vector<std::pair<Tick, uint8_t>>> pending(kPendingSlots);
         bool channelDetected = false;
+        std::vector<uint8_t> blocVsm;
 
         for (const auto& ev : parsedTrack.events) {
             std::visit([&](auto&& data) {
@@ -103,8 +248,14 @@ Project Project::fromParsedFile(const ParsedFile& parsed) {
                         project.markers.push_back({ev.tick, data.text});
                     else
                         track.miscEvents.push_back(ev);
+                } else if constexpr (std::is_same_v<T, UnknownMetaEvent>) {
+                    // NOTRE bloc est CONSOMMÉ (relu plus bas, une fois les
+                    // notes reconstruites) ; celui d'un autre logiciel
+                    // poursuit son chemin intact.
+                    if (isVsmNoteBlock(data)) blocVsm = data.data;
+                    else track.miscEvents.push_back(ev);
                 } else {
-                    // SysExEvent, UnknownMetaEvent : conservés tels quels
+                    // SysExEvent : conservé tel quel
                     track.miscEvents.push_back(ev);
                 }
             }, ev.data);
@@ -124,6 +275,11 @@ Project Project::fromParsedFile(const ParsedFile& parsed) {
             }
         }
 
+        // D6.3 : APRÈS l'appariement des notes, jamais pendant -- les
+        // confiances désignent des notes qui n'existent pas encore au moment
+        // où le bloc est lu, et les notes muettes s'ajoutent à celles-là.
+        if (!blocVsm.empty()) applyVsmNoteBlock(blocVsm, track, project);
+
         track.sortEvents();
         project.tracks.push_back(std::move(track));
     }
@@ -132,6 +288,7 @@ Project Project::fromParsedFile(const ParsedFile& parsed) {
     (void)timeSigFound;
     return project;
 }
+
 
 ParsedFile Project::toParsedFile() const {
     ParsedFile parsed;
@@ -181,6 +338,11 @@ ParsedFile Project::toParsedFile() const {
             events.push_back({pc.tick, ProgramChangeEvent{pc.channel, pc.program}});
         for (const auto& misc : t.miscEvents)
             events.push_back(misc);
+
+        // D6.3 : le bloc privé, posé au tick 0 avec le nom de la piste. Rien
+        // n'est écrit quand il n'y a rien à dire.
+        if (const auto bloc = encodeVsmNoteBlock(t); !bloc.empty())
+            events.push_back({0, UnknownMetaEvent{kVsmMetaType, bloc}});
 
         // Les repères sont globaux : écrits une seule fois, sur la première
         // piste. Les écrire sur chacune les multiplierait par le nombre de

@@ -1558,7 +1558,7 @@ D0.3 a rendu l'export **honnête** ; ici on le rend complet.
 |---|---|---|
 | D6.1 | Plage au choix (morceau, boucle, sélection), fréquence, profondeur, queue | plus de 48 kHz / 24 bits en dur — **fait** |
 | D6.2 | Export **stems** : une piste ou un bus par fichier | la somme des stems égale le mixage, vérifié par test — **fait** |
-| D6.3 | Export MIDI complet (aujourd'hui : perd `muted` et `confidence`) | relu ailleurs sans perte de tempo ni de signature |
+| D6.3 | Export MIDI complet (aujourd'hui : perd `muted` et `confidence`) | relu ailleurs sans perte de tempo ni de signature — **fait** |
 | D6.4 | Export d'un **projet autonome** (dossier complet, échantillons compris) | s'ouvre sur une autre machine sans rien de manquant |
 | D6.5 | Rendu en temps réel, requis dès qu'un plugin tiers l'exige | option explicite, jamais le défaut |
 
@@ -1632,6 +1632,38 @@ L'application n'en invente pas un second ; elle expose celui de `vsm-render`.
 > départ**, en silence — la panne même que D0.3 avait corrigée pour les
 > inserts, restée intacte à côté. Corrigée dans `renderBundleToBuffer`, avec un
 > test qui compare deux rendus ne différant que par un niveau de départ.
+
+
+> **D6.3 EST FAITE (30/08/2026). LE FICHIER JOUE TOUJOURS CE QU'ON ENTEND ; CE
+> QUE LE SMF NE SAIT PAS DIRE EST ÉCRIT LÀ OÙ IL L'IGNORE.** Deux propriétés
+> d'une note n'existent pas dans le format : `muted` (présente mais silencieuse)
+> et `confidence` (le degré de certitude d'une transcription). Elles
+> disparaissaient à l'export sans un mot — exporter puis réimporter son propre
+> morceau démuselait les notes qu'on avait tues et effaçait le travail de
+> vérification d'une transcription. Un aller-retour qui perd du travail est un
+> piège.
+>
+> **CE QUI A ÉTÉ ÉCARTÉ** : écrire les notes muettes dans le flux de notes en
+> les marquant à côté. Le fichier jouerait alors autre chose que ce qu'on
+> entend, et tout autre logiciel les ferait sonner. La règle ne bouge pas, et
+> un test la garde.
+>
+> **CE QUI A ÉTÉ RETENU** : un événement méta **0x7F** (*Sequencer Specific*),
+> que la norme réserve exactement à cet usage et que tout autre logiciel ignore
+> — il n'y a rien à y comprendre pour qui ne le connaît pas. Signature `0x7D
+> "VS"` (0x7D est l'identifiant « non commercial » réservé aux usages privés),
+> un numéro de version, puis les notes muettes **en entier** (elles ne sont
+> nulle part ailleurs) et les confiances des notes qui ne valent pas 1. Un
+> projet qui n'a rien à dire n'écrit **aucun** bloc.
+>
+> **UN BLOC 0x7F D'UN AUTRE LOGICIEL TRAVERSE INTACT.** Ne consommer que le
+> nôtre est la même règle que partout ailleurs dans ce projet : ce qu'on ne
+> comprend pas se réécrit tel quel, jamais ne s'efface.
+>
+> **LE TEMPO ET LA SIGNATURE**, la moitié du critère qui porte sur ce que le SMF
+> sait dire, sont vérifiés sur des cartes à **plusieurs changements** — et pas
+> seulement en comparant les valeurs : le test vérifie qu'un même tick retombe
+> à la même seconde. Un tempo relu de travers ne se voit pas, il s'entend.
 
 
 ### Phase D7 — Héberger les plugins des autres

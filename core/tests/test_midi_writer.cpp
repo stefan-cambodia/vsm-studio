@@ -74,15 +74,27 @@ VSM_TEST(full_roundtrip_preserves_musical_content) {
 VSM_TEST(export_omits_muted_notes) {
     // Le format SMF n'a aucun moyen de dire "présente mais silencieuse" :
     // exporter une note muette produirait un fichier qui joue autre chose que
-    // ce qu'on entend dans l'application. Elles sont donc omises (voir
-    // Note::muted) -- et les autres notes restent intactes.
+    // ce qu'on entend dans l'application. Elles sont donc omises DU FLUX JOUÉ
+    // (voir Note::muted) -- et les autres notes restent intactes.
+    //
+    // LE COMPTE PORTE SUR LES NOTES, PLUS SUR LES ÉVÉNEMENTS. Depuis D6.3, une
+    // note muette fait apparaître un bloc privé 0x7F qui la décrit sans la
+    // faire sonner : compter les événements bruts mesurerait ce bloc en même
+    // temps que l'omission, et confondrait deux choses opposées.
     auto bytes = buildTestSmf(480);
     Project project = Project::fromParsedFile(MidiFileParser::parse(bytes));
     VSM_ASSERT(!project.tracks[1].notes.empty());
 
-    const size_t eventsBefore = project.toParsedFile().tracks[1].events.size();
+    auto compteNotes = [](const ParsedFile& parsed) {
+        size_t n = 0;
+        for (const auto& ev : parsed.tracks[1].events)
+            if (std::holds_alternative<NoteOnEvent>(ev.data)
+                || std::holds_alternative<NoteOffEvent>(ev.data)) ++n;
+        return n;
+    };
+    const size_t eventsBefore = compteNotes(project.toParsedFile());
     project.tracks[1].notes[0].muted = true;
-    const size_t eventsAfter = project.toParsedFile().tracks[1].events.size();
+    const size_t eventsAfter = compteNotes(project.toParsedFile());
     VSM_ASSERT_EQ(eventsAfter, eventsBefore - 2); // NoteOn + NoteOff en moins
 }
 
@@ -98,4 +110,130 @@ VSM_TEST(writer_rejects_smpte_export_in_phase1) {
         threw = true;
     }
     VSM_ASSERT(threw);
+}
+
+// --- D6.3 : l'export MIDI ne perd plus `muted` ni `confidence` --------------
+//
+// Le critère de l'étape se lit en deux moitiés. La première -- « relu ailleurs
+// sans perte de tempo ni de signature » -- porte sur ce que le SMF sait dire ;
+// la seconde sur ce qu'il ne sait pas, et que le bloc privé 0x7F transporte.
+
+VSM_TEST(a_midi_round_trip_keeps_muted_notes_and_their_confidence) {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    Track piste;
+    piste.name = "Transcription";
+    uint64_t ids = 1;
+    piste.addNote(0, 240, 60, 100, 0, ids);
+    piste.addNote(480, 720, 64, 90, 0, ids);
+    piste.addNote(960, 1200, 67, 80, 0, ids);
+    piste.notes[1].muted = true;          // tue dans l'éditeur
+    piste.notes[1].confidence = 0.25f;
+    piste.notes[2].confidence = 0.5f;     // douteuse mais sonnante
+    project.tracks.push_back(piste);
+
+    const Project relu = Project::fromParsedFile(
+        MidiFileParser::parse(MidiFileWriter::write(project.toParsedFile())));
+
+    VSM_ASSERT_EQ(relu.tracks.size(), static_cast<size_t>(1));
+    const auto& notes = relu.tracks[0].notes;
+    VSM_ASSERT_EQ(notes.size(), static_cast<size_t>(3));
+
+    size_t muettes = 0;
+    for (const auto& note : notes) {
+        if (!note.muted) continue;
+        ++muettes;
+        VSM_ASSERT_EQ(note.number, static_cast<uint8_t>(64));
+        VSM_ASSERT_EQ(note.startTick, static_cast<Tick>(480));
+        VSM_ASSERT_EQ(note.endTick, static_cast<Tick>(720));
+        VSM_ASSERT_EQ(note.velocity, static_cast<uint8_t>(90));
+        VSM_ASSERT_NEAR(note.confidence, 0.25f, 1e-4);
+    }
+    VSM_ASSERT_EQ(muettes, static_cast<size_t>(1));
+
+    for (const auto& note : notes)
+        if (!note.muted && note.number == 67) VSM_ASSERT_NEAR(note.confidence, 0.5f, 1e-4);
+    for (const auto& note : notes)
+        if (!note.muted && note.number == 60) VSM_ASSERT_NEAR(note.confidence, 1.0f, 1e-6);
+}
+
+VSM_TEST(a_muted_note_is_still_absent_from_the_played_stream) {
+    // LA RÈGLE NE BOUGE PAS : le fichier joue ce qu'on entend. Le bloc privé
+    // n'est pas une porte dérobée pour faire sonner ailleurs ce qu'on a tu.
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    Track piste;
+    uint64_t ids = 1;
+    piste.addNote(0, 240, 60, 100, 0, ids);
+    piste.addNote(480, 720, 64, 90, 0, ids);
+    piste.notes[1].muted = true;
+    project.tracks.push_back(piste);
+
+    const ParsedFile parsed = project.toParsedFile();
+    int notesOn = 0;
+    for (const auto& ev : parsed.tracks[0].events)
+        if (std::holds_alternative<NoteOnEvent>(ev.data)) ++notesOn;
+    VSM_ASSERT_EQ(notesOn, 1);
+}
+
+VSM_TEST(a_project_without_anything_to_say_writes_no_private_block) {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    Track piste;
+    uint64_t ids = 1;
+    piste.addNote(0, 240, 60, 100, 0, ids);
+    project.tracks.push_back(piste);
+
+    const ParsedFile parsed = project.toParsedFile();
+    for (const auto& ev : parsed.tracks[0].events)
+        VSM_ASSERT(!std::holds_alternative<UnknownMetaEvent>(ev.data));
+}
+
+VSM_TEST(a_private_block_from_another_program_is_left_alone) {
+    // Un 0x7F qui n'est pas le nôtre traverse le logiciel sans être touché --
+    // c'est ce que fait déjà le reste du projet pour ce qu'il ne comprend pas,
+    // et le manger ici effacerait le travail d'un autre.
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    Track piste;
+    uint64_t ids = 1;
+    piste.addNote(0, 240, 60, 100, 0, ids);
+    piste.miscEvents.push_back({0, UnknownMetaEvent{0x7F, {0x00, 0x21, 0x1D, 0x42}}});
+    project.tracks.push_back(piste);
+
+    const Project relu = Project::fromParsedFile(
+        MidiFileParser::parse(MidiFileWriter::write(project.toParsedFile())));
+    bool retrouve = false;
+    for (const auto& ev : relu.tracks[0].miscEvents)
+        if (const auto* meta = std::get_if<UnknownMetaEvent>(&ev.data))
+            if (meta->metaType == 0x7F && meta->data.size() == 4 && meta->data[3] == 0x42)
+                retrouve = true;
+    VSM_ASSERT(retrouve);
+}
+
+VSM_TEST(a_midi_round_trip_keeps_every_tempo_and_time_signature_change) {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    project.tempoMap.addTempoChange(0, 500000);      // 120 BPM
+    project.tempoMap.addTempoChange(1920, 400000);   // 150 BPM
+    project.timeSignatureMap.addChange(0, 3, 2);     // 3/4
+    project.timeSignatureMap.addChange(1920, 7, 3);  // 7/8
+    Track piste;
+    uint64_t ids = 1;
+    piste.addNote(0, 240, 60, 100, 0, ids);
+    project.tracks.push_back(piste);
+
+    const Project relu = Project::fromParsedFile(
+        MidiFileParser::parse(MidiFileWriter::write(project.toParsedFile())));
+
+    VSM_ASSERT_EQ(relu.ticksPerQuarterNote, 480);
+    VSM_ASSERT_EQ(relu.tempoMap.changes().size(), static_cast<size_t>(2));
+    VSM_ASSERT_EQ(relu.tempoMap.changes()[1].tick, static_cast<Tick>(1920));
+    VSM_ASSERT_EQ(relu.tempoMap.changes()[1].microsecondsPerQuarterNote, 400000u);
+    VSM_ASSERT_EQ(relu.timeSignatureMap.changes().size(), static_cast<size_t>(2));
+    VSM_ASSERT_EQ(relu.timeSignatureMap.changes()[1].numerator, 7);
+    VSM_ASSERT_EQ(relu.timeSignatureMap.changes()[1].denominatorPow2, 3);
+    // Et la conséquence qui compte vraiment : la même note tombe au même
+    // instant. Un tempo relu de travers ne se voit pas, il s'entend.
+    VSM_ASSERT_NEAR(relu.ticksToSeconds(2400), project.ticksToSeconds(2400), 1e-9);
 }

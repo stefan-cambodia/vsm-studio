@@ -23,9 +23,13 @@ struct Note {
     uint64_t id = 0;       // identifiant stable, utilisé par la sélection,
                             // l'automation liée et le RNG déterministe (humanize)
     /// Note rendue muette SANS être supprimée : elle reste visible et éditable
-    /// dans le piano roll (affichée hachurée) mais n'est ni jouée ni exportée.
+    /// dans le piano roll (affichée hachurée) mais n'est pas jouée, et
+    /// n'apparaît donc pas dans le flux de notes exporté.
     /// C'est un concept d'ÉDITEUR : le format SMF n'a rien pour le
-    /// représenter, d'où son absence à l'export (documenté dans Project.cpp).
+    /// représenter. Depuis D6.3, elle survit tout de même à un aller-retour
+    /// par un fichier .mid, écrite dans un bloc privé 0x7F que les autres
+    /// logiciels ignorent (voir Project.cpp) -- sans jamais réintégrer le flux
+    /// joué, sans quoi le fichier jouerait autre chose que ce qu'on entend.
     /// Placé APRÈS `id` volontairement : tout le code existant construit une
     /// Note par agrégat positionnel `Note{start, end, canal, num, vel, relVel,
     /// id}`, qui reste donc valide tel quel.
@@ -38,7 +42,9 @@ struct Note {
     /// joue et s'exporte exactement comme les autres. La masquer ou la taire
     /// reviendrait à décider à la place de l'utilisateur ; la signaler lui
     /// permet d'aller l'écouter et de trancher. Le format SMF n'a rien pour la
-    /// représenter, elle ne part donc pas à l'export MIDI -- comme `muted`.
+    /// représenter ; depuis D6.3 elle voyage, comme `muted`, dans le bloc privé
+    /// 0x7F -- de sorte qu'exporter puis réimporter une transcription ne perde
+    /// plus le travail de vérification déjà fait.
     ///
     /// Placée APRÈS `muted`, même raison que lui : tout le code existant
     /// construit une Note par agrégat positionnel, qui reste valide tel quel.
