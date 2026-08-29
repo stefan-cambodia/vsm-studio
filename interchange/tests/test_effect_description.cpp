@@ -75,7 +75,7 @@ VSM_TEST(the_channel_strip_effects_are_named_by_what_they_do) {
                 "effect.eq.high.freq"}},
         {"compressor", {"effect.compressor.threshold", "effect.compressor.ratio",
                         "effect.compressor.attack", "effect.compressor.release",
-                        "effect.compressor.makeup"}},
+                        "effect.compressor.makeup", "effect.compressor.sidechain"}},
         {"gate", {"effect.gate.threshold", "effect.gate.attack", "effect.gate.hold",
                   "effect.gate.release", "effect.gate.range"}},
         {"limiter", {"effect.limiter.ceiling", "effect.limiter.release"}},

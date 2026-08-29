@@ -923,6 +923,7 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Attack", "effect.compressor.attack"},
         {"Release", "effect.compressor.release"},
         {"Makeup", "effect.compressor.makeup"},
+        {"Sidechain Bus", "effect.compressor.sidechain"},
     }},
     {"fx.gate", {
         {"Threshold", "effect.gate.threshold"},

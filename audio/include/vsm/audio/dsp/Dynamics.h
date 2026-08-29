@@ -27,7 +27,17 @@ public:
     /// Traite un échantillon stéréo en place. Renvoie la réduction de gain
     /// appliquée (0..1, 1 = pas de réduction) pour un éventuel mètre GR.
     float processStereo(float& l, float& r) {
-        const float detect = std::max(std::abs(l), std::abs(r));
+        return processStereoDetecting(l, r, std::max(std::abs(l), std::abs(r)));
+    }
+
+    /// Traite un échantillon stéréo en DÉTECTANT SUR AUTRE CHOSE que lui.
+    ///
+    /// C'est toute la chaîne latérale : le compresseur écoute un signal et en
+    /// baisse un autre. Rien du calcul ne change -- seule la source de la
+    /// détection --, et c'est pourquoi la fonction est ici plutôt que dupliquée
+    /// dans l'effet : deux compresseurs finiraient par ne plus compresser
+    /// pareil.
+    float processStereoDetecting(float& l, float& r, float detect) {
         const float detectDb = gainToDb(std::max(detect, 1.0e-9f));
 
         // Cible de gain (linéaire) d'après la courbe statique hard-knee.

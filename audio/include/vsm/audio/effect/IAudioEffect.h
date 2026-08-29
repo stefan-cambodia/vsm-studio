@@ -29,6 +29,29 @@ public:
     virtual const vsm::audio::plugin::ParameterList& parameterList() const = 0;
 
     virtual const char* effectName() const = 0;
+
+    // --- CHAÎNE LATÉRALE (sidechain, D4.4) --------------------------------
+    //
+    // DEUX MÉTHODES FACULTATIVES plutôt qu'un `process` élargi : douze effets
+    // sur treize n'écoutent rien d'autre que ce qu'ils traitent, et leur
+    // imposer un paramètre de plus les obligerait tous à le documenter, le
+    // tester et l'ignorer. Le défaut « je n'écoute rien » les laisse
+    // rigoureusement inchangés.
+
+    /// Le bus de départ que cet effet ÉCOUTE, ou 0 s'il n'écoute rien.
+    ///
+    /// Un bus de départ et non une piste : le signal d'écoute passe par le même
+    /// chemin que n'importe quel envoi, avec son bouton sur chaque tranche.
+    /// Router « la grosse caisse vers le bus 3 » et « ce compresseur écoute le
+    /// bus 3 » emploie ce qui existe déjà, là où une référence de piste à piste
+    /// aurait demandé un second système de routage à tenir d'accord avec le
+    /// premier.
+    virtual int sidechainBus() const { return 0; }
+
+    /// Donne à l'effet le signal qu'il a demandé, juste avant `process`. Les
+    /// pointeurs ne sont valides QUE pendant l'appel à `process` qui suit.
+    virtual void setSidechainInput(const float* /*left*/, const float* /*right*/,
+                                    int /*numSamples*/) {}
 };
 
 using AudioEffectPtr = std::unique_ptr<IAudioEffect>;

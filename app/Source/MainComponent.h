@@ -107,6 +107,9 @@ private:
         /// Vingt places par bus pour choisir son effet : treize aujourd'hui,
         /// de la marge pour ceux qui viendront.
         /// Un identifiant par bus, pour le commuter pré/post-fader.
+        /// Un identifiant par bus, pour rendre son retour audible ou muet.
+        kMenuMixSendReturnFirst,
+        kMenuMixSendReturnLast = kMenuMixSendReturnFirst + 7,
         kMenuMixSendPreFaderFirst,
         kMenuMixSendPreFaderLast = kMenuMixSendPreFaderFirst + 7,
         kMenuMixSendEffectFirst,

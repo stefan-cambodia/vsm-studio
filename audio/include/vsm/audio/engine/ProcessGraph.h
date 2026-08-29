@@ -326,6 +326,21 @@ private:
     /// se relirait par piste et par sous-segment.
     std::atomic<uint32_t> preFaderMask_{0};
 
+    /// L'ORDRE DANS LEQUEL LES PISTES SONT RENDUES (D4.4).
+    ///
+    /// Il vaut l'ordre naturel tant qu'aucune chaîne latérale n'existe -- et
+    /// c'est important : réordonner les additions changerait le dernier bit du
+    /// mixage sans raison. Dès qu'un effet ÉCOUTE un bus, les pistes qui
+    /// ALIMENTENT ce bus passent devant : pour que la grosse caisse fasse
+    /// plonger la basse dans le bloc courant, il faut qu'elle ait déjà été
+    /// calculée. Un ordre publié depuis le thread UI, plutôt qu'un tri dans le
+    /// rappel audio, qui n'alloue pas.
+    std::atomic<std::shared_ptr<const std::vector<size_t>>> renderOrder_{nullptr};
+    /// Recalcule et publie l'ordre. Thread UI ; appelée quand le projet ou une
+    /// chaîne d'inserts change, c'est-à-dire aux deux seuls endroits d'où la
+    /// réponse peut bouger.
+    void refreshRenderOrder();
+
     // Tampons des groupes : une piste routée vers un groupe s'y mélange au lieu
     // d'aller au master, et le groupe est traité APRÈS, une fois que tous ses
     // membres ont écrit. D'où deux passes, et non un ordre de pistes malin :

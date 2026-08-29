@@ -220,3 +220,59 @@ VSM_TEST(none_of_the_four_produces_anything_but_finite_numbers) {
         }
     }
 }
+
+VSM_TEST(the_compressor_detects_on_the_sidechain_when_it_is_given_one) {
+    // Au niveau de l'effet seul, sans moteur : le compresseur baisse ce qu'on
+    // lui donne EN FONCTION d'un autre signal. C'est le coeur de D4.4, et
+    // l'isoler ici distingue une faute de DSP d'une faute de câblage.
+    constexpr double sr = 48000.0;
+    const int n = 4096;
+    std::vector<float> g(static_cast<size_t>(n)), d(static_cast<size_t>(n));
+    std::vector<float> ecouteG(static_cast<size_t>(n)), ecouteD(static_cast<size_t>(n));
+    remplirSinus(g, d, 220.0, sr, 0.1f);            // signal faible à traiter
+    remplirSinus(ecouteG, ecouteD, 60.0, sr, 0.9f); // signal fort à écouter
+
+    CompressorEffect comp;
+    comp.setParameter(CompressorEffect::kThresholdDb, -20.0f);
+    comp.setParameter(CompressorEffect::kRatio, 20.0f);
+    comp.setParameter(CompressorEffect::kAttackMs, 0.5f);
+    comp.setParameter(CompressorEffect::kSidechain, 1.0f);
+    comp.prepare(sr, n);
+    VSM_ASSERT_EQ(comp.sidechainBus(), 1);
+    comp.setSidechainInput(ecouteG.data(), ecouteD.data(), n);
+    comp.process(g.data(), d.data(), n);
+
+    // Le signal traité était SOUS le seuil : sans écoute il serait intact.
+    // Avec, il plonge -- c'est le signal fort qui commande.
+    VSM_ASSERT(crete(g, g.size() / 2) < 0.05f);
+    VSM_ASSERT(comp.gainReduction() < 0.5f);
+}
+
+VSM_TEST(the_compressor_forgets_its_sidechain_after_each_block) {
+    // Les pointeurs d'écoute ne valent que pour l'appel qui suit : les garder
+    // ferait relire au bloc suivant un tampon dont le contenu a changé, ou qui
+    // n'existe plus.
+    constexpr double sr = 48000.0;
+    const int n = 1024;
+    std::vector<float> g(static_cast<size_t>(n)), d(static_cast<size_t>(n));
+    std::vector<float> ecouteG(static_cast<size_t>(n)), ecouteD(static_cast<size_t>(n));
+    remplirSinus(g, d, 220.0, sr, 0.1f);
+    remplirSinus(ecouteG, ecouteD, 60.0, sr, 0.9f);
+
+    CompressorEffect comp;
+    comp.setParameter(CompressorEffect::kThresholdDb, -20.0f);
+    comp.setParameter(CompressorEffect::kRatio, 20.0f);
+    comp.setParameter(CompressorEffect::kSidechain, 1.0f);
+    comp.prepare(sr, n);
+    comp.setSidechainInput(ecouteG.data(), ecouteD.data(), n);
+    comp.process(g.data(), d.data(), n);
+
+    // Deuxième bloc SANS écoute : le compresseur retombe sur le signal traité,
+    // qui est sous le seuil, et le laisse remonter.
+    remplirSinus(g, d, 220.0, sr, 0.1f);
+    for (int passe = 0; passe < 40; ++passe) {
+        remplirSinus(g, d, 220.0, sr, 0.1f);
+        comp.process(g.data(), d.data(), n);
+    }
+    VSM_ASSERT_NEAR(comp.gainReduction(), 1.0f, 0.05f);
+}

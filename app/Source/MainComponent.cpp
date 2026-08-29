@@ -662,6 +662,13 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                     // PRÉ / POST-FADER (D4.3). Post-fader était codé en dur ;
                     // l'infobulle du menu dit ce que chacun change, parce que
                     // « pré-fader » n'apprend rien à qui ne le sait pas déjà.
+                    // LE RETOUR S'ÉTEINT, et ce n'est pas un raffinement : un bus
+                    // qui ne sert qu'à faire ÉCOUTER une piste à un compresseur
+                    // (chaîne latérale, D4.4) ne doit pas s'entendre. Sans ce
+                    // commutateur, il faudrait choisir entre une réverbération
+                    // parasite et pas de chaîne latérale du tout.
+                    sousMenu.addItem(kMenuMixSendReturnFirst + static_cast<int>(bus),
+                                      u8"Retour audible", true, decrit.returnGain > 0.0f);
                     sousMenu.addItem(kMenuMixSendPreFaderFirst + static_cast<int>(bus),
                                       decrit.preFader
                                           ? u8"Pré-fader (le fader ne l'affecte pas)"
@@ -818,6 +825,14 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
                     if (bus < piste.sendLevels.size())
                         piste.sendLevels.erase(piste.sendLevels.begin()
                                                 + static_cast<std::ptrdiff_t>(bus));
+                sendBusesChanged();
+                break;
+            }
+            if (menuItemID >= kMenuMixSendReturnFirst && menuItemID <= kMenuMixSendReturnLast) {
+                const size_t bus = static_cast<size_t>(menuItemID - kMenuMixSendReturnFirst);
+                if (bus >= project_.sends.size()) break;
+                beginProjectEdit(u8"Retour d'un départ");
+                project_.sends[bus].returnGain = project_.sends[bus].returnGain > 0.0f ? 0.0f : 1.0f;
                 sendBusesChanged();
                 break;
             }

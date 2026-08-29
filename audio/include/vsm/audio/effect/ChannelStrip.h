@@ -103,7 +103,7 @@ private:
 class CompressorEffect : public IAudioEffect {
 public:
     enum ParamIds : vsm::audio::plugin::ParamId {
-        kThresholdDb = 0, kRatio, kAttackMs, kReleaseMs, kMakeupDb, kNumParams
+        kThresholdDb = 0, kRatio, kAttackMs, kReleaseMs, kMakeupDb, kSidechain, kNumParams
     };
 
     CompressorEffect() {
@@ -113,6 +113,10 @@ public:
             {kAttackMs, "Attack", 0.1f, 200.0f, 10.0f, "ms"},
             {kReleaseMs, "Release", 5.0f, 1000.0f, 120.0f, "ms"},
             {kMakeupDb, "Makeup", 0.0f, 24.0f, 0.0f, "dB"},
+            // 0 = écoute ce qu'il traite ; 1..8 = écoute le bus de départ de ce
+            // numéro. C'est un paramètre comme les autres, donc il se
+            // sauvegarde, se rappelle et a son bouton sans une ligne de plus.
+            {kSidechain, "Sidechain Bus", 0.0f, 8.0f, 0.0f, ""},
         };
         for (const auto& p : parameterList_) params_[p.id].store(p.defaultValue, std::memory_order_relaxed);
     }
@@ -130,8 +134,24 @@ public:
         compresseur_.setMakeupDb(params_[kMakeupDb].load(std::memory_order_relaxed));
 
         float reduction = 1.0f;
-        for (int n = 0; n < numSamples; ++n)
-            reduction = std::min(reduction, compresseur_.processStereo(left[n], right[n]));
+        // LA CHAÎNE LATÉRALE : on détecte sur le signal d'écoute quand il y en
+        // a un, et sur le signal traité sinon. Le compresseur ne fait pas deux
+        // choses -- il baisse toujours ce qu'on lui donne ; c'est la SOURCE de
+        // sa décision qui change.
+        if (sidechainL_ != nullptr && sidechainR_ != nullptr && sidechainSamples_ >= numSamples) {
+            for (int n = 0; n < numSamples; ++n) {
+                const float ecoute = std::max(std::abs(sidechainL_[n]), std::abs(sidechainR_[n]));
+                reduction = std::min(reduction,
+                                      compresseur_.processStereoDetecting(left[n], right[n], ecoute));
+            }
+        } else {
+            for (int n = 0; n < numSamples; ++n)
+                reduction = std::min(reduction, compresseur_.processStereo(left[n], right[n]));
+        }
+        // Les pointeurs d'écoute ne valent QUE pour cet appel : les oublier
+        // évite qu'un bloc suivant relise un tampon qui a changé de contenu.
+        sidechainL_ = sidechainR_ = nullptr;
+        sidechainSamples_ = 0;
         // LA RÉDUCTION DE GAIN EST PUBLIÉE. Un compresseur dont on ne voit pas
         // travailler est un compresseur qu'on règle au hasard : on monte le
         // seuil jusqu'à entendre quelque chose, et on ne sait jamais de combien.
@@ -150,7 +170,20 @@ public:
     /// Gain appliqué au dernier bloc (1 = pas de réduction).
     float gainReduction() const { return gainReduction_.load(std::memory_order_relaxed); }
 
+    int sidechainBus() const override {
+        const float v = params_[kSidechain].load(std::memory_order_relaxed);
+        return static_cast<int>(std::lround(std::max(0.0f, v)));
+    }
+    void setSidechainInput(const float* left, const float* right, int numSamples) override {
+        sidechainL_ = left;
+        sidechainR_ = right;
+        sidechainSamples_ = numSamples;
+    }
+
 private:
+    const float* sidechainL_ = nullptr;
+    const float* sidechainR_ = nullptr;
+    int sidechainSamples_ = 0;
     vsm::audio::dsp::Compressor compresseur_;
     std::atomic<float> gainReduction_{1.0f};
     std::array<std::atomic<float>, kNumParams> params_;

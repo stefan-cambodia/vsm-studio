@@ -902,7 +902,7 @@ pas seulement l'écouter.
 | D4.1 | **Égaliseur, compresseur, porte, limiteur enfichables par piste** — le DSP existe déjà dans `MasterBus`, il n'est pas exposé | quatre effets de plus dans `EffectFactory`, chacun conforme au CDC (identités sémantiques, façade, empreinte) — **fait** |
 | D4.2 | Bus de groupe et départs **libres** (aujourd'hui : deux, figés en dur sur Reverb et Delay dans le constructeur de `MainComponent`) | une réverbération se partage entre pistes ; le nombre de départs n'est plus une constante — **fait** |
 | D4.3 | Départs pré/post-fader au choix (post-fader est codé en dur, `ProcessGraph.cpp:465`) | commutable par départ — **fait** |
-| D4.4 | **Chaîne latérale** (*sidechain*) | le compresseur d'une piste écoute une autre piste — la signature même du genre que ce projet reconstruit |
+| D4.4 | **Chaîne latérale** (*sidechain*) | le compresseur d'une piste écoute une autre piste — la signature même du genre que ce projet reconstruit — **fait** |
 | D4.5 | **Compensation de latence (PDC)** : `ISynthPlugin` et `IAudioEffect` déclarent leur latence, le graphe la compense | insérer un effet à latence connue ne décale plus la piste ; test avec une latence artificielle et un `Oversampler` |
 | D4.6 | Automation de **tout** : volume, pan, départs, paramètres d'effets, master — aujourd'hui les paramètres d'instrument seulement (`ProcessGraph.cpp:325`) | un fondu écrit en automation s'entend |
 | D4.7 | Mesure : crête **et** RMS par piste, LUFS, corrélation de phase | affichés, et cohérents avec ce que `analyse/` mesure du même signal |
@@ -1053,6 +1053,48 @@ du projet mesureront enfin la même chose.
 > sous la main, mais un entier se lit une fois par bloc là où le vecteur se
 > relirait par piste et par sous-segment. Les groupes obéissent au même masque —
 > un groupe alimente les départs comme une piste.
+
+> **D4.4 EST FAITE (29/08/2026).** Le compresseur d'une piste écoute une autre
+> piste, et les deux étapes précédentes s'y révèlent nécessaires.
+>
+> **L'ÉCOUTE PASSE PAR UN BUS DE DÉPART, pas par une référence de piste à
+> piste.** Router « la grosse caisse vers le bus 3 » et « ce compresseur écoute
+> le bus 3 » emploie ce qui existe déjà — un bouton par tranche, un niveau
+> sauvegardé, un routage nommé. Une référence directe aurait demandé un SECOND
+> système de routage à tenir d'accord avec le premier, et à renuméroter à chaque
+> suppression de piste comme les groupes.
+>
+> **DEUX MÉTHODES FACULTATIVES SUR `IAudioEffect`**, et non un `process`
+> élargi : douze effets sur treize n'écoutent rien d'autre que ce qu'ils
+> traitent, et leur imposer un paramètre de plus les obligerait tous à le
+> documenter, le tester et l'ignorer. Le défaut « je n'écoute rien » les laisse
+> rigoureusement inchangés. Côté DSP, `Compressor` gagne une seule fonction :
+> le calcul ne change pas, seule la SOURCE de sa décision.
+>
+> **L'ORDRE DE RENDU, et le garde-fou qui va avec.** Pour que la grosse caisse
+> fasse plonger la basse **dans le bloc courant**, elle doit avoir été calculée
+> avant. Les pistes qui alimentent un bus écouté passent donc devant. Mais
+> réordonner les additions changerait le dernier bit du mixage sans raison :
+> tant qu'aucun effet n'écoute, **aucun ordre n'est publié** et le rendu emprunte
+> exactement le chemin qu'il avait. Un test vérifie l'égalité **au bit près**.
+>
+> **D4.3 REND D4.4 UTILISABLE, et c'est un test qui l'a montré.** La première
+> version coupait la source au MUET pour ne pas l'entendre — et le muet coupe
+> aussi les départs, donc le bus d'écoute restait vide. Une source de chaîne
+> latérale se retire du mixage par son **fader**, avec un départ **pré-fader** :
+> elle commande sans s'entendre. Les deux étapes composent exactement comme sur
+> une console.
+>
+> **Un second test s'est trompé avant d'être juste.** Il comparait « avec » et
+> « sans » chaîne latérale, et les deux compressaient autant : avec un seuil
+> bas, un compresseur écrase aussi bien son propre signal que celui qu'il
+> écoute. Ce qui varie doit être le seul fil qu'on éprouve — le **niveau
+> d'envoi** de la source vers le bus, tout le reste identique.
+>
+> **Le retour d'un bus s'éteint**, et ce n'est pas un raffinement : un bus qui ne
+> sert qu'à faire écouter une piste ne doit pas s'entendre. Sans ce
+> commutateur, il aurait fallu choisir entre une réverbération parasite et pas
+> de chaîne latérale du tout.
 
 
 ### Phase D5 — La vue d'arrangement

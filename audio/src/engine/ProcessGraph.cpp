@@ -71,6 +71,7 @@ void ProcessGraph::setProject(const Project& project) {
     preFaderMask_.store(masque, std::memory_order_release);
     activeSends_.store(std::min(declares, kMaxSends), std::memory_order_release);
     snapshot_.store(snapshot, std::memory_order_release);
+    refreshRenderOrder();   // les niveaux d'envoi ont pu changer
 }
 
 void ProcessGraph::setTrackInstrument(size_t trackIndex, const std::string& pluginId) {
@@ -141,6 +142,47 @@ void ProcessGraph::setTrackAudio(size_t trackIndex, std::shared_ptr<const AudioT
 void ProcessGraph::setTrackEffectChain(size_t trackIndex, std::shared_ptr<const EffectChain> chain) {
     if (trackIndex >= kMaxTracks) return;
     effectChains_[trackIndex].store(std::move(chain), std::memory_order_release);
+    // Une chaîne peut contenir un effet qui ÉCOUTE un bus : l'ordre de rendu
+    // en dépend.
+    refreshRenderOrder();
+}
+
+void ProcessGraph::refreshRenderOrder() {
+    auto snapshot = snapshot_.load(std::memory_order_acquire);
+    if (!snapshot) { renderOrder_.store(nullptr, std::memory_order_release); return; }
+    const auto& project = snapshot->project;
+
+    // Quels bus sont ÉCOUTÉS par un effet ?
+    uint32_t ecoutes = 0;
+    for (size_t t = 0; t < kMaxTracks; ++t) {
+        auto chain = effectChains_[t].load(std::memory_order_acquire);
+        if (!chain) continue;
+        for (const auto& fx : *chain) {
+            if (!fx) continue;
+            const int bus = fx->sidechainBus();
+            if (bus >= 1 && bus <= static_cast<int>(kMaxSends)) ecoutes |= (1u << (bus - 1));
+        }
+    }
+    // AUCUNE CHAÎNE LATÉRALE : ordre naturel, et surtout AUCUN ordre publié --
+    // le rendu emprunte alors exactement le chemin qu'il avait, au bit près.
+    if (ecoutes == 0) { renderOrder_.store(nullptr, std::memory_order_release); return; }
+
+    auto ordre = std::make_shared<std::vector<size_t>>();
+    ordre->reserve(project.tracks.size());
+    // D'abord celles qui alimentent un bus écouté...
+    for (size_t t = 0; t < project.tracks.size() && t < kMaxTracks; ++t) {
+        bool alimente = false;
+        for (size_t b = 0; b < kMaxSends; ++b)
+            if ((ecoutes & (1u << b)) && project.tracks[t].sendLevel(b) > 0.0f) alimente = true;
+        if (alimente) ordre->push_back(t);
+    }
+    // ... puis toutes les autres, dans leur ordre d'origine.
+    for (size_t t = 0; t < project.tracks.size() && t < kMaxTracks; ++t) {
+        bool deja = false;
+        for (size_t d : *ordre) if (d == t) deja = true;
+        if (!deja) ordre->push_back(t);
+    }
+    renderOrder_.store(std::move(ordre), std::memory_order_release);
 }
 
 void ProcessGraph::setSendEffect(size_t busIndex, std::shared_ptr<vsm::audio::effect::IAudioEffect> effect) {
@@ -531,7 +573,15 @@ void ProcessGraph::renderTrackRange(const GraphSnapshot& snapshot, bool anySolo,
     const Project& project = snapshot.project;
     const double rangeEndSeconds = rangeStartSeconds + static_cast<double>(sampleCount) / sampleRate_;
 
-    for (size_t trackIndex = 0; trackIndex < project.tracks.size() && trackIndex < kMaxTracks; ++trackIndex) {
+    // L'ORDRE DE RENDU : le naturel, sauf si une chaîne latérale l'impose (voir
+    // `refreshRenderOrder`). Une piste écoutée doit avoir versé dans son bus
+    // avant que le compresseur qui l'écoute ne travaille.
+    auto ordre = renderOrder_.load(std::memory_order_acquire);
+    const size_t combien = ordre ? ordre->size()
+                                 : std::min(project.tracks.size(), kMaxTracks);
+    for (size_t rang = 0; rang < combien; ++rang) {
+        const size_t trackIndex = ordre ? (*ordre)[rang] : rang;
+        if (trackIndex >= project.tracks.size() || trackIndex >= kMaxTracks) continue;
         auto instrument = instruments_[trackIndex].load(std::memory_order_acquire);
         auto audioSource = audioSources_[trackIndex].load(std::memory_order_acquire);
         // UNE PISTE AUDIO N'A PAS D'INSTRUMENT, et c'est normal : son matériau
@@ -698,8 +748,19 @@ void ProcessGraph::renderTrackRange(const GraphSnapshot& snapshot, bool anySolo,
         // Chaîne d'inserts (section 5) : TRACK -> SYNTH -> EFFECTS -> MIX.
         auto chain = effectChains_[trackIndex].load(std::memory_order_acquire);
         if (chain) {
-            for (const auto& fx : *chain)
-                if (fx) fx->process(scratchStereoL_.data(), scratchStereoR_.data(), sampleCount);
+            for (const auto& fx : *chain) {
+                if (!fx) continue;
+                // CHAÎNE LATÉRALE : si l'effet écoute un bus, on lui tend le
+                // contenu de ce bus POUR CE SEGMENT, juste avant qu'il
+                // travaille. Le bus a déjà reçu les pistes qui l'alimentent :
+                // c'est ce que garantit l'ordre de rendu.
+                const int bus = fx->sidechainBus();
+                if (bus >= 1 && bus <= static_cast<int>(kMaxSends))
+                    fx->setSidechainInput(sendL_[static_cast<size_t>(bus - 1)].data() + sampleStart,
+                                           sendR_[static_cast<size_t>(bus - 1)].data() + sampleStart,
+                                           sampleCount);
+                fx->process(scratchStereoL_.data(), scratchStereoR_.data(), sampleCount);
+            }
         }
 
         // MIXAGE VERS SA DESTINATION : le master, ou le tampon d'un groupe. Le

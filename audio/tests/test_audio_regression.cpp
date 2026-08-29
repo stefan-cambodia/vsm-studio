@@ -649,6 +649,13 @@ void prepareEffectForFingerprint(const std::string& effectId,
     }
     for (const auto& p : effet.parameterList())
         effet.setParameter(p.id, p.minValue + 0.6f * (p.maxValue - p.minValue));
+
+    // UN SÉLECTEUR DE ROUTAGE N'EST PAS UN RÉGLAGE DE SON. Le « Sidechain Bus »
+    // du compresseur (D4.4) désigne un bus à écouter ; à 60 % de sa plage il
+    // en désignerait un, et l'empreinte dépendrait alors de ce qu'un bus
+    // contient -- c'est-à-dire de rien du tout ici, mais par accident. On le
+    // remet explicitement à zéro : ce qu'on mesure doit être le TRAITEMENT.
+    if (effectId == "compressor") effet.setParameter(5, 0.0f);
 }
 
 Fingerprint renderEffectFingerprint(const std::string& effectId, float* differenceRms = nullptr) {

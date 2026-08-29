@@ -1,12 +1,14 @@
 #include "TestFramework.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
+#include "vsm/audio/effect/ChannelStrip.h"
 #include "vsm/audio/effect/IAudioEffect.h"
 #include "vsm/audio/engine/OfflineRenderer.h"
 #include "vsm/audio/engine/ProcessGraph.h"
 #include "vsm/sequencer/Project.h"
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <memory>
 
 using namespace vsm::audio::engine;
@@ -569,4 +571,120 @@ VSM_TEST(muting_a_track_silences_its_sends_pre_fader_included) {
     graph.setSendEffect(0, std::make_shared<GainEffect>(1.0f));
     graph.setSendReturn(0, 1.0f);
     VSM_ASSERT(peakOf(OfflineRenderer::render(graph, 8000.0, 256, 1.0).left) < 1e-6f);
+}
+
+// --- D4.4 : la chaîne latérale ---------------------------------------------
+
+VSM_TEST(a_compressor_ducks_a_track_when_it_listens_to_another) {
+    // « Le compresseur d'une piste écoute une autre piste — la signature même
+    // du genre que ce projet reconstruit. »
+    //
+    // CE QUI VARIE ENTRE LES DEUX RENDUS EST LE SEUL FIL QU'ON VEUT ÉPROUVER :
+    // le niveau d'envoi de la frappe vers le bus d'écoute. Tout le reste --
+    // instruments, notes, réglages du compresseur, chaîne latérale active -- est
+    // identique. Une première version comparait « avec » et « sans » chaîne
+    // latérale, et les deux compressaient autant : avec un seuil bas, le
+    // compresseur écrase aussi bien son propre signal que celui qu'il écoute, et
+    // le test ne prouvait rien.
+    auto monter = [](float niveauDEcoute) {
+        vsm::sequencer::Project projet;
+        projet.ticksPerQuarterNote = 480;
+        uint64_t ids = 1;
+
+        vsm::sequencer::Track tenue;          // ce qu'on veut faire plonger
+        tenue.name = "Nappe";
+        tenue.addNote(0, 1920, 60, 100, 0, ids);
+        projet.tracks.push_back(tenue);
+
+        vsm::sequencer::Track frappe;         // ce qui la fait plonger
+        frappe.name = "Grosse caisse";
+        frappe.addNote(0, 1920, 84, 127, 0, ids);
+        projet.tracks.push_back(frappe);
+
+        // LE BUS D'ÉCOUTE EST PRÉ-FADER, et c'est D4.3 qui rend D4.4 utilisable :
+        // la frappe COMMANDE sans s'entendre. Fader à zéro, départ pré-fader.
+        //
+        // La couper au MUET ne marcherait pas, et c'est cohérent : le muet coupe
+        // aussi les départs (voir
+        // `muting_a_track_silences_its_sends_pre_fader_included`). Une source de
+        // chaîne latérale se retire du mixage par son fader, pas par son muet --
+        // ce test l'a appris en échouant.
+        vsm::sequencer::SendBusDescription bus;
+        bus.name = "Ecoute";
+        bus.effectType = "reverb";
+        bus.preFader = true;
+        projet.sends.push_back(bus);
+        projet.tracks[1].setSendLevel(0, niveauDEcoute);
+        projet.tracks[1].volume = 0.0f;
+
+        auto graph = std::make_unique<ProcessGraph>();
+        graph->prepare(8000.0, 256);
+        graph->setTrackInstrument(0, "vsm.minimoog");
+        graph->setTrackInstrument(1, "vsm.minimoog");
+        graph->setProject(projet);
+        // Le RETOUR du bus est coupé : on mesure l'effet de l'écoute sur la
+        // nappe, pas le bus lui-même.
+        graph->setSendEffect(0, std::make_shared<GainEffect>(1.0f));
+        graph->setSendReturn(0, 0.0f);
+
+        auto compresseur = std::make_shared<vsm::audio::effect::CompressorEffect>();
+        compresseur->prepare(8000.0, 256);
+        // Le seuil est placé SOUS le niveau de la frappe dans le bus (mesuré à
+        // -10 dB) et le compresseur écoute le bus dans les DEUX rendus : quand
+        // la frappe ne l'alimente pas, il détecte du silence et ne fait rien.
+        // C'est ce qui rend la mesure lisible -- et c'est aussi le comportement
+        // qu'on veut d'un compresseur à qui on désigne un bus vide.
+        compresseur->setParameter(vsm::audio::effect::CompressorEffect::kThresholdDb, -20.0f);
+        compresseur->setParameter(vsm::audio::effect::CompressorEffect::kRatio, 20.0f);
+        compresseur->setParameter(vsm::audio::effect::CompressorEffect::kAttackMs, 0.5f);
+        compresseur->setParameter(vsm::audio::effect::CompressorEffect::kSidechain, 1.0f);
+        auto chain = std::make_shared<ProcessGraph::EffectChain>();
+        chain->push_back(compresseur);
+        graph->setTrackEffectChain(0, chain);   // sur la NAPPE
+
+        return peakOf(OfflineRenderer::render(*graph, 8000.0, 256, 0.5).left);
+    };
+
+    const float ecouteMuette = monter(0.0f);   // la frappe n'alimente pas le bus
+    const float ecoutePleine = monter(1.0f);   // elle l'alimente à fond
+    VSM_ASSERT(ecouteMuette > 0.01f);
+    // La nappe est écrasée par une frappe qu'on n'entend pas.
+    VSM_ASSERT(ecoutePleine < ecouteMuette * 0.7f);
+}
+
+VSM_TEST(without_a_sidechain_the_render_order_is_left_alone) {
+    // GARDE-FOU : réordonner les additions changerait le dernier bit du mixage
+    // sans raison. Tant qu'aucun effet n'écoute, l'ordre reste celui des
+    // pistes, et le rendu est identique AU BIT PRÈS à ce qu'il était.
+    vsm::sequencer::Project projet;
+    projet.ticksPerQuarterNote = 480;
+    uint64_t ids = 1;
+    for (int i = 0; i < 3; ++i) {
+        vsm::sequencer::Track t;
+        t.addNote(0, 480, static_cast<uint8_t>(60 + i * 4), 100, 0, ids);
+        projet.tracks.push_back(t);
+    }
+
+    auto rendre = [&](bool avecChaine) {
+        ProcessGraph graph;
+        graph.prepare(8000.0, 256);
+        for (int i = 0; i < 3; ++i) graph.setTrackInstrument(static_cast<size_t>(i), "vsm.minimoog");
+        graph.setProject(projet);
+        if (avecChaine) {
+            auto compresseur = std::make_shared<vsm::audio::effect::CompressorEffect>();
+            compresseur->prepare(8000.0, 256);
+            compresseur->setParameter(vsm::audio::effect::CompressorEffect::kSidechain, 0.0f);
+            auto chain = std::make_shared<ProcessGraph::EffectChain>();
+            chain->push_back(compresseur);
+            graph.setTrackEffectChain(0, chain);
+            graph.setTrackEffectChain(0, nullptr);   // et on la retire
+        }
+        return OfflineRenderer::render(graph, 8000.0, 256, 0.4);
+    };
+
+    const auto a = rendre(false);
+    const auto b = rendre(true);
+    VSM_ASSERT_EQ(a.left.size(), b.left.size());
+    for (size_t i = 0; i < a.left.size(); ++i)
+        VSM_ASSERT_NEAR(a.left[i], b.left[i], 0.0f);   // au bit près
 }
