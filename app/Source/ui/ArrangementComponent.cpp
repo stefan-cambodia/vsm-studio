@@ -139,10 +139,41 @@ void ArrangementComponent::duplicateSelection() {
     repaint();
 }
 
+int ArrangementComponent::trackHeight(const Track& track) const {
+    return track.folded ? kFoldedHeight
+                        : juce::jlimit(kMinHeight, kMaxHeight, track.arrangementHeight);
+}
+
+int ArrangementComponent::trackTop(size_t index) const {
+    int y = kRulerHeight;
+    for (size_t i = 0; i < index && i < project_->tracks.size(); ++i)
+        y += trackHeight(project_->tracks[i]);
+    return y;
+}
+
 int ArrangementComponent::trackAtY(float y) const {
     if (project_ == nullptr || y < kRulerHeight) return -1;
-    const int index = static_cast<int>((y - kRulerHeight) / kTrackHeight);
-    return index >= 0 && index < static_cast<int>(project_->tracks.size()) ? index : -1;
+    // LES HAUTEURS SONT VARIABLES (D5.3) : on parcourt, on ne divise pas. Une
+    // division supposerait que toutes les pistes ont la même taille, ce qui
+    // n'est plus vrai dès qu'on en plie une.
+    int haut = kRulerHeight;
+    for (size_t i = 0; i < project_->tracks.size(); ++i) {
+        const int bas = haut + trackHeight(project_->tracks[i]);
+        if (y >= haut && y < bas) return static_cast<int>(i);
+        haut = bas;
+    }
+    return -1;
+}
+
+juce::Rectangle<float> ArrangementComponent::foldZone(size_t index) const {
+    if (project_ == nullptr || index >= project_->tracks.size()) return {};
+    return juce::Rectangle<float>(6.0f, static_cast<float>(trackTop(index)) + 3.0f, 14.0f, 14.0f);
+}
+
+juce::Rectangle<float> ArrangementComponent::colourZone(size_t index) const {
+    if (project_ == nullptr || index >= project_->tracks.size()) return {};
+    return juce::Rectangle<float>(0.0f, static_cast<float>(trackTop(index)), 5.0f,
+                                   static_cast<float>(trackHeight(project_->tracks[index])));
 }
 
 vsm::midi::Tick ArrangementComponent::materialEnd(const Track& track) const {
@@ -185,10 +216,45 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
     }
     if (point.x < kHeaderWidth) {
         const int piste = trackAtY(point.y);
-        if (piste >= 0) {
-            pisteCourante_ = static_cast<size_t>(piste);
-            if (onTrackSelected) onTrackSelected(pisteCourante_);
+        if (piste < 0) return;
+        const size_t index = static_cast<size_t>(piste);
+        pisteCourante_ = index;
+        if (onTrackSelected) onTrackSelected(index);
+        auto& track = project_->tracks[index];
+
+        // LE TRIANGLE PLIE ET DÉPLIE. Plier n'écrase pas la hauteur réglée : on
+        // la retrouve en dépliant, sinon le travail de mise en page serait
+        // perdu au premier pli.
+        if (foldZone(index).contains(point)) {
+            if (onEditStarted) onEditStarted(track.folded ? u8"Déplier une piste"
+                                                           : u8"Plier une piste");
+            track.folded = !track.folded;
+            notifyChanged();
+            repaint();
+            return;
         }
+        // LE BANDEAU DE COULEUR OUVRE LE CHOIX DE COULEUR. C'est le seul
+        // endroit qui en montre déjà une : y cliquer pour en changer n'a pas
+        // besoin d'être expliqué.
+        if (colourZone(index).contains(point)) {
+            if (onColourRequested) onColourRequested(index);
+            return;
+        }
+        // LE BAS DE L'EN-TÊTE RÈGLE LA HAUTEUR, le reste RÉORDONNE. Deux gestes
+        // dans la même bande, séparés par l'endroit où l'on saisit -- comme le
+        // bord d'un clip le distingue de son milieu.
+        const int bas = trackTop(index) + trackHeight(track);
+        if (!track.folded && point.y > static_cast<float>(bas) - 5.0f) {
+            geste_ = Geste::Hauteur;
+            pisteSaisie_ = piste;
+            hauteurOrigine_ = trackHeight(track);
+            ySaisie_ = point.y;
+            if (onEditStarted) onEditStarted(u8"Hauteur d'une piste");
+            return;
+        }
+        geste_ = Geste::Reordonner;
+        pisteSaisie_ = piste;
+        ySaisie_ = point.y;
         return;
     }
 
@@ -242,7 +308,35 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
 }
 
 void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
-    if (project_ == nullptr || geste_ == Geste::Aucun || selection_.empty()) return;
+    if (project_ == nullptr || geste_ == Geste::Aucun) return;
+
+    if (geste_ == Geste::Hauteur && pisteSaisie_ >= 0) {
+        auto& track = project_->tracks[static_cast<size_t>(pisteSaisie_)];
+        track.arrangementHeight = juce::jlimit(
+            kMinHeight, kMaxHeight,
+            hauteurOrigine_ + static_cast<int>(event.position.y - ySaisie_));
+        repaint();
+        return;
+    }
+    if (geste_ == Geste::Reordonner && pisteSaisie_ >= 0) {
+        const int sous = trackAtY(event.position.y);
+        if (sous >= 0 && sous != pisteSaisie_) {
+            // UN PAS À LA FOIS, et l'instantané d'annulation n'est pris qu'au
+            // premier : traverser six pistes est UN geste, pas six.
+            if (onEditStarted && !reordonnancementOuvert_) {
+                reordonnancementOuvert_ = true;
+                onEditStarted(u8"Réordonner les pistes");
+            }
+            vsm::sequencer::moveTrack(*project_, static_cast<size_t>(pisteSaisie_),
+                                       static_cast<size_t>(sous));
+            pisteSaisie_ = sous;
+            pisteCourante_ = static_cast<size_t>(sous);
+            notifyChanged();
+            repaint();
+        }
+        return;
+    }
+    if (selection_.empty()) return;
     const int piste = trackAtY(event.position.y);
     juce::ignoreUnused(piste);
 
@@ -269,7 +363,10 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
 }
 
 void ArrangementComponent::mouseUp(const juce::MouseEvent&) {
+    if (geste_ == Geste::Hauteur || geste_ == Geste::Reordonner) notifyChanged();
     geste_ = Geste::Aucun;
+    pisteSaisie_ = -1;
+    reordonnancementOuvert_ = false;
 }
 
 void ArrangementComponent::mouseMove(const juce::MouseEvent& event) {
@@ -379,27 +476,49 @@ void ArrangementComponent::paint(juce::Graphics& g) {
     // --- Pistes et clips ------------------------------------------------------
     for (size_t i = 0; i < project_->tracks.size(); ++i) {
         const auto& track = project_->tracks[i];
-        const int y = kRulerHeight + static_cast<int>(i) * kTrackHeight;
+        const int y = trackTop(i);
+        const int h = trackHeight(track);
         if (y > bounds.getHeight()) break;
 
         g.setColour(i % 2 == 0 ? Palette::panel : Palette::panelRaised);
-        g.fillRect(0, y, kHeaderWidth, kTrackHeight);
+        g.fillRect(0, y, kHeaderWidth, h);
         g.setColour(juce::Colour(track.colorRgba));
-        g.fillRect(0, y, 5, kTrackHeight);
+        g.fillRect(0, y, 5, h);
+
+        // LE TRIANGLE DE PLIAGE, tourné vers le bas quand la piste est ouverte
+        // et vers la droite quand elle est pliée -- la convention de tous les
+        // arbres, et la seule qu'on n'ait pas à expliquer.
+        {
+            juce::Path triangle;
+            const auto z = foldZone(i).reduced(3.0f);
+            if (track.folded)
+                triangle.addTriangle(z.getX(), z.getY(), z.getX(), z.getBottom(),
+                                      z.getRight(), z.getCentreY());
+            else
+                triangle.addTriangle(z.getX(), z.getY(), z.getRight(), z.getY(),
+                                      z.getCentreX(), z.getBottom());
+            g.setColour(Palette::textSecondary);
+            g.fillPath(triangle);
+        }
+
         g.setColour(Palette::textPrimary);
         g.setFont(juce::Font(juce::FontOptions(13.0f)));
-        g.drawText(juce::String(track.name), 10, y + 4, kHeaderWidth - 16, 18,
-                    juce::Justification::centredLeft);
-        g.setColour(Palette::textSecondary);
-        g.setFont(juce::Font(juce::FontOptions(11.0f)));
-        g.drawText(track.kind == Track::Kind::Audio  ? "audio"
-                    : track.kind == Track::Kind::Group ? "groupe"
-                                                       : "midi",
-                    10, y + 22, kHeaderWidth - 16, 14, juce::Justification::centredLeft);
+        g.drawText(juce::String(track.name), 24, y + 2, kHeaderWidth - 30,
+                    std::min(18, h - 2), juce::Justification::centredLeft);
+        // LA NATURE DE LA PISTE NE S'AFFICHE QUE SI LA PLACE EXISTE : sur une
+        // piste pliée, le nom seul est ce qu'on est venu chercher.
+        if (h >= 40) {
+            g.setColour(Palette::textSecondary);
+            g.setFont(juce::Font(juce::FontOptions(11.0f)));
+            g.drawText(track.kind == Track::Kind::Audio  ? "audio"
+                        : track.kind == Track::Kind::Group ? "groupe"
+                                                           : "midi",
+                        24, y + 22, kHeaderWidth - 30, 14, juce::Justification::centredLeft);
+        }
 
         g.setColour(Palette::border);
-        g.drawLine(0.0f, static_cast<float>(y + kTrackHeight),
-                    static_cast<float>(bounds.getWidth()), static_cast<float>(y + kTrackHeight), 1.0f);
+        g.drawLine(0.0f, static_cast<float>(y + h),
+                    static_cast<float>(bounds.getWidth()), static_cast<float>(y + h), 1.0f);
 
         const vsm::midi::Tick fin = materialEnd(track);
         for (const auto& clip : track.clips) {
@@ -408,7 +527,7 @@ void ArrangementComponent::paint(juce::Graphics& g) {
             if (x2 <= kHeaderWidth || x1 >= bounds.getWidth()) continue;
 
             juce::Rectangle<float> r(x1, static_cast<float>(y + 3),
-                                      std::max(2.0f, x2 - x1), static_cast<float>(kTrackHeight - 7));
+                                      std::max(2.0f, x2 - x1), static_cast<float>(h - 7));
             const bool choisi = selection_.count(clip.id) > 0;
             // UN CLIP MUET SE VOIT SANS DISPARAÎTRE : hachuré plutôt qu'effacé,
             // comme une note muette dans le piano roll.

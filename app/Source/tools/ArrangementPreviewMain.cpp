@@ -85,6 +85,21 @@ int main(int argc, char** argv) {
     }
     projet.assignClipIds();
 
+    // SEIZE PISTES, dont douze pliées : c'est le critère de l'étape (« l'écran
+    // tient 16 pistes »), et l'aperçu sert à le VÉRIFIER plutôt qu'à
+    // l'affirmer. Les quatre premières restent dépliées -- on travaille sur
+    // quelques-unes à la fois et on replie le reste.
+    for (int p = 4; p < 16; ++p) {
+        vsm::sequencer::Track piste;
+        piste.name = "Piste " + std::to_string(p + 1);
+        piste.colorRgba = modeles[p % 4].couleur;
+        piste.folded = true;
+        piste.clips.push_back({0, mesure, static_cast<vsm::midi::Tick>(mesure * (p % 5)),
+                                mesure, false, "", piste.colorRgba});
+        projet.tracks.push_back(std::move(piste));
+    }
+    projet.assignClipIds();
+
     ArrangementComponent vue;
     vue.setProject(&projet);
     vue.setPlayheadTick(mesure * 2 + 480);

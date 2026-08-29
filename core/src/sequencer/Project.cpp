@@ -206,6 +206,55 @@ midi::Tick Project::lastUsedTick() const {
     return last;
 }
 
+void moveTrack(Project& project, size_t from, size_t to) {
+    const size_t n = project.tracks.size();
+    if (from >= n || to >= n || from == to) return;
+
+    // LES ROUTAGES SUIVENT LES PISTES, PAS LES INDEX. On note d'abord, pour
+    // chaque piste, VERS QUELLE PISTE elle envoie -- une identité qui survivra
+    // au remaniement --, puis on retrouve les nouveaux index après coup. Tenter
+    // de corriger les index au fil du déplacement demanderait de raisonner sur
+    // trois cas de figure, et le troisième serait faux.
+    std::vector<const Track*> destinations(n, nullptr);
+    for (size_t i = 0; i < n; ++i) {
+        const int cible = project.tracks[i].outputGroup;
+        if (cible >= 0 && static_cast<size_t>(cible) < n)
+            destinations[i] = &project.tracks[static_cast<size_t>(cible)];
+    }
+    // Les adresses doivent rester valides : on déplace dans un vecteur de
+    // pointeurs, pas dans le vecteur de pistes.
+    std::vector<Track*> ordre(n);
+    for (size_t i = 0; i < n; ++i) ordre[i] = &project.tracks[i];
+
+    std::vector<Track> remaniees;
+    remaniees.reserve(n);
+    std::vector<const Track*> anciennesAdresses;
+    anciennesAdresses.reserve(n);
+    {
+        std::vector<Track*> deplace = ordre;
+        Track* saisie = deplace[from];
+        deplace.erase(deplace.begin() + static_cast<std::ptrdiff_t>(from));
+        deplace.insert(deplace.begin() + static_cast<std::ptrdiff_t>(to), saisie);
+        for (Track* t : deplace) {
+            anciennesAdresses.push_back(t);
+            remaniees.push_back(*t);
+        }
+    }
+
+    // Où chaque ANCIENNE piste se trouve-t-elle désormais ?
+    for (size_t i = 0; i < n; ++i) {
+        const Track* destination = nullptr;
+        for (size_t j = 0; j < n; ++j)
+            if (anciennesAdresses[i] == ordre[j]) { destination = destinations[j]; break; }
+        int nouveau = -1;
+        if (destination != nullptr)
+            for (size_t j = 0; j < n; ++j)
+                if (anciennesAdresses[j] == destination) { nouveau = static_cast<int>(j); break; }
+        remaniees[i].outputGroup = nouveau;
+    }
+    project.tracks = std::move(remaniees);
+}
+
 void removeTrack(Project& project, size_t index) {
     if (index >= project.tracks.size()) return;
     project.tracks.erase(project.tracks.begin() + static_cast<std::ptrdiff_t>(index));

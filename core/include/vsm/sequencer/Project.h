@@ -173,4 +173,14 @@ private:
 /// et qu'une règle qu'on ne peut pas tester n'est qu'une intention.
 void removeTrack(Project& project, size_t index);
 
+/// Déplace une piste de `from` à `to` ET RÉPARE LES ROUTAGES (D5.3).
+///
+/// Même piège que la suppression, et il est pire ici : réordonner déplace
+/// potentiellement TOUTES les pistes, et un routage vers un groupe qui a
+/// changé de rang enverrait le mixage ailleurs sans qu'aucun réglage n'ait
+/// bougé. La règle est simple à énoncer et impossible à deviner : ce ne sont
+/// pas les index qui suivent, ce sont les PISTES -- une piste qui allait dans
+/// un groupe continue d'y aller, où que ce groupe se retrouve.
+void moveTrack(Project& project, size_t from, size_t to);
+
 } // namespace vsm::sequencer

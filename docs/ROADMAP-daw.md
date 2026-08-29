@@ -1239,7 +1239,7 @@ D1 a mis les clips dans le modèle ; ici on les rend manipulables.
 |---|---|---|
 | D5.1 | Ligne de temps multipiste : clips déplaçables, redimensionnables, coupables | à la souris, avec annulation — **fait** |
 | D5.2 | Copier/coller/dupliquer, aimantation à la grille, boucle de clip par étirement | mêmes gestes et mêmes raccourcis que le piano roll — **fait** |
-| D5.3 | Pliage des pistes, hauteurs réglables, réordonnancement, couleurs choisies | l'écran tient 16 pistes |
+| D5.3 | Pliage des pistes, hauteurs réglables, réordonnancement, couleurs choisies | l'écran tient 16 pistes — **fait** |
 | D5.4 | Automation dessinée **sur** l'arrangement, avec zoom et courbes | plus une lane isolée dans un onglet |
 | D5.5 | Gel et report (*freeze* / *bounce*) d'une piste en audio | une piste gelée sonne identique et coûte le prix d'une lecture audio |
 | D5.6 | Gain, fondus et inversion de phase **réglés à la souris** sur le clip (venus de D2.4 : le modèle et le moteur les portent déjà) | un fondu se tire sur le coin du clip |
@@ -1348,6 +1348,51 @@ doubler une mesure, boucler quatre temps — se fait entièrement à la souris.
 > Dessiné comme un simple rectangle plus long, il mentirait sur ce qu'il joue —
 > et c'est vérifiable à l'œil dans `vsm-arrangement-preview`, dont l'aperçu
 > porte maintenant un clip étiré quatre fois.
+
+> **D5.3 EST FAITE (30/08/2026), ET LE CRITÈRE EST VÉRIFIÉ À L'ŒIL.** Seize
+> pistes tiennent dans **486 pixels** — quatre dépliées et douze pliées, ce qui
+> est la façon dont on travaille : on ouvre celles qu'on retouche et on referme
+> le reste. L'aperçu le montre plutôt que de le promettre.
+>
+> **PLIER N'ÉCRASE PAS LA HAUTEUR RÉGLÉE, il la met de côté.** Sans quoi
+> déplier rendrait une hauteur standard, et tout le travail de mise en page
+> serait perdu au premier pli. Une piste pliée n'affiche que son nom — c'est ce
+> qu'on est venu chercher — mais ses clips restent visibles en fine bande :
+> replier une piste ne doit pas la faire disparaître du morceau.
+>
+> **LA HAUTEUR ET LE PLI SONT SAUVEGARDÉS AVEC LE MORCEAU.** Ce ne sont pas des
+> propriétés du son mais de la façon dont on REGARDE ce morceau-là, et les
+> perdre obligerait à refaire la mise en page à chaque ouverture. Champs
+> facultatifs : une piste à la hauteur standard et dépliée garde exactement le
+> fichier qu'elle avait.
+>
+> **RÉORDONNER : CE NE SONT PAS LES INDEX QUI SUIVENT, CE SONT LES PISTES.** Le
+> même piège que la suppression, et il est pire ici — réordonner déplace
+> potentiellement TOUTES les pistes, et un routage vers un groupe qui a changé
+> de rang enverrait le mixage ailleurs sans qu'aucun réglage n'ait bougé.
+> `moveTrack` note donc, pour chaque piste, **vers quelle piste** elle envoie,
+> puis retrouve les nouveaux index après coup. Corriger les index au fil du
+> déplacement demanderait de raisonner sur trois cas de figure, et le troisième
+> serait faux. Quatre tests, dont un qui remonte un groupe tout en haut pour que
+> **tous** les index changent.
+>
+> **TROIS GESTES DANS LA MÊME BANDE, séparés par l'endroit où l'on saisit** : le
+> triangle plie, le bandeau de couleur ouvre le sélecteur, le bas de l'en-tête
+> règle la hauteur, et le reste réordonne. C'est la règle déjà employée pour les
+> clips, où le bord se distingue du milieu.
+>
+> **Traverser six pistes est UN geste, pas six** : l'instantané d'annulation
+> n'est pris qu'au premier pas. De même, un glissé dans le sélecteur de couleur
+> produit des dizaines de changements et n'ouvre qu'**un** pas d'annulation —
+> mais rouvrir le sélecteur en commence un nouveau, sans quoi toutes les
+> couleurs de la session n'en feraient qu'un seul et annuler les défairait
+> toutes.
+>
+> **La couleur suit le sélecteur en direct** : on choisit une couleur en la
+> voyant sur la piste, pas en la devinant dans un carré. Le sélecteur est ouvert
+> par l'application et non par la vue : le composant d'arrangement ne connaît de
+> JUCE que le dessin, et lui faire ouvrir une fenêtre le lierait à
+> l'application.
 
 
 ### Phase D6 — Exporter

@@ -244,6 +244,29 @@ MainComponent::MainComponent()
     // deux réglages de grille dans deux vues du même morceau finiraient par se
     // contredire.
     arrangement_.gridProvider = [this] { return pianoRoll_.gridResolution(); };
+    arrangement_.onColourRequested = [this](size_t index) {
+        if (index >= project_.tracks.size()) return;
+        // OUVRIR LE SÉLECTEUR COMMENCE UN NOUVEAU PAS D'ANNULATION : sans cette
+        // remise à zéro, tous les changements de couleur de la session
+        // n'en feraient qu'un seul, et annuler les défairait tous.
+        colourEditOpen_ = false;
+        // LE SÉLECTEUR DE COULEUR EST DE JUCE, donc il est ici : le composant
+        // d'arrangement ne connaît de JUCE que le dessin, et lui faire ouvrir
+        // une fenêtre le lierait à l'application.
+        auto* selecteur = new juce::ColourSelector(
+            juce::ColourSelector::showColourAtTop | juce::ColourSelector::showSliders
+                | juce::ColourSelector::showColourspace);
+        selecteur->setName("Couleur de la piste");
+        selecteur->setCurrentColour(juce::Colour(project_.tracks[index].colorRgba));
+        selecteur->setSize(280, 320);
+        // La couleur suit le sélecteur EN DIRECT : on choisit une couleur en la
+        // voyant sur la piste, pas en la devinant dans un carré.
+        selecteur->addChangeListener(new ColourApplier(*this, index));
+        juce::CallOutBox::launchAsynchronously(
+            std::unique_ptr<juce::Component>(selecteur),
+            arrangement_.getScreenBounds().withSize(1, 1).translated(80, 60 + 20 * static_cast<int>(index)),
+            nullptr);
+    };
     trackList_.onOutputChanged = [this] {
         // Le routage est une donnée de mixage : il se republie sans interrompre
         // la lecture, comme un fader.
@@ -1597,6 +1620,22 @@ void MainComponent::adoptDefaultSendsIfNeeded() {
     for (const auto& piste : project_.tracks)
         for (float niveau : piste.sendLevels)
             if (niveau > 0.0f) { project_.sends = defaultSendBuses(); return; }
+}
+
+void MainComponent::ColourApplier::changeListenerCallback(juce::ChangeBroadcaster* source) {
+    auto* selecteur = dynamic_cast<juce::ColourSelector*>(source);
+    if (selecteur == nullptr || index_ >= parent_.project_.tracks.size()) return;
+    // UN GLISSÉ DANS LE SÉLECTEUR PRODUIT DES DIZAINES DE CHANGEMENTS : un
+    // instantané d'annulation par changement empilerait trois cents pas pour un
+    // seul geste. On n'en ouvre qu'un, au premier.
+    if (!parent_.colourEditOpen_) {
+        parent_.colourEditOpen_ = true;
+        parent_.beginProjectEdit(u8"Couleur d'une piste");
+    }
+    parent_.project_.tracks[index_].colorRgba = selecteur->getCurrentColour().getARGB();
+    parent_.arrangement_.repaint();
+    parent_.trackList_.loadProject(parent_.project_);
+    parent_.mixer_.setProject(&parent_.project_);
 }
 
 void MainComponent::sendBusesChanged() {

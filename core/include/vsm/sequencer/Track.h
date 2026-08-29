@@ -415,6 +415,22 @@ public:
     /// mot. Voir `Take` pour le modèle retenu et celui qui a été écarté.
     std::vector<Take> takes;
 
+    /// HAUTEUR DE LA PISTE dans la vue d'arrangement, en pixels, et si elle est
+    /// PLIÉE (D5.3).
+    ///
+    /// SAUVEGARDÉES AVEC LE MORCEAU, et c'est un choix. Ce ne sont pas des
+    /// propriétés du son : ce sont des propriétés de la façon dont on REGARDE
+    /// ce morceau-là -- on déplie la basse pendant qu'on travaille dessus, on
+    /// replie les huit micros de batterie qu'on a fini de régler. Rouvrir un
+    /// projet en ayant perdu cette disposition obligerait à la refaire à chaque
+    /// fois, et sur un morceau à seize pistes ce n'est pas un détail.
+    ///
+    /// La hauteur est celle de la piste DÉPLIÉE : plier n'écrase pas le
+    /// réglage, il le met de côté. Sans quoi déplier rendrait une hauteur
+    /// standard, et le travail de mise en page serait perdu au premier pli.
+    int arrangementHeight = 56;
+    bool folded = false;
+
     /// La prise dont le matériau est ACTUELLEMENT dans la piste, ou -1 si le
     /// matériau courant n'appartient à aucune prise (le cas de toute piste qui
     /// n'a jamais servi à un enregistrement empilé).

@@ -161,6 +161,11 @@ struct ProjectTrack {
     /// master. Facultatif : absent vaut -1, donc les projets d'avant les
     /// groupes se lisent inchangés.
     int outputGroup = -1;
+    /// Hauteur de la piste dans la vue d'arrangement et si elle est pliée
+    /// (D5.3). Facultatifs : une piste à la hauteur standard et dépliée garde
+    /// exactement le fichier qu'elle avait.
+    int arrangementHeight = 56;
+    bool folded = false;
     /// « midi » (défaut), « audio » ou « group ». Absent du fichier pour une piste MIDI :
     /// un projet qui n'a que des pistes MIDI garde octet pour octet le fichier
     /// qu'il avait avant que les pistes audio existent.

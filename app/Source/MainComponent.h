@@ -66,6 +66,22 @@ public:
     void menuItemSelected(int menuItemID, int topLevelMenuIndex) override;
 
 private:
+    /// Applique en direct la couleur choisie dans le sélecteur à la piste
+    /// visée. Un petit objet plutôt qu'une lambda : `ChangeListener` est une
+    /// interface, et JUCE veut un objet qui lui survive le temps de la fenêtre.
+    class ColourApplier : public juce::ChangeListener {
+    public:
+        ColourApplier(MainComponent& parent, size_t trackIndex)
+            : parent_(parent), index_(trackIndex) {}
+        void changeListenerCallback(juce::ChangeBroadcaster* source) override;
+    private:
+        MainComponent& parent_;
+        size_t index_;
+    };
+    /// Le premier changement de couleur ouvre l'action annulable ; les suivants
+    /// -- un glissé dans le sélecteur en produit des dizaines -- s'y ajoutent.
+    bool colourEditOpen_ = false;
+
     enum MenuItemId {
         kMenuFileNewProject = 1,
         kMenuFileOpen,

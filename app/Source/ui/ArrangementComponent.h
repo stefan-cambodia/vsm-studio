@@ -44,6 +44,10 @@ public:
     std::function<void(vsm::midi::Tick)> onPlayheadRequested;
     /// Une piste a été choisie (clic sur son en-tête ou sur un de ses clips).
     std::function<void(size_t)> onTrackSelected;
+    /// L'utilisateur a cliqué le bandeau de couleur d'une piste : c'est à
+    /// l'application d'ouvrir le sélecteur, ce composant ne connaît pas JUCE
+    /// au-delà du dessin.
+    std::function<void(size_t)> onColourRequested;
 
     void zoomHorizontally(float facteur);
     /// Suppr. efface la sélection, +/- zooment. Publique pour que les fenêtres
@@ -67,18 +71,31 @@ public:
 
     static constexpr int kHeaderWidth = 150;
     static constexpr int kRulerHeight = 22;
-    static constexpr int kTrackHeight = 56;
+    /// Hauteur d'une piste PLIÉE. Assez pour son nom et rien d'autre : c'est
+    /// tout l'intérêt de plier. Seize pistes pliées tiennent alors dans
+    /// 16 x 20 + 22 = 342 pixels, ce que demande le critère de l'étape.
+    static constexpr int kFoldedHeight = 20;
+    static constexpr int kMinHeight = 24;
+    static constexpr int kMaxHeight = 400;
 
 private:
     /// Ce qu'on est en train de faire à la souris. Un état explicite plutôt que
     /// trois booléens : « je déplace ET je redimensionne » n'existe pas, et
     /// l'écrire ainsi le rend impossible.
-    enum class Geste { Aucun, Deplacer, BordGauche, BordDroit };
+    enum class Geste { Aucun, Deplacer, BordGauche, BordDroit, Hauteur, Reordonner };
 
     float tickToX(vsm::midi::Tick tick) const;
     vsm::midi::Tick xToTick(float x) const;
     vsm::midi::Tick snapTick(vsm::midi::Tick tick) const;
     int trackAtY(float y) const;
+    /// La hauteur affichée d'une piste : celle qu'elle déclare, ou celle d'une
+    /// piste pliée. Plier n'écrase pas le réglage, il le met de côté.
+    int trackHeight(const vsm::sequencer::Track& track) const;
+    /// Le haut de la piste `index`, en pixels, hauteurs variables comprises.
+    int trackTop(size_t index) const;
+    /// La zone du triangle de pliage, dans l'en-tête de la piste.
+    juce::Rectangle<float> foldZone(size_t index) const;
+    juce::Rectangle<float> colourZone(size_t index) const;
     /// Le clip sous le point donné, et le bord qu'on y touche.
     vsm::sequencer::Clip* clipAt(juce::Point<float> point, size_t& trackIndex, Geste& bord);
     vsm::midi::Tick materialEnd(const vsm::sequencer::Track& track) const;
@@ -105,4 +122,10 @@ private:
     vsm::midi::Tick gesteOrigine_ = 0;
     vsm::midi::Tick gesteDernier_ = 0;
     Geste survol_ = Geste::Aucun;
+    /// La piste saisie par son en-tête, pendant un réordonnancement ou un
+    /// réglage de hauteur.
+    int pisteSaisie_ = -1;
+    int hauteurOrigine_ = 0;
+    float ySaisie_ = 0.0f;
+    bool reordonnancementOuvert_ = false;
 };

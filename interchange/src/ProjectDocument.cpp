@@ -188,6 +188,8 @@ ProjectDocument documentFromProject(const Project& project) {
             entry.effects.push_back(std::move(described));
         }
         entry.outputGroup = track.outputGroup;
+        entry.arrangementHeight = track.arrangementHeight;
+        entry.folded = track.folded;
         if (track.kind == vsm::sequencer::Track::Kind::Group) {
             entry.kind = "group";
         } else if (track.kind == vsm::sequencer::Track::Kind::Audio) {
@@ -324,6 +326,8 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
                     : source.kind == "group"  ? Track::Kind::Group
                                                : Track::Kind::Midi;
         target.outputGroup = source.outputGroup;
+        target.arrangementHeight = source.arrangementHeight;
+        target.folded = source.folded;
         target.audio = {source.audio.path, source.audio.sampleRate,
                          source.audio.frames, source.audio.channels};
         // Les prises, SANS leurs notes : celles-ci viennent de `prises.mid` et
@@ -499,6 +503,11 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         // au master garde le fichier qu'elle avait avant les groupes.
         if (track.outputGroup >= 0)
             entry.set("output", JsonValue::makeNumber(static_cast<double>(track.outputGroup)));
+        // Écrits seulement s'ils disent quelque chose : une piste à la hauteur
+        // standard et dépliée garde le fichier qu'elle avait.
+        if (track.arrangementHeight != 56)
+            entry.set("height", JsonValue::makeNumber(static_cast<double>(track.arrangementHeight)));
+        if (track.folded) entry.set("folded", JsonValue::makeBoolean(true));
         if (!track.kind.empty() && track.kind != "midi") {
             entry.set("kind", JsonValue::makeString(track.kind));
             JsonValue source = JsonValue::makeObject();
@@ -690,6 +699,8 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
 
         track.kind = entry["kind"].asString();
         track.outputGroup = static_cast<int>(entry["output"].asNumber(-1.0));
+        track.arrangementHeight = static_cast<int>(entry["height"].asNumber(56.0));
+        track.folded = entry["folded"].asBoolean(false);
         if (entry["audio"].isObject()) {
             track.audio.path = entry["audio"]["file"].asString();
             // MÊME RÈGLE QUE POUR LES PRESETS, et pour la même raison : un

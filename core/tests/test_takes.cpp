@@ -226,3 +226,82 @@ VSM_TEST(removing_a_track_out_of_range_changes_nothing) {
     VSM_ASSERT_EQ(projet.tracks.size(), size_t(1));
     VSM_ASSERT_EQ(projet.tracks[0].outputGroup, 7);
 }
+
+// --- D5.3 : réordonner les pistes ------------------------------------------
+
+VSM_TEST(moving_a_track_carries_the_group_routings_with_the_tracks) {
+    // LA RÈGLE, simple à énoncer et impossible à deviner : ce ne sont pas les
+    // index qui suivent, ce sont les PISTES. Une piste qui allait dans un
+    // groupe continue d'y aller, où que ce groupe se retrouve -- sinon le
+    // mixage partirait ailleurs sans qu'aucun réglage n'ait bougé.
+    Project projet;
+    for (int i = 0; i < 4; ++i) projet.tracks.emplace_back();
+    projet.tracks[0].name = "Voix";
+    projet.tracks[1].name = "Basse";
+    projet.tracks[2].name = "Groupe A";
+    projet.tracks[2].kind = Track::Kind::Group;
+    projet.tracks[3].name = "Groupe B";
+    projet.tracks[3].kind = Track::Kind::Group;
+    projet.tracks[0].outputGroup = 3;   // Voix -> Groupe B
+    projet.tracks[1].outputGroup = 2;   // Basse -> Groupe A
+
+    // On remonte le Groupe B tout en haut : tous les index changent.
+    moveTrack(projet, 3, 0);
+
+    VSM_ASSERT_EQ(projet.tracks[0].name, std::string("Groupe B"));
+    VSM_ASSERT_EQ(projet.tracks[1].name, std::string("Voix"));
+    VSM_ASSERT_EQ(projet.tracks[2].name, std::string("Basse"));
+    VSM_ASSERT_EQ(projet.tracks[3].name, std::string("Groupe A"));
+    // Et les routages désignent toujours LES MÊMES pistes.
+    VSM_ASSERT_EQ(projet.tracks[1].outputGroup, 0);   // Voix -> Groupe B
+    VSM_ASSERT_EQ(projet.tracks[2].outputGroup, 3);   // Basse -> Groupe A
+}
+
+VSM_TEST(moving_a_track_downwards_keeps_the_routings_too) {
+    Project projet;
+    for (int i = 0; i < 3; ++i) projet.tracks.emplace_back();
+    projet.tracks[0].name = "A";
+    projet.tracks[1].name = "B";
+    projet.tracks[2].name = "G";
+    projet.tracks[2].kind = Track::Kind::Group;
+    projet.tracks[0].outputGroup = 2;
+    projet.tracks[1].outputGroup = 2;
+
+    moveTrack(projet, 0, 2);   // A descend en dernier
+    VSM_ASSERT_EQ(projet.tracks[0].name, std::string("B"));
+    VSM_ASSERT_EQ(projet.tracks[1].name, std::string("G"));
+    VSM_ASSERT_EQ(projet.tracks[2].name, std::string("A"));
+    VSM_ASSERT_EQ(projet.tracks[0].outputGroup, 1);
+    VSM_ASSERT_EQ(projet.tracks[2].outputGroup, 1);
+}
+
+VSM_TEST(moving_a_track_carries_its_own_contents) {
+    // Notes, effets, prises et automation vivent DANS la piste : les déplacer
+    // ne demande rien de plus, et c'est précisément pourquoi ils y ont été
+    // rangés (voir `TrackEffect`).
+    Project projet;
+    for (int i = 0; i < 3; ++i) projet.tracks.emplace_back();
+    uint64_t ids = 1;
+    projet.tracks[2].addNote(0, 480, 60, 100, 0, ids);
+    projet.tracks[2].effects.push_back({"reverb", {}});
+    projet.tracks[2].arrangementHeight = 120;
+    projet.tracks[2].folded = true;
+
+    moveTrack(projet, 2, 0);
+    VSM_ASSERT_EQ(projet.tracks[0].notes.size(), size_t(1));
+    VSM_ASSERT_EQ(projet.tracks[0].effects.size(), size_t(1));
+    VSM_ASSERT_EQ(projet.tracks[0].arrangementHeight, 120);
+    VSM_ASSERT(projet.tracks[0].folded);
+}
+
+VSM_TEST(moving_a_track_nowhere_or_out_of_range_changes_nothing) {
+    Project projet;
+    for (int i = 0; i < 2; ++i) projet.tracks.emplace_back();
+    projet.tracks[0].name = "A";
+    projet.tracks[1].name = "B";
+    moveTrack(projet, 0, 0);
+    moveTrack(projet, 5, 0);
+    moveTrack(projet, 0, 9);
+    VSM_ASSERT_EQ(projet.tracks[0].name, std::string("A"));
+    VSM_ASSERT_EQ(projet.tracks[1].name, std::string("B"));
+}

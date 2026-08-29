@@ -758,3 +758,33 @@ VSM_TEST(mix_automation_curves_survive_the_round_trip_under_their_own_names) {
     VSM_ASSERT_EQ(courbes[4].parameter, std::string("master.Limiter Ceiling"));
     VSM_ASSERT_NEAR(courbes[4].points[0].value, -6.0f, 1e-6);
 }
+
+VSM_TEST(track_height_and_folding_survive_the_round_trip_and_stay_optional) {
+    // D5.3 : ce ne sont pas des propriétés du son mais de la façon dont on
+    // REGARDE ce morceau-là. Les perdre obligerait à refaire la mise en page à
+    // chaque ouverture, et sur seize pistes ce n'est pas un détail.
+    Project projet;
+    for (int i = 0; i < 3; ++i) projet.tracks.emplace_back();
+    projet.tracks[0].arrangementHeight = 140;
+    projet.tracks[1].folded = true;
+    // La piste 2 garde la hauteur standard et reste dépliée.
+
+    const auto texte = projectDocumentToJson(documentFromProject(projet)).toString();
+    const auto analyse = parseJson(texte);
+    VSM_ASSERT(analyse.success);
+    VSM_ASSERT(analyse.value["tracks"].at(0)["height"].isNumber());
+    VSM_ASSERT(analyse.value["tracks"].at(1)["folded"].asBoolean(false));
+    // Facultatifs : la piste qui n'a rien de particulier n'écrit rien.
+    VSM_ASSERT(!analyse.value["tracks"].at(2)["height"].isNumber());
+    VSM_ASSERT(!analyse.value["tracks"].at(2)["folded"].isBoolean());
+
+    const ProjectLoadResult relu = parseProjectDocument(texte);
+    VSM_ASSERT(relu.success);
+    Project restaure;
+    for (int i = 0; i < 3; ++i) restaure.tracks.emplace_back();
+    applyDocumentToProject(relu.document, restaure);
+    VSM_ASSERT_EQ(restaure.tracks[0].arrangementHeight, 140);
+    VSM_ASSERT(!restaure.tracks[0].folded);
+    VSM_ASSERT(restaure.tracks[1].folded);
+    VSM_ASSERT_EQ(restaure.tracks[2].arrangementHeight, 56);
+}
