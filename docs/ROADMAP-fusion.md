@@ -1681,6 +1681,54 @@ basse — donc plus de transitoire. Le spectre dit la même chose : +6,6 dB à
 120-250 Hz (les queues de kick et de toms qui s'accumulent), −3,1 dB à 4-8 kHz
 (les charlestons et cymbales qui manquent).
 
+**La batterie est au bout de ce que la chaîne sait faire, et la limite n'est pas
+le réglage.** Le budget d'erreur désignait la batterie ; deux routes ont été
+éprouvées, et toutes deux butent sur une limite de conception, pas de recherche.
+
+*La route échantillonnée ne peut pas reproduire la variation.* Le kit découpe
+**un** représentant par famille — le médoïde des frappes isolées — et le sampler
+n'a que **huit emplacements**. 1 602 kicks rejouent donc le même fichier. Le
+stem réel a 4 215 frappes toutes différentes : la route est structurellement
+incapable de s'en approcher, et c'est pourquoi elle mesure +41 %.
+
+*La route modélisée est à son optimum, et c'est la MÉTRIQUE qui le place là.*
+Le réglage a retenu `drum.kick.decay = 1,246 s` — pour un kick toutes les
+330 ms, chaque frappe recouvre les trois suivantes — et `drum.snare.level = 0`,
+c'est-à-dire une caisse claire muette. Ce ne sont pas des accidents de descente
+par coordonnées : rendus à la main, tous les patchs plus courts sont MOINS bons
+au sens de la métrique, et rallumer la caisse claire aussi.
+
+| `kick.decay` | `snare.level` | distance v2 | crête | au-dessus de 10 % de la crête |
+|---|---|---|---|---|
+| **1,246** (retenu) | 0,0 | **0,2117** | 0,260 | 100 % |
+| 0,600 | 0,0 | 0,2116 | 0,258 | 99 % |
+| 0,300 | 0,0 | 0,2553 | 0,254 | 96 % |
+| 0,150 | 0,0 | 0,3667 | 0,246 | 81 % |
+| 0,300 | 0,6 | 0,2721 | 0,265 | 96 % |
+| *stem réel* | | *0* | **0,587** | **52 %** |
+
+**La métrique v2 récompense un bourdon continu et pénalise des frappes
+détachées.** Elle compare des spectres moyennés ; le silence entre deux coups
+n'y pèse rien, et la crête d'un transitoire non plus — la reconstruction plafonne
+à 0,26 quand le réel monte à 0,587, sans que ça coûte quoi que ce soit au
+chiffre. Raccourcir les extinctions rapproche l'enveloppe du réel (100 % → 81 %
+du temps au-dessus du dixième de crête, contre 52 % pour le vrai) et ÉLOIGNE la
+mesure. Les deux juges ne désignent pas le même patch.
+
+**Ce qui est donc à trancher, et ce qui ne l'est pas.** Ce n'est pas un défaut
+de la boîte à rythmes ni du réglage : c'est que le critère optimisé n'est pas
+celui qu'on écoute. Deux sorties possibles, et elles ne se choisissent pas au
+raisonnement : (1) un terme d'ENVELOPPE dans la métrique — crête et silence,
+pas seulement spectre moyen —, qui changerait tous les verdicts du projet et
+rendrait incomparables toutes les distances publiées ; (2) une route de batterie
+qui rejoue plusieurs échantillons par famille, ce qui demande un sampler à plus
+de huit emplacements. La première est peu coûteuse à écrire et coûteuse en
+conséquences ; la seconde l'inverse. **`sky-hd/ecoute-batterie.wav` met les
+trois versions bout à bout au même niveau efficace** — vraie, modélisée que la
+métrique préfère, modélisée à extinctions courtes — parce que la seule question
+qui décide est : laquelle ressemble à l'original ? Une oreille tranche cela en
+deux minutes, aucune mesure disponible ici ne le fait.
+
 **La leçon de méthode, et c'est la sixième forme de celle du § 10.3.** Les
 précédentes disaient qu'une distance n'est un chiffre que si l'on sait à quelles
 conditions elle a été obtenue — la métrique, le budget, le `gate`, le taux
