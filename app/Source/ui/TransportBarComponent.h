@@ -36,6 +36,25 @@ public:
     std::function<void(double)> onTempoChanged;
     /// Le métronome. Il n'existait pas.
     std::function<void(bool)> onMetronomeToggled;
+    /// L'ENREGISTREMENT. Le bouton était affiché, rouge, et sans le moindre
+    /// gestionnaire ; il en a un depuis D3.3. `true` = démarrer une prise.
+    std::function<void(bool)> onRecordToggled;
+    /// L'arrêt du transport, que l'application doit connaître : c'est lui qui
+    /// clôt une prise en cours, et le bouton agissait jusqu'ici directement sur
+    /// le transport sans que personne d'autre ne l'apprenne.
+    std::function<void()> onStopPressed;
+
+    /// Dit si l'enregistrement est possible, et pourquoi il ne l'est pas.
+    /// Sans piste armée il n'y a nulle part où écrire, et le bouton doit le
+    /// DIRE plutôt que de rester rouge et inerte.
+    void setRecordAvailable(bool deviceOpen, int armedTrackCount);
+    /// Reflète l'état réel de la prise (l'arrêt peut venir d'ailleurs).
+    void setRecording(bool active);
+    /// Décompte en cours : nombre de temps restants avant l'entrée. Zéro = pas
+    /// de décompte. L'afficher n'est pas décoratif -- pendant le décompte, la
+    /// tête de lecture est encore AVANT le morceau, et un chiffre qui descend
+    /// est la seule façon de savoir quand on entre.
+    void setCountIn(int beatsRemaining);
     /// Reflète l'état réel de la boucle (l'utilisateur peut aussi la définir
     /// depuis la règle).
     void setLooping(bool active);
@@ -66,6 +85,8 @@ private:
     juce::TextButton stopButton_   { "Stop" };
     juce::TextButton recordButton_ { "Rec" };
     juce::TextButton metronomeButton_ { "Clic" };
+    bool recording_ = false;
+    int countInBeats_ = 0;
     juce::TextButton tapButton_ { "Tap" };
     /// Instants des dernières frappes du bouton « Tap », pour en tirer un
     /// tempo. Une frappe isolée ne dit rien ; il en faut au moins deux.

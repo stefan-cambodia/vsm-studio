@@ -70,6 +70,14 @@ public:
     vsm::midi::Tick visibleStartTick() const { return scrollTick_; }
     int noteHeight() const { return noteHeight_; }
     const vsm::sequencer::NoteSelection& selectedNoteIds() const { return selectedNoteIds_; }
+    /// Remplace la sélection depuis l'extérieur.
+    ///
+    /// POURQUOI C'EST PUBLIC : juste après une prise, l'application sélectionne
+    /// les notes qui viennent d'être enregistrées. C'est ce qui rend la
+    /// « quantification après coup » de D3.3 possible sans écrire un second
+    /// chemin de quantification -- la commande Quantifier existante s'applique
+    /// alors exactement à la prise, et à rien d'autre.
+    void selectNotes(const vsm::sequencer::NoteSelection& ids);
     vsm::midi::Tick playheadTick() const { return playheadTick_; }
     vsm::midi::Tick gridTicks() const;
     /// Repères musicaux du projet, exposés pour que la règle et la lane de

@@ -30,6 +30,12 @@ void ProcessGraph::prepare(double sampleRate, int maxBlockSize) {
     meters_.resetAll();
     masterBus_.prepare(sampleRate_, maxBlockSize_);
     referenceTrack_.prepare(sampleRate_);
+    // LE MÉTRONOME AUSSI, et il ne l'était PAS. Il gardait sa fréquence
+    // d'échantillonnage par défaut de 48 kHz quoi que fasse la carte : à
+    // 44,1 kHz son clic sortait un demi-ton trop bas et durait 9 % de trop, et
+    // c'est justement le régime le plus courant. Personne ne s'en plaignait
+    // parce qu'un clic faux ressemble à un clic.
+    metronome_.prepare(sampleRate_);
 
     for (auto& slot : instruments_) {
         auto instrument = slot.load(std::memory_order_acquire);
@@ -132,7 +138,15 @@ void ProcessGraph::setLoopRegion(double startSeconds, double endSeconds, bool ac
 }
 
 void ProcessGraph::seekSeconds(double seconds) {
-    currentSeconds_.store(std::max(0.0, seconds), std::memory_order_release);
+    // LES POSITIONS NÉGATIVES SONT LÉGITIMES, et elles ne l'étaient pas : la
+    // position était rabotée à zéro. C'est le DÉCOMPTE (D3.2/D3.3) -- deux
+    // mesures de clic AVANT le début du morceau -- et le modéliser comme un
+    // morceau de ligne de temps situé avant zéro évite d'écrire un second
+    // ordonnanceur pour la seule pré-écoute. Tout le reste suit sans rien
+    // changer : le planning n'a aucun événement là, les clips audio et la piste
+    // de référence ne rencontrent que du silence, et la boucle ne se referme
+    // qu'une fois sa fin franchie.
+    currentSeconds_.store(seconds, std::memory_order_release);
 }
 
 
@@ -308,15 +322,24 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
     // MÉTRONOME, mélangé APRÈS le master et pour la même raison que la piste de
     // référence : il n'appartient pas au morceau. Le faire passer par le
     // compresseur ferait plonger tout le mixage à chaque temps.
-    if (metronomeEnabled_.load(std::memory_order_relaxed)) {
+    //
+    // ET IL BAT TOUJOURS PENDANT UN DÉCOMPTE, même éteint. Un décompte qu'on
+    // n'entend pas ne compte rien : c'est sa seule raison d'être. Les positions
+    // négatives sont celles du décompte (voir `seekSeconds`), d'où la
+    // condition -- qui donne aussi, gratuitement, le dernier clic sur le premier
+    // temps du morceau, celui sur lequel on entre.
+    const bool clicAudible = metronomeEnabled_.load(std::memory_order_relaxed)
+                             || blockStartSeconds < 0.0;
+    if (clicAudible) {
         const auto snapshot = snapshot_.load(std::memory_order_acquire);
         if (snapshot) {
             const Project& projet = snapshot->project;
-            // La position DU DÉBUT DU BLOC, celle qui vient d'être jouée --
-            // `currentSeconds_` a déjà avancé à la fin du bloc.
-            const double finSecondes = currentSeconds_.load(std::memory_order_acquire);
-            const double debutSecondes = std::max(
-                0.0, finSecondes - static_cast<double>(samplesToProcess) / sampleRate_);
+            // La position DU DÉBUT DU BLOC, prise telle quelle et non
+            // recalculée depuis la fin : au rebouclage, la fin du bloc est
+            // repartie au début de la boucle, et lui soustraire la durée du
+            // bloc donnerait un intervalle qui n'a jamais été joué.
+            const double debutSecondes = blockStartSeconds;
+            const double finSecondes = blockStartSeconds + blockDurationSeconds;
             const int64_t debutTick = projet.secondsToTicks(debutSecondes);
             const int64_t finTick = projet.secondsToTicks(finSecondes);
             const int numerateur = projet.timeSignatureMap.numeratorAt(debutTick);

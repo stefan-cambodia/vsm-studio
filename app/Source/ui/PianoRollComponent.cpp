@@ -602,6 +602,12 @@ void PianoRollComponent::mirrorSelectionPitch() {
     notifyEdited();
 }
 
+void PianoRollComponent::selectNotes(const NoteSelection& ids) {
+    selectedNoteIds_ = ids;
+    repaint();
+    if (onEditStateChanged) onEditStateChanged();
+}
+
 void PianoRollComponent::setSelectionVelocity(uint8_t velocity) {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;

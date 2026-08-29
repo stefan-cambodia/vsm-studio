@@ -1,6 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include "vsm/sequencer/Project.h"
+#include "vsm/sequencer/MidiRecorder.h"
 #include "vsm/sequencer/ProjectHistory.h"
 #include "vsm/sequencer/RealtimeTransport.h"
 #include "audio/AudioEngine.h"
@@ -81,6 +82,12 @@ private:
         kMenuFileQuit,
         kMenuTrackAdd,
         kMenuTrackRemove,
+        kMenuRecordCountInNone,
+        kMenuRecordCountInOne,
+        kMenuRecordCountInTwo,
+        kMenuRecordOverdub,
+        kMenuRecordReplace,
+        kMenuRecordQuantizeTake,
         kMenuViewTracks,
         kMenuViewPianoRoll,
         kMenuViewSynthRack,
@@ -93,6 +100,32 @@ private:
     };
 
     void timerCallback() override; // playhead, sync Play/Stop, CPU/sample rate (thread UI uniquement)
+
+    // --- Enregistrement MIDI temps réel (D3.3) -----------------------------
+    //
+    // TROIS ÉTATS, ET PAS DEUX. Entre « à l'arrêt » et « en train
+    // d'enregistrer » il y a le DÉCOMPTE, pendant lequel le transport joue déjà
+    // (la tête de lecture est avant le zéro du morceau, voir
+    // ProcessGraph::seekSeconds) mais où rien n'est encore capté. Le confondre
+    // avec l'enregistrement ferait entrer dans la prise les notes jouées pour
+    // se caler.
+    enum class RecordPhase { Off, CountIn, Recording };
+
+    /// Les index des pistes dont le bouton R est enfoncé.
+    std::vector<size_t> armedTrackIndices() const;
+    /// Republie l'armement au moteur et met à jour le bouton Rec.
+    void refreshArmedTracks();
+    void startRecording();
+    /// Clôt la prise et l'écrit dans les pistes armées. Sans effet si aucune
+    /// prise n'est en cours.
+    void stopRecording();
+    /// Vide la file de capture du moteur dans l'enregistreur (thread UI).
+    void drainRecording();
+    /// Quantifie la dernière prise avec la grille du piano roll.
+    void quantizeLastTake();
+    /// Durée du décompte, en secondes, à la position d'entrée donnée.
+    double countInSeconds(vsm::midi::Tick punchTick) const;
+
 
     void openMidiFile();
     /// Enregistre le projet dans son dossier courant, ou demande où si le
@@ -174,6 +207,30 @@ private:
     vsm::sequencer::RealtimeTransport transport_;
     AudioEngine audioEngine_;
     bool audioWasPlaying_ = false;
+
+    vsm::sequencer::MidiRecorder recorder_;
+    RecordPhase recordPhase_ = RecordPhase::Off;
+    /// Le POINT D'ENTRÉE de la prise en cours, en secondes et en ticks : la
+    /// position à laquelle on a appuyé sur Rec, et non celle où le décompte a
+    /// commencé.
+    double punchSeconds_ = 0.0;
+    vsm::midi::Tick punchTick_ = 0;
+    /// Nombre de MESURES de décompte (0, 1 ou 2), conservé d'une exécution à
+    /// l'autre comme l'échelle d'interface.
+    int countInBars_ = 1;
+    vsm::sequencer::RecordMode recordMode_ = vsm::sequencer::RecordMode::Overdub;
+    /// Les notes de la dernière prise, par piste : ce sur quoi porte
+    /// « Quantifier la prise ».
+    std::vector<std::pair<size_t, vsm::sequencer::NoteSelection>> lastTake_;
+    /// Tampon de drainage, réutilisé pour ne pas allouer à chaque tour du timer.
+    std::vector<vsm::sequencer::RecordedNoteEvent> recordDrain_;
+    /// Le débordement de la file de capture ne se dit qu'UNE fois par prise :
+    /// une alerte par tour de timer serait un mur de fenêtres.
+    bool recordDropReported_ = false;
+    /// Dernier état connu de la carte son, pour ne rafraîchir le bouton Rec
+    /// que lorsqu'il change et non à chaque tour du timer.
+    bool recordDeviceWasOpen_ = false;
+
     std::vector<vsm::audio::engine::AutomationLane> currentAutomation_;
     bool mixDirty_ = false; // vol/pan/mute/solo modifiés -> republier le snapshot au timer
 

@@ -563,7 +563,7 @@ Un logiciel qui ne peut rien capter n'est pas un studio, c'est un lecteur.
 |---|---|---|
 | D3.1 | Ouvrir le périphérique **avec des entrées**, choisir la source, écouter l'entrée, mémoriser le choix du périphérique | le niveau d'entrée s'affiche ; `AudioEngine.cpp:11` n'ouvre plus zéro entrée ; le réglage survit au redémarrage |
 | D3.2 | Tempo **modifiable**, tap tempo, piste de tempo dessinée, **métronome** et décompte | on peut commencer un morceau à partir de rien, ce qui est impossible aujourd'hui |
-| D3.3 | Enregistrement MIDI temps réel : armement (`Track::armed` enfin lu), superposition, quantification après coup | jouer trois mesures les inscrit dans un clip |
+| D3.3 | Enregistrement MIDI temps réel : armement (`Track::armed` enfin lu), superposition, quantification après coup | jouer trois mesures les inscrit dans un clip — **fait** |
 | D3.4 | Enregistrement audio en flux sur disque pendant la lecture | 10 minutes s'enregistrent sans décrochage ; le fichier est relu tel quel |
 | D3.5 | Punch in/out, enregistrement en boucle avec prises empilées | les prises se conservent et se choisissent |
 | D3.6 | Latence d'entrée **mesurée**, pas estimée, et compensée | une boucle physique enregistre à l'échantillon près ; le chiffre est publié |
@@ -614,6 +614,84 @@ pas seulement l'écouter.
 > métronome battrait la mesure du **bloc audio** et non celle du morceau), et
 > deux blocs qui se suivent ne doivent pas compter deux fois le temps de leur
 > frontière.
+
+> **D3.3 EST FAITE, DÉCOMPTE COMPRIS (29/08/2026).** `Track::armed` était écrit
+> par un bouton et **lu par personne** : on pouvait armer une piste, et rien
+> n'arrivait. Le bouton R agit maintenant sur deux choses à la fois, et c'est
+> voulu — la piste armée reçoit le clavier **à l'écoute** comme **à
+> l'enregistrement**. Jouer sur une piste et enregistrer sur une autre n'aurait
+> aucun sens, et le bouton Rec reste désactivé tant qu'aucune piste n'est armée
+> plutôt que de rester rouge et inerte : sans piste armée, la prise n'a nulle
+> part où aller.
+>
+> **LE DÉCOMPTE EST UN MORCEAU DE LIGNE DE TEMPS SITUÉ AVANT ZÉRO.** C'est le
+> choix qui porte toute l'étape. `ProcessGraph::seekSeconds` rabotait la
+> position à zéro ; elle accepte désormais les valeurs négatives, et compter
+> deux mesures se réduit à sauter à `-2 mesures` et à jouer. Tout le reste suit
+> sans une ligne de plus : le planning n'a aucun événement là, les clips audio
+> et la piste de référence n'y rencontrent que du silence, le rebouclage ne se
+> déclenche qu'une fois sa fin franchie, et le **dernier clic tombe exactement
+> sur le premier temps du morceau** — ce qui est toute la raison d'être d'un
+> décompte. L'alternative était un second ordonnanceur de pré-écoute, c'est-à-dire
+> une deuxième horloge à tenir d'accord avec la première.
+>
+> Le clic bat **même métronome éteint** tant que la position est négative : un
+> décompte qu'on n'entend pas ne compte rien.
+>
+> **DATER UNE NOTE JOUÉE : L'ANCRE.** Les messages d'un clavier arrivent sur le
+> thread MIDI, datés par le pilote sur l'horloge du système ; le morceau, lui,
+> est daté par l'horloge du transport, que seul le thread audio fait avancer.
+> Lire `currentSeconds()` à l'arrivée du message donnerait à toutes les notes
+> d'un même bloc la **même** date — une quantification involontaire à la taille
+> de bloc, soit 10,7 ms à 512 échantillons, largement audible sur une double
+> croche. Le thread audio publie donc à chaque bloc une **ancre** (heure
+> système, position du transport) et le thread MIDI interpole. La publication
+> passe par un compteur de version (*seqlock*) et non par un verrou, qui est
+> interdit au thread audio ; la précision devient celle de l'horodatage du
+> pilote.
+>
+> **La latence retranchée est DÉCLARÉE, pas mesurée**, et le code le dit à
+> l'endroit où il la retranche. On joue en réaction à ce qu'on **entend**, et ce
+> qu'on entend a déjà pris le retard de la sortie : sans correction, toute prise
+> serait systématiquement en retard d'une dizaine de millisecondes. Le chiffre
+> annoncé par le pilote vaut mieux que rien ; la mesure réelle par boucle
+> physique reste l'objet de **D3.6** et le remplacera sans rien changer d'autre.
+>
+> **L'ARMEMENT NE SE SAUVEGARDE PAS, ET C'EST TRANCHÉ ICI.** C'est un état de
+> session, pas une donnée de morceau. Rouvrir un projet avec une piste
+> silencieusement armée ferait écrire la prise suivante à un endroit qu'on n'a
+> pas désigné, et c'est le genre de surprise qu'un enregistrement ne pardonne
+> pas. Le **décompte** (0, 1 ou 2 mesures) et le **mode** (superposer /
+> remplacer) sont, eux, conservés d'une exécution à l'autre comme l'échelle
+> d'interface : ce sont des façons de travailler, pas des propriétés du morceau.
+>
+> **LA QUANTIFICATION APRÈS COUP NE FAIT PAS DE CHEMIN À ELLE.** À la fin d'une
+> prise, les notes enregistrées sont **sélectionnées** dans le piano roll ; la
+> commande Quantifier existante porte alors exactement sur ce qu'on vient de
+> jouer, avec la grille, le swing et la force que l'utilisateur a réglés. Le
+> menu *Enregistrement* propose le geste en un coup. Écrire une seconde
+> quantification aurait donné deux comportements à faire coïncider.
+>
+> **En mode `Replace`, on efface ce qui COMMENCE dans la prise**, pas ce qui la
+> traverse : une note tenue commencée avant le point d'entrée appartient à ce
+> qui précède, et l'effacer détruirait hors de la région qu'on a désignée.
+>
+> Treize tests couvrent le seul vrai travail de l'enregistrement — transformer
+> des touches en notes — et tous les cas où l'appariement se casse : la touche
+> encore tenue quand on arrête (conservée, fermée à l'arrêt), le relâchement
+> dont l'enfoncement précède la prise (ignoré, parce qu'inventer une note serait
+> écrire ce qu'on n'a pas joué), la même hauteur frappée deux fois avant d'être
+> relâchée une fois (premier enfoncé, premier fermé), la note trop brève pour
+> être mesurée (un tick de plancher), et la prise faite après un changement de
+> tempo.
+>
+> **Deux défauts trouvés en chemin, corrigés ici.** Le métronome n'était
+> **jamais préparé** : il gardait sa fréquence d'échantillonnage par défaut de
+> 48 kHz quoi que fasse la carte, donc à 44,1 kHz — le régime le plus courant —
+> son clic sortait un demi-ton trop bas et durait 9 % de trop. Personne ne s'en
+> plaignait parce qu'un clic faux ressemble à un clic. Et le champ
+> `Track::monitoring`, écrit par personne et lu par personne, a été **retiré** :
+> l'armement dit déjà « c'est cette piste qui écoute mon clavier ».
 
 ### Phase D4 — La console
 

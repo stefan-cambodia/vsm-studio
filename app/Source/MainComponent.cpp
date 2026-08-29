@@ -222,6 +222,13 @@ MainComponent::MainComponent()
     transportBar_.onMetronomeToggled = [this](bool actif) {
         audioEngine_.processGraph().setMetronomeEnabled(actif);
     };
+    transportBar_.onRecordToggled = [this](bool demarrer) {
+        if (demarrer) startRecording(); else stopRecording();
+    };
+    // L'ARRÊT CLÔT LA PRISE. Sans ce fil, appuyer sur Stop laisserait
+    // l'enregistrement ouvert : on aurait joué, et rien ne serait écrit.
+    transportBar_.onStopPressed = [this] { stopRecording(); };
+    trackList_.onArmChanged = [this] { refreshArmedTracks(); };
     transportBar_.onTempoChanged = [this](double bpm) {
         // LE TEMPO EST UNE DONNÉE DU PROJET, et le changer est une action
         // annulable comme les autres.
@@ -261,6 +268,18 @@ MainComponent::MainComponent()
         transportBar_.setLooping(active);
         pianoRollPanel_.refresh();
     };
+
+    // Décompte et mode d'enregistrement : des PRÉFÉRENCES de session, pas des
+    // données de morceau. Elles sont donc conservées comme l'échelle
+    // d'interface, et non écrites dans `project.json` -- un projet rouvert ne
+    // doit pas imposer le mode de travail de la dernière fois.
+    {
+        auto& reglages = vsm::app::ui::UiScale::properties();
+        countInBars_ = juce::jlimit(0, 2, reglages.getIntValue("recordCountInBars", 1));
+        recordMode_ = reglages.getBoolValue("recordReplace", false)
+                          ? vsm::sequencer::RecordMode::Replace
+                          : vsm::sequencer::RecordMode::Overdub;
+    }
 
     rebuildFromProject();
     // Le périphérique retenu au dernier lancement, s'il y en a un.
@@ -363,9 +382,51 @@ void MainComponent::timerCallback() {
     applyAudioConfig();
 
     const bool audioClockAvailable = audioEngine_.isDeviceOpen();
+    // La carte son peut apparaître ou disparaître en cours de route (réglages
+    // audio, périphérique débranché) : le bouton Rec doit suivre, et dire
+    // laquelle des deux conditions manque.
+    if (audioClockAvailable != recordDeviceWasOpen_) refreshArmedTracks();
+    const double horlogeAudio = audioEngine_.processGraph().currentSeconds();
+    // La tête de lecture ne recule jamais AVANT le début du morceau à
+    // l'affichage : pendant un décompte, la position du moteur est négative
+    // (voir ProcessGraph::seekSeconds), et un tick négatif ne veut rien dire
+    // pour le piano roll. C'est le compteur de la barre de transport qui dit
+    // alors où l'on en est.
     const vsm::midi::Tick playhead =
-        audioClockAvailable ? project_.secondsToTicks(audioEngine_.processGraph().currentSeconds())
+        audioClockAvailable ? project_.secondsToTicks(std::max(0.0, horlogeAudio))
                             : transport_.currentTick();
+
+    // ENREGISTREMENT : vider la file de capture à chaque tour, décompte
+    // compris. `MidiRecorder` écarte lui-même ce qui précède le point d'entrée,
+    // donc rien ne se perd et rien n'entre par erreur.
+    if (recordPhase_ != RecordPhase::Off) {
+        drainRecording();
+        if (recordPhase_ == RecordPhase::CountIn) {
+            if (horlogeAudio >= punchSeconds_ - 1.0e-9) {
+                // Le décompte est fini : le transport MIDI part à son tour, et
+                // on court-circuite la synchronisation ci-dessous, qui
+                // replacerait le moteur là où il est déjà.
+                recordPhase_ = RecordPhase::Recording;
+                transportBar_.setCountIn(0);
+                transport_.play();
+                audioWasPlaying_ = true;
+            } else {
+                const double restant = punchSeconds_ - horlogeAudio;
+                const double parTemps =
+                    60.0 / std::max(1.0, project_.tempoMap.bpmAt(punchTick_));
+                transportBar_.setCountIn(std::max(1, static_cast<int>(std::ceil(restant / parTemps))));
+            }
+        }
+        // Une note jouée et perdue faute de place dans la file serait une
+        // prise incomplète, et il n'est pas permis que ça arrive en silence.
+        if (audioEngine_.droppedRecordedEvents() > 0 && !recordDropReported_) {
+            recordDropReported_ = true;
+            juce::AlertWindow::showMessageBoxAsync(
+                juce::AlertWindow::WarningIcon, "Notes perdues à l'enregistrement",
+                "La file de capture a débordé : des notes jouées ne sont PAS dans la "
+                "prise. Signalez-le -- ce n'est pas censé pouvoir arriver.");
+        }
+    }
     transportBar_.setInputLevel(audioEngine_.readInputPeak(),
                                  audioEngine_.currentInputChannels());
     pianoRoll_.setPlayheadTick(playhead);
@@ -373,6 +434,9 @@ void MainComponent::timerCallback() {
     pianoRollPanel_.refresh(); // règle + barre d'outils suivent la tête de lecture et l'historique
 
     bool playing = (transport_.state() == TransportState::Playing);
+    // LE TRANSPORT PEUT S'ARRÊTER TOUT SEUL, à la fin du morceau : une prise
+    // laissée ouverte serait une prise perdue, puisque rien ne l'écrirait.
+    if (!playing && recordPhase_ == RecordPhase::Recording) stopRecording();
     if (playing != audioWasPlaying_) {
         if (playing) {
             audioEngine_.processGraph().seekSeconds(transport_.currentSeconds());
@@ -406,7 +470,7 @@ void MainComponent::timerCallback() {
 // --- Menu ------------------------------------------------------------------
 
 juce::StringArray MainComponent::getMenuBarNames() {
-    return { "Fichier", "Édition", "Piste", "Affichage", "Aide" };
+    return { "Fichier", "Édition", "Piste", "Enregistrement", "Affichage", "Aide" };
 }
 
 juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce::String&) {
@@ -459,6 +523,27 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                          !project_.tracks.empty());
             break;
         case 3:
+            // ENREGISTREMENT. Les deux réglages qui changent ce qu'une prise
+            // fait -- combien de temps on compte avant, et ce qu'elle fait de ce
+            // qui était déjà là -- plus la quantification de la dernière prise.
+            {
+                const int mesures = countInBars_;
+                menu.addSectionHeader("Décompte");
+                menu.addItem(kMenuRecordCountInNone, "Aucun", true, mesures == 0);
+                menu.addItem(kMenuRecordCountInOne, "1 mesure", true, mesures == 1);
+                menu.addItem(kMenuRecordCountInTwo, "2 mesures", true, mesures == 2);
+                menu.addSectionHeader("Ce que fait la prise");
+                menu.addItem(kMenuRecordOverdub, "Superposer",
+                              true, recordMode_ == vsm::sequencer::RecordMode::Overdub);
+                menu.addItem(kMenuRecordReplace, "Remplacer",
+                              true, recordMode_ == vsm::sequencer::RecordMode::Replace);
+                menu.addSeparator();
+                menu.addItem(kMenuRecordQuantizeTake,
+                              "Quantifier la dernière prise (grille du piano roll)",
+                              !lastTake_.empty());
+            }
+            break;
+        case 4:
             menu.addItem(kMenuViewTracks, "Pistes", true, trackListWindow_.isVisible());
             menu.addItem(kMenuViewPianoRoll, "Piano Roll", true, pianoRollWindow_.isVisible());
             menu.addItem(kMenuViewSynthRack, "Synth Rack", true, synthRackWindow_.isVisible());
@@ -481,7 +566,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addSubMenu("Taille de l'interface", tailles);
             }
             break;
-        case 4:
+        case 5:
             menu.addItem(kMenuHelpAbout, "À propos de Vintage Synth MIDI Studio");
             break;
         default:
@@ -517,6 +602,21 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuFileExport:    exportMidiFile(); break;
         case kMenuFileExportWav: exportAudioFile(); break;
         case kMenuFileAudioSettings: showAudioSettings(); break;
+        case kMenuRecordCountInNone:
+        case kMenuRecordCountInOne:
+        case kMenuRecordCountInTwo:
+            countInBars_ = menuItemID - kMenuRecordCountInNone;
+            vsm::app::ui::UiScale::properties().setValue("recordCountInBars", countInBars_);
+            break;
+        case kMenuRecordOverdub:
+        case kMenuRecordReplace:
+            recordMode_ = (menuItemID == kMenuRecordReplace)
+                              ? vsm::sequencer::RecordMode::Replace
+                              : vsm::sequencer::RecordMode::Overdub;
+            vsm::app::ui::UiScale::properties().setValue(
+                "recordReplace", recordMode_ == vsm::sequencer::RecordMode::Replace);
+            break;
+        case kMenuRecordQuantizeTake: quantizeLastTake(); break;
         case kMenuFileQuit:      juce::JUCEApplication::getInstance()->systemRequestedQuit(); break;
         case kMenuTrackAdd:      addTrack(); break;
         case kMenuTrackRemove:   removeSelectedTrack(); break;
@@ -1156,6 +1256,185 @@ void MainComponent::exportMidiFile() {
     });
 }
 
+// ---------------------------------------------------------------------------
+// D3.3 — ENREGISTREMENT MIDI TEMPS RÉEL
+//
+// Le trajet complet, parce qu'il traverse trois threads et qu'il vaut mieux
+// l'avoir écrit une fois : le clavier arrive sur le THREAD MIDI, où
+// `AudioEngine` le date sur la ligne de temps et le pousse dans une file
+// lock-free ; le THREAD UI la vide ici à chaque tour de timer et la verse dans
+// `MidiRecorder` ; à l'arrêt, l'enregistreur apparie les touches en notes et
+// les écrit dans les pistes armées, en une seule action annulable. Le THREAD
+// AUDIO, lui, ne connaît rien de tout cela : il publie seulement l'ancre qui
+// permet de dater, et joue ce qu'on lui envoie en écoute.
+// ---------------------------------------------------------------------------
+
+std::vector<size_t> MainComponent::armedTrackIndices() const {
+    std::vector<size_t> armees;
+    for (size_t i = 0; i < project_.tracks.size() && i < vsm::audio::engine::ProcessGraph::kMaxTracks; ++i)
+        if (project_.tracks[i].armed) armees.push_back(i);
+    return armees;
+}
+
+void MainComponent::refreshArmedTracks() {
+    auto armees = armedTrackIndices();
+    recordDeviceWasOpen_ = audioEngine_.isDeviceOpen();
+    transportBar_.setRecordAvailable(recordDeviceWasOpen_, static_cast<int>(armees.size()));
+    audioEngine_.setArmedTracks(std::move(armees));
+}
+
+double MainComponent::countInSeconds(vsm::midi::Tick punchTick) const {
+    if (countInBars_ <= 0) return 0.0;
+    const vsm::midi::Tick parMesure =
+        project_.timeSignatureMap.ticksPerBar(punchTick, project_.ticksPerQuarterNote);
+    if (parMesure <= 0) return 0.0;
+    // La DURÉE d'un décompte de N mesures se mesure sur la carte de tempo,
+    // depuis le point d'entrée en remontant : à tempo variable, deux mesures
+    // avant la mesure 30 ne durent pas ce que durent les deux premières.
+    const vsm::midi::Tick debut = punchTick - parMesure * countInBars_;
+    return project_.ticksToSeconds(punchTick) - project_.ticksToSeconds(debut);
+}
+
+void MainComponent::startRecording() {
+    auto armees = armedTrackIndices();
+    if (armees.empty() || !audioEngine_.isDeviceOpen()) {
+        // Le bouton est censé être désactivé dans ces deux cas ; si on arrive
+        // quand même ici, on le DIT plutôt que d'enregistrer dans le vide.
+        transportBar_.setRecording(false);
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon,
+            armees.empty() ? "Aucune piste armée" : "Aucune carte son",
+            armees.empty()
+                ? "Armez au moins une piste (bouton R dans la liste des pistes) : "
+                  "sans elle, la prise n'aurait nulle part où aller."
+                : "Sans carte son ouverte, le transport n'avance pas et aucun clavier "
+                  "MIDI n'est écouté. Voir Fichier > Réglages audio.");
+        return;
+    }
+    if (recordPhase_ != RecordPhase::Off) return;
+
+    // POINT D'ENTRÉE : là où se trouve la tête de lecture. Si le transport joue
+    // déjà, on entre en marche (punch in) et il n'y a pas de décompte -- compter
+    // par-dessus la musique qui joue n'aurait aucun sens.
+    const bool dejaEnLecture = transport_.state() == TransportState::Playing;
+    punchTick_ = dejaEnLecture
+                     ? project_.secondsToTicks(std::max(0.0, audioEngine_.processGraph().currentSeconds()))
+                     : transport_.currentTick();
+    punchSeconds_ = project_.ticksToSeconds(punchTick_);
+    const double decompte = dejaEnLecture ? 0.0 : countInSeconds(punchTick_);
+
+    recorder_.begin(punchSeconds_);
+    recordDrain_.clear();
+    recordDropReported_ = false;
+    audioEngine_.setRecording(true);
+    transportBar_.setRecording(true);
+
+    if (decompte > 0.0) {
+        recordPhase_ = RecordPhase::CountIn;
+        // Le décompte est un morceau de ligne de temps situé AVANT le point
+        // d'entrée : le moteur y saute, le métronome y bat de lui-même (voir
+        // ProcessGraph::processBlock), et le transport MIDI attend son tour.
+        audioEngine_.processGraph().seekSeconds(punchSeconds_ - decompte);
+        audioEngine_.processGraph().setPlaying(true);
+        transport_.seekToTick(punchTick_);
+        audioWasPlaying_ = false;
+    } else {
+        recordPhase_ = RecordPhase::Recording;
+        if (!dejaEnLecture) {
+            audioEngine_.processGraph().seekSeconds(punchSeconds_);
+            audioEngine_.processGraph().setPlaying(true);
+            transport_.seekToTick(punchTick_);
+            transport_.play();
+            audioWasPlaying_ = true;
+        }
+    }
+}
+
+void MainComponent::drainRecording() {
+    recordDrain_.clear();
+    audioEngine_.drainRecordedEvents(recordDrain_);
+    for (const auto& evenement : recordDrain_) recorder_.push(evenement);
+}
+
+void MainComponent::stopRecording() {
+    if (recordPhase_ == RecordPhase::Off) return;
+
+    drainRecording();   // ce qui restait dans la file appartient à la prise
+    audioEngine_.setRecording(false);
+    const RecordPhase phase = recordPhase_;
+    recordPhase_ = RecordPhase::Off;
+    transportBar_.setRecording(false);
+    transportBar_.setCountIn(0);
+
+    // Arrêté pendant le décompte : il n'y a rien à écrire, et il ne faut
+    // surtout pas laisser le moteur à une position négative.
+    if (phase == RecordPhase::CountIn) {
+        audioEngine_.processGraph().setPlaying(false);
+        audioEngine_.processGraph().seekSeconds(punchSeconds_);
+        return;
+    }
+    if (recorder_.empty()) return;
+
+    const double finSecondes =
+        std::max(punchSeconds_, audioEngine_.processGraph().currentSeconds());
+    const vsm::midi::Tick finTick = project_.secondsToTicks(finSecondes);
+    auto armees = armedTrackIndices();
+    if (armees.empty()) return;
+
+    // UNE SEULE ACTION ANNULABLE pour toute la prise, même si elle atterrit sur
+    // plusieurs pistes : annuler un enregistrement, c'est le défaire en entier.
+    beginProjectEdit("Enregistrement");
+
+    lastTake_.clear();
+    // Un SEUL compteur d'identifiants pour toutes les pistes armées : la même
+    // prise écrite sur deux pistes doit donner des notes distinctes, sinon la
+    // sélection et l'automation liée confondraient les unes avec les autres.
+    uint64_t compteur = project_.peekNextNoteId();
+    for (size_t index : armees) {
+        if (index >= project_.tracks.size()) continue;
+        auto notes = recorder_.finish(finSecondes,
+                                       [this](double s) { return project_.secondsToTicks(s); },
+                                       compteur);
+        vsm::sequencer::NoteSelection ids;
+        for (const auto& note : notes) ids.insert(note.id);
+        vsm::sequencer::applyRecording(project_.tracks[index], notes, recordMode_,
+                                        punchTick_, finTick);
+        lastTake_.emplace_back(index, std::move(ids));
+    }
+    if (compteur > 0) project_.ensureNoteIdAbove(compteur - 1);
+
+    // La prise est SÉLECTIONNÉE dans le piano roll : c'est ce qui rend la
+    // quantification après coup possible sans écrire un second chemin de
+    // quantification -- la commande Quantifier porte alors exactement sur ce
+    // qu'on vient de jouer.
+    // PUBLIER SANS INTERROMPRE. `refreshTransportSchedule()` arrête et relance
+    // le transport MIDI, dont l'arrêt REMET LA POSITION À ZÉRO : l'employer ici
+    // renverrait la lecture au début du morceau à chaque sortie en marche
+    // (punch out). Le moteur audio, lui, republie sans rien interrompre.
+    if (transport_.state() == TransportState::Playing)
+        audioEngine_.processGraph().setProject(project_);
+    else
+        refreshTransportSchedule();
+    pianoRollPanel_.refresh();
+    if (!lastTake_.empty()) {
+        trackList_.selectTrackIndex(lastTake_.front().first);
+        pianoRoll_.selectNotes(lastTake_.front().second);
+    }
+}
+
+void MainComponent::quantizeLastTake() {
+    if (lastTake_.empty()) return;
+    // On repasse par la SÉLECTION et par la commande existante du piano roll :
+    // la grille, le swing et la force sont ceux que l'utilisateur a réglés dans
+    // sa barre d'outils, et il n'y a qu'une seule quantification dans le
+    // logiciel -- donc pas deux comportements à faire coïncider.
+    trackList_.selectTrackIndex(lastTake_.front().first);
+    pianoRoll_.setActiveTrackIndex(lastTake_.front().first);
+    pianoRoll_.selectNotes(lastTake_.front().second);
+    pianoRoll_.quantizeSelection(1.0f, false);
+    pianoRollPanel_.refresh();
+}
+
 void MainComponent::beginProjectEdit(const juce::String& label) {
     history_.beginEdit(project_, label.toStdString());
 }
@@ -1220,6 +1499,13 @@ void MainComponent::rebuildFromProject(bool stopPlayback) {
 
     refreshTransportSchedule();
     updateSynthRackForSelection();
+    // L'armement suit le projet : après un chargement ou une suppression de
+    // piste, les index publiés au moteur ne désigneraient plus les mêmes pistes.
+    refreshArmedTracks();
+    // Une prise appartient au projet qu'on vient de quitter : la garder ferait
+    // porter « Quantifier la dernière prise » sur des identifiants de notes qui
+    // n'existent plus ici.
+    lastTake_.clear();
 }
 
 void MainComponent::refreshTransportSchedule() {

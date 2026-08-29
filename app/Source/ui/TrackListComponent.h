@@ -17,6 +17,10 @@ public:
 
     std::function<void(size_t)> onSelected;
     std::function<void()> onChanged; // mute/solo/volume/pan modifiés -> reconstruire le scheduler
+    /// L'armement a changé. SÉPARÉ de `onChanged` : armer ne touche ni au
+    /// planning de lecture ni au mixage, et republier le projet au moteur pour
+    /// un bouton d'armement couperait le son à chaque clic.
+    std::function<void()> onArmChanged;
     std::function<void(size_t, const std::string&)> onInstrumentChanged; // trackIndex, pluginId ("" = aucun)
 
     void setSelected(bool selected) { selected_ = selected; repaint(); }
@@ -50,6 +54,8 @@ public:
     std::function<void(size_t)> onTrackSelected;
     std::function<void()> onTracksChanged;
     std::function<void(size_t, const std::string&)> onInstrumentChanged;
+    /// L'armement d'une piste a changé (voir TrackRowComponent::onArmChanged).
+    std::function<void()> onArmChanged;
     std::function<void()> onAddTrack;          // bouton "+ Ajouter une piste"
     std::function<void(size_t)> onRemoveTrack; // bouton "Supprimer" (piste sélectionnée)
 

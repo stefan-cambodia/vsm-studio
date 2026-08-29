@@ -226,8 +226,18 @@ public:
 
     bool muted = false;
     bool solo = false;
+    /// La piste ARMÉE reçoit le clavier MIDI, à l'écoute comme à
+    /// l'enregistrement (D3.3). C'est un état de SESSION et non de morceau :
+    /// il n'est délibérément pas écrit dans `project.json`. Rouvrir un projet
+    /// avec une piste silencieusement armée ferait écrire la prise suivante à
+    /// un endroit qu'on n'a pas désigné, et c'est le genre de surprise qu'un
+    /// enregistrement ne pardonne pas.
+    ///
+    /// Un champ `monitoring` l'accompagnait, écrit par personne et lu par
+    /// personne. Il est parti : l'armement dit déjà « c'est cette piste qui
+    /// écoute mon clavier », et deux champs pour une seule idée finissent
+    /// toujours par se contredire.
     bool armed = false;
-    bool monitoring = false;
     float volume = 1.0f;  // gain linéaire, 1.0 = 0 dB
     float pan = 0.0f;      // -1 (gauche) .. +1 (droite)
     /// Niveaux d'envoi vers les 2 bus auxiliaires (sends, section 15).

@@ -50,21 +50,56 @@ void AudioEngine::stop() {
 }
 
 void AudioEngine::handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMessage& message) {
-    // Notes : jouées immédiatement sur l'instrument de la piste sélectionnée.
-    // Elles passent par la file "live" du ProcessGraph (lock-free), jamais par
-    // le planning du projet -- on joue, on n'enregistre pas.
+    // Notes : jouées immédiatement, et -- depuis D3.3 -- enregistrées si une
+    // prise est en cours. Les DEUX chemins sont distincts et le restent :
+    // l'écoute passe par la file "live" du ProcessGraph, la capture par la file
+    // d'enregistrement. Confondre les deux ferait dépendre ce qu'on GARDE de ce
+    // qu'on ENTEND, alors qu'on doit pouvoir enregistrer une piste muette.
     //
     // C'est bien le THREAD MIDI ici, distinct du thread UI : d'où la source
     // MidiInput, qui a sa propre file (LockFreeRingBuffer est strictement un
     // producteur / un consommateur, voir ProcessGraph::LiveNoteSource).
     if (message.isNoteOnOrOff()) {
-        const size_t track = liveInputTrack_.load(std::memory_order_acquire);
         const auto note = static_cast<uint8_t>(message.getNoteNumber());
         const auto velocity = static_cast<uint8_t>(message.getVelocity());
         // Un NoteOn de vélocité 0 est un NoteOff déguisé (convention MIDI).
         const bool noteOn = message.isNoteOn() && velocity > 0;
-        graph_.sendLiveNote(vsm::audio::engine::ProcessGraph::LiveNoteSource::MidiInput,
-                             track, note, velocity, noteOn);
+
+        // ENREGISTREMENT. La date vient de l'horodatage du PILOTE, pas de
+        // l'instant où ce code s'exécute : entre les deux il y a le
+        // réveil du thread MIDI, qui n'a aucune raison d'être régulier.
+        // Certains pilotes ne datent rien (horodatage nul) ; on retombe alors
+        // sur l'heure courante, qui est ce qu'on peut savoir de moins faux.
+        if (recording_.load(std::memory_order_acquire)) {
+            const double horodatage = message.getTimeStamp() > 0.0
+                                          ? message.getTimeStamp()
+                                          : juce::Time::getMillisecondCounterHiRes() * 0.001;
+            vsm::sequencer::RecordedNoteEvent capture;
+            capture.seconds = transportSecondsAtClock(horodatage);
+            capture.note = note;
+            capture.velocity = velocity;
+            capture.channel = static_cast<uint8_t>(juce::jlimit(1, 16, message.getChannel()) - 1);
+            capture.noteOn = noteOn;
+            // FILE PLEINE : on compte, on ne bloque pas. Attendre ici ferait
+            // patiner le thread MIDI, donc décalerait les notes SUIVANTES --
+            // on perdrait deux notes au lieu d'une, sans le dire.
+            if (!recordQueue_.push(capture))
+                droppedRecorded_.fetch_add(1, std::memory_order_relaxed);
+        }
+
+        // ÉCOUTE. Les pistes ARMÉES d'abord : armer une piste, c'est dire que
+        // c'est elle qui écoute le clavier. Sans piste armée, la piste
+        // sélectionnée, comme avant.
+        auto armees = armedTracks_.load(std::memory_order_acquire);
+        if (armees && !armees->empty()) {
+            for (size_t track : *armees)
+                graph_.sendLiveNote(vsm::audio::engine::ProcessGraph::LiveNoteSource::MidiInput,
+                                     track, note, velocity, noteOn);
+        } else {
+            graph_.sendLiveNote(vsm::audio::engine::ProcessGraph::LiveNoteSource::MidiInput,
+                                 liveInputTrack_.load(std::memory_order_acquire),
+                                 note, velocity, noteOn);
+        }
         return;
     }
 
@@ -92,6 +127,59 @@ void AudioEngine::handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMe
     // setInstrumentParameter est lui-même thread-safe (hors verrou).
     if (resolved)
         graph_.setInstrumentParameter(target.trackIndex, target.paramId, paramValue);
+}
+
+void AudioEngine::setArmedTracks(std::vector<size_t> tracks) {
+    armedTracks_.store(std::make_shared<const std::vector<size_t>>(std::move(tracks)),
+                        std::memory_order_release);
+}
+
+size_t AudioEngine::drainRecordedEvents(std::vector<vsm::sequencer::RecordedNoteEvent>& out) {
+    size_t ajoutes = 0;
+    vsm::sequencer::RecordedNoteEvent capture;
+    while (recordQueue_.pop(capture)) {
+        out.push_back(capture);
+        ++ajoutes;
+    }
+    return ajoutes;
+}
+
+void AudioEngine::publishTransportAnchor() {
+    // Un seul rédacteur (le thread audio), d'où le compteur impair pendant
+    // l'écriture : le lecteur voit « en cours » et recommence.
+    const uint32_t version = anchorVersion_.load(std::memory_order_relaxed);
+    anchorVersion_.store(version + 1, std::memory_order_relaxed);
+    std::atomic_thread_fence(std::memory_order_release);
+    // Time::getMillisecondCounterHiRes() est un simple appel d'horloge
+    // monotone : ni allocation, ni verrou, ni entrée-sortie. C'est la MÊME
+    // horloge que celle dont le pilote MIDI date ses messages, ce qui est toute
+    // la raison de son emploi ici plutôt qu'une autre.
+    anchorClockSeconds_.store(juce::Time::getMillisecondCounterHiRes() * 0.001,
+                               std::memory_order_relaxed);
+    anchorTransportSeconds_.store(graph_.currentSeconds(), std::memory_order_relaxed);
+    std::atomic_thread_fence(std::memory_order_release);
+    anchorVersion_.store(version + 2, std::memory_order_relaxed);
+}
+
+double AudioEngine::transportSecondsAtClock(double clockSeconds) const {
+    // Lecture d'une PAIRE cohérente : si le compteur a bougé pendant la
+    // lecture, l'ancre a changé sous nos pieds et il faut recommencer. Quelques
+    // essais suffisent -- le rédacteur n'écrit qu'une fois par bloc audio.
+    for (int essai = 0; essai < 8; ++essai) {
+        const uint32_t avant = anchorVersion_.load(std::memory_order_relaxed);
+        if ((avant & 1u) != 0u) continue;   // écriture en cours
+        std::atomic_thread_fence(std::memory_order_acquire);
+        const double horloge = anchorClockSeconds_.load(std::memory_order_relaxed);
+        const double transport = anchorTransportSeconds_.load(std::memory_order_relaxed);
+        std::atomic_thread_fence(std::memory_order_acquire);
+        if (anchorVersion_.load(std::memory_order_relaxed) != avant) continue;
+        if (horloge <= 0.0) break;          // aucun bloc audio n'a encore tourné
+        return transport + (clockSeconds - horloge)
+               - declaredLatency_.load(std::memory_order_relaxed);
+    }
+    // Pas d'ancre utilisable : la position du transport, sans interpolation.
+    // C'est moins précis, jamais faux.
+    return graph_.currentSeconds();
 }
 
 void AudioEngine::armMidiLearn(const vsm::audio::engine::MidiLearnTarget& target) {
@@ -127,6 +215,12 @@ void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* device) {
     currentInputChannels_.store(device->getActiveInputChannels().countNumberOfSetBits(),
                                  std::memory_order_release);
     monoFallbackBuffer_.assign(static_cast<size_t>(std::max(bufferSize, 1)), 0.0f);
+    // Ce que le pilote DIT de sa latence de sortie (voir declaredLatencySeconds()
+    // pour la raison de la retrancher, et la limite de l'exercice).
+    declaredLatency_.store(sampleRate > 0.0
+                                ? static_cast<double>(device->getOutputLatencyInSamples()) / sampleRate
+                                : 0.0,
+                            std::memory_order_release);
     graph_.prepare(sampleRate, bufferSize);
 }
 
@@ -139,6 +233,10 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
                                                      float* const* outputChannelData, int numOutputChannels,
                                                      int numSamples, const juce::AudioIODeviceCallbackContext&) {
     if (numOutputChannels <= 0 || numSamples <= 0) return;
+
+    // L'ANCRE D'ABORD, avant que le bloc n'avance le transport : elle doit dire
+    // « à cette heure-là, le transport en était LÀ », et non « il en sera là ».
+    publishTransportAnchor();
 
     // NIVEAU D'ENTRÉE. Rien d'autre n'est fait de l'entrée pour l'instant -- la
     // capture vers un fichier est D3.4 -- mais la mesurer est ce qui permet de

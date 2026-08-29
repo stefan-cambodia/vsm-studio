@@ -18,14 +18,16 @@ TransportBarComponent::TransportBarComponent(RealtimeTransport& transport) : tra
     loopButton_.setClickingTogglesState(true);
     recordButton_.setColour(juce::TextButton::buttonOnColourId, Palette::accentRed);
 
-    // L'ENREGISTREMENT N'EXISTE PAS ENCORE, ET LE BOUTON LE DIT. Il était
-    // affiché, coloré en rouge, et sans le moindre gestionnaire : une commande
-    // qui promet une fonction absente est pire que la fonction absente, parce
-    // qu'elle se découvre en la cherchant. Il redeviendra actif en D3 de
-    // docs/ROADMAP-daw.md, quand la carte son ouvrira des entrées.
-    recordButton_.setEnabled(false);
-    recordButton_.setTooltip("Enregistrement : pas encore implémenté "
-                              "(phase D3 de docs/ROADMAP-daw.md)");
+    // L'ENREGISTREMENT EXISTE (D3.3). Le bouton est resté deux phases affiché,
+    // rouge et sans gestionnaire, en le disant dans son infobulle -- une
+    // commande qui promet une fonction absente est pire que la fonction
+    // absente. Il agit désormais, et reste désactivé tant qu'aucune piste n'est
+    // armée : sans piste armée, il n'y a nulle part où écrire.
+    recordButton_.setClickingTogglesState(true);
+    recordButton_.onClick = [this] {
+        if (onRecordToggled) onRecordToggled(recordButton_.getToggleState());
+    };
+    setRecordAvailable(false, 0);
 
     for (auto* label : { &positionLabel_, &bpmLabel_, &timeSigLabel_, &cpuLabel_, &sampleRateLabel_ }) {
         addAndMakeVisible(label);
@@ -34,7 +36,11 @@ TransportBarComponent::TransportBarComponent(RealtimeTransport& transport) : tra
     }
 
     playButton_.onClick = [this] { transport_.play(); };
-    stopButton_.onClick = [this] { transport_.stop(); };
+    stopButton_.onClick = [this] {
+        transport_.stop();
+        // L'application doit l'apprendre : c'est l'arrêt qui clôt une prise.
+        if (onStopPressed) onStopPressed();
+    };
     loopButton_.onClick = [this] {
         if (onLoopToggled) onLoopToggled(loopButton_.getToggleState());
     };
@@ -171,12 +177,48 @@ void TransportBarComponent::setInputLevel(float peak, int channels) {
         inputChannels_ = channels;
         recordButton_.setTooltip(
             channels > 0
-                ? juce::String(channels) + " entree(s) ouverte(s) — l'enregistrement "
-                  "lui-meme arrive en D3.3 de docs/ROADMAP-daw.md"
+                ? juce::String(channels) + " entree(s) ouverte(s). L'enregistrement "
+                  "AUDIO arrive en D3.4 ; l'enregistrement MIDI, lui, ne depend "
+                  "pas de ces entrees mais du clavier branche."
                 : "Aucune entree audio : la carte n'en donne pas. "
                   "Voir Fichier > Reglages audio.");
     }
     repaint(inputMeterBounds_);
+}
+
+void TransportBarComponent::setRecordAvailable(bool deviceOpen, int armedTrackCount) {
+    // DEUX EMPÊCHEMENTS DISTINCTS, DEUX MESSAGES DISTINCTS. « Rec est gris »
+    // n'apprend rien ; ce qui compte est de savoir s'il manque une piste armée
+    // ou une carte son, parce qu'on ne va pas chercher au même endroit.
+    recordButton_.setEnabled(deviceOpen && armedTrackCount > 0);
+    if (!deviceOpen)
+        recordButton_.setTooltip("Aucune carte son ouverte : le transport n'avance pas, "
+                                  "et aucun clavier MIDI n'est ecoute. "
+                                  "Voir Fichier > Reglages audio.");
+    else if (armedTrackCount <= 0)
+        recordButton_.setTooltip("Aucune piste armee : armer une piste avec son bouton R "
+                                  "dans la liste des pistes, sinon la prise n'aurait nulle "
+                                  "part ou aller.");
+    else
+        recordButton_.setTooltip("Enregistrer sur " + juce::String(armedTrackCount)
+                                  + " piste(s) armee(s). Le decompte et le mode "
+                                    "(superposer / remplacer) sont dans le menu Enregistrement.");
+}
+
+void TransportBarComponent::setRecording(bool active) {
+    recording_ = active;
+    recordButton_.setToggleState(active, juce::dontSendNotification);
+}
+
+void TransportBarComponent::setCountIn(int beatsRemaining) {
+    if (beatsRemaining == countInBeats_) return;
+    countInBeats_ = beatsRemaining;
+    // Le compte à rebours prend la place de la position : pendant le décompte,
+    // la tête de lecture est encore AVANT le morceau, et afficher un tick
+    // négatif ne dirait rien à personne.
+    if (countInBeats_ > 0)
+        positionLabel_.setText("Decompte " + juce::String(countInBeats_),
+                                juce::dontSendNotification);
 }
 
 void TransportBarComponent::setLooping(bool active) {
@@ -211,6 +253,10 @@ void TransportBarComponent::setSampleRate(double sampleRate) {
 }
 
 void TransportBarComponent::timerCallback() {
+    // Pendant un décompte, la position affichée est le compte à rebours ; la
+    // rafraîchir depuis le transport l'effacerait aussitôt.
+    if (countInBeats_ > 0) return;
+
     Tick tick = transport_.currentTick();
     double seconds = transport_.currentSeconds();
     int minutes = static_cast<int>(seconds) / 60;

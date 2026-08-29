@@ -2,6 +2,7 @@
 #include <JuceHeader.h>
 #include "vsm/audio/engine/MidiLearnMap.h"
 #include "vsm/audio/engine/ProcessGraph.h"
+#include "vsm/sequencer/MidiRecorder.h"
 #include <atomic>
 #include <mutex>
 #include <vector>
@@ -67,7 +68,60 @@ public:
     /// Piste qui reçoit les notes d'un clavier MIDI branché (la piste
     /// sélectionnée dans l'application). Lue depuis le thread MIDI, écrite
     /// depuis l'UI -> atomique.
+    ///
+    /// ELLE NE SERT QUE S'IL N'Y A AUCUNE PISTE ARMÉE : armer une piste, c'est
+    /// dire « c'est celle-là qui écoute mon clavier », et il serait absurde de
+    /// jouer sur une piste et d'enregistrer sur une autre.
     void setLiveInputTrack(size_t trackIndex) { liveInputTrack_.store(trackIndex, std::memory_order_release); }
+
+    // --- Enregistrement MIDI temps réel (D3.3) ----------------------------
+    //
+    // CE QUI SE PASSE ICI, ET POURQUOI CE N'EST PAS QU'UNE FILE DE PLUS. Les
+    // messages d'un clavier arrivent sur le THREAD MIDI, daté par le pilote
+    // sur l'horloge du système ; le morceau, lui, est daté par l'horloge du
+    // TRANSPORT, que seul le thread audio fait avancer. Enregistrer, c'est
+    // traduire l'une dans l'autre.
+    //
+    // La traduction naïve -- lire `currentSeconds()` au moment où le message
+    // arrive -- donnerait à toutes les notes d'un même bloc la même date, soit
+    // une quantification involontaire à la taille de bloc : 10,7 ms à 512
+    // échantillons, largement audible sur une double croche. Le thread audio
+    // publie donc, à chaque bloc, une ANCRE (heure système, position du
+    // transport) et le thread MIDI interpole entre deux ancres. La précision
+    // devient celle de l'horodatage du pilote, pas celle du découpage en blocs.
+
+    /// Arme la capture. Ce qui est joué avant le point d'entrée est écarté par
+    /// `MidiRecorder`, pas ici : le moteur date, il ne juge pas.
+    void setRecording(bool on) { recording_.store(on, std::memory_order_release); }
+    bool isRecording() const { return recording_.load(std::memory_order_acquire); }
+
+    /// Les pistes armées, publiées d'un coup depuis le thread UI. Elles
+    /// reçoivent les notes du clavier -- à l'écoute comme à l'enregistrement.
+    void setArmedTracks(std::vector<size_t> tracks);
+
+    /// Vide la file de capture dans `out` (thread UI). Renvoie le nombre
+    /// d'événements ajoutés.
+    size_t drainRecordedEvents(std::vector<vsm::sequencer::RecordedNoteEvent>& out);
+
+    /// Notes perdues faute de place dans la file. Doit rester à zéro ; toute
+    /// autre valeur est une note qu'on a jouée et qui n'est pas dans la prise.
+    uint64_t droppedRecordedEvents() const { return droppedRecorded_.load(std::memory_order_relaxed); }
+
+    /// Le décalage retranché à chaque note enregistrée, en secondes.
+    ///
+    /// C'EST UNE LATENCE DÉCLARÉE, PAS MESURÉE, et la nuance est écrite ici
+    /// pour qu'on ne l'oublie pas : c'est le chiffre que le pilote annonce pour
+    /// sa sortie. On le retranche parce qu'on joue en réaction à ce qu'on
+    /// ENTEND, et que ce qu'on entend a déjà pris ce retard -- sans correction,
+    /// toute prise serait systématiquement en retard d'une dizaine de
+    /// millisecondes. La mesure réelle, par boucle physique, est l'objet de
+    /// D3.6 ; elle remplacera cette déclaration sans rien changer d'autre.
+    double declaredLatencySeconds() const { return declaredLatency_.load(std::memory_order_acquire); }
+
+    /// La position du transport correspondant à une heure système, par
+    /// interpolation depuis la dernière ancre publiée par le thread audio.
+    /// Publique pour être testable sans carte son.
+    double transportSecondsAtClock(double clockSeconds) const;
 
     // --- MIDI Learn --------------------------------------------------------
     // Arme l'apprentissage : le PROCHAIN CC reçu sera lié à `target`.
@@ -96,6 +150,30 @@ private:
     std::atomic<bool> learnArmed_{false};
     std::atomic<size_t> liveInputTrack_{0};
     std::vector<juce::String> enabledMidiInputs_;
+
+    // --- Capture MIDI ------------------------------------------------------
+    std::atomic<bool> recording_{false};
+    std::atomic<std::shared_ptr<const std::vector<size_t>>> armedTracks_{nullptr};
+    static constexpr size_t kRecordQueueCapacity = 1024;
+    vsm::audio::util::LockFreeRingBuffer<vsm::sequencer::RecordedNoteEvent, kRecordQueueCapacity> recordQueue_;
+    std::atomic<uint64_t> droppedRecorded_{0};
+    std::atomic<double> declaredLatency_{0.0};
+
+    // L'ANCRE, publiée par le thread audio et lue par le thread MIDI. Deux
+    // valeurs qui doivent être VUES ENSEMBLE : une heure système et la position
+    // du transport à cette heure-là. Les lire séparément donnerait, une fois
+    // sur des millions, une paire dépareillée -- et donc une note posée
+    // n'importe où dans le morceau.
+    //
+    // D'où le compteur de version (un « seqlock ») : le rédacteur l'incrémente
+    // avant et après son écriture, le lecteur relit et recommence si le
+    // compteur a bougé. Un mutex ferait le même travail mais est INTERDIT ici :
+    // le rédacteur est le thread audio temps réel, qui n'a le droit ni
+    // d'attendre ni de faire attendre.
+    std::atomic<uint32_t> anchorVersion_{0};
+    std::atomic<double> anchorClockSeconds_{0.0};
+    std::atomic<double> anchorTransportSeconds_{0.0};
+    void publishTransportAnchor(); // thread audio uniquement
 
     // Repli pour un device de sortie mono (rare, mais ne doit jamais
     // crasher) : jamais alloué dans le callback, seulement ici à la

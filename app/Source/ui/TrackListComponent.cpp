@@ -67,13 +67,19 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex)
 
     muteButton_.onClick = [this] { track_.muted = muteButton_.getToggleState(); if (onChanged) onChanged(); };
     soloButton_.onClick = [this] { track_.solo = soloButton_.getToggleState(); if (onChanged) onChanged(); };
-    // `Track::armed` est écrit ici et n'est LU par personne : aucun chemin
-    // d'enregistrement n'existe encore. Le bouton reste donc désactivé et le
-    // dit, plutôt que de faire croire qu'une piste est prête à recevoir.
-    armButton_.onClick = [this] { track_.armed = armButton_.getToggleState(); };
-    armButton_.setEnabled(false);
-    armButton_.setTooltip("Armement : pas encore implémenté "
-                           "(phase D3 de docs/ROADMAP-daw.md)");
+    // ARMEMENT (D3.3). `Track::armed` était écrit ici et LU PAR PERSONNE : on
+    // pouvait armer une piste, et rien n'arrivait -- d'où un bouton désactivé
+    // qui l'avouait. Il agit maintenant sur deux choses à la fois, et c'est
+    // voulu : la piste armée reçoit les notes du clavier À L'ÉCOUTE, et les
+    // reçoit aussi PAR ÉCRIT pendant une prise. Jouer sur une piste et
+    // enregistrer sur une autre n'aurait aucun sens.
+    armButton_.setToggleState(track_.armed, juce::dontSendNotification);
+    armButton_.onClick = [this] {
+        track_.armed = armButton_.getToggleState();
+        if (onArmChanged) onArmChanged();
+    };
+    armButton_.setTooltip("Armer la piste : elle recoit alors le clavier MIDI, "
+                           "a l'ecoute comme a l'enregistrement.");
 
     addAndMakeVisible(volumeSlider_);
     volumeSlider_.setSliderStyle(juce::Slider::LinearHorizontal);
@@ -171,6 +177,7 @@ void TrackListComponent::loadProject(Project& project) {
             if (onTrackSelected) onTrackSelected(idx);
         };
         row->onChanged = [this] { if (onTracksChanged) onTracksChanged(); };
+        row->onArmChanged = [this] { if (onArmChanged) onArmChanged(); };
         row->onInstrumentChanged = [this](size_t idx, const std::string& pluginId) {
             if (onInstrumentChanged) onInstrumentChanged(idx, pluginId);
         };

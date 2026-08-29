@@ -210,6 +210,44 @@ avec deux propriétés que le transport MIDI ne pouvait pas offrir :
   le cas qui produit le bug : une note qui commence avant la boucle et finit
   après.
 
+**La position peut être NÉGATIVE, depuis D3.3.** Elle était rabotée à zéro, ce
+qui rendait le décompte inexprimable. Une position négative est celle du
+DÉCOMPTE : deux mesures de clic avant le début du morceau, modélisées comme un
+morceau de ligne de temps situé avant zéro plutôt que comme un second
+ordonnanceur de pré-écoute. Le planning n'a aucun événement là, les clips audio
+et la piste de référence n'y rencontrent que du silence, et le métronome y bat
+même s'il est éteint — un décompte qu'on n'entend pas ne compte rien.
+
+### 6 ter. Dater une note jouée : l'ancre transport ↔ horloge système (D3.3)
+
+Trois horloges se rencontrent à l'enregistrement, et il faut les traduire l'une
+dans l'autre sans jamais faire attendre le thread audio.
+
+Les messages d'un clavier arrivent sur le **thread MIDI**, datés par le pilote
+sur l'horloge du système ; le morceau est daté par l'horloge du **transport**,
+que seul le **thread audio** fait avancer. La traduction naïve — lire
+`currentSeconds()` au moment où le message arrive — donnerait à toutes les notes
+d'un même bloc la même date, soit une quantification involontaire à la taille de
+bloc : 10,7 ms à 512 échantillons, largement audible sur une double croche.
+
+Le thread audio publie donc, à chaque bloc et avant de rendre, une **ancre** :
+le couple (heure système, position du transport). Le thread MIDI interpole
+linéairement entre l'ancre et l'horodatage du message. La précision devient
+celle du pilote, pas celle du découpage en blocs.
+
+Les deux valeurs de l'ancre doivent être **vues ensemble** — les lire séparément
+donnerait, rarement mais sûrement, une paire dépareillée, donc une note posée
+n'importe où dans le morceau. Un mutex ferait le travail mais est interdit au
+thread audio, qui n'a le droit ni d'attendre ni de faire attendre : la
+publication passe donc par un **compteur de version** (*seqlock*), incrémenté
+avant et après l'écriture, que le lecteur relit pour savoir s'il doit
+recommencer. Un seul rédacteur, aucune attente des deux côtés.
+
+Ce qui est enregistré est ensuite décalé de la **latence de sortie déclarée par
+le pilote** : on joue en réaction à ce qu'on entend, et ce qu'on entend a déjà
+pris ce retard. C'est une valeur ANNONCÉE et non mesurée, le code le dit à
+l'endroit où il la retranche, et D3.6 la remplacera par une mesure réelle.
+
 ---
 
 ## 7. Filtre ladder généralisé à N pôles (nouveau, pour le TB-303-style)
