@@ -15,6 +15,12 @@ Ce document remplace, pour la suite, le découpage en phases d'`ARCHITECTURE.md`
 (phases 1 à 7, toutes terminées) et l'addendum
 [`ROADMAP-interop.md`](ROADMAP-interop.md) (P2 à P9, tous faits).
 
+**Un troisième axe s'est ouvert depuis**, et il ne concerne ni l'analyse ni le
+rendu : [`ROADMAP-daw.md`](ROADMAP-daw.md) traite du **logiciel lui-même** —
+piste audio, clip, enregistrement, sauvegarde, console, hébergement de plugins.
+Ce document-ci juge le DAW comme la **référence du rendu** ; l'autre le juge
+comme un **lieu de travail**, et ce second critère n'avait jamais été écrit.
+
 ---
 
 ## 0. Partage des rôles — à ne pas brouiller

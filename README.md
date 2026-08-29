@@ -18,6 +18,12 @@ Wind — anche et lèvres —, Multisample — l'acoustique reportée par
 des feuilles de route sont terminées** (1 à 6 : moteur, machines, optimisation
 SIMD ; 7 : interopérabilité sémantique, CLAP ; 8 à 11 : reconstruction
 WAV → MIDI + patchs, voir [`docs/ROADMAP-fusion.md`](docs/ROADMAP-fusion.md)).
+**Un axe reste ouvert, et il est nouveau** : le logiciel lui-même. Le moteur,
+les machines et la chaîne d'analyse sont au niveau ; l'application qui les
+accueille est restée un démonstrateur — pas de piste audio, pas d'enregistrement,
+pas de clip, et aucune sauvegarde de projet. C'est l'objet de
+[`docs/ROADMAP-daw.md`](docs/ROADMAP-daw.md).
+
 La couche `interchange/` donne à chaque paramètre de chaque machine une
 identité sémantique stable (`filter.1.cutoff`...), et lit/écrit des presets
 `*.synth.json` ainsi que des projets `project.json` qu'un outil extérieur — le
@@ -440,6 +446,12 @@ MIDI + patchs rejouables, et mesurer l'écart.
   modèles CONSEILLENT ; ils ne produisent jamais une seconde d'audio.
 - [`docs/ROADMAP-apprentissage.md`](docs/ROADMAP-apprentissage.md) — le
   découpage en phases A0 à A5, du gain le plus sûr au plus risqué.
+- [`docs/ROADMAP-daw.md`](docs/ROADMAP-daw.md) — **l'axe ouvert le plus
+  récemment** : ce qui manque au logiciel lui-même pour soutenir la comparaison
+  avec Cubase, Ableton Live et FL Studio. Les feuilles de route précédentes
+  disent ce que le programme entend et ce qu'il produit ; celle-ci dit ce qu'on
+  peut y faire — et commence par les huit fonctions qui existent aujourd'hui en
+  donnant un résultat faux sans le dire.
 - [`docs/CDC-multisample.md`](docs/CDC-multisample.md) — `vsm.multisample` :
   l'acoustique mélodique par report d'échantillons, le format de profil, et
   l'installation d'une banque libre.
