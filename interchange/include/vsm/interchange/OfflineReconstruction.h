@@ -44,6 +44,20 @@ struct RenderOptions {
     /// `startSeconds`.
     double durationSeconds = 0.0;
     vsm::audio::io::SampleFormat format = vsm::audio::io::SampleFormat::Float32;
+
+    /// RENDRE AU PAS DU TEMPS RÉEL (D6.5). FAUX PAR DÉFAUT, et cela ne change
+    /// jamais tout seul par confort : les machines de ce projet sont
+    /// déterministes, un rendu accéléré leur donne exactement les mêmes
+    /// échantillons, et neuf minutes rendues en dix secondes sont une propriété
+    /// qu'on ne sacrifie pas.
+    ///
+    /// DEUX FAÇONS DE PASSER À VRAI, ET UNE SEULE EST UN CHOIX. L'utilisateur
+    /// peut le demander -- c'est l'option explicite. Et un plugin peut
+    /// l'EXIGER, en répondant vrai à `requiresRealtimeRender()` : le rendu
+    /// l'honore alors et le DIT dans ses avertissements. Ce n'est pas un défaut
+    /// qui s'installerait en douce, c'est une exigence déclarée qu'ignorer
+    /// rendrait autre chose que ce qu'on a entendu.
+    bool realTimeRender = false;
 };
 
 struct RenderResult {

@@ -1,10 +1,13 @@
 #include "vsm/audio/engine/OfflineRenderer.h"
 #include <algorithm>
+#include <chrono>
+#include <thread>
 #include <cmath>
 
 namespace vsm::audio::engine {
 
-RenderedAudio OfflineRenderer::render(ProcessGraph& graph, double sampleRate, int blockSize, double durationSeconds) {
+RenderedAudio OfflineRenderer::render(ProcessGraph& graph, double sampleRate, int blockSize,
+                                       double durationSeconds, bool realTimePace) {
     RenderedAudio result;
     result.sampleRate = sampleRate;
 
@@ -27,6 +30,12 @@ RenderedAudio OfflineRenderer::render(ProcessGraph& graph, double sampleRate, in
     std::vector<float> blockL(static_cast<size_t>(blockSize), 0.0f);
     std::vector<float> blockR(static_cast<size_t>(blockSize), 0.0f);
 
+    // LE PAS DU TEMPS RÉEL (D6.5). L'attente se calcule depuis le DÉBUT, pas
+    // bloc par bloc : additionner des attentes courtes accumule l'erreur de
+    // chaque réveil, et un rendu de neuf minutes finirait sensiblement en
+    // retard sur ce qu'il prétend imiter.
+    const auto depart = std::chrono::steady_clock::now();
+
     size_t framesRendered = 0;
     while (framesRendered < totalFrames) {
         int thisBlock = static_cast<int>(std::min<size_t>(static_cast<size_t>(blockSize), totalFrames - framesRendered));
@@ -34,6 +43,12 @@ RenderedAudio OfflineRenderer::render(ProcessGraph& graph, double sampleRate, in
         std::copy(blockL.begin(), blockL.begin() + thisBlock, result.left.begin() + static_cast<long>(framesRendered));
         std::copy(blockR.begin(), blockR.begin() + thisBlock, result.right.begin() + static_cast<long>(framesRendered));
         framesRendered += static_cast<size_t>(thisBlock);
+
+        if (realTimePace) {
+            const auto echeance = depart + std::chrono::duration<double>(
+                                                static_cast<double>(framesRendered) / sampleRate);
+            std::this_thread::sleep_until(echeance);
+        }
     }
 
     graph.setPlaying(false);

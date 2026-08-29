@@ -260,8 +260,22 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
     // `RenderOptions::startSeconds` : ce qui précède la plage n'est pas du
     // gaspillage, c'est ce qui met les effets dans l'état où l'oreille les
     // attend au moment où la plage commence.
+    // D6.5 : QUI EXIGE LE TEMPS RÉEL ? On le demande à chaque machine et à
+    // chaque effet réellement posés sur le graphe -- pas au projet, qui ne fait
+    // que les nommer. Un plugin qui l'exige est honoré ET nommé : le rendu
+    // devient cent fois plus lent, l'utilisateur doit savoir pourquoi.
+    bool tempsReel = options.realTimeRender;
+    for (size_t i = 0; i < bundle.project.tracks.size() && i < ProcessGraph::kMaxTracks; ++i) {
+        if (auto* instrument = graph.trackInstrument(i))
+            if (instrument->requiresRealtimeRender()) {
+                tempsReel = true;
+                result.warnings.push_back("la machine de la piste " + std::to_string(i + 1)
+                                           + " exige un rendu en temps réel : le rendu le suit");
+            }
+    }
+
     auto rendered = OfflineRenderer::render(graph, options.sampleRate, options.blockSize,
-                                             debut + duration);
+                                             debut + duration, tempsReel);
     graph.setPlaying(false);
 
     if (debut > 0.0) {

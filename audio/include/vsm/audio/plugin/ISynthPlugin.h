@@ -64,6 +64,22 @@ public:
     /// piste en silence.
     virtual int latencySamples() const { return 0; }
 
+    /// CETTE MACHINE EXIGE-T-ELLE D'ÊTRE RENDUE EN TEMPS RÉEL (D6.5) ?
+    ///
+    /// FAUX pour les trente-quatre machines du parc, et ce n'est pas une
+    /// commodité : elles sont purement déterministes, un bloc calculé plus vite
+    /// que le temps réel donne exactement les mêmes échantillons. Rendre un
+    /// morceau de neuf minutes en dix secondes est alors une propriété, pas un
+    /// raccourci.
+    ///
+    /// LE CHAMP EXISTE POUR LES PLUGINS DES AUTRES (phase D7). Certains lisent
+    /// une horloge, un générateur d'aléa lié au temps de la machine, ou font
+    /// tourner leur propre thread : les rendre plus vite que le temps réel leur
+    /// fait produire autre chose que ce qu'on a entendu. Ils doivent pouvoir le
+    /// DIRE, plutôt que de rendre faux en silence -- exactement la raison
+    /// d'être de `latencySamples()` juste au-dessus.
+    virtual bool requiresRealtimeRender() const { return false; }
+
 };
 
 using SynthPluginPtr = std::shared_ptr<ISynthPlugin>;

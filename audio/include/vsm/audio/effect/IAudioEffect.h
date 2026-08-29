@@ -65,6 +65,12 @@ public:
     /// pointeurs ne sont valides QUE pendant l'appel à `process` qui suit.
     virtual void setSidechainInput(const float* /*left*/, const float* /*right*/,
                                     int /*numSamples*/) {}
+    /// CET EFFET EXIGE-T-IL D'ÊTRE RENDU EN TEMPS RÉEL (D6.5) ? Faux pour tous
+    /// les effets internes, qui sont déterministes. Voir
+    /// `ISynthPlugin::requiresRealtimeRender()` : même question, même raison,
+    /// et c'est la phase D7 qui la rendra utile.
+    virtual bool requiresRealtimeRender() const { return false; }
+
 };
 
 using AudioEffectPtr = std::unique_ptr<IAudioEffect>;

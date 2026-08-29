@@ -1560,7 +1560,7 @@ D0.3 a rendu l'export **honnête** ; ici on le rend complet.
 | D6.2 | Export **stems** : une piste ou un bus par fichier | la somme des stems égale le mixage, vérifié par test — **fait** |
 | D6.3 | Export MIDI complet (aujourd'hui : perd `muted` et `confidence`) | relu ailleurs sans perte de tempo ni de signature — **fait** |
 | D6.4 | Export d'un **projet autonome** (dossier complet, échantillons compris) | s'ouvre sur une autre machine sans rien de manquant — **fait** |
-| D6.5 | Rendu en temps réel, requis dès qu'un plugin tiers l'exige | option explicite, jamais le défaut |
+| D6.5 | Rendu en temps réel, requis dès qu'un plugin tiers l'exige | option explicite, jamais le défaut — **fait** |
 
 **Critère de phase** : il n'y a toujours qu'**un seul rendu** dans ce projet.
 L'application n'en invente pas un second ; elle expose celui de `vsm-render`.
@@ -1693,6 +1693,38 @@ L'application n'en invente pas un second ; elle expose celui de `vsm-render`.
 > constater les copies, il **recharge le dossier écrit** et vérifie qu'il ne
 > manque plus rien. « S'ouvre ailleurs » ne se déduit pas d'une liste de
 > fichiers.
+
+
+> **D6.5 EST FAITE (30/08/2026). DEUX FAÇONS DE PASSER AU TEMPS RÉEL, ET UNE
+> SEULE EST UN CHOIX.** L'utilisateur peut le demander — c'est l'option
+> explicite, jamais cochée d'avance. Et un plugin peut l'EXIGER, en répondant
+> vrai à `requiresRealtimeRender()` : le rendu l'honore alors **et le nomme**
+> dans ses avertissements. Ce second cas n'est pas « le défaut » qui
+> s'installerait en douce, c'est une exigence déclarée qu'ignorer ferait rendre
+> autre chose que ce qu'on a entendu — la première moitié du critère demande
+> exactement cela.
+>
+> **POURQUOI CE N'EST JAMAIS LE DÉFAUT** : les trente-quatre machines du parc
+> sont déterministes. Un bloc calculé plus vite que le temps réel donne
+> exactement les mêmes échantillons, et neuf minutes rendues en dix secondes
+> sont une propriété du projet qu'on ne sacrifie pas par prudence. Un test
+> vérifie qu'aucune machine du parc ne l'exige — si l'une s'y mettait, tous les
+> rendus deviendraient cent fois plus lents sans que personne l'ait demandé.
+>
+> **CE QUE LES TESTS GARDENT** n'est pas « l'option existe » mais les deux
+> propriétés qui la rendent défendable : elle est fausse par défaut, et quand
+> elle est vraie elle change la **durée du calcul sans changer un seul
+> échantillon**. Une option de vitesse qui modifierait le résultat ne serait pas
+> une option de vitesse.
+>
+> **L'ATTENTE SE CALCULE DEPUIS LE DÉBUT**, jamais bloc par bloc : additionner
+> des attentes courtes accumule l'erreur de chaque réveil, et un rendu de neuf
+> minutes finirait sensiblement en retard sur ce qu'il prétend imiter.
+>
+> **LE CROCHET EST POSÉ POUR D7.** `requiresRealtimeRender()` existe sur
+> `ISynthPlugin` et sur `IAudioEffect`, pour la même raison que
+> `latencySamples()` : un plugin doit pouvoir DIRE ce qu'il lui faut au lieu de
+> rendre faux en silence.
 
 
 ### Phase D7 — Héberger les plugins des autres

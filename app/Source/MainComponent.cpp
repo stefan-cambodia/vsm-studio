@@ -1104,6 +1104,22 @@ void MainComponent::exportAudioFile() {
     // pièce sèche et coupent net une grande réverbération, ce qui s'entend.
     fenetre->addTextEditor("queue", "2.0", u8"Queue (secondes)");
 
+    // D6.5 : L'OPTION EST EXPLICITE ET JAMAIS COCHÉE D'AVANCE. Les machines de
+    // ce projet sont déterministes : un rendu accéléré leur donne exactement
+    // les mêmes échantillons, et neuf minutes rendues en dix secondes valent
+    // mieux que neuf minutes rendues en neuf minutes. Un plugin qui EXIGE le
+    // temps réel l'obtient de lui-même, sans que personne ait à cocher quoi que
+    // ce soit -- et le rendu le dit alors dans ses avertissements.
+    fenetre->addTextBlock(u8"Rendu en temps réel : uniquement si un plugin l'exige "
+                          u8"(il le demande alors lui-même). Cocher ci-dessous force "
+                          u8"le rendu a la vitesse du morceau.");
+    juce::StringArray vitesses;
+    vitesses.add(u8"Aussi vite que possible (identique au bit pres)");
+    vitesses.add(u8"Au pas du temps reel");
+    fenetre->addComboBox("vitesse", vitesses, u8"Vitesse de rendu");
+    if (auto* box = fenetre->getComboBoxComponent("vitesse"))
+        box->setSelectedId(1, juce::dontSendNotification);
+
     fenetre->addButton(u8"Exporter...", 1, juce::KeyPress(juce::KeyPress::returnKey));
     fenetre->addButton(u8"Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
     fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
@@ -1112,6 +1128,7 @@ void MainComponent::exportAudioFile() {
         const int frequence = fenetre->getComboBoxComponent("frequence")->getSelectedId();
         const int profondeur = fenetre->getComboBoxComponent("profondeur")->getSelectedId();
         const double queue = std::max(0.0, fenetre->getTextEditorContents("queue").getDoubleValue());
+        const int vitesse = fenetre->getComboBoxComponent("vitesse")->getSelectedId();
         fenetre->exitModalState(resultat);
         fenetre->setVisible(false);
         if (resultat != 1) return;
@@ -1120,6 +1137,7 @@ void MainComponent::exportAudioFile() {
         options.blockSize = 512;
         options.tailSeconds = queue;
         options.sampleRate = kFrequences[juce::jlimit(0, 4, frequence - 1)];
+        options.realTimeRender = vitesse == 2;
         options.format = profondeur == 1 ? vsm::audio::io::SampleFormat::Int16
                         : profondeur == 3 ? vsm::audio::io::SampleFormat::Float32
                                           : vsm::audio::io::SampleFormat::Int24;

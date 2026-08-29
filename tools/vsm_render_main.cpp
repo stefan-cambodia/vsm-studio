@@ -30,6 +30,11 @@ void printUsage() {
         "  --sample-rate <Hz>    fréquence d'échantillonnage (défaut : 48000)\n"
         "  --block-size <n>      taille de bloc du rendu (défaut : 512)\n"
         "  --tail <secondes>     silence ajouté après la dernière note (défaut : 2)\n"
+        "  --temps-reel          rend au pas du temps réel. INUTILE aux machines de\n"
+        "                        ce projet, qui sont déterministes : neuf minutes\n"
+        "                        prendront neuf minutes pour le même résultat. Existe\n"
+        "                        pour les plugins tiers qui l'exigent -- ceux-là\n"
+        "                        l'obtiennent d'eux-mêmes, sans cette option.\n"
         "  --stems <dossier>     un WAV par piste au lieu d'un mixage ; le second\n"
         "                        argument est alors ce dossier. La somme des stems\n"
         "                        redonne le mixage AVANT la tranche master.\n"
@@ -87,6 +92,7 @@ int main(int argc, char** argv) {
 
         if (arg == "--help" || arg == "-h") { printUsage(); return 0; }
         else if (arg == "--quiet") { quiet = true; }
+        else if (arg == "--temps-reel") { options.realTimeRender = true; }
         else if (arg == "--sample-rate") {
             const char* value = next("--sample-rate");
             if (!value || !parseDouble(value, options.sampleRate) || options.sampleRate <= 0.0) {

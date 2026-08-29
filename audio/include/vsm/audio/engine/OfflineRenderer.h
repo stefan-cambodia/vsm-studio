@@ -20,7 +20,14 @@ struct RenderedAudio {
 /// (déterminisme : deux rendus successifs produisent des octets identiques).
 class OfflineRenderer {
 public:
-    static RenderedAudio render(ProcessGraph& graph, double sampleRate, int blockSize, double durationSeconds);
+    /// `realTimePace` fait attendre le rendu entre deux blocs pour suivre le
+    /// temps réel (D6.5). CE N'EST JAMAIS UTILE AUX MACHINES DE CE PROJET, qui
+    /// sont déterministes : le résultat est identique, seule la durée du calcul
+    /// change. Cela existe pour les plugins des autres (phase D7) qui lisent
+    /// une horloge ou font tourner leur propre thread, et qui rendraient
+    /// autrement autre chose que ce qu'on a entendu.
+    static RenderedAudio render(ProcessGraph& graph, double sampleRate, int blockSize,
+                                 double durationSeconds, bool realTimePace = false);
 };
 
 } // namespace vsm::audio::engine
