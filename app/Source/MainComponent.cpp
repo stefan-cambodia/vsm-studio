@@ -233,6 +233,10 @@ MainComponent::MainComponent()
         // matériau audio découpé doivent suivre, sans interrompre la lecture.
         audioEngine_.processGraph().setProject(project_);
         loadAudioTracks();
+        // Une courbe dessinée sur l'arrangement doit S'ENTENDRE tout de suite
+        // (D5.4) : sans cette republication, elle serait sauvegardée et muette
+        // jusqu'à la prochaine ouverture du projet.
+        applyAutomationFromProject();
         pianoRollPanel_.refresh();
     };
     arrangement_.onPlayheadRequested = [this](vsm::midi::Tick tick) {
@@ -244,6 +248,49 @@ MainComponent::MainComponent()
     // deux réglages de grille dans deux vues du même morceau finiraient par se
     // contredire.
     arrangement_.gridProvider = [this] { return pianoRoll_.gridResolution(); };
+    // LES BORNES D'UN PARAMÈTRE AUTOMATISÉ (D5.4). Elles viennent des listes de
+    // paramètres des machines et des effets, que la vue d'arrangement n'a pas à
+    // connaître -- elle demande, l'application répond.
+    arrangement_.automationRange = [this](size_t index, const std::string& parametre,
+                                           float& mini, float& maxi) {
+        if (parametre == "mix.volume") { mini = 0.0f; maxi = 1.5f; return true; }
+        if (parametre == "mix.pan")    { mini = -1.0f; maxi = 1.0f; return true; }
+        if (parametre.rfind("mix.send.", 0) == 0) { mini = 0.0f; maxi = 1.0f; return true; }
+        if (parametre.rfind("master.", 0) == 0) {
+            const std::string nom = parametre.substr(7);
+            for (const auto& info : audioEngine_.processGraph().masterBus().parameterList())
+                if (info.name == nom) { mini = info.minValue; maxi = info.maxValue; return true; }
+            return false;
+        }
+        if (index >= project_.tracks.size()) return false;
+        const auto& track = project_.tracks[index];
+        if (parametre.rfind("insert.", 0) == 0) {
+            const size_t point = parametre.find('.', 7);
+            if (point == std::string::npos) return false;
+            const int numero = std::atoi(parametre.substr(7, point - 7).c_str());
+            const std::string semantique = parametre.substr(point + 1);
+            const size_t slot = numero >= 1 ? static_cast<size_t>(numero - 1) : 0;
+            if (numero < 1 || slot >= track.effects.size()) return false;
+            auto fx = vsm::audio::effect::EffectFactory::create(track.effects[slot].type);
+            if (!fx) return false;
+            const auto profil = vsm::interchange::buildSemanticProfile(
+                vsm::interchange::effectSemanticPluginId(track.effects[slot].type));
+            const auto* d = profil.findBySemanticId(semantique);
+            if (d == nullptr) return false;
+            for (const auto& info : fx->parameterList())
+                if (info.id == d->paramId) { mini = info.minValue; maxi = info.maxValue; return true; }
+            return false;
+        }
+        if (track.instrumentId.empty()) return false;
+        const auto profil = vsm::interchange::buildSemanticProfile(track.instrumentId);
+        const auto* d = profil.findBySemanticId(parametre);
+        if (d == nullptr) return false;
+        auto* machine = audioEngine_.processGraph().trackInstrument(index);
+        if (machine == nullptr) return false;
+        for (const auto& info : machine->parameterList())
+            if (info.id == d->paramId) { mini = info.minValue; maxi = info.maxValue; return true; }
+        return false;
+    };
     arrangement_.onColourRequested = [this](size_t index) {
         if (index >= project_.tracks.size()) return;
         // OUVRIR LE SÉLECTEUR COMMENCE UN NOUVEAU PAS D'ANNULATION : sans cette

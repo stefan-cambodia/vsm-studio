@@ -100,8 +100,20 @@ int main(int argc, char** argv) {
     }
     projet.assignClipIds();
 
+    // UNE COURBE D'AUTOMATION sur la première piste : l'aperçu doit montrer
+    // qu'elle se lit PAR RAPPORT au clip qu'elle éteint, ce qui est tout
+    // l'argument de D5.4 contre une lane isolée dans un onglet.
+    projet.tracks[0].automation.push_back(
+        {"mix.volume", {{0, 1.0f, false}, {mesure * 2, 1.0f, false},
+                         {mesure * 3, 0.15f, false}, {mesure * 4, 1.0f, false}}});
+
     ArrangementComponent vue;
+    vue.automationRange = [](size_t, const std::string& p, float& mini, float& maxi) {
+        if (p == "mix.volume") { mini = 0.0f; maxi = 1.5f; return true; }
+        return false;
+    };
     vue.setProject(&projet);
+    vue.toggleAutomation();
     vue.setPlayheadTick(mesure * 2 + 480);
     vue.setBounds(0, 0, largeur, hauteur);
 

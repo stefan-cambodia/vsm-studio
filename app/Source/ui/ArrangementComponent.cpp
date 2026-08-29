@@ -59,6 +59,44 @@ vsm::midi::Tick ArrangementComponent::snapTick(vsm::midi::Tick tick) const {
     return ((tick + pas / 2) / pas) * pas;
 }
 
+AutomationCurve* ArrangementComponent::curveShownOn(size_t trackIndex) {
+    if (project_ == nullptr || trackIndex >= project_->tracks.size()) return nullptr;
+    auto& courbes = project_->tracks[trackIndex].automation;
+    if (courbes.empty()) return nullptr;
+    const auto it = courbeMontree_.find(trackIndex);
+    // PAR DÉFAUT LA PREMIÈRE : montrer « aucune » alors que la piste en a une
+    // obligerait à la choisir avant de la voir, c'est-à-dire à savoir qu'elle
+    // existe.
+    const int index = it == courbeMontree_.end() ? 0 : it->second;
+    if (index < 0 || index >= static_cast<int>(courbes.size())) return nullptr;
+    return &courbes[static_cast<size_t>(index)];
+}
+
+void ArrangementComponent::toggleAutomation() {
+    automationVisible_ = !automationVisible_;
+    repaint();
+}
+
+void ArrangementComponent::showAutomationCurve(size_t trackIndex, int curveIndex) {
+    courbeMontree_[trackIndex] = curveIndex;
+    repaint();
+}
+
+float ArrangementComponent::valueToY(float valeur, float minimum, float maximum,
+                                      int haut, int hauteur) const {
+    if (maximum <= minimum) return static_cast<float>(haut + hauteur / 2);
+    const float t = juce::jlimit(0.0f, 1.0f, (valeur - minimum) / (maximum - minimum));
+    return static_cast<float>(haut + hauteur) - t * static_cast<float>(hauteur);
+}
+
+float ArrangementComponent::yToValue(float y, float minimum, float maximum,
+                                      int haut, int hauteur) const {
+    if (hauteur <= 0 || maximum <= minimum) return minimum;
+    const float t = juce::jlimit(0.0f, 1.0f,
+                                  (static_cast<float>(haut + hauteur) - y) / static_cast<float>(hauteur));
+    return minimum + t * (maximum - minimum);
+}
+
 void ArrangementComponent::copySelection() {
     if (project_ == nullptr || selection_.empty()) return;
     presse_papiers_.clear();
@@ -258,6 +296,62 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
         return;
     }
 
+    // LES COURBES PASSENT AVANT LES CLIPS quand elles sont montrées : elles
+    // sont dessinées par-dessus, donc c'est ce qu'on vise en cliquant. Les
+    // clips restent saisissables partout où il n'y a pas de point.
+    if (automationVisible_) {
+        const int pisteSousLeCurseur = trackAtY(point.y);
+        if (pisteSousLeCurseur >= 0) {
+            const size_t index = static_cast<size_t>(pisteSousLeCurseur);
+            if (auto* courbe = curveShownOn(index)) {
+                const auto& track = project_->tracks[index];
+                const int y = trackTop(index);
+                const int bande = trackHeight(track) - 8;
+                float mini = 0.0f, maxi = 1.0f;
+                const bool connue = automationRange
+                                    && automationRange(index, courbe->parameter, mini, maxi);
+                const vsm::midi::Tick t = xToTick(point.x);
+                const vsm::midi::Tick tolerance =
+                    static_cast<vsm::midi::Tick>(6.0 / std::max(1.0e-6, pixelsPerTick_));
+
+                if (event.mods.isRightButtonDown() || event.mods.isCtrlDown()) {
+                    // CTRL OU CLIC DROIT RETIRE un point. Le même geste que
+                    // partout, et rien à choisir avant.
+                    if (onEditStarted) onEditStarted(u8"Retirer un point d'automation");
+                    if (vsm::sequencer::removeAutomationPointNear(*courbe, t, tolerance)) {
+                        notifyChanged();
+                        repaint();
+                    }
+                    return;
+                }
+                const size_t existant =
+                    vsm::sequencer::automationPointNear(*courbe, t, tolerance);
+                if (existant < courbe->points.size()) {
+                    if (onEditStarted) onEditStarted(u8"Déplacer un point d'automation");
+                    geste_ = Geste::Point;
+                    pisteCourbeSaisie_ = pisteSousLeCurseur;
+                    pointSaisi_ = existant;
+                    return;
+                }
+                // POSER un point demande de savoir sur quelle échelle : sans
+                // bornes connues, la courbe reste visible mais non modifiable
+                // -- plutôt que modifiable sur une échelle inventée.
+                if (connue && point.y >= static_cast<float>(y + 4)
+                    && point.y <= static_cast<float>(y + 4 + bande)) {
+                    if (onEditStarted) onEditStarted(u8"Poser un point d'automation");
+                    const size_t pose = vsm::sequencer::setAutomationPoint(
+                        *courbe, snapTick(t), yToValue(point.y, mini, maxi, y + 4, bande));
+                    geste_ = Geste::Point;
+                    pisteCourbeSaisie_ = pisteSousLeCurseur;
+                    pointSaisi_ = pose;
+                    notifyChanged();
+                    repaint();
+                    return;
+                }
+            }
+        }
+    }
+
     size_t piste = 0;
     Geste bord = Geste::Aucun;
     Clip* clip = clipAt(point, piste, bord);
@@ -318,6 +412,28 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
         repaint();
         return;
     }
+    if (geste_ == Geste::Point && pisteCourbeSaisie_ >= 0) {
+        const size_t index = static_cast<size_t>(pisteCourbeSaisie_);
+        auto* courbe = curveShownOn(index);
+        if (courbe == nullptr || pointSaisi_ >= courbe->points.size()) return;
+        const auto& track = project_->tracks[index];
+        const int y = trackTop(index);
+        const int bande = trackHeight(track) - 8;
+        float mini = 0.0f, maxi = 1.0f;
+        if (!automationRange || !automationRange(index, courbe->parameter, mini, maxi)) return;
+
+        // ON DÉPLACE LE POINT EN VALEUR ET EN TEMPS, puis on RETRIE : traîner
+        // un point par-dessus son voisin est un geste normal, et la courbe doit
+        // rester lisible ensuite.
+        const float valeur = yToValue(event.position.y, mini, maxi, y + 4, bande);
+        const vsm::midi::Tick t = std::max<vsm::midi::Tick>(0, snapTick(xToTick(event.position.x)));
+        const bool palier = courbe->points[pointSaisi_].step;
+        courbe->points.erase(courbe->points.begin() + static_cast<std::ptrdiff_t>(pointSaisi_));
+        pointSaisi_ = vsm::sequencer::setAutomationPoint(*courbe, t, valeur, palier);
+        notifyChanged();
+        repaint();
+        return;
+    }
     if (geste_ == Geste::Reordonner && pisteSaisie_ >= 0) {
         const int sous = trackAtY(event.position.y);
         if (sous >= 0 && sous != pisteSaisie_) {
@@ -355,6 +471,12 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
             case Geste::Deplacer:   moveClips(track.clips, selection_, delta); break;
             case Geste::BordDroit:  resizeClipsEnd(track.clips, selection_, delta, fin); break;
             case Geste::BordGauche: resizeClipsStart(track.clips, selection_, delta, fin, conversion); break;
+            // Les autres gestes ont été traités plus haut et n'atteignent jamais
+            // cette boucle ; les nommer garde le compilateur du côté du lecteur
+            // le jour où l'on en ajoutera un.
+            case Geste::Hauteur:
+            case Geste::Reordonner:
+            case Geste::Point:
             case Geste::Aucun: break;
         }
     }
@@ -366,6 +488,7 @@ void ArrangementComponent::mouseUp(const juce::MouseEvent&) {
     if (geste_ == Geste::Hauteur || geste_ == Geste::Reordonner) notifyChanged();
     geste_ = Geste::Aucun;
     pisteSaisie_ = -1;
+    pisteCourbeSaisie_ = -1;
     reordonnancementOuvert_ = false;
 }
 
@@ -411,6 +534,13 @@ bool ArrangementComponent::keyPressed(const juce::KeyPress& key) {
     }
     // `S` coupe l'aimantation, `G` bascule entre la MESURE et la grille fine du
     // piano roll -- les deux réglages qu'on change en arrangeant, et les seuls.
+    // `A` MONTRE ET CACHE LES COURBES : « plus une lane isolée dans un onglet »,
+    // mais pas non plus des courbes en permanence par-dessus les clips quand on
+    // arrange.
+    if (key.getTextCharacter() == 'a' || key.getTextCharacter() == 'A') {
+        toggleAutomation();
+        return true;
+    }
     if (key.getTextCharacter() == 's' || key.getTextCharacter() == 'S') {
         snap_ = !snap_;
         repaint();
@@ -560,6 +690,65 @@ void ArrangementComponent::paint(juce::Graphics& g) {
         }
     }
 
+    // --- Courbes d'automation, PAR-DESSUS les clips (D5.4) --------------------
+    //
+    // Par-dessus et non à côté : une courbe se lit par rapport à ce qu'elle
+    // pilote, et une bande séparée obligerait à faire l'aller-retour des yeux
+    // entre le fondu et le clip qu'il éteint. Semi-transparente, pour que le
+    // clip reste lisible dessous.
+    if (automationVisible_) {
+        for (size_t i = 0; i < project_->tracks.size(); ++i) {
+            auto* courbe = curveShownOn(i);
+            if (courbe == nullptr || courbe->points.empty()) continue;
+            const auto& track = project_->tracks[i];
+            const int y = trackTop(i);
+            const int h = trackHeight(track);
+            if (y > bounds.getHeight() || h < 20) continue;
+
+            float mini = 0.0f, maxi = 1.0f;
+            if (automationRange) automationRange(i, courbe->parameter, mini, maxi);
+            const int bande = h - 8;
+
+            juce::Path trace;
+            bool commence = false;
+            for (int x = kHeaderWidth; x < bounds.getWidth(); x += 2) {
+                const vsm::midi::Tick t = xToTick(static_cast<float>(x));
+                const float v = vsm::sequencer::automationValueAt(*courbe, t);
+                const float yy = valueToY(v, mini, maxi, y + 4, bande);
+                if (!commence) { trace.startNewSubPath(static_cast<float>(x), yy); commence = true; }
+                else trace.lineTo(static_cast<float>(x), yy);
+            }
+            g.setColour(Palette::accentAmber.withAlpha(0.9f));
+            g.strokePath(trace, juce::PathStrokeType(1.5f));
+
+            for (const auto& point : courbe->points) {
+                const float x = tickToX(point.tick);
+                if (x < kHeaderWidth || x > bounds.getWidth()) continue;
+                const float yy = valueToY(point.value, mini, maxi, y + 4, bande);
+                g.setColour(Palette::accentAmber);
+                g.fillRect(x - 3.0f, yy - 3.0f, 6.0f, 6.0f);
+                // UN PALIER SE VOIT : carré plein contre carré évidé. Sans
+                // cela, deux points identiques à l'œil se comporteraient
+                // différemment, et rien ne dirait pourquoi.
+                if (!point.step) {
+                    g.setColour(Palette::background);
+                    g.fillRect(x - 1.5f, yy - 1.5f, 3.0f, 3.0f);
+                }
+            }
+
+            // LE NOM DE CE QUI EST PILOTÉ VA DANS L'EN-TÊTE, pas sur les clips :
+            // écrit par-dessus la piste, il se superposait au nom du clip et les
+            // deux devenaient illisibles. Il appartient de toute façon à la
+            // piste -- c'est elle qui décide quelle courbe elle montre.
+            if (h >= 40) {
+                g.setColour(Palette::accentAmber.withAlpha(0.85f));
+                g.setFont(juce::Font(juce::FontOptions(10.0f)));
+                g.drawText(juce::String(courbe->parameter), 24, y + h - 16, kHeaderWidth - 30, 13,
+                            juce::Justification::centredLeft, true);
+            }
+        }
+    }
+
     // --- En-tête et tête de lecture ------------------------------------------
     g.setColour(Palette::border);
     g.drawLine(static_cast<float>(kHeaderWidth), 0.0f,
@@ -575,7 +764,9 @@ void ArrangementComponent::paint(juce::Graphics& g) {
     // contre celui qui l'a basculé sans s'en souvenir.
     g.setColour(Palette::textSecondary);
     g.setFont(juce::Font(juce::FontOptions(10.0f)));
-    g.drawText(snap_ ? (aimanteALaMesure_ ? "aimant : mesure" : "aimant : grille") : "aimant : libre",
+    g.drawText(juce::String(snap_ ? (aimanteALaMesure_ ? "aimant : mesure" : "aimant : grille")
+                                  : "aimant : libre")
+                   + (automationVisible_ ? "  |  auto" : ""),
                 4, 2, kHeaderWidth - 8, kRulerHeight - 4, juce::Justification::centredRight);
 
     if (project_->tracks.empty()) {

@@ -1,9 +1,12 @@
 #pragma once
 #include <JuceHeader.h>
+#include "vsm/sequencer/AutomationEdit.h"
 #include "vsm/sequencer/ClipEdit.h"
 #include "vsm/sequencer/Quantizer.h"
 #include "vsm/sequencer/Project.h"
 #include <functional>
+#include <map>
+#include <string>
 
 // LA VUE D'ARRANGEMENT (D5.1 de docs/ROADMAP-daw.md).
 //
@@ -44,6 +47,21 @@ public:
     std::function<void(vsm::midi::Tick)> onPlayheadRequested;
     /// Une piste a été choisie (clic sur son en-tête ou sur un de ses clips).
     std::function<void(size_t)> onTrackSelected;
+    /// LES BORNES D'UN PARAMÈTRE AUTOMATISÉ (D5.4), pour savoir où placer un
+    /// point dans la hauteur de la piste. Fournies par l'application : elles
+    /// viennent des listes de paramètres des machines et des effets, que ce
+    /// composant n'a pas à connaître. Rend faux quand le paramètre est inconnu
+    /// -- la courbe est alors dessinée mais non modifiable, plutôt que
+    /// modifiable sur une échelle inventée.
+    std::function<bool(size_t trackIndex, const std::string& parameter,
+                        float& minimum, float& maximum)> automationRange;
+
+    /// Bascule l'affichage des courbes. `A` au clavier.
+    void toggleAutomation();
+    bool automationVisible() const { return automationVisible_; }
+    /// Choisit la courbe montrée sur une piste (index dans `Track::automation`).
+    void showAutomationCurve(size_t trackIndex, int curveIndex);
+
     /// L'utilisateur a cliqué le bandeau de couleur d'une piste : c'est à
     /// l'application d'ouvrir le sélecteur, ce composant ne connaît pas JUCE
     /// au-delà du dessin.
@@ -82,7 +100,7 @@ private:
     /// Ce qu'on est en train de faire à la souris. Un état explicite plutôt que
     /// trois booléens : « je déplace ET je redimensionne » n'existe pas, et
     /// l'écrire ainsi le rend impossible.
-    enum class Geste { Aucun, Deplacer, BordGauche, BordDroit, Hauteur, Reordonner };
+    enum class Geste { Aucun, Deplacer, BordGauche, BordDroit, Hauteur, Reordonner, Point };
 
     float tickToX(vsm::midi::Tick tick) const;
     vsm::midi::Tick xToTick(float x) const;
@@ -128,4 +146,22 @@ private:
     int hauteurOrigine_ = 0;
     float ySaisie_ = 0.0f;
     bool reordonnancementOuvert_ = false;
+
+    // --- Automation dessinée SUR l'arrangement (D5.4) ---------------------
+    //
+    // « Plus une lane isolée dans un onglet » : une courbe se lit par rapport à
+    // ce qu'elle pilote, et un onglet à part oblige à faire l'aller-retour des
+    // yeux entre le fondu et le clip qu'il éteint.
+    bool automationVisible_ = false;
+    /// La courbe montrée par piste. -1 = la première qu'elle a, s'il y en a.
+    std::map<size_t, int> courbeMontree_;
+    int pisteCourbeSaisie_ = -1;
+    size_t pointSaisi_ = 0;
+
+    /// La courbe actuellement montrée sur une piste, ou nullptr.
+    vsm::sequencer::AutomationCurve* curveShownOn(size_t trackIndex);
+    /// Convertit une valeur en ordonnée dans la bande d'automation, et
+    /// réciproquement.
+    float valueToY(float valeur, float minimum, float maximum, int haut, int hauteur) const;
+    float yToValue(float y, float minimum, float maximum, int haut, int hauteur) const;
 };

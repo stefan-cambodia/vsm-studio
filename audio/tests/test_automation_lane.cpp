@@ -4,6 +4,7 @@
 #include "vsm/audio/engine/OfflineRenderer.h"
 #include "vsm/audio/engine/ProcessGraph.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
+#include "vsm/sequencer/AutomationEdit.h"
 #include "vsm/sequencer/Project.h"
 #include <algorithm>
 #include <cmath>
@@ -103,6 +104,7 @@ VSM_TEST(automation_lane_points_stay_sorted_regardless_of_insertion_order) {
 // --- Application via ProcessGraph (chemin RT-safe : setAutomationLanes) ---
 #include "vsm/audio/engine/ProcessGraph.h"
 #include "vsm/audio/engine/OfflineRenderer.h"
+#include "vsm/sequencer/AutomationEdit.h"
 #include "vsm/sequencer/Project.h"
 #include <string>
 
@@ -339,4 +341,32 @@ VSM_TEST(automating_an_insert_parameter_reaches_that_insert_and_no_other) {
     for (float e : rendu.left) m = std::max(m, std::abs(e));
     VSM_ASSERT(m < 1e-5f);                              // le second a bien fermé
     VSM_ASSERT_NEAR(premier->getParameter(0), 1.0f, 1e-6);   // le premier n'a pas bougé
+}
+
+VSM_TEST(the_engine_and_the_editor_interpolate_a_curve_identically) {
+    // D5.4 : la courbe est DESSINÉE par `core::automationValueAt` et JOUÉE par
+    // `audio::AutomationLane::valueAt`. Deux interpolations qui divergeraient
+    // feraient dessiner une courbe et en entendre une autre -- le genre d'écart
+    // qu'on met des heures à ne pas croire.
+    //
+    // Deux structures différentes, et c'est voulu : l'une sert l'édition,
+    // l'autre le chemin temps réel. Ce qui doit être commun, c'est la RÈGLE, et
+    // on la vérifie ici plutôt que de l'espérer.
+    struct Point { vsm::midi::Tick tick; float valeur; bool palier; };
+    const Point points[] = {
+        {0, 1.0f, false}, {480, 0.25f, true}, {1440, 0.9f, false}, {2400, 0.0f, false},
+    };
+
+    vsm::sequencer::AutomationCurve courbe;
+    AutomationLane lane;
+    for (const auto& p : points) {
+        vsm::sequencer::setAutomationPoint(courbe, p.tick, p.valeur, p.palier);
+        lane.addPoint(p.tick, p.valeur,
+                       p.palier ? AutomationCurve::Step : AutomationCurve::Linear);
+    }
+
+    // Toute la plage, plus au-delà des deux bouts : c'est là que le maintien
+    // hors plage doit coïncider, et c'est justement ce qu'on oublie.
+    for (vsm::midi::Tick t = -500; t <= 3000; t += 7)
+        VSM_ASSERT_NEAR(vsm::sequencer::automationValueAt(courbe, t), lane.valueAt(t), 1e-6f);
 }

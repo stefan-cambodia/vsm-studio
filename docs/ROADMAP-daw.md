@@ -1240,7 +1240,7 @@ D1 a mis les clips dans le modèle ; ici on les rend manipulables.
 | D5.1 | Ligne de temps multipiste : clips déplaçables, redimensionnables, coupables | à la souris, avec annulation — **fait** |
 | D5.2 | Copier/coller/dupliquer, aimantation à la grille, boucle de clip par étirement | mêmes gestes et mêmes raccourcis que le piano roll — **fait** |
 | D5.3 | Pliage des pistes, hauteurs réglables, réordonnancement, couleurs choisies | l'écran tient 16 pistes — **fait** |
-| D5.4 | Automation dessinée **sur** l'arrangement, avec zoom et courbes | plus une lane isolée dans un onglet |
+| D5.4 | Automation dessinée **sur** l'arrangement, avec zoom et courbes | plus une lane isolée dans un onglet — **fait** |
 | D5.5 | Gel et report (*freeze* / *bounce*) d'une piste en audio | une piste gelée sonne identique et coûte le prix d'une lecture audio |
 | D5.6 | Gain, fondus et inversion de phase **réglés à la souris** sur le clip (venus de D2.4 : le modèle et le moteur les portent déjà) | un fondu se tire sur le coin du clip |
 | D5.7 | Forme d'onde dessinée dans le clip audio, avec cache d'aperçu (venue de D2.5) | 9 minutes s'affichent sans bloquer l'interface |
@@ -1393,6 +1393,44 @@ doubler une mesure, boucler quatre temps — se fait entièrement à la souris.
 > par l'application et non par la vue : le composant d'arrangement ne connaît de
 > JUCE que le dessin, et lui faire ouvrir une fenêtre le lierait à
 > l'application.
+
+> **D5.4 EST FAITE (30/08/2026).** Les courbes se dessinent **par-dessus les
+> clips** et non à côté : une courbe se lit par rapport à ce qu'elle pilote, et
+> une bande séparée — a fortiori un onglet — obligerait à faire l'aller-retour
+> des yeux entre le fondu et le clip qu'il éteint. `A` les montre et les cache :
+> « plus une lane isolée dans un onglet » ne veut pas dire des courbes en
+> permanence par-dessus les clips quand on arrange.
+>
+> **UNE SEULE RÈGLE D'INTERPOLATION, ET ELLE EST VÉRIFIÉE.** La courbe est
+> DESSINÉE par `core::automationValueAt` et JOUÉE par
+> `audio::AutomationLane::valueAt` — deux structures différentes, l'une pour
+> l'édition, l'autre pour le chemin temps réel. Deux interpolations qui
+> divergeraient feraient **dessiner une courbe et en entendre une autre**, le
+> genre d'écart qu'on met des heures à ne pas croire. Un test les compare sur
+> les mêmes points, tous les sept ticks, **au-delà des deux bouts** — c'est là
+> que le maintien hors plage doit coïncider, et c'est justement ce qu'on
+> oublie. Même discipline qu'en D4.7 entre le moteur et `analyse/`.
+>
+> **HORS DE SA PLAGE, UNE COURBE MAINTIENT SA VALEUR** au lieu de tomber à
+> zéro : une courbe qui ne couvre que le refrain ne doit pas éteindre le
+> paramètre pendant les couplets.
+>
+> **POSER UN POINT DEMANDE DE SAVOIR SUR QUELLE ÉCHELLE.** Les bornes viennent
+> des listes de paramètres des machines et des effets, que la vue n'a pas à
+> connaître : elle demande, l'application répond. Quand le paramètre est inconnu
+> — machine absente, insert retiré —, la courbe reste **visible mais non
+> modifiable**, plutôt que modifiable sur une échelle inventée.
+>
+> **UN PALIER SE VOIT** : carré plein contre carré évidé. Sans cela, deux points
+> identiques à l'œil se comporteraient différemment et rien ne dirait pourquoi.
+>
+> **Une courbe dessinée s'entend TOUT DE SUITE** : sans republication, elle
+> serait sauvegardée et muette jusqu'à la prochaine ouverture du projet.
+>
+> **Un défaut d'affichage trouvé dans l'aperçu, et corrigé** : le nom du
+> paramètre était écrit sur la piste et se superposait au nom du clip — les deux
+> devenaient illisibles. Il est maintenant dans l'en-tête, où il appartient de
+> toute façon, puisque c'est la piste qui décide quelle courbe elle montre.
 
 
 ### Phase D6 — Exporter
