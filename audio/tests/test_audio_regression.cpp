@@ -488,6 +488,7 @@ VSM_TEST(regression_piano)      { checkMachine("vsm.piano"); }
 VSM_TEST(regression_drums)      { checkMachine("vsm.drums"); }
 VSM_TEST(regression_wind)       { checkMachine("vsm.wind"); }
 VSM_TEST(regression_perc)       { checkMachine("vsm.perc"); }
+VSM_TEST(regression_additive)   { checkMachine("vsm.additive"); }
 
 /// Le rendu doit être reproductible À L'IDENTIQUE d'une instance à l'autre :
 /// c'est la condition pour que l'empreinte ci-dessus ait un sens. Vérifié ici

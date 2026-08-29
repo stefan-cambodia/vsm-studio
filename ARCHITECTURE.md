@@ -30,7 +30,7 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **775 tests moteur** (84 core + 558 audio
+écoute au clic, et toute la logique testée hors JUCE. Total : **789 tests moteur** (84 core + 572 audio
 + 111 interchange + 11 CLAP + 11 façades,
 tous verts, zéro warning, y compris sous les flags stricts type-JUCE
 `-Wfloat-equal -Wsign-conversion -Wshadow`) + application complète compilée et
@@ -322,12 +322,12 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 775 tests moteur + 18 tests d'analyse, tous verts
+### Bilan actuel : 789 tests moteur + 18 tests d'analyse, tous verts
 
 - **84 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des
   notes douteuses de la transcription),
-  **558 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
+  **572 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
   scalaire, indépendance des lignes, bornes de l'approximation de tanh ; et la
   boucle : rebouclage échantillon-exact, notes relâchées au saut) : chorus BBD, Juno-106,
   bus master (biquad/compresseur/limiteur à plafond garanti/LUFS), oversampler,
@@ -2636,6 +2636,72 @@ amplitudes et les durées sont choisies à l'oreille du modèle, pas relevées s
 un conga. Et l'excitation est un instant, pas une main : un conga frappé du plat
 ou du bout des doigts n'excite pas les mêmes modes, mais le MIDI ne transporte
 pas ce geste — la vélocité n'en change que le niveau.
+
+---
+
+## 37. `vsm.additive` — le spectre rang par rang, et la machine la plus inversible du parc
+
+**LA FAMILLE ÉTAIT ABSENTE, ET C'EST LE SEUL CRITÈRE QUI COMPTE.** Le § 7 de
+`CDC-machines-manquantes.md` déconseille explicitement « un septième
+soustractif » — un nom sur une liste, pas une famille. Le parc avait dix
+soustractifs, une FM, une table d'ondes, un hybride PCM, trois modélisations
+physiques, deux lecteurs d'échantillons, un orgue à roues phoniques. **Personne
+ne pouvait poser un spectre arbitraire** : l'orgue empile bien des sinus, mais
+ses neuf tirettes sont à des rapports FIXES et sans enveloppe propre.
+
+**CE QUE ÇA CHANGE POUR LA RECONSTRUCTION, et c'est l'argument qui décide.**
+Toutes les autres machines fabriquent un spectre par un chemin INDIRECT : on
+règle une coupure, une résonance, un indice de modulation, et le spectre en
+découle ; chercher un patch, c'est inverser cette application. L'additif est le
+seul dont les réglages DÉCRIVENT le spectre. Mesuré au pont Python, rangs 1 à 8
+normalisés au maximum, sensibilité de vélocité neutralisée :
+
+| réglage demandé | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | attendu |
+|---|---|---|---|---|---|---|---|---|---|
+| pente 0 dB/oct | 0,99 | 0,96 | 0,90 | 0,87 | 0,93 | 0,98 | 1,00 | 1,00 | tous égaux |
+| pente −6 dB/oct | 1,00 | 0,48 | 0,31 | 0,22 | 0,19 | 0,17 | 0,15 | 0,13 | 1/n |
+| pente −12 dB/oct | 1,00 | 0,24 | 0,10 | 0,06 | 0,04 | 0,03 | 0,02 | 0,02 | 1/n² |
+| **impairs seuls** | 1,00 | **0,00** | 0,53 | **0,00** | 0,42 | **0,00** | 0,38 | **0,00** | pairs à zéro |
+| **pairs seuls** | **0,00** | 1,00 | **0,00** | 0,64 | **0,00** | 0,59 | **0,00** | 0,52 | impairs à zéro |
+
+Ce qu'on demande est ce qu'on obtient, à la deuxième décimale.
+
+**LE TRAIT DISTINCTIF, TESTÉ DEUX FOIS.** *Le spectre à trous* : un filtre est
+une fonction de transfert CONTINUE — il ne peut pas éteindre le rang 2 en
+laissant intacts les rangs 1 et 3, quelle que soit sa résonance. Les deux
+dernières lignes du tableau sont hors de portée de tout le reste du parc, et le
+test vérifie les deux moitiés de l'affirmation (les rangs voulus présents, les
+autres absents), sur les deux bouts de la course du réglage. *Les partiels
+étirés* : une corde raide a ses rangs à `n·f0·sqrt(1 + B·n²)` et non aux
+multiples entiers — c'est ce qui fait qu'un piano s'accorde faux exprès. Le test
+vérifie que le rang 8 QUITTE 8·f0 et se retrouve là où la physique le met
+(+2,5 % au maximum du réglage).
+
+**SIX RÉGLAGES DE FORME, PAS SOIXANTE-QUATRE CURSEURS.** Un curseur par rang
+serait fidèle à un Synclavier et inutilisable par la recherche de patch, qui a
+besoin d'un espace de petite dimension (§ 6 de `CDC-machines-manquantes.md`).
+Les trente-deux rangs sont donc pilotés par : nombre de rangs, pente,
+balance impairs/pairs, raideur, décroissance différentielle et étalement
+d'attaque. Le profil de recherche les classe dans cet ordre-là, et la raison est
+écrite : **il n'y a pas de coupure ici**, c'est la PENTE qui joue son rôle.
+
+**UNE NORMALISATION QUI BORNE, ET UN DÉFAUT TROUVÉ EN L'ÉCRIVANT.** La première
+version divisait par la racine du nombre de rangs — l'usage, qui suppose des
+phases indépendantes. Or les phases partent alignées (c'est ce qui rend le rendu
+déterministe, donc l'empreinte de non-régression possible), et un accord de huit
+notes à pente nulle crêtait alors **au-dessus de 1**. La sortie est désormais
+divisée par la SOMME des amplitudes, qui est le majorant exact de la crête.
+Le prix est assumé et il a un sens physique : trente-deux rangs se PARTAGENT
+l'énergie au lieu de l'additionner. Mesurée, une note seule sort à 0,184 de
+crête, contre 0,227 au Juno-106 et 0,217 au Prophet — la machine ne se départage
+ni au volume ni contre elle-même.
+
+**APPROXIMATIONS ASSUMÉES** (§ 8 de `CDC-nouvelle-machine.md`), statut
+« dérivé » : trente-deux rangs au plus, ceux qui dépassent Nyquist ÉTEINTS et
+non repliés (un test le vérifie sur une note aiguë : rien sous le fondamental) ;
+une seule enveloppe d'amplitude par voix, plus une décroissance qui dépend du
+rang ; pas de rapports inharmoniques libres — l'étirement est celui d'une corde
+raide, à un paramètre, et une cloche demanderait autant de réglages que de rangs.
 
 ---
 

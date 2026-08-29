@@ -499,6 +499,27 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Tom Decay", "drum.tom.decay"},
         {"Accent", "accent.amount"},
     }},
+    // --- vsm.additive ---
+    // UNE FAMILLE D'IDENTITÉS NEUVE (`additive.*`), et c'est justifié : aucune
+    // autre machine n'expose un spectre rang par rang, donc aucune identité
+    // existante ne dit ce que disent ces réglages. Les quatre dernières lignes,
+    // elles, réemploient les identités canoniques -- une enveloppe
+    // d'amplitude est une enveloppe d'amplitude, quelle que soit la synthèse.
+    {"vsm.additive", {
+        {"Partials", "additive.partialCount"},
+        {"Spectral Tilt", "additive.spectralTilt"},
+        {"Odd/Even Balance", "additive.oddEvenBalance"},
+        {"Inharmonicity", "additive.inharmonicity"},
+        {"Decay Tilt", "additive.decayTilt"},
+        {"Attack Spread", "additive.attackSpread"},
+        {"Amp Attack", "envelope.1.attack"},
+        {"Amp Decay", "envelope.1.decay"},
+        {"Amp Sustain", "envelope.1.sustain"},
+        {"Amp Release", "envelope.1.release"},
+        {"Velocity to Tilt", "voice.velocitySensitivity"},
+        {"Analog Character", "voice.analogCharacter"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.perc ---
     // MÊME GRAMMAIRE QUE LES BOÎTES À RYTHMES DU PARC : `drum.<pièce>.<réglage>`.
     // Les pièces sont nouvelles -- aucune autre machine ne déclare de conga ni

@@ -150,6 +150,20 @@ constexpr Rule kRules[] = {
     // dont la hauteur est balayée à l'attaque, se reconnaît d'abord à sa
     // queue. La barre (bois, claves) suit la même règle : sa hauteur EST son
     // identité, sa durée n'est qu'une nuance de frappe.
+    // SYNTHÈSE ADDITIVE (vsm.additive). L'ordre n'est pas celui d'un
+    // soustractif, et pour une raison de fond : il n'y a pas de coupure ici.
+    // Ce qui fait le timbre est d'abord la PENTE du spectre -- elle joue le
+    // rôle que la coupure joue ailleurs, et sur toute la course --, puis la
+    // balance impairs/pairs, qui bascule d'un son creux à un son plein sans
+    // rien changer d'autre. La raideur vient après : elle colore, elle ne
+    // décide pas. Le nombre de rangs est le plus grossier des quatre, mais il
+    // est DISCRET, donc peu rentable à chercher finement.
+    {"additive.spectralTilt",            -18.0f,     0.0f, SearchScale::Linear,      0.96f},
+    {"additive.oddEvenBalance",            0.0f,     1.0f, SearchScale::Linear,      0.90f},
+    {"additive.decayTilt",                 0.0f,     1.0f, SearchScale::Linear,      0.78f},
+    {"additive.inharmonicity",             0.0f,     1.0f, SearchScale::Linear,      0.74f},
+    {"additive.partialCount",              1.0f,    32.0f, SearchScale::Linear,      0.68f},
+    {"additive.attackSpread",              0.0f,     1.0f, SearchScale::Linear,      0.52f},
     {"drum.conga.tune",                    0.0f,     0.0f, SearchScale::Linear,      0.76f},
     {"drum.bongo.tune",                    0.0f,     0.0f, SearchScale::Linear,      0.74f},
     {"drum.timbale.tune",                  0.0f,     0.0f, SearchScale::Linear,      0.74f},

@@ -24,6 +24,7 @@
 #include "drums/DrumsSynth.h"
 #include "wind/WindSynth.h"
 #include "perc/PercSynth.h"
+#include "additive/AdditiveSynth.h"
 #include "multisample/MultisampleSynth.h"
 
 namespace vsm::audio::plugin {
@@ -134,6 +135,8 @@ void registerBuiltInPlugins() {
         (void)forceLinkWind;
         vsm::plugins::perc::PercSynth forceLinkPerc;
         (void)forceLinkPerc;
+        vsm::plugins::additive::AdditiveSynth forceLinkAdditive;
+        (void)forceLinkAdditive;
     }
     {
         vsm::plugins::multisample::MultisampleSynth forceLinkMultisample;
