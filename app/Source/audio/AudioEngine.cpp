@@ -169,6 +169,32 @@ int64_t AudioEngine::stopAudioRecording() {
     return diskRecorder_.stop();
 }
 
+bool AudioEngine::startLatencyMeasurement() {
+    if (currentInputChannels_.load(std::memory_order_acquire) <= 0) return false;
+    if (probeState_.load(std::memory_order_acquire) != ProbeState::Idle) return false;
+
+    const double frequence = currentSampleRate_.load(std::memory_order_acquire);
+    if (frequence <= 0.0) return false;
+
+    // TOUT EST FABRIQUÉ ET ALLOUÉ ICI, sur le thread de l'interface. Le rappel
+    // audio ne fera que lire un tableau et en remplir un autre.
+    probeSignal_ = vsm::audio::engine::LatencyProbe::makeProbe(frequence);
+    probeCapture_.assign(
+        static_cast<size_t>(frequence * vsm::audio::engine::LatencyProbe::kListenSeconds), 0.0f);
+    probeEmitted_.store(0, std::memory_order_release);
+    probeCaptured_.store(0, std::memory_order_release);
+    probeState_.store(ProbeState::Emitting, std::memory_order_release);
+    return true;
+}
+
+vsm::audio::engine::LatencyProbe::Resultat AudioEngine::finishLatencyMeasurement() {
+    vsm::audio::engine::LatencyProbe::Resultat resultat;
+    if (probeState_.load(std::memory_order_acquire) != ProbeState::Done) return resultat;
+    resultat = vsm::audio::engine::LatencyProbe::detecter(probeCapture_, probeSignal_);
+    probeState_.store(ProbeState::Idle, std::memory_order_release);
+    return resultat;
+}
+
 void AudioEngine::publishTransportAnchor(double positionTransport) {
     // Un seul rédacteur (le thread audio), d'où le compteur impair pendant
     // l'écriture : le lecteur voit « en cours » et recommence.
@@ -299,8 +325,23 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
         // début du bloc qui le contient donnerait à chaque prise un décalage
         // aléatoire allant jusqu'à une taille de bloc, soit 10,7 ms -- le
         // défaut même qu'on a évité côté MIDI avec l'ancre.
+        // LA COMPENSATION DE LATENCE (D3.6), et voici son raisonnement complet.
+        // L'échantillon d'entrée qui arrive au bloc dont le transport est à P a
+        // été JOUÉ en réaction à ce qu'on entendait, c'est-à-dire à ce que le
+        // moteur avait émis un aller-retour plus tôt. Son intention musicale se
+        // situe donc à P - R, où R est la latence d'aller-retour mesurée.
+        //
+        // Pour que le fichier COMMENCE à l'intention du point d'entrée, il faut
+        // donc commencer à écrire quand P vaut punch + R. Sans cette correction,
+        // toute prise audio serait en retard de R -- une dizaine de
+        // millisecondes sur une carte ordinaire, davantage sur une carte USB.
+        //
+        // R vaut zéro tant qu'on n'a rien mesuré : on ne corrige pas d'un
+        // chiffre qu'on aurait deviné.
+        const double allerRetour = measuredRoundTrip_.load(std::memory_order_relaxed);
+
         int decalage = 0;
-        const double punch = audioPunchSeconds_.load(std::memory_order_relaxed);
+        const double punch = audioPunchSeconds_.load(std::memory_order_relaxed) + allerRetour;
         if (positionDebutBloc < punch && frequence > 0.0) {
             const double avant = (punch - positionDebutBloc) * frequence;
             decalage = avant >= static_cast<double>(numSamples)
@@ -312,7 +353,7 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
         // exactement là où la région de punch s'arrête, sans quoi la prise
         // déborderait sur ce qu'on avait décidé de garder.
         int fin = numSamples;
-        const double sortie = punchOutSeconds_.load(std::memory_order_relaxed);
+        const double sortie = punchOutSeconds_.load(std::memory_order_relaxed) + allerRetour;
         if (std::isfinite(sortie) && frequence > 0.0) {
             const double jusquA = (sortie - positionDebutBloc) * frequence;
             if (jusquA <= 0.0) fin = 0;
@@ -337,6 +378,28 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
         }
     }
 
+    // MESURE DE LATENCE (D3.6). Deux gestes, et rien d'autre : poser le balayage
+    // dans la sortie, recopier l'entrée. La capture COMMENCE avec l'émission,
+    // pour que le décalage trouvé soit celui de l'aller-retour complet et non
+    // celui d'une origine arbitraire.
+    const ProbeState mesure = probeState_.load(std::memory_order_acquire);
+    if (mesure == ProbeState::Emitting || mesure == ProbeState::Capturing) {
+        if (inputChannelData != nullptr && numInputChannels > 0 && inputChannelData[0] != nullptr) {
+            int ecrits = probeCaptured_.load(std::memory_order_relaxed);
+            const int place = static_cast<int>(probeCapture_.size()) - ecrits;
+            const int n = std::min(numSamples, std::max(0, place));
+            for (int i = 0; i < n; ++i)
+                probeCapture_[static_cast<size_t>(ecrits + i)] = inputChannelData[0][i];
+            ecrits += n;
+            probeCaptured_.store(ecrits, std::memory_order_release);
+            if (ecrits >= static_cast<int>(probeCapture_.size()))
+                probeState_.store(ProbeState::Done, std::memory_order_release);
+        } else {
+            // Pas d'entrée en cours de mesure : on n'attend pas indéfiniment.
+            probeState_.store(ProbeState::Done, std::memory_order_release);
+        }
+    }
+
     float* left = outputChannelData[0];
     if (numOutputChannels >= 2 && outputChannelData[1] != nullptr) {
         graph_.processBlock(left, outputChannelData[1], numSamples);
@@ -346,6 +409,24 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
         float* fallback = monoFallbackBuffer_.data();
         int n = std::min(numSamples, static_cast<int>(monoFallbackBuffer_.size()));
         graph_.processBlock(left, fallback, n);
+    }
+
+    // Le balayage est ajouté APRÈS le rendu du graphe : la mesure doit pouvoir
+    // se faire pendant que le morceau joue, et surtout ne rien devoir au
+    // contenu du morceau.
+    if (mesure == ProbeState::Emitting) {
+        int emis = probeEmitted_.load(std::memory_order_relaxed);
+        const int reste = static_cast<int>(probeSignal_.size()) - emis;
+        const int n = std::min(numSamples, std::max(0, reste));
+        for (int i = 0; i < n; ++i) {
+            const float e = probeSignal_[static_cast<size_t>(emis + i)];
+            for (int c = 0; c < numOutputChannels; ++c)
+                if (outputChannelData[c] != nullptr) outputChannelData[c][i] += e;
+        }
+        emis += n;
+        probeEmitted_.store(emis, std::memory_order_release);
+        if (emis >= static_cast<int>(probeSignal_.size()))
+            probeState_.store(ProbeState::Capturing, std::memory_order_release);
     }
 
     // Canaux au-delà de la stéréo (ex: interfaces surround) : silence.

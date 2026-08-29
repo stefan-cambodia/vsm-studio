@@ -3,6 +3,7 @@
 #include "vsm/audio/engine/MidiLearnMap.h"
 #include "vsm/audio/engine/ProcessGraph.h"
 #include "DiskRecorder.h"
+#include "vsm/audio/engine/LatencyProbe.h"
 #include "vsm/sequencer/MidiRecorder.h"
 #include <atomic>
 #include <limits>
@@ -150,6 +151,34 @@ public:
     bool isRecordingAudio() const { return recordingAudio_.load(std::memory_order_acquire); }
     const DiskRecorder& diskRecorder() const { return diskRecorder_; }
 
+    // --- Mesure de la latence par boucle physique (D3.6) -------------------
+    //
+    // Les pilotes ANNONCENT une latence ; elle est souvent fausse, presque
+    // toujours sous-estimée, et jamais vérifiable de l'intérieur. Le seul moyen
+    // de la connaître est d'émettre un signal et de l'entendre revenir --
+    // câble de la sortie vers l'entrée, ou micro devant un haut-parleur.
+    //
+    // Le rappel audio ne fait ici que DEUX choses : poser le balayage dans la
+    // sortie, et recopier l'entrée dans un tampon PRÉ-ALLOUÉ. La corrélation,
+    // elle, tourne sur le thread de l'interface une fois la capture finie.
+
+    /// Lance une mesure. Rend faux si la carte n'a pas d'entrée -- il n'y a
+    /// alors rien à mesurer, et le dire vaut mieux que de faire semblant.
+    bool startLatencyMeasurement();
+    /// Vrai tant que la mesure est en cours.
+    bool latencyMeasurementRunning() const { return probeState_.load(std::memory_order_acquire) != ProbeState::Idle; }
+    /// Analyse la capture (thread UI) et, si elle est nette, adopte le
+    /// résultat. Rend le résultat brut, nettete comprise, pour que l'interface
+    /// puisse REFUSER un chiffre peu convaincant plutôt que de l'appliquer.
+    vsm::audio::engine::LatencyProbe::Resultat finishLatencyMeasurement();
+
+    /// La latence d'aller-retour retenue, en secondes. Zéro = jamais mesurée.
+    double measuredRoundTripSeconds() const { return measuredRoundTrip_.load(std::memory_order_acquire); }
+    /// Impose une valeur (celle conservée d'une exécution à l'autre).
+    void setMeasuredRoundTripSeconds(double secondes) {
+        measuredRoundTrip_.store(secondes, std::memory_order_release);
+    }
+
     // --- MIDI Learn --------------------------------------------------------
     // Arme l'apprentissage : le PROCHAIN CC reçu sera lié à `target`.
     void armMidiLearn(const vsm::audio::engine::MidiLearnTarget& target);
@@ -209,6 +238,16 @@ private:
     /// bloc, lue une seule fois par le rappel et partagée avec l'écriture sur
     /// disque -- la relire donnerait deux réponses différentes.
     void publishTransportAnchor(double positionTransport);
+
+    // La mesure traverse le rappel audio, d'où un petit automate atomique :
+    // l'interface arme, le rappel émet puis capture, l'interface analyse.
+    enum class ProbeState { Idle, Emitting, Capturing, Done };
+    std::atomic<ProbeState> probeState_{ProbeState::Idle};
+    std::vector<float> probeSignal_;    ///< pré-calculé, jamais fabriqué dans le rappel
+    std::vector<float> probeCapture_;   ///< pré-alloué, jamais redimensionné dans le rappel
+    std::atomic<int> probeEmitted_{0};
+    std::atomic<int> probeCaptured_{0};
+    std::atomic<double> measuredRoundTrip_{0.0};
 
     DiskRecorder diskRecorder_;
     std::atomic<bool> recordingAudio_{false};

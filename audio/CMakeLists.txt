@@ -104,6 +104,7 @@ if (VSM_BUILD_TESTS)
         tests/test_audio_track.cpp
         tests/test_metronome.cpp
         tests/test_count_in.cpp
+        tests/test_latency_probe.cpp
         tests/test_control_events.cpp
         tests/test_effects.cpp
         tests/test_tr808_synth.cpp

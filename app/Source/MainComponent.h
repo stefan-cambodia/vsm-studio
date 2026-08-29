@@ -93,6 +93,8 @@ private:
         kMenuRecordPunchToggle,
         kMenuRecordPunchFromLoop,
         kMenuRecordPunchClear,
+        kMenuRecordMeasureLatency,
+        kMenuRecordClearLatency,
         /// Un identifiant par prise de la piste sélectionnée, attribué à la
         /// suite -- comme les paliers d'échelle du menu Affichage.
         kMenuRecordTakeFirst,
@@ -152,6 +154,10 @@ private:
     double punchOutSeconds() const;
     /// Dit qu'un débordement du tampon d'écriture a troué le fichier.
     void signalerDisqueTropLent(uint64_t blocsPerdus);
+    /// Lance la mesure de latence par boucle physique, puis affiche et adopte
+    /// le résultat -- ou le REFUSE s'il n'est pas net, ce qui veut dire que
+    /// rien n'est revenu par l'entrée.
+    void measureInputLatency();
     /// Ouvre l'action annulable de l'enregistrement, UNE seule fois par prise :
     /// en boucle, les passes modifient le projet au fur et à mesure, et un
     /// instantané pris à l'arrêt ne défairait que la dernière.

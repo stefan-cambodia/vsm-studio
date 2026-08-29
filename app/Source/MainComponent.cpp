@@ -286,6 +286,10 @@ MainComponent::MainComponent()
     {
         auto& reglages = vsm::app::ui::UiScale::properties();
         countInBars_ = juce::jlimit(0, 2, reglages.getIntValue("recordCountInBars", 1));
+        // La latence mesurée est CONSERVÉE : elle décrit la machine et sa carte,
+        // pas le morceau, et la remesurer à chaque lancement serait absurde.
+        audioEngine_.setMeasuredRoundTripSeconds(
+            juce::jlimit(0.0, 1.0, reglages.getDoubleValue("latenceAllerRetour", 0.0)));
         recordMode_ = static_cast<vsm::sequencer::RecordMode>(
             juce::jlimit(0, 2, reglages.getIntValue("recordMode", 0)));
     }
@@ -595,6 +599,28 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addItem(kMenuRecordPunchClear, u8"L'effacer", punchPose);
                 menu.addSeparator();
 
+                // LA LATENCE, PUBLIÉE. Le critère de D3.6 dit « le chiffre est
+                // publié » : il ne suffit pas de corriger, il faut pouvoir lire
+                // de combien -- sans quoi on ne saurait pas si la correction a
+                // seulement eu lieu.
+                {
+                    const double r = audioEngine_.measuredRoundTripSeconds();
+                    const double sr = audioEngine_.currentSampleRate();
+                    menu.addSectionHeader(u8"Latence d'entrée");
+                    menu.addItem(-2,
+                                  r > 0.0
+                                      ? juce::String(u8"Mesurée : ") + juce::String(r * 1000.0, 2)
+                                            + " ms (" + juce::String(juce::roundToInt(r * sr))
+                                            + juce::String(u8" échantillons)")
+                                      : juce::String(u8"Jamais mesurée — les prises audio ne sont "
+                                                      u8"pas compensées"),
+                                  false, false);
+                    menu.addItem(kMenuRecordMeasureLatency,
+                                  u8"Mesurer (brancher la sortie sur l'entrée)...");
+                    menu.addItem(kMenuRecordClearLatency, u8"Oublier la mesure", r > 0.0);
+                }
+                menu.addSeparator();
+
                 // LES PRISES DE LA PISTE SÉLECTIONNÉE. C'est le « se
                 // choisissent » du critère de D3.5 : sans ce menu, les prises
                 // seraient conservées et inatteignables.
@@ -714,6 +740,11 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             project_.punchStartTick = project_.punchEndTick = 0;
             pianoRollPanel_.setPunchRegion(0, 0, false);
             pianoRollPanel_.refresh();
+            break;
+        case kMenuRecordMeasureLatency: measureInputLatency(); break;
+        case kMenuRecordClearLatency:
+            audioEngine_.setMeasuredRoundTripSeconds(0.0);
+            vsm::app::ui::UiScale::properties().setValue("latenceAllerRetour", 0.0);
             break;
         case kMenuRecordQuantizeTake: quantizeLastTake(); break;
         case kMenuFileQuit:      juce::JUCEApplication::getInstance()->systemRequestedQuit(); break;
@@ -1441,6 +1472,59 @@ bool MainComponent::applyAudioTake(size_t trackIndex, const juce::File& fichier,
     clip.colorRgba = piste.colorRgba;
     piste.clips.push_back(clip);
     return true;
+}
+
+void MainComponent::measureInputLatency() {
+    if (recordPhase_ != RecordPhase::Off) return;   // pas pendant une prise
+    if (!audioEngine_.startLatencyMeasurement()) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Mesure impossible",
+            juce::String(u8"La carte n'ouvre aucune entrée : il n'y a rien à mesurer. "
+                          u8"Voir Fichier > Réglages audio."));
+        return;
+    }
+
+    // LA MESURE DURE UNE DEMI-SECONDE ET SE FAIT DANS LE RAPPEL AUDIO. On
+    // revient la chercher après, sur le thread de l'interface -- attendre ici
+    // gèlerait la fenêtre pendant que la carte travaille.
+    const int attente = static_cast<int>(
+        (vsm::audio::engine::LatencyProbe::kProbeSeconds
+         + vsm::audio::engine::LatencyProbe::kListenSeconds) * 1000.0) + 250;
+    juce::Timer::callAfterDelay(attente, [this] {
+        const auto resultat = audioEngine_.finishLatencyMeasurement();
+        const double sr = audioEngine_.currentSampleRate();
+
+        // UN CHIFFRE PEU NET EST REFUSÉ, PAS PUBLIÉ. C'est le cas du câble non
+        // branché : la corrélation trouve bien un maximum quelque part dans le
+        // bruit, et l'appliquer décalerait toutes les prises suivantes d'une
+        // valeur inventée qu'on ne remettrait jamais en question.
+        constexpr double kNetteteMinimale = 10.0;
+        if (!resultat.trouve() || resultat.nettete < kNetteteMinimale || sr <= 0.0) {
+            juce::AlertWindow::showMessageBoxAsync(
+                juce::AlertWindow::WarningIcon, u8"Rien n'est revenu",
+                juce::String(u8"Le balayage émis n'a pas été retrouvé dans l'entrée "
+                              u8"(netteté ") + juce::String(resultat.nettete, 1)
+                    + juce::String(u8"). Branchez la sortie de la carte sur son entrée, ou "
+                                    u8"placez un micro devant un haut-parleur, et recommencez. "
+                                    u8"Aucune valeur n'a été retenue : mieux vaut ne pas "
+                                    u8"compenser que compenser d'un chiffre inventé."));
+            return;
+        }
+
+        const double secondes = static_cast<double>(resultat.decalageEchantillons) / sr;
+        audioEngine_.setMeasuredRoundTripSeconds(secondes);
+        vsm::app::ui::UiScale::properties().setValue("latenceAllerRetour", secondes);
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Latence mesurée",
+            juce::String(u8"Aller-retour : ") + juce::String(secondes * 1000.0, 2) + " ms ("
+                + juce::String(resultat.decalageEchantillons)
+                + juce::String(u8" échantillons à ") + juce::String(sr / 1000.0, 1) + " kHz)"
+                + juce::String(u8"\n\nNetteté du pic : ") + juce::String(resultat.nettete, 1)
+                + juce::String(u8"\n\nLes prises AUDIO sont désormais avancées d'autant. Les "
+                                u8"prises MIDI, elles, continuent d'employer la latence de "
+                                u8"sortie annoncée par le pilote : un clavier n'est pas dans "
+                                u8"la boucle, et cette mesure ne peut rien en dire."));
+    });
 }
 
 void MainComponent::ouvrirLEditionDEnregistrement() {

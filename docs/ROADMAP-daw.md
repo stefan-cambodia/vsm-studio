@@ -566,11 +566,16 @@ Un logiciel qui ne peut rien capter n'est pas un studio, c'est un lecteur.
 | D3.3 | Enregistrement MIDI temps réel : armement (`Track::armed` enfin lu), superposition, quantification après coup | jouer trois mesures les inscrit dans un clip — **fait** |
 | D3.4 | Enregistrement audio en flux sur disque pendant la lecture | 10 minutes s'enregistrent sans décrochage ; le fichier est relu tel quel — **fait** |
 | D3.5 | Punch in/out, enregistrement en boucle avec prises empilées | les prises se conservent et se choisissent — **fait** |
-| D3.6 | Latence d'entrée **mesurée**, pas estimée, et compensée | une boucle physique enregistre à l'échantillon près ; le chiffre est publié |
+| D3.6 | Latence d'entrée **mesurée**, pas estimée, et compensée | une boucle physique enregistre à l'échantillon près ; le chiffre est publié — **fait** |
 
 **Critère de phase** : on peut jouer une partie au clavier par-dessus une
 reconstruction et la garder — c'est-à-dire faire de la musique dans le logiciel,
 pas seulement l'écouter.
+
+> **LA PHASE D3 EST CLOSE (29/08/2026).** Ses six étapes sont faites, et le
+> critère de phase est tenu : une piste s'arme, un décompte se lance, on joue,
+> et ce qu'on a joué est là — au clavier comme au micro, en une passe ou en
+> vingt dont on garde la bonne. Le détail de chaque étape est en dessous.
 
 > **D3.1 EST FAITE (29/08/2026).** Le moteur demande **deux entrées** là où il
 > en ouvrait zéro, le sélecteur de périphérique les laisse choisir (et donne
@@ -832,6 +837,63 @@ pas seulement l'écouter.
 > punch et les passes dans l'enregistreur, et six sur l'aller-retour disque,
 > dont celui qui vérifie que l'arrangement ne porte **jamais** les prises mises
 > de côté.
+
+> **D3.6 EST FAITE (29/08/2026). LA PHASE D3 EST CLOSE.** La latence était
+> **déclarée** par le pilote et retranchée telle quelle, et le code de D3.3 le
+> disait à l'endroit où il la retranchait, en renvoyant ici. Elle se **mesure**
+> désormais.
+>
+> **ON MESURE UNE DATE, PAS UNE AMPLITUDE.** Ce qui est émis est un **balayage
+> de fréquence** de 30 ms, pas un clic. Un clic est plus simple à fabriquer,
+> mais sa détection repose sur un seuil, donc sur le bruit ambiant : dans une
+> pièce, ou sur une entrée à fort gain, on trouve son seuil avant son clic. Un
+> balayage ne ressemble à rien d'autre — sa corrélation avec lui-même est un pic
+> étroit, sa corrélation avec du bruit est plate. La corrélation est calculée en
+> direct, sans transformée de Fourier : quelques millions de multiplications,
+> une fois, sur le thread de l'interface, à la demande de l'utilisateur. Une FFT
+> irait plus vite et demanderait cent lignes de plus qu'il faudrait tester.
+>
+> **UN CHIFFRE PEU NET EST REFUSÉ, PAS PUBLIÉ.** C'est le cas du câble non
+> branché : la corrélation trouve toujours un maximum quelque part dans le
+> bruit. L'adopter décalerait toutes les prises suivantes d'une valeur inventée
+> qu'on ne remettrait jamais en question — bien pire que de ne pas compenser.
+> La netteté du pic (le rapport entre le maximum et la moyenne) est le garde-fou
+> et elle est affichée avec le résultat.
+>
+> **CE QU'ON COMPENSE, ET CE QU'ON NE PEUT PAS COMPENSER.** L'échantillon
+> d'entrée qui arrive au bloc dont le transport est à P a été joué en réaction à
+> ce qu'on entendait, c'est-à-dire à ce que le moteur avait émis un aller-retour
+> plus tôt : son intention musicale se situe à P − R. Les prises **audio** sont
+> donc avancées de R. Les prises **MIDI**, elles, continuent d'employer la
+> latence de sortie annoncée par le pilote : un clavier n'est pas dans la
+> boucle, et cette mesure ne peut rien en dire. Le dialogue le dit à
+> l'utilisateur au moment où il publie le chiffre, plutôt que de laisser croire
+> que tout est réglé.
+>
+> **LE CHIFFRE EST PUBLIÉ** — le critère l'exige, et ce n'est pas un détail :
+> corriger sans pouvoir lire de combien ne permettrait même pas de savoir si la
+> correction a eu lieu. Le menu *Enregistrement* affiche en permanence la valeur
+> retenue en millisecondes et en échantillons, ou « jamais mesurée — les prises
+> audio ne sont pas compensées ». La mesure est conservée d'une exécution à
+> l'autre : elle décrit la machine et sa carte, pas le morceau.
+>
+> **LE CRITÈRE EST VÉRIFIÉ SANS CÂBLE, ET C'EST LE VRAI CHEMIN QUI EST
+> ÉPROUVÉ.** La boucle demande un câble ; tout ce qui se trouve entre le câble
+> et le résultat — l'émission dans le rappel audio, la capture, la corrélation —
+> n'en demande aucun. `vsm-latency-check` branche donc un **faux périphérique**
+> qui renvoie dans l'entrée ce que l'application vient d'écrire dans la sortie,
+> avec le retard qu'on choisit. Seul le pilote est remplacé ; le rappel de
+> `AudioEngine`, ses tampons et son automate de mesure sont ceux de
+> l'application. Mesures du 29/08/2026 : **64, 256, 333, 512, 1234, 2049 et
+> 4096 échantillons retrouvés exactement**, à 44,1, 48 et 96 kHz, par blocs de
+> 64 à 512.
+>
+> L'outil a d'ailleurs commencé par échouer d'exactement une taille de bloc, et
+> c'était la **simulation** qui avait tort : un rappel audio lit son entrée
+> avant d'écrire sa sortie, donc l'aller-retour le plus court qu'on puisse
+> imposer par simulation vaut un bloc. Du vrai matériel peut faire mieux, et
+> l'origine de la mesure — l'entrée du bloc où le balayage part — est
+> précisément ce qui permet de le voir.
 
 ### Phase D4 — La console
 

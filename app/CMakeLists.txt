@@ -176,3 +176,29 @@ target_link_libraries(vsm-disk-record-check PRIVATE
     juce::juce_audio_formats
 )
 juce_generate_juce_header(vsm-disk-record-check)
+
+
+# --- Vérification de la mesure de latence (D3.6) ----------------------------
+# Le critère est « une boucle physique enregistre à l'échantillon près ». La
+# boucle demande un câble ; tout ce qui se trouve entre le câble et le résultat,
+# non. On branche donc un faux périphérique qui renvoie la sortie dans l'entrée
+# avec un retard connu, et on regarde si l'application le retrouve.
+juce_add_console_app(vsm-latency-check PRODUCT_NAME "vsm-latency-check")
+target_sources(vsm-latency-check PRIVATE
+    Source/tools/LatencyCheckMain.cpp
+    Source/audio/AudioEngine.cpp
+    Source/audio/DiskRecorder.cpp
+)
+target_include_directories(vsm-latency-check PRIVATE Source)
+target_compile_definitions(vsm-latency-check PRIVATE
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_STANDALONE_APPLICATION=1
+)
+target_link_libraries(vsm-latency-check PRIVATE
+    vsm_audio
+    vsm_core
+    juce::juce_audio_devices
+    juce::juce_audio_formats
+)
+juce_generate_juce_header(vsm-latency-check)
