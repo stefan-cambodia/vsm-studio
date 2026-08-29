@@ -209,6 +209,13 @@ public:
     void processBlock(float* outputL, float* outputR, int numSamples);
 
     float readMeterPeak(size_t trackIndex) const { return meters_.readPeak(trackIndex); }
+    /// Valeur EFFICACE (RMS) de la piste sur le dernier bloc. La crête dit si
+    /// ça écrête ; le RMS dit si c'est fort — et c'est le second qu'on cherche
+    /// quand on équilibre un mixage.
+    float readMeterRms(size_t trackIndex) const { return meters_.readRms(trackIndex); }
+    /// Corrélation de phase entre les deux canaux de la piste, de -1 à +1.
+    /// Négative, la piste disparaît en mono.
+    float readMeterCorrelation(size_t trackIndex) const { return meters_.readCorrelation(trackIndex); }
     int totalActiveVoices() const;
 
     /// Tranche master appliquée au bus stéréo final. Désactivée par défaut :
@@ -270,10 +277,19 @@ private:
                            float* outputL, float* outputR);
     /// L'index du tampon de groupe d'une piste, ou -1 si elle va au master.
     int groupBufferFor(const vsm::sequencer::Project& project, size_t trackIndex) const;
+    /// Conclut les mesures accumulées sur le bloc et les publie.
+    void publishMeasurement(size_t trackIndex);
 
     double sampleRate_ = 48000.0;
     int maxBlockSize_ = 512;
     std::array<float, kMaxTracks> blockPeak_{}; // pic par piste, cumulé sur les sous-segments
+    // RMS et corrélation de phase par piste (D4.7). Accumulés sur TOUT le bloc,
+    // sous-segments d'automation compris : une mesure prise sur un
+    // sous-segment de 64 échantillons sauterait à chaque changement de valeur
+    // automatisée, et l'aiguille deviendrait illisible là où le son ne bouge
+    // presque pas.
+    std::array<double, kMaxTracks> blockSumL2_{}, blockSumR2_{}, blockSumLR_{};
+    std::array<int, kMaxTracks> blockCount_{};
 
     std::atomic<std::shared_ptr<const GraphSnapshot>> snapshot_;
     std::array<std::atomic<std::shared_ptr<vsm::audio::plugin::ISynthPlugin>>, kMaxTracks> instruments_{};

@@ -106,6 +106,10 @@ public:
     /// Mesures pour l'UI (thread UI). Valides après au moins un process().
     double integratedLufs() const { return lufs_.integratedLufs(); }
     float outputPeak() const { return outputPeak_.load(std::memory_order_relaxed); }
+    /// Valeur efficace du bus final sur le dernier bloc (D4.7).
+    float outputRms() const { return outputRms_.load(std::memory_order_relaxed); }
+    /// Corrélation de phase du bus final, de -1 à +1. Voir `phaseCorrelation`.
+    float outputCorrelation() const { return outputCorrelation_.load(std::memory_order_relaxed); }
 
     /// Traite le bus stéréo EN PLACE. No-op complet si désactivé.
     void process(float* left, float* right, int numSamples) {
@@ -146,6 +150,7 @@ public:
         const float satNorm = (satAmount > 0.0f) ? (1.0f / std::tanh(satPre)) : 1.0f;
 
         float blockPeak = 0.0f;
+        double sommeL2 = 0.0, sommeR2 = 0.0, sommeLR = 0.0;
         for (int i = 0; i < numSamples; ++i) {
             float l = left[i];
             float r = right[i];
@@ -179,10 +184,25 @@ public:
             left[i] = l;
             right[i] = r;
             blockPeak = std::max(blockPeak, std::max(std::abs(l), std::abs(r)));
+            sommeL2 += static_cast<double>(l) * l;
+            sommeR2 += static_cast<double>(r) * r;
+            sommeLR += static_cast<double>(l) * r;
 
             lufs_.processStereo(l, r);
         }
         outputPeak_.store(blockPeak, std::memory_order_relaxed);
+        // CORRÉLATION DE PHASE DU MASTER (D4.7) : ce qu'il reste du mixage en
+        // mono. Négative, le morceau se vide dès qu'on l'écoute sur un
+        // téléphone -- et rien ne le disait.
+        outputRms_.store(numSamples > 0
+                             ? static_cast<float>(std::sqrt((sommeL2 + sommeR2) / (2.0 * numSamples)))
+                             : 0.0f,
+                          std::memory_order_relaxed);
+        const double denominateur = std::sqrt(sommeL2 * sommeR2);
+        outputCorrelation_.store(denominateur > 1.0e-20
+                                     ? static_cast<float>(std::clamp(sommeLR / denominateur, -1.0, 1.0))
+                                     : 1.0f,
+                                  std::memory_order_relaxed);
     }
 
 private:
@@ -196,6 +216,8 @@ private:
     std::array<std::atomic<float>, kNumParams> params_;
     vsm::audio::plugin::ParameterList parameterList_;
     std::atomic<float> outputPeak_{0.0f};
+    std::atomic<float> outputRms_{0.0f};
+    std::atomic<float> outputCorrelation_{1.0f};
 };
 
 } // namespace vsm::audio::engine

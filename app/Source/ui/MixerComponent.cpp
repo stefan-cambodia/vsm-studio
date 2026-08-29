@@ -148,6 +148,17 @@ MasterStrip::MasterStrip() {
     lufsLabel_.setFont(juce::Font(juce::FontOptions(11.0f)));
     addAndMakeVisible(lufsLabel_);
 
+    // LA CORRÉLATION DE PHASE EN CLAIR (D4.7). Une bande colorée dit qu'il y a
+    // un problème, elle ne dit pas s'il est de -0,1 ou de -0,9 -- et c'est ce
+    // qui décide si on va chercher.
+    phaseLabel_.setText("1.00", juce::dontSendNotification);
+    phaseLabel_.setJustificationType(juce::Justification::centred);
+    phaseLabel_.setColour(juce::Label::textColourId, vsm::ui::Palette::textSecondary);
+    phaseLabel_.setFont(juce::Font(juce::FontOptions(11.0f)));
+    phaseLabel_.setTooltip("Correlation de phase : +1 en phase, 0 sans rapport, "
+                            "negatif = la piste disparait en mono.");
+    addAndMakeVisible(phaseLabel_);
+
     addAndMakeVisible(meter_);
 }
 
@@ -204,7 +215,11 @@ void MasterStrip::resized() {
     // Grille de knobs 2 colonnes.
     auto meterArea = r.removeFromRight(12);
     meter_.setBounds(meterArea.reduced(0, 2));
-    lufsLabel_.setBounds(getLocalBounds().reduced(6).removeFromBottom(16));
+    {
+        auto bas = getLocalBounds().reduced(6);
+        lufsLabel_.setBounds(bas.removeFromBottom(16));
+        phaseLabel_.setBounds(bas.removeFromBottom(14));
+    }
     r.removeFromBottom(18);
 
     const int cols = 2;
@@ -254,11 +269,12 @@ void MixerComponent::setProject(vsm::sequencer::Project* project) {
     resized();
 }
 
-void MixerComponent::updateMeters(const std::function<float(size_t)>& trackPeak,
-                                  double masterLufs, float masterPeak) {
+void MixerComponent::updateMeters(
+    const std::function<vsm::audio::engine::TrackMeasurement(size_t)>& trackMeasure,
+    double masterLufs, float masterPeak, float masterRms, float masterCorrelation) {
     for (int i = 0; i < strips_.size(); ++i)
-        strips_[i]->setMeterLevel(trackPeak(static_cast<size_t>(i)));
-    master_.setMeters(masterLufs, masterPeak);
+        strips_[i]->setMeasurement(trackMeasure(static_cast<size_t>(i)));
+    master_.setMeters(masterLufs, masterPeak, masterRms, masterCorrelation);
 }
 
 void MixerComponent::paint(juce::Graphics& g) {

@@ -392,6 +392,10 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
             std::fill(groupR_[g].begin(), groupR_[g].begin() + idleSamples, 0.0f);
         }
         blockPeak_.fill(0.0f);
+        blockSumL2_.fill(0.0);
+        blockSumR2_.fill(0.0);
+        blockSumLR_.fill(0.0);
+        blockCount_.fill(0);
 
         const bool idleAnySolo = std::any_of(idleSnapshot->project.tracks.begin(),
                                               idleSnapshot->project.tracks.end(),
@@ -405,7 +409,7 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
         // comprendre.
         renderGroupBuses(*idleSnapshot, idleAnySolo, idleSamples, outputL, outputR);
 
-        for (size_t t = 0; t < kMaxTracks; ++t) meters_.reportPeak(t, blockPeak_[t]);
+        for (size_t t = 0; t < kMaxTracks; ++t) publishMeasurement(t);
         for (size_t b = 0; b < actifs; ++b) {
             auto fx = sends_[b].effect.load(std::memory_order_acquire);
             if (!fx) continue;
@@ -453,6 +457,10 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
             std::fill(groupR_[g].begin(), groupR_[g].begin() + samplesToProcess, 0.0f);
         }
         blockPeak_.fill(0.0f);
+        blockSumL2_.fill(0.0);
+        blockSumR2_.fill(0.0);
+        blockSumLR_.fill(0.0);
+        blockCount_.fill(0);
 
         // Découpage du bloc à la frontière de boucle, pour que le rebouclage
         // soit exact à l'échantillon près plutôt qu'arrondi à la taille de
@@ -498,7 +506,7 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
         // d'un groupe montre ce qu'il envoie vraiment.
         renderGroupBuses(*snapshot, anySolo, samplesToProcess, outputL, outputR);
 
-        for (size_t t = 0; t < kMaxTracks; ++t) meters_.reportPeak(t, blockPeak_[t]);
+        for (size_t t = 0; t < kMaxTracks; ++t) publishMeasurement(t);
 
         // Traite chaque bus de send par son effet, puis ajoute le retour au
         // master (avant la tranche master).
@@ -638,6 +646,23 @@ void ProcessGraph::renderSpan(const GraphSnapshot& snapshot, bool anySolo, int s
     }
 }
 
+void ProcessGraph::publishMeasurement(size_t trackIndex) {
+    TrackMeasurement mesure;
+    mesure.peak = blockPeak_[trackIndex];
+    const int n = blockCount_[trackIndex];
+    if (n > 0) {
+        // Le RMS des DEUX canaux ensemble : c'est le niveau de la piste, pas
+        // celui d'un de ses côtés.
+        mesure.rms = static_cast<float>(
+            std::sqrt((blockSumL2_[trackIndex] + blockSumR2_[trackIndex]) / (2.0 * n)));
+        const double denominateur = std::sqrt(blockSumL2_[trackIndex] * blockSumR2_[trackIndex]);
+        mesure.correlation = denominateur > 1.0e-20
+            ? static_cast<float>(std::clamp(blockSumLR_[trackIndex] / denominateur, -1.0, 1.0))
+            : 1.0f;   // silence : deux canaux vides sont identiques, pas « sans rapport »
+    }
+    meters_.reportMeasurement(trackIndex, mesure);
+}
+
 int ProcessGraph::groupBufferFor(const vsm::sequencer::Project& project, size_t trackIndex) const {
     if (trackIndex >= project.tracks.size()) return -1;
     const auto& track = project.tracks[trackIndex];
@@ -687,6 +712,16 @@ void ProcessGraph::renderGroupBuses(const GraphSnapshot& snapshot, bool anySolo,
                                                   track.volume, track.pan, audible,
                                                   outputL, outputR);
         blockPeak_[trackIndex] = std::max(blockPeak_[trackIndex], peak);
+
+        // Un groupe se mesure comme une piste (D4.7), sur ce qu'il envoie.
+        for (int i = 0; i < numSamples; ++i) {
+            const double l = static_cast<double>(groupL_[g][static_cast<size_t>(i)]) * track.volume;
+            const double r = static_cast<double>(groupR_[g][static_cast<size_t>(i)]) * track.volume;
+            blockSumL2_[trackIndex] += l * l;
+            blockSumR2_[trackIndex] += r * r;
+            blockSumLR_[trackIndex] += l * r;
+        }
+        blockCount_[trackIndex] += numSamples;
 
         // Un groupe alimente les départs comme une piste : c'est ce qui permet
         // d'envoyer toute une batterie dans une réverbération d'un seul geste.
@@ -927,6 +962,20 @@ void ProcessGraph::renderTrackRange(const GraphSnapshot& snapshot, bool anySolo,
                                     volume, pan, audible,
                                     destL + sampleStart, destR + sampleStart);
         blockPeak_[trackIndex] = std::max(blockPeak_[trackIndex], peak);
+
+        // RMS ET CORRÉLATION (D4.7) : on accumule les sommes ici et on ne
+        // conclut qu'en fin de bloc. Le signal mesuré est celui d'APRÈS le
+        // fader et AVANT le panoramique, c'est-à-dire ce que la piste envoie --
+        // la même convention que la crête, pour que les trois chiffres parlent
+        // du même son.
+        for (int i = 0; i < sampleCount; ++i) {
+            const double l = static_cast<double>(scratchStereoL_[static_cast<size_t>(i)]) * volume;
+            const double r = static_cast<double>(scratchStereoR_[static_cast<size_t>(i)]) * volume;
+            blockSumL2_[trackIndex] += l * l;
+            blockSumR2_[trackIndex] += r * r;
+            blockSumLR_[trackIndex] += l * r;
+        }
+        blockCount_[trackIndex] += sampleCount;
 
         // Sends post-fader vers les bus auxiliaires (section 15).
         const size_t actifs = activeSends_.load(std::memory_order_acquire);

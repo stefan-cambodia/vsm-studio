@@ -202,3 +202,23 @@ target_link_libraries(vsm-latency-check PRIVATE
     juce::juce_audio_formats
 )
 juce_generate_juce_header(vsm-latency-check)
+
+
+# --- Mesure d'un fichier avec le code du mixeur (D4.7) ----------------------
+# Le critère de la phase D4 veut que l'application et `analyse/` donnent le même
+# LUFS à 0,1 près sur les mêmes stems. Deux moitiés qui mesurent différemment ne
+# peuvent pas se comparer. Cet outil emploie LE code du mixeur -- pas une redite
+# écrite pour l'occasion, qui ne prouverait que sa propre justesse.
+juce_add_console_app(vsm-measure PRODUCT_NAME "vsm-measure")
+target_sources(vsm-measure PRIVATE Source/tools/MeasureMain.cpp)
+target_include_directories(vsm-measure PRIVATE Source)
+target_compile_definitions(vsm-measure PRIVATE
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_STANDALONE_APPLICATION=1
+)
+target_link_libraries(vsm-measure PRIVATE
+    vsm_audio
+    juce::juce_audio_formats
+)
+juce_generate_juce_header(vsm-measure)

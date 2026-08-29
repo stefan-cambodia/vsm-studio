@@ -496,8 +496,14 @@ void MainComponent::timerCallback() {
 
     auto& mb = audioEngine_.processGraph().masterBus();
     mixer_.updateMeters(
-        [this](size_t i) { return audioEngine_.processGraph().readMeterPeak(i); },
-        mb.integratedLufs(), mb.outputPeak());
+        [this](size_t i) {
+            vsm::audio::engine::TrackMeasurement m;
+            m.peak = audioEngine_.processGraph().readMeterPeak(i);
+            m.rms = audioEngine_.processGraph().readMeterRms(i);
+            m.correlation = audioEngine_.processGraph().readMeterCorrelation(i);
+            return m;
+        },
+        mb.integratedLufs(), mb.outputPeak(), mb.outputRms(), mb.outputCorrelation());
 
     // Le bouton MIDI Learn se désarme tout seul une fois un CC lié côté moteur.
     synthRack_.setLearnArmed(audioEngine_.isMidiLearnArmed());

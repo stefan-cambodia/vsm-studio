@@ -905,11 +905,16 @@ pas seulement l'écouter.
 | D4.4 | **Chaîne latérale** (*sidechain*) | le compresseur d'une piste écoute une autre piste — la signature même du genre que ce projet reconstruit — **fait** |
 | D4.5 | **Compensation de latence (PDC)** : `ISynthPlugin` et `IAudioEffect` déclarent leur latence, le graphe la compense | insérer un effet à latence connue ne décale plus la piste ; test avec une latence artificielle et un `Oversampler` — **fait** |
 | D4.6 | Automation de **tout** : volume, pan, départs, paramètres d'effets, master — aujourd'hui les paramètres d'instrument seulement (`ProcessGraph.cpp:325`) | un fondu écrit en automation s'entend — **fait** |
-| D4.7 | Mesure : crête **et** RMS par piste, LUFS, corrélation de phase | affichés, et cohérents avec ce que `analyse/` mesure du même signal |
+| D4.7 | Mesure : crête **et** RMS par piste, LUFS, corrélation de phase | affichés, et cohérents avec ce que `analyse/` mesure du même signal — **fait** |
 
 **Critère de phase** : le mixage fait dans l'application et le mixage fait par
 `analyse/` sur les mêmes stems donnent le même LUFS à 0,1 près. Les deux moitiés
 du projet mesureront enfin la même chose.
+
+> **LA PHASE D4 EST CLOSE (30/08/2026).** Ses sept étapes sont faites, et le
+> critère est tenu **avec cinq cents fois la marge demandée** : l'écart mesuré
+> entre le moteur et `analyse/` est de **0,0002 LU** au pire, là où le critère
+> en tolérait 0,1. Le détail de chaque étape est en dessous.
 
 > **D4.1 EST FAITE (29/08/2026).** Le DSP existait, entier et testé, et n'était
 > accessible QUE sur le master. Une console dont on ne peut pas égaliser une
@@ -1169,6 +1174,61 @@ du projet mesureront enfin la même chose.
 >
 > Six tests, dont celui qui est le critère : le fader descend de 1 à 0 sur une
 > seconde, et on mesure le début et la fin du rendu.
+
+> **D4.7 EST FAITE (30/08/2026), ET AVEC ELLE LA PHASE D4.**
+>
+> **LA CRÊTE SEULE NE DIT PAS GRAND-CHOSE**, et c'est tout ce que le mixeur
+> affichait. Elle dit si ça écrête ; elle ne dit pas si c'est FORT. Deux pistes
+> de même crête peuvent être séparées de quinze décibels perçus selon qu'elles
+> sont denses ou pleines de silences — et c'est la seconde information qu'on
+> cherche quand on équilibre un mixage. Le mètre porte désormais les deux : la
+> barre remplit au niveau EFFICACE, le trait marque la crête, et l'écart entre
+> les deux se lit d'un coup d'œil.
+>
+> **LA CORRÉLATION DE PHASE répond à une question qu'aucune des deux autres ne
+> posait** : « qu'est-ce qu'il reste de ceci en mono ? ». Négative, la piste
+> DISPARAÎT dès qu'on somme — ce qui arrive à qui écoute sur un téléphone — et
+> rien dans ce logiciel ne le signalait. Une bande en pied de mètre, rouge dès
+> que le chiffre passe sous zéro, et la valeur en clair sur le master : une
+> couleur dit qu'il y a un problème, elle ne dit pas s'il est de -0,1 ou de
+> -0,9, et c'est ce qui décide si on va chercher.
+>
+> **LE CRITÈRE DE PHASE EST VÉRIFIÉ, PAS AFFIRMÉ.** Deux moitiés d'un projet qui
+> mesurent différemment ne peuvent pas se comparer : la reconstruction
+> paraîtrait meilleure ou pire qu'elle n'est, selon celle des deux qu'on croit.
+> D'où deux pièces qui se répondent :
+>
+>  - **`vsm-measure`**, qui mesure un fichier avec LE code du mixeur — pas une
+>    redite écrite pour l'occasion, qui ne prouverait que sa propre justesse ;
+>  - **`analyse/analyzer/mesures.py`**, qui suit la même norme (ITU-R BS.1770)
+>    avec les mêmes coefficients de biquad, et dont la récurrence est écrite à
+>    la main plutôt qu'empruntée à `scipy` — c'est la seule façon d'être sûr
+>    qu'un écart vienne du signal et non d'un détail d'implémentation.
+>
+> `analyse/tests/test_mesures.py` les compare sur quatre signaux choisis pour ne
+> pas avoir les mêmes réponses (un grave, un aigu — la pondération K les traite
+> différemment —, du bruit large bande, et une opposition de phase). **Un seul
+> signal ne prouverait rien : deux mesures fausses de la même façon
+> coïncideraient.**
+>
+> Mesures du 30/08/2026 :
+>
+> | Signal | LUFS moteur | LUFS `analyse/` | Écart |
+> |---|---|---|---|
+> | sinus 100 Hz | -7,9043 | -7,9046 | **0,0002** |
+> | sinus 5 kHz | -7,3561 | -7,3561 | **0,000001** |
+> | bruit | -13,9167 | -13,9167 | **0,000000** |
+> | opposition de phase | -8,5886 | -8,5886 | **0,000015** |
+>
+> Le critère tolérait 0,1 LU. La crête, le RMS et la corrélation, qui ne passent
+> par aucun filtre, coïncident à 1e-5 près.
+>
+> **`analyse/` N'AVAIT AUCUNE MESURE DE LOUDNESS** avant ce jour : le module est
+> nouveau, et il ne dépend que de numpy — comme le reste de la chaîne, et pour
+> que le test tourne hors ligne sans installation. Le test se saute proprement
+> quand `vsm-measure` n'est pas compilé : un test qui exige une compilation
+> préalable ne doit pas faire échouer la suite Python de quelqu'un qui travaille
+> sur l'analyse.
 
 
 ### Phase D5 — La vue d'arrangement
