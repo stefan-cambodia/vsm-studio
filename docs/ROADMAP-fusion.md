@@ -79,11 +79,25 @@ client, jamais une dépendance.
   structurelle et vérifiée sur quatre topologies de boucle : une réflexion
   inversante à demi-longueur impose la symétrie demi-onde, qui interdit
   mathématiquement les harmoniques paires. Détail dans ARCHITECTURE.md § 33.
-  **Le verdict « hors de portée » ne tient plus, et le § 33 le dit** : un
-  prototype conique (`audio/plugins/cone/`, hors build) sonne juste, tient son
-  niveau et porte la série harmonique complète. Ce qui manque n'est plus la
-  possibilité mais la SÉLECTIVITÉ — un résonateur qui choisisse `f0` sans
-  raboter ses harmoniques. Travail de conception, pas de réglage.
+  **CETTE LIGNE ÉTAIT FAUSSE, ET LA MESURE L'A DIT (29/08/2026).** Elle
+  annonçait qu'un prototype conique (`audio/plugins/cone/`, hors build)
+  « sonne juste, tient son niveau et porte la série harmonique complète ».
+  Le prototype a été entré dans le build, doté de ses identités sémantiques et
+  MESURÉ par le pont Python, à neuf couples (souffle, raideur d'anche) : il
+  produit une **sinusoïde pure**. Rapportés au fondamental, ses rangs 2 à 6
+  valent 0,001 à 0,009 — c'est-à-dire rien —, quand `vsm.wind` porte les siens
+  (h3 = 0,156, h5 = 0,753) comme sa physique l'exige. Il n'auto-oscille pas :
+  c'est un résonateur qui sonne à `f0`, pas une anche. Sept de ses quinze tests
+  échouent, dont celui de son trait distinctif, et deux d'entre eux réclament un
+  réglage « Cone Taper » que l'en-tête de la machine a délibérément écarté — le
+  prototype a été laissé au milieu d'un changement de conception.
+  Il est donc RESSORTI du build, qui est redevenu vert (543 tests), et la case
+  du tableau de couverture reste **vide**. Ce qui manque n'est pas la
+  sélectivité d'un résonateur : c'est l'auto-oscillation, que l'en-tête de
+  `ConeSynth.h` documente déjà comme ayant échoué par trois routes (guide
+  d'ondes inversant, non inversant, banc modal). Cette mesure est la quatrième.
+  **La leçon vaut plus que la machine : une affirmation de gain écrite sans son
+  chiffre finit par être crue.** Celle-ci l'a été pendant une semaine.
 - **Le sampler n'est plus un repli universel : il est réservé à la voix.**
   C'est ce qui a rendu nécessaires `vsm.piano` et `vsm.drums`, et ce qui donne
   au parc sa forme finale — chaque source a une machine qui la MODÉLISE, sauf
