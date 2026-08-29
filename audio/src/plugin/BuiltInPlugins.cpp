@@ -31,6 +31,7 @@
 #include "phasedist/PhaseDistSynth.h"
 #include "divider/DividerSynth.h"
 #include "psg/PsgSynth.h"
+#include "stochastic/StochasticSynth.h"
 #include "multisample/MultisampleSynth.h"
 
 namespace vsm::audio::plugin {
@@ -155,6 +156,8 @@ void registerBuiltInPlugins() {
         (void)forceLinkDivider;
         vsm::plugins::psg::PsgSynth forceLinkPsg;
         (void)forceLinkPsg;
+        vsm::plugins::stochastic::StochasticSynth forceLinkStochastic;
+        (void)forceLinkStochastic;
     }
     {
         vsm::plugins::multisample::MultisampleSynth forceLinkMultisample;

@@ -30,7 +30,7 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **871 tests moteur** (84 core + 654 audio
+écoute au clic, et toute la logique testée hors JUCE. Total : **884 tests moteur** (84 core + 667 audio
 + 111 interchange + 11 CLAP + 11 façades,
 tous verts, zéro warning, y compris sous les flags stricts type-JUCE
 `-Wfloat-equal -Wsign-conversion -Wshadow`) + application complète compilée et
@@ -322,12 +322,12 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 871 tests moteur + 18 tests d'analyse, tous verts
+### Bilan actuel : 884 tests moteur + 18 tests d'analyse, tous verts
 
 - **84 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des
   notes douteuses de la transcription),
-  **654 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
+  **667 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
   scalaire, indépendance des lignes, bornes de l'approximation de tanh ; et la
   boucle : rebouclage échantillon-exact, notes relâchées au saut) : chorus BBD, Juno-106,
   bus master (biquad/compresseur/limiteur à plafond garanti/LUFS), oversampler,
@@ -3074,6 +3074,66 @@ et une autocorrélation trouve une période même dans un signal qui n'en a pas 
 musicale. La question qui tranche est toujours la même : **où est l'énergie,
 rang par rang ?** Elle aurait coûté une mesure de plus, et elle a été posée
 trois itérations trop tard.
+
+---
+
+## 45. `vsm.stochastic` — la seule forme d'onde du parc qui ne se répète jamais
+
+**CE QUE TRENTE-QUATRE MACHINES ONT EN COMMUN SANS QU'ON LE REMARQUE.** Elles
+sont **exactement périodiques**. Un oscillateur relit la même forme d'onde à
+chaque tour, au bit près — même la puce 8 bits, même le diviseur de fréquence.
+Quand quelque chose varie d'un tour au suivant, c'est un filtre ou une
+enveloppe ; jamais l'onde elle-même.
+
+Xenakis a proposé l'inverse en 1971, et cette famille n'avait aucun représentant
+ici : la forme d'onde est décrite par une poignée de POINTS DE BRISURE, et
+chacun se DÉPLACE d'un tour au suivant par une marche aléatoire bornée. Le son
+garde une hauteur — la période reste la période — mais son timbre bouge en
+permanence, sans qu'aucun filtre ni aucune modulation ne s'en mêle.
+
+**LE TRAIT DISTINCTIF EST BINAIRE, ET LE TEST MESURE LES DEUX MOITIÉS.** L'écart
+moyen entre une période et la suivante, rapporté au niveau du signal :
+
+| divagation de forme | écart entre deux périodes |
+|---|---|
+| 0 (figée) | **0,00013** — exactement périodique |
+| 0,05 | 0,072 |
+| 0,40 | **0,474** |
+
+Sans la première ligne, on ne saurait pas que l'écart vient du réglage et non du
+bruit d'un calcul.
+
+**LE RÉGLAGE QUI REND LA MACHINE JOUABLE** est le VERROU DE HAUTEUR. Laissée
+libre, la marche aléatoire sur les durées fait dériver la période, donc la
+note — c'est le son de Xenakis, et c'est inutilisable dans un morceau. Le verrou
+renormalise les durées à chaque tour pour que leur somme retombe sur la note
+demandée : la forme continue de divaguer, la hauteur non. Verrou serré, la note
+est juste à moins de 50 cents ; verrou lâche, elle s'en va franchement plus
+loin, et le test compare les deux.
+
+**UN ARTEFACT D'IMPLÉMENTATION QUI AURAIT FAUSSÉ LE TRAIT LUI-MÊME.** La
+première version tenait un compteur qu'elle décrémentait d'une unité par
+échantillon et changeait de segment quand il passait sous zéro. Les durées étant
+fractionnaires, les frontières tombaient à une position SOUS-ÉCHANTILLON
+différente à chaque tour : la forme était rééchantillonnée autrement d'une
+période à l'autre. Mesuré, **11,6 % d'écart entre deux périodes alors que rien
+ne divaguait** — c'est-à-dire un artefact que le test du trait distinctif ne
+pouvait pas distinguer du phénomène qu'il prétend mesurer. La position est
+désormais absolue dans la période, et le segment s'en déduit ; l'écart figé
+tombe à 0,00013.
+
+**LE HASARD EST SEEDÉ, ET C'EST UNE CONDITION D'EXISTENCE ICI.** Une machine
+« aléatoire » dont le hasard ne se rejoue pas n'aurait ni empreinte de
+non-régression ni recherche de patch possible. Tout passe par
+`DeterministicRng` : deux rendus d'une même session sont identiques au bit près,
+et un test le vérifie.
+
+**APPROXIMATIONS ASSUMÉES**, statut « dérivé » : marche à pas uniforme avec
+miroir aux bornes, là où Xenakis proposait plusieurs lois — le miroir plutôt
+qu'un écrêtage, qui collerait les points aux bornes et figerait la forme ;
+interpolation linéaire entre les points, ce qui produit des angles et donc des
+harmoniques hautes — c'est le son de cette famille, l'arrondir la ferait
+ressembler à une table d'ondes, que le parc a déjà.
 
 ---
 

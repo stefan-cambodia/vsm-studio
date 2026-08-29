@@ -499,6 +499,25 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Tom Decay", "drum.tom.decay"},
         {"Accent", "accent.amount"},
     }},
+    // --- vsm.stochastic ---
+    // `stochastic.*` pour ce qu'aucune autre machine n'expose : de combien la
+    // forme d'onde se déplace d'un tour au suivant, et à quel point la hauteur
+    // est retenue. Le nombre de points est une description de la FORME, pas un
+    // compte d'oscillateurs -- il n'a donc pas d'équivalent dans les identités
+    // existantes.
+    {"vsm.stochastic", {
+        {"Breakpoints", "stochastic.breakpoints"},
+        {"Shape Wander", "stochastic.shapeWander"},
+        {"Time Wander", "stochastic.timeWander"},
+        {"Pitch Lock", "stochastic.pitchLock"},
+        {"Tone", "filter.1.cutoff"},
+        {"Attack", "envelope.1.attack"},
+        {"Decay", "envelope.1.decay"},
+        {"Sustain", "envelope.1.sustain"},
+        {"Release", "envelope.1.release"},
+        {"Velocity to Wander", "voice.velocitySensitivity"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.psg ---
     // `psg.*` pour ce qui n'a d'équivalent nulle part : une HORLOGE en hertz et
     // une profondeur de volume en BITS. Ce sont les deux grandeurs qui font

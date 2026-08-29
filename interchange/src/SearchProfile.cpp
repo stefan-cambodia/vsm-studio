@@ -150,6 +150,16 @@ constexpr Rule kRules[] = {
     // dont la hauteur est balayée à l'attaque, se reconnaît d'abord à sa
     // queue. La barre (bois, claves) suit la même règle : sa hauteur EST son
     // identité, sa durée n'est qu'une nuance de frappe.
+    // SYNTHÈSE STOCHASTIQUE (vsm.stochastic). Le nombre de POINTS vient en
+    // tête : c'est lui qui décide combien d'angles la forme porte, donc la
+    // richesse du spectre -- le rôle que la coupure tient ailleurs. La
+    // divagation de forme suit, parce qu'elle fait la TEXTURE, qui est la
+    // raison d'être de cette machine. Le verrou de hauteur vient loin derrière
+    // dans la recherche : sur un stem accordé, il vaut toujours un.
+    {"stochastic.breakpoints",             2.0f,    16.0f, SearchScale::Linear,      0.92f},
+    {"stochastic.shapeWander",             0.0f,     0.5f, SearchScale::Linear,      0.86f},
+    {"stochastic.timeWander",              0.0f,     0.5f, SearchScale::Linear,      0.62f},
+    {"stochastic.pitchLock",               0.0f,     1.0f, SearchScale::Linear,      0.40f},
     // PUCE 8 BITS (vsm.psg). L'HORLOGE en tête, et ce n'est pas un réglage
     // d'accordage : elle décide de la GRILLE des fréquences atteignables, donc
     // du désaccord caractéristique. Les bits de volume suivent -- ils font la

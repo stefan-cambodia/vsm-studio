@@ -2804,13 +2804,88 @@ MachinePanel makePsg() {
     return panel;
 }
 
+// ---------------------------------------------------------------------------
+// Stochastic
+//
+// Aucune façade d'origine : cette famille est née dans un article et a vécu
+// dans du code, jamais dans un boîtier. La disposition suit donc le MODÈLE, qui
+// tient en deux idées : une FORME décrite par des points, et une DIVAGATION qui
+// la déplace. Les deux sont côte à côte, en grand, parce qu'il n'y a rien
+// d'autre à comprendre sur cette machine.
+//
+// Le VERROU DE HAUTEUR est à part, et c'est délibéré : il n'appartient ni à la
+// forme ni à la divagation, il décide si l'instrument est jouable dans un
+// morceau ou s'il part en promenade. Papier millimétré et encre : un instrument
+// qui vient d'un article.
+// ---------------------------------------------------------------------------
+MachinePanel makeStochastic() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.stochastic";
+    panel.displayName = "Stochastic";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#E8E6DC";
+    panel.sectionColour = "#DAD7CB";
+    panel.textColour = "#232019";
+    panel.knobColour = "#2E2A22";
+    panel.gridColumns = 14;
+    panel.gridRows = 4;
+
+    PanelSection forme;
+    forme.title = "WAVEFORM";
+    forme.accentColour = "#2E2A22";
+    forme.column = 0; forme.row = 0; forme.columnSpan = 4; forme.rowSpan = 4;
+    forme.contentColumns = 1;
+    forme.controls = {
+        // SÉLECTEUR : un nombre de points est un entier. Un potentiomètre
+        // continu laisserait croire à un morphage, ce que cette machine ne fait
+        // pas -- elle ajoute ou retire des angles.
+        control("Breakpoints", "POINTS", S::Selector, 0, 0),
+        control("Tone", "TONE", S::Knob, 0, 1),
+    };
+
+    PanelSection divagation;
+    divagation.title = "WANDER";
+    divagation.accentColour = "#A63D2F";
+    divagation.column = 4; divagation.row = 0; divagation.columnSpan = 4; divagation.rowSpan = 4;
+    divagation.contentColumns = 2;
+    divagation.controls = {
+        control("Shape Wander", "SHAPE", S::LargeKnob, 0, 0, 1, 2),
+        control("Time Wander", "TIME", S::Knob, 1, 0),
+        control("Velocity to Wander", "TOUCH", S::Knob, 1, 1),
+    };
+
+    PanelSection verrou;
+    verrou.title = "PITCH";
+    verrou.accentColour = "#2F6EA6";
+    verrou.column = 8; verrou.row = 0; verrou.columnSpan = 2; verrou.rowSpan = 4;
+    verrou.contentColumns = 1;
+    verrou.controls = {
+        control("Pitch Lock", "LOCK", S::Knob, 0, 0),
+        control("Output Level", "LEVEL", S::Knob, 0, 1),
+    };
+
+    PanelSection env;
+    env.title = "ENVELOPE";
+    env.accentColour = "#2E2A22";
+    env.column = 10; env.row = 0; env.columnSpan = 4; env.rowSpan = 4;
+    env.controls = {
+        control("Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
+        control("Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
+        control("Sustain", "S", S::VerticalSlider, 2, 0, 1, 2),
+        control("Release", "R", S::VerticalSlider, 3, 0, 1, 2),
+    };
+
+    panel.sections = {forme, divagation, verrou, env};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
         makeJuno106(), makeJupiter8(), makeProphet(), makeMs20(), makeArpOdyssey(), makeDx7(), makeSampler(),
         makeEPiano(), makeObx(), makeSupersaw(), makeWavetable(), makePcmHybrid(), makeTonewheel(), makeGeneric(), makeString(),
         makePiano(), makeDrums(), makeWind(), makeMultisample(),
-        makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg()
+        makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic()
     };
     return all;
 }
