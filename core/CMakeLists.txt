@@ -35,6 +35,7 @@ if (VSM_BUILD_TESTS)
         tests/test_step_pattern.cpp
         tests/test_edit_history.cpp
         tests/test_clips.cpp
+        tests/test_project_history.cpp
         tests/test_transport.cpp
     )
     target_link_libraries(vsm_core_tests PRIVATE vsm_core)

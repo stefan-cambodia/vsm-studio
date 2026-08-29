@@ -59,6 +59,11 @@ public:
 
     void setActiveTrack(int trackIndex);
 
+    /// Prévenu AVANT chaque geste qui modifie la chaîne : c'est là que
+    /// l'application prend son instantané d'annulation. Le libellé nomme le
+    /// geste dans le menu Édition.
+    std::function<void(const juce::String& label)> onEditStarted;
+
     /// Publie la chaîne (immuable) de la piste au moteur.
     std::function<void(size_t trackIndex, std::shared_ptr<const Chain>)> onChainChanged;
 

@@ -1,6 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
-#include "vsm/sequencer/EditHistory.h"
+#include "vsm/sequencer/ProjectHistory.h"
 #include "vsm/sequencer/NoteEdit.h"
 #include "vsm/sequencer/Project.h"
 #include "vsm/sequencer/Quantizer.h"
@@ -41,6 +41,7 @@ public:
     void setProject(vsm::sequencer::Project* project);
     void setActiveTrackIndex(size_t trackIndex);
     vsm::sequencer::Track* activeTrack() const;
+    size_t activeTrackIndex() const { return activeTrackIndex_; }
     /// Le projet édité, pour ce qui n'appartient à aucune piste : les repères
     /// de la ligne de temps, que la règle dessine.
     vsm::sequencer::Project* project() const { return project_; }
@@ -125,10 +126,20 @@ public:
     /// une action, pas trois cents.
     void beginExternalEdit(const juce::String& label) { beginEdit(label); }
 
-    bool canUndo() const { return history_.canUndo(); }
-    bool canRedo() const { return history_.canRedo(); }
-    juce::String undoLabel() const { return juce::String(history_.undoLabel()); }
-    juce::String redoLabel() const { return juce::String(history_.redoLabel()); }
+    /// L'historique du PROJET, détenu par l'application et partagé avec tout
+    /// ce qui modifie le projet (mixeur, pistes, effets, repères). Le piano
+    /// roll n'a plus le sien : une annulation qui ne couvrirait que la piste
+    /// affichée devrait être vidée dès qu'on regarde ailleurs.
+    void setHistory(vsm::sequencer::ProjectHistory* history) { history_ = history; }
+    /// Appelé après un annuler/rétablir : le projet entier a pu changer
+    /// (pistes ajoutées ou supprimées, mixage, effets), et l'application doit
+    /// tout republier.
+    std::function<void()> onProjectRestored;
+
+    bool canUndo() const { return history_ && history_->canUndo(); }
+    bool canRedo() const { return history_ && history_->canRedo(); }
+    juce::String undoLabel() const { return history_ ? juce::String(history_->undoLabel()) : juce::String(); }
+    juce::String redoLabel() const { return history_ ? juce::String(history_->redoLabel()) : juce::String(); }
 
     // --- Sélection ---------------------------------------------------------
     void selectAll();
@@ -246,7 +257,7 @@ private:
 
     vsm::sequencer::NoteSelection selectedNoteIds_;
     std::vector<vsm::sequencer::Note> clipboard_;
-    vsm::sequencer::EditHistory history_;
+    vsm::sequencer::ProjectHistory* history_ = nullptr;
 
     DragMode dragMode_ = DragMode::None;
     uint64_t draggedNoteId_ = 0;

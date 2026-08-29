@@ -353,8 +353,12 @@ L'éditeur de notes couvre ce qu'on attend d'un séquenceur moderne :
 
 - **Outils** (touches 1-6) : sélection/déplacement, dessin, gomme (y compris
   en balayant), ciseaux, colle, muet.
-- **Annuler/rétablir** illimité jusqu'à 128 pas, chaque geste (y compris un
-  glissement continu) comptant pour une seule action.
+- **Annuler/rétablir** jusqu'à 128 pas, chaque geste (y compris un glissement
+  continu) comptant pour une seule action. L'annulation porte sur le **projet
+  entier** : elle défait aussi bien une note qu'un réglage de mixage, un effet
+  inséré, une piste ajoutée ou supprimée, un repère posé — et elle survit au
+  changement de piste, ce qui n'était pas le cas quand elle ne mémorisait que
+  les notes de la piste affichée.
 - **Édition musicale** : quantifier (force réglable, swing, début et/ou fin),
   humaniser, legato, retirer les chevauchements, couper/fusionner, rétrograder,
   miroir des hauteurs, durées x2 / ÷2 / = grille, transposer au demi-ton ou à

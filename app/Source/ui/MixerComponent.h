@@ -66,6 +66,12 @@ public:
     void setMeterLevel(float linearPeak) { meter_.setLevel(linearPeak); }
 
     std::function<void()> onMixChanged;
+    /// Prévenu AVANT qu'un geste ne modifie le mixage : c'est là que
+    /// l'application prend son instantané d'annulation. Séparé de
+    /// `onMixChanged`, qui arrive après et à chaque échantillon d'un glissé --
+    /// s'en servir empilerait trois cents pas d'annulation pour un seul
+    /// mouvement de fader.
+    std::function<void()> onMixEditStarted;
 
 private:
     vsm::sequencer::Track& track_;
@@ -135,6 +141,7 @@ public:
                       double masterLufs, float masterPeak);
 
     std::function<void()> onMixChanged;
+    std::function<void()> onMixEditStarted;
     std::function<void(vsm::audio::plugin::ParamId, float)> onMasterParam;
     std::function<void(bool)> onMasterEnable;
     std::function<float(vsm::audio::plugin::ParamId)> masterParamProvider;

@@ -52,7 +52,11 @@ PianoRollComponent::PianoRollComponent() {
 void PianoRollComponent::setProject(Project* project) {
     project_ = project;
     selectedNoteIds_.clear();
-    history_.clear(); // un historique de notes n'a aucun sens sur un autre projet
+    // L'HISTORIQUE N'EST PAS VIDÉ ICI, et c'est délibéré. `setProject` est
+    // rappelé à chaque republication -- y compris après un annuler --, si bien
+    // qu'y vider la pile effacerait l'annulation à l'instant même où on s'en
+    // sert. C'est l'application qui la vide, là où un VRAI document change :
+    // nouveau projet, ouverture d'un MIDI, ouverture d'un dossier de projet.
     notifyEditState();
     updateScrollBars();
     repaint();
@@ -62,7 +66,10 @@ void PianoRollComponent::setActiveTrackIndex(size_t trackIndex) {
     if (trackIndex != activeTrackIndex_) stopAudition();
     activeTrackIndex_ = trackIndex;
     selectedNoteIds_.clear();
-    history_.clear(); // les identifiants de notes d'une piste n'existent pas dans une autre
+    // L'HISTORIQUE N'EST PLUS VIDÉ ICI. Il portait sur les notes d'une seule
+    // piste, et restaurer celles de l'une dans l'autre n'aurait rien voulu
+    // dire ; il porte désormais sur le projet entier, et regarder une autre
+    // piste n'efface plus ce qu'on pouvait annuler.
     notifyEditState();
     updateScrollBars();
     repaint();
@@ -148,8 +155,8 @@ Note* PianoRollComponent::findNoteAt(juce::Point<float> pos, bool* nearRightEdge
 // ---------------------------------------------------------------------------
 
 void PianoRollComponent::beginEdit(const juce::String& label) {
-    if (Track* track = activeTrack())
-        history_.beginEdit(track->notes, label.toStdString());
+    if (project_ != nullptr && history_ != nullptr)
+        history_->beginEdit(*project_, label.toStdString());
 }
 
 void PianoRollComponent::notifyEdited() {
@@ -164,8 +171,10 @@ void PianoRollComponent::notifyEditState() {
 }
 
 void PianoRollComponent::undo() {
+    if (project_ == nullptr || history_ == nullptr || !history_->undo(*project_)) return;
+    if (onProjectRestored) onProjectRestored();
     Track* track = activeTrack();
-    if (!track || !history_.undo(track->notes)) return;
+    if (!track) { notifyEdited(); return; }
     // Une note annulée peut avoir disparu : la sélection ne doit pas garder de
     // références fantômes (elles rendraient les opérations suivantes muettes).
     NoteSelection stillValid;
@@ -176,8 +185,10 @@ void PianoRollComponent::undo() {
 }
 
 void PianoRollComponent::redo() {
+    if (project_ == nullptr || history_ == nullptr || !history_->redo(*project_)) return;
+    if (onProjectRestored) onProjectRestored();
     Track* track = activeTrack();
-    if (!track || !history_.redo(track->notes)) return;
+    if (!track) { notifyEdited(); return; }
     NoteSelection stillValid;
     for (const auto& n : track->notes)
         if (selectedNoteIds_.count(n.id) > 0) stillValid.insert(n.id);

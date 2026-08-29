@@ -433,7 +433,45 @@ fausse — c'est le principe des empreintes de machines, appliqué au projet.
 > fanion suffit à dire qu'il y a un repère là, un nom coupé à deux lettres ne
 > dit rien du tout.
 >
-> **Reste D1.5**, l'historique transactionnel et global.
+> **D1.5 EST FAITE À SON TOUR.** L'annulation porte désormais sur le PROJET :
+> elle défait une note, un fader, un effet inséré, une piste ajoutée ou
+> supprimée, un repère posé, un clip. Elle **survit au changement de piste**,
+> alors que l'ancienne devait être vidée à chaque fois — regarder une autre
+> piste effaçait tout ce qu'on pouvait annuler.
+>
+> **Une implémentation, deux portées.** `EditHistory` était déjà un historique
+> par instantanés ; il est devenu `SnapshotHistory<T>`, et `EditHistory` comme
+> `ProjectHistory` n'en sont que deux alias. Zéro code dupliqué, et les sept
+> tests d'origine passent sans une ligne changée. **Le type de l'instantané dit
+> ce que l'annulation couvre** : c'est toute la différence entre les deux.
+>
+> **Le coût est en mémoire, et il est chiffré.** Une `Note` pèse une trentaine
+> d'octets ; *Sky and Sand* reconstruit en compte ~9 600 sur quatre pistes, soit
+> quelques centaines de kilo-octets par instantané et quelques dizaines de
+> méga-octets à la profondeur maximale. C'est le prix d'une annulation à
+> laquelle on peut se fier, et il est assumé — l'alternative, un journal de
+> commandes inversibles, demanderait d'écrire et de tester une inverse correcte
+> pour chacune des vingt-et-quelques opérations d'édition, y compris les
+> composées.
+>
+> **Deux pièges tendus par le geste lui-même, et évités.** Un glissé de fader
+> émet son signal de changement à chaque échantillon de mouvement : s'en servir
+> pour l'instantané aurait empilé trois cents pas d'annulation pour un seul
+> mouvement. D'où un signal distinct, émis au DÉBUT du geste (`onMixEditStarted`,
+> `onEditStarted`), comme pour la lane de vélocité. Et `setProject` vidait
+> l'historique : or il est rappelé à chaque republication, **y compris après un
+> annuler** — la pile aurait été effacée à l'instant même où l'on s'en sert. La
+> remise à zéro est passée là où un vrai document change : nouveau projet,
+> ouverture d'un MIDI, ouverture d'un dossier.
+>
+> **Et une régression d'usage attrapée au passage** : la republication remettait
+> la vue sur la piste 0. Après un annuler, l'utilisateur se serait retrouvé au
+> début du morceau à chaque geste. La piste regardée est conservée, et n'est
+> ramenée à zéro que si elle n'existe plus.
+>
+> **LA PHASE D1 EST COMPLÈTE**, et son critère revérifié après D1.5 : les deux
+> projets rendent toujours des fichiers identiques, octet pour octet, à ceux du
+> binaire d'avant la session.
 
 ### Phase D2 — La piste audio
 

@@ -1,6 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include "vsm/sequencer/Project.h"
+#include "vsm/sequencer/ProjectHistory.h"
 #include "vsm/sequencer/RealtimeTransport.h"
 #include "audio/AudioEngine.h"
 #include "ui/TransportBarComponent.h"
@@ -139,7 +140,12 @@ private:
     void removeSelectedTrack();
     void exportMidiFile();
     void exportAudioFile();
-    void rebuildFromProject();
+    /// Republie tout ce qui dépend du projet. `stopPlayback` est faux après un
+    /// annuler/rétablir : l'utilisateur qui corrige une note pendant que ça
+    /// joue n'a aucune raison de voir la lecture s'arrêter.
+    void rebuildFromProject(bool stopPlayback = true);
+    /// Prend l'instantané d'annulation du projet, avec le nom du geste.
+    void beginProjectEdit(const juce::String& label);
     void refreshTransportSchedule();
     void updateSynthRackForSelection();
     void togglePanel(PanelWindow& window);
@@ -151,6 +157,10 @@ private:
     VsmLookAndFeel lookAndFeel_;
 
     vsm::sequencer::Project project_;
+    /// L'annulation du DAW : elle porte sur le PROJET, donc sur tout ce que
+    /// l'utilisateur peut modifier -- notes, mixage, effets, pistes, repères,
+    /// clips -- et non sur les seules notes de la piste affichée.
+    vsm::sequencer::ProjectHistory history_;
     size_t maxAssignedTracks_ = 0; // plus haut nombre de pistes déjà assignées au ProcessGraph (pour nettoyer les slots après suppression)
     vsm::sequencer::RealtimeTransport transport_;
     AudioEngine audioEngine_;

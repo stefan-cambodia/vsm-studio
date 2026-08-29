@@ -25,6 +25,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index)
     volume_.setSkewFactorFromMidPoint(-12.0);
     volume_.setValue(gainToDb(track_.volume), juce::dontSendNotification);
     volume_.setTextValueSuffix(" dB");
+    volume_.onDragStart = [this] { if (onMixEditStarted) onMixEditStarted(); };
     volume_.onValueChange = [this] {
         track_.volume = dbToGain(static_cast<float>(volume_.getValue()));
         if (onMixChanged) onMixChanged();
@@ -35,6 +36,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index)
     pan_.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
     pan_.setRange(-1.0, 1.0, 0.01);
     pan_.setValue(track_.pan, juce::dontSendNotification);
+    pan_.onDragStart = [this] { if (onMixEditStarted) onMixEditStarted(); };
     pan_.onValueChange = [this] {
         track_.pan = static_cast<float>(pan_.getValue());
         if (onMixChanged) onMixChanged();
@@ -46,6 +48,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index)
         s.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
         s.setRange(0.0, 1.0, 0.01);
         s.setValue(track_.sendLevels[static_cast<size_t>(bus)], juce::dontSendNotification);
+        s.onDragStart = [this] { if (onMixEditStarted) onMixEditStarted(); };
         s.onValueChange = [this, &s, bus] {
             track_.sendLevels[static_cast<size_t>(bus)] = static_cast<float>(s.getValue());
             if (onMixChanged) onMixChanged();
@@ -222,6 +225,7 @@ void MixerComponent::setProject(vsm::sequencer::Project* project) {
         for (size_t i = 0; i < project_->tracks.size(); ++i) {
             auto* strip = new ChannelStrip(project_->tracks[i], i);
             strip->onMixChanged = [this] { if (onMixChanged) onMixChanged(); };
+            strip->onMixEditStarted = [this] { if (onMixEditStarted) onMixEditStarted(); };
             stripContainer_.addAndMakeVisible(strip);
             strips_.add(strip);
         }

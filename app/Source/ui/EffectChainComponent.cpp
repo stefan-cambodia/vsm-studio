@@ -31,6 +31,7 @@ EffectChainComponent::EffectChainComponent() {
             addBox_.setSelectedId(0, juce::dontSendNotification); return;
         }
         const auto& info = EffectFactory::available()[static_cast<size_t>(idx)];
+        if (onEditStarted) onEditStarted("Ajouter un effet");
         auto fx = EffectFactory::create(info.id);
         if (fx) {
             fx->prepare(sampleRate_, blockSize_);     // prepare AVANT publication (thread UI)
@@ -156,6 +157,7 @@ void EffectChainComponent::rebuildEffectList() {
             Chain* c = activeChain();
             auto* d = activeDescription();
             if (c && d && index > 0 && d->size() == c->size()) {
+                if (onEditStarted) onEditStarted("Deplacer un effet");
                 std::swap((*c)[static_cast<size_t>(index)], (*c)[static_cast<size_t>(index - 1)]);
                 std::swap((*d)[static_cast<size_t>(index)], (*d)[static_cast<size_t>(index - 1)]);
                 selectedEffect_ = index - 1; publishActiveChain(); rebuildEffectList(); rebuildParamControls(); }
@@ -167,6 +169,7 @@ void EffectChainComponent::rebuildEffectList() {
             Chain* c = activeChain();
             auto* d = activeDescription();
             if (c && d && index + 1 < static_cast<int>(c->size()) && d->size() == c->size()) {
+                if (onEditStarted) onEditStarted("Deplacer un effet");
                 std::swap((*c)[static_cast<size_t>(index)], (*c)[static_cast<size_t>(index + 1)]);
                 std::swap((*d)[static_cast<size_t>(index)], (*d)[static_cast<size_t>(index + 1)]);
                 selectedEffect_ = index + 1; publishActiveChain(); rebuildEffectList(); rebuildParamControls(); }
@@ -179,6 +182,7 @@ void EffectChainComponent::rebuildEffectList() {
             Chain* c = activeChain();
             auto* d = activeDescription();
             if (c && d && index < static_cast<int>(c->size()) && d->size() == c->size()) {
+                if (onEditStarted) onEditStarted("Retirer un effet");
                 c->erase(c->begin() + index);
                 d->erase(d->begin() + index);
                 selectedEffect_ = -1;
@@ -215,6 +219,7 @@ void EffectChainComponent::rebuildParamControls() {
         const auto pid = info.id;
         juce::Slider* raw = pc.slider.get();
         const int slot = selectedEffect_;
+        raw->onDragStart = [this] { if (onEditStarted) onEditStarted("Reglage d'effet"); };
         raw->onValueChange = [this, fx, raw, pid, slot] {
             fx->setParameter(pid, static_cast<float>(raw->getValue()));
             // ET dans la piste, tout de suite : un réglage qui ne vit que dans

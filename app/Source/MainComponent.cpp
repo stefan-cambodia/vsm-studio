@@ -87,6 +87,7 @@ MainComponent::MainComponent()
     mixer_.masterParamProvider = [this](vsm::audio::plugin::ParamId id) {
         return audioEngine_.processGraph().masterBus().getParameter(id);
     };
+    mixer_.onMixEditStarted = [this] { beginProjectEdit("Mixage"); };
     mixer_.onMixChanged = [this] { mixDirty_ = true; };
     mixer_.onMasterParam = [this](vsm::audio::plugin::ParamId id, float v) {
         audioEngine_.processGraph().masterBus().setParameter(id, v);
@@ -133,6 +134,7 @@ MainComponent::MainComponent()
 
     // Éditeur de chaîne d'effets d'insert (dernière pièce UI de la Phase 2).
     // La chaîne est DÉCRITE dans la piste ; ce composant n'en garde rien.
+    effectChain_.onEditStarted = [this](const juce::String& label) { beginProjectEdit(label); };
     effectChain_.onChainChanged =
         [this](size_t track, std::shared_ptr<const EffectChainComponent::Chain> chain) {
             audioEngine_.processGraph().setTrackEffectChain(track, chain);
@@ -171,6 +173,7 @@ MainComponent::MainComponent()
                 fenetre->exitModalState(resultat);
                 fenetre->setVisible(false);
                 if (resultat != 1 || nom.isEmpty()) return;
+                beginProjectEdit("Poser un repere");
                 project_.markers.push_back({tick, nom.toStdString()});
                 std::sort(project_.markers.begin(), project_.markers.end(),
                            [](const vsm::sequencer::Marker& a, const vsm::sequencer::Marker& b) {
@@ -181,10 +184,13 @@ MainComponent::MainComponent()
     };
     pianoRollPanel_.onMarkerRemoved = [this](size_t index) {
         if (index >= project_.markers.size()) return;
+        beginProjectEdit("Retirer un repere");
         project_.markers.erase(project_.markers.begin() + static_cast<long>(index));
         pianoRollPanel_.refresh();
     };
 
+    pianoRoll_.setHistory(&history_);
+    pianoRoll_.onProjectRestored = [this] { rebuildFromProject(false); };
     pianoRoll_.setProject(&project_);
     pianoRoll_.onNotesEdited = [this] { refreshTransportSchedule(); };
     synthRack_.onPatternEdited = [this] {
@@ -632,6 +638,7 @@ void MainComponent::openMidiFile() {
 
         try {
             ParsedFile parsed = MidiFileParser::parseFile(file.getFullPathName().toStdString());
+            history_.clear();
             project_ = Project::fromParsedFile(parsed);
             project_.title = file.getFileNameWithoutExtension().toStdString();
             rebuildFromProject();
@@ -663,6 +670,7 @@ void MainComponent::openProjectBundle() {
             return;
         }
 
+        history_.clear();
         project_ = loaded.bundle.project;
         if (project_.title.empty())
             project_.title = folder.getFileName().toStdString();
@@ -997,12 +1005,14 @@ void MainComponent::applyAudioConfig() {
 }
 
 void MainComponent::newProject() {
+    history_.clear();   // l'annulation d'un autre morceau n'a aucun sens ici
     project_ = Project{};
     project_.title = "Nouveau projet";
     rebuildFromProject();
 }
 
 void MainComponent::addTrack() {
+    beginProjectEdit("Ajouter une piste");
     // Palette de couleurs cyclique pour distinguer visuellement les pistes.
     static const uint32_t kColors[] = {
         0xffE3A24Du, 0xff6B9BFFu, 0xff8ED081u, 0xffD08BC8u, 0xffE0C15Au, 0xff7FD0C8u
@@ -1025,6 +1035,10 @@ void MainComponent::removeSelectedTrack() {
     if (project_.tracks.empty()) return;
     size_t idx = trackList_.selectedTrackIndex();
     if (idx >= project_.tracks.size()) return;
+    // Après l'instant où l'on sait qu'il y a bien quelque chose à supprimer :
+    // un instantané pris pour un geste sans effet ajouterait un pas
+    // d'annulation qui ne défait rien.
+    beginProjectEdit("Supprimer une piste");
 
     project_.tracks.erase(project_.tracks.begin() + static_cast<std::ptrdiff_t>(idx));
     rebuildFromProject();
@@ -1054,16 +1068,31 @@ void MainComponent::exportMidiFile() {
     });
 }
 
-void MainComponent::rebuildFromProject() {
-    transport_.stop();
-    audioEngine_.processGraph().setPlaying(false);
-    audioWasPlaying_ = false;
+void MainComponent::beginProjectEdit(const juce::String& label) {
+    history_.beginEdit(project_, label.toStdString());
+}
 
+void MainComponent::rebuildFromProject(bool stopPlayback) {
+    if (stopPlayback) {
+        transport_.stop();
+        audioEngine_.processGraph().setPlaying(false);
+        audioWasPlaying_ = false;
+    }
+
+    // LA PISTE REGARDÉE EST CONSERVÉE. Cette fonction est rappelée à chaque
+    // republication -- après un annuler, un ajout d'effet, un changement de
+    // mixage --, et y remettre la piste 0 renverrait l'utilisateur au début du
+    // morceau à chaque geste. Elle n'est ramenée à zéro que si la piste qu'il
+    // regardait n'existe plus.
+    const size_t regardee = project_.tracks.empty()
+                                ? 0
+                                : std::min(pianoRoll_.activeTrackIndex(), project_.tracks.size() - 1);
     trackList_.loadProject(project_);
     mixer_.setProject(&project_);
     automation_.setProject(&project_);
     pianoRoll_.setProject(&project_);
-    pianoRoll_.setActiveTrackIndex(0);
+    pianoRoll_.setActiveTrackIndex(regardee);
+    trackList_.selectTrackIndex(regardee);
     transportBar_.setBpm(project_.tempoMap.bpmAt(0));
     transportBar_.setTimeSignature(project_.timeSignatureMap.numeratorAt(0),
                                     static_cast<int>(project_.timeSignatureMap.denominatorAt(0)));
