@@ -1,4 +1,5 @@
 #include "ClapPluginHost.h"
+#include "vsm/audio/plugin/PluginRegistry.h"
 
 #include <clap/clap.h>
 
@@ -483,6 +484,51 @@ bool loadClapState(vsm::audio::plugin::ISynthPlugin& instrument,
         return false;
     }
     return true;
+}
+
+// --- D7.1 : branchement dans le registre de machines ------------------------
+
+namespace {
+constexpr const char* kClapPrefix = "clap:";
+}
+
+std::string clapInstrumentId(const std::string& clapFilePath, const std::string& pluginId) {
+    return std::string(kClapPrefix) + clapFilePath + "#" + pluginId;
+}
+
+bool parseClapInstrumentId(const std::string& instrumentId, std::string& outFilePath,
+                            std::string& outPluginId) {
+    const std::string prefixe = kClapPrefix;
+    if (instrumentId.rfind(prefixe, 0) != 0) return false;
+    const std::string reste = instrumentId.substr(prefixe.size());
+    // LE SÉPARATEUR SE CHERCHE PAR LA FIN : un chemin de fichier peut contenir
+    // un « # », un identifiant de plugin CLAP est un nom pointé qui n'en
+    // contient pas. Chercher par le début couperait le chemin au mauvais
+    // endroit sur la machine de quelqu'un d'autre.
+    const size_t diese = reste.rfind('#');
+    if (diese == std::string::npos) {
+        outFilePath = reste;
+        outPluginId.clear();
+        return !outFilePath.empty();
+    }
+    outFilePath = reste.substr(0, diese);
+    outPluginId = reste.substr(diese + 1);
+    return !outFilePath.empty();
+}
+
+void installClapResolver() {
+    vsm::audio::plugin::PluginRegistry::instance().setExternalResolver(
+        [](const std::string& id) -> vsm::audio::plugin::SynthPluginPtr {
+            std::string chemin, pluginId;
+            if (!parseClapInstrumentId(id, chemin, pluginId)) return nullptr;
+            // L'ERREUR EST AVALÉE ICI, et une seule fois : le registre ne rend
+            // qu'un pointeur, et l'appelant a déjà tout ce qu'il faut pour
+            // dire « instrument absent » sans le remplacer. Faire remonter le
+            // détail obligerait à changer la signature que trente-quatre
+            // machines partagent, pour un cas sur trente-cinq.
+            std::string erreur;
+            return createClapInstrument(chemin, pluginId, erreur);
+        });
 }
 
 } // namespace vsm::clap

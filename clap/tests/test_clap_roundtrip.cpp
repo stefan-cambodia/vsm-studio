@@ -316,3 +316,66 @@ VSM_TEST(a_state_that_is_not_a_valid_preset_is_refused_not_half_applied) {
     VSM_ASSERT(!loadClapState(*viaClap, "{ ceci n'est pas du JSON", error));
     VSM_ASSERT(!error.empty());
 }
+
+// --- D7.1 : l'hôte est branché, un plugin tiers se charge sur une piste -----
+//
+// L'hôte existait, testé, et n'était appelé de nulle part. Le brancher veut
+// dire une chose précise et vérifiable : qu'un identifiant `clap:` demandé au
+// REGISTRE DE MACHINES rende un instrument. Tout le reste du projet -- le
+// graphe, le format de projet, le rendu hors ligne -- ne parle qu'à ce
+// registre, et n'a donc pas une ligne à changer.
+
+VSM_TEST(an_instrument_id_survives_a_round_trip_through_its_text_form) {
+    const std::string id = clapInstrumentId("/opt/plug ins/ma#chine.clap", "com.exemple.synthe");
+    std::string chemin, plugin;
+    VSM_ASSERT(parseClapInstrumentId(id, chemin, plugin));
+    // Le séparateur se cherche PAR LA FIN : un chemin peut contenir un « # ».
+    VSM_ASSERT_EQ(chemin, std::string("/opt/plug ins/ma#chine.clap"));
+    VSM_ASSERT_EQ(plugin, std::string("com.exemple.synthe"));
+}
+
+VSM_TEST(a_native_machine_id_is_not_mistaken_for_a_clap_one) {
+    std::string chemin, plugin;
+    VSM_ASSERT(!parseClapInstrumentId("vsm.tb303", chemin, plugin));
+    VSM_ASSERT(!parseClapInstrumentId("", chemin, plugin));
+}
+
+VSM_TEST(the_registry_loads_a_clap_file_once_the_resolver_is_installed) {
+    installClapResolver();
+    auto& registre = vsm::audio::plugin::PluginRegistry::instance();
+
+    std::string erreur;
+    const auto trouves = scanClapFile(adapterPath(), erreur);
+    VSM_ASSERT(!trouves.empty());
+
+    const std::string id = clapInstrumentId(adapterPath(), trouves[0].id);
+    // LE REGISTRE RÉPOND FAUX À `isRegistered` -- savoir si un plugin tiers est
+    // là demande d'ouvrir un fichier, ce que cette question ne doit pas faire.
+    VSM_ASSERT(!registre.isRegistered(id));
+
+    const auto instrument = registre.create(id);
+    VSM_ASSERT(instrument != nullptr);
+    VSM_ASSERT(instrument->machineName() != nullptr);
+
+    // ET IL JOUE : charger n'est pas sonner, et c'est sonner qui est demandé.
+    instrument->initialize(48000.0, 256);
+    std::vector<float> gauche(256, 0.0f), droite(256, 0.0f);
+    const MidiNoteEvent depart = noteOn(0, 60, 100);
+    instrument->process(&depart, 1, gauche.data(), droite.data(), 256);
+    float crete = 0.0f;
+    for (int i = 0; i < 256; ++i) crete = std::max(crete, std::abs(gauche[i]));
+    for (int passe = 0; passe < 8 && crete <= 0.0f; ++passe) {
+        instrument->process(nullptr, 0, gauche.data(), droite.data(), 256);
+        for (int i = 0; i < 256; ++i) crete = std::max(crete, std::abs(gauche[i]));
+    }
+    VSM_ASSERT(crete > 0.0f);
+}
+
+VSM_TEST(a_missing_clap_file_is_reported_absent_and_never_substituted) {
+    // LE CRITÈRE DE LA PHASE D7, tenu dès la première étape : un plugin
+    // introuvable ne devient pas une autre machine. Rendre un instrument de
+    // remplacement produirait un morceau qui joue autre chose, sans le dire.
+    installClapResolver();
+    auto& registre = vsm::audio::plugin::PluginRegistry::instance();
+    VSM_ASSERT(registre.create(clapInstrumentId("/nulle/part/absent.clap", "quoi")) == nullptr);
+}

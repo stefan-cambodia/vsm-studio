@@ -108,6 +108,7 @@ private:
         kMenuTrackRemove,
         kMenuTrackFreeze,
         kMenuTrackBounce,
+        kMenuTrackClapPlugin,
         kMenuRecordCountInNone,
         kMenuRecordCountInOne,
         kMenuRecordCountInTwo,
@@ -291,6 +292,9 @@ private:
     /// Le dossier `gel/` du projet, où vont les rendus de pistes gelées.
     juce::String frozenPathFor(size_t trackIndex) const;
     void exportMidiFile();
+    /// D7.1 : charger un plugin CLAP tiers sur la piste sélectionnée.
+    void loadClapPluginOnSelectedTrack();
+
     void exportAudioFile();
     /// Un WAV par piste (D6.2).
     void exportStems();

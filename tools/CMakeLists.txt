@@ -4,6 +4,17 @@
 add_executable(vsm-render vsm_render_main.cpp)
 target_link_libraries(vsm-render PRIVATE vsm_interchange)
 
+# D7.1 : `vsm-render` accepte les plugins tiers quand la couche CLAP est
+# compilée. SANS ELLE IL SE COMPILE ET FONCTIONNE À L'IDENTIQUE -- un projet qui
+# porte un plugin CLAP signale simplement l'instrument absent, comme pour toute
+# machine introuvable. Le rendu de l'application et celui de la ligne de commande
+# doivent accepter les mêmes projets ; sans cela, exporter depuis l'un et
+# l'autre ne donnerait pas le même fichier.
+if (TARGET vsm_clap_host)
+    target_link_libraries(vsm-render PRIVATE vsm_clap_host)
+    target_compile_definitions(vsm-render PRIVATE VSM_WITH_CLAP=1)
+endif()
+
 # `vsm-sf2` convertit une banque SoundFont en profil pour vsm.multisample. Outil
 # d'INSTALLATION, appelé une fois : le DAW, lui, ne charge jamais qu'un profil.
 add_executable(vsm-sf2 vsm_sf2_main.cpp)

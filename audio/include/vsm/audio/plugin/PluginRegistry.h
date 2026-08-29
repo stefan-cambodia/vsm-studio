@@ -8,6 +8,8 @@
 namespace vsm::audio::plugin {
 
 using SynthPluginFactory = std::function<SynthPluginPtr()>;
+/// Fabrique une machine d'après un identifiant qu'elle est seule à savoir lire.
+using SynthPluginFactoryById = std::function<SynthPluginPtr(const std::string&)>;
 
 /// Registre global des machines disponibles. Chaque plugin s'enregistre
 /// lui-même via VSM_REGISTER_SYNTH_PLUGIN (voir plus bas) : ajouter le
@@ -25,12 +27,37 @@ public:
         entries_[id] = Entry{displayName, std::move(factory)};
     }
 
-    SynthPluginPtr create(const std::string& id) const {
-        auto it = entries_.find(id);
-        if (it == entries_.end()) return nullptr;
-        return it->second.factory();
+    /// LES MACHINES QU'ON N'A PAS ÉCRITES (D7.1). Un plugin tiers ne peut pas
+    /// s'auto-enregistrer avant `main` : il vit dans un fichier que
+    /// l'utilisateur désigne en cours de route. Le registre accepte donc UN
+    /// résolveur, appelé quand l'identifiant demandé n'est pas connu.
+    ///
+    /// POURQUOI UN CROCHET PLUTÔT QU'UNE DÉPENDANCE. `vsm_audio` ne doit rien
+    /// savoir de CLAP -- c'est `clap/` qui dépend de `audio/`, jamais
+    /// l'inverse, et le SDK CLAP est facultatif. Le crochet inverse la
+    /// dépendance : la couche CLAP se pose elle-même ici quand elle est
+    /// présente, et tout le reste du moteur continue de ne parler que
+    /// d'identifiants.
+    ///
+    /// CONSÉQUENCE VOULUE : `ProcessGraph`, le rendu hors ligne et le format de
+    /// projet n'ont pas une ligne à changer pour accepter des instruments
+    /// tiers.
+    void setExternalResolver(SynthPluginFactoryById resolver) {
+        externalResolver_ = std::move(resolver);
     }
 
+    SynthPluginPtr create(const std::string& id) const {
+        auto it = entries_.find(id);
+        if (it != entries_.end()) return it->second.factory();
+        if (externalResolver_) return externalResolver_(id);
+        return nullptr;
+    }
+
+    /// Vrai pour une machine du parc. UN PLUGIN TIERS RÉPOND FAUX ICI, et
+    /// c'est délibéré : savoir s'il est là demande d'ouvrir un fichier, ce que
+    /// cette question -- posée partout, y compris dans des boucles d'interface
+    /// -- ne doit pas faire. Ce qui décide reste `create()`, dont l'échec est
+    /// déjà signalé et jamais substitué.
     bool isRegistered(const std::string& id) const { return entries_.count(id) > 0; }
 
     std::vector<std::pair<std::string, std::string>> listAvailable() const {
@@ -44,6 +71,7 @@ public:
 private:
     struct Entry { std::string displayName; SynthPluginFactory factory; };
     std::unordered_map<std::string, Entry> entries_;
+    SynthPluginFactoryById externalResolver_;
 };
 
 } // namespace vsm::audio::plugin

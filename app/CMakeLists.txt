@@ -85,6 +85,17 @@ target_link_libraries(VintageSynthMidiStudio
         juce::juce_recommended_warning_flags
 )
 
+# D7.1 : L'HÔTE CLAP EST BRANCHÉ QUAND IL EXISTE. Sans lui, l'application se
+# compile et fonctionne à l'identique -- l'entrée de menu n'apparaît simplement
+# pas, plutôt que d'apparaître grisée pour une raison qu'on ne saurait pas
+# expliquer. Le SDK CLAP reste facultatif, et `audio/` continue de ne rien en
+# savoir : c'est `installClapResolver()` qui se pose dans le registre, jamais le
+# registre qui va chercher CLAP.
+if (TARGET vsm_clap_host)
+    target_link_libraries(VintageSynthMidiStudio PRIVATE vsm_clap_host)
+    target_compile_definitions(VintageSynthMidiStudio PRIVATE VSM_WITH_CLAP=1)
+endif()
+
 juce_generate_juce_header(VintageSynthMidiStudio)
 
 # --- Outil de prévisualisation des façades (rendu PNG hors écran) ----------

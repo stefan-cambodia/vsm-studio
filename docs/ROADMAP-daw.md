@@ -1733,7 +1733,7 @@ L'hôte CLAP existe (`clap/host/`). Le marché, lui, est en VST3.
 
 | Étape | Contenu | Terminé quand |
 |---|---|---|
-| D7.1 | Lier l'hôte CLAP à l'application — il est écrit, testé, et non branché | un `.clap` tiers se charge sur une piste |
+| D7.1 | Lier l'hôte CLAP à l'application — il est écrit, testé, et non branché | un `.clap` tiers se charge sur une piste — **fait** |
 | D7.2 | Hôte VST3 pour les instruments, présenté comme `ISynthPlugin` | un instrument tiers joue et se sauvegarde dans le projet |
 | D7.3 | **Entrées audio dans l'hôte** pour héberger des effets (CLAP comme VST3) | insérables au même titre que les natifs |
 | D7.4 | Interface native du plugin dans une fenêtre ; transport transmis au plugin | affichée, redimensionnable, fermable sans perte d'état ; un delay synchronisé au tempo suit le tempo |
@@ -1743,6 +1743,48 @@ L'hôte CLAP existe (`clap/host/`). Le marché, lui, est en VST3.
 l'identique, et son absence est **signalée sans être substituée** — exactement
 la règle déjà tenue pour les instruments VSM manquants (P4/P7 de
 `ROADMAP-interop.md`).
+
+> **D7.1 EST FAITE (30/08/2026). « BRANCHER » VEUT DIRE UNE CHOSE PRÉCISE : QUE
+> LE REGISTRE DE MACHINES SACHE RÉPONDRE.** Tout le reste du projet — le graphe,
+> le format de projet, le rendu hors ligne, le Synth Rack — ne parle qu'à
+> `PluginRegistry::create(id)`. Faire répondre le registre suffit donc, et
+> aucune de ces couches n'a une ligne à changer pour accepter des instruments
+> qu'on n'a pas écrits. C'est la garantie « ajouter une machine ne touche ni le
+> moteur ni l'interface » tenue jusqu'au bout.
+>
+> **UN CROCHET, PAS UNE DÉPENDANCE.** `audio/` ne doit rien savoir de CLAP : la
+> dépendance va dans l'autre sens, et le SDK CLAP est facultatif. Le registre
+> accepte donc **un résolveur**, appelé quand l'identifiant demandé ne fait pas
+> partie du parc ; c'est `installClapResolver()` qui se pose dedans, jamais le
+> registre qui va chercher CLAP. Sans la couche CLAP compilée, l'application et
+> `vsm-render` se construisent et fonctionnent à l'identique — l'entrée de menu
+> n'apparaît simplement pas, plutôt que d'apparaître grisée pour une raison
+> qu'on ne saurait pas expliquer.
+>
+> **UN PLUGIN TIERS EST UN IDENTIFIANT COMME UN AUTRE** :
+> `clap:<chemin>#<identifiant>`, écrit tel quel dans `project.json` à côté de
+> `vsm.tb303`. Le séparateur se cherche **par la fin** : un chemin de fichier
+> peut contenir un « # », un identifiant CLAP est un nom pointé qui n'en
+> contient pas — chercher par le début couperait le chemin au mauvais endroit
+> sur la machine de quelqu'un d'autre.
+>
+> **LE CHEMIN EST ABSOLU, ET C'EST ASSUMÉ.** Un plugin n'est pas un média du
+> morceau : c'est un logiciel installé sur la machine. Le copier dans le dossier
+> de projet (D6.4) serait le redistribuer, ce qu'aucune licence ne permet en
+> général. Un projet emporté ailleurs signale donc le plugin manquant **sans le
+> remplacer** — le critère de la phase, tenu dès la première étape et gardé par
+> un test.
+>
+> **`isRegistered` RÉPOND FAUX POUR UN PLUGIN TIERS**, délibérément : savoir
+> s'il est là demande d'ouvrir un fichier, et cette question est posée partout,
+> y compris dans des boucles d'interface. Ce qui décide reste `create()`, dont
+> l'échec est déjà signalé et jamais substitué.
+>
+> **`vsm-render` REÇOIT LE MÊME BRANCHEMENT**, en une ligne. L'application et la
+> ligne de commande doivent accepter les mêmes projets ; sans cela, exporter
+> depuis l'une et depuis l'autre ne donnerait pas le même fichier — ce que le
+> critère de la phase D6 interdit.
+
 
 ### Phase D8 — Tenir la charge
 

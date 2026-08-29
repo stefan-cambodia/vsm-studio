@@ -53,14 +53,17 @@ add_subdirectory(audio)
 # connaître JSON ; le moteur continue de l'ignorer complètement.
 add_subdirectory(panels)
 add_subdirectory(interchange)
-add_subdirectory(tools)
-
 # --- clap : adaptateur et hôte CLAP (Phase 7, P5-P6) ---------------------
 # OFF par défaut : seule partie du projet qui exige un téléchargement (le SDK
 # CLAP). Tout le reste doit rester compilable et testable hors ligne.
 if (VSM_BUILD_CLAP)
     add_subdirectory(clap)
 endif()
+
+# AVANT `tools` et `app` (D7.1) : tous deux lient l'hôte CLAP quand il existe,
+# et CMake exige que la cible soit déjà définie.
+add_subdirectory(tools)
+
 
 # --- app : coquille JUCE (Piano Roll, Transport bar, Track list) --------
 # Désactivée par défaut : nécessite le SDK JUCE (récupéré via

@@ -14,6 +14,9 @@
 #include "vsm/interchange/ParameterDescriptor.h"
 #include "vsm/interchange/EffectDescription.h"
 #include "vsm/interchange/OfflineReconstruction.h"
+#if VSM_WITH_CLAP
+#include "ClapPluginHost.h"
+#endif
 #include "vsm/interchange/ProjectBundle.h"
 #include "vsm/interchange/ReconstructionReport.h"
 #include "vsm/interchange/SynthPreset.h"
@@ -35,6 +38,14 @@ MainComponent::MainComponent()
       synthRackWindow_("Synth Rack", synthRack_),
       mixerWindow_("Mixer", bottomTabs_),
       arrangementWindow_("Arrangement", arrangement_) {
+#if VSM_WITH_CLAP
+    // D7.1 : LES IDENTIFIANTS `clap:` DEVIENNENT CHARGEABLES, ici et une seule
+    // fois. Tout le reste -- le graphe, le format de projet, le rendu hors
+    // ligne -- continue de ne parler que d'identifiants d'instrument, sans
+    // savoir que certains désignent des machines qu'on n'a pas écrites.
+    vsm::clap::installClapResolver();
+#endif
+
     juce::LookAndFeel::setDefaultLookAndFeel(&lookAndFeel_);
 
     // Piste de démonstration visible dès le lancement (section 4 du cahier
@@ -685,6 +696,12 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                               gelable);
                 menu.addItem(kMenuTrackBounce, u8"Reporter la piste en audio (définitif)",
                               gelable);
+#if VSM_WITH_CLAP
+                menu.addSeparator();
+                menu.addItem(kMenuTrackClapPlugin, u8"Charger un plugin CLAP sur la piste...",
+                              piste < project_.tracks.size()
+                                  && project_.tracks[piste].kind == Track::Kind::Midi);
+#endif
             }
             break;
         case 3:
@@ -936,6 +953,9 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuTrackAddGroup: addTrack(Track::Kind::Group); break;
         case kMenuTrackRemove:   removeSelectedTrack(); break;
         case kMenuTrackFreeze:   toggleFreezeSelectedTrack(); break;
+#if VSM_WITH_CLAP
+        case kMenuTrackClapPlugin: loadClapPluginOnSelectedTrack(); break;
+#endif
         case kMenuTrackBounce:   bounceSelectedTrack(); break;
         case kMenuViewTracks:    togglePanel(trackListWindow_); break;
         case kMenuViewPianoRoll: togglePanel(pianoRollWindow_); break;
@@ -1046,6 +1066,84 @@ void MainComponent::showAboutDialog() {
         juce::AlertWindow::InfoIcon, "Vintage Synth MIDI Studio",
         "Sequenceur MIDI + rack de synthetiseurs vintage virtuels.\n\n"
         "Version 0.1.0 -- Phases 3 et 4 faites (instruments de reference + extension).");
+}
+
+void MainComponent::loadClapPluginOnSelectedTrack() {
+#if VSM_WITH_CLAP
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+
+    auto chooser = std::make_shared<juce::FileChooser>(
+        u8"Choisir un plugin CLAP...", juce::File("/usr/lib/clap"), "*.clap");
+    chooser->launchAsync(juce::FileBrowserComponent::openMode
+                             | juce::FileBrowserComponent::canSelectFiles
+                             | juce::FileBrowserComponent::canSelectDirectories,
+                          [this, chooser, piste](const juce::FileChooser& fc) {
+        const juce::File fichier = fc.getResult();
+        if (fichier == juce::File()) return;
+
+        // ON REGARDE CE QU'IL Y A DEDANS AVANT DE L'INSTANCIER. Un fichier
+        // .clap peut contenir plusieurs plugins, et un fichier cassé ne doit
+        // jamais faire tomber l'application qui l'ouvre -- c'est déjà la
+        // promesse de `scanClapFile`.
+        std::string erreur;
+        const auto trouves = vsm::clap::scanClapFile(fichier.getFullPathName().toStdString(),
+                                                      erreur);
+        if (trouves.empty()) {
+            juce::AlertWindow::showMessageBoxAsync(
+                juce::AlertWindow::WarningIcon, u8"Plugin CLAP illisible",
+                juce::String(u8"Ce fichier n'a livré aucun plugin.\n\n")
+                    + juce::String(erreur));
+            return;
+        }
+
+        auto poser = [this, piste, fichier](const std::string& pluginId,
+                                             const std::string& nomAffiche) {
+            beginProjectEdit(u8"Charger un plugin CLAP");
+            auto& cible = project_.tracks[piste];
+            cible.instrumentId = vsm::clap::clapInstrumentId(
+                fichier.getFullPathName().toStdString(), pluginId);
+            // LE PRESET DE L'ANCIENNE MACHINE NE SUIT PAS : ses identifiants
+            // sémantiques ne veulent rien dire pour celle-ci, et les appliquer
+            // en silence donnerait un son que personne n'a réglé.
+            cible.presetId.clear();
+            rebuildFromProject();
+            juce::AlertWindow::showMessageBoxAsync(
+                juce::AlertWindow::InfoIcon, u8"Plugin charge",
+                juce::String(nomAffiche) + juce::String(u8" joue maintenant sur la piste ")
+                    + juce::String(static_cast<int>(piste) + 1) + ".");
+        };
+
+        if (trouves.size() == 1) {
+            poser(trouves[0].id, trouves[0].name);
+            return;
+        }
+
+        // PLUSIEURS PLUGINS DANS LE MÊME FICHIER : on demande lequel plutôt que
+        // de prendre le premier. Prendre le premier chargerait une machine que
+        // l'utilisateur n'a pas choisie, sans qu'il puisse s'en apercevoir
+        // autrement qu'à l'oreille.
+        auto fenetre = std::make_shared<juce::AlertWindow>(
+            u8"Plusieurs plugins dans ce fichier", u8"Lequel charger ?",
+            juce::AlertWindow::NoIcon);
+        juce::StringArray noms;
+        for (const auto& info : trouves)
+            noms.add(juce::String(info.name) + " -- " + juce::String(info.vendor));
+        fenetre->addComboBox("plugin", noms, u8"Plugin");
+        fenetre->addButton(u8"Charger", 1, juce::KeyPress(juce::KeyPress::returnKey));
+        fenetre->addButton(u8"Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+        fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+            [fenetre, trouves, poser](int resultat) {
+                const int choix = fenetre->getComboBoxComponent("plugin")->getSelectedId();
+                fenetre->exitModalState(resultat);
+                fenetre->setVisible(false);
+                if (resultat != 1 || choix < 1
+                    || static_cast<size_t>(choix) > trouves.size()) return;
+                poser(trouves[static_cast<size_t>(choix) - 1].id,
+                       trouves[static_cast<size_t>(choix) - 1].name);
+            }), false);
+    });
+#endif
 }
 
 void MainComponent::exportAudioFile() {

@@ -66,4 +66,35 @@ bool saveClapState(vsm::audio::plugin::ISynthPlugin& instrument,
 bool loadClapState(vsm::audio::plugin::ISynthPlugin& instrument,
                     const std::string& text, std::string& outError);
 
+// --- D7.1 : les plugins CLAP vus par le reste du projet ---------------------
+//
+// UN PLUGIN TIERS EST UN IDENTIFIANT COMME UN AUTRE. Une piste désigne son
+// instrument par une chaîne (`instrumentId`), écrite telle quelle dans
+// `project.json` ; les machines du parc s'appellent `vsm.tb303`. Un plugin
+// externe s'appelle donc `clap:<chemin>#<identifiant>`, et rien d'autre dans
+// le projet n'a besoin de savoir ce que cette forme veut dire.
+//
+// LE CHEMIN EST ABSOLU, ET C'EST ASSUMÉ. Ce n'est pas un média du morceau :
+// c'est un logiciel installé sur la machine. Le copier dans le dossier de
+// projet serait le redistribuer, ce qu'aucune licence ne permet en général. Un
+// projet emporté ailleurs signale donc le plugin manquant -- et ne le remplace
+// pas, ce que le critère de la phase D7 demande explicitement.
+
+/// Compose l'identifiant d'instrument d'un plugin CLAP.
+std::string clapInstrumentId(const std::string& clapFilePath, const std::string& pluginId);
+
+/// L'inverse. Rend faux si l'identifiant n'est pas de cette forme -- auquel cas
+/// il désigne une machine du parc, et ne regarde pas cette couche.
+bool parseClapInstrumentId(const std::string& instrumentId, std::string& outFilePath,
+                            std::string& outPluginId);
+
+/// Branche la couche CLAP dans le registre de machines : tout identifiant
+/// `clap:...` demandé à `PluginRegistry::create` charge alors le fichier.
+///
+/// À APPELER UNE FOIS, au démarrage d'un programme qui veut des plugins tiers
+/// (l'application, `vsm-render`). Sans cet appel, rien ne change : les
+/// identifiants `clap:` restent introuvables, et l'absence est signalée comme
+/// celle de n'importe quelle machine.
+void installClapResolver();
+
 } // namespace vsm::clap

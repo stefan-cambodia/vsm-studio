@@ -1,4 +1,7 @@
 #include "vsm/interchange/OfflineReconstruction.h"
+#if VSM_WITH_CLAP
+#include "ClapPluginHost.h"
+#endif
 #include "vsm/interchange/PatchRenderService.h"
 #include <iostream>
 #include <cstdio>
@@ -67,6 +70,11 @@ bool parseDouble(const char* text, double& out) {
 } // namespace
 
 int main(int argc, char** argv) {
+#if VSM_WITH_CLAP
+    // D7.1 : les identifiants `clap:` deviennent chargeables. Une seule ligne,
+    // et le rendu accepte les mêmes projets que l'application.
+    vsm::clap::installClapResolver();
+#endif
     std::vector<std::string> positional;
     vsm::interchange::RenderOptions options;
     bool quiet = false;
