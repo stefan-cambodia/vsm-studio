@@ -1604,6 +1604,93 @@ modéliser la production — pas seulement les machines.
 
 ---
 
+## 5 octies. On réglait au hasard : le budget d'erreur, piste par piste
+
+*Sky and Sand* (Fritz Kalkbrenner, 8 min 52, quatre stems) est reconstruit à
+**0,2854**. La consigne était de rapprocher la sortie de l'entrée, et trois
+leviers ont été essayés dans cet ordre — puis mesurés :
+
+| levier | ce qu'il a donné sur le MÉLANGE |
+|---|---|
+| **budget ×3** (60 itérations, 120 évaluations de piste, 21 axes) | **0,2854 → 0,2521, −11,7 %** — le seul qui gagne |
+| **batterie échantillonnée** (coups découpés dans l'enregistrement) | **0,2521 → 0,3560, +41 %** à budget égal — nettement pire |
+| profil de nappe pour la piste `other` | **écarté** : 0,52 contre 0,32 au profil de piano, sur quatre nappes |
+| suivi du niveau de l'original | −4,8 % au mieux (fenêtre d'une seconde), sur le rendu existant |
+
+**Une erreur de lecture à ne pas refaire, et elle est de moi.** Les gains par
+PISTE du budget triplé sont minuscules — basse 0,242 → 0,228, batterie 0,220 →
+0,212 — et j'en avais conclu « le budget ne sert à rien ». Sur le MÉLANGE il
+vaut 11,7 %, soit dix fois plus que la somme apparente : le verdict du mélange
+recompose les pistes, et deux pistes un peu meilleures ne s'additionnent pas,
+elles se combinent. **Un gain de piste ne se lit pas comme un gain de morceau**,
+dans un sens comme dans l'autre.
+
+**La batterie échantillonnée a été essayée parce que le budget d'erreur
+ci-dessous la désignait, et elle a échoué — pour une raison qui n'était pas dans
+mon modèle.** `--batterie-echantillonnee` ne rejoue pas « la vraie batterie » :
+il découpe **UN échantillon par famille** (sept fichiers de 40 à 100 Ko) et le
+rejoue à chaque frappe — 1 255 kicks strictement identiques, avec la fuite des
+autres pièces que le détecteur signale lui-même (« aucune frappe isolée,
+l'échantillon contient les autres pièces »). Le stem réel, lui, a 4 215 frappes
+toutes différentes. Mesuré par le budget d'erreur : la piste de batterie
+échantillonnée coûte **−72,3 %** (contre −63,5 % à la modélisée), c'est-à-dire
+qu'elle est PLUS loin du stem réel. La route littérale n'est pas la route
+fidèle.
+
+**Aucun des autres ne pouvait marcher, et il était possible de le savoir en
+quatre rendus.** `analyse/budget_erreur.py` remplace chaque piste reconstruite
+par le stem RÉEL correspondant et mesure ce qu'une reconstruction PARFAITE de
+cette piste-là rapporterait :
+
+| piste rendue parfaite | distance | gain |
+|---|---|---|
+| **Batterie** | **0,1041** | **−63,5 %** |
+| basse | 0,2854 | −0,0 % |
+| voix | 0,2854 | −0,0 % |
+| `other` | 0,2927 | +2,5 % (pire) |
+
+La somme des pistes rendues séparément redonne exactement 0,2854, le chiffre du
+rapport : la décomposition décrit bien ce morceau-là, et c'est imprimé par la
+commande plutôt que supposé.
+
+**Presque toute l'erreur est dans une seule piste.** Une basse parfaite ne
+rapporterait rien ; une voix parfaite non plus, ce qui est normal puisqu'elle
+est reportée telle quelle. Et le stem `other` RÉEL ferait légèrement pire que sa
+reconstruction — signe que le réglage de cette piste compense déjà une partie de
+ce que la batterie rate. Les trois leviers travaillaient tous sur les 36 % qui
+ne bougent pas.
+
+**Le plancher, aussi, était inconnu.** La somme des quatre stems séparés est à
+**0,0551** de l'original, contre 0,9544 pour le silence. La séparation ne perd
+donc presque rien : le plafond de la chaîne n'est pas la séparation, et il reste
+les cinq sixièmes du chemin entre 0,2854 et 0,0551.
+
+**En quoi la batterie modélisée diffère de la vraie, et ce n'est pas d'abord le
+timbre.** Comparée au stem réel, à niveau efficace égal :
+
+| | vraie | TR-808 réglée |
+|---|---|---|
+| crête d'enveloppe | 0,587 | **0,288** |
+| part du temps au-dessus de 10 % de la crête | **0,52** | **1,00** |
+| corrélation des enveloppes (20 ms) | — | 0,618 |
+
+La vraie batterie se tait la moitié du temps ; la reconstruite jamais. Elle ne
+frappe pas, elle bourdonne : 4 215 frappes en 532 secondes, avec des extinctions
+trop longues qui se recouvrent en un mur continu, et une crête deux fois trop
+basse — donc plus de transitoire. Le spectre dit la même chose : +6,6 dB à
+120-250 Hz (les queues de kick et de toms qui s'accumulent), −3,1 dB à 4-8 kHz
+(les charlestons et cymbales qui manquent).
+
+**La leçon de méthode, et c'est la sixième forme de celle du § 10.3.** Les
+précédentes disaient qu'une distance n'est un chiffre que si l'on sait à quelles
+conditions elle a été obtenue — la métrique, le budget, le `gate`, le taux
+d'échantillonnage. Celle-ci porte sur ce qu'on fait d'un chiffre unique :
+**une distance globale ne dit pas OÙ est l'erreur, et sans ce partage on règle
+au hasard, longtemps.** La mesure coûte quatre rendus. Elle passe désormais
+avant tout réglage.
+
+---
+
 ## 6. Ce qui n'est pas au programme, et pourquoi
 
 - **Reconstruire la voix.** Hors de portée d'une synthèse par machine ; la

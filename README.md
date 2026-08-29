@@ -176,6 +176,33 @@ venv depuis `requirements.txt` défait donc cette bascule**, silencieusement.
 retombe sur `cuda` s'il y a une carte NVIDIA, sinon sur `cpu`, et la chaîne rend
 les mêmes résultats — plus lentement.
 
+### Où est l'erreur ? Le budget, piste par piste (`budget_erreur.py`)
+
+Une distance globale dit qu'on est à 0,2854 de l'original. Elle ne dit pas OÙ,
+et sans ça on règle au hasard.
+
+```bash
+analyse/.venv/bin/python analyse/budget_erreur.py DOSSIER-PROJET --original MORCEAU.wav
+```
+
+La commande remplace chaque piste reconstruite par le **stem réel**
+correspondant et mesure ce qu'une reconstruction PARFAITE de cette piste-là
+rapporterait. Sur *Sky and Sand* : batterie **−63,5 %**, basse −0,0 %, voix
+−0,0 %, `other` +2,5 % (pire). Presque toute l'erreur est dans une seule piste,
+et deux des quatre sont hors de cause — ce qu'aucun chiffre global ne dit.
+
+Elle donne aussi le **plancher** : la somme des stems séparés est à 0,0551 de
+l'original (le silence, lui, est à 0,9544), donc la séparation ne perd presque
+rien et n'est pas ce qui limite la chaîne. Et elle imprime son propre
+**contrôle** : la somme des pistes rendues séparément doit redonner la distance
+du rapport, sinon la décomposition ne décrit pas le morceau qu'on croit.
+
+Ce qu'elle ne dit pas : COMMENT réparer la piste qu'elle désigne. Sur ce
+morceau, la route qui semblait évidente — rejouer les coups découpés dans
+l'enregistrement (`--batterie-echantillonnee`) plutôt qu'une boîte modélisée —
+s'est révélée pire de 41 %, parce qu'elle découpe un seul échantillon par
+famille et le rejoue des centaines de fois.
+
 ### Apprendre les sonorités du parc (`docs/CDC-apprentissage.md`)
 
 Le moteur fabrique un corpus étiqueté pour rien : des milliers de paires
