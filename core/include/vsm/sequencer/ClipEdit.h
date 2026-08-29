@@ -41,10 +41,29 @@ void moveClips(std::vector<Clip>& clips, const ClipSelection& selection, Tick de
 
 /// Tire le bord DROIT : change ce qui est joué, donc la fenêtre.
 ///
+/// LA BOUCLE VIENT DU MÊME GESTE (D5.2), et c'est ce que veut dire « boucle de
+/// clip par ÉTIREMENT ». Tant qu'il reste du matériau, tirer le bord droit en
+/// révèle davantage ; une fois au bout, la fenêtre ne peut plus grandir et
+/// c'est la durée JOUÉE qui continue -- le clip répète alors sa fenêtre, sans
+/// qu'une seule note soit copiée. Un modificateur ou un second outil pour
+/// « boucler » demanderait de savoir à l'avance si l'on est au bout du
+/// matériau, ce que personne ne sait en tirant.
+///
 /// La longueur ne descend jamais sous un tick -- un clip de durée nulle serait
 /// invisible et injouable, exactement comme une note de durée nulle.
 void resizeClipsEnd(std::vector<Clip>& clips, const ClipSelection& selection,
                      Tick deltaTicks, Tick materialEnd);
+
+/// Duplique les clips sélectionnés, décalés de `offsetTicks`, et rend la
+/// sélection des COPIES -- pour que le geste suivant porte sur ce qu'on vient
+/// de créer, comme dans le piano roll.
+ClipSelection duplicateClips(std::vector<Clip>& clips, const ClipSelection& selection,
+                              Tick offsetTicks, uint64_t& idCounter);
+
+/// Les bornes d'une sélection sur la ligne de temps, pour savoir de combien
+/// décaler une duplication. Rend faux si la sélection est vide.
+bool clipSelectionBounds(const std::vector<Clip>& clips, const ClipSelection& selection,
+                          Tick materialEnd, Tick& startTick, Tick& endTick);
 
 /// Tire le bord GAUCHE : révèle ou masque du matériau par la tête.
 ///

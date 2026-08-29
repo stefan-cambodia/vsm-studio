@@ -62,6 +62,17 @@ int main(int argc, char** argv) {
             piste.clips.push_back({0, mesure * 3, mesure, mesure * 3, false, "Tenue",
                                     modeles[p].couleur});
             piste.clips.push_back({0, mesure, mesure * 5, mesure, true, "Muet", modeles[p].couleur});
+        } else if (p == 3) {
+            // Un clip ÉTIRÉ au-delà de son matériau : il répète sa fenêtre, et
+            // l'aperçu sert à vérifier que cela SE VOIT -- dessiné comme un
+            // simple rectangle plus long, il mentirait sur ce qu'il joue.
+            vsm::sequencer::Clip boucle;
+            boucle.startTick = 0;
+            boucle.sourceLength = mesure;      // une mesure de fenêtre...
+            boucle.length = mesure * 4;        // ...jouée quatre fois
+            boucle.name = "Boucle x4";
+            boucle.colorRgba = modeles[p].couleur;
+            piste.clips.push_back(boucle);
         } else if (p == 2) {
             piste.audio.path = "audio/voix.wav";
             piste.audio.sampleRate = 48000.0;

@@ -172,3 +172,69 @@ VSM_TEST(an_empty_selection_does_nothing_at_all) {
     VSM_ASSERT_EQ(clips[0].startTick, avant.startTick);
     VSM_ASSERT_EQ(clips[0].length, avant.length);
 }
+
+// --- D5.2 : dupliquer, et boucler par étirement -----------------------------
+
+VSM_TEST(stretching_past_the_material_loops_instead_of_reading_further) {
+    // « Boucle de clip par ÉTIREMENT » : tant qu'il reste du matériau, tirer le
+    // bord droit en révèle davantage ; une fois au bout, la fenêtre ne peut
+    // plus grandir et c'est la durée jouée qui continue. Un modificateur pour
+    // « boucler » demanderait de savoir à l'avance où finit le matériau, ce que
+    // personne ne sait en tirant.
+    std::vector<Clip> clips{clip(1, 0, 960)};
+    const Tick materiau = 1920;          // deux mesures de matériau seulement
+
+    resizeClipsEnd(clips, {1}, 960, materiau);
+    VSM_ASSERT_EQ(clips[0].length, Tick(1920));
+    VSM_ASSERT_EQ(clips[0].sourceLength, Tick(1920));   // encore du matériau : on révèle
+
+    resizeClipsEnd(clips, {1}, 1920, materiau);
+    VSM_ASSERT_EQ(clips[0].length, Tick(3840));         // ce qui est joué double
+    VSM_ASSERT_EQ(clips[0].sourceLength, Tick(1920));   // la fenêtre est au bout
+    // Durée jouée > fenêtre : le clip RÉPÈTE, sans qu'une note ait été copiée.
+    VSM_ASSERT(clips[0].length > clips[0].sourceLength);
+}
+
+VSM_TEST(a_window_that_starts_late_runs_out_of_material_sooner) {
+    // La fenêtre disponible se compte DEPUIS le début de la fenêtre, pas depuis
+    // zéro : un clip qui commence à la moitié du matériau ne peut en révéler
+    // que la moitié.
+    std::vector<Clip> clips{clip(1, 0, 480, 1440)};
+    resizeClipsEnd(clips, {1}, 4800, 1920);
+    VSM_ASSERT_EQ(clips[0].sourceLength, Tick(480));    // 1920 - 1440
+    VSM_ASSERT_EQ(clips[0].length, Tick(5280));
+}
+
+VSM_TEST(duplicating_returns_the_copies_so_the_next_gesture_lands_on_them) {
+    std::vector<Clip> clips{clip(1, 0, 960), clip(2, 1920, 960)};
+    uint64_t compteur = 50;
+    const ClipSelection copies = duplicateClips(clips, {1, 2}, 3840, compteur);
+
+    VSM_ASSERT_EQ(clips.size(), size_t(4));
+    VSM_ASSERT_EQ(copies.size(), size_t(2));
+    // La sélection rendue est celle des COPIES : le geste suivant porte sur ce
+    // qu'on vient de créer, comme dans le piano roll.
+    for (uint64_t id : copies) VSM_ASSERT(id >= 50);
+
+    Tick debut = 0, fin = 0;
+    VSM_ASSERT(clipSelectionBounds(clips, copies, 100000, debut, fin));
+    VSM_ASSERT_EQ(debut, Tick(3840));
+    VSM_ASSERT_EQ(fin, Tick(6720));
+}
+
+VSM_TEST(a_duplicate_that_would_land_before_zero_is_clamped) {
+    std::vector<Clip> clips{clip(1, 480, 960)};
+    uint64_t compteur = 10;
+    duplicateClips(clips, {1}, -4800, compteur);
+    VSM_ASSERT_EQ(clips.size(), size_t(2));
+    VSM_ASSERT(clips[0].startTick >= 0);
+}
+
+VSM_TEST(the_bounds_of_an_empty_selection_are_reported_as_absent) {
+    std::vector<Clip> clips{clip(1, 480, 960)};
+    Tick a = 0, b = 0;
+    VSM_ASSERT(!clipSelectionBounds(clips, {}, 100000, a, b));
+    uint64_t compteur = 1;
+    VSM_ASSERT(duplicateClips(clips, {}, 960, compteur).empty());
+    VSM_ASSERT_EQ(clips.size(), size_t(1));
+}

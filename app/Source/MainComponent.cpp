@@ -240,6 +240,10 @@ MainComponent::MainComponent()
         audioEngine_.processGraph().seekSeconds(project_.ticksToSeconds(tick));
     };
     arrangement_.onTrackSelected = [this](size_t index) { trackList_.selectTrackIndex(index); };
+    // La grille fine de l'arrangement EST celle du piano roll, lue à l'usage :
+    // deux réglages de grille dans deux vues du même morceau finiraient par se
+    // contredire.
+    arrangement_.gridProvider = [this] { return pianoRoll_.gridResolution(); };
     trackList_.onOutputChanged = [this] {
         // Le routage est une donnée de mixage : il se republie sans interrompre
         // la lecture, comme un fader.

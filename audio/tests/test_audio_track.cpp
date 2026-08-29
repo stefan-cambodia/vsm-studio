@@ -165,3 +165,63 @@ VSM_TEST(the_graph_plays_an_audio_track_that_has_no_instrument_at_all) {
     for (float s : rendu.left) crete = std::max(crete, std::abs(s));
     VSM_ASSERT(crete > 0.01f);   // la piste a bien sonné
 }
+
+// --- D5.2 : la boucle de clip vaut aussi pour l'audio -----------------------
+
+VSM_TEST(an_audio_clip_longer_than_its_window_repeats_it) {
+    // LE GESTE DOIT VOULOIR DIRE LA MÊME CHOSE SUR LES DEUX SORTES DE PISTE.
+    // Le planning MIDI répétait déjà sa fenêtre quand la durée jouée la
+    // dépasse ; l'audio, lui, lisait tout droit et continuait dans le fichier.
+    // Étirer un clip aurait donc bouclé une batterie MIDI et révélé la suite
+    // d'une prise audio -- deux réponses pour un seul geste.
+    vsm::sequencer::Track piste;
+    piste.kind = vsm::sequencer::Track::Kind::Audio;
+    piste.audio.path = "audio/prise.wav";
+    piste.audio.sampleRate = 48000.0;
+    piste.audio.frames = 48000 * 8;
+    piste.audio.channels = 2;
+
+    vsm::sequencer::Clip clip;
+    clip.startTick = 0;
+    clip.sourceLength = 960;    // une seconde de fenêtre à 120 BPM / ppq 480
+    clip.length = 3840;         // quatre fois plus long que la fenêtre
+    piste.clips.push_back(clip);
+
+    // 480 ticks par noire, 120 BPM : un tick vaut 1/960 s.
+    const auto spans = spansFromTrack(piste, 48000.0,
+                                       [](int64_t t) { return static_cast<double>(t) / 960.0; });
+    VSM_ASSERT_EQ(spans.size(), size_t(4));
+    for (size_t i = 0; i < spans.size(); ++i) {
+        VSM_ASSERT_EQ(spans[i].startFrame, static_cast<int64_t>(i) * 48000);
+        VSM_ASSERT_EQ(spans[i].lengthFrames, int64_t(48000));
+        // CHAQUE TOUR REPART DU MÊME ENDROIT DU FICHIER : c'est ce qui fait
+        // une boucle plutôt qu'une lecture continue.
+        VSM_ASSERT_EQ(spans[i].sourceStartFrame, int64_t(0));
+    }
+}
+
+VSM_TEST(the_fades_of_a_looped_clip_belong_to_the_clip_and_not_to_each_turn) {
+    // Les répéter ferait un trou à chaque tour de boucle.
+    vsm::sequencer::Track piste;
+    piste.kind = vsm::sequencer::Track::Kind::Audio;
+    piste.audio.path = "audio/prise.wav";
+    piste.audio.sampleRate = 48000.0;
+    piste.audio.frames = 48000 * 8;
+
+    vsm::sequencer::Clip clip;
+    clip.sourceLength = 960;
+    clip.length = 2880;         // trois tours
+    clip.fadeInSeconds = 0.05;
+    clip.fadeOutSeconds = 0.10;
+    piste.clips.push_back(clip);
+
+    const auto spans = spansFromTrack(piste, 48000.0,
+                                       [](int64_t t) { return static_cast<double>(t) / 960.0; });
+    VSM_ASSERT_EQ(spans.size(), size_t(3));
+    VSM_ASSERT_EQ(spans[0].fadeInFrames, int64_t(48000 * 0.05));
+    VSM_ASSERT_EQ(spans[0].fadeOutFrames, int64_t(0));
+    VSM_ASSERT_EQ(spans[1].fadeInFrames, int64_t(0));
+    VSM_ASSERT_EQ(spans[1].fadeOutFrames, int64_t(0));
+    VSM_ASSERT_EQ(spans[2].fadeInFrames, int64_t(0));
+    VSM_ASSERT_EQ(spans[2].fadeOutFrames, int64_t(48000 * 0.10));
+}

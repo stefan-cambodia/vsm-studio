@@ -75,15 +75,42 @@ std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
             ? ticksToSeconds(static_cast<int64_t>(clip.startTick + clip.length))
             : debutSecondes + track.audio.durationSeconds() - clip.sourceStartSeconds;
 
-        AudioClipSpan span;
-        span.startFrame = static_cast<int64_t>(std::llround(debutSecondes * sampleRate));
-        span.lengthFrames = static_cast<int64_t>(std::llround((finSecondes - debutSecondes) * sampleRate));
-        span.sourceStartFrame = static_cast<int64_t>(std::llround(clip.sourceStartSeconds * sampleRate));
-        span.fadeInFrames = static_cast<int64_t>(std::llround(clip.fadeInSeconds * sampleRate));
-        span.fadeOutFrames = static_cast<int64_t>(std::llround(clip.fadeOutSeconds * sampleRate));
-        span.gain = clip.gain;
-        span.invertPhase = clip.invertPhase;
-        if (span.lengthFrames > 0) spans.push_back(span);
+        const int64_t depart = static_cast<int64_t>(std::llround(debutSecondes * sampleRate));
+        const int64_t jouee = static_cast<int64_t>(std::llround((finSecondes - debutSecondes) * sampleRate));
+        if (jouee <= 0) continue;
+
+        // LA FENÊTRE, en trames. Elle vaut la durée jouée quand le clip ne
+        // déclare pas de fenêtre : c'est le cas d'un clip qu'on n'a pas
+        // étiré, et il ne se répète alors pas -- une seule portée.
+        const double fenetreSecondes = clip.sourceLength > 0
+            ? ticksToSeconds(static_cast<int64_t>(clip.startTick + clip.sourceLength)) - debutSecondes
+            : 0.0;
+        int64_t fenetre = static_cast<int64_t>(std::llround(fenetreSecondes * sampleRate));
+        if (fenetre <= 0) fenetre = jouee;
+
+        // LA BOUCLE DE CLIP (D5.2), et elle est ici pour que le geste veuille
+        // dire la MÊME chose sur une piste audio et sur une piste MIDI. Le
+        // planning MIDI répétait déjà sa fenêtre quand la durée jouée la
+        // dépasse (voir `passagesOf`) ; l'audio, lui, lisait tout droit et
+        // continuait dans le fichier. Étirer un clip aurait donc bouclé une
+        // batterie MIDI et révélé la suite d'une prise audio -- deux réponses
+        // pour un seul geste.
+        for (int64_t offset = 0; offset < jouee; offset += fenetre) {
+            AudioClipSpan span;
+            span.startFrame = depart + offset;
+            span.lengthFrames = std::min(fenetre, jouee - offset);
+            span.sourceStartFrame = static_cast<int64_t>(std::llround(clip.sourceStartSeconds * sampleRate));
+            // LES FONDUS APPARTIENNENT AU CLIP, PAS À CHAQUE RÉPÉTITION : celui
+            // d'entrée est sur la première, celui de sortie sur la dernière.
+            // Les répéter ferait un trou à chaque tour de boucle.
+            span.fadeInFrames = offset == 0
+                ? static_cast<int64_t>(std::llround(clip.fadeInSeconds * sampleRate)) : 0;
+            span.fadeOutFrames = (offset + fenetre >= jouee)
+                ? static_cast<int64_t>(std::llround(clip.fadeOutSeconds * sampleRate)) : 0;
+            span.gain = clip.gain;
+            span.invertPhase = clip.invertPhase;
+            if (span.lengthFrames > 0) spans.push_back(span);
+        }
     }
 
     // UNE PISTE AUDIO SANS CLIP JOUE TOUT SON FICHIER, à sa place — la même

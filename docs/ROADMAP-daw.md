@@ -1238,7 +1238,7 @@ D1 a mis les clips dans le modèle ; ici on les rend manipulables.
 | Étape | Contenu | Terminé quand |
 |---|---|---|
 | D5.1 | Ligne de temps multipiste : clips déplaçables, redimensionnables, coupables | à la souris, avec annulation — **fait** |
-| D5.2 | Copier/coller/dupliquer, aimantation à la grille, boucle de clip par étirement | mêmes gestes et mêmes raccourcis que le piano roll |
+| D5.2 | Copier/coller/dupliquer, aimantation à la grille, boucle de clip par étirement | mêmes gestes et mêmes raccourcis que le piano roll — **fait** |
 | D5.3 | Pliage des pistes, hauteurs réglables, réordonnancement, couleurs choisies | l'écran tient 16 pistes |
 | D5.4 | Automation dessinée **sur** l'arrangement, avec zoom et courbes | plus une lane isolée dans un onglet |
 | D5.5 | Gel et report (*freeze* / *bounce*) d'une piste en audio | une piste gelée sonne identique et coûte le prix d'une lecture audio |
@@ -1303,6 +1303,51 @@ doubler une mesure, boucler quatre temps — se fait entièrement à la souris.
 > clips bord à bord (le résultat d'une coupe) qui doivent se lire comme deux, un
 > clip muet qui doit se remarquer **sans disparaître**, et une piste de groupe
 > qui n'a pas de clip parce qu'elle n'a pas de matériau.
+
+> **D5.2 EST FAITE (30/08/2026).**
+>
+> **LA BOUCLE NAÎT DU MÊME GESTE QUE LE REDIMENSIONNEMENT**, et c'est ce que dit
+> « boucle de clip par ÉTIREMENT ». Tant qu'il reste du matériau, tirer le bord
+> droit en révèle davantage ; une fois au bout, la fenêtre ne peut plus grandir
+> et c'est la durée jouée qui continue — le clip répète alors sa fenêtre, **sans
+> qu'une seule note soit copiée**. Un modificateur ou un second outil pour
+> « boucler » demanderait de savoir à l'avance où finit le matériau, ce que
+> personne ne sait en tirant.
+>
+> **UN DÉFAUT TROUVÉ EN CHEMIN, ET IL AURAIT ÉTÉ DIFFICILE À VOIR.** Le planning
+> MIDI répétait déjà la fenêtre d'un clip trop long (`passagesOf`) ; le côté
+> AUDIO, lui, lisait tout droit et continuait dans le fichier. Le même geste
+> aurait donc **bouclé une batterie MIDI et révélé la suite d'une prise
+> audio** — deux réponses pour un seul geste, et personne n'aurait soupçonné
+> l'étirement. `spansFromTrack` répète désormais sa fenêtre comme le fait le
+> planning, avec la même règle sur les fondus : ils appartiennent au CLIP et non
+> à chaque tour, sinon un trou reviendrait à chaque boucle.
+>
+> **LES MÊMES RACCOURCIS QUE LE PIANO ROLL, à la lettre** : Ctrl+C, Ctrl+V,
+> Ctrl+D, Ctrl+X. Deux vues du même morceau qui demanderaient deux gestes
+> différents pour la même chose seraient deux logiciels. Dupliquer décale de la
+> longueur de la sélection **arrondie à la grille** — dupliquer une mesure tombe
+> pile sur la suivante —, exactement la règle du piano roll.
+>
+> **Le presse-papiers porte ses CLIPS, pas des identifiants** : coller doit
+> marcher après avoir supprimé l'original, et un identifiant ne désignerait
+> alors plus rien. On colle à la **tête de lecture** et sur la **piste
+> courante**, ce qui permet aussi de recopier un motif d'une piste à l'autre.
+>
+> **LA GRILLE FINE EST CELLE DU PIANO ROLL, lue à l'usage plutôt que recopiée.**
+> Deux réglages de grille dans deux vues du même morceau finiraient par se
+> contredire, et l'utilisateur ne saurait plus lequel il vient de changer.
+> L'aimantation est à la **mesure** par défaut — on arrange par mesures — et `G`
+> bascule vers la grille fine, `S` la coupe.
+>
+> **UN RÉGLAGE QU'ON BASCULE AU CLAVIER DOIT SE VOIR** : l'état d'aimantation
+> est écrit en petit dans le coin de la règle. Sans cela il se retournerait
+> contre celui qui l'a basculé sans s'en souvenir.
+>
+> **UN CLIP QUI BOUCLE SE VOIT BOUCLER** : un trait fin marque chaque tour.
+> Dessiné comme un simple rectangle plus long, il mentirait sur ce qu'il joue —
+> et c'est vérifiable à l'œil dans `vsm-arrangement-preview`, dont l'aperçu
+> porte maintenant un clip étiré quatre fois.
 
 
 ### Phase D6 — Exporter

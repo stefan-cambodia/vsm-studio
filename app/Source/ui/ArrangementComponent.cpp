@@ -42,14 +42,101 @@ vsm::midi::Tick ArrangementComponent::xToTick(float x) const {
 
 vsm::midi::Tick ArrangementComponent::snapTick(vsm::midi::Tick tick) const {
     if (!snap_ || project_ == nullptr) return tick;
-    // AIMANTATION À LA MESURE, et non à la noire : on arrange par mesures, et
-    // un clip qui tomberait sur un temps quelconque ne serait presque jamais ce
-    // qu'on voulait.
-    const vsm::midi::Tick parMesure =
-        project_->timeSignatureMap.ticksPerBar(std::max<vsm::midi::Tick>(0, tick),
-                                                project_->ticksPerQuarterNote);
-    if (parMesure <= 0) return tick;
-    return ((tick + parMesure / 2) / parMesure) * parMesure;
+    // AIMANTATION À LA MESURE PAR DÉFAUT, et non à la double croche : on arrange
+    // par mesures, et la grille du piano roll n'a pas de sens à cette échelle.
+    // Mais elle reste disponible -- c'est ce qu'il faut pour poser un clip sur
+    // un contretemps, et c'est le « mêmes gestes que le piano roll » du critère.
+    const vsm::midi::Tick pas =
+        aimanteALaMesure_
+            ? project_->timeSignatureMap.ticksPerBar(std::max<vsm::midi::Tick>(0, tick),
+                                                      project_->ticksPerQuarterNote)
+            : vsm::sequencer::gridResolutionToTicks(
+                  gridProvider ? gridProvider()
+                               : vsm::sequencer::GridResolution{vsm::sequencer::NoteValue::Quarter,
+                                                                 false, false},
+                  project_->ticksPerQuarterNote);
+    if (pas <= 0) return tick;
+    return ((tick + pas / 2) / pas) * pas;
+}
+
+void ArrangementComponent::copySelection() {
+    if (project_ == nullptr || selection_.empty()) return;
+    presse_papiers_.clear();
+    for (size_t p = 0; p < project_->tracks.size(); ++p)
+        for (const auto& clip : project_->tracks[p].clips)
+            if (selection_.count(clip.id) > 0) {
+                presse_papiers_.push_back(clip);
+                pistePressePapiers_ = p;
+            }
+}
+
+void ArrangementComponent::paste() {
+    if (project_ == nullptr || presse_papiers_.empty()) return;
+    // ON COLLE À LA TÊTE DE LECTURE, comme le piano roll : c'est le seul point
+    // que l'utilisateur regarde en collant, et il n'a pas à viser à la souris.
+    vsm::midi::Tick plusTot = presse_papiers_.front().startTick;
+    for (const auto& clip : presse_papiers_) plusTot = std::min(plusTot, clip.startTick);
+    const vsm::midi::Tick decalage = playhead_ - plusTot;
+
+    // LA PISTE COURANTE, pas celle d'origine : coller sur la piste qu'on
+    // regarde est ce qu'on attend, et c'est aussi ce qui permet de recopier un
+    // motif d'une piste à l'autre.
+    const size_t cible = pisteCourante_ < project_->tracks.size() ? pisteCourante_
+                                                                   : pistePressePapiers_;
+    if (cible >= project_->tracks.size()) return;
+
+    if (onEditStarted) onEditStarted(u8"Coller des clips");
+    selection_.clear();
+    for (const auto& source : presse_papiers_) {
+        Clip copie = source;
+        copie.id = project_->nextClipId();
+        copie.startTick = std::max<vsm::midi::Tick>(0, source.startTick + decalage);
+        selection_.insert(copie.id);
+        project_->tracks[cible].clips.push_back(std::move(copie));
+    }
+    std::stable_sort(project_->tracks[cible].clips.begin(), project_->tracks[cible].clips.end(),
+                      [](const Clip& a, const Clip& b) { return a.startTick < b.startTick; });
+    notifyChanged();
+    repaint();
+}
+
+void ArrangementComponent::duplicateSelection() {
+    if (project_ == nullptr || selection_.empty()) return;
+
+    // LE DÉCALAGE EST LA LONGUEUR DE LA SÉLECTION, arrondie à la grille :
+    // dupliquer une mesure doit tomber pile sur la suivante. C'est exactement
+    // la règle du piano roll, et elle vaut ici pour la même raison.
+    vsm::midi::Tick debut = 0, fin = 0;
+    bool trouve = false;
+    for (const auto& track : project_->tracks)
+        if (clipSelectionBounds(track.clips, selection_, materialEnd(track), debut, fin))
+            trouve = true;
+    if (!trouve) return;
+
+    vsm::midi::Tick decalage = fin - debut;
+    const vsm::midi::Tick pas =
+        aimanteALaMesure_
+            ? project_->timeSignatureMap.ticksPerBar(debut, project_->ticksPerQuarterNote)
+            : vsm::sequencer::gridResolutionToTicks(
+                  gridProvider ? gridProvider()
+                               : vsm::sequencer::GridResolution{vsm::sequencer::NoteValue::Quarter,
+                                                                 false, false},
+                  project_->ticksPerQuarterNote);
+    if (pas > 0) decalage = std::max(pas, ((decalage + pas - 1) / pas) * pas);
+
+    if (onEditStarted) onEditStarted(u8"Dupliquer des clips");
+    uint64_t compteur = project_->peekNextClipId();
+    ClipSelection creees;
+    for (auto& track : project_->tracks) {
+        const auto copies = duplicateClips(track.clips, selection_, decalage, compteur);
+        creees.insert(copies.begin(), copies.end());
+    }
+    project_->ensureClipIdAbove(compteur - 1);
+    if (!creees.empty()) {
+        selection_ = std::move(creees);
+        notifyChanged();
+    }
+    repaint();
 }
 
 int ArrangementComponent::trackAtY(float y) const {
@@ -98,7 +185,10 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
     }
     if (point.x < kHeaderWidth) {
         const int piste = trackAtY(point.y);
-        if (piste >= 0 && onTrackSelected) onTrackSelected(static_cast<size_t>(piste));
+        if (piste >= 0) {
+            pisteCourante_ = static_cast<size_t>(piste);
+            if (onTrackSelected) onTrackSelected(pisteCourante_);
+        }
         return;
     }
 
@@ -110,6 +200,7 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
         repaint();
         return;
     }
+    pisteCourante_ = piste;
     if (onTrackSelected) onTrackSelected(piste);
 
     // MAJ ÉTEND la sélection, comme partout. Sans Maj, cliquer un clip déjà
@@ -209,6 +300,30 @@ void ArrangementComponent::deleteSelection() {
 }
 
 bool ArrangementComponent::keyPressed(const juce::KeyPress& key) {
+    // LES MÊMES RACCOURCIS QUE LE PIANO ROLL, à la lettre : Ctrl+C, Ctrl+V,
+    // Ctrl+D. Deux vues du même morceau qui demanderaient deux gestes
+    // différents pour la même chose seraient deux logiciels.
+    if (key.getModifiers().isCommandDown()) {
+        switch (key.getTextCharacter()) {
+            case 'c': case 'C': copySelection(); return true;
+            case 'v': case 'V': paste(); return true;
+            case 'd': case 'D': duplicateSelection(); return true;
+            case 'x': case 'X': copySelection(); deleteSelection(); return true;
+            default: break;
+        }
+    }
+    // `S` coupe l'aimantation, `G` bascule entre la MESURE et la grille fine du
+    // piano roll -- les deux réglages qu'on change en arrangeant, et les seuls.
+    if (key.getTextCharacter() == 's' || key.getTextCharacter() == 'S') {
+        snap_ = !snap_;
+        repaint();
+        return true;
+    }
+    if (key.getTextCharacter() == 'g' || key.getTextCharacter() == 'G') {
+        aimanteALaMesure_ = !aimanteALaMesure_;
+        repaint();
+        return true;
+    }
     if (key == juce::KeyPress::deleteKey || key == juce::KeyPress::backspaceKey) {
         if (!hasSelection()) return false;
         deleteSelection();
@@ -299,6 +414,22 @@ void ArrangementComponent::paint(juce::Graphics& g) {
             // comme une note muette dans le piano roll.
             g.setColour(juce::Colour(clip.colorRgba).withAlpha(clip.muted ? 0.25f : 0.75f));
             g.fillRoundedRectangle(r, 3.0f);
+            // UN CLIP QUI BOUCLE DOIT SE VOIR BOUCLER. Étiré au-delà de son
+            // matériau, il répète sa fenêtre (D5.2) -- et dessiné comme un
+            // simple rectangle plus long, il mentirait sur ce qu'il joue. Un
+            // trait fin à chaque tour, et on lit d'un coup d'œil combien de
+            // fois le motif revient.
+            const vsm::midi::Tick jouee = clipPlayedLength(clip, fin);
+            const vsm::midi::Tick fenetre = clip.sourceLength > 0 ? clip.sourceLength : jouee;
+            if (fenetre > 0 && jouee > fenetre) {
+                g.setColour(Palette::background.withAlpha(0.55f));
+                for (vsm::midi::Tick t = fenetre; t < jouee; t += fenetre) {
+                    const float x = tickToX(clip.startTick + t);
+                    if (x > r.getX() && x < r.getRight())
+                        g.drawLine(x, r.getY() + 1.0f, x, r.getBottom() - 1.0f, 1.0f);
+                }
+            }
+
             g.setColour(choisi ? Palette::textPrimary : Palette::border);
             g.drawRoundedRectangle(r, 3.0f, choisi ? 2.0f : 1.0f);
             if (!clip.name.empty() && r.getWidth() > 30.0f) {
@@ -319,6 +450,14 @@ void ArrangementComponent::paint(juce::Graphics& g) {
         g.setColour(Palette::accentAmber);
         g.drawLine(xTete, 0.0f, xTete, static_cast<float>(bounds.getHeight()), 1.5f);
     }
+
+    // L'ÉTAT D'AIMANTATION EST ÉCRIT, en petit, dans le coin de la règle. Un
+    // réglage qu'on bascule au clavier et qui ne se voit nulle part se retourne
+    // contre celui qui l'a basculé sans s'en souvenir.
+    g.setColour(Palette::textSecondary);
+    g.setFont(juce::Font(juce::FontOptions(10.0f)));
+    g.drawText(snap_ ? (aimanteALaMesure_ ? "aimant : mesure" : "aimant : grille") : "aimant : libre",
+                4, 2, kHeaderWidth - 8, kRulerHeight - 4, juce::Justification::centredRight);
 
     if (project_->tracks.empty()) {
         g.setColour(Palette::textSecondary);

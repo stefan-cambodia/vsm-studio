@@ -1,6 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include "vsm/sequencer/ClipEdit.h"
+#include "vsm/sequencer/Quantizer.h"
 #include "vsm/sequencer/Project.h"
 #include <functional>
 
@@ -50,9 +51,19 @@ public:
     bool keyPressed(const juce::KeyPress& key) override;
     void setSnapEnabled(bool actif) { snap_ = actif; }
     bool snapEnabled() const { return snap_; }
+    /// LA GRILLE FINE EST CELLE DU PIANO ROLL, lue à l'usage plutôt que
+    /// recopiée (D5.2 : « mêmes gestes et mêmes raccourcis »). Deux réglages de
+    /// grille dans deux vues du même morceau finiraient par se contredire, et
+    /// l'utilisateur ne saurait plus laquelle il vient de changer.
+    std::function<vsm::sequencer::GridResolution()> gridProvider;
+
     /// Supprime les clips sélectionnés.
     void deleteSelection();
     bool hasSelection() const { return !selection_.empty(); }
+    /// Les mêmes trois gestes que le piano roll, aux mêmes raccourcis.
+    void copySelection();
+    void paste();
+    void duplicateSelection();
 
     static constexpr int kHeaderWidth = 150;
     static constexpr int kRulerHeight = 22;
@@ -79,6 +90,16 @@ private:
     vsm::midi::Tick scrollTick_ = 0;
     double pixelsPerTick_ = 0.06;
     bool snap_ = true;
+    /// Aimanter à la MESURE (le défaut, parce qu'on arrange par mesures) ou à
+    /// la grille fine du piano roll. `G` bascule, `S` coupe l'aimantation.
+    bool aimanteALaMesure_ = true;
+    /// Le presse-papiers PORTE SES CLIPS, pas des identifiants : coller doit
+    /// marcher après avoir supprimé l'original, et un identifiant ne désigne
+    /// alors plus rien.
+    std::vector<vsm::sequencer::Clip> presse_papiers_;
+    /// La piste d'où vient le presse-papiers, pour y recoller par défaut.
+    size_t pistePressePapiers_ = 0;
+    size_t pisteCourante_ = 0;
 
     Geste geste_ = Geste::Aucun;
     vsm::midi::Tick gesteOrigine_ = 0;

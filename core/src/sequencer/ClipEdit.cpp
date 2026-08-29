@@ -44,11 +44,15 @@ void resizeClipsEnd(std::vector<Clip>& clips, const ClipSelection& selection,
         if (!selected(selection, clip)) continue;
         const Tick actuelle = clipPlayedLength(clip, materialEnd);
         const Tick nouvelle = std::max<Tick>(1, actuelle + deltaTicks);
-        // La fenêtre suit ce qui est joué : allonger le bord droit révèle du
-        // matériau, il ne le répète pas. La répétition -- la boucle de clip --
-        // est un geste distinct, et elle a son étape (D5.2).
         clip.length = nouvelle;
-        clip.sourceLength = nouvelle;
+
+        // LA FENÊTRE SUIT TANT QU'IL RESTE DU MATÉRIAU, et s'arrête au bout.
+        // Au-delà, la durée jouée dépasse la fenêtre : le clip RÉPÈTE, sans
+        // qu'une seule note soit copiée (voir `Clip::length`). C'est la
+        // « boucle par étirement » de D5.2, et elle naît du même geste parce
+        // que personne ne sait à l'avance où finit le matériau.
+        const Tick disponible = std::max<Tick>(1, materialEnd - clip.sourceStart);
+        clip.sourceLength = std::min(nouvelle, disponible);
     }
 }
 
@@ -80,6 +84,40 @@ void resizeClipsStart(std::vector<Clip>& clips, const ClipSelection& selection,
         clip.length = actuelle - applique;
         clip.sourceLength = clip.length;
     }
+}
+
+bool clipSelectionBounds(const std::vector<Clip>& clips, const ClipSelection& selection,
+                          Tick materialEnd, Tick& startTick, Tick& endTick) {
+    bool trouve = false;
+    for (const auto& clip : clips) {
+        if (!selected(selection, clip)) continue;
+        const Tick fin = clip.startTick + clipPlayedLength(clip, materialEnd);
+        if (!trouve) { startTick = clip.startTick; endTick = fin; trouve = true; }
+        else { startTick = std::min(startTick, clip.startTick); endTick = std::max(endTick, fin); }
+    }
+    return trouve;
+}
+
+ClipSelection duplicateClips(std::vector<Clip>& clips, const ClipSelection& selection,
+                              Tick offsetTicks, uint64_t& idCounter) {
+    ClipSelection creees;
+    if (selection.empty()) return creees;
+
+    // ON COLLECTE AVANT D'INSÉRER : ajouter dans le vecteur qu'on parcourt
+    // invaliderait les itérateurs, et dupliquerait les copies.
+    std::vector<Clip> copies;
+    for (const auto& clip : clips) {
+        if (!selected(selection, clip)) continue;
+        Clip copie = clip;
+        copie.id = idCounter++;
+        copie.startTick = std::max<Tick>(0, clip.startTick + offsetTicks);
+        copies.push_back(copie);
+        creees.insert(copie.id);
+    }
+    for (auto& copie : copies) clips.push_back(std::move(copie));
+    std::stable_sort(clips.begin(), clips.end(),
+                      [](const Clip& a, const Clip& b) { return a.startTick < b.startTick; });
+    return creees;
 }
 
 size_t splitClips(std::vector<Clip>& clips, const ClipSelection& selection, Tick atTick,
