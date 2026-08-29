@@ -30,6 +30,10 @@ void printUsage() {
         "  --sample-rate <Hz>    fréquence d'échantillonnage (défaut : 48000)\n"
         "  --block-size <n>      taille de bloc du rendu (défaut : 512)\n"
         "  --tail <secondes>     silence ajouté après la dernière note (défaut : 2)\n"
+        "  --start <secondes>    début de la plage exportée (défaut : 0). Le rendu\n"
+        "                        part toujours de zéro et la plage est découpée\n"
+        "                        ensuite, pour que les queues et les compresseurs\n"
+        "                        soient dans l'état où l'oreille les attend.\n"
         "  --duration <secondes> durée imposée (défaut : déduite du projet)\n"
         "  --format <f>          float32 | int24 | int16 (défaut : float32)\n"
         "  --quiet               n'affiche que les erreurs\n"
@@ -95,6 +99,12 @@ int main(int argc, char** argv) {
             const char* value = next("--tail");
             if (!value || !parseDouble(value, options.tailSeconds) || options.tailSeconds < 0.0) {
                 std::fprintf(stderr, "vsm-render : durée de queue invalide\n");
+                return 1;
+            }
+        } else if (arg == "--start") {
+            const char* value = next("--start");
+            if (!value || !parseDouble(value, options.startSeconds) || options.startSeconds < 0.0) {
+                std::fprintf(stderr, "vsm-render : début de plage invalide\n");
                 return 1;
             }
         } else if (arg == "--duration") {

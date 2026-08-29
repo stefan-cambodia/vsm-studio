@@ -219,6 +219,79 @@ VSM_TEST(render_duration_follows_the_content_and_the_requested_tail) {
     VSM_ASSERT_EQ(fixed.framesWritten, static_cast<size_t>(3.0 * 48000.0));
 }
 
+// --- D6.1 : la plage exportée se choisit -----------------------------------
+//
+// Ce que le test doit prouver n'est pas « un fichier plus court sort » -- ce
+// serait vrai d'un rendu à froid, qui est justement ce qu'on refuse. Il doit
+// prouver que la plage exportée est BIT À BIT la portion correspondante du
+// rendu complet : c'est la seule formulation vérifiable de « ce qu'on y
+// entend », queues et compresseurs compris.
+
+VSM_TEST(exported_range_is_exactly_the_matching_slice_of_the_whole_render) {
+    TempFolder folder("plage");
+    saveProjectBundle(buildPlayableProject(), folder.str());
+    const auto chargé = loadProjectBundle(folder.str());
+    VSM_ASSERT(chargé.success);
+
+    RenderOptions entier;
+    entier.durationSeconds = 4.0;
+    vsm::audio::engine::RenderedAudio complet;
+    VSM_ASSERT(renderBundleToBuffer(chargé.bundle, complet, entier).success);
+
+    RenderOptions plage = entier;
+    plage.startSeconds = 1.5;
+    plage.durationSeconds = 2.0;
+    vsm::audio::engine::RenderedAudio extrait;
+    const RenderResult résultat = renderBundleToBuffer(chargé.bundle, extrait, plage);
+    VSM_ASSERT(résultat.success);
+    VSM_ASSERT_EQ(extrait.numFrames(), static_cast<size_t>(2.0 * 48000.0));
+    VSM_ASSERT_NEAR(résultat.renderedSeconds, 2.0, 1e-9);
+
+    const size_t décalage = static_cast<size_t>(1.5 * 48000.0);
+    for (size_t i = 0; i < extrait.numFrames(); ++i) {
+        VSM_ASSERT_EQ(extrait.left[i], complet.left[décalage + i]);
+        VSM_ASSERT_EQ(extrait.right[i], complet.right[décalage + i]);
+    }
+}
+
+VSM_TEST(a_range_starting_at_zero_renders_exactly_as_before) {
+    // Garde-fou : `startSeconds` par défaut ne doit RIEN changer, sans quoi
+    // tout ce qui a été mesuré et gelé jusqu'ici se déplacerait en silence.
+    TempFolder folder("plage-zero");
+    saveProjectBundle(buildPlayableProject(), folder.str());
+    const auto chargé = loadProjectBundle(folder.str());
+    VSM_ASSERT(chargé.success);
+
+    RenderOptions options;
+    options.durationSeconds = 2.0;
+    vsm::audio::engine::RenderedAudio a, b;
+    VSM_ASSERT(renderBundleToBuffer(chargé.bundle, a, options).success);
+    options.startSeconds = 0.0;
+    VSM_ASSERT(renderBundleToBuffer(chargé.bundle, b, options).success);
+    VSM_ASSERT_EQ(a.numFrames(), b.numFrames());
+    for (size_t i = 0; i < a.numFrames(); ++i) VSM_ASSERT_EQ(a.left[i], b.left[i]);
+}
+
+VSM_TEST(a_deduced_duration_is_measured_from_the_start_of_the_range) {
+    TempFolder folder("plage-deduite");
+    saveProjectBundle(buildPlayableProject(), folder.str());
+    const auto chargé = loadProjectBundle(folder.str());
+    VSM_ASSERT(chargé.success);
+
+    RenderOptions entier;
+    entier.tailSeconds = 1.0;
+    vsm::audio::engine::RenderedAudio complet, depuis;
+    const RenderResult total = renderBundleToBuffer(chargé.bundle, complet, entier);
+    VSM_ASSERT(total.success);
+
+    RenderOptions tardive = entier;
+    tardive.startSeconds = 0.5;
+    const RenderResult reste = renderBundleToBuffer(chargé.bundle, depuis, tardive);
+    VSM_ASSERT(reste.success);
+    // Partir plus tard raccourcit d'autant : la fin reste la fin du morceau.
+    VSM_ASSERT_NEAR(reste.renderedSeconds, total.renderedSeconds - 0.5, 1e-9);
+}
+
 // --- D0.3 : le rendu contient ce que le projet décrit -----------------------
 //
 // Les inserts étaient écrits dans `project.json` et jamais posés sur le graphe

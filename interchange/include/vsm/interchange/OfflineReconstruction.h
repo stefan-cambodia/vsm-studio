@@ -28,7 +28,20 @@ struct RenderOptions {
     /// Durée ajoutée après la dernière note, pour laisser les résonances et
     /// les queues de réverbération s'éteindre au lieu d'être coupées net.
     double tailSeconds = 2.0;
-    /// 0 = déduire du contenu du projet (dernière note + queue).
+    /// DÉBUT DE LA PLAGE EXPORTÉE (D6.1). 0 = le début du morceau.
+    ///
+    /// LE RENDU PART TOUJOURS DE ZÉRO ET LA PLAGE EST DÉCOUPÉE ENSUITE. C'est
+    /// plus cher, et c'est le seul choix honnête : exporter une boucle prise au
+    /// milieu d'un morceau doit rendre CE QU'ON Y ENTEND, c'est-à-dire avec la
+    /// queue de réverbération, l'écho et le compresseur déjà engagés par ce qui
+    /// précède. Un rendu qui démarrerait à froid à `startSeconds` produirait un
+    /// extrait que personne n'a jamais entendu, et rien dans le fichier ne le
+    /// dirait. Le surcoût est proportionnel à `startSeconds`, hors ligne, et
+    /// payé une fois.
+    double startSeconds = 0.0;
+    /// Longueur du fichier PRODUIT (et non de la portion calculée).
+    /// 0 = déduire du contenu du projet (dernière note + queue), à partir de
+    /// `startSeconds`.
     double durationSeconds = 0.0;
     vsm::audio::io::SampleFormat format = vsm::audio::io::SampleFormat::Float32;
 };

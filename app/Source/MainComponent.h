@@ -19,6 +19,7 @@
 #include "ui/LookAndFeel/VsmLookAndFeel.h"
 #include "vsm/audio/engine/ReferenceTrack.h"
 #include "vsm/audio/io/WaveformPeaks.h"
+#include "vsm/interchange/OfflineReconstruction.h"
 #include <map>
 #include <memory>
 
@@ -290,6 +291,9 @@ private:
     juce::String frozenPathFor(size_t trackIndex) const;
     void exportMidiFile();
     void exportAudioFile();
+    /// La seconde moitié de l'export : choisir le fichier, puis rendre avec les
+    /// options que l'utilisateur vient de fixer (D6.1).
+    void exportAudioWithOptions(const vsm::interchange::RenderOptions& options);
     /// Republie tout ce qui dépend du projet. `stopPlayback` est faux après un
     /// annuler/rétablir : l'utilisateur qui corrige une note pendant que ça
     /// joue n'a aucune raison de voir la lecture s'arrêter.

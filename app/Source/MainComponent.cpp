@@ -1047,11 +1047,104 @@ void MainComponent::showAboutDialog() {
 }
 
 void MainComponent::exportAudioFile() {
+    // D6.1 : ON DEMANDE AVANT D'ÉCRIRE. La version précédente rendait toujours
+    // le morceau entier en 48 kHz / 24 bits, sans jamais le dire ni permettre
+    // d'en changer : un projet travaillé à 96 kHz s'exportait rééchantillonné
+    // en silence, et exporter huit mesures obligeait à exporter tout puis à
+    // couper ailleurs.
+    auto fenetre = std::make_shared<juce::AlertWindow>(
+        u8"Exporter en audio", u8"Ce qui sera rendu :", juce::AlertWindow::NoIcon);
+
+    juce::StringArray plages;
+    plages.add(u8"Le morceau entier");
+    plages.add(u8"La boucle");
+    plages.add(u8"La selection");
+    fenetre->addComboBox("plage", plages, u8"Plage");
+    // CE QUI N'EXISTE PAS NE SE PROPOSE PAS : une boucle absente ou une
+    // sélection vide donneraient un fichier vide sans rien expliquer.
+    vsm::midi::Tick selDebut = 0, selFin = 0;
+    const bool aSelection = arrangement_.selectionTickRange(selDebut, selFin);
+    const bool aBoucle = project_.loopEndTick > project_.loopStartTick;
+    if (auto* box = fenetre->getComboBoxComponent("plage")) {
+        box->setItemEnabled(2, aBoucle);
+        box->setItemEnabled(3, aSelection);
+        box->setSelectedId(aSelection ? 3 : (aBoucle ? 2 : 1), juce::dontSendNotification);
+    }
+
+    juce::StringArray frequences;
+    frequences.add(u8"44100 Hz");
+    frequences.add(u8"48000 Hz");
+    frequences.add(u8"88200 Hz");
+    frequences.add(u8"96000 Hz");
+    frequences.add(u8"192000 Hz");
+    fenetre->addComboBox("frequence", frequences, u8"Frequence");
+    // LE DÉFAUT EST CELLE DE LA SESSION, pas 48 kHz : exporter à une fréquence
+    // autre que celle qu'on vient d'entendre est un choix, jamais un accident.
+    const double sessionHz = audioEngine_.currentSampleRate() > 0.0
+                                 ? audioEngine_.currentSampleRate() : 48000.0;
+    static const double kFrequences[] = {44100.0, 48000.0, 88200.0, 96000.0, 192000.0};
+    if (auto* box = fenetre->getComboBoxComponent("frequence")) {
+        int choix = 2;
+        for (int i = 0; i < 5; ++i)
+            if (std::abs(kFrequences[i] - sessionHz) < 1.0) choix = i + 1;
+        box->setSelectedId(choix, juce::dontSendNotification);
+    }
+
+    juce::StringArray profondeurs;
+    profondeurs.add(u8"16 bits entiers");
+    profondeurs.add(u8"24 bits entiers");
+    profondeurs.add(u8"32 bits flottants");
+    fenetre->addComboBox("profondeur", profondeurs, u8"Profondeur");
+    if (auto* box = fenetre->getComboBoxComponent("profondeur"))
+        box->setSelectedId(2, juce::dontSendNotification);
+
+    // LA QUEUE EST EN SECONDES ET SE RÈGLE : deux secondes suffisent à une
+    // pièce sèche et coupent net une grande réverbération, ce qui s'entend.
+    fenetre->addTextEditor("queue", "2.0", u8"Queue (secondes)");
+
+    fenetre->addButton(u8"Exporter...", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton(u8"Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+        [this, fenetre, aBoucle, aSelection, selDebut, selFin](int resultat) {
+        const int plage = fenetre->getComboBoxComponent("plage")->getSelectedId();
+        const int frequence = fenetre->getComboBoxComponent("frequence")->getSelectedId();
+        const int profondeur = fenetre->getComboBoxComponent("profondeur")->getSelectedId();
+        const double queue = std::max(0.0, fenetre->getTextEditorContents("queue").getDoubleValue());
+        fenetre->exitModalState(resultat);
+        fenetre->setVisible(false);
+        if (resultat != 1) return;
+
+        vsm::interchange::RenderOptions options;
+        options.blockSize = 512;
+        options.tailSeconds = queue;
+        options.sampleRate = kFrequences[juce::jlimit(0, 4, frequence - 1)];
+        options.format = profondeur == 1 ? vsm::audio::io::SampleFormat::Int16
+                        : profondeur == 3 ? vsm::audio::io::SampleFormat::Float32
+                                          : vsm::audio::io::SampleFormat::Int24;
+
+        // LA PLAGE : le morceau laisse tout déduire ; la boucle et la
+        // sélection donnent un début ET une longueur, à quoi la queue s'ajoute
+        // pour ne pas couper la dernière résonance sur le dernier temps.
+        if (plage == 2 && aBoucle) {
+            options.startSeconds = project_.ticksToSeconds(project_.loopStartTick);
+            options.durationSeconds =
+                project_.ticksToSeconds(project_.loopEndTick) - options.startSeconds + queue;
+        } else if (plage == 3 && aSelection) {
+            options.startSeconds = project_.ticksToSeconds(selDebut);
+            options.durationSeconds =
+                project_.ticksToSeconds(selFin) - options.startSeconds + queue;
+        }
+
+        exportAudioWithOptions(options);
+    }), false);
+}
+
+void MainComponent::exportAudioWithOptions(const vsm::interchange::RenderOptions& options) {
     auto chooser = std::make_shared<juce::FileChooser>(
         "Exporter en audio WAV...", juce::File(), "*.wav");
 
     chooser->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
-                          [this, chooser](const juce::FileChooser& fc) {
+                          [this, chooser, options](const juce::FileChooser& fc) {
         juce::File file = fc.getResult();
         if (file == juce::File()) return;
 
@@ -1077,11 +1170,6 @@ void MainComponent::exportAudioFile() {
                     *plugin, project_.tracks[i].instrumentId, project_.tracks[i].name);
         }
 
-        vsm::interchange::RenderOptions options;
-        options.sampleRate = 48000.0;
-        options.blockSize = 512;
-        options.format = vsm::audio::io::SampleFormat::Int24;
-
         const auto rendered = vsm::interchange::renderBundleToWav(
             bundle, file.getFullPathName().toStdString(), options);
         if (!rendered.success) {
@@ -1093,8 +1181,12 @@ void MainComponent::exportAudioFile() {
         // Les avertissements du rendu sont MONTRÉS. Un export qui laisse une
         // piste muette ou saute un effet doit le dire au moment où il le fait.
         juce::String message = juce::String(u8"Rendu écrit :\n") + file.getFullPathName() + "\n\n"
-                              + juce::String(rendered.renderedSeconds, 1) + juce::String(u8" s, 48 kHz, 24 bits, crête ")
-                              + juce::String(rendered.peakLevel, 3) + ".";
+                              + juce::String(rendered.renderedSeconds, 1) + juce::String(u8" s, ")
+                              + juce::String(options.sampleRate / 1000.0, 1) + juce::String(u8" kHz, ")
+                              + juce::String(options.format == vsm::audio::io::SampleFormat::Int16 ? u8"16 bits"
+                                            : options.format == vsm::audio::io::SampleFormat::Float32 ? u8"32 bits flottants"
+                                                                                                       : u8"24 bits")
+                              + juce::String(u8", crête ") + juce::String(rendered.peakLevel, 3) + ".";
         for (const auto& warning : rendered.warnings)
             message += "\n" + juce::String(warning);
         juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon,

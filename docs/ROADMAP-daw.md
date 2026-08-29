@@ -1556,7 +1556,7 @@ D0.3 a rendu l'export **honnête** ; ici on le rend complet.
 
 | Étape | Contenu | Terminé quand |
 |---|---|---|
-| D6.1 | Plage au choix (morceau, boucle, sélection), fréquence, profondeur, queue | plus de 48 kHz / 24 bits en dur |
+| D6.1 | Plage au choix (morceau, boucle, sélection), fréquence, profondeur, queue | plus de 48 kHz / 24 bits en dur — **fait** |
 | D6.2 | Export **stems** : une piste ou un bus par fichier | la somme des stems égale le mixage, vérifié par test |
 | D6.3 | Export MIDI complet (aujourd'hui : perd `muted` et `confidence`) | relu ailleurs sans perte de tempo ni de signature |
 | D6.4 | Export d'un **projet autonome** (dossier complet, échantillons compris) | s'ouvre sur une autre machine sans rien de manquant |
@@ -1564,6 +1564,37 @@ D0.3 a rendu l'export **honnête** ; ici on le rend complet.
 
 **Critère de phase** : il n'y a toujours qu'**un seul rendu** dans ce projet.
 L'application n'en invente pas un second ; elle expose celui de `vsm-render`.
+
+> **D6.1 EST FAITE (30/08/2026). UNE PLAGE SE CALCULE DEPUIS ZÉRO ET SE DÉCOUPE
+> ENSUITE.** C'était le seul vrai choix de l'étape. Rendre à froid en se
+> plaçant directement au début de la plage aurait été rapide et faux : la
+> queue de réverbération, l'écho et le compresseur qu'installe ce qui précède
+> n'existeraient pas, et l'extrait exporté ne serait pas celui qu'on entend à
+> cet endroit — sans que rien dans le fichier ne le signale. Le rendu part donc
+> toujours de zéro, et `startSeconds` découpe. Le surcoût est proportionnel au
+> début de la plage, hors ligne, et payé une fois.
+>
+> **C'EST AUSSI CE QUE LE TEST VÉRIFIE**, et c'est pour cela qu'il est
+> formulé ainsi : la plage exportée doit être **bit à bit** la portion
+> correspondante du rendu complet. « Un fichier plus court sort » serait vrai
+> d'un rendu à froid, donc ne prouverait rien.
+>
+> **LE DÉFAUT DE FRÉQUENCE EST CELLE DE LA SESSION**, pas 48 kHz. Un projet
+> travaillé à 96 kHz s'exportait jusqu'ici rééchantillonné en silence.
+> Rééchantillonner en exportant reste possible : c'est désormais un choix,
+> plus un accident.
+>
+> **CE QUI N'EXISTE PAS NE SE PROPOSE PAS** : sans boucle posée et sans clip
+> sélectionné, les deux plages correspondantes sont grisées. Les laisser
+> actives donnerait un fichier vide sans rien expliquer.
+>
+> **LA QUEUE S'AJOUTE APRÈS LA PLAGE**, boucle et sélection comprises : une
+> boucle exportée sans queue coupe net sa dernière résonance sur le dernier
+> temps, ce qui s'entend immédiatement en la rejouant ailleurs.
+>
+> **UN SEUL RENDU, TOUJOURS** : `vsm-render` reçoit la même option, `--start`.
+> L'application ne sait rien exporter que la ligne de commande ne sache faire.
+
 
 ### Phase D7 — Héberger les plugins des autres
 

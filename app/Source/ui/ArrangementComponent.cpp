@@ -544,6 +544,21 @@ juce::MouseCursor ArrangementComponent::getMouseCursor() {
     return juce::MouseCursor::NormalCursor;
 }
 
+bool ArrangementComponent::selectionTickRange(vsm::midi::Tick& debut,
+                                               vsm::midi::Tick& fin) const {
+    if (project_ == nullptr || selection_.empty()) return false;
+    bool trouve = false;
+    for (const auto& track : project_->tracks) {
+        vsm::midi::Tick a = 0, b = 0;
+        if (!vsm::sequencer::clipSelectionBounds(track.clips, selection_, materialEnd(track), a, b))
+            continue;
+        debut = trouve ? std::min(debut, a) : a;
+        fin = trouve ? std::max(fin, b) : b;
+        trouve = true;
+    }
+    return trouve;
+}
+
 void ArrangementComponent::deleteSelection() {
     if (project_ == nullptr || selection_.empty()) return;
     if (onEditStarted) onEditStarted(u8"Supprimer des clips");

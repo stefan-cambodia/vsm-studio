@@ -93,6 +93,13 @@ public:
     /// Supprime les clips sélectionnés.
     void deleteSelection();
     bool hasSelection() const { return !selection_.empty(); }
+    /// LES BORNES DE LA SÉLECTION sur la ligne de temps, toutes pistes
+    /// confondues (D6.1 : « exporter la sélection »). Rend faux si rien n'est
+    /// sélectionné. Les clips sélectionnés peuvent appartenir à des pistes
+    /// différentes : ce qu'on exporte est la PLAGE DE TEMPS qu'ils couvrent,
+    /// avec tout ce qui sonne pendant -- exporter « seulement les pistes
+    /// sélectionnées » est une autre fonction, celle des stems (D6.2).
+    bool selectionTickRange(vsm::midi::Tick& debut, vsm::midi::Tick& fin) const;
     /// Les mêmes trois gestes que le piano roll, aux mêmes raccourcis.
     void copySelection();
     void paste();

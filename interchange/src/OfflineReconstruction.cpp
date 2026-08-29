@@ -213,17 +213,30 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
     // résonances. Un projet vide produit tout de même un fichier valide (la
     // queue), plutôt qu'un WAV de zéro échantillon que certains lecteurs
     // refusent d'ouvrir.
+    const double debut = std::max(0.0, options.startSeconds);
     double duration = options.durationSeconds;
     if (duration <= 0.0) {
         const double lastNoteSeconds = bundle.project.ticksToSeconds(bundle.project.lastUsedTick());
-        duration = lastNoteSeconds + std::max(0.0, options.tailSeconds);
+        duration = lastNoteSeconds + std::max(0.0, options.tailSeconds) - debut;
     }
     if (duration <= 0.0) duration = std::max(0.1, options.tailSeconds);
 
     graph.seekSeconds(0.0);
     graph.setPlaying(true);
-    const auto rendered = OfflineRenderer::render(graph, options.sampleRate, options.blockSize, duration);
+    // ON CALCULE DEPUIS ZÉRO, ON GARDE LA PLAGE. Voir la note de
+    // `RenderOptions::startSeconds` : ce qui précède la plage n'est pas du
+    // gaspillage, c'est ce qui met les effets dans l'état où l'oreille les
+    // attend au moment où la plage commence.
+    auto rendered = OfflineRenderer::render(graph, options.sampleRate, options.blockSize,
+                                             debut + duration);
     graph.setPlaying(false);
+
+    if (debut > 0.0) {
+        const size_t coupe = std::min(rendered.numFrames(),
+                                       static_cast<size_t>(debut * options.sampleRate));
+        rendered.left.erase(rendered.left.begin(), rendered.left.begin() + static_cast<long>(coupe));
+        rendered.right.erase(rendered.right.begin(), rendered.right.begin() + static_cast<long>(coupe));
+    }
 
     for (size_t i = 0; i < rendered.left.size(); ++i)
         result.peakLevel = std::max(result.peakLevel,
