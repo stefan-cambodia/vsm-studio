@@ -59,43 +59,48 @@ from .vsm_project_export import ExportNote, ExportTrack
 ORIGINE_CHERCHE = "patch cherché"
 ORIGINE_USINE = "patch d'usine"
 
-# ÉCART EN DEÇÀ DUQUEL DEUX MACHINES NE SONT PAS DÉPARTAGÉES.
-#
-# Mesuré, et c'est ce qui a rendu ce seuil nécessaire : sur le stem `other` de
-# *Children*, l'arbitrage sépare `vsm.ms20` de `vsm.string` par UN MILLIÈME
-# (0,260 contre 0,261). À cette marge, un simple changement de protocole -- le
-# passage au rendu à durée imposée -- suffit à les intervertir, et le mauvais
-# choix coûtait 0,016 sur le morceau entier sans que rien en aval puisse le
-# rattraper.
-#
-# 2 % en RELATIF, et non une valeur absolue : les distances ne vivent pas dans
-# la même plage d'un stem à l'autre, et un seuil absolu serait tantôt muet
-# tantôt bavard. Ce n'est pas un réglage fin -- c'est une déclaration
-# d'ignorance : « sous cet écart, je ne sais pas laquelle est la meilleure, que
-# le mélange tranche ».
-CLOSE_MARGIN = 0.02
+def runners_up(verdicts: Sequence["TrackVerdict"], count: int = 3) -> List["TrackVerdict"]:
+    """Les meilleures candidates d'AUTRES machines que la gagnante, sans seuil.
 
+    POURQUOI SANS SEUIL, ALORS QUE `close_runner_up` EN AVAIT UN. Le seuil
+    supposait qu'une machine loin derrière AU STEM est loin derrière tout court.
+    C'est faux, et c'est mesuré (§ 5 decies) : sur la basse de *Sky and Sand*,
+    la machine que le MÉLANGE retient est TROISIÈME au stem, à 17,6 % de la
+    gagnante -- huit fois la marge de 2 %. Sur `other`, elle est deuxième à
+    16,4 %. Aucun seuil serré ne peut les attraper, parce que les deux
+    classements ne sont pas seulement décalés : ils sont pratiquement inverses.
 
-def close_runner_up(verdicts: Sequence["TrackVerdict"],
-                    margin: float = CLOSE_MARGIN) -> Optional["TrackVerdict"]:
-    """
-    La meilleure candidate d'une AUTRE machine que la gagnante, si elle est à
-    portée de `margin` (relatif). Renvoie None s'il n'y en a pas, ce qui est le
-    cas courant : la plupart du temps l'arbitrage tranche nettement.
+    Ce que le seuil protégeait était le COÛT, et il est mesurable : une
+    proposition de plus coûte un rendu de projet et une distance, une quinzaine
+    de secondes, contre les ~5 900 s d'une reconstruction. Le seuil économisait
+    un millième du temps et laissait passer douze pour cent de qualité.
 
-    Une autre MACHINE, pas un autre patch : un second patch de la gagnante ne
+    LA RAISON D'ÊTRE DE L'ANCIEN SEUIL RESTE VRAIE, ET ELLE EST ABSORBÉE ICI.
+    Il avait été écrit pour un cas mesuré : sur le stem `other` de *Children*,
+    l'arbitrage sépare `vsm.ms20` de `vsm.string` par UN MILLIÈME (0,260 contre
+    0,261) — à cette marge, un simple changement de protocole les intervertit,
+    et le mauvais choix coûtait 0,016 sur le morceau sans que rien en aval
+    puisse le rattraper. Une égalité pareille est évidemment dans les trois
+    premières ; la remise en jeu systématique la couvre, et couvre en plus les
+    écarts francs que le seuil laissait passer.
+
+    Une autre MACHINE, jamais un autre patch de la gagnante : un second patch ne
     répare pas un mauvais choix de machine, et c'est ce choix-là que le verdict
     du mélange ne savait pas défaire.
     """
-    if len(verdicts) < 2:
-        return None
+    if not verdicts:
+        return []
     gagnante = verdicts[0]
-    seuil = gagnante.distance * (1.0 + margin)
+    vus = {gagnante.machine}
+    retenues: List["TrackVerdict"] = []
     for v in verdicts[1:]:
-        if v.machine == gagnante.machine:
+        if v.machine in vus:
             continue
-        return v if v.distance <= seuil else None
-    return None
+        vus.add(v.machine)
+        retenues.append(v)
+        if len(retenues) >= count:
+            break
+    return retenues
 
 
 @dataclass

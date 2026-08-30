@@ -91,6 +91,11 @@ class MixDecision:
     # Distance de PISTE de ce qui a été retenu, ou None si l'état courant l'a
     # emporté (l'appelant sait alors qu'il n'a rien à changer).
     kept_track_distance: Optional[float] = None
+    # LE TÉMOIN DE COUPURE : ce que vaut le morceau SANS cette piste du tout.
+    # Ce n'est PAS une candidate, et le corps de `keep_what_helps_the_mix` dit
+    # pourquoi. C'est le repère sans lequel on ne sait pas si la piste rapporte
+    # quoi que ce soit.
+    muted_distance: Optional[float] = None
 
 
 def _copy_samples(tracks: Sequence[ExportTrack], samples_root: Path, folder: Path) -> None:
@@ -244,7 +249,31 @@ def keep_what_helps_the_mix(
         track.notes = list(meilleur[2][4])
         if track.machine != etat_courant[0]:
             track.machine_display_name = ""
+
+        # LE TÉMOIN DE COUPURE, MESURÉ ET PUBLIÉ, JAMAIS JOUÉ.
+        #
+        # Ce que vaut le morceau sans cette piste du tout. Il n'entre pas en
+        # concurrence avec les autres, et c'est délibéré : une chaîne autorisée
+        # à supprimer une piste optimiserait la métrique en abandonnant le
+        # morceau -- elle rendrait un *Sky and Sand* sans basse, qu'aucune
+        # oreille n'accepterait. La décision de couper reste humaine ; ce qui
+        # ne peut pas rester tu, c'est le CHIFFRE.
+        #
+        # Il ne coûte rien à établir et il manquait cruellement : mesuré après
+        # coup (§ 5 decies), la basse publiée de *Sky and Sand* valait 0,2933
+        # quand le morceau SANS elle valait 0,2781. La chaîne ajoutait un
+        # instrument qui la dégradait de 5,5 %, et aucune pièce n'était en
+        # mesure de le remarquer, faute de ce repère-là.
+        volume_retenu = float(track.volume)
+        track.volume = 0.0
+        muet = distance_du_projet()
+        track.volume = volume_retenu
+        if muet < meilleur[1] - 1e-6:
+            print(f"      {track.name:8s} : ATTENTION — le morceau est MEILLEUR "
+                  f"sans cette piste ({muet:.4f} contre {meilleur[1]:.4f}). "
+                  f"Elle est conservée : couper est une décision humaine.")
+
         decisions.append(MixDecision(track.name, meilleur[0], meilleur[1], ecartees,
-                                     meilleur[3]))
+                                     meilleur[3], muet))
 
     return decisions

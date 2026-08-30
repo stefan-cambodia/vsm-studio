@@ -594,12 +594,12 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 1 213 tests moteur + 18 tests d'analyse, tous verts
+### Bilan actuel : 1 213 tests moteur + 59 tests d'analyse, tous verts
 
-- **84 tests `vsm_core`** (dont l'édition du piano roll : opérations de
+- **158 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des
   notes douteuses de la transcription),
-  **672 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
+  **798 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
   scalaire, indépendance des lignes, bornes de l'approximation de tanh ; et la
   boucle : rebouclage échantillon-exact, notes relâchées au saut) : chorus BBD, Juno-106,
   bus master (biquad/compresseur/limiteur à plafond garanti/LUFS), oversampler,

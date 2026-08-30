@@ -74,7 +74,7 @@ from analyzer.vsm_reconstruct import (StemNote, StemReconstruction, melodic_mach
                                       reconstruct_stem, reconstruction_distance,
                                       write_reconstruction_report)
 from analyzer.vsm_track_arbitration import (ORIGINE_USINE, TrackCandidate, arbitrate_on_track,  # noqa: E402
-                                             build_candidates, close_runner_up)
+                                             build_candidates, runners_up)
 from analyzer.vsm_track_refine import refine_patch_on_track  # noqa: E402
 
 SAMPLE_RATE = 44100
@@ -88,6 +88,22 @@ CLOSE_MARGIN_BATTERIE = 0.50
 
 # Les boîtes à rythmes du parc qui concourent contre la batterie modélisée.
 BOITES_A_RYTHMES = ("vsm.tr909", "vsm.tr808")
+
+# COMBIEN DE MACHINES L'ARBITRAGE REMET EN JEU AU VERDICT DU MÉLANGE.
+#
+# Trois, et le chiffre vient d'une mesure et non d'un goût. Sur *Sky and Sand*
+# (§ 5 decies), la machine que le mélange retient est TROISIÈME au stem pour la
+# basse et DEUXIÈME pour `other` : deux suffiraient de justesse, trois couvrent
+# les deux cas observés.
+#
+# ÉLARGIR A ÉTÉ MESURÉ, ET N'AURAIT RIEN RAPPORTÉ. L'objection est réelle -- sur
+# `other`, `vsm.tb303` est DERNIÈRE au stem, à plus de 50 %, et bat pourtant au
+# mélange la machine publiée. Mais elle ne GAGNE pas : sur les deux pistes
+# mesurées, la gagnante du mélange est dans les trois premières du stem. Aller à
+# cinq coûterait une minute de plus par piste (un rendu de projet et une
+# distance chacune, une quinzaine de secondes) pour des candidates dont aucune
+# ne l'emporte. À remesurer au premier morceau qui démentira ça.
+MACHINES_AU_MELANGE = 3
 
 # Nom de la piste de batterie dans le projet écrit, sous lequel le verdict du
 # mélange, le rapport et les niveaux la retrouvent.
@@ -876,18 +892,19 @@ def reconstruire_batterie(ctx: Contexte, nom: str, chemin: Path) -> Optional[Res
 class ResultatMelodique:
     stem: StemReconstruction
     audio: np.ndarray
-    # La machine seconde de l'arbitrage, quand elle est à portée.
-    seconde: Optional[MixAlternative] = None
+    # Les machines SUIVANTES de l'arbitrage, que le mélange rejugera.
+    secondes: List[MixAlternative] = field(default_factory=list)
 
 
 def arbitrer_sur_piste(ctx: Contexte, nom: str, stem: StemReconstruction, audio: np.ndarray
-                       ) -> Optional[MixAlternative]:
+                       ) -> List[MixAlternative]:
     """Rejuge toutes les candidates sur la PISTE ENTIÈRE.
 
     La recherche a choisi une machine d'après UNE note ; ceci la rejuge sur
     toutes. Les deux critères ne classent pas dans le même ordre, et c'est le
-    second qu'on écoute. Modifie `stem` en place ; rend la machine seconde si
-    l'égalité est serrée.
+    second qu'on écoute. Modifie `stem` en place ; rend les machines SUIVANTES,
+    que le verdict du mélange rejugera -- le classement contre le stem ne
+    prédit pas le classement dans le mélange (§ 5 decies).
     """
     depart = time.perf_counter()
     verdicts = arbitrate_on_track(
@@ -907,7 +924,7 @@ def arbitrer_sur_piste(ctx: Contexte, nom: str, stem: StemReconstruction, audio:
         print(f"      {nom:8s} : arbitrage sans verdict (aucune candidate "
               f"rendue ni retenue au niveau) — la machine de la "
               f"recherche est conservée")
-        return None
+        return []
     gagnant = verdicts[0]
     stem.track_distance = gagnant.distance
     stem.track_considered = [(v.machine, v.origin, v.distance) for v in verdicts]
@@ -928,16 +945,25 @@ def arbitrer_sur_piste(ctx: Contexte, nom: str, stem: StemReconstruction, audio:
           + f" [{time.perf_counter()-depart:.0f} s] — {classement}")
     print("                 (* = patch d'usine)")
 
-    seconde = close_runner_up(verdicts)
-    if seconde is None:
-        return None
-    ecart = (seconde.distance - gagnant.distance) / max(1e-9, gagnant.distance)
-    print(f"      {nom:8s} : arbitrage SERRÉ — {seconde.machine} "
-          f"à {ecart*100:.1f} % ({seconde.distance:.3f}), remise en jeu "
-          f"au verdict du mélange")
-    return MixAlternative(parameters=dict(seconde.parameters),
-                          label=f"machine seconde ({seconde.machine})",
-                          machine=seconde.machine, track_distance=seconde.distance)
+    # LES SUIVANTES REPARTENT TOUTES AU MÉLANGE, ET PLUS SEULEMENT LES SERRÉES.
+    # Le seuil de 2 % supposait qu'une machine loin derrière AU STEM est loin
+    # derrière tout court. Mesuré sur *Sky and Sand* (§ 5 decies), c'est faux :
+    # la machine que le mélange retient pour la basse est TROISIÈME au stem, à
+    # 17,6 %, et celle de `other` deuxième à 16,4 %. Les deux classements sont
+    # à peu près inverses. Une proposition de plus coûte un rendu de projet --
+    # une quinzaine de secondes sur les ~5 900 s d'une reconstruction.
+    suivantes = runners_up(verdicts, count=MACHINES_AU_MELANGE)
+    if not suivantes:
+        return []
+    detail = ", ".join(
+        f"{v.machine.split('.')[-1]} à {(v.distance - gagnant.distance) / max(1e-9, gagnant.distance) * 100:.1f} %"
+        for v in suivantes)
+    print(f"      {nom:8s} : {len(suivantes)} machine(s) suivante(s) remises en jeu "
+          f"au verdict du mélange — {detail}")
+    return [MixAlternative(parameters=dict(v.parameters),
+                           label=f"machine suivante ({v.machine})",
+                           machine=v.machine, track_distance=v.distance)
+            for v in suivantes]
 
 
 def regler_sur_piste(ctx: Contexte, nom: str, stem: StemReconstruction, audio: np.ndarray) -> None:
@@ -1011,7 +1037,7 @@ def reconstruire_stem_melodique(ctx: Contexte, nom: str, chemin: Path) -> Option
 
     resultat = ResultatMelodique(stem=stem, audio=audio)
     if not args.sans_arbitrage:
-        resultat.seconde = arbitrer_sur_piste(ctx, nom, stem, audio)
+        resultat.secondes = arbitrer_sur_piste(ctx, nom, stem, audio)
     if not args.sans_reglage_piste:
         regler_sur_piste(ctx, nom, stem, audio)
     return resultat
@@ -1049,8 +1075,8 @@ def reconstruire_les_stems(ctx: Contexte, pistes: Dict[str, Path]) -> Chantier:
             continue
         chantier.reconstruits.append(melodique.stem)
         chantier.audio_par_stem[melodique.stem.name] = melodique.audio
-        if melodique.seconde is not None:
-            chantier.machines_secondes.setdefault(nom, []).append(melodique.seconde)
+        if melodique.secondes:
+            chantier.machines_secondes.setdefault(nom, []).extend(melodique.secondes)
     if not chantier.reconstruits and not chantier.pistes_directes:
         raise Abandon(3, "aucune piste reconstruite")
     return chantier
@@ -1136,12 +1162,18 @@ def verdict_du_melange(ctx: Contexte, chantier: Chantier, pistes_export: List[Ex
     verdict: List[Dict[str, object]] = []
     for decision in decisions:
         ecartees = ", ".join(f"{lib} {d:.4f}" for lib, d in decision.rejected)
+        # LE TÉMOIN DE COUPURE EST DIT AVEC LE VERDICT, et pas seulement inscrit
+        # au rapport : sans lui, « la meilleure des variantes » se lit comme
+        # « une bonne piste », ce qui n'est pas la même chose (§ 5 decies).
+        coupee = ("" if decision.muted_distance is None
+                  else f" [sans la piste : {decision.muted_distance:.4f}]")
         print(f"      {decision.track:8s} : verdict du mélange -> "
-              f"{decision.kept} ({decision.distance_kept:.4f})"
+              f"{decision.kept} ({decision.distance_kept:.4f}){coupee}"
               + (f" — écartées : {ecartees}" if ecartees else ""))
         verdict.append({
             "track": decision.track, "kept": decision.kept,
             "mixDistance": decision.distance_kept,
+            "mixDistanceMuted": decision.muted_distance,
             "rejected": [{"label": lib, "mixDistance": d} for lib, d in decision.rejected]})
     return distances_retenues, verdict
 

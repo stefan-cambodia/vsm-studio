@@ -1193,6 +1193,14 @@ distance globale vers 0,2815.
 
 ## 5 quinquies. Une égalité n'est plus définitive : le verdict peut changer de machine
 
+> **LE SEUIL DE 2 % DÉCRIT ICI A ÉTÉ RETIRÉ AU § 5 DECIES.** Ce que cette
+> section établit reste vrai — le verdict du mélange sait changer de MACHINE, et
+> il le fallait. Ce qui est tombé, c'est la condition d'entrée : mesuré sur la
+> basse de *Sky and Sand*, le classement contre le stem et le classement dans le
+> mélange sont à peu près inverses, et la machine que le mélange retient était à
+> 17,5 % au stem — hors de portée d'un seuil serré. Les trois meilleures
+> machines suivantes repartent maintenant toutes au mélange, sans condition.
+
 Le § 5 quater se terminait sur une prédiction falsifiable — « donner au verdict
 du mélange la machine SECONDE de l'arbitrage comme alternative devrait ramener
 `other` à `vsm.string` et la distance vers 0,2815 ». C'est fait, et c'est
@@ -1984,6 +1992,172 @@ claire : sur *Sky and Sand*, c'est la préférence pour une voix libre, et non l
 spectre, qui a mis la percussion au bon endroit. Un cinquième rôle demanderait
 un discriminant de « métal accordé » ; l'écrire sur une seule famille d'un seul
 morceau serait le sur-ajuster. Il attend une seconde occurrence.
+
+---
+
+## 5 decies. Le classement au stem ne prédit pas le classement au mélange
+
+Le § 5 nonies a fait de la basse le second front — 16,7 % de l'erreur de *Sky
+and Sand*. Il ne disait pas pourquoi elle coûtait, et
+`analyse/diagnostic_basse.py`, pendant mélodique de `diagnostic_batterie.py`,
+applique la même méthode : rejouer la même piste par des moyens différents, et
+mesurer. La réponse n'était dans aucune des cases attendues.
+
+**L'OUTIL REND DEUX COLONNES, ET IL FAUT LES DEUX.** La distance de la piste à
+SON STEM est la cible que la chaîne optimise, piste par piste, et la seule dont
+elle dispose à ce moment-là. La distance du MÉLANGE COMPLET à l'original, la
+piste remplacée par la variante, est ce qu'on écoute. `vsm_mix_verdict` existe
+parce que les deux se contredisent ; personne n'avait mesuré de combien.
+
+Toutes les distances sont en **métrique v4**, sur *Sky and Sand* (532,2 s,
+piste `bass`, 1 128 notes), et la règle du § 10.3 vaut : elles ne se comparent
+qu'entre elles. Trois témoins donnent l'échelle — le projet **tel quel** vaut
+0,2933, la piste **coupée** 0,2781, la piste telle quelle **contre son stem**
+0,3692.
+
+**LE TABLEAU, À PATCH D'USINE, CHAQUE VARIANTE RENDUE EN PROJET ENTIER** (le bus
+maître n'est pas linéaire : additionner des rendus de pistes donne 0,2945 là où
+le rendu du projet donne 0,2933, avec des écarts d'échantillon jusqu'à 0,29 —
+d'où un rendu complet par variante, une quinzaine de secondes) :
+
+| machine, patch d'usine | au stem | **au mélange** |
+|---|---|---|
+| **`vsm.wavetable`** — celle que l'arbitrage retient | **0,3692** | 0,2933 |
+| `vsm.minimoog` | 0,4303 | 0,2845 |
+| **`vsm.phasedist`** | 0,4340 | **0,2557** |
+| `vsm.prophet` | 0,4449 | 0,2764 |
+| `vsm.multisample` | 1,1370 | 0,2781 |
+| *témoin : la piste COUPÉE* | — | *0,2781* |
+
+**LES DEUX CLASSEMENTS SONT À PEU PRÈS INVERSES.** La première au stem est la
+DERNIÈRE au mélange ; la troisième au stem est la première. Ce n'est pas un
+écart de mesure qu'on pourrait absorber par un seuil un peu plus large : c'est
+un désaccord d'ordre.
+
+**ET LA BASSE RECONSTRUITE COÛTAIT PLUS QU'ELLE NE RAPPORTAIT.** Le morceau
+publié vaut 0,2933 ; le même morceau **sans basse du tout** vaut 0,2781. La
+chaîne ajoutait un instrument qui dégradait le mélange de 5,5 %, et rien ne
+pouvait le voir : le verdict du mélange ne jugeait que les variantes qu'on lui
+présentait, et on ne lui en présentait aucune. `vsm.phasedist` à 0,2557 fait
+12,8 % de mieux que ce qui est publié, et 8,1 % de mieux que le silence.
+
+**LE RÉGLAGE DE PISTE GAGNE SUR LE STEM ET PERD SUR LE MÉLANGE — QUATRE FOIS SUR
+QUATRE** (budget de la chaîne : 120 évaluations, 21 axes) :
+
+| machine | stem : usine → réglée | mélange : usine → réglée |
+|---|---|---|
+| `vsm.wavetable` | 0,3692 → **0,3043** (−17,6 %) | 0,2933 → 0,3010 (+2,6 %) |
+| `vsm.minimoog` | 0,4303 → **0,3334** (−22,5 %) | 0,2845 → 0,3148 (+10,6 %) |
+| `vsm.phasedist` | 0,4340 → **0,3092** (−28,8 %) | 0,2557 → 0,2623 (+2,6 %) |
+| `vsm.prophet` | 0,4449 → **0,3051** (−31,4 %) | 0,2764 → 0,3006 (+8,8 %) |
+
+Aucune exception. Le réglage fait exactement ce qu'on lui demande — il se
+rapproche du stem — et le mélange le refuse à chaque fois. Sur cette piste, le
+stem n'est pas un bon mandataire du morceau, et l'optimiser plus fort éloigne
+davantage. C'est la forme la plus dure d'une leçon déjà écrite deux fois.
+Le § 5 septies avait montré qu'un gagnant sur UNE NOTE ne tient pas la PISTE ;
+on montre ici qu'un gagnant sur la PISTE ne tient pas le MÉLANGE. Chaque
+critère intermédiaire est un mandataire, et chacun se paie. Ce qui est neuf,
+c'est que le désaccord ne porte plus seulement sur QUELLE machine on choisit,
+mais sur COMBIEN on la règle : mieux coller au mandataire peut nuire.
+
+**LE MÊME DÉSACCORD SUR `other`, ET IL N'A RIEN DE PARTICULIER À LA BASSE.**
+Mêmes témoins, même protocole, piste `other` (4 280 notes) : projet tel quel
+0,2933, piste coupée 0,3208, piste telle quelle contre son stem 0,3089.
+
+| machine, patch d'usine | au stem | **au mélange** |
+|---|---|---|
+| **`vsm.string`** — celle que l'arbitrage retient | **0,3089** | 0,2933 |
+| **`vsm.stochastic`** | 0,3595 *(+16,4 %)* | **0,2834** |
+| `vsm.piano` | 0,3817 *(+23,6 %)* | 0,2883 |
+| `vsm.divider` | 0,4317 *(+39,8 %)* | 0,2971 |
+| `vsm.tb303` | 0,4684 *(+51,6 %)* | 0,2853 |
+| *témoin : la piste COUPÉE* | — | *0,3208* |
+
+Encore une fois la première au stem est l'avant-dernière au mélange. Deux
+différences avec la basse, et elles comptent toutes les deux. D'abord `other`
+bat franchement son témoin de coupure (0,2933 contre 0,3208) : cette piste-là
+rapporte vraiment, elle est seulement mal jouée. Ensuite `vsm.tb303`, **dernière
+au stem à plus de 50 %**, est troisième au mélange et meilleure que ce qui est
+publié — un rappel que le désordre entre les deux classements n'est pas un
+décalage d'un ou deux rangs qu'on pourrait borner.
+
+**CE QUE LE SEUIL DE 2 % NE POUVAIT STRUCTURELLEMENT PAS VOIR.** L'arbitrage ne
+remettait en jeu au mélange qu'une seconde machine « à portée », `CLOSE_MARGIN =
+0,02`. Les écarts réels au stem : `vsm.minimoog` à 16,5 %, `vsm.phasedist` à
+17,5 %, `vsm.prophet` à 20,5 % — huit à dix fois la marge. Le seuil supposait
+qu'une machine loin derrière AU STEM est loin derrière tout court, et c'est
+précisément ce que le tableau ci-dessus réfute.
+
+**DÉCISION : LE SEUIL DISPARAÎT, LES TROIS MEILLEURES MACHINES SUIVANTES
+REPARTENT TOUTES AU MÉLANGE** (`runners_up`, `MACHINES_AU_MELANGE = 3`). Trois
+machines DISTINCTES, jamais un second patch de la gagnante — un autre patch ne
+répare pas un mauvais choix de machine, et c'est ce choix-là que le verdict du
+mélange ne savait pas défaire.
+
+*Ce que le seuil protégeait était le coût, et le coût est mesurable* : une
+proposition de plus vaut un rendu de projet et une distance, une quinzaine de
+secondes, contre les ~5 900 s d'une reconstruction. Le seuil économisait un
+millième du temps et laissait passer douze pour cent de qualité.
+
+*La raison d'être de l'ancien seuil reste vraie, et elle est absorbée.* Il avait
+été écrit pour un cas mesuré (§ 5 quinquies) : sur le stem `other` de
+*Children*, l'arbitrage sépare `vsm.ms20` de `vsm.string` par UN MILLIÈME, et à
+cette marge un simple changement de protocole les intervertit. Une égalité
+pareille est évidemment dans les trois premières ; la remise en jeu systématique
+la couvre, et couvre en plus les écarts francs que le seuil laissait passer.
+
+*Pourquoi trois et pas cinq, et la question a été posée aux chiffres.* La
+machine que le mélange retient est TROISIÈME au stem pour la basse,
+`vsm.phasedist`, et DEUXIÈME pour `other`, `vsm.stochastic` : deux
+suffiraient de justesse, trois couvrent les deux cas. L'objection était sérieuse
+— sur `other`, `vsm.tb303` est DERNIÈRE au stem et troisième au mélange, ce qui
+donne l'impression qu'il faudrait tout remettre en jeu. Les deux tableaux y
+répondent : sur les deux pistes, la GAGNANTE du mélange est dans les trois
+premières du stem, et `vsm.tb303` ne gagne pas — elle bat seulement le choix
+publié. Élargir à cinq coûterait une minute de plus par piste pour ajouter des
+candidates dont aucune, sur les deux cas mesurés, ne l'emporte. Le chiffre est
+donc mesuré et non choisi, et il sera remesuré au premier morceau qui le
+démentira.
+
+*Le seuil de la BATTERIE reste, et ce n'est pas un oubli.*
+`CLOSE_MARGIN_BATTERIE = 0,50` ne décide pas la même chose : il choisit les
+boîtes à rythmes qu'on RÈGLE — au budget de piste entier, `--budget-piste`
+évaluations chacune — et non les propositions qu'on soumet au mélange. Son coût
+est donc d'un tout autre ordre que la quinzaine de secondes d'un rendu, et sa
+largeur, 50 % sur un parc de deux boîtes, le rend de toute façon presque
+toujours vrai. Il sera revu le jour où le parc de percussions s'élargira, pas
+avant.
+
+**LE VERDICT DU MÉLANGE NE SAIT PAS COUPER — IL SAIT DÉSORMAIS LE DIRE.** Il
+choisit parmi les variantes qu'on lui soumet, et « pas de piste du tout » n'en
+est pas une. Sur la basse, le témoin de coupure valait 0,2781 quand le morceau
+publié valait 0,2933 : le silence battait la reconstruction, et aucune pièce de
+la chaîne n'était en mesure de le remarquer. Le remède technique est d'une ligne
+— soumettre le silence comme candidate — et c'est justement pourquoi il ne
+fallait pas l'écrire sans y penser. Une chaîne autorisée à supprimer une piste
+optimise la métrique en abandonnant le morceau : elle rendrait un *Sky and Sand*
+sans basse, ce qu'aucune oreille n'accepterait. La mesure et l'intention
+divergent ici pour de bon, comme au § 5 octies.
+
+**Ce qui a été tranché, et écrit.** `keep_what_helps_the_mix` mesure maintenant,
+pour CHAQUE piste qu'il examine, le morceau rendu sans elle ; le chiffre est dit
+au journal (`[sans la piste : 0,2781]`), publié au rapport
+(`mixDistanceMuted`), et quand il bat ce qui a été retenu la chaîne l'annonce en
+toutes lettres. Ce qu'elle ne fait pas, c'est couper : la piste est conservée
+audible, et la décision reste humaine. Un test le verrouille dans le pire cas
+possible — cible silencieuse, où couper est optimal au sens de la métrique — et
+exige que la piste survive.
+
+**UNE PANNE DE MÉTHODE, ATTRAPÉE PAR UN TÉMOIN, ET C'EST POURQUOI LE TÉMOIN
+EXISTE.** La première passe du diagnostic donnait un tout autre tableau —
+`vsm.wavetable` à 0,2729 au mélange, tous les volumes à 0,34. Le calage de
+niveau mesurait le niveau efficace du MÉLANGE au lieu de celui de la PISTE
+SEULE, d'où un volume trois fois trop bas pour tout le monde. Rien dans les
+chiffres ne criait l'erreur ; ce qui l'a dite, c'est le témoin de cohérence :
+la candidate identique à ce que le projet joue DOIT reproduire le chiffre
+publié, et 0,2729 n'est pas 0,2933. Sans ce témoin, le mauvais tableau serait
+ci-dessus.
 
 ---
 
