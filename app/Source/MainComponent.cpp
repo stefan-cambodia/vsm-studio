@@ -32,9 +32,10 @@
 
 using namespace vsm::sequencer;
 using namespace vsm::midi;
+using vsm::audio::engine::TransportState;
 
 MainComponent::MainComponent()
-    : transport_(*this),
+    : transport_(audioEngine_.processGraph()),
       transportBar_(transport_),
       velocityLane_(pianoRoll_),
       pianoRollPanel_(pianoRoll_, velocityLane_),
@@ -441,6 +442,13 @@ MainComponent::MainComponent()
             vsm::app::ui::UiScale::properties().getXmlValue("audioDeviceState"));
         audioEngine_.start(etat.get()); // échec silencieux et non bloquant
     }
+    // L'HORLOGE DE SECOURS, TOUT DE SUITE SI LA CARTE N'EST PAS LÀ (D8.3).
+    // L'attendre du prochain changement d'état ne marcherait pas : sur une
+    // machine sans audio, il n'y a jamais de changement, et le temps ne
+    // partirait donc jamais.
+    transport_.setAudioDeviceOpen(audioEngine_.isDeviceOpen(),
+                                   audioEngine_.currentSampleRate(),
+                                   audioEngine_.currentBlockSize());
 
 #if JUCE_MAC
     juce::MenuBarModel::setMacMainMenu(this);
@@ -519,23 +527,17 @@ void MainComponent::showFloatingPanels() {
     mixerWindow_.setVisible(true);
 }
 
-void MainComponent::onMidiEvent(size_t trackIndex, const MidiEventData& data) {
-    juce::ignoreUnused(trackIndex, data);
-}
-
 void MainComponent::timerCallback() {
-    // UNE SEULE HORLOGE FAIT RÉFÉRENCE : celle du moteur audio (Phase 6,
-    // "unification des transports", ARCHITECTURE.md § 6). Elle est
-    // échantillon-exacte -- elle compte les échantillons réellement produits
-    // par la carte son -- là où RealtimeTransport dérive nécessairement, son
-    // thread se réveillant à la milliseconde près. Afficher la position du
-    // second pendant qu'on entend le premier, c'était garantir un décalage
-    // visible entre le curseur et le son au bout de quelques minutes.
+    // UNE SEULE HORLOGE, ET PLUS DE « SELON LES CAS » (D8.3). Elle compte les
+    // échantillons réellement sortis de la carte son : il n'existe pas de
+    // mesure plus exacte de « où en est la lecture », puisque c'est
+    // littéralement ce qu'on entend.
     //
-    // RealtimeTransport reste la source de repli quand aucune carte son n'est
-    // ouverte : l'application doit rester utilisable (édition, défilement,
-    // export) sur une machine sans audio, et c'est lui qui pilote encore la
-    // sortie MIDI (IMidiEventSink).
+    // SANS CARTE SON, C'EST LA MÊME HORLOGE, simplement alimentée autrement :
+    // un thread de secours appelle `processBlock` dans un tampon qu'on jette,
+    // au rythme du temps réel (voir `Transport`). L'application reste
+    // utilisable pour éditer, faire défiler et exporter sur une machine sans
+    // audio, et la position affichée vient du même endroit qu'ailleurs.
     // La carte son peut ouvrir à une autre fréquence que celle qu'on croit, et
     // en changer en cours de route (réglages audio). Les effets suivent.
     applyAudioConfig();
@@ -543,17 +545,21 @@ void MainComponent::timerCallback() {
     const bool audioClockAvailable = audioEngine_.isDeviceOpen();
     // La carte son peut apparaître ou disparaître en cours de route (réglages
     // audio, périphérique débranché) : le bouton Rec doit suivre, et dire
-    // laquelle des deux conditions manque.
-    if (audioClockAvailable != recordDeviceWasOpen_) refreshArmedTracks();
+    // laquelle des deux conditions manque -- et c'est aussi le moment où
+    // l'horloge de secours prend ou rend la main.
+    if (audioClockAvailable != recordDeviceWasOpen_) {
+        refreshArmedTracks();
+        transport_.setAudioDeviceOpen(audioClockAvailable,
+                                       audioEngine_.currentSampleRate(),
+                                       audioEngine_.currentBlockSize());
+    }
     const double horlogeAudio = audioEngine_.processGraph().currentSeconds();
     // La tête de lecture ne recule jamais AVANT le début du morceau à
     // l'affichage : pendant un décompte, la position du moteur est négative
     // (voir ProcessGraph::seekSeconds), et un tick négatif ne veut rien dire
     // pour le piano roll. C'est le compteur de la barre de transport qui dit
     // alors où l'on en est.
-    const vsm::midi::Tick playhead =
-        audioClockAvailable ? project_.secondsToTicks(std::max(0.0, horlogeAudio))
-                            : transport_.currentTick();
+    const vsm::midi::Tick playhead = transport_.currentTick();
 
     // ENREGISTREMENT : vider la file de capture à chaque tour, décompte
     // compris. `MidiRecorder` écarte lui-même ce qui précède le point d'entrée,
@@ -563,13 +569,12 @@ void MainComponent::timerCallback() {
         drainRecording();
         if (recordPhase_ == RecordPhase::CountIn) {
             if (horlogeAudio >= punchSeconds_ - 1.0e-9) {
-                // Le décompte est fini : le transport MIDI part à son tour, et
-                // on court-circuite la synchronisation ci-dessous, qui
-                // replacerait le moteur là où il est déjà.
+                // Le décompte est fini. Le transport joue déjà -- le décompte
+                // EST de la lecture, simplement située avant le point d'entrée
+                // -- il n'y a donc plus rien à synchroniser : seulement à
+                // changer de phase.
                 recordPhase_ = RecordPhase::Recording;
                 transportBar_.setCountIn(0);
-                transport_.play();
-                audioWasPlaying_ = true;
             } else {
                 const double restant = punchSeconds_ - horlogeAudio;
                 const double parTemps =
@@ -619,20 +624,14 @@ void MainComponent::timerCallback() {
     arrangement_.setPlayheadTick(playhead);
     pianoRollPanel_.refresh(); // règle + barre d'outils suivent la tête de lecture et l'historique
 
-    bool playing = (transport_.state() == TransportState::Playing);
+    // LA FIN DU MORCEAU EST LA SEULE CHOSE QUE LE GRAPHE NE PEUT PAS DÉCIDER :
+    // il sait rendre, pas ce qu'est « la fin ». Le transport la connaît, et
+    // c'est ici qu'on lui demande de regarder.
+    transport_.poll();
+    const bool playing = (transport_.state() == TransportState::Playing);
     // LE TRANSPORT PEUT S'ARRÊTER TOUT SEUL, à la fin du morceau : une prise
     // laissée ouverte serait une prise perdue, puisque rien ne l'écrirait.
     if (!playing && recordPhase_ == RecordPhase::Recording) stopRecording();
-    if (playing != audioWasPlaying_) {
-        if (playing) {
-            audioEngine_.processGraph().seekSeconds(transport_.currentSeconds());
-            audioEngine_.processGraph().setPlaying(true);
-        } else {
-            audioEngine_.processGraph().setPlaying(false);
-            audioEngine_.processGraph().seekSeconds(0.0);
-        }
-        audioWasPlaying_ = playing;
-    }
 
     transportBar_.setCpuUsage(audioEngine_.currentCpuUsagePercent());
     transportBar_.setSampleRate(audioEngine_.currentSampleRate());
@@ -2146,7 +2145,7 @@ bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
         // alors que c'est le seul raccourci que tout musicien essaie en
         // premier -- et qu'aucun autre raccourci de transport n'existait.
         case ' ':
-            if (transport_.state() == vsm::sequencer::TransportState::Playing) transport_.stop();
+            if (transport_.state() == TransportState::Playing) transport_.stop();
             else transport_.play();
             return true;
         // R comme « référence » : la bascule A/B, depuis n'importe quelle
@@ -3138,18 +3137,13 @@ void MainComponent::startRecording() {
         // Le décompte est un morceau de ligne de temps situé AVANT le point
         // d'entrée : le moteur y saute, le métronome y bat de lui-même (voir
         // ProcessGraph::processBlock), et le transport MIDI attend son tour.
-        audioEngine_.processGraph().seekSeconds(punchSeconds_ - decompte);
-        audioEngine_.processGraph().setPlaying(true);
-        transport_.seekToTick(punchTick_);
-        audioWasPlaying_ = false;
+        transport_.seekSeconds(punchSeconds_ - decompte);
+        transport_.play();
     } else {
         recordPhase_ = RecordPhase::Recording;
         if (!dejaEnLecture) {
-            audioEngine_.processGraph().seekSeconds(punchSeconds_);
-            audioEngine_.processGraph().setPlaying(true);
-            transport_.seekToTick(punchTick_);
+            transport_.seekSeconds(punchSeconds_);
             transport_.play();
-            audioWasPlaying_ = true;
         }
     }
 }
@@ -3326,11 +3320,7 @@ void MainComponent::rebuildFromProject(bool stopPlayback) {
     pluginEditorWindows_.clear();
 #endif
 
-    if (stopPlayback) {
-        transport_.stop();
-        audioEngine_.processGraph().setPlaying(false);
-        audioWasPlaying_ = false;
-    }
+    if (stopPlayback) transport_.stop();
 
     // LA PISTE REGARDÉE EST CONSERVÉE. Cette fonction est rappelée à chaque
     // republication -- après un annuler, un ajout d'effet, un changement de
@@ -3400,11 +3390,12 @@ void MainComponent::rebuildFromProject(bool stopPlayback) {
 }
 
 void MainComponent::refreshTransportSchedule() {
-    bool wasPlaying = transport_.state() == TransportState::Playing;
-    transport_.stop();
-    transport_.loadProject(project_);
-    if (wasPlaying) transport_.play();
-
+    // PLUS RIEN À INTERROMPRE (D8.3). Cette fonction arrêtait et relançait le
+    // transport MIDI, dont l'arrêt remettait la position à zéro -- d'où les
+    // deux endroits qui l'évitaient soigneusement pendant la lecture. Le
+    // transport ne tient plus de position : lui donner le projet ne fait plus
+    // que rafraîchir sa carte de tempo et l'endroit où le morceau finit.
+    transport_.setProject(project_);
     audioEngine_.processGraph().setProject(project_);
 }
 

@@ -1,14 +1,14 @@
 #pragma once
 #include <JuceHeader.h>
-#include "vsm/sequencer/RealtimeTransport.h"
+#include "vsm/audio/engine/Transport.h"
 
 // TOP BAR de la section 21 : Transport / Play / Stop / Record / Loop / BPM /
-// Time Signature / CPU / Sample Rate. Composant "dumb" : il ne connaît que
-// le RealtimeTransport (Phase 1) qu'on lui injecte ; il n'a aucune logique
-// de layout global (ça, c'est le rôle de MainComponent).
+// Time Signature / CPU / Sample Rate. Composant "dumb" : il ne connaît que le
+// `Transport` qu'on lui injecte -- celui qui lit l'horloge du moteur audio
+// (D8.3) -- et n'a aucune logique de layout global (ça, c'est MainComponent).
 class TransportBarComponent : public juce::Component, private juce::Timer {
 public:
-    explicit TransportBarComponent(vsm::sequencer::RealtimeTransport& transport);
+    explicit TransportBarComponent(vsm::audio::engine::Transport& transport);
     ~TransportBarComponent() override;
 
     void paint(juce::Graphics&) override;
@@ -79,7 +79,7 @@ public:
 private:
     void timerCallback() override; // rafraîchit l'affichage de la position de lecture
 
-    vsm::sequencer::RealtimeTransport& transport_;
+    vsm::audio::engine::Transport& transport_;
 
     juce::TextButton playButton_   { "Play" };
     juce::TextButton stopButton_   { "Stop" };

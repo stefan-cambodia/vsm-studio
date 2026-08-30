@@ -261,8 +261,12 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
     const double debut = std::max(0.0, options.startSeconds);
     double duration = options.durationSeconds;
     if (duration <= 0.0) {
-        const double lastNoteSeconds = bundle.project.ticksToSeconds(bundle.project.lastUsedTick());
-        duration = lastNoteSeconds + std::max(0.0, options.tailSeconds) - debut;
+        // LA DERNIÈRE CHOSE QUI SONNE, et non la dernière NOTE (D8.3) : un
+        // projet uniquement audio n'a pas de note, et son export durait donc
+        // la seule queue de réverbération -- un fichier de deux secondes pour
+        // neuf minutes de prise.
+        const double finSeconds = bundle.project.ticksToSeconds(bundle.project.lastSoundingTick());
+        duration = finSeconds + std::max(0.0, options.tailSeconds) - debut;
     }
     if (duration <= 0.0) duration = std::max(0.1, options.tailSeconds);
 

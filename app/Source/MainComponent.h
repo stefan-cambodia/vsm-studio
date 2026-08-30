@@ -3,7 +3,7 @@
 #include "vsm/sequencer/Project.h"
 #include "vsm/sequencer/MidiRecorder.h"
 #include "vsm/sequencer/ProjectHistory.h"
-#include "vsm/sequencer/RealtimeTransport.h"
+#include "vsm/audio/engine/Transport.h"
 #include "audio/AudioEngine.h"
 #include "ui/TransportBarComponent.h"
 #include "ui/TrackListComponent.h"
@@ -38,13 +38,11 @@
 // l'existence des autres et communique uniquement via des callbacks
 // (std::function), ce qui les garde testables/réutilisables indépendamment.
 //
-// Deux transports coexistent délibérément (voir ARCHITECTURE.md section 6) :
-// RealtimeTransport (Phase 1, thread MIDI dédié) reste la référence pour la
-// position affichée dans le piano roll ; AudioEngine::processGraph() est
-// synchronisé dessus à chaque changement d'état Play/Stop (voir
-// timerCallback()) et c'est LUI qui produit réellement le son.
+// UN SEUL TRANSPORT (D8.3, voir ARCHITECTURE.md section 6). `Transport` ne
+// tient aucune position : il lit celle du graphe audio, qui compte les
+// échantillons réellement sortis de la carte, et n'ajoute que ce que le graphe
+// n'a pas à connaître -- l'état, les ticks, et la fin du morceau.
 class MainComponent : public juce::Component,
-                       public vsm::sequencer::IMidiEventSink,
                        public juce::MenuBarModel,
                        private juce::KeyListener,
                        private juce::Timer {
@@ -55,11 +53,6 @@ public:
     void paint(juce::Graphics&) override;
     void resized() override;
 
-    // IMidiEventSink : appelé depuis le thread du RealtimeTransport, JAMAIS
-    // le thread UI. Toujours no-op : c'est AudioEngine::processGraph() qui
-    // déclenche réellement les notes des synthés -- ce hook reste
-    // disponible pour un futur MIDI-thru vers du matériel externe.
-    void onMidiEvent(size_t trackIndex, const vsm::midi::MidiEventData& data) override;
 
     /// À appeler par MainWindow (Main.cpp) UNE FOIS que la fenêtre socle a
     /// une position d'écran réelle (après centreWithSize/setVisible) --
@@ -369,9 +362,11 @@ private:
     /// clips -- et non sur les seules notes de la piste affichée.
     vsm::sequencer::ProjectHistory history_;
     size_t maxAssignedTracks_ = 0; // plus haut nombre de pistes déjà assignées au ProcessGraph (pour nettoyer les slots après suppression)
-    vsm::sequencer::RealtimeTransport transport_;
     AudioEngine audioEngine_;
-    bool audioWasPlaying_ = false;
+    // DÉCLARÉ APRÈS `audioEngine_`, ET CE N'EST PAS UN DÉTAIL DE STYLE : il
+    // garde une référence sur le graphe que le moteur possède, donc il doit
+    // être construit après lui et détruit avant.
+    vsm::audio::engine::Transport transport_;
 
     vsm::sequencer::MidiRecorder recorder_;
     RecordPhase recordPhase_ = RecordPhase::Off;

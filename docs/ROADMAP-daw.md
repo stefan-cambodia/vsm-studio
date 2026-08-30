@@ -2034,7 +2034,7 @@ la règle déjà tenue pour les instruments VSM manquants (P4/P7 de
 |---|---|---|
 | D8.1 | Graphe audio multicœur | 32 pistes chargées tiennent sans décrochage ; gain mesuré et publié — **fait** |
 | D8.2 | Diffusion disque pour l'audio long | 20 pistes de 9 minutes n'occupent pas 1 Go — **fait** |
-| D8.3 | Un seul chemin de transport : `RealtimeTransport` et l'horloge du `ProcessGraph` sont aujourd'hui **deux notions de position** qui coexistent | une seule fait autorité ; l'autre disparaît ou en dérive |
+| D8.3 | Un seul chemin de transport : `RealtimeTransport` et l'horloge du `ProcessGraph` sont aujourd'hui **deux notions de position** qui coexistent | une seule fait autorité ; l'autre disparaît ou en dérive — **fait : elle a disparu** |
 | D8.4 | Banc de charge dans la suite de tests | le coût par piste est chiffré et suivi, comme le banc CPU de la Phase 6 |
 
 **Critère de phase** : le chiffre existe. Aujourd'hui personne ne sait combien
@@ -2203,6 +2203,61 @@ performance qu'on croit avoir.
 > fichier par tranches de 262 144 trames et ne garde que les extrêmes ; un test
 > vérifie que le dessin obtenu est celui du chemin résident, tranche par
 > tranche.
+
+> **D8.3 EST FAITE (30/08/2026). LE CHOIX ÉTAIT ENTRE « DISPARAÎT » ET « EN
+> DÉRIVE » : C'EST DISPARAÎT.** `RealtimeTransport` est supprimé — en-tête,
+> source, tests. Il ne restait de lui qu'une position redondante et un thread ;
+> sa dernière justification écrite, « il pilote encore la sortie MIDI
+> (`IMidiEventSink`) », était vide au sens propre : le seul récepteur du
+> programme, `MainComponent::onMidiEvent`, ne contenait qu'un
+> `juce::ignoreUnused`.
+>
+> **CE QUE LA COEXISTENCE COÛTAIT, ET CE N'ÉTAIENT PAS DES FAUTES D'ÉCRITURE
+> MAIS DES CONSÉQUENCES DE LA STRUCTURE.** Trois défauts, dont deux que
+> personne n'avait rattachés à leur cause :
+>
+> 1. **La position n'avançait qu'aux événements.** Le thread MIDI dormait
+>    jusqu'à la note suivante et ne publiait sa position qu'en la jouant : entre
+>    deux notes espacées le curseur ne bougeait pas d'un pixel, et sur une nappe
+>    tenue il restait figé pendant des secondes.
+> 2. **Un projet uniquement AUDIO ne pouvait pas jouer du tout.** Sans note, le
+>    planning était vide, la passe se terminait « naturellement » dès le premier
+>    tour, et le transport s'arrêtait avant d'avoir commencé. Le DAW savait
+>    charger une prise de neuf minutes — c'est tout l'objet de D2 et de D8.2 —
+>    et refusait de la lire.
+> 3. **Démarrer la lecture repositionnait le moteur audio sur l'horloge du
+>    thread MIDI**, c'est-à-dire sur la moins exacte des deux, et
+>    l'interface recopiait l'état de l'un dans l'autre une fois par tour de
+>    minuterie en comparant deux booléens.
+>
+> **CE QUI LE REMPLACE NE TIENT AUCUNE POSITION.** `engine::Transport` LIT celle
+> du graphe et n'ajoute que ce que le graphe n'a pas à connaître : l'état
+> (arrêté / en lecture / en pause — l'arrêt étant la pause qui revient à zéro),
+> la conversion en ticks, et la fin du morceau. C'est la seule chose que le
+> graphe ne peut pas décider seul : il sait rendre, il ne sait pas ce qu'est
+> « la fin ».
+>
+> **ET « LA FIN » N'EST PLUS LA DERNIÈRE NOTE.** `Project::lastUsedTick()` ne
+> connaît que le matériau MIDI — ce qui est exactement ce qu'il faut au
+> planificateur, qui s'en sert pour décider où s'arrêtent les répétitions d'un
+> clip. S'en servir pour dire « le morceau est fini » était l'erreur qui rendait
+> un projet audio injouable. `Project::lastSoundingTick()` compte aussi les
+> clips, et c'est elle que le transport **et l'export** emploient : l'export
+> d'un projet uniquement audio produisait sinon un fichier de deux secondes —
+> la seule queue de réverbération — pour neuf minutes de prise.
+>
+> **SANS CARTE SON, C'EST LA MÊME HORLOGE, SIMPLEMENT ALIMENTÉE AUTREMENT.**
+> L'application doit rester utilisable pour éditer, faire défiler et exporter
+> sur une machine sans audio — c'était la vraie raison de garder l'ancien
+> transport. Un thread de secours appelle donc `processBlock` dans un tampon
+> qu'on jette, au rythme du temps réel, et son échéance se calcule depuis
+> l'origine et non bloc par bloc (même règle qu'en D6.5 : additionner des
+> attentes courtes accumule l'erreur de chaque réveil). C'est **volontairement**
+> le même chemin de calcul : une seconde façon de faire avancer le temps serait
+> une seconde façon de se tromper, ce dont cette phase se débarrasse
+> précisément. Il rend la main dès que la carte revient — deux moteurs qui
+> avanceraient le même graphe le feraient avancer deux fois plus vite, et un
+> test le vérifie dans les deux sens.
 
 ### Phase D9 — Reconstruire depuis l'application
 

@@ -12,7 +12,6 @@ add_library(vsm_core STATIC
     src/sequencer/ClipEdit.cpp
     src/sequencer/MidiRecorder.cpp
     src/sequencer/PlaybackScheduler.cpp
-    src/sequencer/RealtimeTransport.cpp
 )
 
 target_include_directories(vsm_core PUBLIC include)

@@ -173,7 +173,7 @@ vsm-studio/
 *(inchangé depuis les versions précédentes, À UNE EXCEPTION PRÈS : l'horloge,
 voir ci-dessous)*
 
-### 6 bis. Unification des transports (Phase 6, fait)
+### 6 bis. Un seul transport (Phase 6, puis D8.3 : l'autre a disparu)
 
 Deux transports coexistaient : `RealtimeTransport` (Phase 1, thread dédié,
 horloge `steady_clock`) donnait la position affichée, pendant que
@@ -189,12 +189,22 @@ de mesure plus exacte de « où en est la lecture », puisque c'est littéraleme
 ce qu'on entend. L'interface lit `ProcessGraph::currentSeconds()` et le
 convertit en ticks.
 
-`RealtimeTransport` n'est pas supprimé pour autant, et ce n'est pas de la
-timidité : il reste (1) la source de repli quand **aucune carte son n'est
-ouverte** -- l'application doit rester utilisable pour éditer, faire défiler et
-exporter sur une machine sans audio -- et (2) le pilote de la sortie MIDI
-(`IMidiEventSink`), qui n'a rien à voir avec le rendu audio. Le choix se fait
-sur `AudioEngine::isDeviceOpen()`, en un seul endroit (`MainComponent::timerCallback`).
+**Depuis D8.3, `RealtimeTransport` n'existe plus.** Il avait été gardé pour deux
+raisons, dont une était vide : il « pilotait la sortie MIDI » vers un
+`IMidiEventSink` dont le seul récepteur du programme ne contenait qu'un
+`juce::ignoreUnused`. La seconde était réelle — l'application doit rester
+utilisable sans carte son — et elle est servie autrement, par la MÊME horloge :
+`engine::Transport` démarre alors un thread de secours qui appelle
+`processBlock` dans un tampon qu'on jette, au rythme du temps réel. Une seconde
+façon de faire avancer le temps serait une seconde façon de se tromper.
+
+`engine::Transport` ne tient **aucune** position : il lit celle du graphe et
+n'ajoute que l'état (arrêté / en lecture / en pause), la conversion en ticks, et
+la fin du morceau — la seule chose que le graphe ne peut pas décider seul.
+Cette fin vient de `Project::lastSoundingTick()`, qui compte les clips et pas
+seulement les notes : `lastUsedTick()` reste réservé au planificateur, et s'en
+servir pour dire « le morceau est fini » rendait un projet uniquement audio
+injouable (et son export long de deux secondes).
 
 **La boucle appartient maintenant au moteur audio** (`ProcessGraph::setLoopRegion`),
 avec deux propriétés que le transport MIDI ne pouvait pas offrir :

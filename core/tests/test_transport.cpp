@@ -3,7 +3,6 @@
 #include "vsm/midi/MidiFileParser.h"
 #include "vsm/sequencer/PlaybackScheduler.h"
 #include "vsm/sequencer/Project.h"
-#include "vsm/sequencer/RealtimeTransport.h"
 
 #include <chrono>
 #include <mutex>
@@ -82,55 +81,9 @@ VSM_TEST(scheduler_respects_solo) {
 }
 
 // ---------------------------------------------------------------------------
-// RealtimeTransport : test de fumée. On tolère une marge large car on ne
-// veut PAS d'un test flaky dépendant du scheduling OS ; la précision fine
-// du timing est déjà couverte, sans aucun aléa, par les tests ci-dessus.
+// LE TRANSPORT TEMPS RÉEL A DISPARU (D8.3), et avec lui ses deux tests de
+// fumée. Il tenait sa propre position sur un thread dédié, à côté de celle du
+// moteur audio ; il n'y en a plus qu'une, celle du graphe, et c'est
+// `audio/tests/test_transport_unifie.cpp` qui l'éprouve -- au bon endroit,
+// puisque c'est le moteur audio qui la produit.
 // ---------------------------------------------------------------------------
-
-namespace {
-class CountingSink : public IMidiEventSink {
-public:
-    void onMidiEvent(size_t trackIndex, const MidiEventData&) override {
-        std::lock_guard<std::mutex> lock(mutex_);
-        ++count_;
-        (void)trackIndex;
-    }
-    int count() const {
-        std::lock_guard<std::mutex> lock(mutex_);
-        return count_;
-    }
-private:
-    mutable std::mutex mutex_;
-    int count_ = 0;
-};
-}
-
-VSM_TEST(realtime_transport_fires_all_events_and_autostops) {
-    Project project = buildFixtureProject(); // durée ~0.75s à 120 BPM
-    CountingSink sink;
-    RealtimeTransport transport(sink);
-    transport.loadProject(project);
-
-    VSM_ASSERT(transport.state() == TransportState::Stopped);
-    transport.play();
-    VSM_ASSERT(transport.state() == TransportState::Playing);
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(2000)); // marge large, anti-flaky
-
-    VSM_ASSERT_EQ(sink.count(), 6);
-    VSM_ASSERT(transport.state() == TransportState::Stopped); // arrêt automatique en fin de lecture
-}
-
-VSM_TEST(realtime_transport_stop_resets_position_and_thread_shuts_down_cleanly) {
-    Project project = buildFixtureProject();
-    CountingSink sink;
-    {
-        RealtimeTransport transport(sink);
-        transport.loadProject(project);
-        transport.play();
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        transport.stop();
-        VSM_ASSERT(transport.state() == TransportState::Stopped);
-        VSM_ASSERT_EQ(transport.currentTick(), static_cast<Tick>(0));
-    } // le destructeur doit joindre le thread sans blocage ni crash
-}

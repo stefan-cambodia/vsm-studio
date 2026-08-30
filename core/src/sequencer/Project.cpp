@@ -368,6 +368,14 @@ midi::Tick Project::lastUsedTick() const {
     return last;
 }
 
+midi::Tick Project::lastSoundingTick() const {
+    Tick last = lastUsedTick();
+    for (const auto& t : tracks)
+        for (const auto& c : t.clips)
+            last = std::max(last, c.startTick + std::max<Tick>(c.length, 0));
+    return last;
+}
+
 void moveTrack(Project& project, size_t from, size_t to) {
     const size_t n = project.tracks.size();
     if (from >= n || to >= n || from == to) return;

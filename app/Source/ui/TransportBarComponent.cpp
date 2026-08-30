@@ -3,8 +3,10 @@
 
 using namespace vsm::sequencer;
 using namespace vsm::ui;
+using vsm::audio::engine::TransportState;
 
-TransportBarComponent::TransportBarComponent(RealtimeTransport& transport) : transport_(transport) {
+TransportBarComponent::TransportBarComponent(vsm::audio::engine::Transport& transport)
+    : transport_(transport) {
     addAndMakeVisible(playButton_);
     addAndMakeVisible(stopButton_);
     addAndMakeVisible(recordButton_);

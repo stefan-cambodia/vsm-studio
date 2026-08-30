@@ -127,6 +127,17 @@ public:
     /// d'affichage par défaut et les bornes d'export.
     midi::Tick lastUsedTick() const;
 
+    /// LA DERNIÈRE CHOSE QUI SONNE, et non la dernière NOTE (D8.3).
+    ///
+    /// `lastUsedTick()` ne connaît que le matériau MIDI, ce qui est exactement
+    /// ce qu'il faut au planificateur -- c'est lui qui décide où s'arrêtent les
+    /// répétitions d'un clip. Mais s'en servir pour dire « le morceau est
+    /// fini » faisait qu'un projet uniquement AUDIO s'arrêtait avant d'avoir
+    /// commencé : sans note, la réponse était zéro, alors que neuf minutes de
+    /// prise attendaient d'être jouées. Cette fonction-ci compte aussi les
+    /// clips, et c'est elle que le transport et l'export doivent employer.
+    midi::Tick lastSoundingTick() const;
+
     uint64_t nextNoteId() { return nextNoteId_++; }
     /// Identifiants de CLIPS, comptés à part de ceux des notes : les deux ne se
     /// rencontrent jamais, et un compteur commun laisserait croire qu'un clip
