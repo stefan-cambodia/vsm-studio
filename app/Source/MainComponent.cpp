@@ -30,6 +30,7 @@
 #include "vsm/audio/io/AudioTrackLoader.h"
 #include "vsm/audio/io/WavFileReader.h"
 #include "ui/UiScale.h"
+#include "ui/Shortcuts.h"
 
 using namespace vsm::sequencer;
 using namespace vsm::midi;
@@ -516,6 +517,83 @@ MainComponent::MainComponent()
     };
     loadMidiLearnMappings();
 
+    // D10.3 : LA TABLE DES RACCOURCIS, prêtée au piano roll. Les deux
+    // gestionnaires de touches consultent la MÊME.
+    loadShortcuts();
+    preferencesPanel_.onUiScaleChanged = [this](float facteur) { setUiScale(facteur); };
+    preferencesPanel_.onRenderThreadsChanged = [this](int choix) {
+        setRenderThreadChoice(choix);
+        refreshPreferences();
+    };
+    preferencesPanel_.onChooseChainFolder = [this] { chooseChainFolder(); };
+    preferencesPanel_.onOpenShortcuts = [this] { menuItemSelected(kMenuViewShortcuts, 0); };
+    preferencesPanel_.onOpenMidiLearn = [this] { menuItemSelected(kMenuViewMidiLearn, 0); };
+    shortcutsPanel_.onRebind = [this](vsm::interchange::ShortcutId id) {
+        rebindPending_ = true;
+        rebindTarget_ = id;
+        const auto* commande = vsm::interchange::findShortcutCommand(id);
+        shortcutsPanel_.setCapturing(commande ? juce::String::fromUTF8(commande->label)
+                                               : juce::String());
+    };
+    shortcutsPanel_.onReset = [this](vsm::interchange::ShortcutId id) {
+        shortcuts_.reset(id);
+        saveShortcuts();
+        refreshShortcutList();
+    };
+    shortcutsPanel_.onResetAll = [this] {
+        shortcuts_.resetAll();
+        saveShortcuts();
+        refreshShortcutList();
+    };
+    shortcutsPanel_.onKeyCaptured = [this](const juce::KeyPress& touche) {
+        if (!rebindPending_) return false;
+        // ÉCHAP ANNULE, et n'est donc jamais assignable depuis ici. C'est le
+        // prix d'avoir une sortie de secours, et il est petit : Échap veut dire
+        // « annuler » partout ailleurs dans le logiciel.
+        if (touche == juce::KeyPress::escapeKey) {
+            rebindPending_ = false;
+            shortcutsPanel_.setCapturing({});
+            return true;
+        }
+        const juce::String description = vsm::app::ui::normalizedKeyDescription(touche);
+        // UN CONFLIT SE DIT AVANT D'ÊTRE CRÉÉ. Deux commandes sur la même
+        // touche, c'est une seule qui répond, et rien qui dise laquelle.
+        const auto conflits = shortcuts_.conflictsFor(description.toStdString(), rebindTarget_);
+        rebindPending_ = false;
+        shortcutsPanel_.setCapturing({});
+        if (!conflits.empty()) {
+            juce::String qui;
+            for (auto autre : conflits)
+                if (const auto* c = vsm::interchange::findShortcutCommand(autre))
+                    qui += juce::String("\n  · ") + juce::String::fromUTF8(c->label);
+            juce::AlertWindow::showMessageBoxAsync(
+                juce::AlertWindow::WarningIcon,
+                juce::String::fromUTF8(u8"Touche déjà prise"),
+                description + juce::String::fromUTF8(u8" est déjà associée à :") + qui
+                    + juce::String::fromUTF8(u8"\n\nLibérez-la d'abord, ou choisissez-en une autre."));
+            return true;
+        }
+        shortcuts_.setKey(rebindTarget_, description.toStdString());
+        saveShortcuts();
+        refreshShortcutList();
+        return true;
+    };
+    shortcutsPanel_.onExport = [this] {
+        auto chooser = std::make_shared<juce::FileChooser>(
+            juce::String::fromUTF8(u8"Enregistrer la table des raccourcis..."),
+            juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
+                .getChildFile("raccourcis-vsm.txt"),
+            "*.txt");
+        chooser->launchAsync(juce::FileBrowserComponent::saveMode
+                                  | juce::FileBrowserComponent::canSelectFiles,
+                              [this, chooser](const juce::FileChooser& fc) {
+            const juce::File fichier = fc.getResult();
+            if (fichier == juce::File()) return;
+            fichier.replaceWithText(juce::String::fromUTF8(
+                vsm::interchange::shortcutTableToPrintableText(shortcuts_).c_str()));
+        });
+    };
+
     // D10.4 : ON CHERCHE UNE SESSION INTERROMPUE AVANT D'OUVRIR LA NÔTRE. Une
     // fois notre dossier créé, il faudrait l'exclure de la recherche -- une
     // condition de plus, donc une occasion de plus de se tromper.
@@ -854,6 +932,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             }
             menu.addSeparator();
             menu.addItem(kMenuFileAudioSettings, u8"Réglages audio...");
+            menu.addItem(kMenuFilePreferences, juce::String::fromUTF8(u8"Préférences..."));
             {
                 // THREADS DE RENDU (D8.1). Le multicœur ne change pas un seul
                 // échantillon du résultat -- un test le vérifie -- donc ce
@@ -1083,6 +1162,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuViewSynthRack, "Synth Rack", true, synthRackWindow_.isVisible());
             menu.addItem(kMenuViewMixer, "Mixer", true, mixerWindow_.isVisible());
             menu.addItem(kMenuViewArrangement, "Arrangement", true, arrangementWindow_.isVisible());
+            menu.addItem(kMenuViewShortcuts,
+                          juce::String::fromUTF8(u8"Raccourcis clavier..."),
+                          true, shortcutsWindow_ && shortcutsWindow_->isVisible());
             menu.addItem(kMenuViewMidiLearn,
                           juce::String::fromUTF8(u8"Associations MIDI (")
                               + juce::String(static_cast<int>(audioEngine_.midiLearnMappingCount()))
@@ -1156,6 +1238,19 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             break;
         }
         case kMenuFileChainFolder: chooseChainFolder(); break;
+        case kMenuFilePreferences: showPreferences(); break;
+        case kMenuViewShortcuts: {
+            if (!shortcutsWindow_) {
+                shortcutsWindow_ = std::make_unique<PanelWindow>(
+                    juce::String::fromUTF8(u8"Raccourcis clavier"), shortcutsPanel_);
+                shortcutsWindow_->setSize(640, 620);
+            }
+            const bool visible = shortcutsWindow_->isVisible();
+            if (!visible) refreshShortcutList();
+            shortcutsWindow_->setVisible(!visible);
+            if (!visible) shortcutsWindow_->toFront(true);
+            break;
+        }
         case kMenuViewMidiLearn: {
             if (!midiLearnWindow_) {
                 midiLearnWindow_ = std::make_unique<PanelWindow>(
@@ -2257,6 +2352,7 @@ void MainComponent::chooseChainFolder() {
                                   "dossierChaineAnalyse", dossier.getFullPathName());
                               vsm::app::ui::UiScale::properties().saveIfNeeded();
                               refreshReconstructionChain();
+                              refreshPreferences();
                               // ON DIT TOUT DE SUITE SI ÇA A MARCHÉ. Enregistrer
                               // un chemin faux sans rien dire ferait chercher le
                               // problème ailleurs.
@@ -2602,6 +2698,65 @@ void MainComponent::autosaveIfNeeded() {
     autosave_->requestSave(project_, presets, currentProjectFolder_);
 }
 
+// --- D10.3 : les raccourcis se lisent et se changent ------------------------
+
+void MainComponent::loadShortcuts() {
+    const juce::String texte =
+        vsm::app::ui::UiScale::properties().getValue("raccourcis", "");
+    if (!vsm::interchange::shortcutTableFromJson(texte.toStdString(), shortcuts_)) {
+        // Illisible : on repart des défauts EN LE DISANT. Se retrouver avec les
+        // raccourcis d'usine sans savoir pourquoi ferait chercher longtemps.
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::WarningIcon,
+            juce::String::fromUTF8(u8"Raccourcis illisibles"),
+            juce::String::fromUTF8(u8"Les raccourcis personnalisés n'ont pas pu être relus : "
+                                    u8"ceux d'origine sont rétablis."));
+    }
+    pianoRoll_.setShortcutTable(&shortcuts_);
+    refreshShortcutList();
+}
+
+void MainComponent::saveShortcuts() {
+    auto& reglages = vsm::app::ui::UiScale::properties();
+    reglages.setValue("raccourcis",
+                       juce::String::fromUTF8(
+                           vsm::interchange::shortcutTableToJson(shortcuts_).c_str()));
+    reglages.saveIfNeeded();
+}
+
+void MainComponent::refreshShortcutList() { shortcutsPanel_.setTable(&shortcuts_); }
+
+void MainComponent::refreshPreferences() {
+    const juce::String designe =
+        vsm::app::ui::UiScale::properties().getValue("dossierChaineAnalyse", "");
+    juce::String etat;
+    if (reconstructionChain_.available)
+        etat = juce::String::fromUTF8(u8"Prête — ")
+               + juce::String::fromUTF8(reconstructionChain_.chainFolder.c_str());
+    else
+        etat = juce::String::fromUTF8(reconstructionChain_.reason.c_str())
+               + (reconstructionChain_.remedy.empty()
+                      ? juce::String()
+                      : juce::String("\n") + juce::String::fromUTF8(reconstructionChain_.remedy.c_str()));
+
+    preferencesPanel_.refresh(
+        vsm::app::ui::UiScale::current(), savedRenderThreadChoice(),
+        static_cast<int>(vsm::audio::engine::ProcessGraph::recommendedRenderThreadCount()),
+        designe, etat, static_cast<int>(vsm::interchange::shortcutCommands().size()),
+        static_cast<int>(audioEngine_.midiLearnMappingCount()));
+}
+
+void MainComponent::showPreferences() {
+    if (!preferencesWindow_) {
+        preferencesWindow_ = std::make_unique<PanelWindow>(
+            juce::String::fromUTF8(u8"Préférences"), preferencesPanel_);
+        preferencesWindow_->setSize(560, 430);
+    }
+    refreshPreferences();
+    preferencesWindow_->setVisible(true);
+    preferencesWindow_->toFront(true);
+}
+
 void MainComponent::loadReferenceAudio() {
     // Les formats proposés sont ceux que le décodeur sait REELLEMENT lire :
     // la liste vient de lui, elle n'est pas recopiée ici. Proposer un format
@@ -2701,26 +2856,29 @@ void MainComponent::refreshListeningIndicator() {
 }
 
 bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
-    const auto mods = key.getModifiers();
-    // Ctrl+S est testé AVANT le filtre ci-dessous, qui rejette tout ce qui
-    // porte un modificateur.
-    if ((mods.isCommandDown() || mods.isCtrlDown())
-        && (key.getKeyCode() == 's' || key.getKeyCode() == 'S')) {
-        if (mods.isShiftDown()) saveProjectAs(); else saveProject();
-        return true;
-    }
-    if (mods.isCommandDown() || mods.isCtrlDown() || mods.isAltDown()) return false;
-    switch (key.getKeyCode()) {
+    // LA TOUCHE DÉSIGNE UNE COMMANDE, ET LA TABLE FAIT LA CORRESPONDANCE
+    // (D10.3). Ce qui était ici -- un test sur `Ctrl+S`, un filtre qui rejetait
+    // tout ce qui portait un modificateur, puis deux `case` -- ne disait à
+    // personne quelles touches existaient.
+    vsm::interchange::ShortcutId commande{};
+    if (!vsm::app::ui::lookupShortcut(shortcuts_, key, commande)) return false;
+
+    using Id = vsm::interchange::ShortcutId;
+    switch (commande) {
+        case Id::FileSave:   saveProject(); return true;
+        case Id::FileSaveAs: saveProjectAs(); return true;
         // LA BARRE D'ESPACE LANCE ET ARRÊTE. Elle ne faisait rien, nulle part,
         // alors que c'est le seul raccourci que tout musicien essaie en
-        // premier -- et qu'aucun autre raccourci de transport n'existait.
-        case ' ':
+        // premier.
+        case Id::TransportPlayStop:
             if (transport_.state() == TransportState::Playing) transport_.stop();
             else transport_.play();
             return true;
-        // R comme « référence » : la bascule A/B, depuis n'importe quelle
+        // « R » comme référence : la bascule A/B, depuis n'importe quelle
         // fenêtre -- on compare en regardant le piano roll, pas le menu.
-        case 'r': case 'R': cycleReferenceMode(); return true;
+        case Id::ReferenceCycle: cycleReferenceMode(); return true;
+        // Tout le reste appartient au piano roll, qui a sa propre table --
+        // la MÊME. On répond faux pour que la touche lui parvienne.
         default: return false;
     }
 }

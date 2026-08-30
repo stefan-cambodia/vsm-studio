@@ -1,4 +1,5 @@
 #include "PianoRollComponent.h"
+#include "Shortcuts.h"
 #include "LookAndFeel/VsmLookAndFeel.h"
 #include <algorithm>
 #include <array>
@@ -1172,36 +1173,23 @@ void PianoRollComponent::mouseWheelMove(const juce::MouseEvent& event, const juc
 
 bool PianoRollComponent::keyPressed(const juce::KeyPress& key) {
     const auto mods = key.getModifiers();
-    // Ctrl sous Windows/Linux, Cmd sous macOS : les deux sont acceptés partout
-    // plutôt que de compiler deux jeux de raccourcis différents.
-    const bool cmd = mods.isCommandDown() || mods.isCtrlDown();
-    const int code = key.getKeyCode();
 
-    if (key == juce::KeyPress::deleteKey || key == juce::KeyPress::backspaceKey) { deleteSelection(); return true; }
-    if (key == juce::KeyPress::escapeKey) { selectNone(); return true; }
-
-    if (cmd) {
-        switch (code) {
-            case 'z': case 'Z': mods.isShiftDown() ? redo() : undo(); return true;
-            case 'y': case 'Y': redo(); return true;
-            case 'a': case 'A': selectAll(); return true;
-            case 'i': case 'I': invertSelection(); return true;
-            case 'c': case 'C': copySelection(); return true;
-            case 'x': case 'X': cutSelection(); return true;
-            case 'v': case 'V': paste(); return true;
-            case 'd': case 'D': duplicateSelection(); return true;
-            case 'l': case 'L': applyLegatoToSelection(); return true;
-            case 'q': case 'Q': quantizeSelection(1.0f, false); return true;
-            case 'm': case 'M': toggleSelectionMuted(); return true;
-            case 'j': case 'J': joinSelection(); return true;
-            case 'e': case 'E': splitSelectionAtPlayhead(); return true;
-            case '0': zoomToFit(); return true;
-            default: break;
-        }
+    // LA TOUCHE NE DÉCIDE PLUS DE RIEN (D10.3) : elle désigne une COMMANDE, et
+    // c'est la table qui fait la correspondance. Le `switch` sur des codes de
+    // touches qui vivait ici était le seul endroit où l'on pouvait apprendre ce
+    // que fait « Ctrl+J » -- en le lisant.
+    if (shortcuts_ != nullptr) {
+        vsm::interchange::ShortcutId commande{};
+        if (vsm::app::ui::lookupShortcut(*shortcuts_, key, commande)
+            && performShortcut(commande, mods))
+            return true;
     }
 
-    // Flèches : déplacement fin de la sélection. Sans sélection, elles font
-    // défiler la vue -- une flèche ne doit jamais "ne rien faire".
+    // LES FLÈCHES NE SONT PAS DES COMMANDES, ET C'EST POURQUOI ELLES NE SONT PAS
+    // DANS LA TABLE : leur sens EST leur direction. Les réassigner produirait
+    // une flèche gauche qui monte. La page des raccourcis les liste quand même,
+    // marquées comme fixes -- taire quatre touches serait mentir davantage que
+    // de dire « celles-ci ne bougent pas ».
     const Tick step = mods.isShiftDown() ? gridTicks() * 4 : gridTicks();
     if (key == juce::KeyPress::leftKey) {
         if (hasSelection()) nudgeSelection(-static_cast<int64_t>(step));
@@ -1223,25 +1211,47 @@ bool PianoRollComponent::keyPressed(const juce::KeyPress& key) {
         else { topNote_ = juce::jlimit(12, 127, topNote_ - 1); updateScrollBars(); repaint(); }
         return true;
     }
-
-    // Outils : 1..6, comme dans la plupart des séquenceurs.
-    switch (code) {
-        case '1': setTool(Tool::Select); return true;
-        case '2': setTool(Tool::Draw);   return true;
-        case '3': setTool(Tool::Erase);  return true;
-        case '4': setTool(Tool::Split);  return true;
-        case '5': setTool(Tool::Glue);   return true;
-        case '6': setTool(Tool::Mute);   return true;
-        case 'g': case 'G': setSnapEnabled(!snapEnabled_); notifyEditState(); return true;
-        // D comme « douteuse » : la suivante, Maj+D la précédente. Sans
-        // modificateur, comme les outils : c'est un geste de relecture qu'on
-        // répète des dizaines de fois sur un morceau transcrit.
-        case 'd': case 'D': selectNextDoubtfulNote(!mods.isShiftDown()); return true;
-        case '+': case '=': zoomHorizontally(1.25f); return true;
-        case '-': case '_': zoomHorizontally(0.8f); return true;
-        default: break;
-    }
     return false;
+}
+
+bool PianoRollComponent::performShortcut(vsm::interchange::ShortcutId id,
+                                          const juce::ModifierKeys& mods) {
+    using Id = vsm::interchange::ShortcutId;
+    switch (id) {
+        case Id::EditDelete:          deleteSelection(); return true;
+        case Id::EditSelectNone:      selectNone(); return true;
+        case Id::EditUndo:            undo(); return true;
+        case Id::EditRedo:            redo(); return true;
+        case Id::EditSelectAll:       selectAll(); return true;
+        case Id::EditInvertSelection: invertSelection(); return true;
+        case Id::EditCopy:            copySelection(); return true;
+        case Id::EditCut:             cutSelection(); return true;
+        case Id::EditPaste:           paste(); return true;
+        case Id::EditDuplicate:       duplicateSelection(); return true;
+        case Id::EditLegato:          applyLegatoToSelection(); return true;
+        case Id::EditQuantize:        quantizeSelection(1.0f, false); return true;
+        case Id::EditToggleMute:      toggleSelectionMuted(); return true;
+        case Id::EditJoin:            joinSelection(); return true;
+        case Id::EditSplitAtPlayhead: splitSelectionAtPlayhead(); return true;
+        case Id::EditToggleSnap:      setSnapEnabled(!snapEnabled_); notifyEditState(); return true;
+        case Id::ToolSelect:          setTool(Tool::Select); return true;
+        case Id::ToolDraw:            setTool(Tool::Draw); return true;
+        case Id::ToolErase:           setTool(Tool::Erase); return true;
+        case Id::ToolSplit:           setTool(Tool::Split); return true;
+        case Id::ToolGlue:            setTool(Tool::Glue); return true;
+        case Id::ToolMute:            setTool(Tool::Mute); return true;
+        case Id::ViewZoomToFit:       zoomToFit(); return true;
+        case Id::ViewZoomIn:          zoomHorizontally(1.25f); return true;
+        case Id::ViewZoomOut:         zoomHorizontally(0.8f); return true;
+        // « D » comme douteuse : la suivante, Maj+D la précédente. C'est un
+        // geste de relecture qu'on répète des dizaines de fois sur un morceau
+        // transcrit, d'où l'absence de modificateur.
+        case Id::NavNextDoubtful:     selectNextDoubtfulNote(!mods.isShiftDown()); return true;
+        // Ce qui appartient à l'application (enregistrer, transport, écoute
+        // A/B) n'est pas rendu ici : le piano roll répond faux, et la touche
+        // remonte à qui sait quoi en faire.
+        default: return false;
+    }
 }
 
 // ---------------------------------------------------------------------------

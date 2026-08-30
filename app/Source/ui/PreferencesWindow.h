@@ -1,0 +1,47 @@
+#pragma once
+#include <JuceHeader.h>
+#include <functional>
+
+namespace vsm::app::ui {
+
+/// LES PRÉFÉRENCES, RASSEMBLÉES (D10.3).
+///
+/// Elles existaient toutes, et elles étaient **éparpillées** : la taille de
+/// l'interface dans *Affichage*, les threads de rendu et le dossier de la
+/// chaîne d'analyse dans *Fichier*, les raccourcis et les associations MIDI
+/// dans deux fenêtres qu'il fallait connaître. Un réglage qu'on ne retrouve
+/// qu'en se souvenant du menu où il se cache est un réglage qu'on ne change
+/// pas.
+///
+/// **CE PANNEAU NE DÉTIENT RIEN.** Chaque contrôle appelle l'application, qui
+/// possède déjà le réglage et sait l'enregistrer — c'est la même règle que pour
+/// le mixeur et la fenêtre des raccourcis. Dupliquer l'état ici créerait une
+/// seconde vérité, et c'est toujours la seconde qui finit par mentir.
+class PreferencesWindow : public juce::Component {
+public:
+    PreferencesWindow();
+
+    void paint(juce::Graphics& g) override;
+    void resized() override;
+
+    /// Republie l'état affiché depuis l'application.
+    void refresh(float uiScale, int renderThreads, int recommendedThreads,
+                  const juce::String& chainFolder, const juce::String& chainStatus,
+                  int shortcutCount, int midiMappingCount);
+
+    std::function<void(float)> onUiScaleChanged;
+    /// -1 = automatique.
+    std::function<void(int)> onRenderThreadsChanged;
+    std::function<void()> onChooseChainFolder;
+    std::function<void()> onOpenShortcuts;
+    std::function<void()> onOpenMidiLearn;
+
+private:
+    juce::Label titreAffichage_, titreAudio_, titreChaine_, titreCommandes_;
+    juce::Label libelleEchelle_, libelleThreads_, libelleChaine_, etatChaine_;
+    juce::ComboBox echelle_, threads_;
+    juce::TextButton choisirChaine_ { u8"Choisir le dossier..." };
+    juce::TextButton raccourcis_, associations_;
+};
+
+} // namespace vsm::app::ui

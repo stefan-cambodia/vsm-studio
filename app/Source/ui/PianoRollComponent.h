@@ -1,5 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
+#include "vsm/interchange/ShortcutTable.h"
 #include "vsm/sequencer/ProjectHistory.h"
 #include "vsm/sequencer/NoteEdit.h"
 #include "vsm/sequencer/Project.h"
@@ -206,7 +207,17 @@ public:
     void mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
     bool keyPressed(const juce::KeyPress&) override;
 
+    /// LA TABLE DES RACCOURCIS (D10.3), prêtée par l'application. Le piano roll
+    /// ne décide plus quelle touche fait quoi : il exécute une COMMANDE, et le
+    /// nom de la touche vit dans un seul endroit -- celui que la page liste.
+    void setShortcutTable(const vsm::interchange::ShortcutTable* table) { shortcuts_ = table; }
+    /// Exécute une commande. `mods` sert à celles dont le sens dépend de `Maj`
+    /// (la note douteuse PRÉCÉDENTE plutôt que la suivante).
+    bool performShortcut(vsm::interchange::ShortcutId id, const juce::ModifierKeys& mods);
+
 private:
+    const vsm::interchange::ShortcutTable* shortcuts_ = nullptr;
+
     enum class DragMode { None, Move, ResizeLeft, ResizeRight, RubberBandSelect, Pan, Erase, Audition };
 
     // --- Conversions internes ---------------------------------------------

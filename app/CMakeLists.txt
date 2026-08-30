@@ -43,6 +43,8 @@ target_sources(VintageSynthMidiStudio PRIVATE
     Source/project/AutosaveService.cpp
     Source/ui/ReconstructionWindow.cpp
     Source/ui/MidiLearnWindow.cpp
+    Source/ui/ShortcutsWindow.cpp
+    Source/ui/PreferencesWindow.cpp
 )
 
 target_compile_definitions(VintageSynthMidiStudio PRIVATE
@@ -141,7 +143,9 @@ target_compile_definitions(vsm-pianoroll-preview PRIVATE
     JUCE_STANDALONE_APPLICATION=1
 )
 target_link_libraries(vsm-pianoroll-preview PRIVATE
-    vsm_core vsm_audio
+    # `vsm_interchange` depuis D10.3 : le piano roll ne décide plus quelle
+    # touche fait quoi, il lit la table des raccourcis, qui vit là.
+    vsm_core vsm_audio vsm_interchange
     juce::juce_gui_basics juce::juce_graphics
 )
 juce_generate_juce_header(vsm-pianoroll-preview)

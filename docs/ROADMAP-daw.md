@@ -2453,7 +2453,7 @@ qu'elle est là.
 |---|---|---|
 | D10.1 | Navigateur : machines, presets, profils, échantillons, recherche, glisser-déposer | trouver un preset ne demande plus d'ouvrir un dossier |
 | D10.2 | MIDI learn **persistant**, liste des associations, moyen d'en défaire une (`clearMidiLearn()` n'est appelé de nulle part), et cartographie du transport et du mixeur | un potentiomètre physique s'en souvient d'une session à l'autre — **fait** |
-| D10.3 | Raccourcis configurables, table imprimable, fenêtre de préférences | une page les liste tous |
+| D10.3 | Raccourcis configurables, table imprimable, fenêtre de préférences | une page les liste tous — **fait** |
 | D10.4 | Sauvegarde automatique et récupération après plantage | tuer l'application ne perd pas plus d'une minute — **fait** |
 
 > **D10.2 EST FAITE (30/08/2026).** Ce qui se perdait à chaque lancement n'était
@@ -2553,6 +2553,64 @@ qu'elle est là.
 > minutes »*. Et quand le projet **n'avait jamais été enregistré**, elle le dit
 > explicitement : c'est le cas où l'on ne perd pas une minute mais tout, et
 > c'est celui pour lequel cette étape existe.
+
+> **D10.3 EST FAITE (30/08/2026). CE QUI EXISTAIT ÉTAIT INVISIBLE** : deux
+> `switch` sur des codes de touches, l'un dans `MainComponent`, l'autre dans le
+> piano roll, et rien qui les liste. La seule façon de savoir ce que faisait une
+> touche était de l'essayer ; la seule façon de savoir quelles touches faisaient
+> quelque chose était de lire deux fichiers de code.
+>
+> **LE CATALOGUE EST LA SOURCE, LES `switch` SONT DES CONSÉQUENCES.** Chaque
+> commande est déclarée une fois dans `interchange/ShortcutTable.h`, avec son
+> libellé, sa famille et sa touche par défaut. Une touche pressée désigne
+> désormais une **commande**, et les deux gestionnaires consultent la même
+> table. Un raccourci qu'on ajouterait dans le code sans le déclarer là
+> n'apparaîtrait pas dans la page — et c'est précisément pour cela que le code
+> ne doit plus les connaître autrement.
+>
+> **CE QUI NE SE RECONFIGURE PAS EST ÉCRIT PLUTÔT QU'OMIS.** Les flèches
+> déplacent la sélection et `Maj` en quadruple le pas : leur sens EST leur
+> direction, et les réassigner produirait une flèche gauche qui monte. Elles
+> figurent donc dans la page, marquées comme fixes. Une page qui prétend tout
+> lister et tait quatre touches ment davantage qu'une page qui dit « celles-ci
+> ne bougent pas ».
+>
+> **TROIS PIÈGES, TROIS DÉCISIONS ÉCRITES.**
+>
+> - **`command` devient `ctrl`.** Sous macOS, JUCE écrit « command + S » ; le
+>   logiciel accepte depuis toujours les deux indifféremment. Une table qui les
+>   distinguerait obligerait l'utilisateur d'un Mac à tout reconfigurer.
+> - **`Maj` est retiré à la seconde tentative, et seulement quand il est seul.**
+>   Sur la plupart des dispositions, `+` s'obtient par `Maj` `=` : JUCE rend
+>   alors « shift + = ». Le retirer toujours ferait répondre « Annuler » à
+>   Ctrl+Maj+Z, qui est « Rétablir ».
+> - **L'alias ne suit pas la personnalisation.** `Retour arrière` supprime et
+>   `Ctrl+Y` rétablit parce que l'usage l'attend, pas parce que ce sont de
+>   seconds raccourcis. Réassigner « Supprimer » à F1 doit rendre `Retour
+>   arrière` inerte — sinon il effacerait encore, et on chercherait longtemps.
+>
+> **UN CONFLIT SE DIT AVANT D'ÊTRE CRÉÉ**, en nommant la commande qui tient
+> déjà la touche : deux commandes sur la même touche, c'est une seule qui
+> répond et rien qui dise laquelle. Une touche **vide désactive** une commande,
+> et c'est un choix légitime — le taire obligerait à inventer une touche pour se
+> débarrasser d'un raccourci gênant. Pendant une capture, la touche est une
+> **donnée et non une commande** : sans ce détournement, appuyer sur `Espace`
+> pour le réassigner lancerait la lecture, et l'on ne pourrait jamais changer
+> une touche déjà prise — c'est-à-dire aucune de celles qu'on veut changer.
+>
+> **LA TABLE S'IMPRIME**, en texte : on l'imprime, on la colle au mur du studio,
+> on la cherche avec Ctrl+F. Une capture d'écran ne ferait aucune des trois. Un
+> test vérifie le critère comme il est écrit — chaque commande du catalogue,
+> avec son libellé et sa touche, doit s'y trouver, les fixes comprises.
+>
+> **ET LES PRÉFÉRENCES SONT RASSEMBLÉES.** Elles existaient toutes, éparpillées :
+> la taille de l'interface dans *Affichage*, les threads de rendu et le dossier
+> de la chaîne d'analyse dans *Fichier*, les raccourcis et les associations MIDI
+> dans deux fenêtres qu'il fallait connaître. Un réglage qu'on ne retrouve qu'en
+> se souvenant du menu où il se cache est un réglage qu'on ne change pas. Le
+> panneau ne détient rien : chaque contrôle appelle l'application, qui possède
+> déjà le réglage — dupliquer l'état créerait une seconde vérité, et c'est
+> toujours la seconde qui finit par mentir.
 
 ---
 

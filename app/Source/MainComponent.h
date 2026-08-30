@@ -10,6 +10,9 @@
 #include "ui/MidiLearnWindow.h"
 #include "vsm/interchange/MidiLearnStore.h"
 #include "project/AutosaveService.h"
+#include "vsm/interchange/ShortcutTable.h"
+#include "ui/ShortcutsWindow.h"
+#include "ui/PreferencesWindow.h"
 #include "audio/AudioEngine.h"
 #include "ui/TransportBarComponent.h"
 #include "ui/TrackListComponent.h"
@@ -164,6 +167,8 @@ private:
         kMenuAudioThreadsFirst,
         kMenuAudioThreadsLast = kMenuAudioThreadsFirst + 32,
         kMenuViewMidiLearn,
+        kMenuViewShortcuts,
+        kMenuFilePreferences,
         kMenuFileReconstruct,
         kMenuFileChainFolder,
         kMenuHelpAbout,
@@ -227,6 +232,25 @@ private:
     /// qu'une marge nulle sur un disque qui hésite.
     double lastAutosaveSeconds_ = 0.0;
     static constexpr double kAutosaveIntervalSeconds = 30.0;
+
+    // --- D10.3 : les raccourcis se lisent et se changent --------------------
+    /// La table effective : les défauts du catalogue plus ce que l'utilisateur
+    /// a changé. Prêtée au piano roll, qui ne décide plus quelle touche fait
+    /// quoi.
+    vsm::interchange::ShortcutTable shortcuts_;
+    vsm::app::ui::ShortcutsWindow shortcutsPanel_;
+    std::unique_ptr<PanelWindow> shortcutsWindow_;
+    void loadShortcuts();
+    void saveShortcuts();
+    void refreshShortcutList();
+    /// Rassemble les réglages éparpillés dans deux menus (D10.3).
+    void showPreferences();
+    void refreshPreferences();
+    vsm::app::ui::PreferencesWindow preferencesPanel_;
+    std::unique_ptr<PanelWindow> preferencesWindow_;
+    /// La commande dont on attend la nouvelle touche, s'il y en a une.
+    bool rebindPending_ = false;
+    vsm::interchange::ShortcutId rebindTarget_{};
     /// Le morceau d'origine, retenu pour devenir la référence A/B (D9.4).
     juce::File reconstructionSource_;
     /// Le fichier qu'un glisser-déposer vient de proposer, retenu le temps que
