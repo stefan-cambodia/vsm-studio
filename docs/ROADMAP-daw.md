@@ -16,6 +16,15 @@ que rien ne le signale — ce qui est exactement le mode de défaillance que le
 § 0 de `CDC-nouvelle-machine.md` désigne comme le pire cas : incomplet **en
 silence**.
 
+**État au 30/08/2026 : les onze phases sont faites, de D0 à D10.** Chacune porte
+le compte rendu de ce qu'elle a coûté et de ce qu'elle a trouvé, à l'endroit où
+elle est décrite — c'est là qu'il faut lire, pas ici. Ce qui reste ouvert est
+nommé au § 5 (« ce qui n'est pas au programme, et pourquoi ») et dans les deux
+différés assumés en cours de route : la façade native des plugins CLAP (D7.4,
+faute d'un affichage pour l'ouvrir au moins une fois) et la pose d'un
+échantillon ou d'un profil depuis le navigateur, qui appartient au montage
+(D10.1).
+
 ---
 
 ## 0. Ce que ce document change, et ce qu'il ne renverse pas
