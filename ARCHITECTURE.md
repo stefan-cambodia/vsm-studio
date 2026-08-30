@@ -558,7 +558,7 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 933 tests moteur + 18 tests d'analyse, tous verts
+### Bilan actuel : 1 211 tests moteur + 18 tests d'analyse, tous verts
 
 - **84 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des
@@ -3502,6 +3502,29 @@ INTERNE à chaque bloc (les commandes remplissent leur cadre), et un afficheur
 unique en bas de façade, qui ne parle que lorsqu'on règle quelque chose.
 
 Aperçus : [`docs/images/panels/`].
+
+**LE MÊME OUTIL POUR LES PANNEAUX DE L'APPLICATION** (`vsm-ui-preview`, D10) :
+navigateur, raccourcis, préférences, associations MIDI, reconstruction.
+
+```bash
+cmake --build build --target vsm-ui-preview
+./build/app/vsm-ui-preview_artefacts/RelWithDebInfo/vsm-ui-preview docs/images/panneaux 1.5
+```
+
+L'échelle par défaut est 1,5 — celle de l'application — parce que c'est à cette
+taille-là qu'il faut juger. Trois défauts au premier rendu, dont aucun test
+n'aurait rien dit : « Édition » affiché « Ãdition » (le panneau REÇOIT ses
+libellés et les passait par `juce::String(const char*)`, qui lit du Latin-1 —
+la faute du § 6 bis bis, réintroduite exactement là où le texte ne vient pas du
+code qui l'affiche), les familles du navigateur coupées à trois lettres
+(« Pre » et « Pro » côte à côte), et le chemin de la chaîne d'analyse écrit
+deux fois dans les préférences.
+
+**Le troisième a livré une règle**, et c'est l'aperçu qui l'a montrée : la
+phrase d'état était composée par l'application, donc l'aperçu en composait une
+autre — et montrait une fenêtre qui n'existe pas. Un panneau doit recevoir
+l'**état**, jamais la phrase. Sinon l'outil qui sert à vérifier devient un
+second endroit où se tromper.
 
 **Un défaut du COMPOSANT trouvé par une nouvelle façade, et il touchait huit
 anciennes.** Sur un châssis de bois, les joues latérales sont peintes par-dessus
