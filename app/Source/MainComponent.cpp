@@ -528,6 +528,10 @@ MainComponent::MainComponent()
     trackList_.onBrowserItemDropped = [this](size_t piste, const juce::String& description) {
         applyBrowserDrop(piste, description);
     };
+    arrangement_.onBrowserItemDropped = [this](size_t piste, vsm::midi::Tick tick,
+                                                const juce::String& description) {
+        applyBrowserDropAt(piste, tick, description);
+    };
     preferencesPanel_.onUiScaleChanged = [this](float facteur) { setUiScale(facteur); };
     preferencesPanel_.onRenderThreadsChanged = [this](int choix) {
         setRenderThreadChoice(choix);
@@ -2918,20 +2922,35 @@ void MainComponent::applyBrowserItem(const vsm::interchange::BrowserItem& item,
             return;
         }
 
-        case Kind::Profile:
         case Kind::Sample:
-            // CE QUI RESTE À FAIRE EST DIT PLUTÔT QUE FAIT À MOITIÉ. Poser un
-            // échantillon ou un profil demande de décider quelle piste il
-            // devient et où il commence : ce sont des gestes de montage, qui
-            // ont leur place dans l'arrangement, pas dans un double-clic.
+            // POSER UN ÉCHANTILLON DEMANDE UNE POSITION, et un double-clic n'en
+            // porte aucune. On le pose donc au début de la piste choisie, ce
+            // qui est la réponse la moins surprenante -- et on rappelle où le
+            // geste EXACT se fait, puisqu'il existe désormais.
+            if (placeSampleOnTrack(trackIndex, 0, juce::File(chemin)))
+                juce::AlertWindow::showMessageBoxAsync(
+                    juce::AlertWindow::InfoIcon, "Navigateur",
+                    juce::String::fromUTF8(item.name.c_str())
+                        + juce::String::fromUTF8(
+                              u8" a été posé au début de la piste.\n\nPour le poser à une mesure "
+                              u8"précise, glissez-le sur l'arrangement plutôt que de "
+                              u8"double-cliquer."));
+            return;
+
+        case Kind::Profile:
+            // UN PROFIL MULTI-ÉCHANTILLONS APPARTIENT À UNE MACHINE, pas à une
+            // piste ni à une position : c'est `vsm.multisample` qui le charge,
+            // depuis sa façade. Le dire vaut mieux que de le faire à moitié --
+            // le poser sur une piste qui n'a pas cette machine ne produirait
+            // rien, et rien n'expliquerait quoi.
             juce::AlertWindow::showMessageBoxAsync(
                 juce::AlertWindow::InfoIcon,
-                juce::String::fromUTF8(u8"Pas encore posable d'ici"),
+                juce::String::fromUTF8(u8"Un profil se charge depuis sa machine"),
                 juce::String::fromUTF8(item.name.c_str())
                     + juce::String::fromUTF8(
-                          u8"\n\nLes profils et les échantillons se chargent depuis la machine "
-                          u8"qui les emploie (Synth Rack) ou depuis l'arrangement. Le navigateur "
-                          u8"sert ici à les TROUVER : le chemin complet est\n\n")
+                          u8"\n\nUn profil multi-échantillons se charge dans la machine qui "
+                          u8"l'emploie (vsm.multisample), depuis le Synth Rack. Le navigateur "
+                          u8"sert ici à le TROUVER :\n\n")
                     + chemin);
             return;
     }
@@ -2949,6 +2968,139 @@ void MainComponent::applyBrowserDrop(size_t trackIndex, const juce::String& desc
             applyBrowserItem(entree, trackIndex);
             return;
         }
+}
+
+void MainComponent::applyBrowserDropAt(size_t trackIndex, vsm::midi::Tick tick,
+                                        const juce::String& description) {
+    vsm::interchange::BrowserItemKind kind{};
+    juce::String reference;
+    if (!vsm::app::ui::BrowserComponent::parseDragDescription(description, kind, reference)) return;
+
+    // UN ÉCHANTILLON EST LE SEUL À AVOIR BESOIN DE LA POSITION. Une machine, un
+    // preset, un profil s'appliquent à une piste entière : les faire dépendre
+    // de l'endroit où on a lâché laisserait croire qu'ils commencent là.
+    if (kind == vsm::interchange::BrowserItemKind::Sample) {
+        placeSampleOnTrack(trackIndex, tick, juce::File(reference));
+        return;
+    }
+    applyBrowserDrop(trackIndex, description);
+}
+
+bool MainComponent::placeSampleOnTrack(size_t trackIndex, vsm::midi::Tick tick,
+                                        const juce::File& fichier) {
+    if (trackIndex >= project_.tracks.size() || !fichier.existsAsFile()) return false;
+
+    // 1. LE PROJET DOIT AVOIR UN DOSSIER. Tous les chemins d'un projet sont
+    // RELATIFS au sien, et la lecture refuse même un chemin absolu (D6.4) : un
+    // échantillon posé dans un projet jamais enregistré n'aurait nulle part où
+    // être écrit, et le projet rouvrirait muet.
+    if (currentProjectFolder_ == juce::File()) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, juce::String::fromUTF8(u8"Projet jamais enregistré"),
+            juce::String::fromUTF8(
+                u8"Un échantillon posé sur une piste est COPIÉ dans le dossier du projet : tous "
+                u8"les chemins y sont relatifs, et c'est ce qui permet de le rouvrir ailleurs.\n\n"
+                u8"Enregistrez le projet, puis reposez le fichier."));
+        return false;
+    }
+
+    // 2. ON NE PERD PAS DE NOTES EN SILENCE. Une piste MIDI qui porte des notes
+    // deviendrait audio, et elles disparaîtraient : c'est peut-être ce qu'on
+    // veut, mais ce n'est jamais ce qu'on veut sans le savoir.
+    auto& piste = project_.tracks[trackIndex];
+    if (piste.kind != Track::Kind::Audio && !piste.notes.empty()) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::WarningIcon, juce::String::fromUTF8(u8"Piste déjà occupée"),
+            juce::String::fromUTF8(u8"« ") + juce::String(piste.name)
+                + juce::String::fromUTF8(u8" » porte ") + juce::String(static_cast<int>(piste.notes.size()))
+                + juce::String::fromUTF8(u8" note(s) : en faire une piste audio les perdrait.\n\n"
+                                          u8"Posez l'échantillon sur une piste vide, ou sur une "
+                                          u8"piste audio."));
+        return false;
+    }
+
+    // 3. LA COPIE, ET ELLE EST LE CŒUR DE L'AFFAIRE. « Enregistrer, c'est aussi
+    // emporter les médias » (D6.4) : un projet qui désignerait un fichier resté
+    // dans la bibliothèque de l'utilisateur serait illisible sur une autre
+    // machine, et silencieusement incomplet sur celle-ci.
+    const juce::File dossierAudio = currentProjectFolder_.getChildFile("audio");
+    dossierAudio.createDirectory();
+    juce::File destination = dossierAudio.getChildFile(fichier.getFileName());
+    // MÊME NOM, MÊME CONTENU : on ne recopie pas. Deux fichiers différents du
+    // même nom, en revanche, doivent coexister -- d'où le suffixe.
+    if (destination.existsAsFile() && destination.getSize() != fichier.getSize()) {
+        int suffixe = 2;
+        do {
+            destination = dossierAudio.getChildFile(fichier.getFileNameWithoutExtension() + "-"
+                                                     + juce::String(suffixe++)
+                                                     + fichier.getFileExtension());
+        } while (destination.existsAsFile());
+    }
+    if (!destination.existsAsFile() && !fichier.copyFileTo(destination)) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::WarningIcon, juce::String::fromUTF8(u8"Copie impossible"),
+            juce::String::fromUTF8(u8"Impossible de copier ") + fichier.getFileName()
+                + juce::String::fromUTF8(u8" dans le dossier du projet."));
+        return false;
+    }
+
+    // 4. ON LIT LE FICHIER POUR SAVOIR CE QU'IL DURE. Le déclarer d'après ce
+    // qu'on croit produirait un clip de la mauvaise longueur, et c'est
+    // exactement l'erreur que `loadAudioTracks` corrige déjà en relisant.
+    const double sr = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate()
+                                                              : 48000.0;
+    auto lu = vsm::audio::io::loadAudioTrack(destination.getFullPathName().toStdString(), sr);
+    if (!lu.success || !lu.source) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::WarningIcon, juce::String::fromUTF8(u8"Échantillon illisible"),
+            juce::String::fromUTF8(lu.error.c_str()));
+        return false;
+    }
+    const double duree = static_cast<double>(lu.source->frames()) / sr;
+
+    // 5. UNE PISTE, UN FICHIER. Le modèle porte le matériau sur la PISTE et les
+    // découpes dans ses clips : poser un second fichier différent sur la même
+    // piste remplacerait le premier partout. On le dit plutôt que de le faire.
+    //
+    // ET ON LE DIT AVANT D'OUVRIR L'ACTION ANNULABLE : un geste refusé ne doit
+    // pas laisser une étape dans l'historique. Annuler pour défaire quelque
+    // chose qui n'a pas eu lieu défait le geste d'avant.
+    const juce::String relatif = "audio/" + destination.getFileName();
+    if (!piste.audio.empty() && piste.audio.path != relatif.toStdString()) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, juce::String::fromUTF8(u8"Piste déjà pourvue"),
+            juce::String::fromUTF8(u8"« ") + juce::String(piste.name)
+                + juce::String::fromUTF8(u8" » joue déjà ")
+                + juce::String(piste.audio.path.c_str())
+                + juce::String::fromUTF8(u8".\n\nUne piste porte UN fichier, découpé en clips : "
+                                          u8"posez celui-ci sur une autre piste."));
+        return false;
+    }
+
+    beginProjectEdit(juce::String::fromUTF8(u8"Poser un échantillon"));
+    if (piste.kind != Track::Kind::Audio) {
+        piste.kind = Track::Kind::Audio;
+        piste.instrumentId.clear();
+        piste.presetId.clear();
+    }
+    piste.audio.path = relatif.toStdString();
+    piste.audio.sampleRate = sr;
+    piste.audio.frames = lu.source->frames();
+    piste.audio.channels = 2;
+
+    vsm::sequencer::Clip clip;
+    clip.startTick = std::max<vsm::midi::Tick>(0, tick);
+    clip.length = std::max<vsm::midi::Tick>(1, project_.secondsToTicks(
+        project_.ticksToSeconds(clip.startTick) + duree) - clip.startTick);
+    clip.sourceStartSeconds = 0.0;
+    clip.name = destination.getFileNameWithoutExtension().toStdString();
+    piste.clips.push_back(clip);
+
+    trackList_.refreshTrackRow(trackIndex);
+    loadAudioTracks();
+    refreshTransportSchedule();
+    arrangement_.repaint();
+    return true;
 }
 
 void MainComponent::loadReferenceAudio() {

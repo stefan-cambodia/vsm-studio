@@ -23,7 +23,8 @@
 // fonctions pures, testées sans serveur graphique. Ici il n'y a que du dessin,
 // des coordonnées et des gestes -- ce qui reste quand on a retiré ce qui peut
 // être faux en silence.
-class ArrangementComponent : public juce::Component {
+class ArrangementComponent : public juce::Component,
+                              public juce::DragAndDropTarget {
 public:
     ArrangementComponent();
 
@@ -77,6 +78,26 @@ public:
     /// l'application d'ouvrir le sélecteur, ce composant ne connaît pas JUCE
     /// au-delà du dessin.
     std::function<void(size_t)> onColourRequested;
+
+    /// D10.1 : QUELQUE CHOSE A ÉTÉ LÂCHÉ DEPUIS LE NAVIGATEUR, sur une piste ET
+    /// à un endroit de la ligne de temps.
+    ///
+    /// C'est ce que la liste des pistes ne pouvait pas fournir, et c'est
+    /// pourquoi la pose d'un échantillon avait été laissée de côté : elle
+    /// demande de décider quelle piste il devient ET où il commence. Cette
+    /// seconde moitié de la réponse n'existe que dans l'arrangement.
+    ///
+    /// La description est celle du navigateur ; l'arrangement ne l'interprète
+    /// pas — il n'a pas à savoir ce qu'est un `*.synth.json`.
+    std::function<void(size_t trackIndex, vsm::midi::Tick tick, const juce::String& description)>
+        onBrowserItemDropped;
+
+    // juce::DragAndDropTarget
+    bool isInterestedInDragSource(const SourceDetails& details) override;
+    void itemDragEnter(const SourceDetails& details) override;
+    void itemDragMove(const SourceDetails& details) override;
+    void itemDragExit(const SourceDetails& details) override;
+    void itemDropped(const SourceDetails& details) override;
 
     void zoomHorizontally(float facteur);
     /// Suppr. efface la sélection, +/- zooment. Publique pour que les fenêtres
@@ -139,6 +160,12 @@ private:
     uint64_t clipFondu_ = 0;
     vsm::midi::Tick materialEnd(const vsm::sequencer::Track& track) const;
     void notifyChanged();
+
+    /// La cible d'un glisser en cours : la piste survolée et la position
+    /// aimantée. Sans ce retour, on lâche à l'aveugle -- et pour un
+    /// échantillon, « à l'aveugle » veut dire à la mauvaise mesure.
+    int dropTrack_ = -1;
+    vsm::midi::Tick dropTick_ = 0;
 
     vsm::sequencer::Project* project_ = nullptr;
     vsm::sequencer::ClipSelection selection_;

@@ -260,6 +260,14 @@ private:
     /// ou de la sélection courante.
     void applyBrowserItem(const vsm::interchange::BrowserItem& item, size_t trackIndex);
     void applyBrowserDrop(size_t trackIndex, const juce::String& description);
+    /// LE MÊME DÉPÔT, MAIS AVEC UNE POSITION (D10.1). C'est ce que la liste des
+    /// pistes ne peut pas fournir, et c'est ce qui manquait pour poser un
+    /// échantillon : il faut savoir quelle piste il devient ET où il commence.
+    void applyBrowserDropAt(size_t trackIndex, vsm::midi::Tick tick,
+                             const juce::String& description);
+    /// Pose un fichier audio sur une piste, à un tick donné. Renvoie faux ET
+    /// dit pourquoi si ce n'est pas possible.
+    bool placeSampleOnTrack(size_t trackIndex, vsm::midi::Tick tick, const juce::File& fichier);
 
     vsm::app::ui::BrowserComponent browserPanel_;
     std::unique_ptr<PanelWindow> browserWindow_;

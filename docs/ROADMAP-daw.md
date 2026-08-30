@@ -19,12 +19,12 @@ silence**.
 **État au 30/08/2026 : les onze phases sont faites, de D0 à D10.** Chacune porte
 le compte rendu de ce qu'elle a coûté et de ce qu'elle a trouvé, à l'endroit où
 elle est décrite — c'est là qu'il faut lire, pas ici. Ce qui reste ouvert est
-nommé au § 5 (« ce qui n'est pas au programme, et pourquoi ») et dans le seul
-différé qui subsiste : la pose d'un échantillon ou d'un profil depuis le
-navigateur, qui appartient au montage (D10.1). L'autre report — la façade
-native des plugins CLAP, différée en D7.4 « faute d'un affichage pour l'ouvrir
-au moins une fois » — a été levé le 30/08/2026, et il l'a été de la façon qu'il
-exigeait : l'affichage existe, la façade a été ouverte.
+nommé au § 5 (« ce qui n'est pas au programme, et pourquoi »), et les deux
+reports assumés en cours de route ont été levés le 30/08/2026 : la façade
+native des plugins CLAP (différée en D7.4 « faute d'un affichage pour l'ouvrir
+au moins une fois » — l'affichage existe, la façade a été ouverte) et la pose
+d'un échantillon depuis le navigateur (qui demandait une position, et l'a
+trouvée dans l'arrangement).
 
 ---
 
@@ -2707,11 +2707,39 @@ qu'elle est là.
 > change si nécessaire. Ce qui n'a pas pu être appliqué est **dit** — un preset
 > à moitié posé qui se tait donne un son qu'on croit être celui du fichier.
 >
-> **CE QUI N'EST PAS POSABLE D'ICI EST DIT PLUTÔT QUE FAIT À MOITIÉ.** Poser un
-> échantillon ou un profil demande de décider quelle piste il devient et où il
-> commence : ce sont des gestes de montage, qui ont leur place dans
-> l'arrangement, pas dans un double-clic. Le navigateur sert alors à les
-> TROUVER, et donne le chemin complet.
+> **POSER UN ÉCHANTILLON SE FAIT DANS L'ARRANGEMENT, ET C'EST LÀ QUE C'EST
+> POSSIBLE.** Cela avait d'abord été laissé de côté avec ce motif : « cela
+> demande de décider quelle piste il devient ET où il commence ». La première
+> moitié de la réponse, la liste des pistes la donne ; la seconde n'existe que
+> dans l'arrangement, qui sait convertir une abscisse en mesure. Un échantillon
+> glissé sur l'arrangement tombe donc sur la piste survolée, **à la mesure
+> aimantée** — un trait doré le montre pendant le glisser, parce que poser à
+> trois millisecondes du premier temps est le genre de décalage qu'on ne voit
+> pas et qu'on entend.
+>
+> **QUATRE REFUS, ET CHACUN NOMME SA RAISON.** Un projet jamais enregistré n'a
+> nulle part où copier le fichier (tous les chemins d'un projet sont relatifs au
+> sien, et la lecture refuse même un chemin absolu — D6.4). Une piste MIDI qui
+> porte des notes ne devient pas audio en silence : c'est peut-être ce qu'on
+> veut, ce n'est jamais ce qu'on veut sans le savoir. Une piste porte UN fichier,
+> découpé en clips : un second le remplacerait partout. Et un échantillon
+> illisible le dit avec le message du décodeur.
+>
+> **LE FICHIER EST COPIÉ DANS LE PROJET**, jamais désigné là où il se trouve :
+> « enregistrer, c'est aussi emporter les médias » (D6.4), et un projet qui
+> pointerait vers la bibliothèque de l'utilisateur serait illisible ailleurs et
+> silencieusement incomplet ici. Même nom et même taille : on ne recopie pas.
+> Même nom et contenu différent : les deux coexistent, avec un suffixe.
+>
+> **ET LA LONGUEUR DU CLIP EST LUE DANS LE FICHIER COPIÉ**, pas déduite de ce
+> qu'on croit : c'est la même correction que `loadAudioTracks` applique déjà en
+> relisant, et pour la même raison — quand la déclaration et le fichier
+> divergent, c'est le fichier qui a raison.
+>
+> **UN PROFIL, LUI, RESTE À TROUVER PLUTÔT QU'À POSER**, et c'est un constat sur
+> le modèle : un profil multi-échantillons appartient à une MACHINE
+> (`vsm.multisample`), pas à une piste ni à une position. Le poser sur une piste
+> qui n'a pas cette machine ne produirait rien, et rien n'expliquerait quoi.
 >
 > **L'INVENTAIRE EST REFAIT À L'OUVERTURE DE LA FENÊTRE**, jamais en continu :
 > un dossier se parcourt en quelques dizaines de millisecondes, et le refaire à

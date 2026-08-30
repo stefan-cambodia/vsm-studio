@@ -904,4 +904,57 @@ void ArrangementComponent::paint(juce::Graphics& g) {
         g.drawText(u8"Aucune piste — Piste ▸ Ajouter une piste",
                     bounds.withTrimmedLeft(kHeaderWidth), juce::Justification::centred);
     }
+
+    // LA CIBLE D'UN GLISSER (D10.1) : la piste survolée, et le trait vertical
+    // qui dit à quelle mesure ça tombera. Sans ce trait, on lâche à
+    // l'aveugle -- et pour un échantillon, « à l'aveugle » veut dire à la
+    // mauvaise mesure.
+    if (dropTrack_ >= 0 && project_ != nullptr
+        && static_cast<size_t>(dropTrack_) < project_->tracks.size()) {
+        const int haut = trackTop(static_cast<size_t>(dropTrack_));
+        const int hauteur = trackHeight(project_->tracks[static_cast<size_t>(dropTrack_)]);
+        g.setColour(juce::Colours::gold.withAlpha(0.18f));
+        g.fillRect(juce::Rectangle<int>(0, haut, getWidth(), hauteur));
+        const float x = tickToX(dropTick_);
+        g.setColour(juce::Colours::gold);
+        g.fillRect(juce::Rectangle<float>(x - 1.0f, static_cast<float>(haut), 2.0f,
+                                           static_cast<float>(hauteur)));
+    }
+
+}
+
+// --- D10.1 : recevoir un échantillon, à une piste ET à une mesure -----------
+
+bool ArrangementComponent::isInterestedInDragSource(const SourceDetails& details) {
+    return details.description.toString().startsWith("vsm-browser:");
+}
+
+void ArrangementComponent::itemDragEnter(const SourceDetails& details) { itemDragMove(details); }
+
+void ArrangementComponent::itemDragMove(const SourceDetails& details) {
+    const int piste = trackAtY(static_cast<float>(details.localPosition.y));
+    // AIMANTÉ, COMME TOUT LE RESTE DE L'ARRANGEMENT. Poser un échantillon à
+    // trois millisecondes du premier temps est le genre de décalage qu'on ne
+    // voit pas et qu'on entend.
+    const vsm::midi::Tick tick = snapTick(xToTick(static_cast<float>(details.localPosition.x)));
+    if (piste == dropTrack_ && tick == dropTick_) return;
+    dropTrack_ = piste;
+    dropTick_ = tick;
+    repaint();
+}
+
+void ArrangementComponent::itemDragExit(const SourceDetails&) {
+    dropTrack_ = -1;
+    repaint();
+}
+
+void ArrangementComponent::itemDropped(const SourceDetails& details) {
+    const int piste = dropTrack_;
+    const vsm::midi::Tick tick = dropTick_;
+    dropTrack_ = -1;
+    repaint();
+    if (piste < 0 || project_ == nullptr || static_cast<size_t>(piste) >= project_->tracks.size())
+        return;
+    if (onBrowserItemDropped)
+        onBrowserItemDropped(static_cast<size_t>(piste), tick, details.description.toString());
 }
