@@ -1946,6 +1946,38 @@ famille `percussion` allait alors sur un tom moyen, et la piste passait de
 place est dans le rôle « grosse caisse » et nulle part ailleurs. Une déclaration
 se corrige comme une mesure : en la mesurant.
 
+### Le budget d'erreur rejoué : la basse est le second front
+
+Le § 5 octies a établi qu'on ne règle rien sans savoir OÙ est l'erreur. Le
+budget a donc été rejoué sur la reconstruction corrigée — et sur l'ancienne, en
+**v4** elle aussi, parce que le chiffre de 63,5 % qui a lancé tout ce travail
+était en v2 et que la règle du § 10.3 interdit de les comparer.
+
+| piste rendue PARFAITE | sky-v5 | **sky-v6** |
+|---|---|---|
+| Batterie | 0,1741 — −47,7 % | 0,1720 — **−41,6 %** |
+| basse | 0,3200 — −3,8 % | 0,2451 — **−16,7 %** |
+| `other` | 0,3456 — +3,9 % | 0,2999 — +1,8 % |
+| voix | 0,3326 — −0,0 % | 0,2979 — +1,2 % |
+| *distance du morceau* | *0,3327* | *0,2933* |
+| *plancher (somme des stems)* | *0,0644* | *0,0644* |
+
+**Le chiffre à lire n'est pas le pourcentage, c'est la colonne de gauche.** Une
+batterie PARFAITE menait à 0,1741 avant la correction et mène à 0,1720 après :
+**le plafond n'a pas bougé**. Ce que la correction a fait, c'est rapprocher le
+morceau de ce plafond-là — d'où une part qui tombe de 47,7 % à 41,6 % sans
+qu'aucune limite ait reculé. Un budget d'erreur mesure une DISTANCE AU PLAFOND,
+et sa part relative se déplace dès que le reste bouge.
+
+**Et la basse a changé de statut.** Elle valait 3,8 % et en vaut 16,7 % : elle
+ne s'est pas dégradée, c'est le total qui a fondu autour d'elle. Elle est
+maintenant le second front, là où le § 5 octies pouvait écrire « une basse
+parfaite ne rapporterait rien ». La batterie reste le premier — 41,6 %, et la
+route de l'attribution est désormais épuisée : la détection est hors de cause,
+le timbre n'est pas le plafond, les voix sont justes. Ce qui reste d'elle est ce
+que le § 5 octies avait déjà nommé, le désaccord entre la métrique et l'oreille,
+et l'unique échantillon par famille.
+
 **Ce qui reste ouvert, et il est nommé.** Le rôle n'a que quatre valeurs — peau
 grave, médium, bruit clair, métal — et rien n'y distingue une vache d'une caisse
 claire : sur *Sky and Sand*, c'est la préférence pour une voix libre, et non le
