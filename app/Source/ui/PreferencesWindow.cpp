@@ -21,7 +21,9 @@ PreferencesWindow::PreferencesWindow() {
     titre(titreAudio_, juce::String::fromUTF8(u8"Audio"));
     titre(titreChaine_, juce::String::fromUTF8(u8"Chaîne d'analyse"));
     titre(titreCommandes_, juce::String::fromUTF8(u8"Commandes"));
-    for (auto* e : {&titreAffichage_, &titreAudio_, &titreChaine_, &titreCommandes_})
+    titre(titreBibliotheque_, juce::String::fromUTF8(u8"Bibliothèque (navigateur)"));
+    for (auto* e : {&titreAffichage_, &titreAudio_, &titreChaine_, &titreCommandes_,
+                     &titreBibliotheque_})
         addAndMakeVisible(*e);
 
     ligne(libelleEchelle_, juce::String::fromUTF8(u8"Taille de l'interface"));
@@ -60,6 +62,11 @@ PreferencesWindow::PreferencesWindow() {
     choisirChaine_.onClick = [this] { if (onChooseChainFolder) onChooseChainFolder(); };
     addAndMakeVisible(choisirChaine_);
 
+    ligne(libelleBibliotheque_, juce::String::fromUTF8(u8"Dossier"));
+    addAndMakeVisible(libelleBibliotheque_);
+    choisirBibliotheque_.onClick = [this] { if (onChooseLibraryFolder) onChooseLibraryFolder(); };
+    addAndMakeVisible(choisirBibliotheque_);
+
     raccourcis_.onClick = [this] { if (onOpenShortcuts) onOpenShortcuts(); };
     associations_.onClick = [this] { if (onOpenMidiLearn) onOpenMidiLearn(); };
     addAndMakeVisible(raccourcis_);
@@ -88,6 +95,9 @@ void PreferencesWindow::resized() {
     paire(rangee(30), libelleChaine_, choisirChaine_);
     etatChaine_.setBounds(rangee(42));
     rangee(12);
+    titreBibliotheque_.setBounds(rangee(26));
+    paire(rangee(30), libelleBibliotheque_, choisirBibliotheque_);
+    rangee(12);
     titreCommandes_.setBounds(rangee(26));
     auto boutons = rangee(32);
     raccourcis_.setBounds(boutons.removeFromLeft(boutons.getWidth() / 2).reduced(2));
@@ -96,6 +106,7 @@ void PreferencesWindow::resized() {
 
 void PreferencesWindow::refresh(float uiScale, int renderThreads, int recommendedThreads,
                                  const juce::String& chainFolder, const juce::String& chainStatus,
+                                 const juce::String& libraryFolder,
                                  int shortcutCount, int midiMappingCount) {
     const auto& paliers = UiScale::steps();
     for (int i = 0; i < paliers.size(); ++i)
@@ -115,6 +126,12 @@ void PreferencesWindow::refresh(float uiScale, int renderThreads, int recommende
                                 : chainFolder,
                             juce::dontSendNotification);
     etatChaine_.setText(chainStatus, juce::dontSendNotification);
+
+    libelleBibliotheque_.setText(
+        libraryFolder.isEmpty()
+            ? juce::String::fromUTF8(u8"Aucune — seul le projet ouvert est indexé")
+            : libraryFolder,
+        juce::dontSendNotification);
 
     raccourcis_.setButtonText(juce::String::fromUTF8(u8"Raccourcis clavier (")
                                   + juce::String(shortcutCount) + ")...");

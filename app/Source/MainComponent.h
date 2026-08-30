@@ -13,6 +13,8 @@
 #include "vsm/interchange/ShortcutTable.h"
 #include "ui/ShortcutsWindow.h"
 #include "ui/PreferencesWindow.h"
+#include "ui/BrowserComponent.h"
+#include "vsm/interchange/BrowserIndex.h"
 #include "audio/AudioEngine.h"
 #include "ui/TransportBarComponent.h"
 #include "ui/TrackListComponent.h"
@@ -169,6 +171,7 @@ private:
         kMenuViewMidiLearn,
         kMenuViewShortcuts,
         kMenuFilePreferences,
+        kMenuViewBrowser,
         kMenuFileReconstruct,
         kMenuFileChainFolder,
         kMenuHelpAbout,
@@ -248,6 +251,18 @@ private:
     void refreshPreferences();
     vsm::app::ui::PreferencesWindow preferencesPanel_;
     std::unique_ptr<PanelWindow> preferencesWindow_;
+
+    // --- D10.1 : le navigateur ---------------------------------------------
+    /// Reconstruit l'inventaire : les machines du parc, puis les fichiers du
+    /// projet et de la bibliothèque de l'utilisateur.
+    void refreshBrowser();
+    /// Applique une entrée à une piste. `trackIndex` vient du glisser-déposer
+    /// ou de la sélection courante.
+    void applyBrowserItem(const vsm::interchange::BrowserItem& item, size_t trackIndex);
+    void applyBrowserDrop(size_t trackIndex, const juce::String& description);
+
+    vsm::app::ui::BrowserComponent browserPanel_;
+    std::unique_ptr<PanelWindow> browserWindow_;
     /// La commande dont on attend la nouvelle touche, s'il y en a une.
     bool rebindPending_ = false;
     vsm::interchange::ShortcutId rebindTarget_{};

@@ -2451,7 +2451,7 @@ qu'elle est là.
 
 | Étape | Contenu | Terminé quand |
 |---|---|---|
-| D10.1 | Navigateur : machines, presets, profils, échantillons, recherche, glisser-déposer | trouver un preset ne demande plus d'ouvrir un dossier |
+| D10.1 | Navigateur : machines, presets, profils, échantillons, recherche, glisser-déposer | trouver un preset ne demande plus d'ouvrir un dossier — **fait** |
 | D10.2 | MIDI learn **persistant**, liste des associations, moyen d'en défaire une (`clearMidiLearn()` n'est appelé de nulle part), et cartographie du transport et du mixeur | un potentiomètre physique s'en souvient d'une session à l'autre — **fait** |
 | D10.3 | Raccourcis configurables, table imprimable, fenêtre de préférences | une page les liste tous — **fait** |
 | D10.4 | Sauvegarde automatique et récupération après plantage | tuer l'application ne perd pas plus d'une minute — **fait** |
@@ -2611,6 +2611,59 @@ qu'elle est là.
 > panneau ne détient rien : chaque contrôle appelle l'application, qui possède
 > déjà le réglage — dupliquer l'état créerait une seconde vérité, et c'est
 > toujours la seconde qui finit par mentir.
+
+> **D10.1 EST FAITE (30/08/2026), ET LA PHASE D10 AVEC ELLE.** Ce que
+> l'application savait faire, c'était **charger** un preset, un profil, un
+> échantillon — chacun par un sélecteur de fichiers, c'est-à-dire à condition de
+> savoir déjà où il était. Trente-quatre machines, autant de presets par projet,
+> des profils multi-échantillons et des dossiers de samples : la matière
+> existait, et le seul moyen d'y accéder était de s'en souvenir.
+>
+> **L'INVENTAIRE NE LIT AUCUN CONTENU**, et c'est ce qui le rend instantané : il
+> lit des NOMS de fichiers et des extensions. Un dossier d'échantillons contient
+> facilement des milliers de fichiers ; les ouvrir un par un pour savoir ce
+> qu'ils sont ferait de l'ouverture du navigateur une attente. Ce qu'on lit
+> vraiment — la machine d'un preset — l'est au moment où on le pose.
+>
+> **LA PROFONDEUR EST BORNÉE.** Un dossier de bibliothèque peut être n'importe
+> quoi, y compris la racine d'un disque désignée par mégarde ; une exploration
+> sans fond transformerait une erreur de clic en gel de plusieurs minutes.
+>
+> **LA RECHERCHE EST DÉLIBÉRÉMENT SIMPLE** : tous les mots, dans n'importe quel
+> ordre, sans casse, dans le nom ou l'origine. « 303 acid » trouve « TB-303 Acid
+> Lead » comme « acid lead (tb303) ». Une recherche floue rendrait des résultats
+> qu'on ne saurait pas expliquer, et la seule chose qu'on demande à un
+> navigateur est qu'on comprenne pourquoi ce qu'il montre est là. **Il s'ouvre
+> plein, pas vide** : un navigateur qui exige une requête avant de montrer quoi
+> que ce soit suppose qu'on sait ce qu'on cherche, alors qu'on l'ouvre justement
+> pour voir ce qu'il y a.
+>
+> **L'ORIGINE DIT LE SOUS-DOSSIER, PAS SEULEMENT LA BIBLIOTHÈQUE** : deux
+> « basse » rangées à deux endroits doivent se distinguer sans qu'on ait à les
+> essayer.
+>
+> **DEUX GESTES, ET LE SECOND EXISTE PARCE QUE LE PREMIER MENT UN PEU.** Le
+> double-clic applique à la piste sélectionnée : c'est le geste court, et il
+> suppose qu'on a la bonne piste en tête. Le glisser dépose sur la piste qu'on
+> VOIT — la liste souligne celle qu'on survole, sans quoi on lâche à l'aveugle
+> et on découvre après coup qu'on vient de changer le son de la mauvaise.
+>
+> **UN PRESET EMPORTE SA MACHINE.** Appliquer un preset de TB-303 sur un DX7
+> réglerait des paramètres qui n'ont pas le même sens, et rien ne dirait
+> pourquoi ça ne sonne pas : le preset déclare sa machine, et la piste en
+> change si nécessaire. Ce qui n'a pas pu être appliqué est **dit** — un preset
+> à moitié posé qui se tait donne un son qu'on croit être celui du fichier.
+>
+> **CE QUI N'EST PAS POSABLE D'ICI EST DIT PLUTÔT QUE FAIT À MOITIÉ.** Poser un
+> échantillon ou un profil demande de décider quelle piste il devient et où il
+> commence : ce sont des gestes de montage, qui ont leur place dans
+> l'arrangement, pas dans un double-clic. Le navigateur sert alors à les
+> TROUVER, et donne le chemin complet.
+>
+> **L'INVENTAIRE EST REFAIT À L'OUVERTURE DE LA FENÊTRE**, jamais en continu :
+> un dossier se parcourt en quelques dizaines de millisecondes, et le refaire à
+> chaque tour de minuterie ferait travailler le disque pour rien pendant qu'on
+> compose.
 
 ---
 

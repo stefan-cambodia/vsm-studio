@@ -63,7 +63,8 @@ private:
 /// Liste verticale de pistes (Track Editor, section 4). Reconstruit ses
 /// lignes à partir du Project quand loadProject() est appelé (ex : après
 /// un import MIDI).
-class TrackListComponent : public juce::Component {
+class TrackListComponent : public juce::Component,
+                            public juce::DragAndDropTarget {
 public:
     TrackListComponent();
 
@@ -80,6 +81,20 @@ public:
     std::function<void()> onOutputChanged;
     std::function<void()> onAddTrack;          // bouton "+ Ajouter une piste"
     std::function<void(size_t)> onRemoveTrack; // bouton "Supprimer" (piste sélectionnée)
+
+    /// D10.1 : QUELQUE CHOSE A ÉTÉ LÂCHÉ SUR UNE PISTE. La description vient du
+    /// navigateur (`BrowserComponent`) ; la liste ne l'interprète pas, elle dit
+    /// seulement SUR QUELLE PISTE. Lui faire charger un preset la rendrait
+    /// dépendante de l'interop, et une liste de pistes n'a pas à savoir ce
+    /// qu'est un `*.synth.json`.
+    std::function<void(size_t, const juce::String&)> onBrowserItemDropped;
+
+    // juce::DragAndDropTarget
+    bool isInterestedInDragSource(const SourceDetails& details) override;
+    void itemDragEnter(const SourceDetails& details) override;
+    void itemDragMove(const SourceDetails& details) override;
+    void itemDragExit(const SourceDetails& details) override;
+    void itemDropped(const SourceDetails& details) override;
 
     size_t selectedTrackIndex() const { return selectedIndex_; }
 
@@ -100,6 +115,11 @@ private:
     juce::TextButton addButton_ { "+ Ajouter une piste" };
     juce::TextButton removeButton_ { "Supprimer" };
     size_t selectedIndex_ = 0;
+    /// La piste survolée pendant un glisser, ou -1. Sans ce retour, on lâche à
+    /// l'aveugle et on découvre après coup sur laquelle.
+    int dropRow_ = -1;
+    /// L'index de piste sous un point de la liste, ou -1.
+    int trackIndexAt(juce::Point<int> position) const;
 
     static constexpr int kRowHeight = 88;
     static constexpr int kToolbarHeight = 36;

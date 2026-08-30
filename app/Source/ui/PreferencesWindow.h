@@ -27,12 +27,16 @@ public:
     /// Republie l'état affiché depuis l'application.
     void refresh(float uiScale, int renderThreads, int recommendedThreads,
                   const juce::String& chainFolder, const juce::String& chainStatus,
+                  const juce::String& libraryFolder,
                   int shortcutCount, int midiMappingCount);
 
     std::function<void(float)> onUiScaleChanged;
     /// -1 = automatique.
     std::function<void(int)> onRenderThreadsChanged;
     std::function<void()> onChooseChainFolder;
+    /// La bibliothèque du navigateur (D10.1) : le dossier où l'utilisateur
+    /// range ses presets, ses profils et ses échantillons.
+    std::function<void()> onChooseLibraryFolder;
     std::function<void()> onOpenShortcuts;
     std::function<void()> onOpenMidiLearn;
 
@@ -41,6 +45,8 @@ private:
     juce::Label libelleEchelle_, libelleThreads_, libelleChaine_, etatChaine_;
     juce::ComboBox echelle_, threads_;
     juce::TextButton choisirChaine_ { u8"Choisir le dossier..." };
+    juce::Label titreBibliotheque_, libelleBibliotheque_;
+    juce::TextButton choisirBibliotheque_ { u8"Choisir le dossier..." };
     juce::TextButton raccourcis_, associations_;
 };
 

@@ -45,6 +45,7 @@ target_sources(VintageSynthMidiStudio PRIVATE
     Source/ui/MidiLearnWindow.cpp
     Source/ui/ShortcutsWindow.cpp
     Source/ui/PreferencesWindow.cpp
+    Source/ui/BrowserComponent.cpp
 )
 
 target_compile_definitions(VintageSynthMidiStudio PRIVATE

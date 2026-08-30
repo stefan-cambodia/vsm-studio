@@ -23,6 +23,7 @@ add_library(vsm_interchange STATIC
     src/MidiLearnStore.cpp
     src/RecoverySession.cpp
     src/ShortcutTable.cpp
+    src/BrowserIndex.cpp
 )
 
 target_include_directories(vsm_interchange PUBLIC include)
@@ -46,6 +47,7 @@ if (VSM_BUILD_TESTS)
         tests/test_midi_learn_store.cpp
         tests/test_recovery_session.cpp
         tests/test_shortcut_table.cpp
+        tests/test_browser_index.cpp
         tests/test_soundfont.cpp
         tests/test_effect_description.cpp
         tests/test_project_document.cpp

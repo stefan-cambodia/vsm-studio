@@ -1,5 +1,6 @@
 #include "MainComponent.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
+#include "vsm/audio/plugin/PluginRegistry.h"
 #include "vsm/midi/MidiFileParser.h"
 #include "vsm/midi/MidiFileWriter.h"
 #include "vsm/audio/engine/OfflineRenderer.h"
@@ -520,12 +521,34 @@ MainComponent::MainComponent()
     // D10.3 : LA TABLE DES RACCOURCIS, prêtée au piano roll. Les deux
     // gestionnaires de touches consultent la MÊME.
     loadShortcuts();
+    browserPanel_.onApply = [this](const vsm::interchange::BrowserItem& entree) {
+        applyBrowserItem(entree, trackList_.selectedTrackIndex());
+    };
+    trackList_.onBrowserItemDropped = [this](size_t piste, const juce::String& description) {
+        applyBrowserDrop(piste, description);
+    };
     preferencesPanel_.onUiScaleChanged = [this](float facteur) { setUiScale(facteur); };
     preferencesPanel_.onRenderThreadsChanged = [this](int choix) {
         setRenderThreadChoice(choix);
         refreshPreferences();
     };
     preferencesPanel_.onChooseChainFolder = [this] { chooseChainFolder(); };
+    preferencesPanel_.onChooseLibraryFolder = [this] {
+        auto chooser = std::make_shared<juce::FileChooser>(
+            juce::String::fromUTF8(u8"Dossier de la bibliothèque (presets, profils, échantillons)"),
+            juce::File(), "");
+        chooser->launchAsync(juce::FileBrowserComponent::openMode
+                                  | juce::FileBrowserComponent::canSelectDirectories,
+                              [this, chooser](const juce::FileChooser& fc) {
+            const juce::File dossier = fc.getResult();
+            if (dossier == juce::File()) return;
+            vsm::app::ui::UiScale::properties().setValue("dossierBibliotheque",
+                                                          dossier.getFullPathName());
+            vsm::app::ui::UiScale::properties().saveIfNeeded();
+            refreshPreferences();
+            refreshBrowser();
+        });
+    };
     preferencesPanel_.onOpenShortcuts = [this] { menuItemSelected(kMenuViewShortcuts, 0); };
     preferencesPanel_.onOpenMidiLearn = [this] { menuItemSelected(kMenuViewMidiLearn, 0); };
     shortcutsPanel_.onRebind = [this](vsm::interchange::ShortcutId id) {
@@ -1162,6 +1185,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuViewSynthRack, "Synth Rack", true, synthRackWindow_.isVisible());
             menu.addItem(kMenuViewMixer, "Mixer", true, mixerWindow_.isVisible());
             menu.addItem(kMenuViewArrangement, "Arrangement", true, arrangementWindow_.isVisible());
+            menu.addItem(kMenuViewBrowser, juce::String::fromUTF8(u8"Navigateur"),
+                          true, browserWindow_ && browserWindow_->isVisible());
             menu.addItem(kMenuViewShortcuts,
                           juce::String::fromUTF8(u8"Raccourcis clavier..."),
                           true, shortcutsWindow_ && shortcutsWindow_->isVisible());
@@ -1239,6 +1264,21 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         }
         case kMenuFileChainFolder: chooseChainFolder(); break;
         case kMenuFilePreferences: showPreferences(); break;
+        case kMenuViewBrowser: {
+            if (!browserWindow_) {
+                browserWindow_ = std::make_unique<PanelWindow>("Navigateur", browserPanel_);
+                browserWindow_->setSize(620, 560);
+            }
+            const bool visible = browserWindow_->isVisible();
+            // L'INVENTAIRE EST REFAIT À L'OUVERTURE, jamais en continu : un
+            // dossier d'échantillons se parcourt en quelques dizaines de
+            // millisecondes, et le refaire à chaque tour de minuterie ferait
+            // travailler le disque pour rien pendant qu'on compose.
+            if (!visible) refreshBrowser();
+            browserWindow_->setVisible(!visible);
+            if (!visible) browserWindow_->toFront(true);
+            break;
+        }
         case kMenuViewShortcuts: {
             if (!shortcutsWindow_) {
                 shortcutsWindow_ = std::make_unique<PanelWindow>(
@@ -2742,7 +2782,9 @@ void MainComponent::refreshPreferences() {
     preferencesPanel_.refresh(
         vsm::app::ui::UiScale::current(), savedRenderThreadChoice(),
         static_cast<int>(vsm::audio::engine::ProcessGraph::recommendedRenderThreadCount()),
-        designe, etat, static_cast<int>(vsm::interchange::shortcutCommands().size()),
+        designe, etat,
+        vsm::app::ui::UiScale::properties().getValue("dossierBibliotheque", ""),
+        static_cast<int>(vsm::interchange::shortcutCommands().size()),
         static_cast<int>(audioEngine_.midiLearnMappingCount()));
 }
 
@@ -2755,6 +2797,135 @@ void MainComponent::showPreferences() {
     refreshPreferences();
     preferencesWindow_->setVisible(true);
     preferencesWindow_->toFront(true);
+}
+
+// --- D10.1 : le navigateur --------------------------------------------------
+
+void MainComponent::refreshBrowser() {
+    std::vector<vsm::interchange::BrowserItem> entrees;
+
+    // LES MACHINES D'ABORD : c'est ce qu'on cherche le plus souvent, et elles
+    // ne coûtent aucune lecture de disque -- le registre les connaît déjà.
+    for (const auto& [identifiant, nom] :
+         vsm::audio::plugin::PluginRegistry::instance().listAvailable()) {
+        vsm::interchange::BrowserItem entree;
+        entree.kind = vsm::interchange::BrowserItemKind::Machine;
+        entree.name = nom;
+        entree.reference = identifiant;
+        entree.origin = identifiant.rfind("vsm.", 0) == 0 ? "Parc VSM" : "Plugin tiers";
+        entrees.push_back(std::move(entree));
+    }
+
+    // PUIS LES FICHIERS. Le dossier du projet en premier : ses presets sont
+    // ceux du morceau ouvert, donc ceux qu'on cherche en priorité.
+    if (currentProjectFolder_ != juce::File())
+        vsm::interchange::indexFolder(currentProjectFolder_.getFullPathName().toStdString(),
+                                       "Projet", entrees);
+    const juce::String bibliotheque =
+        vsm::app::ui::UiScale::properties().getValue("dossierBibliotheque", "");
+    if (bibliotheque.isNotEmpty())
+        vsm::interchange::indexFolder(bibliotheque.toStdString(), "Bibliothèque", entrees);
+
+    browserPanel_.setItems(std::move(entrees));
+}
+
+void MainComponent::applyBrowserItem(const vsm::interchange::BrowserItem& item,
+                                      size_t trackIndex) {
+    if (trackIndex >= project_.tracks.size()) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, "Navigateur",
+            juce::String::fromUTF8(u8"Choisissez d'abord une piste."));
+        return;
+    }
+    using Kind = vsm::interchange::BrowserItemKind;
+    const juce::String chemin = juce::String::fromUTF8(item.reference.c_str());
+
+    switch (item.kind) {
+        case Kind::Machine:
+            beginProjectEdit(juce::String::fromUTF8(u8"Changer de machine"));
+            project_.tracks[trackIndex].instrumentId = item.reference;
+            audioEngine_.processGraph().setTrackInstrument(trackIndex, item.reference);
+            trackList_.refreshTrackRow(trackIndex);
+            updateSynthRackForSelection();
+            refreshTransportSchedule();
+            return;
+
+        case Kind::Preset: {
+            const juce::File fichier(chemin);
+            const auto lu = vsm::interchange::parseSynthPreset(
+                fichier.loadFileAsString().toStdString());
+            if (!lu.success) {
+                juce::AlertWindow::showMessageBoxAsync(
+                    juce::AlertWindow::WarningIcon, "Preset illisible",
+                    juce::String::fromUTF8(lu.error.c_str()));
+                return;
+            }
+            // LE PRESET DIT SA MACHINE, ET ON LA MET SI ELLE MANQUE. Appliquer
+            // un preset de TB-303 sur un DX7 réglerait des paramètres qui n'ont
+            // pas le même sens, et rien ne dirait pourquoi ça ne sonne pas.
+            beginProjectEdit(juce::String::fromUTF8(u8"Appliquer un preset"));
+            if (!lu.preset.pluginId.empty()
+                && project_.tracks[trackIndex].instrumentId != lu.preset.pluginId) {
+                project_.tracks[trackIndex].instrumentId = lu.preset.pluginId;
+                audioEngine_.processGraph().setTrackInstrument(trackIndex, lu.preset.pluginId);
+                trackList_.refreshTrackRow(trackIndex);
+            }
+            auto* machine = audioEngine_.processGraph().trackInstrument(trackIndex);
+            if (machine == nullptr) {
+                juce::AlertWindow::showMessageBoxAsync(
+                    juce::AlertWindow::WarningIcon, "Preset non appliqué",
+                    juce::String::fromUTF8(u8"La machine « ")
+                        + juce::String::fromUTF8(lu.preset.pluginId.c_str())
+                        + juce::String::fromUTF8(u8" » n'est pas disponible."));
+                return;
+            }
+            const auto rapport = vsm::interchange::applyPreset(lu.preset, *machine,
+                                                                project_.tracks[trackIndex].instrumentId);
+            vsm::interchange::applyPresetSamples(
+                lu.preset, *machine,
+                fichier.getParentDirectory().getFullPathName().toStdString());
+            updateSynthRackForSelection();
+            refreshTransportSchedule();
+            // CE QUI N'A PAS PU ÊTRE APPLIQUÉ EST DIT. Un preset à moitié posé
+            // qui se tait donne un son qu'on croit être celui du fichier.
+            if (rapport.unsupportedCount() > 0 || rapport.clampedCount() > 0)
+                juce::AlertWindow::showMessageBoxAsync(
+                    juce::AlertWindow::InfoIcon, "Preset appliqué, avec des reserves",
+                    juce::String::fromUTF8(rapport.summary().c_str()));
+            return;
+        }
+
+        case Kind::Profile:
+        case Kind::Sample:
+            // CE QUI RESTE À FAIRE EST DIT PLUTÔT QUE FAIT À MOITIÉ. Poser un
+            // échantillon ou un profil demande de décider quelle piste il
+            // devient et où il commence : ce sont des gestes de montage, qui
+            // ont leur place dans l'arrangement, pas dans un double-clic.
+            juce::AlertWindow::showMessageBoxAsync(
+                juce::AlertWindow::InfoIcon,
+                juce::String::fromUTF8(u8"Pas encore posable d'ici"),
+                juce::String::fromUTF8(item.name.c_str())
+                    + juce::String::fromUTF8(
+                          u8"\n\nLes profils et les échantillons se chargent depuis la machine "
+                          u8"qui les emploie (Synth Rack) ou depuis l'arrangement. Le navigateur "
+                          u8"sert ici à les TROUVER : le chemin complet est\n\n")
+                    + chemin);
+            return;
+    }
+}
+
+void MainComponent::applyBrowserDrop(size_t trackIndex, const juce::String& description) {
+    vsm::interchange::BrowserItemKind kind{};
+    juce::String reference;
+    if (!vsm::app::ui::BrowserComponent::parseDragDescription(description, kind, reference)) return;
+    // ON RETROUVE L'ENTRÉE COMPLÈTE plutôt que de reconstruire un objet à
+    // partir de la description : le nom affiché sert aux messages, et
+    // l'inventer ici donnerait deux libellés pour la même chose.
+    for (const auto& entree : browserPanel_.visibleItems())
+        if (entree.kind == kind && entree.reference == reference.toStdString()) {
+            applyBrowserItem(entree, trackIndex);
+            return;
+        }
 }
 
 void MainComponent::loadReferenceAudio() {

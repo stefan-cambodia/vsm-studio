@@ -285,4 +285,58 @@ void TrackListComponent::resized() {
 
 void TrackListComponent::paint(juce::Graphics& g) {
     g.fillAll(vsm::ui::Palette::panel);
+
+    // LA PISTE SURVOLÉE PENDANT UN GLISSER (D10.1). Sans ce retour, on lâche à
+    // l'aveugle et on découvre après coup sur laquelle -- ce qui, pour un
+    // preset, veut dire qu'on vient de changer le son de la mauvaise.
+    if (dropRow_ >= 0 && dropRow_ < rows_.size()) {
+        auto zone = rows_[dropRow_]->getBounds()
+                        .translated(viewport_.getX(), viewport_.getY() - viewport_.getViewPositionY());
+        g.setColour(juce::Colours::gold.withAlpha(0.25f));
+        g.fillRect(zone);
+        g.setColour(juce::Colours::gold);
+        g.drawRect(zone, 2);
+    }
+}
+
+// --- D10.1 : recevoir ce que le navigateur laisse tomber --------------------
+
+int TrackListComponent::trackIndexAt(juce::Point<int> position) const {
+    // La position est relative à CE composant ; les lignes vivent dans le
+    // conteneur du `Viewport`, qui a son propre défilement.
+    const auto dansConteneur = position - viewport_.getPosition()
+                               + juce::Point<int>(0, viewport_.getViewPositionY());
+    for (int i = 0; i < rows_.size(); ++i)
+        if (rows_[i]->getBounds().contains(dansConteneur)) return i;
+    return -1;
+}
+
+bool TrackListComponent::isInterestedInDragSource(const SourceDetails& details) {
+    // Seul le navigateur produit ces descriptions. Accepter n'importe quoi
+    // ferait clignoter la liste sous des glissers qui ne la concernent pas.
+    return details.description.toString().startsWith("vsm-browser:");
+}
+
+void TrackListComponent::itemDragEnter(const SourceDetails& details) { itemDragMove(details); }
+
+void TrackListComponent::itemDragMove(const SourceDetails& details) {
+    const int rang = trackIndexAt(details.localPosition);
+    if (rang == dropRow_) return;
+    dropRow_ = rang;
+    repaint();
+}
+
+void TrackListComponent::itemDragExit(const SourceDetails&) {
+    dropRow_ = -1;
+    repaint();
+}
+
+void TrackListComponent::itemDropped(const SourceDetails& details) {
+    const int rang = trackIndexAt(details.localPosition);
+    dropRow_ = -1;
+    repaint();
+    if (rang < 0) return;
+    selectTrackIndex(static_cast<size_t>(rang));
+    if (onBrowserItemDropped) onBrowserItemDropped(static_cast<size_t>(rang),
+                                                    details.description.toString());
 }
