@@ -446,6 +446,7 @@ MainComponent::MainComponent()
     // L'attendre du prochain changement d'état ne marcherait pas : sur une
     // machine sans audio, il n'y a jamais de changement, et le temps ne
     // partirait donc jamais.
+    refreshReconstructionChain();
     transport_.setAudioDeviceOpen(audioEngine_.isDeviceOpen(),
                                    audioEngine_.currentSampleRate(),
                                    audioEngine_.currentBlockSize());
@@ -723,6 +724,33 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuFileExport, "Exporter MIDI...");
             menu.addItem(kMenuFileExportWav, "Exporter audio (WAV)...");
             menu.addItem(kMenuFileExportStems, u8"Exporter les stems (un WAV par piste)...");
+            menu.addSeparator();
+            menu.addSeparator();
+            {
+                // D9.1 : « FONCTION GRISÉE AVEC SA RAISON, JAMAIS UNE ERREUR ».
+                // Un menu inerte sans explication et un message d'échec sont
+                // deux façons de laisser l'utilisateur devant un mur. Quand la
+                // chaîne manque, l'entrée reste VISIBLE, elle est grisée, et la
+                // ligne juste en dessous dit pourquoi et ce qu'il faut faire.
+                const bool dispo = reconstructionChain_.available
+                                   && !reconstructionRunner_.isRunning();
+                menu.addItem(kMenuFileReconstruct,
+                              juce::String::fromUTF8(u8"Reconstruire un morceau..."), dispo);
+                if (!reconstructionChain_.available) {
+                    menu.addItem(-1, juce::String::fromUTF8(u8"    ↳ ")
+                                          + juce::String::fromUTF8(reconstructionChain_.reason.c_str()),
+                                  false, false);
+                    if (!reconstructionChain_.remedy.empty())
+                        menu.addItem(-1, juce::String::fromUTF8(u8"    ↳ ")
+                                              + juce::String::fromUTF8(reconstructionChain_.remedy.c_str()),
+                                      false, false);
+                    menu.addItem(kMenuFileChainFolder,
+                                  juce::String::fromUTF8(u8"Indiquer le dossier de la chaîne..."));
+                } else if (reconstructionRunner_.isRunning()) {
+                    menu.addItem(-1, juce::String::fromUTF8(u8"    ↳ une reconstruction est déjà en cours"),
+                                  false, false);
+                }
+            }
             menu.addSeparator();
             menu.addItem(kMenuFileAudioSettings, u8"Réglages audio...");
             {
@@ -1009,6 +1037,19 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuFileExportWav: exportAudioFile(); break;
         case kMenuFileExportStems: exportStems(); break;
         case kMenuFileAudioSettings: showAudioSettings(); break;
+        case kMenuFileReconstruct: {
+            auto chooser = std::make_shared<juce::FileChooser>(
+                juce::String::fromUTF8(u8"Reconstruire un morceau (wav, mp3, flac...)"),
+                juce::File(), "*.wav;*.mp3;*.flac;*.ogg;*.m4a;*.aiff;*.aif");
+            chooser->launchAsync(juce::FileBrowserComponent::openMode
+                                      | juce::FileBrowserComponent::canSelectFiles,
+                                  [this, chooser](const juce::FileChooser& fc) {
+                                      const juce::File f = fc.getResult();
+                                      if (f != juce::File()) startReconstruction(f);
+                                  });
+            break;
+        }
+        case kMenuFileChainFolder: chooseChainFolder(); break;
         case kMenuRecordCountInNone:
         case kMenuRecordCountInOne:
         case kMenuRecordCountInTwo:
@@ -1946,110 +1987,269 @@ void MainComponent::openProjectBundle() {
     chooser->launchAsync(chooserFlags, [this, chooser](const juce::FileChooser& fc) {
         const juce::File folder = fc.getResult();
         if (folder == juce::File()) return;
+        loadProjectBundleFromFolder(folder);
+    });
+}
 
-        auto loaded = vsm::interchange::loadProjectBundle(folder.getFullPathName().toStdString());
-        if (!loaded.success) {
-            juce::AlertWindow::showMessageBoxAsync(
-                juce::AlertWindow::WarningIcon, "Projet illisible",
-                juce::String::fromUTF8(loaded.error.c_str()));
+/// OUVRIR UN DOSSIER DE PROJET, séparé du sélecteur de fichiers qui le
+/// désigne. La séparation n'est pas cosmétique : depuis D9.3, un projet arrive
+/// aussi SANS que personne l'ait choisi -- la chaîne de reconstruction vient
+/// d'en écrire un, et il doit s'ouvrir exactement comme celui qu'on désigne à
+/// la main, presets, échantillons et notes douteuses compris. Deux chemins
+/// d'ouverture finiraient par ne plus charger tout à fait la même chose.
+void MainComponent::loadProjectBundleFromFolder(const juce::File& folder) {
+    auto loaded = vsm::interchange::loadProjectBundle(folder.getFullPathName().toStdString());
+    if (!loaded.success) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::WarningIcon, "Projet illisible",
+            juce::String::fromUTF8(loaded.error.c_str()));
+        return;
+    }
+
+    history_.clear();
+    project_ = loaded.bundle.project;
+    if (project_.title.empty())
+        project_.title = folder.getFileName().toStdString();
+    // Ctrl+S réécrira ICI, sans redemander où.
+    currentProjectFolder_ = folder;
+    if (auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
+        window->setName("Vintage Synth MIDI Studio -- " + folder.getFileName());
+    // rebuildFromProject() assigne les instruments d'après le projet : les
+    // machines n'existent donc PAS avant cet appel, et appliquer les
+    // presets plus tôt reviendrait à les appliquer à rien.
+    rebuildFromProject();
+
+    // --- presets et échantillons, machine par machine --------------------
+    juce::StringArray rapport;
+    for (const auto& [index, preset] : loaded.bundle.presetsByTrack) {
+        // Un `project.json` peut déclarer un preset pour une piste que le
+        // MIDI ne contient pas : le fichier a pu être édité à la main, ou
+        // produit par une version antérieure. On l'IGNORE en le disant,
+        // plutôt que de lire hors des bornes.
+        if (index >= project_.tracks.size()) {
+            rapport.add("Preset pour une piste inexistante (" + juce::String(static_cast<int>(index) + 1)
+                        + ") : ignore");
+            continue;
+        }
+        auto* instrument = audioEngine_.processGraph().trackInstrument(index);
+        if (instrument == nullptr) {
+            rapport.add("Piste " + juce::String(static_cast<int>(index) + 1)
+                        + juce::String(u8" : machine indisponible, preset non appliqué"));
+            continue;
+        }
+        const auto applique = vsm::interchange::applyPreset(
+            preset, *instrument, project_.tracks[index].instrumentId);
+        if (applique.unsupportedCount() > 0 || applique.clampedCount() > 0)
+            rapport.add("Piste " + juce::String(static_cast<int>(index) + 1) + " : "
+                        + juce::String::fromUTF8(applique.summary().c_str()));
+
+        // Échantillons : chargés ICI, sur le thread de l'interface, et
+        // jamais depuis le thread audio -- ce sont des lectures de
+        // fichiers. La publication vers le thread audio est atomique,
+        // c'est l'affaire de la machine.
+        const auto echantillons = vsm::interchange::applyPresetSamples(
+            preset, *instrument, loaded.bundle.folderPath);
+        if (!echantillons.failures.empty())
+            rapport.add("Piste " + juce::String(static_cast<int>(index) + 1) + " : "
+                        + juce::String::fromUTF8(echantillons.summary().c_str()));
+    }
+
+    for (const auto& avertissement : loaded.warnings)
+        rapport.add(juce::String::fromUTF8(avertissement.c_str()));
+
+    // --- rapport de reconstruction, s'il y en a un ------------------------
+    //
+    // Facultatif : un projet ouvert à la main n'en a pas, et c'est normal.
+    // Quand il est là, il porte la confiance de la transcription note par
+    // note, et le piano roll marque celles sur lesquelles elle a hésité.
+    const juce::File fichierRapport = folder.getChildFile("rapport.json");
+    if (fichierRapport.existsAsFile()) {
+        auto lu = vsm::interchange::loadReconstructionReport(
+            fichierRapport.getFullPathName().toStdString());
+        if (lu.success) {
+            const size_t marquees =
+                vsm::interchange::applyNoteConfidences(lu.report, project_);
+            size_t douteuses = 0;
+            for (const auto& piste : project_.tracks)
+                douteuses += vsm::sequencer::countDoubtfulNotes(piste.notes);
+            if (douteuses > 0)
+                rapport.add(juce::String(static_cast<int>(douteuses))
+                            + juce::String(u8" note(s) signalée(s) comme douteuses sur ")
+                            + juce::String(static_cast<int>(marquees))
+                            + juce::String(u8" transcrite(s) : elles sont marquées dans le "
+                                            u8"piano roll, et la touche D y mène une par une"));
+            // Le projet a changé : le piano roll doit relire les notes.
+            pianoRoll_.repaint();
+        } else {
+            // Un rapport illisible est DIT : le taire laisserait croire
+            // que la transcription était sûre partout.
+            rapport.add("Rapport de reconstruction illisible : "
+                        + juce::String::fromUTF8(lu.error.c_str()));
+        }
+    }
+
+    updateSynthRackForSelection();
+
+    // Un projet incomplet s'OUVRE et DIT ce qui lui manque. Le taire
+    // donnerait un morceau amputé sans explication -- c'est précisément
+    // le genre de panne que ce projet refuse.
+    if (!rapport.isEmpty()) {
+        juce::String texte;
+        for (const auto& ligne : rapport) texte << ligne << "\n";
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon,
+            "Projet ouvert, avec des reserves", texte);
+    }
+}
+
+// --- D9 : reconstruire depuis l'application --------------------------------
+
+void MainComponent::refreshReconstructionChain() {
+    // LA DÉTECTION NE LANCE RIEN, et c'est délibéré (voir
+    // `interchange/ReconstructionChain.h`) : elle coûte quelques `stat` et ne
+    // peut ni échouer ni attendre. Elle peut donc être refaite à volonté.
+    const juce::File binaire = juce::File::getSpecialLocation(
+        juce::File::currentApplicationFile).getParentDirectory();
+    const juce::String designe =
+        vsm::app::ui::UiScale::properties().getValue("dossierChaineAnalyse", "");
+    reconstructionChain_ = vsm::interchange::ReconstructionChain::locate(
+        binaire.getFullPathName().toStdString(), designe.toStdString());
+    menuItemsChanged();
+}
+
+void MainComponent::chooseChainFolder() {
+    auto chooser = std::make_shared<juce::FileChooser>(
+        juce::String::fromUTF8(u8"Où se trouve le dossier analyse/ de la chaîne ?"),
+        juce::File(), "");
+    chooser->launchAsync(juce::FileBrowserComponent::openMode
+                              | juce::FileBrowserComponent::canSelectDirectories,
+                          [this, chooser](const juce::FileChooser& fc) {
+                              const juce::File dossier = fc.getResult();
+                              if (dossier == juce::File()) return;
+                              vsm::app::ui::UiScale::properties().setValue(
+                                  "dossierChaineAnalyse", dossier.getFullPathName());
+                              vsm::app::ui::UiScale::properties().saveIfNeeded();
+                              refreshReconstructionChain();
+                              // ON DIT TOUT DE SUITE SI ÇA A MARCHÉ. Enregistrer
+                              // un chemin faux sans rien dire ferait chercher le
+                              // problème ailleurs.
+                              if (!reconstructionChain_.available)
+                                  juce::AlertWindow::showMessageBoxAsync(
+                                      juce::AlertWindow::InfoIcon,
+                                      juce::String::fromUTF8(u8"Chaîne d'analyse"),
+                                      juce::String::fromUTF8(reconstructionChain_.reason.c_str())
+                                          + "\n\n"
+                                          + juce::String::fromUTF8(reconstructionChain_.remedy.c_str()));
+                          });
+}
+
+void MainComponent::startReconstruction(const juce::File& audioFile) {
+    if (!reconstructionChain_.available) {
+        // JAMAIS UNE ERREUR : une explication, et le moyen d'y remédier.
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon,
+            juce::String::fromUTF8(u8"Reconstruction indisponible"),
+            juce::String::fromUTF8(reconstructionChain_.reason.c_str()) + "\n\n"
+                + juce::String::fromUTF8(reconstructionChain_.remedy.c_str()));
+        return;
+    }
+    if (reconstructionRunner_.isRunning()) return;
+
+    // LE DOSSIER DE SORTIE EST À CÔTÉ DU MORCEAU, et porte son nom. Le mettre
+    // dans un dossier temporaire obligerait à le retrouver ; le mettre dans le
+    // dossier du projet ouvert le mêlerait à un projet qui n'a rien à voir.
+    juce::File sortie = audioFile.getParentDirectory()
+                            .getChildFile(audioFile.getFileNameWithoutExtension()
+                                           + "-reconstruction");
+    int suffixe = 2;
+    while (sortie.exists())
+        sortie = audioFile.getParentDirectory().getChildFile(
+            audioFile.getFileNameWithoutExtension() + "-reconstruction-" + juce::String(suffixe++));
+    reconstructionOutput_ = sortie;
+    reconstructionSource_ = audioFile;
+
+    reconstructionPanel_.setSource(audioFile.getFileName());
+    if (!reconstructionWindow_) {
+        reconstructionWindow_ = std::make_unique<PanelWindow>(
+            juce::String::fromUTF8(u8"Reconstruction"), reconstructionPanel_);
+        reconstructionWindow_->setSize(720, 460);
+    }
+    reconstructionWindow_->setVisible(true);
+    reconstructionWindow_->toFront(true);
+
+    reconstructionPanel_.onCancel = [this] { reconstructionRunner_.cancel(); };
+    reconstructionPanel_.onClose = [this] {
+        if (reconstructionWindow_) reconstructionWindow_->setVisible(false);
+    };
+    reconstructionRunner_.onProgress = [this](const vsm::app::ReconstructionRunner::Progress& p) {
+        reconstructionPanel_.setProgress(p);
+    };
+    reconstructionRunner_.onFinished = [this](bool succes, juce::File dossier, juce::String raison) {
+        menuItemsChanged();
+        if (!succes) {
+            reconstructionPanel_.setFinished(false, raison);
             return;
         }
+        // D9.3 : LE RÉSULTAT ARRIVE COMME UN PROJET OUVERT, pas comme un
+        // dossier à retrouver. C'est le même chemin d'ouverture que celui d'un
+        // projet désigné à la main -- presets, échantillons et notes douteuses
+        // compris --, parce que deux chemins d'ouverture finiraient par ne plus
+        // charger tout à fait la même chose.
+        reconstructionPanel_.setFinished(
+            true, juce::String::fromUTF8(u8"Terminé — le projet est ouvert, l'original en regard"));
+        loadProjectBundleFromFolder(dossier);
+        // D9.4 : L'ÉCOUTE A/B EST PRÊTE AVANT QU'ON LA DEMANDE. Le moment où la
+        // comparaison compte le plus est celui-ci, et l'application sait de
+        // quel fichier elle est partie : le lui faire redemander serait une
+        // question dont elle a déjà la réponse. Silencieux en cas d'échec :
+        // une fenêtre d'erreur par-dessus le projet qui vient de s'ouvrir
+        // ferait passer une limite du décodeur pour un échec de la
+        // reconstruction.
+        setReferenceAudioFile(reconstructionSource_, /*silencieuxSiIllisible=*/true);
+    };
 
-        history_.clear();
-        project_ = loaded.bundle.project;
-        if (project_.title.empty())
-            project_.title = folder.getFileName().toStdString();
-        // Ctrl+S réécrira ICI, sans redemander où.
-        currentProjectFolder_ = folder;
-        if (auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
-            window->setName("Vintage Synth MIDI Studio -- " + folder.getFileName());
-        // rebuildFromProject() assigne les instruments d'après le projet : les
-        // machines n'existent donc PAS avant cet appel, et appliquer les
-        // presets plus tôt reviendrait à les appliquer à rien.
-        rebuildFromProject();
+    reconstructionRunner_.start(reconstructionChain_, audioFile, sortie);
+    menuItemsChanged();
+}
 
-        // --- presets et échantillons, machine par machine --------------------
-        juce::StringArray rapport;
-        for (const auto& [index, preset] : loaded.bundle.presetsByTrack) {
-            // Un `project.json` peut déclarer un preset pour une piste que le
-            // MIDI ne contient pas : le fichier a pu être édité à la main, ou
-            // produit par une version antérieure. On l'IGNORE en le disant,
-            // plutôt que de lire hors des bornes.
-            if (index >= project_.tracks.size()) {
-                rapport.add("Preset pour une piste inexistante (" + juce::String(static_cast<int>(index) + 1)
-                            + ") : ignore");
-                continue;
-            }
-            auto* instrument = audioEngine_.processGraph().trackInstrument(index);
-            if (instrument == nullptr) {
-                rapport.add("Piste " + juce::String(static_cast<int>(index) + 1)
-                            + juce::String(u8" : machine indisponible, preset non appliqué"));
-                continue;
-            }
-            const auto applique = vsm::interchange::applyPreset(
-                preset, *instrument, project_.tracks[index].instrumentId);
-            if (applique.unsupportedCount() > 0 || applique.clampedCount() > 0)
-                rapport.add("Piste " + juce::String(static_cast<int>(index) + 1) + " : "
-                            + juce::String::fromUTF8(applique.summary().c_str()));
+bool MainComponent::isInterestedInFileDrag(const juce::StringArray& files) {
+    for (const auto& f : files)
+        if (vsm::interchange::isReconstructableAudio(f.toStdString())) return true;
+    return false;
+}
 
-            // Échantillons : chargés ICI, sur le thread de l'interface, et
-            // jamais depuis le thread audio -- ce sont des lectures de
-            // fichiers. La publication vers le thread audio est atomique,
-            // c'est l'affaire de la machine.
-            const auto echantillons = vsm::interchange::applyPresetSamples(
-                preset, *instrument, loaded.bundle.folderPath);
-            if (!echantillons.failures.empty())
-                rapport.add("Piste " + juce::String(static_cast<int>(index) + 1) + " : "
-                            + juce::String::fromUTF8(echantillons.summary().c_str()));
-        }
+void MainComponent::filesDropped(const juce::StringArray& files, int, int) {
+    juce::File audio;
+    for (const auto& f : files)
+        if (vsm::interchange::isReconstructableAudio(f.toStdString())) { audio = juce::File(f); break; }
+    if (audio == juce::File()) return;
 
-        for (const auto& avertissement : loaded.warnings)
-            rapport.add(juce::String::fromUTF8(avertissement.c_str()));
-
-        // --- rapport de reconstruction, s'il y en a un ------------------------
-        //
-        // Facultatif : un projet ouvert à la main n'en a pas, et c'est normal.
-        // Quand il est là, il porte la confiance de la transcription note par
-        // note, et le piano roll marque celles sur lesquelles elle a hésité.
-        const juce::File fichierRapport = folder.getChildFile("rapport.json");
-        if (fichierRapport.existsAsFile()) {
-            auto lu = vsm::interchange::loadReconstructionReport(
-                fichierRapport.getFullPathName().toStdString());
-            if (lu.success) {
-                const size_t marquees =
-                    vsm::interchange::applyNoteConfidences(lu.report, project_);
-                size_t douteuses = 0;
-                for (const auto& piste : project_.tracks)
-                    douteuses += vsm::sequencer::countDoubtfulNotes(piste.notes);
-                if (douteuses > 0)
-                    rapport.add(juce::String(static_cast<int>(douteuses))
-                                + juce::String(u8" note(s) signalée(s) comme douteuses sur ")
-                                + juce::String(static_cast<int>(marquees))
-                                + juce::String(u8" transcrite(s) : elles sont marquées dans le "
-                                                u8"piano roll, et la touche D y mène une par une"));
-                // Le projet a changé : le piano roll doit relire les notes.
-                pianoRoll_.repaint();
-            } else {
-                // Un rapport illisible est DIT : le taire laisserait croire
-                // que la transcription était sûre partout.
-                rapport.add("Rapport de reconstruction illisible : "
-                            + juce::String::fromUTF8(lu.error.c_str()));
-            }
-        }
-
-        updateSynthRackForSelection();
-
-        // Un projet incomplet s'OUVRE et DIT ce qui lui manque. Le taire
-        // donnerait un morceau amputé sans explication -- c'est précisément
-        // le genre de panne que ce projet refuse.
-        if (!rapport.isEmpty()) {
-            juce::String texte;
-            for (const auto& ligne : rapport) texte << ligne << "\n";
-            juce::AlertWindow::showMessageBoxAsync(
-                juce::AlertWindow::InfoIcon,
-                "Projet ouvert, avec des reserves", texte);
-        }
-    });
+    // ON DEMANDE AVANT DE PARTIR POUR DIX MINUTES. Un fichier lâché sur une
+    // fenêtre est un geste ambigu -- on peut vouloir l'écouter, le poser sur
+    // une piste, ou le reconstruire --, et lancer d'autorité l'opération la
+    // plus longue des trois serait le pire des choix par défaut.
+    if (!reconstructionChain_.available) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon,
+            juce::String::fromUTF8(u8"Reconstruction indisponible"),
+            audio.getFileName() + "\n\n"
+                + juce::String::fromUTF8(reconstructionChain_.reason.c_str()) + "\n\n"
+                + juce::String::fromUTF8(reconstructionChain_.remedy.c_str()));
+        return;
+    }
+    pendingDroppedAudio_ = audio;
+    juce::AlertWindow::showOkCancelBox(
+        juce::AlertWindow::QuestionIcon,
+        juce::String::fromUTF8(u8"Reconstruire ce morceau ?"),
+        audio.getFileName()
+            + juce::String::fromUTF8(u8"\n\nLa chaîne d'analyse va le séparer, le transcrire et "
+                                      u8"chercher les machines. Cela prend plusieurs minutes."),
+        juce::String::fromUTF8(u8"Reconstruire"), "Annuler", this,
+        juce::ModalCallbackFunction::create([this](int resultat) {
+            if (resultat == 1 && pendingDroppedAudio_ != juce::File())
+                startReconstruction(pendingDroppedAudio_);
+            pendingDroppedAudio_ = juce::File();
+        }));
 }
 
 void MainComponent::loadReferenceAudio() {
@@ -2065,15 +2265,35 @@ void MainComponent::loadReferenceAudio() {
     chooser->launchAsync(chooserFlags, [this, chooser](const juce::FileChooser& fc) {
         const juce::File file = fc.getResult();
         if (file == juce::File()) return;
+        setReferenceAudioFile(file, /*silencieuxSiIllisible=*/false);
+    });
+}
 
+/// CHARGER L'ORIGINAL SANS PASSER PAR UN SÉLECTEUR (D9.4).
+///
+/// L'écoute A/B existait pour un projet qu'on ouvre à la main : on chargeait la
+/// reconstruction, puis on allait chercher l'original dans un menu. Or le
+/// moment où la comparaison compte le plus est celui où la reconstruction
+/// vient de finir -- et c'est précisément le moment où l'application SAIT de
+/// quel fichier elle est partie. Le lui faire redemander était une question
+/// dont elle avait déjà la réponse.
+///
+/// `silencieuxSiIllisible` sert à ce cas-là : après une reconstruction réussie,
+/// un original qu'on ne sait pas relire ne doit pas ouvrir une fenêtre
+/// d'erreur par-dessus le projet qui vient de s'ouvrir. La chaîne, elle, a su
+/// le lire -- si le décodeur du DAW n'y arrive pas, c'est une limite du
+/// décodeur, pas un échec de la reconstruction.
+void MainComponent::setReferenceAudioFile(const juce::File& file, bool silencieuxSiIllisible) {
+    {
         // LECTURE ET DÉCODAGE ICI, sur le thread de l'interface. Le tampon est
         // ensuite publié par échange atomique : le thread audio ne fait que
         // lire un pointeur déjà valide.
         auto result = vsm::app::loadReferenceAudioFile(file);
         if (!result.success || result.buffer.empty()) {
-            juce::AlertWindow::showMessageBoxAsync(
-                juce::AlertWindow::WarningIcon, "Enregistrement illisible",
-                result.error.isEmpty() ? juce::String("fichier sans echantillon") : result.error);
+            if (!silencieuxSiIllisible)
+                juce::AlertWindow::showMessageBoxAsync(
+                    juce::AlertWindow::WarningIcon, "Enregistrement illisible",
+                    result.error.isEmpty() ? juce::String("fichier sans echantillon") : result.error);
             return;
         }
 
@@ -2097,7 +2317,7 @@ void MainComponent::loadReferenceAudio() {
         // revenir à la reconstruction seule.
         reference.setMode(vsm::audio::engine::ReferenceTrack::Mode::Mix);
         refreshListeningIndicator();
-    });
+    }
 }
 
 void MainComponent::setReferenceMode(vsm::audio::engine::ReferenceTrack::Mode mode) {

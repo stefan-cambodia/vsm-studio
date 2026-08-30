@@ -291,6 +291,29 @@ ces généralités coûterait des allocations. Le thread audio ne prend jamais d
 verrou. Le détail des mesures, du plafond de threads recommandé et du piège du
 « un thread par cœur » est dans `docs/ROADMAP-daw.md`, phase D8.
 
+### 6 octies. Lancer la chaîne d'analyse depuis le DAW (phase D9)
+
+La règle n° 2 du § 0 de `ROADMAP-daw.md` — **le DAW se compile et fonctionne
+sans Python** — n'a pas bougé, et c'est elle qui dicte la forme de tout ce qui
+suit.
+
+- **La chaîne est un PROCESSUS, jamais une bibliothèque.** Embarquer un
+  interpréteur ferait de Python une dépendance de compilation ; le lancer comme
+  un enfant en fait une dépendance d'exécution facultative. Bénéfice second : la
+  chaîne charge `torch` et `demucs` et peut s'effondrer ; dans le processus du
+  DAW, cela emporterait le morceau ouvert (même raisonnement qu'en D7.5).
+- **La détection ne lance rien** (`interchange/ReconstructionChain.h`). Elle
+  regarde des fichiers, coûte quelques `stat`, et ne peut ni échouer ni
+  attendre. Elle distingue « pas de dossier », « pas d'environnement » et
+  « prête », parce que les deux premiers n'appellent pas le même geste.
+- **Un chemin désigné à la main qui est faux n'est pas remplacé en silence.**
+- **Le dossier courant du processus n'est jamais changé** : `chdir` est global
+  et le lanceur vit sur un thread de fond. Rien ne l'exige — le script ajoute
+  lui-même son dossier au chemin d'import.
+- **Un seul chemin d'ouverture de projet** (`loadProjectBundleFromFolder`),
+  qu'il vienne d'un sélecteur ou de la chaîne : deux chemins finiraient par ne
+  plus charger tout à fait la même chose.
+
 ### 6 septies. Le planning est rangé par piste, pas par temps (D8.4)
 
 `PlaybackScheduler::build` rend un planning trié par TEMPS. Le rendu, lui,

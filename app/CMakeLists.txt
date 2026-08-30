@@ -39,6 +39,8 @@ target_sources(VintageSynthMidiStudio PRIVATE
     Source/ui/LookAndFeel/VsmLookAndFeel.cpp
     Source/ui/UiScale.cpp
     Source/plugins/PluginScanner.cpp
+    Source/reconstruction/ReconstructionRunner.cpp
+    Source/ui/ReconstructionWindow.cpp
 )
 
 target_compile_definitions(VintageSynthMidiStudio PRIVATE

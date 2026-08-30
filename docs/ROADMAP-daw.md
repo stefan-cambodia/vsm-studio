@@ -2339,14 +2339,110 @@ La case où ce logiciel peut être **devant** les trois autres.
 
 | Étape | Contenu | Terminé quand |
 |---|---|---|
-| D9.1 | Glisser un fichier audio lance la chaîne, si Python est présent | absence de Python = fonction grisée **avec sa raison**, jamais une erreur |
-| D9.2 | Avancement visible et annulable | séparation, transcription, recherche : chaque étape s'affiche |
-| D9.3 | Le résultat arrive comme un projet **ouvert**, pas comme un dossier à charger | pistes, patchs, notes douteuses marquées |
-| D9.4 | Écoute A/B étendue à tout le flux de travail | déjà faite pour un projet chargé |
+| D9.1 | Glisser un fichier audio lance la chaîne, si Python est présent | absence de Python = fonction grisée **avec sa raison**, jamais une erreur — **fait** |
+| D9.2 | Avancement visible et annulable | séparation, transcription, recherche : chaque étape s'affiche — **fait** |
+| D9.3 | Le résultat arrive comme un projet **ouvert**, pas comme un dossier à charger | pistes, patchs, notes douteuses marquées — **fait** |
+| D9.4 | Écoute A/B étendue à tout le flux de travail | déjà faite pour un projet chargé — **fait** |
 
 **Critère de phase, et il est double** : la chaîne se lance depuis l'interface,
 **et** le DAW se compile et fonctionne sans Python (règle n° 2 du § 0). Si tenir
 les deux demande de compliquer le code, c'est la seconde qui gagne.
+
+> **LA PHASE D9 EST FAITE (30/08/2026), ET LES DEUX MOITIÉS DU CRITÈRE TIENNENT
+> SANS SE CONTREDIRE.** Un morceau glissé sur la fenêtre — ou choisi dans
+> *Fichier ▸ Reconstruire un morceau...* — part dans la chaîne, montre ce
+> qu'elle fait, s'annule, et revient sous la forme d'un projet **ouvert** avec
+> l'original prêt en regard. Et pas une ligne de Python n'est liée au binaire :
+> le DAW se compile et passe ses 1180 tests sur une machine qui n'en a pas.
+>
+> **CE QUI REND LES DEUX COMPATIBLES TIENT EN UNE PHRASE : LA CHAÎNE EST UN
+> PROCESSUS, PAS UNE BIBLIOTHÈQUE.** Embarquer un interpréteur aurait fait de
+> Python une dépendance de compilation ; le lancer comme un enfant en fait une
+> dépendance d'exécution *facultative*. Le même choix protège d'autre chose :
+> la chaîne charge `torch` et `demucs`, alloue plusieurs gigaoctets, et peut
+> s'effondrer sur un modèle absent ou une carte graphique qui refuse. Dans le
+> processus du DAW, chacun de ces échecs emporterait le morceau ouvert. C'est
+> exactement le raisonnement du balayage des plugins (D7.5).
+>
+> **D9.1 — « JAMAIS UNE ERREUR » A UNE CONSÉQUENCE PRÉCISE SUR LA DÉTECTION.**
+> La tentation était d'exécuter `python -c "import demucs"` pour savoir si
+> l'environnement est complet. C'est refusé : cela ferait dépendre l'ouverture
+> d'un menu du démarrage d'un interpréteur, qui prend une seconde quand tout va
+> bien et se **bloque** quand tout va mal. La détection ne regarde donc que des
+> fichiers — quelques `stat`, qui ne peuvent ni échouer ni attendre — et elle
+> distingue **trois** situations plutôt que deux, parce que la deuxième et la
+> troisième n'appellent pas le même geste :
+>
+> | Ce qu'on trouve | Ce que l'application dit | Ce qu'elle propose |
+> |---|---|---|
+> | rien | « la chaîne d'analyse (le dossier `analyse/`) est introuvable » | *Indiquer le dossier de la chaîne...* |
+> | `reconstruire.py`, pas de `.venv` | « l'environnement Python n'a pas été créé » | la commande exacte à taper |
+> | les deux | — | l'entrée est active |
+>
+> Répondre « chaîne introuvable » dans le deuxième cas enverrait chercher un
+> dossier que l'utilisateur a sous les yeux, et le vrai remède — trois mots de
+> commande — ne serait dit nulle part. Et un chemin désigné à la main qui se
+> révèle faux **n'est pas remplacé en silence** par celui que la recherche
+> aurait trouvé : lui trouver quand même le bon lui ferait croire que son
+> réglage est correct, et le jour où il le déplacerait, plus rien ne marcherait
+> sans raison apparente.
+>
+> **CE QUE LA DÉTECTION NE PROMET PAS**, écrit plutôt que découvert : trouver
+> l'interpréteur ne prouve pas que `torch` est installé. Une dépendance
+> manquante se voit au lancement, dans la sortie de la chaîne — et c'est le bon
+> endroit, puisque c'est là qu'elle est nommée.
+>
+> **LE GLISSER-DÉPOSER DEMANDE AVANT DE PARTIR POUR DIX MINUTES.** Un fichier
+> lâché sur une fenêtre est un geste ambigu — on peut vouloir l'écouter, le
+> poser sur une piste, ou le reconstruire — et lancer d'autorité l'opération la
+> plus longue des trois serait le pire choix par défaut. Seul l'audio est
+> accepté : un `.mid` glissé est un projet à importer, et les confondre
+> lancerait une analyse de dix minutes sur un fichier qui n'attendait qu'à être
+> lu.
+>
+> **D9.2 — PAS DE POURCENTAGE INVENTÉ.** Les cinq étapes durent de trois
+> secondes (lecture) à dix minutes (séparation) ; une barre qui les traiterait
+> comme égales passerait 80 % de son temps entre 20 et 40 %, ce qui est pire
+> que pas de barre du tout. La fenêtre montre donc **l'étape que la chaîne
+> annonce elle-même** — elle écrit `[2/5] Séparation en stems (htdemucs)` — et
+> le compte est lu dans la ligne au lieu d'être supposé : le jour où la chaîne
+> passera à six étapes, la fenêtre suivra sans qu'on y touche. Le journal
+> défile en dessous, en lecture seule mais **sélectionnable** : quand la chaîne
+> échoue, la ligne qui l'explique doit pouvoir être copiée, pas recopiée à la
+> main.
+>
+> **ANNULER LAISSE LE DOSSIER INCOMPLET EN PLACE**, et c'est délibéré : il
+> contient ce que la séparation a déjà produit, et l'effacer perdrait quatre
+> minutes de calcul pour un projet qu'on relancera peut-être avec d'autres
+> options.
+>
+> **D9.3 — UN SEUL CHEMIN D'OUVERTURE.** Le résultat n'arrive pas comme un
+> dossier à retrouver : il s'ouvre. Et il s'ouvre par la fonction qui ouvre un
+> projet désigné à la main, extraite pour l'occasion de la lambda du sélecteur
+> de fichiers — presets appliqués, échantillons chargés, `rapport.json` lu et
+> notes douteuses marquées dans le piano roll. Deux chemins d'ouverture
+> finiraient par ne plus charger tout à fait la même chose, et c'est le second
+> qui serait oublié.
+>
+> **D9.4 — L'ÉCOUTE A/B EST PRÊTE AVANT QU'ON LA DEMANDE.** Elle existait pour
+> un projet qu'on ouvre à la main : on chargeait la reconstruction, puis on
+> allait chercher l'original dans un menu. Or le moment où la comparaison
+> compte le plus est celui où la reconstruction vient de finir — et c'est
+> précisément le moment où l'application **sait** de quel fichier elle est
+> partie. Le lui faire redemander était une question dont elle avait déjà la
+> réponse. Si le décodeur du DAW ne sait pas relire l'original, on n'ouvre PAS
+> de fenêtre d'erreur par-dessus le projet qui vient de s'ouvrir : la chaîne,
+> elle, a su le lire, donc c'est une limite du décodeur et non un échec de la
+> reconstruction.
+>
+> **ET LE DOSSIER COURANT DU PROCESSUS N'EST PAS TOUCHÉ.** Le réflexe est de
+> faire un `chdir` vers le dossier de la chaîne avant de lancer l'enfant.
+> `setAsCurrentWorkingDirectory` agit sur le processus ENTIER, depuis un thread
+> de fond, pendant que l'utilisateur ouvre peut-être un sélecteur de fichiers :
+> un effet de bord global payé par tout le reste de l'application. Rien ne
+> l'exige — `reconstruire.py` ajoute lui-même son dossier au chemin d'import et
+> le pont trouve `vsm-render` en remontant depuis `__file__`. Vérifié en
+> lançant la chaîne depuis un autre dossier.
 
 ### Phase D10 — Le confort qui fait qu'on reste
 

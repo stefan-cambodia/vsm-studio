@@ -31,7 +31,11 @@ __pycache__/
 *.mp3
 *.flac
 !docs/examples/**/*.wav
-reconstruction/
+# ANCRÉ À LA RACINE, et il ne l'était pas : sans la barre de tête, `git`
+# applique le motif à TOUS les niveaux, et `app/Source/reconstruction/` — du
+# code source — disparaissait avec les dossiers de sortie. Un fichier ajouté là
+# ne serait jamais parti dans un commit, et rien ne l'aurait dit.
+/reconstruction/
 *.png
 !docs/**/*.png
 

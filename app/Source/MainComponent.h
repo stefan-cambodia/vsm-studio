@@ -4,6 +4,9 @@
 #include "vsm/sequencer/MidiRecorder.h"
 #include "vsm/sequencer/ProjectHistory.h"
 #include "vsm/audio/engine/Transport.h"
+#include "vsm/interchange/ReconstructionChain.h"
+#include "reconstruction/ReconstructionRunner.h"
+#include "ui/ReconstructionWindow.h"
 #include "audio/AudioEngine.h"
 #include "ui/TransportBarComponent.h"
 #include "ui/TrackListComponent.h"
@@ -44,6 +47,7 @@
 // n'a pas à connaître -- l'état, les ticks, et la fin du morceau.
 class MainComponent : public juce::Component,
                        public juce::MenuBarModel,
+                       public juce::FileDragAndDropTarget,
                        private juce::KeyListener,
                        private juce::Timer {
 public:
@@ -52,6 +56,10 @@ public:
 
     void paint(juce::Graphics&) override;
     void resized() override;
+
+    // juce::FileDragAndDropTarget — un morceau glissé sur la fenêtre.
+    bool isInterestedInFileDrag(const juce::StringArray& files) override;
+    void filesDropped(const juce::StringArray& files, int x, int y) override;
 
 
     /// À appeler par MainWindow (Main.cpp) UNE FOIS que la fenêtre socle a
@@ -152,8 +160,36 @@ private:
         // les suivants valent kMenuAudioThreadsFirst + 1 + n threads auxiliaires.
         kMenuAudioThreadsFirst,
         kMenuAudioThreadsLast = kMenuAudioThreadsFirst + 32,
+        kMenuFileReconstruct,
+        kMenuFileChainFolder,
         kMenuHelpAbout,
     };
+
+    // --- D9 : reconstruire depuis l'application -----------------------------
+    //
+    // LA RÈGLE QUI COMMANDE : le DAW se compile et fonctionne SANS Python
+    // (§ 0, règle n° 2 de ROADMAP-daw.md). Rien ici ne lie l'interpréteur au
+    // binaire ; on regarde si les fichiers de la chaîne existent, et on lance
+    // un PROCESSUS quand ils existent.
+    /// Relit l'état de la chaîne (au démarrage, et après un changement de
+    /// chemin). Ne lance rien, ne peut pas échouer.
+    void refreshReconstructionChain();
+    /// Lance la reconstruction d'un fichier audio. Ne fait rien -- en le
+    /// DISANT -- si la chaîne n'est pas disponible.
+    void startReconstruction(const juce::File& audioFile);
+    /// Demande où se trouve la chaîne, quand la recherche ne l'a pas trouvée.
+    void chooseChainFolder();
+
+    vsm::interchange::ReconstructionChain reconstructionChain_;
+    vsm::app::ReconstructionRunner reconstructionRunner_;
+    vsm::app::ui::ReconstructionWindow reconstructionPanel_;
+    std::unique_ptr<PanelWindow> reconstructionWindow_;
+    juce::File reconstructionOutput_;
+    /// Le morceau d'origine, retenu pour devenir la référence A/B (D9.4).
+    juce::File reconstructionSource_;
+    /// Le fichier qu'un glisser-déposer vient de proposer, retenu le temps que
+    /// l'utilisateur réponde à la question.
+    juce::File pendingDroppedAudio_;
 
     void timerCallback() override; // playhead, sync Play/Stop, CPU/sample rate (thread UI uniquement)
 
@@ -273,9 +309,14 @@ private:
     /// Ouvre un DOSSIER de projet complet (project.json + MIDI + presets +
     /// échantillons) -- typiquement celui qu'écrit la chaîne d'analyse.
     void openProjectBundle();
+    /// Ouvre un dossier de projet déjà désigné (sélecteur, ou chaîne de
+    /// reconstruction qui vient de l'écrire — D9.3).
+    void loadProjectBundleFromFolder(const juce::File& folder);
     /// Charge l'enregistrement d'origine comme piste de référence, pour
     /// l'écoute A/B (étape 11.2).
     void loadReferenceAudio();
+    /// Charge un original DÉJÀ désigné comme référence A/B (D9.4).
+    void setReferenceAudioFile(const juce::File& file, bool silencieuxSiIllisible);
     void setReferenceMode(vsm::audio::engine::ReferenceTrack::Mode mode);
     /// Reconstruction -> les deux -> original -> reconstruction. Touche R,
     /// depuis n'importe quelle fenêtre, et bouton de la barre de transport.
