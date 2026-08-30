@@ -94,6 +94,23 @@ void ProcessGraph::setProject(const Project& project) {
     snapshot->project = project;
     Tick endTick = project.lastUsedTick() + project.ticksPerQuarterNote;
     snapshot->schedule = PlaybackScheduler::build(project, 0, endTick);
+
+    // RANGÉ PAR PISTE, UNE FOIS ICI PLUTÔT QUE PARCOURU À CHAQUE BLOC (D8.4).
+    // Le tri est STABLE : le planificateur a déjà trié par temps, et trier
+    // ensuite sur la seule piste conserve cet ordre à l'intérieur de chacune.
+    // C'est ce qui permet au rendu d'y entrer par dichotomie.
+    std::stable_sort(snapshot->schedule.begin(), snapshot->schedule.end(),
+                      [](const ScheduledEvent& a, const ScheduledEvent& b) {
+                          return a.trackIndex < b.trackIndex;
+                      });
+    for (auto& borne : snapshot->trackRange) borne = {0u, 0u};
+    for (uint32_t i = 0; i < snapshot->schedule.size(); ++i) {
+        const size_t piste = snapshot->schedule[i].trackIndex;
+        if (piste >= kMaxTracks) continue;
+        auto& borne = snapshot->trackRange[piste];
+        if (borne.second == 0 && borne.first == 0) borne.first = i;
+        borne.second = i + 1;
+    }
     // LE NOMBRE DE DÉPARTS VIENT DU PROJET, et il est publié avec lui : le lire
     // dans le snapshot à chaque bloc obligerait le chemin audio à déréférencer
     // le projet même quand il n'y a aucun départ, alors qu'un entier suffit.
@@ -870,15 +887,28 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
         }
     }
 
-    // NE PAS écrire ceci comme un ternaire sur le conteneur : les deux
-    // branches d'un ternaire doivent avoir le même type, donc
-    // `includeScheduledEvents ? snapshot.schedule : std::vector<...>{}`
-    // COPIERAIT tout le planning à chaque bloc, sur le thread audio.
-    // Un simple `if` ne coûte rien.
+    // SEULEMENT LA TRANCHE DE CETTE PISTE, ET ON Y ENTRE PAR DICHOTOMIE (D8.4).
+    // Le planning était parcouru EN ENTIER par chaque piste, à chaque
+    // sous-segment, pour n'en garder que ce qui la concernait : le coût d'un
+    // bloc valait « pistes x événements », et trente-deux pistes de quatre
+    // mille notes consommaient 99,5 % du budget rien qu'à écarter des notes qui
+    // ne sonnaient pas encore. Le snapshot le range désormais par piste (voir
+    // `GraphSnapshot`), et le temps de départ se cherche au lieu de se
+    // parcourir.
+    const auto& planning = snapshot.schedule;
+    const auto borne = snapshot.trackRange[trackIndex];
+    const auto debutDePiste = planning.begin() + borne.first;
+    const auto finDePiste = planning.begin() + borne.second;
+    const auto premierEvenement =
+        std::lower_bound(debutDePiste, finDePiste, rangeStartSeconds,
+                          [](const ScheduledEvent& ev, double t) { return ev.timeSeconds < t; });
+
     if (includeScheduledEvents)
-    for (const auto& ev : snapshot.schedule) {
-        if (ev.trackIndex != trackIndex) continue;
-        if (ev.timeSeconds < rangeStartSeconds || ev.timeSeconds >= rangeEndSeconds) continue;
+    for (auto it = premierEvenement; it != finDePiste; ++it) {
+        const auto& ev = *it;
+        // TRIÉE PAR TEMPS DANS LA PISTE : le premier événement trop tard est
+        // aussi le dernier qu'on ait à regarder.
+        if (ev.timeSeconds >= rangeEndSeconds) break;
         if (numEvents >= kMaxEventsPerBlock) {
             // PLUS DE `break` MUET. Le plafond existe pour garder le
             // tableau de travail à taille fixe (le chemin temps réel

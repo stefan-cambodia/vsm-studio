@@ -289,7 +289,26 @@ private:
 
     struct GraphSnapshot {
         vsm::sequencer::Project project;
+
+        /// LE PLANNING, RANGÉ PAR PISTE (D8.4).
+        ///
+        /// Il était trié par TEMPS, et chaque piste le parcourait en entier
+        /// pour n'en garder que ce qui la concernait. Le coût d'un bloc valait
+        /// donc « nombre de pistes x nombre total d'événements » -- une
+        /// quadratique, invisible sur les projets d'essai et écrasante sur un
+        /// vrai : trente-deux pistes de quatre mille notes consommaient
+        /// **99,5 % du budget d'un bloc**, dont l'essentiel pour écarter des
+        /// notes qui ne sonnaient pas encore. Et le découpage en sous-segments
+        /// d'automation multipliait le tout par huit.
+        ///
+        /// Le tri est désormais par (piste, temps) -- un tri STABLE sur la
+        /// piste conserve l'ordre temporel que le planificateur a établi --, et
+        /// chaque piste ne voit que sa tranche, dans laquelle elle entre par
+        /// recherche dichotomique.
         std::vector<vsm::sequencer::ScheduledEvent> schedule;
+        /// [début, fin) dans `schedule`, par piste. Vide pour une piste sans
+        /// événement.
+        std::array<std::pair<uint32_t, uint32_t>, kMaxTracks> trackRange{};
     };
 
     struct LiveNoteEvent {

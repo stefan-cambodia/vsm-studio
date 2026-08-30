@@ -205,7 +205,7 @@ BlockStats benchEffect(const std::string& effectId) {
 /// chacune sur une machine différente -- c'est la charge que verra vraiment le
 /// callback audio, inserts et mixage compris.
 vsm::sequencer::Project buildProject(size_t trackCount, const std::vector<std::string>& machines,
-                                     int voicesPerTrack = 4) {
+                                     int voicesPerTrack = 4, int notesPerTrack = 0) {
     vsm::sequencer::Project project;
     const uint16_t ppq = 480;
     project.ticksPerQuarterNote = ppq;
@@ -216,6 +216,16 @@ vsm::sequencer::Project buildProject(size_t trackCount, const std::vector<std::s
         track.channel = static_cast<uint8_t>(t % 16);
         for (int n = 0; n < voicesPerTrack; ++n)
             track.addNote(0, ppq * 32, static_cast<uint8_t>(40 + 3 * n), 100, 0, idCounter);
+        // LE PLANNING, ET NON LES VOIX. Ces notes-ci sont courtes et lointaines :
+        // elles ne sonnent presque jamais, mais elles GROSSISSENT le planning que
+        // le rendu doit traverser. C'est la dimension que le banc ne mesurait
+        // pas, et une piste reconstruite en porte des milliers.
+        for (int n = 0; n < notesPerTrack; ++n) {
+            const uint64_t debut = static_cast<uint64_t>(ppq) * 64 + static_cast<uint64_t>(n) * 8;
+            track.addNote(static_cast<vsm::midi::Tick>(debut),
+                          static_cast<vsm::midi::Tick>(debut + 4),
+                          static_cast<uint8_t>(48 + (n % 24)), 100, 0, idCounter);
+        }
         project.tracks.push_back(track);
     }
     return project;
@@ -239,7 +249,8 @@ std::shared_ptr<const engine::ProcessGraph::EffectChain> loadedChain() {
 
 BlockStats benchGraph(size_t trackCount, const std::vector<std::string>& machines,
                       bool masterBusEnabled, size_t renderThreads = 0,
-                      int voicesPerTrack = 4, bool withInserts = false) {
+                      int voicesPerTrack = 4, bool withInserts = false,
+                      int notesPerTrack = 0) {
     engine::ProcessGraph graph;
     graph.prepare(kSampleRate, kBlockSize);
     graph.setRenderThreadCount(renderThreads);
@@ -247,7 +258,7 @@ BlockStats benchGraph(size_t trackCount, const std::vector<std::string>& machine
         graph.setTrackInstrument(t, machines[t % machines.size()]);
         if (withInserts) graph.setTrackEffectChain(t, loadedChain());
     }
-    graph.setProject(buildProject(trackCount, machines, voicesPerTrack));
+    graph.setProject(buildProject(trackCount, machines, voicesPerTrack, notesPerTrack));
     graph.masterBus().setEnabled(masterBusEnabled);
     graph.seekSeconds(0.0);
     graph.setPlaying(true);
@@ -470,6 +481,11 @@ int main() {
     printRow("8 pistes + bus master ACTIF", benchGraph(8, mix, true));
 
     benchMulticore(mix);
+
+    printHeader("== Densité du planning (D8.4) : le coût des notes QU'ON NE JOUE PAS ==");
+    for (int notes : {0, 500, 2000, 4000})
+        printRow("32 pistes, " + std::to_string(notes) + " notes de planning chacune",
+                 benchGraph(32, mix, false, 0, 8, false, notes));
 
     std::printf("\nLecture :\n"
                 "  - min  : le coût \"propre\" du DSP, sans interférence -- c'est LUI qu'il faut\n"

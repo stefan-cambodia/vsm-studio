@@ -154,6 +154,7 @@ if (VSM_BUILD_TESTS)
         tests/test_render_thread_pool.cpp
         tests/test_streamed_audio.cpp
         tests/test_transport_unifie.cpp
+        tests/test_banc_de_charge.cpp
         tests/test_wav_writer.cpp
         tests/test_wav_reader.cpp
         tests/test_simd_ladder.cpp

@@ -2035,11 +2035,30 @@ la règle déjà tenue pour les instruments VSM manquants (P4/P7 de
 | D8.1 | Graphe audio multicœur | 32 pistes chargées tiennent sans décrochage ; gain mesuré et publié — **fait** |
 | D8.2 | Diffusion disque pour l'audio long | 20 pistes de 9 minutes n'occupent pas 1 Go — **fait** |
 | D8.3 | Un seul chemin de transport : `RealtimeTransport` et l'horloge du `ProcessGraph` sont aujourd'hui **deux notions de position** qui coexistent | une seule fait autorité ; l'autre disparaît ou en dérive — **fait : elle a disparu** |
-| D8.4 | Banc de charge dans la suite de tests | le coût par piste est chiffré et suivi, comme le banc CPU de la Phase 6 |
+| D8.4 | Banc de charge dans la suite de tests | le coût par piste est chiffré et suivi, comme le banc CPU de la Phase 6 — **fait** |
 
 **Critère de phase** : le chiffre existe. Aujourd'hui personne ne sait combien
 de pistes l'application supporte, et une performance qu'on ne mesure pas est une
 performance qu'on croit avoir.
+
+> **LE CHIFFRE EXISTE (30/08/2026).** Sur la machine de développement (Core
+> Ultra 7 155H), à 48 kHz par blocs de 512 échantillons — budget 10,667 ms :
+>
+> - **trente-deux pistes chargées** (huit voix tenues et trois inserts chacune,
+>   dont une distorsion qui suréchantillonne) tiennent à **18,6 % du budget**
+>   avec huit threads auxiliaires, contre **68,7 % et un pire bloc au-dessus du
+>   budget** — donc un clic — sur un seul cœur ;
+> - **une piste ordinaire** coûte **0,011 ms**, et ce coût est linéaire : la
+>   trente-deuxième coûte ce que coûtait la seizième ;
+> - **la taille du planning ne coûte plus rien** : quatre mille notes par piste
+>   se paient comme zéro ;
+> - **vingt pistes de neuf minutes d'audio** occupent **20 Mo** au lieu de
+>   4,1 Go.
+>
+> Ces quatre chiffres sont mesurés, pas estimés, et les trois derniers sont
+> vérifiés à chaque exécution de la suite de tests. Extrapoler « combien de
+> pistes en tout » à partir d'eux serait retomber dans ce que ce critère
+> reproche : ce qu'on sait, c'est ce qu'on a mesuré.
 
 > **D8.1 EST FAITE (30/08/2026). LE CHIFFRE, D'ABORD.** Trente-deux pistes
 > chargées — huit voix tenues et trois inserts chacune, dont la distorsion qui
@@ -2056,6 +2075,12 @@ performance qu'on croit avoir.
 > | **8** | **1,98 ms** | **18,6 %** | **2,05 ms** | **x3,70** |
 > | 12 | 4,06 ms | 38,0 % | 6,33 ms | x1,80 |
 > | 16 | 4,25 ms | 39,9 % | 6,36 ms | x1,72 |
+>
+> Ces chiffres viennent d'une exécution ; la QUEUE de distribution bouge d'une
+> exécution à l'autre (de x2,3 à x3,7 à huit threads sur trois passages), la
+> médiane et le `min` beaucoup moins. Ce qu'il faut en retenir est la FORME --
+> un sommet entre six et huit threads, un décrochage net au-delà --, pas la
+> troisième décimale.
 >
 > **CE QUE CE TABLEAU DIT ET QU'UNE MOYENNE AURAIT CACHÉ** : mono-cœur, la
 > moyenne est confortable (6,83 ms, 64 % du budget) et le pire bloc dépasse
@@ -2258,6 +2283,55 @@ performance qu'on croit avoir.
 > précisément. Il rend la main dès que la carte revient — deux moteurs qui
 > avanceraient le même graphe le feraient avancer deux fois plus vite, et un
 > test le vérifie dans les deux sens.
+
+> **D8.4 EST FAITE (30/08/2026), ET ELLE A TROUVÉ CE QU'ELLE CHERCHAIT DÈS LE
+> PREMIER JOUR.** Le banc CPU de la Phase 6 est un exécutable à part, qu'on
+> lance à la main quand on y pense — c'est-à-dire une fois par optimisation.
+> Entre deux, personne ne regarde : une régression de performance entre dans le
+> dépôt et n'en ressort qu'au moment où quelqu'un se plaint d'un clic. Le banc
+> de charge, lui, vit dans `audio/tests/test_banc_de_charge.cpp` et tourne à
+> chaque fois.
+>
+> **CE QU'UN TEST DE PERFORMANCE PEUT AFFIRMER, ET CE QU'IL NE PEUT PAS.** Il ne
+> peut pas dire « ce bloc coûte 0,42 ms » : la même ligne donne des chiffres
+> différents selon le cœur, la fréquence et ce que fait le reste de la machine.
+> Il peut dire deux choses, et ce sont les deux qui comptent :
+>
+> - **des RAPPORTS**, qui ne dépendent d'aucune de ces variables. « Doubler les
+>   pistes double le coût » et « la densité du planning ne coûte rien » sont des
+>   propriétés de l'algorithme, pas de la machine ;
+> - **un CHIFFRE en étalons** — combien d'enveloppes ADSR coûte une piste —,
+>   comparable d'une exécution à l'autre et **imprimé** à chaque passage de la
+>   suite. C'est ce que le critère appelle « chiffré et suivi ».
+>
+> **LE CHIFFRE.** Une piste (une machine, quatre voix tenues, aucun insert)
+> coûte **0,011 ms** par bloc, soit environ **26 000 étalons**, mesuré comme
+> coût MARGINAL — la différence entre seize pistes et une, divisée par quinze —
+> et non comme le total divisé par le nombre de pistes : un bloc porte des frais
+> fixes (bus master, mètres, métronome) qui n'appartiennent à aucune piste.
+>
+> **LA RÉGRESSION QUE LE BANC A TROUVÉE, ET ELLE ÉTAIT ÉNORME.** Le planning
+> était trié par TEMPS, et chaque piste le parcourait EN ENTIER, à chaque
+> sous-segment d'automation, pour n'en garder que ce qui la concernait : le coût
+> d'un bloc valait « pistes × événements ». Une quadratique, invisible sur les
+> projets d'essai à quatre notes et écrasante sur un vrai. Mesuré : trente-deux
+> pistes de quatre mille notes coûtaient **10,4 ms par bloc contre 3,9 ms à
+> vide — 99,5 % du budget**, dont l'essentiel passé à ÉCARTER des notes situées
+> à deux minutes de la tête de lecture. Les jouer ne coûte rien, puisqu'on ne
+> les joue pas ; le seul coût légitime était celui de ne pas les regarder.
+>
+> Le snapshot range désormais le planning **par (piste, temps)** — un tri stable
+> sur la piste conserve l'ordre temporel que le planificateur a établi — et
+> chaque piste entre dans sa tranche par recherche dichotomique. Le coût est
+> devenu **plat** : 3,97 ms à vide, 3,97 ms avec quatre mille notes par piste.
+> Le test le garde avec un rapport, donc sur n'importe quelle machine ; remis
+> l'ancien parcours en place pour vérifier, il échoue à **x10,0**.
+>
+> **CE QUE LA SUITE IMPRIME MAINTENANT, à chaque exécution** : le coût d'une
+> piste et de seize, le coût marginal par piste, le rapport entre 1→16 et 16→32
+> (la linéarité), le surcoût d'un planning dense, et le coût d'un bloc pris en
+> fin de morceau contre un bloc pris au début (la dichotomie). Quatre rapports,
+> quatre régressions structurelles qui ne peuvent plus passer.
 
 ### Phase D9 — Reconstruire depuis l'application
 

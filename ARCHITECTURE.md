@@ -291,6 +291,28 @@ ces généralités coûterait des allocations. Le thread audio ne prend jamais d
 verrou. Le détail des mesures, du plafond de threads recommandé et du piège du
 « un thread par cœur » est dans `docs/ROADMAP-daw.md`, phase D8.
 
+### 6 septies. Le planning est rangé par piste, pas par temps (D8.4)
+
+`PlaybackScheduler::build` rend un planning trié par TEMPS. Le rendu, lui,
+demande toujours « les événements de LA piste `i` entre telle et telle
+seconde » : chaque piste parcourait donc le planning entier pour n'en garder
+qu'une fraction, à chaque sous-segment d'automation. Le coût d'un bloc valait
+« pistes × événements » — une quadratique invisible sur un projet d'essai et
+écrasante sur un vrai (99,5 % du budget d'un bloc pour trente-deux pistes de
+quatre mille notes).
+
+`GraphSnapshot` re-trie donc le planning par **(piste, temps)** au moment de la
+publication, sur le thread de l'interface — un `stable_sort` sur la seule piste
+conserve l'ordre temporel déjà établi — et garde les bornes de chaque piste.
+Le rendu entre dans sa tranche par `std::lower_bound` et s'arrête au premier
+événement trop tard.
+
+Deux choses à ne pas défaire : le tri doit rester **stable** (sans quoi les
+notes d'une piste se mélangeraient dans le temps), et `PlaybackScheduler` doit
+continuer à trier par temps en amont (c'est ce que le tri stable préserve).
+`audio/tests/test_banc_de_charge.cpp` garde la propriété par un rapport, donc
+sur n'importe quelle machine.
+
 ### 6 sexies. D'où viennent les échantillons d'une piste audio (D8.2)
 
 `AudioTrackSource` ne détient plus de tableau : il détient un `SampleStore`,
