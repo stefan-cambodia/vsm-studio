@@ -155,6 +155,10 @@ private:
         // kMenuViewScaleFirst + index dans UiScale::steps().
         kMenuViewScaleFirst,
         kMenuViewScaleLast = kMenuViewScaleFirst + 15,
+        // THREADS DE RENDU (D8.1). Le premier identifiant est « automatique » ;
+        // les suivants valent kMenuAudioThreadsFirst + 1 + n threads auxiliaires.
+        kMenuAudioThreadsFirst,
+        kMenuAudioThreadsLast = kMenuAudioThreadsFirst + 32,
         kMenuHelpAbout,
     };
 
@@ -169,6 +173,22 @@ private:
     // avec l'enregistrement ferait entrer dans la prise les notes jouées pour
     // se caler.
     enum class RecordPhase { Off, CountIn, Recording };
+
+    // --- Threads de rendu (D8.1) -------------------------------------------
+    //
+    // LE RÉGLAGE EST « AUTOMATIQUE » PAR DÉFAUT, et il le reste tant que
+    // personne n'y touche : la valeur enregistrée est alors -1, et non le
+    // nombre calculé au premier lancement. La différence compte -- un chiffre
+    // figé au premier démarrage suivrait la machine où le fichier de
+    // préférences a été créé, pas celle où l'application tourne.
+    static constexpr int kRenderThreadsAutomatic = -1;
+    /// Le choix enregistré (-1 = automatique).
+    int savedRenderThreadChoice() const;
+    /// Combien de threads auxiliaires cela fait réellement, ici et maintenant.
+    size_t effectiveRenderThreadCount() const;
+    /// Enregistre le choix et l'applique au moteur sans attendre un
+    /// redémarrage : le graphe sait changer de nombre de threads en marche.
+    void setRenderThreadChoice(int choice);
 
     /// Les index des pistes dont le bouton R est enfoncé.
     std::vector<size_t> armedTrackIndices() const;

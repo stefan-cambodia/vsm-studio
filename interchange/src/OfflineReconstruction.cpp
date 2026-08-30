@@ -46,6 +46,13 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
 
     ProcessGraph graph;
     graph.prepare(options.sampleRate, options.blockSize);
+    // LE RENDU HORS LIGNE PROFITE DES MÊMES CŒURS QUE LA LECTURE (D8.1), et il
+    // le peut sans rien risquer : le multicœur ne change pas un échantillon
+    // (test `process_graph_multicore_render_is_bit_identical`), donc un export
+    // rendu à huit threads est le même fichier qu'à un seul, simplement obtenu
+    // plus vite. Le nombre est celui recommandé pour la machine : personne ne
+    // règle un nombre de threads pour un export.
+    graph.setRenderThreadCount(ProcessGraph::recommendedRenderThreadCount());
     graph.setProject(bundle.project);
 
     for (size_t i = 0; i < bundle.project.tracks.size() && i < ProcessGraph::kMaxTracks; ++i) {

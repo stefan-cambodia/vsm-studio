@@ -7,6 +7,7 @@
 #include "vsm/audio/effect/Reverb.h"
 #include "vsm/audio/effect/Delay.h"
 #include <algorithm>
+#include <thread>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -428,6 +429,11 @@ MainComponent::MainComponent()
             juce::jlimit(0, 2, reglages.getIntValue("recordMode", 0)));
     }
 
+    // LES THREADS DE RENDU, AVANT QUE LE PÉRIPHÉRIQUE NE DÉMARRE (D8.1) : le
+    // graphe sait certes en changer en marche, mais les créer pendant qu'il ne
+    // tourne pas évite au tout premier bloc d'être celui qui les attend.
+    audioEngine_.processGraph().setRenderThreadCount(effectiveRenderThreadCount());
+
     rebuildFromProject();
     // Le périphérique retenu au dernier lancement, s'il y en a un.
     {
@@ -653,6 +659,31 @@ void MainComponent::timerCallback() {
     synthRack_.setLearnArmed(audioEngine_.isMidiLearnArmed());
 }
 
+// --- Threads de rendu (D8.1) -----------------------------------------------
+
+int MainComponent::savedRenderThreadChoice() const {
+    const int enregistre = vsm::app::ui::UiScale::properties().getIntValue(
+        "renderThreads", kRenderThreadsAutomatic);
+    if (enregistre < 0) return kRenderThreadsAutomatic;
+    return std::min<int>(enregistre,
+                          static_cast<int>(vsm::audio::engine::RenderThreadPool::kMaxWorkers));
+}
+
+size_t MainComponent::effectiveRenderThreadCount() const {
+    const int choix = savedRenderThreadChoice();
+    return choix == kRenderThreadsAutomatic
+               ? vsm::audio::engine::ProcessGraph::recommendedRenderThreadCount()
+               : static_cast<size_t>(choix);
+}
+
+void MainComponent::setRenderThreadChoice(int choice) {
+    vsm::app::ui::UiScale::properties().setValue("renderThreads", choice);
+    // Écrit tout de suite, comme l'échelle d'interface : une application qui se
+    // termine mal ne doit pas faire perdre le réglage.
+    vsm::app::ui::UiScale::properties().saveIfNeeded();
+    audioEngine_.processGraph().setRenderThreadCount(effectiveRenderThreadCount());
+}
+
 // --- Menu ------------------------------------------------------------------
 
 juce::StringArray MainComponent::getMenuBarNames() {
@@ -695,6 +726,34 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuFileExportStems, u8"Exporter les stems (un WAV par piste)...");
             menu.addSeparator();
             menu.addItem(kMenuFileAudioSettings, u8"Réglages audio...");
+            {
+                // THREADS DE RENDU (D8.1). Le multicœur ne change pas un seul
+                // échantillon du résultat -- un test le vérifie -- donc ce
+                // réglage ne décide de RIEN d'autre que de la marge avant le
+                // décrochage. C'est pour cela qu'il vit dans un sous-menu et
+                // non dans une fenêtre : on le règle une fois, et on l'oublie.
+                juce::PopupMenu threads;
+                const int choix = savedRenderThreadChoice();
+                const size_t recommande =
+                    vsm::audio::engine::ProcessGraph::recommendedRenderThreadCount();
+                threads.addItem(kMenuAudioThreadsFirst,
+                                 juce::String(juce::CharPointer_UTF8("Automatique ("))
+                                     + juce::String(static_cast<int>(recommande))
+                                     + " threads auxiliaires ici)",
+                                 true, choix == kRenderThreadsAutomatic);
+                threads.addSeparator();
+                const int maximum = std::min<int>(
+                    static_cast<int>(vsm::audio::engine::RenderThreadPool::kMaxWorkers),
+                    std::max(1, static_cast<int>(std::thread::hardware_concurrency())) - 1);
+                for (int n = 0; n <= maximum; ++n) {
+                    const juce::String pluriel = n > 1 ? juce::String("s") : juce::String();
+                    const juce::String libelle =
+                        n == 0 ? juce::String(juce::CharPointer_UTF8("Mono-cœur (aucun thread auxiliaire)"))
+                               : juce::String(n) + " thread" + pluriel + " auxiliaire" + pluriel;
+                    threads.addItem(kMenuAudioThreadsFirst + 1 + n, libelle, true, choix == n);
+                }
+                menu.addSubMenu("Threads de rendu", threads);
+            }
             menu.addSeparator();
             menu.addItem(kMenuFileQuit, "Quitter");
             break;
@@ -1075,6 +1134,12 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
                 project_.sends[bus].parameters.clear();
                 project_.sends[bus].name = effets[choix].displayName;
                 sendBusesChanged();
+                break;
+            }
+            if (menuItemID >= kMenuAudioThreadsFirst && menuItemID <= kMenuAudioThreadsLast) {
+                setRenderThreadChoice(menuItemID == kMenuAudioThreadsFirst
+                                           ? kRenderThreadsAutomatic
+                                           : menuItemID - kMenuAudioThreadsFirst - 1);
                 break;
             }
             if (menuItemID >= kMenuViewScaleFirst && menuItemID <= kMenuViewScaleLast) {

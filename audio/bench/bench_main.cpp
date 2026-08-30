@@ -6,6 +6,7 @@
 #include "vsm/audio/dsp/Oscillator.h"
 #include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/audio/engine/ProcessGraph.h"
+#include "vsm/audio/engine/RenderThreadPool.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include "vsm/sequencer/Project.h"
@@ -14,6 +15,7 @@
 #include <cmath>
 #include <cstdio>
 #include <string>
+#include <thread>
 #include <vector>
 
 // ---------------------------------------------------------------------------
@@ -202,7 +204,8 @@ BlockStats benchEffect(const std::string& effectId) {
 /// Projet réaliste : `trackCount` pistes qui jouent chacune un accord tenu,
 /// chacune sur une machine différente -- c'est la charge que verra vraiment le
 /// callback audio, inserts et mixage compris.
-vsm::sequencer::Project buildProject(size_t trackCount, const std::vector<std::string>& machines) {
+vsm::sequencer::Project buildProject(size_t trackCount, const std::vector<std::string>& machines,
+                                     int voicesPerTrack = 4) {
     vsm::sequencer::Project project;
     const uint16_t ppq = 480;
     project.ticksPerQuarterNote = ppq;
@@ -211,19 +214,40 @@ vsm::sequencer::Project buildProject(size_t trackCount, const std::vector<std::s
         vsm::sequencer::Track track;
         track.name = machines[t % machines.size()];
         track.channel = static_cast<uint8_t>(t % 16);
-        for (int n = 0; n < 4; ++n)
-            track.addNote(0, ppq * 32, static_cast<uint8_t>(48 + 4 * n), 100, 0, idCounter);
+        for (int n = 0; n < voicesPerTrack; ++n)
+            track.addNote(0, ppq * 32, static_cast<uint8_t>(40 + 3 * n), 100, 0, idCounter);
         project.tracks.push_back(track);
     }
     return project;
 }
 
-BlockStats benchGraph(size_t trackCount, const std::vector<std::string>& machines, bool masterBusEnabled) {
+/// LA CHAÎNE D'INSERTS D'UNE PISTE « CHARGÉE ». Trois effets, dont la
+/// distorsion qui suréchantillonne -- de loin le plus cher du parc, et
+/// précisément celui qu'on met sur une guitare ou une basse. Une piste de
+/// mixage réel porte à peu près ça ; c'est ce que « 32 pistes chargées » veut
+/// dire dans le critère de la phase D8.
+std::shared_ptr<const engine::ProcessGraph::EffectChain> loadedChain() {
+    auto chaine = std::make_shared<engine::ProcessGraph::EffectChain>();
+    for (const char* id : {"eq", "compressor", "distortion"}) {
+        auto fx = effect::EffectFactory::create(id);
+        if (!fx) continue;
+        fx->prepare(kSampleRate, kBlockSize);
+        chaine->push_back(std::move(fx));
+    }
+    return chaine;
+}
+
+BlockStats benchGraph(size_t trackCount, const std::vector<std::string>& machines,
+                      bool masterBusEnabled, size_t renderThreads = 0,
+                      int voicesPerTrack = 4, bool withInserts = false) {
     engine::ProcessGraph graph;
     graph.prepare(kSampleRate, kBlockSize);
-    for (size_t t = 0; t < trackCount; ++t)
+    graph.setRenderThreadCount(renderThreads);
+    for (size_t t = 0; t < trackCount; ++t) {
         graph.setTrackInstrument(t, machines[t % machines.size()]);
-    graph.setProject(buildProject(trackCount, machines));
+        if (withInserts) graph.setTrackEffectChain(t, loadedChain());
+    }
+    graph.setProject(buildProject(trackCount, machines, voicesPerTrack));
     graph.masterBus().setEnabled(masterBusEnabled);
     graph.seekSeconds(0.0);
     graph.setPlaying(true);
@@ -244,6 +268,59 @@ BlockStats benchGraph(size_t trackCount, const std::vector<std::string>& machine
     BlockStats stats = BlockStats::from(std::move(samples));
     stats.calibrationNs = calibration;
     return stats;
+}
+
+// --- Le gain du rendu multicœur (D8.1) ------------------------------------
+//
+// CE QU'ON MESURE ICI N'EST PAS « EST-CE PLUS RAPIDE » mais « combien de
+// pistes tiennent ». Le critère de la phase D8 est un chiffre, pas une
+// impression : trente-deux pistes chargées doivent tenir dans le budget d'un
+// bloc, et le rapport entre le coût mono-cœur et le coût multicœur doit être
+// dit, pas supposé.
+//
+// LA COLONNE QUI COMPTE EST p99, ET NON `min`. Ailleurs dans ce banc, `min`
+// est le bon chiffre : il donne le coût du DSP sans interférence. Ici,
+// l'interférence EST le sujet -- un travailleur préempté, une ronde qui traîne
+// -- et c'est la queue de distribution qui dit si le son passe. Un multicœur
+// dont la moyenne est excellente et le p99 au-dessus du budget produit des
+// clics ; un mono-cœur régulièrement à 90 % n'en produit pas.
+void benchMulticore(const std::vector<std::string>& mix) {
+    const size_t recommande = engine::ProcessGraph::recommendedRenderThreadCount();
+    std::printf("\n== Rendu multicœur (D8.1) -- 32 pistes CHARGÉES ==\n");
+    std::printf("Charge par piste : 8 voix tenues + 3 inserts (EQ, compresseur, distorsion).\n");
+    std::printf("Cœurs annoncés par la machine : %u ; threads auxiliaires recommandés : %zu\n",
+                std::thread::hardware_concurrency(), recommande);
+
+    auto mesure = [&mix](size_t threads) {
+        return benchGraph(32, mix, false, threads, /*voicesPerTrack=*/8, /*withInserts=*/true);
+    };
+
+    printHeader("");
+    const BlockStats mono = mesure(0);
+    printRow("32 pistes, mono-cœur (référence)", mono);
+
+    std::vector<std::pair<size_t, BlockStats>> resultats;
+    for (size_t threads : {size_t{1}, size_t{2}, size_t{3}, size_t{4}, size_t{6},
+                           size_t{8}, size_t{12}, size_t{16}}) {
+        if (threads > engine::RenderThreadPool::kMaxWorkers) continue;
+        if (threads + 1 > std::thread::hardware_concurrency()) continue;
+        const BlockStats s = mesure(threads);
+        resultats.emplace_back(threads, s);
+        printRow("32 pistes, " + std::to_string(threads) + " thread(s) auxiliaire(s)", s);
+    }
+    if (recommande > 0)
+        printRow("32 pistes, réglage recommandé (" + std::to_string(recommande) + ")",
+                 mesure(recommande));
+
+    std::printf("\nGain, mesuré sur le p99 (ce qui décide s'il y a un clic) :\n");
+    for (const auto& [threads, s] : resultats) {
+        const double gain = s.p99Ms > 0.0 ? mono.p99Ms / s.p99Ms : 0.0;
+        std::printf("  %2zu thread(s) auxiliaire(s) : x%.2f   (%.1f %% d'un cœur -> %.1f %%)%s\n",
+                    threads, gain, coreLoadPercent(mono.p99Ms), coreLoadPercent(s.p99Ms),
+                    coreLoadPercent(s.p99Ms) >= 100.0 ? "   *** NE TIENT PAS ***" : "");
+    }
+    if (coreLoadPercent(mono.p99Ms) >= 100.0)
+        std::printf("  (mono-cœur : %.1f %% du budget -- NE TIENT PAS)\n", coreLoadPercent(mono.p99Ms));
 }
 
 // --- Briques DSP élémentaires ---------------------------------------------
@@ -391,6 +468,8 @@ int main() {
     for (size_t tracks : {size_t{1}, size_t{4}, size_t{8}, size_t{16}})
         printRow(std::to_string(tracks) + " pistes (bus master bypassé)", benchGraph(tracks, mix, false));
     printRow("8 pistes + bus master ACTIF", benchGraph(8, mix, true));
+
+    benchMulticore(mix);
 
     std::printf("\nLecture :\n"
                 "  - min  : le coût \"propre\" du DSP, sans interférence -- c'est LUI qu'il faut\n"

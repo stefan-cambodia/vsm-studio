@@ -6,6 +6,7 @@
 #include "vsm/audio/engine/MasterBus.h"
 #include "vsm/audio/engine/ReferenceTrack.h"
 #include "vsm/audio/engine/Mixer.h"
+#include "vsm/audio/engine/RenderThreadPool.h"
 #include "vsm/audio/plugin/ISynthPlugin.h"
 #include "vsm/audio/util/LockFreeRingBuffer.h"
 #include "vsm/sequencer/PlaybackScheduler.h"
@@ -219,6 +220,44 @@ public:
     /// numSamples/sampleRate si en lecture.
     void processBlock(float* outputL, float* outputR, int numSamples);
 
+    // --- RENDU MULTICŒUR (D8.1) -------------------------------------------
+    //
+    // Une piste ne dépend d'aucune autre tant qu'elle n'est pas MÉLANGÉE : son
+    // instrument, son matériau audio et ses inserts ne lisent qu'elle. C'est
+    // ce qui rend le rendu parallélisable -- et c'est aussi ce qui dit où
+    // s'arrête le parallélisme. Le mixage vers le master, les groupes, les
+    // départs et les mètres reste SÉQUENTIEL et dans l'ordre de rendu : mis en
+    // désordre, il changerait le dernier bit d'un mixage sans rien y gagner,
+    // puisqu'additionner trente-deux tampons ne coûte rien à côté de les
+    // calculer.
+    //
+    // LE RÉSULTAT EST DONC IDENTIQUE AU BIT PRÈS, quel que soit le nombre de
+    // threads. Un test le vérifie ; sans cette propriété, un export ne
+    // reproduirait pas ce qu'on a entendu dès qu'une machine changerait de
+    // nombre de cœurs, ce qui ruinerait la règle de l'ARCHITECTURE.md § 5.
+
+    /// Thread UI, et JAMAIS pendant que le rendu tourne : crée et détruit des
+    /// threads. `workerCount` compte les threads AUXILIAIRES -- le thread audio
+    /// travaille aussi. Zéro rétablit exactement le chemin mono-cœur.
+    void setRenderThreadCount(size_t workerCount);
+    size_t renderThreadCount() const { return renderPool_.workerCount(); }
+
+    /// COMBIEN DE SEGMENTS ONT RÉELLEMENT ÉTÉ RENDUS EN PARALLÈLE.
+    ///
+    /// Ce compteur n'existe pas pour l'interface : il existe pour que le test
+    /// d'identité au bit près puisse distinguer « les deux chemins donnent le
+    /// même son » de « on a mesuré deux fois le même chemin ». Les conditions
+    /// qui font retomber le rendu en séquentiel (chaîne latérale, segment
+    /// court, trop peu de pistes) sont assez nombreuses pour qu'un test muet
+    /// sur ce point ne prouve rien.
+    uint64_t parallelSpansRendered() const {
+        return parallelSpans_.load(std::memory_order_relaxed);
+    }
+    /// Ce qu'on prend par défaut sur cette machine (voir RenderThreadPool).
+    static size_t recommendedRenderThreadCount() {
+        return RenderThreadPool::recommendedWorkerCount();
+    }
+
     float readMeterPeak(size_t trackIndex) const { return meters_.readPeak(trackIndex); }
     /// Valeur EFFICACE (RMS) de la piste sur le dernier bloc. La crête dit si
     /// ça écrête ; le RMS dit si c'est fort — et c'est le second qu'on cherche
@@ -244,6 +283,10 @@ public:
     const ReferenceTrack& referenceTrack() const { return referenceTrack_; }
 
 private:
+    /// Annoncée ici parce que `renderTrackVoice` et `VoiceBatch` en portent un
+    /// pointeur ; définie plus bas, avec l'explication de ce qu'elle compense.
+    struct Compensation;
+
     struct GraphSnapshot {
         vsm::sequencer::Project project;
         std::vector<vsm::sequencer::ScheduledEvent> schedule;
@@ -265,6 +308,49 @@ private:
     void renderSpan(const GraphSnapshot& snapshot, bool anySolo, int sampleStart, int sampleCount,
                     double startSeconds, float* outputL, float* outputR,
                     const std::vector<AutomationLane>* lanes);
+
+    /// LA MOITIÉ QUI NE PARTAGE RIEN : événements, instrument, matériau audio,
+    /// inserts et compensation d'une SEULE piste, écrits dans destL/destR.
+    /// Ne touche que des données propres à `trackIndex` -- c'est ce qui permet
+    /// de l'exécuter sur un autre cœur. `events` est le tableau de travail du
+    /// thread appelant, jamais un tableau partagé.
+    /// Renvoie false quand la piste n'a RIEN à rendre (ni instrument, ni
+    /// matériau) : les tampons sont alors laissés tels quels, et le mixage
+    /// doit la sauter. Ce booléen n'est pas un raffinement -- c'est lui qui
+    /// garantit que les deux moitiés prennent la MÊME décision, même si
+    /// l'interface change l'instrument d'une piste entre les deux.
+    bool renderTrackVoice(const GraphSnapshot& snapshot, size_t trackIndex, int sampleStart,
+                          int sampleCount, double rangeStartSeconds, bool includeScheduledEvents,
+                          Compensation* compensation, vsm::audio::plugin::MidiNoteEvent* events,
+                          float* destL, float* destR);
+
+    /// LA MOITIÉ QUI DOIT RESTER EN ORDRE : mixage vers le master ou un groupe,
+    /// mesures, alimentation des départs. Appelée piste par piste, dans l'ordre
+    /// de rendu, sur le seul thread audio.
+    void mixTrackInto(const GraphSnapshot& snapshot, bool anySolo, size_t trackIndex,
+                      int sampleStart, int sampleCount, const float* srcL, const float* srcR,
+                      float* outputL, float* outputR);
+
+    /// Ce que le banc de threads reçoit : tout ce dont `renderTrackVoice` a
+    /// besoin, plus la liste des pistes à rendre. Vit sur la pile du thread
+    /// audio pendant la ronde -- rien n'est alloué.
+    struct VoiceBatch {
+        ProcessGraph* self = nullptr;
+        const GraphSnapshot* snapshot = nullptr;
+        const std::vector<size_t>* order = nullptr;  ///< nullptr = ordre naturel
+        /// Le plan de compensation, chargé UNE fois par le thread audio et
+        /// prêté aux travailleurs. Le charger dans chaque tâche ferait se
+        /// disputer tous les cœurs le même `atomic<shared_ptr>`.
+        Compensation* compensation = nullptr;
+        int sampleStart = 0;
+        int sampleCount = 0;
+        double rangeStartSeconds = 0.0;
+        bool includeScheduledEvents = true;
+    };
+    static void renderVoiceJob(void* context, size_t index, size_t workerId);
+    /// Alloue (thread UI) les tampons par piste et par thread dont le chemin
+    /// parallèle a besoin. Le chemin mono-cœur n'en alloue aucun.
+    void ensureParallelBuffers();
 
     /// Rend et mixe toutes les pistes pour une sous-plage [sampleStart,
     /// sampleStart+sampleCount) du bloc, en filtrant les événements sur
@@ -404,7 +490,7 @@ private:
     // AVANCER une piste, alors on RETARDE toutes les autres. Le graphe calcule
     // la latence de chaque chemin, prend le maximum, et donne à chaque piste la
     // différence.
-    struct Compensation {
+    struct Compensation {   // (annoncée plus haut : `VoiceBatch` en porte un pointeur)
         int graphLatency = 0;                       ///< le maximum, en échantillons
         std::array<int, kMaxTracks> delay{};        ///< retard à appliquer, par piste
         /// Lignes à retard, une paire par piste retardée. Allouées sur le
@@ -447,6 +533,46 @@ private:
     /// Depuis, le franchir est COMPTÉ (voir `droppedNoteEvents()`).
     static constexpr int kMaxEventsPerBlock = 1024;
     std::vector<vsm::audio::plugin::MidiNoteEvent> scratchEvents_;
+
+    // --- Tampons du rendu multicœur (D8.1) --------------------------------
+    //
+    // UN TAMPON STÉRÉO PAR PISTE, parce que les pistes sont calculées en même
+    // temps et mélangées après ; et UN TABLEAU D'ÉVÉNEMENTS PAR THREAD, parce
+    // qu'un tableau d'événements ne survit pas à la piste qui le consomme.
+    // Alloués seulement quand des threads existent : à zéro thread, le graphe
+    // occupe exactement la mémoire qu'il occupait.
+    RenderThreadPool renderPool_;
+    std::vector<std::vector<float>> parallelL_, parallelR_;
+    std::vector<std::vector<vsm::audio::plugin::MidiNoteEvent>> parallelEvents_;
+    /// Quelles pistes la ronde a réellement rendues. Écrit par les
+    /// travailleurs (une case chacun), lu par le mixage juste après.
+    std::array<uint8_t, kMaxTracks> parallelActive_{};
+
+    /// CHANGER LE NOMBRE DE THREADS PENDANT QUE LE SON TOURNE est une chose
+    /// qu'un utilisateur fait, et détruire un thread qui rend un bloc en est
+    /// une autre. Ces deux atomiques évitent la seconde sans verrou : l'UI
+    /// interdit d'abord le chemin parallèle, puis attend que le bloc en cours
+    /// en soit sorti. Les deux côtés sont en `seq_cst` -- c'est la seule
+    /// cohérence qui garantit qu'au moins l'un des deux voit l'autre.
+    std::atomic<bool> parallelAllowed_{false};
+    std::atomic<int> renderBusy_{0};
+    std::atomic<uint64_t> parallelSpans_{0};
+
+    /// UNE CHAÎNE LATÉRALE INTERDIT LE PARALLÉLISME, et c'est le seul cas.
+    /// Un effet qui écoute un départ lit ce que les pistes précédentes viennent
+    /// d'y verser : le calcul d'une piste dépend alors du MÉLANGE d'une autre,
+    /// et l'indépendance sur laquelle tout repose n'existe plus. Publié par
+    /// `refreshRenderOrder`, qui fait déjà exactement cette recherche.
+    std::atomic<bool> sidechainActive_{false};
+
+    /// EN DESSOUS DE CE NOMBRE D'ÉCHANTILLONS, ON NE RÉVEILLE PERSONNE. Une
+    /// ronde coûte quelques microsecondes de réveils ; les rendre sur un
+    /// sous-segment d'automation de 64 échantillons coûterait plus que le
+    /// calcul qu'on distribue.
+    static constexpr int kMinParallelSamples = 128;
+    /// Et en dessous de ce nombre de pistes non plus : à deux pistes, le second
+    /// thread passe son temps à se réveiller pour une seule.
+    static constexpr size_t kMinParallelTracks = 4;
 
     /// Ce que le moteur n'a pas pu jouer, et qu'il ne cache plus. Écrits
     /// depuis le thread audio, lus par l'interface : `relaxed` suffit, aucune

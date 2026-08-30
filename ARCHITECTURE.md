@@ -250,6 +250,37 @@ Vérifié en imprimant les deux formes côte à côte : `u8"Édition Sél. Réta
 donne `Édition Sél. Rétablir`, `"Édition Sél. Rétablir"` donne
 `Ãdition SÃ©l. RÃ©tablir`.
 
+### 6 quinquies. Le rendu multicœur : où la ligne de partage passe (D8.1)
+
+Le graphe rend les pistes sur plusieurs cœurs. La ligne de partage n'est pas un
+détail d'implémentation, c'est la structure même du moteur :
+
+- **Ce qui se répartit** : l'instrument d'une piste, son matériau audio, ses
+  inserts, sa compensation de latence. Une piste ne lit qu'elle-même tant
+  qu'elle n'est pas mélangée (`ProcessGraph::renderTrackVoice`).
+- **Ce qui reste séquentiel, et dans l'ordre de rendu** : le mixage vers le
+  master ou un groupe, les mètres, l'alimentation des bus de départ
+  (`ProcessGraph::mixTrackInto`). Additionner trente-deux tampons ne coûte rien
+  à côté de les calculer ; le faire dans le désordre changerait le dernier bit
+  du mixage pour rien.
+
+**Conséquence à ne jamais perdre** : le rendu est identique **au bit près**
+quel que soit le nombre de threads, et le § 5 (« un seul chemin de calcul, pour
+qu'un export soit fidèle à ce qu'on a entendu ») reste donc vrai d'une machine
+à l'autre. Un test le vérifie, et vérifie aussi que le chemin parallèle a bien
+été emprunté — sans quoi il pourrait mesurer deux fois le même chemin.
+
+**Le seul refus** : un effet à chaîne latérale lit ce que les pistes
+précédentes ont versé dans un départ. Le calcul d'une piste dépend alors du
+mélange d'une autre ; le graphe le détecte (`sidechainActive_`, publié par
+`refreshRenderOrder`) et rend ce projet-là sur un seul cœur.
+
+`RenderThreadPool` n'a délibérément ni file de travaux, ni vol de tâches entre
+rondes, ni futurs : sur le chemin le plus contraint du programme, chacune de
+ces généralités coûterait des allocations. Le thread audio ne prend jamais de
+verrou. Le détail des mesures, du plafond de threads recommandé et du piège du
+« un thread par cœur » est dans `docs/ROADMAP-daw.md`, phase D8.
+
 ### 6 quater. Les prises empilées : le modèle du rangement (D3.5)
 
 Le critère de D3.5 tient en cinq mots — « les prises se conservent et se

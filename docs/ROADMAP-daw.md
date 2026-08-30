@@ -2032,7 +2032,7 @@ la règle déjà tenue pour les instruments VSM manquants (P4/P7 de
 
 | Étape | Contenu | Terminé quand |
 |---|---|---|
-| D8.1 | Graphe audio multicœur | 32 pistes chargées tiennent sans décrochage ; gain mesuré et publié |
+| D8.1 | Graphe audio multicœur | 32 pistes chargées tiennent sans décrochage ; gain mesuré et publié — **fait** |
 | D8.2 | Diffusion disque pour l'audio long | 20 pistes de 9 minutes n'occupent pas 1 Go |
 | D8.3 | Un seul chemin de transport : `RealtimeTransport` et l'horloge du `ProcessGraph` sont aujourd'hui **deux notions de position** qui coexistent | une seule fait autorité ; l'autre disparaît ou en dérive |
 | D8.4 | Banc de charge dans la suite de tests | le coût par piste est chiffré et suivi, comme le banc CPU de la Phase 6 |
@@ -2040,6 +2040,90 @@ la règle déjà tenue pour les instruments VSM manquants (P4/P7 de
 **Critère de phase** : le chiffre existe. Aujourd'hui personne ne sait combien
 de pistes l'application supporte, et une performance qu'on ne mesure pas est une
 performance qu'on croit avoir.
+
+> **D8.1 EST FAITE (30/08/2026). LE CHIFFRE, D'ABORD.** Trente-deux pistes
+> chargées — huit voix tenues et trois inserts chacune, dont la distorsion qui
+> suréchantillonne — mesurées sur la machine de développement (Core Ultra 7
+> 155H, 22 cœurs logiques), à 48 kHz par blocs de 512 échantillons, dont le
+> budget est de 10,667 ms :
+>
+> | Threads auxiliaires | p99 | % du budget | pire bloc | gain (p99) |
+> |---|---|---|---|---|
+> | 0 (mono-cœur) | 7,32 ms | 68,7 % | **13,34 ms — au-dessus du budget** | — |
+> | 1 | 4,98 ms | 46,7 % | 12,58 ms | x1,47 |
+> | 2 | 3,97 ms | 37,2 % | 4,12 ms | x1,85 |
+> | 4 | 2,45 ms | 22,9 % | 2,53 ms | x2,99 |
+> | **8** | **1,98 ms** | **18,6 %** | **2,05 ms** | **x3,70** |
+> | 12 | 4,06 ms | 38,0 % | 6,33 ms | x1,80 |
+> | 16 | 4,25 ms | 39,9 % | 6,36 ms | x1,72 |
+>
+> **CE QUE CE TABLEAU DIT ET QU'UNE MOYENNE AURAIT CACHÉ** : mono-cœur, la
+> moyenne est confortable (6,83 ms, 64 % du budget) et le pire bloc dépasse
+> quand même le budget — c'est-à-dire qu'il y a un clic. C'est exactement la
+> raison pour laquelle la colonne retenue est le p99 et non la moyenne : un
+> décrochage ne se moyenne pas, il s'entend.
+>
+> **LE SOMMET EST À HUIT, ET LE RÉGLAGE « UN THREAD PAR CŒUR » EST UN PIÈGE.**
+> Vingt threads sur cette machine donnent le meilleur `min` de tout le tableau
+> (0,99 ms) et un p99 deux fois pire que huit. La raison est structurelle : une
+> ronde ne finit qu'avec son dernier travailleur, et sur un processeur hybride
+> un cœur E met deux à trois fois plus longtemps qu'un cœur P à rendre la même
+> piste. Le défaut recommandé est donc plafonné à huit threads auxiliaires
+> (`RenderThreadPool::kRecommendedCeiling`), un plafond qu'on relèvera le jour
+> où une mesure le demandera — pas avant. L'utilisateur peut toujours en
+> choisir davantage à la main (*Fichier ▸ Threads de rendu*).
+>
+> **LA PROPRIÉTÉ QUI REND TOUT LE RESTE ACCEPTABLE : LE MULTICŒUR NE CHANGE PAS
+> UN SEUL ÉCHANTILLON.** Une piste ne dépend d'aucune autre tant qu'elle n'est
+> pas MÉLANGÉE : son instrument, son matériau audio et ses inserts ne lisent
+> qu'elle. C'est là, et seulement là, que le calcul se répartit. Le mixage vers
+> le master, les groupes, les départs et les mètres reste séquentiel et dans
+> l'ordre de rendu — additionner trente-deux tampons ne coûte rien à côté de les
+> calculer, et le faire dans le désordre changerait le dernier bit d'un mixage
+> pour rien. Un test compare le rendu à zéro thread et à quatre, **au bit près**
+> et non à epsilon près, et vérifie au passage que le chemin parallèle a bien
+> été emprunté : sans ce second contrôle, il pourrait mesurer deux fois le même
+> chemin et ne rien prouver. Sans cette propriété, un export cesserait de
+> reproduire ce qu'on a entendu dès qu'on changerait de machine, et la règle du
+> § 5 d'`ARCHITECTURE.md` deviendrait fausse sans que rien ne le dise.
+>
+> **UNE CHAÎNE LATÉRALE INTERDIT LE PARALLÉLISME, ET C'EST LE SEUL CAS.** Un
+> effet qui écoute un bus de départ lit ce que les pistes précédentes viennent
+> d'y verser : le calcul d'une piste dépend alors du MÉLANGE d'une autre, et
+> l'indépendance sur laquelle tout repose n'existe plus. Le graphe s'en aperçoit
+> tout seul — `refreshRenderOrder` fait déjà exactement cette recherche pour
+> ordonner les pistes — et retombe sur un seul cœur pour ce projet-là. Un test
+> le vérifie : quatre threads existent, aucun segment ne passe par le chemin
+> parallèle.
+>
+> **LE BANC DE THREADS NE FAIT QU'UNE CHOSE**, et n'a ni file de travaux, ni vol
+> de tâches entre rondes, ni futurs : chacune de ces généralités coûterait des
+> allocations sur le chemin le plus contraint du programme. Le thread audio ne
+> prend jamais de verrou — il DONNE des jetons de sémaphore et attend la fin sur
+> un entier atomique — parce qu'attendre un verrou que détient un thread moins
+> prioritaire est précisément le clic qu'on cherche à éviter. Le thread appelant
+> travaille comme les autres, ce qui rend le banc transparent à zéro thread : la
+> boucle est alors littéralement celle d'avant.
+>
+> **LE BOGUE QUI NE SE SERAIT VU QU'EN PRODUCTION** mérite d'être nommé, parce
+> qu'il est invisible à la lecture : un travailleur qui vient de finir la
+> DERNIÈRE tâche est encore dans sa boucle et va tenter une prise de plus avant
+> d'en sortir. Si l'appelant était déjà reparti préparer la ronde suivante,
+> cette prise-là piocherait dans la nouvelle ronde et en exécuterait la première
+> tâche deux fois — une piste doublée, une fois sur mille blocs. Le banc compte
+> donc les travailleurs encore DANS la ronde, et non les tâches restantes.
+> `ThreadSanitizer` passe la suite audio complète sans un seul avertissement.
+>
+> **CHANGER LE NOMBRE DE THREADS PENDANT QUE LE SON TOURNE** est une chose qu'un
+> utilisateur fait ; détruire un thread en train de rendre un bloc en est une
+> autre. Le thread d'interface ferme d'abord la porte (`parallelAllowed_`), puis
+> attend que le bloc en cours soit sorti (`renderBusy_`) : les deux atomiques
+> sont en `seq_cst`, la seule cohérence qui garantisse qu'au moins l'un des deux
+> côtés voie l'autre.
+>
+> **ET LE RENDU HORS LIGNE EN PROFITE AUSSI**, sans qu'on ait rien à régler :
+> puisque le résultat est identique au bit près, un export à huit threads est le
+> même fichier qu'à un seul, simplement obtenu plus vite.
 
 ### Phase D9 — Reconstruire depuis l'application
 

@@ -45,6 +45,48 @@ void ProcessGraph::prepare(double sampleRate, int maxBlockSize) {
         auto instrument = slot.load(std::memory_order_acquire);
         if (instrument) instrument->initialize(sampleRate_, maxBlockSize_);
     }
+
+    // La taille de bloc vient de changer : les tampons par piste du rendu
+    // multicœur doivent la suivre, sinon le chemin parallèle écrirait dans des
+    // tampons trop courts. Ne fait rien tant qu'aucun thread n'existe.
+    ensureParallelBuffers();
+}
+
+void ProcessGraph::setRenderThreadCount(size_t workerCount) {
+    // ON FERME D'ABORD LA PORTE, ON ATTEND ENSUITE QUE LA PIÈCE SE VIDE.
+    // Détruire un thread qui est en train de rendre un bloc, ou réallouer les
+    // tampons qu'il écrit, produirait exactement le genre de plantage qu'on ne
+    // reproduit jamais. Les deux atomiques sont en `seq_cst` : c'est ce qui
+    // garantit qu'entre ce thread-ci et le thread audio, au moins l'un voit
+    // l'autre (si le rendu a commencé avant qu'on ferme, on le voit occupé).
+    parallelAllowed_.store(false, std::memory_order_seq_cst);
+    while (renderBusy_.load(std::memory_order_seq_cst) != 0) std::this_thread::yield();
+
+    renderPool_.resize(workerCount);
+    ensureParallelBuffers();
+    parallelAllowed_.store(renderPool_.workerCount() > 0, std::memory_order_seq_cst);
+}
+
+void ProcessGraph::ensureParallelBuffers() {
+    if (renderPool_.workerCount() == 0) {
+        // RIEN N'EST GARDÉ : à zéro thread, le graphe doit occuper exactement la
+        // mémoire qu'il occupait avant que le multicœur existe.
+        parallelL_ = {};
+        parallelR_ = {};
+        parallelEvents_ = {};
+        parallelActive_.fill(0);
+        return;
+    }
+    const size_t taille = static_cast<size_t>(maxBlockSize_);
+    parallelL_.assign(kMaxTracks, std::vector<float>(taille, 0.0f));
+    parallelR_.assign(kMaxTracks, std::vector<float>(taille, 0.0f));
+    // UN TABLEAU D'ÉVÉNEMENTS PAR THREAD, et non par piste : il ne sert que le
+    // temps d'une piste, alors que les tampons audio, eux, doivent survivre
+    // jusqu'au mixage. Cent vingt-huit tableaux au lieu de huit seraient deux
+    // mégaoctets payés pour rien.
+    parallelEvents_.assign(renderPool_.parallelism(),
+                            std::vector<MidiNoteEvent>(static_cast<size_t>(kMaxEventsPerBlock)));
+    parallelActive_.fill(0);
 }
 
 void ProcessGraph::setProject(const Project& project) {
@@ -270,6 +312,10 @@ void ProcessGraph::refreshRenderOrder() {
             if (bus >= 1 && bus <= static_cast<int>(kMaxSends)) ecoutes |= (1u << (bus - 1));
         }
     }
+    // ET C'EST ICI QU'ON SAIT SI LE RENDU PEUT SE PARALLÉLISER (D8.1) : la
+    // recherche vient d'être faite, il serait absurde de la refaire ailleurs.
+    sidechainActive_.store(ecoutes != 0, std::memory_order_release);
+
     // AUCUNE CHAÎNE LATÉRALE : ordre naturel, et surtout AUCUN ordre publié --
     // le rendu emprunte alors exactement le chemin qu'il avait, au bit près.
     if (ecoutes == 0) { renderOrder_.store(nullptr, std::memory_order_release); return; }
@@ -767,287 +813,369 @@ vsm::audio::plugin::TransportInfo ProcessGraph::transportFor(const Project& proj
     return transport;
 }
 
+bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackIndex,
+                                    int sampleStart, int sampleCount, double rangeStartSeconds,
+                                    bool includeScheduledEvents, Compensation* compensation,
+                                    MidiNoteEvent* events, float* destL, float* destR) {
+    const Project& project = snapshot.project;
+    if (trackIndex >= project.tracks.size() || trackIndex >= kMaxTracks) return false;
+    const double rangeEndSeconds = rangeStartSeconds + static_cast<double>(sampleCount) / sampleRate_;
+
+    auto instrument = instruments_[trackIndex].load(std::memory_order_acquire);
+    auto audioSource = audioSources_[trackIndex].load(std::memory_order_acquire);
+    // UNE PISTE AUDIO N'A PAS D'INSTRUMENT, et c'est normal : son matériau
+    // est un fichier. La condition portait sur le seul instrument, ce qui
+    // aurait fait sauter la piste entière en silence.
+    if (!instrument && !audioSource) return false;
+
+    const Track& track = project.tracks[trackIndex];
+
+    int numEvents = 0;
+
+    // Rebouclage : relâche ce que cette piste tenait encore à la frontière
+    // de boucle. Sans ça, une note dont le NoteOff tombe APRÈS la fin de
+    // boucle ne serait jamais relâchée et sonnerait indéfiniment -- le
+    // "note bloquée" classique des séquenceurs.
+    if (wrapNoteOffPending_) {
+        auto& sounding = soundingNotes_[trackIndex];
+        for (int note = 0; note < 128 && numEvents < kMaxEventsPerBlock; ++note) {
+            if (!sounding[static_cast<size_t>(note)]) continue;
+            MidiNoteEvent off;
+            off.kind = MidiNoteEvent::Kind::NoteOff;
+            off.sampleOffset = 0;
+            off.channel = track.channel;
+            off.note = static_cast<uint8_t>(note);
+            off.velocity = 64;
+            events[static_cast<size_t>(numEvents++)] = off;
+            sounding[static_cast<size_t>(note)] = false;
+        }
+    }
+
+    // Notes d'écoute (clic sur le clavier, clavier MIDI) : placées en tête
+    // de bloc. Uniquement dans le PREMIER sous-segment (sampleStart == 0),
+    // sinon le découpage en sous-segments de l'automation les rejouerait à
+    // chaque segment -- une seule note déclencherait huit attaques.
+    if (sampleStart == 0) {
+        for (int i = 0; i < drainedLiveCount_ && numEvents < kMaxEventsPerBlock; ++i) {
+            const LiveNoteEvent& live = drainedLive_[static_cast<size_t>(i)];
+            if (live.trackIndex != trackIndex) continue;
+            MidiNoteEvent pluginEvent;
+            pluginEvent.kind = live.noteOn ? MidiNoteEvent::Kind::NoteOn : MidiNoteEvent::Kind::NoteOff;
+            pluginEvent.sampleOffset = 0;
+            pluginEvent.channel = track.channel;
+            pluginEvent.note = live.note;
+            pluginEvent.velocity = live.velocity;
+            soundingNotes_[trackIndex][live.note] = live.noteOn;
+            events[static_cast<size_t>(numEvents++)] = pluginEvent;
+        }
+    }
+
+    // NE PAS écrire ceci comme un ternaire sur le conteneur : les deux
+    // branches d'un ternaire doivent avoir le même type, donc
+    // `includeScheduledEvents ? snapshot.schedule : std::vector<...>{}`
+    // COPIERAIT tout le planning à chaque bloc, sur le thread audio.
+    // Un simple `if` ne coûte rien.
+    if (includeScheduledEvents)
+    for (const auto& ev : snapshot.schedule) {
+        if (ev.trackIndex != trackIndex) continue;
+        if (ev.timeSeconds < rangeStartSeconds || ev.timeSeconds >= rangeEndSeconds) continue;
+        if (numEvents >= kMaxEventsPerBlock) {
+            // PLUS DE `break` MUET. Le plafond existe pour garder le
+            // tableau de travail à taille fixe (le chemin temps réel
+            // n'alloue pas) ; le franchir reste possible, mais il n'est
+            // plus permis qu'une note disparaisse sans que rien ne le
+            // dise. Le compteur est lu par l'interface.
+            droppedNoteEvents_.fetch_add(1, std::memory_order_relaxed);
+            break;
+        }
+
+        MidiNoteEvent pluginEvent;
+        MidiControlEvent controlEvent;
+        int sampleOffset = static_cast<int>(std::llround((ev.timeSeconds - rangeStartSeconds) * sampleRate_));
+        pluginEvent.sampleOffset = std::clamp(sampleOffset, 0, sampleCount - 1);
+        controlEvent.sampleOffset = pluginEvent.sampleOffset;
+
+        // Trois issues, et plus seulement deux : une note, un contrôle, ou
+        // un méta-événement qui n'a rien à faire dans une machine (tempo,
+        // nom de piste...). La troisième est la SEULE qu'on ait le droit
+        // d'écarter sans le dire.
+        enum class Issue { Note, Control, NotForTheMachine };
+        const Issue issue = std::visit([&pluginEvent, &controlEvent](auto&& data) -> Issue {
+            using T = std::decay_t<decltype(data)>;
+            if constexpr (std::is_same_v<T, NoteOnEvent>) {
+                pluginEvent.kind = MidiNoteEvent::Kind::NoteOn;
+                pluginEvent.channel = data.channel;
+                pluginEvent.note = data.note;
+                pluginEvent.velocity = data.velocity;
+                return Issue::Note;
+            } else if constexpr (std::is_same_v<T, NoteOffEvent>) {
+                pluginEvent.kind = MidiNoteEvent::Kind::NoteOff;
+                pluginEvent.channel = data.channel;
+                pluginEvent.note = data.note;
+                pluginEvent.velocity = data.velocity;
+                return Issue::Note;
+            } else if constexpr (std::is_same_v<T, PitchBendEvent>) {
+                // Converti en DEMI-TONS ici, une fois : une machine n'a pas
+                // à connaître les 14 bits signés du MIDI. La plage est de
+                // +/- 2 demi-tons, la convention par défaut de tous les
+                // instruments depuis la General MIDI.
+                controlEvent.kind = MidiControlEvent::Kind::PitchBend;
+                controlEvent.channel = data.channel;
+                controlEvent.value = static_cast<float>(data.value) / 8192.0f * kPitchBendRangeSemitones;
+                return Issue::Control;
+            } else if constexpr (std::is_same_v<T, ControlChangeEvent>) {
+                controlEvent.kind = MidiControlEvent::Kind::ControlChange;
+                controlEvent.channel = data.channel;
+                controlEvent.index = data.controller;
+                controlEvent.value = static_cast<float>(data.value) / 127.0f;
+                return Issue::Control;
+            } else if constexpr (std::is_same_v<T, ChannelPressureEvent>) {
+                controlEvent.kind = MidiControlEvent::Kind::ChannelPressure;
+                controlEvent.channel = data.channel;
+                controlEvent.value = static_cast<float>(data.pressure) / 127.0f;
+                return Issue::Control;
+            } else if constexpr (std::is_same_v<T, PolyPressureEvent>) {
+                controlEvent.kind = MidiControlEvent::Kind::PolyPressure;
+                controlEvent.channel = data.channel;
+                controlEvent.index = data.note;
+                controlEvent.value = static_cast<float>(data.pressure) / 127.0f;
+                return Issue::Control;
+            } else if constexpr (std::is_same_v<T, ProgramChangeEvent>) {
+                controlEvent.kind = MidiControlEvent::Kind::ProgramChange;
+                controlEvent.channel = data.channel;
+                controlEvent.index = data.program;
+                return Issue::Control;
+            }
+            return Issue::NotForTheMachine;
+        }, ev.data);
+
+        if (issue == Issue::Note) {
+            soundingNotes_[trackIndex][pluginEvent.note] =
+                (pluginEvent.kind == MidiNoteEvent::Kind::NoteOn);
+            events[static_cast<size_t>(numEvents++)] = pluginEvent;
+        } else if (issue == Issue::Control) {
+            // Livré TOUT DE SUITE : les contrôles ne passent pas par le
+            // tableau d'événements de note, dont le contrat (et les
+            // vingt-deux machines qui le lisent) ne connaît que NoteOn et
+            // NoteOff. La granularité est celle du sous-segment
+            // d'automation, ~1,3 ms, et c'est la même que celle des
+            // paramètres automatisés -- une machine ne peut donc pas voir
+            // ses deux sources de modulation se contredire.
+            if (!instrument->handleControlEvent(controlEvent))
+                ignoredControlEvents_.fetch_add(1, std::memory_order_relaxed);
+        }
+    }
+
+    // Rendu STÉRÉO de la piste (L/R séparés) : un instrument, du matériau
+    // audio, ou les deux -- rien n'interdit à une piste audio de porter
+    // aussi des notes, et le graphe n'a pas à en décider.
+    std::fill(destL, destL + sampleCount, 0.0f);
+    std::fill(destR, destR + sampleCount, 0.0f);
+    // UNE PISTE GELÉE NE FAIT PLUS TOURNER SON INSTRUMENT (D5.5) : c'est
+    // tout l'intérêt du gel, et c'est ce qui la fait « coûter le prix d'une
+    // lecture audio ». Son matériau reste dans la piste et revient au
+    // dégel ; seul le calcul s'arrête.
+    // LE TRANSPORT (D7.4), calculé UNE FOIS pour la piste et livré à
+    // l'instrument comme aux inserts, juste avant qu'ils travaillent.
+    // Position, tempo et signature sont lus à `rangeStartSeconds`, c'est-
+    // à-dire au début du segment traité : un plugin qui lit le tempo au
+    // milieu d'un ritardando doit voir celui de l'instant qu'il rend, pas
+    // celui du bloc précédent.
+    const vsm::audio::plugin::TransportInfo transport = transportFor(
+        project, rangeStartSeconds, playing_.load(std::memory_order_acquire));
+
+    if (instrument && !track.frozen) {
+        instrument->setTransportInfo(transport);
+        instrument->process(events, numEvents, destL, destR, sampleCount);
+    }
+    if (audioSource && !audioSource->empty()) {
+        // La position sur la LIGNE DE TEMPS, en échantillons. Elle vient du
+        // temps du segment et non d'un compteur de blocs : c'est ce qui
+        // fait qu'un bouclage ou un saut de tête de lecture tombe juste.
+        const int64_t depart = static_cast<int64_t>(std::llround(rangeStartSeconds * sampleRate_));
+        audioSource->mixInto(destL, destR, depart, sampleCount);
+    }
+
+    // Chaîne d'inserts (section 5) : TRACK -> SYNTH -> EFFECTS -> MIX.
+    // LES INSERTS NON PLUS : ils sont DANS le fichier gelé, et les
+    // repasser dessus les appliquerait deux fois.
+    auto chain = track.frozen ? nullptr
+                              : effectChains_[trackIndex].load(std::memory_order_acquire);
+    if (chain) {
+        for (const auto& fx : *chain) {
+            if (!fx) continue;
+            // CHAÎNE LATÉRALE : si l'effet écoute un bus, on lui tend le
+            // contenu de ce bus POUR CE SEGMENT, juste avant qu'il
+            // travaille. Le bus a déjà reçu les pistes qui l'alimentent :
+            // c'est ce que garantit l'ordre de rendu.
+            const int bus = fx->sidechainBus();
+            if (bus >= 1 && bus <= static_cast<int>(kMaxSends))
+                fx->setSidechainInput(sendL_[static_cast<size_t>(bus - 1)].data() + sampleStart,
+                                       sendR_[static_cast<size_t>(bus - 1)].data() + sampleStart,
+                                       sampleCount);
+            fx->setTransportInfo(transport);
+            fx->process(destL, destR, sampleCount);
+        }
+    }
+
+    // COMPENSATION DE LATENCE (D4.5), APRÈS la chaîne et AVANT le mixage :
+    // ce qu'on aligne est ce qui part vers le master et vers les départs,
+    // pas ce qui entre dans les effets.
+    if (compensation) applyCompensation(*compensation, trackIndex, destL, destR, sampleCount);
+    return true;
+}
+
+void ProcessGraph::renderVoiceJob(void* context, size_t index, size_t workerId) {
+    auto& lot = *static_cast<VoiceBatch*>(context);
+    ProcessGraph& self = *lot.self;
+    const size_t trackIndex = lot.order ? (*lot.order)[index] : index;
+    if (trackIndex >= kMaxTracks) return;
+    const bool rendu = self.renderTrackVoice(
+        *lot.snapshot, trackIndex, lot.sampleStart, lot.sampleCount, lot.rangeStartSeconds,
+        lot.includeScheduledEvents, lot.compensation,
+        self.parallelEvents_[workerId].data(),
+        self.parallelL_[trackIndex].data(), self.parallelR_[trackIndex].data());
+    // Une case par piste, écrite par un seul thread : des voisines de tableau
+    // sont des emplacements mémoire distincts, donc pas une course.
+    self.parallelActive_[trackIndex] = rendu ? uint8_t{1} : uint8_t{0};
+}
+
+void ProcessGraph::mixTrackInto(const GraphSnapshot& snapshot, bool anySolo, size_t trackIndex,
+                                int sampleStart, int sampleCount, const float* srcL,
+                                const float* srcR, float* outputL, float* outputR) {
+    const Project& project = snapshot.project;
+    if (trackIndex >= project.tracks.size() || trackIndex >= kMaxTracks) return;
+    const Track& track = project.tracks[trackIndex];
+    const bool audible = anySolo ? track.solo : !track.muted;
+
+    // MIXAGE VERS SA DESTINATION : le master, ou le tampon d'un groupe. Le
+    // groupe sera traité en fin de bloc, quand tous ses membres y auront
+    // écrit -- voir `renderGroupBuses`.
+    const int groupe = groupBufferFor(project, trackIndex);
+    float* destL = groupe >= 0 ? groupL_[static_cast<size_t>(groupe)].data() : outputL;
+    float* destR = groupe >= 0 ? groupR_[static_cast<size_t>(groupe)].data() : outputR;
+
+    // LE VOLUME ET LE PANORAMIQUE VIENNENT DE L'AUTOMATION QUAND ELLE LES
+    // PILOTE (D4.6), du projet sinon. Un entier consulté par piste, pas un
+    // parcours des courbes : voir `refreshAutomationMask`.
+    const uint16_t pilotes = autoMask_[trackIndex];
+    const float volume = (pilotes & kAutoVolume) ? autoVolume_[trackIndex] : track.volume;
+    const float pan = (pilotes & kAutoPan) ? autoPan_[trackIndex] : track.pan;
+
+    float peak = mixStereoInto(srcL, srcR, sampleCount,
+                                volume, pan, audible,
+                                destL + sampleStart, destR + sampleStart);
+    blockPeak_[trackIndex] = std::max(blockPeak_[trackIndex], peak);
+
+    // RMS ET CORRÉLATION (D4.7) : on accumule les sommes ici et on ne
+    // conclut qu'en fin de bloc. Le signal mesuré est celui d'APRÈS le
+    // fader et AVANT le panoramique, c'est-à-dire ce que la piste envoie --
+    // la même convention que la crête, pour que les trois chiffres parlent
+    // du même son.
+    for (int i = 0; i < sampleCount; ++i) {
+        const double l = static_cast<double>(srcL[static_cast<size_t>(i)]) * volume;
+        const double r = static_cast<double>(srcR[static_cast<size_t>(i)]) * volume;
+        blockSumL2_[trackIndex] += l * l;
+        blockSumR2_[trackIndex] += r * r;
+        blockSumLR_[trackIndex] += l * r;
+    }
+    blockCount_[trackIndex] += sampleCount;
+
+    // Sends post-fader vers les bus auxiliaires (section 15).
+    const size_t actifs = activeSends_.load(std::memory_order_acquire);
+    const uint32_t preFader = preFaderMask_.load(std::memory_order_acquire);
+    if (audible) {
+        for (size_t b = 0; b < actifs; ++b) {
+            // PRÉ-FADER : le départ prélève AVANT le fader, donc le volume
+            // de la piste ne le multiplie pas. C'est ce qui permet
+            // d'envoyer une piste dans un effet sans l'entendre en direct.
+            //
+            // Le fader employé ici est celui de l'AUTOMATION quand elle le
+            // pilote : un fondu écrit en automation doit emporter les
+            // départs post-fader avec lui, comme le ferait la main sur le
+            // fader.
+            const float apresFader = (preFader & (1u << b)) ? 1.0f : volume;
+            const uint16_t bitDepart = static_cast<uint16_t>(1u << (kAutoSendFirst + b));
+            const float niveau = (pilotes & bitDepart) ? autoSend_[trackIndex][b]
+                                                        : track.sendLevel(b);
+            const float lvl = niveau * apresFader;
+            if (lvl <= 0.0f) continue;
+            for (int i = 0; i < sampleCount; ++i) {
+                sendL_[b][static_cast<size_t>(sampleStart + i)] += srcL[static_cast<size_t>(i)] * lvl;
+                sendR_[b][static_cast<size_t>(sampleStart + i)] += srcR[static_cast<size_t>(i)] * lvl;
+            }
+        }
+    }
+}
+
 void ProcessGraph::renderTrackRange(const GraphSnapshot& snapshot, bool anySolo,
                                     int sampleStart, int sampleCount, double rangeStartSeconds,
                                     float* outputL, float* outputR, bool includeScheduledEvents) {
     const Project& project = snapshot.project;
-    const double rangeEndSeconds = rangeStartSeconds + static_cast<double>(sampleCount) / sampleRate_;
 
     // L'ORDRE DE RENDU : le naturel, sauf si une chaîne latérale l'impose (voir
     // `refreshRenderOrder`). Une piste écoutée doit avoir versé dans son bus
     // avant que le compresseur qui l'écoute ne travaille.
     auto ordre = renderOrder_.load(std::memory_order_acquire);
+    // CHARGÉ UNE SEULE FOIS : c'est un `atomic<shared_ptr>` unique, que tous
+    // les cœurs se disputeraient s'ils le lisaient chacun de leur côté.
     auto compensation = compensation_.load(std::memory_order_acquire);
     const size_t combien = ordre ? ordre->size()
                                  : std::min(project.tracks.size(), kMaxTracks);
+
+    // Signale au thread UI qu'un rendu est en cours (voir `parallelAllowed_`) :
+    // il ne détruira pas les threads sous nos pieds tant que ce compteur n'est
+    // pas retombé à zéro.
+    renderBusy_.fetch_add(1, std::memory_order_seq_cst);
+    struct SortieDeRendu {
+        std::atomic<int>& compteur;
+        ~SortieDeRendu() { compteur.fetch_sub(1, std::memory_order_seq_cst); }
+    } sortie{renderBusy_};
+
+    // TROIS CONDITIONS, ET CHACUNE DIT NON À UN CAS PRÉCIS : pas de chaîne
+    // latérale (le calcul d'une piste dépendrait du mélange d'une autre), assez
+    // d'échantillons pour que la ronde se rembourse, assez de pistes pour qu'il
+    // y ait quelque chose à répartir.
+    const bool parallele = parallelAllowed_.load(std::memory_order_seq_cst)
+                           && !sidechainActive_.load(std::memory_order_acquire)
+                           && sampleCount >= kMinParallelSamples
+                           && combien >= kMinParallelTracks
+                           && parallelL_.size() >= kMaxTracks
+                           && !parallelEvents_.empty();
+
+    if (parallele) {
+        VoiceBatch lot;
+        lot.self = this;
+        lot.snapshot = &snapshot;
+        lot.order = ordre.get();
+        lot.compensation = compensation.get();
+        lot.sampleStart = sampleStart;
+        lot.sampleCount = sampleCount;
+        lot.rangeStartSeconds = rangeStartSeconds;
+        lot.includeScheduledEvents = includeScheduledEvents;
+        parallelSpans_.fetch_add(1, std::memory_order_relaxed);
+        renderPool_.runParallel(&ProcessGraph::renderVoiceJob, &lot, combien);
+
+        // ET LE MIXAGE, LUI, DANS L'ORDRE : c'est ce qui rend le résultat
+        // identique au bit près à celui du chemin mono-cœur.
+        for (size_t rang = 0; rang < combien; ++rang) {
+            const size_t trackIndex = ordre ? (*ordre)[rang] : rang;
+            if (trackIndex >= kMaxTracks || !parallelActive_[trackIndex]) continue;
+            mixTrackInto(snapshot, anySolo, trackIndex, sampleStart, sampleCount,
+                         parallelL_[trackIndex].data(), parallelR_[trackIndex].data(),
+                         outputL, outputR);
+        }
+        return;
+    }
+
     for (size_t rang = 0; rang < combien; ++rang) {
         const size_t trackIndex = ordre ? (*ordre)[rang] : rang;
-        if (trackIndex >= project.tracks.size() || trackIndex >= kMaxTracks) continue;
-        auto instrument = instruments_[trackIndex].load(std::memory_order_acquire);
-        auto audioSource = audioSources_[trackIndex].load(std::memory_order_acquire);
-        // UNE PISTE AUDIO N'A PAS D'INSTRUMENT, et c'est normal : son matériau
-        // est un fichier. La condition portait sur le seul instrument, ce qui
-        // aurait fait sauter la piste entière en silence.
-        if (!instrument && !audioSource) continue;
-
-        const Track& track = project.tracks[trackIndex];
-        bool audible = anySolo ? track.solo : !track.muted;
-
-        int numEvents = 0;
-
-        // Rebouclage : relâche ce que cette piste tenait encore à la frontière
-        // de boucle. Sans ça, une note dont le NoteOff tombe APRÈS la fin de
-        // boucle ne serait jamais relâchée et sonnerait indéfiniment -- le
-        // "note bloquée" classique des séquenceurs.
-        if (wrapNoteOffPending_) {
-            auto& sounding = soundingNotes_[trackIndex];
-            for (int note = 0; note < 128 && numEvents < kMaxEventsPerBlock; ++note) {
-                if (!sounding[static_cast<size_t>(note)]) continue;
-                MidiNoteEvent off;
-                off.kind = MidiNoteEvent::Kind::NoteOff;
-                off.sampleOffset = 0;
-                off.channel = track.channel;
-                off.note = static_cast<uint8_t>(note);
-                off.velocity = 64;
-                scratchEvents_[static_cast<size_t>(numEvents++)] = off;
-                sounding[static_cast<size_t>(note)] = false;
-            }
-        }
-
-        // Notes d'écoute (clic sur le clavier, clavier MIDI) : placées en tête
-        // de bloc. Uniquement dans le PREMIER sous-segment (sampleStart == 0),
-        // sinon le découpage en sous-segments de l'automation les rejouerait à
-        // chaque segment -- une seule note déclencherait huit attaques.
-        if (sampleStart == 0) {
-            for (int i = 0; i < drainedLiveCount_ && numEvents < kMaxEventsPerBlock; ++i) {
-                const LiveNoteEvent& live = drainedLive_[static_cast<size_t>(i)];
-                if (live.trackIndex != trackIndex) continue;
-                MidiNoteEvent pluginEvent;
-                pluginEvent.kind = live.noteOn ? MidiNoteEvent::Kind::NoteOn : MidiNoteEvent::Kind::NoteOff;
-                pluginEvent.sampleOffset = 0;
-                pluginEvent.channel = track.channel;
-                pluginEvent.note = live.note;
-                pluginEvent.velocity = live.velocity;
-                soundingNotes_[trackIndex][live.note] = live.noteOn;
-                scratchEvents_[static_cast<size_t>(numEvents++)] = pluginEvent;
-            }
-        }
-
-        // NE PAS écrire ceci comme un ternaire sur le conteneur : les deux
-        // branches d'un ternaire doivent avoir le même type, donc
-        // `includeScheduledEvents ? snapshot.schedule : std::vector<...>{}`
-        // COPIERAIT tout le planning à chaque bloc, sur le thread audio.
-        // Un simple `if` ne coûte rien.
-        if (includeScheduledEvents)
-        for (const auto& ev : snapshot.schedule) {
-            if (ev.trackIndex != trackIndex) continue;
-            if (ev.timeSeconds < rangeStartSeconds || ev.timeSeconds >= rangeEndSeconds) continue;
-            if (numEvents >= kMaxEventsPerBlock) {
-                // PLUS DE `break` MUET. Le plafond existe pour garder le
-                // tableau de travail à taille fixe (le chemin temps réel
-                // n'alloue pas) ; le franchir reste possible, mais il n'est
-                // plus permis qu'une note disparaisse sans que rien ne le
-                // dise. Le compteur est lu par l'interface.
-                droppedNoteEvents_.fetch_add(1, std::memory_order_relaxed);
-                break;
-            }
-
-            MidiNoteEvent pluginEvent;
-            MidiControlEvent controlEvent;
-            int sampleOffset = static_cast<int>(std::llround((ev.timeSeconds - rangeStartSeconds) * sampleRate_));
-            pluginEvent.sampleOffset = std::clamp(sampleOffset, 0, sampleCount - 1);
-            controlEvent.sampleOffset = pluginEvent.sampleOffset;
-
-            // Trois issues, et plus seulement deux : une note, un contrôle, ou
-            // un méta-événement qui n'a rien à faire dans une machine (tempo,
-            // nom de piste...). La troisième est la SEULE qu'on ait le droit
-            // d'écarter sans le dire.
-            enum class Issue { Note, Control, NotForTheMachine };
-            const Issue issue = std::visit([&pluginEvent, &controlEvent](auto&& data) -> Issue {
-                using T = std::decay_t<decltype(data)>;
-                if constexpr (std::is_same_v<T, NoteOnEvent>) {
-                    pluginEvent.kind = MidiNoteEvent::Kind::NoteOn;
-                    pluginEvent.channel = data.channel;
-                    pluginEvent.note = data.note;
-                    pluginEvent.velocity = data.velocity;
-                    return Issue::Note;
-                } else if constexpr (std::is_same_v<T, NoteOffEvent>) {
-                    pluginEvent.kind = MidiNoteEvent::Kind::NoteOff;
-                    pluginEvent.channel = data.channel;
-                    pluginEvent.note = data.note;
-                    pluginEvent.velocity = data.velocity;
-                    return Issue::Note;
-                } else if constexpr (std::is_same_v<T, PitchBendEvent>) {
-                    // Converti en DEMI-TONS ici, une fois : une machine n'a pas
-                    // à connaître les 14 bits signés du MIDI. La plage est de
-                    // +/- 2 demi-tons, la convention par défaut de tous les
-                    // instruments depuis la General MIDI.
-                    controlEvent.kind = MidiControlEvent::Kind::PitchBend;
-                    controlEvent.channel = data.channel;
-                    controlEvent.value = static_cast<float>(data.value) / 8192.0f * kPitchBendRangeSemitones;
-                    return Issue::Control;
-                } else if constexpr (std::is_same_v<T, ControlChangeEvent>) {
-                    controlEvent.kind = MidiControlEvent::Kind::ControlChange;
-                    controlEvent.channel = data.channel;
-                    controlEvent.index = data.controller;
-                    controlEvent.value = static_cast<float>(data.value) / 127.0f;
-                    return Issue::Control;
-                } else if constexpr (std::is_same_v<T, ChannelPressureEvent>) {
-                    controlEvent.kind = MidiControlEvent::Kind::ChannelPressure;
-                    controlEvent.channel = data.channel;
-                    controlEvent.value = static_cast<float>(data.pressure) / 127.0f;
-                    return Issue::Control;
-                } else if constexpr (std::is_same_v<T, PolyPressureEvent>) {
-                    controlEvent.kind = MidiControlEvent::Kind::PolyPressure;
-                    controlEvent.channel = data.channel;
-                    controlEvent.index = data.note;
-                    controlEvent.value = static_cast<float>(data.pressure) / 127.0f;
-                    return Issue::Control;
-                } else if constexpr (std::is_same_v<T, ProgramChangeEvent>) {
-                    controlEvent.kind = MidiControlEvent::Kind::ProgramChange;
-                    controlEvent.channel = data.channel;
-                    controlEvent.index = data.program;
-                    return Issue::Control;
-                }
-                return Issue::NotForTheMachine;
-            }, ev.data);
-
-            if (issue == Issue::Note) {
-                soundingNotes_[trackIndex][pluginEvent.note] =
-                    (pluginEvent.kind == MidiNoteEvent::Kind::NoteOn);
-                scratchEvents_[static_cast<size_t>(numEvents++)] = pluginEvent;
-            } else if (issue == Issue::Control) {
-                // Livré TOUT DE SUITE : les contrôles ne passent pas par le
-                // tableau d'événements de note, dont le contrat (et les
-                // vingt-deux machines qui le lisent) ne connaît que NoteOn et
-                // NoteOff. La granularité est celle du sous-segment
-                // d'automation, ~1,3 ms, et c'est la même que celle des
-                // paramètres automatisés -- une machine ne peut donc pas voir
-                // ses deux sources de modulation se contredire.
-                if (!instrument->handleControlEvent(controlEvent))
-                    ignoredControlEvents_.fetch_add(1, std::memory_order_relaxed);
-            }
-        }
-
-        // Rendu STÉRÉO de la piste (L/R séparés) : un instrument, du matériau
-        // audio, ou les deux -- rien n'interdit à une piste audio de porter
-        // aussi des notes, et le graphe n'a pas à en décider.
-        std::fill(scratchStereoL_.begin(), scratchStereoL_.begin() + sampleCount, 0.0f);
-        std::fill(scratchStereoR_.begin(), scratchStereoR_.begin() + sampleCount, 0.0f);
-        // UNE PISTE GELÉE NE FAIT PLUS TOURNER SON INSTRUMENT (D5.5) : c'est
-        // tout l'intérêt du gel, et c'est ce qui la fait « coûter le prix d'une
-        // lecture audio ». Son matériau reste dans la piste et revient au
-        // dégel ; seul le calcul s'arrête.
-        // LE TRANSPORT (D7.4), calculé UNE FOIS pour la piste et livré à
-        // l'instrument comme aux inserts, juste avant qu'ils travaillent.
-        // Position, tempo et signature sont lus à `rangeStartSeconds`, c'est-
-        // à-dire au début du segment traité : un plugin qui lit le tempo au
-        // milieu d'un ritardando doit voir celui de l'instant qu'il rend, pas
-        // celui du bloc précédent.
-        const vsm::audio::plugin::TransportInfo transport = transportFor(
-            project, rangeStartSeconds, playing_.load(std::memory_order_acquire));
-
-        if (instrument && !track.frozen) {
-            instrument->setTransportInfo(transport);
-            instrument->process(scratchEvents_.data(), numEvents,
-                                 scratchStereoL_.data(), scratchStereoR_.data(), sampleCount);
-        }
-        if (audioSource && !audioSource->empty()) {
-            // La position sur la LIGNE DE TEMPS, en échantillons. Elle vient du
-            // temps du segment et non d'un compteur de blocs : c'est ce qui
-            // fait qu'un bouclage ou un saut de tête de lecture tombe juste.
-            const int64_t depart = static_cast<int64_t>(std::llround(rangeStartSeconds * sampleRate_));
-            audioSource->mixInto(scratchStereoL_.data(), scratchStereoR_.data(),
-                                  depart, sampleCount);
-        }
-
-        // Chaîne d'inserts (section 5) : TRACK -> SYNTH -> EFFECTS -> MIX.
-        // LES INSERTS NON PLUS : ils sont DANS le fichier gelé, et les
-        // repasser dessus les appliquerait deux fois.
-        auto chain = track.frozen ? nullptr
-                                  : effectChains_[trackIndex].load(std::memory_order_acquire);
-        if (chain) {
-            for (const auto& fx : *chain) {
-                if (!fx) continue;
-                // CHAÎNE LATÉRALE : si l'effet écoute un bus, on lui tend le
-                // contenu de ce bus POUR CE SEGMENT, juste avant qu'il
-                // travaille. Le bus a déjà reçu les pistes qui l'alimentent :
-                // c'est ce que garantit l'ordre de rendu.
-                const int bus = fx->sidechainBus();
-                if (bus >= 1 && bus <= static_cast<int>(kMaxSends))
-                    fx->setSidechainInput(sendL_[static_cast<size_t>(bus - 1)].data() + sampleStart,
-                                           sendR_[static_cast<size_t>(bus - 1)].data() + sampleStart,
-                                           sampleCount);
-                fx->setTransportInfo(transport);
-                fx->process(scratchStereoL_.data(), scratchStereoR_.data(), sampleCount);
-            }
-        }
-
-        // COMPENSATION DE LATENCE (D4.5), APRÈS la chaîne et AVANT le mixage :
-        // ce qu'on aligne est ce qui part vers le master et vers les départs,
-        // pas ce qui entre dans les effets.
-        if (compensation) applyCompensation(*compensation, trackIndex,
-                                             scratchStereoL_.data(), scratchStereoR_.data(),
-                                             sampleCount);
-
-        // MIXAGE VERS SA DESTINATION : le master, ou le tampon d'un groupe. Le
-        // groupe sera traité en fin de bloc, quand tous ses membres y auront
-        // écrit -- voir `renderGroupBuses`.
-        const int groupe = groupBufferFor(project, trackIndex);
-        float* destL = groupe >= 0 ? groupL_[static_cast<size_t>(groupe)].data() : outputL;
-        float* destR = groupe >= 0 ? groupR_[static_cast<size_t>(groupe)].data() : outputR;
-
-        // LE VOLUME ET LE PANORAMIQUE VIENNENT DE L'AUTOMATION QUAND ELLE LES
-        // PILOTE (D4.6), du projet sinon. Un entier consulté par piste, pas un
-        // parcours des courbes : voir `refreshAutomationMask`.
-        const uint16_t pilotes = autoMask_[trackIndex];
-        const float volume = (pilotes & kAutoVolume) ? autoVolume_[trackIndex] : track.volume;
-        const float pan = (pilotes & kAutoPan) ? autoPan_[trackIndex] : track.pan;
-
-        float peak = mixStereoInto(scratchStereoL_.data(), scratchStereoR_.data(), sampleCount,
-                                    volume, pan, audible,
-                                    destL + sampleStart, destR + sampleStart);
-        blockPeak_[trackIndex] = std::max(blockPeak_[trackIndex], peak);
-
-        // RMS ET CORRÉLATION (D4.7) : on accumule les sommes ici et on ne
-        // conclut qu'en fin de bloc. Le signal mesuré est celui d'APRÈS le
-        // fader et AVANT le panoramique, c'est-à-dire ce que la piste envoie --
-        // la même convention que la crête, pour que les trois chiffres parlent
-        // du même son.
-        for (int i = 0; i < sampleCount; ++i) {
-            const double l = static_cast<double>(scratchStereoL_[static_cast<size_t>(i)]) * volume;
-            const double r = static_cast<double>(scratchStereoR_[static_cast<size_t>(i)]) * volume;
-            blockSumL2_[trackIndex] += l * l;
-            blockSumR2_[trackIndex] += r * r;
-            blockSumLR_[trackIndex] += l * r;
-        }
-        blockCount_[trackIndex] += sampleCount;
-
-        // Sends post-fader vers les bus auxiliaires (section 15).
-        const size_t actifs = activeSends_.load(std::memory_order_acquire);
-        const uint32_t preFader = preFaderMask_.load(std::memory_order_acquire);
-        if (audible) {
-            for (size_t b = 0; b < actifs; ++b) {
-                // PRÉ-FADER : le départ prélève AVANT le fader, donc le volume
-                // de la piste ne le multiplie pas. C'est ce qui permet
-                // d'envoyer une piste dans un effet sans l'entendre en direct.
-                //
-                // Le fader employé ici est celui de l'AUTOMATION quand elle le
-                // pilote : un fondu écrit en automation doit emporter les
-                // départs post-fader avec lui, comme le ferait la main sur le
-                // fader.
-                const float apresFader = (preFader & (1u << b)) ? 1.0f : volume;
-                const uint16_t bitDepart = static_cast<uint16_t>(1u << (kAutoSendFirst + b));
-                const float niveau = (pilotes & bitDepart) ? autoSend_[trackIndex][b]
-                                                            : track.sendLevel(b);
-                const float lvl = niveau * apresFader;
-                if (lvl <= 0.0f) continue;
-                for (int i = 0; i < sampleCount; ++i) {
-                    sendL_[b][static_cast<size_t>(sampleStart + i)] += scratchStereoL_[static_cast<size_t>(i)] * lvl;
-                    sendR_[b][static_cast<size_t>(sampleStart + i)] += scratchStereoR_[static_cast<size_t>(i)] * lvl;
-                }
-            }
-        }
+        if (!renderTrackVoice(snapshot, trackIndex, sampleStart, sampleCount, rangeStartSeconds,
+                              includeScheduledEvents, compensation.get(), scratchEvents_.data(),
+                              scratchStereoL_.data(), scratchStereoR_.data()))
+            continue;
+        mixTrackInto(snapshot, anySolo, trackIndex, sampleStart, sampleCount,
+                     scratchStereoL_.data(), scratchStereoR_.data(), outputL, outputR);
     }
 }
 
