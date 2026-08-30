@@ -80,6 +80,21 @@ def arbitrage_les_suivantes_ne_supposent_rien_quand_il_n_y_a_rien():
 
 
 @test
+def arbitrage_le_temoin_a_zero_rend_exactement_la_chaine_d_avant():
+    """`--machines-au-melange 0` : la gagnante du stem part SEULE au verdict.
+
+    C'est le témoin des A/B, et il doit être atteignable par la ligne de
+    commande. Il ne l'était pas : le nombre vivait dans une constante du
+    module, si bien que comparer au comportement d'avant le § 5 decies
+    demandait de MODIFIER le code entre les deux mesures -- deux rapports
+    produits par deux programmes différents, et la provenance d'A4.2 n'en
+    disait rien. L'option existe pour que le témoin soit du même code que ce
+    qu'il témoigne."""
+    assert_equal(runners_up(_verdicts(), count=0), [], "0 -> aucune suivante")
+    assert_equal(len(runners_up(_verdicts(), count=3)), 3, "3 -> trois suivantes")
+
+
+@test
 def melange_le_temoin_de_coupure_est_mesure_et_la_piste_est_QUAND_MEME_gardee():
     """Le morceau sans la piste : mesuré, publié, jamais joué.
 

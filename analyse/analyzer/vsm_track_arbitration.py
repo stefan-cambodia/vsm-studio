@@ -88,7 +88,12 @@ def runners_up(verdicts: Sequence["TrackVerdict"], count: int = 3) -> List["Trac
     répare pas un mauvais choix de machine, et c'est ce choix-là que le verdict
     du mélange ne savait pas défaire.
     """
-    if not verdicts:
+    if count <= 0 or not verdicts:
+        # `count <= 0` EST LE TÉMOIN, et il doit rendre exactement la chaîne
+        # d'avant le § 5 decies : la gagnante du stem part seule au verdict du
+        # mélange. Sans cette ligne, la boucle ci-dessous en retenait UNE quand
+        # même -- elle n'ajoute au compte qu'APRÈS avoir accepté la candidate --
+        # et le témoin aurait mesuré autre chose que ce qu'il annonçait.
         return []
     gagnante = verdicts[0]
     vus = {gagnante.machine}

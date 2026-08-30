@@ -105,6 +105,13 @@ BOITES_A_RYTHMES = ("vsm.tr909", "vsm.tr808")
 # ne l'emporte. À remesurer au premier morceau qui démentira ça.
 MACHINES_AU_MELANGE = 3
 
+# CE NOMBRE EST UNE OPTION (`--machines-au-melange`), ET PAS SEULEMENT UNE
+# CONSTANTE, parce qu'un A/B a besoin d'un témoin REPRODUCTIBLE. Le comparer à
+# l'ancien comportement demandait jusqu'ici de modifier cette ligne, c'est-à-dire
+# de mesurer deux fois un code différent sans que le rapport en garde trace --
+# exactement ce que la provenance d'A4.2 existe pour empêcher. `0` rend la chaîne
+# d'avant le § 5 decies : la gagnante du stem part seule au verdict du mélange.
+
 # Nom de la piste de batterie dans le projet écrit, sous lequel le verdict du
 # mélange, le rapport et les niveaux la retrouvent.
 PISTE_BATTERIE = "Batterie"
@@ -317,6 +324,7 @@ def provenance(args: argparse.Namespace, classifieur, frappes) -> dict:
             "arbitrage": not args.sans_arbitrage,
             "arbitrageBatterie": not args.sans_arbitrage_batterie,
             "reglagePiste": not args.sans_reglage_piste,
+            "machinesAuMelange": args.machines_au_melange,
             "budgetPiste": args.budget_piste,
             "axesPiste": args.axes_piste,
             "finalistes": args.finalistes,
@@ -406,6 +414,15 @@ def construire_parseur() -> argparse.ArgumentParser:
                               "coordonnées balaye les axes déclarés par la machine et ne "
                               "garde une valeur que si elle rapproche le rendu complet du "
                               "stem : elle ne peut donc pas dégrader le patch d'où elle part.")
+    parseur.add_argument("--machines-au-melange", type=int, default=MACHINES_AU_MELANGE,
+                         help=f"nombre de machines SUIVANTES du classement de piste "
+                              f"remises en jeu au verdict du mélange (défaut "
+                              f"{MACHINES_AU_MELANGE}). Mesuré sur *Sky and Sand* "
+                              "(ROADMAP-fusion § 5 decies) : les classements au stem "
+                              "et au mélange sont à peu près inverses, et la machine "
+                              "que le mélange retient était TROISIÈME au stem. "
+                              "0 rend la chaîne d'avant cette mesure -- la gagnante "
+                              "part seule -- et c'est le témoin des A/B.")
     parseur.add_argument("--budget-piste", type=int, default=40,
                          help="nombre d'évaluations du réglage sur la piste (défaut 40). "
                               "Une évaluation = un rendu de piste + une distance, mesuré "
@@ -952,7 +969,7 @@ def arbitrer_sur_piste(ctx: Contexte, nom: str, stem: StemReconstruction, audio:
     # 17,6 %, et celle de `other` deuxième à 16,4 %. Les deux classements sont
     # à peu près inverses. Une proposition de plus coûte un rendu de projet --
     # une quinzaine de secondes sur les ~5 900 s d'une reconstruction.
-    suivantes = runners_up(verdicts, count=MACHINES_AU_MELANGE)
+    suivantes = runners_up(verdicts, count=ctx.args.machines_au_melange)
     if not suivantes:
         return []
     detail = ", ".join(
