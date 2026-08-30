@@ -2771,3 +2771,35 @@ Ceux de la fusion, plus cinq propres à cet axe :
 5. **Rien ne se perd et rien ne ment.** Toute fonction ajoutée est sauvegardée
    dans le projet, présente à l'export, et sans commande morte. C'est l'acquis
    de D0, et le reperdre serait pire que ne l'avoir jamais eu.
+
+> **L'INVARIANT N° 2 EST MESURÉ DEPUIS LE 30/08/2026, ET IL NE L'ÉTAIT PAS.**
+> D2.2 en faisait déjà un critère — « un test compte les allocations » — et ce
+> test n'existait pas : la règle était tenue par la relecture, c'est-à-dire par
+> l'attention de celui qui écrivait. C'est exactement le genre de garantie que
+> le § 6 dit qu'on perd sans s'en apercevoir, et D8.2 venait de refaire tout ce
+> chemin-là. `audio/tests/test_no_allocation_in_process.cpp` remplace
+> `operator new` pour le binaire de tests et compte, sur quatre configurations :
+> huit machines, une piste audio résidente, **une piste audio diffusée depuis le
+> disque** — le cas que l'invariant nomme — et le rebouclage avec automation,
+> qui sont les deux chemins qui découpent le bloc.
+>
+> **LE COMPTEUR EST PROPRE À CHAQUE THREAD**, et ce n'est pas un détail : le
+> thread de diffusion disque a parfaitement le droit d'allouer — c'est même
+> pour cela qu'il existe. Un compteur global le prendrait pour une faute du
+> thread audio et ferait échouer le test au hasard, selon le moment où le disque
+> a répondu.
+>
+> **LE GARDE-FOU DU GARDE-FOU A SERVI DÈS LE PREMIER LANCEMENT.** Le test qui
+> vérifie que le compteur compte quelque chose a échoué : écrit avec un
+> `std::vector` local, l'allocation était **éliminée par le compilateur**
+> (l'élision d'allocation est expressément permise depuis C++14). Les trois
+> autres tests passaient alors pour la pire des raisons — ils mesuraient un
+> compteur qui ne comptait rien. Vérifié dans l'autre sens aussi : une
+> allocation ajoutée exprès en tête de `processBlock` les fait tous échouer.
+>
+> **ET LA MESURE EST COURTE POUR UNE RAISON QU'IL FAUT ÉCRIRE** : deux cents
+> blocs se rendent ici en une milliseconde, alors qu'ils durent deux secondes à
+> l'écoute. Le thread de diffusion, qui se réveille toutes les dix
+> millisecondes, ne peut pas suivre — et il a raison de ne pas suivre, puisque
+> personne ne joue mille fois plus vite que le temps réel. On mesure donc dans
+> la fenêtre déjà lue, qui est le régime permanent de la lecture.
