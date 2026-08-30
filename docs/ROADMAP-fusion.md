@@ -1710,6 +1710,17 @@ basse — donc plus de transitoire. Le spectre dit la même chose : +6,6 dB à
 120-250 Hz (les queues de kick et de toms qui s'accumulent), −3,1 dB à 4-8 kHz
 (les charlestons et cymbales qui manquent).
 
+> **CETTE CONCLUSION A ÉTÉ DÉMENTIE, ET IL FAUT LIRE LE § 5 NONIES AVANT LE
+> PARAGRAPHE QUI SUIT.** La batterie n'était pas au bout de ce que la chaîne
+> sait faire : elle était mal ATTRIBUÉE. Une famille de 811 frappes dont 69 %
+> de l'énergie est sous 200 Hz — une grosse caisse — était jouée sur le clap de
+> la TR-808, parce que le repli des toms était écrit d'avance. La replacer par
+> la mesure vaut 0,3038 → 0,2454 en v4, à budget de réglage égal, sur la piste
+> qui porte 63,5 % de l'erreur. Ce qui suit reste vrai de la ROUTE
+> ÉCHANTILLONNÉE et du désaccord entre la métrique et l'oreille ; c'est le
+> « au bout » qui était prématuré, et il l'était faute d'avoir regardé où les
+> coups tombaient.
+
 **La batterie est au bout de ce que la chaîne sait faire, et la limite n'est pas
 le réglage.** Le budget d'erreur désignait la batterie ; deux routes ont été
 éprouvées, et toutes deux butent sur une limite de conception, pas de recherche.
@@ -1811,6 +1822,136 @@ d'échantillonnage. Celle-ci porte sur ce qu'on fait d'un chiffre unique :
 **une distance globale ne dit pas OÙ est l'erreur, et sans ce partage on règle
 au hasard, longtemps.** La mesure coûte quatre rendus. Elle passe désormais
 avant tout réglage.
+
+---
+
+## 5 nonies. Une famille de 811 frappes jouée sur la mauvaise pièce
+
+Le budget d'erreur du § 5 octies désignait la batterie — 63,5 % de l'erreur du
+morceau — et concluait que le réglage n'y pouvait plus rien. Il ne disait pas
+POURQUOI. `analyse/diagnostic_batterie.py` rejoue la même rythmique par des
+moyens différents et mesure : c'est la seule façon de départager les trois
+causes possibles, la détection, le timbre, et l'ATTRIBUTION des voix.
+
+Toutes les distances ci-dessous sont en **métrique v4**, contre le stem de
+batterie de *Sky and Sand* (532,2 s, kit de 7 pièces, 4 215 frappes,
+classifieur `frappes.joblib`). La règle du § 10.3 vaut sans exception : elles ne
+se comparent qu'entre elles. Les témoins donnent l'échelle — le stem contre
+lui-même vaut 0,0000, contre le silence 1,2933, contre lui-même à −6 dB 0,0000,
+ce qui vérifie au passage que la métrique est bien insensible au niveau.
+
+**LA DÉTECTION N'EST PAS EN CAUSE, ET C'EST LA PREMIÈRE CHOSE À ÉCARTER.**
+99,8 % de l'énergie du stem tombe à moins de 300 ms d'un coup détecté (90,8 % à
+120 ms, 52,4 % à 50 ms). Ce qu'aucune machine ne rattraperait — ce qui n'a pas
+été entendu du tout — est de deux pour mille.
+
+**LE DÉFAUT TIENT EN UNE LIGNE.** La famille nommée « tom », 811 frappes, a
+**69 % de son énergie sous 200 Hz** : c'est une grosse caisse. La TR-808 n'a pas
+de toms, et la table de correspondance la rabattait sur le **CLAP** — un grave
+posé sur une salve de bruit, pour un cinquième du morceau. Ce n'était pas un
+accident : c'était un repli ÉCRIT D'AVANCE, « la pièce la plus proche en
+fonction ». Le compte des voix disait le reste : trois familles empilées sur le
+clap, **1 618 frappes sur 4 215 — 38 % du morceau — sur une seule voix**, pendant
+que la vache et la charleston ouverte ne jouaient pas.
+
+**CE QUE VALENT LES ATTRIBUTIONS, À BUDGET DE RÉGLAGE ÉGAL** (120 évaluations,
+21 axes — la descente de la chaîne, partant du patch d'usine) :
+
+| attribution | patch d'usine | **réglée** |
+|---|---|---|
+| **TR-808, repli MESURÉ au spectre** (adopté) | 0,7047 | **0,2454** |
+| TR-808, le même sans la préférence pour une voix libre | 0,7822 | 0,2604 |
+| TR-808, voix décidées ENTIÈREMENT au spectre | 1,0060 | 0,2760 |
+| *TR-808, ancienne table — le chiffre publié de sky-v5* | *0,8710* | *0,3038* |
+| TR-808, table corrigée à la main (clap déclaré, percussion → vache) | 0,8325 | 0,3114 |
+| **TR-909, repli MESURÉ au spectre** (adopté) | 0,8625 | **0,3392** |
+| TR-909, ancienne table | 0,8264 | 0,3432 |
+| TR-909, voix décidées entièrement au spectre | 1,4704 | 0,3935 |
+| *sampler, VRAIS coups découpés dans le stem* | — | *0,4187* |
+| *`vsm.drums`, patch d'usine* | *1,8377* | — |
+
+**Le gain est de 19 % sur la piste qui porte 63,5 % de l'erreur du morceau**, et
+il ne coûte pas une évaluation de plus : c'est la même recherche, partie d'un
+meilleur point.
+
+**ET IL SE RETROUVE SUR LE MORCEAU ENTIER.** La chaîne complète rejouée sur
+*Sky and Sand*, mêmes stems, même budget, même métrique, une seule décision
+changée :
+
+| | sky-v5 | **sky-v6** |
+|---|---|---|
+| distance globale (v4) | 0,3327 | **0,2933** |
+| | | **−11,8 %** |
+
+C'est l'ordre de grandeur qu'annonçait le budget d'erreur du § 5 octies, et il
+le confirme d'un second chemin : une piste qui vaut 63,5 % de l'erreur, gagnant
+19 %, rapporte une douzaine de pour cent sur le mélange.
+
+**UN EFFET DE BORD QUI VAUT AUTANT QUE LE CHIFFRE.** L'arbitrage de batterie
+désigne maintenant `vsm.tr808` du premier coup, à 0,705 contre 0,863 pour la
+909. Avant, il désignait la **909** (0,826 contre 0,871) et ne retrouvait la 808
+que par la règle de l'arbitrage SERRÉ, qui règle les deux quand elles sont à
+moins de 5 %. La marge est passée de 5 % à 22 % : la bonne machine n'est plus
+rattrapée de justesse, elle est choisie. Une attribution fausse ne dégradait pas
+seulement le réglage — elle brouillait le verdict de machine, en amont.
+
+**TROIS CHOSES QUE CE TABLEAU DIT, ET QU'IL FALLAIT MESURER POUR LES SAVOIR.**
+
+*Le timbre n'était pas le plafond.* Les VRAIS coups, découpés dans
+l'enregistrement et rejoués aux VRAIS instants, valent 0,4187 — nettement plus
+que la boîte modélisée et réglée à 0,2454. Ce que la route échantillonnée perd
+en variation (un représentant par famille, § 5 octies), aucune fidélité de
+timbre ne le rachète.
+
+*`vsm.drums` au patch d'usine est plus loin du stem que LE SILENCE* — 1,8377
+contre 1,2933. Une batterie acoustique modélisée jouant un motif de techno n'est
+pas une candidate faible, c'est une candidate nuisible ; l'arbitrage a raison de
+lui préférer une boîte, et il le fait déjà.
+
+*Un verdict au patch d'usine ne survit pas au réglage*, et c'est la septième
+forme de la leçon du § 5 septies. L'ordre des attributions à l'usine n'est pas
+leur ordre après réglage : la variante « tout au spectre », **dernière des 808 à
+l'usine (1,0060), passe deuxième une fois réglée (0,2760)**. Une attribution ne
+se juge donc pas sur un rendu d'usine, pas plus qu'une machine.
+
+**CE QUI EST ADOPTÉ, ET CE QUI EST REFUSÉ.** L'idée large — décider TOUTES les
+voix au spectre, en donnant à chaque famille une voix à elle — a été écrite,
+mesurée, et elle perd (0,2760 contre 0,2454). Elle déloge des familles de la
+voix qui porte leur propre nom, pour éviter un empilement qui n'est pas le
+problème. Ce qui rapporte est plus étroit, et se dit en une phrase :
+
+> **Une famille dont le nom désigne une voix que la machine possède la garde.
+> Une famille dont le nom ne désigne AUCUNE voix de cette machine est placée par
+> son SPECTRE, sur la première voix LIBRE de son rôle.**
+
+C'est `_voix_de_la_famille`, dans `analyse/analyzer/vsm_drumkit.py`. Le rôle se
+lit sur deux grandeurs seulement — la part de l'énergie sous 200 Hz et celle
+au-dessus de 2 kHz —, parce que ce sont les deux dont l'oreille se sert pour
+ranger une pièce de batterie. La préférence pour une voix LIBRE vaut à elle
+seule 0,2604 → 0,2454 : c'est la famille `percussion` (248 frappes, un médium)
+qui cesse de s'empiler sur la caisse claire et va sur la vache. Et elle ne cède
+la place qu'à une famille NOMMÉE — céder aussi aux autres replis reviendrait à
+l'exclusivité générale, qui a été mesurée et qui perd.
+
+La table `DRUM_MACHINE_NOTES` n'est plus la règle : elle est le **dernier
+recours**, pour un kit dont aucun profil n'a pu être mesuré. Ses replis écrits
+d'avance sont exactement ce que la mesure a condamné.
+
+**UNE ERREUR COMMISE EN L'ÉCRIVANT, ET C'EST LA MESURE QUI L'A ATTRAPÉE.** La
+liste des voix acceptables par rôle est une DÉCLARATION sur les machines, et la
+première version mettait les toms parmi les voisines du rôle « caisse claire »,
+au motif que ce sont des peaux. Sur la TR-909 — qui, elle, a des toms — la
+famille `percussion` allait alors sur un tom moyen, et la piste passait de
+0,3392 à **0,3688** : pire que l'ancienne table. Un tom est une peau GRAVE, sa
+place est dans le rôle « grosse caisse » et nulle part ailleurs. Une déclaration
+se corrige comme une mesure : en la mesurant.
+
+**Ce qui reste ouvert, et il est nommé.** Le rôle n'a que quatre valeurs — peau
+grave, médium, bruit clair, métal — et rien n'y distingue une vache d'une caisse
+claire : sur *Sky and Sand*, c'est la préférence pour une voix libre, et non le
+spectre, qui a mis la percussion au bon endroit. Un cinquième rôle demanderait
+un discriminant de « métal accordé » ; l'écrire sur une seule famille d'un seul
+morceau serait le sur-ajuster. Il attend une seconde occurrence.
 
 ---
 

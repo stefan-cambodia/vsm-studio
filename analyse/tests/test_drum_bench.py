@@ -76,7 +76,7 @@ def batterie_les_boites_a_rythmes_jouent_le_kit_detecte():
     MÊMES instants et vélocités que sur vsm.drums : seule la machine change,
     et c'est la condition pour que l'arbitrage compare des machines et non des
     transcriptions."""
-    from analyzer.vsm_drumkit import (DRUM_MACHINE_NOTES, DrumKit, DrumSlot,
+    from analyzer.vsm_drumkit import (MACHINE_VOICES, DrumKit, DrumSlot,
                                       drum_machine_track, modelled_drum_track)
     kit = DrumKit(slots=[
         DrumSlot("kick", 0, 36, "k.wav", onsets=[0.0, 0.5, 1.0], velocities=[110, 100, 120], hit_count=3),
@@ -93,8 +93,8 @@ def batterie_les_boites_a_rythmes_jouent_le_kit_detecte():
                      f"{machine} : mêmes instants")
         assert_equal([n.velocity for n in piste.notes], [n.velocity for n in reference.notes],
                      f"{machine} : mêmes vélocités")
-        assert_true(all(n.note in DRUM_MACHINE_NOTES[machine].values() for n in piste.notes),
-                    f"{machine} : chaque note est une voix de la machine")
+        assert_true(all(n.note in MACHINE_VOICES[machine].values() for n in piste.notes),
+                    f"{machine} : chaque note est une voix RÉELLE de la machine")
     # La pédale n'existe sur aucune des deux : elle devient charleston fermée.
     p909 = drum_machine_track(kit, "vsm.tr909")
     assert_true(42 in [n.note for n in p909.notes if abs(n.start - 1.25) < 1e-9],
@@ -102,7 +102,52 @@ def batterie_les_boites_a_rythmes_jouent_le_kit_detecte():
     # La 808 n'a pas de toms : rabattu ET dit.
     kit.warnings.clear()
     drum_machine_track(kit, "vsm.tr808")
-    assert_true(any("toms" in w for w in kit.warnings), "le rabattement des toms est DIT")
+    assert_true(any("tom" in w for w in kit.warnings), "le rabattement des toms est DIT")
+
+
+@test
+def batterie_le_repli_se_decide_au_spectre_et_non_au_nom():
+    """Une famille dont le nom ne désigne aucune voix de la machine est placée
+    par ce qu'elle SONNE.
+
+    Le cas est celui de *Sky and Sand* : une famille de 811 frappes nommée
+    « tom » dont 69 % de l'énergie est sous 200 Hz -- une grosse caisse. La
+    TR-808 n'a pas de toms ; le repli écrit d'avance l'envoyait sur le CLAP,
+    et la mesure a chiffré ce que coûtait ce choix (0,3038 -> 0,2454 en v4, à
+    budget de réglage égal). Le nom, lui, garde le dernier mot là où la machine
+    A la voix qu'il désigne : la même famille reste un tom grave sur la TR-909.
+    """
+    from analyzer.vsm_drumkit import (MACHINE_VOICES, DrumKit, DrumSlot,
+                                      drum_machine_track, measured_role)
+    grave = [0.33, 0.36, 0.18, 0.08, 0.03, 0.02]      # 69 % sous 200 Hz
+    kit = DrumKit(slots=[
+        DrumSlot("tom", 0, 45, "t.wav", onsets=[0.0], velocities=[100],
+                 hit_count=811, band_shares=grave),
+    ], sample_rate=44100, total_hits=811)
+    assert_equal(measured_role(grave), "kick", "le spectre dit : grosse caisse")
+
+    piste = drum_machine_track(kit, "vsm.tr808")
+    assert_equal([n.note for n in piste.notes], [MACHINE_VOICES["vsm.tr808"]["kick"]],
+                 "sur la 808, qui n'a pas de toms, elle va sur la GROSSE CAISSE")
+    assert_true(any("spectre" in w for w in kit.warnings),
+                "le choix par le spectre est DIT")
+
+    kit.warnings.clear()
+    piste = drum_machine_track(kit, "vsm.tr909")
+    assert_equal([n.note for n in piste.notes], [MACHINE_VOICES["vsm.tr909"]["lowTom"]],
+                 "sur la 909, qui A des toms, le nom garde le dernier mot")
+
+    # SANS PROFIL MESURÉ, on ne devine pas : on retombe sur la table déclarée,
+    # et on le dit. Le pire serait une note qu'aucune voix ne joue -- des
+    # frappes muettes, sans un mot.
+    sans_profil = DrumKit(slots=[
+        DrumSlot("tom", 0, 45, "t.wav", onsets=[0.0], velocities=[100], hit_count=811),
+    ], sample_rate=44100, total_hits=811)
+    piste = drum_machine_track(sans_profil, "vsm.tr808")
+    assert_true(all(n.note in MACHINE_VOICES["vsm.tr808"].values() for n in piste.notes),
+                "sans profil, la note reste une voix RÉELLE de la machine")
+    assert_true(any("pas été mesuré" in w for w in sans_profil.warnings),
+                "le repli faute de mesure est DIT")
 
 
 @test

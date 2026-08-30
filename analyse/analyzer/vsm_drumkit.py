@@ -926,7 +926,82 @@ MODELLED_DRUM_NOTES: Dict[str, int] = {
 }
 
 
+# Les voix que chaque boîte possède RÉELLEMENT, par RÔLE et non par nom de
+# famille, lues dans le C++ (TR808Synth.h l. 247, TR909Synth.h l. 276). Une
+# note absente de ces tables ne déclenche AUCUNE voix : la frappe est
+# silencieuse, et rien ne le dit.
+MACHINE_VOICES: Dict[str, Dict[str, int]] = {
+    "vsm.tr808": {"kick": 36, "snare": 38, "clap": 39, "closedHat": 42,
+                   "openHat": 46, "cowbell": 56},
+    "vsm.tr909": {"kick": 36, "snare": 38, "clap": 39, "closedHat": 42,
+                   "openHat": 46, "crash": 49, "lowTom": 45, "midTom": 47,
+                   "hiTom": 50},
+}
+
+# Le nom d'une famille -> la voix qui porte ce nom, QUAND la machine l'a.
+# `percussion` n'y figure pas : ce n'est le nom d'aucune voix, c'est le nom que
+# la liste de réserve donne à un gabarit qu'on n'a pas su nommer. Il se décide
+# donc au spectre, comme tout ce qui n'est pas nommé.
+FAMILY_VOICE: Dict[str, str] = {
+    "kick": "kick", "kick2": "kick",
+    "snare": "snare", "snare2": "snare",
+    "hihat": "closedHat", "pedalhat": "closedHat", "openhat": "openHat",
+    "clap": "clap",
+    "tom": "lowTom", "tom2": "midTom", "tom3": "hiTom",
+    "cymbal": "crash",
+}
+
+# À défaut de la voix nommée, les voix acceptables dans l'ordre, par rôle.
+# C'est une DÉCLARATION sur les machines -- lisible, et contestable -- et non
+# une mesure : elle ne sert qu'à ordonner des voix que la mesure a déjà
+# regroupées en quatre rôles.
+#
+# Une voix n'y figure QUE si elle peut tenir le rôle. Les toms ont d'abord été
+# écrits dans les voisines de « snare » et de « clap », au motif qu'ils sont des
+# peaux ; la mesure l'a puni. Sur la TR-909, la famille `percussion` de *Sky and
+# Sand* -- un médium -- allait alors sur un tom moyen, et la piste passait de
+# 0,3392 à 0,3688. Un tom est une peau GRAVE : sa place est dans le rôle
+# « kick », et nulle part ailleurs.
+VOICE_NEIGHBOURS: Dict[str, List[str]] = {
+    "kick": ["kick", "lowTom", "midTom", "hiTom"],
+    "snare": ["snare", "clap", "cowbell"],
+    "clap": ["clap", "snare", "cowbell"],
+    "closedHat": ["closedHat", "openHat", "crash"],
+}
+
+
+def measured_role(band_shares: Sequence[float]) -> str:
+    """Le RÔLE d'une famille, déduit de son spectre et non de son nom.
+
+    Deux grandeurs seulement, parce que ce sont les deux dont l'oreille se sert
+    pour ranger une pièce de batterie : la part de l'énergie sous 200 Hz (une
+    peau grave) et celle au-dessus de 2 kHz (du métal ou du bruit). Entre les
+    deux vit le médium, où l'on trouve claps et caisses claires.
+
+    Une famille SANS profil mesuré ne reçoit pas de rôle : on rend une chaîne
+    vide et l'appelant retombe sur le nom. Deviner à partir de rien serait
+    exactement ce que cette fonction sert à supprimer.
+    """
+    if len(band_shares) < 6:
+        return ""
+    grave = band_shares[0] + band_shares[1]
+    aigu = band_shares[4] + band_shares[5]
+    if grave >= 0.50 and aigu < 0.20:
+        return "kick"
+    if aigu >= 0.40:
+        return "closedHat"
+    if aigu >= 0.20:
+        return "snare"
+    return "clap"
+
+
 # Correspondance famille -> note pour les BOÎTES À RYTHMES du parc.
+#
+# CETTE TABLE N'EST PLUS LA RÈGLE, ELLE EST LE DERNIER RECOURS. Depuis le
+# § 5 nonies, une famille dont le nom ne désigne aucune voix de la machine est
+# placée par son SPECTRE (`_voix_de_la_famille`) ; la table ne sert plus que
+# lorsque aucun profil n'a pu être mesuré. Ses replis écrits d'avance -- les
+# toms de la 808 sur le clap -- sont précisément ce que la mesure a condamné.
 #
 # Les deux machines suivent la convention General MIDI (TR909Synth.h l. 276,
 # TR808Synth.h l. 247) : kick 36, caisse claire 38, clap 39, charleston fermée
@@ -958,6 +1033,91 @@ DRUM_MACHINE_DISPLAY: Dict[str, str] = {
 }
 
 
+def _voix_nommees(kit: DrumKit, voix: Dict[str, int]) -> set:
+    """Les voix que des familles NOMMÉES occupent déjà sur cette machine.
+
+    Elles sont calculées d'abord, avant tout repli, parce que le repli doit
+    pouvoir les éviter : c'est la seule exclusivité qui a survécu à la mesure
+    (§ 5 nonies). Une exclusivité GÉNÉRALE -- toute famille sur une voix à
+    elle -- a été écrite, mesurée, et elle perd : elle déloge des familles de
+    la voix qui porte leur propre nom.
+    """
+    return {voix[FAMILY_VOICE[s.family]] for s in kit.slots
+            if s.family in FAMILY_VOICE and FAMILY_VOICE[s.family] in voix}
+
+
+def _voix_de_la_famille(kit: DrumKit, machine: str, voix: Dict[str, int],
+                         emplacement: "DrumSlot", occupees: set) -> int:
+    """La note sur laquelle poser une famille, et l'aveu quand ce n'est pas la sienne.
+
+    Trois cas, dans cet ordre :
+
+      1. La machine A la voix que le nom désigne -- on la prend, sans mesurer.
+         Le nom vient d'un classifieur appris ou des gabarits ; là où il tombe
+         sur une voix existante, rien ne justifie de le contredire.
+      2. Elle ne l'a pas -- le SPECTRE de la famille choisit, parmi les voix de
+         la machine, en partant du rôle mesuré puis en descendant une liste de
+         voisins déclarée. C'est là que se joue le gain mesuré au § 5 nonies.
+      3. Rien n'a pu être mesuré (pas de profil) -- on retombe sur la table
+         déclarée `DRUM_MACHINE_NOTES`, et à défaut sur la note General MIDI de
+         la détection. Les deux sont DITS, et le second peut ne déclencher
+         aucune voix : les frappes seraient alors muettes, ce qui se dit aussi.
+
+    Chaque cas laisse une trace dans `kit.warnings`, sauf le premier -- une
+    famille jouée sur la voix de son propre nom n'a rien à avouer.
+    """
+    voulue = FAMILY_VOICE.get(emplacement.family)
+    if voulue is not None and voulue in voix:
+        return int(voix[voulue])
+
+    # LE REPLI PRÉFÈRE UNE VOIX LIBRE, ET C'EST MESURÉ. Sur *Sky and Sand*, la
+    # famille `percussion` (248 frappes) sonne comme une caisse claire ; mais
+    # la caisse claire est déjà tenue par la famille qui porte ce nom, et les
+    # empiler perd ce qui les distingue. Posée sur la vache -- la voix libre
+    # suivante de son rôle -- elle vaut 0,2604 -> 0,2454 en v4, à budget de
+    # réglage égal. On ne cède la place qu'à une famille NOMMÉE : céder à un
+    # autre repli reviendrait à l'exclusivité générale, qui a été mesurée et
+    # qui perd.
+    role = measured_role(list(emplacement.band_shares))
+    voisines = VOICE_NEIGHBOURS.get(role, [])
+    for candidate in voisines:
+        if candidate in voix and voix[candidate] not in occupees:
+            kit.warnings.append(
+                f"{emplacement.family} : {machine} n'a pas cette voix ; le spectre la "
+                f"donne pour « {role} », jouée sur « {candidate} » "
+                f"({emplacement.hit_count} frappe(s), {describe_band_shares(emplacement.band_shares)})"
+            )
+            occupees.add(voix[candidate])
+            return int(voix[candidate])
+    # Aucune voix libre dans le rôle : on empile plutôt que de sortir du rôle.
+    # Une pièce doublée reste à sa place ; une pièce déplacée ne l'est plus.
+    for candidate in voisines:
+        if candidate in voix:
+            kit.warnings.append(
+                f"{emplacement.family} : {machine} n'a pas cette voix ; le spectre la "
+                f"donne pour « {role} », jouée sur « {candidate} » "
+                f"({emplacement.hit_count} frappe(s), {describe_band_shares(emplacement.band_shares)})"
+            )
+            return int(voix[candidate])
+
+    declaree = DRUM_MACHINE_NOTES.get(machine, {}).get(emplacement.family)
+    if declaree is not None:
+        kit.warnings.append(
+            f"{emplacement.family} : {machine} n'a pas cette voix et le profil n'a pas été "
+            f"mesuré ; repli sur la table déclarée, note {int(declaree)} "
+            f"({emplacement.hit_count} frappe(s))"
+        )
+        return int(declaree)
+
+    note = int(emplacement.midi_note)
+    muette = "" if any(n == note for n in voix.values()) else ", SANS VOIX donc muette"
+    kit.warnings.append(
+        f"{emplacement.family} : {machine} n'a ni cette voix ni de repli déclaré ; "
+        f"jouée sur la note {note} ({emplacement.hit_count} frappe(s){muette})"
+    )
+    return note
+
+
 def drum_machine_track(kit: DrumKit, machine: str, name: str = "Batterie") -> ExportTrack:
     """
     Le kit détecté joué par une BOÎTE À RYTHMES du parc, patch d'usine.
@@ -973,24 +1133,30 @@ def drum_machine_track(kit: DrumKit, machine: str, name: str = "Batterie") -> Ex
 
     Les instants et les vélocités sont ceux de la détection ; seule la machine
     change. Une famille que la machine n'a pas est rabattue et DITE.
+
+    LE REPLI SE DÉCIDE AU SPECTRE, ET C'EST MESURÉ. Quand le nom d'une famille
+    ne désigne aucune voix de la machine, l'ancienne table donnait un repli
+    écrit d'avance -- « la pièce la plus proche en fonction ». Sur *Sky and
+    Sand*, cela envoyait sur le CLAP de la TR-808 une famille de 811 frappes
+    nommée « tom » dont 69 % de l'énergie est sous 200 Hz, c'est-à-dire une
+    grosse caisse : un grave posé sur une salve de bruit, pour un cinquième du
+    morceau. La replacer sur la grosse caisse vaut, à budget de réglage égal,
+    **0,3038 -> 0,2454 en métrique v4 (-19 %)** sur la piste qui porte 63,5 %
+    de l'erreur du morceau. Le repli lit donc `band_shares` -- ce que la
+    famille SONNE -- et non son étiquette.
+
+    Le nom garde le dernier mot quand la machine A la voix qu'il désigne : une
+    variante qui décidait TOUT au spectre a été écrite et mesurée, et elle perd
+    (0,2760 réglée). Ce qui rapporte n'est pas de redistribuer les familles,
+    c'est de ne plus en poser une sur une voix qui ne lui ressemble pas.
     """
     if machine not in DRUM_MACHINE_NOTES:
         raise ValueError(f"pas de correspondance de notes pour « {machine} »")
-    table = DRUM_MACHINE_NOTES[machine]
+    voix = MACHINE_VOICES.get(machine, {})
+    occupees = _voix_nommees(kit, voix)
     notes: List[ExportNote] = []
     for emplacement in kit.slots:
-        note = table.get(emplacement.family)
-        if note is None:
-            note = int(emplacement.midi_note)
-            kit.warnings.append(
-                f"{emplacement.family} : famille sans voix sur {machine}, "
-                f"jouée sur la note {note} ({emplacement.hit_count} frappe(s))"
-            )
-        elif emplacement.family.startswith("tom") and machine == "vsm.tr808":
-            kit.warnings.append(
-                f"{emplacement.family} : la TR-808 n'a pas de toms, rabattu sur le clap "
-                f"({emplacement.hit_count} frappe(s))"
-            )
+        note = _voix_de_la_famille(kit, machine, voix, emplacement, occupees)
         for instant, velocite in zip(emplacement.onsets, emplacement.velocities, strict=True):
             notes.append(ExportNote(note=note, velocity=velocite, start=instant, duration=0.05))
     notes.sort(key=lambda n: n.start)

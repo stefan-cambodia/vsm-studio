@@ -189,6 +189,25 @@ def piste_avec_table(kit, machine: str, table: Dict[str, int], nom: str) -> Expo
     return ExportTrack(name=nom, machine=machine, parameters={}, notes=notes, is_drums=True)
 
 
+
+# La table de correspondance d'AVANT le repli mesuré, conservée pour que la
+# comparaison reste faisable. Sans elle, le gain du repli au spectre ne serait
+# plus qu'une affirmation dans un journal.
+ANCIENNE_TABLE: Dict[str, Dict[str, int]] = {
+    "vsm.tr909": {
+        "kick": 36, "kick2": 36, "snare": 38, "snare2": 38,
+        "hihat": 42, "pedalhat": 42, "openhat": 46,
+        "percussion": 39, "tom": 45, "tom2": 47, "tom3": 50, "cymbal": 49,
+    },
+    "vsm.tr808": {
+        "kick": 36, "kick2": 36, "snare": 38, "snare2": 38,
+        "hihat": 42, "pedalhat": 42, "openhat": 46,
+        "percussion": 39, "cymbal": 46,
+        "tom": 39, "tom2": 39, "tom3": 39,
+    },
+}
+
+
 def main() -> int:
     parseur = argparse.ArgumentParser(description=__doc__,
                                        formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -284,8 +303,10 @@ def main() -> int:
         ("vsm.tr909 (voix par le SPECTRE)", piste_par_profil(frais(), "vsm.tr909", "Batterie")),
         ("vsm.drums (patch VIDE, comme l'arbitrage)", drums_usine),
         ("vsm.drums (modélisée, usine)", modelled_drum_track(frais(), name="Batterie")),
-        ("vsm.tr808 (usine, table actuelle)", drum_machine_track(frais(), "vsm.tr808", name="Batterie")),
-        ("vsm.tr909 (usine, table actuelle)", drum_machine_track(frais(), "vsm.tr909", name="Batterie")),
+        ("vsm.tr808 (repli MESURE)", drum_machine_track(frais(), "vsm.tr808", name="Batterie")),
+        ("vsm.tr909 (repli MESURE)", drum_machine_track(frais(), "vsm.tr909", name="Batterie")),
+        ("vsm.tr808 (ancienne table)", piste_avec_table(frais(), "vsm.tr808", ANCIENNE_TABLE["vsm.tr808"], "Batterie")),
+        ("vsm.tr909 (ancienne table)", piste_avec_table(frais(), "vsm.tr909", ANCIENNE_TABLE["vsm.tr909"], "Batterie")),
         ("vsm.tr808 (table corrigée)", piste_avec_table(frais(), "vsm.tr808", corrigee, "Batterie")),
     ]
 
