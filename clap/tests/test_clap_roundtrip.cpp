@@ -582,3 +582,41 @@ VSM_TEST(a_plugin_without_transport_is_left_on_its_factory_tempo) {
     VSM_ASSERT(pic > 0);
     VSM_ASSERT(std::abs(pic - 24000) < 600);   // 120 BPM d'usine
 }
+
+// ---------------------------------------------------------------------------
+// D7.4 : LA FAÇADE NATIVE, ET CE QU'ON PEUT EN VÉRIFIER SANS ÉCRAN
+// ---------------------------------------------------------------------------
+//
+// Ouvrir une interface demande un serveur graphique ; SAVOIR SI UN PLUGIN EN A
+// UNE n'en demande pas. C'est cette moitié-là que la suite garde, parce que
+// c'est elle qui décide si l'application propose l'entrée de menu -- et
+// proposer d'ouvrir une fenêtre qui n'existe pas est précisément le genre de
+// promesse en trop que ce dépôt refuse.
+//
+// L'AUTRE MOITIÉ -- l'incrustation elle-même -- se vérifie en l'ouvrant, avec
+// `vsm-clap-gui-check`. Elle ne peut pas se simuler : c'est tout le motif pour
+// lequel D7.4 l'avait différée.
+
+VSM_TEST(clap_a_plugin_without_a_gui_says_so) {
+    // L'ADAPTATEUR DU DÉPÔT N'A PAS D'INTERFACE NATIVE, et c'est voulu : les
+    // machines VSM ont leur façade, montrée par le Synth Rack. Deux chemins
+    // vers la même chose, dont l'un ne mène nulle part, valent moins qu'un
+    // seul (note de D7.4).
+    std::string erreur;
+    auto instrument = vsm::clap::createClapInstrument(VSM_CLAP_ADAPTER_PATH, "", erreur);
+    VSM_ASSERT(instrument != nullptr);
+    VSM_ASSERT(!vsm::clap::hasNativeEditor(*instrument));
+}
+
+#ifdef VSM_CLAP_TEST_GUI_PATH
+VSM_TEST(clap_a_plugin_with_an_embeddable_gui_says_so_too) {
+    // ET LA RÉPONSE INVERSE DOIT ÊTRE VRAIE AUSSI. Un prédicat qui répondrait
+    // toujours faux passerait le test précédent sans rien garantir -- c'est la
+    // même précaution que le « garde-fou du garde-fou » du compteur
+    // d'allocations.
+    std::string erreur;
+    auto instrument = vsm::clap::createClapInstrument(VSM_CLAP_TEST_GUI_PATH, "", erreur);
+    VSM_ASSERT(instrument != nullptr);
+    VSM_ASSERT(vsm::clap::hasNativeEditor(*instrument));
+}
+#endif

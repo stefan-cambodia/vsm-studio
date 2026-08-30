@@ -96,6 +96,11 @@ target_link_libraries(VintageSynthMidiStudio
 if (TARGET vsm_clap_host)
     target_link_libraries(VintageSynthMidiStudio PRIVATE vsm_clap_host)
     target_compile_definitions(VintageSynthMidiStudio PRIVATE VSM_WITH_CLAP=1)
+    # D7.4 : la façade native, qui vit dans une cible à part parce qu'elle est
+    # la seule moitié de l'hôte CLAP à avoir besoin de JUCE.
+    if (TARGET vsm_clap_window)
+        target_link_libraries(VintageSynthMidiStudio PRIVATE vsm_clap_window)
+    endif()
 endif()
 
 # D7.2 : et l'hôte VST3, quand il est compilé. Même règle que pour CLAP -- sans
@@ -295,3 +300,28 @@ target_link_libraries(vsm-ui-preview PRIVATE
     juce::juce_gui_basics juce::juce_graphics
 )
 juce_generate_juce_header(vsm-ui-preview)
+
+# --- Ouvrir la façade native d'un plugin CLAP, pour de bon (D7.4) -----------
+# D7.4 avait différé cette façade en écrivant qu'il ne fallait pas la déclarer
+# faite sans l'avoir vue tourner. Cet outil est ce qui le permet : il emprunte
+# EXACTEMENT le chemin du menu de l'application, sur n'importe quel `.clap`.
+if (TARGET vsm_clap_window)
+    juce_add_gui_app(vsm-clap-gui-check PRODUCT_NAME "vsm-clap-gui-check")
+    target_sources(vsm-clap-gui-check PRIVATE Source/tools/ClapGuiCheckMain.cpp)
+    target_compile_definitions(vsm-clap-gui-check PRIVATE
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1
+        # CET OUTIL A BESOIN DE TOURNER LA BOUCLE DE MESSAGES À LA MAIN : il
+        # ouvre une fenêtre, la laisse vivre quelques secondes, puis rend la
+        # main. C'est ce que JUCE appelle une boucle modale, et il faut le lui
+        # demander. L'application, elle, ne l'active pas : une boucle modale
+        # dans un DAW est un rappel audio qu'on fait attendre.
+        JUCE_MODAL_LOOPS_PERMITTED=1
+    )
+    target_link_libraries(vsm-clap-gui-check PRIVATE
+        vsm_clap_window vsm_clap_host
+        juce::juce_gui_basics juce::juce_graphics
+    )
+    juce_generate_juce_header(vsm-clap-gui-check)
+endif()

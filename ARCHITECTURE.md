@@ -291,6 +291,42 @@ ces généralités coûterait des allocations. Le thread audio ne prend jamais d
 verrou. Le détail des mesures, du plafond de threads recommandé et du piège du
 « un thread par cœur » est dans `docs/ROADMAP-daw.md`, phase D8.
 
+### 6 nonies. La façade native d'un plugin CLAP (D7.4, différée puis faite)
+
+Un plugin hébergé peut montrer SON interface, en VST3 comme en CLAP. Le menu ne
+sait pas lequel des deux a répondu, et n'a pas à le savoir.
+
+**Ce qui manquait n'était pas l'incrustation, c'était l'hôte.** Le plugin était
+instancié avec un `clap_host` **statique et partagé**, dont `get_extension`
+répondait toujours `nullptr` et `host_data` était nul. Cela suffit à faire jouer
+un plugin — le son ne demande rien à l'hôte. Une interface, si, et elle le
+demande *en retour* : `request_resize`, `closed`, `register_timer` sont des
+appels du plugin VERS l'hôte, et un `host_data` nul rend « de quel plugin
+s'agit-il ? » sans réponse. D'où `HostBridge` : un `clap_host` par instance,
+exposant l'interface, les minuteries, la vérification de thread et le journal.
+
+**Trois règles à ne pas défaire :**
+
+- **L'ordre `create` → `get_size` → `set_parent` → `show`.** `set_parent` exige
+  une fenêtre native qui existe déjà : l'incrustation se fait dans
+  `parentHierarchyChanged`, jamais dans le constructeur. Un composant sans
+  « peer » rendrait un identifiant nul, et le plugin s'incrusterait dans la
+  racine de l'écran.
+- **Incrustée, jamais flottante.** CLAP permet les deux ; une fenêtre que
+  l'application ne place pas, ne redimensionne pas et ne ferme pas n'est pas une
+  façade, c'est un second logiciel ouvert à côté.
+- **Le pont vit aussi longtemps que le plugin**, pas une ligne de moins : le
+  plugin garde l'adresse de `clap_host` et peut la rappeler à tout instant, y
+  compris pendant sa propre destruction.
+
+`hasNativeEditor` vit dans `ClapPluginHost.h` et non dans la façade : savoir si
+un plugin a une interface ne demande pas de serveur graphique, et c'est cette
+moitié-là qui décide si le menu propose l'entrée. L'ouvrir, en revanche, en
+demande un : `vsm-clap-gui-check` le fait, sur `vsm-test-gui.clap`, un
+instrument CLAP à vraie interface X11 que ce dépôt construit — aucun plugin
+tiers à interface n'étant installé, en exiger un rendrait la vérification
+dépendante de l'ordinateur.
+
 ### 6 octies. Lancer la chaîne d'analyse depuis le DAW (phase D9)
 
 La règle n° 2 du § 0 de `ROADMAP-daw.md` — **le DAW se compile et fonctionne

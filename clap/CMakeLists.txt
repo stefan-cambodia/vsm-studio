@@ -49,6 +49,21 @@ if (UNIX)
     target_link_libraries(vsm_clap_host PUBLIC ${CMAKE_DL_LIBS}) # dlopen
 endif()
 
+# --- D7.4 : la façade native, qui a besoin de JUCE -------------------------
+# SÉPARÉE DE `vsm_clap_host`, et pour la même raison que du côté VST3 : l'hôte
+# ne parle que d'`ISynthPlugin`, ce qui permet à `vsm-render` et aux tests de
+# l'employer sans emporter une bibliothèque graphique. Une façade est du
+# dessin ; elle n'a de sens que dans l'application.
+if (TARGET juce::juce_gui_basics)
+    add_library(vsm_clap_window STATIC host/ClapPluginWindow.cpp)
+    target_include_directories(vsm_clap_window PUBLIC host)
+    target_link_libraries(vsm_clap_window PUBLIC vsm_clap_host juce::juce_gui_basics PRIVATE clap)
+    target_compile_features(vsm_clap_window PUBLIC cxx_std_20)
+    if (NOT MSVC)
+        target_compile_options(vsm_clap_window PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+endif()
+
 if (MSVC)
     target_compile_options(vsm_clap_adapter PRIVATE /W4)
     target_compile_options(vsm_clap_host PRIVATE /W4)
@@ -71,6 +86,26 @@ if (VSM_BUILD_TESTS)
     target_link_libraries(vsm_clap_test_effect PRIVATE clap)
     target_compile_features(vsm_clap_test_effect PRIVATE cxx_std_20)
 
+    # --- Un INSTRUMENT CLAP à interface X11, pour éprouver la façade (D7.4) -
+    # Aucun plugin CLAP tiers à interface n'est installé sur la machine de
+    # développement, et en exiger un rendrait la vérification dépendante de
+    # l'ordinateur -- exactement ce que l'effet d'essai ci-dessus refusait
+    # déjà. Construit uniquement là où X11 existe : sur les autres systèmes,
+    # la façade CLAP se vérifie avec leur propre API de fenêtrage, et ce
+    # fichier n'aurait rien à dire.
+    find_package(X11 QUIET)
+    if (X11_FOUND)
+        add_library(vsm_clap_test_gui MODULE tests/TestGuiPlugin.cpp)
+        set_target_properties(vsm_clap_test_gui PROPERTIES
+            OUTPUT_NAME "vsm-test-gui"
+            PREFIX ""
+            SUFFIX ".clap"
+        )
+        target_link_libraries(vsm_clap_test_gui PRIVATE clap ${X11_LIBRARIES})
+        target_include_directories(vsm_clap_test_gui PRIVATE ${X11_INCLUDE_DIR})
+        target_compile_features(vsm_clap_test_gui PRIVATE cxx_std_20)
+    endif()
+
     add_executable(vsm_clap_tests
         tests/test_main.cpp
         tests/test_clap_roundtrip.cpp
@@ -83,6 +118,11 @@ if (VSM_BUILD_TESTS)
     target_compile_definitions(vsm_clap_tests PRIVATE
         VSM_CLAP_ADAPTER_PATH="$<TARGET_FILE:vsm_clap_adapter>"
         VSM_CLAP_TEST_EFFECT_PATH="$<TARGET_FILE:vsm_clap_test_effect>")
+    if (TARGET vsm_clap_test_gui)
+        add_dependencies(vsm_clap_tests vsm_clap_test_gui)
+        target_compile_definitions(vsm_clap_tests PRIVATE
+            VSM_CLAP_TEST_GUI_PATH="$<TARGET_FILE:vsm_clap_test_gui>")
+    endif()
 
     enable_testing()
     add_test(NAME vsm_clap_tests COMMAND vsm_clap_tests)

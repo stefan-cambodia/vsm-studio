@@ -19,11 +19,12 @@ silence**.
 **État au 30/08/2026 : les onze phases sont faites, de D0 à D10.** Chacune porte
 le compte rendu de ce qu'elle a coûté et de ce qu'elle a trouvé, à l'endroit où
 elle est décrite — c'est là qu'il faut lire, pas ici. Ce qui reste ouvert est
-nommé au § 5 (« ce qui n'est pas au programme, et pourquoi ») et dans les deux
-différés assumés en cours de route : la façade native des plugins CLAP (D7.4,
-faute d'un affichage pour l'ouvrir au moins une fois) et la pose d'un
-échantillon ou d'un profil depuis le navigateur, qui appartient au montage
-(D10.1).
+nommé au § 5 (« ce qui n'est pas au programme, et pourquoi ») et dans le seul
+différé qui subsiste : la pose d'un échantillon ou d'un profil depuis le
+navigateur, qui appartient au montage (D10.1). L'autre report — la façade
+native des plugins CLAP, différée en D7.4 « faute d'un affichage pour l'ouvrir
+au moins une fois » — a été levé le 30/08/2026, et il l'a été de la façon qu'il
+exigeait : l'affichage existe, la façade a été ouverte.
 
 ---
 
@@ -1745,7 +1746,7 @@ L'hôte CLAP existe (`clap/host/`). Le marché, lui, est en VST3.
 | D7.1 | Lier l'hôte CLAP à l'application — il est écrit, testé, et non branché | un `.clap` tiers se charge sur une piste — **fait** |
 | D7.2 | Hôte VST3 pour les instruments, présenté comme `ISynthPlugin` | un instrument tiers joue et se sauvegarde dans le projet — **fait** |
 | D7.3 | **Entrées audio dans l'hôte** pour héberger des effets (CLAP comme VST3) | insérables au même titre que les natifs — **fait** |
-| D7.4 | Interface native du plugin dans une fenêtre ; transport transmis au plugin | affichée, redimensionnable, fermable sans perte d'état ; un delay synchronisé au tempo suit le tempo — **fait (façade native : VST3 ; CLAP différé, voir la note)** |
+| D7.4 | Interface native du plugin dans une fenêtre ; transport transmis au plugin | affichée, redimensionnable, fermable sans perte d'état ; un delay synchronisé au tempo suit le tempo — **fait (VST3 et CLAP)** |
 | D7.5 | Balayage des plugins installés en tâche de fond | plugin fautif isolé et signalé, jamais fatal — **fait** |
 
 **Critère de phase** : un projet contenant un plugin tiers se recharge à
@@ -2025,16 +2026,59 @@ la règle déjà tenue pour les instruments VSM manquants (P4/P7 de
 > ont la leur, montrée par le Synth Rack. Deux chemins vers la même chose, dont
 > l'un ne mène nulle part, valent moins qu'un seul.
 >
-> **LA FAÇADE CLAP EST DIFFÉRÉE, ET C'EST UNE DÉCISION, PAS UN OUBLI.**
-> `clap_plugin_gui` demande d'incruster une fenêtre X11 dans la nôtre, avec les
-> extensions d'hôte qui vont avec (redimensionnement, minuteries, descripteurs
-> de fichiers). Ce n'est pas long à écrire ; c'est **impossible à exécuter une
-> seule fois** dans l'environnement où ce travail se fait, qui n'a pas
-> d'affichage. Livrer cent cinquante lignes d'incrustation de fenêtre que
-> personne n'a jamais vues tourner, en les déclarant faites, est exactement ce
-> que ce projet refuse ailleurs. Le côté VST3 passe par JUCE, dont ce chemin est
-> celui de milliers d'hôtes et que le test ci-dessus exerce réellement. La
-> façade CLAP se fera quand elle pourra être ouverte au moins une fois.
+> **LA FAÇADE CLAP AVAIT ÉTÉ DIFFÉRÉE, ET ELLE EST FAITE DEPUIS LE
+> 30/08/2026.** Le motif du report était écrit ici : « ce n'est pas long à
+> écrire ; c'est **impossible à exécuter une seule fois** dans l'environnement
+> où ce travail se fait, qui n'a pas d'affichage. Livrer cent cinquante lignes
+> d'incrustation de fenêtre que personne n'a jamais vues tourner, en les
+> déclarant faites, est exactement ce que ce projet refuse ailleurs. » Cet
+> environnement a un affichage. La condition posée est donc levée — et elle
+> l'est de la façon qu'elle exigeait : la façade a été **ouverte**.
+>
+> **CE QUI MANQUAIT N'ÉTAIT PAS L'INCRUSTATION, C'ÉTAIT L'HÔTE.** Le plugin
+> était instancié avec un `clap_host` **statique et partagé**, dont
+> `get_extension` répondait toujours `nullptr` et dont `host_data` était nul.
+> C'était suffisant pour faire jouer un plugin : le son ne demande rien à
+> l'hôte. Une interface, si — et elle le demande *en retour* :
+> `request_resize`, `closed`, `register_timer` sont des appels du plugin VERS
+> l'hôte, et un `host_data` nul rendait la question « de quel plugin
+> s'agit-il ? » sans réponse. D'où un pont par instance, qui expose quatre
+> extensions : l'interface, **les minuteries** (beaucoup d'éditeurs ne
+> dessinent rien sans elles et donnent une fenêtre figée qui ressemble à un
+> plugin cassé), la vérification de thread (que beaucoup interrogent avant de
+> s'initialiser) et le journal (un plugin qui se plaint dans le vide est un
+> plugin dont on ne saura jamais pourquoi il refuse).
+>
+> **L'ORDRE DES APPELS N'EST PAS NÉGOCIABLE**, et c'est tout ce que
+> l'incrustation a de délicat : `create`, `get_size`, `set_parent`, `show`.
+> `set_parent` exige une fenêtre native qui **existe déjà**, donc un composant
+> JUCE qui a un « peer ». L'incrustation se fait donc dans
+> `parentHierarchyChanged` et non dans le constructeur : un composant pas encore
+> ajouté à une fenêtre rendrait un identifiant nul, et le plugin s'incrusterait
+> dans la racine de l'écran — c'est-à-dire nulle part et partout.
+>
+> **ET IL A FALLU FABRIQUER DE QUOI L'OUVRIR.** Aucun plugin CLAP tiers à
+> interface n'est installé sur la machine de développement, et en exiger un
+> rendrait la vérification dépendante de l'ordinateur — exactement ce que le
+> plugin d'essai de D7.3 refusait déjà pour les effets. `vsm-test-gui.clap` est
+> donc un instrument CLAP minimal **qui a une vraie interface X11** : il se
+> laisse reparenter, il peint une barre qui se déplace (une fenêtre qui ne bouge
+> pas ne prouverait pas que les minuteries arrivent), et il demande à grandir au
+> bout de deux secondes, ce qui exerce `request_resize` sans qu'un humain tire
+> sur un coin.
+>
+> **CE QUI SE VÉRIFIE SANS ÉCRAN EST DANS LA SUITE ; CE QUI N'Y ARRIVE PAS EST
+> DANS UN OUTIL.** Savoir si un plugin *a* une interface ne demande aucun
+> serveur graphique, et c'est cette moitié-là qui décide si le menu propose
+> l'entrée : deux tests la gardent, dans les deux sens (l'adaptateur du dépôt
+> répond non, le plugin d'essai répond oui — un prédicat toujours faux passerait
+> le premier sans rien garantir). L'incrustation, elle, s'ouvre :
+> `vsm-clap-gui-check <fichier.clap>` emprunte **exactement** le chemin du menu,
+> et rapporte la taille demandée, la taille obtenue, et si le plugin a réclamé
+> un redimensionnement. Mesuré : 360 × 220 demandés, 480 × 260 après deux
+> secondes.
+>
+> Aperçu : [`docs/images/panneaux/facade-clap.png`].
 
 
 ### Phase D8 — Tenir la charge

@@ -100,6 +100,20 @@ bool loadClapState(vsm::audio::plugin::ISynthPlugin& instrument,
 // projet emporté ailleurs signale donc le plugin manquant -- et ne le remplace
 // pas, ce que le critère de la phase D7 demande explicitement.
 
+/// VRAI SI CE PLUGIN A UNE INTERFACE NATIVE INCRUSTABLE (D7.4).
+///
+/// « Incrustable » est la moitié importante : CLAP permet aussi les fenêtres
+/// FLOTTANTES, que le plugin gère lui-même. On ne les propose pas -- une
+/// fenêtre que l'application ne place pas, ne redimensionne pas et ne ferme pas
+/// n'est pas une façade, c'est un second logiciel ouvert à côté.
+///
+/// LA QUESTION SE POSE SANS JUCE, et c'est pour cela qu'elle est ici et non
+/// dans `ClapPluginWindow.h` : elle ne demande rien de plus au plugin que de
+/// dire ce qu'il sait faire, et un test doit pouvoir la poser sans serveur
+/// graphique. Ouvrir la façade, en revanche, demande une fenêtre.
+bool hasNativeEditor(vsm::audio::plugin::ISynthPlugin& instrument);
+bool hasNativeEditor(vsm::audio::effect::IAudioEffect& effect);
+
 /// Compose l'identifiant d'instrument d'un plugin CLAP.
 std::string clapInstrumentId(const std::string& clapFilePath, const std::string& pluginId);
 

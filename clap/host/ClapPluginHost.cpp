@@ -1,4 +1,7 @@
 #include "ClapPluginHost.h"
+#include "ClapHostInternals.h"
+#include <thread>
+#include <cstdio>
 #include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 
@@ -278,6 +281,11 @@ public:
         plugin_->destroy(plugin_);
     }
 
+    /// Le pont vit aussi longtemps que le plugin (voir `ClapInstrument`).
+    void setBridge(std::shared_ptr<HostBridge> pont) { bridge_ = std::move(pont); }
+    HostBridge* bridge() const { return bridge_.get(); }
+    const clap_plugin* rawPlugin() const { return plugin_; }
+
     void prepareExtensions() {
         params_ = static_cast<const clap_plugin_params*>(
             plugin_->get_extension(plugin_, CLAP_EXT_PARAMS));
@@ -416,6 +424,7 @@ private:
     void flushPending() { flushParameterValues(plugin_, params_, pendingValues_); }
 
     std::shared_ptr<LoadedModule> module_;
+    std::shared_ptr<HostBridge> bridge_;
     const clap_plugin* plugin_ = nullptr;
     std::string name_;
     const clap_plugin_params* params_ = nullptr;
@@ -558,6 +567,7 @@ private:
     void flushPending() const { flushParameterValues(plugin_, params_, pendingValues_); }
 
     std::shared_ptr<LoadedModule> module_;
+    std::shared_ptr<HostBridge> bridge_;
     clap_event_transport transport_{};
     const clap_plugin* plugin_ = nullptr;
     std::string name_;
@@ -572,6 +582,11 @@ public:
     /// que de dupliquer la logique de chargement.
     const clap_plugin_state* stateExtension() const { return state_; }
     const clap_plugin* rawPlugin() const { return plugin_; }
+    /// LE PONT VIT AUSSI LONGTEMPS QUE LE PLUGIN, et pas une ligne de moins :
+    /// le plugin garde l'adresse de `clap_host` et peut la rappeler à tout
+    /// instant, y compris pendant sa propre destruction.
+    void setBridge(std::shared_ptr<HostBridge> pont) { bridge_ = std::move(pont); }
+    HostBridge* bridge() const { return bridge_.get(); }
 
 private:
     ParameterList parameters_;
@@ -583,27 +598,6 @@ private:
     int64_t steadyTime_ = 0;
     bool activated_ = false;
 };
-
-/// Hôte minimal mais conforme : les plugins interrogent ces champs dès
-/// `create()`, et plusieurs refusent de s'instancier si l'hôte ment sur sa
-/// version ou ne fournit pas les rappels de base.
-const clap_host& minimalHost() {
-    static clap_host host = [] {
-        clap_host h{};
-        h.clap_version = CLAP_VERSION;
-        h.host_data = nullptr;
-        h.name = "VSM Studio";
-        h.vendor = "VSM Studio";
-        h.url = "";
-        h.version = "0.1.0";
-        h.get_extension = [](const clap_host*, const char*) -> const void* { return nullptr; };
-        h.request_restart = [](const clap_host*) {};
-        h.request_process = [](const clap_host*) {};
-        h.request_callback = [](const clap_host*) {};
-        return h;
-    }();
-    return host;
-}
 
 } // namespace
 
@@ -623,6 +617,117 @@ bool declareUnInstrument(const clap_plugin_descriptor* descriptor) {
 }
 
 } // namespace
+
+// ---------------------------------------------------------------------------
+// LE PONT : UN HÔTE PAR PLUGIN (D7.4, façade CLAP)
+// ---------------------------------------------------------------------------
+
+void HostBridge::install() {
+    host.clap_version = CLAP_VERSION;
+    host.host_data = this;
+    host.name = "VSM Studio";
+    host.vendor = "VSM Studio";
+    host.url = "";
+    host.version = "0.1.0";
+    host.request_restart = [](const clap_host*) {};
+    host.request_process = [](const clap_host*) {};
+    host.request_callback = [](const clap_host*) {};
+
+    host.get_extension = [](const clap_host* h, const char* id) -> const void* {
+        if (id == nullptr) return nullptr;
+
+        // --- L'INTERFACE : ce que le plugin demande EN RETOUR ---------------
+        static const clap_host_gui gui = {
+            // `resize_hints_changed` : le plugin a changé d'avis sur ce qu'il
+            // accepte comme taille. On n'en fait rien pour l'instant, et le
+            // dire vaut mieux que de laisser croire qu'on l'écoute -- la
+            // fenêtre suit `can_resize`, qui suffit à ne pas rogner un
+            // éditeur.
+            [](const clap_host*) {},
+            [](const clap_host* h2, uint32_t w, uint32_t ht) -> bool {
+                auto* pont = HostBridge::from(h2);
+                if (!pont || !pont->onRequestResize) return false;
+                pont->onRequestResize(w, ht);
+                return true;
+            },
+            // `request_show` / `request_hide` : le plugin demande à être
+            // montré ou caché. C'est l'utilisateur qui ouvre et ferme une
+            // fenêtre dans ce logiciel ; répondre faux est honnête, répondre
+            // vrai sans rien faire ne le serait pas.
+            [](const clap_host*) -> bool { return false; },
+            [](const clap_host*) -> bool { return false; },
+            // `closed(was_destroyed)` : le plugin dit que son interface n'est
+            // plus là. `was_destroyed` VRAI oblige l'hôte à appeler
+            // `destroy()` pour en accuser réception -- la fenêtre s'en charge,
+            // c'est elle qui tient l'extension.
+            [](const clap_host* h2, bool) {
+                auto* pont = HostBridge::from(h2);
+                if (pont && pont->onClosed) pont->onClosed();
+            },
+        };
+        if (std::strcmp(id, CLAP_EXT_GUI) == 0) return &gui;
+
+        // --- LES MINUTERIES. Beaucoup d'interfaces ne dessinent RIEN sans
+        // elles : elles s'attendent à être appelées pour rafraîchir. Un hôte
+        // qui répond `nullptr` ici donne une fenêtre figée, ce qui ressemble
+        // à un plugin cassé.
+        static const clap_host_timer_support timers = {
+            [](const clap_host* h2, uint32_t periode, clap_id* out) -> bool {
+                auto* pont = HostBridge::from(h2);
+                if (!pont || out == nullptr) return false;
+                // UN PLANCHER À 16 ms : un plugin qui demande 1 ms demande
+                // mille réveils par seconde du thread de l'interface, ce
+                // qu'aucun écran ne rend visible et qu'un portable paie en
+                // batterie.
+                *out = pont->nextTimerId++;
+                pont->timers.push_back({*out, std::max<uint32_t>(16u, periode)});
+                return true;
+            },
+            [](const clap_host* h2, clap_id id2) -> bool {
+                auto* pont = HostBridge::from(h2);
+                if (!pont) return false;
+                const auto avant = pont->timers.size();
+                pont->timers.erase(std::remove_if(pont->timers.begin(), pont->timers.end(),
+                                                   [id2](const Timer& t) { return t.id == id2; }),
+                                    pont->timers.end());
+                return pont->timers.size() != avant;
+            },
+        };
+        if (std::strcmp(id, CLAP_EXT_TIMER_SUPPORT) == 0) return &timers;
+
+        // --- QUEL THREAD SUIS-JE ? Beaucoup de plugins le demandent avant de
+        // faire quoi que ce soit, et certains refusent de s'initialiser si
+        // l'hôte ne sait pas répondre.
+        static const clap_host_thread_check threads = {
+            [](const clap_host* h2) -> bool {
+                auto* pont = HostBridge::from(h2);
+                return pont && std::this_thread::get_id() == pont->mainThread;
+            },
+            // APPROXIMATION ASSUMÉE : « pas le thread principal » n'est pas
+            // « le thread audio » -- le thread de diffusion disque n'est ni
+            // l'un ni l'autre. Aucun plugin ne s'en sert pour autre chose
+            // qu'une assertion de développement, et mentir dans l'autre sens
+            // (répondre toujours faux) ferait échouer ces assertions-là.
+            [](const clap_host* h2) -> bool {
+                auto* pont = HostBridge::from(h2);
+                return pont && std::this_thread::get_id() != pont->mainThread;
+            },
+        };
+        if (std::strcmp(id, CLAP_EXT_THREAD_CHECK) == 0) return &threads;
+
+        // --- CE QUE LE PLUGIN A À DIRE. Un plugin qui se plaint dans le vide
+        // est un plugin dont on ne saura jamais pourquoi il refuse.
+        static const clap_host_log journal = {
+            [](const clap_host*, clap_log_severity gravite, const char* message) {
+                if (gravite < CLAP_LOG_WARNING || message == nullptr) return;
+                std::fprintf(stderr, "[plugin CLAP] %s\n", message);
+            },
+        };
+        if (std::strcmp(id, CLAP_EXT_LOG) == 0) return &journal;
+
+        return nullptr;
+    };
+}
 
 std::vector<ClapPluginInfo> scanClapFile(const std::string& clapFilePath, std::string& outError) {
     std::vector<ClapPluginInfo> found;
@@ -684,8 +789,13 @@ vsm::audio::plugin::SynthPluginPtr createClapInstrument(const std::string& clapF
         return nullptr;
     }
 
-    const clap_plugin* plugin = factory->create_plugin(factory, &minimalHost(), chosen->id);
+    // LE PONT EST CONSTRUIT AVANT LE PLUGIN, et c'est forcé : le plugin reçoit
+    // l'adresse de l'hôte dans `create_plugin` et l'interroge dès `init()`.
+    auto pont = std::make_shared<HostBridge>();
+    pont->install();
+    const clap_plugin* plugin = factory->create_plugin(factory, &pont->host, chosen->id);
     if (!plugin) { outError = "instanciation refusée par le plugin"; return nullptr; }
+    pont->plugin = plugin;
     if (!plugin->init(plugin)) {
         plugin->destroy(plugin);
         outError = "init() du plugin a échoué";
@@ -694,6 +804,7 @@ vsm::audio::plugin::SynthPluginPtr createClapInstrument(const std::string& clapF
 
     auto instrument = std::make_shared<ClapInstrument>(std::move(module), plugin,
                                                         chosen->name ? chosen->name : "CLAP");
+    instrument->setBridge(std::move(pont));
     instrument->setPluginId(chosen->id ? chosen->id : "");
     instrument->prepareExtensions();
     return instrument;
@@ -734,8 +845,11 @@ vsm::audio::effect::AudioEffectPtr createClapEffect(const std::string& clapFileP
         return nullptr;
     }
 
-    const clap_plugin* plugin = factory->create_plugin(factory, &minimalHost(), chosen->id);
+    auto pont = std::make_shared<HostBridge>();
+    pont->install();
+    const clap_plugin* plugin = factory->create_plugin(factory, &pont->host, chosen->id);
     if (!plugin) { outError = "instanciation refusée par le plugin"; return nullptr; }
+    pont->plugin = plugin;
     if (!plugin->init(plugin)) {
         plugin->destroy(plugin);
         outError = "init() du plugin a échoué";
@@ -744,6 +858,7 @@ vsm::audio::effect::AudioEffectPtr createClapEffect(const std::string& clapFileP
 
     auto effet = std::make_unique<ClapEffect>(std::move(module), plugin,
                                                chosen->name ? chosen->name : "CLAP");
+    effet->setBridge(std::move(pont));
     effet->prepareExtensions();
     return effet;
 }
@@ -865,6 +980,58 @@ void installClapResolver() {
             }
             return precedentEffet ? precedentEffet(id) : nullptr;
         });
+}
+
+
+// ---------------------------------------------------------------------------
+// CE QUE LA FAÇADE A BESOIN DE SAVOIR (D7.4)
+// ---------------------------------------------------------------------------
+//
+// `ClapPluginWindow.cpp` a besoin du plugin brut et de son pont. Il ne peut pas
+// les obtenir autrement : les classes qui les portent sont locales à ce
+// fichier, et c'est très bien ainsi -- une fenêtre n'a pas à connaître la
+// mécanique d'un hôte, seulement de quoi parler au plugin.
+
+namespace {
+/// L'API DE FENÊTRAGE QU'ON DEMANDE. CLAP en nomme trois ; sous Linux, JUCE
+/// dessine dans X11 -- y compris sous Wayland, à travers XWayland.
+constexpr const char* kApiFenetre =
+#if defined(_WIN32)
+    CLAP_WINDOW_API_WIN32;
+#elif defined(__APPLE__)
+    CLAP_WINDOW_API_COCOA;
+#else
+    CLAP_WINDOW_API_X11;
+#endif
+
+bool aUneFacade(const clap_plugin* plugin) {
+    if (plugin == nullptr) return false;
+    const auto* gui = static_cast<const clap_plugin_gui*>(
+        plugin->get_extension(plugin, CLAP_EXT_GUI));
+    // `false` = INCRUSTÉE, et c'est la seule forme qu'on propose.
+    return gui != nullptr && gui->is_api_supported != nullptr
+           && gui->is_api_supported(plugin, kApiFenetre, false);
+}
+} // namespace
+
+bool hasNativeEditor(vsm::audio::plugin::ISynthPlugin& instrument) {
+    return aUneFacade(hostedPluginOf(instrument).plugin);
+}
+
+bool hasNativeEditor(vsm::audio::effect::IAudioEffect& effect) {
+    return aUneFacade(hostedPluginOf(effect).plugin);
+}
+
+HostedPlugin hostedPluginOf(vsm::audio::plugin::ISynthPlugin& instrument) {
+    if (auto* clap = dynamic_cast<ClapInstrument*>(&instrument))
+        return {clap->rawPlugin(), clap->bridge()};
+    return {};
+}
+
+HostedPlugin hostedPluginOf(vsm::audio::effect::IAudioEffect& effect) {
+    if (auto* clap = dynamic_cast<ClapEffect*>(&effect))
+        return {clap->rawPlugin(), clap->bridge()};
+    return {};
 }
 
 } // namespace vsm::clap

@@ -19,6 +19,7 @@
 #include "vsm/interchange/OfflineReconstruction.h"
 #if VSM_WITH_CLAP
 #include "ClapPluginHost.h"
+#include "ClapPluginWindow.h"
 #endif
 #if VSM_WITH_VST3
 #include "Vst3PluginHost.h"
@@ -1663,7 +1664,7 @@ void MainComponent::chooseInstrumentFromCatalogue() {
 }
 
 void MainComponent::openPluginEditorForSelectedTrack() {
-#if VSM_WITH_VST3
+#if VSM_WITH_VST3 || VSM_WITH_CLAP
     const size_t piste = trackList_.selectedTrackIndex();
     if (piste >= project_.tracks.size()) return;
 
@@ -1678,7 +1679,29 @@ void MainComponent::openPluginEditorForSelectedTrack() {
 
     auto* machine = audioEngine_.processGraph().trackInstrument(piste);
     if (machine == nullptr) return;
-    auto facade = vsm::vst3::createEditorFor(*machine);
+
+    // DEUX FORMATS, UNE SEULE FENÊTRE. Un plugin est VST3 ou CLAP, jamais les
+    // deux : on demande sa façade à chacun, et le premier qui en a une gagne.
+    // La fenêtre qui suit ne sait pas lequel a répondu, et n'a pas à le savoir.
+    std::unique_ptr<juce::Component> facade;
+    bool redimensionnable = false;
+#if VSM_WITH_VST3
+    if (auto editeurVst3 = vsm::vst3::createEditorFor(*machine)) {
+        redimensionnable = editeurVst3->isResizable();
+        facade = std::move(editeurVst3);
+    }
+#endif
+#if VSM_WITH_CLAP
+    if (facade == nullptr) {
+        facade = vsm::clap::createEditorFor(*machine);
+        // LA FENÊTRE SUIT LA TAILLE QUE LE PLUGIN DEMANDE, et le laisse la
+        // changer s'il le permet : un éditeur redimensionnable enfermé dans
+        // une fenêtre fixe se retrouve rogné, ce qui est pire que pas de
+        // fenêtre du tout. Côté CLAP, c'est `can_resize` qui le dit, et la
+        // façade l'a déjà lu.
+        if (facade != nullptr) redimensionnable = true;
+    }
+#endif
     if (facade == nullptr) {
         juce::AlertWindow::showMessageBoxAsync(
             juce::AlertWindow::InfoIcon, u8"Pas d'interface native",
@@ -1686,11 +1709,6 @@ void MainComponent::openPluginEditorForSelectedTrack() {
                          u8"accessibles dans le Synth Rack."));
         return;
     }
-
-    // LA FENÊTRE SUIT LA TAILLE QUE LE PLUGIN DEMANDE, et le laisse la changer
-    // s'il le permet : un éditeur redimensionnable enfermé dans une fenêtre
-    // fixe se retrouve rogné, ce qui est pire que pas de fenêtre du tout.
-    const bool redimensionnable = facade->isResizable();
     class FenetreFacade final : public juce::DocumentWindow {
     public:
         FenetreFacade(const juce::String& titre, std::function<void()> quandFermee)
