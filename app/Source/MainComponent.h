@@ -9,6 +9,7 @@
 #include "ui/ReconstructionWindow.h"
 #include "ui/MidiLearnWindow.h"
 #include "vsm/interchange/MidiLearnStore.h"
+#include "project/AutosaveService.h"
 #include "audio/AudioEngine.h"
 #include "ui/TransportBarComponent.h"
 #include "ui/TrackListComponent.h"
@@ -209,6 +210,23 @@ private:
     /// de s'en apercevoir sans faire signer un contrat au thread MIDI.
     size_t midiLearnSeenCount_ = 0;
     std::vector<AudioEngine::LearnedControl> learnedDrain_;
+
+    // --- D10.4 : sauvegarde automatique et récupération ---------------------
+    /// Cherche une session interrompue et propose de la reprendre. Appelée UNE
+    /// fois au démarrage, avant d'ouvrir la nôtre.
+    void offerCrashRecovery();
+    /// Prend une photo si le projet a changé et que le délai est écoulé.
+    void autosaveIfNeeded();
+    /// Le projet a été modifié depuis la dernière photo.
+    void markProjectDirty() { projectDirty_ = true; }
+
+    std::unique_ptr<vsm::app::AutosaveService> autosave_;
+    bool projectDirty_ = false;
+    /// L'heure de la dernière photo. La cadence est de trente secondes : le
+    /// critère dit « pas plus d'une minute », et une marge de deux vaut mieux
+    /// qu'une marge nulle sur un disque qui hésite.
+    double lastAutosaveSeconds_ = 0.0;
+    static constexpr double kAutosaveIntervalSeconds = 30.0;
     /// Le morceau d'origine, retenu pour devenir la référence A/B (D9.4).
     juce::File reconstructionSource_;
     /// Le fichier qu'un glisser-déposer vient de proposer, retenu le temps que
@@ -335,7 +353,10 @@ private:
     void openProjectBundle();
     /// Ouvre un dossier de projet déjà désigné (sélecteur, ou chaîne de
     /// reconstruction qui vient de l'écrire — D9.3).
-    void loadProjectBundleFromFolder(const juce::File& folder);
+    /// `mediaFolder` diffère de `folder` pour une session récupérée : le
+    /// projet vient de sa copie de travail, les médias de leur vrai dossier.
+    void loadProjectBundleFromFolder(const juce::File& folder,
+                                      const juce::File& mediaFolder = juce::File());
     /// Charge l'enregistrement d'origine comme piste de référence, pour
     /// l'écoute A/B (étape 11.2).
     void loadReferenceAudio();

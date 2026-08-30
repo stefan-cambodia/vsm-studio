@@ -40,6 +40,7 @@ target_sources(VintageSynthMidiStudio PRIVATE
     Source/ui/UiScale.cpp
     Source/plugins/PluginScanner.cpp
     Source/reconstruction/ReconstructionRunner.cpp
+    Source/project/AutosaveService.cpp
     Source/ui/ReconstructionWindow.cpp
     Source/ui/MidiLearnWindow.cpp
 )

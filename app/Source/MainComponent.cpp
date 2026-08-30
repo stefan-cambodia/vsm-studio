@@ -7,6 +7,7 @@
 #include "vsm/audio/effect/Reverb.h"
 #include "vsm/audio/effect/Delay.h"
 #include <algorithm>
+#include <chrono>
 #include <thread>
 #include <cstddef>
 #include <cstdint>
@@ -114,7 +115,7 @@ MainComponent::MainComponent()
         return audioEngine_.processGraph().masterBus().getParameter(id);
     };
     mixer_.onMixEditStarted = [this] { beginProjectEdit("Mixage"); };
-    mixer_.onMixChanged = [this] { mixDirty_ = true; };
+    mixer_.onMixChanged = [this] { mixDirty_ = true; markProjectDirty(); };
     mixer_.onMasterParam = [this](vsm::audio::plugin::ParamId id, float v) {
         audioEngine_.processGraph().masterBus().setParameter(id, v);
     };
@@ -515,6 +516,15 @@ MainComponent::MainComponent()
     };
     loadMidiLearnMappings();
 
+    // D10.4 : ON CHERCHE UNE SESSION INTERROMPUE AVANT D'OUVRIR LA NÔTRE. Une
+    // fois notre dossier créé, il faudrait l'exclure de la recherche -- une
+    // condition de plus, donc une occasion de plus de se tromper.
+    autosave_ = std::make_unique<vsm::app::AutosaveService>(
+        vsm::app::ui::UiScale::properties().getFile().getParentDirectory()
+            .getChildFile("recuperation"));
+    offerCrashRecovery();
+    autosave_->begin();
+
     refreshReconstructionChain();
     transport_.setAudioDeviceOpen(audioEngine_.isDeviceOpen(),
                                    audioEngine_.currentSampleRate(),
@@ -533,6 +543,10 @@ MainComponent::MainComponent()
 }
 
 MainComponent::~MainComponent() {
+    // FERMETURE NORMALE : c'est l'ABSENCE du dossier de récupération qui, au
+    // prochain lancement, signalera un plantage. L'effacer ici est donc la
+    // seule chose qui distingue « on a quitté » de « on est mort ».
+    if (autosave_) autosave_->endCleanly();
     // AVANT d'arrêter le moteur : une fois le périphérique fermé, il n'y a plus
     // d'état à écrire.
     saveAudioDeviceState();
@@ -693,6 +707,8 @@ void MainComponent::timerCallback() {
     synthRack_.setPlayheadTick(playhead); // éclaire le pas en cours sur les grilles
     arrangement_.setPlayheadTick(playhead);
     pianoRollPanel_.refresh(); // règle + barre d'outils suivent la tête de lecture et l'historique
+
+    autosaveIfNeeded();
 
     // CE QUE LE THREAD MIDI A DÉPOSÉ (D10.2) : mixage et transport, qu'il n'a
     // pas le droit de toucher lui-même.
@@ -2099,7 +2115,14 @@ void MainComponent::openProjectBundle() {
 /// d'en écrire un, et il doit s'ouvrir exactement comme celui qu'on désigne à
 /// la main, presets, échantillons et notes douteuses compris. Deux chemins
 /// d'ouverture finiraient par ne plus charger tout à fait la même chose.
-void MainComponent::loadProjectBundleFromFolder(const juce::File& folder) {
+void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
+                                                const juce::File& mediaFolder) {
+    // LE PROJET ET SES MÉDIAS PEUVENT NE PAS ÊTRE AU MÊME ENDROIT (D10.4). Une
+    // sauvegarde automatique ne copie pas les médias -- c'est ce qui la rend
+    // écrivable toutes les trente secondes -- et leurs chemins sont restés
+    // relatifs au dossier d'origine du projet. Partout ailleurs, les deux
+    // coïncident, et c'est le cas par défaut.
+    const juce::File medias = mediaFolder == juce::File() ? folder : mediaFolder;
     auto loaded = vsm::interchange::loadProjectBundle(folder.getFullPathName().toStdString());
     if (!loaded.success) {
         juce::AlertWindow::showMessageBoxAsync(
@@ -2112,10 +2135,12 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder) {
     project_ = loaded.bundle.project;
     if (project_.title.empty())
         project_.title = folder.getFileName().toStdString();
-    // Ctrl+S réécrira ICI, sans redemander où.
-    currentProjectFolder_ = folder;
+    // Ctrl+S réécrira ICI, sans redemander où -- et « ici » est le dossier des
+    // MÉDIAS, c'est-à-dire le vrai dossier du projet : réécrire une session
+    // récupérée dans sa copie de travail la perdrait au prochain lancement.
+    currentProjectFolder_ = medias;
     if (auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
-        window->setName("Vintage Synth MIDI Studio -- " + folder.getFileName());
+        window->setName("Vintage Synth MIDI Studio -- " + medias.getFileName());
     // rebuildFromProject() assigne les instruments d'après le projet : les
     // machines n'existent donc PAS avant cet appel, et appliquer les
     // presets plus tôt reviendrait à les appliquer à rien.
@@ -2484,11 +2509,97 @@ void MainComponent::applyLearnedControls() {
         // republier le projet cent fois par seconde reviendrait à reconstruire
         // le planning cent fois pour un fader.
         mixDirty_ = true;
+        markProjectDirty();
         // La console doit MONTRER ce qu'un potentiomètre physique vient de
         // faire : un fader qui bouge sans que le sien bouge à l'écran est
         // exactement ce qui fait douter du câblage.
         mixer_.setProject(&project_);
     }
+}
+
+// --- D10.4 : sauvegarde automatique et récupération -------------------------
+
+void MainComponent::offerCrashRecovery() {
+    if (!autosave_) return;
+    auto sessions = autosave_->findInterruptedSessions();
+    if (sessions.empty()) return;
+
+    // ON NE DEMANDE PAS « RÉCUPÉRER UNE SESSION ? » : personne ne peut répondre
+    // à cette question. On dit lequel, de quand, et ce qu'il contient.
+    const auto& reprise = sessions.front();
+    const auto maintenant = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    const int minutes = static_cast<int>(
+        (maintenant - reprise.record.savedAtEpochSeconds) / 60);
+    const juce::String titre = reprise.record.title.empty()
+        ? juce::String::fromUTF8(u8"(projet sans titre)")
+        : juce::String::fromUTF8(reprise.record.title.c_str());
+    juce::String quand = minutes <= 0
+        ? juce::String::fromUTF8(u8"il y a moins d'une minute")
+        : juce::String::fromUTF8(u8"il y a ") + juce::String(minutes)
+              + juce::String::fromUTF8(u8" minute") + (minutes > 1 ? "s" : "");
+
+    juce::String message = titre + " — " + juce::String(reprise.record.trackCount)
+        + juce::String::fromUTF8(u8" piste(s), ") + juce::String(reprise.record.noteCount)
+        + juce::String::fromUTF8(u8" note(s), enregistré automatiquement ") + quand + ".";
+    if (reprise.record.originalFolder.empty())
+        message += juce::String::fromUTF8(
+            u8"\n\nCe projet n'avait JAMAIS été enregistré : sans cette copie, il serait perdu.");
+    if (sessions.size() > 1)
+        message += juce::String::fromUTF8(u8"\n\n(") + juce::String(static_cast<int>(sessions.size()) - 1)
+                   + juce::String::fromUTF8(u8" autre(s) session(s) interrompue(s) seront conservées "
+                                             u8"et proposées au prochain lancement.)");
+
+    const juce::File dossier = reprise.folder;
+    const juce::File origine = reprise.record.originalFolder.empty()
+        ? juce::File()
+        : juce::File(juce::String::fromUTF8(reprise.record.originalFolder.c_str()));
+
+    juce::AlertWindow::showOkCancelBox(
+        juce::AlertWindow::QuestionIcon,
+        juce::String::fromUTF8(u8"Session interrompue"),
+        message, juce::String::fromUTF8(u8"Récupérer"),
+        juce::String::fromUTF8(u8"Ignorer et effacer"), this,
+        juce::ModalCallbackFunction::create([this, dossier, origine](int resultat) {
+            if (resultat != 1) {
+                vsm::app::AutosaveService::discard(dossier);
+                return;
+            }
+            // LE PROJET VIENT DE LA COPIE, LES MÉDIAS DE SON DOSSIER D'ORIGINE.
+            // La copie ne contient pas les médias -- c'est ce qui la rend
+            // écrivable toutes les trente secondes --, et leurs chemins sont
+            // restés relatifs au dossier d'origine.
+            loadProjectBundleFromFolder(dossier, origine);
+            // ET ELLE EST EFFACÉE : elle a servi. La garder la ferait
+            // reproposer au prochain lancement, indéfiniment.
+            vsm::app::AutosaveService::discard(dossier);
+            // Le projet récupéré n'est PAS enregistré : il vient d'une copie
+            // de travail. Le marquer sale fait qu'une nouvelle photo part tout
+            // de suite, et l'utilisateur garde la main sur le vrai
+            // enregistrement.
+            markProjectDirty();
+        }));
+}
+
+void MainComponent::autosaveIfNeeded() {
+    if (!autosave_ || !projectDirty_) return;
+    const double maintenant = juce::Time::getMillisecondCounterHiRes() / 1000.0;
+    if (maintenant - lastAutosaveSeconds_ < kAutosaveIntervalSeconds) return;
+    lastAutosaveSeconds_ = maintenant;
+    projectDirty_ = false;
+
+    // LA PHOTO EST PRISE ICI, L'ÉCRITURE A LIEU AILLEURS. Capturer les presets
+    // demande les machines vivantes, donc le thread de l'interface ; écrire
+    // demande le disque, donc surtout pas lui.
+    captureSessionIntoProject();
+    std::map<size_t, vsm::interchange::SynthPreset> presets;
+    for (size_t i = 0; i < project_.tracks.size(); ++i) {
+        const auto& piste = project_.tracks[i];
+        if (piste.instrumentId.empty()) continue;
+        if (auto* machine = audioEngine_.processGraph().trackInstrument(i))
+            presets[i] = vsm::interchange::capturePreset(*machine, piste.instrumentId, piste.name);
+    }
+    autosave_->requestSave(project_, presets, currentProjectFolder_);
 }
 
 void MainComponent::loadReferenceAudio() {
@@ -3767,6 +3878,10 @@ void MainComponent::quantizeLastTake() {
 
 void MainComponent::beginProjectEdit(const juce::String& label) {
     history_.beginEdit(project_, label.toStdString());
+    // TOUTES LES MODIFICATIONS ANNULABLES PASSENT PAR ICI (D10.4) : c'est
+    // l'endroit qui ne peut pas être oublié, parce qu'oublier de l'appeler
+    // casserait déjà l'annulation, ce qui se voit tout de suite.
+    markProjectDirty();
 }
 
 void MainComponent::rebuildFromProject(bool stopPlayback) {
@@ -3849,6 +3964,10 @@ void MainComponent::rebuildFromProject(bool stopPlayback) {
 }
 
 void MainComponent::refreshTransportSchedule() {
+    // Republier le projet au moteur veut dire qu'il a changé : la sauvegarde
+    // automatique doit le savoir, même quand le changement n'est pas passé par
+    // l'historique (une prise qu'on vient de poser, un instrument assigné).
+    markProjectDirty();
     // PLUS RIEN À INTERROMPRE (D8.3). Cette fonction arrêtait et relançait le
     // transport MIDI, dont l'arrêt remettait la position à zéro -- d'où les
     // deux endroits qui l'évitaient soigneusement pendant la lecture. Le

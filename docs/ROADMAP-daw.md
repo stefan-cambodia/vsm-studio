@@ -2454,7 +2454,7 @@ qu'elle est là.
 | D10.1 | Navigateur : machines, presets, profils, échantillons, recherche, glisser-déposer | trouver un preset ne demande plus d'ouvrir un dossier |
 | D10.2 | MIDI learn **persistant**, liste des associations, moyen d'en défaire une (`clearMidiLearn()` n'est appelé de nulle part), et cartographie du transport et du mixeur | un potentiomètre physique s'en souvient d'une session à l'autre — **fait** |
 | D10.3 | Raccourcis configurables, table imprimable, fenêtre de préférences | une page les liste tous |
-| D10.4 | Sauvegarde automatique et récupération après plantage | tuer l'application ne perd pas plus d'une minute |
+| D10.4 | Sauvegarde automatique et récupération après plantage | tuer l'application ne perd pas plus d'une minute — **fait** |
 
 > **D10.2 EST FAITE (30/08/2026).** Ce qui se perdait à chaque lancement n'était
 > pas une préférence de confort : c'était le câblage d'un studio, refait à la
@@ -2507,6 +2507,52 @@ qu'elle est là.
 > est **écartée et comptée**, jamais devinée : un potentiomètre qui pilote autre
 > chose que ce qu'on croit est pire qu'un potentiomètre inerte, et le compte
 > permet de le DIRE au lieu de laisser chercher.
+
+> **D10.4 EST FAITE (30/08/2026). LA CADENCE EST DE TRENTE SECONDES**, là où le
+> critère dit « pas plus d'une minute » : une marge de deux vaut mieux qu'une
+> marge nulle sur un disque qui hésite. Une photo n'est prise que si le projet a
+> changé — un studio ouvert sans qu'on y touche n'a aucune raison d'écrire.
+>
+> **CE QU'ELLE N'ÉCRIT PAS EST AUSSI IMPORTANT QUE CE QU'ELLE ÉCRIT.**
+> Enregistrer un projet complet (`exportStandaloneProject`) COPIE tous les
+> médias. Recopier une prise de deux cents mégaoctets toutes les trente secondes
+> ferait de la sauvegarde automatique la panne dont elle devait protéger. Elle
+> écrit donc `project.json`, le MIDI et les presets, et **retient le dossier
+> d'origine** : les chemins de médias lui restent relatifs. Sans ce souvenir, un
+> projet récupéré rouvrirait avec toutes ses pistes audio muettes, et rien
+> n'expliquerait pourquoi.
+>
+> **ELLE N'ÉCRIT PAS SUR LE THREAD DE L'INTERFACE.** Le projet est copié là — un
+> type valeur, copie rapide et cohérente — et écrit ailleurs. Un studio qui
+> hoquette toutes les trente secondes est un studio dont on désactive la
+> sauvegarde automatique, et la protection s'en va avec elle.
+>
+> **ELLE ÉCRIT À CÔTÉ PUIS BASCULE.** Une sauvegarde interrompue *en cours
+> d'écriture* laisserait un `project.json` tronqué : un plantage pendant la
+> sauvegarde détruirait la sauvegarde, c'est-à-dire exactement le scénario
+> qu'elle couvre.
+>
+> **COMMENT ON SAIT QU'UNE SESSION S'EST INTERROMPUE, ET COMMENT ON ÉVITE LE
+> FAUX POSITIF.** Chaque exécution a son dossier et l'efface en se terminant
+> **normalement** ; un dossier qui subsiste est donc celui d'une session morte
+> sans se fermer. Mais un dossier qui subsiste, c'est aussi celui d'une deuxième
+> fenêtre **ouverte en ce moment** — et proposer de récupérer une session qui
+> est en train de travailler serait pire que ne rien proposer. Chaque session
+> tient donc un **verrou inter-processus** sur son dossier : s'il s'acquiert, le
+> propriétaire n'existe plus. C'est le verrou, et lui seul, qui distingue « ça a
+> planté » de « c'est ouvert ailleurs ».
+>
+> **ET L'EFFACEMENT N'EST PAS DANS LE DESTRUCTEUR.** Un destructeur s'exécute
+> aussi bien à la fermeture normale qu'au démontage après une erreur ; effacer
+> des deux côtés effacerait justement ce qu'on voulait garder. C'est la
+> fermeture explicite qui le dit.
+>
+> **LA QUESTION POSÉE N'EST PAS « RÉCUPÉRER UNE SESSION ? »** — personne ne peut
+> répondre à celle-là. Elle dit lequel, de quand, et ce qu'il contient : *« Sky
+> and Sand — 12 piste(s), 4821 note(s), enregistré automatiquement il y a 3
+> minutes »*. Et quand le projet **n'avait jamais été enregistré**, elle le dit
+> explicitement : c'est le cas où l'on ne perd pas une minute mais tout, et
+> c'est celui pour lequel cette étape existe.
 
 ---
 
