@@ -8,6 +8,9 @@ using vsm::interchange::BrowserItemKind;
 namespace {
 constexpr const char* kPrefixe = "vsm-browser:";
 constexpr int kHauteurLigne = 26;
+/// Assez large pour « Échantillon » en entier : c'est le mot le plus long, et
+/// le tronquer est précisément ce qui rendait la colonne inutile.
+constexpr int kLargeurFamille = 100;
 
 juce::Colour couleurDe(BrowserItemKind kind) {
     switch (kind) {
@@ -64,8 +67,9 @@ public:
             if (i == survol_) g.fillAll(juce::Colour(0x18ffffff));
             g.setColour(couleurDe(entree.kind));
             g.setFont(juce::Font(juce::FontOptions(14.0f)));
-            g.drawText(juce::String::fromUTF8(vsm::interchange::browserKindLabel(entree.kind)).substring(0, 3),
-                        ligne.removeFromLeft(38).reduced(4, 0), juce::Justification::centredLeft);
+            g.drawText(juce::String::fromUTF8(vsm::interchange::browserKindShortLabel(entree.kind)),
+                        ligne.removeFromLeft(kLargeurFamille).reduced(4, 0),
+                        juce::Justification::centredLeft);
             g.setColour(juce::Colours::white);
             g.setFont(juce::Font(juce::FontOptions(15.0f)));
             g.drawText(juce::String::fromUTF8(entree.name.c_str()),

@@ -59,8 +59,17 @@ void indexFolder(const std::string& folderPath, const std::string& origin,
 std::vector<BrowserItem> filterBrowserItems(const std::vector<BrowserItem>& items,
                                              const std::string& query);
 
-/// Le libellé d'une famille, pour les en-têtes de la liste.
+/// Le libellé d'une famille, au pluriel, pour les en-têtes.
 const char* browserKindLabel(BrowserItemKind kind);
+
+/// LE LIBELLÉ COURT DE LA COLONNE DE GAUCHE, au singulier et ENTIER.
+///
+/// Il a d'abord été fabriqué en coupant le pluriel à trois lettres, ce qui
+/// donnait « Pre » et « Pro » côte à côte -- deux familles qu'on ne distingue
+/// pas d'un coup d'œil, dans la colonne dont c'est la seule fonction. Une
+/// abréviation qu'il faut décoder ne rend pas la liste plus lisible, elle la
+/// rend plus courte.
+const char* browserKindShortLabel(BrowserItemKind kind);
 
 /// Reconnaît un fichier d'après son nom. Exposé parce que le glisser-déposer
 /// s'en sert aussi -- deux réponses différentes à « qu'est-ce que ce

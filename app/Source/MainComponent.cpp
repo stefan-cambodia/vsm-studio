@@ -2769,20 +2769,10 @@ void MainComponent::refreshShortcutList() { shortcutsPanel_.setTable(&shortcuts_
 void MainComponent::refreshPreferences() {
     const juce::String designe =
         vsm::app::ui::UiScale::properties().getValue("dossierChaineAnalyse", "");
-    juce::String etat;
-    if (reconstructionChain_.available)
-        etat = juce::String::fromUTF8(u8"Prête — ")
-               + juce::String::fromUTF8(reconstructionChain_.chainFolder.c_str());
-    else
-        etat = juce::String::fromUTF8(reconstructionChain_.reason.c_str())
-               + (reconstructionChain_.remedy.empty()
-                      ? juce::String()
-                      : juce::String("\n") + juce::String::fromUTF8(reconstructionChain_.remedy.c_str()));
-
     preferencesPanel_.refresh(
         vsm::app::ui::UiScale::current(), savedRenderThreadChoice(),
         static_cast<int>(vsm::audio::engine::ProcessGraph::recommendedRenderThreadCount()),
-        designe, etat,
+        reconstructionChain_, designe,
         vsm::app::ui::UiScale::properties().getValue("dossierBibliotheque", ""),
         static_cast<int>(vsm::interchange::shortcutCommands().size()),
         static_cast<int>(audioEngine_.midiLearnMappingCount()));

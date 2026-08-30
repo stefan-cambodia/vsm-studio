@@ -16,8 +16,15 @@ public:
 
         juce::String famille;
         for (const auto& commande : vsm::interchange::shortcutCommands()) {
-            if (juce::String(commande.category) != famille) {
-                famille = commande.category;
+            // `fromUTF8` ET PAS LE CONSTRUCTEUR ORDINAIRE. `juce::String(const
+            // char*)` interprète ses octets en Latin-1 : « Édition » sortait
+            // « Ãdition ». C'est la règle du § 6 bis bis d'ARCHITECTURE.md, qui
+            // avait déjà coûté la moitié des libellés de l'application une
+            // première fois -- et que ce panneau a réintroduite parce qu'il ne
+            // fabrique pas ses textes, il les reçoit.
+            const juce::String categorie = juce::String::fromUTF8(commande.category);
+            if (categorie != famille) {
+                famille = categorie;
                 auto titre = std::make_unique<juce::Label>();
                 titre->setText(famille, juce::dontSendNotification);
                 titre->setFont(juce::Font(juce::FontOptions(15.0f, juce::Font::bold)));
@@ -45,7 +52,8 @@ public:
                 // DÉFAIRE : un bouton toujours présent et inerte quinze fois
                 // sur seize n'apprend rien.
                 defaut = std::make_unique<juce::TextButton>(juce::String::fromUTF8(u8"↺"));
-                defaut->setTooltip(juce::String::fromUTF8(u8"Rétablir ") + commande.defaultKey);
+                defaut->setTooltip(juce::String::fromUTF8(u8"Rétablir ")
+                                        + juce::String::fromUTF8(commande.defaultKey));
                 defaut->onClick = [reset, id] { if (reset) reset(id); };
                 addAndMakeVisible(*defaut);
             }

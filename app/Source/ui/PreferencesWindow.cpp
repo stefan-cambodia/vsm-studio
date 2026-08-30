@@ -105,7 +105,8 @@ void PreferencesWindow::resized() {
 }
 
 void PreferencesWindow::refresh(float uiScale, int renderThreads, int recommendedThreads,
-                                 const juce::String& chainFolder, const juce::String& chainStatus,
+                                 const vsm::interchange::ReconstructionChain& chain,
+                                 const juce::String& designatedChainFolder,
                                  const juce::String& libraryFolder,
                                  int shortcutCount, int midiMappingCount) {
     const auto& paliers = UiScale::steps();
@@ -113,19 +114,40 @@ void PreferencesWindow::refresh(float uiScale, int renderThreads, int recommende
         if (std::abs(paliers[i] - uiScale) < 1.0e-3f)
             echelle_.setSelectedId(i + 1, juce::dontSendNotification);
 
+    // « AUTOMATIQUE » DOIT DIRE CE QU'IL VAUT ICI. Le menu Fichier l'écrivait
+    // déjà ; cette fenêtre recevait le chiffre et le jetait, si bien qu'on
+    // pouvait choisir « Automatique » sans jamais apprendre à combien de
+    // threads cela revient sur cette machine -- alors que c'est la seule
+    // question qu'on se pose en regardant ce réglage.
+    threads_.changeItemText(1, juce::String::fromUTF8(u8"Automatique (")
+                                   + juce::String(recommendedThreads)
+                                   + juce::String::fromUTF8(u8" ici)"));
     threads_.setSelectedId(renderThreads < 0 ? 1 : renderThreads + 2, juce::dontSendNotification);
-    threads_.setTextWhenNothingSelected(juce::String::fromUTF8(u8"Automatique"));
-    if (renderThreads < 0)
-        threads_.setItemEnabled(1, true);
 
     // LE DOSSIER ET SON ÉTAT SONT DEUX CHOSES DIFFÉRENTES : un chemin qui
     // existe et une chaîne qui marche ne se confondent pas, et c'est
     // précisément la distinction que D9.1 a coûté du code à établir.
-    libelleChaine_.setText(chainFolder.isEmpty()
+    libelleChaine_.setText(designatedChainFolder.isEmpty()
                                 ? juce::String::fromUTF8(u8"Dossier (trouvé automatiquement)")
-                                : chainFolder,
+                                : designatedChainFolder,
                             juce::dontSendNotification);
-    etatChaine_.setText(chainStatus, juce::dontSendNotification);
+
+    juce::String etat;
+    if (chain.available) {
+        // LE CHEMIN EST DÉJÀ SUR LA LIGNE DU DESSUS quand l'utilisateur l'a
+        // désigné : le répéter en dessous ne dit rien de plus et fait croire à
+        // deux dossiers. Quand il a été TROUVÉ, en revanche, il faut le
+        // montrer -- c'est la seule façon de savoir lequel a été retenu.
+        etat = designatedChainFolder.isNotEmpty()
+                   ? juce::String::fromUTF8(u8"Prête.")
+                   : juce::String::fromUTF8(u8"Prête — trouvée dans ")
+                         + juce::String::fromUTF8(chain.chainFolder.c_str());
+    } else {
+        etat = juce::String::fromUTF8(chain.reason.c_str());
+        if (!chain.remedy.empty())
+            etat += juce::String("\n") + juce::String::fromUTF8(chain.remedy.c_str());
+    }
+    etatChaine_.setText(etat, juce::dontSendNotification);
 
     libelleBibliotheque_.setText(
         libraryFolder.isEmpty()
@@ -137,7 +159,6 @@ void PreferencesWindow::refresh(float uiScale, int renderThreads, int recommende
                                   + juce::String(shortcutCount) + ")...");
     associations_.setButtonText(juce::String::fromUTF8(u8"Associations MIDI (")
                                     + juce::String(midiMappingCount) + ")...");
-    (void)recommendedThreads;
 }
 
 } // namespace vsm::app::ui

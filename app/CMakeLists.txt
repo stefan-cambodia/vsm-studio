@@ -269,3 +269,29 @@ target_link_libraries(vsm-arrangement-preview PRIVATE
     juce::juce_graphics
 )
 juce_generate_juce_header(vsm-arrangement-preview)
+
+# --- Aperçu hors écran des panneaux de l'application (D10) -------------------
+# Même raison d'être que `vsm-panel-preview` : une fenêtre qu'on ne regarde
+# jamais est une fenêtre qu'on ne peut pas juger. Les tests disent que la
+# logique est juste ; ils ne diront jamais qu'une colonne déborde.
+juce_add_console_app(vsm-ui-preview PRODUCT_NAME "vsm-ui-preview")
+target_sources(vsm-ui-preview PRIVATE
+    Source/tools/UiPreviewMain.cpp
+    Source/ui/ShortcutsWindow.cpp
+    Source/ui/MidiLearnWindow.cpp
+    Source/ui/PreferencesWindow.cpp
+    Source/ui/BrowserComponent.cpp
+    Source/ui/ReconstructionWindow.cpp
+    Source/ui/UiScale.cpp
+    Source/reconstruction/ReconstructionRunner.cpp
+)
+target_compile_definitions(vsm-ui-preview PRIVATE
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_STANDALONE_APPLICATION=1
+)
+target_link_libraries(vsm-ui-preview PRIVATE
+    vsm_core vsm_audio vsm_interchange
+    juce::juce_gui_basics juce::juce_graphics
+)
+juce_generate_juce_header(vsm-ui-preview)

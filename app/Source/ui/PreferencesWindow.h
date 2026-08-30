@@ -1,5 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
+#include "vsm/interchange/ReconstructionChain.h"
 #include <functional>
 
 namespace vsm::app::ui {
@@ -25,8 +26,15 @@ public:
     void resized() override;
 
     /// Republie l'état affiché depuis l'application.
+    /// LE PANNEAU REÇOIT L'ÉTAT, PAS LA PHRASE. Il recevait auparavant un
+    /// texte déjà composé par l'application ; l'aperçu hors écran en composait
+    /// donc un autre, et montrait une fenêtre qui n'existait pas -- le chemin
+    /// de la chaîne y apparaissait deux fois là où l'application ne l'écrit
+    /// qu'une. Une phrase construite à deux endroits finit toujours par
+    /// diverger, et c'est le second qui ment.
     void refresh(float uiScale, int renderThreads, int recommendedThreads,
-                  const juce::String& chainFolder, const juce::String& chainStatus,
+                  const vsm::interchange::ReconstructionChain& chain,
+                  const juce::String& designatedChainFolder,
                   const juce::String& libraryFolder,
                   int shortcutCount, int midiMappingCount);
 

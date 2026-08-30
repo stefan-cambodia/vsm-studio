@@ -33,6 +33,16 @@ bool isSampleFile(const std::string& path) {
     return false;
 }
 
+const char* browserKindShortLabel(BrowserItemKind kind) {
+    switch (kind) {
+        case BrowserItemKind::Machine: return "Machine";
+        case BrowserItemKind::Preset:  return "Preset";
+        case BrowserItemKind::Profile: return "Profil";
+        case BrowserItemKind::Sample:  return "Échantillon";
+    }
+    return "?";
+}
+
 const char* browserKindLabel(BrowserItemKind kind) {
     switch (kind) {
         case BrowserItemKind::Machine: return "Machines";
