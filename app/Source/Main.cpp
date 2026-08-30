@@ -92,6 +92,10 @@ private:
 // AVANT TOUT LE RESTE DE JUCE, et c'est essentiel : ouvrir une fenêtre pour
 // balayer un fichier serait absurde, et sur une machine sans affichage cela
 // échouerait avant même d'avoir commencé.
+/// Annoncée avant `main`, définie après : c'est `main` qui l'inscrit dans
+/// `JUCEApplicationBase::createInstance`.
+juce::JUCEApplicationBase* juce_CreateApplication();
+
 int main(int argc, char* argv[]) {
     for (int i = 1; i + 1 < argc; ++i) {
         if (juce::String(argv[i]) != "--scan-plugin") continue;
@@ -105,11 +109,30 @@ int main(int argc, char* argv[]) {
         std::fflush(stdout);
         return 0;
     }
+
+    // CETTE LIGNE EST LA MOITIÉ OUBLIÉE DE `START_JUCE_APPLICATION`, ET SANS
+    // ELLE L'APPLICATION NE DÉMARRE PAS DU TOUT.
+    //
+    // La macro fait DEUX choses : elle définit `juce_CreateApplication()`, et
+    // elle inscrit ce pointeur dans `JUCEApplicationBase::createInstance` --
+    // c'est par là, et uniquement par là, que JUCE sait quelle classe
+    // instancier. Réécrire `main()` à la main (voir ci-dessus, D7.5) en n'ayant
+    // gardé que la définition de la fonction laissait le pointeur NUL :
+    // `JUCEApplicationBase::main()` appelait l'adresse zéro et le processus
+    // mourait sur une faute de segmentation avant d'avoir ouvert une fenêtre.
+    //
+    // POURQUOI PERSONNE NE L'A VU : l'assertion de JUCE qui l'aurait dit
+    // (`jassert (createInstance != nullptr)`) est compilée hors des builds
+    // optimisés, et le reste du dépôt -- 1 206 tests, six suites -- ne passe
+    // jamais par ce fichier. Une interface ne se teste pas sans écran, mais son
+    // POINT D'ENTRÉE, si : la vérification tient dans un lancement.
+    juce::JUCEApplicationBase::createInstance = &juce_CreateApplication;
     return juce::JUCEApplicationBase::main(argc, const_cast<const char**>(argv));
 }
 
-// `START_JUCE_APPLICATION` définirait un second `main`. On garde donc seulement
-// ce que la macro fait d'autre : désigner la classe d'application.
+// `START_JUCE_APPLICATION` définirait un second `main`. On reprend donc à la
+// main ce que la macro fait par ailleurs : définir la fabrique (ici) et
+// l'inscrire dans `createInstance` (dans `main`, ci-dessus).
 juce::JUCEApplicationBase* juce_CreateApplication() {
     return new VintageSynthMidiStudioApplication();
 }
