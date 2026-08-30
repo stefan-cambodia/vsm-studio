@@ -2431,15 +2431,27 @@ void MainComponent::loadAudioTracks() {
         // UN GEL N'EST PAS DÉCOUPÉ : il rend la piste entière, clips compris.
         // Lui appliquer les clips de la piste les appliquerait DEUX fois.
         if (gelee) pourLesClips.clips.clear();
-        // LE CACHE D'APERÇU (D5.7), construit ici parce que les échantillons
-        // sont déjà là et déjà à la bonne fréquence. Le dessin ne les reverra
-        // jamais : il ne lira que ce cache.
-        waveformCache_[i] = std::make_shared<const std::vector<vsm::audio::io::PeakBin>>(
-            vsm::audio::io::computePeaks(charge.source->left.data(),
-                                          charge.source->right.empty()
-                                              ? charge.source->left.data()
-                                              : charge.source->right.data(),
-                                          charge.source->frames()));
+        // LE CACHE D'APERÇU (D5.7). Deux chemins, parce qu'il y a désormais deux
+        // façons de tenir le matériau (D8.2) : quand il est résident, on lit le
+        // tableau qui est déjà là ; quand il est diffusé, on relit le fichier
+        // par tranches sans jamais le tenir en entier -- sinon la diffusion
+        // n'aurait servi à rien, le dessin rechargeant ce que la lecture a
+        // renoncé à charger.
+        if (const auto* memoire = dynamic_cast<const vsm::audio::engine::MemorySampleStore*>(
+                charge.source->samples.get())) {
+            waveformCache_[i] = std::make_shared<const std::vector<vsm::audio::io::PeakBin>>(
+                vsm::audio::io::computePeaks(memoire->leftChannel().data(),
+                                              memoire->rightChannel().empty()
+                                                  ? memoire->leftChannel().data()
+                                                  : memoire->rightChannel().data(),
+                                              charge.source->frames()));
+        } else {
+            auto relecture = vsm::audio::io::WavStreamReader::open(
+                fichier.getFullPathName().toStdString());
+            if (relecture.reader)
+                waveformCache_[i] = std::make_shared<const std::vector<vsm::audio::io::PeakBin>>(
+                    vsm::audio::io::computePeaksFromFile(*relecture.reader, sr));
+        }
 
         charge.source->clips = vsm::audio::engine::spansFromTrack(
             pourLesClips, sr, [this](int64_t tick) { return project_.ticksToSeconds(tick); });

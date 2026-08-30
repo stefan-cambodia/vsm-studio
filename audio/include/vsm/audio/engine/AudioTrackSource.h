@@ -1,4 +1,5 @@
 #pragma once
+#include "vsm/audio/engine/SampleStore.h"
 #include "vsm/sequencer/Track.h"
 #include <cstdint>
 #include <functional>
@@ -26,27 +27,37 @@ struct AudioClipSpan {
 
 /// LE MATÉRIAU AUDIO D'UNE PISTE, prêt à jouer.
 ///
-/// PRÉCHARGÉ EN MÉMOIRE, ET C'EST UN CHOIX ÉCRIT. La voix reconstruite de
-/// *Sky and Sand* pèse 47 Mo sur le disque, soit 190 Mo une fois décodée en
-/// flottants stéréo : c'est tenable pour une poignée de pistes, et c'est
-/// exactement le cas d'usage que la phase D2 doit débloquer. La diffusion
-/// depuis le disque -- qui seule permet vingt pistes de neuf minutes -- est la
-/// phase D8.2, et elle changera CETTE classe sans toucher au reste : le graphe
-/// ne connaît que `frameAt()`.
+/// D'OÙ VIENNENT LES ÉCHANTILLONS N'EST PLUS SON AFFAIRE (D8.2). Ils sont
+/// résidents pour ce qui est court, diffusés depuis le disque pour ce qui est
+/// long, et cette classe ne fait la différence nulle part : elle demande le
+/// n-ième échantillon à un `SampleStore` et le place sur la ligne de temps.
+/// C'est ce que la version précédente de ce commentaire annonçait -- « elle
+/// changera CETTE classe sans toucher au reste » -- et c'est ce qui s'est
+/// passé : `ProcessGraph` n'a pas bougé d'une ligne.
 ///
-/// Le préchargement, le décodage et le rééchantillonnage se font sur le thread
-/// de l'interface. `process()` ne fait que lire ce tableau : aucune allocation,
-/// aucune I/O, aucun verrou.
+/// La découpe en clips, elle, se fait toujours sur le thread de l'interface :
+/// `mixInto()` ne fait que lire, sans allocation, sans entrée-sortie et sans
+/// verrou.
 struct AudioTrackSource {
-    /// Échantillons décodés À LA FRÉQUENCE DE LA SESSION. Le rééchantillonnage
-    /// est fait au chargement : le laisser au chemin temps réel obligerait à y
-    /// interpoler à chaque bloc, pour un fichier qui ne change jamais.
-    std::vector<float> left;
-    std::vector<float> right;
+    /// Le matériau. `nullptr` = piste sans son (et non piste silencieuse : la
+    /// distinction compte, voir `AudioTrackLoader`).
+    std::shared_ptr<const SampleStore> samples;
     std::vector<AudioClipSpan> clips;
 
-    bool empty() const { return left.empty() || clips.empty(); }
-    int64_t frames() const { return static_cast<int64_t>(left.size()); }
+    /// Raccourci pour les cas où le matériau tient en mémoire -- les tests, et
+    /// tout ce qui est fabriqué plutôt que lu.
+    void setMemorySamples(std::vector<float> left, std::vector<float> right) {
+        samples = std::make_shared<MemorySampleStore>(std::move(left), std::move(right));
+    }
+
+    bool empty() const { return !samples || samples->frames() == 0 || clips.empty(); }
+    int64_t frames() const { return samples ? samples->frames() : 0; }
+    /// Ce que cette piste occupe en mémoire vive. Diffusée, le chiffre ne
+    /// dépend pas de la durée du fichier -- c'est tout l'objet de D8.2.
+    size_t residentBytes() const { return samples ? samples->residentBytes() : 0; }
+    /// Échantillons que le cache n'a pas su livrer à temps. Zéro en lecture
+    /// normale ; toute autre valeur est un trou dans le son.
+    uint64_t cacheMisses() const { return samples ? samples->cacheMisses() : 0; }
 
     /// Mélange la portion demandée de la ligne de temps dans les tampons de
     /// sortie. `timelineStart` est l'indice du premier échantillon du bloc sur

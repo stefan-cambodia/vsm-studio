@@ -2033,7 +2033,7 @@ la règle déjà tenue pour les instruments VSM manquants (P4/P7 de
 | Étape | Contenu | Terminé quand |
 |---|---|---|
 | D8.1 | Graphe audio multicœur | 32 pistes chargées tiennent sans décrochage ; gain mesuré et publié — **fait** |
-| D8.2 | Diffusion disque pour l'audio long | 20 pistes de 9 minutes n'occupent pas 1 Go |
+| D8.2 | Diffusion disque pour l'audio long | 20 pistes de 9 minutes n'occupent pas 1 Go — **fait** |
 | D8.3 | Un seul chemin de transport : `RealtimeTransport` et l'horloge du `ProcessGraph` sont aujourd'hui **deux notions de position** qui coexistent | une seule fait autorité ; l'autre disparaît ou en dérive |
 | D8.4 | Banc de charge dans la suite de tests | le coût par piste est chiffré et suivi, comme le banc CPU de la Phase 6 |
 
@@ -2124,6 +2124,85 @@ performance qu'on croit avoir.
 > **ET LE RENDU HORS LIGNE EN PROFITE AUSSI**, sans qu'on ait rien à régler :
 > puisque le résultat est identique au bit près, un export à huit threads est le
 > même fichier qu'à un seul, simplement obtenu plus vite.
+
+> **D8.2 EST FAITE (30/08/2026). LE CHIFFRE, D'ABORD.** Un matériau diffusé
+> occupe **1,0 Mo** en mémoire — quatre fenêtres de 32 768 trames stéréo — plus
+> le tampon de décodage quand il faut rééchantillonner. Vingt pistes en
+> occupent vingt, contre **4,1 Go** avant : neuf minutes de stéréo à 48 kHz font
+> 207 Mo une fois décodées en flottants, et vingt pistes de ce genre
+> demandaient plus de mémoire que n'en a la machine.
+>
+> **LE CHIFFRE NE DÉPEND PAS DE LA DURÉE DU FICHIER, ET C'EST TOUTE LA
+> DÉMONSTRATION.** Écrire vingt fichiers de neuf minutes pour vérifier le
+> critère coûterait deux gigaoctets de disque et une minute à chaque exécution
+> de la suite, pour mesurer une propriété qui se démontre exactement. Le test
+> compare donc la mémoire d'un fichier d'une seconde et celle d'un fichier de
+> quarante, exige qu'elles soient **égales**, puis fait l'arithmétique. C'est
+> plus fort qu'un essai à vingt pistes, qui ne dirait rien de la vingt-et-unième.
+>
+> **LA COUTURE ÉTAIT ANNONCÉE, ET ELLE A TENU.** Le commentaire d'en-tête
+> d'`AudioTrackSource` disait, depuis D2 : « la diffusion changera CETTE classe
+> sans toucher au reste ». C'est ce qui s'est passé — `ProcessGraph` n'a pas
+> bougé d'une ligne. Le matériau est désormais un `SampleStore`, dont il existe
+> deux implémentations : `MemorySampleStore` (tout le fichier, décodé) et
+> `StreamedSampleStore` (quatre fenêtres glissantes, le reste sur le disque).
+> Le graphe ne sait pas laquelle il joue.
+>
+> **LE SEUIL EST À VINGT SECONDES, ET C'EST UNE DÉCISION.** Ce qui est court est
+> lu cent fois et doit répondre à l'échantillon près : un coup de caisse claire
+> de trois secondes n'a rien à faire sur le disque, et le diffuser
+> n'économiserait rien tout en ajoutant une latence. Ce qui est long est lu une
+> fois d'un bout à l'autre, ce qu'un cache glissant sert exactement. Au-dessus
+> de vingt secondes, plus rien n'est un « échantillon ». Le choix se fait sur la
+> durée RÉELLE du fichier, lue dans son en-tête avant de décoder quoi que ce
+> soit — pas sur ce que le projet en déclare, qui peut mentir.
+>
+> **QUATRE FENÊTRES, ET PAS DEUX.** Deux suffiraient à la lecture linéaire et
+> laisseraient un trou au premier montage un peu serré : deux clips superposés
+> puisent à deux endroits du même fichier, et un bloc à cheval sur une frontière
+> en touche deux d'un coup. Un trou qu'on entendrait sans savoir d'où il vient.
+>
+> **LE PIÈGE QUI A COÛTÉ UN SILENCE DÉFINITIF, ET QU'UN TEST A ATTRAPÉ.**
+> L'anneau des demandes tenait huit entrées pour quatre fenêtres. Le
+> remplissage refuse de recycler une fenêtre encore réclamée — c'est ce qui
+> empêche deux besoins d'alterner en se chassant l'un l'autre — mais avec plus
+> de demandes que de fenêtres, des demandes **périmées** suffisaient à toutes
+> les épingler, et une fenêtre réellement nécessaire ne se chargeait plus
+> jamais. L'anneau tient désormais exactement autant de demandes qu'il y a de
+> fenêtres, ce qui rend la situation impossible plutôt qu'improbable.
+>
+> **LE THREAD DE DIFFUSION ATTEND LE THREAD AUDIO, ET JAMAIS L'INVERSE.** Avant
+> de réécrire une fenêtre, il l'invalide, puis attend que plus personne n'y
+> lise. C'est le seul endroit du moteur où un thread attend le thread audio, et
+> c'est le bon sens de l'attente : celui qui n'a pas d'échéance attend celui qui
+> en a une. Un test dédié fait sauter un lecteur d'un bout à l'autre du fichier
+> — donc recycler les fenêtres en permanence — et vérifie **chaque échantillon
+> servi** : le signal d'essai encode la position dans la fenêtre à gauche et le
+> numéro de la fenêtre à droite, parce qu'une fenêtre servie à la place d'une
+> autre porte les mêmes décalages internes et passerait inaperçue sinon.
+> `ThreadSanitizer` passe la suite audio complète sans un avertissement.
+>
+> **CE QUE LE DISQUE N'A PAS LIVRÉ SE COMPTE** (`AudioTrackSource::cacheMisses`),
+> comme les notes que le moteur n'a pas pu jouer. Un trou de diffusion ne se
+> distingue pas, à l'oreille, d'un passage silencieux ; le compteur est la seule
+> chose qui permette de dire lequel des deux on vient d'entendre. Et une
+> position **hors du fichier** n'en est pas un : il n'y a rien à y livrer,
+> jamais, et les confondre ferait sonner l'alarme sur chaque clip qui dépasse la
+> fin de sa prise.
+>
+> **L'EXPORT DIFFUSE AUSSI, MAIS EN ATTENDANT.** Le rendu hors ligne applique le
+> même seuil et va chercher lui-même ce qui manque au lieu de se taire : un
+> export dans lequel il manquerait ce que le disque n'a pas eu le temps de
+> livrer ne serait pas un export, ce serait une loterie. C'est aussi ce qui rend
+> exportable un projet dont l'audio ne tiendrait pas en mémoire — exactement
+> celui que cette phase débloque.
+>
+> **ET L'APERÇU AUSSI, SANS QUOI RIEN N'AURAIT ÉTÉ GAGNÉ.** Il ne servirait à
+> rien de ne plus charger une prise de neuf minutes si dessiner sa forme d'onde
+> exigeait quand même de la charger une fois. `computePeaksFromFile` relit le
+> fichier par tranches de 262 144 trames et ne garde que les extrêmes ; un test
+> vérifie que le dessin obtenu est celui du chemin résident, tranche par
+> tranche.
 
 ### Phase D9 — Reconstruire depuis l'application
 

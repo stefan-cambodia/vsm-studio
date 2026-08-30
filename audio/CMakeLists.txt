@@ -2,9 +2,11 @@ add_library(vsm_audio STATIC
     src/dsp/WaveTable.cpp
     src/io/WavFileWriter.cpp
     src/io/WavFileReader.cpp
+    src/io/WavStreamReader.cpp
     src/io/AudioTrackLoader.cpp
     src/io/WaveformPeaks.cpp
     src/engine/AudioTrackSource.cpp
+    src/engine/SampleStore.cpp
     src/engine/ProcessGraph.cpp
     src/engine/RenderThreadPool.cpp
     src/effect/EffectFactory.cpp
@@ -149,6 +151,7 @@ if (VSM_BUILD_TESTS)
         tests/test_effect_factory.cpp
         tests/test_process_graph_determinism.cpp
         tests/test_render_thread_pool.cpp
+        tests/test_streamed_audio.cpp
         tests/test_wav_writer.cpp
         tests/test_wav_reader.cpp
         tests/test_simd_ladder.cpp

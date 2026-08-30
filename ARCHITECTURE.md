@@ -281,6 +281,36 @@ ces généralités coûterait des allocations. Le thread audio ne prend jamais d
 verrou. Le détail des mesures, du plafond de threads recommandé et du piège du
 « un thread par cœur » est dans `docs/ROADMAP-daw.md`, phase D8.
 
+### 6 sexies. D'où viennent les échantillons d'une piste audio (D8.2)
+
+`AudioTrackSource` ne détient plus de tableau : il détient un `SampleStore`,
+dont il existe deux implémentations, et il ne fait pas la différence entre
+elles.
+
+- `MemorySampleStore` : tout le fichier, décodé, résident. Le bon choix pour ce
+  qui est court — un échantillon de sampler, une prise de huit mesures.
+- `StreamedSampleStore` : quatre fenêtres glissantes de 32 768 trames, le reste
+  sur le disque. **La mémoire occupée ne dépend pas de la durée du fichier** —
+  un mégaoctet, que le fichier fasse trente secondes ou neuf minutes.
+
+Le choix se fait au chargement, sur la durée réelle lue dans l'en-tête
+(`AudioLoadPolicy`, seuil à vingt secondes). `ProcessGraph` n'a pas bougé.
+
+Deux règles à ne pas défaire :
+
+- **Le thread audio ne va jamais chercher un échantillon.** `frameAt` répond
+  faux quand la donnée n'est pas là, et le trou est compté (`cacheMisses`).
+  C'est le thread de diffusion (`DiskStreamer`, un seul pour tout le programme)
+  qui lit le disque, et c'est LUI qui attend le thread audio avant de réécrire
+  une fenêtre — jamais l'inverse.
+- **Le rendu hors ligne diffuse en mode bloquant** : il va chercher lui-même ce
+  qui manque. Un export où il manquerait ce que le disque n'a pas livré à temps
+  serait une loterie, pas un export.
+
+L'aperçu de forme d'onde suit la même règle : `computePeaksFromFile` relit le
+fichier par tranches plutôt que de le charger, sans quoi la diffusion n'aurait
+rien économisé — elle aurait déplacé la dépense.
+
 ### 6 quater. Les prises empilées : le modèle du rangement (D3.5)
 
 Le critère de D3.5 tient en cinq mots — « les prises se conservent et se

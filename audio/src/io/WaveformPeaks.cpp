@@ -1,4 +1,5 @@
 #include "vsm/audio/io/WaveformPeaks.h"
+#include <cmath>
 
 namespace vsm::audio::io {
 
@@ -23,6 +24,60 @@ std::vector<PeakBin> computePeaks(const float* left, const float* right, int64_t
             else { mini = std::min(mini, bas); maxi = std::max(maxi, haut); }
         }
         cache[t] = {mini, maxi};
+    }
+    return cache;
+}
+
+std::vector<PeakBin> computePeaksFromFile(WavStreamReader& reader, double sessionSampleRate,
+                                           int samplesPerBin) {
+    std::vector<PeakBin> cache;
+    if (samplesPerBin <= 0 || sessionSampleRate <= 0.0 || reader.frames() <= 0) return cache;
+
+    // Trames du FICHIER par trame de session. Le cache s'indexe en trames de
+    // session : c'est là que le dessin cherchera.
+    const double ratio = reader.sampleRate() / sessionSampleRate;
+    const int64_t trames = static_cast<int64_t>(
+        std::llround(static_cast<double>(reader.frames()) / (ratio > 0.0 ? ratio : 1.0)));
+    if (trames <= 0) return cache;
+
+    const size_t tranches = static_cast<size_t>((trames + samplesPerBin - 1) / samplesPerBin);
+    cache.assign(tranches, PeakBin{});
+    // UNE TRANCHE VIDE N'EST PAS UNE TRANCHE À ZÉRO. Sans ce drapeau, le
+    // minimum et le maximum partiraient de 0 et ne pourraient jamais devenir
+    // tous deux négatifs : un passage entièrement sous l'axe -- une basse, une
+    // asymétrie de voix -- se dessinerait comme s'il touchait le zéro.
+    std::vector<char> vue(tranches, 0);
+
+    // UN MORCEAU À LA FOIS, et jamais plus. Quatre secondes à 48 kHz font
+    // 1,5 Mo : c'est la mémoire que coûte l'aperçu d'un fichier de neuf
+    // minutes, quelle que soit sa durée.
+    constexpr int64_t kMorceau = 1 << 18;  // 262 144 trames de fichier
+    std::vector<float> gauche(static_cast<size_t>(kMorceau)), droite(static_cast<size_t>(kMorceau));
+
+    for (int64_t depart = 0; depart < reader.frames(); depart += kMorceau) {
+        const int64_t combien = std::min(kMorceau, reader.frames() - depart);
+        const int64_t lues = reader.readFrames(depart, combien, gauche.data(), droite.data());
+        if (lues <= 0) break;
+        for (int64_t i = 0; i < lues; ++i) {
+            // La tranche est celle de la position de SESSION correspondante.
+            const int64_t trameSession = ratio > 0.0
+                ? static_cast<int64_t>(static_cast<double>(depart + i) / ratio) : depart + i;
+            const int64_t t = trameSession / samplesPerBin;
+            if (t < 0 || t >= static_cast<int64_t>(cache.size())) continue;
+            auto& tranche = cache[static_cast<size_t>(t)];
+            const float g = gauche[static_cast<size_t>(i)];
+            const float d = droite[static_cast<size_t>(i)];
+            const float bas = std::min(g, d);
+            const float haut = std::max(g, d);
+            if (!vue[static_cast<size_t>(t)]) {
+                tranche.minimum = bas;
+                tranche.maximum = haut;
+                vue[static_cast<size_t>(t)] = 1;
+            } else {
+                tranche.minimum = std::min(tranche.minimum, bas);
+                tranche.maximum = std::max(tranche.maximum, haut);
+            }
+        }
     }
     return cache;
 }

@@ -25,10 +25,13 @@ inline float fadeGain(int64_t position, int64_t length,
 
 int AudioTrackSource::mixInto(float* outLeft, float* outRight,
                                int64_t timelineStart, int numSamples) const {
-    if (left.empty() || numSamples <= 0) return 0;
-    const int64_t total = frames();
-    const bool stereo = right.size() == left.size();
+    if (!samples || samples->frames() == 0 || numSamples <= 0) return 0;
     int ecrits = 0;
+
+    // LA GARDE COUVRE TOUT LE BLOC, et non chaque échantillon : elle dit au
+    // thread de diffusion « je suis en train de lire », et il doit l'entendre
+    // avant la première lecture, pas entre deux (voir `StreamedSampleStore`).
+    const SampleStore::ReadGuard garde(samples.get());
 
     for (const auto& clip : clips) {
         if (clip.lengthFrames <= 0) continue;
@@ -38,6 +41,12 @@ int AudioTrackSource::mixInto(float* outLeft, float* outRight,
                                       clip.startFrame + clip.lengthFrames);
         if (fin <= debut) continue;
 
+        // ON DIT OÙ ON VA AVANT D'Y ALLER. Le matériau résident n'en fait
+        // rien ; le matériau diffusé en fait tout, puisque c'est sa seule
+        // façon de savoir qu'un saut de tête de lecture vient de l'envoyer
+        // trois minutes plus loin.
+        samples->requestRange(clip.sourceStartFrame + (debut - clip.startFrame), fin - debut);
+
         const float signe = clip.invertPhase ? -clip.gain : clip.gain;
         for (int64_t position = debut; position < fin; ++position) {
             const int64_t dansLeClip = position - clip.startFrame;
@@ -45,14 +54,16 @@ int AudioTrackSource::mixInto(float* outLeft, float* outRight,
             // AU-DELÀ DE LA FIN DU FICHIER, ON SE TAIT. Un clip peut être plus
             // long que ce qui reste de matériau -- après un allongement à la
             // souris, par exemple -- et lire au-delà donnerait du bruit ou un
-            // débordement. Le silence est la seule réponse honnête.
-            if (dansLeFichier < 0 || dansLeFichier >= total) continue;
+            // débordement. Le silence est la seule réponse honnête. Un
+            // matériau diffusé répond faux pour la même raison quand le disque
+            // n'a pas encore livré : le trou est alors COMPTÉ (`cacheMisses`).
+            float g = 0.0f, d = 0.0f;
+            if (!samples->frameAt(dansLeFichier, g, d)) continue;
             const float gain = signe * fadeGain(dansLeClip, clip.lengthFrames,
                                                  clip.fadeInFrames, clip.fadeOutFrames);
-            const auto i = static_cast<size_t>(dansLeFichier);
             const auto j = static_cast<size_t>(position - timelineStart);
-            outLeft[j] += left[i] * gain;
-            outRight[j] += (stereo ? right[i] : left[i]) * gain;
+            outLeft[j] += g * gain;
+            outRight[j] += d * gain;
             ++ecrits;
         }
     }

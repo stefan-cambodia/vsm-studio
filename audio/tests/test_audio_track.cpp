@@ -23,12 +23,12 @@ namespace {
 /// échantillon du fichier a été joué et à quel endroit.
 std::shared_ptr<AudioTrackSource> materiauReperable(int64_t frames) {
     auto source = std::make_shared<AudioTrackSource>();
-    source->left.resize(static_cast<size_t>(frames));
-    source->right.resize(static_cast<size_t>(frames));
+    std::vector<float> gauche(static_cast<size_t>(frames)), droite(static_cast<size_t>(frames));
     for (int64_t i = 0; i < frames; ++i) {
-        source->left[static_cast<size_t>(i)] = static_cast<float>(i) / 1000.0f;
-        source->right[static_cast<size_t>(i)] = -static_cast<float>(i) / 1000.0f;
+        gauche[static_cast<size_t>(i)] = static_cast<float>(i) / 1000.0f;
+        droite[static_cast<size_t>(i)] = -static_cast<float>(i) / 1000.0f;
     }
+    source->setMemorySamples(std::move(gauche), std::move(droite));
     return source;
 }
 

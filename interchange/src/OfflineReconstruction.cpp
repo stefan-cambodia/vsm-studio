@@ -113,7 +113,12 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
         // presets : c'est ce qui permet au dossier d'être ouvert ailleurs.
         const std::string chemin =
             (std::filesystem::path(bundle.folderPath) / track.audio.path).string();
-        auto charge = vsm::audio::io::loadAudioTrack(chemin, options.sampleRate);
+        // LE RENDU HORS LIGNE DIFFUSE COMME LA LECTURE, mais en ATTENDANT le
+        // disque au lieu de se taire (D8.2). C'est ce qui permet d'exporter un
+        // projet dont l'audio ne tiendrait pas en mémoire -- exactement celui
+        // que D8.2 débloque -- sans que l'export soit une loterie.
+        auto charge = vsm::audio::io::loadAudioTrack(
+            chemin, options.sampleRate, vsm::audio::io::AudioLoadPolicy::Offline);
         if (!charge.success || !charge.source) {
             result.warnings.push_back("Piste " + std::to_string(i) + " : " + charge.error);
             continue;

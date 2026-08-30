@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <vector>
+#include "vsm/audio/io/WavStreamReader.h"
 
 // LE CACHE D'APERÇU D'UNE FORME D'ONDE (D5.7 de docs/ROADMAP-daw.md).
 //
@@ -47,6 +48,19 @@ inline constexpr int kSamplesPerPeakBin = 256;
 /// pixels ne se distinguent pas.
 std::vector<PeakBin> computePeaks(const float* left, const float* right, int64_t frames,
                                    int samplesPerBin = kSamplesPerPeakBin);
+
+/// LE MÊME CACHE, MAIS SANS JAMAIS TENIR LE FICHIER EN MÉMOIRE (D8.2).
+///
+/// C'est le pendant obligé de la diffusion depuis le disque : il ne servirait à
+/// rien de ne plus charger une prise de neuf minutes si dessiner son aperçu
+/// exigeait quand même de la charger une fois. Le fichier est parcouru par
+/// tranches de quelques secondes, et seuls les extrêmes sont gardés.
+///
+/// Les tranches sont indexées en trames de la SESSION, comme celles de
+/// `computePeaks` : un fichier à 44,1 kHz dans une session à 48 kHz doit
+/// dessiner sa forme d'onde à l'endroit où on l'entend.
+std::vector<PeakBin> computePeaksFromFile(WavStreamReader& reader, double sessionSampleRate,
+                                           int samplesPerBin = kSamplesPerPeakBin);
 
 /// Réduit le cache à `columns` colonnes couvrant [startFrame, endFrame).
 ///
