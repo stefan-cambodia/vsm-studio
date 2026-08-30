@@ -1036,15 +1036,30 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addItem(kMenuTrackVst3Plugin, u8"Charger un instrument VST3 sur la piste...",
                               piste < project_.tracks.size()
                                   && project_.tracks[piste].kind == Track::Kind::Midi);
+#endif
+#if VSM_WITH_CLAP || VSM_WITH_VST3
                 // D7.4 : GRISÉ QUAND LA MACHINE N'A PAS DE FAÇADE NATIVE. Les
                 // machines du parc ont la leur, montrée par le Synth Rack ;
                 // proposer « ouvrir l'interface » pour elles ferait deux
                 // chemins vers la même chose, dont l'un ne mènerait nulle part.
+                //
+                // ON DEMANDE AUX DEUX FORMATS, et pas seulement à VST3 : la
+                // façade CLAP existe depuis que son report a été levé, et
+                // n'interroger qu'un des deux hôtes grisait l'entrée pour un
+                // plugin qui a bel et bien une interface -- une commande morte
+                // dans l'autre sens, ce que l'invariant n° 5 du § 6 interdit
+                // tout autant.
                 {
                     bool aFacade = false;
                     if (piste < project_.tracks.size())
-                        if (auto* machine = audioEngine_.processGraph().trackInstrument(piste))
+                        if (auto* machine = audioEngine_.processGraph().trackInstrument(piste)) {
+#if VSM_WITH_VST3
                             aFacade = vsm::vst3::hasNativeEditor(*machine);
+#endif
+#if VSM_WITH_CLAP
+                            if (!aFacade) aFacade = vsm::clap::hasNativeEditor(*machine);
+#endif
+                        }
                     menu.addItem(kMenuTrackPluginEditor,
                                   u8"Ouvrir l'interface du plugin de la piste", aFacade);
                 }
