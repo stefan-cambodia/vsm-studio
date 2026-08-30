@@ -38,6 +38,7 @@ target_sources(VintageSynthMidiStudio PRIVATE
     Source/ui/EffectChainComponent.cpp
     Source/ui/LookAndFeel/VsmLookAndFeel.cpp
     Source/ui/UiScale.cpp
+    Source/plugins/PluginScanner.cpp
 )
 
 target_compile_definitions(VintageSynthMidiStudio PRIVATE

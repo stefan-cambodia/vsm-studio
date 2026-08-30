@@ -1737,12 +1737,71 @@ L'hôte CLAP existe (`clap/host/`). Le marché, lui, est en VST3.
 | D7.2 | Hôte VST3 pour les instruments, présenté comme `ISynthPlugin` | un instrument tiers joue et se sauvegarde dans le projet — **fait** |
 | D7.3 | **Entrées audio dans l'hôte** pour héberger des effets (CLAP comme VST3) | insérables au même titre que les natifs — **fait** |
 | D7.4 | Interface native du plugin dans une fenêtre ; transport transmis au plugin | affichée, redimensionnable, fermable sans perte d'état ; un delay synchronisé au tempo suit le tempo — **fait (façade native : VST3 ; CLAP différé, voir la note)** |
-| D7.5 | Balayage des plugins installés en tâche de fond | plugin fautif isolé et signalé, jamais fatal |
+| D7.5 | Balayage des plugins installés en tâche de fond | plugin fautif isolé et signalé, jamais fatal — **fait** |
 
 **Critère de phase** : un projet contenant un plugin tiers se recharge à
 l'identique, et son absence est **signalée sans être substituée** — exactement
 la règle déjà tenue pour les instruments VSM manquants (P4/P7 de
 `ROADMAP-interop.md`).
+
+> **D7.5 EST FAITE (30/08/2026). BALAYER UN PLUGIN, C'EST L'EXÉCUTER.** On ne
+> peut pas savoir ce qu'un fichier `.vst3` contient sans ouvrir sa bibliothèque
+> et l'interroger — donc sans faire tourner du code qu'on n'a pas écrit. Un seul
+> plugin mal écrit, et il y en a, fait tomber le processus. Un balayage naïf
+> transforme « l'utilisateur a installé un plugin douteux » en « le DAW ne
+> démarre plus », sans le moindre message.
+>
+> **« JAMAIS FATAL » EXIGE DEUX PROCESSUS, ET RIEN D'AUTRE NE SUFFIT.** Un
+> `try`/`catch` n'attrape pas une faute de segmentation ; une liste noire
+> construite après coup ne protège que du DEUXIÈME lancement, le premier ayant
+> déjà emporté l'application. Le balayage se fait donc dans un processus
+> ENFANT, un fichier à la fois : s'il tombe, il tombe **seul**, le parent
+> constate un code de sortie anormal, note le fichier comme fautif, et passe au
+> suivant.
+>
+> **VÉRIFIÉ, PAS SUPPOSÉ.** Un `.clap` construit hors du dépôt pour l'occasion,
+> qui déréférence un pointeur nul dès qu'on l'ouvre, a été passé au processus
+> enfant : celui-ci sort en **139** (SIGSEGV), et le parent continue. C'est la
+> seule façon de savoir que ce mécanisme fait ce qu'il promet.
+>
+> **L'APPLICATION SE RELANCE ELLE-MÊME** (`--scan-plugin <fichier>`) plutôt que
+> de livrer un exécutable de balayage à part : l'enfant doit charger
+> **exactement** le même code d'hôte que le parent, sinon le balayage validerait
+> un chemin et la lecture en emprunterait un autre. Un second binaire aurait
+> aussi à être trouvé, installé et tenu à jour. Le détournement se fait dans
+> `main`, **avant** que JUCE ne démarre : ouvrir une fenêtre pour balayer un
+> fichier serait absurde, et échouerait d'emblée sur une machine sans affichage.
+>
+> **UN DÉLAI PAR FICHIER, GÉNÉREUX MAIS BORNÉ** (20 s). Certains plugins lisent
+> des gigaoctets d'échantillons à l'ouverture, et les couper les déclarerait
+> fautifs à tort. Mais un plugin qui attend une clé de licence sur un serveur
+> injoignable ne rendra **jamais** la main, et sans borne le balayage resterait
+> bloqué sur lui pour toujours.
+>
+> **LES FAUTIFS SONT GARDÉS DANS LE CATALOGUE**, avec leur raison. Sans cela,
+> chaque balayage retenterait le même plugin — donc referait payer la même
+> chute — et l'utilisateur n'apprendrait jamais lequel des deux cents fichiers
+> de son disque pose problème. Un second balayage ne rouvre que ce qu'il n'a
+> jamais vu ; tout rouvrir reste possible, et c'est ce qu'on veut après avoir
+> mis à jour un plugin.
+>
+> **LE CATALOGUE EST ÉCRIT AU FUR ET À MESURE**, pas à la fin : si
+> l'application est fermée pendant un balayage de deux cents fichiers, le
+> travail déjà fait est gardé.
+>
+> **CE QUI EST TESTÉ, ET POURQUOI CELA SUFFIT.** Lancer un processus et le voir
+> tomber ne se teste pas dans une suite unitaire — cela se fait, et cela a été
+> fait. Ce qui est testé est la partie où une erreur serait **silencieuse** : le
+> protocole entre l'enfant et le parent (une ligne mal décodée met un plugin au
+> mauvais endroit du menu ; un message de licence imprimé par un plugin pendant
+> son chargement ne doit pas entrer au catalogue ; un nom contenant une
+> tabulation ne doit pas couper la ligne en deux) et la relecture du catalogue.
+>
+> **ET LE BALAYAGE DÉBOUCHE SUR LA MÊME PORTE QUE LE RESTE** :
+> `CataloguedPlugin::instrumentId()` rend exactement l'identifiant que
+> `PluginRegistry` et `EffectFactory` savent lire (D7.1 à D7.3). Un catalogue
+> qui aurait sa propre façon de désigner les plugins n'aurait servi à rien.
+
 
 > **D7.1 EST FAITE (30/08/2026). « BRANCHER » VEUT DIRE UNE CHOSE PRÉCISE : QUE
 > LE REGISTRE DE MACHINES SACHE RÉPONDRE.** Tout le reste du projet — le graphe,

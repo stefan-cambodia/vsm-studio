@@ -30,8 +30,8 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **1143 tests moteur** (160 core + 767 audio
-+ 163 interchange + 23 CLAP + 19 VST3 + 11 façades,
+écoute au clic, et toute la logique testée hors JUCE. Total : **1150 tests moteur** (160 core + 767 audio
++ 170 interchange + 23 CLAP + 19 VST3 + 11 façades,
 tous verts, zéro warning, y compris sous les flags stricts type-JUCE
 `-Wfloat-equal -Wsign-conversion -Wshadow`) + application complète compilée et
 liée. Rendus réels vérifiables : `minimoog_demo.wav`,
@@ -1118,6 +1118,18 @@ détruit un dessin, pas un son : l'état vit dans le plugin, ce qui rend
 différée -- elle demande une incrustation X11 qu'on ne peut pas exécuter une
 seule fois dans l'environnement de développement actuel, et du code d'affichage
 jamais vu tourner ne se déclare pas fait.
+
+**Le balayage des plugins installés se fait dans un processus enfant (D7.5).**
+Balayer un plugin, c'est l'exécuter : on ne sait pas ce qu'un `.vst3` contient
+sans ouvrir sa bibliothèque. « Jamais fatal » exige donc deux processus, et rien
+d'autre ne suffit -- un `try`/`catch` n'attrape pas une faute de segmentation, et
+une liste noire construite après coup ne protège que du deuxième lancement.
+L'application se relance elle-même (`--scan-plugin <fichier>`) plutôt que de
+livrer un binaire de balayage à part, pour que l'enfant charge exactement le même
+code d'hôte que le parent. Le catalogue (`interchange/PluginCatalogue.h`) garde
+aussi les fichiers **fautifs**, avec leur raison : sans eux, chaque balayage
+referait payer la même chute. Vérifié une fois avec un `.clap` qui déréférence un
+pointeur nul : l'enfant sort en 139, le parent continue.
 
 **JUCE fait le travail d'hôte, et n'exige aucun téléchargement de plus** : JUCE 8
 embarque le SDK VST3. `JUCE_PLUGINHOST_VST3=1` est obligatoire et vérifié par un

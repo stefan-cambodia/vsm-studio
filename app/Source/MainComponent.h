@@ -20,6 +20,9 @@
 #include "vsm/audio/engine/ReferenceTrack.h"
 #include "vsm/audio/io/WaveformPeaks.h"
 #include "vsm/interchange/OfflineReconstruction.h"
+#if VSM_WITH_CLAP || VSM_WITH_VST3
+#include "plugins/PluginScanner.h"
+#endif
 #include <map>
 #include <memory>
 
@@ -111,6 +114,8 @@ private:
         kMenuTrackClapPlugin,
         kMenuTrackVst3Plugin,
         kMenuTrackPluginEditor,
+        kMenuTrackScanPlugins,
+        kMenuTrackPluginFromCatalogue,
         kMenuRecordCountInNone,
         kMenuRecordCountInOne,
         kMenuRecordCountInTwo,
@@ -299,9 +304,18 @@ private:
     /// D7.2 : charger un instrument VST3 tiers sur la piste sélectionnée.
     void loadVst3PluginOnSelectedTrack();
     /// D7.3 : laisse choisir un EFFET tiers et rend son identifiant de fabrique.
+    /// Propose d'abord ce que le balayage a trouvé (D7.5), le sélecteur de
+    /// fichier ensuite.
     void chooseThirdPartyEffect(std::function<void(std::string)> quandChoisi);
+    /// La seconde moitié : désigner un fichier à la main.
+    void browseForThirdPartyEffect(std::function<void(std::string)> quandChoisi);
     /// D7.4 : ouvre la façade native du plugin de la piste sélectionnée.
     void openPluginEditorForSelectedTrack();
+    /// D7.5 : lance le balayage des plugins installés, en tâche de fond.
+    void scanInstalledPlugins();
+    /// D7.5 : choisit un instrument PARMI CEUX DÉJÀ TROUVÉS, sans rouvrir de
+    /// fichier -- c'est tout l'intérêt d'avoir balayé.
+    void chooseInstrumentFromCatalogue();
 
     void exportAudioFile();
     /// Un WAV par piste (D6.2).
@@ -422,6 +436,16 @@ private:
     /// que soit leur longueur -- c'est cela, « s'affichent sans bloquer
     /// l'interface ».
     std::map<size_t, std::shared_ptr<const std::vector<vsm::audio::io::PeakBin>>> waveformCache_;
+
+#if VSM_WITH_CLAP || VSM_WITH_VST3
+    /// LE BALAYAGE EN COURS (D7.5), ou nullptr. Gardé par l'application parce
+    /// qu'il doit survivre au menu qui l'a lancé : c'est ce que « en tâche de
+    /// fond » veut dire.
+    std::unique_ptr<vsm::app::plugins::PluginScanner> pluginScanner_;
+    /// Ce que le dernier balayage a trouvé. Relu au démarrage : refaire un
+    /// balayage de deux cents fichiers à chaque lancement serait absurde.
+    vsm::interchange::PluginCatalogue pluginCatalogue_;
+#endif
 
 #if VSM_WITH_VST3
     /// LA FENÊTRE DE LA FAÇADE NATIVE D'UN PLUGIN (D7.4), une par piste.

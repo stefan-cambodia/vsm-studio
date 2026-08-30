@@ -2,6 +2,10 @@
 #include "MainComponent.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
 #include "ui/UiScale.h"
+#if VSM_WITH_CLAP || VSM_WITH_VST3
+#include "plugins/PluginScanner.h"
+#include <cstdio>
+#endif
 
 // ---------------------------------------------------------------------------
 // Application JUCE (voir ARCHITECTURE.md pour l'architecture complète).
@@ -72,4 +76,44 @@ private:
     std::unique_ptr<MainWindow> mainWindow;
 };
 
+#if VSM_WITH_CLAP || VSM_WITH_VST3
+
+// --- D7.5 : le processus enfant du balayage ---------------------------------
+//
+// L'APPLICATION SE RELANCE ELLE-MÊME avec `--scan-plugin <fichier>`. L'enfant
+// ouvre ce fichier, écrit une ligne par plugin trouvé, et sort. S'il tombe --
+// et c'est ce qui arrive avec un plugin mal écrit -- il tombe SEUL.
+//
+// SE RELANCER SOI-MÊME plutôt que de livrer un exécutable de balayage à part :
+// l'enfant doit charger EXACTEMENT le même code d'hôte que le parent, sinon le
+// balayage validerait un chemin et la lecture en emprunterait un autre. Un
+// second binaire aurait aussi à être trouvé, installé et tenu à jour.
+//
+// AVANT TOUT LE RESTE DE JUCE, et c'est essentiel : ouvrir une fenêtre pour
+// balayer un fichier serait absurde, et sur une machine sans affichage cela
+// échouerait avant même d'avoir commencé.
+int main(int argc, char* argv[]) {
+    for (int i = 1; i + 1 < argc; ++i) {
+        if (juce::String(argv[i]) != "--scan-plugin") continue;
+
+        const juce::File fichier(juce::String::fromUTF8(argv[i + 1]));
+        // UNE SEULE LIGNE PAR PLUGIN, SUR LA SORTIE STANDARD. Le parent ignore
+        // tout ce qui n'a pas la bonne forme : un plugin qui écrit un message
+        // de licence pendant son chargement ne doit pas entrer au catalogue.
+        for (const auto& plugin : vsm::app::plugins::scanOneFileInThisProcess(fichier))
+            std::printf("%s\n", vsm::interchange::encodeScanLine(plugin).c_str());
+        std::fflush(stdout);
+        return 0;
+    }
+    return juce::JUCEApplicationBase::main(argc, const_cast<const char**>(argv));
+}
+
+// `START_JUCE_APPLICATION` définirait un second `main`. On garde donc seulement
+// ce que la macro fait d'autre : désigner la classe d'application.
+juce::JUCEApplicationBase* juce_CreateApplication() {
+    return new VintageSynthMidiStudioApplication();
+}
+
+#else
 START_JUCE_APPLICATION(VintageSynthMidiStudioApplication)
+#endif

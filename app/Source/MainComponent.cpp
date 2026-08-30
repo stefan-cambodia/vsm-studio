@@ -169,6 +169,13 @@ MainComponent::MainComponent()
     effectChain_.setProject(&project_);
 
 #if VSM_WITH_CLAP || VSM_WITH_VST3
+    // D7.5 : LE CATALOGUE EST RELU, PAS REFAIT. Rouvrir deux cents fichiers à
+    // chaque lancement coûterait des secondes pour un résultat identique --
+    // et ferait payer à chaque fois la chute d'un plugin fautif.
+    pluginCatalogue_ = vsm::app::plugins::loadCatalogue();
+#endif
+
+#if VSM_WITH_CLAP || VSM_WITH_VST3
     // D7.3 : LA VUE DEMANDE « UN IDENTIFIANT D'EFFET », L'APPLICATION SAIT OÙ
     // LES TROUVER. `EffectChainComponent` ne connaît ni CLAP ni VST3 -- elle
     // sait seulement que la fabrique acceptera ce qu'on lui rendra.
@@ -723,6 +730,18 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                               piste < project_.tracks.size()
                                   && project_.tracks[piste].kind == Track::Kind::Midi);
 #endif
+#if VSM_WITH_CLAP || VSM_WITH_VST3
+                menu.addItem(kMenuTrackScanPlugins,
+                              pluginScanner_ != nullptr
+                                  ? juce::String(u8"Balayage des plugins en cours...")
+                                  : juce::String(u8"Rechercher les plugins installes..."),
+                              pluginScanner_ == nullptr);
+                menu.addItem(kMenuTrackPluginFromCatalogue,
+                              u8"Instrument parmi les plugins trouves...",
+                              !pluginCatalogue_.instruments().empty()
+                                  && piste < project_.tracks.size()
+                                  && project_.tracks[piste].kind == Track::Kind::Midi);
+#endif
 #if VSM_WITH_VST3
                 menu.addItem(kMenuTrackVst3Plugin, u8"Charger un instrument VST3 sur la piste...",
                               piste < project_.tracks.size()
@@ -994,6 +1013,10 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
 #if VSM_WITH_CLAP
         case kMenuTrackClapPlugin: loadClapPluginOnSelectedTrack(); break;
 #endif
+#if VSM_WITH_CLAP || VSM_WITH_VST3
+        case kMenuTrackScanPlugins: scanInstalledPlugins(); break;
+        case kMenuTrackPluginFromCatalogue: chooseInstrumentFromCatalogue(); break;
+#endif
 #if VSM_WITH_VST3
         case kMenuTrackVst3Plugin: loadVst3PluginOnSelectedTrack(); break;
         case kMenuTrackPluginEditor: openPluginEditorForSelectedTrack(); break;
@@ -1188,6 +1211,99 @@ void MainComponent::loadClapPluginOnSelectedTrack() {
 #endif
 }
 
+void MainComponent::scanInstalledPlugins() {
+#if VSM_WITH_CLAP || VSM_WITH_VST3
+    if (pluginScanner_ != nullptr) return;   // un seul balayage à la fois
+
+    pluginScanner_ = std::make_unique<vsm::app::plugins::PluginScanner>();
+    // LES DEUX RAPPELS ARRIVENT SUR LE FIL DE FOND. Toucher à l'interface
+    // depuis là ferait tomber l'application de façon irrégulière et
+    // impossible à reproduire ; on repasse donc par le fil des messages.
+    pluginScanner_->onProgress = [this](int fait, int total, const juce::String& courant) {
+        juce::MessageManager::callAsync([this, fait, total, courant] {
+            if (auto* fenetre = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
+                fenetre->setName("Vintage Synth MIDI Studio -- balayage " + juce::String(fait)
+                                  + "/" + juce::String(total) + " : " + courant);
+        });
+    };
+    pluginScanner_->onFinished = [this](vsm::interchange::PluginCatalogue catalogue) {
+        juce::MessageManager::callAsync([this, catalogue = std::move(catalogue)]() mutable {
+            pluginCatalogue_ = std::move(catalogue);
+            pluginScanner_.reset();
+            if (auto* fenetre = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
+                fenetre->setName("Vintage Synth MIDI Studio");
+
+            // `u8"..."` NE SE CONCATÈNE PAS DIRECTEMENT à une `juce::String`
+            // (voir ARCHITECTURE.md § 6 bis bis) : chaque littéral accentué
+            // passe par un `juce::String` explicite.
+            juce::String message =
+                juce::String(pluginCatalogue_.instruments().size())
+                + juce::String(u8" instrument(s), ")
+                + juce::String(pluginCatalogue_.effects().size())
+                + juce::String(u8" effet(s) trouves.");
+            // LES FAUTIFS SONT NOMMÉS. Un fichier qui disparaît du balayage
+            // sans un mot laisse l'utilisateur chercher pourquoi son plugin
+            // n'apparaît nulle part.
+            if (!pluginCatalogue_.faulty.empty()) {
+                message += juce::String("\n\n")
+                           + juce::String(pluginCatalogue_.faulty.size())
+                           + juce::String(u8" fichier(s) n'ont pas pu etre lus. Ils sont isoles : "
+                                          u8"ils n'ont pas fait tomber l'application, et ne "
+                                          u8"seront pas rouverts.\n");
+                for (const auto& fautif : pluginCatalogue_.faulty)
+                    message += "\n" + juce::String(fautif.path) + "\n   "
+                               + juce::String(fautif.reason);
+            }
+            juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon,
+                                                     u8"Balayage termine", message);
+        });
+    };
+    pluginScanner_->start(false);
+
+    juce::AlertWindow::showMessageBoxAsync(
+        juce::AlertWindow::InfoIcon, u8"Balayage lance",
+        juce::String(u8"Les plugins installes sont ouverts un par un, dans un processus a "
+                     u8"part.\n\nVous pouvez continuer a travailler : un plugin qui ferait "
+                     u8"tomber son processus de balayage sera signale, pas fatal."));
+#endif
+}
+
+void MainComponent::chooseInstrumentFromCatalogue() {
+#if VSM_WITH_CLAP || VSM_WITH_VST3
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    const auto instruments = pluginCatalogue_.instruments();
+    if (instruments.empty()) return;
+
+    auto fenetre = std::make_shared<juce::AlertWindow>(
+        u8"Instruments trouves sur cette machine", u8"Lequel poser sur la piste ?",
+        juce::AlertWindow::NoIcon);
+    juce::StringArray noms;
+    for (const auto& plugin : instruments)
+        noms.add(juce::String(plugin.name) + "  --  " + juce::String(plugin.vendor)
+                 + "  [" + juce::String(plugin.format) + "]");
+    fenetre->addComboBox("plugin", noms, u8"Instrument");
+    fenetre->addButton(u8"Charger", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton(u8"Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+        [this, fenetre, instruments, piste](int resultat) {
+            const int choix = fenetre->getComboBoxComponent("plugin")->getSelectedId();
+            fenetre->exitModalState(resultat);
+            fenetre->setVisible(false);
+            if (resultat != 1 || choix < 1 || static_cast<size_t>(choix) > instruments.size()) return;
+
+            beginProjectEdit(u8"Charger un instrument");
+            auto& cible = project_.tracks[piste];
+            // L'IDENTIFIANT VIENT DU CATALOGUE, et c'est exactement celui que
+            // les fabriques savent lire : le balayage ne sert à rien s'il ne
+            // débouche pas sur la même porte que le reste (D7.1 à D7.3).
+            cible.instrumentId = instruments[static_cast<size_t>(choix) - 1].instrumentId();
+            cible.presetId.clear();
+            rebuildFromProject();
+        }), false);
+#endif
+}
+
 void MainComponent::openPluginEditorForSelectedTrack() {
 #if VSM_WITH_VST3
     const size_t piste = trackList_.selectedTrackIndex();
@@ -1244,6 +1360,45 @@ void MainComponent::openPluginEditorForSelectedTrack() {
 }
 
 void MainComponent::chooseThirdPartyEffect(std::function<void(std::string)> quandChoisi) {
+#if VSM_WITH_CLAP || VSM_WITH_VST3
+    // D7.5 : SI ON A DÉJÀ BALAYÉ, ON PROPOSE CE QU'ON A TROUVÉ. Faire chercher
+    // un fichier à quelqu'un qui vient d'attendre un balayage complet serait
+    // lui redemander ce qu'on sait déjà. Le sélecteur de fichier reste en
+    // dernier choix, pour un plugin installé ailleurs.
+    const auto effetsConnus = pluginCatalogue_.effects();
+    if (!effetsConnus.empty()) {
+        auto fenetre = std::make_shared<juce::AlertWindow>(
+            u8"Effets trouves sur cette machine", u8"Lequel inserer ?",
+            juce::AlertWindow::NoIcon);
+        juce::StringArray noms;
+        for (const auto& plugin : effetsConnus)
+            noms.add(juce::String(plugin.name) + "  --  " + juce::String(plugin.vendor)
+                     + "  [" + juce::String(plugin.format) + "]");
+        noms.add(juce::String(u8"Parcourir un fichier..."));
+        fenetre->addComboBox("effet", noms, u8"Effet");
+        fenetre->addButton(u8"Inserer", 1, juce::KeyPress(juce::KeyPress::returnKey));
+        fenetre->addButton(u8"Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+        fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+            [this, fenetre, effetsConnus, quandChoisi](int resultat) {
+                const int choix = fenetre->getComboBoxComponent("effet")->getSelectedId();
+                fenetre->exitModalState(resultat);
+                fenetre->setVisible(false);
+                if (resultat != 1 || choix < 1) return;
+                if (static_cast<size_t>(choix) <= effetsConnus.size()) {
+                    quandChoisi(effetsConnus[static_cast<size_t>(choix) - 1].instrumentId());
+                    return;
+                }
+                browseForThirdPartyEffect(quandChoisi);
+            }), false);
+        return;
+    }
+    browseForThirdPartyEffect(std::move(quandChoisi));
+#else
+    juce::ignoreUnused(quandChoisi);
+#endif
+}
+
+void MainComponent::browseForThirdPartyEffect(std::function<void(std::string)> quandChoisi) {
 #if VSM_WITH_CLAP || VSM_WITH_VST3
     // UN SEUL SÉLECTEUR POUR LES DEUX FORMATS. Demander d'abord « CLAP ou
     // VST3 ? » ferait choisir une technologie avant de choisir un son ; le
