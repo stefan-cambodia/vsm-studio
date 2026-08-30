@@ -2746,6 +2746,84 @@ qu'elle est là.
 > chaque tour de minuterie ferait travailler le disque pour rien pendant qu'on
 > compose.
 
+> **ET UNE PANNE QUE TOUTE LA PHASE D10 A CÔTOYÉE SANS LA VOIR (31/08/2026).**
+> Elle n'a pas été trouvée en relisant du code : elle a été trouvée en lançant
+> l'application pour vérifier que D10.1 démarrait encore. La fenêtre de
+> récupération s'est ouverte — D10.4 faisait son travail —, et le
+> `project.json` qu'elle proposait contenait ceci :
+>
+> ```
+> "EQ Mid Q": 0,8,
+> "Limiter Ceiling": -0,3,
+> ```
+>
+> **Des virgules décimales. Ce n'est pas du JSON**, et le lecteur du projet
+> refusait les trois sauvegardes automatiques présentes sur le disque. La
+> promesse de D10.4 — « tuer l'application ne perd pas plus d'une minute » —
+> était donc fausse dans les grandes largeurs : la sauvegarde écrivait
+> fidèlement toutes les trente secondes un fichier que le bouton « Récupérer »
+> n'était pas en mesure de relire. Le mécanisme entier fonctionnait ; ce qu'il
+> produisait était inutilisable.
+>
+> **LA CAUSE N'EST PAS DANS CE QUE LE PROGRAMME FAIT, MAIS DANS CE QU'ON FAIT
+> POUR LUI.** `snprintf("%g")` et `strtod` consultent `LC_NUMERIC`. Un
+> programme C++ n'installe aucune locale de lui-même — mais JUCE en installe
+> une : `juce_SystemStats_linux.cpp` appelle `setlocale(LC_ALL, "")`, garde ce
+> que cet appel RENVOIE, et le « restaure ». Or `setlocale` renvoie la
+> NOUVELLE locale. La restauration réinstalle donc ce qu'elle devait défaire,
+> et le processus reste dans la locale de l'environnement pour le reste de sa
+> vie. Sur une machine réglée en français, tout nombre fractionnaire écrit par
+> l'application porte une virgule.
+>
+> **TROIS SYMPTÔMES, ET LE TROISIÈME EST LE SEUL QUI COMPTE VRAIMENT**, mesurés
+> contre la vraie bibliothèque et non déduits :
+>
+> | | ce qu'il écrit dans le fichier | relit son propre fichier | lit un fichier VALIDE, écrit `0.8` |
+> |---|---|---|---|
+> | locale C — celle des tests | `0.8` | la bonne valeur | la bonne valeur |
+> | après le `setlocale` de JUCE | `0,8` | **refusé** | **zéro, en silence** |
+>
+> La dernière colonne est celle qu'aucun message d'erreur n'aurait donnée. Les
+> `project.json` de la chaîne d'analyse sont écrits en Python, donc avec des
+> points, sur n'importe quelle machine : l'application les chargeait avec TOUS
+> leurs paramètres fractionnaires à zéro, **sans un mot**. C'est le projet que
+> D9.3 ouvre à la fin d'une reconstruction, et c'est aussi tout preset, tout
+> profil multi-échantillons et tout fichier d'associations MIDI.
+>
+> **CE QUI A ÉTÉ CORRIGÉ, ET POURQUOI CE N'EST PAS UNE RUSTINE.** On aurait pu
+> remplacer le séparateur après coup, ou forcer la locale au démarrage — deux
+> corrections qui tiennent tant que personne n'ajoute un appel. `std::to_chars`
+> et `std::from_chars` sont définis en locale C, toujours, par la norme : la
+> question ne se pose plus. La forme produite est exactement celle de
+> `printf("%.*g")` en locale C, donc **aucun fichier déjà écrit par une chaîne
+> saine ne change d'un octet** — un test le verrouille, parce qu'une correction
+> qui ferait bouger tous les fichiers du dépôt coûterait plus qu'elle ne
+> rapporte.
+>
+> La règle est écrite UNE fois, dans `interchange/NumberText.h` : **un nombre
+> qui traverse une frontière — un fichier, une ligne de commande, un tube — se
+> lit en locale C.** Les sept autres points d'entrée qui l'ignoraient la
+> suivent, dont `vsm-render` (où `--duration 0.5` devenait une erreur
+> d'utilisation) et l'outil qui publie la latence mesurée de D3.6.
+>
+> **UNE EXCEPTION, ÉCRITE PLUTÔT QUE SUBIE** : `paramsTextToValue` de
+> l'adaptateur CLAP garde la locale du processus. Ce texte-là ne traverse rien
+> — il est affiché par l'hôte à un être humain et retapé par lui. Un
+> utilisateur français qui tape « 0,5 » doit obtenir un demi.
+>
+> **POURQUOI 1 213 TESTS N'ONT RIEN VU, ET CE QUI CHANGE.** Ils tournent en
+> locale C, où la panne n'existe pas. Les trois nouveaux en installent une
+> exprès ; et sur une machine qui n'en a aucune d'installée, ils DISENT que le
+> contrôle n'a pas eu lieu au lieu de se compter comme réussis — un test qui se
+> tait quand il n'a rien pu vérifier est pire qu'un test absent, puisqu'il
+> laisse croire que la vérification existe. Ils ont été éprouvés dans les deux
+> sens : les trois échouent sans la correction.
+>
+> **LA LEÇON, ET C'EST LA MÊME QUE CELLE DE D7.5.** Une phase entière a été
+> déclarée terminée pendant que la sauvegarde automatique écrivait des fichiers
+> illisibles, et rien dans le code, les tests ou les rapports ne le disait.
+> Ce qui l'a dit, c'est d'avoir lancé le binaire et regardé la fenêtre.
+
 ---
 
 ## 4. Les choix tranchés ici, et pourquoi
