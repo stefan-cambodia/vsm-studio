@@ -199,6 +199,17 @@ public:
     void seekSeconds(double seconds);  // thread UI
     void setPlaying(bool playing);     // thread UI
     bool isPlaying() const { return playing_.load(std::memory_order_acquire); }
+
+    /// L'ÉTAT DU TRANSPORT à un instant de la ligne de temps (D7.4), tel qu'il
+    /// est livré aux plugins tiers juste avant qu'ils traitent.
+    ///
+    /// STATIQUE ET PRENANT LE PROJET, plutôt qu'une méthode lisant l'état du
+    /// graphe : c'est une CONVERSION -- des secondes vers un tempo, une
+    /// signature et une position en noires -- et une conversion se vérifie sans
+    /// moteur, sans carte son et sans plugin. Le graphe s'en sert ; le test
+    /// aussi, sur les mêmes lignes.
+    static vsm::audio::plugin::TransportInfo transportFor(const vsm::sequencer::Project& project,
+                                                           double seconds, bool playing);
     double currentSeconds() const { return currentSeconds_.load(std::memory_order_acquire); }
 
     /// Rendu temps réel OU offline : à appeler en boucle depuis le callback

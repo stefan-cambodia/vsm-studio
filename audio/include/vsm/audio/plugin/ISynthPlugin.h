@@ -103,6 +103,18 @@ public:
     ///
     /// Vide veut dire « je n'en ai pas », jamais « la sauvegarde a échoué » :
     /// une machine qui échoue à se décrire doit le faire savoir autrement.
+    /// LE TRANSPORT, LIVRÉ JUSTE AVANT `process` (D7.4). Ne rien faire est le
+    /// comportement des trente-quatre machines du parc, et c'est correct : le
+    /// graphe leur donne des notes déjà horodatées, elles n'ont rien à
+    /// synchroniser. Une machine qu'on n'a pas écrite, elle, ne peut pas
+    /// deviner le tempo -- voir `TransportInfo`.
+    ///
+    /// LIVRÉ AVANT ET NON PASSÉ À `process` : élargir la signature de `process`
+    /// obligerait trente-quatre machines à déclarer, documenter et ignorer un
+    /// paramètre de plus. Même raison, et même forme, que `setSidechainInput`
+    /// pour les effets.
+    virtual void setTransportInfo(const TransportInfo&) {}
+
     virtual std::string saveNativeState() const { return {}; }
     /// Restaure ce que `saveNativeState()` a produit. Rend faux si l'état est
     /// refusé -- et un état refusé laisse la machine sur ses réglages

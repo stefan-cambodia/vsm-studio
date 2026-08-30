@@ -30,8 +30,8 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **1132 tests moteur** (160 core + 763 audio
-+ 163 interchange + 21 CLAP + 14 VST3 + 11 façades,
+écoute au clic, et toute la logique testée hors JUCE. Total : **1143 tests moteur** (160 core + 767 audio
++ 163 interchange + 23 CLAP + 19 VST3 + 11 façades,
 tous verts, zéro warning, y compris sous les flags stricts type-JUCE
 `-Wfloat-equal -Wsign-conversion -Wshadow`) + application complète compilée et
 liée. Rendus réels vérifiables : `minimoog_demo.wav`,
@@ -1098,6 +1098,26 @@ identifiant, et aucune ambiguïté puisqu'on ne demande jamais un effet au
 registre des machines ni l'inverse. Poser un instrument en insert, ou un effet
 sur une piste, est **refusé et dit** : les deux rendraient la piste muette, et
 les deux se découvriraient à l'oreille.
+
+**Le transport est livré aux plugins juste avant qu'ils traitent (D7.4).**
+`setTransportInfo` sur les deux interfaces, appelé par `ProcessGraph` pour
+l'instrument comme pour chaque insert -- ne rien faire est le comportement des
+machines et des effets du parc, qui reçoivent des notes déjà horodatées et n'ont
+rien à synchroniser. La conversion (`ProcessGraph::transportFor`) est **statique
+et prend le projet** : c'est un calcul, pas un état, et il se vérifie sans
+moteur ni plugin. La position est donnée en secondes ET en noires, parce que les
+deux divergent dès qu'un tempo change ; « beat » vaut toujours la noire, même en
+6/8. Côté VST3 elle devient un `AudioPlayHead` ; côté CLAP, un
+`clap_event_transport` attaché à chaque bloc.
+
+**La façade native d'un plugin VST3 s'ouvre dans une fenêtre**, dont la
+déclaration vit dans un en-tête à part (`Vst3PluginWindow.h`) pour que
+`vsm-render` et les tests n'aient jamais à parler de fenêtres. Fermer la fenêtre
+détruit un dessin, pas un son : l'état vit dans le plugin, ce qui rend
+« fermable sans perte d'état » vrai par construction. La façade CLAP est
+différée -- elle demande une incrustation X11 qu'on ne peut pas exécuter une
+seule fois dans l'environnement de développement actuel, et du code d'affichage
+jamais vu tourner ne se déclare pas fait.
 
 **JUCE fait le travail d'hôte, et n'exige aucun téléchargement de plus** : JUCE 8
 embarque le SDK VST3. `JUCE_PLUGINHOST_VST3=1` est obligatoire et vérifié par un

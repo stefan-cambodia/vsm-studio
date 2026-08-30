@@ -486,3 +486,99 @@ VSM_TEST(the_effect_factory_loads_a_clap_once_the_resolver_is_installed) {
     VSM_ASSERT(vsm::audio::effect::EffectFactory::create("delay") != nullptr);
     VSM_ASSERT(vsm::audio::effect::EffectFactory::create("pas-un-effet") == nullptr);
 }
+
+// --- D7.4 : le transport transmis au plugin ---------------------------------
+//
+// LE CRITÈRE DIT « UN DELAY SYNCHRONISÉ AU TEMPO SUIT LE TEMPO », et c'est
+// exactement ce qui est mesuré : l'effet d'essai retarde d'une NOIRE, dont la
+// durée n'existe que dans le transport. On lui envoie une impulsion, on cherche
+// l'écho, et on regarde s'il tombe là où le tempo l'exige. Un hôte qui ne
+// transmettrait rien laisserait le plugin sur 120 BPM d'usine : à 90 BPM
+// l'écho tomberait 167 ms trop tôt, ce qui s'entend et ce que ce test voit.
+
+namespace {
+
+/// L'indice du premier échantillon dépassant `seuil`, ou -1.
+int premierPic(vsm::audio::effect::IAudioEffect& effet, double tempo, int total, float seuil) {
+    vsm::audio::plugin::TransportInfo transport;
+    transport.playing = true;
+    transport.tempoBpm = tempo;
+    effet.setTransportInfo(transport);
+
+    constexpr int kBloc = 512;
+    std::vector<float> gauche(kBloc, 0.0f), droite(kBloc, 0.0f);
+    int rendus = 0;
+    bool impulsionEnvoyee = false;
+    while (rendus < total) {
+        std::fill(gauche.begin(), gauche.end(), 0.0f);
+        std::fill(droite.begin(), droite.end(), 0.0f);
+        if (!impulsionEnvoyee) {
+            gauche[0] = 1.0f;
+            droite[0] = 1.0f;
+            impulsionEnvoyee = true;
+        }
+        effet.setTransportInfo(transport);
+        effet.process(gauche.data(), droite.data(), kBloc);
+        for (int i = 0; i < kBloc; ++i) {
+            // On saute l'impulsion directe elle-même : ce qu'on cherche est
+            // l'ÉCHO, donc le premier pic après le tout début.
+            if (rendus + i < 8) continue;
+            if (std::abs(gauche[i]) > seuil) return rendus + i;
+        }
+        rendus += kBloc;
+    }
+    return -1;
+}
+
+} // namespace
+
+VSM_TEST(a_tempo_synced_delay_follows_the_tempo) {
+    std::string erreur;
+    auto lent = createClapEffect(effetDEssai(), "", erreur);
+    auto rapide = createClapEffect(effetDEssai(), "", erreur);
+    VSM_ASSERT(lent != nullptr && rapide != nullptr);
+    lent->prepare(48000.0, 512);
+    rapide->prepare(48000.0, 512);
+
+    const int aQuatreVingtDix = premierPic(*lent, 90.0, 48000 * 2, 0.3f);
+    const int aCentQuatreVingts = premierPic(*rapide, 180.0, 48000 * 2, 0.3f);
+    VSM_ASSERT(aQuatreVingtDix > 0);
+    VSM_ASSERT(aCentQuatreVingts > 0);
+
+    // Une noire à 90 BPM dure 2/3 de seconde, à 180 BPM un tiers. La tolérance
+    // est d'un bloc : on vérifie que l'écho SUIT le tempo, pas la précision
+    // d'un plugin d'essai.
+    VSM_ASSERT(std::abs(aQuatreVingtDix - 32000) < 600);
+    VSM_ASSERT(std::abs(aCentQuatreVingts - 16000) < 600);
+
+    // ET LE RAPPORT EST BIEN CELUI DES TEMPOS : deux fois plus vite, deux fois
+    // plus court. C'est ce qui distingue « le plugin a reçu un tempo » de « le
+    // plugin a reçu LE tempo ».
+    VSM_ASSERT(std::abs(aQuatreVingtDix - 2 * aCentQuatreVingts) < 1200);
+}
+
+VSM_TEST(a_plugin_without_transport_is_left_on_its_factory_tempo) {
+    // LE TEST QUI DONNE SON SENS AU PRÉCÉDENT. Sans transport, l'effet d'essai
+    // retombe sur 120 BPM -- une demi-seconde. Si les deux tests passaient avec
+    // le même chiffre, c'est que le transport n'aurait jamais servi à rien.
+    std::string erreur;
+    auto effet = createClapEffect(effetDEssai(), "", erreur);
+    VSM_ASSERT(effet != nullptr);
+    effet->prepare(48000.0, 512);
+
+    constexpr int kBloc = 512;
+    std::vector<float> gauche(kBloc, 0.0f), droite(kBloc, 0.0f);
+    int rendus = 0, pic = -1;
+    bool envoyee = false;
+    while (rendus < 48000 && pic < 0) {
+        std::fill(gauche.begin(), gauche.end(), 0.0f);
+        std::fill(droite.begin(), droite.end(), 0.0f);
+        if (!envoyee) { gauche[0] = 1.0f; envoyee = true; }
+        effet->process(gauche.data(), droite.data(), kBloc);   // aucun transport livré
+        for (int i = 0; i < kBloc && pic < 0; ++i)
+            if (rendus + i >= 8 && std::abs(gauche[i]) > 0.3f) pic = rendus + i;
+        rendus += kBloc;
+    }
+    VSM_ASSERT(pic > 0);
+    VSM_ASSERT(std::abs(pic - 24000) < 600);   // 120 BPM d'usine
+}

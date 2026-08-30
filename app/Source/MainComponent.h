@@ -110,6 +110,7 @@ private:
         kMenuTrackBounce,
         kMenuTrackClapPlugin,
         kMenuTrackVst3Plugin,
+        kMenuTrackPluginEditor,
         kMenuRecordCountInNone,
         kMenuRecordCountInOne,
         kMenuRecordCountInTwo,
@@ -299,6 +300,8 @@ private:
     void loadVst3PluginOnSelectedTrack();
     /// D7.3 : laisse choisir un EFFET tiers et rend son identifiant de fabrique.
     void chooseThirdPartyEffect(std::function<void(std::string)> quandChoisi);
+    /// D7.4 : ouvre la façade native du plugin de la piste sélectionnée.
+    void openPluginEditorForSelectedTrack();
 
     void exportAudioFile();
     /// Un WAV par piste (D6.2).
@@ -419,6 +422,17 @@ private:
     /// que soit leur longueur -- c'est cela, « s'affichent sans bloquer
     /// l'interface ».
     std::map<size_t, std::shared_ptr<const std::vector<vsm::audio::io::PeakBin>>> waveformCache_;
+
+#if VSM_WITH_VST3
+    /// LA FENÊTRE DE LA FAÇADE NATIVE D'UN PLUGIN (D7.4), une par piste.
+    ///
+    /// GARDÉE PAR L'APPLICATION ET NON PAR LA PISTE : c'est un objet
+    /// d'interface, pas une propriété du morceau. La refermer ne perd rien --
+    /// l'état vit dans le plugin, la fenêtre n'en montre qu'un dessin -- et
+    /// c'est ce qui rend « fermable sans perte d'état » vrai par construction
+    /// plutôt que par précaution.
+    std::map<size_t, std::unique_ptr<juce::DocumentWindow>> pluginEditorWindows_;
+#endif
 
     /// Dernière configuration audio appliquée aux effets, pour ne refabriquer
     /// que lorsqu'elle change réellement.

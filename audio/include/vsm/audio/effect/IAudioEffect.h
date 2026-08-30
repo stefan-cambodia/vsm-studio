@@ -80,6 +80,13 @@ public:
     /// chargées, des courbes dessinées, des tables apprises, que rien dans le
     /// vocabulaire sémantique ne désigne -- sans cela, rouvrir un morceau
     /// rendrait une réverbération à convolution muette, ou une autre pièce.
+    /// LE TRANSPORT, LIVRÉ JUSTE AVANT `process` (D7.4). Voir
+    /// `ISynthPlugin::setTransportInfo` : même question, même raison, même
+    /// forme que `setSidechainInput` juste au-dessus. Ne rien faire est le
+    /// comportement des treize effets internes, dont aucun ne se synchronise --
+    /// et c'est justement ce qu'un delay tiers réglé « à la noire » attend.
+    virtual void setTransportInfo(const vsm::audio::plugin::TransportInfo&) {}
+
     virtual std::string saveNativeState() const { return {}; }
     /// Restaure ce que `saveNativeState()` a produit. Faux si l'état est
     /// refusé, et l'appelant DOIT le dire : un état refusé laisse l'effet sur

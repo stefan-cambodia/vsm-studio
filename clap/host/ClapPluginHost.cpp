@@ -223,6 +223,44 @@ void flushParameterValues(const clap_plugin* plugin, const clap_plugin_params* p
     pending.clear();
 }
 
+
+/// LE TRANSPORT DE VSM TRADUIT EN ÉVÉNEMENT CLAP (D7.4).
+///
+/// CLAP ne passe pas le transport par une interface à interroger : il l'attache
+/// au bloc, dans `clap_process.transport`. La conversion est donc faite à
+/// chaque bloc, et écrite UNE FOIS -- l'instrument et l'effet posent la même
+/// question, et deux copies finiraient par y répondre différemment.
+///
+/// LES TEMPS CLAP SONT DES POINTS FIXES : `clap_beattime` et `clap_sectime`
+/// comptent en 1/2^31 de noire et de seconde. Les convertir « à peu près »
+/// ferait dériver un delay synchronisé de quelques millisecondes par minute,
+/// ce qui ne s'entend pas tout de suite et ne se rattrape jamais.
+void remplirTransport(clap_event_transport& sortie,
+                       const vsm::audio::plugin::TransportInfo& transport) {
+    std::memset(&sortie, 0, sizeof(sortie));
+    sortie.header.size = sizeof(clap_event_transport);
+    sortie.header.time = 0;
+    sortie.header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+    sortie.header.type = CLAP_EVENT_TRANSPORT;
+
+    sortie.flags = CLAP_TRANSPORT_HAS_TEMPO | CLAP_TRANSPORT_HAS_BEATS_TIMELINE
+                 | CLAP_TRANSPORT_HAS_SECONDS_TIMELINE | CLAP_TRANSPORT_HAS_TIME_SIGNATURE;
+    if (transport.playing) sortie.flags |= CLAP_TRANSPORT_IS_PLAYING;
+    if (transport.looping) sortie.flags |= CLAP_TRANSPORT_IS_LOOP_ACTIVE;
+
+    sortie.tempo = transport.tempoBpm;
+    sortie.song_pos_beats =
+        static_cast<clap_beattime>(transport.positionBeats * CLAP_BEATTIME_FACTOR);
+    sortie.song_pos_seconds =
+        static_cast<clap_sectime>(transport.positionSeconds * CLAP_SECTIME_FACTOR);
+    sortie.loop_start_beats =
+        static_cast<clap_beattime>(transport.loopStartBeats * CLAP_BEATTIME_FACTOR);
+    sortie.loop_end_beats =
+        static_cast<clap_beattime>(transport.loopEndBeats * CLAP_BEATTIME_FACTOR);
+    sortie.tsig_num = static_cast<uint16_t>(transport.timeSignatureNumerator);
+    sortie.tsig_denom = static_cast<uint16_t>(transport.timeSignatureDenominator);
+}
+
 /// Un plugin CLAP présenté au moteur VSM comme un insert.
 ///
 /// CE QUI LE DISTINGUE DE `ClapInstrument` EST L'ENTRÉE, et c'est tout le sujet
@@ -294,6 +332,7 @@ public:
         clap_process process{};
         process.steady_time = steadyTime_;
         process.frames_count = static_cast<uint32_t>(numSamples);
+        process.transport = &transport_;
         process.audio_inputs = &entree;
         process.audio_inputs_count = 1;
         process.audio_outputs = &sortie;
@@ -311,6 +350,10 @@ public:
             std::copy_n(entreeGauche_.data(), numSamples, left);
             std::copy_n(entreeDroite_.data(), numSamples, right);
         }
+    }
+
+    void setTransportInfo(const vsm::audio::plugin::TransportInfo& transport) override {
+        remplirTransport(transport_, transport);
     }
 
     void setParameter(vsm::audio::plugin::ParamId id, float value) override {
@@ -381,6 +424,9 @@ private:
     EventList events_;
     OutputEvents outputs_;
     std::vector<float> entreeGauche_, entreeDroite_;
+    /// Rempli hors du traitement, relu à chaque bloc : `clap_process` ne garde
+    /// qu'un pointeur, il faut donc que la structure nous survive jusque-là.
+    clap_event_transport transport_{};
     std::map<vsm::audio::plugin::ParamId, float> pendingValues_;
     uint32_t maxFrames_ = 0;
     int64_t steadyTime_ = 0;
@@ -436,6 +482,7 @@ public:
         clap_process process{};
         process.steady_time = steadyTime_;
         process.frames_count = static_cast<uint32_t>(numSamples);
+        process.transport = &transport_;
         process.audio_inputs = nullptr;
         process.audio_inputs_count = 0;
         process.audio_outputs = &outputBuffer;
@@ -445,6 +492,10 @@ public:
 
         plugin_->process(plugin_, &process);
         steadyTime_ += numSamples;
+    }
+
+    void setTransportInfo(const vsm::audio::plugin::TransportInfo& transport) override {
+        remplirTransport(transport_, transport);
     }
 
     void setParameter(ParamId id, float value) override {
@@ -507,6 +558,7 @@ private:
     void flushPending() const { flushParameterValues(plugin_, params_, pendingValues_); }
 
     std::shared_ptr<LoadedModule> module_;
+    clap_event_transport transport_{};
     const clap_plugin* plugin_ = nullptr;
     std::string name_;
     std::string pluginId_;

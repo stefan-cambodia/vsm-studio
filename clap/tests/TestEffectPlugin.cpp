@@ -10,7 +10,11 @@
 //     un effet qui rendrait un signal sans regarder celui qu'on lui donne
 //     passerait pour fonctionnel alors que l'hôte ne lui aurait rien transmis.
 //   - déclarer une entrée ET une sortie stéréo (c'est ce que l'hôte cherche) ;
-//   - porter un paramètre, et un état.
+//   - porter un paramètre, et un état ;
+//   - ÊTRE UN DELAY SYNCHRONISÉ AU TEMPO (D7.4). Son retard vaut une noire,
+//     lue dans le transport que l'hôte attache au bloc. C'est ce que le critère
+//     de D7.4 demande de vérifier, et cela ne peut pas se simuler : un hôte
+//     muet laisse le tempo à sa valeur d'usine, et l'écho tombe ailleurs.
 //
 // Il n'est PAS une machine du parc : il ne s'enregistre nulle part et ne sort
 // pas de ce dossier.
@@ -19,6 +23,7 @@
 
 #include <cstring>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -42,6 +47,11 @@ const clap_plugin_descriptor kDescriptor = {
 struct Instance {
     clap_plugin plugin{};
     double gain = 1.0;
+    /// Ligne à retard pour l'écho à la noire (D7.4). Dimensionnée à
+    /// l'activation : deux secondes, de quoi tenir une noire jusqu'à 30 BPM.
+    std::vector<float> ligne;
+    size_t ecriture = 0;
+    double frequence = 48000.0;
     /// Non exposée par un paramètre : c'est ce qui rend le test d'état
     /// significatif. Un état reconstructible depuis la table de paramètres ne
     /// prouverait rien.
@@ -146,7 +156,12 @@ const clap_plugin_state kState = {stateSave, stateLoad};
 
 bool pluginInit(const clap_plugin*) { return true; }
 void pluginDestroy(const clap_plugin* plugin) { delete self(plugin); }
-bool pluginActivate(const clap_plugin*, double, uint32_t, uint32_t) { return true; }
+bool pluginActivate(const clap_plugin* plugin, double sampleRate, uint32_t, uint32_t) {
+    self(plugin)->frequence = sampleRate;
+    self(plugin)->ligne.assign(static_cast<size_t>(sampleRate * 2.0), 0.0f);
+    self(plugin)->ecriture = 0;
+    return true;
+}
 void pluginDeactivate(const clap_plugin*) {}
 bool pluginStartProcessing(const clap_plugin*) { return true; }
 void pluginStopProcessing(const clap_plugin*) {}
@@ -164,6 +179,27 @@ clap_process_status pluginProcess(const clap_plugin* plugin, const clap_process*
         const uint32_t source = canal < entree.channel_count ? canal : 0;
         for (uint32_t i = 0; i < process->frames_count; ++i)
             sortie.data32[canal][i] = -entree.data32[source][i] * gain;
+    }
+
+    // UN ÉCHO À LA NOIRE (D7.4). Le retard n'est pas un réglage : il est LU
+    // DANS LE TRANSPORT que l'hôte attache au bloc. Un hôte qui n'en
+    // fournirait pas laisse le tempo à sa valeur d'usine, et l'écho tombe
+    // ailleurs -- ce que le test doit pouvoir constater.
+    Instance* etat = self(plugin);
+    const double tempo = (process->transport != nullptr
+                          && (process->transport->flags & CLAP_TRANSPORT_HAS_TEMPO))
+                             ? process->transport->tempo : 120.0;
+    const size_t retard = static_cast<size_t>(etat->frequence * 60.0 / (tempo > 1.0 ? tempo : 1.0));
+    if (etat->ligne.empty() || retard == 0 || retard >= etat->ligne.size())
+        return CLAP_PROCESS_CONTINUE;
+
+    for (uint32_t i = 0; i < process->frames_count; ++i) {
+        const size_t lecture = (etat->ecriture + etat->ligne.size() - retard) % etat->ligne.size();
+        const float echo = etat->ligne[lecture];
+        etat->ligne[etat->ecriture] = sortie.data32[0][i];
+        etat->ecriture = (etat->ecriture + 1) % etat->ligne.size();
+        for (uint32_t canal = 0; canal < sortie.channel_count; ++canal)
+            sortie.data32[canal][i] += echo * 0.9f;
     }
     return CLAP_PROCESS_CONTINUE;
 }

@@ -19,6 +19,7 @@
 #endif
 #if VSM_WITH_VST3
 #include "Vst3PluginHost.h"
+#include "Vst3PluginWindow.h"
 #endif
 #include "vsm/interchange/ProjectBundle.h"
 #include "vsm/interchange/ReconstructionReport.h"
@@ -726,6 +727,18 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addItem(kMenuTrackVst3Plugin, u8"Charger un instrument VST3 sur la piste...",
                               piste < project_.tracks.size()
                                   && project_.tracks[piste].kind == Track::Kind::Midi);
+                // D7.4 : GRISÉ QUAND LA MACHINE N'A PAS DE FAÇADE NATIVE. Les
+                // machines du parc ont la leur, montrée par le Synth Rack ;
+                // proposer « ouvrir l'interface » pour elles ferait deux
+                // chemins vers la même chose, dont l'un ne mènerait nulle part.
+                {
+                    bool aFacade = false;
+                    if (piste < project_.tracks.size())
+                        if (auto* machine = audioEngine_.processGraph().trackInstrument(piste))
+                            aFacade = vsm::vst3::hasNativeEditor(*machine);
+                    menu.addItem(kMenuTrackPluginEditor,
+                                  u8"Ouvrir l'interface du plugin de la piste", aFacade);
+                }
 #endif
             }
             break;
@@ -983,6 +996,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
 #endif
 #if VSM_WITH_VST3
         case kMenuTrackVst3Plugin: loadVst3PluginOnSelectedTrack(); break;
+        case kMenuTrackPluginEditor: openPluginEditorForSelectedTrack(); break;
 #endif
         case kMenuTrackBounce:   bounceSelectedTrack(); break;
         case kMenuViewTracks:    togglePanel(trackListWindow_); break;
@@ -1171,6 +1185,61 @@ void MainComponent::loadClapPluginOnSelectedTrack() {
                        trouves[static_cast<size_t>(choix) - 1].name);
             }), false);
     });
+#endif
+}
+
+void MainComponent::openPluginEditorForSelectedTrack() {
+#if VSM_WITH_VST3
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+
+    // DÉJÀ OUVERTE : ON LA RAMÈNE DEVANT, on n'en ouvre pas une seconde. Deux
+    // fenêtres sur le même plugin montreraient le même état à deux endroits, et
+    // l'utilisateur ne saurait plus laquelle il vient de régler.
+    if (const auto trouvee = pluginEditorWindows_.find(piste);
+        trouvee != pluginEditorWindows_.end() && trouvee->second != nullptr) {
+        trouvee->second->toFront(true);
+        return;
+    }
+
+    auto* machine = audioEngine_.processGraph().trackInstrument(piste);
+    if (machine == nullptr) return;
+    auto facade = vsm::vst3::createEditorFor(*machine);
+    if (facade == nullptr) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Pas d'interface native",
+            juce::String(u8"Cette machine n'a pas de facade a elle. Ses reglages restent "
+                         u8"accessibles dans le Synth Rack."));
+        return;
+    }
+
+    // LA FENÊTRE SUIT LA TAILLE QUE LE PLUGIN DEMANDE, et le laisse la changer
+    // s'il le permet : un éditeur redimensionnable enfermé dans une fenêtre
+    // fixe se retrouve rogné, ce qui est pire que pas de fenêtre du tout.
+    const bool redimensionnable = facade->isResizable();
+    class FenetreFacade final : public juce::DocumentWindow {
+    public:
+        FenetreFacade(const juce::String& titre, std::function<void()> quandFermee)
+            : juce::DocumentWindow(titre, juce::Colours::black,
+                                    juce::DocumentWindow::closeButton),
+              quandFermee_(std::move(quandFermee)) {}
+        /// FERMER DÉTRUIT LE DESSIN, PAS LE SON. L'état vit dans le plugin ;
+        /// la prochaine ouverture en refabrique la façade, qui le montre tel
+        /// qu'il est resté.
+        void closeButtonPressed() override { if (quandFermee_) quandFermee_(); }
+    private:
+        std::function<void()> quandFermee_;
+    };
+
+    auto fenetre = std::make_unique<FenetreFacade>(
+        juce::String(project_.tracks[piste].name) + " -- " + juce::String(machine->machineName()),
+        [this, piste] { pluginEditorWindows_.erase(piste); });
+    fenetre->setUsingNativeTitleBar(true);
+    fenetre->setResizable(redimensionnable, false);
+    fenetre->setContentOwned(facade.release(), true);
+    fenetre->centreWithSize(fenetre->getWidth(), fenetre->getHeight());
+    fenetre->setVisible(true);
+    pluginEditorWindows_[piste] = std::move(fenetre);
 #endif
 }
 
@@ -3016,6 +3085,15 @@ void MainComponent::beginProjectEdit(const juce::String& label) {
 }
 
 void MainComponent::rebuildFromProject(bool stopPlayback) {
+#if VSM_WITH_VST3
+    // LES FAÇADES NATIVES SE FERMENT D'ABORD (D7.4). Cette fonction refabrique
+    // les instruments : une fenêtre qui resterait ouverte dessinerait un plugin
+    // détruit. Les rouvrir est un geste de l'utilisateur, pas quelque chose
+    // qu'on lui rend d'office -- et rien n'est perdu, l'état est dans le
+    // plugin, pas dans la fenêtre.
+    pluginEditorWindows_.clear();
+#endif
+
     if (stopPlayback) {
         transport_.stop();
         audioEngine_.processGraph().setPlaying(false);

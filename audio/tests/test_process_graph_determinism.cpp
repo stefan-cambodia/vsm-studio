@@ -340,3 +340,72 @@ VSM_TEST(no_machine_of_this_project_demands_real_time) {
         if (auto* instrument = graph.trackInstrument(i))
             VSM_ASSERT(!instrument->requiresRealtimeRender());
 }
+
+// --- D7.4 : le transport tel qu'un plugin tiers le reçoit -------------------
+//
+// `transportFor` est une CONVERSION -- des secondes vers un tempo, une
+// signature et une position en noires. Elle se vérifie donc sans moteur, sans
+// carte son et sans plugin, sur les lignes mêmes que le graphe emploie.
+
+VSM_TEST(the_transport_reports_the_tempo_at_the_moment_being_rendered) {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    project.tempoMap.clearTempoChanges();
+    project.tempoMap.addTempoChange(0, 500000);      // 120 BPM
+    project.tempoMap.addTempoChange(1920, 300000);   // 200 BPM à la mesure 2
+
+    // Deux secondes après le départ, on est encore à 120 BPM (la mesure 2
+    // tombe à 2 s pile, et le changement s'applique à partir de là).
+    const auto avant = ProcessGraph::transportFor(project, 1.0, true);
+    VSM_ASSERT_NEAR(avant.tempoBpm, 120.0, 1e-9);
+    VSM_ASSERT(avant.playing);
+
+    const auto apres = ProcessGraph::transportFor(project, 3.0, true);
+    VSM_ASSERT_NEAR(apres.tempoBpm, 200.0, 1e-9);
+}
+
+VSM_TEST(the_transport_position_is_in_quarter_notes_even_in_six_eight) {
+    // « Beat » veut dire LA NOIRE dans tous les formats de plugin, y compris en
+    // 6/8 où le temps musical est la croche pointée. Convertir en temps de
+    // mesure ferait sauter un delay synchronisé d'un facteur trois dès qu'on
+    // quitte le 4/4 -- et personne ne comprendrait pourquoi.
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    project.timeSignatureMap.clear();
+    project.timeSignatureMap.addChange(0, 6, 3); // 6/8
+
+    const auto transport = ProcessGraph::transportFor(project, 1.0, true);
+    // Une seconde à 120 BPM = deux noires, quelle que soit la signature.
+    VSM_ASSERT_NEAR(transport.positionBeats, 2.0, 1e-6);
+    VSM_ASSERT_NEAR(transport.positionSeconds, 1.0, 1e-9);
+    VSM_ASSERT_EQ(transport.timeSignatureNumerator, 6);
+    VSM_ASSERT_EQ(transport.timeSignatureDenominator, 8);
+}
+
+VSM_TEST(the_transport_carries_the_loop_only_when_there_is_one) {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+
+    // Une boucle DÉSACTIVÉE n'en est pas une : l'annoncer ferait boucler
+    // l'affichage d'un plugin sur une région que le morceau ne rejoue pas.
+    project.loopEnabled = false;
+    project.loopStartTick = 0;
+    project.loopEndTick = 1920;
+    VSM_ASSERT(!ProcessGraph::transportFor(project, 0.0, true).looping);
+
+    project.loopEnabled = true;
+    const auto avec = ProcessGraph::transportFor(project, 0.0, true);
+    VSM_ASSERT(avec.looping);
+    VSM_ASSERT_NEAR(avec.loopEndBeats, 4.0, 1e-6);
+
+    // Une boucle vide -- début et fin au même endroit -- n'en est pas une non
+    // plus, même cochée.
+    project.loopEndTick = 0;
+    VSM_ASSERT(!ProcessGraph::transportFor(project, 0.0, true).looping);
+}
+
+VSM_TEST(a_stopped_transport_says_so) {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    VSM_ASSERT(!ProcessGraph::transportFor(project, 0.0, false).playing);
+}

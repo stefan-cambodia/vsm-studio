@@ -1,4 +1,5 @@
 #include "Vst3PluginHost.h"
+#include "Vst3PluginWindow.h"
 #include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 
@@ -20,6 +21,7 @@
 #include <string>
 
 namespace vsm::vst3 {
+
 namespace {
 
 using vsm::audio::plugin::MidiControlEvent;
@@ -59,8 +61,63 @@ std::string identifiantDe(const juce::PluginDescription& description) {
     return std::to_string(description.uniqueId);
 }
 
+
+/// LE TRANSPORT DE VSM PRÉSENTÉ COMME UNE TÊTE DE LECTURE JUCE (D7.4).
+///
+/// JUCE ne demande pas au plugin de venir chercher l'information : c'est l'hôte
+/// qui lui DONNE un `AudioPlayHead`, que le plugin interroge quand il en a
+/// besoin. Cette petite classe est donc la traduction, dans les deux sens du
+/// mot : elle convertit nos champs, et elle est le seul endroit où le
+/// vocabulaire de JUCE apparaît.
+///
+/// PARTAGÉE PAR L'INSTRUMENT ET L'EFFET : un arpégiateur et un delay
+/// synchronisé posent la même question, et deux copies de cette conversion
+/// finiraient par répondre différemment.
+class TeteDeLecture final : public juce::AudioPlayHead {
+public:
+    void miseAJour(const vsm::audio::plugin::TransportInfo& transport) {
+        transport_ = transport;
+    }
+
+    juce::Optional<PositionInfo> getPosition() const override {
+        PositionInfo position;
+        position.setIsPlaying(transport_.playing);
+        // ENREGISTRER N'EST PAS JOUER, et rien ici ne le sait : le graphe ne
+        // transmet pas cette distinction, et prétendre le contraire ferait
+        // clignoter des plugins qui affichent l'état de l'hôte.
+        position.setIsRecording(false);
+        position.setBpm(transport_.tempoBpm);
+        position.setTimeSignature(
+            TimeSignature{transport_.timeSignatureNumerator, transport_.timeSignatureDenominator});
+        position.setTimeInSeconds(transport_.positionSeconds);
+        position.setPpqPosition(transport_.positionBeats);
+        position.setTimeInSamples(
+            static_cast<int64_t>(transport_.positionSeconds * frequence_));
+        position.setIsLooping(transport_.looping);
+        if (transport_.looping)
+            position.setLoopPoints(LoopPoints{transport_.loopStartBeats, transport_.loopEndBeats});
+        return position;
+    }
+
+    void setSampleRate(double frequence) { frequence_ = frequence; }
+
+private:
+    vsm::audio::plugin::TransportInfo transport_;
+    double frequence_ = 48000.0;
+};
+
+/// CE QUE LES DEUX ENVELOPPES ONT EN COMMUN : elles tiennent une instance JUCE.
+/// Une interface minuscule plutôt que deux `dynamic_cast` vers les classes
+/// concrètes -- l'ouverture d'une façade (plus bas) n'a besoin que de cela, et
+/// n'a pas à connaître leurs différences.
+class PorteurJuce {
+public:
+    virtual ~PorteurJuce() = default;
+    virtual juce::AudioPluginInstance* instanceJuce() const = 0;
+};
+
 /// Un instrument VST3 présenté comme une machine VSM.
-class Vst3Instrument final : public vsm::audio::plugin::ISynthPlugin {
+class Vst3Instrument final : public vsm::audio::plugin::ISynthPlugin, public PorteurJuce {
 public:
     Vst3Instrument(std::unique_ptr<juce::AudioPluginInstance> instance, std::string nom)
         : instance_(std::move(instance)), nom_(std::move(nom)) {}
@@ -84,6 +141,8 @@ public:
         instance_->setNonRealtime(false);
         instance_->setRateAndBufferSizeDetails(sampleRate, maxBloc_);
         instance_->prepareToPlay(sampleRate, maxBloc_);
+        tete_.setSampleRate(sampleRate);
+        instance_->setPlayHead(&tete_);
 
         parametres_.clear();
         const auto& params = instance_->getParameters();
@@ -256,6 +315,12 @@ public:
         return instance_ ? instance_->getLatencySamples() : 0;
     }
 
+    void setTransportInfo(const vsm::audio::plugin::TransportInfo& transport) override {
+        tete_.miseAJour(transport);
+    }
+
+    juce::AudioPluginInstance* instanceJuce() const override { return instance_.get(); }
+
 private:
     struct ControleEnAttente {
         juce::MidiMessage message;
@@ -267,6 +332,7 @@ private:
     juce::AudioBuffer<float> tampon_;
     juce::MidiBuffer midi_;
     ParameterList parametres_;
+    TeteDeLecture tete_;
     int maxBloc_ = 512;
     /// Assez pour une rafale de contrôleurs sur un sous-bloc d'automation
     /// (~1,3 ms) ; au-delà, `handleControlEvent` rend faux et le moteur COMPTE
@@ -282,7 +348,7 @@ private:
 /// de D7.3. Le tampon qu'on donne au plugin est REMPLI du signal de la piste
 /// avant l'appel, et relu après : un effet qui recevrait du silence rendrait du
 /// silence, ce qui est exactement la panne qu'un hôte sans entrées produit.
-class Vst3Effect final : public vsm::audio::effect::IAudioEffect {
+class Vst3Effect final : public vsm::audio::effect::IAudioEffect, public PorteurJuce {
 public:
     Vst3Effect(std::unique_ptr<juce::AudioPluginInstance> instance, std::string nom)
         : instance_(std::move(instance)), nom_(std::move(nom)) {}
@@ -307,6 +373,8 @@ public:
         instance_->setNonRealtime(false);
         instance_->setRateAndBufferSizeDetails(sampleRate, maxBloc_);
         instance_->prepareToPlay(sampleRate, maxBloc_);
+        tete_.setSampleRate(sampleRate);
+        instance_->setPlayHead(&tete_);
 
         parametres_.clear();
         const auto& params = instance_->getParameters();
@@ -376,6 +444,10 @@ public:
         return instance_ ? instance_->getLatencySamples() : 0;
     }
 
+    void setTransportInfo(const vsm::audio::plugin::TransportInfo& transport) override {
+        tete_.miseAJour(transport);
+    }
+
     std::string saveNativeState() const override {
         if (!instance_) return {};
         juce::MemoryBlock octets;
@@ -392,10 +464,13 @@ public:
         return true;
     }
 
+    juce::AudioPluginInstance* instanceJuce() const override { return instance_.get(); }
+
 private:
     std::unique_ptr<juce::AudioPluginInstance> instance_;
     std::string nom_;
     juce::AudioBuffer<float> tampon_;
+    TeteDeLecture tete_;
     /// VIDE, ET PRÉSENT QUAND MÊME : `processBlock` en exige un, et le
     /// réallouer à chaque bloc serait une allocation sur le thread audio.
     juce::MidiBuffer midi_;
@@ -553,6 +628,56 @@ bool parseVst3InstrumentId(const std::string& instrumentId, std::string& outPath
     outPath = reste.substr(0, diese);
     outPluginId = reste.substr(diese + 1);
     return !outPath.empty();
+}
+
+// --- D7.4 : la façade native, dans une fenêtre ------------------------------
+//
+// ÉCRITES ICI, dans la même unité que les enveloppes, parce qu'elles ont besoin
+// de les reconnaître. Un second fichier aurait obligé à sortir `PorteurJuce` de
+// l'anonyme et à l'exposer publiquement, pour un gain nul : `juce_gui_basics`
+// arrive de toute façon avec `juce_audio_processors`, dont un
+// `AudioProcessorEditor` est un `Component`. Seule la DÉCLARATION est à part
+// (`Vst3PluginWindow.h`), pour que `vsm-render` et les tests n'aient jamais à
+// parler de fenêtres.
+
+namespace {
+
+juce::AudioPluginInstance* instanceDerriere(const void* objet, const PorteurJuce* porteur) {
+    juce::ignoreUnused(objet);
+    return porteur != nullptr ? porteur->instanceJuce() : nullptr;
+}
+
+std::unique_ptr<juce::AudioProcessorEditor> ouvrirFacade(juce::AudioPluginInstance* instance) {
+    if (instance == nullptr || !instance->hasEditor()) return nullptr;
+    // `createEditorIfNeeded` rend un éditeur DONT L'APPELANT EST PROPRIÉTAIRE.
+    // Le détruire ferme la fenêtre et rien d'autre : l'état vit dans le plugin,
+    // pas dans son dessin -- c'est ce qui rend « fermable sans perte d'état »
+    // vrai par construction.
+    return std::unique_ptr<juce::AudioProcessorEditor>(instance->createEditorIfNeeded());
+}
+
+} // namespace
+
+std::unique_ptr<juce::AudioProcessorEditor> createEditorFor(
+    vsm::audio::plugin::ISynthPlugin& instrument) {
+    return ouvrirFacade(instanceDerriere(&instrument, dynamic_cast<PorteurJuce*>(&instrument)));
+}
+
+std::unique_ptr<juce::AudioProcessorEditor> createEditorFor(
+    vsm::audio::effect::IAudioEffect& effect) {
+    return ouvrirFacade(instanceDerriere(&effect, dynamic_cast<PorteurJuce*>(&effect)));
+}
+
+bool hasNativeEditor(const vsm::audio::plugin::ISynthPlugin& instrument) {
+    const auto* porteur = dynamic_cast<const PorteurJuce*>(&instrument);
+    const auto* instance = porteur ? porteur->instanceJuce() : nullptr;
+    return instance != nullptr && instance->hasEditor();
+}
+
+bool hasNativeEditor(const vsm::audio::effect::IAudioEffect& effect) {
+    const auto* porteur = dynamic_cast<const PorteurJuce*>(&effect);
+    const auto* instance = porteur ? porteur->instanceJuce() : nullptr;
+    return instance != nullptr && instance->hasEditor();
 }
 
 void installVst3Resolver() {

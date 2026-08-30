@@ -71,4 +71,29 @@ struct MidiControlEvent {
     float value = 0.0f;
 };
 
+/// L'ÉTAT DU TRANSPORT tel qu'un plugin tiers a besoin de le connaître (D7.4).
+///
+/// POURQUOI CE TYPE EXISTE. Les trente-quatre machines du parc n'en ont aucun
+/// besoin : le graphe leur livre des notes déjà horodatées, et un séquenceur de
+/// machine tourne sur son propre compteur. Un plugin qu'on n'a pas écrit, lui,
+/// ne peut pas deviner le tempo -- un delay synchronisé, un arpégiateur, un LFO
+/// à la noire réglés « 1/4 » resteraient sur leur valeur d'usine, et rien dans
+/// le son ne dirait qu'ils n'ont jamais rien su du morceau.
+///
+/// LA POSITION EST DONNÉE DEUX FOIS, en secondes ET en noires. Les deux sont
+/// exactes et aucune ne se déduit de l'autre sans la carte des tempos : un
+/// morceau qui accélère fait diverger « à la troisième seconde » et « au
+/// troisième temps », et un plugin demande tantôt l'une, tantôt l'autre.
+struct TransportInfo {
+    bool playing = false;
+    double tempoBpm = 120.0;
+    double positionSeconds = 0.0;
+    double positionBeats = 0.0;
+    int timeSignatureNumerator = 4;
+    int timeSignatureDenominator = 4;
+    bool looping = false;
+    double loopStartBeats = 0.0;
+    double loopEndBeats = 0.0;
+};
+
 } // namespace vsm::audio::plugin

@@ -13,8 +13,14 @@
 //   - porter un paramètre visible ;
 //   - porter un état QUE SON PARAMÈTRE NE DÉCRIT PAS, pour que « se recharge à
 //     l'identique » ait quelque chose à prouver.
+//   - ÊTRE UN DELAY SYNCHRONISÉ AU TEMPO (D7.4). Son retard n'est pas un
+//     réglage : il vaut une noire, lue dans le transport que l'hôte fournit.
+//     C'est ce que le critère de D7.4 demande de vérifier, et c'est une
+//     propriété qu'on ne peut pas simuler -- un hôte muet laisse le tempo à sa
+//     valeur d'usine, et l'écho tombe ailleurs.
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <vector>
 
 namespace {
 
@@ -27,14 +33,44 @@ public:
         addParameter(gain_ = new juce::AudioParameterFloat({"gain", 1}, "Gain", 0.0f, 2.0f, 1.0f));
     }
 
-    void prepareToPlay(double, int) override {}
+    void prepareToPlay(double sampleRate, int) override {
+        frequence_ = sampleRate;
+        // Deux secondes : de quoi tenir une noire jusqu'à 30 BPM.
+        ligne_.assign(static_cast<size_t>(sampleRate * 2.0), 0.0f);
+        ecriture_ = 0;
+    }
+
     void releaseResources() override {}
 
     void processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) override {
-        // INVERSION DE SIGNE ET GAIN. L'inversion est délibérée : c'est ce qui
-        // rend le test capable de distinguer « l'effet a traité mon signal » de
-        // « l'effet a rendu quelque chose ».
+        // 1. INVERSION DE SIGNE ET GAIN sur le signal direct. L'inversion est
+        //    délibérée : c'est ce qui rend le test capable de distinguer
+        //    « l'effet a traité mon signal » de « l'effet a rendu quelque
+        //    chose » (D7.3).
         buffer.applyGain(-gain_->get());
+
+        // 2. UN ÉCHO À LA NOIRE (D7.4). Le retard n'est pas un réglage : il est
+        //    LU DANS LE TRANSPORT que l'hôte fournit. Un hôte qui ne
+        //    transmettrait rien laisserait le tempo à sa valeur d'usine, et
+        //    l'écho tomberait au mauvais endroit -- ce qui est exactement ce
+        //    que le test doit pouvoir constater.
+        double tempo = 120.0;
+        if (auto* tete = getPlayHead())
+            if (const auto position = tete->getPosition())
+                if (const auto bpm = position->getBpm()) tempo = *bpm;
+
+        const size_t retard = static_cast<size_t>(frequence_ * 60.0 / juce::jmax(1.0, tempo));
+        if (ligne_.empty() || retard == 0 || retard >= ligne_.size()) return;
+
+        for (int i = 0; i < buffer.getNumSamples(); ++i) {
+            const size_t lecture = (ecriture_ + ligne_.size() - retard) % ligne_.size();
+            const float echo = ligne_[lecture];
+            const float direct = buffer.getSample(0, i);
+            ligne_[ecriture_] = direct;
+            ecriture_ = (ecriture_ + 1) % ligne_.size();
+            for (int canal = 0; canal < buffer.getNumChannels(); ++canal)
+                buffer.setSample(canal, i, buffer.getSample(canal, i) + echo * 0.9f);
+        }
     }
 
     void getStateInformation(juce::MemoryBlock& destination) override {
@@ -64,6 +100,9 @@ public:
 
 private:
     juce::AudioParameterFloat* gain_ = nullptr;
+    std::vector<float> ligne_;
+    size_t ecriture_ = 0;
+    double frequence_ = 48000.0;
     /// Non exposée par un paramètre : c'est ce qui rend le test d'état
     /// significatif.
     int marque_ = 0;

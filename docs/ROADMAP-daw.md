@@ -1736,7 +1736,7 @@ L'hôte CLAP existe (`clap/host/`). Le marché, lui, est en VST3.
 | D7.1 | Lier l'hôte CLAP à l'application — il est écrit, testé, et non branché | un `.clap` tiers se charge sur une piste — **fait** |
 | D7.2 | Hôte VST3 pour les instruments, présenté comme `ISynthPlugin` | un instrument tiers joue et se sauvegarde dans le projet — **fait** |
 | D7.3 | **Entrées audio dans l'hôte** pour héberger des effets (CLAP comme VST3) | insérables au même titre que les natifs — **fait** |
-| D7.4 | Interface native du plugin dans une fenêtre ; transport transmis au plugin | affichée, redimensionnable, fermable sans perte d'état ; un delay synchronisé au tempo suit le tempo |
+| D7.4 | Interface native du plugin dans une fenêtre ; transport transmis au plugin | affichée, redimensionnable, fermable sans perte d'état ; un delay synchronisé au tempo suit le tempo — **fait (façade native : VST3 ; CLAP différé, voir la note)** |
 | D7.5 | Balayage des plugins installés en tâche de fond | plugin fautif isolé et signalé, jamais fatal |
 
 **Critère de phase** : un projet contenant un plugin tiers se recharge à
@@ -1911,6 +1911,62 @@ la règle déjà tenue pour les instruments VSM manquants (P4/P7 de
 > multiples » sur des centaines de symboles. La couche est passée en INTERFACE :
 > sa source est compilée **une fois**, par la cible finale, avec la seule copie
 > de JUCE qu'elle possède déjà.
+
+
+> **D7.4 EST FAITE (30/08/2026). LE TRANSPORT EST LA MOITIÉ QUI S'ENTEND.**
+> Les trente-quatre machines du parc n'en ont aucun besoin : le graphe leur
+> livre des notes déjà horodatées. Un plugin qu'on n'a pas écrit, lui, ne peut
+> pas deviner le tempo — un delay synchronisé, un arpégiateur, un LFO réglés
+> « 1/4 » resteraient sur leur valeur d'usine, et **rien dans le son ne dirait**
+> qu'ils n'ont jamais rien su du morceau.
+>
+> **LIVRÉ AVANT `process`, PAS PASSÉ À `process`.** Élargir la signature aurait
+> obligé trente-quatre machines et treize effets à déclarer, documenter et
+> ignorer un paramètre de plus. Même forme, et même raison, que
+> `setSidechainInput` (D4.4).
+>
+> **LA POSITION EST DONNÉE DEUX FOIS, EN SECONDES ET EN NOIRES**, et aucune ne
+> se déduit de l'autre sans la carte des tempos : un morceau qui accélère fait
+> diverger « à la troisième seconde » et « au troisième temps ». Et « beat »
+> veut dire **la noire** dans tous les formats de plugin, y compris en 6/8 où le
+> temps musical est la croche pointée — convertir en temps de mesure ferait
+> sauter un delay synchronisé d'un facteur trois dès qu'on quitte le 4/4. Un
+> test le garde.
+>
+> **LE CRITÈRE EST MESURÉ COMME IL EST ÉCRIT.** Les deux effets d'essai
+> construits par ce dépôt sont devenus des **delays à la noire**, dont le retard
+> n'est pas un réglage mais une lecture du transport. On leur envoie une
+> impulsion et on cherche l'écho : à 90 BPM il tombe à 32 000 échantillons, à
+> 180 BPM à 16 000, et le rapport est bien celui des tempos — ce qui distingue
+> « le plugin a reçu un tempo » de « le plugin a reçu **le** tempo ». Un second
+> test, **sans transport livré**, vérifie qu'ils retombent alors sur 120 BPM
+> d'usine : sans lui, les deux premiers pourraient passer avec un hôte muet.
+>
+> **LA FAÇADE : CE QUI EST VÉRIFIABLE SANS ÉCRAN EST CE QUI COMPTE.** L'aspect
+> d'une fenêtre ne se teste pas ici ; « fermable sans perte d'état », si —
+> et c'est la moitié du critère qui coûterait cher à découvrir en la subissant.
+> Elle est vraie **par construction** : l'état vit dans le plugin, la fenêtre
+> n'en montre qu'un dessin, et un test ouvre puis détruit la façade avant de
+> comparer l'état natif et le son. La fenêtre suit la taille que le plugin
+> demande et le laisse la changer s'il le permet ; une fenêtre fixe rognerait un
+> éditeur redimensionnable, ce qui est pire que pas de fenêtre du tout. Deux
+> fenêtres sur le même plugin sont refusées — elles montreraient le même état à
+> deux endroits.
+>
+> **LES MACHINES DU PARC NE SE VOIENT PAS PROPOSER DE FAÇADE NATIVE** : elles
+> ont la leur, montrée par le Synth Rack. Deux chemins vers la même chose, dont
+> l'un ne mène nulle part, valent moins qu'un seul.
+>
+> **LA FAÇADE CLAP EST DIFFÉRÉE, ET C'EST UNE DÉCISION, PAS UN OUBLI.**
+> `clap_plugin_gui` demande d'incruster une fenêtre X11 dans la nôtre, avec les
+> extensions d'hôte qui vont avec (redimensionnement, minuteries, descripteurs
+> de fichiers). Ce n'est pas long à écrire ; c'est **impossible à exécuter une
+> seule fois** dans l'environnement où ce travail se fait, qui n'a pas
+> d'affichage. Livrer cent cinquante lignes d'incrustation de fenêtre que
+> personne n'a jamais vues tourner, en les déclarant faites, est exactement ce
+> que ce projet refuse ailleurs. Le côté VST3 passe par JUCE, dont ce chemin est
+> celui de milliers d'hôtes et que le test ci-dessus exerce réellement. La
+> façade CLAP se fera quand elle pourra être ouverte au moins une fois.
 
 
 ### Phase D8 — Tenir la charge

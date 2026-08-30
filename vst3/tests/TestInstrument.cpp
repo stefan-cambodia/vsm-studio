@@ -80,8 +80,14 @@ public:
     void setCurrentProgram(int index) override { marque_ = index; }
     const juce::String getProgramName(int) override { return "Unique"; }
     void changeProgramName(int, const juce::String&) override {}
-    juce::AudioProcessorEditor* createEditor() override { return nullptr; }
-    bool hasEditor() const override { return false; }
+    /// UNE FAÇADE, MÊME BANALE (D7.4). L'éditeur générique de JUCE suffit :
+    /// ce que le test doit prouver n'est pas qu'un plugin sait se dessiner --
+    /// c'est que l'hôte sait ouvrir sa façade, et surtout la REFERMER sans rien
+    /// perdre. Sans éditeur du tout, ce test-là serait creux.
+    juce::AudioProcessorEditor* createEditor() override {
+        return new juce::GenericAudioProcessorEditor(*this);
+    }
+    bool hasEditor() const override { return true; }
 
 private:
     void rendre(juce::AudioBuffer<float>& buffer, int depart, int nombre) {

@@ -740,6 +740,33 @@ void ProcessGraph::renderGroupBuses(const GraphSnapshot& snapshot, bool anySolo,
     }
 }
 
+vsm::audio::plugin::TransportInfo ProcessGraph::transportFor(const Project& project,
+                                                              double seconds, bool playing) {
+    vsm::audio::plugin::TransportInfo transport;
+    transport.playing = playing;
+    transport.positionSeconds = seconds;
+
+    const Tick tick = project.secondsToTicks(seconds);
+    transport.tempoBpm = project.tempoMap.bpmAt(tick);
+    transport.timeSignatureNumerator = project.timeSignatureMap.numeratorAt(tick);
+    transport.timeSignatureDenominator =
+        static_cast<int>(project.timeSignatureMap.denominatorAt(tick));
+
+    // LA POSITION EN NOIRES, ET NON EN TEMPS DE LA MESURE. « Beat » veut dire
+    // la noire dans tous les formats de plugin -- CLAP le dit explicitement,
+    // VST3 aussi -- même en 6/8, où le temps musical est la croche pointée.
+    // Convertir en temps de mesure ferait sauter un delay synchronisé d'un
+    // facteur trois dès qu'on quitte le 4/4.
+    const double ppq = project.ticksPerQuarterNote > 0
+                           ? static_cast<double>(project.ticksPerQuarterNote) : 480.0;
+    transport.positionBeats = static_cast<double>(tick) / ppq;
+
+    transport.looping = project.loopEnabled && project.loopEndTick > project.loopStartTick;
+    transport.loopStartBeats = static_cast<double>(project.loopStartTick) / ppq;
+    transport.loopEndBeats = static_cast<double>(project.loopEndTick) / ppq;
+    return transport;
+}
+
 void ProcessGraph::renderTrackRange(const GraphSnapshot& snapshot, bool anySolo,
                                     int sampleStart, int sampleCount, double rangeStartSeconds,
                                     float* outputL, float* outputR, bool includeScheduledEvents) {
@@ -911,9 +938,20 @@ void ProcessGraph::renderTrackRange(const GraphSnapshot& snapshot, bool anySolo,
         // tout l'intérêt du gel, et c'est ce qui la fait « coûter le prix d'une
         // lecture audio ». Son matériau reste dans la piste et revient au
         // dégel ; seul le calcul s'arrête.
-        if (instrument && !track.frozen)
+        // LE TRANSPORT (D7.4), calculé UNE FOIS pour la piste et livré à
+        // l'instrument comme aux inserts, juste avant qu'ils travaillent.
+        // Position, tempo et signature sont lus à `rangeStartSeconds`, c'est-
+        // à-dire au début du segment traité : un plugin qui lit le tempo au
+        // milieu d'un ritardando doit voir celui de l'instant qu'il rend, pas
+        // celui du bloc précédent.
+        const vsm::audio::plugin::TransportInfo transport = transportFor(
+            project, rangeStartSeconds, playing_.load(std::memory_order_acquire));
+
+        if (instrument && !track.frozen) {
+            instrument->setTransportInfo(transport);
             instrument->process(scratchEvents_.data(), numEvents,
                                  scratchStereoL_.data(), scratchStereoR_.data(), sampleCount);
+        }
         if (audioSource && !audioSource->empty()) {
             // La position sur la LIGNE DE TEMPS, en échantillons. Elle vient du
             // temps du segment et non d'un compteur de blocs : c'est ce qui
@@ -940,6 +978,7 @@ void ProcessGraph::renderTrackRange(const GraphSnapshot& snapshot, bool anySolo,
                     fx->setSidechainInput(sendL_[static_cast<size_t>(bus - 1)].data() + sampleStart,
                                            sendR_[static_cast<size_t>(bus - 1)].data() + sampleStart,
                                            sampleCount);
+                fx->setTransportInfo(transport);
                 fx->process(scratchStereoL_.data(), scratchStereoR_.data(), sampleCount);
             }
         }
