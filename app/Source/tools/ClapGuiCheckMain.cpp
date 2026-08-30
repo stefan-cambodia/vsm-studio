@@ -22,6 +22,7 @@
 #include "ClapPluginWindow.h"
 #include <cstdio>
 #include <cstdlib>
+#include "vsm/interchange/NumberText.h"
 
 int main(int argc, char** argv) {
     juce::ScopedJuceInitialiser_GUI juceInit;
@@ -30,7 +31,7 @@ int main(int argc, char** argv) {
         return 1;
     }
     const std::string chemin = argv[1];
-    const double secondes = argc >= 3 ? std::atof(argv[2]) : 4.0;
+    const double secondes = argc >= 3 ? vsm::interchange::numberFromTextOr(argv[2], 4.0) : 4.0;
 
     std::string erreur;
     auto instrument = vsm::clap::createClapInstrument(chemin, "", erreur);

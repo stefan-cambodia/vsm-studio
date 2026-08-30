@@ -29,6 +29,7 @@
 #include <cmath>
 #include <cstdio>
 #include <vector>
+#include "vsm/interchange/NumberText.h"
 
 namespace {
 
@@ -45,10 +46,10 @@ float echantillon(int64_t index, int canal) {
 } // namespace
 
 int main(int argc, char** argv) {
-    const double secondes   = argc >= 2 ? std::atof(argv[1]) : 10.0;
+    const double secondes   = argc >= 2 ? vsm::interchange::numberFromTextOr(argv[1], 10.0) : 10.0;
     const int    bloc       = argc >= 3 ? std::atoi(argv[2]) : 512;
-    const double frequence  = argc >= 4 ? std::atof(argv[3]) : 48000.0;
-    const double vitesse    = argc >= 5 ? std::atof(argv[4]) : 20.0;
+    const double frequence  = argc >= 4 ? vsm::interchange::numberFromTextOr(argv[3], 48000.0) : 48000.0;
+    const double vitesse    = argc >= 5 ? vsm::interchange::numberFromTextOr(argv[4], 20.0) : 20.0;
     const int    canaux     = 2;
 
     if (secondes <= 0.0 || bloc <= 0 || frequence <= 0.0 || vitesse <= 0.0) {

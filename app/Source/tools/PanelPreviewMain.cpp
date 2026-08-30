@@ -27,6 +27,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include "vsm/interchange/NumberText.h"
 
 int main(int argc, char** argv) {
     juce::ScopedJuceInitialiser_GUI juceInit;
@@ -40,7 +41,7 @@ int main(int argc, char** argv) {
     outputFolder.createDirectory();
     const int width = argc >= 3 ? juce::jmax(320, std::atoi(argv[2])) : 1100;
     const double scale =
-        argc >= 4 ? juce::jlimit(0.5, 4.0, std::atof(argv[3])) : 1.0;
+        argc >= 4 ? juce::jlimit(0.5, 4.0, vsm::interchange::numberFromTextOr(argv[3], 1.0)) : 1.0;
 
     vsm::audio::plugin::registerBuiltInPlugins();
     int rendered = 0;

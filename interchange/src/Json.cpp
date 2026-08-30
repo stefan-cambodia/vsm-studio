@@ -1,4 +1,5 @@
 #include "vsm/interchange/Json.h"
+#include <charconv>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -30,13 +31,27 @@ JsonValue JsonValue::makeNumber(double value) {
 
 JsonValue JsonValue::makeFloat(float value) {
     if (!std::isfinite(value)) return JsonValue();
+    // `to_chars`/`from_chars` plutôt que `snprintf`/`strtod` : la même règle
+    // qu'à `writeNumber` ci-dessous, qui dit pourquoi. Ici le couple était
+    // COHÉRENT sous n'importe quelle locale -- il écrit et relit avec la même
+    // -- et ne produisait donc pas de valeur fausse ; il est repris quand même
+    // pour qu'il n'y ait dans ce fichier qu'UNE façon de passer d'un nombre à
+    // son texte, et qu'aucune ne consulte la locale du processus.
     char buffer[32];
+    char* end = buffer;
     for (int precision = 1; precision <= 9; ++precision) {
-        std::snprintf(buffer, sizeof(buffer), "%.*g", precision, static_cast<double>(value));
-        const float roundTrip = std::strtof(buffer, nullptr);
+        const auto written = std::to_chars(buffer, buffer + sizeof(buffer),
+                                           static_cast<double>(value),
+                                           std::chars_format::general, precision);
+        if (written.ec != std::errc()) continue;
+        end = written.ptr;
+        float roundTrip = 0.0f;
+        std::from_chars(buffer, end, roundTrip);
         if (!(roundTrip < value) && !(value < roundTrip)) break; // identité exacte en float
     }
-    return makeNumber(std::strtod(buffer, nullptr));
+    double exact = 0.0;
+    std::from_chars(buffer, end, exact);
+    return makeNumber(exact);
 }
 
 JsonValue JsonValue::makeString(std::string value) {
@@ -120,18 +135,40 @@ void writeEscapedString(std::string& out, const std::string& text) {
 /// l'aller-retour exact d'un double, mais produit "0.10000000000000001" ;
 /// on essaie donc les précisions courtes d'abord et on garde la première qui
 /// se relit à l'identique -- fichiers lisibles ET valeurs intactes.
+///
+/// `std::to_chars` ET PAS `snprintf`, ET C'EST LA CORRECTION D'UN FICHIER
+/// INVALIDE ÉCRIT EN VRAI. `%g` place le séparateur décimal de la LOCALE du
+/// processus. Le programme n'en installe aucune -- mais JUCE le fait pour lui :
+/// `juce_SystemStats_linux.cpp` appelle `setlocale(LC_ALL, "")` puis
+/// « restaure » ce que cet appel vient de RENDRE, c'est-à-dire la nouvelle
+/// locale, si bien que le processus reste dans celle de l'environnement pour
+/// de bon. Sur une machine réglée en français, l'application écrivait donc
+/// `"EQ Mid Q": 0,8` -- pas du JSON, et son propre lecteur le refuse. Les
+/// trois sauvegardes automatiques trouvées sur le disque de développement
+/// étaient toutes dans cet état : la récupération après plantage (D10.4)
+/// promettait de rendre un projet qu'elle n'était pas en mesure de relire.
+///
+/// `std::to_chars` est défini en locale C, toujours, quelle que soit celle du
+/// processus : le problème ne se répare pas, il cesse d'exister. La forme
+/// produite est celle de `printf("%.*g")` en locale C, donc les fichiers déjà
+/// écrits par une chaîne saine ne changent pas d'un octet.
 void writeNumber(std::string& out, double value) {
     if (!std::isfinite(value)) { out += "null"; return; } // NaN/inf n'existent pas en JSON
     char buffer[40];
+    char* end = buffer;
     for (int precision : {6, 9, 12, 17}) {
-        std::snprintf(buffer, sizeof(buffer), "%.*g", precision, value);
+        const auto written = std::to_chars(buffer, buffer + sizeof(buffer), value,
+                                           std::chars_format::general, precision);
+        if (written.ec != std::errc()) continue; // ne peut pas arriver à 40 octets
+        end = written.ptr;
         // Comparaison d'identité EXACTE voulue : on cherche la précision la
         // plus courte qui se relit au bit près. Écrite sans `==` pour rester
         // propre sous -Wfloat-equal, où l'avertissement viserait juste.
-        const double roundTrip = std::strtod(buffer, nullptr);
+        double roundTrip = 0.0;
+        std::from_chars(buffer, end, roundTrip);
         if (!(roundTrip < value) && !(value < roundTrip)) break;
     }
-    out += buffer;
+    out.append(buffer, static_cast<size_t>(end - buffer));
 }
 
 } // namespace
@@ -400,7 +437,20 @@ private:
             while (!atEnd() && peek() >= '0' && peek() <= '9') ++pos_;
         }
         if (!anyDigit) { pos_ = start; return fail("nombre attendu"); }
-        out = JsonValue::makeNumber(std::strtod(text_.substr(start, pos_ - start).c_str(), nullptr));
+        // `std::from_chars` ET PAS `strtod`, POUR LA RAISON SYMÉTRIQUE DE
+        // `writeNumber`, et c'est le côté SILENCIEUX de la panne : sous une
+        // locale à virgule, `strtod("0.8")` s'arrête sur le point et rend 0.
+        // Un `project.json` parfaitement valide -- ceux qu'écrit la chaîne
+        // d'analyse en Python -- se chargeait donc avec TOUS ses paramètres
+        // fractionnaires à zéro, sans un mot. `from_chars` lit en locale C,
+        // toujours. Il refuse le `+` de tête, que le balayage ci-dessus
+        // accepte ; on le saute pour ne rien changer à ce qui passait déjà.
+        const char* premier = text_.data() + start;
+        const char* dernier = text_.data() + pos_;
+        if (premier != dernier && *premier == '+') ++premier;
+        double valeur = 0.0;
+        std::from_chars(premier, dernier, valeur); // échec => 0, comme strtod
+        out = JsonValue::makeNumber(valeur);
         return true;
     }
 

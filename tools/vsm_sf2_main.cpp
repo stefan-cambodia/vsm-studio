@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <iostream>
 #include <string>
+#include "vsm/interchange/NumberText.h"
 
 // `vsm-sf2` — convertit un preset SoundFont en profil pour `vsm.multisample`
 // (docs/CDC-multisample.md § 5, phase M2).
@@ -87,7 +88,7 @@ int main(int argc, char** argv) {
     const std::string programText = argumentAfter(argc, argv, "--programme");
     if (programText.empty()) { std::cerr << "vsm-sf2 : --programme est obligatoire\n"; return usage(); }
     const int program = std::stoi(programText);
-    const double maxSeconds = std::stod(argumentAfter(argc, argv, "--duree-max", "0"));
+    const double maxSeconds = vsm::interchange::numberFromTextOr(argumentAfter(argc, argv, "--duree-max", "0"), 0.0);
 
     const auto index = readSoundFontIndex(path);
     if (!index.success) { std::cerr << "vsm-sf2 : " << index.error << "\n"; return 2; }

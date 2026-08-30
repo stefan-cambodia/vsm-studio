@@ -325,3 +325,15 @@ if (TARGET vsm_clap_window)
     )
     juce_generate_juce_header(vsm-clap-gui-check)
 endif()
+
+# `NumberText.h` est un en-tête SEUL : ces outils y accèdent sans lier
+# `vsm_interchange`, dont ils n'ont besoin de rien d'autre. La règle qu'il porte
+# -- un nombre qui traverse une frontière se lit en locale C -- vaut pour un
+# argument de ligne de commande comme pour un fichier.
+# `if(TARGET)` parce que `vsm-clap-gui-check` n'existe que si CLAP est activé.
+foreach(outil vsm-panel-preview vsm-ui-preview vsm-clap-gui-check
+              vsm-latency-check vsm-disk-record-check)
+    if(TARGET ${outil})
+        target_include_directories(${outil} PRIVATE ${CMAKE_SOURCE_DIR}/interchange/include)
+    endif()
+endforeach()

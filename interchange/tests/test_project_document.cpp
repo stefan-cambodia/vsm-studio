@@ -1,3 +1,4 @@
+#include "LocaleAVirgule.h"
 #include "TestFramework.h"
 #include "vsm/interchange/Json.h"
 #include "vsm/interchange/ProjectDocument.h"
@@ -787,4 +788,47 @@ VSM_TEST(track_height_and_folding_survive_the_round_trip_and_stay_optional) {
     VSM_ASSERT(!restaure.tracks[0].folded);
     VSM_ASSERT(restaure.tracks[1].folded);
     VSM_ASSERT_EQ(restaure.tracks[2].arrangementHeight, 56);
+}
+
+// ---------------------------------------------------------------------------
+// UN PROJET SURVIT À LA LOCALE DE LA MACHINE QUI L'ENREGISTRE
+//
+// C'est ici que la panne se voyait, et elle ne se voyait que sur le disque :
+// les trois sauvegardes automatiques trouvées sur la machine de développement
+// portaient `"EQ Mid Q": 0,8` et étaient refusées par le lecteur du projet.
+// Le test précédent (`json_ignore_la_locale_du_processus`) vérifie la cause ;
+// celui-ci vérifie la PROMESSE — enregistrer un projet et le rouvrir —, parce
+// qu'une cause corrigée sans que la promesse soit vérifiée n'a jamais prouvé
+// qu'elle était la seule.
+VSM_TEST(un_projet_se_relit_sous_une_locale_a_virgule) {
+    const vsm::test::LocaleAVirgule virgule;
+    if (!virgule.annonce()) return;
+
+    const ProjectDocument original = documentFromProject(buildProject());
+    const std::string texte = projectDocumentToJson(original).toString();
+    // Les valeurs du projet d'essai : volume 0,8 · panoramique -0,25 ·
+    // départs 0,3 et 0,1. Toutes fractionnaires, toutes perdues par l'ancien
+    // écrivain comme par l'ancien lecteur.
+    VSM_ASSERT(texte.find("0,8") == std::string::npos);
+    VSM_ASSERT(texte.find("-0,25") == std::string::npos);
+
+    const ProjectLoadResult relu = parseProjectDocument(texte);
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT_EQ(relu.document.tracks.size(), original.tracks.size());
+    VSM_ASSERT_NEAR(relu.document.tracks[0].volume, 0.8f, 1e-6);
+    VSM_ASSERT_NEAR(relu.document.tracks[0].pan, -0.25f, 1e-6);
+    VSM_ASSERT_EQ(relu.document.tracks[0].sendLevels.size(), size_t{2});
+    VSM_ASSERT_NEAR(relu.document.tracks[0].sendLevels[0], 0.3f, 1e-6);
+
+    // ET UN FICHIER VENU D'AILLEURS. La chaîne d'analyse écrit ses
+    // `project.json` en Python, donc avec des points, quelle que soit la
+    // machine : c'est CE fichier-là que le DAW ouvre après une reconstruction
+    // (D9.3), et il le lisait avec tous ses nombres fractionnaires à zéro.
+    const auto venuDePython = parseProjectDocument(
+        R"({"format":"vsm-project","version":1,)"
+        R"("tracks":[{"name":"Basse","channel":1,)"
+        R"("mix":{"volume":0.62,"pan":-0.4,"sends":[0.35]}}]})");
+    VSM_ASSERT(venuDePython.success);
+    VSM_ASSERT_NEAR(venuDePython.document.tracks[0].volume, 0.62f, 1e-6);
+    VSM_ASSERT_NEAR(venuDePython.document.tracks[0].pan, -0.4f, 1e-6);
 }

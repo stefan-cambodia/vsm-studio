@@ -169,6 +169,15 @@ bool paramsValueToText(const clap_plugin* plugin, clap_id paramId, double value,
     return false;
 }
 
+/// ICI, ET SEULEMENT ICI, LA LOCALE A RAISON — et c'est une décision, pas un
+/// oubli. Ailleurs dans le projet, un nombre écrit en texte traverse une
+/// frontière (un fichier, une ligne de commande) et doit se lire en locale C
+/// quoi qu'il arrive : c'est la règle d'`interchange/NumberText.h`, écrite
+/// après avoir trouvé des `project.json` contenant `0,8`. Ce texte-ci ne
+/// traverse rien : il est AFFICHÉ par l'hôte à un être humain et RETAPÉ par
+/// lui, dans sa langue. `%.3f` et `strtod` consultent la même locale, celle du
+/// processus hôte, donc l'aller-retour est cohérent — et un utilisateur
+/// français qui tape « 0,5 » doit obtenir un demi, pas une erreur.
 bool paramsTextToValue(const clap_plugin*, clap_id, const char* text, double* outValue) {
     *outValue = std::strtod(text, nullptr);
     return true;

@@ -27,6 +27,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include "vsm/interchange/NumberText.h"
 
 namespace {
 
@@ -67,7 +68,7 @@ int main(int argc, char** argv) {
     const juce::File sortie =
         juce::File::getCurrentWorkingDirectory().getChildFile(juce::String(argv[1]));
     sortie.createDirectory();
-    const double echelle = argc >= 3 ? juce::jlimit(0.5, 4.0, std::atof(argv[2])) : 1.5;
+    const double echelle = argc >= 3 ? juce::jlimit(0.5, 4.0, vsm::interchange::numberFromTextOr(argv[2], 1.5)) : 1.5;
     int rendus = 0;
 
     // --- Raccourcis : la page complète, avec une touche personnalisée pour

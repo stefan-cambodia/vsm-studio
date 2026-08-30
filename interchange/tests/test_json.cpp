@@ -1,6 +1,8 @@
+#include "LocaleAVirgule.h"
 #include "TestFramework.h"
 #include "vsm/interchange/Json.h"
 #include <cmath>
+#include <string>
 
 using namespace vsm::interchange;
 
@@ -132,4 +134,73 @@ VSM_TEST(json_compact_and_pretty_forms_are_equivalent) {
     VSM_ASSERT(pretty.success && compact.success);
     VSM_ASSERT_EQ(pretty.value["inner"]["b"].asString(), compact.value["inner"]["b"].asString());
     VSM_ASSERT(root.toString(-1).find('\n') == std::string::npos); // vraiment compact
+}
+
+// ---------------------------------------------------------------------------
+// LA LOCALE DU PROCESSUS N'A PAS SON MOT À DIRE SUR LE CONTENU D'UN FICHIER
+//
+// Trouvé en vrai, pas imaginé : sur la machine de développement, réglée en
+// français, les trois sauvegardes automatiques laissées sur le disque
+// contenaient `"EQ Mid Q": 0,8`. Ce n'est pas du JSON, et le lecteur de ce
+// même fichier les refusait toutes les trois -- la récupération après plantage
+// (D10.4) promettait de rendre un projet qu'elle n'était pas en mesure de
+// relire. Le programme n'installe aucune locale ; JUCE le fait pour lui, et
+// « restaure » ce que son propre appel vient de rendre.
+//
+// POURQUOI CE TEST NE POUVAIT PAS ÉCHOUER AVANT : la suite tourne en locale C,
+// où la panne est invisible. Il faut donc l'installer exprès. Sur une machine
+// qui n'a aucune locale à virgule, le contrôle ne peut pas avoir lieu -- il est
+// alors DIT sur la sortie plutôt que compté comme réussi en silence.
+
+VSM_TEST(json_ignore_la_locale_du_processus) {
+    const vsm::test::LocaleAVirgule virgule;
+    if (!virgule.annonce()) return;
+
+    // 1. CE QU'ON ÉCRIT EST DU JSON. C'est le symptôme visible : un fichier
+    //    qu'aucun autre outil ne peut lire, à commencer par la chaîne d'analyse.
+    JsonValue racine = JsonValue::makeObject();
+    racine.set("EQ Mid Q", JsonValue::makeFloat(0.8f));
+    racine.set("Limiter Ceiling", JsonValue::makeFloat(-0.3f));
+    racine.set("tempo", JsonValue::makeNumber(128.5));
+    const std::string texte = racine.toString();
+    VSM_ASSERT(texte.find("0,8") == std::string::npos);   // ce que le disque contenait
+    VSM_ASSERT(texte.find("-0,3") == std::string::npos);
+    VSM_ASSERT(texte.find("128,5") == std::string::npos);
+    VSM_ASSERT(texte.find("0.8") != std::string::npos);
+    VSM_ASSERT(texte.find("-0.3") != std::string::npos);
+    VSM_ASSERT(texte.find("128.5") != std::string::npos);
+
+    // 2. ON RELIT CE QU'ON A ÉCRIT. C'est la promesse de D10.4, et elle était
+    //    fausse : le parseur s'arrêtait sur la virgule et refusait le fichier.
+    const auto relu = parseJson(texte);
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT_NEAR(relu.value["EQ Mid Q"].asNumber(), 0.8, 1e-9);
+    VSM_ASSERT_NEAR(relu.value["Limiter Ceiling"].asNumber(), -0.3, 1e-9);
+
+    // 3. ON LIT UN FICHIER VALIDE VENU D'AILLEURS, ET C'EST LE CÔTÉ SILENCIEUX.
+    //    `strtod("0.8")` sous une locale à virgule s'arrête sur le point et
+    //    rend 0 : un `project.json` écrit par la chaîne d'analyse se chargeait
+    //    avec tous ses paramètres fractionnaires à zéro, sans un mot.
+    const auto venuDAilleurs = parseJson(R"({"cutoff": 0.8, "gain": -0.3, "bpm": 128.5})");
+    VSM_ASSERT(venuDAilleurs.success);
+    VSM_ASSERT_NEAR(venuDAilleurs.value["cutoff"].asNumber(), 0.8, 1e-12);
+    VSM_ASSERT_NEAR(venuDAilleurs.value["gain"].asNumber(), -0.3, 1e-12);
+    VSM_ASSERT_NEAR(venuDAilleurs.value["bpm"].asNumber(), 128.5, 1e-12);
+}
+
+VSM_TEST(json_ecrit_les_memes_octets_sous_les_deux_locales) {
+    // La correction ne doit RIEN changer quand la locale est déjà saine :
+    // sinon tous les fichiers du dépôt bougeraient d'un octet à la relecture,
+    // et les diffs deviendraient illisibles pour rien.
+    JsonValue racine = JsonValue::makeObject();
+    racine.set("a", JsonValue::makeNumber(0.1));
+    racine.set("b", JsonValue::makeNumber(1.0 / 3.0));
+    racine.set("c", JsonValue::makeFloat(0.7f));
+    racine.set("d", JsonValue::makeNumber(1e-7));
+    racine.set("e", JsonValue::makeNumber(-42));
+    const std::string enC = racine.toString();
+
+    const vsm::test::LocaleAVirgule virgule;
+    if (!virgule.annonce()) return;
+    VSM_ASSERT_EQ(racine.toString(), enC);
 }

@@ -28,6 +28,7 @@
 #include <cstdio>
 #include <deque>
 #include <vector>
+#include "vsm/interchange/NumberText.h"
 
 namespace {
 
@@ -77,7 +78,7 @@ private:
 int main(int argc, char** argv) {
     const int allerRetour = argc >= 2 ? std::atoi(argv[1]) : 1234;
     const int bloc        = argc >= 3 ? std::atoi(argv[2]) : 256;
-    const double freq     = argc >= 4 ? std::atof(argv[3]) : 48000.0;
+    const double freq     = argc >= 4 ? vsm::interchange::numberFromTextOr(argv[3], 48000.0) : 48000.0;
 
     if (bloc <= 0 || freq <= 0.0 || allerRetour < bloc) {
         std::printf("Usage : vsm-latency-check [aller-retour-en-echantillons] "

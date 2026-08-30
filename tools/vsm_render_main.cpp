@@ -5,6 +5,7 @@
 #if VSM_WITH_VST3
 #include "Vst3PluginHost.h"
 #endif
+#include "vsm/interchange/NumberText.h"
 #include "vsm/interchange/PatchRenderService.h"
 #include <iostream>
 #include <cstdio>
@@ -62,12 +63,12 @@ void printUsage() {
         "Codes de sortie : 0 succès, 1 erreur d'utilisation, 2 échec du rendu.\n");
 }
 
+/// La lecture passe par `NumberText.h` ET PAS par `strtod` : un nombre écrit
+/// sur une LIGNE DE COMMANDE n'appartient pas à la locale de celui qui la
+/// tape, il appartient au programme qui la lit. Sous une locale à virgule,
+/// `strtod` fait de `--duration 0.5` une erreur d'utilisation.
 bool parseDouble(const char* text, double& out) {
-    char* end = nullptr;
-    const double value = std::strtod(text, &end);
-    if (end == text || *end != '\0') return false;
-    out = value;
-    return true;
+    return text != nullptr && vsm::interchange::numberFromText(text, out);
 }
 
 } // namespace
