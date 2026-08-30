@@ -446,6 +446,75 @@ MainComponent::MainComponent()
     // L'attendre du prochain changement d'état ne marcherait pas : sur une
     // machine sans audio, il n'y a jamais de changement, et le temps ne
     // partirait donc jamais.
+    midiLearnPanel_.onRemove = [this](int cc) {
+        audioEngine_.clearMidiLearnController(static_cast<uint8_t>(cc));
+        midiLearnSeenCount_ = audioEngine_.midiLearnMappingCount();
+        saveMidiLearnMappings();
+        refreshMidiLearnList();
+        menuItemsChanged();
+    };
+    midiLearnPanel_.onLearn = [this](juce::Component* origine) {
+        // CE QUI EST PROPOSÉ DÉPEND DE CE QUI EXISTE : le transport toujours,
+        // les réglages de piste seulement s'il y a une piste choisie, et un
+        // départ seulement s'il est déclaré par le projet. Proposer une cible
+        // qui n'existe pas serait promettre une association qui ne ferait rien.
+        using Kind = vsm::audio::engine::MidiLearnKind;
+        struct Choix { Kind kind; const char* libelle; uint8_t slot; };
+        auto choix = std::make_shared<std::vector<Choix>>();
+        juce::PopupMenu menu;
+        auto ajouter = [&](Kind kind, const juce::String& libelle, uint8_t slot = 0) {
+            choix->push_back({kind, "", slot});
+            menu.addItem(static_cast<int>(choix->size()), libelle);
+        };
+        menu.addSectionHeader("Transport");
+        ajouter(Kind::TransportPlay, juce::String::fromUTF8(u8"Lecture / arrêt"));
+        ajouter(Kind::TransportStop, juce::String::fromUTF8(u8"Arrêt"));
+        ajouter(Kind::TransportRecord, "Enregistrement");
+        ajouter(Kind::TransportLoop, "Boucle");
+
+        const size_t piste = trackList_.selectedTrackIndex();
+        if (piste < project_.tracks.size()) {
+            menu.addSectionHeader(juce::String::fromUTF8(u8"Piste ") + juce::String(static_cast<int>(piste) + 1)
+                                   + " — " + juce::String::fromUTF8(project_.tracks[piste].name.c_str()));
+            ajouter(Kind::TrackVolume, "Volume");
+            ajouter(Kind::TrackPan, "Panoramique");
+            ajouter(Kind::TrackMute, "Muet");
+            ajouter(Kind::TrackSolo, "Solo");
+            for (size_t bus = 0; bus < project_.sends.size()
+                                 && bus < vsm::audio::engine::ProcessGraph::kMaxSends; ++bus)
+                ajouter(Kind::TrackSend,
+                         juce::String::fromUTF8(u8"Départ ") + juce::String(static_cast<char>('A' + bus)),
+                         static_cast<uint8_t>(bus));
+        }
+
+        menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(origine),
+                            [this, choix, piste](int resultat) {
+            if (resultat <= 0 || resultat > static_cast<int>(choix->size())) return;
+            const auto& retenu = (*choix)[static_cast<size_t>(resultat) - 1];
+            vsm::audio::engine::MidiLearnTarget cible;
+            cible.kind = retenu.kind;
+            cible.trackIndex = piste;
+            cible.slot = retenu.slot;
+            // LA PLAGE EST CELLE DU RÉGLAGE RÉEL, et le panoramique est le seul
+            // qui ne parte pas de zéro : l'enregistrer de 0 à 1 le bloquerait à
+            // droite de l'axe.
+            cible.min = retenu.kind == vsm::audio::engine::MidiLearnKind::TrackPan ? -1.0f : 0.0f;
+            cible.max = 1.0f;
+            cible.valid = true;
+            audioEngine_.armMidiLearn(cible);
+            midiLearnPanel_.setWaiting(juce::String::fromUTF8(
+                vsm::interchange::describeMidiLearnTarget(cible).c_str()));
+        });
+    };
+    midiLearnPanel_.onRemoveAll = [this] {
+        audioEngine_.clearMidiLearn();
+        midiLearnSeenCount_ = 0;
+        saveMidiLearnMappings();
+        refreshMidiLearnList();
+        menuItemsChanged();
+    };
+    loadMidiLearnMappings();
+
     refreshReconstructionChain();
     transport_.setAudioDeviceOpen(audioEngine_.isDeviceOpen(),
                                    audioEngine_.currentSampleRate(),
@@ -624,6 +693,22 @@ void MainComponent::timerCallback() {
     synthRack_.setPlayheadTick(playhead); // éclaire le pas en cours sur les grilles
     arrangement_.setPlayheadTick(playhead);
     pianoRollPanel_.refresh(); // règle + barre d'outils suivent la tête de lecture et l'historique
+
+    // CE QUE LE THREAD MIDI A DÉPOSÉ (D10.2) : mixage et transport, qu'il n'a
+    // pas le droit de toucher lui-même.
+    applyLearnedControls();
+    // ET UN APPRENTISSAGE PEUT AVOIR EU LIEU SANS QUE PERSONNE LE DISE : il
+    // arrive du thread MIDI, au moment où l'utilisateur tourne un bouton.
+    // Comparer le compte est la seule façon de s'en apercevoir sans faire
+    // signer un contrat au thread MIDI.
+    if (const size_t associations = audioEngine_.midiLearnMappingCount();
+        associations != midiLearnSeenCount_) {
+        midiLearnSeenCount_ = associations;
+        midiLearnPanel_.setWaiting({});
+        saveMidiLearnMappings();
+        refreshMidiLearnList();
+        menuItemsChanged();
+    }
 
     // LA FIN DU MORCEAU EST LA SEULE CHOSE QUE LE GRAPHE NE PEUT PAS DÉCIDER :
     // il sait rendre, pas ce qu'est « la fin ». Le transport la connaît, et
@@ -982,6 +1067,11 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuViewSynthRack, "Synth Rack", true, synthRackWindow_.isVisible());
             menu.addItem(kMenuViewMixer, "Mixer", true, mixerWindow_.isVisible());
             menu.addItem(kMenuViewArrangement, "Arrangement", true, arrangementWindow_.isVisible());
+            menu.addItem(kMenuViewMidiLearn,
+                          juce::String::fromUTF8(u8"Associations MIDI (")
+                              + juce::String(static_cast<int>(audioEngine_.midiLearnMappingCount()))
+                              + ")",
+                          true, midiLearnWindow_ && midiLearnWindow_->isVisible());
             menu.addSeparator();
             {
                 // TAILLE DE L'INTERFACE. Le facteur agrandit texte ET cases
@@ -1050,6 +1140,18 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             break;
         }
         case kMenuFileChainFolder: chooseChainFolder(); break;
+        case kMenuViewMidiLearn: {
+            if (!midiLearnWindow_) {
+                midiLearnWindow_ = std::make_unique<PanelWindow>(
+                    juce::String::fromUTF8(u8"Associations MIDI"), midiLearnPanel_);
+                midiLearnWindow_->setSize(560, 420);
+            }
+            const bool visible = midiLearnWindow_->isVisible();
+            if (!visible) refreshMidiLearnList();
+            midiLearnWindow_->setVisible(!visible);
+            if (!visible) midiLearnWindow_->toFront(true);
+            break;
+        }
         case kMenuRecordCountInNone:
         case kMenuRecordCountInOne:
         case kMenuRecordCountInTwo:
@@ -2250,6 +2352,143 @@ void MainComponent::filesDropped(const juce::StringArray& files, int, int) {
                 startReconstruction(pendingDroppedAudio_);
             pendingDroppedAudio_ = juce::File();
         }));
+}
+
+// --- D10.2 : le MIDI learn se voit, se défait, et se souvient --------------
+
+void MainComponent::loadMidiLearnMappings() {
+    const juce::String texte =
+        vsm::app::ui::UiScale::properties().getValue("midiLearnMappings", "");
+    const auto lu = vsm::interchange::midiLearnFromJson(texte.toStdString());
+    if (!lu.success) {
+        // ON NE PERD PAS EN SILENCE. Des associations illisibles, c'est un
+        // studio recâblé à la main sans savoir pourquoi.
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::WarningIcon,
+            juce::String::fromUTF8(u8"Associations MIDI illisibles"),
+            juce::String::fromUTF8(lu.error.c_str()));
+        return;
+    }
+    audioEngine_.setMidiLearnMap(lu.map);
+    midiLearnSeenCount_ = lu.map.size();
+    if (lu.discarded > 0)
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon,
+            juce::String::fromUTF8(u8"Associations MIDI"),
+            juce::String(static_cast<int>(lu.discarded))
+                + juce::String::fromUTF8(u8" association(s) enregistrée(s) n'ont pas été relues : "
+                                          u8"elles désignent une cible que cette version ne connaît "
+                                          u8"pas. Elles ont été écartées plutôt que devinées."));
+    refreshMidiLearnList();
+}
+
+void MainComponent::saveMidiLearnMappings() {
+    const std::string json = vsm::interchange::midiLearnToJson(audioEngine_.midiLearnMap());
+    auto& reglages = vsm::app::ui::UiScale::properties();
+    reglages.setValue("midiLearnMappings", juce::String::fromUTF8(json.c_str()));
+    reglages.saveIfNeeded();
+}
+
+void MainComponent::refreshMidiLearnList() {
+    std::vector<vsm::app::ui::MidiLearnWindow::Row> lignes;
+    const auto carte = audioEngine_.midiLearnMap();
+    for (const auto& entree : carte.entries()) {
+        // LE NOM DU PARAMÈTRE VIENT DE LA MACHINE quand elle est là :
+        // « paramètre 12 » n'aide personne à retrouver ce qu'il a réglé.
+        std::string nomParametre;
+        if (entree.target.kind == vsm::audio::engine::MidiLearnKind::InstrumentParam)
+            if (auto* machine = audioEngine_.processGraph().trackInstrument(entree.target.trackIndex))
+                for (const auto& info : machine->parameterList())
+                    if (info.id == entree.target.paramId) { nomParametre = info.name; break; }
+        lignes.push_back({static_cast<int>(entree.controller),
+                          juce::String::fromUTF8(
+                              vsm::interchange::describeMidiLearnTarget(entree.target, nomParametre)
+                                  .c_str())});
+    }
+    midiLearnPanel_.setRows(std::move(lignes));
+}
+
+void MainComponent::applyLearnedControls() {
+    learnedDrain_.clear();
+    if (audioEngine_.drainLearnedControls(learnedDrain_) == 0) return;
+
+    using Kind = vsm::audio::engine::MidiLearnKind;
+    bool projetTouche = false;
+    for (const auto& commande : learnedDrain_) {
+        const auto& cible = commande.target;
+        // UNE BASCULE S'APPUIE, UN FADER SE POSITIONNE. Traiter l'un comme
+        // l'autre ferait démarrer la lecture au milieu d'une course de
+        // potentiomètre. Le seuil est celui du MIDI : 64.
+        const bool appui = commande.rawValue >= 64;
+        const bool piste = cible.trackIndex < project_.tracks.size();
+        switch (cible.kind) {
+            case Kind::TrackVolume:
+                if (piste) { project_.tracks[cible.trackIndex].volume = commande.value; projetTouche = true; }
+                break;
+            case Kind::TrackPan:
+                // La plage a été enregistrée AVEC l'association (-1 à +1) :
+                // la valeur arrive donc déjà à l'échelle du réglage. La borner
+                // reste utile pour un fichier de préférences édité à la main.
+                if (piste) {
+                    project_.tracks[cible.trackIndex].pan = juce::jlimit(-1.0f, 1.0f, commande.value);
+                    projetTouche = true;
+                }
+                break;
+            case Kind::TrackMute:
+                if (piste && appui) {
+                    project_.tracks[cible.trackIndex].muted = !project_.tracks[cible.trackIndex].muted;
+                    projetTouche = true;
+                }
+                break;
+            case Kind::TrackSolo:
+                if (piste && appui) {
+                    project_.tracks[cible.trackIndex].solo = !project_.tracks[cible.trackIndex].solo;
+                    projetTouche = true;
+                }
+                break;
+            case Kind::TrackSend:
+                if (piste && cible.slot < vsm::audio::engine::ProcessGraph::kMaxSends) {
+                    project_.tracks[cible.trackIndex].setSendLevel(cible.slot, commande.value);
+                    projetTouche = true;
+                }
+                break;
+            case Kind::TransportPlay:
+                if (appui) {
+                    if (transport_.state() == TransportState::Playing) transport_.stop();
+                    else transport_.play();
+                }
+                break;
+            case Kind::TransportStop:  if (appui) transport_.stop(); break;
+            case Kind::TransportRecord:
+                if (appui) {
+                    if (recordPhase_ == RecordPhase::Off) startRecording();
+                    else stopRecording();
+                }
+                break;
+            case Kind::TransportLoop:
+                if (appui) {
+                    const bool actif = !audioEngine_.processGraph().isLoopActive();
+                    project_.loopEnabled = actif;
+                    transport_.setLoopRegion(project_.loopStartTick, project_.loopEndTick, actif);
+                    transportBar_.setLooping(actif);
+                }
+                break;
+            case Kind::InstrumentParam:
+                // Appliqué par le thread MIDI lui-même : il ne passe pas ici.
+                break;
+        }
+    }
+    if (projetTouche) {
+        // REPUBLICATION COALESCÉE, comme pour un geste de souris sur le mixeur :
+        // un potentiomètre physique envoie cent messages par seconde, et
+        // republier le projet cent fois par seconde reviendrait à reconstruire
+        // le planning cent fois pour un fader.
+        mixDirty_ = true;
+        // La console doit MONTRER ce qu'un potentiomètre physique vient de
+        // faire : un fader qui bouge sans que le sien bouge à l'écran est
+        // exactement ce qui fait douter du câblage.
+        mixer_.setProject(&project_);
+    }
 }
 
 void MainComponent::loadReferenceAudio() {

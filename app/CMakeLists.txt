@@ -41,6 +41,7 @@ target_sources(VintageSynthMidiStudio PRIVATE
     Source/plugins/PluginScanner.cpp
     Source/reconstruction/ReconstructionRunner.cpp
     Source/ui/ReconstructionWindow.cpp
+    Source/ui/MidiLearnWindow.cpp
 )
 
 target_compile_definitions(VintageSynthMidiStudio PRIVATE

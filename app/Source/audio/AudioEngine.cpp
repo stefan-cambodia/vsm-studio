@@ -126,9 +126,47 @@ void AudioEngine::handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMe
         std::lock_guard<std::mutex> lock(learnMutex_);
         resolved = learnMap_.resolve(cc, value, target, paramValue);
     }
-    // setInstrumentParameter est lui-même thread-safe (hors verrou).
-    if (resolved)
+    if (!resolved) return;
+
+    // DEUX CHEMINS, ET LA FRONTIÈRE EST CELLE DES THREADS, pas celle du
+    // confort. Un paramètre de machine se règle par un `std::atomic` : on peut
+    // l'écrire d'ici. Tout le reste -- volume, panoramique, muet, départs,
+    // transport -- vit dans le PROJET, que seul le thread de l'interface a le
+    // droit de modifier. On dépose donc, et l'interface applique.
+    if (target.kind == vsm::audio::engine::MidiLearnKind::InstrumentParam) {
         graph_.setInstrumentParameter(target.trackIndex, target.paramId, paramValue);
+        return;
+    }
+    LearnedControl commande;
+    commande.target = target;
+    commande.value = paramValue;
+    commande.rawValue = value;
+    // File pleine : on abandonne plutôt que d'attendre. Perdre un pas de
+    // potentiomètre est sans conséquence -- le suivant arrive dans dix
+    // millisecondes --, bloquer le thread MIDI ne l'est pas.
+    learnQueue_.push(commande);
+}
+
+size_t AudioEngine::drainLearnedControls(std::vector<LearnedControl>& out) {
+    size_t combien = 0;
+    LearnedControl commande;
+    while (learnQueue_.pop(commande)) { out.push_back(commande); ++combien; }
+    return combien;
+}
+
+void AudioEngine::clearMidiLearnController(uint8_t controller) {
+    std::lock_guard<std::mutex> lock(learnMutex_);
+    learnMap_.clearController(controller);
+}
+
+vsm::audio::engine::MidiLearnMap AudioEngine::midiLearnMap() const {
+    std::lock_guard<std::mutex> lock(learnMutex_);
+    return learnMap_;
+}
+
+void AudioEngine::setMidiLearnMap(vsm::audio::engine::MidiLearnMap map) {
+    std::lock_guard<std::mutex> lock(learnMutex_);
+    learnMap_ = std::move(map);
 }
 
 void AudioEngine::setArmedTracks(std::vector<size_t> tracks) {

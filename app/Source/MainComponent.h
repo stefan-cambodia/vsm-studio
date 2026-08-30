@@ -7,6 +7,8 @@
 #include "vsm/interchange/ReconstructionChain.h"
 #include "reconstruction/ReconstructionRunner.h"
 #include "ui/ReconstructionWindow.h"
+#include "ui/MidiLearnWindow.h"
+#include "vsm/interchange/MidiLearnStore.h"
 #include "audio/AudioEngine.h"
 #include "ui/TransportBarComponent.h"
 #include "ui/TrackListComponent.h"
@@ -160,6 +162,7 @@ private:
         // les suivants valent kMenuAudioThreadsFirst + 1 + n threads auxiliaires.
         kMenuAudioThreadsFirst,
         kMenuAudioThreadsLast = kMenuAudioThreadsFirst + 32,
+        kMenuViewMidiLearn,
         kMenuFileReconstruct,
         kMenuFileChainFolder,
         kMenuHelpAbout,
@@ -185,6 +188,27 @@ private:
     vsm::app::ui::ReconstructionWindow reconstructionPanel_;
     std::unique_ptr<PanelWindow> reconstructionWindow_;
     juce::File reconstructionOutput_;
+
+    // --- D10.2 : le MIDI learn se voit, se défait, et se souvient -----------
+    /// Relit les associations enregistrées (démarrage).
+    void loadMidiLearnMappings();
+    /// Les écrit. Appelée dès que la carte change, jamais à la fermeture
+    /// seulement : une application qui se termine mal ne doit pas faire perdre
+    /// le câblage d'un studio.
+    void saveMidiLearnMappings();
+    /// Republie la liste dans la fenêtre.
+    void refreshMidiLearnList();
+    /// Applique ce que le thread MIDI a déposé et que lui seul ne pouvait pas
+    /// appliquer : mixage et transport.
+    void applyLearnedControls();
+
+    vsm::app::ui::MidiLearnWindow midiLearnPanel_;
+    std::unique_ptr<PanelWindow> midiLearnWindow_;
+    /// Le nombre d'associations vu au dernier tour : un apprentissage arrive
+    /// depuis le thread MIDI, sans prévenir personne, et c'est la seule façon
+    /// de s'en apercevoir sans faire signer un contrat au thread MIDI.
+    size_t midiLearnSeenCount_ = 0;
+    std::vector<AudioEngine::LearnedControl> learnedDrain_;
     /// Le morceau d'origine, retenu pour devenir la référence A/B (D9.4).
     juce::File reconstructionSource_;
     /// Le fichier qu'un glisser-déposer vient de proposer, retenu le temps que

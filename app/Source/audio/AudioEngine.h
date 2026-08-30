@@ -185,7 +185,32 @@ public:
     void cancelMidiLearn();
     bool isMidiLearnArmed() const { return learnArmed_.load(std::memory_order_acquire); }
     void clearMidiLearn(); // efface toutes les associations
+    /// Défait UNE association. `clearAll` n'y répond pas : perdre les quinze
+    /// autres pour en corriger une seule n'est pas une correction (D10.2).
+    void clearMidiLearnController(uint8_t controller);
     size_t midiLearnMappingCount() const;
+    /// Copie de la carte, pour l'afficher. Une COPIE et non une référence :
+    /// le thread MIDI peut la modifier à tout instant.
+    vsm::audio::engine::MidiLearnMap midiLearnMap() const;
+    /// Remplace toute la carte (relecture des préférences au démarrage).
+    void setMidiLearnMap(vsm::audio::engine::MidiLearnMap map);
+
+    /// CE QUI NE PEUT PAS ÊTRE APPLIQUÉ DEPUIS LE THREAD MIDI (D10.2).
+    ///
+    /// Un paramètre de machine se règle par un `std::atomic` : le thread MIDI
+    /// l'écrit directement, comme il l'a toujours fait. Le volume, le
+    /// panoramique, le muet, les départs et le transport vivent dans le
+    /// PROJET, que seul le thread de l'interface a le droit de modifier --
+    /// c'est pour cela que le MIDI learn ne les atteignait pas, et la réponse
+    /// n'est pas de forcer la frontière mais de la traverser proprement : une
+    /// file sans verrou, vidée par la minuterie de l'interface.
+    struct LearnedControl {
+        vsm::audio::engine::MidiLearnTarget target;
+        float value = 0.0f;      ///< déjà mise à l'échelle de la cible
+        uint8_t rawValue = 0;    ///< la valeur brute du CC, pour les bascules
+    };
+    /// Thread UI. Vide la file dans `out` ; renvoie le nombre d'éléments.
+    size_t drainLearnedControls(std::vector<LearnedControl>& out);
 
 private:
     vsm::audio::engine::ProcessGraph graph_;
@@ -204,6 +229,11 @@ private:
     vsm::audio::engine::MidiLearnMap learnMap_;
     vsm::audio::engine::MidiLearnTarget pendingLearnTarget_;
     std::atomic<bool> learnArmed_{false};
+    /// Les commandes apprises qui doivent être appliquées par l'interface.
+    /// Un seul producteur (le thread MIDI), un seul consommateur (l'UI) :
+    /// c'est exactement le contrat de `LockFreeRingBuffer`.
+    static constexpr size_t kLearnQueueCapacity = 256;
+    vsm::audio::util::LockFreeRingBuffer<LearnedControl, kLearnQueueCapacity> learnQueue_;
     std::atomic<size_t> liveInputTrack_{0};
     std::vector<juce::String> enabledMidiInputs_;
 

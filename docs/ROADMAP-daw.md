@@ -2452,9 +2452,61 @@ qu'elle est là.
 | Étape | Contenu | Terminé quand |
 |---|---|---|
 | D10.1 | Navigateur : machines, presets, profils, échantillons, recherche, glisser-déposer | trouver un preset ne demande plus d'ouvrir un dossier |
-| D10.2 | MIDI learn **persistant**, liste des associations, moyen d'en défaire une (`clearMidiLearn()` n'est appelé de nulle part), et cartographie du transport et du mixeur | un potentiomètre physique s'en souvient d'une session à l'autre |
+| D10.2 | MIDI learn **persistant**, liste des associations, moyen d'en défaire une (`clearMidiLearn()` n'est appelé de nulle part), et cartographie du transport et du mixeur | un potentiomètre physique s'en souvient d'une session à l'autre — **fait** |
 | D10.3 | Raccourcis configurables, table imprimable, fenêtre de préférences | une page les liste tous |
 | D10.4 | Sauvegarde automatique et récupération après plantage | tuer l'application ne perd pas plus d'une minute |
+
+> **D10.2 EST FAITE (30/08/2026).** Ce qui se perdait à chaque lancement n'était
+> pas une préférence de confort : c'était le câblage d'un studio, refait à la
+> main à chaque démarrage. Les associations vivent maintenant dans le fichier de
+> préférences, écrites **dès qu'elles changent** et non à la fermeture — une
+> application qui se termine mal ne doit pas faire perdre ce travail-là.
+>
+> **CE QUI MANQUAIT N'ÉTAIT PAS UN OUBLI, C'ÉTAIT UNE FRONTIÈRE DE THREADS.**
+> Le MIDI learn ne savait piloter qu'un paramètre de machine, et pour une
+> raison précise : un paramètre de machine se règle par un `std::atomic`, que le
+> thread MIDI peut écrire. Le volume, le panoramique, le muet, les départs et le
+> transport vivent dans le PROJET, que seul le thread de l'interface a le droit
+> de modifier. La réponse n'est pas de forcer la frontière mais de la traverser
+> proprement : le thread MIDI DÉPOSE dans une file sans verrou, la minuterie de
+> l'interface applique. Un potentiomètre physique envoie cent messages par
+> seconde ; la republication du projet est donc coalescée, comme pour un geste
+> de souris sur le mixeur.
+>
+> **UNE BASCULE S'APPUIE, UN FADER SE POSITIONNE.** Traiter l'un comme l'autre
+> ferait démarrer la lecture au milieu d'une course de potentiomètre. Le seuil
+> est celui du MIDI : 64.
+>
+> **PAS DE « VOLUME GÉNÉRAL », ET C'EST UN CONSTAT PLUTÔT QU'UN OUBLI.** Le
+> modèle n'a pas de fader master : la tranche master est un correcteur, un
+> compresseur et un limiteur. Lui ajouter un gain de sortie pour que le MIDI
+> learn ait quelque chose à piloter mettrait dans le chemin audio un réglage
+> qu'aucune interface ne montre, et qu'on retrouverait un jour à une valeur
+> qu'on n'a jamais choisie. « Piloter le mixeur » veut donc dire ici : volume,
+> panoramique, muet, solo et départs des PISTES.
+>
+> **LE LEARN NE PEUT PLUS SE FAIRE UNIQUEMENT EN TOUCHANT UN RÉGLAGE.** C'était
+> le seul geste possible, et c'est exactement pourquoi le transport et le
+> mixeur étaient inatteignables : ils n'ont pas de potentiomètre à toucher dans
+> le Synth Rack. La fenêtre *Associations MIDI* propose donc les cibles, et
+> **seulement celles qui existent** — un départ n'apparaît que si le projet le
+> déclare, les réglages de piste que s'il y a une piste choisie. Promettre une
+> association qui ne ferait rien serait pire que de ne pas la proposer.
+>
+> **ET LES ASSOCIATIONS SE VOIENT.** Le MIDI learn marchait et était
+> **invisible** : retrouver qu'un potentiomètre pilotait la résonance de la
+> piste 4 demandait de les tourner tous en regardant l'écran, et en défaire une
+> demandait de la remplacer ou d'effacer les quinze. La liste dit `CC 74 →
+> piste 4 · Resonance`, avec le nom que la MACHINE donne au paramètre — pas son
+> numéro, qui n'aide personne.
+>
+> **CE QUE LA RELECTURE REFUSE.** Les genres sont écrits en toutes lettres,
+> jamais par leur numéro : un `enum class` se réordonne un jour, et des fichiers
+> à numéros se mettraient alors à piloter autre chose, en silence. Une
+> association dont le genre est inconnu — fichier écrit par une version future —
+> est **écartée et comptée**, jamais devinée : un potentiomètre qui pilote autre
+> chose que ce qu'on croit est pire qu'un potentiomètre inerte, et le compte
+> permet de le DIRE au lieu de laisser chercher.
 
 ---
 
