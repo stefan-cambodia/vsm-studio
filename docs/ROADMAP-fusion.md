@@ -2061,6 +2061,14 @@ critère intermédiaire est un mandataire, et chacun se paie. Ce qui est neuf,
 c'est que le désaccord ne porte plus seulement sur QUELLE machine on choisit,
 mais sur COMBIEN on la règle : mieux coller au mandataire peut nuire.
 
+*Et la chaîne le rattrapait déjà, ce qui mérite d'être dit.* Le réglage n'est
+pas retiré, parce que le verdict du mélange remet systématiquement le patch
+d'AVANT réglage en concurrence — et sur sky-v6 il l'a effectivement préféré pour
+`bass` (0,2901 contre 0,2974) comme pour `other` (0,2785 contre 0,2901). Le
+garde-fou existait et il a fonctionné. Ce que le tableau ci-dessus ajoute, ce
+n'est donc pas une panne à corriger : c'est la mesure de ce que ce garde-fou
+évite, sur une piste où il travaille à chaque fois.
+
 **LE MÊME DÉSACCORD SUR `other`, ET IL N'A RIEN DE PARTICULIER À LA BASSE.**
 Mêmes témoins, même protocole, piste `other` (4 280 notes) : projet tel quel
 0,2933, piste coupée 0,3208, piste telle quelle contre son stem 0,3089.
