@@ -2173,6 +2173,68 @@ la candidate identique à ce que le projet joue DOIT reproduire le chiffre
 publié, et 0,2729 n'est pas 0,2933. Sans ce témoin, le mauvais tableau serait
 ci-dessus.
 
+
+## 5 undecies. L'étape la plus chère de la chaîne perd contre le patch d'usine
+
+Le § 5 septies a établi qu'un gagnant sur UNE NOTE ne tient pas la PISTE. Le
+§ 5 decies a montré que le classement au stem ne prédit pas celui du mélange.
+Cette section-ci ne mesure pas une machine ni un seuil : elle mesure **ce que
+rapporte la recherche de patch elle-même**, et la réponse tient en une ligne.
+
+**LE RELEVÉ EST GRATUIT, ET PERSONNE NE L'AVAIT FAIT.** Chaque arbitrage de
+piste imprime déjà les deux chiffres : `arbitrage piste CHANGE vsm.wavetable
+(patch d'usine) D=0.369 (la recherche donnait 0.649)`. À gauche ce que vaut le
+patch retenu sur la piste entière, à droite ce que valait le patch trouvé par
+la recherche note à note. Il suffisait de les agréger sur tous les journaux
+conservés.
+
+**HUIT COUPLES (MORCEAU, STEM) INDÉPENDANTS**, sur quatre morceaux — *Sky and
+Sand*, *B4 Wuz Then*, *Knight of the Jaguar*, *Clair de Lune*. Les quatorze
+lignes brutes comptaient *Sky and Sand* quatre fois ; ce tableau ne le compte
+qu'une, et c'est la seule lecture honnête.
+
+| morceau | stem | qui gagne l'arbitrage | retard de la recherche |
+|---|---|---|---|
+| *Clair de Lune* | `other` | **usine** | **+254 %** |
+| *Sky and Sand* | `bass` | **usine** | +72 % |
+| *Knight of the Jaguar* | `other` | **usine** | +44 % |
+| *B4 Wuz Then* | `other` | **usine** | +33 % |
+| *Sky and Sand* | `other` | **usine** | +25 % |
+| *B4 Wuz Then* | `bass` | **usine** | +21 % |
+| *Knight of the Jaguar* | `bass` | cherché | — |
+| *Clair de Lune* | `bass` | cherché | — |
+
+**LE PATCH D'USINE GAGNE SIX FOIS SUR HUIT.** Et quand il gagne, le patch
+cherché n'est pas légèrement derrière : il est en retard de 21 à 254 %, médiane
+38,5 % (la médiane de {21, 25, 33, 44, 72, 254}).
+
+**CE QUE ÇA COÛTE, PUISQUE C'EST LÀ QUE PASSE LE TEMPS.** La recherche note à
+note demande 200 à 900 s par stem selon le budget et le nombre de candidates —
+c'est, avec le réglage de piste, l'un des deux postes principaux d'une
+reconstruction de plusieurs heures. Elle produit donc, six fois sur huit, un
+patch qui perd contre **ne rien faire**.
+
+**CE QU'IL NE FAUT PAS EN CONCLURE, ET C'EST IMPORTANT.** La recherche ne sert
+pas qu'à trouver un patch : sa distance note à note est ce qui CLASSE les
+machines, donc ce qui alimente la présélection (`--finalistes`) et l'ordre des
+candidates de l'arbitrage. La supprimer sans rien mettre à la place retirerait
+au parc son seul moyen de dégrossir. Deux des huit cas, par ailleurs, sont
+gagnés par elle — sur les deux basses les plus « instrumentales » du lot, un
+piano et une basse de guide d'ondes.
+
+**L'HYPOTHÈSE À MESURER, ÉCRITE AVANT LA MESURE POUR NE PAS LA TORDRE APRÈS.**
+Si l'arbitrage juge de toute façon chaque machine sur la piste entière avec son
+patch d'usine, et si ce patch gagne six fois sur huit, alors le budget de la
+recherche serait peut-être mieux dépensé au RÉGLAGE DE PISTE, qui lui est
+mesuré contre la vraie cible. Le rendu d'un projet entier coûte une quinzaine
+de secondes ; vingt-neuf patchs d'usine à juger coûtent donc ~435 s, soit
+l'ordre de grandeur de la recherche qu'ils remplaceraient.
+
+Ce n'est **pas** un résultat, c'est une hypothèse chiffrée. Elle se tranche par
+un A/B à budget total égal — recherche complète contre « usine seule, budget
+reversé au réglage » — sur les mêmes stems et la même métrique. Tant que cet
+A/B n'a pas tourné, la chaîne ne change pas.
+
 ---
 
 ## 6. Ce qui n'est pas au programme, et pourquoi
@@ -2309,13 +2371,64 @@ moteur produit et un mauvais lecteur de ce qu'un disque contient.
 Ils ont tenu jusqu'ici ; ils doivent continuer.
 
 ```
-[ ] Le DAW se compile et passe ses tests SANS Python, SANS réseau, SANS CLAP
+[ ] Le MOTEUR se compile et passe ses tests SANS Python, SANS réseau, SANS CLAP
+    (l'application, elle, exige JUCE : hors ligne, lui en désigner une copie)
 [ ] core/ et audio/ n'incluent rien de interchange/, ni de JSON
 [ ] Le chemin temps réel reste sans allocation, sans verrou, sans I/O
 [ ] Deux rendus identiques donnent le même audio, au bit près
 [ ] Aucune approximation silencieuse : ce qui n'est pas reproductible est DIT
 [ ] Les empreintes audio des machines existantes restent inchangées
 [ ] Ajouter une machine ne touche ni le moteur ni l'interface
+```
+
+**CES CASES SONT DES CHOSES À REVÉRIFIER, PAS DES ACQUIS À COCHER** — c'est le
+sens de « ils doivent continuer », et une case cochée une fois pour toutes
+serait justement la garantie qu'on perd sans s'en apercevoir. Ce qui suit date
+les mesures ; il ne dispense pas de les refaire.
+
+**LE PREMIER INVARIANT A ÉTÉ EXÉCUTÉ POUR LA PREMIÈRE FOIS (31/08/2026), ET IL
+ÉTAIT FAUX D'UN QUART.** Ces cases n'avaient jamais été cochées par une mesure ;
+celle-là l'est maintenant, avec `FETCHCONTENT_FULLY_DISCONNECTED=ON`, qui
+INTERDIT à CMake de télécharger quoi que ce soit — c'est la seule façon de
+vérifier « sans réseau » sans débrancher la machine.
+
+| ce qui a été éprouvé | verdict |
+|---|---|
+| moteur seul (défauts), configuration hors ligne | **code 0** |
+| moteur seul, compilation hors ligne | **code 0** |
+| ses tests : `vsm_core` 158, `vsm_audio` 801, `vsm_interchange` 206 | **1 165 verts** |
+| « Python » dans le cache CMake du moteur | **0 occurrence** |
+
+*(Rejoué après l'ajout des tests d'interposition `dlsym`/`pthread` du même
+jour — la partie de la suite la plus plausiblement sensible à un
+environnement minimal — : mêmes verdicts, comptes à jour.)*
+| **application (`VSM_BUILD_APP=ON`), hors ligne** | **ÉCHEC** |
+| application hors ligne + `FETCHCONTENT_SOURCE_DIR_JUCE` | **code 0** |
+
+**CE QUE L'INVARIANT DISAIT DE TROP.** `CMakeLists.txt` récupère JUCE 8.0.4
+depuis GitHub par `FetchContent` dès que `VSM_BUILD_APP` ou `VSM_BUILD_VST3`
+est actif. Sur une machine neuve, **l'application ne se compile pas sans
+réseau** ; elle ne le faisait ici que parce que `build/_deps/juce-src` était
+déjà peuplé. L'invariant était donc vérifié par un CACHE et non par la
+construction — ce qui est la définition d'une garantie qu'on perd sans s'en
+apercevoir.
+
+La distinction existait déjà pour CLAP, dont l'option annonce en toutes lettres
+« nécessite de télécharger le SDK CLAP », et elle manquait pour JUCE. Elle est
+maintenant écrite aux trois endroits qui la portaient à faux : l'option
+`VSM_BUILD_APP` de `CMakeLists.txt`, l'invariant n° 4 de
+[`ROADMAP-daw.md`](ROADMAP-daw.md) § 6, et cette liste-ci.
+
+**CE QUI RESTE VRAI, ET C'EST L'ESSENTIEL.** Le moteur — `core/`, `audio/`,
+`interchange/`, `tools/` — se construit et se prouve **entièrement hors ligne,
+sans Python, sans CLAP**. C'est la partie dont dépendent toutes les mesures
+publiées, et elle ne demande rien à personne. Pour l'application, la
+construction hors ligne est possible et la commande est :
+
+```
+cmake -S . -B build -DVSM_BUILD_APP=ON \
+      -DFETCHCONTENT_FULLY_DISCONNECTED=ON \
+      -DFETCHCONTENT_SOURCE_DIR_JUCE=/chemin/vers/JUCE
 ```
 
 Le dernier invariant est celui qui a rendu tout le reste possible : c'est parce

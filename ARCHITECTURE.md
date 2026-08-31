@@ -31,10 +31,14 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **1 217 tests moteur** (158 core + 798 audio
+écoute au clic, et toute la logique testée hors JUCE. Total : **1 220 tests moteur** (158 core + 801 audio
 + 206 interchange + 25 CLAP + 19 VST3 + 11 façades,
-tous verts, zéro warning, y compris sous les flags stricts type-JUCE
-`-Wfloat-equal -Wsign-conversion -Wshadow`) + application complète compilée et
+tous verts, zéro warning sous les flags du build, `-Wall -Wextra -Wpedantic`.
+L'ancienne mention « y compris -Wfloat-equal -Wsign-conversion -Wshadow »
+est retirée : ces flags ne sont PAS dans le build, et les comparaisons à
+l'identique des tests de déterminisme — voulues, l'identité au bit près est
+leur objet — ne passeraient pas `-Wfloat-equal`. Une garantie que rien
+n'exécute n'est pas une garantie) + application complète compilée et
 liée. Rendus réels vérifiables : `minimoog_demo.wav`,
 `tb303_demo.wav`, `juno106_demo.wav`, `tr808_demo.wav`, `tr909_demo.wav`, `sh101_demo.wav`, `prophet_demo.wav`,
 `jupiter8_demo.wav`, `arpodyssey_demo.wav`, `ms20_demo.wav`, `dx7_demo.wav`.
@@ -595,7 +599,7 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 1 217 tests moteur + 60 tests d'analyse, tous verts
+### Bilan actuel : 1 220 tests moteur + 60 tests d'analyse, tous verts
 
 - **158 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des

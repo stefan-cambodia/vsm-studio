@@ -47,7 +47,7 @@ option(VSM_BUILD_BENCH "Compiler le banc de mesure CPU du moteur audio (Phase 6)
 # `juce_audio_processors` sait déjà héberger. Le marché est en VST3 ; refuser
 # de le lire au motif que CLAP est plus propre reviendrait à n'héberger
 # personne.
-option(VSM_BUILD_VST3 "Compiler l'hôte VST3 (nécessite JUCE, qui embarque le SDK VST3)" OFF)
+option(VSM_BUILD_VST3 "Compiler l'hôte VST3 (nécessite JUCE — téléchargé depuis GitHub au premier configure, voir VSM_BUILD_APP)" OFF)
 
 # JUCE, RÉCUPÉRÉ UNE SEULE FOIS ET ICI. Il servait jusqu'ici à `app/` seul, qui
 # le récupérait lui-même ; la couche VST3 en a besoin AVANT, puisque `tools/` et
@@ -101,7 +101,7 @@ add_subdirectory(tools)
 # du système (X11/ALSA sous Linux, CoreAudio sous macOS, etc.), qui ne sont
 # pas disponibles dans tous les environnements (ex: conteneur headless).
 # Sur une machine de développement standard : cmake -B build -DVSM_BUILD_APP=ON
-option(VSM_BUILD_APP "Compiler l'application desktop JUCE (Phase 1 UI)" OFF)
+option(VSM_BUILD_APP "Compiler l'application desktop JUCE (télécharge JUCE depuis GitHub au premier configure ; hors ligne, désigner une copie locale par -DFETCHCONTENT_SOURCE_DIR_JUCE=...)" OFF)
 if (VSM_BUILD_APP)
     add_subdirectory(app)
 endif()

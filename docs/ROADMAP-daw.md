@@ -2944,14 +2944,32 @@ Ceux de la fusion, plus cinq propres à cet axe :
 2. **`process()` reste sans allocation, sans verrou, sans I/O** — y compris
    quand une piste audio lit 47 Mo depuis le disque.
 3. **Rendu temps réel et rendu hors ligne restent identiques**, à l'échantillon
-   près, sur tout ce qui s'ajoute. Le test existe pour CLAP ; il s'étend.
-4. **Le DAW se compile et s'utilise sans Python, sans réseau, sans CLAP.**
-   Chaque phase le revérifie : c'est le genre de garantie qu'on perd sans s'en
-   apercevoir.
+   près, sur tout ce qui s'ajoute. ~~Le test existe pour CLAP ; il s'étend.~~
+   **Il s'est étendu le 31/08/2026, et il a trouvé une exception, mesurée
+   ci-dessous.**
+4. **Le MOTEUR se compile et s'utilise sans Python, sans réseau, sans CLAP.**
+   L'application, elle, exige JUCE, récupéré depuis GitHub au premier
+   configure : hors ligne, lui désigner une copie locale
+   (`-DFETCHCONTENT_SOURCE_DIR_JUCE=...`). Mesuré le 31/08/2026 avec
+   `FETCHCONTENT_FULLY_DISCONNECTED=ON` — détail au § 8 de
+   [`ROADMAP-fusion.md`](ROADMAP-fusion.md). Chaque phase le revérifie : c'est
+   le genre de garantie qu'on perd sans s'en apercevoir.
 5. **Rien ne se perd et rien ne ment.** Toute fonction ajoutée est sauvegardée
    dans le projet, présente à l'export, et sans commande morte. C'est l'acquis
    de D0, et le reperdre serait pire que ne l'avoir jamais eu.
 
+> **ET IL NE L'ÉTAIT QU'AU TIERS (31/08/2026).** L'invariant interdit TROIS
+> choses — allocation, verrou, I/O — et le test ne comptait que la première,
+> tout en citant la phrase entière. Les verrous bloquants et les
+> entrées-sorties se comptent désormais par la même interposition de symbole
+> que `operator new`, et le verdict est **zéro** dans les quatre scénarios,
+> diffusion disque comprise — POUR LES PRIMITIVES COUVERTES : le contrat exact
+> (ce que les compteurs voient, et la liste de ce qu'ils NE voient PAS —
+> `rwlock`, sémaphores, `open`, `mmap`, lectures `FILE*`…) est écrit en tête de
+> `test_no_allocation_in_process.cpp`, à l'endroit qu'il faudra élargir si le
+> moteur adopte une primitive non couverte. Un garde-fou du garde-fou vérifie
+> que les compteurs voient un verrou et une lecture réels quand il y en a.
+>
 > **L'INVARIANT N° 2 EST MESURÉ DEPUIS LE 30/08/2026, ET IL NE L'ÉTAIT PAS.**
 > D2.2 en faisait déjà un critère — « un test compte les allocations » — et ce
 > test n'existait pas : la règle était tenue par la relecture, c'est-à-dire par

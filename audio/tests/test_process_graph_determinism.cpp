@@ -409,3 +409,125 @@ VSM_TEST(a_stopped_transport_says_so) {
     project.ticksPerQuarterNote = 480;
     VSM_ASSERT(!ProcessGraph::transportFor(project, 0.0, false).playing);
 }
+
+namespace {
+
+/// Rend le même projet à une taille de bloc donnée, avec la même machine.
+RenderedAudio rendreAuBloc(const Project& projet, const char* machine,
+                                     int bloc, double secondes) {
+    ProcessGraph graphe;
+    graphe.prepare(48000.0, bloc);
+    graphe.setTrackInstrument(0, machine);
+    graphe.setProject(projet);
+    return OfflineRenderer::render(graphe, 48000.0, bloc, secondes, false);
+}
+
+} // namespace
+
+VSM_TEST(le_rendu_ne_depend_pas_de_la_taille_de_bloc_hors_frontiere) {
+    // INVARIANT N° 3 DE `ROADMAP-daw.md` § 6, DANS LA PARTIE QUI MANQUAIT.
+    //
+    // « Rendu temps réel et rendu hors ligne restent identiques, à
+    // l'échantillon près, sur tout ce qui s'ajoute. Le test existe pour CLAP ;
+    // il s'étend. » Il ne s'était pas étendu. Ce qui existait comparait le
+    // CADENCEMENT -- `OfflineRenderer` avec et sans attente --, c'est-à-dire le
+    // même code appelé deux fois : cela ne pouvait attraper qu'une horloge qui
+    // modifierait l'audio.
+    //
+    // CE QUI SÉPARE VRAIMENT LA LECTURE DE L'EXPORT, C'EST LA TAILLE DE BLOC :
+    // l'export choisit la sienne, une carte son impose la sienne. Si le graphe
+    // n'y est pas invariant, ce qu'on entend n'est pas ce qu'on exporte, et
+    // rien ne le dit -- la panne la plus coûteuse de la famille (§ 3, règle 1).
+    Project projet = buildSingleNoteProject();
+    const auto reference = rendreAuBloc(projet, "vsm.testtone", 512, 0.7);
+
+    // La fin de note : une noire à 120 BPM, 0,5 s à 48 kHz. Ce chiffre est ce
+    // qui SÉPARE les deux tests -- s'il dérivait avec le projet d'essai, les
+    // deux familles de tailles n'auraient plus le sens qu'elles annoncent, et
+    // les tests passeraient à vide. Il est donc vérifié, pas supposé.
+    const size_t finDeNote = 24000;
+    VSM_ASSERT_EQ(reference.numFrames(), static_cast<size_t>(0.7 * 48000.0));
+
+    // Tailles où la fin de note tombe À L'INTÉRIEUR d'un bloc, comme pour la
+    // référence (512). Identité STRICTE exigée.
+    for (int bloc : {128, 256, 384, 1024, 2048}) {
+        VSM_ASSERT(finDeNote % static_cast<size_t>(bloc) != 0);
+        const auto obtenu = rendreAuBloc(projet, "vsm.testtone", bloc, 0.7);
+        VSM_ASSERT_EQ(obtenu.numFrames(), reference.numFrames());
+        for (size_t i = 0; i < reference.numFrames(); ++i) {
+            VSM_ASSERT_EQ(obtenu.left[i], reference.left[i]);
+            VSM_ASSERT_EQ(obtenu.right[i], reference.right[i]);
+        }
+    }
+}
+
+VSM_TEST(une_fin_de_note_SUR_une_frontiere_de_bloc_change_la_queue) {
+    // CE TEST DÉCRIT UN DÉFAUT, IL NE LE BÉNIT PAS.
+    //
+    // Quand la fin de note tombe EXACTEMENT sur une frontière de bloc -- 24 000
+    // échantillons est un multiple de 64, 96 et 192, pas de 512 --, la queue de
+    // relâchement diffère. La divergence commence à l'échantillon du
+    // relâchement et court jusqu'au bout : 9 598 échantillons sur 33 600.
+    //
+    // ELLE EST PETITE ET ELLE N'EST PAS NULLE : -76 dB rapportée à l'énergie de
+    // la queue elle-même (et -78 dB sous la crête du morceau), mesuré sur
+    // `vsm.juno106` comme sur `vsm.testtone`. Inaudible, donc, mais l'invariant
+    // dit « à l'échantillon près » et ce n'est pas le cas : la lecture live et
+    // l'export ne rendent pas le même fichier quand une note se termine pile
+    // sur une frontière.
+    //
+    // Le test fige la borne pour que le défaut ne puisse pas EMPIRER sans
+    // qu'on le sache. Il devra être remplacé par une identité stricte le jour
+    // où l'ordonnancement du relâchement sera corrigé -- et il échouera alors,
+    // ce qui est la bonne façon de se rappeler à notre bon souvenir.
+    Project projet = buildSingleNoteProject();
+    const auto reference = rendreAuBloc(projet, "vsm.juno106", 512, 0.7);
+    const size_t finDeNote = 24000;
+    VSM_ASSERT_EQ(reference.numFrames(), static_cast<size_t>(0.7 * 48000.0));
+
+    for (int bloc : {64, 96, 192}) {
+        // C'est la condition qui provoque le défaut ; si le projet d'essai
+        // changeait au point de la défaire, ce test passerait à vide.
+        VSM_ASSERT_EQ(finDeNote % static_cast<size_t>(bloc), size_t{0});
+        const auto obtenu = rendreAuBloc(projet, "vsm.juno106", bloc, 0.7);
+        VSM_ASSERT_EQ(obtenu.numFrames(), reference.numFrames());
+
+        // LES DEUX CANAUX, ET LA QUEUE SEULE. Le chorus du Juno met ses LFO en
+        // quadrature : une régression confinée au canal droit serait invisible
+        // d'un test qui ne lit que le gauche. Et l'énergie de référence est
+        // celle de la ZONE DIVERGENTE -- la queue --, pas du rendu entier :
+        // normaliser par la note tenue offrirait ~30 dB de mou, et la borne ne
+        // bornerait plus rien.
+        // LA DIVERGENCE COMMENCE À `finDeNote - 1`, PAS À `finDeNote` — mesuré,
+        // et c'est une information sur le défaut lui-même : sur une frontière,
+        // le relâchement s'applique dès le DERNIER échantillon de la note. La
+        // zone stricte s'arrête donc un échantillon plus tôt.
+        const size_t debutQueue = finDeNote - 1;
+        double sommeEcart = 0.0, sommeQueue = 0.0;
+        for (size_t i = debutQueue; i < reference.numFrames(); ++i) {
+            const double rl = static_cast<double>(reference.left[i]);
+            const double rr = static_cast<double>(reference.right[i]);
+            const double dl = static_cast<double>(obtenu.left[i]) - rl;
+            const double dr = static_cast<double>(obtenu.right[i]) - rr;
+            sommeEcart += dl * dl + dr * dr;
+            sommeQueue += rl * rl + rr * rr;
+        }
+        // Avant la fin de note, rien ne diverge -- et cela se vérifie au bit
+        // près plutôt que de se dire.
+        for (size_t i = 0; i < debutQueue; ++i) {
+            VSM_ASSERT_EQ(obtenu.left[i], reference.left[i]);
+            VSM_ASSERT_EQ(obtenu.right[i], reference.right[i]);
+        }
+
+        // LA BORNE HAUTE : -60 dB rapportés à la queue elle-même, au-dessus
+        // des -76 dB mesurés avec de la marge, très au-dessous de l'audible.
+        VSM_ASSERT(sommeEcart <= sommeQueue * 1e-6);
+
+        // LA BORNE BASSE, ET C'EST ELLE QUI TIENT LA PROMESSE DE L'EN-TÊTE :
+        // le jour où l'ordonnancement du relâchement sera corrigé, l'écart
+        // tombera à zéro, CETTE assertion échouera, et c'est le signal de
+        // remplacer ce test par l'identité stricte. Sans elle, un défaut
+        // corrigé laisserait le test vert et la promesse orpheline.
+        VSM_ASSERT(sommeEcart > 0.0);
+    }
+}

@@ -6,14 +6,44 @@
 #include "vsm/sequencer/Project.h"
 #include <atomic>
 #include <cstdlib>
+#include <dlfcn.h>
+#include <fcntl.h>
+#include <fstream>
+#include <mutex>
+#include <pthread.h>
+#include <unistd.h>
 #include <filesystem>
 #include <new>
 #include <vector>
 
-// INVARIANT N° 2 DE `ROADMAP-daw.md` § 6, ENFIN MESURÉ.
+// INVARIANT N° 2 DE `ROADMAP-daw.md` § 6 — MESURÉ, ET VOICI EXACTEMENT QUOI.
 //
 // « `process()` reste sans allocation, sans verrou, sans I/O — y compris quand
-// une piste audio lit 47 Mo depuis le disque. » D2.2 en faisait déjà un critère
+// une piste audio lit 47 Mo depuis le disque. »
+//
+// CE FICHIER N'EN MESURAIT QU'UN TIERS, ET IL CITAIT POURTANT LA PHRASE
+// ENTIÈRE : seules les allocations étaient comptées, les verrous et les
+// entrées-sorties étaient tenus par la relecture — le reproche même que ce
+// fichier adressait à D2.2 en naissant. Un verrou pris dans `process()` est
+// la cause classique du décrochage qu'on ne reproduit jamais : il ne coûte
+// rien mille fois, puis il attend le thread qui le détient.
+//
+// LE CONTRAT DE CE QUE LES COMPTEURS VOIENT, ÉCRIT POUR NE PAS ÊTRE SURVENDU.
+// Sont interposés : `operator new` (toutes formes), `pthread_mutex_lock` —
+// donc `std::mutex`, ce que le moteur emploie — et `read`/`write`. NE SONT PAS
+// VUS : `pthread_rwlock_*` (`std::shared_mutex`), `sem_wait`, les attentes de
+// variables de condition, `open`, `pread`/`pwrite`, `mmap`, et les lectures
+// `FILE*` dont glibc appelle `__read` en interne sans passer par la PLT. Le
+// moteur d'aujourd'hui n'utilise que les primitives couvertes ; si le chemin
+// de rendu adopte l'une des autres, ce test restera VERT À TORT — élargir
+// l'interposition ICI, en même temps.
+//
+// COMMENT ON COMPTE LES DEUX AUTRES. Même technique que pour `operator new`,
+// par interposition de symbole : une définition forte dans le binaire de tests
+// l'emporte sur celle de la bibliothèque C, et l'implémentation vraie se
+// retrouve par `dlsym(RTLD_NEXT, ...)`. La résolution est forcée AVANT que le
+// comptage ne commence, sans quoi `dlsym` -- qui alloue et verrouille au
+// premier appel -- se compterait lui-même. D2.2 en faisait déjà un critère
 // (« un test compte les allocations ») et ce test n'existait pas : la règle
 // était tenue par la relecture, c'est-à-dire par l'attention de celui qui
 // écrivait. C'est exactement le genre de garantie qu'on perd sans s'en
@@ -32,14 +62,64 @@
 
 namespace {
 thread_local int g_allocations = 0;
+thread_local int g_verrous = 0;
+thread_local int g_es = 0;
 thread_local bool g_counting = false;
+} // namespace
+
+// --- Interposition des verrous et des entrées-sorties ----------------------
+// `extern "C"` et hors namespace : ce sont les symboles de la bibliothèque C
+// qu'on remplace, pas des homonymes.
+extern "C" {
+using FnVerrou = int (*)(pthread_mutex_t*);
+using FnLire  = ssize_t (*)(int, void*, size_t);
+using FnEcrire = ssize_t (*)(int, const void*, size_t);
+
+static FnVerrou vraiLock() {
+    static FnVerrou f = reinterpret_cast<FnVerrou>(dlsym(RTLD_NEXT, "pthread_mutex_lock"));
+    return f;
+}
+static FnLire vraiRead() {
+    static FnLire f = reinterpret_cast<FnLire>(dlsym(RTLD_NEXT, "read"));
+    return f;
+}
+static FnEcrire vraiWrite() {
+    static FnEcrire f = reinterpret_cast<FnEcrire>(dlsym(RTLD_NEXT, "write"));
+    return f;
+}
+
+// `pthread_mutex_trylock` N'EST PAS INTERPOSÉ, ET C'EST UNE DÉCISION :
+// `try_lock` ne bloque pas. Un chemin temps réel a le droit d'essayer un
+// verrou et de renoncer ; ce que l'invariant interdit, c'est d'attendre.
+int pthread_mutex_lock(pthread_mutex_t* m) {
+    if (g_counting) ++g_verrous;
+    return vraiLock()(m);
+}
+ssize_t read(int fd, void* buf, size_t n) {
+    if (g_counting) ++g_es;
+    return vraiRead()(fd, buf, n);
+}
+ssize_t write(int fd, const void* buf, size_t n) {
+    if (g_counting) ++g_es;
+    return vraiWrite()(fd, buf, n);
+}
+} // extern "C"
+
+namespace {
 
 /// Compte, puis rend la main. Rien d'autre : un `operator new` qui ferait quoi
 /// que ce soit d'autre changerait ce qu'il mesure.
 struct Compteur {
-    Compteur() { g_allocations = 0; g_counting = true; }
+    Compteur() {
+        // Résolution FORCÉE avant le comptage : `dlsym` alloue et verrouille à
+        // son premier appel, et se compterait lui-même.
+        (void) vraiLock(); (void) vraiRead(); (void) vraiWrite();
+        g_allocations = 0; g_verrous = 0; g_es = 0; g_counting = true;
+    }
     ~Compteur() { g_counting = false; }
     int total() const { return g_allocations; }
+    int verrous() const { return g_verrous; }
+    int entreesSorties() const { return g_es; }
 };
 } // namespace
 
@@ -105,6 +185,15 @@ std::string ecrireLongFichier(const std::string& nom, double secondes) {
 
 } // namespace
 
+/// Le verdict entier de l'invariant, en un endroit : si une quatrième clause
+/// s'ajoute un jour, elle s'ajoute ici et vaut pour les quatre scénarios.
+#define VSM_ASSERT_CHEMIN_TEMPS_REEL_PROPRE(compteur)      \
+    do {                                                    \
+        VSM_ASSERT_EQ((compteur).total(), 0);               \
+        VSM_ASSERT_EQ((compteur).verrous(), 0);             \
+        VSM_ASSERT_EQ((compteur).entreesSorties(), 0);      \
+    } while (0)
+
 VSM_TEST(the_counter_itself_counts_something) {
     // GARDE-FOU DU GARDE-FOU, ET IL A SERVI DÈS LE PREMIER LANCEMENT. Écrit
     // d'abord avec un `std::vector` local, il a échoué : le compilateur
@@ -125,6 +214,31 @@ VSM_TEST(the_counter_itself_counts_something) {
     VSM_ASSERT(compteur.total() > 0);
 }
 
+VSM_TEST(les_compteurs_de_verrou_et_d_es_comptent_vraiment_quelque_chose) {
+    // GARDE-FOU DU GARDE-FOU, deuxième édition. Un compteur qui rend toujours
+    // zéro donne exactement le même verdict qu'un chemin temps réel propre :
+    // « aucun verrou, aucune I/O » ne veut rien dire tant qu'on n'a pas montré
+    // que ces compteurs savent voir un verrou et une lecture quand il y en a.
+    std::mutex m;
+    const auto chemin = fs::temp_directory_path() / "vsm-garde-fou.bin";
+    { std::ofstream f(chemin, std::ios::binary); f.put('x'); }
+
+    int verrous = 0, es = 0;
+    {
+        Compteur compteur;
+        m.lock();
+        m.unlock();
+        const int fd = ::open(chemin.string().c_str(), O_RDONLY);
+        char octet = 0;
+        if (fd >= 0) { (void) ::read(fd, &octet, 1); ::close(fd); }
+        verrous = compteur.verrous();
+        es = compteur.entreesSorties();
+    }
+    fs::remove(chemin);
+    VSM_ASSERT(verrous > 0);   // l'interposition de pthread_mutex_lock fonctionne
+    VSM_ASSERT(es > 0);        // celle de read aussi
+}
+
 VSM_TEST(process_block_allocates_nothing_with_machines) {
     ProcessGraph graphe;
     graphe.prepare(48000.0, 512);
@@ -142,7 +256,7 @@ VSM_TEST(process_block_allocates_nothing_with_machines) {
 
     Compteur compteur;
     for (int i = 0; i < 200; ++i) graphe.processBlock(gauche.data(), droite.data(), 512);
-    VSM_ASSERT_EQ(compteur.total(), 0);
+    VSM_ASSERT_CHEMIN_TEMPS_REEL_PROPRE(compteur);
 }
 
 VSM_TEST(process_block_allocates_nothing_with_a_resident_audio_track) {
@@ -171,7 +285,7 @@ VSM_TEST(process_block_allocates_nothing_with_a_resident_audio_track) {
 
     Compteur compteur;
     for (int i = 0; i < 200; ++i) graphe.processBlock(gauche.data(), droite.data(), 512);
-    VSM_ASSERT_EQ(compteur.total(), 0);
+    VSM_ASSERT_CHEMIN_TEMPS_REEL_PROPRE(compteur);
 }
 
 VSM_TEST(process_block_allocates_nothing_while_streaming_from_disk) {
@@ -223,7 +337,7 @@ VSM_TEST(process_block_allocates_nothing_while_streaming_from_disk) {
     for (int i = 0; i < 40; ++i) graphe.processBlock(gauche.data(), droite.data(), 512);
     // ZÉRO, et le thread de diffusion peut allouer autant qu'il veut pendant ce
     // temps : le compteur est propre au thread qui rend.
-    VSM_ASSERT_EQ(compteur.total(), 0);
+    VSM_ASSERT_CHEMIN_TEMPS_REEL_PROPRE(compteur);
 
     // Et il a bien joué quelque chose : un silence n'aurait rien prouvé.
     float crete = 0.0f;
@@ -256,7 +370,7 @@ VSM_TEST(process_block_allocates_nothing_when_looping_and_automated) {
 
     Compteur compteur;
     for (int i = 0; i < 200; ++i) graphe.processBlock(gauche.data(), droite.data(), 512);
-    VSM_ASSERT_EQ(compteur.total(), 0);
+    VSM_ASSERT_CHEMIN_TEMPS_REEL_PROPRE(compteur);
     // Le rebouclage a bien eu lieu : sans cela, on aurait mesuré le chemin
     // droit une troisième fois.
     VSM_ASSERT(graphe.loopWrapCount() > 0);
