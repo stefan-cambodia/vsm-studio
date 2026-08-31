@@ -2384,8 +2384,21 @@ chaîne complète identique par ailleurs, distance globale meilleure sur au
 moins deux des trois morceaux étalons ; les stems vivent dans un dossier
 séparé et le rapport dit le modèle.
 
+**H5 — le verdict du mélange se stabilise en point fixe.** Le fait qui la
+motive est sorti du fan-out des profils : le verdict est GLOUTON, piste par
+piste dans un ordre fixe, et chaque décision fait le contexte des suivantes —
+sur *Us and Them*, deux viviers de candidates différents ont mené à deux
+trajectoires dont la moins bonne au global contenait pourtant les meilleures
+pistes au stem. La proposition : rejouer la passe de verdict jusqu'à ce
+qu'aucune piste ne change de décision (point fixe), borné à deux ou trois
+tours — chaque tour coûte ~un rendu de projet par piste à départager. Témoin :
+un seul tour, l'actuel, par option. Succès : distance globale ≤ sur les trois
+morceaux étalons, et AU MOINS un cas mesuré où le second tour change une
+décision — sans quoi le point fixe est atteint d'office et l'hypothèse est
+close à zéro coût.
+
 L'ordre d'exécution proposé : H2 et H3 d'abord (elles accélèrent TOUTES les
-mesures suivantes, H1 et H4 comprises), puis H1, puis H4.
+mesures suivantes, H1 et H4 comprises), puis H1, puis H5, puis H4.
 
 **H2 ET H3, PREMIÈRE FORME : LE CRITÈRE DE VITESSE N'EST PAS ATTEINT, ET LES
 CHIFFRES DISENT POURQUOI (01/09/2026).** Rejouées sur *Us and Them* à chaîne
