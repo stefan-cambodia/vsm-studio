@@ -2143,6 +2143,63 @@ largeur, 50 % sur un parc de deux boîtes, le rend de toute façon presque
 toujours vrai. Il sera revu le jour où le parc de percussions s'élargira, pas
 avant.
 
+**LA DÉCISION A ÉTÉ REJOUÉE EN VRAI, DEUX FOIS, ET ELLE TIENT (31/08/2026).**
+Tout ce qui précède reposait sur un diagnostic — des variantes rendues à la
+main sur une chaîne arrêtée. L'A/B qui manquait a tourné : *B4 Wuz Then*,
+chaîne complète, mêmes stems, même budget (v4, 60 itérations, 120 évaluations,
+21 axes, classifieur de frappes), et UNE seule variable —
+`--machines-au-melange`, l'option créée pour que le témoin soit du même code
+que ce qu'il témoigne. (Sa création a d'ailleurs attrapé un défaut : à zéro,
+`runners_up` rendait quand même une machine, et le témoin aurait comparé trois
+remises en jeu à UNE en croyant les comparer à aucune. Un test le verrouille.)
+
+| *B4 Wuz Then*, chaîne complète | distance globale |
+|---|---|
+| témoin — la gagnante du stem part seule | 0,3683 |
+| **règle des trois machines suivantes** | **0,2521 — soit −31,5 %** |
+
+*L'expérience est propre, et ça se vérifie dans les rapports* : en amont du
+verdict, les deux moitiés sont identiques au chiffre près (basse D=0,1964,
+`other` D=0,2591, arbitrage 0,3854 et réglage 0,3874 des deux côtés). La seule
+variable explique tout l'écart.
+
+**LES TROIS DÉCISIONS FINALES SONT DES CHOIX QUE L'ANCIENNE CHAÎNE NE POUVAIT
+PAS FAIRE.** `bass` retient `vsm.piano` — la TROISIÈME machine suivante, à
+20,5 % au stem : le choix de trois plutôt que deux paie une fois de plus.
+`other` retient `vsm.multisample`. La batterie retient la SECONDE boîte
+(`vsm.tr909` réglée, 0,2499 contre 0,3270). Et sur `other`, la règle ne gagne
+pas seulement des points : dans le témoin, la piste retenue DÉGRADE le mélange
+(0,3751 contre 0,3688 sans elle — le silence gagne) ; avec la règle,
+`vsm.multisample` la rend utile (0,3270 contre 0,3378 sans elle). Une piste
+nuisible est devenue une piste qui rapporte.
+
+**LA DEUXIÈME MESURE, ET POURQUOI ON PUBLIE UNE FOURCHETTE ET PAS LE MEILLEUR
+CHIFFRE.** Une première paire A/B avait tourné le même jour SANS le
+classifieur de frappes (voir plus bas) : mêmes conditions internes, batterie
+dégradée des deux côtés, écart **−10,2 %** (0,2737 contre 0,3049). Deux
+mesures indépendantes, même signe, même mécanisme — et une ampleur qui varie
+du simple au triple selon le contexte. Ce que la règle vaut est donc
+**« entre −10 et −31 % sur ce morceau »**, pas −31,5 %.
+
+**ET SUR *KNIGHT OF THE JAGUAR*, TROISIÈME MORCEAU, LE MÊME MÉCANISME SANS
+TÉMOIN DÉDIÉ** : dans les deux exécutions (avec et sans classifieur de
+frappes), les DEUX stems mélodiques sont gagnés au mélange par une machine
+suivante — `vsm.obx` sur la basse (l'arbitrage valait 0,3226, elle 0,2795,
+et les deux AUTRES suivantes battaient aussi l'arbitrage), `vsm.juno106` puis
+`vsm.minimoog` sur `other`. Sur trois morceaux mesurés, il ne s'est pas
+trouvé UNE piste mélodique où la remise en jeu n'ait rien changé.
+
+**UNE ERREUR DE LANCEMENT EN CHEMIN, ET C'EST LA PROVENANCE QUI L'A DITE.**
+Les quatre premières exécutions de cette campagne sont parties SANS
+`--classifieur-batterie` — une section `modeles` oubliée en recopiant les
+options d'une provenance. Les distances globales de cette série ne se
+comparent à rien de publié, et une comparaison sky-v7/sky-v6 annoncée sur leur
+foi a été RETIRÉE. Ce qui a permis de s'en apercevoir avant publication :
+chaque rapport portait `classifieurFrappes: "aucun"` — A4.2 a fait exactement
+le travail pour lequel il existe. La paire A/B de cette série, elle, reste
+valide (ses deux moitiés étaient identiquement dégradées) : c'est le −10,2 %
+de la fourchette ci-dessus.
+
 **LE VERDICT DU MÉLANGE NE SAIT PAS COUPER — IL SAIT DÉSORMAIS LE DIRE.** Il
 choisit parmi les variantes qu'on lui soumet, et « pas de piste du tout » n'en
 est pas une. Sur la basse, le témoin de coupure valait 0,2781 quand le morceau
