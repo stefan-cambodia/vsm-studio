@@ -73,6 +73,11 @@ public:
             // aucun outil externe ne sait ni viser cette fenêtre ni la faire
             // passer devant un terminal -- une interface qu'on ne peut pas
             // regarder est une interface qu'on ne peut pas juger.
+            if (const char* vues = std::getenv("VSM_VUE"); vues != nullptr && *vues) {
+                juce::StringArray liste;
+                liste.addTokens(juce::String::fromUTF8(vues), ",", "");
+                for (const auto& v : liste) content->applyViewCommand(v.trim());
+            }
             if (const char* sortie = std::getenv("VSM_CAPTURE"); sortie != nullptr && *sortie) {
                 const juce::File fichier =
                     juce::File::getCurrentWorkingDirectory().getChildFile(sortie);

@@ -20,21 +20,27 @@ juce::String noteName(uint8_t note) { return juce::String(noteNumberToName(note)
 
 /// Identifiants du menu contextuel. Regroupés par famille (dizaines) pour que
 /// l'ajout d'une entrée ne décale jamais les autres.
+// LA BASE EST À 100 000, ET C'EST UNE CORRECTION DE PANNE MUETTE. Elle valait
+// 100, et MainComponent route « tout identifiant au-delà de la base » vers ce
+// menu-ci. Or l'énumération des menus de l'application a grossi (les plages
+// d'effets de départ à elles seules font 160 entrées) jusqu'à DÉPASSER 100 :
+// chaque clic sur « Affichage » partait ici et mourait en silence dans le
+// default. Une base qu'aucune énumération séquentielle n'atteindra jamais.
 enum ContextMenuId {
-    kCtxUndo = 100, kCtxRedo,
-    kCtxCut = 110, kCtxCopy, kCtxPaste, kCtxDelete, kCtxDuplicate,
-    kCtxSelectAll = 120, kCtxSelectNone, kCtxSelectInvert, kCtxSelectSamePitch,
+    kCtxUndo = 100000, kCtxRedo,
+    kCtxCut = 100010, kCtxCopy, kCtxPaste, kCtxDelete, kCtxDuplicate,
+    kCtxSelectAll = 100020, kCtxSelectNone, kCtxSelectInvert, kCtxSelectSamePitch,
     kCtxSelectNextDoubtful, kCtxSelectPrevDoubtful, kCtxSelectDoubtful,
-    kCtxTransposeUp = 130, kCtxTransposeDown, kCtxOctaveUp, kCtxOctaveDown,
-    kCtxQuantizeFull = 140, kCtxQuantizeHalf, kCtxQuantizeEnds, kCtxHumanize,
-    kCtxLegato = 150, kCtxRemoveOverlaps, kCtxLengthToGrid, kCtxLengthDouble, kCtxLengthHalve,
-    kCtxSplit = 160, kCtxJoin, kCtxReverse, kCtxMirror, kCtxMute,
-    kCtxVelocityFull = 170, kCtxVelocityHalf, kCtxVelocityUp, kCtxVelocityDown,
+    kCtxTransposeUp = 100030, kCtxTransposeDown, kCtxOctaveUp, kCtxOctaveDown,
+    kCtxQuantizeFull = 100040, kCtxQuantizeHalf, kCtxQuantizeEnds, kCtxHumanize,
+    kCtxLegato = 100050, kCtxRemoveOverlaps, kCtxLengthToGrid, kCtxLengthDouble, kCtxLengthHalve,
+    kCtxSplit = 100060, kCtxJoin, kCtxReverse, kCtxMirror, kCtxMute,
+    kCtxVelocityFull = 100070, kCtxVelocityHalf, kCtxVelocityUp, kCtxVelocityDown,
     kCtxVelocityRampUp, kCtxVelocityRampDown, kCtxVelocityRandom,
-    kCtxScaleConstrain = 180,
-    kCtxArpUp = 190, kCtxArpDown, kCtxArpUpDown, kCtxArpRandom,
-    kCtxChordBase = 200, // + index dans allChordTypes()
-    kCtxZoomFit = 300, kCtxZoomSelection,
+    kCtxScaleConstrain = 100080,
+    kCtxArpUp = 100090, kCtxArpDown, kCtxArpUpDown, kCtxArpRandom,
+    kCtxChordBase = 100100, // + index dans allChordTypes()
+    kCtxZoomFit = 100300, kCtxZoomSelection,
 };
 
 } // namespace

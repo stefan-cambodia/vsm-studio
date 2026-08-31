@@ -76,6 +76,12 @@ public:
     /// coordonnées d'écran non définies (voir le .cpp pour le pourquoi).
     void showFloatingPanels();
 
+    /// Pilote le menu Affichage par son NOM, pour l'autoportrait
+    /// (VSM_VUE=arrangement,sans-pistes,... avant VSM_CAPTURE) : chaque état
+    /// du menu doit pouvoir être photographié sans souris, sans quoi « ça ne
+    /// s'affiche pas » ne se vérifie qu'à la main.
+    void applyViewCommand(const juce::String& nom);
+
     // juce::MenuBarModel
     juce::StringArray getMenuBarNames() override;
     juce::PopupMenu getMenuForIndex(int topLevelMenuIndex, const juce::String& menuName) override;

@@ -699,6 +699,17 @@ void MainComponent::layoutDockedPanels(juce::Rectangle<int> area) {
     pianoRollPanel_.setBounds(area);
 }
 
+void MainComponent::applyViewCommand(const juce::String& nom) {
+    // Les MÊMES identifiants que le menu : tester autre chose que ce que
+    // l'utilisateur clique ne testerait rien.
+    if (nom == "arrangement")      menuItemSelected(kMenuViewArrangement, 5);
+    else if (nom == "pianoroll")   menuItemSelected(kMenuViewPianoRoll, 5);
+    else if (nom == "sans-pistes") menuItemSelected(kMenuViewTracks, 5);
+    else if (nom == "sans-rack")   menuItemSelected(kMenuViewSynthRack, 5);
+    else if (nom == "sans-mixer")  menuItemSelected(kMenuViewMixer, 5);
+    else if (nom == "flottant")    menuItemSelected(kMenuViewSingleWindow, 5);
+}
+
 void MainComponent::dockPanels() {
     for (auto* fenetre : { &trackListWindow_, &pianoRollWindow_, &synthRackWindow_,
                             &mixerWindow_, &arrangementWindow_ }) {
@@ -1313,9 +1324,13 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
 
 void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) {
     // Les entrées du menu Édition proviennent du piano roll et utilisent sa
-    // propre numérotation (>= 100, voir PianoRollComponent.cpp) : elles lui
-    // sont renvoyées telles quelles.
-    if (menuItemID >= 100) {
+    // propre numérotation (>= 100 000, voir PianoRollComponent.cpp) : elles
+    // lui sont renvoyées telles quelles. LA BASE VALAIT 100, et l'énumération
+    // ci-dessous l'a dépassée en grandissant : tout le menu Affichage partait
+    // au piano roll et mourait en silence -- « Arrangement ne s'affiche pas »,
+    // dit par l'utilisateur, vérifié par l'autoportrait, corrigé en montant
+    // la base hors d'atteinte.
+    if (menuItemID >= 100000) {
         pianoRoll_.performContextMenuAction(menuItemID);
         pianoRollPanel_.refresh();
         return;
