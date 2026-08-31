@@ -2346,6 +2346,47 @@ candidates d'usine au budget réel ; si un jour le parc devient trop grand pour
 cela, c'est un dégrossissage qu'il faudra réinventer — pas la recherche de
 patch qu'il faudra regretter.
 
+
+## 5 duodecies. Quatre hypothèses chiffrées, écrites avant leurs mesures
+
+La règle du § 5 undecies vaut pour la suite : une hypothèse s'écrit AVANT
+l'A/B qui la tranche, avec son critère de succès, pour ne pas être tordue
+après. En voici quatre, par ordre de rendement attendu. Aucune n'est un
+résultat.
+
+**H1 — le réglage final se juge au MÉLANGE, pas au stem.** Le fait qui la
+motive est le plus répété du § 5 : le réglage gagne au stem et perd au mélange
+quatre fois sur quatre, et le verdict garde souvent « avant réglage ». La
+proposition : après le verdict du mélange, une passe courte de réglage de la
+GAGNANTE dont l'objectif est la distance du mélange — 20 à 30 évaluations à
+~15 s (rendu de projet) au lieu de 120 à ~5 s (rendu de piste), budget total
+comparable. Témoin : la chaîne actuelle, par option. Succès : distance globale
+≤ sur les trois morceaux étalons, aucune décision de verdict dégradée.
+
+**H2 — un cache de rendus sur disque.** Entre deux exécutions comparées, les
+candidates d'usine sont RENDUES À L'IDENTIQUE (moteur déterministe, graine
+fixe) et repayées à chaque fois — et le fan-out des profils vient de porter
+`vsm.multisample` seul à trente et une candidates par stem. Clé proposée :
+(machine, profil, patch, empreinte des notes, durée, fréquence). Succès :
+verdicts STRICTEMENT identiques avec et sans cache, et une reprise
+d'arbitrage à chaud qui coûte ~0 s de rendu.
+
+**H3 — un pool de moteurs de rendu.** L'arbitrage rend ses candidates en
+SÉRIE dans un seul `vsm-render --serve` ; elles sont indépendantes. Trois ou
+quatre serveurs en parallèle. Succès : verdicts identiques au bit près, étape
+d'arbitrage divisée par ≥ 2,5. (La leçon de la contention du 31/08 borne le
+pool : pas plus de cœurs qu'il n'y en a de libres.)
+
+**H4 — des stems `htdemucs_ft`.** La qualité des stems borne toute la chaîne
+(§ 7 : le fossé de domaine, les fuites). Le modèle fin coûte ~4x la
+séparation — soit ~2 min sur l'iGPU, qui ne fait rien d'autre. Succès :
+chaîne complète identique par ailleurs, distance globale meilleure sur au
+moins deux des trois morceaux étalons ; les stems vivent dans un dossier
+séparé et le rapport dit le modèle.
+
+L'ordre d'exécution proposé : H2 et H3 d'abord (elles accélèrent TOUTES les
+mesures suivantes, H1 et H4 comprises), puis H1, puis H4.
+
 ---
 
 ## 6. Ce qui n'est pas au programme, et pourquoi
