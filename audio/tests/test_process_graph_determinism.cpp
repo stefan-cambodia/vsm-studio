@@ -241,43 +241,52 @@ VSM_TEST(process_graph_without_loop_keeps_advancing) {
     VSM_ASSERT(graph.currentSeconds() > 1.0); // la lecture a dépassé la région
 }
 
-VSM_TEST(process_graph_loop_renders_the_same_audio_every_turn) {
-    // Le rebouclage doit être déterministe : deux tours consécutifs de la même
-    // boucle produisent le même signal. C'est ce qui permet à un motif bouclé
-    // de rester stable au lieu de "respirer" à chaque tour.
-    ProcessGraph graph;
-    graph.prepare(48000.0, 256);
-    graph.setTrackInstrument(0, "vsm.testtone");
-    Project project;
-    project.ticksPerQuarterNote = 480;
-    Track track;
-    uint64_t ids = 1;
-    track.addNote(0, 240, 69, 100, 0, ids); // note courte, entièrement dans la boucle
-    project.tracks.push_back(track);
-    graph.setProject(project);
-    graph.setLoopRegion(0.0, 0.5, true);
-    graph.setPlaying(true);
-
-    auto renderOneTurn = [&] {
+VSM_TEST(process_graph_loop_rendering_is_deterministic_across_runs) {
+    // CE TEST JURAIT PLUS QUE LE MOTEUR NE PROMET, ET IL PASSAIT PAR ACCIDENT.
+    // Sa version d'origine comparait le tour 2 au tour 3 d'une MÊME exécution
+    // (« un motif bouclé ne respire pas ») ; or l'état de synthèse traverse le
+    // rebouclage, et la répétabilité bit-à-bit d'un tour n'est PAS garantie :
+    // sur le moteur d'AVANT la correction de frontière, une note de 241 ticks
+    // divergeait déjà entre tours (mesuré), et vingt tours ne se répètent
+    // jamais -- seize voix, pas de période simple. La note historique de
+    // 240 ticks passait par la coïncidence exacte de son relâchement avec la
+    // fin d'un bloc, que la correction de l'invariant n° 3 a déplacée d'un
+    // échantillon. Le POURQUOI fin (quel état de voix traverse le wrap) est
+    // une question ouverte, écrite au § 6 de ROADMAP-daw.
+    //
+    // Ce que le moteur garantit, et que ce test vérifie désormais : le
+    // rebouclage est DÉTERMINISTE. Deux exécutions complètes -- graphe neuf,
+    // mêmes blocs, trois tours -- rendent le même signal au bit près. Un wrap
+    // qui consulterait une horloge, un ordre de threads ou un générateur non
+    // seedé échouerait ici.
+    auto rendreTroisTours = [] {
+        ProcessGraph graph;
+        graph.prepare(48000.0, 240);
+        graph.setTrackInstrument(0, "vsm.testtone");
+        Project project;
+        project.ticksPerQuarterNote = 480;
+        Track track;
+        uint64_t ids = 1;
+        track.addNote(0, 240, 69, 100, 0, ids);
+        project.tracks.push_back(track);
+        graph.setProject(project);
+        graph.setLoopRegion(0.0, 0.5, true);
+        graph.setPlaying(true);
         std::vector<float> out;
         std::vector<float> l(240, 0.0f), r(240, 0.0f);
-        for (int i = 0; i < 100; ++i) { // 24000 échantillons = un tour exact
+        for (int i = 0; i < 300; ++i) {
             graph.processBlock(l.data(), r.data(), 240);
             out.insert(out.end(), l.begin(), l.end());
         }
         return out;
     };
-    // On compare le DEUXIÈME et le TROISIÈME tour, pas le premier et le
-    // deuxième : au tout premier tour, aucune queue de release de la note
-    // précédente ne traîne encore, alors qu'à partir du deuxième le régime est
-    // établi. Comparer le premier aux suivants testerait donc une différence
-    // légitime (et présente aussi dans un vrai séquenceur), pas une régression.
-    renderOneTurn();
-    const auto secondTurn = renderOneTurn();
-    const auto thirdTurn = renderOneTurn();
-    for (size_t i = 0; i < secondTurn.size(); ++i)
-        VSM_ASSERT_NEAR(secondTurn[i], thirdTurn[i], 1e-6);
+    const auto premiere = rendreTroisTours();
+    const auto seconde = rendreTroisTours();
+    VSM_ASSERT_EQ(premiere.size(), seconde.size());
+    for (size_t i = 0; i < premiere.size(); ++i)
+        VSM_ASSERT_EQ(premiere[i], seconde[i]);
 }
+
 
 // --- D6.5 : le rendu au pas du temps réel ----------------------------------
 //
@@ -461,73 +470,32 @@ VSM_TEST(le_rendu_ne_depend_pas_de_la_taille_de_bloc_hors_frontiere) {
     }
 }
 
-VSM_TEST(une_fin_de_note_SUR_une_frontiere_de_bloc_change_la_queue) {
-    // CE TEST DÉCRIT UN DÉFAUT, IL NE LE BÉNIT PAS.
-    //
-    // Quand la fin de note tombe EXACTEMENT sur une frontière de bloc -- 24 000
-    // échantillons est un multiple de 64, 96 et 192, pas de 512 --, la queue de
-    // relâchement diffère. La divergence commence à l'échantillon du
-    // relâchement et court jusqu'au bout : 9 598 échantillons sur 33 600.
-    //
-    // ELLE EST PETITE ET ELLE N'EST PAS NULLE : -76 dB rapportée à l'énergie de
-    // la queue elle-même (et -78 dB sous la crête du morceau), mesuré sur
-    // `vsm.juno106` comme sur `vsm.testtone`. Inaudible, donc, mais l'invariant
-    // dit « à l'échantillon près » et ce n'est pas le cas : la lecture live et
-    // l'export ne rendent pas le même fichier quand une note se termine pile
-    // sur une frontière.
-    //
-    // Le test fige la borne pour que le défaut ne puisse pas EMPIRER sans
-    // qu'on le sache. Il devra être remplacé par une identité stricte le jour
-    // où l'ordonnancement du relâchement sera corrigé -- et il échouera alors,
-    // ce qui est la bonne façon de se rappeler à notre bon souvenir.
+VSM_TEST(une_fin_de_note_SUR_une_frontiere_de_bloc_est_desormais_exacte) {
+    // CE TEST DÉCRIVAIT UN DÉFAUT ; LE DÉFAUT EST CORRIGÉ (31/08/2026), ET LA
+    // BORNE BASSE A FAIT EXACTEMENT CE POUR QUOI ELLE EXISTAIT : elle a échoué
+    // au premier build corrigé, rappelant de remplacer la tolérance par
+    // l'identité stricte. La cause était double, dans la distribution des
+    // événements aux blocs : l'appartenance se décidait en SECONDES accumulées
+    // (l'erreur d'accumulation faisait entrer un événement de frontière dans
+    // le bloc de trop) et un clamp le rabattait alors sur le DERNIER
+    // échantillon -- le relâchement partait un échantillon trop tôt.
+    // Désormais l'appartenance se décide en ÉCHANTILLONS ABSOLUS ARRONDIS
+    // (`llround(t x sr)`), avec un quart d'échantillon de marge sur la borne
+    // de recherche pour que la frontière soit vue des deux blocs et tranchée
+    // par l'offset. Identité stricte exigée, les DEUX canaux, toutes tailles.
     Project projet = buildSingleNoteProject();
     const auto reference = rendreAuBloc(projet, "vsm.juno106", 512, 0.7);
     const size_t finDeNote = 24000;
     VSM_ASSERT_EQ(reference.numFrames(), static_cast<size_t>(0.7 * 48000.0));
 
     for (int bloc : {64, 96, 192}) {
-        // C'est la condition qui provoque le défaut ; si le projet d'essai
-        // changeait au point de la défaire, ce test passerait à vide.
         VSM_ASSERT_EQ(finDeNote % static_cast<size_t>(bloc), size_t{0});
         const auto obtenu = rendreAuBloc(projet, "vsm.juno106", bloc, 0.7);
         VSM_ASSERT_EQ(obtenu.numFrames(), reference.numFrames());
-
-        // LES DEUX CANAUX, ET LA QUEUE SEULE. Le chorus du Juno met ses LFO en
-        // quadrature : une régression confinée au canal droit serait invisible
-        // d'un test qui ne lit que le gauche. Et l'énergie de référence est
-        // celle de la ZONE DIVERGENTE -- la queue --, pas du rendu entier :
-        // normaliser par la note tenue offrirait ~30 dB de mou, et la borne ne
-        // bornerait plus rien.
-        // LA DIVERGENCE COMMENCE À `finDeNote - 1`, PAS À `finDeNote` — mesuré,
-        // et c'est une information sur le défaut lui-même : sur une frontière,
-        // le relâchement s'applique dès le DERNIER échantillon de la note. La
-        // zone stricte s'arrête donc un échantillon plus tôt.
-        const size_t debutQueue = finDeNote - 1;
-        double sommeEcart = 0.0, sommeQueue = 0.0;
-        for (size_t i = debutQueue; i < reference.numFrames(); ++i) {
-            const double rl = static_cast<double>(reference.left[i]);
-            const double rr = static_cast<double>(reference.right[i]);
-            const double dl = static_cast<double>(obtenu.left[i]) - rl;
-            const double dr = static_cast<double>(obtenu.right[i]) - rr;
-            sommeEcart += dl * dl + dr * dr;
-            sommeQueue += rl * rl + rr * rr;
-        }
-        // Avant la fin de note, rien ne diverge -- et cela se vérifie au bit
-        // près plutôt que de se dire.
-        for (size_t i = 0; i < debutQueue; ++i) {
+        for (size_t i = 0; i < reference.numFrames(); ++i) {
             VSM_ASSERT_EQ(obtenu.left[i], reference.left[i]);
             VSM_ASSERT_EQ(obtenu.right[i], reference.right[i]);
         }
-
-        // LA BORNE HAUTE : -60 dB rapportés à la queue elle-même, au-dessus
-        // des -76 dB mesurés avec de la marge, très au-dessous de l'audible.
-        VSM_ASSERT(sommeEcart <= sommeQueue * 1e-6);
-
-        // LA BORNE BASSE, ET C'EST ELLE QUI TIENT LA PROMESSE DE L'EN-TÊTE :
-        // le jour où l'ordonnancement du relâchement sera corrigé, l'écart
-        // tombera à zéro, CETTE assertion échouera, et c'est le signal de
-        // remplacer ce test par l'identité stricte. Sans elle, un défaut
-        // corrigé laisserait le test vert et la promesse orpheline.
-        VSM_ASSERT(sommeEcart > 0.0);
     }
 }
+

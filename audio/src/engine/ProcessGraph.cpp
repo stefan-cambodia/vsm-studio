@@ -3,6 +3,7 @@
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 
 namespace vsm::audio::engine {
 
@@ -899,8 +900,21 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
     const auto borne = snapshot.trackRange[trackIndex];
     const auto debutDePiste = planning.begin() + borne.first;
     const auto finDePiste = planning.begin() + borne.second;
+    // UN QUART D'ÉCHANTILLON DE MARGE, ET C'EST LA CORRECTION D'UN DÉFAUT
+    // MESURÉ (ROADMAP-daw § 6, invariant n° 3). `rangeStartSeconds` s'accumule
+    // en flottant bloc après bloc ; un événement PILE sur une frontière tombe
+    // donc d'un côté ou de l'autre selon l'erreur d'accumulation. L'ancienne
+    // écriture le comparait en SECONDES puis le plaçait en ÉCHANTILLONS avec
+    // un clamp à [0, n-1] : quand l'erreur le faisait entrer dans le bloc de
+    // trop, le clamp posait son relâchement UN échantillon trop tôt, et la
+    // queue divergeait entre deux tailles de bloc (~-76 dB, mesuré).
+    // Désormais l'appartenance se décide à l'ÉCHANTILLON -- la marge d'un
+    // quart d'échantillon sur la borne de recherche garantit qu'un événement
+    // de frontière est VU par les deux blocs, et l'offset tranche : exactement
+    // l'un des deux le joue.
+    const double margeFrontiere = 0.25 / sampleRate_;
     const auto premierEvenement =
-        std::lower_bound(debutDePiste, finDePiste, rangeStartSeconds,
+        std::lower_bound(debutDePiste, finDePiste, rangeStartSeconds - margeFrontiere,
                           [](const ScheduledEvent& ev, double t) { return ev.timeSeconds < t; });
 
     if (includeScheduledEvents)
@@ -908,7 +922,7 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
         const auto& ev = *it;
         // TRIÉE PAR TEMPS DANS LA PISTE : le premier événement trop tard est
         // aussi le dernier qu'on ait à regarder.
-        if (ev.timeSeconds >= rangeEndSeconds) break;
+        if (ev.timeSeconds >= rangeEndSeconds + margeFrontiere) break;
         if (numEvents >= kMaxEventsPerBlock) {
             // PLUS DE `break` MUET. Le plafond existe pour garder le
             // tableau de travail à taille fixe (le chemin temps réel
@@ -921,9 +935,25 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
 
         MidiNoteEvent pluginEvent;
         MidiControlEvent controlEvent;
-        int sampleOffset = static_cast<int>(std::llround((ev.timeSeconds - rangeStartSeconds) * sampleRate_));
-        pluginEvent.sampleOffset = std::clamp(sampleOffset, 0, sampleCount - 1);
-        controlEvent.sampleOffset = pluginEvent.sampleOffset;
+        // L'ÉCHANTILLON ABSOLU ARRONDI EST L'ARBITRE, pas une soustraction de
+        // secondes accumulées : `llround(t x sr)` donne à chaque événement et
+        // à chaque début de bloc UNE position entière stable, identique d'un
+        // tour de boucle à l'autre -- la soustraction en secondes, elle,
+        // héritait de l'erreur d'accumulation du découpage et faisait vaciller
+        // les événements de frontière d'un échantillon selon le tour (attrapé
+        // par `process_graph_loop_renders_the_same_audio_every_turn`).
+        // Négatif : l'événement appartenait au bloc précédent, qui l'a joué --
+        // la marge le refait seulement passer sous nos yeux. Au-delà : il
+        // appartient au suivant, et la piste étant triée, tous ceux d'après
+        // aussi. Aucun clamp : un clamp déplace, et un événement déplacé est
+        // un événement faux.
+        const long long echantillonBloc = std::llround(rangeStartSeconds * sampleRate_);
+        const long long echantillonEvenement = std::llround(ev.timeSeconds * sampleRate_);
+        const long long decalage = echantillonEvenement - echantillonBloc;
+        if (decalage < 0) continue;
+        if (decalage >= sampleCount) break;
+        pluginEvent.sampleOffset = static_cast<int>(decalage);
+        controlEvent.sampleOffset = static_cast<int>(decalage);
 
         // Trois issues, et plus seulement deux : une note, un contrôle, ou
         // un méta-événement qui n'a rien à faire dans une machine (tempo,
