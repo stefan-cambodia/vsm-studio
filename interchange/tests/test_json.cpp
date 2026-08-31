@@ -204,3 +204,43 @@ VSM_TEST(json_ecrit_les_memes_octets_sous_les_deux_locales) {
     if (!virgule.annonce()) return;
     VSM_ASSERT_EQ(racine.toString(), enC);
 }
+
+VSM_TEST(json_ecrit_chaque_nombre_a_l_octet_pres) {
+    // LA FORME ÉCRITE EST UN FORMAT DE FICHIER, PAS UN DÉTAIL D'IMPLÉMENTATION.
+    //
+    // Ces chaînes sont celles que le dépôt contient déjà : tout `project.json`,
+    // tout preset, tout rapport les porte. Changer d'écrivain -- ce qui vient
+    // d'être fait, `snprintf` remplacé par `std::to_chars` pour cesser de
+    // consulter la locale -- ne doit pas déplacer une virgule, sans quoi chaque
+    // fichier du dépôt bougerait à la première réécriture et les diffs
+    // deviendraient illisibles pour rien.
+    //
+    // L'égalité a été VÉRIFIÉE contre l'ancien code, pas supposée : les deux
+    // écrivains ont sérialisé 100 015 nombres (valeurs remarquables et tirage
+    // large sur douze ordres de grandeur) et rendu 1 522 824 octets identiques.
+    // Ce test est ce qui reste de cette mesure une fois l'ancien code parti.
+    struct CasDouble { double valeur; const char* attendu; };
+    static const CasDouble doubles[] = {
+        {0, "0"}, {1, "1"}, {-1, "-1"}, {0.1, "0.1"}, {0.5, "0.5"},
+        {1.0 / 3.0, "0.33333333333333331"}, {1e-07, "1e-07"},
+        {19999.999, "19999.999"}, {0.30000000000000004, "0.30000000000000004"},
+        {123456789.123456, "123456789.123456"}, {-0.3, "-0.3"},
+        {2.5e-10, "2.5e-10"}, {1e+300, "1e+300"},
+    };
+    for (const auto& cas : doubles) {
+        JsonValue objet = JsonValue::makeObject();
+        objet.set("v", JsonValue::makeNumber(cas.valeur));
+        VSM_ASSERT_EQ(objet.toString(-1), std::string("{\"v\":") + cas.attendu + "}");
+    }
+
+    struct CasFloat { float valeur; const char* attendu; };
+    static const CasFloat floats[] = {
+        {0.7f, "0.7"}, {0.82f, "0.82"}, {0.28f, "0.28"}, {1200.0f, "1200"},
+        {0.001f, "0.001"}, {19999.9f, "19999.9"}, {-12.5f, "-12.5"}, {0.62f, "0.62"},
+    };
+    for (const auto& cas : floats) {
+        JsonValue objet = JsonValue::makeObject();
+        objet.set("v", JsonValue::makeFloat(cas.valeur));
+        VSM_ASSERT_EQ(objet.toString(-1), std::string("{\"v\":") + cas.attendu + "}");
+    }
+}

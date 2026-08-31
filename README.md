@@ -6,7 +6,7 @@ d'avancement détaillé par phase.
 
 **État actuel** : le moteur MIDI (`core/`, 158 tests) et le moteur audio
 temps réel (`audio/`, 798 tests, dont un test de concurrence réel vérifié
-sous ThreadSanitizer) sont implémentés et **entièrement testés** — **1 216
+sous ThreadSanitizer) sont implémentés et **entièrement testés** — **1 217
 tests moteur**, tous verts, zéro warning. Les 33 machines (Minimoog, TB-303, Juno-106,
 TR-808, TR-909, SH-101, Prophet, Jupiter-8, ARP Odyssey, MS-20, DX7, sampler
 16 emplacements, e-piano, OB-X, supersaw, table d'ondes, hybride PCM, orgue à
