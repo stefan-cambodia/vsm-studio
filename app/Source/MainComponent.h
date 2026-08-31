@@ -496,11 +496,49 @@ private:
     // Le CENTRE montre l'arrangement OU le piano roll : les deux montrent le
     // même morceau à deux échelles, on passe de l'un à l'autre (déjà la règle
     // du mode flottant, où ils partagent le même emplacement d'écran).
+    /// Poignée entre deux volets ancrés : on la tire, le volet se
+    /// redimensionne, la taille survit au redémarrage. C'est ce qui rend la
+    /// fenêtre unique HABITABLE -- une disposition qu'on ne peut pas ajuster
+    /// est une disposition qu'on subit.
+    class SeparateurDock : public juce::Component {
+    public:
+        explicit SeparateurDock(bool vertical) : vertical_(vertical) {
+            setMouseCursor(vertical ? juce::MouseCursor::LeftRightResizeCursor
+                                     : juce::MouseCursor::UpDownResizeCursor);
+        }
+        std::function<void()> onDebut;
+        std::function<void(int)> onGlisse;  ///< delta depuis le début du geste
+        std::function<void()> onFin;        ///< moment d'écrire la préférence
+        void mouseDown(const juce::MouseEvent&) override { if (onDebut) onDebut(); }
+        void mouseDrag(const juce::MouseEvent& e) override {
+            if (onGlisse) onGlisse(vertical_ ? e.getDistanceFromDragStartX()
+                                              : e.getDistanceFromDragStartY());
+        }
+        void mouseUp(const juce::MouseEvent&) override { if (onFin) onFin(); }
+        void paint(juce::Graphics& g) override {
+            g.fillAll(juce::Colour(0xff232327));
+            g.setColour(juce::Colour(0xff3d3d44));
+            const auto c = getLocalBounds().toFloat();
+            if (vertical_) g.fillRect(c.getCentreX() - 1.0f, c.getY() + 4.0f, 2.0f, c.getHeight() - 8.0f);
+            else g.fillRect(c.getX() + 4.0f, c.getCentreY() - 1.0f, c.getWidth() - 8.0f, 2.0f);
+        }
+    private:
+        bool vertical_;
+    };
+
     void dockPanels();
     void undockPanels();
     void layoutDockedPanels(juce::Rectangle<int> area);
     bool singleWindow_ = true;
     bool centerShowsArrangement_ = false;
+    // Tailles des volets ancrés, en points, conservées d'une session à l'autre.
+    int dockGauche_ = 300;
+    int dockDroite_ = 380;
+    int dockBas_ = 260;
+    int dockBase_ = 0;  // taille au début du geste en cours
+    SeparateurDock sepGauche_ { true };
+    SeparateurDock sepDroite_ { true };
+    SeparateurDock sepBas_ { false };
     void showAboutDialog();
     void showAudioSettings();
     /// Écrit le choix du périphérique audio dans les préférences.

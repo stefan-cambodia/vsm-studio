@@ -686,15 +686,31 @@ void MainComponent::resized() {
 
 void MainComponent::layoutDockedPanels(juce::Rectangle<int> area) {
     // La géométrie de l'ancienne disposition flottante, repliée dans une seule
-    // fenêtre : pistes à gauche, console en bas, rack à droite, et le morceau
-    // au centre. Chaque volet ne prend sa place que s'il est VISIBLE -- le
-    // menu Affichage cache un volet, l'espace revient au centre.
-    if (bottomTabs_.isVisible())
-        bottomTabs_.setBounds(area.removeFromBottom(juce::jmax(220, area.getHeight() / 4)));
-    if (trackList_.isVisible())
-        trackList_.setBounds(area.removeFromLeft(300));
-    if (synthRack_.isVisible())
-        synthRack_.setBounds(area.removeFromRight(juce::jmin(420, area.getWidth() / 3)));
+    // fenêtre : pistes à gauche, console en bas, rack à droite, le morceau au
+    // centre. Chaque volet ne prend sa place que s'il est VISIBLE -- le menu
+    // Affichage cache un volet, l'espace revient au centre -- et chaque
+    // frontière porte une POIGNÉE : les tailles se tirent à la souris et
+    // survivent au redémarrage. Les bornes gardent toujours un centre lisible.
+    constexpr int poignee = 7;
+    dockBas_ = juce::jlimit(120, juce::jmax(121, area.getHeight() - 220), dockBas_);
+    dockGauche_ = juce::jlimit(180, juce::jmax(181, area.getWidth() / 2), dockGauche_);
+    dockDroite_ = juce::jlimit(220, juce::jmax(221, area.getWidth() / 2), dockDroite_);
+
+    sepBas_.setVisible(bottomTabs_.isVisible());
+    if (bottomTabs_.isVisible()) {
+        bottomTabs_.setBounds(area.removeFromBottom(dockBas_));
+        sepBas_.setBounds(area.removeFromBottom(poignee));
+    }
+    sepGauche_.setVisible(trackList_.isVisible());
+    if (trackList_.isVisible()) {
+        trackList_.setBounds(area.removeFromLeft(dockGauche_));
+        sepGauche_.setBounds(area.removeFromLeft(poignee));
+    }
+    sepDroite_.setVisible(synthRack_.isVisible());
+    if (synthRack_.isVisible()) {
+        synthRack_.setBounds(area.removeFromRight(dockDroite_));
+        sepDroite_.setBounds(area.removeFromRight(poignee));
+    }
     arrangement_.setBounds(area);
     pianoRollPanel_.setBounds(area);
 }
@@ -725,6 +741,29 @@ void MainComponent::dockPanels() {
     for (auto* volet : std::initializer_list<juce::Component*>{
              &trackList_, &synthRack_, &bottomTabs_, &arrangement_, &pianoRollPanel_ })
         addAndMakeVisible(volet);
+
+    auto& prefs = vsm::app::ui::UiScale::properties();
+    dockGauche_ = prefs.getIntValue("dock.gauche", dockGauche_);
+    dockDroite_ = prefs.getIntValue("dock.droite", dockDroite_);
+    dockBas_ = prefs.getIntValue("dock.bas", dockBas_);
+    auto cabler = [this](SeparateurDock& sep, int& taille, const char* cle, int signe) {
+        sep.onDebut = [this, &taille] { dockBase_ = taille; };
+        sep.onGlisse = [this, &taille, signe](int delta) {
+            taille = dockBase_ + signe * delta;
+            resized();
+        };
+        sep.onFin = [&taille, cle] {
+            vsm::app::ui::UiScale::properties().setValue(cle, taille);
+            vsm::app::ui::UiScale::properties().saveIfNeeded();
+        };
+    };
+    // Le signe dit dans quel sens « tirer vers la droite / le bas » AGRANDIT :
+    // +1 pour le volet de gauche, -1 pour ceux qui touchent le bord opposé.
+    cabler(sepGauche_, dockGauche_, "dock.gauche", +1);
+    cabler(sepDroite_, dockDroite_, "dock.droite", -1);
+    cabler(sepBas_, dockBas_, "dock.bas", -1);
+    for (auto* sep : { &sepGauche_, &sepDroite_, &sepBas_ })
+        addAndMakeVisible(sep);
     arrangement_.setVisible(centerShowsArrangement_);
     pianoRollPanel_.setVisible(!centerShowsArrangement_);
     resized();
@@ -736,6 +775,8 @@ void MainComponent::undockPanels() {
     synthRackWindow_.setContentNonOwned(&synthRack_, false);
     mixerWindow_.setContentNonOwned(&bottomTabs_, false);
     arrangementWindow_.setContentNonOwned(&arrangement_, false);
+    for (auto* sep : { &sepGauche_, &sepDroite_, &sepBas_ })
+        sep->setVisible(false);
     pianoRollPanel_.setVisible(true);
     arrangement_.setVisible(true);
     resized();
