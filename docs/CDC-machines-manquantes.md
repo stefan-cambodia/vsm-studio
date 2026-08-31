@@ -667,10 +667,22 @@ le § 44 d'ARCHITECTURE dit où chercher (le couplage), pas quand. En attendant,
 l'import SoundFont de `vsm.multisample`. Treize profils GeneralUser GS sont
 installés — saxophones soprano/alto/ténor, hautbois, clarinette, flûte,
 trompette, section de cuivres, cordes, chœur, violon, contrebasse, guitare
-nylon — chacun avec son attribution. Un stem de saxophone a désormais une
-candidate qui PORTE les harmoniques paires, jouée d'office par l'arbitrage
-comme toute machine du parc. C'est un report d'échantillons et c'est présenté
-comme tel : la modélisation physique reste fermée, la couverture ne l'est plus.
+nylon — chacun avec son attribution. C'est un report d'échantillons et c'est
+présenté comme tel : la modélisation physique reste fermée.
+
+**MAIS LA COUVERTURE N'EST QU'À MOITIÉ OUVERTE, ET C'EST LE PREMIER MORCEAU
+QUI L'A DIT (31/08/2026).** Une première rédaction de ce paragraphe affirmait
+que le saxophone installé serait « joué d'office par l'arbitrage comme toute
+machine du parc ». *Us and Them* (Pink Floyd — ténor de Dick Parry, premier
+morceau à saxophone jamais passé dans la chaîne) a montré que c'est faux :
+`vsm.multisample` ne porte qu'UN profil par exécution — le premier installé,
+« GM-Warm-Pad », et le journal dit en toutes lettres que les dix-huit autres
+« ne seront pas essayés » (`VSM_PROFIL=nom` pour en choisir un). Le ténor n'a
+donc jamais concouru. La couverture est INSTALLÉE mais pas ARBITRÉE : pour
+qu'elle le soit, il faudrait que l'arbitrage de piste présente une candidate
+`vsm.multisample` PAR profil installé — dix-neuf candidates au lieu d'une,
+soit ~4 min 30 de rendus de piste en plus au tarif mesuré. C'est la prochaine
+marche, et elle est écrite ici pour ne pas être crue déjà franchie.
 
 **La décision de ne pas construire la machine ne change pas** : elle reposait
 sur « rien ne l'a encore mesurée comme manquante », et ce paragraphe ne mesure
