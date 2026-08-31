@@ -4,25 +4,32 @@ Séquenceur MIDI + rack de synthétiseurs vintage virtuels. Voir
 [`ARCHITECTURE.md`](ARCHITECTURE.md) pour la conception complète et l'état
 d'avancement détaillé par phase.
 
-**État actuel** : le moteur MIDI (`core/`, 84 tests) et le moteur audio
-temps réel (`audio/`, 543 tests, dont un test de concurrence réel vérifié
-sous ThreadSanitizer) sont implémentés et **entièrement testés** — 760
-tests, tous verts, zéro warning. Les 24 machines (Minimoog, TB-303, Juno-106,
+**État actuel** : le moteur MIDI (`core/`, 158 tests) et le moteur audio
+temps réel (`audio/`, 798 tests, dont un test de concurrence réel vérifié
+sous ThreadSanitizer) sont implémentés et **entièrement testés** — **1 216
+tests moteur**, tous verts, zéro warning. Les 33 machines (Minimoog, TB-303, Juno-106,
 TR-808, TR-909, SH-101, Prophet, Jupiter-8, ARP Odyssey, MS-20, DX7, sampler
 16 emplacements, e-piano, OB-X, supersaw, table d'ondes, hybride PCM, orgue à
 roues phoniques, Generic Synth, String — corde pincée et frottée par guide
 d'ondes —, Piano — cordes frappées —, Drums — batterie acoustique modélisée —,
 Wind — anche et lèvres —, Multisample — l'acoustique reportée par
-échantillons, profils installables — + le synthé de test) ont chacune une
-**empreinte de non-régression audio** qui fige leur rendu. **Toutes les phases
+échantillons, profils installables —, Vocal — conduit vocal et voyelles —,
+Additive — le spectre rang par rang —, West Coast — pliage et porte passe-bas —,
+Phase Distortion — le temps déformé —, Divider — cordes électroniques —,
+PSG — puce 8 bits —, Stochastic — la forme qui divague —, Percussion — peaux et
+barres, modal — et FM Drums — percussions métalliques — + le synthé de test) ont
+chacune une **empreinte de non-régression audio** qui fige leur rendu. **Toutes les phases
 des feuilles de route sont terminées** (1 à 6 : moteur, machines, optimisation
 SIMD ; 7 : interopérabilité sémantique, CLAP ; 8 à 11 : reconstruction
 WAV → MIDI + patchs, voir [`docs/ROADMAP-fusion.md`](docs/ROADMAP-fusion.md)).
-**Un axe reste ouvert, et il est nouveau** : le logiciel lui-même. Le moteur,
-les machines et la chaîne d'analyse sont au niveau ; l'application qui les
-accueille est restée un démonstrateur — pas de piste audio, pas d'enregistrement,
-pas de clip, et aucune sauvegarde de projet. C'est l'objet de
-[`docs/ROADMAP-daw.md`](docs/ROADMAP-daw.md).
+**L'axe « logiciel » est terminé lui aussi.** Ce paragraphe a longtemps dit que
+« l'application qui les accueille est restée un démonstrateur — pas de piste
+audio, pas d'enregistrement, pas de clip, et aucune sauvegarde de projet » :
+plus rien de cela n'est vrai. Les phases D0 à D10 de
+[`docs/ROADMAP-daw.md`](docs/ROADMAP-daw.md) sont closes — projet enregistré et
+récupéré après plantage, clips, pistes audio, enregistrement MIDI et audio,
+console avec bus et chaîne latérale, vue d'arrangement, exports, hôte CLAP et
+VST3, navigateur, MIDI learn persistant, raccourcis configurables.
 
 La couche `interchange/` donne à chaque paramètre de chaque machine une
 identité sémantique stable (`filter.1.cutoff`...), et lit/écrit des presets

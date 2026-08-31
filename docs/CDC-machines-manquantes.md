@@ -583,8 +583,71 @@ du parc a été justifié par un chiffre. Le § 10 rappelle ce que ça coûte de
 faire l'inverse : `vsm.string` a d'abord donné le résultat INVERSE de celui
 qu'on attendait, et il a fallu la mesure pour trouver ses quatre vrais défauts.
 
-**À rouvrir dès qu'un morceau à saxophone, hautbois ou flûte sera passé dans la
-chaîne et que le stem correspondant sera mesuré comme mal servi** — la
+~~**À rouvrir dès qu'un morceau à saxophone, hautbois ou flûte sera passé dans
+la chaîne et que le stem correspondant sera mesuré comme mal servi** — la
 condition est vérifiable, et elle est peu coûteuse à remplir : il suffit d'un
-morceau et d'une exécution. Ce jour-là, c'est ce paragraphe qu'il faudra venir
-corriger, avec le chiffre qui l'aura montré.
+morceau et d'une exécution.~~
+
+**CETTE CONDITION EST INAPPLICABLE TELLE QU'ELLE EST ÉCRITE, ET C'EST LA
+TENTATIVE DE LA REMPLIR QUI L'A MONTRÉ (31/08/2026).** Elle parle du « stem
+correspondant ». Il n'existe pas. `htdemucs` sépare en QUATRE sources —
+`drums`, `bass`, `other`, `vocals` — et **aucun instrument à vent n'a de stem
+à lui** : un saxophone tombe dans `other`, avec l'orgue, la guitare et le
+piano. Une distance mesurée sur `other` ne peut donc pas être imputée au vent,
+ce qui est précisément ce que la condition demandait de faire.
+
+**Ce qui a été essayé, sur *Us and Them* (Pink Floyd, 1973), choisi parce que
+le ténor de Dick Parry y joue longuement :**
+
+- **Séparation à quatre sources, puis recherche d'un passage de vent à
+  découvert dans `other`.** Le passage trouvé donnait `f0` = 366,2 Hz à 140 s,
+  à 150 s ET à 200 s. Une hauteur tenue une minute est un PAD D'ORGUE, pas une
+  phrase de saxophone : le critère « son tenu » sélectionnait exactement le
+  mauvais instrument. Le profil harmonique qu'on en tirait décrivait l'orgue.
+- **Suivi de hauteur au quart de seconde sur la section de solo**, pour
+  remplacer « son tenu » par « ligne mélodique ». Résultat : 112 / 220 / 364 Hz
+  qui alternent d'une fenêtre à l'autre — le détecteur de pic saute entre
+  l'orgue et le reste, aucune ligne cohérente.
+- **Séparation à SIX sources** (`htdemucs_6s` : `guitar` et `piano` en plus),
+  pour vider `other` de ce qui masquait le vent. `other` y tombe à 0,018 de
+  niveau efficace sur la section de solo, DERRIÈRE `guitar` (0,028) : ce n'est
+  plus un instrument, c'est un résidu, et son spectrogramme ne montre aucune
+  pile harmonique suivie. Le parc de modèles de séparation ne contient de toute
+  façon aucune source « vent ».
+
+**CE QUE LA CONDITION DOIT DIRE À LA PLACE.** La bonne épreuve n'est pas un
+morceau, c'est **une cible isolée** — exactement le protocole qui a fait
+accepter `vsm.string` : `cello.wav`, une note réelle d'instrument acoustique,
+cherchée parmi les machines mélodiques sans présélection (§ 10, et
+ARCHITECTURE § 33). Pour le vent conique, il faut donc un enregistrement où
+l'instrument est **la seule source mélodique entretenue** — une pièce solo, ou
+un échantillon isolé —, et la mesure qui tranche est la comparaison des
+profils harmoniques : `vsm.wind` porte h3 = 0,156 et h5 = 0,753 et rien de
+pair, une perce conique doit porter les rangs pairs.
+
+**ET LA FLÛTE, ELLE, A ÉTÉ TENTÉE — CE DOCUMENT NE LE DISAIT PAS.** Le
+paragraphe « ce qu'il faudrait » ci-dessus annonce « deux modèles, donc » et
+s'arrête là, comme si aucun n'existait. Le second a été écrit :
+`audio/plugins/flute/`, un modèle jet/biseau avec ses tests, HORS du
+`CMakeLists` — un résultat négatif conservé, et non un oubli. Sa mesure est au
+§ 44 d'ARCHITECTURE.md, et elle vaut d'être connue avant toute reprise : ce
+qu'on avait d'abord pris pour une auto-oscillation était une composante
+CONTINUE, chaque harmonique pesant 0,00004 pour un niveau global de 0,27 ; le
+bloqueur de continu, qui est obligatoire, fait tomber le niveau à 0,005 et fige
+la fréquence à 1 412 Hz quelle que soit la note.
+
+Le compte exact est donc de **cinq tentatives** — quatre topologies à anche
+(§ 33) et une à jet (§ 44) —, et le § 44 en tire la conclusion qui doit guider
+la sixième : l'obstacle est le même à chaque fois, un gain de boucle sous le
+seuil, atteint par des topologies entièrement différentes. **Ce n'est donc ni
+la forme de la perce ni la nature de l'excitateur qui bloque, c'est la
+formulation du COUPLAGE entre l'excitateur et la colonne d'air.** Une sixième
+topologie ne serait pas une tentative de plus, ce serait la même erreur pour la
+sixième fois.
+
+**La décision de ne pas construire la machine ne change pas** : elle reposait
+sur « rien ne l'a encore mesurée comme manquante », et ce paragraphe ne mesure
+toujours rien de tel. Ce qui change, c'est qu'on sait maintenant que la
+mesure ne s'obtiendra pas en passant un morceau de plus dans la chaîne, et ce
+qu'il faudrait à la place. Une condition de réouverture qu'on ne peut pas
+remplir n'est pas une condition : c'est une porte peinte sur un mur.

@@ -19,7 +19,8 @@ les 2 VCO suivent les touches grave/aiguë, ring mod, sample & hold),
 système d'algorithmes, feedback, enveloppes par opérateur, sensibilité
 vélocité) sont tous faits. La **Phase 6 est ENTAMÉE** : les **tests de
 non-régression audio par machine** sont en place (section 9 bis) -- chacune des
-23 machines a désormais une empreinte de rendu figée, qui détecte toute dérive
+machines (23 quand la phase a été close, **34 aujourd'hui**) a une empreinte de
+rendu figée, qui détecte toute dérive
 du son y compris causée par une brique DSP partagée modifiée pour une AUTRE
 machine. La **Phase 6 est CLOSE** : banc de mesure CPU (§ 9 ter), profiling
 intra-DSP (§ 9 quater), **SIMD entre voix** sur les trois machines
@@ -30,8 +31,8 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **1150 tests moteur** (160 core + 767 audio
-+ 170 interchange + 23 CLAP + 19 VST3 + 11 façades,
+écoute au clic, et toute la logique testée hors JUCE. Total : **1 216 tests moteur** (158 core + 798 audio
++ 205 interchange + 25 CLAP + 19 VST3 + 11 façades,
 tous verts, zéro warning, y compris sous les flags stricts type-JUCE
 `-Wfloat-equal -Wsign-conversion -Wshadow`) + application complète compilée et
 liée. Rendus réels vérifiables : `minimoog_demo.wav`,
@@ -56,7 +57,7 @@ section 17). Tout testé (routage, sends, chaque effet, granularité sous-bloc,
 déterminisme, non-régression).
 
 **La Phase 2 est désormais COMPLÈTE, moteur ET interface.** Ajoutés côté UI :
-`EffectFactory` (liste/instancie les 9 effets), `EffectChainComponent` (onglet
+`EffectFactory` (liste/instancie les 13 effets), `EffectChainComponent` (onglet
 "Effets" : ajout/suppression/réordonnancement d'inserts par piste + réglage des
 paramètres, un knob par entrée de `parameterList()`), et 2 **knobs de send** par
 tranche du mixer routant vers 2 bus auxiliaires (Reverb sur A, Delay sur B par
@@ -64,7 +65,7 @@ défaut). Tous les fichiers UI compilés sans erreur/warning contre JUCE (flags
 stricts inclus, validation par unité de traduction).
 
 **Interopérabilité (Phase 7) : Mode A complet, CLAP fait.** La couche
-`interchange/` (`vsm_interchange`, **45 tests**) couvre les identités
+`interchange/` (`vsm_interchange`, **205 tests**) couvre les identités
 sémantiques des paramètres (P2), les presets `*.synth.json` (P3), les projets
 `project.json` (P4), le chargement/écriture d'un dossier de projet (P7) et la
 reconstruction hors ligne `projet -> WAV` via l'outil `vsm-render` (P8). La
@@ -132,9 +133,9 @@ vsm-studio/
 ├── README.md
 ├── CMakeLists.txt
 │
-├── core/                       "vsm_core" — moteur MIDI/séquenceur (32 tests)
+├── core/                       "vsm_core" — moteur MIDI/séquenceur (158 tests)
 │
-├── audio/                      "vsm_audio" — moteur audio temps réel (115 tests)
+├── audio/                      "vsm_audio" — moteur audio temps réel (798 tests)
 │   ├── include/vsm/audio/dsp/
 │   │   ├── LadderFilterZDF.h     GÉNÉRALISÉ à N pôles (2-4) -- voir section 7
 │   │   └── ...                   Oscillator, Envelope, Filter(SVF), AnalogDrift, ParameterSmoother
@@ -594,7 +595,7 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 1 216 tests moteur + 59 tests d'analyse, tous verts
+### Bilan actuel : 1 216 tests moteur + 60 tests d'analyse, tous verts
 
 - **158 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des
@@ -1009,8 +1010,8 @@ un couplage par le NOM du paramètre -- précisément ce que le projet garde
 stable, déjà verrouillé par les tests `..._parameter_list_size` de chaque
 machine.
 
-**563 paramètres** (23 machines + 9 effets, 308 à l'époque des 12 machines)
-ont reçu une identité, dont
+**835 paramètres** (34 machines + 13 effets ; 563 du temps des 23 machines,
+308 à l'époque des 12) ont reçu une identité, dont
 `accent.amount` pour le TB-303 ou `fm.operator.3.ratio` pour le DX7 : le
 vocabulaire commun couvre ce qui est commun, et le reste est déclaré tel quel
 plutôt que forcé dans une case qui ne lui va pas.
@@ -1296,7 +1297,7 @@ utilisateur se mettrait à automatiser la résonance à la place de la coupure,
 sans erreur ni avertissement, des mois plus tard. Le `clap_id` est donc un
 hachage FNV-1a de l'identifiant SÉMANTIQUE : tant que `filter.1.cutoff` désigne
 la même chose, son identifiant ne bouge pas. Le prix (risque de collision) est
-**vérifié** sur tous les paramètres du parc (563 aujourd'hui), pas supposé,
+**vérifié** sur tous les paramètres du parc (835 aujourd'hui), pas supposé,
 et trois valeurs sont **gelées
 par test** -- si ce test casse, le correctif est de restaurer le hachage, jamais
 de mettre à jour les nombres.

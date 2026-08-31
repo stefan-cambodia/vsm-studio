@@ -46,11 +46,17 @@ client, jamais une dépendance.
 
 **Acquis, mesuré :**
 
-- 24 machines (+ tonalité d'essai), 9 effets, moteur temps réel, 760 tests
-  verts, zéro warning.
-- Piano roll complet, façades « façon hardware » pour les 24 machines,
+- **33 machines (+ tonalité d'essai), 13 effets**, moteur temps réel,
+  **1 216 tests moteur + 60 tests d'analyse** verts, zéro warning.
+  *(Ces trois chiffres disaient « 24 machines, 9 effets, 760 tests » jusqu'au
+  31/08/2026 : ils avaient été écrits une fois et jamais repris, pendant que le
+  parc et la suite grossissaient sous eux. Recomptés à la source —
+  `BuiltInPlugins.cpp`, `EffectFactory.cpp`, les six suites — et non recopiés.
+  `vsm.cone` et `vsm.flute` n'en font pas partie : elles sont dans l'arbre,
+  hors build, comme résultats négatifs documentés.)*
+- Piano roll complet, façades « façon hardware » pour les machines,
   séquenceurs à pas pour celles qui en ont un.
-- Interop : identités sémantiques (563 paramètres), presets `*.synth.json`,
+- Interop : identités sémantiques (**835 paramètres**), presets `*.synth.json`,
   projets `project.json`, rendu hors ligne `vsm-render`, adaptateur et hôte
   CLAP.
 - Pont Python : rendu d'une note par le moteur réel en ~10 ms, déterministe au

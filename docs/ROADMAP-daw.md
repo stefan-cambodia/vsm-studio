@@ -2819,6 +2819,36 @@ qu'elle est là.
 > laisse croire que la vérification existe. Ils ont été éprouvés dans les deux
 > sens : les trois échouent sans la correction.
 >
+> **CE QUE ÇA COÛTAIT VRAIMENT, MESURÉ SUR LES RECONSTRUCTIONS DÉJÀ RENDUES.**
+> Le paragraphe ci-dessus dit que les nombres fractionnaires d'un fichier
+> valide se lisaient comme zéro. Ce n'est pas une tournure : l'ancien lecteur a
+> été recompilé tel quel (`git show bab0ad0^:interchange/src/Json.cpp`) et
+> lâché sur les presets réellement écrits par la chaîne d'analyse.
+>
+> | reconstruction | paramètres de patch lus comme ZÉRO |
+> |---|---|
+> | `children-dream` | **60 sur 76** |
+> | `children-dream-v10` | **120 sur 166** |
+>
+> Sur `track_01` de la v12 — une corde — `string.bowPressure` valait 0,5 et se
+> lisait 0 : **l'archet appuie avec une force nulle**, la corde ne sonne pas.
+> `string.bodySize` 0,956 → 0, `output.drive` 0,108 → 0. Douze des quinze
+> paramètres de cette machine, et les trois survivants sont ceux qui valaient
+> un entier.
+>
+> **Autrement dit, le projet que le DAW ouvrait n'était pas celui que la chaîne
+> avait mesuré.** Les distances publiées sont, elles, intactes — elles sont
+> calculées en Python à partir de rendus faits par `vsm-render`, qui tourne
+> sans interface, donc en locale C, et n'a jamais été touché. Ce qui divergeait
+> n'est pas la mesure : c'est ce qu'on entendait en ouvrant le résultat. Il
+> **ET LA BASCULE EST DATÉE, CE QUI RETIRE LA DERNIÈRE RÉSERVE.** On pouvait
+> espérer qu'elle survenait tard, et qu'un projet ouvert tôt se lisait juste.
+> Le déclencheur est `juce_TextLayout.cpp` : la mise en page d'un
+> `AttributedString` demande `SystemStats::getUserLanguage()`, donc appelle
+> `getLocaleValue`, donc bascule la locale — **au premier texte que
+> l'application dessine**, avant que qui que ce soit ait pu cliquer. Il n'y a
+> pas de fenêtre de tir : dans une session graphique, tout se lit après.
+
 > **LA LEÇON, ET C'EST LA MÊME QUE CELLE DE D7.5.** Une phase entière a été
 > déclarée terminée pendant que la sauvegarde automatique écrivait des fichiers
 > illisibles, et rien dans le code, les tests ou les rapports ne le disait.
