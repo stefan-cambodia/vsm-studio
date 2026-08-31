@@ -9,7 +9,19 @@ reconstruit un morceau enregistré en projet jouable.
 > écran par `vsm-panel-preview`, `vsm-ui-preview`, `vsm-pianoroll-preview` et
 > `vsm-arrangement-preview`, à l'échelle d'interface 150 %.
 
-## 1. L'arrangement
+## 1. La fenêtre
+
+Tout vit dans **une seule fenêtre** : le transport en haut, les pistes à gauche, le morceau au centre — l'arrangement *ou* le piano roll, on passe de l'un à l'autre par le menu Affichage —, la façade de la piste sélectionnée à droite, la console en bas.
+
+**Chaque frontière porte une poignée** : elle se tire à la souris, et la taille choisie est conservée d'une session à l'autre. Masquer un volet depuis *Affichage* rend son espace au centre — cacher le rack et les pistes donne au piano roll et à la façade toute la largeur.
+
+Pour déplacer librement les panneaux, *Affichage ▸ Fenêtre unique* se décoche : chaque panneau redevient une fenêtre indépendante, à poser où l'on veut. Les deux dispositions coexistent et chacune retient ses réglages.
+
+![La fenêtre unique : transport, pistes à gauche, arrangement au centre, rack de la piste sélectionnée à droite, console en bas.](images/manuel/fenetre-unique-arrangement.png)
+
+*La fenêtre unique : transport, pistes à gauche, arrangement au centre, rack de la piste sélectionnée à droite, console en bas.*
+
+## 2. L'arrangement
 
 C'est la vue où le morceau existe. Chaque ligne est une piste, chaque bloc un **clip** — un morceau de musique qu'on déplace, redimensionne, coupe et duplique à la souris, avec annulation. Un clip posé deux fois ne duplique pas ses notes : éditer l'un modifie l'autre.
 
@@ -22,20 +34,6 @@ Un échantillon glissé depuis le navigateur tombe sur la piste survolée, **à 
 ![La vue d'arrangement : quatre pistes nommées, des clips, une automation dessinée, seize pistes visibles à l'écran.](images/manuel/arrangement.png)
 
 *La vue d'arrangement : quatre pistes nommées, des clips, une automation dessinée, seize pistes visibles à l'écran.*
-
-## 2. Le piano roll
-
-Le clavier de gauche donne l'échelle ; les octaves sont marquées en clair. Une note se dessine, se déplace, s'allonge ; la vélocité se règle et passe par l'historique.
-
-Les **notes hachurées** ne sont pas des notes ordinaires : ce sont celles dont la transcription doute. Après une reconstruction, on les parcourt une par une pour décider — c'est le seul endroit où l'oreille tranche ce que la mesure n'a pas su trancher.
-
-En haut, les **marqueurs** (`Intro`, `Pont`) sont des entités du projet, pas des étiquettes décoratives : ils survivent à l'aller-retour disque et à l'export MIDI.
-
-Une trentaine d'opérations d'édition musicale sont disponibles — gammes, accords, arpèges, legato, quantification — et toutes passent par l'historique global : une opération sur trois pistes s'annule d'un seul geste.
-
-![Le piano roll : notes, marqueurs de section, note de tête sélectionnée, et une note douteuse hachurée.](images/manuel/piano-roll.png)
-
-*Le piano roll : notes, marqueurs de section, note de tête sélectionnée, et une note douteuse hachurée.*
 
 ## 3. Le rack
 
@@ -272,7 +270,21 @@ Un soustractif neutre, aux axes bien rangés : la machine que la recherche de pa
 
 ![Façade de Generic Synth](images/manuel/vsm.generic.png)
 
-## 4. Le navigateur
+## 3. Le piano roll
+
+Le clavier de gauche donne l'échelle ; les octaves sont marquées en clair. Une note se dessine, se déplace, s'allonge ; la vélocité se règle et passe par l'historique.
+
+Les **notes hachurées** ne sont pas des notes ordinaires : ce sont celles dont la transcription doute. Après une reconstruction, on les parcourt une par une pour décider — c'est le seul endroit où l'oreille tranche ce que la mesure n'a pas su trancher.
+
+En haut, les **marqueurs** (`Intro`, `Pont`) sont des entités du projet, pas des étiquettes décoratives : ils survivent à l'aller-retour disque et à l'export MIDI.
+
+Une trentaine d'opérations d'édition musicale sont disponibles — gammes, accords, arpèges, legato, quantification — et toutes passent par l'historique global : une opération sur trois pistes s'annule d'un seul geste.
+
+![Le piano roll : notes, marqueurs de section, note de tête sélectionnée, et une note douteuse hachurée.](images/manuel/piano-roll.png)
+
+*Le piano roll : notes, marqueurs de section, note de tête sélectionnée, et une note douteuse hachurée.*
+
+## 5. Le navigateur
 
 Une seule liste pour tout ce qu'on peut poser sur une piste : les **machines** du parc, les **presets** `*.synth.json`, les **profils** multi-échantillons et les **échantillons**. La colonne de droite dit d'où vient chaque chose — et jusqu'au sous-dossier, parce que deux « basse » rangées à deux endroits doivent se distinguer sans qu'on ait à les essayer.
 
@@ -286,7 +298,7 @@ L'inventaire ne lit aucun contenu — des noms de fichiers et des extensions —
 
 *Le navigateur : machines, presets, profils et échantillons dans une seule liste, avec leur origine.*
 
-## 5. Reconstruire un morceau
+## 6. Reconstruire un morceau
 
 Glissez un fichier audio sur l'application : elle en fait un projet. La chaîne sépare le morceau en stems, transcrit les notes, cherche pour chaque piste la machine et le patch les plus proches, puis ouvre le résultat comme un projet — pas comme un dossier à charger.
 
@@ -300,7 +312,7 @@ Ce que la chaîne ne fait pas : couper une piste. Elle mesure le morceau rendu *
 
 *La reconstruction en cours : cinq étapes, le journal en direct, et un bouton pour annuler.*
 
-## 6. Les réglages
+## 7. Les réglages
 
 Tout ce qui se règle est au même endroit. Un réglage qu'on ne retrouve qu'en se souvenant du menu où il se cache est un réglage qu'on ne change pas.
 
@@ -338,7 +350,7 @@ Une bascule s'appuie, un fader se positionne : traiter l'un comme l'autre ferait
 
 ![Six associations](images/manuel/associations-midi.png)
 
-## 7. Ne rien perdre
+## 8. Ne rien perdre
 
 Le projet est photographié **toutes les trente secondes**, et seulement s'il a changé — un studio ouvert sans qu'on y touche n'a aucune raison d'écrire. L'écriture se fait hors du thread de l'interface, et à côté du fichier avant de basculer : une sauvegarde interrompue en cours d'écriture détruirait justement ce qu'elle protège.
 
