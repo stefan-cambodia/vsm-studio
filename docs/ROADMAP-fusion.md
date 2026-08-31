@@ -2189,6 +2189,18 @@ et les deux AUTRES suivantes battaient aussi l'arbitrage), `vsm.juno106` puis
 `vsm.minimoog` sur `other`. Sur trois morceaux mesurés, il ne s'est pas
 trouvé UNE piste mélodique où la remise en jeu n'ait rien changé.
 
+**ET *SKY AND SAND* LUI-MÊME, LE MORCEAU QUI A TOUT DÉCLENCHÉ, CONFIRME LA
+PRÉDICTION MACHINE POUR MACHINE.** Chaîne complète rejouée aux conditions de
+sky-v6 (v4, 60 itérations, 120 évaluations, 21 axes, classifieur de frappes,
+mêmes stems — 7 pièces et 4 215 frappes détectées à l'identique), seule la
+remise en jeu en plus : **0,2467 contre 0,2933 publié, −15,9 %.** Le verdict
+du mélange a retenu `vsm.phasedist` pour la basse et `vsm.stochastic` pour
+`other` — précisément les deux machines que les tableaux ci-dessus
+désignaient. Et le constat qui a ouvert cette section est refermé : la basse
+qui DÉGRADAIT le morceau (0,2933 contre 0,2781 sans elle) le sert désormais
+(0,2510 contre 0,2771 sans elle). Le § 5 octies donnait la basse comme second
+front du budget d'erreur ; ce front-là est pris.
+
 **UNE ERREUR DE LANCEMENT EN CHEMIN, ET C'EST LA PROVENANCE QUI L'A DITE.**
 Les quatre premières exécutions de cette campagne sont parties SANS
 `--classifieur-batterie` — une section `modeles` oubliée en recopiant les
