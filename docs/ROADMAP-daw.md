@@ -2967,8 +2967,9 @@ Ceux de la fusion, plus cinq propres à cet axe :
    quand une piste audio lit 47 Mo depuis le disque.
 3. **Rendu temps réel et rendu hors ligne restent identiques**, à l'échantillon
    près, sur tout ce qui s'ajoute. ~~Le test existe pour CLAP ; il s'étend.~~
-   **Il s'est étendu le 31/08/2026, et il a trouvé une exception, mesurée
-   ci-dessous.**
+   **Il s'est étendu le 31/08/2026, a trouvé une exception, et l'exception a
+   été corrigée le jour même — identité stricte à toutes les tailles de bloc,
+   frontière comprise (note ci-dessous).**
 4. **Le MOTEUR se compile et s'utilise sans Python, sans réseau, sans CLAP.**
    L'application, elle, exige JUCE, récupéré depuis GitHub au premier
    configure : hors ligne, lui désigner une copie locale
@@ -2980,6 +2981,31 @@ Ceux de la fusion, plus cinq propres à cet axe :
    dans le projet, présente à l'export, et sans commande morte. C'est l'acquis
    de D0, et le reperdre serait pire que ne l'avoir jamais eu.
 
+> **L'INVARIANT N° 3, ÉTENDU LE 31/08/2026 : L'EXCEPTION TROUVÉE PUIS CORRIGÉE
+> LE JOUR MÊME.** Rendu à neuf tailles de bloc, le graphe divergeait quand une
+> fin de note tombait PILE sur une frontière (~−76 dB dans la queue de
+> relâchement). Cause double, dans la distribution des événements aux blocs :
+> l'appartenance se décidait en SECONDES accumulées — l'erreur d'accumulation
+> faisait entrer l'événement de frontière dans le bloc de trop — puis un clamp
+> le rabattait sur le dernier échantillon, relâchement un échantillon trop tôt.
+> Correction : l'appartenance se décide en ÉCHANTILLONS ABSOLUS ARRONDIS
+> (`llround(t x sr)`), un quart d'échantillon de marge sur la borne de
+> recherche, l'offset tranche, AUCUN clamp — un clamp déplace, et un événement
+> déplacé est un événement faux. La borne basse du test-mémoire a échoué au
+> premier build corrigé, exactement comme son en-tête le promettait ; les tests
+> (`test_process_graph_determinism.cpp`) exigent désormais l'IDENTITÉ STRICTE
+> partout, deux canaux, et les empreintes audio sont inchangées (801 verts).
+>
+> **UNE QUESTION OUVERTE EN EST SORTIE, ÉCRITE PLUTÔT QUE TUE.** Le test « un
+> motif bouclé ne respire pas » passait PAR ACCIDENT : l'état de synthèse
+> traverse le rebouclage, et la répétabilité bit-à-bit d'un tour n'est PAS une
+> propriété du moteur — sur le moteur d'AVANT la correction, une note de
+> 241 ticks divergeait déjà entre tours, et vingt tours ne se répètent jamais
+> (seize voix, pas de période simple). Le POURQUOI fin — quel état de voix
+> traverse le wrap — reste à établir. Le test affirme désormais la garantie
+> réelle : deux exécutions complètes du même rebouclage sont identiques au bit
+> près.
+>
 > **ET IL NE L'ÉTAIT QU'AU TIERS (31/08/2026).** L'invariant interdit TROIS
 > choses — allocation, verrou, I/O — et le test ne comptait que la première,
 > tout en citant la phrase entière. Les verrous bloquants et les
