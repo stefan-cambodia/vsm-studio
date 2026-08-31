@@ -74,6 +74,11 @@ class MixAlternative:
     # en 49) : remettre vsm.drums en jeu avec les notes de la 909 ferait taire
     # des pièces, et le verdict jugerait un kit amputé.
     notes: Optional[List[ExportNote]] = None
+    # NOM du profil multi-échantillons de la proposition, quand elle en porte
+    # un. Vide : le profil se déduit (celui de la machine visée si la machine
+    # change, celui DÉJÀ en place sinon -- une proposition « paramètres seuls »
+    # ne doit pas écraser le profil que l'arbitrage a choisi).
+    profile: str = ""
     # La distance de PISTE de cette proposition, quand on la connaît. Elle
     # voyage avec elle pour que le rapport puisse suivre la décision : c'est la
     # TROISIÈME fois qu'un champ du rapport reste sur le patch écarté (voir
@@ -218,13 +223,19 @@ def keep_what_helps_the_mix(
             track.parameters = dict(proposition.parameters)
             track.notes = (list(proposition.notes) if proposition.notes is not None
                            else list(etat_courant[4]))
-            # Le PROFIL suit la machine, comme le nom d'affichage : c'est le
-            # seul endroit de la chaîne où une piste change de machine, donc le
-            # seul où un profil peut se retrouver attaché à la mauvaise. Une
-            # piste qui deviendrait `vsm.multisample` en gardant le profil vide
-            # rendrait du silence, et le verdict compterait ce silence comme un
-            # résultat.
-            track.profile = (profiles or {}).get(machine_visee, "")
+            # Le PROFIL suit la proposition d'abord (l'arbitrage par profil en
+            # met un par candidate), la machine ensuite, l'état courant enfin :
+            # une proposition « paramètres seuls » qui retomberait sur le
+            # premier profil installé écraserait celui que l'arbitrage a
+            # choisi. Et une piste qui deviendrait `vsm.multisample` avec un
+            # profil vide rendrait du silence, que le verdict compterait comme
+            # un résultat.
+            if proposition.profile:
+                track.profile = proposition.profile
+            elif proposition.machine and machine_visee != etat_courant[0]:
+                track.profile = (profiles or {}).get(machine_visee, "")
+            else:
+                track.profile = etat_courant[3]
             # Le nom d'affichage suit la machine, sinon le projet annoncerait
             # l'ancienne dans son interface.
             if machine_visee != etat_courant[0]:

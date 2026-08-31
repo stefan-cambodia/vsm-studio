@@ -19,7 +19,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from framework import assert_equal, assert_true, test  # noqa: E402
 
-from analyzer.vsm_track_arbitration import TrackVerdict, runners_up  # noqa: E402
+from analyzer.vsm_track_arbitration import (TrackCandidate, TrackVerdict,  # noqa: E402
+                                             build_candidates, runners_up)
 
 
 def _verdicts():
@@ -135,3 +136,42 @@ def melange_le_temoin_de_coupure_est_mesure_et_la_piste_est_QUAND_MEME_gardee():
     assert_true(piste.machine in ("vsm.minimoog", "vsm.prophet"),
                 f"et la piste est GARDÉE malgré tout ({piste.machine})")
     assert_true(piste.volume > 0.0, "gardée AUDIBLE : couper n'est pas une décision de la chaîne")
+
+
+@test
+def arbitrage_un_profil_multisample_est_une_candidate_a_part_entiere():
+    """`vsm.multisample` part une fois PAR profil installé.
+
+    Le premier morceau à saxophone l'a exigé : dix-neuf profils installés,
+    un seul essayé, le ténor jamais concouru. Une liste de noms dans le
+    dictionnaire des profils devient autant de candidates d'usine, chacune
+    portant le sien -- et une machine à profil UNIQUE garde le comportement
+    d'avant, à l'octet près."""
+    candidates = build_candidates(
+        [("vsm.minimoog", {"cutoff": 0.5})],
+        ["vsm.minimoog", "vsm.multisample"],
+        {"vsm.multisample": ["GU-Tenor-Sax", "GM-Warm-Pad", "YDP-Grand"]})
+    usine = [c for c in candidates if c.origin == "patch d'usine"]
+    multi = [c for c in usine if c.machine == "vsm.multisample"]
+    assert_equal(len(multi), 3, "une candidate par profil")
+    assert_equal(sorted(c.profile for c in multi),
+                 ["GM-Warm-Pad", "GU-Tenor-Sax", "YDP-Grand"], "chacune le sien")
+    mono = [c for c in usine if c.machine == "vsm.minimoog"]
+    assert_equal(len(mono), 1, "machine sans profil : une seule candidate")
+
+
+@test
+def arbitrage_les_suivantes_gardent_une_machine_ET_son_profil():
+    """`runners_up` déduplique par MACHINE : le meilleur profil représente la
+    sienne, et il VOYAGE avec elle -- un « multisample » retenu sans son profil
+    serait une décision inapplicable."""
+    verdicts = [
+        TrackVerdict("vsm.string", {}, "patch d'usine", 0.30),
+        TrackVerdict("vsm.multisample", {}, "patch d'usine", 0.32, profile="GU-Tenor-Sax"),
+        TrackVerdict("vsm.multisample", {}, "patch d'usine", 0.35, profile="GM-Warm-Pad"),
+        TrackVerdict("vsm.piano", {}, "patch d'usine", 0.40),
+    ]
+    suivantes = runners_up(verdicts, count=3)
+    assert_equal([v.machine for v in suivantes], ["vsm.multisample", "vsm.piano"],
+                 "une seule entrée par machine, la meilleure d'abord")
+    assert_equal(suivantes[0].profile, "GU-Tenor-Sax", "le profil gagnant voyage")

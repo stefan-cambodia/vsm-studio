@@ -290,6 +290,24 @@ def profil_de(moteur, machine: str) -> str:
     return ""
 
 
+def profils_pour_arbitrage(moteur, machines: Sequence[str]) -> Dict[str, object]:
+    """Comme `profils_de`, mais `vsm.multisample` part avec TOUS ses profils.
+
+    Le premier morceau à saxophone (*Us and Them*, 31/08/2026) a montré le
+    manque : dix-neuf profils installés, un seul essayé — « les autres ne
+    seront pas essayés », disait le journal — et le ténor n'a jamais concouru.
+    L'arbitrage de piste est l'endroit exact où plusieurs profils se
+    départagent, au même tarif qu'une machine de plus (~15 s par candidate).
+    """
+    d: Dict[str, object] = dict(profils_de(moteur, machines))
+    if "vsm.multisample" in d:
+        noms = [str(p.get("name") or "") for p in moteur.profiles()]
+        noms = [n for n in noms if n]
+        if len(noms) > 1:
+            d["vsm.multisample"] = noms
+    return d
+
+
 def profils_de(moteur, machines: Sequence[str]) -> Dict[str, str]:
     """Machine -> nom de profil, pour celles qui en ont un.
 
@@ -961,7 +979,7 @@ def arbitrer_sur_piste(ctx: Contexte, nom: str, stem: StemReconstruction, audio:
         notes=notes_export(stem.notes),
         stem_audio=audio,
         candidates=build_candidates(list(stem.patches.items()), ctx.candidates,
-                                    profils_de(ctx.moteur, ctx.candidates)),
+                                    profils_pour_arbitrage(ctx.moteur, ctx.candidates)),
         workdir=ctx.travail / "arbitrage" / nom,
         **ctx.options_de_rendu(nom, audio),
     )
@@ -978,9 +996,12 @@ def arbitrer_sur_piste(ctx: Contexte, nom: str, stem: StemReconstruction, audio:
     gagnant = verdicts[0]
     stem.track_distance = gagnant.distance
     stem.track_considered = [(v.machine, v.origin, v.distance) for v in verdicts]
+    stem.profile = gagnant.profile
     classement = ", ".join(
-        f"{v.machine.split('.')[-1]}={v.distance:.3f}"
-        f"{'*' if v.origin == 'patch d\'usine' else ''}"
+        f"{v.machine.split('.')[-1]}"
+        + (f"[{v.profile}]" if v.profile else "")
+        + f"={v.distance:.3f}"
+        + ("*" if v.origin == "patch d'usine" else "")
         for v in verdicts[:3]
     )
     avant = next((v.distance for v in verdicts
@@ -1011,8 +1032,10 @@ def arbitrer_sur_piste(ctx: Contexte, nom: str, stem: StemReconstruction, audio:
     print(f"      {nom:8s} : {len(suivantes)} machine(s) suivante(s) remises en jeu "
           f"au verdict du mélange — {detail}")
     return [MixAlternative(parameters=dict(v.parameters),
-                           label=f"machine suivante ({v.machine})",
-                           machine=v.machine, track_distance=v.distance)
+                           label=f"machine suivante ({v.machine})"
+                                 + (f" · {v.profile}" if v.profile else ""),
+                           machine=v.machine, track_distance=v.distance,
+                           profile=v.profile)
             for v in suivantes]
 
 
@@ -1041,7 +1064,7 @@ def regler_sur_piste(ctx: Contexte, nom: str, stem: StemReconstruction, audio: n
         workdir=ctx.travail / "reglage" / nom,
         budget=ctx.args.budget_piste,
         axes=ctx.args.axes_piste,
-        profile=profil_de(ctx.moteur, stem.machine),
+        profile=stem.profile or profil_de(ctx.moteur, stem.machine),
         **ctx.options_de_rendu(nom, audio),
     )
     if affine is None:

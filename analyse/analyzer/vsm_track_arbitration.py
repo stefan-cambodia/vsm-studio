@@ -126,6 +126,11 @@ class TrackVerdict:
     parameters: Dict[str, float]
     origin: str
     distance: float
+    # NOM du profil multi-échantillons rendu, quand la machine en exige un.
+    # Sans lui, le GAGNANT d'un arbitrage à plusieurs profils serait
+    # inapplicable : on saurait que « multisample » a gagné sans savoir avec
+    # quel instrument -- exactement l'information que la mesure a payée.
+    profile: str = ""
 
 
 def build_candidates(
@@ -140,18 +145,32 @@ def build_candidates(
     C'est voulu : ce sont deux propositions distinctes, et les départager est
     exactement ce qu'on demande à cette étape.
 
-    `profiles` associe une machine au NOM de son profil multi-échantillons.
+    `profiles` associe une machine au NOM de son profil multi-échantillons --
+    ou à une LISTE de noms : la machine part alors à l'arbitrage une fois PAR
+    profil, en candidates d'usine distinctes. C'est ce qui a manqué au premier
+    morceau à saxophone (*Us and Them*, 31/08/2026) : dix-neuf profils
+    installés, un seul essayé, et le ténor n'a jamais concouru.
     L'oublier ne se voyait PAS : le rendu hors ligne sortait du silence, le
     garde-fou de niveau écartait la candidate, et elle disparaissait du tableau
     d'arbitrage sans un mot -- exactement la panne muette que le § 5 bis de la
     feuille de route interdit.
     """
     profiles = profiles or {}
+
+    def premier(machine: str) -> str:
+        valeur = profiles.get(machine, "")
+        if isinstance(valeur, str):
+            return valeur
+        return next(iter(valeur), "")
+
     candidates = [TrackCandidate(machine, dict(parameters), ORIGINE_CHERCHE,
-                                 profiles.get(machine, ""))
+                                 premier(machine))
                   for machine, parameters in searched]
     for machine in factory_machines:
-        candidates.append(TrackCandidate(machine, {}, ORIGINE_USINE, profiles.get(machine, "")))
+        valeur = profiles.get(machine, "")
+        noms = [valeur] if isinstance(valeur, str) else list(valeur)
+        for nom in (noms or [""]):
+            candidates.append(TrackCandidate(machine, {}, ORIGINE_USINE, nom))
     return candidates
 
 
@@ -244,7 +263,7 @@ def arbitrate_on_track(
                 continue
         distance = float(mesurer(rendu))
         verdicts.append(TrackVerdict(candidate.machine, dict(candidate.parameters),
-                                     candidate.origin, distance))
+                                     candidate.origin, distance, candidate.profile))
 
     verdicts.sort(key=lambda v: v.distance)
     if ecartees:
