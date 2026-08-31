@@ -160,6 +160,7 @@ private:
         kMenuViewSynthRack,
         kMenuViewMixer,
         kMenuViewArrangement,
+        kMenuViewSingleWindow,
         // Un identifiant par palier d'échelle, attribué à la suite :
         // kMenuViewScaleFirst + index dans UiScale::steps().
         kMenuViewScaleFirst,
@@ -480,6 +481,20 @@ private:
     void refreshTransportSchedule();
     void updateSynthRackForSelection();
     void togglePanel(PanelWindow& window);
+
+    // --- FENÊTRE UNIQUE (défaut). Les cinq panneaux s'ancrent DANS ce
+    // composant au lieu de flotter chacun dans sa fenêtre : ce qu'on regarde
+    // ensemble doit vivre ensemble. Les PanelWindow restent construites --
+    // « Fenêtres flottantes » du menu Affichage rend l'ancienne disposition,
+    // et le choix survit au redémarrage (fichier de préférences).
+    // Le CENTRE montre l'arrangement OU le piano roll : les deux montrent le
+    // même morceau à deux échelles, on passe de l'un à l'autre (déjà la règle
+    // du mode flottant, où ils partagent le même emplacement d'écran).
+    void dockPanels();
+    void undockPanels();
+    void layoutDockedPanels(juce::Rectangle<int> area);
+    bool singleWindow_ = true;
+    bool centerShowsArrangement_ = false;
     void showAboutDialog();
     void showAudioSettings();
     /// Écrit le choix du périphérique audio dans les préférences.

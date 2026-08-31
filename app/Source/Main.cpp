@@ -1,4 +1,5 @@
 #include <JuceHeader.h>
+#include <cstdlib>
 #include "MainComponent.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
 #include "ui/UiScale.h"
@@ -65,6 +66,27 @@ public:
             // d'écran réelle, les fenêtres flottantes peuvent se
             // positionner par rapport à elle (voir MainComponent.h).
             content->showFloatingPanels();
+
+            // AUTOPORTRAIT (VSM_CAPTURE=sortie.png) : la fenêtre se rend
+            // elle-même en PNG deux secondes après l'ouverture, puis quitte.
+            // Même raison d'être que les outils vsm-*-preview : sous Wayland,
+            // aucun outil externe ne sait ni viser cette fenêtre ni la faire
+            // passer devant un terminal -- une interface qu'on ne peut pas
+            // regarder est une interface qu'on ne peut pas juger.
+            if (const char* sortie = std::getenv("VSM_CAPTURE"); sortie != nullptr && *sortie) {
+                const juce::File fichier =
+                    juce::File::getCurrentWorkingDirectory().getChildFile(sortie);
+                juce::Timer::callAfterDelay(2000, [this, fichier] {
+                    if (auto* c = getContentComponent()) {
+                        auto image = c->createComponentSnapshot(c->getLocalBounds());
+                        fichier.deleteFile();
+                        juce::FileOutputStream flux(fichier);
+                        if (flux.openedOk())
+                            juce::PNGImageFormat().writeImageToStream(image, flux);
+                    }
+                    juce::JUCEApplication::getInstance()->systemRequestedQuit();
+                });
+            }
         }
 
         void closeButtonPressed() override {

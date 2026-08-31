@@ -676,7 +676,58 @@ void MainComponent::resized() {
 #if !JUCE_MAC
     menuBarComponent_.setBounds(area.removeFromTop(26));
 #endif
+    if (singleWindow_ && trackList_.getParentComponent() == this) {
+        transportBar_.setBounds(area.removeFromTop(56));
+        layoutDockedPanels(area);
+        return;
+    }
     transportBar_.setBounds(area);
+}
+
+void MainComponent::layoutDockedPanels(juce::Rectangle<int> area) {
+    // La géométrie de l'ancienne disposition flottante, repliée dans une seule
+    // fenêtre : pistes à gauche, console en bas, rack à droite, et le morceau
+    // au centre. Chaque volet ne prend sa place que s'il est VISIBLE -- le
+    // menu Affichage cache un volet, l'espace revient au centre.
+    if (bottomTabs_.isVisible())
+        bottomTabs_.setBounds(area.removeFromBottom(juce::jmax(220, area.getHeight() / 4)));
+    if (trackList_.isVisible())
+        trackList_.setBounds(area.removeFromLeft(300));
+    if (synthRack_.isVisible())
+        synthRack_.setBounds(area.removeFromRight(juce::jmin(420, area.getWidth() / 3)));
+    arrangement_.setBounds(area);
+    pianoRollPanel_.setBounds(area);
+}
+
+void MainComponent::dockPanels() {
+    for (auto* fenetre : { &trackListWindow_, &pianoRollWindow_, &synthRackWindow_,
+                            &mixerWindow_, &arrangementWindow_ }) {
+        fenetre->setVisible(false);
+        // DÉTACHER AVANT D'ANCRER, et c'est le point qui a coûté une capture :
+        // une ResizableWindow qui garde son pointeur de contenu REPLAQUE ce
+        // contenu à sa propre taille à chaque resized(), même re-parenté --
+        // le piano roll se retrouvait plein cadre par-dessus tous les volets.
+        fenetre->clearContentComponent();
+    }
+    // Re-parentage : addAndMakeVisible RETIRE le composant de sa fenêtre --
+    // c'est le même objet qui vit ici ou là, jamais deux états.
+    for (auto* volet : std::initializer_list<juce::Component*>{
+             &trackList_, &synthRack_, &bottomTabs_, &arrangement_, &pianoRollPanel_ })
+        addAndMakeVisible(volet);
+    arrangement_.setVisible(centerShowsArrangement_);
+    pianoRollPanel_.setVisible(!centerShowsArrangement_);
+    resized();
+}
+
+void MainComponent::undockPanels() {
+    trackListWindow_.setContentNonOwned(&trackList_, false);
+    pianoRollWindow_.setContentNonOwned(&pianoRollPanel_, false);
+    synthRackWindow_.setContentNonOwned(&synthRack_, false);
+    mixerWindow_.setContentNonOwned(&bottomTabs_, false);
+    arrangementWindow_.setContentNonOwned(&arrangement_, false);
+    pianoRollPanel_.setVisible(true);
+    arrangement_.setVisible(true);
+    resized();
 }
 
 void MainComponent::showFloatingPanels() {
@@ -695,6 +746,16 @@ void MainComponent::showFloatingPanels() {
     juce::Rectangle<int> screenArea(0, 0, 1600, 1000);
     if (auto* display = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay())
         screenArea = display->userArea;
+
+    singleWindow_ = vsm::app::ui::UiScale::properties()
+                        .getBoolValue("fenetreUnique", true);
+    if (singleWindow_) {
+        // UNE fenêtre, la taille de l'écran de travail : c'est elle le studio.
+        if (auto* socle = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
+            socle->setBounds(screenArea.reduced(8));
+        dockPanels();
+        return;
+    }
 
     int topY = getScreenBounds().getBottom() + 10;
     int leftW = 320, rightW = 360, mixerH = 300;
@@ -1200,11 +1261,19 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             }
             break;
         case 5:
-            menu.addItem(kMenuViewTracks, "Pistes", true, trackListWindow_.isVisible());
-            menu.addItem(kMenuViewPianoRoll, "Piano Roll", true, pianoRollWindow_.isVisible());
-            menu.addItem(kMenuViewSynthRack, "Synth Rack", true, synthRackWindow_.isVisible());
-            menu.addItem(kMenuViewMixer, "Mixer", true, mixerWindow_.isVisible());
-            menu.addItem(kMenuViewArrangement, "Arrangement", true, arrangementWindow_.isVisible());
+            menu.addItem(kMenuViewSingleWindow, juce::String::fromUTF8(u8"Fenêtre unique"),
+                          true, singleWindow_);
+            menu.addSeparator();
+            menu.addItem(kMenuViewTracks, "Pistes", true,
+                          singleWindow_ ? trackList_.isVisible() : trackListWindow_.isVisible());
+            menu.addItem(kMenuViewPianoRoll, "Piano Roll", true,
+                          singleWindow_ ? pianoRollPanel_.isVisible() : pianoRollWindow_.isVisible());
+            menu.addItem(kMenuViewSynthRack, "Synth Rack", true,
+                          singleWindow_ ? synthRack_.isVisible() : synthRackWindow_.isVisible());
+            menu.addItem(kMenuViewMixer, "Mixer", true,
+                          singleWindow_ ? bottomTabs_.isVisible() : mixerWindow_.isVisible());
+            menu.addItem(kMenuViewArrangement, "Arrangement", true,
+                          singleWindow_ ? arrangement_.isVisible() : arrangementWindow_.isVisible());
             menu.addItem(kMenuViewBrowser, juce::String::fromUTF8(u8"Navigateur"),
                           true, browserWindow_ && browserWindow_->isVisible());
             menu.addItem(kMenuViewShortcuts,
@@ -1394,11 +1463,55 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuTrackPluginEditor: openPluginEditorForSelectedTrack(); break;
 #endif
         case kMenuTrackBounce:   bounceSelectedTrack(); break;
-        case kMenuViewTracks:    togglePanel(trackListWindow_); break;
-        case kMenuViewPianoRoll: togglePanel(pianoRollWindow_); break;
-        case kMenuViewSynthRack: togglePanel(synthRackWindow_); break;
-        case kMenuViewMixer:     togglePanel(mixerWindow_); break;
-        case kMenuViewArrangement: togglePanel(arrangementWindow_); break;
+        case kMenuViewSingleWindow:
+            singleWindow_ = !singleWindow_;
+            // Écrit DÈS le choix, comme les associations MIDI : une disposition
+            // qu'on refait à chaque lancement n'est pas une disposition.
+            vsm::app::ui::UiScale::properties().setValue("fenetreUnique", singleWindow_);
+            vsm::app::ui::UiScale::properties().saveIfNeeded();
+            if (singleWindow_) {
+                if (auto* socle = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
+                    if (auto* display = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay())
+                        socle->setBounds(display->userArea.reduced(8));
+                dockPanels();
+            } else {
+                undockPanels();
+                if (auto* socle = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
+                    socle->setSize(1000, 56 + 26);
+                showFloatingPanels();
+            }
+            break;
+        case kMenuViewTracks:
+            if (singleWindow_) { trackList_.setVisible(!trackList_.isVisible()); resized(); }
+            else togglePanel(trackListWindow_);
+            break;
+        case kMenuViewPianoRoll:
+            if (singleWindow_) {
+                // Le centre montre l'arrangement OU le piano roll ; demander
+                // l'un affiche l'un et range l'autre, comme en mode flottant
+                // où ils partagent le même emplacement.
+                centerShowsArrangement_ = false;
+                pianoRollPanel_.setVisible(true);
+                arrangement_.setVisible(false);
+                resized();
+            } else togglePanel(pianoRollWindow_);
+            break;
+        case kMenuViewSynthRack:
+            if (singleWindow_) { synthRack_.setVisible(!synthRack_.isVisible()); resized(); }
+            else togglePanel(synthRackWindow_);
+            break;
+        case kMenuViewMixer:
+            if (singleWindow_) { bottomTabs_.setVisible(!bottomTabs_.isVisible()); resized(); }
+            else togglePanel(mixerWindow_);
+            break;
+        case kMenuViewArrangement:
+            if (singleWindow_) {
+                centerShowsArrangement_ = true;
+                arrangement_.setVisible(true);
+                pianoRollPanel_.setVisible(false);
+                resized();
+            } else togglePanel(arrangementWindow_);
+            break;
         case kMenuHelpAbout:     showAboutDialog(); break;
         default:
             if (menuItemID >= kMenuMixRemoveSendFirst && menuItemID <= kMenuMixRemoveSendLast) {

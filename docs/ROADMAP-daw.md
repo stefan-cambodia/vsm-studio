@@ -2861,6 +2861,28 @@ qu'elle est là.
 Conformément à l'usage de ce dépôt, les questions ouvertes se referment en
 écrivant. Sept l'étaient.
 
+**8 — ajouté le 31/08/2026 : la FENÊTRE UNIQUE devient le défaut, et ce n'est
+pas la vue Session.** L'application vivait en six fenêtres — un socle réduit à
+la barre de transport, et cinq flottantes (pistes, piano roll, rack, console,
+arrangement) à repositionner à chaque session. Ce qu'on regarde ensemble doit
+vivre ensemble : les cinq panneaux s'ancrent désormais DANS la fenêtre
+principale — pistes à gauche, morceau au centre (arrangement ou piano roll, on
+passe de l'un à l'autre comme avant), rack à droite, console en bas — chaque
+volet masquable depuis Affichage, l'espace rendu au centre. « Fenêtres
+flottantes » reste disponible au même menu, et le choix survit au redémarrage.
+La décision n° 1 ci-dessus n'est PAS rouverte : rien ici ne touche au modèle
+temporel — c'est la disposition qui change, justifiée par l'usage (la doctrine
+du § 5 : jamais par la ressemblance).
+
+Un piège d'implémentation vaut d'être écrit : une `ResizableWindow` qui garde
+son pointeur de contenu le REPLAQUE à sa taille à chaque `resized()`, même
+re-parenté — il faut `clearContentComponent()` avant d'ancrer, sans quoi un
+panneau s'étale plein cadre par-dessus les autres. Et l'application sait
+désormais se photographier (`VSM_CAPTURE=sortie.png` : rendu de la fenêtre en
+PNG après deux secondes, puis sortie) — sous Wayland, aucun outil externe ne
+sait ni viser cette fenêtre ni la passer devant un terminal, et une interface
+qu'on ne peut pas regarder est une interface qu'on ne peut pas juger.
+
 **1. La vue Session d'Ableton (clips lancés en scènes) : non, et voici la
 condition qui rouvrirait le débat.** Elle n'est pas un raffinement de la vue
 d'arrangement, c'est un **second modèle temporel** — des clips déclenchés hors
