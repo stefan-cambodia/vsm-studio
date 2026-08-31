@@ -344,6 +344,8 @@ def provenance(args: argparse.Namespace, classifieur, frappes) -> dict:
             "reglagePiste": not args.sans_reglage_piste,
             "rechercheNotes": not args.sans_recherche,
             "machinesAuMelange": args.machines_au_melange,
+            "reglageMelange": not args.sans_reglage_melange,
+            "budgetMelange": args.budget_melange,
             "rendusParalleles": args.rendus_paralleles,
             "cacheRendus": not args.sans_cache_rendus,
             "budgetPiste": args.budget_piste,
@@ -450,6 +452,17 @@ def construire_parseur() -> argparse.ArgumentParser:
                               "coordonnées balaye les axes déclarés par la machine et ne "
                               "garde une valeur que si elle rapproche le rendu complet du "
                               "stem : elle ne peut donc pas dégrader le patch d'où elle part.")
+    parseur.add_argument("--sans-reglage-melange", action="store_true",
+                         help="ne pas affiner la gagnante de chaque piste contre le "
+                              "MÉLANGE après le verdict (H1 du § 5 duodecies). C'est "
+                              "le témoin de l'A/B ; le défaut fait la passe, parce "
+                              "que quatre morceaux sur quatre ont montré que le stem "
+                              "est un mandataire qui se paie.")
+    parseur.add_argument("--budget-melange", type=int, default=30,
+                         help="évaluations du réglage jugé au mélange, PAR piste "
+                              "(défaut 30). Une évaluation = un rendu de projet "
+                              "entier + une distance (~10 à 15 s) : c'est cher, et "
+                              "c'est le seul critère qui ne soit pas un mandataire.")
     parseur.add_argument("--rendus-paralleles", type=int, default=3,
                          help="nombre de rendus de candidates menés de front à "
                               "l'arbitrage de piste (défaut 3 ; H3 du § 5 duodecies). "
@@ -1272,6 +1285,53 @@ def verdict_du_melange(ctx: Contexte, chantier: Chantier, pistes_export: List[Ex
         profiles=profils_de(ctx.moteur, melodic_machines(ctx.moteur)))
     distances_retenues = {d.track: d.kept_track_distance for d in decisions
                           if d.kept_track_distance is not None}
+
+    # H1 (§ 5 duodecies) : LA DERNIÈRE PASSE SE JUGE AU MORCEAU. Le réglage de
+    # piste optimise le stem, et le stem est un mandataire qui se paie —
+    # quatre morceaux sur quatre. Ici, la gagnante de chaque piste mélodique
+    # est affinée avec la distance du MÉLANGE pour objectif ; chaque valeur
+    # n'est gardée que si elle rapproche, la passe ne peut pas dégrader ce que
+    # le verdict a rendu. Même ordre de pistes que le verdict : les décisions
+    # déjà prises font le contexte des suivantes.
+    reglages_melange: List[Dict[str, object]] = []
+    if not ctx.args.sans_reglage_melange and ctx.args.budget_melange > 0:
+        from analyzer.vsm_mix_refine import refine_against_mix
+
+        noms_melodiques = [d.track for d in decisions
+                           if any(st.name == d.track for st in chantier.reconstruits)]
+        for nom_piste in noms_melodiques:
+            depart = time.perf_counter()
+            resultat = refine_against_mix(
+                pistes_export, nom_piste, melange, chantier.audio_par_stem,
+                ctx.sortie, workdir=ctx.travail / "verdict",
+                sample_rate=SAMPLE_RATE, engine=ctx.moteur,
+                budget=ctx.args.budget_melange,
+                metric=ctx.args.metrique, tempo=ctx.args.tempo,
+                binary=ctx.args.moteur)
+            if resultat is None:
+                print(f"      {nom_piste:8s} : réglage au mélange non tenté "
+                      f"(machine sans axe, ou rendu de départ muet)")
+                continue
+            gain = resultat.start_distance - resultat.distance
+            print(f"      {nom_piste:8s} : réglage au MÉLANGE "
+                  f"{resultat.start_distance:.4f} -> {resultat.distance:.4f} "
+                  f"({'-' if gain > 0 else ''}{abs(gain):.4f}, "
+                  f"{resultat.evaluations} évaluations, "
+                  f"{time.perf_counter() - depart:.0f} s)"
+                  + (" — aucune valeur n'a rapproché, patch du verdict conservé"
+                     if not resultat.improvements else ""))
+            reglages_melange.append({
+                "track": nom_piste,
+                "mixDistanceBefore": resultat.start_distance,
+                "mixDistanceAfter": resultat.distance,
+                "evaluations": resultat.evaluations,
+                "parameters": resultat.parameters if resultat.improvements else None})
+            # Le stem du rapport suit ce que le projet joue, la règle
+            # d'`aligner_rapport_sur_projet`.
+            for st in chantier.reconstruits:
+                if st.name == nom_piste and resultat.improvements:
+                    st.parameters = dict(resultat.parameters)
+
     verdict: List[Dict[str, object]] = []
     for decision in decisions:
         ecartees = ", ".join(f"{lib} {d:.4f}" for lib, d in decision.rejected)
@@ -1288,6 +1348,8 @@ def verdict_du_melange(ctx: Contexte, chantier: Chantier, pistes_export: List[Ex
             "mixDistance": decision.distance_kept,
             "mixDistanceMuted": decision.muted_distance,
             "rejected": [{"label": lib, "mixDistance": d} for lib, d in decision.rejected]})
+    for r in reglages_melange:
+        verdict.append({"track": r["track"], "mixRefine": r})
     return distances_retenues, verdict
 
 
