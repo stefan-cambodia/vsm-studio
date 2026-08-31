@@ -645,6 +645,33 @@ formulation du COUPLAGE entre l'excitateur et la colonne d'air.** Une sixième
 topologie ne serait pas une tentative de plus, ce serait la même erreur pour la
 sixième fois.
 
+**LA MESURE À CIBLE ISOLÉE A ÉTÉ FAITE (31/08/2026), ET ELLE CHIFFRE ENFIN LE
+FOSSÉ.** La condition réécrite ci-dessus demandait un enregistrement où
+l'instrument est seul ; les banques GeneralUser GS installées le fournissent —
+145 zones de saxophone ténor échantillonné, mesurées zone par zone sur leur
+région de boucle (la partie tenue du son) :
+
+| | h2 (paire) | h3 | h4 (paire) |
+|---|---|---|---|
+| ténor réel (médiane de 6 zones, 165–350 Hz) | **0,419** | 0,355 | **0,442** |
+| `vsm.wind` (ARCHITECTURE § 33) | **0,000** | 0,156 | **0,000** |
+
+Les rangs pairs d'un saxophone ne sont pas un ornement : ils pèsent autant que
+les impairs. La symétrie demi-onde de `vsm.wind` les interdit mathématiquement
+— le fossé n'est plus un raisonnement, c'est un facteur mesurable à l'infini.
+
+**ET LA CONSÉQUENCE N'EST PAS DE CONSTRUIRE LA SIXIÈME TOPOLOGIE.** Les cinq
+tentatives documentées butent toutes sur le même seuil d'auto-oscillation, et
+le § 44 d'ARCHITECTURE dit où chercher (le couplage), pas quand. En attendant,
+**la case du tableau de couverture est remplie par la route honnête du parc** :
+l'import SoundFont de `vsm.multisample`. Treize profils GeneralUser GS sont
+installés — saxophones soprano/alto/ténor, hautbois, clarinette, flûte,
+trompette, section de cuivres, cordes, chœur, violon, contrebasse, guitare
+nylon — chacun avec son attribution. Un stem de saxophone a désormais une
+candidate qui PORTE les harmoniques paires, jouée d'office par l'arbitrage
+comme toute machine du parc. C'est un report d'échantillons et c'est présenté
+comme tel : la modélisation physique reste fermée, la couverture ne l'est plus.
+
 **La décision de ne pas construire la machine ne change pas** : elle reposait
 sur « rien ne l'a encore mesurée comme manquante », et ce paragraphe ne mesure
 toujours rien de tel. Ce qui change, c'est qu'on sait maintenant que la

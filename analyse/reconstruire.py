@@ -324,6 +324,7 @@ def provenance(args: argparse.Namespace, classifieur, frappes) -> dict:
             "arbitrage": not args.sans_arbitrage,
             "arbitrageBatterie": not args.sans_arbitrage_batterie,
             "reglagePiste": not args.sans_reglage_piste,
+            "rechercheNotes": not args.sans_recherche,
             "machinesAuMelange": args.machines_au_melange,
             "budgetPiste": args.budget_piste,
             "axesPiste": args.axes_piste,
@@ -408,6 +409,15 @@ def construire_parseur() -> argparse.ArgumentParser:
                               "le critère « une note » ne classe pas dans le même ordre "
                               "que la piste (ARCHITECTURE.md § 34). Cette option rend "
                               "l'ancien comportement, pour comparer.")
+    parseur.add_argument("--sans-recherche", action="store_true",
+                         help="SAUTER la recherche de patch note à note : les patchs "
+                              "d'usine de toutes les machines partent directement à "
+                              "l'arbitrage de piste, et le budget économisé va où on "
+                              "le met (--budget-piste). Écrit pour trancher le § 5 "
+                              "undecies de ROADMAP-fusion : sur 8 couples "
+                              "(morceau, stem) mesurés, le patch d'usine bat le patch "
+                              "cherché 6 fois, de 21 à 254 %%. Tant que l'A/B n'a pas "
+                              "parlé, le défaut reste la recherche complète.")
     parseur.add_argument("--sans-reglage-piste", action="store_true",
                          help="ne pas RÉGLER le patch de la machine gagnante sur la piste "
                               "entière après l'arbitrage. Par défaut, une descente par "
@@ -469,6 +479,9 @@ def construire_parseur() -> argparse.ArgumentParser:
 
 def valider_entree(args: argparse.Namespace) -> Path:
     """Vérifie ce qui peut l'être avant de charger quoi que ce soit."""
+    if args.sans_recherche and args.sans_arbitrage:
+        raise SystemExit("--sans-recherche exige l'arbitrage de piste : sans "
+                         "recherche NI arbitrage, plus rien ne choisit de machine.")
     if args.sans_sampler and args.batterie_echantillonnee:
         raise Abandon(1, "--sans-sampler et --batterie-echantillonnee se contredisent : "
                          "la batterie échantillonnée EST le sampler.")
@@ -1032,6 +1045,31 @@ def reconstruire_stem_melodique(ctx: Contexte, nom: str, chemin: Path) -> Option
         print(f"      {nom:8s} : aucune note détectée, piste ignorée")
         return None
     audio = charger_audio(chemin)
+
+    if args.sans_recherche:
+        # LE § 5 UNDECIES EN ACTE : pas de recherche note à note. L'arbitrage
+        # de piste juge déjà le patch d'usine de TOUTES les machines
+        # (`build_candidates`) ; la recherche n'ajoutait que ses patchs
+        # cherchés, battus six fois sur huit. On lui donne un porte-drapeau
+        # neutre que l'arbitrage remplacera, et rien d'autre.
+        stem = StemReconstruction(
+            name=nom, machine=ctx.candidates[0], parameters={},
+            distance=0.0, notes=list(notes), considered=[])
+        print(f"      {nom:8s} : recherche note à note SAUTÉE (--sans-recherche) — "
+              f"les patchs d'usine des {len(ctx.candidates)} machines partent "
+              f"à l'arbitrage de piste")
+        resultat = ResultatMelodique(stem=stem, audio=audio)
+        resultat.secondes = arbitrer_sur_piste(ctx, nom, stem, audio)
+        if stem.track_distance is None:
+            # Sans recherche, l'arbitrage était le seul juge ; s'il n'a rien
+            # retenu (filtre de niveau), il n'y a pas de repli honnête.
+            print(f"      {nom:8s} : aucun patch d'usine retenu au niveau, piste ignorée")
+            return None
+        stem.distance = stem.track_distance
+        if not args.sans_reglage_piste:
+            regler_sur_piste(ctx, nom, stem, audio)
+        return resultat
+
     depart = time.perf_counter()
     stem = reconstruct_stem(
         nom, audio, notes, ctx.moteur,
