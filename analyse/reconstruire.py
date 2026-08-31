@@ -410,14 +410,20 @@ def construire_parseur() -> argparse.ArgumentParser:
                               "que la piste (ARCHITECTURE.md § 34). Cette option rend "
                               "l'ancien comportement, pour comparer.")
     parseur.add_argument("--sans-recherche", action="store_true",
-                         help="SAUTER la recherche de patch note à note : les patchs "
-                              "d'usine de toutes les machines partent directement à "
-                              "l'arbitrage de piste, et le budget économisé va où on "
-                              "le met (--budget-piste). Écrit pour trancher le § 5 "
-                              "undecies de ROADMAP-fusion : sur 8 couples "
-                              "(morceau, stem) mesurés, le patch d'usine bat le patch "
-                              "cherché 6 fois, de 21 à 254 %%. Tant que l'A/B n'a pas "
-                              "parlé, le défaut reste la recherche complète.")
+                         help="sauter la recherche de patch note à note. C'est le "
+                              "DÉFAUT depuis le 31/08/2026 : l'A/B du § 5 undecies "
+                              "(ROADMAP-fusion) a rendu, sur trois morceaux, deux "
+                              "reconstructions identiques à la sixième décimale et "
+                              "une MEILLEURE de 2,1 %%, en trois à quatre fois moins "
+                              "de temps. L'option est conservée pour les scripts qui "
+                              "la passaient déjà.")
+    parseur.add_argument("--avec-recherche", action="store_true",
+                         help="rétablir la recherche de patch note à note -- l'ancienne "
+                              "chaîne, conservée comme TÉMOIN d'A/B. Mesurée : elle "
+                              "coûte 200 à 900 s par stem et ses patchs, battus six "
+                              "fois sur huit par l'usine, OCCUPAIENT des places de "
+                              "machines suivantes au verdict du mélange (Jaguar : "
+                              "0,2913 avec, 0,2853 sans).")
     parseur.add_argument("--sans-reglage-piste", action="store_true",
                          help="ne pas RÉGLER le patch de la machine gagnante sur la piste "
                               "entière après l'arbitrage. Par défaut, une descente par "
@@ -479,6 +485,20 @@ def construire_parseur() -> argparse.ArgumentParser:
 
 def valider_entree(args: argparse.Namespace) -> Path:
     """Vérifie ce qui peut l'être avant de charger quoi que ce soit."""
+    if args.avec_recherche and args.sans_recherche:
+        raise SystemExit("--avec-recherche et --sans-recherche se contredisent : "
+                         "choisir.")
+    # LE DÉFAUT EST « SANS RECHERCHE » (§ 5 undecies, A/B du 31/08/2026).
+    # Une exception : --sans-arbitrage rejoue l'ancienne chaîne d'avant
+    # l'arbitrage de piste, qui n'a QUE la recherche pour choisir une machine ;
+    # il implique donc la recherche, et le dit.
+    if args.sans_arbitrage and not args.sans_recherche:
+        if not args.avec_recherche:
+            print("      --sans-arbitrage implique --avec-recherche : sans arbitrage, "
+                  "seule la recherche choisit une machine")
+        args.avec_recherche = True
+    if not args.avec_recherche:
+        args.sans_recherche = True
     if args.sans_recherche and args.sans_arbitrage:
         raise SystemExit("--sans-recherche exige l'arbitrage de piste : sans "
                          "recherche NI arbitrage, plus rien ne choisit de machine.")

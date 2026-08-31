@@ -2299,10 +2299,52 @@ mesuré contre la vraie cible. Le rendu d'un projet entier coûte une quinzaine
 de secondes ; vingt-neuf patchs d'usine à juger coûtent donc ~435 s, soit
 l'ordre de grandeur de la recherche qu'ils remplaceraient.
 
-Ce n'est **pas** un résultat, c'est une hypothèse chiffrée. Elle se tranche par
-un A/B à budget total égal — recherche complète contre « usine seule, budget
-reversé au réglage » — sur les mêmes stems et la même métrique. Tant que cet
-A/B n'a pas tourné, la chaîne ne change pas.
+~~Ce n'est **pas** un résultat, c'est une hypothèse chiffrée. Elle se tranche
+par un A/B [...] Tant que cet A/B n'a pas tourné, la chaîne ne change pas.~~
+
+**L'A/B A TOURNÉ LE JOUR MÊME, SUR LES TROIS MORCEAUX, ET IL EST UNANIME
+(31/08/2026).** Mêmes stems, même métrique, même budget, une seule variable
+(`--sans-recherche`) :
+
+| morceau | avec recherche | sans | verdict |
+|---|---|---|---|
+| *B4 Wuz Then* | 0,2521 | 0,2521 | **identique à la 6e décimale**, décision par décision |
+| *Sky and Sand* | 0,2467 | 0,2467 | **identique à la 6e décimale**, décision par décision |
+| *Knight of the Jaguar* | 0,2913 | **0,2853** | **meilleur de 2,1 %** |
+
+**LE CAS DE JAGUAR EST CELUI QUI INSTRUIT.** C'était l'un des deux morceaux sur
+huit où le patch cherché GAGNAIT l'arbitrage (`vsm.string`, D=0,188 contre
+0,370 à l'usine) — le cas où sauter la recherche devait coûter. Il a rapporté :
+sans les patchs cherchés dans le vivier, les machines SUIVANTES remises au
+mélange changent, et le mélange préfère les nouvelles (`vsm.phasedist` 0,2817
+contre 0,2883 ; l'arbitrage direct 0,2739 contre 0,2786). La recherche ne
+faisait pas qu'apporter peu : **ses patchs occupaient des places de suivantes
+que de meilleures candidates d'usine auraient prises.** Gagner le stem pour
+perdre le mélange, une fois de plus — c'est le mandataire du § 5 septies, au
+carré.
+
+**LE TEMPS, DIT AVEC SA RÉSERVE.** Les moitiés « sans » ont coûté 3 306 à
+4 500 s par morceau, en tournant à TROIS courses simultanées ; les références
+« avec » ont été mesurées sous des charges diverses (jusqu'à la contention
+sévère de ce jour-là) et leurs totaux ne sont pas des étalons propres. Ce qui
+se dit sans réserve : la recherche retirée coûtait 200 à 900 s par stem, plus
+ses patchs à rendre à l'arbitrage — sur *Jaguar*, chaîne contre chaîne dans des
+conditions comparables, 12 770 s sont devenues 3 619 s.
+
+**DÉCISION : « SANS RECHERCHE » EST LE DÉFAUT DE LA CHAÎNE.** L'ancienne
+chaîne reste accessible en entier par `--avec-recherche`, conservée comme
+témoin d'A/B — c'est la même politique que `--machines-au-melange 0` et
+`--sans-apprentissage` : le témoin est du même code que ce qu'il témoigne.
+`--sans-arbitrage` implique la recherche (sans arbitrage, elle seule choisit
+une machine), et le dit. Le rapport porte `rechercheNotes` en provenance.
+
+**CE QUE LA RECHERCHE RESTE SEULE À SAVOIR FAIRE, ET QUI N'EST PAS PERDU.**
+Sa distance note à note alimentait le CLASSEMENT préalable des machines — la
+présélection (`--finalistes`) et l'avis consigné du classifieur s'y adossaient.
+Le défaut actuel s'en passe parce que l'arbitrage de piste juge TOUTES les
+candidates d'usine au budget réel ; si un jour le parc devient trop grand pour
+cela, c'est un dégrossissage qu'il faudra réinventer — pas la recherche de
+patch qu'il faudra regretter.
 
 ---
 
