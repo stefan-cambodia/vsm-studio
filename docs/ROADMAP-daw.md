@@ -3001,10 +3001,32 @@ Ceux de la fusion, plus cinq propres à cet axe :
 > traverse le rebouclage, et la répétabilité bit-à-bit d'un tour n'est PAS une
 > propriété du moteur — sur le moteur d'AVANT la correction, une note de
 > 241 ticks divergeait déjà entre tours, et vingt tours ne se répètent jamais
-> (seize voix, pas de période simple). Le POURQUOI fin — quel état de voix
-> traverse le wrap — reste à établir. Le test affirme désormais la garantie
+> (seize voix, pas de période simple). Le test affirme désormais la garantie
 > réelle : deux exécutions complètes du même rebouclage sont identiques au bit
 > près.
+>
+> **LA QUESTION EST FERMÉE LE LENDEMAIN, PAR LA MESURE (01/09/2026).** L'état
+> qui traverse : **la phase de l'oscillateur et la mémoire du filtre des voix
+> réutilisées.** `Voice::noteOn` ne remet ni l'une ni l'autre à zéro ; une voix
+> inactive n'est plus traitée (`if (v.isActive())`), son état GÈLE à la
+> désactivation et repart tel quel à la réutilisation — et l'allocateur reprend
+> le premier emplacement libre, donc la même voix, tour après tour. Prouvé sans
+> boucle : deux notes IDENTIQUES espacées dans un rendu linéaire, voix libérée
+> entre les deux, diffèrent jusqu'à **0,124** d'amplitude. Mesuré aussi :
+> désactivation à l'échantillon 21 600 exactement (relâchement de 9 600 pile) —
+> et l'arithmétique de phase seule prédit alors l'INVERSE des répétitions
+> observées (198,000 cycles/tour au moteur corrigé, 197,991 à l'ancien) : la
+> parité fine des tours de l'ancien moteur reste inexpliquée, et elle est dite
+> telle quelle plutôt qu'habillée.
+>
+> **DÉCISION : LE COMPORTEMENT EST CONSERVÉ.** La réutilisation sans remise à
+> zéro est le motif commun des voix du parc — c'est elle qui donne aux machines
+> vintage leurs notes jamais deux fois identiques, et c'est voulu. La remise à
+> zéro ne rendrait au rebouclage une répétabilité bit-à-bit qu'au prix d'un
+> changement d'empreinte audio (invariant n° 1) pour un gain que l'oreille ne
+> demande pas. Ce que le moteur garantit — le déterminisme entre exécutions —
+> est testé ; ce qu'il ne garantit pas — la répétition bit-à-bit d'un tour de
+> boucle — est écrit ici, avec sa cause.
 >
 > **ET IL NE L'ÉTAIT QU'AU TIERS (31/08/2026).** L'invariant interdit TROIS
 > choses — allocation, verrou, I/O — et le test ne comptait que la première,
