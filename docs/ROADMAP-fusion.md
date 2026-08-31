@@ -2387,6 +2387,29 @@ séparé et le rapport dit le modèle.
 L'ordre d'exécution proposé : H2 et H3 d'abord (elles accélèrent TOUTES les
 mesures suivantes, H1 et H4 comprises), puis H1, puis H4.
 
+**H2 ET H3, PREMIÈRE FORME : LE CRITÈRE DE VITESSE N'EST PAS ATTEINT, ET LES
+CHIFFRES DISENT POURQUOI (01/09/2026).** Rejouées sur *Us and Them* à chaîne
+complète : verdicts identiques à la SIXIÈME décimale (0,270791 des deux
+côtés) — le déterminisme du pool tient — mais arbitrages ×1,3 à 1,6 seulement
+(277→272 s, 450→359 s, avec 60 candidates au lieu de 47), loin du ÷2,5 écrit.
+Cause : seule la partie RENDU était parallélisée ; la DISTANCE (~3,7 s par
+candidate) restait en série dans le fil principal, et Amdahl fait le reste.
+Et le cache d'audio a coûté **9,4 Go pour un seul morceau** — 83 Mo par
+candidate de huit minutes.
+
+**DEUXIÈME FORME, CELLE QUI RESTE.** L'évaluation ENTIÈRE d'une candidate —
+rendu, niveau, distance — part dans les travailleurs (la cible est décrite une
+fois avant le bassin) ; et le cache ne stocke plus l'audio mais LES DEUX
+NOMBRES que l'arbitrage consomme : niveau efficace et distance, clé scellée
+par l'empreinte du moteur ET celle de la cible — quelques octets par
+candidate, et un hit économise le rendu ET la distance. Le test d'intégration
+tient la forme neuve : pool == série aux mêmes distances, et une reprise à
+chaud rend le même classement avec la fonction de rendu SABOTÉE. Le gain de
+bout en bout se remesure à la prochaine course.
+
+*Ce qui suit décrit la première implémentation, conservée pour l'histoire de
+la décision :*
+
 **H2 ET H3 SONT IMPLÉMENTÉES ET TENUES PAR UN TEST (01/09/2026)** —
 `--rendus-paralleles` (défaut 3) et le cache `cache/rendus` (clé : machine,
 profil, patch, notes, durée, fréquence, tempo, EMPREINTE DU MOTEUR ; témoin

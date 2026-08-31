@@ -1,22 +1,26 @@
 # -*- coding: utf-8 -*-
-"""Cache de rendus de piste, sur disque, entre exécutions (hypothèse H2).
+"""Cache de MESURES de candidates, sur disque, entre exécutions (hypothèse H2).
 
 CE QUE LE § 5 DUODECIES A CONSTATÉ : entre deux exécutions comparées, les
 candidates d'usine sont rendues À L'IDENTIQUE — moteur déterministe, graine
-fixe — et repayées à chaque fois. Le fan-out des profils porte
-`vsm.multisample` seul à trente et une candidates par stem : c'est ~15 s
-pièce de rendu strictement rejoué.
+fixe — et repayées à chaque fois.
 
-LA CLÉ DIT TOUT CE QUI PEUT CHANGER LE RENDU, ET RIEN D'AUTRE : machine,
-profil, patch, notes (chaque champ qui traverse `write_project_bundle`),
-durée imposée, fréquence, tempo — et l'EMPREINTE DU MOTEUR : un cache qui
-survivrait à un nouveau `vsm-render` servirait les rendus d'hier avec
-l'autorité d'aujourd'hui, exactement la panne que la vérification de
-fraîcheur d'A4.1 attrape pour les modèles. La distance n'est PAS mise en
-cache ici : elle dépend de la cible et de la métrique, qui ont leurs
-propres caches.
+CE QUE LA PREMIÈRE VERSION A APPRIS EN UNE COURSE : cacher l'AUDIO coûtait
+9,4 Go pour un seul morceau (83 Mo par candidate de huit minutes), et ne
+faisait rien gagner sur la mesure de distance, restée en série. Ce qu'un
+arbitrage consomme d'une candidate tient en DEUX NOMBRES : son niveau
+efficace (le filtre « peut-elle atteindre le stem ») et sa distance à la
+cible. C'est cela qu'on cache — quelques octets — et un hit économise le
+rendu ET la distance.
 
-Le cache vit dans `cache/rendus/` à la racine du dépôt, comme `corpus/` et
+LA CLÉ DIT TOUT CE QUI PEUT CHANGER CES DEUX NOMBRES, ET RIEN D'AUTRE :
+côté candidate — machine, profil, patch, notes, durée, fréquence, tempo, et
+l'EMPREINTE DU MOTEUR (un cache qui survivrait à un nouveau `vsm-render`
+servirait les mesures d'hier avec l'autorité d'aujourd'hui, la panne que la
+fraîcheur d'A4.1 attrape pour les modèles) ; côté mesure — la MÉTRIQUE et
+l'empreinte de la CIBLE, puisque la distance dépend des deux.
+
+Le cache vit dans `cache/mesures/` à la racine du dépôt, comme `corpus/` et
 `modeles/` : regénérable, ignoré par git.
 """
 
@@ -25,7 +29,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Optional, Tuple
 
 import numpy as np
 
@@ -49,7 +53,7 @@ _empreintes: dict = {}
 
 def dossier_du_cache() -> Path:
     racine = Path(__file__).resolve().parent.parent.parent
-    return racine / "cache" / "rendus"
+    return racine / "cache" / "mesures"
 
 
 def cle_de_rendu(track, sample_rate: int, duration, tempo: float,
@@ -75,23 +79,37 @@ def cle_de_rendu(track, sample_rate: int, duration, tempo: float,
     return hashlib.sha256(texte.encode("ascii")).hexdigest()
 
 
-def rendu_en_cache(cle: str) -> Optional[np.ndarray]:
-    chemin = dossier_du_cache() / f"{cle}.npy"
+def empreinte_de_cible(stem_audio: np.ndarray) -> str:
+    """Empreinte du stem cible : la distance dépend de lui autant que du rendu."""
+    x = np.ascontiguousarray(np.asarray(stem_audio, dtype=np.float32))
+    return hashlib.sha256(x.tobytes()).hexdigest()[:24]
+
+
+def cle_de_mesure(cle_rendu: str, metric: str, empreinte_cible: str) -> str:
+    return hashlib.sha256(f"{cle_rendu}|{metric}|{empreinte_cible}"
+                          .encode("ascii")).hexdigest()
+
+
+def mesure_en_cache(cle: str) -> Optional[Tuple[float, float]]:
+    """(niveau efficace, distance) d'une candidate déjà mesurée, ou None."""
+    chemin = dossier_du_cache() / f"{cle}.json"
     if not chemin.is_file():
         return None
     try:
-        return np.load(chemin)
+        d = json.loads(chemin.read_text(encoding="ascii"))
+        return float(d["rms"]), float(d["distance"])
     except Exception:  # noqa: BLE001 - un fichier corrompu vaut une absence
         chemin.unlink(missing_ok=True)
         return None
 
 
-def stocker_rendu(cle: str, audio: np.ndarray) -> None:
+def stocker_mesure(cle: str, rms: float, distance: float) -> None:
     dossier = dossier_du_cache()
     dossier.mkdir(parents=True, exist_ok=True)
     # Écrit à côté puis bascule : la règle de la sauvegarde automatique
-    # (D10.4), pour qu'un processus interrompu ne laisse pas un rendu tronqué
-    # qu'un autre prendrait pour bon.
-    temporaire = dossier / f".{cle}.tmp.npy"
-    np.save(temporaire, audio.astype(np.float32))
-    temporaire.replace(dossier / f"{cle}.npy")
+    # (D10.4), pour qu'un processus interrompu ne laisse pas une mesure
+    # tronquée qu'un autre prendrait pour bonne.
+    temporaire = dossier / f".{cle}.tmp"
+    temporaire.write_text(json.dumps({"rms": rms, "distance": distance}),
+                          encoding="ascii")
+    temporaire.replace(dossier / f"{cle}.json")

@@ -229,33 +229,39 @@ def arbitrate_on_track(
     exportables = list(notes)
     workdir = Path(workdir)
 
-    # LES CANDIDATES SONT INDÉPENDANTES, ET ELLES SE RENDENT DONC EN PARALLÈLE
-    # (hypothèse H3 du § 5 duodecies) : chaque rendu est déjà un processus
-    # `vsm-render` isolé, il suffit d'en lancer plusieurs — chacun dans SON
-    # dossier, réemployé d'une candidate à la suivante du même travailleur
-    # (la leçon « un seul dossier » vaut toujours : trente-huit rendus
-    # conservés, c'est trois gigaoctets par stem). Le CLASSEMENT reste
-    # déterministe : les résultats sont recueillis PAR INDICE, jamais par
-    # ordre d'arrivée.
+    # LES CANDIDATES SONT INDÉPENDANTES, ET TOUTE LEUR ÉVALUATION — rendu,
+    # niveau, DISTANCE — se fait donc en parallèle (H3, § 5 duodecies). La
+    # première version ne parallélisait que le rendu et gardait la distance en
+    # série dans le fil principal : mesuré sur *Us and Them*, x1,3 à 1,6
+    # seulement, loin du critère. La cible est décrite UNE fois avant le
+    # bassin ; chaque travailleur ne touche ensuite que ses propres tableaux.
+    # Le CLASSEMENT reste déterministe : résultats recueillis PAR INDICE,
+    # jamais par ordre d'arrivée.
     #
-    # ET LE CACHE D'ABORD (hypothèse H2) : entre deux exécutions comparées,
-    # les candidates d'usine sont rendues à l'identique — moteur déterministe.
-    # La clé porte l'empreinte du moteur ; un rendu servi du cache est un
-    # rendu d'HIER dont on a prouvé qu'il serait celui d'aujourd'hui.
+    # ET LE CACHE NE STOCKE PLUS L'AUDIO (H2, deuxième forme) : 9,4 Go pour un
+    # morceau, mesuré. Ce que l'arbitrage consomme d'une candidate tient en
+    # deux nombres — niveau efficace et distance — et c'est cela qui se cache,
+    # clé scellée par l'empreinte du moteur ET celle de la cible. Un hit
+    # économise le rendu ET la distance.
     from concurrent.futures import ThreadPoolExecutor
 
-    from .vsm_render_cache import cle_de_rendu, rendu_en_cache, stocker_rendu
+    from .vsm_render_cache import (cle_de_mesure, cle_de_rendu, empreinte_de_cible,
+                                   mesure_en_cache, stocker_mesure)
 
     pool = max(1, int(parallel_renders))
+    cible = empreinte_de_cible(stem_audio) if render_cache else ""
 
-    def rendre(indice: int) -> Optional[np.ndarray]:
+    def evaluer(indice: int) -> Tuple[Optional[float], Optional[float]]:
+        # (niveau efficace, distance) de la candidate, ou (None, None).
         candidate = candidates[indice]
         piste = ExportTrack(name=name, machine=candidate.machine,
                             parameters=dict(candidate.parameters), notes=exportables,
                             profile=candidate.profile)
-        cle = cle_de_rendu(piste, sample_rate, duree, tempo, binary) if render_cache else ""
+        cle = ""
         if render_cache:
-            en_cache = rendu_en_cache(cle)
+            cle = cle_de_mesure(cle_de_rendu(piste, sample_rate, duree, tempo, binary),
+                                metric, cible)
+            en_cache = mesure_en_cache(cle)
             if en_cache is not None:
                 return en_cache
         dossier = workdir / f"candidate-{indice % pool}"
@@ -265,18 +271,22 @@ def arbitrate_on_track(
         # Effacé tout de suite : il a déjà été lu en mémoire, et le garder ne
         # servirait qu'à saturer le disque au trente-huitième.
         (dossier / "rendu.wav").unlink(missing_ok=True)
-        if render_cache and rendu is not None and rendu.size:
-            stocker_rendu(cle, rendu)
-        return rendu
+        if rendu is None or rendu.size == 0:
+            return None, None
+        rms = float(np.sqrt(np.mean(np.square(rendu.astype(np.float64)))))
+        distance = float(mesurer(rendu))
+        if render_cache:
+            stocker_mesure(cle, rms, distance)
+        return rms, distance
 
     if pool > 1:
         with ThreadPoolExecutor(max_workers=pool) as bassin:
-            rendus = list(bassin.map(rendre, range(len(candidates))))
+            mesures = list(bassin.map(evaluer, range(len(candidates))))
     else:
-        rendus = [rendre(i) for i in range(len(candidates))]
+        mesures = [evaluer(i) for i in range(len(candidates))]
 
-    for candidate, rendu in zip(candidates, rendus):
-        if rendu is None or rendu.size == 0:
+    for candidate, (rms_rendu, distance) in zip(candidates, mesures):
+        if rms_rendu is None or distance is None:
             # ABANDON DIT, jamais tu. Un rendu vide vient soit d'un moteur qui a
             # refusé la requête, soit d'une machine sans sa donnée -- et dans les
             # deux cas la candidate disparaît du tableau pour une raison qui n'a
@@ -290,13 +300,11 @@ def arbitrate_on_track(
         # timbre. La même règle vaut au réglage (`vsm_track_refine`), où elle a
         # été apprise.
         if stem_rms is not None and stem_rms > 0.0:
-            rms_rendu = float(np.sqrt(np.mean(np.square(rendu.astype(np.float64)))))
             if rms_rendu <= 0.0 or base_volume * stem_rms / rms_rendu > max_volume:
                 raison = ("silence" if rms_rendu <= 0.0
                           else f"trop faible, il faudrait ×{base_volume * stem_rms / rms_rendu:.1f}")
                 ecartees.append((candidate.machine, candidate.origin, raison))
                 continue
-        distance = float(mesurer(rendu))
         verdicts.append(TrackVerdict(candidate.machine, dict(candidate.parameters),
                                      candidate.origin, distance, candidate.profile))
 
