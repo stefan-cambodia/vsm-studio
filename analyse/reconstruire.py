@@ -67,7 +67,8 @@ from analyzer.vsm_drumkit import (build_drum_kit, drum_kit_track, drum_machine_t
                                   vocal_sampler_track)
 from analyzer.vsm_engine import VsmEngine, find_vsm_render  # noqa: E402
 from analyzer.vsm_levels import VOLUME_MAX, match_track_levels  # noqa: E402
-from analyzer.vsm_mix_verdict import MixAlternative, keep_what_helps_the_mix  # noqa: E402
+from analyzer.vsm_mix_verdict import (MixAlternative, keep_what_helps_the_mix,  # noqa: E402
+                                      settle_verdict)
 from analyzer.vsm_project_export import (DEFAULT_TRACK_VOLUME, ExportNote, ExportTrack,  # noqa: E402
                                           write_project_bundle)
 from analyzer.vsm_reconstruct import (StemNote, StemReconstruction, melodic_machines,  # noqa: E402
@@ -346,6 +347,7 @@ def provenance(args: argparse.Namespace, classifieur, frappes) -> dict:
             "machinesAuMelange": args.machines_au_melange,
             "reglageMelange": not args.sans_reglage_melange,
             "budgetMelange": args.budget_melange,
+            "toursVerdict": args.tours_verdict,
             "rendusParalleles": args.rendus_paralleles,
             "cacheRendus": not args.sans_cache_rendus,
             "budgetPiste": args.budget_piste,
@@ -463,6 +465,13 @@ def construire_parseur() -> argparse.ArgumentParser:
                               "(défaut 30). Une évaluation = un rendu de projet "
                               "entier + une distance (~10 à 15 s) : c'est cher, et "
                               "c'est le seul critère qui ne soit pas un mandataire.")
+    parseur.add_argument("--tours-verdict", type=int, default=3,
+                         help="nombre MAXIMAL de passes du verdict du mélange (défaut 3 ; "
+                              "H5 du § 5 duodecies). Le verdict est glouton et chaque "
+                              "décision fait le contexte des suivantes : on le rejoue "
+                              "jusqu'à ce qu'aucune piste ne change (point fixe), borné "
+                              "par ce nombre. 1 = un seul tour, l'ancien comportement — "
+                              "c'est le témoin de l'A/B.")
     parseur.add_argument("--rendus-paralleles", type=int, default=3,
                          help="nombre de rendus de candidates menés de front à "
                               "l'arbitrage de piste (défaut 3 ; H3 du § 5 duodecies). "
@@ -1277,12 +1286,32 @@ def verdict_du_melange(ctx: Contexte, chantier: Chantier, pistes_export: List[Ex
     if not alternatives:
         return {}, []
 
-    decisions = keep_what_helps_the_mix(
-        pistes_export, alternatives, melange, chantier.audio_par_stem, ctx.sortie,
-        workdir=ctx.travail / "verdict",
-        sample_rate=SAMPLE_RATE, metric=ctx.args.metrique,
-        tempo=ctx.args.tempo, binary=ctx.args.moteur,
-        profiles=profils_de(ctx.moteur, melodic_machines(ctx.moteur)))
+    # H5 (§ 5 duodecies) : LE VERDICT SE STABILISE EN POINT FIXE. La passe est
+    # gloutonne, piste par piste dans un ordre fixe, et chaque décision fait le
+    # contexte des suivantes — le fan-out des profils a montré sur *Us and
+    # Them* que deux trajectoires gloutonnes peuvent finir à des morceaux
+    # différents. On rejoue donc la passe jusqu'à ce qu'aucune piste ne change
+    # de machine, de patch ou de profil, borné par --tours-verdict ; un tour
+    # qui ne change rien est le point fixe, et il est DIT. Le témoin de l'A/B
+    # est --tours-verdict 1, l'ancien comportement.
+    depart_verdict = time.perf_counter()
+
+    def une_passe():
+        return keep_what_helps_the_mix(
+            pistes_export, alternatives, melange, chantier.audio_par_stem, ctx.sortie,
+            workdir=ctx.travail / "verdict",
+            sample_rate=SAMPLE_RATE, metric=ctx.args.metrique,
+            tempo=ctx.args.tempo, binary=ctx.args.moteur,
+            profiles=profils_de(ctx.moteur, melodic_machines(ctx.moteur)))
+
+    decisions, tours_joues, changees_par_tour = settle_verdict(
+        pistes_export, une_passe, ctx.args.tours_verdict)
+    recit = " ; ".join(f"tour {i}: {', '.join(noms) or 'rien'}"
+                       for i, noms in enumerate(changees_par_tour, start=1))
+    borne_atteinte = changees_par_tour and changees_par_tour[-1]
+    print(f"      verdict du mélange : {tours_joues} tour(s) "
+          f"({recit}) en {time.perf_counter() - depart_verdict:.0f} s"
+          + (" — borne atteinte avant le point fixe" if borne_atteinte else ""))
     distances_retenues = {d.track: d.kept_track_distance for d in decisions
                           if d.kept_track_distance is not None}
 
@@ -1350,6 +1379,11 @@ def verdict_du_melange(ctx: Contexte, chantier: Chantier, pistes_export: List[Ex
             "rejected": [{"label": lib, "mixDistance": d} for lib, d in decision.rejected]})
     for r in reglages_melange:
         verdict.append({"track": r["track"], "mixRefine": r})
+    # H5 : le nombre de tours joués et ce que chaque tour a changé sont PUBLIÉS
+    # — un point fixe atteint d'office (un seul tour, rien de changé au-delà)
+    # est une information, pas une absence d'information.
+    verdict.append({"verdictRounds": tours_joues,
+                    "changedByRound": changees_par_tour})
     return distances_retenues, verdict
 
 

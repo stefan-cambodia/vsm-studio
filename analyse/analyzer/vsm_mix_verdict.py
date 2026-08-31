@@ -103,6 +103,38 @@ class MixDecision:
     muted_distance: Optional[float] = None
 
 
+def settle_verdict(tracks: Sequence[ExportTrack], run_pass, max_rounds: int):
+    """H5 (§ 5 duodecies) : rejoue la passe de verdict jusqu'au POINT FIXE.
+
+    La passe est gloutonne, piste par piste dans un ordre fixe, et chaque
+    décision fait le contexte des suivantes — deux viviers de candidates ont
+    mené sur *Us and Them* à deux trajectoires dont la moins bonne au global
+    contenait pourtant les meilleures pistes au stem. On rejoue donc
+    `run_pass()` (qui MODIFIE les pistes en place et rend les décisions)
+    jusqu'à ce qu'un tour ne change ni machine, ni patch, ni profil d'aucune
+    piste, borné par `max_rounds`. Un tour qui ne change rien EST le point
+    fixe : on s'arrête là, le chiffre d'un tour de plus ne dirait rien.
+
+    Rend (décisions du dernier tour, tours joués, pistes changées par tour).
+    """
+    max_rounds = max(1, int(max_rounds))
+    decisions: List[MixDecision] = []
+    changed_by_round: List[List[str]] = []
+    rounds = 0
+    for _ in range(max_rounds):
+        before = {t.name: (t.machine, dict(t.parameters), str(t.profile))
+                  for t in tracks}
+        decisions = run_pass()
+        rounds += 1
+        changed = [t.name for t in tracks
+                   if t.name in before
+                   and before[t.name] != (t.machine, dict(t.parameters), str(t.profile))]
+        changed_by_round.append(changed)
+        if not changed:
+            break
+    return decisions, rounds, changed_by_round
+
+
 def _copy_samples(tracks: Sequence[ExportTrack], samples_root: Path, folder: Path) -> None:
     """
     Recopie les échantillons référencés par les pistes DANS le dossier de rendu.

@@ -2442,6 +2442,27 @@ un chœur, qui épouse la fuite vocale du stem — et le trajet glouton du
 verdict finit ailleurs. C'est le plus fort argument mesuré EN FAVEUR de H1 et
 d'une passe de stabilisation du verdict : détail au CDC § 11.
 
+**H5 EST IMPLÉMENTÉE ET TENUE PAR UN TEST (01/09/2026), SA MESURE RESTE À
+FAIRE.** `--tours-verdict` (défaut 3) rejoue la passe du verdict jusqu'à ce
+qu'un tour ne change ni machine, ni patch, ni profil d'aucune piste — ce
+tour-là est le point fixe et n'est pas payé deux fois ; le témoin de l'A/B est
+`--tours-verdict 1`, l'ancien comportement. Le nombre de tours joués et ce que
+chaque tour a changé sont PUBLIÉS (journal, `mixVerdict`, provenance) : un
+point fixe atteint d'office est une information, pas une absence
+d'information. La boucle vit dans `settle_verdict`
+(`analyse/analyzer/vsm_mix_verdict.py`) et son test verrouille les trois
+conduites : le point fixe arrête, la borne s'impose, le témoin ne joue qu'un
+tour. Les critères chiffrés du § ci-dessus (globale ≤ sur les étalons, au
+moins une décision changée par un second tour) se tranchent à la prochaine
+course.
+
+**ET LE VIVIER DE PROFILS A CHANGÉ D'ÉCHELLE LE MÊME JOUR (01/09/2026).** Les
+banques General MIDI libres s'installent désormais par
+`tools/installer-banques-midi.py` (manifeste, empreintes épinglées,
+attribution — décision 11 du CDC multisample) : 141 profils installés contre
+31 la veille. Toute mesure de H1/H4/H5 postérieure à cette date court donc sur
+ce vivier-là, et ne se compare aux chiffres antérieurs qu'en le disant.
+
 ---
 
 ## 6. Ce qui n'est pas au programme, et pourquoi

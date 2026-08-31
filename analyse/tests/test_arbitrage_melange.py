@@ -244,3 +244,58 @@ def integration_le_pool_et_le_cache_ne_changent_pas_le_classement():
             shutil.rmtree(cache_avant)
         if sauvegarde is not None and sauvegarde.exists():
             shutil.move(sauvegarde, cache_avant)
+
+
+@test
+def verdict_le_point_fixe_arrete_les_tours_et_la_borne_les_limite():
+    """H5 (§ 5 duodecies) : le verdict se rejoue jusqu'au point fixe, borné.
+
+    Le verdict est glouton et chaque décision fait le contexte des suivantes ;
+    la boucle rejoue donc la passe tant qu'un tour change une piste. Ce que ce
+    test verrouille : un tour SANS changement est le point fixe et arrête la
+    boucle (le tour d'après n'est pas payé) ; la borne s'impose même si ça
+    change encore ; et un seul tour (--tours-verdict 1, le témoin de l'A/B)
+    n'en joue jamais deux. Le changement observé porte sur machine, patch OU
+    profil — les trois choses qu'une passe peut défaire.
+    """
+    from analyzer.vsm_mix_verdict import settle_verdict
+    from analyzer.vsm_project_export import ExportTrack
+
+    piste = ExportTrack(name="bass", machine="vsm.minimoog", parameters={}, notes=[])
+
+    # Une passe qui change la piste aux deux premiers tours, puis plus rien.
+    compteur = {"tours": 0}
+
+    def passe_qui_converge():
+        compteur["tours"] += 1
+        if compteur["tours"] == 1:
+            piste.machine = "vsm.prophet"
+        elif compteur["tours"] == 2:
+            piste.parameters = {"cutoff": 0.4}
+        return [f"décisions du tour {compteur['tours']}"]
+
+    decisions, tours, changees = settle_verdict([piste], passe_qui_converge, 5)
+    assert_equal(tours, 3, "deux tours qui changent + le tour du point fixe = 3")
+    assert_equal(compteur["tours"], 3, "le tour d'après le point fixe n'est pas payé")
+    assert_equal(changees, [["bass"], ["bass"], []],
+                 "chaque tour dit ce qu'il a changé, le dernier dit « rien »")
+    assert_equal(decisions, ["décisions du tour 3"],
+                 "les décisions publiées sont celles du DERNIER tour")
+
+    # La borne s'impose à une passe qui changerait toujours quelque chose.
+    boucle = {"tours": 0}
+
+    def passe_qui_oscille():
+        boucle["tours"] += 1
+        piste.profile = f"profil-{boucle['tours']}"
+        return []
+
+    _, tours, changees = settle_verdict([piste], passe_qui_oscille, 3)
+    assert_equal(tours, 3, "la borne limite les tours")
+    assert_true(all(c == ["bass"] for c in changees),
+                "et chaque tour joué est consigné avec son changement")
+
+    # Le témoin : un seul tour, l'ancien comportement, même si ça change.
+    boucle["tours"] = 0
+    _, tours, _ = settle_verdict([piste], passe_qui_oscille, 1)
+    assert_equal(tours, 1, "--tours-verdict 1 rend exactement la chaîne d'avant")

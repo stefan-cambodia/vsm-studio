@@ -416,7 +416,30 @@ côté du profil, un preset `*.synth.json` — un format qui existe déjà — p
 nom**. Rien du SF2 n'est perdu en silence : ce qui n'entre pas dans le profil
 entre dans le preset, et ce qui n'entre nulle part est imprimé.
 
-### Ce que le banc a révélé, et qui n'était pas dans le programme
+### Décision 11 — les banques General MIDI s'installent par SCRIPT, en ensemble canonique (01/09/2026)
+
+Les treize profils GeneralUser GS et les douze FluidR3 des premières mesures
+avaient été convertis À LA MAIN — aucune trace rejouable, aucun manifeste. La
+règle du § 9 (« les banques s'installent ») vaut pour l'orchestre comme pour
+le piano : `tools/installer-banques-midi.py` porte désormais le manifeste —
+URL, licence écrite, crédit, empreinte SHA-256 épinglée — et convertit par
+`vsm-sf2` un ensemble CANONIQUE de 45 programmes General MIDI (claviers,
+orgues, guitares, basses, cordes, chœurs, cuivres, anches, flûtes, nappes ;
+les bruitages et percussions chromatiques rares restent dehors : chaque profil
+est une candidate de plus à l'arbitrage, et ce coût se paie à chaque morceau).
+
+Trois banques y figurent, toutes à licence écrite : FluidR3 GM/GS (MIT, Frank
+Wen), GeneralUser GS 2.0.3 (licence GeneralUser v2.0, S. Christian Collins) et
+MuseScore_General v0.2 (MIT, Wen/Cowgill/Collins) — cette dernière s'ajoute
+aux deux « banques visées » du § 5 parce que sa licence est aussi claire
+qu'elles et qu'elle échantillonne plus dense (492 zones pour son piano). Le
+même programme porte le MÊME nom d'une banque à l'autre (`FR3-Grand-Piano`,
+`GU-Grand-Piano`, `MS-Grand-Piano`) : l'arbitrage par profil compare des
+timbres, pas des catalogues. Les profils installés avant ce script gardent
+leur nom (le script les respecte au lieu de les doubler), et ce qu'une banque
+n'a pas est DIT au bilan, jamais tu. Installé ce jour : 109 profils neufs,
+141 en tout, 1,3 Go — chaque profil reste sous le budget mémoire du § 3, un
+seul étant chargé à la fois.
 
 En rejouant *Clair de Lune*, `vsm.multisample` **n'apparaissait nulle part** :
 ni dans les dix finalistes, ni dans les vingt-neuf lignes du tableau

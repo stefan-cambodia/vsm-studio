@@ -25,6 +25,20 @@ def resume(d, titre):
         print(f"    stem {s.get('name','?'):8s} machine {s.get('machine','?'):16s} "
               f"D={s.get('distance', float('nan')):.4f}")
     for v in d.get("mixVerdict", []):
+        if "verdictRounds" in v:
+            change = v.get("changedByRound") or []
+            detail = " ; ".join(f"tour {i}: {', '.join(noms) or 'rien'}"
+                                for i, noms in enumerate(change, start=1))
+            print(f"    melange verdict en {v.get('verdictRounds')} tour(s)"
+                  + (f" — {detail}" if detail else ""))
+            continue
+        if "mixRefine" in v:
+            r = v["mixRefine"]
+            print(f"    melange {v.get('track','?'):9s} reglage au melange "
+                  f"{r.get('mixDistanceBefore', float('nan')):.4f} -> "
+                  f"{r.get('mixDistanceAfter', float('nan')):.4f} "
+                  f"({r.get('evaluations','?')} evaluations)")
+            continue
         gardee = v.get("kept")
         ecartees = ", ".join(f"{r.get('label')} {r.get('mixDistance'):.4f}"
                              for r in v.get("rejected", []))
