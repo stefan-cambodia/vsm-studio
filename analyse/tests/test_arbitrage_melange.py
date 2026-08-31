@@ -175,3 +175,72 @@ def arbitrage_les_suivantes_gardent_une_machine_ET_son_profil():
     assert_equal([v.machine for v in suivantes], ["vsm.multisample", "vsm.piano"],
                  "une seule entrée par machine, la meilleure d'abord")
     assert_equal(suivantes[0].profile, "GU-Tenor-Sax", "le profil gagnant voyage")
+
+
+@test
+def integration_le_pool_et_le_cache_ne_changent_pas_le_classement():
+    """H2 et H3 (§ 5 duodecies), leurs critères de succès mesurés ici même.
+
+    H3 : trois rendus de front rendent le MÊME classement que la série, aux
+    mêmes distances -- les résultats sont recueillis par indice, jamais par
+    ordre d'arrivée. H2 : une reprise à chaud sert les rendus du cache, et la
+    preuve est brutale : on la lance avec un binaire de rendu CASSÉ
+    (/bin/false). Si un seul rendu était refait, la candidate disparaîtrait du
+    tableau ; elles y sont toutes, aux mêmes distances."""
+    import shutil
+    import tempfile
+
+    import numpy as np
+
+    from analyzer.vsm_project_export import ExportNote
+    from analyzer.vsm_render_cache import dossier_du_cache
+    from analyzer.vsm_track_arbitration import arbitrate_on_track, build_candidates
+
+    notes = [ExportNote(note=57, velocity=100, start=0.05, duration=0.4),
+             ExportNote(note=64, velocity=90, start=0.55, duration=0.4)]
+    sr = 44100
+    rng = np.random.default_rng(7)
+    cible = (0.05 * rng.standard_normal(int(1.2 * sr))).astype(np.float32)
+    candidates = build_candidates([], ["vsm.minimoog", "vsm.juno106", "vsm.tb303"], {})
+    cache_avant = dossier_du_cache()
+    sauvegarde = None
+    if cache_avant.exists():
+        sauvegarde = cache_avant.with_name("rendus.sauvegarde-test")
+        shutil.move(cache_avant, sauvegarde)
+    try:
+        with tempfile.TemporaryDirectory() as travail:
+            commun = dict(notes=notes, stem_audio=cible, candidates=candidates,
+                          sample_rate=sr, metric="v2", name="essai")
+            serie = arbitrate_on_track(workdir=Path(travail) / "serie",
+                                       parallel_renders=1, render_cache=False, **commun)
+            pool = arbitrate_on_track(workdir=Path(travail) / "pool",
+                                      parallel_renders=3, render_cache=True, **commun)
+            assert_equal([(v.machine, v.distance) for v in serie],
+                         [(v.machine, v.distance) for v in pool],
+                         "pool == série, machines et distances")
+            # Reprise à chaud : seules des lectures de cache peuvent produire
+            # ce tableau, et on le PROUVE en sabotant la fonction de rendu --
+            # pas le binaire : changer le binaire change l'empreinte moteur,
+            # donc la clé, et le cache refuse à bon droit de servir (premier
+            # jet de ce test, corrigé : c'est le comportement voulu).
+            import analyzer.vsm_track_arbitration as arb
+
+            def rendu_interdit(*_a, **_k):
+                raise AssertionError("un rendu a été refait malgré le cache")
+
+            vrai_rendu = arb.render_track_offline
+            arb.render_track_offline = rendu_interdit
+            try:
+                chaud = arbitrate_on_track(workdir=Path(travail) / "chaud",
+                                           parallel_renders=3, render_cache=True,
+                                           **commun)
+            finally:
+                arb.render_track_offline = vrai_rendu
+            assert_equal([(v.machine, v.distance) for v in chaud],
+                         [(v.machine, v.distance) for v in serie],
+                         "reprise à chaud == série, sans un seul rendu")
+    finally:
+        if cache_avant.exists():
+            shutil.rmtree(cache_avant)
+        if sauvegarde is not None and sauvegarde.exists():
+            shutil.move(sauvegarde, cache_avant)

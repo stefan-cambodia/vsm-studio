@@ -260,10 +260,10 @@ class VsmEngine:
             if choisi is None and valides:
                 choisi = valides[0]
                 if len(valides) > 1:
-                    autres = ", ".join(str(p.get("name")) for p in valides[1:])
-                    print(f"      {len(valides)} profils installés : « {choisi.get('name')} » "
-                          f"retenu (le premier) ; les autres ({autres}) ne seront pas "
-                          f"essayés. VSM_PROFIL=nom pour en choisir un.")
+                    print(f"      {len(valides)} profils installés — « {choisi.get('name')} » "
+                          f"est le profil PAR DÉFAUT de la machine (VSM_PROFIL=nom "
+                          f"pour en choisir un autre) ; l'arbitrage de piste, lui, "
+                          f"les met TOUS en concurrence.")
             self._profile_choice = str(choisi["path"]) if choisi else ""
         return self._profile_choice or None
 

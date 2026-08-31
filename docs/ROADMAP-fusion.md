@@ -2387,6 +2387,25 @@ séparé et le rapport dit le modèle.
 L'ordre d'exécution proposé : H2 et H3 d'abord (elles accélèrent TOUTES les
 mesures suivantes, H1 et H4 comprises), puis H1, puis H4.
 
+**H2 ET H3 SONT IMPLÉMENTÉES ET TENUES PAR UN TEST (01/09/2026)** —
+`--rendus-paralleles` (défaut 3) et le cache `cache/rendus` (clé : machine,
+profil, patch, notes, durée, fréquence, tempo, EMPREINTE DU MOTEUR ; témoin
+`--sans-cache-rendus` ; les deux en provenance). Le test d'intégration mesure
+leurs critères : pool == série aux mêmes machines et distances, et une
+reprise à chaud rend le même classement avec la fonction de rendu SABOTÉE —
+seules des lectures de cache peuvent produire ce tableau. (Premier jet du
+test instructif : casser le BINAIRE ne prouve rien, l'empreinte moteur change
+la clé et le cache refuse à bon droit.) Le gain de bout en bout reste à
+chiffrer sur un morceau ; les verdicts, eux, sont déjà prouvés identiques.
+
+**ET UNE MESURE IMPRÉVUE S'INTERCALE : LE FAN-OUT DES PROFILS (§ 11 du CDC
+machines) A RENDU SES CHIFFRES.** Stems : −35 % sur `other` d'*Us and Them*
+(0,350 → 0,227, guitare nylon). Morceau : **+2,7 %** (0,2638 → 0,2708). Un
+timbre plus vrai colle mieux au stem fuites comprises — la basse gagnée par
+un chœur, qui épouse la fuite vocale du stem — et le trajet glouton du
+verdict finit ailleurs. C'est le plus fort argument mesuré EN FAVEUR de H1 et
+d'une passe de stabilisation du verdict : détail au CDC § 11.
+
 ---
 
 ## 6. Ce qui n'est pas au programme, et pourquoi

@@ -680,9 +680,27 @@ morceau à saxophone jamais passé dans la chaîne) a montré que c'est faux :
 « ne seront pas essayés » (`VSM_PROFIL=nom` pour en choisir un). Le ténor n'a
 donc jamais concouru. La couverture est INSTALLÉE mais pas ARBITRÉE : pour
 qu'elle le soit, il faudrait que l'arbitrage de piste présente une candidate
-`vsm.multisample` PAR profil installé — dix-neuf candidates au lieu d'une,
-soit ~4 min 30 de rendus de piste en plus au tarif mesuré. C'est la prochaine
-marche, et elle est écrite ici pour ne pas être crue déjà franchie.
+`vsm.multisample` PAR profil installé. ~~C'est la prochaine marche, et elle
+est écrite ici pour ne pas être crue déjà franchie.~~
+
+**LA MARCHE EST FRANCHIE ET MESURÉE (01/09/2026), ET LA MESURE ENSEIGNE
+AUTRE CHOSE QUE PRÉVU.** L'arbitrage présente une candidate par profil
+(trente et un aujourd'hui, GeneralUser GS et FluidR3), le gagnant emporte son
+profil jusqu'au projet, et le classement l'affiche
+(`multisample[GU-Nylon-Guitar]=0.227*`). Rejoué sur *Us and Them* aux mêmes
+conditions : au STEM, les profils écrasent tout — `other` passe de 0,350
+(`vsm.string`) à **0,227** (guitare nylon, −35 %), les suivantes à 54–95 %
+derrière. Et le MORCEAU recule : 0,2708 contre 0,2638 (+2,7 %).
+
+C'est la leçon du mandataire (§ 5 septies, decies) sous sa forme la plus
+instructive : **un timbre plus vrai colle mieux au stem FUITES COMPRISES** —
+la basse y est gagnée par un CHŒUR échantillonné, parce que le stem de basse
+contient de la fuite vocale et qu'un chœur colle à la fuite. Le verdict du
+mélange a contenu les dégâts (il a écarté le pire) sans les annuler : le
+trajet glouton, parti d'autres candidates, finit ailleurs. Le fan-out RESTE —
+il enrichit le vivier et le ténor concourt enfin — mais son bénéfice net
+attend H1 (réglage jugé au mélange) et une passe de stabilisation du verdict,
+inscrites au § 5 duodecies de la feuille de route fusion.
 
 **La décision de ne pas construire la machine ne change pas** : elle reposait
 sur « rien ne l'a encore mesurée comme manquante », et ce paragraphe ne mesure

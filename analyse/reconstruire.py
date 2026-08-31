@@ -344,6 +344,8 @@ def provenance(args: argparse.Namespace, classifieur, frappes) -> dict:
             "reglagePiste": not args.sans_reglage_piste,
             "rechercheNotes": not args.sans_recherche,
             "machinesAuMelange": args.machines_au_melange,
+            "rendusParalleles": args.rendus_paralleles,
+            "cacheRendus": not args.sans_cache_rendus,
             "budgetPiste": args.budget_piste,
             "axesPiste": args.axes_piste,
             "finalistes": args.finalistes,
@@ -448,6 +450,17 @@ def construire_parseur() -> argparse.ArgumentParser:
                               "coordonnées balaye les axes déclarés par la machine et ne "
                               "garde une valeur que si elle rapproche le rendu complet du "
                               "stem : elle ne peut donc pas dégrader le patch d'où elle part.")
+    parseur.add_argument("--rendus-paralleles", type=int, default=3,
+                         help="nombre de rendus de candidates menés de front à "
+                              "l'arbitrage de piste (défaut 3 ; H3 du § 5 duodecies). "
+                              "1 = série, l'ancien comportement. Le classement est "
+                              "déterministe quel que soit ce nombre.")
+    parseur.add_argument("--sans-cache-rendus", action="store_true",
+                         help="ne pas relire ni écrire le cache de rendus de piste "
+                              "(cache/rendus, H2 du § 5 duodecies). Le cache est sûr "
+                              "par construction -- sa clé porte l'empreinte du moteur "
+                              "-- mais un A/B doit pouvoir prouver qu'il ne change "
+                              "rien : voilà son témoin.")
     parseur.add_argument("--machines-au-melange", type=int, default=MACHINES_AU_MELANGE,
                          help=f"nombre de machines SUIVANTES du classement de piste "
                               f"remises en jeu au verdict du mélange (défaut "
@@ -981,6 +994,8 @@ def arbitrer_sur_piste(ctx: Contexte, nom: str, stem: StemReconstruction, audio:
         candidates=build_candidates(list(stem.patches.items()), ctx.candidates,
                                     profils_pour_arbitrage(ctx.moteur, ctx.candidates)),
         workdir=ctx.travail / "arbitrage" / nom,
+        parallel_renders=ctx.args.rendus_paralleles,
+        render_cache=not ctx.args.sans_cache_rendus,
         **ctx.options_de_rendu(nom, audio),
     )
     if not verdicts:

@@ -187,6 +187,8 @@ def arbitrate_on_track(
     stem_rms: Optional[float] = None,
     base_volume: float = 0.9,
     max_volume: float = 10.0,
+    parallel_renders: int = 1,
+    render_cache: bool = True,
 ) -> List[TrackVerdict]:
     """
     Rend la piste entière pour chaque candidate et les classe.
@@ -227,20 +229,53 @@ def arbitrate_on_track(
     exportables = list(notes)
     workdir = Path(workdir)
 
-    # UN SEUL dossier, réemployé : voir « ce que ça ne doit pas coûter » en tête
-    # de module. Trente-huit rendus conservés, c'est trois gigaoctets par stem.
-    dossier = workdir / "candidate"
-    dossier.mkdir(parents=True, exist_ok=True)
+    # LES CANDIDATES SONT INDÉPENDANTES, ET ELLES SE RENDENT DONC EN PARALLÈLE
+    # (hypothèse H3 du § 5 duodecies) : chaque rendu est déjà un processus
+    # `vsm-render` isolé, il suffit d'en lancer plusieurs — chacun dans SON
+    # dossier, réemployé d'une candidate à la suivante du même travailleur
+    # (la leçon « un seul dossier » vaut toujours : trente-huit rendus
+    # conservés, c'est trois gigaoctets par stem). Le CLASSEMENT reste
+    # déterministe : les résultats sont recueillis PAR INDICE, jamais par
+    # ordre d'arrivée.
+    #
+    # ET LE CACHE D'ABORD (hypothèse H2) : entre deux exécutions comparées,
+    # les candidates d'usine sont rendues à l'identique — moteur déterministe.
+    # La clé porte l'empreinte du moteur ; un rendu servi du cache est un
+    # rendu d'HIER dont on a prouvé qu'il serait celui d'aujourd'hui.
+    from concurrent.futures import ThreadPoolExecutor
 
-    for candidate in candidates:
+    from .vsm_render_cache import cle_de_rendu, rendu_en_cache, stocker_rendu
+
+    pool = max(1, int(parallel_renders))
+
+    def rendre(indice: int) -> Optional[np.ndarray]:
+        candidate = candidates[indice]
         piste = ExportTrack(name=name, machine=candidate.machine,
                             parameters=dict(candidate.parameters), notes=exportables,
                             profile=candidate.profile)
+        cle = cle_de_rendu(piste, sample_rate, duree, tempo, binary) if render_cache else ""
+        if render_cache:
+            en_cache = rendu_en_cache(cle)
+            if en_cache is not None:
+                return en_cache
+        dossier = workdir / f"candidate-{indice % pool}"
+        dossier.mkdir(parents=True, exist_ok=True)
         rendu = render_track_offline(piste, dossier, sample_rate, duration=duree,
                                      tempo=tempo, binary=binary, title=f"arbitrage-{name}")
         # Effacé tout de suite : il a déjà été lu en mémoire, et le garder ne
         # servirait qu'à saturer le disque au trente-huitième.
         (dossier / "rendu.wav").unlink(missing_ok=True)
+        if render_cache and rendu is not None and rendu.size:
+            stocker_rendu(cle, rendu)
+        return rendu
+
+    if pool > 1:
+        with ThreadPoolExecutor(max_workers=pool) as bassin:
+            rendus = list(bassin.map(rendre, range(len(candidates))))
+    else:
+        rendus = [rendre(i) for i in range(len(candidates))]
+
+    for candidate, rendu in zip(candidates, rendus):
         if rendu is None or rendu.size == 0:
             # ABANDON DIT, jamais tu. Un rendu vide vient soit d'un moteur qui a
             # refusé la requête, soit d'une machine sans sa donnée -- et dans les
