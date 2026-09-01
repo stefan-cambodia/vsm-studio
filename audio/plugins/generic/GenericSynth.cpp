@@ -11,52 +11,6 @@ namespace {
 constexpr uint64_t kBaseSeed = 0x47454E45524943ULL; // "GENERIC"
 } // namespace
 
-// --- oscillateur morphable ---------------------------------------------------
-
-float MorphOscillator::polyBlep(double t, double dt) {
-    if (t < dt) {
-        const double x = t / dt;
-        return static_cast<float>(x + x - x * x - 1.0);
-    }
-    if (t > 1.0 - dt) {
-        const double x = (t - 1.0) / dt;
-        return static_cast<float>(x * x + x + x + 1.0);
-    }
-    return 0.0f;
-}
-
-float MorphOscillator::nextSample(float shape, float pulseWidth) {
-    const double dt = static_cast<double>(frequencyHz_) / sampleRate_;
-    const double t = phase_;
-
-    // Les quatre formes, toutes calculées à LA MÊME phase. C'est ce qui permet
-    // de les fondre : quatre oscillateurs indépendants se peigneraient.
-    const auto sinus = static_cast<float>(std::sin(t * kTwoPi));
-    const auto triangle = static_cast<float>(4.0 * std::abs(t - 0.5) - 1.0);
-
-    float dent = static_cast<float>(2.0 * t - 1.0);
-    dent -= polyBlep(t, dt);
-
-    const double largeur = std::clamp(static_cast<double>(pulseWidth), 0.05, 0.95);
-    float carre = (t < largeur) ? 1.0f : -1.0f;
-    carre += polyBlep(t, dt);
-    carre -= polyBlep(std::fmod(t + (1.0 - largeur), 1.0), dt);
-
-    phase_ += dt;
-    if (phase_ >= 1.0) phase_ -= 1.0;
-
-    // FONDU ENTRE LES DEUX FORMES VOISINES. La sortie est continue en `shape`,
-    // sans le moindre palier : c'est l'exigence centrale de cette machine, car
-    // un saut dans la fonction de coût bloque une recherche par descente.
-    const float position = std::clamp(shape, 0.0f, 3.0f);
-    const auto index = static_cast<int>(position);
-    const float fraction = position - static_cast<float>(index);
-    const float formes[4] = {sinus, triangle, dent, carre};
-    const float a = formes[std::min(index, 3)];
-    const float b = formes[std::min(index + 1, 3)];
-    return a + (b - a) * fraction;
-}
-
 // --- voix --------------------------------------------------------------------
 
 void GenericVoice::prepare(double sampleRate, uint64_t seed) {

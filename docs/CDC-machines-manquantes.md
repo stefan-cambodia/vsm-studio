@@ -400,6 +400,25 @@ Deux défauts trouvés par la mesure au passage, et corrigés :
   formes riches ; elle est désormais faite en ÉNERGIE, ce qui est la grandeur
   que l'oreille rapporte au volume.
 
+### Deux familles de plus, sur instruction, et au titre que le § 7 autorise (02/09/2026)
+
+L'utilisateur demande de nouvelles machines. La règle du § 7 s'applique telle
+qu'écrite : élargir le catalogue est légitime « pour le plaisir de jouer,
+jamais en s'en réclamant pour la reconstruction » — et le critère du § 9
+reste la FAMILLE de synthèse absente, pas le nom célèbre. Deux familles
+manquent réellement au parc, et ce sont elles qu'on ajoute :
+
+| Machine | Famille ouverte | Ce qu'aucune machine du parc ne sait faire |
+|---|---|---|
+| `vsm.vector` | **synthèse vectorielle** (type Prophet VS / SY22) | quatre timbres aux coins d'un carré, un point qui s'y déplace : le TRAJET est le timbre — la couleur bouge sans qu'aucun filtre ne bouge |
+| `vsm.granular` | **synthèse granulaire** | le son comme NUAGE de grains fenêtrés — densité, taille, dispersion de hauteur et de temps ; entre la note et la texture, un continuum qu'aucune machine n'offre |
+
+Ce qui n'est PAS promis : un gain de reconstruction. Si l'une d'elles gagne
+un jour un arbitrage, tant mieux, et le rapport le dira ; aucune case de
+couverture n'en dépend. Le CDC nouvelle-machine s'applique en entier
+(tests, trait distinctif mesuré, identités, façade, empreinte). Le CS-80
+reste où le § 9 l'a mis : « à garder pour plus tard, en le faisant bien ».
+
 Les rangs 1, 3 et 6 comblent des **trous de couverture** : sans eux, des stems
 entiers n'ont aucune machine cible. Les rangs 2, 4 et 5 élargissent surtout la
 palette de jeu — utiles, mais à ne pas confondre avec un gain de reconstruction.

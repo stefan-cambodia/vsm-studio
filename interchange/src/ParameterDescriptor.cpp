@@ -192,6 +192,39 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Analog Character", "voice.analogCharacter"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.vector ---
+    // Le vecteur et son orbite sont la fonction PROPRE de la machine : des
+    // identités neuves, comme le § 4 le prescrit quand la fonction n'existe
+    // nulle part ailleurs. Le reste est canonique.
+    {"vsm.vector", {
+        {"Vector X", "vector.x"},
+        {"Vector Y", "vector.y"},
+        {"Orbit Rate", "vector.orbit.rate"},
+        {"Orbit Depth", "vector.orbit.depth"},
+        {"A Shape", "vector.corner.a.shape"},
+        {"A Detune", "vector.corner.a.detune"},
+        {"B Shape", "vector.corner.b.shape"},
+        {"B Detune", "vector.corner.b.detune"},
+        {"C Shape", "vector.corner.c.shape"},
+        {"C Detune", "vector.corner.c.detune"},
+        {"D Shape", "vector.corner.d.shape"},
+        {"D Detune", "vector.corner.d.detune"},
+        {"Filter Cutoff", "filter.1.cutoff"},
+        {"Filter Resonance", "filter.1.resonance"},
+        {"Filter Env Amount", "filter.1.envAmount"},
+        {"Filter Key Track", "filter.1.keyTrack"},
+        {"Amp Attack", "envelope.1.attack"},
+        {"Amp Decay", "envelope.1.decay"},
+        {"Amp Sustain", "envelope.1.sustain"},
+        {"Amp Release", "envelope.1.release"},
+        {"Filter Attack", "envelope.2.attack"},
+        {"Filter Decay", "envelope.2.decay"},
+        {"Filter Sustain", "envelope.2.sustain"},
+        {"Filter Release", "envelope.2.release"},
+        {"Velocity Sensitivity", "voice.velocitySensitivity"},
+        {"Analog Character", "voice.analogCharacter"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.multisample ---
     // Peu de paramètres, et TOUS canoniques : le timbre de cette machine vient
     // des échantillons, pas des réglages. `voice.velocitySensitivity` est

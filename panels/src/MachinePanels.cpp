@@ -2955,6 +2955,113 @@ MachinePanel makeCone() {
     return panel;
 }
 
+/// `vsm.vector` -- la synthèse vectorielle : quatre coins, un trajet.
+///
+/// La disposition suit le GESTE de l'original (Prophet VS) : le vecteur au
+/// centre de la façade -- c'est lui l'instrument --, les quatre coins autour
+/// de lui comme sur la sérigraphie du joystick (A en haut à gauche, D en bas
+/// à droite), le filtre et les enveloppes à droite. Livrée sombre à accents
+/// violets, la teinte des machines numériques de la fin des années 80.
+MachinePanel makeVector() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.vector";
+    panel.displayName = "Vector (quatre coins, un trajet)";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#17141F";
+    panel.sectionColour = "#0F0D16";
+    panel.textColour = "#E9E4F5";
+    panel.knobColour = "#8E7CC3";
+    panel.gridColumns = 18;
+    panel.gridRows = 4;
+
+    PanelSection cornerA;
+    cornerA.title = "A";
+    cornerA.accentColour = "#8E7CC3";
+    cornerA.column = 0; cornerA.row = 0; cornerA.columnSpan = 2; cornerA.rowSpan = 2;
+    cornerA.controls = {
+        control("A Shape", "SHAPE", S::Knob, 0, 0),
+        control("A Detune", "DETUNE", S::Knob, 1, 0),
+    };
+    PanelSection cornerC;
+    cornerC.title = "C";
+    cornerC.accentColour = "#8E7CC3";
+    cornerC.column = 0; cornerC.row = 2; cornerC.columnSpan = 2; cornerC.rowSpan = 2;
+    cornerC.controls = {
+        control("C Shape", "SHAPE", S::Knob, 0, 0),
+        control("C Detune", "DETUNE", S::Knob, 1, 0),
+    };
+
+    PanelSection vecteur;
+    vecteur.title = "VECTOR";
+    vecteur.accentColour = "#C3B1F0";
+    vecteur.column = 2; vecteur.row = 0; vecteur.columnSpan = 5; vecteur.rowSpan = 4;
+    vecteur.controls = {
+        control("Vector X", "X", S::LargeKnob, 0, 0),
+        control("Vector Y", "Y", S::LargeKnob, 1, 0),
+        control("Orbit Rate", "ORBIT", S::Knob, 0, 1),
+        control("Orbit Depth", "DEPTH", S::Knob, 1, 1),
+    };
+
+    PanelSection cornerB;
+    cornerB.title = "B";
+    cornerB.accentColour = "#8E7CC3";
+    cornerB.column = 7; cornerB.row = 0; cornerB.columnSpan = 2; cornerB.rowSpan = 2;
+    cornerB.controls = {
+        control("B Shape", "SHAPE", S::Knob, 0, 0),
+        control("B Detune", "DETUNE", S::Knob, 1, 0),
+    };
+    PanelSection cornerD;
+    cornerD.title = "D";
+    cornerD.accentColour = "#8E7CC3";
+    cornerD.column = 7; cornerD.row = 2; cornerD.columnSpan = 2; cornerD.rowSpan = 2;
+    cornerD.controls = {
+        control("D Shape", "SHAPE", S::Knob, 0, 0),
+        control("D Detune", "DETUNE", S::Knob, 1, 0),
+    };
+
+    PanelSection filtre;
+    filtre.title = "FILTER";
+    filtre.accentColour = "#7CA6C3";
+    filtre.column = 9; filtre.row = 0; filtre.columnSpan = 3; filtre.rowSpan = 4;
+    filtre.controls = {
+        control("Filter Cutoff", "CUTOFF", S::LargeKnob, 0, 0),
+        control("Filter Resonance", "RES", S::Knob, 1, 0),
+        control("Filter Env Amount", "ENV", S::Knob, 0, 1),
+        control("Filter Key Track", "TRACK", S::Knob, 1, 1),
+    };
+
+    PanelSection envs;
+    envs.title = "ENVELOPES";
+    envs.accentColour = "#7CA6C3";
+    envs.column = 12; envs.row = 0; envs.columnSpan = 4; envs.rowSpan = 4;
+    envs.controls = {
+        control("Amp Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
+        control("Amp Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
+        control("Amp Sustain", "S", S::VerticalSlider, 2, 0, 1, 2),
+        control("Amp Release", "R", S::VerticalSlider, 3, 0, 1, 2),
+        control("Filter Attack", "FA", S::Knob, 0, 2),
+        control("Filter Decay", "FD", S::Knob, 1, 2),
+        control("Filter Sustain", "FS", S::Knob, 2, 2),
+        control("Filter Release", "FR", S::Knob, 3, 2),
+    };
+
+    PanelSection output;
+    output.title = "OUTPUT";
+    output.accentColour = "#C3B1F0";
+    output.column = 16; output.row = 0; output.columnSpan = 2; output.rowSpan = 4;
+    output.controls = {
+        control("Velocity Sensitivity", "TOUCH", S::Knob, 0, 0),
+        control("Output Level", "VOLUME", S::Knob, 0, 1),
+    };
+    panel.omittedParameters = {
+        {"Analog Character", "instabilité d'intonation très lente, commune au parc : "
+                             "elle se règle une fois et ne se joue pas"},
+    };
+
+    panel.sections = {cornerA, cornerC, vecteur, cornerB, cornerD, filtre, envs, output};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
@@ -2962,7 +3069,7 @@ const std::vector<MachinePanel>& panels() {
         makeEPiano(), makeObx(), makeSupersaw(), makeWavetable(), makePcmHybrid(), makeTonewheel(), makeGeneric(), makeString(),
         makePiano(), makeDrums(), makeWind(), makeMultisample(),
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
-        makeCone()
+        makeCone(), makeVector()
     };
     return all;
 }

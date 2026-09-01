@@ -3,6 +3,7 @@
 #include "vsm/audio/dsp/DenormalGuard.h"
 #include "vsm/audio/dsp/Envelope.h"
 #include "vsm/audio/dsp/Filter.h"
+#include "vsm/audio/dsp/MorphOscillator.h"
 #include "vsm/audio/engine/VoiceManager.h"
 #include "vsm/audio/plugin/ISynthPlugin.h"
 #include "vsm/util/DeterministicRng.h"
@@ -26,22 +27,11 @@ namespace vsm::plugins::generic {
 /// parc (« polyBLEP ») : sans elle, la dent de scie et le carré sifflent dans
 /// les aigus, et la machine deviendrait d'autant plus fausse qu'on monte -- ce
 /// qui est le contraire de ce qu'on attend d'un instrument de mesure.
-class MorphOscillator {
-public:
-    void setSampleRate(double sampleRate) { sampleRate_ = sampleRate > 0.0 ? sampleRate : 48000.0; }
-    void setFrequency(float hz) { frequencyHz_ = hz > 0.0f ? hz : 1.0f; }
-    void reset(double phase = 0.0) { phase_ = phase - std::floor(phase); }
-
-    /// `shape` de 0 (sinus) à 3 (carré), continu.
-    float nextSample(float shape, float pulseWidth);
-
-private:
-    static float polyBlep(double t, double dt);
-
-    double sampleRate_ = 48000.0;
-    double phase_ = 0.0;
-    float frequencyHz_ = 440.0f;
-};
+// L'oscillateur morphable est né ici, puis a été PROMU en brique partagée le
+// jour où `vsm.vector` en a eu besoin (§ 8.4 : une brique se partage, elle ne
+// se recopie pas). La fidélité de l'extraction est prouvée par l'empreinte
+// audio de cette machine, inchangée au bit à travers le déplacement.
+using MorphOscillator = vsm::audio::dsp::MorphOscillator;
 
 /// Synthétiseur NEUTRE, conçu pour la recherche automatique de patch.
 ///
