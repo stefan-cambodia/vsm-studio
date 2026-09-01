@@ -2438,6 +2438,55 @@ ses témoins : 0,1907 / 0,1953 / 0,1907 / 0,1865) sont REJOUÉES en v5 : leurs
 distances finales étaient réelles — mesurées sur le rendu du projet écrit —
 mais leurs arbitrages ont pu élire sur des mesures échangées.
 
+**LA CAMPAGNE DU 01/09/2026 A RENDU TOUS SES VERDICTS.** Seize courses sur
+code sain (la collision réparée) : pour chaque morceau, la chaîne du jour
+(vivier 141 profils, H1 et H5 actifs), son témoin H1, son témoin H5, et la
+même chaîne sur stems `htdemucs_ft`. Mêmes budgets partout
+(`--budget-piste 120 --axes-piste 21`), verdicts et distances au rapport.
+
+| morceau | référence (chaîne d'hier) | chaîne du jour | témoin H1 | témoin H5 | stems ft |
+|---|---|---|---|---|---|
+| Us and Them | 0,2708 | **0,1907** (−29,6 %) | 0,1953 | 0,1907 | 0,1865 |
+| Sky and Sand | 0,2467 | **0,2307** (−6,5 %) | 0,2479 | 0,2307 | 0,2345 |
+| Jaguar | 0,2853 | **0,2117** (−25,8 %) | 0,2167 | 0,2117 | **0,1836** |
+| B4 Wuz Then | 0,2521 | **0,2167** (−14,0 %) | 0,2492 | 0,2167 | 0,2286 |
+
+- **H1 CONFIRMÉE, quatre sur quatre.** Le réglage jugé au mélange gagne
+  partout — −2,4 % (usandthem), −6,9 % (sky), −2,3 % (jaguar), −13,0 %
+  (b4) — sans changer aucune décision de verdict (mêmes machines retenues
+  course et témoin). Le fait le plus répété du § 5 est refermé : la
+  dernière passe se juge au morceau, et ça se chiffre.
+- **H5 TIENT SON CRITÈRE À LA LETTRE, ET C'EST TOUT.** Les témoins à un
+  tour sont identiques au dix-millième sur les quatre morceaux — le point
+  fixe arrive d'office au tour 2. Le cas exigé existe (usandthem sur stems
+  fins : trois tours, le tour 2 change la décision de la BASSE), donc
+  l'hypothèse n'est pas close à zéro coût ; mais son gain mesuré est NUL
+  sur ces huit courses, pour ~2 à 6 min de tour de vérification. Le défaut
+  reste à 3 tours : le mécanisme a agi une fois, son témoin ne perd rien,
+  et son coût est borné.
+- **H4 REJETÉE, un étalon sur trois.** Les stems `htdemucs_ft` gagnent
+  fort sur Jaguar (−13,3 %) mais perdent sur Sky (+1,6 %) et B4 (+5,5 %) ;
+  le critère exigeait deux sur trois. (Hors étalons, usandthem y gagnait
+  −2,2 % et l'arbitrage batterie y CHANGEAIT de machine — la TR-808.)
+  `htdemucs` reste le modèle par défaut ; les stems fins restent
+  disponibles par dossier séparé, modèle dit au rapport. La question
+  qu'HÉRITE H6 : des stems meilleurs au banc public ne donnent pas un
+  morceau plus proche deux fois sur trois — comprendre pourquoi AVANT de
+  payer un cran de SDR de plus (la piste : la chaîne juge la
+  reconstruction contre le MÉLANGE d'origine, et des stems plus propres
+  déplacent la cible de l'arbitrage sans déplacer celle du verdict).
+- **La performance de bout en bout, enfin chiffrée.** Us and Them à cache
+  froid : 59,7 min pour ~170 candidates par stem mélodique, là où la
+  chaîne d'hier mettait 53 min pour 60 candidates — le vivier TRIPLE pour
+  +13 % de temps (la deuxième forme H2/H3 fait exactement ce qu'elle
+  promettait). Témoins à cache chaud : 37,5 et 44,6 min, arbitrages à
+  ~5 s par stem. Le bassin est passé à 8 rendus de front à mi-campagne
+  (jaguar et b4) — les verdicts sont invariants par construction (test
+  pool == série), aucun A/B de temps n'a donc été sacrifié.
+- **Et les gains de la journée s'additionnent** : chaîne d'hier → chaîne
+  du jour, −6,5 % à −29,6 % selon le morceau, moyenne −19 % — le vivier
+  GM complet, H1, et le point fixe H5 pour ce qu'il garde.
+
 *Ce qui suit décrit la première implémentation, conservée pour l'histoire de
 la décision :*
 
@@ -2489,6 +2538,13 @@ séparé, modèle dit au rapport, distance globale meilleure sur au moins deux
 des trois étalons. À mesurer APRÈS H4 : si H4 échoue déjà à améliorer le
 morceau alors que ses stems sont meilleurs au banc, un troisième cran de SDR
 ne se justifiera qu'en comprenant d'abord pourquoi.
+
+> **LA CONDITION S'EST RÉALISÉE LE SOIR MÊME : H4 est rejetée un étalon sur
+> trois (bilan de campagne au § ci-dessous). H6 est donc SUSPENDUE à la
+> compréhension, pas à la mesure** — tant qu'on ne sait pas pourquoi des
+> stems meilleurs au banc public font un morceau plus lointain deux fois
+> sur trois, un modèle encore meilleur au banc n'a aucune raison de faire
+> mieux dans la chaîne.
 
 **ET LE VIVIER DE PROFILS A CHANGÉ D'ÉCHELLE LE MÊME JOUR (01/09/2026).** Les
 banques General MIDI libres s'installent désormais par
