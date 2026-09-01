@@ -380,6 +380,16 @@ Une bascule s'appuie, un fader se positionne : traiter l'un comme l'autre ferait
 
 ![Six associations](images/manuel/associations-midi.png)
 
+### Regarder l'application sans souris
+
+Trois variables d'environnement, pour vérifier une interface plutôt que de
+l'affirmer : `VSM_CAPTURE=sortie.png` fait que la fenêtre se photographie
+elle-même deux secondes après l'ouverture puis quitte ; `VSM_VUE=nom,nom`
+actionne le menu Affichage ; `VSM_PROJET=dossier` ouvre un projet au
+démarrage — sans lui, l'autoportrait ne montre qu'un projet vide, alors que
+ce qu'on a besoin de regarder est presque toujours une machine dans son rack
+ou un arrangement précis.
+
 ## 8. Ne rien perdre
 
 Le projet est photographié **toutes les trente secondes**, et seulement s'il a changé — un studio ouvert sans qu'on y touche n'a aucune raison d'écrire. L'écriture se fait hors du thread de l'interface, et à côté du fichier avant de basculer : une sauvegarde interrompue en cours d'écriture détruirait justement ce qu'elle protège.

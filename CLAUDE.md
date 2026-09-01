@@ -34,8 +34,9 @@ l'ordre de marche — pas de la documentation d'accompagnement.
 ## Interface
 - La machine A un écran. Toute modification d'app/Source/ se VÉRIFIE :
   compiler la cible, puis `VSM_CAPTURE=sortie.png` (autoportrait de la
-  fenêtre) et `VSM_VUE=arrangement,sans-rack,...` pour piloter le menu
-  Affichage sans souris. Ne jamais déclarer une interface invérifiable.
+  fenêtre), `VSM_VUE=arrangement,sans-rack,...` pour piloter le menu
+  Affichage et `VSM_PROJET=dossier` pour ouvrir un projet — sans souris. Ne
+  jamais déclarer une interface invérifiable.
 - Échelle d'interface 150 % par défaut (besoin de lisibilité, pas un goût).
   Toute disposition reste redimensionnable/déplaçable et retient ses réglages.
 

@@ -82,6 +82,14 @@ public:
     /// s'affiche pas » ne se vérifie qu'à la main.
     void applyViewCommand(const juce::String& nom);
 
+    /// Ouvre un dossier de projet au démarrage (VSM_PROJET=dossier), pour la
+    /// même raison que `applyViewCommand` : ce qu'on a besoin de regarder est
+    /// presque toujours un projet précis — une machine dans son rack, un
+    /// arrangement — et le sélecteur de machine ne s'atteint qu'à la souris.
+    void openProjectFolderForCapture(const juce::File& dossier) {
+        loadProjectBundleFromFolder(dossier);
+    }
+
     // juce::MenuBarModel
     juce::StringArray getMenuBarNames() override;
     juce::PopupMenu getMenuForIndex(int topLevelMenuIndex, const juce::String& menuName) override;

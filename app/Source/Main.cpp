@@ -73,6 +73,18 @@ public:
             // aucun outil externe ne sait ni viser cette fenêtre ni la faire
             // passer devant un terminal -- une interface qu'on ne peut pas
             // regarder est une interface qu'on ne peut pas juger.
+            // VSM_PROJET=dossier : ouvrir un projet AVANT la capture. Sans
+            // cela, l'autoportrait ne montrait que le projet vide -- or ce
+            // qu'on a besoin de regarder, c'est presque toujours une machine
+            // ou un arrangement précis, et le sélecteur de machine ne
+            // s'atteint qu'à la souris. Même raison d'être que VSM_VUE : sous
+            // Wayland, une interface qu'on ne peut pas piloter sans souris
+            // est une interface qu'on ne peut pas juger.
+            if (const char* projet = std::getenv("VSM_PROJET"); projet != nullptr && *projet) {
+                const juce::File dossier =
+                    juce::File::getCurrentWorkingDirectory().getChildFile(projet);
+                if (dossier.isDirectory()) content->openProjectFolderForCapture(dossier);
+            }
             if (const char* vues = std::getenv("VSM_VUE"); vues != nullptr && *vues) {
                 juce::StringArray liste;
                 liste.addTokens(juce::String::fromUTF8(vues), ",", "");
