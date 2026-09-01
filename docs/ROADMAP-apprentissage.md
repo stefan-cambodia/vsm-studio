@@ -711,6 +711,42 @@ La plus risquée ; n'entre en chaîne que si son A/B global est positif.
 conservé désactivé et documenté — le sort exact des étapes 10.1 et 10.2, et
 c'est un résultat, pas une honte.
 
+> **A3 EST CLOSE PAR REJET, ET CE DOCUMENT NE LE DISAIT PAS (constaté le
+> 02/09/2026).** La phase a bien été menée jusqu'au bout, et ses mesures
+> vivent au § 7 de [`ROADMAP-fusion.md`](ROADMAP-fusion.md) — mais rien ici
+> ne renvoyait vers elles, si bien que la seule phase encore ouverte du
+> tableau était en réalité terminée depuis longtemps. Un plan qui garde
+> ouverte une case déjà tranchée fait chercher deux fois le même travail ;
+> le renvoi est donc écrit ici, avec les chiffres qui comptent :
+>
+> - **A3.1 — le garde-fou EXISTE et fonctionne.** La distance de la
+>   prédiction à la cible (un rendu, ~12 ms) est corrélée à **−0,66** au
+>   gain qu'elle apportera : l'estimateur sait dire quand ne pas se croire.
+> - **A3.2 — le resserrement marche… sur ce que la machine sait produire.**
+>   Boîte ±0,15 autour de la prédiction, 20 itérations, garde-fou actif :
+>   **−21 %** de distance médiane contre la recherche complète, à budget
+>   égal, sur 14 cibles rendues par le moteur lui-même.
+> - **A3.3 — le candidat bon marché tient aussi** : boîte 5 itérations,
+>   distance identique à la recherche complète pour **1,7×** moins de temps.
+> - **A3.4 — ET C'EST LUI QUI TRANCHE : NON.** Sur 9 cibles RÉELLES (stems
+>   séparés, avec leurs artefacts et leurs fuites), le régime prudent rend
+>   0,1974 contre 0,1974 pour la recherche ordinaire — **identique**, parce
+>   que le garde-fou refuse de resserrer sur 8 cibles sur 9. La méthode ne
+>   nuit pas ; elle ne sert pas non plus. Le critère exigeait « médiane ≤
+>   avec ≤ la moitié des évaluations » : il n'est pas atteint.
+>
+> **La cause n'est pas un défaut de modèle mais une impossibilité de
+> principe**, et deux chemins indépendants l'ont confirmée (l'estimateur ici,
+> le classifieur en A1) : le corpus ne contient que des sons que la machine
+> sait produire, alors qu'un stem séparé est un son qu'AUCUNE machine ne
+> produit. La condition de réouverture — un corpus qui contienne la
+> DÉGRADATION — a été construite (`analyse/corpus_separe.py`) et **n'a pas
+> rouvert le dossier** (28/08). Le code reste, désactivé et documenté, dans
+> `analyse/analyzer/vsm_corpus.py`.
+>
+> **Toutes les phases A0–A5 sont donc traitées**, A3 par rejet mesuré, A5.3
+> restant une écoute humaine qui ne peut pas se déléguer.
+
 ## Phase A4 — Intégration, rapport, repli
 
 | Étape | Contenu | Terminé quand |
