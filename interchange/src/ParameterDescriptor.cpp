@@ -305,6 +305,32 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Velocity to Hardness", "voice.velocitySensitivity"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.chebyshev ---
+    // Les huit poids sont des AMPLITUDES DE RANG, une par rang. Un premier
+    // jet les avait nommées `additive.partial.N.level` en annonçant qu'elles
+    // réemployaient le vocabulaire de `vsm.additive` : c'était FAUX, cette
+    // machine-là règle une PENTE de spectre (`additive.spectralTilt`,
+    // `additive.oddEvenBalance`) et n'a aucune amplitude par rang. Une
+    // identité inventée en croyant réemployer est pire qu'une identité
+    // neuve assumée : elle fait croire à un preset qu'il voyagera. Elles
+    // portent donc un nom à elles, dans l'espace de la machine.
+    {"vsm.chebyshev", {
+        {"Index", "waveshaper.index"},
+        {"Velocity to Index", "waveshaper.velocityToIndex"},
+        {"Partial 1", "waveshaper.partial.1.weight"},
+        {"Partial 2", "waveshaper.partial.2.weight"},
+        {"Partial 3", "waveshaper.partial.3.weight"},
+        {"Partial 4", "waveshaper.partial.4.weight"},
+        {"Partial 5", "waveshaper.partial.5.weight"},
+        {"Partial 6", "waveshaper.partial.6.weight"},
+        {"Partial 7", "waveshaper.partial.7.weight"},
+        {"Partial 8", "waveshaper.partial.8.weight"},
+        {"Attack", "envelope.1.attack"},
+        {"Decay", "envelope.1.decay"},
+        {"Sustain", "envelope.1.sustain"},
+        {"Release", "envelope.1.release"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.multisample ---
     // Peu de paramètres, et TOUS canoniques : le timbre de cette machine vient
     // des échantillons, pas des réglages. `voice.velocitySensitivity` est

@@ -31,7 +31,7 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **1 280 tests moteur** (158 core + 861 audio
+écoute au clic, et toute la logique testée hors JUCE. Total : **1 291 tests moteur** (158 core + 872 audio
 + 206 interchange + 25 CLAP + 19 VST3 + 11 façades,
 tous verts, zéro warning sous les flags du build, `-Wall -Wextra -Wpedantic`.
 L'ancienne mention « y compris -Wfloat-equal -Wsign-conversion -Wshadow »
@@ -139,7 +139,7 @@ vsm-studio/
 │
 ├── core/                       "vsm_core" — moteur MIDI/séquenceur (158 tests)
 │
-├── audio/                      "vsm_audio" — moteur audio temps réel (861 tests)
+├── audio/                      "vsm_audio" — moteur audio temps réel (872 tests)
 │   ├── include/vsm/audio/dsp/
 │   │   ├── LadderFilterZDF.h     GÉNÉRALISÉ à N pôles (2-4) -- voir section 7
 │   │   └── ...                   Oscillator, Envelope, Filter(SVF), AnalogDrift, ParameterSmoother
@@ -599,12 +599,12 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 1 280 tests moteur + 64 tests d'analyse, tous verts
+### Bilan actuel : 1 291 tests moteur + 64 tests d'analyse, tous verts
 
 - **158 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des
   notes douteuses de la transcription),
-  **861 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
+  **872 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
   scalaire, indépendance des lignes, bornes de l'approximation de tanh ; et la
   boucle : rebouclage échantillon-exact, notes relâchées au saut) : chorus BBD, Juno-106,
   bus master (biquad/compresseur/limiteur à plafond garanti/LUFS), oversampler,
@@ -1014,7 +1014,7 @@ un couplage par le NOM du paramètre -- précisément ce que le projet garde
 stable, déjà verrouillé par les tests `..._parameter_list_size` de chaque
 machine.
 
-**936 paramètres** (39 machines + 13 effets ; 563 du temps des 23 machines,
+**951 paramètres** (40 machines + 13 effets ; 563 du temps des 23 machines,
 308 à l'époque des 12) ont reçu une identité, dont
 `accent.amount` pour le TB-303 ou `fm.operator.3.ratio` pour le DX7 : le
 vocabulaire commun couvre ce qui est commun, et le reste est déclaré tel quel
@@ -1238,7 +1238,7 @@ rappellerait.
 des échantillons chargés, des matrices de modulation, des tables dessinées à la
 main, que rien dans le vocabulaire sémantique ne désigne. D'où
 `ISynthPlugin::saveNativeState()` / `loadNativeState()` -- **vides pour les
-trente-neuf machines du parc**, dont le son EST leur table de paramètres, et
+quarante machines du parc**, dont le son EST leur table de paramètres, et
 c'est une propriété qu'on ne voulait pas perdre. L'état natif est du **texte**
 (base64 produit par l'hôte) : la couche d'interopérabilité n'écrit que du JSON et
 n'a pas à apprendre à manipuler des octets pour une famille de machines sur
@@ -3615,7 +3615,29 @@ seulement le volume. Le matériau est un CONTINUUM de la corde à la barre
 discret creuserait une falaise dans toute recherche (§ 3 de `vsm.generic`).
 Onze tests, dont cinq mesurent un trait qu'aucune autre machine ne possède.
 
-Le parc passe à **39 machines**.
+**ET UNE CINQUIÈME : `vsm.chebyshev`, où le spectre est une COMMANDE.** Le
+parc savait déformer une onde de trois façons — le temps (`vsm.phasedist`),
+le pliage (`vsm.westcoast`), la modulation de fréquence (`vsm.dx7`) — mais
+pas par la voie canonique du waveshaping (Arfib, Le Brun, 1979), qui a une
+propriété qu'aucune autre n'offre : `T_n(cos θ) = cos(n·θ)`, **exactement**.
+Un poids sur le seul rang 3, et le rendu ne contient que l'harmonique 3 : on
+écrit le spectre voulu au lieu de l'approcher. Le trait musical en découle —
+sous l'amplitude 1, un rang n se comporte en `A^n`, donc **une note qui
+décroît perd ses aigus d'elle-même, sans qu'aucun filtre n'existe sur la
+machine** (elle n'en a pas un seul).
+
+**Et le test a trouvé un défaut que rien d'autre n'aurait vu** : `T_n(0)`
+vaut ±1 pour n PAIR, si bien que la machine sortait **0,30 de continu au
+repos**, sans qu'aucune note soit jouée. C'est la faute du § 44 sous une
+autre forme — du continu qui écrase ce qu'on veut entendre et qu'aucune
+mesure de niveau ne dénonce. Le terme est retiré exactement (`shape(0)`),
+sans état ni transitoire, et les harmoniques ne bougent pas : on ne retire
+qu'une constante, et une constante n'est l'harmonique de rien. Le
+sur-échantillonnage ×4 traite l'autre piège de la famille, le repliement
+d'un rang 8 qui occupe huit fois la bande — vérifié sur un la6, où rien
+d'inharmonique ne redescend sous le fondamental.
+
+Le parc passe à **40 machines**.
 
 ---
 

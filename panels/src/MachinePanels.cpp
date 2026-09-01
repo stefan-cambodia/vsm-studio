@@ -3282,6 +3282,70 @@ MachinePanel makeModal() {
     return panel;
 }
 
+/// `vsm.chebyshev` -- le spectre commandé. La façade est une RANGÉE DE HUIT
+/// curseurs : un par rang harmonique, comme les tirettes d'un orgue, parce
+/// que c'est exactement ce qu'ils font ici -- dessiner un spectre. L'index,
+/// qui décide de la brillance, est le grand potentiomètre à gauche : sur
+/// cette machine, c'est lui l'instrument.
+MachinePanel makeChebyshev() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.chebyshev";
+    panel.displayName = "Chebyshev (le spectre commandé)";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#16191C";
+    panel.sectionColour = "#101315";
+    panel.textColour = "#E4EEF2";
+    panel.knobColour = "#7FB2C9";
+    panel.gridColumns = 16;
+    panel.gridRows = 4;
+
+    PanelSection drive;
+    drive.title = "INDEX";
+    drive.accentColour = "#A7D4E8";
+    drive.column = 0; drive.row = 0; drive.columnSpan = 3; drive.rowSpan = 4;
+    drive.controls = {
+        control("Index", "INDEX", S::LargeKnob, 0, 0),
+        control("Velocity to Index", "VEL", S::Knob, 0, 1),
+    };
+
+    PanelSection rangs;
+    rangs.title = "PARTIALS";
+    rangs.accentColour = "#7FB2C9";
+    rangs.column = 3; rangs.row = 0; rangs.columnSpan = 8; rangs.rowSpan = 4;
+    rangs.controls = {
+        control("Partial 1", "1", S::VerticalSlider, 0, 0, 1, 3),
+        control("Partial 2", "2", S::VerticalSlider, 1, 0, 1, 3),
+        control("Partial 3", "3", S::VerticalSlider, 2, 0, 1, 3),
+        control("Partial 4", "4", S::VerticalSlider, 3, 0, 1, 3),
+        control("Partial 5", "5", S::VerticalSlider, 4, 0, 1, 3),
+        control("Partial 6", "6", S::VerticalSlider, 5, 0, 1, 3),
+        control("Partial 7", "7", S::VerticalSlider, 6, 0, 1, 3),
+        control("Partial 8", "8", S::VerticalSlider, 7, 0, 1, 3),
+    };
+
+    PanelSection env;
+    env.title = "ENVELOPE";
+    env.accentColour = "#8FA9C9";
+    env.column = 11; env.row = 0; env.columnSpan = 4; env.rowSpan = 4;
+    env.controls = {
+        control("Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
+        control("Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
+        control("Sustain", "S", S::VerticalSlider, 2, 0, 1, 2),
+        control("Release", "R", S::VerticalSlider, 3, 0, 1, 2),
+    };
+
+    PanelSection sortie;
+    sortie.title = "OUT";
+    sortie.accentColour = "#A7D4E8";
+    sortie.column = 15; sortie.row = 0; sortie.columnSpan = 1; sortie.rowSpan = 4;
+    sortie.controls = {
+        control("Output Level", "VOL", S::Knob, 0, 0),
+    };
+
+    panel.sections = {drive, rangs, env, sortie};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
@@ -3289,7 +3353,7 @@ const std::vector<MachinePanel>& panels() {
         makeEPiano(), makeObx(), makeSupersaw(), makeWavetable(), makePcmHybrid(), makeTonewheel(), makeGeneric(), makeString(),
         makePiano(), makeDrums(), makeWind(), makeMultisample(),
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
-        makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal()
+        makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev()
     };
     return all;
 }

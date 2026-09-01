@@ -127,6 +127,12 @@ constexpr Rule kRules[] = {
     {"string.bodySize",                    0.0f,     1.0f, SearchScale::Linear,      0.58f},
     {"string.bowPressure",                 0.0f,     1.0f, SearchScale::Linear,      0.55f},
     {"string.bowSpeed",                    0.0f,     1.0f, SearchScale::Linear,      0.45f},
+    // WAVESHAPING (vsm.chebyshev). L'index EST le timbre de cette famille :
+    // il décide à lui seul de la brillance, sans qu'aucun filtre n'existe
+    // sur la machine. Les poids de rang viennent après, et leur importance
+    // décroît comme leur audibilité.
+    {"waveshaper.index",                   0.0f,     1.0f, SearchScale::Linear,      0.95f},
+    {"waveshaper.velocityToIndex",         0.0f,     1.0f, SearchScale::Linear,      0.50f},
     // OBJET FRAPPÉ (vsm.modal). Ce qui fait reconnaître un objet est d'abord
     // la POSITION de ses partiels -- une barre ne sonne pas comme une corde,
     // et aucun autre réglage ne rattrape cela ; vient ensuite la façon dont

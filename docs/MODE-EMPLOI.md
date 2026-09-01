@@ -37,7 +37,7 @@ Un échantillon glissé depuis le navigateur tombe sur la piste survolée, **à 
 
 ## 3. Le rack
 
-Trente-huit machines, plus une tonalité d'essai qui n'a pas de façade parce qu'elle
+Trente-neuf machines, plus une tonalité d'essai qui n'a pas de façade parce qu'elle
 n'a rien à régler. Chacune porte une **empreinte de non-régression audio** qui fige son rendu.
 
 Elles répondent au **jeu MIDI** selon leur nature, jamais par politesse : la molette de
@@ -161,6 +161,14 @@ Une attaque échantillonnée collée sur une queue synthétisée.
 Le pliage d'onde et la porte passe-bas de l'école Buchla.
 
 ![Façade de West Coast (pliage et porte passe-bas)](images/manuel/vsm.westcoast.png)
+
+**Chebyshev (le spectre commandé)** — `vsm.chebyshev`
+
+Huit curseurs, un par harmonique : on écrit le spectre et on l'obtient
+exactement. L'index fait la brillance — une note qui décroît s'assombrit
+d'elle-même, et la machine n'a aucun filtre.
+
+![Façade de Chebyshev (le spectre commandé)](images/manuel/vsm.chebyshev.png)
 
 **Modal (l'objet frappé)** — `vsm.modal`
 

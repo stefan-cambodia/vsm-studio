@@ -5,9 +5,9 @@ Séquenceur MIDI + rack de synthétiseurs vintage virtuels. Voir
 d'avancement détaillé par phase.
 
 **État actuel** : le moteur MIDI (`core/`, 158 tests) et le moteur audio
-temps réel (`audio/`, 861 tests, dont un test de concurrence réel vérifié
-sous ThreadSanitizer) sont implémentés et **entièrement testés** — **1 280
-tests moteur**, tous verts, zéro warning. Les 39 machines (Minimoog, TB-303, Juno-106,
+temps réel (`audio/`, 872 tests, dont un test de concurrence réel vérifié
+sous ThreadSanitizer) sont implémentés et **entièrement testés** — **1 292
+tests moteur**, tous verts, zéro warning. Les 40 machines (Minimoog, TB-303, Juno-106,
 TR-808, TR-909, SH-101, Prophet, Jupiter-8, ARP Odyssey, MS-20, DX7, sampler
 16 emplacements, e-piano, OB-X, supersaw, table d'ondes, hybride PCM, orgue à
 roues phoniques, Generic Synth, String — corde pincée et frottée par guide
@@ -21,7 +21,8 @@ barres, modal —, FM Drums — percussions métalliques —, Cone — anche sur
 conique, les rangs pairs que le cylindre interdit —, Vector — quatre timbres aux
 coins d'un carré et un trajet qui les mélange —, Granular — le son comme nuage
 de grains —, CS-80 — deux couches par voix, et une pression par note — et
-Modal — les modes d'un objet frappé, à rapports libres — + le synthé de test) ont
+Modal — les modes d'un objet frappé, à rapports libres — et Chebyshev — le
+spectre commandé par polynômes — + le synthé de test) ont
 chacune une **empreinte de non-régression audio** qui fige leur rendu. **Toutes les phases
 des feuilles de route sont terminées** (1 à 6 : moteur, machines, optimisation
 SIMD ; 7 : interopérabilité sémantique, CLAP ; 8 à 11 : reconstruction
