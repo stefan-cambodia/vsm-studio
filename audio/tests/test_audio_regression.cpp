@@ -770,6 +770,7 @@ VSM_TEST(regression_cone)       { checkMachine("vsm.cone"); }
 VSM_TEST(regression_vector)     { checkMachine("vsm.vector"); }
 VSM_TEST(regression_granular)   { checkMachine("vsm.granular"); }
 VSM_TEST(regression_cs80)       { checkMachine("vsm.cs80"); }
+VSM_TEST(regression_modal)      { checkMachine("vsm.modal"); }
 
 /// Le rendu doit être reproductible À L'IDENTIQUE d'une instance à l'autre :
 /// c'est la condition pour que l'empreinte ci-dessus ait un sens. Vérifié ici

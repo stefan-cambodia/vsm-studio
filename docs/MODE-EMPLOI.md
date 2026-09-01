@@ -3,7 +3,7 @@
 Un séquenceur MIDI, un rack de machines vintage modélisées, et une chaîne qui
 reconstruit un morceau enregistré en projet jouable.
 
-**38 machines · 13 effets · 927 paramètres nommés · 1 266 tests verts**
+**39 machines · 13 effets · 936 paramètres nommés · 1 279 tests verts**
 
 > Toutes les illustrations sont des rendus de l'application elle-même, produits hors
 > écran par `vsm-panel-preview`, `vsm-ui-preview`, `vsm-pianoroll-preview` et
@@ -37,7 +37,7 @@ Un échantillon glissé depuis le navigateur tombe sur la piste survolée, **à 
 
 ## 3. Le rack
 
-Trente-sept machines, plus une tonalité d'essai qui n'a pas de façade parce qu'elle
+Trente-huit machines, plus une tonalité d'essai qui n'a pas de façade parce qu'elle
 n'a rien à régler. Chacune porte une **empreinte de non-régression audio** qui fige son rendu.
 
 Elles répondent au **jeu MIDI** selon leur nature, jamais par politesse : la molette de
@@ -161,6 +161,15 @@ Une attaque échantillonnée collée sur une queue synthétisée.
 Le pliage d'onde et la porte passe-bas de l'école Buchla.
 
 ![Façade de West Coast (pliage et porte passe-bas)](images/manuel/vsm.westcoast.png)
+
+**Modal (l'objet frappé)** — `vsm.modal`
+
+Les modes d'un objet — barre, cloche, verre — et non les harmoniques d'une
+corde : le second partiel peut se placer à 2,76 fois le fondamental, ce
+qu'aucune autre machine ne sait faire. Le point de frappe annule les modes
+dont il est un nœud, la dureté du maillet décide lesquels s'éveillent.
+
+![Façade de Modal (l'objet frappé)](images/manuel/vsm.modal.png)
 
 **CS-80-style (deux couches, pression par note)** — `vsm.cs80`
 

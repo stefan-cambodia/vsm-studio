@@ -1014,7 +1014,7 @@ un couplage par le NOM du paramètre -- précisément ce que le projet garde
 stable, déjà verrouillé par les tests `..._parameter_list_size` de chaque
 machine.
 
-**927 paramètres** (38 machines + 13 effets ; 563 du temps des 23 machines,
+**936 paramètres** (39 machines + 13 effets ; 563 du temps des 23 machines,
 308 à l'époque des 12) ont reçu une identité, dont
 `accent.amount` pour le TB-303 ou `fm.operator.3.ratio` pour le DX7 : le
 vocabulaire commun couvre ce qui est commun, et le reste est déclaré tel quel
@@ -1238,7 +1238,7 @@ rappellerait.
 des échantillons chargés, des matrices de modulation, des tables dessinées à la
 main, que rien dans le vocabulaire sémantique ne désigne. D'où
 `ISynthPlugin::saveNativeState()` / `loadNativeState()` -- **vides pour les
-trente-huit machines du parc**, dont le son EST leur table de paramètres, et
+trente-neuf machines du parc**, dont le son EST leur table de paramètres, et
 c'est une propriété qu'on ne voulait pas perdre. L'état natif est du **texte**
 (base64 produit par l'hôte) : la couche d'interopérabilité n'écrit que du JSON et
 n'a pas à apprendre à manipuler des octets pour une famille de machines sur
@@ -3588,7 +3588,23 @@ modulation par-voix, l'honorer à moitié mentirait au musicien » : la
 modulation par-voix existe désormais, dans cette machine et pour l'instant
 elle seule.
 
-Le parc passe à **38 machines**.
+**ET UNE QUATRIÈME : `vsm.modal`, l'objet frappé à rapports LIBRES.** La
+question qu'il fallait trancher avant d'écrire une ligne : en quoi est-ce
+autre chose que `vsm.additive` avec d'autres rapports ? Réponse mesurée :
+l'additif étire ses rangs par la loi de la CORDE RAIDE, `n·f0·sqrt(1+B·n²)`,
+qui plafonne à **2,003·f0** pour son second rang ; une barre libre-libre a
+le sien à **2,76·f0**, et le test le vérifie en exigeant qu'il n'y ait RIEN
+à 2·f0 — là où toute machine harmonique du parc en aurait. S'y ajoutent deux
+commandes qui n'ont de sens que pour un objet : le POINT DE FRAPPE, qui
+annule les modes dont il est un nœud (le peigne `sin(n·π·pos)`, la physique
+du marteau de `vsm.piano` au huitième de la corde), et la DURETÉ DU MAILLET,
+qui décide quels modes sont réveillés — frapper dur ouvre le timbre, pas
+seulement le volume. Le matériau est un CONTINUUM de la corde à la barre
+(`((2n+1)/3)²`, exact à un pour cent des tables), parce qu'un sélecteur
+discret creuserait une falaise dans toute recherche (§ 3 de `vsm.generic`).
+Onze tests, dont cinq mesurent un trait qu'aucune autre machine ne possède.
+
+Le parc passe à **39 machines**.
 
 ---
 

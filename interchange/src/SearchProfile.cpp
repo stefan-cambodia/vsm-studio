@@ -127,6 +127,18 @@ constexpr Rule kRules[] = {
     {"string.bodySize",                    0.0f,     1.0f, SearchScale::Linear,      0.58f},
     {"string.bowPressure",                 0.0f,     1.0f, SearchScale::Linear,      0.55f},
     {"string.bowSpeed",                    0.0f,     1.0f, SearchScale::Linear,      0.45f},
+    // OBJET FRAPPÉ (vsm.modal). Ce qui fait reconnaître un objet est d'abord
+    // la POSITION de ses partiels -- une barre ne sonne pas comme une corde,
+    // et aucun autre réglage ne rattrape cela ; vient ensuite la façon dont
+    // ses modes hauts s'éteignent (le bois contre le métal), puis la durée,
+    // puis le maillet. Le nombre de modes ferme la marche : au-delà d'une
+    // douzaine, l'oreille n'entend plus la différence, et une recherche qui
+    // le balaierait en priorité perdrait son budget.
+    {"modal.material",                     0.0f,     1.0f, SearchScale::Linear,      0.97f},
+    {"modal.decayTilt",                    0.0f,     3.0f, SearchScale::Linear,      0.88f},
+    {"modal.decay",                        0.05f,   12.0f, SearchScale::Logarithmic, 0.84f},
+    {"modal.spread",                       0.5f,     2.0f, SearchScale::Linear,      0.62f},
+    {"modal.modeCount",                    1.0f,    24.0f, SearchScale::Linear,      0.40f},
     // Famille du VENT (vsm.wind). Comme sur la corde, ce qui fait le timbre
     // est d'abord ce qui se perd (le rayonnement au pavillon) et la raideur de
     // ce qui entretient (l'anche ou les lèvres) ; la pression de souffle vient

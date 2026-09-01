@@ -5,9 +5,9 @@ Séquenceur MIDI + rack de synthétiseurs vintage virtuels. Voir
 d'avancement détaillé par phase.
 
 **État actuel** : le moteur MIDI (`core/`, 158 tests) et le moteur audio
-temps réel (`audio/`, 847 tests, dont un test de concurrence réel vérifié
-sous ThreadSanitizer) sont implémentés et **entièrement testés** — **1 266
-tests moteur**, tous verts, zéro warning. Les 38 machines (Minimoog, TB-303, Juno-106,
+temps réel (`audio/`, 860 tests, dont un test de concurrence réel vérifié
+sous ThreadSanitizer) sont implémentés et **entièrement testés** — **1 279
+tests moteur**, tous verts, zéro warning. Les 39 machines (Minimoog, TB-303, Juno-106,
 TR-808, TR-909, SH-101, Prophet, Jupiter-8, ARP Odyssey, MS-20, DX7, sampler
 16 emplacements, e-piano, OB-X, supersaw, table d'ondes, hybride PCM, orgue à
 roues phoniques, Generic Synth, String — corde pincée et frottée par guide

@@ -36,6 +36,7 @@
 #include "vector/VectorSynth.h"
 #include "granular/GranularSynth.h"
 #include "cs80/Cs80Synth.h"
+#include "modal/ModalSynth.h"
 #include "multisample/MultisampleSynth.h"
 
 namespace vsm::audio::plugin {
@@ -170,6 +171,8 @@ void registerBuiltInPlugins() {
         (void)forceLinkGranular;
         vsm::plugins::cs80::Cs80Synth forceLinkCs80;
         (void)forceLinkCs80;
+        vsm::plugins::modal::ModalSynth forceLinkModal;
+        (void)forceLinkModal;
     }
     {
         vsm::plugins::multisample::MultisampleSynth forceLinkMultisample;

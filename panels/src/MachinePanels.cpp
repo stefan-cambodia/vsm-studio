@@ -3232,6 +3232,56 @@ MachinePanel makeCs80() {
     return panel;
 }
 
+/// `vsm.modal` -- l'objet frappé. La façade suit l'OBJET, pas le spectre :
+/// à gauche ce qu'il EST (matériau, modes, étirement), au centre comment il
+/// s'éteint, à droite comment on le frappe. Livrée bronze sombre : celle
+/// d'un jeu de lames.
+MachinePanel makeModal() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.modal";
+    panel.displayName = "Modal (l'objet frappé)";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#1E1B16";
+    panel.sectionColour = "#15120D";
+    panel.textColour = "#EFE6D2";
+    panel.knobColour = "#B98F4E";
+    panel.gridColumns = 12;
+    panel.gridRows = 4;
+
+    PanelSection objet;
+    objet.title = "OBJECT";
+    objet.accentColour = "#B98F4E";
+    objet.column = 0; objet.row = 0; objet.columnSpan = 4; objet.rowSpan = 4;
+    objet.controls = {
+        control("Material", "MATERIAL", S::LargeKnob, 0, 0),
+        control("Spread", "SPREAD", S::Knob, 1, 0),
+        control("Modes", "MODES", S::Knob, 0, 1),
+    };
+
+    PanelSection extinction;
+    extinction.title = "DECAY";
+    extinction.accentColour = "#D9B36A";
+    extinction.column = 4; extinction.row = 0; extinction.columnSpan = 4; extinction.rowSpan = 4;
+    extinction.controls = {
+        control("Decay", "TIME", S::LargeKnob, 0, 0),
+        control("Decay Tilt", "TILT", S::Knob, 1, 0),
+    };
+
+    PanelSection maillet;
+    maillet.title = "MALLET";
+    maillet.accentColour = "#C97F5A";
+    maillet.column = 8; maillet.row = 0; maillet.columnSpan = 4; maillet.rowSpan = 4;
+    maillet.controls = {
+        control("Mallet Hardness", "HARDNESS", S::Knob, 0, 0),
+        control("Strike Position", "POSITION", S::Knob, 1, 0),
+        control("Velocity to Hardness", "VEL", S::Knob, 0, 1),
+        control("Output Level", "VOLUME", S::Knob, 1, 1),
+    };
+
+    panel.sections = {objet, extinction, maillet};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
@@ -3239,7 +3289,7 @@ const std::vector<MachinePanel>& panels() {
         makeEPiano(), makeObx(), makeSupersaw(), makeWavetable(), makePcmHybrid(), makeTonewheel(), makeGeneric(), makeString(),
         makePiano(), makeDrums(), makeWind(), makeMultisample(),
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
-        makeCone(), makeVector(), makeGranular(), makeCs80()
+        makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal()
     };
     return all;
 }

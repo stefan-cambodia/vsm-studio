@@ -288,6 +288,23 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Analog Character", "voice.analogCharacter"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.modal ---
+    // Le vocabulaire est celui d'un OBJET, pas d'un spectre : matériau,
+    // point de frappe, dureté du maillet. Aucune de ces notions n'existe
+    // ailleurs dans le parc, sauf la position de frappe -- et celle de
+    // `vsm.piano` porte déjà ce sens, donc elle est réemployée telle quelle
+    // (§ 4 : réutiliser quand la fonction existe).
+    {"vsm.modal", {
+        {"Material", "modal.material"},
+        {"Modes", "modal.modeCount"},
+        {"Decay", "modal.decay"},
+        {"Decay Tilt", "modal.decayTilt"},
+        {"Strike Position", "string.pickPosition"},
+        {"Mallet Hardness", "string.pickHardness"},
+        {"Spread", "modal.spread"},
+        {"Velocity to Hardness", "voice.velocitySensitivity"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.multisample ---
     // Peu de paramètres, et TOUS canoniques : le timbre de cette machine vient
     // des échantillons, pas des réglages. `voice.velocitySensitivity` est

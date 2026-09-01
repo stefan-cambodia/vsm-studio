@@ -430,11 +430,15 @@ un jour un arbitrage, tant mieux, et le rapport le dira ; aucune case de
 couverture n'en dépend. Le CDC nouvelle-machine s'applique en entier
 (tests, trait distinctif mesuré, identités, façade, empreinte).
 
-**Et une troisième a suivi le 02/09** : `vsm.cs80` sort le CS-80 de la
+**Et deux autres ont suivi le 02/09.** `vsm.cs80` sort le CS-80 de la
 réserve du § 9, parce que sa condition d'attente — la pression
-polyphonique, qu'aucun moteur ne livrait — a été levée le jour même. Elle
+polyphonique, qu'aucun moteur ne livrait — a été levée le jour même : elle
 ouvre l'architecture **à deux couches par voix** et la **modulation
-par-voix**, la première du parc.
+par-voix**, la première du parc. `vsm.modal` ouvre la **synthèse modale
+d'objets frappés à rapports libres** : `vsm.additive`, la plus proche,
+plafonne à 2,003·f0 pour son second rang (loi de la corde raide) là où une
+barre a le sien à 2,76·f0 — la frontière entre les deux machines est donc
+mesurée, pas affirmée.
 
 Les rangs 1, 3 et 6 comblent des **trous de couverture** : sans eux, des stems
 entiers n'ont aucune machine cible. Les rangs 2, 4 et 5 élargissent surtout la
