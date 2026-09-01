@@ -1014,7 +1014,7 @@ un couplage par le NOM du paramètre -- précisément ce que le projet garde
 stable, déjà verrouillé par les tests `..._parameter_list_size` de chaque
 machine.
 
-**835 paramètres** (34 machines + 13 effets ; 563 du temps des 23 machines,
+**850 paramètres** (35 machines + 13 effets ; 563 du temps des 23 machines,
 308 à l'époque des 12) ont reçu une identité, dont
 `accent.amount` pour le TB-303 ou `fm.operator.3.ratio` pour le DX7 : le
 vocabulaire commun couvre ce qui est commun, et le reste est déclaré tel quel
@@ -1238,7 +1238,7 @@ rappellerait.
 des échantillons chargés, des matrices de modulation, des tables dessinées à la
 main, que rien dans le vocabulaire sémantique ne désigne. D'où
 `ISynthPlugin::saveNativeState()` / `loadNativeState()` -- **vides pour les
-trente-quatre machines du parc**, dont le son EST leur table de paramètres, et
+trente-cinq machines du parc**, dont le son EST leur table de paramètres, et
 c'est une propriété qu'on ne voulait pas perdre. L'état natif est du **texte**
 (base64 produit par l'hôte) : la couche d'interopérabilité n'écrit que du JSON et
 n'a pas à apprendre à manipuler des octets pour une famille de machines sur

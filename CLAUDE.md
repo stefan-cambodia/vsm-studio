@@ -1,7 +1,7 @@
 # VSM Studio — ordre de marche
 
 Tu travailles sur ~/videcode/muz/vsm-studio : un DAW C++/JUCE (moteur temps
-réel, 33 machines modélisées) et sa chaîne d'analyse Python qui reconstruit
+réel, 35 machines modélisées) et sa chaîne d'analyse Python qui reconstruit
 un morceau enregistré en projet jouable. Les feuilles de route et cahiers des
 charges (docs/ROADMAP-*.md, docs/CDC-*.md) sont les critères d'acceptation et
 l'ordre de marche — pas de la documentation d'accompagnement.

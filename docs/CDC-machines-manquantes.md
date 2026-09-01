@@ -803,6 +803,8 @@ Livraison complète du § 10 : 9 tests dédiés (le trait distinctif —
 `vsm.wind` — plus les gardes, la justesse, les molettes), empreinte de
 non-régression, identités sémantiques RÉEMPLOYÉES de `vsm.wind` (mêmes
 commandes, seule la perce change — le précédent du piano avec la corde,
-et le profil de recherche suit d'office), façade en laiton verni. Le parc
+et le profil de recherche suit d'office), façade en laiton verni —
+regardée en aperçu PNG (vsm-panel-preview), disposition et sérigraphie
+lisibles. Le parc
 passe à 35 machines. Le critère d'arbitrage sur le stem de ténor réel se
 mesurera à la première course qui suivra la recompilation du moteur.

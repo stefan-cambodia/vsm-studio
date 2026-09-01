@@ -228,8 +228,8 @@ passages par zéro et mentait sous un VCF (monter la note sort des
 harmoniques de la bande passante, le compte baisse alors que la hauteur
 monte) ; et le CC 1 doit rendre le signal DIFFÉRENT de son témoin sans
 molette. Dans les deux cas la machine fautive est NOMMÉE en cas d'échec.
-Toute molette à zéro est une addition flottante exacte : les 34 empreintes
-audio sont inchangées au bit.
+Toute molette à zéro est une addition flottante exacte : les empreintes
+audio du parc sont inchangées au bit.
 
 Une case non cochée n'est pas un détail à finir plus tard : c'est une machine
 qui se comportera correctement aujourd'hui et se dégradera en silence dans six
