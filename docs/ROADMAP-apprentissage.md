@@ -465,7 +465,13 @@ doit simplement plus être présentée comme la parade au fossé de domaine.
 > Le stem de batterie, lui, ne bouge que de 2,4 % : c'est le mélange qui
 > paie. La cause probable est écrite là-bas (les deux pièces
 > supplémentaires sont celles dont le journal dit que l'échantillon
-> « contient les autres pièces ») et sa correction est l'hypothèse H8.
+> « contient les autres pièces ») et sa correction était l'hypothèse H8 —
+> **mesurée le jour même, elle ne récupère qu'un quart de l'écart**
+> (10,4 % → 7,4 %). Le reste vient de la NOMINATION elle-même : à pièces
+> égales, le classifieur déplace 285 frappes d'une famille à l'autre, et le
+> morceau s'en éloigne. La question que la phase A2 doit désormais porter
+> n'est plus « nomme-t-on mieux » mais **« une frappe mieux nommée est-elle
+> mieux jouée »** — et la réponse mesurée, pour l'instant, est non.
 >
 > **Ce que cela ne dit PAS** : que le modèle est mauvais. Il fait ce qu'on
 > lui demande, mieux que le repli par bandes. Ce que cela dit, c'est que

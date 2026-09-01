@@ -2613,6 +2613,41 @@ utilisé que si on le passe explicitement (`--classifieur-batterie`), et la
 campagne du 01/09 a couru sans lui. Ce qui change, c'est qu'on sait
 maintenant que le passer COÛTE, et le chiffre est écrit.
 
+**H8 EST MESURÉE LE JOUR MÊME : ELLE ÉCHOUE À SON CRITÈRE ET RÉCUPÈRE UN
+QUART DE L'ÉCART.** *Us and Them*, quatrième course de la série :
+
+| course | classifieur | pièces jouées | globale | contre v7 |
+|---|---|---|---|---|
+| v7 | aucun | 3 (par bandes) | 0,1910 | — |
+| v6 | actif | 5 | 0,2108 | +10,4 % |
+| **v8** | actif **+ H8** | **3** (tom et openhat écartés) | **0,2051** | **+7,4 %** |
+
+- **Ce que H8 gagne** : 0,2108 → 0,2051, soit **−2,7 %** — un quart du coût
+  du classifieur, pour 322 frappes abandonnées (321 « tom », 1 « openhat »).
+  Écarter une pièce dont l'échantillon contient le reste du kit est donc
+  bien un gain, et il est chiffré.
+- **Ce que H8 ne gagne pas, et c'était son critère** : le morceau reste à
+  +7,4 % de la course sans classifieur. **L'hypothèse est donc REJETÉE
+  telle qu'écrite** — la propreté des échantillons n'explique qu'une part
+  du coût.
+- **Ce qui reste inexpliqué, et où chercher.** Les deux courses jouent
+  alors les MÊMES trois familles, mais pas les mêmes frappes : sans
+  classifieur `kick2=943 kick=925 hihat=414` (2 282), avec classifieur et
+  H8 `kick=791 hihat=687 kick2=519` (1 997). La nomination du classifieur
+  — meilleure à son banc — déplace 285 frappes d'une famille à l'autre et
+  en abandonne 322, et c'est CELA qui coûte les 7,4 % restants. La question
+  ouverte n'est plus « les échantillons sont-ils propres » mais « une
+  frappe mieux NOMMÉE est-elle mieux JOUÉE » — et la réponse mesurée, pour
+  l'instant, est non.
+
+**H8 RESTE POURTANT LE DÉFAUT, et pour une raison vérifiée plutôt que
+supposée** : dans la configuration par défaut — sans classifieur — **aucune
+pièce non isolée n'apparaît jamais**. Vérifié sur les quatre morceaux de la
+campagne (*Us and Them*, *Sky and Sand*, *Jaguar*, *B4 Wuz Then*) : zéro
+avertissement. H8 est donc gratuite là où le garde-fou se tait, et
+bénéfique là où il parle. Son témoin `--garder-pieces-non-isolees` reste,
+et l'option est en provenance.
+
 **H6 — des stems par un modèle RoFormer, écrite avant sa mesure
 (01/09/2026).** La demande « de meilleurs stems » a désigné Spleeter
 (Deezer) ; la piste est examinée et REFUSÉE sans course : sur MUSDB18,
