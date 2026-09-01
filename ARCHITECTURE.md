@@ -3588,6 +3588,17 @@ modulation par-voix, l'honorer à moitié mentirait au musicien » : la
 modulation par-voix existe désormais, dans cette machine et pour l'instant
 elle seule.
 
+**ET ELLE A GAGNÉ UNE PISTE DÈS SA PREMIÈRE COURSE, ce qui n'était pas
+promis.** Le § 7 du CDC machines autorise d'élargir le catalogue « pour le
+plaisir de jouer, jamais en s'en réclamant pour la reconstruction », et
+c'est à ce titre que `vsm.cs80` est entrée. La preuve de bout en bout que
+le § 8 exige la donne pourtant gagnante : sur *Us and Them*, à conditions
+par ailleurs identiques, le parc passe de 0,1910 (37 machines) à **0,1822**
+(39 machines, −4,6 %), et la piste de BASSE est reprise à `vsm.vocal` par
+`vsm.cs80`. Le détail qui compte : **leurs distances au stem sont égales au
+dix-millième** (0,1851 contre 0,1851). Le stem ne les départageait pas ;
+seul le mélange le pouvait, et il a choisi la double couche.
+
 **ET UNE QUATRIÈME : `vsm.modal`, l'objet frappé à rapports LIBRES.** La
 question qu'il fallait trancher avant d'écrire une ligne : en quoi est-ce
 autre chose que `vsm.additive` avec d'autres rapports ? Réponse mesurée :
