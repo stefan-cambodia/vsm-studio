@@ -17,7 +17,11 @@ Wind — anche et lèvres —, Multisample — l'acoustique reportée par
 Additive — le spectre rang par rang —, West Coast — pliage et porte passe-bas —,
 Phase Distortion — le temps déformé —, Divider — cordes électroniques —,
 PSG — puce 8 bits —, Stochastic — la forme qui divague —, Percussion — peaux et
-barres, modal — et FM Drums — percussions métalliques — + le synthé de test) ont
+barres, modal —, FM Drums — percussions métalliques —, Cone — anche sur perce
+conique, les rangs pairs que le cylindre interdit —, Vector — quatre timbres aux
+coins d'un carré et un trajet qui les mélange —, Granular — le son comme nuage
+de grains —, CS-80 — deux couches par voix, et une pression par note — et
+Modal — les modes d'un objet frappé, à rapports libres — + le synthé de test) ont
 chacune une **empreinte de non-régression audio** qui fige leur rendu. **Toutes les phases
 des feuilles de route sont terminées** (1 à 6 : moteur, machines, optimisation
 SIMD ; 7 : interopérabilité sémantique, CLAP ; 8 à 11 : reconstruction
