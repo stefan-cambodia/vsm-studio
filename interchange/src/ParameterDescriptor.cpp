@@ -245,6 +245,49 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Velocity Sensitivity", "voice.velocitySensitivity"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.cs80 ---
+    // DEUX COUCHES, donc deux jeux d'identités indexées : `layer.1.*` et
+    // `layer.2.*` pour ce qui leur est propre, les enveloppes numérotées à
+    // la suite (1 et 2 pour les amplitudes des deux couches, 3 pour le
+    // filtre partagé). La pression a ses identités propres : aucune autre
+    // machine du parc ne la module.
+    {"vsm.cs80", {
+        {"Layer Mix", "layer.mix"},
+        {"I Shape", "layer.1.oscillator.shape"},
+        {"I Detune", "layer.1.oscillator.detune"},
+        {"I Pulse Width", "layer.1.oscillator.pulseWidth"},
+        {"I High Pass", "layer.1.filter.highPass"},
+        {"I Cutoff", "layer.1.filter.cutoff"},
+        {"I Resonance", "layer.1.filter.resonance"},
+        {"I Env Amount", "layer.1.filter.envAmount"},
+        {"I Level", "layer.1.level"},
+        {"II Shape", "layer.2.oscillator.shape"},
+        {"II Detune", "layer.2.oscillator.detune"},
+        {"II Pulse Width", "layer.2.oscillator.pulseWidth"},
+        {"II High Pass", "layer.2.filter.highPass"},
+        {"II Cutoff", "layer.2.filter.cutoff"},
+        {"II Resonance", "layer.2.filter.resonance"},
+        {"II Env Amount", "layer.2.filter.envAmount"},
+        {"II Level", "layer.2.level"},
+        {"I Amp Attack", "envelope.1.attack"},
+        {"I Amp Decay", "envelope.1.decay"},
+        {"I Amp Sustain", "envelope.1.sustain"},
+        {"I Amp Release", "envelope.1.release"},
+        {"II Amp Attack", "envelope.2.attack"},
+        {"II Amp Decay", "envelope.2.decay"},
+        {"II Amp Sustain", "envelope.2.sustain"},
+        {"II Amp Release", "envelope.2.release"},
+        {"Filter Attack", "envelope.3.attack"},
+        {"Filter Decay", "envelope.3.decay"},
+        {"Filter Sustain", "envelope.3.sustain"},
+        {"Filter Release", "envelope.3.release"},
+        {"Pressure to Cutoff", "pressure.toCutoff"},
+        {"Pressure to Level", "pressure.toLevel"},
+        {"Velocity to Cutoff", "filter.1.velocityAmount"},
+        {"Velocity to Level", "voice.velocitySensitivity"},
+        {"Analog Character", "voice.analogCharacter"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.multisample ---
     // Peu de paramètres, et TOUS canoniques : le timbre de cette machine vient
     // des échantillons, pas des réglages. `voice.velocitySensitivity` est

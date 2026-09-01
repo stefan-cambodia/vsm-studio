@@ -1014,7 +1014,7 @@ un couplage par le NOM du paramètre -- précisément ce que le projet garde
 stable, déjà verrouillé par les tests `..._parameter_list_size` de chaque
 machine.
 
-**892 paramètres** (37 machines + 13 effets ; 563 du temps des 23 machines,
+**927 paramètres** (38 machines + 13 effets ; 563 du temps des 23 machines,
 308 à l'époque des 12) ont reçu une identité, dont
 `accent.amount` pour le TB-303 ou `fm.operator.3.ratio` pour le DX7 : le
 vocabulaire commun couvre ce qui est commun, et le reste est déclaré tel quel
@@ -1238,7 +1238,7 @@ rappellerait.
 des échantillons chargés, des matrices de modulation, des tables dessinées à la
 main, que rien dans le vocabulaire sémantique ne désigne. D'où
 `ISynthPlugin::saveNativeState()` / `loadNativeState()` -- **vides pour les
-trente-sept machines du parc**, dont le son EST leur table de paramètres, et
+trente-huit machines du parc**, dont le son EST leur table de paramètres, et
 c'est une propriété qu'on ne voulait pas perdre. L'état natif est du **texte**
 (base64 produit par l'hôte) : la couche d'interopérabilité n'écrit que du JSON et
 n'a pas à apprendre à manipuler des octets pour une famille de machines sur
@@ -3565,6 +3565,30 @@ l'autre, dispersion comprise — la règle du parc ne connaît pas
 d'exception « parce que c'est de l'aléatoire ».
 
 Le parc passe à **37 machines**.
+
+**ET UNE TROISIÈME LE 02/09 : `vsm.cs80`, qui sort d'une réserve vieille de
+tout le projet.** Le § 9 du CDC machines la gardait « pour plus tard, en la
+faisant bien plutôt qu'à moitié », avec sa raison : double couche, pression
+polyphonique, rubans. Deux de ces trois obstacles sont tombés le jour même —
+le moteur livre tout le MIDI non-note (D0.5) et la doctrine des contrôleurs
+est écrite (§ 10 du CDC nouvelle-machine) ; le troisième, les rubans, est un
+contrôleur PHYSIQUE qu'on ne simule pas par un potentiomètre de plus, et
+c'est dit.
+
+Ce qu'elle apporte est une ARCHITECTURE, pas un timbre : **deux couches
+complètes par voix** (oscillateur, coupe-bas, filtre résonant, deux
+enveloppes — chacune), et surtout **la première modulation PAR VOIX du
+parc**. Toutes les autres machines traitent une pression comme une valeur
+globale ; ici, `PolyPressure` va droit à la voix qui porte la note. Le test
+qui le montre n'a d'équivalent nulle part : deux notes tenues, la pression
+sur une seule, et le spectre de l'autre ne bouge pas (les aigus de la voix
+pressée montent de 50 %, ceux de sa voisine restent à ±20 %). C'est ce qui
+a permis de lever le refus que le § 10 documentait — « le parc n'a pas de
+modulation par-voix, l'honorer à moitié mentirait au musicien » : la
+modulation par-voix existe désormais, dans cette machine et pour l'instant
+elle seule.
+
+Le parc passe à **38 machines**.
 
 ---
 

@@ -222,9 +222,17 @@ de modulation (01/09/2026, même passe)** : c'est le geste qu'un clavier
 envoie quand on appuie dans la touche, et il s'ajoute à la molette, borné à
 1 — les quinze machines à chemin LFO → hauteur l'acceptent, vérifié au banc
 dans la même boucle que le CC 1. La pression POLYPHONIQUE, elle, reste
-refusée en le disant : elle est par-note, et le parc n'a pas de modulation
-par-voix — l'honorer à moitié (une pression qui vibre TOUTES les voix)
-mentirait au musicien.
+refusée en le disant par les quinze : elle est par-note, et elles n'ont pas
+de modulation par-voix — l'honorer à moitié (une pression qui vibre TOUTES
+les voix) mentirait au musicien.
+
+**`vsm.cs80` est l'exception, et elle prouve la règle (02/09/2026)** : sa
+modulation EST par-voix, elle honore donc `PolyPressure` pour de vrai — la
+pression sur une touche ouvre le filtre de cette voix et d'elle seule
+(testé en tenant deux notes et en n'en pressant qu'une). Elle refuse en
+revanche la pression sur une note qui NE SONNE PAS, plutôt que de l'avaler :
+le moteur la compte alors comme ignorée, ce qui est exact — personne ne
+l'a entendue.
 
 **Et la molette de MODULATION (CC 1) suit la même doctrine (01/09/2026)** :
 elle DOSE un vibrato au LFO que la machine possède déjà — une demi-note à

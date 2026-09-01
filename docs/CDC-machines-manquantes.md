@@ -359,9 +359,21 @@ Deux critères, à ne pas confondre :
 - **Un septième soustractif à filtre en échelle** (Roland JX, Korg Polysix,
   Moog Voyager…). Ils sonnent bien, mais le parc en a déjà six : le gain est
   un nom sur une liste, pas une famille de sons.
-- **Le CS-80.** Célèbre, magnifique — et très coûteux à faire honnêtement
+- ~~**Le CS-80.** Célèbre, magnifique — et très coûteux à faire honnêtement
   (double couche complète, sensibilité polyphonique à la pression, rubans).
-  À garder pour plus tard, en le faisant bien plutôt qu'à moitié.
+  À garder pour plus tard, en le faisant bien plutôt qu'à moitié.~~
+  **FAIT LE 02/09/2026, et « plus tard » avait une raison précise qui a
+  cessé d'être vraie** : deux des trois obstacles sont tombés le jour même.
+  Le moteur livre désormais tout le MIDI non-note aux machines (D0.5),
+  pression polyphonique comprise, et le § 10 du CDC nouvelle-machine a fixé
+  la doctrine des contrôleurs. Le troisième — les rubans — est un
+  contrôleur PHYSIQUE : il n'entre pas dans une machine logicielle sans
+  matériel pour le porter, et `vsm.cs80` le dit plutôt que de le simuler
+  par un potentiomètre de plus. La machine apporte au parc ce qu'aucune
+  autre n'avait : **deux couches complètes par voix**, et **une modulation
+  PAR VOIX** — la pression sur une touche ouvre le filtre de cette voix et
+  d'elle seule, ce que le test mesure en tenant deux notes et en n'en
+  pressant qu'une.
 - **Les romplers à bibliothèque** (JV-1080 et suite). Sans les échantillons
   d'origine, il ne resterait qu'un lecteur — que le sampler fait déjà.
 
@@ -416,8 +428,13 @@ manquent réellement au parc, et ce sont elles qu'on ajoute :
 Ce qui n'est PAS promis : un gain de reconstruction. Si l'une d'elles gagne
 un jour un arbitrage, tant mieux, et le rapport le dira ; aucune case de
 couverture n'en dépend. Le CDC nouvelle-machine s'applique en entier
-(tests, trait distinctif mesuré, identités, façade, empreinte). Le CS-80
-reste où le § 9 l'a mis : « à garder pour plus tard, en le faisant bien ».
+(tests, trait distinctif mesuré, identités, façade, empreinte).
+
+**Et une troisième a suivi le 02/09** : `vsm.cs80` sort le CS-80 de la
+réserve du § 9, parce que sa condition d'attente — la pression
+polyphonique, qu'aucun moteur ne livrait — a été levée le jour même. Elle
+ouvre l'architecture **à deux couches par voix** et la **modulation
+par-voix**, la première du parc.
 
 Les rangs 1, 3 et 6 comblent des **trous de couverture** : sans eux, des stems
 entiers n'ont aucune machine cible. Les rangs 2, 4 et 5 élargissent surtout la

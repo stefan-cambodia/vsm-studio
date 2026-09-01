@@ -3133,6 +3133,105 @@ MachinePanel makeGranular() {
     return panel;
 }
 
+/// `vsm.cs80` -- deux couches, et une pression par note.
+///
+/// La disposition suit l'original : les deux couches EN MIROIR de part et
+/// d'autre du mélangeur, chacune avec sa rangée complète (oscillateur, coupe-
+/// bas, filtre) -- c'est ainsi que le panneau du CS-80 est organisé, et c'est
+/// ce qui rend lisible qu'une touche allume deux synthétiseurs. La PRESSION a
+/// sa propre section : elle est le geste de la machine, pas un réglage
+/// d'appoint. Livrée bois et crème, comme les grandes consoles japonaises de
+/// la fin des années 70.
+MachinePanel makeCs80() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.cs80";
+    panel.displayName = "CS-80-style (deux couches, pression par note)";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#241C14";
+    panel.sectionColour = "#191309";
+    panel.textColour = "#F2E7D2";
+    panel.knobColour = "#C9A961";
+    panel.gridColumns = 20;
+    panel.gridRows = 4;
+
+    PanelSection coucheI;
+    coucheI.title = "CHANNEL I";
+    coucheI.accentColour = "#C9A961";
+    coucheI.column = 0; coucheI.row = 0; coucheI.columnSpan = 6; coucheI.rowSpan = 4;
+    coucheI.controls = {
+        control("I Shape", "WAVE", S::Knob, 0, 0),
+        control("I Pulse Width", "PW", S::Knob, 1, 0),
+        control("I Detune", "TUNE", S::Knob, 2, 0),
+        control("I High Pass", "HPF", S::Knob, 3, 0),
+        control("I Cutoff", "LPF", S::LargeKnob, 0, 1),
+        control("I Resonance", "RES", S::Knob, 1, 1),
+        control("I Env Amount", "ENV", S::Knob, 2, 1),
+        control("I Level", "LEVEL", S::Knob, 3, 1),
+    };
+
+    PanelSection melange;
+    melange.title = "MIX";
+    melange.accentColour = "#E5C87F";
+    melange.column = 6; melange.row = 0; melange.columnSpan = 2; melange.rowSpan = 4;
+    melange.controls = {
+        control("Layer Mix", "I / II", S::LargeKnob, 0, 0),
+        control("Output Level", "VOLUME", S::Knob, 0, 1),
+    };
+
+    PanelSection coucheII;
+    coucheII.title = "CHANNEL II";
+    coucheII.accentColour = "#C9A961";
+    coucheII.column = 8; coucheII.row = 0; coucheII.columnSpan = 6; coucheII.rowSpan = 4;
+    coucheII.controls = {
+        control("II Shape", "WAVE", S::Knob, 0, 0),
+        control("II Pulse Width", "PW", S::Knob, 1, 0),
+        control("II Detune", "TUNE", S::Knob, 2, 0),
+        control("II High Pass", "HPF", S::Knob, 3, 0),
+        control("II Cutoff", "LPF", S::LargeKnob, 0, 1),
+        control("II Resonance", "RES", S::Knob, 1, 1),
+        control("II Env Amount", "ENV", S::Knob, 2, 1),
+        control("II Level", "LEVEL", S::Knob, 3, 1),
+    };
+
+    PanelSection toucher;
+    toucher.title = "TOUCH";
+    toucher.accentColour = "#D98F5A";
+    toucher.column = 14; toucher.row = 0; toucher.columnSpan = 3; toucher.rowSpan = 4;
+    toucher.controls = {
+        control("Pressure to Cutoff", "AFT>LPF", S::LargeKnob, 0, 0),
+        control("Pressure to Level", "AFT>VOL", S::Knob, 1, 0),
+        control("Velocity to Cutoff", "VEL>LPF", S::Knob, 0, 1),
+        control("Velocity to Level", "VEL>VOL", S::Knob, 1, 1),
+    };
+
+    PanelSection envs;
+    envs.title = "ENVELOPES";
+    envs.accentColour = "#8FA9C9";
+    envs.column = 17; envs.row = 0; envs.columnSpan = 3; envs.rowSpan = 4;
+    envs.controls = {
+        control("I Amp Attack", "IA", S::Knob, 0, 0),
+        control("I Amp Release", "IR", S::Knob, 1, 0),
+        control("II Amp Attack", "IIA", S::Knob, 2, 0),
+        control("II Amp Release", "IIR", S::Knob, 0, 1),
+        control("Filter Attack", "FA", S::Knob, 1, 1),
+        control("Filter Release", "FR", S::Knob, 2, 1),
+    };
+    panel.omittedParameters = {
+        {"I Amp Decay", "les temps intermédiaires des deux couches : réglés une fois "
+                        "pour la nappe, ils ne se jouent pas"},
+        {"I Amp Sustain", "voir I Amp Decay"},
+        {"II Amp Decay", "voir I Amp Decay"},
+        {"II Amp Sustain", "voir I Amp Decay"},
+        {"Filter Decay", "voir I Amp Decay"},
+        {"Filter Sustain", "voir I Amp Decay"},
+        {"Analog Character", "instabilité d'intonation très lente, commune au parc : "
+                             "elle se règle une fois et ne se joue pas"},
+    };
+
+    panel.sections = {coucheI, melange, coucheII, toucher, envs};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
@@ -3140,7 +3239,7 @@ const std::vector<MachinePanel>& panels() {
         makeEPiano(), makeObx(), makeSupersaw(), makeWavetable(), makePcmHybrid(), makeTonewheel(), makeGeneric(), makeString(),
         makePiano(), makeDrums(), makeWind(), makeMultisample(),
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
-        makeCone(), makeVector(), makeGranular()
+        makeCone(), makeVector(), makeGranular(), makeCs80()
     };
     return all;
 }

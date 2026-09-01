@@ -3,7 +3,7 @@
 Un séquenceur MIDI, un rack de machines vintage modélisées, et une chaîne qui
 reconstruit un morceau enregistré en projet jouable.
 
-**37 machines · 13 effets · 892 paramètres nommés · 1 254 tests verts**
+**38 machines · 13 effets · 927 paramètres nommés · 1 266 tests verts**
 
 > Toutes les illustrations sont des rendus de l'application elle-même, produits hors
 > écran par `vsm-panel-preview`, `vsm-ui-preview`, `vsm-pianoroll-preview` et
@@ -37,7 +37,7 @@ Un échantillon glissé depuis le navigateur tombe sur la piste survolée, **à 
 
 ## 3. Le rack
 
-Trente-six machines, plus une tonalité d'essai qui n'a pas de façade parce qu'elle
+Trente-sept machines, plus une tonalité d'essai qui n'a pas de façade parce qu'elle
 n'a rien à régler. Chacune porte une **empreinte de non-régression audio** qui fige son rendu.
 
 Elles répondent au **jeu MIDI** selon leur nature, jamais par politesse : la molette de
@@ -161,6 +161,14 @@ Une attaque échantillonnée collée sur une queue synthétisée.
 Le pliage d'onde et la porte passe-bas de l'école Buchla.
 
 ![Façade de West Coast (pliage et porte passe-bas)](images/manuel/vsm.westcoast.png)
+
+**CS-80-style (deux couches, pression par note)** — `vsm.cs80`
+
+Une touche allume DEUX synthétiseurs complets, dont on dose le mélange — et
+la pression sur cette touche ouvre le filtre de CETTE note, pas des autres.
+C'est la seule machine du parc dont la modulation soit par voix.
+
+![Façade de CS-80-style](images/manuel/vsm.cs80.png)
 
 **Vector (quatre coins, un trajet)** — `vsm.vector`
 

@@ -50,6 +50,7 @@ add_library(vsm_audio STATIC
     plugins/cone/ConeSynth.cpp
     plugins/vector/VectorSynth.cpp
     plugins/granular/GranularSynth.cpp
+    plugins/cs80/Cs80Synth.cpp
     plugins/multisample/MultisampleSynth.cpp
 )
 
@@ -151,6 +152,7 @@ if (VSM_BUILD_TESTS)
         tests/test_cone_synth.cpp
         tests/test_vector_synth.cpp
         tests/test_granular_synth.cpp
+        tests/test_cs80_synth.cpp
         tests/test_multisample_synth.cpp
         tests/test_midi_learn.cpp
         tests/test_effect_routing.cpp
