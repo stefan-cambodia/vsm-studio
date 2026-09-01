@@ -2487,6 +2487,22 @@ même chaîne sur stems `htdemucs_ft`. Mêmes budgets partout
   du jour, −6,5 % à −29,6 % selon le morceau, moyenne −19 % — le vivier
   GM complet, H1, et le point fixe H5 pour ce qu'il garde.
 
+**UNE DEUXIÈME VARIABLE S'ÉTAIT GLISSÉE DANS LA COMPARAISON DE TÊTE, ET
+C'EST LA PROVENANCE QUI L'A DÉNONCÉE.** Les références (v3, v9, v6…)
+couraient AVEC le classifieur de frappes (`--classifieur-batterie`,
+provenance : `2026-08-23`) ; la campagne courait SANS (provenance :
+`aucun`) — l'option ne se charge que si on la passe, et le script de
+campagne ne la passait pas. C'est ce qui expliquait l'énigme de la découpe
+batterie (5 pièces/2319 frappes hier, 3/2282 aujourd'hui, reproductible :
+la campagne retombait sur la découpe par bandes). Conséquences dites :
+les verdicts H1/H4/H5 tiennent — leurs témoins partagent le même
+`aucun` — mais la ligne « chaîne d'hier → chaîne du jour » compare aussi
+ce choix de modèle, et les batteries de la campagne sont celles du repli
+par bandes, pas du classifieur mesuré meilleur au banc (A2 : charleston
+16/16 au lieu de 8/16). La prochaine course le repasse explicitement, et
+la leçon vaut d'être écrite : LIRE la provenance des deux rapports avant
+de les comparer — elle est faite pour ça, et elle disait la vérité.
+
 *Ce qui suit décrit la première implémentation, conservée pour l'histoire de
 la décision :*
 
