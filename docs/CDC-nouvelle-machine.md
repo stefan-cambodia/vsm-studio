@@ -193,19 +193,23 @@ une machine dont l'instrument a un geste de hauteur CONTINUE honore la
 molette ; un résonateur frappé, un orgue ou un lecteur d'échantillons la
 refusent en connaissance de cause, et le moteur compte le refus.
 
-- **Honorent (22)** : les cinq mono/duophoniques (Minimoog, TB-303, SH-101,
-  MS-20, ARP Odyssey) et dix-sept polyphoniques — Juno-106, Jupiter-8,
+- **Honorent (24)** : les cinq mono/duophoniques (Minimoog, TB-303, SH-101,
+  MS-20, ARP Odyssey) et dix-neuf autres — Juno-106, Jupiter-8,
   Prophet, OB-X, Supersaw, DX7, Wavetable, PCM-Hybrid (le corps synthétique ;
   l'attaque PCM, un transitoire, garde sa lecture), Generic, PhaseDist,
   Additive, West Coast, Vocal (la source glisse, les formants restent),
   String (l'accord de la boucle suit, comme un doigt), Wind (la lèvre pousse
-  la note), PSG (quantifiée par l'horloge, par paliers — fidèle à la puce),
-  Stochastic (la cible du verrou de hauteur se déplace).
+  la note), Cone (l'anche aussi), PSG (quantifiée par l'horloge, par
+  paliers — fidèle à la puce), Stochastic (la cible du verrou de hauteur se
+  déplace), et Multisample (l'avance de lecture est multipliée par
+  2^(demi-tons/12), comme sur un sampler matériel — le « refus en
+  attendant » d'une première rédaction est levé le jour même).
 - **Refusent, et le disent** : piano et piano électrique (une corde ou une
   lame frappée n'a pas de molette), roues phoniques (un Hammond non plus),
-  sampler et multisample (report d'échantillons : la re-hauteur continue
-  reste à faire, refus dit en attendant), diviseur d'octaves (un orgue),
-  les percussions (vsm.drums, TR-808, TR-909, perc, fmdrums), testtone.
+  sampler (sa note SÉLECTIONNE une pièce sans transposer — le mapping d'une
+  boîte à rythmes, où une molette n'a pas d'objet), diviseur d'octaves (un
+  orgue), les percussions (vsm.drums, TR-808, TR-909, perc, fmdrums),
+  testtone.
 
 **Et la molette de MODULATION (CC 1) suit la même doctrine (01/09/2026)** :
 elle DOSE un vibrato au LFO que la machine possède déjà — une demi-note à

@@ -102,6 +102,10 @@ public:
     void setEnvelope(const vsm::audio::dsp::AdsrSettings& settings) { env_.setSettings(settings); }
     /// Coefficient d'un passe-bas à un pôle, ou <= 0 pour « neutre ».
     void setToneCoefficient(float coefficient) { toneCoefficient_ = coefficient; }
+    /// Rapport de la molette de hauteur (2^(demi-tons/12)), poussé une fois
+    /// par bloc. À 1,0 exactement, `increment_ * 1.0` est exact : l'empreinte
+    /// ne bouge pas d'un bit sans molette.
+    void setBendRatio(double ratio) { bendRatio_ = ratio; }
 
     /// Rend un échantillon stéréo. Additionne dans `outL`/`outR`.
     void render(float& outL, float& outR);
@@ -122,6 +126,7 @@ private:
 
     double position_ = 0.0;       // en trames du FICHIER
     double increment_ = 1.0;
+    double bendRatio_ = 1.0;      // molette de hauteur, appliquée à l'avance
     float gain_ = 1.0f;
     bool active_ = false;
     uint8_t note_ = 60, channel_ = 0;
@@ -159,6 +164,16 @@ public:
                  float* outputL, float* outputR, int numSamples) override;
     void setParameter(vsm::audio::plugin::ParamId id, float value) override;
     float getParameter(vsm::audio::plugin::ParamId id) const override;
+    bool handleControlEvent(const vsm::audio::plugin::MidiControlEvent& event) override {
+        // La molette de hauteur re-hausse la lecture, comme sur un sampler
+        // matériel ; le CC 1 est refusé en le disant (pas de LFO ici -- le
+        // vibrato d'un instrument échantillonné est DANS ses échantillons).
+        if (event.kind == vsm::audio::plugin::MidiControlEvent::Kind::PitchBend) {
+            bendSemitones_.store(event.value, std::memory_order_relaxed);
+            return true;
+        }
+        return false;
+    }
     const vsm::audio::plugin::ParameterList& parameterList() const override { return parameterList_; }
     vsm::audio::plugin::PresetState saveState() const override;
     void loadState(const vsm::audio::plugin::PresetState& state) override;
@@ -191,6 +206,8 @@ private:
     double sampleRate_ = 48000.0;
     vsm::audio::plugin::ParameterList parameterList_;
     mutable std::array<std::atomic<float>, kParamCount> params_{};
+    // Molette de hauteur (demi-tons), même contrat que params_.
+    std::atomic<float> bendSemitones_{0.0f};
 
     std::atomic<ProfilePtr> profile_{};
     vsm::audio::engine::VoiceManager<MultisampleVoice, kMaxVoices> voices_;

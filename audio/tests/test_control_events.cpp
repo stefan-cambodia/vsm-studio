@@ -109,7 +109,7 @@ VSM_TEST(a_pitch_bend_actually_changes_what_a_machine_plays) {
                                 "vsm.juno106", "vsm.jupiter8", "vsm.prophet", "vsm.obx", "vsm.supersaw",
                                 "vsm.dx7", "vsm.wavetable", "vsm.pcmhybrid", "vsm.generic",
                                 "vsm.phasedist", "vsm.additive", "vsm.westcoast", "vsm.vocal",
-                                "vsm.string", "vsm.wind", "vsm.psg", "vsm.stochastic"}) {
+                                "vsm.string", "vsm.wind", "vsm.psg", "vsm.stochastic", "vsm.cone"}) {
         const auto nu = rendreUneNote(machine, 0.0f);
         const auto bende = rendreUneNote(machine, 2.0f);   // deux demi-tons vers le haut
 

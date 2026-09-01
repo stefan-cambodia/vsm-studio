@@ -168,7 +168,7 @@ void MultisampleVoice::render(float& outL, float& outR) {
     // plus audible que le relâchement est court.
     if (!env_.isActive()) { active_ = false; return; }
 
-    position_ += increment_;
+    position_ += increment_ * bendRatio_;
     if (zone_->loopEnabled) {
         const double loopEnd = static_cast<double>(zone_->loopEnd);
         const double loopLength = loopEnd - static_cast<double>(zone_->loopStart);
@@ -265,9 +265,18 @@ void MultisampleSynth::process(const MidiNoteEvent* events, int numEvents,
         toneIsNeutral ? 0.0f
                       : static_cast<float>(std::exp(-2.0 * std::acos(-1.0) * cutoff / sampleRate_));
 
+    // La molette de hauteur re-hausse la LECTURE : l'avance de position est
+    // multipliée par 2^(demi-tons/12). Le refus « en attendant » du § 10 du
+    // CDC nouvelle machine est levé -- un sampler matériel se plie, celui-ci
+    // aussi. À molette nulle le rapport vaut exactement 1,0 et l'avance est
+    // inchangée au bit.
+    const double bendRatio = std::pow(2.0, static_cast<double>(
+        bendSemitones_.load(std::memory_order_relaxed)) / 12.0);
+
     voices_.forEachVoice([&](MultisampleVoice& voice) {
         voice.setEnvelope(envelope);
         voice.setToneCoefficient(toneCoefficient);
+        voice.setBendRatio(bendRatio);
     });
 
     int eventIndex = 0;

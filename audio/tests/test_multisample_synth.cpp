@@ -504,3 +504,46 @@ VSM_TEST(multisample_tone_darkens_when_closed) {
     VSM_ASSERT(rms(closed, 4800, 14400) < 0.9 * rms(open, 4800, 14400));
     VSM_ASSERT(slopeEnergy(closed, 4800, 19200) < 0.2 * slopeEnergy(open, 4800, 19200));
 }
+
+VSM_TEST(multisample_honours_pitch_bend_like_a_hardware_sampler) {
+    // Le refus « en attendant » du § 10 du CDC nouvelle machine est levé : la
+    // molette de hauteur multiplie l'avance de lecture par 2^(demi-tons/12),
+    // comme sur un sampler matériel. À molette nulle, le rapport vaut
+    // exactement 1,0 : l'avance -- donc l'empreinte -- est inchangée au bit.
+    // Le CC 1, lui, reste refusé en le disant : le vibrato d'un instrument
+    // échantillonné est DANS ses échantillons, la machine n'a pas de LFO.
+    auto pitchOf = [](const std::vector<float>& x, size_t from, size_t count) {
+        // Hauteur par autocorrélation : suffisant pour « c'est plus aigu ».
+        const float* p = x.data() + from;
+        const size_t lagMin = static_cast<size_t>(kSampleRate / 2000.0);
+        const size_t lagMax = std::min(count / 2, static_cast<size_t>(kSampleRate / 40.0));
+        double best = -1.0; size_t bestLag = lagMin;
+        for (size_t lag = lagMin; lag <= lagMax; ++lag) {
+            double acc = 0.0;
+            for (size_t i = 0; i + lag < count; ++i)
+                acc += static_cast<double>(p[i]) * p[i + lag];
+            if (acc > best) { best = acc; bestLag = lag; }
+        }
+        return kSampleRate / static_cast<double>(bestLag);
+    };
+
+    auto plie = makeMultisample();
+    plie->setProfile(makeTestProfile());
+    MidiControlEvent bend;
+    bend.kind = MidiControlEvent::Kind::PitchBend;
+    bend.value = 2.0f;
+    VSM_ASSERT(plie->handleControlEvent(bend));
+    const auto haut = render(*plie, {noteOn(0, 64, 100)}, 24000);
+
+    auto temoin = makeMultisample();
+    temoin->setProfile(makeTestProfile());
+    const auto nu = render(*temoin, {noteOn(0, 64, 100)}, 24000);
+
+    VSM_ASSERT(pitchOf(haut, 4800, 16000) > pitchOf(nu, 4800, 16000) * 1.05);
+
+    MidiControlEvent cc;
+    cc.kind = MidiControlEvent::Kind::ControlChange;
+    cc.index = 1;
+    cc.value = 1.0f;
+    VSM_ASSERT(!temoin->handleControlEvent(cc));
+}
