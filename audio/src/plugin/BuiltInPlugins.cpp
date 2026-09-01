@@ -32,6 +32,7 @@
 #include "divider/DividerSynth.h"
 #include "psg/PsgSynth.h"
 #include "stochastic/StochasticSynth.h"
+#include "cone/ConeSynth.h"
 #include "multisample/MultisampleSynth.h"
 
 namespace vsm::audio::plugin {
@@ -158,6 +159,8 @@ void registerBuiltInPlugins() {
         (void)forceLinkPsg;
         vsm::plugins::stochastic::StochasticSynth forceLinkStochastic;
         (void)forceLinkStochastic;
+        vsm::plugins::cone::ConeSynth forceLinkCone;
+        (void)forceLinkCone;
     }
     {
         vsm::plugins::multisample::MultisampleSynth forceLinkMultisample;

@@ -708,3 +708,101 @@ toujours rien de tel. Ce qui change, c'est qu'on sait maintenant que la
 mesure ne s'obtiendra pas en passant un morceau de plus dans la chaîne, et ce
 qu'il faudrait à la place. Une condition de réouverture qu'on ne peut pas
 remplir n'est pas une condition : c'est une porte peinte sur un mur.
+
+**LE DOSSIER EST ROUVERT SUR INSTRUCTION (01/09/2026), ET LE BANC A PARLÉ
+AVANT TOUTE MODIFICATION.** L'utilisateur demande de couvrir « saxophone,
+hautbois, flûte » ; la voie est celle que le § 44 d'ARCHITECTURE prescrit —
+le COUPLAGE, pas une sixième topologie — et elle part du prototype
+`audio/plugins/cone/` (hors build), qui a déjà la régulation. Un banc dédié
+mesure justesse, niveau et énergie RANG PAR RANG (Goertzel sur n·f0, la
+question du § 44 posée d'office) sur 45 configurations (5 notes de la
+tessiture d'un ténor × 3 raideurs × 3 souffles, drift et bruit coupés).
+L'état de départ, mesuré tel quel — et une leçon de banc AVANT le premier
+chiffre : une première lecture donnait un « spectre de saxophone » à la note
+46 (h2/h1 jusqu'à 1,10) qui fondait en montant. C'était un ARTEFACT : le
+Goertzel visait n·f0 DEMANDÉ alors que la note sort jusqu'à +78 cents
+au-dessus — sur une fenêtre de 1,5 s il lisait les jupes, pas les pics. La
+leçon est la jumelle de celle du § 44 (« où est l'énergie ? ») : l'énergie
+se mesure aux rangs de la note PRODUITE, pas de la note demandée. Corrigé,
+le tableau devient :
+
+| sur les 45 configurations | valeur |
+|---|---|
+| justesse | +36 à +78 cents, l'écart DÉCROÎT avec f0 |
+| niveau efficace | 0,19-0,21 partout (la régulation tient) |
+| h3/h1 · h5/h1 | 0,25-0,29 · 0,10-0,14 — les IMPAIRS sont là |
+| h2/h1 · h4/h1 | 0,03-0,15 · 0,02-0,10 — les PAIRS manquent, partout |
+
+Le spectre est UNIFORME sur la tessiture et il n'est pas vide : c'est la
+signature d'une non-linéarité quasi IMPAIRE (le tanh de l'injection est
+impair, la table d'anche sature symétriquement autour du repos) dans une
+boucle qui, elle, porterait la série complète. Le problème n'est plus « la
+sélectivité contre le timbre » : c'est la SOURCE qui ne produit pas de pair.
+
+**Deux hypothèses, écrites avant leurs mesures (règle du § 5 duodecies de
+la feuille de route fusion) :**
+
+- **HC1 — la justesse est un retard de groupe.** L'écart décroît avec la
+  note : signature d'une compensation faite au continu et non à f0.
+  Compenser, dans `setTuning`, le retard de groupe À f0 des filtres de
+  boucle — les deux pôles de perte, et l'AVANCE de phase de l'apex qui est
+  aujourd'hui ignorée — ramène les 45 configurations sous ±30 cents sans
+  toucher au spectre. Témoin : la compensation actuelle.
+- **HC3 — l'anche asymétrique injecte le pair à la source.** Une anche qui
+  BAT est asymétrique — fermeture en butée dure contre la table, ouverture
+  douce — et un cycle asymétrique porte des rangs pairs même sous une
+  boucle sélective. Rendre la table d'anche et la borne d'injection
+  asymétriques (la butée de fermeture plus proche que la butée d'ouverture)
+  doit porter h2/h1 à ≥ 0,3 sur la majorité des 45 configurations, sans
+  perdre la justesse de HC1 ni la tenue du niveau. Une variable à la fois :
+  HC1 d'abord, HC3 ensuite.
+
+Critère d'acceptation final, celui du § 14 : sur les zones de boucle du
+ténor GeneralUser (l'enregistrement isolé dont ce paragraphe se sert
+depuis le 31/08), la machine doit porter des rangs pairs mesurables
+(h2 ≥ 0,3 en médiane) en restant juste et bornée — et concourir à
+l'arbitrage comme toute machine du parc, où le multisample reste son
+témoin naturel.
+
+**LES DEUX HYPOTHÈSES SONT TRANCHÉES LE JOUR MÊME, ET LA MACHINE EST AU
+PARC (01/09/2026).**
+
+- **HC1 CONFIRMÉE.** La phase de la cascade de boucle (deux pôles de perte,
+  apex) évaluée sur H(e^jw) à w = 2π·f0/fs et retirée du trajet :
+  **45/45 configurations justes** (−13 à +8 cents) contre 0/45 avant
+  (+36 à +78). L'avance de phase de l'apex, ignorée par la compensation au
+  continu, était bien le terme qui manquait.
+- **HC3 CONFIRMÉE, SOUS UNE SECONDE FORME, et le chemin vaut la
+  conclusion.** Première forme (courber la table d'anche) MESURÉE ET
+  REJETÉE : h2/h1 recule (0,078 → 0,026) — l'anche BAT déjà (butée +1
+  atteinte, dp de −2,1 à +0,9), le pair naît à la source mais un limiteur
+  de boucle IMPAIR (le tanh) écrase l'onde vers un carré symétrique. Et le
+  limiteur est structurel : sans lui, la boucle double sa période
+  (−1200 cents). La forme qui reste : rendre le LIMITEUR asymétrique
+  (terme en x², l'idée du micro de `vsm.epiano`), dose-réponse mesurée
+  (asym 0 → h2 0,07 ; −1,2 → 0,42 ; falaise du sous-harmonique à −1,4).
+  Résultat : **h2/h1 ≥ 0,3 sur 45/45 configurations, moyenne 0,365**
+  (cible ténor 0,42), h4/h1 0,25, et `Brassiness` devient le bouton
+  d'embouchure qui échange l'impair contre le pair (0,15 → h2 0,42/h3
+  0,13 ; 0,7 → h2 0,23/h3 0,29).
+- **Trois gardes mesurées au passage**, chacune avec son seuil : la course
+  du souffle plafonne à 0,70 (au-delà, l'anche reste fermée plus d'un
+  demi-cycle et la boucle sous-harmonise — le couac du vrai instrument,
+  qu'une machine faite pour être cherchée ne doit pas avoir sur sa
+  course) ; le mordant est asservi à un souffle ralenti de 150 ms (monté
+  plus vite que la boucle n'établit f0, il verrouillait un mode haut,
+  +2521 cents) ; et le limiteur garde un plancher de drive (brassiness à
+  zéro le supprimait, et la boucle sous-harmonisait).
+- **Et une leçon de banc** : le premier estimateur mesurait les rangs à
+  n·f0 DEMANDÉ sur une note qui sortait +78 cents au-dessus — il lisait
+  les jupes et inventait un « spectre de saxophone » au grave. L'énergie se
+  mesure aux rangs de la note PRODUITE.
+
+Livraison complète du § 10 : 9 tests dédiés (le trait distinctif —
+`cone_bore_carries_even_harmonics`, miroir exact du test d'imparité de
+`vsm.wind` — plus les gardes, la justesse, les molettes), empreinte de
+non-régression, identités sémantiques RÉEMPLOYÉES de `vsm.wind` (mêmes
+commandes, seule la perce change — le précédent du piano avec la corde,
+et le profil de recherche suit d'office), façade en laiton verni. Le parc
+passe à 35 machines. Le critère d'arbitrage sur le stem de ténor réel se
+mesurera à la première course qui suivra la recompilation du moteur.

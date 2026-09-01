@@ -167,6 +167,31 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Analog Character", "voice.analogCharacter"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.cone ---
+    // Les MÊMES identités que `vsm.wind`, et c'est voulu (le précédent est
+    // celui de `vsm.piano` avec la corde) : les deux machines ont exactement
+    // les mêmes commandes — souffle, anche, pavillon — et ce qui les sépare
+    // est la PERCE, pas la façade. Une identité neuve par machine pour le
+    // même geste serait la faute que le § 8.4 interdit ; et le profil de
+    // recherche suivant les identités, le cône hérite d'office de celui du
+    // vent.
+    {"vsm.cone", {
+        {"Breath Pressure", "wind.breathPressure"},
+        {"Reed Stiffness", "wind.reedStiffness"},
+        {"Brassiness", "wind.brassiness"},
+        {"Breath Noise", "wind.breathNoise"},
+        {"Bell Damping", "wind.bellDamping"},
+        {"Attack", "envelope.1.attack"},
+        {"Release", "envelope.1.release"},
+        {"Vibrato Rate", "effect.vibrato.rate"},
+        {"Vibrato Depth", "effect.vibrato.depth"},
+        {"Vibrato Delay", "lfo.1.delay"},
+        {"Tone Bass", "tone.bass"},
+        {"Tone Treble", "tone.treble"},
+        {"Velocity Sensitivity", "voice.velocitySensitivity"},
+        {"Analog Character", "voice.analogCharacter"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.multisample ---
     // Peu de paramètres, et TOUS canoniques : le timbre de cette machine vient
     // des échantillons, pas des réglages. `voice.velocitySensitivity` est

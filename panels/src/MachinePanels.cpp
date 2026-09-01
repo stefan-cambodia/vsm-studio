@@ -2879,13 +2879,90 @@ MachinePanel makeStochastic() {
     return panel;
 }
 
+/// `vsm.cone` -- l'anche sur perce conique : saxophone, hautbois, basson.
+///
+/// LA FAÇADE EST CELLE DE `vsm.wind`, COMMANDE POUR COMMANDE, et c'est une
+/// décision d'en-tête de la machine : ce qui sépare le cône du cylindre est
+/// la PERCE, pas le geste. Souffle, anche, pavillon, articulation, vibrato --
+/// le musicien retrouve les mêmes mains. Seule la livrée change : le laiton
+/// verni d'un saxophone, pour que l'oeil distingue d'emblée les deux vents.
+MachinePanel makeCone() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.cone";
+    panel.displayName = "Cone (anche sur perce conique)";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#241A0F";
+    panel.sectionColour = "#191106";
+    panel.textColour = "#F5E8C8";
+    panel.knobColour = "#E0B45C";
+    panel.gridColumns = 16;
+    panel.gridRows = 4;
+
+    PanelSection mouth;
+    mouth.title = "MOUTHPIECE";
+    mouth.accentColour = "#E0B45C";
+    mouth.column = 0; mouth.row = 0; mouth.columnSpan = 5; mouth.rowSpan = 4;
+    mouth.controls = {
+        control("Breath Pressure", "BREATH", S::LargeKnob, 0, 0),
+        control("Reed Stiffness", "REED", S::Knob, 1, 0),
+        control("Breath Noise", "AIR", S::Knob, 2, 0),
+        control("Velocity Sensitivity", "TOUCH", S::Knob, 1, 1),
+    };
+
+    PanelSection bore;
+    bore.title = "CONICAL BORE";
+    bore.accentColour = "#C29140";
+    bore.column = 5; bore.row = 0; bore.columnSpan = 3; bore.rowSpan = 4;
+    bore.controls = {
+        control("Bell Damping", "BELL", S::Knob, 0, 0),
+        control("Brassiness", "EMBOUCHURE", S::Knob, 0, 1),
+    };
+
+    PanelSection envelope;
+    envelope.title = "ARTICULATION";
+    envelope.accentColour = "#9CB0C9";
+    envelope.column = 8; envelope.row = 0; envelope.columnSpan = 3; envelope.rowSpan = 4;
+    envelope.controls = {
+        control("Attack", "TONGUE", S::VerticalSlider, 0, 0, 1, 2),
+        control("Release", "RELEASE", S::VerticalSlider, 1, 0, 1, 2),
+    };
+
+    PanelSection vibrato;
+    vibrato.title = "VIBRATO";
+    vibrato.accentColour = "#9CB0C9";
+    vibrato.column = 11; vibrato.row = 0; vibrato.columnSpan = 3; vibrato.rowSpan = 4;
+    vibrato.controls = {
+        control("Vibrato Depth", "DEPTH", S::Knob, 0, 0),
+        control("Vibrato Rate", "RATE", S::Knob, 1, 0),
+        control("Vibrato Delay", "DELAY", S::Knob, 0, 1),
+    };
+
+    PanelSection output;
+    output.title = "OUTPUT";
+    output.accentColour = "#E0B45C";
+    output.column = 14; output.row = 0; output.columnSpan = 2; output.rowSpan = 4;
+    output.controls = {
+        control("Tone Bass", "BASS", S::Knob, 0, 0),
+        control("Tone Treble", "TREBLE", S::Knob, 0, 1),
+        control("Output Level", "VOLUME", S::Knob, 1, 0),
+    };
+    panel.omittedParameters = {
+        {"Analog Character", "instabilité d'intonation très lente, commune au parc : "
+                             "elle se règle une fois et ne se joue pas"},
+    };
+
+    panel.sections = {mouth, bore, envelope, vibrato, output};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
         makeJuno106(), makeJupiter8(), makeProphet(), makeMs20(), makeArpOdyssey(), makeDx7(), makeSampler(),
         makeEPiano(), makeObx(), makeSupersaw(), makeWavetable(), makePcmHybrid(), makeTonewheel(), makeGeneric(), makeString(),
         makePiano(), makeDrums(), makeWind(), makeMultisample(),
-        makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic()
+        makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
+        makeCone()
     };
     return all;
 }

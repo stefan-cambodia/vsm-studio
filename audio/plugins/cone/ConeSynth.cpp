@@ -1,6 +1,8 @@
 #include "ConeSynth.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
+#include <cstdio>
+#include <cstdlib>
 
 namespace vsm::plugins::cone {
 
@@ -9,6 +11,37 @@ using namespace vsm::audio::dsp;
 
 namespace {
 constexpr uint64_t kBaseSeed = 0x434F4E45ULL; // "CONE"
+
+/// Asymétrie du limiteur de boucle : c'est ELLE qui porte le rang pair, et sa
+/// valeur sort d'un balayage mesuré (voir le commentaire de l'étage dans
+/// `render`). Dose-réponse relevée à brassiness d'usine, repos 0,7 :
+///
+///   asym    0,00  -0,50  -0,75  -1,00  -1,20  -1,30  | -1,40
+///   h2/h1   0,07   0,13   0,24   0,35   0,42   0,45  | PÉRIODE DOUBLÉE
+///
+/// La cible est le ténor réel du CDC machines § 14 (h2 = 0,42) ; -1,20
+/// l'atteint en laissant une marge d'un cran avant la falaise du
+/// sous-harmonique, qui arrive à -1,4 quel que soit le drive.
+#ifdef CONE_DEBUG
+// Sur le banc, les constantes d'exploration se règlent par l'environnement :
+// un balayage ne doit pas coûter une recompilation par point.
+inline float lireEnv(const char* nom, float defaut) {
+    const char* v = std::getenv(nom);
+    return v ? std::strtof(v, nullptr) : defaut;
+}
+static const float kLimiterAsym = lireEnv("CONE_ASYM", -1.2f);
+#else
+constexpr float kLimiterAsym = -1.2f;
+#endif
+
+/// Plancher du drive du limiteur. L'étage bornait l'amplitude SEULEMENT si
+/// brassiness > 0 ; à zéro, la boucle s'emballait jusqu'au clamp dur et
+/// DOUBLAIT sa période (-1200 cents mesurés). Le limiteur est structurel :
+/// il s'applique toujours, et brassiness ne règle que son mordant.
+constexpr float kDriveFloor = 0.3f;
+
+/// Constante de temps du mordant (~150 ms à 48 kHz).
+constexpr float kDriveRampCoeff = 1.0f / (0.15f * 48000.0f);
 
 /// Le si bémol grave d'un saxophone baryton est vers 35 Hz ; 25 Hz laisse la
 /// marge d'un basson sans réserver de mémoire pour rien. Le trajet étant
@@ -20,6 +53,11 @@ float noteToHz(uint8_t note, float semitones) {
     return 440.0f * std::exp2f((static_cast<float>(note) + semitones - 69.0f) / 12.0f);
 }
 } // namespace
+
+#ifdef CONE_DEBUG
+float ConeVoice::kReedCurve = lireEnv("CONE_COURBE", 0.0f);
+float ConeVoice::kReedRest = lireEnv("CONE_REPOS", 0.7f);
+#endif
 
 // ---------------------------------------------------------------------------
 // Voix
@@ -39,6 +77,7 @@ void ConeVoice::prepare(double sampleRate, uint64_t seed) {
     // premiers échantillons.
     bore_.reset();
     breath_ = target_ = 0.0f;
+    driveRamp_ = 0.0f;
     dcX1_ = dcY1_ = noiseLp_ = 0.0f;
     active_ = released_ = false;
 }
@@ -49,6 +88,7 @@ void ConeVoice::noteOn(uint8_t channel, uint8_t note, uint8_t velocity) {
     velocity_ = velocity;
     bore_.reset();
     breath_ = 0.0f;
+    driveRamp_ = 0.0f;
     dcX1_ = dcY1_ = noiseLp_ = 0.0f;
     vibratoPhase_ = 0.0;
     vibratoRamp_ = 0.0f;
@@ -62,10 +102,13 @@ void ConeVoice::updateTuning(const Params& p) {
     vibratoIncrement_ = static_cast<double>(std::max(0.1f, p.vibratoRate)) / sampleRate_;
     const float rampSeconds = std::max(0.01f, p.vibratoDelay);
     vibratoRampCoeff_ = 1.0f - std::exp(-1.0f / (rampSeconds * static_cast<float>(sampleRate_)));
-    const float vibratoSemis = std::sin(static_cast<float>(vibratoPhase_ * kTwoPi))
-                             * p.vibratoDepth * vibratoRamp_ * 0.5f;
+    // Sinus hissé sans changer l'ordre d'association du produit d'origine ;
+    // le terme de la molette de modulation est additif, exact à zéro.
+    const float sinus = std::sin(static_cast<float>(vibratoPhase_ * kTwoPi));
+    const float vibratoSemis = sinus * p.vibratoDepth * vibratoRamp_ * 0.5f
+                             + sinus * (p.wheelVibrato * vibratoRamp_ * 0.5f);
 
-    const float hz = noteToHz(note_, driftSemis + vibratoSemis);
+    const float hz = noteToHz(note_, driftSemis + vibratoSemis + p.bendSemitones);
     bore_.setTuning(hz, p.bellDamping);
 
     attackCoeff_ = 1.0f - std::exp(-1.0f / (std::max(0.002f, p.attackSeconds) * static_cast<float>(sampleRate_)));
@@ -73,7 +116,18 @@ void ConeVoice::updateTuning(const Params& p) {
 
     const float velocity = static_cast<float>(velocity_) / 127.0f;
     velocityGain_ = 1.0f - std::clamp(p.velocitySensitivity, 0.0f, 1.0f) * (1.0f - velocity);
-    target_ = released_ ? 0.0f : std::clamp(p.breathPressure, 0.0f, 1.0f) * velocityGain_;
+    // LA COURSE DU SOUFFLE EST RECOMPRIMÉE, et le seuil est mesuré : au-delà
+    // d'un souffle effectif d'environ 0,785, l'anche reste fermée plus d'un
+    // demi-cycle et la boucle SOUS-HARMONISE (-1200 cents sur les 13
+    // configurations à souffle 0,9 de la grille). C'est le couac du vrai
+    // instrument -- mais une machine faite pour être cherchée n'a pas droit à
+    // une zone pathologique sur sa course (§ 3 du CDC). La course reste
+    // LINÉAIRE et part de zéro (pas de souffle, pas de note -- le trait testé
+    // de `vsm.wind` vaut ici aussi) ; seul le plafond change : 0,70 — le
+    // coin bouton-à-fond × mordant-à-fond × note haute sous-harmonisait
+    // encore à 0,75, et la marge se prend sur le plafond, pas sur le test.
+    const float souffle = 0.70f * std::clamp(p.breathPressure, 0.0f, 1.0f);
+    target_ = released_ ? 0.0f : souffle * velocityGain_;
 }
 
 float ConeVoice::render(const Params& p) {
@@ -100,11 +154,58 @@ float ConeVoice::render(const Params& p) {
     const float reed = reedTable(difference, std::clamp(p.reedStiffness, 0.0f, 1.0f));
     float pressure = breath + difference * reed;
 
-    // Plus on pousse, plus l'onde se raidit et plus ça claque : c'est ce qui
-    // sépare un saxophone tenu piano d'un ténor poussé.
-    if (p.brassiness > 0.0f) {
-        const float drive = 1.0f + 6.0f * p.brassiness * breath_;
-        pressure = std::tanh(pressure * drive) / std::sqrt(drive);
+#ifdef CONE_DEBUG
+    // Instrumentation de banc (hors build DAW) : excursions du point de
+    // fonctionnement, imprimées une fois la note établie.
+    {
+        static thread_local float dpMin = 1e9f, dpMax = -1e9f, rMin = 1e9f, rMax = -1e9f;
+        static thread_local long n = 0;
+        if (n > 48000) {
+            dpMin = std::min(dpMin, difference); dpMax = std::max(dpMax, difference);
+            rMin = std::min(rMin, reed); rMax = std::max(rMax, reed);
+        }
+        if (++n == 120000) {
+            std::printf("      [debug] dp [%+.3f, %+.3f]  anche [%+.3f, %+.3f]\n",
+                        dpMin, dpMax, rMin, rMax);
+            n = 0; dpMin = rMin = 1e9f; dpMax = rMax = -1e9f;
+        }
+    }
+#endif
+
+    // LE LIMITEUR DE BOUCLE, ASYMÉTRIQUE — c'est lui qui fait le saxophone
+    // (HC3 du CDC machines § 14, seconde forme, celle que la mesure a
+    // retenue). Le chemin qui y a mené, en trois mesures :
+    //
+    //  1. l'anche BAT déjà (butée +1 atteinte, dp de -2,1 à +0,9) : le rang
+    //     pair est produit à la source. Courber la table d'anche ou déplacer
+    //     son repos n'y change rien (h2/h1 recule même, 0,078 -> 0,026) ;
+    //  2. un tanh IMPAIR écrase les deux rails vers un carré symétrique : il
+    //     ne reste que l'impair (h2/h1 <= 0,08 partout). SANS le tanh, la
+    //     boucle double sa période (-1200 cents) : le limiteur est
+    //     structurel, on ne peut pas juste l'ôter ;
+    //  3. la sortie est de rendre le LIMITEUR asymétrique (terme en x², la
+    //     même idée que le micro de `vsm.epiano`) : le rang pair naît au
+    //     point même qui fixe l'onde, et il survit.
+    //
+    // Brassiness devient le bouton d'EMBOUCHURE : l'impair contre le pair
+    // (mesuré : cuivre 0,15 -> h2 0,42 h3 0,13 ; cuivre 0,5 -> h2 0,28
+    // h3 0,26 ; cuivre 0,7 -> h2 0,23 h3 0,29). Le drive garde un plancher :
+    // le limiteur s'applique TOUJOURS, sans quoi la boucle sous-harmonise.
+    {
+        // Le mordant est PLAFONNÉ : poussé sans borne, le drive fait sauter
+        // la boucle sur un mode haut (note 70, brassiness 1,0 : +2521 cents
+        // mesurés). Un instrument poussé surbouffle d'une octave, pas de
+        // trois ; le plafond garde tout le haut de la course jouable.
+        // ... et il est asservi à un souffle RALENTI (~150 ms) : la capture
+        // de mode se joue pendant l'attaque, et un mordant qui monte plus
+        // vite que la boucle n'établit f0 verrouille un mode haut (note 70,
+        // brassiness 1,0 : +2521 cents, quel que soit le plafond). Le
+        // musicien fait pareil : l'émission d'abord, le mordant ensuite.
+        driveRamp_ += kDriveRampCoeff * (breath_ - driveRamp_);
+        const float drive = 1.0f + kDriveFloor
+                          + std::min(1.5f, 6.0f * p.brassiness * driveRamp_);
+        pressure = std::tanh((pressure + kLimiterAsym * pressure * pressure) * drive)
+                 / std::sqrt(drive);
     }
 
     bore_.inject(pressure);
@@ -202,6 +303,8 @@ void ConeSynth::process(const MidiNoteEvent* events, int numEvents,
     p.vibratoDepth = params_[kVibratoDepth].load(std::memory_order_relaxed);
     p.vibratoDelay = params_[kVibratoDelay].load(std::memory_order_relaxed);
     p.velocitySensitivity = params_[kVelocitySensitivity].load(std::memory_order_relaxed);
+    p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
+    p.wheelVibrato = modWheel_.load(std::memory_order_relaxed);
 
     const float drift = params_[kAnalogCharacter].load(std::memory_order_relaxed);
     bassShelf_.set(Biquad::Type::LowShelf, 250.0f, 0.707f,

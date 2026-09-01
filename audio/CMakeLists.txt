@@ -47,6 +47,7 @@ add_library(vsm_audio STATIC
     plugins/divider/DividerSynth.cpp
     plugins/psg/PsgSynth.cpp
     plugins/stochastic/StochasticSynth.cpp
+    plugins/cone/ConeSynth.cpp
     plugins/multisample/MultisampleSynth.cpp
 )
 
@@ -145,6 +146,7 @@ if (VSM_BUILD_TESTS)
         tests/test_divider_synth.cpp
         tests/test_psg_synth.cpp
         tests/test_stochastic_synth.cpp
+        tests/test_cone_synth.cpp
         tests/test_multisample_synth.cpp
         tests/test_midi_learn.cpp
         tests/test_effect_routing.cpp

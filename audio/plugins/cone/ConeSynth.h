@@ -167,12 +167,28 @@ public:
         lossA_ = 1.0f - std::exp(-vsm::audio::dsp::kTwoPi * coupure
                                  / static_cast<float>(sampleRate_));
         lossA_ = std::clamp(lossA_, 0.002f, 0.98f);
-        // Retard de groupe du pôle, retiré du trajet pour que la note reste
-        // juste : sans cette compensation, une coupure basse fait chanter la
-        // machine sous sa hauteur.
-        const float retardPole = 2.0f * (1.0f - lossA_) / lossA_;
 
-        const float remainder = total - retardPole;
+        // HC1 (CDC machines § 14) : LA PHASE DE LA BOUCLE SE COMPENSE À f0,
+        // PAS AU CONTINU. La première version retirait `2·(1-a)/a` — le
+        // retard de groupe des pôles À FRÉQUENCE NULLE — et ignorait l'apex.
+        // Mesuré : la note sortait de +36 (aigu) à +78 cents (grave), l'écart
+        // décroissant avec f0, ce qui est exactement la signature d'une
+        // compensation faite au mauvais point ET de l'AVANCE de phase du
+        // passe-haut d'apex, qui raccourcit le tour de boucle d'autant plus
+        // que la note est basse. Ici, la phase de la cascade (deux pôles de
+        // perte, apex) est évaluée sur H(e^{jw}) à w = 2π·f0/fs, et le trajet
+        // est corrigé de son retard de phase exact.
+        const double w = vsm::audio::dsp::kTwoPi * static_cast<double>(hz)
+                       / sampleRate_;
+        const double b = 1.0 - static_cast<double>(lossA_);
+        const double phasePole = -std::atan2(b * std::sin(w), 1.0 - b * std::cos(w));
+        const double a2 = static_cast<double>(apexA_);
+        const double phaseApex = std::atan2(std::sin(w), 1.0 - std::cos(w))
+                               - std::atan2(a2 * std::sin(w), 1.0 - a2 * std::cos(w));
+        const double phaseBoucle = 2.0 * phasePole + phaseApex;
+        const float retardFiltres = static_cast<float>(-phaseBoucle / w);
+
+        const float remainder = total - retardFiltres;
         float integerPart = std::floor(remainder - 0.5f);
         if (integerPart < 2.0f) integerPart = 2.0f;
         const float maxInteger = static_cast<float>(line_.size() - 2);
@@ -287,6 +303,12 @@ public:
         float vibratoDepth = 0.15f;
         float vibratoDelay = 0.35f;
         float velocitySensitivity = 0.6f;
+        // Molette de hauteur, en demi-tons — la lèvre pousse la note, comme
+        // sur `vsm.wind`. À zéro l'addition est exacte.
+        float bendSemitones = 0.0f;
+        // Molette de MODULATION (CC 1), 0..1 : profondeur de vibrato ajoutée
+        // à celle du panneau, même LFO, même montée. Additif, exact à zéro.
+        float wheelVibrato = 0.0f;
     };
 
     void prepare(double sampleRate, uint64_t seed);
@@ -300,19 +322,38 @@ public:
     float render(const Params& p);
 
 private:
-    /// Coefficient de réflexion de l'anche — caractéristique linéaire SATURÉE,
-    /// exactement celle de `vsm.wind`. C'est sa saturation qui fait passer le
-    /// gain de boucle au-dessus du seuil ; sans elle la boucle serait linéaire
-    /// et s'amortirait, quel que soit le tuyau.
+    /// Coefficient de réflexion de l'anche — la caractéristique saturée de
+    /// `vsm.wind`. Le terme de COURBURE (dp²) reste dans la formule parce que
+    /// son essai est une mesure qu'il ne faut pas refaire : à 0,35, h2/h1
+    /// RECULAIT (0,078 -> 0,026) — l'anche bat déjà, et courber sa table ne
+    /// fait que déplacer le point de fonctionnement. Le rang pair ne se gagne
+    /// pas ici : il se gagne au LIMITEUR de boucle (voir `render`), et la
+    /// courbure est donc figée à ZÉRO.
     static float reedTable(float pressureDifference, float stiffness) {
         const float slope = -(0.25f + 0.40f * stiffness);
-        return std::clamp(0.7f + slope * pressureDifference, -1.0f, 1.0f);
+        return std::clamp(kReedRest + slope * pressureDifference
+                              + kReedCurve * pressureDifference * pressureDifference,
+                          -1.0f, 1.0f);
     }
+    /// Courbure de la table d'anche. MESURÉE SEULE À 0,35 : h2/h1 RECULE
+    /// (0,078 -> 0,026) — au cycle limite l'anche ne touche pas ses butées,
+    /// et la courbure ne faisait que déplacer le point de fonctionnement.
+    /// Repos du coefficient de réflexion : sa distance à la butée de
+    /// fermeture (+1) décide de la part du cycle où l'anche BAT.
+#ifdef CONE_DEBUG
+    static float kReedCurve;
+    static float kReedRest;
+#else
+    static constexpr float kReedCurve = 0.0f;
+    static constexpr float kReedRest = 0.7f;
+#endif
 
     double sampleRate_ = 48000.0;
     ConicalBore bore_{};
 
     float breath_ = 0.0f, target_ = 0.0f;
+    /// Souffle ralenti qui asservit le mordant du limiteur (voir render).
+    float driveRamp_ = 0.0f;
     float attackCoeff_ = 0.01f, releaseCoeff_ = 0.01f;
     float velocityGain_ = 1.0f;
     double vibratoPhase_ = 0.0, vibratoIncrement_ = 0.0;
@@ -345,6 +386,20 @@ public:
                  float* outputL, float* outputR, int numSamples) override;
     void setParameter(vsm::audio::plugin::ParamId id, float value) override;
     float getParameter(vsm::audio::plugin::ParamId id) const override;
+    bool handleControlEvent(const vsm::audio::plugin::MidiControlEvent& event) override {
+        // Molette de hauteur et molette de modulation (CC 1), comme sur
+        // `vsm.wind` ; le reste est refusé en le disant.
+        if (event.kind == vsm::audio::plugin::MidiControlEvent::Kind::PitchBend) {
+            bendSemitones_.store(event.value, std::memory_order_relaxed);
+            return true;
+        }
+        if (event.kind == vsm::audio::plugin::MidiControlEvent::Kind::ControlChange
+            && event.index == 1) {
+            modWheel_.store(event.value, std::memory_order_relaxed);
+            return true;
+        }
+        return false;
+    }
     const vsm::audio::plugin::ParameterList& parameterList() const override { return parameterList_; }
     vsm::audio::plugin::PresetState saveState() const override;
     void loadState(const vsm::audio::plugin::PresetState& state) override;
@@ -359,6 +414,10 @@ private:
     mutable std::array<std::atomic<float>, kOutputLevel + 1> params_{};
     vsm::audio::engine::VoiceManager<ConeVoice, kMaxVoices> voiceManager_;
     vsm::audio::dsp::Biquad bassShelf_, trebleShelf_;
+    // Molettes de hauteur (demi-tons) et de modulation (CC 1, 0..1), même
+    // contrat que params_.
+    std::atomic<float> bendSemitones_{0.0f};
+    std::atomic<float> modWheel_{0.0f};
 };
 
 } // namespace vsm::plugins::cone

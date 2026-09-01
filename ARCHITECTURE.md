@@ -2077,6 +2077,26 @@ divergent, faute d'un gain de boucle borné.
 > raboter ses harmoniques — un peigne accordé plutôt qu'un passe-bas dans la
 > boucle. C'est un travail de conception, pas de réglage, et c'est là qu'il
 > faudra le reprendre.
+>
+> **REPRIS LE 01/09/2026, ET LE DIAGNOSTIC CI-DESSUS ÉTAIT À MOITIÉ JUSTE —
+> LA MACHINE EST LIVRÉE.** La moitié juste : c'était bien un travail de
+> conception sur le couplage, pas un réglage. La moitié fausse : la
+> sélectivité n'était PAS la coupable. Le banc (énergie rang par rang, la
+> question du § 44, posée cette fois aux rangs de la note PRODUITE — le
+> premier estimateur visait la note demandée, à +78 cents de la vraie, et
+> lisait les jupes) a montré que l'anche BAT déjà et que le rang pair naît
+> à la source ; ce qui le tuait était la SYMÉTRIE du limiteur de boucle,
+> un tanh impair qui écrase l'onde vers un carré sans rang pair. Le
+> limiteur rendu ASYMÉTRIQUE (terme en x², l'idée du micro de
+> `vsm.epiano`), le rang 2 vit : h2/h1 = 0,37 en moyenne sur 45
+> configurations, 45/45 justes une fois la phase de boucle compensée À f0
+> (l'avance de l'apex était ignorée : +36 à +78 cents). Dose-réponse,
+> falaises (sous-harmonique à asymétrie −1,4 et au sur-souffle, capture de
+> mode haut quand le mordant précède l'émission) et gardes chiffrées : CDC
+> machines § 14. `vsm.cone` est au build, testée (9 tests, dont le miroir
+> exact de `wind_bore_supports_only_odd_harmonics`), empreinte commise —
+> **le parc passe à 35 machines, et la case « saxophone, hautbois » du
+> tableau de couverture est enfin remplie par une modélisation.**
 
 **Un réglage a été RETIRÉ à cause de cette mesure.** `Bore Shape` prétendait
 fondre du cylindre au cône par un évasement (passe-tout à coefficient positif,
@@ -3417,8 +3437,14 @@ toute seule -- avec une coupure proportionnelle à `f0`, elle ne partait plus
 +41 demi-tons au-dessus de la note. Les deux corrections sont justes ; elles ne
 suffisent simplement pas.
 
-**LA MACHINE EST HORS BUILD**, comme le prototype conique, et le parc reste à
-34 machines. Le source vit dans `audio/plugins/flute/` avec toutes ces mesures.
+**LA MACHINE EST HORS BUILD**, ~~comme le prototype conique, et le parc reste
+à 34 machines~~. Le source vit dans `audio/plugins/flute/` avec toutes ces
+mesures. (Depuis le 01/09/2026, le prototype conique, lui, a été repris et
+LIVRÉ — voir la note du § 33 : la sixième mesure a trouvé le couplage
+fautif, la symétrie du limiteur de boucle, et le parc est à 35 machines. La
+flûte reste hors build : son obstacle — la boucle non inversante d'un tuyau
+ouvert aux deux bouts, qui offre au continu le plus fort gain — n'est pas
+celui que le cône vient de lever.)
 
 **LA LEÇON DE MÉTHODE, ET ELLE EST POUR MOI.** « Ça sonne fort » n'est pas
 « ça oscille ». Un niveau efficace ne dit rien de la nature de ce qu'on entend,
