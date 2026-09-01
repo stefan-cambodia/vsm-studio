@@ -2456,6 +2456,22 @@ tour. Les critères chiffrés du § ci-dessus (globale ≤ sur les étalons, au
 moins une décision changée par un second tour) se tranchent à la prochaine
 course.
 
+**H6 — des stems par un modèle RoFormer, écrite avant sa mesure
+(01/09/2026).** La demande « de meilleurs stems » a désigné Spleeter
+(Deezer) ; la piste est examinée et REFUSÉE sans course : sur MUSDB18,
+Spleeter 4-stems vaut ~5,9 dB de SDR contre ~9,0 pour `htdemucs` (notre
+défaut) et ~9,2 pour `htdemucs_ft` (H4) — et `spleeter` 2.4.2 exige
+Python < 3.12 quand la chaîne tourne en 3.14. Mesurer un modèle que le banc
+public place trois décibels SOUS le défaut ne trancherait rien. La forme qui
+reste de cette demande : les modèles **BS/Mel-RoFormer** (MDX23/SDX,
+~11-12 dB sur les voix, poids ouverts, par exemple via `audio-separator`)
+séparent mieux que `htdemucs_ft` sur le banc public. Hypothèse : mêmes
+critères que H4 — chaîne identique par ailleurs, stems dans un dossier
+séparé, modèle dit au rapport, distance globale meilleure sur au moins deux
+des trois étalons. À mesurer APRÈS H4 : si H4 échoue déjà à améliorer le
+morceau alors que ses stems sont meilleurs au banc, un troisième cran de SDR
+ne se justifiera qu'en comprenant d'abord pourquoi.
+
 **ET LE VIVIER DE PROFILS A CHANGÉ D'ÉCHELLE LE MÊME JOUR (01/09/2026).** Les
 banques General MIDI libres s'installent désormais par
 `tools/installer-banques-midi.py` (manifeste, empreintes épinglées,
