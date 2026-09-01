@@ -2539,6 +2539,42 @@ tour. Les critères chiffrés du § ci-dessus (globale ≤ sur les étalons, au
 moins une décision changée par un second tour) se tranchent à la prochaine
 course.
 
+**LE PARC ÉLARGI NE COÛTE PAS : IL GAGNE (02/09/2026), ET C'EST H5 QUI
+ENCAISSE.** La règle écrite au CDC machines avant la mesure — « une machine
+ajoutée pour le jeu n'a rien à promettre, mais ne doit rien coûter » — est
+non seulement tenue, elle est dépassée :
+
+| course | machines | verdict | basse retenue | globale |
+|---|---|---|---|---|
+| v7 | 37 | 2 tours | `vsm.vocal` (D stem 0,1851) | 0,1910 |
+| **v9** | **39** | **3 tours** | **`vsm.cs80`** (D stem **0,1851**) | **0,1822** |
+
+- **`vsm.cs80` gagne une piste dès sa première course**, et la gagne au
+  MÉLANGE : sa distance au stem est identique à celle de `vsm.vocal` au
+  dix-millième près (0,1851 = 0,1851). Le stem ne les départage pas ; le
+  morceau, oui, et de 4,6 %. C'est la leçon du mandataire (§ 5 septies)
+  prise par le bon bout, pour une fois : la machine que le stem déclarait
+  ex æquo est celle qui rapproche le morceau.
+- **ET C'EST LE TOUR 2 DU POINT FIXE QUI L'A TROUVÉE.** Le verdict a pris
+  trois tours (`tour 1 : other, Batterie ; tour 2 : bass ; tour 3 : rien`) :
+  au premier passage, la basse gardait son choix ; c'est une fois les deux
+  autres pistes arrêtées que `vsm.cs80` est devenue le meilleur choix pour
+  elle. H5, gardée jusqu'ici « pour un coût borné et un gain nul mesuré »,
+  vient de rendre son premier gain GLOBAL — et le second cas où son tour 2
+  change une décision (le premier était `usandthem-v5-ft`).
+- **`vsm.modal` confirme son classement au mélange** : écartée à 0,2739,
+  mais devant `vsm.string` (0,2829) — au stem comme au morceau. Une machine
+  ajoutée pour le jeu qui se place devant une machine de couverture sur un
+  stem réel n'est pas décorative.
+
+**H9 — le gain vient du POINT FIXE, pas du seul vivier ; écrite avant sa
+mesure.** Les deux explications sont enchevêtrées : `vsm.cs80` est entrée
+au tour 2, donc sans tour 2 elle ne serait pas entrée. Le témoin qui
+sépare : **v10 = v9 avec `--tours-verdict 1`**. Succès : v10 ≈ v7
+(0,1910), c'est-à-dire que le vivier seul ne suffit pas et que le point
+fixe porte tout le gain. Échec : v10 ≈ v9, et c'est le vivier qui gagne —
+auquel cas H5 reste sans gain propre, et il faudra le dire.
+
 **H7 — le classifieur de frappes améliore le STEM et éloigne le MORCEAU,
 écrite avant sa mesure (02/09/2026).** Le fait qui la motive : la course v6
 (*Us and Them*, moteur du jour, classifieur de frappes RÉACTIVÉ après la
