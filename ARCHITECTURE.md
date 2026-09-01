@@ -31,7 +31,7 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **1 220 tests moteur** (158 core + 801 audio
+écoute au clic, et toute la logique testée hors JUCE. Total : **1 280 tests moteur** (158 core + 861 audio
 + 206 interchange + 25 CLAP + 19 VST3 + 11 façades,
 tous verts, zéro warning sous les flags du build, `-Wall -Wextra -Wpedantic`.
 L'ancienne mention « y compris -Wfloat-equal -Wsign-conversion -Wshadow »
@@ -69,7 +69,7 @@ défaut). Tous les fichiers UI compilés sans erreur/warning contre JUCE (flags
 stricts inclus, validation par unité de traduction).
 
 **Interopérabilité (Phase 7) : Mode A complet, CLAP fait.** La couche
-`interchange/` (`vsm_interchange`, **205 tests**) couvre les identités
+`interchange/` (`vsm_interchange`, **206 tests**) couvre les identités
 sémantiques des paramètres (P2), les presets `*.synth.json` (P3), les projets
 `project.json` (P4), le chargement/écriture d'un dossier de projet (P7) et la
 reconstruction hors ligne `projet -> WAV` via l'outil `vsm-render` (P8). La
@@ -139,7 +139,7 @@ vsm-studio/
 │
 ├── core/                       "vsm_core" — moteur MIDI/séquenceur (158 tests)
 │
-├── audio/                      "vsm_audio" — moteur audio temps réel (798 tests)
+├── audio/                      "vsm_audio" — moteur audio temps réel (861 tests)
 │   ├── include/vsm/audio/dsp/
 │   │   ├── LadderFilterZDF.h     GÉNÉRALISÉ à N pôles (2-4) -- voir section 7
 │   │   └── ...                   Oscillator, Envelope, Filter(SVF), AnalogDrift, ParameterSmoother
@@ -599,12 +599,12 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 1 220 tests moteur + 60 tests d'analyse, tous verts
+### Bilan actuel : 1 280 tests moteur + 64 tests d'analyse, tous verts
 
 - **158 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des
   notes douteuses de la transcription),
-  **798 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
+  **861 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
   scalaire, indépendance des lignes, bornes de l'approximation de tanh ; et la
   boucle : rebouclage échantillon-exact, notes relâchées au saut) : chorus BBD, Juno-106,
   bus master (biquad/compresseur/limiteur à plafond garanti/LUFS), oversampler,

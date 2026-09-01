@@ -3,7 +3,7 @@
 Un séquenceur MIDI, un rack de machines vintage modélisées, et une chaîne qui
 reconstruit un morceau enregistré en projet jouable.
 
-**39 machines · 13 effets · 936 paramètres nommés · 1 279 tests verts**
+**39 machines · 13 effets · 936 paramètres nommés · 1 280 tests verts**
 
 > Toutes les illustrations sont des rendus de l'application elle-même, produits hors
 > écran par `vsm-panel-preview`, `vsm-ui-preview`, `vsm-pianoroll-preview` et
