@@ -547,3 +547,51 @@ VSM_TEST(multisample_honours_pitch_bend_like_a_hardware_sampler) {
     cc.value = 1.0f;
     VSM_ASSERT(!temoin->handleControlEvent(cc));
 }
+
+VSM_TEST(multisample_honours_midi_program_change) {
+    // Le PROGRAM CHANGE a un sens littéral ici : la machine a un paramètre de
+    // programme, l'événement MIDI le règle -- comme sur un expandeur. Le
+    // profil d'essai reçoit un second programme dont la zone joue une octave
+    // au-dessus : après l'événement, la même note doit sortir plus haut.
+    // `ProfilePtr` est const : on copie le profil d'essai dans un exemplaire
+    // mutable pour y ajouter le second programme.
+    auto profil = std::make_shared<LoadedProfile>(*makeTestProfile());
+    LoadedZone octave;
+    octave.program = 1;
+    octave.lowNote = 48; octave.highNote = 71;
+    octave.lowVelocity = 1; octave.highVelocity = 127;
+    octave.rootNote = 64;
+    octave.level = 1.0f;
+    octave.sample = makeSine(659.26, 24000);   // mi4 : l'octave de la zone B
+    octave.relativePath = "essai-octave.wav";
+    profil->zones.push_back(std::move(octave));
+    profil->programNames.push_back("Essai octave");
+
+    auto pitchOf = [](const std::vector<float>& x, size_t from, size_t count) {
+        const float* p = x.data() + from;
+        const size_t lagMin = static_cast<size_t>(kSampleRate / 2000.0);
+        const size_t lagMax = std::min(count / 2, static_cast<size_t>(kSampleRate / 40.0));
+        double best = -1.0; size_t bestLag = lagMin;
+        for (size_t lag = lagMin; lag <= lagMax; ++lag) {
+            double acc = 0.0;
+            for (size_t i = 0; i + lag < count; ++i)
+                acc += static_cast<double>(p[i]) * p[i + lag];
+            if (acc > best) { best = acc; bestLag = lag; }
+        }
+        return kSampleRate / static_cast<double>(bestLag);
+    };
+
+    auto premier = makeMultisample();
+    premier->setProfile(profil);
+    const auto avant = render(*premier, {noteOn(0, 64, 100)}, 24000);
+
+    auto second = makeMultisample();
+    second->setProfile(profil);
+    MidiControlEvent pc;
+    pc.kind = MidiControlEvent::Kind::ProgramChange;
+    pc.index = 1;
+    VSM_ASSERT(second->handleControlEvent(pc));
+    const auto apres = render(*second, {noteOn(0, 64, 100)}, 24000);
+
+    VSM_ASSERT(pitchOf(apres, 4800, 16000) > pitchOf(avant, 4800, 16000) * 1.8);
+}

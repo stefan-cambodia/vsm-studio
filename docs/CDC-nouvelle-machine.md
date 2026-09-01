@@ -211,6 +211,12 @@ refusent en connaissance de cause, et le moteur compte le refus.
   orgue), les percussions (vsm.drums, TR-808, TR-909, perc, fmdrums),
   testtone.
 
+**Et le PROGRAM CHANGE a trouvé sa seule adresse littérale (01/09/2026,
+même passe)** : le multisample a un paramètre de programme, l'événement MIDI
+le règle — les notes en cours finissent sur leur zone, seul l'avenir change,
+comme sur un expandeur matériel. Les autres machines le refusent en le
+disant : elles n'ont pas de programmes.
+
 **Et l'AFTERTOUCH (pression de canal) dose le même vibrato que la molette
 de modulation (01/09/2026, même passe)** : c'est le geste qu'un clavier
 envoie quand on appuie dans la touche, et il s'ajoute à la molette, borné à

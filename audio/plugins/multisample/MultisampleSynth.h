@@ -172,6 +172,15 @@ public:
             bendSemitones_.store(event.value, std::memory_order_relaxed);
             return true;
         }
+        // Le PROGRAM CHANGE a ici un sens littéral : la machine a un
+        // paramètre de programme, l'événement MIDI le règle. Les notes déjà
+        // en cours finissent sur leur zone -- seul l'avenir change de
+        // programme, comme sur un expandeur matériel.
+        if (event.kind == vsm::audio::plugin::MidiControlEvent::Kind::ProgramChange) {
+            params_[kProgram].store(static_cast<float>(event.index),
+                                    std::memory_order_relaxed);
+            return true;
+        }
         return false;
     }
     const vsm::audio::plugin::ParameterList& parameterList() const override { return parameterList_; }
