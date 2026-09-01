@@ -457,6 +457,24 @@ doit simplement plus être présentée comme la parade au fossé de domaine.
 
 ## Phase A2 — Les gabarits de batterie appris
 
+> **CONTRE-MESURE, ET ELLE EST DURE (02/09/2026).** Ce modèle est meilleur
+> à son banc — charleston 16/16 au lieu de 8/16, zéro kick inventé — et
+> **il éloigne le MORCEAU de 10,4 %** : *Us and Them*, trois courses à une
+> variable près, 0,1910 sans lui contre 0,2108 avec (détail et tableau au
+> § 5 duodecies de [`ROADMAP-fusion.md`](ROADMAP-fusion.md), hypothèse H7).
+> Le stem de batterie, lui, ne bouge que de 2,4 % : c'est le mélange qui
+> paie. La cause probable est écrite là-bas (les deux pièces
+> supplémentaires sont celles dont le journal dit que l'échantillon
+> « contient les autres pièces ») et sa correction est l'hypothèse H8.
+>
+> **Ce que cela ne dit PAS** : que le modèle est mauvais. Il fait ce qu'on
+> lui demande, mieux que le repli par bandes. Ce que cela dit, c'est que
+> son critère de banc — nommer les pièces — n'est pas le critère du
+> projet, qui est la distance au morceau. Un banc qui n'est pas le juge
+> final doit porter cette mention, sans quoi « meilleur » se lit comme
+> « meilleur pour ce qui compte ».
+
+
 Indépendante d'A1/A3 ; peut commencer dès A0.1 (les frappes générées suffisent).
 
 | Étape | Contenu | Terminé quand |

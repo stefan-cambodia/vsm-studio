@@ -2564,6 +2564,50 @@ et v6 > v7 d'au moins 5 % (le classifieur porte l'écart). Échec : le moteur
 porte l'écart, et il faudra comprendre pourquoi un parc élargi éloigne le
 morceau à stems identiques.
 
+**H7 EST TRANCHÉE, ET C'EST LA LEÇON DU MANDATAIRE SOUS SA FORME LA PLUS
+NETTE (02/09/2026).** Trois courses, une variable à la fois, mêmes stems,
+mêmes budgets :
+
+| course | moteur | classifieur de frappes | pièces | globale | batterie au stem |
+|---|---|---|---|---|---|
+| v5 | 35 machines | aucun | 3 | 0,1907 | 0,2181 |
+| **v7** (témoin) | **37 machines** | aucun | 3 | **0,1910** | 0,2182 |
+| **v6** | 37 machines | **2026-08-23** | **5** | **0,2108** | 0,2235 |
+
+- **Le parc élargi ne change RIEN** : v7 contre v5, +0,16 % — du bruit
+  (extraction de notes, cache froid). C'est ce qu'on attend d'un ajout de
+  machines qui perdent leur arbitrage : `vsm.cone` a bien concouru sur
+  `other` et a été écartée au verdict du mélange (0,3687 contre 0,2348),
+  `vsm.vector` et `vsm.granular` de même. **Ajouter une machine ne dégrade
+  pas la reconstruction**, et c'est mesuré plutôt que supposé.
+- **Le classifieur porte TOUT l'écart** : v6 contre v7, **+10,4 %**. Un
+  modèle mesuré MEILLEUR à son propre banc (A2 : charleston 16/16 au lieu
+  de 8/16, zéro kick inventé) rend le MORCEAU plus lointain d'un dixième.
+  Et il ne le fait presque pas au stem de batterie (+2,4 % seulement,
+  0,2182 → 0,2235) : c'est bien le MÉLANGE qui paie.
+- **Le garde-fou avait déjà nommé le coupable, et personne ne l'écoutait.**
+  Les deux pièces que le classifieur ajoute sont exactement celles dont le
+  journal dit, à chaque course : « ! tom : aucune frappe isolée,
+  l'échantillon contient les autres pièces » et « ! openhat : aucune frappe
+  isolée ». Leur échantillon contient le reste du kit ; les jouer superpose
+  au mélange une copie sale de ce qui sonne déjà.
+
+**H8 — ne pas jouer une pièce dont l'échantillon n'est pas isolé, écrite
+avant sa mesure.** La chaîne DIT depuis longtemps qu'une pièce n'a aucune
+frappe isolée ; elle la joue quand même. Proposition : une pièce ainsi
+marquée est ÉCARTÉE du kit (dite au journal et au rapport, comme toute
+candidate écartée — § 5 bis), et ses frappes reviennent à la pièce dont
+elles portent l'énergie. Témoin : le comportement actuel, par option.
+Succès : avec classifieur, distance globale ≤ celle SANS classifieur sur
+*Us and Them* — c'est-à-dire un classifieur qui cesse de coûter — et aucune
+régression sur les trois autres étalons. Échec : l'écart persiste, et il
+faudra chercher ailleurs que dans la propreté des échantillons.
+
+**En attendant, le défaut reste le bon** : le classifieur de frappes n'est
+utilisé que si on le passe explicitement (`--classifieur-batterie`), et la
+campagne du 01/09 a couru sans lui. Ce qui change, c'est qu'on sait
+maintenant que le passer COÛTE, et le chiffre est écrit.
+
 **H6 — des stems par un modèle RoFormer, écrite avant sa mesure
 (01/09/2026).** La demande « de meilleurs stems » a désigné Spleeter
 (Deezer) ; la piste est examinée et REFUSÉE sans course : sur MUSDB18,
