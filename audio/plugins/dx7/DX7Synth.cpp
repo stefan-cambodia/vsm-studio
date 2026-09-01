@@ -106,7 +106,8 @@ void DX7Synth::process(const MidiNoteEvent* events, int numEvents,
     lfoIncrement_ = lfoRate / sampleRate_;
 
     const float bendSemis = bendSemitones_.load(std::memory_order_relaxed);
-    const float wheelSemis = modWheel_.load(std::memory_order_relaxed) * kWheelVibratoSemitones;
+    const float wheelSemis = std::min(1.0f, modWheel_.load(std::memory_order_relaxed)
+                                     + pressure_.load(std::memory_order_relaxed)) * kWheelVibratoSemitones;
     int eventIndex = 0;
     for (int i = 0; i < numSamples; ++i) {
         while (eventIndex < numEvents && events[eventIndex].sampleOffset == i) {
@@ -142,6 +143,12 @@ bool DX7Synth::handleControlEvent(const MidiControlEvent& event) {
     }
     if (event.kind == MidiControlEvent::Kind::ControlChange && event.index == 1) {
         modWheel_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
+    // L'AFTERTOUCH (pression de canal) dose le même vibrato que la molette :
+    // c'est le geste qu'un clavier envoie quand on appuie dans la touche.
+    if (event.kind == MidiControlEvent::Kind::ChannelPressure) {
+        pressure_.store(event.value, std::memory_order_relaxed);
         return true;
     }
     return false;

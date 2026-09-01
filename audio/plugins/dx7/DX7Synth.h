@@ -290,6 +290,8 @@ private:
     // hauteur : la somme est en demi-tons.
     std::atomic<float> bendSemitones_{0.0f};
     std::atomic<float> modWheel_{0.0f};
+    // Aftertouch (pression de canal, 0..1) : s'ajoute à la molette, borné à 1.
+    std::atomic<float> pressure_{0.0f};
     // Vibrato de la molette de modulation à fond : une demi-note.
     static constexpr float kWheelVibratoSemitones = 0.5f;
 

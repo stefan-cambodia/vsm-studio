@@ -158,6 +158,8 @@ private:
     std::atomic<float> bendSemitones_{0.0f};
     // Molette de modulation (CC 1), 0..1 : elle DOSE le vibrato au MG.
     std::atomic<float> modWheel_{0.0f};
+    // Aftertouch (pression de canal, 0..1) : s'ajoute à la molette, borné à 1.
+    std::atomic<float> pressure_{0.0f};
     void applyNoteEvent(const vsm::audio::plugin::MidiNoteEvent& ev);
     float renderMg(int waveform) const;
     static vsm::audio::dsp::Waveform vco1Wave(int shape) {

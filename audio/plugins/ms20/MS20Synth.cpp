@@ -136,7 +136,8 @@ void MS20Synth::process(const MidiNoteEvent* events, int numEvents,
         // telle quelle : refactoriser le produit changerait son ordre
         // d'association flottant, donc l'empreinte, même à molette nulle.
         const float vibratoSemis = mg * mgToPitch * kMgPitchRangeSemitones
-                                 + mg * (modWheel_.load(std::memory_order_relaxed)
+                                 + mg * (std::min(1.0f, modWheel_.load(std::memory_order_relaxed)
+                                     + pressure_.load(std::memory_order_relaxed))
                                          * kWheelVibratoSemitones);
         const float base = noteNumber + pitchDriftSemis + vibratoSemis;
 
@@ -186,6 +187,12 @@ bool MS20Synth::handleControlEvent(const MidiControlEvent& event) {
     // molette du panneau. Les autres contrôleurs sont refusés en le disant.
     if (event.kind == MidiControlEvent::Kind::ControlChange && event.index == 1) {
         modWheel_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
+    // L'AFTERTOUCH (pression de canal) dose le même vibrato que la molette :
+    // c'est le geste qu'un clavier envoie quand on appuie dans la touche.
+    if (event.kind == MidiControlEvent::Kind::ChannelPressure) {
+        pressure_.store(event.value, std::memory_order_relaxed);
         return true;
     }
     return false;

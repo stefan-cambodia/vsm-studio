@@ -220,6 +220,12 @@ bool SupersawSynth::handleControlEvent(const MidiControlEvent& event) {
         modWheel_.store(event.value, std::memory_order_relaxed);
         return true;
     }
+    // L'AFTERTOUCH (pression de canal) dose le même vibrato que la molette :
+    // c'est le geste qu'un clavier envoie quand on appuie dans la touche.
+    if (event.kind == MidiControlEvent::Kind::ChannelPressure) {
+        pressure_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
     return false;
 }
 
@@ -279,7 +285,8 @@ void SupersawSynth::process(const MidiNoteEvent* events, int numEvents,
     p.lfoToFilter = params_[kLfoToFilter].load(std::memory_order_relaxed);
     p.velocityToFilter = params_[kVelocityToFilter].load(std::memory_order_relaxed);
     p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
-    p.wheelVibratoSemis = modWheel_.load(std::memory_order_relaxed) * kWheelVibratoSemitones;
+    p.wheelVibratoSemis = std::min(1.0f, modWheel_.load(std::memory_order_relaxed)
+                                     + pressure_.load(std::memory_order_relaxed)) * kWheelVibratoSemitones;
 
     const AdsrSettings amp{
         params_[kAmpAttack].load(std::memory_order_relaxed),

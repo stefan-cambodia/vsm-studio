@@ -304,7 +304,8 @@ void ConeSynth::process(const MidiNoteEvent* events, int numEvents,
     p.vibratoDelay = params_[kVibratoDelay].load(std::memory_order_relaxed);
     p.velocitySensitivity = params_[kVelocitySensitivity].load(std::memory_order_relaxed);
     p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
-    p.wheelVibrato = modWheel_.load(std::memory_order_relaxed);
+    p.wheelVibrato = std::min(1.0f, modWheel_.load(std::memory_order_relaxed)
+                                     + pressure_.load(std::memory_order_relaxed));
 
     const float drift = params_[kAnalogCharacter].load(std::memory_order_relaxed);
     bassShelf_.set(Biquad::Type::LowShelf, 250.0f, 0.707f,

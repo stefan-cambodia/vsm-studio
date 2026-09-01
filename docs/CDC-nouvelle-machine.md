@@ -211,6 +211,15 @@ refusent en connaissance de cause, et le moteur compte le refus.
   orgue), les percussions (vsm.drums, TR-808, TR-909, perc, fmdrums),
   testtone.
 
+**Et l'AFTERTOUCH (pression de canal) dose le même vibrato que la molette
+de modulation (01/09/2026, même passe)** : c'est le geste qu'un clavier
+envoie quand on appuie dans la touche, et il s'ajoute à la molette, borné à
+1 — les quinze machines à chemin LFO → hauteur l'acceptent, vérifié au banc
+dans la même boucle que le CC 1. La pression POLYPHONIQUE, elle, reste
+refusée en le disant : elle est par-note, et le parc n'a pas de modulation
+par-voix — l'honorer à moitié (une pression qui vibre TOUTES les voix)
+mentirait au musicien.
+
 **Et la molette de MODULATION (CC 1) suit la même doctrine (01/09/2026)** :
 elle DOSE un vibrato au LFO que la machine possède déjà — une demi-note à
 fond, le geste classique du panneau — sur les quatorze machines qui ont un

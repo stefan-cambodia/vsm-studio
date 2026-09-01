@@ -146,7 +146,8 @@ void ArpOdysseySynth::process(const MidiNoteEvent* events, int numEvents,
         // telle quelle : refactoriser le produit changerait son ordre
         // d'association flottant, donc l'empreinte, même à molette nulle.
         const float vibratoSemis = lfo * lfoToPitch * kLfoPitchRangeSemitones
-                                 + lfo * (modWheel_.load(std::memory_order_relaxed)
+                                 + lfo * (std::min(1.0f, modWheel_.load(std::memory_order_relaxed)
+                                     + pressure_.load(std::memory_order_relaxed))
                                           * kWheelVibratoSemitones);
 
         const float note1 = glide1_.nextValue();
@@ -205,6 +206,12 @@ bool ArpOdysseySynth::handleControlEvent(const MidiControlEvent& event) {
     // levier PPC du panneau. Les autres contrôleurs sont refusés en le disant.
     if (event.kind == MidiControlEvent::Kind::ControlChange && event.index == 1) {
         modWheel_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
+    // L'AFTERTOUCH (pression de canal) dose le même vibrato que la molette :
+    // c'est le geste qu'un clavier envoie quand on appuie dans la touche.
+    if (event.kind == MidiControlEvent::Kind::ChannelPressure) {
+        pressure_.store(event.value, std::memory_order_relaxed);
         return true;
     }
     return false;

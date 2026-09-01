@@ -289,6 +289,12 @@ public:
             modWheel_.store(event.value, std::memory_order_relaxed);
             return true;
         }
+        // L'AFTERTOUCH (pression de canal) dose le même vibrato que la
+        // molette : le geste d'un doigt qui appuie dans la touche.
+        if (event.kind == vsm::audio::plugin::MidiControlEvent::Kind::ChannelPressure) {
+            pressure_.store(event.value, std::memory_order_relaxed);
+            return true;
+        }
         return false;
     }
     const vsm::audio::plugin::ParameterList& parameterList() const override { return parameterList_; }
@@ -309,6 +315,8 @@ private:
     // contrat que params_.
     std::atomic<float> bendSemitones_{0.0f};
     std::atomic<float> modWheel_{0.0f};
+    // Aftertouch (pression de canal, 0..1) : s'ajoute à la molette, borné à 1.
+    std::atomic<float> pressure_{0.0f};
 };
 
 } // namespace vsm::plugins::wind

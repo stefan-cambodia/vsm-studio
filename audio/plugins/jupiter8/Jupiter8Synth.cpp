@@ -96,7 +96,8 @@ void Jupiter8Synth::process(const MidiNoteEvent* events, int numEvents,
     p.lfoToPwm = params_[kLfoToPwm].load(std::memory_order_relaxed);
     p.analogCharacter = params_[kAnalogCharacter].load(std::memory_order_relaxed);
     p.bendOctaves = bendSemitones_.load(std::memory_order_relaxed) / 12.0f;
-    p.wheelVibratoOct = modWheel_.load(std::memory_order_relaxed)
+    p.wheelVibratoOct = std::min(1.0f, modWheel_.load(std::memory_order_relaxed)
+                                     + pressure_.load(std::memory_order_relaxed))
                       * (kWheelVibratoSemitones / 12.0f);
 
     const AdsrSettings ampAdsr{
@@ -184,6 +185,12 @@ bool Jupiter8Synth::handleControlEvent(const MidiControlEvent& event) {
     }
     if (event.kind == MidiControlEvent::Kind::ControlChange && event.index == 1) {
         modWheel_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
+    // L'AFTERTOUCH (pression de canal) dose le même vibrato que la molette :
+    // c'est le geste qu'un clavier envoie quand on appuie dans la touche.
+    if (event.kind == MidiControlEvent::Kind::ChannelPressure) {
+        pressure_.store(event.value, std::memory_order_relaxed);
         return true;
     }
     return false;

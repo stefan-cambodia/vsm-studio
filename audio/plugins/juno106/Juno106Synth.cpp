@@ -121,7 +121,8 @@ void Juno106Synth::process(const MidiNoteEvent* events, int numEvents,
     p.lfoPitchAmount = params_[kLfoPitchAmount].load(std::memory_order_relaxed);
     p.analogCharacter = params_[kAnalogCharacter].load(std::memory_order_relaxed);
     p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
-    p.wheelVibratoSemis = modWheel_.load(std::memory_order_relaxed) * kWheelVibratoSemitones;
+    p.wheelVibratoSemis = std::min(1.0f, modWheel_.load(std::memory_order_relaxed)
+                                     + pressure_.load(std::memory_order_relaxed)) * kWheelVibratoSemitones;
 
     const float pwBase = params_[kDcoPulseWidth].load(std::memory_order_relaxed);
     const float pwmDepth = params_[kPwmLfoAmount].load(std::memory_order_relaxed);
@@ -218,6 +219,12 @@ bool Juno106Synth::handleControlEvent(const MidiControlEvent& event) {
     }
     if (event.kind == MidiControlEvent::Kind::ControlChange && event.index == 1) {
         modWheel_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
+    // L'AFTERTOUCH (pression de canal) dose le même vibrato que la molette :
+    // c'est le geste qu'un clavier envoie quand on appuie dans la touche.
+    if (event.kind == MidiControlEvent::Kind::ChannelPressure) {
+        pressure_.store(event.value, std::memory_order_relaxed);
         return true;
     }
     return false;

@@ -196,7 +196,7 @@ VSM_TEST(the_mod_wheel_adds_an_audible_vibrato_where_a_lfo_path_exists) {
     for (const char* machine : {"vsm.sh101", "vsm.ms20", "vsm.arpodyssey",
                                 "vsm.juno106", "vsm.jupiter8", "vsm.prophet", "vsm.obx",
                                 "vsm.supersaw", "vsm.wavetable", "vsm.pcmhybrid",
-                                "vsm.generic", "vsm.dx7", "vsm.wind", "vsm.vocal"}) {
+                                "vsm.generic", "vsm.dx7", "vsm.wind", "vsm.vocal", "vsm.cone"}) {
         auto rendre = [&](float wheel) {
             auto plugin = PluginRegistry::instance().create(machine);
             VSM_ASSERT(plugin != nullptr);
@@ -221,6 +221,15 @@ VSM_TEST(the_mod_wheel_adds_an_audible_vibrato_where_a_lfo_path_exists) {
                                 gauche.data() + i, droite.data() + i, 512);
             return gauche;
         };
+        // L'AFTERTOUCH emprunte le même chemin que la molette : une machine
+        // qui dose l'un accepte l'autre, et c'est vérifié ici même.
+        {
+            auto p2 = PluginRegistry::instance().create(machine);
+            MidiControlEvent pression;
+            pression.kind = MidiControlEvent::Kind::ChannelPressure;
+            pression.value = 1.0f;
+            VSM_ASSERT(p2->handleControlEvent(pression));
+        }
         const auto sans = rendre(0.0f);
         const auto avec = rendre(1.0f);
         float ecart = 0.0f;
