@@ -438,8 +438,21 @@ augmenter quand le parc s'élargit**, à conditions par ailleurs identiques.
 Premier verdict, déjà rendu : `vsm.cone`, `vsm.vector` et `vsm.granular`
 portées de 33 à 37 machines n'ont rien changé sur *Us and Them* (0,1907 →
 0,1910, du bruit — v5 contre v7 au § 5 duodecies de la feuille de route
-fusion). `vsm.cs80` et `vsm.modal` se mesurent de la même façon. Le CDC nouvelle-machine s'applique en entier
+fusion). Le CDC nouvelle-machine s'applique en entier
 (tests, trait distinctif mesuré, identités, façade, empreinte).
+
+**Second verdict, et il dépasse la règle : le parc à 39 machines GAGNE**
+(0,1910 → **0,1822**, −4,6 % sur *Us and Them*). `vsm.cs80`, ajoutée pour
+le jeu et sans rien promettre, **gagne la piste de basse dès sa première
+course** — et elle la gagne au MÉLANGE, sa distance au stem étant
+identique au dix-millième à celle de la machine qu'elle remplace (0,1851
+contre 0,1851). `vsm.modal`, écartée au verdict, se place tout de même
+devant `vsm.string` au stem comme au morceau. Ce que ces chiffres disent,
+et qui vaut mieux que la règle qu'ils vérifient : **un vivier plus large
+ne dilue pas l'arbitrage, il lui donne des candidates que le mélange
+saura départager** — à condition que le verdict ait le droit d'y revenir
+(le point fixe H5, dont c'est ici le premier gain global mesuré ; le
+témoin qui l'isole est l'hypothèse H9 de la feuille de route fusion).
 
 **Et deux autres ont suivi le 02/09.** `vsm.cs80` sort le CS-80 de la
 réserve du § 9, parce que sa condition d'attente — la pression
