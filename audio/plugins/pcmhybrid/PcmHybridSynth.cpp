@@ -178,7 +178,8 @@ float PcmHybridVoice::render(const AttackBank& bank, const SampleBuffer* overrid
 
     const float drift = drift_.nextValue() * 0.05f;
     const float vibrato = lfo * p.lfoToPitch * 0.5f;
-    const float toneHz = baseHz_ * std::exp2f((p.toneDetune + drift + vibrato) / 12.0f);
+    const float toneHz = baseHz_ * std::exp2f(
+        (p.toneDetune + drift + vibrato + p.bendSemitones) / 12.0f);
 
     // --- Couche 1 : l'attaque -------------------------------------------------
     float attack = 0.0f;
@@ -323,6 +324,14 @@ void PcmHybridSynth::initialize(double sampleRate, int /*maxBlockSize*/) {
     lfoPhase_ = 0.0;
 }
 
+bool PcmHybridSynth::handleControlEvent(const MidiControlEvent& event) {
+    // La molette de hauteur, comme sur les monophoniques (D0.5) ; le reste est
+    // refusé en le disant -- le moteur compte le refus.
+    if (event.kind != MidiControlEvent::Kind::PitchBend) return false;
+    bendSemitones_.store(event.value, std::memory_order_relaxed);
+    return true;
+}
+
 void PcmHybridSynth::setParameter(ParamId id, float value) {
     if (id < params_.size()) params_[id].store(value, std::memory_order_relaxed);
 }
@@ -413,6 +422,7 @@ void PcmHybridSynth::process(const MidiNoteEvent* events, int numEvents,
     p.lfoToPitch = params_[kLfoToPitch].load(std::memory_order_relaxed);
     p.lfoToFilter = params_[kLfoToFilter].load(std::memory_order_relaxed);
     p.velocityToFilter = params_[kVelocityToFilter].load(std::memory_order_relaxed);
+    p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
 
     const AdsrSettings amp{
         params_[kAmpAttack].load(std::memory_order_relaxed),

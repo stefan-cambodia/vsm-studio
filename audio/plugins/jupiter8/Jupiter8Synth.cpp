@@ -95,6 +95,7 @@ void Jupiter8Synth::process(const MidiNoteEvent* events, int numEvents,
     p.lfoToFilter = params_[kLfoToFilter].load(std::memory_order_relaxed);
     p.lfoToPwm = params_[kLfoToPwm].load(std::memory_order_relaxed);
     p.analogCharacter = params_[kAnalogCharacter].load(std::memory_order_relaxed);
+    p.bendOctaves = bendSemitones_.load(std::memory_order_relaxed) / 12.0f;
 
     const AdsrSettings ampAdsr{
         params_[kEnv2Attack].load(std::memory_order_relaxed),
@@ -170,6 +171,14 @@ void Jupiter8Synth::process(const MidiNoteEvent* events, int numEvents,
         lfoPhase_ += lfoIncrement_;
         if (lfoPhase_ >= 1.0) lfoPhase_ -= 1.0;
     }
+}
+
+bool Jupiter8Synth::handleControlEvent(const MidiControlEvent& event) {
+    // La molette de hauteur, comme sur les monophoniques (D0.5) ; le reste est
+    // refusé en le disant -- le moteur compte le refus.
+    if (event.kind != MidiControlEvent::Kind::PitchBend) return false;
+    bendSemitones_.store(event.value, std::memory_order_relaxed);
+    return true;
 }
 
 void Jupiter8Synth::setParameter(ParamId id, float value) {

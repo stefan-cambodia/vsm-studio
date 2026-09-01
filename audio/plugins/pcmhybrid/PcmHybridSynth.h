@@ -100,6 +100,11 @@ public:
         float cutoff = 4000.0f, resonance = 0.2f, envAmount = 0.4f, keyTrack = 0.4f;
         float lfoToPitch = 0.0f, lfoToFilter = 0.0f;
         float velocityToFilter = 0.3f;
+        // Molette de hauteur, en demi-tons. Elle porte sur le CORPS
+        // synthétique ; l'attaque PCM, un transitoire de quelques dizaines de
+        // millisecondes, garde sa lecture -- la plier ferait glisser le
+        // claquement, pas la note. À zéro l'addition est exacte.
+        float bendSemitones = 0.0f;
     };
 
     /// `override` remplace le transitoire engendré quand un fichier a été
@@ -144,6 +149,7 @@ public:
                  float* outputL, float* outputR, int numSamples) override;
     void setParameter(vsm::audio::plugin::ParamId id, float value) override;
     float getParameter(vsm::audio::plugin::ParamId id) const override;
+    bool handleControlEvent(const vsm::audio::plugin::MidiControlEvent& event) override;
     const vsm::audio::plugin::ParameterList& parameterList() const override { return parameterList_; }
     vsm::audio::plugin::PresetState saveState() const override;
     void loadState(const vsm::audio::plugin::PresetState& state) override;
@@ -169,6 +175,8 @@ private:
 
     double sampleRate_ = 48000.0;
     vsm::audio::plugin::ParameterList parameterList_;
+    // Molette de hauteur (demi-tons), même contrat que params_.
+    std::atomic<float> bendSemitones_{0.0f};
     mutable std::array<std::atomic<float>, kAnalogCharacter + 1> params_{};
     vsm::audio::engine::VoiceManager<PcmHybridVoice, kMaxVoices> voiceManager_;
     const AttackBank* bank_ = nullptr;

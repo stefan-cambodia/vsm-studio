@@ -310,9 +310,13 @@ des phases suivantes veuillent dire quelque chose.
 > **Cinq machines répondent, et ce n'est pas un échantillon arbitraire** : les
 > quatre monophoniques du parc (Minimoog, TB-303, SH-101, MS-20) et la
 > duophonique (ARP Odyssey) — exactement celles dont le jeu dépend de la molette.
-> Les polyphoniques suivront machine par machine : une case a été ajoutée à la
-> liste de contrôle du § 10 de `CDC-nouvelle-machine.md`, qui est l'endroit où
-> ce projet range les obligations par machine.
+> ~~Les polyphoniques suivront machine par machine~~ : une case a été ajoutée à
+> la liste de contrôle du § 10 de `CDC-nouvelle-machine.md`, qui est l'endroit
+> où ce projet range les obligations par machine. **Les polyphoniques SONT
+> faites (01/09/2026)** : vingt-deux machines honorent la molette, celles qui
+> refusent (résonateurs frappés, orgues, samplers, percussions) le font en
+> connaissance de cause et le moteur compte leur refus — la doctrine, la liste
+> complète et la leçon de l'estimateur de hauteur sont au § 10 du CDC.
 >
 > **La distinction qui fait tout** : une machine qui **ignore** un contrôleur
 > exerce un droit ; un moteur qui le **jette** cachait un défaut. Le moteur

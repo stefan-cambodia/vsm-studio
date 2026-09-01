@@ -65,6 +65,9 @@ public:
         float gateLag = 0.25f;       // lenteur du vactrol, en secondes
         float velocityToFold = 0.5f;
         float drift = 0.15f;
+        // Molette de hauteur, en demi-tons. À zéro l'addition est exacte :
+        // empreinte inchangée au bit.
+        float bendSemitones = 0.0f;
     };
 
     void prepare(double sampleRate, uint64_t seed) {
@@ -133,7 +136,8 @@ public:
         if (!isActive()) return 0.0f;
 
         const float vel = static_cast<float>(velocity_) / 127.0f;
-        const float f0 = baseHz_ * std::pow(2.0f, drift_.nextValue() * 0.05f / 12.0f);
+        const float f0 = baseHz_ * std::pow(
+            2.0f, (drift_.nextValue() * 0.05f + p.bendSemitones) / 12.0f);
 
         // MODULATION DE HAUTEUR par le second oscillateur, en demi-tons : c'est
         // le « timbre » d'une complex oscillator avant le plieur.
@@ -207,6 +211,13 @@ public:
                  float* outputL, float* outputR, int numSamples) override;
     void setParameter(vsm::audio::plugin::ParamId id, float value) override;
     float getParameter(vsm::audio::plugin::ParamId id) const override;
+    bool handleControlEvent(const vsm::audio::plugin::MidiControlEvent& event) override {
+        // La molette de hauteur, comme sur les monophoniques (D0.5) ; le
+        // reste est refusé en le disant -- le moteur compte le refus.
+        if (event.kind != vsm::audio::plugin::MidiControlEvent::Kind::PitchBend) return false;
+        bendSemitones_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
     const vsm::audio::plugin::ParameterList& parameterList() const override { return parameterList_; }
     vsm::audio::plugin::PresetState saveState() const override;
     void loadState(const vsm::audio::plugin::PresetState& state) override;
@@ -220,6 +231,8 @@ private:
     vsm::audio::plugin::ParameterList parameterList_;
     mutable std::array<std::atomic<float>, kOutputLevel + 1> params_{};
     vsm::audio::engine::VoiceManager<WestCoastVoice, kMaxVoices> voiceManager_;
+    // Molette de hauteur (demi-tons), même contrat que params_.
+    std::atomic<float> bendSemitones_{0.0f};
 };
 
 } // namespace vsm::plugins::westcoast

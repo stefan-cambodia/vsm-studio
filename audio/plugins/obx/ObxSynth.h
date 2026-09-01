@@ -63,6 +63,9 @@ public:
         bool fourPole = false;
         float lfoToPitch = 0.0f, lfoToPulseWidth = 0.0f, lfoToFilter = 0.0f;
         float velocityToFilter = 0.3f;
+        // Molette de hauteur, en demi-tons (les sommes des oscillateurs sont
+        // en demi-tons). À zéro l'addition est exacte : empreinte inchangée.
+        float bendSemitones = 0.0f;
     };
 
     float render(const Params& p, float lfo);
@@ -105,6 +108,7 @@ public:
                  float* outputL, float* outputR, int numSamples) override;
     void setParameter(vsm::audio::plugin::ParamId id, float value) override;
     float getParameter(vsm::audio::plugin::ParamId id) const override;
+    bool handleControlEvent(const vsm::audio::plugin::MidiControlEvent& event) override;
     const vsm::audio::plugin::ParameterList& parameterList() const override { return parameterList_; }
     vsm::audio::plugin::PresetState saveState() const override;
     void loadState(const vsm::audio::plugin::PresetState& state) override;
@@ -122,6 +126,8 @@ private:
     double lfoPhase_ = 0.0;
     vsm::util::DeterministicRng lfoRng_{0x4F425800ULL};
     float lfoRandom_ = 0.0f;
+    // Molette de hauteur (demi-tons), même contrat que params_.
+    std::atomic<float> bendSemitones_{0.0f};
 };
 
 } // namespace vsm::plugins::obx

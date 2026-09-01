@@ -92,7 +92,8 @@ float GenericVoice::render(const Params& p, float lfo1, float lfo2) {
     const float ampLevel = ampEnv_.nextSample();
     const float velocity = static_cast<float>(velocity_) / 127.0f;
 
-    const float vibrato = (lfo1 * p.lfo1ToPitch + lfo2 * p.lfo2ToPitch) * 0.5f;
+    const float vibrato = (lfo1 * p.lfo1ToPitch + lfo2 * p.lfo2ToPitch) * 0.5f
+                        + p.bendSemitones;
     const float pwm = lfo1 * p.lfo1ToPulseWidth * 0.4f;
 
     // --- sources ------------------------------------------------------------
@@ -250,6 +251,14 @@ void GenericSynth::initialize(double sampleRate, int /*maxBlockSize*/) {
     lfo2Phase_ = 0.0;
 }
 
+bool GenericSynth::handleControlEvent(const MidiControlEvent& event) {
+    // La molette de hauteur, comme sur les monophoniques (D0.5) ; le reste est
+    // refusé en le disant -- le moteur compte le refus.
+    if (event.kind != MidiControlEvent::Kind::PitchBend) return false;
+    bendSemitones_.store(event.value, std::memory_order_relaxed);
+    return true;
+}
+
 void GenericSynth::setParameter(ParamId id, float value) {
     if (id < params_.size()) params_[id].store(value, std::memory_order_relaxed);
 }
@@ -324,6 +333,7 @@ void GenericSynth::process(const MidiNoteEvent* events, int numEvents,
     p.drive = params_[kDrive].load(std::memory_order_relaxed);
     p.velocityToFilter = params_[kVelocityToFilter].load(std::memory_order_relaxed);
     p.velocityToAmp = params_[kVelocityToAmp].load(std::memory_order_relaxed);
+    p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
 
     const AdsrSettings amp{
         params_[kAmpAttack].load(std::memory_order_relaxed),

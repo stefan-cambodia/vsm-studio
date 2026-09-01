@@ -68,6 +68,7 @@ void VocalSynth::process(const MidiNoteEvent* events, int numEvents,
     p.vibratoDepth = params_[kVibratoDepth].load(std::memory_order_relaxed);
     p.vibratoDelay = params_[kVibratoDelay].load(std::memory_order_relaxed);
     p.velocityToBreath = params_[kVelocityToBreath].load(std::memory_order_relaxed);
+    p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
 
     const AdsrSettings amp{
         params_[kAmpAttack].load(std::memory_order_relaxed),

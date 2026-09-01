@@ -61,7 +61,7 @@ void WindVoice::updateTuning(const Params& p) {
     const float vibratoSemis = std::sin(static_cast<float>(vibratoPhase_ * kTwoPi))
                              * p.vibratoDepth * vibratoRamp_ * 0.5f;
 
-    const float hz = noteToHz(note_, driftSemis + vibratoSemis);
+    const float hz = noteToHz(note_, driftSemis + vibratoSemis + p.bendSemitones);
     bore_.setTuning(hz, p.bellDamping);
 
     attackCoeff_ = 1.0f - std::exp(-1.0f / (std::max(0.002f, p.attackSeconds) * static_cast<float>(sampleRate_)));
@@ -199,6 +199,7 @@ void WindSynth::process(const MidiNoteEvent* events, int numEvents,
     p.vibratoDepth = params_[kVibratoDepth].load(std::memory_order_relaxed);
     p.vibratoDelay = params_[kVibratoDelay].load(std::memory_order_relaxed);
     p.velocitySensitivity = params_[kVelocitySensitivity].load(std::memory_order_relaxed);
+    p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
 
     const float drift = params_[kAnalogCharacter].load(std::memory_order_relaxed);
     bassShelf_.set(Biquad::Type::LowShelf, 250.0f, 0.707f,

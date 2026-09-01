@@ -57,7 +57,7 @@ void StringVoice::noteOn(uint8_t channel, uint8_t note, uint8_t velocity) {
 
 void StringVoice::updateTuning(const Params& p) {
     const float driftSemis = drift_.nextValue() * 0.06f;
-    const float hz = std::clamp(noteToHz(note_, driftSemis), kLowestHz,
+    const float hz = std::clamp(noteToHz(note_, driftSemis + p.bendSemitones), kLowestHz,
                                 static_cast<float>(sampleRate_) * 0.25f);
 
     // Lever le doigt étouffe la corde : ce n'est pas une enveloppe qui se
@@ -242,6 +242,7 @@ void StringSynth::process(const MidiNoteEvent* events, int numEvents,
     p.stiffness = params_[kStiffness].load(std::memory_order_relaxed);
     p.releaseSeconds = params_[kRelease].load(std::memory_order_relaxed);
     p.velocitySensitivity = params_[kVelocitySensitivity].load(std::memory_order_relaxed);
+    p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
 
     const float drift = params_[kAnalogCharacter].load(std::memory_order_relaxed);
 

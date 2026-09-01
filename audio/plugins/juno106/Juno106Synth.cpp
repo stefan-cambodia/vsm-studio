@@ -120,6 +120,7 @@ void Juno106Synth::process(const MidiNoteEvent* events, int numEvents,
     p.vcfKeyTrack = params_[kVcfKeyTrack].load(std::memory_order_relaxed);
     p.lfoPitchAmount = params_[kLfoPitchAmount].load(std::memory_order_relaxed);
     p.analogCharacter = params_[kAnalogCharacter].load(std::memory_order_relaxed);
+    p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
 
     const float pwBase = params_[kDcoPulseWidth].load(std::memory_order_relaxed);
     const float pwmDepth = params_[kPwmLfoAmount].load(std::memory_order_relaxed);
@@ -204,6 +205,15 @@ void Juno106Synth::process(const MidiNoteEvent* events, int numEvents,
         lfoPhase_ += lfoIncrement_;
         if (lfoPhase_ >= 1.0) lfoPhase_ -= 1.0;
     }
+}
+
+bool Juno106Synth::handleControlEvent(const MidiControlEvent& event) {
+    // La molette de hauteur, comme sur les monophoniques (D0.5) ; le reste est
+    // refusé EN LE DISANT -- le moteur compte ce refus, l'interface peut
+    // l'expliquer.
+    if (event.kind != MidiControlEvent::Kind::PitchBend) return false;
+    bendSemitones_.store(event.value, std::memory_order_relaxed);
+    return true;
 }
 
 void Juno106Synth::setParameter(ParamId id, float value) {

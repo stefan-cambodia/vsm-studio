@@ -65,6 +65,7 @@ void AdditiveSynth::process(const MidiNoteEvent* events, int numEvents,
     p.decayTilt = params_[kDecayTilt].load(std::memory_order_relaxed);
     p.attackSpread = params_[kAttackSpread].load(std::memory_order_relaxed);
     p.velocityToTilt = params_[kVelocityToTilt].load(std::memory_order_relaxed);
+    p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
 
     const AdsrSettings amp{
         params_[kAmpAttack].load(std::memory_order_relaxed),

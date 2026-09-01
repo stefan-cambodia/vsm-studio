@@ -189,6 +189,10 @@ public:
         float vibratoDepth = 0.15f;
         float vibratoDelay = 0.35f;
         float velocitySensitivity = 0.6f;
+        // Molette de hauteur, en demi-tons — la perce se réaccorde, comme la
+        // lèvre qui pousse la note. À zéro l'addition est exacte : empreinte
+        // inchangée au bit.
+        float bendSemitones = 0.0f;
     };
 
     void prepare(double sampleRate, uint64_t seed);
@@ -270,6 +274,13 @@ public:
                  float* outputL, float* outputR, int numSamples) override;
     void setParameter(vsm::audio::plugin::ParamId id, float value) override;
     float getParameter(vsm::audio::plugin::ParamId id) const override;
+    bool handleControlEvent(const vsm::audio::plugin::MidiControlEvent& event) override {
+        // La molette de hauteur, comme sur les monophoniques (D0.5) ; le
+        // reste est refusé en le disant -- le moteur compte le refus.
+        if (event.kind != vsm::audio::plugin::MidiControlEvent::Kind::PitchBend) return false;
+        bendSemitones_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
     const vsm::audio::plugin::ParameterList& parameterList() const override { return parameterList_; }
     vsm::audio::plugin::PresetState saveState() const override;
     void loadState(const vsm::audio::plugin::PresetState& state) override;
@@ -284,6 +295,8 @@ private:
     mutable std::array<std::atomic<float>, kOutputLevel + 1> params_{};
     vsm::audio::engine::VoiceManager<WindVoice, kMaxVoices> voiceManager_;
     vsm::audio::dsp::Biquad bassShelf_, trebleShelf_;
+    // Molette de hauteur (demi-tons), même contrat que params_.
+    std::atomic<float> bendSemitones_{0.0f};
 };
 
 } // namespace vsm::plugins::wind

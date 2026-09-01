@@ -92,6 +92,10 @@ public:
         float stiffness = 0.2f;
         float releaseSeconds = 0.25f;
         float velocitySensitivity = 0.7f;
+        // Molette de hauteur, en demi-tons — l'accord de la boucle la suit,
+        // comme un doigt qui glisse. À zéro l'addition est exacte : empreinte
+        // inchangée au bit.
+        float bendSemitones = 0.0f;
     };
 
     void prepare(double sampleRate, uint64_t seed);
@@ -162,6 +166,13 @@ public:
                  float* outputL, float* outputR, int numSamples) override;
     void setParameter(vsm::audio::plugin::ParamId id, float value) override;
     float getParameter(vsm::audio::plugin::ParamId id) const override;
+    bool handleControlEvent(const vsm::audio::plugin::MidiControlEvent& event) override {
+        // La molette de hauteur, comme sur les monophoniques (D0.5) ; le
+        // reste est refusé en le disant -- le moteur compte le refus.
+        if (event.kind != vsm::audio::plugin::MidiControlEvent::Kind::PitchBend) return false;
+        bendSemitones_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
     const vsm::audio::plugin::ParameterList& parameterList() const override { return parameterList_; }
     vsm::audio::plugin::PresetState saveState() const override;
     void loadState(const vsm::audio::plugin::PresetState& state) override;
@@ -176,6 +187,8 @@ private:
     mutable std::array<std::atomic<float>, kOutputLevel + 1> params_{};
     vsm::audio::engine::VoiceManager<StringVoice, kMaxVoices> voiceManager_;
     std::array<vsm::audio::dsp::Biquad, 3> body_{};
+    // Molette de hauteur (demi-tons), même contrat que params_.
+    std::atomic<float> bendSemitones_{0.0f};
 };
 
 } // namespace vsm::plugins::string_machine

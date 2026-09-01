@@ -57,6 +57,9 @@ struct ProphetParams {
     float polyFiltEnvAmt, polyOscBAmt;
     bool polyToFreqA, polyToPwA, polyToFilter;
     float analogCharacter;
+    // Molette de hauteur, en octaves (les exposants se somment en octaves).
+    // À zéro l'addition est exacte : empreinte inchangée au bit.
+    float bendOctaves = 0.0f;
 };
 
 /// Une voix Prophet-style : deux oscillateurs (A/B) + hard-sync + Poly-Mod +
@@ -126,7 +129,8 @@ public:
 
         // --- Oscillateur B (aussi source de modulation) ---
         const float drBoct = driftB_.nextValue() * kDriftSemis / 12.0f;
-        const float freqB = baseHz * std::exp2f(p.oscBDetune / 12.0f + drBoct);
+        const float freqB = baseHz * std::exp2f(p.oscBDetune / 12.0f + drBoct
+                                                + p.bendOctaves);
         oscB_.setFrequency(freqB);
         oscB_.setWaveform(shapeToWave(p.oscBShape));
         if (p.oscBShape == 2) oscB_.setPulseWidth(p.oscBPw);
@@ -143,7 +147,7 @@ public:
         const float drAsemi = driftA_.nextValue() * kDriftSemis;
         const float freqAOct = (p.polyToFreqA ? polyMod * kPolyFreqOctaves : 0.0f)
                              + lfo * p.lfoToPitch * kLfoPitchSemis / 12.0f
-                             + drAsemi / 12.0f;
+                             + drAsemi / 12.0f + p.bendOctaves;
         const float freqA = baseHz * std::exp2f(freqAOct);
         oscA_.setFrequency(freqA);
         oscA_.setWaveform(shapeToWave(p.oscAShape == 0 ? 0 : 2));
@@ -217,6 +221,7 @@ public:
 
     void setParameter(vsm::audio::plugin::ParamId id, float value) override;
     float getParameter(vsm::audio::plugin::ParamId id) const override;
+    bool handleControlEvent(const vsm::audio::plugin::MidiControlEvent& event) override;
     const vsm::audio::plugin::ParameterList& parameterList() const override;
 
     vsm::audio::plugin::PresetState saveState() const override;
@@ -238,6 +243,9 @@ private:
     static constexpr size_t kVoiceGroups = (kMaxVoices + kLanes - 1) / kLanes;
     std::array<vsm::audio::dsp::LadderFilterZDFx4, kVoiceGroups> voiceFilters_;
     double lfoPhase_ = 0.0, lfoIncrement_ = 0.0;
+
+    // Molette de hauteur (demi-tons), même contrat que params_.
+    std::atomic<float> bendSemitones_{0.0f};
 
     std::array<std::atomic<float>, kNumParams> params_;
     vsm::audio::plugin::ParameterList parameterList_;

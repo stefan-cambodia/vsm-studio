@@ -64,6 +64,7 @@ void PhaseDistSynth::process(const MidiNoteEvent* events, int numEvents,
     p.resonance = params_[kResonance].load(std::memory_order_relaxed);
     p.resonanceHarmonic = params_[kResonanceHarmonic].load(std::memory_order_relaxed);
     p.velocityToAmount = params_[kVelocityToAmount].load(std::memory_order_relaxed);
+    p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
 
     const AdsrSettings amp{
         params_[kAmpAttack].load(std::memory_order_relaxed),

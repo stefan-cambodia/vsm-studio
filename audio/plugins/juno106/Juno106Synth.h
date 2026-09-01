@@ -55,6 +55,10 @@ struct Juno106Params {
     float vcfKeyTrack = 0.3f;
     float lfoPitchAmount = 0.0f;
     float analogCharacter = 0.3f;
+    // Molette de hauteur, en demi-tons (D0.5 : le MIDI non-note atteint les
+    // machines). À zéro, l'addition flottante est exacte : l'empreinte audio
+    // de non-régression ne bouge pas d'un bit.
+    float bendSemitones = 0.0f;
 };
 
 /// Une voix polyphonique complète : DCO (saw + pulse + sub) + bruit ->
@@ -138,7 +142,8 @@ public:
         const float driftSemis = drift_.nextValue() * kMaxDriftSemitones;
         const float vibratoSemis = lfoBipolar * p.lfoPitchAmount * kMaxVibratoSemitones;
         const float freq = 440.0f * std::exp2f(
-            (static_cast<float>(note_) + driftSemis + vibratoSemis - 69.0f) / 12.0f);
+            (static_cast<float>(note_) + driftSemis + vibratoSemis
+             + p.bendSemitones - 69.0f) / 12.0f);
 
         saw_.setFrequency(freq);
         pulse_.setFrequency(freq);
@@ -206,6 +211,7 @@ public:
 
     void setParameter(vsm::audio::plugin::ParamId id, float value) override;
     float getParameter(vsm::audio::plugin::ParamId id) const override;
+    bool handleControlEvent(const vsm::audio::plugin::MidiControlEvent& event) override;
     const vsm::audio::plugin::ParameterList& parameterList() const override;
 
     vsm::audio::plugin::PresetState saveState() const override;
@@ -229,6 +235,10 @@ private:
     static constexpr size_t kVoiceGroups = (kMaxVoices + kLanes - 1) / kLanes;
     std::array<vsm::audio::dsp::LadderFilterZDFx4, kVoiceGroups> voiceFilters_;
     vsm::audio::dsp::Chorus chorus_;
+
+    // Molette de hauteur, écrite par le thread d'événements, lue une fois par
+    // bloc -- même contrat que params_.
+    std::atomic<float> bendSemitones_{0.0f};
 
     // État du LFO global (partagé par toutes les voix).
     double lfoPhase_ = 0.0;

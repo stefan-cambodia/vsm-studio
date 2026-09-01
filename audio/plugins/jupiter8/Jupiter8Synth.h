@@ -58,6 +58,9 @@ struct Jupiter8Params {
     float cutoffBase, resonance, filterEnvAmount, keyTrack;
     float lfoToPitch, lfoToFilter, lfoToPwm;
     float analogCharacter;
+    // Molette de hauteur, en OCTAVES (les exposants des VCO se somment en
+    // octaves). À zéro l'addition est exacte : empreinte inchangée au bit.
+    float bendOctaves = 0.0f;
 };
 
 /// Une voix Jupiter-8-style : DEUX VCO (saw/pulse/tri) avec désaccord, un
@@ -153,7 +156,8 @@ public:
 
         // --- VCO-2 (source de cross-mod et de sync) ---
         const float dr2oct = drift2_.nextValue() * kDriftSemis / 12.0f;
-        const float freq2 = baseHz_ * std::exp2f(p.vco2Detune / 12.0f + dr2oct);
+        const float freq2 = baseHz_ * std::exp2f(p.vco2Detune / 12.0f + dr2oct
+                                                 + p.bendOctaves);
         vco2_.setFrequency(freq2);
         vco2_.setWaveform(shapeToWave(p.vco2Shape));
         if (p.vco2Shape == 1)
@@ -168,7 +172,7 @@ public:
         const float dr1semi = drift1_.nextValue() * kDriftSemis;
         const float freq1Oct = p.crossMod * raw2 * kCrossModOctaves
                              + lfo * p.lfoToPitch * kLfoPitchSemis / 12.0f
-                             + dr1semi / 12.0f;
+                             + dr1semi / 12.0f + p.bendOctaves;
         const float freq1 = baseHz_ * std::exp2f(freq1Oct);
         vco1_.setFrequency(freq1);
         vco1_.setWaveform(shapeToWave(p.vco1Shape));
@@ -246,6 +250,7 @@ public:
                  float* outputL, float* outputR, int numSamples) override;
 
     void setParameter(vsm::audio::plugin::ParamId id, float value) override;
+    bool handleControlEvent(const vsm::audio::plugin::MidiControlEvent& event) override;
     float getParameter(vsm::audio::plugin::ParamId id) const override;
     const vsm::audio::plugin::ParameterList& parameterList() const override;
 
@@ -271,6 +276,9 @@ private:
     vsm::audio::dsp::Chorus chorus_;
     double lfoPhase_ = 0.0, lfoIncrement_ = 0.0;
     int chorusMode_ = 1;
+
+    // Molette de hauteur (demi-tons), même contrat que params_.
+    std::atomic<float> bendSemitones_{0.0f};
 
     std::array<std::atomic<float>, kNumParams> params_;
     vsm::audio::plugin::ParameterList parameterList_;

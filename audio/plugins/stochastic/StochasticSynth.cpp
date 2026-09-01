@@ -60,6 +60,7 @@ void StochasticSynth::process(const MidiNoteEvent* events, int numEvents,
     p.timeWander = params_[kTimeWander].load(std::memory_order_relaxed);
     p.pitchLock = params_[kPitchLock].load(std::memory_order_relaxed);
     p.velocityToWander = params_[kVelocityToWander].load(std::memory_order_relaxed);
+    p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
 
     const AdsrSettings env{
         params_[kAttack].load(std::memory_order_relaxed),

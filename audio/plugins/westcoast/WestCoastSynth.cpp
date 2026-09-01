@@ -65,6 +65,7 @@ void WestCoastSynth::process(const MidiNoteEvent* events, int numEvents,
     p.gateCutoff = params_[kGateCutoff].load(std::memory_order_relaxed);
     p.gateLag = params_[kGateLag].load(std::memory_order_relaxed);
     p.velocityToFold = params_[kVelocityToFold].load(std::memory_order_relaxed);
+    p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
 
     const AdsrSettings amp{
         params_[kAmpAttack].load(std::memory_order_relaxed),

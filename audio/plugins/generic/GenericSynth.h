@@ -99,6 +99,9 @@ public:
         float lfo2ToPitch = 0.0f, lfo2ToFilter = 0.0f;
         float drive = 0.0f;
         float velocityToFilter = 0.0f, velocityToAmp = 0.0f;
+        // Molette de hauteur, en demi-tons (le vibrato l'est déjà). À zéro
+        // l'addition est exacte : empreinte inchangée.
+        float bendSemitones = 0.0f;
     };
 
     float render(const Params& p, float lfo1, float lfo2);
@@ -139,6 +142,7 @@ public:
                  float* outputL, float* outputR, int numSamples) override;
     void setParameter(vsm::audio::plugin::ParamId id, float value) override;
     float getParameter(vsm::audio::plugin::ParamId id) const override;
+    bool handleControlEvent(const vsm::audio::plugin::MidiControlEvent& event) override;
     const vsm::audio::plugin::ParameterList& parameterList() const override { return parameterList_; }
     vsm::audio::plugin::PresetState saveState() const override;
     void loadState(const vsm::audio::plugin::PresetState& state) override;
@@ -154,6 +158,8 @@ private:
     mutable std::array<std::atomic<float>, kOutputLevel + 1> params_{};
     vsm::audio::engine::VoiceManager<GenericVoice, kMaxVoices> voiceManager_;
     double lfo1Phase_ = 0.0, lfo2Phase_ = 0.0;
+    // Molette de hauteur (demi-tons), même contrat que params_.
+    std::atomic<float> bendSemitones_{0.0f};
 };
 
 } // namespace vsm::plugins::generic

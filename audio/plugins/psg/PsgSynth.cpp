@@ -64,6 +64,7 @@ void PsgSynth::process(const MidiNoteEvent* events, int numEvents,
     p.noiseLevel = params_[kNoiseLevel].load(std::memory_order_relaxed);
     p.noisePeriod = params_[kNoisePeriod].load(std::memory_order_relaxed);
     p.bits = params_[kBits].load(std::memory_order_relaxed);
+    p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
 
     const AdsrSettings env{
         params_[kAttack].load(std::memory_order_relaxed),

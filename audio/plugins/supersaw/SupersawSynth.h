@@ -79,6 +79,9 @@ public:
         float cutoff = 6000.0f, resonance = 0.3f, envAmount = 0.4f, keyTrack = 0.3f;
         float lfoToPitch = 0.0f, lfoToFilter = 0.0f;
         float velocityToFilter = 0.3f;
+        // Molette de hauteur, en demi-tons (la somme drift+vibrato l'est
+        // déjà). À zéro l'addition est exacte : empreinte inchangée.
+        float bendSemitones = 0.0f;
     };
 
     /// Rend un échantillon stéréo. Le supersaw est stéréo PAR NATURE : les
@@ -120,6 +123,7 @@ public:
                  float* outputL, float* outputR, int numSamples) override;
     void setParameter(vsm::audio::plugin::ParamId id, float value) override;
     float getParameter(vsm::audio::plugin::ParamId id) const override;
+    bool handleControlEvent(const vsm::audio::plugin::MidiControlEvent& event) override;
     const vsm::audio::plugin::ParameterList& parameterList() const override { return parameterList_; }
     vsm::audio::plugin::PresetState saveState() const override;
     void loadState(const vsm::audio::plugin::PresetState& state) override;
@@ -134,6 +138,8 @@ private:
     mutable std::array<std::atomic<float>, kAnalogCharacter + 1> params_{};
     vsm::audio::engine::VoiceManager<SupersawVoice, kMaxVoices> voiceManager_;
     double lfoPhase_ = 0.0;
+    // Molette de hauteur (demi-tons), même contrat que params_.
+    std::atomic<float> bendSemitones_{0.0f};
     /// Dernière hauteur jouée : point de départ du portamento de la note
     /// suivante. Un lead sans glissando n'est pas un lead.
     float lastHz_ = 0.0f;

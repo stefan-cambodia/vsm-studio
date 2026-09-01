@@ -105,6 +105,7 @@ void DX7Synth::process(const MidiNoteEvent* events, int numEvents,
     const float lfoRate = params_[kLfoRate].load(std::memory_order_relaxed);
     lfoIncrement_ = lfoRate / sampleRate_;
 
+    const float bendSemis = bendSemitones_.load(std::memory_order_relaxed);
     int eventIndex = 0;
     for (int i = 0; i < numSamples; ++i) {
         while (eventIndex < numEvents && events[eventIndex].sampleOffset == i) {
@@ -113,7 +114,9 @@ void DX7Synth::process(const MidiNoteEvent* events, int numEvents,
         }
 
         const float lfo = std::sin(static_cast<float>(lfoPhase_ * kTwoPi));
-        const float lfoPitchSemis = lfo * lfoToPitch * 2.0f; // +-2 demi-tons max
+        // Molette comprise : la voix somme déjà ses hauteurs en demi-tons, et
+        // à molette nulle l'addition est exacte (empreinte inchangée au bit).
+        const float lfoPitchSemis = lfo * lfoToPitch * 2.0f + bendSemis;
 
         float sum = 0.0f;
         voiceManager_.forEachVoice([&](DX7Voice& v) { sum += v.render(lfoPitchSemis); });
@@ -125,6 +128,14 @@ void DX7Synth::process(const MidiNoteEvent* events, int numEvents,
         lfoPhase_ += lfoIncrement_;
         if (lfoPhase_ >= 1.0) lfoPhase_ -= 1.0;
     }
+}
+
+bool DX7Synth::handleControlEvent(const MidiControlEvent& event) {
+    // La molette de hauteur, comme sur les monophoniques (D0.5) ; le reste est
+    // refusé en le disant -- le moteur compte le refus.
+    if (event.kind != MidiControlEvent::Kind::PitchBend) return false;
+    bendSemitones_.store(event.value, std::memory_order_relaxed);
+    return true;
 }
 
 void DX7Synth::setParameter(ParamId id, float value) {

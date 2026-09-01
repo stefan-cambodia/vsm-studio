@@ -270,6 +270,7 @@ public:
 
     void setParameter(vsm::audio::plugin::ParamId id, float value) override;
     float getParameter(vsm::audio::plugin::ParamId id) const override;
+    bool handleControlEvent(const vsm::audio::plugin::MidiControlEvent& event) override;
     const vsm::audio::plugin::ParameterList& parameterList() const override;
 
     vsm::audio::plugin::PresetState saveState() const override;
@@ -283,6 +284,10 @@ private:
 
     vsm::audio::engine::VoiceManager<DX7Voice, kMaxVoices> voiceManager_;
     double lfoPhase_ = 0.0, lfoIncrement_ = 0.0;
+
+    // Molette de hauteur (demi-tons), même contrat que params_. Elle entre
+    // dans le même chemin que le LFO de hauteur : la somme est en demi-tons.
+    std::atomic<float> bendSemitones_{0.0f};
 
     std::array<std::atomic<float>, kNumParams> params_;
     vsm::audio::plugin::ParameterList parameterList_;

@@ -82,6 +82,9 @@ public:
         float attackSpread = 0.0f;      // les rangs hauts arrivent en retard
         float velocityToTilt = 0.4f;    // jouer fort ouvre le spectre
         float drift = 0.15f;
+        // Molette de hauteur, en demi-tons. À zéro l'addition est exacte :
+        // empreinte inchangée au bit.
+        float bendSemitones = 0.0f;
     };
 
     void prepare(double sampleRate, uint64_t seed) {
@@ -128,7 +131,8 @@ public:
         // poussé, et c'est le seul rôle de la vélocité sur le timbre ici.
         const float tilt = p.tiltDbPerOct + p.velocityToTilt * vel * 6.0f;
         // La dérive est en DEMI-TONS, comme partout ailleurs dans le parc.
-        const float f0 = baseHz_ * std::pow(2.0f, drift_.nextValue() * 0.05f / 12.0f);
+        const float f0 = baseHz_ * std::pow(
+            2.0f, (drift_.nextValue() * 0.05f + p.bendSemitones) / 12.0f);
         const int rangs = std::max(1, std::min(kPartials, static_cast<int>(p.partialCount + 0.5f)));
         const float nyquist = static_cast<float>(sampleRate_) * 0.5f;
         const float B = p.inharmonicity * 0.0008f;
@@ -214,6 +218,13 @@ public:
                  float* outputL, float* outputR, int numSamples) override;
     void setParameter(vsm::audio::plugin::ParamId id, float value) override;
     float getParameter(vsm::audio::plugin::ParamId id) const override;
+    bool handleControlEvent(const vsm::audio::plugin::MidiControlEvent& event) override {
+        // La molette de hauteur, comme sur les monophoniques (D0.5) ; le
+        // reste est refusé en le disant -- le moteur compte le refus.
+        if (event.kind != vsm::audio::plugin::MidiControlEvent::Kind::PitchBend) return false;
+        bendSemitones_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
     const vsm::audio::plugin::ParameterList& parameterList() const override { return parameterList_; }
     vsm::audio::plugin::PresetState saveState() const override;
     void loadState(const vsm::audio::plugin::PresetState& state) override;
@@ -227,6 +238,8 @@ private:
     vsm::audio::plugin::ParameterList parameterList_;
     mutable std::array<std::atomic<float>, kOutputLevel + 1> params_{};
     vsm::audio::engine::VoiceManager<AdditiveVoice, kMaxVoices> voiceManager_;
+    // Molette de hauteur (demi-tons), même contrat que params_.
+    std::atomic<float> bendSemitones_{0.0f};
 };
 
 } // namespace vsm::plugins::additive

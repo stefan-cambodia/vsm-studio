@@ -44,8 +44,10 @@ float ObxVoice::render(const Params& p, float lfo) {
     const float drift2 = drift2_.nextValue() * 0.06f;
     const float vibrato = lfo * p.lfoToPitch * 0.5f; // demi-tons
 
-    const float freq1 = baseHz_ * std::exp2f((unisonOffset_ + drift1 + vibrato) / 12.0f);
-    const float freq2 = baseHz_ * std::exp2f((unisonOffset_ + p.osc2Detune + drift2 + vibrato) / 12.0f);
+    const float freq1 = baseHz_ * std::exp2f(
+        (unisonOffset_ + drift1 + vibrato + p.bendSemitones) / 12.0f);
+    const float freq2 = baseHz_ * std::exp2f(
+        (unisonOffset_ + p.osc2Detune + drift2 + vibrato + p.bendSemitones) / 12.0f);
 
     osc1_.setFrequency(freq1);
     osc1_.setWaveform(shapeToWave(p.osc1Shape));
@@ -135,6 +137,14 @@ void ObxSynth::initialize(double sampleRate, int /*maxBlockSize*/) {
     lfoPhase_ = 0.0;
 }
 
+bool ObxSynth::handleControlEvent(const MidiControlEvent& event) {
+    // La molette de hauteur, comme sur les monophoniques (D0.5) ; le reste est
+    // refusé en le disant -- le moteur compte le refus.
+    if (event.kind != MidiControlEvent::Kind::PitchBend) return false;
+    bendSemitones_.store(event.value, std::memory_order_relaxed);
+    return true;
+}
+
 void ObxSynth::setParameter(ParamId id, float value) {
     if (id < params_.size()) params_[id].store(value, std::memory_order_relaxed);
 }
@@ -206,6 +216,7 @@ void ObxSynth::process(const MidiNoteEvent* events, int numEvents,
     p.lfoToPulseWidth = params_[kLfoToPulseWidth].load(std::memory_order_relaxed);
     p.lfoToFilter = params_[kLfoToFilter].load(std::memory_order_relaxed);
     p.velocityToFilter = params_[kVelocityToFilter].load(std::memory_order_relaxed);
+    p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
 
     const AdsrSettings amp{
         params_[kAmpAttack].load(std::memory_order_relaxed),

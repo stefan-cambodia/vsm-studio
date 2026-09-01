@@ -74,6 +74,10 @@ public:
         float timeWander = 0.10f;    // pas de la marche sur les durées
         float pitchLock = 1.0f;      // 0 = la hauteur dérive, 1 = elle tient
         float velocityToWander = 0.3f;
+        // Molette de hauteur, en demi-tons : elle déplace la CIBLE du verrou
+        // de hauteur. À zéro le facteur vaut exactement 1 : empreinte
+        // inchangée au bit.
+        float bendSemitones = 0.0f;
     };
 
     void prepare(double sampleRate, uint64_t seed) {
@@ -177,7 +181,8 @@ private:
         // renormalisation elle dérive avec la marche aléatoire, et la note avec
         // elle. On ramène donc cette somme vers `sampleRate / f0`, d'autant plus
         // fort que le verrou est serré.
-        const float visee = static_cast<float>(sampleRate_) / std::max(baseHz_, 1.0f);
+        const float visee = static_cast<float>(sampleRate_)
+                          / std::max(baseHz_ * std::pow(2.0f, p.bendSemitones / 12.0f), 1.0f);
         float somme = 0.0f;
         for (int k = 0; k < n; ++k) somme += durees_[static_cast<size_t>(k)];
         if (somme > 1e-6f) {
@@ -231,6 +236,13 @@ public:
                  float* outputL, float* outputR, int numSamples) override;
     void setParameter(vsm::audio::plugin::ParamId id, float value) override;
     float getParameter(vsm::audio::plugin::ParamId id) const override;
+    bool handleControlEvent(const vsm::audio::plugin::MidiControlEvent& event) override {
+        // La molette de hauteur, comme sur les monophoniques (D0.5) ; le
+        // reste est refusé en le disant -- le moteur compte le refus.
+        if (event.kind != vsm::audio::plugin::MidiControlEvent::Kind::PitchBend) return false;
+        bendSemitones_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
     const vsm::audio::plugin::ParameterList& parameterList() const override { return parameterList_; }
     vsm::audio::plugin::PresetState saveState() const override;
     void loadState(const vsm::audio::plugin::PresetState& state) override;
@@ -244,6 +256,8 @@ private:
     vsm::audio::plugin::ParameterList parameterList_;
     mutable std::array<std::atomic<float>, kOutputLevel + 1> params_{};
     vsm::audio::engine::VoiceManager<StochasticVoice, kMaxVoices> voiceManager_;
+    // Molette de hauteur (demi-tons), même contrat que params_.
+    std::atomic<float> bendSemitones_{0.0f};
 };
 
 } // namespace vsm::plugins::stochastic

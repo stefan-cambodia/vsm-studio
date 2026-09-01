@@ -183,10 +183,37 @@ de `ISynthPlugin::handleControlEvent` est de répondre `false`. Répondre `false
 est un choix parfaitement légitime -- une boîte à rythmes n'a que faire d'un
 pitch bend -- mais c'est un choix, pas un oubli : le moteur COMPTE ce qui a été
 refusé (`ProcessGraph::ignoredControlEvents()`), pour que l'interface puisse
-dire pourquoi une modulation ne s'entend pas. Les cinq machines à voix unique ou
-double du parc (Minimoog, TB-303, SH-101, MS-20, ARP Odyssey) l'honorent ; les
-polyphoniques restent à faire, machine par machine, et cette case est l'endroit
-où on s'en souvient.
+dire pourquoi une modulation ne s'entend pas.
+
+~~Les cinq machines à voix unique ou double du parc l'honorent ; les
+polyphoniques restent à faire, machine par machine.~~ **FAIT LE 01/09/2026,
+avec la doctrine qui décide qui répond.** L'AUTHENTICITÉ tranche, comme
+partout ailleurs (le Juno ignore la vélocité, trait couvert par un test) :
+une machine dont l'instrument a un geste de hauteur CONTINUE honore la
+molette ; un résonateur frappé, un orgue ou un lecteur d'échantillons la
+refusent en connaissance de cause, et le moteur compte le refus.
+
+- **Honorent (22)** : les cinq mono/duophoniques (Minimoog, TB-303, SH-101,
+  MS-20, ARP Odyssey) et dix-sept polyphoniques — Juno-106, Jupiter-8,
+  Prophet, OB-X, Supersaw, DX7, Wavetable, PCM-Hybrid (le corps synthétique ;
+  l'attaque PCM, un transitoire, garde sa lecture), Generic, PhaseDist,
+  Additive, West Coast, Vocal (la source glisse, les formants restent),
+  String (l'accord de la boucle suit, comme un doigt), Wind (la lèvre pousse
+  la note), PSG (quantifiée par l'horloge, par paliers — fidèle à la puce),
+  Stochastic (la cible du verrou de hauteur se déplace).
+- **Refusent, et le disent** : piano et piano électrique (une corde ou une
+  lame frappée n'a pas de molette), roues phoniques (un Hammond non plus),
+  sampler et multisample (report d'échantillons : la re-hauteur continue
+  reste à faire, refus dit en attendant), diviseur d'octaves (un orgue),
+  les percussions (vsm.drums, TR-808, TR-909, perc, fmdrums), testtone.
+
+Le banc (`audio/tests/test_control_events.cpp`) rend chaque machine qui
+honore MESURABLE — deux demi-tons de molette doivent hausser le fondamental,
+estimé par AUTOCORRÉLATION : le premier estimateur comptait les passages par
+zéro et mentait sous un VCF (monter la note sort des harmoniques de la bande
+passante, le compte baisse alors que la hauteur monte) — et il NOMME la
+machine fautive en cas d'échec. Toute molette à zéro est une addition
+flottante exacte : les 34 empreintes audio sont inchangées au bit.
 
 Une case non cochée n'est pas un détail à finir plus tard : c'est une machine
 qui se comportera correctement aujourd'hui et se dégradera en silence dans six

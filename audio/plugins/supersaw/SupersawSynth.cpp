@@ -100,7 +100,7 @@ void SupersawVoice::render(const Params& p, float lfo, float& outL, float& outR)
 
     const float drift = drift_.nextValue() * 0.05f;
     const float vibrato = lfo * p.lfoToPitch * 0.5f;
-    const float rootHz = currentHz_ * std::exp2f((drift + vibrato) / 12.0f);
+    const float rootHz = currentHz_ * std::exp2f((drift + vibrato + p.bendSemitones) / 12.0f);
 
     // Le réglage de façade passe d'abord par la courbe, puis sert d'échelle
     // aux sept écarts. `detuneCurve` rend une fraction de fréquence, pas des
@@ -207,6 +207,14 @@ void SupersawSynth::initialize(double sampleRate, int /*maxBlockSize*/) {
     lastHz_ = 0.0f;
 }
 
+bool SupersawSynth::handleControlEvent(const MidiControlEvent& event) {
+    // La molette de hauteur, comme sur les monophoniques (D0.5) ; le reste est
+    // refusé en le disant -- le moteur compte le refus.
+    if (event.kind != MidiControlEvent::Kind::PitchBend) return false;
+    bendSemitones_.store(event.value, std::memory_order_relaxed);
+    return true;
+}
+
 void SupersawSynth::setParameter(ParamId id, float value) {
     if (id < params_.size()) params_[id].store(value, std::memory_order_relaxed);
 }
@@ -262,6 +270,7 @@ void SupersawSynth::process(const MidiNoteEvent* events, int numEvents,
     p.lfoToPitch = params_[kLfoToPitch].load(std::memory_order_relaxed);
     p.lfoToFilter = params_[kLfoToFilter].load(std::memory_order_relaxed);
     p.velocityToFilter = params_[kVelocityToFilter].load(std::memory_order_relaxed);
+    p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
 
     const AdsrSettings amp{
         params_[kAmpAttack].load(std::memory_order_relaxed),

@@ -4,7 +4,9 @@
 #include "vsm/audio/plugin/BuiltInPlugins.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include "vsm/sequencer/Project.h"
+#include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <vector>
 
 using namespace vsm::sequencer;
@@ -22,13 +24,34 @@ using namespace vsm::audio::plugin;
 
 namespace {
 
-/// Hauteur estimée par comptage de passages par zéro : suffisant pour dire
-/// « c'est plus aigu », qui est tout ce qu'on demande ici.
+/// Hauteur du FONDAMENTAL, par autocorrélation (lags de 50 Hz à 2 kHz).
+///
+/// La première version comptait les passages par zéro, et elle mentait sur le
+/// Juno-106 : son VCF coupe à 1 200 Hz, monter la note de deux demi-tons
+/// pousse des harmoniques HORS de la bande, et le compte de passages BAISSE
+/// alors que la hauteur monte (mesuré : 766 -> 760 « Hz » pour un bend de
+/// +2 demi-tons qui, sondé à l'octave, fonctionne parfaitement). Un compte
+/// d'harmoniques n'est pas une hauteur ; l'autocorrélation, si.
 double hauteurApprochee(const std::vector<float>& signal, double sampleRate) {
-    int passages = 0;
-    for (size_t i = 1; i < signal.size(); ++i)
-        if ((signal[i - 1] < 0.0f) != (signal[i] < 0.0f)) ++passages;
-    return static_cast<double>(passages) * sampleRate / (2.0 * static_cast<double>(signal.size()));
+    // L'attaque (enveloppe, transitoire) est écartée : elle brouille les lags.
+    const size_t debut = std::min(signal.size() / 4, static_cast<size_t>(sampleRate * 0.1));
+    const size_t n = signal.size() - debut;
+    const float* s = signal.data() + debut;
+    const auto lagMin = static_cast<size_t>(sampleRate / 2000.0);
+    const auto lagMax = std::min(n / 2, static_cast<size_t>(sampleRate / 50.0));
+    if (lagMax <= lagMin) return 0.0;
+    double energie = 0.0;
+    for (size_t i = 0; i < n; ++i) energie += static_cast<double>(s[i]) * s[i];
+    if (energie <= 0.0) return 0.0;
+    double meilleur = -1.0;
+    size_t meilleurLag = lagMin;
+    for (size_t lag = lagMin; lag <= lagMax; ++lag) {
+        double somme = 0.0;
+        for (size_t i = 0; i + lag < n; ++i)
+            somme += static_cast<double>(s[i]) * s[i + lag];
+        if (somme > meilleur) { meilleur = somme; meilleurLag = lag; }
+    }
+    return sampleRate / static_cast<double>(meilleurLag);
 }
 
 /// Fait sonner une machine une demi-seconde, avec ou sans molette de hauteur.
@@ -79,14 +102,24 @@ Project projetAvecPitchBend(const std::string& machineId) {
 } // namespace
 
 VSM_TEST(a_pitch_bend_actually_changes_what_a_machine_plays) {
-    // Les cinq machines à voix unique ou double du parc : celles dont la
-    // molette de hauteur fait le style de jeu.
-    for (const char* machine : {"vsm.minimoog", "vsm.tb303", "vsm.sh101", "vsm.ms20", "vsm.arpodyssey"}) {
+    // Les cinq machines à voix unique ou double du parc — celles dont la
+    // molette fait le style de jeu — puis les polyphoniques, équipées machine
+    // par machine (la case du § 10 de CDC-nouvelle-machine.md).
+    for (const char* machine : {"vsm.minimoog", "vsm.tb303", "vsm.sh101", "vsm.ms20", "vsm.arpodyssey",
+                                "vsm.juno106", "vsm.jupiter8", "vsm.prophet", "vsm.obx", "vsm.supersaw",
+                                "vsm.dx7", "vsm.wavetable", "vsm.pcmhybrid", "vsm.generic",
+                                "vsm.phasedist", "vsm.additive", "vsm.westcoast", "vsm.vocal",
+                                "vsm.string", "vsm.wind", "vsm.psg", "vsm.stochastic"}) {
         const auto nu = rendreUneNote(machine, 0.0f);
         const auto bende = rendreUneNote(machine, 2.0f);   // deux demi-tons vers le haut
 
         const double hauteurNue = hauteurApprochee(nu, 48000.0);
         const double hauteurBendee = hauteurApprochee(bende, 48000.0);
+        // La machine fautive est NOMMÉE : un échec anonyme dans une boucle de
+        // vingt machines ne dit rien de ce qu'il faut réparer.
+        if (!(hauteurNue > 50.0) || !(hauteurBendee > hauteurNue * 1.05))
+            std::printf("      [%s] hauteur nue %.1f Hz, bendée %.1f Hz\n",
+                        machine, hauteurNue, hauteurBendee);
         VSM_ASSERT(hauteurNue > 50.0);                     // sinon le test ne prouve rien
         VSM_ASSERT(hauteurBendee > hauteurNue * 1.05);     // deux demi-tons = +12,2 %
     }

@@ -71,6 +71,9 @@ public:
         float cutoff = 4000.0f, resonance = 0.2f, envAmount = 0.4f, keyTrack = 0.3f;
         float lfoToFilter = 0.0f, lfoToPitch = 0.0f;
         float velocityToFilter = 0.3f;
+        // Molette de hauteur, en demi-tons (la somme drift+vibrato l'est
+        // déjà). À zéro l'addition est exacte : empreinte inchangée.
+        float bendSemitones = 0.0f;
     };
 
     float render(const vsm::audio::dsp::WaveTableBank& bank, const Params& p, float lfo);
@@ -107,6 +110,7 @@ public:
                  float* outputL, float* outputR, int numSamples) override;
     void setParameter(vsm::audio::plugin::ParamId id, float value) override;
     float getParameter(vsm::audio::plugin::ParamId id) const override;
+    bool handleControlEvent(const vsm::audio::plugin::MidiControlEvent& event) override;
     const vsm::audio::plugin::ParameterList& parameterList() const override { return parameterList_; }
     vsm::audio::plugin::PresetState saveState() const override;
     void loadState(const vsm::audio::plugin::PresetState& state) override;
@@ -124,6 +128,8 @@ private:
     /// audio ne doit jamais déclencher sa construction.
     const vsm::audio::dsp::WaveTableBank* bank_ = nullptr;
     double lfoPhase_ = 0.0;
+    // Molette de hauteur (demi-tons), même contrat que params_.
+    std::atomic<float> bendSemitones_{0.0f};
 };
 
 } // namespace vsm::plugins::wavetable

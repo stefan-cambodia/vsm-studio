@@ -74,6 +74,11 @@ public:
         float noisePeriod = 32.0f;    // longueur du cycle de bruit
         float bits = 4.0f;            // marches de volume
         int voices = 1;               // combien de voix carrées sonnent
+        // Molette de hauteur, en demi-tons — le glissando est LE geste des
+        // puces sonores. Elle passe par la même quantification d'horloge que
+        // le reste : une molette sur PSG marche par paliers, et c'est fidèle.
+        // À zéro l'addition est exacte : empreinte inchangée au bit.
+        float bendSemitones = 0.0f;
     };
 
     void prepare(double sampleRate, uint64_t seed) {
@@ -126,7 +131,8 @@ public:
             // demandes tombent sur la même période entière. C'est fidèle, et
             // c'est exactement ce qui rendait le désaccord capricieux sur ces
             // puces.
-            const float cents = p.detune * static_cast<float>(k);
+            const float cents = p.detune * static_cast<float>(k)
+                              + p.bendSemitones * 100.0f;
             const float demande = demandeHz_ * std::pow(2.0f, cents / 1200.0f);
             const float f = quantifier(demande, p.clockHz);
             phases_[static_cast<size_t>(k)] += f / static_cast<float>(sampleRate_);
@@ -187,6 +193,13 @@ public:
                  float* outputL, float* outputR, int numSamples) override;
     void setParameter(vsm::audio::plugin::ParamId id, float value) override;
     float getParameter(vsm::audio::plugin::ParamId id) const override;
+    bool handleControlEvent(const vsm::audio::plugin::MidiControlEvent& event) override {
+        // La molette de hauteur, comme sur les monophoniques (D0.5) ; le
+        // reste est refusé en le disant -- le moteur compte le refus.
+        if (event.kind != vsm::audio::plugin::MidiControlEvent::Kind::PitchBend) return false;
+        bendSemitones_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
     const vsm::audio::plugin::ParameterList& parameterList() const override { return parameterList_; }
     vsm::audio::plugin::PresetState saveState() const override;
     void loadState(const vsm::audio::plugin::PresetState& state) override;
@@ -200,6 +213,8 @@ private:
     vsm::audio::plugin::ParameterList parameterList_;
     mutable std::array<std::atomic<float>, kOutputLevel + 1> params_{};
     vsm::audio::engine::VoiceManager<PsgVoice, kMaxVoices> voiceManager_;
+    // Molette de hauteur (demi-tons), même contrat que params_.
+    std::atomic<float> bendSemitones_{0.0f};
 };
 
 } // namespace vsm::plugins::psg
