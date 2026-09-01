@@ -37,8 +37,16 @@ Un échantillon glissé depuis le navigateur tombe sur la piste survolée, **à 
 
 ## 3. Le rack
 
-Trente-trois machines, plus une tonalité d'essai qui n'a pas de façade parce qu'elle
+Trente-quatre machines, plus une tonalité d'essai qui n'a pas de façade parce qu'elle
 n'a rien à régler. Chacune porte une **empreinte de non-régression audio** qui fige son rendu.
+
+Elles répondent au **jeu MIDI** selon leur nature, jamais par politesse : la molette de
+hauteur plie tout ce qui a un geste de hauteur continue (synthés, cordes, vents, voix,
+multisample — vingt-quatre machines), la molette de modulation et l'aftertouch dosent un
+vibrato là où un LFO existe (quinze), le program change règle le programme du multisample.
+Un piano, un orgue à roues ou une boîte à rythmes **refusent** — leur instrument n'a pas ce
+geste — et le moteur compte chaque refus, pour que l'interface puisse dire pourquoi une
+modulation ne s'entend pas.
 
 ### Monophoniques — la ligne de basse et le solo
 
@@ -203,6 +211,14 @@ Guide d'ondes ; l'archet et le plectre sur la même corde.
 Perce cylindrique : la clarinette et, en approche, les cuivres.
 
 ![Façade de Wind (anche et lèvres)](images/manuel/vsm.wind.png)
+
+**Cone (anche sur perce conique)** — `vsm.cone`
+
+Perce conique : le saxophone et le hautbois — les rangs pairs que le cylindre
+interdit. Mêmes commandes que Wind ; ce qui les sépare est la perce, et
+l'EMBOUCHURE y échange le mordant impair contre le corps pair.
+
+![Façade de Cone (anche sur perce conique)](images/manuel/vsm.cone.png)
 
 **Drums (batterie acoustique)** — `vsm.drums`
 
