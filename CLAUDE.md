@@ -54,8 +54,3 @@ l'ordre de marche — pas de la documentation d'accompagnement.
 - Les nombres qui traversent une frontière (fichier, CLI, tube) se lisent et
   s'écrivent en locale C (interchange/NumberText.h) — la locale du processus
   est celle de JUCE, pas la tienne.
-
-## Hors programme (décidé, écrit, ne pas rouvrir sans mesure)
-- Vue Session d'Ableton (second modèle temporel), copier une interface pour
-  la ressemblance, changer de métrique sans nécessité démontrée à l'écoute,
-  dépendance réseau au build du moteur.
