@@ -37,13 +37,17 @@ CE QUE ÇA NE DOIT PAS COÛTER : DE LA PLACE. Un rendu de quatre minutes en
 stéréo flottante pèse 82 Mo. Garder les trente-huit remplissait sept gigaoctets
 de `/tmp` -- qui est un disque en MÉMOIRE sur beaucoup de systèmes -- et la
 première exécution est morte dessus, « No space left on device », après avoir
-mené l'arbitrage de la basse à bien. Chaque candidate est donc rendue dans LE
-MÊME dossier, et son WAV est effacé sitôt mesuré : l'empreinte est celle d'un
-seul rendu, quel que soit le nombre de candidates.
+mené l'arbitrage de la basse à bien. Chaque candidate est donc rendue dans son
+dossier À ELLE, effacé sitôt la mesure prise : l'empreinte simultanée est celle
+du bassin (quelques rendus), quel que soit le nombre de candidates. (Une
+première économie plus agressive — partager les dossiers entre candidates par
+modulo — a produit une collision de threads : voir le commentaire dans
+`evaluer`.)
 """
 
 from __future__ import annotations
 
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -264,13 +268,22 @@ def arbitrate_on_track(
             en_cache = mesure_en_cache(cle)
             if en_cache is not None:
                 return en_cache
-        dossier = workdir / f"candidate-{indice % pool}"
+        # UN DOSSIER PAR CANDIDATE, jamais partagé. La première écriture de
+        # cette ligne disait « candidate-{indice % pool} » : elle supposait
+        # qu'un thread du bassin garde les indices de sa classe modulo, ce que
+        # `ThreadPoolExecutor.map` ne promet pas. Dès qu'une machine rapide en
+        # double une lente, deux candidates partagent le dossier : l'une
+        # efface le rendu.wav que l'autre va lire (plantage, vu sur *Sky and
+        # Sand* le 01/09/2026), ou écrase son project.json avant que le moteur
+        # de l'autre ne l'ouvre — une mesure FAUSSE, silencieuse, et mise en
+        # cache. Le dossier par indice rend la collision impossible ; il est
+        # effacé sitôt la mesure prise (garder les rendus saturait /tmp au
+        # trente-huitième).
+        dossier = workdir / f"candidate-{indice}"
         dossier.mkdir(parents=True, exist_ok=True)
         rendu = render_track_offline(piste, dossier, sample_rate, duration=duree,
                                      tempo=tempo, binary=binary, title=f"arbitrage-{name}")
-        # Effacé tout de suite : il a déjà été lu en mémoire, et le garder ne
-        # servirait qu'à saturer le disque au trente-huitième.
-        (dossier / "rendu.wav").unlink(missing_ok=True)
+        shutil.rmtree(dossier, ignore_errors=True)
         if rendu is None or rendu.size == 0:
             return None, None
         rms = float(np.sqrt(np.mean(np.square(rendu.astype(np.float64)))))

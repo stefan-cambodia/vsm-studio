@@ -66,4 +66,9 @@ def render_track_offline(
         subprocess.run(commande, check=True, capture_output=True)
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
+    # Un moteur qui sort en 0 SANS écrire son fichier est un rendu qui a
+    # échoué, pas une exception à faire remonter : l'appelant sait dire
+    # « rendu vide », et c'est la voie qui nomme la candidate écartée.
+    if not sortie.is_file():
+        return None
     return read_render_wav(sortie)

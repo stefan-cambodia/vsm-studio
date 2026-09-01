@@ -2420,6 +2420,24 @@ tient la forme neuve : pool == série aux mêmes distances, et une reprise à
 chaud rend le même classement avec la fonction de rendu SABOTÉE. Le gain de
 bout en bout se remesure à la prochaine course.
 
+**ET CETTE DEUXIÈME FORME PORTAIT UNE COLLISION DE THREADS, TROUVÉE PAR LA
+CAMPAGNE DU 01/09/2026.** Les dossiers de rendu étaient partagés entre
+candidates par `indice % pool`, en supposant qu'un thread du bassin garde sa
+classe modulo — ce que `ThreadPoolExecutor.map` ne promet pas. Dès qu'une
+machine rapide en double une lente, deux candidates écrivent au même endroit :
+l'une efface le `rendu.wav` que l'autre va lire — c'est le plantage qui a fait
+tomber *Sky and Sand* à la candidate 0, deux fois, reproductible — ou écrase
+son `project.json` avant que le moteur ne l'ouvre, et la mesure de l'une
+devient celle de l'autre, SILENCIEUSEMENT, cache compris. Le test « pool ==
+série » n'y voyait rien : ses rendus courts finissent en cadence, sans
+doublement. Correctif : un dossier PAR candidate, effacé sitôt la mesure
+prise — la collision devient impossible par construction, l'empreinte disque
+simultanée reste celle du bassin. Le cache des mesures a été VIDÉ (4,3 Mo,
+entrées possiblement empoisonnées), et les courses du matin (usandthem-v4 et
+ses témoins : 0,1907 / 0,1953 / 0,1907 / 0,1865) sont REJOUÉES en v5 : leurs
+distances finales étaient réelles — mesurées sur le rendu du projet écrit —
+mais leurs arbitrages ont pu élire sur des mesures échangées.
+
 *Ce qui suit décrit la première implémentation, conservée pour l'histoire de
 la décision :*
 
