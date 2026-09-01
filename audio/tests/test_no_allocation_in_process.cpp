@@ -1,5 +1,8 @@
 #include "TestFramework.h"
+#include <cstdio>
 #include "vsm/audio/engine/ProcessGraph.h"
+#include "vsm/audio/plugin/BuiltInPlugins.h"
+#include "vsm/audio/plugin/PluginRegistry.h"
 #include "vsm/audio/engine/SampleStore.h"
 #include "vsm/audio/io/AudioTrackLoader.h"
 #include "vsm/audio/io/WavFileWriter.h"
@@ -257,6 +260,42 @@ VSM_TEST(process_block_allocates_nothing_with_machines) {
     Compteur compteur;
     for (int i = 0; i < 200; ++i) graphe.processBlock(gauche.data(), droite.data(), 512);
     VSM_ASSERT_CHEMIN_TEMPS_REEL_PROPRE(compteur);
+}
+
+VSM_TEST(process_block_allocates_nothing_for_ANY_machine_of_the_parc) {
+    // L'INVARIANT N° 2 VAUT POUR LE PARC ENTIER, ET IL N'ÉTAIT VÉRIFIÉ QUE
+    // SUR UNE MACHINE. Le test ci-dessus monte huit pistes de `vsm.minimoog`
+    // et ne dit donc rien des trente-huit autres : une machine qui
+    // allouerait dans `process()` — un `std::vector` redimensionné à la
+    // volée, une chaîne construite pour un nom — passerait la suite entière
+    // sans être vue. C'est exactement la forme de garde-fou que le § 6 de
+    // `ROADMAP-daw.md` dit qu'on perd sans s'en apercevoir : il gardait un
+    // trente-neuvième du parc.
+    //
+    // Ici, CHAQUE machine enregistrée joue à son tour, seule, et son bloc de
+    // régime permanent doit être propre. Le rodage reste hors comptage, pour
+    // la raison écrite plus haut.
+    vsm::audio::plugin::registerBuiltInPlugins();
+    for (const auto& [identifiant, nom] : vsm::audio::plugin::PluginRegistry::instance().listAvailable()) {
+        ProcessGraph graphe;
+        graphe.prepare(48000.0, 512);
+        graphe.setTrackInstrument(0, identifiant);
+        graphe.setProject(projetAvecNotes(1));
+        graphe.seekSeconds(0.0);
+        graphe.setPlaying(true);
+
+        std::vector<float> gauche(512, 0.0f), droite(512, 0.0f);
+        for (int i = 0; i < 20; ++i) graphe.processBlock(gauche.data(), droite.data(), 512);
+
+        Compteur compteur;
+        for (int i = 0; i < 60; ++i) graphe.processBlock(gauche.data(), droite.data(), 512);
+        // La machine fautive est NOMMÉE : un échec anonyme sur trente-neuf
+        // machines ne dit rien de ce qu'il faut réparer.
+        if (compteur.verrous() != 0 || compteur.entreesSorties() != 0)
+            std::printf("      [%s] verrous %d, E/S %d\n",
+                        identifiant.c_str(), compteur.verrous(), compteur.entreesSorties());
+        VSM_ASSERT_CHEMIN_TEMPS_REEL_PROPRE(compteur);
+    }
 }
 
 VSM_TEST(process_block_allocates_nothing_with_a_resident_audio_track) {

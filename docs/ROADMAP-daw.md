@@ -2968,7 +2968,14 @@ Ceux de la fusion, plus cinq propres à cet axe :
 1. **Les 34 empreintes audio restent vertes et inchangées.** Une phase qui en
    modifie une est fausse jusqu'à preuve du contraire.
 2. **`process()` reste sans allocation, sans verrou, sans I/O** — y compris
-   quand une piste audio lit 47 Mo depuis le disque.
+   quand une piste audio lit 47 Mo depuis le disque. **Et pour TOUTES les
+   machines depuis le 02/09/2026** : le test ne montait que huit pistes de
+   `vsm.minimoog` et ne disait donc rien des trente-huit autres — une
+   machine qui aurait alloué dans `process()` traversait la suite entière
+   sans être vue. Il parcourt désormais le registre et fait jouer chaque
+   machine à son tour, en NOMMANT la fautive s'il y en a une. C'est
+   exactement la forme de garde-fou que le § 6 décrit : il gardait, et il
+   ne gardait qu'un trente-neuvième du parc.
 3. **Rendu temps réel et rendu hors ligne restent identiques**, à l'échantillon
    près, sur tout ce qui s'ajoute. ~~Le test existe pour CLAP ; il s'étend.~~
    **Il s'est étendu le 31/08/2026, a trouvé une exception, et l'exception a
