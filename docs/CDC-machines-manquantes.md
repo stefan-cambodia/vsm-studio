@@ -31,7 +31,8 @@ Il classe ce qu'il entend en : `bass`, `synth_bass`, `synth_lead`, `synth_pad`,
 | Orgue, claviers électromécaniques | `vsm.epiano`, `vsm.tonewheel` | **couvert** |
 | Cordes | `vsm.string` | **couvert** — corde frottée, même machine (§ 10) |
 | Cuivres, bois à perce CYLINDRIQUE | `vsm.wind` | **couvert** — anche et lèvres (§ 11) |
-| **Saxophone, hautbois, flûte** | — | **non couvert** — perce conique et jet d'air. Plus « hors de portée » depuis les mesures du prototype conique : ce qui manque est la SÉLECTIVITÉ, pas la possibilité (ARCHITECTURE.md § 33) |
+| **Saxophone, hautbois** | `vsm.cone` (modélisé), profils GM (échantillonnés) | **couvert depuis le 01/09/2026** — anche sur perce conique, rangs pairs mesurés (h2/h1 0,37, § 14) ; la sixième mesure a trouvé le couplage fautif là où cinq topologies avaient échoué |
+| **Flûte** | profils multisample (FR3/GU/MS-Flute) | **couvert par échantillons** — le modèle à jet reste hors build, résultat négatif mesuré (ARCHITECTURE § 44 : sa boucle non inversante offre au continu le plus fort gain) |
 | **Voix** | `vsm.sampler` | **reportée, jamais reconstruite** — et c'est le seul emploi du sampler dans la version finale |
 
 > **Pourquoi le piano acoustique a DEUX machines, et ce que ça a coûté de
@@ -54,8 +55,9 @@ stems d'un enregistrement courant n'ont aujourd'hui aucune machine cible.**
 > **État : le tableau ci-dessus a été remis à jour, et il ne reste qu'une case
 > vide.** `vsm.sampler` a couvert le percussif, `vsm.epiano` et
 > `vsm.tonewheel` l'électromécanique, `vsm.string` la corde — pincée comme
-> frottée. Les cuivres et les bois restent seuls non couverts : ni une corde ni
-> une lame ne les produit, il leur faudrait un modèle à anche ou à lèvre. La
+> frottée. ~~Les cuivres et les bois restent seuls non couverts~~ — les
+> cylindriques par `vsm.wind`, puis, le 01/09/2026, les CONIQUES par
+> `vsm.cone` (§ 14) : **plus aucune ligne du tableau n'est vide.** La
 > phrase « les trois quarts des stems n'ont aucune machine cible » n'est plus
 > vraie, et c'est ce document qui la portait : elle est conservée telle quelle
 > ci-dessus parce qu'elle dit ce qu'ON CROYAIT au départ, et l'encadré dit ce
@@ -547,7 +549,12 @@ la sienne AU BIT PRÈS à travers le refactoring. `vsm.wind`, lui, ne la partage
 pas, et le dire compte autant — sa réflexion est inversante, il n'a pas de
 dispersion, et sa perte est un rayonnement au pavillon.
 
-### La case qui reste vide, et pourquoi elle ne se comble pas par un réglage
+### ~~La case qui reste vide~~ — comblée le 01/09/2026, et pourquoi elle ne se comblait pas par un réglage
+
+> **La case est remplie : `vsm.cone` est au parc** (§ 14, ARCHITECTURE § 33).
+> Ce qui suit reste vrai mot pour mot — c'était bien la topologie, pas un
+> réglage — et la sortie n'a pas été une topologie de plus : c'était le
+> COUPLAGE, la symétrie du limiteur de boucle.
 
 **Saxophone, hautbois, flûte.** C'est la dernière ligne sans machine du tableau
 du § 1, et **ce n'est pas un défaut de réglage de `vsm.wind`** : c'est sa
