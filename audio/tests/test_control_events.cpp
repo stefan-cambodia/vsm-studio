@@ -186,3 +186,55 @@ VSM_TEST(a_pitch_bend_survives_the_whole_chain_from_the_project_to_the_sound) {
     std::vector<float> finSans(temoin.left.begin() + static_cast<long>(moitie), temoin.left.end());
     VSM_ASSERT(hauteurApprochee(finAvec, 48000.0) > hauteurApprochee(finSans, 48000.0) * 1.05);
 }
+
+VSM_TEST(the_mod_wheel_adds_an_audible_vibrato_where_a_lfo_path_exists) {
+    // CC 1 (molette de modulation) : elle DOSE un vibrato au LFO de la
+    // machine, une demi-note à fond. Le critère est celui qui s'entend : le
+    // rendu avec molette diffère du rendu sans, sur les machines qui ont un
+    // chemin LFO -> hauteur ; les autres refusent l'événement en le disant.
+    vsm::audio::plugin::registerBuiltInPlugins();
+    for (const char* machine : {"vsm.sh101", "vsm.ms20", "vsm.arpodyssey",
+                                "vsm.juno106", "vsm.jupiter8", "vsm.prophet", "vsm.obx",
+                                "vsm.supersaw", "vsm.wavetable", "vsm.pcmhybrid",
+                                "vsm.generic", "vsm.dx7", "vsm.wind", "vsm.vocal"}) {
+        auto rendre = [&](float wheel) {
+            auto plugin = PluginRegistry::instance().create(machine);
+            VSM_ASSERT(plugin != nullptr);
+            plugin->initialize(48000.0, 512);
+            if (wheel > 0.0f) {
+                MidiControlEvent cc;
+                cc.kind = MidiControlEvent::Kind::ControlChange;
+                cc.index = 1;
+                cc.value = wheel;
+                if (!plugin->handleControlEvent(cc))
+                    std::printf("      [%s] refuse le CC 1\n", machine);
+                VSM_ASSERT(plugin->handleControlEvent(cc));
+            }
+            MidiNoteEvent note;
+            note.kind = MidiNoteEvent::Kind::NoteOn;
+            note.sampleOffset = 0;
+            note.note = 69;
+            note.velocity = 100;
+            std::vector<float> gauche(24000, 0.0f), droite(24000, 0.0f);
+            for (size_t i = 0; i + 512 <= gauche.size(); i += 512)
+                plugin->process(i == 0 ? &note : nullptr, i == 0 ? 1 : 0,
+                                gauche.data() + i, droite.data() + i, 512);
+            return gauche;
+        };
+        const auto sans = rendre(0.0f);
+        const auto avec = rendre(1.0f);
+        float ecart = 0.0f;
+        for (size_t i = 0; i < sans.size(); ++i)
+            ecart = std::max(ecart, std::abs(sans[i] - avec[i]));
+        if (!(ecart > 1.0e-4f))
+            std::printf("      [%s] molette inaudible (écart max %.6f)\n", machine, ecart);
+        VSM_ASSERT(ecart > 1.0e-4f);
+    }
+    // Et une machine sans chemin LFO -> hauteur refuse le CC 1 en le disant.
+    auto moog = PluginRegistry::instance().create("vsm.minimoog");
+    MidiControlEvent cc;
+    cc.kind = MidiControlEvent::Kind::ControlChange;
+    cc.index = 1;
+    cc.value = 1.0f;
+    VSM_ASSERT(!moog->handleControlEvent(cc));
+}

@@ -106,6 +106,7 @@ void DX7Synth::process(const MidiNoteEvent* events, int numEvents,
     lfoIncrement_ = lfoRate / sampleRate_;
 
     const float bendSemis = bendSemitones_.load(std::memory_order_relaxed);
+    const float wheelSemis = modWheel_.load(std::memory_order_relaxed) * kWheelVibratoSemitones;
     int eventIndex = 0;
     for (int i = 0; i < numSamples; ++i) {
         while (eventIndex < numEvents && events[eventIndex].sampleOffset == i) {
@@ -114,9 +115,11 @@ void DX7Synth::process(const MidiNoteEvent* events, int numEvents,
         }
 
         const float lfo = std::sin(static_cast<float>(lfoPhase_ * kTwoPi));
-        // Molette comprise : la voix somme déjà ses hauteurs en demi-tons, et
-        // à molette nulle l'addition est exacte (empreinte inchangée au bit).
-        const float lfoPitchSemis = lfo * lfoToPitch * 2.0f + bendSemis;
+        // Molettes comprises : la voix somme déjà ses hauteurs en demi-tons,
+        // et à molettes nulles les additions sont exactes (empreinte
+        // inchangée au bit). Le CC 1 dose un vibrato au même LFO.
+        const float lfoPitchSemis = lfo * lfoToPitch * 2.0f
+                                  + lfo * wheelSemis + bendSemis;
 
         float sum = 0.0f;
         voiceManager_.forEachVoice([&](DX7Voice& v) { sum += v.render(lfoPitchSemis); });
@@ -131,11 +134,17 @@ void DX7Synth::process(const MidiNoteEvent* events, int numEvents,
 }
 
 bool DX7Synth::handleControlEvent(const MidiControlEvent& event) {
-    // La molette de hauteur, comme sur les monophoniques (D0.5) ; le reste est
+    // Molette de hauteur et molette de modulation (CC 1) ; le reste est
     // refusé en le disant -- le moteur compte le refus.
-    if (event.kind != MidiControlEvent::Kind::PitchBend) return false;
-    bendSemitones_.store(event.value, std::memory_order_relaxed);
-    return true;
+    if (event.kind == MidiControlEvent::Kind::PitchBend) {
+        bendSemitones_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
+    if (event.kind == MidiControlEvent::Kind::ControlChange && event.index == 1) {
+        modWheel_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
+    return false;
 }
 
 void DX7Synth::setParameter(ParamId id, float value) {

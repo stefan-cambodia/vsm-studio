@@ -156,6 +156,8 @@ public:
 
 private:
     std::atomic<float> bendSemitones_{0.0f};
+    // Molette de modulation (CC 1), 0..1 : elle DOSE le vibrato au MG.
+    std::atomic<float> modWheel_{0.0f};
     void applyNoteEvent(const vsm::audio::plugin::MidiNoteEvent& ev);
     float renderMg(int waveform) const;
     static vsm::audio::dsp::Waveform vco1Wave(int shape) {
@@ -172,6 +174,9 @@ private:
     static constexpr float kEgLpfRangeOctaves = 6.0f;
     static constexpr float kMgPitchRangeSemitones = 7.0f;
     static constexpr float kMgLpfRangeOctaves = 4.0f;
+    // Vibrato ajouté par la molette de MODULATION à fond : une demi-note,
+    // le geste classique du panneau (D0.5 : les contrôleurs qui ont un sens).
+    static constexpr float kWheelVibratoSemitones = 0.5f;
 
     vsm::audio::dsp::BandLimitedOscillator vco1_, vco2_;
     MS20Filter hpf_, lpf_;

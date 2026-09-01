@@ -53,7 +53,9 @@ float WavetableVoice::render(const WaveTableBank& bank, const Params& p, float l
 
     const float driftA = driftA_.nextValue() * 0.05f;
     const float driftB = driftB_.nextValue() * 0.05f;
-    const float vibrato = lfo * p.lfoToPitch * 0.5f;
+    // Terme de molette ADDITIF : l'expression d'origine garde son ordre
+    // d'association flottant, l'empreinte ne bouge pas à molette nulle.
+    const float vibrato = lfo * p.lfoToPitch * 0.5f + lfo * p.wheelVibratoSemis;
 
     const auto table = static_cast<size_t>(std::max(0, p.table));
     oscA_.setFrequency(baseHz_ * std::exp2f((driftA + vibrato + p.bendSemitones) / 12.0f));
@@ -132,11 +134,17 @@ void WavetableSynth::initialize(double sampleRate, int /*maxBlockSize*/) {
 }
 
 bool WavetableSynth::handleControlEvent(const MidiControlEvent& event) {
-    // La molette de hauteur, comme sur les monophoniques (D0.5) ; le reste est
+    // Molette de hauteur et molette de modulation (CC 1) ; le reste est
     // refusé en le disant -- le moteur compte le refus.
-    if (event.kind != MidiControlEvent::Kind::PitchBend) return false;
-    bendSemitones_.store(event.value, std::memory_order_relaxed);
-    return true;
+    if (event.kind == MidiControlEvent::Kind::PitchBend) {
+        bendSemitones_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
+    if (event.kind == MidiControlEvent::Kind::ControlChange && event.index == 1) {
+        modWheel_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
+    return false;
 }
 
 void WavetableSynth::setParameter(ParamId id, float value) {
@@ -194,6 +202,7 @@ void WavetableSynth::process(const MidiNoteEvent* events, int numEvents,
     p.lfoToPitch = params_[kLfoToPitch].load(std::memory_order_relaxed);
     p.velocityToFilter = params_[kVelocityToFilter].load(std::memory_order_relaxed);
     p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
+    p.wheelVibratoSemis = modWheel_.load(std::memory_order_relaxed) * kWheelVibratoSemitones;
 
     const AdsrSettings amp{
         params_[kAmpAttack].load(std::memory_order_relaxed),

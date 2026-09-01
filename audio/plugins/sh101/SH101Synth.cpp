@@ -136,7 +136,12 @@ void SH101Synth::process(const MidiNoteEvent* events, int numEvents,
 
         const float noteNumber = pitchGlide_.nextValue();
         const float pitchDriftSemis = pitchDrift_.nextValue() * kMaxPitchDriftSemitones;
-        const float vibratoSemis = lfo * lfoPitchAmt * kLfoPitchRangeSemitones;
+        // Le terme de la molette est ADDITIF et l'expression d'origine reste
+        // telle quelle : refactoriser le produit changerait son ordre
+        // d'association flottant, donc l'empreinte, même à molette nulle.
+        const float vibratoSemis = lfo * lfoPitchAmt * kLfoPitchRangeSemitones
+                                 + lfo * (modWheel_.load(std::memory_order_relaxed)
+                                          * kWheelVibratoSemitones);
         const float baseHz = 440.0f * std::exp2f((noteNumber + pitchDriftSemis + vibratoSemis + bendSemitones_.load(std::memory_order_relaxed) - 69.0f) / 12.0f);
 
         const float pw = std::clamp(pwBase + lfo * pwmAmount * 0.45f, 0.05f, 0.95f);
@@ -178,9 +183,17 @@ void SH101Synth::process(const MidiNoteEvent* events, int numEvents,
 }
 
 bool SH101Synth::handleControlEvent(const MidiControlEvent& event) {
-    if (event.kind != MidiControlEvent::Kind::PitchBend) return false;
-    bendSemitones_.store(event.value, std::memory_order_relaxed);
-    return true;
+    if (event.kind == MidiControlEvent::Kind::PitchBend) {
+        bendSemitones_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
+    // CC 1, la molette de modulation : elle dose le vibrato au LFO, comme le
+    // levier du panneau. Les autres contrôleurs sont refusés en le disant.
+    if (event.kind == MidiControlEvent::Kind::ControlChange && event.index == 1) {
+        modWheel_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
+    return false;
 }
 
 void SH101Synth::setParameter(ParamId id, float value) {

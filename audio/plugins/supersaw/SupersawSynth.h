@@ -82,6 +82,9 @@ public:
         // Molette de hauteur, en demi-tons (la somme drift+vibrato l'est
         // déjà). À zéro l'addition est exacte : empreinte inchangée.
         float bendSemitones = 0.0f;
+        // Molette de MODULATION (CC 1) mise à l'échelle : demi-tons de
+        // vibrato ajoutés au LFO, une demi-note à fond. Additif, exact à 0.
+        float wheelVibratoSemis = 0.0f;
     };
 
     /// Rend un échantillon stéréo. Le supersaw est stéréo PAR NATURE : les
@@ -138,8 +141,12 @@ private:
     mutable std::array<std::atomic<float>, kAnalogCharacter + 1> params_{};
     vsm::audio::engine::VoiceManager<SupersawVoice, kMaxVoices> voiceManager_;
     double lfoPhase_ = 0.0;
-    // Molette de hauteur (demi-tons), même contrat que params_.
+    // Molettes de hauteur (demi-tons) et de modulation (CC 1, 0..1), même
+    // contrat que params_.
     std::atomic<float> bendSemitones_{0.0f};
+    std::atomic<float> modWheel_{0.0f};
+    // Vibrato de la molette de modulation à fond : une demi-note.
+    static constexpr float kWheelVibratoSemitones = 0.5f;
     /// Dernière hauteur jouée : point de départ du portamento de la note
     /// suivante. Un lead sans glissando n'est pas un lead.
     float lastHz_ = 0.0f;

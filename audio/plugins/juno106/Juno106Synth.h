@@ -59,6 +59,10 @@ struct Juno106Params {
     // machines). À zéro, l'addition flottante est exacte : l'empreinte audio
     // de non-régression ne bouge pas d'un bit.
     float bendSemitones = 0.0f;
+    // Molette de MODULATION (CC 1) déjà mise à l'échelle : demi-tons de
+    // vibrato ajoutés au LFO, une demi-note à fond. Terme ADDITIF, exact à
+    // zéro, pour la même raison que la molette de hauteur.
+    float wheelVibratoSemis = 0.0f;
 };
 
 /// Une voix polyphonique complète : DCO (saw + pulse + sub) + bruit ->
@@ -140,7 +144,8 @@ public:
         }
 
         const float driftSemis = drift_.nextValue() * kMaxDriftSemitones;
-        const float vibratoSemis = lfoBipolar * p.lfoPitchAmount * kMaxVibratoSemitones;
+        const float vibratoSemis = lfoBipolar * p.lfoPitchAmount * kMaxVibratoSemitones
+                                 + lfoBipolar * p.wheelVibratoSemis;
         const float freq = 440.0f * std::exp2f(
             (static_cast<float>(note_) + driftSemis + vibratoSemis
              + p.bendSemitones - 69.0f) / 12.0f);
@@ -236,9 +241,12 @@ private:
     std::array<vsm::audio::dsp::LadderFilterZDFx4, kVoiceGroups> voiceFilters_;
     vsm::audio::dsp::Chorus chorus_;
 
-    // Molette de hauteur, écrite par le thread d'événements, lue une fois par
-    // bloc -- même contrat que params_.
+    // Molettes de hauteur et de modulation, écrites par le thread
+    // d'événements, lues une fois par bloc -- même contrat que params_.
     std::atomic<float> bendSemitones_{0.0f};
+    std::atomic<float> modWheel_{0.0f};
+    // Vibrato de la molette de modulation à fond : une demi-note.
+    static constexpr float kWheelVibratoSemitones = 0.5f;
 
     // État du LFO global (partagé par toutes les voix).
     double lfoPhase_ = 0.0;

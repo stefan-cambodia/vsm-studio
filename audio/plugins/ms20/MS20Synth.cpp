@@ -132,7 +132,12 @@ void MS20Synth::process(const MidiNoteEvent* events, int numEvents,
 
         const float noteNumber = pitchGlide_.nextValue();
         const float pitchDriftSemis = pitchDrift_.nextValue() * kMaxPitchDriftSemitones;
-        const float vibratoSemis = mg * mgToPitch * kMgPitchRangeSemitones;
+        // Le terme de la molette est ADDITIF et l'expression d'origine reste
+        // telle quelle : refactoriser le produit changerait son ordre
+        // d'association flottant, donc l'empreinte, même à molette nulle.
+        const float vibratoSemis = mg * mgToPitch * kMgPitchRangeSemitones
+                                 + mg * (modWheel_.load(std::memory_order_relaxed)
+                                         * kWheelVibratoSemitones);
         const float base = noteNumber + pitchDriftSemis + vibratoSemis;
 
         const float bend = bendSemitones_.load(std::memory_order_relaxed);
@@ -173,9 +178,17 @@ void MS20Synth::process(const MidiNoteEvent* events, int numEvents,
 }
 
 bool MS20Synth::handleControlEvent(const MidiControlEvent& event) {
-    if (event.kind != MidiControlEvent::Kind::PitchBend) return false;
-    bendSemitones_.store(event.value, std::memory_order_relaxed);
-    return true;
+    if (event.kind == MidiControlEvent::Kind::PitchBend) {
+        bendSemitones_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
+    // CC 1, la molette de modulation : elle dose le vibrato au MG, comme la
+    // molette du panneau. Les autres contrôleurs sont refusés en le disant.
+    if (event.kind == MidiControlEvent::Kind::ControlChange && event.index == 1) {
+        modWheel_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
+    return false;
 }
 
 void MS20Synth::setParameter(ParamId id, float value) {

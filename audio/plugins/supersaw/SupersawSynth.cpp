@@ -99,7 +99,9 @@ void SupersawVoice::render(const Params& p, float lfo, float& outL, float& outR)
     }
 
     const float drift = drift_.nextValue() * 0.05f;
-    const float vibrato = lfo * p.lfoToPitch * 0.5f;
+    // Terme de molette ADDITIF : l'expression d'origine garde son ordre
+    // d'association flottant, l'empreinte ne bouge pas à molette nulle.
+    const float vibrato = lfo * p.lfoToPitch * 0.5f + lfo * p.wheelVibratoSemis;
     const float rootHz = currentHz_ * std::exp2f((drift + vibrato + p.bendSemitones) / 12.0f);
 
     // Le réglage de façade passe d'abord par la courbe, puis sert d'échelle
@@ -208,11 +210,17 @@ void SupersawSynth::initialize(double sampleRate, int /*maxBlockSize*/) {
 }
 
 bool SupersawSynth::handleControlEvent(const MidiControlEvent& event) {
-    // La molette de hauteur, comme sur les monophoniques (D0.5) ; le reste est
+    // Molette de hauteur et molette de modulation (CC 1) ; le reste est
     // refusé en le disant -- le moteur compte le refus.
-    if (event.kind != MidiControlEvent::Kind::PitchBend) return false;
-    bendSemitones_.store(event.value, std::memory_order_relaxed);
-    return true;
+    if (event.kind == MidiControlEvent::Kind::PitchBend) {
+        bendSemitones_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
+    if (event.kind == MidiControlEvent::Kind::ControlChange && event.index == 1) {
+        modWheel_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
+    return false;
 }
 
 void SupersawSynth::setParameter(ParamId id, float value) {
@@ -271,6 +279,7 @@ void SupersawSynth::process(const MidiNoteEvent* events, int numEvents,
     p.lfoToFilter = params_[kLfoToFilter].load(std::memory_order_relaxed);
     p.velocityToFilter = params_[kVelocityToFilter].load(std::memory_order_relaxed);
     p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
+    p.wheelVibratoSemis = modWheel_.load(std::memory_order_relaxed) * kWheelVibratoSemitones;
 
     const AdsrSettings amp{
         params_[kAmpAttack].load(std::memory_order_relaxed),

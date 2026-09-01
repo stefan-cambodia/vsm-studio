@@ -142,7 +142,12 @@ void ArpOdysseySynth::process(const MidiNoteEvent* events, int numEvents,
         lfoPhase_ += lfoIncrement_;
         if (lfoPhase_ >= 1.0) { lfoPhase_ -= 1.0; lfoRandom_ = lfoRng_.nextBipolar(); }
         const float lfo = renderLfo(lfoWave);
-        const float vibratoSemis = lfo * lfoToPitch * kLfoPitchRangeSemitones;
+        // Le terme de la molette est ADDITIF et l'expression d'origine reste
+        // telle quelle : refactoriser le produit changerait son ordre
+        // d'association flottant, donc l'empreinte, même à molette nulle.
+        const float vibratoSemis = lfo * lfoToPitch * kLfoPitchRangeSemitones
+                                 + lfo * (modWheel_.load(std::memory_order_relaxed)
+                                          * kWheelVibratoSemitones);
 
         const float note1 = glide1_.nextValue();
         const float note2 = glide2_.nextValue();
@@ -192,9 +197,17 @@ void ArpOdysseySynth::process(const MidiNoteEvent* events, int numEvents,
 }
 
 bool ArpOdysseySynth::handleControlEvent(const MidiControlEvent& event) {
-    if (event.kind != MidiControlEvent::Kind::PitchBend) return false;
-    bendSemitones_.store(event.value, std::memory_order_relaxed);
-    return true;
+    if (event.kind == MidiControlEvent::Kind::PitchBend) {
+        bendSemitones_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
+    // CC 1, la molette de modulation : elle dose le vibrato au LFO, comme le
+    // levier PPC du panneau. Les autres contrôleurs sont refusés en le disant.
+    if (event.kind == MidiControlEvent::Kind::ControlChange && event.index == 1) {
+        modWheel_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
+    return false;
 }
 
 void ArpOdysseySynth::setParameter(ParamId id, float value) {

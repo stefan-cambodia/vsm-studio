@@ -74,6 +74,9 @@ public:
         // Molette de hauteur, en demi-tons (la somme drift+vibrato l'est
         // déjà). À zéro l'addition est exacte : empreinte inchangée.
         float bendSemitones = 0.0f;
+        // Molette de MODULATION (CC 1) mise à l'échelle : demi-tons de
+        // vibrato ajoutés au LFO, une demi-note à fond. Additif, exact à 0.
+        float wheelVibratoSemis = 0.0f;
     };
 
     float render(const vsm::audio::dsp::WaveTableBank& bank, const Params& p, float lfo);
@@ -128,8 +131,12 @@ private:
     /// audio ne doit jamais déclencher sa construction.
     const vsm::audio::dsp::WaveTableBank* bank_ = nullptr;
     double lfoPhase_ = 0.0;
-    // Molette de hauteur (demi-tons), même contrat que params_.
+    // Molettes de hauteur (demi-tons) et de modulation (CC 1, 0..1), même
+    // contrat que params_.
     std::atomic<float> bendSemitones_{0.0f};
+    std::atomic<float> modWheel_{0.0f};
+    // Vibrato de la molette de modulation à fond : une demi-note.
+    static constexpr float kWheelVibratoSemitones = 0.5f;
 };
 
 } // namespace vsm::plugins::wavetable

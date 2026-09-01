@@ -285,9 +285,13 @@ private:
     vsm::audio::engine::VoiceManager<DX7Voice, kMaxVoices> voiceManager_;
     double lfoPhase_ = 0.0, lfoIncrement_ = 0.0;
 
-    // Molette de hauteur (demi-tons), même contrat que params_. Elle entre
-    // dans le même chemin que le LFO de hauteur : la somme est en demi-tons.
+    // Molettes de hauteur (demi-tons) et de modulation (CC 1, 0..1), même
+    // contrat que params_. Elles entrent dans le même chemin que le LFO de
+    // hauteur : la somme est en demi-tons.
     std::atomic<float> bendSemitones_{0.0f};
+    std::atomic<float> modWheel_{0.0f};
+    // Vibrato de la molette de modulation à fond : une demi-note.
+    static constexpr float kWheelVibratoSemitones = 0.5f;
 
     std::array<std::atomic<float>, kNumParams> params_;
     vsm::audio::plugin::ParameterList parameterList_;

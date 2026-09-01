@@ -60,6 +60,10 @@ struct ProphetParams {
     // Molette de hauteur, en octaves (les exposants se somment en octaves).
     // À zéro l'addition est exacte : empreinte inchangée au bit.
     float bendOctaves = 0.0f;
+    // Molette de MODULATION (CC 1) mise à l'échelle : octaves de vibrato
+    // ajoutées au LFO de l'oscillateur A, une demi-note à fond. Terme
+    // additif, exact à zéro.
+    float wheelVibratoOct = 0.0f;
 };
 
 /// Une voix Prophet-style : deux oscillateurs (A/B) + hard-sync + Poly-Mod +
@@ -147,6 +151,7 @@ public:
         const float drAsemi = driftA_.nextValue() * kDriftSemis;
         const float freqAOct = (p.polyToFreqA ? polyMod * kPolyFreqOctaves : 0.0f)
                              + lfo * p.lfoToPitch * kLfoPitchSemis / 12.0f
+                             + lfo * p.wheelVibratoOct
                              + drAsemi / 12.0f + p.bendOctaves;
         const float freqA = baseHz * std::exp2f(freqAOct);
         oscA_.setFrequency(freqA);
@@ -244,8 +249,12 @@ private:
     std::array<vsm::audio::dsp::LadderFilterZDFx4, kVoiceGroups> voiceFilters_;
     double lfoPhase_ = 0.0, lfoIncrement_ = 0.0;
 
-    // Molette de hauteur (demi-tons), même contrat que params_.
+    // Molettes de hauteur (demi-tons) et de modulation (CC 1, 0..1), même
+    // contrat que params_.
     std::atomic<float> bendSemitones_{0.0f};
+    std::atomic<float> modWheel_{0.0f};
+    // Vibrato de la molette de modulation à fond : une demi-note.
+    static constexpr float kWheelVibratoSemitones = 0.5f;
 
     std::array<std::atomic<float>, kNumParams> params_;
     vsm::audio::plugin::ParameterList parameterList_;

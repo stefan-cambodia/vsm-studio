@@ -93,6 +93,8 @@ void ProphetSynth::process(const MidiNoteEvent* events, int numEvents,
     p.polyToFilter = params_[kPolyModToFilter].load(std::memory_order_relaxed) >= 0.5f;
     p.analogCharacter = params_[kAnalogCharacter].load(std::memory_order_relaxed);
     p.bendOctaves = bendSemitones_.load(std::memory_order_relaxed) / 12.0f;
+    p.wheelVibratoOct = modWheel_.load(std::memory_order_relaxed)
+                      * (kWheelVibratoSemitones / 12.0f);
 
     const AdsrSettings ampAdsr{
         params_[kAmpAttack].load(std::memory_order_relaxed),
@@ -159,11 +161,17 @@ void ProphetSynth::process(const MidiNoteEvent* events, int numEvents,
 }
 
 bool ProphetSynth::handleControlEvent(const MidiControlEvent& event) {
-    // La molette de hauteur, comme sur les monophoniques (D0.5) ; le reste est
+    // Molette de hauteur et molette de modulation (CC 1) ; le reste est
     // refusé en le disant -- le moteur compte le refus.
-    if (event.kind != MidiControlEvent::Kind::PitchBend) return false;
-    bendSemitones_.store(event.value, std::memory_order_relaxed);
-    return true;
+    if (event.kind == MidiControlEvent::Kind::PitchBend) {
+        bendSemitones_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
+    if (event.kind == MidiControlEvent::Kind::ControlChange && event.index == 1) {
+        modWheel_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
+    return false;
 }
 
 void ProphetSynth::setParameter(ParamId id, float value) {

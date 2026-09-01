@@ -127,6 +127,8 @@ public:
 
 private:
     std::atomic<float> bendSemitones_{0.0f};
+    // Molette de modulation (CC 1), 0..1 : elle DOSE le vibrato au LFO.
+    std::atomic<float> modWheel_{0.0f};
     void applyNoteEvent(const vsm::audio::plugin::MidiNoteEvent& ev);
     float renderLfo(int waveform) const;
     static vsm::audio::dsp::Waveform shapeToWave(int shape) {
@@ -138,6 +140,9 @@ private:
     static constexpr float kFilterEnvRangeOctaves = 6.0f;
     static constexpr float kLfoPitchRangeSemitones = 7.0f;
     static constexpr float kLfoFilterRangeOctaves = 4.0f;
+    // Vibrato ajouté par la molette de MODULATION à fond : une demi-note,
+    // le geste classique du panneau (D0.5 : les contrôleurs qui ont un sens).
+    static constexpr float kWheelVibratoSemitones = 0.5f;
 
     vsm::audio::dsp::BandLimitedOscillator vco1_, vco2_;
     vsm::audio::dsp::StateVariableFilter hpf_;

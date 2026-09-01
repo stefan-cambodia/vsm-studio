@@ -105,6 +105,9 @@ public:
         // millisecondes, garde sa lecture -- la plier ferait glisser le
         // claquement, pas la note. À zéro l'addition est exacte.
         float bendSemitones = 0.0f;
+        // Molette de MODULATION (CC 1) mise à l'échelle : demi-tons de
+        // vibrato ajoutés au LFO, une demi-note à fond. Additif, exact à 0.
+        float wheelVibratoSemis = 0.0f;
     };
 
     /// `override` remplace le transitoire engendré quand un fichier a été
@@ -175,8 +178,12 @@ private:
 
     double sampleRate_ = 48000.0;
     vsm::audio::plugin::ParameterList parameterList_;
-    // Molette de hauteur (demi-tons), même contrat que params_.
+    // Molettes de hauteur (demi-tons) et de modulation (CC 1, 0..1), même
+    // contrat que params_.
     std::atomic<float> bendSemitones_{0.0f};
+    std::atomic<float> modWheel_{0.0f};
+    // Vibrato de la molette de modulation à fond : une demi-note.
+    static constexpr float kWheelVibratoSemitones = 0.5f;
     mutable std::array<std::atomic<float>, kAnalogCharacter + 1> params_{};
     vsm::audio::engine::VoiceManager<PcmHybridVoice, kMaxVoices> voiceManager_;
     const AttackBank* bank_ = nullptr;

@@ -92,7 +92,10 @@ float GenericVoice::render(const Params& p, float lfo1, float lfo2) {
     const float ampLevel = ampEnv_.nextSample();
     const float velocity = static_cast<float>(velocity_) / 127.0f;
 
+    // Terme de molette ADDITIF : l'expression d'origine garde son ordre
+    // d'association flottant, l'empreinte ne bouge pas à molette nulle.
     const float vibrato = (lfo1 * p.lfo1ToPitch + lfo2 * p.lfo2ToPitch) * 0.5f
+                        + lfo1 * p.wheelVibratoSemis
                         + p.bendSemitones;
     const float pwm = lfo1 * p.lfo1ToPulseWidth * 0.4f;
 
@@ -252,11 +255,17 @@ void GenericSynth::initialize(double sampleRate, int /*maxBlockSize*/) {
 }
 
 bool GenericSynth::handleControlEvent(const MidiControlEvent& event) {
-    // La molette de hauteur, comme sur les monophoniques (D0.5) ; le reste est
+    // Molette de hauteur et molette de modulation (CC 1) ; le reste est
     // refusé en le disant -- le moteur compte le refus.
-    if (event.kind != MidiControlEvent::Kind::PitchBend) return false;
-    bendSemitones_.store(event.value, std::memory_order_relaxed);
-    return true;
+    if (event.kind == MidiControlEvent::Kind::PitchBend) {
+        bendSemitones_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
+    if (event.kind == MidiControlEvent::Kind::ControlChange && event.index == 1) {
+        modWheel_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
+    return false;
 }
 
 void GenericSynth::setParameter(ParamId id, float value) {
@@ -334,6 +343,7 @@ void GenericSynth::process(const MidiNoteEvent* events, int numEvents,
     p.velocityToFilter = params_[kVelocityToFilter].load(std::memory_order_relaxed);
     p.velocityToAmp = params_[kVelocityToAmp].load(std::memory_order_relaxed);
     p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
+    p.wheelVibratoSemis = modWheel_.load(std::memory_order_relaxed) * kWheelVibratoSemitones;
 
     const AdsrSettings amp{
         params_[kAmpAttack].load(std::memory_order_relaxed),

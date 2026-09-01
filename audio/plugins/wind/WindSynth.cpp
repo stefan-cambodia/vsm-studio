@@ -58,8 +58,12 @@ void WindVoice::updateTuning(const Params& p) {
     vibratoIncrement_ = static_cast<double>(std::max(0.1f, p.vibratoRate)) / sampleRate_;
     const float rampSeconds = std::max(0.01f, p.vibratoDelay);
     vibratoRampCoeff_ = 1.0f - std::exp(-1.0f / (rampSeconds * static_cast<float>(sampleRate_)));
-    const float vibratoSemis = std::sin(static_cast<float>(vibratoPhase_ * kTwoPi))
-                             * p.vibratoDepth * vibratoRamp_ * 0.5f;
+    // Le sinus est hissé dans une variable SANS changer l'ordre d'association
+    // du produit d'origine ; le terme de la molette est additif et vaut
+    // exactement zéro quand elle est au repos.
+    const float sinus = std::sin(static_cast<float>(vibratoPhase_ * kTwoPi));
+    const float vibratoSemis = sinus * p.vibratoDepth * vibratoRamp_ * 0.5f
+                             + sinus * (p.wheelVibrato * vibratoRamp_ * 0.5f);
 
     const float hz = noteToHz(note_, driftSemis + vibratoSemis + p.bendSemitones);
     bore_.setTuning(hz, p.bellDamping);
@@ -200,6 +204,7 @@ void WindSynth::process(const MidiNoteEvent* events, int numEvents,
     p.vibratoDelay = params_[kVibratoDelay].load(std::memory_order_relaxed);
     p.velocitySensitivity = params_[kVelocitySensitivity].load(std::memory_order_relaxed);
     p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
+    p.wheelVibrato = modWheel_.load(std::memory_order_relaxed);
 
     const float drift = params_[kAnalogCharacter].load(std::memory_order_relaxed);
     bassShelf_.set(Biquad::Type::LowShelf, 250.0f, 0.707f,

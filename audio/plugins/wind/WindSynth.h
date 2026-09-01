@@ -193,6 +193,9 @@ public:
         // lèvre qui pousse la note. À zéro l'addition est exacte : empreinte
         // inchangée au bit.
         float bendSemitones = 0.0f;
+        // Molette de MODULATION (CC 1), 0..1 : profondeur de vibrato AJOUTÉE
+        // à celle du panneau, même LFO, même montée. Additif, exact à zéro.
+        float wheelVibrato = 0.0f;
     };
 
     void prepare(double sampleRate, uint64_t seed);
@@ -275,11 +278,18 @@ public:
     void setParameter(vsm::audio::plugin::ParamId id, float value) override;
     float getParameter(vsm::audio::plugin::ParamId id) const override;
     bool handleControlEvent(const vsm::audio::plugin::MidiControlEvent& event) override {
-        // La molette de hauteur, comme sur les monophoniques (D0.5) ; le
-        // reste est refusé en le disant -- le moteur compte le refus.
-        if (event.kind != vsm::audio::plugin::MidiControlEvent::Kind::PitchBend) return false;
-        bendSemitones_.store(event.value, std::memory_order_relaxed);
-        return true;
+        // Molette de hauteur et molette de modulation (CC 1) ; le reste est
+        // refusé en le disant -- le moteur compte le refus.
+        if (event.kind == vsm::audio::plugin::MidiControlEvent::Kind::PitchBend) {
+            bendSemitones_.store(event.value, std::memory_order_relaxed);
+            return true;
+        }
+        if (event.kind == vsm::audio::plugin::MidiControlEvent::Kind::ControlChange
+            && event.index == 1) {
+            modWheel_.store(event.value, std::memory_order_relaxed);
+            return true;
+        }
+        return false;
     }
     const vsm::audio::plugin::ParameterList& parameterList() const override { return parameterList_; }
     vsm::audio::plugin::PresetState saveState() const override;
@@ -295,8 +305,10 @@ private:
     mutable std::array<std::atomic<float>, kOutputLevel + 1> params_{};
     vsm::audio::engine::VoiceManager<WindVoice, kMaxVoices> voiceManager_;
     vsm::audio::dsp::Biquad bassShelf_, trebleShelf_;
-    // Molette de hauteur (demi-tons), même contrat que params_.
+    // Molettes de hauteur (demi-tons) et de modulation (CC 1, 0..1), même
+    // contrat que params_.
     std::atomic<float> bendSemitones_{0.0f};
+    std::atomic<float> modWheel_{0.0f};
 };
 
 } // namespace vsm::plugins::wind

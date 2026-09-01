@@ -61,6 +61,10 @@ struct Jupiter8Params {
     // Molette de hauteur, en OCTAVES (les exposants des VCO se somment en
     // octaves). À zéro l'addition est exacte : empreinte inchangée au bit.
     float bendOctaves = 0.0f;
+    // Molette de MODULATION (CC 1) mise à l'échelle : octaves de vibrato
+    // ajoutées au LFO du VCO-1, une demi-note à fond. Terme additif, exact à
+    // zéro.
+    float wheelVibratoOct = 0.0f;
 };
 
 /// Une voix Jupiter-8-style : DEUX VCO (saw/pulse/tri) avec désaccord, un
@@ -172,6 +176,7 @@ public:
         const float dr1semi = drift1_.nextValue() * kDriftSemis;
         const float freq1Oct = p.crossMod * raw2 * kCrossModOctaves
                              + lfo * p.lfoToPitch * kLfoPitchSemis / 12.0f
+                             + lfo * p.wheelVibratoOct
                              + dr1semi / 12.0f + p.bendOctaves;
         const float freq1 = baseHz_ * std::exp2f(freq1Oct);
         vco1_.setFrequency(freq1);
@@ -277,8 +282,12 @@ private:
     double lfoPhase_ = 0.0, lfoIncrement_ = 0.0;
     int chorusMode_ = 1;
 
-    // Molette de hauteur (demi-tons), même contrat que params_.
+    // Molettes de hauteur (demi-tons) et de modulation (CC 1, 0..1), même
+    // contrat que params_.
     std::atomic<float> bendSemitones_{0.0f};
+    std::atomic<float> modWheel_{0.0f};
+    // Vibrato de la molette de modulation à fond : une demi-note.
+    static constexpr float kWheelVibratoSemitones = 0.5f;
 
     std::array<std::atomic<float>, kNumParams> params_;
     vsm::audio::plugin::ParameterList parameterList_;

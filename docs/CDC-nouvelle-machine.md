@@ -207,13 +207,25 @@ refusent en connaissance de cause, et le moteur compte le refus.
   reste à faire, refus dit en attendant), diviseur d'octaves (un orgue),
   les percussions (vsm.drums, TR-808, TR-909, perc, fmdrums), testtone.
 
+**Et la molette de MODULATION (CC 1) suit la même doctrine (01/09/2026)** :
+elle DOSE un vibrato au LFO que la machine possède déjà — une demi-note à
+fond, le geste classique du panneau — sur les quatorze machines qui ont un
+chemin LFO → hauteur (SH-101, MS-20, ARP Odyssey, Juno-106, Jupiter-8,
+Prophet, OB-X, Supersaw, Wavetable, PCM-Hybrid, Generic, DX7, Wind, Vocal).
+Une machine SANS ce chemin la refuse en le disant — le Minimoog du parc n'a
+pas de LFO dédié, et c'est couvert par un test. Le terme de la molette est
+toujours ADDITIF : refactoriser un produit existant changerait son ordre
+d'association flottant, donc l'empreinte, même à molette nulle.
+
 Le banc (`audio/tests/test_control_events.cpp`) rend chaque machine qui
-honore MESURABLE — deux demi-tons de molette doivent hausser le fondamental,
-estimé par AUTOCORRÉLATION : le premier estimateur comptait les passages par
-zéro et mentait sous un VCF (monter la note sort des harmoniques de la bande
-passante, le compte baisse alors que la hauteur monte) — et il NOMME la
-machine fautive en cas d'échec. Toute molette à zéro est une addition
-flottante exacte : les 34 empreintes audio sont inchangées au bit.
+honore MESURABLE — deux demi-tons de molette de hauteur doivent hausser le
+fondamental, estimé par AUTOCORRÉLATION : le premier estimateur comptait les
+passages par zéro et mentait sous un VCF (monter la note sort des
+harmoniques de la bande passante, le compte baisse alors que la hauteur
+monte) ; et le CC 1 doit rendre le signal DIFFÉRENT de son témoin sans
+molette. Dans les deux cas la machine fautive est NOMMÉE en cas d'échec.
+Toute molette à zéro est une addition flottante exacte : les 34 empreintes
+audio sont inchangées au bit.
 
 Une case non cochée n'est pas un détail à finir plus tard : c'est une machine
 qui se comportera correctement aujourd'hui et se dégradera en silence dans six
