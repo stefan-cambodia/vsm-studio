@@ -225,6 +225,26 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Analog Character", "voice.analogCharacter"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.granular ---
+    // Le grain et sa dispersion sont la fonction propre de la machine ; le
+    // reste est canonique.
+    {"vsm.granular", {
+        {"Grain Size", "grain.size"},
+        {"Density", "grain.density"},
+        {"Pitch Spray", "grain.pitchSpray"},
+        {"Time Spray", "grain.timeSpray"},
+        {"Shimmer", "grain.shimmer"},
+        {"Grain Shape", "grain.shape"},
+        {"Stereo Spread", "output.stereoWidth"},
+        {"Filter Cutoff", "filter.1.cutoff"},
+        {"Filter Resonance", "filter.1.resonance"},
+        {"Amp Attack", "envelope.1.attack"},
+        {"Amp Decay", "envelope.1.decay"},
+        {"Amp Sustain", "envelope.1.sustain"},
+        {"Amp Release", "envelope.1.release"},
+        {"Velocity Sensitivity", "voice.velocitySensitivity"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.multisample ---
     // Peu de paramètres, et TOUS canoniques : le timbre de cette machine vient
     // des échantillons, pas des réglages. `voice.velocitySensitivity` est

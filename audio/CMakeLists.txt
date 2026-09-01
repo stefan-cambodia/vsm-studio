@@ -49,6 +49,7 @@ add_library(vsm_audio STATIC
     plugins/stochastic/StochasticSynth.cpp
     plugins/cone/ConeSynth.cpp
     plugins/vector/VectorSynth.cpp
+    plugins/granular/GranularSynth.cpp
     plugins/multisample/MultisampleSynth.cpp
 )
 
@@ -149,6 +150,7 @@ if (VSM_BUILD_TESTS)
         tests/test_stochastic_synth.cpp
         tests/test_cone_synth.cpp
         tests/test_vector_synth.cpp
+        tests/test_granular_synth.cpp
         tests/test_multisample_synth.cpp
         tests/test_midi_learn.cpp
         tests/test_effect_routing.cpp

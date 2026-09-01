@@ -1014,7 +1014,7 @@ un couplage par le NOM du paramètre -- précisément ce que le projet garde
 stable, déjà verrouillé par les tests `..._parameter_list_size` de chaque
 machine.
 
-**850 paramètres** (35 machines + 13 effets ; 563 du temps des 23 machines,
+**892 paramètres** (37 machines + 13 effets ; 563 du temps des 23 machines,
 308 à l'époque des 12) ont reçu une identité, dont
 `accent.amount` pour le TB-303 ou `fm.operator.3.ratio` pour le DX7 : le
 vocabulaire commun couvre ce qui est commun, et le reste est déclaré tel quel
@@ -1238,7 +1238,7 @@ rappellerait.
 des échantillons chargés, des matrices de modulation, des tables dessinées à la
 main, que rien dans le vocabulaire sémantique ne désigne. D'où
 `ISynthPlugin::saveNativeState()` / `loadNativeState()` -- **vides pour les
-trente-cinq machines du parc**, dont le son EST leur table de paramètres, et
+trente-sept machines du parc**, dont le son EST leur table de paramètres, et
 c'est une propriété qu'on ne voulait pas perdre. L'état natif est du **texte**
 (base64 produit par l'hôte) : la couche d'interopérabilité n'écrit que du JSON et
 n'a pas à apprendre à manipuler des octets pour une famille de machines sur
@@ -3512,6 +3512,59 @@ qu'un écrêtage, qui collerait les points aux bornes et figerait la forme ;
 interpolation linéaire entre les points, ce qui produit des angles et donc des
 harmoniques hautes — c'est le son de cette famille, l'arrondir la ferait
 ressembler à une table d'ondes, que le parc a déjà.
+
+---
+
+## 46. `vsm.vector` et `vsm.granular` — deux familles ajoutées pour le jeu, et dites comme telles
+
+**LE TITRE D'ENTRÉE N'EST PAS LE MÊME QUE POUR LES AUTRES, ET C'EST ÉCRIT
+AVANT TOUT CHIFFRE.** Ces deux machines entrent au parc sur instruction de
+l'utilisateur (02/09/2026), au titre exact que le § 7 du CDC machines
+autorise : le jeu. Aucune case de couverture n'en dépend, aucun gain de
+reconstruction n'est promis — si l'une gagne un jour un arbitrage, le
+rapport le dira. Le critère de sélection reste celui du § 9 : une FAMILLE
+de synthèse absente, pas un nom célèbre.
+
+**`vsm.vector` — la synthèse vectorielle** (type Prophet VS). Quatre
+sources aux coins d'un carré — l'oscillateur morphable du parc, chacun avec
+sa forme et son désaccord —, mélange bilinéaire par une position (x, y), et
+une ORBITE qui remplace l'enveloppe vectorielle de l'original
+(approximation assumée : un cercle à fréquence et rayon réglables, phase
+remise à zéro à chaque note). Le trait distinctif est testé en deux
+moitiés : les coins sont PURS (un sinus sans harmoniques en (0,0), une
+scie riche en (1,0) — trois poids s'annulent à chaque coin), et l'orbite
+déplace la couleur SANS filtre (h2/h1 varie d'un facteur trois entre deux
+fenêtres du même rendu, coupure grand ouverte). Au passage,
+`MorphOscillator` a été PROMU de `vsm.generic` vers `dsp/` — la règle du
+§ 8.4, brique partagée plutôt que recopiée — et la fidélité de
+l'extraction est prouvée par l'empreinte de `vsm.generic`, inchangée au
+bit.
+
+**`vsm.granular` — la synthèse granulaire** (Gabor, Xenakis, Roads). Des
+grains de quelques dizaines de millisecondes — fenêtre de Hann, source
+morphable —, une horloge de densité, et la DISPERSION qui fait le nuage :
+hauteur (± demi-tons par grain), temps (l'horloge déréglée), shimmer
+(l'octave tirée au sort par grain). Deux leçons de banc valent d'être
+gardées :
+
+- **la phase se transmet, elle ne se réinitialise pas.** Des grains qui
+  repartaient de phase zéro se peignaient entre eux à dispersion nulle
+  (h1 sous 0,01 — pas de hauteur nette) ; chaque grain HÉRITE désormais
+  d'une phase maîtresse continue, et le témoin du trait distinctif tient :
+  dispersion nulle = hauteur nette, dispersion = spectre étalé (mesuré :
+  l'énergie entre les notes monte d'un facteur dix) ;
+- **un emplacement plein SAUTE le grain, il ne le vole pas** — voler le
+  plus ancien couperait sa fenêtre en plein vol, le clic exact que la
+  fenêtre existe pour interdire.
+
+La densité s'entend comme une horloge, pas comme un volume : la variance
+de l'énergie par tranche de 10 ms chute d'un facteur quatre entre huit et
+quatre-vingts grains par seconde (testé). Tout l'aléatoire est seedé et
+repart à chaque note : le nuage est identique au bit près d'un rendu à
+l'autre, dispersion comprise — la règle du parc ne connaît pas
+d'exception « parce que c'est de l'aléatoire ».
+
+Le parc passe à **37 machines**.
 
 ---
 

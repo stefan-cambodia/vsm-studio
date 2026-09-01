@@ -34,6 +34,7 @@
 #include "stochastic/StochasticSynth.h"
 #include "cone/ConeSynth.h"
 #include "vector/VectorSynth.h"
+#include "granular/GranularSynth.h"
 #include "multisample/MultisampleSynth.h"
 
 namespace vsm::audio::plugin {
@@ -164,6 +165,8 @@ void registerBuiltInPlugins() {
         (void)forceLinkCone;
         vsm::plugins::vector::VectorSynth forceLinkVector;
         (void)forceLinkVector;
+        vsm::plugins::granular::GranularSynth forceLinkGranular;
+        (void)forceLinkGranular;
     }
     {
         vsm::plugins::multisample::MultisampleSynth forceLinkMultisample;

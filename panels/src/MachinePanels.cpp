@@ -3062,6 +3062,77 @@ MachinePanel makeVector() {
     return panel;
 }
 
+/// `vsm.granular` -- le nuage de grains : la matière au centre, la dispersion
+/// à sa droite -- c'est elle l'instrument --, le filtre et l'enveloppe
+/// ensuite. Livrée gris perle piquée de cyan : la couleur d'un banc de
+/// laboratoire, pour la seule machine du parc née d'un papier plutôt que
+/// d'un panneau.
+MachinePanel makeGranular() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.granular";
+    panel.displayName = "Granular (le nuage de grains)";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#1A1D1E";
+    panel.sectionColour = "#121415";
+    panel.textColour = "#E8F0F2";
+    panel.knobColour = "#6FC2CE";
+    panel.gridColumns = 16;
+    panel.gridRows = 4;
+
+    PanelSection matiere;
+    matiere.title = "GRAIN";
+    matiere.accentColour = "#6FC2CE";
+    matiere.column = 0; matiere.row = 0; matiere.columnSpan = 4; matiere.rowSpan = 4;
+    matiere.controls = {
+        control("Grain Size", "SIZE", S::LargeKnob, 0, 0),
+        control("Density", "DENSITY", S::LargeKnob, 1, 0),
+        control("Grain Shape", "SOURCE", S::Knob, 0, 1),
+        control("Stereo Spread", "SPREAD", S::Knob, 1, 1),
+    };
+
+    PanelSection nuage;
+    nuage.title = "CLOUD";
+    nuage.accentColour = "#9FDDE6";
+    nuage.column = 4; nuage.row = 0; nuage.columnSpan = 4; nuage.rowSpan = 4;
+    nuage.controls = {
+        control("Pitch Spray", "PITCH", S::LargeKnob, 0, 0),
+        control("Time Spray", "TIME", S::Knob, 1, 0),
+        control("Shimmer", "SHIMMER", S::Knob, 1, 1),
+    };
+
+    PanelSection filtre;
+    filtre.title = "FILTER";
+    filtre.accentColour = "#7CA6C3";
+    filtre.column = 8; filtre.row = 0; filtre.columnSpan = 2; filtre.rowSpan = 4;
+    filtre.controls = {
+        control("Filter Cutoff", "CUTOFF", S::Knob, 0, 0),
+        control("Filter Resonance", "RES", S::Knob, 0, 1),
+    };
+
+    PanelSection env;
+    env.title = "ENVELOPE";
+    env.accentColour = "#7CA6C3";
+    env.column = 10; env.row = 0; env.columnSpan = 4; env.rowSpan = 4;
+    env.controls = {
+        control("Amp Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
+        control("Amp Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
+        control("Amp Sustain", "S", S::VerticalSlider, 2, 0, 1, 2),
+        control("Amp Release", "R", S::VerticalSlider, 3, 0, 1, 2),
+    };
+
+    PanelSection output;
+    output.title = "OUTPUT";
+    output.accentColour = "#6FC2CE";
+    output.column = 14; output.row = 0; output.columnSpan = 2; output.rowSpan = 4;
+    output.controls = {
+        control("Velocity Sensitivity", "TOUCH", S::Knob, 0, 0),
+        control("Output Level", "VOLUME", S::Knob, 0, 1),
+    };
+
+    panel.sections = {matiere, nuage, filtre, env, output};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
@@ -3069,7 +3140,7 @@ const std::vector<MachinePanel>& panels() {
         makeEPiano(), makeObx(), makeSupersaw(), makeWavetable(), makePcmHybrid(), makeTonewheel(), makeGeneric(), makeString(),
         makePiano(), makeDrums(), makeWind(), makeMultisample(),
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
-        makeCone(), makeVector()
+        makeCone(), makeVector(), makeGranular()
     };
     return all;
 }

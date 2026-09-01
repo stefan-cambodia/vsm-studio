@@ -768,6 +768,7 @@ VSM_TEST(regression_psg)        { checkMachine("vsm.psg"); }
 VSM_TEST(regression_stochastic) { checkMachine("vsm.stochastic"); }
 VSM_TEST(regression_cone)       { checkMachine("vsm.cone"); }
 VSM_TEST(regression_vector)     { checkMachine("vsm.vector"); }
+VSM_TEST(regression_granular)   { checkMachine("vsm.granular"); }
 
 /// Le rendu doit être reproductible À L'IDENTIQUE d'une instance à l'autre :
 /// c'est la condition pour que l'empreinte ci-dessus ait un sens. Vérifié ici

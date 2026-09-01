@@ -3,7 +3,7 @@
 Un séquenceur MIDI, un rack de machines vintage modélisées, et une chaîne qui
 reconstruit un morceau enregistré en projet jouable.
 
-**35 machines · 13 effets · 850 paramètres nommés · 1 232 tests verts**
+**37 machines · 13 effets · 892 paramètres nommés · 1 254 tests verts**
 
 > Toutes les illustrations sont des rendus de l'application elle-même, produits hors
 > écran par `vsm-panel-preview`, `vsm-ui-preview`, `vsm-pianoroll-preview` et
@@ -37,7 +37,7 @@ Un échantillon glissé depuis le navigateur tombe sur la piste survolée, **à 
 
 ## 3. Le rack
 
-Trente-quatre machines, plus une tonalité d'essai qui n'a pas de façade parce qu'elle
+Trente-six machines, plus une tonalité d'essai qui n'a pas de façade parce qu'elle
 n'a rien à régler. Chacune porte une **empreinte de non-régression audio** qui fige son rendu.
 
 Elles répondent au **jeu MIDI** selon leur nature, jamais par politesse : la molette de
@@ -161,6 +161,20 @@ Une attaque échantillonnée collée sur une queue synthétisée.
 Le pliage d'onde et la porte passe-bas de l'école Buchla.
 
 ![Façade de West Coast (pliage et porte passe-bas)](images/manuel/vsm.westcoast.png)
+
+**Vector (quatre coins, un trajet)** — `vsm.vector`
+
+Quatre timbres aux coins d'un carré, une position qui les mélange, une orbite
+qui la promène : la couleur bouge sans qu'aucun filtre ne bouge.
+
+![Façade de Vector (quatre coins, un trajet)](images/manuel/vsm.vector.png)
+
+**Granular (le nuage de grains)** — `vsm.granular`
+
+Des grains fenêtrés, une densité, une dispersion : le continuum de la note
+nette à la texture qui scintille — et le nuage est rejouable au bit près.
+
+![Façade de Granular (le nuage de grains)](images/manuel/vsm.granular.png)
 
 **Stochastic (la forme qui divague)** — `vsm.stochastic`
 
