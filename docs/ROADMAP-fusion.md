@@ -2539,6 +2539,31 @@ tour. Les critères chiffrés du § ci-dessus (globale ≤ sur les étalons, au
 moins une décision changée par un second tour) se tranchent à la prochaine
 course.
 
+**H7 — le classifieur de frappes améliore le STEM et éloigne le MORCEAU,
+écrite avant sa mesure (02/09/2026).** Le fait qui la motive : la course v6
+(*Us and Them*, moteur du jour, classifieur de frappes RÉACTIVÉ après la
+correction de provenance) rend 0,2108 contre 0,1907 pour v5 — **+10,5 % au
+morceau** — alors que les distances de STEM sont identiques à un millième
+près (bass 0,1844 → 0,1851, other 0,1737 → 0,1736). Seule la batterie
+bouge, et peu (0,2181 → 0,2235). Un écart de dix pour cent au global pour
+des pistes inchangées ne peut venir que de ce que le mélange fait de la
+BATTERIE : le classifieur découpe cinq pièces (kick, hihat, kick2, tom,
+openhat) là où le repli par bandes en trouve trois, et les deux pièces
+supplémentaires ajoutent de l'énergie qui aide au stem et nuit au morceau.
+Ce serait la leçon du mandataire (§ 5 septies) dans sa forme la plus nette :
+un modèle mesuré MEILLEUR à son banc (A2 : charleston 16/16 au lieu de
+8/16, zéro kick inventé) qui éloigne ce qu'on écoute.
+
+Mais **deux variables ont changé** entre v5 et v6 — le classifieur ET le
+moteur (35 machines, `vsm.cone` en lice, empreinte moteur neuve donc cache
+froid) — et la règle du § 5 undecies l'interdit. Le témoin qui isole :
+**v7 = moteur du jour, SANS classifieur**. v7 contre v5 mesure le moteur ;
+v6 contre v7 mesure le classifieur. Succès de H7 : v7 ≈ v5 (le moteur ne
+change rien, ce qu'on attend d'un ajout de machine qui perd son arbitrage)
+et v6 > v7 d'au moins 5 % (le classifieur porte l'écart). Échec : le moteur
+porte l'écart, et il faudra comprendre pourquoi un parc élargi éloigne le
+morceau à stems identiques.
+
 **H6 — des stems par un modèle RoFormer, écrite avant sa mesure
 (01/09/2026).** La demande « de meilleurs stems » a désigné Spleeter
 (Deezer) ; la piste est examinée et REFUSÉE sans course : sur MUSDB18,
