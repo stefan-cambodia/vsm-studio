@@ -538,6 +538,7 @@ def build_drum_kit(
     max_slots: int = 16,
     write_samples: bool = True,
     hit_classifier: Optional[object] = None,
+    drop_unisolated: bool = False,
 ) -> Optional[DrumKit]:
     """
     Découpe un stem de batterie en kit jouable par le sampler.
@@ -778,6 +779,21 @@ def build_drum_kit(
         isoles = [i for i, debut in enumerate(instants) if est_isole(famille, debut)]
         candidats = isoles if isoles else list(range(len(extraits)))
         if not isoles:
+            # H8 (§ 5 duodecies de ROADMAP-fusion) : UNE PIÈCE SANS AUCUNE
+            # FRAPPE ISOLÉE N'EST PAS UNE PIÈCE. Son échantillon contient le
+            # reste du kit ; la jouer superpose au mélange une copie sale de
+            # ce qui sonne déjà. Mesuré : le classifieur de frappes, qui
+            # ajoute deux pièces de cette sorte sur *Us and Them*, coûtait
+            # 10,4 % au morceau (H7). L'écarter est DIT, jamais tu -- et ses
+            # frappes ne sont pas perdues : la pièce dont elles portaient
+            # l'énergie les garde, puisqu'elles ont été détectées dans SA
+            # bande. Le témoin de l'A/B est `--garder-pieces-non-isolees`.
+            if drop_unisolated:
+                avertissements.append(
+                    f"{famille} : ÉCARTÉE — aucune frappe isolée, son échantillon "
+                    f"contient les autres pièces ({len(extraits)} frappe(s) non jouées)"
+                )
+                continue
             avertissements.append(
                 f"{famille} : aucune frappe isolée, l'échantillon contient les autres pièces"
             )

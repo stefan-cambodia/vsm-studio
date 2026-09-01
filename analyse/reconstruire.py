@@ -348,6 +348,7 @@ def provenance(args: argparse.Namespace, classifieur, frappes) -> dict:
             "reglageMelange": not args.sans_reglage_melange,
             "budgetMelange": args.budget_melange,
             "toursVerdict": args.tours_verdict,
+            "piecesNonIsolees": args.garder_pieces_non_isolees,
             "rendusParalleles": args.rendus_paralleles,
             "cacheRendus": not args.sans_cache_rendus,
             "budgetPiste": args.budget_piste,
@@ -465,6 +466,15 @@ def construire_parseur() -> argparse.ArgumentParser:
                               "(défaut 30). Une évaluation = un rendu de projet "
                               "entier + une distance (~10 à 15 s) : c'est cher, et "
                               "c'est le seul critère qui ne soit pas un mandataire.")
+    parseur.add_argument("--garder-pieces-non-isolees", action="store_true",
+                         help="jouer les pièces de batterie dont AUCUNE frappe n'est "
+                              "isolée (H8 du § 5 duodecies). Par défaut elles sont "
+                              "écartées, en le disant : leur échantillon contient le "
+                              "reste du kit, et les jouer superpose au mélange une "
+                              "copie sale de ce qui sonne déjà. Mesuré : les deux "
+                              "pièces de cette sorte que le classifieur de frappes "
+                              "ajoutait coûtaient 10,4 %% au morceau. C'est le témoin "
+                              "de l'A/B.")
     parseur.add_argument("--tours-verdict", type=int, default=3,
                          help="nombre MAXIMAL de passes du verdict du mélange (défaut 3 ; "
                               "H5 du § 5 duodecies). Le verdict est glouton et chaque "
@@ -886,7 +896,8 @@ def reconstruire_batterie(ctx: Contexte, nom: str, chemin: Path) -> Optional[Res
     args = ctx.args
     audio = charger_audio(chemin)
     kit = build_drum_kit(audio, SAMPLE_RATE, ctx.sortie / "samples",
-                         write_samples=not args.sans_sampler, hit_classifier=ctx.frappes)
+                         write_samples=not args.sans_sampler, hit_classifier=ctx.frappes,
+                         drop_unisolated=not args.garder_pieces_non_isolees)
     if kit is None:
         print(f"      {nom:8s} : aucun coup détecté, piste ignorée")
         return None
