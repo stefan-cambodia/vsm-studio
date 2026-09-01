@@ -427,7 +427,18 @@ manquent réellement au parc, et ce sont elles qu'on ajoute :
 
 Ce qui n'est PAS promis : un gain de reconstruction. Si l'une d'elles gagne
 un jour un arbitrage, tant mieux, et le rapport le dira ; aucune case de
-couverture n'en dépend. Le CDC nouvelle-machine s'applique en entier
+couverture n'en dépend.
+
+**CE QUI EST PROMIS, EN REVANCHE : QU'ELLES NE COÛTENT RIEN.** Le § 7 permet
+d'élargir le catalogue pour le jeu, mais une machine de plus est une
+candidate de plus à chaque arbitrage — donc du temps, et une chance de plus
+qu'un mauvais choix soit fait. La règle que ces ajouts se donnent, écrite
+avant la mesure : **la distance globale d'un morceau étalon ne doit pas
+augmenter quand le parc s'élargit**, à conditions par ailleurs identiques.
+Premier verdict, déjà rendu : `vsm.cone`, `vsm.vector` et `vsm.granular`
+portées de 33 à 37 machines n'ont rien changé sur *Us and Them* (0,1907 →
+0,1910, du bruit — v5 contre v7 au § 5 duodecies de la feuille de route
+fusion). `vsm.cs80` et `vsm.modal` se mesurent de la même façon. Le CDC nouvelle-machine s'applique en entier
 (tests, trait distinctif mesuré, identités, façade, empreinte).
 
 **Et deux autres ont suivi le 02/09.** `vsm.cs80` sort le CS-80 de la
