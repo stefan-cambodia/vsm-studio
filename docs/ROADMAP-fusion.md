@@ -2595,9 +2595,14 @@ mêmes budgets :
 **H8 — ne pas jouer une pièce dont l'échantillon n'est pas isolé, écrite
 avant sa mesure.** La chaîne DIT depuis longtemps qu'une pièce n'a aucune
 frappe isolée ; elle la joue quand même. Proposition : une pièce ainsi
-marquée est ÉCARTÉE du kit (dite au journal et au rapport, comme toute
-candidate écartée — § 5 bis), et ses frappes reviennent à la pièce dont
-elles portent l'énergie. Témoin : le comportement actuel, par option.
+marquée est ÉCARTÉE du kit (dite au journal, comme toute candidate écartée
+— § 5 bis), et **ses frappes sont perdues** : les détections sont par
+famille, écarter la famille écarte ses instants (sur *Us and Them*, 321
+frappes de « tom »). Une première rédaction de cette hypothèse annonçait
+qu'elles « reviendraient à la pièce dont elles portent l'énergie » — c'était
+faux, et le code le disait aussi ; le journal, lui, imprimait déjà le compte
+exact. Ce qu'on abandonne est donc chiffré, et la mesure dira si le morceau
+y gagne malgré tout. Témoin : le comportement actuel, par option.
 Succès : avec classifieur, distance globale ≤ celle SANS classifieur sur
 *Us and Them* — c'est-à-dire un classifieur qui cesse de coûter — et aucune
 régression sur les trois autres étalons. Échec : l'écart persiste, et il

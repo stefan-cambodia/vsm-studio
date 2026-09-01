@@ -784,10 +784,19 @@ def build_drum_kit(
             # reste du kit ; la jouer superpose au mélange une copie sale de
             # ce qui sonne déjà. Mesuré : le classifieur de frappes, qui
             # ajoute deux pièces de cette sorte sur *Us and Them*, coûtait
-            # 10,4 % au morceau (H7). L'écarter est DIT, jamais tu -- et ses
-            # frappes ne sont pas perdues : la pièce dont elles portaient
-            # l'énergie les garde, puisqu'elles ont été détectées dans SA
-            # bande. Le témoin de l'A/B est `--garder-pieces-non-isolees`.
+            # 10,4 % au morceau (H7).
+            #
+            # SES FRAPPES SONT PERDUES, ET IL FAUT LE DIRE AINSI. Une
+            # première rédaction de ce commentaire affirmait qu'elles
+            # « reviennent à la pièce dont elles portent l'énergie » : c'est
+            # FAUX. Les détections sont par famille ; écarter la famille
+            # écarte ses instants, personne ne les rejoue. Sur *Us and Them*,
+            # cela fait 321 frappes de « tom » qui ne sonnent plus. C'est un
+            # choix assumé -- ces frappes étaient jouées par un échantillon
+            # qui contenait le reste du kit, donc doublées de ce qui sonnait
+            # déjà -- et le journal en imprime le COMPTE, pour qu'on puisse
+            # juger de ce qu'on abandonne. Le témoin de l'A/B est
+            # `--garder-pieces-non-isolees`.
             if drop_unisolated:
                 avertissements.append(
                     f"{famille} : ÉCARTÉE — aucune frappe isolée, son échantillon "
