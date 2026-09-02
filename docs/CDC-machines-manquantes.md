@@ -464,6 +464,44 @@ ne dilue pas l'arbitrage, il lui donne des candidates que le mélange
 saura départager** — à condition que le verdict ait le droit d'y revenir
 (le point fixe H5, dont c'est ici le premier gain global mesuré).
 
+**TROISIÈME VERDICT, ET IL EST NÉGATIF : LE VIVIER ÉLARGI COÛTE
+(02/09/2026).** La règle de ce paragraphe — « la distance globale d'un morceau
+étalon ne doit pas augmenter quand le parc s'élargit » — vient d'être
+VIOLÉE, et il faut le dire avant tout le reste, parce que c'est la règle que
+ces ajouts s'étaient donnée.
+
+La course **v12** reprend v9 en tout point : mêmes stems, mêmes budgets, même
+métrique, trois tours de verdict, aucun modèle appris — la comparaison des
+deux provenances ne montre **aucune option différente**. Seul le vivier change,
+34 candidates contre 36, `vsm.chebyshev` et `vsm.scanned` étant entrées.
+Résultat : **0,2112 contre 0,1822, soit +15,9 %.**
+
+**Ce que la mesure dit, et ce qu'elle ne dit pas.** Elle ne dit pas que les
+deux machines ajoutées sont mauvaises : sur la piste de basse, v12 retient
+`vsm.multisample` à 0,185 au stem, c'est-à-dire aussi bien que le `vsm.cs80`
+retenu par v9 (0,1851). Elle dit que **le CHEMIN a changé**. Les candidates
+supplémentaires modifient le classement des « machines suivantes remises en
+jeu au verdict du mélange » — v12 y présente `psg`, `wind` et `cs80` pour la
+basse là où v9 présentait d'autres —, si bien que le point fixe explore une
+autre suite d'états et s'arrête sur un optimum local moins bon. C'est le
+défaut connu de tout algorithme glouton : **plus de candidates, ce n'est pas
+un meilleur résultat, c'est un chemin différent.**
+
+**Conséquence pour la règle du § 7, et elle est franche.** « Une machine de
+plus ne coûte rien » est FAUX, mesuré à +15,9 % sur *Us and Them*. La règle
+correcte est plus modeste : *une machine de plus ne coûte rien tant qu'elle ne
+déplace pas l'arbitrage ; dès qu'elle entre dans les finalistes, elle change
+le chemin, et le chemin peut être pire.* Un vivier qui s'élargit doit donc
+être mesuré à CHAQUE ajout, et non pas une fois pour toutes — et les six
+machines livrées le 02/09 devront passer cette épreuve (course v13, 41
+candidates) avant qu'on puisse dire quoi que ce soit de leur valeur.
+
+**Ce que cela ne remet PAS en cause** : le point fixe (H9, −9,5 % à vivier
+constant) et les traits mesurés de chaque machine, qui sont des propriétés du
+son et non de l'arbitrage. Une machine peut être juste, utile au musicien, et
+nuire à une recherche automatique — ce sont deux mérites différents, et le
+§ 7 les confondait.
+
 **Et le témoin a couru : c'est bien le POINT FIXE qui porte le gain.** H9,
 tranchée le 02/09, compare v9 à un v10 identique sauf `--tours-verdict 1` :
 **0,1822 contre 0,2013**, soit −9,5 % pour le seul droit de revenir sur un
@@ -776,6 +814,75 @@ autocorrélation à décalage ENTIER rapportait « aucune variation » sur la no
 dix. Il a fallu un balayage fin du pic de magnitude pour voir quoi que ce soit.
 
 Le parc passe à **45 machines** (1 012 paramètres nommés, 1 349 tests verts).
+
+## 14. H12 — la PLAQUE, dont la brillance MONTE après la frappe (écrite avant sa mesure, 02/09/2026)
+
+**Ce qui existe déjà, et pourquoi cela ne suffit pas.** Le parc sait faire une
+cymbale : `vsm.drums` la rend « par un cluster de partiels aux rapports
+irrationnels plus du bruit filtré », et c'est écrit dans son en-tête. Cette
+approximation est bonne pour un kit de batterie, où la cymbale dure une
+seconde et sert de ponctuation. Elle est STATIQUE : chaque partiel décroît
+pour son compte, donc le son ne peut que s'assombrir avec le temps, comme
+tout ce que contient le parc.
+
+**Or un gong fait le contraire, et c'est son trait le plus reconnaissable.**
+Frappé fort, un tam-tam est d'abord sourd, puis sa brillance MONTE pendant
+plusieurs secondes avant de retomber. Le mécanisme est un couplage NON
+LINÉAIRE entre modes : les grandes amplitudes de flexion convertissent
+l'énergie des modes bas vers les modes hauts, d'autant plus vite que la
+frappe est forte. Rossing et Fletcher le décrivent, et c'est ce qui distingue
+un tam-tam d'une plaque idéale — qui, elle, s'assombrirait.
+
+**Aucune machine du parc ne peut produire cela**, et ce n'est pas une question
+de réglage : `vsm.modal`, `vsm.membrane`, `vsm.perc` et `vsm.drums` ont tous
+des modes INDÉPENDANTS, dont les amplitudes ne font que décroître. Il n'y a
+aucun chemin par lequel l'énergie d'un mode grave pourrait alimenter un mode
+aigu. C'est une différence de STRUCTURE, pas de paramétrage.
+
+**La mesure qui tranche**, et elle a deux moitiés parce que le phénomène est
+non linéaire :
+- **La montée existe** : le rapport de l'énergie aiguë à l'énergie grave est
+  plus élevé une seconde après la frappe qu'immédiatement après, pour une
+  frappe FORTE. Partout ailleurs dans le parc, ce rapport ne peut que baisser.
+- **Elle dépend de la FORCE** : à frappe faible, le transfert est négligeable
+  et le son s'assombrit normalement, comme n'importe quelle plaque. Sans cette
+  seconde moitié, un simple filtre qui s'ouvrirait avec le temps passerait le
+  premier test.
+
+- **Succès de H12** : les deux moitiés sont mesurées. La famille entre au parc,
+  et `vsm.drums` garde sa cymbale de kit — les deux ne visent pas le même
+  usage.
+- **Échec de H12** : le transfert ne s'entend pas, ou il diverge. Le code part
+  hors du `CMakeLists` comme `audio/plugins/flute/`, avec son chiffre.
+
+### H12 EST TRANCHÉE : SUCCÈS, les deux moitiés mesurées (02/09/2026)
+
+`vsm.plate` rend le tam-tam, et le transfert s'entend franchement :
+
+| couplage | frappe | brillance à 0,2 s | à 1,5 s | rapport |
+|---|---|---|---|---|
+| 0,0 (témoin) | forte | 0,00030 | 0,00026 | **0,88** |
+| 0,6 | forte | 0,00096 | 0,12307 | **128,7** |
+| 0,6 | douce | 0,00044 | 0,00102 | **2,3** |
+
+**Première moitié** : à couplage nul, la machine s'assombrit (0,88) comme tout
+le reste du parc ; dès qu'on couple, elle s'éclaircit. **Seconde moitié** : le
+même réglage donne 128,7 sur une frappe forte et 2,3 sur une frappe douce, le
+transfert étant quadratique. Un filtre qui s'ouvrirait avec le temps aurait
+passé le premier test et échoué au second, ce qui est exactement pourquoi il
+en fallait deux.
+
+**Le témoin est du MÊME CODE** — le couplage à zéro est une valeur de la
+course, pas une constante éditée entre deux passes.
+
+**La course entière a été vérifiée bornée**, parce qu'un transfert non
+linéaire est le genre de mécanisme qui diverge et que ce dépôt en a déjà payé
+cinq : de 0,0 à 1,0, le pic reste entre 0,50 et 0,57 et aucun échantillon
+n'est non fini. Le § 33 exige qu'une machine faite pour être CHERCHÉE n'ait
+pas de zone inutilisable sur la course d'un de ses réglages ; c'est un test à
+part entière.
+
+Le parc passe à **46 machines** (1 019 paramètres nommés, 1 361 tests verts).
 
 ## 12. H10 — la guitare ÉLECTRIQUE est-elle vraiment couverte ? (écrite avant sa mesure, 02/09/2026)
 

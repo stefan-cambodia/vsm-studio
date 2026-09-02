@@ -43,6 +43,7 @@
 #include "sitar/SitarSynth.h"
 #include "membrane/MembraneSynth.h"
 #include "reed/ReedSynth.h"
+#include "plate/PlateSynth.h"
 #include "multisample/MultisampleSynth.h"
 
 namespace vsm::audio::plugin {
@@ -186,6 +187,7 @@ void registerBuiltInPlugins() {
         vsm::plugins::sitar::SitarSynth forceLinkSitar;
         vsm::plugins::membrane::MembraneSynth forceLinkMembrane;
         vsm::plugins::reed::ReedSynth forceLinkReed;
+        vsm::plugins::plate::PlateSynth forceLinkPlate;
         (void)forceLinkScanned;
     }
     {

@@ -206,6 +206,12 @@ constexpr Rule kRules[] = {
     // l'accord, ce qui pèse lourd sur une distance. Elle vient donc juste
     // après la pression et la raideur, que la machine partage avec le vent.
     {"reed.airLoading",                    0.0f,     1.0f, SearchScale::Linear,      0.74f},
+    // PLAQUE (vsm.plate). Le COUPLAGE commande sans partage : à zéro, la
+    // machine est une banque de modes ordinaire qui s'assombrit ; au-delà,
+    // elle s'éclaircit en durant, ce qu'aucune autre ne fait. L'écart entre
+    // les deux bouts de sa course est le plus grand du parc (brillance ×130
+    // mesurée à frappe forte), donc c'est le premier axe à balayer.
+    {"plate.coupling",                     0.0f,     1.0f, SearchScale::Linear,      0.97f},
     // Percussions modélisées : la pièce compte AUTANT que les pièces, parce
     // que c'est elle qui sépare le plus sûrement un kit acoustique d'un kit
     // électronique.

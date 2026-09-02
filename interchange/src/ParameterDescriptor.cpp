@@ -442,6 +442,21 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Velocity to Pressure", "voice.velocitySensitivity"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.plate ---
+    // Le COUPLAGE est neuf, et il ne peut pas ne pas l'être : c'est le seul
+    // réglage du parc qui fasse passer de l'énergie d'un mode à un autre.
+    // Tout le reste est le vocabulaire de l'objet frappé, réemployé de
+    // `vsm.modal` (§ 4) — un preset qui sait doser un maillet et une
+    // décroissance saura le faire ici.
+    {"vsm.plate", {
+        {"Coupling", "plate.coupling"},
+        {"Decay", "modal.decay"},
+        {"Decay Tilt", "modal.decayTilt"},
+        {"Mallet Hardness", "string.pickHardness"},
+        {"Filter Cutoff", "filter.1.cutoff"},
+        {"Velocity Sensitivity", "voice.velocitySensitivity"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.multisample ---
     // Peu de paramètres, et TOUS canoniques : le timbre de cette machine vient
     // des échantillons, pas des réglages. `voice.velocitySensitivity` est

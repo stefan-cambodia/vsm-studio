@@ -3,7 +3,7 @@
 Un séquenceur MIDI, un rack de machines vintage modélisées, et une chaîne qui
 reconstruit un morceau enregistré en projet jouable.
 
-**45 machines · 13 effets · 1 012 paramètres nommés · 1 349 tests verts**
+**46 machines · 13 effets · 1 019 paramètres nommés · 1 361 tests verts**
 
 > Toutes les illustrations sont des rendus de l'application elle-même, produits hors
 > écran par `vsm-panel-preview`, `vsm-ui-preview`, `vsm-pianoroll-preview` et
@@ -265,6 +265,16 @@ trouve pas. Le chevalet est PLAT, si bien que le bourdonnement dépend de la
 force du jeu et non du temps : pincez doucement, il n'y en a aucun.
 
 ![Façade de Sitar (les cordes qu'on ne joue pas)](images/manuel/vsm.sitar.png)
+
+**Plate (le gong qui s'éclaircit)** — `vsm.plate`
+
+Le tam-tam, et le seul objet du rack dont la brillance **monte** : frappé
+fort, il est d'abord sourd, puis s'éclaircit pendant plusieurs secondes.
+*Coupling* est le bouton qui fait cela — à zéro, la plaque s'assombrit comme
+tout le reste ; au bout, elle chante. Et l'effet dépend de la FORCE : une
+frappe douce ne le déclenche presque pas.
+
+![Façade de Plate (le gong qui s'éclaircit)](images/manuel/vsm.plate.png)
 
 **Membrane (la peau tendue)** — `vsm.membrane`
 

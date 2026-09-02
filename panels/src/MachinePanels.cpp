@@ -3635,6 +3635,50 @@ MachinePanel makeReed() {
     return panel;
 }
 
+/// `vsm.plate` -- le gong. COUPLING est seul en grand à gauche, et c'est
+/// mérité : c'est le seul potentiomètre du parc qui fasse passer de l'énergie
+/// d'un mode à un autre, donc le seul qui puisse faire MONTER la brillance
+/// d'un son en train de décroître. À zéro, la machine redevient une banque de
+/// modes ordinaire ; au bout, elle fait le tam-tam.
+///
+/// Livrée bronze patiné, la robe d'un tam-tam.
+MachinePanel makePlate() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.plate";
+    panel.displayName = "Plate (le gong qui s'éclaircit)";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#1D1A12";
+    panel.sectionColour = "#15130C";
+    panel.textColour = "#F0E6C8";
+    panel.knobColour = "#C9A96A";
+    panel.gridColumns = 10;
+    panel.gridRows = 4;
+
+    PanelSection metal;
+    metal.title = "PLATE";
+    metal.accentColour = "#C9A96A";
+    metal.column = 0; metal.row = 0; metal.columnSpan = 5; metal.rowSpan = 4;
+    metal.controls = {
+        control("Coupling", "COUPLING", S::LargeKnob, 0, 0),
+        control("Mallet Hardness", "MALLET", S::Knob, 0, 1),
+    };
+
+    PanelSection extinction;
+    extinction.title = "DECAY";
+    extinction.accentColour = "#D9C48A";
+    extinction.column = 5; extinction.row = 0; extinction.columnSpan = 5; extinction.rowSpan = 4;
+    extinction.controls = {
+        control("Decay", "TIME", S::Knob, 0, 0),
+        control("Decay Tilt", "TILT", S::Knob, 1, 0),
+        control("Filter Cutoff", "CUTOFF", S::Knob, 0, 1),
+        control("Velocity Sensitivity", "VEL", S::Knob, 1, 1),
+        control("Output Level", "VOLUME", S::Knob, 2, 1),
+    };
+
+    panel.sections = {metal, extinction};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
@@ -3643,7 +3687,8 @@ const std::vector<MachinePanel>& panels() {
         makePiano(), makeDrums(), makeWind(), makeMultisample(),
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
         makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev(),
-        makeScanned(), makeMellotron(), makeSitar(), makeMembrane(), makeReed()
+        makeScanned(), makeMellotron(), makeSitar(), makeMembrane(), makeReed(),
+        makePlate()
     };
     return all;
 }

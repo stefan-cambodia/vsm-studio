@@ -31,7 +31,7 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **1 349 tests moteur** (158 core + 930 audio
+écoute au clic, et toute la logique testée hors JUCE. Total : **1 361 tests moteur** (158 core + 942 audio
 + 206 interchange + 25 CLAP + 19 VST3 + 11 façades,
 tous verts, zéro warning sous les flags du build, `-Wall -Wextra -Wpedantic`.
 L'ancienne mention « y compris -Wfloat-equal -Wsign-conversion -Wshadow »
@@ -599,12 +599,12 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 1 349 tests moteur + 64 tests d'analyse, tous verts
+### Bilan actuel : 1 361 tests moteur + 64 tests d'analyse, tous verts
 
 - **158 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des
   notes douteuses de la transcription),
-  **930 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
+  **942 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
   scalaire, indépendance des lignes, bornes de l'approximation de tanh ; et la
   boucle : rebouclage échantillon-exact, notes relâchées au saut) : chorus BBD, Juno-106,
   bus master (biquad/compresseur/limiteur à plafond garanti/LUFS), oversampler,
@@ -3802,6 +3802,31 @@ d'air, dix fois trop forte, faisait descendre la note de 165 cents, soit une
 machine fausse plutôt qu'expressive.
 
 Le parc passe à **45 machines**.
+
+**ET UNE ONZIÈME : `vsm.plate`, le seul objet du parc dont la brillance
+MONTE.** Partout ailleurs — `vsm.modal`, `vsm.membrane`, `vsm.perc`, la
+cymbale de `vsm.drums` — les modes sont indépendants et ne font que décroître :
+il n'existe aucun chemin par lequel l'énergie d'un mode grave pourrait
+alimenter un mode aigu, donc un son ne peut que s'assombrir. Un tam-tam fait
+l'inverse, et c'est son trait le plus reconnaissable : frappé fort, il est
+d'abord sourd, puis s'éclaircit pendant plusieurs secondes. Le mécanisme est un
+couplage NON LINÉAIRE entre modes (Rossing et Fletcher), et c'est une
+différence de structure, pas de paramétrage.
+
+Mesuré : brillance ×**128,7** entre 0,2 s et 1,5 s à couplage 0,6 sur une
+frappe forte, ×2,3 seulement sur une frappe douce, et **×0,88** — donc un
+assombrissement — quand le couplage est à zéro. Les trois chiffres sont
+nécessaires : le premier montre que la montée existe, le deuxième qu'elle
+dépend de la FORCE (le transfert est quadratique), le troisième que le témoin
+est bien du même code, à une valeur près sur la course d'un réglage.
+
+La course entière a été vérifiée BORNÉE — pic entre 0,50 et 0,57 de bout en
+bout, aucun échantillon non fini — parce qu'un transfert d'énergie non
+linéaire est exactement le genre de mécanisme dont les § 33 et § 44 racontent
+cinq divergences, et parce qu'une machine faite pour être cherchée ne doit pas
+avoir de zone inutilisable sur la course d'un de ses réglages.
+
+Le parc passe à **46 machines**.
 
 ---
 
