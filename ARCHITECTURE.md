@@ -31,7 +31,7 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **1 372 tests moteur** (158 core + 953 audio
+écoute au clic, et toute la logique testée hors JUCE. Total : **1 384 tests moteur** (158 core + 965 audio
 + 206 interchange + 25 CLAP + 19 VST3 + 11 façades,
 tous verts, zéro warning sous les flags du build, `-Wall -Wextra -Wpedantic`.
 L'ancienne mention « y compris -Wfloat-equal -Wsign-conversion -Wshadow »
@@ -599,12 +599,12 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 1 372 tests moteur + 68 tests d'analyse, tous verts
+### Bilan actuel : 1 384 tests moteur + 68 tests d'analyse, tous verts
 
 - **158 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des
   notes douteuses de la transcription),
-  **953 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
+  **965 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
   scalaire, indépendance des lignes, bornes de l'approximation de tanh ; et la
   boucle : rebouclage échantillon-exact, notes relâchées au saut) : chorus BBD, Juno-106,
   bus master (biquad/compresseur/limiteur à plafond garanti/LUFS), oversampler,
@@ -3856,6 +3856,28 @@ n'est pas la corde qui décide. Partout ailleurs dans le parc, relâcher une
 corde OUVRE une décroissance.
 
 Le parc passe à **47 machines**.
+
+**ET UNE TREIZIÈME : `vsm.glass`, dont le son met des SECONDES à naître.** Le
+parc savait frotter — l'archet de `vsm.string` — mais sur un GUIDE D'ONDES,
+qui s'établit en quelques dizaines de millisecondes. Un bol de verre est un
+résonateur à Q très élevé : l'énergie qu'un décrochement du doigt lui apporte
+est minuscule devant celle qu'il faut accumuler, et **le temps
+d'établissement EST la conséquence du Q**. Ce n'est pas un réglage plus lent,
+c'est un autre objet — et, comme pour `vsm.reed`, l'absence de ligne à retard
+met ce montage hors de la famille qui a divergé cinq fois.
+
+Le trait qui compte n'est pas la lenteur mais **sa dépendance à la pression** :
+rapport de croissance entre 0,3 s et 1,5 s de **31,7 à pression 0,2, et de
+1,00 à pression 1,0**. Une enveloppe d'attaque lente aurait donné la même
+colonne partout ; c'est cette dose-réponse qui sépare un instrument d'un
+déclencheur.
+
+Troisième trait, conséquence du même Q : **lâcher ne coupe pas**. Avec
+`vsm.clavichord` livré le même jour — dont le feutre tombe à 0,000000 en
+cinquante millisecondes — le parc mesure les deux extrêmes de l'étouffement au
+même protocole.
+
+Le parc passe à **48 machines**.
 
 ---
 

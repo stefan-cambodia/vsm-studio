@@ -45,6 +45,7 @@
 #include "reed/ReedSynth.h"
 #include "plate/PlateSynth.h"
 #include "clavichord/ClavichordSynth.h"
+#include "glass/GlassSynth.h"
 #include "multisample/MultisampleSynth.h"
 
 namespace vsm::audio::plugin {
@@ -190,6 +191,7 @@ void registerBuiltInPlugins() {
         vsm::plugins::reed::ReedSynth forceLinkReed;
         vsm::plugins::plate::PlateSynth forceLinkPlate;
         vsm::plugins::clavichord::ClavichordSynth forceLinkClavichord;
+        vsm::plugins::glass::GlassSynth forceLinkGlass;
         (void)forceLinkScanned;
     }
     {

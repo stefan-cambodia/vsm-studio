@@ -3724,6 +3724,51 @@ MachinePanel makeClavichord() {
     return panel;
 }
 
+/// `vsm.glass` -- le verre frotté. PRESSURE est en grand et seul dans sa
+/// section, parce qu'il ne fait pas ce qu'un potentiomètre de pression fait
+/// ailleurs : il décide du TEMPS QUE LE SON MET À NAÎTRE. Pressé doucement, le
+/// verre met plusieurs secondes ; pressé à fond, il parle presque tout de
+/// suite. Un musicien qui l'ignore croira la machine cassée.
+///
+/// Livrée verre et bleu pâle.
+MachinePanel makeGlass() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.glass";
+    panel.displayName = "Glass (le verre frotté)";
+    panel.chassis = Chassis::Plastic;
+    panel.panelColour = "#151C20";
+    panel.sectionColour = "#101619";
+    panel.textColour = "#E6F2F6";
+    panel.knobColour = "#A8CEDC";
+    panel.gridColumns = 10;
+    panel.gridRows = 4;
+
+    PanelSection doigt;
+    doigt.title = "FINGER";
+    doigt.accentColour = "#A8CEDC";
+    doigt.column = 0; doigt.row = 0; doigt.columnSpan = 5; doigt.rowSpan = 4;
+    doigt.controls = {
+        control("Finger Pressure", "PRESSURE", S::LargeKnob, 0, 0),
+        control("Rim Speed", "SPEED", S::Knob, 1, 0),
+        control("Velocity Sensitivity", "VEL", S::Knob, 0, 1),
+    };
+
+    PanelSection bol;
+    bol.title = "BOWL";
+    bol.accentColour = "#C7DCA8";
+    bol.column = 5; bol.row = 0; bol.columnSpan = 5; bol.rowSpan = 4;
+    bol.controls = {
+        control("Ring Time", "RING", S::Knob, 0, 0),
+        control("Brightness", "TONE", S::Knob, 1, 0),
+        control("Filter Cutoff", "CUTOFF", S::Knob, 0, 1),
+        control("Filter Resonance", "RESO", S::Knob, 1, 1),
+        control("Output Level", "VOLUME", S::Knob, 2, 1),
+    };
+
+    panel.sections = {doigt, bol};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
@@ -3733,7 +3778,7 @@ const std::vector<MachinePanel>& panels() {
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
         makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev(),
         makeScanned(), makeMellotron(), makeSitar(), makeMembrane(), makeReed(),
-        makePlate(), makeClavichord()
+        makePlate(), makeClavichord(), makeGlass()
     };
     return all;
 }

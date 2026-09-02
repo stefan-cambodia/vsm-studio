@@ -60,6 +60,7 @@ add_library(vsm_audio STATIC
     plugins/reed/ReedSynth.cpp
     plugins/plate/PlateSynth.cpp
     plugins/clavichord/ClavichordSynth.cpp
+    plugins/glass/GlassSynth.cpp
     plugins/multisample/MultisampleSynth.cpp
 )
 
@@ -171,6 +172,7 @@ if (VSM_BUILD_TESTS)
         tests/test_reed_synth.cpp
         tests/test_plate_synth.cpp
         tests/test_clavichord_synth.cpp
+        tests/test_glass_synth.cpp
         tests/test_multisample_synth.cpp
         tests/test_midi_learn.cpp
         tests/test_effect_routing.cpp

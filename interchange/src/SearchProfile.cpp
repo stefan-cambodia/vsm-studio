@@ -199,6 +199,14 @@ constexpr Rule kRules[] = {
     // Bebung réel — une trentaine de cents, de quoi colorer une note tenue,
     // pas de quoi transposer.
     {"clavichord.pressureToTension",       0.0f,     1.0f, SearchScale::Linear,      0.28f},
+    // VERRE FROTTÉ (vsm.glass). La PRESSION DU DOIGT commande, et d'une façon
+    // qui n'a pas d'équivalent : elle ne change pas le timbre, elle change le
+    // TEMPS QUE LE SON MET À NAÎTRE — d'un rapport de trente et un à un sur la
+    // course (mesuré). Sur une cible qui attaque franchement, un verre pressé
+    // doucement n'aura pas encore parlé quand la note sera finie ; c'est donc
+    // le premier axe, et de loin.
+    {"glass.fingerPressure",               0.1f,     1.0f, SearchScale::Linear,      0.95f},
+    {"glass.rimSpeed",                     0.0f,     1.0f, SearchScale::Linear,      0.42f},
     // Famille du VENT (vsm.wind). Comme sur la corde, ce qui fait le timbre
     // est d'abord ce qui se perd (le rayonnement au pavillon) et la raideur de
     // ce qui entretient (l'anche ou les lèvres) ; la pression de souffle vient

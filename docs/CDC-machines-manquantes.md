@@ -989,6 +989,72 @@ relâcher OUVRE une décroissance.
 
 Le parc passe à **47 machines** (1 027 paramètres nommés, 1 372 tests verts).
 
+## 16. H16 — le VERRE FROTTÉ : un son qui met des SECONDES à naître (écrite avant sa mesure, 02/09/2026)
+
+**Ce que le parc a déjà, et pourquoi cela ne suffit pas.** `vsm.string` sait
+frotter : son archet applique la friction de Helmholtz à un guide d'ondes, et
+le test mesure le cycle adhérence-décrochement. Mais une corde frottée
+s'établit en quelques dizaines de millisecondes. Un verre frotté du doigt met
+**une à trois secondes** à parler, et c'est ce que tout le monde reconnaît de
+l'harmonica de verre : le son semble venir de nulle part, sans attaque.
+
+**Le mécanisme est différent, pas seulement le réglage.** Un bol de verre est
+un résonateur à Q très élevé — quelques modes seulement, très peu amortis —
+et non une ligne à retard. L'énergie que le doigt lui donne à chaque
+décrochement est minuscule devant celle qu'il faut accumuler ; le temps
+d'établissement EST la conséquence du Q, et il dépend de la pression du doigt.
+Il n'y a pas de guide d'ondes du tout, donc pas de boucle longue à borner —
+la même raison qui a fait réussir `vsm.reed` là où cinq tentatives de vent
+avaient échoué.
+
+**Second trait, qui suit du même Q** : lâcher le verre ne l'arrête pas. Il
+continue plusieurs secondes. C'est le contraire exact de `vsm.clavichord`,
+livré le même jour, dont le feutre coupe le son en cinquante millisecondes —
+et le parc aura mesuré les deux extrêmes au même protocole.
+
+**La mesure qui tranche :**
+- **L'établissement est LENT** : après l'attaque, l'énergie doit encore
+  croître nettement entre 0,3 s et 1,5 s. Sur toute autre machine entretenue
+  du parc, elle a atteint son régime bien avant.
+- **Il dépend de la PRESSION** : plus le doigt appuie, plus le verre parle
+  vite. Une dose-réponse, sans quoi on aurait seulement écrit une enveloppe
+  d'attaque lente — qui, elle, mettrait le même temps à toutes les nuances.
+- **Le relâchement ne coupe pas** : une seconde après, il reste de l'énergie.
+
+- **Succès de H16** : les trois sont mesurés. Le parc gagne la friction sur
+  résonateur, distincte de la friction sur corde.
+- **Échec de H16** : pas d'auto-oscillation, ou établissement instantané. Le
+  code part hors du `CMakeLists`, avec son chiffre.
+
+### H16 EST TRANCHÉE : SUCCÈS, les trois traits mesurés (02/09/2026)
+
+**L'établissement et sa dose-réponse**, note 69, rms mesuré :
+
+| pression | à 0,3 s | à 1,5 s | rapport |
+|---|---|---|---|
+| 0,2 | 0,0067 | 0,2124 | **31,7** |
+| 0,5 | 0,1186 | 0,2435 | 2,05 |
+| 0,8 | 0,2403 | 0,2443 | 1,02 |
+| 1,0 | 0,2443 | 0,2450 | **1,00** |
+
+Pressé doucement, le verre met des secondes à parler ; pressé à fond, il est
+établi dès la première demi-seconde. **Une enveloppe d'attaque lente aurait
+donné la même colonne à toutes les pressions** — c'est cette dose-réponse, et
+elle seule, qui distingue un instrument d'un déclencheur.
+
+**Le relâchement ne coupe pas** : 0,2435 avant, 0,2242 une demi-seconde après,
+0,1977 une seconde et demie après. Le parc a désormais les deux extrêmes
+mesurés au même protocole — `vsm.clavichord`, livré le même jour, tombe à
+0,000000 en cinquante millisecondes.
+
+**Un défaut de niveau corrigé avant livraison** : le cycle limite de la
+friction s'établit vers ±2, si bien que la machine saturait tout projet où on
+l'ajoutait (pic 2,04). Ramenée à 0,38 en monophonie, elle est dans la plage du
+reste du parc — et un test le vérifie sur toute la course de la pression,
+plutôt que de s'en remettre au réglage.
+
+Le parc passe à **48 machines** (1 035 paramètres nommés, 1 384 tests verts).
+
 ## 12. H10 — la guitare ÉLECTRIQUE est-elle vraiment couverte ? (écrite avant sa mesure, 02/09/2026)
 
 **Le fait qui la motive est une contradiction interne à ce dépôt.** Le tableau

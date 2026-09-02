@@ -475,6 +475,24 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Velocity Sensitivity", "voice.velocitySensitivity"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.glass ---
+    // La PRESSION DU DOIGT ne réemploie pas `wind.breathPressure` malgré la
+    // ressemblance des mots : un souffle entretient une colonne d'air, un
+    // doigt frotte un bol, et surtout le doigt décide ici du TEMPS
+    // D'ÉTABLISSEMENT, ce qu'aucun souffle ne fait. Un preset qui voyagerait
+    // de l'un à l'autre arriverait sur un réglage qui ne veut pas dire la même
+    // chose. Le TEMPS DE RÉSONANCE, lui, est bien la décroissance d'un objet
+    // frappé et réemploie le vocabulaire de `vsm.modal`.
+    {"vsm.glass", {
+        {"Finger Pressure", "glass.fingerPressure"},
+        {"Rim Speed", "glass.rimSpeed"},
+        {"Brightness", "modal.decayTilt"},
+        {"Ring Time", "modal.decay"},
+        {"Filter Cutoff", "filter.1.cutoff"},
+        {"Filter Resonance", "filter.1.resonance"},
+        {"Velocity Sensitivity", "voice.velocitySensitivity"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.multisample ---
     // Peu de paramètres, et TOUS canoniques : le timbre de cette machine vient
     // des échantillons, pas des réglages. `voice.velocitySensitivity` est

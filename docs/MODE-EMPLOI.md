@@ -3,7 +3,7 @@
 Un séquenceur MIDI, un rack de machines vintage modélisées, et une chaîne qui
 reconstruit un morceau enregistré en projet jouable.
 
-**47 machines · 13 effets · 1 027 paramètres nommés · 1 372 tests verts**
+**48 machines · 13 effets · 1 035 paramètres nommés · 1 384 tests verts**
 
 > Toutes les illustrations sont des rendus de l'application elle-même, produits hors
 > écran par `vsm-panel-preview`, `vsm-ui-preview`, `vsm-pianoroll-preview` et
@@ -266,6 +266,16 @@ le feutre étouffe la corde. Ni résonance ni traîne, à l'inverse de tout le
 reste.
 
 ![Façade de Clavichord (le clavier qui vibre)](images/manuel/vsm.clavichord.png)
+
+**Glass (le verre frotté)** — `vsm.glass`
+
+L'harmonica de verre. **Ne le croyez pas cassé s'il ne dit rien tout de
+suite** : pressé doucement, le doigt met plusieurs secondes à faire parler le
+bol — c'est le son de cet instrument, et c'est *Pressure* qui décide de ce
+temps. Pressé à fond, il parle presque aussitôt. Et lâchez la touche : il
+continue de sonner, il n'y a rien pour l'arrêter.
+
+![Façade de Glass (le verre frotté)](images/manuel/vsm.glass.png)
 
 **Sitar (les cordes qu'on ne joue pas)** — `vsm.sitar`
 
