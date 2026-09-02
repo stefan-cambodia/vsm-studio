@@ -423,6 +423,25 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Velocity to Hardness", "voice.velocitySensitivity"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.reed ---
+    // Le vocabulaire du VENT est réemployé tel quel (§ 4) : une pression de
+    // soufflerie et une raideur d'anche sont les mêmes notions que sur
+    // `vsm.wind` et `vsm.cone`, et un preset qui sait doser un souffle saura
+    // doser celui-ci. Seule la CHARGE D'AIR est neuve, parce que seule cette
+    // machine a un réglage qui fait dépendre la HAUTEUR de la pression.
+    {"vsm.reed", {
+        {"Bellows Pressure", "wind.breathPressure"},
+        {"Reed Stiffness", "wind.reedStiffness"},
+        {"Air Loading", "reed.airLoading"},
+        {"Filter Cutoff", "filter.1.cutoff"},
+        {"Filter Resonance", "filter.1.resonance"},
+        {"Attack", "envelope.1.attack"},
+        {"Decay", "envelope.1.decay"},
+        {"Sustain", "envelope.1.sustain"},
+        {"Release", "envelope.1.release"},
+        {"Velocity to Pressure", "voice.velocitySensitivity"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.multisample ---
     // Peu de paramètres, et TOUS canoniques : le timbre de cette machine vient
     // des échantillons, pas des réglages. `voice.velocitySensitivity` est

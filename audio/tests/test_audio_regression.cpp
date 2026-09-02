@@ -776,6 +776,7 @@ VSM_TEST(regression_scanned)    { checkMachine("vsm.scanned"); }
 VSM_TEST(regression_mellotron)  { checkMachine("vsm.mellotron"); }
 VSM_TEST(regression_sitar)      { checkMachine("vsm.sitar"); }
 VSM_TEST(regression_membrane)   { checkMachine("vsm.membrane"); }
+VSM_TEST(regression_reed)       { checkMachine("vsm.reed"); }
 
 /// Le rendu doit être reproductible À L'IDENTIQUE d'une instance à l'autre :
 /// c'est la condition pour que l'empreinte ci-dessus ait un sens. Vérifié ici

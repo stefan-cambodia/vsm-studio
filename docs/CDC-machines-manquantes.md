@@ -673,6 +673,99 @@ d'ARCHITECTURE avait déjà conclu pour l'évasement de `vsm.wind`.
 Le parc passe à **44 machines** (1 001 paramètres nommés, 1 337 tests
 verts).
 
+## 13. H11 — l'ANCHE LIBRE, et pourquoi ce n'est pas la sixième tentative de vent (écrite avant sa mesure, 02/09/2026)
+
+Le § 11 conclut, après cinq échecs, qu'« une sixième topologie ne serait pas
+une tentative de plus, ce serait la même erreur pour la sixième fois », et il
+dit précisément où est l'erreur : **« ce n'est ni la forme de la perce ni la
+nature de l'excitateur qui bloque, c'est la formulation du COUPLAGE entre
+l'excitateur et la colonne d'air. »** Cette phrase est le critère qui autorise
+ou interdit toute nouvelle tentative, et il faut donc y répondre AVANT
+d'écrire une ligne.
+
+**Une anche LIBRE n'a pas de colonne d'air.** C'est toute la différence, et
+elle est structurelle. Dans une clarinette ou un saxophone, l'anche bat contre
+une table et sa fréquence est imposée par le TUYAU ; c'est ce couplage
+excitateur↔colonne qui a divergé ou refusé de s'amorcer cinq fois. Dans un
+harmonium, un accordéon ou un harmonica, la lame bat DANS son cadre, sans le
+toucher, et **sa fréquence est la sienne propre** — celle d'une lame encastrée.
+Le corps de l'instrument ne fait que rayonner. Il n'y a donc pas de guide
+d'ondes du tout : un seul résonateur mécanique entretenu par un flux, ce qui
+est une boucle LOCALE, bornable, sans les deux cents échantillons de retard
+qui rendaient les précédentes intraitables. Le critère du § 11 est respecté :
+ce n'est pas une sixième formulation du même couplage, c'est l'absence du
+couplage en cause.
+
+**LE TRAIT À MESURER, et il est un CONTRASTE avec une machine existante.**
+Fletcher et Rossing le donnent : sous pression croissante, une anche BATTANTE
+monte en fréquence (elle se raidit contre sa table) tandis qu'une anche LIBRE
+**descend** légèrement. Le parc a déjà la première (`vsm.wind`) ; la mesure qui
+tranche est donc la dose-réponse de la hauteur à la pression, prise sur les
+deux machines avec le même protocole.
+
+- **Succès de H11** : la machine s'amorce sur toute la tessiture (hauteur à
+  ±20 cents de la note demandée), et sa hauteur BAISSE quand la pression monte,
+  là où celle de `vsm.wind` monte. La famille de l'anche libre entre au parc.
+- **Échec de H11** : pas d'amorçage, divergence, ou hauteur qui ne suit pas le
+  sens annoncé. Alors le code part **hors du `CMakeLists`**, comme
+  `audio/plugins/flute/`, et le résultat négatif est écrit ici avec son
+  chiffre. Un échec conservé et daté vaut mieux qu'un échec oublié : c'est ce
+  qui a évité la sixième tentative de vent.
+
+### H11 EST TRANCHÉE : SUCCÈS — la famille du vent entre enfin (02/09/2026)
+
+**Ce qui avait échoué cinq fois réussit du premier coup, et l'explication
+était dans le diagnostic du § 11.** `vsm.reed` s'amorce sur toute la tessiture
+et sonne JUSTE : mesuré sur les notes 45, 52, 57, 64 et 69, l'écart à la note
+demandée reste **sous 20 cents** (relevé : +1 à −6). Rien à voir avec
+`vsm.flute`, dont « la fréquence se fige à 1 412 Hz quelle que soit la note ».
+La raison est celle qu'on avait écrite avant de coder : il n'y a **pas de
+colonne d'air** à coupler, donc pas de boucle longue à borner — la fréquence
+est celle de la lame, que rien ne dispute.
+
+**Le trait est mesuré, et la dose-réponse est monotone.** Note 57, sur la
+course du soufflet : **+3,1 · 0,0 · −3,1 · −6,8 · −8,9 cents**. Souffler plus
+fort fait DESCENDRE la note, ce qu'aucune autre machine du parc ne fait.
+
+**MAIS L'HYPOTHÈSE ÉTAIT À MOITIÉ FAUSSE, ET C'EST ÉCRIT PLUTÔT QUE CORRIGÉ
+EN SILENCE.** H11 annonçait un contraste de SENS : l'anche battante devait
+MONTER en se raidissant contre sa table. Mesurée au même protocole,
+`vsm.wind` ne monte pas — elle **ne bouge pas du tout** (+0,5 à +1,0 cent,
+c'est-à-dire le bruit de la mesure), sa hauteur étant imposée par la longueur
+du tuyau et non par son anche. Le contraste existe donc, mais il oppose une
+machine SENSIBLE à une machine INSENSIBLE. Une hypothèse à demi vérifiée
+qu'on reformulerait après coup ne vaudrait plus rien ; celle-ci est donc
+consignée avec ce qu'elle a prédit juste et ce qu'elle a prédit faux.
+
+**Trois erreurs de physique payées à la mesure**, toutes attrapées par la
+sonde et aucune par l'oreille :
+- **Le continu, encore, et c'est le piège du § 44 repayé.** Un débit redressé
+  est positif par construction ; le premier essai retirait sa composante
+  continue par une CONSTANTE, ce qui marche au régime établi et ment partout
+  ailleurs. À faible pression, la lame n'oscillait pas du tout et la sortie
+  valait −0,25 constant, soit un rms de 0,25 qu'on aurait pris pour du son.
+  Mot pour mot la faute de `vsm.flute`. Un bloqueur du premier ordre, lui, ne
+  peut pas se tromper.
+- **Redressement DOUBLE au lieu de simple.** Le passage s'ouvrait des deux
+  côtés (`|y|`), en croyant décrire une lame qui traverse son cadre. Mesure
+  au spectre : toute l'énergie à 2·f0 et **rien au fondamental** — la machine
+  jouait une octave au-dessus. Une anche libre laisse passer l'air d'un seul
+  côté.
+- **La charge d'air dix fois trop forte** : −165 cents sur la course, soit un
+  ton et demi. Ce n'est pas une machine expressive, c'est une machine fausse.
+  Ramenée à 1,2 % de raideur et CENTRÉE sur une pression de référence, pour
+  que la note demandée sorte juste au réglage normal.
+
+**Et une leçon d'instrument de mesure, la quatrième de la journée.** Sur le
+même signal, l'autocorrélation annonçait −700 cents quand le spectre disait
++1200. Les deux ne pouvaient pas avoir raison ; c'est le spectre qui l'avait,
+l'autocorrélation accrochant un mauvais pic. Plus tard, la même
+autocorrélation à décalage ENTIER rapportait « aucune variation » sur la note
+69 : à 440 Hz, un décalage d'un échantillon vaut 158 cents, et l'effet en fait
+dix. Il a fallu un balayage fin du pic de magnitude pour voir quoi que ce soit.
+
+Le parc passe à **45 machines** (1 012 paramètres nommés, 1 349 tests verts).
+
 ## 12. H10 — la guitare ÉLECTRIQUE est-elle vraiment couverte ? (écrite avant sa mesure, 02/09/2026)
 
 **Le fait qui la motive est une contradiction interne à ce dépôt.** Le tableau

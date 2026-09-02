@@ -3768,6 +3768,41 @@ diamétraux, ce qui sépare le *na* sourd du *tin* chantant.
 
 Le parc passe à **44 machines**.
 
+**ET UNE DIXIÈME : `vsm.reed`, et c'est la famille du VENT qui entre enfin,
+par la porte qui n'avait pas de colonne d'air.** Les § 33 et § 44 racontent
+cinq échecs et en tirent une conclusion qui servait de garde-fou : ce n'est ni
+la perce ni l'excitateur qui bloque, c'est le COUPLAGE entre l'excitateur et la
+colonne d'air. Une anche LIBRE — harmonium, accordéon, harmonica — n'a pas de
+colonne : la lame bat dans son cadre sans le toucher, sa fréquence est la
+sienne propre, et le corps ne fait que rayonner. Il n'y a donc pas de guide
+d'ondes à borner, seulement un résonateur entretenu, c'est-à-dire une boucle
+LOCALE. **Elle s'amorce du premier coup et sonne juste** : moins de 20 cents
+d'écart sur cinq notes réparties, là où `vsm.flute` figeait sa fréquence à
+1 412 Hz quelle que soit la note.
+
+Le trait est le seul du parc : **souffler plus fort fait BAISSER la note**
+(+3,1 · 0,0 · −3,1 · −6,8 · −8,9 cents sur la course du soufflet), la charge
+d'air ajoutée alourdissant la lame.
+
+**Le § 44 a été repayé avant d'être reconnu, et cela vaut d'être écrit.** Le
+débit d'une anche est redressé, donc positif par construction : sa composante
+continue est énorme. Le premier essai la retirait par une CONSTANTE — ce qui
+marche au régime établi et ment partout ailleurs. À faible pression, la lame
+n'oscillait pas du tout et la sortie valait −0,25 constant, soit un rms de
+0,25 qu'on aurait pu prendre pour du son : mot pour mot la faute de la flûte,
+commise à nouveau par quelqu'un qui l'avait pourtant écrite. La conclusion du
+§ 44 doit donc se lire comme une règle et non comme une anecdote : **un
+bloqueur de continu du premier ordre, jamais une soustraction fixe.**
+
+Deux autres erreurs de physique ont été attrapées par la sonde et par elle
+seule : le passage s'ouvrait des DEUX côtés (`|y|`), ce qui double la
+fréquence — spectre mesuré : toute l'énergie à 2·f0 et rien au fondamental —
+alors qu'une anche libre laisse passer l'air d'un seul côté ; et la charge
+d'air, dix fois trop forte, faisait descendre la note de 165 cents, soit une
+machine fausse plutôt qu'expressive.
+
+Le parc passe à **45 machines**.
+
 ---
 
 ## 29. Façades « façon hardware », machine par machine (sections 6 et 21)

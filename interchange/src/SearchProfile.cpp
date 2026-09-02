@@ -201,6 +201,11 @@ constexpr Rule kRules[] = {
     {"wind.breathPressure",                0.1f,     1.0f, SearchScale::Linear,      0.86f},
     {"wind.brassiness",                    0.0f,     1.0f, SearchScale::Linear,      0.72f},
     {"wind.breathNoise",                   0.0f,     1.0f, SearchScale::Linear,      0.52f},
+    // ANCHE LIBRE (vsm.reed). La charge d'air est le seul réglage du parc qui
+    // déplace la HAUTEUR d'une note tenue : une recherche qui la balaie change
+    // l'accord, ce qui pèse lourd sur une distance. Elle vient donc juste
+    // après la pression et la raideur, que la machine partage avec le vent.
+    {"reed.airLoading",                    0.0f,     1.0f, SearchScale::Linear,      0.74f},
     // Percussions modélisées : la pièce compte AUTANT que les pièces, parce
     // que c'est elle qui sépare le plus sûrement un kit acoustique d'un kit
     // électronique.

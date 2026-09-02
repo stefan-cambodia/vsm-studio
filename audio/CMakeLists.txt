@@ -57,6 +57,7 @@ add_library(vsm_audio STATIC
     plugins/mellotron/MellotronSynth.cpp
     plugins/sitar/SitarSynth.cpp
     plugins/membrane/MembraneSynth.cpp
+    plugins/reed/ReedSynth.cpp
     plugins/multisample/MultisampleSynth.cpp
 )
 
@@ -165,6 +166,7 @@ if (VSM_BUILD_TESTS)
         tests/test_mellotron_synth.cpp
         tests/test_sitar_synth.cpp
         tests/test_membrane_synth.cpp
+        tests/test_reed_synth.cpp
         tests/test_multisample_synth.cpp
         tests/test_midi_learn.cpp
         tests/test_effect_routing.cpp

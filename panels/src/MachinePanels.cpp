@@ -3587,6 +3587,54 @@ MachinePanel makeMembrane() {
     return panel;
 }
 
+/// `vsm.reed` -- l'anche libre. La section BELLOWS occupe la place d'honneur
+/// parce que sur cet instrument le soufflet EST le jeu : c'est lui qui décide
+/// si la lame parle, avec quelle force, et — seul cas du parc — à quelle
+/// hauteur exacte. AIR LOADING est le potentiomètre à connaître : c'est celui
+/// qui fait descendre la note quand on pousse.
+///
+/// Livrée nacre et noir, la robe d'un accordéon.
+MachinePanel makeReed() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.reed";
+    panel.displayName = "Reed (l'anche libre)";
+    panel.chassis = Chassis::Plastic;
+    panel.panelColour = "#191A22";
+    panel.sectionColour = "#12131A";
+    panel.textColour = "#EDEAF6";
+    panel.knobColour = "#C9C2E0";
+    panel.gridColumns = 12;
+    panel.gridRows = 4;
+
+    PanelSection soufflet;
+    soufflet.title = "BELLOWS";
+    soufflet.accentColour = "#C9C2E0";
+    soufflet.column = 0; soufflet.row = 0; soufflet.columnSpan = 6; soufflet.rowSpan = 4;
+    soufflet.controls = {
+        control("Bellows Pressure", "PRESSURE", S::LargeKnob, 0, 0),
+        control("Air Loading", "AIR LOAD", S::LargeKnob, 1, 0),
+        control("Reed Stiffness", "STIFFNESS", S::Knob, 0, 1),
+        control("Velocity to Pressure", "VEL", S::Knob, 1, 1),
+    };
+
+    PanelSection sortie;
+    sortie.title = "VOICE";
+    sortie.accentColour = "#8FA8D9";
+    sortie.column = 6; sortie.row = 0; sortie.columnSpan = 6; sortie.rowSpan = 4;
+    sortie.controls = {
+        control("Attack", "A", S::VerticalSlider, 0, 0),
+        control("Decay", "D", S::VerticalSlider, 1, 0),
+        control("Sustain", "S", S::VerticalSlider, 2, 0),
+        control("Release", "R", S::VerticalSlider, 3, 0),
+        control("Filter Cutoff", "CUTOFF", S::Knob, 0, 1),
+        control("Filter Resonance", "RESO", S::Knob, 1, 1),
+        control("Output Level", "VOLUME", S::Knob, 2, 1),
+    };
+
+    panel.sections = {soufflet, sortie};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
@@ -3595,7 +3643,7 @@ const std::vector<MachinePanel>& panels() {
         makePiano(), makeDrums(), makeWind(), makeMultisample(),
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
         makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev(),
-        makeScanned(), makeMellotron(), makeSitar(), makeMembrane()
+        makeScanned(), makeMellotron(), makeSitar(), makeMembrane(), makeReed()
     };
     return all;
 }
