@@ -41,6 +41,7 @@
 #include "scanned/ScannedSynth.h"
 #include "mellotron/MellotronSynth.h"
 #include "sitar/SitarSynth.h"
+#include "membrane/MembraneSynth.h"
 #include "multisample/MultisampleSynth.h"
 
 namespace vsm::audio::plugin {
@@ -182,6 +183,7 @@ void registerBuiltInPlugins() {
         vsm::plugins::scanned::ScannedSynth forceLinkScanned;
         vsm::plugins::mellotron::MellotronSynth forceLinkMellotron;
         vsm::plugins::sitar::SitarSynth forceLinkSitar;
+        vsm::plugins::membrane::MembraneSynth forceLinkMembrane;
         (void)forceLinkScanned;
     }
     {

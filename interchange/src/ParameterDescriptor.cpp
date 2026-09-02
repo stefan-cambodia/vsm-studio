@@ -404,6 +404,25 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Velocity Sensitivity", "voice.velocitySensitivity"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.membrane ---
+    // Deux notions n'existent nulle part ailleurs et prennent un nom à elles :
+    // la CHARGE (la pâte du tabla, qui rend la peau accordable) et le RAYON de
+    // frappe. Ce dernier ne réemploie PAS `string.pickPosition` bien que la
+    // tentation soit forte : sur une corde, la position est une fraction de
+    // LONGUEUR entre deux extrémités ; ici c'est un rayon depuis un CENTRE, et
+    // les deux ne se transportent pas l'un dans l'autre. Tout le reste vient
+    // de `vsm.modal`, dont cette machine partage la mécanique (une banque de
+    // résonateurs frappés) sans partager ses rapports.
+    {"vsm.membrane", {
+        {"Loading", "membrane.loading"},
+        {"Strike Radius", "membrane.strikeRadius"},
+        {"Mallet Hardness", "string.pickHardness"},
+        {"Decay", "modal.decay"},
+        {"Decay Tilt", "modal.decayTilt"},
+        {"Modes", "modal.modeCount"},
+        {"Velocity to Hardness", "voice.velocitySensitivity"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.multisample ---
     // Peu de paramètres, et TOUS canoniques : le timbre de cette machine vient
     // des échantillons, pas des réglages. `voice.velocitySensitivity` est

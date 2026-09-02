@@ -3747,6 +3747,27 @@ regarde ce qu'on croit.
 
 Le parc passe à **43 machines**.
 
+**ET UNE NEUVIÈME : `vsm.membrane`, le premier objet à DEUX dimensions du
+parc — et la première machine dont l'existence a été DÉMONTRÉE avant d'être
+écrite.** La tentation était d'ajouter un matériau à `vsm.modal` plutôt qu'une
+machine. Le calcul, fait sur le code de `vsm.modal`, l'interdit : son
+`ratioOf` couvre exactement [1,866 ; 2,978] pour le second partiel, quand une
+membrane circulaire a le sien à 1,593 — le rapport des deux premiers zéros de
+Bessel. Une corde et une barre sont des objets à UNE dimension, indexés par un
+seul entier ; une membrane est à deux, indexée par un couple `(m, n)`. Ce n'est
+pas un point de plus sur le segment corde↔barre.
+
+**Le trait qui mérite d'être retenu est la CHARGE.** Le disque de pâte collé au
+centre d'un tabla déplace les modes de Bessel vers des entiers — Raman, 1934 —
+et c'est pour cela qu'un tabla joue des notes là où une timbale joue des bruits
+accordés. Un seul réglage fait le trajet, mesuré à ses deux bouts : 1,59 à
+charge nulle, 2,00 à charge pleine. Aucune autre machine du parc ne rend
+harmonique un objet qui ne l'était pas. S'y ajoute le fait que `m ≥ 1` implique
+un nœud au centre : frappée au milieu, la peau perd d'un coup TOUS ses modes
+diamétraux, ce qui sépare le *na* sourd du *tin* chantant.
+
+Le parc passe à **44 machines**.
+
 ---
 
 ## 29. Façades « façon hardware », machine par machine (sections 6 et 21)

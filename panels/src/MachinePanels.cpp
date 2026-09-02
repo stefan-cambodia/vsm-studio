@@ -3532,6 +3532,51 @@ MachinePanel makeSitar() {
     return panel;
 }
 
+/// `vsm.membrane` -- la peau tendue. Deux potentiomètres portent toute la
+/// machine et occupent donc la moitié gauche : LOADING, qui fait passer d'une
+/// timbale à un tabla accordé, et RADIUS, qui décide si l'on frappe au centre
+/// (sourd) ou près du bord (chantant). Les mettre au même rang que le
+/// tilt de décroissance aurait caché ce que cette machine a d'unique.
+///
+/// Livrée peau et cuivre, la robe d'une timbale.
+MachinePanel makeMembrane() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.membrane";
+    panel.displayName = "Membrane (la peau tendue)";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#241812";
+    panel.sectionColour = "#1B120C";
+    panel.textColour = "#F2E0CC";
+    panel.knobColour = "#C98A4A";
+    panel.gridColumns = 12;
+    panel.gridRows = 4;
+
+    PanelSection peau;
+    peau.title = "SKIN";
+    peau.accentColour = "#C98A4A";
+    peau.column = 0; peau.row = 0; peau.columnSpan = 6; peau.rowSpan = 4;
+    peau.controls = {
+        control("Loading", "LOADING", S::LargeKnob, 0, 0),
+        control("Strike Radius", "RADIUS", S::LargeKnob, 1, 0),
+        control("Mallet Hardness", "MALLET", S::Knob, 0, 1),
+        control("Velocity to Hardness", "VEL", S::Knob, 1, 1),
+    };
+
+    PanelSection extinction;
+    extinction.title = "DECAY";
+    extinction.accentColour = "#D9B36A";
+    extinction.column = 6; extinction.row = 0; extinction.columnSpan = 6; extinction.rowSpan = 4;
+    extinction.controls = {
+        control("Decay", "TIME", S::Knob, 0, 0),
+        control("Decay Tilt", "TILT", S::Knob, 1, 0),
+        control("Modes", "MODES", S::Knob, 0, 1),
+        control("Output Level", "VOLUME", S::Knob, 1, 1),
+    };
+
+    panel.sections = {peau, extinction};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
@@ -3540,7 +3585,7 @@ const std::vector<MachinePanel>& panels() {
         makePiano(), makeDrums(), makeWind(), makeMultisample(),
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
         makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev(),
-        makeScanned(), makeMellotron(), makeSitar()
+        makeScanned(), makeMellotron(), makeSitar(), makeMembrane()
     };
     return all;
 }

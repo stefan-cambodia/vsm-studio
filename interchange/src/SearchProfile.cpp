@@ -184,6 +184,14 @@ constexpr Rule kRules[] = {
     {"sympathetic.root",                  28.0f,    64.0f, SearchScale::Linear,      0.78f},
     {"sympathetic.decay",                  1.0f,    20.0f, SearchScale::Logarithmic, 0.60f},
     {"sympathetic.count",                  1.0f,    13.0f, SearchScale::Linear,      0.36f},
+    // PEAU TENDUE (vsm.membrane). La CHARGE commande, et de loin : c'est elle
+    // qui décide si l'objet est inharmonique (une timbale) ou accordé (un
+    // tabla), et rien d'autre ne rattrape ce choix — deux instruments
+    // différents vivent aux deux bouts de sa course. Le RAYON de frappe vient
+    // juste après, parce qu'il fait disparaître des familles entières de modes
+    // d'un coup : frappée au centre, la peau perd TOUS ses modes diamétraux.
+    {"membrane.loading",                   0.0f,     1.0f, SearchScale::Linear,      0.96f},
+    {"membrane.strikeRadius",              0.0f,    0.95f, SearchScale::Linear,      0.90f},
     // Famille du VENT (vsm.wind). Comme sur la corde, ce qui fait le timbre
     // est d'abord ce qui se perd (le rayonnement au pavillon) et la raideur de
     // ce qui entretient (l'anche ou les lèvres) ; la pression de souffle vient

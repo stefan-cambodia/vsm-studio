@@ -628,6 +628,51 @@ par construction ce qui bouge dans une bande étroite.
 Le parc passe à **43 machines** (993 paramètres nommés, 1 326 tests
 verts).
 
+**Et une neuvième, dont l'existence a été DÉMONTRÉE avant d'être écrite.**
+`vsm.membrane` ouvre l'objet à DEUX dimensions — le parc n'en avait aucun.
+La question qui se posait était légitime : pourquoi ne pas ajouter
+« membrane » au réglage `Material` de `vsm.modal`, qui est déjà une banque de
+résonateurs à rapports libres ? **Le calcul, fait sur le code de `vsm.modal`
+et non sur une intuition, dit que c'est impossible.** Son `ratioOf` interpole
+entre la corde (rapport `n`) et la barre libre-libre (`((2n+1)/3)²`), puis
+multiplie par `spread^((n-1)/10)` avec `spread` dans [0,5 ; 2] : pour le
+second partiel, cela couvre exactement **[1,866 ; 2,978]**. Une membrane
+circulaire a le sien à **1,593**, le rapport des deux premiers zéros de
+Bessel. Hors de portée, quel que soit le réglage — et de même pour le
+troisième (2,136 contre un intervalle qui commence à 2,61).
+
+La raison est structurelle et vaut d'être écrite : une corde et une barre
+sont des objets à UNE dimension, dont les modes s'indexent par un seul
+entier ; une membrane est à deux, et ses modes s'indexent par un couple
+`(m, n)`. Ce n'est pas un point de plus sur le segment corde↔barre, c'est un
+autre espace.
+
+Trois traits, et le deuxième est un fait acoustique remarquable :
+- **Les rapports de Bessel** : second mode à 1,593·f0, ce qui fait qu'une
+  timbale sonne « sans note » franche.
+- **LA CHARGE REND LA PEAU ACCORDABLE — le miracle du tabla.** Le disque de
+  pâte collé au centre (le *syahi*) alourdit la membrane et déplace ses modes
+  vers des ENTIERS ; C. V. Raman l'a montré en 1934, et c'est pour cela qu'un
+  tabla joue des notes là où une timbale joue des bruits accordés. Mesuré aux
+  deux bouts du réglage `Loading` : **1,59 à charge nulle, 2,00 à charge
+  pleine**, et le trajet entre les deux est continu. Aucune autre machine du
+  parc ne rend harmonique un objet qui ne l'était pas.
+- **Frapper au centre n'est pas frapper au bord** : un mode à `m ≥ 1`
+  diamètres nodaux a un NŒUD au centre et ne s'excite pas là. Le second
+  partiel disparaît donc quand on frappe au milieu (mesuré à moins de 5 % de
+  son niveau au bord) — c'est la différence entre le *na* sourd et le *tin*
+  chantant d'un tabla, et elle est binaire.
+
+**Un paramètre mort retiré avant livraison.** La machine exposait d'abord un
+neuvième réglage, `Velocity Sensitivity`, que `process` ne lisait nulle part :
+la vélocité agissait déjà sur le niveau et sur la dureté du maillet. Un
+réglage qui ne fait rien est pire qu'un réglage absent — il ment au musicien
+et coûte une dimension à la recherche —, exactement ce que le § 33
+d'ARCHITECTURE avait déjà conclu pour l'évasement de `vsm.wind`.
+
+Le parc passe à **44 machines** (1 001 paramètres nommés, 1 337 tests
+verts).
+
 ## 12. H10 — la guitare ÉLECTRIQUE est-elle vraiment couverte ? (écrite avant sa mesure, 02/09/2026)
 
 **Le fait qui la motive est une contradiction interne à ce dépôt.** Le tableau
