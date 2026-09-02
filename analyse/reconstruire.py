@@ -276,10 +276,31 @@ def notes_export(notes: Sequence[StemNote]) -> List[ExportNote]:
     return [ExportNote(n.note, n.velocity, n.start, n.duration) for n in notes]
 
 
-def separer(chemin: Path, dossier: Path, modele: str) -> Dict[str, Path]:
-    from analyzer.separation import separate_audio
+def separer(chemin: Path, dossier: Path, modele: str,
+            commande: Optional[List[str]] = None) -> Dict[str, Path]:
+    """Sépare en stems dans un SOUS-PROCESSUS qui meurt, et lit le dossier.
 
-    return {nom: Path(p) for nom, p in separate_audio(chemin, dossier, modele).items()}
+    POURQUOI PAS DANS CE PROCESSUS. Torch et demucs restent résidents (~7 Go)
+    une fois importés, et Basic Pitch charge ensuite son propre modèle :
+    l'addition a fait abattre deux courses par l'OOM killer le 02/09/2026
+    (codes 137, journal du noyau) sur la machine à 15 Go. En sous-processus,
+    demucs vit, écrit, MEURT — la mémoire revient avant la suite. C'est la
+    condition technique du modèle six sources par défaut (§ 4.2 du CDC
+    multipiste) : plus de pistes ne doit pas vouloir dire plus d'OOM.
+
+    `commande` s'injecte pour les tests ; par défaut, le module
+    `analyzer.separation` du même interpréteur.
+    """
+    if commande is None:
+        commande = [sys.executable, "-m", "analyzer.separation"]
+    complet = commande + [str(chemin), str(dossier), modele]
+    resultat = subprocess.run(complet, cwd=str(Path(__file__).resolve().parent))
+    if resultat.returncode != 0:
+        raise RuntimeError(f"séparation en sous-processus : code {resultat.returncode}")
+    stems = {p.stem: p for p in sorted(Path(dossier).glob("*.wav"))}
+    if not stems:
+        raise RuntimeError(f"séparation terminée mais aucun stem dans {dossier}")
+    return stems
 
 
 # ---------------------------------------------------------------------------
@@ -461,7 +482,13 @@ def construire_parseur() -> argparse.ArgumentParser:
                               "du cahier des charges de l'apprentissage")
     parseur.add_argument("--sans-separation", action="store_true",
                          help="ne pas séparer en stems : traiter le fichier comme une seule piste")
-    parseur.add_argument("--modele", default="htdemucs", help="modèle de séparation")
+    parseur.add_argument("--modele", default="htdemucs_6s",
+                         help="modèle de séparation. Le défaut est passé de htdemucs (4 stems) "
+                              "à htdemucs_6s (6 stems : +guitar, +piano) le 03/09/2026, sur "
+                              "mesure : -10,4 %% de distance ET deux pistes de plus sur le "
+                              "témoin H22 (docs/CDC-detection-multipiste.md § 4.2). Mesuré sur "
+                              "UN morceau ; contre-épreuve due à la levée de la pause des "
+                              "campagnes")
     parseur.add_argument("--machines", default="",
                          help="liste de machines candidates, séparées par des virgules "
                               "(défaut : toutes les mélodiques du moteur)")

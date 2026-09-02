@@ -78,3 +78,32 @@ def separate_audio(
         print(f"  {source:10s} -> {output}")
 
     return stems
+
+
+# ---------------------------------------------------------------------------
+# Exécutable en module : `python -m analyzer.separation entrée dossier modèle`.
+#
+# POURQUOI. La séparation vivait dans le processus de la chaîne, et torch +
+# demucs y restent résidents (~7 Go) pendant que Basic Pitch charge le sien :
+# l'OOM killer a abattu deux courses le 02/09/2026 sur la machine à 15 Go.
+# En sous-processus, demucs vit, écrit ses stems, MEURT — et la mémoire
+# revient avant que la chaîne ne continue. C'est ce point d'entrée que
+# `reconstruire.py` lance désormais (voir `separer`).
+# ---------------------------------------------------------------------------
+
+def main(arguments=None) -> int:
+    import argparse
+
+    parseur = argparse.ArgumentParser(
+        description="Sépare un fichier audio en stems (demucs), seul dans son processus.")
+    parseur.add_argument("entree", help="fichier audio à séparer")
+    parseur.add_argument("dossier", help="dossier de sortie des stems")
+    parseur.add_argument("modele", nargs="?", default="htdemucs",
+                         help="modèle demucs (htdemucs, htdemucs_6s…)")
+    args = parseur.parse_args(arguments)
+    stems = separate_audio(Path(args.entree), Path(args.dossier), args.modele)
+    return 0 if stems else 3
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -150,7 +150,11 @@ déplacent rien, et la stabilité par empreintes est démontrée en course.
 [x] La séparation six sources est praticable sans tuer la machine (étape à
     part), et son partage est mesuré
 [ ] H22b et H23 sont tranchées, verdicts écrits avec leurs chiffres
-[ ] La chaîne a un comportement PAR DÉFAUT décidé et écrit (§ 4.2)
+[x] La chaîne a un comportement PAR DÉFAUT décidé, écrit ET câblé (§ 4.2) :
+    --modele vaut htdemucs_6s (gardé par un test), la séparation vit en
+    sous-processus qui meurt (4 tests de plomberie), et le nouveau chemin a
+    été éprouvé en vrai — les six stems rendus sont IDENTIQUES au bit près
+    aux stems de référence (sha256, déterminisme shifts=0)
 [x] Le DAW montre les densités et avertissements du rapport (§ 4.3) :
     Fichier ▸ Voir le rapport de reconstruction (grisé sans rapport), et
     VSM_RAPPORT=1 pour le photographier sans souris — vérifié sur le
