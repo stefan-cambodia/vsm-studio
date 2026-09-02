@@ -3922,6 +3922,67 @@ MachinePanel makeMusicBox() {
     return panel;
 }
 
+/// `vsm.terrain` -- le chemin fait le timbre. RADIUS est le grand
+/// potentiomètre : il ne dose rien, il décide QUELLES BOSSES du relief le
+/// chemin rencontre, et les rangs du spectre y répondent chacun à leur
+/// manière. C'est le seul réglage de timbre du parc qui ne soit ni un filtre,
+/// ni un mélange, ni une table.
+///
+/// Le volume est dans RELIEF et non dans une section « OUT » à lui : essayée,
+/// une section d'une seule rangée donnait un bouton haut d'un quart de façade,
+/// lisible mais ridicule. Une section ne doit pas exister pour un seul réglage
+/// si cela le rend minuscule.
+///
+/// Livrée vert sombre et blanc topographique.
+MachinePanel makeTerrain() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.terrain";
+    panel.displayName = "Terrain (le chemin fait le timbre)";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#131C16";
+    panel.sectionColour = "#0E1611";
+    panel.textColour = "#E2F0E6";
+    panel.knobColour = "#8FC9A2";
+    panel.gridColumns = 14;
+    panel.gridRows = 4;
+
+    PanelSection chemin;
+    chemin.title = "PATH";
+    chemin.accentColour = "#8FC9A2";
+    chemin.column = 0; chemin.row = 0; chemin.columnSpan = 5; chemin.rowSpan = 4;
+    chemin.controls = {
+        control("Orbit Radius", "RADIUS", S::LargeKnob, 0, 0),
+        control("Orbit Ellipse", "ELLIPSE", S::Knob, 1, 0),
+        control("Drift Rate", "DRIFT", S::Knob, 0, 1),
+        control("Velocity to Radius", "VEL", S::Knob, 1, 1),
+    };
+
+    PanelSection relief;
+    relief.title = "RELIEF";
+    relief.accentColour = "#C9C08A";
+    relief.column = 5; relief.row = 0; relief.columnSpan = 4; relief.rowSpan = 4;
+    relief.controls = {
+        control("Roughness", "ROUGH", S::LargeKnob, 0, 0),
+        control("Output Level", "VOLUME", S::Knob, 1, 0),
+        control("Filter Cutoff", "CUTOFF", S::Knob, 0, 1),
+        control("Filter Resonance", "RESO", S::Knob, 1, 1),
+    };
+
+    PanelSection enveloppe;
+    enveloppe.title = "ENVELOPE";
+    enveloppe.accentColour = "#8FA8D9";
+    enveloppe.column = 9; enveloppe.row = 0; enveloppe.columnSpan = 5; enveloppe.rowSpan = 4;
+    enveloppe.controls = {
+        control("Attack", "A", S::VerticalSlider, 0, 0),
+        control("Decay", "D", S::VerticalSlider, 1, 0),
+        control("Sustain", "S", S::VerticalSlider, 2, 0),
+        control("Release", "R", S::VerticalSlider, 3, 0),
+    };
+
+    panel.sections = {chemin, relief, enveloppe};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
@@ -3932,7 +3993,7 @@ const std::vector<MachinePanel>& panels() {
         makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev(),
         makeScanned(), makeMellotron(), makeSitar(), makeMembrane(), makeReed(),
         makePlate(), makeClavichord(), makeGlass(), makeJewsHarp(),
-        makeTheremin(), makeMusicBox()
+        makeTheremin(), makeMusicBox(), makeTerrain()
     };
     return all;
 }

@@ -553,6 +553,29 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Velocity Sensitivity", "voice.velocitySensitivity"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.terrain ---
+    // Le RAYON D'ORBITE ne réemploie PAS `vector.orbitDepth` malgré la
+    // ressemblance des mots, et c'est mesuré et non supposé : sur
+    // `vsm.vector`, agrandir l'orbite redose quatre formes fixes et fait
+    // varier tous les rangs du même facteur (h3 ×2,36 et h5 ×2,36) ; ici elle
+    // fait franchir des reliefs et les rangs vont chacun leur chemin (×2,4 et
+    // ×18,3). Deux réglages qui portent le même nom et ne font pas la même
+    // chose ne doivent pas partager une identité : un preset qui voyagerait de
+    // l'un à l'autre arriverait sur un timbre sans rapport.
+    {"vsm.terrain", {
+        {"Orbit Radius", "terrain.orbitRadius"},
+        {"Roughness", "terrain.roughness"},
+        {"Orbit Ellipse", "terrain.orbitEllipse"},
+        {"Drift Rate", "lfo.1.rate"},
+        {"Filter Cutoff", "filter.1.cutoff"},
+        {"Filter Resonance", "filter.1.resonance"},
+        {"Attack", "envelope.1.attack"},
+        {"Decay", "envelope.1.decay"},
+        {"Sustain", "envelope.1.sustain"},
+        {"Release", "envelope.1.release"},
+        {"Velocity to Radius", "voice.velocitySensitivity"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.multisample ---
     // Peu de paramètres, et TOUS canoniques : le timbre de cette machine vient
     // des échantillons, pas des réglages. `voice.velocitySensitivity` est

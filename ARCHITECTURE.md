@@ -31,7 +31,7 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **1 419 tests moteur** (158 core + 1 000 audio
+écoute au clic, et toute la logique testée hors JUCE. Total : **1 430 tests moteur** (158 core + 1 011 audio
 + 206 interchange + 25 CLAP + 19 VST3 + 11 façades,
 tous verts, zéro warning sous les flags du build, `-Wall -Wextra -Wpedantic`.
 L'ancienne mention « y compris -Wfloat-equal -Wsign-conversion -Wshadow »
@@ -599,12 +599,12 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 1 419 tests moteur + 68 tests d'analyse, tous verts
+### Bilan actuel : 1 430 tests moteur + 68 tests d'analyse, tous verts
 
 - **158 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des
   notes douteuses de la transcription),
-  **1 000 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
+  **1 011 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
   scalaire, indépendance des lignes, bornes de l'approximation de tanh ; et la
   boucle : rebouclage échantillon-exact, notes relâchées au saut) : chorus BBD, Juno-106,
   bus master (biquad/compresseur/limiteur à plafond garanti/LUFS), oversampler,
@@ -3942,6 +3942,28 @@ l'une ni l'autre ne peut le faire en silence — l'une en fait son geste
 principal, l'autre tient un compteur.
 
 Le parc passe à **51 machines**.
+
+**ET UNE DIX-SEPTIÈME : `vsm.terrain`, où le TIMBRE est un chemin.** Une
+surface `z = f(x, y)` parcourue par une orbite : l'onde est l'altitude
+rencontrée. La question à trancher avant d'écrire une ligne était : en quoi
+est-ce autre chose que `vsm.vector`, qui a lui aussi une orbite dans un plan ?
+
+**La réponse est la LINÉARITÉ, et elle a demandé de refaire le critère.** La
+première formulation demandait seulement que h3/h1 bouge quand l'orbite
+grandit : `vsm.vector` le fait aussi (×2,36), donc le critère n'aurait rien
+démontré. Ce qui sépare se voit en regardant PLUSIEURS rangs ensemble —
+`vsm.vector` étant une combinaison linéaire de quatre formes fixes, tous ses
+rangs varient du MÊME facteur (h3 ×2,36 et h5 ×2,36, identiques à trois
+décimales, monotones) ; un terrain est non linéaire et ses rangs vont chacun
+leur chemin (×2,4 et ×18,3).
+
+C'est le troisième cas de la journée où un critère écrit avant la mesure s'est
+révélé trop faible et a dû être resserré au vu des chiffres — après le
+contraste de sens attendu de `vsm.reed` et l'égalité attendue des timbres de
+`vsm.scanned`. Écrire l'hypothèse avant ne garantit pas qu'elle soit la bonne ;
+cela garantit qu'on s'en aperçoive.
+
+Le parc passe à **52 machines**.
 
 ---
 

@@ -49,6 +49,7 @@
 #include "jewsharp/JewsHarpSynth.h"
 #include "theremin/ThereminSynth.h"
 #include "musicbox/MusicBoxSynth.h"
+#include "terrain/TerrainSynth.h"
 #include "multisample/MultisampleSynth.h"
 
 namespace vsm::audio::plugin {
@@ -198,6 +199,7 @@ void registerBuiltInPlugins() {
         vsm::plugins::jewsharp::JewsHarpSynth forceLinkJewsHarp;
         vsm::plugins::theremin::ThereminSynth forceLinkTheremin;
         vsm::plugins::musicbox::MusicBoxSynth forceLinkMusicBox;
+        vsm::plugins::terrain::TerrainSynth forceLinkTerrain;
         (void)forceLinkScanned;
     }
     {

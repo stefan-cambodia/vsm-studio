@@ -230,6 +230,14 @@ constexpr Rule kRules[] = {
     // l'ignorerait comparerait des rendus auxquels il manque des notes sans
     // savoir pourquoi.
     {"musicbox.returnTime",               0.02f,     1.0f, SearchScale::Logarithmic, 0.94f},
+    // TERRAIN D'ONDES (vsm.terrain). Le RAYON est le timbre de cette machine :
+    // c'est lui qui décide quelles bosses du relief le chemin rencontre, et il
+    // fait varier les rangs de façons indépendantes — un axe qui vaut plusieurs
+    // axes de filtre. La RUGOSITÉ vient ensuite : elle change le relief
+    // lui-même, donc ce qu'il y a à rencontrer.
+    {"terrain.orbitRadius",               0.05f,     1.0f, SearchScale::Linear,      0.95f},
+    {"terrain.roughness",                  0.0f,     1.0f, SearchScale::Linear,      0.82f},
+    {"terrain.orbitEllipse",               0.0f,     1.0f, SearchScale::Linear,      0.48f},
     // Famille du VENT (vsm.wind). Comme sur la corde, ce qui fait le timbre
     // est d'abord ce qui se perd (le rayonnement au pavillon) et la raideur de
     // ce qui entretient (l'anche ou les lèvres) ; la pression de souffle vient

@@ -1250,6 +1250,68 @@ lame encastrée sont deux lois, pas deux points d'un même segment.
 
 Le parc passe à **51 machines** (1 059 paramètres nommés, 1 419 tests verts).
 
+## 20. H20 — le TERRAIN D'ONDES, et en quoi il diffère de `vsm.vector` (écrite avant sa mesure, 02/09/2026)
+
+**La famille.** La synthèse par terrain d'ondes (Mitsuhashi, Borgonovo et
+Haus, années 1980) définit une SURFACE `z = f(x, y)` et la parcourt par une
+trajectoire — le plus souvent une orbite. L'onde de sortie est l'altitude
+rencontrée le long du chemin. Le timbre ne vient donc ni d'une table ni d'un
+filtre : **il vient de la FORME DU CHEMIN sur le relief.**
+
+**La question à trancher avant d'écrire une ligne : en quoi est-ce autre chose
+que `vsm.vector` ?** Les deux ont une orbite dans un plan, et la ressemblance
+s'arrête là. `vsm.vector` mélange BILINÉAIREMENT quatre formes d'onde : sa
+sortie est une combinaison LINÉAIRE des quatre coins, donc agrandir l'orbite
+change les proportions du mélange mais **ne peut créer aucun contenu qui
+n'était pas déjà dans les coins**. Un terrain est une fonction NON LINÉAIRE
+des coordonnées : agrandir l'orbite fait franchir des reliefs, et le spectre
+change de nature, pas seulement de dosage.
+
+**La mesure qui tranche est donc un CONTRASTE, et il faut le faire sur les
+deux machines au même protocole :**
+- Sur `vsm.terrain`, agrandir l'orbite (`Orbit Radius`) doit changer le
+  contenu harmonique RELATIF — le rapport h3/h1 doit bouger d'un facteur
+  franc, à hauteur constante.
+- Sur `vsm.vector`, la même manœuvre (agrandir le déplacement dans le plan)
+  ne peut pas produire cela : elle redose des formes fixes.
+- **Et la hauteur ne doit pas bouger** : c'est un changement de TIMBRE, pas
+  de note.
+
+- **Succès de H20** : le rapport bouge franchement sur le terrain, et la
+  hauteur ne bouge pas. La famille entre au parc, et le contraste avec
+  `vsm.vector` est mesuré plutôt qu'affirmé.
+- **Échec de H20** : le terrain se comporte comme un mélange, auquel cas ce
+  serait `vsm.vector` sous un autre nom — le code partirait hors du
+  `CMakeLists`, avec son chiffre.
+
+### H20 EST TRANCHÉE : SUCCÈS — mais le critère annoncé ne séparait rien (02/09/2026)
+
+**Ce que l'hypothèse demandait était insuffisant, et il faut le dire avant le
+verdict.** Elle annonçait que sur `vsm.terrain`, agrandir l'orbite ferait
+bouger h3/h1 « d'un facteur franc ». C'est vrai — mesuré ×2,4 — mais
+`vsm.vector` le fait aussi (×2,36), parce qu'agrandir son orbite redose ses
+quatre formes. **Le critère aurait été satisfait par les deux machines**, et
+n'aurait donc rien démontré.
+
+**Ce qui sépare vraiment se voit en regardant PLUSIEURS rangs ensemble :**
+
+| | h3/h1 | h5/h1 | rapport des deux |
+|---|---|---|---|
+| `vsm.vector` (orbite 0 → 1) | ×2,36 | ×2,36 | **1,00** |
+| `vsm.terrain` (rayon 0,15 → 1) | ×2,4 | **×18,3** | **7,6** |
+
+`vsm.vector` est une combinaison LINÉAIRE de quatre formes fixes : tous ses
+rangs suivent le même dosage et varient donc du même facteur — identiques à
+trois décimales, et de façon parfaitement monotone (0,019 · 0,024 · 0,030 ·
+0,037 · 0,044). Un terrain est une fonction NON LINÉAIRE des coordonnées : ses
+rangs vont chacun leur chemin, et non monotonement. **C'est cela, et cela
+seul, qui distingue un relief d'un mélange.**
+
+La hauteur, elle, ne bouge pas : 220,0 Hz à tous les rayons. C'est bien un
+changement de timbre, pas de note.
+
+Le parc passe à **52 machines** (1 071 paramètres nommés, 1 430 tests verts).
+
 ## 12. H10 — la guitare ÉLECTRIQUE est-elle vraiment couverte ? (écrite avant sa mesure, 02/09/2026)
 
 **Le fait qui la motive est une contradiction interne à ce dépôt.** Le tableau

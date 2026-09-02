@@ -3,7 +3,7 @@
 Un séquenceur MIDI, un rack de machines vintage modélisées, et une chaîne qui
 reconstruit un morceau enregistré en projet jouable.
 
-**51 machines · 13 effets · 1 059 paramètres nommés · 1 419 tests verts**
+**52 machines · 13 effets · 1 071 paramètres nommés · 1 430 tests verts**
 
 > Toutes les illustrations sont des rendus de l'application elle-même, produits hors
 > écran par `vsm-panel-preview`, `vsm-ui-preview`, `vsm-pianoroll-preview` et
@@ -161,6 +161,16 @@ Une attaque échantillonnée collée sur une queue synthétisée.
 Le pliage d'onde et la porte passe-bas de l'école Buchla.
 
 ![Façade de West Coast (pliage et porte passe-bas)](images/manuel/vsm.westcoast.png)
+
+**Terrain (le chemin fait le timbre)** — `vsm.terrain`
+
+Une surface en relief, une orbite qui la parcourt, et l'onde est l'altitude
+rencontrée. *Radius* est le réglage à connaître : il ne dose rien, il décide
+**quelles bosses le chemin rencontre** — les harmoniques y répondent chacun à
+leur manière, et pas tous ensemble comme le ferait un filtre ou un mélange.
+La molette de modulation fait marcher plus loin sur le relief.
+
+![Façade de Terrain (le chemin fait le timbre)](images/manuel/vsm.terrain.png)
 
 **Scanned (la chaîne balayée)** — `vsm.scanned`
 
