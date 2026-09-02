@@ -2996,6 +2996,24 @@ fixe visite les pistes, peut-être d'un optimum local que le vivier élargi rend
 plus probable. Un témoin v15 à neuf finalistes dirait si le reste s'obtient en
 élargissant encore, ou si le mal est ailleurs.
 
+**LE TÉMOIN v15 EST ÉCRIT ET MIS EN FILE (02/09/2026), hypothèse d'abord.**
+Sa forme a changé depuis le paragraphe ci-dessus, pour garder UNE variable :
+comparer v15 à v14 mêlerait deux choses, le goulot ET le moteur (v14 a couru
+sur le binaire de 08:48, à 41 candidates ; le moteur du jour en donne 48). Le
+témoin de v15 est donc **H22a-v2** — mêmes stems, même budget, mêmes trois
+tours, même binaire, 48 candidates — et la seule variable est
+`--machines-au-melange` : 6 contre 9.
+
+*Ce que j'attends, écrit d'avance* : un gain nul ou marginal. H13 a montré que
+passer de 3 à 6 finalistes rendait 9,6 % ; mais v11a a montré que le vivier et
+les tours n'expliquent plus rien une fois le goulot à 6 (v11a = v14 à la
+septième décimale). Si le reste de l'écart v9/v14 (0,1822 contre 0,1910)
+venait du goulot, le passage à 9 devrait en reprendre une part visible ; je
+crois plutôt que cet écart vient d'ailleurs (v9 et v14 diffèrent par le
+moteur ET par le hasard des arbitrages serrés), et j'attends v15 ≈ H22a-v2.
+Un gain net me donnerait tort, et ce serait une bonne nouvelle facile à
+encaisser : le goulot est une constante, pas une architecture.
+
 **H7 — le classifieur de frappes améliore le STEM et éloigne le MORCEAU,
 écrite avant sa mesure (02/09/2026).** Le fait qui la motive : la course v6
 (*Us and Them*, moteur du jour, classifieur de frappes RÉACTIVÉ après la
