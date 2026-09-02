@@ -452,6 +452,35 @@ cmake --build build --target vsm-audio-import-check
 ./build/app/vsm-audio-import-check_artefacts/RelWithDebInfo/vsm-audio-import-check morceau.mp3
 ```
 
+## Autant de pistes que le morceau a de parties
+
+La chaîne rendait quatre pistes, toujours — la séparation en donne quatre
+stems, et tout ce qui n'est ni basse, ni batterie, ni voix atterrissait dans un
+seul `other` : sur *Us and Them*, 58 % du morceau sur une piste jouée par un
+synthé de basse monophonique. Une distance globale ne peut pas voir ce
+défaut ; quatre instruments fondus en un sonnent « à peu près ».
+
+La séparation cherche désormais **six sources**, un stem qui ne porte presque
+rien n'est pas reconstruit (et le refus est dit avec son chiffre), et trois
+découpages — que **`--parite`** allume ensemble — approchent la parité :
+
+```bash
+analyse/reconstruire.py morceau.mp3 --sortie projet --parite
+```
+
+- **les voix par registres** : une piste qui porte plusieurs parties se
+  partage en registres. Une mélodie qui saute d'octave ou un accompagnement
+  d'accords ne se découpe jamais — fabriquer de fausses pistes serait pire ;
+- **la batterie par pièce** : une piste par pièce détectée, sans rien deviner ;
+- **la tête et les chœurs** : le centre du champ stéréo contre le large, les
+  deux pistes rejouées ensemble redonnant exactement le stem.
+
+Ce que cela coûte est publié : le découpage en voix vaut +9 % de distance sur
+*Us and Them*. Quand structure et ressemblance s'opposent, la structure gagne —
+un projet qui met quatre instruments sur une piste ne se retravaille pas.
+Le raisonnement complet est dans
+[`docs/CDC-detection-multipiste.md`](docs/CDC-detection-multipiste.md).
+
 ## Ouvrir un projet fait ailleurs (Ableton, FL Studio, Cubase)
 
 *Fichier ▸ Importer un projet…* lit un **`.als`** d'Ableton Live, un **`.flp`**
@@ -496,6 +525,9 @@ La suite est décrite dans [`docs/ROADMAP-fusion.md`](docs/ROADMAP-fusion.md),
 écrite après la fusion avec le projet d'analyse : reconstruire un fichier WAV en
 MIDI + patchs rejouables, et mesurer l'écart.
 
+- [`docs/CDC-detection-multipiste.md`](docs/CDC-detection-multipiste.md) —
+  pourquoi une reconstruction doit rendre autant de pistes que l'original a
+  de parties, ce qui l'en empêchait, et ce que chaque découpage coûte.
 - [`docs/CDC-import-daw.md`](docs/CDC-import-daw.md) — ce que chaque format
   de projet permet réellement, ce qu'on importe, et pourquoi le `.cpr` de
   Cubase ne se lit pas.
