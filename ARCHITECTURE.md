@@ -31,7 +31,7 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **1 384 tests moteur** (158 core + 965 audio
+écoute au clic, et toute la logique testée hors JUCE. Total : **1 395 tests moteur** (158 core + 976 audio
 + 206 interchange + 25 CLAP + 19 VST3 + 11 façades,
 tous verts, zéro warning sous les flags du build, `-Wall -Wextra -Wpedantic`.
 L'ancienne mention « y compris -Wfloat-equal -Wsign-conversion -Wshadow »
@@ -599,12 +599,12 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 1 384 tests moteur + 68 tests d'analyse, tous verts
+### Bilan actuel : 1 395 tests moteur + 68 tests d'analyse, tous verts
 
 - **158 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des
   notes douteuses de la transcription),
-  **965 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
+  **976 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
   scalaire, indépendance des lignes, bornes de l'approximation de tanh ; et la
   boucle : rebouclage échantillon-exact, notes relâchées au saut) : chorus BBD, Juno-106,
   bus master (biquad/compresseur/limiteur à plafond garanti/LUFS), oversampler,
@@ -3878,6 +3878,30 @@ cinquante millisecondes — le parc mesure les deux extrêmes de l'étouffement 
 même protocole.
 
 Le parc passe à **48 machines**.
+
+**ET UNE QUATORZIÈME : `vsm.jewsharp`, la seule machine du parc qui REFUSE de
+suivre le clavier.** Une guimbarde a une lame d'acier de fréquence fixe ; ce
+que le joueur change, c'est sa cavité buccale, qui fait ressortir tel ou tel
+harmonique du bourdon. Mesuré sur trois octaves et demie : **82,00 Hz aux six
+notes essayées**, pendant que le centroïde du spectre monte de 705 à 1554 Hz.
+Sur n'importe quelle autre machine, la première ligne de ce tableau serait
+celle d'un défaut.
+
+**C'est le miroir exact de `vsm.vocal`**, et le parc a désormais les deux
+faces de la même idée : là-bas la hauteur chantée bouge et les formants
+restent où ils sont ; ici la hauteur reste et le formant bouge. Les identités
+sémantiques le disent en réemployant `vocal.formant.*` — ce sont les mêmes
+résonances de cavité, aux mêmes fréquences ; ce qui diffère est ce qui les
+déplace.
+
+**Le § 10 du CDC nouvelle-machine y gagne un cas qu'il n'avait pas** : il
+traitait des machines qui refusent un CONTRÔLEUR en le disant, en voici une
+qui refuse la HAUTEUR DE NOTE. Elle ne peut pas l'ignorer en silence, donc
+elle en fait son geste : la note choisit le formant, la façade nomme sa
+section « REED » et non « tune », et le mode d'emploi prévient avant qu'on
+s'étonne.
+
+Le parc passe à **49 machines**.
 
 ---
 

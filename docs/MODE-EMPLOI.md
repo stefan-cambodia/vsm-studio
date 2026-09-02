@@ -3,7 +3,7 @@
 Un séquenceur MIDI, un rack de machines vintage modélisées, et une chaîne qui
 reconstruit un morceau enregistré en projet jouable.
 
-**48 machines · 13 effets · 1 035 paramètres nommés · 1 384 tests verts**
+**49 machines · 13 effets · 1 046 paramètres nommés · 1 395 tests verts**
 
 > Toutes les illustrations sont des rendus de l'application elle-même, produits hors
 > écran par `vsm-panel-preview`, `vsm-ui-preview`, `vsm-pianoroll-preview` et
@@ -266,6 +266,18 @@ le feutre étouffe la corde. Ni résonance ni traîne, à l'inverse de tout le
 reste.
 
 ![Façade de Clavichord (le clavier qui vibre)](images/manuel/vsm.clavichord.png)
+
+**Jew's Harp (la note qui ne bouge pas)** — `vsm.jewsharp`
+
+**Attention, celle-ci ne suit pas le clavier — et ce n'est pas une panne.**
+Une guimbarde a une lame d'acier dont la hauteur est fixe : quelle que soit
+la note jouée, vous entendrez la même. Ce que le clavier commande, c'est la
+CAVITÉ : les notes graves ouvrent un formant bas, les aiguës un formant
+haut, et c'est l'harmonique cueilli qui fait la mélodie. Pour changer de
+tonalité, tournez *Reed Pitch* — vous changez d'instrument, comme le
+joueur qui prend une autre guimbarde dans sa poche.
+
+![Façade de Jew's Harp (la note qui ne bouge pas)](images/manuel/vsm.jewsharp.png)
 
 **Glass (le verre frotté)** — `vsm.glass`
 

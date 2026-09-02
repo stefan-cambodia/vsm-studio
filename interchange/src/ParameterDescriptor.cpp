@@ -493,6 +493,29 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Velocity Sensitivity", "voice.velocitySensitivity"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.jewsharp ---
+    // Les FORMANTS réemploient le vocabulaire de `vsm.vocal` (§ 4), et c'est
+    // exact au sens propre : ce sont les mêmes résonances de cavité, aux mêmes
+    // fréquences, avec le même effet sur le spectre. Que l'une les tienne fixes
+    // pendant que la hauteur bouge et que l'autre fasse l'inverse ne change
+    // rien à ce qu'un formant EST — et un preset qui voyage de l'une à l'autre
+    // arrivera sur des voyelles reconnaissables.
+    //
+    // La LAME, en revanche, ne réemploie aucune identité de hauteur : ce n'est
+    // ni un accord (`output.tune`) ni une note, c'est le choix d'un instrument.
+    {"vsm.jewsharp", {
+        {"Reed Pitch", "jewsharp.reedPitch"},
+        {"Formant Low", "vocal.formant.1.frequency"},
+        {"Formant High", "vocal.formant.2.frequency"},
+        {"Formant Q", "vocal.formant.q"},
+        {"Twang", "jewsharp.twang"},
+        {"Attack", "envelope.1.attack"},
+        {"Decay", "envelope.1.decay"},
+        {"Sustain", "envelope.1.sustain"},
+        {"Release", "envelope.1.release"},
+        {"Velocity Sensitivity", "voice.velocitySensitivity"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.multisample ---
     // Peu de paramètres, et TOUS canoniques : le timbre de cette machine vient
     // des échantillons, pas des réglages. `voice.velocitySensitivity` est

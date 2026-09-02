@@ -207,6 +207,15 @@ constexpr Rule kRules[] = {
     // le premier axe, et de loin.
     {"glass.fingerPressure",               0.1f,     1.0f, SearchScale::Linear,      0.95f},
     {"glass.rimSpeed",                     0.0f,     1.0f, SearchScale::Linear,      0.42f},
+    // GUIMBARDE (vsm.jewsharp). La LAME est le premier axe, et pour une raison
+    // qui n'a pas d'équivalent : sur cette machine, elle est la SEULE chose
+    // qui décide de la hauteur entendue — le clavier ne la touche pas. Une
+    // recherche qui ne la balaierait pas jouerait toutes les notes du morceau
+    // à la même fréquence que celle d'usine, et ne pourrait jamais tomber
+    // juste. Le TWANG vient après : il décide de la richesse du bourdon, donc
+    // de ce que le formant a à cueillir.
+    {"jewsharp.reedPitch",                40.0f,   260.0f, SearchScale::Logarithmic, 0.98f},
+    {"jewsharp.twang",                     0.0f,     1.0f, SearchScale::Linear,      0.66f},
     // Famille du VENT (vsm.wind). Comme sur la corde, ce qui fait le timbre
     // est d'abord ce qui se perd (le rayonnement au pavillon) et la raideur de
     // ce qui entretient (l'anche ou les lèvres) ; la pression de souffle vient

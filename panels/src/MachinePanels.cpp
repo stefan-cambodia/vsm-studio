@@ -3769,6 +3769,61 @@ MachinePanel makeGlass() {
     return panel;
 }
 
+/// `vsm.jewsharp` -- la note qui ne bouge pas. REED est en grand parce que
+/// c'est le seul endroit où se règle la HAUTEUR de cette machine : le clavier
+/// ne la change pas, il choisit le formant. Un musicien qui l'ignore croira
+/// l'instrument cassé, et c'est pourquoi la section s'appelle REED et non
+/// « tune » -- on change de guimbarde, on ne transpose pas celle qu'on a.
+///
+/// Livrée acier bruni.
+MachinePanel makeJewsHarp() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.jewsharp";
+    panel.displayName = "Jew's Harp (la note qui ne bouge pas)";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#1A1A1C";
+    panel.sectionColour = "#131315";
+    panel.textColour = "#E8E8EC";
+    panel.knobColour = "#9FA4AC";
+    panel.gridColumns = 12;
+    panel.gridRows = 4;
+
+    PanelSection lame;
+    lame.title = "REED";
+    lame.accentColour = "#9FA4AC";
+    lame.column = 0; lame.row = 0; lame.columnSpan = 4; lame.rowSpan = 4;
+    lame.controls = {
+        control("Reed Pitch", "PITCH", S::LargeKnob, 0, 0),
+        control("Twang", "TWANG", S::Knob, 0, 1),
+    };
+
+    PanelSection bouche;
+    bouche.title = "MOUTH";
+    bouche.accentColour = "#C9A96A";
+    bouche.column = 4; bouche.row = 0; bouche.columnSpan = 4; bouche.rowSpan = 4;
+    bouche.controls = {
+        control("Formant Low", "LOW", S::Knob, 0, 0),
+        control("Formant High", "HIGH", S::Knob, 1, 0),
+        control("Formant Q", "Q", S::Knob, 0, 1),
+        control("Velocity Sensitivity", "VEL", S::Knob, 1, 1),
+    };
+
+    PanelSection enveloppe;
+    enveloppe.title = "ENVELOPE";
+    enveloppe.accentColour = "#8FA8D9";
+    enveloppe.column = 8; enveloppe.row = 0; enveloppe.columnSpan = 4; enveloppe.rowSpan = 4;
+    enveloppe.controls = {
+        control("Attack", "A", S::VerticalSlider, 0, 0),
+        control("Decay", "D", S::VerticalSlider, 1, 0),
+        control("Sustain", "S", S::VerticalSlider, 2, 0),
+        control("Release", "R", S::VerticalSlider, 3, 0),
+        control("Output Level", "VOLUME", S::Knob, 0, 1),
+    };
+
+    panel.sections = {lame, bouche, enveloppe};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
@@ -3778,7 +3833,7 @@ const std::vector<MachinePanel>& panels() {
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
         makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev(),
         makeScanned(), makeMellotron(), makeSitar(), makeMembrane(), makeReed(),
-        makePlate(), makeClavichord(), makeGlass()
+        makePlate(), makeClavichord(), makeGlass(), makeJewsHarp()
     };
     return all;
 }

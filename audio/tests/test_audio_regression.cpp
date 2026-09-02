@@ -780,6 +780,7 @@ VSM_TEST(regression_reed)       { checkMachine("vsm.reed"); }
 VSM_TEST(regression_plate)      { checkMachine("vsm.plate"); }
 VSM_TEST(regression_clavichord) { checkMachine("vsm.clavichord"); }
 VSM_TEST(regression_glass)      { checkMachine("vsm.glass"); }
+VSM_TEST(regression_jewsharp)   { checkMachine("vsm.jewsharp"); }
 
 /// Le rendu doit être reproductible À L'IDENTIQUE d'une instance à l'autre :
 /// c'est la condition pour que l'empreinte ci-dessus ait un sens. Vérifié ici

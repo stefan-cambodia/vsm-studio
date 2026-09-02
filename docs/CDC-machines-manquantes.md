@@ -1055,6 +1055,72 @@ plutôt que de s'en remettre au réglage.
 
 Le parc passe à **48 machines** (1 035 paramètres nommés, 1 384 tests verts).
 
+## 17. H17 — la GUIMBARDE : la seule machine qui refuse de suivre le clavier (écrite avant sa mesure, 02/09/2026)
+
+**Le trait, et il est binaire.** Une guimbarde a une lame d'acier dont la
+fréquence est FIXE : elle ne change pas, quoi que fasse le joueur. Ce qui
+change, c'est la cavité buccale, qui filtre ce bourdon et fait ressortir tel ou
+tel harmonique. **Le musicien ne joue pas des notes, il joue des FORMANTS sur
+une note unique.**
+
+**C'est le miroir exact de `vsm.vocal`**, et le parc aura les deux faces d'une
+même idée. Sur la voix, la hauteur chantée bouge et les formants restent où ils
+sont — c'est ce qui fait reconnaître une voyelle indépendamment de la note. Ici,
+c'est l'inverse terme à terme : la hauteur reste, et c'est le formant qui
+bouge. Aucune machine du parc ne fait cela, et pour une raison simple :
+**toutes suivent le clavier.** Celle-ci sera la seule à le refuser, et à le
+refuser par fidélité.
+
+**La mesure qui tranche :**
+- **La hauteur ne suit pas le clavier** : le fondamental mesuré sur les notes
+  40, 55 et 70 doit être le MÊME à quelques cents près. Sur n'importe quelle
+  autre machine, il suivrait exactement.
+- **Mais la note fait quelque chose** : le pic spectral (le formant) doit
+  monter avec la note, et de façon monotone. Sans cette moitié, on aurait
+  seulement écrit un bourdon qui ignore le clavier — c'est-à-dire une machine
+  cassée, pas une guimbarde.
+
+- **Succès de H17** : les deux sont mesurés, et le § 10 du CDC nouvelle-machine
+  gagne un cas nouveau : une machine qui REFUSE la hauteur MIDI, et qui doit le
+  dire pour ne pas passer pour un défaut.
+- **Échec de H17** : le code part hors du `CMakeLists`, avec son chiffre.
+
+### H17 EST TRANCHÉE : SUCCÈS — et une machine qui refuse la hauteur (02/09/2026)
+
+| note MIDI | 40 | 48 | 55 | 62 | 70 | 78 |
+|---|---|---|---|---|---|---|
+| fondamental | **82,00** | **82,00** | **82,00** | **82,00** | **82,00** | **82,00** Hz |
+| centroïde | 705 | 849 | 994 | 1160 | 1362 | **1554 Hz** |
+
+**Les deux moitiés sont là.** La hauteur ne bouge pas d'un cent sur trois
+octaves et demie de clavier — sur n'importe quelle autre machine du parc, ce
+tableau serait celui d'un défaut. Et pourtant la note fait quelque chose : le
+formant monte de 705 à 1554 Hz, monotone, et c'est lui qu'on entend jouer.
+
+**Un défaut trouvé par la mesure, et il portait sur le bourdon.** L'impulsion
+qui excite la lame était large de neuf pour cent de la période, soit
+cinquante-quatre échantillons à 82 Hz : le bourdon n'avait plus rien au-dessus
+du kilohertz (0,000000 au douzième harmonique), si bien que le formant, même
+placé à 2 240 Hz, **n'avait rien à cueillir** — le trait de la machine ne
+s'entendait pas du tout. La largeur se compte désormais en ÉCHANTILLONS, de
+sorte que la richesse du bourdon ne dépende plus de la lame choisie.
+
+**Et une leçon de métrique, la sixième de la journée.** La première mesure du
+formant cherchait le PIC dominant du spectre : il restait obstinément sur le
+troisième harmonique du bourdon (246 Hz) quelle que soit la note. Un formant
+déplace l'ENVELOPPE du spectre, pas son maximum ; c'est le centroïde qu'il
+fallait regarder.
+
+**Ce que le § 10 du CDC nouvelle-machine y gagne** : il traitait des machines
+qui refusent un CONTRÔLEUR en le disant ; en voici une qui refuse la HAUTEUR
+DE NOTE elle-même. Elle ne peut pas l'ignorer en silence — un musicien croirait
+la machine cassée —, donc elle en fait son geste principal, et la façade
+(section « REED », et non « tune ») comme le mode d'emploi le disent avant
+qu'on s'en étonne. Elle refuse aussi la molette de hauteur, par cohérence : une
+lame d'acier ne se plie pas en jouant.
+
+Le parc passe à **49 machines** (1 046 paramètres nommés, 1 395 tests verts).
+
 ## 12. H10 — la guitare ÉLECTRIQUE est-elle vraiment couverte ? (écrite avant sa mesure, 02/09/2026)
 
 **Le fait qui la motive est une contradiction interne à ce dépôt.** Le tableau
