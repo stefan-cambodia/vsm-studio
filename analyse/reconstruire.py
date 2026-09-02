@@ -97,14 +97,27 @@ BOITES_A_RYTHMES = ("vsm.tr909", "vsm.tr808")
 # basse et DEUXIÈME pour `other` : deux suffiraient de justesse, trois couvrent
 # les deux cas observés.
 #
-# ÉLARGIR A ÉTÉ MESURÉ, ET N'AURAIT RIEN RAPPORTÉ. L'objection est réelle -- sur
-# `other`, `vsm.tb303` est DERNIÈRE au stem, à plus de 50 %, et bat pourtant au
-# mélange la machine publiée. Mais elle ne GAGNE pas : sur les deux pistes
-# mesurées, la gagnante du mélange est dans les trois premières du stem. Aller à
-# cinq coûterait une minute de plus par piste (un rendu de projet et une
-# distance chacune, une quinzaine de secondes) pour des candidates dont aucune
-# ne l'emporte. À remesurer au premier morceau qui démentira ça.
-MACHINES_AU_MELANGE = 3
+# ÉLARGIR A ÉTÉ MESURÉ DEUX FOIS, ET LA SECONDE A DÉMENTI LA PREMIÈRE.
+#
+# Le premier verdict disait : « aller à cinq coûterait une minute de plus par
+# piste pour des candidates dont aucune ne l'emporte », avec la réserve « à
+# remesurer au premier morceau qui démentira ça ». Le démenti est arrivé le
+# 02/09/2026, et il vient du VIVIER qui a grandi : à trente-quatre candidates
+# la gagnante du mélange était dans les trois premières du stem, à quarante et
+# une elle n'y est plus. Le goulot n'était pas trop étroit dans l'absolu, il
+# l'est DEVENU.
+#
+# L'hypothèse H13 (ROADMAP-fusion) et son témoin v14, une seule variable :
+#
+#   v13 : 41 candidates, 3 finalistes -> 0,2112
+#   v14 : 41 candidates, 6 finalistes -> 0,1910   (-9,6 %)
+#
+# ET CELA VA PLUS VITE, ce que personne n'attendait : le verdict passe de 670 à
+# 582 secondes et les réglages au mélange de 1199 à 525. Trouver la bonne
+# machine dès le verdict laisse moins de chemin à parcourir au réglage, et ce
+# gain dépasse le coût des trois rendus supplémentaires. Doubler les finalistes
+# ne se paie donc pas : sur ce morceau, cela rapporte des deux côtés.
+MACHINES_AU_MELANGE = 6
 
 # CE NOMBRE EST UNE OPTION (`--machines-au-melange`), ET PAS SEULEMENT UNE
 # CONSTANTE, parce qu'un A/B a besoin d'un témoin REPRODUCTIBLE. Le comparer à

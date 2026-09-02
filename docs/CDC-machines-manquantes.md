@@ -939,6 +939,14 @@ entre, et la course est rigoureusement la même. La règle du § 7 tient donc
 sous sa forme corrigée, désormais vérifiée dans les deux sens : *une machine
 de plus ne coûte rien tant qu'elle ne déplace pas l'arbitrage.*
 
+**Et le § 7 gagne sa seconde phrase, elle aussi mesurée : _un vivier qui
+grandit demande un goulot qui grandit avec lui._** Le témoin v14 (H13 de la
+feuille de route fusion) porte les finalistes de trois à six sur le même
+vivier de 41 candidates : **0,1910 contre 0,2112**, soit −9,6 %, et la course
+est plus RAPIDE (les réglages au mélange passent de 1199 à 525 secondes).
+`MACHINES_AU_MELANGE` a donc été porté à 6. Le coût du vivier élargi n'était
+donc pas dû aux machines ajoutées mais au tri qui les précédait.
+
 **Conséquence pratique, et elle est rassurante** : une machine ajoutée pour le
 JEU — un mellotron, une boîte à musique, une guimbarde — ne peut pas dégrader
 une reconstruction tant qu'elle ne gagne aucun arbitrage. Élargir le vivier

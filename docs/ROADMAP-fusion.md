@@ -2695,6 +2695,49 @@ finalistes double le nombre de rendus du verdict, donc allonge la course. Si
 H13 réussit, le § 7 du CDC machines-manquantes gagne une seconde phrase :
 *un vivier qui grandit demande un goulot qui grandit avec lui.*
 
+### H13 EST TRANCHÉE : SUCCÈS — et le coût annoncé n'existe pas (02/09/2026)
+
+**Le témoin v14 est v13 à une seule option près** (`machinesAuMelange` 3 → 6,
+vérifié sur les deux provenances) :
+
+| course | candidates | finalistes | distance |
+|---|---|---|---|
+| v9 | 34 | 3 | 0,1822 |
+| v12 | 36 | 3 | 0,2112 |
+| v13 | 41 | 3 | 0,2112 |
+| **v14** | **41** | **6** | **0,1910** |
+
+**Élargir le goulot récupère les deux tiers du coût du vivier** : −9,6 % par
+rapport à v13. Le mécanisme supposé était le bon — à trente-quatre candidates
+la gagnante du mélange était dans les trois premières du stem, à quarante et
+une elle n'y est plus, et le goulot qui n'était pas trop étroit l'est DEVENU.
+Le journal de v14 le montre en clair : sur `bass`, les finalistes vont
+désormais jusqu'à `generic` à 108,9 % de la gagnante du stem, et sur `other`
+jusqu'à `arpodyssey` à 98,6 % — des machines que trois places ne pouvaient pas
+atteindre.
+
+**LE COÛT ANNONCÉ N'EXISTE PAS, ET C'EST LE CONTRAIRE QUI SE PRODUIT.**
+L'hypothèse prévenait honnêtement que « doubler le nombre de finalistes double
+le nombre de rendus du verdict, donc allonge la course ». Mesuré, la course est
+plus RAPIDE : le verdict passe de 670 à 582 secondes, et les réglages au
+mélange de **1199 à 525 secondes**. Trouver la bonne machine dès le verdict
+laisse beaucoup moins de chemin à parcourir au réglage qui suit, et ce gain
+dépasse largement le coût des trois rendus supplémentaires. C'est une leçon
+qu'aucun raisonnement n'aurait donnée : le prix d'un meilleur choix se
+récupère en aval.
+
+**Conséquence, appliquée** : `MACHINES_AU_MELANGE` passe de 3 à **6** dans
+`reconstruire.py`, avec les chiffres inscrits à côté de la constante. Et le § 7
+du CDC machines-manquantes gagne sa seconde phrase : *un vivier qui grandit
+demande un goulot qui grandit avec lui.*
+
+**Ce qui reste ouvert, et qu'il ne faut pas taire** : v14 (0,1910) ne rattrape
+pas v9 (0,1822). Le goulot explique les deux tiers de l'écart, pas la totalité.
+Le tiers restant vient d'ailleurs — peut-être de l'ordre dans lequel le point
+fixe visite les pistes, peut-être d'un optimum local que le vivier élargi rend
+plus probable. Un témoin v15 à neuf finalistes dirait si le reste s'obtient en
+élargissant encore, ou si le mal est ailleurs.
+
 **H7 — le classifieur de frappes améliore le STEM et éloigne le MORCEAU,
 écrite avant sa mesure (02/09/2026).** Le fait qui la motive : la course v6
 (*Us and Them*, moteur du jour, classifieur de frappes RÉACTIVÉ après la
