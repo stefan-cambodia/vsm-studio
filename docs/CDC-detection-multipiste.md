@@ -248,6 +248,46 @@ elle-même pour le réveiller. Les noms sont désormais translittérés pour le
 MIDI (le nom complet survit dans `project.json`, qui est de l'UTF-8), et
 quatre tests le gardent.
 
+## 7. Le calage des niveaux, cassé par le découpage — corrigé (03/09/2026)
+
+**LA CAMPAGNE A TROUVÉ CE QU'ELLE DEVAIT TROUVER.** Mesuré sur *Us and Them*,
+`--batterie-par-piece` coûtait **+35,1 %** de distance (0,2580 contre 0,1910)
+— pour un découpage qui ne change pas une note. La cause était au journal :
+`Batterie · kick2+kick : volume NON CALÉ (pas de stem de référence)`.
+
+Le calage compare chaque piste rendue seule au stem qui porte son nom. Le
+découpage casse cette hypothèse de deux façons :
+
+- **les pièces d'une batterie éclatée n'ont aucun stem à leur nom** — elles
+  restaient au volume d'amorçage 0,90 quand le kit entier, lui, était calé à
+  0,82 : la batterie sortait environ deux fois trop fort ;
+- **les voix d'un stem découpé ont TOUTES le stem entier pour référence** —
+  chacune recevait donc le gain qu'il faudrait pour le remplacer à elle seule.
+  Vu sur la course de parité : quatre voix montées à 1,44, 1,16, 1,69 et 0,73
+  contre un même `rms stem 0,0700`. Leur somme sortait plusieurs fois trop
+  fort, et personne ne l'avait dit.
+
+**J'avais écrit le premier point comme un « renoncement » en câblant l'option,
+sans le mesurer.** Il coûtait un tiers de la distance. L'avoir dit ne le
+rendait pas acceptable : une concession non mesurée est une dette dont on
+ignore le montant.
+
+**Le correctif est de principe.** Les pistes d'un groupe PARTITIONNENT leur
+stem : c'est leur **somme** qui doit l'égaler. On rend donc chacune seule, on
+additionne, et l'on applique à toutes le **même** facteur — l'équilibre
+interne que la détection ou le découpage ont trouvé n'est pas touché, seul le
+poids du groupe dans le mélange l'est. Le chantier tient un registre
+`pistes_groupees` (nom de piste → groupe), rempli par les deux découpages.
+Quatre tests, dont celui qui garde l'équilibre interne et celui qui vérifie
+que le chemin d'origine — une piste ordinaire, seule contre son stem — ne
+bouge pas d'un iota.
+
+**À remesurer** : `--batterie-par-piece`, `--voix-par-stem` et `--parite` sur
+*Us and Them* portent tous ce défaut dans les chiffres du § 3. Les courses
+sans découpage (le témoin, les six sources, la tête et les chœurs) n'y
+touchent pas — le correctif est confiné au chemin des groupes — et restent
+valables telles quelles.
+
 ## 5. Critères d'acceptation
 
 ```

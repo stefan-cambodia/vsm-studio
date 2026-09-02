@@ -76,15 +76,31 @@ def match_track_levels(
     stems_audio: Dict[str, np.ndarray],
     samples_root: Path,
     sample_rate: int,
+    groupes: Dict[str, str] | None = None,
 ) -> List[str]:
     """
     Cale le volume de chaque piste sur le niveau de son stem. EN PLACE.
 
     Renvoie une ligne de rapport par piste -- calée, bornée ou sautée, avec
     son motif : un calage silencieux serait invérifiable.
+
+    `groupes` (nom de piste -> nom du groupe) dit quelles pistes PARTAGENT un
+    stem : les voix d'un même stem découpé par registres, les pièces d'une
+    batterie éclatée. Elles se calent ENSEMBLE — voir `_caler_un_groupe`.
     """
+    groupes = groupes or {}
     rapports: List[str] = []
+    membres: Dict[str, List[ExportTrack]] = {}
     for track in tracks:
+        if track.name in groupes:
+            membres.setdefault(groupes[track.name], []).append(track)
+    for nom_groupe, pistes in membres.items():
+        rapports.extend(_caler_un_groupe(nom_groupe, pistes, stems_audio,
+                                          samples_root, sample_rate))
+
+    for track in tracks:
+        if track.name in groupes:
+            continue
         stem = stems_audio.get(track.name)
         if stem is None:
             rapports.append(f"{track.name} : volume non calé (pas de stem de référence)")
@@ -128,4 +144,81 @@ def match_track_levels(
             f"(rms stem {rms_stem:.4f}, rendu {rms_rendu:.4f})"
         )
         track.volume = cale
+    return rapports
+
+
+def _caler_un_groupe(nom_groupe: str, pistes: List[ExportTrack],
+                     stems_audio: Dict[str, np.ndarray], samples_root: Path,
+                     sample_rate: int) -> List[str]:
+    """Cale ENSEMBLE des pistes qui partagent un stem, sur la SOMME de leurs
+    rendus.
+
+    POURQUOI, ET C'EST MESURÉ. Découper un stem en plusieurs pistes casse
+    l'hypothèse du calage piste par piste : chacune est comparée au stem
+    ENTIER et reçoit donc le gain qu'il faudrait à elle seule pour le
+    remplacer. Quatre voix d'`other` sortaient ainsi chacune au niveau du
+    stem — leur somme, quatre fois trop fort — et les pièces d'une batterie
+    éclatée n'étaient pas calées du tout, faute d'un stem à leur nom : mesuré
+    sur *Us and Them*, `--batterie-par-piece` coûtait **+35,1 %** de distance
+    (0,2580 contre 0,1910) pour cette seule raison.
+
+    Les pistes d'un groupe PARTITIONNENT leur stem : c'est leur SOMME qui doit
+    l'égaler. On rend donc chacune seule, on additionne, et l'on applique à
+    toutes le MÊME facteur. L'équilibre interne — celui que la détection ou le
+    découpage ont trouvé — n'est pas touché ; seul le poids du groupe dans le
+    mélange l'est.
+    """
+    rapports: List[str] = []
+    stem = None
+    for piste in pistes:
+        stem = stems_audio.get(piste.name)
+        if stem is not None:
+            break
+    if stem is None:
+        rapports.append(f"{nom_groupe} : groupe non calé (pas de stem de référence)")
+        return rapports
+
+    duree = stem.size / float(sample_rate)
+    somme = None
+    for piste in pistes:
+        if not piste.machine or not piste.notes:
+            continue
+        with tempfile.TemporaryDirectory(prefix="vsm-niveau-") as dossier:
+            dossier = Path(dossier)
+            for chemin_relatif in piste.samples.values():
+                source = samples_root / chemin_relatif
+                if source.is_file():
+                    destination = dossier / "solo" / chemin_relatif
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(source, destination)
+            rendu = _render_track(piste, dossier / "solo", duree, sample_rate)
+        if rendu is None:
+            continue
+        if somme is None:
+            somme = np.array(rendu, dtype=np.float64)
+        else:
+            n = min(somme.size, rendu.size)
+            somme = somme[:n] + rendu[:n]
+
+    if somme is None:
+        rapports.append(f"{nom_groupe} : groupe non calé (aucun rendu solo)")
+        return rapports
+
+    n = min(stem.size, somme.size)
+    rms_stem = _rms(stem[:n])
+    rms_somme = _rms(somme[:n])
+    if rms_somme < SILENT_RMS or rms_stem < SILENT_RMS:
+        rapports.append(f"{nom_groupe} : groupe non calé (somme ou stem muet)")
+        return rapports
+
+    facteur = rms_stem / rms_somme
+    for piste in pistes:
+        vise = piste.volume * facteur
+        cale = float(np.clip(vise, VOLUME_MIN, VOLUME_MAX))
+        borne = " (borné)" if abs(cale - vise) > 1e-9 else ""
+        rapports.append(
+            f"{piste.name} : volume {piste.volume:.2f} -> {cale:.2f}{borne} "
+            f"(groupe « {nom_groupe} » : rms stem {rms_stem:.4f}, "
+            f"somme des {len(pistes)} pistes {rms_somme:.4f})")
+        piste.volume = cale
     return rapports

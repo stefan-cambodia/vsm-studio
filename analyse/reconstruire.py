@@ -795,6 +795,12 @@ class Chantier:
     # seule façon qu'une égalité mal tranchée cesse d'être définitive : le
     # verdict du mélange ne savait défaire qu'un réglage, jamais une machine.
     machines_secondes: Dict[str, List[MixAlternative]] = field(default_factory=dict)
+    # LES PISTES QUI PARTAGENT UN STEM : nom de piste -> nom du groupe. Les
+    # voix d'un stem découpé par registres, les pièces d'une batterie éclatée.
+    # Elles se calent ENSEMBLE (voir `_caler_un_groupe`) : chacune comparée au
+    # stem entier recevrait le gain qu'il faudrait pour le remplacer à elle
+    # seule, et leur somme sortirait N fois trop fort.
+    pistes_groupees: Dict[str, str] = field(default_factory=dict)
     rapport_batterie: Optional[Dict[str, object]] = None
 
 
@@ -1569,6 +1575,10 @@ def reconstruire_les_stems(ctx: Contexte, pistes: Dict[str, Path]) -> Chantier:
                         {"track": p.name, "hits": len(p.notes)} for p in pieces]
                     for sous_piste in pieces:
                         chantier.pistes_directes.append(sous_piste)
+                        # Le stem de la batterie ENTIÈRE sert de référence à
+                        # chaque pièce, et le groupe dit qu'elles se partagent.
+                        chantier.audio_par_stem[sous_piste.name] = batterie.audio
+                        chantier.pistes_groupees[sous_piste.name] = PISTE_BATTERIE
                     chantier.audio_par_stem[PISTE_BATTERIE] = batterie.audio
                     chantier.rapport_batterie = batterie.rapport
                 else:
@@ -1583,6 +1593,11 @@ def reconstruire_les_stems(ctx: Contexte, pistes: Dict[str, Path]) -> Chantier:
         for melodique in reconstruire_stem_melodique(ctx, nom, chemin):
             chantier.reconstruits.append(melodique.stem)
             chantier.audio_par_stem[melodique.stem.name] = melodique.audio
+            # Une VOIX d'un stem découpé porte le nom du stem suivi du sien :
+            # elle partage donc son stem avec ses sœurs, et le calage doit les
+            # prendre ensemble.
+            if melodique.stem.name != nom:
+                chantier.pistes_groupees[melodique.stem.name] = nom
             if melodique.secondes:
                 # Par le nom de la PISTE (la voix, quand il y a découpe), pas
                 # celui du stem : deux voix du même stem ont chacune leurs
@@ -1633,7 +1648,8 @@ def assembler_pistes(ctx: Contexte, chantier: Chantier) -> List[ExportTrack]:
     # audible une fois la batterie devenue dense : chaque stem se rapprochait
     # de son original, et le mélange s'en éloignait.
     for ligne in match_track_levels(pistes_export, chantier.audio_par_stem, ctx.sortie,
-                                    SAMPLE_RATE):
+                                    SAMPLE_RATE,
+                                    groupes=chantier.pistes_groupees):
         print(f"      {ligne}")
     return pistes_export
 
