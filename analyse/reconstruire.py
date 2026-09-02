@@ -446,6 +446,17 @@ def provenance(args: argparse.Namespace, classifieur, frappes, moteur=None) -> d
             # du cahier des charges).
             "machines": args.machines or None,
             "machinesExclues": args.machines_exclues or None,
+            # LE MODÈLE DE SÉPARATION, qui manquait — et c'est l'option qui
+            # conditionne le plus lourdement le résultat, puisqu'elle décide du
+            # NOMBRE DE PISTES. `htdemucs` en rend quatre, `htdemucs_6s` six.
+            # Deux rapports séparés par des modèles différents ne décrivent pas
+            # le même morceau : l'un met le piano et la guitare dans `other`,
+            # l'autre leur donne une piste. Ce champ vaut `null` quand les
+            # stems sont repris d'un dossier (`--stems`), ce qui est une
+            # information et non une absence : la séparation n'a pas eu lieu.
+            "modeleSeparation": (None if (args.stems or args.sans_separation)
+                                 else args.modele),
+            "stemsRepris": args.stems or None,
         },
         # Les modèles CONSULTÉS, avec leur date d'entraînement -- ou « aucun »,
         # qui est une information et non une absence d'information.

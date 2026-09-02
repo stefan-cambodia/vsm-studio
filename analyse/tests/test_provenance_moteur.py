@@ -37,7 +37,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from framework import assert_equal, assert_true, run, test  # noqa: E402
 
-from reconstruire import identite_du_moteur, moteur_perime  # noqa: E402
+from reconstruire import identite_du_moteur, moteur_perime, provenance  # noqa: E402
 
 
 class MoteurFactice:
@@ -166,6 +166,46 @@ def seules_les_sources_du_MOTEUR_periment_le_moteur():
             reconstruire.__file__ = vrai
 
     assert_true(plainte is None, "app/ ne doit pas périmer le moteur, reçu : " + str(plainte))
+
+
+@test
+def le_modele_de_separation_va_dans_la_provenance():
+    """L'OPTION QUI DÉCIDE DU NOMBRE DE PISTES, et qui n'y était pas.
+
+    `--modele` choisit le modèle de séparation : `htdemucs` rend quatre stems,
+    `htdemucs_6s` en rend six — donc quatre pistes contre six. Deux rapports
+    séparés par des modèles différents ne décrivent pas le même morceau : l'un
+    met le piano et la guitare dans `other`, l'autre leur donne une piste
+    chacun. C'est, de toutes les options de la chaîne, celle qui conditionne le
+    plus lourdement le résultat, et elle manquait à la provenance.
+    """
+    class Args:
+        pass
+    a = Args()
+    for nom, valeur in dict(
+            sans_separation=False, sans_sampler=False, sans_arbitrage=False,
+            sans_arbitrage_batterie=False, sans_reglage_piste=False, sans_recherche=True,
+            machines_au_melange=6, sans_reglage_melange=False, budget_melange=30,
+            tours_verdict=3, garder_pieces_non_isolees=False, rendus_paralleles=8,
+            sans_cache_rendus=False, budget_piste=120, axes_piste=21, finalistes=None,
+            preselection_apprise=0, machines="", machines_exclues="",
+            modele="htdemucs_6s", stems="").items():
+        setattr(a, nom, valeur)
+
+    p = provenance(a, None, None)
+    assert_equal(p["options"]["modeleSeparation"], "htdemucs_6s",
+                 "le modèle de séparation est inscrit")
+    assert_true(p["options"]["stemsRepris"] is None, "aucun dossier de stems repris")
+
+    # DES STEMS REPRIS D'UN DOSSIER : la séparation n'a PAS eu lieu, et dire
+    # « htdemucs » serait alors un mensonge — le rapport nommerait un modèle
+    # qui n'a pas tourné. Le champ vaut null, et le dossier est nommé.
+    a.stems = "/un/dossier/de/stems"
+    p = provenance(a, None, None)
+    assert_true(p["options"]["modeleSeparation"] is None,
+                "aucun modèle ne doit être nommé quand la séparation n'a pas eu lieu")
+    assert_equal(p["options"]["stemsRepris"], "/un/dossier/de/stems",
+                 "le dossier de stems repris est inscrit")
 
 
 if __name__ == "__main__":
