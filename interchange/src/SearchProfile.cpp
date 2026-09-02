@@ -238,6 +238,15 @@ constexpr Rule kRules[] = {
     {"terrain.orbitRadius",               0.05f,     1.0f, SearchScale::Linear,      0.95f},
     {"terrain.roughness",                  0.0f,     1.0f, SearchScale::Linear,      0.82f},
     {"terrain.orbitEllipse",               0.0f,     1.0f, SearchScale::Linear,      0.48f},
+    // SYNTHÈSE SPECTRALE (vsm.spectral). L'ÉTIREMENT commande : à 1,0 la
+    // machine est harmonique et ressemble à une additive ; ailleurs elle ne
+    // ressemble à rien d'autre dans le parc, ses partiels quittant les rangs
+    // entiers. C'est le seul axe qui décide de la NATURE du son et non de son
+    // dosage. Le nombre de partiels vient ensuite : il ne coûte rien à rendre,
+    // mais il change beaucoup ce qu'on entend.
+    {"spectral.stretch",                   0.7f,     1.6f, SearchScale::Linear,      0.96f},
+    {"spectral.partialCount",              1.0f,   256.0f, SearchScale::Logarithmic, 0.78f},
+    {"spectral.spread",                    0.0f,     1.0f, SearchScale::Linear,      0.44f},
     // Famille du VENT (vsm.wind). Comme sur la corde, ce qui fait le timbre
     // est d'abord ce qui se perd (le rayonnement au pavillon) et la raideur de
     // ce qui entretient (l'anche ou les lèvres) ; la pression de souffle vient

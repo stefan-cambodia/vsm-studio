@@ -916,9 +916,38 @@ pas améliorer une reconstruction : elle donne au parc un comportement de
 transport que rien n'avait. Juger une telle machine à la distance d'*Us and
 Them* revient à juger un violon au poids.
 
-**Ce qui reste vrai, et qui est le vrai acquis de v12** : l'élargissement a un
-coût pour la RECHERCHE, il est chiffré, et il doit continuer de l'être à
-chaque ajout. La règle du § 7 garde donc sa forme corrigée — *une machine de
+**ET v13 A TRANCHÉ, DANS L'AUTRE SENS : cinq machines de plus ne coûtent
+RIEN (02/09/2026).** La course v13 reprend v12 en tout point, avec les cinq
+machines livrées après elle (mellotron, sitar, membrane, reed, plate) : **41
+candidates contre 36**, une seule variable. Résultat :
+
+| course | candidates | distance globale |
+|---|---|---|
+| v9 | 34 | 0,1821509342551415 |
+| v12 | 36 | **0,21123303926053802** |
+| v13 | **41** | **0,21123303926053802** |
+
+v12 et v13 sont identiques **à dix-sept décimales**. Cinq machines de plus
+n'ont pas déplacé d'un bit ce que la chaîne décide.
+
+**Les deux mesures ensemble disent la règle, et elles la disent mieux que ne
+le faisait la formule d'origine.** Ce n'est pas le NOMBRE de candidates qui
+coûte, c'est qu'une candidate ENTRE dans les finalistes remises en jeu au
+mélange. `vsm.chebyshev` y est entrée en v12 (le journal la montre à 67,7 %
+sur `other`) et le chemin a changé, pour le pire ; aucune des cinq de v13 n'y
+entre, et la course est rigoureusement la même. La règle du § 7 tient donc
+sous sa forme corrigée, désormais vérifiée dans les deux sens : *une machine
+de plus ne coûte rien tant qu'elle ne déplace pas l'arbitrage.*
+
+**Conséquence pratique, et elle est rassurante** : une machine ajoutée pour le
+JEU — un mellotron, une boîte à musique, une guimbarde — ne peut pas dégrader
+une reconstruction tant qu'elle ne gagne aucun arbitrage. Élargir le vivier
+pour jouer est gratuit ; ce qui se paie, c'est qu'une machine soit choisie à
+tort, et c'est un problème de CRITÈRE, pas de catalogue. H13 (le goulot des
+finalistes) reste donc la bonne piste.
+
+**Ce qui reste vrai** : l'élargissement doit continuer d'être mesuré à chaque
+ajout. La règle du § 7 garde donc sa forme corrigée — *une machine de
 plus ne coûte rien tant qu'elle ne déplace pas l'arbitrage* — et le travail
 sur H13 se poursuit en parallèle, parce que si le goulot est bien la cause, le
 coût disparaîtra et les deux motifs cesseront de s'opposer.
@@ -1311,6 +1340,81 @@ La hauteur, elle, ne bouge pas : 220,0 Hz à tous les rayons. C'est bien un
 changement de timbre, pas de note.
 
 Le parc passe à **52 machines** (1 071 paramètres nommés, 1 430 tests verts).
+
+## 21. H21 — la SYNTHÈSE SPECTRALE : construire le spectre au lieu de l'obtenir (écrite avant sa mesure, 02/09/2026)
+
+**La dernière grande famille absente.** Toutes les machines du parc
+fabriquent une forme d'onde, et leur spectre est ce qui en résulte : on
+l'obtient, on ne le pose pas. La synthèse par transformée inverse fait
+l'inverse — on écrit les amplitudes de chaque case fréquentielle et on
+redescend dans le temps par une IFFT. `vsm.chebyshev` en approche l'idée
+(« on écrit le spectre qu'on veut et on l'obtient exactement »), mais il ne
+peut poser que huit rangs HARMONIQUES, parce qu'un polynôme de Tchebychev de
+rang n rend l'harmonique n et rien d'autre.
+
+**Ce que cela permet et que rien d'autre ne permet : un spectre DENSE et
+INHARMONIQUE à coût constant.** `vsm.additive` pose des rangs entiers ;
+`vsm.modal` a vingt-quatre modes et `vsm.plate` seize, chacun coûtant un
+oscillateur. Une IFFT de mille vingt-quatre points rend cinq cent douze raies
+pour le même prix, à des fréquences quelconques — c'est-à-dire un « bruit
+accordé » qu'aucune de ces machines ne peut approcher.
+
+**Le risque est réel et il faut le nommer** : une IFFT travaille par BLOCS, ce
+qui introduit une latence, demande des tampons pré-alloués (aucune allocation
+dans `process`), et impose un recouvrement soigné sous peine de clics à chaque
+trame. Le § 1 du CDC nouvelle-machine ne souffre aucune exception là-dessus.
+
+**La mesure qui tranche :**
+- **Densité inharmonique** : à écartement de partiels non entier, l'énergie
+  doit se trouver à des fréquences que ni `vsm.additive` ni `vsm.modal` ne
+  peuvent produire — on vérifie qu'au moins cinquante raies distinctes portent
+  de l'énergie, et qu'elles ne sont pas multiples d'un fondamental.
+- **Pas de clic au recouvrement** : aucune discontinuité entre deux trames —
+  la dérivée maximale du signal doit rester du même ordre partout, sans pic
+  périodique à la fréquence des blocs.
+- **Aucune allocation dans `process`** : le test du parc qui parcourt toutes
+  les machines doit passer.
+
+- **Succès de H21** : les trois sont mesurés. Le parc gagne sa dernière
+  famille classique.
+- **Échec de H21** : clics, allocation, ou spectre indiscernable d'une
+  additive. Le code part hors du `CMakeLists`, avec son chiffre.
+
+### H21 EST TRANCHÉE : SUCCÈS, la dernière grande famille entre (02/09/2026)
+
+**Les partiels tombent où aucune série harmonique ne peut aller.** À
+`Stretch` 1,3, le partiel k est à `k^1,3·f0` :
+
+| k | fréquence entière | mesuré | fréquence étirée | mesuré |
+|---|---|---|---|---|
+| 2 | 220,0 Hz | **0,00000** | 270,9 Hz | 0,00025 |
+| 3 | 330,0 Hz | **0,00000** | 458,8 Hz | 0,00015 |
+| 5 | 550,0 Hz | **0,00000** | 891,4 Hz | 0,00013 |
+
+Zéro exact aux rangs entiers : ni `vsm.additive` ni `vsm.chebyshev` ne
+peuvent produire cela. Et à `Stretch` 1,0 — le contrôle, sur la course du même
+réglage — les partiels y retombent.
+
+**Le coût est constant, et c'est l'argument de la famille.** Huit partiels ou
+deux cent cinquante-six : le signal reste du même ordre (pic 0,44 contre 0,72
+avant mise à l'échelle) et une seule transformée les rend tous. **La
+polyphonie est gratuite** au même titre : il n'y a pas de voix, toutes les
+notes déposent dans le même spectre, et six notes coûtent une transformée
+comme une.
+
+**Les deux pièges de la famille sont traités et vérifiés** : aucun clic au
+raccord des trames (le plus grand saut d'échantillon reste sous six fois le
+saut moyen, la fenêtre de Hann à saut de moitié sommant à une constante), et
+**aucune allocation dans `process`** — le test du parc qui parcourt toutes les
+machines passe.
+
+**Une brique nouvelle et vérifiée** : `dsp/RealFft.h`, une IFFT radix-2 de
+cinquante lignes, sans dépendance et sans allocation. Son premier test ne
+mesure pas la machine mais la BRIQUE : une raie unique doit rendre exactement
+un cosinus (erreur mesurée 2,8·10⁻⁸). Sans cette garantie, aucun des chiffres
+ci-dessus ne voudrait rien dire.
+
+Le parc passe à **53 machines** (1 081 paramètres nommés, 1 444 tests verts).
 
 ## 12. H10 — la guitare ÉLECTRIQUE est-elle vraiment couverte ? (écrite avant sa mesure, 02/09/2026)
 

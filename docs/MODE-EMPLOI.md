@@ -3,7 +3,7 @@
 Un séquenceur MIDI, un rack de machines vintage modélisées, et une chaîne qui
 reconstruit un morceau enregistré en projet jouable.
 
-**52 machines · 13 effets · 1 071 paramètres nommés · 1 430 tests verts**
+**53 machines · 13 effets · 1 081 paramètres nommés · 1 444 tests verts**
 
 > Toutes les illustrations sont des rendus de l'application elle-même, produits hors
 > écran par `vsm-panel-preview`, `vsm-ui-preview`, `vsm-pianoroll-preview` et
@@ -161,6 +161,18 @@ Une attaque échantillonnée collée sur une queue synthétisée.
 Le pliage d'onde et la porte passe-bas de l'école Buchla.
 
 ![Façade de West Coast (pliage et porte passe-bas)](images/manuel/vsm.westcoast.png)
+
+**Spectral (le spectre écrit)** — `vsm.spectral`
+
+Ici on n'obtient pas le spectre, on l'**écrit** : les partiels sont posés un
+par un et une transformée inverse en fait un son. *Stretch* est le réglage à
+connaître — à 1,0 les partiels sont des multiples entiers comme partout
+ailleurs, mais dès qu'on s'en écarte ils quittent les rangs et l'instrument
+devient une cloche géante ou une nappe de verre. *Partials* ne coûte rien :
+deux cent cinquante-six raies se rendent au prix de huit, et jouer six notes
+coûte autant qu'une.
+
+![Façade de Spectral (le spectre écrit)](images/manuel/vsm.spectral.png)
 
 **Terrain (le chemin fait le timbre)** — `vsm.terrain`
 

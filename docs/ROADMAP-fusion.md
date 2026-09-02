@@ -2616,6 +2616,19 @@ devra porter cette réserve : *une machine de plus ne coûte rien à
 condition que le verdict ait le droit d'y revenir.* Tant que v11 n'a pas
 couru, cette phrase reste une hypothèse et non un acquis.
 
+**v13 APPORTE UNE PIÈCE AU DOSSIER DE H13 (02/09/2026).** La course v13 (41
+candidates) rend **exactement** la distance de v12 (36 candidates) —
+0,21123303926053802 dans les deux cas, à dix-sept décimales. Cinq machines de
+plus n'ont rien déplacé, parce qu'aucune n'est entrée dans les trois
+finalistes remises en jeu au mélange.
+
+Cela ne tranche pas H13, mais cela en resserre l'énoncé : le vivier n'est pas
+coûteux **par sa taille**, il l'est par ce qui franchit le goulot. Un vivier
+de mille machines dont aucune n'atteint le top 3 coûterait du TEMPS et rien
+d'autre. La question devient donc exactement celle de H13 : le classement au
+stem, qui décide qui franchit, est-il assez fiable pour ce tri — sachant qu'il
+peut se tromper d'un facteur deux (mesuré sur `vsm.cs80`) ?
+
 **LE TÉMOIN v11 EST DÉSORMAIS POSSIBLE (02/09/2026).** Il ne l'était pas :
 réduire le vivier demandait soit de lister à la main les trente-quatre
 machines qu'on garde — une liste qui ment dès qu'une machine arrive —, soit

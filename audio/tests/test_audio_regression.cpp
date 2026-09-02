@@ -784,6 +784,7 @@ VSM_TEST(regression_jewsharp)   { checkMachine("vsm.jewsharp"); }
 VSM_TEST(regression_theremin)   { checkMachine("vsm.theremin"); }
 VSM_TEST(regression_musicbox)   { checkMachine("vsm.musicbox"); }
 VSM_TEST(regression_terrain)    { checkMachine("vsm.terrain"); }
+VSM_TEST(regression_spectral)   { checkMachine("vsm.spectral"); }
 
 /// Le rendu doit être reproductible À L'IDENTIQUE d'une instance à l'autre :
 /// c'est la condition pour que l'empreinte ci-dessus ait un sens. Vérifié ici

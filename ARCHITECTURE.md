@@ -31,7 +31,7 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **1 430 tests moteur** (158 core + 1 011 audio
+écoute au clic, et toute la logique testée hors JUCE. Total : **1 444 tests moteur** (158 core + 1 025 audio
 + 206 interchange + 25 CLAP + 19 VST3 + 11 façades,
 tous verts, zéro warning sous les flags du build, `-Wall -Wextra -Wpedantic`.
 L'ancienne mention « y compris -Wfloat-equal -Wsign-conversion -Wshadow »
@@ -599,12 +599,12 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 1 430 tests moteur + 68 tests d'analyse, tous verts
+### Bilan actuel : 1 444 tests moteur + 68 tests d'analyse, tous verts
 
 - **158 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des
   notes douteuses de la transcription),
-  **1 011 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
+  **1 025 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
   scalaire, indépendance des lignes, bornes de l'approximation de tanh ; et la
   boucle : rebouclage échantillon-exact, notes relâchées au saut) : chorus BBD, Juno-106,
   bus master (biquad/compresseur/limiteur à plafond garanti/LUFS), oversampler,
@@ -3964,6 +3964,29 @@ contraste de sens attendu de `vsm.reed` et l'égalité attendue des timbres de
 cela garantit qu'on s'en aperçoive.
 
 Le parc passe à **52 machines**.
+
+**ET UNE DIX-HUITIÈME : `vsm.spectral`, où l'on ÉCRIT le spectre.** Toutes les
+autres machines fabriquent une forme d'onde et leur spectre en résulte ; ici on
+pose les amplitudes case par case et une transformée inverse rend le signal.
+Mesuré à `Stretch` 1,3 : **zéro exact** aux fréquences entières (220, 330,
+550 Hz) et de l'énergie aux fréquences étirées (270,9 · 458,8 · 891,4 Hz). Ni
+`vsm.additive`, qui pose des rangs entiers, ni `vsm.chebyshev`, dont un
+polynôme de rang n rend l'harmonique n, ne peuvent produire cela.
+
+**Deux propriétés que le parc n'avait nulle part.** Le coût ne dépend pas du
+nombre de partiels — deux cent cinquante-six raies pour le prix de huit — ni du
+nombre de notes : il n'y a pas de voix, toutes déposent dans le même spectre.
+C'est le seul endroit du parc où ajouter une note ne coûte rien.
+
+**Une brique nouvelle, `dsp/RealFft.h`** : une IFFT radix-2 de cinquante
+lignes, sans dépendance, sans allocation, à taille fixée à la compilation. Son
+test ne mesure pas la machine mais la BRIQUE — une raie unique doit rendre
+exactement un cosinus (erreur 2,8·10⁻⁸) — parce que sans cette garantie aucun
+chiffre de la machine ne voudrait rien dire. Les deux pièges de la famille sont
+vérifiés : pas de clic au raccord des trames (fenêtre de Hann à saut de moitié,
+condition COLA) et aucune allocation dans `process`.
+
+Le parc passe à **53 machines**.
 
 ---
 

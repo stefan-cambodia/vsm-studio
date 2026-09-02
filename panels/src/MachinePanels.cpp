@@ -3983,6 +3983,63 @@ MachinePanel makeTerrain() {
     return panel;
 }
 
+/// `vsm.spectral` -- le spectre écrit. STRETCH est le grand potentiomètre, et
+/// il ne ressemble à aucun autre du parc : il ne dose rien et ne filtre rien,
+/// il déplace les PARTIELS hors des rangs entiers. À 1,0 la machine est
+/// harmonique ; ailleurs, elle produit un « bruit accordé » qu'aucune autre ne
+/// peut approcher.
+///
+/// PARTIALS est à côté, et c'est le seul compteur du parc qui ne coûte rien à
+/// augmenter : deux cent cinquante-six raies se rendent au prix de huit.
+///
+/// Livrée bleu nuit et cyan, la robe d'un analyseur.
+MachinePanel makeSpectral() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.spectral";
+    panel.displayName = "Spectral (le spectre écrit)";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#12161F";
+    panel.sectionColour = "#0D1118";
+    panel.textColour = "#DCE8F5";
+    panel.knobColour = "#7FB8D9";
+    panel.gridColumns = 14;
+    panel.gridRows = 4;
+
+    PanelSection spectre;
+    spectre.title = "SPECTRUM";
+    spectre.accentColour = "#7FB8D9";
+    spectre.column = 0; spectre.row = 0; spectre.columnSpan = 5; spectre.rowSpan = 4;
+    spectre.controls = {
+        control("Stretch", "STRETCH", S::LargeKnob, 0, 0),
+        control("Partials", "PARTIALS", S::Knob, 1, 0),
+        control("Spectral Tilt", "TILT", S::Knob, 0, 1),
+        control("Spread", "SPREAD", S::Knob, 1, 1),
+    };
+
+    PanelSection enveloppe;
+    enveloppe.title = "ENVELOPE";
+    enveloppe.accentColour = "#8FD9C4";
+    enveloppe.column = 5; enveloppe.row = 0; enveloppe.columnSpan = 5; enveloppe.rowSpan = 4;
+    enveloppe.controls = {
+        control("Attack", "A", S::VerticalSlider, 0, 0),
+        control("Decay", "D", S::VerticalSlider, 1, 0),
+        control("Sustain", "S", S::VerticalSlider, 2, 0),
+        control("Release", "R", S::VerticalSlider, 3, 0),
+    };
+
+    PanelSection sortie;
+    sortie.title = "OUTPUT";
+    sortie.accentColour = "#C9A96A";
+    sortie.column = 10; sortie.row = 0; sortie.columnSpan = 4; sortie.rowSpan = 4;
+    sortie.controls = {
+        control("Velocity Sensitivity", "VEL", S::Knob, 0, 0),
+        control("Output Level", "VOLUME", S::Knob, 0, 1),
+    };
+
+    panel.sections = {spectre, enveloppe, sortie};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
@@ -3993,7 +4050,7 @@ const std::vector<MachinePanel>& panels() {
         makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev(),
         makeScanned(), makeMellotron(), makeSitar(), makeMembrane(), makeReed(),
         makePlate(), makeClavichord(), makeGlass(), makeJewsHarp(),
-        makeTheremin(), makeMusicBox(), makeTerrain()
+        makeTheremin(), makeMusicBox(), makeTerrain(), makeSpectral()
     };
     return all;
 }

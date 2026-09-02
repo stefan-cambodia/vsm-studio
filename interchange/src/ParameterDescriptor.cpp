@@ -576,6 +576,25 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Velocity to Radius", "voice.velocitySensitivity"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.spectral ---
+    // L'ÉTIREMENT n'a pas d'équivalent : `additive.spectralTilt` règle une
+    // PENTE, pas la position des rangs, et aucune machine du parc ne sait
+    // déplacer ses partiels hors des entiers. Le nombre de partiels non plus
+    // n'est pas `modal.modeCount` — celui-là compte des résonateurs, celui-ci
+    // des cases de spectre, et leur coût n'a rien à voir. La PENTE, elle, est
+    // bien celle de `vsm.additive` et la réemploie (§ 4).
+    {"vsm.spectral", {
+        {"Partials", "spectral.partialCount"},
+        {"Stretch", "spectral.stretch"},
+        {"Spectral Tilt", "additive.spectralTilt"},
+        {"Spread", "spectral.spread"},
+        {"Attack", "envelope.1.attack"},
+        {"Decay", "envelope.1.decay"},
+        {"Sustain", "envelope.1.sustain"},
+        {"Release", "envelope.1.release"},
+        {"Velocity Sensitivity", "voice.velocitySensitivity"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.multisample ---
     // Peu de paramètres, et TOUS canoniques : le timbre de cette machine vient
     // des échantillons, pas des réglages. `voice.velocitySensitivity` est

@@ -50,6 +50,7 @@
 #include "theremin/ThereminSynth.h"
 #include "musicbox/MusicBoxSynth.h"
 #include "terrain/TerrainSynth.h"
+#include "spectral/SpectralSynth.h"
 #include "multisample/MultisampleSynth.h"
 
 namespace vsm::audio::plugin {
@@ -200,6 +201,7 @@ void registerBuiltInPlugins() {
         vsm::plugins::theremin::ThereminSynth forceLinkTheremin;
         vsm::plugins::musicbox::MusicBoxSynth forceLinkMusicBox;
         vsm::plugins::terrain::TerrainSynth forceLinkTerrain;
+        vsm::plugins::spectral::SpectralSynth forceLinkSpectral;
         (void)forceLinkScanned;
     }
     {

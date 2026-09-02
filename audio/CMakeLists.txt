@@ -65,6 +65,7 @@ add_library(vsm_audio STATIC
     plugins/theremin/ThereminSynth.cpp
     plugins/musicbox/MusicBoxSynth.cpp
     plugins/terrain/TerrainSynth.cpp
+    plugins/spectral/SpectralSynth.cpp
     plugins/multisample/MultisampleSynth.cpp
 )
 
@@ -181,6 +182,7 @@ if (VSM_BUILD_TESTS)
         tests/test_theremin_synth.cpp
         tests/test_musicbox_synth.cpp
         tests/test_terrain_synth.cpp
+        tests/test_spectral_synth.cpp
         tests/test_multisample_synth.cpp
         tests/test_midi_learn.cpp
         tests/test_effect_routing.cpp
