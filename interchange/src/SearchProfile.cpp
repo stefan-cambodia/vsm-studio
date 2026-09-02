@@ -145,6 +145,18 @@ constexpr Rule kRules[] = {
     {"modal.decay",                        0.05f,   12.0f, SearchScale::Logarithmic, 0.84f},
     {"modal.spread",                       0.5f,     2.0f, SearchScale::Linear,      0.62f},
     {"modal.modeCount",                    1.0f,    24.0f, SearchScale::Linear,      0.40f},
+    // SYNTHÈSE BALAYÉE (vsm.scanned). L'AMORTISSEMENT commande d'abord, et
+    // de très loin : c'est lui qui décide si le timbre voyage ou se fige, et
+    // une chaîne figée rend cette machine indiscernable d'une table d'ondes
+    // ordinaire -- toute la famille tient là. La tension vient ensuite,
+    // parce qu'elle règle la VITESSE du voyage ; le rappel ferme la marche
+    // des trois réglages de la chaîne, son effet étant surtout d'écourter le
+    // mouvement. La borne haute de l'amortissement est tenue à 0,3 : au-delà,
+    // la chaîne passe sous le seuil d'entretien et s'éteint pour de bon, et
+    // une recherche qui balaierait cette zone y perdrait ses candidats.
+    {"scanned.damping",                    0.0f,     0.3f, SearchScale::Linear,      0.96f},
+    {"scanned.tension",                    0.02f,    1.0f, SearchScale::Logarithmic, 0.88f},
+    {"scanned.centering",                  0.0f,     0.5f, SearchScale::Linear,      0.64f},
     // Famille du VENT (vsm.wind). Comme sur la corde, ce qui fait le timbre
     // est d'abord ce qui se perd (le rayonnement au pavillon) et la raideur de
     // ce qui entretient (l'anche ou les lèvres) ; la pression de souffle vient

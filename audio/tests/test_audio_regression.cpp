@@ -772,6 +772,7 @@ VSM_TEST(regression_granular)   { checkMachine("vsm.granular"); }
 VSM_TEST(regression_cs80)       { checkMachine("vsm.cs80"); }
 VSM_TEST(regression_modal)      { checkMachine("vsm.modal"); }
 VSM_TEST(regression_chebyshev)  { checkMachine("vsm.chebyshev"); }
+VSM_TEST(regression_scanned)    { checkMachine("vsm.scanned"); }
 
 /// Le rendu doit être reproductible À L'IDENTIQUE d'une instance à l'autre :
 /// c'est la condition pour que l'empreinte ci-dessus ait un sens. Vérifié ici

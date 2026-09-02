@@ -331,6 +331,30 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Release", "envelope.1.release"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.scanned ---
+    // Trois réglages disent la CHAÎNE et n'ont d'équivalent nulle part : sa
+    // tension, son amortissement, la force qui ramène chaque masse vers son
+    // repos. Ils portent donc un nom à eux. Le PINCEMENT, en revanche, est le
+    // même geste que la frappe de `vsm.modal` et l'attaque de `vsm.piano` --
+    // où l'on touche, et avec quoi -- et il réemploie leur vocabulaire, comme
+    // le § 4 le demande : un preset qui sait pincer une corde près du chevalet
+    // saura pincer cette chaîne au même endroit.
+    {"vsm.scanned", {
+        {"Tension", "scanned.tension"},
+        {"Damping", "scanned.damping"},
+        {"Centering", "scanned.centering"},
+        {"Pluck Position", "string.pickPosition"},
+        {"Pluck Hardness", "string.pickHardness"},
+        {"Pluck Force", "string.excitation"},
+        {"Filter Cutoff", "filter.1.cutoff"},
+        {"Filter Resonance", "filter.1.resonance"},
+        {"Attack", "envelope.1.attack"},
+        {"Decay", "envelope.1.decay"},
+        {"Sustain", "envelope.1.sustain"},
+        {"Release", "envelope.1.release"},
+        {"Velocity Sensitivity", "voice.velocitySensitivity"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.multisample ---
     // Peu de paramètres, et TOUS canoniques : le timbre de cette machine vient
     // des échantillons, pas des réglages. `voice.velocitySensitivity` est

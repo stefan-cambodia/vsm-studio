@@ -3346,6 +3346,67 @@ MachinePanel makeChebyshev() {
     return panel;
 }
 
+/// `vsm.scanned` -- la chaîne balayée. La façade est organisée autour d'une
+/// idée que le musicien doit saisir au premier regard : ce qu'il règle ici,
+/// ce n'est PAS un son, c'est un OBJET EN MOUVEMENT, et le son n'en est que
+/// la lecture. La section CHAIN est donc la plus large des trois, avec
+/// l'amortissement en potentiomètre principal -- c'est lui qui décide si le
+/// timbre voyage ou se fige, et rien d'autre sur cette machine ne fait cela.
+/// Le PINCEMENT vient ensuite (c'est le geste), la lecture ferme la marche.
+///
+/// Livrée bleu-vert d'oscilloscope, parce que c'est de cela qu'il s'agit :
+/// une forme qu'on regarde bouger.
+MachinePanel makeScanned() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.scanned";
+    panel.displayName = "Scanned (la chaîne balayée)";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#121A19";
+    panel.sectionColour = "#0C1312";
+    panel.textColour = "#DDF2ED";
+    panel.knobColour = "#5FC2A8";
+    panel.gridColumns = 16;
+    panel.gridRows = 4;
+
+    PanelSection chaine;
+    chaine.title = "CHAIN";
+    chaine.accentColour = "#5FC2A8";
+    chaine.column = 0; chaine.row = 0; chaine.columnSpan = 6; chaine.rowSpan = 4;
+    chaine.controls = {
+        control("Damping", "DAMPING", S::LargeKnob, 0, 0),
+        control("Tension", "TENSION", S::Knob, 1, 0),
+        control("Centering", "CENTERING", S::Knob, 0, 1),
+    };
+
+    PanelSection pincement;
+    pincement.title = "PLUCK";
+    pincement.accentColour = "#8FD9C4";
+    pincement.column = 6; pincement.row = 0; pincement.columnSpan = 4; pincement.rowSpan = 4;
+    pincement.controls = {
+        control("Pluck Force", "FORCE", S::Knob, 0, 0),
+        control("Pluck Position", "POSITION", S::Knob, 1, 0),
+        control("Pluck Hardness", "HARDNESS", S::Knob, 0, 1),
+        control("Velocity Sensitivity", "VEL", S::Knob, 1, 1),
+    };
+
+    PanelSection lecture;
+    lecture.title = "OUTPUT";
+    lecture.accentColour = "#C9B06A";
+    lecture.column = 10; lecture.row = 0; lecture.columnSpan = 6; lecture.rowSpan = 4;
+    lecture.controls = {
+        control("Filter Cutoff", "CUTOFF", S::Knob, 0, 0),
+        control("Filter Resonance", "RESO", S::Knob, 1, 0),
+        control("Attack", "A", S::VerticalSlider, 2, 0),
+        control("Decay", "D", S::VerticalSlider, 3, 0),
+        control("Sustain", "S", S::VerticalSlider, 4, 0),
+        control("Release", "R", S::VerticalSlider, 5, 0),
+        control("Output Level", "VOLUME", S::Knob, 0, 1),
+    };
+
+    panel.sections = {chaine, pincement, lecture};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
@@ -3353,7 +3414,8 @@ const std::vector<MachinePanel>& panels() {
         makeEPiano(), makeObx(), makeSupersaw(), makeWavetable(), makePcmHybrid(), makeTonewheel(), makeGeneric(), makeString(),
         makePiano(), makeDrums(), makeWind(), makeMultisample(),
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
-        makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev()
+        makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev(),
+        makeScanned()
     };
     return all;
 }

@@ -2575,6 +2575,35 @@ sépare : **v10 = v9 avec `--tours-verdict 1`**. Succès : v10 ≈ v7
 fixe porte tout le gain. Échec : v10 ≈ v9, et c'est le vivier qui gagne —
 auquel cas H5 reste sans gain propre, et il faudra le dire.
 
+**H9 EST TRANCHÉE : LE POINT FIXE PORTE LE GAIN (02/09/2026).** Le témoin
+v10 — v9 en tout point, `--tours-verdict 1` pour seule différence — rend
+**0,2013 contre 0,1822**. Le point fixe du verdict vaut donc **−9,5 %** sur
+*Us and Them*, à vivier, stems, métrique et budget identiques. C'est la
+première fois que H5 rend un gain propre et chiffré : jusqu'ici elle était
+gardée « pour un coût borné et un gain nul mesuré », et ce n'est plus vrai.
+
+Ce que la mesure dit exactement, et il faut le dire dans cet ordre : ce
+n'est pas le vivier qui gagne, c'est **le droit de revenir sur un verdict**.
+Les deux machines ajoutées ne servent à rien tant que l'arbitrage ne
+repasse pas : `vsm.cs80` n'entre qu'au tour 2, une fois les deux autres
+pistes arrêtées, parce que c'est seulement à ce moment-là que le MÉLANGE
+peut la départager de sa rivale — au stem, les deux sont à égalité au
+dix-millième (0,1851 contre 0,1851). Un vivier plus large donne des
+candidates ; seul le point fixe les fait choisir.
+
+**Ce que ce témoin NE dit PAS, et qui reste ouvert.** v10 (0,2013) est plus
+loin que v7 (0,1910), et il serait tentant d'en conclure qu'un vivier
+élargi éloigne le morceau quand le verdict ne repasse pas. **Cette lecture
+est interdite** : v7 et v10 diffèrent par DEUX variables (37 machines et
+trois tours contre 39 machines et un tour), et le § 5 undecies l'exclut.
+Le témoin qui trancherait est **v11 = 37 machines, `--tours-verdict 1`** :
+si v11 ≈ 0,2013, le vivier n'y est pour rien et c'est le tour unique qui
+coûte ; si v11 ≈ 0,1910, alors le vivier élargi coûte VRAIMENT quand le
+verdict ne repasse pas, et la règle du § 7 du CDC machines-manquantes
+devra porter cette réserve : *une machine de plus ne coûte rien à
+condition que le verdict ait le droit d'y revenir.* Tant que v11 n'a pas
+couru, cette phrase reste une hypothèse et non un acquis.
+
 **H7 — le classifieur de frappes améliore le STEM et éloigne le MORCEAU,
 écrite avant sa mesure (02/09/2026).** Le fait qui la motive : la course v6
 (*Us and Them*, moteur du jour, classifieur de frappes RÉACTIVÉ après la

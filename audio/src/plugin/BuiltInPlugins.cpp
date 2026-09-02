@@ -38,6 +38,7 @@
 #include "cs80/Cs80Synth.h"
 #include "modal/ModalSynth.h"
 #include "chebyshev/ChebyshevSynth.h"
+#include "scanned/ScannedSynth.h"
 #include "multisample/MultisampleSynth.h"
 
 namespace vsm::audio::plugin {
@@ -176,6 +177,8 @@ void registerBuiltInPlugins() {
         (void)forceLinkModal;
         vsm::plugins::chebyshev::ChebyshevSynth forceLinkChebyshev;
         (void)forceLinkChebyshev;
+        vsm::plugins::scanned::ScannedSynth forceLinkScanned;
+        (void)forceLinkScanned;
     }
     {
         vsm::plugins::multisample::MultisampleSynth forceLinkMultisample;

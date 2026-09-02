@@ -451,8 +451,20 @@ devant `vsm.string` au stem comme au morceau. Ce que ces chiffres disent,
 et qui vaut mieux que la règle qu'ils vérifient : **un vivier plus large
 ne dilue pas l'arbitrage, il lui donne des candidates que le mélange
 saura départager** — à condition que le verdict ait le droit d'y revenir
-(le point fixe H5, dont c'est ici le premier gain global mesuré ; le
-témoin qui l'isole est l'hypothèse H9 de la feuille de route fusion).
+(le point fixe H5, dont c'est ici le premier gain global mesuré).
+
+**Et le témoin a couru : c'est bien le POINT FIXE qui porte le gain.** H9,
+tranchée le 02/09, compare v9 à un v10 identique sauf `--tours-verdict 1` :
+**0,1822 contre 0,2013**, soit −9,5 % pour le seul droit de revenir sur un
+verdict. La conclusion du paragraphe précédent doit donc se lire avec sa
+condition, et non sans elle : *un vivier plus large ne dilue pas
+l'arbitrage — à condition que le verdict ait le droit d'y revenir.* Sans
+ce droit, les candidates supplémentaires sont là mais ne sont jamais
+choisies, `vsm.cs80` étant à égalité parfaite au stem avec la machine
+qu'elle finit par battre au mélange. Savoir si le vivier élargi COÛTE
+quand le verdict ne repasse pas reste ouvert et demande un témoin v11
+(37 machines, un tour) : la feuille de route fusion dit pourquoi la
+comparaison v7/v10 ne suffit pas.
 
 **Et deux autres ont suivi le 02/09.** `vsm.cs80` sort le CS-80 de la
 réserve du § 9, parce que sa condition d'attente — la pression
@@ -463,6 +475,64 @@ d'objets frappés à rapports libres** : `vsm.additive`, la plus proche,
 plafonne à 2,003·f0 pour son second rang (loi de la corde raide) là où une
 barre a le sien à 2,76·f0 — la frontière entre les deux machines est donc
 mesurée, pas affirmée.
+
+**Puis deux autres encore, et elles ouvrent des familles entières.**
+`vsm.chebyshev` apporte le **waveshaping par polynômes de Tchebychev**
+(Arfib et Le Brun, 1979), dont la propriété n'a pas d'équivalent dans le
+parc : `T_n(cos θ) = cos(n·θ)` **exactement**, donc on écrit le spectre
+qu'on veut et on l'obtient — poids sur le seul rang 3, et le rendu ne
+contient que l'harmonique 3. Le trait musical en découle sans qu'on ait
+rien à simuler : sous l'amplitude 1 les rangs élevés s'effondrent en `A^n`,
+si bien qu'une note qui décroît perd ses aigus d'elle-même, **sans
+enveloppe de filtre**. Elle a coûté un défaut instructif, consigné dans le
+code : `T_n(0)` vaut ±1 pour n pair, et la machine sortait 0,30 de continu
+AU REPOS — le silence n'était pas silencieux, et aucune mesure de niveau ne
+l'aurait montré. Elle a coûté aussi une identité sémantique inventée
+(`additive.partial.N.level`, annoncée comme un réemploi alors que
+`vsm.additive` n'a aucune amplitude par rang) : une identité inventée en
+croyant réemployer est pire qu'une identité neuve assumée, parce qu'elle
+fait croire à un preset qu'il voyagera.
+
+`vsm.scanned` apporte la **synthèse balayée** (Verplank, Mathews et Shaw,
+2000), et son trait distinctif dit à lui seul pourquoi elle méritait
+d'exister : **la vitesse d'évolution du timbre ne dépend pas de la note
+jouée.** La forme d'onde y est la photographie d'une chaîne de 32 masses
+qu'on a pincée et qui continue d'osciller pour son compte, à quelques
+hertz ; la note ne décide que de la VITESSE À LAQUELLE ON LA LIT. Deux
+machines du parc font bouger leur timbre toutes seules, et aucune de cette
+façon : `vsm.wavetable` promène un pointeur entre des tables FIGÉES,
+`vsm.stochastic` déplace ses points de brisure par une marche aléatoire —
+du bruit borné, sans mémoire ni inertie, et qui change à chaque PÉRIODE.
+Le test mesure exactement cela, et il a fallu deux essais pour le mesurer
+honnêtement : deux notes distantes de deux octaves voient leur timbre
+monter et descendre **aux mêmes instants** (corrélation des calendriers de
+centroïde : 0,82).
+
+Elle a coûté trois leçons de banc, toutes payées à la mesure :
+- **La chaîne donne la FORME, pas l'amplitude.** Laissée à elle-même elle
+  se vide de son énergie : rms 0,038 → 0,00000 en deux secondes et demie,
+  la note tenue mourait toute seule alors que le sustain tenait. L'état
+  est donc RENORMALISÉ à chaque pas (positions et vitesses ensemble, pour
+  ne pas fausser la dynamique) — un entretien, au sens de l'archet.
+- **Une mauvaise métrique a failli faire condamner la machine.** Le test
+  mesurait « la brillance » comme l'énergie de la dérivée du signal : elle
+  restait plate à 0,0004 d'un bout à l'autre, et concluait que rien
+  n'évoluait. La dérivée d'un signal périodique est dominée par sa
+  fréquence de LECTURE, pas par sa forme ; le contenu harmonique réel,
+  lui, voyageait de 0,07 à 1,18. Mesurer un timbre demande de regarder les
+  rangs, pas la pente.
+- **L'hypothèse simple était fausse, et la mesure l'a dit.** On attendait
+  que le timbre soit IDENTIQUE à instant égal pour deux notes, puisque la
+  chaîne est unique et partagée. Il ne l'est pas : la note grave est
+  franchement plus brillante (centroïde 2,4 contre 1,6), parce que sa
+  période de lecture étant quatre fois plus longue, la forme a le temps de
+  bouger PENDANT une lecture. Le niveau de brillance dépend donc de la
+  note ; son CALENDRIER, non — et c'est cela, et cela seul, le trait de la
+  famille. Le test dit désormais ce qui est vrai.
+
+Le parc passe à **41 machines** (965 paramètres nommés, 1 302 tests
+verts) — le compteur du dépôt recense toutes les entrées du registre, y
+compris `vsm.testtone`, qui n'est pas un instrument mais sert de mire.
 
 Les rangs 1, 3 et 6 comblent des **trous de couverture** : sans eux, des stems
 entiers n'ont aucune machine cible. Les rangs 2, 4 et 5 élargissent surtout la

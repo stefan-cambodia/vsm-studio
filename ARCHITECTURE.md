@@ -3639,6 +3639,41 @@ d'inharmonique ne redescend sous le fondamental.
 
 Le parc passe à **40 machines**.
 
+**ET UNE SIXIÈME : `vsm.scanned`, dont le timbre n'écoute pas les notes.**
+La synthèse balayée (Verplank, Mathews et Shaw, 2000) fait de la forme
+d'onde la photographie d'un OBJET EN MOUVEMENT : une chaîne de 32 masses
+reliées par des ressorts, bouclée en anneau, qu'on pince et qui continue
+d'osciller pour son compte à quelques hertz. La note ne décide que de la
+VITESSE À LAQUELLE ON LA LIT. De là le trait qui n'a d'équivalent nulle
+part : **jouer deux octaves plus haut ne fait pas évoluer le timbre quatre
+fois plus vite.** `vsm.wavetable` promène un pointeur entre des tables
+figées, `vsm.stochastic` change sa forme à chaque PÉRIODE ; ici la chaîne
+vit en temps réel, et elle est PARTAGÉE par toutes les voix — deux notes
+tenues ensemble évoluent de concert, ce qu'aucune machine à LFO par voix ne
+peut produire.
+
+**Trois leçons de banc, et la deuxième est la plus utile au projet.**
+D'abord, la chaîne donne la FORME et non l'amplitude : laissée à elle-même
+elle se vide (rms 0,038 → 0,00000 en 2,5 s) et la note tenue mourait toute
+seule ; l'état est donc renormalisé à chaque pas, positions et vitesses
+ensemble. Ensuite — et c'est la leçon transposable — **une mauvaise
+métrique a failli faire condamner la machine** : le test mesurait « la
+brillance » comme l'énergie de la dérivée du signal, qui restait plate à
+0,0004 et disait que rien n'évoluait, alors que le contenu harmonique réel
+voyageait de 0,07 à 1,18. La dérivée d'un signal périodique est dominée par
+sa fréquence de LECTURE, pas par sa forme ; un timbre se mesure aux RANGS,
+jamais à la pente. C'est le pendant exact de la leçon du § 44 sur `vsm.cone`
+(l'estimateur qui lisait les jupes à la fréquence DEMANDÉE) : **la moitié du
+travail sur une machine consiste à s'assurer que l'instrument de mesure
+regarde ce qu'on croit.** Enfin, l'hypothèse simple était fausse : on
+attendait un timbre identique à instant égal pour deux notes, puisque la
+chaîne est unique ; il ne l'est pas (la note grave est plus brillante, sa
+période de lecture laissant la forme bouger PENDANT une lecture). C'est le
+CALENDRIER qui est commun, pas le niveau — corrélation 0,82 entre deux
+notes distantes de deux octaves — et le test dit désormais cela.
+
+Le parc passe à **41 machines**.
+
 ---
 
 ## 29. Façades « façon hardware », machine par machine (sections 6 et 21)
