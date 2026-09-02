@@ -24,6 +24,7 @@ add_library(vsm_interchange STATIC
     src/RecoverySession.cpp
     src/ShortcutTable.cpp
     src/BrowserIndex.cpp
+    src/Inflate.cpp
 )
 
 target_include_directories(vsm_interchange PUBLIC include)
@@ -40,6 +41,7 @@ if (VSM_BUILD_TESTS)
     add_executable(vsm_interchange_tests
         tests/test_main.cpp
         tests/test_json.cpp
+        tests/test_inflate.cpp
         tests/test_semantic_parameters.cpp
         tests/test_synth_preset.cpp
         tests/test_multisample_profile.cpp
