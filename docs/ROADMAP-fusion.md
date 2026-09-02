@@ -2859,6 +2859,40 @@ réserve. Si la course à 34 est plus loin, alors les candidates
 supplémentaires nuisent tant que le verdict ne repasse pas, et la règle doit
 porter sa condition.
 
+**LE TÉMOIN v11 A COURU, ET LE VIVIER GAGNE (02/09/2026).** La paire, une
+seule variable — le vivier, deux machines d'écart — et le même binaire :
+
+| Course | Vivier | Tours | Finalistes | Distance |
+|---|---|---|---|---|
+| v11a | celui de v10 (34 machines) | 1 | 6 | **0,191036** |
+| v11b | celui de v7 (32 machines : sans `vsm.cs80` ni `vsm.modal`) | 1 | 6 | 0,196979 |
+
+**Les deux machines de plus rapportent 3,0 %**, même quand le verdict ne
+repasse pas. La règle du § 7 du CDC machines-manquantes tient donc **sans la
+réserve** que ce paragraphe envisageait — au régime actuel du goulot (six
+finalistes), un vivier plus large ne coûte pas, il paie.
+
+Deux honnêtetés à poser à côté du chiffre :
+
+1. **La paire ne rejoue pas v10 à l'identique.** Elle a couru avec
+   `machinesAuMelange = 6`, le défaut depuis H13, quand v10 avait 3. La phrase
+   « si v11 ≈ 0,2013, c'est le tour unique qui coûte » ne s'applique donc plus
+   telle quelle. Ce qu'elle voulait démêler est démêlé autrement, et mieux :
+   **v11a (34 machines, UN tour) rend 0,191036, soit le chiffre de v14 (41
+   machines, TROIS tours) à la septième décimale** — 0,191036 contre 0,191036.
+   Une fois le goulot élargi à six, le tour unique ne coûte plus rien et les
+   sept machines suivantes ne déplacent rien : le coût que v10 montrait
+   (0,2013) était bien celui du goulot étroit, pas du vivier. H13 s'en trouve
+   confirmée une seconde fois, par un chemin indépendant.
+2. **Le code des deux moitiés diffère** (commits `968c8bd` et `ae98283`, et la
+   provenance le montre) : entre elles ont été livrés des ajouts de pure
+   mesure — densité des stems, partage d'énergie, provenance du moteur, le
+   mécanisme H23 derrière une option éteinte par défaut. Aucun ne touche une
+   décision ni un calcul de distance ; la paire garde sa variable unique. Et
+   leur bloc `moteur` porte encore le repli « je ne sais pas » : la correction
+   de la capture moteur vivant est arrivée pendant leur course. H22 et H23
+   porteront l'identité pleine.
+
 **H13 — le vivier coûte parce que le GOULOT des finalistes est trop
 étroit ; écrite avant sa mesure (02/09/2026).** Deux faits mesurés le même
 jour la motivent, et il faut les lire ensemble :

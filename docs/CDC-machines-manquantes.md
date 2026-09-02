@@ -522,10 +522,15 @@ condition, et non sans elle : *un vivier plus large ne dilue pas
 l'arbitrage — à condition que le verdict ait le droit d'y revenir.* Sans
 ce droit, les candidates supplémentaires sont là mais ne sont jamais
 choisies, `vsm.cs80` étant à égalité parfaite au stem avec la machine
-qu'elle finit par battre au mélange. Savoir si le vivier élargi COÛTE
-quand le verdict ne repasse pas reste ouvert et demande un témoin v11
-(37 machines, un tour) : la feuille de route fusion dit pourquoi la
-comparaison v7/v10 ne suffit pas.
+qu'elle finit par battre au mélange. ~~Savoir si le vivier élargi COÛTE
+quand le verdict ne repasse pas reste ouvert et demande un témoin v11~~
+**TRANCHÉ le 02/09/2026 : le témoin v11 a couru, et le vivier GAGNE.**
+À un seul tour de verdict et six finalistes, le vivier de v10
+(34 machines) rend 0,1910 contre 0,1970 pour celui de v7 (32 machines,
+sans `vsm.cs80` ni `vsm.modal`) — les deux machines de plus rapportent
+3,0 %. La règle de ce § 7 tient donc sans réserve au régime actuel du
+goulot ; le coût que v10 avait montré (0,2013) venait du goulot de trois
+finalistes, pas du vivier (ROADMAP-fusion, « LE TÉMOIN v11 A COURU »).
 
 **Et deux autres ont suivi le 02/09.** `vsm.cs80` sort le CS-80 de la
 réserve du § 9, parce que sa condition d'attente — la pression
