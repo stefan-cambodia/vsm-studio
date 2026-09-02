@@ -355,6 +355,11 @@ def provenance(args: argparse.Namespace, classifieur, frappes) -> dict:
             "axesPiste": args.axes_piste,
             "finalistes": args.finalistes,
             "preselectionApprise": args.preselection_apprise,
+            # Le vivier conditionne le résultat : il va dans la provenance,
+            # sans quoi deux rapports ne seraient pas comparables (§ « Mesure »
+            # du cahier des charges).
+            "machines": args.machines or None,
+            "machinesExclues": args.machines_exclues or None,
         },
         # Les modèles CONSULTÉS, avec leur date d'entraînement -- ou « aucun »,
         # qui est une information et non une absence d'information.
@@ -422,6 +427,18 @@ def construire_parseur() -> argparse.ArgumentParser:
     parseur.add_argument("--machines", default="",
                          help="liste de machines candidates, séparées par des virgules "
                               "(défaut : toutes les mélodiques du moteur)")
+    parseur.add_argument("--machines-exclues", default="",
+                         help="machines à RETIRER du vivier, séparées par des virgules. "
+                              "C'est le complément de --machines, et il existe pour une "
+                              "raison de méthode : mesurer ce qu'apporte une machine "
+                              "demande un témoin qui soit LE MÊME CODE, options mises à "
+                              "part. Sans cette option, retirer deux machines d'un parc "
+                              "de trente-six obligeait soit à en lister trente-quatre à "
+                              "la main (fragile, et la liste ment dès qu'une machine "
+                              "arrive), soit à éditer une constante entre deux passes — "
+                              "ce que le cahier des charges interdit. Un nom inconnu est "
+                              "REFUSÉ et non ignoré : une exclusion qui ne s'applique "
+                              "pas fausserait la course en silence.")
     parseur.add_argument("--sans-arbitrage-batterie", action="store_true",
                          help="ne pas faire concourir les boîtes à rythmes du parc (TR-909, "
                               "TR-808) contre la batterie modélisée sur le stem de batterie. "
@@ -1543,6 +1560,22 @@ def chaine(args: argparse.Namespace) -> None:
             frappes = charger_classifieur_frappes(args, moteur)
             candidates = ([m.strip() for m in args.machines.split(",") if m.strip()]
                           or melodic_machines(moteur))
+            exclues = [m.strip() for m in args.machines_exclues.split(",") if m.strip()]
+            if exclues:
+                # PANNE MUETTE INTERDITE : une exclusion qui ne correspond à
+                # aucune machine (faute de frappe, machine renommée) laisserait
+                # la course tourner avec un vivier qu'on croit réduit et qui ne
+                # l'est pas. Le témoin serait alors identique à ce qu'il est
+                # censé mesurer, et le verdict dirait « aucun effet ».
+                inconnues = [m for m in exclues if m not in candidates]
+                if inconnues:
+                    raise SystemExit(
+                        "[ERREUR] --machines-exclues nomme des machines qui ne sont pas "
+                        "dans le vivier : " + ", ".join(inconnues) + "\n"
+                        "          vivier : " + ", ".join(sorted(candidates)))
+                candidates = [m for m in candidates if m not in exclues]
+                print(f"      {len(exclues)} machine(s) EXCLUE(S) du vivier "
+                      f"(--machines-exclues) : {', '.join(exclues)}")
             ctx = Contexte(args=args, moteur=moteur, sortie=sortie, travail=travail,
                            candidates=candidates, classifieur=classifieur, frappes=frappes)
 

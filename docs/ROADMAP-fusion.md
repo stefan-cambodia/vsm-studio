@@ -2610,6 +2610,33 @@ devra porter cette réserve : *une machine de plus ne coûte rien à
 condition que le verdict ait le droit d'y revenir.* Tant que v11 n'a pas
 couru, cette phrase reste une hypothèse et non un acquis.
 
+**LE TÉMOIN v11 EST DÉSORMAIS POSSIBLE (02/09/2026).** Il ne l'était pas :
+réduire le vivier demandait soit de lister à la main les trente-quatre
+machines qu'on garde — une liste qui ment dès qu'une machine arrive —, soit
+d'éditer une constante entre deux passes, ce que le § « Mesure » du cahier
+des charges interdit expressément. `reconstruire.py` reçoit donc
+**`--machines-exclues`**, complément de `--machines`, et l'option va dans la
+provenance de `rapport.json` comme toute option qui conditionne le résultat.
+Un nom inconnu est REFUSÉ, avec le vivier affiché : une exclusion qui ne
+s'applique pas rendrait le témoin identique à ce qu'il mesure, et le verdict
+dirait « aucun effet » en toute bonne foi.
+
+La paire à courir, une seule variable entre les deux — le vivier — et le
+MÊME binaire pour les deux, ce qui évite de dépendre du moteur de v10 :
+
+```
+# 34 candidates, un tour  (reproduit v10 avec le moteur du jour)
+--machines-exclues vsm.chebyshev,vsm.scanned --tours-verdict 1
+# 32 candidates, un tour  (le vivier de v7)
+--machines-exclues vsm.chebyshev,vsm.scanned,vsm.cs80,vsm.modal --tours-verdict 1
+```
+
+Si les deux rendent la même distance, le vivier élargi ne coûte rien même
+sans point fixe, et la règle du § 7 du CDC machines-manquantes tient sans
+réserve. Si la course à 34 est plus loin, alors les candidates
+supplémentaires nuisent tant que le verdict ne repasse pas, et la règle doit
+porter sa condition.
+
 **H7 — le classifieur de frappes améliore le STEM et éloigne le MORCEAU,
 écrite avant sa mesure (02/09/2026).** Le fait qui la motive : la course v6
 (*Us and Them*, moteur du jour, classifieur de frappes RÉACTIVÉ après la
