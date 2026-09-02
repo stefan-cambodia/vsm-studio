@@ -3785,7 +3785,11 @@ MachinePanel makeJewsHarp() {
     panel.sectionColour = "#131315";
     panel.textColour = "#E8E8EC";
     panel.knobColour = "#9FA4AC";
-    panel.gridColumns = 12;
+    // QUATORZE COLONNES, PAS DOUZE : à douze, la section ENVELOPE serrait
+    // quatre curseurs et un potentiomètre dans quatre colonnes, et
+    // l'étiquette du volume sortait tronquée (« L. ») dans le rack. Vu à
+    // l'écran, corrigé en élargissant plutôt qu'en rétrécissant le texte.
+    panel.gridColumns = 14;
     panel.gridRows = 4;
 
     PanelSection lame;
@@ -3794,30 +3798,37 @@ MachinePanel makeJewsHarp() {
     lame.column = 0; lame.row = 0; lame.columnSpan = 4; lame.rowSpan = 4;
     lame.controls = {
         control("Reed Pitch", "PITCH", S::LargeKnob, 0, 0),
-        control("Twang", "TWANG", S::Knob, 0, 1),
+        control("Twang", "TWANG", S::Knob, 1, 0),
+        // La vélocité est la force du PINCEMENT : sa place est ici, à côté de
+        // la lame, et non dans l'enveloppe.
+        control("Velocity Sensitivity", "VEL", S::Knob, 0, 1),
     };
 
     PanelSection bouche;
     bouche.title = "MOUTH";
     bouche.accentColour = "#C9A96A";
-    bouche.column = 4; bouche.row = 0; bouche.columnSpan = 4; bouche.rowSpan = 4;
+    bouche.column = 4; bouche.row = 0; bouche.columnSpan = 5; bouche.rowSpan = 4;
     bouche.controls = {
         control("Formant Low", "LOW", S::Knob, 0, 0),
         control("Formant High", "HIGH", S::Knob, 1, 0),
         control("Formant Q", "Q", S::Knob, 0, 1),
-        control("Velocity Sensitivity", "VEL", S::Knob, 1, 1),
+        control("Output Level", "VOLUME", S::Knob, 1, 1),
     };
 
     PanelSection enveloppe;
     enveloppe.title = "ENVELOPE";
     enveloppe.accentColour = "#8FA8D9";
-    enveloppe.column = 8; enveloppe.row = 0; enveloppe.columnSpan = 4; enveloppe.rowSpan = 4;
+    enveloppe.column = 9; enveloppe.row = 0; enveloppe.columnSpan = 5; enveloppe.rowSpan = 4;
+    // AUCUN POTENTIOMÈTRE DANS UNE COLONNE DE CURSEUR : les quatre curseurs
+    // occupent quatre colonnes internes, si bien qu'un bouton posé en dessous
+    // héritait du quart de la largeur et voyait son étiquette tronquée en
+    // « Vo.. » dans le rack. Le volume est donc allé rejoindre la bouche, où
+    // il a la place de se lire.
     enveloppe.controls = {
         control("Attack", "A", S::VerticalSlider, 0, 0),
         control("Decay", "D", S::VerticalSlider, 1, 0),
         control("Sustain", "S", S::VerticalSlider, 2, 0),
         control("Release", "R", S::VerticalSlider, 3, 0),
-        control("Output Level", "VOLUME", S::Knob, 0, 1),
     };
 
     panel.sections = {lame, bouche, enveloppe};
