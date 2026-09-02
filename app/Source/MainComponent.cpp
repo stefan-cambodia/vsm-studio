@@ -2678,6 +2678,29 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     project_ = loaded.bundle.project;
     if (project_.title.empty())
         project_.title = folder.getFileName().toStdString();
+
+    // UNE PISTE AVEC DU MATÉRIAU ET SANS CLIP JOUE — « pas de clip = tout le
+    // matériau », c'est la sémantique du PlaybackScheduler — mais NE SE VOIT
+    // PAS : la vue d'arrangement ne dessine que les clips. Tous les projets
+    // écrits par la chaîne de reconstruction arrivaient ainsi : six pistes,
+    // arrangement VIDE, et la capture de usandthem-h22b l'a montré. C'est le
+    // bug de l'import DAW (poserUnClipSurLeMateriau), par une autre porte.
+    // On matérialise la fenêtre implicite : un clip « tout à zéro » est
+    // EXACTEMENT le passage que le scheduler fabriquait déjà pour une piste
+    // sans clip — le rendu ne change pas d'un échantillon, mais le morceau
+    // devient visible et saisissable dans l'arrangement.
+    for (auto& piste : project_.tracks) {
+        const bool aDuMateriau =
+            !piste.notes.empty()
+            || (piste.kind == vsm::sequencer::Track::Kind::Audio
+                && piste.audio.sampleRate > 0.0);
+        if (!aDuMateriau || !piste.clips.empty()) continue;
+        vsm::sequencer::Clip clip;
+        clip.name = piste.name;
+        clip.colorRgba = piste.colorRgba;
+        piste.clips.push_back(std::move(clip));
+    }
+    project_.assignClipIds();
     // Ctrl+S réécrira ICI, sans redemander où -- et « ici » est le dossier des
     // MÉDIAS, c'est-à-dire le vrai dossier du projet : réécrire une session
     // récupérée dans sa copie de travail la perdrait au prochain lancement.

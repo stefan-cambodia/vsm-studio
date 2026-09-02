@@ -85,7 +85,7 @@ déplacent rien, et la stabilité par empreintes est démontrée en course.
 
 | Course | Variable unique | Attendu (écrit d'avance) | Résultat |
 |---|---|---|---|
-| H22b-v2 | stems `htdemucs_6s` (6) | 6 pistes ; distance neutre ou légèrement défavorable ; si elle se dégrade, la chaîne arbitre ressemblance contre jouabilité et le § 0 tranche | *(en course)* |
+| H22b-v2 | stems `htdemucs_6s` (6) | 6 pistes ; distance neutre ou légèrement défavorable ; si elle se dégrade, la chaîne arbitre ressemblance contre jouabilité et le § 0 tranche | **0,17114 — −10,4 % ET six pistes.** L'attendu est contredit dans le bon sens : plus de pistes ET plus proche. Machines : bass→cs80, guitar→tb303, other→musicbox, piano→phasedist. Le verdict à six pistes n'atteint pas le point fixe en 3 tours (bass et piano oscillent), et le réglage au mélange rapporte encore −0,009. Restes : guitar (poly 3,4 · 74 demi-tons) et other (3,8 · 71) sont ENCORE des fourre-tout → H23 est complémentaire, pas concurrente |
 | H23 | `--voix-par-stem 4` | pas de gain de distance ; succès = chaque piste sous le seuil du fourre-tout | *(en file)* |
 
 ## 4. Ce qui reste à faire (l'ordre de marche du chantier)
@@ -133,7 +133,12 @@ déplacent rien, et la stabilité par empreintes est démontrée en course.
     Fichier ▸ Voir le rapport de reconstruction (grisé sans rapport), et
     VSM_RAPPORT=1 pour le photographier sans souris — vérifié sur le
     rapport réel de H22a
-[ ] Un projet multipiste reconstruit a été OUVERT et REGARDÉ dans le DAW
+[x] Un projet multipiste reconstruit a été OUVERT et REGARDÉ dans le DAW :
+    usandthem-h22b, six pistes, rapport à l'écran ET arrangement — lequel
+    était VIDE : la chaîne n'écrit pas de clips, la vue ne dessine que les
+    clips, et le scheduler seul connaissait la fenêtre implicite. Corrigé à
+    l'ouverture (le clip « tout à zéro » est exactement le passage que le
+    scheduler fabriquait), vu la voix dessiner sa forme d'onde
 [ ] Vérifié sur un deuxième morceau avant de changer un défaut
 [ ] Sur un original dont les parties sont connues, le compte de pistes
     reconstruites atteint le compte de parties (l'objectif de parité du § 0)

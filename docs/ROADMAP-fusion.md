@@ -2732,6 +2732,31 @@ avant de mourir, la première H22a avait séparé et mesuré le partage —
 demucs déterministe, et cette égalité l'encaisse : `usandthem/` EST une
 séparation htdemucs du jour.
 
+**H22 EST TRANCHÉE, ET MON ATTENDU AVAIT TORT DANS LE BON SENS (02/09/2026).**
+J'avais écrit « distance neutre ou légèrement défavorable ». Mesuré, contre le
+témoin H22a-v2 (mêmes 48 candidates, mêmes 3 tours, mêmes budgets, même
+binaire, seule variable le jeu de stems) :
+
+| Course | Stems | Pistes | Distance |
+|---|---|---|---|
+| H22a-v2 | htdemucs (4) | 4 | 0,191036 |
+| H22b-v2 | htdemucs_6s (6) | 6 | **0,171142** |
+
+**Six stems rapportent −10,4 % ET deux pistes de plus.** La crainte des
+modèles à six sources (« un peu moins bons sur les quatre sources communes »)
+ne s'est pas matérialisée sur ce morceau : donner à `guitar` et `piano` leur
+piste — donc leur machine, leur arbitrage, leur réglage — vaut mieux que de
+les fondre dans un `other` que le TB-303 approximait. Le § 0 du CDC
+multipiste n'a même pas à trancher : structure ET distance vont du même côté.
+
+Trois observations à côté du chiffre : le verdict à six pistes n'atteint pas
+le point fixe en trois tours (`bass` et `piano` changent d'avis à chaque
+tour — la borne est dite au journal) ; le réglage au mélange rapporte encore
+−0,009 après le verdict ; et `guitar` (polyphonie 3,4, ambitus 74) comme
+`other` résiduel (3,8, 71) restent des FOURRE-TOUT au sens du seuil — la
+séparation à six sources réduit le problème, elle ne le ferme pas. C'est
+exactement l'espace de H23.
+
 ### H23 — diviser un stem polyphonique en VOIX ; écrite AVANT sa mesure
 
 Six stems ne suffiront pas : `other` restera un fourre-tout, plus maigre. La
