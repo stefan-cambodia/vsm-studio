@@ -39,6 +39,7 @@
 #include "modal/ModalSynth.h"
 #include "chebyshev/ChebyshevSynth.h"
 #include "scanned/ScannedSynth.h"
+#include "mellotron/MellotronSynth.h"
 #include "multisample/MultisampleSynth.h"
 
 namespace vsm::audio::plugin {
@@ -178,6 +179,7 @@ void registerBuiltInPlugins() {
         vsm::plugins::chebyshev::ChebyshevSynth forceLinkChebyshev;
         (void)forceLinkChebyshev;
         vsm::plugins::scanned::ScannedSynth forceLinkScanned;
+        vsm::plugins::mellotron::MellotronSynth forceLinkMellotron;
         (void)forceLinkScanned;
     }
     {

@@ -3407,6 +3407,70 @@ MachinePanel makeScanned() {
     return panel;
 }
 
+/// `vsm.mellotron` -- la bande qui finit. La façade met en premier ce que
+/// personne n'a l'habitude de régler sur un synthétiseur : LA LONGUEUR DE
+/// BANDE, en grand, parce que sur cette machine c'est elle qui décide
+/// combien de temps une note existe. Le musicien qui ouvre ce panneau doit
+/// comprendre en un regard qu'il tient un TRANSPORT, pas un oscillateur.
+///
+/// Livrée bois et crème, la robe du M400. Le bois n'a rien de distinctif
+/// dans ce parc -- une dizaine de façades en portent déjà -- mais la teinte
+/// claire et l'accent orangé la séparent nettement de ses voisines de rack,
+/// ce qui importe ici plus qu'ailleurs : l'effet d'insert « Tape » porte
+/// presque le même nom et fait tout autre chose (il SATURE une bande, il
+/// n'en lit pas une).
+MachinePanel makeMellotron() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.mellotron";
+    panel.displayName = "Mellotron (la bande qui finit)";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#241A12";
+    panel.sectionColour = "#1B130D";
+    panel.textColour = "#F2E4CE";
+    panel.knobColour = "#D9B98A";
+    panel.gridColumns = 16;
+    panel.gridRows = 4;
+
+    PanelSection transport;
+    transport.title = "TAPE";
+    transport.accentColour = "#D9B98A";
+    transport.column = 0; transport.row = 0; transport.columnSpan = 5; transport.rowSpan = 4;
+    transport.controls = {
+        control("Tape Length", "LENGTH", S::LargeKnob, 0, 0),
+        control("Rewind Time", "REWIND", S::Knob, 1, 0),
+        control("Tape Hiss", "HISS", S::Knob, 0, 1),
+    };
+
+    PanelSection pleurage;
+    pleurage.title = "WOW & FLUTTER";
+    pleurage.accentColour = "#C98F5A";
+    pleurage.column = 5; pleurage.row = 0; pleurage.columnSpan = 5; pleurage.rowSpan = 4;
+    pleurage.controls = {
+        control("Wow Depth", "WOW", S::Knob, 0, 0),
+        control("Wow Rate", "RATE", S::Knob, 1, 0),
+        control("Flutter Depth", "FLUTTER", S::Knob, 0, 1),
+        control("Velocity Sensitivity", "VEL", S::Knob, 1, 1),
+    };
+
+    PanelSection couleur;
+    couleur.title = "TONE";
+    couleur.accentColour = "#B8C98A";
+    couleur.column = 10; couleur.row = 0; couleur.columnSpan = 6; couleur.rowSpan = 4;
+    couleur.controls = {
+        control("Tone", "TONE", S::Knob, 0, 0),
+        control("Filter Cutoff", "CUTOFF", S::Knob, 1, 0),
+        control("Attack", "A", S::VerticalSlider, 2, 0),
+        control("Decay", "D", S::VerticalSlider, 3, 0),
+        control("Sustain", "S", S::VerticalSlider, 4, 0),
+        control("Release", "R", S::VerticalSlider, 5, 0),
+        control("Filter Resonance", "RESO", S::Knob, 0, 1),
+        control("Output Level", "VOLUME", S::Knob, 1, 1),
+    };
+
+    panel.sections = {transport, pleurage, couleur};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
@@ -3415,7 +3479,7 @@ const std::vector<MachinePanel>& panels() {
         makePiano(), makeDrums(), makeWind(), makeMultisample(),
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
         makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev(),
-        makeScanned()
+        makeScanned(), makeMellotron()
     };
     return all;
 }

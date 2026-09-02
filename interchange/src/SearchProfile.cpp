@@ -157,6 +157,19 @@ constexpr Rule kRules[] = {
     {"scanned.damping",                    0.0f,     0.3f, SearchScale::Linear,      0.96f},
     {"scanned.tension",                    0.02f,    1.0f, SearchScale::Logarithmic, 0.88f},
     {"scanned.centering",                  0.0f,     0.5f, SearchScale::Linear,      0.64f},
+    // LECTURE DE BANDE (vsm.mellotron). La LONGUEUR DE BANDE commande, et
+    // d'une façon qu'aucun autre réglage du parc ne partage : elle ne change
+    // pas le timbre, elle décide COMBIEN DE TEMPS une note existe. Une nappe
+    // tenue de six secondes et une bande de trois, et la moitié de la phrase
+    // disparaît -- aucun ajustement de filtre ne rattrape cela, donc c'est le
+    // premier axe à balayer. Le pleurage vient ensuite : c'est lui qui donne
+    // le grain, et il s'entend tout de suite. Le rembobinage ferme la marche,
+    // son effet ne se voyant que sur les reprises rapprochées.
+    {"tape.length",                        1.0f,    20.0f, SearchScale::Logarithmic, 0.97f},
+    {"tape.wowDepth",                      0.0f,    45.0f, SearchScale::Linear,      0.80f},
+    {"tape.hiss",                          0.0f,     0.6f, SearchScale::Linear,      0.58f},
+    {"tape.wowRate",                       0.1f,     3.0f, SearchScale::Logarithmic, 0.50f},
+    {"tape.rewindTime",                    0.1f,     4.0f, SearchScale::Logarithmic, 0.34f},
     // Famille du VENT (vsm.wind). Comme sur la corde, ce qui fait le timbre
     // est d'abord ce qui se perd (le rayonnement au pavillon) et la raideur de
     // ce qui entretient (l'anche ou les lèvres) ; la pression de souffle vient

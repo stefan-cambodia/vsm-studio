@@ -355,6 +355,34 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Velocity Sensitivity", "voice.velocitySensitivity"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.mellotron ---
+    // Le vocabulaire du TRANSPORT n'existe nulle part ailleurs et prend donc
+    // un espace à lui : longueur de bande, temps de rembobinage, pleurage et
+    // scintillement décrivent une mécanique, pas un son. Le TON, lui, est
+    // exactement celui d'un échantillon lu (`sample.1.tone`, de la famille
+    // de l'échantillonneur) et le réemploie, comme le § 4 le demande : un
+    // preset qui sait rendre une bande sourde saura rendre celle-ci sourde.
+    // Attention à ne pas confondre `tape.*` avec `effect.tape.*` : le second
+    // est la SATURATION de bande, un effet d'insert, et les deux se sont
+    // trouvés côte à côte le jour où cette machine est née -- c'est d'ailleurs
+    // pourquoi elle s'appelle `vsm.mellotron` et non `vsm.tape`.
+    {"vsm.mellotron", {
+        {"Tape Length", "tape.length"},
+        {"Rewind Time", "tape.rewindTime"},
+        {"Wow Depth", "tape.wowDepth"},
+        {"Wow Rate", "tape.wowRate"},
+        {"Flutter Depth", "tape.flutterDepth"},
+        {"Tone", "sample.1.tone"},
+        {"Tape Hiss", "tape.hiss"},
+        {"Filter Cutoff", "filter.1.cutoff"},
+        {"Filter Resonance", "filter.1.resonance"},
+        {"Attack", "envelope.1.attack"},
+        {"Decay", "envelope.1.decay"},
+        {"Sustain", "envelope.1.sustain"},
+        {"Release", "envelope.1.release"},
+        {"Velocity Sensitivity", "voice.velocitySensitivity"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.multisample ---
     // Peu de paramètres, et TOUS canoniques : le timbre de cette machine vient
     // des échantillons, pas des réglages. `voice.velocitySensitivity` est

@@ -534,6 +534,52 @@ Le parc passe à **41 machines** (965 paramètres nommés, 1 302 tests
 verts) — le compteur du dépôt recense toutes les entrées du registre, y
 compris `vsm.testtone`, qui n'est pas un instrument mais sert de mire.
 
+**Et une septième, qui n'apporte pas un timbre mais un COMPORTEMENT.**
+`vsm.mellotron` ouvre la **lecture de bande**. Le parc lit déjà des
+échantillons de trois façons (`vsm.sampler`, `vsm.multisample`,
+`vsm.pcmhybrid`), et toutes les trois se comportent comme un ordinateur :
+la note tenue dure aussi longtemps qu'on la tient, et transposer relit
+l'enregistrement plus vite. Un Mellotron ne fait ni l'un ni l'autre, et
+c'est de là que vient sa manière de jouer :
+
+1. **La bande FINIT.** Huit secondes sous chaque touche, puis plus rien —
+   l'enveloppe a beau tenir son sustain, il n'y a plus de bande. Aucune
+   autre machine du parc ne s'interrompt d'elle-même, et le fait se lit
+   jusque dans son empreinte de non-régression, dont la sixième fenêtre
+   de RMS vaut exactement 0,000000.
+2. **Une bande par touche, donc pas de transposition** : jouer deux
+   octaves plus haut ne raccourcit pas la durée disponible, là où un
+   échantillonneur qui transpose passerait de huit secondes à deux.
+3. **Chaque brin a son défaut d'entraînement** : deux touches tenues
+   ensemble ne pleurent pas en mesure — le contraire exact d'un LFO de
+   vibrato, qui les ferait onduler à l'unisson.
+4. **Le retour de la tête prend du temps** : rejouer avant la fin du
+   rembobinage reprend la lecture où elle en était, et la seconde note
+   dure moins que la première.
+
+**L'APPROXIMATION EST GROSSE ET ELLE EST ASSUMÉE** (§ 8, statut
+« inspiré ») : le CONTENU de la bande n'est pas un enregistrement mais une
+petite banque de partiels avec son souffle. Ce que cette machine apporte
+au parc est le comportement du TRANSPORT, non le timbre d'un orchestre de
+1963 ; qui veut le timbre passe par `vsm.multisample` et ses 141 profils,
+qui veut le comportement vient ici. Le dire est la condition pour que la
+machine ne mente pas sur ce qu'elle est — et c'est aussi pourquoi il ne
+faut rien attendre d'elle à l'arbitrage tant qu'un profil ne lui donne pas
+un vrai contenu.
+
+**Elle a coûté une décision de nommage, et pas une coquetterie.** Elle
+s'est d'abord appelée `vsm.tape`, jusqu'à ce que la suite de tests fasse
+apparaître, côte à côte, `tape_mix_zero_is_passthrough` — qui appartient à
+l'EFFET d'insert « Tape », une saturation de bande. Deux objets presque
+homonymes qui font des choses opposées (l'un lit une bande, l'autre la
+sature) : le musicien qui ouvre son menu ne pouvait pas les distinguer.
+La machine porte donc le nom de l'instrument, comme `vsm.minimoog` ou
+`vsm.cs80`, et ses identités sémantiques gardent le préfixe `tape.` pour
+le transport, distinct de `effect.tape.` pour la saturation.
+
+Le parc passe à **42 machines** (980 paramètres nommés, 1 314 tests
+verts).
+
 Les rangs 1, 3 et 6 comblent des **trous de couverture** : sans eux, des stems
 entiers n'ont aucune machine cible. Les rangs 2, 4 et 5 élargissent surtout la
 palette de jeu — utiles, mais à ne pas confondre avec un gain de reconstruction.

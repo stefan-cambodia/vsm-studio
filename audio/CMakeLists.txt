@@ -54,6 +54,7 @@ add_library(vsm_audio STATIC
     plugins/modal/ModalSynth.cpp
     plugins/chebyshev/ChebyshevSynth.cpp
     plugins/scanned/ScannedSynth.cpp
+    plugins/mellotron/MellotronSynth.cpp
     plugins/multisample/MultisampleSynth.cpp
 )
 
@@ -159,6 +160,7 @@ if (VSM_BUILD_TESTS)
         tests/test_modal_synth.cpp
         tests/test_chebyshev_synth.cpp
         tests/test_scanned_synth.cpp
+        tests/test_mellotron_synth.cpp
         tests/test_multisample_synth.cpp
         tests/test_midi_learn.cpp
         tests/test_effect_routing.cpp

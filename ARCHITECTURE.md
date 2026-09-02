@@ -3674,6 +3674,39 @@ notes distantes de deux octaves — et le test dit désormais cela.
 
 Le parc passe à **41 machines**.
 
+**ET UNE SEPTIÈME : `vsm.mellotron`, la seule machine du parc qui S'ARRÊTE
+TOUTE SEULE.** Elle n'apporte pas un timbre mais un COMPORTEMENT, celui d'un
+transport à bande, et c'est un genre d'apport dont l'architecture n'avait pas
+encore d'exemple. Sous chaque touche, huit secondes de bande : la touche
+appuyée, la tête lit ; huit secondes plus tard il n'y a plus rien à lire, et
+le son cesse quoi qu'en dise l'enveloppe. Le fait se lit jusque dans son
+empreinte de non-régression, dont la sixième fenêtre de RMS vaut exactement
+0,000000 — une empreinte qui porte la signature de la machine au lieu de
+seulement la surveiller.
+
+**Trois conséquences que le code a dû absorber.** D'abord, `isActive()` d'une
+voix ne peut plus se réduire à « l'enveloppe tourne » : une voix dont la bande
+est finie doit se déclarer LIBRE, sans quoi une note tenue immobiliserait sa
+voix pour toujours. Ensuite, l'état ne vit pas dans la voix mais dans la
+TOUCHE — un tableau de 128 positions au niveau du synthé — parce que la bande
+continue de se rembobiner après que la note s'est tue ; c'est ce qui permet au
+quatrième trait d'exister (rejouer avant la fin du rembobinage donne une note
+plus courte). Enfin le pleurage est tiré du NUMÉRO DE TOUCHE et non d'un LFO
+commun : deux touches tenues ensemble ne pleurent pas en mesure, ce qui donne
+le grain de l'instrument, tout en restant déterministe au bit près comme la
+règle du parc l'exige.
+
+**Et une leçon de nommage, payée par la suite de tests.** La machine s'est
+d'abord appelée `vsm.tape`, jusqu'à ce que la sortie des tests fasse
+apparaître côte à côte ses tests et ceux de l'EFFET d'insert « Tape », qui
+SATURE une bande au lieu d'en lire une. Deux objets presque homonymes aux
+fonctions opposées, que le musicien ne pouvait pas distinguer dans son menu.
+La machine porte donc le nom de l'instrument — la convention du parc depuis
+`vsm.minimoog` — et le préfixe sémantique `tape.` reste réservé au transport,
+`effect.tape.` à la saturation.
+
+Le parc passe à **42 machines**.
+
 ---
 
 ## 29. Façades « façon hardware », machine par machine (sections 6 et 21)
