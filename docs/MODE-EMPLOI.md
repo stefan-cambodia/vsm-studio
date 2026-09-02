@@ -162,6 +162,17 @@ Le pliage d'onde et la porte passe-bas de l'école Buchla.
 
 ![Façade de West Coast (pliage et porte passe-bas)](images/manuel/vsm.westcoast.png)
 
+**Scanned (la chaîne balayée)** — `vsm.scanned`
+
+Une chaîne de trente-deux masses qu'on pince et qui continue d'osciller pour
+son compte ; la forme d'onde est sa photographie, et la note ne décide que de
+la vitesse à laquelle on la lit. D'où le trait : **le timbre évolue à sa
+propre vitesse, sans rapport avec la note jouée** — deux octaves plus haut ne
+le fait pas bouger quatre fois plus vite. La chaîne est unique et partagée :
+deux notes tenues ensemble évoluent de concert.
+
+![Façade de Scanned (la chaîne balayée)](images/manuel/vsm.scanned.png)
+
 **Chebyshev (le spectre commandé)** — `vsm.chebyshev`
 
 Huit curseurs, un par harmonique : on écrit le spectre et on l'obtient
@@ -245,6 +256,37 @@ Guide d'ondes ; l'archet et le plectre sur la même corde.
 
 ![Façade de String (corde pincée / frottée)](images/manuel/vsm.string.png)
 
+**Sitar (les cordes qu'on ne joue pas)** — `vsm.sitar`
+
+Onze cordes sympathiques accordées sur une gamme, que le clavier ne touche
+jamais : l'instrument continue de sonner après que tout est relâché, et il
+choisit — une note accordée les réveille, une note à un demi-ton de là ne les
+trouve pas. Le chevalet est PLAT, si bien que le bourdonnement dépend de la
+force du jeu et non du temps : pincez doucement, il n'y en a aucun.
+
+![Façade de Sitar (les cordes qu'on ne joue pas)](images/manuel/vsm.sitar.png)
+
+**Membrane (la peau tendue)** — `vsm.membrane`
+
+Une peau, pas une corde : ses modes se placent sur les zéros de Bessel
+(1 · 1,59 · 2,14…) et non sur une série harmonique. Le bouton *Loading* est
+le disque de pâte du tabla : il ramène les modes vers des entiers, et fait
+passer d'une timbale — qui joue des bruits accordés — à un tambour qui joue
+des notes. Frappez au centre : tous les modes diamétraux disparaissent d'un
+coup.
+
+![Façade de Membrane (la peau tendue)](images/manuel/vsm.membrane.png)
+
+**Reed (l'anche libre)** — `vsm.reed`
+
+L'harmonium et l'accordéon : la lame bat DANS son cadre, sans tuyau pour lui
+dicter sa note. C'est la seule machine du rack où **souffler plus fort fait
+descendre la note** — une dizaine de cents sur la course du soufflet, comme
+sur l'instrument. Sous une certaine pression, l'anche ne parle pas du tout :
+ce n'est pas une panne, c'est le seuil.
+
+![Façade de Reed (l'anche libre)](images/manuel/vsm.reed.png)
+
 **Wind (anche et lèvres)** — `vsm.wind`
 
 Perce cylindrique : la clarinette et, en approche, les cuivres.
@@ -314,6 +356,17 @@ Huit emplacements déclenchés par note. Le report de la voix passe par là.
 Profils multi-échantillons installables ; l'orchestre General MIDI arrive par là.
 
 ![Façade de Multisample (acoustique échantillonné)](images/manuel/vsm.multisample.png)
+
+**Mellotron (la bande qui finit)** — `vsm.mellotron`
+
+Une bande magnétique par touche, et elle FINIT : huit secondes plus tard, le
+son s'arrête, quoi que dise l'enveloppe. Jouer plus haut ne raccourcit pas la
+bande (chaque touche a la sienne), chaque brin pleure à sa manière — deux
+notes tenues ne vibrent jamais ensemble —, et rejouer avant la fin du
+rembobinage donne une note plus courte. Ce n'est pas le timbre d'un orchestre
+de 1963 qu'on trouve ici, c'est le comportement du transport.
+
+![Façade de Mellotron (la bande qui finit)](images/manuel/vsm.mellotron.png)
 
 ### Utilitaire
 
