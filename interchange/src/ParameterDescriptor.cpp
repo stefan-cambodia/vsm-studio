@@ -383,6 +383,27 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Velocity Sensitivity", "voice.velocitySensitivity"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.sitar ---
+    // Les cordes SYMPATHIQUES n'ont aucun équivalent dans le parc et prennent
+    // un espace à elles ; le jawari aussi, parce qu'aucun autre réglage ne
+    // fait dépendre le timbre de l'AMPLITUDE. Tout le reste est du vocabulaire
+    // de corde, réemployé tel quel de `vsm.string` et `vsm.piano` (§ 4) : un
+    // preset qui sait pincer près du chevalet saura le faire ici.
+    {"vsm.sitar", {
+        {"Sympathetic Level", "sympathetic.level"},
+        {"Sympathetic Strings", "sympathetic.count"},
+        {"Sympathetic Decay", "sympathetic.decay"},
+        {"Sympathetic Root", "sympathetic.root"},
+        {"Sympathetic Damping", "sympathetic.damping"},
+        {"Jawari", "string.bridgeBuzz"},
+        {"String Decay", "string.decay"},
+        {"String Damping", "string.damping"},
+        {"Pick Position", "string.pickPosition"},
+        {"Filter Cutoff", "filter.1.cutoff"},
+        {"Filter Resonance", "filter.1.resonance"},
+        {"Velocity Sensitivity", "voice.velocitySensitivity"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.multisample ---
     // Peu de paramètres, et TOUS canoniques : le timbre de cette machine vient
     // des échantillons, pas des réglages. `voice.velocitySensitivity` est

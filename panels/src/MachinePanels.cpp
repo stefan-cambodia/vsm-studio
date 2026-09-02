@@ -3471,6 +3471,67 @@ MachinePanel makeMellotron() {
     return panel;
 }
 
+/// `vsm.sitar` -- les cordes qu'on ne joue pas. La façade donne la place
+/// d'honneur, à gauche et en grand, à une section que personne n'a l'habitude
+/// de voir sur un synthétiseur : SYMPATHETIC. Ce sont onze cordes que le
+/// clavier ne touche jamais, et c'est pourtant là que se joue le caractère de
+/// l'instrument — leur niveau, leur nombre, et surtout leur TONIQUE, qui
+/// décide quelles notes du morceau les réveilleront.
+///
+/// Le JAWARI a sa propre section malgré son unique potentiomètre, et c'est
+/// délibéré : ce bouton ne ressemble à aucun autre du parc, puisqu'il fait
+/// dépendre le timbre de la FORCE du jeu et non du temps. Le noyer dans la
+/// section des cordes l'aurait fait passer pour un réglage de tonalité.
+MachinePanel makeSitar() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.sitar";
+    panel.displayName = "Sitar (les cordes qu'on ne joue pas)";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#2A1C10";
+    panel.sectionColour = "#20150B";
+    panel.textColour = "#F6E7C8";
+    panel.knobColour = "#E0A34A";
+    panel.gridColumns = 16;
+    panel.gridRows = 4;
+
+    PanelSection sympa;
+    sympa.title = "SYMPATHETIC";
+    sympa.accentColour = "#E0A34A";
+    sympa.column = 0; sympa.row = 0; sympa.columnSpan = 7; sympa.rowSpan = 4;
+    sympa.controls = {
+        control("Sympathetic Level", "LEVEL", S::LargeKnob, 0, 0),
+        control("Sympathetic Root", "ROOT", S::Knob, 1, 0),
+        control("Sympathetic Strings", "STRINGS", S::Knob, 2, 0),
+        control("Sympathetic Decay", "DECAY", S::Knob, 0, 1),
+        control("Sympathetic Damping", "DAMPING", S::Knob, 1, 1),
+    };
+
+    PanelSection chevalet;
+    chevalet.title = "BRIDGE";
+    chevalet.accentColour = "#D9704A";
+    chevalet.column = 7; chevalet.row = 0; chevalet.columnSpan = 3; chevalet.rowSpan = 4;
+    chevalet.controls = {
+        control("Jawari", "JAWARI", S::LargeKnob, 0, 0),
+        control("Pick Position", "PICK", S::Knob, 0, 1),
+    };
+
+    PanelSection corde;
+    corde.title = "STRING";
+    corde.accentColour = "#C8C08A";
+    corde.column = 10; corde.row = 0; corde.columnSpan = 6; corde.rowSpan = 4;
+    corde.controls = {
+        control("String Decay", "DECAY", S::Knob, 0, 0),
+        control("String Damping", "DAMPING", S::Knob, 1, 0),
+        control("Filter Cutoff", "CUTOFF", S::Knob, 2, 0),
+        control("Filter Resonance", "RESO", S::Knob, 0, 1),
+        control("Velocity Sensitivity", "VEL", S::Knob, 1, 1),
+        control("Output Level", "VOLUME", S::Knob, 2, 1),
+    };
+
+    panel.sections = {sympa, chevalet, corde};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
@@ -3479,7 +3540,7 @@ const std::vector<MachinePanel>& panels() {
         makePiano(), makeDrums(), makeWind(), makeMultisample(),
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
         makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev(),
-        makeScanned(), makeMellotron()
+        makeScanned(), makeMellotron(), makeSitar()
     };
     return all;
 }

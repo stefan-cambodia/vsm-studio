@@ -3707,6 +3707,46 @@ La machine porte donc le nom de l'instrument — la convention du parc depuis
 
 Le parc passe à **42 machines**.
 
+**ET UNE HUITIÈME : `vsm.sitar`, qui comble un trou que ce document lui-même
+constatait.** Le § 28 renvoie la résonance sympathique à `vsm.piano`, dont
+l'en-tête l'écarte comme approximation assumée ; le CDC du multisample fait de
+même. Trois textes se renvoyaient la balle, et le parc n'avait toujours
+**aucune machine capable de produire du son sur une corde qu'on n'a pas
+touchée**. Onze cordes accordées sur les degrés d'une gamme, jamais pincées,
+excitées par un couplage faible depuis le chevalet : l'instrument continue de
+sonner après le silence des notes, et il le fait de façon SÉLECTIVE — une note
+accordée les réveille, une note à un demi-ton de là ne les trouve pas. Sans
+cette seconde moitié, on aurait seulement fabriqué une réverbe accordée, et le
+test la mesure pour cette raison.
+
+**LE COUPLAGE EST À SENS UNIQUE, ET LE CHOIX EST ARGUMENTÉ.** Sur l'instrument,
+les sympathiques renvoient un peu d'énergie vers la corde jouée. Ici elles
+écoutent sans répondre, parce qu'un couplage bidirectionnel entre douze
+résonateurs à gain proche de un est exactement la famille de montages dont les
+§ 33 et § 44 racontent cinq divergences. Le sens unique est stable par
+construction ; qui voudra la rétroaction devra d'abord écrire comment il borne
+son gain de boucle.
+
+**ET UNE LEÇON DE BANC QUI VAUT POUR TOUT LE DÉPÔT.** Le jawari — le chevalet
+plat, dont le contact intermittent fait le bourdonnement — a été refait deux
+fois sur la foi d'une mesure, puis une troisième fois... alors que le modèle
+était devenu correct. Le centroïde spectral tronqué à 8 kHz DESCENDAIT (1941 →
+1597 Hz) quand le contact s'engageait, et accusait le modèle ; le spectre par
+bandes a montré que le contact multipliait par 35 l'énergie entre 5 et 12 kHz
+tout en épaississant le grave d'un cinquième, et que c'était ce grave qui
+tirait le chiffre agrégé vers le bas.
+
+C'est le troisième cas en deux jours, après l'estimateur du saxophone (§ 44,
+qui lisait les jupes à la fréquence DEMANDÉE) et la « brillance » de
+`vsm.scanned` (l'énergie de la dérivée, dominée par la fréquence de lecture).
+**Règle qui s'en dégage : avant de conclure qu'un modèle est faux, vérifier que
+la mesure regarde là où l'effet est censé se produire.** Un chiffre agrégé
+cache par construction ce qui bouge dans une bande étroite — et la moitié du
+travail sur une machine consiste à s'assurer que l'instrument de mesure
+regarde ce qu'on croit.
+
+Le parc passe à **43 machines**.
+
 ---
 
 ## 29. Façades « façon hardware », machine par machine (sections 6 et 21)

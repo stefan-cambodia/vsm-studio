@@ -170,6 +170,20 @@ constexpr Rule kRules[] = {
     {"tape.hiss",                          0.0f,     0.6f, SearchScale::Linear,      0.58f},
     {"tape.wowRate",                       0.1f,     3.0f, SearchScale::Logarithmic, 0.50f},
     {"tape.rewindTime",                    0.1f,     4.0f, SearchScale::Logarithmic, 0.34f},
+    // CORDES SYMPATHIQUES (vsm.sitar). Le NIVEAU des sympathiques commande :
+    // c'est lui qui décide si l'instrument traîne une queue de résonance ou
+    // sonne comme une corde ordinaire, et l'écart entre les deux est le plus
+    // audible de la machine. Vient ensuite le JAWARI, qui fait tout le grain
+    // du timbre (×30 sur la bande 5–12 kHz d'un extrême à l'autre). La
+    // TONIQUE compte moins qu'on ne croirait à l'oreille mais beaucoup pour
+    // une recherche, puisque c'est elle qui décide quelles notes du morceau
+    // trouveront une corde : elle est cherchée en LINÉAIRE sur les demi-tons,
+    // et non en logarithmique, parce que c'est un numéro de note.
+    {"sympathetic.level",                  0.0f,     1.0f, SearchScale::Linear,      0.94f},
+    {"string.bridgeBuzz",                  0.0f,     1.0f, SearchScale::Linear,      0.86f},
+    {"sympathetic.root",                  28.0f,    64.0f, SearchScale::Linear,      0.78f},
+    {"sympathetic.decay",                  1.0f,    20.0f, SearchScale::Logarithmic, 0.60f},
+    {"sympathetic.count",                  1.0f,    13.0f, SearchScale::Linear,      0.36f},
     // Famille du VENT (vsm.wind). Comme sur la corde, ce qui fait le timbre
     // est d'abord ce qui se perd (le rayonnement au pavillon) et la raideur de
     // ce qui entretient (l'anche ou les lèvres) ; la pression de souffle vient

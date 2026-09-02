@@ -40,6 +40,7 @@
 #include "chebyshev/ChebyshevSynth.h"
 #include "scanned/ScannedSynth.h"
 #include "mellotron/MellotronSynth.h"
+#include "sitar/SitarSynth.h"
 #include "multisample/MultisampleSynth.h"
 
 namespace vsm::audio::plugin {
@@ -180,6 +181,7 @@ void registerBuiltInPlugins() {
         (void)forceLinkChebyshev;
         vsm::plugins::scanned::ScannedSynth forceLinkScanned;
         vsm::plugins::mellotron::MellotronSynth forceLinkMellotron;
+        vsm::plugins::sitar::SitarSynth forceLinkSitar;
         (void)forceLinkScanned;
     }
     {

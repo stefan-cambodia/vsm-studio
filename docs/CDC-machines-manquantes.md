@@ -580,6 +580,54 @@ le transport, distinct de `effect.tape.` pour la saturation.
 Le parc passe à **42 machines** (980 paramètres nommés, 1 314 tests
 verts).
 
+**Et une huitième, qui comble un trou que TROIS documents constataient sans
+le combler.** « Aucune résonance sympathique entre notes » est une
+approximation assumée de `vsm.piano`, écrite dans son en-tête ; le § 28
+d'ARCHITECTURE range la question du côté de la modélisation en la renvoyant
+à cette machine-là ; le CDC du multisample l'écarte à son tour. Résultat :
+**aucune machine du parc ne produisait de son sur une corde qu'on n'a pas
+touchée**, alors que c'est la définition d'une famille entière — sitar,
+tampura, viole d'amour, hardanger. `vsm.sitar` la comble, avec deux traits
+mesurés :
+
+1. **Les cordes sympathiques survivent à la note.** Tout relâché, la corde
+   jouée étouffée depuis deux secondes, l'instrument sonne encore. Et la
+   réponse est SÉLECTIVE, ce qui est le phénomène même et non une réverbe :
+   une note accordée sur une corde la met en branle, une note à un demi-ton
+   de là ne la trouve pas (le test exige un facteur trois entre les deux).
+2. **Le jawari fait dépendre le timbre de l'AMPLITUDE, pas du temps.** Le
+   chevalet du sitar est plat : la corde qui vibre fort vient le toucher une
+   fois par cycle, et chaque contact est un choc. Mesuré sur la bande
+   5–12 kHz, du plus doux au plus fort : **1,00 · 1,67 · 22,7 · 34,8 ·
+   29,9**. À vélocité 6, le même réglage ne fait RIEN — pas « presque
+   rien » : exactement 1,00. Aucune enveloppe de filtre ne produit cela,
+   puisqu'une enveloppe suit le temps et ferait le même écart à toutes les
+   vélocités.
+
+**ELLE A COÛTÉ TROIS MÉTRIQUES FAUSSES, ET C'EST LA LEÇON À GARDER.** Le
+modèle du chevalet a été refait deux fois parce que la mesure disait qu'il
+assombrissait le son : une compression douce (centroïde 1495 → 1448 Hz),
+puis un écrêtage dur (0,971 à quatre secondes de décroissance, en retirant
+un cinquième de l'énergie). Ces deux-là étaient bien de mauvais modèles —
+arrondir ou raboter une crête ENLÈVE des harmoniques. Mais le troisième,
+lui, était JUSTE, et la métrique continuait de le condamner : le centroïde
+spectral, tronqué à 8 kHz, DESCENDAIT (1941 → 1597 Hz). Le spectre par
+bandes a montré pourquoi — le contact multiplie par 35 l'énergie de 5 à
+12 kHz, mais épaissit aussi le grave d'un cinquième, et c'est ce grave qui
+tirait le centroïde vers le bas.
+
+C'est la troisième fois en deux jours qu'un instrument de mesure fait
+accuser un modèle correct — après le saxophone (§ 44 : l'estimateur qui
+lisait les jupes à la fréquence DEMANDÉE) et la synthèse balayée (l'énergie
+de la dérivée, aveugle à l'évolution du timbre). **La règle qui s'en dégage
+mérite d'être écrite une fois pour toutes : avant de conclure qu'un modèle
+est faux, vérifier que la mesure regarde là où l'effet est censé se
+produire.** Un chiffre agrégé — un centroïde, une énergie totale — cache
+par construction ce qui bouge dans une bande étroite.
+
+Le parc passe à **43 machines** (993 paramètres nommés, 1 326 tests
+verts).
+
 Les rangs 1, 3 et 6 comblent des **trous de couverture** : sans eux, des stems
 entiers n'ont aucune machine cible. Les rangs 2, 4 et 5 élargissent surtout la
 palette de jeu — utiles, mais à ne pas confondre avec un gain de reconstruction.
