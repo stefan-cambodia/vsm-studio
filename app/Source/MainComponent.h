@@ -89,6 +89,10 @@ public:
     /// Ouvre un projet pour l'autoportrait, et DIT si elle n'y arrive pas :
     /// le mode capture est piloté depuis un terminal, où une alerte graphique
     /// ne se voit pas.
+    /// Importe un projet d'un autre DAW et rend le compte rendu affiché, pour
+    /// que l'autoportrait puisse le montrer sans souris (VSM_IMPORT).
+    bool importDawProjectForCapture(const juce::File& fichier);
+
     bool openProjectFolderForCapture(const juce::File& dossier) {
         const auto lu = vsm::interchange::loadProjectBundle(dossier.getFullPathName().toStdString());
         if (!lu.success) return false;
@@ -122,6 +126,7 @@ private:
         kMenuFileNewProject = 1,
         kMenuFileOpen,
         kMenuFileOpenBundle,
+        kMenuFileImportDaw,
         kMenuFileSave,
         kMenuFileSaveAs,
         kMenuFileLoadReference,
@@ -423,6 +428,14 @@ private:
     /// reconstruction qui vient de l'écrire — D9.3).
     /// `mediaFolder` diffère de `folder` pour une session récupérée : le
     /// projet vient de sa copie de travail, les médias de leur vrai dossier.
+    /// Ouvre le sélecteur, importe, applique et MONTRE LE RAPPORT.
+    void importDawProject();
+    /// Applique un import déjà lu. Séparé du sélecteur pour la même raison que
+    /// `loadProjectBundleFromFolder` : un import doit pouvoir arriver sans que
+    /// personne ait cliqué (capture, ligne de commande), et suivre exactement
+    /// le même chemin.
+    bool applyDawImport(const juce::File& fichier);
+
     void loadProjectBundleFromFolder(const juce::File& folder,
                                       const juce::File& mediaFolder = juce::File());
     /// Charge l'enregistrement d'origine comme piste de référence, pour

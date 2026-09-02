@@ -98,6 +98,20 @@ public:
                                 + dossier.getFullPathName().toStdString()
                                 + " — la capture montrera le projet par défaut\n").c_str(), stderr);
             }
+            // VSM_IMPORT=fichier : importer un projet d'un autre DAW au
+            // démarrage. Même raison d'être que VSM_PROJET — sans cela, cet
+            // écran ne serait vérifiable qu'à la souris, et le dépôt refuse
+            // de déclarer une interface invérifiable.
+            if (const char* aImporter = std::getenv("VSM_IMPORT");
+                aImporter != nullptr && *aImporter) {
+                const juce::File fichier =
+                    juce::File::getCurrentWorkingDirectory().getChildFile(aImporter);
+                if (!fichier.existsAsFile())
+                    std::fputs(("VSM_IMPORT : fichier introuvable — "
+                                + fichier.getFullPathName().toStdString() + "\n").c_str(), stderr);
+                else
+                    content->importDawProjectForCapture(fichier);
+            }
             if (const char* vues = std::getenv("VSM_VUE"); vues != nullptr && *vues) {
                 juce::StringArray liste;
                 liste.addTokens(juce::String::fromUTF8(vues), ",", "");

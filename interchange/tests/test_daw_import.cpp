@@ -493,3 +493,27 @@ VSM_TEST(un_format_inconnu_est_refuse_en_nommant_ce_qui_est_su_lire) {
     VSM_ASSERT(message.find("Ableton") != std::string::npos);
     VSM_ASSERT(message.find("FL Studio") != std::string::npos);
 }
+
+// --- Ce que la capture d'écran a trouvé et que les tests ne voyaient pas ---
+
+VSM_TEST(un_import_pose_un_clip_sinon_l_arrangement_parait_vide) {
+    // DÉFAUT TROUVÉ EN OUVRANT L'APPLICATION, pas ici : une piste porte son
+    // MATÉRIAU (les notes) et des CLIPS, qui sont des fenêtres posées dessus.
+    // La vue d'arrangement dessine les CLIPS. Un import sans clip donnait donc
+    // un arrangement parfaitement vide alors que toutes les notes étaient là,
+    // et le musicien concluait que l'import avait échoué.
+    //
+    // Aucun des tests d'import ne regardait l'arrangement ; celui-ci le fait.
+    for (const auto& resultat : {importDawProject(kAlsGzip),
+                                 importDawProject(kFlp)}) {
+        VSM_ASSERT(!resultat.project.tracks.empty());
+        for (const auto& piste : resultat.project.tracks) {
+            if (piste.notes.empty()) continue;
+            VSM_ASSERT(!piste.clips.empty());
+            // Une fenêtre qui couvre TOUT : longueurs à zéro, ce qui signifie
+            // « jusqu'à la fin du matériau » dans ce modèle.
+            VSM_ASSERT_EQ(piste.clips[0].startTick, vsm::midi::Tick(0));
+            VSM_ASSERT_EQ(piste.clips[0].sourceLength, vsm::midi::Tick(0));
+        }
+    }
+}

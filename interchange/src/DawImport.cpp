@@ -43,6 +43,31 @@ uint32_t couleurDepuisIndice(int indice) {
     return kPalette[static_cast<size_t>(indice) % (sizeof(kPalette) / sizeof(kPalette[0]))];
 }
 
+/// POSE UN CLIP SUR LE MATÉRIAU IMPORTÉ, et c'est indispensable.
+///
+/// Une piste de VSM Studio porte deux choses : son MATÉRIAU (les notes) et des
+/// CLIPS, qui sont des fenêtres posées sur ce matériau. La vue d'arrangement
+/// dessine les CLIPS. Une piste importée avec ses notes mais sans clip est
+/// donc parfaitement muette à l'écran : l'arrangement paraît VIDE alors que
+/// tout est là, et le musicien croit que l'import a échoué.
+///
+/// Le défaut a été vu en ouvrant l'application, pas dans les tests — aucun des
+/// tests d'import ne regarde l'arrangement. On pose donc une fenêtre qui
+/// couvre tout (`sourceLength` et `length` à zéro signifient « jusqu'à la fin
+/// du matériau »), ce qui est exactement ce que le format d'origine décrit :
+/// des notes posées sur une ligne de temps.
+void poserUnClipSurLeMateriau(Track& piste) {
+    if (piste.notes.empty()) return;
+    vsm::sequencer::Clip clip;
+    clip.sourceStart = 0;
+    clip.sourceLength = 0;
+    clip.startTick = 0;
+    clip.length = 0;
+    clip.name = piste.name;
+    clip.colorRgba = piste.colorRgba;
+    piste.clips.push_back(std::move(clip));
+}
+
 /// Lit les notes d'un clip et les ajoute à la piste.
 ///
 /// LA STRUCTURE D'UN `.als` EST PROFONDE ET CHANGE D'UNE VERSION À L'AUTRE :
@@ -163,6 +188,7 @@ DawImportResult importAbletonLive(const std::vector<uint8_t>& octets) {
         rapport.notesImported += notesDeLaPiste;
         ++rapport.midiTracksImported;
         ++rapport.tracksWithoutInstrument;
+        poserUnClipSurLeMateriau(piste);
         rapport.note("Piste MIDI « " + piste.name + " » : " + std::to_string(notesDeLaPiste)
                      + " note(s) reprise(s), AUCUN instrument assigné — l'instrument du projet "
                        "d'origine n'existe pas ici et ses réglages n'ont pas d'équivalent");
@@ -437,6 +463,7 @@ DawImportResult importFlStudio(const std::vector<uint8_t>& octets) {
         piste.colorRgba = couleurDepuisIndice(static_cast<int>(c));
         std::sort(piste.notes.begin(), piste.notes.end(),
                   [](const Note& a, const Note& b) { return a.startTick < b.startTick; });
+        poserUnClipSurLeMateriau(piste);
         ++rapport.midiTracksImported;
         ++rapport.tracksWithoutInstrument;
         rapport.note("Canal « " + piste.name + " » : " + std::to_string(piste.notes.size())
@@ -624,6 +651,7 @@ DawImportResult importCubaseTrackArchive(const std::vector<uint8_t>& octets) {
     for (auto& piste : projet.tracks) {
         std::sort(piste.notes.begin(), piste.notes.end(),
                   [](const Note& a, const Note& b) { return a.startTick < b.startTick; });
+        poserUnClipSurLeMateriau(piste);
         ++rapport.midiTracksImported;
         ++rapport.tracksWithoutInstrument;
         rapport.note("Piste « " + piste.name + " » : " + std::to_string(piste.notes.size())

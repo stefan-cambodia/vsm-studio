@@ -1,4 +1,5 @@
 #include "MainComponent.h"
+#include "vsm/interchange/DawImport.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include "vsm/midi/MidiFileParser.h"
@@ -1017,6 +1018,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuFileNewProject, "Nouveau projet");
             menu.addItem(kMenuFileOpen, "Ouvrir MIDI...");
             menu.addItem(kMenuFileOpenBundle, "Ouvrir un projet VSM...");
+            menu.addItem(kMenuFileImportDaw,
+                         u8"Importer un projet (Ableton, FL Studio, Cubase)...");
             menu.addItem(kMenuFileSave, "Enregistrer" +
                           juce::String(currentProjectFolder_ == juce::File() ? "..." : "")
                           + " (Ctrl+S)");
@@ -1381,6 +1384,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuFileNewProject: newProject(); break;
         case kMenuFileOpen:      openMidiFile(); break;
         case kMenuFileOpenBundle: openProjectBundle(); break;
+        case kMenuFileImportDaw: importDawProject(); break;
         case kMenuFileSave:      saveProject(); break;
         case kMenuFileSaveAs:    saveProjectAs(); break;
         case kMenuFileLoadReference: loadReferenceAudio(); break;
@@ -2449,6 +2453,77 @@ void MainComponent::openProjectBundle() {
         if (folder == juce::File()) return;
         loadProjectBundleFromFolder(folder);
     });
+}
+
+/// IMPORTER UN PROJET FAIT AILLEURS (docs/CDC-import-daw.md).
+///
+/// Le sélecteur accepte les trois formats lisibles ET le `.cpr` — non pour le
+/// lire, mais pour pouvoir EXPLIQUER. Un musicien qui vient de Cubase cherche
+/// son `.cpr` : ne pas l'afficher du tout le laisserait croire que
+/// l'application ne l'a pas vu, alors que le message a quelque chose d'utile à
+/// lui dire (l'archive de pistes, l'export MIDI).
+void MainComponent::importDawProject() {
+    auto chooser = std::make_shared<juce::FileChooser>(
+        juce::String::fromUTF8("Importer un projet d'un autre DAW..."), juce::File(),
+        "*.als;*.flp;*.xml;*.cpr");
+    chooser->launchAsync(juce::FileBrowserComponent::openMode
+                             | juce::FileBrowserComponent::canSelectFiles,
+                         [this, chooser](const juce::FileChooser& fc) {
+        const juce::File fichier = fc.getResult();
+        if (fichier == juce::File()) return;
+        applyDawImport(fichier);
+    });
+}
+
+/// APPLIQUE UN IMPORT, ET MONTRE SON RAPPORT DANS TOUS LES CAS.
+///
+/// Le rapport n'est pas un journal de mise au point : c'est une partie du
+/// résultat (§ 0 du CDC). Un import réussi qui ne dirait pas « ces pistes
+/// n'ont aucun instrument » ferait chercher pendant des heures pourquoi le
+/// projet est muet.
+bool MainComponent::applyDawImport(const juce::File& fichier) {
+    vsm::interchange::DawImportResult resultat;
+    try {
+        resultat = vsm::interchange::importDawProjectFile(fichier.getFullPathName().toStdString());
+    } catch (const std::exception& erreur) {
+        // LE MESSAGE DU LECTEUR EST MONTRÉ TEL QUEL, et c'est voulu : pour un
+        // `.cpr` il nomme les deux chemins praticables, ce qu'aucun « échec de
+        // l'import » générique ne ferait.
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::WarningIcon,
+            juce::String::fromUTF8("Import impossible"),
+            juce::String::fromUTF8(erreur.what()));
+        std::fputs((std::string("Import : ") + erreur.what() + "\n").c_str(), stderr);
+        return false;
+    }
+
+    history_.clear();
+    project_ = resultat.project;
+    currentProjectFolder_ = juce::File();   // un import n'a pas de dossier à réécrire
+    if (auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
+        window->setName(juce::String::fromUTF8("Vintage Synth MIDI Studio -- ")
+                        + fichier.getFileNameWithoutExtension());
+    rebuildFromProject();
+
+    juce::String texte;
+    texte << juce::String::fromUTF8(resultat.report.sourceFormat.c_str())
+          << juce::String::fromUTF8(" -- ") << juce::String::fromUTF8(resultat.report.sourceVersion.c_str())
+          << "\n\n";
+    for (const auto& ligne : resultat.report.lines)
+        texte << juce::String::fromUTF8(ligne.c_str()) << "\n";
+    juce::AlertWindow::showMessageBoxAsync(
+        juce::AlertWindow::InfoIcon,
+        juce::String::fromUTF8("Rapport d'import"), texte);
+    // AU TERMINAL AUSSI : la capture d'écran ne montre pas une alerte
+    // asynchrone, et c'est la seule façon de vérifier cet écran sans souris.
+    std::fputs(("Import : " + resultat.report.sourceFormat + "\n").c_str(), stderr);
+    for (const auto& ligne : resultat.report.lines)
+        std::fputs(("  " + ligne + "\n").c_str(), stderr);
+    return true;
+}
+
+bool MainComponent::importDawProjectForCapture(const juce::File& fichier) {
+    return applyDawImport(fichier);
 }
 
 /// OUVRIR UN DOSSIER DE PROJET, séparé du sélecteur de fichiers qui le
