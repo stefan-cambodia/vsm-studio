@@ -10,10 +10,11 @@ sujets de travail** ; les campagnes de mesure générales sont en pause
 
 ## 0. La règle qui prime : la PARITÉ des pistes
 
-L'objectif est fixé par l'utilisateur en toutes lettres (02/09/2026) : **« si
-un original comporte 15 postes, la reconstruction doit comporter 15 pistes
-également »**. Le critère n'est donc pas « plus de quatre pistes » mais la
-parité — le compte de pistes de la reconstruction vise le compte de parties
+L'objectif est fixé par l'utilisateur en toutes lettres (02/09/2026), et il
+est SANS PLAFOND : **« si un original comporte 15 postes, la reconstruction
+doit comporter 15 pistes également ; si l'original comporte 64 pistes, la
+reconstruction doit en comporter 64 »**. Le critère n'est donc pas « plus de
+quatre pistes » mais la parité, à toute échelle — le compte de pistes de la reconstruction vise le compte de parties
 réelles de l'original. On ne sait pas toujours compter les parties réelles
 (on n'a pas la session d'origine) ; ce qu'on sait faire, c'est ne jamais
 FONDRE deux parties discernables en une, et publier ce qu'on n'a pas su
@@ -118,7 +119,12 @@ déplacent rien, et la stabilité par empreintes est démontrée en course.
    une voix de tête restent une piste. Non couvert, dit, pas nié ; c'est le
    morceau le plus dur (séparer des voix DANS un stem de voix demande un
    modèle qu'on n'a pas).
-6. **Un deuxième morceau** : tout ce chantier est mesuré sur *Us and Them*.
+6. **Le DAW à l'échelle de la parité** : l'application est vérifiée à huit
+   pistes ; l'objectif en promet soixante-quatre. La liste de pistes, la
+   console, l'arrangement et le rendu doivent être REGARDÉS et mesurés à 64
+   pistes (fluidité, défilement, lisibilité à l'échelle 150 %) — un projet
+   d'essai à 64 pistes se fabrique par l'import FLP, sans attendre la chaîne.
+7. **Un deuxième morceau** : tout ce chantier est mesuré sur *Us and Them*.
    Avant de changer un défaut de la chaîne, le vérifier sur un second
    original (les MIDI de référence de ~/Téléchargements peuvent servir de
    cibles à contenu connu — voir CDC-multisample § 1, la question ouverte de
