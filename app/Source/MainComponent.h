@@ -137,6 +137,7 @@ private:
         kMenuFileImportDaw,
         kMenuFileImportReport,
         kMenuFileReconstructionReport,
+        kMenuFileParite,
         kMenuFileSave,
         kMenuFileSaveAs,
         kMenuFileLoadReference,

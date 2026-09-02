@@ -126,6 +126,31 @@ VSM_TEST(the_command_line_is_a_list_of_arguments_not_a_shell_string) {
     fs::remove_all(racine);
 }
 
+VSM_TEST(la_parite_ajoute_un_drapeau_et_un_seul) {
+    // L'APPLICATION RENDAIT QUATRE PISTES LÀ OÙ LA LIGNE DE COMMANDE EN
+    // DONNAIT TREIZE : celui qui glisse son morceau dans la fenêtre n'avait
+    // aucun moyen d'atteindre les découpages de la chaîne (§ 0 du CDC
+    // détection-multipiste, la parité). Elle passe donc `--parite`.
+    //
+    // UN SEUL DRAPEAU, et c'est le point du test : recopier ici les trois
+    // découpages que `--parite` allume les ferait diverger de la chaîne au
+    // premier changement, et l'aide de `reconstruire.py` cesserait de décrire
+    // ce que l'application fait.
+    const fs::path racine = fabriquerDepot("parite", true, true);
+    const auto chaine = ReconstructionChain::locate((racine / "build" / "app").string());
+    VSM_ASSERT(chaine.available);
+
+    const auto sans = chaine.commandLine("/m/morceau.mp3", "/tmp/sortie");
+    VSM_ASSERT_EQ(sans.size(), size_t{5});
+
+    const auto avec = chaine.commandLine("/m/morceau.mp3", "/tmp/sortie", true);
+    VSM_ASSERT_EQ(avec.size(), size_t{6});
+    VSM_ASSERT_EQ(avec[5], std::string("--parite"));
+    // Le reste de la commande ne bouge pas d'un argument.
+    for (size_t i = 0; i < sans.size(); ++i) VSM_ASSERT_EQ(avec[i], sans[i]);
+    fs::remove_all(racine);
+}
+
 VSM_TEST(only_audio_is_offered_for_reconstruction) {
     // Un `.mid` glissé sur la fenêtre est un projet à importer, pas un morceau
     // à reconstruire : les confondre lancerait une analyse de dix minutes sur

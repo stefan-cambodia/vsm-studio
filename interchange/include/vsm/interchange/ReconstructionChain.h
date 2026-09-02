@@ -65,8 +65,16 @@ struct ReconstructionChain {
     /// Child O' Mine.mp3 », avec une apostrophe et des espaces, et concaténer
     /// des chemins dans une ligne de shell est la façon la plus sûre de
     /// transformer un nom de fichier en commande.
+    /// La ligne de commande de la chaîne.
+    ///
+    /// `viserLaParite` ajoute `--parite` : autant de pistes que le morceau a
+    /// de parties (docs/CDC-detection-multipiste.md). SANS ce drapeau,
+    /// l'application obtenait quatre pistes là où la ligne de commande en
+    /// donnait treize — le musicien qui glisse son morceau dans la fenêtre
+    /// n'avait aucun moyen d'atteindre ce que la chaîne sait faire.
     std::vector<std::string> commandLine(const std::string& audioFile,
-                                          const std::string& outputFolder) const;
+                                          const std::string& outputFolder,
+                                          bool viserLaParite = false) const;
 };
 
 /// Les extensions que la chaîne sait lire. Utilisé par le glisser-déposer pour

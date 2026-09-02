@@ -17,11 +17,13 @@ ReconstructionRunner::~ReconstructionRunner() {
 }
 
 void ReconstructionRunner::start(const vsm::interchange::ReconstructionChain& chain,
-                                  const juce::File& audioFile, const juce::File& outputFolder) {
+                                  const juce::File& audioFile, const juce::File& outputFolder,
+                                  bool viserLaParite) {
     if (isThreadRunning()) return;
     chain_ = chain;
     audioFile_ = audioFile;
     outputFolder_ = outputFolder;
+    viserLaParite_ = viserLaParite;
     cancelled_.store(false);
     {
         std::lock_guard<std::mutex> verrou(mutex_);
@@ -69,7 +71,8 @@ void ReconstructionRunner::publish() {
 
 void ReconstructionRunner::run() {
     const auto arguments = chain_.commandLine(audioFile_.getFullPathName().toStdString(),
-                                               outputFolder_.getFullPathName().toStdString());
+                                               outputFolder_.getFullPathName().toStdString(),
+                                               viserLaParite_);
     juce::StringArray commande;
     for (const auto& argument : arguments) commande.add(juce::String::fromUTF8(argument.c_str()));
 

@@ -87,9 +87,17 @@ ReconstructionChain ReconstructionChain::locate(const std::string& startFolder,
 }
 
 std::vector<std::string> ReconstructionChain::commandLine(const std::string& audioFile,
-                                                           const std::string& outputFolder) const {
+                                                           const std::string& outputFolder,
+                                                           bool viserLaParite) const {
     if (!available) return {};
-    return {interpreterPath, scriptPath, audioFile, "--sortie", outputFolder};
+    std::vector<std::string> commande{interpreterPath, scriptPath, audioFile,
+                                      "--sortie", outputFolder};
+    // UN SEUL DRAPEAU, PAS TROIS. `--parite` est le raccourci de la chaîne, et
+    // l'application le passe tel quel : recopier ici les trois découpages
+    // qu'il allume les ferait diverger au premier changement, et l'aide de la
+    // chaîne cesserait de décrire ce que l'application fait.
+    if (viserLaParite) commande.push_back("--parite");
+    return commande;
 }
 
 bool isReconstructableAudio(const std::string& path) {

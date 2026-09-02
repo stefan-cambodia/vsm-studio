@@ -41,8 +41,13 @@ public:
     /// Thread UI. `onProgress` et `onFinished` sont appelés sur le thread UI.
     /// `onFinished(true, dossier, "")` en cas de succès ; sinon
     /// `onFinished(false, {}, raison)`.
+    /// `viserLaParite` : autant de pistes que le morceau a de parties
+    /// (docs/CDC-detection-multipiste.md). Le réglage vient des préférences,
+    /// pas d'un argument perdu ici : c'est un choix de travail, pas un
+    /// paramètre d'appel.
     void start(const vsm::interchange::ReconstructionChain& chain,
-                const juce::File& audioFile, const juce::File& outputFolder);
+                const juce::File& audioFile, const juce::File& outputFolder,
+                bool viserLaParite = false);
 
     /// Thread UI. Demande l'arrêt : le processus enfant est tué, et le dossier
     /// de sortie INCOMPLET est laissé tel quel plutôt qu'effacé -- il contient
@@ -63,6 +68,8 @@ private:
 
     vsm::interchange::ReconstructionChain chain_;
     juce::File audioFile_, outputFolder_;
+    /// Viser la parité des pistes : lu au démarrage du thread, jamais après.
+    bool viserLaParite_ = false;
 
     mutable std::mutex mutex_;
     Progress progress_;

@@ -1051,6 +1051,14 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuFileReconstructionReport,
                          u8"Voir le rapport de reconstruction",
                          rapportReconstruction_ != juce::File(), false);
+            // LA PARITÉ, COCHÉE PAR DÉFAUT : autant de pistes que le morceau a
+            // de parties. C'est un choix de travail — il vaut pour toutes les
+            // reconstructions — et il se voit, coché, plutôt que de vivre
+            // dans un fichier de préférences que personne n'ouvre.
+            menu.addItem(kMenuFileParite,
+                         u8"Reconstruire en visant la parité des pistes", true,
+                         vsm::app::ui::UiScale::properties()
+                             .getBoolValue("reconstruireEnParite", true));
             menu.addItem(kMenuFileSave, "Enregistrer" +
                           juce::String(currentProjectFolder_ == juce::File() ? "..." : "")
                           + " (Ctrl+S)");
@@ -1418,6 +1426,14 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuFileImportDaw: importDawProject(); break;
         case kMenuFileImportReport: showLastImportReport(); break;
         case kMenuFileReconstructionReport: showReconstructionReport(); break;
+        case kMenuFileParite: {
+            auto& reglages = vsm::app::ui::UiScale::properties();
+            const bool actif = !reglages.getBoolValue("reconstruireEnParite", true);
+            reglages.setValue("reconstruireEnParite", actif);
+            reglages.saveIfNeeded();
+            menuItemsChanged();
+            break;
+        }
         case kMenuFileSave:      saveProject(); break;
         case kMenuFileSaveAs:    saveProjectAs(); break;
         case kMenuFileLoadReference: loadReferenceAudio(); break;
@@ -2966,7 +2982,17 @@ void MainComponent::startReconstruction(const juce::File& audioFile) {
         setReferenceAudioFile(reconstructionSource_, /*silencieuxSiIllisible=*/true);
     };
 
-    reconstructionRunner_.start(reconstructionChain_, audioFile, sortie);
+    // LA PARITÉ EST UN CHOIX DE TRAVAIL, pas un paramètre d'appel : elle vit
+    // dans les préférences et vaut pour toutes les reconstructions à venir.
+    // Sans elle, l'application rendait quatre pistes là où la ligne de
+    // commande en donnait treize — celui qui glisse son morceau dans la
+    // fenêtre n'avait aucun moyen d'atteindre ce que la chaîne sait faire.
+    const bool parite = vsm::app::ui::UiScale::properties()
+                            .getBoolValue("reconstruireEnParite", true);
+    reconstructionRunner_.start(reconstructionChain_, audioFile, sortie, parite);
+    if (parite)
+        reconstructionPanel_.setSource(audioFile.getFileName()
+                                       + juce::String::fromUTF8(" — parité des pistes"));
     menuItemsChanged();
 }
 

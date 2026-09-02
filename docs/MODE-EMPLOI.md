@@ -515,7 +515,11 @@ La séparation cherche désormais **six sources** (elle ajoute `guitar` et
 une partie — n'est **pas** reconstruit : c'est dit avec son chiffre, faute de
 quoi un piano seul donnerait six pistes pour une seule partie.
 
-Trois découpages vont plus loin, et **`--parite` les allume tous les trois** :
+Dans l'application, tout cela tient dans une case à cocher : *Fichier ▸
+Reconstruire en visant la parité des pistes*, **cochée par défaut**. Elle vaut
+pour toutes les reconstructions à venir — c'est un choix de travail, pas un
+réglage à refaire à chaque morceau. En ligne de commande, **`--parite`** allume
+les trois découpages :
 
 - **les voix par registres** (`--voix-par-stem 4`) : une piste qui porte
   plusieurs parties — au moins trois notes simultanées en moyenne ET trois
