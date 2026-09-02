@@ -212,6 +212,42 @@ déplacent rien, et la stabilité par empreintes est démontrée en course.
    Reste due, à la levée de la pause : la mesure de DISTANCE sur ce second
    morceau (le partage seul ne dit pas si le morceau sonne plus près).
 
+## 6. `--parite` : le raccourci, et une épreuve de bout en bout
+
+Trois découpages mènent à la parité — voix par registres, batterie par pièce,
+tête et chœurs — et il faut **les trois**. Personne ne devrait avoir à les
+retenir : `--parite` les allume, en disant lesquels et ce qu'ils coûtent. Une
+option écrite à la main l'emporte, pour qu'un A/B sur un seul découpage reste
+possible.
+
+**L'ÉPREUVE DE BOUT EN BOUT, sur un morceau dont on CONNAÎT les parties.**
+Toute la mesure de ce chantier porte sur des originaux dont personne ne sait
+la vérité : on compare des pistes à un nombre de parties qu'on suppose. Un
+morceau court est donc fabriqué avec sa vérité écrite (trois parties
+mélodiques en registres disjoints, une batterie à trois pièces, une voix
+centrée doublée large), et ses stems fournis directement — la variable est
+la CHAÎNE, pas demucs. La chaîne complète y tourne en **25 secondes** :
+
+| Course | Pistes | Distance |
+|---|---|---|
+| témoin | 4 — `bass`, `other`, `Batterie`, `Voix` | 0,3169 |
+| `--parite` | **6** — `bass`, `other`, `Batterie · hihat`, `Batterie · kick+kick2`, `Voix · tête`, `Voix · chœurs` | 0,3163 |
+
+La parité ne coûte rien ici (l'écart est du bruit), et deux mécanismes sur
+trois se déclenchent. Le troisième — le découpage en voix — **ne se déclenche
+pas, et c'est la garde qui fonctionne** : la transcription d'un morceau de
+synthèse rend 32 notes de polyphonie moyenne 2,37, sous le seuil de 3. Le
+découpage par registres reste prouvé sur des données réelles (H23, quatre
+voix sur le vrai `other` d'*Us and Them*).
+
+**Ce que cette épreuve a trouvé, et qu'aucune mesure n'aurait vu** : le format
+MIDI écrit ses noms de piste en Latin-1, et « Voix · chœurs » contient un
+« œ ». La chaîne TOMBAIT à l'écriture du projet — après tout le calcul. Le
+défaut dormait depuis toujours ; il fallait un nom composé par la chaîne
+elle-même pour le réveiller. Les noms sont désormais translittérés pour le
+MIDI (le nom complet survit dans `project.json`, qui est de l'UTF-8), et
+quatre tests le gardent.
+
 ## 5. Critères d'acceptation
 
 ```

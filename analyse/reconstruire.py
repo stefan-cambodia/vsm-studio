@@ -416,6 +416,10 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
             "batterieParPiece": args.batterie_par_piece,
             "voixTeteChoeurs": args.voix_tete_choeurs,
             "seuilStem": args.seuil_stem,
+            # `parite` est un RACCOURCI : les trois options qu'il allume sont
+            # inscrites au-dessus, chacune à sa valeur effective. On garde
+            # quand même la trace de la façon dont la course a été demandée.
+            "parite": args.parite,
         },
         # Les modèles CONSULTÉS, avec leur date d'entraînement -- ou « aucun »,
         # qui est une information et non une absence d'information.
@@ -496,6 +500,19 @@ def construire_parseur() -> argparse.ArgumentParser:
     parseur.add_argument("--machines", default="",
                          help="liste de machines candidates, séparées par des virgules "
                               "(défaut : toutes les mélodiques du moteur)")
+    parseur.add_argument("--parite", action="store_true",
+                         help="VISER LA PARITÉ DES PISTES : autant de pistes que le morceau "
+                              "a de parties (docs/CDC-detection-multipiste.md § 0). Allume "
+                              "d'un coup les trois découpages structurels — --voix-par-stem 4, "
+                              "--batterie-par-piece, --voix-tete-choeurs — parce qu'il faut "
+                              "les trois pour approcher la parité et que personne ne devrait "
+                              "avoir à les retenir. CE QUE CELA COÛTE, ET C'EST MESURÉ : le "
+                              "découpage en voix vaut +9,1 %% de distance sur *Us and Them* "
+                              "(H23) ; l'effet des deux autres n'est pas mesuré. La règle du "
+                              "§ 0 s'applique — quand structure et ressemblance s'opposent, "
+                              "la structure gagne et l'écart se publie. Chaque option reste "
+                              "réglable à part, et une option explicite l'emporte sur ce "
+                              "raccourci")
     parseur.add_argument("--seuil-stem", type=float, default=0.5,
                          help="part d'énergie (en %%) sous laquelle un stem n'est PAS "
                               "reconstruit : c'est un résidu de séparation, pas une partie. "
@@ -673,6 +690,26 @@ def valider_entree(args: argparse.Namespace) -> Path:
     if args.avec_recherche and args.sans_recherche:
         raise SystemExit("--avec-recherche et --sans-recherche se contredisent : "
                          "choisir.")
+    # LA PARITÉ EST UN RACCOURCI, PAS UN MODE. Elle allume les trois
+    # découpages structurels et le DIT, poste par poste ; une option écrite à
+    # la main l'emporte, pour qu'un A/B sur un seul découpage reste possible
+    # sans démonter le raccourci.
+    if args.parite:
+        allumes = []
+        if args.voix_par_stem == 0:
+            args.voix_par_stem = 4
+            allumes.append("--voix-par-stem 4")
+        if not args.batterie_par_piece:
+            args.batterie_par_piece = True
+            allumes.append("--batterie-par-piece")
+        if not args.voix_tete_choeurs:
+            args.voix_tete_choeurs = True
+            allumes.append("--voix-tete-choeurs")
+        print("      --parite : " + (", ".join(allumes) if allumes
+                                     else "rien à allumer, tout était déjà demandé"))
+        print("      la parité prime sur la ressemblance quand les deux s'opposent "
+              "(§ 0 du CDC) ; le découpage en voix vaut +9,1 % de distance sur "
+              "*Us and Them*, l'effet des deux autres n'est pas mesuré")
     # LE DÉFAUT EST « SANS RECHERCHE » (§ 5 undecies, A/B du 31/08/2026).
     # Une exception : --sans-arbitrage rejoue l'ancienne chaîne d'avant
     # l'arbitrage de piste, qui n'a QUE la recherche pour choisir une machine ;

@@ -161,7 +161,8 @@ def _write_midi(tracks: Sequence[ExportTrack], path: Path, tempo: float) -> None
 
     for index, track in enumerate(tracks):
         midi_track = mido.MidiTrack()
-        midi_track.append(mido.MetaMessage("track_name", name=track.name, time=0))
+        midi_track.append(mido.MetaMessage("track_name",
+                                           name=nom_midi_lisible(track.name), time=0))
         if index == 0:
             midi_track.append(
                 mido.MetaMessage("set_tempo", tempo=mido.bpm2tempo(float(tempo)), time=0)
@@ -214,6 +215,30 @@ def _write_midi(tracks: Sequence[ExportTrack], path: Path, tempo: float) -> None
             f"MIDI écrit avec {len(written.tracks)} pistes pour {len(tracks)} pistes de projet : "
             f"l'appariement par indice serait décalé"
         )
+
+
+def nom_midi_lisible(nom: str) -> str:
+    """Un nom de piste écrivable dans un fichier MIDI.
+
+    LE FORMAT MIDI ÉCRIT SES MÉTA-TEXTES EN LATIN-1, et c'est une contrainte
+    du format, pas de nous : `mido` lève `UnicodeEncodeError` sur tout
+    caractère hors de cette table. Le défaut a dormi tant que les pistes
+    s'appelaient « bass », « other » ou « Batterie » ; il est tombé au premier
+    nom composé par la chaîne elle-même — « Voix · chœurs », dont le « œ »
+    n'existe pas en Latin-1 — et il a fait TOMBER toute la reconstruction à
+    l'écriture du projet, après des heures de calcul.
+
+    On translittère donc les caractères qu'on sait remplacer sans perdre le
+    sens, et l'on remplace le reste par un point d'interrogation plutôt que
+    d'abandonner : un nom approché vaut mieux qu'un projet perdu. Le nom
+    COMPLET, lui, survit dans `project.json`, qui est de l'UTF-8 — c'est celui
+    que l'application affiche.
+    """
+    remplacements = {"œ": "oe", "Œ": "OE", "æ": "ae", "Æ": "AE",
+                     "·": "-", "—": "-", "–": "-", "’": "'",
+                     "«": '"', "»": '"', "…": "..."}
+    sortie = "".join(remplacements.get(c, c) for c in nom)
+    return sortie.encode("latin-1", errors="replace").decode("latin-1")
 
 
 def write_project_bundle(
