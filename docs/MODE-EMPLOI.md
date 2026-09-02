@@ -504,6 +504,40 @@ Si Python n'est pas installé, la fonction est **grisée avec sa raison**, jamai
 
 Ce que la chaîne ne fait pas : couper une piste. Elle mesure le morceau rendu **sans** chaque piste et le publie au rapport, mais garder ou couper reste une décision humaine.
 
+**Autant de pistes que le morceau a de parties.** Longtemps la chaîne rendait
+quatre pistes, toujours : la séparation en donne quatre stems, et tout ce qui
+n'est ni basse, ni batterie, ni voix atterrissait dans un seul `other` — sur
+*Us and Them*, 58 % du morceau sur une piste jouée par un synthé de basse
+monophonique. Ce n'est plus le cas.
+
+La séparation cherche désormais **six sources** (elle ajoute `guitar` et
+`piano`), et un stem qui ne porte presque rien — un résidu de séparation, pas
+une partie — n'est **pas** reconstruit : c'est dit avec son chiffre, faute de
+quoi un piano seul donnerait six pistes pour une seule partie.
+
+Trois découpages vont plus loin, et **`--parite` les allume tous les trois** :
+
+- **les voix par registres** (`--voix-par-stem 4`) : une piste qui porte
+  plusieurs parties — au moins trois notes simultanées en moyenne ET trois
+  octaves — se partage en registres, l'aigu, les médiums, la basse-nappe. Une
+  mélodie qui saute d'octave ou un accompagnement d'accords **ne se découpe
+  jamais** : ce sont des parties uniques, et fabriquer de fausses pistes
+  serait pire que le mal ;
+- **la batterie par pièce** (`--batterie-par-piece`) : une piste par pièce
+  détectée — grosse caisse, charleston, caisse claire — au lieu d'un kit
+  unique. Rien n'est deviné : les frappes sont déjà classées ;
+- **la voix de tête et les chœurs** (`--voix-tete-choeurs`) : un mixage pose
+  la voix principale au centre du champ stéréo et élargit les chœurs ; la
+  chaîne sépare le centre du large. Les deux pistes rejouées ensemble
+  redonnent **exactement** le stem d'origine. Une voix mono, ou sans largeur,
+  n'est pas découpée.
+
+Ce que la parité coûte est **dit** : le découpage en voix vaut +9 % de
+distance sur *Us and Them*. Quand la ressemblance et la structure s'opposent,
+c'est la structure qui gagne — un projet qui met quatre instruments sur une
+piste ne se retravaille pas, quelle que soit sa distance — et l'écart se
+publie au lieu d'être caché.
+
 **Le rapport de reconstruction se lit dans l'application** : *Fichier ▸ Voir le
 rapport de reconstruction* (grisé quand le projet ouvert n'en a pas — un projet
 créé à la main n'en a pas, c'est normal). Il dit la distance globale, **quelle
@@ -511,6 +545,9 @@ part du morceau chaque piste porte** (en rouge au-delà de la moitié : « cette
 piste porte le morceau à elle seule »), la machine et le profil retenus, et la
 densité de chaque piste — polyphonie et ambitus, avec l'avertissement
 « PLUSIEURS parties sur une seule piste » quand une piste est un fourre-tout.
+La **batterie** y figure avec ses pièces et leurs frappes, ce que la machine a
+dû concéder (une famille sans voix, un tom rabattu sur un clap), et le nombre
+de parties qu'elle porte encore sur une seule piste.
 C'est l'écran qui répond à « pourquoi cette piste sonne-t-elle comme quatre
 instruments ? » sans ouvrir un fichier JSON.
 
@@ -603,7 +640,12 @@ ce qu'on a besoin de regarder est presque toujours une machine dans son rack
 ou un arrangement précis ; `VSM_IMPORT=fichier` importe un projet d'un
 autre DAW au démarrage, ce qui est la seule façon d'atteindre l'écran du
 rapport d'import sans souris ; et `VSM_RAPPORT=1` montre le rapport de
-reconstruction du projet ouvert par `VSM_PROJET`, pour la même raison.
+reconstruction du projet ouvert par `VSM_PROJET`, pour la même raison. Deux
+jetons de `VSM_VUE` servent la même fin : `sans-rapport` referme l'écran de
+rapport pour photographier ce qu'il couvre, et `jouer` lance la lecture — sans
+quoi le compteur de charge de la barre de transport ne dit rien, et c'est lui
+qu'il faut regarder pour juger un projet à soixante-quatre machines. (Éprouvé :
+64 machines jouées à la fois coûtent environ 1,3 cœur.)
 
 ## 8. Ne rien perdre
 
