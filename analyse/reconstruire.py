@@ -66,7 +66,8 @@ from analyzer.vsm_automation import try_cutoff_automation  # noqa: E402
 from analyzer.vsm_drumkit import (build_drum_kit, drum_kit_track, drum_machine_track,  # noqa: E402
                                   modelled_drum_track, vocal_audio_track,
                                   vocal_sampler_track)
-from analyzer.vsm_engine import VsmEngine, find_vsm_render  # noqa: E402
+from analyzer.vsm_engine import (VsmEngine, find_vsm_render, identite_du_moteur,  # noqa: E402
+                                 moteur_perime)
 from analyzer.vsm_levels import VOLUME_MAX, match_track_levels  # noqa: E402
 from analyzer.vsm_mix_verdict import (MixAlternative, keep_what_helps_the_mix,  # noqa: E402
                                       settle_verdict)
@@ -334,78 +335,8 @@ def profils_de(moteur, machines: Sequence[str]) -> Dict[str, str]:
     return {m: nom for m in machines if (nom := profil_de(moteur, m))}
 
 
-def identite_du_moteur(moteur) -> dict:
-    """QUI A RENDU L'AUDIO — le binaire, pas le commit.
-
-    POURQUOI CE BLOC EXISTE, ET IL A COÛTÉ DEUX COURSES. La provenance nommait
-    le commit du dépôt et rien d'autre. Or le rendu ne sort pas du dépôt : il
-    sort de `build/tools/vsm-render`, qui peut dater d'AVANT le commit annoncé.
-    Le 02/09/2026, les courses v13 et v14 (terminées à 10:12 et 11:05) ont
-    tourné avec un moteur compilé à 08:48, donc sans les sept machines écrites
-    entre 09:13 et 10:17. Leur rapport annonce un commit dont le vivier compte
-    quarante-sept machines mélodiques ; la course en a vu quarante et une, et
-    rien ne le disait. Le verdict de H13 tient — v13 et v14 partagent ce même
-    binaire, donc la comparaison n'a qu'une variable — mais le NOMBRE inscrit
-    à côté était faux, et il l'a été en silence.
-
-    C'est exactement la panne muette que le cahier des charges interdit, avec
-    la circonstance aggravante qu'elle touche l'instrument de mesure. La
-    parade est celle de toute option qui conditionne le résultat : elle va
-    dans la provenance. Ici, ce sont la date de compilation, la taille et le
-    nombre de machines que le binaire déclare — trois nombres qui suffisent à
-    dire que deux rapports n'ont pas été rendus par le même moteur.
-    """
-    try:
-        chemin = Path(str(moteur.binary)).resolve()
-        stat = chemin.stat()
-        return {
-            "chemin": str(chemin),
-            "compile": datetime.fromtimestamp(stat.st_mtime).isoformat(timespec="seconds"),
-            "octets": stat.st_size,
-            "machines": len(moteur.machines()),
-        }
-    except Exception:  # noqa: BLE001 — un moteur qu'on ne sait pas décrire se dit
-        return {"chemin": str(getattr(moteur, "binary", "")), "compile": "", "octets": 0,
-                "machines": 0}
-
-
-def moteur_perime(moteur) -> Optional[str]:
-    """Le binaire est-il plus vieux que les sources qu'il prétend porter ?
-
-    UN BINAIRE PÉRIMÉ NE SE SIGNALE PAS COMME PÉRIMÉ (leçon inscrite au § 9 de
-    docs/ROADMAP-interop.md). Il ne plante pas, il ne se plaint pas : il rend
-    un vivier plus petit, et la course mesure autre chose que ce qu'on croit.
-    Cette fonction rend la phrase à imprimer, ou None si tout va bien.
-
-    On ne regarde que les dossiers dont le moteur est FAIT : `audio/` porte les
-    machines, `core/` et `interchange/` ce qu'elles traversent. Un changement
-    dans `app/` ne périme pas le rendu.
-    """
-    try:
-        racine = Path(__file__).resolve().parent.parent
-        binaire = Path(str(moteur.binary)).resolve()
-        compile_le = binaire.stat().st_mtime
-        plus_recent, nom = compile_le, None
-        for dossier in ("audio", "core", "interchange"):
-            for fichier in (racine / dossier).rglob("*"):
-                if fichier.suffix not in (".h", ".cpp", ".inc"):
-                    continue
-                horodatage = fichier.stat().st_mtime
-                if horodatage > plus_recent:
-                    plus_recent, nom = horodatage, fichier
-        if nom is None:
-            return None
-        return (f"ATTENTION : le moteur date du "
-                f"{datetime.fromtimestamp(compile_le).isoformat(timespec='seconds')} et "
-                f"{nom.relative_to(racine)} du "
-                f"{datetime.fromtimestamp(plus_recent).isoformat(timespec='seconds')}. "
-                f"Ce rendu N'EST PAS celui du code présent — recompiler vsm-render, "
-                f"ou lire ce rapport en le sachant.")
-    except Exception:  # noqa: BLE001
-        return None
-
-
-def provenance(args: argparse.Namespace, classifieur, frappes, moteur=None) -> dict:
+def provenance(args: argparse.Namespace, classifieur, frappes,
+               identite_moteur: Optional[dict] = None) -> dict:
     """Ce qu'il faut savoir pour REJOUER ce rapport (phase A4.2)."""
     try:
         racine = str(Path(__file__).resolve().parent.parent)
@@ -466,9 +397,12 @@ def provenance(args: argparse.Namespace, classifieur, frappes, moteur=None) -> d
         },
         "profilMultisample": os.environ.get("VSM_PROFIL", "") or "(premier installé)",
         # LE MOTEUR QUI A RENDU L'AUDIO, et non le commit du dépôt : voir
-        # `identite_du_moteur`. Deux rapports dont ce bloc diffère ne se
-        # comparent pas, quand bien même ils annonceraient le même commit.
-        "moteur": (identite_du_moteur(moteur) if moteur is not None else None),
+        # `identite_du_moteur` (analyzer/vsm_engine.py). L'identité est
+        # CAPTURÉE pendant que le moteur est vivant et passée ici toute faite :
+        # la première version interrogeait le moteur au moment d'écrire le
+        # rapport, donc APRÈS sa fermeture, et retombait sur « je ne sais
+        # pas » à chaque course — en silence (vu sur v11a).
+        "moteur": identite_moteur,
     }
 
 
@@ -1755,6 +1689,9 @@ def chaine(args: argparse.Namespace) -> None:
             plainte = moteur_perime(moteur)
             if plainte:
                 print("      " + plainte)
+            # L'IDENTITÉ SE CAPTURE ICI, moteur vivant : `machines()` parle au
+            # processus. La provenance, elle, s'écrit après sa fermeture.
+            identite_moteur = identite_du_moteur(moteur)
             classifieur = charger_classifieur(args, moteur)
             if args.sans_apprentissage:
                 print("      --sans-apprentissage : aucun modèle appris n'est consulté")
@@ -1796,7 +1733,7 @@ def chaine(args: argparse.Namespace) -> None:
         # -- le seul qu'on lit -- ne disait ni commit, ni options, ni modèles.
         # A4.2 était « fait » et son résultat n'existait pas sur disque.
         complements: Dict[str, object] = dict(
-            provenance=provenance(args, classifieur, frappes, moteur),
+            provenance=provenance(args, classifieur, frappes, identite_moteur),
             drums=chantier.rapport_batterie,
             mix_verdict=verdict or None,
             partage=partage,

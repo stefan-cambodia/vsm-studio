@@ -23,17 +23,23 @@ namespace vsm::app::ui {
 //     dire ; et les lignes des lecteurs sont longues à dessein -- elles
 //     expliquent, elles ne codent pas -- donc elles doivent se replier plutôt
 //     que de fuir hors du cadre ;
-//   - les avertissements RESSORTENT. Dans une liste uniforme, la ligne qui
-//     compte -- « ATTENTION : arrangement DEVINÉ », « AUCUN instrument » -- se
-//     perd au milieu des lignes de comptage ; elle est en rouge ou en ambre ;
+//   - les avertissements RESSORTENT, et la couleur vient de la GRAVITÉ que le
+//     lecteur a posée sur chaque ligne (DawImportReport::Gravite) -- jamais
+//     d'une devinette sur la prose : la première version cherchait « ignor »
+//     dans le texte et peignait le récapitulatif en avertissement ;
 //   - il vit DANS la fenêtre principale, et non dans une fenêtre flottante.
 //     Ce n'est pas un goût : l'autoportrait (VSM_CAPTURE) photographie le
 //     composant de contenu, donc ni une alerte asynchrone ni une PanelWindow
 //     n'y figurent. Un rapport affiché ailleurs serait un écran qu'on ne peut
 //     pas regarder, c'est-à-dire un écran qu'on ne peut pas juger.
 //
+// L'OVERLAY SE GÈRE SEUL : il suit la taille de son parent par
+// `parentSizeChanged` et passe devant en devenant visible. `MainComponent` ne
+// le mentionne pas dans son `resized()` -- c'est ce qui réalise vraiment « le
+// reste de la disposition ne le connaît pas ».
+//
 // Il reste consultable après coup par *Fichier ▸ Voir le dernier rapport
-// d'import* : `MainComponent` garde le dernier rapport et le redonne ici.
+// d'import* : le panneau garde son dernier contenu et `reopen()` le remontre.
 class ImportReportComponent : public juce::Component {
 public:
     ImportReportComponent();
@@ -64,9 +70,8 @@ public:
 
     void paint(juce::Graphics&) override;
     void resized() override;
+    void parentSizeChanged() override;
     bool keyPressed(const juce::KeyPress&) override;
-
-    std::function<void()> onClose;
 
 private:
     struct Ligne {
@@ -90,15 +95,23 @@ private:
     void disposer();
     void reconstruireLaListe();
     void envelopper(const Ligne& source, int largeurMax);
+    // Le rituel commun aux trois entrées : mise en page, visibilité, premier
+    // plan, clavier (pour qu'Échap ferme vraiment).
+    void montrer();
+    void fermer();
 
     juce::String titre_;
     juce::String sousTitre_;
     // `source_` est le rapport tel qu'il a été écrit : une entrée par fait.
-    // `lignes_` en est le repli à la largeur du moment, refait à chaque
-    // `resized()`. Garder les deux évite de perdre le texte d'origine -- c'est
-    // lui qu'on copie, et lui qu'on replierait autrement à la mauvaise largeur.
+    // `lignes_` en est le repli à la largeur du moment, refait quand la
+    // largeur change. Garder les deux évite de perdre le texte d'origine --
+    // c'est lui qu'on copie, et lui qu'on replierait autrement à la mauvaise
+    // largeur.
     juce::Array<Ligne> source_;
     juce::Array<Ligne> lignes_;
+    // La largeur du dernier repli : un redimensionnement qui ne la change pas
+    // (un drag vertical, par exemple) ne re-mesure rien. -1 = contenu neuf.
+    int largeurRepliee_ = -1;
     Liste liste_{lignes_};
     juce::Viewport vue_;
     juce::TextButton fermer_;

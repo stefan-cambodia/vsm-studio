@@ -289,6 +289,7 @@ target_sources(vsm-ui-preview PRIVATE
     Source/ui/BrowserComponent.cpp
     Source/ui/ReconstructionWindow.cpp
     Source/ui/ImportReportComponent.cpp
+    Source/ui/LookAndFeel/VsmLookAndFeel.cpp
     Source/ui/UiScale.cpp
     Source/reconstruction/ReconstructionRunner.cpp
 )

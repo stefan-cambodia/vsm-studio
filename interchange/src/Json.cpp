@@ -1,4 +1,5 @@
 #include "vsm/interchange/Json.h"
+#include "vsm/interchange/Utf8.h"
 #include <charconv>
 #include <cmath>
 #include <cstdio>
@@ -344,23 +345,11 @@ private:
     }
 
     /// Encode un point de code en UTF-8 (les échappements \uXXXX du JSON sont
-    /// en UTF-16 ; les paires de substitution sont recombinées).
+    /// en UTF-16 ; les paires de substitution sont recombinées). Délègue à
+    /// l'encodeur partagé — c'était la première des quatre copies du module,
+    /// voir interchange/Utf8.h.
     static void appendUtf8(std::string& out, uint32_t codepoint) {
-        if (codepoint < 0x80) {
-            out += static_cast<char>(codepoint);
-        } else if (codepoint < 0x800) {
-            out += static_cast<char>(0xC0 | (codepoint >> 6));
-            out += static_cast<char>(0x80 | (codepoint & 0x3F));
-        } else if (codepoint < 0x10000) {
-            out += static_cast<char>(0xE0 | (codepoint >> 12));
-            out += static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F));
-            out += static_cast<char>(0x80 | (codepoint & 0x3F));
-        } else {
-            out += static_cast<char>(0xF0 | (codepoint >> 18));
-            out += static_cast<char>(0x80 | ((codepoint >> 12) & 0x3F));
-            out += static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F));
-            out += static_cast<char>(0x80 | (codepoint & 0x3F));
-        }
+        vsm::interchange::appendUtf8(out, codepoint);
     }
 
     bool parseHex4(uint32_t& out) {

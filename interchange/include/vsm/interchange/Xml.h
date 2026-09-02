@@ -45,8 +45,6 @@ public:
     std::string attribute(const std::string& nom, const std::string& defaut = {}) const;
     bool hasAttribute(const std::string& nom) const;
 
-    /// Le premier enfant portant ce nom, ou `nullptr`.
-    const XmlNode* child(const std::string& nom) const;
     /// Tous les enfants portant ce nom (dans l'ordre du fichier).
     std::vector<const XmlNode*> childrenNamed(const std::string& nom) const;
 

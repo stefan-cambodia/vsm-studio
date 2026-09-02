@@ -1,6 +1,7 @@
 """La provenance doit nommer le MOTEUR, pas seulement le commit.
 
-Ces tests verrouillent une panne muette trouvée le 02/09/2026.
+Ces tests verrouillent une panne muette trouvée le 02/09/2026, puis sa
+récidive trouvée le même jour.
 
 `rapport.json` inscrivait le commit du dépôt et rien sur le binaire qui a
 rendu l'audio. Or le rendu ne sort pas du dépôt : il sort de
@@ -10,25 +11,26 @@ compilé à 08:48 — donc sans les sept machines écrites entre 09:13 et 10:17.
 Leur rapport annonce un commit dont le vivier compte quarante-sept machines
 mélodiques ; la course en a vu quarante et une, et **rien ne le disait**.
 
-Le verdict de H13 n'en souffre pas : v13 et v14 partagent ce binaire, donc
-leur comparaison n'a bien qu'une variable. Ce qui était faux, c'est le nombre
-inscrit à côté — et il l'était en silence, ce que le cahier des charges
-interdit, avec la circonstance aggravante que la panne touche l'instrument de
-mesure lui-même.
+La récidive : la première version de la garde interrogeait le moteur au
+moment d'écrire le rapport, donc APRÈS la fermeture du processus, et
+retombait sur le repli « je ne sais pas » à chaque course — en silence, ce
+que le rapport de v11a a montré (`compile: ""`). D'où la forme actuelle :
+l'identité se CAPTURE moteur vivant, et la provenance la reçoit toute faite.
 
-Deux gardes, donc, et un test pour chacune :
-  - `identite_du_moteur` met dans la provenance la date de compilation, la
-    taille et le nombre de machines déclarées ;
-  - `moteur_perime` rend une phrase à imprimer dès que le binaire est plus
-    vieux qu'un fichier source du moteur.
+Les gardes vivent dans `analyzer/vsm_engine.py`, à côté de
+`find_vsm_render` : tous les programmes qui créent un moteur (corpus, banc de
+batterie, classifieur…) doivent pouvoir s'en servir — un corpus bâti sur un
+moteur périmé empoisonne les modèles plus durablement qu'une course.
 """
 
 from __future__ import annotations
 
+import contextlib
 import os
 import sys
 import tempfile
 import time
+import types
 from pathlib import Path
 
 RACINE = Path(__file__).resolve().parents[1]
@@ -37,7 +39,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from framework import assert_equal, assert_true, run, test  # noqa: E402
 
-from reconstruire import identite_du_moteur, moteur_perime, provenance  # noqa: E402
+from analyzer.vsm_engine import identite_du_moteur, moteur_perime  # noqa: E402
+from reconstruire import provenance  # noqa: E402
 
 
 class MoteurFactice:
@@ -49,6 +52,31 @@ class MoteurFactice:
 
     def machines(self):
         return list(self._machines)
+
+
+@contextlib.contextmanager
+def depot_factice(source_du_moteur=None, source_hors_moteur=None):
+    """Un faux dépôt : `audio/` (et `app/` au besoin), un binaire, une racine.
+
+    Rend `(racine, moteur)`. Le binaire date d'il y a une heure ; les sources
+    passées en argument sont écrites MAINTENANT, donc après lui.
+    """
+    with tempfile.TemporaryDirectory() as dossier:
+        racine = Path(dossier)
+        (racine / "audio").mkdir()
+        binaire = racine / "vsm-render"
+        binaire.write_bytes(b"moteur")
+        vieux = time.time() - 3600
+        os.utime(binaire, (vieux, vieux))
+        if source_du_moteur is not None:
+            chemin = racine / source_du_moteur
+            chemin.parent.mkdir(parents=True, exist_ok=True)
+            chemin.write_text("// ecrit APRES la compilation\n")
+        if source_hors_moteur is not None:
+            chemin = racine / source_hors_moteur
+            chemin.parent.mkdir(parents=True, exist_ok=True)
+            chemin.write_text("// ecrit APRES la compilation, hors moteur\n")
+        yield racine, MoteurFactice(binaire, [])
 
 
 @test
@@ -85,28 +113,8 @@ def un_moteur_plus_vieux_que_ses_sources_se_plaint_en_nommant_le_fichier():
     Un avertissement qui dirait seulement « le moteur est périmé » laisserait
     chercher lequel des mille fichiers a bougé.
     """
-    with tempfile.TemporaryDirectory() as dossier:
-        racine = Path(dossier)
-        (racine / "analyse").mkdir()
-        (racine / "audio" / "plugins" / "neuve").mkdir(parents=True)
-        binaire = racine / "vsm-render"
-        binaire.write_bytes(b"moteur")
-        source = racine / "audio" / "plugins" / "neuve" / "NeuveSynth.h"
-        source.write_text("// une machine ecrite APRES la compilation\n")
-
-        vieux = time.time() - 3600
-        os.utime(binaire, (vieux, vieux))
-
-        # `moteur_perime` cherche les sources relativement au dossier parent
-        # de `reconstruire.py` : on le fait pointer vers notre faux dépôt.
-        import reconstruire
-        vrai = reconstruire.__file__
-        try:
-            reconstruire.__file__ = str(racine / "analyse" / "reconstruire.py")
-            plainte = moteur_perime(MoteurFactice(binaire, []))
-        finally:
-            reconstruire.__file__ = vrai
-
+    with depot_factice(source_du_moteur="audio/plugins/neuve/NeuveSynth.h") as (racine, moteur):
+        plainte = moteur_perime(moteur, racine=racine)
     assert_true(plainte is not None, "un moteur périmé doit se plaindre")
     assert_true("NeuveSynth.h" in plainte, "la plainte nomme le fichier : " + str(plainte))
     assert_true("ATTENTION" in plainte, "la plainte se voit dans un journal")
@@ -116,26 +124,13 @@ def un_moteur_plus_vieux_que_ses_sources_se_plaint_en_nommant_le_fichier():
 def un_moteur_a_jour_ne_dit_rien():
     """La garde ne doit pas crier à tort : un journal qui crie toujours ne se
     lit plus, et c'est ainsi qu'on rate le seul avertissement qui comptait."""
-    with tempfile.TemporaryDirectory() as dossier:
-        racine = Path(dossier)
-        (racine / "analyse").mkdir()
-        (racine / "audio").mkdir()
+    with depot_factice() as (racine, moteur):
+        # La seule source est ANTÉRIEURE au binaire.
         source = racine / "audio" / "Vieille.h"
-        source.write_text("// une source ANTERIEURE au binaire\n")
-        vieux = time.time() - 3600
-        os.utime(source, (vieux, vieux))
-
-        binaire = racine / "vsm-render"
-        binaire.write_bytes(b"moteur")
-
-        import reconstruire
-        vrai = reconstruire.__file__
-        try:
-            reconstruire.__file__ = str(racine / "analyse" / "reconstruire.py")
-            plainte = moteur_perime(MoteurFactice(binaire, []))
-        finally:
-            reconstruire.__file__ = vrai
-
+        source.write_text("// une source anterieure\n")
+        encore_plus_vieux = time.time() - 7200
+        os.utime(source, (encore_plus_vieux, encore_plus_vieux))
+        plainte = moteur_perime(moteur, racine=racine)
     assert_true(plainte is None, "aucune plainte attendue, reçu : " + str(plainte))
 
 
@@ -147,25 +142,23 @@ def seules_les_sources_du_MOTEUR_periment_le_moteur():
     l'avertissement deviendrait un bruit de fond qu'on apprend à ignorer —
     c'est-à-dire l'inverse de ce qu'il est là pour faire.
     """
-    with tempfile.TemporaryDirectory() as dossier:
-        racine = Path(dossier)
-        (racine / "analyse").mkdir()
-        (racine / "audio").mkdir()
-        (racine / "app" / "Source").mkdir(parents=True)
-        binaire = racine / "vsm-render"
-        binaire.write_bytes(b"moteur")
-        # Écrit APRÈS le binaire, mais dans `app/` : sans effet sur le rendu.
-        (racine / "app" / "Source" / "Ecran.cpp").write_text("// interface\n")
-
-        import reconstruire
-        vrai = reconstruire.__file__
-        try:
-            reconstruire.__file__ = str(racine / "analyse" / "reconstruire.py")
-            plainte = moteur_perime(MoteurFactice(binaire, []))
-        finally:
-            reconstruire.__file__ = vrai
-
+    with depot_factice(source_hors_moteur="app/Source/Ecran.cpp") as (racine, moteur):
+        plainte = moteur_perime(moteur, racine=racine)
     assert_true(plainte is None, "app/ ne doit pas périmer le moteur, reçu : " + str(plainte))
+
+
+def _args(**surcharges):
+    """Les options minimales que `provenance` lit, en un seul endroit."""
+    base = dict(
+        sans_separation=False, sans_sampler=False, sans_arbitrage=False,
+        sans_arbitrage_batterie=False, sans_reglage_piste=False, sans_recherche=True,
+        machines_au_melange=6, sans_reglage_melange=False, budget_melange=30,
+        tours_verdict=3, garder_pieces_non_isolees=False, rendus_paralleles=8,
+        sans_cache_rendus=False, budget_piste=120, axes_piste=21, finalistes=None,
+        preselection_apprise=0, machines="", machines_exclues="",
+        modele="htdemucs", stems="")
+    base.update(surcharges)
+    return types.SimpleNamespace(**base)
 
 
 @test
@@ -179,20 +172,7 @@ def le_modele_de_separation_va_dans_la_provenance():
     chacun. C'est, de toutes les options de la chaîne, celle qui conditionne le
     plus lourdement le résultat, et elle manquait à la provenance.
     """
-    class Args:
-        pass
-    a = Args()
-    for nom, valeur in dict(
-            sans_separation=False, sans_sampler=False, sans_arbitrage=False,
-            sans_arbitrage_batterie=False, sans_reglage_piste=False, sans_recherche=True,
-            machines_au_melange=6, sans_reglage_melange=False, budget_melange=30,
-            tours_verdict=3, garder_pieces_non_isolees=False, rendus_paralleles=8,
-            sans_cache_rendus=False, budget_piste=120, axes_piste=21, finalistes=None,
-            preselection_apprise=0, machines="", machines_exclues="",
-            modele="htdemucs_6s", stems="").items():
-        setattr(a, nom, valeur)
-
-    p = provenance(a, None, None)
+    p = provenance(_args(modele="htdemucs_6s"), None, None)
     assert_equal(p["options"]["modeleSeparation"], "htdemucs_6s",
                  "le modèle de séparation est inscrit")
     assert_true(p["options"]["stemsRepris"] is None, "aucun dossier de stems repris")
@@ -200,12 +180,26 @@ def le_modele_de_separation_va_dans_la_provenance():
     # DES STEMS REPRIS D'UN DOSSIER : la séparation n'a PAS eu lieu, et dire
     # « htdemucs » serait alors un mensonge — le rapport nommerait un modèle
     # qui n'a pas tourné. Le champ vaut null, et le dossier est nommé.
-    a.stems = "/un/dossier/de/stems"
-    p = provenance(a, None, None)
+    p = provenance(_args(stems="/un/dossier/de/stems"), None, None)
     assert_true(p["options"]["modeleSeparation"] is None,
                 "aucun modèle ne doit être nommé quand la séparation n'a pas eu lieu")
     assert_equal(p["options"]["stemsRepris"], "/un/dossier/de/stems",
                  "le dossier de stems repris est inscrit")
+
+
+@test
+def la_provenance_reprend_l_identite_capturee_moteur_vivant():
+    """LA RÉCIDIVE VERROUILLÉE : `provenance` ne doit plus interroger le
+    moteur — elle reçoit une identité déjà capturée, et l'inscrit telle
+    quelle. La première forme appelait `machines()` après la fermeture du
+    processus et publiait « je ne sais pas » à chaque course, en silence."""
+    identite = {"chemin": "/x/vsm-render", "compile": "2026-09-02T13:17:23",
+                "octets": 156023512, "machines": 48}
+    p = provenance(_args(), None, None, identite)
+    assert_equal(p["moteur"], identite, "l'identité passe telle quelle")
+    # Sans identité : null, qui se voit — jamais un moteur à moitié décrit.
+    p = provenance(_args(), None, None)
+    assert_true(p["moteur"] is None, "pas d'identité inventée")
 
 
 if __name__ == "__main__":

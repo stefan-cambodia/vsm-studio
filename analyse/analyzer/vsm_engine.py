@@ -31,10 +31,91 @@ import os
 import subprocess
 import shutil
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 
 import numpy as np
+
+
+def identite_du_moteur(moteur) -> Dict[str, object]:
+    """QUI A RENDU L'AUDIO — le binaire, pas le commit.
+
+    POURQUOI CE BLOC EXISTE, ET IL A COÛTÉ DEUX COURSES. La provenance de
+    `rapport.json` nommait le commit du dépôt et rien d'autre. Or le rendu ne
+    sort pas du dépôt : il sort de `build/tools/vsm-render`, qui peut dater
+    d'AVANT le commit annoncé. Le 02/09/2026, les courses v13 et v14 (terminées
+    à 10:12 et 11:05) ont tourné avec un moteur compilé à 08:48, donc sans les
+    sept machines écrites entre 09:13 et 10:17. Leur rapport annonce un commit
+    dont le vivier compte quarante-sept machines mélodiques ; la course en a vu
+    quarante et une, et rien ne le disait.
+
+    À appeler PENDANT que le moteur est vivant : `machines()` interroge le
+    processus. La première version vivait dans `reconstruire.py` et était
+    appelée après la fermeture du moteur — elle retombait sur le repli « je ne
+    sais pas » à chaque course, en silence, ce que la course v11a a montré.
+
+    La fonction vit ICI, à côté de `find_vsm_render`, parce que tous les
+    programmes qui créent un moteur (corpus, banc de batterie, classifieur…)
+    doivent pouvoir s'en servir : la panne de v13/v14 peut se reproduire par
+    chacune de ces portes, et un corpus bâti sur un moteur périmé empoisonne
+    les modèles plus durablement qu'une course.
+    """
+    try:
+        chemin = Path(str(moteur.binary)).resolve()
+        stat = chemin.stat()
+        return {
+            "chemin": str(chemin),
+            "compile": datetime.fromtimestamp(stat.st_mtime).isoformat(timespec="seconds"),
+            "octets": stat.st_size,
+            "machines": len(moteur.machines()),
+        }
+    except Exception:  # noqa: BLE001 — un moteur qu'on ne sait pas décrire se dit
+        return {"chemin": str(getattr(moteur, "binary", "")), "compile": "", "octets": 0,
+                "machines": 0}
+
+
+def moteur_perime(moteur, racine: Optional[Path] = None) -> Optional[str]:
+    """Le binaire est-il plus vieux que les sources qu'il prétend porter ?
+
+    UN BINAIRE PÉRIMÉ NE SE SIGNALE PAS COMME PÉRIMÉ (leçon du § 9 de
+    docs/ROADMAP-interop.md). Il ne plante pas, il ne se plaint pas : il rend
+    un vivier plus petit, et la course mesure autre chose que ce qu'on croit.
+    Cette fonction rend la phrase à imprimer, ou None si tout va bien — elle
+    n'imprime rien elle-même : chaque point d'entrée décide de son journal.
+
+    On ne regarde que les dossiers dont le moteur est FAIT : `audio/` porte les
+    machines, `core/` et `interchange/` ce qu'elles traversent. Un changement
+    dans `app/` ne périme pas le rendu — sans cette borne, toute retouche
+    d'interface ferait crier la chaîne, et l'avertissement deviendrait un bruit
+    de fond qu'on apprend à ignorer.
+
+    `racine` s'injecte pour les tests ; par défaut, la racine du dépôt est
+    déduite de ce fichier.
+    """
+    try:
+        if racine is None:
+            racine = Path(__file__).resolve().parent.parent.parent
+        binaire = Path(str(moteur.binary)).resolve()
+        compile_le = binaire.stat().st_mtime
+        plus_recent, nom = compile_le, None
+        for dossier in ("audio", "core", "interchange"):
+            for fichier in (racine / dossier).rglob("*"):
+                if fichier.suffix not in (".h", ".cpp", ".inc"):
+                    continue
+                horodatage = fichier.stat().st_mtime
+                if horodatage > plus_recent:
+                    plus_recent, nom = horodatage, fichier
+        if nom is None:
+            return None
+        return (f"ATTENTION : le moteur date du "
+                f"{datetime.fromtimestamp(compile_le).isoformat(timespec='seconds')} et "
+                f"{nom.relative_to(racine)} du "
+                f"{datetime.fromtimestamp(plus_recent).isoformat(timespec='seconds')}. "
+                f"Ce rendu N'EST PAS celui du code présent — recompiler vsm-render, "
+                f"ou lire ce rapport en le sachant.")
+    except Exception:  # noqa: BLE001
+        return None
 
 
 DEFAULT_BINARY_CANDIDATES = (

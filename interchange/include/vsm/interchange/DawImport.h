@@ -40,12 +40,37 @@ struct DawImportReport {
     int eventsRead = 0;
     int eventsUnderstood = 0;
 
+    /// LA GRAVITÉ D'UNE LIGNE, décidée PAR CELUI QUI L'ÉCRIT.
+    ///
+    /// La première interface devinait l'importance d'une ligne en cherchant
+    /// des sous-chaînes dans sa prose (« ATTENTION », « AUCUN instrument »,
+    /// « ignor »…) — et s'est déjà trompée : « Total : … 1 piste(s) audio
+    /// ignorée(s) » contenait « ignor » et se peignait en avertissement, ce
+    /// qu'une capture d'écran a montré et qu'aucun test ne gardait. Un lecteur
+    /// qui reformule sa phrase ne doit pas pouvoir décolorer un avertissement
+    /// en silence : l'auteur de la ligne SAIT sa gravité au moment où il
+    /// l'écrit — il l'écrivait déjà, en majuscules, dans la prose.
+    ///
+    ///  - `info`      : un fait repris ou un décompte ;
+    ///  - `attention` : quelque chose a été DEVINÉ ou est peut-être faux
+    ///                  (arrangement posé bout à bout, identifiant suspect) ;
+    ///  - `perte`     : quelque chose du projet d'origine n'arrive pas
+    ///                  (piste audio, instrument non assigné).
+    enum class Gravite : uint8_t { info, attention, perte };
+
+    struct Ligne {
+        std::string texte;
+        Gravite gravite = Gravite::info;
+    };
+
     /// Une ligne par fait notable, dans l'ordre de la lecture. Ce sont ces
     /// lignes que l'interface montre : elles sont écrites pour un musicien,
     /// pas pour un programmeur.
-    std::vector<std::string> lines;
+    std::vector<Ligne> lines;
 
-    void note(const std::string& ligne) { lines.push_back(ligne); }
+    void note(std::string ligne, Gravite gravite = Gravite::info) {
+        lines.push_back({std::move(ligne), gravite});
+    }
 };
 
 struct DawImportResult {

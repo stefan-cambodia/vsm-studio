@@ -2,6 +2,7 @@
 #include "vsm/interchange/DawImport.h"
 #include "vsm/interchange/Xml.h"
 #include <algorithm>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -90,10 +91,41 @@ const vsm::sequencer::Track* pisteNommee(const vsm::sequencer::Project& projet,
 }
 bool rapportContient(const DawImportReport& rapport, const std::string& fragment) {
     for (const auto& ligne : rapport.lines)
-        if (ligne.find(fragment) != std::string::npos) return true;
+        if (ligne.texte.find(fragment) != std::string::npos) return true;
     return false;
 }
+
+/// La GRAVITÉ de la ligne qui contient ce fragment. La gravité est décidée par
+/// le lecteur qui écrit la ligne — plus par l'interface qui la relit — et un
+/// test doit donc pouvoir dire « cette perte est bien étiquetée perte » sans
+/// dépendre de la prose.
+DawImportReport::Gravite graviteDe(const DawImportReport& rapport, const std::string& fragment) {
+    for (const auto& ligne : rapport.lines)
+        if (ligne.texte.find(fragment) != std::string::npos) return ligne.gravite;
+    throw std::runtime_error("aucune ligne ne contient : " + fragment);
+}
 } // namespace
+
+// --- La gravité, décidée à la source ---------------------------------------
+
+VSM_TEST(les_lignes_du_rapport_portent_leur_gravite) {
+    // LE BUG QUE CE TEST VERROUILLE : l'interface devinait l'importance d'une
+    // ligne dans sa prose, et « Total : … 1 piste(s) audio ignorée(s) »
+    // (contenant « ignor ») se peignait en avertissement. Vu par capture
+    // d'écran, gardé par aucun test. Désormais l'auteur de la ligne étiquette,
+    // et c'est ici qu'on fixe le contrat : une PERTE est marquée perte, un
+    // AVERTISSEMENT attention, un décompte info.
+    using Gravite = DawImportReport::Gravite;
+    const std::vector<uint8_t> octets(kAlsClair.begin(), kAlsClair.end());
+    const auto resultat = importAbletonLive(octets);
+    VSM_ASSERT(graviteDe(resultat.report, "AUCUN instrument assigné") == Gravite::perte);
+    VSM_ASSERT(graviteDe(resultat.report, "NON importée") == Gravite::perte);
+    VSM_ASSERT(graviteDe(resultat.report, "Total :") == Gravite::info);
+
+    const auto fl = importFlStudio(kFlp);
+    VSM_ASSERT(graviteDe(fl.report, "ARRANGEMENT n'est pas repris") == Gravite::attention);
+    VSM_ASSERT(graviteDe(fl.report, "Événements lus") == Gravite::info);
+}
 
 // --- Le lecteur XML --------------------------------------------------------
 

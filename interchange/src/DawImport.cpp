@@ -8,6 +8,8 @@
 #include <cmath>
 #include <fstream>
 
+#include "vsm/interchange/Utf8.h"
+
 namespace vsm::interchange {
 namespace {
 
@@ -109,13 +111,61 @@ int lireLesNotesDUnClip(const XmlNode& clip, Track& piste, uint16_t tpq) {
     return compte;
 }
 
+using Gravite = DawImportReport::Gravite;
+
+/// Lit un fichier ENTIER en octets, ou lève l'erreur nommée. Les quatre
+/// fonctions `import*File` répétaient ce bloc mot pour mot — quatre variantes
+/// d'ouverture de fichier, exactement ce que `ProjectBundle.h` demande
+/// d'éviter pour ses propres lectures.
+std::vector<uint8_t> lireOctets(const std::string& chemin) {
+    std::ifstream fichier(chemin, std::ios::binary);
+    if (!fichier) throw DawImportError("fichier introuvable : " + chemin);
+    return std::vector<uint8_t>((std::istreambuf_iterator<char>(fichier)),
+                                std::istreambuf_iterator<char>());
+}
+
+/// L'ÉPILOGUE COMMUN aux trois lecteurs : trier, poser le clip, compter, dire.
+///
+/// Cette mécanique était recopiée dans les trois lecteurs — et l'ordre des six
+/// lignes avait déjà commencé à diverger entre eux. Or elle porte l'invariant
+/// le plus cher du module : `poserUnClipSurLeMateriau` est la correction du
+/// bug de l'arrangement vide, et un quatrième lecteur qui oublierait l'appel
+/// reproduirait EXACTEMENT ce bug, que seuls des yeux sur l'écran ont vu. Ici,
+/// l'invariant est vrai par construction pour tout lecteur futur.
+///
+/// La LIGNE DE RAPPORT reste rédigée par chaque lecteur : « l'instrument du
+/// projet d'origine », « le générateur du rack (Sytrus…) », « le VST du
+/// projet d'origine » sont des explications différentes parce que les mondes
+/// d'origine le sont — c'est une richesse, pas une duplication.
+void livrerLaPiste(Project& projet, DawImportReport& rapport, Track&& piste,
+                   const std::string& ligneDeRapport) {
+    std::sort(piste.notes.begin(), piste.notes.end(),
+              [](const Note& a, const Note& b) { return a.startTick < b.startTick; });
+    poserUnClipSurLeMateriau(piste);
+    ++rapport.midiTracksImported;
+    ++rapport.tracksWithoutInstrument;
+    rapport.note(ligneDeRapport, Gravite::perte);
+    projet.tracks.push_back(std::move(piste));
+}
+
+/// Le corps du lecteur Ableton, sur le XML DÉJÀ décompressé. Séparé pour que
+/// `importDawProject`, qui doit décompresser pour reconnaître le format, ne
+/// paie pas l'inflate DEUX fois — un `.als` réel fait des dizaines de
+/// mégaoctets une fois dégonflé.
+DawImportResult importAbletonLiveTexte(const std::string& texte);
+DawImportResult importCubaseTrackArchiveTexte(const std::string& texte);
+
 } // namespace
 
 DawImportResult importAbletonLive(const std::vector<uint8_t>& octets) {
     if (octets.empty()) throw DawImportError("fichier vide");
-
     const auto clair = Inflate::any(octets);
-    const std::string texte(clair.begin(), clair.end());
+    return importAbletonLiveTexte(std::string(clair.begin(), clair.end()));
+}
+
+namespace {
+
+DawImportResult importAbletonLiveTexte(const std::string& texte) {
     XmlDocument doc;
     try {
         doc = parseXml(texte);
@@ -146,7 +196,7 @@ DawImportResult importAbletonLive(const std::vector<uint8_t>& octets) {
         if (!manuel.empty()) bpm = nombre(manuel, 120.0);
     }
     if (bpm < 20.0 || bpm > 999.0) {
-        rapport.note("Tempo illisible : 120 BPM retenu par défaut");
+        rapport.note("Tempo illisible : 120 BPM retenu par défaut", Gravite::attention);
         bpm = 120.0;
     }
     projet.tempoMap.clearTempoChanges();
@@ -154,14 +204,15 @@ DawImportResult importAbletonLive(const std::vector<uint8_t>& octets) {
     rapport.note("Tempo : " + std::to_string(static_cast<int>(std::llround(bpm))) + " BPM");
     if (tempo != nullptr && tempo->find("FloatEvent") != nullptr)
         rapport.note("ATTENTION : ce projet a une AUTOMATION de tempo, qui n'est pas reprise — "
-                     "seul le tempo de base est importé");
+                     "seul le tempo de base est importé", Gravite::attention);
 
     // --- Les pistes --------------------------------------------------------
     for (const XmlNode* audio : doc.root->findAll("AudioTrack")) {
         ++rapport.audioTracksSeen;
         const std::string nom = valeurDe(*audio, "EffectiveName", "sans nom");
         rapport.note("Piste AUDIO « " + nom + " » NON importée : un clip audio renvoie à un "
-                     "fichier extérieur au projet, que VSM Studio ne peut pas reprendre ici");
+                     "fichier extérieur au projet, que VSM Studio ne peut pas reprendre ici",
+                     Gravite::perte);
     }
 
     for (const XmlNode* midi : doc.root->findAll("MidiTrack")) {
@@ -182,22 +233,17 @@ DawImportResult importAbletonLive(const std::vector<uint8_t>& octets) {
         for (const XmlNode* clip : clips)
             notesDeLaPiste += lireLesNotesDUnClip(*clip, piste, projet.ticksPerQuarterNote);
 
-        std::sort(piste.notes.begin(), piste.notes.end(),
-                  [](const Note& a, const Note& b) { return a.startTick < b.startTick; });
-
         rapport.notesImported += notesDeLaPiste;
-        ++rapport.midiTracksImported;
-        ++rapport.tracksWithoutInstrument;
-        poserUnClipSurLeMateriau(piste);
-        rapport.note("Piste MIDI « " + piste.name + " » : " + std::to_string(notesDeLaPiste)
-                     + " note(s) reprise(s), AUCUN instrument assigné — l'instrument du projet "
-                       "d'origine n'existe pas ici et ses réglages n'ont pas d'équivalent");
-        projet.tracks.push_back(std::move(piste));
+        livrerLaPiste(projet, rapport, std::move(piste),
+                      "Piste MIDI « " + piste.name + " » : " + std::to_string(notesDeLaPiste)
+                      + " note(s) reprise(s), AUCUN instrument assigné — l'instrument du projet "
+                        "d'origine n'existe pas ici et ses réglages n'ont pas d'équivalent");
     }
 
     if (projet.tracks.empty() && rapport.audioTracksSeen == 0)
         rapport.note("ATTENTION : aucune piste trouvée — ce projet est peut-être vide, "
-                     "ou d'une version de Live que ce lecteur ne reconnaît pas");
+                     "ou d'une version de Live que ce lecteur ne reconnaît pas",
+                     Gravite::attention);
 
     projet.title = "Import Ableton";
     rapport.note("Total : " + std::to_string(rapport.midiTracksImported) + " piste(s) MIDI, "
@@ -206,12 +252,10 @@ DawImportResult importAbletonLive(const std::vector<uint8_t>& octets) {
     return resultat;
 }
 
+} // namespace
+
 DawImportResult importAbletonLiveFile(const std::string& chemin) {
-    std::ifstream fichier(chemin, std::ios::binary);
-    if (!fichier) throw DawImportError("fichier introuvable : " + chemin);
-    const std::vector<uint8_t> octets((std::istreambuf_iterator<char>(fichier)),
-                                      std::istreambuf_iterator<char>());
-    return importAbletonLive(octets);
+    return importAbletonLive(lireOctets(chemin));
 }
 
 } // namespace vsm::interchange
@@ -256,34 +300,25 @@ uint32_t lireDoubleMot(const std::vector<uint8_t>& o, size_t i) {
 
 /// Les textes de FL sont en UTF-16 depuis la version 12, en Latin-1 avant.
 /// On reconnaît l'UTF-16 à ses octets nuls en position impaire, et on convertit
-/// en UTF-8 — sans quoi un nom de canal accentué arriverait haché.
-std::string texteDeFl(const std::vector<uint8_t>& donnees) {
-    bool utf16 = donnees.size() >= 4;
-    for (size_t i = 1; i < donnees.size() && utf16; i += 2)
+/// en UTF-8 (par l'encodeur partagé, Utf8.h) — sans quoi un nom de canal
+/// accentué arriverait haché. Lecture EN PLACE, sur (pointeur, longueur) : la
+/// boucle d'événements passait par une copie sur le tas à chaque événement.
+std::string texteDeFl(const uint8_t* donnees, size_t longueur) {
+    bool utf16 = longueur >= 4;
+    for (size_t i = 1; i < longueur && utf16; i += 2)
         if (donnees[i] != 0) utf16 = false;
     std::string sortie;
     if (utf16) {
-        for (size_t i = 0; i + 1 < donnees.size(); i += 2) {
+        for (size_t i = 0; i + 1 < longueur; i += 2) {
             const unsigned code = static_cast<unsigned>(donnees[i])
                                 | (static_cast<unsigned>(donnees[i + 1]) << 8);
             if (code == 0) break;
-            if (code < 0x80) {
-                sortie += static_cast<char>(code);
-            } else if (code < 0x800) {
-                sortie += static_cast<char>(0xC0 | (code >> 6));
-                sortie += static_cast<char>(0x80 | (code & 0x3F));
-            } else {
-                sortie += static_cast<char>(0xE0 | (code >> 12));
-                sortie += static_cast<char>(0x80 | ((code >> 6) & 0x3F));
-                sortie += static_cast<char>(0x80 | (code & 0x3F));
-            }
+            appendUtf8(sortie, code);
         }
     } else {
-        for (uint8_t c : donnees) {
-            if (c == 0) break;
-            if (c < 0x80) sortie += static_cast<char>(c);
-            else { sortie += static_cast<char>(0xC0 | (c >> 6));
-                   sortie += static_cast<char>(0x80 | (c & 0x3F)); }
+        for (size_t i = 0; i < longueur; ++i) {
+            if (donnees[i] == 0) break;
+            appendUtf8(sortie, donnees[i]);   // Latin-1 : le point de code EST l'octet
         }
     }
     return sortie;
@@ -378,14 +413,23 @@ DawImportResult importFlStudio(const std::vector<uint8_t>& octets) {
                 if (decalage > 28) throw DawImportError("longueur d'événement aberrante");
             }
             if (i + longueur > fin) throw DawImportError("événement annoncé plus long que le bloc");
-            const std::vector<uint8_t> donnees(octets.begin() + static_cast<long>(i),
-                                               octets.begin() + static_cast<long>(i + longueur));
+            // Lecture EN PLACE : `debut` désigne les données de l'événement
+            // dans le fichier même. La première version copiait chaque
+            // événement dans un vecteur — une allocation par tour de la
+            // boucle dominante du lecteur, et les blocs de notes dupliquaient
+            // l'intégralité des notes du fichier.
+            const size_t base = i;
+            const uint8_t* debut = octets.data() + base;
             i += longueur;
 
-            if (id == kFlpTitre) { titre = texteDeFl(donnees); compris = true; }
-            else if (id == kFlpVersion) { rapport.sourceVersion = texteDeFl(donnees); compris = true; }
+            if (id == kFlpTitre) { titre = texteDeFl(debut, longueur); compris = true; }
+            else if (id == kFlpVersion) {
+                rapport.sourceVersion = texteDeFl(debut, longueur);
+                compris = true;
+            }
             else if (id == kFlpNomDeCanal) {
-                if (canalCourant < nomsDeCanaux.size()) nomsDeCanaux[canalCourant] = texteDeFl(donnees);
+                if (canalCourant < nomsDeCanaux.size())
+                    nomsDeCanaux[canalCourant] = texteDeFl(debut, longueur);
                 compris = true;
             } else if (id == kFlpNomDeMotif) {
                 compris = true;
@@ -396,16 +440,17 @@ DawImportResult importFlStudio(const std::vector<uint8_t>& octets) {
                 if (longueur % 24 != 0) {
                     rapport.note("ATTENTION : un bloc de notes de " + std::to_string(longueur)
                                  + " octets n'est pas un multiple de 24 — il n'a pas été lu, et "
-                                   "ce lecteur se trompe peut-être d'identifiant d'événement");
+                                   "ce lecteur se trompe peut-être d'identifiant d'événement",
+                                 Gravite::attention);
                 } else {
                     auto& liste = motif(motifCourant);
                     for (size_t n = 0; n + 24 <= longueur; n += 24) {
                         NoteFl note;
-                        note.position = lireDoubleMot(donnees, n);
-                        note.canal = lireMot(donnees, n + 6);
-                        note.duree = lireDoubleMot(donnees, n + 8);
-                        note.hauteur = donnees[n + 12];
-                        note.velocite = donnees[n + 21];
+                        note.position = lireDoubleMot(octets, base + n);
+                        note.canal = lireMot(octets, base + n + 6);
+                        note.duree = lireDoubleMot(octets, base + n + 8);
+                        note.hauteur = debut[n + 12];
+                        note.velocite = debut[n + 21];
                         if (note.duree == 0) continue;
                         liste.push_back(note);
                     }
@@ -461,28 +506,25 @@ DawImportResult importFlStudio(const std::vector<uint8_t>& octets) {
         piste.name = (c < nomsDeCanaux.size() && !nomsDeCanaux[c].empty())
                    ? nomsDeCanaux[c] : ("Canal " + std::to_string(c + 1));
         piste.colorRgba = couleurDepuisIndice(static_cast<int>(c));
-        std::sort(piste.notes.begin(), piste.notes.end(),
-                  [](const Note& a, const Note& b) { return a.startTick < b.startTick; });
-        poserUnClipSurLeMateriau(piste);
-        ++rapport.midiTracksImported;
-        ++rapport.tracksWithoutInstrument;
-        rapport.note("Canal « " + piste.name + " » : " + std::to_string(piste.notes.size())
-                     + " note(s), AUCUN instrument assigné — le générateur du rack "
-                       "(Sytrus, Harmless, un VST…) n'existe pas ici");
-        projet.tracks.push_back(std::move(piste));
+        const std::string ligne =
+            "Canal « " + piste.name + " » : " + std::to_string(piste.notes.size())
+            + " note(s), AUCUN instrument assigné — le générateur du rack "
+              "(Sytrus, Harmless, un VST…) n'existe pas ici";
+        livrerLaPiste(projet, rapport, std::move(piste), ligne);
     }
 
     if (motifs.size() > 1)
         rapport.note("ATTENTION : l'ARRANGEMENT n'est pas repris. Les "
                      + std::to_string(motifs.size())
                      + " motifs sont posés BOUT À BOUT dans l'ordre de leurs numéros, ce qui "
-                       "n'est probablement pas l'ordre de votre playlist");
+                       "n'est probablement pas l'ordre de votre playlist", Gravite::attention);
     rapport.note("Événements lus : " + std::to_string(rapport.eventsRead) + ", dont "
                  + std::to_string(rapport.eventsUnderstood) + " compris. Un import qui ne "
                    "comprend presque rien signale un lecteur qui se trompe, pas un projet vide");
     if (rapport.notesImported == 0)
         rapport.note("ATTENTION : AUCUNE note lue. Soit ce projet n'en contient pas, soit ce "
-                     "lecteur ne reconnaît pas la version de FL Studio qui l'a écrit");
+                     "lecteur ne reconnaît pas la version de FL Studio qui l'a écrit",
+                     Gravite::attention);
     return resultat;
 }
 
@@ -577,8 +619,12 @@ void collecterLesNotes(const XmlNode& noeud, const std::string& nomHerite,
 DawImportResult importCubaseTrackArchive(const std::vector<uint8_t>& octets) {
     if (octets.empty()) throw DawImportError("fichier vide");
     const auto clair = Inflate::any(octets);
-    const std::string texte(clair.begin(), clair.end());
+    return importCubaseTrackArchiveTexte(std::string(clair.begin(), clair.end()));
+}
 
+namespace {
+
+DawImportResult importCubaseTrackArchiveTexte(const std::string& texte) {
     XmlDocument doc;
     try {
         doc = parseXml(texte);
@@ -613,7 +659,8 @@ DawImportResult importCubaseTrackArchive(const std::vector<uint8_t>& octets) {
     } else {
         projet.tempoMap.addTempoChange(0, 500000);   // 120 BPM
         rapport.note("Tempo ABSENT de cette archive : 120 BPM retenu — une archive de pistes "
-                     "n'emporte pas toujours le tempo du projet, pensez à le régler");
+                     "n'emporte pas toujours le tempo du projet, pensez à le régler",
+                     Gravite::attention);
     }
 
     // LA RÉSOLUTION. Cubase compte en ticks à 480 par noire dans ses archives ;
@@ -634,47 +681,46 @@ DawImportResult importCubaseTrackArchive(const std::vector<uint8_t>& octets) {
     std::vector<std::pair<std::string, Note>> notes;
     collecterLesNotes(*doc.root, {}, notes, diviseur <= 0.0 ? 1.0 : diviseur);
 
-    // Regroupement par nom de piste, dans l'ordre d'apparition.
+    // Regroupement par nom de piste, dans l'ordre d'apparition — dans un
+    // vecteur LOCAL : c'est `livrerLaPiste` qui pousse dans le projet, pour
+    // que l'épilogue (tri, clip, compteurs) soit le même que chez les deux
+    // autres lecteurs, par construction et non par recopie.
+    std::vector<Track> pistes;
     for (auto& [nomDePiste, note] : notes) {
         Track* piste = nullptr;
-        for (auto& t : projet.tracks) if (t.name == nomDePiste) { piste = &t; break; }
+        for (auto& t : pistes) if (t.name == nomDePiste) { piste = &t; break; }
         if (piste == nullptr) {
             Track neuve;
             neuve.name = nomDePiste;
-            neuve.colorRgba = couleurDepuisIndice(static_cast<int>(projet.tracks.size()));
-            projet.tracks.push_back(std::move(neuve));
-            piste = &projet.tracks.back();
+            neuve.colorRgba = couleurDepuisIndice(static_cast<int>(pistes.size()));
+            pistes.push_back(std::move(neuve));
+            piste = &pistes.back();
         }
         piste->notes.push_back(note);
         ++rapport.notesImported;
     }
-    for (auto& piste : projet.tracks) {
-        std::sort(piste.notes.begin(), piste.notes.end(),
-                  [](const Note& a, const Note& b) { return a.startTick < b.startTick; });
-        poserUnClipSurLeMateriau(piste);
-        ++rapport.midiTracksImported;
-        ++rapport.tracksWithoutInstrument;
-        rapport.note("Piste « " + piste.name + " » : " + std::to_string(piste.notes.size())
-                     + " note(s), AUCUN instrument assigné — le VST du projet d'origine "
-                       "n'existe pas ici");
+    for (auto& piste : pistes) {
+        const std::string ligne =
+            "Piste « " + piste.name + " » : " + std::to_string(piste.notes.size())
+            + " note(s), AUCUN instrument assigné — le VST du projet d'origine "
+              "n'existe pas ici";
+        livrerLaPiste(projet, rapport, std::move(piste), ligne);
     }
 
     if (projet.tracks.empty())
         rapport.note("ATTENTION : aucune note trouvée. Soit cette archive ne contient que des "
                      "pistes audio ou vides, soit sa structure diffère de celles que ce lecteur "
                      "reconnaît — dans ce cas, exporter en MIDI Type 1 donnera un meilleur "
-                     "résultat");
+                     "résultat", Gravite::attention);
     rapport.note("Total : " + std::to_string(rapport.midiTracksImported) + " piste(s), "
                  + std::to_string(rapport.notesImported) + " note(s)");
     return resultat;
 }
 
+} // namespace
+
 DawImportResult importCubaseTrackArchiveFile(const std::string& chemin) {
-    std::ifstream fichier(chemin, std::ios::binary);
-    if (!fichier) throw DawImportError("fichier introuvable : " + chemin);
-    const std::vector<uint8_t> octets((std::istreambuf_iterator<char>(fichier)),
-                                      std::istreambuf_iterator<char>());
-    return importCubaseTrackArchive(octets);
+    return importCubaseTrackArchive(lireOctets(chemin));
 }
 
 DawImportResult importDawProject(const std::vector<uint8_t>& octets,
@@ -699,33 +745,27 @@ DawImportResult importDawProject(const std::vector<uint8_t>& octets,
         return importFlStudio(octets);
 
     // Ableton et Cubase sont tous deux du XML (le premier gzippé) : on
-    // décompresse une fois, et c'est l'élément racine qui tranche.
+    // décompresse UNE fois et le texte dégonflé part directement au lecteur —
+    // la première version reconnaissait le format sur le texte puis rappelait
+    // le lecteur avec les octets compressés, qui refaisait l'inflate entier ;
+    // sur un `.als` réel, des dizaines de mégaoctets dégonflés deux fois.
     const auto clair = Inflate::any(octets);
     const std::string texte(clair.begin(), clair.end());
-    if (texte.find("<Ableton") != std::string::npos) return importAbletonLive(octets);
+    if (texte.find("<Ableton") != std::string::npos) return importAbletonLiveTexte(texte);
     if (texte.find("tracklist") != std::string::npos || texte.find("<tracklist2") != std::string::npos
         || texte.find("MMidiPartEvent") != std::string::npos)
-        return importCubaseTrackArchive(octets);
+        return importCubaseTrackArchiveTexte(texte);
 
     throw DawImportError("format non reconnu : ce fichier n'est ni un projet Ableton Live (.als), "
                          "ni un projet FL Studio (.flp), ni une archive de pistes Cubase (.xml)");
 }
 
 DawImportResult importDawProjectFile(const std::string& chemin) {
-    std::ifstream fichier(chemin, std::ios::binary);
-    if (!fichier) throw DawImportError("fichier introuvable : " + chemin);
-    const std::vector<uint8_t> octets((std::istreambuf_iterator<char>(fichier)),
-                                      std::istreambuf_iterator<char>());
-    return importDawProject(octets, chemin);
+    return importDawProject(lireOctets(chemin), chemin);
 }
 
-
 DawImportResult importFlStudioFile(const std::string& chemin) {
-    std::ifstream fichier(chemin, std::ios::binary);
-    if (!fichier) throw DawImportError("fichier introuvable : " + chemin);
-    const std::vector<uint8_t> octets((std::istreambuf_iterator<char>(fichier)),
-                                      std::istreambuf_iterator<char>());
-    return importFlStudio(octets);
+    return importFlStudio(lireOctets(chemin));
 }
 
 } // namespace vsm::interchange

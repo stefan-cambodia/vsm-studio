@@ -649,9 +649,10 @@ MainComponent::MainComponent()
     // Le rapport d'import : ajouté ici, INVISIBLE, et rendu visible par
     // `applyDawImport`. Il est enfant du composant de contenu -- donc de ce que
     // photographie l'autoportrait -- parce qu'un rapport qu'aucune capture ne
-    // montre est un écran qu'on ne peut pas juger.
+    // montre est un écran qu'on ne peut pas juger. Il se gère seul (bornes par
+    // `parentSizeChanged`, premier plan en devenant visible) : rien ici ni
+    // dans `resized()` n'a à le connaître.
     addChildComponent(importReport_);
-    importReport_.onClose = [this] { resized(); };
 
     startTimerHz(30);
 }
@@ -681,11 +682,6 @@ void MainComponent::paint(juce::Graphics& g) {
 
 void MainComponent::resized() {
     auto area = getLocalBounds();
-    // LE RAPPORT D'IMPORT COUVRE TOUT, barre de menu comprise, et il est placé
-    // en PREMIER pour que le reste de la disposition ne le connaisse pas : ce
-    // n'est pas un volet qui prend de la place, c'est une feuille posée dessus.
-    importReport_.setBounds(getLocalBounds());
-    importReport_.toFront(false);
 #if !JUCE_MAC
     menuBarComponent_.setBounds(area.removeFromTop(26));
 #endif
@@ -2509,7 +2505,6 @@ bool MainComponent::applyDawImport(const juce::File& fichier) {
         // l'import » générique ne ferait.
         importReport_.showFailure(juce::String::fromUTF8("Import impossible"),
                                   juce::String::fromUTF8(erreur.what()));
-        resized();
         std::fputs((std::string("Import : ") + erreur.what() + "\n").c_str(), stderr);
         return false;
     }
@@ -2529,12 +2524,16 @@ bool MainComponent::applyDawImport(const juce::File& fichier) {
     // photographie : VSM_CAPTURE rend le composant de contenu, où une alerte
     // asynchrone n'apparaît pas.
     importReport_.showReport(resultat.report);
-    resized();
     // AU TERMINAL AUSSI : un import lancé par VSM_IMPORT se juge depuis le
     // terminal qui l'a lancé, et le rapport doit y être lisible sans image.
+    // Le « ! » marque les lignes que le lecteur a étiquetées attention ou
+    // perte -- la même gravité que les couleurs du panneau.
     std::fputs(("Import : " + resultat.report.sourceFormat + "\n").c_str(), stderr);
-    for (const auto& ligne : resultat.report.lines)
-        std::fputs(("  " + ligne + "\n").c_str(), stderr);
+    for (const auto& ligne : resultat.report.lines) {
+        const bool grave =
+            ligne.gravite != vsm::interchange::DawImportReport::Gravite::info;
+        std::fputs(((grave ? "! " : "  ") + ligne.texte + "\n").c_str(), stderr);
+    }
     return true;
 }
 
@@ -2544,7 +2543,6 @@ bool MainComponent::importDawProjectForCapture(const juce::File& fichier) {
 
 void MainComponent::showLastImportReport() {
     importReport_.reopen();
-    resized();
 }
 
 /// OUVRIR UN DOSSIER DE PROJET, séparé du sélecteur de fichiers qui le

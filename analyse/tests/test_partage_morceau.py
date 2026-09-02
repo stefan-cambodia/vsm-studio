@@ -12,9 +12,9 @@ publie ; au-delà de 50 % sur un seul stem, elle le crie au journal.
 
 from __future__ import annotations
 
-import struct
 import sys
 import tempfile
+import wave
 from pathlib import Path
 
 RACINE = Path(__file__).resolve().parents[1]
@@ -31,13 +31,17 @@ from reconstruire import partage_du_morceau  # noqa: E402
 
 def ecrire_wav_mono(chemin: Path, amplitude: float, echantillons: int = 4800) -> None:
     """Un WAV 16 bits mono d'amplitude constante : son énergie est connue
-    EXACTEMENT (n·a²), donc les parts attendues se calculent de tête."""
+    EXACTEMENT (n·a²), donc les parts attendues se calculent de tête.
+
+    Par le module `wave`, comme `test_batterie_melange.py` : un en-tête RIFF
+    empaqueté à la main serait la troisième variante maison du dépôt, et
+    chacune est un endroit de plus où se tromper d'octet."""
     valeur = int(amplitude * 32767)
-    donnees = struct.pack("<" + "h" * echantillons, *([valeur] * echantillons))
-    entete = (b"RIFF" + struct.pack("<I", 36 + len(donnees)) + b"WAVE"
-              + b"fmt " + struct.pack("<IHHIIHH", 16, 1, 1, 48000, 96000, 2, 16)
-              + b"data" + struct.pack("<I", len(donnees)))
-    chemin.write_bytes(entete + donnees)
+    with wave.open(str(chemin), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(48000)
+        w.writeframes(valeur.to_bytes(2, "little", signed=True) * echantillons)
 
 
 def capturer(pistes):

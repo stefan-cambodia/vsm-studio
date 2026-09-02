@@ -17,23 +17,18 @@ juce::Font policeDeLigne(bool titre = false) {
     return juce::Font(juce::FontOptions(float(kCorpsDeLigne + (titre ? 2 : 0))));
 }
 
-// LA COULEUR DIT L'IMPORTANCE, et c'est la seule mise en forme du panneau.
-// Dans une liste uniforme, la ligne qui compte se noie au milieu des lignes de
-// comptage -- or c'est précisément elle qu'on écrit le rapport pour faire lire.
-// Les mots repérés ici sont ceux que les lecteurs emploient déjà (voir
-// interchange/src/DawImport.cpp) : « ATTENTION » pour ce qui est deviné plutôt
-// que lu, « AUCUN instrument » et « NON importée » pour ce qui manque à
-// l'arrivée.
-juce::Colour couleurDeLaLigne(const juce::String& texte) {
-    if (texte.contains("ATTENTION")) return P::accentRed;
-    // LE TOTAL D'ABORD, avant la règle sur « ignorée » : la ligne « Total : 2
-    // piste(s) MIDI, 7 note(s), 1 piste(s) audio ignorée(s) » contient le mot
-    // et se peignait en ambre, ce qui la faisait lire comme un avertissement
-    // alors qu'elle est le récapitulatif. Une capture d'écran l'a montrée.
-    if (texte.startsWith("Total")) return P::textPrimary;
-    if (texte.contains("AUCUN instrument") || texte.contains("NON import")
-        || texte.contains("ignor"))
-        return P::accentAmber;
+// LA COULEUR VIENT DE LA GRAVITÉ QUE LE LECTEUR A POSÉE, jamais de la prose.
+// La première version cherchait des sous-chaînes (« ATTENTION », « AUCUN
+// instrument », « ignor »…) dans des lignes rédigées deux couches plus bas —
+// et s'est trompée : « Total : … 1 piste(s) audio ignorée(s) » se peignait en
+// avertissement, ce qu'une capture d'écran a montré et qu'aucun test ne
+// gardait. Un lecteur qui reformule sa phrase ne doit pas pouvoir décolorer un
+// avertissement en silence ; désormais il ÉTIQUETTE (DawImportReport::Gravite),
+// et la correspondance tient en trois lignes que rien ne peut désynchroniser.
+juce::Colour couleurDeGravite(vsm::interchange::DawImportReport::Gravite gravite) {
+    using Gravite = vsm::interchange::DawImportReport::Gravite;
+    if (gravite == Gravite::attention) return P::accentRed;
+    if (gravite == Gravite::perte) return P::accentAmber;
     return P::textSecondary;
 }
 
@@ -58,20 +53,13 @@ ImportReportComponent::ImportReportComponent() {
     addAndMakeVisible(vue_);
     vue_.setViewedComponent(&liste_, false);
     vue_.setScrollBarsShown(true, false);
-    // La barre de défilement dans la PALETTE : sans cela elle arrive au bleu
-    // par défaut de JUCE, la seule tache froide d'une interface entièrement
-    // chaude -- et l'aperçu hors écran, qui n'installe pas le LookAndFeel de
-    // l'application, l'a montrée sans détour.
-    vue_.getVerticalScrollBar().setColour(juce::ScrollBar::thumbColourId,
-                                          P::border.brighter(0.35f));
-    vue_.getVerticalScrollBar().setColour(juce::ScrollBar::trackColourId, P::panel);
+    // Les couleurs de la barre viennent du VsmLookAndFeel de l'application —
+    // et l'aperçu hors écran (vsm-ui-preview) l'installe désormais lui aussi,
+    // au lieu que chaque composant recopie les couleurs à la main.
 
     fermer_.setButtonText(juce::String::fromUTF8("Fermer"));
     addAndMakeVisible(fermer_);
-    fermer_.onClick = [this] {
-        setVisible(false);
-        if (onClose) onClose();
-    };
+    fermer_.onClick = [this] { fermer(); };
 
     // COPIER : un rapport d'import sert souvent à être montré à quelqu'un
     // d'autre -- sur un forum, dans un message -- quand l'import ne donne pas
@@ -92,20 +80,18 @@ void ImportReportComponent::showReport(const vsm::interchange::DawImportReport& 
     // « Ableton Live — Ableton Live 11.3.4 » ne renseignait personne.
     const auto format = juce::String::fromUTF8(rapport.sourceFormat.c_str());
     const auto version = juce::String::fromUTF8(rapport.sourceVersion.c_str());
-    if (version.isEmpty())          sousTitre_ = format;
+    if (version.isEmpty())             sousTitre_ = format;
     else if (version.contains(format)) sousTitre_ = version;
-    else                            sousTitre_ = format + juce::String::fromUTF8(" \xe2\x80\x94 ") + version;
+    else                               sousTitre_ = format + juce::String::fromUTF8(" \xe2\x80\x94 ") + version;
 
     source_.clear();
 
     // LE RÉSUMÉ D'ABORD. Sans lui il faudrait compter les lignes pour savoir si
     // l'import a rapporté quelque chose ; c'est la première question qu'on se
     // pose, elle mérite la première ligne.
-    juce::String resume;
     // « lu(s) » pour les clips, et le mot compte : `clipsSeen` dénombre ce que
-    // le FICHIER contenait, pas ce que le projet a reçu. Les trois nombres
-    // alignés sans distinction se liraient comme trois résultats, et un clip vu
-    // mais non repris passerait pour un clip repris.
+    // le FICHIER contenait, pas ce que le projet a reçu.
+    juce::String resume;
     resume << rapport.midiTracksImported << juce::String::fromUTF8(" piste(s) reprise(s), ")
            << rapport.notesImported << juce::String::fromUTF8(" note(s), ")
            << rapport.clipsSeen << juce::String::fromUTF8(" clip(s) lu(s)");
@@ -136,20 +122,11 @@ void ImportReportComponent::showReport(const vsm::interchange::DawImportReport& 
     }
     source_.add({{}, P::textSecondary, false});
 
-    for (const auto& ligne : rapport.lines) {
-        const auto texte = juce::String::fromUTF8(ligne.c_str());
-        source_.add({texte, couleurDeLaLigne(texte), false});
-    }
+    for (const auto& ligne : rapport.lines)
+        source_.add({juce::String::fromUTF8(ligne.texte.c_str()),
+                     couleurDeGravite(ligne.gravite), false});
 
-    // `resized()` et non `reconstruireLaListe()` : la hauteur du cadre suit le
-    // nombre de lignes, et ce nombre vient de changer.
-    resized();
-    setVisible(true);
-    toFront(false);
-    // LE CLAVIER, pour qu'Échap ferme vraiment : sans cette prise de focus, la
-    // touche part au panneau qui l'avait avant, et le rapport ne se fermerait
-    // qu'à la souris.
-    grabKeyboardFocus();
+    montrer();
 }
 
 void ImportReportComponent::showFailure(const juce::String& titre, const juce::String& message) {
@@ -161,28 +138,30 @@ void ImportReportComponent::showFailure(const juce::String& titre, const juce::S
     // intérêt. Le repli à la largeur du cadre s'occupe de le rendre lisible.
     source_.add({message, P::accentRed, false});
 
-    // `resized()` et non `reconstruireLaListe()` : la hauteur du cadre suit le
-    // nombre de lignes, et ce nombre vient de changer.
-    resized();
-    setVisible(true);
-    toFront(false);
-    // LE CLAVIER, pour qu'Échap ferme vraiment : sans cette prise de focus, la
-    // touche part au panneau qui l'avait avant, et le rapport ne se fermerait
-    // qu'à la souris.
-    grabKeyboardFocus();
+    montrer();
 }
 
 void ImportReportComponent::reopen() {
     if (source_.isEmpty()) return;
-    // `resized()` et non `reconstruireLaListe()` : la hauteur du cadre suit le
-    // nombre de lignes, et ce nombre vient de changer.
-    resized();
+    montrer();
+}
+
+void ImportReportComponent::montrer() {
+    // VISIBLE D'ABORD : `resized()` ne replie rien tant que le panneau est
+    // caché — un rapport fermé ne doit pas coûter un repli à chaque
+    // redimensionnement de la fenêtre —, donc la visibilité précède la mise en
+    // page. Le contenu vient peut-être de changer : le repli est invalidé.
+    largeurRepliee_ = -1;
     setVisible(true);
+    resized();
     toFront(false);
     // LE CLAVIER, pour qu'Échap ferme vraiment : sans cette prise de focus, la
-    // touche part au panneau qui l'avait avant, et le rapport ne se fermerait
-    // qu'à la souris.
+    // touche part au panneau qui l'avait avant.
     grabKeyboardFocus();
+}
+
+void ImportReportComponent::fermer() {
+    setVisible(false);
 }
 
 juce::String ImportReportComponent::reportText() const {
@@ -210,9 +189,9 @@ juce::Rectangle<int> ImportReportComponent::cadre() const {
     // Le compte doit être JUSTE, pas approché : huit pixels de moins et le
     // Viewport se croit trop petit, sort une barre de défilement pour un
     // contenu qui tient, et le panneau a l'air de cacher quelque chose. Les
-    // deux termes qui suivent la hauteur des lignes sont exactement ce que
+    // termes qui suivent la hauteur des lignes sont exactement ce que
     // `disposer()` retranche (le `reduced(kMarge, 4)` du Viewport) plus une
-    // ligne d'air.
+    // demi-ligne d'air.
     const int voulue = kHauteurEnTete + kHauteurPied + 8 + kHauteurDeLigne / 2
                      + juce::jmax(1, lignes_.size()) * kHauteurDeLigne;
     const int hauteur = juce::jlimit(juce::jmin(160, hauteurMax), hauteurMax, voulue);
@@ -238,21 +217,32 @@ void ImportReportComponent::envelopper(const Ligne& source, int largeurMax) {
     // Le RETRAIT des suites : sans lui, une explication repliée sur trois
     // lignes se lit comme trois faits distincts.
     const juce::String retrait = juce::String::fromUTF8("    ");
+    const float largeurRetrait = juce::GlyphArrangement::getStringWidth(police, retrait);
+    const float largeurEspace = juce::GlyphArrangement::getStringWidth(police, " ");
 
+    // CHAQUE MOT EST MESURÉ UNE FOIS, et les largeurs s'additionnent. La
+    // première version re-mesurait la ligne CUMULÉE à chaque mot — un coût en
+    // carré du nombre de mots, payé à chaque repli. La somme ignore le crénage
+    // entre mots, ce qui replie au pire un mot trop tôt, jamais trop tard.
     juce::StringArray mots;
     mots.addTokens(source.texte, " ", "");
     juce::String courante;
+    float largeurCourante = 0.0f;
     bool premiere = true;
     for (const auto& mot : mots) {
-        const juce::String essai =
-            courante.isEmpty() ? (premiere ? mot : retrait + mot) : courante + " " + mot;
-        if (!courante.isEmpty()
-            && juce::GlyphArrangement::getStringWidth(police, essai) > float(largeurMax)) {
+        const float largeurMot = juce::GlyphArrangement::getStringWidth(police, mot);
+        const float essai = courante.isEmpty()
+                          ? (premiere ? largeurMot : largeurRetrait + largeurMot)
+                          : largeurCourante + largeurEspace + largeurMot;
+        if (!courante.isEmpty() && essai > float(largeurMax)) {
             lignes_.add({courante, source.couleur, source.titre && premiere});
             premiere = false;
             courante = retrait + mot;
+            largeurCourante = largeurRetrait + largeurMot;
         } else {
-            courante = essai;
+            courante = courante.isEmpty() ? (premiere ? mot : retrait + mot)
+                                          : courante + " " + mot;
+            largeurCourante = essai;
         }
     }
     if (courante.isNotEmpty()) lignes_.add({courante, source.couleur, source.titre && premiere});
@@ -261,8 +251,10 @@ void ImportReportComponent::envelopper(const Ligne& source, int largeurMax) {
 void ImportReportComponent::reconstruireLaListe() {
     // La largeur de repli est celle qu'on a VRAIMENT, barre de défilement
     // déduite -- pas une largeur devinée qui laisserait la fin des phrases
-    // hors du cadre.
+    // hors du cadre. Si elle n'a pas changé (drag vertical), rien à refaire.
     const int largeurMax = juce::jmax(200, vue_.getMaximumVisibleWidth() - 8);
+    if (largeurMax == largeurRepliee_) return;
+    largeurRepliee_ = largeurMax;
 
     lignes_.clear();
     for (const auto& ligne : source_) envelopper(ligne, largeurMax);
@@ -298,6 +290,11 @@ void ImportReportComponent::paint(juce::Graphics& g) {
 }
 
 void ImportReportComponent::resized() {
+    // UN PANNEAU CACHÉ NE PAIE RIEN : `MainComponent` se redimensionne à
+    // chaque frame d'un drag de fenêtre, et replier deux cents lignes pour un
+    // panneau que personne ne voit serait du travail à 60 Hz sur le fil de
+    // message. `montrer()` rend visible AVANT de disposer.
+    if (!isVisible()) return;
     // DEUX PASSES, et elles ne bouclent pas : la première donne au Viewport sa
     // largeur, le repli en déduit le nombre de lignes, la seconde ajuste la
     // hauteur du cadre à ce nombre. La largeur ne dépendant pas du contenu, la
@@ -307,10 +304,17 @@ void ImportReportComponent::resized() {
     disposer();
 }
 
+void ImportReportComponent::parentSizeChanged() {
+    // L'OVERLAY SE GÈRE SEUL : couvrir le parent est SA géométrie, pas celle
+    // de la disposition du parent — qui n'a plus une ligne à son sujet. C'est
+    // ce qui réalise vraiment « le reste de la disposition ne le connaît pas ».
+    if (auto* parent = getParentComponent())
+        setBounds(parent->getLocalBounds());
+}
+
 bool ImportReportComponent::keyPressed(const juce::KeyPress& touche) {
     if (touche == juce::KeyPress::escapeKey) {
-        setVisible(false);
-        if (onClose) onClose();
+        fermer();
         return true;
     }
     return false;

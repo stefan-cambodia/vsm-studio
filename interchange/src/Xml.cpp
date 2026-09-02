@@ -1,5 +1,7 @@
 #include "vsm/interchange/Xml.h"
 
+#include "vsm/interchange/Utf8.h"
+
 #include <cctype>
 
 namespace vsm::interchange {
@@ -31,16 +33,9 @@ std::string resoudreEntites(const std::string& brut) {
             try {
                 const long code = std::stol(chiffres, nullptr, base);
                 // Encodage UTF-8 : les noms de pistes contiennent des accents.
-                if (code < 0x80) {
-                    sortie += static_cast<char>(code);
-                } else if (code < 0x800) {
-                    sortie += static_cast<char>(0xC0 | (code >> 6));
-                    sortie += static_cast<char>(0x80 | (code & 0x3F));
-                } else {
-                    sortie += static_cast<char>(0xE0 | (code >> 12));
-                    sortie += static_cast<char>(0x80 | ((code >> 6) & 0x3F));
-                    sortie += static_cast<char>(0x80 | (code & 0x3F));
-                }
+                // Par l'encodeur partagé (Utf8.h) — la copie locale tronquait
+                // le plan au-delà de 0xFFFF à trois octets, en silence.
+                appendUtf8(sortie, static_cast<uint32_t>(code));
             } catch (...) {
                 sortie += brut.substr(i, fin - i + 1);
             }
@@ -189,11 +184,6 @@ std::string XmlNode::attribute(const std::string& nom, const std::string& defaut
 bool XmlNode::hasAttribute(const std::string& nom) const {
     for (const auto& a : attributes) if (a.name == nom) return true;
     return false;
-}
-
-const XmlNode* XmlNode::child(const std::string& nom) const {
-    for (const auto& c : children) if (c->name == nom) return c.get();
-    return nullptr;
 }
 
 std::vector<const XmlNode*> XmlNode::childrenNamed(const std::string& nom) const {

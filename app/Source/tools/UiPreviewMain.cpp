@@ -20,6 +20,7 @@
 #include <JuceHeader.h>
 #include "../ui/BrowserComponent.h"
 #include "../ui/ImportReportComponent.h"
+#include "../ui/LookAndFeel/VsmLookAndFeel.h"
 #include "../ui/MidiLearnWindow.h"
 #include "../ui/PreferencesWindow.h"
 #include "../ui/ReconstructionWindow.h"
@@ -62,6 +63,13 @@ bool ecrire(juce::Component& composant, const juce::File& dossier, const juce::S
 
 int main(int argc, char** argv) {
     juce::ScopedJuceInitialiser_GUI juceInit;
+    // LE LOOKANDFEEL DE L'APPLICATION, installé ici aussi : un aperçu qui
+    // n'installe pas le style de l'application montre autre chose que ce que
+    // l'application montrera — la barre de défilement du rapport d'import est
+    // sortie au bleu par défaut de JUCE dans l'application des heures avant
+    // qu'on le voie, parce que l'aperçu la rendait autrement.
+    VsmLookAndFeel lookAndFeel;   // la classe vit dans l'espace global, comme dans l'application
+    juce::LookAndFeel::setDefaultLookAndFeel(&lookAndFeel);
     if (argc < 2) {
         std::fprintf(stderr, "Usage : vsm-ui-preview <dossier-de-sortie> [échelle]\n");
         return 1;
@@ -181,18 +189,19 @@ int main(int argc, char** argv) {
         rapport.tracksWithoutInstrument = 4;
         rapport.eventsRead = 1043;
         rapport.eventsUnderstood = 96;
+        using Gravite = vsm::interchange::DawImportReport::Gravite;
         rapport.note("Tempo : 128 BPM, 96 PPQ");
         rapport.note("Canal « Kick » : 128 note(s), AUCUN instrument assigné — le générateur "
-                     "du rack (Sytrus, Harmless, un VST…) n'existe pas ici");
+                     "du rack (Sytrus, Harmless, un VST…) n'existe pas ici", Gravite::perte);
         rapport.note("Canal « Bassline 303 » : 402 note(s), AUCUN instrument assigné — le "
-                     "générateur du rack (Sytrus, Harmless, un VST…) n'existe pas ici");
+                     "générateur du rack (Sytrus, Harmless, un VST…) n'existe pas ici", Gravite::perte);
         rapport.note("Canal « Pad » : 96 note(s), AUCUN instrument assigné — le générateur du "
-                     "rack (Sytrus, Harmless, un VST…) n'existe pas ici");
+                     "rack (Sytrus, Harmless, un VST…) n'existe pas ici", Gravite::perte);
         rapport.note("Canal « Lead » : 186 note(s), AUCUN instrument assigné — le générateur "
-                     "du rack (Sytrus, Harmless, un VST…) n'existe pas ici");
+                     "du rack (Sytrus, Harmless, un VST…) n'existe pas ici", Gravite::perte);
         rapport.note("ATTENTION : l'ARRANGEMENT n'est pas repris. Les 7 motifs sont posés BOUT "
                      "À BOUT dans l'ordre de leurs numéros, ce qui n'est probablement pas "
-                     "l'ordre de votre playlist");
+                     "l'ordre de votre playlist", Gravite::attention);
         rapport.note("Événements lus : 1043, dont 96 compris. Un import qui ne comprend presque "
                      "rien signale un lecteur qui se trompe, pas un projet vide");
 
@@ -215,5 +224,6 @@ int main(int argc, char** argv) {
     }
 
     std::printf("%d panneau(x) rendu(s)\n", rendus);
+    juce::LookAndFeel::setDefaultLookAndFeel(nullptr);
     return rendus > 0 ? 0 : 2;
 }
