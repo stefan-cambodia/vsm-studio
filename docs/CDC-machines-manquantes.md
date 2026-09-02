@@ -896,6 +896,31 @@ part entière.
 
 Le parc passe à **46 machines** (1 019 paramètres nommés, 1 361 tests verts).
 
+### DÉCISION : on arrête d'élargir le vivier jusqu'au verdict de H13 (02/09/2026)
+
+Six familles sont entrées au parc le 02/09 — synthèse balayée, lecture de
+bande, cordes sympathiques, membrane, anche libre, plaque. Le même jour, la
+course v12 a mesuré que **le vivier élargi coûte** (+15,9 %), et l'hypothèse
+H13 (feuille de route fusion) propose une cause : le goulot des finalistes,
+fixé à trois quel que soit le nombre de candidates, alors que le classement au
+stem peut se tromper d'un facteur deux.
+
+**Tant que H13 n'est pas tranchée, ajouter une septième famille serait
+mesurer sur du sable.** Si le goulot est bien la cause, le coût disparaîtra en
+l'élargissant et les six machines du jour devront être re-mesurées dans ces
+conditions ; s'il ne l'est pas, il faudra comprendre l'algorithme avant d'y
+verser d'autres candidates. Dans les deux cas, une machine de plus n'apprend
+rien maintenant et fausse la comparaison ensuite.
+
+La règle qui s'en dégage, et qui vaut au-delà de ce cas : **quand une mesure
+vient de contredire la stratégie qu'on suivait, on tranche la mesure avant de
+continuer la stratégie.** Ce n'est pas une pause, c'est l'ordre de marche : le
+§ 7 juge une machine sur ce qu'elle apporte, et on ne peut rien juger tant que
+l'instrument de jugement est en cause.
+
+Reprise prévue : après v13 (41 candidates, trois finalistes) et v14 (41
+candidates, six finalistes).
+
 ## 12. H10 — la guitare ÉLECTRIQUE est-elle vraiment couverte ? (écrite avant sa mesure, 02/09/2026)
 
 **Le fait qui la motive est une contradiction interne à ce dépôt.** Le tableau

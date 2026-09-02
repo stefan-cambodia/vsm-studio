@@ -52,10 +52,17 @@ void SynthRackComponent::setSynth(ISynthPlugin* synth, const juce::String& track
     if (synth_) {
         titleLabel_.setText(trackName.isEmpty() ? juce::String("SYNTH RACK") : trackName,
                              juce::dontSendNotification);
-        machineNameLabel_.setText(juce::String(synth_->machineName()), juce::dontSendNotification);
+        // `fromUTF8` ET NON `juce::String(const char*)` : le second traite les
+        // octets comme du Latin-1 et rend « s'éclaircit » en « s'Â©claircit ».
+        // Le défaut se voyait sur toute machine dont le nom porte un accent —
+        // `vsm.modal` (« l'objet frappé ») et `vsm.plate` — et aucun des
+        // 1 361 tests ne pouvait l'attraper : il n'apparaît qu'à l'écran.
+        machineNameLabel_.setText(juce::String::fromUTF8(synth_->machineName()),
+                                  juce::dontSendNotification);
     } else {
         titleLabel_.setText("SYNTH RACK", juce::dontSendNotification);
-        machineNameLabel_.setText("(aucun instrument assigne)", juce::dontSendNotification);
+        machineNameLabel_.setText(juce::String::fromUTF8("(aucun instrument assigné)"),
+                                  juce::dontSendNotification);
     }
 
     rebuildControls();

@@ -1912,7 +1912,8 @@ void MainComponent::openPluginEditorForSelectedTrack() {
     };
 
     auto fenetre = std::make_unique<FenetreFacade>(
-        juce::String(project_.tracks[piste].name) + " -- " + juce::String(machine->machineName()),
+        juce::String::fromUTF8(project_.tracks[piste].name.c_str()) + " -- "
+            + juce::String::fromUTF8(machine->machineName()),
         [this, piste] { pluginEditorWindows_.erase(piste); });
     fenetre->setUsingNativeTitleBar(true);
     fenetre->setResizable(redimensionnable, false);
