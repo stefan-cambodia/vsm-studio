@@ -8,7 +8,16 @@ regardait. Depuis la même date, ce chantier et le DAW sont **les deux seuls
 sujets de travail** ; les campagnes de mesure générales sont en pause
 (directive utilisateur), seules courent les mesures de CE chantier.
 
-## 0. La règle qui prime : le nombre de pistes est un critère, pas un détail
+## 0. La règle qui prime : la PARITÉ des pistes
+
+L'objectif est fixé par l'utilisateur en toutes lettres (02/09/2026) : **« si
+un original comporte 15 postes, la reconstruction doit comporter 15 pistes
+également »**. Le critère n'est donc pas « plus de quatre pistes » mais la
+parité — le compte de pistes de la reconstruction vise le compte de parties
+réelles de l'original. On ne sait pas toujours compter les parties réelles
+(on n'a pas la session d'origine) ; ce qu'on sait faire, c'est ne jamais
+FONDRE deux parties discernables en une, et publier ce qu'on n'a pas su
+discerner.
 
 Une reconstruction n'est pas jugée seulement à sa distance. Elle est jugée à
 ce qu'elle rend **jouable et retravaillable** : un projet qui met quatre
@@ -94,12 +103,16 @@ déplacent rien, et la stabilité par empreintes est démontrée en course.
    piste porte plusieurs parties » là où on la voit — forme à concevoir
    (colonne de la liste de pistes ? panneau du rapport de reconstruction,
    comme le rapport d'import ?).
-4. **La voix et la batterie** ne sont pas couvertes : `vocals` (22,7 %) part
-   d'un bloc au sampler — un chœur et une voix de tête restent une piste ;
-   `drums` est UNE piste là où un batteur en mixe huit. Ni l'un ni l'autre
-   n'est urgent (le § 1 montre que `other` domine le problème), mais ils se
-   listent pour n'être ni oubliés ni niés.
-5. **Un deuxième morceau** : tout ce chantier est mesuré sur *Us and Them*.
+4. **La batterie éclatée par pièce** — le chemin le plus mûr vers la parité
+   après les § 4.1-4.2 : la chaîne SAIT déjà séparer les frappes par pièce
+   (sur *Us and Them* : kick 925, kick2 943, hihat 414) et n'en rend qu'UNE
+   piste. Un batteur mixe huit pistes ; rendre une piste par pièce détectée
+   est un découpage sans invention — les frappes sont déjà classées.
+5. **La voix** : `vocals` (22,7 %) part d'un bloc au sampler — un chœur et
+   une voix de tête restent une piste. Non couvert, dit, pas nié ; c'est le
+   morceau le plus dur (séparer des voix DANS un stem de voix demande un
+   modèle qu'on n'a pas).
+6. **Un deuxième morceau** : tout ce chantier est mesuré sur *Us and Them*.
    Avant de changer un défaut de la chaîne, le vérifier sur un second
    original (les MIDI de référence de ~/Téléchargements peuvent servir de
    cibles à contenu connu — voir CDC-multisample § 1, la question ouverte de
@@ -119,4 +132,6 @@ déplacent rien, et la stabilité par empreintes est démontrée en course.
 [ ] Le DAW montre les densités et avertissements du rapport (§ 4.3)
 [ ] Un projet multipiste reconstruit a été OUVERT et REGARDÉ dans le DAW
 [ ] Vérifié sur un deuxième morceau avant de changer un défaut
+[ ] Sur un original dont les parties sont connues, le compte de pistes
+    reconstruites atteint le compte de parties (l'objectif de parité du § 0)
 ```
