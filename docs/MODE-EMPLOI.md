@@ -3,7 +3,7 @@
 Un séquenceur MIDI, un rack de machines vintage modélisées, et une chaîne qui
 reconstruit un morceau enregistré en projet jouable.
 
-**50 machines · 13 effets · 1 053 paramètres nommés · 1 407 tests verts**
+**51 machines · 13 effets · 1 059 paramètres nommés · 1 419 tests verts**
 
 > Toutes les illustrations sont des rendus de l'application elle-même, produits hors
 > écran par `vsm-panel-preview`, `vsm-ui-preview`, `vsm-pianoroll-preview` et
@@ -266,6 +266,17 @@ le feutre étouffe la corde. Ni résonance ni traîne, à l'inverse de tout le
 reste.
 
 ![Façade de Clavichord (le clavier qui vibre)](images/manuel/vsm.clavichord.png)
+
+**Music Box (la lame qui doit revenir)** — `vsm.musicbox`
+
+**Si une note ne sonne pas, ce n'est pas un bogue.** Chaque note est une lame
+qu'une goupille soulève puis lâche ; redemandée avant que la lame soit
+revenue, il n'y a rien à pincer et elle reste muette — comme sur le vrai
+mécanisme, où un trille est impossible sans doubler la lame. *Return* règle
+ce délai : raccourcissez-le pour jouer plus vite, allongez-le pour retrouver
+la mécanique d'origine. Deux touches différentes ne se gênent jamais.
+
+![Façade de Music Box (la lame qui doit revenir)](images/manuel/vsm.musicbox.png)
 
 **Theremin (la main dans l'air)** — `vsm.theremin`
 

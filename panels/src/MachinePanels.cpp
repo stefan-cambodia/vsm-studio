@@ -3879,6 +3879,49 @@ MachinePanel makeTheremin() {
     return panel;
 }
 
+/// `vsm.musicbox` -- la lame qui doit revenir. RETURN est en grand et seul
+/// dans sa section, parce qu'il ne ressemble à aucun autre potentiomètre du
+/// parc : il décide de COMBIEN DE NOTES seront jouées. Trop long sur une
+/// partie rapide, il en supprime la moitié -- et c'est fidèle, c'est ce que
+/// fait le mécanisme.
+///
+/// Livrée laiton et palissandre.
+MachinePanel makeMusicBox() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.musicbox";
+    panel.displayName = "Music Box (la lame qui doit revenir)";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#241C14";
+    panel.sectionColour = "#1A140E";
+    panel.textColour = "#F2E8D4";
+    panel.knobColour = "#DCC07E";
+    panel.gridColumns = 10;
+    panel.gridRows = 4;
+
+    PanelSection peigne;
+    peigne.title = "COMB";
+    peigne.accentColour = "#DCC07E";
+    peigne.column = 0; peigne.row = 0; peigne.columnSpan = 5; peigne.rowSpan = 4;
+    peigne.controls = {
+        control("Return Time", "RETURN", S::LargeKnob, 0, 0),
+        control("Velocity Sensitivity", "VEL", S::Knob, 0, 1),
+    };
+
+    PanelSection lame;
+    lame.title = "BLADE";
+    lame.accentColour = "#C9B08A";
+    lame.column = 5; lame.row = 0; lame.columnSpan = 5; lame.rowSpan = 4;
+    lame.controls = {
+        control("Decay", "DECAY", S::Knob, 0, 0),
+        control("Decay Tilt", "TILT", S::Knob, 1, 0),
+        control("Brightness", "TONE", S::Knob, 0, 1),
+        control("Output Level", "VOLUME", S::Knob, 1, 1),
+    };
+
+    panel.sections = {peigne, lame};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
@@ -3889,7 +3932,7 @@ const std::vector<MachinePanel>& panels() {
         makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev(),
         makeScanned(), makeMellotron(), makeSitar(), makeMembrane(), makeReed(),
         makePlate(), makeClavichord(), makeGlass(), makeJewsHarp(),
-        makeTheremin()
+        makeTheremin(), makeMusicBox()
     };
     return all;
 }

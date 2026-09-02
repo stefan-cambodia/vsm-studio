@@ -223,6 +223,13 @@ constexpr Rule kRules[] = {
     // l'attaque, puisqu'il n'y a pas d'enveloppe.
     {"voice.glide",                        0.02f,    1.5f, SearchScale::Logarithmic, 0.93f},
     {"theremin.volumeResponse",           0.005f,    0.5f, SearchScale::Logarithmic, 0.70f},
+    // BOÎTE À MUSIQUE (vsm.musicbox). Le TEMPS DE RETOUR décide de COMBIEN DE
+    // NOTES du morceau seront jouées : sur une partie rapide, un temps trop
+    // long en supprime la moitié. Aucun autre réglage du parc ne peut faire
+    // disparaître des notes, donc c'est le premier axe -- et une recherche qui
+    // l'ignorerait comparerait des rendus auxquels il manque des notes sans
+    // savoir pourquoi.
+    {"musicbox.returnTime",               0.02f,     1.0f, SearchScale::Logarithmic, 0.94f},
     // Famille du VENT (vsm.wind). Comme sur la corde, ce qui fait le timbre
     // est d'abord ce qui se perd (le rayonnement au pavillon) et la raideur de
     // ce qui entretient (l'anche ou les lèvres) ; la pression de souffle vient

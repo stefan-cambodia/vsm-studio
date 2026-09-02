@@ -1185,6 +1185,71 @@ regarder au lieu de supposer.
 
 Le parc passe à **50 machines** (1 053 paramètres nommés, 1 407 tests verts).
 
+## 19. H19 — la BOÎTE À MUSIQUE : une note qu'on redemande trop tôt ne sonne pas (écrite avant sa mesure, 02/09/2026)
+
+**Le trait est mécanique, et il n'a rien d'un réglage.** Dans une boîte à
+musique, chaque note est une LAME d'acier qu'une goupille du cylindre soulève
+puis lâche. Une fois pincée, la lame met un temps à revenir sous la goupille :
+si le cylindre la redemande avant, **il n'y a rien à pincer, et la note ne
+sonne pas du tout.** C'est pour cela qu'un mécanisme de boîte à musique
+comporte souvent deux lames accordées à l'unisson pour les notes répétées —
+faute de quoi le trille est impossible.
+
+**Aucune machine du parc ne refuse une note.** Toutes acceptent n'importe quel
+débit : au pire, une nouvelle note vole une voix, mais elle sonne. Ici, une
+note trop rapprochée doit être MUETTE, et le dire (le moteur compte déjà les
+événements ignorés).
+
+**Second trait, qui suit du même objet** : une lame d'acier libre à une
+extrémité a des partiels très écartés et INHARMONIQUES — le premier au-dessus
+du fondamental est vers 6,27 fois celui-ci, loin de l'octave. C'est ce qui
+donne à la boîte à musique son timbre de verre, qu'aucune corde ne fait.
+`vsm.modal` sait déjà faire une barre libre-libre (rapport 2,76 au second
+rang) ; une lame ENCASTRÉE d'un côté est une autre loi, et le calcul sur son
+code dira si elle est atteignable.
+
+**La mesure qui tranche :**
+- **La note redemandée trop tôt est muette** : deux frappes séparées de
+  30 ms, la seconde ne doit rien ajouter — l'énergie mesurée juste après doit
+  être celle de la décroissance de la première, à quelques pour cent près.
+- **Mais elle sonne dès que la lame est revenue** : à 400 ms, la seconde
+  frappe relance franchement le niveau.
+- **Les partiels sont ceux d'une lame encastrée** : le second est à 6,27·f0 à
+  quelques pour cent près.
+
+- **Succès de H19** : les trois sont mesurés, et le § 10 du CDC gagne un
+  second cas de refus — après la hauteur de `vsm.jewsharp`, une machine qui
+  refuse une NOTE.
+- **Échec de H19** : le code part hors du `CMakeLists`, avec son chiffre.
+
+### H19 EST TRANCHÉE : SUCCÈS, et le parc a sa machine qui refuse (02/09/2026)
+
+**La lame doit revenir**, temps de retour réglé à 0,18 s, deux frappes de la
+même note :
+
+| écart | notes refusées | niveau juste après / juste avant |
+|---|---|---|
+| 0,10 s | **1** | 0,96 — la première décroît, rien ne s'ajoute |
+| 0,30 s | **0** | **2,01** — la seconde frappe relance |
+
+Et c'est bien le TEMPS DE RETOUR qui décide, pas une limite arbitraire : le
+même écart de 0,10 s passe si la lame revient en 0,05 s. Deux touches
+différentes ne se bloquent jamais — chacune a sa lame, comme le peigne réel.
+
+**Le refus est COMPTÉ** (`refusedNotes()`), parce qu'une panne muette reste
+interdite même quand le silence est le comportement juste : l'interface
+pourra dire un jour pourquoi un trille ne s'entend pas.
+
+**Le second partiel est à 6,27·f0**, la loi d'une lame encastrée d'un côté —
+et le calcul sur le `ratioOf` de `vsm.modal` confirme qu'il est hors de sa
+portée ([1,866 ; 2,978] sur ce rang). Une barre libre aux deux bouts et une
+lame encastrée sont deux lois, pas deux points d'un même segment.
+
+**Le § 10 du CDC nouvelle-machine gagne son second cas de refus** : après
+`vsm.jewsharp` qui refuse la HAUTEUR, voici une machine qui refuse la NOTE.
+
+Le parc passe à **51 machines** (1 059 paramètres nommés, 1 419 tests verts).
+
 ## 12. H10 — la guitare ÉLECTRIQUE est-elle vraiment couverte ? (écrite avant sa mesure, 02/09/2026)
 
 **Le fait qui la motive est une contradiction interne à ce dépôt.** Le tableau

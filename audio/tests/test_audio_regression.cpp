@@ -782,6 +782,7 @@ VSM_TEST(regression_clavichord) { checkMachine("vsm.clavichord"); }
 VSM_TEST(regression_glass)      { checkMachine("vsm.glass"); }
 VSM_TEST(regression_jewsharp)   { checkMachine("vsm.jewsharp"); }
 VSM_TEST(regression_theremin)   { checkMachine("vsm.theremin"); }
+VSM_TEST(regression_musicbox)   { checkMachine("vsm.musicbox"); }
 
 /// Le rendu doit être reproductible À L'IDENTIQUE d'une instance à l'autre :
 /// c'est la condition pour que l'empreinte ci-dessus ait un sens. Vérifié ici

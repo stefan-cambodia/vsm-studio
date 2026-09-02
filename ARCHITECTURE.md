@@ -31,7 +31,7 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **1 407 tests moteur** (158 core + 988 audio
+écoute au clic, et toute la logique testée hors JUCE. Total : **1 419 tests moteur** (158 core + 1 000 audio
 + 206 interchange + 25 CLAP + 19 VST3 + 11 façades,
 tous verts, zéro warning sous les flags du build, `-Wall -Wextra -Wpedantic`.
 L'ancienne mention « y compris -Wfloat-equal -Wsign-conversion -Wshadow »
@@ -599,12 +599,12 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 1 407 tests moteur + 68 tests d'analyse, tous verts
+### Bilan actuel : 1 419 tests moteur + 68 tests d'analyse, tous verts
 
 - **158 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des
   notes douteuses de la transcription),
-  **988 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
+  **1 000 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
   scalaire, indépendance des lignes, bornes de l'approximation de tanh ; et la
   boucle : rebouclage échantillon-exact, notes relâchées au saut) : chorus BBD, Juno-106,
   bus master (biquad/compresseur/limiteur à plafond garanti/LUFS), oversampler,
@@ -3920,6 +3920,28 @@ un endroit, si bien qu'une seconde note ne prend pas une voix — elle déplace 
 main. C'est écrit dans sa structure, qui n'a pas de `VoiceManager`.
 
 Le parc passe à **50 machines**.
+
+**ET UNE SEIZIÈME : `vsm.musicbox`, la seule machine du parc qui REFUSE une
+note.** Chaque note est une lame qu'une goupille soulève puis lâche ;
+redemandée avant que la lame soit revenue, il n'y a rien à pincer et elle est
+MUETTE. Toutes les autres machines acceptent n'importe quel débit — au pire une
+note vole une voix, mais elle sonne. Mesuré avec un retour de 0,18 s : à
+0,10 s d'écart, une note refusée et un niveau à 0,96 de ce qu'il était ; à
+0,30 s, aucune refusée et un niveau à 2,01. Le refus est COMPTÉ
+(`refusedNotes()`), parce qu'une panne muette reste interdite même quand le
+silence est le comportement juste.
+
+Second trait : le partiel suivant est à **6,27·f0**, la loi d'une lame
+encastrée d'un côté — hors de portée de `vsm.modal`, dont le `ratioOf` couvre
+[1,866 ; 2,978] sur ce rang. Une barre libre aux deux bouts et une lame
+encastrée sont deux lois différentes.
+
+**Le § 10 du CDC nouvelle-machine a maintenant ses deux cas de refus** :
+`vsm.jewsharp` refuse la HAUTEUR de note, `vsm.musicbox` refuse la NOTE. Ni
+l'une ni l'autre ne peut le faire en silence — l'une en fait son geste
+principal, l'autre tient un compteur.
+
+Le parc passe à **51 machines**.
 
 ---
 

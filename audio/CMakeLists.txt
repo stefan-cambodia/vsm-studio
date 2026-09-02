@@ -63,6 +63,7 @@ add_library(vsm_audio STATIC
     plugins/glass/GlassSynth.cpp
     plugins/jewsharp/JewsHarpSynth.cpp
     plugins/theremin/ThereminSynth.cpp
+    plugins/musicbox/MusicBoxSynth.cpp
     plugins/multisample/MultisampleSynth.cpp
 )
 
@@ -177,6 +178,7 @@ if (VSM_BUILD_TESTS)
         tests/test_glass_synth.cpp
         tests/test_jewsharp_synth.cpp
         tests/test_theremin_synth.cpp
+        tests/test_musicbox_synth.cpp
         tests/test_multisample_synth.cpp
         tests/test_midi_learn.cpp
         tests/test_effect_routing.cpp
@@ -194,7 +196,11 @@ if (VSM_BUILD_TESTS)
         tests/test_audio_regression.cpp
     )
     target_link_libraries(vsm_audio_tests PRIVATE vsm_audio)
-    target_include_directories(vsm_audio_tests PRIVATE tests)
+    # `plugins` aussi : un test peut avoir besoin du TYPE CONCRET d'une machine,
+    # et non seulement de l'interface. `vsm.musicbox` expose un compteur de
+    # notes refusees qui n'a pas sa place dans `ISynthPlugin` -- il est propre a
+    # une machine -- mais que son test doit pouvoir lire.
+    target_include_directories(vsm_audio_tests PRIVATE tests plugins)
 
     enable_testing()
     add_test(NAME vsm_audio_tests COMMAND vsm_audio_tests)

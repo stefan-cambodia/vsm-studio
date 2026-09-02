@@ -540,6 +540,19 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Filter Cutoff", "filter.1.cutoff"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.musicbox ---
+    // Le TEMPS DE RETOUR n'a aucun équivalent : ce n'est ni une décroissance
+    // ni un temps de relâchement, c'est le délai avant qu'une note puisse être
+    // REJOUÉE. Aucune autre machine du parc n'a de raison d'en avoir un. Le
+    // reste est le vocabulaire de l'objet frappé, réemployé de `vsm.modal`.
+    {"vsm.musicbox", {
+        {"Return Time", "musicbox.returnTime"},
+        {"Decay", "modal.decay"},
+        {"Decay Tilt", "modal.decayTilt"},
+        {"Brightness", "modal.spread"},
+        {"Velocity Sensitivity", "voice.velocitySensitivity"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.multisample ---
     // Peu de paramètres, et TOUS canoniques : le timbre de cette machine vient
     // des échantillons, pas des réglages. `voice.velocitySensitivity` est
