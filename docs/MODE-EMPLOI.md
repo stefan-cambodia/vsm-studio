@@ -3,7 +3,7 @@
 Un séquenceur MIDI, un rack de machines vintage modélisées, et une chaîne qui
 reconstruit un morceau enregistré en projet jouable.
 
-**46 machines · 13 effets · 1 019 paramètres nommés · 1 361 tests verts**
+**47 machines · 13 effets · 1 027 paramètres nommés · 1 372 tests verts**
 
 > Toutes les illustrations sont des rendus de l'application elle-même, produits hors
 > écran par `vsm-panel-preview`, `vsm-ui-preview`, `vsm-pianoroll-preview` et
@@ -255,6 +255,17 @@ Ici la machine ne dessine pas une onde : elle simule le corps qui la produit.
 Guide d'ondes ; l'archet et le plectre sur la même corde.
 
 ![Façade de String (corde pincée / frottée)](images/manuel/vsm.string.png)
+
+**Clavichord (le clavier qui vibre)** — `vsm.clavichord`
+
+Le seul clavier du rack où **appuyer plus fort fait monter la note** : la
+tangente reste en contact avec la corde et la tend. C'est le *Bebung*, la
+seule façon de faire un vibrato au clavier, et il répond à la pression —
+par touche si votre clavier sait l'envoyer. Relâchez : le son s'arrête NET,
+le feutre étouffe la corde. Ni résonance ni traîne, à l'inverse de tout le
+reste.
+
+![Façade de Clavichord (le clavier qui vibre)](images/manuel/vsm.clavichord.png)
 
 **Sitar (les cordes qu'on ne joue pas)** — `vsm.sitar`
 

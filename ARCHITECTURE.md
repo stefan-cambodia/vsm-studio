@@ -31,7 +31,7 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **1 361 tests moteur** (158 core + 942 audio
+écoute au clic, et toute la logique testée hors JUCE. Total : **1 372 tests moteur** (158 core + 953 audio
 + 206 interchange + 25 CLAP + 19 VST3 + 11 façades,
 tous verts, zéro warning sous les flags du build, `-Wall -Wextra -Wpedantic`.
 L'ancienne mention « y compris -Wfloat-equal -Wsign-conversion -Wshadow »
@@ -599,12 +599,12 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 1 361 tests moteur + 68 tests d'analyse, tous verts
+### Bilan actuel : 1 372 tests moteur + 68 tests d'analyse, tous verts
 
 - **158 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des
   notes douteuses de la transcription),
-  **942 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
+  **953 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
   scalaire, indépendance des lignes, bornes de l'approximation de tanh ; et la
   boucle : rebouclage échantillon-exact, notes relâchées au saut) : chorus BBD, Juno-106,
   bus master (biquad/compresseur/limiteur à plafond garanti/LUFS), oversampler,
@@ -3834,6 +3834,28 @@ cinq divergences, et parce qu'une machine faite pour être cherchée ne doit pas
 avoir de zone inutilisable sur la course d'un de ses réglages.
 
 Le parc passe à **46 machines**.
+
+**ET UNE DOUZIÈME : `vsm.clavichord`, le seul clavier du parc dont la note
+MONTE quand on appuie.** La tangente de laiton ne rebondit pas comme un
+marteau : elle reste en contact et définit la longueur vibrante, si bien
+qu'appuyer dans une touche déjà enfoncée tend la corde. C'est le *Bebung*, la
+seule façon de faire un vibrato sur un clavier, et il est mesuré sur la course
+de la pression : **0,0 · +7,3 · +14,5 · +22,0 · +29,2 cents**, monotone.
+
+**Le parc a maintenant les deux sens, et ils viennent de deux mécaniques
+opposées** : une corde qu'on TEND monte, une lame qu'on ALOURDIT descend
+(`vsm.reed`, −8,9 cents, mesuré au même protocole). `vsm.cs80` reçoit
+pourtant une pression par voix depuis le 02/09 — mais elle l'envoie à son
+filtre : le timbre change, la hauteur non. Trois gestes, trois destinations,
+et c'est pourquoi leurs identités sémantiques restent distinctes.
+
+Second trait : **relâcher COUPE**. La corde est tressée de feutre à l'autre
+bout ; mesuré, l'énergie tombe de 0,0074 à 0,000000 en cinquante
+millisecondes, avec une décroissance de corde réglée sur huit secondes. Ce
+n'est pas la corde qui décide. Partout ailleurs dans le parc, relâcher une
+corde OUVRE une décroissance.
+
+Le parc passe à **47 machines**.
 
 ---
 

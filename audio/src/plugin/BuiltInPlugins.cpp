@@ -44,6 +44,7 @@
 #include "membrane/MembraneSynth.h"
 #include "reed/ReedSynth.h"
 #include "plate/PlateSynth.h"
+#include "clavichord/ClavichordSynth.h"
 #include "multisample/MultisampleSynth.h"
 
 namespace vsm::audio::plugin {
@@ -188,6 +189,7 @@ void registerBuiltInPlugins() {
         vsm::plugins::membrane::MembraneSynth forceLinkMembrane;
         vsm::plugins::reed::ReedSynth forceLinkReed;
         vsm::plugins::plate::PlateSynth forceLinkPlate;
+        vsm::plugins::clavichord::ClavichordSynth forceLinkClavichord;
         (void)forceLinkScanned;
     }
     {

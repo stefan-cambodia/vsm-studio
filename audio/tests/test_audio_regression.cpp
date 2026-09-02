@@ -778,6 +778,7 @@ VSM_TEST(regression_sitar)      { checkMachine("vsm.sitar"); }
 VSM_TEST(regression_membrane)   { checkMachine("vsm.membrane"); }
 VSM_TEST(regression_reed)       { checkMachine("vsm.reed"); }
 VSM_TEST(regression_plate)      { checkMachine("vsm.plate"); }
+VSM_TEST(regression_clavichord) { checkMachine("vsm.clavichord"); }
 
 /// Le rendu doit être reproductible À L'IDENTIQUE d'une instance à l'autre :
 /// c'est la condition pour que l'empreinte ci-dessus ait un sens. Vérifié ici

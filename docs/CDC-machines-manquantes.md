@@ -896,7 +896,7 @@ part entière.
 
 Le parc passe à **46 machines** (1 019 paramètres nommés, 1 361 tests verts).
 
-### DÉCISION : on arrête d'élargir le vivier jusqu'au verdict de H13 (02/09/2026)
+### DÉCISION : le vivier continue de s'élargir, et la mesure se poursuit à côté (02/09/2026)
 
 Six familles sont entrées au parc le 02/09 — synthèse balayée, lecture de
 bande, cordes sympathiques, membrane, anche libre, plaque. Le même jour, la
@@ -905,21 +905,89 @@ H13 (feuille de route fusion) propose une cause : le goulot des finalistes,
 fixé à trois quel que soit le nombre de candidates, alors que le classement au
 stem peut se tromper d'un facteur deux.
 
-**Tant que H13 n'est pas tranchée, ajouter une septième famille serait
-mesurer sur du sable.** Si le goulot est bien la cause, le coût disparaîtra en
-l'élargissant et les six machines du jour devront être re-mesurées dans ces
-conditions ; s'il ne l'est pas, il faudra comprendre l'algorithme avant d'y
-verser d'autres candidates. Dans les deux cas, une machine de plus n'apprend
-rien maintenant et fausse la comparaison ensuite.
+**Ce chiffre n'arrête pas l'élargissement, et il ne le doit pas.** La question
+avait d'abord été tranchée dans l'autre sens — « on arrête jusqu'au verdict de
+H13 » —, et c'était une erreur de raisonnement qu'il vaut mieux écrire que
+taire : elle confondait les deux motifs que ce même § 7 distingue depuis le
+début. Une machine s'ajoute pour la COUVERTURE (combler un trou de
+reconstruction) **ou pour le JEU** (donner un son que le musicien veut jouer),
+et la distance globale ne mesure que le premier. `vsm.mellotron` ne prétend
+pas améliorer une reconstruction : elle donne au parc un comportement de
+transport que rien n'avait. Juger une telle machine à la distance d'*Us and
+Them* revient à juger un violon au poids.
 
-La règle qui s'en dégage, et qui vaut au-delà de ce cas : **quand une mesure
-vient de contredire la stratégie qu'on suivait, on tranche la mesure avant de
-continuer la stratégie.** Ce n'est pas une pause, c'est l'ordre de marche : le
-§ 7 juge une machine sur ce qu'elle apporte, et on ne peut rien juger tant que
-l'instrument de jugement est en cause.
+**Ce qui reste vrai, et qui est le vrai acquis de v12** : l'élargissement a un
+coût pour la RECHERCHE, il est chiffré, et il doit continuer de l'être à
+chaque ajout. La règle du § 7 garde donc sa forme corrigée — *une machine de
+plus ne coûte rien tant qu'elle ne déplace pas l'arbitrage* — et le travail
+sur H13 se poursuit en parallèle, parce que si le goulot est bien la cause, le
+coût disparaîtra et les deux motifs cesseront de s'opposer.
 
-Reprise prévue : après v13 (41 candidates, trois finalistes) et v14 (41
+Les courses en cours : v13 (41 candidates, trois finalistes) et v14 (41
 candidates, six finalistes).
+
+## 15. H15 — le CLAVICORDE : appuyer plus fort MONTE la note (écrite avant sa mesure, 02/09/2026)
+
+**Le trait, et il est unique au clavier.** Sur un clavicorde, la tangente de
+laiton ne rebondit pas comme un marteau de piano : elle frappe la corde ET
+**reste en contact**, définissant elle-même la longueur vibrante. Appuyer plus
+fort sur une touche déjà enfoncée tend donc la corde et **fait monter la
+note** — c'est le *Bebung*, et c'est la seule façon de faire un vibrato sur un
+instrument à clavier.
+
+**Ce que le parc a, et ce qui lui manque.** `vsm.cs80` reçoit bien une
+pression PAR VOIX, mais elle ouvre un filtre : le timbre change, la hauteur
+non. `vsm.reed` déplace la hauteur sous la pression, mais **vers le bas**
+(mesuré : +3,1 à −8,9 cents), la charge d'air alourdissant la lame. Aucune
+machine ne la fait monter, et aucune ne relie la pression à la TENSION d'une
+corde.
+
+**Second trait, et il est aussi net** : relâcher la touche **étouffe
+immédiatement**. La tangente quitte la corde, dont l'autre extrémité est
+tressée de feutre : il n'y a ni résonance ni traîne. C'est le contraire du
+piano (pédale, cordes sympathiques) et du sitar. Sur les autres machines à
+corde du parc, le relâchement ouvre une décroissance ; ici il coupe.
+
+**La mesure qui tranche :**
+- **Bebung** : note tenue, pression de zéro à un, hauteur mesurée finement
+  (balayage du pic de magnitude, pas d'autocorrélation à décalage entier —
+  la leçon du banc de `vsm.reed`). La hauteur doit MONTER d'au moins dix
+  cents, et de façon monotone.
+- **Étouffement** : après le relâchement, l'énergie doit tomber sous le
+  centième de son niveau en moins de 150 ms, quel que soit le réglage de
+  décroissance de la corde — parce que ce n'est pas la corde qui décide, c'est
+  le feutre.
+
+- **Succès de H15** : les deux sont mesurés. Le parc gagne le seul clavier
+  expressif en hauteur, et le contraste avec `vsm.reed` (qui descend) est
+  mesuré au même protocole.
+- **Échec de H15** : le code part hors du `CMakeLists`, avec son chiffre.
+
+### H15 EST TRANCHÉE : SUCCÈS, les deux traits mesurés (02/09/2026)
+
+**Le Bebung, sur la course de la pression, note 57 :**
+
+| pression | 0,00 | 0,25 | 0,50 | 0,75 | 1,00 |
+|---|---|---|---|---|---|
+| écart | **0,0** | +7,3 | +14,5 | +22,0 | **+29,2 cents** |
+
+Monotone, et d'une ampleur juste : une trentaine de cents colore une note
+tenue sans la transposer, ce qui est exactement ce que le geste fait sur
+l'instrument. Sans pression, la note est juste au cent près.
+
+**Le contraste avec `vsm.reed` est désormais mesuré au même protocole**, et il
+oppose deux mécaniques : une corde qu'on TEND monte (+29,2), une lame qu'on
+ALOURDIT descend (−8,9). Le parc a les deux sens, et aucune autre machine ne
+déplace la hauteur sous la pression — `vsm.cs80`, qui reçoit pourtant une
+pression par voix, l'envoie à son filtre.
+
+**L'étouffement** : 0,0074 avant le relâchement, **0,000000 cinquante
+millisecondes après**, avec une corde réglée sur huit secondes de
+décroissance. Ce n'est pas la corde qui décide, c'est le feutre — et c'est ce
+qui sépare ce clavier de tous les autres instruments à corde du parc, où
+relâcher OUVRE une décroissance.
+
+Le parc passe à **47 machines** (1 027 paramètres nommés, 1 372 tests verts).
 
 ## 12. H10 — la guitare ÉLECTRIQUE est-elle vraiment couverte ? (écrite avant sa mesure, 02/09/2026)
 

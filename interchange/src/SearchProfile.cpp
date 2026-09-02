@@ -192,6 +192,13 @@ constexpr Rule kRules[] = {
     // d'un coup : frappée au centre, la peau perd TOUS ses modes diamétraux.
     {"membrane.loading",                   0.0f,     1.0f, SearchScale::Linear,      0.96f},
     {"membrane.strikeRadius",              0.0f,    0.95f, SearchScale::Linear,      0.90f},
+    // CLAVICORDE (vsm.clavichord). Le lien pression→tension est un GESTE DE
+    // JEU avant d'être un timbre : sans message de pression dans le morceau,
+    // il ne fait rien du tout, et une recherche qui le balaierait perdrait son
+    // budget. Il est donc cherché en dernier, et sa borne haute est celle du
+    // Bebung réel — une trentaine de cents, de quoi colorer une note tenue,
+    // pas de quoi transposer.
+    {"clavichord.pressureToTension",       0.0f,     1.0f, SearchScale::Linear,      0.28f},
     // Famille du VENT (vsm.wind). Comme sur la corde, ce qui fait le timbre
     // est d'abord ce qui se perd (le rayonnement au pavillon) et la raideur de
     // ce qui entretient (l'anche ou les lèvres) ; la pression de souffle vient

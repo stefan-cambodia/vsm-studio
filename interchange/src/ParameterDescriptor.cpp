@@ -457,6 +457,24 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Velocity Sensitivity", "voice.velocitySensitivity"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.clavichord ---
+    // Une seule identité neuve, et il le faut : aucune autre machine du parc
+    // ne relie une PRESSION à la TENSION d'une corde. `vsm.cs80` envoie la
+    // sienne au filtre, `vsm.reed` à la charge d'air ; ce sont trois gestes
+    // différents, et les confondre ferait voyager un preset vers un son qui
+    // n'a rien à voir. La POSITION DE LA TANGENTE, en revanche, est le même
+    // point de contact que le plectre de `vsm.string` et le marteau de
+    // `vsm.piano`, et réemploie leur vocabulaire (§ 4).
+    {"vsm.clavichord", {
+        {"Pressure to Tension", "clavichord.pressureToTension"},
+        {"String Decay", "string.decay"},
+        {"String Damping", "string.damping"},
+        {"Tangent Position", "string.pickPosition"},
+        {"Filter Cutoff", "filter.1.cutoff"},
+        {"Filter Resonance", "filter.1.resonance"},
+        {"Velocity Sensitivity", "voice.velocitySensitivity"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.multisample ---
     // Peu de paramètres, et TOUS canoniques : le timbre de cette machine vient
     // des échantillons, pas des réglages. `voice.velocitySensitivity` est

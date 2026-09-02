@@ -3679,6 +3679,51 @@ MachinePanel makePlate() {
     return panel;
 }
 
+/// `vsm.clavichord` -- le clavier qui vibre. La section TANGENT porte le seul
+/// réglage qui distingue cette machine de toutes les autres cordes du parc :
+/// PRESSURE, qui décide de combien la note monte quand on appuie dans une
+/// touche déjà enfoncée. Sans message de pression, il ne fait rien -- c'est un
+/// geste, pas un timbre, et la façade le dit en le mettant à part.
+///
+/// Livrée bois clair et laiton, la robe d'un instrument de chambre.
+MachinePanel makeClavichord() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.clavichord";
+    panel.displayName = "Clavichord (le clavier qui vibre)";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#241E14";
+    panel.sectionColour = "#1A150E";
+    panel.textColour = "#F2E8D2";
+    panel.knobColour = "#D9BE7E";
+    panel.gridColumns = 10;
+    panel.gridRows = 4;
+
+    PanelSection tangente;
+    tangente.title = "TANGENT";
+    tangente.accentColour = "#D9BE7E";
+    tangente.column = 0; tangente.row = 0; tangente.columnSpan = 5; tangente.rowSpan = 4;
+    tangente.controls = {
+        control("Pressure to Tension", "PRESSURE", S::LargeKnob, 0, 0),
+        control("Tangent Position", "POSITION", S::Knob, 1, 0),
+        control("Velocity Sensitivity", "VEL", S::Knob, 0, 1),
+    };
+
+    PanelSection corde;
+    corde.title = "STRING";
+    corde.accentColour = "#B9C98A";
+    corde.column = 5; corde.row = 0; corde.columnSpan = 5; corde.rowSpan = 4;
+    corde.controls = {
+        control("String Decay", "DECAY", S::Knob, 0, 0),
+        control("String Damping", "DAMPING", S::Knob, 1, 0),
+        control("Filter Cutoff", "CUTOFF", S::Knob, 0, 1),
+        control("Filter Resonance", "RESO", S::Knob, 1, 1),
+        control("Output Level", "VOLUME", S::Knob, 2, 1),
+    };
+
+    panel.sections = {tangente, corde};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
@@ -3688,7 +3733,7 @@ const std::vector<MachinePanel>& panels() {
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
         makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev(),
         makeScanned(), makeMellotron(), makeSitar(), makeMembrane(), makeReed(),
-        makePlate()
+        makePlate(), makeClavichord()
     };
     return all;
 }
