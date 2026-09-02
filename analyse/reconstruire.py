@@ -1142,6 +1142,18 @@ def reconstruire_batterie(ctx: Contexte, nom: str, chemin: Path) -> Optional[Res
         moyen = "vsm.drums"
     print(f"      {nom:8s} : {moyen}, {len(kit.slots)} pièce(s), "
           f"{kit.total_hits} frappe(s) — {detail}")
+    # LA PARITÉ POUR LA BATTERIE, DITE QUAND ELLE MANQUE. Le seuil de
+    # fourre-tout des stems mélodiques (polyphonie et ambitus) n'a aucun sens
+    # pour un kit : il ne voit donc PAS le cas de *Sky and Sand*, où la
+    # batterie porte 78 % du morceau et contient CINQ pièces distinctes, sur
+    # une seule piste. Ici, on ne devine rien — les pièces sont classées, on
+    # sait exactement combien de parties la piste porte.
+    part_batterie = ctx.parts.get(nom)
+    if (not args.batterie_par_piece and len(kit.slots) >= 2
+            and part_batterie is not None and part_batterie >= 25.0):
+        print(f"      {nom:8s} : cette batterie porte {part_batterie} % du morceau sur UNE "
+              f"piste et contient {len(kit.slots)} pièces distinctes — "
+              f"--batterie-par-piece en ferait {len(kit.slots)}")
     # OÙ SE TROUVE L'ÉNERGIE DE CHAQUE FAMILLE. Un nom de famille est une
     # étiquette -- elle vient d'un modèle appris, ou d'une liste de réserve
     # quand le modèle n'a rien dit -- et rien ne la confrontait à ce qu'on

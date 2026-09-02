@@ -243,15 +243,27 @@ void ImportReportComponent::envelopper(const Ligne& source, int largeurMax) {
     // première version re-mesurait la ligne CUMULÉE à chaque mot — un coût en
     // carré du nombre de mots, payé à chaque repli. La somme ignore le crénage
     // entre mots, ce qui replie au pire un mot trop tôt, jamais trop tard.
+    // LE RETRAIT D'ORIGINE SURVIT AU REPLI. `addTokens` découpe sur les
+    // espaces et les jette : une ligne écrite avec quatre espaces de tête —
+    // les sous-postes du rapport de reconstruction, pièce par pièce —
+    // ressortait collée à la marge, et la hiérarchie qu'elle exprimait avec
+    // elle. On met le retrait de côté avant de découper, et on le rend à la
+    // première ligne.
+    const int espacesDeTete = source.texte.length() - source.texte.trimStart().length();
+    const juce::String retraitDOrigine = source.texte.substring(0, espacesDeTete);
+
     juce::StringArray mots;
-    mots.addTokens(source.texte, " ", "");
+    mots.addTokens(source.texte.trimStart(), " ", "");
     juce::String courante;
     float largeurCourante = 0.0f;
     bool premiere = true;
     for (const auto& mot : mots) {
         const float largeurMot = juce::GlyphArrangement::getStringWidth(police, mot);
+        const float largeurTete =
+            premiere ? juce::GlyphArrangement::getStringWidth(police, retraitDOrigine)
+                     : largeurRetrait;
         const float essai = courante.isEmpty()
-                          ? (premiere ? largeurMot : largeurRetrait + largeurMot)
+                          ? largeurTete + largeurMot
                           : largeurCourante + largeurEspace + largeurMot;
         if (!courante.isEmpty() && essai > float(largeurMax)) {
             lignes_.add({courante, source.couleur, source.titre && premiere});
@@ -259,7 +271,7 @@ void ImportReportComponent::envelopper(const Ligne& source, int largeurMax) {
             courante = retrait + mot;
             largeurCourante = largeurRetrait + largeurMot;
         } else {
-            courante = courante.isEmpty() ? (premiere ? mot : retrait + mot)
+            courante = courante.isEmpty() ? (premiere ? retraitDOrigine + mot : retrait + mot)
                                           : courante + " " + mot;
             largeurCourante = essai;
         }

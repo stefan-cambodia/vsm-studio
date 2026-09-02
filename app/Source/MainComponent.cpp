@@ -2656,6 +2656,55 @@ void MainComponent::showReconstructionReport() {
         }
     }
 
+    // --- La BATTERIE, qui n'est pas un stem mélodique -------------------
+    //
+    // Elle manquait à cet écran comme elle a longtemps manqué au rapport :
+    // c'est souvent la piste la plus lourde du morceau — 78 % sur *Sky and
+    // Sand* — et la seule dont on sache EXACTEMENT combien de parties elle
+    // porte, puisque les frappes sont classées par pièce.
+    const auto& batterie = racine["drums"];
+    if (batterie.isObject()) {
+        lignes.add({{}, Ton::info});
+        const auto& pieces = batterie["pieces"];
+        juce::String tete;
+        tete << juce::String::fromUTF8("Batterie → ")
+             << juce::String::fromUTF8(batterie["machine"].asString("?").c_str())
+             << juce::String::fromUTF8(" · ") << static_cast<int>(pieces.size())
+             << juce::String::fromUTF8(" pièce(s), ")
+             << static_cast<int>(batterie["hits"].asNumber(0.0))
+             << juce::String::fromUTF8(" frappe(s)");
+        // LE DÉCOUPAGE PAR PIÈCE, quand il a eu lieu : sans cette ligne, un
+        // projet à huit pistes de batterie ne se distinguerait pas d'un
+        // projet à une seule dans ce rapport.
+        const auto& decoupe = batterie["splitByPiece"];
+        const bool eclatee = decoupe.isArray() && decoupe.size() > 1;
+        if (eclatee)
+            tete << juce::String::fromUTF8(", ÉCLATÉE en ")
+                 << static_cast<int>(decoupe.size()) << juce::String::fromUTF8(" pistes");
+        lignes.add({tete, Ton::info});
+        for (const auto& piece : pieces.elements()) {
+            juce::String ligne;
+            ligne << juce::String::fromUTF8("    ")
+                  << juce::String::fromUTF8(piece["family"].asString("?").c_str())
+                  << juce::String::fromUTF8(" : ")
+                  << static_cast<int>(piece["hits"].asNumber(0.0))
+                  << juce::String::fromUTF8(" frappe(s)");
+            lignes.add({ligne, Ton::info});
+        }
+        // Ce que la machine a dû concéder — familles sans voix, toms rabattus
+        // sur un clap : le rapport les portait, l'écran les taisait.
+        for (const auto& avertissement : batterie["warnings"].elements())
+            lignes.add({juce::String::fromUTF8("    ")
+                        + juce::String::fromUTF8(avertissement.asString("").c_str()),
+                        Ton::perte});
+        if (!eclatee && pieces.size() >= 2)
+            lignes.add({juce::String::fromUTF8("    ")
+                        + juce::String(static_cast<int>(pieces.size()))
+                        + juce::String::fromUTF8(" parties sur une seule piste — la chaîne "
+                                                 "sait les séparer (--batterie-par-piece)"),
+                        Ton::perte});
+    }
+
     importReport_.showLines(
         juce::String::fromUTF8("Rapport de reconstruction"),
         currentProjectFolder_ != juce::File() ? currentProjectFolder_.getFileName()

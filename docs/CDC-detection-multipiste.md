@@ -196,11 +196,18 @@ déplacent rien, et la stabilité par empreintes est démontrée en course.
      dépôt protège ce qu'on entend ; ici la chaîne refuse de FABRIQUER, le
      stem reste sur le disque, `--seuil-stem 0` le reconstruit. La plus petite
      vraie partie d'*Us and Them* (piano, 6,9 %) est douze fois au-dessus ;
-   - **le fourre-tout de *Sky and Sand* est la BATTERIE** (78 %), pas `other`,
-     et aucun de nos outils ne l'atteint : le seuil de fourre-tout mesure
-     polyphonie et ambitus, qui n'ont pas de sens pour un kit, et
-     `--voix-par-stem` ne touche pas la batterie. `--batterie-par-piece` est
-     la seule réponse existante ; son effet n'est pas mesuré. À suivre.
+   - **le fourre-tout de *Sky and Sand* est la BATTERIE** (78 %), pas `other`.
+     Le seuil de fourre-tout mesure polyphonie et ambitus, qui n'ont pas de
+     sens pour un kit — il ne le voyait donc pas. **Comblé le même jour** :
+     la batterie n'a pas besoin d'être devinée, ses pièces sont CLASSÉES, et
+     l'on sait exactement combien de parties elle porte. Mesuré :
+     *Sky and Sand* = **5 pièces, 3 309 frappes** (tom 1455, percussion 601,
+     hihat 512, kick 434, kick2 307) ; *Us and Them* = 4 pièces, 2 227
+     frappes. La chaîne le dit désormais quand la batterie porte au moins un
+     quart du morceau sur une piste, et l'écran du rapport porte le bloc
+     batterie — machine, pièces, frappes, concessions de la machine, et la
+     ligne de parité. Reste non mesuré : l'effet de `--batterie-par-piece`
+     sur la distance.
 
    Reste due, à la levée de la pause : la mesure de DISTANCE sur ce second
    morceau (le partage seul ne dit pas si le morceau sonne plus près).
