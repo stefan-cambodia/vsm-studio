@@ -342,6 +342,17 @@ Deux critères, à ne pas confondre :
 | Électromécanique | `vsm.epiano` (lames), `vsm.tonewheel` (roues phoniques + rotatif) | **fait** |
 | Filtre à 2 pôles, poly « brass » | `vsm.obx` | **fait** |
 | **Modélisation physique, guide d'ondes** | `vsm.string` (corde pincée et frottée) | **fait** — voir § 10 |
+| Tuyau à anche BATTANTE | `vsm.wind` (cylindre), `vsm.cone` (perce conique) | **fait** — § 11 |
+| **Anche LIBRE** | `vsm.reed` (harmonium, accordéon) | **fait le 02/09** — § 13 ; seule machine dont la pression change la HAUTEUR |
+| Objet frappé à rapports libres (1D) | `vsm.modal` (corde ↔ barre) | **fait** |
+| **Objet frappé à DEUX dimensions** | `vsm.membrane` (timbale ↔ tabla chargé) | **fait le 02/09** — rapports de Bessel, hors de portée de `vsm.modal` |
+| **Cordes SYMPATHIQUES** | `vsm.sitar` (onze cordes jamais pincées, chevalet plat) | **fait le 02/09** — comble un trou que trois documents constataient |
+| Waveshaping (spectre commandé) | `vsm.chebyshev` | **fait** |
+| **Synthèse balayée** | `vsm.scanned` (chaîne de masses, timbre en temps réel) | **fait le 02/09** |
+| **Lecture de BANDE** | `vsm.mellotron` (la bande finit, une par touche) | **fait le 02/09** — un COMPORTEMENT, pas un timbre |
+| Granulaire, vectoriel, stochastique | `vsm.granular`, `vsm.vector`, `vsm.stochastic` | **fait** |
+| Formants (voix) | `vsm.vocal` | **fait** |
+| Double couche + modulation par voix | `vsm.cs80` | **fait** |
 
 ### Proposition, par ordre de rendement
 
