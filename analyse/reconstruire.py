@@ -1415,6 +1415,20 @@ def verdict_du_melange(ctx: Contexte, chantier: Chantier, pistes_export: List[Ex
     return distances_retenues, verdict
 
 
+def _distance_au_stem(stem, machine: str) -> Optional[float]:
+    """La meilleure distance AU STEM relevée pour `machine` pendant l'arbitrage.
+
+    Renvoie `None` si la machine n'a pas concouru — auquel cas on préfère
+    laisser le champ tel quel plutôt que d'inventer un chiffre : une valeur
+    absente est une information, une valeur fausse n'en est pas une.
+    """
+    meilleures = [d for m, _origine, d in getattr(stem, "track_considered", []) if m == machine]
+    if meilleures:
+        return min(meilleures)
+    candidates = [d for m, d in getattr(stem, "considered", []) if m == machine]
+    return min(candidates) if candidates else None
+
+
 def aligner_rapport_sur_projet(chantier: Chantier, pistes_export: List[ExportTrack],
                                distances_retenues: Dict[str, float]) -> None:
     """LE RAPPORT DOIT DÉCRIRE LE PROJET QU'ON ÉCRIT, et il ne le faisait plus.
@@ -1449,6 +1463,26 @@ def aligner_rapport_sur_projet(chantier: Chantier, pistes_export: List[ExportTra
         retenue = distances_retenues.get(stem.name)
         if retenue is not None:
             stem.track_distance = retenue
+        # ET LA DISTANCE AU STEM AVEC, POUR LA MÊME RAISON — le mensonge avait
+        # simplement reculé d'un champ de plus.
+        #
+        # `stem.distance` est le score de la machine sur le STEM. Quand le
+        # verdict du mélange remplace la machine, ce champ restait celui de la
+        # MACHINE ÉCARTÉE, publié sous le nom de la nouvelle. Ce n'est pas une
+        # imprécision : mesuré sur `usandthem-v9`, le rapport annonçait
+        # « vsm.cs80, distance 0,185085 » alors que la vraie distance de
+        # `vsm.cs80` au stem de basse est **0,362272** — la valeur publiée
+        # était celle de `vsm.multisample`, qui avait gagné l'arbitrage avant
+        # d'être écartée. Sur `other`, « vsm.tb303 » publiait 0,173624 pour une
+        # distance réelle de 0,299406.
+        #
+        # Cette panne a fait écrire une conclusion FAUSSE dans deux documents
+        # (« sa distance au stem étant identique au dix-millième à celle de la
+        # machine qu'elle remplace »). La vérité est plus intéressante que
+        # l'erreur : une machine DEUX FOIS plus loin au stem gagne au mélange.
+        vraie = _distance_au_stem(stem, piste_finale.machine)
+        if vraie is not None:
+            stem.distance = vraie
     # LA BATTERIE AUSSI : le verdict du mélange peut lui avoir rendu une autre
     # boîte, et le rapport doit décrire celle qu'on écrit.
     rapport_batterie = chantier.rapport_batterie

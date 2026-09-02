@@ -455,9 +455,21 @@ fusion). Le CDC nouvelle-machine s'applique en entier
 **Second verdict, et il dépasse la règle : le parc à 39 machines GAGNE**
 (0,1910 → **0,1822**, −4,6 % sur *Us and Them*). `vsm.cs80`, ajoutée pour
 le jeu et sans rien promettre, **gagne la piste de basse dès sa première
-course** — et elle la gagne au MÉLANGE, sa distance au stem étant
-identique au dix-millième à celle de la machine qu'elle remplace (0,1851
-contre 0,1851). `vsm.modal`, écartée au verdict, se place tout de même
+course** — et elle la gagne au MÉLANGE alors qu'elle est **DEUX FOIS PLUS
+LOIN au stem** : 0,3623 contre 0,1851 pour `vsm.multisample`, qui avait
+gagné l'arbitrage avant d'être écartée.
+
+> **Correction du 02/09/2026.** Ce paragraphe a d'abord annoncé que les deux
+> machines étaient « identiques au dix-millième » au stem (0,1851 contre
+> 0,1851). C'était FAUX, et le chiffre venait d'une panne muette de
+> `rapport.json` : le champ `distance` d'un stem n'était pas recalculé quand
+> le verdict du mélange remplaçait la machine, si bien que le rapport publiait
+> le score de la machine ÉCARTÉE sous le nom de la nouvelle. Les deux valeurs
+> étaient identiques parce que c'était **le même nombre**, pas parce que les
+> machines étaient à égalité. Le défaut est corrigé dans
+> `aligner_rapport_sur_projet`, et la conclusion en sort renforcée : le
+> mélange ne fait pas que départager deux ex æquo, il **renverse** un écart
+> de un à deux. `vsm.modal`, écartée au verdict, se place tout de même
 devant `vsm.string` au stem comme au morceau. Ce que ces chiffres disent,
 et qui vaut mieux que la règle qu'ils vérifient : **un vivier plus large
 ne dilue pas l'arbitrage, il lui donne des candidates que le mélange

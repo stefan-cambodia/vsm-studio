@@ -2593,9 +2593,15 @@ n'est pas le vivier qui gagne, c'est **le droit de revenir sur un verdict**.
 Les deux machines ajoutées ne servent à rien tant que l'arbitrage ne
 repasse pas : `vsm.cs80` n'entre qu'au tour 2, une fois les deux autres
 pistes arrêtées, parce que c'est seulement à ce moment-là que le MÉLANGE
-peut la départager de sa rivale — au stem, les deux sont à égalité au
-dix-millième (0,1851 contre 0,1851). Un vivier plus large donne des
-candidates ; seul le point fixe les fait choisir.
+peut la préférer à sa rivale — et le mélange la préfère alors qu'elle est
+**deux fois plus loin au stem** (0,3623 contre 0,1851). Un vivier plus large
+donne des candidates ; seul le point fixe les fait choisir.
+
+*(Ce passage disait d'abord « les deux sont à égalité au dix-millième
+(0,1851 contre 0,1851) ». Le chiffre venait d'un champ de `rapport.json` qui
+n'était pas recalculé après substitution de machine : les deux valeurs
+étaient le MÊME nombre, celui de la machine écartée. Corrigé le 02/09/2026 ;
+la mesure réelle rend la conclusion plus forte, pas plus faible.)*
 
 **Ce que ce témoin NE dit PAS, et qui reste ouvert.** v10 (0,2013) est plus
 loin que v7 (0,1910), et il serait tentant d'en conclure qu'un vivier

@@ -3595,9 +3595,16 @@ c'est à ce titre que `vsm.cs80` est entrée. La preuve de bout en bout que
 le § 8 exige la donne pourtant gagnante : sur *Us and Them*, à conditions
 par ailleurs identiques, le parc passe de 0,1910 (37 machines) à **0,1822**
 (39 machines, −4,6 %), et la piste de BASSE est reprise à `vsm.vocal` par
-`vsm.cs80`. Le détail qui compte : **leurs distances au stem sont égales au
-dix-millième** (0,1851 contre 0,1851). Le stem ne les départageait pas ;
-seul le mélange le pouvait, et il a choisi la double couche.
+`vsm.cs80`. Le détail qui compte : **le mélange a renversé un écart de un à
+deux au stem** — `vsm.cs80` y mesure 0,3623 quand la machine qu'elle
+remplace mesure 0,1851. Le stem se trompait franchement ; seul le mélange
+pouvait le dire, et il a choisi la double couche.
+
+*(Ce passage annonçait d'abord des distances « égales au dix-millième
+(0,1851 contre 0,1851) » : c'était le même nombre publié deux fois, le champ
+`distance` de `rapport.json` n'étant pas recalculé quand le verdict remplace
+la machine. Panne muette corrigée le 02/09/2026 — et la leçon du mandataire,
+du § 5 septies, en sort sous sa forme la plus spectaculaire.)*
 
 **ET UNE QUATRIÈME : `vsm.modal`, l'objet frappé à rapports LIBRES.** La
 question qu'il fallait trancher avant d'écrire une ligne : en quoi est-ce
