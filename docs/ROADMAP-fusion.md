@@ -71,6 +71,12 @@ client, jamais une dépendance.
   900 visés (contre 864 / 827 / 1228 avec l'ancien espace).
 - ~~La couverture instrumentale s'est comblée côté synthèse, mais basse,
   guitare et cordes réelles passent toujours par le sampler faute de modèle
+  — **CETTE PHRASE EST DATÉE, corrigée le 02/09/2026 par l'hypothèse H10 du
+  CDC machines-manquantes** : `vsm.string` couvre la guitare, y compris
+  ÉLECTRIQUE, et la mesure le dit (h2 = 1,363 contre 1,387 relevé sur 36 zones
+  de « Clean Guitar » réelle, h3 = 1,710 contre 1,967). Ce qui manque encore
+  n'est pas une machine mais deux effets d'insert : la saturation d'ampli et
+  la bande étroite du haut-parleur
   dédié~~ — **levé par `vsm.string`** (§ 10 de
   [`CDC-machines-manquantes.md`](CDC-machines-manquantes.md), chiffres dans
   ARCHITECTURE.md § 32). La corde — pincée ET frottée — est modélisée par

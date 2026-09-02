@@ -15,9 +15,17 @@ SynthPluginPtr makeObx(double sr = 48000.0) {
     if (plugin) plugin->initialize(sr, 512);
     return plugin;
 }
+/// UN NOM INCONNU EST UNE ERREUR, ET IL DOIT LE DIRE. Ce helper renvoyait 0
+/// quand il ne trouvait pas le paramètre ; `setParameter(0, v)` ne fait rien
+/// et ne se plaint pas, si bien qu'un test réglant `"Damping"` sur une machine
+/// qui expose `"String Damping"` mesurait la machine par défaut en croyant
+/// mesurer autre chose. C'est arrivé au banc de H10 (CDC machines-manquantes,
+/// § 12) : quatre lignes d'un balayage étaient identiques sans que cela
+/// alerte, et il s'en est fallu de peu qu'on écrive une machine inutile sur
+/// cette base. Panne muette interdite, ici comme ailleurs.
 ParamId byName(const ISynthPlugin& plugin, const std::string& name) {
     for (const auto& info : plugin.parameterList()) if (info.name == name) return info.id;
-    return 0;
+    throw vsm::test::AssertionFailure("paramètre inconnu : « " + name + " » — la machine expose d'autres noms");
 }
 MidiNoteEvent noteOn(int offset, uint8_t note, uint8_t velocity = 100) {
     return {MidiNoteEvent::Kind::NoteOn, offset, 0, note, velocity};

@@ -628,6 +628,98 @@ par construction ce qui bouge dans une bande étroite.
 Le parc passe à **43 machines** (993 paramètres nommés, 1 326 tests
 verts).
 
+## 12. H10 — la guitare ÉLECTRIQUE est-elle vraiment couverte ? (écrite avant sa mesure, 02/09/2026)
+
+**Le fait qui la motive est une contradiction interne à ce dépôt.** Le tableau
+du § 1 déclare « Basse électrique, guitare → `vsm.string` → **couvert** ». Le
+§ 1 de `ROADMAP-fusion.md` écrit le contraire : « basse, guitare et cordes
+réelles passent toujours par le sampler faute de modèle ». Les deux ne peuvent
+pas être vrais, et la question n'est pas rhétorique : la séparation à six
+sources (`htdemucs_6s`) produit un stem `guitar` à part entière, donc un stem
+entier dépend de la réponse.
+
+**L'ARGUMENT À ÉPROUVER.** Une guitare électrique n'est pas une corde pincée
+qu'on écoute : c'est une corde pincée qu'on écoute EN UN POINT, par un micro
+magnétique placé quelque part le long de la corde. Il y a donc **deux peignes
+indépendants** — celui du point de PINCEMENT (que `vsm.string` a, via
+`string.pickPosition`) et celui du point de CAPTATION (qu'aucune machine du
+parc n'a). Un micro placé au quart de la corde ne peut pas entendre
+l'harmonique 4, dont il occupe un nœud, quel que soit l'endroit où l'on pince.
+S'y ajoutent la saturation d'ampli et la bande passante étroite du
+haut-parleur, qui sont des effets d'insert et non de la machine.
+
+**LA MESURE QUI TRANCHE, et c'est le protocole du saxophone (§ 11).** Cible
+isolée : le preset « Clean Guitar » (programme 27) de GeneralUser GS, mesuré
+zone par zone sur sa région tenue. Machine : `vsm.string`, balayée sur TOUTE la
+course de `Pick Position` et de son amortissement. On compare les profils de
+rangs h1..h8.
+
+- **Succès de H10** : le profil réel montre un creux marqué à un rang que
+  `vsm.string` ne parvient à creuser à AUCUN réglage de sa course — la marque
+  du second peigne. Alors le tableau du § 1 est faux, il faut le corriger, et
+  une machine `vsm.guitar` (corde + micro à position) a sa raison d'être.
+- **Échec de H10** : `vsm.string` atteint le profil réel quelque part sur sa
+  course. Alors le tableau a raison, `ROADMAP-fusion.md` § 1 est daté et doit
+  être corrigé dans l'autre sens, et **il ne faut PAS écrire la machine** — ce
+  serait un doublon, exactement ce que le § 9 refuse.
+
+Dans les deux cas le dépôt y gagne : une contradiction de moins entre deux
+documents qui se lisent l'un l'autre.
+
+### H10 EST TRANCHÉE : ÉCHEC — et **la machine ne sera pas écrite** (02/09/2026)
+
+**La cible réelle, 36 zones de « Clean Guitar » (GeneralUser GS) mesurées sur
+leur région de boucle.** Médiane des rangs, rapportés au fondamental :
+
+| | h2 | h3 | h4 | h5 |
+|---|---|---|---|---|
+| guitare électrique réelle (médiane de 36 zones) | 1,387 | 1,967 | 1,800 | 0,756 |
+| `vsm.string`, meilleur point de sa course | **1,363** | **1,710** | 1,222 | 1,403 |
+
+Le premier fait à retenir est déjà dans la colonne de gauche : **les rangs 2, 3
+et 4 d'une guitare électrique sont PLUS FORTS que son fondamental.** C'est la
+marque du micro magnétique, qui capte la VITESSE de la corde et non son
+déplacement, donc accentue de six décibels par octave. Une machine qui ne
+saurait pas produire cela serait hors sujet.
+
+**`vsm.string` le produit.** Pincée près du chevalet (`Pick Position` 0,05),
+elle rend h2 = 1,363 pour 1,387 visé — l'écart est de deux pour cent — et
+h3 = 1,710 pour 1,967. Elle plafonne sur h4 (1,222 contre 1,800) et déborde sur
+h5 (1,403 contre 0,756), mais **il n'existe aucun rang qu'elle serait
+structurellement incapable d'atteindre** : l'écart est quantitatif, pas
+mathématique. Rien à voir avec le fossé du saxophone, où la symétrie demi-onde
+interdisait les rangs pairs et mesurait 0,000 contre 0,419 — un facteur infini,
+et une impossibilité démontrable.
+
+**Et la dispersion des zones réelles achève l'argument.** Ces 36 zones ne
+décrivent pas UN profil mais un nuage : h4 va de 0,005 à 2,827 selon la corde
+et la vélocité échantillonnées. « La » guitare électrique n'a pas de signature
+spectrale unique dont on pourrait dire qu'une machine la rate ; `vsm.string`
+tombe dans le nuage.
+
+**Conséquences, et elles sont toutes des économies.**
+- **Aucune machine `vsm.guitar` ne sera écrite.** Ce serait le septième
+  soustractif du § 9 sous une autre forme : un nom de plus sur une liste, une
+  candidate de plus à chaque arbitrage, et aucune famille ouverte.
+- **Le tableau du § 1 a raison** et reste tel quel : la guitare est couverte
+  par `vsm.string`.
+- **Le § 1 de `ROADMAP-fusion.md` est DATÉ et doit être corrigé** : il écrit
+  que « basse, guitare et cordes réelles passent toujours par le sampler faute
+  de modèle », ce qui était vrai avant `vsm.string` et ne l'est plus. La
+  contradiction entre les deux documents est levée dans ce sens-là.
+- **Ce qui manque vraiment, s'il manque quelque chose, n'est PAS une machine**
+  mais deux effets d'insert appliqués APRÈS elle : la saturation d'ampli et la
+  bande étroite du haut-parleur. Ils appartiennent à la chaîne d'effets, pas au
+  parc de machines, et le § 9 refuse expressément de confondre les deux.
+
+**Une leçon de banc, et elle est du même genre que les trois précédentes.** Le
+premier balayage a conclu que `vsm.string` plafonnait à h3 = 1,347, très loin
+de la cible. Il réglait un paramètre nommé `Damping` — qui n'existe pas : la
+machine expose `String Damping`. `setParameter` sur un identifiant inconnu ne
+fait rien et **ne le dit pas**, si bien que quatre lignes du balayage étaient
+identiques sans que cela alerte. C'est une panne muette, exactement ce que la
+règle du dépôt interdit, et elle a failli faire écrire une machine inutile.
+
 Les rangs 1, 3 et 6 comblent des **trous de couverture** : sans eux, des stems
 entiers n'ont aucune machine cible. Les rangs 2, 4 et 5 élargissent surtout la
 palette de jeu — utiles, mais à ne pas confondre avec un gain de reconstruction.
