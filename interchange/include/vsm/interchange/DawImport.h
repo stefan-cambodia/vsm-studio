@@ -32,6 +32,14 @@ struct DawImportReport {
     int clipsSeen = 0;
     int tracksWithoutInstrument = 0;   ///< toutes, aujourd'hui — voir le § 2 du CDC
 
+    /// LE GARDE-FOU DES FORMATS BINAIRES (voir le § 3 bis du CDC). Sur un
+    /// `.flp`, la STRUCTURE est certaine mais le SENS des identifiants est
+    /// reconstitué : compter ce qu'on a reconnu et ce qu'on n'a pas reconnu
+    /// permet au musicien de voir, sans avoir à nous croire, si la lecture a
+    /// mordu. Un lecteur qui se tromperait d'identifiants le montrerait ici.
+    int eventsRead = 0;
+    int eventsUnderstood = 0;
+
     /// Une ligne par fait notable, dans l'ordre de la lecture. Ce sont ces
     /// lignes que l'interface montre : elles sont écrites pour un musicien,
     /// pas pour un programmeur.
@@ -60,5 +68,22 @@ DawImportResult importAbletonLive(const std::vector<uint8_t>& octets);
 
 /// Même chose depuis un fichier. Lève `DawImportError` si le fichier manque.
 DawImportResult importAbletonLiveFile(const std::string& chemin);
+
+/// Lit un projet **FL Studio** (`.flp`).
+///
+/// CE QUI EST REPRIS : tempo, PPQ, titre, noms des canaux du rack, et les
+/// notes de tous les motifs — une piste par canal, comme dans le rack de FL.
+///
+/// CE QUI EST APPROCHÉ, ET LE RAPPORT LE DIT : **l'arrangement**. Si l'ordre
+/// des motifs dans la playlist est lisible, il est suivi ; sinon les motifs
+/// sont posés BOUT À BOUT dans l'ordre de leurs numéros. Un morceau dont
+/// l'arrangement est deviné n'est pas le morceau du musicien, et il doit le
+/// savoir avant de chercher pourquoi.
+///
+/// CE QUI NE L'EST PAS : les instruments (chaque canal du rack porte un
+/// générateur — Sytrus, Harmless, un VST — qui n'existe pas ici), les effets,
+/// et l'automation.
+DawImportResult importFlStudio(const std::vector<uint8_t>& octets);
+DawImportResult importFlStudioFile(const std::string& chemin);
 
 } // namespace vsm::interchange

@@ -51,6 +51,40 @@ bibliothèque, pour la même raison. Un inflate tient en deux cents lignes et se
 teste contre des cas connus ; une dépendance se porte, se fige et s'explique
 pour toujours.
 
+## 3 bis. FL Studio : ce qui est certain et ce qui est reconstitué
+
+Un `.flp` n'a pas de spécification publique. Ce qu'on en sait vient de la
+rétro-ingénierie, et il faut séparer nettement deux choses, parce que la
+première ne peut pas mentir et la seconde le peut :
+
+**CE QUI EST CERTAIN — la STRUCTURE.** Le fichier est fait de deux blocs,
+`FLhd` (en-tête : format, nombre de canaux, PPQ) et `FLdt` (données), ce
+dernier étant une suite d'événements dont la TAILLE se déduit de
+l'identifiant : 0–63 un octet, 64–127 deux, 128–191 quatre, 192–255 une
+longueur variable en base 128. **Ce découpage se vérifie tout seul** : s'il
+est faux, on n'atteint pas la fin du fichier exactement. Un lecteur peut donc
+parcourir n'importe quel `.flp` sans rien comprendre à son contenu, et savoir
+qu'il l'a bien parcouru.
+
+**CE QUI EST RECONSTITUÉ — le SENS des identifiants.** Que l'événement 156
+porte le tempo, que le 224 porte les notes d'un motif, que le 192 porte un nom
+de canal : ce sont des faits établis par plusieurs projets libres et stables
+depuis des années, mais ce ne sont pas des faits *garantis*. Un identifiant mal
+attribué produirait un import silencieusement faux — précisément ce que ce
+dépôt refuse.
+
+**La parade, et elle est structurelle** : le rapport d'import compte les
+événements **reconnus** et **non reconnus**, et donne le nombre total. Un
+lecteur qui se tromperait d'identifiants le montrerait aussitôt — zéro note
+lue, ou un compte d'événements qui ne retombe pas sur la taille du fichier. Le
+musicien voit donc, sans avoir à nous croire, si la lecture a mordu.
+
+**Ce qu'on n'invente pas.** L'ordre des motifs dans la playlist est lu s'il est
+présent ; sinon les motifs sont posés **bout à bout** dans l'ordre de leurs
+numéros, et le rapport le dit en toutes lettres — un morceau dont l'arrangement
+est deviné n'est pas le morceau du musicien, et il doit le savoir avant de
+chercher pourquoi.
+
 ## 4. Cubase : la réponse honnête
 
 **Le format `.cpr` est fermé et non documenté.** Il n'existe aucune
