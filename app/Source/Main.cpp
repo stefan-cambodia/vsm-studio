@@ -117,6 +117,13 @@ public:
                 liste.addTokens(juce::String::fromUTF8(vues), ",", "");
                 for (const auto& v : liste) content->applyViewCommand(v.trim());
             }
+            // VSM_RAPPORT=1 : montrer le rapport de reconstruction du projet
+            // ouvert (VSM_PROJET) avant la capture. Même raison d'être que
+            // VSM_IMPORT : cet écran ne s'atteint autrement qu'à la souris,
+            // et une interface qu'on ne peut pas photographier ne se juge pas.
+            if (const char* rapport = std::getenv("VSM_RAPPORT");
+                rapport != nullptr && *rapport)
+                content->showReconstructionReport();
             if (const char* sortie = std::getenv("VSM_CAPTURE"); sortie != nullptr && *sortie) {
                 const juce::File fichier =
                     juce::File::getCurrentWorkingDirectory().getChildFile(sortie);

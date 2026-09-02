@@ -129,7 +129,10 @@ déplacent rien, et la stabilité par empreintes est démontrée en course.
     part), et son partage est mesuré
 [ ] H22b et H23 sont tranchées, verdicts écrits avec leurs chiffres
 [ ] La chaîne a un comportement PAR DÉFAUT décidé et écrit (§ 4.2)
-[ ] Le DAW montre les densités et avertissements du rapport (§ 4.3)
+[x] Le DAW montre les densités et avertissements du rapport (§ 4.3) :
+    Fichier ▸ Voir le rapport de reconstruction (grisé sans rapport), et
+    VSM_RAPPORT=1 pour le photographier sans souris — vérifié sur le
+    rapport réel de H22a
 [ ] Un projet multipiste reconstruit a été OUVERT et REGARDÉ dans le DAW
 [ ] Vérifié sur un deuxième morceau avant de changer un défaut
 [ ] Sur un original dont les parties sont connues, le compte de pistes

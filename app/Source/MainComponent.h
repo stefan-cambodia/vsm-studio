@@ -93,6 +93,13 @@ public:
     /// Importe un projet d'un autre DAW et rend le compte rendu affiché, pour
     /// que l'autoportrait puisse le montrer sans souris (VSM_IMPORT).
     bool importDawProjectForCapture(const juce::File& fichier);
+    /// Montre le rapport de reconstruction du projet ouvert (§ 4.3 de
+    /// docs/CDC-detection-multipiste.md) : partage d'énergie, machine et
+    /// DENSITÉ de chaque piste — c'est là que « cette piste porte plusieurs
+    /// parties » devient visible dans l'application, et non plus seulement
+    /// dans un JSON que personne n'ouvre. Publique pour VSM_RAPPORT : cet
+    /// écran doit se photographier sans souris.
+    void showReconstructionReport();
 
     bool openProjectFolderForCapture(const juce::File& dossier) {
         const auto lu = vsm::interchange::loadProjectBundle(dossier.getFullPathName().toStdString());
@@ -129,6 +136,7 @@ private:
         kMenuFileOpenBundle,
         kMenuFileImportDaw,
         kMenuFileImportReport,
+        kMenuFileReconstructionReport,
         kMenuFileSave,
         kMenuFileSaveAs,
         kMenuFileLoadReference,
@@ -442,6 +450,9 @@ private:
     /// question qu'il répond -- « pourquoi cette piste est-elle muette ? » --
     /// se pose une heure plus tard.
     void showLastImportReport();
+    /// Le fichier `rapport.json` du projet ouvert, ou vide s'il n'en a pas.
+    /// Un projet ouvert à la main n'en a pas, et c'est normal.
+    juce::File rapportReconstruction_;
 
     /// Le panneau du rapport, POSÉ DANS LA FENÊTRE et non flottant : c'est le
     /// composant de contenu que photographie l'autoportrait (VSM_CAPTURE), donc

@@ -33,6 +33,7 @@
 #include "vsm/audio/io/AudioTrackLoader.h"
 #include "vsm/audio/io/WavFileReader.h"
 #include "ui/UiScale.h"
+#include "vsm/interchange/Json.h"
 #include "ui/Shortcuts.h"
 
 using namespace vsm::sequencer;
@@ -1033,6 +1034,12 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // qu'un rapport EXISTE et où le retrouver.
             menu.addItem(kMenuFileImportReport, u8"Voir le dernier rapport d'import",
                          importReport_.hasReport(), false);
+            // Le rapport de RECONSTRUCTION du projet ouvert (§ 4.3 du CDC
+            // multipiste) : grisé quand le projet n'en a pas — un projet
+            // ouvert à la main n'en a pas, et c'est normal.
+            menu.addItem(kMenuFileReconstructionReport,
+                         u8"Voir le rapport de reconstruction",
+                         rapportReconstruction_ != juce::File(), false);
             menu.addItem(kMenuFileSave, "Enregistrer" +
                           juce::String(currentProjectFolder_ == juce::File() ? "..." : "")
                           + " (Ctrl+S)");
@@ -1399,6 +1406,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuFileOpenBundle: openProjectBundle(); break;
         case kMenuFileImportDaw: importDawProject(); break;
         case kMenuFileImportReport: showLastImportReport(); break;
+        case kMenuFileReconstructionReport: showReconstructionReport(); break;
         case kMenuFileSave:      saveProject(); break;
         case kMenuFileSaveAs:    saveProjectAs(); break;
         case kMenuFileLoadReference: loadReferenceAudio(); break;
@@ -2545,6 +2553,105 @@ void MainComponent::showLastImportReport() {
     importReport_.reopen();
 }
 
+/// LE RAPPORT DE RECONSTRUCTION À L'ÉCRAN (§ 4.3 de
+/// docs/CDC-detection-multipiste.md). Les densités, le partage d'énergie et
+/// les avertissements de fourre-tout existaient dans `rapport.json` et nulle
+/// part dans l'application : le musicien ouvrait un projet dont une piste
+/// porte 57 % du morceau sans que rien ne le lui dise.
+///
+/// La lecture se fait sur le JSON BRUT (vsm/interchange/Json.h) et non sur le
+/// lecteur typé `loadReconstructionReport` : celui-ci sert l'appariement des
+/// confiances note à note ; ici on AFFICHE ce que le rapport sait, champ
+/// présent par champ présent — un rapport d'une version antérieure, sans
+/// densités, montre simplement moins de lignes.
+void MainComponent::showReconstructionReport() {
+    if (rapportReconstruction_ == juce::File()) return;
+    const auto lu = vsm::interchange::parseJson(
+        rapportReconstruction_.loadFileAsString().toStdString());
+    if (!lu.success) {
+        importReport_.showFailure(juce::String::fromUTF8("Rapport illisible"),
+                                  juce::String::fromUTF8(lu.error.c_str()));
+        return;
+    }
+    const auto& racine = lu.value;
+    using Ligne = vsm::app::ui::ImportReportComponent::LigneExterne;
+    using Ton = vsm::app::ui::ImportReportComponent::Ton;
+    juce::Array<Ligne> lignes;
+
+    juce::String resume;
+    resume << static_cast<int>(project_.tracks.size())
+           << juce::String::fromUTF8(" piste(s) reconstruite(s)");
+    const double distance = racine["globalDistance"].asNumber(-1.0);
+    if (distance >= 0.0)
+        resume << juce::String::fromUTF8(" · distance globale ")
+               << juce::String(distance, 4)
+               << juce::String::fromUTF8(" (0 = identique, 1 = silence)");
+    lignes.add({resume, Ton::resume});
+
+    // --- Le partage : qui porte le morceau -------------------------------
+    const auto& partage = racine["partage"];
+    if (partage.isArray() && partage.size() > 0) {
+        lignes.add({{}, Ton::info});
+        for (const auto& part : partage.elements()) {
+            const double pourcent = part["partEnergie"].asNumber(0.0);
+            juce::String texte;
+            texte << juce::String::fromUTF8(part["stem"].asString("?").c_str())
+                  << juce::String::fromUTF8(" : ") << juce::String(pourcent, 1)
+                  << juce::String::fromUTF8(" % de l'énergie du morceau");
+            // Le même seuil que le cri de la chaîne : au-delà de la moitié
+            // sur un stem, « N pistes » est une description trompeuse.
+            if (pourcent >= 50.0)
+                texte << juce::String::fromUTF8(" — cette piste porte le morceau "
+                                                "à elle seule");
+            lignes.add({texte, pourcent >= 50.0 ? Ton::attention : Ton::info});
+        }
+    }
+
+    // --- Les pistes mélodiques : machine et densité -----------------------
+    const auto& stems = racine["stems"];
+    if (stems.isArray() && stems.size() > 0) {
+        lignes.add({{}, Ton::info});
+        for (const auto& stem : stems.elements()) {
+            juce::String texte;
+            texte << juce::String::fromUTF8(stem["name"].asString("?").c_str())
+                  << juce::String::fromUTF8(" → ")
+                  << juce::String::fromUTF8(stem["machine"].asString("?").c_str());
+            const std::string profil = stem["profile"].asString("");
+            if (!profil.empty())
+                texte << juce::String::fromUTF8(" [") << juce::String::fromUTF8(profil.c_str())
+                      << juce::String::fromUTF8("]");
+            const double poly = stem["polyphonieMoyenne"].asNumber(-1.0);
+            const double ambitus = stem["ambitusDemiTons"].asNumber(-1.0);
+            bool fourreTout = false;
+            if (poly >= 0.0 && ambitus >= 0.0) {
+                texte << juce::String::fromUTF8(" · polyphonie ")
+                      << juce::String(poly, 1)
+                      << juce::String::fromUTF8(" (max ")
+                      << static_cast<int>(stem["polyphonieMax"].asNumber(0.0))
+                      << juce::String::fromUTF8(") · ambitus ")
+                      << static_cast<int>(ambitus)
+                      << juce::String::fromUTF8(" demi-tons");
+                // LES SEUILS DU FOURRE-TOUT, les mêmes que ceux de la chaîne
+                // (analyse/analyzer/vsm_reconstruct.py, `stem_fourre_tout`) :
+                // au moins 3 notes simultanées en moyenne ET 3 octaves. Le
+                // jour où la chaîne publiera le verdict dans le rapport, ce
+                // recalcul disparaîtra — c'est noté au § 4.3 du CDC.
+                fourreTout = poly >= 3.0 && ambitus >= 36.0;
+                if (fourreTout)
+                    texte << juce::String::fromUTF8(" — PLUSIEURS parties sur une "
+                                                    "seule piste");
+            }
+            lignes.add({texte, fourreTout ? Ton::attention : Ton::info});
+        }
+    }
+
+    importReport_.showLines(
+        juce::String::fromUTF8("Rapport de reconstruction"),
+        currentProjectFolder_ != juce::File() ? currentProjectFolder_.getFileName()
+                                              : juce::String(),
+        lignes);
+}
+
 /// OUVRIR UN DOSSIER DE PROJET, séparé du sélecteur de fichiers qui le
 /// désigne. La séparation n'est pas cosmétique : depuis D9.3, un projet arrive
 /// aussi SANS que personne l'ait choisi -- la chaîne de reconstruction vient
@@ -2626,6 +2733,10 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     // Quand il est là, il porte la confiance de la transcription note par
     // note, et le piano roll marque celles sur lesquelles elle a hésité.
     const juce::File fichierRapport = folder.getChildFile("rapport.json");
+    // Retenu pour le menu « Voir le rapport de reconstruction » — et EFFACÉ
+    // quand le projet n'en a pas : garder celui du projet précédent ferait
+    // lire les densités d'un morceau sous le titre d'un autre.
+    rapportReconstruction_ = fichierRapport.existsAsFile() ? fichierRapport : juce::File();
     if (fichierRapport.existsAsFile()) {
         auto lu = vsm::interchange::loadReconstructionReport(
             fichierRapport.getFullPathName().toStdString());

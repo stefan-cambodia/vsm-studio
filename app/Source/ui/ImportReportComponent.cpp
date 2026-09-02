@@ -129,6 +129,25 @@ void ImportReportComponent::showReport(const vsm::interchange::DawImportReport& 
     montrer();
 }
 
+void ImportReportComponent::showLines(const juce::String& titre, const juce::String& sousTitre,
+                                      const juce::Array<LigneExterne>& lignes) {
+    titre_ = titre;
+    sousTitre_ = sousTitre;
+    source_.clear();
+    for (const auto& ligne : lignes) {
+        juce::Colour couleur = P::textSecondary;
+        bool enTete = false;
+        switch (ligne.ton) {
+            case Ton::resume:    couleur = P::textPrimary; enTete = true; break;
+            case Ton::attention: couleur = P::accentRed; break;
+            case Ton::perte:     couleur = P::accentAmber; break;
+            case Ton::info:      break;
+        }
+        source_.add({ligne.texte, couleur, enTete});
+    }
+    montrer();
+}
+
 void ImportReportComponent::showFailure(const juce::String& titre, const juce::String& message) {
     titre_ = titre;
     sousTitre_ = {};

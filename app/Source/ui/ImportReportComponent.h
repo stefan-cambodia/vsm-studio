@@ -47,6 +47,22 @@ public:
     // Montre un rapport d'import réussi (même partiellement).
     void showReport(const vsm::interchange::DawImportReport& rapport);
 
+    // LE TON D'UNE LIGNE fournie par un client extérieur. Le panneau est né
+    // pour le rapport d'IMPORT ; le rapport de RECONSTRUCTION (§ 4.3 de
+    // docs/CDC-detection-multipiste.md) est son deuxième vrai client — c'est
+    // cette deuxième venue, et pas une envie de généralité, qui justifie
+    // cette entrée. `resume` est la ligne de tête, en gras.
+    enum class Ton { resume, info, attention, perte };
+    struct LigneExterne {
+        juce::String texte;
+        Ton ton = Ton::info;
+    };
+
+    // Montre un rapport composé PAR L'APPELANT : un titre, un sous-titre, des
+    // lignes tonalisées. Même défilement, même repli, même bouton Copier.
+    void showLines(const juce::String& titre, const juce::String& sousTitre,
+                   const juce::Array<LigneExterne>& lignes);
+
     // Montre un ÉCHEC, avec le message du lecteur EN ENTIER. Celui d'un `.cpr`
     // nomme les deux chemins praticables (Track Archive XML, MIDI Type 1) : le
     // tronquer transformerait une explication utile en une porte fermée.
