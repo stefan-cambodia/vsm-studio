@@ -216,6 +216,13 @@ constexpr Rule kRules[] = {
     // de ce que le formant a à cueillir.
     {"jewsharp.reedPitch",                40.0f,   260.0f, SearchScale::Logarithmic, 0.98f},
     {"jewsharp.twang",                     0.0f,     1.0f, SearchScale::Linear,      0.66f},
+    // THÉRÉMINE (vsm.theremin). Le GLISSANDO n'est pas un ornement sur cette
+    // machine, c'est ce qui décide de tout ce qu'on entend entre deux notes —
+    // et sur une mélodie serrée, il occupe plus de temps que les notes
+    // elles-mêmes. La RÉPONSE DE VOLUME vient ensuite : c'est elle qui fait
+    // l'attaque, puisqu'il n'y a pas d'enveloppe.
+    {"voice.glide",                        0.02f,    1.5f, SearchScale::Logarithmic, 0.93f},
+    {"theremin.volumeResponse",           0.005f,    0.5f, SearchScale::Logarithmic, 0.70f},
     // Famille du VENT (vsm.wind). Comme sur la corde, ce qui fait le timbre
     // est d'abord ce qui se perd (le rayonnement au pavillon) et la raideur de
     // ce qui entretient (l'anche ou les lèvres) ; la pression de souffle vient

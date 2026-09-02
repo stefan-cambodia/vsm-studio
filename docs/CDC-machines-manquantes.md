@@ -1121,6 +1121,70 @@ lame d'acier ne se plie pas en jouant.
 
 Le parc passe à **49 machines** (1 046 paramètres nommés, 1 395 tests verts).
 
+## 18. H18 — le THÉRÉMINE : un instrument sans touches, donc sans sauts (écrite avant sa mesure, 02/09/2026)
+
+**Le trait vient de ce qu'il n'y a rien à toucher.** Un thérémine se joue dans
+l'air, entre deux antennes : la main droite fait la hauteur, la gauche le
+volume. Il n'y a **pas de touches**, donc pas de discontinuité possible — pour
+aller d'une note à l'autre, la main traverse toutes celles du milieu, et on les
+entend. Le glissando n'est pas un effet qu'on ajoute, c'est la seule façon dont
+l'instrument sait changer de note.
+
+**Deux conséquences, et le parc n'a ni l'une ni l'autre :**
+- **Aucune machine du parc ne refuse les sauts de hauteur.** Toutes ont un
+  portamento réglable — c'est-à-dire optionnel, et à zéro par défaut. Ici il ne
+  peut pas être nul : ce serait un autre instrument.
+- **Le volume ne vient pas de la frappe.** Il n'y a pas de frappe. La vélocité
+  MIDI ne dit rien d'un thérémine ; c'est un contrôleur CONTINU qui fait le
+  niveau, et il en fait tout, y compris l'attaque et l'extinction. `vsm.juno106`
+  ignore déjà la vélocité (et un test le verrouille), mais il la remplace par
+  une valeur fixe ; ici elle est remplacée par un GESTE.
+
+**La mesure qui tranche :**
+- **Le glissando est obligatoire** : deux notes enchaînées, la fréquence
+  mesurée à mi-chemin doit se trouver STRICTEMENT entre les deux — et pas à
+  moins d'un demi-ton de l'une ou de l'autre. Sur toute autre machine du parc
+  réglée par défaut, elle serait déjà arrivée.
+- **La vélocité ne fait rien au niveau** : deux rendus à vélocités opposées
+  donnent le même RMS à 1 % près.
+- **Mais la main gauche fait tout** : le même contrôleur, à deux valeurs,
+  change le niveau d'un facteur franc.
+
+- **Succès de H18** : les trois sont mesurés, et le parc gagne le seul
+  instrument qui n'a pas de notes discrètes.
+- **Échec de H18** : le code part hors du `CMakeLists`, avec son chiffre.
+
+### H18 EST TRANCHÉE : SUCCÈS, les trois traits mesurés (02/09/2026)
+
+**Le glissando est obligatoire.** De la note 57 (220 Hz) à la note 69
+(440 Hz), avec `Glide` à 0,4 s :
+
+| t | 0,90 s | 1,05 s | 1,20 s | 1,40 s | 1,80 s | 2,50 s |
+|---|---|---|---|---|---|---|
+| hauteur | 221,6 | **283,9** | 332,4 | 374,7 | 415,8 | 436,2 Hz |
+
+À mi-chemin, la main est à 284 Hz — strictement entre les deux notes et à
+plus d'un demi-ton de chacune. Sur toute autre machine du parc réglée par
+défaut, elle serait déjà arrivée. Et la course du réglage l'interdit de
+descendre à zéro : sa borne basse est à vingt millisecondes, parce qu'un
+thérémine à portamento nul serait un oscillateur ordinaire.
+
+**La vélocité ne fait RIEN** : vélocités 10 et 127 donnent 0,306018 toutes
+les deux — un rapport de 1,0000 exactement. Il n'y a pas de frappe sur cet
+instrument, donc la vélocité MIDI n'a rien à dire. **Mais la main gauche fait
+tout** : la même pression de canal, à 0,2 et 0,9, change le niveau d'un
+facteur **4,50**. `vsm.juno106` ignore déjà la vélocité, mais il la remplace
+par une constante ; ici elle est remplacée par un GESTE.
+
+**Et une identité inventée, rattrapée avant livraison.** Le premier jet
+écrivait `lfo.1.pitchAmount` pour la profondeur de vibrato, en croyant
+réemployer le vocabulaire du parc. Vérification faite dans le fichier :
+**cette identité n'existe nulle part** ; la bonne est `lfo.1.toPitch`. C'est
+la faute que `vsm.chebyshev` avait déjà payée, et la seule parade est de
+regarder au lieu de supposer.
+
+Le parc passe à **50 machines** (1 053 paramètres nommés, 1 407 tests verts).
+
 ## 12. H10 — la guitare ÉLECTRIQUE est-elle vraiment couverte ? (écrite avant sa mesure, 02/09/2026)
 
 **Le fait qui la motive est une contradiction interne à ce dépôt.** Le tableau

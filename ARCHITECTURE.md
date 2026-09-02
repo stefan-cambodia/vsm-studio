@@ -31,7 +31,7 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **1 395 tests moteur** (158 core + 976 audio
+écoute au clic, et toute la logique testée hors JUCE. Total : **1 407 tests moteur** (158 core + 988 audio
 + 206 interchange + 25 CLAP + 19 VST3 + 11 façades,
 tous verts, zéro warning sous les flags du build, `-Wall -Wextra -Wpedantic`.
 L'ancienne mention « y compris -Wfloat-equal -Wsign-conversion -Wshadow »
@@ -599,12 +599,12 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 1 395 tests moteur + 68 tests d'analyse, tous verts
+### Bilan actuel : 1 407 tests moteur + 68 tests d'analyse, tous verts
 
 - **158 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des
   notes douteuses de la transcription),
-  **976 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
+  **988 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
   scalaire, indépendance des lignes, bornes de l'approximation de tanh ; et la
   boucle : rebouclage échantillon-exact, notes relâchées au saut) : chorus BBD, Juno-106,
   bus master (biquad/compresseur/limiteur à plafond garanti/LUFS), oversampler,
@@ -3902,6 +3902,24 @@ section « REED » et non « tune », et le mode d'emploi prévient avant qu'on
 s'étonne.
 
 Le parc passe à **49 machines**.
+
+**ET UNE QUINZIÈME : `vsm.theremin`, le seul instrument du parc sans notes
+discrètes.** Toutes les machines ont un portamento RÉGLABLE — donc optionnel,
+et nul par défaut. Celle-ci ne peut pas sauter : il n'y a rien à toucher, et la
+borne basse de `Glide` est à vingt millisecondes. Mesuré de 220 à 440 Hz : à
+mi-parcours la main est à **284 Hz**, strictement entre les deux et à plus d'un
+demi-ton de chacune.
+
+**Deux conséquences que le parc n'avait pas.** La vélocité ne fait RIEN
+(0,306018 aux vélocités 10 et 127, rapport 1,0000) parce qu'il n'y a pas de
+frappe — `vsm.juno106` ignore déjà la vélocité, mais il la remplace par une
+constante, quand celle-ci la remplace par un GESTE : la pression de canal, qui
+fait tout le volume, attaque comprise (×4,50 entre 0,2 et 0,9). Et la machine
+est MONOPHONIQUE par fidélité et non par économie : une main ne peut être qu'à
+un endroit, si bien qu'une seconde note ne prend pas une voix — elle déplace la
+main. C'est écrit dans sa structure, qui n'a pas de `VoiceManager`.
+
+Le parc passe à **50 machines**.
 
 ---
 

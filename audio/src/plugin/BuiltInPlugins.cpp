@@ -47,6 +47,7 @@
 #include "clavichord/ClavichordSynth.h"
 #include "glass/GlassSynth.h"
 #include "jewsharp/JewsHarpSynth.h"
+#include "theremin/ThereminSynth.h"
 #include "multisample/MultisampleSynth.h"
 
 namespace vsm::audio::plugin {
@@ -194,6 +195,7 @@ void registerBuiltInPlugins() {
         vsm::plugins::clavichord::ClavichordSynth forceLinkClavichord;
         vsm::plugins::glass::GlassSynth forceLinkGlass;
         vsm::plugins::jewsharp::JewsHarpSynth forceLinkJewsHarp;
+        vsm::plugins::theremin::ThereminSynth forceLinkTheremin;
         (void)forceLinkScanned;
     }
     {

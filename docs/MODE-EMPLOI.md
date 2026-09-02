@@ -3,7 +3,7 @@
 Un séquenceur MIDI, un rack de machines vintage modélisées, et une chaîne qui
 reconstruit un morceau enregistré en projet jouable.
 
-**49 machines · 13 effets · 1 046 paramètres nommés · 1 395 tests verts**
+**50 machines · 13 effets · 1 053 paramètres nommés · 1 407 tests verts**
 
 > Toutes les illustrations sont des rendus de l'application elle-même, produits hors
 > écran par `vsm-panel-preview`, `vsm-ui-preview`, `vsm-pianoroll-preview` et
@@ -266,6 +266,18 @@ le feutre étouffe la corde. Ni résonance ni traîne, à l'inverse de tout le
 reste.
 
 ![Façade de Clavichord (le clavier qui vibre)](images/manuel/vsm.clavichord.png)
+
+**Theremin (la main dans l'air)** — `vsm.theremin`
+
+Le seul instrument du rack **sans touches**, donc sans sauts : pour aller
+d'une note à l'autre, la main traverse toutes celles du milieu et vous les
+entendez. *Glide* règle ce trajet, et ne peut pas être annulé — ce serait un
+autre instrument. Deuxième surprise : **la vélocité ne fait rien**, il n'y a
+rien à frapper. C'est la pression (l'aftertouch de votre clavier) qui tient
+lieu de main gauche, et elle fait tout le volume, attaque comprise. Sans
+elle, la note tenue sonne à plein.
+
+![Façade de Theremin (la main dans l'air)](images/manuel/vsm.theremin.png)
 
 **Jew's Harp (la note qui ne bouge pas)** — `vsm.jewsharp`
 

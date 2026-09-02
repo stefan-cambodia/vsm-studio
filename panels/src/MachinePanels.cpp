@@ -3835,6 +3835,50 @@ MachinePanel makeJewsHarp() {
     return panel;
 }
 
+/// `vsm.theremin` -- la main dans l'air. Deux sections pour deux mains, et
+/// c'est ainsi qu'on joue l'instrument : PITCH HAND à gauche, VOLUME HAND à
+/// droite. GLIDE est le grand potentiomètre parce que, sur cette machine, il
+/// décide de tout ce qu'on entend ENTRE les notes -- et sur une mélodie
+/// serrée, cela occupe plus de temps que les notes elles-mêmes.
+///
+/// Livrée acajou et laiton, la robe du RCA de 1929.
+MachinePanel makeTheremin() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.theremin";
+    panel.displayName = "Theremin (la main dans l'air)";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#2A1A12";
+    panel.sectionColour = "#1F130C";
+    panel.textColour = "#F5E6D0";
+    panel.knobColour = "#D9A96A";
+    panel.gridColumns = 10;
+    panel.gridRows = 4;
+
+    PanelSection droite;
+    droite.title = "PITCH HAND";
+    droite.accentColour = "#D9A96A";
+    droite.column = 0; droite.row = 0; droite.columnSpan = 5; droite.rowSpan = 4;
+    droite.controls = {
+        control("Glide", "GLIDE", S::LargeKnob, 0, 0),
+        control("Vibrato Depth", "VIB", S::Knob, 1, 0),
+        control("Vibrato Rate", "RATE", S::Knob, 0, 1),
+        control("Warmth", "WARMTH", S::Knob, 1, 1),
+    };
+
+    PanelSection gauche;
+    gauche.title = "VOLUME HAND";
+    gauche.accentColour = "#C9C08A";
+    gauche.column = 5; gauche.row = 0; gauche.columnSpan = 5; gauche.rowSpan = 4;
+    gauche.controls = {
+        control("Volume Response", "RESPONSE", S::LargeKnob, 0, 0),
+        control("Filter Cutoff", "CUTOFF", S::Knob, 1, 0),
+        control("Output Level", "VOLUME", S::Knob, 0, 1),
+    };
+
+    panel.sections = {droite, gauche};
+    return panel;
+}
+
 const std::vector<MachinePanel>& panels() {
     static const std::vector<MachinePanel> all = {
         makeMinimoog(), makeTb303(), makeTr808(), makeTr909(), makeSh101(),
@@ -3844,7 +3888,8 @@ const std::vector<MachinePanel>& panels() {
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
         makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev(),
         makeScanned(), makeMellotron(), makeSitar(), makeMembrane(), makeReed(),
-        makePlate(), makeClavichord(), makeGlass(), makeJewsHarp()
+        makePlate(), makeClavichord(), makeGlass(), makeJewsHarp(),
+        makeTheremin()
     };
     return all;
 }

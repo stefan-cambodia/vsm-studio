@@ -62,6 +62,7 @@ add_library(vsm_audio STATIC
     plugins/clavichord/ClavichordSynth.cpp
     plugins/glass/GlassSynth.cpp
     plugins/jewsharp/JewsHarpSynth.cpp
+    plugins/theremin/ThereminSynth.cpp
     plugins/multisample/MultisampleSynth.cpp
 )
 
@@ -175,6 +176,7 @@ if (VSM_BUILD_TESTS)
         tests/test_clavichord_synth.cpp
         tests/test_glass_synth.cpp
         tests/test_jewsharp_synth.cpp
+        tests/test_theremin_synth.cpp
         tests/test_multisample_synth.cpp
         tests/test_midi_learn.cpp
         tests/test_effect_routing.cpp

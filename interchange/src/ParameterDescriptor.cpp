@@ -516,6 +516,30 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Velocity Sensitivity", "voice.velocitySensitivity"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.theremin ---
+    // Le GLISSANDO réemploie `voice.glide`, qui existe déjà pour les
+    // monophoniques du parc — c'est bien la même notion, un temps de trajet
+    // entre deux hauteurs. Ce qui diffère n'est pas le réglage mais sa COURSE :
+    // ici elle ne descend pas à zéro. La RÉPONSE DE VOLUME, en revanche, n'a
+    // pas d'équivalent : ce n'est ni une attaque d'enveloppe (il n'y a pas
+    // d'enveloppe) ni un lissage de paramètre, c'est le temps que met la main
+    // gauche à être suivie.
+    //
+    // `lfo.1.toPitch` a été VÉRIFIÉ dans le fichier avant d'être écrit, et il
+    // a fallu le faire : le premier jet disait `lfo.1.pitchAmount`, qui
+    // n'existe nulle part. C'est la faute que `vsm.chebyshev` a déjà payée
+    // (§ 27) — une identité inventée en croyant réemployer est pire qu'une
+    // identité neuve assumée, parce qu'elle fait croire à un preset qu'il
+    // voyagera.
+    {"vsm.theremin", {
+        {"Glide", "voice.glide"},
+        {"Warmth", "oscillator.1.shape"},
+        {"Vibrato Depth", "lfo.1.toPitch"},
+        {"Vibrato Rate", "lfo.1.rate"},
+        {"Volume Response", "theremin.volumeResponse"},
+        {"Filter Cutoff", "filter.1.cutoff"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.multisample ---
     // Peu de paramètres, et TOUS canoniques : le timbre de cette machine vient
     // des échantillons, pas des réglages. `voice.velocitySensitivity` est
