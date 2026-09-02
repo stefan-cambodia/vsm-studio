@@ -504,6 +504,16 @@ Si Python n'est pas installé, la fonction est **grisée avec sa raison**, jamai
 
 Ce que la chaîne ne fait pas : couper une piste. Elle mesure le morceau rendu **sans** chaque piste et le publie au rapport, mais garder ou couper reste une décision humaine.
 
+**Le rapport de reconstruction se lit dans l'application** : *Fichier ▸ Voir le
+rapport de reconstruction* (grisé quand le projet ouvert n'en a pas — un projet
+créé à la main n'en a pas, c'est normal). Il dit la distance globale, **quelle
+part du morceau chaque piste porte** (en rouge au-delà de la moitié : « cette
+piste porte le morceau à elle seule »), la machine et le profil retenus, et la
+densité de chaque piste — polyphonie et ambitus, avec l'avertissement
+« PLUSIEURS parties sur une seule piste » quand une piste est un fourre-tout.
+C'est l'écran qui répond à « pourquoi cette piste sonne-t-elle comme quatre
+instruments ? » sans ouvrir un fichier JSON.
+
 ![La reconstruction en cours : cinq étapes, le journal en direct, et un bouton pour annuler.](images/manuel/reconstruction.png)
 
 *La reconstruction en cours : cinq étapes, le journal en direct, et un bouton pour annuler.*
@@ -584,15 +594,16 @@ Une bascule s'appuie, un fader se positionne : traiter l'un comme l'autre ferait
 
 ### Regarder l'application sans souris
 
-Quatre variables d'environnement, pour vérifier une interface plutôt que de
+Cinq variables d'environnement, pour vérifier une interface plutôt que de
 l'affirmer : `VSM_CAPTURE=sortie.png` fait que la fenêtre se photographie
 elle-même deux secondes après l'ouverture puis quitte ; `VSM_VUE=nom,nom`
 actionne le menu Affichage ; `VSM_PROJET=dossier` ouvre un projet au
 démarrage — sans lui, l'autoportrait ne montre qu'un projet vide, alors que
 ce qu'on a besoin de regarder est presque toujours une machine dans son rack
-ou un arrangement précis ; et `VSM_IMPORT=fichier` importe un projet d'un
+ou un arrangement précis ; `VSM_IMPORT=fichier` importe un projet d'un
 autre DAW au démarrage, ce qui est la seule façon d'atteindre l'écran du
-rapport d'import sans souris.
+rapport d'import sans souris ; et `VSM_RAPPORT=1` montre le rapport de
+reconstruction du projet ouvert par `VSM_PROJET`, pour la même raison.
 
 ## 8. Ne rien perdre
 
