@@ -179,6 +179,96 @@ def densite_du_stem(notes: List["StemNote"]) -> Dict[str, float]:
     }
 
 
+def separer_en_voix(notes: List["StemNote"], maximum: int) -> List[List["StemNote"]]:
+    """Sépare un stem FOURRE-TOUT en voix, par REGISTRES de hauteur.
+
+    C'est le mécanisme de H23 (ROADMAP-fusion § 5 quaterdecies), et
+    l'algorithme a été CHOISI PAR LA MESURE, pas par préférence. Trois
+    candidats ont été essayés à sec sur les 4 642 notes du stem `other`
+    d'*Us and Them* (polyphonie 4,83, ambitus 66 demi-tons) :
+
+      - la séparation de voix par CONTINUITÉ (une note rejoint la voix dont la
+        dernière note est la plus proche) — celle que la feuille de route
+        avait pressentie — rend quatre voix de ~1 160 notes dont CHACUNE
+        balaie 65 à 66 demi-tons : des parts de gâteau, pas des parties ;
+      - la continuité à ancre de registre (moyenne glissante, inertie 0,9)
+        écarte les médianes (66/57/50/50) mais laisse les ambitus à 47-62 ;
+      - le partage par REGISTRES (k-moyennes 1-D sur la hauteur, pondérées
+        par la durée) rend quatre voix d'ambitus **28/9/9/16**, sur des
+        intervalles DISJOINTS (69-97, 59-68, 48-57, 31-47), polyphonie ≤ 1,7 :
+        l'aigu, deux médiums, la basse-nappe. Des parties nommables.
+
+    Sur un nuage dense, toute affectation note à note perd son registre ; le
+    partage par registres le garantit PAR CONSTRUCTION — chaque voix est un
+    intervalle de hauteurs, les intervalles ne se recouvrent pas.
+
+    LA FONCTION NE DÉCOUPE QUE CE QUI EST UN FOURRE-TOUT (au sens de
+    `stem_fourre_tout` : au moins 3 notes simultanées en moyenne ET 3
+    octaves). C'est le garde-fou le plus important, et il vit ICI et non chez
+    l'appelant : une mélodie qui saute d'octave, un accordage de piano, une
+    nappe d'accords serrés sont UNE partie — les découper fabriquerait de
+    fausses pistes, pires que le fourre-tout qu'on soigne.
+
+    PAS DE VOIX SQUELETTIQUE, et sans nettoyage après coup : les centres
+    initiaux sont posés aux QUANTILES PONDÉRÉS par la durée, donc toujours au
+    milieu des registres qui pèsent — jamais sur une poignée de notes. Une
+    fioriture isolée rejoint le registre voisin dès l'affectation, au lieu
+    d'ouvrir une piste de trois notes qu'il faudrait replier. (Un premier jet
+    portait ce repli ; il était inatteignable — aucun cas construit n'a su le
+    déclencher — et on l'a retiré plutôt que de garder un filet que rien ne
+    peut toucher.)
+
+    Les voix rendues vont de l'aiguë à la grave, et tout est DÉTERMINISTE —
+    l'initialisation aux quantiles ne tire rien au sort, et les égalités de
+    distance se tranchent par l'indice du centre.
+    """
+    if maximum <= 1 or len(notes) < 2 or not stem_fourre_tout(densite_du_stem(notes)):
+        return [list(notes)]
+
+    # --- k-moyennes 1-D, pondérées par la durée --------------------------
+    # La durée comme poids : une nappe tenue PÈSE dans son registre, une
+    # fioriture ne déplace pas un centre.
+    ordonnees = sorted(notes, key=lambda n: (int(n.note), float(n.start)))
+    total = sum(max(1e-6, float(n.duration)) for n in ordonnees)
+    centres: List[float] = []
+    seuils = [(2 * k + 1) * total / (2 * maximum) for k in range(maximum)]
+    cumul = 0.0
+    indice = 0
+    for seuil in seuils:
+        while cumul < seuil and indice < len(ordonnees):
+            cumul += max(1e-6, float(ordonnees[indice].duration))
+            indice += 1
+        centres.append(float(ordonnees[min(indice, len(ordonnees) - 1)].note))
+
+    groupes: List[List[StemNote]] = []
+    for _ in range(50):
+        groupes = [[] for _ in centres]
+        for note in notes:
+            k = min(range(len(centres)), key=lambda j: (abs(centres[j] - float(note.note)), j))
+            groupes[k].append(note)
+        nouveaux = []
+        for k, groupe in enumerate(groupes):
+            if groupe:
+                poids = sum(max(1e-6, float(n.duration)) for n in groupe)
+                nouveaux.append(sum(float(n.note) * max(1e-6, float(n.duration))
+                                    for n in groupe) / poids)
+            else:
+                nouveaux.append(centres[k])
+        if all(abs(a - b) < 1e-9 for a, b in zip(nouveaux, centres)):
+            break
+        centres = nouveaux
+
+    voix = [groupe for groupe in groupes if groupe]
+
+    def hauteur_moyenne(groupe: List[StemNote]) -> float:
+        return sum(float(n.note) for n in groupe) / len(groupe)
+
+    for groupe in voix:
+        groupe.sort(key=lambda n: (float(n.start), int(n.note)))
+    voix.sort(key=hauteur_moyenne, reverse=True)
+    return voix
+
+
 def stem_fourre_tout(densite: Dict[str, float]) -> str:
     """Le stem est-il un FOURRE-TOUT plutôt qu'une partie ? La phrase, ou "".
 

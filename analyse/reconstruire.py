@@ -75,8 +75,8 @@ from analyzer.vsm_project_export import (DEFAULT_TRACK_VOLUME, ExportNote, Expor
                                           write_project_bundle)
 from analyzer.vsm_reconstruct import (StemNote, StemReconstruction, densite_du_stem,  # noqa: E402
                                       melodic_machines, reconstruct_stem,
-                                      reconstruction_distance, stem_fourre_tout,
-                                      write_reconstruction_report)
+                                      reconstruction_distance, separer_en_voix,
+                                      stem_fourre_tout, write_reconstruction_report)
 from analyzer.vsm_track_arbitration import (ORIGINE_USINE, TrackCandidate, arbitrate_on_track,  # noqa: E402
                                              build_candidates, runners_up)
 from analyzer.vsm_track_refine import refine_patch_on_track  # noqa: E402
@@ -388,6 +388,9 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
             "modeleSeparation": (None if (args.stems or args.sans_separation)
                                  else args.modele),
             "stemsRepris": args.stems or None,
+            # Le découpage en voix change le NOMBRE DE PISTES du résultat :
+            # deux rapports qui n'ont pas le même réglage ne se comparent pas.
+            "voixParStem": args.voix_par_stem,
         },
         # Les modèles CONSULTÉS, avec leur date d'entraînement -- ou « aucun »,
         # qui est une information et non une absence d'information.
@@ -462,6 +465,15 @@ def construire_parseur() -> argparse.ArgumentParser:
     parseur.add_argument("--machines", default="",
                          help="liste de machines candidates, séparées par des virgules "
                               "(défaut : toutes les mélodiques du moteur)")
+    parseur.add_argument("--voix-par-stem", type=int, default=0,
+                         help="découper un stem FOURRE-TOUT (au moins 3 notes simultanées en "
+                              "moyenne ET 3 octaves) en au plus N voix, une piste par voix, "
+                              "partagées par registres de hauteur (H23, ROADMAP-fusion "
+                              "§ 5 quaterdecies). 0 (défaut) : ne rien découper. Chaque voix "
+                              "est arbitrée et réglée sur le MÊME stem audio — le rapport et "
+                              "le journal disent le découpage, qui reste une approximation : "
+                              "un registre n'est pas un instrument, mais une piste par "
+                              "registre se retravaille, un fourre-tout non")
     parseur.add_argument("--machines-exclues", default="",
                          help="machines à RETIRER du vivier, séparées par des virgules. "
                               "C'est le complément de --machines, et il existe pour une "
@@ -1225,15 +1237,57 @@ def regler_sur_piste(ctx: Contexte, nom: str, stem: StemReconstruction, audio: n
           f"{time.perf_counter()-depart:.0f} s) — {resume_des_axes(affine)}")
 
 
-def reconstruire_stem_melodique(ctx: Contexte, nom: str, chemin: Path) -> Optional[ResultatMelodique]:
-    """Transcription, recherche de patch, arbitrage et réglage d'un stem."""
+def reconstruire_stem_melodique(ctx: Contexte, nom: str,
+                                chemin: Path) -> List[ResultatMelodique]:
+    """Transcription, découpe en voix s'il y a lieu, puis recherche par voix.
+
+    Rend une LISTE : un stem ordinaire donne une piste, un stem fourre-tout
+    découpé par `--voix-par-stem` en donne plusieurs. La liste vide signifie
+    « rien d'exploitable », et cela a été dit au journal.
+    """
     args = ctx.args
     notes = extraire_notes(chemin)
     if not notes:
         print(f"      {nom:8s} : aucune note détectée, piste ignorée")
-        return None
+        return []
     audio = charger_audio(chemin)
 
+    # LA PLAINTE DU FOURRE-TOUT, sur le stem ENTIER et dans les deux chemins
+    # (recherche ou non) : elle vivait après la recherche note à note, qui est
+    # SAUTÉE par défaut depuis le § 5 undecies — elle ne s'imprimait donc
+    # jamais en course réelle.
+    plainte = stem_fourre_tout(densite_du_stem(notes))
+    if plainte:
+        print(f"      {nom:8s} : {plainte}")
+
+    if args.voix_par_stem > 1 and plainte:
+        voix = separer_en_voix(notes, args.voix_par_stem)
+        if len(voix) > 1:
+            # LE DÉCOUPAGE EST DIT, registre par registre : c'est une décision
+            # qui change le nombre de pistes du résultat, pas un détail.
+            registres = ", ".join(
+                f"voix {k} = MIDI {min(n.note for n in v)}-{max(n.note for n in v)}"
+                f" ({len(v)} notes)" for k, v in enumerate(voix, 1))
+            print(f"      {nom:8s} : DÉCOUPÉ en {len(voix)} voix par registres — {registres}")
+            resultats = []
+            for k, notes_voix in enumerate(voix, 1):
+                sous_nom = f"{nom} · voix {k}"
+                resultat = _reconstruire_notes(ctx, sous_nom, list(notes_voix), audio)
+                if resultat is not None:
+                    resultats.append(resultat)
+            return resultats
+
+    resultat = _reconstruire_notes(ctx, nom, notes, audio)
+    return [resultat] if resultat is not None else []
+
+
+def _reconstruire_notes(ctx: Contexte, nom: str, notes: List[StemNote],
+                        audio: np.ndarray) -> Optional[ResultatMelodique]:
+    """Recherche de patch, arbitrage et réglage d'UNE piste : le stem entier
+    d'ordinaire, une voix quand le fourre-tout a été découpé. Chaque voix est
+    jugée contre le MÊME audio de stem — il n'existe pas d'audio par voix, et
+    en fabriquer un par filtrage amputerait les timbres (H23)."""
+    args = ctx.args
     if args.sans_recherche:
         # LE § 5 UNDECIES EN ACTE : pas de recherche note à note. L'arbitrage
         # de piste juge déjà le patch d'usine de TOUTES les machines
@@ -1277,13 +1331,6 @@ def reconstruire_stem_melodique(ctx: Contexte, nom: str, chemin: Path) -> Option
     )
     print(f"      {nom:8s} : {stem.machine:14s} d={stem.distance:.3f} "
           f"({len(notes)} notes, {time.perf_counter()-depart:.0f} s) — {podium}")
-    # PANNE MUETTE INTERDITE, Y COMPRIS SUR CE QUE LA CHAÎNE PRODUIT. Un stem
-    # qui porte plusieurs parties reçoit UNE machine ; c'est un choix, il doit
-    # se dire. Sur `other` d'Us and Them : 62 % de l'énergie du morceau, 4,8
-    # notes simultanées en moyenne, 66 demi-tons, joués par vsm.tb303.
-    plainte = stem_fourre_tout(densite_du_stem(stem.notes))
-    if plainte:
-        print(f"      {nom:8s} : {plainte}")
 
     resultat = ResultatMelodique(stem=stem, audio=audio)
     if not args.sans_arbitrage:
@@ -1320,13 +1367,15 @@ def reconstruire_les_stems(ctx: Contexte, pistes: Dict[str, Path]) -> Chantier:
                 if batterie.secondes:
                     chantier.machines_secondes.setdefault(PISTE_BATTERIE, []).extend(batterie.secondes)
             continue
-        melodique = reconstruire_stem_melodique(ctx, nom, chemin)
-        if melodique is None:
-            continue
-        chantier.reconstruits.append(melodique.stem)
-        chantier.audio_par_stem[melodique.stem.name] = melodique.audio
-        if melodique.secondes:
-            chantier.machines_secondes.setdefault(nom, []).extend(melodique.secondes)
+        for melodique in reconstruire_stem_melodique(ctx, nom, chemin):
+            chantier.reconstruits.append(melodique.stem)
+            chantier.audio_par_stem[melodique.stem.name] = melodique.audio
+            if melodique.secondes:
+                # Par le nom de la PISTE (la voix, quand il y a découpe), pas
+                # celui du stem : deux voix du même stem ont chacune leurs
+                # machines remises en jeu au verdict.
+                chantier.machines_secondes.setdefault(
+                    melodique.stem.name, []).extend(melodique.secondes)
     if not chantier.reconstruits and not chantier.pistes_directes:
         raise Abandon(3, "aucune piste reconstruite")
     return chantier

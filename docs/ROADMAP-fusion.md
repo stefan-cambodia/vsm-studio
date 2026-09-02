@@ -2723,11 +2723,35 @@ ses harmoniques dans les suivantes ; un découpage spectral ne sépare pas des
 instruments, il ampute des timbres. Ce serait une séparation en apparence et un
 massacre en fait.
 
-*Ce qui se tient* : découper les NOTES déjà transcrites en voix — par
-continuité de hauteur, comme la séparation de voix classique — et donner à
+*Ce qui se tient* : découper les NOTES déjà transcrites en voix, et donner à
 chaque voix sa propre piste, chacune arbitrée sur le même stem. Le gain visé
 n'est pas la distance : c'est **un projet qu'on peut retravailler**, où la
 nappe et la ligne mélodique ne sont plus la même piste.
+
+**LE MÉCANISME A ÉTÉ CHOISI PAR LA MESURE (02/09/2026), et le pressenti a
+perdu.** Trois candidats, essayés à sec sur les 4 642 vraies notes du stem
+`other` de v14 (polyphonie 4,83, ambitus 66 demi-tons) :
+
+| Candidat | Voix (max=4) | Ambitus par voix | Verdict |
+|---|---|---|---|
+| Continuité de hauteur (le pressenti ci-dessus) | 4 × ~1 160 notes | **65-66 chacune** | des parts de gâteau, pas des parties |
+| Continuité à ancre de registre (moyenne glissante, inertie 0,9) | 4 | 47-62 (médianes 66/57/50/50) | mieux, pas assez |
+| **Partage par REGISTRES** (k-moyennes 1-D sur la hauteur, pondérées par la durée, init aux quantiles) | 4 | **28 / 9 / 9 / 16**, intervalles DISJOINTS (69-97, 59-68, 48-57, 31-47), polyphonie ≤ 1,7 | **retenu** |
+
+Sur un nuage dense, toute affectation note à note perd son registre ; le
+partage par registres garantit PAR CONSTRUCTION des intervalles de hauteur
+disjoints — l'aigu, les médiums, la basse-nappe : des parties nommables. Et le
+garde-fou vit dans la fonction même : **ce qui n'est pas un fourre-tout ne se
+découpe jamais** — une mélodie qui saute d'octave, un accompagnement d'accords
+serrés restent UNE piste, parce que les découper fabriquerait de fausses
+parties, pires que le mal soigné. Six tests
+(`analyse/tests/test_separation_voix.py`) fixent ce contrat ; l'option est
+`--voix-par-stem N`, dans la provenance comme tout ce qui change le résultat.
+
+*(Le premier jet portait aussi un repli des « voix squelettiques » après
+partage ; aucun cas construit n'a su le déclencher — l'initialisation aux
+quantiles pondérés ne donne jamais un centre à une poignée de notes — et il a
+été retiré plutôt que de garder un filet que rien ne peut toucher.)*
 
 *Ce que j'attends, écrit d'avance* : aucun gain de distance, et peut-être une
 légère perte (N machines valent N fois plus d'occasions de se tromper). Le
@@ -2739,9 +2763,12 @@ se décide pas ici.
 
 **Ordre : H22 d'abord**, parce qu'elle est une option déjà câblée et qu'elle
 tranche la question « une vraie séparation supplémentaire aide-t-elle ? » avant
-qu'on écrive quoi que ce soit. H23 ensuite, à la lumière de ce qu'elle aura dit.
-Les deux courses attendent la fin du témoin v11 : deux reconstructions de front
-mettent la machine au surplace.
+qu'on écrive quoi que ce soit. H23 ensuite — son mécanisme est écrit et testé,
+sa course est en file (`course-h23.sh`) derrière la paire H22, avec **H22a pour
+témoin commun** : même modèle, même budget, même moteur, une seule variable
+chacune (le modèle pour H22b, le découpage pour H23). Les courses attendent la
+fin du témoin v11 : deux reconstructions de front mettent la machine au
+surplace.
 
 ---
 
