@@ -257,7 +257,9 @@ quatre tests le gardent.
     par une mesure sur données réelles, testé (6 tests d'algorithme)
 [x] La séparation six sources est praticable sans tuer la machine (étape à
     part), et son partage est mesuré
-[ ] H22b et H23 sont tranchées, verdicts écrits avec leurs chiffres
+[x] H22b et H23 sont tranchées, verdicts écrits avec leurs chiffres
+    (§ 3, et ROADMAP-fusion) : six sources −10,4 % et deux pistes de plus ;
+    voix par registres +9,1 % et zéro fourre-tout restant
 [x] La chaîne a un comportement PAR DÉFAUT décidé, écrit ET câblé (§ 4.2) :
     --modele vaut htdemucs_6s (gardé par un test), la séparation vit en
     sous-processus qui meurt (4 tests de plomberie), et le nouveau chemin a
@@ -276,6 +278,21 @@ quatre tests le gardent.
 [x] Vérifié sur un deuxième morceau avant de changer un défaut : deux
     seconds originaux (*Sky and Sand*, *Clair de Lune*), qui ont borné le
     gain des six sources et fait naître `--seuil-stem`
-[ ] Sur un original dont les parties sont connues, le compte de pistes
-    reconstruites atteint le compte de parties (l'objectif de parité du § 0)
+[~] Sur un original dont les parties sont connues, le compte de pistes
+    reconstruites atteint le compte de parties (l'objectif de parité du § 0).
+    MESURÉ, ET PAS ENCORE ATTEINT : sur le morceau à vérité écrite du § 6,
+    **9 parties donnent 6 pistes**. Le détail vaut mieux qu'un ratio, car les
+    deux manques ont des causes différentes et une seule est un défaut :
+
+      | Partie réelle | Attendu | Obtenu | Pourquoi |
+      |---|---|---|---|
+      | basse | 1 | 1 | — |
+      | `other` : grave, médium, aigu | 3 | **1** | la transcription rend 32 notes de polyphonie 2,37 : sous le seuil du fourre-tout, la garde REFUSE de découper. Elle a raison sur ce qu'elle voit ; c'est la TRANSCRIPTION qui n'a pas vu les trois couches |
+      | batterie : kick, caisse, charleston | 3 | **2** | les pièces sont bien détectées toutes les trois (hihat 36, kick 11, kick2 1), mais `kick` et `kick2` tombent sur la MÊME voix de la machine et restent donc ensemble — ce qui est le comportement voulu : les séparer mentirait sur ce que la machine joue |
+      | voix : tête, doublage | 2 | 2 | — |
+
+    Autrement dit, aucun des deux manques ne vient des découpages : l'un vient
+    de la transcription en amont, l'autre du nombre de voix de la machine en
+    aval. **C'est là qu'il faudra chercher pour aller plus loin**, et non dans
+    de nouveaux découpages.
 ```
