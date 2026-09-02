@@ -5,9 +5,9 @@ Séquenceur MIDI + rack de synthétiseurs vintage virtuels. Voir
 d'avancement détaillé par phase.
 
 **État actuel** : le moteur MIDI (`core/`, 158 tests) et le moteur audio
-temps réel (`audio/`, 872 tests, dont un test de concurrence réel vérifié
-sous ThreadSanitizer) sont implémentés et **entièrement testés** — **1 292
-tests moteur**, tous verts, zéro warning. Les 40 machines (Minimoog, TB-303, Juno-106,
+temps réel (`audio/`, 1 025 tests, dont un test de concurrence réel vérifié
+sous ThreadSanitizer) sont implémentés et **entièrement testés** — **1 486
+tests moteur**, tous verts, zéro warning. Les 53 machines (Minimoog, TB-303, Juno-106,
 TR-808, TR-909, SH-101, Prophet, Jupiter-8, ARP Odyssey, MS-20, DX7, sampler
 16 emplacements, e-piano, OB-X, supersaw, table d'ondes, hybride PCM, orgue à
 roues phoniques, Generic Synth, String — corde pincée et frottée par guide
@@ -21,8 +21,16 @@ barres, modal —, FM Drums — percussions métalliques —, Cone — anche sur
 conique, les rangs pairs que le cylindre interdit —, Vector — quatre timbres aux
 coins d'un carré et un trajet qui les mélange —, Granular — le son comme nuage
 de grains —, CS-80 — deux couches par voix, et une pression par note — et
-Modal — les modes d'un objet frappé, à rapports libres — et Chebyshev — le
-spectre commandé par polynômes — + le synthé de test) ont
+Modal — les modes d'un objet frappé, à rapports libres —, Chebyshev — le
+spectre commandé par polynômes —, Sitar — la corde et son chevalet jawari —,
+Membrane — les modes irrationnels d'une peau —, Mellotron — la bande qui
+finit —, Reed — l'anche libre de l'accordéon —, Plate — la plaque et ses
+fuites de mode à mode —, Clavicorde — la tangente qui frappe ET arrête —,
+Glass — le verre frotté au doigt —, Guimbarde — l'anche et la bouche qui
+filtre —, Thérémine — deux mains et jamais d'attaque —, Boîte à musique —
+la lame pincée par le peigne —, Terrain — une onde promenée sur un relief —,
+Scanned — la table balayée pendant qu'elle vibre — et Spectral — le spectre
+resynthétisé trame par trame — + le synthé de test) ont
 chacune une **empreinte de non-régression audio** qui fige leur rendu. **Toutes les phases
 des feuilles de route sont terminées** (1 à 6 : moteur, machines, optimisation
 SIMD ; 7 : interopérabilité sémantique, CLAP ; 8 à 11 : reconstruction
@@ -34,7 +42,8 @@ plus rien de cela n'est vrai. Les phases D0 à D10 de
 [`docs/ROADMAP-daw.md`](docs/ROADMAP-daw.md) sont closes — projet enregistré et
 récupéré après plantage, clips, pistes audio, enregistrement MIDI et audio,
 console avec bus et chaîne latérale, vue d'arrangement, exports, hôte CLAP et
-VST3, navigateur, MIDI learn persistant, raccourcis configurables.
+VST3, navigateur, MIDI learn persistant, raccourcis configurables, et l'import de
+projets Ableton Live, FL Studio et Cubase.
 
 La couche `interchange/` donne à chaque paramètre de chaque machine une
 identité sémantique stable (`filter.1.cutoff`...), et lit/écrit des presets
@@ -44,7 +53,7 @@ du code du DAW. Exemples de fichiers dans [`docs/examples/`](docs/examples).
 
 ## Façades « façon hardware »
 
-**Les vingt-quatre machines** ont leur propre façade, avec la disposition de
+**Les cinquante-deux machines** ont leur propre façade, avec la disposition de
 l'original : trajet du signal du Minimoog, rangée unique du TB-303, colonne
 par pièce des TR-808/909 et du sampler-boîte à rythmes, curseurs du Juno-106,
 du Jupiter-8, du SH-101 et de l'ARP Odyssey, double filtre du MS-20, bloc
@@ -443,6 +452,43 @@ cmake --build build --target vsm-audio-import-check
 ./build/app/vsm-audio-import-check_artefacts/RelWithDebInfo/vsm-audio-import-check morceau.mp3
 ```
 
+## Ouvrir un projet fait ailleurs (Ableton, FL Studio, Cubase)
+
+*Fichier ▸ Importer un projet…* lit un **`.als`** d'Ableton Live, un **`.flp`**
+de FL Studio et une **archive de pistes Cubase** (`.xml`). Ce qui se transporte,
+c'est la musique et la structure : tempo, pistes, notes avec leur durée et leur
+vélocité, noms, couleurs, muet et solo.
+
+Ce qui ne se transporte pas : **les instruments**. Un projet Live utilise
+Operator ou un VST tiers, un canal de FL porte Sytrus ou Harmless ; ces machines
+n'existent pas ici et leurs réglages n'ont aucun équivalent. Les pistes arrivent
+donc sans instrument assigné — convertir un patch d'Operator en `vsm.dx7`
+reviendrait à inventer un son que personne n'a écrit.
+
+**Tout import rend son rapport, et ce rapport fait partie du résultat** : il
+dit, poste par poste, ce qui a été repris, ce qui a été approché et ce qui a été
+perdu. Pour un `.flp`, il donne le nombre d'événements *compris* sur le nombre
+d'événements *lus* — de quoi voir si la lecture a mordu sans avoir à nous
+croire. Il se relit par *Fichier ▸ Voir le dernier rapport d'import*.
+
+**Le `.cpr` de Cubase n'est pas lu, et l'application le dit en nommant ce qui
+marche.** Le format est fermé et sans documentation : un lecteur écrit au jugé
+marcherait sur un fichier et casserait sur le suivant. Depuis Cubase, deux
+chemins donnent un bon résultat — *Fichier ▸ Exporter ▸ Archive de pistes*
+(`.xml`), le meilleur, ou un export MIDI Type 1.
+
+Aucune dépendance n'a été ajoutée pour cela : le décompresseur DEFLATE et
+l'analyseur XML sont écrits dans `interchange/`, comme la transformée de Fourier
+l'est dans `audio/`. Le raisonnement complet est dans
+[`docs/CDC-import-daw.md`](docs/CDC-import-daw.md).
+
+Pour vérifier cet écran sans souris :
+
+```bash
+VSM_IMPORT=projet.als VSM_CAPTURE=ecran.png \
+  "./build/app/VintageSynthMidiStudio_artefacts/RelWithDebInfo/Vintage Synth MIDI Studio"
+```
+
 ## Où va le projet
 
 Les phases 1 à 7 sont terminées (moteur, machines, interface, interopérabilité).
@@ -450,6 +496,9 @@ La suite est décrite dans [`docs/ROADMAP-fusion.md`](docs/ROADMAP-fusion.md),
 écrite après la fusion avec le projet d'analyse : reconstruire un fichier WAV en
 MIDI + patchs rejouables, et mesurer l'écart.
 
+- [`docs/CDC-import-daw.md`](docs/CDC-import-daw.md) — ce que chaque format
+  de projet permet réellement, ce qu'on importe, et pourquoi le `.cpr` de
+  Cubase ne se lit pas.
 - [`docs/CDC-nouvelle-machine.md`](docs/CDC-nouvelle-machine.md) — ce qu'une
   machine doit satisfaire pour être finie (DSP, tests, identités sémantiques,
   façade, empreinte audio).

@@ -19,7 +19,7 @@ les 2 VCO suivent les touches grave/aiguë, ring mod, sample & hold),
 système d'algorithmes, feedback, enveloppes par opérateur, sensibilité
 vélocité) sont tous faits. La **Phase 6 est ENTAMÉE** : les **tests de
 non-régression audio par machine** sont en place (section 9 bis) -- chacune des
-machines (23 quand la phase a été close, **34 aujourd'hui**) a une empreinte de
+machines (23 quand la phase a été close, **53 aujourd'hui**) a une empreinte de
 rendu figée, qui détecte toute dérive
 du son y compris causée par une brique DSP partagée modifiée pour une AUTRE
 machine. La **Phase 6 est CLOSE** : banc de mesure CPU (§ 9 ter), profiling
@@ -31,8 +31,8 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **1 444 tests moteur** (158 core + 1 025 audio
-+ 206 interchange + 25 CLAP + 19 VST3 + 11 façades,
+écoute au clic, et toute la logique testée hors JUCE. Total : **1 486 tests moteur** (158 core + 1 025 audio
++ 248 interchange + 25 CLAP + 19 VST3 + 11 façades,
 tous verts, zéro warning sous les flags du build, `-Wall -Wextra -Wpedantic`.
 L'ancienne mention « y compris -Wfloat-equal -Wsign-conversion -Wshadow »
 est retirée : ces flags ne sont PAS dans le build, et les comparaisons à
@@ -69,7 +69,7 @@ défaut). Tous les fichiers UI compilés sans erreur/warning contre JUCE (flags
 stricts inclus, validation par unité de traduction).
 
 **Interopérabilité (Phase 7) : Mode A complet, CLAP fait.** La couche
-`interchange/` (`vsm_interchange`, **206 tests**) couvre les identités
+`interchange/` (`vsm_interchange`, **248 tests**) couvre les identités
 sémantiques des paramètres (P2), les presets `*.synth.json` (P3), les projets
 `project.json` (P4), le chargement/écriture d'un dossier de projet (P7) et la
 reconstruction hors ligne `projet -> WAV` via l'outil `vsm-render` (P8). La
@@ -139,7 +139,7 @@ vsm-studio/
 │
 ├── core/                       "vsm_core" — moteur MIDI/séquenceur (158 tests)
 │
-├── audio/                      "vsm_audio" — moteur audio temps réel (872 tests)
+├── audio/                      "vsm_audio" — moteur audio temps réel (1 025 tests)
 │   ├── include/vsm/audio/dsp/
 │   │   ├── LadderFilterZDF.h     GÉNÉRALISÉ à N pôles (2-4) -- voir section 7
 │   │   └── ...                   Oscillator, Envelope, Filter(SVF), AnalogDrift, ParameterSmoother
@@ -599,7 +599,7 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 1 444 tests moteur + 68 tests d'analyse, tous verts
+### Bilan actuel : 1 486 tests moteur + 73 tests d'analyse, tous verts
 
 - **158 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des
@@ -1014,7 +1014,7 @@ un couplage par le NOM du paramètre -- précisément ce que le projet garde
 stable, déjà verrouillé par les tests `..._parameter_list_size` de chaque
 machine.
 
-**951 paramètres** (40 machines + 13 effets ; 563 du temps des 23 machines,
+**1 081 paramètres** (53 machines + 13 effets ; 563 du temps des 23 machines,
 308 à l'époque des 12) ont reçu une identité, dont
 `accent.amount` pour le TB-303 ou `fm.operator.3.ratio` pour le DX7 : le
 vocabulaire commun couvre ce qui est commun, et le reste est déclaré tel quel
@@ -1301,7 +1301,7 @@ utilisateur se mettrait à automatiser la résonance à la place de la coupure,
 sans erreur ni avertissement, des mois plus tard. Le `clap_id` est donc un
 hachage FNV-1a de l'identifiant SÉMANTIQUE : tant que `filter.1.cutoff` désigne
 la même chose, son identifiant ne bouge pas. Le prix (risque de collision) est
-**vérifié** sur tous les paramètres du parc (835 aujourd'hui), pas supposé,
+**vérifié** sur tous les paramètres du parc (1 081 aujourd'hui), pas supposé,
 et trois valeurs sont **gelées
 par test** -- si ce test casse, le correctif est de restaurer le hachage, jamais
 de mettre à jour les nombres.
@@ -1320,7 +1320,7 @@ est vert.
 **Compilation : `-DVSM_BUILD_CLAP=ON`, désactivée par défaut.** C'est la seule
 partie du projet qui exige un téléchargement (le SDK CLAP, en-têtes seuls, via
 FetchContent). Vérifié : le build par défaut ne crée aucun `_deps/` et passe
-ses 644 tests hors ligne. Activer CLAP impose aussi le code indépendant de la
+ses 1 442 tests hors ligne. Activer CLAP impose aussi le code indépendant de la
 position (`-fPIC`) aux bibliothèques statiques -- un module partagé ne peut pas
 lier autre chose.
 
@@ -3987,6 +3987,134 @@ vérifiés : pas de clic au raccord des trames (fenêtre de Hann à saut de moit
 condition COLA) et aucune allocation dans `process`.
 
 Le parc passe à **53 machines**.
+
+---
+
+## 47. Ouvrir un projet fait ailleurs : `Inflate`, `Xml`, `DawImport`
+
+**LE POINT DE DÉPART EST UN REFUS QU'IL A FALLU LEVER.** Le § 5 de
+`ROADMAP-daw.md` classait « la compatibilité avec les projets de Cubase, Live
+ou FL » hors programme, au motif que *lire un `.flp` ou un `.als` est de la
+rétro-ingénierie sans fin*. La phrase mêlait trois formats qui n'ont rien de
+commun, et elle n'était juste que pour un seul d'entre eux. Le refus est levé
+le 02/09/2026, et `docs/CDC-import-daw.md` porte le raisonnement complet ; ce
+qui suit en est la mise en œuvre.
+
+### 47.1 Ce que valent réellement les trois formats
+
+| Format | Nature | Ce qu'on peut en tirer |
+|---|---|---|
+| `.als` Ableton Live | **XML gzippé**, balises explicites (`MidiTrack`, `KeyTrack`, `MidiNoteEvent`) | tout : tempo, pistes, notes, noms, couleurs, muet/solo |
+| `.flp` FL Studio | **binaire**, suite d'événements typés | structure **certaine**, sens des identifiants **reconstitué** |
+| `.cpr` Cubase | **binaire propriétaire** | rien de fiable — voir 47.5 |
+
+Un `.als` ne demande aucune rétro-ingénierie : il demande un décompresseur.
+C'est une différence de nature, pas de degré.
+
+### 47.2 `Inflate` — DEFLATE écrit ici, pour la même raison que l'IFFT
+
+`zlib` est sur la machine. Il n'est pas employé : **`interchange` n'a aucune
+dépendance externe**, et c'est une propriété qu'on garde. Le même jour, la
+synthèse spectrale a reçu sa propre IFFT (`dsp/RealFft.h`) plutôt qu'une
+bibliothèque, et l'argument est identique — un inflate tient en deux cent
+cinquante lignes et se teste contre des cas connus ; une dépendance se porte,
+se fige et s'explique pour toujours.
+
+`interchange/src/Inflate.cpp` (252 lignes) implémente RFC 1951 : blocs stockés,
+Huffman fixe, Huffman dynamique, et les enveloppes gzip (RFC 1952) et zlib.
+`Inflate::any` reconnaît l'enveloppe d'après ses octets de tête, ce qui permet
+d'ouvrir un `.als` gzippé **ou** un `.als` déjà décompressé sans rien demander
+à l'appelant. Neuf tests.
+
+### 47.3 `Xml` — un analyseur qui cherche des SIGNATURES, pas des chemins
+
+`interchange/src/Xml.cpp` (233 lignes) rend un arbre `XmlNode` avec
+`attribute`, `child`, `childrenNamed`, `find` et `findAll`. Ce sont les deux
+derniers qui comptent, et le choix est délibéré : **les lecteurs ne suivent
+aucun chemin fixe**. Une archive de pistes Cubase imbrique ses objets
+différemment selon la version et selon ce qu'on exporte ; un lecteur qui
+descendrait `Root/Tracks/Track/Events/Note` marcherait sur un fichier et
+casserait sur le suivant. Les lecteurs cherchent donc les nœuds qui portent la
+**signature** d'une note — un début, une longueur, une hauteur — et ceux qui
+portent un nom de piste. La propriété qu'on y gagne est celle qui compte pour
+ce dépôt : un fichier de structure inattendue donne **moins de notes**, jamais
+des notes fausses.
+
+### 47.4 `DawImport` — pourquoi aucune fonction ne rend un `Project` seul
+
+L'interface (`interchange/include/vsm/interchange/DawImport.h`) n'expose que des
+`DawImportResult`, qui sont un couple `{project, report}`. C'est la forme que le
+§ 0 du cahier des charges impose : *un import partiel est utile, un import
+partiel qu'on croit complet est nuisible*. **Le rapport n'est pas un journal de
+mise au point, c'est une moitié du résultat**, et le type l'empêche d'être
+oublié.
+
+Le rapport compte les pistes reprises, les pistes audio vues et non reprises,
+les pistes sans instrument — et, pour les formats binaires, les **événements
+lus** et les **événements compris**. Ce dernier couple est le garde-fou du
+`.flp` : sa structure se vérifie toute seule (la taille d'un événement se déduit
+de son identifiant, et un découpage faux n'atteint pas la fin du fichier
+exactement), mais le SENS des identifiants — 156 le tempo, 224 les notes, 192 un
+nom de canal — est établi par rétro-ingénierie et n'est pas *garanti*. Le
+musicien voit donc, sans avoir à nous croire, si la lecture a mordu.
+
+Ce qui n'est jamais importé, et le rapport le dit piste par piste : **les
+instruments**. Convertir un patch d'Operator en `vsm.dx7` reviendrait à inventer
+un son que personne n'a écrit. Les pistes arrivent sans instrument assigné.
+
+Un détail que seule la capture d'écran a réclamé : la vue d'arrangement dessine
+`track.clips`, pas `track.notes`. Un import qui remplissait les notes sans poser
+de clip donnait un arrangement **vide** avec un piano roll plein — les tests
+passaient tous. D'où `poserUnClipSurLeMateriau`, appelée par les trois lecteurs,
+et sa régression.
+
+### 47.5 Cubase : la réponse honnête, et pourquoi elle vaut mieux qu'un lecteur
+
+**Le `.cpr` n'est pas lu.** Aucune spécification publique, aucune
+rétro-ingénierie assez complète : un lecteur écrit au jugé marcherait sur le
+fichier d'essai et casserait sur le suivant — exactement la panne muette que ce
+dépôt refuse partout ailleurs. `importDawProject` reconnaît le `.cpr` et lève
+une erreur qui **nomme les deux chemins praticables** : l'archive de pistes XML
+(*Fichier ▸ Exporter ▸ Archive de pistes*), qui donne un import de qualité
+comparable à celui de Live, et l'export MIDI Type 1, que VSM Studio lit déjà.
+Le sélecteur de fichiers accepte donc l'extension `.cpr` — non pour la lire,
+mais pour pouvoir expliquer : ne pas l'afficher laisserait croire que
+l'application ne l'a pas vue.
+
+### 47.6 Le rapport à l'écran, et pourquoi pas dans une alerte
+
+`app/Source/ui/ImportReportComponent.cpp` (319 lignes) est un panneau **posé
+dans la fenêtre principale**, pas une `AlertWindow` ni une `PanelWindow`
+flottante. Trois raisons, et la deuxième est structurelle :
+
+1. Il doit rester **consultable** — la question qu'un rapport d'import répond,
+   « pourquoi cette piste est-elle muette ? », se pose une heure plus tard.
+   D'où *Fichier ▸ Voir le dernier rapport d'import*.
+2. Il doit être **vérifiable** — `VSM_CAPTURE` photographie le composant de
+   contenu ; ni une alerte asynchrone ni une fenêtre flottante n'y figurent. Un
+   rapport affiché ailleurs aurait été un écran qu'on ne peut pas regarder,
+   donc qu'on ne peut pas juger. `VSM_IMPORT=fichier` complète le dispositif :
+   l'écran s'atteint sans souris.
+3. Il doit **se lire** — les lignes des lecteurs font cent cinquante caractères
+   parce qu'elles expliquent ; le panneau les replie à la largeur mesurée du
+   cadre, avec un retrait pour les suites. « ATTENTION » en rouge, ce qui manque
+   à l'arrivée en ambre, le reste en gris.
+
+Quatre défauts de ce panneau n'ont été vus que sur des captures, jamais par un
+test : quatre cents pixels de vide sous un message de trois lignes, une barre de
+défilement pour un contenu qui tenait (huit pixels d'erreur dans le compte), la
+même barre au bleu par défaut de JUCE, et la ligne « Total : … 1 piste(s) audio
+ignorée(s) » peinte en ambre parce qu'elle contient le mot « ignor » — elle se
+lisait comme un avertissement alors qu'elle est le récapitulatif.
+
+**Coût total** : 1 216 lignes de code (`Inflate` 252, `Xml` 233, `DawImport`
+731) et 42 tests, tous sur des fichiers construits **dans** le test — aucun
+fichier d'exemple qu'on n'aurait pas le droit de redistribuer. Zéro dépendance
+ajoutée.
+
+*Réserve qui reste vraie* : ces fichiers d'essai sont bâtis d'après la structure
+des formats, par le même auteur que les lecteurs. Un vrai projet exporté par
+Live ou par FL Studio est le seul juge que la chaîne n'a pas encore passé.
 
 ---
 

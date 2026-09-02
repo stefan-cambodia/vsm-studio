@@ -3,7 +3,7 @@
 Un séquenceur MIDI, un rack de machines vintage modélisées, et une chaîne qui
 reconstruit un morceau enregistré en projet jouable.
 
-**53 machines · 13 effets · 1 081 paramètres nommés · 1 444 tests verts**
+**53 machines · 13 effets · 1 081 paramètres nommés · 1 486 tests verts**
 
 > Toutes les illustrations sont des rendus de l'application elle-même, produits hors
 > écran par `vsm-panel-preview`, `vsm-ui-preview`, `vsm-pianoroll-preview` et
@@ -37,13 +37,13 @@ Un échantillon glissé depuis le navigateur tombe sur la piste survolée, **à 
 
 ## 3. Le rack
 
-Trente-neuf machines, plus une tonalité d'essai qui n'a pas de façade parce qu'elle
+Cinquante-deux machines, plus une tonalité d'essai qui n'a pas de façade parce qu'elle
 n'a rien à régler. Chacune porte une **empreinte de non-régression audio** qui fige son rendu.
 
 Elles répondent au **jeu MIDI** selon leur nature, jamais par politesse : la molette de
 hauteur plie tout ce qui a un geste de hauteur continue (synthés, cordes, vents, voix,
-multisample — vingt-quatre machines), la molette de modulation et l'aftertouch dosent un
-vibrato là où un LFO existe (quinze), le program change règle le programme du multisample.
+multisample — quarante machines), la molette de modulation et l'aftertouch dosent un
+vibrato là où un LFO existe (vingt), le program change règle le programme du multisample.
 Un piano, un orgue à roues ou une boîte à rythmes **refusent** — leur instrument n'a pas ce
 geste — et le moteur compte chaque refus, pour que l'interface puisse dire pourquoi une
 modulation ne s'entend pas.
@@ -466,7 +466,7 @@ Un soustractif neutre, aux axes bien rangés : la machine que la recherche de pa
 
 ![Façade de Generic Synth](images/manuel/vsm.generic.png)
 
-## 3. Le piano roll
+## 4. Le piano roll
 
 Le clavier de gauche donne l'échelle ; les octaves sont marquées en clair. Une note se dessine, se déplace, s'allonge ; la vélocité se règle et passe par l'historique.
 
@@ -584,15 +584,15 @@ Une bascule s'appuie, un fader se positionne : traiter l'un comme l'autre ferait
 
 ### Regarder l'application sans souris
 
-Trois variables d'environnement, pour vérifier une interface plutôt que de
+Quatre variables d'environnement, pour vérifier une interface plutôt que de
 l'affirmer : `VSM_CAPTURE=sortie.png` fait que la fenêtre se photographie
 elle-même deux secondes après l'ouverture puis quitte ; `VSM_VUE=nom,nom`
 actionne le menu Affichage ; `VSM_PROJET=dossier` ouvre un projet au
 démarrage — sans lui, l'autoportrait ne montre qu'un projet vide, alors que
 ce qu'on a besoin de regarder est presque toujours une machine dans son rack
-ou un arrangement précis. Une quatrième, `VSM_IMPORT=fichier`, importe un
-projet d'un autre DAW au démarrage : c'est ainsi que l'écran du rapport
-d'import se vérifie, puisqu'il ne s'atteint autrement qu'à la souris.
+ou un arrangement précis ; et `VSM_IMPORT=fichier` importe un projet d'un
+autre DAW au démarrage, ce qui est la seule façon d'atteindre l'écran du
+rapport d'import sans souris.
 
 ## 8. Ne rien perdre
 
