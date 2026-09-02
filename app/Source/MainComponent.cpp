@@ -646,6 +646,13 @@ MainComponent::MainComponent()
     setSize(1000, 56 + 26);
 #endif
 
+    // Le rapport d'import : ajouté ici, INVISIBLE, et rendu visible par
+    // `applyDawImport`. Il est enfant du composant de contenu -- donc de ce que
+    // photographie l'autoportrait -- parce qu'un rapport qu'aucune capture ne
+    // montre est un écran qu'on ne peut pas juger.
+    addChildComponent(importReport_);
+    importReport_.onClose = [this] { resized(); };
+
     startTimerHz(30);
 }
 
@@ -674,6 +681,11 @@ void MainComponent::paint(juce::Graphics& g) {
 
 void MainComponent::resized() {
     auto area = getLocalBounds();
+    // LE RAPPORT D'IMPORT COUVRE TOUT, barre de menu comprise, et il est placé
+    // en PREMIER pour que le reste de la disposition ne le connaisse pas : ce
+    // n'est pas un volet qui prend de la place, c'est une feuille posée dessus.
+    importReport_.setBounds(getLocalBounds());
+    importReport_.toFront(false);
 #if !JUCE_MAC
     menuBarComponent_.setBounds(area.removeFromTop(26));
 #endif
@@ -1020,6 +1032,11 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuFileOpenBundle, "Ouvrir un projet VSM...");
             menu.addItem(kMenuFileImportDaw,
                          u8"Importer un projet (Ableton, FL Studio, Cubase)...");
+            // GRISÉE tant qu'aucun import n'a eu lieu, plutôt qu'absente : une
+            // entrée qui apparaît puis disparaît ne s'apprend pas. Là, on voit
+            // qu'un rapport EXISTE et où le retrouver.
+            menu.addItem(kMenuFileImportReport, u8"Voir le dernier rapport d'import",
+                         importReport_.hasReport(), false);
             menu.addItem(kMenuFileSave, "Enregistrer" +
                           juce::String(currentProjectFolder_ == juce::File() ? "..." : "")
                           + " (Ctrl+S)");
@@ -1385,6 +1402,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuFileOpen:      openMidiFile(); break;
         case kMenuFileOpenBundle: openProjectBundle(); break;
         case kMenuFileImportDaw: importDawProject(); break;
+        case kMenuFileImportReport: showLastImportReport(); break;
         case kMenuFileSave:      saveProject(); break;
         case kMenuFileSaveAs:    saveProjectAs(); break;
         case kMenuFileLoadReference: loadReferenceAudio(); break;
@@ -2489,10 +2507,9 @@ bool MainComponent::applyDawImport(const juce::File& fichier) {
         // LE MESSAGE DU LECTEUR EST MONTRÉ TEL QUEL, et c'est voulu : pour un
         // `.cpr` il nomme les deux chemins praticables, ce qu'aucun « échec de
         // l'import » générique ne ferait.
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::WarningIcon,
-            juce::String::fromUTF8("Import impossible"),
-            juce::String::fromUTF8(erreur.what()));
+        importReport_.showFailure(juce::String::fromUTF8("Import impossible"),
+                                  juce::String::fromUTF8(erreur.what()));
+        resized();
         std::fputs((std::string("Import : ") + erreur.what() + "\n").c_str(), stderr);
         return false;
     }
@@ -2505,17 +2522,16 @@ bool MainComponent::applyDawImport(const juce::File& fichier) {
                         + fichier.getFileNameWithoutExtension());
     rebuildFromProject();
 
-    juce::String texte;
-    texte << juce::String::fromUTF8(resultat.report.sourceFormat.c_str())
-          << juce::String::fromUTF8(" -- ") << juce::String::fromUTF8(resultat.report.sourceVersion.c_str())
-          << "\n\n";
-    for (const auto& ligne : resultat.report.lines)
-        texte << juce::String::fromUTF8(ligne.c_str()) << "\n";
-    juce::AlertWindow::showMessageBoxAsync(
-        juce::AlertWindow::InfoIcon,
-        juce::String::fromUTF8("Rapport d'import"), texte);
-    // AU TERMINAL AUSSI : la capture d'écran ne montre pas une alerte
-    // asynchrone, et c'est la seule façon de vérifier cet écran sans souris.
+    // LE RAPPORT DANS LA FENÊTRE, ET NON DANS UNE ALERTE. Une boîte de message
+    // traite ce texte comme une nouvelle qu'on chasse d'un clic ; or il fait
+    // partie du résultat et doit rester consultable (Fichier ▸ Voir le dernier
+    // rapport d'import). Il est aussi la seule forme que l'autoportrait
+    // photographie : VSM_CAPTURE rend le composant de contenu, où une alerte
+    // asynchrone n'apparaît pas.
+    importReport_.showReport(resultat.report);
+    resized();
+    // AU TERMINAL AUSSI : un import lancé par VSM_IMPORT se juge depuis le
+    // terminal qui l'a lancé, et le rapport doit y être lisible sans image.
     std::fputs(("Import : " + resultat.report.sourceFormat + "\n").c_str(), stderr);
     for (const auto& ligne : resultat.report.lines)
         std::fputs(("  " + ligne + "\n").c_str(), stderr);
@@ -2524,6 +2540,11 @@ bool MainComponent::applyDawImport(const juce::File& fichier) {
 
 bool MainComponent::importDawProjectForCapture(const juce::File& fichier) {
     return applyDawImport(fichier);
+}
+
+void MainComponent::showLastImportReport() {
+    importReport_.reopen();
+    resized();
 }
 
 /// OUVRIR UN DOSSIER DE PROJET, séparé du sélecteur de fichiers qui le

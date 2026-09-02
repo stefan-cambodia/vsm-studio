@@ -27,6 +27,7 @@
 #include "ui/AutomationComponent.h"
 #include "ui/EffectChainComponent.h"
 #include "ui/PanelWindow.h"
+#include "ui/ImportReportComponent.h"
 #include "ui/LookAndFeel/VsmLookAndFeel.h"
 #include "vsm/audio/engine/ReferenceTrack.h"
 #include "vsm/audio/io/WaveformPeaks.h"
@@ -127,6 +128,7 @@ private:
         kMenuFileOpen,
         kMenuFileOpenBundle,
         kMenuFileImportDaw,
+        kMenuFileImportReport,
         kMenuFileSave,
         kMenuFileSaveAs,
         kMenuFileLoadReference,
@@ -435,6 +437,16 @@ private:
     /// personne ait cliqué (capture, ligne de commande), et suivre exactement
     /// le même chemin.
     bool applyDawImport(const juce::File& fichier);
+    /// Rouvre le dernier rapport d'import de la session. Un rapport qu'on ne
+    /// peut plus relire ne sert qu'à la seconde où il s'affiche ; or la
+    /// question qu'il répond -- « pourquoi cette piste est-elle muette ? » --
+    /// se pose une heure plus tard.
+    void showLastImportReport();
+
+    /// Le panneau du rapport, POSÉ DANS LA FENÊTRE et non flottant : c'est le
+    /// composant de contenu que photographie l'autoportrait (VSM_CAPTURE), donc
+    /// la seule place d'où cet écran reste vérifiable sans souris.
+    vsm::app::ui::ImportReportComponent importReport_;
 
     void loadProjectBundleFromFolder(const juce::File& folder,
                                       const juce::File& mediaFolder = juce::File());

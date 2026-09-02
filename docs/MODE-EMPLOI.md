@@ -508,6 +508,42 @@ Ce que la chaîne ne fait pas : couper une piste. Elle mesure le morceau rendu *
 
 *La reconstruction en cours : cinq étapes, le journal en direct, et un bouton pour annuler.*
 
+## 6 bis. Ouvrir un projet fait ailleurs
+
+*Fichier ▸ Importer un projet (Ableton, FL Studio, Cubase)…* lit un `.als`, un
+`.flp` ou une archive de pistes Cubase (`.xml`). Ce qui se transporte, c'est la
+**musique et la structure** : tempo, pistes, notes avec leur durée et leur
+vélocité, noms, couleurs, muet et solo.
+
+Ce qui ne se transporte pas : **les instruments**. Un projet Live utilise
+Operator ou un VST tiers, un canal de FL porte Sytrus ou Harmless ; ces machines
+n'existent pas ici et leurs réglages n'ont aucun équivalent. Les pistes arrivent
+donc **sans instrument assigné**, et il vous revient de leur en choisir un dans
+le rack. Prétendre convertir un patch d'Operator en `vsm.dx7` reviendrait à
+inventer un son que personne n'a écrit.
+
+**Tout import rend son rapport**, et ce rapport fait partie du résultat. Il dit,
+poste par poste, ce qui a été repris, ce qui a été approché et ce qui a été
+perdu : les pistes audio vues mais non reprises, les pistes sans instrument, et
+— pour un `.flp` — le nombre d'événements *compris* sur le nombre d'événements
+*lus*, qui vous permet de voir si la lecture a mordu sans avoir à nous croire.
+Les avertissements sont en couleur ; le bouton *Copier* met le texte entier dans
+le presse-papiers. Le rapport se relit à tout moment par *Fichier ▸ Voir le
+dernier rapport d'import* — la question à laquelle il répond, « pourquoi cette
+piste est-elle muette ? », se pose une heure plus tard.
+
+![Le rapport d'import : ce qui a été repris, ce qui ne pouvait pas l'être.](images/manuel/rapport-import.png)
+
+*Le rapport d'import : ce qui a été repris, ce qui ne pouvait pas l'être.*
+
+**Les projets Cubase `.cpr` ne sont pas lus, et l'application le dit en nommant
+ce qui marche.** Le format est fermé et sans documentation : un lecteur écrit au
+jugé marcherait sur un fichier et casserait sur le suivant, ce qui est
+exactement la panne muette que ce studio refuse partout ailleurs. Depuis
+Cubase, deux chemins donnent un bon résultat : *Fichier ▸ Exporter ▸ Archive de
+pistes* (`.xml`), qui est le meilleur, ou un export **MIDI Type 1** (`.mid`),
+que l'application lit déjà.
+
 ## 7. Les réglages
 
 Tout ce qui se règle est au même endroit. Un réglage qu'on ne retrouve qu'en se souvenant du menu où il se cache est un réglage qu'on ne change pas.
@@ -554,7 +590,9 @@ elle-même deux secondes après l'ouverture puis quitte ; `VSM_VUE=nom,nom`
 actionne le menu Affichage ; `VSM_PROJET=dossier` ouvre un projet au
 démarrage — sans lui, l'autoportrait ne montre qu'un projet vide, alors que
 ce qu'on a besoin de regarder est presque toujours une machine dans son rack
-ou un arrangement précis.
+ou un arrangement précis. Une quatrième, `VSM_IMPORT=fichier`, importe un
+projet d'un autre DAW au démarrage : c'est ainsi que l'écran du rapport
+d'import se vérifie, puisqu'il ne s'atteint autrement qu'à la souris.
 
 ## 8. Ne rien perdre
 

@@ -116,16 +116,55 @@ apparaît, ce paragraphe sera la première chose à corriger.
 4. **Cubase** — Track Archive XML, et le message qui oriente pour le `.cpr`.
 5. Un rapport d'import commun aux quatre chemins, et l'interface qui l'affiche.
 
+## 5 bis. Où vit le rapport, et pourquoi pas dans une alerte
+
+La première version affichait le rapport dans une `AlertWindow`. C'était faux
+sur trois points, et le § 0 explique lequel compte : *le rapport est une partie
+du résultat*, pas une notification.
+
+**Décision : le rapport est un panneau POSÉ DANS LA FENÊTRE PRINCIPALE**
+(`app/Source/ui/ImportReportComponent.h`), et non une boîte de message ni une
+`PanelWindow` flottante. Trois raisons, dans l'ordre de leur poids :
+
+1. **Il doit rester consultable.** La question à laquelle un rapport d'import
+   répond — « pourquoi cette piste est-elle muette ? » — se pose une heure plus
+   tard, pas à la seconde du clic. D'où *Fichier ▸ Voir le dernier rapport
+   d'import*, grisé tant qu'aucun import n'a eu lieu.
+2. **Il doit être VÉRIFIABLE sans souris.** `VSM_CAPTURE` photographie le
+   composant de contenu ; ni une alerte asynchrone ni une fenêtre flottante n'y
+   figurent. Un rapport affiché ailleurs aurait été un écran qu'on ne peut pas
+   regarder, donc qu'on ne peut pas juger — ce que la conduite du dépôt
+   interdit. Les captures qui ont servi à le régler sont celles de
+   `VSM_IMPORT=… VSM_CAPTURE=…`, et l'aperçu hors écran
+   `vsm-ui-preview` rend les deux états (rapport garni, échec `.cpr`).
+3. **Il doit se LIRE.** Les lignes des lecteurs sont longues parce qu'elles
+   expliquent ; le panneau les replie à la largeur du cadre, avec un retrait
+   pour les suites, plutôt que de les tronquer. Les avertissements ressortent :
+   « ATTENTION » en rouge, ce qui manque à l'arrivée (« AUCUN instrument »,
+   « NON importée ») en ambre, le reste en gris — dans une liste uniforme, la
+   ligne qui compte se noie au milieu des lignes de comptage. Un bouton
+   *Copier* met le texte complet dans le presse-papiers : un rapport sert
+   souvent à être montré à quelqu'un d'autre.
+
+Ce que le panneau N'EST PAS : modal. Un DAW dont la boucle de messages s'arrête
+est un DAW dont l'audio hoquette. Le voile sombre arrête le regard, pas
+l'application ; Échap ou *Fermer* le referme.
+
 ## 6. Critères d'acceptation
 
 ```
-[ ] Chaque lecteur a ses tests sur des fichiers construits DANS le test
+[x] Chaque lecteur a ses tests sur des fichiers construits DANS le test
     (aucune dépendance à un fichier d'exemple qu'on n'a pas le droit de
     redistribuer)
-[ ] Un fichier tronqué ou corrompu donne une ERREUR nommée, jamais un
+[x] Un fichier tronqué ou corrompu donne une ERREUR nommée, jamais un
     plantage ni un projet à moitié rempli
-[ ] Tout ce qui n'est pas importé figure dans le rapport, poste par poste
-[ ] Les pistes arrivent sans instrument, et le rapport le dit
-[ ] Aucune dépendance externe ajoutée
-[ ] Toutes les suites vertes, zéro warning
+[x] Tout ce qui n'est pas importé figure dans le rapport, poste par poste
+[x] Les pistes arrivent sans instrument, et le rapport le dit
+[x] Aucune dépendance externe ajoutée
+[x] Toutes les suites vertes, zéro warning
+    (1 486 tests : core 158, audio 1 025, interchange 248, panels 11,
+    clap 25, vst3 19)
+[x] Le rapport est VU : capture de la fenêtre réelle pour un `.flp`, un `.als`
+    et le refus d'un `.cpr` (`VSM_IMPORT=… VSM_CAPTURE=…`), plus les deux
+    états rendus hors écran par `vsm-ui-preview`
 ```

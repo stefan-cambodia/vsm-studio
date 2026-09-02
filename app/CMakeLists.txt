@@ -36,6 +36,7 @@ target_sources(VintageSynthMidiStudio PRIVATE
     Source/ui/ArrangementComponent.cpp
     Source/ui/AutomationComponent.cpp
     Source/ui/EffectChainComponent.cpp
+    Source/ui/ImportReportComponent.cpp
     Source/ui/LookAndFeel/VsmLookAndFeel.cpp
     Source/ui/UiScale.cpp
     Source/plugins/PluginScanner.cpp
@@ -287,6 +288,7 @@ target_sources(vsm-ui-preview PRIVATE
     Source/ui/PreferencesWindow.cpp
     Source/ui/BrowserComponent.cpp
     Source/ui/ReconstructionWindow.cpp
+    Source/ui/ImportReportComponent.cpp
     Source/ui/UiScale.cpp
     Source/reconstruction/ReconstructionRunner.cpp
 )

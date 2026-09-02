@@ -19,6 +19,7 @@
 
 #include <JuceHeader.h>
 #include "../ui/BrowserComponent.h"
+#include "../ui/ImportReportComponent.h"
 #include "../ui/MidiLearnWindow.h"
 #include "../ui/PreferencesWindow.h"
 #include "../ui/ReconstructionWindow.h"
@@ -159,6 +160,58 @@ int main(int argc, char** argv) {
         avancement.recentLines.add(juce::String::fromUTF8(u8"      other    : vsm.juno106, 6 axes, 40 évaluations"));
         panneau.setProgress(avancement);
         rendus += ecrire(panneau, sortie, "reconstruction", 720, 460, echelle) ? 1 : 0;
+    }
+
+    // --- Rapport d'import : le cas garni, et le cas de l'échec.
+    //
+    // POURQUOI CES DEUX-LÀ. Le rapport n'est utile que s'il se LIT : les lignes
+    // des lecteurs d'import sont longues, elles expliquent au lieu de coder, et
+    // ce sont justement les plus longues qui portent l'avertissement. Un aperçu
+    // qui ne montrerait qu'un rapport de trois lignes courtes ne prouverait
+    // rien. Celui-ci reprend mot pour mot des lignes de
+    // `interchange/src/DawImport.cpp`, avec un `.flp` -- le format dont le sens
+    // est reconstitué, donc celui dont le rapport compte le plus.
+    {
+        vsm::interchange::DawImportReport rapport;
+        rapport.sourceFormat = "FL Studio";
+        rapport.sourceVersion = "20.8.3.2304";
+        rapport.midiTracksImported = 4;
+        rapport.notesImported = 812;
+        rapport.clipsSeen = 4;
+        rapport.tracksWithoutInstrument = 4;
+        rapport.eventsRead = 1043;
+        rapport.eventsUnderstood = 96;
+        rapport.note("Tempo : 128 BPM, 96 PPQ");
+        rapport.note("Canal « Kick » : 128 note(s), AUCUN instrument assigné — le générateur "
+                     "du rack (Sytrus, Harmless, un VST…) n'existe pas ici");
+        rapport.note("Canal « Bassline 303 » : 402 note(s), AUCUN instrument assigné — le "
+                     "générateur du rack (Sytrus, Harmless, un VST…) n'existe pas ici");
+        rapport.note("Canal « Pad » : 96 note(s), AUCUN instrument assigné — le générateur du "
+                     "rack (Sytrus, Harmless, un VST…) n'existe pas ici");
+        rapport.note("Canal « Lead » : 186 note(s), AUCUN instrument assigné — le générateur "
+                     "du rack (Sytrus, Harmless, un VST…) n'existe pas ici");
+        rapport.note("ATTENTION : l'ARRANGEMENT n'est pas repris. Les 7 motifs sont posés BOUT "
+                     "À BOUT dans l'ordre de leurs numéros, ce qui n'est probablement pas "
+                     "l'ordre de votre playlist");
+        rapport.note("Événements lus : 1043, dont 96 compris. Un import qui ne comprend presque "
+                     "rien signale un lecteur qui se trompe, pas un projet vide");
+
+        vsm::app::ui::ImportReportComponent panneau;
+        panneau.setBounds(0, 0, 1000, 700);
+        panneau.showReport(rapport);
+        panneau.resized();
+        rendus += ecrire(panneau, sortie, "rapport-import", 1000, 700, echelle) ? 1 : 0;
+
+        panneau.showFailure(
+            juce::String::fromUTF8("Import impossible"),
+            juce::String::fromUTF8(
+                "Le format de projet de Cubase (.cpr) est fermé et non documenté : aucun "
+                "lecteur fiable ne peut en être écrit, et un lecteur écrit au jugé "
+                "produirait un import faux sans le dire. Deux chemins donnent un bon "
+                "résultat depuis Cubase : Fichier ▸ Exporter ▸ Archive de pistes (.xml), "
+                "qui est le meilleur, ou un export MIDI Type 1 (.mid)."));
+        panneau.resized();
+        rendus += ecrire(panneau, sortie, "rapport-import-echec", 1000, 700, echelle) ? 1 : 0;
     }
 
     std::printf("%d panneau(x) rendu(s)\n", rendus);

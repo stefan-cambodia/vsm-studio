@@ -688,7 +688,7 @@ DawImportResult importDawProject(const std::vector<uint8_t>& octets,
         && nomDuFichier.compare(nomDuFichier.size() - 4, 4, ".cpr") == 0;
     if (extensionCpr)
         throw DawImportError(
-            "les projets Cubase (.cpr) ne peuvent pas être lus : le format est fermé et sans "
+            "Les projets Cubase (.cpr) ne peuvent pas être lus : le format est fermé et sans "
             "documentation, et un lecteur écrit au jugé donnerait un import faux sans le dire. "
             "Deux chemins fonctionnent depuis Cubase : « Fichier ▸ Exporter ▸ Archive de "
             "pistes » (.xml), qui garde les pistes, leurs noms et leurs notes ; ou l'export "
