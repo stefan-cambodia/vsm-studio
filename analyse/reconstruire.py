@@ -758,6 +758,51 @@ class Chantier:
 # [2/5] Les stems
 # ---------------------------------------------------------------------------
 
+def partage_du_morceau(pistes: Dict[str, Path]) -> List[Dict[str, object]]:
+    """QUELLE PART DU MORCEAU CHAQUE STEM PORTE-T-IL ?
+
+    POURQUOI CE CHIFFRE MANQUAIT ET CE QU'IL A RÉVÉLÉ. Le rapport donnait
+    quatre distances côte à côte, ce qui laisse croire à quatre pistes
+    comparables. Elles ne le sont pas : sur *Us and Them*, `other` porte
+    **62,1 %** de l'énergie du morceau, `vocals` 20,8 %, `drums` 13,0 % et
+    `bass` 4,1 %. Les deux tiers du morceau sont sur une seule piste, jouée par
+    une seule machine — et rien ne le disait.
+
+    La part est mesurée sur les stems D'ORIGINE, jamais sur le rendu. C'est le
+    partage du MORCEAU qu'on décrit, pas celui de notre copie : une piste
+    ratée, donc silencieuse, pèserait zéro dans le rendu et disparaîtrait
+    justement du tableau où il faut la voir.
+
+    L'énergie plutôt que la durée ou le nombre de notes : c'est elle qui dit ce
+    qu'on entend. Une nappe tenue tout le morceau ne fait que quelques notes.
+    """
+    energies: Dict[str, float] = {}
+    for nom, chemin in pistes.items():
+        try:
+            echantillons = lire_wav(Path(chemin))
+            energies[nom] = float(np.sum(np.square(echantillons, dtype=np.float64)))
+        except Exception as erreur:  # noqa: BLE001 — un stem illisible se DIT
+            print(f"      {nom:8s} : part d'énergie non mesurée ({erreur})")
+            energies[nom] = 0.0
+    total = sum(energies.values())
+    if total <= 0.0:
+        return []
+    partage = [
+        {"stem": nom, "partEnergie": round(100.0 * valeur / total, 1)}
+        for nom, valeur in sorted(energies.items(), key=lambda kv: -kv[1])
+    ]
+    detail = ", ".join(f"{p['stem']} {p['partEnergie']} %" for p in partage)
+    print(f"      partage du morceau : {detail}")
+    # LA PHRASE QUI COMPTE, quand une piste porte le morceau à elle seule. Le
+    # seuil est à la moitié : au-delà, parler de « quatre pistes » est une
+    # description trompeuse de ce qu'on a produit.
+    if partage[0]["partEnergie"] >= 50.0:
+        print(f"      ATTENTION : « {partage[0]['stem']} » porte "
+              f"{partage[0]['partEnergie']} % du morceau à lui seul. Une seule machine "
+              f"jouera cette part-là. Voir --modele htdemucs_6s pour séparer davantage.")
+    return partage
+
+
 def obtenir_stems(args: argparse.Namespace, entree: Path, travail: Path) -> Dict[str, Path]:
     """Nom de stem -> fichier : repris d'un dossier, séparés, ou le mélange seul."""
     if args.stems:
@@ -1691,6 +1736,9 @@ def chaine(args: argparse.Namespace) -> None:
 
     with dossier_de_travail(args) as travail:
         pistes = obtenir_stems(args, entree, travail)
+        # LE PARTAGE, MESURÉ TOUT DE SUITE ET SUR LES STEMS D'ORIGINE : c'est
+        # le morceau qu'on décrit, pas le rendu (voir `partage_du_morceau`).
+        partage = partage_du_morceau(pistes)
 
         try:
             moteur = VsmEngine(binary=args.moteur, sample_rate=SAMPLE_RATE)
@@ -1751,6 +1799,7 @@ def chaine(args: argparse.Namespace) -> None:
             provenance=provenance(args, classifieur, frappes, moteur),
             drums=chantier.rapport_batterie,
             mix_verdict=verdict or None,
+            partage=partage,
         )
         write_reconstruction_report(chantier.reconstruits, sortie / "rapport.json",
                                     metric=args.metrique, iterations=args.iterations,

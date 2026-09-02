@@ -2647,7 +2647,16 @@ depuis onze versions ne le disait — parce qu'aucun ne le regardait.
 
 Autrement dit : **les deux tiers du morceau sont sur une seule piste, jouée par
 une seule machine, qui doit tenir cinq notes simultanées sur cinq octaves et
-demie.** Sur ce morceau-là, cette machine est un TB-303 — un synthétiseur
+demie.**
+
+*(Deux chiffres circulent pour la part de `other`, et les deux sont justes :
+**62,1 %** en sommant l'énergie des deux canaux stéréo — la mesure faite à la
+main le jour du constat — et **57,7 %** après pli mono `(G+D)/2`, qui est ce
+que `partage_du_morceau` publie désormais au rapport. L'écart vient de la
+largeur stéréo : les composantes hors phase de `other` (nappes, réverbération)
+s'annulent partiellement au pli, celles des voix centrées non. Le chiffre du
+rapport est le pli mono, parce que c'est le signal que la chaîne traite
+réellement ; la conclusion est la même des deux côtés du seuil de 50 %.)* Sur ce morceau-là, cette machine est un TB-303 — un synthétiseur
 monophonique de ligne de basse acide. Le piano électrique, l'orgue, le
 saxophone et les guitares de Pink Floyd passent tous par lui.
 

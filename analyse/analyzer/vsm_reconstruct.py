@@ -485,6 +485,7 @@ def write_reconstruction_report(
     provenance: Optional[Dict[str, object]] = None,
     drums: Optional[Dict[str, object]] = None,
     mix_verdict: Optional[Sequence[Dict[str, object]]] = None,
+    partage: Optional[Sequence[Dict[str, object]]] = None,
 ) -> None:
     """
     Écrit le rapport de reconstruction (étape 9.3).
@@ -531,6 +532,20 @@ def write_reconstruction_report(
         # n'était qu'imprimé ; or c'est la dernière décision de la chaîne,
         # et celle qui peut défaire toutes les autres.
         **({"mixVerdict": list(mix_verdict)} if mix_verdict else {}),
+        # COMMENT LE MORCEAU SE PARTAGE ENTRE LES PISTES, en part d'énergie.
+        #
+        # C'EST LE CHIFFRE QUI A RENDU LE DÉFAUT VISIBLE, et il n'était nulle
+        # part. Sur *Us and Them* : `other` porte 62,1 % de l'énergie, `vocals`
+        # 20,8 %, `drums` 13,0 %, `bass` 4,1 %. Autrement dit les deux tiers du
+        # morceau sur UNE piste, jouée par UNE machine. Un rapport qui donne
+        # quatre distances sans dire ce que chacune pèse laisse croire à quatre
+        # pistes comparables ; il faut savoir laquelle porte le morceau.
+        #
+        # La part est calculée sur les stems D'ORIGINE et non sur le rendu :
+        # c'est le partage du MORCEAU qu'on décrit, pas celui de notre copie —
+        # une piste ratée et donc silencieuse pèserait zéro dans le rendu et
+        # disparaîtrait justement du tableau où il faut la voir.
+        **({"partage": list(partage)} if partage else {}),
         "stems": [
             {
                 "name": stem.name,
