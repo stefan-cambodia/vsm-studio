@@ -61,7 +61,13 @@ explique l'écart.)
    `guitar` et `piano`. La séparation est une étape À PART (un processus qui
    ne fait que demucs, écrit, meurt) : la faire dans le processus de la
    chaîne a fait tuer deux courses par l'OOM killer sur cette machine à
-   15 Go. Partage six stems mesuré : vocals 28,0 · guitar 26,9 · drums 20,4 ·
+   15 Go. Troisième leçon de mémoire, payée le même jour : chaque
+   travailleur de `--rendus-paralleles` tient EN PYTHON le rendu entier du
+   morceau et ses intermédiaires de mesure (~0,5 Go), en plus de son
+   vsm-render — à 12 travailleurs le python de course monte à 6,8 Go et
+   l'OOM killer tranche (H23, 20:36). Sur cette machine, 8 est la borne
+   mesurée ; le parallélisme est neutre pour le résultat, pas pour la
+   mémoire. Partage six stems mesuré : vocals 28,0 · guitar 26,9 · drums 20,4 ·
    **other 9,1** · bass 8,7 · piano 6,9 — le fourre-tout tombe de 57,7 % à
    9,1 % avant tout découpage.
 3. **Le découpage en voix** (H23) — `--voix-par-stem N` partage un stem
