@@ -170,11 +170,40 @@ déplacent rien, et la stabilité par empreintes est démontrée en course.
    en cours, les 64 vumètres bougeant. `VSM_VUE` gagne le jeton `jouer`
    pour photographier un projet EN TRAIN de jouer — sans lui, le compteur de
    charge ne dit rien.
-7. **Un deuxième morceau** : tout ce chantier est mesuré sur *Us and Them*.
-   Avant de changer un défaut de la chaîne, le vérifier sur un second
-   original (les MIDI de référence de ~/Téléchargements peuvent servir de
-   cibles à contenu connu — voir CDC-multisample § 1, la question ouverte de
-   la cible à MIDI exact).
+7. **Le deuxième morceau — FAIT (03/09/2026), et il a corrigé une décision.**
+   Deux seconds originaux, choisis pour s'opposer :
+
+   | Original | 4 sources | 6 sources |
+   |---|---|---|
+   | *Sky and Sand* (électronique) | drums 77,2 · bass 11,3 · other 9,5 · vocals 2,0 | drums 78,0 · bass 13,8 · other 6,0 · vocals 2,0 · **piano 0,1 · guitar 0,0** |
+   | *Clair de Lune* (PIANO SEUL) | other 100,0 | **piano 99,5** · guitar 0,4 · other 0,1 · reste 0,0 |
+
+   **Ce que le deuxième morceau apprend, et qu'*Us and Them* ne pouvait pas
+   dire** :
+
+   - **le gain des six sources NE GÉNÉRALISE PAS.** Sur *Us and Them*, la
+     guitare et le piano existent vraiment et valaient −10,4 %. Sur *Sky and
+     Sand*, ils sont VIDES (0,0 et 0,1 %) : le modèle à six sources n'y
+     ajoute que deux pistes de silence. Le défaut reste `htdemucs_6s` — il ne
+     nuit pas, il nomme mieux (`piano 99,5` vaut mieux qu'`other 100,0` sur un
+     piano seul) — mais la réserve du § 4.2 est LEVÉE dans un sens précis :
+     six sources ne rapprochent que les morceaux qui ont réellement ces
+     parties, et cela devait être dit ;
+   - **un original à UNE partie donnait SIX pistes**, et c'est l'exact
+     contraire de l'objectif de parité. D'où `--seuil-stem` (défaut 0,5 % de
+     l'énergie) : un stem sous le seuil n'est pas reconstruit, et le refus est
+     DIT avec son chiffre. Ce n'est pas « couper une piste » — la règle du
+     dépôt protège ce qu'on entend ; ici la chaîne refuse de FABRIQUER, le
+     stem reste sur le disque, `--seuil-stem 0` le reconstruit. La plus petite
+     vraie partie d'*Us and Them* (piano, 6,9 %) est douze fois au-dessus ;
+   - **le fourre-tout de *Sky and Sand* est la BATTERIE** (78 %), pas `other`,
+     et aucun de nos outils ne l'atteint : le seuil de fourre-tout mesure
+     polyphonie et ambitus, qui n'ont pas de sens pour un kit, et
+     `--voix-par-stem` ne touche pas la batterie. `--batterie-par-piece` est
+     la seule réponse existante ; son effet n'est pas mesuré. À suivre.
+
+   Reste due, à la levée de la pause : la mesure de DISTANCE sur ce second
+   morceau (le partage seul ne dit pas si le morceau sonne plus près).
 
 ## 5. Critères d'acceptation
 
@@ -201,7 +230,9 @@ déplacent rien, et la stabilité par empreintes est démontrée en course.
     clips, et le scheduler seul connaissait la fenêtre implicite. Corrigé à
     l'ouverture (le clip « tout à zéro » est exactement le passage que le
     scheduler fabriquait), vu la voix dessiner sa forme d'onde
-[ ] Vérifié sur un deuxième morceau avant de changer un défaut
+[x] Vérifié sur un deuxième morceau avant de changer un défaut : deux
+    seconds originaux (*Sky and Sand*, *Clair de Lune*), qui ont borné le
+    gain des six sources et fait naître `--seuil-stem`
 [ ] Sur un original dont les parties sont connues, le compte de pistes
     reconstruites atteint le compte de parties (l'objectif de parité du § 0)
 ```

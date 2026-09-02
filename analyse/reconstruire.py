@@ -415,6 +415,7 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
             "voixParStem": args.voix_par_stem,
             "batterieParPiece": args.batterie_par_piece,
             "voixTeteChoeurs": args.voix_tete_choeurs,
+            "seuilStem": args.seuil_stem,
         },
         # Les modèles CONSULTÉS, avec leur date d'entraînement -- ou « aucun »,
         # qui est une information et non une absence d'information.
@@ -495,6 +496,15 @@ def construire_parseur() -> argparse.ArgumentParser:
     parseur.add_argument("--machines", default="",
                          help="liste de machines candidates, séparées par des virgules "
                               "(défaut : toutes les mélodiques du moteur)")
+    parseur.add_argument("--seuil-stem", type=float, default=0.5,
+                         help="part d'énergie (en %%) sous laquelle un stem n'est PAS "
+                              "reconstruit : c'est un résidu de séparation, pas une partie. "
+                              "Mesuré sur *Clair de Lune* (piano SEUL) : le modèle à six "
+                              "sources rend piano 99,5 %% et cinq stems à 0,0-0,4 %% — en "
+                              "faire des pistes fabriquerait cinq parties là où il y en a "
+                              "une, l'exact contraire de l'objectif de parité. Le stem "
+                              "écarté est DIT avec son chiffre, jamais tu. 0 pour ne rien "
+                              "écarter")
     parseur.add_argument("--voix-tete-choeurs", action="store_true",
                          help="séparer la voix de TÊTE (le centre du champ stéréo) des CHŒURS "
                               "(le large) en deux pistes audio dont la somme redonne "
@@ -717,6 +727,9 @@ class Contexte:
     candidates: List[str]
     classifieur: Optional[object] = None
     frappes: Optional[object] = None
+    # La part d'énergie de chaque stem, mesurée avant toute reconstruction :
+    # c'est elle qui distingue une partie d'un résidu de séparation.
+    parts: Dict[str, float] = field(default_factory=dict)
 
     def options_de_rendu(self, nom: str, audio: np.ndarray) -> Dict[str, object]:
         """Les réglages communs à tous les rendus hors ligne d'une piste :
@@ -791,9 +804,17 @@ def partage_du_morceau(pistes: Dict[str, Path]) -> List[Dict[str, object]]:
     # seuil est à la moitié : au-delà, parler de « quatre pistes » est une
     # description trompeuse de ce qu'on a produit.
     if partage[0]["partEnergie"] >= 50.0:
+        # LE CONSEIL NE CONSEILLE QUE CE QUI RESTE À FAIRE. La première version
+        # renvoyait à `--modele htdemucs_6s` même quand la course tournait DÉJÀ
+        # dessus — vu sur *Sky and Sand*, où `drums` porte 78 % avec les six
+        # sources : un conseil qu'on a déjà suivi discrédite les autres.
+        conseil = (" Voir --modele htdemucs_6s pour séparer davantage."
+                   if len(partage) <= 4 else
+                   " Le modèle à six sources ne l'a pas partagé : c'est un stem "
+                   "dense par nature (--voix-par-stem le découpe par registres).")
         print(f"      ATTENTION : « {partage[0]['stem']} » porte "
               f"{partage[0]['partEnergie']} % du morceau à lui seul. Une seule machine "
-              f"jouera cette part-là. Voir --modele htdemucs_6s pour séparer davantage.")
+              f"jouera cette part-là.{conseil}")
     return partage
 
 
@@ -1451,6 +1472,22 @@ def reconstruire_les_stems(ctx: Contexte, pistes: Dict[str, Path]) -> Chantier:
               "la batterie modélisée n'écrit pas d'échantillons")
     chantier = Chantier()
     for nom, chemin in sorted(pistes.items()):
+        # UN RÉSIDU DE SÉPARATION N'EST PAS UNE PARTIE, et le reconstruire
+        # fabriquerait une piste là où il n'y a rien. Mesuré sur *Clair de
+        # Lune* (piano SEUL) : le modèle à six sources rend `piano` 99,5 % et
+        # CINQ stems entre 0,0 et 0,4 % — six pistes pour une partie, l'exact
+        # contraire de l'objectif de parité.
+        #
+        # CE N'EST PAS COUPER UNE PISTE : couper reste une décision humaine,
+        # et la règle vaut pour ce qu'on ENTEND. Ici on refuse de FABRIQUER,
+        # et le refus est dit avec son chiffre — le stem reste sur le disque,
+        # `--seuil-stem 0` le reconstruit.
+        part = ctx.parts.get(nom)
+        if part is not None and args.seuil_stem > 0.0 and part < args.seuil_stem:
+            print(f"      {nom:8s} : NON reconstruit — {part} % de l'énergie du morceau, "
+                  f"sous le seuil de {args.seuil_stem} % (résidu de séparation, pas une "
+                  f"partie ; --seuil-stem 0 pour le reconstruire quand même)")
+            continue
         if nom == "vocals" and not args.sans_sampler:
             for piste, audio in reporter_voix(nom, chemin, ctx.sortie,
                                               par_sampler=ctx.args.voix_sampler,
@@ -1891,6 +1928,7 @@ def chaine(args: argparse.Namespace) -> None:
                 print(f"      {len(exclues)} machine(s) EXCLUE(S) du vivier "
                       f"(--machines-exclues) : {', '.join(exclues)}")
             ctx = Contexte(args=args, moteur=moteur, sortie=sortie, travail=travail,
+                           parts={p["stem"]: p["partEnergie"] for p in partage},
                            candidates=candidates, classifieur=classifieur, frappes=frappes)
 
             chantier = reconstruire_les_stems(ctx, pistes)
