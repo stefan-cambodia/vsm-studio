@@ -86,4 +86,34 @@ DawImportResult importAbletonLiveFile(const std::string& chemin);
 DawImportResult importFlStudio(const std::vector<uint8_t>& octets);
 DawImportResult importFlStudioFile(const std::string& chemin);
 
+/// Lit une **Track Archive de Cubase** (`.xml`), ce que Steinberg exporte par
+/// *Fichier ▸ Exporter ▸ Archive de pistes*.
+///
+/// POURQUOI CE CHEMIN ET PAS LE `.cpr` : le format de projet de Cubase est
+/// fermé et sans documentation exploitable ; un lecteur écrit au jugé marcherait
+/// sur un fichier et casserait sur le suivant (§ 4 du CDC). La Track Archive,
+/// elle, est du XML et contient ce qui compte : les pistes, leurs noms, et les
+/// notes.
+///
+/// COMMENT IL LIT, ET C'EST DÉLIBÉRÉ : une Track Archive imbrique ses objets
+/// différemment selon la version de Cubase et selon ce qu'on exporte. Le
+/// lecteur ne suit donc AUCUN chemin fixe — il cherche les objets qui portent
+/// la SIGNATURE d'une note (un début, une longueur, une hauteur) et ceux qui
+/// portent un nom de piste. C'est plus robuste qu'un chemin, et cela se dit :
+/// un fichier dont la structure changerait donnerait moins de notes, pas des
+/// notes fausses.
+DawImportResult importCubaseTrackArchive(const std::vector<uint8_t>& octets);
+DawImportResult importCubaseTrackArchiveFile(const std::string& chemin);
+
+/// Reconnaît le format d'après le contenu (et, à défaut, d'après l'extension)
+/// puis appelle le bon lecteur.
+///
+/// **Devant un `.cpr`, cette fonction ne tente rien et EXPLIQUE** : elle lève
+/// une erreur qui nomme les deux chemins praticables (Track Archive XML, MIDI
+/// Type 1). Un message qui oriente vaut mieux qu'un import qui échoue sans
+/// dire pourquoi — et infiniment mieux qu'un import qui invente.
+DawImportResult importDawProject(const std::vector<uint8_t>& octets,
+                                 const std::string& nomDuFichier = {});
+DawImportResult importDawProjectFile(const std::string& chemin);
+
 } // namespace vsm::interchange

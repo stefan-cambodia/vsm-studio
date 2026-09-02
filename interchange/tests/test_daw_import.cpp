@@ -348,3 +348,148 @@ VSM_TEST(fl_refuse_un_fichier_tronque_au_lieu_d_un_projet_a_moitie) {
     try { importFlStudio(tronque); } catch (const DawImportError&) { leve = true; }
     VSM_ASSERT(leve);
 }
+
+// --- Cubase : la Track Archive, et le refus motivé du .cpr -----------------
+
+namespace {
+// Une archive de pistes telle que Cubase l'exporte : des objets imbriqués, des
+// valeurs nommées, et une hiérarchie dont on ne veut PAS dépendre. Le lecteur
+// cherche la signature d'une note (début, longueur, hauteur) où qu'elle soit.
+const std::string kArchiveCubase = R"XML(<?xml version="1.0" encoding="utf-8"?>
+<tracklist2 version="1">
+ <list name="track" type="obj">
+  <obj class="MMidiTrackEvent" ID="1">
+   <string name="Name" value="Piano"/>
+   <member name="Node">
+    <obj class="MTrackNode">
+     <int name="PPQ" value="480"/>
+     <float name="Tempo" value="96"/>
+     <list name="Events" type="obj">
+      <obj class="MMidiPartEvent">
+       <member name="Node">
+        <obj class="MMidiPartNode">
+         <list name="Events" type="obj">
+          <obj class="MMidiEvent">
+           <int name="Start" value="0"/>
+           <int name="Length" value="480"/>
+           <int name="PitchOrValue" value="60"/>
+           <int name="Velocity" value="90"/>
+          </obj>
+          <obj class="MMidiEvent">
+           <int name="Start" value="960"/>
+           <int name="Length" value="240"/>
+           <int name="PitchOrValue" value="64"/>
+           <int name="Velocity" value="110"/>
+          </obj>
+         </list>
+        </obj>
+       </member>
+      </obj>
+     </list>
+    </obj>
+   </member>
+  </obj>
+  <obj class="MMidiTrackEvent" ID="2">
+   <string name="Name" value="Basse"/>
+   <member name="Node">
+    <obj class="MTrackNode">
+     <list name="Events" type="obj">
+      <obj class="MMidiEvent">
+       <int name="Start" value="0"/>
+       <int name="Length" value="1920"/>
+       <int name="Pitch" value="36"/>
+       <int name="Velocity" value="127"/>
+      </obj>
+     </list>
+    </obj>
+   </member>
+  </obj>
+ </list>
+</tracklist2>
+)XML";
+} // namespace
+
+VSM_TEST(cubase_lit_les_pistes_et_leurs_notes_sans_suivre_de_chemin) {
+    const std::vector<uint8_t> octets(kArchiveCubase.begin(), kArchiveCubase.end());
+    const auto resultat = importCubaseTrackArchive(octets);
+
+    VSM_ASSERT_EQ(resultat.report.midiTracksImported, 2);
+    const auto* piano = pisteNommee(resultat.project, "Piano");
+    VSM_ASSERT(piano != nullptr);
+    VSM_ASSERT_EQ(piano->notes.size(), size_t(2));
+    VSM_ASSERT_EQ(int(piano->notes[0].number), 60);
+    VSM_ASSERT_EQ(piano->notes[0].endTick, vsm::midi::Tick(480));
+    VSM_ASSERT_EQ(piano->notes[1].startTick, vsm::midi::Tick(960));
+}
+
+VSM_TEST(cubase_accepte_les_deux_noms_de_hauteur) {
+    // « PitchOrValue » sur les événements génériques, « Pitch » ailleurs :
+    // accepter les deux plutôt que de parier sur l'un.
+    const std::vector<uint8_t> octets(kArchiveCubase.begin(), kArchiveCubase.end());
+    const auto resultat = importCubaseTrackArchive(octets);
+    const auto* basse = pisteNommee(resultat.project, "Basse");
+    VSM_ASSERT(basse != nullptr);
+    VSM_ASSERT_EQ(basse->notes.size(), size_t(1));
+    VSM_ASSERT_EQ(int(basse->notes[0].number), 36);
+}
+
+VSM_TEST(cubase_lit_le_tempo_de_l_archive) {
+    const std::vector<uint8_t> octets(kArchiveCubase.begin(), kArchiveCubase.end());
+    const auto resultat = importCubaseTrackArchive(octets);
+    VSM_ASSERT_NEAR(resultat.project.tempoMap.bpmAt(0), 96.0, 0.05);
+}
+
+VSM_TEST(cubase_dit_quand_le_tempo_manque_au_lieu_d_imposer_120_en_silence) {
+    const std::string sansTempo =
+        R"(<tracklist2><list name="track" type="obj"><obj class="MMidiTrackEvent">)"
+        R"(<string name="Name" value="X"/><obj class="MMidiEvent">)"
+        R"(<int name="Start" value="0"/><int name="Length" value="480"/>)"
+        R"(<int name="Pitch" value="60"/></obj></obj></list></tracklist2>)";
+    const std::vector<uint8_t> octets(sansTempo.begin(), sansTempo.end());
+    const auto resultat = importCubaseTrackArchive(octets);
+    VSM_ASSERT(rapportContient(resultat.report, "Tempo ABSENT"));
+}
+
+VSM_TEST(cubase_dit_quand_il_ne_trouve_aucune_note_et_oriente) {
+    const std::string vide = R"(<tracklist2><list name="track" type="obj"/></tracklist2>)";
+    const std::vector<uint8_t> octets(vide.begin(), vide.end());
+    const auto resultat = importCubaseTrackArchive(octets);
+    VSM_ASSERT_EQ(resultat.report.notesImported, 0);
+    VSM_ASSERT(rapportContient(resultat.report, "aucune note trouvée"));
+    VSM_ASSERT(rapportContient(resultat.report, "MIDI Type 1"));
+}
+
+// --- Le choix du lecteur d'après le contenu -------------------------------
+
+VSM_TEST(le_format_est_reconnu_au_contenu_et_non_a_l_extension) {
+    VSM_ASSERT_EQ(importDawProject(kFlp).report.sourceFormat, std::string("FL Studio"));
+    VSM_ASSERT_EQ(importDawProject(kAlsGzip).report.sourceFormat, std::string("Ableton Live"));
+    const std::vector<uint8_t> cubase(kArchiveCubase.begin(), kArchiveCubase.end());
+    VSM_ASSERT(importDawProject(cubase).report.sourceFormat.find("Cubase") != std::string::npos);
+}
+
+VSM_TEST(un_cpr_est_refuse_avec_les_deux_chemins_qui_marchent) {
+    // LE SEUL ENDROIT DU DÉPÔT OÙ L'ON REFUSE DE LIRE : mieux vaut un message
+    // qui donne les chemins praticables qu'un import qui invente. Le test
+    // vérifie que le message les NOMME — sans quoi le refus serait un mur.
+    const std::vector<uint8_t> nImporteQuoi{0x01, 0x02, 0x03, 0x04, 0x05, 0x06};
+    std::string message;
+    try {
+        importDawProject(nImporteQuoi, "MonProjet.cpr");
+    } catch (const DawImportError& erreur) {
+        message = erreur.what();
+    }
+    VSM_ASSERT(!message.empty());
+    VSM_ASSERT(message.find("Archive de ") != std::string::npos);
+    VSM_ASSERT(message.find("MIDI Type 1") != std::string::npos);
+}
+
+VSM_TEST(un_format_inconnu_est_refuse_en_nommant_ce_qui_est_su_lire) {
+    const std::string rien = "un fichier texte quelconque, ni als ni flp ni xml";
+    const std::vector<uint8_t> octets(rien.begin(), rien.end());
+    std::string message;
+    try { importDawProject(octets, "truc.dat"); }
+    catch (const DawImportError& erreur) { message = erreur.what(); }
+    VSM_ASSERT(message.find("Ableton") != std::string::npos);
+    VSM_ASSERT(message.find("FL Studio") != std::string::npos);
+}

@@ -459,6 +459,239 @@ DawImportResult importFlStudio(const std::vector<uint8_t>& octets) {
     return resultat;
 }
 
+// ============================================================================
+// CUBASE — Track Archive XML
+// ============================================================================
+//
+// LE `.cpr` N'EST PAS LU, ET C'EST UNE DÉCISION ÉCRITE (§ 4 du CDC) : format
+// fermé, aucune documentation exploitable, et un lecteur écrit au jugé
+// marcherait sur un fichier pour casser sur le suivant. La Track Archive, elle,
+// est du XML que Cubase exporte lui-même.
+//
+// CE LECTEUR NE SUIT AUCUN CHEMIN FIXE, et c'est le point de conception. Une
+// Track Archive imbrique ses objets différemment selon la version et selon ce
+// qu'on exporte : suivre une hiérarchie exacte donnerait un lecteur qui marche
+// une fois. On cherche donc les objets qui portent la SIGNATURE d'une note — un
+// début, une longueur, une hauteur — où qu'ils soient. Un fichier de structure
+// inattendue rendra donc moins de notes, jamais des notes fausses, et le
+// rapport dira combien il en a trouvé.
+
+namespace {
+
+/// Dans une Track Archive, une valeur est un élément qui porte `name` et
+/// `value` : `<int name="Start" value="480"/>`, `<float …>`, `<string …>`.
+/// On la cherche parmi les ENFANTS DIRECTS, sans descendre : descendre
+/// prendrait la valeur d'un objet imbriqué pour celle de son parent.
+const XmlNode* valeurNommee(const XmlNode& parent, const std::string& nom) {
+    for (const auto& enfant : parent.children)
+        if (enfant->attribute("name") == nom && enfant->hasAttribute("value"))
+            return enfant.get();
+    return nullptr;
+}
+
+bool aLaValeur(const XmlNode& parent, const std::string& nom) {
+    return valeurNommee(parent, nom) != nullptr;
+}
+
+double valeurNombre(const XmlNode& parent, const std::string& nom, double defaut) {
+    const XmlNode* n = valeurNommee(parent, nom);
+    return n != nullptr ? nombre(n->attribute("value"), defaut) : defaut;
+}
+
+std::string valeurTexte(const XmlNode& parent, const std::string& nom,
+                        const std::string& defaut = {}) {
+    const XmlNode* n = valeurNommee(parent, nom);
+    return n != nullptr ? n->attribute("value") : defaut;
+}
+
+/// LA SIGNATURE D'UNE NOTE : un début, une longueur, et une hauteur. Cubase
+/// nomme la hauteur « PitchOrValue » sur les événements MIDI génériques et
+/// « Pitch » ailleurs ; on accepte les deux plutôt que de parier.
+bool ressembleAUneNote(const XmlNode& noeud) {
+    const bool hauteur = aLaValeur(noeud, "PitchOrValue") || aLaValeur(noeud, "Pitch");
+    return hauteur && aLaValeur(noeud, "Start") && aLaValeur(noeud, "Length");
+}
+
+/// Cherche récursivement les notes, en les rattachant à la piste dont le nom
+/// est le plus proche au-dessus d'elles dans l'arbre.
+void collecterLesNotes(const XmlNode& noeud, const std::string& nomHerite,
+                       std::vector<std::pair<std::string, Note>>& sortie,
+                       double diviseurDeTicks) {
+    std::string nom = nomHerite;
+    // Un objet qui porte un nom de piste le donne à tout ce qu'il contient.
+    const std::string sien = valeurTexte(noeud, "Name");
+    if (!sien.empty() && noeud.attribute("class").find("Track") != std::string::npos)
+        nom = sien;
+
+    if (ressembleAUneNote(noeud)) {
+        Note note;
+        const double debut = valeurNombre(noeud, "Start", 0.0) / diviseurDeTicks;
+        const double duree = valeurNombre(noeud, "Length", 0.0) / diviseurDeTicks;
+        const double hauteur = aLaValeur(noeud, "PitchOrValue")
+                             ? valeurNombre(noeud, "PitchOrValue", 60.0)
+                             : valeurNombre(noeud, "Pitch", 60.0);
+        const double velocite = valeurNombre(noeud, "Velocity", 100.0);
+        if (duree > 0.0 && hauteur >= 0.0 && hauteur <= 127.0) {
+            note.startTick = static_cast<::vsm::midi::Tick>(std::max<long long>(0, std::llround(debut)));
+            note.endTick = note.startTick
+                         + static_cast<::vsm::midi::Tick>(std::max<long long>(1, std::llround(duree)));
+            note.number = static_cast<uint8_t>(std::llround(hauteur));
+            note.velocity = static_cast<uint8_t>(std::clamp(velocite, 1.0, 127.0));
+            sortie.emplace_back(nom.empty() ? "Piste importée" : nom, note);
+        }
+        return;   // une note ne contient pas d'autres notes
+    }
+    for (const auto& enfant : noeud.children)
+        collecterLesNotes(*enfant, nom, sortie, diviseurDeTicks);
+}
+
+} // namespace
+
+DawImportResult importCubaseTrackArchive(const std::vector<uint8_t>& octets) {
+    if (octets.empty()) throw DawImportError("fichier vide");
+    const auto clair = Inflate::any(octets);
+    const std::string texte(clair.begin(), clair.end());
+
+    XmlDocument doc;
+    try {
+        doc = parseXml(texte);
+    } catch (const XmlError& erreur) {
+        throw DawImportError(std::string("archive de pistes illisible : ") + erreur.what());
+    }
+    if (!doc.root) throw DawImportError("archive de pistes vide");
+
+    DawImportResult resultat;
+    auto& rapport = resultat.report;
+    rapport.sourceFormat = "Cubase (archive de pistes)";
+    rapport.sourceVersion = doc.root->attribute("version", "non déclarée");
+    Project& projet = resultat.project;
+    projet.ticksPerQuarterNote = 480;
+    projet.title = "Import Cubase";
+
+    // LE TEMPO. Cubase l'écrit sous plusieurs noms selon la version ; on
+    // essaie les deux qu'on connaît et on DIT si on ne l'a pas trouvé, plutôt
+    // que d'imposer 120 en silence.
+    double bpm = 0.0;
+    for (const XmlNode* n : doc.root->findAll("float")) {
+        const std::string nom = n->attribute("name");
+        if (nom == "Tempo" || nom == "BPM") {
+            const double v = nombre(n->attribute("value"), 0.0);
+            if (v >= 20.0 && v <= 999.0) { bpm = v; break; }
+        }
+    }
+    projet.tempoMap.clearTempoChanges();
+    if (bpm > 0.0) {
+        projet.tempoMap.addTempoChange(0, static_cast<uint32_t>(std::llround(60000000.0 / bpm)));
+        rapport.note("Tempo : " + std::to_string(static_cast<int>(std::llround(bpm))) + " BPM");
+    } else {
+        projet.tempoMap.addTempoChange(0, 500000);   // 120 BPM
+        rapport.note("Tempo ABSENT de cette archive : 120 BPM retenu — une archive de pistes "
+                     "n'emporte pas toujours le tempo du projet, pensez à le régler");
+    }
+
+    // LA RÉSOLUTION. Cubase compte en ticks à 480 par noire dans ses archives ;
+    // si le fichier déclare autre chose, on s'y adapte.
+    double diviseur = 1.0;
+    for (const XmlNode* n : doc.root->findAll("int")) {
+        if (n->attribute("name") == "PPQ" || n->attribute("name") == "TicksPerQuarter") {
+            const double v = nombre(n->attribute("value"), 0.0);
+            if (v > 0.0) {
+                diviseur = v / static_cast<double>(projet.ticksPerQuarterNote);
+                rapport.note("Résolution déclarée : " + std::to_string(static_cast<int>(v))
+                             + " ticks par noire");
+            }
+            break;
+        }
+    }
+
+    std::vector<std::pair<std::string, Note>> notes;
+    collecterLesNotes(*doc.root, {}, notes, diviseur <= 0.0 ? 1.0 : diviseur);
+
+    // Regroupement par nom de piste, dans l'ordre d'apparition.
+    for (auto& [nomDePiste, note] : notes) {
+        Track* piste = nullptr;
+        for (auto& t : projet.tracks) if (t.name == nomDePiste) { piste = &t; break; }
+        if (piste == nullptr) {
+            Track neuve;
+            neuve.name = nomDePiste;
+            neuve.colorRgba = couleurDepuisIndice(static_cast<int>(projet.tracks.size()));
+            projet.tracks.push_back(std::move(neuve));
+            piste = &projet.tracks.back();
+        }
+        piste->notes.push_back(note);
+        ++rapport.notesImported;
+    }
+    for (auto& piste : projet.tracks) {
+        std::sort(piste.notes.begin(), piste.notes.end(),
+                  [](const Note& a, const Note& b) { return a.startTick < b.startTick; });
+        ++rapport.midiTracksImported;
+        ++rapport.tracksWithoutInstrument;
+        rapport.note("Piste « " + piste.name + " » : " + std::to_string(piste.notes.size())
+                     + " note(s), AUCUN instrument assigné — le VST du projet d'origine "
+                       "n'existe pas ici");
+    }
+
+    if (projet.tracks.empty())
+        rapport.note("ATTENTION : aucune note trouvée. Soit cette archive ne contient que des "
+                     "pistes audio ou vides, soit sa structure diffère de celles que ce lecteur "
+                     "reconnaît — dans ce cas, exporter en MIDI Type 1 donnera un meilleur "
+                     "résultat");
+    rapport.note("Total : " + std::to_string(rapport.midiTracksImported) + " piste(s), "
+                 + std::to_string(rapport.notesImported) + " note(s)");
+    return resultat;
+}
+
+DawImportResult importCubaseTrackArchiveFile(const std::string& chemin) {
+    std::ifstream fichier(chemin, std::ios::binary);
+    if (!fichier) throw DawImportError("fichier introuvable : " + chemin);
+    const std::vector<uint8_t> octets((std::istreambuf_iterator<char>(fichier)),
+                                      std::istreambuf_iterator<char>());
+    return importCubaseTrackArchive(octets);
+}
+
+DawImportResult importDawProject(const std::vector<uint8_t>& octets,
+                                 const std::string& nomDuFichier) {
+    if (octets.empty()) throw DawImportError("fichier vide");
+
+    // LE `.cpr` EST RECONNU POUR ÊTRE REFUSÉ EN EXPLIQUANT. C'est le seul
+    // endroit du dépôt où l'on refuse de lire quelque chose : mieux vaut un
+    // message qui donne les deux chemins praticables qu'un import qui invente.
+    const bool extensionCpr = nomDuFichier.size() >= 4
+        && nomDuFichier.compare(nomDuFichier.size() - 4, 4, ".cpr") == 0;
+    if (extensionCpr)
+        throw DawImportError(
+            "les projets Cubase (.cpr) ne peuvent pas être lus : le format est fermé et sans "
+            "documentation, et un lecteur écrit au jugé donnerait un import faux sans le dire. "
+            "Deux chemins fonctionnent depuis Cubase : « Fichier ▸ Exporter ▸ Archive de "
+            "pistes » (.xml), qui garde les pistes, leurs noms et leurs notes ; ou l'export "
+            "MIDI Type 1 (.mid), que VSM Studio lit déjà.");
+
+    if (octets.size() >= 4 && octets[0] == 'F' && octets[1] == 'L'
+        && octets[2] == 'h' && octets[3] == 'd')
+        return importFlStudio(octets);
+
+    // Ableton et Cubase sont tous deux du XML (le premier gzippé) : on
+    // décompresse une fois, et c'est l'élément racine qui tranche.
+    const auto clair = Inflate::any(octets);
+    const std::string texte(clair.begin(), clair.end());
+    if (texte.find("<Ableton") != std::string::npos) return importAbletonLive(octets);
+    if (texte.find("tracklist") != std::string::npos || texte.find("<tracklist2") != std::string::npos
+        || texte.find("MMidiPartEvent") != std::string::npos)
+        return importCubaseTrackArchive(octets);
+
+    throw DawImportError("format non reconnu : ce fichier n'est ni un projet Ableton Live (.als), "
+                         "ni un projet FL Studio (.flp), ni une archive de pistes Cubase (.xml)");
+}
+
+DawImportResult importDawProjectFile(const std::string& chemin) {
+    std::ifstream fichier(chemin, std::ios::binary);
+    if (!fichier) throw DawImportError("fichier introuvable : " + chemin);
+    const std::vector<uint8_t> octets((std::istreambuf_iterator<char>(fichier)),
+                                      std::istreambuf_iterator<char>());
+    return importDawProject(octets, chemin);
+}
+
+
 DawImportResult importFlStudioFile(const std::string& chemin) {
     std::ifstream fichier(chemin, std::ios::binary);
     if (!fichier) throw DawImportError("fichier introuvable : " + chemin);
