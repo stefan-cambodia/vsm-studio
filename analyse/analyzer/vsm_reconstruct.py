@@ -483,6 +483,16 @@ def write_reconstruction_report(
                 # retenue -- la seule des deux qui dise ce qu'on entendra.
                 # `distance` juste au-dessus porte sur une note.
                 "trackDistance": stem.track_distance,
+                # LE PROFIL FAIT LE SON, DONC IL VA DANS LE RAPPORT. Sur
+                # `vsm.multisample`, le profil décide de tout : deux courses
+                # qui retiennent « FR3-Saw-Lead » et « GU-Nylon-Guitar »
+                # rendent des morceaux sans rapport l'un avec l'autre, et
+                # leurs rapports étaient pourtant indiscernables — le champ
+                # n'était pas publié du tout. Une reconstruction dont on ne
+                # peut pas dire ce qui l'a produite n'est pas reproductible,
+                # et c'est le contraire de ce que ce fichier existe pour
+                # garantir. Vide pour les machines qui n'en ont pas.
+                "profile": stem.profile,
                 "trackArbitration": [
                     {"machine": machine, "origin": origin, "distance": distance}
                     for machine, origin, distance in stem.track_considered

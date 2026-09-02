@@ -1483,6 +1483,11 @@ def aligner_rapport_sur_projet(chantier: Chantier, pistes_export: List[ExportTra
         vraie = _distance_au_stem(stem, piste_finale.machine)
         if vraie is not None:
             stem.distance = vraie
+        # ET LE PROFIL, pour la même raison encore : `vsm.multisample`
+        # remplacée par une machine sans profil laisserait « FR3-Saw-Lead »
+        # publié sous le nom de la nouvelle. Le rapport doit décrire le projet
+        # qu'on écrit, champ par champ, sans exception.
+        stem.profile = piste_finale.profile
     # LA BATTERIE AUSSI : le verdict du mélange peut lui avoir rendu une autre
     # boîte, et le rapport doit décrire celle qu'on écrit.
     rapport_batterie = chantier.rapport_batterie

@@ -599,7 +599,7 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 1 361 tests moteur + 64 tests d'analyse, tous verts
+### Bilan actuel : 1 361 tests moteur + 68 tests d'analyse, tous verts
 
 - **158 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des
