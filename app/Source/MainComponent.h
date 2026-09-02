@@ -86,8 +86,14 @@ public:
     /// même raison que `applyViewCommand` : ce qu'on a besoin de regarder est
     /// presque toujours un projet précis — une machine dans son rack, un
     /// arrangement — et le sélecteur de machine ne s'atteint qu'à la souris.
-    void openProjectFolderForCapture(const juce::File& dossier) {
+    /// Ouvre un projet pour l'autoportrait, et DIT si elle n'y arrive pas :
+    /// le mode capture est piloté depuis un terminal, où une alerte graphique
+    /// ne se voit pas.
+    bool openProjectFolderForCapture(const juce::File& dossier) {
+        const auto lu = vsm::interchange::loadProjectBundle(dossier.getFullPathName().toStdString());
+        if (!lu.success) return false;
         loadProjectBundleFromFolder(dossier);
+        return true;
     }
 
     // juce::MenuBarModel

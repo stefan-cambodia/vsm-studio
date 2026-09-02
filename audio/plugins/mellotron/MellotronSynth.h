@@ -231,7 +231,7 @@ public:
     const vsm::audio::plugin::ParameterList& parameterList() const override { return parameterList_; }
     vsm::audio::plugin::PresetState saveState() const override;
     void loadState(const vsm::audio::plugin::PresetState& state) override;
-    const char* machineName() const override { return "Tape (la bande qui finit)"; }
+    const char* machineName() const override { return "Mellotron (la bande qui finit)"; }
     int activeVoiceCount() const override { return voiceManager_.activeVoiceCount(); }
 
 private:

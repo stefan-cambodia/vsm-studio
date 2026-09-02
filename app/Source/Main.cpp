@@ -83,7 +83,20 @@ public:
             if (const char* projet = std::getenv("VSM_PROJET"); projet != nullptr && *projet) {
                 const juce::File dossier =
                     juce::File::getCurrentWorkingDirectory().getChildFile(projet);
-                if (dossier.isDirectory()) content->openProjectFolderForCapture(dossier);
+                // PANNE MUETTE INTERDITE, Y COMPRIS DANS L'OUTIL QUI SERT À
+                // VÉRIFIER. Un projet illisible n'ouvrait qu'une alerte
+                // graphique -- que la capture, prise deux secondes plus tard
+                // sur le composant principal, ne montre même pas. On croyait
+                // donc regarder son projet en regardant le projet vide, et
+                // rien ne le disait. Ce mode est piloté depuis un terminal :
+                // c'est au terminal qu'il doit se plaindre.
+                if (!dossier.isDirectory())
+                    std::fputs(("VSM_PROJET : dossier introuvable — "
+                                + dossier.getFullPathName().toStdString() + "\n").c_str(), stderr);
+                else if (!content->openProjectFolderForCapture(dossier))
+                    std::fputs(("VSM_PROJET : projet illisible dans "
+                                + dossier.getFullPathName().toStdString()
+                                + " — la capture montrera le projet par défaut\n").c_str(), stderr);
             }
             if (const char* vues = std::getenv("VSM_VUE"); vues != nullptr && *vues) {
                 juce::StringArray liste;

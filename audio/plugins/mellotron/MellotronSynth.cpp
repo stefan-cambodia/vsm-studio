@@ -142,6 +142,6 @@ void MellotronSynth::loadState(const PresetState& state) {
         if (id < params_.size()) params_[id].store(value, std::memory_order_relaxed);
 }
 
-VSM_REGISTER_SYNTH_PLUGIN("vsm.mellotron", "Tape (la bande qui finit)", MellotronSynth);
+VSM_REGISTER_SYNTH_PLUGIN("vsm.mellotron", "Mellotron (la bande qui finit)", MellotronSynth);
 
 } // namespace vsm::plugins::mellotron
