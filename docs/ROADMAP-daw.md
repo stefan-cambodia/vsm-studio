@@ -2950,9 +2950,21 @@ sont des métiers entiers. Les nommer ici évite d'y revenir à chaque relecture
   besoin, et aucune banque n'est commise dans le dépôt.
 - **Le nuage, la collaboration, les comptes.** Rien ne les demande, et chacun
   apporte un pan de problèmes sans améliorer une seule mesure.
-- **La compatibilité avec les projets de Cubase, Live ou FL.** Lire un `.flp` ou
-  un `.als` est de la rétro-ingénierie sans fin. Le MIDI et les stems sont les
-  formats d'échange, et ils sont ouverts.
+- ~~**La compatibilité avec les projets de Cubase, Live ou FL.**~~ **CE REFUS
+  EST LEVÉ (02/09/2026), et il faut dire pourquoi il était mal posé.** Il tenait
+  en une phrase — « lire un `.flp` ou un `.als` est de la rétro-ingénierie sans
+  fin » — qui mélangeait trois formats très différents. Un `.als` est du **XML
+  gzippé et lisible**, dont les balises se nomment elles-mêmes (`MidiTrack`,
+  `MidiNoteEvent`) : il n'y a là aucune rétro-ingénierie, seulement un
+  décompresseur à écrire. Un `.flp` est binaire, mais sa STRUCTURE se vérifie
+  toute seule — un découpage d'événements faux n'atteint pas la fin du fichier
+  exactement — et seul le SENS de ses identifiants est reconstitué, ce que le
+  rapport d'import chiffre poste par poste. Le seul format où la phrase était
+  juste est le `.cpr` de Cubase, et **c'est le seul qu'on ne lit pas** : on
+  explique à la place, en nommant les deux chemins qui marchent.
+  Voir `docs/CDC-import-daw.md`. Le refus valait donc pour un format sur trois,
+  et le tenir pour les trois privait le musicien de ses projets Live et FL sans
+  raison mesurée.
 - **Compiler `vsm.cone` et `vsm.flute`.** Elles sont dans l'arbre avec leurs
   tests et hors du `CMakeLists`. Ce n'est pas un oubli : ce sont deux **résultats
   négatifs** conservés et documentés (ARCHITECTURE.md § 44 pour la flûte, qui ne

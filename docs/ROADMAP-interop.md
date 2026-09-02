@@ -255,3 +255,22 @@ SILENCIEUSE — la piste mélodique principale du morceau — et sort avec le co
 de substitution silencieuse ») ; il reste qu'un rendu réussi peut être un rendu
 amputé. Le binaire à employer est `build/tools/vsm-render`, celui que
 `find_vsm_render` retient, et c'est celui que le README nomme.
+
+**LA MÊME LEÇON, UNE SECONDE FOIS ET PLUS CHÈRE (02/09/2026), parce qu'elle
+était restée une consigne.** Le paragraphe ci-dessus disait quoi faire — prendre
+`build/tools/vsm-render` — et c'est précisément ce que faisaient les courses
+v13 et v14. Le bon binaire, donc ; mais compilé à 08:48, alors que sept machines
+ont été écrites entre 09:13 et 10:17. Les deux courses ont annoncé un commit
+dont le vivier compte quarante-sept machines mélodiques et n'en ont vu quarante
+et une, sans que rien ne le dise. **Un binaire périmé ne se signale toujours pas
+comme périmé, et il ne le fera jamais tant que la parade est une chose à se
+rappeler.** Une consigne qu'on doit garder en tête est une consigne qu'on oublie
+sous charge — d'autant plus qu'ici il n'y a pas d'erreur à commettre : il suffit
+d'écrire une machine et de lancer une mesure, deux gestes justes, pour que le
+résultat soit faux.
+
+Elle devient donc une **mesure imprimée** : `reconstruire.py` inscrit un bloc
+`moteur` dans la provenance de `rapport.json` — chemin, date de compilation,
+taille, nombre de machines déclarées — et se plaint au démarrage, en nommant le
+fichier fautif, dès que le binaire est plus vieux qu'une source de `audio/`,
+`core/` ou `interchange/`. Voir `analyse/tests/test_provenance_moteur.py`.

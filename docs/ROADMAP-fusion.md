@@ -2629,6 +2629,47 @@ d'autre. La question devient donc exactement celle de H13 : le classement au
 stem, qui décide qui franchit, est-il assez fiable pour ce tri — sachant qu'il
 peut se tromper d'un facteur deux (mesuré sur `vsm.cs80`) ?
 
+**LE MOTEUR N'ÉTAIT PAS DANS LA PROVENANCE, ET DEUX COURSES L'ONT PAYÉ
+(02/09/2026).** En préparant v11 il a fallu établir le vivier de v10 et celui
+de v7. C'est en les comptant qu'un écart est apparu : au commit de v13
+(`fe39a4d`) le dépôt porte **quarante-sept** machines mélodiques, et la course
+v13 en annonce **quarante et une**. La raison tient en deux horodatages :
+`build/tools/vsm-render` avait été compilé à **08:48**, v13 s'est terminée à
+**10:12** et v14 à **11:05**, et sept machines ont été écrites entre 09:13 et
+10:17. **Les deux courses ont donc tourné avec un moteur qui ignorait sept
+machines de leur propre commit, et rien ne le disait.**
+
+*Ce que cela n'invalide pas* : le verdict de **H13**. v13 et v14 partagent ce
+même binaire ; la seule variable entre elles reste `machinesAuMelange` (3 puis
+6), et le gain de −9,6 % tient. *Ce que cela invalide* : le NOMBRE écrit à côté.
+« 41 candidates » n'est pas « le vivier au commit fe39a4d », c'est « le vivier
+du binaire de 08:48 ». Les deux phrases se ressemblent et une seule est vraie.
+
+*Pourquoi cela pouvait arriver.* `rapport.json` inscrivait le commit du dépôt —
+et même son `+` quand l'arbre est modifié —, mais **seulement pour `analyse/`**.
+Or l'audio ne sort pas de `analyse/` : il sort d'un binaire C++ qui peut dater
+de n'importe quand. Le § « Mesure » du cahier des charges veut que *toute option
+qui conditionne le résultat aille dans la provenance* ; le moteur n'est pas une
+option, c'est l'instrument lui-même, et il n'y était pas.
+
+*La parade, livrée le même jour.* La provenance reçoit un bloc **`moteur`** —
+chemin, date de compilation, taille, nombre de machines déclarées : quatre
+champs qui suffisent à voir que deux rapports n'ont pas été rendus par le même
+moteur. Et la chaîne **se plaint au démarrage** dès que le binaire est plus
+vieux qu'un fichier de `audio/`, `core/` ou `interchange/`, en nommant le
+fichier fautif ; un changement dans `app/` ne déclenche rien, sans quoi
+l'avertissement deviendrait un bruit de fond qu'on apprend à ignorer. Cinq
+tests dans `analyse/tests/test_provenance_moteur.py`, vérifiés contre une
+implémentation cassée.
+
+*La leçon, et elle était déjà écrite ailleurs.* Le § 9 de
+`docs/ROADMAP-interop.md` dit depuis longtemps qu'**un binaire périmé ne se
+signale pas comme périmé**. Elle y était consignée comme une consigne
+d'exploitation — « penser à recompiler » —, ce qui ne suffit jamais : une
+consigne qu'on doit se rappeler est une consigne qu'on oublie sous charge. Elle
+devient ici une **mesure**, imprimée et publiée, et c'est la seule forme qui
+tienne.
+
 **LE TÉMOIN v11 EST DÉSORMAIS POSSIBLE (02/09/2026).** Il ne l'était pas :
 réduire le vivier demandait soit de lister à la main les trente-quatre
 machines qu'on garde — une liste qui ment dès qu'une machine arrive —, soit
@@ -2649,6 +2690,25 @@ MÊME binaire pour les deux, ce qui évite de dépendre du moteur de v10 :
 # 32 candidates, un tour  (le vivier de v7)
 --machines-exclues vsm.chebyshev,vsm.scanned,vsm.cs80,vsm.modal --tours-verdict 1
 ```
+
+**CES DEUX LISTES ONT VIEILLI EN UNE JOURNÉE, et c'est instructif.** Elles
+étaient justes le 02/09 au matin, quand le vivier comptait trente-six machines
+mélodiques : trente-six moins deux font bien trente-quatre. Le soir même il en
+compte **quarante-huit**. Une liste d'exclusions énoncée en extension est un
+nombre déguisé en noms : elle dit « toutes sauf celles-ci » à un moment où l'on
+sait ce que « toutes » veut dire, et elle ment dès que le parc bouge — le même
+défaut, exactement, que la liste en compréhension qu'on avait refusé d'écrire.
+
+Les listes réellement courues sont donc **recalculées** à partir des commits :
+le vivier de v10 est l'ensemble des machines mélodiques d'aujourd'hui qui
+existaient déjà au commit `883d5e6`, plus `vsm.chebyshev` qui y avait un dossier
+sans être candidate ; celui de v7, les mêmes moins `vsm.cs80` et `vsm.modal`.
+Quatorze exclusions d'un côté, seize de l'autre, et la chaîne affiche le compte
+obtenu — 34 et 32 — de sorte que le témoin se vérifie lui-même. Les scripts sont
+`reconstruction/travail/course-v11a.sh` et `course-v11b.sh`, lancés en série par
+`paire-v11.sh`.
+
+
 
 Si les deux rendent la même distance, le vivier élargi ne coûte rien même
 sans point fixe, et la règle du § 7 du CDC machines-manquantes tient sans
