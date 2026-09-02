@@ -414,6 +414,7 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
             # deux rapports qui n'ont pas le même réglage ne se comparent pas.
             "voixParStem": args.voix_par_stem,
             "batterieParPiece": args.batterie_par_piece,
+            "voixTeteChoeurs": args.voix_tete_choeurs,
         },
         # Les modèles CONSULTÉS, avec leur date d'entraînement -- ou « aucun »,
         # qui est une information et non une absence d'information.
@@ -494,6 +495,14 @@ def construire_parseur() -> argparse.ArgumentParser:
     parseur.add_argument("--machines", default="",
                          help="liste de machines candidates, séparées par des virgules "
                               "(défaut : toutes les mélodiques du moteur)")
+    parseur.add_argument("--voix-tete-choeurs", action="store_true",
+                         help="séparer la voix de TÊTE (le centre du champ stéréo) des CHŒURS "
+                              "(le large) en deux pistes audio dont la somme redonne "
+                              "exactement le stem (§ 4.5 du CDC détection-multipiste). Le "
+                              "séparateur ne reconnaît pas des voix : il sépare le centre du "
+                              "large, convention de mixage presque universelle, et refuse EN "
+                              "LE DISANT un stem mono ou sans largeur. L'effet sur la "
+                              "distance n'est pas mesuré (campagnes en pause)")
     parseur.add_argument("--batterie-par-piece", action="store_true",
                          help="une piste PAR PIÈCE détectée (kick, hihat, caisse…) au lieu "
                               "d'une piste de kit unique — la parité des pistes pour la "
@@ -868,28 +877,79 @@ def charger_classifieur_frappes(args: argparse.Namespace, moteur: VsmEngine):
 # ---------------------------------------------------------------------------
 
 def reporter_voix(nom: str, chemin: Path, sortie: Path,
-                   par_sampler: bool = False) -> Optional[Tuple[ExportTrack, np.ndarray]]:
-    """Le stem vocal, REPORTÉ tel quel — sur une piste audio.
+                   par_sampler: bool = False,
+                   tete_et_choeurs: bool = False) -> List[Tuple[ExportTrack, np.ndarray]]:
+    """Le stem vocal, REPORTÉ tel quel — sur une piste audio (ou deux).
 
     La voix ne se synthétise pas — le § 6 de la feuille de route le dit depuis
     le début, et chercher un patch dessus produisait un chiffre (obx, d=0,196
     sur Children) qui ne voulait rien dire : ce n'est pas parce qu'un OB-X
     approche le spectre d'une voix qu'il chante. C'est dit pour ce que c'est.
+
+    `tete_et_choeurs` (--voix-tete-choeurs, § 4.5 du CDC multipiste) sépare la
+    voix de TÊTE (le centre du champ stéréo) des CHŒURS (le large), en deux
+    pistes audio dont la somme redonne EXACTEMENT le stem. La séparation lit
+    le fichier STÉRÉO elle-même : le chargeur mono de la chaîne replie
+    précisément ce qu'elle exploite. Trois refus possibles, tous DITS : stem
+    mono, largeur sous le seuil, ou mode sampler (une note par échantillon —
+    deux échantillons feraient deux notes, pas deux voix).
     """
     audio = charger_audio(chemin)
     if par_sampler:
+        if tete_et_choeurs:
+            print(f"      {nom:8s} : tête/chœurs IGNORÉ avec --voix-sampler — "
+                  f"le report par sampler ne porte qu'un échantillon")
         piste = vocal_sampler_track(audio, SAMPLE_RATE, sortie / "samples", name="Voix")
         moyen = "sampler"
     else:
+        if tete_et_choeurs:
+            from analyzer.vsm_voix import lire_wav_stereo, separer_tete_et_choeurs
+            stereo = lire_wav_stereo(chemin)
+            separation = None
+            if stereo is None:
+                print(f"      {nom:8s} : tête/chœurs impossible — le stem vocal est MONO, "
+                      f"il n'y a pas de champ stéréo à séparer")
+            else:
+                gauche, droite, _taux = stereo
+                separation = separer_tete_et_choeurs(gauche, droite)
+                if separation is None:
+                    print(f"      {nom:8s} : tête/chœurs refusé — largeur stéréo sous le "
+                          f"seuil, une piste « chœurs » quasi vide passerait pour une partie")
+            if separation is not None:
+                from analyzer.vsm_voix import ecrire_wav_stereo
+                dossier = sortie / "samples"
+                dossier.mkdir(parents=True, exist_ok=True)
+                ecrire_wav_stereo(dossier / "voix-tete.wav", separation.tete, SAMPLE_RATE)
+                ecrire_wav_stereo(dossier / "voix-choeurs.wav", separation.choeurs, SAMPLE_RATE)
+                et = float(np.sum(separation.tete ** 2))
+                ec = float(np.sum(separation.choeurs ** 2))
+                total = max(1e-12, et + ec)
+                print(f"      {nom:8s} : voix SÉPARÉE tête/chœurs par le champ stéréo — "
+                      f"tête {100 * et / total:.0f} %, chœurs {100 * ec / total:.0f} % "
+                      f"(part latérale {separation.part_laterale:.2f}) ; "
+                      f"tête + chœurs = stem, exactement")
+                pistes = []
+                for etiquette, fichier, canal in (("Voix · tête", "voix-tete.wav", separation.tete),
+                                                   ("Voix · chœurs", "voix-choeurs.wav",
+                                                    separation.choeurs)):
+                    mono = canal.mean(axis=1)
+                    piste_voix = vocal_audio_track(mono, SAMPLE_RATE, dossier,
+                                                    name=etiquette, nom_fichier=fichier)
+                    if piste_voix is not None:
+                        pistes.append((piste_voix, mono))
+                if len(pistes) == 2:
+                    return pistes
+                print(f"      {nom:8s} : une des deux voix est vide après séparation — "
+                      f"report intégral à la place")
         piste = vocal_audio_track(audio, SAMPLE_RATE, sortie / "samples", name="Voix")
         moyen = "piste audio"
     if piste is None:
         print(f"      {nom:8s} : stem vocal vide, piste ignorée")
-        return None
+        return []
     duree = audio.size / SAMPLE_RATE
     print(f"      {nom:8s} : {moyen}, report intégral ({duree:.0f} s) "
           f"— la voix n'est pas reconstruite, elle est reportée")
-    return piste, audio
+    return [(piste, audio)]
 
 
 def resume_des_axes(affine) -> str:
@@ -1392,9 +1452,9 @@ def reconstruire_les_stems(ctx: Contexte, pistes: Dict[str, Path]) -> Chantier:
     chantier = Chantier()
     for nom, chemin in sorted(pistes.items()):
         if nom == "vocals" and not args.sans_sampler:
-            voix = reporter_voix(nom, chemin, ctx.sortie, par_sampler=ctx.args.voix_sampler)
-            if voix is not None:
-                piste, audio = voix
+            for piste, audio in reporter_voix(nom, chemin, ctx.sortie,
+                                              par_sampler=ctx.args.voix_sampler,
+                                              tete_et_choeurs=args.voix_tete_choeurs):
                 chantier.pistes_directes.append(piste)
                 chantier.audio_par_stem[piste.name] = audio
             continue

@@ -1312,6 +1312,7 @@ def vocal_audio_track(
     dossier_samples: Path,
     name: str = "Voix",
     relative_prefix: str = "samples",
+    nom_fichier: str = "voix.wav",
 ) -> Optional[ExportTrack]:
     """
     Le stem vocal, posé sur une PISTE AUDIO.
@@ -1334,14 +1335,14 @@ def vocal_audio_track(
     if float(np.max(np.abs(audio))) < 1e-4:
         return None
     dossier_samples.mkdir(parents=True, exist_ok=True)
-    chemin = dossier_samples / "voix.wav"
+    chemin = dossier_samples / nom_fichier
     _write_wav(chemin, audio, sample_rate, gain=1.0)
     return ExportTrack(
         name=name,
         machine="",
         parameters={},
         notes=[],
-        audio_path=f"{relative_prefix}/voix.wav",
+        audio_path=f"{relative_prefix}/{nom_fichier}",
         audio_sample_rate=float(sample_rate),
         audio_frames=int(audio.size),
         audio_channels=1,

@@ -132,10 +132,21 @@ déplacent rien, et la stabilité par empreintes est démontrée en course.
    distance n'est PAS mesuré (campagnes en pause) — chaque pièce devient une
    instance séparée de la machine, les pièces ne se volent plus de voix, et
    ce changement de rendu attendra sa mesure.
-5. **La voix** : `vocals` (22,7 %) part d'un bloc au sampler — un chœur et
-   une voix de tête restent une piste. Non couvert, dit, pas nié ; c'est le
-   morceau le plus dur (séparer des voix DANS un stem de voix demande un
-   modèle qu'on n'a pas).
+5. **La voix — CÂBLÉE (03/09/2026)** : `--voix-tete-choeurs` sépare la voix
+   de TÊTE des CHŒURS **par le champ stéréo** (extraction de centre par
+   masque spectral, `analyzer/vsm_voix.py`) — le séparateur ne reconnaît pas
+   des voix, il sépare le centre du large, convention de mixage presque
+   universelle, et se nomme pour ça. Garanties : tête + chœurs = stem
+   EXACTEMENT (le complément temporel — erreur max 2,8·10⁻¹⁷ mesurée sur le
+   vrai stem) ; une voix mono ou sans largeur n'est PAS découpée, en le
+   disant. Mesuré sur *Us and Them* (stem 6s) : part latérale 0,18, partage
+   tête 74 % / chœurs 26 %, 22,7 s de calcul pour 470 s d'audio. 5 tests —
+   dont un qui a coûté sa leçon : la resynthèse d'un spectre MASQUÉ explose
+   au bord du signal là où l'identité est exacte (|r| = 2 132 sur 64
+   échantillons), d'où le rembourrage d'une fenêtre de zéros. Option, pas
+   défaut ; la QUALITÉ de la séparation (fuites de réverbération de la tête
+   dans les chœurs, notamment) ne se juge qu'à l'OREILLE — les deux wav
+   d'essai attendent une écoute.
 6. **Le DAW à l'échelle de la parité — REGARDÉ à 64 pistes (03/09/2026)** :
    un FLP d'essai à 64 canaux (16 familles × 4) importé et photographié.
    L'arrangement défile et reste lisible à 150 %, la console défile
