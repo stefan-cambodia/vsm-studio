@@ -734,6 +734,12 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     else if (nom == "sans-rack")   menuItemSelected(kMenuViewSynthRack, 5);
     else if (nom == "sans-mixer")  menuItemSelected(kMenuViewMixer, 5);
     else if (nom == "flottant")    menuItemSelected(kMenuViewSingleWindow, 5);
+    // Ferme l'écran de rapport (import ou reconstruction) : VSM_IMPORT le
+    // montre, et sans ce jeton l'arrangement d'un projet importé ne serait
+    // photographiable qu'à travers lui. Pas dans le menu Affichage — le
+    // rapport a son bouton Fermer et Échap — mais l'autoportrait n'a ni
+    // souris ni clavier.
+    else if (nom == "sans-rapport") importReport_.setVisible(false);
 }
 
 void MainComponent::dockPanels() {

@@ -136,11 +136,17 @@ déplacent rien, et la stabilité par empreintes est démontrée en course.
    une voix de tête restent une piste. Non couvert, dit, pas nié ; c'est le
    morceau le plus dur (séparer des voix DANS un stem de voix demande un
    modèle qu'on n'a pas).
-6. **Le DAW à l'échelle de la parité** : l'application est vérifiée à huit
-   pistes ; l'objectif en promet soixante-quatre. La liste de pistes, la
-   console, l'arrangement et le rendu doivent être REGARDÉS et mesurés à 64
-   pistes (fluidité, défilement, lisibilité à l'échelle 150 %) — un projet
-   d'essai à 64 pistes se fabrique par l'import FLP, sans attendre la chaîne.
+6. **Le DAW à l'échelle de la parité — REGARDÉ à 64 pistes (03/09/2026)** :
+   un FLP d'essai à 64 canaux (16 familles × 4) importé et photographié.
+   L'arrangement défile et reste lisible à 150 %, la console défile
+   horizontalement (MASTER épinglé à droite, `MixerComponent` a son
+   viewport), la liste de pistes défile, le rapport d'import à 64 lignes
+   défile ; l'import et l'ouverture sont instantanés. VSM_VUE gagne le jeton
+   `sans-rapport` pour photographier l'arrangement derrière l'écran de
+   rapport. CE QUI RESTE NON ÉPROUVÉ, et c'est dit : la charge AUDIO de 64
+   machines instanciées et jouées à la fois — les pistes d'essai n'ont pas
+   d'instrument, et l'épreuve du rendu à 64 machines attend un projet qui
+   les assigne.
 7. **Un deuxième morceau** : tout ce chantier est mesuré sur *Us and Them*.
    Avant de changer un défaut de la chaîne, le vérifier sur un second
    original (les MIDI de référence de ~/Téléchargements peuvent servir de
