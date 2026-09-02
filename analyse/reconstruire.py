@@ -72,8 +72,9 @@ from analyzer.vsm_mix_verdict import (MixAlternative, keep_what_helps_the_mix,  
                                       settle_verdict)
 from analyzer.vsm_project_export import (DEFAULT_TRACK_VOLUME, ExportNote, ExportTrack,  # noqa: E402
                                           write_project_bundle)
-from analyzer.vsm_reconstruct import (StemNote, StemReconstruction, melodic_machines,  # noqa: E402
-                                      reconstruct_stem, reconstruction_distance,
+from analyzer.vsm_reconstruct import (StemNote, StemReconstruction, densite_du_stem,  # noqa: E402
+                                      melodic_machines, reconstruct_stem,
+                                      reconstruction_distance, stem_fourre_tout,
                                       write_reconstruction_report)
 from analyzer.vsm_track_arbitration import (ORIGINE_USINE, TrackCandidate, arbitrate_on_track,  # noqa: E402
                                              build_candidates, runners_up)
@@ -1286,6 +1287,13 @@ def reconstruire_stem_melodique(ctx: Contexte, nom: str, chemin: Path) -> Option
     )
     print(f"      {nom:8s} : {stem.machine:14s} d={stem.distance:.3f} "
           f"({len(notes)} notes, {time.perf_counter()-depart:.0f} s) — {podium}")
+    # PANNE MUETTE INTERDITE, Y COMPRIS SUR CE QUE LA CHAÎNE PRODUIT. Un stem
+    # qui porte plusieurs parties reçoit UNE machine ; c'est un choix, il doit
+    # se dire. Sur `other` d'Us and Them : 62 % de l'énergie du morceau, 4,8
+    # notes simultanées en moyenne, 66 demi-tons, joués par vsm.tb303.
+    plainte = stem_fourre_tout(densite_du_stem(stem.notes))
+    if plainte:
+        print(f"      {nom:8s} : {plainte}")
 
     resultat = ResultatMelodique(stem=stem, audio=audio)
     if not args.sans_arbitrage:

@@ -2629,6 +2629,113 @@ d'autre. La question devient donc exactement celle de H13 : le classement au
 stem, qui décide qui franchit, est-il assez fiable pour ce tri — sachant qu'il
 peut se tromper d'un facteur deux (mesuré sur `vsm.cs80`) ?
 
+## § 5 quaterdecies. LE PLAFOND DE QUATRE PISTES — un défaut de conception, signalé par l'utilisateur (02/09/2026)
+
+**LE CONSTAT, ET IL NE VIENT PAS D'UNE MESURE MAIS D'UNE ÉCOUTE.** « Les
+originaux contiennent bien plus que 4 pistes, or notre analyse n'en fait jamais
+plus de 4. » C'est exact, et aucun des chiffres que cette feuille accumule
+depuis onze versions ne le disait — parce qu'aucun ne le regardait.
+
+### Les nombres, mesurés sur *Us and Them* le 02/09/2026
+
+| Stem | Part de l'énergie | Notes | Polyphonie moyenne | Max | Ambitus | Machine retenue |
+|---|---|---|---|---|---|---|
+| `other` | **62,1 %** | 4 642 | **4,83** | 11 | **66 demi-tons** | `vsm.tb303` |
+| `vocals` | 20,8 % | — | — | — | — | sampler |
+| `drums` | 13,0 % | 2 282 | 0,24 | 2 | 6 | `vsm.drums` |
+| `bass` | 4,1 % | 481 | 0,50 | 3 | 47 | `vsm.vocal` |
+
+Autrement dit : **les deux tiers du morceau sont sur une seule piste, jouée par
+une seule machine, qui doit tenir cinq notes simultanées sur cinq octaves et
+demie.** Sur ce morceau-là, cette machine est un TB-303 — un synthétiseur
+monophonique de ligne de basse acide. Le piano électrique, l'orgue, le
+saxophone et les guitares de Pink Floyd passent tous par lui.
+
+### Pourquoi ce n'était pas visible
+
+La chaîne rend **une piste par stem**, et `htdemucs` rend quatre stems : `bass`,
+`drums`, `other`, `vocals`. Le quatre n'est écrit nulle part dans notre code —
+`reconstruire_les_stems` itère sur ce qu'on lui donne et ne traite spécialement
+que `vocals` et `drums` — il est **hérité du modèle de séparation**, et il n'a
+jamais été interrogé.
+
+Surtout : **la distance globale ne pouvait pas le voir.** Quatre instruments
+fondus en un sonnent « à peu près » ; la métrique compare des spectres, et un
+spectre additionné ressemble à un spectre additionné. Une version qui
+séparerait mieux pourrait même mesurer PLUS LOIN tout en rendant un projet
+enfin retravaillable. Onze versions ont donc optimisé un nombre qui ne
+regardait pas la chose la plus importante.
+
+C'est une panne muette d'un genre nouveau : elle ne porte pas sur ce que la
+chaîne mesure, mais sur **ce qu'elle produit**.
+
+### Ce qui est fait tout de suite : la rendre visible
+
+Trois champs par stem dans `rapport.json` — `polyphonieMoyenne` (pondérée par
+le temps), `polyphonieMax`, `ambitusDemiTons` — et une plainte au journal quand
+un stem dépasse **3 notes simultanées en moyenne ET 3 octaves** à la fois. Les
+deux seuils sont exigés ensemble et non l'un ou l'autre : un accord de piano
+est dense sans être un fourre-tout, un solo est large sans l'être non plus. Ce
+qu'on cherche à nommer, c'est « plusieurs instruments additionnés ».
+
+Cela ne corrige rien. Cela empêche que le défaut se reproduise sans témoin, et
+c'est la première chose que ce dépôt exige. Cinq tests
+(`analyse/tests/test_densite_stem.py`), vérifiés contre une moyenne non
+pondérée par le temps — laquelle rend 2,5 là où la vraie valeur est 5.
+
+### H22 — plus de stems à la séparation ; écrite AVANT sa mesure
+
+**`htdemucs_6s` sépare six sources au lieu de quatre** : il ajoute `guitar` et
+`piano`. L'option existe déjà (`--modele`), donc le témoin est une option en
+ligne de commande et non une constante éditée, comme le § « Mesure » l'exige.
+
+*Ce que j'attends, écrit d'avance* : le nombre de pistes passe de 4 à 6, et
+`other` perd de sa densité — c'est le point. Sur la **distance**, je m'attends à
+un résultat **neutre ou légèrement défavorable**, pour deux raisons : les
+modèles à six sources sont réputés un peu moins bons sur les quatre sources
+communes, et deux pistes de plus font deux arbitrages de plus, donc deux
+occasions de choisir mal. **Si la distance se dégrade, cela ne condamne pas
+H22** : il faudra alors dire clairement que la chaîne arbitre entre deux
+qualités — la ressemblance et la jouabilité — et que la seconde n'a jamais été
+mesurée jusqu'ici. C'est cette phrase-là, et non le chiffre, qui manquait.
+
+*Le témoin* : même morceau, mêmes stems interdits (il faut re-séparer), même
+budget, même métrique, un seul changement — `--modele htdemucs_6s`.
+
+### H23 — diviser un stem polyphonique en VOIX ; écrite AVANT sa mesure
+
+Six stems ne suffiront pas : `other` restera un fourre-tout, plus maigre. La
+question suivante est de savoir si l'on peut **découper une piste polyphonique
+en plusieurs voix jouables**.
+
+*Ce qu'il ne faut PAS faire, et la raison est physique* : découper l'AUDIO par
+bandes de fréquence. Une note de saxophone a son fondamental dans une bande et
+ses harmoniques dans les suivantes ; un découpage spectral ne sépare pas des
+instruments, il ampute des timbres. Ce serait une séparation en apparence et un
+massacre en fait.
+
+*Ce qui se tient* : découper les NOTES déjà transcrites en voix — par
+continuité de hauteur, comme la séparation de voix classique — et donner à
+chaque voix sa propre piste, chacune arbitrée sur le même stem. Le gain visé
+n'est pas la distance : c'est **un projet qu'on peut retravailler**, où la
+nappe et la ligne mélodique ne sont plus la même piste.
+
+*Ce que j'attends, écrit d'avance* : aucun gain de distance, et peut-être une
+légère perte (N machines valent N fois plus d'occasions de se tromper). Le
+critère de succès de H23 n'est donc **pas** la distance : c'est que chaque
+piste produite passe sous le seuil du fourre-tout — moins de 3 notes
+simultanées en moyenne ou moins de 3 octaves. Si la distance se dégrade de plus
+de 5 %, le compromis se dit et se laisse à l'utilisateur par une option, il ne
+se décide pas ici.
+
+**Ordre : H22 d'abord**, parce qu'elle est une option déjà câblée et qu'elle
+tranche la question « une vraie séparation supplémentaire aide-t-elle ? » avant
+qu'on écrive quoi que ce soit. H23 ensuite, à la lumière de ce qu'elle aura dit.
+Les deux courses attendent la fin du témoin v11 : deux reconstructions de front
+mettent la machine au surplace.
+
+---
+
 **LE MOTEUR N'ÉTAIT PAS DANS LA PROVENANCE, ET DEUX COURSES L'ONT PAYÉ
 (02/09/2026).** En préparant v11 il a fallu établir le vivier de v10 et celui
 de v7. C'est en les comptant qu'un écart est apparu : au commit de v13

@@ -125,6 +125,78 @@ class StemReconstruction:
     arbitration_distance: Optional[float] = None
 
 
+def densite_du_stem(notes: List["StemNote"]) -> Dict[str, float]:
+    """COMBIEN DE PARTIES CE STEM PORTE-T-IL VRAIMENT ?
+
+    POURQUOI CETTE MESURE EXISTE, ET CE QU'ELLE A RÉVÉLÉ. La chaîne rend une
+    piste par stem, et la séparation par défaut (`htdemucs`) rend quatre stems :
+    `bass`, `drums`, `other`, `vocals`. Tout ce qui n'est ni basse, ni batterie,
+    ni voix — piano électrique, orgue, saxophone, guitare, nappes — atterrit
+    donc dans `other`, **joué par une seule machine**. Mesuré sur *Us and Them*
+    le 02/09/2026 : `other` porte **62,1 % de l'énergie du morceau**, 4 642
+    notes, une polyphonie moyenne de **4,8** (maximum 11) sur un ambitus de
+    **66 demi-tons**. La machine retenue pour tout cela était `vsm.tb303`.
+
+    Aucun champ du rapport ne le disait. La distance globale, elle, peut
+    parfaitement s'améliorer pendant que la structure du morceau se perd :
+    quatre instruments fondus en un sonnent « à peu près », et le projet livré
+    n'est plus retravaillable. C'est une panne muette, et elle porte sur ce que
+    la chaîne produit, pas sur ce qu'elle mesure.
+
+    Ces trois nombres la rendent visible pour toute course à venir. Ils ne
+    corrigent rien — voir les hypothèses H22 et H23 de `ROADMAP-fusion.md` —
+    mais ils empêchent que le défaut se reproduise sans témoin.
+
+    La polyphonie MOYENNE est pondérée par le temps : compter les notes
+    simultanées à chaque frontière et faire la moyenne des événements
+    surestimerait les instants denses, qui sont brefs.
+    """
+    if not notes:
+        return {"polyphonieMoyenne": 0.0, "polyphonieMax": 0, "ambitusDemiTons": 0}
+
+    bornes = []
+    for note in notes:
+        bornes.append((float(note.start), 1))
+        bornes.append((float(note.start) + max(1e-6, float(note.duration)), -1))
+    bornes.sort()
+
+    ouvertes = 0
+    maxi = 0
+    aire = 0.0
+    precedent = bornes[0][0]
+    for instant, delta in bornes:
+        aire += ouvertes * (instant - precedent)
+        precedent = instant
+        ouvertes += delta
+        maxi = max(maxi, ouvertes)
+    duree = bornes[-1][0] - bornes[0][0]
+
+    hauteurs = [int(n.note) for n in notes]
+    return {
+        "polyphonieMoyenne": round(aire / duree, 2) if duree > 0 else 0.0,
+        "polyphonieMax": maxi,
+        "ambitusDemiTons": max(hauteurs) - min(hauteurs),
+    }
+
+
+def stem_fourre_tout(densite: Dict[str, float]) -> str:
+    """Le stem est-il un FOURRE-TOUT plutôt qu'une partie ? La phrase, ou "".
+
+    Les deux seuils sont posés d'après ce qu'un instrument réel fait : une
+    partie jouée par un instrument tient dans **trois notes simultanées** en
+    moyenne (un accord de piano en tient plus, mais pas en moyenne sur un
+    morceau) et dans **trois octaves**. Au-delà des deux à la fois, ce n'est
+    plus une partie, ce sont plusieurs parties additionnées — et les donner à
+    une seule machine est un choix qu'il faut au moins DIRE.
+    """
+    if densite["polyphonieMoyenne"] >= 3.0 and densite["ambitusDemiTons"] >= 36:
+        return (f"ATTENTION : ce stem porte plusieurs parties — polyphonie moyenne "
+                f"{densite['polyphonieMoyenne']} (max {densite['polyphonieMax']}) sur "
+                f"{densite['ambitusDemiTons']} demi-tons. UNE SEULE machine va toutes "
+                f"les jouer. Voir --modele htdemucs_6s pour séparer davantage.")
+    return ""
+
+
 def melodic_machines(engine: VsmEngine) -> List[str]:
     """Machines mélodiques que le moteur sait réellement instancier.
 
@@ -465,6 +537,10 @@ def write_reconstruction_report(
                 "machine": stem.machine,
                 "distance": stem.distance,
                 "notes": len(stem.notes),
+                # COMBIEN DE PARTIES CE STEM PORTAIT — voir `densite_du_stem`.
+                # Sans ces trois nombres, rien ne distinguait une ligne de basse
+                # d'un fourre-tout de 62 % du morceau joué par une machine.
+                **densite_du_stem(stem.notes),
                 # Troisième condition de la mesure, après la métrique et le
                 # budget : voir le commentaire du champ `gate`.
                 "gate": None if stem.gate is None else round(float(stem.gate), 4),
