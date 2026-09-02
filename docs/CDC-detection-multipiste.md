@@ -93,17 +93,27 @@ déplacent rien, et la stabilité par empreintes est démontrée en course.
 | Course | Variable unique | Attendu (écrit d'avance) | Résultat |
 |---|---|---|---|
 | H22b-v2 | stems `htdemucs_6s` (6) | 6 pistes ; distance neutre ou légèrement défavorable ; si elle se dégrade, la chaîne arbitre ressemblance contre jouabilité et le § 0 tranche | **0,17114 — −10,4 % ET six pistes.** L'attendu est contredit dans le bon sens : plus de pistes ET plus proche. Machines : bass→cs80, guitar→tb303, other→musicbox, piano→phasedist. Le verdict à six pistes n'atteint pas le point fixe en 3 tours (bass et piano oscillent), et le réglage au mélange rapporte encore −0,009. Restes : guitar (poly 3,4 · 74 demi-tons) et other (3,8 · 71) sont ENCORE des fourre-tout → H23 est complémentaire, pas concurrente |
-| H23 | `--voix-par-stem 4` | pas de gain de distance ; succès = chaque piste sous le seuil du fourre-tout | *(en file)* |
+| H23 | `--voix-par-stem 4` | pas de gain de distance ; succès = chaque piste sous le seuil du fourre-tout | **0,20846 (+9,1 %) et 7 pistes — le critère structurel est TENU** : les quatre voix passent sous le seuil (poly 0,64/1,68/1,36/1,14 ; ambitus 28/9/9/16), et chaque registre reçoit SA machine (divider, tb303, multisample ×2). La distance dépasse les 5 % de la règle écrite d'avance → le découpage reste une OPTION, il ne devient pas le défaut. Verdict au point fixe en 2 tours ; la chaîne signale 2× que le morceau serait meilleur sans la voix 1 (l'aigu jugé seul contre le stem entier) — conservée, couper est humain |
 
 ## 4. Ce qui reste à faire (l'ordre de marche du chantier)
 
 1. **Encaisser H22b et H23** : verdicts écrits ici et dans ROADMAP-fusion,
    projets ouverts DANS le DAW et regardés (capture), densités par piste
    vérifiées au rapport.
-2. **Trancher le défaut** : au vu des deux verdicts, décider ce que la chaîne
-   fait PAR DÉFAUT (htdemucs_6s ? découpage automatique des fourre-tout ?) —
-   décision à écrire ici avec ses chiffres. Le § 0 donne la règle de
-   décision : la structure prime, l'écart de distance se publie.
+2. **Trancher le défaut — DÉCIDÉ (03/09/2026), les deux verdicts en main** :
+   - **`htdemucs_6s` devient le modèle de séparation PAR DÉFAUT** : −10,4 %
+     de distance ET deux pistes de plus, structure et ressemblance du même
+     côté — il n'y a pas de compromis à arbitrer. Réserve dite : mesuré sur
+     UN morceau ; la contre-épreuve sur un second original est la première
+     mesure à faire quand la pause des campagnes sera levée (§ 4.7).
+     Conséquence technique obligatoire : la séparation PAR DÉFAUT doit se
+     faire en SOUS-PROCESSUS qui meurt (deux courses tuées par l'OOM avec
+     demucs résident dans le processus de la chaîne — § 2.2).
+   - **`--voix-par-stem` reste une option, PAS le défaut** : la règle écrite
+     avant la mesure disait « si la distance se dégrade de plus de 5 %, le
+     compromis se dit et se laisse à l'utilisateur » — mesuré +9,1 %. Le
+     § 0 ne s'y oppose pas : ici la structure est déjà servie par les six
+     stems, et le découpage vaut pour qui veut la parité au prix dit.
 3. **Le DAW montre ce que la chaîne sait** : les densités, le partage et les
    avertissements de fourre-tout existent dans `rapport.json` et nulle part
    dans l'application. Un projet reconstruit qui s'ouvre devrait dire « cette

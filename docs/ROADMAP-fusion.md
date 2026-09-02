@@ -2807,6 +2807,30 @@ simultanées en moyenne ou moins de 3 octaves. Si la distance se dégrade de plu
 de 5 %, le compromis se dit et se laisse à l'utilisateur par une option, il ne
 se décide pas ici.
 
+**H23 EST TRANCHÉE : LE CRITÈRE STRUCTUREL EST TENU, LE PRIX EST DIT
+(03/09/2026).** Contre le même témoin H22a-v2, seule variable le découpage :
+
+| Course | Pistes | Distance | Fourre-tout restants |
+|---|---|---|---|
+| H22a-v2 (témoin) | 4 | 0,191036 | other (poly 4,83 · 66 demi-tons) |
+| H23 (`--voix-par-stem 4`) | **7** | 0,208457 (+9,1 %) | **aucun** |
+
+Le succès promis est là : les quatre voix passent sous le seuil du
+fourre-tout (polyphonie 0,64 / 1,68 / 1,36 / 1,14 sur des ambitus de 28 / 9 /
+9 / 16 demi-tons), et l'arbitrage donne à chaque registre SA machine —
+`vsm.divider` à l'aigu, `vsm.tb303`, deux `vsm.multisample`. Le verdict à
+sept pistes atteint son point fixe en deux tours. Le déterminisme du
+découpage s'est vérifié en vrai : la reprise après l'OOM a rendu les mêmes
+quatre voix au bit près.
+
+Le prix aussi est là : +9,1 % de distance, au-delà des 5 % que la règle
+écrite d'avance fixait — le découpage reste donc une OPTION et ne devient pas
+le défaut. La cause est visible au journal : chaque voix est jugée SEULE
+contre le stem ENTIER, et la chaîne a signalé deux fois que le morceau serait
+meilleur sans la voix 1 (l'aigu isolé ressemble peu au tout). Si le découpage
+doit un jour gagner en distance, c'est cette cible-là qu'il faudra repenser —
+juger les voix ENSEMBLE, pas chacune contre le tout.
+
 **Ordre : H22 d'abord**, parce qu'elle est une option déjà câblée et qu'elle
 tranche la question « une vraie séparation supplémentaire aide-t-elle ? » avant
 qu'on écrive quoi que ce soit. H23 ensuite — son mécanisme est écrit et testé,
