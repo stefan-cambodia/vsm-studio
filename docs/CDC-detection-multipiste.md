@@ -120,11 +120,18 @@ déplacent rien, et la stabilité par empreintes est démontrée en course.
    piste porte plusieurs parties » là où on la voit — forme à concevoir
    (colonne de la liste de pistes ? panneau du rapport de reconstruction,
    comme le rapport d'import ?).
-4. **La batterie éclatée par pièce** — le chemin le plus mûr vers la parité
-   après les § 4.1-4.2 : la chaîne SAIT déjà séparer les frappes par pièce
-   (sur *Us and Them* : kick 925, kick2 943, hihat 414) et n'en rend qu'UNE
-   piste. Un batteur mixe huit pistes ; rendre une piste par pièce détectée
-   est un découpage sans invention — les frappes sont déjà classées.
+4. **La batterie éclatée par pièce — CÂBLÉE (03/09/2026)** :
+   `--batterie-par-piece` rend une piste par pièce détectée, même machine et
+   même patch pour toutes (le kit reste un instrument réglé une fois). Les
+   pièces et les notes s'apparient par les INSTANTS de frappe — jamais en
+   rejouant la logique de repli, qui écrit des avertissements et tient un
+   état ; deux pièces rabattues sur la même voix restent ensemble sous un nom
+   composé (« kick+tom »). Deux renoncements dits au journal : les boîtes
+   suivantes ne sont plus remises en jeu au verdict, et le volume par pièce
+   n'est pas calé sur le stem. 4 tests. Option, pas défaut : son effet sur la
+   distance n'est PAS mesuré (campagnes en pause) — chaque pièce devient une
+   instance séparée de la machine, les pièces ne se volent plus de voix, et
+   ce changement de rendu attendra sa mesure.
 5. **La voix** : `vocals` (22,7 %) part d'un bloc au sampler — un chœur et
    une voix de tête restent une piste. Non couvert, dit, pas nié ; c'est le
    morceau le plus dur (séparer des voix DANS un stem de voix demande un

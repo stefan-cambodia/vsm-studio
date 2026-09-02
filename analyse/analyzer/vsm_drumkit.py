@@ -1232,6 +1232,80 @@ def modelled_drum_track(kit: DrumKit, name: str = "Batterie") -> ExportTrack:
     )
 
 
+def eclater_par_piece(piste: ExportTrack, kit: DrumKit) -> List[ExportTrack]:
+    """Une piste de batterie PAR PIÈCE détectée — la parité pour la batterie.
+
+    LE POURQUOI (§ 4.4 du CDC détection-multipiste). La chaîne sait depuis
+    longtemps séparer les frappes par pièce — kick, hihat, caisse… — et n'en
+    rendait qu'UNE piste : un batteur mixe huit pistes, l'objectif de parité
+    les veut. Ce découpage n'invente rien : les frappes sont déjà classées,
+    on les répartit.
+
+    LE COMMENT, et il est choisi pour ne rien rejouer. La note de chaque
+    pièce a été décidée par le constructeur de piste (avec ses replis, ses
+    avertissements, son état d'occupation des voix) ; refaire ce calcul ici
+    dupliquerait les avertissements et pourrait diverger. On apparie donc par
+    les INSTANTS : les frappes d'une pièce et les notes de la piste finale
+    viennent de la même détection, aux mêmes temps — la note d'une pièce est
+    celle qui sonne à ses instants. Deux pièces rabattues sur la même voix
+    restent ENSEMBLE, sous un nom composé (« kick+tom ») : les séparer
+    mentirait sur ce que la machine joue réellement.
+
+    Chaque piste rendue garde LA MÊME machine et LE MÊME patch : le kit reste
+    un instrument réglé une fois, seules les frappes se répartissent. (Chaque
+    piste devient une instance séparée de la machine : les pièces ne se
+    volent plus de voix entre elles — c'est un effet du découpage, pas un
+    réglage, et il n'est pas mesuré tant que les campagnes sont en pause.)
+
+    Les notes qui ne correspondent à aucune pièce — il ne devrait pas y en
+    avoir — partent dans une piste « autres » plutôt que de disparaître.
+    """
+    groupes: Dict[int, List[ExportNote]] = {}
+    for note in piste.notes:
+        groupes.setdefault(int(note.note), []).append(note)
+    temps_par_groupe = {numero: {round(float(n.start), 6) for n in notes}
+                        for numero, notes in groupes.items()}
+
+    familles_par_note: Dict[int, List[str]] = {}
+    for emplacement in kit.slots:
+        temps = {round(float(instant), 6) for instant in emplacement.onsets}
+        if not temps:
+            continue
+        meilleur = max(sorted(groupes),
+                       key=lambda numero: len(temps & temps_par_groupe[numero]))
+        if not temps & temps_par_groupe[meilleur]:
+            continue   # pièce sans note dans la piste finale : rien à répartir
+        familles_par_note.setdefault(meilleur, []).append(emplacement.family)
+
+    pistes: List[ExportTrack] = []
+    def sous_piste(etiquette: str, notes: List[ExportNote]) -> ExportTrack:
+        return ExportTrack(
+            name=f"{piste.name} · {etiquette}",
+            machine=piste.machine,
+            parameters=dict(piste.parameters),
+            notes=sorted(notes, key=lambda n: (float(n.start), int(n.note))),
+            channel=piste.channel,
+            volume=piste.volume,
+            pan=piste.pan,
+            is_drums=True,
+            machine_display_name=piste.machine_display_name,
+        )
+
+    # L'ordre des pistes est celui du KIT (pièces porteuses d'abord), pas
+    # celui des numéros de note : c'est l'ordre dans lequel on lit un kit.
+    deja: set = set()
+    for emplacement in kit.slots:
+        for numero, familles in familles_par_note.items():
+            if emplacement.family in familles and numero not in deja:
+                deja.add(numero)
+                pistes.append(sous_piste("+".join(familles), groupes[numero]))
+    restes = [n for numero, notes in sorted(groupes.items())
+              if numero not in deja for n in notes]
+    if restes:
+        pistes.append(sous_piste("autres", restes))
+    return pistes
+
+
 def vocal_audio_track(
     audio: np.ndarray,
     sample_rate: int,

@@ -64,6 +64,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from analyzer.vsm_automation import try_cutoff_automation  # noqa: E402
 from analyzer.vsm_drumkit import (build_drum_kit, drum_kit_track, drum_machine_track,  # noqa: E402
+                                  eclater_par_piece,
                                   modelled_drum_track, vocal_audio_track,
                                   vocal_sampler_track)
 from analyzer.vsm_engine import (VsmEngine, find_vsm_render, identite_du_moteur,  # noqa: E402
@@ -412,6 +413,7 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
             # Le découpage en voix change le NOMBRE DE PISTES du résultat :
             # deux rapports qui n'ont pas le même réglage ne se comparent pas.
             "voixParStem": args.voix_par_stem,
+            "batterieParPiece": args.batterie_par_piece,
         },
         # Les modèles CONSULTÉS, avec leur date d'entraînement -- ou « aucun »,
         # qui est une information et non une absence d'information.
@@ -492,6 +494,16 @@ def construire_parseur() -> argparse.ArgumentParser:
     parseur.add_argument("--machines", default="",
                          help="liste de machines candidates, séparées par des virgules "
                               "(défaut : toutes les mélodiques du moteur)")
+    parseur.add_argument("--batterie-par-piece", action="store_true",
+                         help="une piste PAR PIÈCE détectée (kick, hihat, caisse…) au lieu "
+                              "d'une piste de kit unique — la parité des pistes pour la "
+                              "batterie (§ 4.4 du CDC détection-multipiste). Même machine et "
+                              "même patch pour toutes : le kit reste un instrument réglé une "
+                              "fois, seules les frappes se répartissent. Les machines "
+                              "suivantes ne sont alors plus remises en jeu au verdict du "
+                              "mélange (la piste unique qu'elles remplaceraient n'existe "
+                              "plus), et le volume par pièce n'est pas calé sur le stem — "
+                              "les deux sont dits au journal")
     parseur.add_argument("--voix-par-stem", type=int, default=0,
                          help="découper un stem FOURRE-TOUT (au moins 3 notes simultanées en "
                               "moyenne ET 3 octaves) en au plus N voix, une piste par voix, "
@@ -892,6 +904,9 @@ class ResultatBatterie:
     piste: ExportTrack
     audio: np.ndarray
     rapport: Dict[str, object]
+    # Le kit détecté : c'est lui qui sait quelles frappes appartiennent à
+    # quelle pièce, et l'éclatement par pièce (--batterie-par-piece) en vit.
+    kit: Optional[object] = None
     # Le patch d'usine de la boîte retenue, quand elle a été réglée : le
     # verdict du mélange le remet en concurrence.
     patch_avant_reglage: Optional[Dict[str, float]] = None
@@ -1085,7 +1100,7 @@ def reconstruire_batterie(ctx: Contexte, nom: str, chemin: Path) -> Optional[Res
         "trackArbitration": [],
         "refinements": [],
     }
-    resultat = ResultatBatterie(piste=piste, audio=audio, rapport=rapport)
+    resultat = ResultatBatterie(piste=piste, audio=audio, rapport=rapport, kit=kit)
 
     en_lice: Dict[str, ExportTrack] = {piste.machine: piste}
     a_regler: List[str] = [piste.machine]
@@ -1386,13 +1401,38 @@ def reconstruire_les_stems(ctx: Contexte, pistes: Dict[str, Path]) -> Chantier:
         if nom == "drums" or args.batterie:
             batterie = reconstruire_batterie(ctx, nom, chemin)
             if batterie is not None:
-                chantier.pistes_directes.append(batterie.piste)
-                chantier.audio_par_stem[PISTE_BATTERIE] = batterie.audio
-                chantier.rapport_batterie = batterie.rapport
-                if batterie.patch_avant_reglage is not None:
-                    chantier.patchs_avant_reglage[batterie.piste.name] = batterie.patch_avant_reglage
-                if batterie.secondes:
-                    chantier.machines_secondes.setdefault(PISTE_BATTERIE, []).extend(batterie.secondes)
+                pieces: List[ExportTrack] = []
+                if args.batterie_par_piece and batterie.kit is not None \
+                        and batterie.piste.machine != "vsm.sampler":
+                    pieces = eclater_par_piece(batterie.piste, batterie.kit)
+                if len(pieces) > 1:
+                    detail = ", ".join(f"{p.name.split(chr(183))[-1].strip()} "
+                                       f"({len(p.notes)})" for p in pieces)
+                    print(f"      {nom:8s} : batterie ÉCLATÉE en {len(pieces)} piste(s) "
+                          f"par pièce — {detail}")
+                    # DEUX RENONCEMENTS, DITS : les boîtes suivantes ne sont
+                    # plus remises en jeu au verdict (la piste unique qu'elles
+                    # remplaceraient n'existe plus), et le volume par pièce
+                    # n'est pas calé sur le stem (le stem est le kit ENTIER,
+                    # caler chaque pièce dessus la gonflerait).
+                    if batterie.secondes:
+                        print(f"      {nom:8s} : {len(batterie.secondes)} boîte(s) "
+                              f"suivante(s) NON remises en jeu au verdict — "
+                              f"conséquence du découpage par pièce")
+                    batterie.rapport["splitByPiece"] = [
+                        {"track": p.name, "hits": len(p.notes)} for p in pieces]
+                    for sous_piste in pieces:
+                        chantier.pistes_directes.append(sous_piste)
+                    chantier.audio_par_stem[PISTE_BATTERIE] = batterie.audio
+                    chantier.rapport_batterie = batterie.rapport
+                else:
+                    chantier.pistes_directes.append(batterie.piste)
+                    chantier.audio_par_stem[PISTE_BATTERIE] = batterie.audio
+                    chantier.rapport_batterie = batterie.rapport
+                    if batterie.patch_avant_reglage is not None:
+                        chantier.patchs_avant_reglage[batterie.piste.name] = batterie.patch_avant_reglage
+                    if batterie.secondes:
+                        chantier.machines_secondes.setdefault(PISTE_BATTERIE, []).extend(batterie.secondes)
             continue
         for melodique in reconstruire_stem_melodique(ctx, nom, chemin):
             chantier.reconstruits.append(melodique.stem)
