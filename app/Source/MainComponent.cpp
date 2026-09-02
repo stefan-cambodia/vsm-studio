@@ -740,6 +740,11 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     // rapport a son bouton Fermer et Échap — mais l'autoportrait n'a ni
     // souris ni clavier.
     else if (nom == "sans-rapport") importReport_.setVisible(false);
+    // LANCER LA LECTURE pour l'autoportrait : le compteur de CPU de la barre
+    // de transport ne dit rien tant que rien ne joue, et c'est justement lui
+    // qu'il faut regarder pour juger un projet à soixante-quatre machines.
+    // Sans ce jeton, la charge du fil audio ne se vérifie qu'à la souris.
+    else if (nom == "jouer")       transport_.play();
 }
 
 void MainComponent::dockPanels() {

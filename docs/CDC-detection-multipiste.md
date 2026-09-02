@@ -154,10 +154,22 @@ déplacent rien, et la stabilité par empreintes est démontrée en course.
    viewport), la liste de pistes défile, le rapport d'import à 64 lignes
    défile ; l'import et l'ouverture sont instantanés. VSM_VUE gagne le jeton
    `sans-rapport` pour photographier l'arrangement derrière l'écran de
-   rapport. CE QUI RESTE NON ÉPROUVÉ, et c'est dit : la charge AUDIO de 64
-   machines instanciées et jouées à la fois — les pistes d'essai n'ont pas
-   d'instrument, et l'épreuve du rendu à 64 machines attend un projet qui
-   les assigne.
+   rapport. LA CHARGE AUDIO EST MESURÉE À SON TOUR (03/09/2026),
+   sur un projet d'essai où 64 machines DIFFÉRENTES tiennent chacune trois
+   notes par mesure — le cas défavorable, les voix se superposent :
+
+   | Machines | Rendu hors ligne | DAW en LECTURE |
+   |---|---|---|
+   | 4 | 63× le temps réel | ~50 % d'un cœur |
+   | 16 | 17× | ~67 % |
+   | 64 | **5,2×** | **~127 %** (1,3 cœur sur 22) |
+
+   Le DAW joue donc 64 machines avec une marge d'un facteur cinq, et la
+   charge croît moins vite que le nombre de pistes (×16 de pistes pour ×2,6
+   de CPU : le coût fixe domine à quatre pistes). Vérifié à l'écran, lecture
+   en cours, les 64 vumètres bougeant. `VSM_VUE` gagne le jeton `jouer`
+   pour photographier un projet EN TRAIN de jouer — sans lui, le compteur de
+   charge ne dit rien.
 7. **Un deuxième morceau** : tout ce chantier est mesuré sur *Us and Them*.
    Avant de changer un défaut de la chaîne, le vérifier sur un second
    original (les MIDI de référence de ~/Téléchargements peuvent servir de
