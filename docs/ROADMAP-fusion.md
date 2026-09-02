@@ -2643,6 +2643,45 @@ réserve. Si la course à 34 est plus loin, alors les candidates
 supplémentaires nuisent tant que le verdict ne repasse pas, et la règle doit
 porter sa condition.
 
+**H13 — le vivier coûte parce que le GOULOT des finalistes est trop
+étroit ; écrite avant sa mesure (02/09/2026).** Deux faits mesurés le même
+jour la motivent, et il faut les lire ensemble :
+
+1. **Le vivier élargi coûte** : v12 rend 0,2112 contre 0,1822 pour v9,
+   +15,9 %, pour une seule variable — 36 candidates au lieu de 34.
+2. **Le stem est un très mauvais prédicteur du mélange**, et bien pire qu'on
+   ne le croyait : sur la basse de v9, `vsm.cs80` mesure **0,3623** au stem
+   contre 0,1851 pour la machine qu'elle remplace, et elle fait pourtant un
+   MEILLEUR morceau. Un facteur DEUX renversé. (Ce chiffre n'était pas connu
+   avant le 02/09 : `rapport.json` publiait le score de la machine écartée,
+   panne muette corrigée le même jour.)
+
+**Le mécanisme que ces deux faits suggèrent.** Le verdict du mélange ne
+rejuge que les `machinesAuMelange` premières du classement AU STEM — trois
+par défaut. Si le stem peut se tromper d'un facteur deux, ce classement est
+peu fiable ; et plus le vivier grandit, plus la vraie gagnante a de chances
+de tomber en quatrième position ou au-delà, donc de n'être jamais essayée au
+mélange. **Le vivier ne nuit pas parce qu'il contient de mauvaises machines,
+il nuit parce que le goulot par lequel il passe est trop étroit pour lui.**
+
+Si c'est vrai, la conséquence est agréable : le coût n'est pas une fatalité
+de l'élargissement, c'est un réglage mal dimensionné.
+
+**Le témoin : v14 = v13 avec `--machines-au-melange 6`**, une seule variable.
+
+- **Succès de H13** : v14 rattrape ou dépasse v9 (≈ 0,18) là où v13 reste
+  autour de 0,21. Le goulot était bien la cause, et il faut redimensionner
+  `machinesAuMelange` en fonction de la TAILLE du vivier plutôt que de le
+  laisser à trois quel que soit le nombre de candidates.
+- **Échec de H13** : v14 ≈ v13. Alors le mal est ailleurs — probablement dans
+  l'ordre d'exploration du point fixe lui-même — et il faudra chercher du
+  côté de l'algorithme et non de ses paramètres.
+
+Le coût à prévoir est connu d'avance et doit être dit : doubler le nombre de
+finalistes double le nombre de rendus du verdict, donc allonge la course. Si
+H13 réussit, le § 7 du CDC machines-manquantes gagne une seconde phrase :
+*un vivier qui grandit demande un goulot qui grandit avec lui.*
+
 **H7 — le classifieur de frappes améliore le STEM et éloigne le MORCEAU,
 écrite avant sa mesure (02/09/2026).** Le fait qui la motive : la course v6
 (*Us and Them*, moteur du jour, classifieur de frappes RÉACTIVÉ après la
