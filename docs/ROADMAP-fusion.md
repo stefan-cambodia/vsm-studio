@@ -2708,8 +2708,29 @@ H22** : il faudra alors dire clairement que la chaîne arbitre entre deux
 qualités — la ressemblance et la jouabilité — et que la seconde n'a jamais été
 mesurée jusqu'ici. C'est cette phrase-là, et non le chiffre, qui manquait.
 
-*Le témoin* : même morceau, mêmes stems interdits (il faut re-séparer), même
-budget, même métrique, un seul changement — `--modele htdemucs_6s`.
+*Le témoin* : même morceau, même budget, même métrique, un seul changement —
+le jeu de stems (htdemucs contre htdemucs_6s).
+
+**LA PREMIÈRE FORME DU TÉMOIN EST MORTE DEUX FOIS, ET LA CAUSE EST LA
+MÉMOIRE (02/09/2026).** Le dispositif initial faisait re-séparer chaque moitié
+dans le processus de la chaîne (« mêmes stems interdits, il faut re-séparer »),
+pour que les deux moitiés soient traitées à l'identique. La machine a 15 Go :
+torch et demucs restent résidents (~7 Go) pendant que Basic Pitch charge son
+propre modèle, et l'OOM killer a abattu H22a à 15:28 puis H22b à 15:30 —
+code 137, la trace est au journal du noyau. Pire : la file d'attente
+enchaînait après le cadavre, et H22b est partie pendant que H22a gisait ;
+la file s'arrête désormais au premier échec.
+
+Le dispositif corrigé sépare À PART — un processus qui ne fait que demucs,
+écrit ses stems, meurt — puis les deux moitiés repartent de `--stems`. Elles
+restent traitées à l'identique (aucune ne sépare), la variable reste unique
+(le dossier de stems, donc le modèle), et la provenance porte le dossier.
+
+Ce qui permet de réutiliser les stems déjà en place pour la moitié témoin :
+avant de mourir, la première H22a avait séparé et mesuré le partage —
+57,7/22,7/15,0/4,6, **exactement** celui des stems stockés. `shifts=0` rend
+demucs déterministe, et cette égalité l'encaisse : `usandthem/` EST une
+séparation htdemucs du jour.
 
 ### H23 — diviser un stem polyphonique en VOIX ; écrite AVANT sa mesure
 
