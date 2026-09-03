@@ -523,11 +523,12 @@ elles — un avertissement vrai, mais qui doit rester rare pour rester lu :
 - **les noms de fichiers des stems exportés par groupe** : `OfflineReconstruction.cpp`
   remplace chaque octet non ASCII par `_`, et « Voix · tête » devient
   `Voix __ t__te.wav`. Translittérer (é → e, œ → oe, « · » → « - ») ;
-- **le vivier de machines** (mémoire permanente de l'utilisateur) : TROIS
+- **le vivier de machines** (mémoire permanente de l'utilisateur) : QUATRE
   familles sont PRÊTES sur la branche `machine-clavecin`, développées dans
   un worktree séparé, suites vertes, façades rendues — `vsm.harpsichord`
   (le clavecin, § 22 du CDC machines), `vsm.hurdygurdy` (la vielle à roue,
-  § 23), `vsm.banjo` (la corde sur la peau, § 24) ; elles se fusionnent à
+  § 23), `vsm.banjo` (la corde sur la peau, § 24), `vsm.vibraphone` (la
+  barre creusée, le tube à moteur, le feutre à pédale, § 25) ; elles se fusionnent à
   la fin des campagnes, et le moteur se recompile alors pour les courses
   suivantes, provenance à l'appui.
 
