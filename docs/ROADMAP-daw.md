@@ -2996,6 +2996,20 @@ chantier lourd en dernier.
 > tourne). Actif, il emprunte les lettres aux raccourcis ; la répétition
 > d'une touche tenue ne rejoue pas la note, et le relâchement l'éteint.
 
+> **D11.8 EST TRANCHÉE (03/09/2026) : REPORTÉE, et voici les chiffres.**
+> Un étirement temporel digne de Live (warp) ou de Cubase (élastique) est
+> un vocodeur de phase ou un WSOLA avec détection de transitoires, un banc
+> de mesure (hauteur conservée au cent près, durée exacte à l'échantillon,
+> transitoires non doublés) et une interface de marqueurs de warp : de
+> l'ordre de D2 entière, pas d'une étape. La reconstruction n'en a aucun
+> besoin — ses pistes audio sont des reports d'un original qui a déjà le
+> bon tempo — et aucune mesure du dépôt ne le demande. Il entrera comme
+> phase D12, avec son cahier des charges, une fois les campagnes de la
+> parité closes et les cinq machines de la branche fusionnées : c'est
+> l'ordre du § 3 (ce qui s'appuie sur le modèle, après le modèle), et
+> `Clip::sourceStartSeconds` continue de dire en toutes lettres pourquoi un
+> clip audio ne suit pas le tempo.
+
 Ce que l'audit a trouvé et qui n'entre PAS ici, avec la raison : la
 sélection de notes par vélocité (le filtre existe sous forme d'opérations
 sur la sélection, le tri par vélocité s'ajoutera au piano roll quand une
