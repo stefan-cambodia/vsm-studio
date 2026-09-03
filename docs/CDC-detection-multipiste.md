@@ -475,7 +475,12 @@ morceau de synthèse n'est pas le juge. Le juge, écrit d'avance :
 [x] Le DAW montre les densités et avertissements du rapport (§ 4.3) :
     Fichier ▸ Voir le rapport de reconstruction (grisé sans rapport), et
     VSM_RAPPORT=1 pour le photographier sans souris — vérifié sur le
-    rapport réel de H22a
+    rapport réel de H22a. Complété le 03/09/2026 : le verdict du mélange
+    (« meilleur sans cette piste », machine gardée au mélange), la
+    réverbération cherchée au mélange (retenue ou refusée), et l'original
+    chargé avec le projet pour l'écoute A/B (provenance.source, sinon le
+    canal gauche de comparaison.wav) — vus à l'écran sur l'épreuve et sur
+    usandthem-parite
 [x] Un projet multipiste reconstruit a été OUVERT et REGARDÉ dans le DAW :
     usandthem-h22b, six pistes, rapport à l'écran ET arrangement — lequel
     était VIDE : la chaîne n'écrit pas de clips, la vue ne dessine que les
