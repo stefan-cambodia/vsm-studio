@@ -425,6 +425,23 @@ void moveTrack(Project& project, size_t from, size_t to) {
     project.tracks = std::move(remaniees);
 }
 
+size_t duplicateTrack(Project& project, size_t index) {
+    if (index >= project.tracks.size()) return index;
+    Track copie = project.tracks[index];
+    copie.name = copie.name.empty() ? "(copie)" : copie.name + " (copie)";
+    copie.armed = false;
+    for (auto& note : copie.notes) note.id = project.nextNoteId();
+    for (auto& clip : copie.clips) clip.id = project.nextClipId();
+    // Les groupes situés APRÈS l'original reculent d'un rang pour tout le
+    // monde, y compris pour la copie et l'original.
+    const int insere = static_cast<int>(index) + 1;
+    for (auto& piste : project.tracks)
+        if (piste.outputGroup >= insere) piste.outputGroup += 1;
+    if (copie.outputGroup >= insere) copie.outputGroup += 1;
+    project.tracks.insert(project.tracks.begin() + insere, std::move(copie));
+    return static_cast<size_t>(insere);
+}
+
 void removeTrack(Project& project, size_t index) {
     if (index >= project.tracks.size()) return;
     project.tracks.erase(project.tracks.begin() + static_cast<std::ptrdiff_t>(index));

@@ -2915,7 +2915,7 @@ chantier lourd en dernier.
 | D11.2 | **Sélection au lasso** dans l'arrangement, et « tout sélectionner » (Ctrl+A n'y est câblé que pour les notes) | un rectangle tiré sur le vide sélectionne les clips qu'il touche ; Ctrl+A prend tous les clips — **fait** |
 | D11.3 | **Se repérer en musique** : la position du transport dit minutes:secondes et un tick brut, jamais « mesure 33, temps 2 » ; l'arrangement ne suit pas la tête de lecture (le piano roll, si) ; ni retour à zéro ni marqueur suivant/précédent au clavier | mesure · temps affichés à côté du temps ; l'arrangement défile derrière la tête quand elle sort de l'écran, bouton comme au piano roll ; Début, marqueur suivant/précédent dans la table des raccourcis — **fait** |
 | D11.4 | **Renommer et colorer un clip** : `Clip::name` et `Clip::colorRgba` existent et aucune vue ne les édite (la couleur est toujours celle de la piste) | double-clic sur le nom, couleur au menu ; sauvegardés (déjà dans le format) — **fait** |
-| D11.5 | **Dupliquer une piste** (seules les sélections se dupliquent) ; **canal MIDI éditable** (`t.channel = n % 16` à la création, étiquette non éditable) | une commande au menu de piste, tout copié (instrument, effets, notes, clips, automation, routage) ; le canal se saisit |
+| D11.5 | **Dupliquer une piste** (seules les sélections se dupliquent) ; **canal MIDI éditable** (`t.channel = n % 16` à la création, étiquette non éditable) | une commande au menu de piste, tout copié (instrument, effets, notes, clips, automation, routage) ; le canal se saisit — **fait** |
 | D11.6 | **Fichiers récents**, **plein écran**, **modèle de projet** (« Enregistrer comme modèle », « Nouveau depuis le modèle ») | menu Fichier ; F11 ; un modèle rouvert est un projet neuf sans chemin |
 | D11.7 | **S'entendre** : l'entrée audio n'est jamais recopiée vers la sortie pendant l'armement ; **le clavier d'ordinateur** ne joue pas de notes | écoute d'entrée commutable par piste armée (latence dite) ; une rangée de touches joue la piste choisie, octave réglable |
 | D11.8 | **Étirement temporel d'un clip audio** — le choix n° 3 du § 4 le refusait ; `Clip::sourceStartSeconds` le dit en toutes lettres | à trancher au moment de l'écrire, chiffres à l'appui : un étirement de qualité (vocodeur de phase ou WSOLA) coûte un chantier entier, et la reconstruction n'en a pas besoin — c'est un besoin de production, pas de mesure. Dernier, et seulement après D11.1 à D11.7 |
@@ -2959,6 +2959,16 @@ chantier lourd en dernier.
 > la sélection, car six clips pris au lasso font un geste. Les fenêtres
 > restent dans l'application, la vue demande par deux rappels ; le format
 > portait déjà `name` et `color` (ProjectDocument.cpp), rien à migrer.
+
+> **D11.5 EST FAITE (03/09/2026).** `duplicateTrack` vit dans `core/`
+> (2 tests) parce que c'est une règle du modèle : tout est copié, les
+> identifiants de notes et de clips sont NEUFS (deux notes du même
+> identifiant sur deux pistes feraient agir un geste sur l'autre piste), et
+> les routages vers un groupe situé après l'original sont réparés comme
+> pour `moveTrack`. L'état VIVANT de l'instrument n'est pas dans le modèle
+> (D0.1) : l'application le recopie de l'original à la copie après avoir
+> reconstruit le graphe, état natif compris. Le canal MIDI se saisit dans
+> la liste des pistes (1 à 16, tout autre texte rend l'ancien).
 
 Ce que l'audit a trouvé et qui n'entre PAS ici, avec la raison : la
 sélection de notes par vélocité (le filtre existe sous forme d'opérations

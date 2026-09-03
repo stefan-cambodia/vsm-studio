@@ -170,6 +170,7 @@ private:
         kMenuTrackAddAudio,
         kMenuTrackAddGroup,
         kMenuTrackRemove,
+        kMenuTrackDuplicate,
         kMenuTrackFreeze,
         kMenuTrackBounce,
         kMenuTrackClapPlugin,
@@ -509,6 +510,8 @@ private:
     /// rendait l'enregistrement audio de D3.4 inatteignable.
     void addTrack(vsm::sequencer::Track::Kind kind = vsm::sequencer::Track::Kind::Midi);
     void removeSelectedTrack();
+    /// D11.5 : dupliquer la piste choisie, état de l'instrument compris.
+    void duplicateSelectedTrack();
     /// GÈLE OU DÉGÈLE la piste sélectionnée (D5.5). Le gel rend ce qu'elle
     /// produit dans un fichier du dossier de projet et cesse de le recalculer ;
     /// le dégel efface le fichier et remet l'instrument en marche. Le matériau

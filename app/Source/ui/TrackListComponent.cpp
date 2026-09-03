@@ -38,6 +38,21 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
                            juce::dontSendNotification);
     channelLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
     channelLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
+    // D11.5 : LE CANAL MIDI SE SAISIT. Il était attribué à la création
+    // (`n % 16`) et affiché sans qu'on puisse y toucher. Un nombre de 1 à
+    // 16 ; tout autre texte rend l'ancien. Le planning du moteur suit.
+    if (!audio_) {
+        channelLabel_.setEditable(false, true, false);
+        channelLabel_.setTooltip(u8"Canal MIDI (1 \u00e0 16) \u2014 double-clic pour le changer");
+        channelLabel_.onTextChange = [this] {
+            const int saisi = channelLabel_.getText().retainCharacters("0123456789").getIntValue();
+            if (saisi >= 1 && saisi <= 16) {
+                track_.channel = static_cast<uint8_t>(saisi - 1);
+                if (onChanged) onChanged();
+            }
+            channelLabel_.setText("Ch " + juce::String(track_.channel + 1), juce::dontSendNotification);
+        };
+    }
 
     // UNE PISTE AUDIO N'A PAS D'INSTRUMENT, et lui présenter un sélecteur de
     // machine serait lui promettre un choix sans effet : son matériau est un

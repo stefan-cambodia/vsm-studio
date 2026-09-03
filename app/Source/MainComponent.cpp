@@ -1240,6 +1240,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuTrackAddGroup, "Ajouter un groupe");
             menu.addItem(kMenuTrackRemove, u8"Supprimer la piste sélectionnée",
                          !project_.tracks.empty());
+            menu.addItem(kMenuTrackDuplicate, u8"Dupliquer la piste sélectionnée",
+                         !project_.tracks.empty());
             menu.addSeparator();
             {
                 const size_t piste = trackList_.selectedTrackIndex();
@@ -1640,6 +1642,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuTrackAddAudio: addTrack(Track::Kind::Audio); break;
         case kMenuTrackAddGroup: addTrack(Track::Kind::Group); break;
         case kMenuTrackRemove:   removeSelectedTrack(); break;
+        case kMenuTrackDuplicate: duplicateSelectedTrack(); break;
         case kMenuTrackFreeze:   toggleFreezeSelectedTrack(); break;
 #if VSM_WITH_CLAP
         case kMenuTrackClapPlugin: loadClapPluginOnSelectedTrack(); break;
@@ -4445,6 +4448,22 @@ void MainComponent::removeSelectedTrack() {
         const size_t next = std::min(idx, project_.tracks.size() - 1);
         trackList_.selectTrackIndex(next);
     }
+}
+
+void MainComponent::duplicateSelectedTrack() {
+    const size_t idx = trackList_.selectedTrackIndex();
+    if (idx >= project_.tracks.size()) return;
+    beginProjectEdit(u8"Dupliquer une piste");
+    const size_t copie = vsm::sequencer::duplicateTrack(project_, idx);
+    rebuildFromProject();
+    // L'ÉTAT VIVANT DE L'INSTRUMENT n'est pas dans le modèle (D0.1 : il vit
+    // dans la machine, le fichier le relit à l'ouverture). La copie vient
+    // d'être instanciée sur son patch d'usine : on lui recopie l'état de
+    // l'original, réglage par réglage et état natif compris.
+    auto* original = audioEngine_.processGraph().trackInstrument(idx);
+    auto* duplique = audioEngine_.processGraph().trackInstrument(copie);
+    if (original != nullptr && duplique != nullptr) duplique->loadState(original->saveState());
+    trackList_.selectTrackIndex(copie);
 }
 
 juce::String MainComponent::frozenPathFor(size_t trackIndex) const {

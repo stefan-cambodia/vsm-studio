@@ -305,3 +305,49 @@ VSM_TEST(moving_a_track_nowhere_or_out_of_range_changes_nothing) {
     VSM_ASSERT_EQ(projet.tracks[0].name, std::string("A"));
     VSM_ASSERT_EQ(projet.tracks[1].name, std::string("B"));
 }
+
+// D11.5 — DUPLIQUER UNE PISTE : tout est copié, les identifiants sont neufs,
+// les routages sont réparés.
+
+VSM_TEST(duplicating_a_track_copies_everything_with_fresh_ids) {
+    Project projet;
+    Track piste;
+    piste.name = "Basse";
+    piste.channel = 3;
+    piste.colorRgba = 0xFF112233u;
+    piste.instrumentId = "vsm.minimoog";
+    piste.volume = 0.5f;
+    Note n; n.startTick = 0; n.endTick = 480; n.number = 40; n.id = projet.nextNoteId();
+    piste.notes.push_back(n);
+    Clip c; c.startTick = 0; c.length = 1920; c.id = projet.nextClipId();
+    piste.clips.push_back(c);
+    projet.tracks.push_back(piste);
+
+    const size_t copie = duplicateTrack(projet, 0);
+    VSM_ASSERT_EQ(copie, size_t{1});
+    VSM_ASSERT_EQ(projet.tracks.size(), size_t{2});
+    const auto& d = projet.tracks[1];
+    VSM_ASSERT_EQ(d.name, std::string("Basse (copie)"));
+    VSM_ASSERT_EQ(static_cast<int>(d.channel), 3);
+    VSM_ASSERT_EQ(d.colorRgba, 0xFF112233u);
+    VSM_ASSERT_EQ(d.instrumentId, std::string("vsm.minimoog"));
+    VSM_ASSERT_EQ(d.notes.size(), size_t{1});
+    VSM_ASSERT_EQ(d.clips.size(), size_t{1});
+    VSM_ASSERT(d.notes[0].id != projet.tracks[0].notes[0].id);
+    VSM_ASSERT(d.clips[0].id != projet.tracks[0].clips[0].id);
+    VSM_ASSERT_EQ(d.notes[0].number, uint8_t{40});
+}
+
+VSM_TEST(duplicating_a_track_keeps_routings_to_groups_that_moved_down) {
+    Project projet;
+    projet.tracks.resize(3);
+    projet.tracks[2].kind = Track::Kind::Group;
+    projet.tracks[0].outputGroup = 2;   // la piste 0 va dans le groupe en 2
+    projet.tracks[1].outputGroup = 2;
+    duplicateTrack(projet, 0);          // le groupe recule en 3
+    VSM_ASSERT_EQ(projet.tracks.size(), size_t{4});
+    VSM_ASSERT(projet.tracks[3].kind == Track::Kind::Group);
+    VSM_ASSERT_EQ(projet.tracks[0].outputGroup, 3);
+    VSM_ASSERT_EQ(projet.tracks[1].outputGroup, 3);   // la copie
+    VSM_ASSERT_EQ(projet.tracks[2].outputGroup, 3);
+}
