@@ -453,6 +453,30 @@ VSM_TEST(stems_are_written_one_file_per_track_with_readable_names) {
     VSM_ASSERT(std::filesystem::exists(std::filesystem::path(sortie) / "03 - Nappe.wav"));
 }
 
+/// Les noms à accents, ligatures et points médians — ceux que la chaîne de
+/// reconstruction donne aux voix (« Voix · tête », « Voix · chœurs ») — se
+/// translittèrent au lieu de devenir `Voix __ t__te.wav`.
+VSM_TEST(stem_file_names_transliterate_accents_ligatures_and_middle_dots) {
+    TempFolder folder("stems-accents");
+    auto bundle = buildStemProject();
+    bundle.tracks[0].name = "Voix \u00b7 t\u00eate";
+    bundle.tracks[1].name = "Voix \u00b7 ch\u0153urs";
+    bundle.tracks[2].name = "Ba\u00dfe \u2014 \u00e0 l\u2019\u00e9tude";
+    saveProjectBundle(bundle, folder.str());
+    const auto chargé = loadProjectBundle(folder.str());
+    VSM_ASSERT(chargé.success);
+
+    RenderOptions options;
+    options.durationSeconds = 1.0;
+    const std::string sortie = folder.file("stems");
+    const StemResult écrits =
+        renderStemsToFolder(chargé.bundle, sortie, StemGranularity::Tracks, options);
+    VSM_ASSERT(écrits.success);
+    VSM_ASSERT(std::filesystem::exists(std::filesystem::path(sortie) / "01 - Voix - tete.wav"));
+    VSM_ASSERT(std::filesystem::exists(std::filesystem::path(sortie) / "02 - Voix - choeurs.wav"));
+    VSM_ASSERT(std::filesystem::exists(std::filesystem::path(sortie) / "03 - Basse - a letude.wav"));
+}
+
 // --- D0.3 : le rendu contient ce que le projet décrit -----------------------
 //
 // Les inserts étaient écrits dans `project.json` et jamais posés sur le graphe
