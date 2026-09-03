@@ -95,7 +95,7 @@ déplacent rien, et la stabilité par empreintes est démontrée en course.
 | H22b-v2 | stems `htdemucs_6s` (6) | 6 pistes ; distance neutre ou légèrement défavorable ; si elle se dégrade, la chaîne arbitre ressemblance contre jouabilité et le § 0 tranche | **0,17114 — −10,4 % ET six pistes.** L'attendu est contredit dans le bon sens : plus de pistes ET plus proche. Machines : bass→cs80, guitar→tb303, other→musicbox, piano→phasedist. Le verdict à six pistes n'atteint pas le point fixe en 3 tours (bass et piano oscillent), et le réglage au mélange rapporte encore −0,009. Restes : guitar (poly 3,4 · 74 demi-tons) et other (3,8 · 71) sont ENCORE des fourre-tout → H23 est complémentaire, pas concurrente |
 | H23 | `--voix-par-stem 4` | pas de gain de distance ; succès = chaque piste sous le seuil du fourre-tout | **0,20846 (+9,1 %) et 7 pistes — le critère structurel est TENU** : les quatre voix passent sous le seuil (poly 0,64/1,68/1,36/1,14 ; ambitus 28/9/9/16), et chaque registre reçoit SA machine (divider, tb303, multisample ×2). La distance dépasse les 5 % de la règle écrite d'avance → le découpage reste une OPTION, il ne devient pas le défaut. Verdict au point fixe en 2 tours ; la chaîne signale 2× que le morceau serait meilleur sans la voix 1 (l'aigu jugé seul contre le stem entier) — conservée, couper est humain |
 | `--voix-tete-choeurs` | tête et chœurs par le champ stéréo | *(aucun attendu écrit avant la course — faute dite ; la voix étant un report d'audio dont la somme est exacte, la distance ne pouvait bouger que par les autres pistes)* | **0,19112 (+0,05 %) et 5 pistes** contre H22a-v2 (0,19104) : neutre. Tête 74 % / chœurs 26 %, tête + chœurs = stem exactement. Le prix en distance est nul ; la qualité reste affaire d'oreille |
-| `--batterie-par-piece` | une piste par pièce | pas de gain de distance ; les pièces ne se volent plus de voix | **0,25804 (+35,1 %) et 5 pistes** — chiffre INVALIDÉ par le § 7 : les pièces n'étaient pas calées. Remesuré en campagne 2 (§ 8) |
+| `--batterie-par-piece` | une piste par pièce | pas de gain de distance ; les pièces ne se volent plus de voix | v1 0,25804 (+35,1 %, pièces non calées, § 7) ; v2 0,24481 (+28,2 %, pas d'alternative d'usine, § 8) ; **v3 0,191036 (+0,00 %, le témoin au millionième) et 5 pistes** : le découpage ne coûte rien |
 | `--parite` | les trois découpages ensemble | ≈ H23 (+9 %), le prix des voix jugées seules | **0,21029 (+10,1 %) et 9 pistes** — même défaut de calage sur les pièces ET sur les voix (§ 7). Remesuré en campagne 2 (§ 8) |
 
 ## 4. Ce qui reste à faire (l'ordre de marche du chantier)
@@ -464,6 +464,20 @@ morceau de synthèse n'est pas le juge. Le juge, écrit d'avance :
 |---|---|---|---|
 | usandthem-batterie-v3 | H22a-v2 (0,19104) | `--batterie-par-piece`, code corrigé | le verdict retient le patch d'usine pour les pièces comme pour le kit, recalées ensemble : j'attends la distance dans ±5 % du témoin. Si elle reste au-dessus de +10 %, la cause restante est le rendu en instances séparées (les pièces ne se volent plus de voix) |
 | usandthem-parite-v3 | H22a-v2 (0,19104) | `--parite`, code corrigé | les voix recalées ensemble au verdict et au réglage : j'attends mieux que parite-v2 et ≈ H23 (+9 %), soit entre +5 et +11 % |
+
+**usandthem-batterie-v3 — MESURÉE (18:09) : 0,191036, le témoin AU MILLIONIÈME
+(+0,00 %).** L'attendu (±5 %) est tenu au-delà de ce qu'il osait : le
+découpage de la batterie par pièce ne coûte RIEN. Le journal le montre pas à
+pas : les deux pièces calées ensemble à 0,82 comme le kit du témoin ; au tour
+1 du verdict, chacune reçoit le patch d'usine (l'alternative qui manquait) et
+son volume recalé à 0,51 — les valeurs mêmes du kit dans le témoin ; le
+réglage au mélange fait ensuite le même chemin (bass 0,2262 → 0,2108, other →
+0,2086). Deux instances de la même machine jouant chacune ses pièces au même
+patch et au même volume rendent le même son qu'une seule : le surcoût de
++35 % (v1) puis +28 % (v2) était ENTIÈREMENT fait du calage et de
+l'alternative absente, jamais du découpage. Le projet porte en plus son bus
+« Batterie » (§ 6 bis). Le découpage par pièce peut donc rester dans
+`--parite` sans réserve de distance.
 
 **usandthem-parite-v2 — PERDUE (17:16), et la leçon vaut plus que la
 course.** Après 5 h 24 et les trois tours du verdict, la chaîne est morte au
