@@ -479,6 +479,29 @@ l'alternative absente, jamais du découpage. Le projet porte en plus son bus
 « Batterie » (§ 6 bis). Le découpage par pièce peut donc rester dans
 `--parite` sans réserve de distance.
 
+**usandthem-parite-v3 — MESURÉE (21:11) : 0,19084, soit −0,10 % du témoin,
+et NEUF pistes.** L'attendu (+5 à +11 %) est contredit dans le bon sens, et
+de loin : le prix de la parité, mesuré à +9,1 % par H23 et à +28 % par
+parite-v1, était ENTIÈREMENT fait du calage voix par voix contre le stem
+entier. Recalées ensemble sur leur stem (§ 7), les quatre voix d'`other`,
+les deux pièces de la batterie et les deux voix chantées rendent le même
+morceau que quatre pistes, à 0,0002 près — et le projet se retravaille.
+Machines retenues : bass → vocal ; other · voix 1 → divider, voix 2 →
+tb303, voix 3 et 4 → multisample ; batterie kick2+kick et hihat → drums au
+patch d'usine ; tête et chœurs reportées. Deux bus de groupe (« other »,
+« Batterie »). Durée : 3 h 01 (10 885 s) à 8 rendus de front, contre 5 h 24
+pour parite-v2 avant sa mort au réglage. Le verdict du mélange dit encore
+« meilleur sans la basse » (0,2165 contre 0,2219), et elle est conservée.
+
+Ce que cela rouvre : le § 4.2 laissait `--voix-par-stem` en option parce
+que la parité coûtait +9,1 %. Elle ne coûte plus rien sur ce morceau.
+**Faire de `--parite` le défaut est donc la question suivante — et elle
+attend sky-parite (campagne 4, en cours depuis 21:11)**, parce que la règle
+du § 5 exige un deuxième morceau avant de changer un défaut, et que *Sky
+and Sand* met la parité à une autre épreuve : c'est la batterie (78 %) qui
+s'y découpe, pas `other`. Attendu déjà écrit (§ 8, tableau de la campagne
+2) : neutre à +5 %.
+
 **usandthem-parite-v2 — PERDUE (17:16), et la leçon vaut plus que la
 course.** Après 5 h 24 et les trois tours du verdict, la chaîne est morte au
 réglage du mélange : `vsm_mix_refine` était importé À LA DEMANDE à cet
