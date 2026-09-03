@@ -149,8 +149,8 @@ D12 utilisable avant tout suiveur de temps.
 | Étape | Contenu | Terminé quand |
 |---|---|---|
 | D12.1 | le noyau de rééchantillonnage fenêtré (sinc de Kaiser), qui remplace l'interpolation linéaire de D2.3 et fait le mode *Rééchantillonné* | banc 8 ; les empreintes qui passent par le rééchantillonnage sont régénérées EN LE DISANT |
-| D12.2 | `TimeStretch` : le WSOLA, la recherche de similarité, le court-circuit à 1,0 | bancs 1, 2, 3 (première moitié), 5, 6, 7 |
-| D12.3 | la détection de transitoires (flux d'énergie sur le matériau, à la publication, mise en cache par fichier comme les crêtes de forme d'onde) et le verrouillage | banc 4 |
+| D12.2 | `TimeStretch` : le WSOLA, la recherche de similarité, le court-circuit à 1,0 | bancs 1, 2, 3 (première moitié), 5, 6, 7 — **fait le 04/09/2026** (banc 7 au moment de D12.5, dans `process()`) |
+| D12.3 | la détection de transitoires (flux d'énergie sur le matériau, à la publication, mise en cache par fichier comme les crêtes de forme d'onde) et le verrouillage | banc 4 — **fait le 04/09/2026** (le cache par fichier attend D12.5) |
 | D12.4 | le modèle : `warpMode`, `warpMarkers`, les gestes de `ClipEdit`, le format | tests `core/` et `interchange/` ; un projet v2 s'ouvre inchangé |
 | D12.5 | le moteur : la carte par morceaux dans `AudioClipSpan`, `mixInto()` à travers l'étireur, `vsm-render` | banc 3 (seconde moitié), 9 ; `ProcessGraph` intact |
 | D12.6 | l'interface : le menu du clip, « N mesures », les marqueurs sur la forme d'onde, la forme dessinée en temps étiré, annulation | vu à l'écran, `VSM_CAPTURE`, réglages retenus |
@@ -158,6 +158,38 @@ D12 utilisable avant tout suiveur de temps.
 
 Le vocodeur de phase, s'il vient, sera D12.8 avec son propre attendu, écrit
 sur le chiffre du banc 5.
+
+> **D12.2 ET D12.3 SONT FAITES (04/09/2026), ET VOICI LES CHIFFRES.**
+> `audio/include/vsm/audio/dsp/TimeStretch.h` (grains de 2 048, saut de
+> 1 024, recherche ± 768 grossière au pas de 8 puis fine, Hann périodique,
+> corrélation normalisée sur la zone de recouvrement) et
+> `TransientDetector.h` (flux d'énergie par blocs de 256, seuil à trois fois
+> la moyenne des ± 20 blocs voisins, plancher, maximum local, 48 ms entre
+> deux, position affinée à la trame de plus forte pente). Le banc,
+> `audio/tests/test_time_stretch.cpp` :
+>
+> | # | attendu | mesuré |
+> |---|---|---|
+> | 1 | ≤ 5 cents | **0,0 cent** à ×0,75 et ×1,5 (la3, 2 s au milieu) |
+> | 2 | sonne jusqu'à round(N·r), silence après | rms 0,348 avant la fin contre 0,353 au milieu ; **0,000000** après, aux deux rapports |
+> | 3 | rapport 1 au bit près | **identique**, 48 000 trames, signal riche ; un décalage entier reste un court-circuit, 1,0000001 non |
+> | 4 | 16 attaques à ≤ 1 ms, ×1,5 et ×0,66 | **16 et 16, écart 0,98 ms** — le retard constant du détecteur du banc (fenêtre de 1 ms) ; avec les transitoires DÉTECTÉS et non déclarés : 16, 0,98 ms ; le détecteur seul : 16 sur 16 à 0,00 ms, et 0 sur un la3 tenu |
+> | 5 | flottement ≤ 10 % | **0,0 %** (rms 0,3535 à 0,3536 par 100 ms) |
+> | 6 | déterministe, blocs de 256 = blocs de 4 096 | **identiques au bit près** ; un `seek` repart à froid, identique à un départ là |
+>
+> **Ce que la première mesure a enseigné, et qui n'était pas dans le § 3.**
+> Le premier verrouillage (le grain propriétaire posé juste, son prédécesseur
+> une demi-fenêtre plus tôt, son successeur à la suite) laissait UN CLIC SUR
+> DEUX 17 à 20 ms trop tôt à ×1,5. La cause : à l'étirement, la fenêtre d'un
+> grain (2 048 trames) lit plus de source que son avance nominale (683 par
+> saut), si bien qu'un grain CHERCHÉ deux ou trois sauts avant le
+> propriétaire attrape déjà l'attaque dans sa queue, atténuée par la fenêtre
+> mais entière comme attaque. La règle complétée : un grain cherché ne
+> contient jamais de transitoire — coupé au premier qu'il rencontre, les
+> grains d'avant gardent ce qui précède, ceux d'après ce qui suit ; seuls les
+> trois grains alignés jouent l'attaque, et leur somme de fenêtres vaut un.
+> Le prix, dit dans l'en-tête : un creux de quelques millisecondes dans la
+> queue du grain coupé, juste avant l'attaque.
 
 ## 8. Ce qui n'est pas au programme, et pourquoi
 

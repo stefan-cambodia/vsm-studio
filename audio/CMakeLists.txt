@@ -134,6 +134,7 @@ if (VSM_BUILD_TESTS)
         tests/test_master_dsp.cpp
         tests/test_master_bus.cpp
         tests/test_oversampler.cpp
+        tests/test_time_stretch.cpp
         tests/test_audio_track.cpp
         tests/test_metronome.cpp
         tests/test_count_in.cpp
