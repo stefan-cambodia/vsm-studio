@@ -28,7 +28,8 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     if (track_.kind == vsm::sequencer::Track::Kind::Group) {
         nameLabel_.setColour(juce::Label::textColourId, vsm::ui::Palette::accentAmber);
         nameLabel_.setTooltip(juce::String::fromUTF8(track_.name.c_str())
-                              + u8" — bus de groupe : les pistes routées vers lui passent par ce fader");
+                              + juce::String::fromUTF8(" — bus de groupe : les pistes routées vers lui "
+                                                       "passent par ce fader"));
     }
     addAndMakeVisible(nameLabel_);
 
