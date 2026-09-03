@@ -41,9 +41,16 @@ TICKS_PER_QUARTER_NOTE = 480
 
 # Couleurs de piste, reprises de la palette de l'application. Une piste sans
 # couleur serait grise, et douze pistes grises sont illisibles.
+# COULEURS DE PISTE, EN ARGB COMME LE DAW LES LIT (« #AARRGGBB »,
+# ProjectDocument.cpp : colourFromHex). La première version les écrivait en
+# RGBA : lue en ARGB, « #06D6A0FF » avait un alpha de 0x06 -- une piste sur
+# huit sortait aux notes quasi TRANSPARENTES dans le piano roll, et toutes
+# les autres avaient une fausse couleur (le rose « #FF6B9B » devenait bleu).
+# Trouvé à l'écran, sur un registre de l'épreuve de parité dont les 164 notes
+# ne se voyaient pas.
 _TRACK_COLOURS = [
-    "#FF6B9BFF", "#FFD166FF", "#06D6A0FF", "#4CC9F0FF",
-    "#B57BFFFF", "#F4845FFF", "#8AC926FF", "#FF595EFF",
+    "#FFFF6B9B", "#FFFFD166", "#FF06D6A0", "#FF4CC9F0",
+    "#FFB57BFF", "#FFF4845F", "#FF8AC926", "#FFFF595E",
 ]
 
 

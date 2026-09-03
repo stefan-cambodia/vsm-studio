@@ -83,5 +83,18 @@ def sans_groupe_le_projet_ne_change_pas():
     assert_equal(projet["version"], 1, "version 1 conservée")
 
 
+@test
+def les_couleurs_de_piste_sont_opaques_en_argb():
+    """Le DAW lit « #AARRGGBB » : une couleur écrite en RGBA lui donne un alpha
+    quelconque, et « #06D6A0FF » rendait ses notes transparentes."""
+    with tempfile.TemporaryDirectory() as d:
+        write_project_bundle(pistes(), Path(d))
+        projet = json.loads((Path(d) / "project.json").read_text(encoding="utf-8"))
+    for piste in projet["tracks"]:
+        couleur = piste["color"]
+        assert_true(len(couleur) == 9 and couleur.startswith("#FF"),
+                    f"{piste['name']} : {couleur} doit être opaque en ARGB")
+
+
 if __name__ == "__main__":
     raise SystemExit(run())

@@ -2841,6 +2841,17 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     project_ = loaded.bundle.project;
     if (project_.title.empty())
         project_.title = folder.getFileName().toStdString();
+    // UNE COULEUR QUASI TRANSPARENTE N'EST PAS UNE COULEUR. La chaîne
+    // d'analyse a longtemps écrit ses couleurs en RGBA là où ce fichier lit
+    // de l'ARGB : « #06D6A0FF » donnait un alpha de 0x06, et les notes d'une
+    // piste sur huit ne se voyaient pas dans le piano roll. La chaîne est
+    // corrigée ; les projets déjà écrits, eux, restent -- on les rend
+    // opaques à l'ouverture, en gardant leur teinte.
+    for (auto& track : project_.tracks) {
+        if ((track.colorRgba >> 24) < 0x40u) track.colorRgba |= 0xFF000000u;
+        for (auto& clip : track.clips)
+            if ((clip.colorRgba >> 24) < 0x40u) clip.colorRgba |= 0xFF000000u;
+    }
 
     // UNE PISTE AVEC DU MATÉRIAU ET SANS CLIP JOUE — « pas de clip = tout le
     // matériau », c'est la sémantique du PlaybackScheduler — mais NE SE VOIT
