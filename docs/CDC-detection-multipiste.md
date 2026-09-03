@@ -348,6 +348,18 @@ meilleur sans telle piste (la basse, deux registres d'`other`) : chaque
 registre est jugé seul contre le stem entier, et l'aveu reste ce qu'il est —
 une information, pas une coupe.
 
+**L'excès inverse, mesuré aussi (variante `--variante chorale`).** `other`
+y est UN SEUL instrument — même timbre — qui tient quatre voix serrées sur
+trois octaves : un piano d'accompagnement, 7 parties en tout. Au sens du
+seuil c'est un fourre-tout (polyphonie 3,8, ambitus 47) ; pour l'oreille
+c'est une partie. Résultat avec `--parite` : **8 pistes pour 7 parties** —
+la voix de basse de la chorale (G#1-D#2) est séparée des trois autres
+(C3-G5) par un creux, et le découpage par les vides en fait deux
+instruments. Rien dans les notes ne peut dire le contraire, et le timbre lu
+dans l'audio ne le peut pas non plus — mesuré et réfuté le jour même,
+ROADMAP-fusion H25. **C'est une limite connue et chiffrée de la parité** :
+un instrument dont les registres se séparent par un vide compte pour deux.
+
 Ce que l'épreuve ne prouve pas : que les creux existent dans un vrai morceau.
 Ils n'existent dans aucun des trois mesurés. Le jour où une transcription
 réelle en montre, le journal le dira (« DÉCOUPÉ en N registres par les

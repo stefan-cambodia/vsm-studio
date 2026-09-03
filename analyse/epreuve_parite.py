@@ -54,6 +54,18 @@ VERITE = {
     "vocals": ["tête", "chœurs"],
 }
 
+# LA VARIANTE « CHORALE » : l'excès inverse de la parité. `other` y est UN
+# SEUL instrument (même timbre) qui tient quatre voix serrées sur trois
+# octaves — un piano d'accompagnement. Au sens du seuil du fourre-tout
+# (polyphonie ≥ 3 ET ambitus ≥ 36), c'est un fourre-tout ; pour l'oreille,
+# c'est une partie. La parité, c'est UNE piste ici, pas quatre.
+VERITE_CHORALE = {
+    "bass": ["basse"],
+    "other": ["chorale"],
+    "drums": ["kick", "caisse", "charleston"],
+    "vocals": ["tête", "chœurs"],
+}
+
 
 def _hz(midi: float) -> float:
     return 440.0 * 2.0 ** ((midi - 69) / 12.0)
@@ -164,7 +176,7 @@ def _frappe(sorte: str) -> np.ndarray:
     raise ValueError(sorte)
 
 
-def fabriquer(dossier: Path) -> dict:
+def fabriquer(dossier: Path, variante: str = "registres") -> dict:
     dossier.mkdir(parents=True, exist_ok=True)
     n = int(DUREE * SR) + int(1.0 * SR)  # une seconde de queue
     bass = np.zeros(n)
@@ -191,28 +203,42 @@ def fabriquer(dossier: Path) -> dict:
             _poser(bass, t0 + croche * BATTEMENT / 2, _note(_hz(midi), BATTEMENT / 2 * 0.95, "basse"))
             notes_verite["bass"].append((midi, t0 + croche * BATTEMENT / 2))
 
-        # grave : une dyade tenue par mesure (fondamentale + quinte), registre 36-50
-        for iv in (0, 7):
-            midi = fond - 9 + iv if fond - 9 + iv >= 36 else fond + 3 + iv
-            _poser(grave, t0, _note(_hz(midi), 4 * BATTEMENT * 0.98, "grave"), 0.6)
-            notes_verite["grave"].append((midi, t0))
+        if variante == "chorale":
+            # UN instrument, quatre voix serrées (basse, ténor, alto, soprano)
+            # en blanches, même timbre partout, registres qui se TOUCHENT :
+            # aucun vide, trois octaves, polyphonie 4.
+            for blanche in range(2):
+                t = t0 + blanche * 2 * BATTEMENT
+                voix = [fond - 9, fond + 3 + intervalles[1], fond + 12 + 7, fond + 24 + intervalles[1]]
+                if blanche == 1:
+                    voix = [fond - 9 + 7 - 12 if fond - 9 + 7 - 12 >= 36 else fond - 9,
+                            fond + 3 + 7, fond + 12 + intervalles[1] + 12 - 12, fond + 24 + 7]
+                for midi in voix:
+                    _poser(grave, t, _note(_hz(midi), 2 * BATTEMENT * 0.95, "grave"), 0.5)
+                    notes_verite["grave"].append((midi, t))
+        else:
+            # grave : une dyade tenue par mesure (fondamentale + quinte), registre 36-50
+            for iv in (0, 7):
+                midi = fond - 9 + iv if fond - 9 + iv >= 36 else fond + 3 + iv
+                _poser(grave, t0, _note(_hz(midi), 4 * BATTEMENT * 0.98, "grave"), 0.6)
+                notes_verite["grave"].append((midi, t0))
 
-        # médium : arpèges en croches sur les notes de l'accord, registre 60-72
-        for croche in range(8):
-            midi = fond + 12 + intervalles[croche % 3] + (12 if croche >= 6 else 0)
-            while midi < 60:
-                midi += 12
-            while midi > 72:
-                midi -= 12
-            _poser(medium, t0 + croche * BATTEMENT / 2, _note(_hz(midi), BATTEMENT / 2 * 0.9, "medium"), 0.7)
-            notes_verite["medium"].append((midi, t0 + croche * BATTEMENT / 2))
+            # médium : arpèges en croches sur les notes de l'accord, registre 60-72
+            for croche in range(8):
+                midi = fond + 12 + intervalles[croche % 3] + (12 if croche >= 6 else 0)
+                while midi < 60:
+                    midi += 12
+                while midi > 72:
+                    midi -= 12
+                _poser(medium, t0 + croche * BATTEMENT / 2, _note(_hz(midi), BATTEMENT / 2 * 0.9, "medium"), 0.7)
+                notes_verite["medium"].append((midi, t0 + croche * BATTEMENT / 2))
 
-        # aigu : mélodie en noires, registre 84-96
-        for noire in range(4):
-            degre = melodie_aigu[(mesure * 4 + noire) % 8]
-            midi = 84 + gamme[degre % 8]
-            _poser(aigu, t0 + noire * BATTEMENT, _note(_hz(midi), BATTEMENT * 0.9, "aigu"), 0.5)
-            notes_verite["aigu"].append((midi, t0 + noire * BATTEMENT))
+            # aigu : mélodie en noires, registre 84-96
+            for noire in range(4):
+                degre = melodie_aigu[(mesure * 4 + noire) % 8]
+                midi = 84 + gamme[degre % 8]
+                _poser(aigu, t0 + noire * BATTEMENT, _note(_hz(midi), BATTEMENT * 0.9, "aigu"), 0.5)
+                notes_verite["aigu"].append((midi, t0 + noire * BATTEMENT))
 
         # batterie : kick 1 et 3 (et le « et » de 4 une mesure sur deux), caisse 2 et 4,
         # charleston à chaque croche
@@ -245,7 +271,10 @@ def fabriquer(dossier: Path) -> dict:
         return x * (cible / (np.sqrt(np.mean(x ** 2)) + 1e-12))
 
     bass = normaliser(bass, 0.10)
-    other = normaliser(grave, 0.06) + normaliser(medium, 0.05) + normaliser(aigu, 0.035)
+    if variante == "chorale":
+        other = normaliser(grave, 0.09)
+    else:
+        other = normaliser(grave, 0.06) + normaliser(medium, 0.05) + normaliser(aigu, 0.035)
     drums = normaliser(drums, 0.12)
     tete = normaliser(voix_tete, 0.07)
     g = normaliser(voix_g, 0.04)
@@ -268,11 +297,13 @@ def fabriquer(dossier: Path) -> dict:
         sf.write(str(dossier / f"{nom}.wav"), (normaliser(couche, 0.05) * gain).astype(np.float32), SR,
                  subtype="FLOAT")
 
+    parties = VERITE_CHORALE if variante == "chorale" else VERITE
     verite = {
         "format": "vsm-epreuve-parite", "version": 1,
+        "variante": variante,
         "duree": DUREE, "bpm": BPM,
-        "parties": VERITE,
-        "total": sum(len(v) for v in VERITE.values()),
+        "parties": parties,
+        "total": sum(len(v) for v in parties.values()),
         "registres": {"bass": [29, 36], "grave": [36, 50], "medium": [60, 72], "aigu": [84, 96],
                       "tete": [62, 74], "choeurs": [65, 81]},
         "notes": {k: len(v) for k, v in notes_verite.items()},
@@ -317,10 +348,13 @@ def main() -> int:
     ap.add_argument("--rendus-paralleles", type=int, default=4)
     ap.add_argument("--sans-parite", action="store_true", help="le témoin : sans --parite")
     ap.add_argument("--nom", default=None, help="nom de la course (défaut : parite ou temoin)")
+    ap.add_argument("--variante", default="registres", choices=("registres", "chorale"),
+                    help="registres : trois parties disjointes dans other (9 parties) ; "
+                         "chorale : UN instrument à quatre voix serrées dans other (7 parties)")
     args, reste = ap.parse_known_args()  # le reste va tel quel à reconstruire.py
 
-    morceau = args.sortie / "morceau"
-    verite = fabriquer(morceau)
+    morceau = args.sortie / ("morceau" if args.variante == "registres" else f"morceau-{args.variante}")
+    verite = fabriquer(morceau, args.variante)
     print(f"morceau fabriqué : {morceau} — {verite['total']} parties, "
           + ", ".join(f"{k} {v}" for k, v in verite["notes"].items()) + " notes")
     if args.fabriquer_seulement:

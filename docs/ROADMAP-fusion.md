@@ -2878,6 +2878,51 @@ tranche seule — elle aurait laissé *Sky and Sand* sec en le disant — et la
 raison pour laquelle elle ne deviendra pas le défaut : le gain est propre au
 morceau, petit quand il existe, et l'oreille n'a pas jugé.
 
+### H25 — le TIMBRE dirait si deux registres sont un ou deux instruments ; écrite, mesurée le jour même, RÉFUTÉE (03/09/2026)
+
+**Le constat** : la parité se trompe dans les deux sens. L'épreuve à vérité
+connue (CDC multipiste § 6 bis) atteint 9 pistes pour 9 parties ; sa
+variante « chorale » — un SEUL piano à quatre voix serrées sur trois
+octaves, 7 parties — donne **8 pistes** : la voix de basse de la chorale
+est séparée des trois autres par un vide, et le découpage par les vides,
+qui ne connaît que des hauteurs, en fait deux instruments. Rien dans les
+notes ne distingue « deux mains d'un piano » de « une basse et un clavier ».
+
+*Ce que j'attendais, écrit d'avance (dans l'en-tête de
+`analyse/analyzer/vsm_timbre.py`, avant la mesure)* : une empreinte de
+timbre lue dans l'audio du stem aux notes de chaque registre — amplitudes
+aux dix premiers harmoniques de la note, normalisées, moyennées sur le
+registre, comparées par distance cosinus — devait être PETITE entre deux
+registres d'un même instrument et GRANDE entre deux instruments ; le seuil
+restait à mesurer. Le garde-fou aurait alors REFUSÉ de découper des
+registres de même timbre.
+
+*Mesuré* (distance 1 − cosinus, 0 = même profil) :
+
+| Stem | Registres | Distances |
+|---|---|---|
+| épreuve, trois timbres DIFFÉRENTS | 84-96 · 56-79 · 27-46 | 0,08 (aigu-médium), 0,12 (médium-grave), 0,32 (aigu-grave) |
+| chorale, UN SEUL timbre | 48-79 · 32-39 | **0,48** |
+| chorale, quatre voix k-moyennes | 69-79 · 57-67 · 48-55 · 32-39 | de 0,05 (voisines) à 0,65 (extrêmes) |
+| *Us and Them* `other` (H22a), quatre voix | 69-97 … 31-47 | de 0,01 (voisines) à 0,27 (extrêmes) |
+| *Sky and Sand* `other`, quatre voix | 80-98 … 30-49 | de 0,04 à 0,87 |
+
+**Réfutée à la première mesure, et sans ambiguïté** : le même instrument
+donne la PLUS GRANDE distance de la table, et les trois instruments distincts
+la plus petite. Le profil harmonique dépend du registre bien plus que de
+l'instrument — un filtre passe-bas coupe les harmoniques d'une note aiguë et
+laisse celles d'une note grave, et le même piano a deux profils —, et il est
+sali par la polyphonie de la même façon dans tous les cas. Une empreinte
+indépendante du registre demanderait de connaître l'enveloppe spectrale de
+l'instrument, c'est-à-dire de l'avoir déjà séparé : c'est le problème
+qu'on voulait résoudre.
+
+*Ce qui reste* : la limite est ÉCRITE et chiffrée (CDC multipiste § 6 bis) —
+un instrument dont les registres se séparent par un vide compte pour deux.
+Le module de mesure reste dans le dépôt, hors de la chaîne. La voie
+restante est un modèle appris sur des extraits de notes (§ 7, à sa
+condition de rouverture), pas une empreinte à la main.
+
 ### H23 — diviser un stem polyphonique en VOIX ; écrite AVANT sa mesure
 
 Six stems ne suffiront pas : `other` restera un fourre-tout, plus maigre. La

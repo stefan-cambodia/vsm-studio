@@ -44,5 +44,15 @@ def le_morceau_a_neuf_parties_et_ses_stems_somment_a_l_original():
                     "les trois registres d'other sont disjoints")
 
 
+@test
+def la_variante_chorale_a_sept_parties_et_un_seul_other():
+    with tempfile.TemporaryDirectory() as d:
+        verite = epreuve_parite.fabriquer(Path(d), "chorale")
+    assert_equal(verite["total"], 7, "sept parties : other n'en porte qu'une")
+    assert_equal(verite["parties"]["other"], ["chorale"], "un seul instrument dans other")
+    assert_equal(verite["notes"]["medium"], 0, "ni médium ni aigu : tout est dans la chorale")
+    assert_true(verite["notes"]["grave"] >= 100, "quatre voix par blanche sur seize mesures")
+
+
 if __name__ == "__main__":
     raise SystemExit(run())
