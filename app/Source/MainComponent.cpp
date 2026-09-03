@@ -297,6 +297,18 @@ MainComponent::MainComponent()
         audioEngine_.processGraph().seekSeconds(project_.ticksToSeconds(tick));
     };
     arrangement_.onTrackSelected = [this](size_t index) { trackList_.selectTrackIndex(index); };
+    // D11.1 : ce qu'un changement de piste a refusé se DIT — un clip audio
+    // vers une piste qui porte un autre fichier, un groupe, un genre qui ne
+    // correspond pas. Le geste a fait le reste ; ceci n'est pas une erreur.
+    arrangement_.onClipsRefused = [](size_t refuses) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Changement de piste",
+            juce::String(static_cast<int>(refuses))
+                + (refuses > 1 ? u8" clips n'ont pas changé de piste" : u8" clip n'a pas changé de piste")
+                + u8" : un clip audio ne va que vers une piste audio qui porte le même fichier "
+                  u8"(ou aucun), un clip MIDI vers une piste MIDI, et un groupe ne reçoit rien. "
+                  u8"Les autres clips de la sélection ont été déplacés.");
+    };
     // La grille fine de l'arrangement EST celle du piano roll, lue à l'usage :
     // deux réglages de grille dans deux vues du même morceau finiraient par se
     // contredire.

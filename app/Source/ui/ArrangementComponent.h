@@ -125,6 +125,11 @@ public:
     void copySelection();
     void paste();
     void duplicateSelection();
+    /// Tous les clips de toutes les pistes (Ctrl+A, D11.2).
+    void selectAll();
+    /// Appelé au relâchement quand un déplacement de piste a refusé des clips
+    /// (nombre refusé) : la vue ne sait pas parler, l'application si.
+    std::function<void(size_t)> onClipsRefused;
 
     static constexpr int kHeaderWidth = 150;
     static constexpr int kRulerHeight = 22;
@@ -140,7 +145,7 @@ private:
     /// trois booléens : « je déplace ET je redimensionne » n'existe pas, et
     /// l'écrire ainsi le rend impossible.
     enum class Geste { Aucun, Deplacer, BordGauche, BordDroit, Hauteur, Reordonner, Point,
-                        FonduEntree, FonduSortie };
+                        FonduEntree, FonduSortie, Lasso };
 
     float tickToX(vsm::midi::Tick tick) const;
     vsm::midi::Tick xToTick(float x) const;
@@ -194,6 +199,17 @@ private:
     int hauteurOrigine_ = 0;
     float ySaisie_ = 0.0f;
     bool reordonnancementOuvert_ = false;
+
+    // --- D11.1 : le clip change de piste ; D11.2 : le lasso ---------------
+    /// La piste sous le pointeur au dernier pas du déplacement : le décalage
+    /// de pistes est RELATIF, comme celui du temps.
+    int pisteDerniere_ = -1;
+    /// Ce que le geste a refusé (clips audio vers un autre fichier, groupes),
+    /// rendu à `onClipsRefused` au relâchement — jamais tu.
+    size_t refusesPendantLeGeste_ = 0;
+    juce::Point<float> lassoOrigine_;
+    juce::Rectangle<float> lasso_;
+    void selectClipsInLasso(bool etendre);
 
     // --- Automation dessinée SUR l'arrangement (D5.4) ---------------------
     //

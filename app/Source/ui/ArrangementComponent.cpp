@@ -367,10 +367,19 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
     Clip* clip = clipAt(point, piste, bord);
     if (clip == nullptr) {
         if (!event.mods.isShiftDown()) selection_.clear();
+        // LE LASSO PART DU VIDE : un rectangle tiré sur rien sélectionne les
+        // clips qu'il touche (D11.2). Maj l'AJOUTE à la sélection en cours.
+        if (event.mods.isLeftButtonDown() && point.x >= kHeaderWidth) {
+            geste_ = Geste::Lasso;
+            lassoOrigine_ = point;
+            lasso_ = juce::Rectangle<float>(point, point);
+        }
         repaint();
         return;
     }
     pisteCourante_ = piste;
+    pisteDerniere_ = static_cast<int>(piste);
+    refusesPendantLeGeste_ = 0;
     if (onTrackSelected) onTrackSelected(piste);
 
     // MAJ ÉTEND la sélection, comme partout. Sans Maj, cliquer un clip déjà
@@ -465,9 +474,29 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
         }
         return;
     }
+    if (geste_ == Geste::Lasso) {
+        lasso_ = juce::Rectangle<float>(lassoOrigine_, event.position);
+        selectClipsInLasso(event.mods.isShiftDown());
+        repaint();
+        return;
+    }
     if (selection_.empty()) return;
     const int piste = trackAtY(event.position.y);
-    juce::ignoreUnused(piste);
+
+    // LE CLIP CHANGE DE PISTE (D11.1) : le décalage de pistes est relatif au
+    // dernier pas, comme celui du temps, et il emporte les notes que la
+    // fenêtre couvre (voir `moveClipsAcrossTracks`). Ce qui est refusé est
+    // compté et dit au relâchement.
+    if (geste_ == Geste::Deplacer && piste >= 0 && pisteDerniere_ >= 0 && piste != pisteDerniere_) {
+        const auto rapport = vsm::sequencer::moveClipsAcrossTracks(
+            project_->tracks, selection_, piste - pisteDerniere_);
+        pisteDerniere_ += rapport.applied;
+        refusesPendantLeGeste_ += rapport.refused;
+        if (rapport.moved > 0) {
+            pisteCourante_ = static_cast<size_t>(pisteDerniere_);
+            if (onTrackSelected) onTrackSelected(pisteCourante_);
+        }
+    }
 
     // LES FONDUS SE TIRENT EN ABSOLU, pas en relatif : le coin suit le
     // pointeur, comme on l'attend d'une poignée qu'on tient.
@@ -509,6 +538,7 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
             case Geste::Point:
             case Geste::FonduEntree:
             case Geste::FonduSortie:
+            case Geste::Lasso:
             case Geste::Aucun: break;
         }
     }
@@ -518,6 +548,10 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
 
 void ArrangementComponent::mouseUp(const juce::MouseEvent&) {
     if (geste_ == Geste::Hauteur || geste_ == Geste::Reordonner) notifyChanged();
+    if (geste_ == Geste::Lasso) { lasso_ = {}; repaint(); }
+    if (refusesPendantLeGeste_ > 0 && onClipsRefused) onClipsRefused(refusesPendantLeGeste_);
+    refusesPendantLeGeste_ = 0;
+    pisteDerniere_ = -1;
     geste_ = Geste::Aucun;
     pisteSaisie_ = -1;
     pisteCourbeSaisie_ = -1;
@@ -542,6 +576,33 @@ juce::MouseCursor ArrangementComponent::getMouseCursor() {
     if (survol_ == Geste::FonduEntree || survol_ == Geste::FonduSortie)
         return juce::MouseCursor::TopLeftCornerResizeCursor;
     return juce::MouseCursor::NormalCursor;
+}
+
+void ArrangementComponent::selectAll() {
+    if (project_ == nullptr) return;
+    selection_.clear();
+    for (const auto& track : project_->tracks)
+        for (const auto& clip : track.clips) selection_.insert(clip.id);
+    repaint();
+}
+
+void ArrangementComponent::selectClipsInLasso(bool etendre) {
+    if (project_ == nullptr) return;
+    if (!etendre) selection_.clear();
+    const auto zone = lasso_;
+    for (size_t i = 0; i < project_->tracks.size(); ++i) {
+        const auto& track = project_->tracks[i];
+        const int y = trackTop(i);
+        const int h = trackHeight(track);
+        const vsm::midi::Tick fin = materialEnd(track);
+        for (const auto& clip : track.clips) {
+            const float x1 = tickToX(clip.startTick);
+            const float x2 = tickToX(clip.startTick + clipPlayedLength(clip, fin));
+            const juce::Rectangle<float> r(x1, static_cast<float>(y + 3), std::max(2.0f, x2 - x1),
+                                            static_cast<float>(h - 7));
+            if (zone.intersects(r)) selection_.insert(clip.id);
+        }
+    }
 }
 
 bool ArrangementComponent::selectionTickRange(vsm::midi::Tick& debut,
@@ -577,6 +638,7 @@ bool ArrangementComponent::keyPressed(const juce::KeyPress& key) {
     // différents pour la même chose seraient deux logiciels.
     if (key.getModifiers().isCommandDown()) {
         switch (key.getTextCharacter()) {
+            case 'a': case 'A': selectAll(); return true;
             case 'c': case 'C': copySelection(); return true;
             case 'v': case 'V': paste(); return true;
             case 'd': case 'D': duplicateSelection(); return true;
@@ -921,6 +983,13 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                                            static_cast<float>(hauteur)));
     }
 
+    // LE LASSO (D11.2) : le rectangle qu'on tire, par-dessus tout.
+    if (geste_ == Geste::Lasso && !lasso_.isEmpty()) {
+        g.setColour(Palette::accentTeal.withAlpha(0.15f));
+        g.fillRect(lasso_);
+        g.setColour(Palette::accentTeal);
+        g.drawRect(lasso_, 1.0f);
+    }
 }
 
 // --- D10.1 : recevoir un échantillon, à une piste ET à une mesure -----------

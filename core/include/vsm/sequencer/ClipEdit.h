@@ -86,6 +86,31 @@ void toggleClipPhase(std::vector<Clip>& clips, const ClipSelection& selection);
 
 /// Les bornes d'une sélection sur la ligne de temps, pour savoir de combien
 /// décaler une duplication. Rend faux si la sélection est vide.
+/// D11.1 — LE CLIP CHANGE DE PISTE, ET IL EMPORTE CE QUE SA FENÊTRE COUVRE.
+///
+/// Un clip est une fenêtre sur le matériau de SA piste (voir Track.h) : le
+/// poser sur une autre piste n'a de sens que si les notes qu'il montre le
+/// suivent. Elles quittent donc la piste d'origine et entrent dans la piste
+/// cible AUX MÊMES TICKS DE MATÉRIAU — le clip y montre exactement ce qu'il
+/// montrait. Le prix du modèle de la région, dit ici : un autre clip de la
+/// piste cible dont la fenêtre couvre ces ticks les verra aussi, comme il
+/// verrait des notes qu'on y aurait enregistrées ; et un autre clip de la
+/// piste d'origine sur le même matériau ne les voit plus.
+///
+/// Un clip AUDIO ne change de piste que vers une piste audio qui porte le
+/// même fichier — ou aucun, et elle l'adopte alors ; le reste est REFUSÉ et
+/// compté, jamais silencieux. Une piste de groupe ne reçoit rien. Le décalage
+/// de pistes est réduit pour TOUS quand l'un des clips sortirait de la liste,
+/// comme `moveClips` le fait pour le temps : la figure saisie garde sa forme.
+struct ClipTrackMove {
+    size_t moved = 0;
+    size_t refused = 0;
+    /// Le décalage réellement appliqué, après réduction aux bords.
+    int applied = 0;
+};
+ClipTrackMove moveClipsAcrossTracks(std::vector<Track>& tracks, const ClipSelection& selection,
+                                    int deltaTracks);
+
 bool clipSelectionBounds(const std::vector<Clip>& clips, const ClipSelection& selection,
                           Tick materialEnd, Tick& startTick, Tick& endTick);
 
