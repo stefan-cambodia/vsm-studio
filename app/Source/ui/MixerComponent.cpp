@@ -11,6 +11,15 @@ float dbToGain(float db) { return std::pow(10.0f, db / 20.0f); }
 
 // ============================================================ ChannelStrip
 
+void ChannelStrip::setMembers(const juce::StringArray& membres) {
+    if (track_.kind != vsm::sequencer::Track::Kind::Group) return;
+    juce::String texte = juce::String::fromUTF8(track_.name.c_str())
+                       + juce::String::fromUTF8(" — bus de groupe");
+    texte << (membres.isEmpty() ? juce::String::fromUTF8(" : aucune piste n'y est routée")
+                                : juce::String::fromUTF8(" : ") + membres.joinIntoString(", "));
+    nameLabel_.setTooltip(texte);
+}
+
 ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
                             const std::vector<std::string>& sendNames)
     : track_(track), index_(index) {
@@ -267,6 +276,13 @@ void MixerComponent::setProject(vsm::sequencer::Project* project) {
     if (project_ != nullptr) {
         for (size_t i = 0; i < project_->tracks.size(); ++i) {
             auto* strip = new ChannelStrip(project_->tracks[i], i, sendNames);
+            if (project_->tracks[i].kind == vsm::sequencer::Track::Kind::Group) {
+                juce::StringArray membres;
+                for (const auto& autre : project_->tracks)
+                    if (autre.outputGroup == static_cast<int>(i))
+                        membres.add(juce::String::fromUTF8(autre.name.c_str()));
+                strip->setMembers(membres);
+            }
             strip->onMixChanged = [this] { if (onMixChanged) onMixChanged(); };
             strip->onMixEditStarted = [this] { if (onMixEditStarted) onMixEditStarted(); };
             stripContainer_.addAndMakeVisible(strip);

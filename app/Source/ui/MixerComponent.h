@@ -116,6 +116,8 @@ public:
     /// ordre. Deux boutons figés promettaient deux départs qui n'étaient écrits
     /// nulle part et dont rien ne disait le contenu ; un bouton par bus nommé
     /// dit ce qu'on alimente.
+    /// Pour un bus de groupe : les pistes routées vers lui, dites en infobulle.
+    void setMembers(const juce::StringArray& membres);
     ChannelStrip(vsm::sequencer::Track& track, size_t index,
                   const std::vector<std::string>& sendNames);
     void resized() override;
