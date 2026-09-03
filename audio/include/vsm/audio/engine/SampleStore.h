@@ -1,4 +1,5 @@
 #pragma once
+#include "vsm/audio/dsp/SincResampler.h"
 #include "vsm/audio/io/WavStreamReader.h"
 #include <array>
 #include <atomic>
@@ -178,6 +179,9 @@ private:
     int64_t frames_ = 0;              ///< à la fréquence de la SESSION
     double ratio_ = 1.0;              ///< fréquence du fichier / fréquence de session
     double fileSampleRate_ = 48000.0;
+    /// Le noyau de rééchantillonnage (D12.1), construit à l'ouverture pour le
+    /// rapport du fichier ; le même que celui du chargeur résident.
+    vsm::audio::dsp::SincResampler noyau_;
 
     /// Les dernières plages demandées par le thread audio. Un anneau plutôt
     /// qu'une valeur : plusieurs clips peuvent demander plusieurs endroits dans

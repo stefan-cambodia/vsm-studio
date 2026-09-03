@@ -1,4 +1,5 @@
 #include "vsm/audio/io/AudioTrackLoader.h"
+#include "vsm/audio/dsp/SincResampler.h"
 #include "vsm/audio/engine/SampleStore.h"
 #include "vsm/audio/io/WavFileReader.h"
 #include "vsm/audio/io/WavStreamReader.h"
@@ -9,20 +10,14 @@ namespace vsm::audio::io {
 
 namespace {
 
-/// Interpolation linéaire d'un canal vers une nouvelle fréquence.
+/// Un canal vers une nouvelle fréquence, par le noyau fenêtré de D12.1 — le
+/// MÊME noyau que la diffusion depuis le disque, pour que la même prise
+/// sonne pareil quelle que soit sa durée.
 std::vector<float> reechantillonner(const std::vector<float>& source, double ratio,
                                      size_t framesCibles) {
-    std::vector<float> sortie(framesCibles, 0.0f);
-    if (source.empty()) return sortie;
-    const double dernier = static_cast<double>(source.size() - 1);
-    for (size_t i = 0; i < framesCibles; ++i) {
-        const double position = std::min(static_cast<double>(i) * ratio, dernier);
-        const size_t bas = static_cast<size_t>(position);
-        const size_t haut = std::min(bas + 1, source.size() - 1);
-        const float fraction = static_cast<float>(position - static_cast<double>(bas));
-        sortie[i] = source[bas] * (1.0f - fraction) + source[haut] * fraction;
-    }
-    return sortie;
+    vsm::audio::dsp::SincResampler noyau;
+    noyau.prepare(ratio);
+    return noyau.resample(source, framesCibles);
 }
 
 } // namespace

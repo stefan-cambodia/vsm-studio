@@ -56,14 +56,14 @@ inline constexpr double kStreamAboveSeconds = 20.0;
 /// Lit un WAV et le prépare pour le graphe : décodage, puis rééchantillonnage
 /// à la fréquence de la session s'il le faut.
 ///
-/// LE RÉÉCHANTILLONNAGE EST UNE INTERPOLATION LINÉAIRE, et c'est une
-/// approximation ASSUMÉE, documentée ici plutôt que découverte à l'oreille.
-/// Elle atténue légèrement l'aigu et laisse un peu de repliement ; sur les
-/// rapports courants -- 44,1 vers 48 kHz, soit 1,088 -- l'erreur reste sous le
-/// millième pour tout ce qui vit sous 10 kHz. Un rééchantillonneur à noyau
-/// fenêtré ferait mieux, et c'est ce qu'exigera l'étirement temporel (choix
-/// n° 3 du § 4 de `ROADMAP-daw.md`) : il sera écrit là, avec le reste, plutôt
-/// qu'emprunté à une bibliothèque que le dépôt devrait télécharger.
+/// LE RÉÉCHANTILLONNAGE EST UN NOYAU SINC SOUS FENÊTRE DE KAISER (D12.1,
+/// `vsm/audio/dsp/SincResampler.h`), depuis le 04/09/2026. Il a remplacé
+/// l'interpolation linéaire de D2, approximation assumée à l'époque et
+/// chiffrée (10⁻³ sous 10 kHz sur 44,1 → 48 kHz) : mesuré, le noyau de 64
+/// points tient 3 × 10⁻⁵ jusqu'à 18 kHz et 10⁻⁵ à 20 kHz, là où le linéaire
+/// était à 10⁻¹ dès 10 kHz — et il coupe ce qui replierait en
+/// sous-échantillonnage, que le linéaire laissait passer. Écrit ici, comme le
+/// choix n° 3 du § 4 de `ROADMAP-daw.md` le demandait, plutôt qu'emprunté.
 AudioTrackLoadResult loadAudioTrack(const std::string& path, double sessionSampleRate,
                                     AudioLoadPolicy policy = AudioLoadPolicy::Automatic);
 

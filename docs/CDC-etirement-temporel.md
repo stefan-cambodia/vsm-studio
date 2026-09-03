@@ -148,7 +148,7 @@ D12 utilisable avant tout suiveur de temps.
 
 | Étape | Contenu | Terminé quand |
 |---|---|---|
-| D12.1 | le noyau de rééchantillonnage fenêtré (sinc de Kaiser), qui remplace l'interpolation linéaire de D2.3 et fait le mode *Rééchantillonné* | banc 8 ; les empreintes qui passent par le rééchantillonnage sont régénérées EN LE DISANT |
+| D12.1 | le noyau de rééchantillonnage fenêtré (sinc de Kaiser), qui remplace l'interpolation linéaire de D2.3 et fait le mode *Rééchantillonné* | banc 8 ; les empreintes qui passent par le rééchantillonnage sont régénérées EN LE DISANT — **fait le 04/09/2026** (aucune empreinte ne passait par le rééchantillonnage : rien à régénérer ; le mode *Rééchantillonné* du clip attend D12.5) |
 | D12.2 | `TimeStretch` : le WSOLA, la recherche de similarité, le court-circuit à 1,0 | bancs 1, 2, 3 (première moitié), 5, 6, 7 — **fait le 04/09/2026** (banc 7 au moment de D12.5, dans `process()`) |
 | D12.3 | la détection de transitoires (flux d'énergie sur le matériau, à la publication, mise en cache par fichier comme les crêtes de forme d'onde) et le verrouillage | banc 4 — **fait le 04/09/2026** (le cache par fichier attend D12.5) |
 | D12.4 | le modèle : `warpMode`, `warpMarkers`, les gestes de `ClipEdit`, le format | tests `core/` et `interchange/` ; un projet v2 s'ouvre inchangé |
@@ -190,6 +190,33 @@ sur le chiffre du banc 5.
 > trois grains alignés jouent l'attaque, et leur somme de fenêtres vaut un.
 > Le prix, dit dans l'en-tête : un creux de quelques millisecondes dans la
 > queue du grain coupé, juste avant l'attaque.
+
+> **D12.1 EST FAITE (04/09/2026), ET LE BANC A CHOISI LA LONGUEUR DU NOYAU.**
+> `audio/include/vsm/audio/dsp/SincResampler.h` : sinc sous fenêtre de
+> Kaiser (β = 8), table de 512 phases interpolée, coupure abaissée au
+> Nyquist de session en sous-échantillonnage, gain unité phase par phase ;
+> branché sur le chargeur résident ET la diffusion depuis le disque (même
+> noyau, même valeurs à 10⁻⁵ près, le test de D8.2 le vérifie toujours). Le
+> § 3 disait 32 points ; le banc, `test_sinc_resampler.cpp`, a mesuré trois
+> longueurs, erreur rms contre la référence analytique, 44,1 → 48 kHz :
+>
+> | fréquence | linéaire (D2.3) | sinc 32 | **sinc 64** | sinc 96 |
+> |---|---|---|---|---|
+> | 1 kHz | 1,3 × 10⁻³ | 3,1 × 10⁻⁵ | **1,2 × 10⁻⁵** | 1,3 × 10⁻⁶ |
+> | 10 kHz | 1,3 × 10⁻¹ | 1,8 × 10⁻⁵ | **1,7 × 10⁻⁵** | 3,3 × 10⁻⁶ |
+> | 18 kHz | 3,7 × 10⁻¹ | 3,3 × 10⁻⁵ | **3,3 × 10⁻⁵** | 5,6 × 10⁻⁶ |
+> | 20 kHz | 4,4 × 10⁻¹ | 4,4 × 10⁻² | **9,5 × 10⁻⁶** | 1,8 × 10⁻⁵ |
+>
+> Et en sous-échantillonnage 48 → 44,1 kHz, ce qui replierait (rms restant
+> d'un sinus à 0,707) : 23 kHz → 0,17 (32 points), **0,054 (64)**, 0,0082
+> (96) ; 23,5 kHz → 0,10, **0,0072**, 0,00004. **Décision : 64 points.**
+> 32 laissent 20 kHz rouler et n'atténuent un 23 kHz replié que de 12 dB ;
+> 64 tiennent l'attendu du banc 8 (sous 10⁻⁴ jusqu'à 20 kHz) et 22 dB de
+> réjection ; 96 n'apportent qu'au dernier kilohertz sous Nyquist, pour une
+> fois et demie le coût, sur un chemin (48 → 44,1) qui est l'exception. Le
+> chiffre du linéaire à 1 kHz (1,3 × 10⁻³) dit au passage que le
+> « millième sous 10 kHz » de D2.3 était optimiste d'un ordre de grandeur
+> dès 5 kHz (3,2 × 10⁻²).
 
 ## 8. Ce qui n'est pas au programme, et pourquoi
 
