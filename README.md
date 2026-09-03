@@ -473,11 +473,28 @@ analyse/reconstruire.py morceau.mp3 --sortie projet --parite
   d'accords ne se découpe jamais — fabriquer de fausses pistes serait pire ;
 - **la batterie par pièce** : une piste par pièce détectée, sans rien deviner ;
 - **la tête et les chœurs** : le centre du champ stéréo contre le large, les
-  deux pistes rejouées ensemble redonnant exactement le stem.
+  deux pistes rejouées ensemble redonnant exactement le stem ;
+- **les registres lus dans les vides** : quand la transcription laisse des
+  creux entre deux registres qui pèsent, le nombre de parties est lu au lieu
+  d'être imposé — trois registres disjoints donnent trois pistes, pas quatre.
+
+Les pièces et les registres d'un même stem arrivent dans le DAW sous un **bus
+de groupe** : un fader pour le kit, un par pièce.
 
 Ce que cela coûte est publié : le découpage en voix vaut +9 % de distance sur
 *Us and Them*. Quand structure et ressemblance s'opposent, la structure gagne —
-un projet qui met quatre instruments sur une piste ne se retravaille pas.
+un projet qui met quatre instruments sur une piste ne se retravaille pas. Et ce
+que cela vaut se vérifie sur un morceau dont on **connaît** les parties —
+`analyse/epreuve_parite.py` en fabrique un de 32 secondes avec sa vérité
+écrite : **neuf parties, neuf pistes**, et une distance de 0,178 contre 0,220
+sans découpage. Sa variante « chorale » (un seul piano à quatre voix) montre la
+limite : un instrument dont les registres se séparent par un vide compte pour
+deux.
+
+Sur demande, `--reverb-melange` cherche en fin de chaîne une réverbération
+commune aux pistes mélodiques et ne la garde que si elle rapproche de
+l'original — le gain est petit et propre au morceau (−2,5 % sur *Us and Them*,
+rien sur *Sky and Sand*), et l'oreille tranche.
 Le raisonnement complet est dans
 [`docs/CDC-detection-multipiste.md`](docs/CDC-detection-multipiste.md).
 
