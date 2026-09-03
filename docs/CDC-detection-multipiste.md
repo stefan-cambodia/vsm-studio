@@ -94,6 +94,9 @@ déplacent rien, et la stabilité par empreintes est démontrée en course.
 |---|---|---|---|
 | H22b-v2 | stems `htdemucs_6s` (6) | 6 pistes ; distance neutre ou légèrement défavorable ; si elle se dégrade, la chaîne arbitre ressemblance contre jouabilité et le § 0 tranche | **0,17114 — −10,4 % ET six pistes.** L'attendu est contredit dans le bon sens : plus de pistes ET plus proche. Machines : bass→cs80, guitar→tb303, other→musicbox, piano→phasedist. Le verdict à six pistes n'atteint pas le point fixe en 3 tours (bass et piano oscillent), et le réglage au mélange rapporte encore −0,009. Restes : guitar (poly 3,4 · 74 demi-tons) et other (3,8 · 71) sont ENCORE des fourre-tout → H23 est complémentaire, pas concurrente |
 | H23 | `--voix-par-stem 4` | pas de gain de distance ; succès = chaque piste sous le seuil du fourre-tout | **0,20846 (+9,1 %) et 7 pistes — le critère structurel est TENU** : les quatre voix passent sous le seuil (poly 0,64/1,68/1,36/1,14 ; ambitus 28/9/9/16), et chaque registre reçoit SA machine (divider, tb303, multisample ×2). La distance dépasse les 5 % de la règle écrite d'avance → le découpage reste une OPTION, il ne devient pas le défaut. Verdict au point fixe en 2 tours ; la chaîne signale 2× que le morceau serait meilleur sans la voix 1 (l'aigu jugé seul contre le stem entier) — conservée, couper est humain |
+| `--voix-tete-choeurs` | tête et chœurs par le champ stéréo | *(aucun attendu écrit avant la course — faute dite ; la voix étant un report d'audio dont la somme est exacte, la distance ne pouvait bouger que par les autres pistes)* | **0,19112 (+0,05 %) et 5 pistes** contre H22a-v2 (0,19104) : neutre. Tête 74 % / chœurs 26 %, tête + chœurs = stem exactement. Le prix en distance est nul ; la qualité reste affaire d'oreille |
+| `--batterie-par-piece` | une piste par pièce | pas de gain de distance ; les pièces ne se volent plus de voix | **0,25804 (+35,1 %) et 5 pistes** — chiffre INVALIDÉ par le § 7 : les pièces n'étaient pas calées. Remesuré en campagne 2 (§ 8) |
+| `--parite` | les trois découpages ensemble | ≈ H23 (+9 %), le prix des voix jugées seules | **0,21029 (+10,1 %) et 9 pistes** — même défaut de calage sur les pièces ET sur les voix (§ 7). Remesuré en campagne 2 (§ 8) |
 
 ## 4. Ce qui reste à faire (l'ordre de marche du chantier)
 
@@ -146,7 +149,7 @@ déplacent rien, et la stabilité par empreintes est démontrée en course.
    échantillons), d'où le rembourrage d'une fenêtre de zéros. Option, pas
    défaut ; la QUALITÉ de la séparation (fuites de réverbération de la tête
    dans les chœurs, notamment) ne se juge qu'à l'OREILLE — les deux wav
-   d'essai attendent une écoute.
+   d'essai attendent une écoute. Distance mesurée le 03/09/2026 : +0,05 %, neutre (§ 3).
 6. **Le DAW à l'échelle de la parité — REGARDÉ à 64 pistes (03/09/2026)** :
    un FLP d'essai à 64 canaux (16 familles × 4) importé et photographié.
    L'arrangement défile et reste lisible à 150 %, la console défile
@@ -209,8 +212,36 @@ déplacent rien, et la stabilité par empreintes est démontrée en course.
      ligne de parité. Reste non mesuré : l'effet de `--batterie-par-piece`
      sur la distance.
 
-   Reste due, à la levée de la pause : la mesure de DISTANCE sur ce second
-   morceau (le partage seul ne dit pas si le morceau sonne plus près).
+   **La DISTANCE sur ce second morceau — MESURÉE (03/09/2026), et elle borne
+   le défaut.** Paire à une variable, le modèle de séparation, sur *Sky and
+   Sand* (6 rendus de front, budget 120 × 21, 3 tours, 6 finalistes, même
+   binaire) :
+
+   | Course | Stems | Pistes | Distance | Verdict |
+   |---|---|---|---|---|
+   | sky-t4 (témoin) | 4 sources | 4 | **0,22466** | bass→vector, other→stochastic, batterie tr909 ; 3 tours |
+   | sky-t6 | 6 sources | 4 — guitar (0,0 %) et piano (0,1 %) REFUSÉS par `--seuil-stem`, avec leurs chiffres | 0,23347 (**+3,9 %**) | bass→vector, other→musicbox, batterie tr909 ; 2 tours |
+
+   Ce que cela dit : sur un morceau SANS guitare ni piano, les six sources
+   ne donnent pas une piste de plus (le seuil fait son office, les deux stems
+   vides sont refusés en le disant) et coûtent +3,9 % — non pas par les deux
+   pistes en plus, il n'y en a pas, mais parce que le modèle à six sources
+   découpe AUTREMENT la basse, l'accompagnement et la batterie (la basse y
+   compte 1 704 notes contre 1 128 : le partage entre bass et other n'est pas
+   le même). Le § 4.2 disait « il ne nuit pas » : c'était faux de 3,9 % sur
+   ce morceau, et c'est écrit. **Le défaut RESTE `htdemucs_6s`** : −10,4 %
+   sur un morceau qui a ces parties, +3,9 % sur un morceau qui ne les a pas ;
+   la parité gagne dans un cas et ne perd rien dans l'autre, et
+   `--modele htdemucs` reste à portée de main pour qui sait que son morceau
+   n'a ni guitare ni piano. Choisir le modèle d'après le morceau lui-même
+   (séparer aux deux modèles et garder celui dont les stems refusés sont
+   nombreux) coûterait une séparation de plus ; ce n'est pas mesuré, et ce
+   n'est pas fait.
+
+   Vu aussi, et déjà connu du § 5 nonies de ROADMAP-fusion : sur sky-t4, le
+   verdict du mélange trouve le morceau MEILLEUR sans la basse (0,2263 contre
+   0,2319) — la basse de *Sky and Sand* reste le second front, quelle que soit
+   la séparation.
 
 ## 6. `--parite` : le raccourci, et une épreuve de bout en bout
 
@@ -287,6 +318,22 @@ bouge pas d'un iota.
 sans découpage (le témoin, les six sources, la tête et les chœurs) n'y
 touchent pas — le correctif est confiné au chemin des groupes — et restent
 valables telles quelles.
+
+## 8. Campagne 2 : la remesure après le calage des groupes — attendus écrits AVANT (03/09/2026)
+
+Quatre courses en série, une variable chacune, mêmes réglages que la campagne
+de la nuit (budget 120 × 21, 3 tours, 6 finalistes, même binaire du
+02/09 15:23). La première campagne s'est arrêtée sur `sky-parite` par un
+redémarrage de la machine ; les deux courses de *Us and Them* qui portaient le
+défaut du § 7 sont rejouées dans de nouveaux dossiers, les anciens restent
+pour la comparaison.
+
+| Course | Témoin | Variable | Attendu, écrit d'avance |
+|---|---|---|---|
+| usandthem-batterie-v2 | H22a-v2 (0,19104) | `--batterie-par-piece` | le surcoût de +35,1 % DISPARAÎT : le découpage ne change pas une note, et les pièces sont désormais calées ensemble sur leur stem. J'attends la distance dans ±3 % du témoin. Si elle reste au-dessus de +5 %, le calage n'était pas la seule cause (les instances séparées ne se volent plus de voix, et c'est un changement de rendu) |
+| usandthem-parite-v2 | H22a-v2 (0,19104) | `--parite` | ≈ H23 seule (0,2085, +9,1 %) : le prix des voix jugées seules contre le stem entier reste, celui du calage part. J'attends entre +7 et +11 %, et 9 pistes |
+| sky-parite | sky-t6 (0,23347) | `--parite` | la batterie de *Sky and Sand* porte 78 % du morceau et 5 pièces : c'est le découpage qui compte ici. J'attends 5 pièces (ou moins, si des pièces se rabattent sur une même voix), la voix découpée si le stem a de la largeur, `other` NON découpé (il faut qu'il passe le seuil du fourre-tout, et la course t6 ne le criait pas). Distance : neutre à +5 % — les pièces sont calées en groupe, et rien d'autre ne change de note |
+| usandthem-v15 | H22a-v2 (0,19104) | `--machines-au-melange 9` | ≈ témoin (hypothèse écrite le 02/09, ROADMAP-fusion § 5 quaterdecies) |
 
 ## 5. Critères d'acceptation
 

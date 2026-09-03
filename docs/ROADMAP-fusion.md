@@ -2757,6 +2757,12 @@ tour — la borne est dite au journal) ; le réglage au mélange rapporte encore
 séparation à six sources réduit le problème, elle ne le ferme pas. C'est
 exactement l'espace de H23.
 
+*La contre-épreuve sur un second morceau a eu lieu (03/09/2026)* : sur *Sky
+and Sand*, qui n'a ni guitare ni piano, six sources coûtent **+3,9 %**
+(0,23347 contre 0,22466) sans donner une piste de plus — les deux stems vides
+sont refusés par le seuil, en le disant. Le défaut reste `htdemucs_6s` ; le
+détail et la raison sont au CDC multipiste, § 4.7.
+
 ### H24 — la chaîne rend des pistes SÈCHES contre un disque réverbéré ; écrite AVANT sa mesure (03/09/2026)
 
 **LE CONSTAT.** `"effects": []` est écrit EN DUR dans l'export de projet : de
@@ -2791,6 +2797,58 @@ ceux de la course. La voix est EXCLUE : c'est un report intégral de
 l'enregistrement, elle porte déjà la réverbération du disque, lui en ajouter
 la doublerait. La mesure ne touche pas la chaîne — si l'hypothèse tient, il
 sera temps de faire chercher le dosage par la chaîne elle-même.
+
+**H24 EST TRANCHÉE : L'ATTENDU ÉTAIT FAUX DANS SA FORME FORTE, ET LE PEU QUI
+RESTE A UNE FORME PRÉCISE (03/09/2026).** L'outil est `analyse/essai_reverb.py` :
+il prend le projet d'une course, insère l'effet `reverb` du DAW (Freeverb) sur
+les pistes mélodiques, re-rend par le même binaire et mesure avec la même
+métrique et la même cible que la chaîne. Le témoin re-rendu retrouve
+**0,171142 à la sixième décimale**, et l'effet inséré à 0 % rend le témoin au
+bit près : la mesure est bien la même, et les insertions de `project.json`
+traversent bien le rendu hors ligne — ce que personne n'avait vérifié sur un
+projet réel. Vingt rendus de 28 s, un par point :
+
+| Pièce (`size`) | 4 % | 6 % | 8 % | 10 % | 12 % | 15 % | 25 % | 40 % |
+|---|---|---|---|---|---|---|---|---|
+| 0,3 | | | +0,47 % | | | +1,28 % | +2,89 % | |
+| **0,6 (défaut du DAW)** | | | +0,11 % | | | +0,60 % | +1,74 % | +4,56 % |
+| 0,9 | −0,85 % | −1,14 % | −1,35 % | −1,48 % | −1,11 % | −0,35 % | +5,77 % | |
+| 1,0 | **−2,45 %** | | −2,24 % | | +4,47 % | | | |
+
+(écart à 0,171142 ; amortissement 0,5 et largeur 1,0 partout ; le meilleur
+point vaut 0,166954.)
+
+*Ce que la grille dit.* (1) **La réverbération par défaut n'aide JAMAIS** :
+à la pièce 0,6 comme à 0,3, la distance monte de façon monotone avec le
+dosage, dès 8 %. L'attendu « un gain, peut-être important » est contredit.
+(2) **Ce qui aide est une queue TRÈS longue et TRÈS peu dosée** : à la pièce
+0,9 le gain existe entre 4 et 15 % et culmine à −1,5 % ; à la pièce 1,0 (la
+réinjection maximale de Freeverb, une traîne de plusieurs secondes) il
+atteint −2,45 % à 4 % de mélange et s'effondre dès 12 %. Le meilleur point est
+donc au BORD de l'espace des réglages, ce qui est le signe d'un mécanisme qui
+n'est pas « la salle de 1973 » : une nappe diffuse et faible sous les pistes,
+qui remplit un plancher d'énergie que les rendus secs n'ont pas. (3) La sonde
+prévue d'avance a tourné : l'ORIGINAL passé dans la même réverbération (pièce
+0,6), mesuré contre lui-même, donne 0,0046 / 0,0092 / 0,0165 / 0,0328 à
+8 / 15 / 25 / 40 %. **La métrique voit la réverbération**, mais la réverb la
+plus lourde de la grille ne « vaut » que 0,033 quand la reconstruction est à
+0,171 : à l'échelle de ce qui sépare le rendu de l'original, la queue de
+réverbération est un cinquième au plus, et ce n'est pas un angle mort majeur
+de la mesure.
+
+*Ce que je retiens.* Le gain existe, il est petit (−2,45 % au mieux, le même
+ordre que le réglage au mélange après verdict, −5 %), et il est obtenu par
+un réglage extrême dont l'oreille n'a pas jugé. Trois choses en découlent,
+dans l'ordre : ce n'est PAS le chantier qui fermera l'écart de 0,17 ; la
+raison (1) écrite d'avance tient — les stems portent déjà la salle, les
+patchs cherchés contre ces stems portent déjà leur flou, et en rajouter
+noie les transitoires dès que la queue est ordinaire ; et si la chaîne doit un
+jour chercher ce réglage elle-même, ce sera comme OPTION, sur deux
+paramètres (pièce, dosage), en fin de chaîne, à raison d'une dizaine de rendus
+complets — et l'écoute A/B devra dire si une traîne de plusieurs secondes à
+4 % est un gain ou un artefact que la métrique aime. Non câblé aujourd'hui :
+la campagne 2 du CDC multipiste (§ 8) passe avant, elle remesure un défaut
+qui coûtait +35 %.
 
 ### H23 — diviser un stem polyphonique en VOIX ; écrite AVANT sa mesure
 
