@@ -501,8 +501,10 @@ elles — un avertissement vrai, mais qui doit rester rare pour rester lu :
   remplace chaque octet non ASCII par `_`, et « Voix · tête » devient
   `Voix __ t__te.wav`. Translittérer (é → e, œ → oe, « · » → « - ») ;
 - **le vivier de machines** (mémoire permanente de l'utilisateur) : la
-  prochaine famille s'ajoute une fois la campagne 3 terminée, et le moteur
-  se recompile alors pour les courses suivantes, provenance à l'appui.
+  prochaine famille est PRÊTE sur la branche `machine-clavecin`
+  (`vsm.harpsichord`, développée dans un worktree séparé, suites vertes,
+  façade rendue) ; elle se fusionne à la fin des campagnes, et le moteur se
+  recompile alors pour les courses suivantes, provenance à l'appui.
 
 ## 5. Critères d'acceptation
 
