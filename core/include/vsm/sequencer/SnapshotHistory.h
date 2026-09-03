@@ -3,6 +3,7 @@
 #include <deque>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace vsm::sequencer {
 
@@ -66,6 +67,21 @@ public:
 
     void clear() { undoStack_.clear(); redoStack_.clear(); }
 
+    /// LES LIBELLÉS, POUR UNE FENÊTRE D'HISTORIQUE (D11) : les pas
+    /// annulables du plus ancien au plus récent, les pas rétablissables du
+    /// prochain au plus lointain. Des copies : la pile reste à elle.
+    std::vector<std::string> undoLabels() const {
+        std::vector<std::string> labels;
+        labels.reserve(undoStack_.size());
+        for (const auto& e : undoStack_) labels.push_back(e.label);
+        return labels;
+    }
+    std::vector<std::string> redoLabels() const {
+        std::vector<std::string> labels;
+        labels.reserve(redoStack_.size());
+        for (auto it = redoStack_.rbegin(); it != redoStack_.rend(); ++it) labels.push_back(it->label);
+        return labels;
+    }
     size_t undoDepth() const { return undoStack_.size(); }
     size_t redoDepth() const { return redoStack_.size(); }
     size_t maxDepth() const { return maxDepth_; }

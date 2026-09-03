@@ -12,6 +12,7 @@
 #include "project/AutosaveService.h"
 #include "vsm/interchange/ShortcutTable.h"
 #include "ui/ShortcutsWindow.h"
+#include "ui/HistoryWindow.h"
 #include "ui/PreferencesWindow.h"
 #include "ui/BrowserComponent.h"
 #include "vsm/interchange/BrowserIndex.h"
@@ -232,6 +233,7 @@ private:
         kMenuAudioThreadsLast = kMenuAudioThreadsFirst + 32,
         kMenuViewMidiLearn,
         kMenuViewShortcuts,
+        kMenuViewHistory,
         kMenuFilePreferences,
         kMenuViewBrowser,
         kMenuFileReconstruct,
@@ -304,6 +306,9 @@ private:
     /// quoi.
     vsm::interchange::ShortcutTable shortcuts_;
     vsm::app::ui::ShortcutsWindow shortcutsPanel_;
+    vsm::app::ui::HistoryWindow historyPanel_;
+    std::unique_ptr<PanelWindow> historyWindow_;
+    void refreshHistoryList();
     std::unique_ptr<PanelWindow> shortcutsWindow_;
     void loadShortcuts();
     void saveShortcuts();

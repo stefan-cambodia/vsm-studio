@@ -47,6 +47,7 @@ target_sources(VintageSynthMidiStudio PRIVATE
     Source/ui/ReconstructionWindow.cpp
     Source/ui/MidiLearnWindow.cpp
     Source/ui/ShortcutsWindow.cpp
+    Source/ui/HistoryWindow.cpp
     Source/ui/PreferencesWindow.cpp
     Source/ui/BrowserComponent.cpp
 )
@@ -286,6 +287,7 @@ juce_add_console_app(vsm-ui-preview PRODUCT_NAME "vsm-ui-preview")
 target_sources(vsm-ui-preview PRIVATE
     Source/tools/UiPreviewMain.cpp
     Source/ui/ShortcutsWindow.cpp
+    Source/ui/HistoryWindow.cpp
     Source/ui/MidiLearnWindow.cpp
     Source/ui/PreferencesWindow.cpp
     Source/ui/BrowserComponent.cpp

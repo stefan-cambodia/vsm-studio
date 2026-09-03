@@ -99,6 +99,17 @@ MainComponent::MainComponent()
     bottomTabs_.addTab("MIDI CC", vsm::ui::Palette::panel, &midiCc_, false);
     bottomTabs_.addTab("Tempo", vsm::ui::Palette::panel, &tempoLane_, false);
 
+    // D11 : l'historique visible. Un clic sur un pas y revient par autant
+    // d'annulations (ou de rétablissements) qu'il faut, par le MÊME chemin
+    // que Ctrl+Z — le piano roll, qui republie le projet restauré.
+    historyPanel_.onUndoSteps = [this](size_t pas) {
+        for (size_t i = 0; i < pas; ++i) pianoRoll_.undo();
+        refreshHistoryList();
+    };
+    historyPanel_.onRedoSteps = [this](size_t pas) {
+        for (size_t i = 0; i < pas; ++i) pianoRoll_.redo();
+        refreshHistoryList();
+    };
     transportBar_.onOpenMidiFile = [this] { openMidiFile(); };
     transportBar_.onExportMidiFile = [this] { exportMidiFile(); };
     transportBar_.onCycleListening = [this] { cycleReferenceMode(); };
@@ -238,7 +249,7 @@ MainComponent::MainComponent()
     };
 
     pianoRoll_.setHistory(&history_);
-    pianoRoll_.onProjectRestored = [this] { rebuildFromProject(false); };
+    pianoRoll_.onProjectRestored = [this] { rebuildFromProject(false); refreshHistoryList(); };
     pianoRoll_.setProject(&project_);
     pianoRoll_.onNotesEdited = [this] { refreshTransportSchedule(); };
     synthRack_.onPatternEdited = [this] {
@@ -802,6 +813,7 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     else if (nom == "sans-rack")   menuItemSelected(kMenuViewSynthRack, 5);
     else if (nom == "sans-mixer")  menuItemSelected(kMenuViewMixer, 5);
     else if (nom == "flottant")    menuItemSelected(kMenuViewSingleWindow, 5);
+    else if (nom == "historique")  menuItemSelected(kMenuViewHistory, 5);   // D11 : la fenêtre d'historique, pour la photographier
     // Ferme l'écran de rapport (import ou reconstruction) : VSM_IMPORT le
     // montre, et sans ce jeton l'arrangement d'un projet importé ne serait
     // photographiable qu'à travers lui. Pas dans le menu Affichage — le
@@ -1495,6 +1507,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuViewShortcuts,
                           juce::String::fromUTF8(u8"Raccourcis clavier..."),
                           true, shortcutsWindow_ && shortcutsWindow_->isVisible());
+            menu.addItem(kMenuViewHistory,
+                          juce::String::fromUTF8(u8"Historique des modifications..."),
+                          true, historyWindow_ && historyWindow_->isVisible());
             menu.addItem(kMenuViewMidiLearn,
                           juce::String::fromUTF8(u8"Associations MIDI (")
                               + juce::String(static_cast<int>(audioEngine_.midiLearnMappingCount()))
@@ -1603,6 +1618,17 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             if (!visible) refreshBrowser();
             browserWindow_->setVisible(!visible);
             if (!visible) browserWindow_->toFront(true);
+            break;
+        }
+        case kMenuViewHistory: {
+            if (!historyWindow_) {
+                historyWindow_ = std::make_unique<PanelWindow>(
+                    juce::String::fromUTF8(u8"Historique des modifications"), historyPanel_);
+                historyWindow_->setSize(420, 520);
+            }
+            const bool visible = historyWindow_->isVisible();
+            if (!visible) refreshHistoryList();
+            historyWindow_->setVisible(!visible);
             break;
         }
         case kMenuViewShortcuts: {
@@ -4024,6 +4050,11 @@ void MainComponent::toggleFullScreen() {
         fenetre->setFullScreen(!fenetre->isFullScreen());
 }
 
+void MainComponent::refreshHistoryList() {
+    if (!historyWindow_ || !historyWindow_->isVisible()) return;
+    historyPanel_.setEntries(history_.undoLabels(), history_.redoLabels());
+}
+
 void MainComponent::seekAllViews(vsm::midi::Tick tick) {
     transport_.seekToTick(tick);
     audioEngine_.processGraph().seekSeconds(project_.ticksToSeconds(tick));
@@ -5312,6 +5343,7 @@ void MainComponent::quantizeLastTake() {
 
 void MainComponent::beginProjectEdit(const juce::String& label) {
     history_.beginEdit(project_, label.toStdString());
+    refreshHistoryList();
     // TOUTES LES MODIFICATIONS ANNULABLES PASSENT PAR ICI (D10.4) : c'est
     // l'endroit qui ne peut pas être oublié, parce qu'oublier de l'appeler
     // casserait déjà l'annulation, ce qui se voit tout de suite.

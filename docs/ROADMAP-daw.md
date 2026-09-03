@@ -3020,8 +3020,11 @@ pseudo-contrôleurs, 128 et 129, le bend dessiné à 7 bits autour de son
 centre, un bend enregistré gardant ses 14 bits tant qu'on ne touche pas la
 lane) ; l'arpégiateur temps réel (celui du
 piano roll écrit des notes, ce qui est le choix D0 : pas d'effet MIDI qui
-mentirait sur ce qui est écrit) ; l'historique d'annulation visible et la
-palette de commandes (agréables, sans geste quotidien derrière).
+mentirait sur ce qui est écrit) ; l'historique d'annulation visible — **fait le jour même** (Affichage ▸
+Historique des modifications : chaque pas, l'état courant marqué, ce que
+Rétablir rendrait ; un clic sur un pas y revient par le même chemin que
+Ctrl+Z) — et la palette de commandes (agréable, sans geste quotidien
+derrière).
 
 ## 4. Les choix tranchés ici, et pourquoi
 
