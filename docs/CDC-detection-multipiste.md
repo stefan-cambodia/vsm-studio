@@ -523,13 +523,14 @@ elles — un avertissement vrai, mais qui doit rester rare pour rester lu :
 - **les noms de fichiers des stems exportés par groupe** : `OfflineReconstruction.cpp`
   remplace chaque octet non ASCII par `_`, et « Voix · tête » devient
   `Voix __ t__te.wav`. Translittérer (é → e, œ → oe, « · » → « - ») ;
-- **le vivier de machines** (mémoire permanente de l'utilisateur) : SIX
+- **le vivier de machines** (mémoire permanente de l'utilisateur) : SEPT
   familles sont PRÊTES sur la branche `machine-clavecin`, développées dans
   un worktree séparé, suites vertes, façades rendues — `vsm.harpsichord`
   (le clavecin, § 22 du CDC machines), `vsm.hurdygurdy` (la vielle à roue,
   § 23), `vsm.banjo` (la corde sur la peau, § 24), `vsm.vibraphone` (la
   barre creusée, le tube à moteur, le feutre à pédale, § 25), `vsm.bagpipe`
-  (la réserve d'air, § 26), `vsm.carillon` (la cloche accordée, § 27) — et, sur la même branche, **la correction d'un
+  (la réserve d'air, § 26), `vsm.carillon` (la cloche accordée, § 27), `vsm.clavinet` (la corde qui sonne
+  entière au relâchement, § 28) — et, sur la même branche, **la correction d'un
   défaut de `vsm.cone`** que la cornemuse a révélé : le saxophone ne
   s'éteignait jamais après le relâchement (rms 0,295 deux secondes après),
   la régénération de sa perce tenant la boucle à 1,4 sans souffle. Le
