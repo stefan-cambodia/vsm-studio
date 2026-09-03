@@ -465,6 +465,19 @@ morceau de synthèse n'est pas le juge. Le juge, écrit d'avance :
 | usandthem-batterie-v3 | H22a-v2 (0,19104) | `--batterie-par-piece`, code corrigé | le verdict retient le patch d'usine pour les pièces comme pour le kit, recalées ensemble : j'attends la distance dans ±5 % du témoin. Si elle reste au-dessus de +10 %, la cause restante est le rendu en instances séparées (les pièces ne se volent plus de voix) |
 | usandthem-parite-v3 | H22a-v2 (0,19104) | `--parite`, code corrigé | les voix recalées ensemble au verdict et au réglage : j'attends mieux que parite-v2 et ≈ H23 (+9 %), soit entre +5 et +11 % |
 
+### En attente de la fin des campagnes (03/09/2026)
+
+Deux retouches sont différées parce qu'elles touchent `audio/` ou
+`interchange/` et feraient crier « moteur périmé » toute course lancée après
+elles — un avertissement vrai, mais qui doit rester rare pour rester lu :
+
+- **les noms de fichiers des stems exportés par groupe** : `OfflineReconstruction.cpp`
+  remplace chaque octet non ASCII par `_`, et « Voix · tête » devient
+  `Voix __ t__te.wav`. Translittérer (é → e, œ → oe, « · » → « - ») ;
+- **le vivier de machines** (mémoire permanente de l'utilisateur) : la
+  prochaine famille s'ajoute une fois la campagne 3 terminée, et le moteur
+  se recompile alors pour les courses suivantes, provenance à l'appui.
+
 ## 5. Critères d'acceptation
 
 ```
