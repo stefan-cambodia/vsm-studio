@@ -353,6 +353,7 @@ Deux critères, à ne pas confondre :
 | **Barre CREUSÉE, tube à MOTEUR, feutre à PÉDALE** | `vsm.vibraphone` (partiels 1:4:10, tube sur f0, disques sur un axe commun, CC 64) | **fait le 03/09** — § 25 ; seul le fondamental ondule sous le moteur, et la pédale de sustain est celle de l'instrument |
 | **RÉSERVE D'AIR entre le souffle et les anches** | `vsm.bagpipe` (sac à trois temps, chalumeau de `vsm.cone`, bourdons de `vsm.wind`, note de grâce automatique) | **fait le 03/09** — § 26 ; jamais de silence entre deux notes, et une note répétée passe par sa note de grâce |
 | **Cloche ACCORDÉE, tierce mineure, partiels dédoublés** | `vsm.carillon` (huit partiels de fonderie, tierce 6:5 ou 5:4, doublets qui battent, bourdon long) | **fait le 03/09** — § 27 ; la seule machine dont le spectre porte une tierce mineure, et dont les partiels battent par géométrie |
+| **Corde TENUE par la touche, qui sonne entière au relâchement** | `vsm.clavinet` (corde de `vsm.string`, hauteur de relâchement, laine, deux micros en peigne, sourdine) | **fait le 03/09** — § 28 ; la seule machine qui relâche une note en changeant sa hauteur |
 | Waveshaping (spectre commandé) | `vsm.chebyshev` | **fait** |
 | **Synthèse balayée** | `vsm.scanned` (chaîne de masses, timbre en temps réel) | **fait le 02/09** |
 | **Lecture de BANDE** | `vsm.mellotron` (la bande finit, une par touche) | **fait le 02/09** — un COMPORTEMENT, pas un timbre |
@@ -1739,6 +1740,64 @@ dit, avant l'oreille. Onze tests, empreinte, façade BELL · TIME · CLAPPER
 (rendue et regardée) ; identités neuves pour la tierce et le doublet,
 celles de `vsm.modal` pour le temps et du maillet pour le battant. Le parc
 passe à **59 machines**.
+
+## 28. H32 — le CLAVINET : la corde que la touche tient, et qui sonne ENTIÈRE, plus bas, quand on la lâche (écrite avant sa mesure, 03/09/2026)
+
+**Ce que le parc n'avait pas.** Le clavicorde (H15) presse la corde avec la
+tangente : appuyer plus fort monte la note. Le clavinet (Hohner D6, 1971)
+fait autre chose : un embout de caoutchouc sous la touche frappe la corde
+et la TIENT contre une enclume pendant toute la note — la longueur qui
+sonne va de l'enclume au chevalet. Quand la touche remonte, l'embout
+lâche : la corde ENTIÈRE vibre un instant, à sa hauteur propre, plus
+basse, jusqu'à ce que la laine tressée au bout la taise en quelques
+centièmes de seconde. C'est le « thump » du clavinet, et aucune machine du
+parc ne relâche une note en changeant sa hauteur. Deux micros sous les
+cordes (manche, chevalet), en somme ou en différence, et un curseur de
+sourdine.
+
+*Ce que j'attends, écrit avant la mesure (dans le banc)* : (1) la3 tenue,
+corde derrière l'embout à 0,35 : dans les 60 ms qui suivent le
+relâchement, le pic à 163 Hz (220/1,35) dépasse ×2 celui à 220 Hz — et
+sans corde derrière (0), l'inverse ; (2) 300 ms après le relâchement, il
+reste moins de 2 % de la tenue, et une laine lâche (0,3 s) laisse ×5 plus
+de queue qu'une laine serrée (0,03 s) ; (3) le micro chevalet a un
+centroïde ×1,25 plus haut que le manche, et la différence A − B annule le
+fondamental commun (< 30 % de la somme) ; (4) la sourdine à fond réduit la
+tenue à 1 s sous 30 % ; vélocité ×1,5 ; molette refusée.
+
+### H32 EST TRANCHÉE : SUCCÈS, et l'attendu (3) a été RÉÉCRIT avant la mesure qui le tranche (03/09/2026)
+
+| Trait | Attendu | Mesuré |
+|---|---|---|
+| après le relâchement, 163 Hz contre 220 Hz (corde derrière 0,35) | ≥ ×2 | **0,00024 contre 0,00001** (×24) |
+| sans corde derrière (0) : 220 Hz contre 163 Hz | ≥ ×2 | **0,00020 contre 0,00001** |
+| 300 ms après le relâchement, laine serrée | < 2 % de la tenue | **0,000000** contre 0,0163 |
+| laine lâche contre laine serrée, 300 ms après | ≥ ×5 | **0,000010 contre 0,000000** |
+| A − B : fondamental contre A + B | < 30 % | **15 %** (0,00039 contre 0,00260) |
+| A − B : octave contre A + B | ≥ ×1,5 | **×14** (0,0130 contre 0,00091) |
+| sourdine à fond, tenue à 1 s | < 30 % de l'ouvert | **0,0000 contre 0,0444** |
+| vélocité 30 contre 120 | ≥ ×1,5 | tenu |
+
+**L'attendu (3) disait d'abord « le micro chevalet a un centroïde ×1,25
+plus haut que le manche »**, et la première mesure a dit 3 344 Hz contre
+3 329 Hz : rien. La cause était le modèle des micros, pas la mesure : un
+peigne x − x(t − p·N) donne au rang n le poids sin(n·π·p), juste, mais à
+une phase temporelle qui DÉPEND de p — alors que sur une corde réelle tous
+les points d'un mode vibrent en phase. Il manquait le retard de
+propagation (1 − p)·N/2 entre le chevalet et le micro ; sans lui, deux
+micros symétriques s'annulaient EN SOMME au lieu de se retrancher, et la
+brillance de deux micros près des deux bouts est la même par symétrie
+(sin(n·π·p) = ± sin(n·π·(1 − p))). Le modèle a été corrigé (retard
+inclus), et l'attendu réécrit sur le trait qui distingue vraiment le D6 :
+la DIFFÉRENCE des deux micros, qui creuse les rangs impairs (même signe aux
+deux bouts) et double les pairs — le son « nasal ». Micros posés à 0,08 et
+0,90 de la longueur qui sonne (un premier essai à 0,86 laissait 40 % de
+fondamental). Le niveau a été rattrapé ×8 (crête 0,06 → 0,48, l'e-piano
+est à 0,41) : les peignes mangent le grave. Douze tests, empreinte, façade
+STRING · RELEASE · PICKUPS (rendue et regardée) ; identités neuves pour la
+sourdine, la corde derrière l'embout, la laine, le claquement et les deux
+micros ; celles de `vsm.string` pour la corde. Le parc passe à
+**60 machines**.
 
 ## 12. H10 — la guitare ÉLECTRIQUE est-elle vraiment couverte ? (écrite avant sa mesure, 02/09/2026)
 

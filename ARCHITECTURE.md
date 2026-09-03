@@ -4057,6 +4057,19 @@ machines-manquantes § 27.
 
 Le parc passe à **59 machines**.
 
+**ET UNE DIX-NEUVIÈME : `vsm.clavinet`, la corde que la touche TIENT, et
+qui sonne ENTIÈRE, plus bas, quand on la lâche.** La corde de `vsm.string`
+tenue contre l'enclume ; au relâchement, la longueur entière (f/(1 +
+derrière), 163 Hz contre 220 Hz : 0,00024 contre 0,00001) sous la laine
+(rien à 300 ms). Deux micros près des deux bouts, modélisés comme le
+déplacement de la corde à leur position — y_p = x(t − (1−p)N/2) − x(t −
+(1+p)N/2), le retard de propagation compris, sans quoi la symétrie
+s'annulait en somme — dont la DIFFÉRENCE creuse le fondamental (15 %) et
+double l'octave (×14). Douze tests, empreinte, façade ; CDC
+machines-manquantes § 28.
+
+Le parc passe à **60 machines**.
+
 ---
 
 ## 47. Ouvrir un projet fait ailleurs : `Inflate`, `Xml`, `DawImport`

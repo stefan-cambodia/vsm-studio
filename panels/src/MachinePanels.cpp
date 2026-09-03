@@ -4041,6 +4041,59 @@ MachinePanel makeCarillon() {
     return panel;
 }
 
+/// `vsm.clavinet` -- la corde qui sonne entière au relâchement. STRING pour
+/// l'embout, la tenue, la sourdine ; RELEASE pour ce qui fait le clavinet
+/// (la corde derrière l'embout, la laine, le claquement), en grand ;
+/// PICKUPS pour les deux micros et la tonalité. Bois clair, boutons noirs
+/// et blancs comme les commutateurs du D6.
+MachinePanel makeClavinet() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.clavinet";
+    panel.displayName = "Clavinet (la corde qui sonne entière au relâchement)";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#4A3524";
+    panel.sectionColour = "#3A291B";
+    panel.textColour = "#F3EADB";
+    panel.knobColour = "#1E1E1E";
+    panel.gridColumns = 12;
+    panel.gridRows = 4;
+
+    PanelSection corde;
+    corde.title = "STRING";
+    corde.accentColour = "#E8DCC4";
+    corde.column = 0; corde.row = 0; corde.columnSpan = 4; corde.rowSpan = 4;
+    corde.controls = {
+        control("Tip Hardness", "TIP", S::Knob, 0, 0),
+        control("String Decay", "DECAY", S::Knob, 1, 0),
+        control("Mute", "MUTE", S::Knob, 0, 1),
+        control("Velocity Sensitivity", "VEL", S::Knob, 1, 1),
+    };
+
+    PanelSection relachement;
+    relachement.title = "RELEASE";
+    relachement.accentColour = "#D9A441";
+    relachement.column = 4; relachement.row = 0; relachement.columnSpan = 4; relachement.rowSpan = 4;
+    relachement.controls = {
+        control("String Behind", "BEHIND", S::LargeKnob, 0, 0),
+        control("Yarn Damping", "YARN", S::Knob, 1, 0),
+        control("Release Click", "CLICK", S::Knob, 1, 1),
+    };
+
+    PanelSection micros;
+    micros.title = "PICKUPS";
+    micros.accentColour = "#9FB8C9";
+    micros.column = 8; micros.row = 0; micros.columnSpan = 4; micros.rowSpan = 4;
+    micros.controls = {
+        control("Pickup Mix", "A / B", S::Knob, 0, 0),
+        control("Pickup Phase", "PHASE", S::Knob, 1, 0),
+        control("Filter Cutoff", "TONE", S::Knob, 0, 1),
+        control("Output Level", "VOLUME", S::Knob, 1, 1),
+    };
+
+    panel.sections = {corde, relachement, micros};
+    return panel;
+}
+
 /// `vsm.glass` -- le verre frotté. PRESSURE est en grand et seul dans sa
 /// section, parce qu'il ne fait pas ce qu'un potentiomètre de pression fait
 /// ailleurs : il décide du TEMPS QUE LE SON MET À NAÎTRE. Pressé doucement, le
@@ -4366,7 +4419,7 @@ const std::vector<MachinePanel>& panels() {
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
         makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev(),
         makeScanned(), makeMellotron(), makeSitar(), makeMembrane(), makeReed(),
-        makePlate(), makeClavichord(), makeHarpsichord(), makeHurdyGurdy(), makeBanjo(), makeVibraphone(), makeBagpipe(), makeCarillon(), makeGlass(), makeJewsHarp(),
+        makePlate(), makeClavichord(), makeHarpsichord(), makeHurdyGurdy(), makeBanjo(), makeVibraphone(), makeBagpipe(), makeCarillon(), makeClavinet(), makeGlass(), makeJewsHarp(),
         makeTheremin(), makeMusicBox(), makeTerrain(), makeSpectral()
     };
     return all;

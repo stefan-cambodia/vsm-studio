@@ -360,6 +360,17 @@ bout.
 
 ![Façade de Carillon (la cloche et sa tierce mineure)](images/manuel/vsm.carillon.png)
 
+**Clavinet (la corde qui sonne entière au relâchement)** — `vsm.clavinet`
+
+La touche tient la corde contre une enclume ; lâchez-la et la corde
+**entière** sonne un instant, plus bas (*Behind* règle de combien), avant
+que la laine (*Yarn*) ne l'étouffe — c'est le « thump » du clavinet, à
+doser avec *Click*. Deux micros, manche et chevalet (*A / B*), en somme ou
+en différence (*Phase* : la différence creuse le fondamental, le son
+« nasal » du D6) ; *Mute* est le curseur de sourdine. Pas de molette.
+
+![Façade de Clavinet (la corde qui sonne entière au relâchement)](images/manuel/vsm.clavinet.png)
+
 **Music Box (la lame qui doit revenir)** — `vsm.musicbox`
 
 **Si une note ne sonne pas, ce n'est pas un bogue.** Chaque note est une lame

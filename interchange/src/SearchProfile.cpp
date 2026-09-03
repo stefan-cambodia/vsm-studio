@@ -243,6 +243,15 @@ constexpr Rule kRules[] = {
     // bat contre une qui ne bat pas s'entend à la seconde).
     {"carillon.tierce",                    0.0f,     1.0f, SearchScale::Linear,      0.85f},
     {"carillon.doublet",                   0.0f,     3.0f, SearchScale::Linear,      0.70f},
+    // CLAVINET (vsm.clavinet). Les micros font le timbre tenu (ce qu'une
+    // recherche entend le plus), la sourdine la tenue ; le relâchement se
+    // cherche moins : il ne dure que quelques centièmes de seconde.
+    {"clavinet.pickupMix",                 0.0f,     1.0f, SearchScale::Linear,      0.90f},
+    {"clavinet.pickupPhase",               0.0f,     1.0f, SearchScale::Linear,      0.60f},
+    {"clavinet.mute",                      0.0f,     1.0f, SearchScale::Linear,      0.75f},
+    {"clavinet.stringBehind",              0.0f,     1.0f, SearchScale::Linear,      0.40f},
+    {"clavinet.yarnDamping",              0.02f,     0.4f, SearchScale::Logarithmic, 0.35f},
+    {"clavinet.releaseClick",              0.0f,     1.0f, SearchScale::Linear,      0.30f},
     // VERRE FROTTÉ (vsm.glass). La PRESSION DU DOIGT commande, et d'une façon
     // qui n'a pas d'équivalent : elle ne change pas le timbre, elle change le
     // TEMPS QUE LE SON MET À NAÎTRE — d'un rapport de trente et un à un sur la

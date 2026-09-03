@@ -578,6 +578,23 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Velocity to Hardness", "voice.velocitySensitivity"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.clavinet ---
+    // La corde et l'embout parlent le vocabulaire de `vsm.string` ; le
+    // relâchement (la corde derrière l'embout, la laine, le claquement), la
+    // sourdine et les micros n'existent nulle part ailleurs.
+    {"vsm.clavinet", {
+        {"Tip Hardness", "string.pickHardness"},
+        {"String Decay", "string.decay"},
+        {"Mute", "clavinet.mute"},
+        {"String Behind", "clavinet.stringBehind"},
+        {"Yarn Damping", "clavinet.yarnDamping"},
+        {"Release Click", "clavinet.releaseClick"},
+        {"Velocity Sensitivity", "voice.velocitySensitivity"},
+        {"Pickup Mix", "clavinet.pickupMix"},
+        {"Pickup Phase", "clavinet.pickupPhase"},
+        {"Filter Cutoff", "filter.1.cutoff"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.glass ---
     // La PRESSION DU DOIGT ne réemploie pas `wind.breathPressure` malgré la
     // ressemblance des mots : un souffle entretient une colonne d'air, un
