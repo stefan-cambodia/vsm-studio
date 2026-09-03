@@ -3940,6 +3940,59 @@ MachinePanel makeVibraphone() {
     return panel;
 }
 
+/// `vsm.bagpipe` -- la réserve d'air. BAG en premier et en grand : c'est
+/// le sac qui fait la cornemuse -- sa réserve, sa montée (strike-in), sa
+/// chute (cut-off). CHANTER reprend l'anche de `vsm.cone` et porte la note
+/// de grâce ; DRONES les trois bourdons et leur tonique. Vert de tartan,
+/// bois sombre.
+MachinePanel makeBagpipe() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.bagpipe";
+    panel.displayName = "Bagpipe (la réserve d'air)";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#1F3326";
+    panel.sectionColour = "#16251B";
+    panel.textColour = "#EFE9D8";
+    panel.knobColour = "#B33A3A";
+    panel.gridColumns = 12;
+    panel.gridRows = 4;
+
+    PanelSection sac;
+    sac.title = "BAG";
+    sac.accentColour = "#B33A3A";
+    sac.column = 0; sac.row = 0; sac.columnSpan = 4; sac.rowSpan = 4;
+    sac.controls = {
+        control("Bag Reserve", "RESERVE", S::LargeKnob, 0, 0),
+        control("Strike-in", "STRIKE-IN", S::Knob, 1, 0),
+        control("Cut-off", "CUT-OFF", S::Knob, 1, 1),
+    };
+
+    PanelSection chalumeau;
+    chalumeau.title = "CHANTER";
+    chalumeau.accentColour = "#D9C27A";
+    chalumeau.column = 4; chalumeau.row = 0; chalumeau.columnSpan = 5; chalumeau.rowSpan = 4;
+    chalumeau.controls = {
+        control("Grace Length", "GRACE", S::LargeKnob, 0, 0),
+        control("Reed Stiffness", "REED", S::Knob, 1, 0),
+        control("Brassiness", "BRASS", S::Knob, 2, 0),
+        control("Breath Noise", "NOISE", S::Knob, 1, 1),
+        control("Bell Damping", "BELL", S::Knob, 2, 1),
+    };
+
+    PanelSection bourdons;
+    bourdons.title = "DRONES";
+    bourdons.accentColour = "#8FB3A0";
+    bourdons.column = 9; bourdons.row = 0; bourdons.columnSpan = 3; bourdons.rowSpan = 4;
+    bourdons.controls = {
+        control("Drone Note", "TONIC", S::Knob, 0, 0),
+        control("Drones", "LEVEL", S::Knob, 1, 0),
+        control("Output Level", "VOLUME", S::Knob, 0, 1),
+    };
+
+    panel.sections = {sac, chalumeau, bourdons};
+    return panel;
+}
+
 /// `vsm.glass` -- le verre frotté. PRESSURE est en grand et seul dans sa
 /// section, parce qu'il ne fait pas ce qu'un potentiomètre de pression fait
 /// ailleurs : il décide du TEMPS QUE LE SON MET À NAÎTRE. Pressé doucement, le
@@ -4265,7 +4318,7 @@ const std::vector<MachinePanel>& panels() {
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
         makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev(),
         makeScanned(), makeMellotron(), makeSitar(), makeMembrane(), makeReed(),
-        makePlate(), makeClavichord(), makeHarpsichord(), makeHurdyGurdy(), makeBanjo(), makeVibraphone(), makeGlass(), makeJewsHarp(),
+        makePlate(), makeClavichord(), makeHarpsichord(), makeHurdyGurdy(), makeBanjo(), makeVibraphone(), makeBagpipe(), makeGlass(), makeJewsHarp(),
         makeTheremin(), makeMusicBox(), makeTerrain(), makeSpectral()
     };
     return all;

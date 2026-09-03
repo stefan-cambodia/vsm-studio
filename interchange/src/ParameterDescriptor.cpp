@@ -546,6 +546,24 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Stereo Spread", "output.stereoWidth"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.bagpipe ---
+    // Les anches parlent le vocabulaire de `vsm.wind`, les bourdons celui
+    // de la vielle (même chose : des tuyaux sans clavier sur une tonique).
+    // Le SAC n'a d'équivalent nulle part : sa réserve, sa montée, sa chute,
+    // et la longueur de la note de grâce.
+    {"vsm.bagpipe", {
+        {"Drone Note", "hurdygurdy.droneNote"},
+        {"Drones", "hurdygurdy.drones"},
+        {"Bag Reserve", "bagpipe.bagReserve"},
+        {"Strike-in", "bagpipe.strikeIn"},
+        {"Cut-off", "bagpipe.cutOff"},
+        {"Grace Length", "bagpipe.graceLength"},
+        {"Reed Stiffness", "wind.reedStiffness"},
+        {"Brassiness", "wind.brassiness"},
+        {"Breath Noise", "wind.breathNoise"},
+        {"Bell Damping", "wind.bellDamping"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.glass ---
     // La PRESSION DU DOIGT ne réemploie pas `wind.breathPressure` malgré la
     // ressemblance des mots : un souffle entretient une colonne d'air, un

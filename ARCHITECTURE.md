@@ -4031,6 +4031,22 @@ Treize tests, empreinte, façade ; CDC machines-manquantes § 25.
 
 Le parc passe à **57 machines**.
 
+**ET UNE DIX-SEPTIÈME : `vsm.bagpipe`, la RÉSERVE D'AIR qui interdit le
+silence.** Un sac à trois temps (montée, réserve, chute) entre le souffle
+et quatre anches — le chalumeau sur la perce conique de `vsm.cone`, trois
+bourdons sur les perces cylindriques de `vsm.wind`. Jamais de silence
+entre deux notes (98 % du niveau dans un trou de 150 ms), une note de
+grâce automatique sur la note répétée (la aigu ×760), le sac qui se vide
+en détendant tout (−31,8 cents, puis 0), la vélocité ignorée au bit près.
+**Elle a révélé que `vsm.cone` ne s'éteignait jamais après le
+relâchement** (rms 0,295 deux secondes après) : la régénération de la
+perce conique tenait la boucle à 1,4 sans souffle. Corrigé dans les deux
+machines — la régénération exige un dixième de souffle — empreinte du cône
+régénérée (pic −3,4 %, l'attaque). Treize tests, empreinte, façade ; CDC
+machines-manquantes § 26.
+
+Le parc passe à **58 machines**.
+
 ---
 
 ## 47. Ouvrir un projet fait ailleurs : `Inflate`, `Xml`, `DawImport`

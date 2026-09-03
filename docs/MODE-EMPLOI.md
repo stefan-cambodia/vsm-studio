@@ -336,6 +336,18 @@ tenue vaut la pédale. Pas de molette : une barre frappée n'en a pas.
 
 ![Façade de Vibraphone (la barre, le tube et le moteur)](images/manuel/vsm.vibraphone.png)
 
+**Bagpipe (la réserve d'air)** — `vsm.bagpipe`
+
+**Si le son ne s'arrête pas quand vous lâchez la touche, ce n'est pas un
+bogue.** Un sac d'air alimente le chalumeau et les trois bourdons : la note
+tient jusqu'à la suivante, et tout lâché, elle tient encore sa *Reserve*
+avant que le sac se vide (*Cut-off*) — en s'affaissant, comme une vraie.
+Rejouer la note qui sonne insère d'elle-même une note de grâce (*Grace*,
+le la aigu) : sans elle, deux notes identiques n'en feraient qu'une. Pas de
+nuance, pas de molette. *Tonic* règle les bourdons sur celle du morceau.
+
+![Façade de Bagpipe (la réserve d'air)](images/manuel/vsm.bagpipe.png)
+
 **Music Box (la lame qui doit revenir)** — `vsm.musicbox`
 
 **Si une note ne sonne pas, ce n'est pas un bogue.** Chaque note est une lame

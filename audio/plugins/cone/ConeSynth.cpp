@@ -149,7 +149,16 @@ float ConeVoice::render(const Params& p) {
     // de 0,7 au repos, tendant vers 1 quand la valve arrive en butée. La
     // première version injectait un débit et n'atteignait que 0,22 : elle ne
     // s'amorçait pas (voir l'en-tête).
-    const float returning = bore_.returning();
+    // L'ANCHE NE PARLE PAS SANS SOUFFLE — TROUVÉ PAR LA CORNEMUSE (03/09/2026).
+    // La régénération de la perce (×2) donne à la boucle un gain de 1,4 au
+    // repos de l'anche, QUEL QUE SOIT le souffle : une note relâchée ne
+    // s'éteignait JAMAIS (mesuré : rms 0,279 pendant la note, 0,295 deux
+    // secondes après le relâchement), la voix restait active jusqu'au vol.
+    // Physiquement, la régénération vient de l'anche pressée, pas du tuyau :
+    // sous un dixième de souffle plein, elle s'éteint et la boucle repasse
+    // sous 1 (0,7 × 2 × 0,45 × 0,9 ≈ 0,57). Pendant la note, rien ne change.
+    const float parole = std::clamp(breath_ / 0.10f, 0.0f, 1.0f);
+    const float returning = bore_.returning() * (0.45f + 0.55f * parole);
     const float difference = returning - breath;
     const float reed = reedTable(difference, std::clamp(p.reedStiffness, 0.0f, 1.0f));
     float pressure = breath + difference * reed;

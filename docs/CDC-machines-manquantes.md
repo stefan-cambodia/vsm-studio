@@ -351,6 +351,7 @@ Deux critères, à ne pas confondre :
 | **Archet SANS FIN, bourdons sans clavier, chevalet qui claque** | `vsm.hurdygurdy` (roue, inertie, bourdons, chien) | **fait le 03/09** — § 23 ; la vélocité n'y fait pas la force mais le rythme |
 | **Corde dont la table est une PEAU** | `vsm.banjo` (corde de `vsm.string` sur une banque de modes de Bessel) | **fait le 03/09** — § 24 ; la peau chante ses modes quelle que soit la note, et mange la corde |
 | **Barre CREUSÉE, tube à MOTEUR, feutre à PÉDALE** | `vsm.vibraphone` (partiels 1:4:10, tube sur f0, disques sur un axe commun, CC 64) | **fait le 03/09** — § 25 ; seul le fondamental ondule sous le moteur, et la pédale de sustain est celle de l'instrument |
+| **RÉSERVE D'AIR entre le souffle et les anches** | `vsm.bagpipe` (sac à trois temps, chalumeau de `vsm.cone`, bourdons de `vsm.wind`, note de grâce automatique) | **fait le 03/09** — § 26 ; jamais de silence entre deux notes, et une note répétée passe par sa note de grâce |
 | Waveshaping (spectre commandé) | `vsm.chebyshev` | **fait** |
 | **Synthèse balayée** | `vsm.scanned` (chaîne de masses, timbre en temps réel) | **fait le 02/09** |
 | **Lecture de BANDE** | `vsm.mellotron` (la bande finit, une par touche) | **fait le 02/09** — un COMPORTEMENT, pas un timbre |
@@ -1622,6 +1623,71 @@ RESONATORS · DAMPER (rendue et regardée) ; identités neuves pour le
 creusement, le feutre, la part du tube et le décalage de frappe ; celles
 de `vsm.modal` pour la barre et du trémolo pour le moteur. Le parc passe à
 **57 machines**.
+
+## 26. H30 — la CORNEMUSE : la réserve d'air qui interdit le silence (écrite avant sa mesure, 03/09/2026)
+
+**Ce que le parc n'avait pas.** Tous ses vents obéissent au souffle : la
+note commence quand on souffle, finit quand on s'arrête, avec son attaque
+et sa chute. La cornemuse met un SAC entre le souffle et les anches, et le
+sac change tout ce qu'un clavier peut lui faire. Il n'y a pas de silence
+entre deux notes : le chalumeau sonne tant que le sac a de l'air, lâcher
+une touche ne tait rien. Une note répétée EXIGE une note de grâce — deux
+notes identiques à la suite ne se séparent que par une autre note, très
+brève, et c'est toute la technique du sonneur ; la machine la fait
+d'elle-même (le la aigu du chalumeau). Le sac se vide et tout baisse
+ENSEMBLE : toutes les anches boivent au même sac, à la coupure la hauteur
+s'affaisse et les tuyaux se taisent, le chalumeau d'abord (son anche
+demande plus), les bourdons après. Et pas de nuance : la vélocité est
+ignorée au bit près, comme sur le clavecin. Le chalumeau est la perce
+conique de `vsm.cone`, les bourdons les perces cylindriques de `vsm.wind`,
+réemployées telles quelles ; ce que la machine ajoute, c'est le sac.
+
+*Ce que j'attends, écrit avant la mesure (dans le banc)* : (1) une note
+lâchée, 150 ms de rien, une autre note : le niveau dans le trou reste à
+80 % au moins de celui de la note (un vent ordinaire y serait à 30 %) ;
+(2) la même note rejouée : dans les 35 ms qui suivent la seconde frappe,
+le la aigu (440 Hz, tonique 57) est au moins ×3 plus fort qu'avant la
+frappe et qu'après une note DIFFÉRENTE, et plus fort que le fondamental
+lui-même ; (3) tout lâché, réserve 0,4 s : à 0,2 s le niveau tient à 80 %,
+à 2 s il est sous 2 % ; (4) dans la coupure, le chalumeau sonne au moins
+8 cents plus bas qu'en tenue ; (5) le ténor (110 Hz) est ×5 plus fort
+bourdons demandés que refusés ; (6) vélocité 20 contre 127 : identiques au
+bit près ; molette et contrôleurs refusés.
+
+### H30 EST TRANCHÉE : SUCCÈS — et elle a trouvé un défaut dans `vsm.cone` (03/09/2026)
+
+| Trait | Attendu | Mesuré |
+|---|---|---|
+| niveau dans un trou de 150 ms entre deux notes | ≥ 80 % | **98 %** (0,4095 contre 0,4196) |
+| la aigu après la note répétée, contre avant | ≥ ×3 | **×760** (0,258 contre 0,00034) |
+| la aigu après la note répétée, contre après une AUTRE note | ≥ ×3 | **×890** (0,258 contre 0,00029) |
+| la aigu contre le fondamental, dans la grâce | > 1 | **0,258 contre 0,0009** : la grâce est toute la note |
+| tenue 0,2 s après le relâchement (réserve 0,4 s) | ≥ 80 % | **110 %** (0,470 contre 0,425) |
+| niveau 2 s après le relâchement | < 2 % | **0,000000** |
+| hauteur du chalumeau dans la coupure | ≤ −8 cents | **−31,8 cents** (329,5 → 323,5 Hz) |
+| ténor à 110 Hz, bourdons demandés contre refusés | ≥ ×5 | **×720** (0,0358 contre 0,00005) |
+| vélocité 20 contre 127 | identiques | au bit près |
+
+**Ce que la cornemuse a trouvé, et que cinq mesures sur le saxophone
+n'avaient pas vu.** La première version du sac ne vidait rien : deux
+secondes après le relâchement, le chalumeau sonnait encore à 100 %. La
+cause n'était pas dans le sac mais dans la perce conique réemployée : la
+régénération de `ConicalBore` (×2, posée pour que la note s'amorce) donne
+à la boucle un gain de 1,4 AU REPOS DE L'ANCHE, quel que soit le souffle.
+Vérifié sur `vsm.cone` lui-même, témoin dans le banc : rms 0,279 pendant
+la note, **0,295 deux secondes après le relâchement** — le saxophone du
+parc ne s'arrêtait JAMAIS, la voix restait active jusqu'au vol, et aucun
+de ses tests ne regardait après la note. Corrigé dans le cône et dans la
+cornemuse par la même règle physique : la régénération vient de l'anche
+pressée, pas du tuyau ; sous un dixième de souffle plein elle s'éteint et
+la boucle repasse sous 1 (0,7 × 2 × 0,45 × 0,9 ≈ 0,57). Pendant la note,
+rien ne change ; l'empreinte du cône bouge de 3,4 % sur le pic (l'attaque
+des dix premières millisecondes), et elle est régénérée en le disant.
+
+Treize tests, empreinte, façade BAG · CHANTER · DRONES (rendue et
+regardée) ; identités neuves pour le sac (réserve, montée, chute) et la
+note de grâce, celles de `vsm.wind` pour les anches et de la vielle pour
+les bourdons. Le parc passe à **58 machines**.
 
 ## 12. H10 — la guitare ÉLECTRIQUE est-elle vraiment couverte ? (écrite avant sa mesure, 02/09/2026)
 

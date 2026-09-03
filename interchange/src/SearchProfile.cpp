@@ -230,6 +230,14 @@ constexpr Rule kRules[] = {
     {"vibraphone.resonatorMix",            0.0f,     1.0f, SearchScale::Linear,      0.80f},
     {"vibraphone.strikeOffset",            0.0f,     1.0f, SearchScale::Linear,      0.62f},
     {"vibraphone.damperDecay",            0.05f,     1.5f, SearchScale::Logarithmic, 0.35f},
+    // CORNEMUSE (vsm.bagpipe). Le sac se règle peu : la réserve et la chute
+    // décident de ce qui se passe APRÈS la dernière note, ce qu'une
+    // recherche sur des notes tenues voit à peine ; la note de grâce, elle,
+    // s'entend à chaque répétition.
+    {"bagpipe.graceLength",               10.0f,   120.0f, SearchScale::Linear,      0.60f},
+    {"bagpipe.bagReserve",                 0.0f,     3.0f, SearchScale::Linear,      0.40f},
+    {"bagpipe.cutOff",                    0.05f,     1.5f, SearchScale::Logarithmic, 0.35f},
+    {"bagpipe.strikeIn",                  0.05f,     1.5f, SearchScale::Logarithmic, 0.30f},
     // VERRE FROTTÉ (vsm.glass). La PRESSION DU DOIGT commande, et d'une façon
     // qui n'a pas d'équivalent : elle ne change pas le timbre, elle change le
     // TEMPS QUE LE SON MET À NAÎTRE — d'un rapport de trente et un à un sur la
