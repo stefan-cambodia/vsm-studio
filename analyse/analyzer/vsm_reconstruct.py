@@ -179,6 +179,14 @@ def densite_du_stem(notes: List["StemNote"]) -> Dict[str, float]:
     }
 
 
+def nom_de_note(midi: int) -> str:
+    """Le nom qu'affiche le piano roll du DAW (core/src/sequencer/NoteEdit.cpp :
+    60 = C4). Une piste nommée « other · C6-C7 » se lit ; « other · 84-96 »
+    se calcule."""
+    noms = ("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
+    return f"{noms[int(midi) % 12]}{int(midi) // 12 - 1}"
+
+
 def registres_par_vides(notes: List["StemNote"], lissage: float = 2.0,
                         creux: float = 0.25, part_minimale: float = 0.05) -> List[List["StemNote"]]:
     """Découper un stem FOURRE-TOUT là où sa transcription laisse des VIDES.

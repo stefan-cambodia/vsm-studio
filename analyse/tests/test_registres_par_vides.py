@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from framework import assert_equal, assert_true, run, test  # noqa: E402
 
-from analyzer.vsm_reconstruct import StemNote, registres_par_vides  # noqa: E402
+from analyzer.vsm_reconstruct import StemNote, nom_de_note, registres_par_vides  # noqa: E402
 
 
 def couche(hauteurs, debut=0.0, duree=1.0, pas=1.0, nombre=40):
@@ -68,6 +68,12 @@ def sans_vide_rien_a_decouper():
              + couche(list(range(74, 89))))
     voix = registres_par_vides(notes)
     assert_equal(len(voix), 1, "aucun vide : une seule liste, l'appelant passe à --voix-par-stem")
+
+
+@test
+def les_registres_se_nomment_comme_le_piano_roll():
+    assert_equal([nom_de_note(60), nom_de_note(61), nom_de_note(36), nom_de_note(96)],
+                 ["C4", "C#4", "C2", "C7"], "60 = C4, la convention de NoteEdit.cpp")
 
 
 if __name__ == "__main__":

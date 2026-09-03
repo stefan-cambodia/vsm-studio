@@ -335,7 +335,7 @@ même moteur ; la seule variable est le découpage) :
 |---|---|---|---|---|---|
 | témoin (aucun découpage) | 1 | 1 | 1 | 4 / 9 | 0,2197 |
 | les trois découpages d'avant | **4** (77-96, 56-75, 43-46, 27-41) | 3 | 2 | 10 / 9 | 0,1793 |
-| `--parite` (les quatre) | **3** (84-96, 56-79, 27-46) | 3 (hihat, kick+kick2, snare) | 2 (tête 77 %, chœurs 23 %) | **9 / 9** | **0,1776** |
+| `--parite` (les quatre) | **3** (84-96, 56-79, 27-46 — nommés depuis en notes : C6-C7, G#3-G5, D#1-A#2) | 3 (hihat, kick+kick2, snare) | 2 (tête 77 %, chœurs 23 %) | **9 / 9** | **0,1776** |
 
 La parité est atteinte, et elle ne coûte rien : la distance BAISSE de 19 %
 par rapport au témoin (chaque partie reçoit sa machine et son volume). La

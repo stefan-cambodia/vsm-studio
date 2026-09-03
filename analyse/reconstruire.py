@@ -76,7 +76,7 @@ from analyzer.vsm_project_export import (DEFAULT_TRACK_VOLUME, ExportNote, Expor
                                           write_project_bundle)
 from analyzer.vsm_reconstruct import (StemNote, StemReconstruction, densite_du_stem,  # noqa: E402
                                       melodic_machines, reconstruct_stem,
-                                      reconstruction_distance, registres_par_vides,
+                                      nom_de_note, reconstruction_distance, registres_par_vides,
                                       separer_en_voix, stem_fourre_tout,
                                       write_reconstruction_report)
 from analyzer.vsm_track_arbitration import (ORIGINE_USINE, TrackCandidate, arbitrate_on_track,  # noqa: E402
@@ -1488,7 +1488,7 @@ def reconstruire_stem_melodique(ctx: Contexte, nom: str,
             resultats = []
             for registre in registres:
                 lo, hi = min(n.note for n in registre), max(n.note for n in registre)
-                sous_nom = f"{nom} · {lo}-{hi}"
+                sous_nom = f"{nom} · {nom_de_note(lo)}-{nom_de_note(hi)}"
                 sous_voix = ([list(registre)] if args.voix_par_stem <= 1
                              else separer_en_voix(list(registre), args.voix_par_stem))
                 if len(sous_voix) > 1:
