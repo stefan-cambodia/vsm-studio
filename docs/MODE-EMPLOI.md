@@ -667,7 +667,10 @@ jetons de `VSM_VUE` servent la même fin : `sans-rapport` referme l'écran de
 rapport pour photographier ce qu'il couvre, et `jouer` lance la lecture — sans
 quoi le compteur de charge de la barre de transport ne dit rien, et c'est lui
 qu'il faut regarder pour juger un projet à soixante-quatre machines. (Éprouvé :
-64 machines jouées à la fois coûtent environ 1,3 cœur.)
+64 machines jouées à la fois coûtent environ 1,3 cœur.) Quatre jetons de plus
+choisissent l'onglet du bas — `mixer`, `automation`, `effets`, `midi-cc` — :
+un projet reconstruit avec `--reverb-melange` porte un insert que personne
+n'a posé, et il doit se voir là où on le règle.
 
 ## 8. Ne rien perdre
 

@@ -740,6 +740,13 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     // rapport a son bouton Fermer et Échap — mais l'autoportrait n'a ni
     // souris ni clavier.
     else if (nom == "sans-rapport") importReport_.setVisible(false);
+    // L'ONGLET DU BAS, pour photographier les effets d'une piste ou son
+    // automation : un projet reconstruit avec --reverb-melange porte un
+    // insert que personne n'a posé, et il doit se voir là où on le règle.
+    else if (nom == "mixer")       bottomTabs_.setCurrentTabIndex(0);
+    else if (nom == "automation")  bottomTabs_.setCurrentTabIndex(1);
+    else if (nom == "effets")      bottomTabs_.setCurrentTabIndex(2);
+    else if (nom == "midi-cc")     bottomTabs_.setCurrentTabIndex(3);
     // LANCER LA LECTURE pour l'autoportrait : le compteur de CPU de la barre
     // de transport ne dit rien tant que rien ne joue, et c'est justement lui
     // qu'il faut regarder pour juger un projet à soixante-quatre machines.
@@ -2481,6 +2488,7 @@ void MainComponent::openMidiFile() {
             project_ = Project::fromParsedFile(parsed);
             project_.title = file.getFileNameWithoutExtension().toStdString();
             rebuildFromProject();
+            pianoRoll_.cadrerSurLesNotes();  // un projet qui arrive se regarde là où sont ses notes
         } catch (const std::exception& e) {
             juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
                                                      "Erreur d'import MIDI", e.what());
@@ -2551,6 +2559,7 @@ bool MainComponent::applyDawImport(const juce::File& fichier) {
         window->setName(juce::String::fromUTF8("Vintage Synth MIDI Studio -- ")
                         + fichier.getFileNameWithoutExtension());
     rebuildFromProject();
+    pianoRoll_.cadrerSurLesNotes();  // un projet qui arrive se regarde là où sont ses notes
 
     // LE RAPPORT DANS LA FENÊTRE, ET NON DANS UNE ALERTE. Une boîte de message
     // traite ce texte comme une nouvelle qu'on chasse d'un clic ; or il fait
@@ -2828,6 +2837,7 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     // machines n'existent donc PAS avant cet appel, et appliquer les
     // presets plus tôt reviendrait à les appliquer à rien.
     rebuildFromProject();
+    pianoRoll_.cadrerSurLesNotes();  // un projet qui arrive se regarde là où sont ses notes
 
     // --- presets et échantillons, machine par machine --------------------
     juce::StringArray rapport;

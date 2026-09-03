@@ -70,9 +70,19 @@ void PianoRollComponent::setProject(Project* project) {
 }
 
 void PianoRollComponent::setActiveTrackIndex(size_t trackIndex) {
-    if (trackIndex != activeTrackIndex_) stopAudition();
+    const bool autrePiste = trackIndex != activeTrackIndex_;
+    if (autrePiste) stopAudition();
     activeTrackIndex_ = trackIndex;
     selectedNoteIds_.clear();
+    // CADRER LES NOTES DE LA PISTE QU'ON VIENT DE CHOISIR, verticalement
+    // seulement. Le piano roll s'ouvrait toujours sur C6 en haut, quelle que
+    // soit la piste : une basse reconstruite (octave 1) montrait une fenêtre
+    // vide, ou ses seules notes fantômes de transcription dans l'aigu. La
+    // hauteur visée est la MÉDIANE des hauteurs pondérée par la durée -- pas
+    // le milieu de l'étendue, qu'une note fantôme deux octaves plus haut
+    // déplacerait. Le zoom horizontal, lui, ne bouge pas : c'est le choix de
+    // l'utilisateur, pas celui de la piste.
+    if (autrePiste) cadrerSurLesNotes();
     // L'HISTORIQUE N'EST PLUS VIDÉ ICI. Il portait sur les notes d'une seule
     // piste, et restaurer celles de l'une dans l'autre n'aurait rien voulu
     // dire ; il porte désormais sur le projet entier, et regarder une autre
@@ -278,6 +288,28 @@ void PianoRollComponent::zoomVertically(float factor) {
     noteHeight_ = juce::jlimit(4, 48, static_cast<int>(std::lround(static_cast<float>(noteHeight_) * factor)));
     updateScrollBars();
     repaint();
+}
+
+void PianoRollComponent::cadrerSurLesNotes() {
+    const Track* track = activeTrack();
+    if (!track || track->notes.empty()) return;
+    std::vector<std::pair<int, Tick>> hauteurs;
+    hauteurs.reserve(track->notes.size());
+    Tick total = 0;
+    for (const auto& n : track->notes) {
+        const Tick duree = std::max<Tick>(1, n.endTick - n.startTick);
+        hauteurs.push_back({static_cast<int>(n.number), duree});
+        total += duree;
+    }
+    std::sort(hauteurs.begin(), hauteurs.end());
+    Tick cumul = 0;
+    int mediane = hauteurs.front().first;
+    for (const auto& [hauteur, duree] : hauteurs) {
+        cumul += duree;
+        if (cumul * 2 >= total) { mediane = hauteur; break; }
+    }
+    const int lignesVisibles = std::max(1, contentArea().getHeight() / std::max(1, noteHeight_));
+    topNote_ = juce::jlimit(12, 127, mediane + lignesVisibles / 2);
 }
 
 void PianoRollComponent::zoomToFit() {

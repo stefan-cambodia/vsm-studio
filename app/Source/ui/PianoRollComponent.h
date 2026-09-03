@@ -115,6 +115,7 @@ public:
     void zoomHorizontally(float factor);
     void zoomVertically(float factor);
     void zoomToFit();       ///< tout le contenu de la piste dans la fenêtre
+    void cadrerSurLesNotes();  ///< place la fenêtre sur la hauteur médiane de la piste (vertical seul)
     void zoomToSelection(); ///< la sélection remplit la fenêtre
     void scrollToPlayhead();
 
