@@ -1358,6 +1358,17 @@ void PianoRollComponent::paint(juce::Graphics& g) {
     // UNE PISTE AUDIO N'A PAS DE NOTES À ÉDITER ICI, et il faut le dire :
     // sans ce mot, l'écran montrait une grille vide et les notes fantômes
     // d'une autre piste, comme si la voix reportée avait perdu ses notes.
+    if (activeTrack()->kind == Track::Kind::Group) {
+        drawGrid(g);
+        drawKeyboard(g);
+        g.setColour(Palette::textSecondary);
+        g.setFont(16.0f);
+        g.drawFittedText(u8"Bus de groupe : il additionne les pistes routées vers lui.\n"
+                         u8"Il n'a pas de notes ; ses effets et son fader se règlent dans le mixeur.",
+                         getLocalBounds().withTrimmedLeft(keyboardWidth()).reduced(24),
+                         juce::Justification::centred, 3);
+        return;
+    }
     if (activeTrack()->kind == Track::Kind::Audio) {
         drawGrid(g);
         drawKeyboard(g);

@@ -101,6 +101,9 @@ public:
     /// Sélectionne une piste par index (met à jour l'état visuel et notifie
     /// via onTrackSelected). Sans effet si l'index est hors bornes.
     void selectTrackIndex(size_t idx);
+    /// Fait défiler la liste juste assez pour montrer la piste `idx` entière.
+    void faireVoirLaPiste(size_t idx);
+    int aMontrer_ = -1;   ///< piste à faire voir dès que la liste aura une hauteur
 
     /// Réaffiche une seule ligne, sans reconstruire la liste -- reconstruire
     /// remettrait la sélection et le défilement à zéro. Sert après une prise

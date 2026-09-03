@@ -49,6 +49,14 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
         audioSourceLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
         audioSourceLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
         refreshAudioSource();
+    } else if (track_.kind == Track::Kind::Group) {
+        // UN BUS DE GROUPE N'A PAS D'INSTRUMENT NON PLUS : il additionne les
+        // pistes routées vers lui. Un sélecteur « (Aucun) » lui promettait
+        // un choix sans effet ; il dit ce qu'il est.
+        addAndMakeVisible(audioSourceLabel_);
+        audioSourceLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
+        audioSourceLabel_.setColour(juce::Label::textColourId, Palette::accentAmber);
+        audioSourceLabel_.setText(u8"bus de groupe", juce::dontSendNotification);
     } else {
         addAndMakeVisible(instrumentBox_);
         instrumentBox_.addItem("(Aucun)", 1);
@@ -175,8 +183,8 @@ void TrackRowComponent::resized() {
 
     area.removeFromTop(4);
     auto secondRow = area.removeFromTop(24);
-    if (audio_) audioSourceLabel_.setBounds(secondRow.removeFromLeft(170));
-    else        instrumentBox_.setBounds(secondRow.removeFromLeft(170));
+    if (audio_ || track_.kind == Track::Kind::Group) audioSourceLabel_.setBounds(secondRow.removeFromLeft(170));
+    else instrumentBox_.setBounds(secondRow.removeFromLeft(170));
     secondRow.removeFromLeft(8);
     muteButton_.setBounds(secondRow.removeFromLeft(28));
     secondRow.removeFromLeft(4);
@@ -220,7 +228,11 @@ TrackListComponent::TrackListComponent() {
 void TrackListComponent::loadProject(Project& project) {
     project_ = &project;
     rows_.clear();
-    selectedIndex_ = 0;
+    // LA PISTE CHOISIE SURVIT À LA RECONSTRUCTION DE LA LISTE : cette
+    // fonction est rappelée à chaque republication du projet, et remettre la
+    // sélection à zéro faisait surligner la première piste pendant que le
+    // piano roll et le rack en montraient une autre.
+    if (selectedIndex_ >= project.tracks.size()) selectedIndex_ = 0;
 
     // La liste des groupes, calculée UNE fois : chaque ligne la reçoit pour
     // remplir son sélecteur de sortie.
@@ -235,12 +247,7 @@ void TrackListComponent::loadProject(Project& project) {
     for (size_t i = 0; i < project_->tracks.size(); ++i) {
         auto* row = rows_.add(new TrackRowComponent(project_->tracks[i], i, groupes));
         rowContainer_.addAndMakeVisible(row);
-        row->onSelected = [this](size_t idx) {
-            selectedIndex_ = idx;
-            for (int r = 0; r < rows_.size(); ++r)
-                rows_[r]->setSelected(static_cast<size_t>(r) == idx);
-            if (onTrackSelected) onTrackSelected(idx);
-        };
+        row->onSelected = [this](size_t idx) { selectTrackIndex(idx); };
         row->onChanged = [this] { if (onTracksChanged) onTracksChanged(); };
         row->onArmChanged = [this] { if (onArmChanged) onArmChanged(); };
         row->onOutputChanged = [this] { if (onOutputChanged) onOutputChanged(); };
@@ -248,10 +255,32 @@ void TrackListComponent::loadProject(Project& project) {
             if (onInstrumentChanged) onInstrumentChanged(idx, pluginId);
         };
     }
-    if (!rows_.isEmpty()) rows_[0]->setSelected(true);
+    if (!rows_.isEmpty()) rows_[static_cast<int>(selectedIndex_)]->setSelected(true);
     removeButton_.setEnabled(!rows_.isEmpty());
 
     resized();
+    faireVoirLaPiste(selectedIndex_);
+}
+
+void TrackListComponent::faireVoirLaPiste(size_t idx) {
+    // LA PISTE CHOISIE SE VOIT : une piste choisie ailleurs (l'arrangement,
+    // le mixeur, un autoportrait) peut être hors de la fenêtre de la liste --
+    // un projet en parité en a onze --, et rien ne disait laquelle était
+    // sélectionnée. On fait défiler juste assez pour la montrer entière.
+    if (idx >= static_cast<size_t>(rows_.size())) return;
+    // Avant la première mise en page (un autoportrait choisit sa piste au
+    // démarrage), la fenêtre n'a pas de hauteur : on retient la demande et
+    // resized() la sert.
+    if (viewport_.getViewHeight() <= 0) { aMontrer_ = static_cast<int>(idx); return; }
+    aMontrer_ = -1;
+    const auto bornes = rows_[static_cast<int>(idx)]->getBounds();
+
+    const int haut = viewport_.getViewPositionY();
+    const int bas = haut + viewport_.getViewHeight();
+    if (bornes.getY() < haut)
+        viewport_.setViewPosition(0, bornes.getY());
+    else if (bornes.getBottom() > bas)
+        viewport_.setViewPosition(0, std::max(0, bornes.getBottom() - viewport_.getViewHeight()));
 }
 
 void TrackListComponent::refreshTrackRow(size_t idx) {
@@ -264,6 +293,7 @@ void TrackListComponent::selectTrackIndex(size_t idx) {
     selectedIndex_ = idx;
     for (int r = 0; r < rows_.size(); ++r)
         rows_[r]->setSelected(static_cast<size_t>(r) == idx);
+    faireVoirLaPiste(idx);
     if (onTrackSelected) onTrackSelected(idx);
 }
 
@@ -277,10 +307,18 @@ void TrackListComponent::resized() {
 
     viewport_.setBounds(area);
     int totalHeight = rows_.size() * kRowHeight;
-    rowContainer_.setBounds(0, 0, viewport_.getWidth() - viewport_.getScrollBarThickness(), totalHeight);
+    // LE DÉFILEMENT SURVIT À LA MISE EN PAGE. `setBounds(0, 0, …)` remettait le
+    // conteneur en haut à chaque redimensionnement -- et chaque republication
+    // du projet passe par ici : la liste sautait en haut pendant qu'on
+    // travaillait la onzième piste. On ne change que la taille, et l'on
+    // rend au viewport la position qu'il avait.
+    const auto position = viewport_.getViewPosition();
+    rowContainer_.setSize(viewport_.getWidth() - viewport_.getScrollBarThickness(), totalHeight);
+    viewport_.setViewPosition(position);
 
     for (int i = 0; i < rows_.size(); ++i)
         rows_[i]->setBounds(0, i * kRowHeight, rowContainer_.getWidth(), kRowHeight);
+    if (aMontrer_ >= 0) faireVoirLaPiste(static_cast<size_t>(aMontrer_));
 }
 
 void TrackListComponent::paint(juce::Graphics& g) {
