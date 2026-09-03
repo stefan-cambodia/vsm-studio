@@ -480,6 +480,8 @@ assignée, ou la convention General MIDI si elle n'est pas connue. Une **piste
 audio** le dit : son matériau se voit et se coupe dans l'arrangement, il n'y a
 pas de notes à éditer ici.
 
+![Le piano roll d'une piste de batterie : le clavier nomme les pièces, la vue est cadrée sur le charleston.](images/manuel/piano-roll-batterie.png)
+
 **Les contrôleurs MIDI (CC) s'éditent dans l'onglet *MIDI CC* du bas.** Une
 piste, un contrôleur — ceux déjà présents sur la piste d'abord, avec leur
 compte de points, puis les usuels par leur nom (1 modulation, 7 volume, 74
@@ -490,6 +492,8 @@ geste passe par l'historique (Ctrl+Z) et le séquenceur rejoue la piste
 aussitôt. Une courbe importée d'un autre DAW se voit donc, et se corrige, là
 où elle ne faisait avant que se jouer.
 
+![L'onglet MIDI CC : une rampe de coupure (CC 74) en paliers sur la basse, dix-sept points.](images/manuel/midi-cc.png)
+
 **La piste de tempo s'édite dans l'onglet *Tempo*.** Le tempo n'est pas
 forcément une valeur unique : un morceau qui ralentit à la coda, un `.als`
 importé avec sa carte de tempo, se jouent déjà au bon tempo à chaque bloc.
@@ -499,6 +503,8 @@ le déplacer, clic droit pour le supprimer. Le tempo de départ, au tick 0, ne
 bouge qu'en valeur ; c'est aussi celui de la barre de transport, et le
 changer là ne touche plus au reste de la carte. Chaque geste passe par
 l'historique.
+
+![L'onglet Tempo : trois paliers, 120, 96 puis 140 BPM.](images/manuel/tempo.png)
 
 Les **notes hachurées** ne sont pas des notes ordinaires : ce sont celles dont la transcription doute. Après une reconstruction, on les parcourt une par une pour décider — c'est le seul endroit où l'oreille tranche ce que la mesure n'a pas su trancher.
 
