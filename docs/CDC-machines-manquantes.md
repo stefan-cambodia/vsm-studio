@@ -350,6 +350,7 @@ Deux critères, à ne pas confondre :
 | **Clavier PINCÉ, sans vélocité, à REGISTRES** | `vsm.harpsichord` (sautereau, 8'/4', jeu de luth, frôlement au relâchement) | **fait le 03/09** — § 22 ; la seule machine qui refuse la vélocité au bit près et qui sonne AU relâchement |
 | **Archet SANS FIN, bourdons sans clavier, chevalet qui claque** | `vsm.hurdygurdy` (roue, inertie, bourdons, chien) | **fait le 03/09** — § 23 ; la vélocité n'y fait pas la force mais le rythme |
 | **Corde dont la table est une PEAU** | `vsm.banjo` (corde de `vsm.string` sur une banque de modes de Bessel) | **fait le 03/09** — § 24 ; la peau chante ses modes quelle que soit la note, et mange la corde |
+| **Barre CREUSÉE, tube à MOTEUR, feutre à PÉDALE** | `vsm.vibraphone` (partiels 1:4:10, tube sur f0, disques sur un axe commun, CC 64) | **fait le 03/09** — § 25 ; seul le fondamental ondule sous le moteur, et la pédale de sustain est celle de l'instrument |
 | Waveshaping (spectre commandé) | `vsm.chebyshev` | **fait** |
 | **Synthèse balayée** | `vsm.scanned` (chaîne de masses, timbre en temps réel) | **fait le 02/09** |
 | **Lecture de BANDE** | `vsm.mellotron` (la bande finit, une par touche) | **fait le 02/09** — un COMPORTEMENT, pas un timbre |
@@ -1564,6 +1565,63 @@ toute la différence avec `vsm.membrane` ; le couplage est à sens unique
 empreinte, façade HEAD · PICK · STRING (rendue et regardée) ; identités
 neuves pour la peau seule (tension, amortissement, part), celles de
 `vsm.string` pour la corde. Le parc passe à **56 machines**.
+
+## 25. H29 — le VIBRAPHONE : la barre CREUSÉE, le tube qu'un MOTEUR ouvre et ferme, le feutre qu'une PÉDALE soulève (écrite avant sa mesure, 03/09/2026)
+
+**Ce que le parc n'avait pas.** `vsm.modal` sonne une barre libre-libre,
+dont le second partiel tombe à 2,76·f0 — et c'est exactement ce qu'un
+facteur de vibraphone refuse : il CREUSE le dessous de la barre jusqu'à ce
+que ses partiels tombent à 1 : 4 : 10, deux octaves puis trois octaves et
+une tierce. L'instrument est accordé DANS le partiel, pas seulement dans la
+note. Trois autres traits qu'aucune machine du parc n'a : sous chaque barre
+un TUBE fermé accordé sur f0, qui ne renforce que le fondamental (un tube
+fermé ne résonne qu'aux rangs impairs, et la barre n'en a aucun au-dessus
+de f0) ; au sommet des tubes des disques sur un axe commun, le MOTEUR, qui
+ouvre et ferme le tube — ce « vibrato » n'est ni un vibrato (la hauteur ne
+bouge pas) ni un trémolo ordinaire (seul le fondamental ondule, les
+partiels hauts restent droits), et toutes les notes ondulent en phase ; et
+un FEUTRE qu'une pédale soulève — une barre d'aluminium tient six
+secondes, le feutre la tait en un quart de seconde, et le pied choisit.
+CC 64, la pédale de sustain d'un clavier, est exactement ce geste.
+
+*Ce que j'attends, écrit avant la mesure (dans le banc)* : (1) sur la3
+(220 Hz), barre creusée, le pic à 880 Hz (4·f0) dépasse d'au moins ×5
+celui à 611 Hz (2,78·f0) — et barre libre (creusement à 0), l'inverse ;
+(2) moteur tournant contre moteur ouvert, fenêtre par fenêtre sur une
+période entière, la profondeur d'ondulation du fondamental dépasse 0,25
+et celle du 4·f0 reste sous 0,05 ; (3) touche lâchée à 0,1 s, la tenue à
+1 s est au moins ×20 plus forte pédale enfoncée que sans ; une touche tenue
+tient comme la pédale (à 5 % près) ; (4) la vélocité compte (×1,5) et
+ouvre le timbre (la part du 4·f0 monte d'au moins ×1,3) ; molette REFUSÉE
+en le disant (une barre frappée n'en a pas, comme le piano), pédale
+honorée.
+
+### H29 EST TRANCHÉE : SUCCÈS (03/09/2026)
+
+| Trait | Attendu | Mesuré |
+|---|---|---|
+| barre creusée, la3 : pic à 880 Hz contre 611 Hz | ≥ ×5 | **0,0467 contre 0,0000** — le 2,78·f0 n'existe plus |
+| barre libre (creusement 0) : 611 Hz contre 880 Hz | ≥ ×5 | **0,0465 contre 0,0000** — la barre de `vsm.modal` |
+| profondeur d'ondulation sous le moteur, f0 | > 0,25 | **0,479** |
+| profondeur d'ondulation sous le moteur, 4·f0 | < 0,05 | **0,005** — le tube ne le porte pas |
+| tenue à 1 s, touche lâchée à 0,1 s : pédale contre feutre | ≥ ×20 | **0,344 contre ≈ 0** (le feutre a tout pris en 0,9 s) |
+| touche tenue contre pédale | égales à 5 % | tenu |
+| vélocité 30 contre 120 ; part du 4·f0 | ≥ ×1,5 ; ≥ ×1,3 | tenu |
+
+Une première version du tube explosait (crête > 8 au banc de
+non-régression) : le gain unité au pic oubliait le facteur (1 − r) du
+dénominateur — cent fois trop fort à Q 18. Corrigé avant l'empreinte, et
+c'est le banc qui l'a vu, pas l'oreille. La barre est six modes à rapports
+libres tirés vers 1 : 4 : 10 par le creusement, avec les formes modales
+(ventre au centre pour les impairs, nœud pour les pairs — frapper au centre
+exact tait le 4·f0, d'où le décalage de frappe) ; le tube est un
+résonateur à deux pôles sur f0 par voix ; le moteur, une seule phase pour
+toutes les voix ; le feutre, un second jeu d'amortissements par mode que
+la touche ou la pédale commute. Treize tests, empreinte, façade BARS ·
+RESONATORS · DAMPER (rendue et regardée) ; identités neuves pour le
+creusement, le feutre, la part du tube et le décalage de frappe ; celles
+de `vsm.modal` pour la barre et du trémolo pour le moteur. Le parc passe à
+**57 machines**.
 
 ## 12. H10 — la guitare ÉLECTRIQUE est-elle vraiment couverte ? (écrite avant sa mesure, 02/09/2026)
 

@@ -322,6 +322,20 @@ guitare sèche.
 
 ![Façade de Banjo (la corde sur la peau)](images/manuel/vsm.banjo.png)
 
+**Vibraphone (la barre, le tube et le moteur)** — `vsm.vibraphone`
+
+Une barre d'aluminium **creusée** jusqu'à ce que ses partiels tombent à
+1 : 4 : 10 (*Undercut* à zéro rend la barre libre de `vsm.modal`, au second
+partiel à 2,76·f0) ; sous chaque barre un tube accordé sur la note, dont un
+**moteur** ouvre et ferme le sommet : c'est le vibrato du vibraphone, et il
+n'ondule que le fondamental — *Motor* règle sa vitesse, *Depth* le laisse
+ouvert à zéro. La **pédale de sustain** de votre clavier (CC 64) soulève le
+feutre : sans elle, une touche lâchée se tait en un quart de seconde
+(*Felt*) ; avec elle, la barre tient ses six secondes (*Decay*). Une touche
+tenue vaut la pédale. Pas de molette : une barre frappée n'en a pas.
+
+![Façade de Vibraphone (la barre, le tube et le moteur)](images/manuel/vsm.vibraphone.png)
+
 **Music Box (la lame qui doit revenir)** — `vsm.musicbox`
 
 **Si une note ne sonne pas, ce n'est pas un bogue.** Chaque note est une lame

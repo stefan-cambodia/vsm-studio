@@ -4021,6 +4021,16 @@ façade ; CDC machines-manquantes § 24.
 
 Le parc passe à **56 machines**.
 
+**ET UNE SEIZIÈME : `vsm.vibraphone`, la barre CREUSÉE, le tube à MOTEUR,
+le feutre à PÉDALE.** Six modes tirés de la barre libre (1 : 2,78 : 5,44)
+vers 1 : 4 : 10 par le creusement (880 Hz contre 611 Hz sur la3 : 0,0467
+contre 0) ; un tube à deux pôles sur f0 par voix, qu'un moteur à phase
+unique ouvre et ferme — seul le fondamental ondule (profondeur 0,479 à f0,
+0,005 à 4·f0) ; CC 64 soulève le feutre (tenue à 1 s : 0,344 contre ≈ 0).
+Treize tests, empreinte, façade ; CDC machines-manquantes § 25.
+
+Le parc passe à **57 machines**.
+
 ---
 
 ## 47. Ouvrir un projet fait ailleurs : `Inflate`, `Xml`, `DawImport`

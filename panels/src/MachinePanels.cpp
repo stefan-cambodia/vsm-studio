@@ -3885,6 +3885,61 @@ MachinePanel makeBanjo() {
     return panel;
 }
 
+/// `vsm.vibraphone` -- la barre, le tube et le moteur. Trois sections dans
+/// l'ordre où l'instrument se lit : BARS (creusement, temps, maillet),
+/// RESONATORS (la part du tube, et le MOTEUR en grand : c'est le réglage
+/// qu'un vibraphoniste touche pendant qu'il joue), DAMPER (le feutre, et
+/// la sortie). Barres d'aluminium argent sur un châssis doré, comme les
+/// tubes.
+MachinePanel makeVibraphone() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.vibraphone";
+    panel.displayName = "Vibraphone (la barre, le tube et le moteur)";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#2A2418";
+    panel.sectionColour = "#1D1910";
+    panel.textColour = "#F1EBDD";
+    panel.knobColour = "#C9CCD1";
+    panel.gridColumns = 12;
+    panel.gridRows = 4;
+
+    PanelSection barres;
+    barres.title = "BARS";
+    barres.accentColour = "#C9CCD1";
+    barres.column = 0; barres.row = 0; barres.columnSpan = 5; barres.rowSpan = 4;
+    barres.controls = {
+        control("Bar Undercut", "UNDERCUT", S::LargeKnob, 0, 0),
+        control("Bar Decay", "DECAY", S::Knob, 1, 0),
+        control("Decay Tilt", "TILT", S::Knob, 2, 0),
+        control("Mallet Hardness", "MALLET", S::Knob, 0, 1),
+        control("Strike Offset", "STRIKE", S::Knob, 1, 1),
+        control("Velocity to Hardness", "VEL", S::Knob, 2, 1),
+    };
+
+    PanelSection tubes;
+    tubes.title = "RESONATORS";
+    tubes.accentColour = "#D4A94A";
+    tubes.column = 5; tubes.row = 0; tubes.columnSpan = 4; tubes.rowSpan = 4;
+    tubes.controls = {
+        control("Resonator Mix", "TUBES", S::Knob, 0, 0),
+        control("Motor Speed", "MOTOR", S::LargeKnob, 1, 0),
+        control("Motor Depth", "DEPTH", S::Knob, 1, 1),
+    };
+
+    PanelSection feutre;
+    feutre.title = "DAMPER";
+    feutre.accentColour = "#B9C98A";
+    feutre.column = 9; feutre.row = 0; feutre.columnSpan = 3; feutre.rowSpan = 4;
+    feutre.controls = {
+        control("Damper Decay", "FELT", S::Knob, 0, 0),
+        control("Stereo Spread", "SPREAD", S::Knob, 0, 1),
+        control("Output Level", "VOLUME", S::Knob, 1, 1),
+    };
+
+    panel.sections = {barres, tubes, feutre};
+    return panel;
+}
+
 /// `vsm.glass` -- le verre frotté. PRESSURE est en grand et seul dans sa
 /// section, parce qu'il ne fait pas ce qu'un potentiomètre de pression fait
 /// ailleurs : il décide du TEMPS QUE LE SON MET À NAÎTRE. Pressé doucement, le
@@ -4210,7 +4265,7 @@ const std::vector<MachinePanel>& panels() {
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
         makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev(),
         makeScanned(), makeMellotron(), makeSitar(), makeMembrane(), makeReed(),
-        makePlate(), makeClavichord(), makeHarpsichord(), makeHurdyGurdy(), makeBanjo(), makeGlass(), makeJewsHarp(),
+        makePlate(), makeClavichord(), makeHarpsichord(), makeHurdyGurdy(), makeBanjo(), makeVibraphone(), makeGlass(), makeJewsHarp(),
         makeTheremin(), makeMusicBox(), makeTerrain(), makeSpectral()
     };
     return all;

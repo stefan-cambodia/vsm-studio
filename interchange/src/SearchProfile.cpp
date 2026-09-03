@@ -222,6 +222,14 @@ constexpr Rule kRules[] = {
     {"banjo.headMix",                      0.0f,     1.0f, SearchScale::Linear,      0.94f},
     {"banjo.headTension",                150.0f,   600.0f, SearchScale::Logarithmic, 0.90f},
     {"banjo.headDamping",                  0.0f,     1.0f, SearchScale::Linear,      0.60f},
+    // VIBRAPHONE (vsm.vibraphone). Le creusement décide où tombent les
+    // partiels — c'est ce qu'on entend d'abord ; la part du tube ensuite ;
+    // le point de frappe dose le second partiel ; le feutre ne se cherche
+    // qu'en dernier (un morceau se joue pédale enfoncée ou non).
+    {"vibraphone.undercut",                0.0f,     1.0f, SearchScale::Linear,      0.92f},
+    {"vibraphone.resonatorMix",            0.0f,     1.0f, SearchScale::Linear,      0.80f},
+    {"vibraphone.strikeOffset",            0.0f,     1.0f, SearchScale::Linear,      0.62f},
+    {"vibraphone.damperDecay",            0.05f,     1.5f, SearchScale::Logarithmic, 0.35f},
     // VERRE FROTTÉ (vsm.glass). La PRESSION DU DOIGT commande, et d'une façon
     // qui n'a pas d'équivalent : elle ne change pas le timbre, elle change le
     // TEMPS QUE LE SON MET À NAÎTRE — d'un rapport de trente et un à un sur la

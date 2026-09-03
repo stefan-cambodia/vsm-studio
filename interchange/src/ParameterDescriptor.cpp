@@ -527,6 +527,25 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Filter Cutoff", "filter.1.cutoff"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.vibraphone ---
+    // La barre parle le vocabulaire de `vsm.modal` (temps, pente, maillet),
+    // le moteur celui du trémolo (c'est le trémolo de l'instrument, comme
+    // sur le piano électrique). Trois identités neuves pour ce qui n'existe
+    // nulle part : le creusement de la barre, le feutre, la part du tube.
+    {"vsm.vibraphone", {
+        {"Bar Undercut", "vibraphone.undercut"},
+        {"Bar Decay", "modal.decay"},
+        {"Decay Tilt", "modal.decayTilt"},
+        {"Damper Decay", "vibraphone.damperDecay"},
+        {"Mallet Hardness", "string.pickHardness"},
+        {"Strike Offset", "vibraphone.strikeOffset"},
+        {"Velocity to Hardness", "voice.velocitySensitivity"},
+        {"Resonator Mix", "vibraphone.resonatorMix"},
+        {"Motor Speed", "effect.tremolo.rate"},
+        {"Motor Depth", "effect.tremolo.depth"},
+        {"Stereo Spread", "output.stereoWidth"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.glass ---
     // La PRESSION DU DOIGT ne réemploie pas `wind.breathPressure` malgré la
     // ressemblance des mots : un souffle entretient une colonne d'air, un
