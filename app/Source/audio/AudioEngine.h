@@ -76,6 +76,18 @@ public:
     /// dire « c'est celle-là qui écoute mon clavier », et il serait absurde de
     /// jouer sur une piste et d'enregistrer sur une autre.
     void setLiveInputTrack(size_t trackIndex) { liveInputTrack_.store(trackIndex, std::memory_order_release); }
+    /// D11.7 — S'ENTENDRE : l'entrée audio recopiée vers la sortie, en direct,
+    /// à la latence du périphérique (aller-retour mesurable par « Mesurer la
+    /// latence »). Rien n'est traité : c'est le son qui entre, tel quel.
+    void setInputMonitoring(bool on) { inputMonitoring_.store(on, std::memory_order_release); }
+    bool inputMonitoring() const { return inputMonitoring_.load(std::memory_order_acquire); }
+    /// D11.7 — LE CLAVIER D'ORDINATEUR joue comme un clavier MIDI : même
+    /// chemin que `handleIncomingMidiMessage` (piste choisie ou armées,
+    /// capture si l'enregistrement tourne).
+    void playComputerKey(uint8_t note, uint8_t velocity, bool on) {
+        handleIncomingMidiMessage(nullptr, on ? juce::MidiMessage::noteOn(1, note, velocity)
+                                              : juce::MidiMessage::noteOff(1, note));
+    }
 
     // --- Enregistrement MIDI temps réel (D3.3) ----------------------------
     //
@@ -235,6 +247,7 @@ private:
     static constexpr size_t kLearnQueueCapacity = 256;
     vsm::audio::util::LockFreeRingBuffer<LearnedControl, kLearnQueueCapacity> learnQueue_;
     std::atomic<size_t> liveInputTrack_{0};
+    std::atomic<bool> inputMonitoring_{false};
     std::vector<juce::String> enabledMidiInputs_;
 
     // --- Capture MIDI ------------------------------------------------------

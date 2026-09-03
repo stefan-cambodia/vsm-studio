@@ -99,6 +99,17 @@ MainComponent::MainComponent()
     bottomTabs_.addTab("MIDI CC", vsm::ui::Palette::panel, &midiCc_, false);
     bottomTabs_.addTab("Tempo", vsm::ui::Palette::panel, &tempoLane_, false);
 
+    // D11 : l'historique visible. Un clic sur un pas y revient par autant
+    // d'annulations (ou de rétablissements) qu'il faut, par le MÊME chemin
+    // que Ctrl+Z — le piano roll, qui republie le projet restauré.
+    historyPanel_.onUndoSteps = [this](size_t pas) {
+        for (size_t i = 0; i < pas; ++i) pianoRoll_.undo();
+        refreshHistoryList();
+    };
+    historyPanel_.onRedoSteps = [this](size_t pas) {
+        for (size_t i = 0; i < pas; ++i) pianoRoll_.redo();
+        refreshHistoryList();
+    };
     transportBar_.onOpenMidiFile = [this] { openMidiFile(); };
     transportBar_.onExportMidiFile = [this] { exportMidiFile(); };
     transportBar_.onCycleListening = [this] { cycleReferenceMode(); };
@@ -238,7 +249,7 @@ MainComponent::MainComponent()
     };
 
     pianoRoll_.setHistory(&history_);
-    pianoRoll_.onProjectRestored = [this] { rebuildFromProject(false); };
+    pianoRoll_.onProjectRestored = [this] { rebuildFromProject(false); refreshHistoryList(); };
     pianoRoll_.setProject(&project_);
     pianoRoll_.onNotesEdited = [this] { refreshTransportSchedule(); };
     synthRack_.onPatternEdited = [this] {
@@ -292,11 +303,30 @@ MainComponent::MainComponent()
         applyAutomationFromProject();
         pianoRollPanel_.refresh();
     };
+    // D11.3 : la position se lit aussi en MESURE · TEMPS, à côté du temps.
+    // La barre de transport ne connaît pas le projet ; elle demande.
+    transportBar_.positionInBarsProvider = [this](vsm::midi::Tick tick) {
+        const auto bb = project_.timeSignatureMap.barBeatAt(tick, project_.ticksPerQuarterNote);
+        return juce::String(u8"mes. ") + juce::String(static_cast<long long>(bb.bar + 1))
+               + juce::String(u8" \u00b7 ") + juce::String(static_cast<long long>(bb.beat + 1));
+    };
     arrangement_.onPlayheadRequested = [this](vsm::midi::Tick tick) {
         transport_.seekToTick(tick);
         audioEngine_.processGraph().seekSeconds(project_.ticksToSeconds(tick));
     };
     arrangement_.onTrackSelected = [this](size_t index) { trackList_.selectTrackIndex(index); };
+    // D11.1 : ce qu'un changement de piste a refusé se DIT — un clip audio
+    // vers une piste qui porte un autre fichier, un groupe, un genre qui ne
+    // correspond pas. Le geste a fait le reste ; ceci n'est pas une erreur.
+    arrangement_.onClipsRefused = [](size_t refuses) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Changement de piste",
+            juce::String(static_cast<int>(refuses))
+                + juce::String(refuses > 1 ? u8" clips n'ont pas changé de piste" : u8" clip n'a pas changé de piste")
+                + juce::String(u8" : un clip audio ne va que vers une piste audio qui porte le même fichier "
+                               u8"(ou aucun), un clip MIDI vers une piste MIDI, et un groupe ne reçoit rien. "
+                               u8"Les autres clips de la sélection ont été déplacés."));
+    };
     // La grille fine de l'arrangement EST celle du piano roll, lue à l'usage :
     // deux réglages de grille dans deux vues du même morceau finiraient par se
     // contredire.
@@ -351,6 +381,44 @@ MainComponent::MainComponent()
         for (const auto& info : machine->parameterList())
             if (info.id == d->paramId) { mini = info.minValue; maxi = info.maxValue; return true; }
         return false;
+    };
+    // D11.4 : RENOMMER ET COLORER UN CLIP. `Clip::name` et `Clip::colorRgba`
+    // étaient dans le modèle et dans le fichier depuis D1, et aucune vue ne
+    // les éditait : la couleur était toujours celle de la piste.
+    arrangement_.onClipRenameRequested = [this](size_t piste, uint64_t clipId) {
+        auto* clip = findClip(piste, clipId);
+        if (clip == nullptr) return;
+        auto* fenetre = new juce::AlertWindow(
+            u8"Renommer le clip", u8"Le nom s'affiche sur le clip et se sauvegarde avec le projet.",
+            juce::MessageBoxIconType::NoIcon);
+        fenetre->addTextEditor("nom", juce::String(clip->name), u8"Nom :");
+        fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
+        fenetre->addButton("Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+        fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+            [this, piste, clipId, fenetre](int resultat) {
+                if (resultat != 1) return;
+                if (auto* c = findClip(piste, clipId)) {
+                    beginProjectEdit(u8"Renommer un clip");
+                    c->name = fenetre->getTextEditorContents("nom").toStdString();
+                    arrangement_.repaint();
+                }
+            }), true);
+    };
+    arrangement_.onClipColourRequested = [this](size_t piste, uint64_t clipId) {
+        auto* clip = findClip(piste, clipId);
+        if (clip == nullptr) return;
+        colourEditOpen_ = false;
+        auto* selecteur = new juce::ColourSelector(
+            juce::ColourSelector::showColourAtTop | juce::ColourSelector::showSliders
+                | juce::ColourSelector::showColourspace);
+        selecteur->setName("Couleur du clip");
+        selecteur->setCurrentColour(juce::Colour(clip->colorRgba));
+        selecteur->setSize(280, 320);
+        selecteur->addChangeListener(new ClipColourApplier(*this, piste, clipId));
+        juce::CallOutBox::launchAsynchronously(std::unique_ptr<juce::Component>(selecteur),
+                                               arrangement_.getScreenBounds().withSize(1, 1)
+                                                   .translated(arrangement_.getWidth() / 2, arrangement_.getHeight() / 3),
+                                               nullptr);
     };
     arrangement_.onColourRequested = [this](size_t index) {
         if (index >= project_.tracks.size()) return;
@@ -745,6 +813,7 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     else if (nom == "sans-rack")   menuItemSelected(kMenuViewSynthRack, 5);
     else if (nom == "sans-mixer")  menuItemSelected(kMenuViewMixer, 5);
     else if (nom == "flottant")    menuItemSelected(kMenuViewSingleWindow, 5);
+    else if (nom == "historique")  menuItemSelected(kMenuViewHistory, 5);   // D11 : la fenêtre d'historique, pour la photographier
     // Ferme l'écran de rapport (import ou reconstruction) : VSM_IMPORT le
     // montre, et sans ce jeton l'arrangement d'un projet importé ne serait
     // photographiable qu'à travers lui. Pas dans le menu Affichage — le
@@ -1062,6 +1131,23 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuFileNewProject, "Nouveau projet");
             menu.addItem(kMenuFileOpen, "Ouvrir MIDI...");
             menu.addItem(kMenuFileOpenBundle, "Ouvrir un projet VSM...");
+            {
+                // D11.6 : LES PROJETS RÉCENTS, dix au plus, le dernier ouvert
+                // en tête. Un dossier disparu reste listé barré de sa raison :
+                // le retirer en silence ferait chercher où il est passé.
+                juce::PopupMenu recents;
+                const auto liste = recentProjects();
+                for (int i = 0; i < liste.size(); ++i) {
+                    const juce::File dossier(liste[i]);
+                    const bool existe = dossier.isDirectory();
+                    recents.addItem(kMenuFileRecentFirst + i,
+                                    dossier.getFileName() + juce::String(u8"  \u2014  ") + dossier.getParentDirectory().getFullPathName()
+                                        + (existe ? juce::String() : juce::String(u8"  (introuvable)")),
+                                    existe);
+                }
+                if (liste.isEmpty()) recents.addItem(kMenuFileRecentFirst, "(aucun)", false);
+                menu.addSubMenu(u8"Projets récents", recents);
+            }
             menu.addItem(kMenuFileImportDaw,
                          u8"Importer un projet (Ableton, FL Studio, Cubase)...");
             // GRISÉE tant qu'aucun import n'a eu lieu, plutôt qu'absente : une
@@ -1087,6 +1173,14 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                           juce::String(currentProjectFolder_ == juce::File() ? "..." : "")
                           + " (Ctrl+S)");
             menu.addItem(kMenuFileSaveAs, "Enregistrer sous...");
+            menu.addSeparator();
+            // D11.6 : LE MODÈLE. Un seul, dans le dossier des préférences : le
+            // projet qu'on ouvre pour commencer (pistes, machines, routage,
+            // tempo). « Nouveau depuis le modèle » rend un projet SANS chemin :
+            // Ctrl+S demandera où, et le modèle ne s'écrase pas par mégarde.
+            menu.addItem(kMenuFileSaveTemplate, u8"Enregistrer comme modèle de projet");
+            menu.addItem(kMenuFileNewFromTemplate, u8"Nouveau depuis le modèle",
+                         templateFolder().getChildFile("project.json").existsAsFile());
             menu.addSeparator();
             // Écoute A/B : l'enregistrement d'origine en regard de la
             // reconstruction. Les trois modes sont dans le même menu, cochés,
@@ -1182,6 +1276,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuTrackAddAudio, "Ajouter une piste audio");
             menu.addItem(kMenuTrackAddGroup, "Ajouter un groupe");
             menu.addItem(kMenuTrackRemove, u8"Supprimer la piste sélectionnée",
+                         !project_.tracks.empty());
+            menu.addItem(kMenuTrackDuplicate, u8"Dupliquer la piste sélectionnée",
                          !project_.tracks.empty());
             menu.addSeparator();
             {
@@ -1302,6 +1398,12 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                       : juce::String(u8"Jamais mesurée — les prises audio ne sont "
                                                       u8"pas compensées"),
                                   false, false);
+                    // D11.7 : S'ENTENDRE. L'entrée recopiée vers la sortie, en
+                    // direct — à la latence du périphérique, que la commande
+                    // suivante mesure. Coché quand c'est actif ; jamais par défaut.
+                    menu.addItem(kMenuRecordMonitorInput,
+                                 u8"\u00c9couter l'entr\u00e9e en direct (latence du p\u00e9riph\u00e9rique)",
+                                 audioEngine_.isDeviceOpen(), audioEngine_.inputMonitoring());
                     menu.addItem(kMenuRecordMeasureLatency,
                                   u8"Mesurer (brancher la sortie sur l'entrée)...");
                     menu.addItem(kMenuRecordClearLatency, u8"Oublier la mesure", r > 0.0);
@@ -1381,6 +1483,14 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
         case 5:
             menu.addItem(kMenuViewSingleWindow, juce::String::fromUTF8(u8"Fenêtre unique"),
                           true, singleWindow_);
+            menu.addItem(kMenuViewComputerKeyboard,
+                         juce::String::fromUTF8(u8"Clavier d'ordinateur (A S D F… jouent la piste choisie, Z/X : octave)"),
+                         true, computerKeyboard_);
+            {
+                auto* fenetre = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent());
+                menu.addItem(kMenuViewFullScreen, u8"Plein \u00e9cran (F11)", fenetre != nullptr,
+                              fenetre != nullptr && fenetre->isFullScreen());
+            }
             menu.addSeparator();
             menu.addItem(kMenuViewTracks, "Pistes", true,
                           singleWindow_ ? trackList_.isVisible() : trackListWindow_.isVisible());
@@ -1397,6 +1507,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuViewShortcuts,
                           juce::String::fromUTF8(u8"Raccourcis clavier..."),
                           true, shortcutsWindow_ && shortcutsWindow_->isVisible());
+            menu.addItem(kMenuViewHistory,
+                          juce::String::fromUTF8(u8"Historique des modifications..."),
+                          true, historyWindow_ && historyWindow_->isVisible());
             menu.addItem(kMenuViewMidiLearn,
                           juce::String::fromUTF8(u8"Associations MIDI (")
                               + juce::String(static_cast<int>(audioEngine_.midiLearnMappingCount()))
@@ -1430,6 +1543,12 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
 }
 
 void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) {
+    if (menuItemID >= kMenuFileRecentFirst && menuItemID <= kMenuFileRecentLast) {
+        const auto liste = recentProjects();
+        const int i = menuItemID - kMenuFileRecentFirst;
+        if (i < liste.size()) loadProjectBundleFromFolder(juce::File(liste[i]));
+        return;
+    }
     // Les entrées du menu Édition proviennent du piano roll et utilisent sa
     // propre numérotation (>= 100 000, voir PianoRollComponent.cpp) : elles
     // lui sont renvoyées telles quelles. LA BASE VALAIT 100, et l'énumération
@@ -1499,6 +1618,17 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             if (!visible) refreshBrowser();
             browserWindow_->setVisible(!visible);
             if (!visible) browserWindow_->toFront(true);
+            break;
+        }
+        case kMenuViewHistory: {
+            if (!historyWindow_) {
+                historyWindow_ = std::make_unique<PanelWindow>(
+                    juce::String::fromUTF8(u8"Historique des modifications"), historyPanel_);
+                historyWindow_->setSize(420, 520);
+            }
+            const bool visible = historyWindow_->isVisible();
+            if (!visible) refreshHistoryList();
+            historyWindow_->setVisible(!visible);
             break;
         }
         case kMenuViewShortcuts: {
@@ -1579,10 +1709,24 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             break;
         }
         case kMenuFileQuit:      juce::JUCEApplication::getInstance()->systemRequestedQuit(); break;
+        case kMenuFileSaveTemplate:    saveAsTemplate(); break;
+        case kMenuFileNewFromTemplate: newFromTemplate(); break;
+        case kMenuViewFullScreen:      toggleFullScreen(); break;
+        case kMenuViewComputerKeyboard:
+            computerKeyboard_ = !computerKeyboard_;
+            // Éteindre ce qui sonne encore : une note tenue par une touche qu'on
+            // ne surveille plus ne s'éteindrait jamais.
+            for (const auto& [code, note] : computerKeysDown_) audioEngine_.playComputerKey(note, 0, false);
+            computerKeysDown_.clear();
+            break;
+        case kMenuRecordMonitorInput:
+            audioEngine_.setInputMonitoring(!audioEngine_.inputMonitoring());
+            break;
         case kMenuTrackAdd:      addTrack(Track::Kind::Midi); break;
         case kMenuTrackAddAudio: addTrack(Track::Kind::Audio); break;
         case kMenuTrackAddGroup: addTrack(Track::Kind::Group); break;
         case kMenuTrackRemove:   removeSelectedTrack(); break;
+        case kMenuTrackDuplicate: duplicateSelectedTrack(); break;
         case kMenuTrackFreeze:   toggleFreezeSelectedTrack(); break;
 #if VSM_WITH_CLAP
         case kMenuTrackClapPlugin: loadClapPluginOnSelectedTrack(); break;
@@ -2899,6 +3043,7 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     // MÉDIAS, c'est-à-dire le vrai dossier du projet : réécrire une session
     // récupérée dans sa copie de travail la perdrait au prochain lancement.
     currentProjectFolder_ = medias;
+    rememberRecentProject(medias);
     if (auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
         window->setName("Vintage Synth MIDI Studio -- " + medias.getFileName());
     // rebuildFromProject() assigne les instruments d'après le projet : les
@@ -3848,7 +3993,115 @@ void MainComponent::refreshListeningIndicator() {
     }
 }
 
+// --- D11.6 : projets récents, modèle, plein écran ---------------------------
+
+void MainComponent::rememberRecentProject(const juce::File& folder) {
+    if (folder == juce::File() || folder == templateFolder()) return;
+    auto liste = recentProjects();
+    liste.removeString(folder.getFullPathName());
+    liste.insert(0, folder.getFullPathName());
+    while (liste.size() > 10) liste.remove(liste.size() - 1);
+    // Écrit tout de suite, comme l'échelle : une fin brutale ne doit pas
+    // faire perdre la liste.
+    vsm::app::ui::UiScale::properties().setValue("projetsRecents", liste.joinIntoString("\n"));
+    vsm::app::ui::UiScale::properties().saveIfNeeded();
+}
+
+juce::StringArray MainComponent::recentProjects() const {
+    juce::StringArray liste;
+    liste.addLines(vsm::app::ui::UiScale::properties().getValue("projetsRecents"));
+    liste.removeEmptyStrings();
+    return liste;
+}
+
+juce::File MainComponent::templateFolder() {
+    return vsm::app::ui::UiScale::properties().getFile().getParentDirectory().getChildFile("modele-de-projet");
+}
+
+void MainComponent::saveAsTemplate() {
+    // Le modèle s'écrit là où vivent les préférences, sans toucher au projet
+    // courant : son dossier reste le sien, et Ctrl+S continue d'y écrire.
+    const juce::File avant = currentProjectFolder_;
+    const juce::File dossier = templateFolder();
+    dossier.createDirectory();
+    const bool ok = writeProjectTo(dossier);
+    currentProjectFolder_ = avant;
+    if (auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
+        window->setName("Vintage Synth MIDI Studio" + (avant == juce::File() ? juce::String() : " -- " + avant.getFileName()));
+    juce::AlertWindow::showMessageBoxAsync(
+        ok ? juce::AlertWindow::InfoIcon : juce::AlertWindow::WarningIcon, u8"Modèle de projet",
+        ok ? juce::String(u8"Le projet courant est devenu le modèle : Fichier \u25b8 Nouveau depuis le modèle l'ouvrira, sans chemin, chaque fois.")
+           : juce::String(u8"Le modèle n'a pas pu être écrit dans ") + dossier.getFullPathName());
+}
+
+void MainComponent::newFromTemplate() {
+    const juce::File dossier = templateFolder();
+    if (!dossier.getChildFile("project.json").existsAsFile()) return;
+    loadProjectBundleFromFolder(dossier);
+    // Un projet NEUF : pas de chemin, Ctrl+S demandera où. Le modèle ne se
+    // réécrit que par « Enregistrer comme modèle ».
+    currentProjectFolder_ = juce::File();
+    if (auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
+        window->setName("Vintage Synth MIDI Studio -- nouveau projet (depuis le mod\u00e8le)");
+}
+
+void MainComponent::toggleFullScreen() {
+    if (auto* fenetre = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
+        fenetre->setFullScreen(!fenetre->isFullScreen());
+}
+
+void MainComponent::refreshHistoryList() {
+    if (!historyWindow_ || !historyWindow_->isVisible()) return;
+    historyPanel_.setEntries(history_.undoLabels(), history_.redoLabels());
+}
+
+void MainComponent::seekAllViews(vsm::midi::Tick tick) {
+    transport_.seekToTick(tick);
+    audioEngine_.processGraph().seekSeconds(project_.ticksToSeconds(tick));
+}
+
+// D11.7 — LE CLAVIER D'ORDINATEUR. La disposition de Live et de tout le
+// monde : la rangée du milieu pour les blanches (A S D F G H J K L ;), celle du
+// dessus pour les noires (W E T Y U O P). Z et X déplacent l'octave.
+bool MainComponent::handleComputerKeyboard(const juce::KeyPress& key) {
+    if (!computerKeyboard_ || key.getModifiers().isAnyModifierKeyDown()) return false;
+    const juce::juce_wchar c = juce::CharacterFunctions::toLowerCase(key.getTextCharacter());
+    if (c == 'z' || c == 'x') {
+        computerKeyboardOctave_ = juce::jlimit(-3, 3, computerKeyboardOctave_ + (c == 'z' ? -1 : 1));
+        return true;
+    }
+    static const juce::String kBlanches("asdfghjkl;");
+    static const juce::String kNoires("wetyuop");
+    static const int kDemiTonsBlanches[] = {0, 2, 4, 5, 7, 9, 11, 12, 14, 16};
+    static const int kDemiTonsNoires[] = {1, 3, 6, 8, 10, 13, 15};
+    int demiTons = -1;
+    if (const int i = kBlanches.indexOfChar(c); i >= 0) demiTons = kDemiTonsBlanches[i];
+    else if (const int j = kNoires.indexOfChar(c); j >= 0) demiTons = kDemiTonsNoires[j];
+    if (demiTons < 0) return false;
+    const int note = juce::jlimit(0, 127, 60 + 12 * computerKeyboardOctave_ + demiTons);
+    // Le clavier RÉPÈTE une touche tenue : la note ne se rejoue pas.
+    for (const auto& [code, n] : computerKeysDown_)
+        if (code == key.getKeyCode()) return true;
+    computerKeysDown_.emplace_back(key.getKeyCode(), static_cast<uint8_t>(note));
+    audioEngine_.playComputerKey(static_cast<uint8_t>(note), 100, true);
+    return true;
+}
+
+bool MainComponent::keyStateChanged(bool, juce::Component*) {
+    // JUCE ne dit pas QUELLE touche s'est relâchée : on relit l'état de
+    // celles qu'on tient, et l'on éteint les notes des touches disparues.
+    bool traite = false;
+    for (size_t i = 0; i < computerKeysDown_.size();) {
+        if (juce::KeyPress::isKeyCurrentlyDown(computerKeysDown_[i].first)) { ++i; continue; }
+        audioEngine_.playComputerKey(computerKeysDown_[i].second, 0, false);
+        computerKeysDown_.erase(computerKeysDown_.begin() + static_cast<std::ptrdiff_t>(i));
+        traite = true;
+    }
+    return traite;
+}
+
 bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
+    if (handleComputerKeyboard(key)) return true;
     // LA TOUCHE DÉSIGNE UNE COMMANDE, ET LA TABLE FAIT LA CORRESPONDANCE
     // (D10.3). Ce qui était ici -- un test sur `Ctrl+S`, un filtre qui rejetait
     // tout ce qui portait un modificateur, puis deux `case` -- ne disait à
@@ -3870,6 +4123,29 @@ bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
         // « R » comme référence : la bascule A/B, depuis n'importe quelle
         // fenêtre -- on compare en regardant le piano roll, pas le menu.
         case Id::ReferenceCycle: cycleReferenceMode(); return true;
+        // D11.3 — SE REPÉRER EN MUSIQUE : Début, marqueur suivant, précédent.
+        // Le marqueur « suivant » est strictement après la tête ; « précédent »
+        // strictement avant, avec une noire de tolérance pour qu'un second
+        // appui remonte bien au marqueur d'avant et non à celui qu'on vient
+        // d'atteindre. Sans marqueur avant, on revient au début.
+        case Id::NavGoToStart: seekAllViews(0); return true;
+        case Id::ViewFullScreen: toggleFullScreen(); return true;
+        case Id::NavNextMarker: {
+            const auto ici = transport_.currentTick();
+            vsm::midi::Tick cible = -1;
+            for (const auto& m : project_.markers)
+                if (m.tick > ici && (cible < 0 || m.tick < cible)) cible = m.tick;
+            if (cible >= 0) seekAllViews(cible);
+            return true;
+        }
+        case Id::NavPreviousMarker: {
+            const auto ici = transport_.currentTick() - project_.ticksPerQuarterNote;
+            vsm::midi::Tick cible = 0;
+            for (const auto& m : project_.markers)
+                if (m.tick < ici && m.tick > cible) cible = m.tick;
+            seekAllViews(cible);
+            return true;
+        }
         // Tout le reste appartient au piano roll, qui a sa propre table --
         // la MÊME. On répond faux pour que la touche lui parvienne.
         default: return false;
@@ -4088,6 +4364,7 @@ bool MainComponent::writeProjectTo(const juce::File& folder) {
                                                  u8"Projet incomplet", message);
     }
     currentProjectFolder_ = folder;
+    rememberRecentProject(folder);
     // Le nom du dossier passe dans le titre de la fenêtre : c'est le retour
     // qu'attend un Ctrl+S, et il ne demande pas de cliquer pour disparaître.
     if (auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
@@ -4254,6 +4531,25 @@ void MainComponent::ColourApplier::changeListenerCallback(juce::ChangeBroadcaste
     parent_.mixer_.setProject(&parent_.project_);
 }
 
+void MainComponent::ClipColourApplier::changeListenerCallback(juce::ChangeBroadcaster* source) {
+    auto* selecteur = dynamic_cast<juce::ColourSelector*>(source);
+    if (selecteur == nullptr) return;
+    if (!parent_.colourEditOpen_) {
+        parent_.colourEditOpen_ = true;
+        parent_.beginProjectEdit(u8"Couleur d'un clip");
+    }
+    if (auto* clip = parent_.findClip(index_, clip_))
+        clip->colorRgba = selecteur->getCurrentColour().getARGB();
+    parent_.arrangement_.repaint();
+}
+
+vsm::sequencer::Clip* MainComponent::findClip(size_t trackIndex, uint64_t clipId) {
+    if (trackIndex >= project_.tracks.size()) return nullptr;
+    for (auto& clip : project_.tracks[trackIndex].clips)
+        if (clip.id == clipId) return &clip;
+    return nullptr;
+}
+
 void MainComponent::sendBusesChanged() {
     applySendBuses();
     mixer_.setProject(&project_);   // le nombre de boutons a pu changer
@@ -4342,6 +4638,22 @@ void MainComponent::removeSelectedTrack() {
         const size_t next = std::min(idx, project_.tracks.size() - 1);
         trackList_.selectTrackIndex(next);
     }
+}
+
+void MainComponent::duplicateSelectedTrack() {
+    const size_t idx = trackList_.selectedTrackIndex();
+    if (idx >= project_.tracks.size()) return;
+    beginProjectEdit(u8"Dupliquer une piste");
+    const size_t copie = vsm::sequencer::duplicateTrack(project_, idx);
+    rebuildFromProject();
+    // L'ÉTAT VIVANT DE L'INSTRUMENT n'est pas dans le modèle (D0.1 : il vit
+    // dans la machine, le fichier le relit à l'ouverture). La copie vient
+    // d'être instanciée sur son patch d'usine : on lui recopie l'état de
+    // l'original, réglage par réglage et état natif compris.
+    auto* original = audioEngine_.processGraph().trackInstrument(idx);
+    auto* duplique = audioEngine_.processGraph().trackInstrument(copie);
+    if (original != nullptr && duplique != nullptr) duplique->loadState(original->saveState());
+    trackList_.selectTrackIndex(copie);
 }
 
 juce::String MainComponent::frozenPathFor(size_t trackIndex) const {
@@ -5031,6 +5343,7 @@ void MainComponent::quantizeLastTake() {
 
 void MainComponent::beginProjectEdit(const juce::String& label) {
     history_.beginEdit(project_, label.toStdString());
+    refreshHistoryList();
     // TOUTES LES MODIFICATIONS ANNULABLES PASSENT PAR ICI (D10.4) : c'est
     // l'endroit qui ne peut pas être oublié, parce qu'oublier de l'appeler
     // casserait déjà l'annulation, ce qui se voit tout de suite.

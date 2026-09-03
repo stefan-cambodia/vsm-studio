@@ -144,6 +144,75 @@ bool clipSelectionBounds(const std::vector<Clip>& clips, const ClipSelection& se
     return trouve;
 }
 
+ClipTrackMove moveClipsAcrossTracks(std::vector<Track>& tracks, const ClipSelection& selection,
+                                    int deltaTracks) {
+    ClipTrackMove rapport;
+    if (selection.empty() || deltaTracks == 0 || tracks.empty()) return rapport;
+
+    // ON REPÈRE D'ABORD, ON DÉPLACE ENSUITE : déplacer en parcourant ferait
+    // retrouver un clip déjà posé sur sa piste cible et le pousserait encore.
+    struct Repere { size_t piste; uint64_t clip; };
+    std::vector<Repere> reperes;
+    int plusHaut = -1, plusBas = -1;
+    for (size_t t = 0; t < tracks.size(); ++t)
+        for (const auto& clip : tracks[t].clips)
+            if (selected(selection, clip)) {
+                reperes.push_back({t, clip.id});
+                const int i = static_cast<int>(t);
+                plusHaut = plusHaut < 0 ? i : std::min(plusHaut, i);
+                plusBas = plusBas < 0 ? i : std::max(plusBas, i);
+            }
+    if (reperes.empty()) return rapport;
+
+    // LA FIGURE GARDE SA FORME : le décalage est réduit pour tous.
+    int applique = deltaTracks;
+    if (applique < 0) applique = std::max(applique, -plusHaut);
+    else applique = std::min(applique, static_cast<int>(tracks.size()) - 1 - plusBas);
+    rapport.applied = applique;
+    if (applique == 0) return rapport;
+
+    for (const auto& repere : reperes) {
+        auto& source = tracks[repere.piste];
+        auto& cible = tracks[static_cast<size_t>(static_cast<int>(repere.piste) + applique)];
+        auto it = std::find_if(source.clips.begin(), source.clips.end(),
+                               [&](const Clip& c) { return c.id == repere.clip; });
+        if (it == source.clips.end()) continue;
+
+        // CE QUI EST REFUSÉ EST COMPTÉ : une piste de groupe, un genre qui ne
+        // correspond pas, un fichier audio qui n'est pas le sien.
+        const bool memeGenre = source.kind == cible.kind && cible.kind != Track::Kind::Group;
+        const bool audioOk = cible.kind != Track::Kind::Audio || cible.audio.empty()
+                             || cible.audio.path == source.audio.path;
+        if (!memeGenre || !audioOk) { ++rapport.refused; continue; }
+        if (cible.kind == Track::Kind::Audio && cible.audio.empty()) cible.audio = source.audio;
+
+        // LES NOTES QUE LA FENÊTRE COUVRE SUIVENT LE CLIP, aux mêmes ticks.
+        if (source.kind == Track::Kind::Midi) {
+            const Tick debut = it->sourceStart;
+            const bool jusquAuBout = it->sourceLength <= 0;
+            const Tick fin = debut + it->sourceLength;
+            std::vector<Note> restent;
+            restent.reserve(source.notes.size());
+            for (auto& note : source.notes) {
+                const bool couverte = note.startTick >= debut && (jusquAuBout || note.startTick < fin);
+                if (couverte) cible.notes.push_back(note);
+                else restent.push_back(note);
+            }
+            source.notes.swap(restent);
+            std::stable_sort(cible.notes.begin(), cible.notes.end(),
+                              [](const Note& a, const Note& b) { return a.startTick < b.startTick; });
+        }
+
+        Clip deplace = *it;
+        source.clips.erase(it);
+        cible.clips.push_back(deplace);
+        std::stable_sort(cible.clips.begin(), cible.clips.end(),
+                          [](const Clip& a, const Clip& b) { return a.startTick < b.startTick; });
+        ++rapport.moved;
+    }
+    return rapport;
+}
+
 ClipSelection duplicateClips(std::vector<Clip>& clips, const ClipSelection& selection,
                               Tick offsetTicks, uint64_t& idCounter) {
     ClipSelection creees;

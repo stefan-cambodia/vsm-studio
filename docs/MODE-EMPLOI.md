@@ -31,6 +31,8 @@ L'automation se dessine **sur** l'arrangement, pas dans un onglet à part : la l
 
 Un échantillon glissé depuis le navigateur tombe sur la piste survolée, **à la mesure aimantée**, et un trait doré le montre pendant le glisser : poser à trois millisecondes du premier temps est le genre de décalage qu'on ne voit pas et qu'on entend.
 
+**Déplacer, choisir, se repérer.** Un clip se glisse **d'une piste à une autre** : il emporte les notes que sa fenêtre couvre (un clip est une fenêtre sur le matériau de sa piste, pas un sac qu'on transporte). Un clip audio ne va que vers une piste audio qui porte le même fichier, ou aucune ; ce qui est refusé vous est dit. Un rectangle tiré sur le vide choisit les clips qu'il touche (**lasso**, Maj pour ajouter), Ctrl+A les prend tous. La barre de transport affiche la position en **mesure · temps** à côté du temps ; l'arrangement **suit la tête de lecture** par pages (`F` pour cesser, la règle dit « suit ») ; `Début` ramène au début, `Maj+N` et `Maj+B` sautent au marqueur suivant ou précédent. Un **double-clic** sur un clip le renomme ; le **clic droit** donne sa couleur (ou lui rend celle de la piste) et le rend muet — sur toute la sélection. Le menu Piste sait **dupliquer la piste sélectionnée** (instrument, réglages, notes, clips, effets, automation et routage compris, avec des identifiants neufs), et le canal MIDI d'une piste (« Ch 3 ») se change par double-clic dans la liste des pistes.
+
 ![La vue d'arrangement : quatre pistes nommées, des clips, une automation dessinée, seize pistes visibles à l'écran.](images/manuel/arrangement.png)
 
 *La vue d'arrangement : quatre pistes nommées, des clips, une automation dessinée, seize pistes visibles à l'écran.*
@@ -592,7 +594,7 @@ pas de notes à éditer ici.
 
 ![Le piano roll d'une piste de batterie : le clavier nomme les pièces, la vue est cadrée sur le charleston.](images/manuel/piano-roll-batterie.png)
 
-**Les contrôleurs MIDI (CC) s'éditent dans l'onglet *MIDI CC* du bas.** Une
+**Les contrôleurs MIDI (CC) s'éditent dans l'onglet *MIDI CC* du bas.** Le **pitch bend** et l'**aftertouch de canal** y sont deux lanes comme les autres, en tête de la liste (le bend se lit autour de son centre ; un bend enregistré garde sa finesse tant qu'on ne touche pas la lane). Une
 piste, un contrôleur — ceux déjà présents sur la piste d'abord, avec leur
 compte de points, puis les usuels par leur nom (1 modulation, 7 volume, 74
 coupure…), puis tous les autres —, et des points : clic pour poser, glisser
@@ -835,6 +837,12 @@ un projet reconstruit avec `--reverb-melange` porte un insert que personne
 n'a posé, et il doit se voir là où on le règle. `piste:N` choisit la piste N (à partir
 de 0), et `VSM_TAILLE=LARGEURxHAUTEUR` (pixels logiques, bornée par l'écran)
 donne à la fenêtre la taille à laquelle on veut vérifier une disposition.
+
+## 7 bis. Commencer et retrouver
+
+**Projets récents** : Fichier ▸ Projets récents garde les dix derniers dossiers ouverts ou enregistrés ; un dossier disparu y reste, grisé et marqué « introuvable ». **Modèle de projet** : Fichier ▸ Enregistrer comme modèle de projet fait du projet courant (pistes, machines, routage, tempo) le point de départ de Fichier ▸ Nouveau depuis le modèle — qui ouvre un projet **sans chemin**, pour que Ctrl+S demande où l'écrire et que le modèle reste intact. **Plein écran** : Affichage ▸ Plein écran, ou `F11`. **S'entendre** : Enregistrement ▸ Écouter l'entrée en direct recopie l'entrée audio vers la sortie, à la latence du périphérique (jamais par défaut). **Jouer sans clavier MIDI** : Affichage ▸ Clavier d'ordinateur fait jouer la piste choisie par les lettres — A S D F G H J K L pour les blanches, W E T Y U O P pour les noires, Z et X pour l'octave ; tant qu'il est actif, ces lettres ne sont plus des raccourcis.
+
+**L'historique se voit** : Affichage ▸ Historique des modifications liste chaque pas — les plus anciens en haut, l'état courant en surbrillance, puis ce que Rétablir rendrait — et un clic sur un pas y revient d'un coup.
 
 ## 8. Ne rien perdre
 

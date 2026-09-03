@@ -194,4 +194,18 @@ void removeTrack(Project& project, size_t index);
 /// un groupe continue d'y aller, où que ce groupe se retrouve.
 void moveTrack(Project& project, size_t from, size_t to);
 
+/// D11.5 — DUPLIQUE une piste, juste après elle, et rend l'index de la copie.
+///
+/// Tout est copié : genre, nom (suffixé « (copie) »), couleur, canal, notes,
+/// contrôleurs, clips, effets, automation, routage, réglages de mixage,
+/// fichier audio. Les IDENTIFIANTS sont neufs — notes et clips reçoivent les
+/// suivants du projet — parce qu'ils désignent une sélection ou un lien
+/// d'automation, et que deux notes du même identifiant sur deux pistes
+/// feraient agir un geste sur l'autre piste. Les routages des autres pistes
+/// sont RÉPARÉS comme pour `moveTrack` : une piste qui allait dans un groupe
+/// situé après l'original y va toujours. L'état vivant de l'instrument
+/// n'est pas dans le modèle : c'est à l'application de le recopier après
+/// avoir reconstruit le graphe.
+size_t duplicateTrack(Project& project, size_t index);
+
 } // namespace vsm::sequencer

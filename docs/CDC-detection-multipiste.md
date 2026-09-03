@@ -95,7 +95,7 @@ déplacent rien, et la stabilité par empreintes est démontrée en course.
 | H22b-v2 | stems `htdemucs_6s` (6) | 6 pistes ; distance neutre ou légèrement défavorable ; si elle se dégrade, la chaîne arbitre ressemblance contre jouabilité et le § 0 tranche | **0,17114 — −10,4 % ET six pistes.** L'attendu est contredit dans le bon sens : plus de pistes ET plus proche. Machines : bass→cs80, guitar→tb303, other→musicbox, piano→phasedist. Le verdict à six pistes n'atteint pas le point fixe en 3 tours (bass et piano oscillent), et le réglage au mélange rapporte encore −0,009. Restes : guitar (poly 3,4 · 74 demi-tons) et other (3,8 · 71) sont ENCORE des fourre-tout → H23 est complémentaire, pas concurrente |
 | H23 | `--voix-par-stem 4` | pas de gain de distance ; succès = chaque piste sous le seuil du fourre-tout | **0,20846 (+9,1 %) et 7 pistes — le critère structurel est TENU** : les quatre voix passent sous le seuil (poly 0,64/1,68/1,36/1,14 ; ambitus 28/9/9/16), et chaque registre reçoit SA machine (divider, tb303, multisample ×2). La distance dépasse les 5 % de la règle écrite d'avance → le découpage reste une OPTION, il ne devient pas le défaut. Verdict au point fixe en 2 tours ; la chaîne signale 2× que le morceau serait meilleur sans la voix 1 (l'aigu jugé seul contre le stem entier) — conservée, couper est humain |
 | `--voix-tete-choeurs` | tête et chœurs par le champ stéréo | *(aucun attendu écrit avant la course — faute dite ; la voix étant un report d'audio dont la somme est exacte, la distance ne pouvait bouger que par les autres pistes)* | **0,19112 (+0,05 %) et 5 pistes** contre H22a-v2 (0,19104) : neutre. Tête 74 % / chœurs 26 %, tête + chœurs = stem exactement. Le prix en distance est nul ; la qualité reste affaire d'oreille |
-| `--batterie-par-piece` | une piste par pièce | pas de gain de distance ; les pièces ne se volent plus de voix | **0,25804 (+35,1 %) et 5 pistes** — chiffre INVALIDÉ par le § 7 : les pièces n'étaient pas calées. Remesuré en campagne 2 (§ 8) |
+| `--batterie-par-piece` | une piste par pièce | pas de gain de distance ; les pièces ne se volent plus de voix | v1 0,25804 (+35,1 %, pièces non calées, § 7) ; v2 0,24481 (+28,2 %, pas d'alternative d'usine, § 8) ; **v3 0,191036 (+0,00 %, le témoin au millionième) et 5 pistes** : le découpage ne coûte rien |
 | `--parite` | les trois découpages ensemble | ≈ H23 (+9 %), le prix des voix jugées seules | **0,21029 (+10,1 %) et 9 pistes** — même défaut de calage sur les pièces ET sur les voix (§ 7). Remesuré en campagne 2 (§ 8) |
 
 ## 4. Ce qui reste à faire (l'ordre de marche du chantier)
@@ -112,11 +112,13 @@ déplacent rien, et la stabilité par empreintes est démontrée en course.
      Conséquence technique obligatoire : la séparation PAR DÉFAUT doit se
      faire en SOUS-PROCESSUS qui meurt (deux courses tuées par l'OOM avec
      demucs résident dans le processus de la chaîne — § 2.2).
-   - **`--voix-par-stem` reste une option, PAS le défaut** : la règle écrite
-     avant la mesure disait « si la distance se dégrade de plus de 5 %, le
-     compromis se dit et se laisse à l'utilisateur » — mesuré +9,1 %. Le
-     § 0 ne s'y oppose pas : ici la structure est déjà servie par les six
-     stems, et le découpage vaut pour qui veut la parité au prix dit.
+   - ~~**`--voix-par-stem` reste une option, PAS le défaut**~~ — DÉPASSÉ le
+     04/09/2026 : la règle écrite avant la mesure disait « si la distance se
+     dégrade de plus de 5 %, le compromis se dit et se laisse à
+     l'utilisateur » — mesuré +9,1 % par H23, mais ce prix était celui du
+     calage voix par voix (§ 7) ; recalé, il vaut −0,1 % sur *Us and Them*
+     et +3,1 % sur *Sky and Sand* (§ 8). **`--parite` est le défaut**, et
+     `--sans-parite` le témoin.
 3. **Le DAW montre ce que la chaîne sait** : les densités, le partage et les
    avertissements de fourre-tout existent dans `rapport.json` et nulle part
    dans l'application. Un projet reconstruit qui s'ouvre devrait dire « cette
@@ -429,7 +431,7 @@ pour la comparaison.
 | usandthem-batterie-v2 | H22a-v2 (0,19104) | `--batterie-par-piece` | le surcoût de +35,1 % DISPARAÎT : le découpage ne change pas une note, et les pièces sont désormais calées ensemble sur leur stem. J'attends la distance dans ±3 % du témoin. Si elle reste au-dessus de +5 %, le calage n'était pas la seule cause (les instances séparées ne se volent plus de voix, et c'est un changement de rendu) |
 | usandthem-parite-v2 | H22a-v2 (0,19104) | `--parite` | ≈ H23 seule (0,2085, +9,1 %) : le prix des voix jugées seules contre le stem entier reste, celui du calage part. J'attends entre +7 et +11 %, et 9 pistes |
 | sky-parite | sky-t6 (0,23347) | `--parite` | la batterie de *Sky and Sand* porte 78 % du morceau et 5 pièces : c'est le découpage qui compte ici. J'attends 5 pièces (ou moins, si des pièces se rabattent sur une même voix), la voix découpée si le stem a de la largeur, `other` NON découpé (il faut qu'il passe le seuil du fourre-tout, et la course t6 ne le criait pas). Distance : neutre à +5 % — les pièces sont calées en groupe, et rien d'autre ne change de note |
-| usandthem-v15 | H22a-v2 (0,19104) | `--machines-au-melange 9` | ≈ témoin (hypothèse écrite le 02/09, ROADMAP-fusion § 5 quaterdecies) |
+| usandthem-v15 | H22a-v2 (0,19104) | `--machines-au-melange 9` (avec `--sans-parite` explicite depuis que la parité est le défaut, 04/09) | ≈ témoin (hypothèse écrite le 02/09, ROADMAP-fusion § 5 quaterdecies). Relancée le 04/09 après l'extinction du poste |
 
 **usandthem-batterie-v2 — MESURÉE (03/09/2026, 11:52) : 0,24481, +28,2 %
 contre le témoin, −5,1 % seulement contre la v1.** L'attendu (±3 %) est
@@ -465,6 +467,76 @@ morceau de synthèse n'est pas le juge. Le juge, écrit d'avance :
 | usandthem-batterie-v3 | H22a-v2 (0,19104) | `--batterie-par-piece`, code corrigé | le verdict retient le patch d'usine pour les pièces comme pour le kit, recalées ensemble : j'attends la distance dans ±5 % du témoin. Si elle reste au-dessus de +10 %, la cause restante est le rendu en instances séparées (les pièces ne se volent plus de voix) |
 | usandthem-parite-v3 | H22a-v2 (0,19104) | `--parite`, code corrigé | les voix recalées ensemble au verdict et au réglage : j'attends mieux que parite-v2 et ≈ H23 (+9 %), soit entre +5 et +11 % |
 
+**usandthem-batterie-v3 — MESURÉE (18:09) : 0,191036, le témoin AU MILLIONIÈME
+(+0,00 %).** L'attendu (±5 %) est tenu au-delà de ce qu'il osait : le
+découpage de la batterie par pièce ne coûte RIEN. Le journal le montre pas à
+pas : les deux pièces calées ensemble à 0,82 comme le kit du témoin ; au tour
+1 du verdict, chacune reçoit le patch d'usine (l'alternative qui manquait) et
+son volume recalé à 0,51 — les valeurs mêmes du kit dans le témoin ; le
+réglage au mélange fait ensuite le même chemin (bass 0,2262 → 0,2108, other →
+0,2086). Deux instances de la même machine jouant chacune ses pièces au même
+patch et au même volume rendent le même son qu'une seule : le surcoût de
++35 % (v1) puis +28 % (v2) était ENTIÈREMENT fait du calage et de
+l'alternative absente, jamais du découpage. Le projet porte en plus son bus
+« Batterie » (§ 6 bis). Le découpage par pièce peut donc rester dans
+`--parite` sans réserve de distance.
+
+**usandthem-parite-v3 — MESURÉE (21:11) : 0,19084, soit −0,10 % du témoin,
+et NEUF pistes.** L'attendu (+5 à +11 %) est contredit dans le bon sens, et
+de loin : le prix de la parité, mesuré à +9,1 % par H23 et à +28 % par
+parite-v1, était ENTIÈREMENT fait du calage voix par voix contre le stem
+entier. Recalées ensemble sur leur stem (§ 7), les quatre voix d'`other`,
+les deux pièces de la batterie et les deux voix chantées rendent le même
+morceau que quatre pistes, à 0,0002 près — et le projet se retravaille.
+Machines retenues : bass → vocal ; other · voix 1 → divider, voix 2 →
+tb303, voix 3 et 4 → multisample ; batterie kick2+kick et hihat → drums au
+patch d'usine ; tête et chœurs reportées. Deux bus de groupe (« other »,
+« Batterie »). Durée : 3 h 01 (10 885 s) à 8 rendus de front, contre 5 h 24
+pour parite-v2 avant sa mort au réglage. Le verdict du mélange dit encore
+« meilleur sans la basse » (0,2165 contre 0,2219), et elle est conservée.
+
+Ce que cela rouvre : le § 4.2 laissait `--voix-par-stem` en option parce
+que la parité coûtait +9,1 %. Elle ne coûte plus rien sur ce morceau.
+**Faire de `--parite` le défaut est donc la question suivante — et elle
+attend sky-parite (campagne 4, en cours depuis 21:11)**, parce que la règle
+du § 5 exige un deuxième morceau avant de changer un défaut, et que *Sky
+and Sand* met la parité à une autre épreuve : c'est la batterie (78 %) qui
+s'y découpe, pas `other`. Attendu déjà écrit (§ 8, tableau de la campagne
+2) : neutre à +5 %.
+
+**sky-parite — MESURÉE (03/09 22:48, lue le 04/09) : 0,24073, soit +3,1 %
+du témoin sky-t6 (0,23347), et SEPT pistes au lieu de quatre.** Dans
+l'attendu (neutre à +5 %), et sur chaque point : la batterie de cinq pièces
+s'est rabattue sur TROIS pistes (tom+kick+kick2 à 2 196 frappes, percussion
+à 601, hihat à 512 — le tr808 n'a ni tom ni percussion, le spectre les
+donne pour kick et snare), la voix n'est PAS découpée (largeur stéréo sous
+le seuil : « une piste chœurs quasi vide passerait pour une partie », dit
+au journal), `other` n'est PAS découpé (il ne passe pas le seuil du
+fourre-tout). Le verdict du mélange garde tout ; le réglage au mélange
+ramène 0,2523 à 0,2297, ce qui fait tout l'écart entre le prix au verdict
+(+10 %) et le prix final (+3,1 %). Une piste est mesurée nuisible et
+conservée : le morceau est meilleur SANS le hihat (0,2420 contre 0,2523) —
+couper reste une décision humaine, la chaîne l'écrit deux fois au journal
+(une fois de trop, à corriger). Durée : 1 h 37 (5 817 s) à 6 rendus de
+front. Deux verrues dites au journal, différées (moteur) : le rendu final
+avertit « Piste 6 (Batterie) : aucun instrument, elle restera silencieuse »
+pour le BUS de groupe, qui n'a pas à avoir d'instrument.
+
+**DÉCISION (04/09/2026) : `--parite` devient le DÉFAUT de `reconstruire.py`,
+et `--sans-parite` rend la chaîne d'avant, pour les témoins.** La règle du
+§ 5 (un deuxième morceau avant de changer un défaut) est satisfaite : deux
+morceaux, deux structures différentes (`other` à 58 % découpé en quatre
+voix sur *Us and Them* ; la batterie à 78 % découpée en trois sur *Sky and
+Sand*), et le prix mesuré est −0,1 % et +3,1 % — pour neuf et sept pistes
+au lieu de quatre. L'objectif du § 0 est la parité, pas la distance ; à ce
+prix, la faire demander par une option revenait à livrer par défaut un
+projet que personne ne peut retravailler. Ce que cela change pour les
+mesures : tout témoin antérieur (H22a-v2, sky-t6 et leurs suites) a couru
+sans parité, et une course qui doit leur être comparable s'écrit désormais
+avec `--sans-parite` explicite — c'est le cas de usandthem-v15 (ci-dessous).
+La provenance dit `parite` dans les deux cas. Le test `test_parite.py` fixe
+le défaut, le témoin, et que le journal nomme `--sans-parite`.
+
 **usandthem-parite-v2 — PERDUE (17:16), et la leçon vaut plus que la
 course.** Après 5 h 24 et les trois tours du verdict, la chaîne est morte au
 réglage du mélange : `vsm_mix_refine` était importé À LA DEMANDE à cet
@@ -477,6 +549,37 @@ toute la chaîne au départ : une course est une photographie du code à son
 départ. La campagne 2 s'est arrêtée là ; sky-parite et v15 sont remises en
 file derrière la campagne 3 (campagne 4).
 
+## 9. Campagne 5 : la fusion des sept machines, et son prix — attendu écrit AVANT (03/09/2026)
+
+La campagne 4 (sky-parite, v15) finit dans la nuit. Un script
+(`campagne-parite-5.sh`, dans le dossier de travail) attend sa fin, puis
+FUSIONNE la branche `machine-clavecin` dans `master` (sept machines, le
+correctif du cône, la translittération), reconstruit tout, rejoue les six
+suites, et NE POUSSE et NE LANCE la course suivante QUE si tout est vert ;
+sinon il s'arrête et le journal le dit. La course :
+
+| Course | Témoin | Variable unique | Attendu, écrit d'avance |
+|---|---|---|---|
+| usandthem-parite-parc60 | usandthem-parite-v3 (0,19084, 9 pistes) | le MOTEUR : 60 machines au lieu de 53, `vsm.cone` qui s'éteint enfin, mêmes stems, mêmes options (`--parite`, 120 × 21, 3 tours, 6 finalistes, 8 rendus) | la mémoire `elargir-le-vivier-de-machines` a mesuré une fois +15,9 % pour six familles (v12) ; depuis, le verdict au mélange arbitre entre finalistes et le parc n'est plus jugé qu'au stem. J'attends entre −3 % et +5 %, neuf pistes, et au moins UNE des sept nouvelles machines parmi les six finalistes d'une voix d'`other` (le clavinet ou le vibraphone sur *Us and Them* ne seraient pas absurdes). Si le prix dépasse +5 %, il se publie et ne décide de rien : une machine s'ajoute pour la couverture ET pour le jeu (CDC machines § 7), et la distance ne mesure que la première |
+
+Le correctif du cône change son empreinte (pic −3,4 %) : toute course
+lancée après la fusion porte un moteur différent de celui des campagnes 1
+à 4, et la provenance le dit (`moteur.compile`, `moteur.machines` = 60).
+
+### Reprise du 04/09/2026 : le poste s'est éteint à 22:50
+
+Le poste a été éteint le 03/09 à 22:50 (journal système), deux minutes après
+le départ de usandthem-v15 (22:48) : sky-parite était finie et écrite, v15
+n'avait fait que l'arbitrage de la basse, et la campagne 5 n'a jamais
+démarré (son journal est vide). Rien n'est perdu que deux minutes. La file
+est relancée le 04/09 à 04:30 par `campagne-parite-4-reprise.sh`, qui
+rejoue v15 sur l'ANCIEN moteur (53 machines, celui de son témoin H22a-v2),
+avec `--sans-parite` EXPLICITE puisque la parité est devenue le défaut
+entre-temps — même conditions que le témoin, une seule variable
+(`--machines-au-melange 9`) — puis enchaîne `campagne-parite-5.sh` tel
+quel (fusion, tout reconstruire, six suites, pousser, parc60). L'essai à
+blanc de la fusion (`git merge-tree`) ne montre aucun conflit.
+
 ### En attente de la fin des campagnes (03/09/2026)
 
 Deux retouches sont différées parce qu'elles touchent `audio/` ou
@@ -485,10 +588,24 @@ elles — un avertissement vrai, mais qui doit rester rare pour rester lu :
 
 - **les noms de fichiers des stems exportés par groupe** : `OfflineReconstruction.cpp`
   remplace chaque octet non ASCII par `_`, et « Voix · tête » devient
-  `Voix __ t__te.wav`. Translittérer (é → e, œ → oe, « · » → « - ») ;
-- **le vivier de machines** (mémoire permanente de l'utilisateur) : la
-  prochaine famille s'ajoute une fois la campagne 3 terminée, et le moteur
-  se recompile alors pour les courses suivantes, provenance à l'appui.
+  `Voix __ t__te.wav`. Translittérer (é → e, œ → oe, « · » → « - ») —
+  **FAIT sur la branche `machine-clavecin`** (03/09/2026, 1 test) : elle
+  attend la même fusion que les machines ;
+- **le vivier de machines** (mémoire permanente de l'utilisateur) : SEPT
+  familles sont PRÊTES sur la branche `machine-clavecin`, développées dans
+  un worktree séparé, suites vertes, façades rendues — `vsm.harpsichord`
+  (le clavecin, § 22 du CDC machines), `vsm.hurdygurdy` (la vielle à roue,
+  § 23), `vsm.banjo` (la corde sur la peau, § 24), `vsm.vibraphone` (la
+  barre creusée, le tube à moteur, le feutre à pédale, § 25), `vsm.bagpipe`
+  (la réserve d'air, § 26), `vsm.carillon` (la cloche accordée, § 27), `vsm.clavinet` (la corde qui sonne
+  entière au relâchement, § 28) — et, sur la même branche, **la correction d'un
+  défaut de `vsm.cone`** que la cornemuse a révélé : le saxophone ne
+  s'éteignait jamais après le relâchement (rms 0,295 deux secondes après),
+  la régénération de sa perce tenant la boucle à 1,4 sans souffle. Le
+  correctif change l'empreinte du cône (pic −3,4 %, l'attaque) et attend
+  donc lui aussi la fin des campagnes ; elles se fusionnent à
+  la fin des campagnes, et le moteur se recompile alors pour les courses
+  suivantes, provenance à l'appui.
 
 ## 5. Critères d'acceptation
 

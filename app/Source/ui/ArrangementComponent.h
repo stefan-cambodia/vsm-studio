@@ -36,10 +36,16 @@ public:
     void mouseDrag(const juce::MouseEvent&) override;
     void mouseUp(const juce::MouseEvent&) override;
     void mouseMove(const juce::MouseEvent&) override;
+    /// D11.4 : double-clic sur un clip = le renommer.
+    void mouseDoubleClick(const juce::MouseEvent&) override;
     juce::MouseCursor getMouseCursor() override;
 
     /// La tête de lecture, pour que la vue montre où l'on en est.
     void setPlayheadTick(vsm::midi::Tick tick);
+    /// D11.3 : l'arrangement défile derrière la tête de lecture, par pages, comme
+    /// le piano roll. `F` bascule, et la règle le dit.
+    void setFollowPlayhead(bool suit) { followPlayhead_ = suit; repaint(); }
+    bool followPlayhead() const { return followPlayhead_; }
     /// Un geste va modifier le projet : l'application prend son instantané
     /// d'annulation. Appelé UNE fois par geste, au `mouseDown` -- un
     /// glissement continu est une action, pas trois cents.
@@ -125,6 +131,15 @@ public:
     void copySelection();
     void paste();
     void duplicateSelection();
+    /// Tous les clips de toutes les pistes (Ctrl+A, D11.2).
+    void selectAll();
+    /// Appelé au relâchement quand un déplacement de piste a refusé des clips
+    /// (nombre refusé) : la vue ne sait pas parler, l'application si.
+    std::function<void(size_t)> onClipsRefused;
+    /// D11.4 : renommer et colorer UN clip. Les fenêtres sont de JUCE, donc
+    /// dans l'application ; la vue demande (piste, identifiant du clip).
+    std::function<void(size_t, uint64_t)> onClipRenameRequested;
+    std::function<void(size_t, uint64_t)> onClipColourRequested;
 
     static constexpr int kHeaderWidth = 150;
     static constexpr int kRulerHeight = 22;
@@ -140,7 +155,7 @@ private:
     /// trois booléens : « je déplace ET je redimensionne » n'existe pas, et
     /// l'écrire ainsi le rend impossible.
     enum class Geste { Aucun, Deplacer, BordGauche, BordDroit, Hauteur, Reordonner, Point,
-                        FonduEntree, FonduSortie };
+                        FonduEntree, FonduSortie, Lasso };
 
     float tickToX(vsm::midi::Tick tick) const;
     vsm::midi::Tick xToTick(float x) const;
@@ -176,6 +191,7 @@ private:
     /// Aimanter à la MESURE (le défaut, parce qu'on arrange par mesures) ou à
     /// la grille fine du piano roll. `G` bascule, `S` coupe l'aimantation.
     bool aimanteALaMesure_ = true;
+    bool followPlayhead_ = true;
     /// Le presse-papiers PORTE SES CLIPS, pas des identifiants : coller doit
     /// marcher après avoir supprimé l'original, et un identifiant ne désigne
     /// alors plus rien.
@@ -194,6 +210,18 @@ private:
     int hauteurOrigine_ = 0;
     float ySaisie_ = 0.0f;
     bool reordonnancementOuvert_ = false;
+
+    // --- D11.1 : le clip change de piste ; D11.2 : le lasso ---------------
+    /// La piste sous le pointeur au dernier pas du déplacement : le décalage
+    /// de pistes est RELATIF, comme celui du temps.
+    int pisteDerniere_ = -1;
+    /// Ce que le geste a refusé (clips audio vers un autre fichier, groupes),
+    /// rendu à `onClipsRefused` au relâchement — jamais tu.
+    size_t refusesPendantLeGeste_ = 0;
+    juce::Point<float> lassoOrigine_;
+    juce::Rectangle<float> lasso_;
+    void selectClipsInLasso(bool etendre);
+    void clipMenuAction(size_t piste, uint64_t clipId, int choix);
 
     // --- Automation dessinée SUR l'arrangement (D5.4) ---------------------
     //

@@ -42,6 +42,15 @@ public:
 
     /// Le nom usuel d'un contrôleur (« 74 · coupure »), ou « CC n » sinon.
     static juce::String controllerName(int controller);
+    /// LE PITCH BEND ET L'AFTERTOUCH DE CANAL SONT DES LANES COMME LES AUTRES
+    /// (D11, 03/09/2026). Le format les portait (`Track::pitchBends`,
+    /// `Track::channelPressure`), le moteur les jouait, et aucune vue ne les
+    /// montrait : un bend importé ou joué en direct était invisible et
+    /// incorrigible. Deux pseudo-contrôleurs hors de 0..127 les désignent ;
+    /// la lane dessine le bend à 7 bits (le centre à 64), et un bend
+    /// enregistré garde ses 14 bits tant qu'on ne touche pas la lane.
+    static constexpr int kPitchBend = 128;
+    static constexpr int kChannelPressure = 129;
 
 private:
     void rebuildTrackBox();

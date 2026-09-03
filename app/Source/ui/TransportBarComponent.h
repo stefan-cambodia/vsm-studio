@@ -19,6 +19,8 @@ public:
     void setCpuUsage(float percent);      // câblé sur AudioEngine en Phase 2
     void setSampleRate(double sampleRate); // idem
 
+    /// D11.3 : « mes. 33 · 2 » à côté du temps ; sans fournisseur, le tick brut.
+    std::function<juce::String(vsm::midi::Tick)> positionInBarsProvider;
     std::function<void()> onOpenMidiFile;
     std::function<void()> onExportMidiFile;
 

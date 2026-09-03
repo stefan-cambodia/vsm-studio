@@ -12,6 +12,7 @@
 #include "project/AutosaveService.h"
 #include "vsm/interchange/ShortcutTable.h"
 #include "ui/ShortcutsWindow.h"
+#include "ui/HistoryWindow.h"
 #include "ui/PreferencesWindow.h"
 #include "ui/BrowserComponent.h"
 #include "vsm/interchange/BrowserIndex.h"
@@ -132,6 +133,19 @@ private:
     /// Le premier changement de couleur ouvre l'action annulable ; les suivants
     /// -- un glissé dans le sélecteur en produit des dizaines -- s'y ajoutent.
     bool colourEditOpen_ = false;
+    /// D11.4 : la même chose pour la couleur d'UN clip.
+    class ClipColourApplier : public juce::ChangeListener {
+    public:
+        ClipColourApplier(MainComponent& parent, size_t trackIndex, uint64_t clipId)
+            : parent_(parent), index_(trackIndex), clip_(clipId) {}
+        void changeListenerCallback(juce::ChangeBroadcaster* source) override;
+    private:
+        MainComponent& parent_;
+        size_t index_;
+        uint64_t clip_;
+    };
+    /// Le clip d'identifiant donné sur la piste donnée, ou nul.
+    vsm::sequencer::Clip* findClip(size_t trackIndex, uint64_t clipId);
 
     enum MenuItemId {
         kMenuFileNewProject = 1,
@@ -153,10 +167,16 @@ private:
         kMenuFileExportStems,
         kMenuFileAudioSettings,
         kMenuFileQuit,
+        // D11.6 : modèle de projet et projets récents.
+        kMenuFileSaveTemplate,
+        kMenuFileNewFromTemplate,
+        kMenuFileRecentFirst,
+        kMenuFileRecentLast = kMenuFileRecentFirst + 9,
         kMenuTrackAdd,
         kMenuTrackAddAudio,
         kMenuTrackAddGroup,
         kMenuTrackRemove,
+        kMenuTrackDuplicate,
         kMenuTrackFreeze,
         kMenuTrackBounce,
         kMenuTrackClapPlugin,
@@ -176,6 +196,7 @@ private:
         kMenuRecordPunchClear,
         kMenuRecordMeasureLatency,
         kMenuRecordClearLatency,
+        kMenuRecordMonitorInput,
         /// Un identifiant par prise de la piste sélectionnée, attribué à la
         /// suite -- comme les paliers d'échelle du menu Affichage.
         kMenuRecordTakeFirst,
@@ -200,6 +221,8 @@ private:
         kMenuViewMixer,
         kMenuViewArrangement,
         kMenuViewSingleWindow,
+        kMenuViewFullScreen,
+        kMenuViewComputerKeyboard,
         // Un identifiant par palier d'échelle, attribué à la suite :
         // kMenuViewScaleFirst + index dans UiScale::steps().
         kMenuViewScaleFirst,
@@ -210,6 +233,7 @@ private:
         kMenuAudioThreadsLast = kMenuAudioThreadsFirst + 32,
         kMenuViewMidiLearn,
         kMenuViewShortcuts,
+        kMenuViewHistory,
         kMenuFilePreferences,
         kMenuViewBrowser,
         kMenuFileReconstruct,
@@ -282,6 +306,9 @@ private:
     /// quoi.
     vsm::interchange::ShortcutTable shortcuts_;
     vsm::app::ui::ShortcutsWindow shortcutsPanel_;
+    vsm::app::ui::HistoryWindow historyPanel_;
+    std::unique_ptr<PanelWindow> historyWindow_;
+    void refreshHistoryList();
     std::unique_ptr<PanelWindow> shortcutsWindow_;
     void loadShortcuts();
     void saveShortcuts();
@@ -485,8 +512,27 @@ private:
     // s'inscrit comme écouteur sur chaque fenêtre, et reçoit ce que le
     // composant qui a le focus n'a pas consommé.
     bool keyPressed(const juce::KeyPress& key, juce::Component* origin) override;
+    /// Déplace la tête de lecture partout (transport, graphe) — D11.3.
+    void seekAllViews(vsm::midi::Tick tick);
     using juce::Component::keyPressed;   // la surcharge du composant reste visible (sinon -Woverloaded-virtual)
     void newProject();
+    // --- D11.6 : projets récents, modèle, plein écran ---------------------
+    void rememberRecentProject(const juce::File& folder);
+    juce::StringArray recentProjects() const;
+    static juce::File templateFolder();
+    void saveAsTemplate();
+    void newFromTemplate();
+    void toggleFullScreen();
+    // --- D11.7 : le clavier d'ordinateur joue la piste choisie -------------
+    /// Actif, il EMPRUNTE les lettres (A S D F… jouent des notes, Z et X
+    /// changent d'octave) ; inactif, elles retrouvent leurs raccourcis.
+    bool computerKeyboard_ = false;
+    int computerKeyboardOctave_ = 0;      // décalage en octaves autour du do central
+    /// Les touches tenues et la note qu'elles jouent : la note s'éteint quand
+    /// la touche se relâche, pas quand le clavier répète.
+    std::vector<std::pair<int, uint8_t>> computerKeysDown_;
+    bool keyStateChanged(bool isKeyDown, juce::Component* origin) override;
+    bool handleComputerKeyboard(const juce::KeyPress& key);
     /// Ajoute une piste. Une piste AUDIO n'est pas une autre espèce d'objet :
     /// c'est une piste dont le matériau est un fichier et non des notes (voir
     /// `Track::Kind`). Il n'existait aucun moyen d'en créer une depuis
@@ -494,6 +540,8 @@ private:
     /// rendait l'enregistrement audio de D3.4 inatteignable.
     void addTrack(vsm::sequencer::Track::Kind kind = vsm::sequencer::Track::Kind::Midi);
     void removeSelectedTrack();
+    /// D11.5 : dupliquer la piste choisie, état de l'instrument compris.
+    void duplicateSelectedTrack();
     /// GÈLE OU DÉGÈLE la piste sélectionnée (D5.5). Le gel rend ce qu'elle
     /// produit dans un fichier du dossier de projet et cesse de le recalculer ;
     /// le dégel efface le fichier et remet l'instrument en marche. Le matériau

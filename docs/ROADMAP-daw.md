@@ -2894,6 +2894,150 @@ qu'elle est là.
 
 ---
 
+### Phase D11 — L'audit après les onze phases : ce qu'un musicien cherche encore (03/09/2026)
+
+**Pourquoi une douzième phase.** Les onze phases ont répondu aux cinq
+critères du § 2, et la question « peut-on travailler là-dedans ? » a une
+réponse. Mais elle a été posée par la feuille de route, pas par un
+utilisateur de Cubase ou de Live qui s'assoit devant l'écran ; celui-là
+cherche des gestes précis, et quelques-uns manquent encore. Un audit
+poste par poste, vérifié dans le code (pas d'après le manuel), en donne
+la liste. Il a aussi dit faux deux fois — la chaîne latérale et la
+compensation de latence existent (D4.4, D4.5, `ProcessGraph.cpp`) — et
+ces deux-là sont rayés.
+
+L'ordre suit le § 3 : le geste quotidien d'abord, le confort ensuite, le
+chantier lourd en dernier.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D11.1 | **Le clip change de piste** : `mouseDrag` calcule la piste sous le curseur et l'ignore (`juce::ignoreUnused(piste)`) ; le déplacement ne touche que le temps | glisser un clip sur une autre piste l'y pose — avec les notes que sa fenêtre couvre, puisqu'un clip est une fenêtre sur le matériau de SA piste (D1) ; un clip audio ne change de piste que si elle porte le même fichier ou aucun, et le refus est dit ; annulable ; test — **fait** |
+| D11.2 | **Sélection au lasso** dans l'arrangement, et « tout sélectionner » (Ctrl+A n'y est câblé que pour les notes) | un rectangle tiré sur le vide sélectionne les clips qu'il touche ; Ctrl+A prend tous les clips — **fait** |
+| D11.3 | **Se repérer en musique** : la position du transport dit minutes:secondes et un tick brut, jamais « mesure 33, temps 2 » ; l'arrangement ne suit pas la tête de lecture (le piano roll, si) ; ni retour à zéro ni marqueur suivant/précédent au clavier | mesure · temps affichés à côté du temps ; l'arrangement défile derrière la tête quand elle sort de l'écran, bouton comme au piano roll ; Début, marqueur suivant/précédent dans la table des raccourcis — **fait** |
+| D11.4 | **Renommer et colorer un clip** : `Clip::name` et `Clip::colorRgba` existent et aucune vue ne les édite (la couleur est toujours celle de la piste) | double-clic sur le nom, couleur au menu ; sauvegardés (déjà dans le format) — **fait** |
+| D11.5 | **Dupliquer une piste** (seules les sélections se dupliquent) ; **canal MIDI éditable** (`t.channel = n % 16` à la création, étiquette non éditable) | une commande au menu de piste, tout copié (instrument, effets, notes, clips, automation, routage) ; le canal se saisit — **fait** |
+| D11.6 | **Fichiers récents**, **plein écran**, **modèle de projet** (« Enregistrer comme modèle », « Nouveau depuis le modèle ») | menu Fichier ; F11 ; un modèle rouvert est un projet neuf sans chemin — **fait** |
+| D11.7 | **S'entendre** : l'entrée audio n'est jamais recopiée vers la sortie pendant l'armement ; **le clavier d'ordinateur** ne joue pas de notes | écoute d'entrée commutable par piste armée (latence dite) ; une rangée de touches joue la piste choisie, octave réglable — **fait** (l'écoute est globale, pas par piste : voir la note) |
+| D11.8 | **Étirement temporel d'un clip audio** — le choix n° 3 du § 4 le refusait ; `Clip::sourceStartSeconds` le dit en toutes lettres | à trancher au moment de l'écrire, chiffres à l'appui : un étirement de qualité (vocodeur de phase ou WSOLA) coûte un chantier entier, et la reconstruction n'en a pas besoin — c'est un besoin de production, pas de mesure. Dernier, et seulement après D11.1 à D11.7 |
+
+> **D11.1 ET D11.2 SONT FAITES (03/09/2026).** Le geste existait à moitié :
+> `mouseDrag` calculait la piste sous le pointeur et l'ignorait. Le
+> changement de piste est RELATIF au dernier pas, comme le temps, et il
+> passe par `moveClipsAcrossTracks` (core, 3 tests) : **les notes que la
+> fenêtre couvre suivent le clip**, aux mêmes ticks de matériau — c'est la
+> seule lecture cohérente du modèle de la région (D1), et son prix est dit
+> dans l'en-tête : un autre clip de la piste cible qui couvre ces ticks les
+> verra aussi. La figure garde sa forme aux bords de la liste (le décalage
+> est réduit pour tous, règle de `moveClips`). Un clip audio ne va que vers
+> une piste audio du même fichier, ou vide (qui l'adopte) ; le reste est
+> compté pendant le geste et DIT au relâchement, en une fenêtre, jamais
+> avalé. Le lasso part du vide (Maj l'ajoute), Ctrl+A prend tous les clips,
+> et l'arrangement s'est ouvert sur les neuf pistes de *usandthem-parite-v3*
+> avec ce code (capture).
+
+> **D11.3 EST FAITE (03/09/2026).** La barre de transport demande « mes. 33 ·
+> 2 » à l'application (un fournisseur ; elle ne connaît pas le projet), et
+> l'affiche sous le temps. L'arrangement suit la tête PAR PAGES, la règle
+> qu'avait fixée le piano roll (un fond qui glisse à chaque image fatigue) ;
+> `F` bascule, et la règle écrit « suit » — un réglage qu'on bascule au
+> clavier doit se voir (D5). Trois commandes de plus dans la table des
+> raccourcis, donc dans la page imprimable : Début (`Début`), marqueur
+> suivant (`Maj+N`), précédent (`Maj+B`, avec une noire de tolérance pour
+> qu'un second appui remonte bien au marqueur d'avant). Vu à l'écran.
+>
+> **Et une faute de conduite, dite** : le commit de D11.1 annonçait une
+> capture faite « avec ce code » alors que l'application ne compilait pas
+> (une concaténation `juce::String + char8_t*` ambiguë dans le message de
+> refus) et que la capture venait du binaire précédent — le filtre de la
+> sortie de compilation ne montrait que les avertissements. Corrigé ici ;
+> désormais la ligne « Built target » est exigée avant toute capture.
+
+> **D11.4 EST FAITE (03/09/2026).** Double-clic : une fenêtre demande le
+> nom. Clic droit : Renommer, Couleur (le sélecteur de JUCE, en direct sur
+> le clip, un seul pas d'annulation par ouverture — la règle de la couleur
+> de piste), Couleur de la piste (la reprendre), Rendre muet — sur toute
+> la sélection, car six clips pris au lasso font un geste. Les fenêtres
+> restent dans l'application, la vue demande par deux rappels ; le format
+> portait déjà `name` et `color` (ProjectDocument.cpp), rien à migrer.
+
+> **D11.5 EST FAITE (03/09/2026).** `duplicateTrack` vit dans `core/`
+> (2 tests) parce que c'est une règle du modèle : tout est copié, les
+> identifiants de notes et de clips sont NEUFS (deux notes du même
+> identifiant sur deux pistes feraient agir un geste sur l'autre piste), et
+> les routages vers un groupe situé après l'original sont réparés comme
+> pour `moveTrack`. L'état VIVANT de l'instrument n'est pas dans le modèle
+> (D0.1) : l'application le recopie de l'original à la copie après avoir
+> reconstruit le graphe, état natif compris. Le canal MIDI se saisit dans
+> la liste des pistes (1 à 16, tout autre texte rend l'ancien).
+
+> **D11.6 EST FAITE (03/09/2026).** Dix projets récents dans le fichier de
+> préférences (écrit dès l'ouverture ou l'enregistrement, comme l'échelle) ;
+> un dossier disparu reste listé, grisé, marqué « introuvable » — le
+> retirer en silence ferait chercher où il est passé. Le modèle est UN
+> dossier de projet dans le dossier des préférences : « Enregistrer comme
+> modèle » y écrit le projet courant sans changer son chemin, « Nouveau
+> depuis le modèle » le charge et EFFACE le chemin, si bien que Ctrl+S
+> demande où et que le modèle ne s'écrase que par la commande qui le
+> nomme. Plein écran : Affichage et F11, coché quand il l'est.
+
+> **D11.7 EST FAITE (03/09/2026), avec un écart dit.** L'écoute d'entrée
+> est GLOBALE (Enregistrement ▸ Écouter l'entrée en direct), pas par piste
+> armée : le moteur n'a qu'une entrée physique, et la recopier vers la
+> sortie une fois ou une fois par piste armée rendrait le même son — sauf
+> à passer par les inserts de la piste, ce qui ajouterait la latence d'un
+> bloc au chemin et n'est pas ce qu'on demande quand on veut s'entendre.
+> Elle s'ajoute à la sortie dans le rappel audio, sans allocation, jamais
+> par défaut (entendre son micro dans ses enceintes sans l'avoir voulu,
+> c'est un larsen), et l'intitulé nomme la latence du périphérique que
+> « Mesurer la latence » chiffre. Le clavier d'ordinateur (Affichage) suit
+> la disposition de Live — rangée du milieu pour les blanches, rangée du
+> dessus pour les noires, Z/X pour l'octave — et passe par le MÊME chemin
+> qu'un clavier MIDI (piste choisie ou armées, capture si l'enregistrement
+> tourne). Actif, il emprunte les lettres aux raccourcis ; la répétition
+> d'une touche tenue ne rejoue pas la note, et le relâchement l'éteint.
+
+> **D11.8 EST TRANCHÉE (03/09/2026) : REPORTÉE, et voici les chiffres.**
+> Un étirement temporel digne de Live (warp) ou de Cubase (élastique) est
+> un vocodeur de phase ou un WSOLA avec détection de transitoires, un banc
+> de mesure (hauteur conservée au cent près, durée exacte à l'échantillon,
+> transitoires non doublés) et une interface de marqueurs de warp : de
+> l'ordre de D2 entière, pas d'une étape. La reconstruction n'en a aucun
+> besoin — ses pistes audio sont des reports d'un original qui a déjà le
+> bon tempo — et aucune mesure du dépôt ne le demande. Il entrera comme
+> phase D12, avec son cahier des charges, une fois les campagnes de la
+> parité closes et les cinq machines de la branche fusionnées : c'est
+> l'ordre du § 3 (ce qui s'appuie sur le modèle, après le modèle), et
+> `Clip::sourceStartSeconds` continue de dire en toutes lettres pourquoi un
+> clip audio ne suit pas le tempo.
+>
+> **Le cahier des charges de D12 est écrit (04/09/2026)** :
+> `docs/CDC-etirement-temporel.md` (sur la branche `machine-mandoline`,
+> fusionnée après la campagne 5) — trois modes par clip (éteint, hauteur
+> conservée, rééchantillonné), des marqueurs entre le fichier et la grille,
+> un WSOLA à verrouillage de transitoires écrit dans le dépôt (le vocodeur de
+> phase attend un chiffre), un noyau de rééchantillonnage fenêtré qui
+> remplace l'interpolation linéaire de D2.3, un banc de neuf mesures écrit
+> avant la première, et un critère de phase sur *Sky and Sand* (+10 % de
+> tempo, la voix à ≤ 10 ms sur huit mesures). Il s'écrit le jour où sa
+> condition se réalise : la campagne 5 fusionne les machines et clôt les
+> campagnes de la parité.
+
+Ce que l'audit a trouvé et qui n'entre PAS ici, avec la raison : la
+sélection de notes par vélocité (le filtre existe sous forme d'opérations
+sur la sélection, le tri par vélocité s'ajoutera au piano roll quand une
+main le demandera) ; les lanes de pitch bend et d'aftertouch (le format
+les porte, la vue CC les montrera avec le même composant — une extension
+de `MidiCcComponent`, pas une phase — **faite le jour même** : deux
+pseudo-contrôleurs, 128 et 129, le bend dessiné à 7 bits autour de son
+centre, un bend enregistré gardant ses 14 bits tant qu'on ne touche pas la
+lane) ; l'arpégiateur temps réel (celui du
+piano roll écrit des notes, ce qui est le choix D0 : pas d'effet MIDI qui
+mentirait sur ce qui est écrit) ; l'historique d'annulation visible — **fait le jour même** (Affichage ▸
+Historique des modifications : chaque pas, l'état courant marqué, ce que
+Rétablir rendrait ; un clic sur un pas y revient par le même chemin que
+Ctrl+Z) — et la palette de commandes (agréable, sans geste quotidien
+derrière).
+
 ## 4. Les choix tranchés ici, et pourquoi
 
 Conformément à l'usage de ce dépôt, les questions ouvertes se referment en

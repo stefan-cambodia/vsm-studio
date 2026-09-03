@@ -468,6 +468,23 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
     }
 
     // Canaux au-delà de la stéréo (ex: interfaces surround) : silence.
+    // D11.7 — L'ÉCOUTE D'ENTRÉE : l'entrée s'ajoute à la sortie, canal pour
+    // canal (une entrée mono va aux deux côtés). Sans allocation, sans
+    // traitement, et seulement si on l'a demandé : entendre son micro dans
+    // ses enceintes sans l'avoir voulu, c'est un larsen.
+    if (inputMonitoring_.load(std::memory_order_acquire) && inputChannelData != nullptr
+        && numInputChannels > 0 && inputChannelData[0] != nullptr && numOutputChannels >= 1
+        && outputChannelData[0] != nullptr) {
+        const float* gauche = inputChannelData[0];
+        const float* droite = (numInputChannels >= 2 && inputChannelData[1] != nullptr) ? inputChannelData[1] : gauche;
+        float* sortieG = outputChannelData[0];
+        float* sortieD = (numOutputChannels >= 2 && outputChannelData[1] != nullptr) ? outputChannelData[1] : nullptr;
+        for (int i = 0; i < numSamples; ++i) {
+            sortieG[i] += gauche[i];
+            if (sortieD != nullptr) sortieD[i] += droite[i];
+        }
+    }
+
     for (int ch = 2; ch < numOutputChannels; ++ch)
         if (outputChannelData[ch] != nullptr)
             std::fill(outputChannelData[ch], outputChannelData[ch] + numSamples, 0.0f);

@@ -7,9 +7,10 @@ comporter 64 ». Trois découpages y mènent — les voix par registres, la
 batterie par pièce, la tête et les chœurs — et il faut les TROIS. Personne ne
 devrait avoir à les retenir : `--parite` les allume, en le disant.
 
-Ce que ces tests fixent : le raccourci allume bien les trois, il n'écrase PAS
+Ce que ces tests fixent : le raccourci allume bien les quatre, il n'écrase PAS
 une option écrite à la main (un A/B sur un seul découpage doit rester
-possible), et il ne s'allume pas tout seul.
+possible), il est le DÉFAUT depuis le 04/09/2026 (deux morceaux mesurés, § 8),
+et `--sans-parite` rend la chaîne d'avant, pour les témoins.
 """
 
 from __future__ import annotations
@@ -49,15 +50,29 @@ def options(*arguments):
 
 
 @test
+def le_defaut_est_la_parite():
+    """Depuis le 04/09/2026, la parité est le défaut : deux morceaux l'ont
+    mesurée (−0,1 % sur *Us and Them*, +3,1 % sur *Sky and Sand*, CDC
+    multipiste § 8), et l'objectif du § 0 est la parité, pas la distance."""
+    args, journal = options()
+    assert_equal(args.parite, True, "la parité est le défaut")
+    assert_equal(args.voix_par_stem, 4, "voix par registres")
+    assert_equal(args.batterie_par_piece, True, "batterie par pièce")
+    assert_equal(args.voix_tete_choeurs, True, "tête et chœurs")
+    assert_equal(args.voix_par_vides, True, "registres par les vides")
+    assert_true("--sans-parite" in journal, "le témoin est nommé : " + journal)
+
+
+@test
 def sans_parite_rien_n_est_allume():
-    """Le défaut ne découpe rien : chaque découpage a un coût, et aucun ne
-    s'impose sans être demandé."""
-    args, _ = options()
+    """Le témoin ne découpe rien : c'est la chaîne d'avant le 04/09, celle
+    des témoins H22a-v2 et sky-t6, et il faut pouvoir la rejouer."""
+    args, _ = options("--sans-parite")
     assert_equal(args.voix_par_stem, 0, "aucune voix")
     assert_equal(args.batterie_par_piece, False, "batterie entière")
     assert_equal(args.voix_tete_choeurs, False, "voix entière")
     assert_equal(args.voix_par_vides, False, "registres entiers")
-    assert_equal(args.parite, False, "le raccourci ne s'allume pas seul")
+    assert_equal(args.parite, False, "le raccourci est éteint")
 
 
 @test
@@ -70,8 +85,8 @@ def parite_allume_les_quatre_decoupages_et_le_dit():
     for attendu in ("--voix-par-stem 4", "--batterie-par-piece", "--voix-tete-choeurs",
                     "--voix-par-vides"):
         assert_true(attendu in journal, f"« {attendu} » doit être dit : {journal}")
-    assert_true("+9,1 %" in journal,
-                "le coût mesuré du découpage en voix est rappelé : " + journal)
+    assert_true("−0,1 %" in journal and "+3,1 %" in journal,
+                "le coût mesuré sur les deux morceaux est rappelé : " + journal)
 
 
 @test

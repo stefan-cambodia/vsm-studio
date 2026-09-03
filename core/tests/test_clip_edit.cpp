@@ -296,3 +296,87 @@ VSM_TEST(these_gestures_ignore_a_clip_that_is_not_there) {
     VSM_ASSERT_NEAR(clips[0].gain, 1.0f, 1e-6f);
     VSM_ASSERT(!clips[0].invertPhase);
 }
+
+// D11.1 — LE CLIP CHANGE DE PISTE, ET IL EMPORTE CE QUE SA FENÊTRE COUVRE.
+
+namespace {
+Note note(Tick debut, uint8_t hauteur, uint64_t id) {
+    Note n;
+    n.startTick = debut;
+    n.endTick = debut + 240;
+    n.number = hauteur;
+    n.id = id;
+    return n;
+}
+}
+
+VSM_TEST(moving_a_clip_to_another_track_takes_the_notes_its_window_covers) {
+    std::vector<Track> pistes(3);
+    // Piste 0 : deux clips, l'un sur les mesures 1-2 (0..1920), l'autre sur
+    // 2-3 (1920..3840) ; trois notes, une par mesure sur les trois premières.
+    pistes[0].clips = {clip(1, 0, 1920, 0), clip(2, 1920, 1920, 1920)};
+    pistes[0].notes = {note(0, 60, 10), note(1920, 62, 11), note(3840, 64, 12)};
+
+    const auto rapport = moveClipsAcrossTracks(pistes, {2}, 2);
+    VSM_ASSERT_EQ(rapport.moved, size_t{1});
+    VSM_ASSERT_EQ(rapport.refused, size_t{0});
+    VSM_ASSERT_EQ(rapport.applied, 2);
+    // Le clip 2 est sur la piste 2, avec LA note que sa fenêtre couvrait, aux
+    // mêmes ticks ; la piste 0 garde le clip 1 et ses deux autres notes.
+    VSM_ASSERT_EQ(pistes[0].clips.size(), size_t{1});
+    VSM_ASSERT_EQ(pistes[2].clips.size(), size_t{1});
+    VSM_ASSERT_EQ(pistes[2].clips[0].id, uint64_t{2});
+    VSM_ASSERT_EQ(pistes[2].clips[0].startTick, Tick{1920});
+    VSM_ASSERT_EQ(pistes[2].notes.size(), size_t{1});
+    VSM_ASSERT_EQ(pistes[2].notes[0].id, uint64_t{11});
+    VSM_ASSERT_EQ(pistes[2].notes[0].startTick, Tick{1920});
+    VSM_ASSERT_EQ(pistes[0].notes.size(), size_t{2});
+    VSM_ASSERT_EQ(pistes[0].notes[1].id, uint64_t{12});
+}
+
+VSM_TEST(a_selection_that_hits_the_last_track_keeps_its_shape_across_tracks) {
+    std::vector<Track> pistes(4);
+    pistes[1].clips = {clip(1, 0, 960)};
+    pistes[2].clips = {clip(2, 0, 960)};
+    // Demander +5 quand le plus bas est en 2 sur quatre pistes : +1 pour tous.
+    const auto rapport = moveClipsAcrossTracks(pistes, {1, 2}, 5);
+    VSM_ASSERT_EQ(rapport.applied, 1);
+    VSM_ASSERT_EQ(rapport.moved, size_t{2});
+    VSM_ASSERT_EQ(pistes[2].clips.size(), size_t{1});
+    VSM_ASSERT_EQ(pistes[2].clips[0].id, uint64_t{1});
+    VSM_ASSERT_EQ(pistes[3].clips[0].id, uint64_t{2});
+    // Et vers le haut, le clip en 2 (désormais en 3) ne dépasse pas zéro.
+    const auto retour = moveClipsAcrossTracks(pistes, {1, 2}, -9);
+    VSM_ASSERT_EQ(retour.applied, -2);
+    VSM_ASSERT_EQ(pistes[0].clips[0].id, uint64_t{1});
+    VSM_ASSERT_EQ(pistes[1].clips[0].id, uint64_t{2});
+}
+
+VSM_TEST(an_audio_clip_refuses_a_track_with_another_file_and_adopts_an_empty_one) {
+    std::vector<Track> pistes(3);
+    pistes[0].kind = Track::Kind::Audio;
+    pistes[0].audio.path = "prise-1.wav";
+    pistes[0].clips = {clip(1, 0, 960)};
+    pistes[1].kind = Track::Kind::Audio;
+    pistes[1].audio.path = "prise-2.wav";
+    pistes[2].kind = Track::Kind::Audio;
+
+    const auto refus = moveClipsAcrossTracks(pistes, {1}, 1);
+    VSM_ASSERT_EQ(refus.refused, size_t{1});
+    VSM_ASSERT_EQ(refus.moved, size_t{0});
+    VSM_ASSERT_EQ(pistes[0].clips.size(), size_t{1});
+
+    const auto adopte = moveClipsAcrossTracks(pistes, {1}, 2);
+    VSM_ASSERT_EQ(adopte.moved, size_t{1});
+    VSM_ASSERT_EQ(pistes[2].clips.size(), size_t{1});
+    VSM_ASSERT_EQ(pistes[2].audio.path, std::string("prise-1.wav"));
+
+    // Une piste MIDI ne reçoit pas un clip audio, ni un groupe quoi que ce soit.
+    std::vector<Track> mixte(2);
+    mixte[0].kind = Track::Kind::Audio;
+    mixte[0].audio.path = "prise-1.wav";
+    mixte[0].clips = {clip(1, 0, 960)};
+    VSM_ASSERT_EQ(moveClipsAcrossTracks(mixte, {1}, 1).refused, size_t{1});
+    mixte[1].kind = Track::Kind::Group;
+    VSM_ASSERT_EQ(moveClipsAcrossTracks(mixte, {1}, 1).refused, size_t{1});
+}

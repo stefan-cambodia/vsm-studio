@@ -121,3 +121,25 @@ VSM_TEST(a_new_edit_drops_the_redo_branch) {
     project.tracks[0].pan = 0.5f;
     VSM_ASSERT(!history.canRedo());
 }
+
+// D11 — l'historique se LISTE : libellés annulables (du plus ancien au plus
+// récent) et rétablissables (du prochain au plus lointain).
+VSM_TEST(history_lists_its_labels_in_the_order_a_window_shows_them) {
+    ProjectHistory histoire;
+    Project projet;
+    histoire.beginEdit(projet, "un");
+    histoire.beginEdit(projet, "deux");
+    histoire.beginEdit(projet, "trois");
+    auto annulables = histoire.undoLabels();
+    VSM_ASSERT_EQ(annulables.size(), size_t{3});
+    VSM_ASSERT_EQ(annulables[0], std::string("un"));
+    VSM_ASSERT_EQ(annulables[2], std::string("trois"));
+    VSM_ASSERT(histoire.redoLabels().empty());
+    histoire.undo(projet);
+    histoire.undo(projet);
+    auto retablissables = histoire.redoLabels();
+    VSM_ASSERT_EQ(retablissables.size(), size_t{2});
+    VSM_ASSERT_EQ(retablissables[0], std::string("deux"));   // le prochain Rétablir
+    VSM_ASSERT_EQ(retablissables[1], std::string("trois"));
+    VSM_ASSERT_EQ(histoire.undoLabels().size(), size_t{1});
+}
