@@ -18,6 +18,14 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     nameLabel_.setJustificationType(juce::Justification::centred);
     nameLabel_.setColour(juce::Label::textColourId, vsm::ui::Palette::textPrimary);
     nameLabel_.setFont(juce::Font(juce::FontOptions(12.0f).withStyle("Bold")));
+    // UN BUS DE GROUPE SE RECONNAÎT : son nom en ambre, comme le master est à
+    // part. Sans cela, « Batterie » (le bus) et « Batterie · hihat » (une
+    // pièce) se ressemblaient trait pour trait, et un projet reconstruit en
+    // parité en aligne onze.
+    if (track_.kind == vsm::sequencer::Track::Kind::Group) {
+        nameLabel_.setColour(juce::Label::textColourId, vsm::ui::Palette::accentAmber);
+        nameLabel_.setTooltip(u8"Bus de groupe : les pistes routées vers lui passent par ce fader");
+    }
     addAndMakeVisible(nameLabel_);
 
     volume_.setSliderStyle(juce::Slider::LinearVertical);
