@@ -50,6 +50,7 @@
 #include "banjo/BanjoSynth.h"
 #include "vibraphone/VibraphoneSynth.h"
 #include "bagpipe/BagpipeSynth.h"
+#include "carillon/CarillonSynth.h"
 #include "glass/GlassSynth.h"
 #include "jewsharp/JewsHarpSynth.h"
 #include "theremin/ThereminSynth.h"
@@ -206,6 +207,7 @@ void registerBuiltInPlugins() {
         vsm::plugins::banjo::BanjoSynth forceLinkBanjo;
         vsm::plugins::vibraphone::VibraphoneSynth forceLinkVibraphone;
         vsm::plugins::bagpipe::BagpipeSynth forceLinkBagpipe;
+        vsm::plugins::carillon::CarillonSynth forceLinkCarillon;
         vsm::plugins::glass::GlassSynth forceLinkGlass;
         vsm::plugins::jewsharp::JewsHarpSynth forceLinkJewsHarp;
         vsm::plugins::theremin::ThereminSynth forceLinkTheremin;

@@ -348,6 +348,18 @@ nuance, pas de molette. *Tonic* règle les bourdons sur celle du morceau.
 
 ![Façade de Bagpipe (la réserve d'air)](images/manuel/vsm.bagpipe.png)
 
+**Carillon (la cloche et sa tierce mineure)** — `vsm.carillon`
+
+Une cloche fondue et **accordée** : bourdon à l'octave grave, prime, tierce
+**mineure** (*Tierce* à zéro ; à un, la tierce majeure des cloches
+d'Eindhoven), quinte, nominale. *Doublet* écarte les deux composantes de
+chaque partiel — c'est le battement d'une vraie cloche, pas un LFO ; à zéro,
+la cloche est parfaitement ronde. *Hum* règle la vie du bourdon, qui
+survit à tout. Pas de molette, pas d'étouffoir : une cloche sonne jusqu'au
+bout.
+
+![Façade de Carillon (la cloche et sa tierce mineure)](images/manuel/vsm.carillon.png)
+
 **Music Box (la lame qui doit revenir)** — `vsm.musicbox`
 
 **Si une note ne sonne pas, ce n'est pas un bogue.** Chaque note est une lame

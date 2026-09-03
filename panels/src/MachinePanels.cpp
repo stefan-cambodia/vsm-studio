@@ -3993,6 +3993,54 @@ MachinePanel makeBagpipe() {
     return panel;
 }
 
+/// `vsm.carillon` -- la cloche. BELL en premier : la tierce (mineure ou
+/// majeure) et le doublet, les deux réglages qui n'existent nulle part
+/// ailleurs, en grand ; TIME pour le bourdon et la pente ; CLAPPER pour le
+/// battant. Bronze sur bois sombre.
+MachinePanel makeCarillon() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.carillon";
+    panel.displayName = "Carillon (la cloche et sa tierce mineure)";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#2B2118";
+    panel.sectionColour = "#1E1710";
+    panel.textColour = "#F2E8D5";
+    panel.knobColour = "#B8863B";
+    panel.gridColumns = 12;
+    panel.gridRows = 4;
+
+    PanelSection cloche;
+    cloche.title = "BELL";
+    cloche.accentColour = "#B8863B";
+    cloche.column = 0; cloche.row = 0; cloche.columnSpan = 5; cloche.rowSpan = 4;
+    cloche.controls = {
+        control("Tierce", "TIERCE", S::LargeKnob, 0, 0),
+        control("Doublet", "DOUBLET", S::LargeKnob, 1, 0),
+    };
+
+    PanelSection temps;
+    temps.title = "TIME";
+    temps.accentColour = "#8FA3B3";
+    temps.column = 5; temps.row = 0; temps.columnSpan = 4; temps.rowSpan = 4;
+    temps.controls = {
+        control("Hum Decay", "HUM", S::Knob, 0, 0),
+        control("Decay Tilt", "TILT", S::Knob, 1, 0),
+        control("Output Level", "VOLUME", S::Knob, 0, 1),
+    };
+
+    PanelSection battant;
+    battant.title = "CLAPPER";
+    battant.accentColour = "#C9B08A";
+    battant.column = 9; battant.row = 0; battant.columnSpan = 3; battant.rowSpan = 4;
+    battant.controls = {
+        control("Clapper Hardness", "HARDNESS", S::Knob, 0, 0),
+        control("Velocity to Hardness", "VEL", S::Knob, 0, 1),
+    };
+
+    panel.sections = {cloche, temps, battant};
+    return panel;
+}
+
 /// `vsm.glass` -- le verre frotté. PRESSURE est en grand et seul dans sa
 /// section, parce qu'il ne fait pas ce qu'un potentiomètre de pression fait
 /// ailleurs : il décide du TEMPS QUE LE SON MET À NAÎTRE. Pressé doucement, le
@@ -4318,7 +4366,7 @@ const std::vector<MachinePanel>& panels() {
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
         makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev(),
         makeScanned(), makeMellotron(), makeSitar(), makeMembrane(), makeReed(),
-        makePlate(), makeClavichord(), makeHarpsichord(), makeHurdyGurdy(), makeBanjo(), makeVibraphone(), makeBagpipe(), makeGlass(), makeJewsHarp(),
+        makePlate(), makeClavichord(), makeHarpsichord(), makeHurdyGurdy(), makeBanjo(), makeVibraphone(), makeBagpipe(), makeCarillon(), makeGlass(), makeJewsHarp(),
         makeTheremin(), makeMusicBox(), makeTerrain(), makeSpectral()
     };
     return all;

@@ -784,6 +784,7 @@ VSM_TEST(regression_hurdygurdy) { checkMachine("vsm.hurdygurdy"); }
 VSM_TEST(regression_banjo)      { checkMachine("vsm.banjo"); }
 VSM_TEST(regression_vibraphone) { checkMachine("vsm.vibraphone"); }
 VSM_TEST(regression_bagpipe)    { checkMachine("vsm.bagpipe"); }
+VSM_TEST(regression_carillon)   { checkMachine("vsm.carillon"); }
 VSM_TEST(regression_glass)      { checkMachine("vsm.glass"); }
 VSM_TEST(regression_jewsharp)   { checkMachine("vsm.jewsharp"); }
 VSM_TEST(regression_theremin)   { checkMachine("vsm.theremin"); }

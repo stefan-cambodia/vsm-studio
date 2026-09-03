@@ -352,6 +352,7 @@ Deux critères, à ne pas confondre :
 | **Corde dont la table est une PEAU** | `vsm.banjo` (corde de `vsm.string` sur une banque de modes de Bessel) | **fait le 03/09** — § 24 ; la peau chante ses modes quelle que soit la note, et mange la corde |
 | **Barre CREUSÉE, tube à MOTEUR, feutre à PÉDALE** | `vsm.vibraphone` (partiels 1:4:10, tube sur f0, disques sur un axe commun, CC 64) | **fait le 03/09** — § 25 ; seul le fondamental ondule sous le moteur, et la pédale de sustain est celle de l'instrument |
 | **RÉSERVE D'AIR entre le souffle et les anches** | `vsm.bagpipe` (sac à trois temps, chalumeau de `vsm.cone`, bourdons de `vsm.wind`, note de grâce automatique) | **fait le 03/09** — § 26 ; jamais de silence entre deux notes, et une note répétée passe par sa note de grâce |
+| **Cloche ACCORDÉE, tierce mineure, partiels dédoublés** | `vsm.carillon` (huit partiels de fonderie, tierce 6:5 ou 5:4, doublets qui battent, bourdon long) | **fait le 03/09** — § 27 ; la seule machine dont le spectre porte une tierce mineure, et dont les partiels battent par géométrie |
 | Waveshaping (spectre commandé) | `vsm.chebyshev` | **fait** |
 | **Synthèse balayée** | `vsm.scanned` (chaîne de masses, timbre en temps réel) | **fait le 02/09** |
 | **Lecture de BANDE** | `vsm.mellotron` (la bande finit, une par touche) | **fait le 02/09** — un COMPORTEMENT, pas un timbre |
@@ -1688,6 +1689,56 @@ Treize tests, empreinte, façade BAG · CHANTER · DRONES (rendue et
 regardée) ; identités neuves pour le sac (réserve, montée, chute) et la
 note de grâce, celles de `vsm.wind` pour les anches et de la vielle pour
 les bourdons. Le parc passe à **58 machines**.
+
+## 27. H31 — le CARILLON : une tierce MINEURE dans le spectre, des partiels qui vont par deux (écrite avant sa mesure, 03/09/2026)
+
+**Ce que le parc n'avait pas.** `vsm.modal` place ses partiels sur un
+continuum corde → barre libre, `vsm.dx7` fait des cloches par FM avec des
+rapports que personne n'a choisis. Une cloche fondue est autre chose :
+depuis le XVIIe siècle les fondeurs l'ACCORDENT partiel par partiel —
+bourdon à l'octave grave (0,5), prime (1), TIERCE à 1,2·f0, quinte (1,5),
+nominale à l'octave (2), puis 2,51, 2,66, 3,01. La tierce est MINEURE (6:5),
+ce qu'aucun instrument harmonique ne porte, et c'est elle qui fait la
+mélancolie des cloches ; les fondeurs d'Eindhoven ont obtenu la majeure
+(5:4) en 1985, et c'est un autre instrument — un réglage continu entre les
+deux. Deux autres traits : les partiels VONT PAR DEUX, parce qu'une cloche
+n'est jamais ronde — chaque mode se dédouble en deux composantes à quelques
+dixièmes de hertz dont le battement est l'ondulation qui fait vivre la note
+(ce n'est pas un LFO, c'est la géométrie) ; et le BOURDON SURVIT À TOUT, en
+dizaines de secondes là où les partiels hauts meurent en secondes.
+
+*Ce que j'attends, écrit avant la mesure (dans le banc)* : (1) sur la3
+(prime 220 Hz), tierce mineure : le pic à 264 Hz dépasse ×5 celui à 275 Hz,
+et tierce majeure l'inverse ; un partiel à 2,5·f0 (553 Hz) là où 2,25·f0
+n'a rien (×5) ; (2) doublet à 1 Hz : l'enveloppe de la tierce, rapportée à
+la même cloche sans doublet, ondule avec une profondeur > 0,5 sur deux
+périodes, et la référence sans doublet ne fait que décroître ; (3) à la
+frappe la nominale (440 Hz) domine le bourdon (110 Hz), à 6 s le bourdon
+domine la nominale ×3 ; (4) la vélocité compte (×1,5) et ouvre le timbre
+(×1,3 sur le partiel à 3,01·f0) ; molette refusée.
+
+### H31 EST TRANCHÉE : SUCCÈS (03/09/2026)
+
+| Trait | Attendu | Mesuré |
+|---|---|---|
+| tierce mineure, la3 : 264 Hz contre 275 Hz | ≥ ×5 | **0,0574 contre 0,00008** (×700) |
+| tierce majeure : 275 Hz contre 264 Hz | ≥ ×5 | **0,0533 contre 0,00008** |
+| partiel à 2,5·f0 contre rien à 2,25·f0 | ≥ ×5 | tenu |
+| profondeur du battement de la tierce (doublet 1 Hz) | > 0,5 | **1,00** (rapport de 0,004 à 0,995 : deux composantes égales s'annulent) |
+| la cloche sans doublet ne fait que décroître | monotone | tenu |
+| à la frappe, nominale contre bourdon | nominale > bourdon | **0,0432 contre 0,0380** |
+| à 6 s, bourdon contre nominale | ≥ ×3 | **0,00113 contre 0,00000** : il ne reste que lui |
+| vélocité ; ouverture du timbre | ≥ ×1,5 ; ≥ ×1,3 | tenu |
+
+Une première version réveillait le bourdon PLUS que la nominale (0,090
+contre 0,043) : la pente du battant s'appliquait aussi sous la prime, et
+un rapport de 0,5 élevé à une puissance négative devient un gain. La
+pente ne s'applique qu'au-dessus de la prime — le bourdon n'est pas plus
+réveillé qu'elle, il est seulement plus long — et c'est le banc qui l'a
+dit, avant l'oreille. Onze tests, empreinte, façade BELL · TIME · CLAPPER
+(rendue et regardée) ; identités neuves pour la tierce et le doublet,
+celles de `vsm.modal` pour le temps et du maillet pour le battant. Le parc
+passe à **59 machines**.
 
 ## 12. H10 — la guitare ÉLECTRIQUE est-elle vraiment couverte ? (écrite avant sa mesure, 02/09/2026)
 

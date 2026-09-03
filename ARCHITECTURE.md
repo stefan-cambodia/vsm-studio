@@ -4047,6 +4047,16 @@ machines-manquantes § 26.
 
 Le parc passe à **58 machines**.
 
+**ET UNE DIX-HUITIÈME : `vsm.carillon`, la cloche ACCORDÉE.** Huit
+partiels de fonderie (0,5 · 1 · 1,2 · 1,5 · 2 · 2,51 · 2,66 · 3,01), la
+tierce MINEURE (264 Hz contre 275 Hz sur la3 : 0,0574 contre 0,00008) ou
+majeure, chaque partiel dédoublé en deux composantes qui battent par
+géométrie (profondeur 1,00 à 1 Hz), le bourdon qui survit à tout (à 6 s :
+0,00113 contre 0 pour la nominale). Onze tests, empreinte, façade ; CDC
+machines-manquantes § 27.
+
+Le parc passe à **59 machines**.
+
 ---
 
 ## 47. Ouvrir un projet fait ailleurs : `Inflate`, `Xml`, `DawImport`

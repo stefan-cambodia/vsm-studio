@@ -564,6 +564,20 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Bell Damping", "wind.bellDamping"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.carillon ---
+    // Le temps et sa pente parlent le vocabulaire de `vsm.modal`, le battant
+    // celui du maillet. Deux identités neuves : la tierce (mineure ou
+    // majeure) et le doublet — l'écart des deux composantes d'un partiel —
+    // qui n'existent sur aucune autre machine.
+    {"vsm.carillon", {
+        {"Tierce", "carillon.tierce"},
+        {"Hum Decay", "modal.decay"},
+        {"Decay Tilt", "modal.decayTilt"},
+        {"Doublet", "carillon.doublet"},
+        {"Clapper Hardness", "string.pickHardness"},
+        {"Velocity to Hardness", "voice.velocitySensitivity"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.glass ---
     // La PRESSION DU DOIGT ne réemploie pas `wind.breathPressure` malgré la
     // ressemblance des mots : un souffle entretient une colonne d'air, un

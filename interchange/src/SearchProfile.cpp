@@ -238,6 +238,11 @@ constexpr Rule kRules[] = {
     {"bagpipe.bagReserve",                 0.0f,     3.0f, SearchScale::Linear,      0.40f},
     {"bagpipe.cutOff",                    0.05f,     1.5f, SearchScale::Logarithmic, 0.35f},
     {"bagpipe.strikeIn",                  0.05f,     1.5f, SearchScale::Logarithmic, 0.30f},
+    // CARILLON (vsm.carillon). La tierce se cherche d'abord (mineure ou
+    // majeure, c'est deux instruments), le doublet ensuite (une cloche qui
+    // bat contre une qui ne bat pas s'entend à la seconde).
+    {"carillon.tierce",                    0.0f,     1.0f, SearchScale::Linear,      0.85f},
+    {"carillon.doublet",                   0.0f,     3.0f, SearchScale::Linear,      0.70f},
     // VERRE FROTTÉ (vsm.glass). La PRESSION DU DOIGT commande, et d'une façon
     // qui n'a pas d'équivalent : elle ne change pas le timbre, elle change le
     // TEMPS QUE LE SON MET À NAÎTRE — d'un rapport de trente et un à un sur la
