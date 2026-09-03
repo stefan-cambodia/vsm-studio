@@ -465,6 +465,18 @@ morceau de synthèse n'est pas le juge. Le juge, écrit d'avance :
 | usandthem-batterie-v3 | H22a-v2 (0,19104) | `--batterie-par-piece`, code corrigé | le verdict retient le patch d'usine pour les pièces comme pour le kit, recalées ensemble : j'attends la distance dans ±5 % du témoin. Si elle reste au-dessus de +10 %, la cause restante est le rendu en instances séparées (les pièces ne se volent plus de voix) |
 | usandthem-parite-v3 | H22a-v2 (0,19104) | `--parite`, code corrigé | les voix recalées ensemble au verdict et au réglage : j'attends mieux que parite-v2 et ≈ H23 (+9 %), soit entre +5 et +11 % |
 
+**usandthem-parite-v2 — PERDUE (17:16), et la leçon vaut plus que la
+course.** Après 5 h 24 et les trois tours du verdict, la chaîne est morte au
+réglage du mélange : `vsm_mix_refine` était importé À LA DEMANDE à cet
+instant, donc lu sur le disque dans sa version réécrite l'après-midi, qui
+demandait à `vsm_levels` — chargé en mémoire dans sa version du matin — une
+fonction qu'il n'avait pas. Rien n'a été écrit. L'information n'est pas
+perdue (parite-v2 aurait porté le défaut du recalage que parite-v3 corrige),
+le temps de machine l'est. Désormais `charger_tous_les_modules()` importe
+toute la chaîne au départ : une course est une photographie du code à son
+départ. La campagne 2 s'est arrêtée là ; sky-parite et v15 sont remises en
+file derrière la campagne 3 (campagne 4).
+
 ### En attente de la fin des campagnes (03/09/2026)
 
 Deux retouches sont différées parce qu'elles touchent `audio/` ou

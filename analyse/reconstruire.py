@@ -2143,7 +2143,36 @@ def rendre_et_mesurer(args: argparse.Namespace, sortie: Path, melange: np.ndarra
 # La chaîne
 # ---------------------------------------------------------------------------
 
+def charger_tous_les_modules() -> None:
+    """UNE COURSE EST UNE PHOTOGRAPHIE DU CODE À SON DÉPART, pas un film.
+
+    Plusieurs modules de la chaîne étaient importés À LA DEMANDE, au moment de
+    servir : `vsm_mix_refine` au réglage du mélange, `vsm_voix` à la voix,
+    `note_extraction` à la première transcription. Un module importé cinq
+    heures après le départ est lu SUR LE DISQUE à cet instant -- dans l'état où
+    il est ALORS, pas dans celui du départ. Le 03/09/2026, la course
+    usandthem-parite-v2 (5 h 24) est morte au réglage final : `vsm_mix_refine`
+    fraîchement réécrit demandait à `vsm_levels`, chargé en mémoire dans sa
+    version d'avant, une fonction qu'il n'avait pas encore. Tout le verdict
+    était fait ; rien n'a été écrit.
+
+    On importe donc TOUT au départ, ici et en une fois. Les importations
+    paresseuses restent en place là où elles sont (elles servent les tests et
+    `--help`, qui n'ont pas à payer Basic Pitch) : elles retombent sur
+    `sys.modules`, et plus jamais sur le disque.
+    """
+    import importlib
+    for nom in ("librosa", "analyzer.note_extraction", "analyzer.vsm_classifier",
+                "analyzer.vsm_drum_corpus", "analyzer.vsm_voix", "analyzer.vsm_drumkit",
+                "analyzer.vsm_mix_refine", "analyzer.vsm_mix_verdict", "analyzer.vsm_distance_cache",
+                "analyzer.vsm_corpus", "analyzer.vsm_automation", "analyzer.vsm_track_refine",
+                "analyzer.vsm_track_arbitration", "analyzer.vsm_offline_render",
+                "analyzer.vsm_render_cache", "analyzer.vsm_project_export"):
+        importlib.import_module(nom)
+
+
 def chaine(args: argparse.Namespace) -> None:
+    charger_tous_les_modules()
     """La chaîne entière, de la lecture à l'écoute A/B. Lève `Abandon` pour s'arrêter."""
     entree = valider_entree(args)
     sortie = Path(args.sortie).expanduser()

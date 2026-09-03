@@ -55,3 +55,8 @@ l'ordre de marche — pas de la documentation d'accompagnement.
 - Les nombres qui traversent une frontière (fichier, CLI, tube) se lisent et
   s'écrivent en locale C (interchange/NumberText.h) — la locale du processus
   est celle de JUCE, pas la tienne.
+- JAMAIS d'édition de analyse/analyzer/*.py pendant qu'une course tourne : la
+  chaîne importait des modules À LA DEMANDE, cinq heures après le départ, dans
+  l'état du disque à cet instant (parite-v2, 5 h 24 perdues au réglage final).
+  `charger_tous_les_modules()` importe tout au départ depuis le 03/09 ; la
+  règle reste : ce qui n'a pas été importé au départ ne se touche pas.
