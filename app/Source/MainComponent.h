@@ -26,6 +26,7 @@
 #include "ui/MixerComponent.h"
 #include "ui/ArrangementComponent.h"
 #include "ui/AutomationComponent.h"
+#include "ui/MidiCcComponent.h"
 #include "ui/EffectChainComponent.h"
 #include "ui/PanelWindow.h"
 #include "ui/ImportReportComponent.h"
@@ -723,9 +724,7 @@ private:
     /// que lorsqu'elle change réellement.
     double appliedSampleRate_ = 0.0;
 
-    juce::Label mixerPlaceholder_;
-    juce::Label automationPlaceholder_;
-    juce::Label midiCcPlaceholder_;
+    MidiCcComponent midiCc_;
 
     PanelWindow trackListWindow_;
     PanelWindow pianoRollWindow_;

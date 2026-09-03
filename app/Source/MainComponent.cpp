@@ -79,18 +79,14 @@ MainComponent::MainComponent()
 
     addAndMakeVisible(transportBar_);
 
-    for (auto* label : { &mixerPlaceholder_, &automationPlaceholder_, &midiCcPlaceholder_ }) {
-        label->setJustificationType(juce::Justification::centred);
-        label->setColour(juce::Label::textColourId, vsm::ui::Palette::textSecondary);
-    }
-    mixerPlaceholder_.setText(u8"MIXER — console de mixage (Phase 2 UI)", juce::dontSendNotification);
-    automationPlaceholder_.setText(u8"AUTOMATION — lanes sample-accurate (Phase 2 UI)", juce::dontSendNotification);
-    midiCcPlaceholder_.setText(u8"MIDI CC — vue dédiée (Phase 2 UI ; éditable dès maintenant via les lanes du piano roll)",
-                                juce::dontSendNotification);
+    // L'ONGLET MIDI CC ÉDITE POUR DE VRAI : il n'était qu'un libellé qui
+    // renvoyait aux lanes du piano roll, lesquelles n'éditent pas les CC.
+    midiCc_.setHistory(&history_);
+    midiCc_.onCcEdited = [this] { refreshTransportSchedule(); };
     bottomTabs_.addTab("Mixer", vsm::ui::Palette::panel, &mixer_, false);
     bottomTabs_.addTab("Automation", vsm::ui::Palette::panel, &automation_, false);
     bottomTabs_.addTab("Effets", vsm::ui::Palette::panel, &effectChain_, false);
-    bottomTabs_.addTab("MIDI CC", vsm::ui::Palette::panel, &midiCcPlaceholder_, false);
+    bottomTabs_.addTab("MIDI CC", vsm::ui::Palette::panel, &midiCc_, false);
 
     transportBar_.onOpenMidiFile = [this] { openMidiFile(); };
     transportBar_.onExportMidiFile = [this] { exportMidiFile(); };
@@ -101,6 +97,7 @@ MainComponent::MainComponent()
         pianoRoll_.setActiveTrackIndex(idx);
         updateSynthRackForSelection();
         effectChain_.setActiveTrack(static_cast<int>(idx));
+        midiCc_.setActiveTrackIndex(idx);
         audioEngine_.setLiveInputTrack(idx); // un clavier MIDI joue la piste sélectionnée
     };
     trackList_.onTracksChanged = [this] { refreshTransportSchedule(); };
@@ -4012,6 +4009,7 @@ void MainComponent::applyAutomationFromProject() {
     }
     audioEngine_.processGraph().setAutomationLanes(currentAutomation_);
     automation_.setProject(&project_);
+    midiCc_.setProject(&project_);
 }
 
 bool MainComponent::writeProjectTo(const juce::File& folder) {
@@ -5030,6 +5028,7 @@ void MainComponent::rebuildFromProject(bool stopPlayback) {
     trackList_.loadProject(project_);
     mixer_.setProject(&project_);
     automation_.setProject(&project_);
+    midiCc_.setProject(&project_);
     pianoRoll_.setProject(&project_);
     pianoRoll_.setActiveTrackIndex(regardee);
     trackList_.selectTrackIndex(regardee);

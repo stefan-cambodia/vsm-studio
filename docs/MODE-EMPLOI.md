@@ -480,6 +480,16 @@ assignée, ou la convention General MIDI si elle n'est pas connue. Une **piste
 audio** le dit : son matériau se voit et se coupe dans l'arrangement, il n'y a
 pas de notes à éditer ici.
 
+**Les contrôleurs MIDI (CC) s'éditent dans l'onglet *MIDI CC* du bas.** Une
+piste, un contrôleur — ceux déjà présents sur la piste d'abord, avec leur
+compte de points, puis les usuels par leur nom (1 modulation, 7 volume, 74
+coupure…), puis tous les autres —, et des points : clic pour poser, glisser
+pour déplacer, clic droit pour supprimer, aimantés à la double-croche. La
+courbe est en **paliers**, parce qu'un CC vaut jusqu'au suivant. Chaque
+geste passe par l'historique (Ctrl+Z) et le séquenceur rejoue la piste
+aussitôt. Une courbe importée d'un autre DAW se voit donc, et se corrige, là
+où elle ne faisait avant que se jouer.
+
 Les **notes hachurées** ne sont pas des notes ordinaires : ce sont celles dont la transcription doute. Après une reconstruction, on les parcourt une par une pour décider — c'est le seul endroit où l'oreille tranche ce que la mesure n'a pas su trancher.
 
 En haut, les **marqueurs** (`Intro`, `Pont`) sont des entités du projet, pas des étiquettes décoratives : ils survivent à l'aller-retour disque et à l'export MIDI.
