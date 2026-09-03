@@ -4000,6 +4000,18 @@ machines-manquantes § 22.
 
 Le parc passe à **54 machines**.
 
+**ET UNE QUATORZIÈME : `vsm.hurdygurdy`, la vielle à roue — un archet sans
+fin, des bourdons sans clavier, et la vélocité comme RYTHME.** Une note tenue
+garde son niveau (+2,0 dB entre 1 s et 3 s) ; chien levé, deux vélocités
+extrêmes donnent la même chanterelle au bit près ; chien posé, le coup de
+poignet fort claque ×8,2 plus que le faible ; les bourdons sonnent encore
+50 ms après la dernière touche (inertie de la roue) et sont à zéro à 2 s.
+Le banc a trouvé le seuil de la friction : la force de la roue sur les
+bourdons est choisie par la mesure (0,8), pas devinée. Douze tests,
+empreinte, façade ; CDC machines-manquantes § 23.
+
+Le parc passe à **55 machines**.
+
 ---
 
 ## 47. Ouvrir un projet fait ailleurs : `Inflate`, `Xml`, `DawImport`

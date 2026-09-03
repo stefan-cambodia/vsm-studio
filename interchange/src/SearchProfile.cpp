@@ -208,6 +208,15 @@ constexpr Rule kRules[] = {
     {"harpsichord.register8",              0.2f,     1.0f, SearchScale::Linear,      0.45f},
     {"harpsichord.damperTime",            0.01f,     0.2f, SearchScale::Linear,      0.30f},
     {"harpsichord.releasePluck",           0.0f,     1.0f, SearchScale::Linear,      0.25f},
+    // VIELLE À ROUE (vsm.hurdygurdy). Les bourdons décident de ce qu'on
+    // entend avant tout (ils sonnent sous chaque note) ; la tonique des
+    // bourdons se cherche par demi-tons, comme une hauteur ; le chien est un
+    // rythme, il pèse peu sur une distance et vient en dernier.
+    {"hurdygurdy.drones",                  0.0f,     1.0f, SearchScale::Linear,      0.93f},
+    {"hurdygurdy.droneNote",              24.0f,    60.0f, SearchScale::Linear,      0.88f},
+    {"hurdygurdy.wheelInertia",           0.05f,     2.0f, SearchScale::Linear,      0.35f},
+    {"hurdygurdy.chien",                   0.0f,     1.0f, SearchScale::Linear,      0.30f},
+    {"hurdygurdy.chienBuzz",              30.0f,   120.0f, SearchScale::Linear,      0.20f},
     // VERRE FROTTÉ (vsm.glass). La PRESSION DU DOIGT commande, et d'une façon
     // qui n'a pas d'équivalent : elle ne change pas le timbre, elle change le
     // TEMPS QUE LE SON MET À NAÎTRE — d'un rapport de trente et un à un sur la

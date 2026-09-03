@@ -301,6 +301,17 @@ l'instrument n'en a pas.
 
 ![Façade de Harpsichord (le clavecin)](images/manuel/vsm.harpsichord.png)
 
+**Hurdy-Gurdy (la vielle à roue)** — `vsm.hurdygurdy`
+
+Un archet qui ne finit pas : tant qu'une touche est tenue, la roue tourne et
+la note ne meurt pas. Les **bourdons** n'ont pas de clavier — ils sonnent
+tant que la roue tourne, et encore un instant après la dernière touche, le
+temps de l'inertie. Ici la vélocité **n'est pas la force** : c'est le coup de
+poignet, qui fait claquer le **chien**, ce chevalet mobile qui donne le
+rythme des vielles. Réglez la tonique des bourdons sur celle du morceau.
+
+![Façade de Hurdy-Gurdy (la vielle à roue)](images/manuel/vsm.hurdygurdy.png)
+
 **Music Box (la lame qui doit revenir)** — `vsm.musicbox`
 
 **Si une note ne sonne pas, ce n'est pas un bogue.** Chaque note est une lame

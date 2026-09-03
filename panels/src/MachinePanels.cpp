@@ -3779,6 +3779,59 @@ MachinePanel makeHarpsichord() {
     return panel;
 }
 
+/// `vsm.hurdygurdy` -- la vielle à roue. WHEEL d'abord, parce que tout
+/// vient d'elle : vitesse, pression, inertie. DRONES à part, avec leur
+/// tonique : ce sont eux qu'on entend sous chaque note. CHIEN en dernier
+/// et en grand : c'est le trait -- ce que la vélocité fait ici.
+///
+/// Livrée bois de vielle, vernis sombre et cuivre.
+MachinePanel makeHurdyGurdy() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.hurdygurdy";
+    panel.displayName = "Hurdy-Gurdy (la vielle à roue)";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#33221A";
+    panel.sectionColour = "#261811";
+    panel.textColour = "#F1E4CF";
+    panel.knobColour = "#C98B4B";
+    panel.gridColumns = 12;
+    panel.gridRows = 4;
+
+    PanelSection roue;
+    roue.title = "WHEEL";
+    roue.accentColour = "#C98B4B";
+    roue.column = 0; roue.row = 0; roue.columnSpan = 4; roue.rowSpan = 4;
+    roue.controls = {
+        control("Wheel Speed", "SPEED", S::Knob, 0, 0),
+        control("Wheel Pressure", "PRESSURE", S::Knob, 1, 0),
+        control("Wheel Inertia", "INERTIA", S::Knob, 0, 1),
+        control("String Damping", "DAMPING", S::Knob, 1, 1),
+    };
+
+    PanelSection bourdons;
+    bourdons.title = "DRONES";
+    bourdons.accentColour = "#B9C98A";
+    bourdons.column = 4; bourdons.row = 0; bourdons.columnSpan = 4; bourdons.rowSpan = 4;
+    bourdons.controls = {
+        control("Drones", "LEVEL", S::LargeKnob, 0, 0),
+        control("Drone Note", "NOTE", S::Knob, 1, 0),
+    };
+
+    PanelSection chien;
+    chien.title = "CHIEN";
+    chien.accentColour = "#E0A050";
+    chien.column = 8; chien.row = 0; chien.columnSpan = 4; chien.rowSpan = 4;
+    chien.controls = {
+        control("Chien", "CHIEN", S::LargeKnob, 0, 0),
+        control("Chien Buzz", "BUZZ", S::Knob, 1, 0),
+        control("Filter Cutoff", "CUTOFF", S::Knob, 0, 1),
+        control("Output Level", "VOLUME", S::Knob, 1, 1),
+    };
+
+    panel.sections = {roue, bourdons, chien};
+    return panel;
+}
+
 /// `vsm.glass` -- le verre frotté. PRESSURE est en grand et seul dans sa
 /// section, parce qu'il ne fait pas ce qu'un potentiomètre de pression fait
 /// ailleurs : il décide du TEMPS QUE LE SON MET À NAÎTRE. Pressé doucement, le
@@ -4104,7 +4157,7 @@ const std::vector<MachinePanel>& panels() {
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
         makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev(),
         makeScanned(), makeMellotron(), makeSitar(), makeMembrane(), makeReed(),
-        makePlate(), makeClavichord(), makeHarpsichord(), makeGlass(), makeJewsHarp(),
+        makePlate(), makeClavichord(), makeHarpsichord(), makeHurdyGurdy(), makeGlass(), makeJewsHarp(),
         makeTheremin(), makeMusicBox(), makeTerrain(), makeSpectral()
     };
     return all;

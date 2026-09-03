@@ -494,6 +494,23 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Filter Cutoff", "filter.1.cutoff"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.hurdygurdy ---
+    // La roue est un archet : sa vitesse et sa pression sont celles de
+    // l'archet de `vsm.string`, et en gardent le vocabulaire. Le reste n'a
+    // d'équivalent nulle part -- des bourdons sans clavier, l'inertie d'une
+    // roue, un chevalet qui claque -- et reçoit ses identités propres.
+    {"vsm.hurdygurdy", {
+        {"Drones", "hurdygurdy.drones"},
+        {"Drone Note", "hurdygurdy.droneNote"},
+        {"Wheel Speed", "string.bowSpeed"},
+        {"Wheel Pressure", "string.bowPressure"},
+        {"Wheel Inertia", "hurdygurdy.wheelInertia"},
+        {"Chien", "hurdygurdy.chien"},
+        {"Chien Buzz", "hurdygurdy.chienBuzz"},
+        {"String Damping", "string.damping"},
+        {"Filter Cutoff", "filter.1.cutoff"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.glass ---
     // La PRESSION DU DOIGT ne réemploie pas `wind.breathPressure` malgré la
     // ressemblance des mots : un souffle entretient une colonne d'air, un

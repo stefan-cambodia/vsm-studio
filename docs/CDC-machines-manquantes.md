@@ -348,6 +348,7 @@ Deux critères, à ne pas confondre :
 | **Objet frappé à DEUX dimensions** | `vsm.membrane` (timbale ↔ tabla chargé) | **fait le 02/09** — rapports de Bessel, hors de portée de `vsm.modal` |
 | **Cordes SYMPATHIQUES** | `vsm.sitar` (onze cordes jamais pincées, chevalet plat) | **fait le 02/09** — comble un trou que trois documents constataient |
 | **Clavier PINCÉ, sans vélocité, à REGISTRES** | `vsm.harpsichord` (sautereau, 8'/4', jeu de luth, frôlement au relâchement) | **fait le 03/09** — § 22 ; la seule machine qui refuse la vélocité au bit près et qui sonne AU relâchement |
+| **Archet SANS FIN, bourdons sans clavier, chevalet qui claque** | `vsm.hurdygurdy` (roue, inertie, bourdons, chien) | **fait le 03/09** — § 23 ; la vélocité n'y fait pas la force mais le rythme |
 | Waveshaping (spectre commandé) | `vsm.chebyshev` | **fait** |
 | **Synthèse balayée** | `vsm.scanned` (chaîne de masses, timbre en temps réel) | **fait le 02/09** |
 | **Lecture de BANDE** | `vsm.mellotron` (la bande finit, une par touche) | **fait le 02/09** — un COMPORTEMENT, pas un timbre |
@@ -1474,6 +1475,59 @@ pour le point de pincement et la corde. Le parc passe à **54 machines**.
 Développé dans un worktree pendant les campagnes de parité, pour ne pas
 périmer le moteur des courses en cours (CDC multipiste § 8, « en attente ») ;
 fusionné à leur fin.
+
+## 23. H27 — la VIELLE À ROUE : un archet sans fin, des bourdons sans clavier, et la vélocité comme RYTHME (écrite avant sa mesure, 03/09/2026)
+
+**Ce que le parc n'avait pas.** `vsm.string` frotte une corde à l'archet,
+et l'archet finit avec la note. Une roue enduite de colophane ne finit pas :
+tournée à la manivelle, elle frotte toutes les cordes à la fois, la
+CHANTERELLE que les touches raccourcissent comme les BOURDONS, qui n'ont pas
+de clavier et sonnent tant que la roue tourne — même sans note, et encore
+un instant après la dernière, le temps que la roue s'arrête. Et la TROMPETTE
+porte un chevalet mobile, le CHIEN, qui claque quand la roue accélère : le
+rythme d'une vielle vient du coup de poignet, pas des touches, qui n'ont
+aucune force à donner. Aucune machine du parc n'avait de son sans note, ni
+d'inertie, ni de vélocité qui soit un rythme plutôt qu'une force.
+
+*Ce que j'attends, écrit avant la mesure (dans le banc)* : (1) une note
+tenue garde son niveau à 3 s comme à 1 s (à 3 dB près) — un archet, pas un
+pincement ; (2) chien levé, deux vélocités extrêmes donnent la même
+chanterelle AU BIT PRÈS ; (3) chien posé, la vélocité forte porte au moins
+deux fois l'énergie de claquement de la faible (bandes latérales de la
+trompette à ± la fréquence du chien) ; (4) les bourdons sonnent encore
+50 ms après le relâchement (au moins 30 % du niveau tenu) et sont éteints
+2 s après (moins de 5 %) ; (5) bourdons levés, plus rien ne sonne à leur
+hauteur. Molette et pression refusées en connaissance de cause.
+
+### H27 EST TRANCHÉE : SUCCÈS — et la roue a une force de seuil (03/09/2026)
+
+| Trait | Attendu | Mesuré |
+|---|---|---|
+| chanterelle tenue | ±3 dB entre 1 s et 3 s | **+2,0 dB** (0,108 → 0,136) : elle ne meurt pas |
+| vélocité 15 contre 127, chien levé | identique au bit près | **identique** |
+| chien | ≥ ×2 d'énergie de claquement | **×8,2** (0,000043 → 0,000354) |
+| bourdons après le relâchement | ≥ 30 % à 50 ms, ≤ 5 % à 2 s | **×2,3 à 50 ms** (0,0106 → 0,0244), **0,000000 à 2 s** |
+| bourdons levés | < 10 % | tenu |
+
+**Ce que le banc a appris, et qui n'était pas prévu : la friction a un
+SEUIL.** Le gros bourdon, d'abord accordé une octave sous la tonique
+(32 Hz), ne donnait pas sa fondamentale sous la roue — 3·f0 dominait de
+soixante-dix fois. Remonté à la tonique (65 Hz, l'accord des vielles en
+sol/do), il chante ; mais la force de la roue sur lui a dû être CHOISIE
+par la mesure, pas devinée : à 0,3 sa fondamentale vaut 0,00002, à 0,45
+0,00004, à 0,6 0,0022, à 0,8 0,0106. En dessous d'un seuil, l'archet
+n'entretient pas l'oscillation ; la roue pousse donc les bourdons à 0,8 de
+la force de la chanterelle, et le nombre est écrit dans le code avec sa
+raison. Second effet vu au banc : au ralenti de la roue, le bourdon sonne
+plus FORT à sa fondamentale que sous la pleine force (×2,3 à 50 ms) — la
+friction passe d'un régime à glissements multiples au cycle de Helmholtz
+propre, comme un archet qu'on allège. C'est un trait de l'instrument, pas
+un défaut, et il n'est pas corrigé.
+
+Douze tests, empreinte, façade WHEEL · DRONES · CHIEN (rendue et regardée) ;
+identités neuves pour ce qui n'existe nulle part ailleurs (bourdons, tonique,
+inertie, chien), celles de l'archet de `vsm.string` pour la roue. Le parc
+passe à **55 machines**.
 
 ## 12. H10 — la guitare ÉLECTRIQUE est-elle vraiment couverte ? (écrite avant sa mesure, 02/09/2026)
 
