@@ -2865,6 +2865,16 @@ moteur est lu sans `--quiet`, et une plainte interrompt la recherche. Pas
 le défaut : l'oreille n'a pas jugé. La campagne 2 du CDC multipiste (§ 8)
 tourne pendant ce temps, elle remesure un défaut qui coûtait +35 %.
 
+**ET LE GAIN NE GÉNÉRALISE PAS — mesuré sur le second morceau (03/09/2026).**
+Même outil, même grille gagnante, sur le projet sky-t6 (*Sky and Sand*,
+d = 0,23347) : pièce 1,0 à 4 % → +0,35 %, à 8 % → +0,60 %, pièce 0,9 à 8 % →
++1,06 %. **Aucun point ne rapproche.** Un disque de 1973 a une salle que le
+rendu sec n'a pas ; un morceau électronique de 2009 n'en a pas, et lui en
+mettre l'éloigne. C'est exactement la situation que `--reverb-melange`
+tranche seule — elle aurait laissé *Sky and Sand* sec en le disant — et la
+raison pour laquelle elle ne deviendra pas le défaut : le gain est propre au
+morceau, petit quand il existe, et l'oreille n'a pas jugé.
+
 ### H23 — diviser un stem polyphonique en VOIX ; écrite AVANT sa mesure
 
 Six stems ne suffiront pas : `other` restera un fourre-tout, plus maigre. La
