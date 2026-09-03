@@ -1386,6 +1386,12 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                       : juce::String(u8"Jamais mesurée — les prises audio ne sont "
                                                       u8"pas compensées"),
                                   false, false);
+                    // D11.7 : S'ENTENDRE. L'entrée recopiée vers la sortie, en
+                    // direct — à la latence du périphérique, que la commande
+                    // suivante mesure. Coché quand c'est actif ; jamais par défaut.
+                    menu.addItem(kMenuRecordMonitorInput,
+                                 u8"\u00c9couter l'entr\u00e9e en direct (latence du p\u00e9riph\u00e9rique)",
+                                 audioEngine_.isDeviceOpen(), audioEngine_.inputMonitoring());
                     menu.addItem(kMenuRecordMeasureLatency,
                                   u8"Mesurer (brancher la sortie sur l'entrée)...");
                     menu.addItem(kMenuRecordClearLatency, u8"Oublier la mesure", r > 0.0);
@@ -1465,6 +1471,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
         case 5:
             menu.addItem(kMenuViewSingleWindow, juce::String::fromUTF8(u8"Fenêtre unique"),
                           true, singleWindow_);
+            menu.addItem(kMenuViewComputerKeyboard,
+                         juce::String::fromUTF8(u8"Clavier d'ordinateur (A S D F… jouent la piste choisie, Z/X : octave)"),
+                         true, computerKeyboard_);
             {
                 auto* fenetre = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent());
                 menu.addItem(kMenuViewFullScreen, u8"Plein \u00e9cran (F11)", fenetre != nullptr,
@@ -1677,6 +1686,16 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuFileSaveTemplate:    saveAsTemplate(); break;
         case kMenuFileNewFromTemplate: newFromTemplate(); break;
         case kMenuViewFullScreen:      toggleFullScreen(); break;
+        case kMenuViewComputerKeyboard:
+            computerKeyboard_ = !computerKeyboard_;
+            // Éteindre ce qui sonne encore : une note tenue par une touche qu'on
+            // ne surveille plus ne s'éteindrait jamais.
+            for (const auto& [code, note] : computerKeysDown_) audioEngine_.playComputerKey(note, 0, false);
+            computerKeysDown_.clear();
+            break;
+        case kMenuRecordMonitorInput:
+            audioEngine_.setInputMonitoring(!audioEngine_.inputMonitoring());
+            break;
         case kMenuTrackAdd:      addTrack(Track::Kind::Midi); break;
         case kMenuTrackAddAudio: addTrack(Track::Kind::Audio); break;
         case kMenuTrackAddGroup: addTrack(Track::Kind::Group); break;
@@ -4010,7 +4029,48 @@ void MainComponent::seekAllViews(vsm::midi::Tick tick) {
     audioEngine_.processGraph().seekSeconds(project_.ticksToSeconds(tick));
 }
 
+// D11.7 — LE CLAVIER D'ORDINATEUR. La disposition de Live et de tout le
+// monde : la rangée du milieu pour les blanches (A S D F G H J K L ;), celle du
+// dessus pour les noires (W E T Y U O P). Z et X déplacent l'octave.
+bool MainComponent::handleComputerKeyboard(const juce::KeyPress& key) {
+    if (!computerKeyboard_ || key.getModifiers().isAnyModifierKeyDown()) return false;
+    const juce::juce_wchar c = juce::CharacterFunctions::toLowerCase(key.getTextCharacter());
+    if (c == 'z' || c == 'x') {
+        computerKeyboardOctave_ = juce::jlimit(-3, 3, computerKeyboardOctave_ + (c == 'z' ? -1 : 1));
+        return true;
+    }
+    static const juce::String kBlanches("asdfghjkl;");
+    static const juce::String kNoires("wetyuop");
+    static const int kDemiTonsBlanches[] = {0, 2, 4, 5, 7, 9, 11, 12, 14, 16};
+    static const int kDemiTonsNoires[] = {1, 3, 6, 8, 10, 13, 15};
+    int demiTons = -1;
+    if (const int i = kBlanches.indexOfChar(c); i >= 0) demiTons = kDemiTonsBlanches[i];
+    else if (const int j = kNoires.indexOfChar(c); j >= 0) demiTons = kDemiTonsNoires[j];
+    if (demiTons < 0) return false;
+    const int note = juce::jlimit(0, 127, 60 + 12 * computerKeyboardOctave_ + demiTons);
+    // Le clavier RÉPÈTE une touche tenue : la note ne se rejoue pas.
+    for (const auto& [code, n] : computerKeysDown_)
+        if (code == key.getKeyCode()) return true;
+    computerKeysDown_.emplace_back(key.getKeyCode(), static_cast<uint8_t>(note));
+    audioEngine_.playComputerKey(static_cast<uint8_t>(note), 100, true);
+    return true;
+}
+
+bool MainComponent::keyStateChanged(bool, juce::Component*) {
+    // JUCE ne dit pas QUELLE touche s'est relâchée : on relit l'état de
+    // celles qu'on tient, et l'on éteint les notes des touches disparues.
+    bool traite = false;
+    for (size_t i = 0; i < computerKeysDown_.size();) {
+        if (juce::KeyPress::isKeyCurrentlyDown(computerKeysDown_[i].first)) { ++i; continue; }
+        audioEngine_.playComputerKey(computerKeysDown_[i].second, 0, false);
+        computerKeysDown_.erase(computerKeysDown_.begin() + static_cast<std::ptrdiff_t>(i));
+        traite = true;
+    }
+    return traite;
+}
+
 bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
+    if (handleComputerKeyboard(key)) return true;
     // LA TOUCHE DÉSIGNE UNE COMMANDE, ET LA TABLE FAIT LA CORRESPONDANCE
     // (D10.3). Ce qui était ici -- un test sur `Ctrl+S`, un filtre qui rejetait
     // tout ce qui portait un modificateur, puis deux `case` -- ne disait à

@@ -2917,7 +2917,7 @@ chantier lourd en dernier.
 | D11.4 | **Renommer et colorer un clip** : `Clip::name` et `Clip::colorRgba` existent et aucune vue ne les édite (la couleur est toujours celle de la piste) | double-clic sur le nom, couleur au menu ; sauvegardés (déjà dans le format) — **fait** |
 | D11.5 | **Dupliquer une piste** (seules les sélections se dupliquent) ; **canal MIDI éditable** (`t.channel = n % 16` à la création, étiquette non éditable) | une commande au menu de piste, tout copié (instrument, effets, notes, clips, automation, routage) ; le canal se saisit — **fait** |
 | D11.6 | **Fichiers récents**, **plein écran**, **modèle de projet** (« Enregistrer comme modèle », « Nouveau depuis le modèle ») | menu Fichier ; F11 ; un modèle rouvert est un projet neuf sans chemin — **fait** |
-| D11.7 | **S'entendre** : l'entrée audio n'est jamais recopiée vers la sortie pendant l'armement ; **le clavier d'ordinateur** ne joue pas de notes | écoute d'entrée commutable par piste armée (latence dite) ; une rangée de touches joue la piste choisie, octave réglable |
+| D11.7 | **S'entendre** : l'entrée audio n'est jamais recopiée vers la sortie pendant l'armement ; **le clavier d'ordinateur** ne joue pas de notes | écoute d'entrée commutable par piste armée (latence dite) ; une rangée de touches joue la piste choisie, octave réglable — **fait** (l'écoute est globale, pas par piste : voir la note) |
 | D11.8 | **Étirement temporel d'un clip audio** — le choix n° 3 du § 4 le refusait ; `Clip::sourceStartSeconds` le dit en toutes lettres | à trancher au moment de l'écrire, chiffres à l'appui : un étirement de qualité (vocodeur de phase ou WSOLA) coûte un chantier entier, et la reconstruction n'en a pas besoin — c'est un besoin de production, pas de mesure. Dernier, et seulement après D11.1 à D11.7 |
 
 > **D11.1 ET D11.2 SONT FAITES (03/09/2026).** Le geste existait à moitié :
@@ -2979,6 +2979,22 @@ chantier lourd en dernier.
 > depuis le modèle » le charge et EFFACE le chemin, si bien que Ctrl+S
 > demande où et que le modèle ne s'écrase que par la commande qui le
 > nomme. Plein écran : Affichage et F11, coché quand il l'est.
+
+> **D11.7 EST FAITE (03/09/2026), avec un écart dit.** L'écoute d'entrée
+> est GLOBALE (Enregistrement ▸ Écouter l'entrée en direct), pas par piste
+> armée : le moteur n'a qu'une entrée physique, et la recopier vers la
+> sortie une fois ou une fois par piste armée rendrait le même son — sauf
+> à passer par les inserts de la piste, ce qui ajouterait la latence d'un
+> bloc au chemin et n'est pas ce qu'on demande quand on veut s'entendre.
+> Elle s'ajoute à la sortie dans le rappel audio, sans allocation, jamais
+> par défaut (entendre son micro dans ses enceintes sans l'avoir voulu,
+> c'est un larsen), et l'intitulé nomme la latence du périphérique que
+> « Mesurer la latence » chiffre. Le clavier d'ordinateur (Affichage) suit
+> la disposition de Live — rangée du milieu pour les blanches, rangée du
+> dessus pour les noires, Z/X pour l'octave — et passe par le MÊME chemin
+> qu'un clavier MIDI (piste choisie ou armées, capture si l'enregistrement
+> tourne). Actif, il emprunte les lettres aux raccourcis ; la répétition
+> d'une touche tenue ne rejoue pas la note, et le relâchement l'éteint.
 
 Ce que l'audit a trouvé et qui n'entre PAS ici, avec la raison : la
 sélection de notes par vélocité (le filtre existe sous forme d'opérations

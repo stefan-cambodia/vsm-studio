@@ -730,7 +730,7 @@ donne à la fenêtre la taille à laquelle on veut vérifier une disposition.
 
 ## 7 bis. Commencer et retrouver
 
-**Projets récents** : Fichier ▸ Projets récents garde les dix derniers dossiers ouverts ou enregistrés ; un dossier disparu y reste, grisé et marqué « introuvable ». **Modèle de projet** : Fichier ▸ Enregistrer comme modèle de projet fait du projet courant (pistes, machines, routage, tempo) le point de départ de Fichier ▸ Nouveau depuis le modèle — qui ouvre un projet **sans chemin**, pour que Ctrl+S demande où l'écrire et que le modèle reste intact. **Plein écran** : Affichage ▸ Plein écran, ou `F11`.
+**Projets récents** : Fichier ▸ Projets récents garde les dix derniers dossiers ouverts ou enregistrés ; un dossier disparu y reste, grisé et marqué « introuvable ». **Modèle de projet** : Fichier ▸ Enregistrer comme modèle de projet fait du projet courant (pistes, machines, routage, tempo) le point de départ de Fichier ▸ Nouveau depuis le modèle — qui ouvre un projet **sans chemin**, pour que Ctrl+S demande où l'écrire et que le modèle reste intact. **Plein écran** : Affichage ▸ Plein écran, ou `F11`. **S'entendre** : Enregistrement ▸ Écouter l'entrée en direct recopie l'entrée audio vers la sortie, à la latence du périphérique (jamais par défaut). **Jouer sans clavier MIDI** : Affichage ▸ Clavier d'ordinateur fait jouer la piste choisie par les lettres — A S D F G H J K L pour les blanches, W E T Y U O P pour les noires, Z et X pour l'octave ; tant qu'il est actif, ces lettres ne sont plus des raccourcis.
 
 ## 8. Ne rien perdre
 

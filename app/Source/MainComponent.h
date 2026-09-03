@@ -195,6 +195,7 @@ private:
         kMenuRecordPunchClear,
         kMenuRecordMeasureLatency,
         kMenuRecordClearLatency,
+        kMenuRecordMonitorInput,
         /// Un identifiant par prise de la piste sélectionnée, attribué à la
         /// suite -- comme les paliers d'échelle du menu Affichage.
         kMenuRecordTakeFirst,
@@ -220,6 +221,7 @@ private:
         kMenuViewArrangement,
         kMenuViewSingleWindow,
         kMenuViewFullScreen,
+        kMenuViewComputerKeyboard,
         // Un identifiant par palier d'échelle, attribué à la suite :
         // kMenuViewScaleFirst + index dans UiScale::steps().
         kMenuViewScaleFirst,
@@ -516,6 +518,16 @@ private:
     void saveAsTemplate();
     void newFromTemplate();
     void toggleFullScreen();
+    // --- D11.7 : le clavier d'ordinateur joue la piste choisie -------------
+    /// Actif, il EMPRUNTE les lettres (A S D F… jouent des notes, Z et X
+    /// changent d'octave) ; inactif, elles retrouvent leurs raccourcis.
+    bool computerKeyboard_ = false;
+    int computerKeyboardOctave_ = 0;      // décalage en octaves autour du do central
+    /// Les touches tenues et la note qu'elles jouent : la note s'éteint quand
+    /// la touche se relâche, pas quand le clavier répète.
+    std::vector<std::pair<int, uint8_t>> computerKeysDown_;
+    bool keyStateChanged(bool isKeyDown, juce::Component* origin) override;
+    bool handleComputerKeyboard(const juce::KeyPress& key);
     /// Ajoute une piste. Une piste AUDIO n'est pas une autre espèce d'objet :
     /// c'est une piste dont le matériau est un fichier et non des notes (voir
     /// `Track::Kind`). Il n'existait aucun moyen d'en créer une depuis
