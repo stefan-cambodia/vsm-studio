@@ -2616,9 +2616,14 @@ void MainComponent::showReconstructionReport() {
     using Ton = vsm::app::ui::ImportReportComponent::Ton;
     juce::Array<Ligne> lignes;
 
+    // Les BUS de groupe ne sont pas des pistes reconstruites : ce sont les
+    // faders communs des pistes qui partagent un stem. On compte ce qui joue.
+    int pistesJouees = 0, bus = 0;
+    for (const auto& piste : project_.tracks)
+        (piste.kind == vsm::sequencer::Track::Kind::Group ? bus : pistesJouees) += 1;
     juce::String resume;
-    resume << static_cast<int>(project_.tracks.size())
-           << juce::String::fromUTF8(" piste(s) reconstruite(s)");
+    resume << pistesJouees << juce::String::fromUTF8(" piste(s) reconstruite(s)");
+    if (bus > 0) resume << juce::String::fromUTF8(" sous ") << bus << juce::String::fromUTF8(" bus de groupe");
     const double distance = racine["globalDistance"].asNumber(-1.0);
     if (distance >= 0.0)
         resume << juce::String::fromUTF8(" · distance globale ")
