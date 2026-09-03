@@ -593,6 +593,14 @@ de parties qu'elle porte encore sur une seule piste.
 C'est l'écran qui répond à « pourquoi cette piste sonne-t-elle comme quatre
 instruments ? » sans ouvrir un fichier JSON.
 
+**Les pistes d'un même stem arrivent sous un groupe.** Les pièces d'une
+batterie éclatée et les registres d'un stem découpé partagent un stem ; dans
+le projet, elles partagent un **bus de groupe** (« Batterie », « other »),
+à 0 dB et sans effet : un seul fader règle tout le kit, comme dans n'importe
+quelle console, et chaque pièce garde le sien. Le son n'en change pas (la
+distance mesurée est identique au centième de millième) ; la prise en main,
+si.
+
 **L'original arrive avec le projet.** Ouvrir un dossier reconstruit — par
 l'application ou par la ligne de commande — charge aussi l'enregistrement
 d'origine pour l'écoute comparative : `rapport.json` en porte le chemin dans

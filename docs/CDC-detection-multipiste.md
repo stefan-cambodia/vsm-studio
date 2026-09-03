@@ -360,6 +360,16 @@ dans l'audio ne le peut pas non plus — mesuré et réfuté le jour même,
 ROADMAP-fusion H25. **C'est une limite connue et chiffrée de la parité** :
 un instrument dont les registres se séparent par un vide compte pour deux.
 
+**Et les groupes arrivent dans le DAW (03/09/2026).** Le registre
+`pistes_groupees` qui cale ensemble les pièces et les voix sert aussi le
+projet écrit : une piste de groupe par stem partagé (« Batterie »,
+« other »), les membres routés vers elle (`kind: group`, `output`), à 0 dB
+sans effet, ajoutée en fin de liste pour ne décaler aucun index. Vérifié :
+la distance de l'épreuve ne bouge pas (0,1828 avant comme après — le bus au
+volume 1 est neutre pour le rendu), et le mixeur du DAW montre les deux bus.
+Le compte de parité ignore les bus : ce sont des faders, pas des parties.
+4 tests.
+
 Ce que l'épreuve ne prouve pas : que les creux existent dans un vrai morceau.
 Ils n'existent dans aucun des trois mesurés. Le jour où une transcription
 réelle en montre, le journal le dira (« DÉCOUPÉ en N registres par les

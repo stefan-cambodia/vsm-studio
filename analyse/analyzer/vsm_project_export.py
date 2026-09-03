@@ -118,6 +118,12 @@ class ExportTrack:
     # l'histoire de la chaîne jusqu'à H24 (ROADMAP-fusion § 5 quaterdecies) :
     # chaque piste sortait sèche contre un disque mixé.
     effects: List[Dict[str, object]] = field(default_factory=list)
+    # PISTE DE GROUPE (un bus du DAW : `kind: group`), et le routage des pistes
+    # membres vers elle (`output`, index de la piste de groupe). Les pièces
+    # d'une batterie éclatée et les voix d'un stem découpé partagent un stem ;
+    # dans le DAW, elles partagent un fader.
+    is_group: bool = False
+    output_group: int = -1
 
 
 def _preset_document(track: ExportTrack, name: str) -> dict:
@@ -283,6 +289,11 @@ def write_project_bundle(
             },
         }
 
+        if track.is_group:
+            entry["kind"] = "group"
+        if track.output_group >= 0:
+            entry["output"] = int(track.output_group)
+
         if track.audio_path:
             entry["kind"] = "audio"
             entry["audio"] = {
@@ -305,7 +316,7 @@ def write_project_bundle(
                 "preferredPlugin": track.machine,
                 "preset": preset_relative,
             }
-        elif not track.audio_path:
+        elif not track.audio_path and not track.is_group:
             unassigned.append(track.name)
 
         if track.automation and track.machine:
@@ -333,7 +344,7 @@ def write_project_bundle(
     # pas reste en version 1 et s'ouvre donc dans tout ce qui a jamais su lire
     # un projet VSM. Écrire 2 partout par confort rendrait illisibles, sans
     # aucune raison, des projets qui n'utilisent rien de nouveau.
-    version = 2 if any(entree.get("kind") == "audio" for entree in document_tracks) else 1
+    version = 2 if any(entree.get("kind") in ("audio", "group") for entree in document_tracks) else 1
     document = {
         "format": "vsm-project",
         "version": version,

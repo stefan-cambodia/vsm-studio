@@ -2072,6 +2072,36 @@ def chercher_reverb_au_melange(args: argparse.Namespace, sortie: Path,
     return {"pistes": touchees, "temoin": temoin, "grille": grille, "retenu": retenu}
 
 
+def ajouter_groupes(pistes_export: List[ExportTrack], groupes: Dict[str, str]) -> List[str]:
+    """LES PISTES D'UN GROUPE ARRIVENT DANS LE DAW SOUS UN BUS DE GROUPE.
+
+    Le chantier tient le registre `pistes_groupees` (nom de piste -> nom du
+    groupe) pour caler ensemble les pièces d'une batterie éclatée et les voix
+    d'un stem découpé. Ce que la chaîne sait, le DAW doit le montrer : une
+    piste de groupe par groupe (« Batterie », « other »), les membres routés
+    vers elle. Un seul fader règle alors tout le kit, comme dans n'importe
+    quelle console -- sans cela, neuf pistes de parité se réglaient une par
+    une. Le groupe est au volume 1 et sans effet : il ne change pas le son,
+    seulement la prise en main. Les groupes sont AJOUTÉS EN FIN de liste pour
+    ne décaler aucun index de piste existant. Rend les noms des groupes créés.
+    """
+    if not groupes:
+        return []
+    index_par_nom = {piste.name: i for i, piste in enumerate(pistes_export)}
+    crees: List[str] = []
+    for nom_groupe in sorted(set(groupes.values()), key=lambda n: min(
+            index_par_nom.get(m, len(pistes_export)) for m, g in groupes.items() if g == n)):
+        membres = [m for m, g in groupes.items() if g == nom_groupe and m in index_par_nom]
+        if len(membres) < 2:
+            continue
+        pistes_export.append(ExportTrack(name=nom_groupe, is_group=True, volume=1.0))
+        index_groupe = len(pistes_export) - 1
+        for membre in membres:
+            pistes_export[index_par_nom[membre]].output_group = index_groupe
+        crees.append(nom_groupe)
+    return crees
+
+
 def rendre_et_mesurer(args: argparse.Namespace, sortie: Path, melange: np.ndarray,
                       chantier: Chantier, complements: Dict[str, object]) -> float:
     """Rend le projet écrit, mesure sa distance au mélange, écrit l'écoute A/B."""
@@ -2181,6 +2211,10 @@ def chaine(args: argparse.Namespace) -> None:
             distances_retenues, verdict = verdict_du_melange(ctx, chantier, pistes_export, melange)
             aligner_rapport_sur_projet(chantier, pistes_export, distances_retenues)
             figer_presets(moteur, pistes_export)
+            groupes_crees = ajouter_groupes(pistes_export, chantier.pistes_groupees)
+            if groupes_crees:
+                print(f"      groupes du DAW : {', '.join(groupes_crees)} — les pistes d'un même "
+                      f"stem partagent un fader")
 
         rapport = write_project_bundle(pistes_export, sortie, title=entree.stem, tempo=args.tempo)
         reverb = None

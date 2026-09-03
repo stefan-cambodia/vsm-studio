@@ -322,6 +322,10 @@ def compter(sortie: Path, verite: dict) -> dict:
     par_stem = {"bass": [], "other": [], "drums": [], "vocals": []}
     for piste in projet["tracks"]:
         nom = piste["name"]
+        # Un BUS de groupe n'est pas une partie : c'est le fader commun des
+        # pistes qui partagent un stem. On compte les pistes qui jouent.
+        if piste.get("kind") == "group":
+            continue
         if nom.startswith("bass"):
             par_stem["bass"].append(nom)
         elif nom.startswith("other"):
@@ -334,7 +338,8 @@ def compter(sortie: Path, verite: dict) -> dict:
     for stem, parties in verite["parties"].items():
         lignes.append({"stem": stem, "attendu": len(parties), "obtenu": len(par_stem[stem]),
                        "parties": parties, "pistes": par_stem[stem]})
-    return {"lignes": lignes, "pistes": len(projet["tracks"]), "parties": verite["total"],
+    jouees = sum(1 for piste in projet["tracks"] if piste.get("kind") != "group")
+    return {"lignes": lignes, "pistes": jouees, "parties": verite["total"],
             "distance": rapport.get("globalDistance"), "metrique": rapport.get("metric")}
 
 
