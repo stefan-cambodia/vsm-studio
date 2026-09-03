@@ -222,6 +222,13 @@ constexpr Rule kRules[] = {
     {"banjo.headMix",                      0.0f,     1.0f, SearchScale::Linear,      0.94f},
     {"banjo.headTension",                150.0f,   600.0f, SearchScale::Logarithmic, 0.90f},
     {"banjo.headDamping",                  0.0f,     1.0f, SearchScale::Linear,      0.60f},
+    // MANDOLINE (vsm.mandolin). L'octave d'abord (unisson ou douze-cordes,
+    // c'est deux instruments), le trémolo ensuite (une note tenue qui
+    // ondule contre une qui est refrappée), l'écart des cordes, le retard.
+    {"mandolin.octavePair",                0.0f,     1.0f, SearchScale::Linear,      0.85f},
+    {"mandolin.tremoloRate",               0.0f,    16.0f, SearchScale::Linear,      0.80f},
+    {"mandolin.courseDetune",              0.0f,    30.0f, SearchScale::Linear,      0.70f},
+    {"mandolin.strumSpread",               0.0f,    15.0f, SearchScale::Linear,      0.40f},
     // VIBRAPHONE (vsm.vibraphone). Le creusement décide où tombent les
     // partiels — c'est ce qu'on entend d'abord ; la part du tube ensuite ;
     // le point de frappe dose le second partiel ; le feutre ne se cherche

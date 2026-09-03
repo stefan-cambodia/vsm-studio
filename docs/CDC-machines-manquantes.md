@@ -1799,6 +1799,86 @@ sourdine, la corde derrière l'embout, la laine, le claquement et les deux
 micros ; celles de `vsm.string` pour la corde. Le parc passe à
 **60 machines**.
 
+## 29. H33 — la MANDOLINE : les cordes vont par DEUX, et le plectre ne s'arrête pas (écrite avant sa mesure, 04/09/2026)
+
+**Ce que le parc n'avait pas.** Toutes ses cordes sont SEULES : une note, une
+corde — `vsm.string`, le sitar, le banjo, le clavecin, le clavinet. La
+mandoline, la guitare à douze cordes, le bouzouki, le saz, le tzouras
+tendent leurs cordes par CHŒURS : deux cordes par note, que le plectre
+attaque presque ensemble et qui ne sont jamais tout à fait à la même
+hauteur. Trois traits en découlent, et aucun n'est un effet posé après
+coup : (1) le BATTEMENT — deux cordes à quelques cents d'écart battent à la
+différence de leurs fréquences, l'enveloppe de la note ondule, c'est le
+chatoiement de la douze-cordes et ce n'est pas un chorus ; (2) l'OCTAVE —
+sur les chœurs graves d'une douze-cordes, la seconde corde est à l'octave
+aiguë, la note porte son octave dès la frappe ; (3) le TRÉMOLO DU PLECTRE —
+une mandoline ne tient pas une note, le plectre la REFRAPPE huit à quatorze
+fois par seconde tant que le doigt reste, et chaque coup est une pince
+neuve avec son bruit. La machine a été commencée le 03/09 à 22:32, dix-huit
+minutes avant l'extinction du poste ; elle est finie et mesurée ici.
+
+*Ce que j'attends, écrit avant la mesure (dans le banc, avant de le
+lancer)* : (1) à 6 cents sur la3 (220 Hz), Δf = 0,76 Hz, une période de
+1,3 s : l'enveloppe du fondamental (fenêtres de 100 ms sur 2,6 s) a une
+profondeur (1 − min/max) d'au moins 0,5, et à 0 cent elle ne fait que
+décroître (monotone à 2 %) ; (2) *Octave Pair* à 1 : l'énergie à 440 Hz
+dans les 200 premières ms au moins DOUBLE par rapport à 0 — **RÉFUTÉE à la
+première mesure (0,00535 contre 0,00592), et la cause est la cohérence** :
+la fondamentale de la seconde corde et l'harmonique 2 de la première sont
+à la MÊME fréquence, et deux sources cohérentes s'additionnent selon leur
+phase, ici en partie contre. RÉÉCRIT avant la seconde mesure : seconde
+corde à l'octave ET à 30 cents (447,7 Hz, à 7,7 Hz de l'harmonique, qu'une
+fenêtre de 0,5 s sépare) — là l'unisson n'a rien, l'octave doit avoir au
+moins le double ; (3) *Tremolo
+Rate* 10 Hz, touche tenue une seconde : au moins huit maxima locaux de
+l'enveloppe (rms par 20 ms) dans la seconde, et le niveau à 0,95 s reste au
+moins la moitié de celui à 0,05 s — sans trémolo, il tombe sous 30 % ;
+(4) *Strum Spread* 10 ms, octave à 1 : la seconde corde n'est pas là dans
+les 8 premières ms — le rapport « 880 Hz avant 8 ms / 880 Hz entre 12 et
+20 ms » est au moins deux fois plus petit qu'à 0 ms d'écart — **RÉFUTÉE à
+la première mesure (1,043 contre 0,787), par le MASQUAGE** : l'harmonique
+2 de la première corde occupe la fréquence où l'on cherchait la seconde.
+RÉÉCRIT avant la seconde mesure, sous la forme exacte du trait : tant que
+le plectre n'a pas atteint la seconde corde, elle ne fait RIEN — 10 ms et
+20 ms d'écart donnent les 8 premières ms identiques AU BIT PRÈS, 0 ms en
+diffère, et la différence pèse au moins un cinquième du rms. Cela a exigé
+un changement de modèle : chaque corde a son propre bruit de plectre (deux
+contacts, deux bruits), sans quoi retarder la seconde changeait les tirages
+de la première ; (5) le
+relâchement ÉTOUFFE (la main quitte les cordes frettées) : 300 ms après,
+le rms est sous 10 % de la tenue. Deux cordes frettées ne se tirent pas
+ensemble : pas de molette, refusée en connaissance de cause.
+     """de la première ;
+
+### H33 EST TRANCHÉE : SUCCÈS, deux attendus RÉÉCRITS avant la mesure qui les tranche (04/09/2026)
+
+| Trait | Attendu | Mesuré |
+|---|---|---|
+| battement à 6 cents, la3 : profondeur de l'enveloppe sur 2,6 s | ≥ 0,5 | **1,00** (min 0,00000, max 0,00419) |
+| à 0 cent : l'enveloppe ne fait que décroître | monotone à 2 % | tenu |
+| octave à 30 cents (447,7 Hz), 0,5 s | ≥ ×2 l'unisson | **0,00445 contre 0,00005** (×89) |
+| trémolo 10 Hz : maxima de l'enveloppe en 1 s | ≥ 8 | **9** |
+| trémolo : niveau à 0,95 s contre 0,05 s | ≥ 50 % | **0,152 contre 0,068** (222 %) |
+| sans trémolo : niveau à 0,95 s contre 0,05 s | < 30 % | **0,003 contre 0,068** (4 %) |
+| plectre : 10 ms et 20 ms d'écart, 8 premières ms | identiques au bit près, 0 ms diffère | **oui / oui**, la seconde corde pèse 0,131 sur 0,171 de rms |
+| relâchement, 300 ms après | < 10 % de la tenue | **0,0000 contre 0,0174** |
+| vélocité 30 contre 120 | ≥ ×1,5 | tenu |
+
+**Ce que les deux réécritures enseignent, et qui vaut pour les prochaines
+machines à sources multiples.** Quand deux sources d'un même modèle
+tombent sur la MÊME fréquence (ici la fondamentale de la seconde corde et
+l'harmonique 2 de la première), leur somme dépend de la phase, et une
+mesure « l'énergie à f double » ne mesure rien — il faut mesurer à une
+fréquence que l'autre source n'a pas (l'écart de 30 cents), ou mesurer le
+trait sous sa forme exacte (l'identité au bit près avant que le plectre
+n'arrive). Et un générateur aléatoire PARTAGÉ entre deux sources fait
+dépendre l'une de l'autre par les tirages : retarder la seconde changeait
+la première. Deux contacts, deux bruits — c'est aussi ce que fait un vrai
+plectre. Treize tests, empreinte, façade COURSE · TREMOLO · PICK · STRING
+(rendue et regardée) ; identités neuves pour l'écart du chœur, l'octave,
+le retard du plectre et le trémolo ; celles de `vsm.string` pour le reste.
+Le parc passe à **61 machines**.
+
 ## 12. H10 — la guitare ÉLECTRIQUE est-elle vraiment couverte ? (écrite avant sa mesure, 02/09/2026)
 
 **Le fait qui la motive est une contradiction interne à ce dépôt.** Le tableau

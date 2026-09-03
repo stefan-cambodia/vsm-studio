@@ -4070,6 +4070,22 @@ machines-manquantes § 28.
 
 Le parc passe à **60 machines**.
 
+**ET UNE VINGTIÈME : `vsm.mandolin`, les cordes qui vont par DEUX, et le
+plectre qui ne s'arrête pas.** Deux guides d'ondes de `vsm.string` par
+note, à quelques cents l'un de l'autre : ils BATTENT par géométrie
+(profondeur 1,00 à 6 cents sur la3, monotone à 0 cent), la seconde à
+l'octave porte la douze-cordes (447,7 Hz : 0,00445 contre 0,00005 à
+l'unisson), le plectre atteint la seconde corde après la première (10 et
+20 ms d'écart : les 8 premières ms identiques au bit près, 0 ms en
+diffère — chaque corde a son propre bruit de plectre), et le TRÉMOLO
+refrappe tant que la touche tient (10 Hz : 9 maxima par seconde, niveau
+0,068 → 0,152 là où la note tenue tombe à 0,003). Le relâchement étouffe
+(0,0174 → 0,0000 à 300 ms). Treize tests, empreinte, façade ; CDC
+machines-manquantes § 29. Commencée dix-huit minutes avant l'extinction du
+poste du 03/09, finie le 04/09.
+
+Le parc passe à **61 machines**.
+
 ---
 
 ## 47. Ouvrir un projet fait ailleurs : `Inflate`, `Xml`, `DawImport`

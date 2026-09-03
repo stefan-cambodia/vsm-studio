@@ -527,6 +527,23 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Filter Cutoff", "filter.1.cutoff"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.mandolin ---
+    // Le plectre et la corde parlent le vocabulaire de `vsm.string`. Quatre
+    // identités neuves, celles du chœur : l'écart des deux cordes, la seconde
+    // à l'octave, le retard du plectre entre les deux, et le trémolo — qui
+    // n'est pas un LFO mais des pinces répétées, sur aucune autre machine.
+    {"vsm.mandolin", {
+        {"Course Detune", "mandolin.courseDetune"},
+        {"Octave Pair", "mandolin.octavePair"},
+        {"Strum Spread", "mandolin.strumSpread"},
+        {"Tremolo Rate", "mandolin.tremoloRate"},
+        {"Pick Position", "string.pickPosition"},
+        {"Pick Hardness", "string.pickHardness"},
+        {"String Decay", "string.decay"},
+        {"String Damping", "string.damping"},
+        {"Velocity Sensitivity", "voice.velocitySensitivity"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.vibraphone ---
     // La barre parle le vocabulaire de `vsm.modal` (temps, pente, maillet),
     // le moteur celui du trémolo (c'est le trémolo de l'instrument, comme

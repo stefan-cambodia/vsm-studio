@@ -371,6 +371,20 @@ en différence (*Phase* : la différence creuse le fondamental, le son
 
 ![Façade de Clavinet (la corde qui sonne entière au relâchement)](images/manuel/vsm.clavinet.png)
 
+**Mandolin (les cordes par deux)** — `vsm.mandolin`
+
+Deux cordes par note, comme sur une mandoline, une douze-cordes ou un
+bouzouki. *Detune* les écarte de quelques cents : elles **battent**, et
+c'est le chatoiement du chœur, pas un chorus. *Octave* met la seconde
+corde à l'octave aiguë — la douze-cordes. *Spread* est le retard du
+plectre entre les deux. *Rate* fait le **trémolo** : tant que la touche
+tient, le plectre refrappe (huit à quatorze fois par seconde sur une
+mandoline), chaque coup avec son bruit ; à zéro, la note est simplement
+tenue. Lâcher la touche étouffe les deux cordes. Pas de molette : deux
+cordes frettées ne se tirent pas ensemble.
+
+![Façade de Mandolin (les cordes par deux)](images/manuel/vsm.mandolin.png)
+
 **Music Box (la lame qui doit revenir)** — `vsm.musicbox`
 
 **Si une note ne sonne pas, ce n'est pas un bogue.** Chaque note est une lame
