@@ -415,6 +415,7 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
             # deux rapports qui n'ont pas le même réglage ne se comparent pas.
             "voixParStem": args.voix_par_stem,
             "voixParVides": args.voix_par_vides,
+            "reverbMelange": args.reverb_melange,
             "batterieParPiece": args.batterie_par_piece,
             "voixTeteChoeurs": args.voix_tete_choeurs,
             "seuilStem": args.seuil_stem,
@@ -551,6 +552,16 @@ def construire_parseur() -> argparse.ArgumentParser:
                               "le journal disent le découpage, qui reste une approximation : "
                               "un registre n'est pas un instrument, mais une piste par "
                               "registre se retravaille, un fourre-tout non")
+    parseur.add_argument("--reverb-melange", action="store_true",
+                         help="EN FIN DE CHAÎNE, chercher une réverbération commune aux pistes "
+                              "mélodiques en re-rendant le projet entier sur une petite grille "
+                              "(pièce 0,9 et 1,0 × mélange 4 et 8 %%, les seuls points où H24 "
+                              "a mesuré un gain, ROADMAP-fusion § 5 quaterdecies) et garder "
+                              "le point qui rapproche le plus de l'original — ou aucun, en le "
+                              "disant. Quatre rendus complets. La voix (report d'audio) et la "
+                              "batterie ne sont pas touchées. Option : le gain mesuré est petit "
+                              "(−2,45 %% au mieux) et l'oreille n'a pas jugé une traîne de "
+                              "plusieurs secondes à 4 %%")
     parseur.add_argument("--voix-par-vides", action="store_true",
                          help="AVANT le partage en N voix, découper un stem fourre-tout là "
                               "où sa transcription laisse des VIDES (au moins deux demi-tons "
@@ -1947,6 +1958,105 @@ def figer_presets(moteur: VsmEngine, pistes_export: List[ExportTrack]) -> None:
 # [5/5] Rendu et mesure
 # ---------------------------------------------------------------------------
 
+GRILLE_REVERB: Tuple[Tuple[float, float], ...] = ((0.9, 0.04), (0.9, 0.08), (1.0, 0.04), (1.0, 0.08))
+
+
+def piste_melodique(piste: ExportTrack) -> bool:
+    """Ni batterie, ni report d'audio : les seules pistes que H24 a réverbérées."""
+    return bool(piste.machine) and not piste.is_drums and not piste.audio_path
+
+
+def effet_reverb(taille: float, dosage: float) -> Dict[str, object]:
+    return {"type": "reverb", "parameters": {
+        "effect.reverb.mix": float(dosage), "effect.reverb.size": float(taille),
+        "effect.reverb.damping": 0.5, "effect.reverb.width": 1.0}}
+
+
+def chercher_reverb_au_melange(args: argparse.Namespace, sortie: Path,
+                               pistes_export: List[ExportTrack], melange: np.ndarray,
+                               mesurer=None) -> Dict[str, object]:
+    """H24 EN ACTE, comme OPTION : la réverbération cherchée au mélange.
+
+    Le projet est déjà écrit dans `sortie`. On le re-rend tel quel (le
+    témoin), puis avec le même insert sur toutes les pistes mélodiques à
+    chaque point de GRILLE_REVERB, et l'on garde le point qui rapproche le
+    plus — s'il rapproche. Le refus est DIT avec son chiffre : une grille qui
+    ne gagne rien laisse les pistes sèches, et le rapport le porte.
+
+    `mesurer(pistes) -> distance` s'injecte pour les tests ; par défaut, un
+    rendu complet par vsm-render dans un sous-dossier de travail, mesuré avec
+    la métrique de la course. Les rendus tournent de front.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    if mesurer is None:
+        moteur_chemin = str(find_vsm_render(args.moteur))
+        travail = sortie / "travail-reverb"
+
+        def mesurer(pistes: List[ExportTrack], etiquette: str = "point") -> float:
+            dossier = travail / etiquette
+            write_project_bundle(pistes, dossier, title="reverb", tempo=args.tempo)
+            # LES ÉCHANTILLONS NE SUIVENT PAS LE PROJET : la voix et les
+            # frappes vivent dans `sortie/samples`, en chemins relatifs. Sans
+            # ce lien, le premier essai a rendu la grille SANS la voix — et
+            # `--quiet` taisait l'avertissement du moteur : la recherche
+            # choisissait sur un mélange amputé, sans que rien ne le dise.
+            lien = dossier / "samples"
+            if (sortie / "samples").is_dir() and not lien.exists():
+                os.symlink((sortie / "samples").resolve(), lien)
+            rendu = dossier / "rendu.wav"
+            resultat = subprocess.run([moteur_chemin, str(dossier), str(rendu), "--sample-rate",
+                                       str(SAMPLE_RATE)], check=True, capture_output=True, text=True)
+            plaintes = [ligne for ligne in (resultat.stdout + resultat.stderr).splitlines()
+                        if "avertissement" in ligne or "illisible" in ligne]
+            if plaintes:
+                raise RuntimeError("le moteur s'est plaint pendant la recherche de réverb — "
+                                   "la grille serait mesurée sur un projet amputé : " + plaintes[0])
+            return reconstruction_distance(melange, lire_wav(rendu), SAMPLE_RATE, metric=args.metrique)
+
+    touchees = [p.name for p in pistes_export if piste_melodique(p)]
+    if not touchees:
+        print("      réverb au mélange : aucune piste mélodique, rien à chercher")
+        return {"pistes": [], "temoin": None, "grille": [], "retenu": None}
+
+    def variante(taille: float, dosage: float) -> List[ExportTrack]:
+        copie = []
+        for piste in pistes_export:
+            double = ExportTrack(**{k: v for k, v in piste.__dict__.items()})
+            if piste_melodique(piste):
+                double.effects = list(piste.effects) + [effet_reverb(taille, dosage)]
+            copie.append(double)
+        return copie
+
+    points = [("temoin", None)] + [(f"p{int(t * 10)}-m{int(round(d * 100)):02d}", (t, d))
+                                   for t, d in GRILLE_REVERB]
+    with ThreadPoolExecutor(max_workers=max(1, args.rendus_paralleles)) as pool:
+        futurs = {nom: pool.submit(mesurer, pistes_export if pt is None else variante(*pt), nom)
+                  for nom, pt in points}
+        distances = {nom: float(f.result()) for nom, f in futurs.items()}
+    temoin = distances["temoin"]
+    grille = [{"taille": t, "dosage": d, "distance": distances[nom],
+               "ecartPourcent": (distances[nom] / temoin - 1.0) * 100.0 if temoin else None}
+              for nom, (t, d) in [(n, p) for n, p in points if p is not None]]
+    meilleur = min(grille, key=lambda g: (g["distance"], g["dosage"], g["taille"]))
+    lignes = ", ".join(f"pièce {g['taille']:.1f} à {100 * g['dosage']:.0f} % → {g['distance']:.4f} "
+                       f"({g['ecartPourcent']:+.2f} %)" for g in grille)
+    if meilleur["distance"] < temoin:
+        for piste in pistes_export:
+            if piste_melodique(piste):
+                piste.effects.append(effet_reverb(meilleur["taille"], meilleur["dosage"]))
+        print(f"      réverb au mélange : témoin {temoin:.4f} ; {lignes}")
+        print(f"      réverb au mélange : RETENUE pièce {meilleur['taille']:.1f} à "
+              f"{100 * meilleur['dosage']:.0f} % sur {', '.join(touchees)} "
+              f"({meilleur['ecartPourcent']:+.2f} %)")
+        retenu = {"taille": meilleur["taille"], "dosage": meilleur["dosage"]}
+    else:
+        print(f"      réverb au mélange : témoin {temoin:.4f} ; {lignes}")
+        print(f"      réverb au mélange : AUCUN point ne rapproche — les pistes restent sèches")
+        retenu = None
+    return {"pistes": touchees, "temoin": temoin, "grille": grille, "retenu": retenu}
+
+
 def rendre_et_mesurer(args: argparse.Namespace, sortie: Path, melange: np.ndarray,
                       chantier: Chantier, complements: Dict[str, object]) -> float:
     """Rend le projet écrit, mesure sa distance au mélange, écrit l'écoute A/B."""
@@ -2058,6 +2168,11 @@ def chaine(args: argparse.Namespace) -> None:
             figer_presets(moteur, pistes_export)
 
         rapport = write_project_bundle(pistes_export, sortie, title=entree.stem, tempo=args.tempo)
+        reverb = None
+        if args.reverb_melange:
+            reverb = chercher_reverb_au_melange(args, sortie, pistes_export, melange)
+            if reverb.get("retenu"):
+                rapport = write_project_bundle(pistes_export, sortie, title=entree.stem, tempo=args.tempo)
         # TOUT CE QUE LE RAPPORT PORTE EN PLUS DES STEMS, réuni UNE fois et
         # passé aux DEUX écritures. La première version ne passait la
         # provenance qu'à la première : la seconde, celle qui ajoute la
@@ -2069,6 +2184,7 @@ def chaine(args: argparse.Namespace) -> None:
             drums=chantier.rapport_batterie,
             mix_verdict=verdict or None,
             partage=partage,
+            reverb=reverb,
         )
         write_reconstruction_report(chantier.reconstruits, sortie / "rapport.json",
                                     metric=args.metrique, iterations=args.iterations,

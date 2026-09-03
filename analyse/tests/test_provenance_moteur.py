@@ -170,7 +170,7 @@ def _args(**surcharges):
         tours_verdict=3, garder_pieces_non_isolees=False, rendus_paralleles=8,
         sans_cache_rendus=False, budget_piste=120, axes_piste=21, finalistes=None,
         preselection_apprise=0, machines="", machines_exclues="",
-        modele="htdemucs", stems="", voix_par_stem=0, batterie_par_piece=False, voix_tete_choeurs=False, voix_par_vides=False,
+        modele="htdemucs", stems="", voix_par_stem=0, batterie_par_piece=False, voix_tete_choeurs=False, voix_par_vides=False, reverb_melange=False,
         seuil_stem=0.5, parite=False)
     base.update(surcharges)
     return types.SimpleNamespace(**base)

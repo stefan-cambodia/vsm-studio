@@ -657,6 +657,7 @@ def write_reconstruction_report(
     drums: Optional[Dict[str, object]] = None,
     mix_verdict: Optional[Sequence[Dict[str, object]]] = None,
     partage: Optional[Sequence[Dict[str, object]]] = None,
+    reverb: Optional[Dict[str, object]] = None,
 ) -> None:
     """
     Écrit le rapport de reconstruction (étape 9.3).
@@ -703,6 +704,9 @@ def write_reconstruction_report(
         # n'était qu'imprimé ; or c'est la dernière décision de la chaîne,
         # et celle qui peut défaire toutes les autres.
         **({"mixVerdict": list(mix_verdict)} if mix_verdict else {}),
+        # LA RÉVERBÉRATION CHERCHÉE AU MÉLANGE (H24) : la grille essayée,
+        # le point retenu et ce qu'il rapporte — ou le refus, avec son chiffre.
+        **({"reverb": reverb} if reverb else {}),
         # COMMENT LE MORCEAU SE PARTAGE ENTRE LES PISTES, en part d'énergie.
         #
         # C'EST LE CHIFFRE QUI A RENDU LE DÉFAUT VISIBLE, et il n'était nulle

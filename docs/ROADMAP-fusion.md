@@ -2846,9 +2846,24 @@ noie les transitoires dès que la queue est ordinaire ; et si la chaîne doit un
 jour chercher ce réglage elle-même, ce sera comme OPTION, sur deux
 paramètres (pièce, dosage), en fin de chaîne, à raison d'une dizaine de rendus
 complets — et l'écoute A/B devra dire si une traîne de plusieurs secondes à
-4 % est un gain ou un artefact que la métrique aime. Non câblé aujourd'hui :
-la campagne 2 du CDC multipiste (§ 8) passe avant, elle remesure un défaut
-qui coûtait +35 %.
+4 % est un gain ou un artefact que la métrique aime.
+
+**CÂBLÉE LE JOUR MÊME, COMME OPTION : `--reverb-melange`.** En fin de chaîne,
+le projet écrit est re-rendu tel quel (le témoin) puis avec le même insert
+`reverb` sur toutes les pistes mélodiques aux quatre points où H24 a mesuré
+un gain (pièce 0,9 et 1,0 × 4 et 8 %) ; le point qui rapproche le plus est
+gardé, sinon les pistes restent sèches et le refus est dit avec son chiffre.
+La batterie et les reports d'audio ne sont pas touchés. La grille entière va
+dans `rapport.json` (bloc `reverb`) et l'option dans la provenance. Trois
+tests. Éprouvée sur le morceau à vérité connue (CDC multipiste § 6 bis) :
+témoin 0,1776, pièce 1,0 à 8 % retenue, **0,1749 (−1,53 %)**, confirmé par
+le rendu final. Le premier essai a trouvé une panne muette : les rendus de la
+grille se faisaient dans un dossier de travail SANS les échantillons de la
+voix, le moteur l'écrivait, `--quiet` le taisait, et la grille choisissait
+sur un mélange amputé — désormais les échantillons sont liés au dossier, le
+moteur est lu sans `--quiet`, et une plainte interrompt la recherche. Pas
+le défaut : l'oreille n'a pas jugé. La campagne 2 du CDC multipiste (§ 8)
+tourne pendant ce temps, elle remesure un défaut qui coûtait +35 %.
 
 ### H23 — diviser un stem polyphonique en VOIX ; écrite AVANT sa mesure
 

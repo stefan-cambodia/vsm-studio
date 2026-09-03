@@ -547,7 +547,15 @@ Ce que la parité coûte est **dit** : le découpage en voix vaut +9 % de
 distance sur *Us and Them*. Et ce qu'elle vaut se vérifie sur un morceau dont
 on connaît les parties (`analyse/epreuve_parite.py`, 32 secondes fabriquées
 avec leur vérité) : **neuf parties, neuf pistes**, et une distance de 0,178
-contre 0,220 sans parité. Quand la ressemblance et la structure s'opposent,
+contre 0,220 sans parité.
+
+**Une réverbération cherchée au mélange, sur demande** (`--reverb-melange`) :
+la chaîne rend des pistes sèches contre un disque mixé. Cette option re-rend
+le projet fini avec une même réverbération sur les pistes mélodiques, à
+quatre dosages, et garde celui qui rapproche de l'original — ou aucun, en le
+disant. Le gain mesuré est petit (−1,5 à −2,5 %) et le réglage retenu est
+une traîne longue et discrète : c'est à l'oreille de dire si elle lui plaît,
+et l'onglet *Effets* de chaque piste la montre et la règle. Quand la ressemblance et la structure s'opposent,
 c'est la structure qui gagne — un projet qui met quatre instruments sur une
 piste ne se retravaille pas, quelle que soit sa distance — et l'écart se
 publie au lieu d'être caché.

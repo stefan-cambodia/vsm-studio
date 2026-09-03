@@ -113,6 +113,11 @@ class ExportTrack:
     # qu'une moyenne, et le caractère d'un morceau vit souvent dans le
     # mouvement. Converties en ticks à l'écriture, comme les notes.
     automation: Dict[str, List[Tuple[float, float]]] = field(default_factory=dict)
+    # INSERTS de la piste, au format du DAW : [{"type": "reverb",
+    # "parameters": {"effect.reverb.mix": 0.04, ...}}]. Vide pour toute
+    # l'histoire de la chaîne jusqu'à H24 (ROADMAP-fusion § 5 quaterdecies) :
+    # chaque piste sortait sèche contre un disque mixé.
+    effects: List[Dict[str, object]] = field(default_factory=list)
 
 
 def _preset_document(track: ExportTrack, name: str) -> dict:
@@ -268,7 +273,7 @@ def write_project_bundle(
             "name": track.name,
             "channel": 9 if track.is_drums else int(track.channel),
             "color": _TRACK_COLOURS[index % len(_TRACK_COLOURS)],
-            "effects": [],
+            "effects": [dict(effet) for effet in track.effects],
             "mix": {
                 "volume": float(track.volume),
                 "pan": float(track.pan),
