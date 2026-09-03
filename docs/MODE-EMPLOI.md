@@ -698,7 +698,9 @@ qu'il faut regarder pour juger un projet à soixante-quatre machines. (Éprouvé
 64 machines jouées à la fois coûtent environ 1,3 cœur.) Quatre jetons de plus
 choisissent l'onglet du bas — `mixer`, `automation`, `effets`, `midi-cc` — :
 un projet reconstruit avec `--reverb-melange` porte un insert que personne
-n'a posé, et il doit se voir là où on le règle.
+n'a posé, et il doit se voir là où on le règle. `piste:N` choisit la piste N (à partir
+de 0), et `VSM_TAILLE=LARGEURxHAUTEUR` (pixels logiques, bornée par l'écran)
+donne à la fenêtre la taille à laquelle on veut vérifier une disposition.
 
 ## 8. Ne rien perdre
 

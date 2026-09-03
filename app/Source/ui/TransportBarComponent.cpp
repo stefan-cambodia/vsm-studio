@@ -136,39 +136,56 @@ void TransportBarComponent::paint(juce::Graphics& g) {
 void TransportBarComponent::resized() {
     auto area = getLocalBounds().reduced(8, 6);
 
-    // Élargi : la rangée porte maintenant le métronome, le tap tempo et le
-    // témoin d'entrée en plus du transport.
-    auto transportArea = area.removeFromLeft(460);
-    playButton_.setBounds(transportArea.removeFromLeft(70));
+    // LA RANGÉE DOIT TENIR DANS LA FENÊTRE, À 150 % AUSSI. Elle était posée
+    // en largeurs fixes -- 1 062 px à gauche, 542 à droite -- et sur un écran
+    // de 1 920 px à l'échelle par défaut (1 280 px logiques), les boutons de
+    // droite recouvraient la signature rythmique et le tempo : « Ouvrir… »
+    // disparaissait, le compteur de charge se lisait « 0 … ». Les commandes
+    // sont posées d'abord ; les deux étiquettes d'information (charge,
+    // fréquence) ne s'affichent que s'il reste de la place, et les largeurs
+    // secondaires se resserrent avant qu'un bouton ne soit coupé.
+    const int largeur = area.getWidth();
+    const bool serre = largeur < 1500;
+    const bool tresSerre = largeur < 1300;
+
+    auto transportArea = area.removeFromLeft(tresSerre ? 420 : 460);
+    const int boutonPlay = tresSerre ? 62 : 70;
+    playButton_.setBounds(transportArea.removeFromLeft(boutonPlay));
     transportArea.removeFromLeft(4);
-    stopButton_.setBounds(transportArea.removeFromLeft(70));
+    stopButton_.setBounds(transportArea.removeFromLeft(boutonPlay));
     transportArea.removeFromLeft(4);
-    recordButton_.setBounds(transportArea.removeFromLeft(60));
+    recordButton_.setBounds(transportArea.removeFromLeft(tresSerre ? 54 : 60));
     transportArea.removeFromLeft(4);
-    loopButton_.setBounds(transportArea.removeFromLeft(60));
+    loopButton_.setBounds(transportArea.removeFromLeft(tresSerre ? 54 : 60));
     transportArea.removeFromLeft(4);
-    metronomeButton_.setBounds(transportArea.removeFromLeft(56));
+    metronomeButton_.setBounds(transportArea.removeFromLeft(tresSerre ? 50 : 56));
     transportArea.removeFromLeft(4);
-    tapButton_.setBounds(transportArea.removeFromLeft(50));
+    tapButton_.setBounds(transportArea.removeFromLeft(tresSerre ? 46 : 50));
     transportArea.removeFromLeft(6);
     inputMeterBounds_ = transportArea.removeFromLeft(10).reduced(0, 2);
 
-    area.removeFromLeft(12);
-    listenButton_.setBounds(area.removeFromLeft(230));
-    area.removeFromLeft(16);
-    positionLabel_.setBounds(area.removeFromLeft(140));
-    area.removeFromLeft(16);
-    bpmLabel_.setBounds(area.removeFromLeft(110));
+    area.removeFromLeft(serre ? 8 : 12);
+    listenButton_.setBounds(area.removeFromLeft(serre ? 190 : 230));
+    area.removeFromLeft(serre ? 10 : 16);
+    positionLabel_.setBounds(area.removeFromLeft(serre ? 130 : 140));
+    area.removeFromLeft(serre ? 10 : 16);
+    bpmLabel_.setBounds(area.removeFromLeft(serre ? 100 : 110));
     area.removeFromLeft(8);
-    timeSigLabel_.setBounds(area.removeFromLeft(70));
+    timeSigLabel_.setBounds(area.removeFromLeft(serre ? 60 : 70));
 
-    exportButton_.setBounds(area.removeFromRight(150));
-    area.removeFromRight(8);
-    openButton_.setBounds(area.removeFromRight(150));
-    area.removeFromRight(16);
-    sampleRateLabel_.setBounds(area.removeFromRight(120));
-    area.removeFromRight(8);
-    cpuLabel_.setBounds(area.removeFromRight(90));
+    // À droite, par ordre d'importance : exporter, ouvrir, puis les deux
+    // étiquettes seulement si elles tiennent.
+    const int bouton = serre ? 120 : 150;
+    auto poser = [&](juce::Component& c, int w, int ecart) {
+        if (area.getWidth() < w) { c.setVisible(false); c.setBounds({}); return; }
+        c.setVisible(true);
+        c.setBounds(area.removeFromRight(w));
+        area.removeFromRight(ecart);
+    };
+    poser(exportButton_, bouton, 8);
+    poser(openButton_, bouton, serre ? 10 : 16);
+    poser(cpuLabel_, serre ? 76 : 90, 8);
+    poser(sampleRateLabel_, serre ? 90 : 120, 0);
 }
 
 void TransportBarComponent::setInputLevel(float peak, int channels) {

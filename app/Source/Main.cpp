@@ -60,6 +60,17 @@ public:
             setContentOwned(content, true); // la fenêtre s'ajuste à la taille du contenu (menu + transport)
             centreWithSize(content->getWidth(), content->getHeight());
             setResizable(true, true);
+            // VSM_TAILLE=LARGEURxHAUTEUR (pixels logiques) : la taille de la
+            // fenêtre pour un autoportrait. Sans elle, l'autoportrait prend
+            // la taille mémorisée, et une disposition qui ne tient qu'à une
+            // certaine largeur -- la barre de transport à 1 280 px -- ne se
+            // vérifie pas.
+            if (const char* taille = std::getenv("VSM_TAILLE"); taille != nullptr && *taille) {
+                const juce::String t(taille);
+                const int l = t.upToFirstOccurrenceOf("x", false, true).getIntValue();
+                const int h = t.fromFirstOccurrenceOf("x", false, true).getIntValue();
+                if (l > 200 && h > 100) centreWithSize(l, h);
+            }
             setVisible(true);
 
             // Seulement maintenant : la fenêtre socle a une position
