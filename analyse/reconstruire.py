@@ -1212,11 +1212,16 @@ def reconstruire_batterie(ctx: Contexte, nom: str, chemin: Path) -> Optional[Res
     # une seule piste. Ici, on ne devine rien — les pièces sont classées, on
     # sait exactement combien de parties la piste porte.
     part_batterie = ctx.parts.get(nom)
-    if (not args.batterie_par_piece and len(kit.slots) >= 2
+    # Le nombre de PISTES que ferait le découpage est celui des VOIX jouées,
+    # pas celui des gabarits : deux gabarits d'un même kick (le premier coup
+    # d'un morceau n'a pas de queue) tombent sur la même voix et restent
+    # ensemble. L'épreuve de parité annonçait « 4 » pour 3 pistes rendues.
+    voix_jouees = len({int(note.note) for note in piste.notes})
+    if (not args.batterie_par_piece and voix_jouees >= 2
             and part_batterie is not None and part_batterie >= 25.0):
         print(f"      {nom:8s} : cette batterie porte {part_batterie} % du morceau sur UNE "
-              f"piste et contient {len(kit.slots)} pièces distinctes — "
-              f"--batterie-par-piece en ferait {len(kit.slots)}")
+              f"piste et contient {len(kit.slots)} pièces distinctes sur {voix_jouees} voix — "
+              f"--batterie-par-piece en ferait {voix_jouees}")
     # OÙ SE TROUVE L'ÉNERGIE DE CHAQUE FAMILLE. Un nom de famille est une
     # étiquette -- elle vient d'un modèle appris, ou d'une liste de réserve
     # quand le modèle n'a rien dit -- et rien ne la confrontait à ce qu'on
