@@ -147,6 +147,27 @@ def match_track_levels(
     return rapports
 
 
+def recaler_avec_son_groupe(track: ExportTrack, tracks: Sequence[ExportTrack],
+                            stems_audio: Dict[str, np.ndarray], samples_root: Path,
+                            sample_rate: int, groupes: Dict[str, str] | None) -> List[str]:
+    """Recale une piste dont le patch vient de changer — et son GROUPE entier
+    quand elle partage son stem (§ 7 du CDC multipiste).
+
+    Le verdict et le réglage au mélange recalaient la piste SEULE : une voix
+    ou une pièce calée seule contre le stem entier reçoit le gain qu'il
+    faudrait pour le remplacer à elle seule — exactement le défaut que le
+    calage par groupe avait corrigé au § 7, et qui revenait par ces deux
+    portes (mesuré : batterie-v2, +28 % contre le témoin). Ici, le groupe se
+    recale ensemble, et une piste ordinaire seule contre son stem, comme
+    avant.
+    """
+    if groupes and track.name in groupes:
+        nom = groupes[track.name]
+        membres = [t for t in tracks if groupes.get(t.name) == nom]
+        return match_track_levels(membres, stems_audio, samples_root, sample_rate, groupes=groupes)
+    return match_track_levels([track], stems_audio, samples_root, sample_rate)
+
+
 def _caler_un_groupe(nom_groupe: str, pistes: List[ExportTrack],
                      stems_audio: Dict[str, np.ndarray], samples_root: Path,
                      sample_rate: int) -> List[str]:

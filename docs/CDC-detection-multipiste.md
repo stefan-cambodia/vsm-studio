@@ -409,6 +409,40 @@ pour la comparaison.
 | sky-parite | sky-t6 (0,23347) | `--parite` | la batterie de *Sky and Sand* porte 78 % du morceau et 5 pièces : c'est le découpage qui compte ici. J'attends 5 pièces (ou moins, si des pièces se rabattent sur une même voix), la voix découpée si le stem a de la largeur, `other` NON découpé (il faut qu'il passe le seuil du fourre-tout, et la course t6 ne le criait pas). Distance : neutre à +5 % — les pièces sont calées en groupe, et rien d'autre ne change de note |
 | usandthem-v15 | H22a-v2 (0,19104) | `--machines-au-melange 9` | ≈ témoin (hypothèse écrite le 02/09, ROADMAP-fusion § 5 quaterdecies) |
 
+**usandthem-batterie-v2 — MESURÉE (03/09/2026, 11:52) : 0,24481, +28,2 %
+contre le témoin, −5,1 % seulement contre la v1.** L'attendu (±3 %) est
+contredit : le calage par groupe a bien agi (les deux pièces calées ensemble
+à 0,82, comme le kit entier du témoin), mais il n'expliquait qu'un cinquième
+du surcoût. Le journal et le projet du témoin ont livré le reste :
+
+- **le témoin garde le patch d'USINE de la batterie.** Au tour 1 du verdict du
+  mélange, l'alternative « avant réglage » (le patch d'usine, contre celui
+  réglé sur la piste) a été retenue — le preset final de H22a est identique
+  aux défauts de `vsm.drums`, et son volume recalé à 0,51. Les pièces
+  éclatées n'avaient JAMAIS cette alternative : le § 4.4 ne l'avait pas
+  inscrite dans ses renoncements, parce que personne ne savait que le
+  verdict la retenait. Elles gardaient donc le patch réglé sur la piste, à
+  0,82 — le kit que le mélange refuse, plus fort d'un tiers ;
+- **le verdict et le réglage au mélange recalaient la piste SEULE.** Après
+  chaque essai de patch, `match_track_levels([piste])` — sans le registre
+  des groupes : une pièce ou une voix y recevait le gain qu'il faudrait
+  pour remplacer tout le stem. Le défaut du § 7 revenait par ces deux
+  portes, et la course usandthem-parite-v2 (partie à 11:52, code d'avant)
+  le porte dans ses chiffres.
+
+Corrigé le jour même : chaque pièce reçoit le patch d'avant réglage comme
+alternative (même patch pour toutes), et le recalage après un changement de
+patch suit le groupe — `recaler_avec_son_groupe`, 2 tests. Sur l'épreuve à
+vérité connue, les pièces reçoivent bien l'alternative (écartée : le patch
+réglé y vaut mieux) ; la distance passe de 0,1776 à 0,1828 (+2,9 %) — les
+décisions du verdict changent quand les voix sont recalées ensemble, et ce
+morceau de synthèse n'est pas le juge. Le juge, écrit d'avance :
+
+| Course | Témoin | Variable | Attendu, écrit d'avance |
+|---|---|---|---|
+| usandthem-batterie-v3 | H22a-v2 (0,19104) | `--batterie-par-piece`, code corrigé | le verdict retient le patch d'usine pour les pièces comme pour le kit, recalées ensemble : j'attends la distance dans ±5 % du témoin. Si elle reste au-dessus de +10 %, la cause restante est le rendu en instances séparées (les pièces ne se volent plus de voix) |
+| usandthem-parite-v3 | H22a-v2 (0,19104) | `--parite`, code corrigé | les voix recalées ensemble au verdict et au réglage : j'attends mieux que parite-v2 et ≈ H23 (+9 %), soit entre +5 et +11 % |
+
 ## 5. Critères d'acceptation
 
 ```

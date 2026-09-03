@@ -29,7 +29,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 from .vsm_engine import VsmEngine, VsmEngineError
-from .vsm_levels import match_track_levels
+from .vsm_levels import match_track_levels, recaler_avec_son_groupe
 from .vsm_mix_verdict import _copy_samples, _render_project
 from .vsm_track_refine import _probe_values
 
@@ -59,6 +59,7 @@ def refine_against_mix(
     metric: str = "v2",
     tempo: float = 120.0,
     binary: Optional[str] = None,
+    groupes: Optional[Dict[str, str]] = None,
 ) -> Optional[MixRefineOutcome]:
     """Affine les paramètres de `track_name` en jugeant le PROJET rendu.
 
@@ -103,7 +104,7 @@ def refine_against_mix(
         # Recalé sur la piste SEULE avant chaque mesure : deux patchs de
         # niveaux différents comparés au même volume compareraient des
         # niveaux. C'est la règle du verdict du mélange, reprise telle quelle.
-        match_track_levels([piste], stems_audio, samples_root, sample_rate)
+        recaler_avec_son_groupe(piste, tracks, stems_audio, samples_root, sample_rate, groupes)
         rendu = _render_project(tracks, dossier, sample_rate, tempo, binary)
         compteur["n"] += 1
         if rendu is None or rendu.size == 0:
@@ -143,7 +144,7 @@ def refine_against_mix(
     # L'état FINAL de la piste est le meilleur trouvé — y compris si c'est le
     # point de départ : la passe ne dégrade jamais ce qu'elle reçoit.
     piste.parameters = dict(courant)
-    match_track_levels([piste], stems_audio, samples_root, sample_rate)
+    recaler_avec_son_groupe(piste, tracks, stems_audio, samples_root, sample_rate, groupes)
     return MixRefineOutcome(track=track_name, start_distance=depart,
                             distance=meilleure, parameters=dict(courant),
                             evaluations=compteur["n"], improvements=ameliorations)

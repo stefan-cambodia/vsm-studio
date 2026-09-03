@@ -49,7 +49,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 import numpy as np
 
 from .vsm_engine import find_vsm_render
-from .vsm_levels import match_track_levels
+from .vsm_levels import match_track_levels, recaler_avec_son_groupe
 from .vsm_offline_render import read_render_wav
 from .vsm_project_export import ExportNote, ExportTrack, write_project_bundle
 
@@ -190,6 +190,7 @@ def keep_what_helps_the_mix(
     tempo: float = 120.0,
     binary: Optional[str] = None,
     profiles: Optional[Dict[str, str]] = None,
+    groupes: Optional[Dict[str, str]] = None,
 ) -> List[MixDecision]:
     """
     Tranche piste par piste entre l'état courant et ses concurrentes.
@@ -241,8 +242,12 @@ def keep_what_helps_the_mix(
 
         etat_courant = (track.machine, dict(track.parameters), float(track.volume),
                         str(track.profile), list(track.notes))
+        # Les VOLUMES de toutes les pistes, parce qu'un recalage de groupe
+        # touche les sœurs de la piste jugée : une variante écartée doit
+        # rendre leurs volumes aussi.
+        volumes_courants = {t.name: float(t.volume) for t in tracks}
         d_courant = distance_du_projet()
-        meilleur = ("réglage", d_courant, etat_courant, None)
+        meilleur = ("réglage", d_courant, etat_courant, None, volumes_courants)
         ecartees: List[Tuple[str, float]] = []
 
         for proposition in propositions:
@@ -275,7 +280,7 @@ def keep_what_helps_the_mix(
             # Le VOLUME est recalé pour chaque variante : deux patchs de
             # niveaux différents comparés au même volume ne compareraient pas
             # les patchs.
-            match_track_levels([track], stems_audio, samples_root, sample_rate)
+            recaler_avec_son_groupe(track, tracks, stems_audio, samples_root, sample_rate, groupes)
             distance = distance_du_projet()
 
             if distance < meilleur[1] - 1e-6:
@@ -283,12 +288,16 @@ def keep_what_helps_the_mix(
                 meilleur = (proposition.label, distance,
                             (track.machine, dict(track.parameters), float(track.volume),
                              str(track.profile), list(track.notes)),
-                            proposition.track_distance)
+                            proposition.track_distance,
+                            {t.name: float(t.volume) for t in tracks})
             else:
                 ecartees.append((proposition.label, distance))
 
         track.machine, track.parameters, track.volume, track.profile = (
             meilleur[2][0], dict(meilleur[2][1]), meilleur[2][2], meilleur[2][3])
+        for t in tracks:
+            if t.name in meilleur[4]:
+                t.volume = meilleur[4][t.name]
         track.notes = list(meilleur[2][4])
         if track.machine != etat_courant[0]:
             track.machine_display_name = ""

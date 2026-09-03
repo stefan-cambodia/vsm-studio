@@ -1643,6 +1643,15 @@ def reconstruire_les_stems(ctx: Contexte, pistes: Dict[str, Path]) -> Chantier:
                         # chaque pièce, et le groupe dit qu'elles se partagent.
                         chantier.audio_par_stem[sous_piste.name] = batterie.audio
                         chantier.pistes_groupees[sous_piste.name] = PISTE_BATTERIE
+                        # LE PATCH D'AVANT RÉGLAGE, pour chaque pièce. Sur le
+                        # témoin H22a, le verdict du mélange a PRÉFÉRÉ le patch
+                        # d'usine de la batterie à celui réglé sur la piste
+                        # (preset final = défauts) ; les pièces, qui n'avaient
+                        # pas cette alternative, gardaient le patch réglé :
+                        # +28 % mesurés (batterie-v2). Même patch pour toutes,
+                        # le kit reste un instrument réglé une fois.
+                        if batterie.patch_avant_reglage is not None:
+                            chantier.patchs_avant_reglage[sous_piste.name] = dict(batterie.patch_avant_reglage)
                     chantier.audio_par_stem[PISTE_BATTERIE] = batterie.audio
                     chantier.rapport_batterie = batterie.rapport
                 else:
@@ -1759,7 +1768,8 @@ def verdict_du_melange(ctx: Contexte, chantier: Chantier, pistes_export: List[Ex
             workdir=ctx.travail / "verdict",
             sample_rate=SAMPLE_RATE, metric=ctx.args.metrique,
             tempo=ctx.args.tempo, binary=ctx.args.moteur,
-            profiles=profils_de(ctx.moteur, melodic_machines(ctx.moteur)))
+            profiles=profils_de(ctx.moteur, melodic_machines(ctx.moteur)),
+            groupes=chantier.pistes_groupees)
 
     decisions, tours_joues, changees_par_tour = settle_verdict(
         pistes_export, une_passe, ctx.args.tours_verdict)
@@ -1793,7 +1803,7 @@ def verdict_du_melange(ctx: Contexte, chantier: Chantier, pistes_export: List[Ex
                 sample_rate=SAMPLE_RATE, engine=ctx.moteur,
                 budget=ctx.args.budget_melange,
                 metric=ctx.args.metrique, tempo=ctx.args.tempo,
-                binary=ctx.args.moteur)
+                binary=ctx.args.moteur, groupes=chantier.pistes_groupees)
             if resultat is None:
                 print(f"      {nom_piste:8s} : réglage au mélange non tenté "
                       f"(machine sans axe, ou rendu de départ muet)")
