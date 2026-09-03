@@ -312,6 +312,16 @@ rythme des vielles. Réglez la tonique des bourdons sur celle du morceau.
 
 ![Façade de Hurdy-Gurdy (la vielle à roue)](images/manuel/vsm.hurdygurdy.png)
 
+**Banjo (la corde sur la peau)** — `vsm.banjo`
+
+Une corde pincée dont la table est une **peau de tambour** : elle chante ses
+propres modes quelle que soit la note — tendez-la avec *Tension*, c'est la
+clé du cercle — et elle mange la corde, d'où la note brève et claquante du
+banjo. *Mix* dose ce que la peau prend à la corde ; à zéro, c'est une
+guitare sèche.
+
+![Façade de Banjo (la corde sur la peau)](images/manuel/vsm.banjo.png)
+
 **Music Box (la lame qui doit revenir)** — `vsm.musicbox`
 
 **Si une note ne sonne pas, ce n'est pas un bogue.** Chaque note est une lame

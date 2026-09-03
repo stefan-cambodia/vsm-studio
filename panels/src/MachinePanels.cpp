@@ -3832,6 +3832,59 @@ MachinePanel makeHurdyGurdy() {
     return panel;
 }
 
+/// `vsm.banjo` -- la corde sur la peau. HEAD en premier et en grand : c'est
+/// la peau qui fait le banjo -- sa tension (la clé du cercle), son
+/// amortissement, sa part dans le son. STRING et PICK reprennent la corde
+/// de `vsm.string`.
+///
+/// Livrée peau claire et métal du cercle.
+MachinePanel makeBanjo() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.banjo";
+    panel.displayName = "Banjo (la corde sur la peau)";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#3A2B1F";
+    panel.sectionColour = "#2B2017";
+    panel.textColour = "#F4EBDC";
+    panel.knobColour = "#E8DCC4";
+    panel.gridColumns = 12;
+    panel.gridRows = 4;
+
+    PanelSection peau;
+    peau.title = "HEAD";
+    peau.accentColour = "#E8DCC4";
+    peau.column = 0; peau.row = 0; peau.columnSpan = 5; peau.rowSpan = 4;
+    peau.controls = {
+        control("Head Tension", "TENSION", S::LargeKnob, 0, 0),
+        control("Head Mix", "MIX", S::LargeKnob, 1, 0),
+        control("Head Damping", "DAMPING", S::Knob, 0, 1),
+    };
+
+    PanelSection onglet;
+    onglet.title = "PICK";
+    onglet.accentColour = "#C9A96E";
+    onglet.column = 5; onglet.row = 0; onglet.columnSpan = 3; onglet.rowSpan = 4;
+    onglet.controls = {
+        control("Pick Position", "POSITION", S::Knob, 0, 0),
+        control("Pick Hardness", "HARDNESS", S::Knob, 0, 1),
+        control("Velocity Sensitivity", "VEL", S::Knob, 1, 1),
+    };
+
+    PanelSection corde;
+    corde.title = "STRING";
+    corde.accentColour = "#B9C98A";
+    corde.column = 8; corde.row = 0; corde.columnSpan = 4; corde.rowSpan = 4;
+    corde.controls = {
+        control("String Decay", "DECAY", S::Knob, 0, 0),
+        control("String Damping", "DAMPING", S::Knob, 1, 0),
+        control("Filter Cutoff", "CUTOFF", S::Knob, 0, 1),
+        control("Output Level", "VOLUME", S::Knob, 1, 1),
+    };
+
+    panel.sections = {peau, onglet, corde};
+    return panel;
+}
+
 /// `vsm.glass` -- le verre frotté. PRESSURE est en grand et seul dans sa
 /// section, parce qu'il ne fait pas ce qu'un potentiomètre de pression fait
 /// ailleurs : il décide du TEMPS QUE LE SON MET À NAÎTRE. Pressé doucement, le
@@ -4157,7 +4210,7 @@ const std::vector<MachinePanel>& panels() {
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
         makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev(),
         makeScanned(), makeMellotron(), makeSitar(), makeMembrane(), makeReed(),
-        makePlate(), makeClavichord(), makeHarpsichord(), makeHurdyGurdy(), makeGlass(), makeJewsHarp(),
+        makePlate(), makeClavichord(), makeHarpsichord(), makeHurdyGurdy(), makeBanjo(), makeGlass(), makeJewsHarp(),
         makeTheremin(), makeMusicBox(), makeTerrain(), makeSpectral()
     };
     return all;

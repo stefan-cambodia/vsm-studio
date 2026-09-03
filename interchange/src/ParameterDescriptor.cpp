@@ -511,6 +511,22 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Filter Cutoff", "filter.1.cutoff"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.banjo ---
+    // La corde est celle de `vsm.string` et en garde tout le vocabulaire ;
+    // la PEAU n'a d'équivalent nulle part : sa tension (la clé du cercle),
+    // son amortissement, sa part dans le son.
+    {"vsm.banjo", {
+        {"Head Tension", "banjo.headTension"},
+        {"Head Damping", "banjo.headDamping"},
+        {"Head Mix", "banjo.headMix"},
+        {"Pick Position", "string.pickPosition"},
+        {"Pick Hardness", "string.pickHardness"},
+        {"String Decay", "string.decay"},
+        {"String Damping", "string.damping"},
+        {"Velocity Sensitivity", "voice.velocitySensitivity"},
+        {"Filter Cutoff", "filter.1.cutoff"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.glass ---
     // La PRESSION DU DOIGT ne réemploie pas `wind.breathPressure` malgré la
     // ressemblance des mots : un souffle entretient une colonne d'air, un

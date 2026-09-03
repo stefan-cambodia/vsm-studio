@@ -349,6 +349,7 @@ Deux critères, à ne pas confondre :
 | **Cordes SYMPATHIQUES** | `vsm.sitar` (onze cordes jamais pincées, chevalet plat) | **fait le 02/09** — comble un trou que trois documents constataient |
 | **Clavier PINCÉ, sans vélocité, à REGISTRES** | `vsm.harpsichord` (sautereau, 8'/4', jeu de luth, frôlement au relâchement) | **fait le 03/09** — § 22 ; la seule machine qui refuse la vélocité au bit près et qui sonne AU relâchement |
 | **Archet SANS FIN, bourdons sans clavier, chevalet qui claque** | `vsm.hurdygurdy` (roue, inertie, bourdons, chien) | **fait le 03/09** — § 23 ; la vélocité n'y fait pas la force mais le rythme |
+| **Corde dont la table est une PEAU** | `vsm.banjo` (corde de `vsm.string` sur une banque de modes de Bessel) | **fait le 03/09** — § 24 ; la peau chante ses modes quelle que soit la note, et mange la corde |
 | Waveshaping (spectre commandé) | `vsm.chebyshev` | **fait** |
 | **Synthèse balayée** | `vsm.scanned` (chaîne de masses, timbre en temps réel) | **fait le 02/09** |
 | **Lecture de BANDE** | `vsm.mellotron` (la bande finit, une par touche) | **fait le 02/09** — un COMPORTEMENT, pas un timbre |
@@ -1528,6 +1529,41 @@ Douze tests, empreinte, façade WHEEL · DRONES · CHIEN (rendue et regardée) ;
 identités neuves pour ce qui n'existe nulle part ailleurs (bourdons, tonique,
 inertie, chien), celles de l'archet de `vsm.string` pour la roue. Le parc
 passe à **55 machines**.
+
+## 24. H28 — le BANJO : la corde dont la table est une PEAU (écrite avant sa mesure, 03/09/2026)
+
+**Ce que le parc n'avait pas.** Toutes ses cordes rayonnent par une table
+que personne ne modélise : le chevalet y est une simple perte. Le banjo
+tend ses cordes sur une peau de tambour, et c'est la peau qui rayonne. Deux
+traits en découlent qu'aucune corde du parc n'a : la peau chante SES modes
+— ceux d'une membrane circulaire, les zéros de Bessel de `vsm.membrane` —
+à des fréquences qui ne dépendent pas de la note ; et la peau MANGE la
+corde, prend son énergie pour la rayonner, si bien que la note est brève et
+claquante là où une guitare tiendrait.
+
+*Ce que j'attends, écrit avant la mesure (dans le banc)* : (1) pour deux
+notes éloignées (la2 et la4), la PART du mode fondamental de la peau
+(tendue à 300 Hz) dans le son est au moins doublée par rapport au même
+banjo sans peau ; (2) avec la peau, la tenue à une seconde (relative à
+l'attaque) tombe sous 60 % de celle sans peau ; (3) la vélocité compte
+(c'est un onglet, pas un sautereau) ; molette honorée, comme `vsm.string`.
+
+### H28 EST TRANCHÉE : SUCCÈS (03/09/2026)
+
+| Trait | Attendu | Mesuré |
+|---|---|---|
+| part du mode de peau à 300 Hz, la2 | ≥ ×2 | **×2,1** (0,0027 → 0,0056) |
+| part du mode de peau à 300 Hz, la4 | ≥ ×2 | **×2,6** |
+| tenue à 1 s, relative à l'attaque | ≤ 60 % de sans peau | **≈ 0** contre 0,0020 : la peau a tout pris |
+| vélocité 30 contre 120 | ≥ ×1,5 | tenu |
+
+La peau est une banque de six résonateurs à deux pôles aux six premiers
+modes de Bessel, alimentée par le chevalet — et non frappée, ce qui est
+toute la différence avec `vsm.membrane` ; le couplage est à sens unique
+(la peau ne renvoie rien à la corde, sinon une perte). Douze tests,
+empreinte, façade HEAD · PICK · STRING (rendue et regardée) ; identités
+neuves pour la peau seule (tension, amortissement, part), celles de
+`vsm.string` pour la corde. Le parc passe à **56 machines**.
 
 ## 12. H10 — la guitare ÉLECTRIQUE est-elle vraiment couverte ? (écrite avant sa mesure, 02/09/2026)
 

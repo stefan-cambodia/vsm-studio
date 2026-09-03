@@ -47,6 +47,7 @@
 #include "clavichord/ClavichordSynth.h"
 #include "harpsichord/HarpsichordSynth.h"
 #include "hurdygurdy/HurdyGurdySynth.h"
+#include "banjo/BanjoSynth.h"
 #include "glass/GlassSynth.h"
 #include "jewsharp/JewsHarpSynth.h"
 #include "theremin/ThereminSynth.h"
@@ -200,6 +201,7 @@ void registerBuiltInPlugins() {
         vsm::plugins::clavichord::ClavichordSynth forceLinkClavichord;
         vsm::plugins::harpsichord::HarpsichordSynth forceLinkHarpsichord;
         vsm::plugins::hurdygurdy::HurdyGurdySynth forceLinkHurdyGurdy;
+        vsm::plugins::banjo::BanjoSynth forceLinkBanjo;
         vsm::plugins::glass::GlassSynth forceLinkGlass;
         vsm::plugins::jewsharp::JewsHarpSynth forceLinkJewsHarp;
         vsm::plugins::theremin::ThereminSynth forceLinkTheremin;

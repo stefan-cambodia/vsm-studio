@@ -217,6 +217,11 @@ constexpr Rule kRules[] = {
     {"hurdygurdy.wheelInertia",           0.05f,     2.0f, SearchScale::Linear,      0.35f},
     {"hurdygurdy.chien",                   0.0f,     1.0f, SearchScale::Linear,      0.30f},
     {"hurdygurdy.chienBuzz",              30.0f,   120.0f, SearchScale::Linear,      0.20f},
+    // BANJO (vsm.banjo). La peau fait le son : sa part d'abord, sa tension
+    // (où chantent ses modes) ensuite, son amortissement enfin.
+    {"banjo.headMix",                      0.0f,     1.0f, SearchScale::Linear,      0.94f},
+    {"banjo.headTension",                150.0f,   600.0f, SearchScale::Logarithmic, 0.90f},
+    {"banjo.headDamping",                  0.0f,     1.0f, SearchScale::Linear,      0.60f},
     // VERRE FROTTÉ (vsm.glass). La PRESSION DU DOIGT commande, et d'une façon
     // qui n'a pas d'équivalent : elle ne change pas le timbre, elle change le
     // TEMPS QUE LE SON MET À NAÎTRE — d'un rapport de trente et un à un sur la

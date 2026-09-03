@@ -4012,6 +4012,15 @@ empreinte, façade ; CDC machines-manquantes § 23.
 
 Le parc passe à **55 machines**.
 
+**ET UNE QUINZIÈME : `vsm.banjo`, la corde dont la table est une PEAU.** La
+corde de `vsm.string` livre son chevalet à une banque de six résonateurs
+aux modes de Bessel d'une membrane : la peau chante ses modes quelle que
+soit la note (part du mode à 300 Hz ×2,1 sur la2, ×2,6 sur la4) et mange
+la corde (tenue à 1 s ≈ 0 contre 0,0020 sans peau). Douze tests, empreinte,
+façade ; CDC machines-manquantes § 24.
+
+Le parc passe à **56 machines**.
+
 ---
 
 ## 47. Ouvrir un projet fait ailleurs : `Inflate`, `Xml`, `DawImport`
