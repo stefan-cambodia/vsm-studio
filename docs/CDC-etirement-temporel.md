@@ -1,0 +1,173 @@
+# L'étirement temporel (phase D12) — cahier des charges
+
+Un clip audio de VSM Studio est du **temps réel** posé sur une ligne de temps
+**musicale** : sa position est en ticks, son contenu en secondes
+(`Clip::sourceStartSeconds`, et le commentaire qui l'accompagne dit pourquoi).
+Changer le tempo du projet déplace le clip et ne change rien à ce qu'il joue.
+Cubase (*élastique*) et Live (*warp*) font autre chose : le contenu SUIT le
+tempo, en gardant sa hauteur, et l'on peut caler une prise sur la grille
+marqueur par marqueur. C'est ce que D12 écrit — dans le dépôt, sans
+bibliothèque, comme le choix n° 3 du § 4 de `ROADMAP-daw.md` l'a fixé.
+
+Écrit le 04/09/2026, le jour où sa condition se réalise : les campagnes de la
+parité sont closes (CDC multipiste § 8 et § 9) et les machines de la branche
+sont fusionnées par la campagne 5. Il se lit avec `ROADMAP-daw.md` (D2, D5,
+D8.2, D11.8) et se mesure comme tout le reste : un chiffre par promesse,
+écrit avant la mesure.
+
+## 0. La règle qui prime : un clip non étiré ne change pas d'un bit
+
+Tout ce que D2 et D8.2 ont mesuré reste vrai après D12 : un clip dont le
+suivi de tempo est ÉTEINT passe par le même chemin qu'aujourd'hui, échantillon
+pour échantillon (le test de D2.6, « hors ligne = temps réel à
+1,2 × 10⁻⁷ », et celui de D8.2, « la mémoire ne dépend pas de la durée »,
+restent dans la suite et doivent rester verts). Un clip étiré au rapport 1,0
+rend AUSSI l'original au bit près : l'algorithme a un court-circuit, et un
+test le prouve. Sans cette règle, D12 ferait mentir neuf phases.
+
+## 1. Ce qu'on entend par « suivre le tempo »
+
+Trois modes par clip, parce que les DAW de référence en ont trois et qu'ils
+ne se remplacent pas :
+
+| Mode | Ce qu'il fait | Coût | Quand |
+|---|---|---|---|
+| **Éteint** (défaut, l'état actuel) | temps réel ; `sourceStartSeconds` | aucun | une prise qu'on ne touche pas, la voix reportée par la reconstruction |
+| **Hauteur conservée** (Live « Beats/Complex », Cubase « élastique ») | la durée suit le tempo, la hauteur ne bouge pas | l'algorithme du § 3 | caler une prise, changer le tempo d'un morceau reconstruit |
+| **Rééchantillonné** (Live « Re-Pitch ») | la durée suit le tempo ET la hauteur suit avec (un vinyle qu'on ralentit) | un noyau de rééchantillonnage | boucles rythmiques, effet voulu |
+
+Le mode est un champ du clip (`Clip::warpMode`), sauvegardé, annulable. Le
+**défaut est Éteint** : un projet existant s'ouvre identique, et la chaîne
+d'analyse continue d'écrire des reports d'audio en temps réel — la
+reconstruction n'a pas besoin de D12, c'est un besoin de production (D11.8).
+
+## 2. Les marqueurs : la carte entre le fichier et la grille
+
+Suivre le tempo suppose de savoir OÙ, dans le fichier, tombent les temps.
+Un clip étiré porte des **marqueurs** (`Clip::warpMarkers`), chacun une
+paire *(position dans le fichier, en secondes ; position musicale, en ticks
+depuis le début du matériau du clip)*. Entre deux marqueurs la relation est
+linéaire (un rapport d'étirement constant) ; avant le premier et après le
+dernier, le rapport du segment voisin se prolonge. Deux marqueurs au moins
+existent dès qu'on allume le mode : le début du clip et sa fin, posés par la
+règle « le clip fait N mesures » (§ 6) — et c'est TOUT ce qu'il faut pour
+qu'une boucle de quatre mesures à 118 BPM joue à 120.
+
+Ce que les marqueurs ne sont pas : une détection de tempo. Un suiveur de
+temps (*beat tracker*) est un autre chantier, avec son propre banc ; D12 pose
+les marqueurs à la main et par la règle des N mesures, et le dit (§ 8).
+
+## 3. L'algorithme, et pourquoi celui-là
+
+**Décision : un WSOLA avec verrouillage des transitoires** (*Waveform
+Similarity Overlap-Add*), écrit dans `audio/include/vsm/audio/dsp/TimeStretch.h`.
+Pas un vocodeur de phase, et voici la pesée :
+
+- ce qu'on étire d'abord dans ce dépôt est **rythmique ou chanté** (des
+  stems séparés, des prises) : un WSOLA garde les attaques nettes là où un
+  vocodeur de phase les étale (*smearing*) sauf à lui ajouter un verrouillage
+  de phase par transitoire — c'est-à-dire la même détection qu'ici, plus une
+  FFT ;
+- il travaille **dans le domaine temporel, grain par grain** : il lit le
+  fichier autour de la position courante (± une fenêtre), ce qui convient à
+  la diffusion depuis le disque de D8.2 (`SampleStore::frameAt` et
+  `requestRange`), sans tampon de plusieurs secondes ;
+- il coûte peu : une recherche de similarité de ± 256 trames sur des grains
+  de 1 024, soit de l'ordre de cent millions de multiplications par seconde
+  et par clip stéréo — vingt clips tiennent sur cette machine ;
+- il est **déterministe et sans allocation** dans `process()` : l'état
+  (fenêtres, position, dernier grain) est alloué à la publication de la piste,
+  sur le thread de l'interface, comme les `AudioClipSpan`.
+
+Ce qu'il fait moins bien, et qui est dit : sur un son TENU et très
+harmonique (une nappe, un accord d'orgue) étiré loin (au-delà de ×1,5), un
+WSOLA laisse entendre un léger flottement là où un vocodeur de phase reste
+lisse. **Le vocodeur de phase n'est pas écrit dans D12** ; il le sera si une
+mesure sur un stem réel montre que le WSOLA y perd (§ 5, critère 4), et
+`RealIfft` existe déjà pour lui. Le mode *Rééchantillonné* est un **noyau
+fenêtré (sinc de Kaiser, 32 points)** qui remplace aussi l'interpolation
+linéaire de D2.3 — ce que D2 avait annoncé (« il sera écrit avec
+l'étirement temporel plutôt qu'emprunté »).
+
+## 4. Où cela vit, et ce qui ne bouge pas
+
+- **Modèle** (`core/`) : `Clip::warpMode` et `Clip::warpMarkers` ; les gestes
+  de `ClipEdit` (déplacer, couper, rogner, boucler) transportent les
+  marqueurs — couper un clip à la mesure 3 laisse chaque moitié avec les
+  marqueurs qui la concernent et un marqueur neuf au point de coupe. Tests.
+- **Format** (`interchange/`) : les deux champs dans `project.json`, écrits
+  seulement quand le mode n'est pas Éteint ; la version de format ne monte
+  que si un projet s'en sert (choix n° 4 du § 4, la règle de D2) ; un projet
+  ancien se charge sans changement.
+- **Moteur** (`audio/`) : `AudioClipSpan` gagne une carte *ligne de temps →
+  fichier* par morceaux (en trames, calculée à la publication par
+  `ticksToSeconds`, jamais dans `process()`), et `mixInto()` lit à travers
+  l'étireur quand le mode l'exige. `ProcessGraph` ne bouge pas — la couture
+  annoncée à D2 et tenue à D8.2 tient une troisième fois, ou le document le
+  dit.
+- **Rendu hors ligne** : `vsm-render` passe par le même `mixInto()` ; le test
+  de D2.6 s'étend au clip étiré (critère 3 du § 5).
+- **Interface** (`app/Source/ui/`) : dans l'arrangement (D5), le clip audio
+  a un menu « Suivre le tempo » (Éteint · Hauteur conservée ·
+  Rééchantillonné), « Le clip fait N mesures », et ses marqueurs se voient
+  sur la forme d'onde, se déplacent, s'ajoutent (double-clic) et se
+  suppriment ; la forme d'onde est dessinée dans le temps ÉTIRÉ (un clip qui
+  suit le tempo montre ses temps sur la grille). Tout est annulable, et la
+  vue se vérifie à l'écran (`VSM_CAPTURE`).
+
+## 5. Le banc, écrit avant la première mesure
+
+| # | Promesse | Mesure | Seuil |
+|---|---|---|---|
+| 1 | la hauteur ne bouge pas | un la3 tenu (220 Hz, 3 s) étiré ×0,75 et ×1,5 ; fréquence du pic de la sortie | ≤ 5 cents d'écart |
+| 2 | la durée est exacte | longueur de la sortie pour une entrée de N trames au rapport r | = round(N·r) trames, à zéro près |
+| 3 | rapport 1,0 = l'original | sortie contre entrée | identiques au bit près (court-circuit) ; et hors ligne = temps réel sur un clip étiré, comme D2.6 |
+| 4 | les transitoires ne se doublent ni ne se perdent | un train de 16 clics espacés de 250 ms étiré ×1,5 et ×0,66 ; comptage des attaques de la sortie | 16 attaques, chacune à ≤ 1 ms de sa position théorique |
+| 5 | un son tenu ne flotte pas trop | la3 tenu étiré ×1,5 ; profondeur de la modulation d'enveloppe sur 100 ms | ≤ 10 % (et le chiffre est publié, c'est lui qui décidera du vocodeur de phase) |
+| 6 | déterminisme | deux rendus | identiques au bit près |
+| 7 | pas d'allocation, pas d'entrée-sortie dans `process()` | le compteur d'allocations du banc de D8.2 | zéro |
+| 8 | le noyau fenêtré vaut mieux que l'interpolation linéaire | 44,1 → 48 kHz sur un balayage 20 Hz–20 kHz ; erreur rms contre la référence | sous 10⁻⁴ jusqu'à 20 kHz (D2.3 mesurait 10⁻³ sous 10 kHz) |
+| 9 | la mémoire ne dépend toujours pas de la durée | le test de D8.2 sur un clip étiré | égalité, comme avant |
+
+**Critère de phase, et c'est le plus important** : la reconstruction de *Sky
+and Sand* (D2 : « se joue entière, voix comprise ») s'ouvre, on change le
+tempo du projet de +10 %, et **la voix reste en place** — les attaques de la
+piste audio étirée tombent à ≤ 10 ms des attaques du MIDI reconstruit sur
+les huit premières mesures (mesuré par le banc, pas à l'oreille). Sans D12,
+la voix dérive d'une mesure entière au bout d'une minute.
+
+## 6. « Le clip fait N mesures », et pourquoi c'est la première commande
+
+Un musicien qui pose une boucle sait combien de mesures elle fait ; il ne
+sait pas son tempo au centième. La commande prend N, pose les deux marqueurs
+extrêmes, et en déduit le tempo d'origine (qu'elle affiche, pour qu'on le
+vérifie). C'est ce que Live fait à l'import d'une boucle, et c'est ce qui rend
+D12 utilisable avant tout suiveur de temps.
+
+## 7. Ordre de marche
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D12.1 | le noyau de rééchantillonnage fenêtré (sinc de Kaiser), qui remplace l'interpolation linéaire de D2.3 et fait le mode *Rééchantillonné* | banc 8 ; les empreintes qui passent par le rééchantillonnage sont régénérées EN LE DISANT |
+| D12.2 | `TimeStretch` : le WSOLA, la recherche de similarité, le court-circuit à 1,0 | bancs 1, 2, 3 (première moitié), 5, 6, 7 |
+| D12.3 | la détection de transitoires (flux d'énergie sur le matériau, à la publication, mise en cache par fichier comme les crêtes de forme d'onde) et le verrouillage | banc 4 |
+| D12.4 | le modèle : `warpMode`, `warpMarkers`, les gestes de `ClipEdit`, le format | tests `core/` et `interchange/` ; un projet v2 s'ouvre inchangé |
+| D12.5 | le moteur : la carte par morceaux dans `AudioClipSpan`, `mixInto()` à travers l'étireur, `vsm-render` | banc 3 (seconde moitié), 9 ; `ProcessGraph` intact |
+| D12.6 | l'interface : le menu du clip, « N mesures », les marqueurs sur la forme d'onde, la forme dessinée en temps étiré, annulation | vu à l'écran, `VSM_CAPTURE`, réglages retenus |
+| D12.7 | le critère de phase sur *Sky and Sand* | ≤ 10 ms sur huit mesures à +10 % de tempo |
+
+Le vocodeur de phase, s'il vient, sera D12.8 avec son propre attendu, écrit
+sur le chiffre du banc 5.
+
+## 8. Ce qui n'est pas au programme, et pourquoi
+
+- **Le suiveur de temps** (détection automatique des temps d'une prise) :
+  un chantier de mesure à part entière (un banc de morceaux annotés) ; D12
+  pose les marqueurs à la main et par N mesures, et le dit.
+- **La transposition sans changer la durée** (*pitch shift*) : c'est un
+  WSOLA au rapport r suivi d'un rééchantillonnage à 1/r, donc D12.1 + D12.2 —
+  elle viendra comme réglage du clip quand une main la demandera, et sans
+  nouvel algorithme.
+- **L'étirement des clips MIDI** : ils suivent déjà le tempo, par nature.
+- **Une bibliothèque** (Rubber Band, SoundTouch, élastique) : refusée par
+  la règle n° 2 du § 0 de `ROADMAP-daw.md`, et par le choix n° 3 de son § 4.
