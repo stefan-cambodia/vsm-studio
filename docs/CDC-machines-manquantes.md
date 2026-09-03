@@ -1879,6 +1879,80 @@ plectre. Treize tests, empreinte, façade COURSE · TREMOLO · PICK · STRING
 le retard du plectre et le trémolo ; celles de `vsm.string` pour le reste.
 Le parc passe à **61 machines**.
 
+## 30. H34 — le KALIMBA : la lame encastrée d'un seul côté, le buzz du contact, la caisse qu'on bouche (écrite avant sa mesure, 04/09/2026)
+
+**Ce que le parc n'avait pas.** Ses résonateurs sont des cordes (série
+harmonique), des barres LIBRES aux deux bouts (`vsm.vibraphone`, 1 : 2,76 :
+5,40 avant creusement), des membranes (Bessel), des plaques, des tubes. Le
+kalimba — mbira, sanza, likembe, et le « thumb piano » de tant de morceaux
+récents — est un LAMELLOPHONE : une lame de métal ENCASTRÉE d'un seul
+côté sous une barre de pression, libre de l'autre, que le pouce déplace
+puis lâche. Une poutre encastrée-libre a ses propres rapports, qu'aucune
+géométrie du parc ne donne : **1 : 6,27 : 17,55** ((βL)² = 3,516, 22,03,
+61,70 — Rayleigh), et rien à 2·f0 ni 3·f0 — un son presque pur avec une
+« pointe » très haute. Trois traits :
+
+1. **LES PARTIELS D'UNE POUTRE ENCASTRÉE** : 6,27·f0, pas 2·f0.
+2. **LE BUZZ DU CONTACT** : plus la lame vibre fort, plus elle vient
+   toucher la barre ou le chevalet à chaque cycle ; un pouce ferme fait
+   crépiter la note, un pouce doux non — et le crépitement S'ÉTEINT de
+   lui-même, parce que chaque contact mange de l'amplitude et que la lame
+   retombe sous l'écart. Le sitar a son jawari (§ 10) : ici le seuil est
+   sur une lame, et le contact amortit.
+3. **LA CAISSE QU'ON BOUCHE** : le kalimba a des trous au dos que les
+   doigts couvrent et découvrent — c'est LE geste de l'instrument, un
+   « wah » de résonance de Helmholtz qui descend quand on bouche. La
+   molette de modulation et l'aftertouch bouchent les trous.
+
+*Ce que j'attends, écrit avant la mesure (dans le banc, avant de le
+lancer)* : (1) sur la3 (220 Hz), caisse coupée, pic près de 1 379 Hz
+(6,27·f0) au moins CINQ fois ceux près de 440 et de 660 Hz ; (2) *Buzz*
+0,6 : l'énergie 2–6 kHz rapportée au fondamental, dans les 60 premières
+ms, au moins ×4 à la vélocité 127 par rapport à 40, et sous ×2 à *Buzz* 0 ;
+à 127, ce rapport tombe sous un cinquième entre 400 et 460 ms (le buzz
+s'éteint seul) ; (3) caisse à 233 Hz, niveau 1 : sur si♭3 (233 Hz), boucher
+les trous (*Hole Cover* 1, résonance à 0,6·f) fait baisser le fondamental
+d'au moins 20 % sur 200 ms, et sur do♯3 (138,6 Hz) le fait MONTER d'au
+moins 20 % ; la molette (CC 1 à 1) fait la même chose que *Hole Cover* 1
+(fondamental de si♭3 en baisse d'au moins 20 %) ; (4) do5 s'éteint plus
+vite que do4 (une lame courte meurt plus vite) ; (5) lâcher la touche ne
+change rien (pas d'étouffoir : 200 ms après, au moins la moitié du niveau)
+— **cette forme-là est RÉFUTÉE par l'arithmétique avant même le modèle**
+(0,164 → 0,077 : une note à 2,5 s de T60 perd ×0,47 en 300 ms toute
+seule ; je comparais deux instants d'une décroissance), RÉÉCRITE avant la
+seconde mesure sous la forme exacte du trait : la note relâchée à 250 ms
+et la note tenue sont IDENTIQUES AU BIT PRÈS, et elle sonne encore à
+450 ms. Pour (1), la fenêtre n'était pas dite : ce sont les 100 premières
+ms, parce que le second mode meurt en 0,3 s.
+
+### H34 EST TRANCHÉE : SUCCÈS, un attendu RÉÉCRIT avant la mesure qui le tranche (04/09/2026)
+
+| Trait | Attendu | Mesuré |
+|---|---|---|
+| la3, 100 premières ms : 6,27·f0 (1 379 Hz) contre 2·f0 et 3·f0 | ≥ ×5 | **0,00573 contre 0,00001 et 0,00000** (fondamental 0,169) |
+| buzz 0,6 : 2–6 kHz / fondamental, 60 ms, vélocité 127 contre 40 | ≥ ×4 | **0,0261 contre 0,0026** (×10) |
+| buzz 0 : même rapport, 127 contre 40 | < ×2 | **0,0004 contre 0,0004** |
+| buzz 0,6, vélocité 127, entre 400 et 460 ms | < 1/5 des 60 premières ms | **0,0000** |
+| caisse à 233 Hz bouchée : si♭3 | baisse ≥ 20 % | **0,316 → 0,078** (−75 %) |
+| caisse bouchée : do♯3 (138,6 Hz) | hausse ≥ 20 % | **0,101 → 0,327** (×3,2) |
+| molette CC 1 à 1, et pression de canal à 1 : si♭3 | baisse ≥ 20 % | **0,244 → 0,060** pour les deux |
+| do5 contre do4, niveau à 1 s | do5 plus bas | **0,024 contre 0,072** |
+| note relâchée à 250 ms contre note tenue | identiques au bit près, et elle sonne à 450 ms | **oui** ; rms 0,077 |
+| vélocité 30 contre 120 | ≥ ×1,5 | tenu |
+
+**Ce que la réécriture enseigne.** Un attendu sur le niveau « après » doit
+se rapporter au niveau qu'aurait eu la note SANS le geste, pas au niveau
+d'avant : une note qui décroît perd la moitié en 300 ms à 2,5 s de T60, et
+un seuil de « la moitié » ne mesurait que sa propre décroissance. Le trait
+« lâcher ne change rien » se mesure comme identité de deux rendus — c'est
+la forme qu'avaient déjà le clavecin (H26) et le carillon. Quatorze tests,
+empreinte, façade TINES · CONTACT · BODY (rendue et regardée) ; identités
+neuves pour le buzz et les trous ; celles de `vsm.modal` pour le temps, de
+`vsm.string` pour le pouce et la caisse. Le parc passe à **62 machines**.
+Pas de molette de hauteur (une lame frappée n'en a pas), refusée en
+connaissance de cause ; CC 1 et pression de canal honorés — ce sont les
+doigts sur les trous.
+
 ## 12. H10 — la guitare ÉLECTRIQUE est-elle vraiment couverte ? (écrite avant sa mesure, 02/09/2026)
 
 **Le fait qui la motive est une contradiction interne à ce dépôt.** Le tableau

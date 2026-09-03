@@ -3943,6 +3943,55 @@ MachinePanel makeMandolin() {
     return panel;
 }
 
+/// `vsm.kalimba` -- la lame et la caisse. TINES en premier : le temps, la
+/// pente, le pouce ; CONTACT pour le buzz, seul et en grand ; BODY pour la
+/// caisse et ses trous. Bois de caisse rougeâtre, lames claires.
+MachinePanel makeKalimba() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.kalimba";
+    panel.displayName = "Kalimba (la lame encastrée et la caisse qu’on bouche)";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#6B3A22";
+    panel.sectionColour = "#3E2114";
+    panel.textColour = "#F6EAD8";
+    panel.knobColour = "#D9D3C4";
+    panel.gridColumns = 12;
+    panel.gridRows = 4;
+
+    PanelSection lames;
+    lames.title = "TINES";
+    lames.accentColour = "#D9D3C4";
+    lames.column = 0; lames.row = 0; lames.columnSpan = 4; lames.rowSpan = 4;
+    lames.controls = {
+        control("Tine Decay", "DECAY", S::LargeKnob, 0, 0),
+        control("Decay Tilt", "TILT", S::Knob, 1, 0),
+        control("Thumb Hardness", "THUMB", S::Knob, 0, 1),
+        control("Velocity Sensitivity", "VEL", S::Knob, 1, 1),
+    };
+
+    PanelSection contact;
+    contact.title = "CONTACT";
+    contact.accentColour = "#E0A050";
+    contact.column = 4; contact.row = 0; contact.columnSpan = 3; contact.rowSpan = 4;
+    contact.controls = {
+        control("Buzz", "BUZZ", S::LargeKnob, 0, 0),
+    };
+
+    PanelSection caisse;
+    caisse.title = "BODY";
+    caisse.accentColour = "#B9C98A";
+    caisse.column = 7; caisse.row = 0; caisse.columnSpan = 5; caisse.rowSpan = 4;
+    caisse.controls = {
+        control("Body Resonance", "RESONANCE", S::LargeKnob, 0, 0),
+        control("Hole Cover", "HOLES", S::LargeKnob, 1, 0),
+        control("Body Level", "LEVEL", S::Knob, 0, 1),
+        control("Output Level", "VOLUME", S::Knob, 1, 1),
+    };
+
+    panel.sections = {lames, contact, caisse};
+    return panel;
+}
+
 /// `vsm.vibraphone` -- la barre, le tube et le moteur. Trois sections dans
 /// l'ordre où l'instrument se lit : BARS (creusement, temps, maillet),
 /// RESONATORS (la part du tube, et le MOTEUR en grand : c'est le réglage
@@ -4477,7 +4526,7 @@ const std::vector<MachinePanel>& panels() {
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
         makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev(),
         makeScanned(), makeMellotron(), makeSitar(), makeMembrane(), makeReed(),
-        makePlate(), makeClavichord(), makeHarpsichord(), makeHurdyGurdy(), makeBanjo(), makeMandolin(), makeVibraphone(), makeBagpipe(), makeCarillon(), makeClavinet(), makeGlass(), makeJewsHarp(),
+        makePlate(), makeClavichord(), makeHarpsichord(), makeHurdyGurdy(), makeBanjo(), makeMandolin(), makeKalimba(), makeVibraphone(), makeBagpipe(), makeCarillon(), makeClavinet(), makeGlass(), makeJewsHarp(),
         makeTheremin(), makeMusicBox(), makeTerrain(), makeSpectral()
     };
     return all;

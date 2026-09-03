@@ -68,6 +68,7 @@ add_library(vsm_audio STATIC
     plugins/carillon/CarillonSynth.cpp
     plugins/clavinet/ClavinetSynth.cpp
     plugins/mandolin/MandolinSynth.cpp
+    plugins/kalimba/KalimbaSynth.cpp
     plugins/glass/GlassSynth.cpp
     plugins/jewsharp/JewsHarpSynth.cpp
     plugins/theremin/ThereminSynth.cpp
@@ -193,6 +194,7 @@ if (VSM_BUILD_TESTS)
         tests/test_carillon_synth.cpp
         tests/test_clavinet_synth.cpp
         tests/test_mandolin_synth.cpp
+        tests/test_kalimba_synth.cpp
         tests/test_glass_synth.cpp
         tests/test_jewsharp_synth.cpp
         tests/test_theremin_synth.cpp

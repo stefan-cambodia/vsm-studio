@@ -544,6 +544,22 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Velocity Sensitivity", "voice.velocitySensitivity"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.kalimba ---
+    // Le temps et sa pente parlent le vocabulaire de `vsm.modal`, le pouce
+    // celui du plectre, la caisse celui de `vsm.string`. Deux identités
+    // neuves : le buzz du contact (l'écart de la barre) et les trous qu'on
+    // bouche — le geste du kalimba, sur aucune autre machine.
+    {"vsm.kalimba", {
+        {"Tine Decay", "modal.decay"},
+        {"Decay Tilt", "modal.decayTilt"},
+        {"Thumb Hardness", "string.pickHardness"},
+        {"Buzz", "kalimba.buzz"},
+        {"Body Resonance", "string.bodySize"},
+        {"Body Level", "string.bodyLevel"},
+        {"Hole Cover", "kalimba.holeCover"},
+        {"Velocity Sensitivity", "voice.velocitySensitivity"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.vibraphone ---
     // La barre parle le vocabulaire de `vsm.modal` (temps, pente, maillet),
     // le moteur celui du trémolo (c'est le trémolo de l'instrument, comme

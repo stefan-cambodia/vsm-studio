@@ -229,6 +229,10 @@ constexpr Rule kRules[] = {
     {"mandolin.tremoloRate",               0.0f,    16.0f, SearchScale::Linear,      0.80f},
     {"mandolin.courseDetune",              0.0f,    30.0f, SearchScale::Linear,      0.70f},
     {"mandolin.strumSpread",               0.0f,    15.0f, SearchScale::Linear,      0.40f},
+    // KALIMBA (vsm.kalimba). Le buzz d'abord (une note qui crépite contre
+    // une qui ne crépite pas s'entend à la première), les trous ensuite.
+    {"kalimba.buzz",                       0.0f,     1.0f, SearchScale::Linear,      0.80f},
+    {"kalimba.holeCover",                  0.0f,     1.0f, SearchScale::Linear,      0.55f},
     // VIBRAPHONE (vsm.vibraphone). Le creusement décide où tombent les
     // partiels — c'est ce qu'on entend d'abord ; la part du tube ensuite ;
     // le point de frappe dose le second partiel ; le feutre ne se cherche

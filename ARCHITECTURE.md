@@ -4086,6 +4086,22 @@ poste du 03/09, finie le 04/09.
 
 Le parc passe à **61 machines**.
 
+**ET UNE VINGT ET UNIÈME : `vsm.kalimba`, la lame ENCASTRÉE d'un seul côté,
+le buzz du contact, la caisse qu'on bouche.** Trois modes d'une poutre
+encastrée-libre (1 : 6,27 : 17,55 — sur la3, 1 379 Hz à 0,00573 contre
+0,00001 à 2·f0), un contact avec la barre au-delà d'un écart qui dépend
+de la force : chaque franchissement est un choc sur le mode du chevalet et
+chaque contact mange de l'amplitude, si bien que le crépitement s'éteint
+seul (2–6 kHz sur le fondamental : 0,0261 au pouce ferme contre 0,0026 au
+pouce doux, 0,0000 à 400 ms ; 0,0004 sans buzz) ; une caisse de Helmholtz
+que les doigts bouchent (si♭3 0,316 → 0,078, do♯3 0,101 → 0,327 ; la
+molette CC 1 et l'aftertouch font la même chose, 0,244 → 0,060). Pas
+d'étouffoir (note relâchée et note tenue identiques au bit près), do5
+meurt avant do4 (0,024 contre 0,072 à 1 s). Quatorze tests, empreinte,
+façade ; CDC machines-manquantes § 30.
+
+Le parc passe à **62 machines**.
+
 ---
 
 ## 47. Ouvrir un projet fait ailleurs : `Inflate`, `Xml`, `DawImport`

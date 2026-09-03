@@ -385,6 +385,20 @@ cordes frettées ne se tirent pas ensemble.
 
 ![Façade de Mandolin (les cordes par deux)](images/manuel/vsm.mandolin.png)
 
+**Kalimba (la lame encastrée et la caisse qu’on bouche)** — `vsm.kalimba`
+
+Dix-sept lames de métal tenues d'un seul côté, que le pouce déplace puis
+lâche : un son presque pur, avec une pointe très haute (les partiels d'une
+lame encastrée, à 6,27 fois la note, pas à l'octave). *Thumb* est la
+pulpe ou l'ongle. *Buzz* rapproche la barre : un pouce ferme fait
+**crépiter** la note, un pouce doux non, et le crépitement s'éteint de
+lui-même. *Resonance* est la caisse, *Holes* les doigts qui bouchent ses
+trous au dos — le « wah » du kalimba, que la **molette de modulation** et
+l'aftertouch font aussi. Pas d'étouffoir : lâcher la touche ne change
+rien. Pas de molette de hauteur.
+
+![Façade de Kalimba (la lame encastrée et la caisse qu’on bouche)](images/manuel/vsm.kalimba.png)
+
 **Music Box (la lame qui doit revenir)** — `vsm.musicbox`
 
 **Si une note ne sonne pas, ce n'est pas un bogue.** Chaque note est une lame
