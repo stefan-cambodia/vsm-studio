@@ -2735,6 +2735,41 @@ void MainComponent::showReconstructionReport() {
                         Ton::perte});
     }
 
+    // --- Le verdict du mélange : ce que la chaîne AVOUE -------------------
+    // « Le morceau est MEILLEUR sans cette piste » n'existait que dans le
+    // fichier. Or c'est la décision que la chaîne refuse de prendre -- couper
+    // est humain -- et l'humain est devant cet écran. On dit aussi la
+    // machine que le mélange a préférée à celle de l'arbitrage, quand il en
+    // a changé : le projet joue cette machine-là, et le rapport doit le dire.
+    const auto& verdict = racine["mixVerdict"];
+    if (verdict.isArray() && verdict.size() > 0) {
+        bool entete = false;
+        for (const auto& decision : verdict.elements()) {
+            const juce::String piste = juce::String::fromUTF8(decision["track"].asString("?").c_str());
+            const double avec = decision["mixDistance"].asNumber(-1.0);
+            const double sans = decision["mixDistanceMuted"].asNumber(-1.0);
+            const juce::String gardee = juce::String::fromUTF8(decision["kept"].asString("").c_str());
+            juce::Array<Ligne> nouvelles;
+            if (avec >= 0.0 && sans >= 0.0 && sans < avec - 1e-6)
+                nouvelles.add({piste + juce::String::fromUTF8(" : le morceau mesuré est MEILLEUR sans cette "
+                                                             "piste (")
+                               + juce::String(sans, 4) + juce::String::fromUTF8(" contre ")
+                               + juce::String(avec, 4)
+                               + juce::String::fromUTF8(") — conservée : couper est une décision humaine"),
+                               Ton::perte});
+            if (gardee.isNotEmpty() && gardee != juce::String::fromUTF8("réglage"))
+                nouvelles.add({piste + juce::String::fromUTF8(" : au mélange, gardé « ") + gardee
+                               + juce::String::fromUTF8(" » plutôt que le réglage de piste"),
+                               Ton::info});
+            if (!nouvelles.isEmpty() && !entete) {
+                lignes.add({{}, Ton::info});
+                lignes.add({juce::String::fromUTF8("Verdict du mélange"), Ton::info});
+                entete = true;
+            }
+            lignes.addArray(nouvelles);
+        }
+    }
+
     // --- La réverbération cherchée au mélange (H24, option) ----------------
     // Retenue ou refusée, avec ses chiffres : un projet dont les pistes
     // portent un insert que personne n'a posé à la main doit dire d'où il
