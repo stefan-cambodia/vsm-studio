@@ -45,6 +45,13 @@
 #include "reed/ReedSynth.h"
 #include "plate/PlateSynth.h"
 #include "clavichord/ClavichordSynth.h"
+#include "harpsichord/HarpsichordSynth.h"
+#include "hurdygurdy/HurdyGurdySynth.h"
+#include "banjo/BanjoSynth.h"
+#include "vibraphone/VibraphoneSynth.h"
+#include "bagpipe/BagpipeSynth.h"
+#include "carillon/CarillonSynth.h"
+#include "clavinet/ClavinetSynth.h"
 #include "glass/GlassSynth.h"
 #include "jewsharp/JewsHarpSynth.h"
 #include "theremin/ThereminSynth.h"
@@ -196,6 +203,13 @@ void registerBuiltInPlugins() {
         vsm::plugins::reed::ReedSynth forceLinkReed;
         vsm::plugins::plate::PlateSynth forceLinkPlate;
         vsm::plugins::clavichord::ClavichordSynth forceLinkClavichord;
+        vsm::plugins::harpsichord::HarpsichordSynth forceLinkHarpsichord;
+        vsm::plugins::hurdygurdy::HurdyGurdySynth forceLinkHurdyGurdy;
+        vsm::plugins::banjo::BanjoSynth forceLinkBanjo;
+        vsm::plugins::vibraphone::VibraphoneSynth forceLinkVibraphone;
+        vsm::plugins::bagpipe::BagpipeSynth forceLinkBagpipe;
+        vsm::plugins::carillon::CarillonSynth forceLinkCarillon;
+        vsm::plugins::clavinet::ClavinetSynth forceLinkClavinet;
         vsm::plugins::glass::GlassSynth forceLinkGlass;
         vsm::plugins::jewsharp::JewsHarpSynth forceLinkJewsHarp;
         vsm::plugins::theremin::ThereminSynth forceLinkTheremin;

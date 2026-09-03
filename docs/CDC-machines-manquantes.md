@@ -347,6 +347,13 @@ Deux critères, à ne pas confondre :
 | Objet frappé à rapports libres (1D) | `vsm.modal` (corde ↔ barre) | **fait** |
 | **Objet frappé à DEUX dimensions** | `vsm.membrane` (timbale ↔ tabla chargé) | **fait le 02/09** — rapports de Bessel, hors de portée de `vsm.modal` |
 | **Cordes SYMPATHIQUES** | `vsm.sitar` (onze cordes jamais pincées, chevalet plat) | **fait le 02/09** — comble un trou que trois documents constataient |
+| **Clavier PINCÉ, sans vélocité, à REGISTRES** | `vsm.harpsichord` (sautereau, 8'/4', jeu de luth, frôlement au relâchement) | **fait le 03/09** — § 22 ; la seule machine qui refuse la vélocité au bit près et qui sonne AU relâchement |
+| **Archet SANS FIN, bourdons sans clavier, chevalet qui claque** | `vsm.hurdygurdy` (roue, inertie, bourdons, chien) | **fait le 03/09** — § 23 ; la vélocité n'y fait pas la force mais le rythme |
+| **Corde dont la table est une PEAU** | `vsm.banjo` (corde de `vsm.string` sur une banque de modes de Bessel) | **fait le 03/09** — § 24 ; la peau chante ses modes quelle que soit la note, et mange la corde |
+| **Barre CREUSÉE, tube à MOTEUR, feutre à PÉDALE** | `vsm.vibraphone` (partiels 1:4:10, tube sur f0, disques sur un axe commun, CC 64) | **fait le 03/09** — § 25 ; seul le fondamental ondule sous le moteur, et la pédale de sustain est celle de l'instrument |
+| **RÉSERVE D'AIR entre le souffle et les anches** | `vsm.bagpipe` (sac à trois temps, chalumeau de `vsm.cone`, bourdons de `vsm.wind`, note de grâce automatique) | **fait le 03/09** — § 26 ; jamais de silence entre deux notes, et une note répétée passe par sa note de grâce |
+| **Cloche ACCORDÉE, tierce mineure, partiels dédoublés** | `vsm.carillon` (huit partiels de fonderie, tierce 6:5 ou 5:4, doublets qui battent, bourdon long) | **fait le 03/09** — § 27 ; la seule machine dont le spectre porte une tierce mineure, et dont les partiels battent par géométrie |
+| **Corde TENUE par la touche, qui sonne entière au relâchement** | `vsm.clavinet` (corde de `vsm.string`, hauteur de relâchement, laine, deux micros en peigne, sourdine) | **fait le 03/09** — § 28 ; la seule machine qui relâche une note en changeant sa hauteur |
 | Waveshaping (spectre commandé) | `vsm.chebyshev` | **fait** |
 | **Synthèse balayée** | `vsm.scanned` (chaîne de masses, timbre en temps réel) | **fait le 02/09** |
 | **Lecture de BANDE** | `vsm.mellotron` (la bande finit, une par touche) | **fait le 02/09** — un COMPORTEMENT, pas un timbre |
@@ -1428,6 +1435,369 @@ un cosinus (erreur mesurée 2,8·10⁻⁸). Sans cette garantie, aucun des chiff
 ci-dessus ne voudrait rien dire.
 
 Le parc passe à **53 machines** (1 081 paramètres nommés, 1 444 tests verts).
+
+## 22. H26 — le CLAVECIN : un clavier qui refuse la vélocité et qui sonne au relâchement (écrite avant sa mesure, 03/09/2026)
+
+**Ce que le parc n'avait pas.** Toutes ses cordes écoutent la vélocité, et
+aucune machine ne produit de son AU relâchement : le clavicorde coupe net, le
+piano laisse mourir, les synthés relâchent une enveloppe. Un clavecin fait
+les deux choses à l'envers. Son SAUTEREAU monte avec la touche et son bec
+pince la corde en passant — toujours de la même façon, vite ou lentement :
+c'est le trait qui a fait inventer le piano-forte. En retombant, le bec
+frôle la corde une seconde fois avant que l'étouffoir se pose, et ce petit
+pincement s'entend sur tout clavecin. Enfin le son ne se règle pas, il se
+REGISTRE : 8', 4' à l'octave, jeu de luth (une peau sur les cordes du 8').
+
+*Ce que j'attends, écrit avant la mesure (dans le banc, avant de le
+lancer)* : (1) deux vélocités extrêmes donnent une sortie IDENTIQUE AU BIT
+PRÈS ; (2) une corde qu'on laisse mourir sous la touche puis qu'on relâche
+produit un niveau au moins trois fois supérieur juste après le relâchement à
+celui d'avant, puis retombe sous le dixième dans les 200 ms ; le frôlement
+doit rester un petit pincement, une quinzaine de dB sous l'attaque ; (3)
+tirer le 4' augmente l'énergie à 2·f0 d'au moins moitié ; (4) le jeu de luth
+divise par deux le niveau à une seconde. Comme la boîte à musique (H19) et
+le clavicorde, la machine refuse la molette en connaissance de cause.
+
+### H26 EST TRANCHÉE : SUCCÈS, mesuré au banc (03/09/2026)
+
+| Trait | Attendu | Mesuré |
+|---|---|---|
+| vélocité 20 contre 120 | sortie identique au bit près | **identique** (comparaison des tampons) |
+| frôlement au relâchement | ≥ 3× le niveau d'avant, −15 dB sous l'attaque environ | corde éteinte avant (0,000000), frôlement 0,00635 = **−13,7 dB** sous l'attaque (réglage à fond ; −20 dB au défaut), **0,000000** 200 ms plus tard : l'étouffoir a coupé |
+| registre 4' | ×1,5 à 2·f0 | **×1,6** |
+| jeu de luth | ≤ ×0,5 à 1 s | **×0,05** |
+
+Le premier banc a trouvé le piège de la machine : une corde tenue longtemps
+s'endort sous le seuil d'activité, le gestionnaire de voix la croit libre et
+ne lui transmet plus le relâchement — le frôlement n'avait pas lieu. Une
+touche ENFONCÉE tient donc la voix éveillée même silencieuse. Douze tests,
+dont les quatre traits ; empreinte de non-régression committée ; façade
+REGISTERS · PLECTRUM · STRINGS (sans réglage de vélocité : la façade ne
+promet pas ce que la machine refuse) ; identités sémantiques neuves pour ce
+qui est propre au clavecin (registres, frôlement, étouffoir), réemployées
+pour le point de pincement et la corde. Le parc passe à **54 machines**.
+
+Développé dans un worktree pendant les campagnes de parité, pour ne pas
+périmer le moteur des courses en cours (CDC multipiste § 8, « en attente ») ;
+fusionné à leur fin.
+
+## 23. H27 — la VIELLE À ROUE : un archet sans fin, des bourdons sans clavier, et la vélocité comme RYTHME (écrite avant sa mesure, 03/09/2026)
+
+**Ce que le parc n'avait pas.** `vsm.string` frotte une corde à l'archet,
+et l'archet finit avec la note. Une roue enduite de colophane ne finit pas :
+tournée à la manivelle, elle frotte toutes les cordes à la fois, la
+CHANTERELLE que les touches raccourcissent comme les BOURDONS, qui n'ont pas
+de clavier et sonnent tant que la roue tourne — même sans note, et encore
+un instant après la dernière, le temps que la roue s'arrête. Et la TROMPETTE
+porte un chevalet mobile, le CHIEN, qui claque quand la roue accélère : le
+rythme d'une vielle vient du coup de poignet, pas des touches, qui n'ont
+aucune force à donner. Aucune machine du parc n'avait de son sans note, ni
+d'inertie, ni de vélocité qui soit un rythme plutôt qu'une force.
+
+*Ce que j'attends, écrit avant la mesure (dans le banc)* : (1) une note
+tenue garde son niveau à 3 s comme à 1 s (à 3 dB près) — un archet, pas un
+pincement ; (2) chien levé, deux vélocités extrêmes donnent la même
+chanterelle AU BIT PRÈS ; (3) chien posé, la vélocité forte porte au moins
+deux fois l'énergie de claquement de la faible (bandes latérales de la
+trompette à ± la fréquence du chien) ; (4) les bourdons sonnent encore
+50 ms après le relâchement (au moins 30 % du niveau tenu) et sont éteints
+2 s après (moins de 5 %) ; (5) bourdons levés, plus rien ne sonne à leur
+hauteur. Molette et pression refusées en connaissance de cause.
+
+### H27 EST TRANCHÉE : SUCCÈS — et la roue a une force de seuil (03/09/2026)
+
+| Trait | Attendu | Mesuré |
+|---|---|---|
+| chanterelle tenue | ±3 dB entre 1 s et 3 s | **+2,0 dB** (0,108 → 0,136) : elle ne meurt pas |
+| vélocité 15 contre 127, chien levé | identique au bit près | **identique** |
+| chien | ≥ ×2 d'énergie de claquement | **×8,2** (0,000043 → 0,000354) |
+| bourdons après le relâchement | ≥ 30 % à 50 ms, ≤ 5 % à 2 s | **×2,3 à 50 ms** (0,0106 → 0,0244), **0,000000 à 2 s** |
+| bourdons levés | < 10 % | tenu |
+
+**Ce que le banc a appris, et qui n'était pas prévu : la friction a un
+SEUIL.** Le gros bourdon, d'abord accordé une octave sous la tonique
+(32 Hz), ne donnait pas sa fondamentale sous la roue — 3·f0 dominait de
+soixante-dix fois. Remonté à la tonique (65 Hz, l'accord des vielles en
+sol/do), il chante ; mais la force de la roue sur lui a dû être CHOISIE
+par la mesure, pas devinée : à 0,3 sa fondamentale vaut 0,00002, à 0,45
+0,00004, à 0,6 0,0022, à 0,8 0,0106. En dessous d'un seuil, l'archet
+n'entretient pas l'oscillation ; la roue pousse donc les bourdons à 0,8 de
+la force de la chanterelle, et le nombre est écrit dans le code avec sa
+raison. Second effet vu au banc : au ralenti de la roue, le bourdon sonne
+plus FORT à sa fondamentale que sous la pleine force (×2,3 à 50 ms) — la
+friction passe d'un régime à glissements multiples au cycle de Helmholtz
+propre, comme un archet qu'on allège. C'est un trait de l'instrument, pas
+un défaut, et il n'est pas corrigé.
+
+Douze tests, empreinte, façade WHEEL · DRONES · CHIEN (rendue et regardée) ;
+identités neuves pour ce qui n'existe nulle part ailleurs (bourdons, tonique,
+inertie, chien), celles de l'archet de `vsm.string` pour la roue. Le parc
+passe à **55 machines**.
+
+## 24. H28 — le BANJO : la corde dont la table est une PEAU (écrite avant sa mesure, 03/09/2026)
+
+**Ce que le parc n'avait pas.** Toutes ses cordes rayonnent par une table
+que personne ne modélise : le chevalet y est une simple perte. Le banjo
+tend ses cordes sur une peau de tambour, et c'est la peau qui rayonne. Deux
+traits en découlent qu'aucune corde du parc n'a : la peau chante SES modes
+— ceux d'une membrane circulaire, les zéros de Bessel de `vsm.membrane` —
+à des fréquences qui ne dépendent pas de la note ; et la peau MANGE la
+corde, prend son énergie pour la rayonner, si bien que la note est brève et
+claquante là où une guitare tiendrait.
+
+*Ce que j'attends, écrit avant la mesure (dans le banc)* : (1) pour deux
+notes éloignées (la2 et la4), la PART du mode fondamental de la peau
+(tendue à 300 Hz) dans le son est au moins doublée par rapport au même
+banjo sans peau ; (2) avec la peau, la tenue à une seconde (relative à
+l'attaque) tombe sous 60 % de celle sans peau ; (3) la vélocité compte
+(c'est un onglet, pas un sautereau) ; molette honorée, comme `vsm.string`.
+
+### H28 EST TRANCHÉE : SUCCÈS (03/09/2026)
+
+| Trait | Attendu | Mesuré |
+|---|---|---|
+| part du mode de peau à 300 Hz, la2 | ≥ ×2 | **×2,1** (0,0027 → 0,0056) |
+| part du mode de peau à 300 Hz, la4 | ≥ ×2 | **×2,6** |
+| tenue à 1 s, relative à l'attaque | ≤ 60 % de sans peau | **≈ 0** contre 0,0020 : la peau a tout pris |
+| vélocité 30 contre 120 | ≥ ×1,5 | tenu |
+
+La peau est une banque de six résonateurs à deux pôles aux six premiers
+modes de Bessel, alimentée par le chevalet — et non frappée, ce qui est
+toute la différence avec `vsm.membrane` ; le couplage est à sens unique
+(la peau ne renvoie rien à la corde, sinon une perte). Douze tests,
+empreinte, façade HEAD · PICK · STRING (rendue et regardée) ; identités
+neuves pour la peau seule (tension, amortissement, part), celles de
+`vsm.string` pour la corde. Le parc passe à **56 machines**.
+
+## 25. H29 — le VIBRAPHONE : la barre CREUSÉE, le tube qu'un MOTEUR ouvre et ferme, le feutre qu'une PÉDALE soulève (écrite avant sa mesure, 03/09/2026)
+
+**Ce que le parc n'avait pas.** `vsm.modal` sonne une barre libre-libre,
+dont le second partiel tombe à 2,76·f0 — et c'est exactement ce qu'un
+facteur de vibraphone refuse : il CREUSE le dessous de la barre jusqu'à ce
+que ses partiels tombent à 1 : 4 : 10, deux octaves puis trois octaves et
+une tierce. L'instrument est accordé DANS le partiel, pas seulement dans la
+note. Trois autres traits qu'aucune machine du parc n'a : sous chaque barre
+un TUBE fermé accordé sur f0, qui ne renforce que le fondamental (un tube
+fermé ne résonne qu'aux rangs impairs, et la barre n'en a aucun au-dessus
+de f0) ; au sommet des tubes des disques sur un axe commun, le MOTEUR, qui
+ouvre et ferme le tube — ce « vibrato » n'est ni un vibrato (la hauteur ne
+bouge pas) ni un trémolo ordinaire (seul le fondamental ondule, les
+partiels hauts restent droits), et toutes les notes ondulent en phase ; et
+un FEUTRE qu'une pédale soulève — une barre d'aluminium tient six
+secondes, le feutre la tait en un quart de seconde, et le pied choisit.
+CC 64, la pédale de sustain d'un clavier, est exactement ce geste.
+
+*Ce que j'attends, écrit avant la mesure (dans le banc)* : (1) sur la3
+(220 Hz), barre creusée, le pic à 880 Hz (4·f0) dépasse d'au moins ×5
+celui à 611 Hz (2,78·f0) — et barre libre (creusement à 0), l'inverse ;
+(2) moteur tournant contre moteur ouvert, fenêtre par fenêtre sur une
+période entière, la profondeur d'ondulation du fondamental dépasse 0,25
+et celle du 4·f0 reste sous 0,05 ; (3) touche lâchée à 0,1 s, la tenue à
+1 s est au moins ×20 plus forte pédale enfoncée que sans ; une touche tenue
+tient comme la pédale (à 5 % près) ; (4) la vélocité compte (×1,5) et
+ouvre le timbre (la part du 4·f0 monte d'au moins ×1,3) ; molette REFUSÉE
+en le disant (une barre frappée n'en a pas, comme le piano), pédale
+honorée.
+
+### H29 EST TRANCHÉE : SUCCÈS (03/09/2026)
+
+| Trait | Attendu | Mesuré |
+|---|---|---|
+| barre creusée, la3 : pic à 880 Hz contre 611 Hz | ≥ ×5 | **0,0467 contre 0,0000** — le 2,78·f0 n'existe plus |
+| barre libre (creusement 0) : 611 Hz contre 880 Hz | ≥ ×5 | **0,0465 contre 0,0000** — la barre de `vsm.modal` |
+| profondeur d'ondulation sous le moteur, f0 | > 0,25 | **0,479** |
+| profondeur d'ondulation sous le moteur, 4·f0 | < 0,05 | **0,005** — le tube ne le porte pas |
+| tenue à 1 s, touche lâchée à 0,1 s : pédale contre feutre | ≥ ×20 | **0,344 contre ≈ 0** (le feutre a tout pris en 0,9 s) |
+| touche tenue contre pédale | égales à 5 % | tenu |
+| vélocité 30 contre 120 ; part du 4·f0 | ≥ ×1,5 ; ≥ ×1,3 | tenu |
+
+Une première version du tube explosait (crête > 8 au banc de
+non-régression) : le gain unité au pic oubliait le facteur (1 − r) du
+dénominateur — cent fois trop fort à Q 18. Corrigé avant l'empreinte, et
+c'est le banc qui l'a vu, pas l'oreille. La barre est six modes à rapports
+libres tirés vers 1 : 4 : 10 par le creusement, avec les formes modales
+(ventre au centre pour les impairs, nœud pour les pairs — frapper au centre
+exact tait le 4·f0, d'où le décalage de frappe) ; le tube est un
+résonateur à deux pôles sur f0 par voix ; le moteur, une seule phase pour
+toutes les voix ; le feutre, un second jeu d'amortissements par mode que
+la touche ou la pédale commute. Treize tests, empreinte, façade BARS ·
+RESONATORS · DAMPER (rendue et regardée) ; identités neuves pour le
+creusement, le feutre, la part du tube et le décalage de frappe ; celles
+de `vsm.modal` pour la barre et du trémolo pour le moteur. Le parc passe à
+**57 machines**.
+
+## 26. H30 — la CORNEMUSE : la réserve d'air qui interdit le silence (écrite avant sa mesure, 03/09/2026)
+
+**Ce que le parc n'avait pas.** Tous ses vents obéissent au souffle : la
+note commence quand on souffle, finit quand on s'arrête, avec son attaque
+et sa chute. La cornemuse met un SAC entre le souffle et les anches, et le
+sac change tout ce qu'un clavier peut lui faire. Il n'y a pas de silence
+entre deux notes : le chalumeau sonne tant que le sac a de l'air, lâcher
+une touche ne tait rien. Une note répétée EXIGE une note de grâce — deux
+notes identiques à la suite ne se séparent que par une autre note, très
+brève, et c'est toute la technique du sonneur ; la machine la fait
+d'elle-même (le la aigu du chalumeau). Le sac se vide et tout baisse
+ENSEMBLE : toutes les anches boivent au même sac, à la coupure la hauteur
+s'affaisse et les tuyaux se taisent, le chalumeau d'abord (son anche
+demande plus), les bourdons après. Et pas de nuance : la vélocité est
+ignorée au bit près, comme sur le clavecin. Le chalumeau est la perce
+conique de `vsm.cone`, les bourdons les perces cylindriques de `vsm.wind`,
+réemployées telles quelles ; ce que la machine ajoute, c'est le sac.
+
+*Ce que j'attends, écrit avant la mesure (dans le banc)* : (1) une note
+lâchée, 150 ms de rien, une autre note : le niveau dans le trou reste à
+80 % au moins de celui de la note (un vent ordinaire y serait à 30 %) ;
+(2) la même note rejouée : dans les 35 ms qui suivent la seconde frappe,
+le la aigu (440 Hz, tonique 57) est au moins ×3 plus fort qu'avant la
+frappe et qu'après une note DIFFÉRENTE, et plus fort que le fondamental
+lui-même ; (3) tout lâché, réserve 0,4 s : à 0,2 s le niveau tient à 80 %,
+à 2 s il est sous 2 % ; (4) dans la coupure, le chalumeau sonne au moins
+8 cents plus bas qu'en tenue ; (5) le ténor (110 Hz) est ×5 plus fort
+bourdons demandés que refusés ; (6) vélocité 20 contre 127 : identiques au
+bit près ; molette et contrôleurs refusés.
+
+### H30 EST TRANCHÉE : SUCCÈS — et elle a trouvé un défaut dans `vsm.cone` (03/09/2026)
+
+| Trait | Attendu | Mesuré |
+|---|---|---|
+| niveau dans un trou de 150 ms entre deux notes | ≥ 80 % | **98 %** (0,4095 contre 0,4196) |
+| la aigu après la note répétée, contre avant | ≥ ×3 | **×760** (0,258 contre 0,00034) |
+| la aigu après la note répétée, contre après une AUTRE note | ≥ ×3 | **×890** (0,258 contre 0,00029) |
+| la aigu contre le fondamental, dans la grâce | > 1 | **0,258 contre 0,0009** : la grâce est toute la note |
+| tenue 0,2 s après le relâchement (réserve 0,4 s) | ≥ 80 % | **110 %** (0,470 contre 0,425) |
+| niveau 2 s après le relâchement | < 2 % | **0,000000** |
+| hauteur du chalumeau dans la coupure | ≤ −8 cents | **−31,8 cents** (329,5 → 323,5 Hz) |
+| ténor à 110 Hz, bourdons demandés contre refusés | ≥ ×5 | **×720** (0,0358 contre 0,00005) |
+| vélocité 20 contre 127 | identiques | au bit près |
+
+**Ce que la cornemuse a trouvé, et que cinq mesures sur le saxophone
+n'avaient pas vu.** La première version du sac ne vidait rien : deux
+secondes après le relâchement, le chalumeau sonnait encore à 100 %. La
+cause n'était pas dans le sac mais dans la perce conique réemployée : la
+régénération de `ConicalBore` (×2, posée pour que la note s'amorce) donne
+à la boucle un gain de 1,4 AU REPOS DE L'ANCHE, quel que soit le souffle.
+Vérifié sur `vsm.cone` lui-même, témoin dans le banc : rms 0,279 pendant
+la note, **0,295 deux secondes après le relâchement** — le saxophone du
+parc ne s'arrêtait JAMAIS, la voix restait active jusqu'au vol, et aucun
+de ses tests ne regardait après la note. Corrigé dans le cône et dans la
+cornemuse par la même règle physique : la régénération vient de l'anche
+pressée, pas du tuyau ; sous un dixième de souffle plein elle s'éteint et
+la boucle repasse sous 1 (0,7 × 2 × 0,45 × 0,9 ≈ 0,57). Pendant la note,
+rien ne change ; l'empreinte du cône bouge de 3,4 % sur le pic (l'attaque
+des dix premières millisecondes), et elle est régénérée en le disant.
+
+Treize tests, empreinte, façade BAG · CHANTER · DRONES (rendue et
+regardée) ; identités neuves pour le sac (réserve, montée, chute) et la
+note de grâce, celles de `vsm.wind` pour les anches et de la vielle pour
+les bourdons. Le parc passe à **58 machines**.
+
+## 27. H31 — le CARILLON : une tierce MINEURE dans le spectre, des partiels qui vont par deux (écrite avant sa mesure, 03/09/2026)
+
+**Ce que le parc n'avait pas.** `vsm.modal` place ses partiels sur un
+continuum corde → barre libre, `vsm.dx7` fait des cloches par FM avec des
+rapports que personne n'a choisis. Une cloche fondue est autre chose :
+depuis le XVIIe siècle les fondeurs l'ACCORDENT partiel par partiel —
+bourdon à l'octave grave (0,5), prime (1), TIERCE à 1,2·f0, quinte (1,5),
+nominale à l'octave (2), puis 2,51, 2,66, 3,01. La tierce est MINEURE (6:5),
+ce qu'aucun instrument harmonique ne porte, et c'est elle qui fait la
+mélancolie des cloches ; les fondeurs d'Eindhoven ont obtenu la majeure
+(5:4) en 1985, et c'est un autre instrument — un réglage continu entre les
+deux. Deux autres traits : les partiels VONT PAR DEUX, parce qu'une cloche
+n'est jamais ronde — chaque mode se dédouble en deux composantes à quelques
+dixièmes de hertz dont le battement est l'ondulation qui fait vivre la note
+(ce n'est pas un LFO, c'est la géométrie) ; et le BOURDON SURVIT À TOUT, en
+dizaines de secondes là où les partiels hauts meurent en secondes.
+
+*Ce que j'attends, écrit avant la mesure (dans le banc)* : (1) sur la3
+(prime 220 Hz), tierce mineure : le pic à 264 Hz dépasse ×5 celui à 275 Hz,
+et tierce majeure l'inverse ; un partiel à 2,5·f0 (553 Hz) là où 2,25·f0
+n'a rien (×5) ; (2) doublet à 1 Hz : l'enveloppe de la tierce, rapportée à
+la même cloche sans doublet, ondule avec une profondeur > 0,5 sur deux
+périodes, et la référence sans doublet ne fait que décroître ; (3) à la
+frappe la nominale (440 Hz) domine le bourdon (110 Hz), à 6 s le bourdon
+domine la nominale ×3 ; (4) la vélocité compte (×1,5) et ouvre le timbre
+(×1,3 sur le partiel à 3,01·f0) ; molette refusée.
+
+### H31 EST TRANCHÉE : SUCCÈS (03/09/2026)
+
+| Trait | Attendu | Mesuré |
+|---|---|---|
+| tierce mineure, la3 : 264 Hz contre 275 Hz | ≥ ×5 | **0,0574 contre 0,00008** (×700) |
+| tierce majeure : 275 Hz contre 264 Hz | ≥ ×5 | **0,0533 contre 0,00008** |
+| partiel à 2,5·f0 contre rien à 2,25·f0 | ≥ ×5 | tenu |
+| profondeur du battement de la tierce (doublet 1 Hz) | > 0,5 | **1,00** (rapport de 0,004 à 0,995 : deux composantes égales s'annulent) |
+| la cloche sans doublet ne fait que décroître | monotone | tenu |
+| à la frappe, nominale contre bourdon | nominale > bourdon | **0,0432 contre 0,0380** |
+| à 6 s, bourdon contre nominale | ≥ ×3 | **0,00113 contre 0,00000** : il ne reste que lui |
+| vélocité ; ouverture du timbre | ≥ ×1,5 ; ≥ ×1,3 | tenu |
+
+Une première version réveillait le bourdon PLUS que la nominale (0,090
+contre 0,043) : la pente du battant s'appliquait aussi sous la prime, et
+un rapport de 0,5 élevé à une puissance négative devient un gain. La
+pente ne s'applique qu'au-dessus de la prime — le bourdon n'est pas plus
+réveillé qu'elle, il est seulement plus long — et c'est le banc qui l'a
+dit, avant l'oreille. Onze tests, empreinte, façade BELL · TIME · CLAPPER
+(rendue et regardée) ; identités neuves pour la tierce et le doublet,
+celles de `vsm.modal` pour le temps et du maillet pour le battant. Le parc
+passe à **59 machines**.
+
+## 28. H32 — le CLAVINET : la corde que la touche tient, et qui sonne ENTIÈRE, plus bas, quand on la lâche (écrite avant sa mesure, 03/09/2026)
+
+**Ce que le parc n'avait pas.** Le clavicorde (H15) presse la corde avec la
+tangente : appuyer plus fort monte la note. Le clavinet (Hohner D6, 1971)
+fait autre chose : un embout de caoutchouc sous la touche frappe la corde
+et la TIENT contre une enclume pendant toute la note — la longueur qui
+sonne va de l'enclume au chevalet. Quand la touche remonte, l'embout
+lâche : la corde ENTIÈRE vibre un instant, à sa hauteur propre, plus
+basse, jusqu'à ce que la laine tressée au bout la taise en quelques
+centièmes de seconde. C'est le « thump » du clavinet, et aucune machine du
+parc ne relâche une note en changeant sa hauteur. Deux micros sous les
+cordes (manche, chevalet), en somme ou en différence, et un curseur de
+sourdine.
+
+*Ce que j'attends, écrit avant la mesure (dans le banc)* : (1) la3 tenue,
+corde derrière l'embout à 0,35 : dans les 60 ms qui suivent le
+relâchement, le pic à 163 Hz (220/1,35) dépasse ×2 celui à 220 Hz — et
+sans corde derrière (0), l'inverse ; (2) 300 ms après le relâchement, il
+reste moins de 2 % de la tenue, et une laine lâche (0,3 s) laisse ×5 plus
+de queue qu'une laine serrée (0,03 s) ; (3) le micro chevalet a un
+centroïde ×1,25 plus haut que le manche, et la différence A − B annule le
+fondamental commun (< 30 % de la somme) ; (4) la sourdine à fond réduit la
+tenue à 1 s sous 30 % ; vélocité ×1,5 ; molette refusée.
+
+### H32 EST TRANCHÉE : SUCCÈS, et l'attendu (3) a été RÉÉCRIT avant la mesure qui le tranche (03/09/2026)
+
+| Trait | Attendu | Mesuré |
+|---|---|---|
+| après le relâchement, 163 Hz contre 220 Hz (corde derrière 0,35) | ≥ ×2 | **0,00024 contre 0,00001** (×24) |
+| sans corde derrière (0) : 220 Hz contre 163 Hz | ≥ ×2 | **0,00020 contre 0,00001** |
+| 300 ms après le relâchement, laine serrée | < 2 % de la tenue | **0,000000** contre 0,0163 |
+| laine lâche contre laine serrée, 300 ms après | ≥ ×5 | **0,000010 contre 0,000000** |
+| A − B : fondamental contre A + B | < 30 % | **15 %** (0,00039 contre 0,00260) |
+| A − B : octave contre A + B | ≥ ×1,5 | **×14** (0,0130 contre 0,00091) |
+| sourdine à fond, tenue à 1 s | < 30 % de l'ouvert | **0,0000 contre 0,0444** |
+| vélocité 30 contre 120 | ≥ ×1,5 | tenu |
+
+**L'attendu (3) disait d'abord « le micro chevalet a un centroïde ×1,25
+plus haut que le manche »**, et la première mesure a dit 3 344 Hz contre
+3 329 Hz : rien. La cause était le modèle des micros, pas la mesure : un
+peigne x − x(t − p·N) donne au rang n le poids sin(n·π·p), juste, mais à
+une phase temporelle qui DÉPEND de p — alors que sur une corde réelle tous
+les points d'un mode vibrent en phase. Il manquait le retard de
+propagation (1 − p)·N/2 entre le chevalet et le micro ; sans lui, deux
+micros symétriques s'annulaient EN SOMME au lieu de se retrancher, et la
+brillance de deux micros près des deux bouts est la même par symétrie
+(sin(n·π·p) = ± sin(n·π·(1 − p))). Le modèle a été corrigé (retard
+inclus), et l'attendu réécrit sur le trait qui distingue vraiment le D6 :
+la DIFFÉRENCE des deux micros, qui creuse les rangs impairs (même signe aux
+deux bouts) et double les pairs — le son « nasal ». Micros posés à 0,08 et
+0,90 de la longueur qui sonne (un premier essai à 0,86 laissait 40 % de
+fondamental). Le niveau a été rattrapé ×8 (crête 0,06 → 0,48, l'e-piano
+est à 0,41) : les peignes mangent le grave. Douze tests, empreinte, façade
+STRING · RELEASE · PICKUPS (rendue et regardée) ; identités neuves pour la
+sourdine, la corde derrière l'embout, la laine, le claquement et les deux
+micros ; celles de `vsm.string` pour la corde. Le parc passe à
+**60 machines**.
 
 ## 12. H10 — la guitare ÉLECTRIQUE est-elle vraiment couverte ? (écrite avant sa mesure, 02/09/2026)
 

@@ -3724,6 +3724,376 @@ MachinePanel makeClavichord() {
     return panel;
 }
 
+/// `vsm.harpsichord` -- le clavecin. La section REGISTERS vient en premier
+/// et en grand : c'est la seule façon de changer le son d'un clavecin, comme
+/// les tirettes d'un orgue -- 8', 4', et le jeu de luth. PLECTRUM porte le
+/// point du bec et le frôlement du relâchement, le trait qu'aucune autre
+/// machine n'a. Pas de réglage de vélocité : il n'y en a pas sur l'instrument,
+/// et la façade ne promet pas ce que la machine refuse.
+///
+/// Livrée bois sombre et dorures, la robe d'un instrument de cour.
+MachinePanel makeHarpsichord() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.harpsichord";
+    panel.displayName = "Harpsichord (le clavecin)";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#2A1C12";
+    panel.sectionColour = "#1E140C";
+    panel.textColour = "#F3E6C8";
+    panel.knobColour = "#D8B45A";
+    panel.gridColumns = 12;
+    panel.gridRows = 4;
+
+    PanelSection registres;
+    registres.title = "REGISTERS";
+    registres.accentColour = "#D8B45A";
+    registres.column = 0; registres.row = 0; registres.columnSpan = 4; registres.rowSpan = 4;
+    registres.controls = {
+        control("Register 8'", "8'", S::LargeKnob, 0, 0),
+        control("Register 4'", "4'", S::LargeKnob, 1, 0),
+        control("Lute Stop", "LUTE", S::Knob, 0, 1),
+    };
+
+    PanelSection plectre;
+    plectre.title = "PLECTRUM";
+    plectre.accentColour = "#C9A96E";
+    plectre.column = 4; plectre.row = 0; plectre.columnSpan = 4; plectre.rowSpan = 4;
+    plectre.controls = {
+        control("Pluck Position", "POSITION", S::Knob, 0, 0),
+        control("Release Pluck", "RELEASE", S::Knob, 1, 0),
+        control("Damper Time", "DAMPER", S::Knob, 0, 1),
+    };
+
+    PanelSection corde;
+    corde.title = "STRINGS";
+    corde.accentColour = "#B9C98A";
+    corde.column = 8; corde.row = 0; corde.columnSpan = 4; corde.rowSpan = 4;
+    corde.controls = {
+        control("String Decay", "DECAY", S::Knob, 0, 0),
+        control("String Damping", "DAMPING", S::Knob, 1, 0),
+        control("Filter Cutoff", "CUTOFF", S::Knob, 0, 1),
+        control("Output Level", "VOLUME", S::Knob, 1, 1),
+    };
+
+    panel.sections = {registres, plectre, corde};
+    return panel;
+}
+
+/// `vsm.hurdygurdy` -- la vielle à roue. WHEEL d'abord, parce que tout
+/// vient d'elle : vitesse, pression, inertie. DRONES à part, avec leur
+/// tonique : ce sont eux qu'on entend sous chaque note. CHIEN en dernier
+/// et en grand : c'est le trait -- ce que la vélocité fait ici.
+///
+/// Livrée bois de vielle, vernis sombre et cuivre.
+MachinePanel makeHurdyGurdy() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.hurdygurdy";
+    panel.displayName = "Hurdy-Gurdy (la vielle à roue)";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#33221A";
+    panel.sectionColour = "#261811";
+    panel.textColour = "#F1E4CF";
+    panel.knobColour = "#C98B4B";
+    panel.gridColumns = 12;
+    panel.gridRows = 4;
+
+    PanelSection roue;
+    roue.title = "WHEEL";
+    roue.accentColour = "#C98B4B";
+    roue.column = 0; roue.row = 0; roue.columnSpan = 4; roue.rowSpan = 4;
+    roue.controls = {
+        control("Wheel Speed", "SPEED", S::Knob, 0, 0),
+        control("Wheel Pressure", "PRESSURE", S::Knob, 1, 0),
+        control("Wheel Inertia", "INERTIA", S::Knob, 0, 1),
+        control("String Damping", "DAMPING", S::Knob, 1, 1),
+    };
+
+    PanelSection bourdons;
+    bourdons.title = "DRONES";
+    bourdons.accentColour = "#B9C98A";
+    bourdons.column = 4; bourdons.row = 0; bourdons.columnSpan = 4; bourdons.rowSpan = 4;
+    bourdons.controls = {
+        control("Drones", "LEVEL", S::LargeKnob, 0, 0),
+        control("Drone Note", "NOTE", S::Knob, 1, 0),
+    };
+
+    PanelSection chien;
+    chien.title = "CHIEN";
+    chien.accentColour = "#E0A050";
+    chien.column = 8; chien.row = 0; chien.columnSpan = 4; chien.rowSpan = 4;
+    chien.controls = {
+        control("Chien", "CHIEN", S::LargeKnob, 0, 0),
+        control("Chien Buzz", "BUZZ", S::Knob, 1, 0),
+        control("Filter Cutoff", "CUTOFF", S::Knob, 0, 1),
+        control("Output Level", "VOLUME", S::Knob, 1, 1),
+    };
+
+    panel.sections = {roue, bourdons, chien};
+    return panel;
+}
+
+/// `vsm.banjo` -- la corde sur la peau. HEAD en premier et en grand : c'est
+/// la peau qui fait le banjo -- sa tension (la clé du cercle), son
+/// amortissement, sa part dans le son. STRING et PICK reprennent la corde
+/// de `vsm.string`.
+///
+/// Livrée peau claire et métal du cercle.
+MachinePanel makeBanjo() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.banjo";
+    panel.displayName = "Banjo (la corde sur la peau)";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#3A2B1F";
+    panel.sectionColour = "#2B2017";
+    panel.textColour = "#F4EBDC";
+    panel.knobColour = "#E8DCC4";
+    panel.gridColumns = 12;
+    panel.gridRows = 4;
+
+    PanelSection peau;
+    peau.title = "HEAD";
+    peau.accentColour = "#E8DCC4";
+    peau.column = 0; peau.row = 0; peau.columnSpan = 5; peau.rowSpan = 4;
+    peau.controls = {
+        control("Head Tension", "TENSION", S::LargeKnob, 0, 0),
+        control("Head Mix", "MIX", S::LargeKnob, 1, 0),
+        control("Head Damping", "DAMPING", S::Knob, 0, 1),
+    };
+
+    PanelSection onglet;
+    onglet.title = "PICK";
+    onglet.accentColour = "#C9A96E";
+    onglet.column = 5; onglet.row = 0; onglet.columnSpan = 3; onglet.rowSpan = 4;
+    onglet.controls = {
+        control("Pick Position", "POSITION", S::Knob, 0, 0),
+        control("Pick Hardness", "HARDNESS", S::Knob, 0, 1),
+        control("Velocity Sensitivity", "VEL", S::Knob, 1, 1),
+    };
+
+    PanelSection corde;
+    corde.title = "STRING";
+    corde.accentColour = "#B9C98A";
+    corde.column = 8; corde.row = 0; corde.columnSpan = 4; corde.rowSpan = 4;
+    corde.controls = {
+        control("String Decay", "DECAY", S::Knob, 0, 0),
+        control("String Damping", "DAMPING", S::Knob, 1, 0),
+        control("Filter Cutoff", "CUTOFF", S::Knob, 0, 1),
+        control("Output Level", "VOLUME", S::Knob, 1, 1),
+    };
+
+    panel.sections = {peau, onglet, corde};
+    return panel;
+}
+
+/// `vsm.vibraphone` -- la barre, le tube et le moteur. Trois sections dans
+/// l'ordre où l'instrument se lit : BARS (creusement, temps, maillet),
+/// RESONATORS (la part du tube, et le MOTEUR en grand : c'est le réglage
+/// qu'un vibraphoniste touche pendant qu'il joue), DAMPER (le feutre, et
+/// la sortie). Barres d'aluminium argent sur un châssis doré, comme les
+/// tubes.
+MachinePanel makeVibraphone() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.vibraphone";
+    panel.displayName = "Vibraphone (la barre, le tube et le moteur)";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#2A2418";
+    panel.sectionColour = "#1D1910";
+    panel.textColour = "#F1EBDD";
+    panel.knobColour = "#C9CCD1";
+    panel.gridColumns = 12;
+    panel.gridRows = 4;
+
+    PanelSection barres;
+    barres.title = "BARS";
+    barres.accentColour = "#C9CCD1";
+    barres.column = 0; barres.row = 0; barres.columnSpan = 5; barres.rowSpan = 4;
+    barres.controls = {
+        control("Bar Undercut", "UNDERCUT", S::LargeKnob, 0, 0),
+        control("Bar Decay", "DECAY", S::Knob, 1, 0),
+        control("Decay Tilt", "TILT", S::Knob, 2, 0),
+        control("Mallet Hardness", "MALLET", S::Knob, 0, 1),
+        control("Strike Offset", "STRIKE", S::Knob, 1, 1),
+        control("Velocity to Hardness", "VEL", S::Knob, 2, 1),
+    };
+
+    PanelSection tubes;
+    tubes.title = "RESONATORS";
+    tubes.accentColour = "#D4A94A";
+    tubes.column = 5; tubes.row = 0; tubes.columnSpan = 4; tubes.rowSpan = 4;
+    tubes.controls = {
+        control("Resonator Mix", "TUBES", S::Knob, 0, 0),
+        control("Motor Speed", "MOTOR", S::LargeKnob, 1, 0),
+        control("Motor Depth", "DEPTH", S::Knob, 1, 1),
+    };
+
+    PanelSection feutre;
+    feutre.title = "DAMPER";
+    feutre.accentColour = "#B9C98A";
+    feutre.column = 9; feutre.row = 0; feutre.columnSpan = 3; feutre.rowSpan = 4;
+    feutre.controls = {
+        control("Damper Decay", "FELT", S::Knob, 0, 0),
+        control("Stereo Spread", "SPREAD", S::Knob, 0, 1),
+        control("Output Level", "VOLUME", S::Knob, 1, 1),
+    };
+
+    panel.sections = {barres, tubes, feutre};
+    return panel;
+}
+
+/// `vsm.bagpipe` -- la réserve d'air. BAG en premier et en grand : c'est
+/// le sac qui fait la cornemuse -- sa réserve, sa montée (strike-in), sa
+/// chute (cut-off). CHANTER reprend l'anche de `vsm.cone` et porte la note
+/// de grâce ; DRONES les trois bourdons et leur tonique. Vert de tartan,
+/// bois sombre.
+MachinePanel makeBagpipe() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.bagpipe";
+    panel.displayName = "Bagpipe (la réserve d'air)";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#1F3326";
+    panel.sectionColour = "#16251B";
+    panel.textColour = "#EFE9D8";
+    panel.knobColour = "#B33A3A";
+    panel.gridColumns = 12;
+    panel.gridRows = 4;
+
+    PanelSection sac;
+    sac.title = "BAG";
+    sac.accentColour = "#B33A3A";
+    sac.column = 0; sac.row = 0; sac.columnSpan = 4; sac.rowSpan = 4;
+    sac.controls = {
+        control("Bag Reserve", "RESERVE", S::LargeKnob, 0, 0),
+        control("Strike-in", "STRIKE-IN", S::Knob, 1, 0),
+        control("Cut-off", "CUT-OFF", S::Knob, 1, 1),
+    };
+
+    PanelSection chalumeau;
+    chalumeau.title = "CHANTER";
+    chalumeau.accentColour = "#D9C27A";
+    chalumeau.column = 4; chalumeau.row = 0; chalumeau.columnSpan = 5; chalumeau.rowSpan = 4;
+    chalumeau.controls = {
+        control("Grace Length", "GRACE", S::LargeKnob, 0, 0),
+        control("Reed Stiffness", "REED", S::Knob, 1, 0),
+        control("Brassiness", "BRASS", S::Knob, 2, 0),
+        control("Breath Noise", "NOISE", S::Knob, 1, 1),
+        control("Bell Damping", "BELL", S::Knob, 2, 1),
+    };
+
+    PanelSection bourdons;
+    bourdons.title = "DRONES";
+    bourdons.accentColour = "#8FB3A0";
+    bourdons.column = 9; bourdons.row = 0; bourdons.columnSpan = 3; bourdons.rowSpan = 4;
+    bourdons.controls = {
+        control("Drone Note", "TONIC", S::Knob, 0, 0),
+        control("Drones", "LEVEL", S::Knob, 1, 0),
+        control("Output Level", "VOLUME", S::Knob, 0, 1),
+    };
+
+    panel.sections = {sac, chalumeau, bourdons};
+    return panel;
+}
+
+/// `vsm.carillon` -- la cloche. BELL en premier : la tierce (mineure ou
+/// majeure) et le doublet, les deux réglages qui n'existent nulle part
+/// ailleurs, en grand ; TIME pour le bourdon et la pente ; CLAPPER pour le
+/// battant. Bronze sur bois sombre.
+MachinePanel makeCarillon() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.carillon";
+    panel.displayName = "Carillon (la cloche et sa tierce mineure)";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#2B2118";
+    panel.sectionColour = "#1E1710";
+    panel.textColour = "#F2E8D5";
+    panel.knobColour = "#B8863B";
+    panel.gridColumns = 12;
+    panel.gridRows = 4;
+
+    PanelSection cloche;
+    cloche.title = "BELL";
+    cloche.accentColour = "#B8863B";
+    cloche.column = 0; cloche.row = 0; cloche.columnSpan = 5; cloche.rowSpan = 4;
+    cloche.controls = {
+        control("Tierce", "TIERCE", S::LargeKnob, 0, 0),
+        control("Doublet", "DOUBLET", S::LargeKnob, 1, 0),
+    };
+
+    PanelSection temps;
+    temps.title = "TIME";
+    temps.accentColour = "#8FA3B3";
+    temps.column = 5; temps.row = 0; temps.columnSpan = 4; temps.rowSpan = 4;
+    temps.controls = {
+        control("Hum Decay", "HUM", S::Knob, 0, 0),
+        control("Decay Tilt", "TILT", S::Knob, 1, 0),
+        control("Output Level", "VOLUME", S::Knob, 0, 1),
+    };
+
+    PanelSection battant;
+    battant.title = "CLAPPER";
+    battant.accentColour = "#C9B08A";
+    battant.column = 9; battant.row = 0; battant.columnSpan = 3; battant.rowSpan = 4;
+    battant.controls = {
+        control("Clapper Hardness", "HARDNESS", S::Knob, 0, 0),
+        control("Velocity to Hardness", "VEL", S::Knob, 0, 1),
+    };
+
+    panel.sections = {cloche, temps, battant};
+    return panel;
+}
+
+/// `vsm.clavinet` -- la corde qui sonne entière au relâchement. STRING pour
+/// l'embout, la tenue, la sourdine ; RELEASE pour ce qui fait le clavinet
+/// (la corde derrière l'embout, la laine, le claquement), en grand ;
+/// PICKUPS pour les deux micros et la tonalité. Bois clair, boutons noirs
+/// et blancs comme les commutateurs du D6.
+MachinePanel makeClavinet() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.clavinet";
+    panel.displayName = "Clavinet (la corde qui sonne entière au relâchement)";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#4A3524";
+    panel.sectionColour = "#3A291B";
+    panel.textColour = "#F3EADB";
+    panel.knobColour = "#1E1E1E";
+    panel.gridColumns = 12;
+    panel.gridRows = 4;
+
+    PanelSection corde;
+    corde.title = "STRING";
+    corde.accentColour = "#E8DCC4";
+    corde.column = 0; corde.row = 0; corde.columnSpan = 4; corde.rowSpan = 4;
+    corde.controls = {
+        control("Tip Hardness", "TIP", S::Knob, 0, 0),
+        control("String Decay", "DECAY", S::Knob, 1, 0),
+        control("Mute", "MUTE", S::Knob, 0, 1),
+        control("Velocity Sensitivity", "VEL", S::Knob, 1, 1),
+    };
+
+    PanelSection relachement;
+    relachement.title = "RELEASE";
+    relachement.accentColour = "#D9A441";
+    relachement.column = 4; relachement.row = 0; relachement.columnSpan = 4; relachement.rowSpan = 4;
+    relachement.controls = {
+        control("String Behind", "BEHIND", S::LargeKnob, 0, 0),
+        control("Yarn Damping", "YARN", S::Knob, 1, 0),
+        control("Release Click", "CLICK", S::Knob, 1, 1),
+    };
+
+    PanelSection micros;
+    micros.title = "PICKUPS";
+    micros.accentColour = "#9FB8C9";
+    micros.column = 8; micros.row = 0; micros.columnSpan = 4; micros.rowSpan = 4;
+    micros.controls = {
+        control("Pickup Mix", "A / B", S::Knob, 0, 0),
+        control("Pickup Phase", "PHASE", S::Knob, 1, 0),
+        control("Filter Cutoff", "TONE", S::Knob, 0, 1),
+        control("Output Level", "VOLUME", S::Knob, 1, 1),
+    };
+
+    panel.sections = {corde, relachement, micros};
+    return panel;
+}
+
 /// `vsm.glass` -- le verre frotté. PRESSURE est en grand et seul dans sa
 /// section, parce qu'il ne fait pas ce qu'un potentiomètre de pression fait
 /// ailleurs : il décide du TEMPS QUE LE SON MET À NAÎTRE. Pressé doucement, le
@@ -4049,7 +4419,7 @@ const std::vector<MachinePanel>& panels() {
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
         makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev(),
         makeScanned(), makeMellotron(), makeSitar(), makeMembrane(), makeReed(),
-        makePlate(), makeClavichord(), makeGlass(), makeJewsHarp(),
+        makePlate(), makeClavichord(), makeHarpsichord(), makeHurdyGurdy(), makeBanjo(), makeVibraphone(), makeBagpipe(), makeCarillon(), makeClavinet(), makeGlass(), makeJewsHarp(),
         makeTheremin(), makeMusicBox(), makeTerrain(), makeSpectral()
     };
     return all;

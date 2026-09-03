@@ -779,6 +779,13 @@ VSM_TEST(regression_membrane)   { checkMachine("vsm.membrane"); }
 VSM_TEST(regression_reed)       { checkMachine("vsm.reed"); }
 VSM_TEST(regression_plate)      { checkMachine("vsm.plate"); }
 VSM_TEST(regression_clavichord) { checkMachine("vsm.clavichord"); }
+VSM_TEST(regression_harpsichord) { checkMachine("vsm.harpsichord"); }
+VSM_TEST(regression_hurdygurdy) { checkMachine("vsm.hurdygurdy"); }
+VSM_TEST(regression_banjo)      { checkMachine("vsm.banjo"); }
+VSM_TEST(regression_vibraphone) { checkMachine("vsm.vibraphone"); }
+VSM_TEST(regression_bagpipe)    { checkMachine("vsm.bagpipe"); }
+VSM_TEST(regression_carillon)   { checkMachine("vsm.carillon"); }
+VSM_TEST(regression_clavinet)   { checkMachine("vsm.clavinet"); }
 VSM_TEST(regression_glass)      { checkMachine("vsm.glass"); }
 VSM_TEST(regression_jewsharp)   { checkMachine("vsm.jewsharp"); }
 VSM_TEST(regression_theremin)   { checkMachine("vsm.theremin"); }

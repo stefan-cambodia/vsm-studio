@@ -199,6 +199,59 @@ constexpr Rule kRules[] = {
     // Bebung réel — une trentaine de cents, de quoi colorer une note tenue,
     // pas de quoi transposer.
     {"clavichord.pressureToTension",       0.0f,     1.0f, SearchScale::Linear,      0.28f},
+    // CLAVECIN (vsm.harpsichord). La REGISTRATION est ce qui change le son
+    // d'un clavecin : le 4' double à l'octave, le jeu de luth raccourcit et
+    // assourdit. Le frôlement du relâchement est un trait de jeu qui pèse peu
+    // sur une distance ; il vient en dernier.
+    {"harpsichord.register4",              0.0f,     1.0f, SearchScale::Linear,      0.92f},
+    {"harpsichord.luteStop",               0.0f,     1.0f, SearchScale::Linear,      0.70f},
+    {"harpsichord.register8",              0.2f,     1.0f, SearchScale::Linear,      0.45f},
+    {"harpsichord.damperTime",            0.01f,     0.2f, SearchScale::Linear,      0.30f},
+    {"harpsichord.releasePluck",           0.0f,     1.0f, SearchScale::Linear,      0.25f},
+    // VIELLE À ROUE (vsm.hurdygurdy). Les bourdons décident de ce qu'on
+    // entend avant tout (ils sonnent sous chaque note) ; la tonique des
+    // bourdons se cherche par demi-tons, comme une hauteur ; le chien est un
+    // rythme, il pèse peu sur une distance et vient en dernier.
+    {"hurdygurdy.drones",                  0.0f,     1.0f, SearchScale::Linear,      0.93f},
+    {"hurdygurdy.droneNote",              24.0f,    60.0f, SearchScale::Linear,      0.88f},
+    {"hurdygurdy.wheelInertia",           0.05f,     2.0f, SearchScale::Linear,      0.35f},
+    {"hurdygurdy.chien",                   0.0f,     1.0f, SearchScale::Linear,      0.30f},
+    {"hurdygurdy.chienBuzz",              30.0f,   120.0f, SearchScale::Linear,      0.20f},
+    // BANJO (vsm.banjo). La peau fait le son : sa part d'abord, sa tension
+    // (où chantent ses modes) ensuite, son amortissement enfin.
+    {"banjo.headMix",                      0.0f,     1.0f, SearchScale::Linear,      0.94f},
+    {"banjo.headTension",                150.0f,   600.0f, SearchScale::Logarithmic, 0.90f},
+    {"banjo.headDamping",                  0.0f,     1.0f, SearchScale::Linear,      0.60f},
+    // VIBRAPHONE (vsm.vibraphone). Le creusement décide où tombent les
+    // partiels — c'est ce qu'on entend d'abord ; la part du tube ensuite ;
+    // le point de frappe dose le second partiel ; le feutre ne se cherche
+    // qu'en dernier (un morceau se joue pédale enfoncée ou non).
+    {"vibraphone.undercut",                0.0f,     1.0f, SearchScale::Linear,      0.92f},
+    {"vibraphone.resonatorMix",            0.0f,     1.0f, SearchScale::Linear,      0.80f},
+    {"vibraphone.strikeOffset",            0.0f,     1.0f, SearchScale::Linear,      0.62f},
+    {"vibraphone.damperDecay",            0.05f,     1.5f, SearchScale::Logarithmic, 0.35f},
+    // CORNEMUSE (vsm.bagpipe). Le sac se règle peu : la réserve et la chute
+    // décident de ce qui se passe APRÈS la dernière note, ce qu'une
+    // recherche sur des notes tenues voit à peine ; la note de grâce, elle,
+    // s'entend à chaque répétition.
+    {"bagpipe.graceLength",               10.0f,   120.0f, SearchScale::Linear,      0.60f},
+    {"bagpipe.bagReserve",                 0.0f,     3.0f, SearchScale::Linear,      0.40f},
+    {"bagpipe.cutOff",                    0.05f,     1.5f, SearchScale::Logarithmic, 0.35f},
+    {"bagpipe.strikeIn",                  0.05f,     1.5f, SearchScale::Logarithmic, 0.30f},
+    // CARILLON (vsm.carillon). La tierce se cherche d'abord (mineure ou
+    // majeure, c'est deux instruments), le doublet ensuite (une cloche qui
+    // bat contre une qui ne bat pas s'entend à la seconde).
+    {"carillon.tierce",                    0.0f,     1.0f, SearchScale::Linear,      0.85f},
+    {"carillon.doublet",                   0.0f,     3.0f, SearchScale::Linear,      0.70f},
+    // CLAVINET (vsm.clavinet). Les micros font le timbre tenu (ce qu'une
+    // recherche entend le plus), la sourdine la tenue ; le relâchement se
+    // cherche moins : il ne dure que quelques centièmes de seconde.
+    {"clavinet.pickupMix",                 0.0f,     1.0f, SearchScale::Linear,      0.90f},
+    {"clavinet.pickupPhase",               0.0f,     1.0f, SearchScale::Linear,      0.60f},
+    {"clavinet.mute",                      0.0f,     1.0f, SearchScale::Linear,      0.75f},
+    {"clavinet.stringBehind",              0.0f,     1.0f, SearchScale::Linear,      0.40f},
+    {"clavinet.yarnDamping",              0.02f,     0.4f, SearchScale::Logarithmic, 0.35f},
+    {"clavinet.releaseClick",              0.0f,     1.0f, SearchScale::Linear,      0.30f},
     // VERRE FROTTÉ (vsm.glass). La PRESSION DU DOIGT commande, et d'une façon
     // qui n'a pas d'équivalent : elle ne change pas le timbre, elle change le
     // TEMPS QUE LE SON MET À NAÎTRE — d'un rapport de trente et un à un sur la

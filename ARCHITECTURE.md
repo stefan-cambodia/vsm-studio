@@ -3988,6 +3988,88 @@ condition COLA) et aucune allocation dans `process`.
 
 Le parc passe à **53 machines**.
 
+**ET UNE TREIZIÈME NOUVELLE FAMILLE LE 03/09 : `vsm.harpsichord`, le
+clavecin — le seul clavier du parc qui REFUSE la vélocité, et le seul
+instrument qui sonne AU relâchement.** Le bec du sautereau pince toujours
+de la même façon : deux vélocités extrêmes donnent une sortie identique au
+bit près (test). En retombant, le bec frôle la corde — mesuré −13,7 dB sous
+l'attaque à fond, −20 dB au défaut — puis l'étouffoir coupe (0,000000 à
+200 ms). Le son se REGISTRE au lieu de se régler : 8', 4' (×1,6 à 2·f0),
+jeu de luth (×0,05 à une seconde). Douze tests, empreinte, façade ; CDC
+machines-manquantes § 22.
+
+Le parc passe à **54 machines**.
+
+**ET UNE QUATORZIÈME : `vsm.hurdygurdy`, la vielle à roue — un archet sans
+fin, des bourdons sans clavier, et la vélocité comme RYTHME.** Une note tenue
+garde son niveau (+2,0 dB entre 1 s et 3 s) ; chien levé, deux vélocités
+extrêmes donnent la même chanterelle au bit près ; chien posé, le coup de
+poignet fort claque ×8,2 plus que le faible ; les bourdons sonnent encore
+50 ms après la dernière touche (inertie de la roue) et sont à zéro à 2 s.
+Le banc a trouvé le seuil de la friction : la force de la roue sur les
+bourdons est choisie par la mesure (0,8), pas devinée. Douze tests,
+empreinte, façade ; CDC machines-manquantes § 23.
+
+Le parc passe à **55 machines**.
+
+**ET UNE QUINZIÈME : `vsm.banjo`, la corde dont la table est une PEAU.** La
+corde de `vsm.string` livre son chevalet à une banque de six résonateurs
+aux modes de Bessel d'une membrane : la peau chante ses modes quelle que
+soit la note (part du mode à 300 Hz ×2,1 sur la2, ×2,6 sur la4) et mange
+la corde (tenue à 1 s ≈ 0 contre 0,0020 sans peau). Douze tests, empreinte,
+façade ; CDC machines-manquantes § 24.
+
+Le parc passe à **56 machines**.
+
+**ET UNE SEIZIÈME : `vsm.vibraphone`, la barre CREUSÉE, le tube à MOTEUR,
+le feutre à PÉDALE.** Six modes tirés de la barre libre (1 : 2,78 : 5,44)
+vers 1 : 4 : 10 par le creusement (880 Hz contre 611 Hz sur la3 : 0,0467
+contre 0) ; un tube à deux pôles sur f0 par voix, qu'un moteur à phase
+unique ouvre et ferme — seul le fondamental ondule (profondeur 0,479 à f0,
+0,005 à 4·f0) ; CC 64 soulève le feutre (tenue à 1 s : 0,344 contre ≈ 0).
+Treize tests, empreinte, façade ; CDC machines-manquantes § 25.
+
+Le parc passe à **57 machines**.
+
+**ET UNE DIX-SEPTIÈME : `vsm.bagpipe`, la RÉSERVE D'AIR qui interdit le
+silence.** Un sac à trois temps (montée, réserve, chute) entre le souffle
+et quatre anches — le chalumeau sur la perce conique de `vsm.cone`, trois
+bourdons sur les perces cylindriques de `vsm.wind`. Jamais de silence
+entre deux notes (98 % du niveau dans un trou de 150 ms), une note de
+grâce automatique sur la note répétée (la aigu ×760), le sac qui se vide
+en détendant tout (−31,8 cents, puis 0), la vélocité ignorée au bit près.
+**Elle a révélé que `vsm.cone` ne s'éteignait jamais après le
+relâchement** (rms 0,295 deux secondes après) : la régénération de la
+perce conique tenait la boucle à 1,4 sans souffle. Corrigé dans les deux
+machines — la régénération exige un dixième de souffle — empreinte du cône
+régénérée (pic −3,4 %, l'attaque). Treize tests, empreinte, façade ; CDC
+machines-manquantes § 26.
+
+Le parc passe à **58 machines**.
+
+**ET UNE DIX-HUITIÈME : `vsm.carillon`, la cloche ACCORDÉE.** Huit
+partiels de fonderie (0,5 · 1 · 1,2 · 1,5 · 2 · 2,51 · 2,66 · 3,01), la
+tierce MINEURE (264 Hz contre 275 Hz sur la3 : 0,0574 contre 0,00008) ou
+majeure, chaque partiel dédoublé en deux composantes qui battent par
+géométrie (profondeur 1,00 à 1 Hz), le bourdon qui survit à tout (à 6 s :
+0,00113 contre 0 pour la nominale). Onze tests, empreinte, façade ; CDC
+machines-manquantes § 27.
+
+Le parc passe à **59 machines**.
+
+**ET UNE DIX-NEUVIÈME : `vsm.clavinet`, la corde que la touche TIENT, et
+qui sonne ENTIÈRE, plus bas, quand on la lâche.** La corde de `vsm.string`
+tenue contre l'enclume ; au relâchement, la longueur entière (f/(1 +
+derrière), 163 Hz contre 220 Hz : 0,00024 contre 0,00001) sous la laine
+(rien à 300 ms). Deux micros près des deux bouts, modélisés comme le
+déplacement de la corde à leur position — y_p = x(t − (1−p)N/2) − x(t −
+(1+p)N/2), le retard de propagation compris, sans quoi la symétrie
+s'annulait en somme — dont la DIFFÉRENCE creuse le fondamental (15 %) et
+double l'octave (×14). Douze tests, empreinte, façade ; CDC
+machines-manquantes § 28.
+
+Le parc passe à **60 machines**.
+
 ---
 
 ## 47. Ouvrir un projet fait ailleurs : `Inflate`, `Xml`, `DawImport`

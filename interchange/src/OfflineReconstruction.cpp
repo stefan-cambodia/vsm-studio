@@ -409,17 +409,58 @@ RenderResult renderTrackForFreeze(const LoadedBundle& bundle, size_t trackIndex,
 
 namespace {
 
+/// Ce qu'un caractère hors ASCII devient dans un nom de fichier : la lettre
+/// sans son accent, la ligature en deux lettres, le point médian des noms de
+/// voix (« Voix · tête ») en tiret. Le reste devient `_`. Sans cette table,
+/// « Voix · tête » s'écrivait `Voix __ t__te.wav` (constaté le 03/09/2026 sur
+/// les stems d'un projet à parité) : lisible par personne.
+std::string translittere(uint32_t codePoint) {
+    switch (codePoint) {
+        case 0xE0: case 0xE1: case 0xE2: case 0xE3: case 0xE4: case 0xE5: return "a";
+        case 0xC0: case 0xC1: case 0xC2: case 0xC3: case 0xC4: case 0xC5: return "A";
+        case 0xE8: case 0xE9: case 0xEA: case 0xEB: return "e";
+        case 0xC8: case 0xC9: case 0xCA: case 0xCB: return "E";
+        case 0xEC: case 0xED: case 0xEE: case 0xEF: return "i";
+        case 0xCC: case 0xCD: case 0xCE: case 0xCF: return "I";
+        case 0xF2: case 0xF3: case 0xF4: case 0xF5: case 0xF6: return "o";
+        case 0xD2: case 0xD3: case 0xD4: case 0xD5: case 0xD6: return "O";
+        case 0xF9: case 0xFA: case 0xFB: case 0xFC: return "u";
+        case 0xD9: case 0xDA: case 0xDB: case 0xDC: return "U";
+        case 0xFD: case 0xFF: return "y";
+        case 0xE7: return "c"; case 0xC7: return "C";
+        case 0xF1: return "n"; case 0xD1: return "N";
+        case 0x153: return "oe"; case 0x152: return "OE";
+        case 0xE6: return "ae"; case 0xC6: return "AE";
+        case 0xDF: return "ss";
+        case 0xB7: case 0x2013: case 0x2014: case 0x2022: return "-";   // · – — •
+        case 0x2019: case 0x2018: return "";                              // ’ ‘
+        default: return "_";
+    }
+}
+
 /// Un nom de fichier sûr tiré du nom de la piste : ni séparateur, ni accent
 /// perdu en route. Deux pistes homonymes existent (« Guitare » deux fois) et
 /// s'écraseraient l'une l'autre ; le numéro de piste les sépare, en tête pour
 /// que le dossier se lise dans l'ordre du mixeur.
 std::string stemFileName(size_t index, const std::string& name) {
     std::string propre;
-    for (const char c : name) {
-        const unsigned char u = static_cast<unsigned char>(c);
-        if (u >= 0x80) { propre += '_'; continue; }
-        if (std::isalnum(u) || c == '-' || c == '_' || c == ' ') propre += c;
-        else propre += '_';
+    for (size_t i = 0; i < name.size();) {
+        const unsigned char u = static_cast<unsigned char>(name[i]);
+        if (u < 0x80) {
+            const char c = name[i++];
+            if (std::isalnum(u) || c == '-' || c == '_' || c == ' ') propre += c;
+            else propre += '_';
+            continue;
+        }
+        // Décodage UTF-8 minimal : la longueur de la séquence se lit dans le
+        // premier octet ; une séquence tronquée vaut `_`.
+        size_t longueur = (u & 0xE0) == 0xC0 ? 2 : (u & 0xF0) == 0xE0 ? 3 : (u & 0xF8) == 0xF0 ? 4 : 1;
+        if (i + longueur > name.size()) { propre += '_'; break; }
+        uint32_t point = longueur == 2 ? (u & 0x1Fu) : longueur == 3 ? (u & 0x0Fu) : longueur == 4 ? (u & 0x07u) : 0u;
+        for (size_t k = 1; k < longueur; ++k)
+            point = (point << 6) | (static_cast<unsigned char>(name[i + k]) & 0x3Fu);
+        propre += longueur == 1 ? std::string("_") : translittere(point);
+        i += longueur;
     }
     while (!propre.empty() && propre.back() == ' ') propre.pop_back();
     if (propre.empty()) propre = "piste";

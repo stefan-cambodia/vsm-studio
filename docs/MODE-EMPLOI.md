@@ -291,6 +291,88 @@ reste.
 
 ![Façade de Clavichord (le clavier qui vibre)](images/manuel/vsm.clavichord.png)
 
+**Harpsichord (le clavecin)** — `vsm.harpsichord`
+
+Le clavier qui **ignore la vélocité** : le bec du sautereau pince la corde
+toujours de la même façon, vite ou lentement — c'est ce qui a fait inventer
+le piano-forte, et la machine le respecte au bit près. Relâchez : le bec
+frôle la corde en retombant, un petit pincement, puis l'étouffoir coupe. Le
+son ne se règle pas, il se **registre** : tirez le 4' pour doubler à
+l'octave, le jeu de luth pour un son court et mat. Ni molette ni pression :
+l'instrument n'en a pas.
+
+![Façade de Harpsichord (le clavecin)](images/manuel/vsm.harpsichord.png)
+
+**Hurdy-Gurdy (la vielle à roue)** — `vsm.hurdygurdy`
+
+Un archet qui ne finit pas : tant qu'une touche est tenue, la roue tourne et
+la note ne meurt pas. Les **bourdons** n'ont pas de clavier — ils sonnent
+tant que la roue tourne, et encore un instant après la dernière touche, le
+temps de l'inertie. Ici la vélocité **n'est pas la force** : c'est le coup de
+poignet, qui fait claquer le **chien**, ce chevalet mobile qui donne le
+rythme des vielles. Réglez la tonique des bourdons sur celle du morceau.
+
+![Façade de Hurdy-Gurdy (la vielle à roue)](images/manuel/vsm.hurdygurdy.png)
+
+**Banjo (la corde sur la peau)** — `vsm.banjo`
+
+Une corde pincée dont la table est une **peau de tambour** : elle chante ses
+propres modes quelle que soit la note — tendez-la avec *Tension*, c'est la
+clé du cercle — et elle mange la corde, d'où la note brève et claquante du
+banjo. *Mix* dose ce que la peau prend à la corde ; à zéro, c'est une
+guitare sèche.
+
+![Façade de Banjo (la corde sur la peau)](images/manuel/vsm.banjo.png)
+
+**Vibraphone (la barre, le tube et le moteur)** — `vsm.vibraphone`
+
+Une barre d'aluminium **creusée** jusqu'à ce que ses partiels tombent à
+1 : 4 : 10 (*Undercut* à zéro rend la barre libre de `vsm.modal`, au second
+partiel à 2,76·f0) ; sous chaque barre un tube accordé sur la note, dont un
+**moteur** ouvre et ferme le sommet : c'est le vibrato du vibraphone, et il
+n'ondule que le fondamental — *Motor* règle sa vitesse, *Depth* le laisse
+ouvert à zéro. La **pédale de sustain** de votre clavier (CC 64) soulève le
+feutre : sans elle, une touche lâchée se tait en un quart de seconde
+(*Felt*) ; avec elle, la barre tient ses six secondes (*Decay*). Une touche
+tenue vaut la pédale. Pas de molette : une barre frappée n'en a pas.
+
+![Façade de Vibraphone (la barre, le tube et le moteur)](images/manuel/vsm.vibraphone.png)
+
+**Bagpipe (la réserve d'air)** — `vsm.bagpipe`
+
+**Si le son ne s'arrête pas quand vous lâchez la touche, ce n'est pas un
+bogue.** Un sac d'air alimente le chalumeau et les trois bourdons : la note
+tient jusqu'à la suivante, et tout lâché, elle tient encore sa *Reserve*
+avant que le sac se vide (*Cut-off*) — en s'affaissant, comme une vraie.
+Rejouer la note qui sonne insère d'elle-même une note de grâce (*Grace*,
+le la aigu) : sans elle, deux notes identiques n'en feraient qu'une. Pas de
+nuance, pas de molette. *Tonic* règle les bourdons sur celle du morceau.
+
+![Façade de Bagpipe (la réserve d'air)](images/manuel/vsm.bagpipe.png)
+
+**Carillon (la cloche et sa tierce mineure)** — `vsm.carillon`
+
+Une cloche fondue et **accordée** : bourdon à l'octave grave, prime, tierce
+**mineure** (*Tierce* à zéro ; à un, la tierce majeure des cloches
+d'Eindhoven), quinte, nominale. *Doublet* écarte les deux composantes de
+chaque partiel — c'est le battement d'une vraie cloche, pas un LFO ; à zéro,
+la cloche est parfaitement ronde. *Hum* règle la vie du bourdon, qui
+survit à tout. Pas de molette, pas d'étouffoir : une cloche sonne jusqu'au
+bout.
+
+![Façade de Carillon (la cloche et sa tierce mineure)](images/manuel/vsm.carillon.png)
+
+**Clavinet (la corde qui sonne entière au relâchement)** — `vsm.clavinet`
+
+La touche tient la corde contre une enclume ; lâchez-la et la corde
+**entière** sonne un instant, plus bas (*Behind* règle de combien), avant
+que la laine (*Yarn*) ne l'étouffe — c'est le « thump » du clavinet, à
+doser avec *Click*. Deux micros, manche et chevalet (*A / B*), en somme ou
+en différence (*Phase* : la différence creuse le fondamental, le son
+« nasal » du D6) ; *Mute* est le curseur de sourdine. Pas de molette.
+
+![Façade de Clavinet (la corde qui sonne entière au relâchement)](images/manuel/vsm.clavinet.png)
+
 **Music Box (la lame qui doit revenir)** — `vsm.musicbox`
 
 **Si une note ne sonne pas, ce n'est pas un bogue.** Chaque note est une lame

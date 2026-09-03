@@ -475,6 +475,126 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Velocity Sensitivity", "voice.velocitySensitivity"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.harpsichord ---
+    // Le bec pince au même point que le plectre de `vsm.string` et la tangente
+    // de `vsm.clavichord` (« string.pickPosition »), et la corde a la même
+    // décroissance et le même amortissement. Ce qui est neuf, et propre au
+    // clavecin, ce sont les REGISTRES (8', 4', jeu de luth), le frôlement du
+    // relâchement et le temps de pose de l'étouffoir : aucune autre machine
+    // du parc n'a de registration ni de son au relâchement.
+    {"vsm.harpsichord", {
+        {"Register 8'", "harpsichord.register8"},
+        {"Register 4'", "harpsichord.register4"},
+        {"Lute Stop", "harpsichord.luteStop"},
+        {"Pluck Position", "string.pickPosition"},
+        {"Release Pluck", "harpsichord.releasePluck"},
+        {"String Decay", "string.decay"},
+        {"String Damping", "string.damping"},
+        {"Damper Time", "harpsichord.damperTime"},
+        {"Filter Cutoff", "filter.1.cutoff"},
+        {"Output Level", "output.level"},
+    }},
+    // --- vsm.hurdygurdy ---
+    // La roue est un archet : sa vitesse et sa pression sont celles de
+    // l'archet de `vsm.string`, et en gardent le vocabulaire. Le reste n'a
+    // d'équivalent nulle part -- des bourdons sans clavier, l'inertie d'une
+    // roue, un chevalet qui claque -- et reçoit ses identités propres.
+    {"vsm.hurdygurdy", {
+        {"Drones", "hurdygurdy.drones"},
+        {"Drone Note", "hurdygurdy.droneNote"},
+        {"Wheel Speed", "string.bowSpeed"},
+        {"Wheel Pressure", "string.bowPressure"},
+        {"Wheel Inertia", "hurdygurdy.wheelInertia"},
+        {"Chien", "hurdygurdy.chien"},
+        {"Chien Buzz", "hurdygurdy.chienBuzz"},
+        {"String Damping", "string.damping"},
+        {"Filter Cutoff", "filter.1.cutoff"},
+        {"Output Level", "output.level"},
+    }},
+    // --- vsm.banjo ---
+    // La corde est celle de `vsm.string` et en garde tout le vocabulaire ;
+    // la PEAU n'a d'équivalent nulle part : sa tension (la clé du cercle),
+    // son amortissement, sa part dans le son.
+    {"vsm.banjo", {
+        {"Head Tension", "banjo.headTension"},
+        {"Head Damping", "banjo.headDamping"},
+        {"Head Mix", "banjo.headMix"},
+        {"Pick Position", "string.pickPosition"},
+        {"Pick Hardness", "string.pickHardness"},
+        {"String Decay", "string.decay"},
+        {"String Damping", "string.damping"},
+        {"Velocity Sensitivity", "voice.velocitySensitivity"},
+        {"Filter Cutoff", "filter.1.cutoff"},
+        {"Output Level", "output.level"},
+    }},
+    // --- vsm.vibraphone ---
+    // La barre parle le vocabulaire de `vsm.modal` (temps, pente, maillet),
+    // le moteur celui du trémolo (c'est le trémolo de l'instrument, comme
+    // sur le piano électrique). Trois identités neuves pour ce qui n'existe
+    // nulle part : le creusement de la barre, le feutre, la part du tube.
+    {"vsm.vibraphone", {
+        {"Bar Undercut", "vibraphone.undercut"},
+        {"Bar Decay", "modal.decay"},
+        {"Decay Tilt", "modal.decayTilt"},
+        {"Damper Decay", "vibraphone.damperDecay"},
+        {"Mallet Hardness", "string.pickHardness"},
+        {"Strike Offset", "vibraphone.strikeOffset"},
+        {"Velocity to Hardness", "voice.velocitySensitivity"},
+        {"Resonator Mix", "vibraphone.resonatorMix"},
+        {"Motor Speed", "effect.tremolo.rate"},
+        {"Motor Depth", "effect.tremolo.depth"},
+        {"Stereo Spread", "output.stereoWidth"},
+        {"Output Level", "output.level"},
+    }},
+    // --- vsm.bagpipe ---
+    // Les anches parlent le vocabulaire de `vsm.wind`, les bourdons celui
+    // de la vielle (même chose : des tuyaux sans clavier sur une tonique).
+    // Le SAC n'a d'équivalent nulle part : sa réserve, sa montée, sa chute,
+    // et la longueur de la note de grâce.
+    {"vsm.bagpipe", {
+        {"Drone Note", "hurdygurdy.droneNote"},
+        {"Drones", "hurdygurdy.drones"},
+        {"Bag Reserve", "bagpipe.bagReserve"},
+        {"Strike-in", "bagpipe.strikeIn"},
+        {"Cut-off", "bagpipe.cutOff"},
+        {"Grace Length", "bagpipe.graceLength"},
+        {"Reed Stiffness", "wind.reedStiffness"},
+        {"Brassiness", "wind.brassiness"},
+        {"Breath Noise", "wind.breathNoise"},
+        {"Bell Damping", "wind.bellDamping"},
+        {"Output Level", "output.level"},
+    }},
+    // --- vsm.carillon ---
+    // Le temps et sa pente parlent le vocabulaire de `vsm.modal`, le battant
+    // celui du maillet. Deux identités neuves : la tierce (mineure ou
+    // majeure) et le doublet — l'écart des deux composantes d'un partiel —
+    // qui n'existent sur aucune autre machine.
+    {"vsm.carillon", {
+        {"Tierce", "carillon.tierce"},
+        {"Hum Decay", "modal.decay"},
+        {"Decay Tilt", "modal.decayTilt"},
+        {"Doublet", "carillon.doublet"},
+        {"Clapper Hardness", "string.pickHardness"},
+        {"Velocity to Hardness", "voice.velocitySensitivity"},
+        {"Output Level", "output.level"},
+    }},
+    // --- vsm.clavinet ---
+    // La corde et l'embout parlent le vocabulaire de `vsm.string` ; le
+    // relâchement (la corde derrière l'embout, la laine, le claquement), la
+    // sourdine et les micros n'existent nulle part ailleurs.
+    {"vsm.clavinet", {
+        {"Tip Hardness", "string.pickHardness"},
+        {"String Decay", "string.decay"},
+        {"Mute", "clavinet.mute"},
+        {"String Behind", "clavinet.stringBehind"},
+        {"Yarn Damping", "clavinet.yarnDamping"},
+        {"Release Click", "clavinet.releaseClick"},
+        {"Velocity Sensitivity", "voice.velocitySensitivity"},
+        {"Pickup Mix", "clavinet.pickupMix"},
+        {"Pickup Phase", "clavinet.pickupPhase"},
+        {"Filter Cutoff", "filter.1.cutoff"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.glass ---
     // La PRESSION DU DOIGT ne réemploie pas `wind.breathPressure` malgré la
     // ressemblance des mots : un souffle entretient une colonne d'air, un
