@@ -153,8 +153,17 @@ void EffectChainComponent::rebuildFromProject() {
 void EffectChainComponent::setActiveTrack(int trackIndex) {
     activeTrack_ = trackIndex;
     selectedEffect_ = -1;
-    titleLabel_.setText(trackIndex < 0 ? "Effets - aucune piste"
-                                       : "Effets - piste " + juce::String(trackIndex + 1),
+    // LE NOM DE LA PISTE, PAS SON NUMÉRO : « Effets — Batterie » se lit,
+    // « piste 11 » se compte sur la liste.
+    juce::String titre = "Effets - aucune piste";
+    if (trackIndex >= 0) {
+        titre = "Effets - piste " + juce::String(trackIndex + 1);
+        if (project_ != nullptr && static_cast<size_t>(trackIndex) < project_->tracks.size()
+            && !project_->tracks[static_cast<size_t>(trackIndex)].name.empty())
+            titre = juce::String::fromUTF8("Effets \u2014 ")
+                  + juce::String::fromUTF8(project_->tracks[static_cast<size_t>(trackIndex)].name.c_str());
+    }
+    titleLabel_.setText(titre,
                         juce::dontSendNotification);
     rebuildEffectList();
     rebuildParamControls();
