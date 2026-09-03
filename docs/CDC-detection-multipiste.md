@@ -514,6 +514,23 @@ toute la chaîne au départ : une course est une photographie du code à son
 départ. La campagne 2 s'est arrêtée là ; sky-parite et v15 sont remises en
 file derrière la campagne 3 (campagne 4).
 
+## 9. Campagne 5 : la fusion des sept machines, et son prix — attendu écrit AVANT (03/09/2026)
+
+La campagne 4 (sky-parite, v15) finit dans la nuit. Un script
+(`campagne-parite-5.sh`, dans le dossier de travail) attend sa fin, puis
+FUSIONNE la branche `machine-clavecin` dans `master` (sept machines, le
+correctif du cône, la translittération), reconstruit tout, rejoue les six
+suites, et NE POUSSE et NE LANCE la course suivante QUE si tout est vert ;
+sinon il s'arrête et le journal le dit. La course :
+
+| Course | Témoin | Variable unique | Attendu, écrit d'avance |
+|---|---|---|---|
+| usandthem-parite-parc60 | usandthem-parite-v3 (0,19084, 9 pistes) | le MOTEUR : 60 machines au lieu de 53, `vsm.cone` qui s'éteint enfin, mêmes stems, mêmes options (`--parite`, 120 × 21, 3 tours, 6 finalistes, 8 rendus) | la mémoire `elargir-le-vivier-de-machines` a mesuré une fois +15,9 % pour six familles (v12) ; depuis, le verdict au mélange arbitre entre finalistes et le parc n'est plus jugé qu'au stem. J'attends entre −3 % et +5 %, neuf pistes, et au moins UNE des sept nouvelles machines parmi les six finalistes d'une voix d'`other` (le clavinet ou le vibraphone sur *Us and Them* ne seraient pas absurdes). Si le prix dépasse +5 %, il se publie et ne décide de rien : une machine s'ajoute pour la couverture ET pour le jeu (CDC machines § 7), et la distance ne mesure que la première |
+
+Le correctif du cône change son empreinte (pic −3,4 %) : toute course
+lancée après la fusion porte un moteur différent de celui des campagnes 1
+à 4, et la provenance le dit (`moteur.compile`, `moteur.machines` = 60).
+
 ### En attente de la fin des campagnes (03/09/2026)
 
 Deux retouches sont différées parce qu'elles touchent `audio/` ou
@@ -522,7 +539,9 @@ elles — un avertissement vrai, mais qui doit rester rare pour rester lu :
 
 - **les noms de fichiers des stems exportés par groupe** : `OfflineReconstruction.cpp`
   remplace chaque octet non ASCII par `_`, et « Voix · tête » devient
-  `Voix __ t__te.wav`. Translittérer (é → e, œ → oe, « · » → « - ») ;
+  `Voix __ t__te.wav`. Translittérer (é → e, œ → oe, « · » → « - ») —
+  **FAIT sur la branche `machine-clavecin`** (03/09/2026, 1 test) : elle
+  attend la même fusion que les machines ;
 - **le vivier de machines** (mémoire permanente de l'utilisateur) : SEPT
   familles sont PRÊTES sur la branche `machine-clavecin`, développées dans
   un worktree séparé, suites vertes, façades rendues — `vsm.harpsichord`
