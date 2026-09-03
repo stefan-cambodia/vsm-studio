@@ -246,7 +246,8 @@ déplacent rien, et la stabilité par empreintes est démontrée en course.
 ## 6. `--parite` : le raccourci, et une épreuve de bout en bout
 
 Trois découpages mènent à la parité — voix par registres, batterie par pièce,
-tête et chœurs — et il faut **les trois**. Personne ne devrait avoir à les
+tête et chœurs — et il faut **les trois**. *(Un quatrième les a rejoints le
+03/09/2026, les registres lus dans les vides : voir le § 6 bis.)* Personne ne devrait avoir à les
 retenir : `--parite` les allume, en disant lesquels et ce qu'ils coûtent. Une
 option écrite à la main l'emporte, pour qu'un A/B sur un seul découpage reste
 possible.
@@ -278,6 +279,79 @@ défaut dormait depuis toujours ; il fallait un nom composé par la chaîne
 elle-même pour le réveiller. Les noms sont désormais translittérés pour le
 MIDI (le nom complet survit dans `project.json`, qui est de l'UTF-8), et
 quatre tests le gardent.
+
+## 6 bis. L'épreuve rejouable, et le quatrième découpage (03/09/2026)
+
+**L'épreuve du § 6 avait été perdue** : son morceau et son script vivaient
+dans un dossier temporaire, effacé par un redémarrage. Elle est maintenant un
+outil du dépôt, `analyse/epreuve_parite.py` : il FABRIQUE le morceau (32 s à
+120 bpm, Am-F-C-G) avec sa vérité écrite dans `verite.json`, fournit ses
+stems, fait tourner la chaîne à petit budget (trois candidates, un tour) et
+compte les pistes contre les parties, stem par stem. Neuf parties : une
+basse (MIDI 29-36) ; dans `other`, trois couches en registres DISJOINTS —
+dyades graves 36-50, arpèges médiums 60-72, mélodie aiguë 84-96 ; une
+batterie à trois pièces (kick, caisse claire, charleston) ; une voix de tête
+au centre doublée de chœurs larges. Chaque course dure de 80 à 250 s.
+
+**Ce que l'épreuve a trouvé d'abord : un plantage.** Ses stems sont écrits
+en float32, et le lecteur stéréo de la séparation tête/chœurs passait par le
+module `wave` de Python, qui refuse ce format : la chaîne tombait sur le stem
+vocal, après tout le travail sur les autres. Les stems de demucs sont en
+entiers, personne n'avait rencontré le cas. Le lecteur lit désormais
+l'en-tête lui-même (comme `lire_wav`), un test le garde.
+
+**Puis le défaut nommé au § 5 — et il n'était pas où le § 5 le disait.** Le
+§ 5 accusait la transcription (« 32 notes de polyphonie 2,37 »). Sur ce
+morceau-ci, Basic Pitch rend 285 notes de polyphonie 3,97 sur 69 demi-tons —
+un fourre-tout au sens du seuil, avec trois registres nettement séparés
+(36-46, 56-79, 84-96). Le découpage se déclenche, et rend **quatre** voix
+pour trois parties : `separer_en_voix` IMPOSE son maximum (quatre avec
+`--parite`) et coupe en deux le registre le plus maigre pour faire le compte.
+Le nombre de voix n'était pas lu, il était décidé d'avance.
+
+**Le quatrième découpage : `--voix-par-vides`.** Avant le partage en N voix,
+la densité de durée par hauteur, lissée sur deux demi-tons, est coupée à ses
+**creux** — là où elle tombe sous un quart du plus petit des deux sommets
+voisins. Un arpège serré (tierces, quartes) ne creuse pas : ses notes se
+recouvrent après lissage — le premier jet coupait à chaque hauteur muette et
+rendait douze registres pour trois ; dix demi-tons vides creusent jusqu'à
+zéro. Un registre sous 5 % de la durée totale (une erreur d'octave de la
+transcription, une fioriture) rejoint son voisin. Même garde-fou que les
+voix : ce qui n'est pas un fourre-tout ne se découpe pas. Un registre encore
+fourre-tout après ce découpage est partagé par `--voix-par-stem`. Quatre
+tests (`analyse/tests/test_registres_par_vides.py`).
+
+**Il rejoint `--parite`, et voici pourquoi c'est sans danger pour la campagne
+2 qui tourne** : essayé sur les huit pistes mélodiques réelles des courses
+H22a, H22b et sky-t6 (transcriptions de 481 à 4 642 notes), il ne coupe
+RIEN — une transcription réelle est dense, sans creux. Il est donc inerte
+sur les vrais morceaux mesurés jusqu'ici, et décisif sur le seul cas où la
+vérité est connue. Il est dans la provenance (`voixParVides`).
+
+**Mesuré, trois courses sur le même morceau** (mêmes candidates, même budget,
+même moteur ; la seule variable est le découpage) :
+
+| Course | other | Batterie | Voix | Pistes | Distance |
+|---|---|---|---|---|---|
+| témoin (aucun découpage) | 1 | 1 | 1 | 4 / 9 | 0,2197 |
+| les trois découpages d'avant | **4** (77-96, 56-75, 43-46, 27-41) | 3 | 2 | 10 / 9 | 0,1793 |
+| `--parite` (les quatre) | **3** (84-96, 56-79, 27-46) | 3 (hihat, kick+kick2, snare) | 2 (tête 77 %, chœurs 23 %) | **9 / 9** | **0,1776** |
+
+La parité est atteinte, et elle ne coûte rien : la distance BAISSE de 19 %
+par rapport au témoin (chaque partie reçoit sa machine et son volume). La
+batterie rend ses trois pièces — le kick porte deux gabarits (le premier coup
+d'un morceau n'a pas de queue), rabattus ensemble sous `kick+kick2`, ce qui
+est le comportement voulu ; la caisse claire de synthèse est bien classée
+caisse (la version perdue de l'épreuve l'avait vue en `kick2` : sa caisse
+était trop sombre). La chaîne dit aussi, trois fois, que le morceau serait
+meilleur sans telle piste (la basse, deux registres d'`other`) : chaque
+registre est jugé seul contre le stem entier, et l'aveu reste ce qu'il est —
+une information, pas une coupe.
+
+Ce que l'épreuve ne prouve pas : que les creux existent dans un vrai morceau.
+Ils n'existent dans aucun des trois mesurés. Le jour où une transcription
+réelle en montre, le journal le dira (« DÉCOUPÉ en N registres par les
+VIDES »), et ce sera à mesurer.
 
 ## 7. Le calage des niveaux, cassé par le découpage — corrigé (03/09/2026)
 
@@ -365,21 +439,20 @@ pour la comparaison.
 [x] Vérifié sur un deuxième morceau avant de changer un défaut : deux
     seconds originaux (*Sky and Sand*, *Clair de Lune*), qui ont borné le
     gain des six sources et fait naître `--seuil-stem`
-[~] Sur un original dont les parties sont connues, le compte de pistes
+[x] Sur un original dont les parties sont connues, le compte de pistes
     reconstruites atteint le compte de parties (l'objectif de parité du § 0).
-    MESURÉ, ET PAS ENCORE ATTEINT : sur le morceau à vérité écrite du § 6,
-    **9 parties donnent 6 pistes**. Le détail vaut mieux qu'un ratio, car les
-    deux manques ont des causes différentes et une seule est un défaut :
+    ATTEINT LE 03/09/2026 : sur le morceau à vérité écrite (§ 6 bis, outil
+    `analyse/epreuve_parite.py`), **9 parties donnent 9 pistes**, à 0,1776
+    contre 0,2197 sans découpage. La première mesure (6 pistes, § 6) accusait
+    la transcription et le nombre de voix de la machine ; la cause réelle
+    était le nombre de voix IMPOSÉ par le partage en registres — corrigé par
+    les registres lus dans les vides (`--voix-par-vides`). Historique de la
+    première mesure :
 
-      | Partie réelle | Attendu | Obtenu | Pourquoi |
+      | Partie réelle | Attendu | Obtenu (§ 6) | Obtenu (§ 6 bis) |
       |---|---|---|---|
-      | basse | 1 | 1 | — |
-      | `other` : grave, médium, aigu | 3 | **1** | la transcription rend 32 notes de polyphonie 2,37 : sous le seuil du fourre-tout, la garde REFUSE de découper. Elle a raison sur ce qu'elle voit ; c'est la TRANSCRIPTION qui n'a pas vu les trois couches |
-      | batterie : kick, caisse, charleston | 3 | **2** | les pièces sont bien détectées toutes les trois (hihat 36, kick 11, kick2 1), mais `kick` et `kick2` tombent sur la MÊME voix de la machine et restent donc ensemble — ce qui est le comportement voulu : les séparer mentirait sur ce que la machine joue |
-      | voix : tête, doublage | 2 | 2 | — |
-
-    Autrement dit, aucun des deux manques ne vient des découpages : l'un vient
-    de la transcription en amont, l'autre du nombre de voix de la machine en
-    aval. **C'est là qu'il faudra chercher pour aller plus loin**, et non dans
-    de nouveaux découpages.
+      | basse | 1 | 1 | 1 |
+      | `other` : grave, médium, aigu | 3 | 1 | **3** |
+      | batterie : kick, caisse, charleston | 3 | 2 | **3** |
+      | voix : tête, doublage | 2 | 2 | 2 |
 ```

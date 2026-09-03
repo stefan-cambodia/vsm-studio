@@ -147,6 +147,20 @@ def seules_les_sources_du_MOTEUR_periment_le_moteur():
     assert_true(plainte is None, "app/ ne doit pas périmer le moteur, reçu : " + str(plainte))
 
 
+@test
+def un_fichier_de_tests_ne_perime_pas_le_moteur():
+    """`interchange/tests/*.cpp` n'entre pas dans le binaire. L'épreuve de
+    parité (03/09/2026) a vu la chaîne crier pour un test réécrit après la
+    compilation : un faux positif de plus, et l'avertissement perdait sa
+    valeur."""
+    with depot_factice(source_hors_moteur="interchange/tests/test_x.cpp") as (racine, moteur):
+        plainte = moteur_perime(moteur, racine=racine)
+    assert_true(plainte is None, "un test ne doit pas périmer le moteur, reçu : " + str(plainte))
+    with depot_factice(source_du_moteur="interchange/src/Vrai.cpp") as (racine, moteur):
+        plainte = moteur_perime(moteur, racine=racine)
+    assert_true(plainte is not None, "une source du moteur, elle, le périme toujours")
+
+
 def _args(**surcharges):
     """Les options minimales que `provenance` lit, en un seul endroit."""
     base = dict(
@@ -156,7 +170,7 @@ def _args(**surcharges):
         tours_verdict=3, garder_pieces_non_isolees=False, rendus_paralleles=8,
         sans_cache_rendus=False, budget_piste=120, axes_piste=21, finalistes=None,
         preselection_apprise=0, machines="", machines_exclues="",
-        modele="htdemucs", stems="", voix_par_stem=0, batterie_par_piece=False, voix_tete_choeurs=False,
+        modele="htdemucs", stems="", voix_par_stem=0, batterie_par_piece=False, voix_tete_choeurs=False, voix_par_vides=False,
         seuil_stem=0.5, parite=False)
     base.update(surcharges)
     return types.SimpleNamespace(**base)

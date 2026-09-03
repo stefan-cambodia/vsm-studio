@@ -127,5 +127,27 @@ def l_aller_retour_wav_stereo_conserve_les_canaux():
                 "gauche et droite ne sont pas échangés ni mélangés")
 
 
+@test
+def un_wav_stereo_en_float32_se_lit_aussi():
+    """Le module `wave` refuse le format 3 : la chaîne tombait sur un stem
+    vocal écrit en flottants (trouvé par l'épreuve de parité)."""
+    import struct
+    import tempfile
+    gauche, droite = sinus(220), sinus(330)
+    entrelace = np.stack([gauche, droite], axis=1).astype("<f4").reshape(-1).tobytes()
+    entete = (b"RIFF" + struct.pack("<I", 36 + len(entrelace)) + b"WAVE"
+              + b"fmt " + struct.pack("<IHHIIHH", 16, 3, 2, TAUX, TAUX * 8, 8, 32)
+              + b"data" + struct.pack("<I", len(entrelace)))
+    with tempfile.TemporaryDirectory() as d:
+        chemin = Path(d) / "flottants.wav"
+        chemin.write_bytes(entete + entrelace)
+        lu = lire_wav_stereo(chemin)
+    assert_true(lu is not None, "float32 stéréo lu")
+    g, dr, taux = lu
+    assert_equal(taux, TAUX, "le taux survit")
+    assert_true(np.allclose(g, gauche, atol=1e-6) and np.allclose(dr, droite, atol=1e-6),
+                "les canaux sont exacts")
+
+
 if __name__ == "__main__":
     raise SystemExit(run())

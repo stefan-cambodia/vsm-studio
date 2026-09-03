@@ -2924,6 +2924,13 @@ meilleur sans la voix 1 (l'aigu isolé ressemble peu au tout). Si le découpage
 doit un jour gagner en distance, c'est cette cible-là qu'il faudra repenser —
 juger les voix ENSEMBLE, pas chacune contre le tout.
 
+*Suite (03/09/2026)* : le partage en registres IMPOSE son nombre de voix, et
+l'épreuve à vérité connue l'a pris en défaut (quatre voix pour trois
+registres disjoints). Un quatrième découpage lit le nombre de parties dans
+les CREUX de la transcription (`--voix-par-vides`, dans `--parite`) ; il est
+inerte sur les transcriptions denses des vrais morceaux et fait atteindre la
+parité sur l'épreuve : 9 parties, 9 pistes. CDC multipiste, § 6 bis.
+
 **Ordre : H22 d'abord**, parce qu'elle est une option déjà câblée et qu'elle
 tranche la question « une vraie séparation supplémentaire aide-t-elle ? » avant
 qu'on écrive quoi que ce soit. H23 ensuite — son mécanisme est écrit et testé,

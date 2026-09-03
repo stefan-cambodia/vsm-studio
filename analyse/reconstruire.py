@@ -76,8 +76,9 @@ from analyzer.vsm_project_export import (DEFAULT_TRACK_VOLUME, ExportNote, Expor
                                           write_project_bundle)
 from analyzer.vsm_reconstruct import (StemNote, StemReconstruction, densite_du_stem,  # noqa: E402
                                       melodic_machines, reconstruct_stem,
-                                      reconstruction_distance, separer_en_voix,
-                                      stem_fourre_tout, write_reconstruction_report)
+                                      reconstruction_distance, registres_par_vides,
+                                      separer_en_voix, stem_fourre_tout,
+                                      write_reconstruction_report)
 from analyzer.vsm_track_arbitration import (ORIGINE_USINE, TrackCandidate, arbitrate_on_track,  # noqa: E402
                                              build_candidates, runners_up)
 from analyzer.vsm_track_refine import refine_patch_on_track  # noqa: E402
@@ -413,6 +414,7 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
             # Le découpage en voix change le NOMBRE DE PISTES du résultat :
             # deux rapports qui n'ont pas le même réglage ne se comparent pas.
             "voixParStem": args.voix_par_stem,
+            "voixParVides": args.voix_par_vides,
             "batterieParPiece": args.batterie_par_piece,
             "voixTeteChoeurs": args.voix_tete_choeurs,
             "seuilStem": args.seuil_stem,
@@ -549,6 +551,17 @@ def construire_parseur() -> argparse.ArgumentParser:
                               "le journal disent le découpage, qui reste une approximation : "
                               "un registre n'est pas un instrument, mais une piste par "
                               "registre se retravaille, un fourre-tout non")
+    parseur.add_argument("--voix-par-vides", action="store_true",
+                         help="AVANT le partage en N voix, découper un stem fourre-tout là "
+                              "où sa transcription laisse des VIDES (au moins deux demi-tons "
+                              "que personne ne joue entre deux registres qui pèsent chacun "
+                              "au moins 5 %% de la durée). Le nombre de parties est LU dans "
+                              "les notes au lieu d'être imposé : l'épreuve de parité "
+                              "(analyse/epreuve_parite.py) a montré que --voix-par-stem 4 "
+                              "coupe en quatre un stem qui porte trois registres disjoints. "
+                              "Un registre encore fourre-tout après ce découpage est ensuite "
+                              "partagé par --voix-par-stem. Allumé par --parite ; inerte sur les "
+                              "transcriptions denses des vrais morceaux essayés (aucun creux)")
     parseur.add_argument("--machines-exclues", default="",
                          help="machines à RETIRER du vivier, séparées par des virgules. "
                               "C'est le complément de --machines, et il existe pour une "
@@ -705,6 +718,13 @@ def valider_entree(args: argparse.Namespace) -> Path:
         if not args.voix_tete_choeurs:
             args.voix_tete_choeurs = True
             allumes.append("--voix-tete-choeurs")
+        # LE QUATRIÈME : les registres lus dans les vides de la transcription.
+        # Inerte sur les huit pistes réelles des trois courses où on l'a
+        # essayé (aucun creux dans une transcription dense), décisif sur
+        # l'épreuve à vérité connue (trois registres disjoints).
+        if not args.voix_par_vides:
+            args.voix_par_vides = True
+            allumes.append("--voix-par-vides")
         print("      --parite : " + (", ".join(allumes) if allumes
                                      else "rien à allumer, tout était déjà demandé"))
         print("      la parité prime sur la ressemblance quand les deux s'opposent "
@@ -1437,6 +1457,34 @@ def reconstruire_stem_melodique(ctx: Contexte, nom: str,
     plainte = stem_fourre_tout(densite_du_stem(notes))
     if plainte:
         print(f"      {nom:8s} : {plainte}")
+
+    if args.voix_par_vides and plainte:
+        registres = registres_par_vides(notes)
+        if len(registres) > 1:
+            # LE NOMBRE DE PARTIES EST LU, PAS IMPOSÉ : chaque registre que
+            # les vides délimitent devient une piste ; un registre encore
+            # fourre-tout est ensuite partagé par --voix-par-stem, s'il est là.
+            bornes = ", ".join(
+                f"MIDI {min(n.note for n in r)}-{max(n.note for n in r)} ({len(r)} notes)"
+                for r in registres)
+            print(f"      {nom:8s} : DÉCOUPÉ en {len(registres)} registres par les VIDES de la "
+                  f"transcription — {bornes}")
+            resultats = []
+            for registre in registres:
+                lo, hi = min(n.note for n in registre), max(n.note for n in registre)
+                sous_nom = f"{nom} · {lo}-{hi}"
+                sous_voix = ([list(registre)] if args.voix_par_stem <= 1
+                             else separer_en_voix(list(registre), args.voix_par_stem))
+                if len(sous_voix) > 1:
+                    print(f"      {sous_nom:8s} : encore un fourre-tout, partagé en "
+                          f"{len(sous_voix)} voix par registres")
+                for k, notes_voix in enumerate(sous_voix, 1):
+                    nom_voix = sous_nom if len(sous_voix) == 1 else f"{sous_nom} · voix {k}"
+                    resultat = _reconstruire_notes(ctx, nom_voix, list(notes_voix), audio)
+                    if resultat is not None:
+                        resultats.append(resultat)
+            return resultats
+        print(f"      {nom:8s} : aucun vide dans la transcription, rien à découper par les vides")
 
     if args.voix_par_stem > 1 and plainte:
         voix = separer_en_voix(notes, args.voix_par_stem)

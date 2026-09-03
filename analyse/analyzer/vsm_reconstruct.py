@@ -179,6 +179,87 @@ def densite_du_stem(notes: List["StemNote"]) -> Dict[str, float]:
     }
 
 
+def registres_par_vides(notes: List["StemNote"], lissage: float = 2.0,
+                        creux: float = 0.25, part_minimale: float = 0.05) -> List[List["StemNote"]]:
+    """Découper un stem FOURRE-TOUT là où sa transcription laisse des VIDES.
+
+    `separer_en_voix` impose son nombre de voix : quatre registres CONTIGUS,
+    quelle que soit la musique. L'épreuve de parité (analyse/epreuve_parite.py,
+    CDC multipiste § 6) l'a pris en défaut sur un cas où la vérité est connue :
+    trois parties en registres disjoints (36-46, 56-79, 84-96), et quatre voix
+    rendues — le registre le plus maigre coupé en deux pour faire le compte.
+
+    Ici le nombre de parties est LU dans les notes, pas imposé. Un vide n'est
+    pas « une hauteur que personne ne joue » — les notes d'un arpège sont à
+    trois ou quatre demi-tons l'une de l'autre, et un premier jet qui coupait
+    à chaque trou rendait douze registres pour trois. C'est un CREUX dans la
+    densité de durée par hauteur, lissée sur `lissage` demi-tons (gaussienne) :
+    on coupe là où la densité tombe sous `creux` fois le plus petit des deux
+    sommets voisins. Un arpège serré ne creuse pas (ses notes se recouvrent
+    après lissage) ; dix demi-tons vides creusent jusqu'à zéro. Un registre
+    qui pèse moins de `part_minimale` de la durée totale n'est pas une partie
+    — une fioriture, une erreur d'octave de la transcription — et rejoint le
+    registre voisin le plus proche.
+
+    MÊME GARDE-FOU que `separer_en_voix`, pour la même raison : ce qui n'est
+    pas un fourre-tout ne se découpe pas. Une mélodie qui saute d'octave
+    laisse un vide et reste UNE partie. Les registres sont rendus de l'aigu au
+    grave, et tout est déterministe. Une liste d'un seul élément signifie
+    « rien à découper ».
+    """
+    if len(notes) < 2 or not stem_fourre_tout(densite_du_stem(notes)):
+        return [list(notes)]
+    poids: Dict[int, float] = {}
+    for note in notes:
+        poids[int(note.note)] = poids.get(int(note.note), 0.0) + max(1e-6, float(note.duration))
+    bas, haut = min(poids), max(poids)
+    axe = np.arange(bas, haut + 1)
+    densite = np.zeros(axe.size)
+    for hauteur, duree in poids.items():
+        densite += duree * np.exp(-0.5 * ((axe - hauteur) / lissage) ** 2)
+
+    # Sommets et creux de la densité lissée ; une coupure par creux profond.
+    coupures: List[int] = []  # hauteur de la coupure : le registre du dessus commence APRÈS
+    i = 1
+    while i < axe.size - 1:
+        if densite[i] <= densite[i - 1] and densite[i] <= densite[i + 1]:
+            gauche = float(densite[:i].max())
+            droite = float(densite[i + 1:].max())
+            if densite[i] < creux * min(gauche, droite):
+                coupures.append(int(axe[i]))
+                # sauter le plateau du creux
+                while i < axe.size - 1 and densite[i + 1] <= densite[i]:
+                    i += 1
+        i += 1
+    if not coupures:
+        return [list(notes)]
+    registres: List[List[int]] = [[] for _ in range(len(coupures) + 1)]
+    for hauteur in sorted(poids):
+        k = sum(1 for c in coupures if hauteur > c)
+        registres[k].append(hauteur)
+    registres = [r for r in registres if r]
+
+    total = sum(poids.values())
+    # Fusion des registres trop légers dans leur plus proche voisin, du plus
+    # léger au plus lourd, pour qu'une poussière ne serve pas d'appui à une autre.
+    while len(registres) > 1:
+        parts = [sum(poids[h] for h in r) / total for r in registres]
+        k = min(range(len(registres)), key=lambda i: (parts[i], i))
+        if parts[k] >= part_minimale:
+            break
+        voisins = [i for i in (k - 1, k + 1) if 0 <= i < len(registres)]
+        cible = min(voisins, key=lambda i: (min(abs(a - b) for a in registres[i] for b in registres[k]), i))
+        lo, hi = sorted((k, cible))
+        registres[lo:hi + 1] = [registres[lo] + registres[hi]]
+    if len(registres) < 2:
+        return [list(notes)]
+    voix: List[List[StemNote]] = []
+    for registre in reversed(registres):
+        contenu = set(registre)
+        voix.append([n for n in notes if int(n.note) in contenu])
+    return voix
+
+
 def separer_en_voix(notes: List["StemNote"], maximum: int) -> List[List["StemNote"]]:
     """Sépare un stem FOURRE-TOUT en voix, par REGISTRES de hauteur.
 

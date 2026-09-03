@@ -519,7 +519,7 @@ Dans l'application, tout cela tient dans une case à cocher : *Fichier ▸
 Reconstruire en visant la parité des pistes*, **cochée par défaut**. Elle vaut
 pour toutes les reconstructions à venir — c'est un choix de travail, pas un
 réglage à refaire à chaque morceau. En ligne de commande, **`--parite`** allume
-les trois découpages :
+les quatre découpages :
 
 - **les voix par registres** (`--voix-par-stem 4`) : une piste qui porte
   plusieurs parties — au moins trois notes simultanées en moyenne ET trois
@@ -534,10 +534,20 @@ les trois découpages :
   la voix principale au centre du champ stéréo et élargit les chœurs ; la
   chaîne sépare le centre du large. Les deux pistes rejouées ensemble
   redonnent **exactement** le stem d'origine. Une voix mono, ou sans largeur,
-  n'est pas découpée.
+  n'est pas découpée ;
+- **les registres lus dans les vides** (`--voix-par-vides`) : avant de
+  partager un fourre-tout en quatre voix, la chaîne regarde si sa
+  transcription laisse des **creux** — des hauteurs que personne ne joue entre
+  deux registres qui pèsent. S'il y en a, le nombre de parties est **lu** au
+  lieu d'être imposé : trois registres disjoints donnent trois pistes, pas
+  quatre. Sur les vrais morceaux essayés, dont les transcriptions sont denses,
+  ce découpage ne se déclenche pas et le partage en voix reprend la main.
 
 Ce que la parité coûte est **dit** : le découpage en voix vaut +9 % de
-distance sur *Us and Them*. Quand la ressemblance et la structure s'opposent,
+distance sur *Us and Them*. Et ce qu'elle vaut se vérifie sur un morceau dont
+on connaît les parties (`analyse/epreuve_parite.py`, 32 secondes fabriquées
+avec leur vérité) : **neuf parties, neuf pistes**, et une distance de 0,178
+contre 0,220 sans parité. Quand la ressemblance et la structure s'opposent,
 c'est la structure qui gagne — un projet qui met quatre instruments sur une
 piste ne se retravaille pas, quelle que soit sa distance — et l'écart se
 publie au lieu d'être caché.

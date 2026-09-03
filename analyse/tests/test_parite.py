@@ -56,16 +56,19 @@ def sans_parite_rien_n_est_allume():
     assert_equal(args.voix_par_stem, 0, "aucune voix")
     assert_equal(args.batterie_par_piece, False, "batterie entière")
     assert_equal(args.voix_tete_choeurs, False, "voix entière")
+    assert_equal(args.voix_par_vides, False, "registres entiers")
     assert_equal(args.parite, False, "le raccourci ne s'allume pas seul")
 
 
 @test
-def parite_allume_les_trois_decoupages_et_le_dit():
+def parite_allume_les_quatre_decoupages_et_le_dit():
     args, journal = options("--parite")
     assert_equal(args.voix_par_stem, 4, "voix par registres")
     assert_equal(args.batterie_par_piece, True, "batterie par pièce")
     assert_equal(args.voix_tete_choeurs, True, "tête et chœurs")
-    for attendu in ("--voix-par-stem 4", "--batterie-par-piece", "--voix-tete-choeurs"):
+    assert_equal(args.voix_par_vides, True, "registres par les vides")
+    for attendu in ("--voix-par-stem 4", "--batterie-par-piece", "--voix-tete-choeurs",
+                    "--voix-par-vides"):
         assert_true(attendu in journal, f"« {attendu} » doit être dit : {journal}")
     assert_true("+9,1 %" in journal,
                 "le coût mesuré du découpage en voix est rappelé : " + journal)
@@ -95,6 +98,7 @@ def parite_va_dans_la_provenance_avec_ses_consequences():
     assert_equal(p["options"]["voixParStem"], 4, "et sa conséquence aussi")
     assert_equal(p["options"]["batterieParPiece"], True, "et celle-ci")
     assert_equal(p["options"]["voixTeteChoeurs"], True, "et celle-là")
+    assert_equal(p["options"]["voixParVides"], True, "et la quatrième")
 
 
 if __name__ == "__main__":

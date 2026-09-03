@@ -32,6 +32,7 @@ au-delà de numpy.
 
 from __future__ import annotations
 
+import struct
 import wave
 from dataclasses import dataclass
 from pathlib import Path
@@ -129,21 +130,33 @@ def lire_wav_stereo(chemin: Path) -> Optional[Tuple[np.ndarray, np.ndarray, int]
     métier, la mesure travaille en mono — mais la séparation tête/chœurs vit
     précisément DANS ce que le pli efface. Elle lit donc le fichier
     elle-même, int16 ou float32.
+
+    Le module `wave` de Python refuse le format 3 (float32) : la première
+    version l'employait, et la chaîne TOMBAIT sur un stem vocal stéréo en
+    flottants — après tout le travail sur les autres stems (trouvé par
+    l'épreuve de parité, dont les stems sont écrits en float32). On lit donc
+    l'en-tête soi-même, comme `lire_wav`.
     """
-    with wave.open(str(chemin), "rb") as w:
-        canaux = w.getnchannels()
-        taux = w.getframerate()
-        largeur = w.getsampwidth()
-        brut = w.readframes(w.getnframes())
+    octets = Path(chemin).read_bytes()
+    entete = octets.find(b"fmt ")
+    debut = octets.find(b"data")
+    if entete < 0 or debut < 0:
+        return None
+    format_code, canaux, taux = struct.unpack("<HHI", octets[entete + 8 : entete + 16])
+    largeur = struct.unpack("<H", octets[entete + 22 : entete + 24])[0] // 8
+    if format_code == 0xFFFE:  # WAVE_FORMAT_EXTENSIBLE : le sous-format est plus loin
+        format_code = struct.unpack("<H", octets[entete + 32 : entete + 34])[0]
+    taille = struct.unpack("<I", octets[debut + 4 : debut + 8])[0]
+    brut = octets[debut + 8 : debut + 8 + taille]
     if canaux != 2:
         return None
-    if largeur == 2:
-        valeurs = np.frombuffer(brut, dtype="<i2").astype(np.float64) / 32768.0
-    elif largeur == 4:
+    if format_code == 3 and largeur == 4:
         valeurs = np.frombuffer(brut, dtype="<f4").astype(np.float64)
+    elif format_code == 1 and largeur == 2:
+        valeurs = np.frombuffer(brut, dtype="<i2").astype(np.float64) / 32768.0
     else:
         return None
-    return valeurs[0::2], valeurs[1::2], taux
+    return valeurs[0::2], valeurs[1::2], int(taux)
 
 
 def ecrire_wav_stereo(chemin: Path, stereo: np.ndarray, taux: int) -> None:

@@ -103,6 +103,11 @@ def moteur_perime(moteur, racine: Optional[Path] = None) -> Optional[str]:
             for fichier in (racine / dossier).rglob("*"):
                 if fichier.suffix not in (".h", ".cpp", ".inc"):
                     continue
+                # Un fichier de TESTS n'entre pas dans le binaire : l'épreuve de
+                # parité a fait crier la chaîne pour interchange/tests/... —
+                # exactement le faux positif qu'on apprend à ignorer.
+                if "tests" in fichier.relative_to(racine).parts:
+                    continue
                 horodatage = fichier.stat().st_mtime
                 if horodatage > plus_recent:
                     plus_recent, nom = horodatage, fichier
