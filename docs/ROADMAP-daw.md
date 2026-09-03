@@ -3009,6 +3009,18 @@ chantier lourd en dernier.
 > l'ordre du § 3 (ce qui s'appuie sur le modèle, après le modèle), et
 > `Clip::sourceStartSeconds` continue de dire en toutes lettres pourquoi un
 > clip audio ne suit pas le tempo.
+>
+> **Le cahier des charges de D12 est écrit (04/09/2026)** :
+> `docs/CDC-etirement-temporel.md` (sur la branche `machine-mandoline`,
+> fusionnée après la campagne 5) — trois modes par clip (éteint, hauteur
+> conservée, rééchantillonné), des marqueurs entre le fichier et la grille,
+> un WSOLA à verrouillage de transitoires écrit dans le dépôt (le vocodeur de
+> phase attend un chiffre), un noyau de rééchantillonnage fenêtré qui
+> remplace l'interpolation linéaire de D2.3, un banc de neuf mesures écrit
+> avant la première, et un critère de phase sur *Sky and Sand* (+10 % de
+> tempo, la voix à ≤ 10 ms sur huit mesures). Il s'écrit le jour où sa
+> condition se réalise : la campagne 5 fusionne les machines et clôt les
+> campagnes de la parité.
 
 Ce que l'audit a trouvé et qui n'entre PAS ici, avec la raison : la
 sélection de notes par vélocité (le filtre existe sous forme d'opérations
