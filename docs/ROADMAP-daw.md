@@ -148,6 +148,23 @@ d'échantillonnage différentes).
 | 7 | **Les éditions de vélocité contournent l'historique** : elles modifient `note.velocity` sans passer par `beginEdit()` | `VelocityLaneComponent.cpp:93-131` | non annulables, **et** la pile d'annulation devient incohérente pour les gestes suivants |
 | 8 | **Trois commandes sont des décors** : le bouton Rec n'a aucun gestionnaire, le bouton Loop a un `onClick` **vide**, et `Track::armed` est écrit par le bouton « R » sans que personne ne le lise | `TransportBarComponent.cpp:10, 27-31` ; `TrackListComponent.cpp:70` | l'interface promet trois fonctions qui n'existent pas |
 
+> **UNE NEUVIÈME, TROUVÉE LE 03/09/2026 EN PHOTOGRAPHIANT LES ONGLETS DU BAS.**
+> L'onglet « MIDI CC » était un libellé — « vue dédiée (Phase 2 UI ; éditable
+> dès maintenant via les lanes du piano roll) » — et sa promesse était fausse :
+> aucune lane du piano roll n'édite les CC. Le modèle les porte, le
+> séquenceur les joue (D0.5), l'import et l'export les conservent : une
+> courbe de coupure importée d'un `.als` se JOUAIT sans pouvoir être vue ni
+> corrigée. C'est exactement une chose « présente qui ment ». Corrigé le jour
+> même : `MidiCcComponent` édite les contrôleurs (piste, contrôleur, points en
+> paliers, historique, republication au séquenceur) ; les deux libellés
+> « Phase 2 UI » du mixeur et de l'automation, morts depuis D4 et D5, sont
+> retirés. Le même passage a corrigé trois choses moins graves, vues sur le
+> projet de l'épreuve de parité : le piano roll s'ouvrait toujours sur C6 (une
+> basse reconstruite montrait une fenêtre vide), une piste de batterie nommait
+> ses touches par leur hauteur et non par leur pièce, une piste audio montrait
+> une grille vide avec les notes fantômes d'une autre piste ; et un projet
+> reconstruit ouvert à la main n'avait pas son original pour l'écoute A/B.
+
 ### 1.5 Ce qui, à l'inverse, est déjà au niveau
 
 Il serait faux de tout peindre en noir, et ce document ne servirait à rien s'il
