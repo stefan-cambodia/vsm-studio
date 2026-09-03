@@ -132,6 +132,19 @@ private:
     /// Le premier changement de couleur ouvre l'action annulable ; les suivants
     /// -- un glissé dans le sélecteur en produit des dizaines -- s'y ajoutent.
     bool colourEditOpen_ = false;
+    /// D11.4 : la même chose pour la couleur d'UN clip.
+    class ClipColourApplier : public juce::ChangeListener {
+    public:
+        ClipColourApplier(MainComponent& parent, size_t trackIndex, uint64_t clipId)
+            : parent_(parent), index_(trackIndex), clip_(clipId) {}
+        void changeListenerCallback(juce::ChangeBroadcaster* source) override;
+    private:
+        MainComponent& parent_;
+        size_t index_;
+        uint64_t clip_;
+    };
+    /// Le clip d'identifiant donné sur la piste donnée, ou nul.
+    vsm::sequencer::Clip* findClip(size_t trackIndex, uint64_t clipId);
 
     enum MenuItemId {
         kMenuFileNewProject = 1,

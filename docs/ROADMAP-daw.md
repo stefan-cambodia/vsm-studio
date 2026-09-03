@@ -2914,7 +2914,7 @@ chantier lourd en dernier.
 | D11.1 | **Le clip change de piste** : `mouseDrag` calcule la piste sous le curseur et l'ignore (`juce::ignoreUnused(piste)`) ; le déplacement ne touche que le temps | glisser un clip sur une autre piste l'y pose — avec les notes que sa fenêtre couvre, puisqu'un clip est une fenêtre sur le matériau de SA piste (D1) ; un clip audio ne change de piste que si elle porte le même fichier ou aucun, et le refus est dit ; annulable ; test — **fait** |
 | D11.2 | **Sélection au lasso** dans l'arrangement, et « tout sélectionner » (Ctrl+A n'y est câblé que pour les notes) | un rectangle tiré sur le vide sélectionne les clips qu'il touche ; Ctrl+A prend tous les clips — **fait** |
 | D11.3 | **Se repérer en musique** : la position du transport dit minutes:secondes et un tick brut, jamais « mesure 33, temps 2 » ; l'arrangement ne suit pas la tête de lecture (le piano roll, si) ; ni retour à zéro ni marqueur suivant/précédent au clavier | mesure · temps affichés à côté du temps ; l'arrangement défile derrière la tête quand elle sort de l'écran, bouton comme au piano roll ; Début, marqueur suivant/précédent dans la table des raccourcis — **fait** |
-| D11.4 | **Renommer et colorer un clip** : `Clip::name` et `Clip::colorRgba` existent et aucune vue ne les édite (la couleur est toujours celle de la piste) | double-clic sur le nom, couleur au menu ; sauvegardés (déjà dans le format) |
+| D11.4 | **Renommer et colorer un clip** : `Clip::name` et `Clip::colorRgba` existent et aucune vue ne les édite (la couleur est toujours celle de la piste) | double-clic sur le nom, couleur au menu ; sauvegardés (déjà dans le format) — **fait** |
 | D11.5 | **Dupliquer une piste** (seules les sélections se dupliquent) ; **canal MIDI éditable** (`t.channel = n % 16` à la création, étiquette non éditable) | une commande au menu de piste, tout copié (instrument, effets, notes, clips, automation, routage) ; le canal se saisit |
 | D11.6 | **Fichiers récents**, **plein écran**, **modèle de projet** (« Enregistrer comme modèle », « Nouveau depuis le modèle ») | menu Fichier ; F11 ; un modèle rouvert est un projet neuf sans chemin |
 | D11.7 | **S'entendre** : l'entrée audio n'est jamais recopiée vers la sortie pendant l'armement ; **le clavier d'ordinateur** ne joue pas de notes | écoute d'entrée commutable par piste armée (latence dite) ; une rangée de touches joue la piste choisie, octave réglable |
@@ -2951,6 +2951,14 @@ chantier lourd en dernier.
 > refus) et que la capture venait du binaire précédent — le filtre de la
 > sortie de compilation ne montrait que les avertissements. Corrigé ici ;
 > désormais la ligne « Built target » est exigée avant toute capture.
+
+> **D11.4 EST FAITE (03/09/2026).** Double-clic : une fenêtre demande le
+> nom. Clic droit : Renommer, Couleur (le sélecteur de JUCE, en direct sur
+> le clip, un seul pas d'annulation par ouverture — la règle de la couleur
+> de piste), Couleur de la piste (la reprendre), Rendre muet — sur toute
+> la sélection, car six clips pris au lasso font un geste. Les fenêtres
+> restent dans l'application, la vue demande par deux rappels ; le format
+> portait déjà `name` et `color` (ProjectDocument.cpp), rien à migrer.
 
 Ce que l'audit a trouvé et qui n'entre PAS ici, avec la raison : la
 sélection de notes par vélocité (le filtre existe sous forme d'opérations

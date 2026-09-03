@@ -36,6 +36,8 @@ public:
     void mouseDrag(const juce::MouseEvent&) override;
     void mouseUp(const juce::MouseEvent&) override;
     void mouseMove(const juce::MouseEvent&) override;
+    /// D11.4 : double-clic sur un clip = le renommer.
+    void mouseDoubleClick(const juce::MouseEvent&) override;
     juce::MouseCursor getMouseCursor() override;
 
     /// La tête de lecture, pour que la vue montre où l'on en est.
@@ -134,6 +136,10 @@ public:
     /// Appelé au relâchement quand un déplacement de piste a refusé des clips
     /// (nombre refusé) : la vue ne sait pas parler, l'application si.
     std::function<void(size_t)> onClipsRefused;
+    /// D11.4 : renommer et colorer UN clip. Les fenêtres sont de JUCE, donc
+    /// dans l'application ; la vue demande (piste, identifiant du clip).
+    std::function<void(size_t, uint64_t)> onClipRenameRequested;
+    std::function<void(size_t, uint64_t)> onClipColourRequested;
 
     static constexpr int kHeaderWidth = 150;
     static constexpr int kRulerHeight = 22;
@@ -215,6 +221,7 @@ private:
     juce::Point<float> lassoOrigine_;
     juce::Rectangle<float> lasso_;
     void selectClipsInLasso(bool etendre);
+    void clipMenuAction(size_t piste, uint64_t clipId, int choix);
 
     // --- Automation dessinée SUR l'arrangement (D5.4) ---------------------
     //

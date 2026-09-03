@@ -371,6 +371,44 @@ MainComponent::MainComponent()
             if (info.id == d->paramId) { mini = info.minValue; maxi = info.maxValue; return true; }
         return false;
     };
+    // D11.4 : RENOMMER ET COLORER UN CLIP. `Clip::name` et `Clip::colorRgba`
+    // étaient dans le modèle et dans le fichier depuis D1, et aucune vue ne
+    // les éditait : la couleur était toujours celle de la piste.
+    arrangement_.onClipRenameRequested = [this](size_t piste, uint64_t clipId) {
+        auto* clip = findClip(piste, clipId);
+        if (clip == nullptr) return;
+        auto* fenetre = new juce::AlertWindow(
+            u8"Renommer le clip", u8"Le nom s'affiche sur le clip et se sauvegarde avec le projet.",
+            juce::MessageBoxIconType::NoIcon);
+        fenetre->addTextEditor("nom", juce::String(clip->name), u8"Nom :");
+        fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
+        fenetre->addButton("Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+        fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+            [this, piste, clipId, fenetre](int resultat) {
+                if (resultat != 1) return;
+                if (auto* c = findClip(piste, clipId)) {
+                    beginProjectEdit(u8"Renommer un clip");
+                    c->name = fenetre->getTextEditorContents("nom").toStdString();
+                    arrangement_.repaint();
+                }
+            }), true);
+    };
+    arrangement_.onClipColourRequested = [this](size_t piste, uint64_t clipId) {
+        auto* clip = findClip(piste, clipId);
+        if (clip == nullptr) return;
+        colourEditOpen_ = false;
+        auto* selecteur = new juce::ColourSelector(
+            juce::ColourSelector::showColourAtTop | juce::ColourSelector::showSliders
+                | juce::ColourSelector::showColourspace);
+        selecteur->setName("Couleur du clip");
+        selecteur->setCurrentColour(juce::Colour(clip->colorRgba));
+        selecteur->setSize(280, 320);
+        selecteur->addChangeListener(new ClipColourApplier(*this, piste, clipId));
+        juce::CallOutBox::launchAsynchronously(std::unique_ptr<juce::Component>(selecteur),
+                                               arrangement_.getScreenBounds().withSize(1, 1)
+                                                   .translated(arrangement_.getWidth() / 2, arrangement_.getHeight() / 3),
+                                               nullptr);
+    };
     arrangement_.onColourRequested = [this](size_t index) {
         if (index >= project_.tracks.size()) return;
         // OUVRIR LE SÉLECTEUR COMMENCE UN NOUVEAU PAS D'ANNULATION : sans cette
@@ -4298,6 +4336,25 @@ void MainComponent::ColourApplier::changeListenerCallback(juce::ChangeBroadcaste
     parent_.arrangement_.repaint();
     parent_.trackList_.loadProject(parent_.project_);
     parent_.mixer_.setProject(&parent_.project_);
+}
+
+void MainComponent::ClipColourApplier::changeListenerCallback(juce::ChangeBroadcaster* source) {
+    auto* selecteur = dynamic_cast<juce::ColourSelector*>(source);
+    if (selecteur == nullptr) return;
+    if (!parent_.colourEditOpen_) {
+        parent_.colourEditOpen_ = true;
+        parent_.beginProjectEdit(u8"Couleur d'un clip");
+    }
+    if (auto* clip = parent_.findClip(index_, clip_))
+        clip->colorRgba = selecteur->getCurrentColour().getARGB();
+    parent_.arrangement_.repaint();
+}
+
+vsm::sequencer::Clip* MainComponent::findClip(size_t trackIndex, uint64_t clipId) {
+    if (trackIndex >= project_.tracks.size()) return nullptr;
+    for (auto& clip : project_.tracks[trackIndex].clips)
+        if (clip.id == clipId) return &clip;
+    return nullptr;
 }
 
 void MainComponent::sendBusesChanged() {

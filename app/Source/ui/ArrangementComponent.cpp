@@ -404,6 +404,23 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
         selection_.insert(clip->id);
     }
 
+    // LE MENU DU CLIP (D11.4) : renommer, colorer, reprendre la couleur de la
+    // piste, rendre muet. Le clic droit a d'abord choisi le clip, ci-dessus.
+    if (event.mods.isPopupMenu()) {
+        juce::PopupMenu menu;
+        menu.addItem(1, u8"Renommer\u2026");
+        menu.addItem(2, u8"Couleur\u2026");
+        menu.addItem(3, u8"Couleur de la piste");
+        menu.addItem(4, clip->muted ? u8"R\u00e9activer" : u8"Rendre muet");
+        const uint64_t id = clip->id;
+        const size_t p = piste;
+        menu.showMenuAsync(juce::PopupMenu::Options().withTargetScreenArea(
+                               juce::Rectangle<int>(event.getScreenX(), event.getScreenY(), 1, 1)),
+                           [this, p, id](int choix) { clipMenuAction(p, id, choix); });
+        repaint();
+        return;
+    }
+
     // ALT COUPE, plutôt qu'un OUTIL qu'on choisit et qu'on oublie de quitter.
     // Un mode se laisse allumé, et le geste suivant fait autre chose que ce
     // qu'on croit ; un modificateur ne dure que le temps où on le tient. C'est
@@ -567,6 +584,43 @@ void ArrangementComponent::mouseUp(const juce::MouseEvent&) {
     pisteSaisie_ = -1;
     pisteCourbeSaisie_ = -1;
     reordonnancementOuvert_ = false;
+}
+
+void ArrangementComponent::mouseDoubleClick(const juce::MouseEvent& event) {
+    if (project_ == nullptr) return;
+    size_t piste = 0;
+    Geste bord = Geste::Aucun;
+    if (auto* clip = clipAt(event.position, piste, bord))
+        if (onClipRenameRequested) onClipRenameRequested(piste, clip->id);
+}
+
+void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int choix) {
+    if (project_ == nullptr || choix == 0 || piste >= project_->tracks.size()) return;
+    auto& track = project_->tracks[piste];
+    auto it = std::find_if(track.clips.begin(), track.clips.end(),
+                           [clipId](const Clip& c) { return c.id == clipId; });
+    if (it == track.clips.end()) return;
+    switch (choix) {
+        case 1: if (onClipRenameRequested) onClipRenameRequested(piste, clipId); return;
+        case 2: if (onClipColourRequested) onClipColourRequested(piste, clipId); return;
+        case 3:
+            if (onEditStarted) onEditStarted(u8"Couleur d'un clip");
+            it->colorRgba = track.colorRgba;
+            break;
+        case 4: {
+            // Sur TOUTE la sélection : rendre muets six clips choisis au lasso
+            // est un geste, pas six.
+            if (onEditStarted) onEditStarted(u8"Muet sur des clips");
+            const bool muet = !it->muted;
+            for (auto& t : project_->tracks)
+                for (auto& c : t.clips)
+                    if (selection_.count(c.id) > 0 || c.id == clipId) c.muted = muet;
+            break;
+        }
+        default: return;
+    }
+    notifyChanged();
+    repaint();
 }
 
 void ArrangementComponent::mouseMove(const juce::MouseEvent& event) {
