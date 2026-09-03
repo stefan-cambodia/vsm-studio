@@ -22,9 +22,13 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     // part. Sans cela, « Batterie » (le bus) et « Batterie · hihat » (une
     // pièce) se ressemblaient trait pour trait, et un projet reconstruit en
     // parité en aligne onze.
+    // LE NOM ENTIER EN INFOBULLE : une tranche de console est étroite, et
+    // « Batterie · kick+kick2 » s'y tronque en « Batterie · ki… ».
+    nameLabel_.setTooltip(juce::String::fromUTF8(track_.name.c_str()));
     if (track_.kind == vsm::sequencer::Track::Kind::Group) {
         nameLabel_.setColour(juce::Label::textColourId, vsm::ui::Palette::accentAmber);
-        nameLabel_.setTooltip(u8"Bus de groupe : les pistes routées vers lui passent par ce fader");
+        nameLabel_.setTooltip(juce::String::fromUTF8(track_.name.c_str())
+                              + u8" — bus de groupe : les pistes routées vers lui passent par ce fader");
     }
     addAndMakeVisible(nameLabel_);
 
