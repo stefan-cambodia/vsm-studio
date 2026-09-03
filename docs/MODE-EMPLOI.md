@@ -728,6 +728,10 @@ n'a posé, et il doit se voir là où on le règle. `piste:N` choisit la piste N
 de 0), et `VSM_TAILLE=LARGEURxHAUTEUR` (pixels logiques, bornée par l'écran)
 donne à la fenêtre la taille à laquelle on veut vérifier une disposition.
 
+## 7 bis. Commencer et retrouver
+
+**Projets récents** : Fichier ▸ Projets récents garde les dix derniers dossiers ouverts ou enregistrés ; un dossier disparu y reste, grisé et marqué « introuvable ». **Modèle de projet** : Fichier ▸ Enregistrer comme modèle de projet fait du projet courant (pistes, machines, routage, tempo) le point de départ de Fichier ▸ Nouveau depuis le modèle — qui ouvre un projet **sans chemin**, pour que Ctrl+S demande où l'écrire et que le modèle reste intact. **Plein écran** : Affichage ▸ Plein écran, ou `F11`.
+
 ## 8. Ne rien perdre
 
 Le projet est photographié **toutes les trente secondes**, et seulement s'il a changé — un studio ouvert sans qu'on y touche n'a aucune raison d'écrire. L'écriture se fait hors du thread de l'interface, et à côté du fichier avant de basculer : une sauvegarde interrompue en cours d'écriture détruirait justement ce qu'elle protège.

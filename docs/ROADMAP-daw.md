@@ -2916,7 +2916,7 @@ chantier lourd en dernier.
 | D11.3 | **Se repérer en musique** : la position du transport dit minutes:secondes et un tick brut, jamais « mesure 33, temps 2 » ; l'arrangement ne suit pas la tête de lecture (le piano roll, si) ; ni retour à zéro ni marqueur suivant/précédent au clavier | mesure · temps affichés à côté du temps ; l'arrangement défile derrière la tête quand elle sort de l'écran, bouton comme au piano roll ; Début, marqueur suivant/précédent dans la table des raccourcis — **fait** |
 | D11.4 | **Renommer et colorer un clip** : `Clip::name` et `Clip::colorRgba` existent et aucune vue ne les édite (la couleur est toujours celle de la piste) | double-clic sur le nom, couleur au menu ; sauvegardés (déjà dans le format) — **fait** |
 | D11.5 | **Dupliquer une piste** (seules les sélections se dupliquent) ; **canal MIDI éditable** (`t.channel = n % 16` à la création, étiquette non éditable) | une commande au menu de piste, tout copié (instrument, effets, notes, clips, automation, routage) ; le canal se saisit — **fait** |
-| D11.6 | **Fichiers récents**, **plein écran**, **modèle de projet** (« Enregistrer comme modèle », « Nouveau depuis le modèle ») | menu Fichier ; F11 ; un modèle rouvert est un projet neuf sans chemin |
+| D11.6 | **Fichiers récents**, **plein écran**, **modèle de projet** (« Enregistrer comme modèle », « Nouveau depuis le modèle ») | menu Fichier ; F11 ; un modèle rouvert est un projet neuf sans chemin — **fait** |
 | D11.7 | **S'entendre** : l'entrée audio n'est jamais recopiée vers la sortie pendant l'armement ; **le clavier d'ordinateur** ne joue pas de notes | écoute d'entrée commutable par piste armée (latence dite) ; une rangée de touches joue la piste choisie, octave réglable |
 | D11.8 | **Étirement temporel d'un clip audio** — le choix n° 3 du § 4 le refusait ; `Clip::sourceStartSeconds` le dit en toutes lettres | à trancher au moment de l'écrire, chiffres à l'appui : un étirement de qualité (vocodeur de phase ou WSOLA) coûte un chantier entier, et la reconstruction n'en a pas besoin — c'est un besoin de production, pas de mesure. Dernier, et seulement après D11.1 à D11.7 |
 
@@ -2969,6 +2969,16 @@ chantier lourd en dernier.
 > (D0.1) : l'application le recopie de l'original à la copie après avoir
 > reconstruit le graphe, état natif compris. Le canal MIDI se saisit dans
 > la liste des pistes (1 à 16, tout autre texte rend l'ancien).
+
+> **D11.6 EST FAITE (03/09/2026).** Dix projets récents dans le fichier de
+> préférences (écrit dès l'ouverture ou l'enregistrement, comme l'échelle) ;
+> un dossier disparu reste listé, grisé, marqué « introuvable » — le
+> retirer en silence ferait chercher où il est passé. Le modèle est UN
+> dossier de projet dans le dossier des préférences : « Enregistrer comme
+> modèle » y écrit le projet courant sans changer son chemin, « Nouveau
+> depuis le modèle » le charge et EFFACE le chemin, si bien que Ctrl+S
+> demande où et que le modèle ne s'écrase que par la commande qui le
+> nomme. Plein écran : Affichage et F11, coché quand il l'est.
 
 Ce que l'audit a trouvé et qui n'entre PAS ici, avec la raison : la
 sélection de notes par vélocité (le filtre existe sous forme d'opérations

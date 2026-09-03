@@ -58,6 +58,7 @@ enum class ShortcutId : uint16_t {
     NavGoToStart,
     NavNextMarker,
     NavPreviousMarker,
+    ViewFullScreen,
 
     Count
 };

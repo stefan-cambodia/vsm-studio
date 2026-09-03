@@ -1119,6 +1119,23 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuFileNewProject, "Nouveau projet");
             menu.addItem(kMenuFileOpen, "Ouvrir MIDI...");
             menu.addItem(kMenuFileOpenBundle, "Ouvrir un projet VSM...");
+            {
+                // D11.6 : LES PROJETS RÉCENTS, dix au plus, le dernier ouvert
+                // en tête. Un dossier disparu reste listé barré de sa raison :
+                // le retirer en silence ferait chercher où il est passé.
+                juce::PopupMenu recents;
+                const auto liste = recentProjects();
+                for (int i = 0; i < liste.size(); ++i) {
+                    const juce::File dossier(liste[i]);
+                    const bool existe = dossier.isDirectory();
+                    recents.addItem(kMenuFileRecentFirst + i,
+                                    dossier.getFileName() + juce::String(u8"  \u2014  ") + dossier.getParentDirectory().getFullPathName()
+                                        + (existe ? juce::String() : juce::String(u8"  (introuvable)")),
+                                    existe);
+                }
+                if (liste.isEmpty()) recents.addItem(kMenuFileRecentFirst, "(aucun)", false);
+                menu.addSubMenu(u8"Projets récents", recents);
+            }
             menu.addItem(kMenuFileImportDaw,
                          u8"Importer un projet (Ableton, FL Studio, Cubase)...");
             // GRISÉE tant qu'aucun import n'a eu lieu, plutôt qu'absente : une
@@ -1144,6 +1161,14 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                           juce::String(currentProjectFolder_ == juce::File() ? "..." : "")
                           + " (Ctrl+S)");
             menu.addItem(kMenuFileSaveAs, "Enregistrer sous...");
+            menu.addSeparator();
+            // D11.6 : LE MODÈLE. Un seul, dans le dossier des préférences : le
+            // projet qu'on ouvre pour commencer (pistes, machines, routage,
+            // tempo). « Nouveau depuis le modèle » rend un projet SANS chemin :
+            // Ctrl+S demandera où, et le modèle ne s'écrase pas par mégarde.
+            menu.addItem(kMenuFileSaveTemplate, u8"Enregistrer comme modèle de projet");
+            menu.addItem(kMenuFileNewFromTemplate, u8"Nouveau depuis le modèle",
+                         templateFolder().getChildFile("project.json").existsAsFile());
             menu.addSeparator();
             // Écoute A/B : l'enregistrement d'origine en regard de la
             // reconstruction. Les trois modes sont dans le même menu, cochés,
@@ -1440,6 +1465,11 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
         case 5:
             menu.addItem(kMenuViewSingleWindow, juce::String::fromUTF8(u8"Fenêtre unique"),
                           true, singleWindow_);
+            {
+                auto* fenetre = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent());
+                menu.addItem(kMenuViewFullScreen, u8"Plein \u00e9cran (F11)", fenetre != nullptr,
+                              fenetre != nullptr && fenetre->isFullScreen());
+            }
             menu.addSeparator();
             menu.addItem(kMenuViewTracks, "Pistes", true,
                           singleWindow_ ? trackList_.isVisible() : trackListWindow_.isVisible());
@@ -1489,6 +1519,12 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
 }
 
 void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) {
+    if (menuItemID >= kMenuFileRecentFirst && menuItemID <= kMenuFileRecentLast) {
+        const auto liste = recentProjects();
+        const int i = menuItemID - kMenuFileRecentFirst;
+        if (i < liste.size()) loadProjectBundleFromFolder(juce::File(liste[i]));
+        return;
+    }
     // Les entrées du menu Édition proviennent du piano roll et utilisent sa
     // propre numérotation (>= 100 000, voir PianoRollComponent.cpp) : elles
     // lui sont renvoyées telles quelles. LA BASE VALAIT 100, et l'énumération
@@ -1638,6 +1674,9 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             break;
         }
         case kMenuFileQuit:      juce::JUCEApplication::getInstance()->systemRequestedQuit(); break;
+        case kMenuFileSaveTemplate:    saveAsTemplate(); break;
+        case kMenuFileNewFromTemplate: newFromTemplate(); break;
+        case kMenuViewFullScreen:      toggleFullScreen(); break;
         case kMenuTrackAdd:      addTrack(Track::Kind::Midi); break;
         case kMenuTrackAddAudio: addTrack(Track::Kind::Audio); break;
         case kMenuTrackAddGroup: addTrack(Track::Kind::Group); break;
@@ -2959,6 +2998,7 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     // MÉDIAS, c'est-à-dire le vrai dossier du projet : réécrire une session
     // récupérée dans sa copie de travail la perdrait au prochain lancement.
     currentProjectFolder_ = medias;
+    rememberRecentProject(medias);
     if (auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
         window->setName("Vintage Synth MIDI Studio -- " + medias.getFileName());
     // rebuildFromProject() assigne les instruments d'après le projet : les
@@ -3908,6 +3948,63 @@ void MainComponent::refreshListeningIndicator() {
     }
 }
 
+// --- D11.6 : projets récents, modèle, plein écran ---------------------------
+
+void MainComponent::rememberRecentProject(const juce::File& folder) {
+    if (folder == juce::File() || folder == templateFolder()) return;
+    auto liste = recentProjects();
+    liste.removeString(folder.getFullPathName());
+    liste.insert(0, folder.getFullPathName());
+    while (liste.size() > 10) liste.remove(liste.size() - 1);
+    // Écrit tout de suite, comme l'échelle : une fin brutale ne doit pas
+    // faire perdre la liste.
+    vsm::app::ui::UiScale::properties().setValue("projetsRecents", liste.joinIntoString("\n"));
+    vsm::app::ui::UiScale::properties().saveIfNeeded();
+}
+
+juce::StringArray MainComponent::recentProjects() const {
+    juce::StringArray liste;
+    liste.addLines(vsm::app::ui::UiScale::properties().getValue("projetsRecents"));
+    liste.removeEmptyStrings();
+    return liste;
+}
+
+juce::File MainComponent::templateFolder() {
+    return vsm::app::ui::UiScale::properties().getFile().getParentDirectory().getChildFile("modele-de-projet");
+}
+
+void MainComponent::saveAsTemplate() {
+    // Le modèle s'écrit là où vivent les préférences, sans toucher au projet
+    // courant : son dossier reste le sien, et Ctrl+S continue d'y écrire.
+    const juce::File avant = currentProjectFolder_;
+    const juce::File dossier = templateFolder();
+    dossier.createDirectory();
+    const bool ok = writeProjectTo(dossier);
+    currentProjectFolder_ = avant;
+    if (auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
+        window->setName("Vintage Synth MIDI Studio" + (avant == juce::File() ? juce::String() : " -- " + avant.getFileName()));
+    juce::AlertWindow::showMessageBoxAsync(
+        ok ? juce::AlertWindow::InfoIcon : juce::AlertWindow::WarningIcon, u8"Modèle de projet",
+        ok ? juce::String(u8"Le projet courant est devenu le modèle : Fichier \u25b8 Nouveau depuis le modèle l'ouvrira, sans chemin, chaque fois.")
+           : juce::String(u8"Le modèle n'a pas pu être écrit dans ") + dossier.getFullPathName());
+}
+
+void MainComponent::newFromTemplate() {
+    const juce::File dossier = templateFolder();
+    if (!dossier.getChildFile("project.json").existsAsFile()) return;
+    loadProjectBundleFromFolder(dossier);
+    // Un projet NEUF : pas de chemin, Ctrl+S demandera où. Le modèle ne se
+    // réécrit que par « Enregistrer comme modèle ».
+    currentProjectFolder_ = juce::File();
+    if (auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
+        window->setName("Vintage Synth MIDI Studio -- nouveau projet (depuis le mod\u00e8le)");
+}
+
+void MainComponent::toggleFullScreen() {
+    if (auto* fenetre = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
+        fenetre->setFullScreen(!fenetre->isFullScreen());
+}
+
 void MainComponent::seekAllViews(vsm::midi::Tick tick) {
     transport_.seekToTick(tick);
     audioEngine_.processGraph().seekSeconds(project_.ticksToSeconds(tick));
@@ -3941,6 +4038,7 @@ bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
         // appui remonte bien au marqueur d'avant et non à celui qu'on vient
         // d'atteindre. Sans marqueur avant, on revient au début.
         case Id::NavGoToStart: seekAllViews(0); return true;
+        case Id::ViewFullScreen: toggleFullScreen(); return true;
         case Id::NavNextMarker: {
             const auto ici = transport_.currentTick();
             vsm::midi::Tick cible = -1;
@@ -4175,6 +4273,7 @@ bool MainComponent::writeProjectTo(const juce::File& folder) {
                                                  u8"Projet incomplet", message);
     }
     currentProjectFolder_ = folder;
+    rememberRecentProject(folder);
     // Le nom du dossier passe dans le titre de la fenêtre : c'est le retour
     // qu'attend un Ctrl+S, et il ne demande pas de cliquer pour disparaître.
     if (auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))

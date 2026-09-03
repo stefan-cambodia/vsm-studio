@@ -166,6 +166,11 @@ private:
         kMenuFileExportStems,
         kMenuFileAudioSettings,
         kMenuFileQuit,
+        // D11.6 : modèle de projet et projets récents.
+        kMenuFileSaveTemplate,
+        kMenuFileNewFromTemplate,
+        kMenuFileRecentFirst,
+        kMenuFileRecentLast = kMenuFileRecentFirst + 9,
         kMenuTrackAdd,
         kMenuTrackAddAudio,
         kMenuTrackAddGroup,
@@ -214,6 +219,7 @@ private:
         kMenuViewMixer,
         kMenuViewArrangement,
         kMenuViewSingleWindow,
+        kMenuViewFullScreen,
         // Un identifiant par palier d'échelle, attribué à la suite :
         // kMenuViewScaleFirst + index dans UiScale::steps().
         kMenuViewScaleFirst,
@@ -503,6 +509,13 @@ private:
     void seekAllViews(vsm::midi::Tick tick);
     using juce::Component::keyPressed;   // la surcharge du composant reste visible (sinon -Woverloaded-virtual)
     void newProject();
+    // --- D11.6 : projets récents, modèle, plein écran ---------------------
+    void rememberRecentProject(const juce::File& folder);
+    juce::StringArray recentProjects() const;
+    static juce::File templateFolder();
+    void saveAsTemplate();
+    void newFromTemplate();
+    void toggleFullScreen();
     /// Ajoute une piste. Une piste AUDIO n'est pas une autre espèce d'objet :
     /// c'est une piste dont le matériau est un fichier et non des notes (voir
     /// `Track::Kind`). Il n'existait aucun moyen d'en créer une depuis

@@ -47,6 +47,7 @@ const std::vector<ShortcutCommand>& shortcutCommands() {
         {ShortcutId::NavGoToStart,      "nav.goToStart",    "Transport", "Retour au début",                "home",             ""},
         {ShortcutId::NavNextMarker,     "nav.nextMarker",   "Transport", "Marqueur suivant",               "shift + N",        ""},
         {ShortcutId::NavPreviousMarker, "nav.previousMarker","Transport","Marqueur précédent",             "shift + B",        ""},
+        {ShortcutId::ViewFullScreen,    "view.fullScreen",  "Affichage", "Plein écran",                    "F11",              ""},
     };
     return catalogue;
 }
