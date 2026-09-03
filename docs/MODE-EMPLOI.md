@@ -31,6 +31,8 @@ L'automation se dessine **sur** l'arrangement, pas dans un onglet à part : la l
 
 Un échantillon glissé depuis le navigateur tombe sur la piste survolée, **à la mesure aimantée**, et un trait doré le montre pendant le glisser : poser à trois millisecondes du premier temps est le genre de décalage qu'on ne voit pas et qu'on entend.
 
+**Déplacer, choisir, se repérer.** Un clip se glisse **d'une piste à une autre** : il emporte les notes que sa fenêtre couvre (un clip est une fenêtre sur le matériau de sa piste, pas un sac qu'on transporte). Un clip audio ne va que vers une piste audio qui porte le même fichier, ou aucune ; ce qui est refusé vous est dit. Un rectangle tiré sur le vide choisit les clips qu'il touche (**lasso**, Maj pour ajouter), Ctrl+A les prend tous. La barre de transport affiche la position en **mesure · temps** à côté du temps ; l'arrangement **suit la tête de lecture** par pages (`F` pour cesser, la règle dit « suit ») ; `Début` ramène au début, `Maj+N` et `Maj+B` sautent au marqueur suivant ou précédent.
+
 ![La vue d'arrangement : quatre pistes nommées, des clips, une automation dessinée, seize pistes visibles à l'écran.](images/manuel/arrangement.png)
 
 *La vue d'arrangement : quatre pistes nommées, des clips, une automation dessinée, seize pistes visibles à l'écran.*

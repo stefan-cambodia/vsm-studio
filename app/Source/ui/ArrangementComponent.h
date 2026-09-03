@@ -40,6 +40,10 @@ public:
 
     /// La tête de lecture, pour que la vue montre où l'on en est.
     void setPlayheadTick(vsm::midi::Tick tick);
+    /// D11.3 : l'arrangement défile derrière la tête de lecture, par pages, comme
+    /// le piano roll. `F` bascule, et la règle le dit.
+    void setFollowPlayhead(bool suit) { followPlayhead_ = suit; repaint(); }
+    bool followPlayhead() const { return followPlayhead_; }
     /// Un geste va modifier le projet : l'application prend son instantané
     /// d'annulation. Appelé UNE fois par geste, au `mouseDown` -- un
     /// glissement continu est une action, pas trois cents.
@@ -181,6 +185,7 @@ private:
     /// Aimanter à la MESURE (le défaut, parce qu'on arrange par mesures) ou à
     /// la grille fine du piano roll. `G` bascule, `S` coupe l'aimantation.
     bool aimanteALaMesure_ = true;
+    bool followPlayhead_ = true;
     /// Le presse-papiers PORTE SES CLIPS, pas des identifiants : coller doit
     /// marcher après avoir supprimé l'original, et un identifiant ne désigne
     /// alors plus rien.

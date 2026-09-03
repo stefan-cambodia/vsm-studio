@@ -2913,7 +2913,7 @@ chantier lourd en dernier.
 |---|---|---|
 | D11.1 | **Le clip change de piste** : `mouseDrag` calcule la piste sous le curseur et l'ignore (`juce::ignoreUnused(piste)`) ; le déplacement ne touche que le temps | glisser un clip sur une autre piste l'y pose — avec les notes que sa fenêtre couvre, puisqu'un clip est une fenêtre sur le matériau de SA piste (D1) ; un clip audio ne change de piste que si elle porte le même fichier ou aucun, et le refus est dit ; annulable ; test — **fait** |
 | D11.2 | **Sélection au lasso** dans l'arrangement, et « tout sélectionner » (Ctrl+A n'y est câblé que pour les notes) | un rectangle tiré sur le vide sélectionne les clips qu'il touche ; Ctrl+A prend tous les clips — **fait** |
-| D11.3 | **Se repérer en musique** : la position du transport dit minutes:secondes et un tick brut, jamais « mesure 33, temps 2 » ; l'arrangement ne suit pas la tête de lecture (le piano roll, si) ; ni retour à zéro ni marqueur suivant/précédent au clavier | mesure · temps affichés à côté du temps ; l'arrangement défile derrière la tête quand elle sort de l'écran, bouton comme au piano roll ; Début, marqueur suivant/précédent dans la table des raccourcis |
+| D11.3 | **Se repérer en musique** : la position du transport dit minutes:secondes et un tick brut, jamais « mesure 33, temps 2 » ; l'arrangement ne suit pas la tête de lecture (le piano roll, si) ; ni retour à zéro ni marqueur suivant/précédent au clavier | mesure · temps affichés à côté du temps ; l'arrangement défile derrière la tête quand elle sort de l'écran, bouton comme au piano roll ; Début, marqueur suivant/précédent dans la table des raccourcis — **fait** |
 | D11.4 | **Renommer et colorer un clip** : `Clip::name` et `Clip::colorRgba` existent et aucune vue ne les édite (la couleur est toujours celle de la piste) | double-clic sur le nom, couleur au menu ; sauvegardés (déjà dans le format) |
 | D11.5 | **Dupliquer une piste** (seules les sélections se dupliquent) ; **canal MIDI éditable** (`t.channel = n % 16` à la création, étiquette non éditable) | une commande au menu de piste, tout copié (instrument, effets, notes, clips, automation, routage) ; le canal se saisit |
 | D11.6 | **Fichiers récents**, **plein écran**, **modèle de projet** (« Enregistrer comme modèle », « Nouveau depuis le modèle ») | menu Fichier ; F11 ; un modèle rouvert est un projet neuf sans chemin |
@@ -2934,6 +2934,23 @@ chantier lourd en dernier.
 > avalé. Le lasso part du vide (Maj l'ajoute), Ctrl+A prend tous les clips,
 > et l'arrangement s'est ouvert sur les neuf pistes de *usandthem-parite-v3*
 > avec ce code (capture).
+
+> **D11.3 EST FAITE (03/09/2026).** La barre de transport demande « mes. 33 ·
+> 2 » à l'application (un fournisseur ; elle ne connaît pas le projet), et
+> l'affiche sous le temps. L'arrangement suit la tête PAR PAGES, la règle
+> qu'avait fixée le piano roll (un fond qui glisse à chaque image fatigue) ;
+> `F` bascule, et la règle écrit « suit » — un réglage qu'on bascule au
+> clavier doit se voir (D5). Trois commandes de plus dans la table des
+> raccourcis, donc dans la page imprimable : Début (`Début`), marqueur
+> suivant (`Maj+N`), précédent (`Maj+B`, avec une noire de tolérance pour
+> qu'un second appui remonte bien au marqueur d'avant). Vu à l'écran.
+>
+> **Et une faute de conduite, dite** : le commit de D11.1 annonçait une
+> capture faite « avec ce code » alors que l'application ne compilait pas
+> (une concaténation `juce::String + char8_t*` ambiguë dans le message de
+> refus) et que la capture venait du binaire précédent — le filtre de la
+> sortie de compilation ne montrait que les avertissements. Corrigé ici ;
+> désormais la ligne « Built target » est exigée avant toute capture.
 
 Ce que l'audit a trouvé et qui n'entre PAS ici, avec la raison : la
 sélection de notes par vélocité (le filtre existe sous forme d'opérations

@@ -292,6 +292,13 @@ MainComponent::MainComponent()
         applyAutomationFromProject();
         pianoRollPanel_.refresh();
     };
+    // D11.3 : la position se lit aussi en MESURE · TEMPS, à côté du temps.
+    // La barre de transport ne connaît pas le projet ; elle demande.
+    transportBar_.positionInBarsProvider = [this](vsm::midi::Tick tick) {
+        const auto bb = project_.timeSignatureMap.barBeatAt(tick, project_.ticksPerQuarterNote);
+        return juce::String(u8"mes. ") + juce::String(static_cast<long long>(bb.bar + 1))
+               + juce::String(u8" \u00b7 ") + juce::String(static_cast<long long>(bb.beat + 1));
+    };
     arrangement_.onPlayheadRequested = [this](vsm::midi::Tick tick) {
         transport_.seekToTick(tick);
         audioEngine_.processGraph().seekSeconds(project_.ticksToSeconds(tick));
@@ -304,10 +311,10 @@ MainComponent::MainComponent()
         juce::AlertWindow::showMessageBoxAsync(
             juce::AlertWindow::InfoIcon, u8"Changement de piste",
             juce::String(static_cast<int>(refuses))
-                + (refuses > 1 ? u8" clips n'ont pas changé de piste" : u8" clip n'a pas changé de piste")
-                + u8" : un clip audio ne va que vers une piste audio qui porte le même fichier "
-                  u8"(ou aucun), un clip MIDI vers une piste MIDI, et un groupe ne reçoit rien. "
-                  u8"Les autres clips de la sélection ont été déplacés.");
+                + juce::String(refuses > 1 ? u8" clips n'ont pas changé de piste" : u8" clip n'a pas changé de piste")
+                + juce::String(u8" : un clip audio ne va que vers une piste audio qui porte le même fichier "
+                               u8"(ou aucun), un clip MIDI vers une piste MIDI, et un groupe ne reçoit rien. "
+                               u8"Les autres clips de la sélection ont été déplacés."));
     };
     // La grille fine de l'arrangement EST celle du piano roll, lue à l'usage :
     // deux réglages de grille dans deux vues du même morceau finiraient par se
@@ -3860,6 +3867,11 @@ void MainComponent::refreshListeningIndicator() {
     }
 }
 
+void MainComponent::seekAllViews(vsm::midi::Tick tick) {
+    transport_.seekToTick(tick);
+    audioEngine_.processGraph().seekSeconds(project_.ticksToSeconds(tick));
+}
+
 bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
     // LA TOUCHE DÉSIGNE UNE COMMANDE, ET LA TABLE FAIT LA CORRESPONDANCE
     // (D10.3). Ce qui était ici -- un test sur `Ctrl+S`, un filtre qui rejetait
@@ -3882,6 +3894,28 @@ bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
         // « R » comme référence : la bascule A/B, depuis n'importe quelle
         // fenêtre -- on compare en regardant le piano roll, pas le menu.
         case Id::ReferenceCycle: cycleReferenceMode(); return true;
+        // D11.3 — SE REPÉRER EN MUSIQUE : Début, marqueur suivant, précédent.
+        // Le marqueur « suivant » est strictement après la tête ; « précédent »
+        // strictement avant, avec une noire de tolérance pour qu'un second
+        // appui remonte bien au marqueur d'avant et non à celui qu'on vient
+        // d'atteindre. Sans marqueur avant, on revient au début.
+        case Id::NavGoToStart: seekAllViews(0); return true;
+        case Id::NavNextMarker: {
+            const auto ici = transport_.currentTick();
+            vsm::midi::Tick cible = -1;
+            for (const auto& m : project_.markers)
+                if (m.tick > ici && (cible < 0 || m.tick < cible)) cible = m.tick;
+            if (cible >= 0) seekAllViews(cible);
+            return true;
+        }
+        case Id::NavPreviousMarker: {
+            const auto ici = transport_.currentTick() - project_.ticksPerQuarterNote;
+            vsm::midi::Tick cible = 0;
+            for (const auto& m : project_.markers)
+                if (m.tick < ici && m.tick > cible) cible = m.tick;
+            seekAllViews(cible);
+            return true;
+        }
         // Tout le reste appartient au piano roll, qui a sa propre table --
         // la MÊME. On répond faux pour que la touche lui parvienne.
         default: return false;

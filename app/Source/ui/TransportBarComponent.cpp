@@ -281,8 +281,11 @@ void TransportBarComponent::timerCallback() {
     int minutes = static_cast<int>(seconds) / 60;
     double secsRemainder = seconds - minutes * 60.0;
 
-    juce::String text = juce::String::formatted("%02d:%06.3f  |  tick %lld",
-                                                  minutes, secsRemainder, static_cast<long long>(tick));
+    // D11.3 : la position MUSICALE à côté de la position en temps. « tick
+    // 4 215 » ne dit rien à personne ; « mes. 33 · 2 », si.
+    juce::String text = juce::String::formatted("%02d:%06.3f  |  ", minutes, secsRemainder)
+                        + (positionInBarsProvider ? positionInBarsProvider(tick)
+                                                  : "tick " + juce::String(static_cast<long long>(tick)));
     positionLabel_.setText(text, juce::dontSendNotification);
 
     bool playing = transport_.state() == TransportState::Playing;

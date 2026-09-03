@@ -55,6 +55,9 @@ enum class ShortcutId : uint16_t {
     ViewZoomIn,
     ViewZoomOut,
     NavNextDoubtful,
+    NavGoToStart,
+    NavNextMarker,
+    NavPreviousMarker,
 
     Count
 };

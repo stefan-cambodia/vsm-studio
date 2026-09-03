@@ -27,6 +27,17 @@ void ArrangementComponent::setProject(Project* project) {
 void ArrangementComponent::setPlayheadTick(vsm::midi::Tick tick) {
     if (tick == playhead_) return;
     playhead_ = tick;
+    // D11.3 : PAR PAGES, pas centré en continu — un fond qui glisse à chaque
+    // image fatigue et empêche de lire les positions (même règle qu'au piano
+    // roll). La page tourne quand la tête sort de la zone des clips.
+    if (followPlayhead_) {
+        const float x = tickToX(tick);
+        const float droite = static_cast<float>(getWidth()) - 40.0f;
+        if (x > droite || x < static_cast<float>(kHeaderWidth)) {
+            const double visibles = static_cast<double>(getWidth() - kHeaderWidth) / std::max(1.0e-6, pixelsPerTick_);
+            scrollTick_ = std::max<vsm::midi::Tick>(0, tick - static_cast<vsm::midi::Tick>(visibles * 0.15));
+        }
+    }
     repaint();
 }
 
@@ -655,6 +666,10 @@ bool ArrangementComponent::keyPressed(const juce::KeyPress& key) {
         toggleAutomation();
         return true;
     }
+    if (key.getTextCharacter() == 'f' || key.getTextCharacter() == 'F') {
+        setFollowPlayhead(!followPlayhead_);
+        return true;
+    }
     if (key.getTextCharacter() == 's' || key.getTextCharacter() == 'S') {
         snap_ = !snap_;
         repaint();
@@ -955,8 +970,9 @@ void ArrangementComponent::paint(juce::Graphics& g) {
     // contre celui qui l'a basculé sans s'en souvenir.
     g.setColour(Palette::textSecondary);
     g.setFont(juce::Font(juce::FontOptions(10.0f)));
-    g.drawText(juce::String(snap_ ? (aimanteALaMesure_ ? "aimant : mesure" : "aimant : grille")
-                                  : "aimant : libre")
+    g.drawText((followPlayhead_ ? juce::String(u8"suit \u00b7 ") : juce::String())
+                   + juce::String(snap_ ? (aimanteALaMesure_ ? "aimant : mesure" : "aimant : grille")
+                                        : "aimant : libre")
                    + (automationVisible_ ? "  |  auto" : ""),
                 4, 2, kHeaderWidth - 8, kRulerHeight - 4, juce::Justification::centredRight);
 

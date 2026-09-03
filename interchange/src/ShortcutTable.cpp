@@ -43,6 +43,10 @@ const std::vector<ShortcutCommand>& shortcutCommands() {
         {ShortcutId::ViewZoomIn,        "view.zoomIn",      "Affichage", "Zoom avant",                     "=",                "+"},
         {ShortcutId::ViewZoomOut,       "view.zoomOut",     "Affichage", "Zoom arrière",                   "-",                "_"},
         {ShortcutId::NavNextDoubtful,   "nav.nextDoubtful", "Affichage", "Note douteuse suivante (Maj : précédente)", "D",     ""},
+        // D11.3 — se repérer en musique : le début, et les marqueurs.
+        {ShortcutId::NavGoToStart,      "nav.goToStart",    "Transport", "Retour au début",                "home",             ""},
+        {ShortcutId::NavNextMarker,     "nav.nextMarker",   "Transport", "Marqueur suivant",               "shift + N",        ""},
+        {ShortcutId::NavPreviousMarker, "nav.previousMarker","Transport","Marqueur précédent",             "shift + B",        ""},
     };
     return catalogue;
 }

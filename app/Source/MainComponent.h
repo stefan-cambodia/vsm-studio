@@ -485,6 +485,8 @@ private:
     // s'inscrit comme écouteur sur chaque fenêtre, et reçoit ce que le
     // composant qui a le focus n'a pas consommé.
     bool keyPressed(const juce::KeyPress& key, juce::Component* origin) override;
+    /// Déplace la tête de lecture partout (transport, graphe) — D11.3.
+    void seekAllViews(vsm::midi::Tick tick);
     using juce::Component::keyPressed;   // la surcharge du composant reste visible (sinon -Woverloaded-virtual)
     void newProject();
     /// Ajoute une piste. Une piste AUDIO n'est pas une autre espèce d'objet :
