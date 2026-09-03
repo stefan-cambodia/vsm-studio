@@ -16,6 +16,7 @@
 #include "ui/BrowserComponent.h"
 #include "vsm/interchange/BrowserIndex.h"
 #include "audio/AudioEngine.h"
+#include "audio/ReferenceAudioLoader.h"
 #include "ui/TransportBarComponent.h"
 #include "ui/TrackListComponent.h"
 #include "ui/PianoRollComponent.h"
@@ -467,6 +468,8 @@ private:
     void loadReferenceAudio();
     /// Charge un original DÉJÀ désigné comme référence A/B (D9.4).
     void setReferenceAudioFile(const juce::File& file, bool silencieuxSiIllisible);
+    void publierReference(vsm::app::ReferenceAudioResult&& result, const juce::File& file, bool activerEcoute);
+    void chargerOriginalDuProjet(const juce::File& folder);
     void setReferenceMode(vsm::audio::engine::ReferenceTrack::Mode mode);
     /// Reconstruction -> les deux -> original -> reconstruction. Touche R,
     /// depuis n'importe quelle fenêtre, et bouton de la barre de transport.

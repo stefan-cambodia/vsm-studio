@@ -377,6 +377,11 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
         commit = ""
     return {
         "commit": commit,
+        # L'ORIGINAL, en chemin absolu : le DAW qui ouvre ce projet à la main
+        # peut charger l'écoute A/B sans le redemander — la chaîne sait de quel
+        # fichier elle est partie, et c'est au moment de l'ouverture que la
+        # comparaison compte.
+        "source": str(Path(args.entree).resolve()) if getattr(args, "entree", None) else None,
         "options": {
             "separation": not args.sans_separation,
             "sampler": not args.sans_sampler,

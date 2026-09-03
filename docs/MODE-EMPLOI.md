@@ -583,6 +583,14 @@ de parties qu'elle porte encore sur une seule piste.
 C'est l'écran qui répond à « pourquoi cette piste sonne-t-elle comme quatre
 instruments ? » sans ouvrir un fichier JSON.
 
+**L'original arrive avec le projet.** Ouvrir un dossier reconstruit — par
+l'application ou par la ligne de commande — charge aussi l'enregistrement
+d'origine pour l'écoute comparative : `rapport.json` en porte le chemin dans
+sa provenance, et à défaut `comparaison.wav` le porte lui-même sur son canal
+gauche. Le bouton d'écoute de la barre de transport est prêt ; on entend
+d'abord la reconstruction, et un clic passe à l'original, puis aux deux
+ensemble.
+
 ![La reconstruction en cours : cinq étapes, le journal en direct, et un bouton pour annuler.](images/manuel/reconstruction.png)
 
 *La reconstruction en cours : cinq étapes, le journal en direct, et un bouton pour annuler.*

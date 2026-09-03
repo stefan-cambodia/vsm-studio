@@ -2843,6 +2843,7 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     // presets plus tôt reviendrait à les appliquer à rien.
     rebuildFromProject();
     pianoRoll_.cadrerSurLesNotes();  // un projet qui arrive se regarde là où sont ses notes
+    chargerOriginalDuProjet(folder);
 
     // --- presets et échantillons, machine par machine --------------------
     juce::StringArray rapport;
@@ -3688,27 +3689,70 @@ void MainComponent::setReferenceAudioFile(const juce::File& file, bool silencieu
             return;
         }
 
-        // CE QU'ON A CHARGÉ, ÉCRIT QUELQUE PART. Un MP3 décodé, un FLAC et un
-        // WAV donnent le même tampon flottant : rien, à l'écoute, ne dit par
-        // quel décodeur on est passé ni à quelle fréquence le fichier était.
-        // Le menu le rappelle, parce que comparer sans savoir à quoi, c'est
-        // comparer pour rien.
-        const double duree = static_cast<double>(result.buffer.numFrames())
-                           / juce::jmax(1.0, result.buffer.sampleRate);
-        referenceDescription_ = file.getFileName() + "  --  " + result.decoder + ", "
-                              + juce::String(result.buffer.sampleRate / 1000.0, 1) + " kHz, "
-                              + (result.buffer.isStereo() ? "stereo, " : "mono, ")
-                              + juce::String(static_cast<int>(duree) / 60) + ":"
-                              + juce::String(static_cast<int>(duree) % 60).paddedLeft('0', 2);
-
-        auto& reference = audioEngine_.processGraph().referenceTrack();
-        reference.setAudio(std::make_shared<const vsm::audio::io::SampleBuffer>(std::move(result.buffer)));
-        // On passe en écoute comparative tout de suite : charger un original
-        // sans l'entendre serait un geste pour rien, et le menu permet de
-        // revenir à la reconstruction seule.
-        reference.setMode(vsm::audio::engine::ReferenceTrack::Mode::Mix);
-        refreshListeningIndicator();
+        publierReference(std::move(result), file, /*activerEcoute=*/true);
     }
+}
+
+/// CE QU'ON A CHARGÉ, ÉCRIT QUELQUE PART. Un MP3 décodé, un FLAC et un WAV
+/// donnent le même tampon flottant : rien, à l'écoute, ne dit par quel
+/// décodeur on est passé ni à quelle fréquence le fichier était. Le menu le
+/// rappelle, parce que comparer sans savoir à quoi, c'est comparer pour rien.
+/// `activerEcoute` : après une reconstruction ou un chargement demandé, on
+/// passe en écoute comparative tout de suite -- charger un original sans
+/// l'entendre serait un geste pour rien. À l'ouverture d'un projet à la main,
+/// l'original est PRÊT (le bouton s'allume) mais on entend d'abord le projet
+/// qu'on vient d'ouvrir.
+void MainComponent::publierReference(vsm::app::ReferenceAudioResult&& result, const juce::File& file,
+                                     bool activerEcoute) {
+    const double duree = static_cast<double>(result.buffer.numFrames())
+                       / juce::jmax(1.0, result.buffer.sampleRate);
+    referenceDescription_ = file.getFileName() + "  --  " + result.decoder + ", "
+                          + juce::String(result.buffer.sampleRate / 1000.0, 1) + " kHz, "
+                          + (result.buffer.isStereo() ? "stereo, " : "mono, ")
+                          + juce::String(static_cast<int>(duree) / 60) + ":"
+                          + juce::String(static_cast<int>(duree) % 60).paddedLeft('0', 2);
+
+    auto& reference = audioEngine_.processGraph().referenceTrack();
+    reference.setAudio(std::make_shared<const vsm::audio::io::SampleBuffer>(std::move(result.buffer)));
+    if (activerEcoute) reference.setMode(vsm::audio::engine::ReferenceTrack::Mode::Mix);
+    refreshListeningIndicator();
+}
+
+/// L'ORIGINAL D'UN PROJET RECONSTRUIT, CHARGÉ AVEC LUI. L'écoute A/B était
+/// prête après une reconstruction lancée depuis l'application (D9.4), mais un
+/// projet reconstruit en ligne de commande -- ceux des campagnes -- s'ouvrait
+/// sans son original, et il fallait aller le chercher dans un menu alors que
+/// le dossier sait d'où il vient : `rapport.json` porte le chemin de la source
+/// dans sa provenance, et `comparaison.wav` porte l'original lui-même sur son
+/// canal gauche (la reconstruction est à droite). On prend la source si elle
+/// existe encore, sinon le canal gauche de la comparaison ; sans les deux, rien
+/// -- un projet ouvert à la main n'a pas forcément d'original, et c'est normal.
+void MainComponent::chargerOriginalDuProjet(const juce::File& folder) {
+    const juce::File fichierRapport = folder.getChildFile("rapport.json");
+    if (fichierRapport.existsAsFile()) {
+        const auto lu = vsm::interchange::parseJson(fichierRapport.loadFileAsString().toStdString());
+        if (lu.success) {
+            const std::string source = lu.value["provenance"]["source"].asString("");
+            if (!source.empty()) {
+                const juce::File fichier(juce::String::fromUTF8(source.c_str()));
+                if (fichier.existsAsFile()) {
+                    auto result = vsm::app::loadReferenceAudioFile(fichier);
+                    if (result.success && !result.buffer.empty()) {
+                        publierReference(std::move(result), fichier, /*activerEcoute=*/false);
+                        return;
+                    }
+                }
+            }
+        }
+    }
+    const juce::File comparaison = folder.getChildFile("comparaison.wav");
+    if (!comparaison.existsAsFile()) return;
+    auto result = vsm::app::loadReferenceAudioFile(comparaison);
+    if (!result.success || result.buffer.empty() || !result.buffer.isStereo()) return;
+    // Gauche = original, droite = reconstruction : on ne garde que l'original.
+    result.buffer.right.clear();
+    result.decoder = result.decoder + " (canal gauche de comparaison.wav)";
+    publierReference(std::move(result), comparaison, /*activerEcoute=*/false);
 }
 
 void MainComponent::setReferenceMode(vsm::audio::engine::ReferenceTrack::Mode mode) {
