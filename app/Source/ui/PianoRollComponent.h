@@ -68,7 +68,7 @@ public:
     // --- Conversions partagées (règle, lane de vélocité) ------------------
     float tickToX(vsm::midi::Tick tick) const;
     vsm::midi::Tick xToTick(float x) const;
-    int keyboardWidth() const { return kKeyboardWidth; }
+    int keyboardWidth() const;  ///< 62 px, ou plus large sur une piste de batterie (noms des pièces)
     double pixelsPerTick() const { return pixelsPerTick_; }
     vsm::midi::Tick visibleStartTick() const { return scrollTick_; }
     int noteHeight() const { return noteHeight_; }
@@ -264,7 +264,11 @@ private:
     int noteHeight_ = 16;
     int topNote_ = 84;
 
-    static constexpr int kKeyboardWidth = 62;
+    // LA COLONNE DU CLAVIER S'ÉLARGIT SUR UNE PISTE DE BATTERIE : elle y porte
+    // le nom des pièces (« charleston fermé ») et non des hauteurs (« F#2 »),
+    // et 62 pixels les tronquaient tous.
+    static constexpr int kKeyboardWidthNotes = 62;
+    static constexpr int kKeyboardWidthDrums = 128;
     static constexpr int kScrollBarThickness = 12;
 
     Tool tool_ = Tool::Select;

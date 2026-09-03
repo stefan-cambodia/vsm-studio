@@ -1,4 +1,5 @@
 #include "PianoRollComponent.h"
+#include "DrumVoiceNames.h"
 #include "Shortcuts.h"
 #include "LookAndFeel/VsmLookAndFeel.h"
 #include <algorithm>
@@ -92,6 +93,11 @@ void PianoRollComponent::setActiveTrackIndex(size_t trackIndex) {
     repaint();
 }
 
+int PianoRollComponent::keyboardWidth() const {
+    const Track* track = activeTrack();
+    return (track && track->channel == 9) ? kKeyboardWidthDrums : kKeyboardWidthNotes;
+}
+
 Track* PianoRollComponent::activeTrack() const {
     if (!project_ || activeTrackIndex_ >= project_->tracks.size()) return nullptr;
     return &project_->tracks[activeTrackIndex_];
@@ -102,13 +108,13 @@ Track* PianoRollComponent::activeTrack() const {
 // ---------------------------------------------------------------------------
 
 float PianoRollComponent::tickToX(Tick tick) const {
-    return static_cast<float>(kKeyboardWidth) +
+    return static_cast<float>(keyboardWidth()) +
            static_cast<float>(static_cast<double>(tick - scrollTick_) * pixelsPerTick_);
 }
 
 Tick PianoRollComponent::xToTick(float x) const {
     if (pixelsPerTick_ <= 0.0) return scrollTick_;
-    return scrollTick_ + static_cast<Tick>(static_cast<double>(x - kKeyboardWidth) / pixelsPerTick_);
+    return scrollTick_ + static_cast<Tick>(static_cast<double>(x - keyboardWidth()) / pixelsPerTick_);
 }
 
 int PianoRollComponent::noteToY(uint8_t note) const {
@@ -259,7 +265,7 @@ void PianoRollComponent::setPlayheadTick(Tick tick) {
         // fatigant et rendant la lecture des positions difficile.
         const float x = tickToX(tick);
         const auto area = contentArea();
-        if (x > static_cast<float>(area.getRight()) - 40.0f || x < static_cast<float>(kKeyboardWidth)) {
+        if (x > static_cast<float>(area.getRight()) - 40.0f || x < static_cast<float>(keyboardWidth())) {
             const double visibleTicks = static_cast<double>(area.getWidth()) / pixelsPerTick_;
             scrollTick_ = std::max<Tick>(0, tick - static_cast<Tick>(visibleTicks * 0.15));
             updateScrollBars();
@@ -881,7 +887,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& event) {
     dragStartMousePos_ = pos;
 
     // --- Clavier de gauche : écoute d'une note ----------------------------
-    if (pos.x < static_cast<float>(kKeyboardWidth)) {
+    if (pos.x < static_cast<float>(keyboardWidth())) {
         dragMode_ = DragMode::Audition;
         startAudition(yToNote(pos.y), defaultVelocity_);
         repaint();
@@ -1168,7 +1174,7 @@ void PianoRollComponent::mouseMove(const juce::MouseEvent& event) {
     const uint64_t newHover = hit ? hit->id : 0;
     if (newHover != hoveredNoteId_) { hoveredNoteId_ = newHover; repaint(); }
 
-    if (event.position.x < static_cast<float>(kKeyboardWidth))
+    if (event.position.x < static_cast<float>(keyboardWidth()))
         setMouseCursor(juce::MouseCursor::PointingHandCursor);
     else if (tool_ == Tool::Erase)
         setMouseCursor(juce::MouseCursor::CrosshairCursor);
@@ -1349,6 +1355,21 @@ void PianoRollComponent::paint(juce::Graphics& g) {
         return;
     }
 
+    // UNE PISTE AUDIO N'A PAS DE NOTES À ÉDITER ICI, et il faut le dire :
+    // sans ce mot, l'écran montrait une grille vide et les notes fantômes
+    // d'une autre piste, comme si la voix reportée avait perdu ses notes.
+    if (activeTrack()->kind == Track::Kind::Audio) {
+        drawGrid(g);
+        drawKeyboard(g);
+        g.setColour(Palette::textSecondary);
+        g.setFont(16.0f);
+        g.drawFittedText(u8"Piste audio : son matériau se voit et se coupe dans l'arrangement.\n"
+                         u8"Il n'y a pas de notes à éditer ici.",
+                         getLocalBounds().withTrimmedLeft(keyboardWidth()).reduced(24),
+                         juce::Justification::centred, 3);
+        return;
+    }
+
     drawGrid(g);
     drawLoopRegion(g);
     if (ghostNotes_) drawGhostNotes(g);
@@ -1366,15 +1387,15 @@ void PianoRollComponent::paint(juce::Graphics& g) {
 
 void PianoRollComponent::resized() {
     const auto bounds = getLocalBounds();
-    horizontalScrollBar_.setBounds(kKeyboardWidth, bounds.getBottom() - kScrollBarThickness,
-                                    bounds.getWidth() - kKeyboardWidth - kScrollBarThickness, kScrollBarThickness);
+    horizontalScrollBar_.setBounds(keyboardWidth(), bounds.getBottom() - kScrollBarThickness,
+                                    bounds.getWidth() - keyboardWidth() - kScrollBarThickness, kScrollBarThickness);
     verticalScrollBar_.setBounds(bounds.getRight() - kScrollBarThickness, 0,
                                   kScrollBarThickness, bounds.getHeight() - kScrollBarThickness);
     updateScrollBars();
 }
 
 juce::Rectangle<int> PianoRollComponent::contentArea() const {
-    return getLocalBounds().withTrimmedLeft(kKeyboardWidth)
+    return getLocalBounds().withTrimmedLeft(keyboardWidth())
                             .withTrimmedRight(kScrollBarThickness)
                             .withTrimmedBottom(kScrollBarThickness);
 }
@@ -1382,7 +1403,7 @@ juce::Rectangle<int> PianoRollComponent::contentArea() const {
 void PianoRollComponent::drawKeyboard(juce::Graphics& g) const {
     const auto bounds = getLocalBounds();
     g.setColour(Palette::panel);
-    g.fillRect(0, 0, kKeyboardWidth, bounds.getHeight());
+    g.fillRect(0, 0, keyboardWidth(), bounds.getHeight());
 
     // Touches "enfoncées" : les notes de la piste active qui couvrent la tête
     // de lecture. Dérivé du MODÈLE, pas de l'état du moteur audio -- ça
@@ -1394,13 +1415,15 @@ void PianoRollComponent::drawKeyboard(juce::Graphics& g) const {
                 keyPressed[note.number] = true;
     }
     if (auditionNote_ >= 0 && auditionNote_ < 128) keyPressed[static_cast<size_t>(auditionNote_)] = true;
+    const Track* pisteDeBatterie = nullptr;
+    if (const Track* track = activeTrack(); track && track->channel == 9) pisteDeBatterie = track;
 
     const int bottomNote = topNote_ - bounds.getHeight() / noteHeight_ - 1;
     for (int note = std::max(0, bottomNote); note <= std::min(127, topNote_); ++note) {
         const int y = noteToY(static_cast<uint8_t>(note));
         const bool black = isBlackKey(note);
         const bool pressed = keyPressed[static_cast<size_t>(note)];
-        const int width = black ? (kKeyboardWidth * 2 / 3) : kKeyboardWidth;
+        const int width = black ? (keyboardWidth() * 2 / 3) : keyboardWidth();
 
         juce::Colour keyColour = black ? Palette::pianoKeyBlack : Palette::pianoKeyWhite;
         if (scaleHighlight_ && scale_.type != ScaleType::Chromatic &&
@@ -1417,16 +1440,26 @@ void PianoRollComponent::drawKeyboard(juce::Graphics& g) const {
                         static_cast<float>(noteHeight_ - 1), 1.5f);
         }
         // Nom de note sur les do, et sur toutes les touches si la place le permet.
-        if (note % 12 == 0 || noteHeight_ >= 14) {
+        // SUR UNE PISTE DE BATTERIE (canal 10), LA PIÈCE PLUTÔT QUE LA HAUTEUR :
+        // « charleston fermé » se lit, « F#2 » se devine. La pièce vient de la
+        // machine assignée, sinon de la convention General MIDI.
+        juce::String etiquette;
+        if (pisteDeBatterie) {
+            const std::string piece = vsm::app::ui::drumVoiceName(pisteDeBatterie->instrumentId,
+                                                    static_cast<uint8_t>(note));
+            if (!piece.empty() && noteHeight_ >= 9) etiquette = juce::String::fromUTF8(piece.c_str());
+        }
+        if (etiquette.isNotEmpty() || note % 12 == 0 || noteHeight_ >= 14) {
             g.setColour(pressed ? juce::Colours::black
-                                 : (note % 12 == 0 ? Palette::textPrimary : Palette::textSecondary));
+                                 : (etiquette.isNotEmpty() || note % 12 == 0 ? Palette::textPrimary
+                                                                             : Palette::textSecondary));
             g.setFont(std::min(11.0f, static_cast<float>(noteHeight_) - 3.0f));
-            g.drawText(noteName(static_cast<uint8_t>(note)), 4, y, kKeyboardWidth - 8, noteHeight_,
-                        juce::Justification::centredLeft);
+            g.drawText(etiquette.isNotEmpty() ? etiquette : noteName(static_cast<uint8_t>(note)),
+                       4, y, keyboardWidth() - 8, noteHeight_, juce::Justification::centredLeft);
         }
     }
     g.setColour(Palette::border);
-    g.drawLine(static_cast<float>(kKeyboardWidth), 0.0f, static_cast<float>(kKeyboardWidth),
+    g.drawLine(static_cast<float>(keyboardWidth()), 0.0f, static_cast<float>(keyboardWidth()),
                 static_cast<float>(bounds.getHeight()), 1.0f);
 }
 
@@ -1448,15 +1481,15 @@ void PianoRollComponent::drawGrid(juce::Graphics& g) const {
                 rowColour = Palette::accentTeal.withAlpha(0.10f); // la fondamentale
         }
         g.setColour(rowColour);
-        g.fillRect(kKeyboardWidth, y, bounds.getWidth() - kKeyboardWidth, noteHeight_);
+        g.fillRect(keyboardWidth(), y, bounds.getWidth() - keyboardWidth(), noteHeight_);
 
         g.setColour(isC ? Palette::gridLineStrong : Palette::gridLine);
-        g.drawLine(static_cast<float>(kKeyboardWidth), static_cast<float>(y),
+        g.drawLine(static_cast<float>(keyboardWidth()), static_cast<float>(y),
                     static_cast<float>(bounds.getWidth()), static_cast<float>(y), isC ? 1.2f : 0.6f);
     }
 
     const Tick grid = gridTicks();
-    const Tick startTick = std::max<Tick>(0, xToTick(static_cast<float>(kKeyboardWidth)));
+    const Tick startTick = std::max<Tick>(0, xToTick(static_cast<float>(keyboardWidth())));
     const Tick endTick = xToTick(static_cast<float>(bounds.getWidth()));
     Tick barTicks = project_->timeSignatureMap.ticksPerBar(startTick, project_->ticksPerQuarterNote);
     if (barTicks <= 0) barTicks = project_->ticksPerQuarterNote * 4;
@@ -1498,7 +1531,7 @@ void PianoRollComponent::drawGhostNotes(juce::Graphics& g) const {
         const juce::Colour c = juce::Colour(track.colorRgba).withAlpha(0.16f);
         for (const auto& note : track.notes) {
             const float x1 = tickToX(note.startTick), x2 = tickToX(note.endTick);
-            if (x2 < static_cast<float>(kKeyboardWidth) || x1 > static_cast<float>(getWidth())) continue;
+            if (x2 < static_cast<float>(keyboardWidth()) || x1 > static_cast<float>(getWidth())) continue;
             const float y = static_cast<float>(noteToY(note.number));
             if (y + static_cast<float>(noteHeight_) < 0.0f || y > static_cast<float>(getHeight())) continue;
             g.setColour(c);
@@ -1598,7 +1631,7 @@ void PianoRollComponent::drawNotes(juce::Graphics& g) const {
     // déplacement, elles passent au-dessus de celles qu'elles survolent.
     for (const auto& note : track->notes) {
         const float x1 = tickToX(note.startTick), x2 = tickToX(note.endTick);
-        if (x2 < static_cast<float>(kKeyboardWidth) || x1 > static_cast<float>(getWidth())) continue;
+        if (x2 < static_cast<float>(keyboardWidth()) || x1 > static_cast<float>(getWidth())) continue;
         const float y = static_cast<float>(noteToY(note.number));
         if (y + static_cast<float>(noteHeight_) < 0.0f || y > static_cast<float>(getHeight())) continue;
         if (selectedNoteIds_.count(note.id) == 0) drawNoteRectangle(g, note, false);
@@ -1606,7 +1639,7 @@ void PianoRollComponent::drawNotes(juce::Graphics& g) const {
     for (const auto& note : track->notes) {
         if (selectedNoteIds_.count(note.id) == 0) continue;
         const float x1 = tickToX(note.startTick), x2 = tickToX(note.endTick);
-        if (x2 < static_cast<float>(kKeyboardWidth) || x1 > static_cast<float>(getWidth())) continue;
+        if (x2 < static_cast<float>(keyboardWidth()) || x1 > static_cast<float>(getWidth())) continue;
         drawNoteRectangle(g, note, true);
     }
 }
@@ -1624,7 +1657,7 @@ void PianoRollComponent::drawLoopRegion(juce::Graphics& g) const {
 
 void PianoRollComponent::drawPlayhead(juce::Graphics& g) const {
     const float x = tickToX(playheadTick_);
-    if (x < static_cast<float>(kKeyboardWidth) || x > static_cast<float>(getWidth())) return;
+    if (x < static_cast<float>(keyboardWidth()) || x > static_cast<float>(getWidth())) return;
     g.setColour(Palette::accentAmber);
     g.drawLine(x, 0.0f, x, static_cast<float>(getHeight()), 1.5f);
 }

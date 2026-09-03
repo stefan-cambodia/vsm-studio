@@ -470,6 +470,16 @@ Un soustractif neutre, aux axes bien rangés : la machine que la recherche de pa
 
 Le clavier de gauche donne l'échelle ; les octaves sont marquées en clair. Une note se dessine, se déplace, s'allonge ; la vélocité se règle et passe par l'historique.
 
+À l'ouverture d'un projet et à chaque changement de piste, la fenêtre se place
+sur la hauteur **médiane** des notes de la piste (pondérée par la durée) : une
+basse reconstruite s'ouvre sur son octave, pas sur un C6 vide, et une note
+fantôme de transcription deux octaves plus haut ne déplace pas la vue. Sur une
+**piste de batterie** (canal 10), le clavier s'élargit et nomme les **pièces**
+— grosse caisse, caisse claire, charleston fermé — d'après la machine
+assignée, ou la convention General MIDI si elle n'est pas connue. Une **piste
+audio** le dit : son matériau se voit et se coupe dans l'arrangement, il n'y a
+pas de notes à éditer ici.
+
 Les **notes hachurées** ne sont pas des notes ordinaires : ce sont celles dont la transcription doute. Après une reconstruction, on les parcourt une par une pour décider — c'est le seul endroit où l'oreille tranche ce que la mesure n'a pas su trancher.
 
 En haut, les **marqueurs** (`Intro`, `Pont`) sont des entités du projet, pas des étiquettes décoratives : ils survivent à l'aller-retour disque et à l'export MIDI.

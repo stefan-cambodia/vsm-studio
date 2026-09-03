@@ -747,6 +747,11 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     else if (nom == "automation")  bottomTabs_.setCurrentTabIndex(1);
     else if (nom == "effets")      bottomTabs_.setCurrentTabIndex(2);
     else if (nom == "midi-cc")     bottomTabs_.setCurrentTabIndex(3);
+    // CHOISIR UNE PISTE (piste:N, à partir de 0) : le piano roll, le rack et
+    // l'onglet Effets suivent la piste choisie, et sans souris seule la
+    // première se laissait photographier.
+    else if (nom.startsWith("piste:"))
+        trackList_.selectTrackIndex(static_cast<size_t>(std::max(0, nom.substring(6).getIntValue())));
     // LANCER LA LECTURE pour l'autoportrait : le compteur de CPU de la barre
     // de transport ne dit rien tant que rien ne joue, et c'est justement lui
     // qu'il faut regarder pour juger un projet à soixante-quatre machines.
