@@ -17,7 +17,7 @@ Tout vit dans **une seule fenêtre** : le transport en haut, les pistes à gauch
 
 Pour déplacer librement les panneaux, *Affichage ▸ Fenêtre unique* se décoche : chaque panneau redevient une fenêtre indépendante, à poser où l'on veut. Les deux dispositions coexistent et chacune retient ses réglages.
 
-![La fenêtre unique : transport, pistes à gauche, arrangement au centre, rack de la piste sélectionnée à droite, console en bas.](images/manuel/fenetre-unique-arrangement.png)
+![La fenêtre unique, sur un projet reconstruit en parité (neuf pistes et deux bus de groupe) : transport, pistes à gauche, arrangement au centre, rack de la piste sélectionnée à droite, console en bas.](images/manuel/fenetre-unique-arrangement.png)
 
 *La fenêtre unique : transport, pistes à gauche, arrangement au centre, rack de la piste sélectionnée à droite, console en bas.*
 
