@@ -2757,6 +2757,41 @@ tour — la borne est dite au journal) ; le réglage au mélange rapporte encore
 séparation à six sources réduit le problème, elle ne le ferme pas. C'est
 exactement l'espace de H23.
 
+### H24 — la chaîne rend des pistes SÈCHES contre un disque réverbéré ; écrite AVANT sa mesure (03/09/2026)
+
+**LE CONSTAT.** `"effects": []` est écrit EN DUR dans l'export de projet : de
+toute l'histoire de cette chaîne, **aucune des treize insertions du DAW n'a
+jamais servi à une reconstruction**. Chaque piste sort parfaitement sèche —
+pas une réverbération, pas une égalisation, pas une compression — et on la
+compare à un disque **mixé**. Aucun réglage de machine ne peut compenser une
+queue de réverbération absente : c'est une composante du signal que le
+vocabulaire de la recherche ne contient pas.
+
+C'est un angle mort d'une autre nature que ceux qu'on a corrigés jusqu'ici.
+Le vivier, le goulot, le découpage portaient sur *quelle machine joue quoi* ;
+celui-ci porte sur *ce que devient le son après la machine*, et il est resté
+invisible parce que la chaîne n'a jamais eu de vocabulaire pour en parler.
+
+*Ce que j'attends, écrit d'avance* : un gain, et il pourrait être important —
+la réverbération d'un disque de 1973 est audible et systématique. Mais il
+peut aussi être nul, voire négatif, pour deux raisons qu'il faut poser
+maintenant : (1) les stems séparés portent DÉJÀ la réverbération du disque,
+donc le morceau que l'on cible n'est pas sec — c'est le RENDU qui l'est, et
+l'écart est peut-être moindre qu'il n'y paraît ; (2) une réverbération mal
+dosée noie les transitoires et peut éloigner davantage qu'elle ne rapproche.
+Si le gain est nul, cela voudra dire que la métrique v2 est peu sensible à la
+queue de réverbération, ce qui serait à son tour une information sur la
+MESURE et non sur la chaîne.
+
+*Le témoin* : le projet de la meilleure course (`usandthem-h22b`, d = 0,1711),
+re-rendu tel quel avec une réverbération insérée sur les pistes mélodiques à
+plusieurs dosages — 0 (le témoin, qui doit retrouver 0,1711), 8, 15, 25 et
+40 % de mélange. Une seule variable, le dosage ; patchs, volumes et notes sont
+ceux de la course. La voix est EXCLUE : c'est un report intégral de
+l'enregistrement, elle porte déjà la réverbération du disque, lui en ajouter
+la doublerait. La mesure ne touche pas la chaîne — si l'hypothèse tient, il
+sera temps de faire chercher le dosage par la chaîne elle-même.
+
 ### H23 — diviser un stem polyphonique en VOIX ; écrite AVANT sa mesure
 
 Six stems ne suffiront pas : `other` restera un fourre-tout, plus maigre. La
