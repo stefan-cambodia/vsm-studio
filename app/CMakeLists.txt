@@ -36,6 +36,7 @@ target_sources(VintageSynthMidiStudio PRIVATE
     Source/ui/ArrangementComponent.cpp
     Source/ui/AutomationComponent.cpp
     Source/ui/MidiCcComponent.cpp
+    Source/ui/TempoLaneComponent.cpp
     Source/ui/EffectChainComponent.cpp
     Source/ui/ImportReportComponent.cpp
     Source/ui/LookAndFeel/VsmLookAndFeel.cpp

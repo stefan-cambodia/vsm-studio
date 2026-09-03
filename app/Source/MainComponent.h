@@ -27,6 +27,7 @@
 #include "ui/ArrangementComponent.h"
 #include "ui/AutomationComponent.h"
 #include "ui/MidiCcComponent.h"
+#include "ui/TempoLaneComponent.h"
 #include "ui/EffectChainComponent.h"
 #include "ui/PanelWindow.h"
 #include "ui/ImportReportComponent.h"
@@ -725,6 +726,7 @@ private:
     double appliedSampleRate_ = 0.0;
 
     MidiCcComponent midiCc_;
+    TempoLaneComponent tempoLane_;
 
     PanelWindow trackListWindow_;
     PanelWindow pianoRollWindow_;

@@ -83,10 +83,21 @@ MainComponent::MainComponent()
     // renvoyait aux lanes du piano roll, lesquelles n'éditent pas les CC.
     midiCc_.setHistory(&history_);
     midiCc_.onCcEdited = [this] { refreshTransportSchedule(); };
+    // LA PISTE DE TEMPO (D3.2, enfin dessinée) : chaque geste republie le
+    // projet au moteur, qui suit la carte à chaque bloc, et la barre de
+    // transport montre le tempo de départ.
+    tempoLane_.setHistory(&history_);
+    tempoLane_.onTempoEdited = [this] {
+        refreshTransportSchedule();
+        audioEngine_.processGraph().setProject(project_);
+        transportBar_.setBpm(project_.tempoMap.bpmAt(0));
+        pianoRollPanel_.refresh();
+    };
     bottomTabs_.addTab("Mixer", vsm::ui::Palette::panel, &mixer_, false);
     bottomTabs_.addTab("Automation", vsm::ui::Palette::panel, &automation_, false);
     bottomTabs_.addTab("Effets", vsm::ui::Palette::panel, &effectChain_, false);
     bottomTabs_.addTab("MIDI CC", vsm::ui::Palette::panel, &midiCc_, false);
+    bottomTabs_.addTab("Tempo", vsm::ui::Palette::panel, &tempoLane_, false);
 
     transportBar_.onOpenMidiFile = [this] { openMidiFile(); };
     transportBar_.onExportMidiFile = [this] { exportMidiFile(); };
@@ -373,8 +384,11 @@ MainComponent::MainComponent()
         // LE TEMPO EST UNE DONNÉE DU PROJET, et le changer est une action
         // annulable comme les autres.
         beginProjectEdit("Tempo");
-        project_.tempoMap.clearTempoChanges();
+        // SEUL LE TEMPO DE DÉPART CHANGE : la carte dessinée dans l'onglet
+        // Tempo reste. La première version effaçait toute la carte, ce qui
+        // n'avait pas de conséquence tant que personne ne pouvait en dessiner.
         project_.tempoMap.addTempoChange(0, static_cast<uint32_t>(std::llround(60000000.0 / bpm)));
+        tempoLane_.refresh();
         refreshTransportSchedule();
         audioEngine_.processGraph().setProject(project_);
         pianoRollPanel_.refresh();
@@ -744,6 +758,7 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     else if (nom == "automation")  bottomTabs_.setCurrentTabIndex(1);
     else if (nom == "effets")      bottomTabs_.setCurrentTabIndex(2);
     else if (nom == "midi-cc")     bottomTabs_.setCurrentTabIndex(3);
+    else if (nom == "tempo")       bottomTabs_.setCurrentTabIndex(4);
     // CHOISIR UNE PISTE (piste:N, à partir de 0) : le piano roll, le rack et
     // l'onglet Effets suivent la piste choisie, et sans souris seule la
     // première se laissait photographier.
@@ -4026,6 +4041,7 @@ void MainComponent::applyAutomationFromProject() {
     audioEngine_.processGraph().setAutomationLanes(currentAutomation_);
     automation_.setProject(&project_);
     midiCc_.setProject(&project_);
+    tempoLane_.setProject(&project_);
 }
 
 bool MainComponent::writeProjectTo(const juce::File& folder) {
@@ -5045,6 +5061,7 @@ void MainComponent::rebuildFromProject(bool stopPlayback) {
     mixer_.setProject(&project_);
     automation_.setProject(&project_);
     midiCc_.setProject(&project_);
+    tempoLane_.setProject(&project_);
     pianoRoll_.setProject(&project_);
     pianoRoll_.setActiveTrackIndex(regardee);
     trackList_.selectTrackIndex(regardee);

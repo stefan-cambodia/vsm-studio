@@ -638,7 +638,13 @@ pas seulement l'écouter.
 > permanent sépare les deux questions avant qu'on ne les confonde.
 >
 > **D3.2 EST FAITE, sauf le décompte** (qui n'a de sens qu'avec
-> l'enregistrement, D3.3). Le tempo **s'édite** — il n'était qu'un `juce::Label`
+> l'enregistrement, D3.3). *La « piste de tempo dessinée » du rang, elle,
+> manquait encore à ce compte rendu et n'est arrivée que le 03/09/2026 : le
+> moteur suivait déjà une carte de tempo à chaque bloc et l'import la
+> remplissait, mais rien ne la montrait ni ne l'éditait, et le tempo de la
+> barre de transport l'EFFAÇAIT à chaque changement. L'onglet Tempo l'édite
+> en paliers (`TempoLaneComponent`), avec historique et republication ; la
+> barre de transport ne change plus que le tempo de départ.* Le tempo **s'édite** — il n'était qu'un `juce::Label`
 > jamais rendu éditable, dont la valeur venait du projet importé : on ne pouvait
 > donc pas commencer un morceau à partir de rien, ce qui est le premier geste
 > d'un studio. Il se frappe aussi au bouton **Tap** (moyenne des intervalles des
