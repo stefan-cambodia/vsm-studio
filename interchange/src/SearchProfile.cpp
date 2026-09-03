@@ -199,6 +199,15 @@ constexpr Rule kRules[] = {
     // Bebung réel — une trentaine de cents, de quoi colorer une note tenue,
     // pas de quoi transposer.
     {"clavichord.pressureToTension",       0.0f,     1.0f, SearchScale::Linear,      0.28f},
+    // CLAVECIN (vsm.harpsichord). La REGISTRATION est ce qui change le son
+    // d'un clavecin : le 4' double à l'octave, le jeu de luth raccourcit et
+    // assourdit. Le frôlement du relâchement est un trait de jeu qui pèse peu
+    // sur une distance ; il vient en dernier.
+    {"harpsichord.register4",              0.0f,     1.0f, SearchScale::Linear,      0.92f},
+    {"harpsichord.luteStop",               0.0f,     1.0f, SearchScale::Linear,      0.70f},
+    {"harpsichord.register8",              0.2f,     1.0f, SearchScale::Linear,      0.45f},
+    {"harpsichord.damperTime",            0.01f,     0.2f, SearchScale::Linear,      0.30f},
+    {"harpsichord.releasePluck",           0.0f,     1.0f, SearchScale::Linear,      0.25f},
     // VERRE FROTTÉ (vsm.glass). La PRESSION DU DOIGT commande, et d'une façon
     // qui n'a pas d'équivalent : elle ne change pas le timbre, elle change le
     // TEMPS QUE LE SON MET À NAÎTRE — d'un rapport de trente et un à un sur la

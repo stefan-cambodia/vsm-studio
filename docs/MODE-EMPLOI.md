@@ -289,6 +289,18 @@ reste.
 
 ![Façade de Clavichord (le clavier qui vibre)](images/manuel/vsm.clavichord.png)
 
+**Harpsichord (le clavecin)** — `vsm.harpsichord`
+
+Le clavier qui **ignore la vélocité** : le bec du sautereau pince la corde
+toujours de la même façon, vite ou lentement — c'est ce qui a fait inventer
+le piano-forte, et la machine le respecte au bit près. Relâchez : le bec
+frôle la corde en retombant, un petit pincement, puis l'étouffoir coupe. Le
+son ne se règle pas, il se **registre** : tirez le 4' pour doubler à
+l'octave, le jeu de luth pour un son court et mat. Ni molette ni pression :
+l'instrument n'en a pas.
+
+![Façade de Harpsichord (le clavecin)](images/manuel/vsm.harpsichord.png)
+
 **Music Box (la lame qui doit revenir)** — `vsm.musicbox`
 
 **Si une note ne sonne pas, ce n'est pas un bogue.** Chaque note est une lame

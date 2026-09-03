@@ -347,6 +347,7 @@ Deux critères, à ne pas confondre :
 | Objet frappé à rapports libres (1D) | `vsm.modal` (corde ↔ barre) | **fait** |
 | **Objet frappé à DEUX dimensions** | `vsm.membrane` (timbale ↔ tabla chargé) | **fait le 02/09** — rapports de Bessel, hors de portée de `vsm.modal` |
 | **Cordes SYMPATHIQUES** | `vsm.sitar` (onze cordes jamais pincées, chevalet plat) | **fait le 02/09** — comble un trou que trois documents constataient |
+| **Clavier PINCÉ, sans vélocité, à REGISTRES** | `vsm.harpsichord` (sautereau, 8'/4', jeu de luth, frôlement au relâchement) | **fait le 03/09** — § 22 ; la seule machine qui refuse la vélocité au bit près et qui sonne AU relâchement |
 | Waveshaping (spectre commandé) | `vsm.chebyshev` | **fait** |
 | **Synthèse balayée** | `vsm.scanned` (chaîne de masses, timbre en temps réel) | **fait le 02/09** |
 | **Lecture de BANDE** | `vsm.mellotron` (la bande finit, une par touche) | **fait le 02/09** — un COMPORTEMENT, pas un timbre |
@@ -1428,6 +1429,51 @@ un cosinus (erreur mesurée 2,8·10⁻⁸). Sans cette garantie, aucun des chiff
 ci-dessus ne voudrait rien dire.
 
 Le parc passe à **53 machines** (1 081 paramètres nommés, 1 444 tests verts).
+
+## 22. H26 — le CLAVECIN : un clavier qui refuse la vélocité et qui sonne au relâchement (écrite avant sa mesure, 03/09/2026)
+
+**Ce que le parc n'avait pas.** Toutes ses cordes écoutent la vélocité, et
+aucune machine ne produit de son AU relâchement : le clavicorde coupe net, le
+piano laisse mourir, les synthés relâchent une enveloppe. Un clavecin fait
+les deux choses à l'envers. Son SAUTEREAU monte avec la touche et son bec
+pince la corde en passant — toujours de la même façon, vite ou lentement :
+c'est le trait qui a fait inventer le piano-forte. En retombant, le bec
+frôle la corde une seconde fois avant que l'étouffoir se pose, et ce petit
+pincement s'entend sur tout clavecin. Enfin le son ne se règle pas, il se
+REGISTRE : 8', 4' à l'octave, jeu de luth (une peau sur les cordes du 8').
+
+*Ce que j'attends, écrit avant la mesure (dans le banc, avant de le
+lancer)* : (1) deux vélocités extrêmes donnent une sortie IDENTIQUE AU BIT
+PRÈS ; (2) une corde qu'on laisse mourir sous la touche puis qu'on relâche
+produit un niveau au moins trois fois supérieur juste après le relâchement à
+celui d'avant, puis retombe sous le dixième dans les 200 ms ; le frôlement
+doit rester un petit pincement, une quinzaine de dB sous l'attaque ; (3)
+tirer le 4' augmente l'énergie à 2·f0 d'au moins moitié ; (4) le jeu de luth
+divise par deux le niveau à une seconde. Comme la boîte à musique (H19) et
+le clavicorde, la machine refuse la molette en connaissance de cause.
+
+### H26 EST TRANCHÉE : SUCCÈS, mesuré au banc (03/09/2026)
+
+| Trait | Attendu | Mesuré |
+|---|---|---|
+| vélocité 20 contre 120 | sortie identique au bit près | **identique** (comparaison des tampons) |
+| frôlement au relâchement | ≥ 3× le niveau d'avant, −15 dB sous l'attaque environ | corde éteinte avant (0,000000), frôlement 0,00635 = **−13,7 dB** sous l'attaque (réglage à fond ; −20 dB au défaut), **0,000000** 200 ms plus tard : l'étouffoir a coupé |
+| registre 4' | ×1,5 à 2·f0 | **×1,6** |
+| jeu de luth | ≤ ×0,5 à 1 s | **×0,05** |
+
+Le premier banc a trouvé le piège de la machine : une corde tenue longtemps
+s'endort sous le seuil d'activité, le gestionnaire de voix la croit libre et
+ne lui transmet plus le relâchement — le frôlement n'avait pas lieu. Une
+touche ENFONCÉE tient donc la voix éveillée même silencieuse. Douze tests,
+dont les quatre traits ; empreinte de non-régression committée ; façade
+REGISTERS · PLECTRUM · STRINGS (sans réglage de vélocité : la façade ne
+promet pas ce que la machine refuse) ; identités sémantiques neuves pour ce
+qui est propre au clavecin (registres, frôlement, étouffoir), réemployées
+pour le point de pincement et la corde. Le parc passe à **54 machines**.
+
+Développé dans un worktree pendant les campagnes de parité, pour ne pas
+périmer le moteur des courses en cours (CDC multipiste § 8, « en attente ») ;
+fusionné à leur fin.
 
 ## 12. H10 — la guitare ÉLECTRIQUE est-elle vraiment couverte ? (écrite avant sa mesure, 02/09/2026)
 

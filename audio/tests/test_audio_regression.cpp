@@ -779,6 +779,7 @@ VSM_TEST(regression_membrane)   { checkMachine("vsm.membrane"); }
 VSM_TEST(regression_reed)       { checkMachine("vsm.reed"); }
 VSM_TEST(regression_plate)      { checkMachine("vsm.plate"); }
 VSM_TEST(regression_clavichord) { checkMachine("vsm.clavichord"); }
+VSM_TEST(regression_harpsichord) { checkMachine("vsm.harpsichord"); }
 VSM_TEST(regression_glass)      { checkMachine("vsm.glass"); }
 VSM_TEST(regression_jewsharp)   { checkMachine("vsm.jewsharp"); }
 VSM_TEST(regression_theremin)   { checkMachine("vsm.theremin"); }

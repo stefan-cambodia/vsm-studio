@@ -3724,6 +3724,61 @@ MachinePanel makeClavichord() {
     return panel;
 }
 
+/// `vsm.harpsichord` -- le clavecin. La section REGISTERS vient en premier
+/// et en grand : c'est la seule façon de changer le son d'un clavecin, comme
+/// les tirettes d'un orgue -- 8', 4', et le jeu de luth. PLECTRUM porte le
+/// point du bec et le frôlement du relâchement, le trait qu'aucune autre
+/// machine n'a. Pas de réglage de vélocité : il n'y en a pas sur l'instrument,
+/// et la façade ne promet pas ce que la machine refuse.
+///
+/// Livrée bois sombre et dorures, la robe d'un instrument de cour.
+MachinePanel makeHarpsichord() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.harpsichord";
+    panel.displayName = "Harpsichord (le clavecin)";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#2A1C12";
+    panel.sectionColour = "#1E140C";
+    panel.textColour = "#F3E6C8";
+    panel.knobColour = "#D8B45A";
+    panel.gridColumns = 12;
+    panel.gridRows = 4;
+
+    PanelSection registres;
+    registres.title = "REGISTERS";
+    registres.accentColour = "#D8B45A";
+    registres.column = 0; registres.row = 0; registres.columnSpan = 4; registres.rowSpan = 4;
+    registres.controls = {
+        control("Register 8'", "8'", S::LargeKnob, 0, 0),
+        control("Register 4'", "4'", S::LargeKnob, 1, 0),
+        control("Lute Stop", "LUTE", S::Knob, 0, 1),
+    };
+
+    PanelSection plectre;
+    plectre.title = "PLECTRUM";
+    plectre.accentColour = "#C9A96E";
+    plectre.column = 4; plectre.row = 0; plectre.columnSpan = 4; plectre.rowSpan = 4;
+    plectre.controls = {
+        control("Pluck Position", "POSITION", S::Knob, 0, 0),
+        control("Release Pluck", "RELEASE", S::Knob, 1, 0),
+        control("Damper Time", "DAMPER", S::Knob, 0, 1),
+    };
+
+    PanelSection corde;
+    corde.title = "STRINGS";
+    corde.accentColour = "#B9C98A";
+    corde.column = 8; corde.row = 0; corde.columnSpan = 4; corde.rowSpan = 4;
+    corde.controls = {
+        control("String Decay", "DECAY", S::Knob, 0, 0),
+        control("String Damping", "DAMPING", S::Knob, 1, 0),
+        control("Filter Cutoff", "CUTOFF", S::Knob, 0, 1),
+        control("Output Level", "VOLUME", S::Knob, 1, 1),
+    };
+
+    panel.sections = {registres, plectre, corde};
+    return panel;
+}
+
 /// `vsm.glass` -- le verre frotté. PRESSURE est en grand et seul dans sa
 /// section, parce qu'il ne fait pas ce qu'un potentiomètre de pression fait
 /// ailleurs : il décide du TEMPS QUE LE SON MET À NAÎTRE. Pressé doucement, le
@@ -4049,7 +4104,7 @@ const std::vector<MachinePanel>& panels() {
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
         makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev(),
         makeScanned(), makeMellotron(), makeSitar(), makeMembrane(), makeReed(),
-        makePlate(), makeClavichord(), makeGlass(), makeJewsHarp(),
+        makePlate(), makeClavichord(), makeHarpsichord(), makeGlass(), makeJewsHarp(),
         makeTheremin(), makeMusicBox(), makeTerrain(), makeSpectral()
     };
     return all;

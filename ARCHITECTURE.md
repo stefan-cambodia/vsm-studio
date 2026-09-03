@@ -3988,6 +3988,18 @@ condition COLA) et aucune allocation dans `process`.
 
 Le parc passe à **53 machines**.
 
+**ET UNE TREIZIÈME NOUVELLE FAMILLE LE 03/09 : `vsm.harpsichord`, le
+clavecin — le seul clavier du parc qui REFUSE la vélocité, et le seul
+instrument qui sonne AU relâchement.** Le bec du sautereau pince toujours
+de la même façon : deux vélocités extrêmes donnent une sortie identique au
+bit près (test). En retombant, le bec frôle la corde — mesuré −13,7 dB sous
+l'attaque à fond, −20 dB au défaut — puis l'étouffoir coupe (0,000000 à
+200 ms). Le son se REGISTRE au lieu de se régler : 8', 4' (×1,6 à 2·f0),
+jeu de luth (×0,05 à une seconde). Douze tests, empreinte, façade ; CDC
+machines-manquantes § 22.
+
+Le parc passe à **54 machines**.
+
 ---
 
 ## 47. Ouvrir un projet fait ailleurs : `Inflate`, `Xml`, `DawImport`

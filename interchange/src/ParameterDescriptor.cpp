@@ -475,6 +475,25 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Velocity Sensitivity", "voice.velocitySensitivity"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.harpsichord ---
+    // Le bec pince au même point que le plectre de `vsm.string` et la tangente
+    // de `vsm.clavichord` (« string.pickPosition »), et la corde a la même
+    // décroissance et le même amortissement. Ce qui est neuf, et propre au
+    // clavecin, ce sont les REGISTRES (8', 4', jeu de luth), le frôlement du
+    // relâchement et le temps de pose de l'étouffoir : aucune autre machine
+    // du parc n'a de registration ni de son au relâchement.
+    {"vsm.harpsichord", {
+        {"Register 8'", "harpsichord.register8"},
+        {"Register 4'", "harpsichord.register4"},
+        {"Lute Stop", "harpsichord.luteStop"},
+        {"Pluck Position", "string.pickPosition"},
+        {"Release Pluck", "harpsichord.releasePluck"},
+        {"String Decay", "string.decay"},
+        {"String Damping", "string.damping"},
+        {"Damper Time", "harpsichord.damperTime"},
+        {"Filter Cutoff", "filter.1.cutoff"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.glass ---
     // La PRESSION DU DOIGT ne réemploie pas `wind.breathPressure` malgré la
     // ressemblance des mots : un souffle entretient une colonne d'air, un
