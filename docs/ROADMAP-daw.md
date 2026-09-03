@@ -164,6 +164,17 @@ d'échantillonnage différentes).
 > ses touches par leur hauteur et non par leur pièce, une piste audio montrait
 > une grille vide avec les notes fantômes d'une autre piste ; et un projet
 > reconstruit ouvert à la main n'avait pas son original pour l'écoute A/B.
+>
+> **ET UNE DIXIÈME, LA MÊME APRÈS-MIDI, PAR ÉCHANTILLONNAGE DES PIXELS.** Un
+> registre reconstruit de l'épreuve montrait sa bande de vélocité pleine et
+> une grille vide : ses 164 notes étaient dessinées, mais quasi
+> transparentes. La chaîne écrivait ses couleurs de piste en RGBA
+> (« #06D6A0FF ») là où le format lit de l'ARGB : un alpha de 0x06 pour une
+> piste sur huit, et une fausse teinte pour toutes les autres — la basse
+> « rose » sortait bleue depuis toujours, et personne ne pouvait le savoir
+> sans connaître la palette voulue. L'exportateur écrit désormais des
+> couleurs opaques, et le DAW rend opaque à l'ouverture une couleur d'alpha
+> trop bas, pour les projets déjà écrits.
 
 ### 1.5 Ce qui, à l'inverse, est déjà au niveau
 
