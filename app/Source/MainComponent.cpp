@@ -2721,6 +2721,47 @@ void MainComponent::showReconstructionReport() {
                         Ton::perte});
     }
 
+    // --- La réverbération cherchée au mélange (H24, option) ----------------
+    // Retenue ou refusée, avec ses chiffres : un projet dont les pistes
+    // portent un insert que personne n'a posé à la main doit dire d'où il
+    // vient, et un refus chiffré vaut autant qu'un choix.
+    const auto& reverb = racine["reverb"];
+    if (reverb.isObject()) {
+        lignes.add({{}, Ton::info});
+        const double temoin = reverb["temoin"].asNumber(-1.0);
+        const auto& retenu = reverb["retenu"];
+        juce::String texte;
+        if (retenu.isObject()) {
+            const double taille = retenu["taille"].asNumber(0.0);
+            const double dosage = retenu["dosage"].asNumber(0.0);
+            double distanceRetenue = -1.0;
+            for (const auto& point : reverb["grille"].elements())
+                if (std::abs(point["taille"].asNumber(-1.0) - taille) < 1e-9
+                    && std::abs(point["dosage"].asNumber(-1.0) - dosage) < 1e-9)
+                    distanceRetenue = point["distance"].asNumber(-1.0);
+            texte << juce::String::fromUTF8("Réverbération au mélange : RETENUE, pièce ")
+                  << juce::String(taille, 1) << juce::String::fromUTF8(" à ")
+                  << static_cast<int>(std::lround(dosage * 100.0))
+                  << juce::String::fromUTF8(" % sur ")
+                  << static_cast<int>(reverb["pistes"].size())
+                  << juce::String::fromUTF8(" piste(s) mélodique(s)");
+            if (temoin > 0.0 && distanceRetenue >= 0.0)
+                texte << juce::String::fromUTF8(" · ") << juce::String(temoin, 4)
+                      << juce::String::fromUTF8(" → ") << juce::String(distanceRetenue, 4)
+                      << juce::String::fromUTF8(" (")
+                      << juce::String((distanceRetenue / temoin - 1.0) * 100.0, 2)
+                      << juce::String::fromUTF8(" %)");
+            lignes.add({texte, Ton::info});
+        } else {
+            texte << juce::String::fromUTF8("Réverbération au mélange : aucune — aucun point "
+                                            "de la grille ne rapproche de l'original");
+            if (temoin > 0.0)
+                texte << juce::String::fromUTF8(" (témoin sec ") << juce::String(temoin, 4)
+                      << juce::String::fromUTF8(")");
+            lignes.add({texte, Ton::info});
+        }
+    }
+
     importReport_.showLines(
         juce::String::fromUTF8("Rapport de reconstruction"),
         currentProjectFolder_ != juce::File() ? currentProjectFolder_.getFileName()

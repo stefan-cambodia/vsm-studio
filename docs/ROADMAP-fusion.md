@@ -2862,7 +2862,10 @@ grille se faisaient dans un dossier de travail SANS les échantillons de la
 voix, le moteur l'écrivait, `--quiet` le taisait, et la grille choisissait
 sur un mélange amputé — désormais les échantillons sont liés au dossier, le
 moteur est lu sans `--quiet`, et une plainte interrompt la recherche. Pas
-le défaut : l'oreille n'a pas jugé. La campagne 2 du CDC multipiste (§ 8)
+le défaut : l'oreille n'a pas jugé. L'écran du rapport du DAW (*Fichier ▸
+Voir le rapport de reconstruction*) porte la ligne — retenue avec pièce,
+dosage, pistes et gain, ou refusée avec le témoin — vérifié à l'écran sur le
+projet de l'épreuve. La campagne 2 du CDC multipiste (§ 8)
 tourne pendant ce temps, elle remesure un défaut qui coûtait +35 %.
 
 **ET LE GAIN NE GÉNÉRALISE PAS — mesuré sur le second morceau (03/09/2026).**
