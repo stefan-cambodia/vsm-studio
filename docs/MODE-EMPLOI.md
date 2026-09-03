@@ -484,7 +484,7 @@ pas de notes à éditer ici.
 
 ![Le piano roll d'une piste de batterie : le clavier nomme les pièces, la vue est cadrée sur le charleston.](images/manuel/piano-roll-batterie.png)
 
-**Les contrôleurs MIDI (CC) s'éditent dans l'onglet *MIDI CC* du bas.** Une
+**Les contrôleurs MIDI (CC) s'éditent dans l'onglet *MIDI CC* du bas.** Le **pitch bend** et l'**aftertouch de canal** y sont deux lanes comme les autres, en tête de la liste (le bend se lit autour de son centre ; un bend enregistré garde sa finesse tant qu'on ne touche pas la lane). Une
 piste, un contrôleur — ceux déjà présents sur la piste d'abord, avec leur
 compte de points, puis les usuels par leur nom (1 modulation, 7 volume, 74
 coupure…), puis tous les autres —, et des points : clic pour poser, glisser

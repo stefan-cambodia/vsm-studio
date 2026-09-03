@@ -19,6 +19,8 @@ constexpr NamedCc kNamed[] = {
 } // namespace
 
 juce::String MidiCcComponent::controllerName(int controller) {
+    if (controller == kPitchBend) return juce::String::fromUTF8("Pitch bend");
+    if (controller == kChannelPressure) return juce::String::fromUTF8("Aftertouch (canal)");
     for (const auto& n : kNamed)
         if (n.id == controller)
             return juce::String(controller) + juce::String::fromUTF8(" · ") + juce::String::fromUTF8(n.name);
@@ -68,6 +70,8 @@ void MidiCcComponent::setProject(vsm::sequencer::Project* project) {
         for (const auto& t : project_->tracks) {
             for (const auto& n : t.notes) maxTick_ = std::max(maxTick_, n.endTick);
             for (const auto& c : t.controlChanges) maxTick_ = std::max(maxTick_, c.tick);
+            for (const auto& b : t.pitchBends) maxTick_ = std::max(maxTick_, b.tick);
+            for (const auto& p : t.channelPressure) maxTick_ = std::max(maxTick_, p.tick);
         }
     }
     rebuildTrackBox();
@@ -106,11 +110,13 @@ void MidiCcComponent::rebuildControllerBox() {
     controllerBox_.clear(juce::dontSendNotification);
     controllerIds_.clear();
     std::vector<int> presents;
-    std::vector<int> comptes(128, 0);
+    std::vector<int> comptes(130, 0);
     if (const Track* track = activeTrack()) {
         for (const auto& cc : track->controlChanges)
             if (cc.controller < 128) ++comptes[cc.controller];
-        for (int c = 0; c < 128; ++c)
+        comptes[kPitchBend] = static_cast<int>(track->pitchBends.size());
+        comptes[kChannelPressure] = static_cast<int>(track->channelPressure.size());
+        for (int c = 0; c < 130; ++c)
             if (comptes[static_cast<size_t>(c)] > 0) presents.push_back(c);
     }
     int itemId = 1;
@@ -123,6 +129,10 @@ void MidiCcComponent::rebuildControllerBox() {
         controllerIds_.push_back(c);
     };
     for (int c : presents) ajouter(c);
+    // Le bend et l'aftertouch AVANT les contrôleurs nommés : ce sont les deux
+    // gestes qu'un clavier envoie sans qu'on les ait assignés.
+    ajouter(kPitchBend);
+    ajouter(kChannelPressure);
     for (const auto& n : kNamed) ajouter(n.id);
     for (int c = 0; c < 128; ++c) ajouter(c);
 
@@ -143,6 +153,15 @@ void MidiCcComponent::loadPoints() {
     points_.clear();
     dragIndex_ = -1;
     if (const Track* track = activeTrack()) {
+        if (selectedController_ == kPitchBend) {
+            // 14 bits ramenés à 7 pour la lane : (valeur + 8192) / 128, le
+            // centre à 64.
+            for (const auto& b : track->pitchBends)
+                points_.push_back({b.tick, juce::jlimit(0, 127, (static_cast<int>(b.value) + 8192) / 128)});
+        } else if (selectedController_ == kChannelPressure) {
+            for (const auto& p : track->channelPressure)
+                points_.push_back({p.tick, static_cast<int>(p.pressure)});
+        } else
         for (const auto& cc : track->controlChanges)
             if (cc.controller == selectedController_)
                 points_.push_back({cc.tick, static_cast<int>(cc.value)});
@@ -157,6 +176,26 @@ void MidiCcComponent::commit(const juce::String& label) {
     if (history_ != nullptr && project_ != nullptr) history_->beginEdit(*project_, label.toStdString());
     // Les points de CE contrôleur sont remplacés ; les autres contrôleurs et
     // les autres événements de la piste ne bougent pas.
+    if (selectedController_ == kPitchBend) {
+        track->pitchBends.clear();
+        for (const auto& p : points_)
+            track->pitchBends.push_back({p.tick, track->channel,
+                                         static_cast<int16_t>(juce::jlimit(-8192, 8191, p.value * 128 - 8192))});
+        track->sortEvents();
+        if (onCcEdited) onCcEdited();
+        rebuildControllerBox();
+        return;
+    }
+    if (selectedController_ == kChannelPressure) {
+        track->channelPressure.clear();
+        for (const auto& p : points_)
+            track->channelPressure.push_back({p.tick, track->channel,
+                                              static_cast<uint8_t>(juce::jlimit(0, 127, p.value))});
+        track->sortEvents();
+        if (onCcEdited) onCcEdited();
+        rebuildControllerBox();
+        return;
+    }
     auto& liste = track->controlChanges;
     liste.erase(std::remove_if(liste.begin(), liste.end(),
                                [this](const vsm::sequencer::CcPoint& cc) {
@@ -291,9 +330,11 @@ void MidiCcComponent::paint(juce::Graphics& g) {
     }
 
     g.setColour(Palette::textSecondary);
-    g.drawText("127", a.getX() + 2, a.getY(), 40, 14, juce::Justification::topLeft);
-    g.drawText("64", a.getX() + 2, valueToY(64) - 7, 40, 14, juce::Justification::centredLeft);
-    g.drawText("0", a.getX() + 2, a.getBottom() - 14, 40, 14, juce::Justification::bottomLeft);
+    // Un bend se lit autour de son CENTRE, pas de zéro à 127.
+    const bool bend = selectedController_ == kPitchBend;
+    g.drawText(bend ? "haut" : "127", a.getX() + 2, a.getY(), 40, 14, juce::Justification::topLeft);
+    g.drawText(bend ? "centre" : "64", a.getX() + 2, valueToY(64) - 7, 48, 14, juce::Justification::centredLeft);
+    g.drawText(bend ? "bas" : "0", a.getX() + 2, a.getBottom() - 14, 40, 14, juce::Justification::bottomLeft);
 
     if (points_.empty()) {
         g.setColour(Palette::textSecondary.withAlpha(0.7f));

@@ -3015,7 +3015,10 @@ sélection de notes par vélocité (le filtre existe sous forme d'opérations
 sur la sélection, le tri par vélocité s'ajoutera au piano roll quand une
 main le demandera) ; les lanes de pitch bend et d'aftertouch (le format
 les porte, la vue CC les montrera avec le même composant — une extension
-de `MidiCcComponent`, pas une phase) ; l'arpégiateur temps réel (celui du
+de `MidiCcComponent`, pas une phase — **faite le jour même** : deux
+pseudo-contrôleurs, 128 et 129, le bend dessiné à 7 bits autour de son
+centre, un bend enregistré gardant ses 14 bits tant qu'on ne touche pas la
+lane) ; l'arpégiateur temps réel (celui du
 piano roll écrit des notes, ce qui est le choix D0 : pas d'effet MIDI qui
 mentirait sur ce qui est écrit) ; l'historique d'annulation visible et la
 palette de commandes (agréables, sans geste quotidien derrière).
