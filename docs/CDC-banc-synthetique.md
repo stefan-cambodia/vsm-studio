@@ -1,0 +1,390 @@
+# Le banc synthétique — cahier des charges
+
+Chantier ouvert le 04/09/2026. Il répond à une question que la chaîne ne
+savait pas poser : **où perd-elle ?**
+
+## 0. La question, et la réponse courte
+
+**La question.** La chaîne publie une distance globale (`rapport.json`,
+`globalDistance`) et une distance par piste. Elle ne sait pas dire à quel
+ÉTAGE l'écart se creuse : la séparation (le stem n'est pas la partie), la
+transcription (les notes ne sont pas celles jouées), la parité (deux parties
+fondues, une partie coupée en deux), l'arbitrage (la mauvaise machine), le
+réglage (le mauvais patch). Sur un disque, on ne le saura jamais : on n'a ni
+la session, ni le MIDI, ni les instruments — faute de vérité, chaque étage
+est jugé contre la sortie de l'étage d'avant, et une erreur amont se
+déguise en erreur aval.
+
+**La réponse courte.** Un morceau que le MOTEUR a fabriqué a une vérité
+complète par construction : les parties, la machine de chacune, son patch,
+chaque note avec sa vélocité et sa durée, les niveaux, les panoramiques, et
+les stems VRAIS de chaque partie. Sur un tel morceau, chaque étage se
+mesure contre CE qu'il devait produire, et non contre ce que l'étage d'avant
+lui a donné. Le banc est cet ensemble : un **générateur** de morceaux
+entiers à vérité connue (`analyse/morceaux.py`), et un **tableau de bord
+par étage** (`analyse/banc_synthetique.py`) qui fait tourner la chaîne
+d'aujourd'hui, sans la modifier, et publie la perte imputable à chaque
+étage.
+
+Le banc MESURE la chaîne. Il ne la remplace pas, il ne l'entraîne pas, et il
+ne dispense d'aucune validation sur disque (§ 3).
+
+## 1. Ce que la mesure a déjà établi, et que le banc ne rouvre pas
+
+Ce chantier part de quatre résultats écrits, tous chiffrés. Ils bornent ce
+qu'on peut attendre d'un morceau généré.
+
+- **ROADMAP-fusion § 7 (l'estimateur de paramètres, A3).** Un corpus de
+  rendus moteur apprend à inverser ce que le moteur produit (distance
+  médiane 0,1798 contre 0,5208 au hasard) et ne lit pas un disque : sur 9
+  cibles réelles, le régime prudent rend 0,1974 contre 0,1974 pour la
+  recherche ordinaire — identique, parce que le garde-fou refuse de
+  resserrer 8 fois sur 9. **Un stem séparé est un son qu'aucune machine ne
+  produit.**
+- **ROADMAP-apprentissage A1.3 (le classifieur de machine).** 99,9 % de bonne
+  machine dans le top 3 sur ce que le moteur produit ; sur un piano réel il
+  annonce `vsm.sh101` à 1,00, et sur un morceau de SYNTHÉS séparé il
+  s'abstient 96 à 100 % du temps. Les augmentations synthétiques, mesurées
+  puis renforcées (fuite ×4, compression ×3), n'ont pas bougé le rang
+  médian d'un cran ; le corpus passé par demucs (`corpus_separe.py`, 7 990
+  exemples) apprend le résidu de la séparation, pas le disque (somme des
+  rangs médians 45 pour le sec, 54 pour le séparé).
+- **ROADMAP-apprentissage A3.4.** Le critère « médiane ≤ chaîne actuelle
+  avec ≤ la moitié des évaluations » n'est pas atteint ; A3 est close par
+  rejet mesuré, le code reste désactivé et documenté.
+- **ROADMAP-fusion H25 (le timbre pour dire un ou deux instruments).**
+  Réfutée à la première mesure : un seul piano donne la plus grande
+  distance harmonique de la table (0,48), trois instruments distincts la
+  plus petite (0,08). Le profil harmonique dépend du registre bien plus que
+  de l'instrument. La limite est écrite au CDC multipiste § 6 bis : **un
+  instrument dont les registres se séparent par un vide compte pour deux.**
+
+Et une cinquième, qui fonde la méthode : **ROADMAP-fusion § 5 sexies**
+écrit la condition de réouverture du dossier `vsm.multisample` — « une cible
+dont on CONNAÎT le MIDI exact ; la transcription sortirait alors de
+l'équation, et l'on saurait si la machine perd sur le timbre ou sur les
+notes ». C'est exactement l'objet que ce banc fabrique, pour toutes les
+machines et pas seulement pour celle-là.
+
+**Conséquence.** Le corpus généré a montré trois fois qu'il n'apprend pas ce
+qu'un disque contient. Ce banc n'en fait donc pas un corpus d'apprentissage
+(sauf le cas circonscrit du § 8, sur une question STRUCTURELLE et non
+timbrale). Il s'en sert pour ce qu'un tel corpus sait faire : dire, étage
+par étage, ce que la chaîne perd **quand la vérité est connue** — ce qui est
+une borne, pas une prédiction de ce qu'elle perd sur un disque.
+
+## 2. Objets
+
+### 2.1 Un morceau généré
+
+Un dossier `morceau-NNNN-gGGG/` (numéro dans le lot, graine) :
+
+```
+morceau.wav            le mélange stéréo, float32, 44,1 kHz
+verite.json            tout ce qu'on sait par construction (ci-dessous)
+stems-vrais/           un WAV stéréo float32 par partie, dans l'ordre de verite.json
+   01-basse.wav
+   02-batterie.wav
+   ...
+```
+
+Le morceau : un tempo tiré (84 à 140 bpm), une grille de 4/4, une
+progression d'accords tirée parmi des progressions plausibles, une durée
+demandée (30 s par défaut), N parties (2 à 12, tiré). Chaque partie :
+
+| champ | contenu |
+|---|---|
+| `role` | `basse`, `accompagnement`, `melodie`, `nappe`, `batterie`, `piano-deux-mains` |
+| `machine` | une machine du parc de recherche (`machines_de_recherche`), mélodique pour les rôles mélodiques, `vsm.drums` / `vsm.tr808` / `vsm.tr909` pour la batterie |
+| `patch` | un point tiré uniformément dans le `SearchProfile` déclaré par le moteur (`search_space_for_machine` sur TOUTES ses dimensions, `_vector_to_parameters`), rejeté et retiré s'il rend un son inaudible — le rejet est compté |
+| `notes` | `[note, velocite, debut, duree]` en demi-tons MIDI, 1-127, secondes |
+| `registre` | `[bas, haut]` MIDI ; deux registres pour `piano-deux-mains` |
+| `niveau` | RMS cible du stem (tiré, dit en dB) et gain appliqué |
+| `pan` | −1 à +1, loi à puissance constante |
+| `pieces` | batterie seulement : les pièces frappées (`kick`, `snare`, `hihat`, `openhat`, `clap`, `tom`) |
+| `cas` | le cas de parité que la partie incarne, s'il y en a un (§ 2.2) |
+
+Les notes sont STRUCTURÉES, pas tirées au hasard : une basse suit la
+fondamentale et la quinte des accords en croches ou en noires ; un
+accompagnement arpège ou plaque les accords ; une mélodie marche par
+degrés de la gamme avec des sauts rares, en motifs de deux mesures répétés
+avec variation ; une nappe tient l'accord en rondes ; la batterie joue un
+motif d'une mesure répété avec des variantes toutes les quatre mesures. Les
+vélocités varient (temps forts plus forts, une dispersion tirée par
+partie), les durées suivent un gate par rôle.
+
+Le rendu passe par le pont existant (`VsmEngine`, `vsm-render --serve`),
+UNE passe par partie, puis le mixage en numpy : chaque stem est calé à son
+RMS tiré, panoramiqué, et **le mélange est la somme des stems vrais dans
+l'ordre du fichier, en float64, convertie en float32** — la somme des stems
+écrits redonne le mélange au bit près (testé). Si le mélange dépasse
+0,95 de crête, un gain commun est appliqué à tous les stems AVANT
+l'écriture, et il est dit dans la vérité.
+
+`--production` ajoute au mélange, et seulement à lui, une réverbération
+courte (réponse impulsionnelle synthétique seedée, 0,6 à 1,2 s, dosée) et
+une compression légère (RMS, seuil, ratio 2:1 à 3:1, gain de rattrapage).
+La vérité porte alors `production: {...}` avec chaque valeur, et le rapport
+du banc rappelle que le mélange n'est PLUS la somme des stems.
+
+`verite.json` porte aussi : la graine, la version du format, le commit, le
+tempo, la progression, la durée réelle, l'identité du moteur
+(`identite_du_moteur` : chemin, date de compilation, octets, nombre de
+machines), les empreintes de rendu par partie (SHA-256 des échantillons),
+les patchs rejetés pour inaudibilité, et le **coût** : secondes de rendu par
+partie, de mixage, total.
+
+### 2.2 Les cas de parité, inclus volontairement
+
+Trois cas que le CDC multipiste nomme, tirés parmi les parties d'un
+morceau et déclarés dans la vérité (`cas`) pour être comptés à part :
+
+- **`memes-machine-disjoints`** : deux parties de la MÊME machine (patchs
+  différents) dans des registres disjoints (au moins 8 demi-tons de vide).
+  La parité doit en faire deux pistes (le découpage par les vides).
+- **`chevauchement`** : deux parties de machines différentes dont les
+  registres se recouvrent d'au moins une octave. Aucun découpage par
+  hauteur ne peut les séparer ; c'est à la séparation ou aux voix de le
+  faire, et l'attendu est qu'elles soient FONDUES.
+- **`deux-mains`** : UNE partie `piano-deux-mains` — une machine, un patch,
+  deux registres (main gauche 36-52, main droite 60-84) séparés par un
+  vide. C'est le cas « chorale » d'H25 : la chaîne la coupe en deux pistes,
+  et c'est une limite écrite. Le banc le compte SÉPARÉMENT des autres
+  erreurs (§ 2.4, colonne H25).
+
+Par défaut, chaque morceau tire son cas parmi `aucun` et ces trois (poids
+égaux) ; `--cas` l'impose.
+
+### 2.3 Le lot
+
+`analyse/morceaux.py --sortie dossier --nombre 10 --graine 1 [--duree 30]
+[--production] [--cas ...]` fabrique dix morceaux aux graines 1 à 10 (graine
+du lot + indice). **Seedé de bout en bout** : même graine → même
+`verite.json` (empreintes comprises) et mêmes octets de WAV (testé sur deux
+générations). **Interruptible et reprenable** : un morceau dont
+`verite.json` est complet est sauté en le disant ; `verite.json` est écrit
+en dernier et de façon atomique. Le coût de chaque morceau et du lot est
+publié dans `lot.json`.
+
+### 2.4 Le tableau de bord par étage
+
+`analyse/banc_synthetique.py dossier --sortie banc [options de
+reconstruire.py]` fait tourner `reconstruire.py` sur chaque `morceau.wav`
+(défauts de la chaîne : séparation `htdemucs_6s`, `--parite`, tout le
+parc), en gardant les stems séparés (`--garder-stems`), puis calcule et
+publie, par morceau et agrégé (médiane et moyenne sur le lot) :
+
+1. **Séparation.** Pour chaque stem séparé, la cible est la somme des stems
+   vrais qu'il DEVRAIT porter : `bass` ← les parties `basse` ; `drums` ← la
+   `batterie` ; `other` ← tout le reste. Publiés : corrélation et SDR
+   (10·log10 de l'énergie de la cible sur celle du résidu, en mono, sur la
+   durée commune). Les stems à six sources (`guitar`, `piano`, `vocals`)
+   n'ont AUCUNE partie attendue sur un morceau généré : leur énergie est
+   publiée comme **hallucinée** (part de l'énergie totale séparée), et un
+   second couple corrélation/SDR est donné pour `other + guitar + piano`
+   contre la même cible, puisque c'est là que la chaîne retrouve les
+   claviers. Quand le banc reçoit les stems vrais (`--stems-vrais` : la
+   chaîne saute la séparation et reçoit `bass`, `drums`, `other` sommés
+   depuis la vérité), l'étage est marqué « non mesuré ».
+2. **Transcription.** Les notes vraies des parties mélodiques contre les
+   notes transcrites de toutes les pistes mélodiques (lues dans
+   `midi/arrangement.mid`, en secondes par le tempo du fichier).
+   Appariement glouton : même hauteur à ±1 demi-ton et attaque à ±50 ms,
+   au plus proche. Publiés : précision, rappel, F1 ; les mêmes à hauteur
+   EXACTE ; erreur absolue moyenne de vélocité sur les paires ; erreur
+   médiane de durée (absolue et relative). Les frappes de batterie sont
+   comptées à part, par attaque à ±50 ms, sans hauteur. C'est le chiffre
+   qui manque depuis A5.
+3. **Parité.** Chaque piste obtenue (hors bus de groupe) est attribuée à la
+   partie vraie dont elle porte le plus de notes appariées ; les parties
+   `batterie` comptent pour autant de parties que de pièces frappées
+   (convention du CDC multipiste § 6 bis, qui compte kick, caisse,
+   charleston), et les pistes `Batterie · …` leur répondent. Puis :
+   - **fondues** : parties qui n'ont AUCUNE piste (leurs notes sont sur la
+     piste d'une autre) ;
+   - **inventées** : pistes au-delà de la première pour une même partie
+     (une partie coupée en deux), ET pistes qui n'ont reçu aucune note
+     appariée ;
+   - **H25** : les pistes inventées d'une partie `deux-mains` sont comptées
+     dans cette colonne et PAS dans « inventées » ;
+   - les comptes bruts : parties vraies, pistes obtenues, écart.
+   Le cas déclaré de chaque morceau reçoit son verdict nommé (séparé /
+   fondu).
+4. **Arbitrage.** Pour chaque piste mélodique attribuée à une partie : le
+   RANG de la vraie machine dans `trackArbitration` (ou « absente » si elle
+   n'a pas concouru), et la **borne de piste** — la distance, à la métrique
+   de la course, du rendu de la VRAIE machine avec son VRAI patch sur les
+   notes TRANSCRITES de cette piste, contre la cible que la chaîne a jugée
+   (le stem séparé, entier). `trackDistance − borne` est la perte imputable
+   à l'arbitrage et au réglage sur cette piste ; une borne PLUS GRANDE que
+   la distance de la chaîne dit que le stem séparé ressemble davantage à
+   une autre machine qu'à la vraie — c'est le fossé de domaine du § 1,
+   mesuré piste par piste.
+5. **Distance globale et l'écart à la borne.** Trois nombres à la métrique
+   de la course, contre `morceau.wav` :
+   - `globalDistance` de la chaîne ;
+   - **borne de transcription** : le mélange des pistes de la chaîne,
+     chacune rendue par la vraie machine et le vrai patch de sa partie,
+     calée au RMS et au panoramique vrais de cette partie. C'est ce que la
+     chaîne atteindrait avec un arbitrage, un réglage et un calage
+     parfaits, à transcription et parité égales ;
+   - **borne de production** : le mélange des stems vrais, secs, contre le
+     mélange produit. Sans `--production`, ce nombre est 0 (le mélange EST
+     cette somme). Avec, c'est ce que coûte de rendre sec contre un
+     original réverbéré et compressé (H24).
+   La perte de chaque étage se lit dans les différences : `borne de
+   transcription − borne de production` = transcription + parité ;
+   `globalDistance − borne de transcription` = arbitrage + réglage +
+   calage ; la séparation se lit à l'étage 1 et dans les bornes de piste.
+
+Tout va dans `banc/rapport.json` (format `vsm-banc-synthetique`, version,
+provenance : commit, options de la chaîne mot pour mot, identité du moteur,
+dossier des morceaux, liste des morceaux avec leur graine) et dans un
+tableau lisible `banc/tableau.txt`, imprimé aussi au terminal. Une piste ou
+un morceau qui n'a pas pu être mesuré est DIT, avec sa raison, jamais omis.
+Le banc est **reprenable** : une course dont `rapport.json` existe n'est
+pas rejouée.
+
+## 3. Anti-objectifs
+
+1. **Le banc ne remplace pas la validation sur disques réels.** Un morceau
+   généré est un son que le parc sait produire, et un disque n'en est pas
+   un (§ 1). Un gain mesuré au banc est une hypothèse pour un disque, pas
+   un résultat : toute modification de la chaîne motivée par le banc se
+   mesure ENSUITE en A/B sur un morceau réel, aux règles de
+   ROADMAP-fusion, avant d'être déclarée.
+2. **Il ne rouvre ni A1 ni A3.** Le corpus généré a montré trois fois qu'il
+   n'apprend pas ce qu'un disque contient. Le banc ne produit ni
+   classifieur de machine ni estimateur de patch, et aucun modèle appris
+   sur ses morceaux n'entre dans la chaîne — à la seule exception du § 8,
+   qui porte sur une question structurelle, est écrite d'avance et reste
+   désactivée si elle échoue.
+3. **Pas une ligne hors de `analyse/`.** Ni `core/`, ni `audio/`, ni
+   `interchange/`, ni `app/` : une campagne en cours crierait « moteur
+   périmé » et deux mesures deviendraient incomparables.
+4. **Le banc ne règle pas la chaîne.** Ses chiffres décrivent ; les seuils,
+   budgets et défauts de `reconstruire.py` ne changent pas parce que le
+   banc préférerait d'autres valeurs — ce serait apprendre le banc.
+5. **La chaîne mesurée est la chaîne d'aujourd'hui.** Le banc appelle
+   `reconstruire.py` par son interface publique, avec ses défauts, et ne
+   lui passe que des options existantes ; sans banc, la chaîne est
+   inchangée à l'octet près.
+
+## 4. Critères d'acceptation
+
+```
+[ ] Générateur seedé : même graine → même verite.json et mêmes octets de WAV,
+    testé sur deux générations successives (test_banc_synthetique.py,
+    04/09/2026 : 2 parties, 4 s, deux générations identiques au bit près)
+[ ] Cohérence vérité/rendu : la somme des stems vrais, dans l'ordre du
+    fichier, redonne morceau.wav au bit près hors --production (testé) ;
+    avec --production la vérité le dit et le test vérifie que ce n'est PLUS
+    le cas
+[ ] Les notes de verite.json sont celles rendues : le nombre de notes et
+    leur registre par partie sont lus depuis la vérité et vérifiés dans les
+    bornes déclarées par rôle (testé)
+[ ] Les trois cas de parité se tirent et se déclarent ; --cas les impose
+    (testé : deux-mains → une partie à deux registres, séparés par un vide ;
+    memes-machine-disjoints → deux parties de même machine à registres
+    disjoints ; chevauchement → deux registres qui se recouvrent d'une octave)
+[ ] Un patch inaudible est rejeté, retiré, et compté dans la vérité (testé
+    par un moteur factice qui rend du silence une fois)
+[ ] Interruptible et reprenable : un morceau complet est sauté en le disant
+    (testé : deuxième appel sur le même dossier, aucun rendu)
+[ ] Coût mesuré et publié : secondes par partie et total dans verite.json,
+    par morceau et total dans lot.json
+[ ] Tableau de bord : sur un morceau minuscule COMMIS avec sa course
+    (analyse/tests/donnees/banc-minuscule/), les cinq étages se calculent et
+    les chiffres attendus sont vérifiés (testé, sans moteur pour les étages
+    1 à 3, avec moteur pour les bornes 4 et 5)
+[ ] Le tableau dit ce qu'il n'a pas pu mesurer (stems vrais fournis →
+    séparation « non mesurée » ; piste sans partie → « inventée », avec son
+    nom)
+[ ] Zéro ligne hors de analyse/ (git diff --stat du chantier)
+[ ] Suites vertes, zéro warning (analyse/tests/run.py)
+[ ] README, MODE-EMPLOI et ROADMAP-fusion nomment le chantier
+[ ] Campagne S1 écrite AVANT sa mesure (§ 5), verdict écrit APRÈS avec les
+    chiffres (§ 6)
+```
+
+## 5. Campagne S1 — attendus écrits AVANT la mesure (04/09/2026, 18:05)
+
+**Ce qui est mesuré.** Dix morceaux de 30 s sans production (graines 1 à
+10, lot `s1-sec`), puis les MÊMES dix graines avec `--production` (lot
+`s1-prod`) : la seule variable entre les deux lots est la production. La
+chaîne aux défauts du jour (`htdemucs_6s`, `--parite`, tout le parc,
+`--budget-piste 40 --axes-piste 8 --tours-verdict 3`), `--rendus-paralleles
+6`. Rien ne part avant la fin de la campagne 7 (prévue vers 19:40) : une
+seule course lourde à la fois.
+
+**Coût attendu.** Génération ≤ 30 s par morceau (≤ 10 min le lot des
+vingt). Course ≤ 15 min par morceau de 30 s (l'épreuve de parité à 3
+candidates dure 80 à 250 s ; à 58 candidates mélodiques et budget 40,
+l'arbitrage domine) — soit ≤ 5 h pour les vingt. Si un morceau dépasse 30
+min, le banc le dit et continue.
+
+**Mes attendus, chiffrés.** Les médianes sont sur le lot sec ; la dernière
+ligne dit ce que la production doit changer.
+
+| étage | attendu (médiane, lot sec) | ce qui le réfuterait |
+|---|---|---|
+| 1. séparation | `bass` SDR ≥ 6 dB, corrélation ≥ 0,85 ; `drums` SDR ≥ 8 dB ; `other` seul SDR entre 3 et 8 dB ; `other+guitar+piano` ≥ 6 dB ; énergie hallucinée (guitar+piano+vocals) entre 5 et 25 % | `drums` sous 5 dB (la séparation ne reconnaît pas une boîte à rythmes de synthèse) ; hallucination > 40 % |
+| 2. transcription | F1 à ±1 demi-ton, ±50 ms : entre 0,50 et 0,70 ; rappel > précision ; F1 à hauteur exacte inférieur d'au moins 0,10 ; vélocité : erreur absolue moyenne ≥ 20 (la chaîne n'écrit pas une vélocité mesurée) ; durée : erreur relative médiane ≥ 30 % ; par rôle : basse > mélodie > accompagnement > nappe | F1 > 0,80 (la transcription ne serait pas le premier poste) ; vélocité < 10 |
+| 3. parité | sur les morceaux sans cas : écart ≤ 1 piste dans ≥ 6/10 ; `memes-machine-disjoints` séparé (2 pistes) dans ≥ 2/3 des occurrences ; `chevauchement` FONDU dans ≥ 2/3 ; `deux-mains` coupé en deux (colonne H25) dans ≥ 2/3 ; fondues ≥ 1 par morceau dès 6 parties ; batterie : 3 pistes pour 3 pièces dans ≥ 6/10 | les registres disjoints fondus plus d'une fois sur deux ; le deux-mains laissé entier plus d'une fois sur deux (H25 aurait tort d'être une limite) |
+| 4. arbitrage | vraie machine dans le top 6 pour ≥ 50 % des pistes mélodiques attribuées (hasard à 58 machines : 10 %) ; rang 1 pour ≥ 20 % ; borne de piste PLUS GRANDE que `trackDistance` pour ≥ 50 % des pistes (le stem séparé ressemble à autre chose que la vérité) | top 6 < 25 % (l'arbitrage ne reconnaîtrait même pas un son du parc) ; borne toujours plus petite (le réglage perdrait contre la vérité partout) |
+| 5. global | `globalDistance` v2 entre 0,15 et 0,30 ; borne de transcription entre 0,08 et 0,18 ; **transcription + parité (borne − 0) > arbitrage + réglage (global − borne) dans ≥ 6/10** — la transcription est le premier poste (A5) | l'écart arbitrage > transcription dans ≥ 6/10 |
+| production | `globalDistance` +8 à +25 % ; borne de production entre 0,04 et 0,12 ; séparation : SDR −1 à −4 dB ; transcription : F1 −0,00 à −0,08 ; parité : même compte à ±1 sur ≥ 7/10 ; arbitrage : top 6 −0 à −15 points | global inchangé à ±3 % (la production ne coûterait rien, contre H24) ; F1 −0,20 (la réverbération casserait la transcription) |
+
+**Ce que je ne sais pas prédire, et que je publie sans attendu** : la part
+de l'énergie de `other` que `htdemucs_6s` range dans `piano` (une nappe de
+synthé peut y passer entière), et l'erreur de durée de la batterie (une
+frappe de boîte à rythmes n'a pas de durée transcrite).
+
+**Ce que le résultat décidera.** Si la transcription est le premier poste,
+le chantier suivant est A5-bis : mesurer une transcription de rechange sur
+CE banc avant d'y toucher. Si l'arbitrage l'est, c'est le fossé de domaine
+qui domine et le banc le dira piste par piste. Si la parité l'est, le § 8
+s'ouvre. Le § 8 ne s'ouvre QUE si le cas `deux-mains` est coupé en deux dans
+au moins 2/3 des occurrences ET si les registres disjoints sont bien
+séparés : un modèle qui corrigerait un cas rare au prix d'un cas fréquent
+n'a pas d'objet.
+
+## 6. Campagne S1 — verdict
+
+*À écrire après la mesure, avec les chiffres, réfutations comprises.*
+
+## 7. Ce que le banc n'est pas encore, et qui reste à écrire
+
+- Des morceaux LONGS (3 à 5 min) et des parties qui entrent et sortent :
+  le banc mesure aujourd'hui une texture stable de 30 s. La chaîne est
+  mesurée sur des disques de quatre minutes ; un lot long viendra après S1
+  s'il change une conclusion.
+- Des parties à échantillons (`vsm.sampler`, `vsm.multisample`) : le
+  générateur ne les tire pas (elles demandent des données installées, et
+  la chaîne les traite à part).
+- La voix : aucun rôle chanté. La chaîne a une branche voix (tête/chœurs)
+  que le banc ne mesure pas.
+
+## 8. L'usage apprenant d'H25 — SEULEMENT après S1, et sous condition
+
+Écrit d'avance, dans l'en-tête du module (`analyse/analyzer/vsm_deux_mains.py`)
+le jour où il s'écrira, et repris ici :
+
+*Attendu.* Sur des morceaux générés où la réponse « un instrument ou deux »
+est connue par construction (`deux-mains` contre `memes-machine-disjoints`
+et deux parties quelconques à registres disjoints), un petit modèle CPU
+(scikit-learn, seedé, versionné par empreinte) sur des descripteurs
+STRUCTURELS — jamais timbraux, H25 a montré que le timbre ment : co-occurrence
+temporelle des deux registres, corrélation des enveloppes d'attaque,
+synchronie des attaques (part des attaques du registre haut à ±30 ms d'une
+attaque du bas), rapport des ambitus, rapport des densités — doit dire
+« un seul instrument » sur le cas deux-mains PLUS SOUVENT que le découpage
+par les vides (qui dit toujours « deux »), SANS dégrader le 9/9 de l'épreuve
+de parité ni séparer moins souvent les registres disjoints de S1.
+
+*Décision.* S'il n'y arrive pas, le code reste désactivé, le chiffre se
+publie ici — le sort de A3. S'il y arrive, il n'entre dans la chaîne que
+derrière une option (`--deux-mains-appris`, dans la provenance), et la
+validation sur disque (anti-objectif n° 1) reste due : *Us and Them* et
+*Sky and Sand* n'ont montré aucun creux, le modèle y doit être INERTE, et
+c'est à mesurer.
