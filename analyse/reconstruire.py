@@ -662,15 +662,17 @@ def construire_parseur() -> argparse.ArgumentParser:
                               "jusqu'à ce qu'aucune piste ne change (point fixe), borné "
                               "par ce nombre. 1 = un seul tour, l'ancien comportement — "
                               "c'est le témoin de l'A/B.")
-    parseur.add_argument("--second-verdict", type=int, default=0,
+    parseur.add_argument("--second-verdict", type=int, default=1,
                          help="CAMPAGNE 7 (CDC multipiste § 11) : après le réglage au "
                               "mélange de la gagnante de chaque piste mélodique, remettre "
                               "en jeu ses N meilleures écartées qui changent de machine, "
                               "chacune RÉGLÉE au mélange avec le même budget, et garder la "
                               "meilleure des réglées. Le verdict jugeait des candidates "
-                              "AVANT réglage, et le réglage peut renverser son ordre. "
-                              "Défaut 0 : le témoin, l'ancien comportement. Coût : un "
-                              "réglage au mélange par candidate.")
+                              "AVANT réglage, et le réglage renverse son ordre : mesuré "
+                              "sur Sky and Sand (04/09/2026), la basse passe de string à "
+                              "vector (réglées 0,2307 -> 0,2170) et la distance finale "
+                              "gagne 6,5 %% pour +33 %% de durée. Défaut 1 depuis ; 0 = le "
+                              "témoin, l'ancien comportement.")
     parseur.add_argument("--rendus-paralleles", type=int, default=3,
                          help="nombre de rendus de candidates menés de front à "
                               "l'arbitrage de piste (défaut 3 ; H3 du § 5 duodecies). "

@@ -355,6 +355,13 @@ rotation : `memes-machine-disjoints` ×3 (graines 1, 5, 9), `chevauchement`
 produit. Les stems vrais de `s1-prod` sont identiques à ceux de `s1-sec`
 (mêmes graines) : seul le mélange diffère.
 
+**Le défaut a changé avant le départ (19:56).** La campagne 7 (CDC
+multipiste § 11, verdict) fait de `--second-verdict 1` le défaut de la
+chaîne : S1, démarrée à 19:51 sur l'ancien défaut, a été arrêtée après
+cinq minutes et relancée sur le nouveau — c'est « la chaîne d'aujourd'hui »
+que le banc mesure. Le coût attendu ci-dessous grandit d'un tiers ; les
+attendus, eux, ne changent pas.
+
 **Coût attendu.** Génération ≤ 30 s par morceau (≤ 10 min le lot des
 vingt). Course ≤ 15 min par morceau de 30 s (l'épreuve de parité à 3
 candidates dure 80 à 250 s ; à 58 candidates mélodiques et budget 40,

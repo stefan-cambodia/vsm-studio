@@ -715,6 +715,53 @@ publie.
 Le script `campagne-7.sh` enchaîne les deux courses et s'arrête à la
 première qui échoue. Départ à 15:38, fin prévue vers 19:40.
 
+### Verdict de la campagne 7 (04/09/2026, 19:50)
+
+| Course | Distance | Basse | `other` | Durée |
+|---|---|---|---|---|
+| sky-parite-m9 (témoin de v2) | 0,244108 | `vsm.string` | `vsm.musicbox` | — |
+| sky-parite-m9-v2 (moteur à 64 machines) | **0,244108** | `vsm.string` | `vsm.musicbox` | 1 h 48 (15:38 → 17:26) |
+| sky-parite-m9-sv1 (`--second-verdict 1`) | **0,228156** (**−6,5 %**) | **`vsm.vector`** | `vsm.musicbox` | 2 h 24 (17:26 → 19:50, **+2 160 s**, +33 %) |
+
+**Le témoin est confirmé à la neuvième décimale.** v2 rend 0,244108
+comme m9 : ni la 64e machine, ni D12 à D15 (le dither compris) n'entrent
+dans la distance d'une reconstruction. Les distances de piste sont les
+mêmes aussi (basse 0,2404, `other` 0,1968).
+
+**Le second verdict est confirmé sur la basse, et mon attendu y est
+RÉFUTÉ.** J'attendais un pile ou face sous 0,1 % entre string et vector
+réglées (0,2346 contre 0,2345 au § 10). Mesuré, dans le contexte du
+second verdict — après le réglage de TOUTES les gagnantes — : vector au
+verdict 0,2523, installée 0,2490, **réglée 0,2170** ; string réglée,
+remesurée dans le même contexte, 0,2307. L'écart est de 0,0137 (−5,9 %
+sur la distance au mélange), pas de 0,0001. La raison est dans le contexte
+: au § 10, les deux chiffres venaient de deux COURSES (m9, parc63), donc
+de deux mélanges différents ; ici les deux candidates sont réglées contre
+le même mélange, celui où `other` est déjà réglée, et l'une y trouve
+davantage. Le § 10 avait raison de dire que le réglage efface l'ordre du
+verdict ; il avait tort de conclure que les deux machines valaient la même
+chose une fois réglées.
+
+**Sur `other`, l'attendu tient.** Mellotron au verdict 0,2504, installée
+0,2214, réglée 0,2190 ; musicbox réglée 0,2170 : la gagnante reste, pour
+0,0020. Le second verdict coûte 1 646 s sur cette piste pour ne rien
+changer — c'est le prix d'une question qu'on ne peut pas trancher sans la
+poser.
+
+**La durée est celle annoncée** : +2 160 s pour +2 300 attendus.
+
+**Décision, celle qui était écrite d'avance** : une machine change ET le
+final gagne 6,5 % (≥ 1 %) → **`--second-verdict 1` est le défaut** de
+`reconstruire.py` depuis ce commit, `0` reste le témoin, et la provenance
+le porte (`secondVerdict`). Le +1,4 % de m9 sur parc63 (§ 10) n'a plus à
+se chercher en aval : sv1 passe SOUS parc63 (0,2407) de 5,2 %, avec la
+machine que parc63 avait trouvée sur la basse.
+
+**Conséquence sur la campagne S1 du banc synthétique** (CDC banc § 5) :
+elle avait démarré à 19:51 sur l'ancien défaut ; arrêtée à 19:56 après
+une course de cinq minutes, relancée sur le nouveau, pour mesurer la
+chaîne telle qu'elle est. Son coût attendu grandit d'un tiers.
+
 ### En attente de la fin des campagnes (03/09/2026)
 
 Deux retouches sont différées parce qu'elles touchent `audio/` ou
