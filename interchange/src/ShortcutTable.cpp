@@ -59,6 +59,8 @@ const std::vector<FixedShortcut>& fixedShortcuts() {
     static const std::vector<FixedShortcut> fixes = {
         {"←  →", "Navigation", "Déplacer la sélection (Maj : par quatre pas) ; sans sélection, faire défiler"},
         {"↑  ↓", "Navigation", "Transposer d'un demi-ton (Maj : d'une octave) ; sans sélection, faire défiler"},
+        {"←  →", "Arrangement", "Déplacer les clips choisis d'un pas d'aimantation (Maj : quatre pas) ; sans sélection, faire défiler"},
+        {"↑  ↓", "Arrangement", "Déplacer les clips choisis vers la piste voisine"},
     };
     return fixes;
 }

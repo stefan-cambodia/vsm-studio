@@ -119,6 +119,16 @@ public:
 
     /// Supprime les clips sélectionnés.
     void deleteSelection();
+    /// D15.2 : LA SÉLECTION AU CLAVIER. Le pas est celui de l'aimantation --
+    /// la mesure, ou la grille fine du piano roll selon `G` -- et c'est le
+    /// même qu'à la souris ; annulable ; un clip ne passe pas avant zéro (la
+    /// figure garde sa forme, voir `moveClips`).
+    void nudgeSelection(vsm::midi::Tick delta);
+    /// D15.2 : vers la piste voisine du même genre, en emportant les notes que
+    /// la fenêtre couvre ; ce qui est refusé est compté et dit.
+    void moveSelectionAcrossTracks(int deltaTracks);
+    /// Le pas d'aimantation à cet endroit du morceau (mesure ou grille fine).
+    vsm::midi::Tick snapStep(vsm::midi::Tick tick) const;
     bool hasSelection() const { return !selection_.empty(); }
     /// L'ÉTENDUE DE LA SÉLECTION (D14.1), en ticks, toutes pistes confondues.
     /// Faux si rien n'est choisi.

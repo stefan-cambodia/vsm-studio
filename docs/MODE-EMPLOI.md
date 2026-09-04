@@ -861,6 +861,8 @@ Un conflit se dit **avant** d'être créé, en nommant la commande qui tient dé
 
 Les flèches ne se reconfigurent pas : leur sens **est** leur direction. Elles figurent quand même dans la table, marquées comme fixes — une page qui prétend tout lister et tait quatre touches ment davantage qu'une page qui dit « celles-ci ne bougent pas ».
 
+Dans l'**arrangement**, les mêmes flèches valent pour les clips choisis : `←` / `→` les déplacent d'un pas d'aimantation — la mesure, ou la grille fine du piano roll selon `G` — et de quatre pas avec `Maj` ; `↑` / `↓` les font passer à la piste voisine, notes comprises, et ce qu'une piste refuse (un clip audio vers une piste MIDI) est compté et dit. Sans sélection, `←` / `→` font défiler. Chaque déplacement s'annule.
+
 La table **s'imprime**, en texte : on l'imprime, on la colle au mur du studio, on la cherche avec Ctrl+F. Une capture d'écran ne ferait aucune des trois.
 
 ![La table des raccourcis](images/manuel/raccourcis.png)

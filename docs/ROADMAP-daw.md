@@ -3284,6 +3284,22 @@ modèle temporel en dernier parce qu'il traverse tout.
 > hors ligne lit le même drapeau. Le garde-fou d'allocation monte désormais
 > un insert sur deux contourné.
 
+> **D15.2 EST FAITE (04/09/2026), et elle a pris la convention du piano
+> roll plutôt que celle du tableau ci-dessus.** Le tableau disait
+> `Ctrl+←/→`, « dans la table des raccourcis » ; le piano roll avait déjà
+> tranché le contraire pour ses flèches (D10) : leur sens EST leur
+> direction, elles ne se reconfigurent pas, et la page des raccourcis les
+> liste comme fixes. Deux vues du même morceau ne demandent pas deux gestes
+> pour la même chose -- c'est la règle écrite en tête de `keyPressed` de
+> l'arrangement. Donc : `←`/`→` déplacent les clips choisis d'un pas
+> d'aimantation (la mesure, ou la grille fine selon `G` -- le même pas qu'à
+> la souris), `Maj` en fait quatre ; `↑`/`↓` les passent à la piste voisine
+> par `moveClipsAcrossTracks`, notes comprises, refus comptés et dits ; sans
+> sélection, `←`/`→` font défiler. Annulable. Le pas fin de `Ctrl+Maj` du
+> tableau n'existe pas : `G` le donne déjà. Vérifié : le déplacement passe
+> par les deux fonctions de `core/` déjà testées ; l'application s'ouvre en
+> arrangement sur un projet à quatre pistes.
+
 **Ce que l'audit a écarté, et pourquoi.** Le pré-roll (jouer les mesures
 qui précèdent le punch-in) : le décompte existe, et un punch-in se prépare
 en posant la tête avant. Le scrub audio : Live ne l'a pas, et la tête posée

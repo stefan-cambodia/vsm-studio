@@ -53,11 +53,18 @@ vsm::midi::Tick ArrangementComponent::xToTick(float x) const {
 
 vsm::midi::Tick ArrangementComponent::snapTick(vsm::midi::Tick tick) const {
     if (!snap_ || project_ == nullptr) return tick;
+    const vsm::midi::Tick pas = snapStep(tick);
+    if (pas <= 0) return tick;
+    return ((tick + pas / 2) / pas) * pas;
+}
+
+vsm::midi::Tick ArrangementComponent::snapStep(vsm::midi::Tick tick) const {
+    if (project_ == nullptr) return 0;
     // AIMANTATION À LA MESURE PAR DÉFAUT, et non à la double croche : on arrange
     // par mesures, et la grille du piano roll n'a pas de sens à cette échelle.
     // Mais elle reste disponible -- c'est ce qu'il faut pour poser un clip sur
     // un contretemps, et c'est le « mêmes gestes que le piano roll » du critère.
-    const vsm::midi::Tick pas =
+    return
         aimanteALaMesure_
             ? project_->timeSignatureMap.ticksPerBar(std::max<vsm::midi::Tick>(0, tick),
                                                       project_->ticksPerQuarterNote)
@@ -66,8 +73,31 @@ vsm::midi::Tick ArrangementComponent::snapTick(vsm::midi::Tick tick) const {
                                : vsm::sequencer::GridResolution{vsm::sequencer::NoteValue::Quarter,
                                                                  false, false},
                   project_->ticksPerQuarterNote);
-    if (pas <= 0) return tick;
-    return ((tick + pas / 2) / pas) * pas;
+}
+
+void ArrangementComponent::nudgeSelection(vsm::midi::Tick delta) {
+    if (project_ == nullptr || selection_.empty() || delta == 0) return;
+    if (onEditStarted) onEditStarted(u8"Déplacer des clips");
+    for (auto& track : project_->tracks)
+        vsm::sequencer::moveClips(track.clips, selection_, delta);
+    notifyChanged();
+    repaint();
+}
+
+void ArrangementComponent::moveSelectionAcrossTracks(int deltaTracks) {
+    if (project_ == nullptr || selection_.empty() || deltaTracks == 0) return;
+    if (onEditStarted) onEditStarted(u8"Déplacer des clips de piste");
+    const auto rapport = vsm::sequencer::moveClipsAcrossTracks(project_->tracks, selection_, deltaTracks);
+    if (rapport.moved > 0) {
+        const int cible = static_cast<int>(pisteCourante_) + rapport.applied;
+        if (cible >= 0 && static_cast<size_t>(cible) < project_->tracks.size()) {
+            pisteCourante_ = static_cast<size_t>(cible);
+            if (onTrackSelected) onTrackSelected(pisteCourante_);
+        }
+    }
+    if (rapport.refused > 0 && onClipsRefused) onClipsRefused(rapport.refused);
+    notifyChanged();
+    repaint();
 }
 
 AutomationCurve* ArrangementComponent::curveShownOn(size_t trackIndex) {
@@ -912,6 +942,26 @@ bool ArrangementComponent::keyPressed(const juce::KeyPress& key) {
     if (key == juce::KeyPress::deleteKey || key == juce::KeyPress::backspaceKey) {
         if (!hasSelection()) return false;
         deleteSelection();
+        return true;
+    }
+    // LES FLÈCHES, COMME AU PIANO ROLL (D15.2) : avec une sélection, ←/→ la
+    // déplacent d'un pas d'aimantation (Maj : quatre pas) et ↑/↓ la font
+    // changer de piste ; sans sélection, ←/→ font défiler. Leur sens EST leur
+    // direction : elles ne sont pas dans la table des raccourcis, la page les
+    // liste comme fixes.
+    if (key == juce::KeyPress::leftKey || key == juce::KeyPress::rightKey) {
+        const auto mods = key.getModifiers();
+        vsm::midi::Tick pas = snapStep(scrollTick_);
+        if (pas <= 0 && project_ != nullptr) pas = project_->ticksPerQuarterNote;
+        if (mods.isShiftDown()) pas *= 4;
+        const vsm::midi::Tick delta = key == juce::KeyPress::leftKey ? -pas : pas;
+        if (hasSelection()) nudgeSelection(delta);
+        else { scrollTick_ = std::max<vsm::midi::Tick>(0, scrollTick_ + delta); repaint(); }
+        return true;
+    }
+    if (key == juce::KeyPress::upKey || key == juce::KeyPress::downKey) {
+        if (!hasSelection()) return false;
+        moveSelectionAcrossTracks(key == juce::KeyPress::upKey ? -1 : 1);
         return true;
     }
     if (key.getTextCharacter() == '+' || key.getTextCharacter() == '=') {
