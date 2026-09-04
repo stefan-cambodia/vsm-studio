@@ -766,6 +766,17 @@ l'ancien chemin octet pour octet), avec la voix dans le verdict.
 | le témoin de coupure du hihat | « meilleur sans » disparaît ou s'inverse : 0,2431 contre 0,2486 était mesuré sans la voix |
 | durée | celle de m9-v2, ± 10 % : rien de plus à rendre, un fichier de plus à lire par rendu |
 
+**Et un second morceau, le même jour (16:20).** `usandthem-parite-voix`,
+mêmes options que `usandthem-parite-parc60` (0,190043, campagne 5, le
+dernier *Us and Them* en parité ; six finalistes, huit rendus). Le v15
+(−5,0 %, neuf finalistes) n'était PAS en parité : sa voix était un report
+vocal, donc recopiée, donc entendue par son verdict — ce qui explique
+peut-être qu'il ait gagné là où le m9 de *Sky* perdait. Attendu : entre
+−4 % et −1 % de parc60, pour les mêmes raisons ; et le jalon du verdict
+(nouveau, publié sous `verdictJalon`) à moins de 0,5 % de la finale sur
+les deux morceaux. Le script `campagne-8.sh` enchaîne les deux courses,
+*Sky* d'abord.
+
 **Décision écrite d'avance.** La correction reste quoi qu'il arrive : un
 verdict qui juge un autre morceau que celui qu'on rend n'est pas une
 option, et le chiffre de la campagne dit seulement ce qu'elle valait. Si
