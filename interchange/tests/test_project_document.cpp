@@ -361,6 +361,25 @@ VSM_TEST(effects_and_automation_survive_the_trip_through_the_model) {
     VSM_ASSERT(rejoue.tracks[1].automation[0].points[1].step);
 }
 
+VSM_TEST(a_tempo_ramp_survives_the_file_and_a_step_writes_nothing_new) {
+    // D15.5. Le drapeau de rampe traverse le fichier ; un palier -- le seul
+    // que les projets antérieurs connaissent -- n'y écrit rien de plus.
+    Project project = buildProject();
+    project.tempoMap.clearTempoChanges();
+    project.tempoMap.addTempoChange(0, 500000, true);
+    project.tempoMap.addTempoChange(7680, 1000000);
+    const std::string texte = projectDocumentToJson(documentFromProject(project)).toString();
+    size_t mentions = 0;
+    for (size_t pos = texte.find("\"ramp\""); pos != std::string::npos; pos = texte.find("\"ramp\"", pos + 1)) ++mentions;
+    VSM_ASSERT_EQ(mentions, size_t(1));
+    const ProjectLoadResult relu = parseProjectDocument(texte);
+    VSM_ASSERT(relu.success);
+    Project rejoue;
+    applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT(rejoue.tempoMap.hasRamps());
+    VSM_ASSERT_NEAR(rejoue.tempoMap.ticksToSeconds(7680, 480), 16.0 * std::log(2.0), 1e-6);
+}
+
 VSM_TEST(a_bypassed_insert_stays_bypassed_through_the_file_and_an_active_one_writes_nothing) {
     // D15.1. Le contournement traverse le fichier ; l'état actif -- le seul
     // que les projets antérieurs connaissent -- n'y écrit rien, si bien que

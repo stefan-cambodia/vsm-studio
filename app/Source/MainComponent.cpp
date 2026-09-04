@@ -5143,6 +5143,18 @@ void MainComponent::exportMidiFile() {
         try {
             ParsedFile parsed = project_.toParsedFile();
             MidiFileWriter::writeFile(parsed, file.getFullPathName().toStdString());
+            // D15.5 : le MIDI ne connaît pas les rampes ; elles partent en
+            // paliers d'une noire, et on le dit plutôt que de le taire.
+            if (project_.tempoMap.hasRamps()) {
+                const size_t paliers = project_.tempoMap.flattened(project_.ticksPerQuarterNote,
+                                                                   project_.ticksPerQuarterNote).size()
+                                     - project_.tempoMap.changes().size();
+                juce::AlertWindow::showMessageBoxAsync(
+                    juce::AlertWindow::InfoIcon, juce::String::fromUTF8(u8"Rampes de tempo exportées en paliers"),
+                    juce::String::fromUTF8(u8"Le format MIDI ne connaît pas les rampes : elles sont rendues en ")
+                        + juce::String(static_cast<int>(paliers))
+                        + juce::String::fromUTF8(u8" paliers d'une noire, à la durée totale près."));
+            }
         } catch (const std::exception& e) {
             juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
                                                      "Erreur d'export MIDI", e.what());

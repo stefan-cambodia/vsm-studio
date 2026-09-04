@@ -20,7 +20,7 @@ TempoLaneComponent::TempoLaneComponent() {
     titleLabel_.setFont(juce::Font(juce::FontOptions(13.0f).withStyle("Bold")));
     addAndMakeVisible(titleLabel_);
 
-    hintLabel_.setText(u8"Clic : ajouter un changement  -  Glisser : déplacer  -  Clic droit : supprimer  -  "
+    hintLabel_.setText(u8"Clic : ajouter un changement  -  Glisser : déplacer  -  Clic droit : supprimer  -  Ctrl+clic ou double-clic : rampe jusqu'au suivant  -  "
                        u8"le tempo de départ (tick 0) ne bouge qu'en valeur",
                        juce::dontSendNotification);
     hintLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
@@ -49,7 +49,7 @@ void TempoLaneComponent::loadPoints() {
     dragIndex_ = -1;
     if (project_ == nullptr) return;
     for (const auto& c : project_->tempoMap.changes())
-        points_.push_back({c.tick, bpmFromMicroseconds(c.microsecondsPerQuarterNote)});
+        points_.push_back({c.tick, bpmFromMicroseconds(c.microsecondsPerQuarterNote), c.rampToNext});
     std::stable_sort(points_.begin(), points_.end(),
                      [](const Point& a, const Point& b) { return a.tick < b.tick; });
     if (points_.empty() || points_.front().tick != 0)
@@ -64,7 +64,7 @@ void TempoLaneComponent::commit(const juce::String& label) {
     project_->tempoMap.clearTempoChanges();
     for (const auto& p : points_)
         project_->tempoMap.addTempoChange(p.tick, microsecondsFromBpm(
-            juce::jlimit(kBpmMin, kBpmMax, p.bpm)));
+            juce::jlimit(kBpmMin, kBpmMax, p.bpm)), p.ramp);
     if (onTempoEdited) onTempoEdited();
     loadPoints();
     repaint();
@@ -131,6 +131,8 @@ void TempoLaneComponent::mouseDown(const juce::MouseEvent& e) {
         }
         return;
     }
+    // D15.5 : Ctrl+clic sur un point bascule sa RAMPE vers le suivant.
+    if (hit >= 0 && e.mods.isCommandDown()) { toggleRamp(static_cast<size_t>(hit)); return; }
     dragged_ = false;
     if (hit >= 0) { dragIndex_ = hit; return; }
     const Tick tick = xToTick(e.x);
@@ -165,6 +167,19 @@ void TempoLaneComponent::mouseUp(const juce::MouseEvent&) {
     dragged_ = false;
 }
 
+void TempoLaneComponent::mouseDoubleClick(const juce::MouseEvent& e) {
+    if (project_ == nullptr) return;
+    const int hit = findPointNear(e.getPosition());
+    if (hit >= 0) toggleRamp(static_cast<size_t>(hit));
+}
+
+void TempoLaneComponent::toggleRamp(size_t index) {
+    if (index + 1 >= points_.size()) return;   // rien vers quoi glisser après le dernier point
+    points_[index].ramp = !points_[index].ramp;
+    dragIndex_ = -1;
+    commit(points_[index].ramp ? u8"Rampe de tempo" : u8"Palier de tempo");
+}
+
 // ----------------------------------------------------------------- paint ---
 
 void TempoLaneComponent::paint(juce::Graphics& g) {
@@ -194,16 +209,19 @@ void TempoLaneComponent::paint(juce::Graphics& g) {
         return;
     }
 
-    // EN PALIERS : un tempo vaut jusqu'au suivant.
+    // EN PALIERS : un tempo vaut jusqu'au suivant -- ou EN RAMPE (D15.5) : il
+    // glisse jusqu'au suivant, et la courbe le montre en pente.
     juce::Path path;
     for (size_t i = 0; i < points_.size(); ++i) {
         const float x = static_cast<float>(tickToX(points_[i].tick));
         const float y = static_cast<float>(bpmToY(points_[i].bpm));
         if (i == 0) path.startNewSubPath(x, y);
         else path.lineTo(x, y);
+        const bool rampe = points_[i].ramp && i + 1 < points_.size();
         const float xFin = i + 1 < points_.size() ? static_cast<float>(tickToX(points_[i + 1].tick))
                                                   : static_cast<float>(a.getRight());
-        path.lineTo(xFin, y);
+        const float yFin = rampe ? static_cast<float>(bpmToY(points_[i + 1].bpm)) : y;
+        path.lineTo(xFin, yFin);
     }
     g.setColour(Palette::accentAmber);
     g.strokePath(path, juce::PathStrokeType(2.0f));

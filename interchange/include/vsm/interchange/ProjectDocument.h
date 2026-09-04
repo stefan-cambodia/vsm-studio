@@ -52,7 +52,7 @@ inline constexpr int kProjectVersionWithoutWarp = 2;
 /// La plus ancienne version qu'on sache encore lire.
 inline constexpr int kOldestReadableProjectVersion = 1;
 
-struct ProjectTempoChange { int64_t tick = 0; double bpm = 120.0; };
+struct ProjectTempoChange { int64_t tick = 0; double bpm = 120.0; bool ramp = false; /* D15.5 : glisse jusqu'au suivant */ };
 struct ProjectTimeSignature { int64_t tick = 0; int numerator = 4; int denominator = 4; };
 
 /// UN BUS DE DÉPART du projet (D4.2). Voir `vsm::sequencer::SendBusDescription`

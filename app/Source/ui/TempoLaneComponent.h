@@ -29,6 +29,7 @@ public:
     void mouseDown(const juce::MouseEvent&) override;
     void mouseDrag(const juce::MouseEvent&) override;
     void mouseUp(const juce::MouseEvent&) override;
+    void mouseDoubleClick(const juce::MouseEvent&) override;
 
     void setProject(vsm::sequencer::Project* project);
     void setHistory(vsm::sequencer::ProjectHistory* history) { history_ = history; }
@@ -56,7 +57,8 @@ private:
 
     juce::Label titleLabel_, hintLabel_;
 
-    struct Point { vsm::midi::Tick tick; double bpm; };
+    struct Point { vsm::midi::Tick tick; double bpm; bool ramp = false; };
+    void toggleRamp(size_t index);
     std::vector<Point> points_;
     int dragIndex_ = -1;
     bool dragged_ = false;

@@ -202,7 +202,8 @@ ProjectDocument documentFromProject(const Project& project) {
 
     for (const auto& change : project.tempoMap.changes())
         document.transport.tempoChanges.push_back({change.tick,
-                                                    bpmFromMicroseconds(change.microsecondsPerQuarterNote)});
+                                                    bpmFromMicroseconds(change.microsecondsPerQuarterNote),
+                                                    change.rampToNext});
     for (const auto& change : project.timeSignatureMap.changes())
         document.transport.timeSignatures.push_back({change.tick, change.numerator,
                                                       1 << change.denominatorPow2});
@@ -330,7 +331,7 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
     if (!document.transport.tempoChanges.empty()) {
         project.tempoMap.clearTempoChanges();
         for (const auto& change : document.transport.tempoChanges)
-            project.tempoMap.addTempoChange(change.tick, microsecondsFromBpm(change.bpm));
+            project.tempoMap.addTempoChange(change.tick, microsecondsFromBpm(change.bpm), change.ramp);
     }
     if (!document.transport.timeSignatures.empty()) {
         project.timeSignatureMap.clear();
@@ -483,6 +484,7 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         JsonValue entry = JsonValue::makeObject();
         entry.set("tick", JsonValue::makeNumber(static_cast<double>(change.tick)));
         entry.set("bpm", makeBpmNumber(change.bpm));
+        if (change.ramp) entry.set("ramp", JsonValue::makeBoolean(true));   // D15.5, écrit seulement si vrai
         tempoChanges.append(std::move(entry));
     }
     transport.set("tempoChanges", std::move(tempoChanges));
@@ -718,6 +720,7 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         ProjectTempoChange change;
         change.tick = static_cast<int64_t>(entry["tick"].asNumber(0.0));
         change.bpm = entry["bpm"].asNumber(120.0);
+        change.ramp = entry["ramp"].asBoolean(false);
         document.transport.tempoChanges.push_back(change);
     }
     for (const auto& entry : transport["timeSignatures"].elements()) {

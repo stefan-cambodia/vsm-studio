@@ -657,6 +657,8 @@ bouge qu'en valeur ; c'est aussi celui de la barre de transport, et le
 changer là ne touche plus au reste de la carte. Chaque geste passe par
 l'historique.
 
+**Une rampe de tempo** : Ctrl+clic (ou double-clic) sur un point de la voie fait glisser le tempo linéairement jusqu'au point suivant au lieu de tenir en palier ; la courbe se dessine en pente, et la lecture, l'export audio et l'affichage du tempo la suivent exactement. Le fichier MIDI ne connaît pas les rampes : à l'export, chacune devient des paliers d'une noire, à la durée totale près, et l'application vous le dit avec le nombre de paliers.
+
 ![L'onglet Tempo : trois paliers, 120, 96 puis 140 BPM.](images/manuel/tempo.png)
 
 Les **notes hachurées** ne sont pas des notes ordinaires : ce sont celles dont la transcription doute. Après une reconstruction, on les parcourt une par une pour décider — c'est le seul endroit où l'oreille tranche ce que la mesure n'a pas su trancher.

@@ -150,7 +150,7 @@ size_t appliquer(Project& project, Tick at, Tick delta,
             gardes.push_back(d);
         }
         project.tempoMap.clearTempoChanges();
-        for (const auto& c : gardes) project.tempoMap.addTempoChange(c.tick, c.microsecondsPerQuarterNote);
+        for (const auto& c : gardes) project.tempoMap.addTempoChange(c.tick, c.microsecondsPerQuarterNote, c.rampToNext);
     }
     {
         auto changes = project.timeSignatureMap.changes();

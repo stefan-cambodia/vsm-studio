@@ -303,7 +303,9 @@ ParsedFile Project::toParsedFile() const {
     // format d'export (convention Type 1 ; sans effet audible en Type 0 où
     // tout est fusionné de toute façon).
     auto& conductorEvents = parsed.tracks[0].events;
-    for (const auto& change : tempoMap.changes())
+    // LES RAMPES EN PALIERS D'UNE NOIRE (D15.5) : le fichier MIDI ne connaît
+    // que le palier. La durée totale est conservée, la courbe approchée.
+    for (const auto& change : tempoMap.flattened(ticksPerQuarterNote, ticksPerQuarterNote))
         conductorEvents.push_back({change.tick, TempoEvent{change.microsecondsPerQuarterNote}});
     for (const auto& change : timeSignatureMap.changes())
         conductorEvents.push_back({change.tick, TimeSignatureEvent{

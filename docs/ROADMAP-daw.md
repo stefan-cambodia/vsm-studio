@@ -3347,6 +3347,25 @@ modèle temporel en dernier parce qu'il traverse tout.
 > de `basse.synth.json`. Vu à l'écran : la rangée « On | Reverb | Preset |
 > ^ v X ».
 
+> **D15.5 EST FAITE (04/09/2026), en forme close.** `TempoChange` gagne
+> `rampToNext` : le tempo glisse linéairement EN BPM contre la position
+> musicale jusqu'au changement suivant (la courbe de tempo de Cubase). Sur
+> un tronçon de L ticks de b0 à b1, une noire dure 60/b(x) secondes, donc
+> s(x) = 60·L/(ppq·(b1-b0))·ln(b(x)/b0), et l'inverse est une exponentielle :
+> aucun pas fixe, le milieu d'une rampe est aussi juste que son bout. Tout
+> passe par `TempoMap` (le moteur, l'ordonnanceur, l'export, la voie), donc
+> tout suit. Mesuré : une rampe de 120 à 60 sur quatre mesures dure
+> 16·ln 2 = 11,0904 s (8 s en palier à 120, 16 à 60), 90 BPM au milieu,
+> aller-retour exact au tick sur onze positions et à la microseconde en
+> secondes. Le fichier MIDI ne connaît que le palier : l'export rend chaque
+> rampe en paliers d'une noire dont chacun dure exactement ce que la rampe
+> lui donne (durée totale conservée à l'arrondi de la microseconde, 16 pas
+> = 17 événements pour l'exemple), et l'application le DIT au moment
+> d'exporter, avec le nombre de paliers. Dans le fichier de projet, `"ramp":
+> true` seulement quand c'est le cas. Dans la voie de tempo, Ctrl+clic ou
+> double-clic sur un point bascule sa rampe, dessinée en pente ; annulable.
+> Vu à l'écran : 120 → 60 en pente, puis 140 en palier. Quatre tests.
+
 **Ce que l'audit a écarté, et pourquoi.** Le pré-roll (jouer les mesures
 qui précèdent le punch-in) : le décompte existe, et un punch-in se prépare
 en posant la tête avant. Le scrub audio : Live ne l'a pas, et la tête posée
