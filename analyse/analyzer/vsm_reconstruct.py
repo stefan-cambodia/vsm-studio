@@ -666,6 +666,7 @@ def write_reconstruction_report(
     mix_verdict: Optional[Sequence[Dict[str, object]]] = None,
     partage: Optional[Sequence[Dict[str, object]]] = None,
     reverb: Optional[Dict[str, object]] = None,
+    verdict_jalon: Optional[Dict[str, object]] = None,
 ) -> None:
     """
     Écrit le rapport de reconstruction (étape 9.3).
@@ -707,6 +708,11 @@ def write_reconstruction_report(
         # distance de piste. C'est la piste la plus lourde du mélange, et ses
         # décisions n'existaient que sur la sortie standard.
         **({"drums": drums} if drums else {}),
+        # LE JALON DU VERDICT (CDC multipiste § 12) : la distance du projet
+        # telle que le verdict la mesurait juste avant l'écriture, et son
+        # écart avec le rendu final. Deux chemins de mesure, un seul morceau :
+        # l'écart doit rester nul, et quand il ne l'est pas, c'est dit.
+        **({"verdictJalon": verdict_jalon} if verdict_jalon else {}),
         # LE VERDICT DU MÉLANGE, piste par piste : ce qui a été gardé et ce
         # qui a été écarté, avec la distance du MÉLANGE pour chacun. Il
         # n'était qu'imprimé ; or c'est la dernière décision de la chaîne,

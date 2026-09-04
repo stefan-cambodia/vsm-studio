@@ -2220,7 +2220,8 @@ def ajouter_groupes(pistes_export: List[ExportTrack], groupes: Dict[str, str]) -
 
 
 def rendre_et_mesurer(args: argparse.Namespace, sortie: Path, melange: np.ndarray,
-                      chantier: Chantier, complements: Dict[str, object]) -> float:
+                      chantier: Chantier, complements: Dict[str, object],
+                      jalon_verdict: Optional[float] = None) -> float:
     """Rend le projet écrit, mesure sa distance au mélange, écrit l'écoute A/B."""
     print("[5/5] Rendu du projet et mesure")
     rendu = sortie / "reconstruit.wav"
@@ -2241,6 +2242,17 @@ def rendre_et_mesurer(args: argparse.Namespace, sortie: Path, melange: np.ndarra
     distance = reconstruction_distance(melange, reconstruit, SAMPLE_RATE, metric=args.metrique)
     silence = reconstruction_distance(melange, np.zeros_like(melange), SAMPLE_RATE,
                                       metric=args.metrique)
+    # LE VERDICT ET LE RENDU FINAL DOIVENT MESURER LE MÊME MORCEAU (§ 12).
+    jalon = jalon_verdict
+    ecart_jalon = None
+    if jalon is not None and jalon > 0 and np.isfinite(jalon):
+        ecart_jalon = distance / jalon - 1.0
+        if abs(ecart_jalon) > 0.005:
+            print(f"      ATTENTION — le verdict mesurait {jalon:.4f} et le rendu final "
+                  f"{distance:.4f} ({100*ecart_jalon:+.1f} %) : le verdict a jugé un autre "
+                  f"morceau que celui qu'on rend (piste muette, fichier absent ?)")
+    complements = dict(complements, verdict_jalon={
+        "distanceAuSortirDuVerdict": jalon, "ecartAvecLeRenduFinal": ecart_jalon})
     write_reconstruction_report(chantier.reconstruits, sortie / "rapport.json",
                                 global_distance=distance, metric=args.metrique,
                                 iterations=args.iterations, **complements)
@@ -2366,6 +2378,18 @@ def chaine(args: argparse.Namespace) -> None:
                 print(f"      groupes du DAW : {', '.join(groupes_crees)} — les pistes d'un même "
                       f"stem partagent un fader")
 
+        # LE JALON DU VERDICT (§ 12) : la distance du projet tel que le verdict
+        # le mesure, juste avant l'écriture. Le rendu final la remesure par un
+        # autre chemin (le projet écrit, `rendre_et_mesurer`) ; si les deux
+        # chiffres divergent, le verdict a jugé un autre morceau que celui
+        # qu'on rend -- c'est ainsi que la voix muette est restée sept
+        # campagnes sans être vue. Un rendu de plus, une trentaine de secondes.
+        jalon_verdict = None
+        if not args.sans_arbitrage:
+            jalon_verdict = project_mix_distance(
+                pistes_export, melange, sortie, travail / "verdict", SAMPLE_RATE,
+                args.metrique, args.tempo, args.moteur)
+            print(f"      jalon : distance du projet au sortir du verdict {jalon_verdict:.4f}")
         rapport = write_project_bundle(pistes_export, sortie, title=entree.stem, tempo=args.tempo)
         reverb = None
         if args.reverb_melange:
@@ -2390,7 +2414,7 @@ def chaine(args: argparse.Namespace) -> None:
                                     **complements)
         print(f"      {rapport['tracks']} piste(s), {rapport['notes']} note(s)")
 
-        rendre_et_mesurer(args, sortie, melange, chantier, complements)
+        rendre_et_mesurer(args, sortie, melange, chantier, complements, jalon_verdict)
         print(f"  projet    : {sortie}/project.json")
         print(f"  rapport   : {sortie}/rapport.json")
         print(f"  écoute A/B: {sortie}/comparaison.wav (gauche = original, droite = reconstruction)")
