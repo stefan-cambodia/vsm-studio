@@ -31,8 +31,8 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **1 486 tests moteur** (158 core + 1 025 audio
-+ 248 interchange + 25 CLAP + 19 VST3 + 11 façades,
+écoute au clic, et toute la logique testée hors JUCE. Total : **1 791 tests moteur** (237 core + 1 227 audio
++ 272 interchange + 25 CLAP + 19 VST3 + 11 façades,
 tous verts, zéro warning sous les flags du build, `-Wall -Wextra -Wpedantic`.
 L'ancienne mention « y compris -Wfloat-equal -Wsign-conversion -Wshadow »
 est retirée : ces flags ne sont PAS dans le build, et les comparaisons à
@@ -139,7 +139,7 @@ vsm-studio/
 │
 ├── core/                       "vsm_core" — moteur MIDI/séquenceur (158 tests)
 │
-├── audio/                      "vsm_audio" — moteur audio temps réel (1 025 tests)
+├── audio/                      "vsm_audio" — moteur audio temps réel (1 227 tests)
 │   ├── include/vsm/audio/dsp/
 │   │   ├── LadderFilterZDF.h     GÉNÉRALISÉ à N pôles (2-4) -- voir section 7
 │   │   └── ...                   Oscillator, Envelope, Filter(SVF), AnalogDrift, ParameterSmoother
@@ -599,12 +599,12 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 1 486 tests moteur + 73 tests d'analyse, tous verts
+### Bilan actuel : 1 791 tests moteur + 73 tests d'analyse, tous verts (05/09/2026)
 
-- **158 tests `vsm_core`** (dont l'édition du piano roll : opérations de
+- **237 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des
   notes douteuses de la transcription),
-  **1 025 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
+  **1 227 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
   scalaire, indépendance des lignes, bornes de l'approximation de tanh ; et la
   boucle : rebouclage échantillon-exact, notes relâchées au saut) : chorus BBD, Juno-106,
   bus master (biquad/compresseur/limiteur à plafond garanti/LUFS), oversampler,
@@ -4352,6 +4352,93 @@ repères, tempo, mesures, boucle et punch ensemble ; ce qui est à cheval est
 coupé — parce qu'un morceau est une ligne de temps, et que retirer une
 mesure piste par piste sans en oublier une n'était pas possible.
 
+## 49. Ce que D14 à D18 ont ajouté, et les cinq règles qu'elles ont établies
+
+Cette section ne raconte pas les étapes — les feuilles de route le font, avec
+leurs chiffres. Elle dit où vivent les briques neuves, et surtout les
+INVARIANTS qui en sont sortis : ce sont eux qu'on doit connaître avant de
+toucher au code, et aucun ne se devine en le lisant.
+
+### Les briques neuves, et où elles sont
+
+| Brique | Où | Ce qu'elle fait |
+|---|---|---|
+| `sequencer::Groove` | `core/…/Groove.h` | Extrait le placement réel d'une partie et le donne à une autre (D17.8). Des écarts en FRACTION de pas, jamais des ticks : le même groove vaut à tout tempo et à toute résolution. |
+| `sequencer::PlayOrder` | `core/…/PlayOrder.h` | Sections déduites des repères, et `flattenPlayOrder` qui réécrit le matériau pour jouer l'ordre demandé (D18.4). |
+| `io::detectSound` | `audio/…/io/SilenceDetection.h` | Bornes de ce qui dépasse un seuil, à la milliseconde (D17.6). Lit les ÉCHANTILLONS et non le cache d'aperçu, dont la tranche de 256 vaut 5,3 ms. |
+| `sequencer::FadeShape` | `core/…/Track.h` | Forme des fondus, et la formule `fadeShapeGain` (D17.1). |
+| `automationCurveEase` | `core/…/Track.h` | Courbure d'un segment d'automation (D17.7). |
+| `RetrospectiveBuffer` | `core/…/MidiRecorder.h` | Les derniers événements MIDI, alimentés en permanence, récupérables (D17.3). |
+| `PlaybackScheduler::chaseAt` | `core/…/PlaybackScheduler.h` | Les valeurs de contrôleur en vigueur à un tick (D16.2). |
+| Champs de `Track` | `core/…/Track.h` | `locked`, `hidden`, `delayMs`, `transposeSemitones`, `automationMode`, `editGroup` — tous absents du fichier à leur valeur par défaut. |
+
+### Règle 1 — une formule qui se DESSINE et s'ENTEND vit dans le modèle
+
+C'est l'invariant n° 3 du § 6, généralisé par l'usage. `fadeShapeGain` et
+`automationCurveEase` sont dans `core/…/Track.h`, et le moteur les APPELLE.
+Deux formules qui divergeraient feraient dessiner une courbe et en entendre
+une autre — l'écart le plus long à croire qui soit. Un test `audio/` compare
+les deux implémentations de la courbure sur sept valeurs et quatre-vingt-deux
+positions, à 10⁻⁶.
+
+Corollaire pratique : quand une forme est au bon endroit, le dessin n'a rien à
+apprendre. L'arrangement échantillonnait déjà `automationValueAt` tous les deux
+pixels ; la courbure y est apparue sans une ligne de code de dessin.
+
+### Règle 2 — un refus se met à UN endroit, jamais dans les gestes
+
+Le verrou de piste (D16.5) et le groupe d'édition (D18.3) posent le même
+problème et reçoivent la même réponse, par deux chemins différents :
+
+- **Le verrou** : des surcharges de `ClipEdit` qui prennent un `Track&` au lieu
+  d'un `std::vector<Clip>&`. Elles refusent et rendent zéro ; les fonctions qui
+  prennent le vecteur restent la géométrie pure, que les tests exercent.
+- **Le groupe d'édition** : `expandSelectionToEditGroups`, qui fait GRANDIR la
+  sélection. Les six gestes de montage travaillaient déjà sur une sélection —
+  ils en héritent sans une ligne.
+
+Dans les deux cas, écrire la règle dans chacun des six gestes aurait garanti
+que le septième l'oublie. Pour les notes, le point de passage unique existait
+déjà : les trente et un gestes du piano roll appellent `beginEdit` avant de
+toucher au matériau, et c'est lui qui refuse.
+
+### Règle 3 — tout champ neuf va EN DERNIER, et le compilateur ne rattrape pas toujours
+
+`Clip`, `ProjectClip` et `AutomationPoint` se construisent par AGRÉGAT
+POSITIONNEL en plusieurs endroits. Un champ glissé au milieu décale tout ce qui
+suit. Le 05/09/2026, cela a été payé trois fois en une nuit : deux fois
+rattrapé par le compilateur (`float` vers `enum class`, puis vers
+`std::string`), et **une fois en silence** — la courbure d'automation ajoutée en
+dernier prenait sa valeur par défaut dans deux conversions de
+`ProjectDocument`, et se perdait à la sauvegarde sans un mot. Les tests
+d'aller-retour vérifient désormais que les champs VOISINS n'ont pas glissé.
+
+### Règle 4 — `lastSoundingTick()` dès qu'on borne « le morceau »
+
+`lastUsedTick()` ne connaît que le matériau MIDI. C'est ce qu'il faut au
+planificateur, qui décide où s'arrêtent les répétitions d'un clip, et c'est
+FAUX partout où l'on demande « où finit le morceau » : un projet fait de clips
+audio n'a pas de note. La leçon date de D8.3 (l'export d'un projet audio durait
+la seule queue de réverbération) et a été repayée en D18.4, où la dernière
+section d'un projet sans note n'existait pas.
+
+### Règle 5 — quatre suites vertes ne voient pas le chemin `app/`
+
+En D17.7, la courbure d'automation restait droite à l'écran alors que le
+fichier la disait courbe. `core/`, le moteur et le format étaient verts, et
+aucun ne pouvait le voir : la fonction fautive est dans `app/`, où les courbes
+du projet sont REFAITES à partir des voies du moteur après chaque
+republication, et construisaient leurs points sans la courbure. Elle repartait
+donc à zéro à chaque republication, dessinée droite et écrasée à la sauvegarde
+suivante.
+
+Aucune suite ne traverse ce point de passage. C'est exactement ce que la règle
+« lancer l'application et la regarder » existe pour attraper, et c'est ainsi
+qu'elle a été trouvée. La même méthode a trouvé, la même nuit, un « W » tronqué
+en « ... » à l'échelle 150 %, une section manquante à l'aplatissement, et un
+`"locked"` écrit à l'intérieur du bloc réservé aux pistes GELÉES — donc perdu
+sur toute piste non gelée, c'est-à-dire presque toutes.
+
 ## 29. Façades « façon hardware », machine par machine (sections 6 et 21)
 
 Le panneau générique (un potentiomètre par paramètre) reste le filet de
@@ -4571,7 +4658,7 @@ page cache :
 | **4 — Extension** | TR-808/909-style, SH-101-style, Prophet-style | **CLOSE : les quatre faits** (TR-808, TR-909, SH-101, Prophet) |
 | **5 — Synthèses avancées** | DX7-style FM, MS-20-style, Jupiter-style, ARP-style | **CLOSE : les quatre faits**, testés et audibles (`*_demo.wav`) |
 | **6 — Qualité** | Profiling, SIMD, oversampling, unification transports, UI Mixer/device selector, tests de non-régression audio par machine | **CLOSE** : non-régression audio par machine (§ 9 bis), banc CPU + oversampling polyphase (§ 9 ter), profiling intra-DSP + optimisations exactes (§ 9 quater), SIMD entre voix (§ 9 sexies), unification des transports + boucle échantillon-exacte (§ 6 bis). Bilan : graphe 16 pistes **1,40x** plus rapide, Jupiter-8 **2,06x**, Distortion **3,5x**, à empreintes audio inchangées |
-| **7 — Interopérabilité** | ParameterDescriptor sémantique, `*.synth.json`, `project.json`, CLAP, import Python, API locale | **P2-P8 FAITS** : identités sémantiques (308 paramètres), presets, projets, dossier de projet, rendu hors ligne `vsm-render`, adaptateur et hôte CLAP — 59 tests (§ 28). Ne reste que P9 (API locale, Mode B) |
+| **7 — Interopérabilité** | ParameterDescriptor sémantique, `*.synth.json`, `project.json`, CLAP, import Python, API locale | **CLOSE : P2 à P10 FAITS** : identités sémantiques (308 paramètres), presets, projets, dossier de projet, rendu hors ligne `vsm-render`, adaptateur et hôte CLAP. P9 (API locale, Mode B) est `vsm-render --serve`, qui lit des requêtes JSON ligne à ligne sur l'entrée standard — pas de port, pas de serveur à laisser tourner, les deux programmes étant sur la même machine. P10 (la boucle d'optimisation audio→Python→DAW→rendu→Python) EST `reconstruire.py`, et c'est le mode `--serve` qui rend son volume tenable. Cette case disait encore « ne reste que P9 » le 05/09/2026, alors que `ROADMAP-interop.md` § 1 les donnait faits depuis longtemps : corrigé |
 
 **Reste de la Phase 2 avant la Phase 4.** Fait : le **bus master** (section
 15) -- EQ 3 bandes, compresseur, saturation, largeur stéréo, limiteur
