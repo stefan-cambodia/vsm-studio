@@ -670,7 +670,7 @@ temps (+9 %) ; neuf finalistes gagnent −5,0 % sur un morceau et perdent
 +1,4 % sur l'autre — c'est une constante du morceau, et le défaut ne
 change pas.
 
-## 11. Campagne 7 : le second verdict, entre candidates RÉGLÉES — attendu écrit AVANT (04/09/2026, 16:40)
+## 11. Campagne 7 : le second verdict, entre candidates RÉGLÉES — attendu écrit AVANT (04/09/2026, 15:35)
 
 **Ce que la campagne 6 a laissé, relu aux chiffres.** Le § 10 disait que
 « le réglage au mélange rattrape moins bien string que vector ». Les
@@ -713,7 +713,7 @@ machine change, gain sous 1 %) : l'option reste une option, le chiffre se
 publie.
 
 Le script `campagne-7.sh` enchaîne les deux courses et s'arrête à la
-première qui échoue. Départ prévu vers 16:50, fin vers 20:50.
+première qui échoue. Départ à 15:38, fin prévue vers 19:40.
 
 ### En attente de la fin des campagnes (03/09/2026)
 
