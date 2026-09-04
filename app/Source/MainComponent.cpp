@@ -1072,6 +1072,9 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     // D17.7 : les courbes d'automation par-dessus les clips (la touche `A` de
     // l'arrangement), pour les photographier -- une touche ne se capture pas.
     else if (nom == "courbes") arrangement_.toggleAutomation();
+    else if (nom.startsWith("choisir-clip:"))
+        arrangement_.selectFirstClipOf(
+            static_cast<size_t>(std::max(0, nom.substring(13).getIntValue())));
     else if (nom == "tout-choisir") arrangement_.selectAll();
     else if (nom == "couper-clips") arrangement_.splitSelectionAtPlayhead();
     else if (nom == "joindre-clips") arrangement_.joinSelection();
@@ -1609,6 +1612,22 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                         + juce::String(static_cast<int>(masquees))
                                         + juce::String::fromUTF8(u8" masquées)"),
                               masquees > 0);
+                {
+                    // D18.3 : LE GROUPE D'ÉDITION. Huit suffisent -- au-delà,
+                    // on ne s'y retrouve plus, et le besoin réel est « les
+                    // micros de la batterie » et « les doublages de la voix ».
+                    const size_t choisie = trackList_.selectedTrackIndex();
+                    const int actuel = choisie < project_.tracks.size()
+                                           ? project_.tracks[choisie].editGroup : 0;
+                    juce::PopupMenu groupes;
+                    groupes.addItem(kMenuTrackEditGroupNone, u8"Aucun", true, actuel == 0);
+                    for (int g = 1; g <= 8; ++g)
+                        groupes.addItem(kMenuTrackEditGroupNone + g,
+                                         juce::String(u8"Groupe ") + juce::String(g),
+                                         true, actuel == g);
+                    menu.addSubMenu(u8"Groupe d'édition (couper et déplacer ensemble)", groupes,
+                                     !project_.tracks.empty());
+                }
                 menu.addItem(kMenuTrackLock,
                               verrouillee ? u8"Déverrouiller la piste (le montage reprend)"
                                           : u8"Verrouiller la piste (le montage s'arrête)",
@@ -2115,6 +2134,24 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuTrackLock:     toggleLockSelectedTrack(); break;
         case kMenuTrackHide:     hideSelectedTrack(); break;
         case kMenuTrackShowAll:  showAllTracks(); break;
+        default: break;
+    }
+    if (menuItemID >= kMenuTrackEditGroupNone && menuItemID <= kMenuTrackEditGroupLast) {
+        const size_t piste = trackList_.selectedTrackIndex();
+        if (piste < project_.tracks.size()) {
+            const int groupe = menuItemID - kMenuTrackEditGroupNone;
+            if (project_.tracks[piste].editGroup != groupe) {
+                beginProjectEdit(u8"Groupe d'édition");
+                project_.tracks[piste].editGroup = groupe;
+                // AUCUN SIGNAL NE CHANGE : un groupe d'édition lie des gestes,
+                // pas des bus. Rien n'est republié au moteur.
+                arrangement_.repaint();
+                trackList_.repaint();
+            }
+        }
+        return;
+    }
+    switch (menuItemID) {
 #if VSM_WITH_CLAP
         case kMenuTrackClapPlugin: loadClapPluginOnSelectedTrack(); break;
 #endif

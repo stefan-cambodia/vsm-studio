@@ -130,6 +130,17 @@ public:
     /// Le pas d'aimantation à cet endroit du morceau (mesure ou grille fine).
     vsm::midi::Tick snapStep(vsm::midi::Tick tick) const;
     bool hasSelection() const { return !selection_.empty(); }
+
+    /// D18.3 : LA SÉLECTION TELLE QUE LE MONTAGE LA VOIT — celle de
+    /// l'utilisateur, élargie aux pistes du même groupe d'édition.
+    ///
+    /// `selection_` reste EXACTEMENT ce qu'on a cliqué : un clic qui ferait
+    /// grossir la sélection en silence rendrait impossible de savoir ce qu'on
+    /// a pris. L'élargissement est calculé au moment de s'en servir, et il a
+    /// DEUX consommateurs, un seul et même résultat : les gestes de temps, et
+    /// le dessin (qui montre les clips liés comme choisis, sans quoi on
+    /// couperait trois pistes en croyant en couper une).
+    vsm::sequencer::ClipSelection montageSelection() const;
     /// L'ÉTENDUE DE LA SÉLECTION (D14.1), en ticks, toutes pistes confondues.
     /// Faux si rien n'est choisi.
     bool selectionBounds(vsm::midi::Tick& debut, vsm::midi::Tick& fin) const;
@@ -154,6 +165,10 @@ public:
     void duplicateSelection();
     /// Tous les clips de toutes les pistes (Ctrl+A, D11.2).
     void selectAll();
+    /// D18.3 : ne choisir QUE le premier clip de la piste `index`. Sert à
+    /// photographier ce qu'un groupe d'édition fait -- « tout choisir » ne
+    /// prouverait rien, puisque tout serait déjà pris.
+    void selectFirstClipOf(size_t index);
     /// Appelé au relâchement quand un déplacement de piste a refusé des clips
     /// (nombre refusé) : la vue ne sait pas parler, l'application si.
     std::function<void(size_t)> onClipsRefused;

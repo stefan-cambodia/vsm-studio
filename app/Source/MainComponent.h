@@ -187,6 +187,9 @@ private:
         /// D17.4 : masquer la piste choisie, et tout réafficher.
         kMenuTrackHide,
         kMenuTrackShowAll,
+        /// D18.3 : le groupe d'édition de la piste choisie (0 = aucun).
+        kMenuTrackEditGroupNone,
+        kMenuTrackEditGroupLast = kMenuTrackEditGroupNone + 8,
     kMenuEditInsertTimeAtLocators,
     kMenuEditDeleteTimeAtLocators,
     kMenuEditLocatorsFromSelection,

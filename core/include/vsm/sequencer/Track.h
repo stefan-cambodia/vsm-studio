@@ -630,6 +630,19 @@ public:
     /// COMPTÉES (`transposeDroppedNotes`), et l'application le dit.
     int transposeSemitones = 0;
 
+    /// LE GROUPE D'ÉDITION (D18.3) — les Edit Groups de Cubase. 0 = aucun.
+    ///
+    /// Deux pistes du même groupe se COUPENT, se déplacent et se joignent
+    /// ensemble, au même tick. Couper une reconstruction multipiste à la
+    /// mesure 33 demandait douze gestes, et un tick d'écart entre deux micros
+    /// d'une même batterie casse leur phase — c'est-à-dire le son.
+    ///
+    /// RIEN À VOIR AVEC `outputGroup`, qui est un bus de MIXAGE : celui-ci ne
+    /// touche à aucun signal, il ne fait que lier des gestes d'édition. Deux
+    /// pistes peuvent être dans le même groupe d'édition et sortir sur des bus
+    /// différents, et l'inverse.
+    int editGroup = 0;
+
     /// LE DÉCALAGE DE PISTE (D16.7), en MILLISECONDES, négatif pour sonner
     /// plus tôt. Le Delay de l'inspecteur de Cubase, le Track Delay de Live.
     ///

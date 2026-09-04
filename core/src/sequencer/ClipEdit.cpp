@@ -2,6 +2,7 @@
 #include "vsm/sequencer/AutomationEdit.h"
 #include <algorithm>
 #include <cmath>
+#include <map>
 #include <limits>
 
 namespace vsm::sequencer {
@@ -258,6 +259,42 @@ ClipJoin joinClips(Track& track, const ClipSelection& selection, Tick materialEn
     if (track.locked) return {};
     return joinClips(track.clips, selection, materialEnd, track.kind == Track::Kind::Audio,
                       ticksToSeconds);
+}
+
+ClipSelection expandSelectionToEditGroups(const std::vector<Track>& tracks,
+                                           const ClipSelection& selection, Tick materialEnd) {
+    ClipSelection elargie = selection;
+    if (selection.empty()) return elargie;
+
+    // LES PLAGES CHOISIES, PAR GROUPE. On relève d'abord, on élargit ensuite :
+    // élargir en parcourant ferait entrer un clip puis élargirait à partir de
+    // lui, et de proche en proche toute la piste y passerait.
+    std::map<int, std::vector<std::pair<Tick, Tick>>> plages;
+    for (const auto& track : tracks) {
+        if (track.editGroup == 0) continue;
+        for (const auto& clip : track.clips)
+            if (selected(selection, clip))
+                plages[track.editGroup].emplace_back(
+                    clip.startTick, clip.startTick + clipPlayedLength(clip, materialEnd));
+    }
+    if (plages.empty()) return elargie;
+
+    for (const auto& track : tracks) {
+        if (track.editGroup == 0) continue;
+        const auto it = plages.find(track.editGroup);
+        if (it == plages.end()) continue;
+        for (const auto& clip : track.clips) {
+            if (selected(elargie, clip)) continue;
+            const Tick debut = clip.startTick;
+            const Tick fin = debut + clipPlayedLength(clip, materialEnd);
+            for (const auto& [d, f] : it->second)
+                // RECOUVREMENT, et non égalité des bornes : deux micros d'une
+                // même batterie sont découpés pareil, mais un clip a pu être
+                // rogné, et c'est encore le même passage.
+                if (debut < f && d < fin) { elargie.insert(clip.id); break; }
+        }
+    }
+    return elargie;
 }
 
 size_t lockedClipsInSelection(const std::vector<Track>& tracks, const ClipSelection& selection) {

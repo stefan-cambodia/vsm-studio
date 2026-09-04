@@ -80,13 +80,14 @@ void ArrangementComponent::nudgeSelection(vsm::midi::Tick delta) {
     // D16.5 : ce qu'une piste VERROUILLÉE a refusé se compte AVANT de prendre
     // l'instantané -- un déplacement entièrement refusé ne doit rien laisser
     // dans l'historique, et il doit se dire.
+    const auto montage = montageSelection();
     const size_t verrouilles =
-        vsm::sequencer::lockedClipsInSelection(project_->tracks, selection_);
+        vsm::sequencer::lockedClipsInSelection(project_->tracks, montage);
     size_t deplaces = 0;
-    if (verrouilles < selection_.size()) {
+    if (verrouilles < montage.size()) {
         if (onEditStarted) onEditStarted(u8"Déplacer des clips");
         for (auto& track : project_->tracks)
-            deplaces += vsm::sequencer::moveClips(track, selection_, delta, automationSuit_,
+            deplaces += vsm::sequencer::moveClips(track, montage, delta, automationSuit_,
                                                    materialEnd(track));
         notifyChanged();
         repaint();
@@ -567,7 +568,7 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
         const uint64_t depart = project_->peekNextClipId();
         uint64_t compteur = depart;
         if (onEditStarted) onEditStarted(u8"Couper un clip");
-        const size_t coupes = splitClips(track, selection_, ou, materialEnd(track), compteur,
+        const size_t coupes = splitClips(track, montageSelection(), ou, materialEnd(track), compteur,
                                           [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); });
         project_->ensureClipIdAbove(compteur - 1);
         // Les moitiés restent choisies, comme au Ctrl+E : couper à la souris
@@ -745,14 +746,18 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
     if (delta == 0) return;
     gesteDernier_ = maintenant;
 
+    // D18.3 : les pistes du même groupe d'édition suivent le geste, et elles
+    // le suivent parce que la SÉLECTION a grandi -- aucun geste n'a eu à
+    // apprendre ce qu'est un groupe.
+    const auto montage = montageSelection();
     for (auto& track : project_->tracks) {
         const vsm::midi::Tick fin = materialEnd(track);
         auto conversion = [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); };
         switch (geste_) {
-            case Geste::Deplacer:   moveClips(track, selection_, delta, automationSuit_, fin); break;
-            case Geste::BordDroit:  resizeClipsEnd(track, selection_, delta, fin); break;
-            case Geste::Etirer:     stretchClipsEnd(track, selection_, delta, fin, conversion); break;
-            case Geste::BordGauche: resizeClipsStart(track, selection_, delta, fin, conversion); break;
+            case Geste::Deplacer:   moveClips(track, montage, delta, automationSuit_, fin); break;
+            case Geste::BordDroit:  resizeClipsEnd(track, montage, delta, fin); break;
+            case Geste::Etirer:     stretchClipsEnd(track, montage, delta, fin, conversion); break;
+            case Geste::BordGauche: resizeClipsStart(track, montage, delta, fin, conversion); break;
             // Les autres gestes ont été traités plus haut et n'atteignent jamais
             // cette boucle ; les nommer garde le compilateur du côté du lecteur
             // le jour où l'on en ajoutera un.
@@ -785,6 +790,7 @@ void ArrangementComponent::mouseUp(const juce::MouseEvent&) {
 void ArrangementComponent::joinSelection() {
     if (project_ == nullptr || selection_.size() < 2) return;
     size_t joints = 0, refuses = 0;
+    const auto montage = montageSelection();
     // L'INSTANTANÉ N'EST PRIS QUE SI QUELQUE CHOSE VA CHANGER : une jonction
     // toute refusée qui laisserait « Joindre des clips » dans l'historique
     // ferait annuler du vide. On mesure donc d'abord sur une copie.
@@ -795,7 +801,7 @@ void ArrangementComponent::joinSelection() {
         const auto bilan =
             track.locked
                 ? vsm::sequencer::ClipJoin{}
-                : vsm::sequencer::joinClips(essai, selection_, materialEnd(track),
+                : vsm::sequencer::joinClips(essai, montage, materialEnd(track),
                                              track.kind == Track::Kind::Audio,
                                              [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); });
         joints += bilan.joined;
@@ -822,6 +828,7 @@ void ArrangementComponent::joinSelection() {
 void ArrangementComponent::splitSelectionAtPlayhead() {
     if (project_ == nullptr || selection_.empty()) return;
     size_t coupes = 0;
+    const auto montage = montageSelection();
     const uint64_t depart = project_->peekNextClipId();
     uint64_t compteur = depart;
     // Même précaution : on compte avant de prendre l'instantané.
@@ -832,7 +839,7 @@ void ArrangementComponent::splitSelectionAtPlayhead() {
         const size_t faites =
             track.locked
                 ? 0u
-                : splitClips(essai, selection_, playhead_, materialEnd(track), compteur,
+                : splitClips(essai, montage, playhead_, materialEnd(track), compteur,
                               [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); });
         coupes += faites;
         if (faites > 0) resultats.emplace_back(i, std::move(essai));
@@ -850,6 +857,20 @@ void ArrangementComponent::splitSelectionAtPlayhead() {
     for (uint64_t id = depart; id < compteur; ++id) selection_.insert(id);
     notifyChanged();
     repaint();
+}
+
+void ArrangementComponent::selectFirstClipOf(size_t index) {
+    if (project_ == nullptr || index >= project_->tracks.size()) return;
+    selection_.clear();
+    if (!project_->tracks[index].clips.empty())
+        selection_.insert(project_->tracks[index].clips.front().id);
+    repaint();
+}
+
+vsm::sequencer::ClipSelection ArrangementComponent::montageSelection() const {
+    if (project_ == nullptr || selection_.empty()) return selection_;
+    return vsm::sequencer::expandSelectionToEditGroups(project_->tracks, selection_,
+                                                        project_->lastUsedTick());
 }
 
 int ArrangementComponent::markerAt(float x) const {
@@ -1273,6 +1294,7 @@ void ArrangementComponent::paint(juce::Graphics& g) {
     }
 
     // --- Pistes et clips ------------------------------------------------------
+    const auto montage = montageSelection();
     for (size_t i = 0; i < project_->tracks.size(); ++i) {
         const auto& track = project_->tracks[i];
         const int y = trackTop(i);
@@ -1343,7 +1365,11 @@ void ArrangementComponent::paint(juce::Graphics& g) {
 
             juce::Rectangle<float> r(x1, static_cast<float>(y + 3),
                                       std::max(2.0f, x2 - x1), static_cast<float>(h - 7));
-            const bool choisi = selection_.count(clip.id) > 0;
+            // D18.3 : UN CLIP LIÉ PAR SON GROUPE SE MONTRE CHOISI. Sans cela
+            // on couperait trois pistes en croyant en couper une, et c'est
+            // exactement le genre de surprise qu'un groupe d'édition doit
+            // éviter, pas produire.
+            const bool choisi = montage.count(clip.id) > 0;
             // LES CLIPS D'UNE PISTE GELÉE SONT ESTOMPÉS : ils décrivent encore
             // le morceau, mais ce n'est plus eux qu'on entend. Les montrer
             // pleins laisserait croire qu'on les édite.

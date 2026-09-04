@@ -1106,3 +1106,22 @@ VSM_TEST(an_automation_curve_bend_survives_the_trip_and_zero_writes_nothing) {
     VSM_ASSERT_NEAR(rejoue.tracks[0].automation[0].points[0].curve, 0.75f, 1e-6f);
     VSM_ASSERT_NEAR(rejoue.tracks[0].automation[0].points[1].curve, 0.0f, 1e-9f);
 }
+
+// D18.3 — LE GROUPE D'ÉDITION, écrit seulement quand il y en a un.
+VSM_TEST(an_edit_group_survives_the_trip_and_none_writes_nothing) {
+    Project project = buildProject();
+    VSM_ASSERT(projectDocumentToJson(documentFromProject(project)).toString()
+                   .find("editGroup") == std::string::npos);
+    project.tracks[0].editGroup = 3;
+    project.tracks[1].editGroup = 3;
+    const std::string ecrit = projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(ecrit.find("\"editGroup\"") != std::string::npos);
+
+    const ProjectLoadResult relu = parseProjectDocument(ecrit);
+    VSM_ASSERT(relu.success);
+    Project rejoue = project;
+    for (auto& t : rejoue.tracks) t.editGroup = 0;
+    applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT_EQ(rejoue.tracks[0].editGroup, 3);
+    VSM_ASSERT_EQ(rejoue.tracks[1].editGroup, 3);
+}

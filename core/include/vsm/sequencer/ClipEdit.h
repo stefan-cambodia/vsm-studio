@@ -318,6 +318,26 @@ ClipJoin joinClips(Track& track, const ClipSelection& selection, Tick materialEn
 
 /// Combien de clips de la sélection appartiennent à une piste verrouillée :
 /// ce que l'appelant doit DIRE quand un geste n'a pas tout fait.
+/// ÉLARGIR UNE SÉLECTION AUX GROUPES D'ÉDITION (D18.3).
+///
+/// Pour chaque clip choisi appartenant à une piste qui a un `editGroup`, les
+/// clips des AUTRES pistes du même groupe qui couvrent les mêmes ticks entrent
+/// dans la sélection. Les gestes de montage — couper, déplacer, joindre,
+/// redimensionner — héritent alors du groupe SANS UNE LIGNE DE PLUS : ils
+/// travaillent déjà sur une sélection, et c'est la sélection qui a grandi.
+///
+/// C'EST POURQUOI IL N'Y A QU'UNE FONCTION ET PAS SIX. Écrire « et fais la
+/// même chose sur les pistes du groupe » dans chacun des six gestes
+/// garantirait que le septième l'oublie — c'est le raisonnement du verrou
+/// (D16.5), appliqué là où il marche encore mieux.
+///
+/// « Couvrir les mêmes ticks » et non « avoir le même début » : deux micros
+/// d'une même batterie sont découpés pareil, mais un clip peut avoir été
+/// rogné. Le recouvrement est le critère qui décrit ce qu'on veut couper
+/// ensemble.
+ClipSelection expandSelectionToEditGroups(const std::vector<Track>& tracks,
+                                           const ClipSelection& selection, Tick materialEnd);
+
 size_t lockedClipsInSelection(const std::vector<Track>& tracks, const ClipSelection& selection);
 
 } // namespace vsm::sequencer

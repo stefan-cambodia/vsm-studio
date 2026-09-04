@@ -958,3 +958,76 @@ VSM_TEST(a_clip_that_changes_track_hands_its_automation_to_the_new_one) {
     VSM_ASSERT_EQ(pistes[0].automation[0].points.size(), size_t(1));
     VSM_ASSERT_EQ(pistes[0].automation[0].points[0].tick, Tick(2880));
 }
+
+// --------------------------------------------------------------------------
+// D18.3 — LES GROUPES D'ÉDITION.
+//
+// Couper une reconstruction multipiste à la mesure 33 demandait douze gestes,
+// et un tick d'écart entre deux micros d'une même batterie casse leur phase,
+// c'est-à-dire le son.
+// --------------------------------------------------------------------------
+
+VSM_TEST(a_selection_grows_to_the_other_tracks_of_the_same_edit_group) {
+    std::vector<Track> pistes(4);
+    for (int i = 0; i < 4; ++i)
+        pistes[static_cast<size_t>(i)].clips = {clip(static_cast<uint64_t>(i + 1), 0, 1920)};
+    pistes[0].editGroup = 1;
+    pistes[1].editGroup = 1;
+    pistes[2].editGroup = 2;      // un autre groupe : il ne suit pas
+    // pistes[3] n'a aucun groupe : elle ne suit pas non plus.
+
+    const auto elargie = expandSelectionToEditGroups(pistes, {1}, 1920);
+    VSM_ASSERT_EQ(elargie.size(), size_t(2));
+    VSM_ASSERT(elargie.count(1) == 1);
+    VSM_ASSERT(elargie.count(2) == 1);
+    VSM_ASSERT(elargie.count(3) == 0);
+    VSM_ASSERT(elargie.count(4) == 0);
+}
+
+VSM_TEST(cutting_one_track_of_a_group_of_three_cuts_the_three_at_the_same_tick) {
+    // LE CRITÈRE DE L'ÉTAPE. Le geste n'a pas changé d'une ligne : c'est la
+    // SÉLECTION qui a grandi, et `splitClips` coupe ce qui est choisi.
+    std::vector<Track> pistes(4);
+    for (int i = 0; i < 4; ++i)
+        pistes[static_cast<size_t>(i)].clips = {clip(static_cast<uint64_t>(i + 1), 0, 1920)};
+    for (int i = 0; i < 3; ++i) pistes[static_cast<size_t>(i)].editGroup = 7;
+
+    const auto choisis = expandSelectionToEditGroups(pistes, {1}, 1920);
+    uint64_t compteur = 100;
+    size_t coupes = 0;
+    for (auto& piste : pistes)
+        coupes += splitClips(piste, choisis, 960, 1920, compteur, {});
+
+    VSM_ASSERT_EQ(coupes, size_t(3));
+    for (int i = 0; i < 3; ++i) {
+        const auto& c = pistes[static_cast<size_t>(i)].clips;
+        VSM_ASSERT_EQ(c.size(), size_t(2));
+        VSM_ASSERT_EQ(c[1].startTick, Tick(960));      // AU MÊME TICK, les trois
+    }
+    // Et la piste hors groupe n'a pas été touchée.
+    VSM_ASSERT_EQ(pistes[3].clips.size(), size_t(1));
+}
+
+VSM_TEST(the_group_follows_by_overlap_and_not_by_identical_edges) {
+    // Deux micros d'une même batterie sont découpés pareil, mais un clip a pu
+    // être rogné : c'est encore le même passage, et il doit suivre.
+    std::vector<Track> pistes(2);
+    pistes[0].clips = {clip(1, 0, 1920)};
+    pistes[1].clips = {clip(2, 480, 960), clip(3, 3840, 960)};   // l'un rogné, l'autre ailleurs
+    pistes[0].editGroup = pistes[1].editGroup = 3;
+
+    const auto elargie = expandSelectionToEditGroups(pistes, {1}, 4800);
+    VSM_ASSERT(elargie.count(2) == 1);    // il recouvre
+    VSM_ASSERT(elargie.count(3) == 0);    // il ne recouvre pas
+}
+
+VSM_TEST(without_a_group_the_selection_is_returned_untouched) {
+    std::vector<Track> pistes(2);
+    pistes[0].clips = {clip(1, 0, 960)};
+    pistes[1].clips = {clip(2, 0, 960)};
+    const auto elargie = expandSelectionToEditGroups(pistes, {1}, 960);
+    VSM_ASSERT_EQ(elargie.size(), size_t(1));
+    VSM_ASSERT(elargie.count(1) == 1);
+    // Et une sélection vide reste vide : élargir le vide donnerait tout.
+    VSM_ASSERT(expandSelectionToEditGroups(pistes, {}, 960).empty());
+}

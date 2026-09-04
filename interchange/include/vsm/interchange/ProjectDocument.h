@@ -217,6 +217,8 @@ struct ProjectTrack {
     /// D17.5 : la transposition de piste, en demi-tons. Écrite seulement
     /// quand elle n'est pas nulle.
     int transposeSemitones = 0;
+    /// D18.3 : le groupe d'édition. 0 = aucun, et rien n'est écrit.
+    int editGroup = 0;
 
     /// D16.7 : le décalage de piste, en millisecondes. Écrit seulement quand
     /// il n'est pas nul.

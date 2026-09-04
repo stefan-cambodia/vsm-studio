@@ -4088,6 +4088,47 @@ les jours ensuite, le modèle en dernier.
 > format, une version future, un groove sans pas et un JSON cassé sont tous
 > refusés en le disant).
 
+> **D18.3 EST FAITE (05/09/2026), et aucun geste n'a eu à apprendre ce qu'est
+> un groupe.** `Track::editGroup` (0 = aucun, absent du fichier), et UNE seule
+> fonction : `expandSelectionToEditGroups`. Les six gestes de montage —
+> couper, déplacer, joindre, redimensionner, étirer, à la souris comme au
+> clavier — travaillaient déjà sur une sélection ; c'est la SÉLECTION qui a
+> grandi, et ils en héritent sans une ligne de plus. Écrire « et fais la même
+> chose sur les pistes du groupe » dans chacun des six aurait garanti que le
+> septième l'oublie : c'est le raisonnement du verrou (D16.5), et il marche
+> encore mieux ici.
+>
+> `selection_` reste EXACTEMENT ce que l'utilisateur a cliqué — un clic qui
+> ferait grossir la sélection en silence rendrait impossible de savoir ce
+> qu'on a pris. L'élargissement est calculé au moment de s'en servir, et il a
+> deux consommateurs pour un seul résultat : les gestes de temps, et le
+> DESSIN, qui montre les clips liés comme choisis. Sans ce second, on
+> couperait trois pistes en croyant en couper une — exactement la surprise
+> qu'un groupe d'édition doit éviter, pas produire.
+>
+> LE CRITÈRE DE RATTACHEMENT EST LE RECOUVREMENT, et non l'égalité des bornes :
+> deux micros d'une même batterie sont découpés pareil, mais un clip a pu être
+> rogné, et c'est encore le même passage. Rien à voir avec `outputGroup`, qui
+> est un bus de MIXAGE : celui-ci ne touche à aucun signal, deux pistes peuvent
+> être liées à l'édition et sortir sur des bus différents. Huit groupes, parce
+> que le besoin réel est « les micros de la batterie » et « les doublages de
+> la voix », et qu'au-delà on ne s'y retrouve plus.
+>
+> Cinq tests : la sélection grandit au bon groupe et pas aux autres ; couper
+> une piste d'un groupe de trois coupe les trois AU MÊME TICK et laisse la
+> quatrième entière ; le rattachement se fait par recouvrement ; sans groupe la
+> sélection est rendue telle quelle, et une sélection vide reste vide
+> (l'élargir donnerait tout) ; l'aller-retour disque. Vu à l'écran AVEC SON
+> TÉMOIN, un seul clip choisi (`choisir-clip:0,tete:2,couper-clips`) : groupe
+> posé, les deux pistes sont coupées à la mesure 3 ; groupe retiré, seule
+> Acid Bass est coupée et Drums reste entière.
+>
+> **D18.2 (assembler les prises) est prise APRÈS celle-ci, et c'est une
+> décision.** Le comping n'est utilisable qu'avec une vue des prises empilées
+> où l'on dessine la plage qu'on garde : livrer le modèle sans la vue
+> donnerait une fonction que personne ne peut appeler, et ce dépôt préfère une
+> étape entière à deux moitiés.
+
 > **D18.1 EST FAITE (05/09/2026), et son critère a dû être réécrit par la
 > mesure.** « Piste ▸ Reporter la sélection en audio » rend hors ligne les
 > clips choisis — une piste neuve par piste source, posée À LA PLACE de la
