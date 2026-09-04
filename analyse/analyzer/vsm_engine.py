@@ -235,13 +235,23 @@ class VsmEngine:
         self.close()
 
     def close(self) -> None:
-        if self._process.poll() is not None:
-            return
-        try:
-            self._process.stdin.close()
-            self._process.wait(timeout=5)
-        except Exception:
-            self._process.kill()
+        if self._process.poll() is None:
+            try:
+                self._process.stdin.close()
+                self._process.wait(timeout=5)
+            except Exception:
+                self._process.kill()
+        # Les tubes de SORTIE restaient ouverts après l'arrêt du processus :
+        # un moteur finalisé en cours d'exécution (et non à la sortie de
+        # l'interpréteur) levait deux ResourceWarning sous `-W error`. Vu au
+        # banc synthétique, dont les tests ouvrent et ferment plusieurs
+        # moteurs dans la même session.
+        for tube in (self._process.stdout, self._process.stderr):
+            try:
+                if tube is not None:
+                    tube.close()
+            except Exception:
+                pass
 
     # -- rendu ----------------------------------------------------------
 
