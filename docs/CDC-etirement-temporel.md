@@ -369,6 +369,55 @@ sur le chiffre du banc 5.
 > phrase du § 5 l'écrit. Le chiffre par mesure (14 ms) est publié et non
 > arrondi ; il entre dans l'attendu de D12.8.
 
+## 7 bis. D12.8 — le vocodeur de phase, et son attendu écrit AVANT (04/09/2026)
+
+**Pourquoi il vient.** Le § 3 le réservait au cas où « une mesure sur un stem
+réel montre que le WSOLA y perd ». La mesure est venue par D12.7, et ce n'est
+pas le flottement d'enveloppe du banc 5 (0,0 %) : c'est le **flottement de
+PLACEMENT**. Un WSOLA pose chaque grain à ± 16 ms de sa position nominale
+(la zone de recherche), et sur une voix chantée, sans attaque franche à
+verrouiller, le raccord choisi flotte dans cette zone — mesuré de 0 à 14 ms
+d'une mesure à l'autre, sans dérive mais sans précision. Un vocodeur de
+phase n'a pas ce degré de liberté : chaque trame de synthèse est posée
+EXACTEMENT à son saut, et c'est la phase, pas la position, qui assure la
+continuité. Son défaut connu est l'inverse : les attaques s'étalent
+(*smearing*) et les sons tenus deviennent « phaseux » si les phases des
+partiels dérivent les unes par rapport aux autres — deux défauts qui ont
+leurs parades (verrouillage de phase par pic, remise à zéro des phases aux
+transitoires), écrites ici avec le reste.
+
+**Ce qui est écrit.** `audio/include/vsm/audio/dsp/PhaseVocoder.h` : STFT à
+2 048 points sous fenêtre de Hann, saut de synthèse fixe (512), saut
+d'analyse dicté par la carte, propagation de phase par bande avec
+**verrouillage d'identité sur les pics** (Laroche et Dolson : les bandes
+d'un même pic gardent leur relation de phase, c'est ce qui évite le son
+phaseux), et **remise à zéro des phases** à chaque transitoire déclaré (la
+trame qui contient l'attaque reprend les phases d'analyse telles quelles,
+posée là où la carte met l'attaque). Une transformée de Fourier directe
+radix-2 est écrite à côté de l'inverse qui existait (`RealFft.h`), pour la
+même raison qu'elle. Même contrat que `TimeStretch` (carte, transitoires,
+`render` par blocs, `seek`, court-circuit au rapport un), pour que le
+moteur choisisse l'un ou l'autre sans changer une ligne de `mixInto`.
+
+*Ce que j'attends, écrit avant la mesure (dans le banc, avant de le
+lancer)* :
+
+| # | promesse | mesure | seuil |
+|---|---|---|---|
+| 1 | la hauteur ne bouge pas | la3 tenu, ×0,75 et ×1,5 | ≤ 5 cents |
+| 2 | la durée est exacte | sonne jusqu'à round(N·r), silence après | comme le banc 2 |
+| 3 | rapport 1 = l'original | court-circuit | au bit près |
+| 4 | les attaques passent une fois, en place | 16 clics, ×1,5 et ×0,66 | 16 attaques, ≤ 1 ms — c'est la parade des phases remises à zéro qui est jugée |
+| 5 | déterministe, indépendant des blocs | 256 contre 4 096 | au bit près |
+| 6 | **le placement ne flotte pas** | une « voix » de synthèse (harmonique, vibrato lent, enveloppe molle, sans attaque), ×1,1 ; décalage du pic de corrélation d'enveloppe par fenêtres de 1,8 s, comme D12.7 | ≤ 2 ms par fenêtre, là où le WSOLA, mesuré sur le même signal dans le même test, fait plus |
+| 7 | pas phaseux | la3 + ses cinq premiers partiels, ×1,5 ; les partiels gardent leur rapport d'amplitude (± 20 %) et aucun creux d'enveloppe de plus de 10 % | seuils publiés, pas devinés : c'est la promesse du verrouillage de phase |
+| 8 | **le critère de phase, refait** | `mesure_d12_critere_de_phase.py` sur sky-parite, mode vocodeur | ≤ 10 ms sur CHAQUE mesure, ≤ 5 ms sur les huit |
+
+Si le banc 8 tient, le mode « Hauteur conservée » passe au vocodeur pour
+tous les clips, et le WSOLA reste dans le dépôt comme témoin et comme
+solution de repli (une option de clip, dite). S'il ne tient pas, le WSOLA
+reste le défaut, et le chiffre du vocodeur se publie à côté du sien.
+
 ## 8. Ce qui n'est pas au programme, et pourquoi
 
 - **Le suiveur de temps** (détection automatique des temps d'une prise) :
