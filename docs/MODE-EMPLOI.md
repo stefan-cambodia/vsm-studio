@@ -424,6 +424,20 @@ une enveloppe d'amplitude, et la molette de hauteur.
 
 ![Façade de Wave Sequence (le timbre est une séquence)](images/manuel/vsm.wavesequence.png)
 
+**Pipe Organ (une soufflerie commune)** — `vsm.pipeorgan`
+
+L'orgue à tuyaux, pas le Hammond : toutes les notes boivent au même
+réservoir d'air. *Sag* règle de combien le vent s'affaisse quand un accord
+s'ajoute — une note tenue baisse alors de hauteur et de niveau, et remonte
+quand les autres lâchent. *Chiff* est la parole du tuyau : à l'attaque,
+l'octave sort avant la fondamentale, avec un souffle. Les jeux se tirent
+(*Principal*, *Flute 4*, *Mixture* — la douzième et la quinzième) ; le
+tremblant fait onduler la pression, donc la hauteur et le niveau ensemble.
+Pas de vélocité (une soupape s'ouvre, vite ou lentement c'est le même
+vent), pas de molette.
+
+![Façade de Pipe Organ (une soufflerie commune)](images/manuel/vsm.pipeorgan.png)
+
 **Music Box (la lame qui doit revenir)** — `vsm.musicbox`
 
 **Si une note ne sonne pas, ce n'est pas un bogue.** Chaque note est une lame
