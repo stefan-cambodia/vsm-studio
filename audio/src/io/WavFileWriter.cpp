@@ -1,4 +1,5 @@
 #include "vsm/audio/io/WavFileWriter.h"
+#include "vsm/util/DeterministicRng.h"
 #include <algorithm>
 #include <cmath>
 #include <fstream>
@@ -22,10 +23,21 @@ void pushBytes(std::vector<uint8_t>& v, const char* s, size_t n) { v.insert(v.en
 
 float clampSample(float x) { return std::max(-1.0f, std::min(1.0f, x)); }
 
-int16_t floatToInt16(float x) { return static_cast<int16_t>(std::lround(clampSample(x) * 32767.0f)); }
+/// LE DITHER TPDF (D14.4) : la somme de deux tirages uniformes, en LSB, soit
+/// un bruit triangulaire de ± 1 LSB -- celui qui rend l'erreur de quantification
+/// indépendante du signal, et donc inaudible comme distorsion. Un générateur
+/// déterministe à graine fixe : l'export est reproductible octet pour octet.
+struct Dither {
+    vsm::util::DeterministicRng rng{0x4449544852ULL};   // "DITHR"
+    bool actif = true;
+    float lsb = 1.0f / 32767.0f;
+    float bruit() { return actif ? (rng.nextUnipolar() - rng.nextUnipolar()) * lsb : 0.0f; }
+};
 
-void floatToInt24(float x, uint8_t out[3]) {
-    int32_t v = static_cast<int32_t>(std::lround(clampSample(x) * 8388607.0f));
+int16_t floatToInt16(float x, Dither& d) { return static_cast<int16_t>(std::lround(clampSample(clampSample(x) + d.bruit()) * 32767.0f)); }
+
+void floatToInt24(float x, uint8_t out[3], Dither& d) {
+    int32_t v = static_cast<int32_t>(std::lround(clampSample(clampSample(x) + d.bruit()) * 8388607.0f));
     out[0] = static_cast<uint8_t>(v & 0xFF);
     out[1] = static_cast<uint8_t>((v >> 8) & 0xFF);
     out[2] = static_cast<uint8_t>((v >> 16) & 0xFF);
@@ -34,7 +46,10 @@ void floatToInt24(float x, uint8_t out[3]) {
 } // namespace
 
 std::vector<uint8_t> WavFileWriter::write(const float* left, const float* right, size_t numFrames,
-                                           double sampleRate, SampleFormat format) {
+                                           double sampleRate, SampleFormat format, bool dither) {
+    Dither d;
+    d.actif = dither && format != SampleFormat::Float32;
+    d.lsb = format == SampleFormat::Int24 ? 1.0f / 8388607.0f : 1.0f / 32767.0f;
     uint16_t numChannels = right ? 2 : 1;
     uint16_t bitsPerSample = 16;
     uint16_t formatCode = 1; // WAVE_FORMAT_PCM
@@ -80,11 +95,11 @@ std::vector<uint8_t> WavFileWriter::write(const float* left, const float* right,
     for (size_t i = 0; i < numFrames; ++i) {
         switch (format) {
             case SampleFormat::Int16: {
-                int16_t li = floatToInt16(left[i]);
+                int16_t li = floatToInt16(left[i], d);
                 out.push_back(static_cast<uint8_t>(li & 0xFF));
                 out.push_back(static_cast<uint8_t>((li >> 8) & 0xFF));
                 if (right) {
-                    int16_t ri = floatToInt16(right[i]);
+                    int16_t ri = floatToInt16(right[i], d);
                     out.push_back(static_cast<uint8_t>(ri & 0xFF));
                     out.push_back(static_cast<uint8_t>((ri >> 8) & 0xFF));
                 }
@@ -92,11 +107,11 @@ std::vector<uint8_t> WavFileWriter::write(const float* left, const float* right,
             }
             case SampleFormat::Int24: {
                 uint8_t lb[3];
-                floatToInt24(left[i], lb);
+                floatToInt24(left[i], lb, d);
                 out.insert(out.end(), lb, lb + 3);
                 if (right) {
                     uint8_t rb[3];
-                    floatToInt24(right[i], rb);
+                    floatToInt24(right[i], rb, d);
                     out.insert(out.end(), rb, rb + 3);
                 }
                 break;
@@ -119,8 +134,9 @@ std::vector<uint8_t> WavFileWriter::write(const float* left, const float* right,
 }
 
 void WavFileWriter::writeFile(const float* left, const float* right, size_t numFrames,
-                               double sampleRate, SampleFormat format, const std::string& path) {
-    std::vector<uint8_t> bytes = write(left, right, numFrames, sampleRate, format);
+                              double sampleRate, SampleFormat format, const std::string& path,
+                              bool dither) {
+    std::vector<uint8_t> bytes = write(left, right, numFrames, sampleRate, format, dither);
     std::ofstream out(path, std::ios::binary);
     if (!out) throw std::runtime_error("WavFileWriter: impossible d'écrire: " + path);
     out.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));

@@ -3224,6 +3224,18 @@ quotidien d'abord, l'import et l'export ensuite, la préférence en dernier.
 > les mesures du fichier sont IGNORÉS et comptés — le projet garde les
 > siens, et l'application le dit. Deux tests. Fichier ▸ Importer un MIDI
 > dans le projet…, et un `.mid` lâché sur la fenêtre fait pareil ; annulable.
+>
+> **D14.4 EST FAITE (04/09/2026), et son banc a dû réécrire sa forme.**
+> `WavFileWriter` ajoute un bruit TPDF de ± 1 LSB (deux tirages uniformes
+> d'un générateur déterministe à graine fixe : l'export reste reproductible
+> octet pour octet) avant l'arrondi des formats entiers, sans effet sur le
+> flottant ; `RenderOptions::dither` (vrai par défaut) et `vsm-render
+> --sans-dither`. L'attendu disait « un sinus de 1 LSB tronqué est un carré,
+> troisième harmonique à un tiers » : l'écrivain ARRONDIT, il ne tronque
+> pas, et un sinus d'un LSB arrondi est un escalier à trois niveaux dont la
+> troisième harmonique ne vaut que 0,022 — ce sont les cinquième et septième
+> qui ressortent (0,186 et 0,151). Le banc juge donc le profil entier,
+> harmoniques 2 à 12 : pire harmonique 0,186 sans dither, **0,012 avec**.
 
 
 ## 4. Les choix tranchés ici, et pourquoi

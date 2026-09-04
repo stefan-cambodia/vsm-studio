@@ -837,6 +837,8 @@ Cubase, deux chemins donnent un bon résultat : *Fichier ▸ Exporter ▸ Archiv
 pistes* (`.xml`), qui est le meilleur, ou un export **MIDI Type 1** (`.mid`),
 que l'application lit déjà.
 
+**L'export en 16 ou 24 bits est dithérisé** : un bruit triangulaire de ± 1 LSB est ajouté avant l'arrondi, comme dans Cubase ou Live, pour qu'une queue de réverbération à −80 dB reste un souffle et non une distorsion de quantification. Le flottant n'en a pas besoin ; `vsm-render --sans-dither` l'éteint.
+
 ## 7. Les réglages
 
 Tout ce qui se règle est au même endroit. Un réglage qu'on ne retrouve qu'en se souvenant du menu où il se cache est un réglage qu'on ne change pas.
