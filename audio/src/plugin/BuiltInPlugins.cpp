@@ -54,6 +54,7 @@
 #include "clavinet/ClavinetSynth.h"
 #include "mandolin/MandolinSynth.h"
 #include "kalimba/KalimbaSynth.h"
+#include "wavesequence/WaveSequenceSynth.h"
 #include "glass/GlassSynth.h"
 #include "jewsharp/JewsHarpSynth.h"
 #include "theremin/ThereminSynth.h"
@@ -214,6 +215,7 @@ void registerBuiltInPlugins() {
         vsm::plugins::clavinet::ClavinetSynth forceLinkClavinet;
         vsm::plugins::mandolin::MandolinSynth forceLinkMandolin;
         vsm::plugins::kalimba::KalimbaSynth forceLinkKalimba;
+        vsm::plugins::wavesequence::WaveSequenceSynth forceLinkWaveSequence;
         vsm::plugins::glass::GlassSynth forceLinkGlass;
         vsm::plugins::jewsharp::JewsHarpSynth forceLinkJewsHarp;
         vsm::plugins::theremin::ThereminSynth forceLinkTheremin;

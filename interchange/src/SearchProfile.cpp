@@ -233,6 +233,20 @@ constexpr Rule kRules[] = {
     // une qui ne crépite pas s'entend à la première), les trous ensuite.
     {"kalimba.buzz",                       0.0f,     1.0f, SearchScale::Linear,      0.80f},
     {"kalimba.holeCover",                  0.0f,     1.0f, SearchScale::Linear,      0.55f},
+    // SÉQUENÇAGE D'ONDES (vsm.wavesequence). Le pas et le fondu d'abord (le
+    // rythme du timbre), puis les huit formes, la boucle en dernier.
+    {"wavesequence.stepTime",             10.0f,  2000.0f, SearchScale::Logarithmic, 0.85f},
+    {"wavesequence.crossfade",             0.0f,     1.0f, SearchScale::Linear,      0.75f},
+    {"wavesequence.step1",                 0.0f,     4.0f, SearchScale::Linear,      0.70f},
+    {"wavesequence.step2",                 0.0f,     4.0f, SearchScale::Linear,      0.70f},
+    {"wavesequence.step3",                 0.0f,     4.0f, SearchScale::Linear,      0.60f},
+    {"wavesequence.step4",                 0.0f,     4.0f, SearchScale::Linear,      0.60f},
+    {"wavesequence.step5",                 0.0f,     4.0f, SearchScale::Linear,      0.50f},
+    {"wavesequence.step6",                 0.0f,     4.0f, SearchScale::Linear,      0.50f},
+    {"wavesequence.step7",                 0.0f,     4.0f, SearchScale::Linear,      0.50f},
+    {"wavesequence.step8",                 0.0f,     4.0f, SearchScale::Linear,      0.50f},
+    {"wavesequence.loopStart",             1.0f,     8.0f, SearchScale::Linear,      0.40f},
+    {"wavesequence.keyRestart",            0.0f,     1.0f, SearchScale::Linear,      0.30f},
     // VIBRAPHONE (vsm.vibraphone). Le creusement décide où tombent les
     // partiels — c'est ce qu'on entend d'abord ; la part du tube ensuite ;
     // le point de frappe dose le second partiel ; le feutre ne se cherche

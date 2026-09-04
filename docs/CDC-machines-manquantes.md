@@ -1953,6 +1953,73 @@ Pas de molette de hauteur (une lame frappée n'en a pas), refusée en
 connaissance de cause ; CC 1 et pression de canal honorés — ce sont les
 doigts sur les trous.
 
+## 31. H35 — le SÉQUENÇAGE D'ONDES : le seul synthé où le timbre est une SÉQUENCE (écrite avant sa mesure, 04/09/2026)
+
+**Ce que le parc n'avait pas.** `vsm.wavetable` balaie une table d'ondes
+de façon CONTINUE (une enveloppe, un LFO) ; `vsm.vector` promène un point
+entre quatre coins. Le séquençage d'ondes (Korg Wavestation, 1990, et son
+retour dans les Korg d'aujourd'hui) est une troisième chose : le timbre
+est une LISTE — huit pas, chacun une forme d'onde et une durée, joués l'un
+après l'autre avec un fondu entre deux, en boucle, remis au premier pas à
+chaque note ou laissés courir librement. C'est ce qui fait les nappes qui
+« respirent par paliers » et les textures rythmiques des années 1990 ; ni
+un balayage ni une orbite ne les donnent, parce que ni l'un ni l'autre ne
+SAUTE d'un spectre à un autre à des instants réglés. Quatre traits, que le
+banc mesure :
+
+1. **LE TIMBRE EST UNE SÉQUENCE** : le centroïde spectral change d'un pas
+   au suivant et le motif se répète, période de huit pas.
+2. **LE FONDU ENTRE DEUX PAS** : sans fondu, le franchissement d'un pas
+   est un saut de forme d'onde (un clic) ; avec, il ne l'est plus.
+3. **LA BOUCLE** : un point de retour ; après le premier passage, seuls
+   les pas depuis ce point se répètent.
+4. **LA REMISE AU PREMIER PAS À LA NOTE, ou la course libre** : remise,
+   chaque note commence au pas 1 ; libre, une horloge commune décide, et
+   une note tardive commence au pas courant — c'est ce qui fait que deux
+   notes d'un accord y sont toujours ensemble.
+
+Elle lit la MÊME banque de tables que `vsm.wavetable` (chaque pas choisit
+une table et une position dedans) : le matériau est partagé, le geste ne
+l'est pas.
+
+*Ce que j'attends, écrit avant la mesure (dans le banc, avant de le
+lancer)* : (1) pas impairs sur une forme A, pas pairs sur une forme B (les
+deux extrêmes de la banque), pas de 200 ms : les centroïdes des fenêtres
+impaires sont entre eux à 10 % près, ceux des fenêtres paires aussi, et le
+rapport entre les deux vaut au moins 1,5 (dans un sens ou l'autre) ;
+(2) *Crossfade* 0 contre 0,5 : le plus grand saut d'échantillon au
+franchissement d'un pas est au moins trois fois plus petit avec le fondu,
+et sous 0,1 ; (3) *Loop Start* au pas 5, pas 1–4 en A et 5–8 en B : les
+fenêtres 9 à 12 ont le centroïde de B, pas de A ; (4) pas 1 en A, les
+autres en B, une note qui commence trois pas après le départ de l'horloge :
+avec *Key Restart* sa première fenêtre a le centroïde de A, en course
+libre celui de B ; (5) la molette de hauteur est honorée (c'est un synthé),
+la vélocité compte.
+
+### H35 EST TRANCHÉE : SUCCÈS, et le banc du fondu a dû changer de note (04/09/2026)
+
+| Trait | Attendu | Mesuré |
+|---|---|---|
+| centroïdes des pas impairs entre eux, et des pas pairs entre eux | ± 10 % | **1,30 partout / 20,43 partout**, seize fenêtres |
+| rapport entre A et B | ≥ 1,5 | **15,7** |
+| plus grand saut d'échantillon au franchissement, sans / avec fondu | ≥ ×3, et < 0,1 avec | **0,076 / 0,017** (×4,5) |
+| boucle depuis le pas 5 : fenêtres 9 à 12 | le centroïde de B | **20,43 × 4** |
+| remise à la note, note trois pas après le départ : première fenêtre | A (1,30) puis B | **1,30 puis 20,43** |
+| course libre, même note | B dès la première fenêtre | **20,43 puis 20,43** |
+| molette de hauteur (+12), vélocité 30 contre 120 | honorée ; ≥ ×1,5 | tenu |
+
+**Ce que le banc du fondu enseigne.** Écrit sur la2 (110 Hz) avec des pas
+de 200 ms, il ne trouvait PAS de clic sans fondu (0,088 contre 0,096 avec) :
+un pas de 200 ms fait vingt-deux cycles de 110 Hz tout rond, chaque
+franchissement tombait à la phase zéro, où presque toutes les formes
+passent par zéro. Un test qui mesure un saut doit faire tomber les
+franchissements sur des phases variées ; sur si♭2 (23,3 cycles par pas),
+le saut apparaît (0,076) et le fondu le divise par 4,5. L'attendu n'a pas
+changé, la note du banc, si — et c'est dit. Onze tests, empreinte, façade
+SEQUENCE · FILTER · ENVELOPE (rendue et regardée) ; douze identités neuves
+(les huit pas, le pas, le fondu, la boucle, la remise). Le parc passe à
+**63 machines**.
+
 ## 12. H10 — la guitare ÉLECTRIQUE est-elle vraiment couverte ? (écrite avant sa mesure, 02/09/2026)
 
 **Le fait qui la motive est une contradiction interne à ce dépôt.** Le tableau

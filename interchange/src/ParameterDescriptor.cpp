@@ -560,6 +560,32 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Velocity Sensitivity", "voice.velocitySensitivity"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.wavesequence ---
+    // Les huit pas sont l'instrument : une identité par pas (aucune autre
+    // machine n'a de liste de formes), plus le pas, le fondu, la boucle et la
+    // remise à la note. Le filtre et l'enveloppe parlent la langue commune.
+    {"vsm.wavesequence", {
+        {"Step 1 Wave", "wavesequence.step1"},
+        {"Step 2 Wave", "wavesequence.step2"},
+        {"Step 3 Wave", "wavesequence.step3"},
+        {"Step 4 Wave", "wavesequence.step4"},
+        {"Step 5 Wave", "wavesequence.step5"},
+        {"Step 6 Wave", "wavesequence.step6"},
+        {"Step 7 Wave", "wavesequence.step7"},
+        {"Step 8 Wave", "wavesequence.step8"},
+        {"Step Time", "wavesequence.stepTime"},
+        {"Crossfade", "wavesequence.crossfade"},
+        {"Loop Start", "wavesequence.loopStart"},
+        {"Key Restart", "wavesequence.keyRestart"},
+        {"Filter Cutoff", "filter.1.cutoff"},
+        {"Filter Resonance", "filter.1.resonance"},
+        {"Attack", "env.amp.attack"},
+        {"Decay", "env.amp.decay"},
+        {"Sustain", "env.amp.sustain"},
+        {"Release", "env.amp.release"},
+        {"Velocity Sensitivity", "voice.velocitySensitivity"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.vibraphone ---
     // La barre parle le vocabulaire de `vsm.modal` (temps, pente, maillet),
     // le moteur celui du trémolo (c'est le trémolo de l'instrument, comme

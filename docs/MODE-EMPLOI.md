@@ -403,6 +403,19 @@ rien. Pas de molette de hauteur.
 
 ![Façade de Kalimba (la lame encastrée et la caisse qu’on bouche)](images/manuel/vsm.kalimba.png)
 
+**Wave Sequence (le timbre est une séquence)** — `vsm.wavesequence`
+
+Le séquençage d'ondes des stations de travail des années 1990 : huit pas,
+chacun une forme d'onde prise dans la banque du *Wavetable Synth* (le
+bouton choisit la table et la position dedans), joués l'un après l'autre
+au rythme de *Step*, avec un fondu (*XFade*) entre deux, en boucle depuis
+le pas *Loop*. *Restart* remet chaque note au premier pas ; à zéro, une
+horloge commune court librement et une note tardive commence au pas
+courant — c'est ce qui tient ensemble les notes d'un accord. Un filtre et
+une enveloppe d'amplitude, et la molette de hauteur.
+
+![Façade de Wave Sequence (le timbre est une séquence)](images/manuel/vsm.wavesequence.png)
+
 **Music Box (la lame qui doit revenir)** — `vsm.musicbox`
 
 **Si une note ne sonne pas, ce n'est pas un bogue.** Chaque note est une lame
