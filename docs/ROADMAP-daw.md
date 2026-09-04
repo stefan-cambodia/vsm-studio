@@ -3065,6 +3065,25 @@ Rétablir rendrait ; un clic sur un pas y revient par le même chemin que
 Ctrl+Z) — et la palette de commandes (agréable, sans geste quotidien
 derrière).
 
+### Phase D13 — Le second audit : ce qui manque encore une fois D12 posée (04/09/2026)
+
+**Pourquoi.** D11 avait audité les gestes quotidiens ; D12 a posé le suivi
+de tempo, et un clip qui suit le tempo appelle des gestes qui n'existaient
+pas avant lui. Le même audit, refait dans le code, trouve six absences —
+dont une qui MENT, et qui passe donc en premier (règle 1 du § 3).
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D13.1 | **Deux clips audio qui se chevauchent S'ADDITIONNENT** : `mixInto` somme toutes les portées, et une prise posée sur la fin d'une autre double le son sur le chevauchement — ce qu'aucun DAW ne fait. Cubase et Live y mettent un fondu enchaîné | sur le chevauchement, le premier clip s'éteint et le second monte, linéairement, la somme restant à un ; la région se voit hachurée dans l'arrangement ; test moteur : deux clips d'un même signal qui se chevauchent d'une seconde jouent à niveau constant |
+| D13.2 | **Étirer un clip audio à la souris** : le geste de D12 manque — tirer le bord droit d'un clip étiré ne fait que le prolonger (la carte se prolonge, le matériau continue) | Ctrl tenu, tirer le bord droit ÉTIRE : le dernier marqueur suit le bord, le mode passe en « hauteur conservée » s'il était éteint ; la règle dit ce que fait le bord ; annulable ; test `core/` |
+| D13.3 | **Insérer ou supprimer une plage de temps** sur tout le morceau (l'outil Plage de Cubase) : retirer une mesure d'un arrangement déplace aujourd'hui piste par piste | Édition ▸ Insérer du silence à la tête de lecture / Supprimer la sélection de temps : clips, notes, automation, marqueurs, tempo et mesures de TOUTES les pistes glissent ensemble ; ce qui est à cheval est coupé ; test `core/` |
+| D13.4 | **Un clip audio à l'envers** (cymbale, traîne inversée) : `Clip` n'a pas de sens de lecture | menu du clip « À l'envers » ; le moteur lit le fichier à rebours sur la fenêtre du clip ; la forme d'onde se dessine à l'envers ; sauvegardé ; test moteur (la lecture inversée d'une rampe est une rampe descendante) |
+| D13.5 | **La saisie pas à pas** dans le piano roll (Cubase) : un clavier — d'ordinateur ou MIDI — pose des notes à la position d'insertion, qui avance d'un pas de grille à chaque note, sans que le transport tourne | un bouton de la barre du piano roll l'arme ; chaque note reçue s'écrit à la position, de la longueur de la grille ; Entrée avance sans note (un silence), Retour arrière recule ; vu à l'écran |
+| D13.6 | **Normaliser un clip** : le gain existe, personne ne le calcule | menu du clip « Normaliser » : le gain devient 1 / crête du matériau joué ; dit dans le gain du clip, annulable |
+
+L'ordre suit le § 3 : ce qui ment (D13.1) avant ce qui manque ; le geste
+de D12 (D13.2) et l'arrangement global (D13.3) avant le confort.
+
 ## 4. Les choix tranchés ici, et pourquoi
 
 Conformément à l'usage de ce dépôt, les questions ouvertes se referment en
