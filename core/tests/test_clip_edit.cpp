@@ -769,3 +769,105 @@ VSM_TEST(on_an_audio_track_the_window_in_the_file_must_continue_too) {
     midi[1].sourceStartSeconds = 9.0;
     VSM_ASSERT_EQ(joinClips(midi, {1, 2}, 100000, false, enSecondes).joined, size_t(1));
 }
+
+// --------------------------------------------------------------------------
+// D16.5 — LE VERROU. Une piste verrouillée se joue, s'entend et se mixe comme
+// avant ; c'est son MONTAGE qui est refusé. Le refus est dans ces surcharges,
+// pas dans les quarante gestes des vues.
+// --------------------------------------------------------------------------
+
+namespace {
+/// Une piste qui porte deux clips d'une mesure et les notes qui vont avec.
+Track pisteDeuxClips(uint64_t premierId) {
+    Track piste;
+    uint64_t ids = 1;
+    for (int i = 0; i < 4; ++i)
+        piste.addNote(480 * i, 480 * i + 240, static_cast<uint8_t>(60 + i), 100, 0, ids);
+    piste.clips = {clip(premierId, 0, 960), clip(premierId + 1, 960, 960, 960)};
+    return piste;
+}
+} // namespace
+
+VSM_TEST(a_locked_track_refuses_every_edit_and_not_a_tick_moves) {
+    Track piste = pisteDeuxClips(1);
+    piste.locked = true;
+    const auto avant = piste.clips;
+
+    VSM_ASSERT_EQ(moveClips(piste, {1, 2}, 480), size_t(0));
+    VSM_ASSERT_EQ(resizeClipsEnd(piste, {1}, 480, 1920), size_t(0));
+    VSM_ASSERT_EQ(resizeClipsStart(piste, {1}, 480, 1920, {}), size_t(0));
+    VSM_ASSERT_EQ(stretchClipsEnd(piste, {1}, 480, 1920, {}), size_t(0));
+    uint64_t compteur = 3;
+    VSM_ASSERT_EQ(splitClips(piste, {1}, 480, 1920, compteur, {}), size_t(0));
+    VSM_ASSERT(duplicateClips(piste, {1}, 1920, compteur).empty());
+    VSM_ASSERT_EQ(createClip(piste, 3840, 960, compteur, 1920).id, uint64_t(0));
+    VSM_ASSERT_EQ(joinClips(piste, {1, 2}, 1920, {}).joined, size_t(0));
+
+    VSM_ASSERT_EQ(compteur, uint64_t(3));            // pas un identifiant distribué
+    VSM_ASSERT_EQ(piste.clips.size(), avant.size());
+    for (size_t i = 0; i < avant.size(); ++i) {
+        VSM_ASSERT_EQ(piste.clips[i].startTick, avant[i].startTick);
+        VSM_ASSERT_EQ(piste.clips[i].length, avant[i].length);
+        VSM_ASSERT_EQ(piste.clips[i].sourceStart, avant[i].sourceStart);
+    }
+
+    // Déverrouillée, le MÊME appel passe : c'est le cadenas qu'on mesure, pas
+    // une sélection vide ou un geste impossible.
+    piste.locked = false;
+    VSM_ASSERT_EQ(moveClips(piste, {1, 2}, 480), size_t(2));
+    VSM_ASSERT_EQ(piste.clips[0].startTick, Tick(480));
+}
+
+VSM_TEST(a_selection_across_a_locked_and_a_free_track_only_moves_the_free_one) {
+    std::vector<Track> pistes{pisteDeuxClips(1), pisteDeuxClips(3)};
+    pistes[0].locked = true;
+    const auto avantVerrouillee = pistes[0].clips;
+
+    // Ce que l'appelant doit DIRE : deux clips sur quatre sont verrouillés.
+    VSM_ASSERT_EQ(lockedClipsInSelection(pistes, {1, 2, 3, 4}), size_t(2));
+
+    size_t deplaces = 0;
+    for (auto& piste : pistes) deplaces += moveClips(piste, {1, 2, 3, 4}, 960);
+    VSM_ASSERT_EQ(deplaces, size_t(2));                       // seuls ceux de la piste libre
+    VSM_ASSERT_EQ(pistes[0].clips[0].startTick, avantVerrouillee[0].startTick);
+    VSM_ASSERT_EQ(pistes[0].clips[1].startTick, avantVerrouillee[1].startTick);
+    VSM_ASSERT_EQ(pistes[1].clips[0].startTick, Tick(960));
+    VSM_ASSERT_EQ(pistes[1].clips[1].startTick, Tick(1920));
+}
+
+VSM_TEST(a_locked_track_neither_gives_a_clip_nor_receives_one) {
+    // Des deux côtés : on ne prend rien à une piste verrouillée, et on ne lui
+    // pose rien. Sinon le verrou se contournerait en poussant depuis la
+    // voisine.
+    std::vector<Track> versLeBas{pisteDeuxClips(1), pisteDeuxClips(3)};
+    versLeBas[1].locked = true;
+    auto rapport = moveClipsAcrossTracks(versLeBas, {1, 2}, 1);
+    VSM_ASSERT_EQ(rapport.moved, size_t(0));
+    VSM_ASSERT_EQ(rapport.refused, size_t(2));
+    VSM_ASSERT_EQ(versLeBas[0].clips.size(), size_t(2));
+
+    std::vector<Track> depuis{pisteDeuxClips(1), pisteDeuxClips(3)};
+    depuis[0].locked = true;
+    rapport = moveClipsAcrossTracks(depuis, {1, 2}, 1);
+    VSM_ASSERT_EQ(rapport.moved, size_t(0));
+    VSM_ASSERT_EQ(rapport.refused, size_t(2));
+    VSM_ASSERT_EQ(depuis[0].clips.size(), size_t(2));
+}
+
+VSM_TEST(locking_a_track_changes_nothing_to_what_it_plays) {
+    // VERROUILLER N'EST PAS TAIRE : c'est la moitié de la définition, et elle
+    // se vérifie au planificateur, pas à la géométrie.
+    Project libre;
+    libre.ticksPerQuarterNote = 480;
+    libre.tempoMap.addTempoChange(0, 500000);
+    libre.tracks.push_back(pisteDeuxClips(1));
+    Project verrouille = libre;
+    verrouille.tracks[0].locked = true;
+
+    const auto a = PlaybackScheduler::build(libre, 0, 100000);
+    const auto b = PlaybackScheduler::build(verrouille, 0, 100000);
+    VSM_ASSERT_EQ(b.size(), a.size());
+    VSM_ASSERT(!a.empty());
+    for (size_t i = 0; i < a.size(); ++i)
+        VSM_ASSERT_NEAR(b[i].timeSeconds, a[i].timeSeconds, 1e-12);
+}

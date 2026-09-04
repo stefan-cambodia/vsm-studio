@@ -254,6 +254,7 @@ ProjectDocument documentFromProject(const Project& project) {
         entry.arrangementHeight = track.arrangementHeight;
         entry.folded = track.folded;
         entry.frozen = track.frozen;
+        entry.locked = track.locked;
         entry.frozenAudio.path = track.frozenAudio.path;
         entry.frozenAudio.sampleRate = track.frozenAudio.sampleRate;
         entry.frozenAudio.frames = track.frozenAudio.frames;
@@ -391,6 +392,7 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.arrangementHeight = source.arrangementHeight;
         target.folded = source.folded;
         target.frozen = source.frozen;
+        target.locked = source.locked;
         target.frozenAudio = {source.frozenAudio.path, source.frozenAudio.sampleRate,
                                source.frozenAudio.frames, source.frozenAudio.channels};
         target.audio = {source.audio.path, source.audio.sampleRate,
@@ -569,6 +571,11 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         if (track.arrangementHeight != 56)
             entry.set("height", JsonValue::makeNumber(static_cast<double>(track.arrangementHeight)));
         if (track.folded) entry.set("folded", JsonValue::makeBoolean(true));
+        // D16.5 : LE VERROU, écrit seulement quand il est mis, et INDÉPENDANT
+        // du gel -- ce sont deux choses sans rapport (l'un est une affaire de
+        // CPU, l'autre de montage), et l'imbriquer dans le second aurait fait
+        // perdre le premier sur toute piste non gelée.
+        if (track.locked) entry.set("locked", JsonValue::makeBoolean(true));
         if (track.frozen || !track.frozenAudio.path.empty()) {
             entry.set("frozen", JsonValue::makeBoolean(track.frozen));
             JsonValue gel = JsonValue::makeObject();
@@ -781,6 +788,7 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         track.arrangementHeight = static_cast<int>(entry["height"].asNumber(56.0));
         track.folded = entry["folded"].asBoolean(false);
         track.frozen = entry["frozen"].asBoolean(false);
+        track.locked = entry["locked"].asBoolean(false);
         if (entry["frozenAudio"].isObject()) {
             track.frozenAudio.path = entry["frozenAudio"]["file"].asString();
             // MÊME RÈGLE QUE PARTOUT : un chemin absolu est refusé, jamais

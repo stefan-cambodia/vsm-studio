@@ -177,9 +177,22 @@ Note* PianoRollComponent::findNoteAt(juce::Point<float> pos, bool* nearRightEdge
 // Historique et notifications
 // ---------------------------------------------------------------------------
 
-void PianoRollComponent::beginEdit(const juce::String& label) {
+bool PianoRollComponent::beginEdit(const juce::String& label) {
+    // LE VERROU (D16.5), EN UN SEUL ENDROIT. Les trente-deux gestes d'édition
+    // de notes passent tous par ici avant de toucher au matériau : mettre le
+    // cadenas dans chacun d'eux garantirait qu'un jour l'un l'oublie.
+    if (activeTrackLocked()) {
+        if (onLockRefused) onLockRefused();
+        return false;
+    }
     if (project_ != nullptr && history_ != nullptr)
         history_->beginEdit(*project_, label.toStdString());
+    return true;
+}
+
+bool PianoRollComponent::activeTrackLocked() const {
+    const Track* track = activeTrack();
+    return track != nullptr && track->locked;
 }
 
 void PianoRollComponent::notifyEdited() {
@@ -447,7 +460,7 @@ void PianoRollComponent::selectNextDoubtfulNote(bool forward) {
 void PianoRollComponent::deleteSelection() {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    beginEdit("Supprimer");
+    if (!beginEdit("Supprimer")) return;
     track->notes.erase(std::remove_if(track->notes.begin(), track->notes.end(),
                                        [this](const Note& n) { return selectedNoteIds_.count(n.id) > 0; }),
                         track->notes.end());
@@ -466,7 +479,7 @@ void PianoRollComponent::duplicateSelection() {
     if (grid > 0) offset = ((offset + grid - 1) / grid) * grid;
     offset = std::max<Tick>(grid, offset);
 
-    beginEdit("Dupliquer");
+    if (!beginEdit("Dupliquer")) return;
     uint64_t idCounter = project_->peekNextNoteId() - 1;
     NoteSelection created = duplicateNotes(track->notes, selectedNoteIds_, offset, idCounter);
     project_->ensureNoteIdAbove(idCounter);
@@ -496,7 +509,7 @@ void PianoRollComponent::paste() {
     for (const auto& n : clipboard_) minTick = std::min(minTick, n.startTick);
     const Tick offset = playheadTick_ - minTick;
 
-    beginEdit("Coller");
+    if (!beginEdit("Coller")) return;
     selectedNoteIds_.clear();
     for (const auto& n : clipboard_) {
         Note copy = n;
@@ -512,7 +525,7 @@ void PianoRollComponent::paste() {
 void PianoRollComponent::transposeSelection(int semitones) {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    beginEdit(semitones > 0 ? "Transposer +" : "Transposer -");
+    if (!beginEdit(semitones > 0 ? "Transposer +" : "Transposer -")) return;
     transposeNotes(track->notes, selectedNoteIds_, semitones);
     notifyEdited();
 }
@@ -520,7 +533,7 @@ void PianoRollComponent::transposeSelection(int semitones) {
 void PianoRollComponent::nudgeSelection(int64_t deltaTicks) {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    beginEdit(u8"Décaler");
+    if (!beginEdit(u8"Décaler")) return;
     nudgeNotes(track->notes, selectedNoteIds_, deltaTicks);
     notifyEdited();
 }
@@ -528,7 +541,7 @@ void PianoRollComponent::nudgeSelection(int64_t deltaTicks) {
 void PianoRollComponent::setSelectionLengthToGrid() {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    beginEdit(u8"Durée = grille");
+    if (!beginEdit(u8"Durée = grille")) return;
     setNoteLengths(track->notes, selectedNoteIds_, gridTicks());
     notifyEdited();
 }
@@ -536,7 +549,7 @@ void PianoRollComponent::setSelectionLengthToGrid() {
 void PianoRollComponent::scaleSelectionLength(float factor) {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    beginEdit(juce::String(u8"Durée x") + juce::String(factor, 2));
+    if (!beginEdit(juce::String(u8"Durée x") + juce::String(factor, 2))) return;
     scaleNoteLengths(track->notes, selectedNoteIds_, factor);
     notifyEdited();
 }
@@ -560,7 +573,7 @@ void PianoRollComponent::quantizeSelection(float strength, bool alsoQuantizeEnds
         if (selectedNoteIds_.count(n.id) > 0) selected.push_back(n);
     if (selected.empty()) return;
 
-    beginEdit("Quantifier");
+    if (!beginEdit("Quantifier")) return;
     quantizeNotes(selected, settings, project_->ticksPerQuarterNote);
     for (auto& n : track->notes) {
         auto it = std::find_if(selected.begin(), selected.end(),
@@ -584,7 +597,7 @@ void PianoRollComponent::humanizeSelection(float timingTicks, float velocityAmou
         if (selectedNoteIds_.count(n.id) > 0) selected.push_back(n);
     if (selected.empty()) return;
 
-    beginEdit("Humaniser");
+    if (!beginEdit("Humaniser")) return;
     humanizeNotes(selected, settings);
     for (auto& n : track->notes) {
         auto it = std::find_if(selected.begin(), selected.end(),
@@ -597,7 +610,7 @@ void PianoRollComponent::humanizeSelection(float timingTicks, float velocityAmou
 void PianoRollComponent::applyLegatoToSelection() {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    beginEdit("Legato");
+    if (!beginEdit("Legato")) return;
     applyLegato(track->notes, selectedNoteIds_);
     notifyEdited();
 }
@@ -605,7 +618,7 @@ void PianoRollComponent::applyLegatoToSelection() {
 void PianoRollComponent::removeOverlapsInSelection() {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    beginEdit("Retirer chevauchements");
+    if (!beginEdit("Retirer chevauchements")) return;
     removeOverlaps(track->notes, selectedNoteIds_);
     notifyEdited();
 }
@@ -613,7 +626,7 @@ void PianoRollComponent::removeOverlapsInSelection() {
 void PianoRollComponent::splitSelectionAtPlayhead() {
     Track* track = activeTrack();
     if (!track || !project_ || selectedNoteIds_.empty()) return;
-    beginEdit("Couper");
+    if (!beginEdit("Couper")) return;
     uint64_t idCounter = project_->peekNextNoteId() - 1;
     NoteSelection created;
     const size_t made = splitNotes(track->notes, selectedNoteIds_, playheadTick_, idCounter, &created);
@@ -626,7 +639,7 @@ void PianoRollComponent::splitSelectionAtPlayhead() {
 void PianoRollComponent::joinSelection() {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.size() < 2) return;
-    beginEdit("Fusionner");
+    if (!beginEdit("Fusionner")) return;
     joinNotes(track->notes, selectedNoteIds_);
     notifyEdited();
 }
@@ -634,7 +647,7 @@ void PianoRollComponent::joinSelection() {
 void PianoRollComponent::reverseSelection() {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.size() < 2) return;
-    beginEdit(u8"Rétrograder");
+    if (!beginEdit(u8"Rétrograder")) return;
     reverseNotesInTime(track->notes, selectedNoteIds_);
     notifyEdited();
 }
@@ -642,7 +655,7 @@ void PianoRollComponent::reverseSelection() {
 void PianoRollComponent::mirrorSelectionPitch() {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    beginEdit("Miroir des hauteurs");
+    if (!beginEdit("Miroir des hauteurs")) return;
     mirrorNotesPitch(track->notes, selectedNoteIds_);
     notifyEdited();
 }
@@ -656,7 +669,7 @@ void PianoRollComponent::selectNotes(const NoteSelection& ids) {
 void PianoRollComponent::setSelectionVelocity(uint8_t velocity) {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    beginEdit(u8"Vélocité");
+    if (!beginEdit(u8"Vélocité")) return;
     setVelocity(track->notes, selectedNoteIds_, velocity);
     notifyEdited();
 }
@@ -664,7 +677,7 @@ void PianoRollComponent::setSelectionVelocity(uint8_t velocity) {
 void PianoRollComponent::scaleSelectionVelocity(float factor) {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    beginEdit(juce::String(u8"Vélocité x") + juce::String(factor, 2));
+    if (!beginEdit(juce::String(u8"Vélocité x") + juce::String(factor, 2))) return;
     scaleVelocity(track->notes, selectedNoteIds_, factor);
     notifyEdited();
 }
@@ -672,7 +685,7 @@ void PianoRollComponent::scaleSelectionVelocity(float factor) {
 void PianoRollComponent::rampSelectionVelocity(uint8_t from, uint8_t to) {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    beginEdit(from < to ? "Crescendo" : "Decrescendo");
+    if (!beginEdit(from < to ? "Crescendo" : "Decrescendo")) return;
     rampVelocity(track->notes, selectedNoteIds_, from, to);
     notifyEdited();
 }
@@ -680,7 +693,7 @@ void PianoRollComponent::rampSelectionVelocity(uint8_t from, uint8_t to) {
 void PianoRollComponent::randomizeSelectionVelocity(int amount) {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    beginEdit(u8"Vélocité aléatoire");
+    if (!beginEdit(u8"Vélocité aléatoire")) return;
     randomizeVelocity(track->notes, selectedNoteIds_, amount, 0xA11CEu);
     notifyEdited();
 }
@@ -688,7 +701,7 @@ void PianoRollComponent::randomizeSelectionVelocity(int amount) {
 void PianoRollComponent::constrainSelectionToScale() {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    beginEdit(u8"Contraindre à la gamme");
+    if (!beginEdit(u8"Contraindre à la gamme")) return;
     constrainNotesToScale(track->notes, selectedNoteIds_, scale_);
     notifyEdited();
 }
@@ -696,7 +709,7 @@ void PianoRollComponent::constrainSelectionToScale() {
 void PianoRollComponent::toggleSelectionMuted() {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    beginEdit("Rendre muet");
+    if (!beginEdit("Rendre muet")) return;
     toggleNotesMuted(track->notes, selectedNoteIds_);
     notifyEdited();
 }
@@ -704,7 +717,7 @@ void PianoRollComponent::toggleSelectionMuted() {
 void PianoRollComponent::arpeggiateSelection(ArpeggioMode mode) {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    beginEdit(u8"Arpéger");
+    if (!beginEdit(u8"Arpéger")) return;
     arpeggiateNotes(track->notes, selectedNoteIds_, gridTicks(), mode);
     notifyEdited();
 }
@@ -712,7 +725,7 @@ void PianoRollComponent::arpeggiateSelection(ArpeggioMode mode) {
 void PianoRollComponent::insertChordAtPlayhead(ChordType type, uint8_t rootNote) {
     Track* track = activeTrack();
     if (!track || !project_) return;
-    beginEdit(u8"Insérer accord");
+    if (!beginEdit(u8"Insérer accord")) return;
     uint64_t idCounter = project_->peekNextNoteId() - 1;
     NoteSelection created = insertChord(track->notes, snapTick(playheadTick_), gridTicks() * 4,
                                          rootNote, type, track->channel, defaultVelocity_, idCounter);
@@ -731,7 +744,7 @@ void PianoRollComponent::setStepInputEnabled(bool enabled) {
 void PianoRollComponent::stepInputNote(uint8_t note, uint8_t velocity) {
     Track* track = activeTrack();
     if (!track || !project_ || !stepInput_) return;
-    beginEdit(u8"Saisie pas à pas");
+    if (!beginEdit(u8"Saisie pas à pas")) return;
     const vsm::midi::Tick debut = snapTick(playheadTick_);
     const vsm::midi::Tick pas = std::max<vsm::midi::Tick>(1, gridTicks());
     Note n;
@@ -966,7 +979,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& event) {
     switch (tool_) {
         case Tool::Erase:
             if (hit) {
-                beginEdit("Effacer");
+                if (!beginEdit("Effacer")) return;
                 const uint64_t id = hit->id;
                 track->notes.erase(std::remove_if(track->notes.begin(), track->notes.end(),
                                                    [id](const Note& n) { return n.id == id; }),
@@ -979,7 +992,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& event) {
 
         case Tool::Split:
             if (hit) {
-                beginEdit("Couper");
+                if (!beginEdit("Couper")) return;
                 const Tick cut = snapTick(xToTick(pos.x));
                 uint64_t idCounter = project_->peekNextNoteId() - 1;
                 NoteSelection one{hit->id};
@@ -1003,7 +1016,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& event) {
                 }
                 if (best) {
                     pair.insert(best->id);
-                    beginEdit("Coller les notes");
+                    if (!beginEdit("Coller les notes")) return;
                     joinNotes(track->notes, pair);
                     selectedNoteIds_ = pair;
                     notifyEdited();
@@ -1014,7 +1027,7 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& event) {
 
         case Tool::Mute:
             if (hit) {
-                beginEdit("Rendre muet");
+                if (!beginEdit("Rendre muet")) return;
                 toggleNotesMuted(track->notes, NoteSelection{hit->id});
                 notifyEdited();
             }
@@ -1050,11 +1063,11 @@ void PianoRollComponent::mouseDown(const juce::MouseEvent& event) {
 
         // L'état d'avant-glissement est mémorisé maintenant : le glissement
         // entier (déplacement continu) compte pour UNE seule annulation.
-        beginEdit(dragMode_ == DragMode::Move ? juce::String(u8"Déplacer") : juce::String("Redimensionner"));
+        if (!beginEdit(dragMode_ == DragMode::Move ? juce::String(u8"Déplacer") : juce::String("Redimensionner"))) return;
         startAudition(hit->number, hit->velocity);
     } else if (!hit && (tool_ == Tool::Draw || (tool_ == Tool::Select && !event.mods.isCommandDown()))) {
         // Création d'une note, puis glissement immédiat sur sa durée.
-        beginEdit(u8"Créer une note");
+        if (!beginEdit(u8"Créer une note")) return;
         const Tick startTick = snapTick(xToTick(pos.x));
         const uint8_t noteNumber = yToNote(pos.y);
         Note newNote{startTick, startTick + gridTicks(), track->channel, noteNumber,
@@ -1101,7 +1114,7 @@ void PianoRollComponent::mouseDrag(const juce::MouseEvent& event) {
         case DragMode::Erase: {
             // Balayage : efface toutes les notes survolées, sans confirmation.
             if (Note* hit = findNoteAt(pos)) {
-                beginEdit("Effacer");
+                if (!beginEdit("Effacer")) return;
                 const uint64_t id = hit->id;
                 track->notes.erase(std::remove_if(track->notes.begin(), track->notes.end(),
                                                    [id](const Note& n) { return n.id == id; }),

@@ -161,6 +161,83 @@ bool clipSelectionBounds(const std::vector<Clip>& clips, const ClipSelection& se
     return trouve;
 }
 
+// ---------------------------------------------------------------------------
+// LES SURCHARGES VERROUILLABLES (D16.5). Un seul `if` par geste, ici, plutôt
+// que dans les quarante endroits des deux vues qui les appellent.
+// ---------------------------------------------------------------------------
+
+namespace {
+/// Combien de clips de la sélection cette piste porte.
+size_t comptes(const std::vector<Clip>& clips, const ClipSelection& selection) {
+    size_t n = 0;
+    for (const auto& c : clips) if (selected(selection, c)) ++n;
+    return n;
+}
+} // namespace
+
+size_t moveClips(Track& track, const ClipSelection& selection, Tick deltaTicks) {
+    if (track.locked) return 0;
+    const size_t touches = comptes(track.clips, selection);
+    moveClips(track.clips, selection, deltaTicks);
+    return touches;
+}
+
+size_t resizeClipsEnd(Track& track, const ClipSelection& selection, Tick deltaTicks,
+                       Tick materialEnd) {
+    if (track.locked) return 0;
+    const size_t touches = comptes(track.clips, selection);
+    resizeClipsEnd(track.clips, selection, deltaTicks, materialEnd);
+    return touches;
+}
+
+size_t resizeClipsStart(Track& track, const ClipSelection& selection, Tick deltaTicks,
+                         Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds) {
+    if (track.locked) return 0;
+    const size_t touches = comptes(track.clips, selection);
+    resizeClipsStart(track.clips, selection, deltaTicks, materialEnd, ticksToSeconds);
+    return touches;
+}
+
+size_t stretchClipsEnd(Track& track, const ClipSelection& selection, Tick deltaTicks,
+                        Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds) {
+    if (track.locked) return 0;
+    const size_t touches = comptes(track.clips, selection);
+    if (!stretchClipsEnd(track.clips, selection, deltaTicks, materialEnd, ticksToSeconds)) return 0;
+    return touches;
+}
+
+size_t splitClips(Track& track, const ClipSelection& selection, Tick atTick, Tick materialEnd,
+                   uint64_t& idCounter, const std::function<double(Tick)>& ticksToSeconds) {
+    if (track.locked) return 0;
+    return splitClips(track.clips, selection, atTick, materialEnd, idCounter, ticksToSeconds);
+}
+
+ClipSelection duplicateClips(Track& track, const ClipSelection& selection, Tick offsetTicks,
+                              uint64_t& idCounter) {
+    if (track.locked) return {};
+    return duplicateClips(track.clips, selection, offsetTicks, idCounter);
+}
+
+ClipCreation createClip(Track& track, Tick startTick, Tick length, uint64_t& idCounter,
+                         Tick materialEnd) {
+    if (track.locked) return {};
+    return createClip(track.clips, startTick, length, idCounter, materialEnd);
+}
+
+ClipJoin joinClips(Track& track, const ClipSelection& selection, Tick materialEnd,
+                    const std::function<double(Tick)>& ticksToSeconds) {
+    if (track.locked) return {};
+    return joinClips(track.clips, selection, materialEnd, track.kind == Track::Kind::Audio,
+                      ticksToSeconds);
+}
+
+size_t lockedClipsInSelection(const std::vector<Track>& tracks, const ClipSelection& selection) {
+    size_t n = 0;
+    for (const auto& track : tracks)
+        if (track.locked) n += comptes(track.clips, selection);
+    return n;
+}
+
 ClipTrackMove moveClipsAcrossTracks(std::vector<Track>& tracks, const ClipSelection& selection,
                                     int deltaTracks) {
     ClipTrackMove rapport;
@@ -196,7 +273,10 @@ ClipTrackMove moveClipsAcrossTracks(std::vector<Track>& tracks, const ClipSelect
         if (it == source.clips.end()) continue;
 
         // CE QUI EST REFUSÉ EST COMPTÉ : une piste de groupe, un genre qui ne
-        // correspond pas, un fichier audio qui n'est pas le sien.
+        // correspond pas, un fichier audio qui n'est pas le sien, une piste
+        // VERROUILLÉE des deux côtés (D16.5) -- on ne prend rien à une piste
+        // verrouillée, et on ne lui pose rien.
+        if (source.locked || cible.locked) { ++rapport.refused; continue; }
         const bool memeGenre = source.kind == cible.kind && cible.kind != Track::Kind::Group;
         const bool audioOk = cible.kind != Track::Kind::Audio || cible.audio.empty()
                              || cible.audio.path == source.audio.path;

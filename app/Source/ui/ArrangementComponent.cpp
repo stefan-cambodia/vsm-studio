@@ -77,11 +77,21 @@ vsm::midi::Tick ArrangementComponent::snapStep(vsm::midi::Tick tick) const {
 
 void ArrangementComponent::nudgeSelection(vsm::midi::Tick delta) {
     if (project_ == nullptr || selection_.empty() || delta == 0) return;
-    if (onEditStarted) onEditStarted(u8"Déplacer des clips");
-    for (auto& track : project_->tracks)
-        vsm::sequencer::moveClips(track.clips, selection_, delta);
-    notifyChanged();
-    repaint();
+    // D16.5 : ce qu'une piste VERROUILLÉE a refusé se compte AVANT de prendre
+    // l'instantané -- un déplacement entièrement refusé ne doit rien laisser
+    // dans l'historique, et il doit se dire.
+    const size_t verrouilles =
+        vsm::sequencer::lockedClipsInSelection(project_->tracks, selection_);
+    size_t deplaces = 0;
+    if (verrouilles < selection_.size()) {
+        if (onEditStarted) onEditStarted(u8"Déplacer des clips");
+        for (auto& track : project_->tracks)
+            deplaces += vsm::sequencer::moveClips(track, selection_, delta);
+        notifyChanged();
+        repaint();
+    }
+    (void)deplaces;
+    if (verrouilles > 0 && onLockRefused) onLockRefused(verrouilles);
 }
 
 void ArrangementComponent::moveSelectionAcrossTracks(int deltaTracks) {
@@ -207,7 +217,7 @@ void ArrangementComponent::duplicateSelection() {
     uint64_t compteur = project_->peekNextClipId();
     ClipSelection creees;
     for (auto& track : project_->tracks) {
-        const auto copies = duplicateClips(track.clips, selection_, decalage, compteur);
+        const auto copies = duplicateClips(track, selection_, decalage, compteur);
         creees.insert(copies.begin(), copies.end());
     }
     project_->ensureClipIdAbove(compteur - 1);
@@ -509,7 +519,7 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
         const uint64_t depart = project_->peekNextClipId();
         uint64_t compteur = depart;
         if (onEditStarted) onEditStarted(u8"Couper un clip");
-        const size_t coupes = splitClips(track.clips, selection_, ou, materialEnd(track), compteur,
+        const size_t coupes = splitClips(track, selection_, ou, materialEnd(track), compteur,
                                           [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); });
         project_->ensureClipIdAbove(compteur - 1);
         // Les moitiés restent choisies, comme au Ctrl+E : couper à la souris
@@ -672,10 +682,10 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
         const vsm::midi::Tick fin = materialEnd(track);
         auto conversion = [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); };
         switch (geste_) {
-            case Geste::Deplacer:   moveClips(track.clips, selection_, delta); break;
-            case Geste::BordDroit:  resizeClipsEnd(track.clips, selection_, delta, fin); break;
-            case Geste::Etirer:     stretchClipsEnd(track.clips, selection_, delta, fin, conversion); break;
-            case Geste::BordGauche: resizeClipsStart(track.clips, selection_, delta, fin, conversion); break;
+            case Geste::Deplacer:   moveClips(track, selection_, delta); break;
+            case Geste::BordDroit:  resizeClipsEnd(track, selection_, delta, fin); break;
+            case Geste::Etirer:     stretchClipsEnd(track, selection_, delta, fin, conversion); break;
+            case Geste::BordGauche: resizeClipsStart(track, selection_, delta, fin, conversion); break;
             // Les autres gestes ont été traités plus haut et n'atteignent jamais
             // cette boucle ; les nommer garde le compilateur du côté du lecteur
             // le jour où l'on en ajoutera un.
@@ -716,9 +726,11 @@ void ArrangementComponent::joinSelection() {
         auto& track = project_->tracks[i];
         auto essai = track.clips;
         const auto bilan =
-            vsm::sequencer::joinClips(essai, selection_, materialEnd(track),
-                                       track.kind == Track::Kind::Audio,
-                                       [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); });
+            track.locked
+                ? vsm::sequencer::ClipJoin{}
+                : vsm::sequencer::joinClips(essai, selection_, materialEnd(track),
+                                             track.kind == Track::Kind::Audio,
+                                             [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); });
         joints += bilan.joined;
         refuses += bilan.refused;
         if (bilan.joined > 0) resultats.emplace_back(i, std::move(essai));
@@ -751,8 +763,10 @@ void ArrangementComponent::splitSelectionAtPlayhead() {
         auto& track = project_->tracks[i];
         auto essai = track.clips;
         const size_t faites =
-            splitClips(essai, selection_, playhead_, materialEnd(track), compteur,
-                        [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); });
+            track.locked
+                ? 0u
+                : splitClips(essai, selection_, playhead_, materialEnd(track), compteur,
+                              [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); });
         coupes += faites;
         if (faites > 0) resultats.emplace_back(i, std::move(essai));
     }
@@ -1217,7 +1231,13 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                                 : track.kind == Track::Kind::Group ? "groupe"
                                                                    : "midi";
             if (track.frozen) nature += u8" · gelé";
-            g.setColour(track.frozen ? Palette::accentTeal : Palette::textSecondary);
+            // UNE PISTE VERROUILLÉE LE DIT AUSSI (D16.5), et pour la même
+            // raison : sans cela on tirerait un clip en se demandant pourquoi
+            // il ne bouge pas. Le mot, pas une icône -- il n'y a rien à
+            // deviner, et un cadenas de dix pixels ne se lit pas.
+            if (track.locked) nature += u8" · verrouillé";
+            g.setColour(track.locked ? Palette::accentAmber
+                                     : track.frozen ? Palette::accentTeal : Palette::textSecondary);
             g.setFont(juce::Font(juce::FontOptions(11.0f)));
             g.drawText(nature, 24, y + 22, kHeaderWidth - 30, 14, juce::Justification::centredLeft);
         }
@@ -1238,7 +1258,11 @@ void ArrangementComponent::paint(juce::Graphics& g) {
             // LES CLIPS D'UNE PISTE GELÉE SONT ESTOMPÉS : ils décrivent encore
             // le morceau, mais ce n'est plus eux qu'on entend. Les montrer
             // pleins laisserait croire qu'on les édite.
-            const float opacite = track.frozen ? 0.35f : (clip.muted ? 0.25f : 0.75f);
+            // Un clip de piste verrouillée est GRISÉ comme un clip de piste
+            // gelée : ce qu'on ne peut pas saisir doit se voir avant qu'on
+            // essaie de le saisir (D16.5).
+            const float opacite = (track.frozen || track.locked) ? 0.35f
+                                                                  : (clip.muted ? 0.25f : 0.75f);
             // UN CLIP MUET SE VOIT SANS DISPARAÎTRE : hachuré plutôt qu'effacé,
             // comme une note muette dans le piano roll.
             g.setColour(juce::Colour(clip.colorRgba).withAlpha(opacite));

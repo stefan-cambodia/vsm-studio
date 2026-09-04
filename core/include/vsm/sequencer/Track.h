@@ -469,6 +469,24 @@ public:
     bool frozen = false;
     AudioSource frozenAudio;
 
+    /// PISTE VERROUILLÉE (D16.5) : le cadenas par piste de Cubase.
+    ///
+    /// Elle se joue, s'entend, se mixe et se règle exactement comme avant --
+    /// verrouiller n'est PAS taire. Ce qui est refusé, c'est le MONTAGE :
+    /// déplacer, redimensionner, étirer, couper, joindre, créer, changer de
+    /// piste, et l'édition de ses notes. Une piste de référence finie partait
+    /// d'un coup de flèche depuis que les flèches déplacent les clips
+    /// (D15.2), et rien ne la protégeait.
+    ///
+    /// LE REFUS EST DANS `ClipEdit` ET DANS L'ÉDITEUR DE NOTES, PAS DANS LA
+    /// VUE : quarante gestes de deux composants toucheraient sinon quarante
+    /// fois au même `if`, et le quarante-et-unième l'oublierait.
+    ///
+    /// Rien à voir avec `frozen`, qui est une affaire de CPU : une piste
+    /// gelée s'édite encore (le gel se défait), une piste verrouillée
+    /// calcule encore.
+    bool locked = false;
+
     /// Les clips de la piste.
     ///
     /// **VIDE SIGNIFIE « AUCUNE DÉCOUPE »**, c'est-à-dire que la piste joue

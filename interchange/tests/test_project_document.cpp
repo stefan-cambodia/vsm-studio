@@ -944,3 +944,29 @@ VSM_TEST(warp_survives_the_trip_through_the_model_and_bumps_the_version_only_whe
     VSM_ASSERT(temoin.success);
     VSM_ASSERT_EQ(temoin.document.tracks[0].clips[0].warpMode, 3);
 }
+
+// D16.5 — LE VERROU D'UNE PISTE, écrit seulement quand il est mis.
+VSM_TEST(a_locked_track_survives_the_trip_and_an_unlocked_one_adds_nothing_to_the_file) {
+    Project project = buildProject();
+    VSM_ASSERT(project.tracks.size() >= 2);
+
+    // Aucun verrou : le fichier ne doit pas gagner un octet. C'est la règle de
+    // ce format -- un projet qui n'utilise pas une possibilité s'écrit comme
+    // il s'écrivait avant qu'elle existe.
+    const std::string sansVerrou =
+        projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(sansVerrou.find("locked") == std::string::npos);
+
+    project.tracks[1].locked = true;
+    const std::string avecVerrou =
+        projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(avecVerrou.find("\"locked\"") != std::string::npos);
+
+    const ProjectLoadResult relu = parseProjectDocument(avecVerrou);
+    VSM_ASSERT(relu.success);
+    Project rejoue = project;
+    for (auto& t : rejoue.tracks) t.locked = false;
+    applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT(!rejoue.tracks[0].locked);
+    VSM_ASSERT(rejoue.tracks[1].locked);
+}

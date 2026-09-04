@@ -182,6 +182,17 @@ void TrackRowComponent::paint(juce::Graphics& g) {
     g.setColour(juce::Colour(track_.colorRgba));
     g.fillRect(bounds.removeFromLeft(6));
 
+    // LE CADENAS (D16.5), écrit en toutes lettres dans le coin haut droit
+    // plutôt qu'en pictogramme : la piste continue de sonner, seul son
+    // MONTAGE est refusé, et un dessin de cadenas laisserait croire qu'elle
+    // est coupée. Même choix que le « gelé » de l'arrangement.
+    if (track_.locked) {
+        g.setColour(Palette::accentAmber);
+        g.setFont(juce::Font(juce::FontOptions(11.0f)));
+        g.drawText(u8"verrouillée", bounds.removeFromTop(18).reduced(6, 2),
+                    juce::Justification::centredRight);
+    }
+
     g.setColour(Palette::border);
     g.drawLine(0.0f, static_cast<float>(getHeight() - 1), static_cast<float>(getWidth()),
                static_cast<float>(getHeight() - 1), 1.0f);

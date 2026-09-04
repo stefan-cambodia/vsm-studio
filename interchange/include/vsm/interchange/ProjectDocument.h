@@ -195,6 +195,11 @@ struct ProjectTrack {
     /// (D5.5). Facultatifs : une piste non gelée garde le fichier qu'elle avait.
     bool frozen = false;
     ProjectAudioSource frozenAudio;
+
+    /// PISTE VERROUILLÉE (D16.5). Écrite SEULEMENT quand elle l'est : un
+    /// projet dont aucune piste n'est verrouillée garde le fichier qu'il a
+    /// toujours eu, octet pour octet.
+    bool locked = false;
     /// « midi » (défaut), « audio » ou « group ». Absent du fichier pour une piste MIDI :
     /// un projet qui n'a que des pistes MIDI garde octet pour octet le fichier
     /// qu'il avait avant que les pistes audio existent.

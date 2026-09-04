@@ -3557,6 +3557,55 @@ départ, ce qui est exactement ce qu'on lui demande.
 > l'écran (`tout-choisir,tete:2,couper-clips[,joindre-clips]`) : un clip de
 > quatre mesures coupé en deux à la mesure 3, puis rendu entier.
 
+> **D16.5 EST FAITE (04/09/2026), et la frontière du refus est écrite dans
+> les types.** `Track::locked`, absent du fichier quand il est faux (vérifié :
+> un projet sans verrou ne gagne pas un octet). Verrouiller n'est PAS taire —
+> la piste se joue, s'entend, se mixe et se règle comme avant, et un test le
+> montre au planificateur, événement par événement. C'est le MONTAGE qui est
+> refusé : déplacer, redimensionner, étirer, couper, joindre, dupliquer,
+> créer, changer de piste, et l'édition des notes.
+>
+> OÙ VIT LE CADENAS. Les fonctions de `ClipEdit` qui prennent un
+> `std::vector<Clip>&` sont la géométrie pure : elles ne savent pas à quelle
+> piste appartiennent les clips, et ne peuvent donc rien vérifier. Des
+> SURCHARGES qui prennent un `Track&` ont été ajoutées à côté : elles
+> refusent tout sur une piste verrouillée et rendent ce qu'elles ont fait
+> (zéro quand elles ont refusé). Ce sont elles que l'application appelle
+> désormais, et le cadenas tient en un `if` par geste au lieu des quarante
+> gestes des deux vues, où le quarante-et-unième l'aurait oublié.
+> `moveClipsAcrossTracks` vérifie DES DEUX CÔTÉS : on ne prend rien à une
+> piste verrouillée et on ne lui pose rien, sinon le verrou se contournerait
+> en poussant depuis la voisine. Pour les notes, le point de passage unique
+> était déjà là sans qu'on l'ait cherché : les trente et un gestes d'édition
+> du piano roll appellent tous `beginEdit` avant de toucher au matériau ;
+> il rend maintenant faux sur une piste verrouillée, et chaque geste s'arrête
+> là. La vue ne teste jamais le cadenas — elle le RAPPORTE, et l'application
+> le dit avec sa raison.
+>
+> À l'écran, le mot et non l'icône, dans la liste des pistes (« verrouillée »)
+> et dans l'en-tête de l'arrangement (« midi · verrouillé »), en ambre : un
+> dessin de cadenas laisserait croire que la piste est coupée, ce qu'elle
+> n'est pas. Ses clips sont grisés à la même opacité qu'une piste gelée — ce
+> qu'on ne peut pas saisir doit se voir avant qu'on essaie de le saisir.
+> Annulable.
+>
+> UN DÉFAUT TROUVÉ PAR LE TEST D'ALLER-RETOUR, et qui aurait vidé l'étape de
+> son sens : `"locked"` avait d'abord été écrit À L'INTÉRIEUR du bloc qui
+> n'existe que pour une piste GELÉE. Le verrou aurait donc été perdu à la
+> sauvegarde sur toute piste non gelée, c'est-à-dire presque toutes. Gel et
+> verrou n'ont aucun rapport — l'un est une affaire de CPU, l'autre de
+> montage — et ils s'écrivent maintenant côte à côte, indépendamment.
+>
+> Cinq tests : tous les gestes refusés sur une piste verrouillée sans qu'un
+> tick bouge ni qu'un identifiant soit distribué, et le MÊME appel qui passe
+> une fois déverrouillée (c'est le cadenas qu'on mesure, pas un geste
+> impossible) ; une sélection à cheval ne déplace que la piste libre, et les
+> clips verrouillés sont comptés pour être dits ; le changement de piste
+> refusé dans les deux sens ; le rendu identique verrouillée ou non ;
+> l'aller-retour disque, avec le fichier inchangé quand rien n'est
+> verrouillé. Vu à l'écran (`verrouiller:0,tout-choisir,deplacer-clips`) :
+> le clip d'Acid Bass grisé et immobile, celui de Drums déplacé d'une mesure.
+
 > **D16.4 EST FAITE (04/09/2026), et elle a pris le menu plutôt que le clic
 > droit sec.** Le tableau disait « clic droit le retire » ; un repère qui
 > disparaît sous un clic droit sans rien demander est une perte silencieuse,

@@ -23,6 +23,25 @@
 
 namespace vsm::sequencer {
 
+// ---------------------------------------------------------------------------
+// LE VERROU (D16.5), ET OÙ PASSE LA FRONTIÈRE.
+//
+// Les fonctions qui prennent un `std::vector<Clip>&` sont la GÉOMÉTRIE pure :
+// elles ne savent pas à quelle piste appartiennent les clips, et ne peuvent
+// donc pas savoir si elle est verrouillée. Ce sont elles que les tests
+// exercent, et elles ne vérifient rien.
+//
+// Les surcharges qui prennent un `Track&` sont celles qu'un ÉDITEUR appelle :
+// elles refusent tout sur une piste verrouillée, en un seul endroit par geste,
+// et rendent ce qu'elles ont fait (zéro quand elles ont refusé). C'est là que
+// vit le cadenas -- pas dans les quarante gestes des deux composants, où le
+// quarante-et-unième l'oublierait.
+//
+// Une sélection à cheval sur plusieurs pistes ne perd donc que les pistes
+// verrouillées : les autres bougent, et l'appelant compte les refus pour les
+// dire.
+// ---------------------------------------------------------------------------
+
 /// La sélection est un ensemble d'IDENTIFIANTS, jamais d'indices : couper un
 /// clip en insère un, et une sélection par indice désignerait alors le voisin.
 using ClipSelection = std::set<uint64_t>;
@@ -268,5 +287,28 @@ ClipJoin joinClips(std::vector<Clip>& clips, const ClipSelection& selection, Tic
 size_t splitClips(std::vector<Clip>& clips, const ClipSelection& selection, Tick atTick,
                    Tick materialEnd, uint64_t& idCounter,
                    const std::function<double(Tick)>& ticksToSeconds);
+
+/// LES SURCHARGES VERROUILLABLES (D16.5). Chacune rend le nombre de clips
+/// qu'elle a touchés -- zéro quand la piste est verrouillée, et alors PAS UN
+/// TICK n'a bougé.
+size_t moveClips(Track& track, const ClipSelection& selection, Tick deltaTicks);
+size_t resizeClipsEnd(Track& track, const ClipSelection& selection, Tick deltaTicks,
+                       Tick materialEnd);
+size_t resizeClipsStart(Track& track, const ClipSelection& selection, Tick deltaTicks,
+                         Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds);
+size_t stretchClipsEnd(Track& track, const ClipSelection& selection, Tick deltaTicks,
+                        Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds);
+size_t splitClips(Track& track, const ClipSelection& selection, Tick atTick, Tick materialEnd,
+                   uint64_t& idCounter, const std::function<double(Tick)>& ticksToSeconds);
+ClipSelection duplicateClips(Track& track, const ClipSelection& selection, Tick offsetTicks,
+                              uint64_t& idCounter);
+ClipCreation createClip(Track& track, Tick startTick, Tick length, uint64_t& idCounter,
+                         Tick materialEnd);
+ClipJoin joinClips(Track& track, const ClipSelection& selection, Tick materialEnd,
+                    const std::function<double(Tick)>& ticksToSeconds);
+
+/// Combien de clips de la sélection appartiennent à une piste verrouillée :
+/// ce que l'appelant doit DIRE quand un geste n'a pas tout fait.
+size_t lockedClipsInSelection(const std::vector<Track>& tracks, const ClipSelection& selection);
 
 } // namespace vsm::sequencer

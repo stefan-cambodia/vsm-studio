@@ -268,6 +268,24 @@ MainComponent::MainComponent()
     };
     // D16.3 : ce qui n'a pas pu être joint est DIT, avec la raison. Un
     // Ctrl+J qui ne fait rien et se tait laisse chercher pourquoi.
+    // D16.5 : le cadenas se DIT quand il refuse. Un clip qui ne bouge pas et
+    // ne dit rien laisse chercher la panne ailleurs.
+    arrangement_.onLockRefused = [](size_t refuses) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Piste verrouillée",
+            juce::String(static_cast<int>(refuses))
+                + juce::String(refuses > 1 ? u8" clips appartiennent à une piste verrouillée"
+                                            : u8" clip appartient à une piste verrouillée")
+                + juce::String(u8" et n'ont pas bougé. Piste ▸ Déverrouiller la piste pour "
+                               u8"reprendre le montage. Une piste verrouillée continue de "
+                               u8"sonner et de se mixer : seul le montage est refusé."));
+    };
+    pianoRoll_.onLockRefused = [] {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Piste verrouillée",
+            juce::String(u8"Les notes de cette piste ne s'éditent pas tant qu'elle est "
+                         u8"verrouillée. Piste ▸ Déverrouiller la piste pour reprendre."));
+    };
     arrangement_.onJoinRefused = [](size_t refuses) {
         juce::AlertWindow::showMessageBoxAsync(
             juce::AlertWindow::InfoIcon, u8"Joindre des clips",
@@ -960,6 +978,15 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     // que l'utilisateur déclenche ne photographierait rien.
     // D16.3 : couper à la tête et joindre, sur la sélection courante. Même
     // raison d'être que `clip:` -- un raccourci clavier ne se photographie pas.
+    // D16.5 : verrouiller la piste N (à partir de 0), pour photographier le
+    // cadenas et ce qu'il refuse -- l'article de menu ne s'atteint qu'à la
+    // souris. Passe par la MÊME fonction que le menu.
+    else if (nom.startsWith("verrouiller:")) {
+        trackList_.selectTrackIndex(static_cast<size_t>(std::max(0, nom.substring(12).getIntValue())));
+        toggleLockSelectedTrack();
+    }
+    else if (nom == "deplacer-clips") arrangement_.nudgeSelection(
+        project_.timeSignatureMap.ticksPerBar(0, project_.ticksPerQuarterNote));
     else if (nom == "tout-choisir") arrangement_.selectAll();
     else if (nom == "couper-clips") arrangement_.splitSelectionAtPlayhead();
     else if (nom == "joindre-clips") arrangement_.joinSelection();
@@ -1447,6 +1474,15 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                          !project_.tracks.empty());
             menu.addItem(kMenuTrackCreateClip, u8"Créer un clip d'une mesure à la tête de lecture",
                          !project_.tracks.empty());
+            {
+                const size_t choisie = trackList_.selectedTrackIndex();
+                const bool verrouillee = choisie < project_.tracks.size()
+                                         && project_.tracks[choisie].locked;
+                menu.addItem(kMenuTrackLock,
+                              verrouillee ? u8"Déverrouiller la piste (le montage reprend)"
+                                          : u8"Verrouiller la piste (le montage s'arrête)",
+                              !project_.tracks.empty());
+            }
             menu.addSeparator();
             {
                 const size_t piste = trackList_.selectedTrackIndex();
@@ -1927,6 +1963,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             break;
         }
         case kMenuTrackFreeze:   toggleFreezeSelectedTrack(); break;
+        case kMenuTrackLock:     toggleLockSelectedTrack(); break;
 #if VSM_WITH_CLAP
         case kMenuTrackClapPlugin: loadClapPluginOnSelectedTrack(); break;
 #endif
@@ -5701,6 +5738,20 @@ bool MainComponent::materializeImplicitClips() {
     }
     project_.assignClipIds();
     return cree;
+}
+
+void MainComponent::toggleLockSelectedTrack() {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    auto& track = project_.tracks[piste];
+    beginProjectEdit(track.locked ? u8"Déverrouiller une piste" : u8"Verrouiller une piste");
+    track.locked = !track.locked;
+    // VERROUILLER N'EST PAS TAIRE : rien n'est republié au moteur, la piste
+    // continue de sonner exactement comme elle sonnait. Seules les vues qui
+    // la dessinent ont quelque chose à apprendre.
+    arrangement_.repaint();
+    trackList_.repaint();
+    pianoRollPanel_.refresh();
 }
 
 void MainComponent::createClipOnTrack(size_t trackIndex, vsm::midi::Tick tick) {

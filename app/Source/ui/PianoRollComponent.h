@@ -42,6 +42,11 @@ public:
     void setProject(vsm::sequencer::Project* project);
     void setActiveTrackIndex(size_t trackIndex);
     vsm::sequencer::Track* activeTrack() const;
+    /// D16.5 : la piste montrée est-elle verrouillée ? Lu par la vue pour se
+    /// dessiner (fond grisé), jamais pour décider d'un refus.
+    bool activeTrackLocked() const;
+    /// L'édition a été refusée parce que la piste est verrouillée.
+    std::function<void()> onLockRefused;
     size_t activeTrackIndex() const { return activeTrackIndex_; }
     /// Le projet édité, pour ce qui n'appartient à aucune piste : les repères
     /// de la ligne de temps, que la règle dessine.
@@ -245,7 +250,13 @@ private:
     // --- Historique / notification ----------------------------------------
     /// À appeler AVANT toute modification des notes : mémorise l'état pour
     /// l'annulation et donne son nom à l'action dans le menu Édition.
-    void beginEdit(const juce::String& label);
+    /// Prend l'instantané d'annulation, ET REFUSE SUR UNE PISTE VERROUILLÉE
+    /// (D16.5). Rend faux quand le geste ne doit pas avoir lieu : c'est le
+    /// point de passage unique des trente-deux gestes d'édition de notes, et
+    /// c'est pour cela que le cadenas est ici plutôt que dans chacun d'eux --
+    /// le trente-troisième l'oublierait. Le refus est DIT une fois par
+    /// `onLockRefused`, pas à chaque touche enfoncée.
+    bool beginEdit(const juce::String& label);
     void notifyEdited();
     void notifyEditState();
     void updateStatusText(juce::Point<float> mousePos, bool mouseInside);

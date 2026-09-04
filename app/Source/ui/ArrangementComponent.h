@@ -164,6 +164,11 @@ public:
     /// fenêtre est une affaire d'application, pas de vue.
     std::function<void(size_t, uint64_t)> onClipBarsRequested;
 
+    /// D16.5 : des clips d'une piste VERROUILLÉE ont été refusés (leur
+    /// nombre), pour que l'application le dise. Le refus lui-même est dans
+    /// `ClipEdit` ; la vue ne teste jamais le cadenas, elle le rapporte.
+    std::function<void(size_t)> onLockRefused;
+
     /// JOINDRE ET COUPER AU CLAVIER (D16.3). `Ctrl+J` recolle les clips
     /// choisis quand le second est exactement ce qu'une coupe aurait produit
     /// du premier ; `Ctrl+E` coupe la sélection à la tête de lecture. Les deux

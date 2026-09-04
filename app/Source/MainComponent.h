@@ -181,6 +181,8 @@ private:
         kMenuTrackDuplicate,
         /// D16.1 : créer un clip d'une mesure à la tête de lecture.
         kMenuTrackCreateClip,
+        /// D16.5 : verrouiller ou déverrouiller la piste choisie.
+        kMenuTrackLock,
     kMenuEditInsertTimeAtLocators,
     kMenuEditDeleteTimeAtLocators,
     kMenuEditLocatorsFromSelection,
@@ -626,6 +628,9 @@ private:
     /// endroit qui fabrique un clip à la demande : le double-clic de
     /// l'arrangement et l'article du menu Piste y passent tous les deux.
     void createClipOnTrack(size_t trackIndex, vsm::midi::Tick tick);
+    /// D16.5 : bascule le cadenas de la piste choisie. Annulable, comme tout
+    /// ce qui change le projet.
+    void toggleLockSelectedTrack();
     /// LA FENÊTRE IMPLICITE SE MATÉRIALISE (D16.1) : toute piste qui porte du
     /// matériau et aucun clip en reçoit un, « tout à zéro » -- exactement le
     /// passage que l'ordonnanceur fabriquait déjà pour elle, à l'échantillon
