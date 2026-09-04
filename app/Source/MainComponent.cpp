@@ -1246,7 +1246,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // reconstructions — et il se voit, coché, plutôt que de vivre
             // dans un fichier de préférences que personne n'ouvre.
             menu.addItem(kMenuFileParite,
-                         u8"Reconstruire en visant la parité des pistes", true,
+                         u8"Reconstruire en visant la parité des pistes (le défaut de la chaîne)", true,
                          vsm::app::ui::UiScale::properties()
                              .getBoolValue("reconstruireEnParite", true));
             menu.addItem(kMenuFileSave, "Enregistrer" +

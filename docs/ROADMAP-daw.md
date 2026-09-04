@@ -3155,6 +3155,16 @@ de D12 (D13.2) et l'arrangement global (D13.3) avant le confort.
 > joue au rapport un — le court-circuit de l'étireur, pas un bit de
 > différence avec le fichier. Annulable comme tout ce qui passe par
 > `beginProjectEdit`.
+>
+> **ET UNE CASE QUI S'ÉTAIT MISE À MENTIR, rattrapée le même jour.** Depuis
+> que la parité est le défaut de la chaîne (CDC multipiste § 8, 04/09), la
+> case « Reconstruire en visant la parité des pistes » n'ajoutait plus rien
+> en étant cochée et ne retirait rien en étant décochée : la reconstruction
+> visait la parité dans les deux cas. `ReconstructionChain::commandLine`
+> passe désormais `--sans-parite` quand elle est vide et `--parite` quand
+> elle est cochée — explicite même s'il est le défaut, pour que la ligne de
+> commande se lise sans connaître la date — et l'intitulé dit « (le défaut
+> de la chaîne) ». Deux tests corrigés dans le même sens.
 
 ## 4. Les choix tranchés ici, et pourquoi
 

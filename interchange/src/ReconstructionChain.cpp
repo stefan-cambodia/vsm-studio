@@ -96,7 +96,14 @@ std::vector<std::string> ReconstructionChain::commandLine(const std::string& aud
     // l'application le passe tel quel : recopier ici les trois découpages
     // qu'il allume les ferait diverger au premier changement, et l'aide de la
     // chaîne cesserait de décrire ce que l'application fait.
-    if (viserLaParite) commande.push_back("--parite");
+    //
+    // ET LA CASE DÉCOCHÉE DIT QUELQUE CHOSE, DEPUIS LE 04/09/2026 : la parité
+    // est devenue le DÉFAUT de la chaîne (CDC multipiste § 8), si bien que
+    // « ne rien passer » ne désactivait plus rien -- la case mentait quand
+    // elle était vide. Décochée, l'application passe `--sans-parite`, le
+    // témoin de la chaîne ; cochée, `--parite`, explicite même s'il est le
+    // défaut, pour que la ligne de commande se lise sans connaître la date.
+    commande.push_back(viserLaParite ? "--parite" : "--sans-parite");
     return commande;
 }
 
