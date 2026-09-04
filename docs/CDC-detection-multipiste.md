@@ -580,6 +580,27 @@ entre-temps — même conditions que le témoin, une seule variable
 quel (fusion, tout reconstruire, six suites, pousser, parc60). L'essai à
 blanc de la fusion (`git merge-tree`) ne montre aucun conflit.
 
+**usandthem-parite-parc60 — MESURÉE (10:08) : 0,19000, soit −0,4 % du
+témoin parite-v3 (0,19084), NEUF pistes, moteur à 60 machines (provenance
+`moteur.compile` 06:50:11, `moteur.machines` 60, commit 44fa8c4).** L'attendu
+(−3 à +5 %, neuf pistes, au moins une des sept nouvelles machines parmi les
+six finalistes d'une voix d'`other`) est tenu, et au-delà : **le clavecin
+(`vsm.harpsichord`) est RETENU sur la voix 1 d'`other`** (D 0,4173 contre
+0,4754 au diviseur de parite-v3), après avoir été finaliste sur les voix 1,
+3 et 4 (à 11,5 %, 16,2 % et 31,8 % du premier à l'arbitrage) ; la vielle
+est finaliste sur les voix 1 et 2, le clavinet sur les voix 1 et 3, la
+cornemuse sur la basse (à 86,6 %). Les autres pistes ne changent pas de
+machine (basse → vocal, voix 2 → tb303, voix 3 et 4 → multisample,
+batterie → drums). Le verdict du mélange dit toujours « meilleur sans la
+basse » (0,2202 contre 0,2174), et elle est conservée. Durée : 3 h 18
+(11 886 s) contre 3 h 01 pour parite-v3 — **+9 % pour sept machines de
+plus**, le prix du parc élargi en temps, pas en distance. Ce que cela dit :
+le § 7 du CDC machines avait raison de séparer couverture et jeu — une
+machine de plus ne coûte rien à la distance quand le verdict au mélange
+arbitre, et peut la gagner ; le −0,4 % est dans le bruit de la mesure,
+c'est le clavecin retenu qui est le fait. La campagne 5 clôt les campagnes
+de la parité ; usandthem-v15 (06:49) reste à lire.
+
 ### En attente de la fin des campagnes (03/09/2026)
 
 Deux retouches sont différées parce qu'elles touchent `audio/` ou
