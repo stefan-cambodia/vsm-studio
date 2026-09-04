@@ -355,10 +355,10 @@ rotation : `memes-machine-disjoints` ×3 (graines 1, 5, 9), `chevauchement`
 produit. Les stems vrais de `s1-prod` sont identiques à ceux de `s1-sec`
 (mêmes graines) : seul le mélange diffère.
 
-**Le défaut a changé avant le départ (19:56).** La campagne 7 (CDC
+**Le défaut a changé avant le départ (19:54).** La campagne 7 (CDC
 multipiste § 11, verdict) fait de `--second-verdict 1` le défaut de la
 chaîne : S1, démarrée à 19:51 sur l'ancien défaut, a été arrêtée après
-cinq minutes et relancée sur le nouveau — c'est « la chaîne d'aujourd'hui »
+trois minutes et relancée à 19:54 sur le nouveau — c'est « la chaîne d'aujourd'hui »
 que le banc mesure. Le coût attendu ci-dessous grandit d'un tiers ; les
 attendus, eux, ne changent pas.
 

@@ -758,11 +758,11 @@ se chercher en aval : sv1 passe SOUS parc63 (0,2407) de 5,2 %, avec la
 machine que parc63 avait trouvée sur la basse.
 
 **Conséquence sur la campagne S1 du banc synthétique** (CDC banc § 5) :
-elle avait démarré à 19:51 sur l'ancien défaut ; arrêtée à 19:56 après
-une course de cinq minutes, relancée sur le nouveau, pour mesurer la
+elle avait démarré à 19:51 sur l'ancien défaut ; arrêtée après trois
+minutes de course, relancée à 19:54 sur le nouveau, pour mesurer la
 chaîne telle qu'elle est. Son coût attendu grandit d'un tiers.
 
-### En attente de la fin des campagnes (03/09/2026)
+### En attente de la fin des campagnes (03/09/2026) — FAIT le 03/09 au soir (fusion `44fa8c4`, § 9)
 
 Deux retouches sont différées parce qu'elles touchent `audio/` ou
 `interchange/` et feraient crier « moteur périmé » toute course lancée après
