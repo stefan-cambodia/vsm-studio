@@ -249,6 +249,7 @@ VSM_TEST(les_compteurs_de_verrou_et_d_es_comptent_vraiment_quelque_chose) {
 VSM_TEST(process_block_allocates_nothing_with_machines) {
     ProcessGraph graphe;
     graphe.prepare(48000.0, 512);
+    graphe.spectrumTap().setEnabled(true);   // D15.3 : la prise du spectre est un chemin de process()
     for (size_t t = 0; t < 8; ++t) graphe.setTrackInstrument(t, "vsm.minimoog");
     graphe.setProject(projetAvecNotes(8));
     graphe.seekSeconds(0.0);

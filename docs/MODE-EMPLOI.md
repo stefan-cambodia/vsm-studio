@@ -768,6 +768,8 @@ en temps réel de ± 12 demi-tons, la durée ne bougeant pas ; son grain bat
 légèrement sur un son tenu et transposé loin, c'est la signature de la
 famille). Un effet tiers CLAP ou VST3 se pose de la même façon.
 
+**Contourner un insert** : chaque rangée de la chaîne commence par un interrupteur *On / Off* ; *Off* ne retire pas l'effet, il le contourne à la façon du *Bypass* de Cubase — l'effet continue de tourner et garde sa latence, seule sa sortie est remplacée par le signal sec retardé d'autant, si bien que la piste ne se déplace pas et que le retour est sans à-coup. *Contourner tout* / *Tout remettre* fait de même pour toute la chaîne de la piste. Le contournement est enregistré avec le projet et l'export le respecte.
+
 **Le rapport de reconstruction se lit dans l'application** : *Fichier ▸ Voir le
 rapport de reconstruction* (grisé quand le projet ouvert n'en a pas — un projet
 créé à la main n'en a pas, c'est normal). Il dit la distance globale, **quelle
@@ -903,12 +905,20 @@ un projet reconstruit avec `--reverb-melange` porte un insert que personne
 n'a posé, et il doit se voir là où on le règle. `piste:N` choisit la piste N (à partir
 de 0), et `VSM_TAILLE=LARGEURxHAUTEUR` (pixels logiques, bornée par l'écran)
 donne à la fenêtre la taille à laquelle on veut vérifier une disposition.
+`historique` et `spectre` ouvrent les fenêtres flottantes du même nom ; la
+photographie de `VSM_CAPTURE` ne couvre que la fenêtre principale, une fenêtre
+flottante se photographie avec `spectacle -b -n -f -o fichier.png` pendant que
+l'application tourne.
 
 ## 7 bis. Commencer et retrouver
 
 **Projets récents** : Fichier ▸ Projets récents garde les dix derniers dossiers ouverts ou enregistrés ; un dossier disparu y reste, grisé et marqué « introuvable ». **Modèle de projet** : Fichier ▸ Enregistrer comme modèle de projet fait du projet courant (pistes, machines, routage, tempo) le point de départ de Fichier ▸ Nouveau depuis le modèle — qui ouvre un projet **sans chemin**, pour que Ctrl+S demande où l'écrire et que le modèle reste intact. **Plein écran** : Affichage ▸ Plein écran, ou `F11`. **S'entendre** : Enregistrement ▸ Écouter l'entrée en direct recopie l'entrée audio vers la sortie, à la latence du périphérique (jamais par défaut). **Jouer sans clavier MIDI** : Affichage ▸ Clavier d'ordinateur fait jouer la piste choisie par les lettres — A S D F G H J K L pour les blanches, W E T Y U O P pour les noires, Z et X pour l'octave ; tant qu'il est actif, ces lettres ne sont plus des raccourcis.
 
 **L'historique se voit** : Affichage ▸ Historique des modifications liste chaque pas — les plus anciens en haut, l'état courant en surbrillance, puis ce que Rétablir rendrait — et un clic sur un pas y revient d'un coup.
+
+**Le spectre se voit** : Affichage ▸ Analyseur de spectre ouvre une fenêtre qui montre, pendant la lecture, la répartition du bus final — après la tranche master, donc ce qui sort réellement — de 20 Hz à la moitié de la cadence sur un axe logarithmique, en décibels où un sinus plein-échelle lit 0. La courbe claire est tenue et redescend lentement, la courbe pleine est l'instant ; l'en-tête nomme la crête en hertz. Fenêtre fermée, l'analyseur ne coûte rien au fil audio.
+
+**Les fenêtres flottantes se souviennent** : chacune (navigateur, historique, raccourcis, associations MIDI, reconstruction, préférences, analyseur) rouvre là où on l'avait laissée, à la taille qu'on lui avait donnée, ramenée dans l'écran si l'écran a changé.
 
 ## 8. Ne rien perdre
 

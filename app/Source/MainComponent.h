@@ -13,6 +13,7 @@
 #include "vsm/interchange/ShortcutTable.h"
 #include "ui/ShortcutsWindow.h"
 #include "ui/HistoryWindow.h"
+#include "ui/SpectrumComponent.h"
 #include "ui/PreferencesWindow.h"
 #include "ui/BrowserComponent.h"
 #include "vsm/interchange/BrowserIndex.h"
@@ -238,6 +239,7 @@ private:
         kMenuViewMidiLearn,
         kMenuViewShortcuts,
         kMenuViewHistory,
+        kMenuViewSpectrum,
         kMenuFilePreferences,
         kMenuViewBrowser,
         kMenuFileReconstruct,
@@ -312,6 +314,9 @@ private:
     vsm::app::ui::ShortcutsWindow shortcutsPanel_;
     vsm::app::ui::HistoryWindow historyPanel_;
     std::unique_ptr<PanelWindow> historyWindow_;
+    /// D15.3 : l'analyseur de spectre du master, fenêtre flottante retenue.
+    vsm::app::ui::SpectrumComponent spectrumPanel_;
+    std::unique_ptr<PanelWindow> spectrumWindow_;
     void refreshHistoryList();
     std::unique_ptr<PanelWindow> shortcutsWindow_;
     void loadShortcuts();

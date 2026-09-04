@@ -485,6 +485,7 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
             }
         }
         masterBus_.process(outputL, outputR, idleSamples);
+        spectrumTap_.write(outputL, outputR, idleSamples);
         // À l'arrêt, la position ne bouge pas : la référence n'a rien à jouer.
         return;
     }
@@ -589,6 +590,7 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
     // Tranche master sur le bus stéréo final. No-op tant qu'elle n'est pas
     // activée (bypass par défaut) -> comportement historique préservé.
     masterBus_.process(outputL, outputR, samplesToProcess);
+    spectrumTap_.write(outputL, outputR, samplesToProcess);   // D15.3 : ce que l'analyseur voit est ce qui sort
 
     // MÉTRONOME, mélangé APRÈS le master et pour la même raison que la piste de
     // référence : il n'appartient pas au morceau. Le faire passer par le

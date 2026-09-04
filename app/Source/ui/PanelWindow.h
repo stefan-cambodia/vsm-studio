@@ -16,8 +16,19 @@ public:
 
     void closeButtonPressed() override;
     void visibilityChanged() override;
+    /// LA TAILLE PAR DÉFAUT, OU CE QU'ON AVAIT RÉGLÉ (D15.3) : si cette
+    /// fenêtre a déjà été déplacée ou redimensionnée lors d'une exécution
+    /// passée, ses limites sont reprises (ramenées dans l'écran) ; sinon la
+    /// taille donnée. Chaque déplacement ou redimensionnement d'une fenêtre
+    /// visible est retenu sous son titre dans le fichier de préférences.
+    void setDefaultSize(int width, int height);
+    void moved() override;
+    void resized() override;
 
     /// Notifie MainComponent qu'il faut resynchroniser la coche du menu
     /// Affichage correspondant à ce panneau.
     std::function<void(bool)> onVisibilityChanged;
+
+private:
+    void memoriser();
 };

@@ -213,6 +213,7 @@ if (VSM_BUILD_TESTS)
         tests/test_effect_routing.cpp
         tests/test_more_effects.cpp
         tests/test_effect_bypass.cpp
+        tests/test_spectrum_analyzer.cpp
         tests/test_effect_factory.cpp
         tests/test_process_graph_determinism.cpp
         tests/test_render_thread_pool.cpp

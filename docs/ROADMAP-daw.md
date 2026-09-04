@@ -3300,6 +3300,31 @@ modèle temporel en dernier parce qu'il traverse tout.
 > par les deux fonctions de `core/` déjà testées ; l'application s'ouvre en
 > arrangement sur un projet à quatre pistes.
 
+> **D15.3 EST FAITE (04/09/2026), et son banc a corrigé deux fois
+> l'échelle.** Affichage ▸ Analyseur de spectre… : une fenêtre flottante,
+> FFT de 4 096 points sur la somme mono du bus final, PRISE APRÈS la tranche
+> master (ce que l'analyseur voit est ce qui sort), axe des fréquences
+> logarithmique de 20 Hz à la moitié de la cadence, axe des niveaux où un
+> sinus plein-échelle lit 0 dB, courbe vive et courbe tenue (un demi-dB par
+> image), la crête nommée en hertz. Le fil audio ne fait que déposer les
+> échantillons dans un anneau sans verrou (`SpectrumTap`, éteint tant que la
+> fenêtre est fermée) ; tout le calcul est sur le fil de l'interface, à 25
+> images par seconde. L'attendu disait « 1 kHz dans la bonne case à ± un
+> demi-ton » : la case est à 996,1 Hz (une case fait 11,7 Hz), et la
+> parabole sur trois cases affine à 1 000,18 Hz. Le NIVEAU, lui, a menti
+> deux fois : la case seule lit -0,63 dB (la fenêtre de Hann creuse une raie
+> qui tombe entre deux cases, jusqu'à -1,42 dB), et le sommet de la parabole
+> en dB surcorrige (+0,15 dB à 1 kHz, +0,27 à 440 Hz : la parabole n'est
+> pas la forme du lobe). La forme du lobe de Hann, elle, est connue --
+> sinc(δ)/(1-δ²) -- et rend 0,06 dB pour le sinus plein-échelle et -59,96
+> pour celui à -60. Trois tests. Et une règle de plus pour TOUTES les
+> fenêtres flottantes, qui manquait (mémoire « disposition réglable ») :
+> `PanelWindow::setDefaultSize` reprend la position et la taille qu'on avait
+> réglées, ramenées dans l'écran, et chaque déplacement d'une fenêtre visible
+> est retenu sous son titre. `VSM_VUE=spectre,jouer` ouvre la fenêtre et
+> lance la lecture, pour la photographier ; vu à l'écran sur le projet à
+> quatre pistes, crête à 167,8 Hz.
+
 **Ce que l'audit a écarté, et pourquoi.** Le pré-roll (jouer les mesures
 qui précèdent le punch-in) : le décompte existe, et un punch-in se prépare
 en posant la tête avant. Le scrub audio : Live ne l'a pas, et la tête posée

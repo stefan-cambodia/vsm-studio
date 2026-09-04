@@ -3,6 +3,7 @@
 #include "vsm/audio/engine/AudioTrackSource.h"
 #include "vsm/audio/engine/Metronome.h"
 #include "vsm/audio/engine/AutomationLane.h"
+#include "vsm/audio/dsp/SpectrumTap.h"
 #include "vsm/audio/engine/MasterBus.h"
 #include "vsm/audio/engine/ReferenceTrack.h"
 #include "vsm/audio/engine/Mixer.h"
@@ -274,6 +275,11 @@ public:
     MasterBus& masterBus() { return masterBus_; }
     const MasterBus& masterBus() const { return masterBus_; }
 
+    /// D15.3 : la prise du bus final pour l'analyseur de spectre. Éteinte tant
+    /// qu'aucune fenêtre d'analyse n'est ouverte.
+    vsm::audio::dsp::SpectrumTap& spectrumTap() { return spectrumTap_; }
+    const vsm::audio::dsp::SpectrumTap& spectrumTap() const { return spectrumTap_; }
+
     /// Piste de référence : l'enregistrement d'origine, pour l'écoute A/B.
     /// Configurée depuis le thread UI, lue dans processBlock().
     ///
@@ -441,6 +447,7 @@ private:
     void refreshAutomationMask();
     MeterBank meters_;
     MasterBus masterBus_;
+    vsm::audio::dsp::SpectrumTap spectrumTap_;
     ReferenceTrack referenceTrack_;
 
     std::atomic<double> currentSeconds_{0.0};

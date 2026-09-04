@@ -104,6 +104,8 @@ MainComponent::MainComponent()
     // D11 : l'historique visible. Un clic sur un pas y revient par autant
     // d'annulations (ou de rétablissements) qu'il faut, par le MÊME chemin
     // que Ctrl+Z — le piano roll, qui republie le projet restauré.
+    spectrumPanel_.setTap(&audioEngine_.processGraph().spectrumTap());
+    spectrumPanel_.sampleRateProvider = [this] { return audioEngine_.currentSampleRate(); };
     historyPanel_.onUndoSteps = [this](size_t pas) {
         for (size_t i = 0; i < pas; ++i) pianoRoll_.undo();
         refreshHistoryList();
@@ -901,6 +903,7 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     else if (nom == "sans-mixer")  menuItemSelected(kMenuViewMixer, 5);
     else if (nom == "flottant")    menuItemSelected(kMenuViewSingleWindow, 5);
     else if (nom == "historique")  menuItemSelected(kMenuViewHistory, 5);   // D11 : la fenêtre d'historique, pour la photographier
+    else if (nom == "spectre")     menuItemSelected(kMenuViewSpectrum, 5);  // D15.3 : l'analyseur, pour le photographier
     // Ferme l'écran de rapport (import ou reconstruction) : VSM_IMPORT le
     // montre, et sans ce jeton l'arrangement d'un projet importé ne serait
     // photographiable qu'à travers lui. Pas dans le menu Affichage — le
@@ -1621,6 +1624,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuViewHistory,
                           juce::String::fromUTF8(u8"Historique des modifications..."),
                           true, historyWindow_ && historyWindow_->isVisible());
+            menu.addItem(kMenuViewSpectrum,
+                          juce::String::fromUTF8(u8"Analyseur de spectre..."),
+                          true, spectrumWindow_ && spectrumWindow_->isVisible());
             menu.addItem(kMenuViewMidiLearn,
                           juce::String::fromUTF8(u8"Associations MIDI (")
                               + juce::String(static_cast<int>(audioEngine_.midiLearnMappingCount()))
@@ -1723,7 +1729,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuViewBrowser: {
             if (!browserWindow_) {
                 browserWindow_ = std::make_unique<PanelWindow>("Navigateur", browserPanel_);
-                browserWindow_->setSize(620, 560);
+                browserWindow_->setDefaultSize(620, 560);
             }
             const bool visible = browserWindow_->isVisible();
             // L'INVENTAIRE EST REFAIT À L'OUVERTURE, jamais en continu : un
@@ -1739,18 +1745,31 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             if (!historyWindow_) {
                 historyWindow_ = std::make_unique<PanelWindow>(
                     juce::String::fromUTF8(u8"Historique des modifications"), historyPanel_);
-                historyWindow_->setSize(420, 520);
+                historyWindow_->setDefaultSize(420, 520);
             }
             const bool visible = historyWindow_->isVisible();
             if (!visible) refreshHistoryList();
             historyWindow_->setVisible(!visible);
             break;
         }
+        case kMenuViewSpectrum: {
+            if (!spectrumWindow_) {
+                spectrumWindow_ = std::make_unique<PanelWindow>(
+                    juce::String::fromUTF8(u8"Analyseur de spectre"), spectrumPanel_);
+                spectrumWindow_->setDefaultSize(720, 420);
+                // La prise ne coûte au fil audio que fenêtre ouverte.
+                spectrumWindow_->onVisibilityChanged = [this](bool visible) {
+                    audioEngine_.processGraph().spectrumTap().setEnabled(visible);
+                };
+            }
+            spectrumWindow_->setVisible(!spectrumWindow_->isVisible());
+            break;
+        }
         case kMenuViewShortcuts: {
             if (!shortcutsWindow_) {
                 shortcutsWindow_ = std::make_unique<PanelWindow>(
                     juce::String::fromUTF8(u8"Raccourcis clavier"), shortcutsPanel_);
-                shortcutsWindow_->setSize(640, 620);
+                shortcutsWindow_->setDefaultSize(640, 620);
             }
             const bool visible = shortcutsWindow_->isVisible();
             if (!visible) refreshShortcutList();
@@ -1762,7 +1781,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             if (!midiLearnWindow_) {
                 midiLearnWindow_ = std::make_unique<PanelWindow>(
                     juce::String::fromUTF8(u8"Associations MIDI"), midiLearnPanel_);
-                midiLearnWindow_->setSize(560, 420);
+                midiLearnWindow_->setDefaultSize(560, 420);
             }
             const bool visible = midiLearnWindow_->isVisible();
             if (!visible) refreshMidiLearnList();
@@ -3326,7 +3345,7 @@ void MainComponent::startReconstruction(const juce::File& audioFile) {
     if (!reconstructionWindow_) {
         reconstructionWindow_ = std::make_unique<PanelWindow>(
             juce::String::fromUTF8(u8"Reconstruction"), reconstructionPanel_);
-        reconstructionWindow_->setSize(720, 460);
+        reconstructionWindow_->setDefaultSize(720, 460);
     }
     reconstructionWindow_->setVisible(true);
     reconstructionWindow_->toFront(true);
@@ -3690,7 +3709,7 @@ void MainComponent::showPreferences() {
     if (!preferencesWindow_) {
         preferencesWindow_ = std::make_unique<PanelWindow>(
             juce::String::fromUTF8(u8"Préférences"), preferencesPanel_);
-        preferencesWindow_->setSize(560, 472);
+        preferencesWindow_->setDefaultSize(560, 472);
     }
     refreshPreferences();
     preferencesWindow_->setVisible(true);
