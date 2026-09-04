@@ -4155,6 +4155,34 @@ les jours ensuite, le modèle en dernier.
 > d'ÉCRAN et non un autoportrait — la fenêtre est flottante, donc absente du
 > rendu du composant principal.
 
+> **D18.5 A ÉTÉ ESSAYÉE PUIS REMISE (05/09/2026), et ce qu'elle a appris vaut
+> d'être écrit.** L'idée paraissait tenir en deux lignes : un facteur sur
+> l'horloge du transport, et tout ce qui lit le transport suit. Le facteur a
+> été posé sur l'avance de BLOC (`blockEndSeconds = blockStart + durée ×
+> vitesse`), avec la précaution qui allait bien — à 1,0 exactement,
+> l'arithmétique de placement des événements restait celle d'avant, arrondi
+> pour arrondi, pour ne déplacer aucun échantillon des rendus existants.
+>
+> **Le banc a dit non, et tout de suite : à 0,5, l'impulsion posée à une
+> seconde sortait encore à une seconde.** La raison est que le bloc n'est pas
+> l'unité du temps ici. `renderSpan` découpe chaque bloc en SOUS-SEGMENTS pour
+> l'automation, et chacun calcule sa position en secondes à partir du décalage
+> d'échantillon dans le bloc — à raison d'un échantillon pour un échantillon.
+> Ralentir l'avance de bloc sans toucher à cette conversion revient à ralentir
+> l'horloge de la pendule sans ralentir la trotteuse : entre deux blocs, tout
+> continue à la vitesse normale.
+>
+> Le vrai travail est donc là, dans la conversion « décalage d'échantillon →
+> secondes de morceau », qui est aussi le code que traversent l'accumulation
+> en flottant, la marge d'un quart d'échantillon aux frontières et le
+> rebouclage — trois choses qu'un test protège précisément parce qu'elles se
+> cassent en silence (`process_graph_loop_renders_the_same_audio_every_turn`).
+> Ce n'est pas une étape de deux lignes, c'est une étape qui touche le cœur du
+> placement temporel, et elle mérite d'être écrite d'un seul tenant plutôt
+> qu'ajoutée à la fin d'une longue session. **Le code a été retiré entièrement
+> plutôt que laissé en place** : un varispeed qui ne change pas la vitesse est
+> pire que pas de varispeed, parce qu'on le croit.
+
 > **D18.1 EST FAITE (05/09/2026), et son critère a dû être réécrit par la
 > mesure.** « Piste ▸ Reporter la sélection en audio » rend hors ligne les
 > clips choisis — une piste neuve par piste source, posée À LA PLACE de la
@@ -4271,7 +4299,7 @@ le dither à l'export (D14.4).
 | D18.2 | **Assembler les prises.** `Track::takes` conserve chaque passe depuis D3.5 et l'on ne peut que CHOISIR la meilleure : impossible de prendre le couplet de la deuxième et le refrain de la quatrième. Cubase : lanes ; Live : take lanes | une prise composite se décrit par une suite de tronçons (prise, début, fin) dans `core/` ; la vue des prises montre les passes empilées, on y dessine la plage qu'on garde ; le matériau courant est RECALCULÉ depuis les tronçons, jamais recopié à la main ; annulable ; test `core/` : trois tronçons pris dans trois prises rendent exactement les notes de chacune sur sa plage |
 | D18.3 | **Éditer plusieurs pistes ensemble.** Rien ne lie deux pistes à l'édition : couper une reconstruction multipiste à la mesure 33 demande de couper douze fois, et un tick d'écart casse la phase entre deux micros. Cubase : Edit Groups | `Track::editGroup` (0 = aucun, absent du fichier), et les gestes de TEMPS de `ClipEdit` (couper, déplacer, joindre) s'appliquent à toutes les pistes du même groupe, au même tick ; test `core/` : couper une piste d'un groupe de trois coupe les trois au même tick, et une piste hors groupe n'est pas touchée |
 | D18.4 | **L'ordre de jeu.** Les repères nomment des endroits (D16.4) mais rien ne nomme des SECTIONS ni ne les rejoue dans un autre ordre : essayer « couplet, couplet, refrain » demande de tout recopier. Cubase : piste d'Arrangement | des sections nommées (début, fin), déduites des repères ou dessinées ; une liste d'ordre de jeu ; « Aplatir » écrit le résultat comme du vrai matériau, et c'est le SEUL moment où le projet change ; test `core/` : aplatir [A, A, B] rend un projet dont le planning est celui qu'on entendrait |
-| D18.5 | **La vitesse de lecture.** Aucun varispeed : on ne peut pas ralentir pour relever un passage. Cubase : Varispeed ; Live n'en a pas besoin parce que tout y suit le tempo, ce qui n'est pas notre cas (un clip audio ne suit le tempo que si on le lui demande, D12) | un facteur de vitesse appliqué à l'HORLOGE du transport, sans toucher au projet ni au tempo ; les clips qui suivent le tempo s'étirent, les autres changent de hauteur — c'est un varispeed, pas un étirement, et l'interface le dit ; test `audio/` : à 0,5, une impulsion posée à 1 s sort à 2 s |
+| D18.5 | **La vitesse de lecture.** Aucun varispeed : on ne peut pas ralentir pour relever un passage. Cubase : Varispeed ; Live n'en a pas besoin parce que tout y suit le tempo, ce qui n'est pas notre cas (un clip audio ne suit le tempo que si on le lui demande, D12) | un facteur de vitesse appliqué à l'HORLOGE du transport, sans toucher au projet ni au tempo ; les clips qui suivent le tempo s'étirent, les autres changent de hauteur — c'est un varispeed, pas un étirement, et l'interface le dit ; test `audio/` : à 0,5, une impulsion posée à 1 s sort à 2 s |  ⟵ **ESSAYÉE ET REMISE (05/09/2026) : voir la note ci-dessous.**
 | D18.6 | **Les notes du projet.** Rien pour écrire « la basse vient du stem `other`, la nappe est une hypothèse » : une reconstruction est pleine de décisions dont il ne reste aucune trace, et c'est précisément ce projet-ci qui en produit le plus | un texte libre par projet, écrit dans `project.json`, montré dans une fenêtre ; test `interchange/` : aller-retour, et fichier inchangé octet pour octet quand le texte est vide |
 | D18.7 | **Une machine ne sort que sur DEUX canaux.** `ISynthPlugin::process` rend L/R : les huit voix d'un TR-808 arrivent mixées, et une reconstruction qui a séparé la grosse caisse de la caisse claire les recolle. C'est le § 2 de `CDC-detection-multipiste.md` qui le demande, et l'objectif de parité qui le paie | `ISynthPlugin` sait dire combien de sorties il a et les rendre séparément (défaut : une paire, aucune machine existante ne change) ; `ProcessGraph` publie chaque sortie sur une piste ; test `audio/` : la somme des sorties séparées est identique AU BIT PRÈS au rendu stéréo d'avant |
 
