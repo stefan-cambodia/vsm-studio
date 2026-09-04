@@ -4131,6 +4131,53 @@ les jours ensuite, le modèle en dernier.
 > quatre courbes se distinguent à l'œil.
 
 
+### Phase D18 — Le septième audit : ce qui manque une fois D17 posée (05/09/2026, 01:10)
+
+**Pourquoi.** Même méthode que D11 à D17. L'ordre suit le § 3 : le geste de
+tous les jours d'abord, l'outil de travail ensuite, le modèle en dernier
+parce qu'il traverse l'interface des machines.
+
+> **UN HUITIÈME MANQUE A ÉTÉ ÉCRIT PUIS RETIRÉ, ET C'EST LA LEÇON DE CET
+> AUDIT.** « Exporter une PLAGE » figurait ici, vérifié par un `grep` sur
+> `exportRange|renderRange|bounceRange` qui ne rendait rien. C'était FAUX :
+> l'export d'une plage existe depuis D6.1, sous le nom
+> `RenderOptions::startSeconds`, avec exactement le raisonnement que l'étape
+> se proposait d'écrire (« le rendu part toujours de zéro et la plage est
+> découpée ensuite… un rendu qui démarrerait à froid produirait un extrait
+> que personne n'a jamais entendu »). J'en avais même commencé une seconde
+> implémentation dans `OfflineRenderer` — c'est-à-dire deux copies de la
+> même règle, ce que ce dépôt refuse partout ailleurs. Elle a été retirée.
+>
+> **La règle qui en sort, et qui vaut pour tous les audits à venir : on
+> cherche le CONCEPT, pas l'identifiant, et on cherche AUSSI dans la feuille
+> de route.** Un `grep` sur trois noms qu'on aurait choisis soi-même ne
+> prouve rien : il prouve que l'auteur d'avant n'a pas eu les mêmes idées de
+> nommage. Les sept manques ci-dessous ont été revérifiés de cette façon —
+> sur le concept, dans le code ET dans ce document.
+
+Le relevé a écarté ce qui existe : l'export d'une plage (D6.1), l'écoute
+d'entrée, la force de quantification, le gel, le report d'une piste entière,
+l'export par piste, les prises conservées, les repères, le suivi de tempo,
+le dither à l'export (D14.4).
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D18.1 | **Reporter la SÉLECTION en audio.** Reporter une PISTE existe (`kMenuTrackBounce`) ; reporter les clips choisis sur une piste neuve, non — c'est pourtant le geste qui fige une idée sans figer la piste. Cubase : Render in Place ; Live : Freeze & Flatten sur une sélection | « Piste ▸ Reporter la sélection en audio » : les clips choisis sont rendus hors ligne et posés sur une piste audio neuve À LEUR PLACE, la piste d'origine intacte ; le rendu part de zéro et découpe, comme l'export (D6.1) ; annulable ; test : le report de la sélection est identique au rendu du morceau sur cette plage, les autres pistes mises à part |
+| D18.2 | **Assembler les prises.** `Track::takes` conserve chaque passe depuis D3.5 et l'on ne peut que CHOISIR la meilleure : impossible de prendre le couplet de la deuxième et le refrain de la quatrième. Cubase : lanes ; Live : take lanes | une prise composite se décrit par une suite de tronçons (prise, début, fin) dans `core/` ; la vue des prises montre les passes empilées, on y dessine la plage qu'on garde ; le matériau courant est RECALCULÉ depuis les tronçons, jamais recopié à la main ; annulable ; test `core/` : trois tronçons pris dans trois prises rendent exactement les notes de chacune sur sa plage |
+| D18.3 | **Éditer plusieurs pistes ensemble.** Rien ne lie deux pistes à l'édition : couper une reconstruction multipiste à la mesure 33 demande de couper douze fois, et un tick d'écart casse la phase entre deux micros. Cubase : Edit Groups | `Track::editGroup` (0 = aucun, absent du fichier), et les gestes de TEMPS de `ClipEdit` (couper, déplacer, joindre) s'appliquent à toutes les pistes du même groupe, au même tick ; test `core/` : couper une piste d'un groupe de trois coupe les trois au même tick, et une piste hors groupe n'est pas touchée |
+| D18.4 | **L'ordre de jeu.** Les repères nomment des endroits (D16.4) mais rien ne nomme des SECTIONS ni ne les rejoue dans un autre ordre : essayer « couplet, couplet, refrain » demande de tout recopier. Cubase : piste d'Arrangement | des sections nommées (début, fin), déduites des repères ou dessinées ; une liste d'ordre de jeu ; « Aplatir » écrit le résultat comme du vrai matériau, et c'est le SEUL moment où le projet change ; test `core/` : aplatir [A, A, B] rend un projet dont le planning est celui qu'on entendrait |
+| D18.5 | **La vitesse de lecture.** Aucun varispeed : on ne peut pas ralentir pour relever un passage. Cubase : Varispeed ; Live n'en a pas besoin parce que tout y suit le tempo, ce qui n'est pas notre cas (un clip audio ne suit le tempo que si on le lui demande, D12) | un facteur de vitesse appliqué à l'HORLOGE du transport, sans toucher au projet ni au tempo ; les clips qui suivent le tempo s'étirent, les autres changent de hauteur — c'est un varispeed, pas un étirement, et l'interface le dit ; test `audio/` : à 0,5, une impulsion posée à 1 s sort à 2 s |
+| D18.6 | **Les notes du projet.** Rien pour écrire « la basse vient du stem `other`, la nappe est une hypothèse » : une reconstruction est pleine de décisions dont il ne reste aucune trace, et c'est précisément ce projet-ci qui en produit le plus | un texte libre par projet, écrit dans `project.json`, montré dans une fenêtre ; test `interchange/` : aller-retour, et fichier inchangé octet pour octet quand le texte est vide |
+| D18.7 | **Une machine ne sort que sur DEUX canaux.** `ISynthPlugin::process` rend L/R : les huit voix d'un TR-808 arrivent mixées, et une reconstruction qui a séparé la grosse caisse de la caisse claire les recolle. C'est le § 2 de `CDC-detection-multipiste.md` qui le demande, et l'objectif de parité qui le paie | `ISynthPlugin` sait dire combien de sorties il a et les rendre séparément (défaut : une paire, aucune machine existante ne change) ; `ProcessGraph` publie chaque sortie sur une piste ; test `audio/` : la somme des sorties séparées est identique AU BIT PRÈS au rendu stéréo d'avant |
+
+**Ce que l'audit a écarté, et pourquoi.** Les zooms mémorisés (le zoom sur la
+sélection et le zoom « tout voir » de D14.2 couvrent l'usage réel) ; le motif
+d'accentuation du métronome (le clic accentue déjà le premier temps, et un
+motif réglable est un séquenceur de plus) ; l'automation par Bézier (D17.7 a
+tranché pour la puissance, qui s'inverse et se compose) ; le mode « ripple »
+où tout ce qui suit se décale (l'insertion et la suppression de temps entre
+locateurs, D13.3, font le même travail en le disant).
+
 ## 4. Les choix tranchés ici, et pourquoi
 
 Conformément à l'usage de ce dépôt, les questions ouvertes se referment en
