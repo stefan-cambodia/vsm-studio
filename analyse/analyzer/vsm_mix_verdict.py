@@ -103,6 +103,16 @@ class MixDecision:
     muted_distance: Optional[float] = None
 
 
+# CE QUI N'A PAS CHANGÉ DEPUIS LE TOUR PRÉCÉDENT N'EST PAS REDIT. Le verdict
+# rejoue sa passe jusqu'au point fixe (`settle_verdict`), et chaque passe
+# mesurait ET imprimait « le morceau est MEILLEUR sans cette piste » : sur
+# sky-parite, la même phrase avec les mêmes chiffres sortait deux fois de
+# suite (CDC multipiste § 8, « une fois de trop »). Le chiffre est toujours
+# mesuré et toujours publié dans le rapport ; au journal, il n'est redit que
+# s'il a bougé.
+_deja_dit: Dict[str, Tuple[float, float]] = {}
+
+
 def settle_verdict(tracks: Sequence[ExportTrack], run_pass, max_rounds: int):
     """H5 (§ 5 duodecies) : rejoue la passe de verdict jusqu'au POINT FIXE.
 
@@ -121,6 +131,7 @@ def settle_verdict(tracks: Sequence[ExportTrack], run_pass, max_rounds: int):
     decisions: List[MixDecision] = []
     changed_by_round: List[List[str]] = []
     rounds = 0
+    _deja_dit.clear()
     for _ in range(max_rounds):
         before = {t.name: (t.machine, dict(t.parameters), str(t.profile))
                   for t in tracks}
@@ -321,9 +332,12 @@ def keep_what_helps_the_mix(
         muet = distance_du_projet()
         track.volume = volume_retenu
         if muet < meilleur[1] - 1e-6:
-            print(f"      {track.name:8s} : ATTENTION — le morceau est MEILLEUR "
-                  f"sans cette piste ({muet:.4f} contre {meilleur[1]:.4f}). "
-                  f"Elle est conservée : couper est une décision humaine.")
+            chiffres = (round(muet, 4), round(meilleur[1], 4))
+            if _deja_dit.get(track.name) != chiffres:
+                _deja_dit[track.name] = chiffres
+                print(f"      {track.name:8s} : ATTENTION — le morceau est MEILLEUR "
+                      f"sans cette piste ({muet:.4f} contre {meilleur[1]:.4f}). "
+                      f"Elle est conservée : couper est une décision humaine.")
 
         decisions.append(MixDecision(track.name, meilleur[0], meilleur[1], ecartees,
                                      meilleur[3], muet))

@@ -3065,6 +3065,132 @@ Rétablir rendrait ; un clic sur un pas y revient par le même chemin que
 Ctrl+Z) — et la palette de commandes (agréable, sans geste quotidien
 derrière).
 
+### Phase D13 — Le second audit : ce qui manque encore une fois D12 posée (04/09/2026)
+
+**Pourquoi.** D11 avait audité les gestes quotidiens ; D12 a posé le suivi
+de tempo, et un clip qui suit le tempo appelle des gestes qui n'existaient
+pas avant lui. Le même audit, refait dans le code, trouve six absences —
+dont une qui MENT, et qui passe donc en premier (règle 1 du § 3).
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D13.1 | **Deux clips audio qui se chevauchent S'ADDITIONNENT** : `mixInto` somme toutes les portées, et une prise posée sur la fin d'une autre double le son sur le chevauchement — ce qu'aucun DAW ne fait. Cubase et Live y mettent un fondu enchaîné | sur le chevauchement, le premier clip s'éteint et le second monte, linéairement, la somme restant à un ; la région se voit hachurée dans l'arrangement ; test moteur : deux clips d'un même signal qui se chevauchent d'une seconde jouent à niveau constant |
+| D13.2 | **Étirer un clip audio à la souris** : le geste de D12 manque — tirer le bord droit d'un clip étiré ne fait que le prolonger (la carte se prolonge, le matériau continue) | Ctrl tenu, tirer le bord droit ÉTIRE : le dernier marqueur suit le bord, le mode passe en « hauteur conservée » s'il était éteint ; la règle dit ce que fait le bord ; annulable ; test `core/` |
+| D13.3 | **Insérer ou supprimer une plage de temps** sur tout le morceau (l'outil Plage de Cubase) : retirer une mesure d'un arrangement déplace aujourd'hui piste par piste | Édition ▸ Insérer du silence à la tête de lecture / Supprimer la sélection de temps : clips, notes, automation, marqueurs, tempo et mesures de TOUTES les pistes glissent ensemble ; ce qui est à cheval est coupé ; test `core/` |
+| D13.4 | **Un clip audio à l'envers** (cymbale, traîne inversée) : `Clip` n'a pas de sens de lecture | menu du clip « À l'envers » ; le moteur lit le fichier à rebours sur la fenêtre du clip ; la forme d'onde se dessine à l'envers ; sauvegardé ; test moteur (la lecture inversée d'une rampe est une rampe descendante) |
+| D13.5 | **La saisie pas à pas** dans le piano roll (Cubase) : un clavier — d'ordinateur ou MIDI — pose des notes à la position d'insertion, qui avance d'un pas de grille à chaque note, sans que le transport tourne | un bouton de la barre du piano roll l'arme ; chaque note reçue s'écrit à la position, de la longueur de la grille ; Entrée avance sans note (un silence), Retour arrière recule ; vu à l'écran |
+| D13.6 | **Normaliser un clip** : le gain existe, personne ne le calcule | menu du clip « Normaliser » : le gain devient 1 / crête du matériau joué ; dit dans le gain du clip, annulable |
+| D13.8 | **Trois effets d'insert qu'une tranche de Cubase ou Live a et que le parc n'avait pas** : la forme (transient shaper), le mouvement (trémolo / auto-pan), la hauteur en temps réel (pitch shift) — l'audit D11 s'était arrêté aux gestes, pas aux inserts | dans `EffectFactory`, l'onglet Effets les propose (l'interface est générique) ; chacun mesuré sur son trait, empreinte, identités |
+| D13.7 | **Adopter le tempo du clip** : « N mesures » déduit le tempo d'origine d'une boucle et l'affiche — mais le projet reste à son tempo, et la boucle joue étirée. Le geste inverse manque : caler le PROJET sur la boucle (Live : « Set 1.1.1 here » et le tempo de la boucle ; Cubase : « Set Tempo from Event ») | la fenêtre du tempo déduit propose « Adopter ce tempo pour le projet » : le changement de tempo au tick 0 prend cette valeur, la boucle joue alors au rapport un (le court-circuit), les autres changements de tempo restent ; annulable |
+
+L'ordre suit le § 3 : ce qui ment (D13.1) avant ce qui manque ; le geste
+de D12 (D13.2) et l'arrangement global (D13.3) avant le confort.
+
+> **D13.1 EST FAITE (04/09/2026).** La règle vit dans `spansFromTrack`, là
+> où les clips deviennent des portées : sur un chevauchement, le premier
+> reçoit un fondu de sortie et le second un fondu d'entrée de la longueur du
+> chevauchement (le plus long des deux si un fondu réglé l'était déjà). Le
+> test joue deux clips d'un fichier CONSTANT qui se chevauchent d'une
+> seconde : le niveau reste à 0,5 partout, au bit près (pire écart 10⁻⁵),
+> là où l'addition donnait 1,0 sur la seconde commune. Le moteur n'a pas
+> changé d'une ligne — `mixInto` applique les fondus qu'il appliquait déjà.
+> L'arrangement hachure la zone de chevauchement sur chaque clip concerné.
+>
+> **D13.2 EST FAITE (04/09/2026).** `stretchClipsEnd` vit dans `core/` : la
+> durée jouée change, les marqueurs glissent en proportion (le calage
+> relatif est gardé, le dernier suit le bord, deux marqueurs ne se
+> confondent jamais, jamais sous un tick), et un clip qui ne suivait pas le
+> tempo reçoit sa paire neutre et passe en « hauteur conservée ». Test : un
+> clip de deux secondes tiré à 2 880 ticks joue les MÊMES deux secondes (le
+> milieu de la carte est à 4,0 s pour un matériau de 3,0 à 5,0 s). Dans la
+> vue, Ctrl sur le bord droit d'un clip audio étire — un modificateur, pas
+> un outil, la même raison qu'Alt pour couper — et le curseur le dit avant
+> le clic.
+>
+> **D13.3 EST FAITE (04/09/2026).** `insertTime` et `deleteTime` vivent
+> dans `core/` (`TimeEdit.h`) : tout glisse ensemble — notes, clips (par
+> `splitClips`, qui sait couper une fenêtre en secondes et une carte de
+> tempo), contrôleurs MIDI, automation, repères, tempo, mesures, boucle et
+> punch ; ce qui est à cheval est coupé à l'insertion et raccourci de ce
+> qu'il avait dedans à la suppression ; l'entrée au tick 0 du tempo et de
+> la mesure ne bouge jamais. Trois tests. Dans l'application, la plage est
+> celle des LOCATEURS (la région de boucle), comme dans Cubase : Édition ▸
+> Insérer du silence entre les locateurs (Ctrl+Maj+I) et Supprimer le
+> temps entre les locateurs (Ctrl+Maj+K), dans la table des raccourcis donc
+> dans la page imprimable ; annulable.
+>
+> **D13.4 EST FAITE (04/09/2026).** `Clip::reversed`, écrit dans le projet
+> (`reversed`, et la version 3 comme le suivi de tempo : un lecteur ancien
+> jouerait le clip à l'endroit sans un mot). Le moteur n'apprend rien de
+> nouveau : la portée lit un MIROIR du magasin de la piste
+> (`MirroredSampleStore`, la trame i est la trame N − 1 − i, la diffusion
+> depuis le disque reste diffusée), sa fenêtre convertie une fois à la
+> publication ; un clip étiré et à l'envers retourne sa carte sur ses deux
+> axes. Test : une rampe lue à l'envers est une rampe qui descend, à la
+> trame près (pire écart 10⁻⁷), étirée ×2 aussi. Menu du clip « À
+> l'envers » (sur la sélection, chacun le sien), la forme d'onde se dessine
+> à l'envers.
+>
+> **D13.6 EST FAITE (04/09/2026).** Menu du clip « Normaliser (gain =
+> 1 / crête) » : la crête du matériau joué vient du cache d'aperçu, qui
+> garde les extrêmes de chaque tranche de 256 trames — exactement ce qu'il
+> faut, déjà là, sans relire le fichier — et le gain du clip devient son
+> inverse ; le silence ne se normalise pas ; annulable, et le gain se voit
+> dans la forme d'onde comme tout gain de clip.
+>
+> **D13.5 EST FAITE (04/09/2026).** Un bouton « Pas à pas » dans la barre
+> du piano roll arme le moteur applicatif ; armé, chaque note reçue sur son
+> entrée MIDI — un clavier MIDI comme le clavier d'ordinateur, qui passe
+> par le même chemin — est POSTÉE au fil d'interface (on est sur le thread
+> MIDI, le projet ne s'y touche pas) et le piano roll l'écrit à la tête de
+> lecture, de la longueur de la grille, puis avance la tête d'un pas ;
+> Entrée avance sans note, Retour arrière recule ; le son continue de
+> passer, on s'entend en saisissant. La tête de lecture EST la position
+> d'insertion : elle se voit, elle se déplace au clic sur la règle. Une note
+> par pas — l'accord se pose par le bouton Accord — et c'est dit.
+>
+> **D13.7 EST FAITE (04/09/2026).** La fenêtre du tempo déduit par « N
+> mesures » propose désormais « Adopter ce tempo pour le projet » : le
+> changement de tempo au tick 0 prend la valeur déduite (les autres
+> restent), le transport et les pistes audio se republient, et la boucle
+> joue au rapport un — le court-circuit de l'étireur, pas un bit de
+> différence avec le fichier. Annulable comme tout ce qui passe par
+> `beginProjectEdit`.
+>
+> **D13.8 EST FAITE (04/09/2026), et deux de ses bancs ont eu une leçon à
+> donner.** `TremoloEffect` (LFO sur le gain, sinus → carré par une tangente
+> hyperbolique, phase stéréo 0 = trémolo, 180° = auto-pan : à 4 Hz et
+> profondeur 1, la gauche va de 0,015 à 0,343 et seize fenêtres sur
+> trente-deux sont en opposition gauche-droite). `TransientShaperEffect`
+> (deux suiveurs, 1/20 ms et 30/200 ms, leur différence est l'attaque : Attack
+> +1 fait ×4 sur les cinq premières ms d'une note et laisse la tenue à
+> +1,5 % ; Sustain −1 la ramène à 0,36) — la première version faisait +12 %
+> sur la tenue, parce que le suiveur lent ne montait que sous les crêtes de
+> la sinusoïde redressée : les deux suiveurs lisent désormais une enveloppe
+> lissée à 2 ms. `PitchShiftEffect` (deux têtes sur une ligne de retard,
+> fenêtres en demi-sinus, la recette de l'H910 ; latence déclarée d'un
+> demi-grain) : mesuré sur si♭3 transposé d'une octave, **466,1 Hz pour
+> 466,2 attendus**, reste à 233 Hz 0,011, battement du grain 2,9 % — après
+> deux leçons : à 220 Hz, un grain de 50 ms fait onze périodes tout rond et
+> les deux têtes tombaient en opposition de phase exacte (la porteuse
+> s'annulait : « la note du banc ne doit pas diviser le grain », comme pour
+> la machine à séquence) ; et sans alignement, la tête qui redémarre
+> reprenait la source 5,83 périodes plus tôt, un saut de 0,17 tour toutes
+> les 25 ms que la transformée lisait comme +25 cents (473,1 Hz). La tête
+> qui redémarre cherche donc, à ± 8 ms, le décalage qui la met en phase avec
+> l'autre — la recherche du WSOLA, une fois par grain. Le parc passe à
+> **16 effets d'insert**.
+>
+> **ET UNE CASE QUI S'ÉTAIT MISE À MENTIR, rattrapée le même jour.** Depuis
+> que la parité est le défaut de la chaîne (CDC multipiste § 8, 04/09), la
+> case « Reconstruire en visant la parité des pistes » n'ajoutait plus rien
+> en étant cochée et ne retirait rien en étant décochée : la reconstruction
+> visait la parité dans les deux cas. `ReconstructionChain::commandLine`
+> passe désormais `--sans-parite` quand elle est vide et `--parite` quand
+> elle est cochée — explicite même s'il est le défaut, pour que la ligne de
+> commande se lise sans connaître la date — et l'intitulé dit « (le défaut
+> de la chaîne) ». Deux tests corrigés dans le même sens.
+
 ## 4. Les choix tranchés ici, et pourquoi
 
 Conformément à l'usage de ce dépôt, les questions ouvertes se referment en

@@ -65,6 +65,14 @@ void AudioEngine::handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMe
         // Un NoteOn de vélocité 0 est un NoteOff déguisé (convention MIDI).
         const bool noteOn = message.isNoteOn() && velocity > 0;
 
+        // LA SAISIE PAS À PAS (D13.5) : postée au fil d'interface, jamais
+        // écrite d'ici. Le son continue de passer, on s'entend en saisissant.
+        if (noteOn && stepInputArmed_.load(std::memory_order_relaxed) && onStepInputNote) {
+            juce::MessageManager::callAsync([this, note, velocity] {
+                if (onStepInputNote) onStepInputNote(note, velocity);
+            });
+        }
+
         // ENREGISTREMENT. La date vient de l'horodatage du PILOTE, pas de
         // l'instant où ce code s'exécute : entre les deux il y a le
         // réveil du thread MIDI, qui n'a aucune raison d'être régulier.

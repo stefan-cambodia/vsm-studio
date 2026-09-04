@@ -177,6 +177,8 @@ private:
         kMenuTrackAddGroup,
         kMenuTrackRemove,
         kMenuTrackDuplicate,
+    kMenuEditInsertTimeAtLocators,
+    kMenuEditDeleteTimeAtLocators,
         kMenuTrackFreeze,
         kMenuTrackBounce,
         kMenuTrackClapPlugin,
@@ -462,6 +464,11 @@ private:
     /// attendre l'interface le temps de la lire -- c'est visible, et c'est
     /// préférable à un chargement partiel qui jouerait du silence sans le dire.
     void loadAudioTracks();
+    /// INSÉRER OU SUPPRIMER LA PLAGE ENTRE LES LOCATEURS (D13.3) : tout le
+    /// morceau glisse -- notes, clips, contrôleurs, automation, repères,
+    /// tempo, mesures, boucle et punch -- et ce qui est à cheval est coupé.
+    /// Les locateurs sont la région de boucle, comme dans Cubase.
+    void editTimeAtLocators(bool inserer);
     /// Ouvre un DOSSIER de projet complet (project.json + MIDI + presets +
     /// échantillons) -- typiquement celui qu'écrit la chaîne d'analyse.
     void openProjectBundle();

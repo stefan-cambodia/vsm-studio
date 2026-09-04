@@ -1570,6 +1570,24 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Depth", "effect.chorus.depth"},
         {"Mix", "effect.chorus.mix"},
     }},
+    // --- fx.tremolo, fx.transientshaper, fx.pitchshift (D13.8) ---
+    {"fx.tremolo", {
+        {"Rate", "effect.tremolo.rate"},
+        {"Depth", "effect.tremolo.depth"},
+        {"Shape", "effect.tremolo.shape"},
+        {"Stereo Phase", "effect.tremolo.stereoPhase"},
+    }},
+    {"fx.transientshaper", {
+        {"Attack", "effect.transientshaper.attack"},
+        {"Sustain", "effect.transientshaper.sustain"},
+        {"Output Level", "effect.transientshaper.level"},
+    }},
+    {"fx.pitchshift", {
+        {"Semitones", "effect.pitchshift.semitones"},
+        {"Cents", "effect.pitchshift.cents"},
+        {"Grain", "effect.pitchshift.grain"},
+        {"Mix", "effect.pitchshift.mix"},
+    }},
     // --- fx.flanger ---
     {"fx.flanger", {
         {"Rate", "effect.flanger.rate"},

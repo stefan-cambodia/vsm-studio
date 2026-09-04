@@ -74,10 +74,12 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
     configureButton(zoomFitButton_, "Afficher toute la piste (Ctrl+0)");
     zoomFitButton_.onClick = [this] { pianoRoll_.zoomToFit(); };
 
-    for (auto* toggle : { &snapButton_, &ghostButton_, &followButton_, &scaleHighlightButton_ })
+    for (auto* toggle : { &snapButton_, &ghostButton_, &followButton_, &scaleHighlightButton_, &stepButton_ })
         addAndMakeVisible(*toggle);
     snapButton_.setToggleState(pianoRoll_.snapEnabled(), juce::dontSendNotification);
     snapButton_.onClick = [this] { pianoRoll_.setSnapEnabled(snapButton_.getToggleState()); };
+    stepButton_.setTooltip(u8"Saisie pas à pas : chaque note jouée s'écrit à la tête de lecture, qui avance d'un pas de grille ; Entrée = silence, Retour arrière = reculer");
+    stepButton_.onClick = [this] { pianoRoll_.setStepInputEnabled(stepButton_.getToggleState()); };
     ghostButton_.setToggleState(pianoRoll_.ghostNotesVisible(), juce::dontSendNotification);
     ghostButton_.onClick = [this] { pianoRoll_.setGhostNotesVisible(ghostButton_.getToggleState()); };
     followButton_.setToggleState(pianoRoll_.followPlayhead(), juce::dontSendNotification);
@@ -222,6 +224,7 @@ void PianoRollToolbar::resized() {
     place(bottom, gridCombo_, 66);
     place(bottom, gridModifierCombo_, 78);
     place(bottom, snapButton_, 74);
+    place(bottom, stepButton_, 88);
     bottom.removeFromLeft(8);
     place(bottom, swingLabel_, 40);
     place(bottom, swingSlider_, 120);

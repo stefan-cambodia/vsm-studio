@@ -814,6 +814,9 @@ VSM_TEST(regression_fx_phaser)     { checkEffect("phaser"); }
 VSM_TEST(regression_fx_delay)      { checkEffect("delay"); }
 VSM_TEST(regression_fx_reverb)     { checkEffect("reverb"); }
 VSM_TEST(regression_fx_tape)       { checkEffect("tape"); }
+VSM_TEST(regression_fx_transientshaper) { checkEffect("transientshaper"); }
+VSM_TEST(regression_fx_tremolo)    { checkEffect("tremolo"); }
+VSM_TEST(regression_fx_pitchshift) { checkEffect("pitchshift"); }
 
 VSM_TEST(regression_every_factory_effect_has_a_reference) {
     // Le même garde-fou que pour les machines : un effet ajouté sans empreinte

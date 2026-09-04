@@ -69,9 +69,15 @@ struct AudioClipSpan {
     int64_t fadeOutFrames = 0;
     float gain = 1.0f;
     bool invertPhase = false;
+    /// À l'envers (D13.4). Traduit à la publication par `prepareWarpedSpans`
+    /// en un miroir du matériau et une fenêtre convertie.
+    bool reversed = false;
     /// Nul quand le clip ne suit pas le tempo -- c'est-à-dire presque toujours,
     /// et le chemin de lecture est alors exactement celui d'avant D12.
     std::shared_ptr<ClipWarp> warp;
+    /// LE MATÉRIAU DE CETTE PORTÉE, s'il n'est pas celui de la piste (D13.4 :
+    /// un clip à l'envers lit un MIROIR du magasin de la piste). Nul sinon.
+    std::shared_ptr<const SampleStore> source;
 };
 
 /// LE MATÉRIAU AUDIO D'UNE PISTE, prêt à jouer.
@@ -125,8 +131,8 @@ std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
                                            double sampleRate,
                                            const std::function<double(int64_t)>& ticksToSeconds);
 
-/// ARME LES PORTÉES ÉTIRÉES d'une piste, une fois que son matériau est là
-/// (D12.5) : détecte les attaques du fichier -- UNE fois, partagées par toutes
+/// ARME LES PORTÉES ÉTIRÉES ET À L'ENVERS d'une piste, une fois que son
+/// matériau est là (D12.5, D13.4) : détecte les attaques du fichier -- UNE fois, partagées par toutes
 /// les portées -- et prépare les étireurs. Sans matériau ou sans portée
 /// étirée, elle ne fait rien. Hors thread audio : elle lit tout le matériau et
 /// elle alloue.

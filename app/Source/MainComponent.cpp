@@ -1,4 +1,5 @@
 #include "MainComponent.h"
+#include "vsm/sequencer/TimeEdit.h"
 #include "vsm/interchange/DawImport.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
@@ -252,6 +253,13 @@ MainComponent::MainComponent()
     pianoRoll_.onProjectRestored = [this] { rebuildFromProject(false); refreshHistoryList(); };
     pianoRoll_.setProject(&project_);
     pianoRoll_.onNotesEdited = [this] { refreshTransportSchedule(); };
+    // LA SAISIE PAS À PAS (D13.5) : le piano roll arme le moteur, le moteur
+    // poste la note, le piano roll l'écrit. Un seul chemin pour le clavier
+    // MIDI et le clavier d'ordinateur, puisque le second passe par le premier.
+    pianoRoll_.onStepInputChanged = [this](bool armee) { audioEngine_.setStepInputArmed(armee); };
+    audioEngine_.onStepInputNote = [this](uint8_t note, uint8_t velocity) {
+        pianoRoll_.stepInputNote(note, velocity);
+    };
     synthRack_.onPatternEdited = [this] {
         refreshTransportSchedule();
         pianoRoll_.repaint(); // le piano roll montre les mêmes notes
@@ -448,13 +456,32 @@ MainComponent::MainComponent()
                 // (`char8_t`), et l'erreur ne se voit qu'à la compilation de
                 // l'application -- le piège qui avait fait annoncer une
                 // capture faite « avec ce code » à D11.1.
-                juce::AlertWindow::showMessageBoxAsync(
-                    juce::AlertWindow::InfoIcon, u8"Tempo du clip",
+                // ET LE GESTE INVERSE (D13.7) : caler le PROJET sur la boucle.
+                // Le changement de tempo au tick 0 prend la valeur déduite, les
+                // autres restent, et la boucle joue alors au rapport un -- le
+                // court-circuit de l'étireur, pas un bit de différence.
+                auto* choix = new juce::AlertWindow(
+                    u8"Tempo du clip",
                     juce::String(u8"Le matériau de ce clip a été enregistré à environ ")
                         + juce::String(bpm, 1) + juce::String(u8" BPM.\n")
                         + juce::String(u8"Il joue désormais à ")
                         + juce::String(project_.tempoMap.bpmAt(0), 1)
-                        + juce::String(u8" BPM, sans changer de hauteur."));
+                        + juce::String(u8" BPM, sans changer de hauteur.\n\n")
+                        + juce::String(u8"Adopter ce tempo pour le projet le cale sur la boucle, qui joue alors telle quelle."),
+                    juce::MessageBoxIconType::InfoIcon);
+                choix->addButton(u8"Garder le tempo du projet", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+                choix->addButton(u8"Adopter ce tempo pour le projet", 1, juce::KeyPress(juce::KeyPress::returnKey));
+                choix->enterModalState(true, juce::ModalCallbackFunction::create(
+                    [this, bpm](int resultat) {
+                        if (resultat != 1 || bpm <= 0.0) return;
+                        beginProjectEdit(u8"Adopter le tempo du clip");
+                        project_.tempoMap.addTempoChange(
+                            0, static_cast<uint32_t>(std::lround(60'000'000.0 / bpm)));
+                        refreshTransportSchedule();
+                        loadAudioTracks();
+                        arrangement_.repaint();
+                        tempoLane_.repaint();
+                    }), true);
             }), true);
     };
     arrangement_.onClipColourRequested = [this](size_t piste, uint64_t clipId) {
@@ -1219,7 +1246,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // reconstructions — et il se voit, coché, plutôt que de vivre
             // dans un fichier de préférences que personne n'ouvre.
             menu.addItem(kMenuFileParite,
-                         u8"Reconstruire en visant la parité des pistes", true,
+                         u8"Reconstruire en visant la parité des pistes (le défaut de la chaîne)", true,
                          vsm::app::ui::UiScale::properties()
                              .getBoolValue("reconstruireEnParite", true));
             menu.addItem(kMenuFileSave, "Enregistrer" +
@@ -1323,6 +1350,16 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // définition, donc aucun risque qu'une opération existe à un
             // endroit et pas à l'autre, ou que les deux divergent.
             menu = pianoRoll_.buildContextMenu();
+            // LA PLAGE ENTRE LES LOCATEURS (D13.3) : deux opérations sur TOUT
+            // le morceau, qui n'ont pas leur place dans le piano roll -- elles
+            // déplacent aussi les clips, les repères et le tempo.
+            menu.addSeparator();
+            menu.addItem(kMenuEditInsertTimeAtLocators,
+                         u8"Insérer du silence entre les locateurs (Ctrl+Maj+I)",
+                         project_.loopEndTick > project_.loopStartTick);
+            menu.addItem(kMenuEditDeleteTimeAtLocators,
+                         u8"Supprimer le temps entre les locateurs (Ctrl+Maj+K)",
+                         project_.loopEndTick > project_.loopStartTick);
             break;
         case 2:
             menu.addItem(kMenuTrackAdd, "Ajouter une piste MIDI");
@@ -1596,6 +1633,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
 }
 
 void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) {
+    if (menuItemID == kMenuEditInsertTimeAtLocators) { editTimeAtLocators(true); return; }
+    if (menuItemID == kMenuEditDeleteTimeAtLocators) { editTimeAtLocators(false); return; }
     if (menuItemID >= kMenuFileRecentFirst && menuItemID <= kMenuFileRecentLast) {
         const auto liste = recentProjects();
         const int i = menuItemID - kMenuFileRecentFirst;
@@ -4155,6 +4194,13 @@ bool MainComponent::keyStateChanged(bool, juce::Component*) {
 
 bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
     if (handleComputerKeyboard(key)) return true;
+    // EN SAISIE PAS À PAS, Entrée avance sans note et Retour arrière recule :
+    // avant la table des raccourcis, parce qu'elles ne sont des commandes que
+    // dans ce mode-là.
+    if (pianoRoll_.stepInputEnabled() && !key.getModifiers().isAnyModifierKeyDown()) {
+        if (key == juce::KeyPress::returnKey) { pianoRoll_.stepInputRest(); return true; }
+        if (key == juce::KeyPress::backspaceKey) { pianoRoll_.stepInputBack(); return true; }
+    }
     // LA TOUCHE DÉSIGNE UNE COMMANDE, ET LA TABLE FAIT LA CORRESPONDANCE
     // (D10.3). Ce qui était ici -- un test sur `Ctrl+S`, un filtre qui rejetait
     // tout ce qui portait un modificateur, puis deux `case` -- ne disait à
@@ -4182,6 +4228,8 @@ bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
         // appui remonte bien au marqueur d'avant et non à celui qu'on vient
         // d'atteindre. Sans marqueur avant, on revient au début.
         case Id::NavGoToStart: seekAllViews(0); return true;
+        case Id::EditInsertTimeAtLocators: editTimeAtLocators(true); return true;
+        case Id::EditDeleteTimeAtLocators: editTimeAtLocators(false); return true;
         case Id::ViewFullScreen: toggleFullScreen(); return true;
         case Id::NavNextMarker: {
             const auto ici = transport_.currentTick();
@@ -4441,6 +4489,28 @@ void MainComponent::saveProjectAs() {
         folder.createDirectory();
         writeProjectTo(folder);
     });
+}
+
+void MainComponent::editTimeAtLocators(bool inserer) {
+    const auto de = project_.loopStartTick;
+    const auto a = project_.loopEndTick;
+    if (a <= de) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Locateurs",
+            u8"Placez d'abord les locateurs : la région de boucle est la plage à insérer ou à supprimer.");
+        return;
+    }
+    beginProjectEdit(inserer ? u8"Insérer du silence" : u8"Supprimer une plage de temps");
+    const auto conversion = [this](vsm::midi::Tick t) { return project_.ticksToSeconds(t); };
+    const size_t touches = inserer ? vsm::sequencer::insertTime(project_, de, a - de, conversion)
+                                   : vsm::sequencer::deleteTime(project_, de, a, conversion);
+    // TOUT CE QUI LIT LE PROJET SE RAFRAÎCHIT : le transport (les notes et le
+    // tempo ont bougé), les pistes audio (les clips aussi), et les vues.
+    refreshTransportSchedule();
+    loadAudioTracks();
+    arrangement_.repaint();
+    pianoRoll_.repaint();
+    juce::ignoreUnused(touches);
 }
 
 void MainComponent::loadAudioTracks() {

@@ -33,7 +33,15 @@ Un échantillon glissé depuis le navigateur tombe sur la piste survolée, **à 
 
 **Déplacer, choisir, se repérer.** Un clip se glisse **d'une piste à une autre** : il emporte les notes que sa fenêtre couvre (un clip est une fenêtre sur le matériau de sa piste, pas un sac qu'on transporte). Un clip audio ne va que vers une piste audio qui porte le même fichier, ou aucune ; ce qui est refusé vous est dit. Un rectangle tiré sur le vide choisit les clips qu'il touche (**lasso**, Maj pour ajouter), Ctrl+A les prend tous. La barre de transport affiche la position en **mesure · temps** à côté du temps ; l'arrangement **suit la tête de lecture** par pages (`F` pour cesser, la règle dit « suit ») ; `Début` ramène au début, `Maj+N` et `Maj+B` sautent au marqueur suivant ou précédent. Un **double-clic** sur un clip le renomme ; le **clic droit** donne sa couleur (ou lui rend celle de la piste) et le rend muet — sur toute la sélection. Le menu Piste sait **dupliquer la piste sélectionnée** (instrument, réglages, notes, clips, effets, automation et routage compris, avec des identifiants neufs), et le canal MIDI d'une piste (« Ch 3 ») se change par double-clic dans la liste des pistes.
 
-**Suivre le tempo.** Un clip audio est du temps réel : changer le tempo du projet le déplace sans changer ce qu'il joue. Le **clic droit** sur un clip audio propose *Suivre le tempo* — **Non** (l'état d'origine), **Hauteur conservée** (la durée suit le tempo, la hauteur ne bouge pas : c'est ce qu'il faut pour caler une prise ou changer le tempo d'un morceau reconstruit), **Rééchantillonné** (la hauteur suit avec, comme un vinyle qu'on ralentit) ou **Hauteur conservée (WSOLA, témoin)** — le premier algorithme, gardé pour comparer et comme repli ; le défaut est un vocodeur de phase, mesuré plus précis d'un facteur trois sur une voix. L'allumer ne change rien au son tant que rien n'est calé. La commande **Le clip fait N mesures…** répartit la boucle sur ce nombre de mesures et vous dit le tempo d'origine qu'elle en déduit, pour que vous le vérifiiez. Les **marqueurs** (un trait ambre sur le clip) se tirent à la souris : vous déplacez le temps musical où tombe cet endroit du fichier, sans toucher au fichier ; *Ajouter un marqueur ici* en pose un là où vous avez cliqué, *Retirer ce marqueur* l'enlève. La forme d'onde d'un clip qui suit le tempo est dessinée dans le temps étiré : ce que vous voyez sous la grille est ce que vous entendrez sur la grille. Tout s'annule avec Ctrl+Z, et l'export hors ligne joue exactement ce que l'application joue.
+**Insérer ou retirer une plage de temps.** Placez les locateurs (la boucle) sur la plage, puis Édition ▸ **Insérer du silence entre les locateurs** (Ctrl+Maj+I) ou **Supprimer le temps entre les locateurs** (Ctrl+Maj+K) : tout le morceau glisse — notes, clips, automation, repères, tempo et mesures de toutes les pistes ensemble — et ce qui est à cheval sur la plage est coupé. C'est l'outil qui retire une mesure d'un arrangement sans la retirer piste par piste.
+
+**Normaliser.** Le clic droit sur un clip audio propose *Normaliser* : le gain du clip devient l'inverse de la crête de ce qu'il joue, et la forme d'onde le montre.
+
+**À l'envers.** Le clic droit sur un clip audio propose *À l'envers* : le clip lit sa fenêtre à rebours (une cymbale inversée, une traîne qui monte), sa forme d'onde se dessine à l'envers, et cela se sauvegarde ; un clip qui suit le tempo reste étiré, à l'envers.
+
+**Deux prises bout à bout.** Deux clips audio qui se chevauchent sur une même piste se **fondent** l'un dans l'autre sur leur chevauchement (hachuré) : le premier s'éteint pendant que le second monte, comme dans Cubase ou Live — ils ne s'additionnent pas. Un fondu que vous avez réglé plus long est gardé.
+
+**Suivre le tempo.** Un clip audio est du temps réel : changer le tempo du projet le déplace sans changer ce qu'il joue. Le **clic droit** sur un clip audio propose *Suivre le tempo* — **Non** (l'état d'origine), **Hauteur conservée** (la durée suit le tempo, la hauteur ne bouge pas : c'est ce qu'il faut pour caler une prise ou changer le tempo d'un morceau reconstruit), **Rééchantillonné** (la hauteur suit avec, comme un vinyle qu'on ralentit) ou **Hauteur conservée (WSOLA, témoin)** — le premier algorithme, gardé pour comparer et comme repli ; le défaut est un vocodeur de phase, mesuré plus précis d'un facteur trois sur une voix. L'allumer ne change rien au son tant que rien n'est calé. La commande **Le clip fait N mesures…** répartit la boucle sur ce nombre de mesures et vous dit le tempo d'origine qu'elle en déduit, pour que vous le vérifiiez. Les **marqueurs** (un trait ambre sur le clip) se tirent à la souris : vous déplacez le temps musical où tombe cet endroit du fichier, sans toucher au fichier ; *Ajouter un marqueur ici* en pose un là où vous avez cliqué, *Retirer ce marqueur* l'enlève. La forme d'onde d'un clip qui suit le tempo est dessinée dans le temps étiré : ce que vous voyez sous la grille est ce que vous entendrez sur la grille. Quand *Le clip fait N mesures* vous dit le tempo d'origine de la boucle, la même fenêtre propose **Adopter ce tempo pour le projet** : le projet se cale sur la boucle, qui joue alors telle quelle. **Ctrl** en tirant le bord droit d'un clip audio l'**étire** au lieu de le prolonger : le matériau suit le bord, la hauteur reste (le clip passe en « Hauteur conservée » s'il ne suivait pas le tempo). Tout s'annule avec Ctrl+Z, et l'export hors ligne joue exactement ce que l'application joue.
 
 ![La vue d'arrangement : quatre pistes nommées, des clips, une automation dessinée, seize pistes visibles à l'écran.](images/manuel/arrangement.png)
 
@@ -643,6 +651,8 @@ Une trentaine d'opérations d'édition musicale sont disponibles — gammes, acc
 
 *Le piano roll : notes, marqueurs de section, note de tête sélectionnée, et une note douteuse hachurée.*
 
+**La saisie pas à pas.** Le bouton **Pas à pas** de la barre du piano roll écrit chaque note que vous jouez — au clavier MIDI ou au clavier d'ordinateur — à la tête de lecture, de la longueur de la grille, puis avance d'un pas ; **Entrée** avance sans note, **Retour arrière** recule. Vous vous entendez en saisissant. Placez la tête de lecture d'un clic sur la règle pour choisir où commencer.
+
 ## 5. Le navigateur
 
 Une seule liste pour tout ce qu'on peut poser sur une piste : les **machines** du parc, les **presets** `*.synth.json`, les **profils** multi-échantillons et les **échantillons**. La colonne de droite dit d'où vient chaque chose — et jusqu'au sous-dossier, parce que deux « basse » rangées à deux endroits doivent se distinguer sans qu'on ait à les essayer.
@@ -679,9 +689,14 @@ une partie — n'est **pas** reconstruit : c'est dit avec son chiffre, faute de
 quoi un piano seul donnerait six pistes pour une seule partie.
 
 Dans l'application, tout cela tient dans une case à cocher : *Fichier ▸
-Reconstruire en visant la parité des pistes*, **cochée par défaut**. Elle vaut
-pour toutes les reconstructions à venir — c'est un choix de travail, pas un
-réglage à refaire à chaque morceau. En ligne de commande, **`--parite`** allume
+Reconstruire en visant la parité des pistes (le défaut de la chaîne)*,
+**cochée par défaut**. Elle vaut pour toutes les reconstructions à venir —
+c'est un choix de travail, pas un réglage à refaire à chaque morceau.
+Décochée, elle dit à la chaîne `--sans-parite` : une piste par stem, rien de
+découpé, la chaîne d'avant le 04/09/2026. En ligne de commande, la parité
+est le **défaut** depuis cette date (deux morceaux l'ont mesurée : −0,1 % de
+distance sur *Us and Them* pour neuf pistes au lieu de quatre, +3,1 % sur
+*Sky and Sand* pour sept) ; **`--parite`** l'écrit explicitement et allume
 les quatre découpages :
 
 - **les voix par registres** (`--voix-par-stem 4`) : une piste qui porte
@@ -706,8 +721,9 @@ les quatre découpages :
   quatre. Sur les vrais morceaux essayés, dont les transcriptions sont denses,
   ce découpage ne se déclenche pas et le partage en voix reprend la main.
 
-Ce que la parité coûte est **dit** : le découpage en voix vaut +9 % de
-distance sur *Us and Them*. Et ce qu'elle vaut se vérifie sur un morceau dont
+Ce que la parité coûte est **dit** : −0,1 % sur *Us and Them* et +3,1 % sur
+*Sky and Sand* (les +9 % d'une première mesure venaient d'un calage voix par
+voix, corrigé depuis). Et ce qu'elle vaut se vérifie sur un morceau dont
 on connaît les parties (`analyse/epreuve_parite.py`, 32 secondes fabriquées
 avec leur vérité) : **neuf parties, neuf pistes**, et une distance de 0,178
 contre 0,220 sans parité.
@@ -722,6 +738,17 @@ et l'onglet *Effets* de chaque piste la montre et la règle. Quand la ressemblan
 c'est la structure qui gagne — un projet qui met quatre instruments sur une
 piste ne se retravaille pas, quelle que soit sa distance — et l'écart se
 publie au lieu d'être caché.
+
+Seize effets d'insert sont proposés par l'onglet *Effets* : l'égaliseur, le
+compresseur (avec chaîne latérale), la porte, le limiteur, le filtre, la
+distorsion, le bit crusher, le chorus, le flanger, le phaser, le délai, la
+réverbération, la saturation à bande — et, depuis le 04/09/2026, le
+**transient shaper** (l'attaque et la tenue d'un son, sans seuil), le
+**trémolo / auto-pan** (un LFO sur le gain, à phase stéréo nulle les deux
+voies ensemble, à 180° l'une contre l'autre) et le **pitch shift** (transposer
+en temps réel de ± 12 demi-tons, la durée ne bougeant pas ; son grain bat
+légèrement sur un son tenu et transposé loin, c'est la signature de la
+famille). Un effet tiers CLAP ou VST3 se pose de la même façon.
 
 **Le rapport de reconstruction se lit dans l'application** : *Fichier ▸ Voir le
 rapport de reconstruction* (grisé quand le projet ouvert n'en a pas — un projet

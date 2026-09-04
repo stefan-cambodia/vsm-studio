@@ -155,6 +155,10 @@ struct Clip {
     /// il en faut deux au moins (`setClipWarpMode` pose la paire neutre).
     WarpMode warpMode = WarpMode::Off;
     std::vector<WarpMarker> warpMarkers;
+    /// À L'ENVERS (D13.4) : le clip lit sa fenêtre du fichier à rebours -- une
+    /// cymbale inversée, une traîne qui monte. La fenêtre reste la même ; seul
+    /// le sens change, et le moteur lit un miroir du fichier.
+    bool reversed = false;
 
     /// IDENTIFIANT STABLE, pour que la sélection de la vue d'arrangement
     /// survive aux gestes (D5.1).

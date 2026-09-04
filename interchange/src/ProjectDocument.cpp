@@ -124,6 +124,7 @@ JsonValue clipToJson(const ProjectClip& clip) {
         }
         c.set("warpMarkers", std::move(marqueurs));
     }
+    if (clip.reversed) c.set("reversed", JsonValue::makeBoolean(true));
     return c;
 }
 
@@ -147,6 +148,7 @@ ProjectClip clipFromJson(const JsonValue& clipJson) {
     for (const auto& m : clipJson["warpMarkers"].elements())
         clip.warpMarkers.emplace_back(m["seconds"].asNumber(0.0),
                                       static_cast<int64_t>(m["tick"].asNumber(0.0)));
+    clip.reversed = clipJson["reversed"].asBoolean(false);
     return clip;
 }
 
@@ -154,9 +156,9 @@ ProjectClip clipFromJson(const JsonValue& clipJson) {
 /// version écrite.
 bool usesWarp(const ProjectDocument& document) {
     for (const auto& track : document.tracks) {
-        for (const auto& clip : track.clips) if (clip.warpMode != 0) return true;
+        for (const auto& clip : track.clips) if (clip.warpMode != 0 || clip.reversed) return true;
         for (const auto& take : track.takes)
-            for (const auto& clip : take.clips) if (clip.warpMode != 0) return true;
+            for (const auto& clip : take.clips) if (clip.warpMode != 0 || clip.reversed) return true;
     }
     return false;
 }
@@ -171,6 +173,7 @@ ProjectClip clipToDocument(const vsm::sequencer::Clip& clip) {
                   clip.fadeOutSeconds, clip.gain, clip.invertPhase, 0, {}};
     c.warpMode = static_cast<int>(clip.warpMode);
     for (const auto& m : clip.warpMarkers) c.warpMarkers.emplace_back(m.sourceSeconds, m.tick);
+    c.reversed = clip.reversed;
     return c;
 }
 vsm::sequencer::Clip clipToModel(const ProjectClip& clip) {
@@ -184,6 +187,7 @@ vsm::sequencer::Clip clipToModel(const ProjectClip& clip) {
                : clip.warpMode == 3 ? vsm::sequencer::WarpMode::KeepPitchWsola
                                     : vsm::sequencer::WarpMode::Off;
     for (const auto& [secondes, tick] : clip.warpMarkers) c.warpMarkers.push_back({secondes, tick});
+    c.reversed = clip.reversed;
     return c;
 }
 

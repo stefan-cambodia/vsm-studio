@@ -516,8 +516,10 @@ fourre-tout). Le verdict du mélange garde tout ; le réglage au mélange
 ramène 0,2523 à 0,2297, ce qui fait tout l'écart entre le prix au verdict
 (+10 %) et le prix final (+3,1 %). Une piste est mesurée nuisible et
 conservée : le morceau est meilleur SANS le hihat (0,2420 contre 0,2523) —
-couper reste une décision humaine, la chaîne l'écrit deux fois au journal
-(une fois de trop, à corriger). Durée : 1 h 37 (5 817 s) à 6 rendus de
+couper reste une décision humaine, la chaîne l'écrivait deux fois au
+journal — une fois par tour du verdict, mêmes chiffres ; corrigé le
+04/09 : ce qui n'a pas bougé depuis le tour précédent n'est pas redit, le
+chiffre reste mesuré et publié dans le rapport. Durée : 1 h 37 (5 817 s) à 6 rendus de
 front. Deux verrues dites au journal, différées (moteur) : le rendu final
 avertit « Piste 6 (Batterie) : aucun instrument, elle restera silencieuse »
 pour le BUS de groupe, qui n'a pas à avoir d'instrument.

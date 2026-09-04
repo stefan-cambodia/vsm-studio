@@ -67,7 +67,9 @@ struct ReconstructionChain {
     /// transformer un nom de fichier en commande.
     /// La ligne de commande de la chaîne.
     ///
-    /// `viserLaParite` ajoute `--parite` : autant de pistes que le morceau a
+    /// `viserLaParite` passe `--parite` -- sinon `--sans-parite`, parce que la
+    /// parité est le défaut de la chaîne depuis le 04/09/2026 et qu'une case
+    /// décochée doit désactiver quelque chose. `--parite` : autant de pistes que le morceau a
     /// de parties (docs/CDC-detection-multipiste.md). SANS ce drapeau,
     /// l'application obtenait quatre pistes là où la ligne de commande en
     /// donnait treize — le musicien qui glisse son morceau dans la fenêtre

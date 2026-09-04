@@ -61,7 +61,7 @@ section 17). Tout testé (routage, sends, chaque effet, granularité sous-bloc,
 déterminisme, non-régression).
 
 **La Phase 2 est désormais COMPLÈTE, moteur ET interface.** Ajoutés côté UI :
-`EffectFactory` (liste/instancie les 13 effets), `EffectChainComponent` (onglet
+`EffectFactory` (liste/instancie les 16 effets), `EffectChainComponent` (onglet
 "Effets" : ajout/suppression/réordonnancement d'inserts par piste + réglage des
 paramètres, un knob par entrée de `parameterList()`), et 2 **knobs de send** par
 tranche du mixer routant vers 2 bus auxiliaires (Reverb sur A, Delay sur B par
@@ -4245,6 +4245,97 @@ des formats, par le même auteur que les lecteurs. Un vrai projet exporté par
 Live ou par FL Studio est le seul juge que la chaîne n'a pas encore passé.
 
 ---
+
+## 48. L'étirement temporel, et le temps du morceau (D12, D13)
+
+**LE PROBLÈME QUE D2 AVAIT LAISSÉ EN TOUTES LETTRES.** Un clip audio était
+du temps réel posé sur une ligne de temps musicale : `Clip::sourceStartSeconds`
+disait pourquoi (convertir des ticks en secondes suppose que le matériau suit
+le tempo, et un enregistrement ne le fait pas). D12 (`docs/CDC-etirement-
+temporel.md`) donne au clip une CARTE entre le fichier et la grille, et
+quatre briques pour la jouer, toutes écrites ici (règle n° 2 du § 0 de
+`ROADMAP-daw.md` : pas de bibliothèque).
+
+### 48.1 Les briques, et ce que le banc leur a fait dire
+
+- **`dsp/SincResampler.h`** — un sinc sous fenêtre de Kaiser, table de 512
+  phases interpolée, coupure abaissée au Nyquist de session en
+  sous-échantillonnage. Le CDC disait 32 points ; **le banc a choisi 64**
+  (44,1 → 48 kHz, erreur rms : linéaire 1,3 × 10⁻¹ à 10 kHz ; 32 points
+  4,4 × 10⁻² à 20 kHz ; 64 points 9,5 × 10⁻⁶ à 20 kHz). Branché sur le
+  chargeur résident ET la diffusion depuis le disque : même noyau, mêmes
+  valeurs. Il a remplacé l'interpolation linéaire de D2.3, dont le
+  « millième sous 10 kHz » était optimiste d'un ordre de grandeur dès 5 kHz.
+- **`dsp/TimeStretch.h`** — le WSOLA : grains de 2 048, saut de 1 024,
+  recherche de similarité ± 768 (grossière au pas de 8, puis fine), fenêtre
+  de Hann, corrélation normalisée sur le recouvrement, un rappel vers la
+  carte (`kPull` = 0,05) qui a ramené un biais systématique de −12 à −8 ms.
+  Le verrouillage des transitoires a coûté une leçon : à l'étirement, la
+  fenêtre d'un grain lit plus de source que son avance nominale, et un
+  grain cherché AVANT le propriétaire d'une attaque l'attrapait dans sa
+  queue (un clic sur deux 17 à 20 ms trop tôt). Règle : un grain cherché ne
+  contient jamais de transitoire ; les trois grains alignés le jouent.
+- **`dsp/PhaseVocoder.h`** — le vocodeur de phase : STFT 2 048, saut 512,
+  verrouillage d'identité sur les pics (Laroche et Dolson), phases remises
+  à zéro aux transitoires, trames coupées selon la même règle du
+  propriétaire. **C'est le défaut de « hauteur conservée » depuis D12.8**,
+  sur un chiffre : la voix de *Sky and Sand* à +10 % de tempo est à −2 ms
+  de sa place sur huit mesures (pire mesure 4 ms) contre −8 (pire 14) au
+  WSOLA, gardé comme témoin (`WarpMode::KeepPitchWsola`). La transformée
+  directe a été ajoutée à `RealFft.h` pour lui.
+- **`dsp/TransientDetector.h`** — flux d'énergie par blocs de 256, seuil à
+  trois fois la moyenne des ± 20 blocs, plancher, maximum local, 48 ms
+  entre deux, position affinée à la trame de plus forte pente (16 clics sur
+  16 à 0,00 ms ; 0 sur un la3 tenu). Il tourne à la publication d'une piste,
+  une fois, et ses attaques sont partagées par toutes les portées.
+
+Les trois étireurs ont le MÊME contrat : une carte par morceaux (sortie →
+source, en trames), des transitoires, `render` par blocs indépendant de la
+taille des blocs (256 = 4 096 au bit près — la condition « hors ligne =
+temps réel » de D2.6), `seek` qui repart à froid, et un court-circuit au
+rapport un exact (l'original au bit près : la règle du § 0 du CDC).
+
+### 48.2 Où cela vit dans le moteur, et ce qui n'a pas bougé
+
+`AudioClipSpan` porte un `ClipWarp` — nul quand le clip ne suit pas le
+tempo, et le chemin de lecture est alors EXACTEMENT celui d'avant D12.
+`ClipWarp` tient la carte en trames, les étireurs, leurs tampons et le
+noyau, alloués par `prepareWarpedSpans` à la publication ; `mixInto` rend par
+passes de 8 192 trames au plus. **`ProcessGraph` n'a pas bougé d'une ligne** :
+la couture annoncée à D2, tenue à D8.2, a tenu une troisième fois. La mesure
+du critère de phase a trouvé une panne muette : `prepareWarpedSpans` n'était
+câblé que dans l'application, et `vsm-render` exportait un clip calé sans son
+calage — trois fichiers identiques au bit près, c'est ainsi qu'on l'a vu.
+
+Le modèle : `Clip::warpMode`, `Clip::warpMarkers` (secondes de fichier, tick
+RELATIF au clip — déplacer un clip ne les touche pas), `Clip::reversed`
+(D13.4, joué par un `MirroredSampleStore` : la trame i est la trame N − 1 − i,
+la diffusion disque reste diffusée). Les gestes de `ClipEdit` transportent la
+carte (couper, rogner, étirer par le bord droit — D13.2), et le format écrit
+la version 3 seulement si un clip s'en sert, parce qu'un lecteur ancien
+jouerait un clip étiré sans l'étirer, en silence.
+
+### 48.4 Trois effets d'insert de plus (D13.8)
+
+`TremoloEffect`, `TransientShaperEffect`, `PitchShiftEffect`, dans
+`audio/include/vsm/audio/effect/`, sans façade à dessiner (l'onglet Effets
+est générique). Le pitch shift est un décaleur à deux têtes sur une ligne de
+retard (H910), et non le vocodeur de phase de D12.8 : un insert reçoit un
+flux, pas un fichier relisible ; sa tête qui redémarre s'aligne en phase sur
+l'autre par la recherche du WSOLA, une fois par grain, sans quoi la
+transformée lisait +25 cents sur un son tenu. Chiffres et leçons dans
+`ROADMAP-daw.md`, D13.8.
+
+### 48.3 Le temps du morceau (D13.1, D13.3)
+
+Deux clips qui se chevauchent SE FONDENT (`spansFromTrack` : le premier reçoit
+un fondu de sortie, le second un fondu d'entrée, de la longueur du
+chevauchement ; deux clips d'un fichier constant jouent à 0,5 partout, au bit
+près, là où l'addition donnait 1,0). Et `TimeEdit.h` insère ou supprime une
+plage de temps sur TOUT le morceau — notes, clips, contrôleurs, automation,
+repères, tempo, mesures, boucle et punch ensemble ; ce qui est à cheval est
+coupé — parce qu'un morceau est une ligne de temps, et que retirer une
+mesure piste par piste sans en oublier une n'était pas possible.
 
 ## 29. Façades « façon hardware », machine par machine (sections 6 et 21)
 

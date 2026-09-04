@@ -9,6 +9,9 @@
 #include "vsm/audio/effect/Phaser.h"
 #include "vsm/audio/effect/Reverb.h"
 #include "vsm/audio/effect/TapeSaturation.h"
+#include "vsm/audio/effect/TransientShaperEffect.h"
+#include "vsm/audio/effect/TremoloEffect.h"
+#include "vsm/audio/effect/PitchShiftEffect.h"
 
 namespace vsm::audio::effect {
 
@@ -30,6 +33,12 @@ const std::vector<EffectInfo>& EffectFactory::available() {
         {"delay", "Delay"},
         {"reverb", "Reverb"},
         {"tape", "Tape Saturation"},
+        // TROIS DE PLUS (D13.8) : ce qu'une tranche de Cubase ou de Live a et
+        // que le parc n'avait pas -- la forme (transient shaper), le mouvement
+        // (trémolo / auto-pan) et la hauteur en temps réel (pitch shift).
+        {"transientshaper", "Transient Shaper"},
+        {"tremolo", "Tremolo / Auto-pan"},
+        {"pitchshift", "Pitch Shift"},
     };
     return kEffects;
 }
@@ -48,6 +57,9 @@ std::unique_ptr<IAudioEffect> EffectFactory::create(const std::string& id) {
     if (id == "delay") return std::make_unique<Delay>();
     if (id == "reverb") return std::make_unique<Reverb>();
     if (id == "tape") return std::make_unique<TapeSaturation>();
+    if (id == "transientshaper") return std::make_unique<TransientShaperEffect>();
+    if (id == "tremolo") return std::make_unique<TremoloEffect>();
+    if (id == "pitchshift") return std::make_unique<PitchShiftEffect>();
     // PAS UN EFFET INTERNE : on demande aux couches d'hébergement, s'il y en a
     // une de posée. Sans elles, on rend nullptr comme avant, et l'appelant
     // signale un effet inconnu -- jamais ne le remplace par un autre.

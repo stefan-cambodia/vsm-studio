@@ -116,7 +116,10 @@ VSM_TEST(the_command_line_is_a_list_of_arguments_not_a_shell_string) {
     VSM_ASSERT(chaine.available);
 
     const auto commande = chaine.commandLine("/musique/Sweet Child O' Mine.mp3", "/tmp/sortie");
-    VSM_ASSERT_EQ(commande.size(), size_t{5});
+    // Cinq arguments et le drapeau de parité, toujours présent depuis que la
+    // parité est le défaut de la chaîne : décochée, `--sans-parite`.
+    VSM_ASSERT_EQ(commande.size(), size_t{6});
+    VSM_ASSERT_EQ(commande.back(), std::string("--sans-parite"));
     VSM_ASSERT_EQ(commande[0], chaine.interpreterPath);
     VSM_ASSERT_EQ(commande[1], chaine.scriptPath);
     // Le nom de fichier passe ENTIER et INTACT, apostrophe et espaces compris.
@@ -141,13 +144,15 @@ VSM_TEST(la_parite_ajoute_un_drapeau_et_un_seul) {
     VSM_ASSERT(chaine.available);
 
     const auto sans = chaine.commandLine("/m/morceau.mp3", "/tmp/sortie");
-    VSM_ASSERT_EQ(sans.size(), size_t{5});
+    VSM_ASSERT_EQ(sans.size(), size_t{6});
+    VSM_ASSERT_EQ(sans.back(), std::string("--sans-parite"));   // décochée, la case dit quelque chose
 
     const auto avec = chaine.commandLine("/m/morceau.mp3", "/tmp/sortie", true);
     VSM_ASSERT_EQ(avec.size(), size_t{6});
     VSM_ASSERT_EQ(avec[5], std::string("--parite"));
-    // Le reste de la commande ne bouge pas d'un argument.
-    for (size_t i = 0; i < sans.size(); ++i) VSM_ASSERT_EQ(avec[i], sans[i]);
+    // Le reste de la commande ne bouge pas d'un argument : seul le dernier
+    // dit le choix, dans un sens ou dans l'autre.
+    for (size_t i = 0; i + 1 < sans.size(); ++i) VSM_ASSERT_EQ(avec[i], sans[i]);
     fs::remove_all(racine);
 }
 

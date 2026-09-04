@@ -425,6 +425,45 @@ bool moveWarpMarker(std::vector<Clip>& clips, uint64_t clipId, size_t index, Tic
     return true;
 }
 
+void toggleClipReverse(std::vector<Clip>& clips, const ClipSelection& selection) {
+    for (auto& clip : clips)
+        if (selected(selection, clip)) clip.reversed = !clip.reversed;
+}
+
+bool stretchClipsEnd(std::vector<Clip>& clips, const ClipSelection& selection, Tick deltaTicks,
+                     Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds) {
+    if (selection.empty() || deltaTicks == 0) return false;
+    bool bouge = false;
+    for (auto& clip : clips) {
+        if (!selected(selection, clip)) continue;
+        const Tick avant = clipPlayedLength(clip, materialEnd);
+        const Tick apres = std::max<Tick>(1, avant + deltaTicks);
+        if (apres == avant) continue;
+        if (!clipIsWarped(clip)) {
+            clip.warpMode = clip.warpMode == WarpMode::Off ? WarpMode::KeepPitch : clip.warpMode;
+            if (clip.warpMarkers.size() < 2) {
+                if (!ticksToSeconds) continue;
+                const double secondes = ticksToSeconds(clip.startTick + avant) - ticksToSeconds(clip.startTick);
+                clip.warpMarkers = {{clip.sourceStartSeconds, 0},
+                                    {clip.sourceStartSeconds + secondes, std::max<Tick>(1, avant)}};
+            }
+        }
+        // LES MARQUEURS GLISSENT EN PROPORTION : le calage relatif est gardé,
+        // le dernier suit le bord. Deux marqueurs ne se confondent jamais.
+        const double rapport = static_cast<double>(apres) / static_cast<double>(std::max<Tick>(1, clip.warpMarkers.back().tick));
+        Tick precedent = -1;
+        for (auto& m : clip.warpMarkers) {
+            m.tick = std::max<Tick>(precedent + 1, static_cast<Tick>(std::llround(static_cast<double>(m.tick) * rapport)));
+            precedent = m.tick;
+        }
+        clip.warpMarkers.back().tick = std::max<Tick>(clip.warpMarkers.back().tick, apres);
+        clip.length = apres;
+        clip.sourceLength = apres;
+        bouge = true;
+    }
+    return bouge;
+}
+
 bool removeWarpMarker(std::vector<Clip>& clips, uint64_t clipId, size_t index) {
     Clip* clip = clipById(clips, clipId);
     if (!clip || !clipIsWarped(*clip)) return false;

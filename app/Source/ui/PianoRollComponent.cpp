@@ -721,6 +721,45 @@ void PianoRollComponent::insertChordAtPlayhead(ChordType type, uint8_t rootNote)
     notifyEdited();
 }
 
+void PianoRollComponent::setStepInputEnabled(bool enabled) {
+    if (stepInput_ == enabled) return;
+    stepInput_ = enabled;
+    if (onStepInputChanged) onStepInputChanged(enabled);
+    repaint();
+}
+
+void PianoRollComponent::stepInputNote(uint8_t note, uint8_t velocity) {
+    Track* track = activeTrack();
+    if (!track || !project_ || !stepInput_) return;
+    beginEdit(u8"Saisie pas à pas");
+    const vsm::midi::Tick debut = snapTick(playheadTick_);
+    const vsm::midi::Tick pas = std::max<vsm::midi::Tick>(1, gridTicks());
+    Note n;
+    n.startTick = debut;
+    n.endTick = debut + pas;
+    n.number = note;
+    n.velocity = velocity > 0 ? velocity : defaultVelocity_;
+    n.channel = track->channel;
+    n.id = project_->peekNextNoteId();
+    project_->ensureNoteIdAbove(n.id);
+    track->notes.push_back(n);
+    selectedNoteIds_ = {n.id};
+    setPlayheadTick(debut + pas);
+    notifyEdited();
+}
+
+void PianoRollComponent::stepInputRest() {
+    if (!stepInput_) return;
+    setPlayheadTick(snapTick(playheadTick_) + std::max<vsm::midi::Tick>(1, gridTicks()));
+    repaint();
+}
+
+void PianoRollComponent::stepInputBack() {
+    if (!stepInput_) return;
+    setPlayheadTick(std::max<vsm::midi::Tick>(0, snapTick(playheadTick_) - std::max<vsm::midi::Tick>(1, gridTicks())));
+    repaint();
+}
+
 // ---------------------------------------------------------------------------
 // Menu contextuel
 // ---------------------------------------------------------------------------

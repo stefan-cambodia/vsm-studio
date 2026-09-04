@@ -431,6 +431,8 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
             menu.addItem(14, u8"Ajouter un marqueur ici", vsm::sequencer::clipIsWarped(*clip)
                                                           && surMarqueur < 0);
             menu.addItem(15, u8"Retirer ce marqueur", surMarqueur > 0);
+            menu.addItem(17, u8"\u00c0 l'envers", true, clip->reversed);
+            menu.addItem(18, u8"Normaliser (gain = 1 / cr\u00eate)", waveformProvider != nullptr);
             marqueurGeste_ = surMarqueur;
         }
         const uint64_t id = clip->id;
@@ -474,11 +476,18 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
     }
 
     geste_ = bord;
+    // CTRL SUR LE BORD DROIT D'UN CLIP AUDIO ÉTIRE (D13.2) : le geste de Live
+    // (Alt + bord) et de Cubase (« le redimensionnement étire »). Un
+    // modificateur, pas un outil -- la même raison qu'Alt pour couper.
+    if (bord == Geste::BordDroit && event.mods.isCtrlDown()
+        && project_->tracks[piste].kind == Track::Kind::Audio)
+        geste_ = Geste::Etirer;
     gesteOrigine_ = xToTick(point.x);
     gesteDernier_ = gesteOrigine_;
     clipFondu_ = clip->id;
     if (onEditStarted)
-        onEditStarted(bord == Geste::FonduEntree || bord == Geste::FonduSortie
+        onEditStarted(geste_ == Geste::Etirer ? juce::String(u8"Étirer un clip")
+                      : bord == Geste::FonduEntree || bord == Geste::FonduSortie
                           ? juce::String(u8"Fondu d'un clip")
                       : bord == Geste::Deplacer ? juce::String(u8"Déplacer un clip")
                                                  : juce::String(u8"Redimensionner un clip"));
@@ -606,6 +615,7 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
         switch (geste_) {
             case Geste::Deplacer:   moveClips(track.clips, selection_, delta); break;
             case Geste::BordDroit:  resizeClipsEnd(track.clips, selection_, delta, fin); break;
+            case Geste::Etirer:     stretchClipsEnd(track.clips, selection_, delta, fin, conversion); break;
             case Geste::BordGauche: resizeClipsStart(track.clips, selection_, delta, fin, conversion); break;
             // Les autres gestes ont été traités plus haut et n'atteignent jamais
             // cette boucle ; les nommer garde le compilateur du côté du lecteur
@@ -693,6 +703,35 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
             break;
         }
         case 13: if (onClipBarsRequested) onClipBarsRequested(piste, clipId); return;
+        case 18: {
+            // NORMALISER (D13.6) : le gain devient 1 / crête du matériau JOUÉ.
+            // La crête vient du cache d'aperçu, qui garde les extrêmes de
+            // chaque tranche de 256 trames : c'est exactement ce qu'il faut, et
+            // il est déjà là -- pas besoin de relire le fichier.
+            if (!waveformProvider) return;
+            auto cache = waveformProvider(piste);
+            if (!cache) return;
+            const double sr = sampleRateProvider ? sampleRateProvider() : 48000.0;
+            const auto jouee = clipPlayedLength(*it, materialEnd(track));
+            const auto depart = static_cast<int64_t>(it->sourceStartSeconds * sr);
+            const double duree = project_->ticksToSeconds(it->startTick + jouee) - project_->ticksToSeconds(it->startTick);
+            const auto arrivee = depart + static_cast<int64_t>(duree * sr);
+            const auto tranches = vsm::audio::io::peaksForRange(*cache, depart, std::max(arrivee, depart + 1), 1024);
+            float crete = 0.0f;
+            for (const auto& t : tranches) crete = std::max({crete, std::abs(t.minimum), std::abs(t.maximum)});
+            if (crete < 1e-6f) return;   // du silence ne se normalise pas
+            if (onEditStarted) onEditStarted(u8"Normaliser un clip");
+            it->gain = 1.0f / crete;
+            break;
+        }
+        case 17: {
+            // Sur toute la sélection, chacun le sien -- comme la phase.
+            if (onEditStarted) onEditStarted(u8"Clip \u00e0 l'envers");
+            ClipSelection cibles = selection_;
+            cibles.insert(clipId);
+            toggleClipReverse(track.clips, cibles);
+            break;
+        }
         case 14: {
             if (onEditStarted) onEditStarted(u8"Ajouter un marqueur de tempo");
             if (addWarpMarker(track.clips, clipId, clicTick_ - it->startTick) < 0) return;
@@ -719,11 +758,17 @@ void ArrangementComponent::mouseMove(const juce::MouseEvent& event) {
     // UN MARQUEUR SOUS LE POINTEUR L'EMPORTE sur le geste du clip : c'est ce
     // qui se produira au clic, et le curseur doit le dire d'avance.
     if (sous != nullptr && marqueurAt(*sous, event.position.x) > 0) survol_ = Geste::MarqueurWarp;
+    // CTRL SUR LE BORD DROIT D'UN CLIP AUDIO : le curseur dit d'avance qu'il
+    // étirera, pas qu'il redimensionnera.
+    if (sous != nullptr && bord == Geste::BordDroit && event.mods.isCtrlDown()
+        && project_->tracks[piste].kind == Track::Kind::Audio)
+        survol_ = Geste::Etirer;
     if (survol_ != avant) updateMouseCursor();
 }
 
 juce::MouseCursor ArrangementComponent::getMouseCursor() {
     if (survol_ == Geste::MarqueurWarp) return juce::MouseCursor::LeftRightResizeCursor;
+    if (survol_ == Geste::Etirer) return juce::MouseCursor::UpDownLeftRightResizeCursor;
     if (survol_ == Geste::BordGauche || survol_ == Geste::BordDroit)
         return juce::MouseCursor::LeftRightResizeCursor;
     // Le coin de fondu a son propre curseur : sans cela, rien ne distinguerait
@@ -989,6 +1034,9 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                     } else {
                         tracé = vsm::audio::io::peaksForRange(*cache, depart, arrivee, colonnes);
                     }
+                    // À L'ENVERS, LA FORME SE DESSINE À L'ENVERS (D13.4) : ce
+                    // qu'on voit à droite est ce qu'on entend en dernier.
+                    if (clip.reversed) std::reverse(tracé.begin(), tracé.end());
                     const float milieu = r.getCentreY();
                     const float demi = r.getHeight() * 0.45f;
                     g.setColour(Palette::background.withAlpha(0.72f));
@@ -1026,6 +1074,30 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                     g.fillPath(coin);
                 }
             }
+            // LE FONDU ENCHAÎNÉ SE VOIT (D13.1) : la zone où ce clip en
+            // chevauche un autre de la piste est hachurée. C'est là que l'un
+            // s'éteint et que l'autre monte, et un chevauchement invisible
+            // s'entendrait sans se comprendre.
+            if (track.kind == Track::Kind::Audio) {
+                const auto finClip = clip.startTick + clipPlayedLength(clip, fin);
+                for (const auto& autre : track.clips) {
+                    if (autre.id == clip.id || autre.muted) continue;
+                    const auto finAutre = autre.startTick + clipPlayedLength(autre, fin);
+                    const auto debut = std::max(clip.startTick, autre.startTick);
+                    const auto arret = std::min(finClip, finAutre);
+                    if (arret <= debut) continue;
+                    const float x0 = std::max(r.getX(), tickToX(debut));
+                    const float x1 = std::min(r.getRight(), tickToX(arret));
+                    if (x1 <= x0) continue;
+                    g.setColour(Palette::background.withAlpha(0.35f));
+                    g.fillRect(x0, r.getY(), x1 - x0, r.getHeight());
+                    g.setColour(Palette::textPrimary.withAlpha(0.35f));
+                    for (float x = x0 - r.getHeight(); x < x1; x += 7.0f)
+                        g.drawLine(std::max(x0, x), r.getBottom(), std::min(x1, x + r.getHeight()),
+                                   r.getBottom() - std::min(r.getHeight(), std::min(x1, x + r.getHeight()) - std::max(x0, x)), 1.0f);
+                }
+            }
+
             // LES MARQUEURS DE TEMPO SE VOIENT (D12.6) : un trait vertical et
             // une pointe en haut, là où on les saisit. Un marqueur qu'on ne
             // verrait pas se déplacerait par surprise, en croyant déplacer le

@@ -177,6 +177,19 @@ bool moveWarpMarker(std::vector<Clip>& clips, uint64_t clipId, size_t index, Tic
 /// Retire le marqueur `index` — jamais le premier, jamais sous deux.
 bool removeWarpMarker(std::vector<Clip>& clips, uint64_t clipId, size_t index);
 
+/// À L'ENVERS OU À L'ENDROIT (D13.4) : bascule le sens de lecture de chaque
+/// clip de la sélection -- chacun le sien, comme l'inversion de phase.
+void toggleClipReverse(std::vector<Clip>& clips, const ClipSelection& selection);
+
+/// ÉTIRER PAR LE BORD DROIT (D13.2) : la durée jouée change de `deltaTicks`
+/// et le MATÉRIAU suit — les marqueurs glissent en proportion, le dernier
+/// suit le bord. Un clip qui ne suivait pas le tempo reçoit d'abord sa paire
+/// neutre et passe en « hauteur conservée » : c'est le geste de Live (Alt +
+/// bord) et de Cubase (« le redimensionnement étire »). Ne descend jamais
+/// sous un tick. Rend vrai si quelque chose a bougé.
+bool stretchClipsEnd(std::vector<Clip>& clips, const ClipSelection& selection, Tick deltaTicks,
+                     Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds);
+
 size_t splitClips(std::vector<Clip>& clips, const ClipSelection& selection, Tick atTick,
                    Tick materialEnd, uint64_t& idCounter,
                    const std::function<double(Tick)>& ticksToSeconds);

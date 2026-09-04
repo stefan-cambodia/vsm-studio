@@ -42,7 +42,7 @@ inline constexpr const char* kProjectFormat = "vsm-project";
 /// comprend pas.
 ///
 /// VERSION 3 : le suivi de tempo d'un clip audio (D12, `warp` et
-/// `warpMarkers`). Écrite SEULEMENT si un clip s'en sert — un projet qui ne
+/// `warpMarkers`) et le clip à l'envers (D13.4, `reversed`). Écrite SEULEMENT si un clip s'en sert — un projet qui ne
 /// suit pas le tempo garde son fichier de version 2, octet pour octet — parce
 /// qu'un lecteur de la version 2 jouerait un clip étiré SANS l'étirer, en
 /// silence, et que ce format refuse plutôt qu'il ne devine.
@@ -142,6 +142,9 @@ struct ProjectClip {
     /// du clip). Voir `vsm::sequencer::Clip`.
     int warpMode = 0;
     std::vector<std::pair<double, int64_t>> warpMarkers;
+    /// À l'envers (D13.4). Comme le suivi de tempo, il fait monter la version
+    /// du fichier : un lecteur ancien jouerait le clip à l'endroit sans un mot.
+    bool reversed = false;
 };
 
 /// Le fichier que joue une piste audio. `path` est RELATIF au dossier de

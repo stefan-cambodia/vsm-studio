@@ -6,6 +6,7 @@
 #include "vsm/audio/engine/LatencyProbe.h"
 #include "vsm/sequencer/MidiRecorder.h"
 #include <atomic>
+#include <functional>
 #include <limits>
 #include <mutex>
 #include <vector>
@@ -84,6 +85,14 @@ public:
     /// D11.7 — LE CLAVIER D'ORDINATEUR joue comme un clavier MIDI : même
     /// chemin que `handleIncomingMidiMessage` (piste choisie ou armées,
     /// capture si l'enregistrement tourne).
+    /// LA SAISIE PAS À PAS (D13.5). Armée, chaque note reçue -- d'un clavier
+    /// MIDI comme du clavier d'ordinateur, qui passe par le même chemin -- est
+    /// AUSSI postée au fil d'interface, où le piano roll l'écrit. Postée, pas
+    /// appelée : on est sur le thread MIDI ici, et le projet ne s'y touche pas.
+    void setStepInputArmed(bool armed) { stepInputArmed_.store(armed, std::memory_order_relaxed); }
+    bool stepInputArmed() const { return stepInputArmed_.load(std::memory_order_relaxed); }
+    std::function<void(uint8_t note, uint8_t velocity)> onStepInputNote;
+
     void playComputerKey(uint8_t note, uint8_t velocity, bool on) {
         handleIncomingMidiMessage(nullptr, on ? juce::MidiMessage::noteOn(1, note, velocity)
                                               : juce::MidiMessage::noteOff(1, note));
@@ -249,6 +258,7 @@ private:
     std::atomic<size_t> liveInputTrack_{0};
     std::atomic<bool> inputMonitoring_{false};
     std::vector<juce::String> enabledMidiInputs_;
+    std::atomic<bool> stepInputArmed_{false};
 
     // --- Capture MIDI ------------------------------------------------------
     std::atomic<bool> recording_{false};
