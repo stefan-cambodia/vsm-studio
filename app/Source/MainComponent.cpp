@@ -456,13 +456,32 @@ MainComponent::MainComponent()
                 // (`char8_t`), et l'erreur ne se voit qu'à la compilation de
                 // l'application -- le piège qui avait fait annoncer une
                 // capture faite « avec ce code » à D11.1.
-                juce::AlertWindow::showMessageBoxAsync(
-                    juce::AlertWindow::InfoIcon, u8"Tempo du clip",
+                // ET LE GESTE INVERSE (D13.7) : caler le PROJET sur la boucle.
+                // Le changement de tempo au tick 0 prend la valeur déduite, les
+                // autres restent, et la boucle joue alors au rapport un -- le
+                // court-circuit de l'étireur, pas un bit de différence.
+                auto* choix = new juce::AlertWindow(
+                    u8"Tempo du clip",
                     juce::String(u8"Le matériau de ce clip a été enregistré à environ ")
                         + juce::String(bpm, 1) + juce::String(u8" BPM.\n")
                         + juce::String(u8"Il joue désormais à ")
                         + juce::String(project_.tempoMap.bpmAt(0), 1)
-                        + juce::String(u8" BPM, sans changer de hauteur."));
+                        + juce::String(u8" BPM, sans changer de hauteur.\n\n")
+                        + juce::String(u8"Adopter ce tempo pour le projet le cale sur la boucle, qui joue alors telle quelle."),
+                    juce::MessageBoxIconType::InfoIcon);
+                choix->addButton(u8"Garder le tempo du projet", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+                choix->addButton(u8"Adopter ce tempo pour le projet", 1, juce::KeyPress(juce::KeyPress::returnKey));
+                choix->enterModalState(true, juce::ModalCallbackFunction::create(
+                    [this, bpm](int resultat) {
+                        if (resultat != 1 || bpm <= 0.0) return;
+                        beginProjectEdit(u8"Adopter le tempo du clip");
+                        project_.tempoMap.addTempoChange(
+                            0, static_cast<uint32_t>(std::lround(60'000'000.0 / bpm)));
+                        refreshTransportSchedule();
+                        loadAudioTracks();
+                        arrangement_.repaint();
+                        tempoLane_.repaint();
+                    }), true);
             }), true);
     };
     arrangement_.onClipColourRequested = [this](size_t piste, uint64_t clipId) {

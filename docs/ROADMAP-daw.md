@@ -3080,6 +3080,7 @@ dont une qui MENT, et qui passe donc en premier (règle 1 du § 3).
 | D13.4 | **Un clip audio à l'envers** (cymbale, traîne inversée) : `Clip` n'a pas de sens de lecture | menu du clip « À l'envers » ; le moteur lit le fichier à rebours sur la fenêtre du clip ; la forme d'onde se dessine à l'envers ; sauvegardé ; test moteur (la lecture inversée d'une rampe est une rampe descendante) |
 | D13.5 | **La saisie pas à pas** dans le piano roll (Cubase) : un clavier — d'ordinateur ou MIDI — pose des notes à la position d'insertion, qui avance d'un pas de grille à chaque note, sans que le transport tourne | un bouton de la barre du piano roll l'arme ; chaque note reçue s'écrit à la position, de la longueur de la grille ; Entrée avance sans note (un silence), Retour arrière recule ; vu à l'écran |
 | D13.6 | **Normaliser un clip** : le gain existe, personne ne le calcule | menu du clip « Normaliser » : le gain devient 1 / crête du matériau joué ; dit dans le gain du clip, annulable |
+| D13.7 | **Adopter le tempo du clip** : « N mesures » déduit le tempo d'origine d'une boucle et l'affiche — mais le projet reste à son tempo, et la boucle joue étirée. Le geste inverse manque : caler le PROJET sur la boucle (Live : « Set 1.1.1 here » et le tempo de la boucle ; Cubase : « Set Tempo from Event ») | la fenêtre du tempo déduit propose « Adopter ce tempo pour le projet » : le changement de tempo au tick 0 prend cette valeur, la boucle joue alors au rapport un (le court-circuit), les autres changements de tempo restent ; annulable |
 
 L'ordre suit le § 3 : ce qui ment (D13.1) avant ce qui manque ; le geste
 de D12 (D13.2) et l'arrangement global (D13.3) avant le confort.
@@ -3146,6 +3147,14 @@ de D12 (D13.2) et l'arrangement global (D13.3) avant le confort.
 > passer, on s'entend en saisissant. La tête de lecture EST la position
 > d'insertion : elle se voit, elle se déplace au clic sur la règle. Une note
 > par pas — l'accord se pose par le bouton Accord — et c'est dit.
+>
+> **D13.7 EST FAITE (04/09/2026).** La fenêtre du tempo déduit par « N
+> mesures » propose désormais « Adopter ce tempo pour le projet » : le
+> changement de tempo au tick 0 prend la valeur déduite (les autres
+> restent), le transport et les pistes audio se republient, et la boucle
+> joue au rapport un — le court-circuit de l'étireur, pas un bit de
+> différence avec le fichier. Annulable comme tout ce qui passe par
+> `beginProjectEdit`.
 
 ## 4. Les choix tranchés ici, et pourquoi
 
