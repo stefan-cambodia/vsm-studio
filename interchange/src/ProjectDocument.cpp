@@ -255,6 +255,7 @@ ProjectDocument documentFromProject(const Project& project) {
         entry.folded = track.folded;
         entry.frozen = track.frozen;
         entry.locked = track.locked;
+        entry.delayMs = track.delayMs;
         entry.frozenAudio.path = track.frozenAudio.path;
         entry.frozenAudio.sampleRate = track.frozenAudio.sampleRate;
         entry.frozenAudio.frames = track.frozenAudio.frames;
@@ -393,6 +394,7 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.folded = source.folded;
         target.frozen = source.frozen;
         target.locked = source.locked;
+        target.delayMs = source.delayMs;
         target.frozenAudio = {source.frozenAudio.path, source.frozenAudio.sampleRate,
                                source.frozenAudio.frames, source.frozenAudio.channels};
         target.audio = {source.audio.path, source.audio.sampleRate,
@@ -576,6 +578,7 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         // CPU, l'autre de montage), et l'imbriquer dans le second aurait fait
         // perdre le premier sur toute piste non gelée.
         if (track.locked) entry.set("locked", JsonValue::makeBoolean(true));
+        if (track.delayMs != 0.0) entry.set("delayMs", JsonValue::makeFloat(track.delayMs));
         if (track.frozen || !track.frozenAudio.path.empty()) {
             entry.set("frozen", JsonValue::makeBoolean(track.frozen));
             JsonValue gel = JsonValue::makeObject();
@@ -789,6 +792,7 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         track.folded = entry["folded"].asBoolean(false);
         track.frozen = entry["frozen"].asBoolean(false);
         track.locked = entry["locked"].asBoolean(false);
+        track.delayMs = entry["delayMs"].asNumber(0.0);
         if (entry["frozenAudio"].isObject()) {
             track.frozenAudio.path = entry["frozenAudio"]["file"].asString();
             // MÊME RÈGLE QUE PARTOUT : un chemin absolu est refusé, jamais

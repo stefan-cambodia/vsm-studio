@@ -1147,7 +1147,15 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
         // La position sur la LIGNE DE TEMPS, en échantillons. Elle vient du
         // temps du segment et non d'un compteur de blocs : c'est ce qui
         // fait qu'un bouclage ou un saut de tête de lecture tombe juste.
-        const int64_t depart = static_cast<int64_t>(std::llround(rangeStartSeconds * sampleRate_));
+        // LE DÉCALAGE DE PISTE (D16.7) : la position de LECTURE recule de ce
+        // que la piste avance. Un décalage de -10 ms fait sonner la piste dix
+        // millisecondes plus tôt, donc à l'instant t on lit ce qui se trouvait
+        // à t + 10 ms. Le signe opposé à celui du planning n'est pas une
+        // faute : là on déplace l'événement, ici on déplace la fenêtre par
+        // laquelle on regarde le fichier.
+        const double decalage = track.delayMs / 1000.0;
+        const int64_t depart =
+            static_cast<int64_t>(std::llround((rangeStartSeconds - decalage) * sampleRate_));
         audioSource->mixInto(destL, destR, depart, sampleCount);
     }
 

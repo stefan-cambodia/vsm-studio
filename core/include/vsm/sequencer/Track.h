@@ -487,6 +487,23 @@ public:
     /// calcule encore.
     bool locked = false;
 
+    /// LE DÉCALAGE DE PISTE (D16.7), en MILLISECONDES, négatif pour sonner
+    /// plus tôt. Le Delay de l'inspecteur de Cubase, le Track Delay de Live.
+    ///
+    /// EN MILLISECONDES ET NON EN TICKS, et c'est tout le point : ce réglage
+    /// sert à corriger le temps de réaction d'un joueur, la latence d'un
+    /// appareil, ou à poser une caisse claire trois millisecondes en retard
+    /// pour qu'elle « traîne ». Aucune de ces trois choses ne suit le tempo,
+    /// et l'exprimer en ticks les ferait toutes changer au premier
+    /// ritardando. Même raison que `Clip::sourceStartSeconds`.
+    ///
+    /// IL NE TOUCHE PAS À LA COMPENSATION DE LATENCE, qui corrige ce que les
+    /// inserts retardent : celle-là remet les pistes ENSEMBLE, celui-ci les
+    /// décale exprès. La latence déclarée du graphe ne change pas d'un
+    /// échantillon (testé) -- sans quoi régler un décalage déplacerait tout
+    /// le reste du morceau.
+    double delayMs = 0.0;
+
     /// Les clips de la piste.
     ///
     /// **VIDE SIGNIFIE « AUCUNE DÉCOUPE »**, c'est-à-dire que la piste joue

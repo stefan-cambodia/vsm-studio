@@ -142,6 +142,12 @@ private:
     juce::Label nameLabel_;
     juce::Slider volume_;
     juce::Slider pan_;
+    /// LE DÉCALAGE DE PISTE (D16.7), en millisecondes : une case où l'on TAPE
+    /// un nombre, pas un bouton qu'on tourne. C'est un réglage qu'on connaît
+    /// (« la basse arrive trois millisecondes trop tard »), pas un réglage
+    /// qu'on cherche à l'oreille -- et un bouton de dix pixels ne saurait pas
+    /// donner le dixième de milliseconde.
+    juce::Slider delay_;
     /// Un bouton par bus de départ du projet. `OwnedArray` et non deux membres :
     /// leur nombre n'est plus connu à la compilation.
     juce::OwnedArray<juce::Slider> sends_;

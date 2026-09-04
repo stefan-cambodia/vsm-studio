@@ -507,3 +507,99 @@ VSM_TEST(a_reversed_clip_plays_its_window_backwards_frame_for_frame) {
     std::printf("    [banc à l'envers] étiré ×2 : niveau au début %.4f, à la fin %.4f (une rampe qui descend)\n", debut, fin);
     VSM_ASSERT(debut > fin * 1.5);
 }
+
+// --------------------------------------------------------------------------
+// D16.7 — LE DÉCALAGE DE PISTE (Delay de l'inspecteur de Cubase, Track Delay
+// de Live). La compensation de latence remet les pistes ENSEMBLE ; celui-ci
+// les décale exprès, et ne doit rien changer à la première.
+// --------------------------------------------------------------------------
+
+namespace {
+
+/// Un fichier fait d'une seule impulsion, à l'échantillon `ou`.
+std::shared_ptr<AudioTrackSource> impulsionA(int64_t ou, int64_t frames) {
+    auto source = std::make_shared<AudioTrackSource>();
+    std::vector<float> gauche(static_cast<size_t>(frames), 0.0f);
+    std::vector<float> droite(static_cast<size_t>(frames), 0.0f);
+    gauche[static_cast<size_t>(ou)] = 1.0f;
+    droite[static_cast<size_t>(ou)] = 1.0f;
+    source->setMemorySamples(std::move(gauche), std::move(droite));
+    return source;
+}
+
+/// L'indice du premier échantillon non nul, ou -1.
+int64_t premierNonNul(const std::vector<float>& signal) {
+    for (size_t i = 0; i < signal.size(); ++i)
+        if (std::abs(signal[i]) > 1.0e-4f) return static_cast<int64_t>(i);
+    return -1;
+}
+
+} // namespace
+
+VSM_TEST(a_track_delay_of_minus_ten_milliseconds_moves_the_audio_ten_milliseconds_earlier) {
+    constexpr double kSampleRate = 48000.0;
+    constexpr int64_t kImpulsion = 24000;          // une demi-seconde dans le fichier
+
+    auto rendre = [&](double delayMs) {
+        Project projet;
+        projet.ticksPerQuarterNote = 480;
+        Track piste;
+        piste.name = "Audio";
+        piste.kind = Track::Kind::Audio;
+        piste.audio.sampleRate = kSampleRate;
+        piste.audio.frames = 48000;
+        piste.audio.channels = 2;
+        piste.audio.path = "essai.wav";
+        piste.delayMs = delayMs;
+        projet.tracks.push_back(piste);
+
+        ProcessGraph graphe;
+        graphe.prepare(kSampleRate, 256);
+        graphe.setProject(projet);
+        auto source = impulsionA(kImpulsion, 48000);
+        AudioClipSpan span;
+        span.startFrame = 0;
+        span.lengthFrames = 48000;
+        span.sourceStartFrame = 0;
+        source->clips.push_back(span);
+        graphe.setTrackAudio(0, source);
+        graphe.seekSeconds(0.0);
+        graphe.setPlaying(true);
+
+        std::vector<float> gauche(48000, 0.0f), droite(48000, 0.0f);
+        for (size_t i = 0; i + 256 <= gauche.size(); i += 256)
+            graphe.processBlock(gauche.data() + i, droite.data() + i, 256);
+        return gauche;
+    };
+
+    const int64_t sansDecalage = premierNonNul(rendre(0.0));
+    VSM_ASSERT(sansDecalage >= 0);
+    VSM_ASSERT_EQ(sansDecalage, kImpulsion);       // le témoin tombe où le fichier le dit
+
+    // -10 ms à 48 kHz font 480 échantillons, À L'ÉCHANTILLON PRÈS.
+    const int64_t avance = premierNonNul(rendre(-10.0));
+    VSM_ASSERT_EQ(avance, kImpulsion - 480);
+    const int64_t retarde = premierNonNul(rendre(10.0));
+    VSM_ASSERT_EQ(retarde, kImpulsion + 480);
+}
+
+VSM_TEST(a_track_delay_never_touches_the_declared_latency) {
+    // La compensation de latence remet les pistes ENSEMBLE ; le décalage les
+    // écarte exprès. Si le second changeait la première, régler un décalage
+    // déplacerait tout le reste du morceau.
+    Project projet;
+    projet.ticksPerQuarterNote = 480;
+    Track piste;
+    piste.name = "Audio";
+    piste.kind = Track::Kind::Audio;
+    projet.tracks.push_back(piste);
+
+    ProcessGraph graphe;
+    graphe.prepare(48000.0, 256);
+    graphe.setProject(projet);
+    const int avant = graphe.graphLatencySamples();
+
+    projet.tracks[0].delayMs = -37.5;
+    graphe.setProject(projet);
+    VSM_ASSERT_EQ(graphe.graphLatencySamples(), avant);
+}

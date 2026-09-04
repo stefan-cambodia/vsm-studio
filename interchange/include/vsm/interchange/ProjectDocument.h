@@ -200,6 +200,10 @@ struct ProjectTrack {
     /// projet dont aucune piste n'est verrouillée garde le fichier qu'il a
     /// toujours eu, octet pour octet.
     bool locked = false;
+
+    /// D16.7 : le décalage de piste, en millisecondes. Écrit seulement quand
+    /// il n'est pas nul.
+    double delayMs = 0.0;
     /// « midi » (défaut), « audio » ou « group ». Absent du fichier pour une piste MIDI :
     /// un projet qui n'a que des pistes MIDI garde octet pour octet le fichier
     /// qu'il avait avant que les pistes audio existent.

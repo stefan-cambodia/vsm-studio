@@ -66,6 +66,24 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     };
     addAndMakeVisible(pan_);
 
+    // LE DÉCALAGE DE PISTE (D16.7). Bornes à +/- 200 ms : au-delà on ne
+    // corrige plus un temps de réaction, on déplace la partie -- et cela se
+    // fait au clip, où l'on VOIT ce qu'on déplace.
+    delay_.setSliderStyle(juce::Slider::LinearBar);
+    delay_.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 44, 16);
+    delay_.setRange(-200.0, 200.0, 0.1);
+    delay_.setTextValueSuffix(" ms");
+    delay_.setValue(track_.delayMs, juce::dontSendNotification);
+    delay_.setTooltip(juce::String::fromUTF8(
+        u8"Décalage de la piste, en millisecondes. Négatif : elle sonne plus tôt. "
+        u8"Ne change pas la compensation de latence."));
+    delay_.onDragStart = [this] { if (onMixEditStarted) onMixEditStarted(); };
+    delay_.onValueChange = [this] {
+        track_.delayMs = delay_.getValue();
+        if (onMixChanged) onMixChanged();
+    };
+    addAndMakeVisible(delay_);
+
     // UN BOUTON PAR BUS DÉCLARÉ, et son infobulle dit lequel : « send A » et
     // « send B » n'apprenaient rien, et le projet ne disait même pas ce qu'ils
     // alimentaient.
@@ -119,6 +137,7 @@ void ChannelStrip::resized() {
     r.removeFromTop(4); // bandeau couleur
     nameLabel_.setBounds(r.removeFromTop(18));
     pan_.setBounds(r.removeFromTop(34).reduced(6, 2));
+    delay_.setBounds(r.removeFromTop(18).reduced(4, 1));
 
     // Deux petits knobs de send (A/B).
     auto sendRow = r.removeFromTop(28);

@@ -233,6 +233,18 @@ std::vector<ScheduledEvent> PlaybackScheduler::build(const Project& project,
         }
     }
 
+    // LE DÉCALAGE DE PISTE (D16.7) s'applique EN SECONDES, à la toute fin, et
+    // avant le tri : il ne suit pas le tempo (voir `Track::delayMs`), et un
+    // événement décalé doit être trié à l'endroit où il sonne, pas à celui
+    // où il était écrit. La chasse est décalée aussi -- une pédale rendue à
+    // la position du transport doit arriver avec la piste qu'elle règle.
+    for (auto* liste : {&chasse, &result})
+        for (auto& ev : *liste) {
+            if (ev.trackIndex >= project.tracks.size()) continue;
+            const double ms = project.tracks[ev.trackIndex].delayMs;
+            if (ms != 0.0) ev.timeSeconds += ms / 1000.0;
+        }
+
     // LA CHASSE D'ABORD, puis le reste : le tri est STABLE, donc les valeurs
     // rendues à `startTick` précèdent tout ce qui tombe au même instant.
     chasse.insert(chasse.end(), result.begin(), result.end());

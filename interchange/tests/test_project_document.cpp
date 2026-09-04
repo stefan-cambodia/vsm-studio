@@ -970,3 +970,23 @@ VSM_TEST(a_locked_track_survives_the_trip_and_an_unlocked_one_adds_nothing_to_th
     VSM_ASSERT(!rejoue.tracks[0].locked);
     VSM_ASSERT(rejoue.tracks[1].locked);
 }
+
+// D16.7 — LE DÉCALAGE DE PISTE, écrit seulement quand il n'est pas nul.
+VSM_TEST(a_track_delay_survives_the_trip_and_a_zero_one_adds_nothing_to_the_file) {
+    Project project = buildProject();
+    VSM_ASSERT(project.tracks.size() >= 2);
+    VSM_ASSERT(projectDocumentToJson(documentFromProject(project)).toString()
+                   .find("delayMs") == std::string::npos);
+
+    project.tracks[1].delayMs = -12.5;
+    const std::string ecrit = projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(ecrit.find("\"delayMs\"") != std::string::npos);
+
+    const ProjectLoadResult relu = parseProjectDocument(ecrit);
+    VSM_ASSERT(relu.success);
+    Project rejoue = project;
+    for (auto& t : rejoue.tracks) t.delayMs = 0.0;
+    applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT_NEAR(rejoue.tracks[0].delayMs, 0.0, 1e-9);
+    VSM_ASSERT_NEAR(rejoue.tracks[1].delayMs, -12.5, 1e-6);
+}

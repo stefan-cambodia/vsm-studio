@@ -3641,6 +3641,44 @@ départ, ce qui est exactement ce qu'on lui demande.
 > haut pour les trois rangées — « ça tient dans la case » ne l'emporte
 > jamais sur « ça se lit ».
 
+> **D16.7 EST FAITE (04/09/2026), en millisecondes et pas en ticks.**
+> `Track::delayMs`, absent du fichier quand il est nul. Le réglage sert à
+> corriger le temps de réaction d'un joueur, la latence d'un appareil, ou à
+> poser une caisse claire trois millisecondes en retard pour qu'elle
+> « traîne » : aucune de ces trois choses ne suit le tempo, et l'exprimer en
+> ticks les ferait toutes changer au premier ritardando. Un test le montre —
+> la même piste à 120 puis à 60 BPM garde ses dix millisecondes.
+>
+> DEUX SIGNES OPPOSÉS, ET CE N'EST PAS UNE FAUTE. Côté notes, le décalage
+> s'ajoute au TEMPS de l'événement, à la toute fin de `build` et AVANT le
+> tri : un événement décalé doit être trié là où il sonne, pas là où il était
+> écrit. Côté audio, c'est la position de LECTURE qui recule de ce que la
+> piste avance — à l'instant t on lit ce qui se trouvait à t + 10 ms. Là on
+> déplace l'événement, ici on déplace la fenêtre par laquelle on regarde le
+> fichier. La chasse aux contrôleurs (D16.2) est décalée elle aussi : une
+> pédale doit arriver AVEC la piste qu'elle règle.
+>
+> IL NE TOUCHE PAS À LA COMPENSATION DE LATENCE. Celle-là remet les pistes
+> ENSEMBLE, celui-ci les écarte exprès ; si le second changeait la première,
+> régler un décalage déplacerait tout le reste du morceau. La latence
+> déclarée du graphe est vérifiée inchangée à −37,5 ms.
+>
+> Dans la console, une case où l'on TAPE un nombre plutôt qu'un bouton qu'on
+> tourne : c'est un réglage qu'on connaît (« la basse arrive trois
+> millisecondes trop tard »), pas un réglage qu'on cherche à l'oreille, et un
+> bouton de dix pixels ne saurait pas donner le dixième de milliseconde.
+> Bornes ±200 ms — au-delà on ne corrige plus un temps de réaction, on
+> déplace la partie, et cela se fait au clip, où l'on VOIT ce qu'on déplace.
+>
+> Cinq tests : l'impulsion audio à −10 ms sort 480 échantillons plus tôt à
+> 48 kHz, À L'ÉCHANTILLON PRÈS (et 480 plus tard à +10 ms, le témoin à zéro
+> tombant où le fichier le dit) ; la latence déclarée ne bouge pas ; les
+> notes décalées en secondes et non en ticks, tempo changé compris ; la
+> chasse suit ; l'aller-retour disque, le fichier inchangé quand le décalage
+> est nul. Vu à l'écran (`VSM_VUE=mixer` sur un projet dont la première piste
+> porte −12,5 ms) : « -12,5 ms » sous le panoramique d'Acid Bass, « 0,0 ms »
+> sous celui de Drums.
+
 > **D16.4 EST FAITE (04/09/2026), et elle a pris le menu plutôt que le clic
 > droit sec.** Le tableau disait « clic droit le retire » ; un repère qui
 > disparaît sous un clic droit sans rien demander est une perte silencieuse,

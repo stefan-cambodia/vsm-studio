@@ -319,3 +319,55 @@ VSM_TEST(a_muted_track_is_not_chased_either) {
     project.tracks.push_back(piste);
     VSM_ASSERT(PlaybackScheduler::build(project, 960, 2880).empty());
 }
+
+// --------------------------------------------------------------------------
+// D16.7 — LE DÉCALAGE DE PISTE, côté notes. Il porte sur le TEMPS et non sur
+// le tick : il sert à corriger un temps de réaction ou la latence d'un
+// appareil, et aucune de ces choses ne suit le tempo.
+// --------------------------------------------------------------------------
+
+VSM_TEST(a_track_delay_shifts_the_notes_in_seconds_and_not_in_ticks) {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    project.tempoMap.addTempoChange(0, 500000);            // 120 BPM
+    Track piste;
+    uint64_t ids = 1;
+    piste.addNote(960, 1440, 60, 100, 0, ids);             // à une seconde
+    project.tracks.push_back(piste);
+
+    const auto temoin = PlaybackScheduler::build(project, 0, 100000);
+    VSM_ASSERT_EQ(temoin.size(), size_t(2));
+    VSM_ASSERT_NEAR(temoin[0].timeSeconds, 1.0, 1e-12);
+
+    project.tracks[0].delayMs = -10.0;
+    const auto avance = PlaybackScheduler::build(project, 0, 100000);
+    VSM_ASSERT_EQ(avance.size(), size_t(2));
+    VSM_ASSERT_NEAR(avance[0].timeSeconds, 0.99, 1e-12);
+    VSM_ASSERT_NEAR(avance[1].timeSeconds, temoin[1].timeSeconds - 0.01, 1e-12);
+
+    // LE TEMPO NE LE CHANGE PAS : à 60 BPM la note tombe deux fois plus tard,
+    // mais le décalage vaut toujours dix millisecondes. Un décalage en ticks
+    // aurait doublé lui aussi, ce qui n'est pas ce qu'on règle.
+    Project lent = project;
+    lent.tempoMap = TempoMap{};
+    lent.tempoMap.addTempoChange(0, 1000000);              // 60 BPM
+    const auto aLent = PlaybackScheduler::build(lent, 0, 100000);
+    VSM_ASSERT_NEAR(aLent[0].timeSeconds, 2.0 - 0.01, 1e-12);
+}
+
+VSM_TEST(a_track_delay_carries_the_chased_controllers_with_the_track) {
+    // Une pédale rendue à la position du transport doit arriver AVEC la piste
+    // qu'elle règle, sans quoi elle la précéderait ou la suivrait de dix
+    // millisecondes selon le signe.
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    project.tempoMap.addTempoChange(0, 500000);
+    Track piste;
+    piste.controlChanges.push_back({0, 0, 64, 127});
+    piste.delayMs = -10.0;
+    project.tracks.push_back(piste);
+
+    const auto events = PlaybackScheduler::build(project, 960, 2880);
+    VSM_ASSERT_EQ(events.size(), size_t(1));
+    VSM_ASSERT_NEAR(events[0].timeSeconds, 1.0 - 0.01, 1e-12);
+}
