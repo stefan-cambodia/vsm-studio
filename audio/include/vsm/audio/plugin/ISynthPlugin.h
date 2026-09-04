@@ -29,6 +29,50 @@ public:
     virtual void process(const MidiNoteEvent* events, int numEvents,
                           float* outputL, float* outputR, int numSamples) = 0;
 
+    /// COMBIEN DE SORTIES SÉPARÉES CETTE MACHINE SAIT RENDRE (D18.7).
+    ///
+    /// Une paire stéréo par défaut, et c'est le cas de toutes les machines
+    /// écrites jusqu'ici : rien ne change pour elles, pas une ligne, pas un
+    /// échantillon.
+    ///
+    /// POURQUOI CETTE CAPACITÉ EXISTE. Les huit voix d'une boîte à rythmes
+    /// arrivent MIXÉES sur deux canaux. Une reconstruction qui a séparé la
+    /// grosse caisse de la caisse claire — ce que la chaîne d'analyse fait, et
+    /// c'est l'objectif de PARITÉ des pistes — les recolle donc au moment de
+    /// les jouer. Le § 2 de `docs/CDC-detection-multipiste.md` le demande
+    /// explicitement.
+    virtual int outputCount() const { return 1; }
+
+    /// Le nom de la sortie `index` (« Grosse caisse », « Caisse claire »),
+    /// pour que la piste qui la portera puisse le dire. Vide = la machine
+    /// entière, ce qui est le cas d'une machine à une seule sortie.
+    virtual const char* outputName(int) const { return ""; }
+
+    /// Rend les sorties SÉPARÉMENT, une paire stéréo par sortie.
+    ///
+    /// LE DÉFAUT EST L'ANCIEN CHEMIN, ET C'EST CE QUI REND CETTE ADDITION
+    /// SANS RISQUE : une machine qui n'implémente rien rend son mixage dans la
+    /// sortie 0 et du silence dans les autres. Pour une machine à une seule
+    /// sortie -- toutes celles d'aujourd'hui -- c'est `process` appelé tel
+    /// quel, au bit près.
+    ///
+    /// L'INVARIANT QUI COMPTE, et qu'un test tient : la SOMME des sorties
+    /// séparées est ce que `process` aurait rendu. Une machine qui ne le
+    /// respecterait pas ferait sonner un projet différemment selon qu'on l'a
+    /// éclaté en pistes ou non, ce qui est exactement le genre d'écart qu'on
+    /// met des heures à ne pas croire.
+    virtual void processMultiOut(const MidiNoteEvent* events, int numEvents,
+                                  float* const* outputsL, float* const* outputsR,
+                                  int numOutputs, int numSamples) {
+        if (numOutputs <= 0) return;
+        process(events, numEvents, outputsL[0], outputsR[0], numSamples);
+        for (int bus = 1; bus < numOutputs; ++bus)
+            for (int i = 0; i < numSamples; ++i) {
+                outputsL[bus][i] = 0.0f;
+                outputsR[bus][i] = 0.0f;
+            }
+    }
+
     /// Applique un événement de contrôle (pitch bend, molette, pression...).
     ///
     /// NON PURE, ET LE DÉFAUT EST « JE NE SAIS PAS FAIRE ». Une machine qui

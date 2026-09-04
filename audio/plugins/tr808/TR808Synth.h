@@ -251,6 +251,17 @@ public:
     TR808Synth();
 
     void initialize(double sampleRate, int maxBlockSize) override;
+    /// D18.7 : SIX SORTIES, une par pièce. Une reconstruction qui a séparé la
+    /// grosse caisse de la caisse claire ne doit pas les recoller en les
+    /// jouant. La SOMME des six est ce que `process` rend, au bit près : les
+    /// six voix sont indépendantes, et le facteur de marge est une puissance
+    /// de deux, donc exact.
+    int outputCount() const override { return 6; }
+    const char* outputName(int index) const override;
+    void processMultiOut(const vsm::audio::plugin::MidiNoteEvent* events, int numEvents,
+                          float* const* outputsL, float* const* outputsR,
+                          int numOutputs, int numSamples) override;
+
     void process(const vsm::audio::plugin::MidiNoteEvent* events, int numEvents,
                  float* outputL, float* outputR, int numSamples) override;
 

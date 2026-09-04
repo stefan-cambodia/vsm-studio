@@ -102,6 +102,44 @@ void TR808Synth::process(const MidiNoteEvent* events, int numEvents,
     }
 }
 
+const char* TR808Synth::outputName(int index) const {
+    // L'ORDRE EST CELUI DE LA SOMME de `process`, et il ne doit pas en
+    // changer : c'est lui qui rend l'invariant vérifiable.
+    static const char* const noms[6] = {"Grosse caisse", "Caisse claire", "Charley ferme",
+                                         "Charley ouvert", "Clap", "Cloche"};
+    return (index >= 0 && index < 6) ? noms[index] : "";
+}
+
+void TR808Synth::processMultiOut(const MidiNoteEvent* events, int numEvents,
+                                  float* const* outputsL, float* const* outputsR,
+                                  int numOutputs, int numSamples) {
+    if (numOutputs <= 0) return;
+    applyConfig();
+
+    int eventIndex = 0;
+    for (int i = 0; i < numSamples; ++i) {
+        while (eventIndex < numEvents && events[eventIndex].sampleOffset == i) {
+            const auto& ev = events[eventIndex];
+            if (ev.kind == MidiNoteEvent::Kind::NoteOn && ev.velocity > 0)
+                triggerNote(ev.note, ev.velocity);
+            ++eventIndex;
+        }
+
+        // LA MARGE EST APPLIQUÉE PIÈCE PAR PIÈCE, et non à la somme : 0,5 est
+        // une puissance de deux, donc la multiplication est EXACTE et la somme
+        // des six moitiés est la moitié de la somme, au bit près. C'est ce qui
+        // rend l'invariant « la somme des sorties est ce que rend `process` »
+        // vérifiable et non approché.
+        const float pieces[6] = {kick_.render(), snare_.render(), closedHat_.render(),
+                                  openHat_.render(), clap_.render(), cowbell_.render()};
+        for (int bus = 0; bus < numOutputs; ++bus) {
+            const float v = (bus < 6) ? pieces[bus] * 0.5f : 0.0f;
+            outputsL[bus][i] = v;
+            outputsR[bus][i] = v;
+        }
+    }
+}
+
 int TR808Synth::activeVoiceCount() const {
     return (kick_.isActive() ? 1 : 0) + (snare_.isActive() ? 1 : 0)
          + (closedHat_.isActive() ? 1 : 0) + (openHat_.isActive() ? 1 : 0)

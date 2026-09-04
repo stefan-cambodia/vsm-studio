@@ -4298,6 +4298,41 @@ les jours ensuite, le modèle en dernier.
 > lit les trois prises de la piste, dit combien de mesures fait le morceau et
 > que ce qu'aucun tronçon ne couvre ne sonnera pas.
 
+> **D18.7 A ÉTÉ SCINDÉE EN DEUX, ET SA PREMIÈRE MOITIÉ EST FAITE
+> (05/09/2026).** L'étape mêlait deux choses de nature différente : qu'une
+> machine SACHE rendre ses voix séparément, et que le graphe les PUBLIE sur
+> des pistes. La première est une capacité, close et vérifiable seule ; la
+> seconde est un changement de modèle (une piste qui est « la sortie n° k de
+> l'instrument de la piste j »), et la mêler à l'autre aurait donné une étape
+> qu'on ne peut ni finir ni juger d'un coup. Elles sont donc deux, et c'est
+> écrit plutôt que fait en silence.
+>
+> **D18.7a — la capacité — EST FAITE.** `ISynthPlugin` gagne `outputCount()`
+> (une paire par défaut), `outputName(index)` et `processMultiOut(...)`. Le
+> DÉFAUT EST L'ANCIEN CHEMIN : une machine qui n'implémente rien rend son
+> mixage dans la sortie 0 et du SILENCE dans les autres — vérifié au bit près
+> sur le Minimoog, y compris que les sorties qu'elle n'a pas sont mises à
+> zéro et non laissées telles qu'on les lui a données. Aucune des soixante
+> machines existantes ne change d'une ligne ni d'un échantillon.
+>
+> Le TR-808 l'implémente : six sorties nommées (grosse caisse, caisse claire,
+> charley fermé, charley ouvert, clap, cloche). **La somme des six est ce que
+> `process` rend, AU BIT PRÈS** — écart mesuré **0,000e+00** sur une mesure où
+> cinq pièces sonnent ensemble (crête 0,876, donc la mesure porte sur du
+> son). Ce n'est pas une chance : la marge de 0,5 est appliquée pièce par
+> pièce plutôt qu'à la somme, et 0,5 étant une puissance de deux, la
+> multiplication est EXACTE — la somme des six moitiés est la moitié de la
+> somme, sans arrondi intermédiaire. L'invariant est ce qui rend l'addition
+> sans risque : sans lui, un projet sonnerait différemment selon qu'on l'a
+> éclaté en pistes ou non.
+>
+> **D18.7b — la publication sur des pistes — reste à faire**, et c'est elle
+> qui sert l'objectif de PARITÉ : une reconstruction qui a séparé la grosse
+> caisse de la caisse claire ne doit pas les recoller en les jouant (§ 2 de
+> `CDC-detection-multipiste.md`). Elle demande de dire dans le modèle qu'une
+> piste porte la sortie n° k d'une autre, et de le faire suivre au fichier, à
+> la console et au rendu hors ligne.
+
 > **D18.1 EST FAITE (05/09/2026), et son critère a dû être réécrit par la
 > mesure.** « Piste ▸ Reporter la sélection en audio » rend hors ligne les
 > clips choisis — une piste neuve par piste source, posée À LA PLACE de la
@@ -4416,7 +4451,7 @@ le dither à l'export (D14.4).
 | D18.4 | **L'ordre de jeu.** Les repères nomment des endroits (D16.4) mais rien ne nomme des SECTIONS ni ne les rejoue dans un autre ordre : essayer « couplet, couplet, refrain » demande de tout recopier. Cubase : piste d'Arrangement | des sections nommées (début, fin), déduites des repères ou dessinées ; une liste d'ordre de jeu ; « Aplatir » écrit le résultat comme du vrai matériau, et c'est le SEUL moment où le projet change ; test `core/` : aplatir [A, A, B] rend un projet dont le planning est celui qu'on entendrait |
 | D18.5 | **La vitesse de lecture.** Aucun varispeed : on ne peut pas ralentir pour relever un passage. Cubase : Varispeed ; Live n'en a pas besoin parce que tout y suit le tempo, ce qui n'est pas notre cas (un clip audio ne suit le tempo que si on le lui demande, D12) | un facteur de vitesse appliqué à l'HORLOGE du transport, sans toucher au projet ni au tempo ; les clips qui suivent le tempo s'étirent, les autres changent de hauteur — c'est un varispeed, pas un étirement, et l'interface le dit ; test `audio/` : à 0,5, une impulsion posée à 1 s sort à 2 s |  ⟵ **ESSAYÉE ET REMISE (05/09/2026) : voir la note ci-dessous.**
 | D18.6 | **Les notes du projet.** Rien pour écrire « la basse vient du stem `other`, la nappe est une hypothèse » : une reconstruction est pleine de décisions dont il ne reste aucune trace, et c'est précisément ce projet-ci qui en produit le plus | un texte libre par projet, écrit dans `project.json`, montré dans une fenêtre ; test `interchange/` : aller-retour, et fichier inchangé octet pour octet quand le texte est vide |
-| D18.7 | **Une machine ne sort que sur DEUX canaux.** `ISynthPlugin::process` rend L/R : les huit voix d'un TR-808 arrivent mixées, et une reconstruction qui a séparé la grosse caisse de la caisse claire les recolle. C'est le § 2 de `CDC-detection-multipiste.md` qui le demande, et l'objectif de parité qui le paie | `ISynthPlugin` sait dire combien de sorties il a et les rendre séparément (défaut : une paire, aucune machine existante ne change) ; `ProcessGraph` publie chaque sortie sur une piste ; test `audio/` : la somme des sorties séparées est identique AU BIT PRÈS au rendu stéréo d'avant |
+| D18.7 | **Une machine ne sort que sur DEUX canaux.** `ISynthPlugin::process` rend L/R : les huit voix d'un TR-808 arrivent mixées, et une reconstruction qui a séparé la grosse caisse de la caisse claire les recolle. C'est le § 2 de `CDC-detection-multipiste.md` qui le demande, et l'objectif de parité qui le paie | `ISynthPlugin` sait dire combien de sorties il a et les rendre séparément (défaut : une paire, aucune machine existante ne change) ; `ProcessGraph` publie chaque sortie sur une piste ; test `audio/` : la somme des sorties séparées est identique AU BIT PRÈS au rendu stéréo d'avant |  ⟵ **SCINDÉE EN DEUX (05/09/2026) : voir la note.**
 
 **Ce que l'audit a écarté, et pourquoi.** Les zooms mémorisés (le zoom sur la
 sélection et le zoom « tout voir » de D14.2 couvrent l'usage réel) ; le motif
