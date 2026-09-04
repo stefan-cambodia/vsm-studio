@@ -144,6 +144,10 @@ public:
     /// avec tout ce qui sonne pendant -- exporter « seulement les pistes
     /// sélectionnées » est une autre fonction, celle des stems (D6.2).
     bool selectionTickRange(vsm::midi::Tick& debut, vsm::midi::Tick& fin) const;
+    /// D18.1 : LES IDENTIFIANTS DES CLIPS CHOISIS, pour que l'application
+    /// puisse reporter la sélection en audio. Elle en a besoin telle quelle :
+    /// un report ne rend pas « la piste », il rend CE QUI EST CHOISI dessus.
+    const vsm::sequencer::ClipSelection& selectedClipIds() const { return selection_; }
     /// Les mêmes trois gestes que le piano roll, aux mêmes raccourcis.
     void copySelection();
     void paste();

@@ -1626,6 +1626,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                               gelable);
                 menu.addItem(kMenuTrackBounce, u8"Reporter la piste en audio (définitif)",
                               gelable);
+                menu.addItem(kMenuTrackBounceSelection,
+                              u8"Reporter la sélection en audio (sur une piste neuve)",
+                              arrangement_.hasSelection());
 #if VSM_WITH_CLAP || VSM_WITH_VST3
                 menu.addSeparator();
 #endif
@@ -2124,6 +2127,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuTrackPluginEditor: openPluginEditorForSelectedTrack(); break;
 #endif
         case kMenuTrackBounce:   bounceSelectedTrack(); break;
+        case kMenuTrackBounceSelection: bounceSelectionToNewTracks(); break;
         case kMenuViewSingleWindow:
             singleWindow_ = !singleWindow_;
             // Écrit DÈS le choix, comme les associations MIDI : une disposition
@@ -5294,6 +5298,132 @@ void MainComponent::bounceSelectedTrack() {
             if (choix == 0) return;
             performBounce(index);
         }));
+}
+
+void MainComponent::bounceSelectionToNewTracks() {
+    if (!arrangement_.hasSelection()) return;
+    if (currentProjectFolder_ == juce::File()) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Projet jamais enregistré",
+            juce::String(u8"Un report est un FICHIER, et le format range les fichiers d'un "
+                          u8"projet par chemin relatif à son dossier. Enregistrez d'abord le "
+                          u8"projet (Ctrl+S)."));
+        return;
+    }
+    vsm::midi::Tick debutTick = 0, finTick = 0;
+    if (!arrangement_.selectionTickRange(debutTick, finTick)) return;
+
+    const auto& choisis = arrangement_.selectedClipIds();
+    // QUELLES PISTES SONT CONCERNÉES : une par piste portant un clip choisi.
+    // Cubase rend chaque piste sur la sienne, et c'est la seule réponse qui ne
+    // mélange pas ce que l'utilisateur avait pris soin de séparer.
+    std::vector<size_t> sources;
+    for (size_t i = 0; i < project_.tracks.size(); ++i)
+        for (const auto& clip : project_.tracks[i].clips)
+            if (choisis.count(clip.id) > 0) { sources.push_back(i); break; }
+    if (sources.empty()) return;
+
+    captureSessionIntoProject();
+    vsm::interchange::RenderOptions options;
+    options.sampleRate = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate()
+                                                                 : 48000.0;
+    options.blockSize = audioEngine_.currentBlockSize() > 0 ? audioEngine_.currentBlockSize() : 512;
+    options.format = vsm::audio::io::SampleFormat::Float32;
+    // LE RENDU PART DE ZÉRO ET LA PLAGE EST DÉCOUPÉE (D6.1) : à la mesure 33,
+    // une réverbération porte la queue de ce qui précède, et un report qui
+    // démarrerait à froid rendrait un extrait que personne n'a entendu.
+    options.startSeconds = project_.ticksToSeconds(debutTick);
+    const double finSecondes = project_.ticksToSeconds(finTick);
+    options.durationSeconds = finSecondes - options.startSeconds + options.tailSeconds;
+    if (options.durationSeconds <= 0.0) return;
+
+    std::vector<vsm::sequencer::Track> neuves;
+    juce::StringArray echecs;
+    for (size_t index : sources) {
+        // LE BUNDLE NE GARDE QUE LES CLIPS CHOISIS de cette piste : le reste
+        // de la piste n'est pas ce qu'on a demandé de reporter, et le rendre
+        // ferait entrer dans le fichier ce qu'on avait exclu en le
+        // désélectionnant. Les NOTES restent : un clip est une fenêtre sur
+        // elles, et les retirer viderait la fenêtre.
+        vsm::interchange::LoadedBundle bundle;
+        bundle.project = project_;
+        auto& piste = bundle.project.tracks[index];
+        std::vector<vsm::sequencer::Clip> gardes;
+        for (const auto& clip : piste.clips)
+            if (choisis.count(clip.id) > 0) gardes.push_back(clip);
+        piste.clips = std::move(gardes);
+        bundle.document = vsm::interchange::documentFromProject(bundle.project);
+        bundle.folderPath = currentProjectFolder_.getFullPathName().toStdString();
+        if (!piste.instrumentId.empty())
+            if (auto* machine = audioEngine_.processGraph().trackInstrument(index))
+                bundle.presetsByTrack[index] = vsm::interchange::capturePreset(
+                    *machine, piste.instrumentId, piste.name);
+
+        vsm::audio::engine::RenderedAudio rendu;
+        // LE MÊME RENDU QUE LE GEL ET QUE LE REPORT DE PISTE : trois chemins
+        // différents finiraient par ne plus sonner pareil.
+        const auto resultat = vsm::interchange::renderTrackForFreeze(bundle, index, rendu, options);
+        if (!resultat.success) {
+            echecs.add(juce::String(project_.tracks[index].name) + " : " + juce::String(resultat.error));
+            continue;
+        }
+
+        const juce::String relatif = "audio/report-selection-piste-"
+                                     + juce::String(static_cast<int>(index) + 1) + "-"
+                                     + juce::String(static_cast<long long>(debutTick)) + ".wav";
+        const juce::File fichier = currentProjectFolder_.getChildFile(relatif);
+        fichier.getParentDirectory().createDirectory();
+        try {
+            vsm::audio::io::WavFileWriter::writeFile(rendu.left.data(), rendu.right.data(),
+                                                      rendu.numFrames(), options.sampleRate,
+                                                      options.format,
+                                                      fichier.getFullPathName().toStdString());
+        } catch (const std::exception& e) {
+            echecs.add(juce::String(project_.tracks[index].name) + " : " + juce::String(e.what()));
+            continue;
+        }
+
+        vsm::sequencer::Track neuve;
+        neuve.kind = Track::Kind::Audio;
+        neuve.name = project_.tracks[index].name + " (report)";
+        neuve.colorRgba = project_.tracks[index].colorRgba;
+        neuve.audio.path = relatif.toStdString();
+        neuve.audio.sampleRate = options.sampleRate;
+        neuve.audio.frames = static_cast<int64_t>(rendu.numFrames());
+        neuve.audio.channels = 2;
+        // À SA PLACE SUR LA LIGNE DE TEMPS, et pas au début du morceau : le
+        // fichier commence là où la sélection commençait.
+        vsm::sequencer::Clip clip;
+        clip.startTick = debutTick;
+        clip.length = project_.secondsToTicks(options.startSeconds + options.durationSeconds)
+                      - debutTick;
+        clip.sourceLength = clip.length;
+        clip.name = neuve.name;
+        clip.colorRgba = neuve.colorRgba;
+        neuve.clips.push_back(std::move(clip));
+        neuves.push_back(std::move(neuve));
+    }
+
+    if (!neuves.empty()) {
+        beginProjectEdit(u8"Reporter la sélection en audio");
+        for (auto& piste : neuves) project_.tracks.push_back(std::move(piste));
+        project_.assignClipIds();
+        rebuildFromProject(false);
+    }
+    // PANNE MUETTE INTERDITE : ce qui n'a pas pu être reporté est nommé, piste
+    // par piste, plutôt que de laisser compter les pistes neuves.
+    if (!echecs.isEmpty())
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::WarningIcon, u8"Reporter la sélection",
+            juce::String(u8"Ces pistes n'ont pas pu être reportées :\n")
+                + echecs.joinIntoString("\n"));
+    else
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Reporter la sélection",
+            juce::String(static_cast<int>(neuves.size()))
+                + juce::String(neuves.size() > 1 ? u8" pistes de report posées" : u8" piste de report posée")
+                + juce::String(u8", à la place de la sélection. Les pistes d'origine n'ont pas été "
+                               u8"touchées — désactivez-les si vous voulez entendre le report seul."));
 }
 
 void MainComponent::performBounce(size_t index) {

@@ -199,6 +199,8 @@ private:
     kMenuEditLoadGroove,
         kMenuTrackFreeze,
         kMenuTrackBounce,
+        /// D18.1 : reporter en audio les CLIPS CHOISIS, sur une piste neuve.
+        kMenuTrackBounceSelection,
         kMenuTrackClapPlugin,
         kMenuTrackVst3Plugin,
         kMenuTrackPluginEditor,
@@ -654,6 +656,11 @@ private:
     /// D17.6 : rogne le clip à ce qui sonne, en relisant les échantillons du
     /// fichier. Annulable.
     void trimClipToSound(size_t trackIndex, uint64_t clipId);
+    /// D18.1 : rend hors ligne les clips choisis et les pose sur une piste
+    /// audio neuve, à leur place. La piste d'origine n'est pas touchée --
+    /// c'est ce qui distingue « reporter la sélection » de « reporter la
+    /// piste », qui, lui, remplace le matériau.
+    void bounceSelectionToNewTracks();
     /// D17.8 : les quatre gestes du groove. Le groove COURANT vit dans
     /// l'application et non dans le projet : c'est un outil qu'on porte d'un
     /// morceau à l'autre, comme un preset, pas une propriété du morceau.

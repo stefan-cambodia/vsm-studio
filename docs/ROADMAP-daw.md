@@ -4088,6 +4088,44 @@ les jours ensuite, le modèle en dernier.
 > format, une version future, un groove sans pas et un JSON cassé sont tous
 > refusés en le disant).
 
+> **D18.1 EST FAITE (05/09/2026), et son critère a dû être réécrit par la
+> mesure.** « Piste ▸ Reporter la sélection en audio » rend hors ligne les
+> clips choisis — une piste neuve par piste source, posée À LA PLACE de la
+> sélection, l'originale intacte. C'est ce qui distingue ce geste du report de
+> PISTE (D5.5), qui remplace le matériau : ici on pose à côté, et l'on désactive
+> l'original si l'on veut entendre le report seul. Le bundle rendu ne garde que
+> les clips choisis ; les NOTES restent, puisqu'un clip est une fenêtre sur
+> elles. Même rendu que le gel et que le report de piste — trois chemins
+> différents finiraient par ne plus sonner pareil. Ce qui échoue est nommé
+> piste par piste.
+>
+> **LE CRITÈRE ÉCRIT UNE HEURE PLUS TÔT DISAIT « identique au rendu du morceau
+> sur cette plage ». La mesure l'a réfuté deux fois, et la seconde est la plus
+> instructive.** Premier essai, clips voisins : écart **0,459** — c'est la
+> QUEUE de la note du clip d'avant, et elle DOIT être absente, sans quoi elle
+> s'entendrait deux fois une fois le report posé à côté de l'original. Second
+> essai, clips écartés d'une seconde de silence : écart **0,426 encore**, alors
+> que plus rien ne sonnait. Les deux rendus contiennent bien la note (crêtes
+> 0,327 et 0,358) — elle n'est simplement pas au même endroit de son cycle.
+> **Une machine a de la MÉMOIRE** (phase d'oscillateur, charge de filtre, état
+> d'enveloppe), et une note précédée d'une autre ne sonne pas échantillon pour
+> échantillon comme la même note jouée à froid.
+>
+> Ce n'est donc pas un défaut à corriger : c'est ce qu'EST un report de
+> sélection, chez Cubase comme ici. Le rendu part de zéro (D6.1), ce qui met
+> les EFFETS dans l'état où l'oreille les attend ; rien ne peut mettre la
+> MACHINE dans l'état que lui aurait donné un matériau qu'on a justement exclu
+> — et le voudrait-on qu'il faudrait le rendre, c'est-à-dire ne plus reporter
+> une sélection. Le critère juste, et celui que les tests portent désormais :
+> le report CONTIENT ce qu'on a choisi, il ne contient PAS ce qu'on n'a pas
+> choisi, et l'écart au morceau est NOMMÉ plutôt que promis nul.
+>
+> Trois tests `interchange/` : le clip choisi sonne et le clip écarté est
+> silencieux ; l'écart au morceau est non nul et sa raison est écrite — ce
+> dernier test existe pour empêcher une fausse réparation, et s'il tombe un
+> jour à zéro c'est que le report aura recommencé à rendre ce qu'on n'avait
+> pas choisi.
+
 > **D17.1 EST FAITE (05/09/2026), et le chiffre est celui du manuel.**
 > `FadeShape` (`Linear`, `EqualPower`, `Slow`, `Fast`), absente du fichier
 > quand c'est la droite — un projet d'avant D17.1 se réécrit octet pour
@@ -4162,7 +4200,7 @@ le dither à l'export (D14.4).
 
 | Étape | Contenu | Terminé quand |
 |---|---|---|
-| D18.1 | **Reporter la SÉLECTION en audio.** Reporter une PISTE existe (`kMenuTrackBounce`) ; reporter les clips choisis sur une piste neuve, non — c'est pourtant le geste qui fige une idée sans figer la piste. Cubase : Render in Place ; Live : Freeze & Flatten sur une sélection | « Piste ▸ Reporter la sélection en audio » : les clips choisis sont rendus hors ligne et posés sur une piste audio neuve À LEUR PLACE, la piste d'origine intacte ; le rendu part de zéro et découpe, comme l'export (D6.1) ; annulable ; test : le report de la sélection est identique au rendu du morceau sur cette plage, les autres pistes mises à part |
+| D18.1 | **Reporter la SÉLECTION en audio.** Reporter une PISTE existe (`kMenuTrackBounce`) ; reporter les clips choisis sur une piste neuve, non — c'est pourtant le geste qui fige une idée sans figer la piste. Cubase : Render in Place ; Live : Freeze & Flatten sur une sélection | « Piste ▸ Reporter la sélection en audio » : les clips choisis sont rendus hors ligne et posés sur une piste audio neuve À LEUR PLACE, la piste d'origine intacte ; le rendu part de zéro et découpe, comme l'export (D6.1) ; annulable ; test : le report CONTIENT ce qui a été choisi et RIEN de ce qui ne l'a pas été |
 | D18.2 | **Assembler les prises.** `Track::takes` conserve chaque passe depuis D3.5 et l'on ne peut que CHOISIR la meilleure : impossible de prendre le couplet de la deuxième et le refrain de la quatrième. Cubase : lanes ; Live : take lanes | une prise composite se décrit par une suite de tronçons (prise, début, fin) dans `core/` ; la vue des prises montre les passes empilées, on y dessine la plage qu'on garde ; le matériau courant est RECALCULÉ depuis les tronçons, jamais recopié à la main ; annulable ; test `core/` : trois tronçons pris dans trois prises rendent exactement les notes de chacune sur sa plage |
 | D18.3 | **Éditer plusieurs pistes ensemble.** Rien ne lie deux pistes à l'édition : couper une reconstruction multipiste à la mesure 33 demande de couper douze fois, et un tick d'écart casse la phase entre deux micros. Cubase : Edit Groups | `Track::editGroup` (0 = aucun, absent du fichier), et les gestes de TEMPS de `ClipEdit` (couper, déplacer, joindre) s'appliquent à toutes les pistes du même groupe, au même tick ; test `core/` : couper une piste d'un groupe de trois coupe les trois au même tick, et une piste hors groupe n'est pas touchée |
 | D18.4 | **L'ordre de jeu.** Les repères nomment des endroits (D16.4) mais rien ne nomme des SECTIONS ni ne les rejoue dans un autre ordre : essayer « couplet, couplet, refrain » demande de tout recopier. Cubase : piste d'Arrangement | des sections nommées (début, fin), déduites des repères ou dessinées ; une liste d'ordre de jeu ; « Aplatir » écrit le résultat comme du vrai matériau, et c'est le SEUL moment où le projet change ; test `core/` : aplatir [A, A, B] rend un projet dont le planning est celui qu'on entendrait |

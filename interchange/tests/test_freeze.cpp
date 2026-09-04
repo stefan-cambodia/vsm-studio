@@ -152,3 +152,120 @@ VSM_TEST(freezing_a_track_that_does_not_exist_says_so) {
     VSM_ASSERT(!resultat.success);
     VSM_ASSERT(!resultat.error.empty());
 }
+
+// --------------------------------------------------------------------------
+// D18.1 — REPORTER LA SÉLECTION EN AUDIO, ET CE QU'UN REPORT NE PEUT PAS ÊTRE.
+//
+// LE CRITÈRE ÉCRIT DANS LA FEUILLE DE ROUTE DISAIT « le report de la sélection
+// est identique au rendu du morceau sur cette plage ». LA MESURE L'A RÉFUTÉ,
+// deux fois, et la seconde fois est la plus instructive.
+//
+//  1. Premier essai, clips voisins : écart 0,459. C'est la QUEUE de la note du
+//     clip d'avant, qui sonne encore au début de la plage. Elle doit être
+//     absente : le report est posé À CÔTÉ de la piste d'origine, qui continue
+//     de jouer, et une queue reportée s'entendrait deux fois.
+//  2. Second essai, clips écartés d'une seconde de silence : écart 0,426
+//     ENCORE, alors que plus rien ne sonnait. Les deux rendus contiennent bien
+//     la note (crêtes 0,327 et 0,358) : elle n'est pas au même endroit du
+//     cycle. UNE MACHINE A DE LA MÉMOIRE — phase d'oscillateur, charge de
+//     filtre, état d'enveloppe — et une note précédée d'une autre ne sonne pas
+//     échantillon pour échantillon comme la même note jouée à froid.
+//
+// Ce n'est donc pas un défaut à corriger, c'est ce qu'est un report de
+// sélection, chez Cubase comme ici. Le rendu part de zéro (D6.1), ce qui met
+// les EFFETS dans l'état où l'oreille les attend ; rien ne peut mettre la
+// MACHINE dans l'état que lui aurait donné un matériau qu'on a justement
+// exclu — et le voudrait-on qu'il faudrait rendre ce matériau, c'est-à-dire
+// ne plus reporter une sélection.
+//
+// Ce qui est donc vérifié ici : le report CONTIENT ce qu'on a choisi, il ne
+// contient PAS ce qu'on n'a pas choisi, et l'écart au morceau est nommé.
+// --------------------------------------------------------------------------
+
+namespace {
+
+LoadedBundle bundleDeuxClipsEcartes() {
+    LoadedBundle bundle;
+    bundle.project.ticksPerQuarterNote = 480;
+    uint64_t ids = 1;
+    Track piste;
+    piste.name = "Basse";
+    piste.instrumentId = "vsm.minimoog";
+    piste.addNote(0, 240, 45, 100, 0, ids);         // 0 à 0,25 s
+    piste.addNote(1440, 1680, 52, 110, 0, ids);     // 1,5 à 1,75 s
+    Clip premier;
+    premier.id = 1;
+    premier.sourceStart = 0;    premier.sourceLength = 480;
+    premier.startTick = 0;      premier.length = 480;
+    Clip second;
+    second.id = 2;
+    second.sourceStart = 1440;  second.sourceLength = 480;
+    second.startTick = 1440;    second.length = 480;
+    piste.clips = {premier, second};
+    bundle.project.tracks.push_back(std::move(piste));
+    bundle.document = documentFromProject(bundle.project);
+    return bundle;
+}
+
+LoadedBundle sansLePremierClip(LoadedBundle bundle) {
+    bundle.project.tracks[0].clips = {bundle.project.tracks[0].clips[1]};
+    bundle.document = documentFromProject(bundle.project);
+    return bundle;
+}
+
+float crete(const std::vector<float>& s) {
+    float c = 0.0f;
+    for (float e : s) c = std::max(c, std::abs(e));
+    return c;
+}
+
+} // namespace
+
+VSM_TEST(the_bounce_contains_the_chosen_clip_and_not_what_was_left_out) {
+    RenderOptions o = options();
+    o.sampleRate = 8000.0;
+    o.tailSeconds = 0.0;
+
+    // Sur la plage du clip CHOISI : il sonne.
+    o.startSeconds = 1.5;
+    o.durationSeconds = 0.5;
+    vsm::audio::engine::RenderedAudio choisi;
+    VSM_ASSERT(renderTrackForFreeze(sansLePremierClip(bundleDeuxClipsEcartes()), 0, choisi, o).success);
+    VSM_ASSERT(crete(choisi.left) > 1.0e-4f);
+
+    // Sur la plage du clip ÉCARTÉ : silence. C'est la moitié qui garantit que
+    // le report ne fait pas entrer ce qu'on a désélectionné.
+    o.startSeconds = 0.0;
+    o.durationSeconds = 0.2;
+    vsm::audio::engine::RenderedAudio ecarte;
+    VSM_ASSERT(renderTrackForFreeze(sansLePremierClip(bundleDeuxClipsEcartes()), 0, ecarte, o).success);
+    VSM_ASSERT(crete(ecarte.left) < 1.0e-6f);
+}
+
+VSM_TEST(a_bounced_selection_is_not_the_song_and_the_reason_is_the_machines_memory) {
+    // CE TEST EXISTE POUR EMPÊCHER UNE FAUSSE RÉPARATION. Si quelqu'un le voit
+    // échouer un jour parce que l'écart est devenu nul, c'est que le report
+    // aura recommencé à rendre ce qu'on n'avait pas choisi.
+    RenderOptions o = options();
+    o.sampleRate = 8000.0;
+    o.startSeconds = 1.5;
+    o.durationSeconds = 0.5;
+    o.tailSeconds = 0.0;
+
+    vsm::audio::engine::RenderedAudio entiere, choisie;
+    VSM_ASSERT(renderTrackForFreeze(bundleDeuxClipsEcartes(), 0, entiere, o).success);
+    VSM_ASSERT(renderTrackForFreeze(sansLePremierClip(bundleDeuxClipsEcartes()), 0, choisie, o).success);
+    VSM_ASSERT_EQ(choisie.left.size(), entiere.left.size());
+
+    double pire = 0.0;
+    for (size_t i = 0; i < entiere.left.size(); ++i)
+        pire = std::max(pire, std::abs(static_cast<double>(choisie.left[i] - entiere.left[i])));
+    std::printf("      [D18.1] report contre morceau : ecart %.3e (cretes %.4f et %.4f)\n",
+                pire, crete(entiere.left), crete(choisie.left));
+
+    // Les deux contiennent la note...
+    VSM_ASSERT(crete(entiere.left) > 1.0e-4f);
+    VSM_ASSERT(crete(choisie.left) > 1.0e-4f);
+    // ...et pourtant elles diffèrent : c'est la mémoire de la machine.
+    VSM_ASSERT(pire > 1.0e-3);
+}
