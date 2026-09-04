@@ -634,6 +634,42 @@ Durées attendues : 1 h 40 (sky-parite faisait 1 h 37 à 6 rendus) puis
 script `campagne-parite-6.sh` enchaîne les deux et s'arrête à la première
 qui échoue.
 
+**sky-parite-parc63 — MESURÉE (12:05) : 0,240683, IDENTIQUE au témoin
+sky-parite (0,240683) à la neuvième décimale, sept pistes, moteur à 63
+machines (provenance `moteur.compile` 10:18:16, commit 55e881b).** Mêmes
+machines retenues (bass → vector, other → musicbox, batterie → tr808 par
+pièce) : le parc élargi et le correctif du cône ne changent pas un
+échantillon des machines que ce morceau choisit. L'attendu (−3 à +5 %, une
+nouvelle machine parmi les finalistes) est tenu par le clavecin, finaliste
+sur la basse à 7,3 % du premier, et la vielle sur `other` à 38 % — sans
+qu'aucune ne gagne. Durée 6 366 s contre 5 817 (+9 %, le même prix que sur
+*Us and Them*). Le fait : sur *Sky and Sand*, dix machines de plus ne
+coûtent rien et n'apportent rien ; sur *Us and Them*, le clavecin gagnait
+une voix.
+
+**sky-parite-m9 — MESURÉE (13:43) : 0,244108, soit +1,4 % de son témoin
+parc63.** La règle écrite d'avance tranche : au-delà de +1 %, l'hypothèse
+est RÉFUTÉE sur ce morceau, et v15 (−5,0 % sur *Us and Them*) reste un
+fait de ce morceau-là. `--machines-au-melange 9` reste une option, et le
+défaut reste 6. Ce que la course montre, et qui vaut plus que le chiffre :
+la basse a changé de machine — `vsm.string`, septième à neuvième finaliste,
+GAGNE au verdict (0,2486 contre 0,2523 pour vector au même stade) — mais le
+réglage au mélange qui suit rattrape moins bien string que vector : final
+0,2441 contre 0,2407. **Le verdict juge un mélange AVANT réglage, et le
+réglage peut renverser son ordre.** Sur *Us and Them* le sitar gagnant au
+verdict gagnait aussi après réglage ; ici non. Un verdict qui jugerait des
+finalistes RÉGLÉS coûterait un réglage par finaliste (mille secondes
+chacun) ; un second verdict APRÈS réglage, entre le gagnant réglé et le
+second non réglé, est la forme économe à essayer — attendu à écrire avant
+sa mesure, campagne 7 si elle vient. Durée 5 877 s (le troisième tour n'a
+pas eu lieu : deux tours, comme parc63).
+
+**Ce que la campagne 6 clôt.** Deux morceaux mesurés dans chaque sens :
+le parc élargi ne coûte rien à la distance (−0,4 % et 0,0 %) et se paie en
+temps (+9 %) ; neuf finalistes gagnent −5,0 % sur un morceau et perdent
++1,4 % sur l'autre — c'est une constante du morceau, et le défaut ne
+change pas.
+
 ### En attente de la fin des campagnes (03/09/2026)
 
 Deux retouches sont différées parce qu'elles touchent `audio/` ou
