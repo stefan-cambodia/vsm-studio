@@ -3093,6 +3093,17 @@ de D12 (D13.2) et l'arrangement global (D13.3) avant le confort.
 > là où l'addition donnait 1,0 sur la seconde commune. Le moteur n'a pas
 > changé d'une ligne — `mixInto` applique les fondus qu'il appliquait déjà.
 > L'arrangement hachure la zone de chevauchement sur chaque clip concerné.
+>
+> **D13.2 EST FAITE (04/09/2026).** `stretchClipsEnd` vit dans `core/` : la
+> durée jouée change, les marqueurs glissent en proportion (le calage
+> relatif est gardé, le dernier suit le bord, deux marqueurs ne se
+> confondent jamais, jamais sous un tick), et un clip qui ne suivait pas le
+> tempo reçoit sa paire neutre et passe en « hauteur conservée ». Test : un
+> clip de deux secondes tiré à 2 880 ticks joue les MÊMES deux secondes (le
+> milieu de la carte est à 4,0 s pour un matériau de 3,0 à 5,0 s). Dans la
+> vue, Ctrl sur le bord droit d'un clip audio étire — un modificateur, pas
+> un outil, la même raison qu'Alt pour couper — et le curseur le dit avant
+> le clic.
 
 ## 4. Les choix tranchés ici, et pourquoi
 

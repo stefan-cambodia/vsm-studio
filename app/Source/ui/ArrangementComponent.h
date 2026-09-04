@@ -161,7 +161,7 @@ private:
     /// trois booléens : « je déplace ET je redimensionne » n'existe pas, et
     /// l'écrire ainsi le rend impossible.
     enum class Geste { Aucun, Deplacer, BordGauche, BordDroit, Hauteur, Reordonner, Point,
-                        FonduEntree, FonduSortie, Lasso, MarqueurWarp };
+                        FonduEntree, FonduSortie, Lasso, MarqueurWarp, Etirer };
 
     /// LE MARQUEUR DE WARP SOUS LE POINTEUR (D12.6), s'il y en a un. Rend
     /// l'indice dans `clip.warpMarkers`, ou -1. Les marqueurs ne sont

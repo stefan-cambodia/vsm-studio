@@ -474,11 +474,18 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
     }
 
     geste_ = bord;
+    // CTRL SUR LE BORD DROIT D'UN CLIP AUDIO ÉTIRE (D13.2) : le geste de Live
+    // (Alt + bord) et de Cubase (« le redimensionnement étire »). Un
+    // modificateur, pas un outil -- la même raison qu'Alt pour couper.
+    if (bord == Geste::BordDroit && event.mods.isCtrlDown()
+        && project_->tracks[piste].kind == Track::Kind::Audio)
+        geste_ = Geste::Etirer;
     gesteOrigine_ = xToTick(point.x);
     gesteDernier_ = gesteOrigine_;
     clipFondu_ = clip->id;
     if (onEditStarted)
-        onEditStarted(bord == Geste::FonduEntree || bord == Geste::FonduSortie
+        onEditStarted(geste_ == Geste::Etirer ? juce::String(u8"Étirer un clip")
+                      : bord == Geste::FonduEntree || bord == Geste::FonduSortie
                           ? juce::String(u8"Fondu d'un clip")
                       : bord == Geste::Deplacer ? juce::String(u8"Déplacer un clip")
                                                  : juce::String(u8"Redimensionner un clip"));
@@ -606,6 +613,7 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
         switch (geste_) {
             case Geste::Deplacer:   moveClips(track.clips, selection_, delta); break;
             case Geste::BordDroit:  resizeClipsEnd(track.clips, selection_, delta, fin); break;
+            case Geste::Etirer:     stretchClipsEnd(track.clips, selection_, delta, fin, conversion); break;
             case Geste::BordGauche: resizeClipsStart(track.clips, selection_, delta, fin, conversion); break;
             // Les autres gestes ont été traités plus haut et n'atteignent jamais
             // cette boucle ; les nommer garde le compilateur du côté du lecteur
@@ -719,11 +727,17 @@ void ArrangementComponent::mouseMove(const juce::MouseEvent& event) {
     // UN MARQUEUR SOUS LE POINTEUR L'EMPORTE sur le geste du clip : c'est ce
     // qui se produira au clic, et le curseur doit le dire d'avance.
     if (sous != nullptr && marqueurAt(*sous, event.position.x) > 0) survol_ = Geste::MarqueurWarp;
+    // CTRL SUR LE BORD DROIT D'UN CLIP AUDIO : le curseur dit d'avance qu'il
+    // étirera, pas qu'il redimensionnera.
+    if (sous != nullptr && bord == Geste::BordDroit && event.mods.isCtrlDown()
+        && project_->tracks[piste].kind == Track::Kind::Audio)
+        survol_ = Geste::Etirer;
     if (survol_ != avant) updateMouseCursor();
 }
 
 juce::MouseCursor ArrangementComponent::getMouseCursor() {
     if (survol_ == Geste::MarqueurWarp) return juce::MouseCursor::LeftRightResizeCursor;
+    if (survol_ == Geste::Etirer) return juce::MouseCursor::UpDownLeftRightResizeCursor;
     if (survol_ == Geste::BordGauche || survol_ == Geste::BordDroit)
         return juce::MouseCursor::LeftRightResizeCursor;
     // Le coin de fondu a son propre curseur : sans cela, rien ne distinguerait

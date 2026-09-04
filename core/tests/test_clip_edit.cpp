@@ -499,6 +499,32 @@ VSM_TEST(warp_markers_are_added_where_the_map_already_is_moved_between_neighbour
     VSM_ASSERT(!removeWarpMarker(clips, 1, 1));
 }
 
+VSM_TEST(stretching_the_right_edge_scales_the_map_and_the_last_marker_follows_the_edge) {
+    // D13.2 : un clip non étiré de 1920 ticks (2 s) tiré de 960 ticks devient
+    // un clip étiré de 2880 ticks qui joue les MÊMES deux secondes.
+    std::vector<Clip> clips{clip(1, 0, 1920)};
+    clips[0].sourceStartSeconds = 3.0;
+    VSM_ASSERT(stretchClipsEnd(clips, {1}, 960, 100000, enSecondes));
+    VSM_ASSERT(clipIsWarped(clips[0]));
+    VSM_ASSERT(clips[0].warpMode == WarpMode::KeepPitch);
+    VSM_ASSERT_EQ(clips[0].length, Tick(2880));
+    VSM_ASSERT_EQ(clips[0].warpMarkers.back().tick, Tick(2880));
+    VSM_ASSERT_NEAR(clips[0].warpMarkers.back().sourceSeconds, 5.0, 1e-9);   // le même matériau
+    VSM_ASSERT_NEAR(warpSourceSecondsAt(clips[0], 1440), 4.0, 1e-9);          // au milieu, la moitié
+    // Un clip déjà calé : les marqueurs glissent en proportion.
+    clips[0].warpMarkers = {{3.0, 0}, {3.5, 960}, {5.0, 2880}};
+    VSM_ASSERT(stretchClipsEnd(clips, {1}, -1440, 100000, enSecondes));      // 2880 -> 1440
+    VSM_ASSERT_EQ(clips[0].length, Tick(1440));
+    VSM_ASSERT_EQ(clips[0].warpMarkers[1].tick, Tick(480));
+    VSM_ASSERT_EQ(clips[0].warpMarkers[2].tick, Tick(1440));
+    VSM_ASSERT_NEAR(clips[0].warpMarkers[1].sourceSeconds, 3.5, 1e-9);        // la source ne bouge pas
+    // Jamais sous un tick, et deux marqueurs ne se confondent pas.
+    VSM_ASSERT(stretchClipsEnd(clips, {1}, -100000, 100000, enSecondes));
+    VSM_ASSERT(clips[0].length >= 1);
+    VSM_ASSERT(clips[0].warpMarkers[1].tick > clips[0].warpMarkers[0].tick);
+    VSM_ASSERT(clips[0].warpMarkers[2].tick > clips[0].warpMarkers[1].tick);
+}
+
 VSM_TEST(moving_a_warped_clip_leaves_its_markers_alone_they_are_relative) {
     std::vector<Clip> clips{clip(1, 0, 3840)};
     clips[0].warpMode = WarpMode::KeepPitch;
