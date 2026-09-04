@@ -1,4 +1,5 @@
 #include "MainComponent.h"
+#include "vsm/sequencer/ClipEdit.h"
 #include "vsm/sequencer/TimeEdit.h"
 #include "vsm/sequencer/ProjectImport.h"
 #include "vsm/interchange/DawImport.h"
@@ -255,7 +256,16 @@ MainComponent::MainComponent()
     pianoRoll_.setHistory(&history_);
     pianoRoll_.onProjectRestored = [this] { rebuildFromProject(false); refreshHistoryList(); };
     pianoRoll_.setProject(&project_);
-    pianoRoll_.onNotesEdited = [this] { refreshTransportSchedule(); };
+    // D16.1 : LES NOTES ÉCRITES SE MATÉRIALISENT TOUT DE SUITE. Avant, une
+    // piste neuve où l'on venait d'écrire ne montrait aucun clip dans
+    // l'arrangement tant qu'on n'avait pas sauvegardé et rouvert le projet.
+    pianoRoll_.onNotesEdited = [this] {
+        if (materializeImplicitClips()) arrangement_.repaint();
+        refreshTransportSchedule();
+    };
+    arrangement_.onClipCreationRequested = [this](size_t piste, vsm::midi::Tick tick) {
+        createClipOnTrack(piste, tick);
+    };
     // LA SAISIE PAS À PAS (D13.5) : le piano roll arme le moteur, le moteur
     // poste la note, le piano roll l'écrit. Un seul chemin pour le clavier
     // MIDI et le clavier d'ordinateur, puisque le second passe par le premier.
@@ -928,6 +938,20 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     // qu'il faut regarder pour juger un projet à soixante-quatre machines.
     // Sans ce jeton, la charge du fil audio ne se vérifie qu'à la souris.
     else if (nom == "jouer")       transport_.play();
+    // CRÉER UN CLIP (D16.1) : `clip:piste:mesure`, à partir de 0 pour les deux.
+    // Le geste est un DOUBLE-CLIC sur le vide d'une piste, c'est-à-dire
+    // invisible à un autoportrait sans souris -- or c'est précisément le
+    // résultat qu'il faut regarder. Passe par la MÊME fonction que le
+    // double-clic et que l'article du menu : photographier autre chose que ce
+    // que l'utilisateur déclenche ne photographierait rien.
+    else if (nom.startsWith("clip:")) {
+        auto morceaux = juce::StringArray::fromTokens(nom.substring(5), ":", "");
+        const size_t piste = static_cast<size_t>(std::max(0, morceaux[0].getIntValue()));
+        const int mesure = morceaux.size() > 1 ? std::max(0, morceaux[1].getIntValue()) : 0;
+        const vsm::midi::Tick parMesure =
+            project_.timeSignatureMap.ticksPerBar(0, project_.ticksPerQuarterNote);
+        createClipOnTrack(piste, static_cast<vsm::midi::Tick>(mesure) * parMesure);
+    }
 }
 
 void MainComponent::dockPanels() {
@@ -1392,6 +1416,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuTrackRemove, u8"Supprimer la piste sélectionnée",
                          !project_.tracks.empty());
             menu.addItem(kMenuTrackDuplicate, u8"Dupliquer la piste sélectionnée",
+                         !project_.tracks.empty());
+            menu.addItem(kMenuTrackCreateClip, u8"Créer un clip d'une mesure à la tête de lecture",
                          !project_.tracks.empty());
             menu.addSeparator();
             {
@@ -1861,6 +1887,17 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuTrackAddGroup: addTrack(Track::Kind::Group); break;
         case kMenuTrackRemove:   removeSelectedTrack(); break;
         case kMenuTrackDuplicate: duplicateSelectedTrack(); break;
+        case kMenuTrackCreateClip: {
+            // À LA TÊTE DE LECTURE, ramenée sur la mesure : l'article du menu
+            // vise le même endroit que le double-clic, à la souris près.
+            const size_t piste = trackList_.selectedTrackIndex();
+            if (piste >= project_.tracks.size()) break;
+            const vsm::midi::Tick ici = std::max<vsm::midi::Tick>(0, transport_.currentTick());
+            const vsm::midi::Tick mesure = std::max<vsm::midi::Tick>(
+                1, project_.timeSignatureMap.ticksPerBar(ici, project_.ticksPerQuarterNote));
+            createClipOnTrack(piste, (ici / mesure) * mesure);
+            break;
+        }
         case kMenuTrackFreeze:   toggleFreezeSelectedTrack(); break;
 #if VSM_WITH_CLAP
         case kMenuTrackClapPlugin: loadClapPluginOnSelectedTrack(); break;
@@ -3161,18 +3198,7 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     // EXACTEMENT le passage que le scheduler fabriquait déjà pour une piste
     // sans clip — le rendu ne change pas d'un échantillon, mais le morceau
     // devient visible et saisissable dans l'arrangement.
-    for (auto& piste : project_.tracks) {
-        const bool aDuMateriau =
-            !piste.notes.empty()
-            || (piste.kind == vsm::sequencer::Track::Kind::Audio
-                && piste.audio.sampleRate > 0.0);
-        if (!aDuMateriau || !piste.clips.empty()) continue;
-        vsm::sequencer::Clip clip;
-        clip.name = piste.name;
-        clip.colorRgba = piste.colorRgba;
-        piste.clips.push_back(std::move(clip));
-    }
-    project_.assignClipIds();
+    materializeImplicitClips();
     // Ctrl+S réécrira ICI, sans redemander où -- et « ici » est le dossier des
     // MÉDIAS, c'est-à-dire le vrai dossier du projet : réécrire une session
     // récupérée dans sa copie de travail la perdrait au prochain lancement.
@@ -5629,6 +5655,81 @@ void MainComponent::beginProjectEdit(const juce::String& label) {
     // l'endroit qui ne peut pas être oublié, parce qu'oublier de l'appeler
     // casserait déjà l'annulation, ce qui se voit tout de suite.
     markProjectDirty();
+}
+
+bool MainComponent::materializeImplicitClips() {
+    bool cree = false;
+    for (auto& piste : project_.tracks) {
+        const bool aDuMateriau =
+            !piste.notes.empty()
+            || (piste.kind == vsm::sequencer::Track::Kind::Audio
+                && piste.audio.sampleRate > 0.0);
+        if (!aDuMateriau || !piste.clips.empty()) continue;
+        vsm::sequencer::Clip clip;
+        clip.name = piste.name;
+        clip.colorRgba = piste.colorRgba;
+        piste.clips.push_back(std::move(clip));
+        cree = true;
+    }
+    project_.assignClipIds();
+    return cree;
+}
+
+void MainComponent::createClipOnTrack(size_t trackIndex, vsm::midi::Tick tick) {
+    if (trackIndex >= project_.tracks.size()) return;
+    auto& piste = project_.tracks[trackIndex];
+    // UN GROUPE N'A PAS DE MATÉRIAU : c'est un bus, pas un dossier (§ 4 de la
+    // feuille de route). Lui poser un clip ne jouerait rien et laisserait
+    // croire le contraire.
+    if (piste.kind == vsm::sequencer::Track::Kind::Group) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Créer un clip",
+            u8"Un groupe est un bus de mixage, pas une piste de matériau : il ne porte pas de clip.");
+        return;
+    }
+
+    const vsm::midi::Tick mesure = std::max<vsm::midi::Tick>(
+        1, project_.timeSignatureMap.ticksPerBar(std::max<vsm::midi::Tick>(0, tick),
+                                                  project_.ticksPerQuarterNote));
+    // La fin du matériau de la piste : le même calcul que dans l'arrangement.
+    vsm::midi::Tick finMateriau = 0;
+    for (const auto& note : piste.notes) finMateriau = std::max(finMateriau, note.endTick);
+    if (piste.kind == vsm::sequencer::Track::Kind::Audio && piste.audio.sampleRate > 0.0)
+        finMateriau = std::max(finMateriau, project_.secondsToTicks(piste.audio.durationSeconds()));
+
+    uint64_t compteur = project_.peekNextClipId();
+    // On travaille sur une COPIE : `beginProjectEdit` prend l'instantané
+    // d'annulation, et il ne doit le prendre que si quelque chose va changer --
+    // un refus qui laisse une entrée « Créer un clip » dans l'historique ferait
+    // annuler du vide.
+    auto essai = piste.clips;
+    const auto faite = vsm::sequencer::createClip(essai, tick, mesure, compteur,
+                                                   finMateriau);
+    if (faite.id == 0) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Créer un clip",
+            u8"Il y a déjà un clip à cet endroit de la piste. Deux clips qui se recouvrent "
+            u8"joueraient le même matériau deux fois : posez-le sur un espace libre, ou tirez "
+            u8"le bord du clip existant.");
+        return;
+    }
+
+    beginProjectEdit(u8"Créer un clip");
+    piste.clips = std::move(essai);
+    project_.ensureClipIdAbove(faite.id);
+    for (auto& clip : piste.clips)
+        if (clip.id == faite.id) { clip.name = piste.name; clip.colorRgba = piste.colorRgba; }
+    refreshTransportSchedule();
+    arrangement_.repaint();
+    // PANNE MUETTE INTERDITE, même quand le geste réussit à moitié : un clip
+    // raccourci par son voisin n'est pas celui qu'on a demandé, et rien à
+    // l'écran ne dirait pourquoi il fait une demi-mesure.
+    if (faite.truncated)
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Créer un clip",
+            juce::String(u8"Le clip s'arrête au clip suivant : il fait ")
+                + juce::String(static_cast<double>(faite.length) / static_cast<double>(mesure), 2)
+                + juce::String(u8" mesure au lieu d'une."));
 }
 
 void MainComponent::refreshMarkerViews() {

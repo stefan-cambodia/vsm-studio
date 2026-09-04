@@ -164,6 +164,13 @@ public:
     /// fenêtre est une affaire d'application, pas de vue.
     std::function<void(size_t, uint64_t)> onClipBarsRequested;
 
+    /// CRÉER UN CLIP (D16.1). Un double-clic sur le vide d'une piste demande
+    /// un clip d'une mesure aimantée à cet endroit. La vue ne le fabrique pas
+    /// elle-même : le geste doit être annulable et republié au moteur, et cela
+    /// n'appartient pas à un composant de dessin -- même partage que pour les
+    /// repères. Le tick est DÉJÀ aimanté quand il arrive.
+    std::function<void(size_t trackIndex, vsm::midi::Tick tick)> onClipCreationRequested;
+
     /// LES REPÈRES DANS L'ARRANGEMENT (D16.4). `Project::markers` n'était
     /// dessiné et posé que par la règle du piano roll ; on naviguait donc à
     /// l'aveugle (Maj+N/B) là où l'on arrange. Mêmes rappels et mêmes gestes

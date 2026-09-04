@@ -1,5 +1,8 @@
 #include "TestFramework.h"
 #include "vsm/sequencer/ClipEdit.h"
+#include "vsm/sequencer/PlaybackScheduler.h"
+#include "vsm/sequencer/Project.h"
+#include <algorithm>
 #include <vector>
 
 using namespace vsm::midi;
@@ -541,4 +544,84 @@ VSM_TEST(moving_a_warped_clip_leaves_its_markers_alone_they_are_relative) {
     VSM_ASSERT_EQ(clips[0].startTick, Tick(7680));
     VSM_ASSERT_EQ(clips[0].warpMarkers[1].tick, Tick(1920));
     VSM_ASSERT_NEAR(clips[0].warpMarkers[1].sourceSeconds, 1.0, 1e-9);
+}
+
+// --------------------------------------------------------------------------
+// D16.1 — CRÉER UN CLIP DANS L'ARRANGEMENT.
+// --------------------------------------------------------------------------
+
+VSM_TEST(creating_a_clip_makes_the_identity_window_on_the_material_already_there) {
+    // Le critère de l'étape : un clip créé d'une mesure sur une piste qui
+    // porte des notes rejoue EXACTEMENT les notes de cette mesure -- ni celles
+    // d'avant, ni celles d'après, et aucune déplacée.
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    project.tempoMap.addTempoChange(0, 500000);          // 120 BPM, la noire = 0,5 s
+    Track piste;
+    uint64_t ids = 1;
+    for (int i = 0; i < 8; ++i)                          // deux mesures de quatre noires
+        piste.addNote(480 * i, 480 * i + 240, static_cast<uint8_t>(60 + i), 100, 0, ids);
+    project.tracks.push_back(piste);
+
+    uint64_t compteur = 1;
+    const auto faite = createClip(project.tracks[0].clips, 0, 1920, compteur, 100000);
+    VSM_ASSERT(faite.id != 0);
+    VSM_ASSERT_EQ(faite.length, Tick(1920));
+    VSM_ASSERT(!faite.truncated);
+    VSM_ASSERT_EQ(compteur, uint64_t(2));                 // le compteur a avancé d'un
+    VSM_ASSERT_EQ(project.tracks[0].clips.size(), size_t(1));
+    // La fenêtre est l'identité : ce qui sonnait là sonne toujours là.
+    VSM_ASSERT_EQ(project.tracks[0].clips[0].sourceStart, Tick(0));
+    VSM_ASSERT_EQ(project.tracks[0].clips[0].startTick, Tick(0));
+
+    std::vector<double> departs;
+    for (const auto& e : PlaybackScheduler::build(project, 0, 100000))
+        if (std::holds_alternative<vsm::midi::NoteOnEvent>(e.data))
+            departs.push_back(e.timeSeconds);
+    std::sort(departs.begin(), departs.end());
+    VSM_ASSERT_EQ(departs.size(), size_t(4));             // la première mesure, pas la seconde
+    for (int i = 0; i < 4; ++i) VSM_ASSERT_NEAR(departs[static_cast<size_t>(i)], 0.5 * i, 1e-9);
+}
+
+VSM_TEST(creating_a_clip_on_an_empty_track_gives_a_clip_and_no_event) {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    project.tempoMap.addTempoChange(0, 500000);
+    project.tracks.push_back(Track{});
+
+    uint64_t compteur = 1;
+    const auto faite = createClip(project.tracks[0].clips, 1920, 1920, compteur, 100000);
+    VSM_ASSERT(faite.id != 0);
+    VSM_ASSERT_EQ(project.tracks[0].clips.size(), size_t(1));
+    VSM_ASSERT_EQ(project.tracks[0].clips[0].startTick, Tick(1920));
+    VSM_ASSERT(PlaybackScheduler::build(project, 0, 100000).empty());
+}
+
+VSM_TEST(creating_a_clip_never_bites_into_the_one_that_is_already_there) {
+    // LA RÈGLE DU CHEVAUCHEMENT. Deux fenêtres qui se recouvrent joueraient le
+    // même matériau deux fois, sans qu'aucune note soit en double : la
+    // création s'arrête donc au clip suivant, et refuse un début déjà pris.
+    std::vector<Clip> clips{clip(1, 1920, 960)};
+    uint64_t compteur = 2;
+
+    // Une mesure demandée à partir de 960 : il n'y a que 960 ticks de libre.
+    const auto raccourcie = createClip(clips, 960, 1920, compteur, 100000);
+    VSM_ASSERT(raccourcie.id != 0);
+    VSM_ASSERT(raccourcie.truncated);
+    VSM_ASSERT_EQ(raccourcie.length, Tick(960));
+    VSM_ASSERT_EQ(clips.size(), size_t(2));
+
+    // Un début déjà couvert : RIEN n'est créé, et le compteur ne bouge pas --
+    // un refus se dit, il ne se déplace pas ailleurs en silence.
+    const uint64_t avant = compteur;
+    const auto refusee = createClip(clips, 2400, 960, compteur, 100000);
+    VSM_ASSERT_EQ(refusee.id, uint64_t(0));
+    VSM_ASSERT_EQ(compteur, avant);
+    VSM_ASSERT_EQ(clips.size(), size_t(2));
+
+    // Un clip BOUCLÉ couvre toute sa répétition, pas seulement sa fenêtre.
+    std::vector<Clip> boucle{clip(1, 0, 960)};
+    boucle[0].length = 3840;                              // la fenêtre de 960 répétée
+    uint64_t c2 = 2;
+    VSM_ASSERT_EQ(createClip(boucle, 1920, 960, c2, 100000).id, uint64_t(0));
 }

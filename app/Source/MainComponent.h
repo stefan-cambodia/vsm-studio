@@ -179,6 +179,8 @@ private:
         kMenuTrackAddGroup,
         kMenuTrackRemove,
         kMenuTrackDuplicate,
+        /// D16.1 : créer un clip d'une mesure à la tête de lecture.
+        kMenuTrackCreateClip,
     kMenuEditInsertTimeAtLocators,
     kMenuEditDeleteTimeAtLocators,
     kMenuEditLocatorsFromSelection,
@@ -620,6 +622,18 @@ private:
     /// LES REPÈRES (D16.4) : posés, renommés, retirés depuis les DEUX règles
     /// (piano roll et arrangement) par les mêmes trois fonctions, et les deux
     /// vues rafraîchies ensemble.
+    /// CRÉER UN CLIP (D16.1), d'une mesure, sur `trackIndex` à `tick`. Le seul
+    /// endroit qui fabrique un clip à la demande : le double-clic de
+    /// l'arrangement et l'article du menu Piste y passent tous les deux.
+    void createClipOnTrack(size_t trackIndex, vsm::midi::Tick tick);
+    /// LA FENÊTRE IMPLICITE SE MATÉRIALISE (D16.1) : toute piste qui porte du
+    /// matériau et aucun clip en reçoit un, « tout à zéro » -- exactement le
+    /// passage que l'ordonnanceur fabriquait déjà pour elle, à l'échantillon
+    /// près. Appelée à l'ouverture d'un projet ET après chaque écriture de
+    /// notes : sans ce second appel, des notes posées au piano roll sur une
+    /// piste neuve n'apparaissaient dans l'arrangement qu'après avoir
+    /// sauvegardé et rouvert. Rend vrai si elle a créé quelque chose.
+    bool materializeImplicitClips();
     void requestMarker(vsm::midi::Tick tick);
     void renameMarker(size_t index);
     void removeMarker(size_t index);

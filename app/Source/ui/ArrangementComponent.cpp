@@ -721,8 +721,22 @@ void ArrangementComponent::mouseDoubleClick(const juce::MouseEvent& event) {
     }
     size_t piste = 0;
     Geste bord = Geste::Aucun;
-    if (auto* clip = clipAt(event.position, piste, bord))
+    if (auto* clip = clipAt(event.position, piste, bord)) {
         if (onClipRenameRequested) onClipRenameRequested(piste, clip->id);
+        return;
+    }
+    // SUR LE VIDE D'UNE PISTE : créer un clip d'une mesure (D16.1). C'est le
+    // double-clic de Live sur une piste et le crayon de Cubase entre les
+    // locateurs. Le point est ramené SUR LA GRILLE VERS L'ARRIÈRE -- on vise
+    // une mesure, pas un tick, et un clip qui commencerait trois pixels après
+    // la barre de mesure ne s'alignerait avec rien.
+    const int surPiste = trackAtY(event.position.y);
+    if (surPiste < 0 || event.position.x < static_cast<float>(kHeaderWidth)) return;
+    if (!onClipCreationRequested) return;
+    const vsm::midi::Tick brut = std::max<vsm::midi::Tick>(0, xToTick(event.position.x));
+    const vsm::midi::Tick pas = std::max<vsm::midi::Tick>(1, snapStep(brut));
+    const vsm::midi::Tick tick = snap_ ? (brut / pas) * pas : brut;
+    onClipCreationRequested(static_cast<size_t>(surPiste), tick);
 }
 
 bool ArrangementComponent::selectionBounds(vsm::midi::Tick& debut, vsm::midi::Tick& fin) const {

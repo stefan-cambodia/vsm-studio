@@ -3385,9 +3385,17 @@ export par piste, MIDI learn, automation des inserts…). Huit manquent.
 L'ordre suit le § 3 : ce qui MENT d'abord (D16.1 et D16.2 rendent un
 projet qui ne dit pas ce qu'il contient), le geste de tous les jours
 ensuite, le modèle en dernier. Pendant la campagne S1 du banc synthétique
-(04/09 au soir), seules les étapes qui ne touchent que `app/` avancent :
-une retouche de `core/` ou d'`audio/` ferait crier « moteur périmé » aux
-courses suivantes.
+(04/09 au soir), la règle écrite ici était « seules les étapes qui ne
+touchent que `app/` avancent » ; elle était plus stricte que le danger.
+Vérifié : `vsm-render` lie `vsm_core` et `vsm_audio` STATIQUEMENT (`ldd`
+n'y montre aucun `libvsm_*`), donc bâtir `vsm_core_tests` ou
+l'application refabrique les bibliothèques sans remplacer d'un octet le
+binaire que la course exécute. La vraie règle, celle du CLAUDE.md, est
+donc la seule : jamais de build complet, jamais la cible `vsm-render`
+pendant une course — des cibles nommées, et l'on vérifie l'horodatage de
+`build/tools/vsm-render` après coup. `core/` et `audio/` sont donc
+ouverts, et ce qu'une course mesure reste le moteur qu'elle a trouvé au
+départ, ce qui est exactement ce qu'on lui demande.
 
 | Étape | Contenu | Terminé quand |
 |---|---|---|
@@ -3399,6 +3407,51 @@ courses suivantes.
 | D16.6 | **Le métronome réglable.** `setMetronomeLevel` existe et n'est appelé nulle part ; l'interface n'a qu'un interrupteur. Cubase : Metronome Setup ; Live : volume et Count-in | niveau retenu dans les préférences et poussé au graphe ; « seulement au décompte » et « seulement à l'enregistrement » branchés sur `clicAudible` ; test `audio/` : niveau 0,25 → crête du clic au quart de celle à 1,0 à 10⁻⁶ près ; le décompte reste audible métronome éteint |
 | D16.7 | **Le décalage de piste.** `Track` n'a aucun `delayMs` ; la compensation de latence corrige, elle ne se règle pas. Cubase : Delay dans l'inspecteur ; Live : Track Delay | `Track::delayMs` (absent du fichier quand nul), lu par `ProcessGraph` et `PlaybackScheduler` (notes ET audio), saisi dans la console ; test `audio/` : une impulsion sur une piste à −10 ms sort 10 ms plus tôt à l'échantillon près, latence déclarée inchangée |
 | D16.8 | **Écrire l'automation en jouant.** L'automation ne s'obtient qu'au dessin ; aucun mode Write/Touch/Latch, aucun armement. Cubase : W/R par tranche ; Live : armement d'automation, la main sur un fader écrit | `AutomationEdit::writeAutomationRange` (remplace les points de la plage, raccorde les bords), un mode par piste (`off / touch / latch`, absent du fichier quand off), W dans la console, capture des rappels de volume/pan/sends avec la position du transport ; test `core/` : écrire 0,5 de 0 à 960 dans une courbe à 1,0 → deux points de raccord, `automationValueAt(961)` = 1,0 |
+
+> **D16.1 EST FAITE (04/09/2026), et la règle du chevauchement est le
+> refus.** `ClipEdit::createClip` pose la fenêtre IDENTITÉ sur le matériau
+> déjà là (`sourceStart == startTick`, même longueur) : ce qui sonnait à la
+> mesure 5 continue d'y sonner. Un clip créé qui montrerait le début du
+> matériau déplacerait le morceau à sa naissance -- c'est déjà le
+> raisonnement de la matérialisation à l'ouverture, et il vaut ici.
+>
+> Le chevauchement, lui, était le choix à trancher. Deux clips d'une même
+> piste dont les fenêtres se recouvrent lisent DEUX FOIS le même matériau :
+> le passage se joue en double alors qu'aucune note n'est en double.
+> Déplacer et dupliquer le laissent possible, et cela reste assumé -- on
+> VOIT les deux clips qu'on empile. Créer, non : le geste vise ce qui a
+> l'air d'être du vide. Donc le nouveau clip s'arrête au clip suivant (et
+> l'application DIT qu'il fait une demi-mesure au lieu d'une), et si son
+> début est déjà couvert, rien n'est créé et le refus est dit avec sa
+> raison -- jamais une création discrète ailleurs. La durée JOUÉE fait foi,
+> pas la fenêtre : un clip bouclé couvre toute sa répétition, et créer au
+> milieu d'une boucle doublerait ce qu'elle répète.
+>
+> Le geste : double-clic sur le vide d'une piste, le point ramené sur la
+> grille VERS L'ARRIÈRE (on vise une mesure, pas un tick) ; article
+> « Créer un clip d'une mesure à la tête de lecture » du menu Piste ; les
+> deux passent par la même fonction. Le clip prend le nom et la couleur de
+> sa piste. Annulable, et l'instantané n'est pris QUE si quelque chose va
+> changer -- un refus qui laisserait « Créer un clip » dans l'historique
+> ferait annuler du vide. Un groupe est un bus, pas une piste de matériau :
+> il refuse, en le disant.
+>
+> Et la moitié invisible de l'étape : la matérialisation de la fenêtre
+> implicite n'avait lieu qu'à l'OUVERTURE d'un projet, si bien que des
+> notes écrites au piano roll sur une piste neuve ne produisaient aucun
+> clip tant qu'on n'avait pas sauvegardé et rouvert. La même fonction est
+> désormais appelée après chaque écriture de notes.
+>
+> Trois tests `core/` : un clip d'une mesure sur une piste de deux mesures
+> de noires rend EXACTEMENT les quatre notes de la première (0,0 / 0,5 /
+> 1,0 / 1,5 s), pas la seconde ; sur une piste vide, le clip est là et
+> l'ordonnanceur ne rend rien ; la règle du chevauchement dans ses trois
+> cas (raccourci, refusé, boucle). Vu à l'écran : `VSM_VUE=clip:0:4,
+> clip:1:6` -- le jeton d'autoportrait qui déclenche le MÊME code que le
+> double-clic, parce qu'un geste de souris ne se photographie pas
+> autrement -- pose « Acid Bass » en mesure 5 et « Drums » en mesure 7,
+> d'une mesure chacun, au nom et à la couleur de leur piste ; `clip:0:0`
+> sur une mesure occupée ne crée rien.
 
 > **D16.4 EST FAITE (04/09/2026), et elle a pris le menu plutôt que le clic
 > droit sec.** Le tableau disait « clic droit le retire » ; un repère qui

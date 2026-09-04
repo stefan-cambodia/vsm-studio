@@ -230,6 +230,47 @@ ClipTrackMove moveClipsAcrossTracks(std::vector<Track>& tracks, const ClipSelect
     return rapport;
 }
 
+ClipCreation createClip(std::vector<Clip>& clips, Tick startTick, Tick length,
+                        uint64_t& idCounter, Tick materialEnd) {
+    ClipCreation faite;
+    if (startTick < 0 || length <= 0) return faite;
+
+    // LE DÉBUT EST-IL LIBRE ? On regarde la durée JOUÉE, pas la fenêtre : un
+    // clip bouclé couvre la ligne de temps sur toute sa répétition, et créer
+    // au milieu d'une boucle doublerait ce qu'elle répète.
+    Tick suivant = -1;
+    for (const auto& clip : clips) {
+        const Tick longueur = clipPlayedLength(clip, materialEnd);
+        if (startTick >= clip.startTick && startTick < clip.startTick + longueur) return faite;
+        if (clip.startTick > startTick)
+            suivant = suivant < 0 ? clip.startTick : std::min(suivant, clip.startTick);
+    }
+
+    Tick obtenue = length;
+    if (suivant >= 0 && startTick + obtenue > suivant) {
+        obtenue = suivant - startTick;
+        faite.truncated = true;
+    }
+    // Le clip suivant colle au point visé : il n'y a pas la place d'un clip,
+    // et un clip de zéro tick serait invisible et injouable.
+    if (obtenue <= 0) return faite;
+
+    Clip clip;
+    clip.id = idCounter++;
+    clip.sourceStart = startTick;
+    clip.sourceLength = obtenue;
+    clip.startTick = startTick;
+    clip.length = obtenue;
+    clips.push_back(clip);
+    std::stable_sort(clips.begin(), clips.end(),
+                      [](const Clip& a, const Clip& b) { return a.startTick < b.startTick; });
+
+    faite.id = clip.id;
+    faite.startTick = startTick;
+    faite.length = obtenue;
+    return faite;
+}
+
 ClipSelection duplicateClips(std::vector<Clip>& clips, const ClipSelection& selection,
                               Tick offsetTicks, uint64_t& idCounter) {
     ClipSelection creees;

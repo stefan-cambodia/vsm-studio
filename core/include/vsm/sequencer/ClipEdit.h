@@ -54,6 +54,38 @@ void moveClips(std::vector<Clip>& clips, const ClipSelection& selection, Tick de
 void resizeClipsEnd(std::vector<Clip>& clips, const ClipSelection& selection,
                      Tick deltaTicks, Tick materialEnd);
 
+/// CRÉER UN CLIP (D16.1) : la fenêtre IDENTITÉ sur le matériau déjà là,
+/// posée de `startTick` à `startTick + length`.
+///
+/// Jusqu'ici un clip ne naissait qu'à l'ouverture d'un projet (la
+/// matérialisation de la fenêtre implicite) ou d'un clip existant (couper,
+/// dupliquer) : sur une piste neuve, des notes écrites au piano roll ne
+/// produisaient AUCUN clip visible tant qu'on n'avait pas sauvegardé et
+/// rouvert. C'est le geste qui manquait.
+///
+/// La fenêtre est l'IDENTITÉ -- `sourceStart == startTick`, même longueur --
+/// pour la même raison que la matérialisation à l'ouverture : ce qui sonnait
+/// à la mesure 3 continue de sonner à la mesure 3. Un clip créé qui montrerait
+/// le début du matériau déplacerait le morceau à sa naissance.
+///
+/// LA RÈGLE DU CHEVAUCHEMENT, et celle qui a été écartée. Deux clips d'une
+/// même piste dont les fenêtres se recouvrent lisent DEUX FOIS le même
+/// matériau : le passage se joue en double, alors qu'aucune note n'est en
+/// double. Déplacer ou dupliquer laissent cela possible, et c'est assumé --
+/// on VOIT les deux clips qu'on empile. Créer, non : le geste vise ce qui a
+/// l'air d'être du vide, et une création qui recouvre en silence serait une
+/// panne muette. Donc le nouveau clip s'arrête au clip suivant (`truncated`
+/// le dit), et si son début est DÉJÀ pris, rien n'est créé -- un refus que
+/// l'appelant doit dire, jamais une création discrète ailleurs.
+struct ClipCreation {
+    uint64_t id = 0;          ///< 0 = refusé : le début est déjà couvert.
+    Tick startTick = 0;
+    Tick length = 0;          ///< la longueur RÉELLEMENT obtenue.
+    bool truncated = false;   ///< raccourcie par le clip suivant.
+};
+ClipCreation createClip(std::vector<Clip>& clips, Tick startTick, Tick length,
+                        uint64_t& idCounter, Tick materialEnd);
+
 /// Duplique les clips sélectionnés, décalés de `offsetTicks`, et rend la
 /// sélection des COPIES -- pour que le geste suivant porte sur ce qu'on vient
 /// de créer, comme dans le piano roll.
