@@ -3236,6 +3236,20 @@ moteur ET par le hasard des arbitrages serrés), et j'attends v15 ≈ H22a-v2.
 Un gain net me donnerait tort, et ce serait une bonne nouvelle facile à
 encaisser : le goulot est une constante, pas une architecture.
 
+**v15 EST MESURÉE (04/09/2026), ET ELLE ME DONNE TORT — dans le bon sens :
+0,18160 contre 0,19104, −5,0 %.** Le gain n'est ni nul ni marginal, et il a
+une adresse : la BASSE change de machine. `vsm.sitar`, SEPTIÈME à
+l'arbitrage de piste (à 130,1 % du premier), gagne au verdict du mélange,
+qui prend un troisième tour pour elle seule — à six finalistes, le sitar
+n'aurait jamais été entendu. Les autres pistes ne bougent pas (other →
+tb303, comme le témoin). Ce que cela dit : sur cette basse, l'arbitrage au
+stem se trompe franchement (elle sonne autrement mêlée que seule), et le
+nombre de finalistes est le budget de la seconde chance qu'on lui laisse.
+Le goulot n'est donc pas « une constante » : c'est une constante DU
+MORCEAU, et neuf valait mieux que six ici. Durée 4 294 s. Règle du § 5 du
+CDC multipiste : un second morceau avant d'en faire le défaut — c'est
+sky-parite-m9, campagne 6 (CDC multipiste § 10), attendu écrit d'avance.
+
 **H7 — le classifieur de frappes améliore le STEM et éloigne le MORCEAU,
 écrite avant sa mesure (02/09/2026).** Le fait qui la motive : la course v6
 (*Us and Them*, moteur du jour, classifieur de frappes RÉACTIVÉ après la
