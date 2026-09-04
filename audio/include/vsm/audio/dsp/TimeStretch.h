@@ -300,16 +300,31 @@ private:
         if (refE <= 1e-12) return base;   // silence : rien à raccorder
         // Grossière : tous les `kCoarse` échantillons ; fine : ± kCoarse
         // autour du meilleur. Le décalage 0 est toujours candidat.
+        //
+        // À QUALITÉ DE RACCORD ÉGALE, LE GRAIN RESTE OÙ LA CARTE LE MET.
+        // Sans ce rappel, la recherche choisit librement dans ± kSearch et
+        // s'installe du même côté grain après grain : mesuré sur la voix de
+        // *Sky and Sand* étirée, un retard SYSTÉMATIQUE de 12 ms — constant,
+        // donc pas une dérive, mais au-delà des 10 ms que le critère de phase
+        // s'était fixés. Le rappel est proportionnel à l'écart et vaut au plus
+        // `kPull` de corrélation au bord de la zone : il ne peut pas faire
+        // préférer un raccord franchement moins bon, il départage seulement
+        // les candidats voisins.
+        constexpr double kPull = 0.05;
+        auto note = [&](int delta) {
+            return score(delta, refE)
+                   - kPull * std::abs(static_cast<double>(delta)) / static_cast<double>(kSearch);
+        };
         int meilleur = 0;
-        double meilleurScore = score(0, refE);
+        double meilleurScore = note(0);
         for (int delta = -kSearch; delta <= kSearch; delta += kCoarse) {
-            const double s = score(delta, refE);
+            const double s = note(delta);
             if (s > meilleurScore) { meilleurScore = s; meilleur = delta; }
         }
         const int centre = meilleur;
         for (int delta = std::max(-kSearch, centre - kCoarse + 1);
              delta <= std::min(kSearch, centre + kCoarse - 1); ++delta) {
-            const double s = score(delta, refE);
+            const double s = note(delta);
             if (s > meilleurScore) { meilleurScore = s; meilleur = delta; }
         }
         return base + meilleur;

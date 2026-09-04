@@ -145,6 +145,12 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
                                        ") : aucun clip audio à jouer");
             continue;
         }
+        // LES CLIPS QUI SUIVENT LE TEMPO (D12.5) : le rendu hors ligne DOIT
+        // armer les portées étirées comme l'application le fait, sinon un
+        // clip calé s'exporterait sans son calage -- une panne muette, et
+        // c'est exactement ainsi qu'elle a été trouvée (la mesure du critère
+        // de phase D12.7 rendait trois fichiers identiques au bit près).
+        vsm::audio::engine::prepareWarpedSpans(*charge.source);
         graph.setTrackAudio(i, charge.source);
         ++result.tracksWithInstrument;
     }

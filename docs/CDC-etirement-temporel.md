@@ -154,7 +154,7 @@ D12 utilisable avant tout suiveur de temps.
 | D12.4 | le modèle : `warpMode`, `warpMarkers`, les gestes de `ClipEdit`, le format | tests `core/` et `interchange/` ; un projet v2 s'ouvre inchangé — **fait le 04/09/2026** |
 | D12.5 | le moteur : la carte par morceaux dans `AudioClipSpan`, `mixInto()` à travers l'étireur, `vsm-render` | banc 3 (seconde moitié), 9 ; `ProcessGraph` intact — **fait le 04/09/2026** |
 | D12.6 | l'interface : le menu du clip, « N mesures », les marqueurs sur la forme d'onde, la forme dessinée en temps étiré, annulation | vu à l'écran, `VSM_CAPTURE`, réglages retenus — **fait le 04/09/2026** |
-| D12.7 | le critère de phase sur *Sky and Sand* | ≤ 10 ms sur huit mesures à +10 % de tempo |
+| D12.7 | le critère de phase sur *Sky and Sand* | ≤ 10 ms sur huit mesures à +10 % de tempo — **mesuré le 04/09/2026 : −8 ms sur les huit mesures, 14 ms sur la pire mesure prise seule ; voir la note** |
 
 Le vocodeur de phase, s'il vient, sera D12.8 avec son propre attendu, écrit
 sur le chiffre du banc 5.
@@ -319,6 +319,55 @@ sur le chiffre du banc 5.
 > la compilation de l'application — le piège qui avait fait annoncer une
 > capture « faite avec ce code » à D11.1. Chaque littéral passe désormais par
 > `juce::String`.
+
+> **D12.7 EST MESURÉE (04/09/2026), ET LA MESURE A D'ABORD TROUVÉ UNE PANNE
+> MUETTE.** Le protocole (`analyse/mesure_d12_critere_de_phase.py`, pour le
+> refaire) : trois projets écrits à partir de sky-parite — `ref` (120 BPM,
+> la voix en temps réel), `sansWarp` (132 BPM, la voix en temps réel : l'état
+> d'avant D12) et `avecWarp` (132 BPM, la voix avec la paire neutre de
+> marqueurs, hauteur conservée) — rendus par `vsm-render --stems` ; puis
+> l'enveloppe de la voix de `ref` (rms par 2 ms) comprimée de 1,1 — ce que
+> le nouveau tempo DOIT donner — comparée par corrélation croisée à celle
+> des deux autres rendus, sur huit mesures au nouveau tempo, et mesure par
+> mesure. Deux choses à dire avant les chiffres. (1) **La voix reportée de
+> *Sky and Sand* est silencieuse jusqu'à 151,8 s** (rms médian 0,00007 par
+> tranche de 5 s, maximum 0,083) : les « huit premières mesures » du morceau
+> sont instrumentales, la mesure porte donc sur les huit mesures qui suivent
+> l'entrée de la voix. (2) **La première exécution rendait trois fichiers
+> IDENTIQUES au bit près** : `prepareWarpedSpans` n'était câblé que dans
+> l'application, et le rendu hors ligne exportait un clip calé sans son
+> calage, sans un mot. C'est corrigé dans `OfflineReconstruction.cpp`, et
+> c'est exactement le genre de panne pour laquelle un critère se MESURE au
+> lieu de se déclarer.
+>
+> | | décalage sur huit mesures | corrélation | par mesure |
+> |---|---|---|---|
+> | avec suivi du tempo, avant le rappel | −10 ms | 0,930 | −4 à −14 ms, toutes du même côté |
+> | **avec suivi du tempo** | **−8 ms** | **0,930** | **0 à −14 ms** (−12, 0, −8, −4, −14, −10, −12, −2) |
+> | sans suivi du tempo | −98 ms | 0,332 | (la voix est ailleurs : par comptage d'attaques, 13,8 s de dérive à la huitième mesure) |
+>
+> **Ce qui est tenu, ce qui ne l'est pas, et pourquoi.** Sur les huit mesures,
+> la voix est à −8 ms de sa place : le critère est tenu, et il n'y a AUCUNE
+> dérive (le décalage de la huitième mesure n'est pas plus grand que celui
+> de la première). Prise mesure par mesure, la pire est à −14 ms : le
+> critère n'est pas tenu par chacune séparément. La cause est connue et
+> bornée : un WSOLA place chaque grain à ± 16 ms de sa position nominale (la
+> zone de recherche, 768 trames), et sur une voix chantée — pas d'attaque
+> franche à verrouiller — le raccord choisi flotte dans cette zone. La
+> première mesure montrait un biais SYSTÉMATIQUE de −12 ms (toutes les
+> mesures du même côté) : la recherche s'installait du même côté grain après
+> grain. Un rappel vers la carte (à qualité de raccord égale, le grain reste
+> où la carte le met ; `kPull` = 0,05 de corrélation au bord de la zone) a
+> ramené le biais à −8 ms et centré le flottement. Le reste est du
+> flottement de grain, pas un défaut de la carte : c'est le chiffre que le
+> vocodeur de phase (D12.8), s'il vient, devra battre — et la mesure elle-
+> même a 2 ms de résolution et r ≈ 0,9 sur une voix.
+>
+> **Décision** : D12.7 est acceptée comme critère de DÉRIVE (la voix reste
+> en place sur huit mesures, à −8 ms, contre une voix ailleurs sans D12), et
+> la limite de 10 ms est lue sur la fenêtre de huit mesures, comme la
+> phrase du § 5 l'écrit. Le chiffre par mesure (14 ms) est publié et non
+> arrondi ; il entre dans l'attendu de D12.8.
 
 ## 8. Ce qui n'est pas au programme, et pourquoi
 
