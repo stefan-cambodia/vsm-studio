@@ -120,6 +120,35 @@ private:
 /// cheval sur une frontière en touche deux d'un coup. Deux fenêtres suffiraient
 /// à la lecture linéaire et laisseraient un trou au premier montage un peu
 /// serré -- un trou qu'on entendrait sans savoir d'où il vient.
+/// LE MIROIR D'UN MATÉRIAU (D13.4) : la trame `i` est la trame `N - 1 - i` du
+/// magasin qu'il enveloppe. C'est ce qui rend un clip À L'ENVERS sans copier
+/// une seule trame et sans rien apprendre au reste du moteur : la portée lit
+/// un magasin comme un autre, en avançant, et c'est le miroir qui recule.
+/// Un magasin diffusé depuis le disque reste diffusé -- la demande de plage
+/// est renvoyée en miroir, et la garde de lecture est celle de l'original.
+class MirroredSampleStore final : public SampleStore {
+public:
+    explicit MirroredSampleStore(std::shared_ptr<const SampleStore> base) : base_(std::move(base)) {}
+    int64_t frames() const override { return base_ ? base_->frames() : 0; }
+    bool frameAt(int64_t index, float& left, float& right) const override {
+        if (!base_) return false;
+        const int64_t n = base_->frames();
+        if (index < 0 || index >= n) return false;
+        return base_->frameAt(n - 1 - index, left, right);
+    }
+    void requestRange(int64_t startFrame, int64_t count) const override {
+        if (!base_ || count <= 0) return;
+        const int64_t n = base_->frames();
+        base_->requestRange(n - (startFrame + count), count);
+    }
+    void beginRead() const override { if (base_) base_->beginRead(); }
+    void endRead() const override { if (base_) base_->endRead(); }
+    size_t residentBytes() const override { return 0; }   // rien à lui : tout est à l'original
+    uint64_t cacheMisses() const override { return base_ ? base_->cacheMisses() : 0; }
+private:
+    std::shared_ptr<const SampleStore> base_;
+};
+
 class StreamedSampleStore final : public SampleStore {
 public:
     /// COMMENT LE CACHE EST REMPLI, et c'est la seule différence entre écouter

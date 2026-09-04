@@ -3116,6 +3116,18 @@ de D12 (D13.2) et l'arrangement global (D13.3) avant le confort.
 > Insérer du silence entre les locateurs (Ctrl+Maj+I) et Supprimer le
 > temps entre les locateurs (Ctrl+Maj+K), dans la table des raccourcis donc
 > dans la page imprimable ; annulable.
+>
+> **D13.4 EST FAITE (04/09/2026).** `Clip::reversed`, écrit dans le projet
+> (`reversed`, et la version 3 comme le suivi de tempo : un lecteur ancien
+> jouerait le clip à l'endroit sans un mot). Le moteur n'apprend rien de
+> nouveau : la portée lit un MIROIR du magasin de la piste
+> (`MirroredSampleStore`, la trame i est la trame N − 1 − i, la diffusion
+> depuis le disque reste diffusée), sa fenêtre convertie une fois à la
+> publication ; un clip étiré et à l'envers retourne sa carte sur ses deux
+> axes. Test : une rampe lue à l'envers est une rampe qui descend, à la
+> trame près (pire écart 10⁻⁷), étirée ×2 aussi. Menu du clip « À
+> l'envers » (sur la sélection, chacun le sien), la forme d'onde se dessine
+> à l'envers.
 
 ## 4. Les choix tranchés ici, et pourquoi
 

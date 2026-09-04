@@ -874,6 +874,17 @@ VSM_TEST(warp_survives_the_trip_through_the_model_and_bumps_the_version_only_whe
     // Et un lecteur de la version 2 REFUSERAIT ce fichier : c'est voulu.
     VSM_ASSERT(kProjectVersion == 3 && kProjectVersionWithoutWarp == 2);
 
+    // À l'envers (D13.4) : écrit seulement s'il l'est, et il fait monter la version.
+    Project envers = buildProject();
+    vsm::sequencer::Clip retour;
+    retour.length = 960; retour.sourceLength = 960; retour.reversed = true;
+    envers.tracks[0].clips.push_back(retour);
+    const std::string jsonEnvers = projectDocumentToJson(documentFromProject(envers)).toString();
+    VSM_ASSERT(jsonEnvers.find("\"reversed\"") != std::string::npos);
+    VSM_ASSERT(jsonEnvers.find("\"version\": 3") != std::string::npos || jsonEnvers.find("\"version\":3") != std::string::npos);
+    const ProjectLoadResult reluEnvers = parseProjectDocument(jsonEnvers);
+    VSM_ASSERT(reluEnvers.success && reluEnvers.document.tracks[0].clips[0].reversed);
+
     // Le témoin (WSOLA) est un mode à part entière, et il fait l'aller-retour.
     project.tracks[0].clips[0].warpMode = vsm::sequencer::WarpMode::KeepPitchWsola;
     const ProjectLoadResult temoin = parseProjectDocument(

@@ -525,6 +525,14 @@ VSM_TEST(stretching_the_right_edge_scales_the_map_and_the_last_marker_follows_th
     VSM_ASSERT(clips[0].warpMarkers[2].tick > clips[0].warpMarkers[1].tick);
 }
 
+VSM_TEST(reversing_toggles_each_selected_clip_on_its_own) {
+    std::vector<Clip> clips{clip(1, 0, 960), clip(2, 960, 960)};
+    clips[1].reversed = true;
+    toggleClipReverse(clips, {1, 2});
+    VSM_ASSERT(clips[0].reversed);
+    VSM_ASSERT(!clips[1].reversed);   // chacun le sien, pas un alignement
+}
+
 VSM_TEST(moving_a_warped_clip_leaves_its_markers_alone_they_are_relative) {
     std::vector<Clip> clips{clip(1, 0, 3840)};
     clips[0].warpMode = WarpMode::KeepPitch;

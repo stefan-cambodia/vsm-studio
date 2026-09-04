@@ -453,3 +453,57 @@ VSM_TEST(overlapping_audio_clips_crossfade_instead_of_summing) {
     VSM_ASSERT_EQ(spans[0].fadeOutFrames, int64_t(72000));
     VSM_ASSERT_EQ(spans[1].fadeInFrames, int64_t(48000));
 }
+
+// ---------------------------------------------------------------------------
+// D13.4 — UN CLIP À L'ENVERS lit sa fenêtre à rebours : une rampe montante
+// devient une rampe descendante, à la trame près ; étiré, il reste à l'envers.
+// ---------------------------------------------------------------------------
+
+VSM_TEST(a_reversed_clip_plays_its_window_backwards_frame_for_frame) {
+    auto source = std::make_shared<vsm::audio::engine::AudioTrackSource>();
+    const int64_t n = 48000 * 4;
+    std::vector<float> l(static_cast<size_t>(n)), r(static_cast<size_t>(n));
+    for (int64_t i = 0; i < n; ++i) l[static_cast<size_t>(i)] = r[static_cast<size_t>(i)] = static_cast<float>(i) / static_cast<float>(n);
+    source->setMemorySamples(std::move(l), std::move(r));
+    vsm::sequencer::Track piste;
+    piste.kind = vsm::sequencer::Track::Kind::Audio;
+    piste.audio.path = "audio/rampe.wav";
+    piste.audio.sampleRate = 48000.0;
+    piste.audio.frames = n;
+    vsm::sequencer::Clip clip;
+    clip.id = 1; clip.startTick = 0; clip.length = 960; clip.sourceLength = 960;   // une seconde
+    clip.sourceStartSeconds = 1.0;                                                   // la fenêtre 1 s -> 2 s
+    clip.reversed = true;
+    piste.clips.push_back(clip);
+    source->clips = spansFromTrack(piste, 48000.0, enSecondes960);
+    prepareWarpedSpans(*source);
+    VSM_ASSERT(source->clips[0].source != nullptr);
+    auto [ol, orr] = jouer(*source, 48000, 512);
+    // À la sortie t, la trame du fichier (2 s - t) : la rampe descend de 2/4 à 1/4.
+    double pire = 0.0;
+    for (int64_t t = 0; t < 48000; ++t) {
+        const float attendu = static_cast<float>(96000 - 1 - t) / static_cast<float>(n);
+        pire = std::max(pire, static_cast<double>(std::abs(ol[static_cast<size_t>(t)] - attendu)));
+    }
+    std::printf("    [banc à l'envers] rampe : sortie[0] %.5f (attendu %.5f), sortie[47999] %.5f ; pire écart %.2e\n",
+                ol[0], 95999.0 / n, ol[47999], pire);
+    VSM_ASSERT(pire < 1e-6);
+
+    // Étiré ×2 ET à l'envers : deux secondes qui descendent de 2/4 à 1/4.
+    piste.clips[0].length = 1920;
+    piste.clips[0].warpMode = vsm::sequencer::WarpMode::KeepPitch;
+    piste.clips[0].warpMarkers = {{1.0, 0}, {2.0, 1920}};
+    auto etire = std::make_shared<vsm::audio::engine::AudioTrackSource>();
+    etire->samples = source->samples;
+    etire->clips = spansFromTrack(piste, 48000.0, enSecondes960);
+    prepareWarpedSpans(*etire);
+    auto [el, er] = jouer(*etire, 96000, 512);
+    const auto rms = [](const std::vector<float>& x, size_t from, size_t count) {
+        double somme = 0.0;
+        for (size_t i = from; i < from + count && i < x.size(); ++i) somme += x[i] * x[i];
+        return std::sqrt(somme / static_cast<double>(count));
+    };
+    const double debut = rms(el, 2000, 4000), fin = rms(el, 90000, 4000);
+    std::printf("    [banc à l'envers] étiré ×2 : niveau au début %.4f, à la fin %.4f (une rampe qui descend)\n", debut, fin);
+    VSM_ASSERT(debut > fin * 1.5);
+}

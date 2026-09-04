@@ -425,6 +425,11 @@ bool moveWarpMarker(std::vector<Clip>& clips, uint64_t clipId, size_t index, Tic
     return true;
 }
 
+void toggleClipReverse(std::vector<Clip>& clips, const ClipSelection& selection) {
+    for (auto& clip : clips)
+        if (selected(selection, clip)) clip.reversed = !clip.reversed;
+}
+
 bool stretchClipsEnd(std::vector<Clip>& clips, const ClipSelection& selection, Tick deltaTicks,
                      Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds) {
     if (selection.empty() || deltaTicks == 0) return false;

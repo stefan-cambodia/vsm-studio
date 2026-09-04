@@ -431,6 +431,7 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
             menu.addItem(14, u8"Ajouter un marqueur ici", vsm::sequencer::clipIsWarped(*clip)
                                                           && surMarqueur < 0);
             menu.addItem(15, u8"Retirer ce marqueur", surMarqueur > 0);
+            menu.addItem(17, u8"\u00c0 l'envers", true, clip->reversed);
             marqueurGeste_ = surMarqueur;
         }
         const uint64_t id = clip->id;
@@ -701,6 +702,14 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
             break;
         }
         case 13: if (onClipBarsRequested) onClipBarsRequested(piste, clipId); return;
+        case 17: {
+            // Sur toute la sélection, chacun le sien -- comme la phase.
+            if (onEditStarted) onEditStarted(u8"Clip \u00e0 l'envers");
+            ClipSelection cibles = selection_;
+            cibles.insert(clipId);
+            toggleClipReverse(track.clips, cibles);
+            break;
+        }
         case 14: {
             if (onEditStarted) onEditStarted(u8"Ajouter un marqueur de tempo");
             if (addWarpMarker(track.clips, clipId, clicTick_ - it->startTick) < 0) return;
@@ -1003,6 +1012,9 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                     } else {
                         tracé = vsm::audio::io::peaksForRange(*cache, depart, arrivee, colonnes);
                     }
+                    // À L'ENVERS, LA FORME SE DESSINE À L'ENVERS (D13.4) : ce
+                    // qu'on voit à droite est ce qu'on entend en dernier.
+                    if (clip.reversed) std::reverse(tracé.begin(), tracé.end());
                     const float milieu = r.getCentreY();
                     const float demi = r.getHeight() * 0.45f;
                     g.setColour(Palette::background.withAlpha(0.72f));

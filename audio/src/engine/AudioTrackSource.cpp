@@ -79,6 +79,8 @@ int AudioTrackSource::mixInto(float* outLeft, float* outRight,
         const int64_t fin = std::min(timelineStart + numSamples,
                                       clip.startFrame + clip.lengthFrames);
         if (fin <= debut) continue;
+        // LE MATÉRIAU DE LA PORTÉE : celui de la piste, ou son miroir (D13.4).
+        const SampleStore& magasin = clip.source ? *clip.source : *samples;
 
         // LE CLIP QUI SUIT LE TEMPO (D12.5). Le chemin est SÉPARÉ, et c'est
         // volontaire : un clip qui ne suit pas le tempo -- c'est-à-dire
@@ -96,22 +98,22 @@ int AudioTrackSource::mixInto(float* outLeft, float* outRight,
                     // LE VINYLE QU'ON RALENTIT : on lit la source à une
                     // position fractionnaire, par le noyau fenêtré de D12.1,
                     // à travers le magasin (résident ou diffusé).
-                    const auto* magasin = samples.get();
-                    const auto lire = [magasin](int64_t i, float& g, float& d) {
-                        return magasin->frameAt(i, g, d);
+                    const auto* magasinP = &magasin;
+                    const auto lire = [magasinP](int64_t i, float& g, float& d) {
+                        return magasinP->frameAt(i, g, d);
                     };
                     const double sDebut = w.sourceFor(position);
                     const double sFin = w.sourceFor(position + n);
-                    samples->requestRange(static_cast<int64_t>(std::floor(std::min(sDebut, sFin))) - 64,
-                                          static_cast<int64_t>(std::abs(sFin - sDebut)) + 128);
+                    magasin.requestRange(static_cast<int64_t>(std::floor(std::min(sDebut, sFin))) - 64,
+                                         static_cast<int64_t>(std::abs(sFin - sDebut)) + 128);
                     for (int i = 0; i < n; ++i)
                         w.kernel.stereoAt(lire, w.sourceFor(position + i),
                                            w.scratchL[static_cast<size_t>(i)],
                                            w.scratchR[static_cast<size_t>(i)]);
                 } else if (w.vocoder) {
-                    w.phaseVocoder.render(*samples, position, n, w.scratchL.data(), w.scratchR.data(), 1.0f);
+                    w.phaseVocoder.render(magasin, position, n, w.scratchL.data(), w.scratchR.data(), 1.0f);
                 } else {
-                    w.stretch.render(*samples, position, n, w.scratchL.data(), w.scratchR.data(), 1.0f);
+                    w.stretch.render(magasin, position, n, w.scratchL.data(), w.scratchR.data(), 1.0f);
                 }
                 for (int i = 0; i < n; ++i) {
                     const int64_t dansLeClip = position + i - clip.startFrame;
@@ -131,7 +133,7 @@ int AudioTrackSource::mixInto(float* outLeft, float* outRight,
         // rien ; le matériau diffusé en fait tout, puisque c'est sa seule
         // façon de savoir qu'un saut de tête de lecture vient de l'envoyer
         // trois minutes plus loin.
-        samples->requestRange(clip.sourceStartFrame + (debut - clip.startFrame), fin - debut);
+        magasin.requestRange(clip.sourceStartFrame + (debut - clip.startFrame), fin - debut);
 
         const float signe = clip.invertPhase ? -clip.gain : clip.gain;
         for (int64_t position = debut; position < fin; ++position) {
@@ -144,7 +146,7 @@ int AudioTrackSource::mixInto(float* outLeft, float* outRight,
             // matériau diffusé répond faux pour la même raison quand le disque
             // n'a pas encore livré : le trou est alors COMPTÉ (`cacheMisses`).
             float g = 0.0f, d = 0.0f;
-            if (!samples->frameAt(dansLeFichier, g, d)) continue;
+            if (!magasin.frameAt(dansLeFichier, g, d)) continue;
             const float gain = signe * fadeGain(dansLeClip, clip.lengthFrames,
                                                  clip.fadeInFrames, clip.fadeOutFrames);
             const auto j = static_cast<size_t>(position - timelineStart);
@@ -193,6 +195,7 @@ std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
             span.fadeOutFrames = static_cast<int64_t>(std::llround(clip.fadeOutSeconds * sampleRate));
             span.gain = clip.gain;
             span.invertPhase = clip.invertPhase;
+            span.reversed = clip.reversed;
             auto warp = std::make_shared<ClipWarp>();
             warp->repitch = clip.warpMode == vsm::sequencer::WarpMode::Repitch;
             // LE VOCODEUR EST LE DÉFAUT DE « HAUTEUR CONSERVÉE » (D12.8, banc
@@ -247,6 +250,7 @@ std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
                 ? static_cast<int64_t>(std::llround(clip.fadeOutSeconds * sampleRate)) : 0;
             span.gain = clip.gain;
             span.invertPhase = clip.invertPhase;
+            span.reversed = clip.reversed;
             if (span.lengthFrames > 0) spans.push_back(span);
         }
     }
@@ -285,8 +289,35 @@ std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
     return spans;
 }
 
+void prepareReversedSpans(AudioTrackSource& source) {
+    if (!source.samples) return;
+    const int64_t n = source.samples->frames();
+    std::shared_ptr<const SampleStore> miroir;
+    for (auto& span : source.clips) {
+        if (!span.reversed) continue;
+        if (!miroir) miroir = std::make_shared<MirroredSampleStore>(source.samples);
+        span.source = miroir;
+        // LA FENÊTRE SE CONVERTIT UNE FOIS : lue à l'endroit, elle allait de S à
+        // S + L ; dans le miroir, la même matière commence à N - S - L.
+        if (span.warp) {
+            // La carte se retourne sur ses DEUX axes : à la sortie t, on veut
+            // la matière que le clip à l'endroit jouait à sa fin moins t.
+            auto& map = span.warp->map;
+            const int64_t o0 = map.front().outputFrame, o1 = map.back().outputFrame;
+            for (auto& p : map) {
+                p.outputFrame = o0 + (o1 - p.outputFrame);
+                p.sourceFrame = static_cast<double>(n - 1) - p.sourceFrame;
+            }
+            std::reverse(map.begin(), map.end());
+        } else {
+            span.sourceStartFrame = n - span.sourceStartFrame - span.lengthFrames;
+        }
+    }
+}
+
 void prepareWarpedSpans(AudioTrackSource& source) {
     if (!source.samples) return;
+    prepareReversedSpans(source);
     bool besoin = false;
     for (const auto& span : source.clips) if (span.warp) { besoin = true; break; }
     if (!besoin) return;
