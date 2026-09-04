@@ -104,6 +104,34 @@ public:
         return somme;
     }
 
+    /// LA MÊME LECTURE, MAIS À TRAVERS UNE FONCTION plutôt qu'un tableau
+    /// contigu : `fetch(i, l, r)` remplit les deux canaux de la trame `i` et
+    /// rend faux hors du matériau. C'est ce qui permet de lire un
+    /// `SampleStore` -- résident ou diffusé depuis le disque -- à une position
+    /// fractionnaire sans le recopier (D12.5, le mode *Rééchantillonné* d'un
+    /// clip). Sans allocation.
+    template <class Fetch>
+    void stereoAt(const Fetch& fetch, double position, float& outL, float& outR) const {
+        const double plancher = std::floor(position);
+        const auto n0 = static_cast<int64_t>(plancher);
+        const double phaseExacte = (position - plancher) * kPhases;
+        const auto ph = static_cast<int>(phaseExacte);
+        const float mix = static_cast<float>(phaseExacte - ph);
+        const float* a = table_.data() + static_cast<size_t>(ph * taps_);
+        const float* b = a + taps_;
+        const int half = taps_ / 2;
+        float sommeL = 0.0f, sommeR = 0.0f;
+        for (int k = 0; k < taps_; ++k) {
+            float g = 0.0f, d = 0.0f;
+            if (!fetch(n0 + (k - half + 1), g, d)) continue;
+            const float h = a[k] + (b[k] - a[k]) * mix;
+            sommeL += g * h;
+            sommeR += d * h;
+        }
+        outL = sommeL;
+        outR = sommeR;
+    }
+
     /// Un canal entier vers `framesCibles` trames de session. Alloue.
     std::vector<float> resample(const std::vector<float>& source, size_t framesCibles) const {
         std::vector<float> sortie(framesCibles, 0.0f);

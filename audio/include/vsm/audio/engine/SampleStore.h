@@ -150,7 +150,11 @@ public:
     uint64_t cacheMisses() const override { return misses_.load(std::memory_order_relaxed); }
 
     double fileSampleRate() const { return fileSampleRate_; }
-    bool resampled() const { return ratio_ != 1.0; }
+    /// Deux comparaisons d'ordre plutôt qu'un `!=` : l'idiome du dépôt sous
+    /// `-Wfloat-equal` (`dsp/Constants.h`). L'égalité exacte est bien
+    /// l'intention -- `open()` pose `ratio_` à 1,0 tout rond quand les deux
+    /// fréquences se rejoignent.
+    bool resampled() const { return ratio_ < 1.0 || ratio_ > 1.0; }
 
     /// Un tour de remplissage. Appelée par le thread de diffusion, et
     /// directement par `requestRange` en mode `Blocking`.

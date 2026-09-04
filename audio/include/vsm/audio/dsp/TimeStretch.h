@@ -98,12 +98,16 @@ public:
         if (map_.empty()) map_.push_back({0, 0.0});
         if (map_.size() == 1) map_.push_back({map_[0].outputFrame + 1, map_[0].sourceFrame + 1.0});
         // LE COURT-CIRCUIT se décide ici : tous les segments au rapport un
-        // exactement, et un décalage entier.
-        bypass_ = std::floor(map_[0].sourceFrame) == map_[0].sourceFrame;
+        // exactement, et un décalage entier. Les égalités sont voulues BIT À
+        // BIT (c'est la condition qui permet de copier au lieu de calculer) et
+        // s'écrivent donc par deux comparaisons d'ordre, l'idiome du dépôt
+        // sous `-Wfloat-equal` (`dsp/Constants.h`).
+        const auto memeValeur = [](double a, double b) { return !(a < b) && !(b < a); };
+        bypass_ = memeValeur(std::floor(map_[0].sourceFrame), map_[0].sourceFrame);
         for (size_t i = 1; i < map_.size() && bypass_; ++i) {
             const double ds = map_[i].sourceFrame - map_[i - 1].sourceFrame;
             const auto dout = static_cast<double>(map_[i].outputFrame - map_[i - 1].outputFrame);
-            if (ds != dout) bypass_ = false;
+            if (!memeValeur(ds, dout)) bypass_ = false;
         }
     }
     /// Le cas simple : un rapport constant `ratio` = durée de sortie / durée

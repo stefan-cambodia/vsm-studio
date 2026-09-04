@@ -152,7 +152,7 @@ D12 utilisable avant tout suiveur de temps.
 | D12.2 | `TimeStretch` : le WSOLA, la recherche de similarité, le court-circuit à 1,0 | bancs 1, 2, 3 (première moitié), 5, 6, 7 — **fait le 04/09/2026** (banc 7 au moment de D12.5, dans `process()`) |
 | D12.3 | la détection de transitoires (flux d'énergie sur le matériau, à la publication, mise en cache par fichier comme les crêtes de forme d'onde) et le verrouillage | banc 4 — **fait le 04/09/2026** (le cache par fichier attend D12.5) |
 | D12.4 | le modèle : `warpMode`, `warpMarkers`, les gestes de `ClipEdit`, le format | tests `core/` et `interchange/` ; un projet v2 s'ouvre inchangé — **fait le 04/09/2026** |
-| D12.5 | le moteur : la carte par morceaux dans `AudioClipSpan`, `mixInto()` à travers l'étireur, `vsm-render` | banc 3 (seconde moitié), 9 ; `ProcessGraph` intact |
+| D12.5 | le moteur : la carte par morceaux dans `AudioClipSpan`, `mixInto()` à travers l'étireur, `vsm-render` | banc 3 (seconde moitié), 9 ; `ProcessGraph` intact — **fait le 04/09/2026** |
 | D12.6 | l'interface : le menu du clip, « N mesures », les marqueurs sur la forme d'onde, la forme dessinée en temps étiré, annulation | vu à l'écran, `VSM_CAPTURE`, réglages retenus |
 | D12.7 | le critère de phase sur *Sky and Sand* | ≤ 10 ms sur huit mesures à +10 % de tempo |
 
@@ -251,6 +251,41 @@ sur le chiffre du banc 5.
 > réallocation invalide. L'indice se calcule maintenant avant. Aucun test
 > n'aurait vu ce défaut sans vérifier la valeur de retour d'une fonction dont
 > on aurait pu croire qu'elle « range bien le marqueur ».
+
+> **D12.5 EST FAITE (04/09/2026) : LE MOTEUR SUIT LE TEMPO.** `AudioClipSpan`
+> porte un `ClipWarp` — nul quand le clip ne suit pas le tempo, c'est-à-dire
+> presque toujours, et le chemin de lecture est alors **exactement celui
+> d'avant D12**, sans un test de plus par échantillon. Le `ClipWarp` tient la
+> carte traduite en trames, l'étireur, ses tampons et le noyau ; tout est
+> alloué à la publication par `prepareWarpedSpans`, qui cherche aussi les
+> attaques du fichier **une fois par piste** (elles sont une propriété du
+> matériau, pas du clip) et les partage entre les portées. `ProcessGraph` n'a
+> pas bougé d'une ligne : la couture annoncée à D2 et tenue à D8.2 tient une
+> troisième fois. Mesuré (`test_audio_track.cpp`) :
+>
+> | promesse | mesuré |
+> |---|---|
+> | rapport un = pas un bit de différence | **identique** au clip non étiré, 48 000 trames |
+> | ×2, hauteur conservée | pic **220,0 Hz**, le clip dure 96 000 trames et se tait après (rms 0,000000) |
+> | ×2, rééchantillonné | pic **110,0 Hz** — la hauteur suit la vitesse, c'est ce qui sépare les deux modes |
+> | blocs de 256 contre blocs de 4 096 | **identiques au bit près** (la condition de D2.6) |
+> | fondu de 0,5 s et gain 0,5 sur un clip étiré | rms 0,015 à 40 ms contre 0,178 à 0,85 s |
+>
+> **Deux décisions prises en écrivant, et dites ici.** (1) Un clip étiré **ne
+> boucle pas** : il donne une seule portée, et sa carte dit ce qu'il joue.
+> Répéter une fenêtre et suivre une carte sont deux réponses à la même
+> question, et c'est la carte qui a été posée à la main ; la boucle d'un clip
+> étiré entrera avec un attendu à elle si une main la demande. (2) Un bloc
+> plus long que 8 192 trames est rendu en plusieurs passes, ce qui évite de
+> faire descendre la taille maximale de bloc jusqu'à la portée — et ne change
+> aucune valeur, puisque l'étireur est indépendant de la taille des blocs (le
+> banc le vérifie au bit près). Le noyau du mode rééchantillonné est réglé sur
+> le rapport le PLUS RAPIDE de la carte : c'est lui qui décide de la coupure
+> anti-repliement, et sous-estimer la vitesse laisserait replier le passage le
+> plus rapide.
+>
+> Six suites vertes : core 170, audio 1161, interchange 252, panneaux 11,
+> CLAP 25, VST3 19 — et l'application a été lancée et regardée.
 
 ## 8. Ce qui n'est pas au programme, et pourquoi
 

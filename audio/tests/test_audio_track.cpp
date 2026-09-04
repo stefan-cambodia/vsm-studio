@@ -225,3 +225,172 @@ VSM_TEST(the_fades_of_a_looped_clip_belong_to_the_clip_and_not_to_each_turn) {
     VSM_ASSERT_EQ(spans[2].fadeInFrames, int64_t(0));
     VSM_ASSERT_EQ(spans[2].fadeOutFrames, int64_t(48000 * 0.10));
 }
+
+// ---------------------------------------------------------------------------
+// D12.5 — LE MOTEUR SUIT LE TEMPO (docs/CDC-etirement-temporel.md, § 4 et § 5).
+// La règle du § 0 d'abord : un clip qui ne suit pas le tempo ne change pas
+// d'un bit, et un clip étiré au rapport un non plus.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+using vsm::audio::engine::MemorySampleStore;
+
+/// Une piste audio d'une seconde, un sinus à 220 Hz, 48 kHz.
+std::shared_ptr<vsm::audio::engine::AudioTrackSource> pisteSinus(double hz, double secondes,
+                                                                  double sr = 48000.0) {
+    auto source = std::make_shared<vsm::audio::engine::AudioTrackSource>();
+    const auto n = static_cast<size_t>(secondes * sr);
+    std::vector<float> l(n), r(n);
+    for (size_t i = 0; i < n; ++i) {
+        l[i] = 0.5f * static_cast<float>(std::sin(2.0 * M_PI * hz * static_cast<double>(i) / sr));
+        r[i] = l[i];
+    }
+    source->setMemorySamples(std::move(l), std::move(r));
+    return source;
+}
+/// Un tick vaut 1/960 s (480 ppq, 120 BPM).
+double enSecondes960(int64_t tick) { return static_cast<double>(tick) / 960.0; }
+
+std::pair<std::vector<float>, std::vector<float>> jouer(
+    const vsm::audio::engine::AudioTrackSource& source, int64_t trames, int bloc) {
+    std::vector<float> l(static_cast<size_t>(trames), 0.0f), r(static_cast<size_t>(trames), 0.0f);
+    for (int64_t pos = 0; pos < trames; pos += bloc) {
+        const int n = static_cast<int>(std::min<int64_t>(bloc, trames - pos));
+        source.mixInto(l.data() + pos, r.data() + pos, pos, n);
+    }
+    return {std::move(l), std::move(r)};
+}
+double picHz960(const std::vector<float>& x, size_t from, size_t count, double lo, double hi) {
+    double meilleur = lo, m = -1.0;
+    for (double f = lo; f <= hi; f += 0.2) {
+        double re = 0.0, im = 0.0;
+        for (size_t i = 0; i < count && from + i < x.size(); ++i) {
+            const double w = 0.5 - 0.5 * std::cos(2.0 * M_PI * static_cast<double>(i) / static_cast<double>(count));
+            const double ph = 2.0 * M_PI * f * static_cast<double>(i) / 48000.0;
+            re += w * x[from + i] * std::cos(ph);
+            im += w * x[from + i] * std::sin(ph);
+        }
+        const double v = std::sqrt(re * re + im * im);
+        if (v > m) { m = v; meilleur = f; }
+    }
+    return meilleur;
+}
+
+/// Une piste d'une seconde avec UN clip, étiré ou non.
+vsm::sequencer::Track pisteAvecClip(vsm::sequencer::WarpMode mode, double secondesSource,
+                                     vsm::midi::Tick longueurTicks) {
+    vsm::sequencer::Track piste;
+    piste.kind = vsm::sequencer::Track::Kind::Audio;
+    piste.audio.path = "audio/prise.wav";
+    piste.audio.sampleRate = 48000.0;
+    piste.audio.frames = static_cast<int64_t>(secondesSource * 48000.0);
+    vsm::sequencer::Clip clip;
+    clip.id = 1;
+    clip.startTick = 0;
+    clip.length = longueurTicks;
+    clip.sourceLength = longueurTicks;
+    clip.warpMode = mode;
+    if (mode != vsm::sequencer::WarpMode::Off)
+        clip.warpMarkers = {{0.0, 0}, {secondesSource, longueurTicks}};
+    piste.clips.push_back(clip);
+    return piste;
+}
+
+} // namespace
+
+VSM_TEST(a_clip_warped_at_ratio_one_plays_the_original_bit_for_bit) {
+    // LA RÈGLE DU § 0 DU CDC : allumer le suivi de tempo sans rien caler ne
+    // change pas un échantillon. C'est le court-circuit de `TimeStretch`.
+    auto source = pisteSinus(220.0, 1.0);
+    auto nu = pisteSinus(220.0, 1.0);
+    // Une seconde de matériau sur 960 ticks = une seconde : rapport un.
+    source->clips = spansFromTrack(pisteAvecClip(vsm::sequencer::WarpMode::KeepPitch, 1.0, 960),
+                                    48000.0, enSecondes960);
+    nu->clips = spansFromTrack(pisteAvecClip(vsm::sequencer::WarpMode::Off, 1.0, 960),
+                                48000.0, enSecondes960);
+    VSM_ASSERT_EQ(source->clips.size(), size_t(1));
+    VSM_ASSERT(source->clips[0].warp != nullptr);
+    prepareWarpedSpans(*source);
+    prepareWarpedSpans(*nu);
+    VSM_ASSERT(nu->clips[0].warp == nullptr);
+
+    auto [wl, wr] = jouer(*source, 48000, 512);
+    auto [nl, nr] = jouer(*nu, 48000, 512);
+    VSM_ASSERT(wl == nl);
+    VSM_ASSERT(wr == nr);
+}
+
+VSM_TEST(a_warped_clip_plays_longer_and_keeps_its_pitch) {
+    // Une seconde de matériau déclarée durer DEUX secondes (1920 ticks) : le
+    // clip joue deux secondes, et le la3 reste un la3.
+    auto source = pisteSinus(220.0, 1.0);
+    source->clips = spansFromTrack(pisteAvecClip(vsm::sequencer::WarpMode::KeepPitch, 1.0, 1920),
+                                    48000.0, enSecondes960);
+    prepareWarpedSpans(*source);
+    VSM_ASSERT_EQ(source->clips[0].lengthFrames, int64_t(96000));
+
+    auto [l, r] = jouer(*source, 100000, 512);
+    const double pic = picHz960(l, 24000, 48000, 210.0, 230.0);
+    double rmsFin = 0.0;
+    for (size_t i = 80000; i < 94000; ++i) rmsFin += l[i] * l[i];
+    rmsFin = std::sqrt(rmsFin / 14000.0);
+    double rmsApres = 0.0;
+    for (size_t i = 97000; i < 100000; ++i) rmsApres += l[i] * l[i];
+    rmsApres = std::sqrt(rmsApres / 3000.0);
+    std::printf("    [banc moteur étiré] ×2 : pic %.1f Hz, rms avant la fin %.4f, après %.6f\n",
+                pic, rmsFin, rmsApres);
+    VSM_ASSERT(std::abs(1200.0 * std::log2(pic / 220.0)) <= 5.0);
+    VSM_ASSERT(rmsFin > 0.2);
+    VSM_ASSERT(rmsApres < 0.01);
+}
+
+VSM_TEST(a_repitched_clip_drops_its_pitch_with_its_speed) {
+    // LE VINYLE : une seconde étalée sur deux, la hauteur suit — 220 Hz
+    // deviennent 110 Hz. C'est ce qui distingue les deux modes, et le seul
+    // moyen de le vérifier est de mesurer la hauteur.
+    auto source = pisteSinus(220.0, 1.0);
+    source->clips = spansFromTrack(pisteAvecClip(vsm::sequencer::WarpMode::Repitch, 1.0, 1920),
+                                    48000.0, enSecondes960);
+    prepareWarpedSpans(*source);
+    VSM_ASSERT(source->clips[0].warp && source->clips[0].warp->repitch);
+    auto [l, r] = jouer(*source, 96000, 512);
+    const double pic = picHz960(l, 24000, 48000, 100.0, 240.0);
+    std::printf("    [banc moteur étiré] rééchantillonné ×2 : pic %.1f Hz (110 attendu)\n", pic);
+    VSM_ASSERT(std::abs(1200.0 * std::log2(pic / 110.0)) <= 5.0);
+}
+
+VSM_TEST(a_warped_clip_renders_the_same_whatever_the_block_size) {
+    // LA CONDITION DE D2.6, portée à l'étirement : le rendu hors ligne (gros
+    // blocs) et le temps réel (petits blocs) doivent donner le même fichier.
+    auto a = pisteSinus(220.0, 1.0), b = pisteSinus(220.0, 1.0);
+    const auto piste = pisteAvecClip(vsm::sequencer::WarpMode::KeepPitch, 1.0, 1500);
+    a->clips = spansFromTrack(piste, 48000.0, enSecondes960);
+    b->clips = spansFromTrack(piste, 48000.0, enSecondes960);
+    prepareWarpedSpans(*a);
+    prepareWarpedSpans(*b);
+    auto [al, ar] = jouer(*a, 75000, 256);
+    auto [bl, br] = jouer(*b, 75000, 4096);
+    VSM_ASSERT(al == bl);
+    VSM_ASSERT(ar == br);
+}
+
+VSM_TEST(the_fades_and_the_gain_of_a_warped_clip_still_apply) {
+    auto source = pisteSinus(220.0, 1.0);
+    auto piste = pisteAvecClip(vsm::sequencer::WarpMode::KeepPitch, 1.0, 1920);
+    piste.clips[0].fadeInSeconds = 0.5;
+    piste.clips[0].gain = 0.5f;
+    source->clips = spansFromTrack(piste, 48000.0, enSecondes960);
+    prepareWarpedSpans(*source);
+    VSM_ASSERT_EQ(source->clips[0].fadeInFrames, int64_t(24000));
+    auto [l, r] = jouer(*source, 96000, 512);
+    double debut = 0.0, milieu = 0.0;
+    for (size_t i = 1000; i < 3000; ++i) debut += l[i] * l[i];
+    for (size_t i = 40000; i < 42000; ++i) milieu += l[i] * l[i];
+    debut = std::sqrt(debut / 2000.0);
+    milieu = std::sqrt(milieu / 2000.0);
+    std::printf("    [banc moteur étiré] fondu de 0,5 s et gain 0,5 : rms à 40 ms %.4f, à 0,85 s %.4f\n",
+                debut, milieu);
+    VSM_ASSERT(debut < milieu * 0.2);
+    VSM_ASSERT(milieu > 0.1 && milieu < 0.3);   // 0,5 × 0,354 = 0,177
+}

@@ -4454,6 +4454,10 @@ void MainComponent::loadAudioTracks() {
 
         charge.source->clips = vsm::audio::engine::spansFromTrack(
             pourLesClips, sr, [this](int64_t tick) { return project_.ticksToSeconds(tick); });
+        // LES CLIPS QUI SUIVENT LE TEMPO (D12.5) : les attaques du fichier se
+        // cherchent ICI, une fois par piste, hors du thread audio -- comme le
+        // cache d'aperçu juste au-dessus, et pour la même raison.
+        vsm::audio::engine::prepareWarpedSpans(*charge.source);
         audioEngine_.processGraph().setTrackAudio(i, charge.source);
     }
     // UNE PISTE AUDIO QUI NE CHARGE PAS NE SE DISTINGUE PAS, À L'OREILLE, D'UNE
