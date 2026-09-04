@@ -3768,6 +3768,72 @@ transposition d'un clip entier depuis l'arrangement (Cubase seul, le piano
 roll transpose à la flèche) ; le note repeat (l'arpégiateur temps réel est
 écarté depuis D11).
 
+### Phase D17 — Le sixième audit : ce qui manque une fois D16 posée (04/09/2026, 23:55)
+
+**Pourquoi.** Même méthode que D11 à D16, même garde-fou : chaque absence
+ci-dessous a été VÉRIFIÉE dans le code avant d'être écrite, jamais supposée.
+Le relevé a d'abord écarté ce qui existe déjà — le sidechain (`ProcessGraph`
+lit un bus de départ en entrée latérale), la quantification de la dernière
+prise, le report en audio, le gel, l'analyseur de spectre, les presets
+d'effet, les rampes de tempo, le suivi de tempo des clips, les repères, le
+verrou, le décalage de piste, l'écriture d'automation en jouant. Restent
+huit manques, et l'ordre suit le § 3 : ce qui MENT d'abord, le geste de tous
+les jours ensuite, le modèle en dernier.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D17.1 | **Les fondus n'ont pas de forme.** `AudioTrackSource.cpp:18-22` : `gain *= position / fadeIn`, strictement LINÉAIRE. Deux clips corrélés en fondu enchaîné creusent donc ~3 dB au milieu — le raccord s'entend, et rien ne le dit. Cubase : sept formes par fondu ; Live : Constant Power / Constant Gain | une forme par fondu (`Linear`, `EqualPower`, et `Slow`/`Fast` pour l'attaque), absente du fichier quand linéaire ; le moteur applique la forme ; test `audio/` : deux copies du MÊME bruit en fondu enchaîné d'égale puissance gardent leur niveau à 0,5 dB près au point de croisement, contre −3 dB en linéaire (le témoin est la même passe, forme changée) |
+| D17.2 | **L'automation ne suit pas les clips.** `ClipEdit.cpp` ne touche à `Track::automation` nulle part : déplacer un clip d'une mesure laisse sa courbe de volume où elle était, et le projet ne joue plus ce qu'il montre. Cubase : « l'automation suit les événements », actif par défaut | `AutomationEdit::shiftAutomationRange` et son usage par `moveClips`/`moveClipsAcrossTracks`/`splitClips` — les points de la plage couverte par le clip suivent, les autres non ; un interrupteur global (Cubase le rend débrayable, et le débrayer sert quand on remonte une prise sous une courbe qu'on veut garder) ; test `core/` : un clip de [0,960[ portant une courbe déplacé à 1920 → `automationValueAt` rend à 1920 ce qu'elle rendait à 0, et rien n'a changé hors de la plage |
+| D17.3 | **Ce qu'on vient de jouer est perdu.** Aucune capture rétrospective : jouer une phrase sans avoir armé, la trouver bonne, et n'avoir aucun moyen de la garder. Cubase : Retrospective Record ; Live : Capture MIDI | un tampon circulaire des N dernières minutes d'entrée MIDI, alimenté DÈS que l'application tourne (pas seulement à l'enregistrement) ; « Enregistrement ▸ Récupérer ce qui vient d'être joué » pose les notes sur la piste choisie, à leur place réelle sur la ligne de temps ; annulable ; test `core/` : trois notes poussées au tampon puis récupérées rendent trois notes aux mêmes ticks |
+| D17.4 | **On ne peut pas masquer une piste.** Rien dans `Track` ni dans les vues : une reconstruction à soixante pistes se parcourt en entier ou pas du tout. Cubase : Visibility ; Live : Fold/Unfold et les Track Groups | `Track::hidden` (absent du fichier quand faux), respecté par la liste des pistes, l'arrangement et la console — et par AUCUN calcul : une piste masquée sonne exactement comme avant (test), sans quoi « masquer » deviendrait « couper » à l'insu de tous |
+| D17.5 | **Transposer une piste ou le morceau.** Le piano roll transpose une SÉLECTION de notes ; rien ne transpose une piste entière ni le morceau, et rien ne le fait sans réécrire les notes. Cubase : Transpose de l'inspecteur, piste de transposition | `Track::transposeSemitones` (absent du fichier quand nul), appliqué par `PlaybackScheduler` À LA LECTURE et non au matériau — c'est ce qui le rend annulable d'un chiffre et non d'un historique ; les notes hors 0..127 sont ÉCARTÉES et comptées, jamais repliées ; saisi dans la console ; test `core/` : +12 rend les mêmes notes une octave au-dessus, une note à 120 transposée de +12 disparaît et le compteur le dit |
+| D17.6 | **Raccourcir un clip à ce qui sonne.** Aucune détection de silence : un stem reconstruit commence par 400 ms de rien, et il faut tirer le bord à l'œil. Cubase : Detect Silence ; Live : le même geste à la main | `audio::analysis::detectSilence` (seuil en dB, durée minimale, marge avant l'attaque), et « Clip ▸ Rogner au son » qui règle la fenêtre du clip sans toucher au fichier ; annulable ; test `audio/` : un bruit précédé de 500 ms de silence à −80 dB est rogné à 500 ms ± 1 ms, et un fichier sans silence n'est pas touché |
+| D17.7 | **L'automation ne sait pas courber.** `AutomationPoint` n'a que `step` : un segment est droit ou en marche d'escalier, jamais courbe. Un fondu de volume droit en gain sonne comme une chute brutale à la fin. Cubase : poignée de courbure sur chaque segment ; Live : la même | un `curve` par point (−1 à +1, 0 = droit), écrit seulement quand il n'est pas nul ; la MÊME interpolation dans `AutomationEdit` et dans `AutomationLane` du moteur (deux formules qui divergeraient feraient dessiner une courbe et en entendre une autre — c'est déjà la règle du § 6) ; la poignée se tire au milieu du segment dans la voie d'automation ; tests `core/` ET `audio/` sur les mêmes points |
+| D17.8 | **Le groove ne s'extrait ni ne s'applique.** La quantification ne connaît que la grille et le swing : on ne peut pas prendre le placement d'une batterie reconstruite et le donner à une basse écrite droite. Cubase : Groove Agent / Hitpoints → quantize ; Live : le Groove Pool | `sequencer::Groove` (une suite d'écarts en fraction de pas, plus une force), `extractGroove` depuis les notes d'une piste et `applyGroove` sur une sélection ; le groove s'enregistre dans la bibliothèque comme un preset (`*.groove.json`) ; test `core/` : extraire d'une piste puis appliquer à une copie DROITE de cette piste rend les ticks d'origine à un tick près |
+
+> **D17.1 EST FAITE (05/09/2026), et le chiffre est celui du manuel.**
+> `FadeShape` (`Linear`, `EqualPower`, `Slow`, `Fast`), absente du fichier
+> quand c'est la droite — un projet d'avant D17.1 se réécrit octet pour
+> octet et sonne au bit près comme avant, parce que la droite reste le
+> défaut.
+>
+> Mesuré, avec le témoin de la même passe et une seule variable (deux bruits
+> DÉCORRÉLÉS de graines différentes, une seconde de recouvrement, la forme
+> seule change) : **la droite creuse −2,93 dB au point de croisement**, ce
+> que la théorie annonce (0,5² + 0,5² = 0,5, soit −3,01 dB) ; **le quart de
+> sinusoïde tient à +0,07 dB**. Le raccord s'entendait, et rien ne le disait.
+> C'est aussi pourquoi la droite n'est pas fautive et reste proposée : entre
+> deux clips CORRÉLÉS — deux prises du même passage, ou le même matériau
+> coupé et recollé, c'est-à-dire le montage courant — la somme se fait en
+> amplitude, 0,5 + 0,5 fait un, et c'est la droite qui est juste. Les deux
+> cas existent, d'où les deux formes ; `Slow` et `Fast` complètent pour
+> l'attaque d'un fondu simple.
+>
+> LA FORMULE VIT DANS LE MODÈLE (`sequencer::fadeShapeGain`) et pas dans le
+> moteur, pour la raison du § 6 : le dessin du clip et le son qu'il rend
+> doivent sortir de la même. L'arrangement dessinait un TRIANGLE, c'est-à-dire
+> une droite quelle que soit la forme jouée — on aurait vu une droite en
+> entendant un quart de sinusoïde. Il trace maintenant la vraie courbe, en
+> douze segments (c'est un masque, pas un tracé de précision). Le choix est
+> au menu du clip, sur toute la sélection comme le muet.
+>
+> UN PIÈGE PAYÉ DEUX FOIS DANS LA MÊME HEURE, et l'écrire ici est le seul
+> moyen de ne pas le repayer : `Clip` ET `ProjectClip` se construisent par
+> AGRÉGAT POSITIONNEL. Le champ, glissé la première fois entre
+> `fadeOutSeconds` et `gain`, décalait tout ce qui suit ; le compilateur a
+> rattrapé les deux (un `float` vers un `enum class`, puis vers un
+> `std::string`), mais un champ du même type serait passé sans un mot. Les
+> deux structures le disent déjà dans leur commentaire — « placé en dernier,
+> volontairement » — et la règle vaut pour tout champ ajouté à l'une ou à
+> l'autre. Un test de l'aller-retour vérifie désormais que les champs voisins
+> n'ont pas glissé.
+>
+> Trois tests : le creux mesuré des deux formes (`audio/`), le défaut resté
+> à la droite, et l'aller-retour disque avec le fichier inchangé en droite
+> (`interchange/`). Vu à l'écran : quatre clips, une forme chacun, et les
+> quatre courbes se distinguent à l'œil.
+
+
 ## 4. Les choix tranchés ici, et pourquoi
 
 Conformément à l'usage de ce dépôt, les questions ouvertes se referment en

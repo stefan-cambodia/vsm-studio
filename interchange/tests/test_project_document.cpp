@@ -1013,3 +1013,33 @@ VSM_TEST(the_automation_write_mode_survives_the_trip_and_off_writes_nothing) {
     VSM_ASSERT(rejoue.tracks[0].automationMode == vsm::sequencer::AutomationMode::Touch);
     VSM_ASSERT(rejoue.tracks[1].automationMode == vsm::sequencer::AutomationMode::Latch);
 }
+
+// D17.1 — LA FORME DES FONDUS, écrite seulement quand ce n'est pas la droite :
+// un projet d'avant D17.1 se réécrit octet pour octet.
+VSM_TEST(the_fade_shape_survives_the_trip_and_linear_writes_nothing) {
+    Project project = buildProject();
+    vsm::sequencer::Clip clip;
+    clip.sourceStart = 0; clip.sourceLength = 960;
+    clip.startTick = 0; clip.length = 960;
+    clip.fadeInSeconds = 0.25; clip.fadeOutSeconds = 0.25;
+    project.tracks[0].clips.push_back(clip);
+
+    VSM_ASSERT(projectDocumentToJson(documentFromProject(project)).toString()
+                   .find("fadeShape") == std::string::npos);
+
+    project.tracks[0].clips[0].fadeShape = vsm::sequencer::FadeShape::EqualPower;
+    const std::string ecrit = projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(ecrit.find("\"equalPower\"") != std::string::npos);
+
+    const ProjectLoadResult relu = parseProjectDocument(ecrit);
+    VSM_ASSERT(relu.success);
+    Project rejoue = project;
+    for (auto& t : rejoue.tracks) t.clips.clear();
+    applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT_EQ(rejoue.tracks[0].clips.size(), size_t(1));
+    VSM_ASSERT(rejoue.tracks[0].clips[0].fadeShape == vsm::sequencer::FadeShape::EqualPower);
+    // Et les champs voisins n'ont pas glissé : c'est le piège de l'agrégat
+    // positionnel, payé une fois à l'écriture de cette étape.
+    VSM_ASSERT_NEAR(rejoue.tracks[0].clips[0].gain, 1.0f, 1e-9f);
+    VSM_ASSERT_NEAR(rejoue.tracks[0].clips[0].fadeInSeconds, 0.25, 1e-9);
+}

@@ -492,6 +492,19 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
                                                           && surMarqueur < 0);
             menu.addItem(15, u8"Retirer ce marqueur", surMarqueur > 0);
             menu.addItem(17, u8"\u00c0 l'envers", true, clip->reversed);
+            // D17.1 : LA FORME DES FONDUS. Sur une piste audio seulement --
+            // un clip MIDI n'a pas de fondu à donner une forme.
+            {
+                using vsm::sequencer::FadeShape;
+                juce::PopupMenu formes;
+                formes.addItem(30, u8"Droite (mat\u00e9riau corr\u00e9l\u00e9)", true,
+                                clip->fadeShape == FadeShape::Linear);
+                formes.addItem(31, u8"\u00c9gale puissance (mat\u00e9riau d\u00e9corr\u00e9l\u00e9)", true,
+                                clip->fadeShape == FadeShape::EqualPower);
+                formes.addItem(32, u8"Lente au d\u00e9part", true, clip->fadeShape == FadeShape::Slow);
+                formes.addItem(33, u8"Rapide au d\u00e9part", true, clip->fadeShape == FadeShape::Fast);
+                menu.addSubMenu(u8"Forme des fondus", formes);
+            }
             menu.addItem(18, u8"Normaliser (gain = 1 / cr\u00eate)", waveformProvider != nullptr);
             marqueurGeste_ = surMarqueur;
         }
@@ -892,6 +905,20 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
             for (auto& t : project_->tracks)
                 for (auto& c : t.clips)
                     if (selection_.count(c.id) > 0 || c.id == clipId) c.muted = muet;
+            break;
+        }
+        case 30: case 31: case 32: case 33: {
+            using vsm::sequencer::FadeShape;
+            const FadeShape forme = choix == 31 ? FadeShape::EqualPower
+                                  : choix == 32 ? FadeShape::Slow
+                                  : choix == 33 ? FadeShape::Fast : FadeShape::Linear;
+            if (it->fadeShape == forme) return;
+            if (onEditStarted) onEditStarted(u8"Forme des fondus");
+            // Sur TOUTE la sélection, comme le muet : régler la forme de six
+            // raccords choisis au lasso est un geste, pas six.
+            for (auto& t : project_->tracks)
+                for (auto& c : t.clips)
+                    if (selection_.count(c.id) > 0 || c.id == clipId) c.fadeShape = forme;
             break;
         }
         case 5: splitSelectionAtPlayhead(); return;
@@ -1333,22 +1360,34 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                                     - project_->ticksToSeconds(clip.startTick);
             if (dureeClip > 0.0) {
                 const float largeur = r.getWidth();
-                if (clip.fadeInSeconds > 0.0) {
-                    const float w = static_cast<float>(clip.fadeInSeconds / dureeClip) * largeur;
+                // LE DESSIN SUIT LA FORME (D17.1), et par la MÊME formule que
+                // le moteur (`sequencer::fadeShapeGain`) : le triangle en dur
+                // dessinait une droite quelle que soit la forme jouée, et l'on
+                // aurait vu une droite en entendant un quart de sinusoïde.
+                // Douze segments suffisent à la lire, et c'est un masque, pas
+                // une courbe de précision.
+                auto masqueDeFondu = [&](float xDebut, float w, bool entree) {
+                    if (w <= 0.0f) return;
                     juce::Path coin;
-                    coin.addTriangle(r.getX(), r.getY(), r.getX() + w, r.getY(),
-                                      r.getX(), r.getBottom());
+                    coin.startNewSubPath(xDebut, r.getBottom());
+                    for (int i = 0; i <= 12; ++i) {
+                        const float t = static_cast<float>(i) / 12.0f;
+                        const float gain = vsm::sequencer::fadeShapeGain(clip.fadeShape, t);
+                        coin.lineTo(xDebut + (entree ? w * t : -w * t),
+                                     r.getBottom() - gain * r.getHeight());
+                    }
+                    coin.lineTo(xDebut + (entree ? w : -w), r.getY());
+                    coin.lineTo(xDebut, r.getY());
+                    coin.closeSubPath();
                     g.setColour(Palette::background.withAlpha(0.72f));
                     g.fillPath(coin);
-                }
-                if (clip.fadeOutSeconds > 0.0) {
-                    const float w = static_cast<float>(clip.fadeOutSeconds / dureeClip) * largeur;
-                    juce::Path coin;
-                    coin.addTriangle(r.getRight(), r.getY(), r.getRight() - w, r.getY(),
-                                      r.getRight(), r.getBottom());
-                    g.setColour(Palette::background.withAlpha(0.72f));
-                    g.fillPath(coin);
-                }
+                };
+                if (clip.fadeInSeconds > 0.0)
+                    masqueDeFondu(r.getX(),
+                                   static_cast<float>(clip.fadeInSeconds / dureeClip) * largeur, true);
+                if (clip.fadeOutSeconds > 0.0)
+                    masqueDeFondu(r.getRight(),
+                                   static_cast<float>(clip.fadeOutSeconds / dureeClip) * largeur, false);
             }
             // LE FONDU ENCHAÎNÉ SE VOIT (D13.1) : la zone où ce clip en
             // chevauche un autre de la piste est hachurée. C'est là que l'un

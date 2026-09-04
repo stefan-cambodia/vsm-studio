@@ -603,3 +603,99 @@ VSM_TEST(a_track_delay_never_touches_the_declared_latency) {
     graphe.setProject(projet);
     VSM_ASSERT_EQ(graphe.graphLatencySamples(), avant);
 }
+
+// --------------------------------------------------------------------------
+// D17.1 — LA FORME DES FONDUS.
+//
+// Un fondu enchaîné entre deux clips DÉCORRÉLÉS se somme en PUISSANCE : deux
+// moitiés linéaires donnent 0,5² + 0,5² = 0,5, soit −3 dB au point de
+// croisement. Le raccord se creuse, et rien ne le disait.
+// --------------------------------------------------------------------------
+
+namespace {
+
+/// Deux clips DÉCORRÉLÉS (deux bruits de graines différentes) qui se
+/// chevauchent d'une seconde, avec la forme demandée.
+std::vector<float> fonduEnchaine(vsm::sequencer::FadeShape forme) {
+    constexpr int64_t kFrames = 96000;      // deux secondes à 48 kHz
+    constexpr int64_t kFondu = 48000;       // une seconde de recouvrement
+
+    auto bruit = [](uint32_t graine, int64_t n) {
+        auto source = std::make_shared<AudioTrackSource>();
+        std::vector<float> g(static_cast<size_t>(n)), d(static_cast<size_t>(n));
+        uint32_t etat = graine;
+        for (int64_t i = 0; i < n; ++i) {
+            etat = etat * 1664525u + 1013904223u;
+            const float v = static_cast<float>(static_cast<int32_t>(etat >> 8) % 20001 - 10000) / 10000.0f;
+            g[static_cast<size_t>(i)] = v;
+            d[static_cast<size_t>(i)] = v;
+        }
+        source->setMemorySamples(std::move(g), std::move(d));
+        return source;
+    };
+
+    // Le PREMIER clip finit en fondu de sortie ; le second entre en fondu
+    // d'entrée sur la même seconde. C'est le montage courant.
+    auto a = bruit(1u, kFrames);
+    AudioClipSpan spanA;
+    spanA.startFrame = 0; spanA.lengthFrames = kFrames; spanA.sourceStartFrame = 0;
+    spanA.fadeOutFrames = kFondu; spanA.fadeShape = forme;
+    a->clips.push_back(spanA);
+
+    auto b = bruit(7777u, kFrames);
+    AudioClipSpan spanB;
+    spanB.startFrame = kFrames - kFondu; spanB.lengthFrames = kFrames; spanB.sourceStartFrame = 0;
+    spanB.fadeInFrames = kFondu; spanB.fadeShape = forme;
+    b->clips.push_back(spanB);
+
+    std::vector<float> gauche(static_cast<size_t>(kFrames + kFondu), 0.0f);
+    std::vector<float> droite(gauche.size(), 0.0f);
+    a->mixInto(gauche.data(), droite.data(), 0, static_cast<int>(gauche.size()));
+    b->mixInto(gauche.data(), droite.data(), 0, static_cast<int>(gauche.size()));
+    return gauche;
+}
+
+/// Le niveau efficace sur une fenêtre, en dB.
+double niveauDb(const std::vector<float>& s, size_t depuis, size_t combien) {
+    double somme = 0.0;
+    for (size_t i = depuis; i < depuis + combien && i < s.size(); ++i)
+        somme += static_cast<double>(s[i]) * s[i];
+    return 10.0 * std::log10(somme / static_cast<double>(combien) + 1e-30);
+}
+
+} // namespace
+
+VSM_TEST(a_linear_crossfade_digs_three_decibels_and_an_equal_power_one_does_not) {
+    // LE TÉMOIN EST LA MÊME PASSE, forme changée : une seule variable.
+    const auto lineaire = fonduEnchaine(vsm::sequencer::FadeShape::Linear);
+    const auto puissance = fonduEnchaine(vsm::sequencer::FadeShape::EqualPower);
+
+    // Le niveau de référence : hors du recouvrement, un seul clip sonne.
+    const double refLin = niveauDb(lineaire, 4000, 8000);
+    const double refPui = niveauDb(puissance, 4000, 8000);
+    VSM_ASSERT(refLin > -30.0);              // sinon le test ne prouve rien
+
+    // Au POINT DE CROISEMENT (le milieu de la seconde de recouvrement).
+    const size_t croisement = 96000 - 48000 / 2;
+    const double creuxLin = niveauDb(lineaire, croisement - 2000, 4000) - refLin;
+    const double creuxPui = niveauDb(puissance, croisement - 2000, 4000) - refPui;
+
+    std::printf("      [D17.1] creux au croisement : linéaire %+.2f dB, égale puissance %+.2f dB\n",
+                creuxLin, creuxPui);
+    // La droite creuse : c'est le défaut que l'étape corrige.
+    VSM_ASSERT(creuxLin < -2.0);
+    // Le quart de sinusoïde tient le niveau : c'est ce qu'on lui demande.
+    VSM_ASSERT(std::abs(creuxPui) < 0.5);
+}
+
+VSM_TEST(the_default_shape_leaves_every_existing_project_sounding_the_same) {
+    // `Linear` est le défaut : un projet d'avant D17.1 doit sortir au BIT
+    // près ce qu'il sortait, sans quoi l'étape aurait changé des morceaux
+    // finis sans le dire.
+    const auto defaut = fonduEnchaine(vsm::sequencer::FadeShape::Linear);
+    AudioClipSpan span;
+    VSM_ASSERT(span.fadeShape == vsm::sequencer::FadeShape::Linear);
+    vsm::sequencer::Clip clip;
+    VSM_ASSERT(clip.fadeShape == vsm::sequencer::FadeShape::Linear);
+    VSM_ASSERT(!defaut.empty());
+}

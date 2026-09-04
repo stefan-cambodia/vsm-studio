@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <cmath>
 #include "vsm/midi/MidiEvent.h"
 #include <cstdint>
 #include <map>
@@ -93,6 +94,47 @@ struct ProgramChangePoint   { Tick tick; uint8_t channel; uint8_t program; };
 /// clip posé ailleurs sur la ligne de temps édite le matériau À SA POSITION
 /// D'ORIGINE. C'est le comportement d'un éditeur de régions, et c'est celui
 /// qu'on veut ici -- un enregistrement reconstruit a UNE ligne de temps.
+/// LA FORME D'UN FONDU (D17.1).
+///
+/// POURQUOI CE N'EST PAS UN DÉTAIL D'ESTHÉTIQUE. Un fondu enchaîné entre deux
+/// clips CORRÉLÉS -- deux prises du même passage, ou le même matériau coupé et
+/// recollé, c'est-à-dire le cas courant d'un montage -- se somme en
+/// AMPLITUDE : au point de croisement, deux moitiés linéaires font 0,5 + 0,5,
+/// donc le niveau de départ, et tout va bien. Entre deux clips DÉCORRÉLÉS, la
+/// somme se fait en PUISSANCE : 0,5² + 0,5² = 0,5, soit −3 dB. Le raccord se
+/// creuse, et rien ne le dit.
+///
+/// Les deux cas existent et demandent deux formes, c'est pourquoi Cubase en
+/// propose sept et Live deux (« Constant Gain » et « Constant Power »). Ici :
+///
+/// `Linear` : le gain suit une droite. Juste pour du matériau corrélé, et
+/// c'est la forme qu'avaient tous les fondus jusqu'ici -- donc le défaut, pour
+/// que rien de ce qui existe ne change de son.
+/// `EqualPower` : le gain suit un quart de sinusoïde, dont le carré s'ajoute à
+/// un avec celui du fondu complémentaire. Juste pour du matériau décorrélé.
+/// `Slow` : le fondu démarre doucement et finit vite (le carré de la droite) --
+/// une entrée qui « arrive » plutôt qu'elle ne surgit.
+/// `Fast` : l'inverse (la racine) -- une sortie qui tient avant de lâcher.
+enum class FadeShape : uint8_t { Linear = 0, EqualPower = 1, Slow = 2, Fast = 3 };
+
+/// LE GAIN D'UN FONDU à l'avancement `x` (0 au début du fondu, 1 à sa fin).
+///
+/// ÉCRITE ICI, DANS LE MODÈLE, ET NON DANS LE MOTEUR : le dessin du clip et le
+/// son qu'il rend doivent venir de la MÊME formule, sans quoi on dessine une
+/// courbe et on en entend une autre -- c'est déjà la règle des courbes
+/// d'automation (§ 6), et elle vaut ici pour la même raison.
+inline float fadeShapeGain(FadeShape shape, float x) {
+    if (x <= 0.0f) return 0.0f;
+    if (x >= 1.0f) return 1.0f;
+    switch (shape) {
+        case FadeShape::EqualPower: return std::sin(x * 1.57079632679489662f);
+        case FadeShape::Slow:       return x * x;
+        case FadeShape::Fast:       return std::sqrt(x);
+        case FadeShape::Linear:
+        default:                    return x;
+    }
+}
+
 /// LE SUIVI DE TEMPO D'UN CLIP AUDIO (D12, `docs/CDC-etirement-temporel.md`).
 ///
 /// `Off` : le contenu est du temps réel, comme depuis D2. `KeepPitch` : la
@@ -179,6 +221,15 @@ struct Clip {
     /// MIDI. L'écrire ferait grossir le format d'une donnée que personne ne
     /// relit.
     uint64_t id = 0;
+
+    /// LA FORME DES FONDUS (D17.1). `Linear` par défaut : les projets
+    /// existants sonnent au bit près comme avant.
+    ///
+    /// APRÈS `id`, ET C'EST LA RÈGLE DE CE STRUCT, écrite plus haut : tout le
+    /// code existant construit un `Clip` par agrégat POSITIONNEL. Glissé entre
+    /// `fadeOutSeconds` et `gain`, ce champ décalait tout ce qui suit — la
+    /// première écriture de D17.1 l'a fait, et le compilateur l'a rattrapée.
+    FadeShape fadeShape = FadeShape::Linear;
 };
 
 /// LE MATÉRIAU D'UNE PISTE AUDIO : un fichier, et ce qu'il faut en savoir pour

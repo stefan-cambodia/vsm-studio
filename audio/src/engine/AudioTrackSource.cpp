@@ -9,17 +9,24 @@ namespace vsm::audio::engine {
 namespace {
 
 /// Le gain du fondu à la position `position` dans un clip de `length`
-/// échantillons. Linéaire : sur des fondus courts -- ceux qui servent à ne pas
-/// entendre le raccord -- une courbe plus savante ne s'entend pas, et une
-/// courbe est une chose de plus à régler.
-inline float fadeGain(int64_t position, int64_t length,
-                       int64_t fadeIn, int64_t fadeOut) {
+/// échantillons.
+///
+/// LA FORME VIENT DU MODÈLE (D17.1), et la formule aussi
+/// (`sequencer::fadeShapeGain`) : le dessin du clip et le son qu'il rend
+/// doivent sortir de la même. Ce commentaire disait auparavant qu'une courbe
+/// « ne s'entend pas sur des fondus courts » ; c'est vrai d'un fondu simple et
+/// faux d'un fondu ENCHAÎNÉ, où deux droites qui se croisent creusent 3 dB sur
+/// du matériau décorrélé.
+inline float fadeGain(int64_t position, int64_t length, int64_t fadeIn, int64_t fadeOut,
+                       vsm::sequencer::FadeShape shape) {
     float gain = 1.0f;
     if (fadeIn > 0 && position < fadeIn)
-        gain *= static_cast<float>(position) / static_cast<float>(fadeIn);
+        gain *= vsm::sequencer::fadeShapeGain(
+            shape, static_cast<float>(position) / static_cast<float>(fadeIn));
     const int64_t restant = length - position;
     if (fadeOut > 0 && restant < fadeOut)
-        gain *= static_cast<float>(std::max<int64_t>(0, restant)) / static_cast<float>(fadeOut);
+        gain *= vsm::sequencer::fadeShapeGain(
+            shape, static_cast<float>(std::max<int64_t>(0, restant)) / static_cast<float>(fadeOut));
     return gain;
 }
 
@@ -118,7 +125,7 @@ int AudioTrackSource::mixInto(float* outLeft, float* outRight,
                 for (int i = 0; i < n; ++i) {
                     const int64_t dansLeClip = position + i - clip.startFrame;
                     const float gain = signeW * fadeGain(dansLeClip, clip.lengthFrames,
-                                                          clip.fadeInFrames, clip.fadeOutFrames);
+                                                          clip.fadeInFrames, clip.fadeOutFrames, clip.fadeShape);
                     const auto j = static_cast<size_t>(position + i - timelineStart);
                     outLeft[j] += w.scratchL[static_cast<size_t>(i)] * gain;
                     outRight[j] += w.scratchR[static_cast<size_t>(i)] * gain;
@@ -148,7 +155,7 @@ int AudioTrackSource::mixInto(float* outLeft, float* outRight,
             float g = 0.0f, d = 0.0f;
             if (!magasin.frameAt(dansLeFichier, g, d)) continue;
             const float gain = signe * fadeGain(dansLeClip, clip.lengthFrames,
-                                                 clip.fadeInFrames, clip.fadeOutFrames);
+                                                 clip.fadeInFrames, clip.fadeOutFrames, clip.fadeShape);
             const auto j = static_cast<size_t>(position - timelineStart);
             outLeft[j] += g * gain;
             outRight[j] += d * gain;
@@ -191,6 +198,7 @@ std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
             span.startFrame = depart;
             span.lengthFrames = jouee;
             span.sourceStartFrame = static_cast<int64_t>(std::llround(clip.sourceStartSeconds * sampleRate));
+            span.fadeShape = clip.fadeShape;
             span.fadeInFrames = static_cast<int64_t>(std::llround(clip.fadeInSeconds * sampleRate));
             span.fadeOutFrames = static_cast<int64_t>(std::llround(clip.fadeOutSeconds * sampleRate));
             span.gain = clip.gain;

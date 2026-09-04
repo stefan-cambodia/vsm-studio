@@ -67,6 +67,9 @@ struct AudioClipSpan {
     int64_t sourceStartFrame = 0;  ///< où il commence dans le fichier
     int64_t fadeInFrames = 0;
     int64_t fadeOutFrames = 0;
+    /// D17.1 : la forme des deux fondus. `Linear` par défaut, et le chemin de
+    /// lecture est alors exactement celui d'avant.
+    vsm::sequencer::FadeShape fadeShape = vsm::sequencer::FadeShape::Linear;
     float gain = 1.0f;
     bool invertPhase = false;
     /// À l'envers (D13.4). Traduit à la publication par `prepareWarpedSpans`

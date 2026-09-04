@@ -147,6 +147,13 @@ struct ProjectClip {
     /// À l'envers (D13.4). Comme le suivi de tempo, il fait monter la version
     /// du fichier : un lecteur ancien jouerait le clip à l'endroit sans un mot.
     bool reversed = false;
+    /// D17.1 : la forme des fondus — « linear » (défaut, non écrit),
+    /// « equalPower », « slow », « fast ».
+    ///
+    /// EN DERNIER, comme `vsm::sequencer::Clip::fadeShape` et pour la même
+    /// raison : `clipToDocument` construit un `ProjectClip` par agrégat
+    /// POSITIONNEL, et un champ glissé au milieu décale tout ce qui suit.
+    std::string fadeShape;
 };
 
 /// Le fichier que joue une piste audio. `path` est RELATIF au dossier de

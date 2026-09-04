@@ -108,6 +108,9 @@ JsonValue clipToJson(const ProjectClip& clip) {
         c.set("fadeIn", JsonValue::makeFloat(static_cast<float>(clip.fadeInSeconds)));
     if (clip.fadeOutSeconds != 0.0)
         c.set("fadeOut", JsonValue::makeFloat(static_cast<float>(clip.fadeOutSeconds)));
+    // D17.1 : la forme n'est écrite que si elle n'est pas la droite -- un
+    // projet d'avant D17.1 se réécrit octet pour octet.
+    if (!clip.fadeShape.empty()) c.set("fadeShape", JsonValue::makeString(clip.fadeShape));
     if (clip.gain != 1.0f) c.set("gain", JsonValue::makeFloat(clip.gain));
     if (clip.invertPhase) c.set("invertPhase", JsonValue::makeBoolean(true));
     // LE SUIVI DE TEMPO (D12), écrit seulement s'il est allumé : c'est ce qui
@@ -141,6 +144,7 @@ ProjectClip clipFromJson(const JsonValue& clipJson) {
     clip.sourceStartSeconds = clipJson["sourceStartSeconds"].asNumber(0.0);
     clip.fadeInSeconds = clipJson["fadeIn"].asNumber(0.0);
     clip.fadeOutSeconds = clipJson["fadeOut"].asNumber(0.0);
+    clip.fadeShape = clipJson["fadeShape"].asString();
     clip.gain = static_cast<float>(clipJson["gain"].asNumber(1.0));
     clip.invertPhase = clipJson["invertPhase"].asBoolean(false);
     const std::string warp = clipJson["warp"].asString();
@@ -174,6 +178,10 @@ ProjectClip clipToDocument(const vsm::sequencer::Clip& clip) {
     c.warpMode = static_cast<int>(clip.warpMode);
     for (const auto& m : clip.warpMarkers) c.warpMarkers.emplace_back(m.sourceSeconds, m.tick);
     c.reversed = clip.reversed;
+    c.fadeShape = clip.fadeShape == vsm::sequencer::FadeShape::EqualPower ? "equalPower"
+                : clip.fadeShape == vsm::sequencer::FadeShape::Slow       ? "slow"
+                : clip.fadeShape == vsm::sequencer::FadeShape::Fast       ? "fast"
+                                                                          : "";
     return c;
 }
 vsm::sequencer::Clip clipToModel(const ProjectClip& clip) {
@@ -188,6 +196,10 @@ vsm::sequencer::Clip clipToModel(const ProjectClip& clip) {
                                     : vsm::sequencer::WarpMode::Off;
     for (const auto& [secondes, tick] : clip.warpMarkers) c.warpMarkers.push_back({secondes, tick});
     c.reversed = clip.reversed;
+    c.fadeShape = clip.fadeShape == "equalPower" ? vsm::sequencer::FadeShape::EqualPower
+                : clip.fadeShape == "slow"       ? vsm::sequencer::FadeShape::Slow
+                : clip.fadeShape == "fast"       ? vsm::sequencer::FadeShape::Fast
+                                                 : vsm::sequencer::FadeShape::Linear;
     return c;
 }
 
