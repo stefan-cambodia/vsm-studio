@@ -22,6 +22,24 @@ from .vsm_engine import find_vsm_render
 from .vsm_project_export import ExportTrack, write_project_bundle
 
 
+# LES AVERTISSEMENTS DU RENDU DE VARIANTE NE SONT PLUS AVALÉS (CDC multipiste § 12). Le
+# moteur les écrit sur la sortie d'erreur même en mode silencieux, et
+# `capture_output` les rangeait dans une variable que personne ne lisait :
+# « fichier audio introuvable » y a dormi sept campagnes. Chaque message
+# distinct est dit UNE fois -- un verdict rend des centaines de variantes, et
+# la même phrase cent fois n'est plus lue.
+_avertissements_dits: set = set()
+
+
+def dire_les_avertissements_du_rendu(stderr: Optional[str]) -> None:
+    for ligne in (stderr or "").splitlines():
+        ligne = ligne.strip()
+        if not ligne or ligne in _avertissements_dits:
+            continue
+        _avertissements_dits.add(ligne)
+        print(f"      rendu de variante : {ligne}")
+
+
 def read_render_wav(path: Path) -> Optional[np.ndarray]:
     """Relit un WAV écrit par `vsm-render` (float32 stéréo), rendu en mono."""
     donnees = Path(path).read_bytes()
@@ -63,7 +81,8 @@ def render_track_offline(
         commande += ["--duration", str(duration)]
     commande.append("--quiet")
     try:
-        subprocess.run(commande, check=True, capture_output=True)
+        termine = subprocess.run(commande, check=True, capture_output=True, text=True)
+        dire_les_avertissements_du_rendu(termine.stderr)
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
     # Un moteur qui sort en 0 SANS écrire son fichier est un rendu qui a

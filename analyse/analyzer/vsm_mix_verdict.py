@@ -50,7 +50,7 @@ import numpy as np
 
 from .vsm_engine import find_vsm_render
 from .vsm_levels import match_track_levels, recaler_avec_son_groupe
-from .vsm_offline_render import read_render_wav
+from .vsm_offline_render import dire_les_avertissements_du_rendu, read_render_wav
 from .vsm_project_export import ExportNote, ExportTrack, write_project_bundle
 
 
@@ -262,11 +262,12 @@ def _render_project(tracks: Sequence[ExportTrack], folder: Path, sample_rate: in
     write_project_bundle(list(tracks), folder, title="verdict-mélange", tempo=tempo)
     sortie = folder / "rendu.wav"
     try:
-        subprocess.run([str(find_vsm_render(binary)), str(folder), str(sortie),
-                        "--sample-rate", str(sample_rate), "--quiet"],
-                       check=True, capture_output=True)
+        termine = subprocess.run([str(find_vsm_render(binary)), str(folder), str(sortie),
+                                  "--sample-rate", str(sample_rate), "--quiet"],
+                                 check=True, capture_output=True, text=True)
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
+    dire_les_avertissements_du_rendu(termine.stderr)
     audio = read_render_wav(sortie)
     sortie.unlink(missing_ok=True)
     return audio
