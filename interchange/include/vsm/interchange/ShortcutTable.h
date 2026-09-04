@@ -43,6 +43,8 @@ enum class ShortcutId : uint16_t {
     EditJoin,
     EditSplitAtPlayhead,
     EditToggleSnap,
+    EditInsertTimeAtLocators,
+    EditDeleteTimeAtLocators,
 
     ToolSelect,
     ToolDraw,

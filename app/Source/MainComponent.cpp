@@ -1,4 +1,5 @@
 #include "MainComponent.h"
+#include "vsm/sequencer/TimeEdit.h"
 #include "vsm/interchange/DawImport.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
@@ -1323,6 +1324,16 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // définition, donc aucun risque qu'une opération existe à un
             // endroit et pas à l'autre, ou que les deux divergent.
             menu = pianoRoll_.buildContextMenu();
+            // LA PLAGE ENTRE LES LOCATEURS (D13.3) : deux opérations sur TOUT
+            // le morceau, qui n'ont pas leur place dans le piano roll -- elles
+            // déplacent aussi les clips, les repères et le tempo.
+            menu.addSeparator();
+            menu.addItem(kMenuEditInsertTimeAtLocators,
+                         u8"Insérer du silence entre les locateurs (Ctrl+Maj+I)",
+                         project_.loopEndTick > project_.loopStartTick);
+            menu.addItem(kMenuEditDeleteTimeAtLocators,
+                         u8"Supprimer le temps entre les locateurs (Ctrl+Maj+K)",
+                         project_.loopEndTick > project_.loopStartTick);
             break;
         case 2:
             menu.addItem(kMenuTrackAdd, "Ajouter une piste MIDI");
@@ -1596,6 +1607,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
 }
 
 void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) {
+    if (menuItemID == kMenuEditInsertTimeAtLocators) { editTimeAtLocators(true); return; }
+    if (menuItemID == kMenuEditDeleteTimeAtLocators) { editTimeAtLocators(false); return; }
     if (menuItemID >= kMenuFileRecentFirst && menuItemID <= kMenuFileRecentLast) {
         const auto liste = recentProjects();
         const int i = menuItemID - kMenuFileRecentFirst;
@@ -4182,6 +4195,8 @@ bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
         // appui remonte bien au marqueur d'avant et non à celui qu'on vient
         // d'atteindre. Sans marqueur avant, on revient au début.
         case Id::NavGoToStart: seekAllViews(0); return true;
+        case Id::EditInsertTimeAtLocators: editTimeAtLocators(true); return true;
+        case Id::EditDeleteTimeAtLocators: editTimeAtLocators(false); return true;
         case Id::ViewFullScreen: toggleFullScreen(); return true;
         case Id::NavNextMarker: {
             const auto ici = transport_.currentTick();
@@ -4441,6 +4456,28 @@ void MainComponent::saveProjectAs() {
         folder.createDirectory();
         writeProjectTo(folder);
     });
+}
+
+void MainComponent::editTimeAtLocators(bool inserer) {
+    const auto de = project_.loopStartTick;
+    const auto a = project_.loopEndTick;
+    if (a <= de) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Locateurs",
+            u8"Placez d'abord les locateurs : la région de boucle est la plage à insérer ou à supprimer.");
+        return;
+    }
+    beginProjectEdit(inserer ? u8"Insérer du silence" : u8"Supprimer une plage de temps");
+    const auto conversion = [this](vsm::midi::Tick t) { return project_.ticksToSeconds(t); };
+    const size_t touches = inserer ? vsm::sequencer::insertTime(project_, de, a - de, conversion)
+                                   : vsm::sequencer::deleteTime(project_, de, a, conversion);
+    // TOUT CE QUI LIT LE PROJET SE RAFRAÎCHIT : le transport (les notes et le
+    // tempo ont bougé), les pistes audio (les clips aussi), et les vues.
+    refreshTransportSchedule();
+    loadAudioTracks();
+    arrangement_.repaint();
+    pianoRoll_.repaint();
+    juce::ignoreUnused(touches);
 }
 
 void MainComponent::loadAudioTracks() {

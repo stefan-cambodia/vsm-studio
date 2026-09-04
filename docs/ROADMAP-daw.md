@@ -3104,6 +3104,18 @@ de D12 (D13.2) et l'arrangement global (D13.3) avant le confort.
 > vue, Ctrl sur le bord droit d'un clip audio étire — un modificateur, pas
 > un outil, la même raison qu'Alt pour couper — et le curseur le dit avant
 > le clic.
+>
+> **D13.3 EST FAITE (04/09/2026).** `insertTime` et `deleteTime` vivent
+> dans `core/` (`TimeEdit.h`) : tout glisse ensemble — notes, clips (par
+> `splitClips`, qui sait couper une fenêtre en secondes et une carte de
+> tempo), contrôleurs MIDI, automation, repères, tempo, mesures, boucle et
+> punch ; ce qui est à cheval est coupé à l'insertion et raccourci de ce
+> qu'il avait dedans à la suppression ; l'entrée au tick 0 du tempo et de
+> la mesure ne bouge jamais. Trois tests. Dans l'application, la plage est
+> celle des LOCATEURS (la région de boucle), comme dans Cubase : Édition ▸
+> Insérer du silence entre les locateurs (Ctrl+Maj+I) et Supprimer le
+> temps entre les locateurs (Ctrl+Maj+K), dans la table des raccourcis donc
+> dans la page imprimable ; annulable.
 
 ## 4. Les choix tranchés ici, et pourquoi
 
