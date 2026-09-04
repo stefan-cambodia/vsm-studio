@@ -4053,6 +4053,56 @@ MachinePanel makeWaveSequence() {
     return panel;
 }
 
+/// `vsm.pipeorgan` -- la soufflerie commune. STOPS : les jeux se tirent, en
+/// grand, comme des tirants ; SPEECH : le chiff et les temps de la soupape ;
+/// WIND : le sag et le tremblant. Chêne sombre et ivoire.
+MachinePanel makePipeOrgan() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.pipeorgan";
+    panel.displayName = "Pipe Organ (une soufflerie commune)";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#4A3423";
+    panel.sectionColour = "#2F2016";
+    panel.textColour = "#F3E9D7";
+    panel.knobColour = "#EFE6D2";
+    panel.gridColumns = 12;
+    panel.gridRows = 4;
+
+    PanelSection jeux;
+    jeux.title = "STOPS";
+    jeux.accentColour = "#EFE6D2";
+    jeux.column = 0; jeux.row = 0; jeux.columnSpan = 5; jeux.rowSpan = 4;
+    jeux.controls = {
+        control("Principal 8'", "PRINCIPAL", S::LargeKnob, 0, 0),
+        control("Flute 4'", "FLUTE 4", S::LargeKnob, 1, 0),
+        control("Mixture", "MIXTURE", S::LargeKnob, 0, 1),
+    };
+
+    PanelSection parole;
+    parole.title = "SPEECH";
+    parole.accentColour = "#C9A96E";
+    parole.column = 5; parole.row = 0; parole.columnSpan = 3; parole.rowSpan = 4;
+    parole.controls = {
+        control("Chiff", "CHIFF", S::LargeKnob, 0, 0),
+        control("Attack", "ATTACK", S::Knob, 0, 1),
+        control("Release", "RELEASE", S::Knob, 1, 1),
+    };
+
+    PanelSection vent;
+    vent.title = "WIND";
+    vent.accentColour = "#8FA3B3";
+    vent.column = 8; vent.row = 0; vent.columnSpan = 4; vent.rowSpan = 4;
+    vent.controls = {
+        control("Wind Sag", "SAG", S::LargeKnob, 0, 0),
+        control("Tremulant Rate", "TREM RATE", S::Knob, 1, 0),
+        control("Tremulant Depth", "TREM DEPTH", S::Knob, 0, 1),
+        control("Output Level", "VOLUME", S::Knob, 1, 1),
+    };
+
+    panel.sections = {jeux, parole, vent};
+    return panel;
+}
+
 /// `vsm.vibraphone` -- la barre, le tube et le moteur. Trois sections dans
 /// l'ordre où l'instrument se lit : BARS (creusement, temps, maillet),
 /// RESONATORS (la part du tube, et le MOTEUR en grand : c'est le réglage
@@ -4587,7 +4637,7 @@ const std::vector<MachinePanel>& panels() {
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
         makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev(),
         makeScanned(), makeMellotron(), makeSitar(), makeMembrane(), makeReed(),
-        makePlate(), makeClavichord(), makeHarpsichord(), makeHurdyGurdy(), makeBanjo(), makeMandolin(), makeKalimba(), makeWaveSequence(), makeVibraphone(), makeBagpipe(), makeCarillon(), makeClavinet(), makeGlass(), makeJewsHarp(),
+        makePlate(), makeClavichord(), makeHarpsichord(), makeHurdyGurdy(), makeBanjo(), makeMandolin(), makeKalimba(), makeWaveSequence(), makePipeOrgan(), makeVibraphone(), makeBagpipe(), makeCarillon(), makeClavinet(), makeGlass(), makeJewsHarp(),
         makeTheremin(), makeMusicBox(), makeTerrain(), makeSpectral()
     };
     return all;

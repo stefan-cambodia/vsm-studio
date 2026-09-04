@@ -28,7 +28,7 @@ Il classe ce qu'il entend en : `bass`, `synth_bass`, `synth_lead`, `synth_pad`,
 | Batterie acoustique | `vsm.drums` | **couvert** — peaux inharmoniques, métal, pièce (§ 11) |
 | Basse électrique, guitare | `vsm.string` | **couvert** — corde pincée, guide d'ondes (§ 10) |
 | Piano acoustique | `vsm.piano` (modélisé), `vsm.multisample` (échantillonné) | **couvert deux fois, et il a fallu les deux** — voir l'encadré ci-dessous |
-| Orgue, claviers électromécaniques | `vsm.epiano`, `vsm.tonewheel` | **couvert** |
+| Orgue, claviers électromécaniques | `vsm.epiano`, `vsm.tonewheel` — et l'orgue à TUYAUX par `vsm.pipeorgan` (H36, 04/09/2026) | **couvert** |
 | Cordes | `vsm.string` | **couvert** — corde frottée, même machine (§ 10) |
 | Cuivres, bois à perce CYLINDRIQUE | `vsm.wind` | **couvert** — anche et lèvres (§ 11) |
 | **Saxophone, hautbois** | `vsm.cone` (modélisé), profils GM (échantillonnés) | **couvert depuis le 01/09/2026** — anche sur perce conique, rangs pairs mesurés (h2/h1 0,37, § 14) ; la sixième mesure a trouvé le couplage fautif là où cinq topologies avaient échoué |
@@ -2019,6 +2019,74 @@ changé, la note du banc, si — et c'est dit. Onze tests, empreinte, façade
 SEQUENCE · FILTER · ENVELOPE (rendue et regardée) ; douze identités neuves
 (les huit pas, le pas, le fondu, la boucle, la remise). Le parc passe à
 **63 machines**.
+
+## 32. H36 — l'ORGUE À TUYAUX : une soufflerie COMMUNE, et des tuyaux qui « parlent » (écrite avant sa mesure, 04/09/2026)
+
+**Ce que le parc n'avait pas.** Le tableau du § 1 range l'orgue sous
+`vsm.tonewheel` : c'est l'orgue Hammond, des roues et des tirettes, un son
+électrique. L'orgue à TUYAUX est une autre famille, et ce n'est pas un nom
+célèbre de plus : c'est le seul instrument où TOUTES les notes boivent au
+même réservoir d'air. Quatre traits, qu'aucune machine n'a ensemble et que
+le banc mesure :
+
+1. **LE VENT S'AFFAISSE** (le *sag*) : plus on tient de touches, plus la
+   pression baisse pour toutes -- une note tenue BAISSE de hauteur et de
+   niveau quand un accord vient s'y ajouter. La cornemuse (H30) a un
+   réservoir qui se vide dans le temps ; ici il se partage entre les notes.
+2. **LE TUYAU PARLE** (le *chiff*) : un tuyau à bouche ne s'installe pas
+   d'un coup sur sa fondamentale — à l'attaque, c'est son OCTAVE qui sort la
+   première (la bouche suroscille le temps que la colonne s'accorde), avec
+   un souffle ; c'est ce qui fait qu'un orgue « articule ».
+3. **LES JEUX** : le son ne se règle pas, il se TIRE — un principal, une
+   flûte à l'octave (4'), une fourniture (la douzième et la quinzième par
+   rangs fixes). Comme au clavecin (H26), des registres et non des boutons
+   de timbre.
+4. **LE TREMBLANT** : une soupape qui fait onduler la PRESSION — donc la
+   hauteur ET le niveau ensemble, au même rythme. Un LFO de hauteur seul
+   (le vibrato des synthés) n'est pas un tremblant.
+
+Et, comme le clavecin, la machine refuse la vélocité : une touche d'orgue
+ouvre une soupape, vite ou lentement c'est le même vent.
+
+*Ce que j'attends, écrit avant la mesure (dans le banc, avant de le
+lancer)* : (1) deux vélocités extrêmes donnent une sortie IDENTIQUE au bit
+près ; (2) chiff à 1 : sur do3, l'énergie à 2·f0 atteint la moitié de son
+régime au moins 10 ms AVANT celle à f0 ; à 0, l'écart est sous 3 ms ;
+(3) *Wind Sag* à 1 : un do3 tenu seul, puis rejoint par sept autres notes,
+baisse d'au moins 5 cents et de 10 % de niveau — et remonte quand elles
+lâchent ; (4) tirer la *Mixture* multiplie par au moins 3 l'énergie à 3·f0
+(la douzième) ; (5) tremblant à 6 Hz, profondeur 1 : la hauteur ondule
+d'au moins ± 5 cents ET le niveau d'au moins 10 %, au même rythme
+(corrélation des deux enveloppes > 0,5) ; (6) le relâchement ferme la
+soupape : sous 10 % en 300 ms. Pas de molette de hauteur (une soupape n'en
+a pas), refusée en connaissance de cause.
+
+### H36 EST TRANCHÉE : SUCCÈS, et deux bancs ont dû apprendre à mesurer (04/09/2026)
+
+| Trait | Attendu | Mesuré |
+|---|---|---|
+| vélocité 30 contre 120 | identiques au bit près | tenu |
+| chiff 1 : mi-régime de l'octave avant celui de la fondamentale | ≥ 10 ms | **18 ms contre 72 ms** (54 ms d'avance) |
+| chiff 0 | < 3 ms d'écart | **18 contre 18** |
+| sag 1 : do3 rejoint par sept notes | ≤ −5 cents, niveau ≤ −10 % | **−16 cents, −30 %** ; après leur départ, 130,80 Hz retrouvé à 0,0 cent |
+| fourniture tirée : la douzième | ≥ ×3 | **0,029 → 0,099** (×3,4) |
+| tremblant 6 Hz : hauteur ET niveau | ≥ ± 5 cents, ≥ 10 %, corrélation > 0,5 | **42 cents crête à crête, 80 %, corrélation 1,00** |
+| relâchement à 300 ms | < 10 % | **0,173 → 0,0006** |
+
+**Ce que les deux corrections enseignent.** (1) Le banc du chiff mesurait
+l'énergie de chaque harmonique sur des fenêtres de 2 ms — plus courtes
+qu'une période de do3 : la transformée n'y sépare rien, et les deux
+harmoniques « montaient » ensemble. Une fenêtre doit tenir une période
+(20 ms ici). (2) Le vent se partage entre les SOUPAPES OUVERTES, pas entre
+les voix actives : un tuyau qui s'éteint après le relâchement ne boit plus,
+et compter les voix retardait la remontée du vent de tout le relâchement
+(130,60 Hz au lieu de 130,80, mesuré). Et un réglage de modèle, dit : la
+loi pression → hauteur est passée de 6 % à 3 % (un tremblant à 78 cents
+crête à crête n'est pas un tremblant). Le tableau du § 1 range toujours
+l'orgue sous `vsm.tonewheel` : c'est vrai du Hammond, et l'orgue à tuyaux
+a désormais sa case. Treize tests, empreinte, façade STOPS · SPEECH ·
+WIND (rendue et regardée) ; sept identités neuves. Le parc passe à
+**64 machines**.
 
 ## 12. H10 — la guitare ÉLECTRIQUE est-elle vraiment couverte ? (écrite avant sa mesure, 02/09/2026)
 

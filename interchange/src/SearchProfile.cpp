@@ -247,6 +247,15 @@ constexpr Rule kRules[] = {
     {"wavesequence.step8",                 0.0f,     4.0f, SearchScale::Linear,      0.50f},
     {"wavesequence.loopStart",             1.0f,     8.0f, SearchScale::Linear,      0.40f},
     {"wavesequence.keyRestart",            0.0f,     1.0f, SearchScale::Linear,      0.30f},
+    // ORGUE À TUYAUX (vsm.pipeorgan). Les jeux d'abord (c'est le timbre), le
+    // chiff ensuite (l'articulation), le tremblant et le vent en dernier.
+    {"pipeorgan.principal",                0.0f,     1.0f, SearchScale::Linear,      0.85f},
+    {"pipeorgan.flute4",                   0.0f,     1.0f, SearchScale::Linear,      0.80f},
+    {"pipeorgan.mixture",                  0.0f,     1.0f, SearchScale::Linear,      0.75f},
+    {"pipeorgan.chiff",                    0.0f,     1.0f, SearchScale::Linear,      0.60f},
+    {"pipeorgan.tremulantRate",            0.0f,    10.0f, SearchScale::Linear,      0.45f},
+    {"pipeorgan.tremulantDepth",           0.0f,     1.0f, SearchScale::Linear,      0.40f},
+    {"pipeorgan.windSag",                  0.0f,     1.0f, SearchScale::Linear,      0.35f},
     // VIBRAPHONE (vsm.vibraphone). Le creusement décide où tombent les
     // partiels — c'est ce qu'on entend d'abord ; la part du tube ensuite ;
     // le point de frappe dose le second partiel ; le feutre ne se cherche

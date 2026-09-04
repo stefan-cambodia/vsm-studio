@@ -586,6 +586,21 @@ const std::vector<std::pair<std::string, NameToSemantic>>& semanticTable() {
         {"Velocity Sensitivity", "voice.velocitySensitivity"},
         {"Output Level", "output.level"},
     }},
+    // --- vsm.pipeorgan ---
+    // Les jeux, le chiff, le vent et le tremblant sont à lui ; l'attaque et
+    // le relâchement parlent la langue commune.
+    {"vsm.pipeorgan", {
+        {"Principal 8'", "pipeorgan.principal"},
+        {"Flute 4'", "pipeorgan.flute4"},
+        {"Mixture", "pipeorgan.mixture"},
+        {"Chiff", "pipeorgan.chiff"},
+        {"Wind Sag", "pipeorgan.windSag"},
+        {"Tremulant Rate", "pipeorgan.tremulantRate"},
+        {"Tremulant Depth", "pipeorgan.tremulantDepth"},
+        {"Attack", "env.amp.attack"},
+        {"Release", "env.amp.release"},
+        {"Output Level", "output.level"},
+    }},
     // --- vsm.vibraphone ---
     // La barre parle le vocabulaire de `vsm.modal` (temps, pente, maillet),
     // le moteur celui du trémolo (c'est le trémolo de l'instrument, comme

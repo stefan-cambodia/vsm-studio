@@ -4116,6 +4116,21 @@ libre (20,43). Onze tests, empreinte, façade ; CDC machines-manquantes
 
 Le parc passe à **63 machines**.
 
+**ET UNE VINGT-TROISIÈME : `vsm.pipeorgan`, l'orgue à tuyaux — une
+soufflerie COMMUNE.** Des tuyaux additifs (huit harmoniques au principal,
+une flûte 4', une fourniture) sous un réservoir partagé : le vent
+s'affaisse avec le nombre de soupapes ouvertes (do3 tenu, rejoint par sept
+notes : −16 cents et −30 % de niveau, et il remonte exactement quand elles
+lâchent — compter les voix qui s'éteignent au lieu des soupapes ouvertes
+retardait la remontée de tout le relâchement), le tuyau parle (chiff 1 :
+l'octave à mi-régime à 18 ms, la fondamentale à 72 ; chiff 0 : ensemble),
+la fourniture multiplie la douzième par 3,4, le tremblant fait onduler la
+hauteur (42 cents crête à crête) et le niveau (80 %) ensemble, corrélation
+1,00 ; la vélocité est refusée au bit près. Treize tests, empreinte,
+façade STOPS · SPEECH · WIND ; CDC machines-manquantes § 32.
+
+Le parc passe à **64 machines**.
+
 ---
 
 ## 47. Ouvrir un projet fait ailleurs : `Inflate`, `Xml`, `DawImport`
