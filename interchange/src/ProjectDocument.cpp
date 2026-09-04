@@ -110,6 +110,19 @@ JsonValue clipToJson(const ProjectClip& clip) {
         c.set("fadeOut", JsonValue::makeFloat(static_cast<float>(clip.fadeOutSeconds)));
     if (clip.gain != 1.0f) c.set("gain", JsonValue::makeFloat(clip.gain));
     if (clip.invertPhase) c.set("invertPhase", JsonValue::makeBoolean(true));
+    // LE SUIVI DE TEMPO (D12), écrit seulement s'il est allumé : c'est ce qui
+    // laisse un projet sans étirement en version 2.
+    if (clip.warpMode != 0) {
+        c.set("warp", JsonValue::makeString(clip.warpMode == 2 ? "repitch" : "keepPitch"));
+        JsonValue marqueurs = JsonValue::makeArray();
+        for (const auto& [secondes, tick] : clip.warpMarkers) {
+            JsonValue m = JsonValue::makeObject();
+            m.set("seconds", JsonValue::makeFloat(secondes));
+            m.set("tick", JsonValue::makeNumber(static_cast<double>(tick)));
+            marqueurs.append(std::move(m));
+        }
+        c.set("warpMarkers", std::move(marqueurs));
+    }
     return c;
 }
 
@@ -128,7 +141,48 @@ ProjectClip clipFromJson(const JsonValue& clipJson) {
     clip.fadeOutSeconds = clipJson["fadeOut"].asNumber(0.0);
     clip.gain = static_cast<float>(clipJson["gain"].asNumber(1.0));
     clip.invertPhase = clipJson["invertPhase"].asBoolean(false);
+    const std::string warp = clipJson["warp"].asString();
+    clip.warpMode = warp == "keepPitch" ? 1 : warp == "repitch" ? 2 : 0;
+    for (const auto& m : clipJson["warpMarkers"].elements())
+        clip.warpMarkers.emplace_back(m["seconds"].asNumber(0.0),
+                                      static_cast<int64_t>(m["tick"].asNumber(0.0)));
     return clip;
+}
+
+/// Un projet a-t-il un clip qui suit le tempo ? C'est ce qui décide de la
+/// version écrite.
+bool usesWarp(const ProjectDocument& document) {
+    for (const auto& track : document.tracks) {
+        for (const auto& clip : track.clips) if (clip.warpMode != 0) return true;
+        for (const auto& take : track.takes)
+            for (const auto& clip : take.clips) if (clip.warpMode != 0) return true;
+    }
+    return false;
+}
+
+/// Un clip du MODÈLE vers le document, et retour. Un seul endroit pour les
+/// deux sens : un champ ajouté au clip (le suivi de tempo, D12) se recopie
+/// ici, pas dans quatre agrégats positionnels.
+ProjectClip clipToDocument(const vsm::sequencer::Clip& clip) {
+    ProjectClip c{clip.sourceStart, clip.sourceLength, clip.startTick,
+                  clip.length, clip.muted, clip.name, clip.colorRgba,
+                  clip.sourceStartSeconds, clip.fadeInSeconds,
+                  clip.fadeOutSeconds, clip.gain, clip.invertPhase, 0, {}};
+    c.warpMode = static_cast<int>(clip.warpMode);
+    for (const auto& m : clip.warpMarkers) c.warpMarkers.emplace_back(m.sourceSeconds, m.tick);
+    return c;
+}
+vsm::sequencer::Clip clipToModel(const ProjectClip& clip) {
+    vsm::sequencer::Clip c{clip.sourceStart, clip.sourceLength, clip.startTick,
+                           clip.length, clip.muted, clip.name, clip.colorRgba,
+                           clip.sourceStartSeconds, clip.fadeInSeconds,
+                           clip.fadeOutSeconds, clip.gain, clip.invertPhase,
+                           vsm::sequencer::WarpMode::Off, {}, 0};
+    c.warpMode = clip.warpMode == 1 ? vsm::sequencer::WarpMode::KeepPitch
+               : clip.warpMode == 2 ? vsm::sequencer::WarpMode::Repitch
+                                    : vsm::sequencer::WarpMode::Off;
+    for (const auto& [secondes, tick] : clip.warpMarkers) c.warpMarkers.push_back({secondes, tick});
+    return c;
 }
 
 // ---------------------------------------------------------------------------
@@ -204,10 +258,7 @@ ProjectDocument documentFromProject(const Project& project) {
                             track.audio.frames, track.audio.channels};
         }
         for (const auto& clip : track.clips)
-            entry.clips.push_back({clip.sourceStart, clip.sourceLength, clip.startTick,
-                                    clip.length, clip.muted, clip.name, clip.colorRgba,
-                                    clip.sourceStartSeconds, clip.fadeInSeconds,
-                                    clip.fadeOutSeconds, clip.gain, clip.invertPhase});
+            entry.clips.push_back(clipToDocument(clip));
         for (const auto& curve : track.automation) {
             ProjectAutomationLane lane;
             lane.parameter = curve.parameter;
@@ -236,10 +287,7 @@ ProjectDocument documentFromProject(const Project& project) {
             described.audio.frames = take.audio.frames;
             described.audio.channels = take.audio.channels;
             for (const auto& clip : take.clips)
-                described.clips.push_back({clip.sourceStart, clip.sourceLength, clip.startTick,
-                                            clip.length, clip.muted, clip.name, clip.colorRgba,
-                                            clip.sourceStartSeconds, clip.fadeInSeconds,
-                                            clip.fadeOutSeconds, clip.gain, clip.invertPhase});
+                described.clips.push_back(clipToDocument(clip));
             entry.takes.push_back(std::move(described));
         }
         entry.activeTake = track.activeTake;
@@ -352,10 +400,7 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
             restauree.audio.frames = take.audio.frames;
             restauree.audio.channels = take.audio.channels;
             for (const auto& clip : take.clips)
-                restauree.clips.push_back({clip.sourceStart, clip.sourceLength, clip.startTick,
-                                            clip.length, clip.muted, clip.name, clip.colorRgba,
-                                            clip.sourceStartSeconds, clip.fadeInSeconds,
-                                            clip.fadeOutSeconds, clip.gain, clip.invertPhase});
+                restauree.clips.push_back(clipToModel(clip));
             target.takes.push_back(std::move(restauree));
         }
         target.activeTake = source.activeTake < static_cast<int>(target.takes.size())
@@ -363,10 +408,7 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
 
         target.clips.clear();
         for (const auto& clip : source.clips)
-            target.clips.push_back({clip.sourceStart, clip.sourceLength, clip.startTick,
-                                     clip.length, clip.muted, clip.name, clip.colorRgba,
-                                     clip.sourceStartSeconds, clip.fadeInSeconds,
-                                     clip.fadeOutSeconds, clip.gain, clip.invertPhase});
+            target.clips.push_back(clipToModel(clip));
         target.automation.clear();
         for (const auto& lane : source.automation) {
             vsm::sequencer::AutomationCurve curve;
@@ -398,7 +440,8 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
 JsonValue projectDocumentToJson(const ProjectDocument& document) {
     JsonValue root = JsonValue::makeObject();
     root.set("format", JsonValue::makeString(kProjectFormat));
-    root.set("version", JsonValue::makeNumber(kProjectVersion));
+    root.set("version", JsonValue::makeNumber(usesWarp(document) ? kProjectVersion
+                                                                  : kProjectVersionWithoutWarp));
     root.set("title", JsonValue::makeString(document.title));
 
     // Écrit SEULEMENT s'il y a quelque chose à écrire : un projet sans réglage

@@ -131,6 +131,52 @@ void resizeClipsStart(std::vector<Clip>& clips, const ClipSelection& selection,
 /// reprend la fenêtre là où la première l'a laissée. Rend le nombre de coupes
 /// réellement faites -- zéro quand le point tombe en dehors, sur un bord, ou
 /// sur aucun clip sélectionné.
+// ---------------------------------------------------------------------------
+// LE SUIVI DE TEMPO (D12.4, `docs/CDC-etirement-temporel.md` § 2 et § 4).
+// Les marqueurs sont RELATIFS au début du clip : déplacer le clip ne les
+// touche pas ; le rogner, le couper, les transportent (testé).
+// ---------------------------------------------------------------------------
+
+/// Un clip suit-il le tempo ? Il faut le mode ET deux marqueurs au moins.
+bool clipIsWarped(const Clip& clip);
+
+/// La position dans le FICHIER, en secondes, pour un tick relatif au début
+/// du clip, d'après ses marqueurs (linéaire entre deux, prolongé au-delà).
+/// Sans marqueurs suffisants, rend `sourceStartSeconds`.
+double warpSourceSecondsAt(const Clip& clip, Tick relativeTick);
+
+/// L'inverse : le tick relatif où une position du fichier tombe.
+Tick warpTickAtSeconds(const Clip& clip, double sourceSeconds);
+
+/// Allume ou éteint le suivi de tempo. L'allumer sur un clip sans marqueurs
+/// pose la PAIRE NEUTRE (début et fin, au rapport un) : rien ne change au
+/// son tant qu'on ne bouge rien — et le rapport un est un court-circuit au
+/// bit près dans le moteur. `ticksToSeconds` sert à mesurer la durée jouée.
+void setClipWarpMode(std::vector<Clip>& clips, const ClipSelection& selection, WarpMode mode,
+                     Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds);
+
+/// « LE CLIP FAIT N MESURES » : la première commande du § 6. Le matériau
+/// actuellement joué (en secondes) est réparti sur `bars × ticksPerBar`
+/// ticks ; le clip prend cette longueur, ses marqueurs deviennent la paire
+/// début/fin, et le mode s'allume (KeepPitch) s'il était éteint. Rend le
+/// tempo d'origine déduit, en BPM, pour l'afficher — ou 0 si rien n'a changé.
+double setClipBars(std::vector<Clip>& clips, uint64_t clipId, int bars, Tick ticksPerBar,
+                   Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds);
+
+/// Ajoute un marqueur à `relativeTick` (strictement entre le premier et le
+/// dernier), à la position du fichier que la carte y met déjà : le son ne
+/// change pas, mais le point peut maintenant se déplacer. Rend son indice, ou
+/// -1.
+int addWarpMarker(std::vector<Clip>& clips, uint64_t clipId, Tick relativeTick);
+
+/// Déplace le marqueur `index` en musique (sa position dans le fichier ne
+/// bouge pas) : c'est le geste de calage. Le premier marqueur reste à 0 ;
+/// les autres restent strictement entre leurs voisins.
+bool moveWarpMarker(std::vector<Clip>& clips, uint64_t clipId, size_t index, Tick relativeTick);
+
+/// Retire le marqueur `index` — jamais le premier, jamais sous deux.
+bool removeWarpMarker(std::vector<Clip>& clips, uint64_t clipId, size_t index);
+
 size_t splitClips(std::vector<Clip>& clips, const ClipSelection& selection, Tick atTick,
                    Tick materialEnd, uint64_t& idCounter,
                    const std::function<double(Tick)>& ticksToSeconds);

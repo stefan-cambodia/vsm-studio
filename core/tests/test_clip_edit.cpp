@@ -380,3 +380,131 @@ VSM_TEST(an_audio_clip_refuses_a_track_with_another_file_and_adopts_an_empty_one
     mixte[1].kind = Track::Kind::Group;
     VSM_ASSERT_EQ(moveClipsAcrossTracks(mixte, {1}, 1).refused, size_t{1});
 }
+
+// ---------------------------------------------------------------------------
+// D12.4 — LE SUIVI DE TEMPO (docs/CDC-etirement-temporel.md, § 2 et § 4).
+// Les marqueurs sont relatifs au clip ; l'allumer est neutre ; « N mesures »
+// pose la paire ; couper et rogner transportent la carte, tick pour tick.
+// ---------------------------------------------------------------------------
+
+VSM_TEST(turning_warp_on_places_the_neutral_pair_and_changes_no_sound) {
+    std::vector<Clip> clips{clip(1, 1920, 1920)};
+    clips[0].sourceStartSeconds = 5.0;
+    VSM_ASSERT(!clipIsWarped(clips[0]));
+    setClipWarpMode(clips, {1}, WarpMode::KeepPitch, 100000, enSecondes);
+    VSM_ASSERT(clipIsWarped(clips[0]));
+    VSM_ASSERT_EQ(clips[0].warpMarkers.size(), size_t(2));
+    VSM_ASSERT_NEAR(clips[0].warpMarkers[0].sourceSeconds, 5.0, 1e-9);
+    VSM_ASSERT_EQ(clips[0].warpMarkers[0].tick, Tick(0));
+    VSM_ASSERT_NEAR(clips[0].warpMarkers[1].sourceSeconds, 7.0, 1e-9);   // 1920 ticks = 2 s
+    VSM_ASSERT_EQ(clips[0].warpMarkers[1].tick, Tick(1920));
+    // La carte est celle du tempo : rapport un, partout, prolongé au-delà.
+    VSM_ASSERT_NEAR(warpSourceSecondsAt(clips[0], 960), 6.0, 1e-9);
+    VSM_ASSERT_NEAR(warpSourceSecondsAt(clips[0], 3840), 9.0, 1e-9);
+    VSM_ASSERT_EQ(warpTickAtSeconds(clips[0], 6.5), Tick(1440));
+    // Éteindre garde les marqueurs (pour rallumer sans les perdre) mais le
+    // clip ne suit plus.
+    setClipWarpMode(clips, {1}, WarpMode::Off, 100000, enSecondes);
+    VSM_ASSERT(!clipIsWarped(clips[0]));
+    VSM_ASSERT_EQ(clips[0].warpMarkers.size(), size_t(2));
+}
+
+VSM_TEST(the_clip_is_n_bars_sets_the_length_and_the_pair_and_tells_the_tempo) {
+    // Une boucle de 2,0 s (1920 ticks à 120 BPM) qu'on déclare faire UNE
+    // mesure : elle doit désormais durer 1920 ticks... c'est déjà le cas ; on
+    // la déclare faire DEUX mesures, et sa carte s'étire d'un facteur deux.
+    std::vector<Clip> clips{clip(1, 0, 1920)};
+    clips[0].sourceStartSeconds = 10.0;
+    const double bpm = setClipBars(clips, 1, 2, 1920, 100000, enSecondes);
+    VSM_ASSERT(clipIsWarped(clips[0]));
+    VSM_ASSERT(clips[0].warpMode == WarpMode::KeepPitch);
+    VSM_ASSERT_EQ(clips[0].length, Tick(3840));
+    VSM_ASSERT_EQ(clips[0].warpMarkers.size(), size_t(2));
+    VSM_ASSERT_NEAR(clips[0].warpMarkers[1].sourceSeconds, 12.0, 1e-9);   // le même matériau
+    VSM_ASSERT_EQ(clips[0].warpMarkers[1].tick, Tick(3840));             // sur deux fois plus de ticks
+    // Deux mesures de quatre temps en deux secondes : 240 BPM d'origine.
+    VSM_ASSERT_NEAR(bpm, 240.0, 1e-9);
+    VSM_ASSERT_NEAR(warpSourceSecondsAt(clips[0], 1920), 11.0, 1e-9);
+}
+
+VSM_TEST(splitting_a_warped_clip_cuts_its_map_and_the_halves_replay_it_tick_for_tick) {
+    std::vector<Clip> clips{clip(1, 0, 3840)};
+    clips[0].sourceStartSeconds = 0.0;
+    clips[0].warpMode = WarpMode::KeepPitch;
+    // Trois marqueurs, deux rapports : 0 → 0 s, 1920 → 1 s (×2), 3840 → 4 s (×0,67).
+    clips[0].warpMarkers = {{0.0, 0}, {1.0, 1920}, {4.0, 3840}};
+    const Clip original = clips[0];
+    uint64_t compteur = 10;
+    VSM_ASSERT_EQ(splitClips(clips, {1}, 2880, 100000, compteur, enSecondes), size_t(1));
+    VSM_ASSERT_EQ(clips.size(), size_t(2));
+    // La première garde 0 et 1920, et reçoit la coupe (2880 → 2,5 s).
+    VSM_ASSERT_EQ(clips[0].warpMarkers.size(), size_t(3));
+    VSM_ASSERT_EQ(clips[0].warpMarkers.back().tick, Tick(2880));
+    VSM_ASSERT_NEAR(clips[0].warpMarkers.back().sourceSeconds, 2.5, 1e-9);
+    // La seconde commence à la coupe (0 → 2,5 s) et garde 3840 → 4 s, décalé.
+    VSM_ASSERT_EQ(clips[1].warpMarkers.size(), size_t(2));
+    VSM_ASSERT_NEAR(clips[1].sourceStartSeconds, 2.5, 1e-9);
+    VSM_ASSERT_EQ(clips[1].warpMarkers[0].tick, Tick(0));
+    VSM_ASSERT_EQ(clips[1].warpMarkers[1].tick, Tick(960));
+    VSM_ASSERT_NEAR(clips[1].warpMarkers[1].sourceSeconds, 4.0, 1e-9);
+    // Bout à bout, les deux cartes SONT l'ancienne.
+    for (Tick t = 0; t < 3840; t += 120) {
+        const double attendu = warpSourceSecondsAt(original, t);
+        const double obtenu = t < 2880 ? warpSourceSecondsAt(clips[0], t)
+                                       : warpSourceSecondsAt(clips[1], t - 2880);
+        VSM_ASSERT_NEAR(obtenu, attendu, 1e-9);
+    }
+}
+
+VSM_TEST(trimming_the_head_of_a_warped_clip_follows_its_map_not_the_tempo) {
+    std::vector<Clip> clips{clip(1, 0, 3840)};
+    clips[0].warpMode = WarpMode::KeepPitch;
+    clips[0].warpMarkers = {{0.0, 0}, {1.0, 1920}, {4.0, 3840}};   // ×2 puis ×0,67
+    resizeClipsStart(clips, {1}, 960, 100000, enSecondes);
+    // Au tempo, 960 ticks font 1 s ; dans la carte, 0,5 s.
+    VSM_ASSERT_NEAR(clips[0].sourceStartSeconds, 0.5, 1e-9);
+    VSM_ASSERT_EQ(clips[0].startTick, Tick(960));
+    VSM_ASSERT_EQ(clips[0].length, Tick(2880));
+    VSM_ASSERT_EQ(clips[0].warpMarkers.size(), size_t(3));
+    VSM_ASSERT_EQ(clips[0].warpMarkers[0].tick, Tick(0));
+    VSM_ASSERT_EQ(clips[0].warpMarkers[1].tick, Tick(960));    // l'ancien 1920, glissé
+    VSM_ASSERT_EQ(clips[0].warpMarkers[2].tick, Tick(2880));
+    VSM_ASSERT_NEAR(warpSourceSecondsAt(clips[0], 960), 1.0, 1e-9);
+}
+
+VSM_TEST(warp_markers_are_added_where_the_map_already_is_moved_between_neighbours_and_never_below_two) {
+    std::vector<Clip> clips{clip(1, 0, 3840)};
+    clips[0].warpMode = WarpMode::KeepPitch;
+    clips[0].warpMarkers = {{0.0, 0}, {4.0, 3840}};
+    // Ajouter au milieu : le son ne change pas (2 s à 1920).
+    VSM_ASSERT_EQ(addWarpMarker(clips, 1, 1920), 1);
+    VSM_ASSERT_NEAR(clips[0].warpMarkers[1].sourceSeconds, 2.0, 1e-9);
+    VSM_ASSERT_EQ(addWarpMarker(clips, 1, 1920), -1);     // déjà là
+    VSM_ASSERT_EQ(addWarpMarker(clips, 1, 0), -1);        // pas sur les bords
+    VSM_ASSERT_EQ(addWarpMarker(clips, 1, 5000), -1);
+    // Le déplacer en musique : c'est le calage. La source ne bouge pas.
+    VSM_ASSERT(moveWarpMarker(clips, 1, 1, 1440));
+    VSM_ASSERT_EQ(clips[0].warpMarkers[1].tick, Tick(1440));
+    VSM_ASSERT_NEAR(clips[0].warpMarkers[1].sourceSeconds, 2.0, 1e-9);
+    VSM_ASSERT_NEAR(warpSourceSecondsAt(clips[0], 720), 1.0, 1e-9);     // ×1,33 avant
+    VSM_ASSERT_NEAR(warpSourceSecondsAt(clips[0], 2640), 3.0, 1e-9);    // ×0,8 après
+    // Jamais sur un voisin, jamais le premier.
+    VSM_ASSERT(moveWarpMarker(clips, 1, 1, 5000));
+    VSM_ASSERT_EQ(clips[0].warpMarkers[1].tick, Tick(3839));
+    VSM_ASSERT(!moveWarpMarker(clips, 1, 0, 100));
+    // Retirer : pas le premier, pas sous deux.
+    VSM_ASSERT(!removeWarpMarker(clips, 1, 0));
+    VSM_ASSERT(removeWarpMarker(clips, 1, 1));
+    VSM_ASSERT_EQ(clips[0].warpMarkers.size(), size_t(2));
+    VSM_ASSERT(!removeWarpMarker(clips, 1, 1));
+}
+
+VSM_TEST(moving_a_warped_clip_leaves_its_markers_alone_they_are_relative) {
+    std::vector<Clip> clips{clip(1, 0, 3840)};
+    clips[0].warpMode = WarpMode::KeepPitch;
+    clips[0].warpMarkers = {{0.0, 0}, {1.0, 1920}, {4.0, 3840}};
+    moveClips(clips, {1}, 7680);
+    VSM_ASSERT_EQ(clips[0].startTick, Tick(7680));
+    VSM_ASSERT_EQ(clips[0].warpMarkers[1].tick, Tick(1920));
+    VSM_ASSERT_NEAR(clips[0].warpMarkers[1].sourceSeconds, 1.0, 1e-9);
+}

@@ -1,5 +1,7 @@
 #include "vsm/sequencer/ClipEdit.h"
 #include <algorithm>
+#include <cmath>
+#include <limits>
 
 namespace vsm::sequencer {
 
@@ -73,7 +75,22 @@ void resizeClipsStart(std::vector<Clip>& clips, const ClipSelection& selection,
         // UN CLIP AUDIO A SA FENÊTRE EN SECONDES (voir `Clip`) : sans cette
         // ligne, rogner le début d'une prise DÉCALERAIT le son au lieu de le
         // rogner -- le clip commencerait plus tard en jouant la même chose.
-        if (ticksToSeconds) {
+        // Un clip qui SUIT LE TEMPO (D12) lit la nouvelle position dans sa
+        // carte, pas dans celle du tempo ; et ses marqueurs glissent avec lui.
+        if (clipIsWarped(clip)) {
+            const double nouveau = std::max(0.0, warpSourceSecondsAt(clip, applique));
+            std::vector<WarpMarker> gardes;
+            gardes.push_back({nouveau, 0});
+            for (const auto& m : clip.warpMarkers)
+                if (m.tick > applique) gardes.push_back({m.sourceSeconds, m.tick - applique});
+            if (gardes.size() < 2) {
+                // Tout rogné jusqu'au dernier marqueur : on prolonge le rapport.
+                const double fin = warpSourceSecondsAt(clip, actuelle);
+                gardes.push_back({fin, actuelle - applique});
+            }
+            clip.warpMarkers = std::move(gardes);
+            clip.sourceStartSeconds = nouveau;
+        } else if (ticksToSeconds) {
             const double avant = ticksToSeconds(clip.startTick);
             const double apres = ticksToSeconds(clip.startTick + applique);
             clip.sourceStartSeconds = std::max(0.0, clip.sourceStartSeconds + (apres - avant));
@@ -260,10 +277,28 @@ size_t splitClips(std::vector<Clip>& clips, const ClipSelection& selection, Tick
         seconde.sourceLength = seconde.length;
         // LES DEUX MOITIÉS REJOUENT EXACTEMENT CE QUE JOUAIT L'ORIGINAL : la
         // seconde reprend la fenêtre là où la première l'a laissée, en secondes
-        // pour un clip audio comme en ticks pour un clip MIDI.
-        if (ticksToSeconds)
+        // pour un clip audio comme en ticks pour un clip MIDI. Un clip qui
+        // suit le tempo (D12) coupe SA carte : chaque moitié garde les
+        // marqueurs qui la concernent et reçoit un marqueur neuf au point de
+        // coupe, à la position du fichier que la carte y mettait — si bien
+        // que les deux cartes mises bout à bout sont l'ancienne, tick pour tick.
+        if (clipIsWarped(clip)) {
+            const double coupe = warpSourceSecondsAt(clip, avant);
+            std::vector<WarpMarker> premiere, deuxieme;
+            for (const auto& m : clip.warpMarkers) {
+                if (m.tick < avant) premiere.push_back(m);
+                else if (m.tick > avant) deuxieme.push_back({m.sourceSeconds, m.tick - avant});
+            }
+            premiere.push_back({coupe, avant});
+            deuxieme.insert(deuxieme.begin(), {coupe, 0});
+            if (deuxieme.size() < 2) deuxieme.push_back({warpSourceSecondsAt(clip, longueur), longueur - avant});
+            clip.warpMarkers = std::move(premiere);
+            seconde.warpMarkers = std::move(deuxieme);
+            seconde.sourceStartSeconds = coupe;
+        } else if (ticksToSeconds) {
             seconde.sourceStartSeconds =
                 clip.sourceStartSeconds + (ticksToSeconds(atTick) - ticksToSeconds(clip.startTick));
+        }
         // LES FONDUS NE SE DUPLIQUENT PAS : le fondu d'entrée appartient au
         // début de l'original, le fondu de sortie à sa fin. Les recopier sur
         // les deux moitiés ferait apparaître un trou au point de coupe.
@@ -279,6 +314,124 @@ size_t splitClips(std::vector<Clip>& clips, const ClipSelection& selection, Tick
     std::stable_sort(clips.begin(), clips.end(),
                       [](const Clip& a, const Clip& b) { return a.startTick < b.startTick; });
     return coupes;
+}
+
+// ---------------------------------------------------------------------------
+// Le suivi de tempo (D12.4)
+// ---------------------------------------------------------------------------
+
+bool clipIsWarped(const Clip& clip) {
+    return clip.warpMode != WarpMode::Off && clip.warpMarkers.size() >= 2;
+}
+
+namespace {
+
+Clip* clipById(std::vector<Clip>& clips, uint64_t clipId) {
+    for (auto& clip : clips) if (clip.id == clipId) return &clip;
+    return nullptr;
+}
+double pente(const WarpMarker& a, const WarpMarker& b) {
+    const Tick dt = std::max<Tick>(1, b.tick - a.tick);
+    return (b.sourceSeconds - a.sourceSeconds) / static_cast<double>(dt);
+}
+
+} // namespace
+
+double warpSourceSecondsAt(const Clip& clip, Tick relativeTick) {
+    const auto& m = clip.warpMarkers;
+    if (m.size() < 2) return clip.sourceStartSeconds;
+    size_t i = 1;
+    while (i + 1 < m.size() && m[i].tick <= relativeTick) ++i;
+    return m[i - 1].sourceSeconds + pente(m[i - 1], m[i]) * static_cast<double>(relativeTick - m[i - 1].tick);
+}
+
+Tick warpTickAtSeconds(const Clip& clip, double sourceSeconds) {
+    const auto& m = clip.warpMarkers;
+    if (m.size() < 2) return 0;
+    size_t i = 1;
+    while (i + 1 < m.size() && m[i].sourceSeconds <= sourceSeconds) ++i;
+    const double p = pente(m[i - 1], m[i]);
+    if (p <= 0.0) return m[i - 1].tick;
+    return m[i - 1].tick + static_cast<Tick>(std::llround((sourceSeconds - m[i - 1].sourceSeconds) / p));
+}
+
+void setClipWarpMode(std::vector<Clip>& clips, const ClipSelection& selection, WarpMode mode,
+                     Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds) {
+    for (auto& clip : clips) {
+        if (!selected(selection, clip)) continue;
+        clip.warpMode = mode;
+        if (mode == WarpMode::Off || clip.warpMarkers.size() >= 2 || !ticksToSeconds) continue;
+        // LA PAIRE NEUTRE : le début et la fin, au rapport un. Le son ne
+        // change pas d'un bit (court-circuit du moteur) tant qu'on ne bouge
+        // rien ; le clip est simplement devenu calable.
+        const Tick longueur = clipPlayedLength(clip, materialEnd);
+        const double secondes = ticksToSeconds(clip.startTick + longueur) - ticksToSeconds(clip.startTick);
+        clip.warpMarkers = {{clip.sourceStartSeconds, 0},
+                            {clip.sourceStartSeconds + secondes, std::max<Tick>(1, longueur)}};
+    }
+}
+
+double setClipBars(std::vector<Clip>& clips, uint64_t clipId, int bars, Tick ticksPerBar,
+                   Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds) {
+    Clip* clip = clipById(clips, clipId);
+    if (!clip || bars <= 0 || ticksPerBar <= 0) return 0.0;
+    const Tick longueur = clipPlayedLength(*clip, materialEnd);
+    // Le matériau actuellement joué, en secondes de FICHIER : par la carte s'il
+    // y en a une, par le tempo sinon.
+    double secondes = 0.0;
+    if (clipIsWarped(*clip)) secondes = warpSourceSecondsAt(*clip, longueur) - clip->sourceStartSeconds;
+    else if (ticksToSeconds) secondes = ticksToSeconds(clip->startTick + longueur) - ticksToSeconds(clip->startTick);
+    if (secondes <= 0.0) return 0.0;
+    const Tick nouvelle = static_cast<Tick>(bars) * ticksPerBar;
+    clip->warpMarkers = {{clip->sourceStartSeconds, 0}, {clip->sourceStartSeconds + secondes, nouvelle}};
+    clip->length = nouvelle;
+    clip->sourceLength = nouvelle;
+    if (clip->warpMode == WarpMode::Off) clip->warpMode = WarpMode::KeepPitch;
+    // Le tempo d'origine : N mesures de 4 temps en `secondes`. (Le nombre de
+    // temps par mesure est celui que `ticksPerBar` encode ; on rend des
+    // mesures par minute × 4, ce qui est le BPM d'une mesure à quatre temps.)
+    return 60.0 * 4.0 * static_cast<double>(bars) / secondes;
+}
+
+int addWarpMarker(std::vector<Clip>& clips, uint64_t clipId, Tick relativeTick) {
+    Clip* clip = clipById(clips, clipId);
+    if (!clip || !clipIsWarped(*clip)) return -1;
+    auto& m = clip->warpMarkers;
+    if (relativeTick <= m.front().tick || relativeTick >= m.back().tick) return -1;
+    for (const auto& existant : m) if (existant.tick == relativeTick) return -1;
+    const WarpMarker neuf{warpSourceSecondsAt(*clip, relativeTick), relativeTick};
+    // L'INDICE SE CALCULE AVANT L'INSERTION, et ce n'est pas du zèle : écrit
+    // `m.insert(ou, neuf) - m.begin()`, les deux opérandes ne sont pas
+    // séquencés, `m.begin()` peut être lu AVANT l'insertion, donc avant la
+    // réallocation qui l'invalide -- la différence vaut alors n'importe quoi
+    // (94 au lieu de 1, mesuré par le test qui a trouvé ce défaut).
+    const auto indice = std::upper_bound(m.begin(), m.end(), relativeTick,
+                                          [](Tick t, const WarpMarker& x) { return t < x.tick; })
+                        - m.begin();
+    m.insert(m.begin() + indice, neuf);
+    return static_cast<int>(indice);
+}
+
+bool moveWarpMarker(std::vector<Clip>& clips, uint64_t clipId, size_t index, Tick relativeTick) {
+    Clip* clip = clipById(clips, clipId);
+    if (!clip || !clipIsWarped(*clip)) return false;
+    auto& m = clip->warpMarkers;
+    if (index == 0 || index >= m.size()) return false;
+    const Tick bas = m[index - 1].tick + 1;
+    const Tick haut = index + 1 < m.size() ? m[index + 1].tick - 1 : std::numeric_limits<Tick>::max();
+    const Tick vise = std::clamp(relativeTick, bas, haut);
+    if (vise == m[index].tick) return false;
+    m[index].tick = vise;
+    return true;
+}
+
+bool removeWarpMarker(std::vector<Clip>& clips, uint64_t clipId, size_t index) {
+    Clip* clip = clipById(clips, clipId);
+    if (!clip || !clipIsWarped(*clip)) return false;
+    auto& m = clip->warpMarkers;
+    if (index == 0 || index >= m.size() || m.size() <= 2) return false;
+    m.erase(m.begin() + static_cast<std::ptrdiff_t>(index));
+    return true;
 }
 
 } // namespace vsm::sequencer

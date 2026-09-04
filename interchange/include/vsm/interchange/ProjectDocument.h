@@ -40,7 +40,15 @@ inline constexpr const char* kProjectFormat = "vsm-project";
 /// Dans l'autre sens, un fichier version 2 est refusé par un logiciel qui ne
 /// lit que la 1 -- refusé et non deviné, comme tout ce que ce format ne
 /// comprend pas.
-inline constexpr int kProjectVersion = 2;
+///
+/// VERSION 3 : le suivi de tempo d'un clip audio (D12, `warp` et
+/// `warpMarkers`). Écrite SEULEMENT si un clip s'en sert — un projet qui ne
+/// suit pas le tempo garde son fichier de version 2, octet pour octet — parce
+/// qu'un lecteur de la version 2 jouerait un clip étiré SANS l'étirer, en
+/// silence, et que ce format refuse plutôt qu'il ne devine.
+inline constexpr int kProjectVersion = 3;
+/// La version qu'un projet sans suivi de tempo continue d'écrire.
+inline constexpr int kProjectVersionWithoutWarp = 2;
 /// La plus ancienne version qu'on sache encore lire.
 inline constexpr int kOldestReadableProjectVersion = 1;
 
@@ -128,6 +136,11 @@ struct ProjectClip {
     double fadeOutSeconds = 0.0;
     float gain = 1.0f;
     bool invertPhase = false;
+    /// Le suivi de tempo (D12) : 0 = éteint, 1 = hauteur conservée,
+    /// 2 = rééchantillonné ; et les marqueurs (secondes de fichier, tick
+    /// relatif au début du clip). Voir `vsm::sequencer::Clip`.
+    int warpMode = 0;
+    std::vector<std::pair<double, int64_t>> warpMarkers;
 };
 
 /// Le fichier que joue une piste audio. `path` est RELATIF au dossier de

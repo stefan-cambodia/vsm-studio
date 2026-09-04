@@ -832,3 +832,45 @@ VSM_TEST(un_projet_se_relit_sous_une_locale_a_virgule) {
     VSM_ASSERT_NEAR(venuDePython.document.tracks[0].volume, 0.62f, 1e-6);
     VSM_ASSERT_NEAR(venuDePython.document.tracks[0].pan, -0.4f, 1e-6);
 }
+
+// ---------------------------------------------------------------------------
+// D12.4 — le suivi de tempo dans le format : écrit seulement s'il sert, et
+// alors le fichier passe en version 3 ; sans lui, version 2, octet pour octet.
+// ---------------------------------------------------------------------------
+
+VSM_TEST(warp_survives_the_trip_through_the_model_and_bumps_the_version_only_when_used) {
+    Project project = buildProject();
+    vsm::sequencer::Clip clip;
+    clip.startTick = 0; clip.length = 3840; clip.sourceLength = 3840;
+    clip.sourceStartSeconds = 2.5;
+    project.tracks[0].clips.push_back(clip);
+
+    // Sans suivi de tempo : version 2, et pas un mot de warp dans le fichier.
+    std::string json = projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(json.find("\"version\": 2") != std::string::npos || json.find("\"version\":2") != std::string::npos);
+    VSM_ASSERT(json.find("warp") == std::string::npos);
+
+    // Avec : version 3, les marqueurs font l'aller-retour, le mode aussi.
+    project.tracks[0].clips[0].warpMode = vsm::sequencer::WarpMode::Repitch;
+    project.tracks[0].clips[0].warpMarkers = {{2.5, 0}, {3.25, 1920}, {6.5, 3840}};
+    json = projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(json.find("\"version\": 3") != std::string::npos || json.find("\"version\":3") != std::string::npos);
+    VSM_ASSERT(json.find("\"warp\"") != std::string::npos);
+
+    const ProjectLoadResult relu = parseProjectDocument(json);
+    VSM_ASSERT(relu.success);
+    Project rejoue = project;
+    for (auto& t : rejoue.tracks) t.clips.clear();
+    applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT_EQ(rejoue.tracks[0].clips.size(), size_t(1));
+    const auto& c = rejoue.tracks[0].clips[0];
+    VSM_ASSERT(c.warpMode == vsm::sequencer::WarpMode::Repitch);
+    VSM_ASSERT_EQ(c.warpMarkers.size(), size_t(3));
+    VSM_ASSERT_NEAR(c.warpMarkers[1].sourceSeconds, 3.25, 1e-6);
+    VSM_ASSERT_EQ(c.warpMarkers[1].tick, vsm::midi::Tick(1920));
+    VSM_ASSERT_NEAR(c.warpMarkers[2].sourceSeconds, 6.5, 1e-6);
+    VSM_ASSERT_EQ(c.warpMarkers[2].tick, vsm::midi::Tick(3840));
+
+    // Et un lecteur de la version 2 REFUSERAIT ce fichier : c'est voulu.
+    VSM_ASSERT(kProjectVersion == 3 && kProjectVersionWithoutWarp == 2);
+}
