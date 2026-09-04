@@ -32,126 +32,25 @@ from analyzer.vsm_reconstruct import StemNote, registres_par_vides  # noqa: E402
 GRAINE = 20260905
 
 
-def _stem_notes(notes: Sequence[Sequence[float]]) -> List[StemNote]:
-    """Les notes de la vérité, dans le type que `registres_par_vides` attend."""
-    return [StemNote(note=int(n[0]), velocity=int(n[1]), start=float(n[2]), duration=float(n[3]))
-            for n in notes]
-
-
-def _pistes_du_stem_other(data: dict) -> List[Tuple[int, list]]:
-    """Les parties qui atterrissent dans le stem « other », avec leur indice.
-
-    C'EST LA CLÉ DE CE JEU DE DONNÉES, et le premier essai s'était trompé. La
-    chaîne ne pose JAMAIS la question sur une partie isolée : elle la pose sur
-    le stem `other` ENTIER, qui porte plusieurs parties additionnées — c'est
-    même la seule raison pour laquelle `registres_par_vides` existe. Une partie
-    seule ne passe pas le garde-fou du fourre-tout (trois notes simultanées ET
-    trois octaves), et le premier jet a donc produit ZÉRO paire sur
-    quatre-vingts morceaux. Mesure faite, cause comprise, jeu refait.
-    """
-    pistes: List[Tuple[int, list]] = []
-    for i, partie in enumerate(data.get("parties", [])):
-        role = str(partie.get("role", ""))
-        # `basse` et `batterie` ont leurs propres stems : ce qui reste est
-        # `other`, et c'est là que le fourre-tout se forme.
-        if role in ("basse", "batterie"):
-            continue
-        notes = partie.get("notes") or []
-        if notes:
-            pistes.append((i, list(notes)))
-    return pistes
-
-
-def _paires_du_morceau(data: dict) -> List[Tuple[np.ndarray, int]]:
-    """Les paires de registres voisins que la chaîne poserait, étiquetées.
-
-    L'étiquette est connue PAR CONSTRUCTION : chaque note sait de quelle partie
-    elle vient. Un registre appartient à la partie qui y pèse le plus (en
-    durée) ; deux registres voisins dominés par la MÊME partie sont un seul
-    instrument, et c'est exactement la question d'H25.
-    """
-    pistes = _pistes_du_stem_other(data)
-    if len(pistes) < 1:
-        return []
-    origine: Dict[Tuple[int, int, int], int] = {}
-    toutes: List[list] = []
-    for indice, notes in pistes:
-        for n in notes:
-            cle = (int(n[0]), int(round(float(n[2]) * 1000)), int(round(float(n[3]) * 1000)))
-            origine.setdefault(cle, indice)
-            toutes.append(list(n))
-    registres = registres_par_vides(_stem_notes(toutes))
-    if len(registres) < 2:
-        return []
-
-    def dominante(registre) -> Optional[int]:
-        poids: Dict[int, float] = {}
-        for n in registre:
-            cle = (int(n.note), int(round(float(n.start) * 1000)), int(round(float(n.duration) * 1000)))
-            src = origine.get(cle)
-            if src is None:
-                continue
-            poids[src] = poids.get(src, 0.0) + max(1e-6, float(n.duration))
-        if not poids:
-            return None
-        return max(poids, key=lambda k: (poids[k], -k))
-
-    conv = lambda r: [[n.note, n.velocity, n.start, n.duration] for n in r]
-    exemples: List[Tuple[np.ndarray, int]] = []
-    # Les registres sont rendus de l'aigu au grave.
-    for k in range(len(registres) - 1):
-        haut, bas = registres[k], registres[k + 1]
-        da, db = dominante(haut), dominante(bas)
-        if da is None or db is None:
-            continue
-        etiquette = 1 if da == db else 0
-        exemples.append((descripteurs(conv(bas), conv(haut)).vecteur(), etiquette))
-    return exemples
-
-
-def _exemples_du_lot(dossier: Path, cas: Optional[str]) -> Tuple[List[np.ndarray], List[int], int, int]:
-    """Rend (vecteurs, étiquettes, morceaux lus, morceaux que les vides ne
-    découpent pas)."""
-    X: List[np.ndarray] = []
-    y: List[int] = []
-    lus = 0
-    non_decoupes = 0
-    for verite in sorted(dossier.glob("*/verite.json")):
-        data = json.loads(verite.read_text(encoding="utf-8"))
-        if cas is not None and data.get("cas") != cas:
-            continue
-        lus += 1
-        paires = _paires_du_morceau(data)
-        if not paires:
-            non_decoupes += 1
-            continue
-        for vecteur, etiquette in paires:
-            X.append(vecteur)
-            y.append(etiquette)
-    return X, y, lus, non_decoupes
-
-
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--mains", type=Path, required=True, help="lot --cas deux-mains")
-    ap.add_argument("--disjoints", type=Path, required=True, help="lot --cas memes-machine-disjoints")
+    ap.add_argument("--jeu", type=Path, required=True,
+                    help="le jeu construit par jeu_h25.py depuis les COURSES (.npz)")
     ap.add_argument("--modele", type=Path, default=None, help="où écrire le modèle s'il tient")
     args = ap.parse_args()
 
-    Xm, ym, lus_m, sans_m = _exemples_du_lot(args.mains, None)
-    Xd, yd, lus_d, sans_d = _exemples_du_lot(args.disjoints, None)
-
-    print(f"lot deux-mains          : {lus_m} morceaux, {len(Xm)} paires posées, "
-          f"{sans_m} non découpés par les vides")
-    print(f"lot registres disjoints : {lus_d} morceaux, {len(Xd)} paires posées, "
-          f"{sans_d} non découpés par les vides")
-    if len(Xm) < 5 or len(Xd) < 5:
-        print("PAS ASSEZ D'EXEMPLES pour conclure : le modèle reste désactivé.")
+    donnees = np.load(args.jeu)
+    X, y = donnees["X"], donnees["y"].astype(int)
+    n_un, n_deux = int(np.sum(y == 1)), int(np.sum(y == 0))
+    print(f"jeu : {X.shape[0]} paires ({n_un} « un seul », {n_deux} « deux »), "
+          f"{X.shape[1]} descripteurs")
+    # DEUX CLASSES, ET ASSEZ DE CHACUNE : en dessous, la validation croisée
+    # stratifiée n'a plus de sens et un score n'est plus une mesure.
+    if n_un < 5 or n_deux < 5:
+        print("PAS ASSEZ D'EXEMPLES D'UNE DES DEUX CLASSES pour conclure : "
+              "le modèle reste désactivé, et c'est le chiffre qui se publie.")
         return 1
-
-    X = np.vstack(Xm + Xd)
-    y = np.asarray(ym + yd, dtype=int)
 
     # LE DÉPART À BATTRE : le découpage par les vides dit TOUJOURS « deux ».
     # Sur les paires posées, il a donc raison sur les disjoints et tort sur

@@ -4182,6 +4182,28 @@ les jours ensuite, le modèle en dernier.
 > qu'ajoutée à la fin d'une longue session. **Le code a été retiré entièrement
 > plutôt que laissé en place** : un varispeed qui ne change pas la vitesse est
 > pire que pas de varispeed, parce qu'on le croit.
+>
+> **SECOND EXAMEN (05/09/2026, 05:30), et il approfondit le diagnostic — la
+> conversion du temps n'est que la moitié du travail.** Trois endroits
+> convertissent un décalage d'échantillon en secondes de morceau à raison
+> d'un pour un : le début de chaque sous-segment d'automation
+> (`renderSpan`, ~64 échantillons), la fin de segment de `renderTrackVoice`,
+> et le placement des événements. Ceux-là se corrigent.
+>
+> Mais le quatrième n'est pas une conversion : `AudioTrackSource::mixInto`
+> lit `sampleCount` trames CONSÉCUTIVES du fichier à partir d'une position.
+> Ralentir l'horloge ne ralentit pas cette lecture — il faudrait lire à un
+> autre PAS, c'est-à-dire RÉÉCHANTILLONNER. Un varispeed audio n'est donc pas
+> un décalage de position, c'est un changement de vitesse de lecture, et le
+> seul endroit du moteur qui sache faire cela est le chemin d'étirement de
+> D12 (`ClipWarp`, dont le mode `Repitch` rééchantillonne justement).
+>
+> **Ce que la prochaine tentative doit savoir** : D18.5 n'est pas « poser un
+> facteur sur l'horloge », c'est (a) corriger les trois conversions de temps,
+> et (b) faire passer tout clip audio par le rééchantillonnage quand la
+> vitesse n'est pas 1 — en préservant le chemin d'aujourd'hui au bit près à
+> vitesse normale, puisque c'est lui que tous les rendus existants ont
+> emprunté. C'est une étape de moteur, pas une étape de transport.
 
 > **D18.4 EST FAITE (05/09/2026), et une réduction l'a rendue petite.** UNE
 > SECTION N'EST PAS UN OBJET DE PLUS : elle se DÉDUIT des repères — de
