@@ -555,6 +555,27 @@ par construction, elle est simplement lue à travers la transcription.
 Trente morceaux sont en cours depuis 04:20 ; le modèle et son verdict
 s'écriront ici quand ils seront mesurés, et pas avant.
 
+**DEUXIÈME MESURE, ET LE JEU A DÛ CHANGER UNE SECONDE FOIS (05/09, 05:40).**
+Vingt et une courses faites, la chaîne n'a posé la question que **5 fois**, et
+une seule fois sur un vrai cas de mains. La raison est structurelle et non
+accidentelle : le stem `other` porte PLUSIEURS parties, et les vides y coupent
+là où le MÉLANGE creuse — pas là où les deux mains se séparent. Sur seize
+courses sur vingt et une, il n'y avait même pas deux registres.
+
+À ce rythme (0,24 paire par course, un positif sur cinq), réunir vingt cas
+positifs demanderait **plus de vingt heures** de chaîne. Ce n'est pas un
+budget, c'est un aveu que le jeu n'est pas construit au bon endroit.
+
+**Le jeu ciblé, et pourquoi il pose MIEUX la question plutôt que moins bien.**
+Les morceaux du second lot n'ont que DEUX parties : `other` EST alors le cas.
+Pour les mains, il porte la seule partie `piano-deux-mains`, dont les deux
+registres (36-52 et 60-84) sont séparés de huit demi-tons ; pour les
+disjoints, il porte les deux parties (48-58 et 68-84), séparées de dix. Les
+vides coupent donc là où la question se pose, et l'étiquette reste connue par
+construction — c'est le MÊME découpage, sur le MÊME genre de transcription,
+isolé de ce qui le noyait. Trente-six morceaux, lancés à la suite de la
+première série.
+
 Les six descripteurs sont ceux du § 8 et rien d'autre — synchronie des
 attaques dans les deux sens, co-occurrence temporelle, corrélation des
 densités d'attaques, rapport des ambitus, rapport des densités. **Aucun n'est
