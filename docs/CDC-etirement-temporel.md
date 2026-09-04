@@ -151,7 +151,7 @@ D12 utilisable avant tout suiveur de temps.
 | D12.1 | le noyau de rééchantillonnage fenêtré (sinc de Kaiser), qui remplace l'interpolation linéaire de D2.3 et fait le mode *Rééchantillonné* | banc 8 ; les empreintes qui passent par le rééchantillonnage sont régénérées EN LE DISANT — **fait le 04/09/2026** (aucune empreinte ne passait par le rééchantillonnage : rien à régénérer ; le mode *Rééchantillonné* du clip attend D12.5) |
 | D12.2 | `TimeStretch` : le WSOLA, la recherche de similarité, le court-circuit à 1,0 | bancs 1, 2, 3 (première moitié), 5, 6, 7 — **fait le 04/09/2026** (banc 7 au moment de D12.5, dans `process()`) |
 | D12.3 | la détection de transitoires (flux d'énergie sur le matériau, à la publication, mise en cache par fichier comme les crêtes de forme d'onde) et le verrouillage | banc 4 — **fait le 04/09/2026** (le cache par fichier attend D12.5) |
-| D12.4 | le modèle : `warpMode`, `warpMarkers`, les gestes de `ClipEdit`, le format | tests `core/` et `interchange/` ; un projet v2 s'ouvre inchangé |
+| D12.4 | le modèle : `warpMode`, `warpMarkers`, les gestes de `ClipEdit`, le format | tests `core/` et `interchange/` ; un projet v2 s'ouvre inchangé — **fait le 04/09/2026** |
 | D12.5 | le moteur : la carte par morceaux dans `AudioClipSpan`, `mixInto()` à travers l'étireur, `vsm-render` | banc 3 (seconde moitié), 9 ; `ProcessGraph` intact |
 | D12.6 | l'interface : le menu du clip, « N mesures », les marqueurs sur la forme d'onde, la forme dessinée en temps étiré, annulation | vu à l'écran, `VSM_CAPTURE`, réglages retenus |
 | D12.7 | le critère de phase sur *Sky and Sand* | ≤ 10 ms sur huit mesures à +10 % de tempo |
@@ -217,6 +217,40 @@ sur le chiffre du banc 5.
 > chiffre du linéaire à 1 kHz (1,3 × 10⁻³) dit au passage que le
 > « millième sous 10 kHz » de D2.3 était optimiste d'un ordre de grandeur
 > dès 5 kHz (3,2 × 10⁻²).
+
+> **D12.4 EST FAITE (04/09/2026) : LE MODÈLE ET LE FORMAT.** `Clip::warpMode`
+> (`Off` par défaut, `KeepPitch`, `Repitch`) et `Clip::warpMarkers`, des
+> paires *(secondes de fichier ; tick RELATIF au début du clip)* — relatives,
+> si bien que déplacer un clip ne les touche pas, ce qu'un test vérifie.
+> Six gestes dans `ClipEdit` : allumer le suivi pose la **paire neutre** (le
+> rapport un, donc le court-circuit du moteur : le son ne change pas d'un
+> bit) ; « le clip fait N mesures » (§ 6) répartit le matériau joué sur
+> N × ticksPerBar et rend le tempo d'origine déduit ; ajouter un marqueur le
+> pose là où la carte est déjà (le son ne change pas, le point devient
+> calable) ; le déplacer bouge sa position MUSICALE en gardant sa position
+> dans le fichier, borné par ses voisins ; le retirer, jamais le premier ni
+> sous deux. **Couper et rogner transportent la carte** : un test compare
+> `warpSourceSecondsAt` tous les 120 ticks avant et après la coupe, les deux
+> moitiés mises bout à bout SONT l'ancienne carte, tick pour tick ; rogner la
+> tête d'un clip étiré suit sa carte et non le tempo (0,5 s là où le tempo
+> disait 1,0 s).
+>
+> **Format : la version 3 ne s'écrit que si un clip suit le tempo.** Un
+> projet sans étirement garde son fichier de version 2, octet pour octet
+> (testé) ; sinon, `warp` et `warpMarkers` s'écrivent et la version monte,
+> parce qu'un lecteur de la version 2 jouerait un clip étiré SANS l'étirer,
+> en silence — et ce format refuse plutôt qu'il ne devine. Les quatre
+> recopies positionnelles de clip du sérialiseur sont remplacées par deux
+> fonctions nommées : un champ ajouté au clip se recopie désormais à un seul
+> endroit, pas à quatre.
+>
+> **Un défaut trouvé par le banc, et il valait le détour** : `addWarpMarker`
+> rendait 94 au lieu de 1. La cause n'est pas dans l'algorithme mais dans une
+> ligne de C++ : `m.insert(ou, neuf) - m.begin()` n'a pas d'ordre d'évaluation
+> garanti, et `m.begin()` lu AVANT l'insertion est un pointeur que la
+> réallocation invalide. L'indice se calcule maintenant avant. Aucun test
+> n'aurait vu ce défaut sans vérifier la valeur de retour d'une fonction dont
+> on aurait pu croire qu'elle « range bien le marqueur ».
 
 ## 8. Ce qui n'est pas au programme, et pourquoi
 
