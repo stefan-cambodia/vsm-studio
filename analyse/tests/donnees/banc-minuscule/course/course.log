@@ -1,0 +1,59 @@
+WARNING:root:Coremltools is not installed. If you plan to use a CoreML Saved Model, reinstall basic-pitch with `pip install 'basic-pitch[coreml]'`
+WARNING:root:tflite-runtime is not installed. If you plan to use a TFLite Model, reinstall basic-pitch with `pip install 'basic-pitch tflite-runtime'` or `pip install 'basic-pitch[tf]'
+WARNING:root:Tensorflow is not installed. If you plan to use a TF Saved Model, reinstall basic-pitch with `pip install 'basic-pitch[tf]'`
+      --parite : --voix-par-stem 4, --batterie-par-piece, --voix-tete-choeurs, --voix-par-vides
+      la parité prime sur la ressemblance quand les deux s'opposent (§ 0 du CDC) ; mesurée à −0,1 % sur *Us and Them* (9 pistes) et +3,1 % sur *Sky and Sand* (7 pistes) — --sans-parite pour le témoin
+[1/5] Lecture de morceau.wav
+      3.0 s, 130854 échantillons
+[2/5] Stems repris de /tmp/claude-1000/-home-stefan-videcode-muz-vsm-studio/1f5b090a-58dc-4f1b-a92e-21bf9e348ba9/scratchpad/mini-g5-banc/morceau-0001-g5/stems-vrais-groupes : bass, drums, other
+      partage du morceau : drums 67.2 %, bass 20.0 %, other 12.8 %
+      ATTENTION : « drums » porte 67.2 % du morceau à lui seul. Une seule machine jouera cette part-là. Voir --modele htdemucs_6s pour séparer davantage.
+[3/5] 3 machine(s) candidate(s)
+[NOTES] Analyse Basic Pitch...
+Predicting MIDI for /tmp/claude-1000/-home-stefan-videcode-muz-vsm-studio/1f5b090a-58dc-4f1b-a92e-21bf9e348ba9/scratchpad/mini-g5-banc/morceau-0001-g5/stems-vrais-groupes/bass.wav...
+      bass     : recherche note à note SAUTÉE (--sans-recherche) — les patchs d'usine des 3 machines partent à l'arbitrage de piste
+      bass     : arbitrage piste confirme vsm.juno106 (patch d'usine) D=0.302 (la recherche donnait 0.302) [0 s] — juno106=0.302*, tb303=0.396*, minimoog=0.427*
+                 (* = patch d'usine)
+      bass     : 2 machine(s) suivante(s) remises en jeu au verdict du mélange — tb303 à 31.2 %, minimoog à 41.5 %
+      bass     : réglage piste 0.302 -> 0.175 (-0.127, 4 évaluations, 0 s) — cutoff=2.26e+03
+      drums    : vsm.drums, 2 pièce(s), 8 frappe(s) — hihat=6 kick=2
+                 hihat       20-80=16% 80-200=7% 200-600=2% 600-2k=1% 2k-6k=6% 6k-16k=40%
+                 kick        20-80=0% 80-200=20% 200-600=33% 600-2k=15% 2k-6k=2% 6k-16k=17%
+      drums    : arbitrage batterie CHANGE vsm.tr909 D=0.270 [0 s] — tr909=0.270, drums=0.320, tr808=0.446
+      drums    : arbitrage batterie SERRÉ — vsm.drums à 19 % (0.320), réglée elle aussi
+      drums    : réglage piste 0.270 -> 0.270 (4 évaluations, 0 s) — aucun axe retenu
+      drums    : réglage piste vsm.drums 0.320 -> 0.313 (4 évaluations, 0 s) — decay=0.453, decay=0.827
+      drums    : batterie ÉCLATÉE en 2 piste(s) par pièce — hihat (6), kick (2)
+      drums    : 1 boîte(s) suivante(s) NON remises en jeu au verdict — conséquence du découpage par pièce
+[NOTES] Analyse Basic Pitch...
+Predicting MIDI for /tmp/claude-1000/-home-stefan-videcode-muz-vsm-studio/1f5b090a-58dc-4f1b-a92e-21bf9e348ba9/scratchpad/mini-g5-banc/morceau-0001-g5/stems-vrais-groupes/other.wav...
+      other    : recherche note à note SAUTÉE (--sans-recherche) — les patchs d'usine des 3 machines partent à l'arbitrage de piste
+      other    : arbitrage piste CHANGE vsm.tb303 (patch d'usine) D=0.169 (la recherche donnait 0.787) [0 s] — tb303=0.169*, minimoog=0.529*, juno106=0.787*
+                 (* = patch d'usine)
+      other    : 2 machine(s) suivante(s) remises en jeu au verdict du mélange — minimoog à 212.5 %, juno106 à 364.4 %
+      other    : réglage piste 0.169 -> 0.151 (-0.018, 4 évaluations, 0 s) — cutoff=1.42e+03
+[4/5] Écriture du projet dans /tmp/claude-1000/-home-stefan-videcode-muz-vsm-studio/1f5b090a-58dc-4f1b-a92e-21bf9e348ba9/scratchpad/mini-g5-banc/morceau-0001-g5/course
+      bass     : automation de coupure rejetée (2.584 -> 6.025, elle n'aide pas)
+      other    : automation de coupure GARDÉE (4 points, distance 2.654 -> 2.604)
+      Batterie · hihat : volume 0.90 -> 1.00 (groupe « Batterie » : rms stem 0.0957, somme des 2 pistes 0.0860)
+      Batterie · kick : volume 0.90 -> 1.00 (groupe « Batterie » : rms stem 0.0957, somme des 2 pistes 0.0860)
+      bass : volume 0.90 -> 0.76 (rms stem 0.0522, rendu 0.0614)
+      other : volume 0.90 -> 0.70 (rms stem 0.0417, rendu 0.0539)
+      141 profils installés — « FR3-Accordion » est le profil PAR DÉFAUT de la machine (VSM_PROFIL=nom pour en choisir un autre) ; l'arbitrage de piste, lui, les met TOUS en concurrence.
+      verdict du mélange : 1 tour(s) (tour 1: other) en 1 s — borne atteinte avant le point fixe
+      bass     : réglage au MÉLANGE 0.2835 -> 0.2544 (-0.0290, 30 évaluations, 4 s)
+      other    : réglage au MÉLANGE 0.2544 -> 0.2345 (-0.0199, 30 évaluations, 4 s)
+      bass     : verdict du mélange -> réglage (0.2898) [sans la piste : 0.2898] — écartées : arbitrage 0.2986, machine suivante (vsm.tb303) 0.3032, machine suivante (vsm.minimoog) 0.3211
+      other    : verdict du mélange -> machine suivante (vsm.juno106) (0.2835) [sans la piste : 0.2879] — écartées : arbitrage 0.2898, machine suivante (vsm.minimoog) 0.3070, réglage 0.2898
+      Batterie · hihat : verdict du mélange -> réglage (0.2835) [sans la piste : 0.4255]
+      Batterie · kick : verdict du mélange -> réglage (0.2835) [sans la piste : 0.3311]
+      groupes du DAW : Batterie — les pistes d'un même stem partagent un fader
+      5 piste(s), 17 note(s)
+[5/5] Rendu du projet et mesure
+
+  DISTANCE GLOBALE : 0.2345  (métrique v2, budget 20 itérations)
+  (pour situer : la distance de l'original au silence vaut 1.0)
+  projet    : /tmp/claude-1000/-home-stefan-videcode-muz-vsm-studio/1f5b090a-58dc-4f1b-a92e-21bf9e348ba9/scratchpad/mini-g5-banc/morceau-0001-g5/course/project.json
+  rapport   : /tmp/claude-1000/-home-stefan-videcode-muz-vsm-studio/1f5b090a-58dc-4f1b-a92e-21bf9e348ba9/scratchpad/mini-g5-banc/morceau-0001-g5/course/rapport.json
+  écoute A/B: /tmp/claude-1000/-home-stefan-videcode-muz-vsm-studio/1f5b090a-58dc-4f1b-a92e-21bf9e348ba9/scratchpad/mini-g5-banc/morceau-0001-g5/course/comparaison.wav (gauche = original, droite = reconstruction)
+  total     : 12 s

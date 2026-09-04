@@ -1,0 +1,153 @@
+{
+  "format": "vsm-project",
+  "midi": {
+    "file": "midi/arrangement.mid"
+  },
+  "title": "morceau",
+  "tracks": [
+    {
+      "channel": 0,
+      "color": "#FFFF6B9B",
+      "effects": [],
+      "instrument": {
+        "preferredPlugin": "vsm.juno106",
+        "preset": "instruments/track_00.synth.json"
+      },
+      "mix": {
+        "muted": false,
+        "pan": 0.0,
+        "sends": [
+          0.0,
+          0.0
+        ],
+        "solo": false,
+        "volume": 3.3111303654806257
+      },
+      "name": "bass"
+    },
+    {
+      "automation": [
+        {
+          "parameter": "filter.1.cutoff",
+          "points": [
+            {
+              "tick": 0,
+              "value": 1116.9534945150244
+            },
+            {
+              "tick": 490,
+              "value": 1436.8262379050016
+            },
+            {
+              "tick": 981,
+              "value": 1667.642739667799
+            },
+            {
+              "tick": 1471,
+              "value": 1436.9090441077449
+            }
+          ]
+        }
+      ],
+      "channel": 0,
+      "color": "#FFFFD166",
+      "effects": [],
+      "instrument": {
+        "preferredPlugin": "vsm.juno106",
+        "preset": "instruments/track_01.synth.json"
+      },
+      "mix": {
+        "muted": false,
+        "pan": 0.0,
+        "sends": [
+          0.0,
+          0.0
+        ],
+        "solo": false,
+        "volume": 2.5974931425397476
+      },
+      "name": "other"
+    },
+    {
+      "channel": 9,
+      "color": "#FF06D6A0",
+      "effects": [],
+      "instrument": {
+        "preferredPlugin": "vsm.tr909",
+        "preset": "instruments/track_02.synth.json"
+      },
+      "mix": {
+        "muted": false,
+        "pan": 0.0,
+        "sends": [
+          0.0,
+          0.0
+        ],
+        "solo": false,
+        "volume": 1.001176074657335
+      },
+      "name": "Batterie · hihat",
+      "output": 4
+    },
+    {
+      "channel": 9,
+      "color": "#FF4CC9F0",
+      "effects": [],
+      "instrument": {
+        "preferredPlugin": "vsm.tr909",
+        "preset": "instruments/track_03.synth.json"
+      },
+      "mix": {
+        "muted": false,
+        "pan": 0.0,
+        "sends": [
+          0.0,
+          0.0
+        ],
+        "solo": false,
+        "volume": 1.001176074657335
+      },
+      "name": "Batterie · kick",
+      "output": 4
+    },
+    {
+      "channel": 0,
+      "color": "#FFB57BFF",
+      "effects": [],
+      "kind": "group",
+      "mix": {
+        "muted": false,
+        "pan": 0.0,
+        "sends": [
+          0.0,
+          0.0
+        ],
+        "solo": false,
+        "volume": 1.0
+      },
+      "name": "Batterie"
+    }
+  ],
+  "transport": {
+    "loop": {
+      "enabled": false,
+      "endTick": 0,
+      "startTick": 0
+    },
+    "tempoChanges": [
+      {
+        "bpm": 120.0,
+        "tick": 0
+      }
+    ],
+    "ticksPerQuarterNote": 480,
+    "timeSignatures": [
+      {
+        "denominator": 4,
+        "numerator": 4,
+        "tick": 0
+      }
+    ]
+  },
+  "version": 2
+}

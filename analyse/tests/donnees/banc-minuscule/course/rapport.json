@@ -1,0 +1,358 @@
+{
+  "format": "vsm-reconstruction-report",
+  "version": 1,
+  "metric": "v2",
+  "provenance": {
+    "commit": "0b30f5f",
+    "source": "/tmp/claude-1000/-home-stefan-videcode-muz-vsm-studio/1f5b090a-58dc-4f1b-a92e-21bf9e348ba9/scratchpad/mini-g5/morceau-0001-g5/morceau.wav",
+    "options": {
+      "separation": true,
+      "sampler": true,
+      "arbitrage": true,
+      "arbitrageBatterie": true,
+      "reglagePiste": true,
+      "rechercheNotes": false,
+      "machinesAuMelange": 2,
+      "reglageMelange": true,
+      "budgetMelange": 30,
+      "toursVerdict": 1,
+      "secondVerdict": 0,
+      "piecesNonIsolees": false,
+      "rendusParalleles": 2,
+      "cacheRendus": true,
+      "budgetPiste": 4,
+      "axesPiste": 2,
+      "finalistes": null,
+      "preselectionApprise": 0,
+      "machines": "vsm.juno106,vsm.tb303,vsm.minimoog",
+      "machinesExclues": null,
+      "modeleSeparation": null,
+      "stemsRepris": "/tmp/claude-1000/-home-stefan-videcode-muz-vsm-studio/1f5b090a-58dc-4f1b-a92e-21bf9e348ba9/scratchpad/mini-g5-banc/morceau-0001-g5/stems-vrais-groupes",
+      "voixParStem": 4,
+      "voixParVides": true,
+      "reverbMelange": false,
+      "batterieParPiece": true,
+      "voixTeteChoeurs": true,
+      "seuilStem": 0.5,
+      "parite": true
+    },
+    "modeles": {
+      "classifieurMachine": "aucun",
+      "classifieurFrappes": "aucun"
+    },
+    "profilMultisample": "(premier installé)",
+    "moteur": {
+      "chemin": "/home/stefan/videcode/muz/vsm-studio/build/tools/vsm-render",
+      "compile": "2026-09-04T15:37:58",
+      "octets": 162513544,
+      "machines": 64
+    }
+  },
+  "iterations": 20,
+  "globalDistance": 0.2344916898940266,
+  "drums": {
+    "machine": "vsm.tr909",
+    "means": "vsm.tr909",
+    "hits": 8,
+    "pieces": [
+      {
+        "family": "hihat",
+        "hits": 6,
+        "bandShares": [
+          0.1635,
+          0.075,
+          0.0193,
+          0.0073,
+          0.06,
+          0.3994
+        ]
+      },
+      {
+        "family": "kick",
+        "hits": 2,
+        "bandShares": [
+          0.0012,
+          0.1999,
+          0.3262,
+          0.1457,
+          0.0215,
+          0.1747
+        ]
+      }
+    ],
+    "warnings": [],
+    "trackArbitration": [
+      {
+        "machine": "vsm.tr909",
+        "origin": "patch d'usine",
+        "distance": 0.2697072710887462
+      },
+      {
+        "machine": "vsm.drums",
+        "origin": "patch d'usine",
+        "distance": 0.32049932253687685
+      },
+      {
+        "machine": "vsm.tr808",
+        "origin": "patch d'usine",
+        "distance": 0.4456355307003007
+      }
+    ],
+    "refinements": [
+      {
+        "machine": "vsm.tr909",
+        "before": 0.2697072710887462,
+        "after": 0.2697072710887462,
+        "evaluations": 4
+      },
+      {
+        "machine": "vsm.drums",
+        "before": 0.32049932253687685,
+        "after": 0.31338500527199803,
+        "evaluations": 4
+      }
+    ],
+    "trackDistance": 0.2697072710887462,
+    "splitByPiece": [
+      {
+        "track": "Batterie · hihat",
+        "hits": 6
+      },
+      {
+        "track": "Batterie · kick",
+        "hits": 2
+      }
+    ]
+  },
+  "mixVerdict": [
+    {
+      "track": "bass",
+      "kept": "réglage",
+      "mixDistance": 0.28978373969469234,
+      "mixDistanceMuted": 0.289819701327051,
+      "rejected": [
+        {
+          "label": "arbitrage",
+          "mixDistance": 0.29856835680230026
+        },
+        {
+          "label": "machine suivante (vsm.tb303)",
+          "mixDistance": 0.30317691216339815
+        },
+        {
+          "label": "machine suivante (vsm.minimoog)",
+          "mixDistance": 0.3211069708261011
+        }
+      ]
+    },
+    {
+      "track": "other",
+      "kept": "machine suivante (vsm.juno106)",
+      "mixDistance": 0.28347242583652327,
+      "mixDistanceMuted": 0.28789090579433224,
+      "rejected": [
+        {
+          "label": "arbitrage",
+          "mixDistance": 0.28978373969469234
+        },
+        {
+          "label": "machine suivante (vsm.minimoog)",
+          "mixDistance": 0.307001033981221
+        },
+        {
+          "label": "réglage",
+          "mixDistance": 0.28978373969469234
+        }
+      ]
+    },
+    {
+      "track": "Batterie · hihat",
+      "kept": "réglage",
+      "mixDistance": 0.28347242583652327,
+      "mixDistanceMuted": 0.42545406932863633,
+      "rejected": []
+    },
+    {
+      "track": "Batterie · kick",
+      "kept": "réglage",
+      "mixDistance": 0.28347242583652327,
+      "mixDistanceMuted": 0.3311226414701546,
+      "rejected": []
+    },
+    {
+      "track": "bass",
+      "mixRefine": {
+        "track": "bass",
+        "mixDistanceBefore": 0.28347135932018563,
+        "mixDistanceAfter": 0.25443787430955145,
+        "evaluations": 30,
+        "parameters": {
+          "filter.1.cutoff": 7740.575675803152,
+          "envelope.1.attack": 0.0750329625214913,
+          "filter.1.resonance": 4.2,
+          "envelope.1.sustain": 0.625
+        }
+      }
+    },
+    {
+      "track": "other",
+      "mixRefine": {
+        "track": "other",
+        "mixDistanceBefore": 0.2544377636191707,
+        "mixDistanceAfter": 0.23449169610981094,
+        "evaluations": 30,
+        "parameters": {
+          "envelope.1.attack": 0.0030632078677837915,
+          "envelope.1.decay": 2.0,
+          "envelope.1.sustain": 0.825,
+          "filter.1.resonance": 4.2
+        }
+      }
+    },
+    {
+      "verdictRounds": 1,
+      "changedByRound": [
+        [
+          "other"
+        ]
+      ]
+    }
+  ],
+  "partage": [
+    {
+      "stem": "drums",
+      "partEnergie": 67.2
+    },
+    {
+      "stem": "bass",
+      "partEnergie": 20.0
+    },
+    {
+      "stem": "other",
+      "partEnergie": 12.8
+    }
+  ],
+  "stems": [
+    {
+      "name": "bass",
+      "machine": "vsm.juno106",
+      "distance": 0.30215128091581583,
+      "notes": 4,
+      "polyphonieMoyenne": 0.99,
+      "polyphonieMax": 1,
+      "ambitusDemiTons": 5,
+      "gate": null,
+      "noteConfidence": [
+        {
+          "note": 42,
+          "start": 1.4629,
+          "confidence": 0.7349
+        },
+        {
+          "note": 37,
+          "start": 0.9752,
+          "confidence": 0.7555
+        },
+        {
+          "note": 42,
+          "start": 0.4876,
+          "confidence": 0.7557
+        },
+        {
+          "note": 42,
+          "start": 0.0116,
+          "confidence": 0.7716
+        }
+      ],
+      "trackDistance": 0.17488461807495514,
+      "profile": "",
+      "trackArbitration": [
+        {
+          "machine": "vsm.juno106",
+          "origin": "patch d'usine",
+          "distance": 0.30215128091581583
+        },
+        {
+          "machine": "vsm.tb303",
+          "origin": "patch d'usine",
+          "distance": 0.39627506701809406
+        },
+        {
+          "machine": "vsm.minimoog",
+          "origin": "patch d'usine",
+          "distance": 0.4274083990068754
+        }
+      ],
+      "consideredMachines": [],
+      "parameters": {
+        "envelope.1.attack": 0.0750329625214913,
+        "envelope.1.sustain": 0.625,
+        "filter.1.cutoff": 7740.575675803152,
+        "filter.1.resonance": 4.2
+      }
+    },
+    {
+      "name": "other",
+      "machine": "vsm.juno106",
+      "distance": 0.7867923844373114,
+      "notes": 5,
+      "polyphonieMoyenne": 0.96,
+      "polyphonieMax": 2,
+      "ambitusDemiTons": 10,
+      "gate": null,
+      "noteConfidence": [
+        {
+          "note": 76,
+          "start": 1.7183,
+          "confidence": 0.7886
+        },
+        {
+          "note": 80,
+          "start": 1.219,
+          "confidence": 0.8102
+        },
+        {
+          "note": 83,
+          "start": 0.7314,
+          "confidence": 0.5822
+        },
+        {
+          "note": 80,
+          "start": 0.4876,
+          "confidence": 0.7781
+        },
+        {
+          "note": 73,
+          "start": 0.0116,
+          "confidence": 0.8427
+        }
+      ],
+      "trackDistance": 0.7867923844373114,
+      "profile": "",
+      "trackArbitration": [
+        {
+          "machine": "vsm.tb303",
+          "origin": "patch d'usine",
+          "distance": 0.16940759605212913
+        },
+        {
+          "machine": "vsm.minimoog",
+          "origin": "patch d'usine",
+          "distance": 0.5293753637689453
+        },
+        {
+          "machine": "vsm.juno106",
+          "origin": "patch d'usine",
+          "distance": 0.7867923844373114
+        }
+      ],
+      "consideredMachines": [],
+      "parameters": {
+        "envelope.1.attack": 0.0030632078677837915,
+        "envelope.1.decay": 2.0,
+        "envelope.1.sustain": 0.825,
+        "filter.1.resonance": 4.2
+      }
+    }
+  ]
+}

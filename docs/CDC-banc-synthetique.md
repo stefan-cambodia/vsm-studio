@@ -201,7 +201,8 @@ publie, par morceau et agrégé (médiane et moyenne sur le lot) :
    (convention du CDC multipiste § 6 bis, qui compte kick, caisse,
    charleston), et les pistes `Batterie · …` leur répondent. Puis :
    - **fondues** : parties qui n'ont AUCUNE piste (leurs notes sont sur la
-     piste d'une autre) ;
+     piste d'une autre) ; pour la batterie, les pièces au-delà du nombre de
+     pistes `Batterie · …` ;
    - **inventées** : pistes au-delà de la première pour une même partie
      (une partie coupée en deux), ET pistes qui n'ont reçu aucune note
      appariée ;
@@ -224,10 +225,15 @@ publie, par morceau et agrégé (médiane et moyenne sur le lot) :
    de la course, contre `morceau.wav` :
    - `globalDistance` de la chaîne ;
    - **borne de transcription** : le mélange des pistes de la chaîne,
-     chacune rendue par la vraie machine et le vrai patch de sa partie,
-     calée au RMS et au panoramique vrais de cette partie. C'est ce que la
-     chaîne atteindrait avec un arbitrage, un réglage et un calage
-     parfaits, à transcription et parité égales ;
+     chacune rendue par la vraie machine et le vrai patch de sa partie, au
+     GAIN et au panoramique vrais de cette partie (le gain que le
+     générateur a appliqué au rendu brut : avec les notes exactes, ce
+     mélange EST la somme des stems vrais ; avec des notes manquantes il en
+     manque la part, et caler au RMS aurait masqué le manque). C'est ce que
+     la chaîne atteindrait avec un arbitrage, un réglage et un calage
+     parfaits, à transcription et parité égales. Les pistes de batterie
+     sont sommées en une seule entrée, jugée contre le stem entier comme la
+     chaîne l'a fait ;
    - **borne de production** : le mélange des stems vrais, secs, contre le
      mélange produit. Sans `--production`, ce nombre est 0 (le mélange EST
      cette somme). Avec, c'est ce que coûte de rendre sec contre un
@@ -236,6 +242,20 @@ publie, par morceau et agrégé (médiane et moyenne sur le lot) :
    transcription − borne de production` = transcription + parité ;
    `globalDistance − borne de transcription` = arbitrage + réglage +
    calage ; la séparation se lit à l'étage 1 et dans les bornes de piste.
+
+   **Ce que « borne » veut dire, et ne veut pas dire.** La borne de
+   transcription est une borne À CALAGE VRAI : elle rend les notes
+   transcrites au gain de la vérité, sans rien compenser. La chaîne, elle,
+   cale ses niveaux et règle ses patchs CONTRE le stem, et peut donc passer
+   SOUS cette borne en rattrapant par le volume ou le timbre ce que la
+   transcription a perdu (une pièce de batterie manquante, remontée par le
+   calage du kit). Un écart négatif n'est pas une erreur du banc : c'est la
+   mesure de cette compensation, et il se publie tel quel — c'est le
+   mécanisme que ROADMAP-fusion § 5 sexies décrivait sur *Clair de Lune*
+   (« la reconstruction réussissait en corrigeant en continu un timbre
+   qu'elle n'avait pas su choisir »). Sur le morceau minuscule du dépôt,
+   c'est déjà le cas : F1 de transcription 1,00 mais 2 pièces de batterie
+   sur 5, borne 0,336, chaîne 0,234.
 
 Tout va dans `banc/rapport.json` (format `vsm-banc-synthetique`, version,
 provenance : commit, options de la chaîne mot pour mot, identité du moteur,
