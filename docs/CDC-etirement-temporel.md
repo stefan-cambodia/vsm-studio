@@ -153,7 +153,7 @@ D12 utilisable avant tout suiveur de temps.
 | D12.3 | la détection de transitoires (flux d'énergie sur le matériau, à la publication, mise en cache par fichier comme les crêtes de forme d'onde) et le verrouillage | banc 4 — **fait le 04/09/2026** (le cache par fichier attend D12.5) |
 | D12.4 | le modèle : `warpMode`, `warpMarkers`, les gestes de `ClipEdit`, le format | tests `core/` et `interchange/` ; un projet v2 s'ouvre inchangé — **fait le 04/09/2026** |
 | D12.5 | le moteur : la carte par morceaux dans `AudioClipSpan`, `mixInto()` à travers l'étireur, `vsm-render` | banc 3 (seconde moitié), 9 ; `ProcessGraph` intact — **fait le 04/09/2026** |
-| D12.6 | l'interface : le menu du clip, « N mesures », les marqueurs sur la forme d'onde, la forme dessinée en temps étiré, annulation | vu à l'écran, `VSM_CAPTURE`, réglages retenus |
+| D12.6 | l'interface : le menu du clip, « N mesures », les marqueurs sur la forme d'onde, la forme dessinée en temps étiré, annulation | vu à l'écran, `VSM_CAPTURE`, réglages retenus — **fait le 04/09/2026** |
 | D12.7 | le critère de phase sur *Sky and Sand* | ≤ 10 ms sur huit mesures à +10 % de tempo |
 
 Le vocodeur de phase, s'il vient, sera D12.8 avec son propre attendu, écrit
@@ -286,6 +286,39 @@ sur le chiffre du banc 5.
 >
 > Six suites vertes : core 170, audio 1161, interchange 252, panneaux 11,
 > CLAP 25, VST3 19 — et l'application a été lancée et regardée.
+
+> **D12.6 EST FAITE (04/09/2026) : L'INTERFACE, ET ELLE A ÉTÉ REGARDÉE.** Le
+> menu d'un clip AUDIO — et de lui seul, un clip MIDI suivant le tempo par
+> nature — porte un sous-menu « Suivre le tempo » (Non · Hauteur conservée ·
+> Rééchantillonné, coché sur l'état courant), « Le clip fait N mesures… »,
+> « Ajouter un marqueur ici » et « Retirer ce marqueur ». Les marqueurs se
+> **voient** (un trait ambre sur toute la hauteur du clip et une pointe en
+> haut) et se **saisissent** : quatre pixels autour du trait, le curseur
+> change avant le clic, et tirer déplace la position MUSICALE du marqueur en
+> laissant sa position dans le fichier — c'est le geste de calage. Le premier
+> marqueur ne se saisit pas : il est le début du clip, et le déplacer voudrait
+> dire rogner, ce que le bord gauche fait déjà. Tout passe par
+> `onEditStarted`, donc tout s'annule.
+>
+> **La forme d'onde d'un clip étiré est dessinée dans le TEMPS ÉTIRÉ** :
+> chaque colonne demande au clip où elle est dans le fichier. Sans cela, un
+> clip calé montrerait ses temps ailleurs qu'où il les joue, et le calage se
+> ferait à l'oreille alors qu'il se fait à l'œil.
+>
+> **Vu à l'écran** (`VSM_PROJET` + `VSM_VUE=arrangement` + `VSM_CAPTURE`, sur
+> un projet écrit à la main en version 3) : une boucle de huit secondes
+> déclarée faire six mesures s'étend de la mesure 1 à la mesure 7, son
+> marqueur intermédiaire se voit à la mesure 4,5, et la densité des frappes
+> CHANGE de part et d'autre — plus lâche avant, plus serrée après, ce qui est
+> exactement ce que la carte demande (4 s de matériau sur 3,5 s avant le
+> marqueur, 4 s sur 2,5 s après). La même boucle non étirée, sur la piste
+> d'à côté, s'arrête à la mesure 5 : les deux se comparent d'un coup d'œil.
+>
+> Une ambiguïté de C++20 rattrapée au passage : concaténer une `juce::String`
+> et un littéral `u8"..."` ne compile pas (`char8_t`), et cela ne se voit qu'à
+> la compilation de l'application — le piège qui avait fait annoncer une
+> capture « faite avec ce code » à D11.1. Chaque littéral passe désormais par
+> `juce::String`.
 
 ## 8. Ce qui n'est pas au programme, et pourquoi
 

@@ -404,6 +404,59 @@ MainComponent::MainComponent()
                 }
             }), true);
     };
+    // « LE CLIP FAIT N MESURES » (D12.6, § 6 du CDC d'étirement). C'est la
+    // première commande du suivi de tempo, et la plus utile : un musicien sait
+    // combien de mesures fait sa boucle, il ne sait pas son tempo au centième.
+    // On pose les deux marqueurs extrêmes et on DIT le tempo déduit, pour
+    // qu'il se vérifie.
+    arrangement_.onClipBarsRequested = [this](size_t piste, uint64_t clipId) {
+        auto* clip = findClip(piste, clipId);
+        if (clip == nullptr || piste >= project_.tracks.size()) return;
+        auto* fenetre = new juce::AlertWindow(
+            u8"Le clip fait N mesures",
+            u8"Le clip s'étirera pour durer ce nombre de mesures, sans changer de hauteur.\n"
+            u8"Le tempo d'origine du matériau sera déduit et affiché.",
+            juce::MessageBoxIconType::NoIcon);
+        fenetre->addTextEditor("mesures", "4", u8"Mesures :");
+        fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
+        fenetre->addButton("Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+        fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+            [this, piste, clipId, fenetre](int resultat) {
+                if (resultat != 1 || piste >= project_.tracks.size()) return;
+                const int mesures = fenetre->getTextEditorContents("mesures").getIntValue();
+                if (mesures <= 0) return;
+                auto& track = project_.tracks[piste];
+                const auto parMesure =
+                    project_.timeSignatureMap.ticksPerBar(0, project_.ticksPerQuarterNote);
+                // LA FIN DU MATÉRIAU d'une piste audio est celle de son
+                // fichier, en ticks -- la même règle que dans la vue.
+                const vsm::midi::Tick finMateriau =
+                    track.audio.sampleRate > 0.0
+                        ? project_.secondsToTicks(track.audio.durationSeconds()) : 0;
+                beginProjectEdit(u8"Le clip fait N mesures");
+                const double bpm = vsm::sequencer::setClipBars(
+                    track.clips, clipId, mesures, parMesure, finMateriau,
+                    [this](vsm::midi::Tick t) { return project_.ticksToSeconds(t); });
+                loadAudioTracks();
+                arrangement_.repaint();
+                if (bpm <= 0.0) return;
+                // LE TEMPO DÉDUIT SE DIT, parce qu'il se vérifie : un nombre de
+                // mesures faux donne un tempo absurde, et c'est le seul moment
+                // où on peut s'en apercevoir sans écouter.
+                // Chaque littéral passe par `juce::String` : concaténer une
+                // `juce::String` et un `u8"..."` est AMBIGU depuis C++20
+                // (`char8_t`), et l'erreur ne se voit qu'à la compilation de
+                // l'application -- le piège qui avait fait annoncer une
+                // capture faite « avec ce code » à D11.1.
+                juce::AlertWindow::showMessageBoxAsync(
+                    juce::AlertWindow::InfoIcon, u8"Tempo du clip",
+                    juce::String(u8"Le matériau de ce clip a été enregistré à environ ")
+                        + juce::String(bpm, 1) + juce::String(u8" BPM.\n")
+                        + juce::String(u8"Il joue désormais à ")
+                        + juce::String(project_.tempoMap.bpmAt(0), 1)
+                        + juce::String(u8" BPM, sans changer de hauteur."));
+            }), true);
+    };
     arrangement_.onClipColourRequested = [this](size_t piste, uint64_t clipId) {
         auto* clip = findClip(piste, clipId);
         if (clip == nullptr) return;
