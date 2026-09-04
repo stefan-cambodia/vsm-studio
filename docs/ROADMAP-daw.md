@@ -3135,6 +3135,17 @@ de D12 (D13.2) et l'arrangement global (D13.3) avant le confort.
 > faut, déjà là, sans relire le fichier — et le gain du clip devient son
 > inverse ; le silence ne se normalise pas ; annulable, et le gain se voit
 > dans la forme d'onde comme tout gain de clip.
+>
+> **D13.5 EST FAITE (04/09/2026).** Un bouton « Pas à pas » dans la barre
+> du piano roll arme le moteur applicatif ; armé, chaque note reçue sur son
+> entrée MIDI — un clavier MIDI comme le clavier d'ordinateur, qui passe
+> par le même chemin — est POSTÉE au fil d'interface (on est sur le thread
+> MIDI, le projet ne s'y touche pas) et le piano roll l'écrit à la tête de
+> lecture, de la longueur de la grille, puis avance la tête d'un pas ;
+> Entrée avance sans note, Retour arrière recule ; le son continue de
+> passer, on s'entend en saisissant. La tête de lecture EST la position
+> d'insertion : elle se voit, elle se déplace au clic sur la règle. Une note
+> par pas — l'accord se pose par le bouton Accord — et c'est dit.
 
 ## 4. Les choix tranchés ici, et pourquoi
 

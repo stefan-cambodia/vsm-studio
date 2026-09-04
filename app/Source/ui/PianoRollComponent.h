@@ -193,6 +193,20 @@ public:
     void arpeggiateSelection(vsm::sequencer::ArpeggioMode mode);
     void insertChordAtPlayhead(vsm::sequencer::ChordType type, uint8_t rootNote);
 
+    /// LA SAISIE PAS À PAS (D13.5, Cubase) : armée, chaque note reçue s'écrit
+    /// à la tête de lecture, de la longueur de la grille, et la tête avance
+    /// d'un pas ; Entrée avance sans note (un silence), Retour arrière recule.
+    /// La tête de lecture EST la position d'insertion : on la voit, elle se
+    /// déplace au clic sur la règle, et le transport arrêté n'en a pas
+    /// d'autre usage. Une note par pas ; un accord se pose par le bouton
+    /// Accord (dit dans la feuille de route).
+    void setStepInputEnabled(bool enabled);
+    bool stepInputEnabled() const { return stepInput_; }
+    void stepInputNote(uint8_t note, uint8_t velocity);
+    void stepInputRest();
+    void stepInputBack();
+    std::function<void(bool)> onStepInputChanged;
+
     /// Menu contextuel complet (aussi accessible depuis le menu Édition).
     juce::PopupMenu buildContextMenu() const;
     void performContextMenuAction(int menuItemId);
@@ -302,6 +316,7 @@ private:
     vsm::midi::Tick loopEndTick_ = 0;
     bool loopActive_ = false;
     vsm::midi::Tick playheadTick_ = 0;
+    bool stepInput_ = false;
 
     juce::ScrollBar horizontalScrollBar_ { false };
     juce::ScrollBar verticalScrollBar_ { true };

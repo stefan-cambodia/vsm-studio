@@ -19,9 +19,10 @@ Project morceau() {
     Track midi;
     midi.name = "Basse";
     // Trois notes : avant, à cheval sur 1920, après.
-    midi.notes.push_back({0, 960, 40, 100, 0, 1});
-    midi.notes.push_back({1440, 2400, 43, 100, 0, 2});
-    midi.notes.push_back({3840, 4800, 45, 100, 0, 3});
+    // {startTick, endTick, channel, number, velocity, releaseVelocity, id}
+    midi.notes.push_back({0, 960, 0, 40, 100, 64, 1});
+    midi.notes.push_back({1440, 2400, 0, 43, 100, 64, 2});
+    midi.notes.push_back({3840, 4800, 0, 45, 100, 64, 3});
     midi.controlChanges.push_back({480, 0, 7, 100});
     midi.controlChanges.push_back({3000, 0, 7, 80});
     AutomationCurve c;

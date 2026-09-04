@@ -35,7 +35,8 @@ private:
                      humanizeButton_ { "Humaniser" }, chordButton_ { "Accord" }, moreButton_ { "Plus..." };
     juce::TextButton zoomInButton_ { "+" }, zoomOutButton_ { "-" }, zoomFitButton_ { "Tout" };
     juce::ToggleButton snapButton_ { "Aimant" }, ghostButton_ { u8"Fantômes" },
-                       followButton_ { "Suivre" }, scaleHighlightButton_ { "Gamme" };
+                       followButton_ { "Suivre" }, scaleHighlightButton_ { "Gamme" },
+                       stepButton_ { u8"Pas à pas" };
 
     juce::ComboBox gridCombo_, gridModifierCombo_, scaleRootCombo_, scaleTypeCombo_;
     juce::Slider swingSlider_ { juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight };

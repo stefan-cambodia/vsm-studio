@@ -651,6 +651,8 @@ Une trentaine d'opérations d'édition musicale sont disponibles — gammes, acc
 
 *Le piano roll : notes, marqueurs de section, note de tête sélectionnée, et une note douteuse hachurée.*
 
+**La saisie pas à pas.** Le bouton **Pas à pas** de la barre du piano roll écrit chaque note que vous jouez — au clavier MIDI ou au clavier d'ordinateur — à la tête de lecture, de la longueur de la grille, puis avance d'un pas ; **Entrée** avance sans note, **Retour arrière** recule. Vous vous entendez en saisissant. Placez la tête de lecture d'un clic sur la règle pour choisir où commencer.
+
 ## 5. Le navigateur
 
 Une seule liste pour tout ce qu'on peut poser sur une piste : les **machines** du parc, les **presets** `*.synth.json`, les **profils** multi-échantillons et les **échantillons**. La colonne de droite dit d'où vient chaque chose — et jusqu'au sous-dossier, parce que deux « basse » rangées à deux endroits doivent se distinguer sans qu'on ait à les essayer.

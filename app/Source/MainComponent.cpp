@@ -253,6 +253,13 @@ MainComponent::MainComponent()
     pianoRoll_.onProjectRestored = [this] { rebuildFromProject(false); refreshHistoryList(); };
     pianoRoll_.setProject(&project_);
     pianoRoll_.onNotesEdited = [this] { refreshTransportSchedule(); };
+    // LA SAISIE PAS À PAS (D13.5) : le piano roll arme le moteur, le moteur
+    // poste la note, le piano roll l'écrit. Un seul chemin pour le clavier
+    // MIDI et le clavier d'ordinateur, puisque le second passe par le premier.
+    pianoRoll_.onStepInputChanged = [this](bool armee) { audioEngine_.setStepInputArmed(armee); };
+    audioEngine_.onStepInputNote = [this](uint8_t note, uint8_t velocity) {
+        pianoRoll_.stepInputNote(note, velocity);
+    };
     synthRack_.onPatternEdited = [this] {
         refreshTransportSchedule();
         pianoRoll_.repaint(); // le piano roll montre les mêmes notes
@@ -4168,6 +4175,13 @@ bool MainComponent::keyStateChanged(bool, juce::Component*) {
 
 bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
     if (handleComputerKeyboard(key)) return true;
+    // EN SAISIE PAS À PAS, Entrée avance sans note et Retour arrière recule :
+    // avant la table des raccourcis, parce qu'elles ne sont des commandes que
+    // dans ce mode-là.
+    if (pianoRoll_.stepInputEnabled() && !key.getModifiers().isAnyModifierKeyDown()) {
+        if (key == juce::KeyPress::returnKey) { pianoRoll_.stepInputRest(); return true; }
+        if (key == juce::KeyPress::backspaceKey) { pianoRoll_.stepInputBack(); return true; }
+    }
     // LA TOUCHE DÉSIGNE UNE COMMANDE, ET LA TABLE FAIT LA CORRESPONDANCE
     // (D10.3). Ce qui était ici -- un test sur `Ctrl+S`, un filtre qui rejetait
     // tout ce qui portait un modificateur, puis deux `case` -- ne disait à
