@@ -396,6 +396,65 @@ n'a pas d'objet.
 
 ## 6. Campagne S1 — verdict
 
+### La moitié SÈCHE est mesurée (05/09/2026, 00:24) — la moitié produite tourne
+
+Dix morceaux sur dix, aucun non mesuré, en 1 h 43 (22:41 → 00:24, après deux
+départs perdus : voir le piège du CLAUDE.md sur les campagnes lancées depuis
+le shell de l'outil). La ligne « production » du § 5 ne pourra être tranchée
+qu'à la fin de `s1-prod` ; tout le reste est ci-dessous, attendu par attendu.
+
+**Le résultat tient en une phrase : la chaîne est PLUS FAIBLE que prévu à
+tous les étages, et le banc a donc fait exactement ce pour quoi il a été
+écrit.** Presque aucun attendu du lot sec n'est atteint ; deux frôlent la
+ligne qui les aurait réfutés.
+
+| étage | attendu (§ 5) | mesuré | verdict |
+|---|---|---|---|
+| séparation | `bass` SDR ≥ 6 dB, corrélation ≥ 0,85 | **0,21 dB**, corrélation **0,26** | RATÉ, et de très loin |
+| | `drums` SDR ≥ 8 dB (< 5 dB réfuterait) | **5,07 dB** | raté ; à 0,07 dB de la réfutation |
+| | `other` seul entre 3 et 8 dB | **2,75 dB** | raté de peu |
+| | `other+guitar+piano` ≥ 6 dB | **3,69 dB** | raté |
+| | énergie hallucinée entre 5 et 25 % | **19,8 %** | **tenu** |
+| transcription | F1 (±1 demi-ton, ±50 ms) entre 0,50 et 0,70 | **0,367** | raté |
+| | rappel > précision | rappel **0,345** < précision **0,426** | RATÉ, et dans l'autre sens |
+| | F1 hauteur exacte inférieur d'au moins 0,10 | **0,352**, soit −0,015 | raté |
+| | vélocité : erreur absolue ≥ 20 | **20,5** | tenu |
+| | durée : erreur relative médiane ≥ 30 % | **30,5 %** | tenu |
+| parité | écart ≤ 1 piste dans ≥ 6/10 | **2/10**, écart médian **−2** | raté |
+| | `memes-machine-disjoints` séparé dans ≥ 2/3 | 0/3 (fondu les trois fois) | RATÉ, et c'est la réfutation nommée |
+| | `chevauchement` fondu dans ≥ 2/3 | 3/3 | tenu |
+| | `deux-mains` coupé en deux dans ≥ 2/3 | 1/2 | à la limite |
+| arbitrage | vraie machine dans le top 6 pour ≥ 50 % | **25,6 %** (11 pistes sur 43) | raté ; à 0,6 point de la réfutation |
+| | rang 1 pour ≥ 20 % | **14,0 %** (6 sur 43) | raté |
+| | borne de piste plus grande que la chaîne pour ≥ 50 % | **42 sur 43** | tenu, et largement |
+| global | `globalDistance` entre 0,15 et 0,30 | médiane **0,186** | **tenu** |
+| | borne de transcription entre 0,08 et 0,18 | **0,307** | raté (deux fois trop grande) |
+| | transcription + parité > arbitrage + réglage dans ≥ 6/10 | **10/10** | **tenu, et sans appel** |
+
+**Ce que ces chiffres tranchent, et qui ne se déduisait pas d'un rapport de
+reconstruction.** La perte médiane imputable à la transcription et à la
+parité est de **0,307**, celle de l'arbitrage et du réglage de **−0,146** :
+non seulement la transcription est le premier poste dans 10 morceaux sur 10
+(A5 confirmé sans ambiguïté), mais l'arbitrage et le réglage font MIEUX que
+la vérité de référence — la borne est plus grande que la distance obtenue
+dans 42 pistes sur 43. Autrement dit : à ce stade, régler une machine du parc
+pour ressembler au stem SÉPARÉ marche mieux que de viser le stem vrai, parce
+que le stem séparé n'est pas le stem vrai. **C'est la séparation qui plafonne
+tout le reste** — `bass` à 0,21 dB de SDR et 0,26 de corrélation dit qu'il
+n'y a presque rien de juste à transcrire dans la basse séparée.
+
+Deux attendus se sont révélés MAL CALIBRÉS plutôt que réfutés, et il faut le
+dire : « rappel > précision » supposait une transcription qui invente plus
+qu'elle n'oublie ; c'est l'inverse (elle oublie). Et la borne de
+transcription attendue entre 0,08 et 0,18 était une prévision faite sur des
+morceaux réels, pas sur des morceaux de synthèse à douze parties.
+
+**Ce que cela ne dit pas** : rien sur la production (la moitié `s1-prod`
+tourne depuis 00:24), et rien sur ce qu'il faut changer — le banc mesure et
+publie, il ne décide pas. La suite s'écrira quand les vingt morceaux seront
+mesurés.
+
+
 *À écrire après la mesure, avec les chiffres, réfutations comprises.*
 
 ## 7. Ce que le banc n'est pas encore, et qui reste à écrire
