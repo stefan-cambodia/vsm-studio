@@ -335,7 +335,7 @@ RenderResult renderBundleToWav(const LoadedBundle& bundle, const std::string& wa
     try {
         vsm::audio::io::WavFileWriter::writeFile(rendered.left.data(), rendered.right.data(),
                                                   rendered.numFrames(), options.sampleRate,
-                                                  options.format, wavPath);
+                                                  options.format, wavPath, options.dither);
     } catch (const std::exception& e) {
         result.success = false;
         result.error = std::string("écriture WAV impossible : ") + e.what();
@@ -593,7 +593,7 @@ StemResult renderStemsToFolder(const LoadedBundle& bundle, const std::string& fo
         try {
             vsm::audio::io::WavFileWriter::writeFile(stem.audio.left.data(), stem.audio.right.data(),
                                                       stem.audio.numFrames(), options.sampleRate,
-                                                      options.format, chemin);
+                                                      options.format, chemin, options.dither);
         } catch (const std::exception& e) {
             result.success = false;
             result.error = std::string("écriture WAV impossible : ") + e.what();

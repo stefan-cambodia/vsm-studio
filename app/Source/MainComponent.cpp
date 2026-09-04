@@ -1,5 +1,6 @@
 #include "MainComponent.h"
 #include "vsm/sequencer/TimeEdit.h"
+#include "vsm/sequencer/ProjectImport.h"
 #include "vsm/interchange/DawImport.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
@@ -716,6 +717,12 @@ MainComponent::MainComponent()
         });
     };
     preferencesPanel_.onOpenShortcuts = [this] { menuItemSelected(kMenuViewShortcuts, 0); };
+    retourAuDepart_ = vsm::app::ui::UiScale::properties().getBoolValue("retourAuDepartALArret", false);
+    preferencesPanel_.onReturnToStartChanged = [this](bool actif) {
+        retourAuDepart_ = actif;
+        vsm::app::ui::UiScale::properties().setValue("retourAuDepartALArret", actif);
+        vsm::app::ui::UiScale::properties().saveIfNeeded();
+    };
     preferencesPanel_.onOpenMidiLearn = [this] { menuItemSelected(kMenuViewMidiLearn, 0); };
     shortcutsPanel_.onRebind = [this](vsm::interchange::ShortcutId id) {
         rebindPending_ = true;
@@ -1039,6 +1046,17 @@ void MainComponent::timerCallback() {
     // en changer en cours de route (réglages audio). Les effets suivent.
     applyAudioConfig();
 
+    // RETOUR AU DÉBUT À L'ARRÊT (D14.5). La transition se voit ICI, sur
+    // l'horloge unique, quel que soit le chemin qui a arrêté le transport --
+    // le bouton, la barre d'espace, une commande MIDI apprise : un seul
+    // endroit, pas quatre.
+    {
+        const bool lecture = transport_.state() == TransportState::Playing;
+        if (lecture && !etaitEnLecture_) departLecture_ = transport_.currentTick();
+        else if (!lecture && etaitEnLecture_ && retourAuDepart_) seekAllViews(departLecture_);
+        etaitEnLecture_ = lecture;
+    }
+
     const bool audioClockAvailable = audioEngine_.isDeviceOpen();
     // La carte son peut apparaître ou disparaître en cours de route (réglages
     // audio, périphérique débranché) : le bouton Rec doit suivre, et dire
@@ -1210,6 +1228,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
         case 0:
             menu.addItem(kMenuFileNewProject, "Nouveau projet");
             menu.addItem(kMenuFileOpen, "Ouvrir MIDI...");
+            menu.addItem(kMenuFileImportMidiIntoProject, u8"Importer un MIDI dans le projet...");
             menu.addItem(kMenuFileOpenBundle, "Ouvrir un projet VSM...");
             {
                 // D11.6 : LES PROJETS RÉCENTS, dix au plus, le dernier ouvert
@@ -1360,6 +1379,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuEditDeleteTimeAtLocators,
                          u8"Supprimer le temps entre les locateurs (Ctrl+Maj+K)",
                          project_.loopEndTick > project_.loopStartTick);
+            menu.addItem(kMenuEditLocatorsFromSelection, u8"Locateurs sur la s\u00e9lection (P)",
+                         arrangement_.hasSelection() || pianoRoll_.hasSelection());
             break;
         case 2:
             menu.addItem(kMenuTrackAdd, "Ajouter une piste MIDI");
@@ -1635,6 +1656,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
 void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) {
     if (menuItemID == kMenuEditInsertTimeAtLocators) { editTimeAtLocators(true); return; }
     if (menuItemID == kMenuEditDeleteTimeAtLocators) { editTimeAtLocators(false); return; }
+    if (menuItemID == kMenuEditLocatorsFromSelection) { locatorsFromSelection(); return; }
+    if (menuItemID == kMenuFileImportMidiIntoProject) { chooseMidiToImport(); return; }
     if (menuItemID >= kMenuFileRecentFirst && menuItemID <= kMenuFileRecentLast) {
         const auto liste = recentProjects();
         const int i = menuItemID - kMenuFileRecentFirst;
@@ -3354,12 +3377,19 @@ void MainComponent::startReconstruction(const juce::File& audioFile) {
 }
 
 bool MainComponent::isInterestedInFileDrag(const juce::StringArray& files) {
-    for (const auto& f : files)
+    for (const auto& f : files) {
         if (vsm::interchange::isReconstructableAudio(f.toStdString())) return true;
+        if (f.endsWithIgnoreCase(".mid") || f.endsWithIgnoreCase(".midi")) return true;
+    }
     return false;
 }
 
 void MainComponent::filesDropped(const juce::StringArray& files, int, int) {
+    // UN FICHIER MIDI LÂCHÉ SUR LA FENÊTRE S'IMPORTE DANS LE PROJET (D14.3), à
+    // la tête de lecture -- le geste le moins ambigu des deux qu'on peut
+    // vouloir, et le seul qui ne perd rien.
+    for (const auto& f : files)
+        if (f.endsWithIgnoreCase(".mid") || f.endsWithIgnoreCase(".midi")) { importMidiIntoProject(juce::File(f)); return; }
     juce::File audio;
     for (const auto& f : files)
         if (vsm::interchange::isReconstructableAudio(f.toStdString())) { audio = juce::File(f); break; }
@@ -3653,14 +3683,14 @@ void MainComponent::refreshPreferences() {
         reconstructionChain_, designe,
         vsm::app::ui::UiScale::properties().getValue("dossierBibliotheque", ""),
         static_cast<int>(vsm::interchange::shortcutCommands().size()),
-        static_cast<int>(audioEngine_.midiLearnMappingCount()));
+        static_cast<int>(audioEngine_.midiLearnMappingCount()), retourAuDepart_);
 }
 
 void MainComponent::showPreferences() {
     if (!preferencesWindow_) {
         preferencesWindow_ = std::make_unique<PanelWindow>(
             juce::String::fromUTF8(u8"Préférences"), preferencesPanel_);
-        preferencesWindow_->setSize(560, 430);
+        preferencesWindow_->setSize(560, 472);
     }
     refreshPreferences();
     preferencesWindow_->setVisible(true);
@@ -4229,6 +4259,10 @@ bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
         // d'atteindre. Sans marqueur avant, on revient au début.
         case Id::NavGoToStart: seekAllViews(0); return true;
         case Id::EditInsertTimeAtLocators: editTimeAtLocators(true); return true;
+        case Id::EditLocatorsFromSelection: locatorsFromSelection(); return true;
+        // AJUSTER À LA FENÊTRE vaut pour les DEUX vues (D14.2) : l'arrangement
+        // ne l'entendait pas, seul le piano roll répondait.
+        case Id::ViewZoomToFit: arrangement_.zoomToFit(); pianoRoll_.zoomToFit(); return true;
         case Id::EditDeleteTimeAtLocators: editTimeAtLocators(false); return true;
         case Id::ViewFullScreen: toggleFullScreen(); return true;
         case Id::NavNextMarker: {
@@ -4489,6 +4523,70 @@ void MainComponent::saveProjectAs() {
         folder.createDirectory();
         writeProjectTo(folder);
     });
+}
+
+void MainComponent::chooseMidiToImport() {
+    auto chooser = std::make_shared<juce::FileChooser>(
+        u8"Importer un MIDI dans le projet...", juce::File(), "*.mid;*.midi");
+    chooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+                         [this, chooser](const juce::FileChooser& fc) {
+                             const juce::File file = fc.getResult();
+                             if (file != juce::File()) importMidiIntoProject(file);
+                         });
+}
+
+void MainComponent::importMidiIntoProject(const juce::File& file) {
+    try {
+        ParsedFile parsed = MidiFileParser::parseFile(file.getFullPathName().toStdString());
+        const Project source = Project::fromParsedFile(parsed);
+        beginProjectEdit(u8"Importer un MIDI");
+        const auto bilan = vsm::sequencer::appendTracksFrom(project_, source, transport_.currentTick());
+        rebuildFromProject();
+        if (!project_.tracks.empty()) trackList_.selectTrackIndex(project_.tracks.size() - 1);
+        // CE QUI EST IGNORÉ EST DIT : le tempo et les mesures du fichier.
+        if (bilan.tempoChangesIgnored > 0 || bilan.timeSignaturesIgnored > 0)
+            juce::AlertWindow::showMessageBoxAsync(
+                juce::AlertWindow::InfoIcon, u8"MIDI importé",
+                juce::String(static_cast<int>(bilan.tracksAdded)) + juce::String(u8" piste(s) ajoutée(s) à la tête de lecture. ")
+                    + juce::String(u8"Le tempo et les mesures du fichier ont été ignorés (")
+                    + juce::String(static_cast<int>(bilan.tempoChangesIgnored + bilan.timeSignaturesIgnored))
+                    + juce::String(u8" changement(s)) : le projet garde les siens."));
+    } catch (const std::exception& e) {
+        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                                                 u8"Erreur d'import MIDI", e.what());
+    }
+}
+
+void MainComponent::setLoopRegionEverywhere(vsm::midi::Tick start, vsm::midi::Tick end, bool active) {
+    if (end <= start) return;
+    project_.loopEnabled = active;
+    project_.loopStartTick = start;
+    project_.loopEndTick = end;
+    transport_.setLoopRegion(start, end, active);
+    audioEngine_.processGraph().setLoopRegion(project_.ticksToSeconds(start),
+                                               project_.ticksToSeconds(end), active);
+    pianoRoll_.setLoopRegion(start, end, active);
+    pianoRollPanel_.refresh();
+    transportBar_.setLooping(active);
+    arrangement_.repaint();
+}
+
+void MainComponent::locatorsFromSelection() {
+    vsm::midi::Tick debut = 0, fin = 0;
+    bool trouve = arrangement_.selectionBounds(debut, fin);
+    if (!trouve) {
+        // À défaut de clips : les notes choisies du piano roll.
+        if (const auto* track = pianoRoll_.activeTrack()) {
+            for (const auto& n : track->notes) {
+                if (pianoRoll_.selectedNoteIds().count(n.id) == 0) continue;
+                if (!trouve) { debut = n.startTick; fin = n.endTick; trouve = true; }
+                else { debut = std::min(debut, n.startTick); fin = std::max(fin, n.endTick); }
+            }
+        }
+    }
+    if (!trouve || fin <= debut) return;
+    beginProjectEdit(u8"Locateurs sur la sélection");
+    setLoopRegionEverywhere(debut, fin, true);
 }
 
 void MainComponent::editTimeAtLocators(bool inserer) {

@@ -52,6 +52,9 @@ void printUsage() {
         "                        soient dans l'état où l'oreille les attend.\n"
         "  --duration <secondes> durée imposée (défaut : déduite du projet)\n"
         "  --format <f>          float32 | int24 | int16 (défaut : float32)\n"
+        "  --sans-dither         n'ajoute pas le bruit TPDF de ± 1 LSB avant l'arrondi\n"
+        "                        des formats entiers (actif par défaut, sans effet sur\n"
+        "                        le flottant) -- un sinus de 1 LSB tronqué est un carré\n"
         "  --quiet               n'affiche que les erreurs\n"
         "\n"
         "Mode service (pour une boucle d'optimisation) :\n"
@@ -108,6 +111,7 @@ int main(int argc, char** argv) {
         if (arg == "--help" || arg == "-h") { printUsage(); return 0; }
         else if (arg == "--quiet") { quiet = true; }
         else if (arg == "--temps-reel") { options.realTimeRender = true; }
+        else if (arg == "--sans-dither") { options.dither = false; }
         else if (arg == "--sample-rate") {
             const char* value = next("--sample-rate");
             if (!value || !parseDouble(value, options.sampleRate) || options.sampleRate <= 0.0) {

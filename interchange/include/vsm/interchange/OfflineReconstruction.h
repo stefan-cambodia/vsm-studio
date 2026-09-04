@@ -25,6 +25,10 @@ namespace vsm::interchange {
 struct RenderOptions {
     double sampleRate = 48000.0;
     int blockSize = 512;
+    /// LE DITHER À L'EXPORT (D14.4) : un bruit TPDF de ± 1 LSB avant l'arrondi
+    /// des formats entiers, actif par défaut -- ce que Cubase et Live font.
+    /// Sans effet sur le flottant. `--sans-dither` l'éteint.
+    bool dither = true;
     /// Durée ajoutée après la dernière note, pour laisser les résonances et
     /// les queues de réverbération s'éteindre au lieu d'être coupées net.
     double tailSeconds = 2.0;

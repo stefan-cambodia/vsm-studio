@@ -33,6 +33,10 @@ Un échantillon glissé depuis le navigateur tombe sur la piste survolée, **à 
 
 **Déplacer, choisir, se repérer.** Un clip se glisse **d'une piste à une autre** : il emporte les notes que sa fenêtre couvre (un clip est une fenêtre sur le matériau de sa piste, pas un sac qu'on transporte). Un clip audio ne va que vers une piste audio qui porte le même fichier, ou aucune ; ce qui est refusé vous est dit. Un rectangle tiré sur le vide choisit les clips qu'il touche (**lasso**, Maj pour ajouter), Ctrl+A les prend tous. La barre de transport affiche la position en **mesure · temps** à côté du temps ; l'arrangement **suit la tête de lecture** par pages (`F` pour cesser, la règle dit « suit ») ; `Début` ramène au début, `Maj+N` et `Maj+B` sautent au marqueur suivant ou précédent. Un **double-clic** sur un clip le renomme ; le **clic droit** donne sa couleur (ou lui rend celle de la piste) et le rend muet — sur toute la sélection. Le menu Piste sait **dupliquer la piste sélectionnée** (instrument, réglages, notes, clips, effets, automation et routage compris, avec des identifiants neufs), et le canal MIDI d'une piste (« Ch 3 ») se change par double-clic dans la liste des pistes.
 
+**Importer un MIDI dans le projet.** *Fichier ▸ Importer un MIDI dans le projet…* — ou un fichier `.mid` lâché sur la fenêtre — ajoute ses pistes à la suite des vôtres, posées à la tête de lecture et converties à la résolution du projet ; son tempo et ses mesures sont ignorés (le projet garde les siens, et cela vous est dit). *Ouvrir MIDI…*, lui, remplace le projet.
+
+**Les locateurs sur la sélection.** Choisissez des clips (ou des notes dans le piano roll) et appuyez sur **P** : la boucle prend leur étendue et s'active — le geste de Cubase. Le menu du clip zoome aussi : *Zoom : tout voir*, *Zoom : la sélection*, et **Ajuster à la fenêtre** vaut pour les deux vues.
+
 **Insérer ou retirer une plage de temps.** Placez les locateurs (la boucle) sur la plage, puis Édition ▸ **Insérer du silence entre les locateurs** (Ctrl+Maj+I) ou **Supprimer le temps entre les locateurs** (Ctrl+Maj+K) : tout le morceau glisse — notes, clips, automation, repères, tempo et mesures de toutes les pistes ensemble — et ce qui est à cheval sur la plage est coupé. C'est l'outil qui retire une mesure d'un arrangement sans la retirer piste par piste.
 
 **Normaliser.** Le clic droit sur un clip audio propose *Normaliser* : le gain du clip devient l'inverse de la crête de ce qu'il joue, et la forme d'onde le montre.
@@ -833,7 +837,11 @@ Cubase, deux chemins donnent un bon résultat : *Fichier ▸ Exporter ▸ Archiv
 pistes* (`.xml`), qui est le meilleur, ou un export **MIDI Type 1** (`.mid`),
 que l'application lit déjà.
 
+**L'export en 16 ou 24 bits est dithérisé** : un bruit triangulaire de ± 1 LSB est ajouté avant l'arrondi, comme dans Cubase ou Live, pour qu'une queue de réverbération à −80 dB reste un souffle et non une distorsion de quantification. Le flottant n'en a pas besoin ; `vsm-render --sans-dither` l'éteint.
+
 ## 7. Les réglages
+
+Les *Préférences* (menu Fichier) tiennent aussi le comportement du transport : **À l'arrêt, revenir au point de départ** ramène la tête là où la lecture était partie quand vous appuyez sur Stop — la préférence de Cubase, le défaut de Live ; décochée, la tête reste où elle s'est arrêtée.
 
 Tout ce qui se règle est au même endroit. Un réglage qu'on ne retrouve qu'en se souvenant du menu où il se cache est un réglage qu'on ne change pas.
 

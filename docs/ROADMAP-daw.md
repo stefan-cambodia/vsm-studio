@@ -3191,6 +3191,59 @@ de D12 (D13.2) et l'arrangement global (D13.3) avant le confort.
 > commande se lise sans connaître la date — et l'intitulé dit « (le défaut
 > de la chaîne) ». Deux tests corrigés dans le même sens.
 
+### Phase D14 — Le troisième audit : les gestes de tous les jours qui manquaient encore (04/09/2026)
+
+**Pourquoi.** Même méthode que D11 et D13 : un utilisateur de Cubase ou de
+Live s'assoit, cherche ses gestes, et l'on vérifie dans le code ce qui
+manque. Cinq absences, vérifiées ; l'ordre suit le § 3 — les gestes du
+quotidien d'abord, l'import et l'export ensuite, la préférence en dernier.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D14.1 | **Les locateurs sur la sélection** (le `P` de Cubase, `Ctrl+L` de Live) : la boucle ne se pose que sur la règle, à la main | une commande (dans la table des raccourcis) pose la région de boucle sur l'étendue de la sélection — les clips de l'arrangement, ou à défaut les notes du piano roll — et l'active ; les deux vues et le moteur la voient |
+| D14.2 | **Zoom sur tout / sur la sélection dans l'arrangement** : « Ajuster à la fenêtre » n'est entendu que par le piano roll, et l'arrangement n'a que +/− | le raccourci ajuste les deux vues ; le menu de l'arrangement offre « Zoom : tout voir » et « Zoom : la sélection », comme celui du piano roll |
+| D14.3 | **Importer un fichier MIDI sur de nouvelles pistes** : « Ouvrir MIDI… » REMPLACE le projet, et un `.mid` lâché sur la fenêtre n'est pas reçu | Fichier ▸ Importer un MIDI dans le projet… ajoute ses pistes à la suite, à la tête de lecture ; un `.mid` lâché sur la fenêtre fait pareil ; annulable ; test `core/` sur la fusion des pistes |
+| D14.4 | **Le dither à l'export 16 et 24 bits** : l'export tronque, et une queue de réverbération à −80 dB devient une distorsion de quantification — Cubase et Live dithérisent | un dither TPDF (± 1 LSB triangulaire) à l'écriture des formats entiers, actif par défaut, éteint par option ; test : un sinus à −90 dB exporté en 16 bits garde un spectre sans harmoniques de quantification (dit en chiffres) |
+| D14.5 | **Retour au début à l'arrêt** (préférence de Cubase ; c'est le défaut de Live) : Stop laisse la tête où elle est, et il faut `Début` ensuite | une préférence, retenue, qui ramène la tête à la position de départ de la lecture quand on arrête |
+
+> **D14.1 ET D14.2 SONT FAITES (04/09/2026).** « Locateurs sur la
+> sélection » (`P`, table des raccourcis, menu Édition) pose la boucle sur
+> l'étendue des clips choisis dans l'arrangement, toutes pistes confondues —
+> à défaut sur les notes choisies du piano roll — et l'active ; la région
+> est posée PARTOUT d'un coup (projet, transport, moteur, les deux vues, le
+> bouton Loop) par une seule fonction, qui remplace six lignes recopiées.
+> Annulable. Et l'arrangement zoome : « Zoom : tout voir » et « Zoom : la
+> sélection » dans son menu, et le raccourci « Ajuster à la fenêtre » vaut
+> désormais pour les deux vues — il n'était entendu que par le piano roll.
+>
+> **D14.3 EST FAITE (04/09/2026).** `appendTracksFrom` vit dans `core/`
+> (`ProjectImport.h`) : les pistes de la source s'ajoutent à la suite,
+> leurs ticks ramenés à la résolution du projet (un fichier à 960 ppq
+> jouerait deux fois trop lentement dans un projet à 480), posées à la tête
+> de lecture, avec des identifiants de notes et de clips neufs ; le tempo et
+> les mesures du fichier sont IGNORÉS et comptés — le projet garde les
+> siens, et l'application le dit. Deux tests. Fichier ▸ Importer un MIDI
+> dans le projet…, et un `.mid` lâché sur la fenêtre fait pareil ; annulable.
+>
+> **D14.4 EST FAITE (04/09/2026), et son banc a dû réécrire sa forme.**
+> `WavFileWriter` ajoute un bruit TPDF de ± 1 LSB (deux tirages uniformes
+> d'un générateur déterministe à graine fixe : l'export reste reproductible
+> octet pour octet) avant l'arrondi des formats entiers, sans effet sur le
+> flottant ; `RenderOptions::dither` (vrai par défaut) et `vsm-render
+> --sans-dither`. L'attendu disait « un sinus de 1 LSB tronqué est un carré,
+> troisième harmonique à un tiers » : l'écrivain ARRONDIT, il ne tronque
+> pas, et un sinus d'un LSB arrondi est un escalier à trois niveaux dont la
+> troisième harmonique ne vaut que 0,022 — ce sont les cinquième et septième
+> qui ressortent (0,186 et 0,151). Le banc juge donc le profil entier,
+> harmoniques 2 à 12 : pire harmonique 0,186 sans dither, **0,012 avec**.
+>
+> **D14.5 EST FAITE (04/09/2026).** Préférences ▸ Audio ▸ « À l'arrêt :
+> revenir au point de départ », retenue dans le fichier de préférences. La
+> transition se voit sur l'horloge unique, dans le minuteur — quel que soit
+> le chemin qui a arrêté le transport (le bouton, la barre d'espace, une
+> commande MIDI apprise) : un seul endroit, pas quatre.
+
+
 ## 4. Les choix tranchés ici, et pourquoi
 
 Conformément à l'usage de ce dépôt, les questions ouvertes se referment en

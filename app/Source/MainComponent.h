@@ -150,6 +150,7 @@ private:
     enum MenuItemId {
         kMenuFileNewProject = 1,
         kMenuFileOpen,
+    kMenuFileImportMidiIntoProject,
         kMenuFileOpenBundle,
         kMenuFileImportDaw,
         kMenuFileImportReport,
@@ -179,6 +180,7 @@ private:
         kMenuTrackDuplicate,
     kMenuEditInsertTimeAtLocators,
     kMenuEditDeleteTimeAtLocators,
+    kMenuEditLocatorsFromSelection,
         kMenuTrackFreeze,
         kMenuTrackBounce,
         kMenuTrackClapPlugin,
@@ -469,6 +471,21 @@ private:
     /// tempo, mesures, boucle et punch -- et ce qui est à cheval est coupé.
     /// Les locateurs sont la région de boucle, comme dans Cubase.
     void editTimeAtLocators(bool inserer);
+    /// IMPORTER UN MIDI DANS LE PROJET (D14.3) : ses pistes s'ajoutent à la
+    /// suite, posées à la tête de lecture ; « Ouvrir MIDI » le REMPLACE.
+    void importMidiIntoProject(const juce::File& file);
+    void chooseMidiToImport();
+    /// LA RÉGION DE BOUCLE, POSÉE PARTOUT où elle se voit et s'entend (D14.1) :
+    /// le projet, le transport, le moteur, les deux vues.
+    void setLoopRegionEverywhere(vsm::midi::Tick start, vsm::midi::Tick end, bool active);
+    /// LES LOCATEURS SUR LA SÉLECTION : les clips de l'arrangement, ou à
+    /// défaut les notes du piano roll.
+    void locatorsFromSelection();
+    /// RETOUR AU DÉBUT À L'ARRÊT (D14.5) : la position d'où la lecture est
+    /// partie, et l'état précédent du transport pour voir la transition.
+    bool retourAuDepart_ = false;
+    bool etaitEnLecture_ = false;
+    vsm::midi::Tick departLecture_ = 0;
     /// Ouvre un DOSSIER de projet complet (project.json + MIDI + presets +
     /// échantillons) -- typiquement celui qu'écrit la chaîne d'analyse.
     void openProjectBundle();

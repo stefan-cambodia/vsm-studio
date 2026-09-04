@@ -36,9 +36,12 @@ public:
                   const vsm::interchange::ReconstructionChain& chain,
                   const juce::String& designatedChainFolder,
                   const juce::String& libraryFolder,
-                  int shortcutCount, int midiMappingCount);
+                  int shortcutCount, int midiMappingCount, bool returnToStartOnStop = false);
 
     std::function<void(float)> onUiScaleChanged;
+    /// RETOUR AU DÉBUT À L'ARRÊT (D14.5) : la préférence de Cubase, le défaut
+    /// de Live. Stop ramène la tête là où la lecture était partie.
+    std::function<void(bool)> onReturnToStartChanged;
     /// -1 = automatique.
     std::function<void(int)> onRenderThreadsChanged;
     std::function<void()> onChooseChainFolder;
@@ -52,6 +55,8 @@ private:
     juce::Label titreAffichage_, titreAudio_, titreChaine_, titreCommandes_;
     juce::Label libelleEchelle_, libelleThreads_, libelleChaine_, etatChaine_;
     juce::ComboBox echelle_, threads_;
+    juce::Label libelleRetour_;
+    juce::ToggleButton retourAuDepart_ { juce::String::fromUTF8(u8"Revenir au point de départ") };
     juce::TextButton choisirChaine_ { u8"Choisir le dossier..." };
     juce::Label titreBibliotheque_, libelleBibliotheque_;
     juce::TextButton choisirBibliotheque_ { u8"Choisir le dossier..." };

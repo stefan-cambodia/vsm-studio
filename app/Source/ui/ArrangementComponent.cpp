@@ -435,6 +435,10 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
             menu.addItem(18, u8"Normaliser (gain = 1 / cr\u00eate)", waveformProvider != nullptr);
             marqueurGeste_ = surMarqueur;
         }
+        // LE ZOOM (D14.2), pour tout clip : tout voir, ou la sélection.
+        menu.addSeparator();
+        menu.addItem(20, u8"Zoom : tout voir");
+        menu.addItem(21, u8"Zoom : la s\u00e9lection");
         const uint64_t id = clip->id;
         const size_t p = piste;
         menu.showMenuAsync(juce::PopupMenu::Options().withTargetScreenArea(
@@ -654,6 +658,39 @@ void ArrangementComponent::mouseDoubleClick(const juce::MouseEvent& event) {
         if (onClipRenameRequested) onClipRenameRequested(piste, clip->id);
 }
 
+bool ArrangementComponent::selectionBounds(vsm::midi::Tick& debut, vsm::midi::Tick& fin) const {
+    if (project_ == nullptr || selection_.empty()) return false;
+    bool trouve = false;
+    vsm::midi::Tick d = 0, f = 0;
+    for (const auto& track : project_->tracks) {
+        vsm::midi::Tick td = 0, tf = 0;
+        if (!clipSelectionBounds(track.clips, selection_, materialEnd(track), td, tf)) continue;
+        if (!trouve) { d = td; f = tf; trouve = true; }
+        else { d = std::min(d, td); f = std::max(f, tf); }
+    }
+    if (trouve) { debut = d; fin = f; }
+    return trouve;
+}
+
+void ArrangementComponent::zoomToFit() {
+    if (project_ == nullptr) return;
+    const vsm::midi::Tick fin = std::max<vsm::midi::Tick>(1, project_->lastUsedTick());
+    const int largeur = std::max(1, getWidth() - kHeaderWidth);
+    pixelsPerTick_ = juce::jlimit(0.0005, 8.0, static_cast<double>(largeur) * 0.96 / static_cast<double>(fin));
+    scrollTick_ = 0;
+    repaint();
+}
+
+void ArrangementComponent::zoomToSelection() {
+    vsm::midi::Tick debut = 0, fin = 0;
+    if (!selectionBounds(debut, fin)) return;
+    const vsm::midi::Tick etendue = std::max<vsm::midi::Tick>(1, fin - debut);
+    const int largeur = std::max(1, getWidth() - kHeaderWidth);
+    pixelsPerTick_ = juce::jlimit(0.0005, 8.0, static_cast<double>(largeur) * 0.9 / static_cast<double>(etendue));
+    scrollTick_ = std::max<vsm::midi::Tick>(0, debut - etendue / 20);
+    repaint();
+}
+
 int ArrangementComponent::marqueurAt(const Clip& clip, float x) const {
     if (!vsm::sequencer::clipIsWarped(clip)) return -1;
     // LE PREMIER MARQUEUR NE SE SAISIT PAS : il est le début du clip, et le
@@ -703,6 +740,8 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
             break;
         }
         case 13: if (onClipBarsRequested) onClipBarsRequested(piste, clipId); return;
+        case 20: zoomToFit(); return;
+        case 21: zoomToSelection(); return;
         case 18: {
             // NORMALISER (D13.6) : le gain devient 1 / crête du matériau JOUÉ.
             // La crête vient du cache d'aperçu, qui garde les extrêmes de

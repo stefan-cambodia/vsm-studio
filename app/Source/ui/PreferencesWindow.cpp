@@ -28,6 +28,10 @@ PreferencesWindow::PreferencesWindow() {
 
     ligne(libelleEchelle_, juce::String::fromUTF8(u8"Taille de l'interface"));
     ligne(libelleThreads_, juce::String::fromUTF8(u8"Threads de rendu"));
+    ligne(libelleRetour_, juce::String::fromUTF8(u8"À l'arrêt"));
+    addAndMakeVisible(libelleRetour_);
+    retourAuDepart_.onClick = [this] { if (onReturnToStartChanged) onReturnToStartChanged(retourAuDepart_.getToggleState()); };
+    addAndMakeVisible(retourAuDepart_);
     ligne(libelleChaine_, juce::String::fromUTF8(u8"Dossier"));
     ligne(etatChaine_, "");
     for (auto* e : {&libelleEchelle_, &libelleThreads_, &libelleChaine_, &etatChaine_})
@@ -90,6 +94,7 @@ void PreferencesWindow::resized() {
     rangee(12);
     titreAudio_.setBounds(rangee(26));
     paire(rangee(30), libelleThreads_, threads_);
+    paire(rangee(30), libelleRetour_, retourAuDepart_);
     rangee(12);
     titreChaine_.setBounds(rangee(26));
     paire(rangee(30), libelleChaine_, choisirChaine_);
@@ -108,7 +113,8 @@ void PreferencesWindow::refresh(float uiScale, int renderThreads, int recommende
                                  const vsm::interchange::ReconstructionChain& chain,
                                  const juce::String& designatedChainFolder,
                                  const juce::String& libraryFolder,
-                                 int shortcutCount, int midiMappingCount) {
+                                 int shortcutCount, int midiMappingCount, bool returnToStartOnStop) {
+    retourAuDepart_.setToggleState(returnToStartOnStop, juce::dontSendNotification);
     const auto& paliers = UiScale::steps();
     for (int i = 0; i < paliers.size(); ++i)
         if (std::abs(paliers[i] - uiScale) < 1.0e-3f)

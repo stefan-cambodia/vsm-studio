@@ -33,6 +33,7 @@ const std::vector<ShortcutCommand>& shortcutCommands() {
         {ShortcutId::EditToggleSnap,    "edit.toggleSnap",  "Édition",   "Aimantation",                    "G",                ""},
         {ShortcutId::EditInsertTimeAtLocators, "edit.insertTimeAtLocators", "Édition", "Insérer du silence entre les locateurs (tout le morceau glisse)", "ctrl + shift + I", ""},
         {ShortcutId::EditDeleteTimeAtLocators, "edit.deleteTimeAtLocators", "Édition", "Supprimer le temps entre les locateurs (tout le morceau glisse)", "ctrl + shift + K", ""},
+        {ShortcutId::EditLocatorsFromSelection, "edit.locatorsFromSelection", "Édition", "Locateurs sur la sélection (la boucle prend son étendue)", "P", ""},
 
         {ShortcutId::ToolSelect,        "tool.select",      "Outils",    "Sélection",                      "1",                ""},
         {ShortcutId::ToolDraw,          "tool.draw",        "Outils",    "Crayon",                         "2",                ""},

@@ -45,6 +45,7 @@ enum class ShortcutId : uint16_t {
     EditToggleSnap,
     EditInsertTimeAtLocators,
     EditDeleteTimeAtLocators,
+    EditLocatorsFromSelection,
 
     ToolSelect,
     ToolDraw,
