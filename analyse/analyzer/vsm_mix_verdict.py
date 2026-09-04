@@ -112,6 +112,9 @@ class MixDecision:
 # s'il a bougé.
 _deja_dit: Dict[str, Tuple[float, float]] = {}
 
+# Voir `_copy_samples` : vrai par défaut, faux seulement pour le témoin.
+COPIER_LES_PISTES_AUDIO = True
+
 
 TrackState = Tuple[str, Dict[str, float], float, str, List[ExportNote]]
 
@@ -231,7 +234,19 @@ def _copy_samples(tracks: Sequence[ExportTrack], samples_root: Path, folder: Pat
     que le rendu qu'elle sert.
     """
     for track in tracks:
-        for chemin_relatif in track.samples.values():
+        fichiers = list(track.samples.values())
+        # LA PISTE AUDIO AUSSI (04/09/2026, CDC multipiste § 12). Le paragraphe
+        # ci-dessus a été écrit quand la voix était une piste de SAMPLER ; la
+        # parité en a fait une piste AUDIO (`audio_path`), que cette boucle ne
+        # voyait pas -- et le verdict s'est de nouveau prononcé sur un morceau
+        # sans la voix, pendant sept campagnes. La preuve : le projet final de
+        # sky-parite-m9 rendu SANS sa piste « Voix » vaut 0,230693, le chiffre
+        # exact du dernier réglage au mélange (0,2307) ; avec elle, 0,244108,
+        # le chiffre final. `COPIER_LES_PISTES_AUDIO` est le témoin de l'A/B
+        # (`--verdict-sans-audio`), jamais un réglage.
+        if COPIER_LES_PISTES_AUDIO and track.audio_path:
+            fichiers.append(track.audio_path)
+        for chemin_relatif in fichiers:
             source = Path(samples_root) / chemin_relatif
             if not source.is_file():
                 continue

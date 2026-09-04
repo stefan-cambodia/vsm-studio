@@ -715,6 +715,66 @@ publie.
 Le script `campagne-7.sh` enchaîne les deux courses et s'arrête à la
 première qui échoue. Départ à 15:38, fin prévue vers 19:40.
 
+## 12. Le verdict jugeait un morceau SANS LA VOIX — trouvé le 04/09/2026 à 16:05, en cherchant « l'aval »
+
+**Comment c'est apparu.** Le § 11 se demandait où naissait l'écart entre le
+dernier réglage au mélange de m9 (0,2307) et sa distance finale (0,2441).
+Une expérience sans course, sur les fichiers publiés de sky-parite-m9,
+rendus par le moteur du jour (64 machines) :
+
+| Rendu du projet final de m9 | Distance v2 |
+|---|---|
+| tel quel (moteur à 63, `reconstruit.wav` publié) | 0,244108 |
+| tel quel, moteur à 64 machines | 0,244108 — le moteur ne change rien |
+| sans le groupe « Batterie » | 0,244108 — le groupe ne change rien |
+| **sans la piste audio « Voix »** | **0,230693 — le chiffre exact du dernier réglage au mélange** |
+
+**La cause.** `_copy_samples` (verdict et réglage au mélange) recopie dans
+le dossier de variante les fichiers des pistes de SAMPLER
+(`track.samples`) ; son propre commentaire raconte la première fois où le
+verdict s'est prononcé sur un mélange sans la voix, quand elle était un
+report vocal. La parité (§ 6) a fait de la voix une piste AUDIO
+(`audio_path`, `vocal_audio_track`), que cette boucle ne voit pas ; le
+mini-projet écrit ailleurs ne trouve pas `samples/voix.wav`, `vsm-render`
+ne s'en plaint que sur une sortie d'erreur que `capture_output` avale, et
+la piste est muette dans CHAQUE rendu du verdict et du réglage. Le
+calage des niveaux (`vsm_levels`) n'est pas touché : il saute les pistes
+sans machine.
+
+**Ce que cela invalide, et ce que cela ne change pas.** Toutes les
+campagnes en parité (2 à 7) ont choisi les machines, les patchs et les
+volumes des pistes mélodiques et de la batterie en jugeant un morceau
+privé de son stem le plus présent : les comparaisons ENTRE candidates
+restent des comparaisons (même absence des deux côtés), mais les volumes
+et les réglages ont été poussés à remplir le vide de la voix, et le
+témoin de coupure (« le morceau est MEILLEUR sans cette piste ») était
+mesuré sans elle. Les distances FINALES publiées, elles, sont justes :
+`rendre_et_mesurer` rend le projet écrit, voix comprise. La correction
+recopie aussi `audio_path` ; `--verdict-sans-audio` en est le témoin, même
+code, et la provenance l'inscrit (`verdictAvecAudio`). Un test verrouille
+les deux (`test_verdict_piste_audio.py`).
+
+**Campagne 8, attendu écrit AVANT (04/09/2026, 16:15).** Une course sur
+*Sky and Sand*, `sky-parite-m9-voix`, mêmes options que sky-parite-m9-v2
+(témoin de la campagne 7, même code à l'option près, qui reproduit
+l'ancien chemin octet pour octet), avec la voix dans le verdict.
+
+| Ce qu'on attend | Chiffre |
+|---|---|
+| distances au verdict et au réglage | de l'ordre de 0,244 et non 0,23 : elles sont désormais comparables à la finale — l'écart « en aval » du § 11 disparaît (moins de 0,5 % entre le dernier réglage et la finale, contre +5,8 % sur m9) |
+| distance finale | entre −4 % et −1 % de m9-v2 : les volumes et réglages de `bass`, `other` et des trois pièces de batterie sont choisis contre le vrai morceau. Au-delà de −4 % je me serai trompé sur le mécanisme dans le bon sens ; entre −1 % et +0,5 %, la présence de la voix ne changeait pas les choix (à publier tel quel) ; au-delà de +0,5 %, la correction fait pire et il faudra comprendre pourquoi avant de la garder |
+| le témoin de coupure du hihat | « meilleur sans » disparaît ou s'inverse : 0,2431 contre 0,2486 était mesuré sans la voix |
+| durée | celle de m9-v2, ± 10 % : rien de plus à rendre, un fichier de plus à lire par rendu |
+
+**Décision écrite d'avance.** La correction reste quoi qu'il arrive : un
+verdict qui juge un autre morceau que celui qu'on rend n'est pas une
+option, et le chiffre de la campagne dit seulement ce qu'elle valait. Si
+le gain est ≥ 1 %, les campagnes 5 à 7 sont à relire à cette lumière avant
+d'en tirer autre chose que ce qu'elles disent déjà (le parc ne coûte
+rien ; neuf finalistes sont une constante du morceau — deux conclusions
+qui reposent sur des comparaisons entre courses toutes privées de voix, et
+qui tiennent donc).
+
 ### En attente de la fin des campagnes (03/09/2026)
 
 Deux retouches sont différées parce qu'elles touchent `audio/` ou

@@ -395,6 +395,7 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
             "budgetMelange": args.budget_melange,
             "toursVerdict": args.tours_verdict,
             "secondVerdict": args.second_verdict,
+            "verdictAvecAudio": not args.verdict_sans_audio,
             "piecesNonIsolees": args.garder_pieces_non_isolees,
             "rendusParalleles": args.rendus_paralleles,
             "cacheRendus": not args.sans_cache_rendus,
@@ -662,6 +663,11 @@ def construire_parseur() -> argparse.ArgumentParser:
                               "jusqu'à ce qu'aucune piste ne change (point fixe), borné "
                               "par ce nombre. 1 = un seul tour, l'ancien comportement — "
                               "c'est le témoin de l'A/B.")
+    parseur.add_argument("--verdict-sans-audio", action="store_true",
+                         help="TÉMOIN de la campagne 8 (CDC multipiste § 12) : juger le "
+                              "mélange SANS ses pistes audio, comme la chaîne le faisait "
+                              "sans le dire depuis que la voix est une piste audio. Ne "
+                              "sert qu'à mesurer ce que la correction change.")
     parseur.add_argument("--second-verdict", type=int, default=0,
                          help="CAMPAGNE 7 (CDC multipiste § 11) : après le réglage au "
                               "mélange de la gagnante de chaque piste mélodique, remettre "
@@ -2284,6 +2290,10 @@ def charger_tous_les_modules() -> None:
 
 def chaine(args: argparse.Namespace) -> None:
     charger_tous_les_modules()
+    if args.verdict_sans_audio:
+        import analyzer.vsm_mix_verdict as _verdict
+        _verdict.COPIER_LES_PISTES_AUDIO = False
+        print("      TÉMOIN : le verdict et le réglage au mélange jugeront SANS les pistes audio")
     """La chaîne entière, de la lecture à l'écoute A/B. Lève `Abandon` pour s'arrêter."""
     entree = valider_entree(args)
     sortie = Path(args.sortie).expanduser()

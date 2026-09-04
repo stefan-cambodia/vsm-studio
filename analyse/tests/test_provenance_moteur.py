@@ -167,7 +167,7 @@ def _args(**surcharges):
         sans_separation=False, sans_sampler=False, sans_arbitrage=False,
         sans_arbitrage_batterie=False, sans_reglage_piste=False, sans_recherche=True,
         machines_au_melange=6, sans_reglage_melange=False, budget_melange=30,
-        tours_verdict=3, second_verdict=0, garder_pieces_non_isolees=False, rendus_paralleles=8,
+        tours_verdict=3, second_verdict=0, verdict_sans_audio=False, garder_pieces_non_isolees=False, rendus_paralleles=8,
         sans_cache_rendus=False, budget_piste=120, axes_piste=21, finalistes=None,
         preselection_apprise=0, machines="", machines_exclues="",
         modele="htdemucs", stems="", voix_par_stem=0, batterie_par_piece=False, voix_tete_choeurs=False, voix_par_vides=False, reverb_melange=False,
