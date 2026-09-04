@@ -3374,7 +3374,7 @@ l'entrée audio par piste : à revérifier avec une carte multi-entrées sous
 la main, pas sur un relevé de code.
 
 
-### Phase D16 — Le cinquième audit : ce qui manque encore une fois D15 posée (04/09/2026, 22:30)
+### Phase D16 — Le cinquième audit : ce qui manque encore une fois D15 posée (04/09/2026, 22:30) — **TERMINÉE (04/09/2026, 23:45)**
 
 **Pourquoi.** Même méthode que D11, D13, D14 et D15, même garde-fou :
 quarante-cinq gestes de Cubase et de Live relevés et VÉRIFIÉS un par un
