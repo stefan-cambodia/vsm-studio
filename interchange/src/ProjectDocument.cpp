@@ -113,7 +113,8 @@ JsonValue clipToJson(const ProjectClip& clip) {
     // LE SUIVI DE TEMPO (D12), écrit seulement s'il est allumé : c'est ce qui
     // laisse un projet sans étirement en version 2.
     if (clip.warpMode != 0) {
-        c.set("warp", JsonValue::makeString(clip.warpMode == 2 ? "repitch" : "keepPitch"));
+        c.set("warp", JsonValue::makeString(clip.warpMode == 2 ? "repitch"
+                                            : clip.warpMode == 3 ? "keepPitchWsola" : "keepPitch"));
         JsonValue marqueurs = JsonValue::makeArray();
         for (const auto& [secondes, tick] : clip.warpMarkers) {
             JsonValue m = JsonValue::makeObject();
@@ -142,7 +143,7 @@ ProjectClip clipFromJson(const JsonValue& clipJson) {
     clip.gain = static_cast<float>(clipJson["gain"].asNumber(1.0));
     clip.invertPhase = clipJson["invertPhase"].asBoolean(false);
     const std::string warp = clipJson["warp"].asString();
-    clip.warpMode = warp == "keepPitch" ? 1 : warp == "repitch" ? 2 : 0;
+    clip.warpMode = warp == "keepPitch" ? 1 : warp == "repitch" ? 2 : warp == "keepPitchWsola" ? 3 : 0;
     for (const auto& m : clipJson["warpMarkers"].elements())
         clip.warpMarkers.emplace_back(m["seconds"].asNumber(0.0),
                                       static_cast<int64_t>(m["tick"].asNumber(0.0)));
@@ -180,6 +181,7 @@ vsm::sequencer::Clip clipToModel(const ProjectClip& clip) {
                            vsm::sequencer::WarpMode::Off, {}, 0};
     c.warpMode = clip.warpMode == 1 ? vsm::sequencer::WarpMode::KeepPitch
                : clip.warpMode == 2 ? vsm::sequencer::WarpMode::Repitch
+               : clip.warpMode == 3 ? vsm::sequencer::WarpMode::KeepPitchWsola
                                     : vsm::sequencer::WarpMode::Off;
     for (const auto& [secondes, tick] : clip.warpMarkers) c.warpMarkers.push_back({secondes, tick});
     return c;

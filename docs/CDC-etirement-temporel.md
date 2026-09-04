@@ -152,7 +152,7 @@ D12 utilisable avant tout suiveur de temps.
 | D12.2 | `TimeStretch` : le WSOLA, la recherche de similarité, le court-circuit à 1,0 | bancs 1, 2, 3 (première moitié), 5, 6, 7 — **fait le 04/09/2026** (banc 7 au moment de D12.5, dans `process()`) |
 | D12.3 | la détection de transitoires (flux d'énergie sur le matériau, à la publication, mise en cache par fichier comme les crêtes de forme d'onde) et le verrouillage | banc 4 — **fait le 04/09/2026** (le cache par fichier attend D12.5) |
 | D12.4 | le modèle : `warpMode`, `warpMarkers`, les gestes de `ClipEdit`, le format | tests `core/` et `interchange/` ; un projet v2 s'ouvre inchangé — **fait le 04/09/2026** |
-| D12.5 | le moteur : la carte par morceaux dans `AudioClipSpan`, `mixInto()` à travers l'étireur, `vsm-render` | banc 3 (seconde moitié), 9 ; `ProcessGraph` intact — **fait le 04/09/2026** |
+| D12.5 | le moteur : la carte par morceaux dans `AudioClipSpan`, `mixInto()` à travers l'étireur, `vsm-render` | banc 3 (seconde moitié), 9 ; `ProcessGraph` intact — **fait le 04/09/2026** ; depuis D12.8, l'étireur de « hauteur conservée » est le vocodeur de phase, le WSOLA le témoin |
 | D12.6 | l'interface : le menu du clip, « N mesures », les marqueurs sur la forme d'onde, la forme dessinée en temps étiré, annulation | vu à l'écran, `VSM_CAPTURE`, réglages retenus — **fait le 04/09/2026** |
 | D12.7 | le critère de phase sur *Sky and Sand* | ≤ 10 ms sur huit mesures à +10 % de tempo — **mesuré le 04/09/2026 : −8 ms sur les huit mesures, 14 ms sur la pire mesure prise seule ; voir la note** |
 
@@ -417,6 +417,39 @@ Si le banc 8 tient, le mode « Hauteur conservée » passe au vocodeur pour
 tous les clips, et le WSOLA reste dans le dépôt comme témoin et comme
 solution de repli (une option de clip, dite). S'il ne tient pas, le WSOLA
 reste le défaut, et le chiffre du vocodeur se publie à côté du sien.
+
+> **D12.8 EST TRANCHÉE : LE VOCODEUR TIENT LE BANC 8, ET IL EST LE DÉFAUT
+> (04/09/2026).** `audio/include/vsm/audio/dsp/PhaseVocoder.h`, et la
+> transformée directe ajoutée à `RealFft.h`. Le banc,
+> `test_phase_vocoder.cpp`, puis le critère de phase refait par
+> `mesure_d12_critere_de_phase.py` avec l'algorithme ÉCRIT DANS LE CLIP
+> (`keepPitch` = vocodeur, `keepPitchWsola` = témoin) — les deux chiffres
+> sortent du même script, du même rendu, de la même mesure :
+>
+> | # | attendu | mesuré |
+> |---|---|---|
+> | 1 | ≤ 5 cents | **0,0 cent** à ×0,75 et ×1,5 |
+> | 2 | sonne jusqu'à round(N·r), silence après | 0,348 avant la fin, **0,000000** après, aux deux rapports |
+> | 3 | rapport 1 au bit près | **identique** |
+> | 4 | 16 attaques à ≤ 1 ms, ×1,5 et ×0,66 | **16 et 16, 0,98 ms** (le retard constant du détecteur du banc) — la remise à zéro des phases tient |
+> | 5 | déterministe, blocs 256 = 4 096 | **identiques au bit près** |
+> | 6 | ≤ 2 ms sur une voix de synthèse, « et le WSOLA fait plus » | **RÉFUTÉ dans sa prémisse** : le vocodeur est à 4 ms et le WSOLA à 2 ms sur ce signal — périodique, donc le meilleur cas de la recherche de similarité ; le flottement de D12.7 tient à l'apériodicité d'une VRAIE voix, que la synthèse ne reproduit pas. Réécrit avant le banc 8 : ≤ 4 ms, chiffre publié, et le juge est le banc 8 |
+> | 7 | rapports des partiels à ± 20 %, creux ≤ 10 % | **0,0 %** d'écart sur h2 à h5 (0,500 · 0,333 · 0,250 · 0,200), creux **7,1 %** — le verrouillage de pics tient |
+> | 8 | ≤ 10 ms sur chaque mesure, ≤ 5 ms sur les huit | **vocodeur : −2 ms sur les huit (r 0,956), pire mesure 4 ms** (−4, −2, 0, 0, −2, −4, −2, 0) ; **WSOLA, même script : −8 ms (r 0,930), pire mesure 14 ms** (−12, 0, −8, −4, −14, −10, −12, −2) ; sans suivi : r 0,332 |
+>
+> **Décision, telle qu'elle était écrite d'avance** : « Hauteur conservée »
+> (`WarpMode::KeepPitch`) est rendue par le vocodeur de phase ; le WSOLA
+> devient `WarpMode::KeepPitchWsola`, « Hauteur conservée (WSOLA, témoin) »
+> dans le sous-menu du clip et `keepPitchWsola` dans le fichier de projet.
+> La variable d'environnement qui avait servi au premier A/B a été RETIRÉE
+> le jour même : une option qui conditionne le résultat se lit dans le
+> projet, pas dans l'environnement du processus. Ce que le vocodeur ne fait
+> pas mieux, et qui est dit : son creux d'enveloppe autour d'une trame
+> coupée est le même que celui du WSOLA (quatre trames se recouvrent, la
+> somme des fenêtres au carré ne vaut 1,5 que si les quatre sont là) ; et
+> son coût est une transformée aller-retour par saut de 512 échantillons,
+> de l'ordre de cent multiplications par échantillon et par canal — le
+> double du WSOLA, sans conséquence à vingt clips sur cette machine.
 
 ## 8. Ce qui n'est pas au programme, et pourquoi
 

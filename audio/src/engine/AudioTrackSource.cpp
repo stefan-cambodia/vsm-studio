@@ -30,10 +30,21 @@ inline float fadeGain(int64_t position, int64_t length,
 // ---------------------------------------------------------------------------
 
 void ClipWarp::prepare() {
+    // Le WSOLA est toujours armé : sa carte sert aussi à `sourceFor`, dont le
+    // mode rééchantillonné a besoin. Le vocodeur ne l'est que s'il joue.
     stretch.prepare(kMaxBlock);
     if (map.size() >= 2) stretch.setMap(map.data(), static_cast<int>(map.size()));
     if (transients && !transients->empty())
         stretch.setTransients(transients->data(), static_cast<int>(transients->size()));
+    if (vocoder && !repitch) {
+        phaseVocoder.prepare(kMaxBlock);
+        std::vector<vsm::audio::dsp::PhaseVocoder<SampleStore>::MapPoint> points;
+        points.reserve(map.size());
+        for (const auto& p : map) points.push_back({p.outputFrame, p.sourceFrame});
+        if (points.size() >= 2) phaseVocoder.setMap(points.data(), static_cast<int>(points.size()));
+        if (transients && !transients->empty())
+            phaseVocoder.setTransients(transients->data(), static_cast<int>(transients->size()));
+    }
     scratchL.assign(static_cast<size_t>(kMaxBlock), 0.0f);
     scratchR.assign(static_cast<size_t>(kMaxBlock), 0.0f);
     // LE NOYAU DU MODE RÉÉCHANTILLONNÉ est réglé sur le rapport le PLUS RAPIDE
@@ -97,6 +108,8 @@ int AudioTrackSource::mixInto(float* outLeft, float* outRight,
                         w.kernel.stereoAt(lire, w.sourceFor(position + i),
                                            w.scratchL[static_cast<size_t>(i)],
                                            w.scratchR[static_cast<size_t>(i)]);
+                } else if (w.vocoder) {
+                    w.phaseVocoder.render(*samples, position, n, w.scratchL.data(), w.scratchR.data(), 1.0f);
                 } else {
                     w.stretch.render(*samples, position, n, w.scratchL.data(), w.scratchR.data(), 1.0f);
                 }
@@ -182,6 +195,9 @@ std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
             span.invertPhase = clip.invertPhase;
             auto warp = std::make_shared<ClipWarp>();
             warp->repitch = clip.warpMode == vsm::sequencer::WarpMode::Repitch;
+            // LE VOCODEUR EST LE DÉFAUT DE « HAUTEUR CONSERVÉE » (D12.8, banc
+            // 8 tenu) ; le WSOLA reste le témoin, choisi par le clip.
+            warp->vocoder = clip.warpMode == vsm::sequencer::WarpMode::KeepPitch;
             for (const auto& m : clip.warpMarkers) {
                 const double sortieSecondes = ticksToSeconds(static_cast<int64_t>(clip.startTick) + m.tick);
                 warp->map.push_back({static_cast<int64_t>(std::llround(sortieSecondes * sampleRate)),

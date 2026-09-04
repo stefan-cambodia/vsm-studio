@@ -41,6 +41,16 @@ public:
         }
     }
 
+    /// LA TRANSFORMÉE DIRECTE (D12.8) : `kSize` échantillons réels dans `in`,
+    /// `kBins` cases complexes dans `re`/`im`. Écrite ici pour la même raison
+    /// que l'inverse -- le vocodeur de phase en a besoin, et elle tient dans
+    /// le même noyau radix-2 : une copie, une transformation, une lecture.
+    void forward(const float* in, float* re, float* im) {
+        for (size_t k = 0; k < kSize; ++k) { reT_[k] = in[k]; imT_[k] = 0.0f; }
+        transformer();
+        for (size_t k = 0; k < kBins; ++k) { re[k] = reT_[k]; im[k] = imT_[k]; }
+    }
+
     /// `re`/`im` : `kBins` cases. Écrit `kSize` échantillons réels dans `out`.
     void inverse(const float* re, const float* im, float* out) {
         // Symétrie hermitienne : un signal réel a `X[N-k] = conj(X[k])`. On la

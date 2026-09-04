@@ -136,9 +136,10 @@ struct ProjectClip {
     double fadeOutSeconds = 0.0;
     float gain = 1.0f;
     bool invertPhase = false;
-    /// Le suivi de tempo (D12) : 0 = éteint, 1 = hauteur conservée,
-    /// 2 = rééchantillonné ; et les marqueurs (secondes de fichier, tick
-    /// relatif au début du clip). Voir `vsm::sequencer::Clip`.
+    /// Le suivi de tempo (D12) : 0 = éteint, 1 = hauteur conservée (vocodeur
+    /// de phase), 2 = rééchantillonné, 3 = hauteur conservée par le WSOLA (le
+    /// témoin) ; et les marqueurs (secondes de fichier, tick relatif au début
+    /// du clip). Voir `vsm::sequencer::Clip`.
     int warpMode = 0;
     std::vector<std::pair<double, int64_t>> warpMarkers;
 };

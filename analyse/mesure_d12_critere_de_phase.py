@@ -22,7 +22,8 @@ fabrique à lui seul des dizaines de millisecondes d'écart (mesuré : 124 ms
 le critère demande — la voix est-elle LÀ où elle doit être — et rien d'autre.
 
     analyse/.venv/bin/python analyse/mesure_d12_critere_de_phase.py \\
-        reconstruction/travail/sky-parite build/tools/vsm-render dossier-de-travail
+        reconstruction/travail/sky-parite build/tools/vsm-render dossier-de-travail \\
+        [début-s] [durée-s] [keepPitch|keepPitchWsola]
 """
 import copy
 import json
@@ -37,7 +38,7 @@ PAS = 0.002          # la résolution de la mesure : 2 ms
 FACTEUR = 1.1        # +10 % de tempo
 
 
-def ecrire_projets(source, travail):
+def ecrire_projets(source, travail, algo="keepPitch"):
     d = json.load(open(os.path.join(source, "project.json"), encoding="utf-8"))
     voix = next(t for t in d["tracks"] if (t.get("audio") or {}).get("file"))
     a = voix["audio"]
@@ -60,7 +61,7 @@ def ecrire_projets(source, travail):
                 clip = {"sourceStart": 0, "sourceLength": longueur, "start": 0,
                         "length": longueur, "color": "#FF4BB3A6", "name": "Voix"}
                 if warp:
-                    clip["warp"] = "keepPitch"
+                    clip["warp"] = algo
                     clip["warpMarkers"] = [{"seconds": 0.0, "tick": 0},
                                            {"seconds": duree, "tick": longueur}]
                 t["clips"] = [clip]
@@ -114,8 +115,12 @@ def main():
     source, vsm_render, travail = sys.argv[1:4]
     debut = float(sys.argv[4]) if len(sys.argv) > 4 else 130.0     # sky-parite : la voix entre à 151,8 s
     duree = float(sys.argv[5]) if len(sys.argv) > 5 else 60.0
+    # L'ALGORITHME EST ÉCRIT DANS LE CLIP (« keepPitch » = vocodeur de phase,
+    # « keepPitchWsola » = le témoin) : l'A/B se lit dans le fichier de projet.
+    algo = sys.argv[6] if len(sys.argv) > 6 else "keepPitch"
     os.makedirs(travail, exist_ok=True)
-    bpm0 = ecrire_projets(source, travail)
+    bpm0 = ecrire_projets(source, travail, algo)
+    print(f"algorithme du clip étiré : {algo}")
     rendre(vsm_render, travail, debut, duree)
 
     a, sr = voix(travail, "ref")

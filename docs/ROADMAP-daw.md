@@ -3039,6 +3039,15 @@ chantier lourd en dernier.
 > attendus réécrits et les deux pannes trouvées par la mesure (un ordre
 > d'évaluation en C++, un rendu hors ligne qui exportait un clip calé sans
 > son calage) sont dans `docs/CDC-etirement-temporel.md`.
+>
+> **D12.8 AUSSI, LE JOUR MÊME : le vocodeur de phase, et il est le défaut.**
+> Écrit sur le chiffre que D12.7 lui léguait (14 ms de flottement de grain
+> sur la pire mesure), avec verrouillage de pics et phases remises à zéro
+> aux transitoires ; même banc que le WSOLA, tenu (0,0 cent, seize attaques
+> à 0,98 ms, partiels à 0,0 %, blocs au bit près), et le critère de phase
+> refait par le même script : **−2 ms sur huit mesures, 4 ms sur la pire**,
+> contre −8 et 14 au WSOLA — qui reste dans le dépôt comme témoin, une
+> option de clip écrite dans le projet.
 
 Ce que l'audit a trouvé et qui n'entre PAS ici, avec la raison : la
 sélection de notes par vélocité (le filtre existe sous forme d'opérations

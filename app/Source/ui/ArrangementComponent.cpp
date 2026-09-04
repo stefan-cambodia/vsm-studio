@@ -423,6 +423,8 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
             suivi.addItem(10, u8"Non", true, clip->warpMode == WarpMode::Off);
             suivi.addItem(11, u8"Hauteur conserv\u00e9e", true, clip->warpMode == WarpMode::KeepPitch);
             suivi.addItem(12, u8"R\u00e9\u00e9chantillonn\u00e9", true, clip->warpMode == WarpMode::Repitch);
+            suivi.addItem(16, u8"Hauteur conserv\u00e9e (WSOLA, t\u00e9moin)", true,
+                          clip->warpMode == WarpMode::KeepPitchWsola);
             menu.addSubMenu(u8"Suivre le tempo", suivi);
             menu.addItem(13, u8"Le clip fait N mesures\u2026");
             const int surMarqueur = marqueurAt(*clip, point.x);
@@ -676,10 +678,11 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
                     if (selection_.count(c.id) > 0 || c.id == clipId) c.muted = muet;
             break;
         }
-        case 10: case 11: case 12: {
+        case 10: case 11: case 12: case 16: {
             using vsm::sequencer::WarpMode;
             const WarpMode mode = choix == 11 ? WarpMode::KeepPitch
-                                : choix == 12 ? WarpMode::Repitch : WarpMode::Off;
+                                : choix == 12 ? WarpMode::Repitch
+                                : choix == 16 ? WarpMode::KeepPitchWsola : WarpMode::Off;
             if (it->warpMode == mode) return;
             if (onEditStarted) onEditStarted(u8"Suivre le tempo");
             // ALLUMER EST NEUTRE : la paire de marqueurs posée vaut le rapport

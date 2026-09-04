@@ -96,10 +96,14 @@ struct ProgramChangePoint   { Tick tick; uint8_t channel; uint8_t program; };
 /// LE SUIVI DE TEMPO D'UN CLIP AUDIO (D12, `docs/CDC-etirement-temporel.md`).
 ///
 /// `Off` : le contenu est du temps réel, comme depuis D2. `KeepPitch` : la
-/// durée suit le tempo et la hauteur ne bouge pas (WSOLA). `Repitch` : la
-/// durée suit le tempo et la hauteur suit avec, comme un vinyle qu'on
-/// ralentit (rééchantillonnage).
-enum class WarpMode : uint8_t { Off = 0, KeepPitch = 1, Repitch = 2 };
+/// durée suit le tempo et la hauteur ne bouge pas -- par le VOCODEUR DE
+/// PHASE depuis D12.8 (banc 8 : −2 ms sur huit mesures de *Sky and Sand*,
+/// contre −8 au WSOLA). `Repitch` : la durée suit le tempo et la hauteur suit
+/// avec, comme un vinyle qu'on ralentit (rééchantillonnage). `KeepPitchWsola` :
+/// la hauteur conservée par le WSOLA, gardé comme TÉMOIN et comme repli --
+/// une option de clip, écrite dans le projet, pour qu'un A/B se lise dans le
+/// fichier et non dans une variable d'environnement.
+enum class WarpMode : uint8_t { Off = 0, KeepPitch = 1, Repitch = 2, KeepPitchWsola = 3 };
 
 /// UN MARQUEUR DE WARP : une paire (position dans le FICHIER, en secondes ;
 /// position MUSICALE, en ticks depuis le début du clip). Entre deux

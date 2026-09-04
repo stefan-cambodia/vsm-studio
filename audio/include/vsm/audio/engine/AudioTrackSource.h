@@ -1,4 +1,5 @@
 #pragma once
+#include "vsm/audio/dsp/PhaseVocoder.h"
 #include "vsm/audio/dsp/SincResampler.h"
 #include "vsm/audio/dsp/TimeStretch.h"
 #include "vsm/audio/engine/SampleStore.h"
@@ -35,9 +36,14 @@ struct ClipWarp {
     /// taille maximale de bloc jusqu'ici.
     static constexpr int kMaxBlock = 8192;
 
-    /// `false` : hauteur conservée (WSOLA). `true` : rééchantillonné, la
-    /// hauteur suit la durée comme un vinyle qu'on ralentit.
+    /// `false` : hauteur conservée. `true` : rééchantillonné, la hauteur
+    /// suit la durée comme un vinyle qu'on ralentit.
     bool repitch = false;
+    /// Hauteur conservée PAR LE VOCODEUR DE PHASE (D12.8) -- le défaut de
+    /// `WarpMode::KeepPitch` depuis que le banc 8 l'a tranché -- ou par le
+    /// WSOLA (`WarpMode::KeepPitchWsola`, le témoin). Décidé par le clip, à la
+    /// publication, jamais dans `process()`.
+    bool vocoder = false;
     /// La carte, sur la ligne de temps ABSOLUE (trames), vers le fichier.
     std::vector<vsm::audio::dsp::TimeStretch<SampleStore>::MapPoint> map;
     /// Les attaques du matériau, partagées par toutes les portées d'une piste :
@@ -45,6 +51,7 @@ struct ClipWarp {
     std::shared_ptr<const std::vector<int64_t>> transients;
 
     mutable vsm::audio::dsp::TimeStretch<SampleStore> stretch;
+    mutable vsm::audio::dsp::PhaseVocoder<SampleStore> phaseVocoder;
     mutable std::vector<float> scratchL, scratchR;
     vsm::audio::dsp::SincResampler kernel;
 

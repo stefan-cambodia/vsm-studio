@@ -873,4 +873,11 @@ VSM_TEST(warp_survives_the_trip_through_the_model_and_bumps_the_version_only_whe
 
     // Et un lecteur de la version 2 REFUSERAIT ce fichier : c'est voulu.
     VSM_ASSERT(kProjectVersion == 3 && kProjectVersionWithoutWarp == 2);
+
+    // Le témoin (WSOLA) est un mode à part entière, et il fait l'aller-retour.
+    project.tracks[0].clips[0].warpMode = vsm::sequencer::WarpMode::KeepPitchWsola;
+    const ProjectLoadResult temoin = parseProjectDocument(
+        projectDocumentToJson(documentFromProject(project)).toString());
+    VSM_ASSERT(temoin.success);
+    VSM_ASSERT_EQ(temoin.document.tracks[0].clips[0].warpMode, 3);
 }

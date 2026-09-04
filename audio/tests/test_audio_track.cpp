@@ -321,6 +321,26 @@ VSM_TEST(a_clip_warped_at_ratio_one_plays_the_original_bit_for_bit) {
     VSM_ASSERT(wr == nr);
 }
 
+VSM_TEST(keep_pitch_uses_the_phase_vocoder_and_the_witness_uses_wsola) {
+    // D12.8 : le choix d'algorithme est celui du CLIP, écrit dans le projet.
+    auto a = pisteSinus(220.0, 1.0), b = pisteSinus(220.0, 1.0);
+    a->clips = spansFromTrack(pisteAvecClip(vsm::sequencer::WarpMode::KeepPitch, 1.0, 1920), 48000.0, enSecondes960);
+    b->clips = spansFromTrack(pisteAvecClip(vsm::sequencer::WarpMode::KeepPitchWsola, 1.0, 1920), 48000.0, enSecondes960);
+    prepareWarpedSpans(*a);
+    prepareWarpedSpans(*b);
+    VSM_ASSERT(a->clips[0].warp && a->clips[0].warp->vocoder && !a->clips[0].warp->repitch);
+    VSM_ASSERT(b->clips[0].warp && !b->clips[0].warp->vocoder && !b->clips[0].warp->repitch);
+    // Les deux jouent deux secondes de la3 ; ils ne sont pas identiques (deux
+    // algorithmes), mais tous deux tiennent la hauteur.
+    auto [al, ar] = jouer(*a, 100000, 512);
+    auto [bl, br] = jouer(*b, 100000, 512);
+    VSM_ASSERT(al != bl);
+    for (const auto* x : {&al, &bl}) {
+        const double pic = picHz960(*x, 24000, 48000, 210.0, 230.0);
+        VSM_ASSERT(std::abs(1200.0 * std::log2(pic / 220.0)) <= 5.0);
+    }
+}
+
 VSM_TEST(a_warped_clip_plays_longer_and_keeps_its_pitch) {
     // Une seconde de matériau déclarée durer DEUX secondes (1920 ticks) : le
     // clip joue deux secondes, et le la3 reste un la3.
