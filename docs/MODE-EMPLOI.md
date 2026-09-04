@@ -35,6 +35,8 @@ Un échantillon glissé depuis le navigateur tombe sur la piste survolée, **à 
 
 **Insérer ou retirer une plage de temps.** Placez les locateurs (la boucle) sur la plage, puis Édition ▸ **Insérer du silence entre les locateurs** (Ctrl+Maj+I) ou **Supprimer le temps entre les locateurs** (Ctrl+Maj+K) : tout le morceau glisse — notes, clips, automation, repères, tempo et mesures de toutes les pistes ensemble — et ce qui est à cheval sur la plage est coupé. C'est l'outil qui retire une mesure d'un arrangement sans la retirer piste par piste.
 
+**Normaliser.** Le clic droit sur un clip audio propose *Normaliser* : le gain du clip devient l'inverse de la crête de ce qu'il joue, et la forme d'onde le montre.
+
 **À l'envers.** Le clic droit sur un clip audio propose *À l'envers* : le clip lit sa fenêtre à rebours (une cymbale inversée, une traîne qui monte), sa forme d'onde se dessine à l'envers, et cela se sauvegarde ; un clip qui suit le tempo reste étiré, à l'envers.
 
 **Deux prises bout à bout.** Deux clips audio qui se chevauchent sur une même piste se **fondent** l'un dans l'autre sur leur chevauchement (hachuré) : le premier s'éteint pendant que le second monte, comme dans Cubase ou Live — ils ne s'additionnent pas. Un fondu que vous avez réglé plus long est gardé.

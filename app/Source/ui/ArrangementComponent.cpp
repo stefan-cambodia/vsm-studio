@@ -432,6 +432,7 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
                                                           && surMarqueur < 0);
             menu.addItem(15, u8"Retirer ce marqueur", surMarqueur > 0);
             menu.addItem(17, u8"\u00c0 l'envers", true, clip->reversed);
+            menu.addItem(18, u8"Normaliser (gain = 1 / cr\u00eate)", waveformProvider != nullptr);
             marqueurGeste_ = surMarqueur;
         }
         const uint64_t id = clip->id;
@@ -702,6 +703,27 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
             break;
         }
         case 13: if (onClipBarsRequested) onClipBarsRequested(piste, clipId); return;
+        case 18: {
+            // NORMALISER (D13.6) : le gain devient 1 / crête du matériau JOUÉ.
+            // La crête vient du cache d'aperçu, qui garde les extrêmes de
+            // chaque tranche de 256 trames : c'est exactement ce qu'il faut, et
+            // il est déjà là -- pas besoin de relire le fichier.
+            if (!waveformProvider) return;
+            auto cache = waveformProvider(piste);
+            if (!cache) return;
+            const double sr = sampleRateProvider ? sampleRateProvider() : 48000.0;
+            const auto jouee = clipPlayedLength(*it, materialEnd(track));
+            const auto depart = static_cast<int64_t>(it->sourceStartSeconds * sr);
+            const double duree = project_->ticksToSeconds(it->startTick + jouee) - project_->ticksToSeconds(it->startTick);
+            const auto arrivee = depart + static_cast<int64_t>(duree * sr);
+            const auto tranches = vsm::audio::io::peaksForRange(*cache, depart, std::max(arrivee, depart + 1), 1024);
+            float crete = 0.0f;
+            for (const auto& t : tranches) crete = std::max({crete, std::abs(t.minimum), std::abs(t.maximum)});
+            if (crete < 1e-6f) return;   // du silence ne se normalise pas
+            if (onEditStarted) onEditStarted(u8"Normaliser un clip");
+            it->gain = 1.0f / crete;
+            break;
+        }
         case 17: {
             // Sur toute la sélection, chacun le sien -- comme la phase.
             if (onEditStarted) onEditStarted(u8"Clip \u00e0 l'envers");

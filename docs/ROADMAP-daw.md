@@ -3128,6 +3128,13 @@ de D12 (D13.2) et l'arrangement global (D13.3) avant le confort.
 > trame près (pire écart 10⁻⁷), étirée ×2 aussi. Menu du clip « À
 > l'envers » (sur la sélection, chacun le sien), la forme d'onde se dessine
 > à l'envers.
+>
+> **D13.6 EST FAITE (04/09/2026).** Menu du clip « Normaliser (gain =
+> 1 / crête) » : la crête du matériau joué vient du cache d'aperçu, qui
+> garde les extrêmes de chaque tranche de 256 trames — exactement ce qu'il
+> faut, déjà là, sans relire le fichier — et le gain du clip devient son
+> inverse ; le silence ne se normalise pas ; annulable, et le gain se voit
+> dans la forme d'onde comme tout gain de clip.
 
 ## 4. Les choix tranchés ici, et pourquoi
 
