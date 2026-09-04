@@ -443,9 +443,17 @@ def mesurer_arbitrage_et_bornes(verite: dict, morceau: Path, rapport: dict, pist
             entree["distance_chaine"] = par_nom[nom].get("trackDistance", par_nom[nom].get("distance"))
             entree["machine_chaine"] = par_nom[nom].get("machine")
         if classement:
-            machines = [c["machine"] for c in classement]
+            # Le rang se compte en MACHINES distinctes, dans l'ordre du classement
+            # (une machine y figure plusieurs fois : patch cherché, patch
+            # d'usine, un par profil). Sur Sky and Sand, 194 entrées pour 59
+            # machines ; « top 6 » veut dire six machines, pas six lignes.
+            machines: List[str] = []
+            for c in classement:
+                if c["machine"] not in machines:
+                    machines.append(c["machine"])
             entree["rang"] = machines.index(partie["machine"]) + 1 if partie["machine"] in machines else None
             entree["candidates"] = len(machines)
+            entree["entrees_du_classement"] = len(classement)
             if entree["rang"] is None:
                 entree["note"] = "la vraie machine n'a pas concouru"
         else:
