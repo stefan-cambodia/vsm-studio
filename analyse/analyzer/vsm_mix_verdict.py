@@ -113,6 +113,74 @@ class MixDecision:
 _deja_dit: Dict[str, Tuple[float, float]] = {}
 
 
+TrackState = Tuple[str, Dict[str, float], float, str, List[ExportNote]]
+
+
+def track_state(track: ExportTrack) -> TrackState:
+    """L'état d'une piste tel que le verdict le photographie : machine, patch,
+    volume, profil, notes -- ce qu'il faut pour la remettre comme elle était."""
+    return (track.machine, dict(track.parameters), float(track.volume),
+            str(track.profile), list(track.notes))
+
+
+def restore_track_state(track: ExportTrack, state: TrackState, machine_avant: str) -> None:
+    track.machine, track.parameters, track.volume, track.profile = (
+        state[0], dict(state[1]), state[2], state[3])
+    track.notes = list(state[4])
+    if track.machine != machine_avant:
+        track.machine_display_name = ""
+
+
+def install_alternative(track: ExportTrack, tracks: Sequence[ExportTrack],
+                        proposition: MixAlternative, etat_courant: TrackState,
+                        stems_audio: Dict[str, np.ndarray], samples_root: Path,
+                        sample_rate: int, profiles: Optional[Dict[str, str]],
+                        groupes: Optional[Dict[str, str]]) -> None:
+    """Pose une proposition sur la piste, EN PLACE, volume recalé avec son
+    groupe. Factorisé hors de `keep_what_helps_the_mix` pour que le second
+    verdict (campagne 7) installe une candidate exactement comme le premier."""
+    machine_visee = proposition.machine or etat_courant[0]
+    track.machine = machine_visee
+    track.parameters = dict(proposition.parameters)
+    track.notes = (list(proposition.notes) if proposition.notes is not None
+                   else list(etat_courant[4]))
+    # Le PROFIL suit la proposition d'abord (l'arbitrage par profil en met un
+    # par candidate), la machine ensuite, l'état courant enfin : une
+    # proposition « paramètres seuls » qui retomberait sur le premier profil
+    # installé écraserait celui que l'arbitrage a choisi. Et une piste qui
+    # deviendrait `vsm.multisample` avec un profil vide rendrait du silence,
+    # que le verdict compterait comme un résultat.
+    if proposition.profile:
+        track.profile = proposition.profile
+    elif proposition.machine and machine_visee != etat_courant[0]:
+        track.profile = (profiles or {}).get(machine_visee, "")
+    else:
+        track.profile = etat_courant[3]
+    # Le nom d'affichage suit la machine, sinon le projet annoncerait
+    # l'ancienne dans son interface.
+    if machine_visee != etat_courant[0]:
+        track.machine_display_name = ""
+    # Le VOLUME est recalé pour chaque variante : deux patchs de niveaux
+    # différents comparés au même volume ne compareraient pas les patchs.
+    recaler_avec_son_groupe(track, tracks, stems_audio, samples_root, sample_rate, groupes)
+
+
+def project_mix_distance(tracks: Sequence[ExportTrack], mixture: np.ndarray, samples_root: Path,
+                         workdir: Path, sample_rate: int, metric: str = "v2",
+                         tempo: float = 120.0, binary: Optional[str] = None) -> float:
+    """La distance du PROJET rendu au morceau, telle que le verdict la mesure
+    -- même dossier de variante, mêmes échantillons recopiés une fois."""
+    from .vsm_distance_cache import cached_distance_for
+    mesurer = cached_distance_for(metric)(np.asarray(mixture), sample_rate)
+    dossier = Path(workdir) / "variante"
+    dossier.mkdir(parents=True, exist_ok=True)
+    _copy_samples(tracks, samples_root, dossier)
+    rendu = _render_project(tracks, dossier, sample_rate, tempo, binary)
+    if rendu is None or rendu.size == 0:
+        return float("inf")
+    return float(mesurer(rendu))
+
+
 def settle_verdict(tracks: Sequence[ExportTrack], run_pass, max_rounds: int):
     """H5 (§ 5 duodecies) : rejoue la passe de verdict jusqu'au POINT FIXE.
 
@@ -267,31 +335,8 @@ def keep_what_helps_the_mix(
                     and dict(proposition.parameters) == etat_courant[1]):
                 continue                       # rien à départager
 
-            track.machine = machine_visee
-            track.parameters = dict(proposition.parameters)
-            track.notes = (list(proposition.notes) if proposition.notes is not None
-                           else list(etat_courant[4]))
-            # Le PROFIL suit la proposition d'abord (l'arbitrage par profil en
-            # met un par candidate), la machine ensuite, l'état courant enfin :
-            # une proposition « paramètres seuls » qui retomberait sur le
-            # premier profil installé écraserait celui que l'arbitrage a
-            # choisi. Et une piste qui deviendrait `vsm.multisample` avec un
-            # profil vide rendrait du silence, que le verdict compterait comme
-            # un résultat.
-            if proposition.profile:
-                track.profile = proposition.profile
-            elif proposition.machine and machine_visee != etat_courant[0]:
-                track.profile = (profiles or {}).get(machine_visee, "")
-            else:
-                track.profile = etat_courant[3]
-            # Le nom d'affichage suit la machine, sinon le projet annoncerait
-            # l'ancienne dans son interface.
-            if machine_visee != etat_courant[0]:
-                track.machine_display_name = ""
-            # Le VOLUME est recalé pour chaque variante : deux patchs de
-            # niveaux différents comparés au même volume ne compareraient pas
-            # les patchs.
-            recaler_avec_son_groupe(track, tracks, stems_audio, samples_root, sample_rate, groupes)
+            install_alternative(track, tracks, proposition, etat_courant,
+                                stems_audio, samples_root, sample_rate, profiles, groupes)
             distance = distance_du_projet()
 
             if distance < meilleur[1] - 1e-6:

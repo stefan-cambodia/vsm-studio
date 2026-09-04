@@ -670,6 +670,51 @@ temps (+9 %) ; neuf finalistes gagnent −5,0 % sur un morceau et perdent
 +1,4 % sur l'autre — c'est une constante du morceau, et le défaut ne
 change pas.
 
+## 11. Campagne 7 : le second verdict, entre candidates RÉGLÉES — attendu écrit AVANT (04/09/2026, 16:40)
+
+**Ce que la campagne 6 a laissé, relu aux chiffres.** Le § 10 disait que
+« le réglage au mélange rattrape moins bien string que vector ». Les
+rapports disent autre chose : au stade du réglage, la basse de m9 (string)
+arrive à 0,2346 et celle de parc63 (vector) à 0,2345 — le même point ; et
+`other` (musicbox dans les deux) à 0,2307 contre 0,2297. L'écart final
+(0,2441 contre 0,2407, +1,4 %) naît donc pour un tiers au réglage d'`other`
+et pour le reste EN AVAL du réglage, dans des étapes que ces deux rapports
+ne détaillent pas. Ce qui reste vrai : le verdict juge des candidates
+AVANT réglage (string 0,2486 contre vector 0,2523), et le réglage efface
+cet ordre. Un verdict qui jugerait des candidates réglées est la forme
+honnête ; la forme économe est un SECOND verdict, après le réglage de la
+gagnante, contre ses meilleures écartées réglées à leur tour.
+
+**L'option.** `--second-verdict N` (défaut 0 = le témoin, même code) :
+après le réglage au mélange de la gagnante de chaque piste mélodique, ses
+N meilleures écartées qui changent de machine sont installées comme au
+premier verdict (`install_alternative`, factorisé), réglées au mélange
+avec le même budget, et la meilleure des réglées est gardée. Chaque
+candidate est jugée dans le même contexte (la gagnante est remise entre
+deux). Tout est publié dans `rapport.json` sous `secondVerdict` : distance
+au verdict, installée, réglée, gagnante réglée, et la machine avant/après.
+Coût : un réglage au mélange par candidate — 950 à 1 030 s sur `bass`,
+1 270 à 1 310 s sur `other` (campagne 6).
+
+| Course | Témoin | Variable unique | Attendu, écrit d'avance |
+|---|---|---|---|
+| sky-parite-m9-v2 | sky-parite-m9 (0,244108, moteur à 63 machines du 04/09 10:18) | le MOTEUR : 64 machines (clavinet), D12 à D15 (dither à l'export, contournement, rampes — rien de tout cela ne joue dans une reconstruction sans insert ni rampe, sauf le dither si les rendus sont en entiers), mêmes stems, mêmes options que m9 | identique à m9 à la quatrième décimale (parc63 l'était à la neuvième face à sky-parite) : 0,2441 ± 0,0005, basse `vsm.string`, `other` musicbox. Un écart au-delà dirait que le dither entre dans la distance, et il faudrait alors le mesurer seul |
+| sky-parite-m9-sv1 | sky-parite-m9-v2 | `--second-verdict 1` | sur `bass`, vector réglée contre string réglée : les deux valent 0,2345 à 0,2346 au § 10, donc l'écart attendu est sous 0,1 % et le sens est un pile ou face — j'attends que la basse RESTE string (la gagnante réglée garde l'avantage à égalité, par le seuil 1e-6) ou passe à vector pour moins de 0,0005. Sur `other`, la meilleure écartée est mellotron (0,2504 au verdict contre 0,2486) : j'attends qu'elle reste derrière musicbox une fois réglée (musicbox réglée 0,2307 ; mellotron devrait gagner moins de 0,015 au réglage, ce que ni bass ni other n'ont jamais gagné : −0,0140 et −0,0177 au mieux). Distance finale : entre −1 % et +0,5 % du témoin v2. Durée : +2 300 s (deux réglages) sur 5 877, soit 2 h 15 |
+
+**Décision écrite d'avance.** Si le second verdict change une machine ET
+que le final gagne au moins 1 % : `--second-verdict 1` devient le défaut,
+et son coût (+40 %) s'accepte. Si aucune candidate réglée ne bat la
+gagnante réglée sur aucune piste : l'hypothèse « le réglage renverse
+l'ordre du verdict » est RÉFUTÉE sur ce morceau, l'option reste à 0, et
+le +1,4 % de m9 se cherche EN AVAL du réglage — la prochaine campagne
+publiera la distance après chaque étape qui suit (résolution des défauts,
+rendu final), ce que les rapports ne font pas encore. Entre les deux (une
+machine change, gain sous 1 %) : l'option reste une option, le chiffre se
+publie.
+
+Le script `campagne-7.sh` enchaîne les deux courses et s'arrête à la
+première qui échoue. Départ prévu vers 16:50, fin vers 20:50.
+
 ### En attente de la fin des campagnes (03/09/2026)
 
 Deux retouches sont différées parce qu'elles touchent `audio/` ou

@@ -70,8 +70,9 @@ from analyzer.vsm_drumkit import (build_drum_kit, drum_kit_track, drum_machine_t
 from analyzer.vsm_engine import (VsmEngine, find_vsm_render, identite_du_moteur,  # noqa: E402
                                  moteur_perime)
 from analyzer.vsm_levels import VOLUME_MAX, match_track_levels  # noqa: E402
-from analyzer.vsm_mix_verdict import (MixAlternative, keep_what_helps_the_mix,  # noqa: E402
-                                      settle_verdict)
+from analyzer.vsm_mix_verdict import (MixAlternative, install_alternative,  # noqa: E402
+                                      keep_what_helps_the_mix, project_mix_distance,
+                                      restore_track_state, settle_verdict, track_state)
 from analyzer.vsm_project_export import (DEFAULT_TRACK_VOLUME, ExportNote, ExportTrack,  # noqa: E402
                                           write_project_bundle)
 from analyzer.vsm_reconstruct import (StemNote, StemReconstruction, densite_du_stem,  # noqa: E402
@@ -393,6 +394,7 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
             "reglageMelange": not args.sans_reglage_melange,
             "budgetMelange": args.budget_melange,
             "toursVerdict": args.tours_verdict,
+            "secondVerdict": args.second_verdict,
             "piecesNonIsolees": args.garder_pieces_non_isolees,
             "rendusParalleles": args.rendus_paralleles,
             "cacheRendus": not args.sans_cache_rendus,
@@ -660,6 +662,15 @@ def construire_parseur() -> argparse.ArgumentParser:
                               "jusqu'à ce qu'aucune piste ne change (point fixe), borné "
                               "par ce nombre. 1 = un seul tour, l'ancien comportement — "
                               "c'est le témoin de l'A/B.")
+    parseur.add_argument("--second-verdict", type=int, default=0,
+                         help="CAMPAGNE 7 (CDC multipiste § 11) : après le réglage au "
+                              "mélange de la gagnante de chaque piste mélodique, remettre "
+                              "en jeu ses N meilleures écartées qui changent de machine, "
+                              "chacune RÉGLÉE au mélange avec le même budget, et garder la "
+                              "meilleure des réglées. Le verdict jugeait des candidates "
+                              "AVANT réglage, et le réglage peut renverser son ordre. "
+                              "Défaut 0 : le témoin, l'ancien comportement. Coût : un "
+                              "réglage au mélange par candidate.")
     parseur.add_argument("--rendus-paralleles", type=int, default=3,
                          help="nombre de rendus de candidates menés de front à "
                               "l'arbitrage de piste (défaut 3 ; H3 du § 5 duodecies). "
@@ -1845,6 +1856,92 @@ def verdict_du_melange(ctx: Contexte, chantier: Chantier, pistes_export: List[Ex
                 if st.name == nom_piste and resultat.improvements:
                     st.parameters = dict(resultat.parameters)
 
+    # CAMPAGNE 7 (§ 11) : LE SECOND VERDICT, ENTRE CANDIDATES RÉGLÉES. Le
+    # premier verdict a jugé des machines AVANT réglage, et sky-parite-m9 a
+    # montré qu'une gagnante au verdict (string, 0,2486 contre 0,2523 pour
+    # vector) arrive au même point que sa rivale une fois réglée (0,2346
+    # contre 0,2345) : l'ordre du verdict n'est pas celui d'après réglage.
+    # Ici, les N meilleures écartées qui CHANGENT de machine sont installées,
+    # réglées au mélange avec le même budget, et la meilleure des réglées est
+    # gardée -- chaque chiffre est publié, y compris ceux des perdantes.
+    seconds_verdicts: List[Dict[str, object]] = []
+    if (ctx.args.second_verdict > 0 and not ctx.args.sans_reglage_melange
+            and ctx.args.budget_melange > 0):
+        from analyzer.vsm_mix_refine import refine_against_mix
+        profils = profils_de(ctx.moteur, melodic_machines(ctx.moteur))
+        noms_melodiques = [d.track for d in decisions
+                           if any(st.name == d.track for st in chantier.reconstruits)]
+        for nom_piste in noms_melodiques:
+            decision = next((d for d in decisions if d.track == nom_piste), None)
+            piste = next((t for t in pistes_export if t.name == nom_piste), None)
+            if decision is None or piste is None:
+                continue
+            ecartees = sorted(((lib, d) for lib, d in decision.rejected
+                               if lib.startswith("machine suivante")), key=lambda x: x[1])
+            candidates = ecartees[:ctx.args.second_verdict]
+            if not candidates:
+                print(f"      {nom_piste:8s} : second verdict sans objet (aucune machine écartée)")
+                continue
+            depart = time.perf_counter()
+            mesure = lambda: project_mix_distance(  # noqa: E731
+                pistes_export, melange, ctx.sortie, ctx.travail / "verdict",
+                SAMPLE_RATE, ctx.args.metrique, ctx.args.tempo, ctx.args.moteur)
+            etat_gagnante = track_state(piste)
+            volumes_gagnante = {t.name: float(t.volume) for t in pistes_export}
+            machine_gagnante = piste.machine
+            d_gagnante = mesure()
+            meilleure = ("gagnante réglée", d_gagnante, etat_gagnante, volumes_gagnante)
+            bilan: List[Dict[str, object]] = []
+            for libelle, d_verdict in candidates:
+                proposition = next((a for a in alternatives.get(nom_piste, ())
+                                    if a.label == libelle), None)
+                if proposition is None:
+                    continue
+                install_alternative(piste, pistes_export, proposition, etat_gagnante,
+                                    chantier.audio_par_stem, ctx.sortie, SAMPLE_RATE,
+                                    profils, chantier.pistes_groupees)
+                d_installee = mesure()
+                resultat = refine_against_mix(
+                    pistes_export, nom_piste, melange, chantier.audio_par_stem,
+                    ctx.sortie, workdir=ctx.travail / "verdict",
+                    sample_rate=SAMPLE_RATE, engine=ctx.moteur,
+                    budget=ctx.args.budget_melange,
+                    metric=ctx.args.metrique, tempo=ctx.args.tempo,
+                    binary=ctx.args.moteur, groupes=chantier.pistes_groupees)
+                d_reglee = resultat.distance if resultat is not None else d_installee
+                bilan.append({"label": libelle, "mixDistanceAtVerdict": d_verdict,
+                              "mixDistanceInstalled": d_installee, "mixDistanceRefined": d_reglee,
+                              "evaluations": resultat.evaluations if resultat else 0})
+                print(f"      {nom_piste:8s} : second verdict, {libelle} : au verdict {d_verdict:.4f}, "
+                      f"installée {d_installee:.4f}, réglée {d_reglee:.4f}"
+                      f" (gagnante réglée {d_gagnante:.4f})")
+                if d_reglee < meilleure[1] - 1e-6:
+                    meilleure = (libelle, d_reglee, track_state(piste),
+                                 {t.name: float(t.volume) for t in pistes_export})
+                # On remet la gagnante avant d'essayer la suivante : chaque
+                # candidate est jugée dans le même contexte.
+                restore_track_state(piste, etat_gagnante, piste.machine)
+                for t in pistes_export:
+                    if t.name in volumes_gagnante:
+                        t.volume = volumes_gagnante[t.name]
+            restore_track_state(piste, meilleure[2], piste.machine)
+            for t in pistes_export:
+                if t.name in meilleure[3]:
+                    t.volume = meilleure[3][t.name]
+            if piste.machine != machine_gagnante:
+                piste.machine_display_name = ""
+            print(f"      {nom_piste:8s} : second verdict -> {meilleure[0]} ({meilleure[1]:.4f}) "
+                  f"en {time.perf_counter() - depart:.0f} s"
+                  + ("" if meilleure[0] == "gagnante réglée"
+                     else f" — la machine change : {machine_gagnante} -> {piste.machine}"))
+            seconds_verdicts.append({
+                "track": nom_piste, "kept": meilleure[0], "mixDistance": meilleure[1],
+                "winnerRefined": d_gagnante, "candidates": bilan,
+                "machineBefore": machine_gagnante, "machineAfter": piste.machine})
+            for st in chantier.reconstruits:
+                if st.name == nom_piste:
+                    st.parameters = dict(piste.parameters)
+
     verdict: List[Dict[str, object]] = []
     for decision in decisions:
         ecartees = ", ".join(f"{lib} {d:.4f}" for lib, d in decision.rejected)
@@ -1863,6 +1960,8 @@ def verdict_du_melange(ctx: Contexte, chantier: Chantier, pistes_export: List[Ex
             "rejected": [{"label": lib, "mixDistance": d} for lib, d in decision.rejected]})
     for r in reglages_melange:
         verdict.append({"track": r["track"], "mixRefine": r})
+    for sv in seconds_verdicts:
+        verdict.append({"track": sv["track"], "secondVerdict": sv})
     # H5 : le nombre de tours joués et ce que chaque tour a changé sont PUBLIÉS
     # — un point fixe atteint d'office (un seul tour, rien de changé au-delà)
     # est une information, pas une absence d'information.
