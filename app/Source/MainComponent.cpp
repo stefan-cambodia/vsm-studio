@@ -717,6 +717,12 @@ MainComponent::MainComponent()
         });
     };
     preferencesPanel_.onOpenShortcuts = [this] { menuItemSelected(kMenuViewShortcuts, 0); };
+    retourAuDepart_ = vsm::app::ui::UiScale::properties().getBoolValue("retourAuDepartALArret", false);
+    preferencesPanel_.onReturnToStartChanged = [this](bool actif) {
+        retourAuDepart_ = actif;
+        vsm::app::ui::UiScale::properties().setValue("retourAuDepartALArret", actif);
+        vsm::app::ui::UiScale::properties().saveIfNeeded();
+    };
     preferencesPanel_.onOpenMidiLearn = [this] { menuItemSelected(kMenuViewMidiLearn, 0); };
     shortcutsPanel_.onRebind = [this](vsm::interchange::ShortcutId id) {
         rebindPending_ = true;
@@ -1039,6 +1045,17 @@ void MainComponent::timerCallback() {
     // La carte son peut ouvrir à une autre fréquence que celle qu'on croit, et
     // en changer en cours de route (réglages audio). Les effets suivent.
     applyAudioConfig();
+
+    // RETOUR AU DÉBUT À L'ARRÊT (D14.5). La transition se voit ICI, sur
+    // l'horloge unique, quel que soit le chemin qui a arrêté le transport --
+    // le bouton, la barre d'espace, une commande MIDI apprise : un seul
+    // endroit, pas quatre.
+    {
+        const bool lecture = transport_.state() == TransportState::Playing;
+        if (lecture && !etaitEnLecture_) departLecture_ = transport_.currentTick();
+        else if (!lecture && etaitEnLecture_ && retourAuDepart_) seekAllViews(departLecture_);
+        etaitEnLecture_ = lecture;
+    }
 
     const bool audioClockAvailable = audioEngine_.isDeviceOpen();
     // La carte son peut apparaître ou disparaître en cours de route (réglages
@@ -3666,14 +3683,14 @@ void MainComponent::refreshPreferences() {
         reconstructionChain_, designe,
         vsm::app::ui::UiScale::properties().getValue("dossierBibliotheque", ""),
         static_cast<int>(vsm::interchange::shortcutCommands().size()),
-        static_cast<int>(audioEngine_.midiLearnMappingCount()));
+        static_cast<int>(audioEngine_.midiLearnMappingCount()), retourAuDepart_);
 }
 
 void MainComponent::showPreferences() {
     if (!preferencesWindow_) {
         preferencesWindow_ = std::make_unique<PanelWindow>(
             juce::String::fromUTF8(u8"Préférences"), preferencesPanel_);
-        preferencesWindow_->setSize(560, 430);
+        preferencesWindow_->setSize(560, 472);
     }
     refreshPreferences();
     preferencesWindow_->setVisible(true);

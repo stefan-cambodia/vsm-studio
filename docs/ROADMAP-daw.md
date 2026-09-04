@@ -3236,6 +3236,12 @@ quotidien d'abord, l'import et l'export ensuite, la préférence en dernier.
 > troisième harmonique ne vaut que 0,022 — ce sont les cinquième et septième
 > qui ressortent (0,186 et 0,151). Le banc juge donc le profil entier,
 > harmoniques 2 à 12 : pire harmonique 0,186 sans dither, **0,012 avec**.
+>
+> **D14.5 EST FAITE (04/09/2026).** Préférences ▸ Audio ▸ « À l'arrêt :
+> revenir au point de départ », retenue dans le fichier de préférences. La
+> transition se voit sur l'horloge unique, dans le minuteur — quel que soit
+> le chemin qui a arrêté le transport (le bouton, la barre d'espace, une
+> commande MIDI apprise) : un seul endroit, pas quatre.
 
 
 ## 4. Les choix tranchés ici, et pourquoi

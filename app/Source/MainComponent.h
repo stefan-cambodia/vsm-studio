@@ -481,6 +481,11 @@ private:
     /// LES LOCATEURS SUR LA SÉLECTION : les clips de l'arrangement, ou à
     /// défaut les notes du piano roll.
     void locatorsFromSelection();
+    /// RETOUR AU DÉBUT À L'ARRÊT (D14.5) : la position d'où la lecture est
+    /// partie, et l'état précédent du transport pour voir la transition.
+    bool retourAuDepart_ = false;
+    bool etaitEnLecture_ = false;
+    vsm::midi::Tick departLecture_ = 0;
     /// Ouvre un DOSSIER de projet complet (project.json + MIDI + presets +
     /// échantillons) -- typiquement celui qu'écrit la chaîne d'analyse.
     void openProjectBundle();

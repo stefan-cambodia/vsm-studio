@@ -841,6 +841,8 @@ que l'application lit déjà.
 
 ## 7. Les réglages
 
+Les *Préférences* (menu Fichier) tiennent aussi le comportement du transport : **À l'arrêt, revenir au point de départ** ramène la tête là où la lecture était partie quand vous appuyez sur Stop — la préférence de Cubase, le défaut de Live ; décochée, la tête reste où elle s'est arrêtée.
+
 Tout ce qui se règle est au même endroit. Un réglage qu'on ne retrouve qu'en se souvenant du menu où il se cache est un réglage qu'on ne change pas.
 
 **La taille de l'interface** agit globalement et se conserve d'une exécution à l'autre. 150 % est le réglage par défaut : en cas de doute entre « ça tient dans la case » et « ça se lit », c'est la lisibilité qui prime.
