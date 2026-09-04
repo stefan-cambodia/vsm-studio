@@ -169,6 +169,35 @@ VSM_TEST(missing_instrument_renders_silence_and_says_so) {
     VSM_ASSERT(mentioned);
 }
 
+VSM_TEST(a_group_bus_has_no_instrument_and_is_not_warned_about) {
+    // Un bus de groupe somme ce qu'on lui route : il n'a pas d'instrument, et
+    // ce n'est pas une anomalie. Sky-parite criait « Piste 6 (Batterie) :
+    // aucun instrument, elle restera silencieuse » pour le bus de sa batterie
+    // à chaque rendu -- un avertissement faux, qui noyait les vrais.
+    TempFolder folder("group_bus_silence");
+    Project project = buildPlayableProject();
+    Track bus;
+    bus.name = "Batterie";
+    bus.kind = Track::Kind::Group;
+    project.tracks.push_back(bus);
+    Track sansRien;
+    sansRien.name = "Oubliee";
+    sansRien.kind = Track::Kind::Midi;   // celle-là, oui : une piste MIDI sans machine
+    project.tracks.push_back(sansRien);
+    saveProjectBundle(project, folder.str());
+
+    const RenderResult result = renderProjectFolderToWav(folder.str(), folder.file("out.wav"));
+    VSM_ASSERT(result.success);
+    bool busAverti = false, oublieeAvertie = false;
+    for (const auto& warning : result.warnings) {
+        if (warning.find("aucun instrument") == std::string::npos) continue;
+        if (warning.find("Batterie") != std::string::npos) busAverti = true;
+        if (warning.find("Oubliee") != std::string::npos) oublieeAvertie = true;
+    }
+    VSM_ASSERT(!busAverti);
+    VSM_ASSERT(oublieeAvertie);
+}
+
 VSM_TEST(loading_reports_a_missing_preset_without_refusing_the_project) {
     // Un projet auquel il manque un preset doit s'ouvrir avec les réglages par
     // défaut, en le disant -- pas refuser de s'ouvrir.
