@@ -495,7 +495,12 @@ class Generateur:
         rng = np.random.default_rng(int(graine))
         s = Structure(rng, duree)
         nombre = int(nombre_de_parties) if nombre_de_parties else int(rng.integers(2, 13))
-        cas_choisi = cas if cas else str(rng.choice(CAS))
+        # Le cas TOURNE avec la graine plutôt que d'être tiré : un lot de dix
+        # graines consécutives voit chaque cas deux ou trois fois. Le premier
+        # lot tiré au hasard (04/09/2026) avait donné 0 « aucun », 1
+        # « mêmes machine », 4 « deux mains » et 5 « chevauchement » — un
+        # attendu par cas ne se mesure pas sur une occurrence.
+        cas_choisi = cas if cas else CAS[int(graine) % len(CAS)]
         if cas_choisi not in CAS:
             raise ValueError(f"cas inconnu : {cas_choisi} (attendu {', '.join(CAS)})")
         roles = _tirer_roles(rng, nombre, cas_choisi)

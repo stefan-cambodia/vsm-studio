@@ -152,8 +152,11 @@ morceau et déclarés dans la vérité (`cas`) pour être comptés à part :
   et c'est une limite écrite. Le banc le compte SÉPARÉMENT des autres
   erreurs (§ 2.4, colonne H25).
 
-Par défaut, chaque morceau tire son cas parmi `aucun` et ces trois (poids
-égaux) ; `--cas` l'impose.
+Par défaut, le cas TOURNE avec la graine (`aucun`, `memes-machine-disjoints`,
+`chevauchement`, `deux-mains`, dans l'ordre de graine mod 4) : un lot de
+dix graines consécutives voit chaque cas deux ou trois fois. Le premier
+lot, tiré au hasard, en avait donné 0, 1, 5 et 4 — un attendu « dans ≥ 2/3
+des occurrences » ne se mesure pas sur une occurrence. `--cas` l'impose.
 
 ### 2.3 Le lot
 
@@ -341,8 +344,16 @@ pas rejouée.
 `s1-prod`) : la seule variable entre les deux lots est la production. La
 chaîne aux défauts du jour (`htdemucs_6s`, `--parite`, tout le parc,
 `--budget-piste 40 --axes-piste 8 --tours-verdict 3`), `--rendus-paralleles
-6`. Rien ne part avant la fin de la campagne 7 (prévue vers 19:40) : une
+6`. Le script `reconstruction/travail/banc-s1.sh` (hors dépôt, comme
+campagne-7.sh) attend la fin de la campagne 7 dans le journal : une
 seule course lourde à la fois.
+
+**Les lots, fabriqués avant le départ (19:30).** Graines 1 à 10, cas en
+rotation : `memes-machine-disjoints` ×3 (graines 1, 5, 9), `chevauchement`
+×3 (2, 6, 10), `deux-mains` ×2 (3, 7), `aucun` ×2 (4, 8) ; 3 à 12 parties,
+30,0 à 31,5 s, 108 à 137 bpm ; 34 s pour le lot sec, 41 s pour le lot
+produit. Les stems vrais de `s1-prod` sont identiques à ceux de `s1-sec`
+(mêmes graines) : seul le mélange diffère.
 
 **Coût attendu.** Génération ≤ 30 s par morceau (≤ 10 min le lot des
 vingt). Course ≤ 15 min par morceau de 30 s (l'épreuve de parité à 3
@@ -357,7 +368,7 @@ ligne dit ce que la production doit changer.
 |---|---|---|
 | 1. séparation | `bass` SDR ≥ 6 dB, corrélation ≥ 0,85 ; `drums` SDR ≥ 8 dB ; `other` seul SDR entre 3 et 8 dB ; `other+guitar+piano` ≥ 6 dB ; énergie hallucinée (guitar+piano+vocals) entre 5 et 25 % | `drums` sous 5 dB (la séparation ne reconnaît pas une boîte à rythmes de synthèse) ; hallucination > 40 % |
 | 2. transcription | F1 à ±1 demi-ton, ±50 ms : entre 0,50 et 0,70 ; rappel > précision ; F1 à hauteur exacte inférieur d'au moins 0,10 ; vélocité : erreur absolue moyenne ≥ 20 (la chaîne n'écrit pas une vélocité mesurée) ; durée : erreur relative médiane ≥ 30 % ; par rôle : basse > mélodie > accompagnement > nappe | F1 > 0,80 (la transcription ne serait pas le premier poste) ; vélocité < 10 |
-| 3. parité | sur les morceaux sans cas : écart ≤ 1 piste dans ≥ 6/10 ; `memes-machine-disjoints` séparé (2 pistes) dans ≥ 2/3 des occurrences ; `chevauchement` FONDU dans ≥ 2/3 ; `deux-mains` coupé en deux (colonne H25) dans ≥ 2/3 ; fondues ≥ 1 par morceau dès 6 parties ; batterie : 3 pistes pour 3 pièces dans ≥ 6/10 | les registres disjoints fondus plus d'une fois sur deux ; le deux-mains laissé entier plus d'une fois sur deux (H25 aurait tort d'être une limite) |
+| 3. parité | écart ≤ 1 piste (H25 compté à part) dans ≥ 6/10 ; `memes-machine-disjoints` séparé (2 pistes) dans ≥ 2/3 des occurrences ; `chevauchement` FONDU dans ≥ 2/3 ; `deux-mains` coupé en deux (colonne H25) dans ≥ 2/3 ; fondues ≥ 1 par morceau dès 6 parties ; batterie : autant de pistes que de pièces dans ≥ 5/10 | les registres disjoints fondus plus d'une fois sur deux ; le deux-mains laissé entier plus d'une fois sur deux (H25 aurait tort d'être une limite) |
 | 4. arbitrage | vraie machine dans le top 6 pour ≥ 50 % des pistes mélodiques attribuées (hasard à 58 machines : 10 %) ; rang 1 pour ≥ 20 % ; borne de piste PLUS GRANDE que `trackDistance` pour ≥ 50 % des pistes (le stem séparé ressemble à autre chose que la vérité) | top 6 < 25 % (l'arbitrage ne reconnaîtrait même pas un son du parc) ; borne toujours plus petite (le réglage perdrait contre la vérité partout) |
 | 5. global | `globalDistance` v2 entre 0,15 et 0,30 ; borne de transcription entre 0,08 et 0,18 ; **transcription + parité (borne − 0) > arbitrage + réglage (global − borne) dans ≥ 6/10** — la transcription est le premier poste (A5) | l'écart arbitrage > transcription dans ≥ 6/10 |
 | production | `globalDistance` +8 à +25 % ; borne de production entre 0,04 et 0,12 ; séparation : SDR −1 à −4 dB ; transcription : F1 −0,00 à −0,08 ; parité : même compte à ±1 sur ≥ 7/10 ; arbitrage : top 6 −0 à −15 points | global inchangé à ±3 % (la production ne coûterait rien, contre H24) ; F1 −0,20 (la réverbération casserait la transcription) |
