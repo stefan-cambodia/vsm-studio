@@ -396,17 +396,17 @@ n'a pas d'objet.
 
 ## 6. Campagne S1 — verdict
 
-### La moitié SÈCHE est mesurée (05/09/2026, 00:24) — la moitié produite tourne
+### Verdict complet (05/09/2026, 02:23) — vingt morceaux, aucun non mesuré
 
-Dix morceaux sur dix, aucun non mesuré, en 1 h 43 (22:41 → 00:24, après deux
-départs perdus : voir le piège du CLAUDE.md sur les campagnes lancées depuis
-le shell de l'outil). La ligne « production » du § 5 ne pourra être tranchée
-qu'à la fin de `s1-prod` ; tout le reste est ci-dessous, attendu par attendu.
+`s1-sec` 22:41 → 00:24, `s1-prod` 00:24 → 02:23. Dix morceaux chacun, zéro
+non mesuré, code 0 aux deux courses. Les attendus du § 5 étaient écrits le
+04/09 à 18:05, avant la fabrication des lots ; ils sont confrontés un par un
+ci-dessous.
 
-**Le résultat tient en une phrase : la chaîne est PLUS FAIBLE que prévu à
-tous les étages, et le banc a donc fait exactement ce pour quoi il a été
-écrit.** Presque aucun attendu du lot sec n'est atteint ; deux frôlent la
-ligne qui les aurait réfutés.
+#### Ce que le lot SEC a tranché
+
+**La chaîne est plus faible que prévu à tous les étages, et le banc a donc
+fait exactement ce pour quoi il a été écrit.**
 
 | étage | attendu (§ 5) | mesuré | verdict |
 |---|---|---|---|
@@ -431,31 +431,67 @@ ligne qui les aurait réfutés.
 | | borne de transcription entre 0,08 et 0,18 | **0,307** | raté (deux fois trop grande) |
 | | transcription + parité > arbitrage + réglage dans ≥ 6/10 | **10/10** | **tenu, et sans appel** |
 
-**Ce que ces chiffres tranchent, et qui ne se déduisait pas d'un rapport de
-reconstruction.** La perte médiane imputable à la transcription et à la
-parité est de **0,307**, celle de l'arbitrage et du réglage de **−0,146** :
-non seulement la transcription est le premier poste dans 10 morceaux sur 10
-(A5 confirmé sans ambiguïté), mais l'arbitrage et le réglage font MIEUX que
-la vérité de référence — la borne est plus grande que la distance obtenue
-dans 42 pistes sur 43. Autrement dit : à ce stade, régler une machine du parc
-pour ressembler au stem SÉPARÉ marche mieux que de viser le stem vrai, parce
-que le stem séparé n'est pas le stem vrai. **C'est la séparation qui plafonne
-tout le reste** — `bass` à 0,21 dB de SDR et 0,26 de corrélation dit qu'il
-n'y a presque rien de juste à transcrire dans la basse séparée.
+Perte médiane imputable à la transcription et à la parité : **0,307**. À
+l'arbitrage et au réglage : **−0,146**. Non seulement la transcription est le
+premier poste dans 10 morceaux sur 10 (A5 confirmé sans ambiguïté), mais
+l'arbitrage et le réglage font MIEUX que la vérité de référence — la borne est
+plus grande que la distance obtenue dans 42 pistes sur 43. Régler une machine
+du parc pour ressembler au stem SÉPARÉ marche mieux que viser le stem vrai,
+parce que le stem séparé n'est pas le stem vrai. **C'est la séparation qui
+plafonne tout le reste.**
 
-Deux attendus se sont révélés MAL CALIBRÉS plutôt que réfutés, et il faut le
-dire : « rappel > précision » supposait une transcription qui invente plus
-qu'elle n'oublie ; c'est l'inverse (elle oublie). Et la borne de
-transcription attendue entre 0,08 et 0,18 était une prévision faite sur des
-morceaux réels, pas sur des morceaux de synthèse à douze parties.
+Deux attendus étaient MAL CALIBRÉS plutôt que réfutés, et il faut le dire :
+« rappel > précision » supposait une transcription qui invente plus qu'elle
+n'oublie — c'est l'inverse ; et la borne de transcription attendue entre 0,08
+et 0,18 était une prévision faite sur des morceaux réels, pas sur des
+synthèses à douze parties.
 
-**Ce que cela ne dit pas** : rien sur la production (la moitié `s1-prod`
-tourne depuis 00:24), et rien sur ce qu'il faut changer — le banc mesure et
-publie, il ne décide pas. La suite s'écrira quand les vingt morceaux seront
-mesurés.
+#### Ce que la PRODUCTION a tranché, et c'est une surprise
 
+**La production coûte beaucoup MOINS que prévu, et à deux endroits elle
+AIDE.** C'était la seule ligne du § 5 qui comparait les deux lots ; elle est
+la plus intéressante des vingt.
 
-*À écrire après la mesure, avec les chiffres, réfutations comprises.*
+| attendu (§ 5) | mesuré | verdict |
+|---|---|---|
+| `globalDistance` **+8 à +25 %** | **+7,1 %** (médiane 0,1859 → 0,1991 ; moyenne +4,7 %) | raté de peu, et par le bas |
+| borne de production entre 0,04 et 0,12 | **0,036** | raté de peu, par le bas |
+| séparation : SDR **−1 à −4 dB** | `bass` **−0,16**, `drums` **−0,75**, `other` **−0,48**, `other` élargi **−0,83** | RATÉ : quatre fois moins de dégât qu'annoncé |
+| transcription : F1 **−0,00 à −0,08** | **−0,043** (0,367 → 0,323) | **tenu** |
+| parité : même compte à ±1 sur **≥ 7/10** | **8/10**, et le verdict de cas identique **10/10** | **tenu** |
+| arbitrage : top 6 **−0 à −15 points** | **+2,3 points** (25,6 % → 27,9 %) | RATÉ : la production l'améliore |
+| *(réfuterait)* global inchangé à ±3 % | +7,1 % | pas réfuté |
+| *(réfuterait)* F1 −0,20 | −0,043 | pas réfuté |
+
+**Pourquoi la production coûte si peu, et ce que cela dit.** Parce qu'il n'y
+avait presque plus rien à perdre. `bass` passe de 0,21 dB à 0,05 dB : ce n'est
+pas une chute, c'est un plancher qu'on rase de plus près. L'attendu « −1 à
+−4 dB » supposait une séparation qui marche et que la réverbération dégrade ;
+la mesure dit qu'elle ne marchait déjà pas. **La production n'est pas le
+problème de cette chaîne, et H24 — qui la disait coûteuse — est vraie dans son
+sens mais négligeable dans son ampleur, tant que la séparation reste où elle
+est.**
+
+Deux effets vont même dans l'autre sens, et ils sont écrits ici sans être
+expliqués, parce que le banc mesure et ne décide pas :
+
+- **L'énergie hallucinée BAISSE avec la production** : 19,8 % → 14,6 %.
+- **L'arbitrage s'améliore** : top 6 de 25,6 % à 27,9 %, et l'écart
+  arbitrage/réglage passe de −0,146 à −0,165 (il fait encore mieux que la
+  vérité). Une hypothèse plausible, qu'il faudrait une autre campagne pour
+  trancher : la production rapproche le stem séparé de ce qu'une machine du
+  parc PEUT produire, ce qui est un compliment ambigu.
+
+#### Ce que la campagne établit, en une phrase
+
+Sur vingt morceaux à vérité connue, **le premier poste de perte est la
+transcription et la parité (0,307 contre −0,146), dans 20 morceaux sur 20**,
+et il est lui-même plafonné par une séparation qui ne rend presque rien
+d'utilisable sur la basse. La production, qu'on soupçonnait d'être un coût
+majeur, coûte **+7,1 %** — moins que la fourchette qu'on lui prêtait.
+
+Le banc mesure et publie ; il ne décide pas. Ce qu'on en fait s'écrira
+ailleurs, avec ses propres attendus écrits avant leur mesure.
 
 ## 7. Ce que le banc n'est pas encore, et qui reste à écrire
 
@@ -470,6 +506,15 @@ mesurés.
   que le banc ne mesure pas.
 
 ## 8. L'usage apprenant d'H25 — SEULEMENT après S1, et sous condition
+
+> **S1 EST MESURÉE (05/09/2026, 02:23), la condition d'entrée est donc
+> levée.** Le § 5 demandait de ne pas ouvrir ce chantier avant ; il l'est
+> maintenant, avec ce que la campagne apporte comme matière : dix morceaux
+> `deux-mains` et `memes-machine-disjoints` dont la réponse est connue par
+> construction, et un chiffre de départ à battre — le découpage par les vides
+> dit « deux » à chaque fois, et a fondu les registres disjoints 3 fois sur 3.
+> Les attendus du paragraphe ci-dessous restent ceux qui ont été écrits
+> d'avance, et ils ne changent pas maintenant que la campagne est finie.
 
 Écrit d'avance, dans l'en-tête du module (`analyse/analyzer/vsm_deux_mains.py`)
 le jour où il s'écrira, et repris ici :
