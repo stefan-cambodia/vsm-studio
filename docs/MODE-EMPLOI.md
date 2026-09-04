@@ -689,9 +689,14 @@ une partie — n'est **pas** reconstruit : c'est dit avec son chiffre, faute de
 quoi un piano seul donnerait six pistes pour une seule partie.
 
 Dans l'application, tout cela tient dans une case à cocher : *Fichier ▸
-Reconstruire en visant la parité des pistes*, **cochée par défaut**. Elle vaut
-pour toutes les reconstructions à venir — c'est un choix de travail, pas un
-réglage à refaire à chaque morceau. En ligne de commande, **`--parite`** allume
+Reconstruire en visant la parité des pistes (le défaut de la chaîne)*,
+**cochée par défaut**. Elle vaut pour toutes les reconstructions à venir —
+c'est un choix de travail, pas un réglage à refaire à chaque morceau.
+Décochée, elle dit à la chaîne `--sans-parite` : une piste par stem, rien de
+découpé, la chaîne d'avant le 04/09/2026. En ligne de commande, la parité
+est le **défaut** depuis cette date (deux morceaux l'ont mesurée : −0,1 % de
+distance sur *Us and Them* pour neuf pistes au lieu de quatre, +3,1 % sur
+*Sky and Sand* pour sept) ; **`--parite`** l'écrit explicitement et allume
 les quatre découpages :
 
 - **les voix par registres** (`--voix-par-stem 4`) : une piste qui porte
@@ -716,8 +721,9 @@ les quatre découpages :
   quatre. Sur les vrais morceaux essayés, dont les transcriptions sont denses,
   ce découpage ne se déclenche pas et le partage en voix reprend la main.
 
-Ce que la parité coûte est **dit** : le découpage en voix vaut +9 % de
-distance sur *Us and Them*. Et ce qu'elle vaut se vérifie sur un morceau dont
+Ce que la parité coûte est **dit** : −0,1 % sur *Us and Them* et +3,1 % sur
+*Sky and Sand* (les +9 % d'une première mesure venaient d'un calage voix par
+voix, corrigé depuis). Et ce qu'elle vaut se vérifie sur un morceau dont
 on connaît les parties (`analyse/epreuve_parite.py`, 32 secondes fabriquées
 avec leur vérité) : **neuf parties, neuf pistes**, et une distance de 0,178
 contre 0,220 sans parité.
