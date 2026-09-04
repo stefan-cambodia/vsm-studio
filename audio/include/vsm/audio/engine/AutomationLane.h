@@ -1,6 +1,7 @@
 #pragma once
 #include "vsm/audio/plugin/ParameterTypes.h"
 #include "vsm/midi/MidiEvent.h" // vsm::midi::Tick
+#include "vsm/sequencer/Track.h" // vsm::sequencer::automationCurveEase (D17.7)
 #include <algorithm>
 #include <cstddef>
 #include <vector>
@@ -15,6 +16,11 @@ struct AutomationPoint {
     Tick tick = 0;
     float value = 0.0f;
     AutomationCurve curveToNext = AutomationCurve::Linear; // forme du segment DEPUIS ce point
+    /// D17.7 : la courbure du segment, de -1 à +1 ; zéro est la droite. La
+    /// forme est calculée par `vsm::sequencer::automationCurveEase`, c'est-à-
+    /// dire par la MÊME fonction que l'éditeur -- deux formules qui
+    /// divergeraient feraient dessiner une courbe et en entendre une autre.
+    float bend = 0.0f;
 };
 
 /// Une lane d'automation cible un paramètre d'une instance de plugin
@@ -52,15 +58,17 @@ public:
     size_t targetSlot = 0;
     vsm::audio::plugin::ParamId targetParam = 0;
 
-    void addPoint(Tick tick, float value, AutomationCurve curve = AutomationCurve::Linear) {
+    void addPoint(Tick tick, float value, AutomationCurve curve = AutomationCurve::Linear,
+                   float bend = 0.0f) {
         auto it = std::find_if(points_.begin(), points_.end(),
                                 [tick](const AutomationPoint& p) { return p.tick == tick; });
         if (it != points_.end()) {
             it->value = value;
             it->curveToNext = curve;
+            it->bend = bend;
             return;
         }
-        points_.push_back({tick, value, curve});
+        points_.push_back({tick, value, curve, bend});
         std::sort(points_.begin(), points_.end(),
                   [](const AutomationPoint& a, const AutomationPoint& b) { return a.tick < b.tick; });
     }
@@ -80,8 +88,10 @@ public:
             if (tick >= a.tick && tick <= b.tick) {
                 if (a.curveToNext == AutomationCurve::Step || b.tick == a.tick)
                     return a.value;
-                double ratio = static_cast<double>(tick - a.tick) / static_cast<double>(b.tick - a.tick);
-                return static_cast<float>(a.value + ratio * (b.value - a.value));
+                const float ratio = static_cast<float>(tick - a.tick)
+                                    / static_cast<float>(b.tick - a.tick);
+                return a.value
+                       + vsm::sequencer::automationCurveEase(a.bend, ratio) * (b.value - a.value);
             }
         }
         return points_.back().value; // ne devrait pas être atteint, filet de sécurité

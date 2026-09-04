@@ -290,7 +290,13 @@ ProjectDocument documentFromProject(const Project& project) {
             ProjectAutomationLane lane;
             lane.parameter = curve.parameter;
             for (const auto& point : curve.points)
-                lane.points.push_back({point.tick, point.value, point.step});
+                // D17.7 : la courbure est recopiée EXPLICITEMENT. L'agrégat
+                // positionnel ne s'est pas plaint quand le champ a été ajouté
+                // -- il est en dernier, donc il prenait sa valeur par défaut --
+                // et la courbure se serait perdue à la sauvegarde SANS QUE RIEN
+                // NE LE DISE. Le compilateur avait rattrapé les deux fois de
+                // D17.1 ; celle-ci, il ne pouvait pas.
+                lane.points.push_back({point.tick, point.value, point.step, point.curve});
             entry.automation.push_back(std::move(lane));
         }
 
@@ -448,7 +454,7 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
             vsm::sequencer::AutomationCurve curve;
             curve.parameter = lane.parameter;
             for (const auto& point : lane.points)
-                curve.points.push_back({point.tick, point.value, point.step});
+                curve.points.push_back({point.tick, point.value, point.step, point.curve});
             target.automation.push_back(std::move(curve));
         }
 
@@ -696,6 +702,9 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
                     p.set("tick", JsonValue::makeFloat(static_cast<double>(point.tick)));
                     p.set("value", JsonValue::makeFloat(point.value));
                     if (point.step) p.set("step", JsonValue::makeBoolean(true));
+                    // D17.7 : la courbure, écrite seulement quand elle n'est
+                    // pas nulle -- un projet d'avant se réécrit à l'octet.
+                    if (point.curve != 0.0f) p.set("curve", JsonValue::makeFloat(point.curve));
                     points.append(std::move(p));
                 }
                 entree.set("points", std::move(points));
@@ -898,6 +907,7 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
                 point.tick = static_cast<int64_t>(pointJson["tick"].asNumber(0.0));
                 point.value = static_cast<float>(pointJson["value"].asNumber(0.0));
                 point.step = pointJson["step"].asBoolean(false);
+                point.curve = static_cast<float>(pointJson["curve"].asNumber(0.0));
                 lane.points.push_back(point);
             }
             // Une courbe sans cible ou sans point ne commande rien : refusée

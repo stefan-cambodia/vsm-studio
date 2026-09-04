@@ -224,7 +224,16 @@ private:
     /// trois booléens : « je déplace ET je redimensionne » n'existe pas, et
     /// l'écrire ainsi le rend impossible.
     enum class Geste { Aucun, Deplacer, BordGauche, BordDroit, Hauteur, Reordonner, Point,
-                        FonduEntree, FonduSortie, Lasso, MarqueurWarp, Etirer };
+                        FonduEntree, FonduSortie, Lasso, MarqueurWarp, Etirer,
+                        /// D17.7 : la poignée du MILIEU d'un segment d'automation,
+                        /// qu'on tire vers le haut ou le bas pour le courber.
+                        CourbureAutomation };
+    /// D17.7 : la courbure du segment saisi au moment du clic, et l'ordonnée
+    /// du clic. La courbure se calcule par rapport à ces deux-là plutôt qu'en
+    /// s'accumulant : un glissement qui repasse par son point de départ doit
+    /// rendre la courbure de départ, au bit près.
+    float courbureAuClic_ = 0.0f;
+    float yAuClic_ = 0.0f;
 
     /// LE MARQUEUR DE WARP SOUS LE POINTEUR (D12.6), s'il y en a un. Rend
     /// l'indice dans `clip.warpMarkers`, ou -1. Les marqueurs ne sont

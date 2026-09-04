@@ -409,6 +409,33 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
                     }
                     return;
                 }
+                // LA POIGNÉE DE COURBURE (D17.7) SE VISE AVANT LES POINTS,
+                // parce qu'elle est plus petite qu'eux et qu'elle est posée
+                // entre deux : viser les points d'abord ne la rendrait
+                // saisissable que là où il n'y a rien à saisir.
+                if (connue) {
+                    for (size_t k = 0; k + 1 < courbe->points.size(); ++k) {
+                        const auto& a = courbe->points[k];
+                        const auto& b = courbe->points[k + 1];
+                        if (a.step) continue;   // un palier ne se courbe pas
+                        const float xa = tickToX(a.tick), xb = tickToX(b.tick);
+                        if (xb - xa < 24.0f) continue;   // pas la place d'une poignée
+                        const float xm = (xa + xb) * 0.5f;
+                        const auto tm = static_cast<vsm::midi::Tick>((a.tick + b.tick) / 2);
+                        const float ym = valueToY(vsm::sequencer::automationValueAt(*courbe, tm),
+                                                   mini, maxi, y + 4, trackHeight(track) - 8);
+                        if (std::abs(point.x - xm) < 5.0f && std::abs(point.y - ym) < 5.0f) {
+                            if (onEditStarted) onEditStarted(u8"Courber un segment d'automation");
+                            geste_ = Geste::CourbureAutomation;
+                            pisteCourbeSaisie_ = pisteSousLeCurseur;
+                            pointSaisi_ = k;
+                            courbureAuClic_ = a.curve;
+                            yAuClic_ = point.y;
+                            return;
+                        }
+                    }
+                }
+
                 const size_t existant =
                     vsm::sequencer::automationPointNear(*courbe, t, tolerance);
                 if (existant < courbe->points.size()) {
@@ -593,6 +620,25 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
             kMinHeight, kMaxHeight,
             hauteurOrigine_ + static_cast<int>(event.position.y - ySaisie_));
         repaint();
+        return;
+    }
+    if (geste_ == Geste::CourbureAutomation && pisteCourbeSaisie_ >= 0) {
+        const auto index = static_cast<size_t>(pisteCourbeSaisie_);
+        if (auto* courbe = curveShownOn(index)) {
+            if (pointSaisi_ < courbe->points.size()) {
+                auto& a = courbe->points[pointSaisi_];
+                const auto& b = courbe->points[pointSaisi_ + 1];
+                // CENT PIXELS POUR TOUTE LA COURSE, et le sens suit la pente :
+                // tirer VERS la valeur d'arrivée accélère le segment, tirer à
+                // l'opposé le fait traîner. Sans cette symétrie, la poignée
+                // ferait l'inverse de ce qu'on croit sur un segment descendant.
+                const float sens = b.value >= a.value ? -1.0f : 1.0f;
+                const float delta = (event.position.y - yAuClic_) * sens / 100.0f;
+                a.curve = juce::jlimit(-1.0f, 1.0f, courbureAuClic_ + delta);
+                notifyChanged();
+                repaint();
+            }
+        }
         return;
     }
     if (geste_ == Geste::Point && pisteCourbeSaisie_ >= 0) {
@@ -1512,6 +1558,23 @@ void ArrangementComponent::paint(juce::Graphics& g) {
             }
             g.setColour(Palette::accentAmber.withAlpha(0.9f));
             g.strokePath(trace, juce::PathStrokeType(1.5f));
+
+            // LA POIGNÉE DE COURBURE (D17.7), au milieu de chaque segment
+            // assez large pour en porter une. Un petit cercle évidé : elle ne
+            // doit pas se confondre avec un point, qui est carré.
+            for (size_t k = 0; k + 1 < courbe->points.size(); ++k) {
+                const auto& a = courbe->points[k];
+                const auto& b = courbe->points[k + 1];
+                if (a.step) continue;
+                const float xa = tickToX(a.tick), xb = tickToX(b.tick);
+                if (xb - xa < 24.0f || xb < kHeaderWidth || xa > bounds.getWidth()) continue;
+                const float xm = (xa + xb) * 0.5f;
+                const auto tm = static_cast<vsm::midi::Tick>((a.tick + b.tick) / 2);
+                const float ym = valueToY(vsm::sequencer::automationValueAt(*courbe, tm),
+                                           mini, maxi, y + 4, bande);
+                g.setColour(Palette::accentAmber.withAlpha(a.curve == 0.0f ? 0.45f : 0.95f));
+                g.drawEllipse(xm - 3.5f, ym - 3.5f, 7.0f, 7.0f, 1.4f);
+            }
 
             for (const auto& point : courbe->points) {
                 const float x = tickToX(point.tick);

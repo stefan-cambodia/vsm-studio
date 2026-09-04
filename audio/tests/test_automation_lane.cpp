@@ -8,6 +8,7 @@
 #include "vsm/sequencer/Project.h"
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <memory>
 #include <vector>
 
@@ -369,4 +370,35 @@ VSM_TEST(the_engine_and_the_editor_interpolate_a_curve_identically) {
     // hors plage doit coïncider, et c'est justement ce qu'on oublie.
     for (vsm::midi::Tick t = -500; t <= 3000; t += 7)
         VSM_ASSERT_NEAR(vsm::sequencer::automationValueAt(courbe, t), lane.valueAt(t), 1e-6f);
+}
+
+// --------------------------------------------------------------------------
+// D17.7 — LE MOTEUR ET L'ÉDITEUR SUR LES MÊMES POINTS.
+//
+// C'est l'invariant du § 6 de la feuille de route, et la seule chose qui
+// empêche de dessiner une courbe et d'en entendre une autre. Ce test compare
+// les DEUX implémentations sur les mêmes valeurs, courbure comprise.
+// --------------------------------------------------------------------------
+
+VSM_TEST(the_engine_and_the_editor_agree_on_every_curved_segment) {
+    for (float courbure : {-1.0f, -0.6f, -0.25f, 0.0f, 0.25f, 0.6f, 1.0f}) {
+        vsm::sequencer::AutomationCurve modele;
+        modele.points = {{0, 0.1f, false, courbure},
+                          {960, 0.9f, false, -courbure},
+                          {2880, 0.3f, false, 0.0f}};
+
+        AutomationLane lane;
+        for (const auto& p : modele.points)
+            lane.addPoint(p.tick, p.value,
+                           p.step ? AutomationCurve::Step : AutomationCurve::Linear, p.curve);
+
+        for (Tick t = 0; t <= 3000; t += 37) {
+            const float aLEcran = vsm::sequencer::automationValueAt(modele, t);
+            const float aLOreille = lane.valueAt(t);
+            if (std::abs(aLEcran - aLOreille) > 1.0e-6f)
+                std::printf("      [D17.7] courbure %+.2f, tick %lld : écran %.6f, oreille %.6f\n",
+                            courbure, static_cast<long long>(t), aLEcran, aLOreille);
+            VSM_ASSERT_NEAR(aLOreille, aLEcran, 1.0e-6f);
+        }
+    }
 }

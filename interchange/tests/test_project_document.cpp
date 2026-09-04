@@ -1081,3 +1081,28 @@ VSM_TEST(a_track_transpose_survives_the_trip_and_zero_writes_nothing) {
     applyDocumentToProject(relu.document, rejoue);
     VSM_ASSERT_EQ(rejoue.tracks[0].transposeSemitones, -5);
 }
+
+// D17.7 — LA COURBURE D'UN POINT D'AUTOMATION, écrite seulement quand elle
+// n'est pas nulle, et surtout PAS PERDUE par un agrégat positionnel.
+VSM_TEST(an_automation_curve_bend_survives_the_trip_and_zero_writes_nothing) {
+    Project project = buildProject();
+    vsm::sequencer::AutomationCurve courbe;
+    courbe.parameter = "mix.volume";
+    courbe.points = {{0, 0.0f, false, 0.0f}, {960, 1.0f, false, 0.0f}};
+    project.tracks[0].automation.push_back(courbe);
+    VSM_ASSERT(projectDocumentToJson(documentFromProject(project)).toString()
+                   .find("\"curve\"") == std::string::npos);
+
+    project.tracks[0].automation[0].points[0].curve = 0.75f;
+    const std::string ecrit = projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(ecrit.find("\"curve\"") != std::string::npos);
+
+    const ProjectLoadResult relu = parseProjectDocument(ecrit);
+    VSM_ASSERT(relu.success);
+    Project rejoue = project;
+    for (auto& t : rejoue.tracks) t.automation.clear();
+    applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT_EQ(rejoue.tracks[0].automation.size(), size_t(1));
+    VSM_ASSERT_NEAR(rejoue.tracks[0].automation[0].points[0].curve, 0.75f, 1e-6f);
+    VSM_ASSERT_NEAR(rejoue.tracks[0].automation[0].points[1].curve, 0.0f, 1e-9f);
+}

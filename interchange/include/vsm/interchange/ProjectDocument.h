@@ -106,6 +106,10 @@ struct ProjectAutomationPoint {
     int64_t tick = 0;
     float value = 0.0f;
     bool step = false;
+    /// D17.7 : la courbure du segment qui part de ce point, de -1 à +1. Zéro
+    /// est la droite, et n'est pas écrit. EN DERNIER, comme dans le modèle :
+    /// ces points se construisent par agrégat positionnel.
+    float curve = 0.0f;
 };
 
 /// Une courbe d'automation d'une piste, ciblant un paramètre par son identité

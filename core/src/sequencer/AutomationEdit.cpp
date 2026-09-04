@@ -19,9 +19,13 @@ float automationValueAt(const AutomationCurve& curve, Tick tick) {
         // dire `step`, et c'est ce qu'il faut pour un commutateur, un choix de
         // forme d'onde ou tout ce qui ne s'interpole pas.
         if (a.step || b.tick == a.tick) return a.value;
-        const double ratio = static_cast<double>(tick - a.tick)
-                           / static_cast<double>(b.tick - a.tick);
-        return static_cast<float>(a.value + ratio * (b.value - a.value));
+        const float ratio = static_cast<float>(tick - a.tick)
+                            / static_cast<float>(b.tick - a.tick);
+        // LA COURBURE (D17.7) : la MÊME fonction que le moteur, appelée depuis
+        // le modèle. Deux formules qui divergeraient feraient dessiner une
+        // courbe et en entendre une autre.
+        const float avance = automationCurveEase(a.curve, ratio);
+        return a.value + avance * (b.value - a.value);
     }
     return points.back().value;
 }

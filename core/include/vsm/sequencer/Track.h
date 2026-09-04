@@ -360,7 +360,45 @@ struct AutomationPoint {
     Tick tick = 0;
     float value = 0.0f;
     bool step = false;
+    /// LA COURBURE DU SEGMENT QUI PART DE CE POINT (D17.7), de -1 à +1.
+    ///
+    /// Zéro est la droite, et c'est le défaut : un projet d'avant D17.7 sonne
+    /// et se dessine exactement comme avant. Positif, le segment monte VITE
+    /// puis s'aplatit ; négatif, il traîne puis se précipite.
+    ///
+    /// POURQUOI IL EN FALLAIT UNE. Un fondu de volume DROIT EN GAIN n'est pas
+    /// un fondu droit à l'oreille : l'oreille entend des décibels, et une
+    /// droite en gain passe la moitié de sa course dans les six derniers
+    /// décibels -- elle s'entend comme une chute brutale à la fin. C'est le
+    /// geste d'automation le plus courant qui soit, et il ne se dessinait pas.
+    ///
+    /// APRÈS `step`, et c'est la règle de ce struct comme de `Clip` : le code
+    /// existant construit des `AutomationPoint` par agrégat POSITIONNEL, et un
+    /// champ glissé au milieu décalerait tout ce qui suit (piège payé deux
+    /// fois à D17.1).
+    float curve = 0.0f;
 };
+
+/// L'AVANCEMENT COURBÉ (D17.7) : où en est un segment de courbure `curve`
+/// quand on a parcouru la fraction `x` de sa durée.
+///
+/// ÉCRITE ICI, DANS LE MODÈLE, et appelée par l'éditeur COMME par le moteur.
+/// Deux formules qui divergeraient feraient dessiner une courbe et en entendre
+/// une autre -- c'est déjà l'invariant du § 6 de la feuille de route, et la
+/// même raison qui a fait mettre `fadeShapeGain` ici à D17.1.
+///
+/// La forme est `x` élevé à la puissance `2^(-2·courbure)` : continue,
+/// strictement croissante, égale à l'identité à courbure nulle, et symétrique
+/// (la courbure opposée donne la fonction réciproque). Une puissance plutôt
+/// qu'une Bézier parce qu'elle s'inverse et se compose sans résoudre quoi que
+/// ce soit -- et que la poignée du milieu de segment suffit à la régler.
+inline float automationCurveEase(float curve, float x) {
+    if (x <= 0.0f) return 0.0f;
+    if (x >= 1.0f) return 1.0f;
+    if (curve == 0.0f) return x;
+    const float c = curve < -1.0f ? -1.0f : (curve > 1.0f ? 1.0f : curve);
+    return std::pow(x, std::pow(2.0f, -2.0f * c));
+}
 
 /// Une courbe d'automation, ciblant un paramètre par son identité SÉMANTIQUE
 /// (« filter.1.cutoff ») : c'est ce qui permet à la courbe de survivre à un

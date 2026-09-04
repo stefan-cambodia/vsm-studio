@@ -1068,6 +1068,9 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     }
     else if (nom == "deplacer-clips") arrangement_.nudgeSelection(
         project_.timeSignatureMap.ticksPerBar(0, project_.ticksPerQuarterNote));
+    // D17.7 : les courbes d'automation par-dessus les clips (la touche `A` de
+    // l'arrangement), pour les photographier -- une touche ne se capture pas.
+    else if (nom == "courbes") arrangement_.toggleAutomation();
     else if (nom == "tout-choisir") arrangement_.selectAll();
     else if (nom == "couper-clips") arrangement_.splitSelectionAtPlayhead();
     else if (nom == "joindre-clips") arrangement_.joinSelection();
@@ -3388,6 +3391,7 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     // sans clip — le rendu ne change pas d'un échantillon, mais le morceau
     // devient visible et saisissable dans l'arrangement.
     materializeImplicitClips();
+
     // Ctrl+S réécrira ICI, sans redemander où -- et « ici » est le dossier des
     // MÉDIAS, c'est-à-dire le vrai dossier du projet : réécrire une session
     // récupérée dans sa copie de travail la perdrait au prochain lancement.
@@ -4634,8 +4638,16 @@ void MainComponent::captureSessionIntoProject() {
         vsm::sequencer::AutomationCurve curve;
         curve.parameter = nom;
         for (const auto& point : lane.points())
+            // D17.7 : LA COURBURE FAIT L'ALLER-RETOUR. Ce chemin-ci refait les
+            // courbes du projet à partir des voies du moteur ; il oubliait la
+            // courbure, qui repartait donc à zéro à chaque republication --
+            // dessinée droite alors que le fichier la disait courbe, et
+            // ÉCRASÉE à la sauvegarde suivante. Trouvé en regardant l'écran :
+            // les tests de `core/`, du moteur et du format étaient tous verts,
+            // et aucun ne traverse ce point de passage.
             curve.points.push_back({point.tick, point.value,
-                                     point.curveToNext == vsm::audio::engine::AutomationCurve::Step});
+                                     point.curveToNext == vsm::audio::engine::AutomationCurve::Step,
+                                     point.bend});
         project_.tracks[rangement].automation.push_back(std::move(curve));
     }
 }
@@ -4712,7 +4724,8 @@ void MainComponent::applyAutomationFromProject() {
             for (const auto& point : curve.points)
                 lane.addPoint(point.tick, point.value,
                                point.step ? vsm::audio::engine::AutomationCurve::Step
-                                          : vsm::audio::engine::AutomationCurve::Linear);
+                                          : vsm::audio::engine::AutomationCurve::Linear,
+                               point.curve);
             currentAutomation_.push_back(std::move(lane));
         }
     }

@@ -3981,6 +3981,61 @@ les jours ensuite, le modèle en dernier.
 > deux bouts sont rognés, et un fichier entièrement silencieux est laissé tel
 > quel.
 
+> **D17.7 EST FAITE (05/09/2026), et c'est l'écran qui a trouvé le défaut que
+> quatre suites de tests laissaient passer.** `AutomationPoint::curve`, de −1
+> à +1, zéro étant la droite et n'étant pas écrit. La forme est `x` élevé à la
+> puissance `2^(−2·courbure)` : continue, strictement croissante, égale à
+> l'identité à courbure nulle, et SYMÉTRIQUE — la courbure opposée donne la
+> fonction réciproque, ce qu'un test vérifie. Une puissance plutôt qu'une
+> Bézier parce qu'elle s'inverse et se compose sans rien résoudre, et que la
+> poignée du milieu de segment suffit à la régler.
+>
+> POURQUOI IL EN FALLAIT UNE : un fondu de volume DROIT EN GAIN n'est pas un
+> fondu droit à l'oreille. L'oreille entend des décibels, et une droite en
+> gain passe la moitié de sa course dans les six derniers décibels — elle
+> s'entend comme une chute brutale à la fin. C'est le geste d'automation le
+> plus courant qui soit, et il ne se dessinait pas.
+>
+> LA FORMULE EST DANS LE MODÈLE (`sequencer::automationCurveEase`) et le
+> MOTEUR L'APPELLE : c'est l'invariant du § 6, et un test `audio/` compare
+> les deux implémentations sur sept courbures et quatre-vingt-deux positions,
+> à 10⁻⁶ près. Le dessin, lui, n'a eu besoin d'aucune ligne : il échantillonne
+> déjà `automationValueAt` tous les deux pixels — mettre la formule au bon
+> endroit l'a fait suivre tout seul.
+>
+> **LE DÉFAUT, ET IL MÉRITE D'ÊTRE ÉCRIT EN ENTIER.** La courbe restait
+> DROITE à l'écran alors que le fichier la disait courbe. Les tests de `core/`
+> (la fonction), du moteur (l'accord des deux formules) et du format
+> (l'aller-retour disque) étaient tous verts, et aucun ne pouvait le voir : le
+> chemin fautif est dans `app/`, où une fonction refait les courbes du projet
+> À PARTIR DES VOIES DU MOTEUR après chaque republication, et construisait ses
+> points sans la courbure. Elle repartait donc à zéro à chaque republication —
+> dessinée droite, et ÉCRASÉE à la sauvegarde suivante. Aucune suite ne
+> traverse ce point de passage, et c'est précisément ce que la règle « lancer
+> l'application et la regarder » existe pour attraper. Deux autres conversions
+> avaient déjà failli tomber : les agrégats POSITIONNELS de `ProjectDocument`,
+> où le champ ajouté en dernier prenait sa valeur par défaut sans que le
+> compilateur ait un mot à dire.
+>
+> La poignée est un petit cercle ÉVIDÉ au milieu de chaque segment assez large
+> (24 px), pâle quand la courbure est nulle et vive sinon — elle ne doit pas se
+> confondre avec un point, qui est carré. On la tire verticalement, cent
+> pixels pour toute la course, et le SENS SUIT LA PENTE : tirer vers la valeur
+> d'arrivée accélère, tirer à l'opposé fait traîner. Sans cette symétrie, la
+> poignée ferait l'inverse de ce qu'on croit sur un segment descendant. La
+> courbure se calcule par rapport à celle du clic et non en s'accumulant : un
+> glissement qui repasse par son point de départ rend la courbure de départ au
+> bit près. Un palier ne se courbe pas, et n'a pas de poignée.
+>
+> Six tests : quatre `core/` (zéro est exactement la droite ; les deux sens
+> écartent la mi-course de part et d'autre sans jamais déplacer les bornes ;
+> les courbures opposées sont réciproques ; un palier tient sa valeur quoi
+> que dise la courbure ; l'aisance est monotone et bornée), un `audio/`
+> (l'accord des deux implémentations) et un `interchange/` (l'aller-retour, et
+> le fichier inchangé à courbure nulle). Vu à l'écran : le premier segment
+> monte vite et s'aplatit, le second traîne et se précipite, et les deux
+> poignées disent laquelle est réglée.
+
 > **D17.1 EST FAITE (05/09/2026), et le chiffre est celui du manuel.**
 > `FadeShape` (`Linear`, `EqualPower`, `Slow`, `Fast`), absente du fichier
 > quand c'est la droite — un projet d'avant D17.1 se réécrit octet pour
