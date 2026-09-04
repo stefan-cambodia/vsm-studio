@@ -5,6 +5,7 @@
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <cmath>
 #include "vsm/audio/engine/AudioTrackSource.h"
+#include "vsm/audio/effect/BypassableEffect.h"
 #include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/audio/engine/SampleStore.h"
 #include "vsm/audio/io/AudioTrackLoader.h"
@@ -438,7 +439,12 @@ VSM_TEST(process_block_allocates_nothing_with_every_factory_effect_inserted) {
         // (pitch shift à zéro, trémolo à zéro) resteraient inertes.
         for (const auto& p : effet->parameterList())
             effet->setParameter(p.id, p.minValue + 0.6f * (p.maxValue - p.minValue));
-        chaine->push_back(std::move(effet));
+        // Par l'enrobage de D15.1, un effet sur deux contourné : la ligne à
+        // retard du sec est aussi un chemin de `process()`.
+        auto enrobe = std::make_shared<vsm::audio::effect::BypassableEffect>(std::move(effet));
+        enrobe->prepare(48000.0, 512);
+        enrobe->setBypassed(chaine->size() % 2 == 1);
+        chaine->push_back(std::move(enrobe));
     }
     graphe.setTrackEffectChain(0, chaine);
     graphe.setProject(projetAvecNotes(1));

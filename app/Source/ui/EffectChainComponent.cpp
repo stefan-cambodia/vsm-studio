@@ -1,4 +1,5 @@
 #include "EffectChainComponent.h"
+#include "vsm/audio/effect/BypassableEffect.h"
 #include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/interchange/EffectDescription.h"
 #include <cmath>
@@ -44,6 +45,15 @@ EffectChainComponent::EffectChainComponent() {
         addEffectById(EffectFactory::available()[idx].id);
     };
     addAndMakeVisible(addBox_);
+    addAndMakeVisible(allButton_);
+    allButton_.setVisible(false);
+    allButton_.onClick = [this] {
+        auto* d = activeDescription();
+        if (!d) return;
+        bool unActif = false;
+        for (const auto& e : *d) unActif = unActif || e.enabled;
+        setAllEffectsEnabled(!unActif);
+    };
 
     paramHeader_.setColour(juce::Label::textColourId, Palette::textSecondary);
     paramHeader_.setFont(juce::Font(juce::FontOptions(11.0f).withStyle("Bold")));
@@ -111,9 +121,13 @@ EffectChainComponent::buildChain(const std::vector<TrackEffect>& described) cons
         // évité en n'ajoutant rien à la chaîne vivante -- la description, elle,
         // reste intacte et sera réécrite telle quelle.
         if (!fx) continue;
-        fx->prepare(sampleRate_, blockSize_);
-        vsm::interchange::applyEffectDescription(entry, *fx);
-        chain.push_back(std::move(fx));
+        // D15.1 : chaque insert vivant est enrobé pour pouvoir être contourné
+        // sans reconstruire la chaîne ; le drapeau suit la description.
+        auto enrobe = std::make_unique<vsm::audio::effect::BypassableEffect>(std::move(fx));
+        enrobe->setBypassed(!entry.enabled);
+        enrobe->prepare(sampleRate_, blockSize_);
+        vsm::interchange::applyEffectDescription(entry, *enrobe);
+        chain.push_back(std::move(enrobe));
     }
     return chain;
 }
@@ -183,18 +197,38 @@ void EffectChainComponent::publishActiveChain() {
 void EffectChainComponent::rebuildEffectList() {
     rows_.clear();
     Chain* chain = activeChain();
-    if (chain == nullptr) { resized(); return; }
+    auto* description = activeDescription();
+    if (chain == nullptr || description == nullptr) { allButton_.setVisible(false); resized(); return; }
+    allButton_.setVisible(!chain->empty());
+    {
+        // Le libellé dit ce que le clic FERA : contourner tous les inserts
+        // tant qu'un seul est actif, sinon les remettre tous.
+        bool unActif = false;
+        for (const auto& e : *description) unActif = unActif || e.enabled;
+        allButton_.setButtonText(unActif ? "Contourner tout" : "Tout remettre");
+    }
 
     for (size_t i = 0; i < chain->size(); ++i) {
         EffectRow row;
         const auto index = static_cast<int>(i);
 
+        const bool actif = i < description->size() ? (*description)[i].enabled : true;
         row.select = std::make_unique<juce::TextButton>((*chain)[i]->effectName());
         row.select->setColour(juce::TextButton::buttonOnColourId, Palette::accentTeal);
+        row.select->setAlpha(actif ? 1.0f : 0.45f);
+        row.select->setTooltip(actif ? juce::String() : juce::String(u8"Contourné : le signal passe sec, retardé de la latence de l'effet"));
         row.select->setClickingTogglesState(true);
         row.select->setToggleState(index == selectedEffect_, juce::dontSendNotification);
         row.select->onClick = [this, index] { selectedEffect_ = index; rebuildEffectList(); rebuildParamControls(); };
         addAndMakeVisible(*row.select);
+
+        row.bypass = std::make_unique<juce::TextButton>(actif ? "On" : "Off");
+        row.bypass->setColour(juce::TextButton::buttonOnColourId, Palette::accentTeal);
+        row.bypass->setClickingTogglesState(true);
+        row.bypass->setToggleState(actif, juce::dontSendNotification);
+        row.bypass->setTooltip(u8"Actif / contourné (Bypass) : l'effet tourne encore et garde sa latence");
+        row.bypass->onClick = [this, index] { setEffectEnabled(static_cast<size_t>(index), !effectEnabled(static_cast<size_t>(index))); };
+        addAndMakeVisible(*row.bypass);
 
         row.up = std::make_unique<juce::TextButton>("^");
         row.up->onClick = [this, index] {
@@ -300,6 +334,8 @@ void EffectChainComponent::resized() {
     auto addRow = area.removeFromTop(26);
     addLabel_.setBounds(addRow.removeFromLeft(56));
     addBox_.setBounds(addRow.removeFromLeft(200));
+    addRow.removeFromLeft(8);
+    allButton_.setBounds(addRow.removeFromLeft(150));
     area.removeFromTop(6);
 
     // Liste des effets (rangées de 24 px).
@@ -308,6 +344,7 @@ void EffectChainComponent::resized() {
         row.remove->setBounds(r.removeFromRight(28).reduced(1));
         row.down->setBounds(r.removeFromRight(26).reduced(1));
         row.up->setBounds(r.removeFromRight(26).reduced(1));
+        row.bypass->setBounds(r.removeFromLeft(44).reduced(1));
         row.select->setBounds(r.reduced(1));
     }
 
@@ -324,4 +361,42 @@ void EffectChainComponent::resized() {
         params_[i].label->setBounds(cell.removeFromBottom(14));
         params_[i].slider->setBounds(cell.reduced(4));
     }
+}
+
+// --- D15.1 : contourner un insert, ou tous ceux de la piste ----------------
+
+bool EffectChainComponent::effectEnabled(size_t index) const {
+    if (project_ == nullptr || activeTrack_ < 0) return true;
+    const auto& d = project_->tracks[static_cast<size_t>(activeTrack_)].effects;
+    return index < d.size() ? d[index].enabled : true;
+}
+
+void EffectChainComponent::setEffectEnabled(size_t index, bool enabled) {
+    Chain* c = activeChain();
+    auto* d = activeDescription();
+    if (!c || !d || index >= d->size() || d->size() != c->size()) return;
+    if ((*d)[index].enabled == enabled) return;
+    if (onEditStarted) onEditStarted(enabled ? "Remettre un effet" : "Contourner un effet");
+    (*d)[index].enabled = enabled;
+    // Le drapeau est atomique sur l'instance vivante : rien à republier, donc
+    // aucun clic de reconstruction de chaîne.
+    if (auto* enrobe = dynamic_cast<vsm::audio::effect::BypassableEffect*>((*c)[index].get()))
+        enrobe->setBypassed(!enabled);
+    rebuildEffectList();
+}
+
+void EffectChainComponent::setAllEffectsEnabled(bool enabled) {
+    Chain* c = activeChain();
+    auto* d = activeDescription();
+    if (!c || !d || d->size() != c->size()) return;
+    bool change = false;
+    for (const auto& e : *d) change = change || (e.enabled != enabled);
+    if (!change) return;
+    if (onEditStarted) onEditStarted(enabled ? "Remettre tous les effets" : "Contourner tous les effets");
+    for (size_t i = 0; i < d->size(); ++i) {
+        (*d)[i].enabled = enabled;
+        if (auto* enrobe = dynamic_cast<vsm::audio::effect::BypassableEffect*>((*c)[i].get()))
+            enrobe->setBypassed(!enabled);
+    }
+    rebuildEffectList();
 }

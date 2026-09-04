@@ -1,4 +1,5 @@
 #include "vsm/interchange/OfflineReconstruction.h"
+#include "vsm/audio/effect/BypassableEffect.h"
 #include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/audio/io/AudioTrackLoader.h"
 #include <filesystem>
@@ -176,6 +177,11 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
                                            " » inconnu, non appliqué");
                 continue;
             }
+            // D15.1 : l'insert contourné dans le projet l'est aussi à l'export,
+            // avec la même latence -- le fichier rendu est ce qu'on entendait.
+            auto enrobe = std::make_unique<vsm::audio::effect::BypassableEffect>(std::move(effect));
+            enrobe->setBypassed(!entry.enabled);
+            effect = std::move(enrobe);
             effect->prepare(options.sampleRate, options.blockSize);
             const EffectApplyReport applyReport = applyEffectDescription(entry, *effect);
             for (const auto& unknown : applyReport.unknownParameters)

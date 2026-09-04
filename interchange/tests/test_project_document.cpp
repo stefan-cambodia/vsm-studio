@@ -1,5 +1,6 @@
 #include "LocaleAVirgule.h"
 #include "TestFramework.h"
+#include <algorithm>
 #include "vsm/interchange/Json.h"
 #include "vsm/interchange/ProjectDocument.h"
 #include <cmath>
@@ -358,6 +359,38 @@ VSM_TEST(effects_and_automation_survive_the_trip_through_the_model) {
     VSM_ASSERT_EQ(rejoue.tracks[1].automation[0].points.size(), size_t(2));
     VSM_ASSERT_NEAR(rejoue.tracks[1].automation[0].points[1].value, 4800.0f, 1e-3);
     VSM_ASSERT(rejoue.tracks[1].automation[0].points[1].step);
+}
+
+VSM_TEST(a_bypassed_insert_stays_bypassed_through_the_file_and_an_active_one_writes_nothing) {
+    // D15.1. Le contournement traverse le fichier ; l'état actif -- le seul
+    // que les projets antérieurs connaissent -- n'y écrit rien, si bien que
+    // ces projets gardent exactement leur fichier.
+    Project project = buildProject();
+    project.tracks[0].effects.push_back({"reverb", {{"reverb.1.mix", 0.35f}}});
+    project.tracks[0].effects.push_back({"delay", {{"delay.1.time", 0.375f}}});
+    project.tracks[0].effects[1].enabled = false;
+
+    const std::string texte = projectDocumentToJson(documentFromProject(project)).toString();
+    Project toutActif = project;
+    toutActif.tracks[0].effects[1].enabled = true;
+    const std::string texteActif = projectDocumentToJson(documentFromProject(toutActif)).toString();
+    auto mentions = [](const std::string& t) {
+        size_t n = 0;
+        for (size_t pos = t.find("\"enabled\""); pos != std::string::npos; pos = t.find("\"enabled\"", pos + 1)) ++n;
+        return n;
+    };
+    // Exactement une mention de plus quand un insert est contourné : le
+    // fichier d'un projet tout actif n'en porte aucune sous ses effets.
+    VSM_ASSERT_EQ(mentions(texte), mentions(texteActif) + 1);
+
+    const ProjectLoadResult relu = parseProjectDocument(texte);
+    VSM_ASSERT(relu.success);
+    Project rejoue = project;
+    for (auto& track : rejoue.tracks) track.effects.clear();
+    applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT_EQ(rejoue.tracks[0].effects.size(), size_t(2));
+    VSM_ASSERT(rejoue.tracks[0].effects[0].enabled);
+    VSM_ASSERT(!rejoue.tracks[0].effects[1].enabled);
 }
 
 VSM_TEST(removing_a_track_takes_its_effects_with_it) {

@@ -294,6 +294,12 @@ struct TrackEffect {
     /// ne désigne. Sans ce champ, rouvrir un morceau rendrait une
     /// réverbération à convolution muette, ou une autre pièce.
     std::string nativeState;
+
+    /// ACTIF OU CONTOURNÉ (D15.1). Contourné, l'insert tourne encore et garde
+    /// sa latence ; seule sa sortie est remplacée par le signal sec retardé
+    /// d'autant (voir `BypassableEffect`). Absent du fichier quand vrai : les
+    /// projets écrits avant ne changent pas d'un octet.
+    bool enabled = true;
 };
 
 /// Un point d'automation. `value` est en UNITÉS RÉELLES (Hz, secondes), jamais

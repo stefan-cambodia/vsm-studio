@@ -94,6 +94,8 @@ struct ProjectEffect {
     /// internes ; écrit seulement quand il existe, si bien qu'un projet sans
     /// plugin tiers garde exactement le fichier qu'il avait.
     std::string nativeState;
+    /// Actif ou contourné (D15.1) ; écrit seulement quand contourné.
+    bool enabled = true;
 };
 
 /// Un point d'automation. `tick` est dans la résolution du transport (la même

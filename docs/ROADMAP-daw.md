@@ -3243,6 +3243,54 @@ quotidien d'abord, l'import et l'export ensuite, la préférence en dernier.
 > le chemin qui a arrêté le transport (le bouton, la barre d'espace, une
 > commande MIDI apprise) : un seul endroit, pas quatre.
 
+### Phase D15 — Le quatrième audit : ce qui manque encore une fois D14 posée (04/09/2026)
+
+**Pourquoi.** Même méthode que D11, D13 et D14, et le même garde-fou : chaque
+absence ci-dessous a été VÉRIFIÉE dans le code avant d'être écrite (un
+relevé de trente gestes usuels de Cubase et de Live contre `app/Source/`,
+`core/` et `interchange/` ; vingt-cinq existaient déjà). L'ordre suit le
+§ 3 : le geste de tous les jours d'abord, l'outil de mesure ensuite, le
+modèle temporel en dernier parce qu'il traverse tout.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D15.1 | **Contourner un insert** : `TrackEffect` n'a pas d'état « actif », et l'on ne peut comparer avec/sans qu'en supprimant l'effet (Cubase : bouton Bypass ; Live : l'interrupteur du device) | un champ `enabled` par insert, sauvegardé (absent = actif, les projets existants ne changent pas), un interrupteur par rangée dans la chaîne d'effets, et « tous les inserts » d'un coup par piste ; le graphe saute l'effet SANS changer la compensation de latence (un contournement ne doit pas déplacer la piste) ; test `audio/` : contourné = identique à l'absence de l'effet, à la latence près, et le retard reste le même |
+| D15.2 | **Déplacer la sélection au clavier dans l'arrangement** : le piano roll a ses flèches, l'arrangement n'a que la souris (Cubase : `Ctrl+←/→` d'un pas de grille ; Live : `←/→`) | `Ctrl+←/→` déplace les clips choisis d'un pas de grille, `Ctrl+Shift+←/→` d'un pas fin, `Ctrl+↑/↓` vers la piste voisine du même genre ; dans la table des raccourcis ; annulable |
+| D15.3 | **Un analyseur de spectre** sur le master (Live : Spectrum ; Cubase : SuperVision) : la console montre des niveaux, jamais une répartition | une fenêtre d'analyse, FFT 4096 sur le master, axe des fréquences logarithmique de 20 Hz à 20 kHz, axe des niveaux en dB, retenue en position et taille ; le calcul se fait hors du fil audio, sur une copie ; test : un sinus à 1 kHz sort dans la bonne case, à ± un demi-ton |
+| D15.4 | **Des presets d'effet** : les machines ont leurs presets, les seize effets n'en ont aucun, et régler une réverbération se refait à chaque piste | enregistrer / charger un preset nommé par type d'effet, dans le dossier des préférences ; un menu dans la rangée de l'insert ; test `interchange/` : aller-retour disque exact |
+| D15.5 | **Les rampes de tempo** : `TempoChange` ne connaît que le palier, et un ralentissement se fait en marches d'escalier (Cubase : courbe de tempo ; Live : automation du tempo) | un drapeau « rampe jusqu'au suivant » par changement de tempo ; `TempoMap` intègre la rampe exactement (forme close, pas de pas fixe) dans les deux sens ; l'export MIDI la rend en paliers d'une noire et le dit ; la voie de tempo la dessine ; tests `core/` : aller-retour ticks ↔ secondes à 1 µs près, et une rampe de 120 à 60 sur quatre mesures dure ce que la formule dit |
+
+> **D15.1 EST FAITE (04/09/2026), avec le choix de Cubase plutôt que celui
+> de Live.** Contourner n'éteint pas : l'insert continue de tourner (queue de
+> réverbération, mémoire de delay, enveloppe de compresseur), déclare la
+> même latence, et seule sa sortie est remplacée par le signal sec retardé
+> d'exactement cette latence (`BypassableEffect`, un enrobage ; le drapeau
+> est atomique, la chaîne n'est ni reconstruite ni republiée, donc aucun
+> clic). Deux raisons : la compensation de latence de la piste ne bouge pas
+> -- un « avec / sans » qui déplace la piste compare autre chose --, et le
+> retour est sans transitoire. Le prix, un effet qui calcule pour rien, est
+> celui que Cubase paie aussi. Le banc l'a mesuré sur les seize effets à 60 %
+> de chaque réglage : contourné = sec retardé de la latence, écart 0 ; remis
+> après un tiers de contournement = jamais contourné, écart 0 ; latence du
+> graphe 1 648 échantillons dans les deux états. Le premier passage a trouvé
+> un défaut réel : la latence du pitch shift est la moitié de son grain, un
+> RÉGLAGE posé après `prepare`, et une ligne dimensionnée à `prepare` lisait
+> 1 200 pour 1 632 (écart 0,93) -- la latence se lit donc à chaque bloc, et
+> la ligne est dimensionnée large (un huitième de seconde au moins). Dans le
+> fichier : `"enabled": false` seulement quand c'est le cas, les projets
+> existants ne changent pas d'un octet (test d'aller-retour). Dans la vue :
+> « On / Off » en tête de chaque rangée, le nom grisé quand contourné,
+> « Contourner tout / Tout remettre » pour la piste ; annulable ; l'export
+> hors ligne lit le même drapeau. Le garde-fou d'allocation monte désormais
+> un insert sur deux contourné.
+
+**Ce que l'audit a écarté, et pourquoi.** Le pré-roll (jouer les mesures
+qui précèdent le punch-in) : le décompte existe, et un punch-in se prépare
+en posant la tête avant. Le scrub audio : Live ne l'a pas, et la tête posée
+à la souris avec la lecture en boucle rend le même service. Le choix de
+l'entrée audio par piste : à revérifier avec une carte multi-entrées sous
+la main, pas sur un relevé de code.
+
 
 ## 4. Les choix tranchés ici, et pourquoi
 

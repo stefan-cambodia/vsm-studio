@@ -88,6 +88,13 @@ public:
     /// il ne le remplace jamais par un autre effet.
     bool addEffectById(const std::string& effectId);
 
+    /// D15.1 : un insert actif ou contourné, et tous ceux de la piste d'un
+    /// coup. La description est modifiée, le drapeau de l'instance vivante
+    /// suit ; la chaîne n'est pas republiée.
+    bool effectEnabled(size_t index) const;
+    void setEffectEnabled(size_t index, bool enabled);
+    void setAllEffectsEnabled(bool enabled);
+
 private:
     void rebuildEffectList();
     void rebuildParamControls();
@@ -121,10 +128,13 @@ private:
     juce::Label titleLabel_;
     juce::Label addLabel_;
     juce::ComboBox addBox_;
+    /// D15.1 : « Contourner tout » / « Tout remettre » pour la piste.
+    juce::TextButton allButton_;
 
     // Rangées d'effets (nom + monter/descendre/supprimer).
     struct EffectRow {
         std::unique_ptr<juce::TextButton> select;
+        std::unique_ptr<juce::TextButton> bypass; ///< D15.1 : On / Off
         std::unique_ptr<juce::TextButton> up;
         std::unique_ptr<juce::TextButton> down;
         std::unique_ptr<juce::TextButton> remove;
