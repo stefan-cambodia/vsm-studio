@@ -105,6 +105,10 @@ public:
     /// rythmes n'a que faire d'un pitch bend -- mais c'est ce qui permet à
     /// l'interface de dire pourquoi une modulation ne s'entend pas.
     uint64_t ignoredControlEvents() const { return ignoredControlEvents_.load(std::memory_order_relaxed); }
+    /// D16.2 : les valeurs chassées que la file n'a pas pu porter. Comptées
+    /// plutôt que tues -- une pédale qui manque est le genre de silence qu'on
+    /// cherche des heures.
+    uint64_t droppedChasedControls() const { return droppedChasedControls_.load(std::memory_order_relaxed); }
     /// LE MÉTRONOME. Éteint par défaut, et il doit le rester pour le rendu
     /// hors ligne : un clic dans un fichier exporté serait une faute grossière.
     /// Le rendu hors ligne monte son propre graphe et ne l'allume jamais ;
@@ -317,12 +321,27 @@ private:
         std::array<std::pair<uint32_t, uint32_t>, kMaxTracks> trackRange{};
     };
 
+    /// UNE VALEUR CHASSÉE (D16.2), en attente de livraison à sa piste.
+    ///
+    /// Elle est CALCULÉE SUR LE FIL DE L'INTERFACE, dans `seekSeconds`, et
+    /// passe au fil audio par une file sans verrou -- exactement comme une
+    /// note jouée au clavier. Le chemin audio ne parcourt donc jamais le
+    /// planning à rebours pour retrouver « la valeur d'avant », ce qui serait
+    /// un coût non borné à l'endroit où il n'y en a pas le droit.
+    struct ChasedControlEvent {
+        uint32_t trackIndex = 0;
+        vsm::audio::plugin::MidiControlEvent event;
+    };
+
     struct LiveNoteEvent {
         uint32_t trackIndex = 0;
         uint8_t note = 60;
         uint8_t velocity = 100;
         bool noteOn = true;
     };
+
+    /// Vide la file des valeurs chassées dans drainedChase_ (début de bloc).
+    void drainChasedControls();
 
     /// Vide les files de notes live dans drainedLive_ (début de bloc).
     void drainLiveNotes();
@@ -617,6 +636,17 @@ private:
     std::array<vsm::audio::util::LockFreeRingBuffer<LiveNoteEvent, kLiveQueueCapacity>, kNumLiveSources> liveQueues_;
     std::array<LiveNoteEvent, kMaxLiveEventsPerBlock> drainedLive_{};
     int drainedLiveCount_ = 0;
+
+    /// LA CHASSE AUX CONTRÔLEURS (D16.2). La file est large : un déplacement
+    /// de tête peut rendre plusieurs valeurs par piste, sur des dizaines de
+    /// pistes. Ce qui déborderait est COMPTÉ, jamais tu -- une pédale qui
+    /// manque est exactement le genre de silence qu'on cherche des heures.
+    static constexpr size_t kChaseQueueCapacity = 1024;
+    static constexpr size_t kMaxChasedPerBlock = 512;
+    vsm::audio::util::LockFreeRingBuffer<ChasedControlEvent, kChaseQueueCapacity> chaseQueue_;
+    std::array<ChasedControlEvent, kMaxChasedPerBlock> drainedChase_{};
+    int drainedChaseCount_ = 0;
+    std::atomic<uint64_t> droppedChasedControls_{0};
 };
 
 } // namespace vsm::audio::engine

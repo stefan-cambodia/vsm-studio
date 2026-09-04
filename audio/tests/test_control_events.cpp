@@ -247,3 +247,80 @@ VSM_TEST(the_mod_wheel_adds_an_audible_vibrato_where_a_lfo_path_exists) {
     cc.value = 1.0f;
     VSM_ASSERT(!moog->handleControlEvent(cc));
 }
+
+// --------------------------------------------------------------------------
+// D16.2 — LA CHASSE AUX CONTRÔLEURS À LA MISE EN LECTURE.
+//
+// Le planning est construit UNE fois, du début à la fin du morceau, et le
+// rendu s'y déplace par dichotomie : poser la tête au refrain ne « saute »
+// aucun événement, il commence simplement à les lire plus loin. Les
+// contrôleurs posés avant n'étaient donc jamais joués -- la pédale du
+// couplet, le balayage en cours, le programme de la première mesure. Le
+// morceau ne sonnait pas comme lui-même, et rien ne le disait.
+// --------------------------------------------------------------------------
+
+namespace {
+
+/// Une molette poussée à la première mesure, une note à la TROISIÈME : entre
+/// les deux, rien. C'est le cas qui perdait la molette.
+Project projetDontLaMolettePrecedeLaNote(bool avecMolette) {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    project.tempoMap.addTempoChange(0, 500000);            // 120 BPM
+    Track track;
+    track.name = "Essai";
+    track.instrumentId = "vsm.juno106";
+    uint64_t ids = 1;
+    track.addNote(3840, 4800, 69, 100, 0, ids);            // mesure 3, un La
+    if (avecMolette) track.pitchBends.push_back({0, 0, 8191});
+    project.tracks.push_back(track);
+    return project;
+}
+
+double hauteurDepuisLaMesureTrois(bool avecMolette) {
+    vsm::audio::plugin::registerBuiltInPlugins();
+    constexpr double kSampleRate = 48000.0;
+    constexpr int kBlock = 512;
+    ProcessGraph graphe;
+    graphe.prepare(kSampleRate, kBlock);
+    graphe.setProject(projetDontLaMolettePrecedeLaNote(avecMolette));
+    graphe.setTrackInstrument(0, "vsm.juno106");
+    // LA TÊTE EST POSÉE SUR LA NOTE, molette laissée derrière : 3840 ticks à
+    // 120 BPM font quatre secondes.
+    graphe.seekSeconds(4.0);
+    graphe.setPlaying(true);
+
+    std::vector<float> gauche(static_cast<size_t>(kSampleRate * 0.5), 0.0f);
+    std::vector<float> droite(gauche.size(), 0.0f);
+    for (size_t i = 0; i + kBlock <= gauche.size(); i += kBlock)
+        graphe.processBlock(gauche.data() + i, droite.data() + i, kBlock);
+    return hauteurApprochee(gauche, kSampleRate);
+}
+
+} // namespace
+
+VSM_TEST(starting_at_the_chorus_keeps_the_wheel_that_was_pushed_at_the_verse) {
+    const double sansMolette = hauteurDepuisLaMesureTrois(false);
+    const double avecMolette = hauteurDepuisLaMesureTrois(true);
+    if (!(sansMolette > 50.0) || !(avecMolette > sansMolette * 1.05))
+        std::printf("      chasse : sans molette %.1f Hz, avec %.1f Hz\n",
+                    sansMolette, avecMolette);
+    VSM_ASSERT(sansMolette > 50.0);            // sinon le test ne prouve rien
+    // Molette à fond : deux demi-tons vers le haut, soit +12,2 % au moins.
+    VSM_ASSERT(avecMolette > sansMolette * 1.05);
+}
+
+VSM_TEST(the_chase_leaves_a_track_alone_when_the_head_goes_back_to_zero) {
+    // Il n'y a rien avant le début : chasser y rendrait des valeurs qui
+    // n'ont jamais été posées, et changerait le son du premier temps.
+    vsm::audio::plugin::registerBuiltInPlugins();
+    ProcessGraph graphe;
+    graphe.prepare(48000.0, 512);
+    graphe.setProject(projetDontLaMolettePrecedeLaNote(true));
+    graphe.setTrackInstrument(0, "vsm.juno106");
+    graphe.seekSeconds(0.0);
+    VSM_ASSERT_EQ(graphe.droppedChasedControls(), uint64_t(0));
+    // Et une position négative (le décompte) ne chasse pas non plus.
+    graphe.seekSeconds(-1.0);
+    VSM_ASSERT_EQ(graphe.droppedChasedControls(), uint64_t(0));
+}

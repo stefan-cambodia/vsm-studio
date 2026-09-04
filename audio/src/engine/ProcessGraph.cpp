@@ -385,6 +385,72 @@ void ProcessGraph::seekSeconds(double seconds) {
     // Un déplacement de la tête de lecture recommence le compte des passes :
     // ce qui précède appartient à un autre enregistrement.
     loopWrapCount_.store(0, std::memory_order_release);
+
+    // LA CHASSE AUX CONTRÔLEURS (D16.2) — « Chase Events » de Cubase, actif
+    // par défaut comme chez lui.
+    //
+    // POURQUOI ICI ET PAS DANS LE PLANNING. Le planning est construit UNE
+    // fois, du début à la fin du morceau (`setProject`), et le rendu s'y
+    // déplace par dichotomie : sauter au refrain ne « saute » aucun
+    // événement, il commence simplement à les lire plus loin. Les
+    // contrôleurs posés avant ne sont donc jamais joués, et démarrer au
+    // refrain perdait la pédale du couplet, le balayage de filtre en cours
+    // et le programme de la première mesure. La chasse appartient au
+    // DÉPLACEMENT, et c'est ici qu'il a lieu.
+    //
+    // CALCULÉE SUR CE FIL-CI, qui est celui de l'interface, et livrée au fil
+    // audio par une file sans verrou : lui faire remonter le planning à
+    // rebours serait un coût non borné là où il n'y en a pas le droit.
+    auto snapshot = snapshot_.load(std::memory_order_acquire);
+    if (!snapshot || snapshot->project.tracks.empty()) return;
+    const auto& project = snapshot->project;
+    const auto tick = project.secondsToTicks(seconds);
+    if (tick <= 0) return;
+
+    size_t perdus = 0;
+    for (const auto& ev : vsm::sequencer::PlaybackScheduler::chaseAt(project, tick)) {
+        ChasedControlEvent chasse;
+        chasse.trackIndex = static_cast<uint32_t>(ev.trackIndex);
+        bool utile = std::visit([&chasse](auto&& data) {
+            using T = std::decay_t<decltype(data)>;
+            using namespace vsm::midi;
+            if constexpr (std::is_same_v<T, PitchBendEvent>) {
+                chasse.event.kind = MidiControlEvent::Kind::PitchBend;
+                chasse.event.channel = data.channel;
+                chasse.event.value =
+                    static_cast<float>(data.value) / 8192.0f * kPitchBendRangeSemitones;
+                return true;
+            } else if constexpr (std::is_same_v<T, ControlChangeEvent>) {
+                chasse.event.kind = MidiControlEvent::Kind::ControlChange;
+                chasse.event.channel = data.channel;
+                chasse.event.index = data.controller;
+                chasse.event.value = static_cast<float>(data.value) / 127.0f;
+                return true;
+            } else if constexpr (std::is_same_v<T, ChannelPressureEvent>) {
+                chasse.event.kind = MidiControlEvent::Kind::ChannelPressure;
+                chasse.event.channel = data.channel;
+                chasse.event.value = static_cast<float>(data.pressure) / 127.0f;
+                return true;
+            } else if constexpr (std::is_same_v<T, ProgramChangeEvent>) {
+                chasse.event.kind = MidiControlEvent::Kind::ProgramChange;
+                chasse.event.channel = data.channel;
+                chasse.event.index = data.program;
+                return true;
+            }
+            return false;
+        }, ev.data);
+        if (!utile) continue;
+        chasse.event.sampleOffset = 0;
+        if (!chaseQueue_.push(chasse)) ++perdus;
+    }
+    if (perdus > 0) droppedChasedControls_.fetch_add(perdus, std::memory_order_relaxed);
+}
+
+void ProcessGraph::drainChasedControls() {
+    drainedChaseCount_ = 0;
+    ChasedControlEvent event;
+    while (static_cast<size_t>(drainedChaseCount_) < kMaxChasedPerBlock && chaseQueue_.pop(event))
+        drainedChase_[static_cast<size_t>(drainedChaseCount_++)] = event;
 }
 
 
@@ -429,6 +495,7 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
     std::fill(outputR, outputR + numSamples, 0.0f);
 
     drainLiveNotes();
+    drainChasedControls();
 
     if (!playing_.load(std::memory_order_acquire)) {
         // À L'ARRÊT, la position ne bouge pas et le planning n'est pas rejoué
@@ -440,7 +507,11 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
         // Court-circuit quand il n'y a rien à jouer : c'est le cas immensément
         // majoritaire (application ouverte, transport à l'arrêt), et on ne veut
         // pas y brûler du CPU en rendant des instruments silencieux.
-        if (drainedLiveCount_ == 0 && totalActiveVoices() == 0) return;
+        // LES VALEURS CHASSÉES COMPTENT AUSSI (D16.2) : poser la tête au
+        // refrain transport à l'arrêt doit régler les machines tout de suite,
+        // sinon la première note jouée au clavier sonnerait avec les
+        // contrôleurs d'avant le déplacement.
+        if (drainedLiveCount_ == 0 && drainedChaseCount_ == 0 && totalActiveVoices() == 0) return;
 
         auto idleSnapshot = snapshot_.load(std::memory_order_acquire);
         if (!idleSnapshot || idleSnapshot->project.tracks.empty()) return;
@@ -887,6 +958,20 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
             pluginEvent.velocity = live.velocity;
             soundingNotes_[trackIndex][live.note] = live.noteOn;
             events[static_cast<size_t>(numEvents++)] = pluginEvent;
+        }
+    }
+
+    // LES VALEURS CHASSÉES (D16.2) : livrées EN TÊTE DE BLOC, avant tout ce
+    // que le planning apporte -- une pédale rendue après la note qu'elle
+    // devait tenir ne la tient pas. Comme les notes d'écoute, seulement dans
+    // le premier sous-segment : le découpage de l'automation les rejouerait
+    // sinon à chaque segment.
+    if (sampleStart == 0 && instrument != nullptr) {
+        for (int i = 0; i < drainedChaseCount_; ++i) {
+            const ChasedControlEvent& chasse = drainedChase_[static_cast<size_t>(i)];
+            if (chasse.trackIndex != trackIndex) continue;
+            if (!instrument->handleControlEvent(chasse.event))
+                ignoredControlEvents_.fetch_add(1, std::memory_order_relaxed);
         }
     }
 

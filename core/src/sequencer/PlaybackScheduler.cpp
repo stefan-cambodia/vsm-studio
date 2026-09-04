@@ -1,6 +1,8 @@
 #include "vsm/sequencer/PlaybackScheduler.h"
 #include <algorithm>
 #include <limits>
+#include <map>
+#include <utility>
 
 namespace vsm::sequencer {
 
@@ -54,11 +56,120 @@ std::vector<Passage> passagesOf(const Track& track, Tick materialEnd) {
     return passages;
 }
 
+/// LE DERNIER TICK DE SORTIE, STRICTEMENT AVANT `limite`, où cet événement du
+/// matériau est joué -- tous passages confondus. -1 s'il n'est jamais joué
+/// avant.
+///
+/// « Tous passages confondus » n'est pas un détail : un clip bouclé rejoue la
+/// même valeur source à chaque répétition, et c'est la DERNIÈRE qui est passée
+/// sous la tête de lecture, pas celle de la ligne de temps du matériau. Chasser
+/// sur les ticks sources rendrait la valeur d'un passage qui n'a peut-être
+/// jamais été joué.
+Tick lastOutBefore(const std::vector<Passage>& passages, Tick source, Tick limit) {
+    Tick meilleur = -1;
+    for (const auto& passage : passages) {
+        if (source < passage.sourceFrom || source >= passage.sourceTo) continue;
+        const Tick out = source + passage.shift;
+        if (out >= passage.outLimit || out >= limit) continue;
+        meilleur = std::max(meilleur, out);
+    }
+    return meilleur;
+}
+
 } // namespace
+
+std::vector<ScheduledEvent> PlaybackScheduler::chaseAt(const Project& project, Tick startTick) {
+    std::vector<ScheduledEvent> resultat;
+    if (startTick <= 0) return resultat;
+
+    const bool anySolo = std::any_of(project.tracks.begin(), project.tracks.end(),
+                                      [](const Track& t) { return t.solo; });
+    const Tick materialEnd = project.lastUsedTick();
+
+    for (size_t trackIndex = 0; trackIndex < project.tracks.size(); ++trackIndex) {
+        const Track& track = project.tracks[trackIndex];
+        if (anySolo ? !track.solo : track.muted) continue;
+        const std::vector<Passage> passages = passagesOf(track, materialEnd);
+
+    // ------------------------------------------------------------------
+    // LA CHASSE AUX CONTRÔLEURS (D16.2) — « Chase Events » de Cubase.
+    //
+    // Un événement continu n'est émis que si son tick tombe dans la
+    // fenêtre demandée : démarrer la lecture au refrain perdait donc la
+    // pédale forte posée au couplet, le balayage de filtre en cours et le
+    // programme choisi à la première mesure. Le morceau ne sonnait pas
+    // comme lui-même, et rien ne le disait -- on croyait entendre le
+    // refrain, on entendait le refrain sans sa pédale.
+    //
+    // STRICTEMENT AVANT `startTick`, et non « jusqu'à » : un événement
+    // posé exactement là est déjà émis par la boucle ci-dessous
+    // (`inRange` commence à `startTick`), et le chasser aussi le
+    // dédoublerait.
+    //
+    // CE QUI EST CHASSÉ, ET CE QUI NE L'EST PAS. Les contrôleurs continus
+    // (CC), le pitch bend, la pression de CANAL et le programme : ce sont
+    // des états du canal, qui valent tant qu'on ne les change pas, et
+    // qu'un instrument appliquera aux notes à venir. La pression
+    // POLYPHONIQUE, non : elle s'adresse à une note nommée, et aucune
+    // note d'avant le point de départ ne sonne encore -- la rendre
+    // enverrait une pression pour une note qui n'existe pas.
+    //
+    // Le programme part EN PREMIER : sur beaucoup d'instruments il
+    // remplace le son, et les contrôleurs rendus avant lui seraient
+    // effacés par lui.
+    if (startTick > 0) {
+        const double quand = project.ticksToSeconds(startTick);
+        std::map<uint8_t, std::pair<Tick, uint8_t>> programmes;
+        std::map<uint16_t, std::pair<Tick, uint8_t>> controleurs;
+        std::map<uint8_t, std::pair<Tick, int16_t>> bends;
+        std::map<uint8_t, std::pair<Tick, uint8_t>> pressions;
+        auto retenir = [](auto& carte, auto cle, Tick out, auto valeur) {
+            auto it = carte.find(cle);
+            if (it == carte.end() || it->second.first < out) carte[cle] = {out, valeur};
+        };
+
+        for (const auto& pc : track.programChanges) {
+            const Tick out = lastOutBefore(passages, pc.tick, startTick);
+            if (out >= 0) retenir(programmes, pc.channel, out, pc.program);
+        }
+        for (const auto& cc : track.controlChanges) {
+            const Tick out = lastOutBefore(passages, cc.tick, startTick);
+            if (out >= 0)
+                retenir(controleurs,
+                        static_cast<uint16_t>(cc.channel * 256 + cc.controller), out, cc.value);
+        }
+        for (const auto& pb : track.pitchBends) {
+            const Tick out = lastOutBefore(passages, pb.tick, startTick);
+            if (out >= 0) retenir(bends, pb.channel, out, pb.value);
+        }
+        for (const auto& cp : track.channelPressure) {
+            const Tick out = lastOutBefore(passages, cp.tick, startTick);
+            if (out >= 0) retenir(pressions, cp.channel, out, cp.pressure);
+        }
+
+        for (const auto& [canal, v] : programmes)
+            resultat.push_back({quand, trackIndex, ProgramChangeEvent{canal, v.second}});
+        for (const auto& [cle, v] : controleurs)
+            resultat.push_back({quand, trackIndex,
+                               ControlChangeEvent{static_cast<uint8_t>(cle / 256),
+                                                   static_cast<uint8_t>(cle % 256), v.second}});
+        for (const auto& [canal, v] : bends)
+            resultat.push_back({quand, trackIndex, PitchBendEvent{canal, v.second}});
+        for (const auto& [canal, v] : pressions)
+            resultat.push_back({quand, trackIndex, ChannelPressureEvent{canal, v.second}});
+    }
+    }
+    return resultat;
+}
 
 std::vector<ScheduledEvent> PlaybackScheduler::build(const Project& project,
                                                        Tick startTick, Tick endTick) {
     std::vector<ScheduledEvent> result;
+    // LA CHASSE AUX CONTRÔLEURS (D16.2) est calculée à part pour être placée
+    // EN TÊTE : le tri final est stable, et une pédale rendue après la note
+    // qu'elle devait tenir ne la tient pas.
+    std::vector<ScheduledEvent> chasse =
+        startTick < endTick ? chaseAt(project, startTick) : std::vector<ScheduledEvent>{};
 
     bool anySolo = std::any_of(project.tracks.begin(), project.tracks.end(),
                                 [](const Track& t) { return t.solo; });
@@ -122,11 +233,14 @@ std::vector<ScheduledEvent> PlaybackScheduler::build(const Project& project,
         }
     }
 
-    std::stable_sort(result.begin(), result.end(),
+    // LA CHASSE D'ABORD, puis le reste : le tri est STABLE, donc les valeurs
+    // rendues à `startTick` précèdent tout ce qui tombe au même instant.
+    chasse.insert(chasse.end(), result.begin(), result.end());
+    std::stable_sort(chasse.begin(), chasse.end(),
                       [](const ScheduledEvent& a, const ScheduledEvent& b) {
                           return a.timeSeconds < b.timeSeconds;
                       });
-    return result;
+    return chasse;
 }
 
 } // namespace vsm::sequencer

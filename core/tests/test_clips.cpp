@@ -207,3 +207,115 @@ VSM_TEST(markers_do_not_multiply_across_several_tracks) {
     VSM_ASSERT_EQ(relu.markers.size(), size_t(1));
     VSM_ASSERT_EQ(relu.markers[0].name, std::string("Pont"));
 }
+
+// --------------------------------------------------------------------------
+// D16.2 — LA CHASSE AUX CONTRÔLEURS À LA MISE EN LECTURE (« Chase Events »).
+//
+// Un événement continu n'était émis que si son tick tombait dans la fenêtre
+// demandée : démarrer au refrain perdait la pédale posée au couplet, le
+// balayage de filtre en cours et le programme choisi à la première mesure.
+// --------------------------------------------------------------------------
+
+VSM_TEST(starting_in_the_middle_chases_the_controller_value_that_was_in_force) {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    project.tempoMap.addTempoChange(0, 500000);          // 120 BPM
+    Track piste;
+    piste.controlChanges.push_back({0,    0, 74, 20});
+    piste.controlChanges.push_back({1920, 0, 74, 100});
+    project.tracks.push_back(piste);
+
+    const auto events = PlaybackScheduler::build(project, 960, 2880);
+    VSM_ASSERT_EQ(events.size(), size_t(2));
+    // La valeur en vigueur arrive EN PREMIER, au temps du point de départ.
+    const auto* premier = std::get_if<vsm::midi::ControlChangeEvent>(&events[0].data);
+    VSM_ASSERT(premier != nullptr);
+    VSM_ASSERT_EQ(int(premier->controller), 74);
+    VSM_ASSERT_EQ(int(premier->value), 20);
+    VSM_ASSERT_NEAR(events[0].timeSeconds, 1.0, 1e-9);    // 960 ticks à 120 BPM
+    // Et celui qui tombe dans la fenêtre est rendu à sa place, une seule fois.
+    const auto* second = std::get_if<vsm::midi::ControlChangeEvent>(&events[1].data);
+    VSM_ASSERT(second != nullptr);
+    VSM_ASSERT_EQ(int(second->value), 100);
+    VSM_ASSERT_NEAR(events[1].timeSeconds, 2.0, 1e-9);
+}
+
+VSM_TEST(the_chase_never_doubles_an_event_that_sits_exactly_on_the_start) {
+    // STRICTEMENT AVANT : un événement posé sur le point de départ est déjà
+    // rendu par la boucle ordinaire, et le chasser aussi le dédoublerait.
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    project.tempoMap.addTempoChange(0, 500000);
+    Track piste;
+    piste.controlChanges.push_back({960, 0, 64, 127});
+    project.tracks.push_back(piste);
+
+    const auto events = PlaybackScheduler::build(project, 960, 2880);
+    VSM_ASSERT_EQ(events.size(), size_t(1));
+    // Et rien du tout quand on part de zéro : il n'y a rien avant.
+    VSM_ASSERT_EQ(PlaybackScheduler::build(project, 0, 480).size(), size_t(0));
+}
+
+VSM_TEST(the_chase_carries_bend_pressure_and_program_but_never_poly_pressure) {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    project.tempoMap.addTempoChange(0, 500000);
+    Track piste;
+    piste.programChanges.push_back({0, 0, 42});
+    piste.pitchBends.push_back({240, 0, 3000});
+    piste.channelPressure.push_back({480, 0, 77});
+    // La pression POLYPHONIQUE s'adresse à une note nommée : aucune note
+    // d'avant le départ ne sonne, la chasser enverrait une pression pour une
+    // note qui n'existe pas.
+    piste.polyAftertouch.push_back({480, 0, 60, 99});
+    project.tracks.push_back(piste);
+
+    const auto events = PlaybackScheduler::build(project, 1920, 3840);
+    VSM_ASSERT_EQ(events.size(), size_t(3));
+    // LE PROGRAMME PART EN PREMIER : sur beaucoup d'instruments il remplace le
+    // son, et les contrôleurs rendus avant lui seraient effacés par lui.
+    VSM_ASSERT(std::holds_alternative<vsm::midi::ProgramChangeEvent>(events[0].data));
+    VSM_ASSERT_EQ(int(std::get<vsm::midi::ProgramChangeEvent>(events[0].data).program), 42);
+    VSM_ASSERT(std::holds_alternative<vsm::midi::PitchBendEvent>(events[1].data));
+    VSM_ASSERT(std::holds_alternative<vsm::midi::ChannelPressureEvent>(events[2].data));
+    for (const auto& e : events)
+        VSM_ASSERT(!std::holds_alternative<vsm::midi::PolyPressureEvent>(e.data));
+}
+
+VSM_TEST(the_chase_reads_the_last_value_actually_played_loop_repeats_included) {
+    // « Tous passages confondus » : un clip bouclé rejoue la même valeur source
+    // à chaque répétition, et c'est la DERNIÈRE passée sous la tête qui compte.
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    project.tempoMap.addTempoChange(0, 500000);
+    Track piste;
+    piste.controlChanges.push_back({0,   0, 74, 10});
+    piste.controlChanges.push_back({960, 0, 74, 90});
+    uint64_t ids = 1;
+    piste.addNote(0, 240, 60, 100, 0, ids);                // du matériau jusqu'à 1920
+    piste.addNote(1680, 1920, 62, 100, 0, ids);
+    Clip boucle;                                            // fenêtre [0,1920[ jouée 4 fois
+    boucle.sourceStart = 0; boucle.sourceLength = 1920;
+    boucle.startTick = 0;   boucle.length = 7680;
+    piste.clips.push_back(boucle);
+    project.tracks.push_back(piste);
+
+    // Départ à 5760 : la troisième répétition a rendu 10 (à 3840) puis 90 (à
+    // 4800) ; la quatrième commence à 5760. La valeur en vigueur est 90.
+    const auto events = PlaybackScheduler::build(project, 5700, 5760);
+    VSM_ASSERT(!events.empty());
+    const auto* premier = std::get_if<vsm::midi::ControlChangeEvent>(&events[0].data);
+    VSM_ASSERT(premier != nullptr);
+    VSM_ASSERT_EQ(int(premier->value), 90);
+}
+
+VSM_TEST(a_muted_track_is_not_chased_either) {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    project.tempoMap.addTempoChange(0, 500000);
+    Track piste;
+    piste.muted = true;
+    piste.controlChanges.push_back({0, 0, 64, 127});
+    project.tracks.push_back(piste);
+    VSM_ASSERT(PlaybackScheduler::build(project, 960, 2880).empty());
+}

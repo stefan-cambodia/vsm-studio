@@ -3453,6 +3453,57 @@ départ, ce qui est exactement ce qu'on lui demande.
 > d'une mesure chacun, au nom et à la couleur de leur piste ; `clip:0:0`
 > sur une mesure occupée ne crée rien.
 
+> **D16.2 EST FAITE (04/09/2026), et l'attendu écrit ici n'aurait pas suffi
+> à la faire sonner.** Le tableau disait « avant la boucle, `build` émet à
+> `startTick` la dernière valeur… ». C'est fait, et c'est juste — mais
+> vérifié en cherchant les appelants : `PlaybackScheduler::build` n'est
+> appelé qu'à UN endroit en production, `ProcessGraph::setProject`, et
+> toujours avec `startTick = 0`. Le moteur construit son planning une fois,
+> du début à la fin du morceau, et se déplace ensuite dedans par
+> dichotomie : poser la tête au refrain ne « saute » aucun événement, il
+> commence à les lire plus loin. La chasse dans `build` seule aurait donc
+> été verte aux tests et muette à l'oreille — exactement la panne que ce
+> dépôt s'interdit. La chasse appartient au DÉPLACEMENT DE LA TÊTE, et
+> c'est là qu'elle a été posée en plus : `PlaybackScheduler::chaseAt` est
+> publique, `ProcessGraph::seekSeconds` l'appelle SUR LE FIL DE
+> L'INTERFACE et livre le résultat au fil audio par une file sans verrou,
+> comme une note jouée au clavier. Faire remonter le planning à rebours au
+> chemin audio aurait été un coût non borné là où il n'y en a pas le droit ;
+> ce qui déborderait la file est compté (`droppedChasedControls`), jamais tu.
+>
+> STRICTEMENT AVANT le point de départ, et non « jusqu'à » : un événement
+> posé exactement là est déjà rendu par la boucle ordinaire, et le chasser
+> aussi le dédoublerait. Tous passages confondus, aussi : un clip bouclé
+> rejoue la même valeur source à chaque répétition, et c'est la dernière
+> passée sous la tête qui est en vigueur, pas celle de la ligne de temps du
+> matériau.
+>
+> CE QUI EST CHASSÉ : les contrôleurs continus, le pitch bend, la pression
+> de CANAL et le programme — des états du canal, qui valent tant qu'on ne
+> les change pas. Pas la pression POLYPHONIQUE, et c'est la décision que le
+> tableau laissait ouverte en écrivant « l'aftertouch » : elle s'adresse à
+> une note nommée, et aucune note d'avant le point de départ ne sonne
+> encore — la rendre enverrait une pression pour une note qui n'existe pas.
+> Le programme part EN PREMIER : sur beaucoup d'instruments il remplace le
+> son, et les contrôleurs rendus avant lui seraient effacés par lui. Une
+> piste muette ou hors solo n'est pas chassée. La tête ramenée à zéro ou
+> avant (le décompte) ne chasse rien : il n'y a rien avant le début.
+> Chassé même transport à l'ARRÊT — sans quoi la première note jouée au
+> clavier après un déplacement sonnerait avec les contrôleurs d'avant.
+>
+> Mesuré, avec le témoin du même code (la chasse coupée d'une ligne) : une
+> molette poussée à fond à la mesure 1, une note à la mesure 3, la tête
+> posée sur la note. Sans chasse, 440,4 Hz avec la molette comme sans —
+> elle était perdue, et rien ne le disait. Avec, 494,8 Hz, soit les deux
+> demi-tons attendus (493,9 Hz à la résolution de l'autocorrélation près).
+> Sept tests : cinq `core/` (la valeur en vigueur rendue en tête au temps du
+> départ ; pas de doublon sur le point de départ ; bend, pression et
+> programme oui, polyphonique non, programme en premier ; la dernière
+> répétition d'une boucle ; une piste muette n'est pas chassée) et deux
+> `audio/` (le refrain garde la molette du couplet ; retour à zéro et
+> décompte ne chassent rien). Le test de non-allocation du chemin audio
+> reste vert.
+
 > **D16.4 EST FAITE (04/09/2026), et elle a pris le menu plutôt que le clic
 > droit sec.** Le tableau disait « clic droit le retire » ; un repère qui
 > disparaît sous un clic droit sans rien demander est une perte silencieuse,
