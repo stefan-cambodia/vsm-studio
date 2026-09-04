@@ -15,6 +15,7 @@
 #include "ui/ShortcutsWindow.h"
 #include "ui/HistoryWindow.h"
 #include "ui/SpectrumComponent.h"
+#include "ui/PlayOrderComponent.h"
 #include "ui/PreferencesWindow.h"
 #include "ui/BrowserComponent.h"
 #include "vsm/interchange/BrowserIndex.h"
@@ -264,6 +265,8 @@ private:
         kMenuViewSpectrum,
         /// D18.6 : le bloc-notes du projet.
         kMenuViewProjectNotes,
+        /// D18.4 : l'ordre de jeu.
+        kMenuViewPlayOrder,
         kMenuFilePreferences,
         kMenuViewBrowser,
         kMenuFileReconstruct,
@@ -668,6 +671,10 @@ private:
     void bounceSelectionToNewTracks();
     /// D18.6 : ouvre le bloc-notes du projet.
     void showProjectNotes();
+    /// D18.4 : ouvre l'ordre de jeu, sections relues depuis les repères.
+    void showPlayOrder();
+    std::unique_ptr<PanelWindow> playOrderWindow_;
+    vsm::app::ui::PlayOrderComponent playOrderPanel_;
     std::unique_ptr<PanelWindow> projectNotesWindow_;
     /// LE PANNEAU NE DÉTIENT RIEN : le texte vit dans `project_`, et l'éditeur
     /// l'y écrit à chaque frappe. Dupliquer l'état créerait une seconde

@@ -4183,6 +4183,58 @@ les jours ensuite, le modèle en dernier.
 > plutôt que laissé en place** : un varispeed qui ne change pas la vitesse est
 > pire que pas de varispeed, parce qu'on le croit.
 
+> **D18.4 EST FAITE (05/09/2026), et une réduction l'a rendue petite.** UNE
+> SECTION N'EST PAS UN OBJET DE PLUS : elle se DÉDUIT des repères — de
+> celui-ci jusqu'au suivant —, parce que c'est déjà ainsi qu'on s'en sert. On
+> pose « Refrain » au début du refrain, et la section refrain va de là au
+> repère d'après. Ajouter un second modèle de « zone nommée » à côté des
+> repères aurait donné deux vérités sur la même chose, et c'est toujours la
+> seconde qui ment. Seul l'ORDRE est nouveau, et il tient dans une liste
+> d'entiers.
+>
+> `flattenPlayOrder` transporte les notes, les clips, les courbes d'automation
+> et les repères ; c'est le SEUL moment où l'ordre touche au matériau — tant
+> qu'on n'aplatit pas, on n'a rien cassé et l'on peut essayer autre chose. Une
+> note qui déborderait de sa section est COUPÉE à sa fin : laissée entière,
+> elle empiéterait sur la section suivante, que personne n'a arrangée ainsi
+> (la règle de `splitClips` au bord d'un clip). Chaque créneau reçoit un point
+> d'automation à sa valeur d'entrée, sans quoi un créneau qui commence au
+> milieu d'un fondu hériterait de la valeur du précédent et le paramètre
+> sauterait au raccord. Les notes copiées reçoivent des identifiants NEUFS :
+> une section jouée deux fois a produit deux fois les mêmes notes.
+>
+> CE QUI N'EST PAS TRANSPORTÉ, ET C'EST DIT AVANT D'APLATIR : la carte de
+> tempo et celle des signatures. Elles décrivent la ligne de temps, pas les
+> sections, et les réordonner demanderait de décider ce que devient un ralenti
+> joué deux fois — la réponse n'est pas la même selon qu'on répète un refrain
+> ou qu'on déplace une coda. Le panneau prévient quand le morceau a plus d'un
+> tempo (`flattenChangesTempoMeaning`) ; sur une reconstruction à tempo
+> constant, cela ne change rien.
+>
+> **LA LEÇON DE D8.3, REPAYÉE ICI.** La première écriture bornait la dernière
+> section avec `lastUsedTick()`, qui ne connaît que le matériau MIDI. Vu à
+> l'écran : sur un projet à trois repères, la section « C » n'existait pas et
+> l'aplatissement en rendait deux au lieu de trois. Une reconstruction faite
+> de clips AUDIO n'aurait eu aucune section au-delà de son dernier repère,
+> c'est-à-dire, le plus souvent, aucune. C'est `lastSoundingTick()` qu'il
+> fallait, exactement comme pour l'export en D8.3 — et un test le tient
+> désormais sur un projet sans une seule note.
+>
+> L'ORDRE N'EST PAS ENREGISTRÉ DANS LE PROJET, et c'est une décision : il ne
+> décrit rien du morceau, c'est un brouillon dont le résultat s'écrit dans le
+> matériau dès qu'on aplatit. Un projet rouvert avec un ordre de jeu qu'on ne
+> se rappelle pas avoir posé serait une surprise, pas un service.
+>
+> Huit tests `core/` : les sections lues des repères (la dernière court
+> jusqu'au matériau, un repère posé après tout ne fait pas de section, sans
+> repère il n'y en a aucune) ; aplatir [A, A, B] rend un projet dont le
+> PLANNING est celui qu'on entendrait, avec des identifiants distincts ; les
+> repères suivent ; une note à cheval est coupée ; un ordre vide ou invalide
+> ne touche à rien ; l'automation reçoit sa valeur au raccord ; deux tempos
+> sont signalés ; un projet fait uniquement de clips audio a bien ses
+> sections. Vu à l'écran (`aplatir:2:0:1` sur A/B/C) : C occupe deux mesures,
+> puis A, puis B, repères et clips réordonnés ensemble.
+
 > **D18.1 EST FAITE (05/09/2026), et son critère a dû être réécrit par la
 > mesure.** « Piste ▸ Reporter la sélection en audio » rend hors ligne les
 > clips choisis — une piste neuve par piste source, posée À LA PLACE de la

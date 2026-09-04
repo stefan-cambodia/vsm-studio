@@ -1,5 +1,6 @@
 #include "MainComponent.h"
 #include "vsm/sequencer/ClipEdit.h"
+#include "vsm/sequencer/PlayOrder.h"
 #include "vsm/interchange/GroovePreset.h"
 #include "vsm/audio/io/SilenceDetection.h"
 #include "vsm/sequencer/TimeEdit.h"
@@ -1021,6 +1022,23 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     else if (nom == "historique")  menuItemSelected(kMenuViewHistory, 5);   // D11 : la fenêtre d'historique, pour la photographier
     else if (nom == "spectre")     menuItemSelected(kMenuViewSpectrum, 5);  // D15.3 : l'analyseur, pour le photographier
     else if (nom == "notes")       menuItemSelected(kMenuViewProjectNotes, 5);  // D18.6
+    else if (nom == "ordre")       menuItemSelected(kMenuViewPlayOrder, 5);     // D18.4
+    // D18.4 : `aplatir:0:0:1` pose l'ordre et l'aplatit tout de suite. Le
+    // panneau se pilote à la souris, et le RÉSULTAT est ce qu'il faut
+    // regarder : c'est l'arrangement qui doit avoir changé.
+    else if (nom.startsWith("aplatir:")) {
+        std::vector<int> ordre;
+        auto morceaux = juce::StringArray::fromTokens(nom.substring(8), ":", "");
+        for (const auto& m : morceaux) ordre.push_back(std::max(0, m.getIntValue()));
+        if (!ordre.empty()) {
+            beginProjectEdit(u8"Aplatir l'ordre de jeu");
+            if (vsm::sequencer::flattenPlayOrder(project_, ordre)) {
+                rebuildFromProject(false);
+                refreshTransportSchedule();
+                arrangement_.repaint();
+            }
+        }
+    }
     // D16.6 : la fenêtre des préférences, pour photographier le réglage du
     // métronome — elle ne s'ouvre autrement qu'au menu Fichier, à la souris.
     else if (nom == "preferences") menuItemSelected(kMenuFilePreferences, 0);
@@ -1884,6 +1902,20 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // D18.6 : LE NOMBRE DE CARACTÈRES EST DIT. Un bloc-notes vide et un
             // bloc-notes plein s'ouvrent pareil ; savoir qu'il y a quelque
             // chose dedans est la moitié de son intérêt.
+            // D18.4 : le nombre de sections est DIT. Sans repère il n'y a rien
+            // à ordonner, et l'apprendre en ouvrant la fenêtre serait un
+            // aller-retour pour rien.
+            {
+                const auto sections = vsm::sequencer::sectionsFromMarkers(project_);
+                menu.addItem(kMenuViewPlayOrder,
+                              sections.empty()
+                                  ? juce::String::fromUTF8(u8"Ordre de jeu... (aucune section)")
+                                  : juce::String::fromUTF8(u8"Ordre de jeu... (")
+                                        + juce::String(static_cast<int>(sections.size()))
+                                        + juce::String::fromUTF8(u8" sections)"),
+                              !sections.empty(),
+                              playOrderWindow_ && playOrderWindow_->isVisible());
+            }
             menu.addItem(kMenuViewProjectNotes,
                           project_.notes.empty()
                               ? juce::String::fromUTF8(u8"Notes du projet... (vides)")
@@ -2021,6 +2053,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             break;
         }
         case kMenuViewProjectNotes: showProjectNotes(); break;
+        case kMenuViewPlayOrder: showPlayOrder(); break;
         case kMenuViewSpectrum: {
             if (!spectrumWindow_) {
                 spectrumWindow_ = std::make_unique<PanelWindow>(
@@ -4000,6 +4033,49 @@ void MainComponent::refreshPreferences() {
         audioEngine_.processGraph().metronomeCountInOnly(),
         audioEngine_.processGraph().metronomeRecordOnly(),
         arrangement_.automationFollowsClips());
+}
+
+void MainComponent::showPlayOrder() {
+    if (!playOrderWindow_) {
+        playOrderPanel_.onFlatten = [this](const std::vector<int>& ordre) {
+            if (ordre.empty()) return;
+            // APLATIR EST LE SEUL MOMENT OÙ L'ORDRE TOUCHE AU MATÉRIAU, et
+            // c'est irréversible autrement que par l'annulation : on le dit
+            // avant, comme le report de piste (D5.5).
+            juce::AlertWindow::showOkCancelBox(
+                juce::AlertWindow::QuestionIcon, u8"Aplatir l'ordre de jeu",
+                juce::String(u8"Les notes, les clips, les courbes et les repères seront "
+                              u8"réécrits pour jouer l'ordre demandé (")
+                    + juce::String(static_cast<int>(ordre.size()))
+                    + juce::String(u8" sections). C'est annulable tant que la session est "
+                                    u8"ouverte, et définitif ensuite."),
+                u8"Aplatir", "Annuler", nullptr,
+                juce::ModalCallbackFunction::create([this, ordre](int choix) {
+                    if (choix == 0) return;
+                    beginProjectEdit(u8"Aplatir l'ordre de jeu");
+                    if (!vsm::sequencer::flattenPlayOrder(project_, ordre)) return;
+                    rebuildFromProject(false);
+                    refreshTransportSchedule();
+                    pianoRollPanel_.refresh();
+                    arrangement_.repaint();
+                    refreshHistoryList();
+                    // LES SECTIONS ONT CHANGÉ : ce sont les repères du projet
+                    // aplati, et l'ordre d'avant ne désigne plus rien.
+                    playOrderPanel_.setSections(vsm::sequencer::sectionsFromMarkers(project_),
+                                                 vsm::sequencer::flattenChangesTempoMeaning(project_));
+                }));
+        };
+        playOrderWindow_ = std::make_unique<PanelWindow>(
+            juce::String::fromUTF8(u8"Ordre de jeu"), playOrderPanel_);
+        playOrderWindow_->setDefaultSize(520, 420);
+    }
+    // RELUES À CHAQUE OUVERTURE : les repères ont pu changer depuis la
+    // dernière fois, et un panneau qui montrerait les sections d'avant ferait
+    // aplatir autre chose que ce qu'il annonce.
+    playOrderPanel_.setSections(vsm::sequencer::sectionsFromMarkers(project_),
+                                 vsm::sequencer::flattenChangesTempoMeaning(project_));
+    playOrderWindow_->setVisible(true);
+    playOrderWindow_->toFront(true);
 }
 
 void MainComponent::showProjectNotes() {

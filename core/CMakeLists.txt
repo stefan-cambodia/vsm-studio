@@ -10,6 +10,7 @@ add_library(vsm_core STATIC
     src/sequencer/StepPattern.cpp
     src/sequencer/AutomationEdit.cpp
     src/sequencer/Groove.cpp
+    src/sequencer/PlayOrder.cpp
     src/sequencer/ClipEdit.cpp
     src/sequencer/TimeEdit.cpp
     src/sequencer/ProjectImport.cpp
@@ -49,6 +50,7 @@ if (VSM_BUILD_TESTS)
         tests/test_project_import.cpp
         tests/test_automation_edit.cpp
         tests/test_groove.cpp
+        tests/test_play_order.cpp
     )
     target_link_libraries(vsm_core_tests PRIVATE vsm_core)
     target_include_directories(vsm_core_tests PRIVATE tests)
