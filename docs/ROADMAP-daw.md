@@ -3371,7 +3371,12 @@ Ceux de la fusion, plus cinq propres à cet axe :
    sans être vue. Il parcourt désormais le registre et fait jouer chaque
    machine à son tour, en NOMMANT la fautive s'il y en a une. C'est
    exactement la forme de garde-fou que le § 6 décrit : il gardait, et il
-   ne gardait qu'un trente-neuvième du parc.
+   ne gardait qu'un trente-neuvième du parc. **Et depuis le 04/09/2026, il
+   monte aussi les seize effets d'insert sur une piste et fait jouer un clip
+   qui suit le tempo (vocodeur, WSOLA, rééchantillonné) et un clip à
+   l'envers** : D12, D13 et D14 avaient ajouté des chemins dans `process()`
+   que le garde-fou ne voyait pas. Vérifié : aucune allocation, aucun
+   verrou, aucune entrée-sortie.
 3. **Rendu temps réel et rendu hors ligne restent identiques**, à l'échantillon
    près, sur tout ce qui s'ajoute. ~~Le test existe pour CLAP ; il s'étend.~~
    **Il s'est étendu le 31/08/2026, a trouvé une exception, et l'exception a

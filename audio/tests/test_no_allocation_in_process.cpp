@@ -3,6 +3,9 @@
 #include "vsm/audio/engine/ProcessGraph.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
+#include <cmath>
+#include "vsm/audio/engine/AudioTrackSource.h"
+#include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/audio/engine/SampleStore.h"
 #include "vsm/audio/io/AudioTrackLoader.h"
 #include "vsm/audio/io/WavFileWriter.h"
@@ -413,4 +416,79 @@ VSM_TEST(process_block_allocates_nothing_when_looping_and_automated) {
     // Le rebouclage a bien eu lieu : sans cela, on aurait mesuré le chemin
     // droit une troisième fois.
     VSM_ASSERT(graphe.loopWrapCount() > 0);
+}
+
+// ---------------------------------------------------------------------------
+// § 6 DE ROADMAP-daw, REVÉRIFIÉ APRÈS D12, D13 ET D14 : ce qui s'est ajouté
+// dans `process()` -- les seize effets d'insert, et les clips qui suivent le
+// tempo (vocodeur, WSOLA, rééchantillonné) ou jouent à l'envers -- n'alloue
+// pas davantage que le reste. Le garde-fou ne montait ni effet ni clip étiré.
+// ---------------------------------------------------------------------------
+
+VSM_TEST(process_block_allocates_nothing_with_every_factory_effect_inserted) {
+    ProcessGraph graphe;
+    graphe.prepare(48000.0, 512);
+    graphe.setTrackInstrument(0, "vsm.minimoog");
+    auto chaine = std::make_shared<ProcessGraph::EffectChain>();
+    for (const auto& info : vsm::audio::effect::EffectFactory::available()) {
+        auto effet = vsm::audio::effect::EffectFactory::create(info.id);
+        VSM_ASSERT(effet != nullptr);
+        effet->prepare(48000.0, 512);
+        // Un réglage qui fait travailler l'effet, sans quoi certains chemins
+        // (pitch shift à zéro, trémolo à zéro) resteraient inertes.
+        for (const auto& p : effet->parameterList())
+            effet->setParameter(p.id, p.minValue + 0.6f * (p.maxValue - p.minValue));
+        chaine->push_back(std::move(effet));
+    }
+    graphe.setTrackEffectChain(0, chaine);
+    graphe.setProject(projetAvecNotes(1));
+    graphe.seekSeconds(0.0);
+    graphe.setPlaying(true);
+    std::vector<float> gauche(512, 0.0f), droite(512, 0.0f);
+    for (int i = 0; i < 20; ++i) graphe.processBlock(gauche.data(), droite.data(), 512);
+    Compteur compteur;
+    for (int i = 0; i < 200; ++i) graphe.processBlock(gauche.data(), droite.data(), 512);
+    VSM_ASSERT_CHEMIN_TEMPS_REEL_PROPRE(compteur);
+}
+
+VSM_TEST(process_block_allocates_nothing_with_warped_and_reversed_audio_clips) {
+    for (int variante = 0; variante < 4; ++variante) {
+        ProcessGraph graphe;
+        graphe.prepare(48000.0, 512);
+        auto source = std::make_shared<AudioTrackSource>();
+        std::vector<float> l(48000 * 4), r(48000 * 4);
+        for (size_t i = 0; i < l.size(); ++i) {
+            l[i] = 0.3f * static_cast<float>(std::sin(2.0 * M_PI * 220.0 * static_cast<double>(i) / 48000.0));
+            r[i] = l[i];
+        }
+        source->setMemorySamples(std::move(l), std::move(r));
+
+        Project projet;
+        projet.ticksPerQuarterNote = 480;
+        Track piste;
+        piste.kind = Track::Kind::Audio;
+        piste.audio.path = "audio/prise.wav";
+        piste.audio.sampleRate = 48000.0;
+        piste.audio.frames = 48000 * 4;
+        Clip clip;
+        clip.id = 1; clip.length = 3840; clip.sourceLength = 3840;   // quatre secondes... étirées sur 4 s de ticks
+        clip.warpMode = variante == 0 ? WarpMode::KeepPitch
+                      : variante == 1 ? WarpMode::KeepPitchWsola
+                      : variante == 2 ? WarpMode::Repitch : WarpMode::Off;
+        if (variante < 3) clip.warpMarkers = {{0.0, 0}, {3.0, 3840}};   // 3 s de matériau sur 4 s
+        clip.reversed = variante == 3;
+        piste.clips.push_back(clip);
+        projet.tracks.push_back(piste);
+        source->clips = spansFromTrack(piste, 48000.0, [&](int64_t t) { return projet.ticksToSeconds(t); });
+        prepareWarpedSpans(*source);   // hors thread audio : ici, et c'est le seul endroit qui alloue
+        graphe.setProject(projet);
+        graphe.setTrackAudio(0, source);
+        graphe.seekSeconds(0.0);
+        graphe.setPlaying(true);
+        std::vector<float> gauche(512, 0.0f), droite(512, 0.0f);
+        for (int i = 0; i < 10; ++i) graphe.processBlock(gauche.data(), droite.data(), 512);
+        Compteur compteur;
+        for (int i = 0; i < 200; ++i) graphe.processBlock(gauche.data(), droite.data(), 512);
+        VSM_ASSERT_CHEMIN_TEMPS_REEL_PROPRE(compteur);
+    }
 }
