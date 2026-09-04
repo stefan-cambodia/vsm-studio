@@ -45,6 +45,10 @@ l'ordre de marche — pas de la documentation d'accompagnement.
   build/tools/vsm-render tue la course. Compiler des cibles précises.
 - `pkill -f "Vintage Synth"` tue le shell qui porte le motif dans sa propre
   ligne de commande : passer par un script fichier.
+- Une campagne lancée depuis le shell de l'outil MEURT avec la session, même
+  sous nohup (S1, 04/09 : 1 h 44 de course perdues à la reprise). Lancer par
+  `setsid nohup script.sh > x.log 2>&1 < /dev/null & disown`, et à chaque
+  reprise vérifier `pgrep` avant de croire le journal.
 - Python bufferise stdout vers un fichier : lancer les longues chaînes avec
   `python -u`, et surveiller par Monitor (fins ET échecs, jamais le succès
   seul).
