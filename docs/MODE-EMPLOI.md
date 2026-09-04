@@ -807,6 +807,15 @@ ensemble.
 
 *La reconstruction en cours : cinq étapes, le journal en direct, et un bouton pour annuler.*
 
+**Savoir où la chaîne perd.** Sur un disque, personne ne connaît la
+vérité ; sur un morceau que le moteur a fabriqué, si. `analyse/morceaux.py`
+fabrique des morceaux entiers à vérité connue (parties, machines, patchs,
+notes, stems vrais), et `analyse/banc_synthetique.py` y fait tourner la
+chaîne et publie, étage par étage, ce qu'elle perd : séparation,
+transcription, parité, arbitrage, et la distance face à la borne de la
+vraie machine. C'est un instrument de mesure, pas un remplaçant de
+l'écoute d'un vrai morceau (`docs/CDC-banc-synthetique.md`).
+
 ## 6 bis. Ouvrir un projet fait ailleurs
 
 *Fichier ▸ Importer un projet (Ableton, FL Studio, Cubase)…* lit un `.als`, un

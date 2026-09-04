@@ -1347,6 +1347,18 @@ publié. La transcription sortirait alors de l'équation, et l'on saurait si la
 machine perd sur le timbre ou sur les notes. C'est peu coûteux à remplir, et
 c'est ce paragraphe qu'il faudra venir corriger ce jour-là.
 
+> **L'OBJET EXISTE (04/09/2026) : LE BANC SYNTHÉTIQUE.** Non pas une prise
+> Disklavier, mais mieux pour la question posée : des morceaux entiers que
+> le MOTEUR fabrique, avec le MIDI exact, la machine et le patch de chaque
+> partie, et les stems vrais — `analyse/morceaux.py`, et le tableau de bord
+> `analyse/banc_synthetique.py` qui mesure chaque étage contre ce qu'il
+> devait produire (séparation, transcription, parité, arbitrage, bornes).
+> La transcription sort de l'équation piste par piste : la borne de piste
+> rend la vraie machine au vrai patch sur les notes TRANSCRITES contre le
+> stem que la chaîne a jugé. Le cahier des charges, ses anti-objectifs (il
+> ne remplace pas la validation sur disque, il ne rouvre ni A1 ni A3) et la
+> campagne S1 écrite avant sa mesure : `docs/CDC-banc-synthetique.md`.
+
 ---
 
 ## 5 septies. Le gagnant d'une note ne tient pas la piste : mesuré deux fois sur un morceau
@@ -2922,6 +2934,13 @@ un instrument dont les registres se séparent par un vide compte pour deux.
 Le module de mesure reste dans le dépôt, hors de la chaîne. La voie
 restante est un modèle appris sur des extraits de notes (§ 7, à sa
 condition de rouverture), pas une empreinte à la main.
+
+> **La voie a son banc et sa condition (04/09/2026).** Le banc synthétique
+> (`docs/CDC-banc-synthetique.md`) génère des morceaux où « un instrument
+> ou deux » est connu par construction, et son § 8 écrit d'avance l'usage
+> apprenant : un petit modèle sur des descripteurs STRUCTURELS (jamais
+> timbraux — cette mesure-ci a montré que le timbre ment), qui ne s'ouvre
+> qu'après la campagne S1 et seulement si elle le justifie.
 
 ### H23 — diviser un stem polyphonique en VOIX ; écrite AVANT sa mesure
 

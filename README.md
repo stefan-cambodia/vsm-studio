@@ -498,6 +498,30 @@ rien sur *Sky and Sand*), et l'oreille tranche.
 Le raisonnement complet est dans
 [`docs/CDC-detection-multipiste.md`](docs/CDC-detection-multipiste.md).
 
+## Où la chaîne perd : le banc synthétique
+
+Sur un disque, la chaîne publie une distance et ne sait pas dire à quel
+étage elle l'a perdue — séparation, transcription, parité, arbitrage,
+réglage — parce qu'aucune vérité n'existe. Sur un morceau que le **moteur a
+fabriqué**, tout est connu par construction : les parties, leurs machines
+et patchs, chaque note avec sa vélocité, les niveaux, les stems vrais.
+
+```bash
+analyse/morceaux.py --sortie lot --nombre 10 --graine 1 [--duree 30] [--production]
+analyse/banc_synthetique.py lot --sortie lot-banc [--stems-vrais] [-- options de reconstruire.py]
+```
+
+Le générateur est seedé au bit près (même graine → mêmes octets) et la
+somme de ses stems vrais redonne le mélange, hors `--production`. Le banc
+fait tourner la chaîne d'aujourd'hui, sans la modifier, et publie par
+étage : SDR de chaque stem séparé contre ce qu'il devait porter, F1 des
+notes à ±50 ms, parties fondues et pistes inventées (le cas « deux mains »
+d'H25 compté à part), rang de la vraie machine dans chaque arbitrage, et la
+distance globale face à la borne de la vraie machine au vrai patch. Ce
+qu'il n'est pas : une validation sur disque, ni un corpus d'apprentissage
+— [`docs/CDC-banc-synthetique.md`](docs/CDC-banc-synthetique.md) dit
+pourquoi, avec les campagnes écrites avant leurs mesures.
+
 ## Ouvrir un projet fait ailleurs (Ableton, FL Studio, Cubase)
 
 *Fichier ▸ Importer un projet…* lit un **`.als`** d'Ableton Live, un **`.flp`**

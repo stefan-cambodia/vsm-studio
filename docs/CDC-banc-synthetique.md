@@ -293,38 +293,45 @@ pas rejouée.
 ## 4. Critères d'acceptation
 
 ```
-[ ] Générateur seedé : même graine → même verite.json et mêmes octets de WAV,
+[x] Générateur seedé : même graine → même verite.json et mêmes octets de WAV,
     testé sur deux générations successives (test_banc_synthetique.py,
-    04/09/2026 : 2 parties, 4 s, deux générations identiques au bit près)
-[ ] Cohérence vérité/rendu : la somme des stems vrais, dans l'ordre du
+    04/09/2026 : 2 parties, 1 mesure, vérité, stems, mélange et FICHIERS
+    identiques au bit près — après avoir remplacé l'écrivain WAV de
+    libsndfile, dont le bloc PEAK horodate le fichier)
+[x] Cohérence vérité/rendu : la somme des stems vrais, dans l'ordre du
     fichier, redonne morceau.wav au bit près hors --production (testé) ;
     avec --production la vérité le dit et le test vérifie que ce n'est PLUS
-    le cas
-[ ] Les notes de verite.json sont celles rendues : le nombre de notes et
-    leur registre par partie sont lus depuis la vérité et vérifiés dans les
-    bornes déclarées par rôle (testé)
-[ ] Les trois cas de parité se tirent et se déclarent ; --cas les impose
-    (testé : deux-mains → une partie à deux registres, séparés par un vide ;
-    memes-machine-disjoints → deux parties de même machine à registres
-    disjoints ; chevauchement → deux registres qui se recouvrent d'une octave)
-[ ] Un patch inaudible est rejeté, retiré, et compté dans la vérité (testé
-    par un moteur factice qui rend du silence une fois)
-[ ] Interruptible et reprenable : un morceau complet est sauté en le disant
-    (testé : deuxième appel sur le même dossier, aucun rendu)
-[ ] Coût mesuré et publié : secondes par partie et total dans verite.json,
-    par morceau et total dans lot.json
-[ ] Tableau de bord : sur un morceau minuscule COMMIS avec sa course
-    (analyse/tests/donnees/banc-minuscule/), les cinq étages se calculent et
-    les chiffres attendus sont vérifiés (testé, sans moteur pour les étages
-    1 à 3, avec moteur pour les bornes 4 et 5)
-[ ] Le tableau dit ce qu'il n'a pas pu mesurer (stems vrais fournis →
-    séparation « non mesurée » ; piste sans partie → « inventée », avec son
-    nom)
-[ ] Zéro ligne hors de analyse/ (git diff --stat du chantier)
-[ ] Suites vertes, zéro warning (analyse/tests/run.py)
-[ ] README, MODE-EMPLOI et ROADMAP-fusion nomment le chantier
-[ ] Campagne S1 écrite AVANT sa mesure (§ 5), verdict écrit APRÈS avec les
-    chiffres (§ 6)
+    le cas, et que les stems, eux, n'ont pas bougé
+[x] Les notes de verite.json sont celles rendues : nombre, registre par rôle,
+    vélocités qui varient, frappes sur des voix que la boîte possède (testé
+    sur un morceau à 6 parties)
+[x] Les trois cas de parité se tirent et se déclarent ; --cas les impose
+    (testé : deux-mains → une partie à deux registres séparés d'un vide ;
+    memes-machine-disjoints → deux parties de même machine, patchs différents,
+    vide ≥ 8 ; chevauchement → deux registres qui se recouvrent d'une octave)
+[x] Un patch inaudible est rejeté, retiré, et compté dans la vérité (testé
+    par un rendu factice muet une fois : patchs_rejetes = 1) ; une MACHINE
+    muette sur la note du rôle est écartée en le disant (vsm.fmdrums,
+    vsm.perc, constaté au premier lot) et une autre est tirée
+[x] Interruptible et reprenable : un morceau complet est sauté en le disant
+    (morceaux.py ; morceau_complet testé sur un dossier sans vérité, sur une
+    vérité sans fichiers, et sur le morceau minuscule)
+[x] Coût mesuré et publié : secondes par partie et total dans verite.json,
+    par morceau et total dans lot.json (mesuré : 0,2 à 1,8 s par morceau de
+    8 s, 5 s pour un lot de quatre)
+[x] Tableau de bord : sur le morceau minuscule COMMIS avec sa course
+    (analyse/tests/donnees/banc-minuscule/, 2 s, basse TB-303, TR-909,
+    mélodie TB-303), les cinq étages se calculent et les chiffres attendus
+    sont vérifiés — F1 1,00, 9 notes vraies, 4 pistes pour 7 parties, 3
+    pièces fondues, rangs 2/3 et 1/3, borne de production 0, borne de
+    transcription > 0 (testé, sans moteur pour 1-3, avec moteur pour 4-5)
+[x] Le tableau dit ce qu'il n'a pas pu mesurer (stems vrais fournis →
+    « séparation non mesurée », testé ; piste sans partie → nommée)
+[x] Zéro ligne hors de analyse/ et docs/ (git diff --stat des trois commits)
+[x] Suites vertes, zéro warning : 150 tests d'analyse (04/09/2026)
+[x] README, MODE-EMPLOI et ROADMAP-fusion nomment le chantier
+[x] Campagne S1 écrite AVANT sa mesure (§ 5)
+[ ] Verdict de S1 écrit APRÈS avec les chiffres (§ 6)
 ```
 
 ## 5. Campagne S1 — attendus écrits AVANT la mesure (04/09/2026, 18:05)
