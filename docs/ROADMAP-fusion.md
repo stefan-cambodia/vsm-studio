@@ -3250,6 +3250,14 @@ MORCEAU, et neuf valait mieux que six ici. Durée 4 294 s. Règle du § 5 du
 CDC multipiste : un second morceau avant d'en faire le défaut — c'est
 sky-parite-m9, campagne 6 (CDC multipiste § 10), attendu écrit d'avance.
 
+**Et sky-parite-m9 a répondu (04/09, 13:43) : +1,4 %.** Neuf finalistes
+font changer la basse de *Sky and Sand* (`vsm.string` gagne au verdict,
+0,2486 contre 0,2523) mais le réglage au mélange rattrape moins bien string
+que vector : 0,2441 contre 0,2407 au final. Deux morceaux, deux sens : le
+goulot est une constante DU MORCEAU, le défaut reste six, et neuf est une
+option. Ce que cela révèle est ailleurs : le verdict juge AVANT un réglage
+qui peut renverser son ordre (CDC multipiste § 10).
+
 **H7 — le classifieur de frappes améliore le STEM et éloigne le MORCEAU,
 écrite avant sa mesure (02/09/2026).** Le fait qui la motive : la course v6
 (*Us and Them*, moteur du jour, classifieur de frappes RÉACTIVÉ après la
