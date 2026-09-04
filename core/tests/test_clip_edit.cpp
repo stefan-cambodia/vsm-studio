@@ -625,3 +625,147 @@ VSM_TEST(creating_a_clip_never_bites_into_the_one_that_is_already_there) {
     uint64_t c2 = 2;
     VSM_ASSERT_EQ(createClip(boucle, 1920, 960, c2, 100000).id, uint64_t(0));
 }
+
+// --------------------------------------------------------------------------
+// D16.3 — JOINDRE DES CLIPS (la Colle de Cubase, le Consolidate de Live).
+// --------------------------------------------------------------------------
+
+VSM_TEST(joining_two_contiguous_clips_gives_one_that_plays_note_for_note_the_same) {
+    // LE CRITÈRE : le clip joint rejoue EXACTEMENT ce que jouaient les deux.
+    // Le témoin est le projet non découpé, et la comparaison se fait sur les
+    // événements du planificateur, pas sur la géométrie des clips.
+    Project temoin;
+    temoin.ticksPerQuarterNote = 480;
+    temoin.tempoMap.addTempoChange(0, 500000);
+    Track piste;
+    uint64_t ids = 1;
+    for (int i = 0; i < 4; ++i)
+        piste.addNote(480 * i, 480 * i + 240, static_cast<uint8_t>(60 + i), 100, 0, ids);
+    temoin.tracks.push_back(piste);
+    Clip entier;
+    entier.id = 1; entier.sourceStart = 0; entier.sourceLength = 1920;
+    entier.startTick = 0; entier.length = 1920;
+    temoin.tracks[0].clips.push_back(entier);
+
+    Project coupe = temoin;
+    coupe.tracks[0].clips = {clip(1, 0, 960), clip(2, 960, 960, 960)};
+
+    Project joint = coupe;
+    const auto bilan = joinClips(joint.tracks[0].clips, {1, 2}, 1920, false,
+                                  [&joint](Tick t) { return joint.ticksToSeconds(t); });
+    VSM_ASSERT_EQ(bilan.joined, size_t(1));
+    VSM_ASSERT_EQ(bilan.refused, size_t(0));
+    VSM_ASSERT_EQ(joint.tracks[0].clips.size(), size_t(1));
+    VSM_ASSERT_EQ(joint.tracks[0].clips[0].startTick, Tick(0));
+    VSM_ASSERT_EQ(joint.tracks[0].clips[0].length, Tick(1920));
+
+    const auto attendus = PlaybackScheduler::build(temoin, 0, 100000);
+    const auto obtenus = PlaybackScheduler::build(joint, 0, 100000);
+    VSM_ASSERT_EQ(obtenus.size(), attendus.size());
+    for (size_t i = 0; i < attendus.size(); ++i)
+        VSM_ASSERT_NEAR(obtenus[i].timeSeconds, attendus[i].timeSeconds, 1e-12);
+}
+
+VSM_TEST(clips_whose_windows_do_not_continue_are_refused_and_nothing_moves) {
+    // Contigus SUR LA LIGNE DE TEMPS mais lisant deux endroits différents du
+    // matériau : les joindre changerait ce qu'on entend. Refusé, et compté.
+    std::vector<Clip> clips{clip(1, 0, 960), clip(2, 960, 960, 2880)};
+    const auto avant = clips;
+    const auto bilan = joinClips(clips, {1, 2}, 100000, false, {});
+    VSM_ASSERT_EQ(bilan.joined, size_t(0));
+    VSM_ASSERT_EQ(bilan.refused, size_t(1));
+    VSM_ASSERT_EQ(clips.size(), size_t(2));
+    VSM_ASSERT_EQ(clips[0].sourceStart, avant[0].sourceStart);
+    VSM_ASSERT_EQ(clips[1].sourceStart, avant[1].sourceStart);
+    VSM_ASSERT_EQ(clips[1].startTick, avant[1].startTick);
+
+    // Un trou sur la ligne de temps : refusé aussi.
+    std::vector<Clip> troues{clip(1, 0, 960), clip(2, 1440, 960, 960)};
+    VSM_ASSERT_EQ(joinClips(troues, {1, 2}, 100000, false, {}).joined, size_t(0));
+    VSM_ASSERT_EQ(troues.size(), size_t(2));
+}
+
+VSM_TEST(a_looping_clip_a_warped_one_and_a_differently_set_one_never_join) {
+    // Une boucle : la joindre donnerait une fenêtre qui n'est plus celle qu'on
+    // répétait.
+    std::vector<Clip> boucle{clip(1, 0, 960), clip(2, 960, 960, 960)};
+    boucle[0].length = 1920;                    // la fenêtre de 960 répétée deux fois
+    VSM_ASSERT_EQ(joinClips(boucle, {1, 2}, 100000, false, {}).joined, size_t(0));
+
+    // Un clip qui suit le tempo : deux cartes bout à bout ne font pas une carte.
+    std::vector<Clip> warpe{clip(1, 0, 960), clip(2, 960, 960, 960)};
+    warpe[0].warpMode = WarpMode::KeepPitch;
+    warpe[0].warpMarkers = {{0.0, 0}, {2.0, 960}};
+    VSM_ASSERT_EQ(joinClips(warpe, {1, 2}, 100000, false, {}).joined, size_t(0));
+
+    // Deux gains différents : un clip joint ne peut pas porter les deux.
+    std::vector<Clip> gains{clip(1, 0, 960), clip(2, 960, 960, 960)};
+    gains[1].gain = 0.5f;
+    VSM_ASSERT_EQ(joinClips(gains, {1, 2}, 100000, false, {}).joined, size_t(0));
+}
+
+VSM_TEST(joining_is_the_exact_inverse_of_splitting) {
+    // Couper puis joindre rend le clip de départ, fondus compris : le fondu
+    // d'entrée du premier et celui de sortie du dernier sont les deux bords
+    // qui restent des bords.
+    std::vector<Clip> clips{clip(1, 0, 1920)};
+    clips[0].fadeInSeconds = 0.25;
+    clips[0].fadeOutSeconds = 0.5;
+    const Clip depart = clips[0];
+
+    uint64_t compteur = 2;
+    auto enSecondes = [](Tick t) { return static_cast<double>(t) / 960.0; };
+    VSM_ASSERT_EQ(splitClips(clips, {1}, 960, 100000, compteur, enSecondes), size_t(1));
+    VSM_ASSERT_EQ(clips.size(), size_t(2));
+
+    const auto bilan = joinClips(clips, {1, 2}, 100000, false, enSecondes);
+    VSM_ASSERT_EQ(bilan.joined, size_t(1));
+    VSM_ASSERT_EQ(clips.size(), size_t(1));
+    VSM_ASSERT_EQ(clips[0].startTick, depart.startTick);
+    VSM_ASSERT_EQ(clips[0].length, depart.length);
+    VSM_ASSERT_EQ(clips[0].sourceStart, depart.sourceStart);
+    VSM_ASSERT_EQ(clips[0].sourceLength, depart.sourceLength);
+    VSM_ASSERT_NEAR(clips[0].fadeInSeconds, depart.fadeInSeconds, 1e-12);
+    VSM_ASSERT_NEAR(clips[0].fadeOutSeconds, depart.fadeOutSeconds, 1e-12);
+}
+
+VSM_TEST(three_in_a_row_become_one_and_a_stranger_in_the_middle_is_counted) {
+    std::vector<Clip> trois{clip(1, 0, 960), clip(2, 960, 960, 960), clip(3, 1920, 960, 1920)};
+    VSM_ASSERT_EQ(joinClips(trois, {1, 2, 3}, 100000, false, {}).joined, size_t(2));
+    VSM_ASSERT_EQ(trois.size(), size_t(1));
+    VSM_ASSERT_EQ(trois[0].length, Tick(2880));
+
+    // Deux paires joignables séparées par une rupture : deux clips, un refus.
+    std::vector<Clip> deux{clip(1, 0, 960), clip(2, 960, 960, 960),
+                            clip(3, 3840, 960), clip(4, 4800, 960, 960)};
+    const auto bilan = joinClips(deux, {1, 2, 3, 4}, 100000, false, {});
+    VSM_ASSERT_EQ(bilan.joined, size_t(2));
+    VSM_ASSERT_EQ(bilan.refused, size_t(1));
+    VSM_ASSERT_EQ(deux.size(), size_t(2));
+}
+
+VSM_TEST(on_an_audio_track_the_window_in_the_file_must_continue_too) {
+    // La même exigence que la fenêtre en ticks, dans l'unité du matériau : un
+    // clip audio lit des SECONDES du fichier, pas des ticks. Deux moitiés dont
+    // les secondes ne s'enchaînent pas joueraient un saut à l'endroit du joint.
+    auto enSecondes = [](Tick t) { return static_cast<double>(t) / 960.0; };   // 960 ticks = 1 s
+
+    std::vector<Clip> suite{clip(1, 0, 960), clip(2, 960, 960, 960)};
+    suite[0].sourceStartSeconds = 3.0;
+    suite[1].sourceStartSeconds = 4.0;                    // 3 s + la seconde du premier
+    VSM_ASSERT_EQ(joinClips(suite, {1, 2}, 100000, true, enSecondes).joined, size_t(1));
+
+    std::vector<Clip> saut{clip(1, 0, 960), clip(2, 960, 960, 960)};
+    saut[0].sourceStartSeconds = 3.0;
+    saut[1].sourceStartSeconds = 9.0;                     // six secondes plus loin
+    const auto bilan = joinClips(saut, {1, 2}, 100000, true, enSecondes);
+    VSM_ASSERT_EQ(bilan.joined, size_t(0));
+    VSM_ASSERT_EQ(bilan.refused, size_t(1));
+    VSM_ASSERT_EQ(saut.size(), size_t(2));
+    // Et la MÊME paire sur une piste MIDI se joint : le critère des secondes ne
+    // la concerne pas, et c'est pourquoi le genre est dit et non deviné.
+    std::vector<Clip> midi{clip(1, 0, 960), clip(2, 960, 960, 960)};
+    midi[0].sourceStartSeconds = 3.0;
+    midi[1].sourceStartSeconds = 9.0;
+    VSM_ASSERT_EQ(joinClips(midi, {1, 2}, 100000, false, enSecondes).joined, size_t(1));
+}

@@ -293,6 +293,76 @@ ClipSelection duplicateClips(std::vector<Clip>& clips, const ClipSelection& sele
     return creees;
 }
 
+ClipJoin joinClips(std::vector<Clip>& clips, const ClipSelection& selection, Tick materialEnd,
+                    bool audioTrack, const std::function<double(Tick)>& ticksToSeconds) {
+    ClipJoin bilan;
+    if (selection.size() < 2) return bilan;
+
+    // La fenêtre d'un clip, en ticks de matériau (zéro = jusqu'au bout).
+    auto fenetreDe = [materialEnd](const Clip& c) {
+        return c.sourceLength > 0 ? c.sourceLength : std::max<Tick>(0, materialEnd - c.sourceStart);
+    };
+
+    // On travaille sur les INDICES des clips choisis, rangés par position :
+    // « le suivant » n'a de sens que sur la ligne de temps.
+    std::vector<size_t> choisis;
+    for (size_t i = 0; i < clips.size(); ++i)
+        if (selected(selection, clips[i])) choisis.push_back(i);
+    std::stable_sort(choisis.begin(), choisis.end(),
+                      [&clips](size_t a, size_t b) { return clips[a].startTick < clips[b].startTick; });
+
+    auto joignable = [&](const Clip& a, const Clip& b) {
+        const Tick fa = fenetreDe(a), fb = fenetreDe(b);
+        if (fa <= 0 || fb <= 0) return false;
+        if (clipPlayedLength(a, materialEnd) != fa) return false;   // a boucle
+        if (clipPlayedLength(b, materialEnd) != fb) return false;   // b boucle
+        if (a.startTick + fa != b.startTick) return false;          // pas contigus
+        if (a.sourceStart + fa != b.sourceStart) return false;      // la fenêtre ne se prolonge pas
+        if (a.warpMode != WarpMode::Off || b.warpMode != WarpMode::Off) return false;
+        if (a.muted != b.muted || a.reversed != b.reversed) return false;
+        if (a.invertPhase != b.invertPhase || a.gain != b.gain) return false;
+        // POUR L'AUDIO, la fenêtre du FICHIER doit se prolonger aussi : c'est
+        // la même exigence, dans l'unité du matériau. Un demi-échantillon de
+        // tolérance à 96 kHz, soit ce qu'un aller-retour en ticks peut coûter.
+        if (audioTrack && ticksToSeconds) {
+            const double attendue =
+                a.sourceStartSeconds + (ticksToSeconds(a.sourceStart + fa) - ticksToSeconds(a.sourceStart));
+            if (std::abs(b.sourceStartSeconds - attendue) > 0.5 / 96000.0) return false;
+        }
+        return true;
+    };
+
+    std::vector<bool> absorbe(clips.size(), false);
+    size_t courant = 0;
+    while (courant < choisis.size()) {
+        Clip& tete = clips[choisis[courant]];
+        size_t suivant = courant + 1;
+        while (suivant < choisis.size()) {
+            Clip& candidat = clips[choisis[suivant]];
+            if (!joignable(tete, candidat)) { ++bilan.refused; break; }
+            // La tête s'étend, et garde le fondu de SORTIE du dernier absorbé :
+            // c'est le seul bord qui reste un bord.
+            const Tick fa = fenetreDe(tete), fb = fenetreDe(candidat);
+            tete.sourceLength = fa + fb;
+            tete.length = tete.sourceLength;
+            tete.fadeOutSeconds = candidat.fadeOutSeconds;
+            absorbe[choisis[suivant]] = true;
+            ++bilan.joined;
+            ++suivant;
+        }
+        courant = suivant;
+    }
+
+    if (bilan.joined > 0) {
+        std::vector<Clip> restants;
+        restants.reserve(clips.size() - bilan.joined);
+        for (size_t i = 0; i < clips.size(); ++i)
+            if (!absorbe[i]) restants.push_back(clips[i]);
+        clips = std::move(restants);
+    }
+    return bilan;
+}
+
 size_t splitClips(std::vector<Clip>& clips, const ClipSelection& selection, Tick atTick,
                    Tick materialEnd, uint64_t& idCounter,
                    const std::function<double(Tick)>& ticksToSeconds) {

@@ -164,6 +164,17 @@ public:
     /// fenêtre est une affaire d'application, pas de vue.
     std::function<void(size_t, uint64_t)> onClipBarsRequested;
 
+    /// JOINDRE ET COUPER AU CLAVIER (D16.3). `Ctrl+J` recolle les clips
+    /// choisis quand le second est exactement ce qu'une coupe aurait produit
+    /// du premier ; `Ctrl+E` coupe la sélection à la tête de lecture. Les deux
+    /// étaient dans la table des raccourcis depuis D10 et seul le piano roll
+    /// les entendait -- or c'est dans l'arrangement qu'on colle des clips.
+    void joinSelection();
+    void splitSelectionAtPlayhead();
+    /// Ce qui n'a pas pu être joint (nombre de paires), pour que
+    /// l'application le dise : la vue ne sait pas parler.
+    std::function<void(size_t)> onJoinRefused;
+
     /// CRÉER UN CLIP (D16.1). Un double-clic sur le vide d'une piste demande
     /// un clip d'une mesure aimantée à cet endroit. La vue ne le fabrique pas
     /// elle-même : le geste doit être annulable et republié au moteur, et cela

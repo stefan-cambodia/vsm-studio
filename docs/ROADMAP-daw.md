@@ -3504,6 +3504,59 @@ départ, ce qui est exactement ce qu'on lui demande.
 > décompte ne chassent rien). Le test de non-allocation du chemin audio
 > reste vert.
 
+> **D16.3 EST FAITE (04/09/2026), et joindre se définit par la coupe.**
+> `ClipEdit::joinClips` : deux clips fusionnent quand le second est
+> exactement ce qu'une coupe aurait produit du premier — ils se touchent sur
+> la ligne de temps ET leur fenêtre se prolonge. Le second critère est celui
+> qui compte : sans lui, le clip joint jouerait autre chose que les deux
+> clips séparés, et le seul étalon qui vaille ici est que le son ne change
+> pas d'une note. Sont refusés, comptés et dits : un clip qui BOUCLE (la
+> fenêtre jointe ne serait plus celle qu'on répétait), un clip qui SUIT LE
+> TEMPO (deux cartes de warp bout à bout ne font pas une carte, le
+> prolongement des rapports aux bords se croiserait), et deux réglages de
+> montage différents (gain, phase, sens, muet) — un clip joint ne peut pas
+> porter les deux, et en perdre un en silence serait pire que refuser. Le
+> clip joint garde le fondu d'ENTRÉE du premier et celui de SORTIE du
+> dernier : les deux bords qui restent des bords.
+>
+> `audioTrack` est un paramètre EXPLICITE, et c'est une décision : sur une
+> piste audio la fenêtre dans le FICHIER doit se prolonger aussi, en
+> secondes, ce qui est la même exigence dans l'unité du matériau. Le déduire
+> de `sourceStartSeconds` marcherait presque, et « presque » veut dire qu'une
+> paire de clips MIDI se ferait refuser sur un critère qui ne la concerne
+> pas — un clip est une fenêtre, il ne sait pas s'il montre des notes ou un
+> fichier, c'est sa PISTE qui le sait.
+>
+> `Ctrl+J` et `Ctrl+E` sont écrits en clair dans le `keyPressed` de
+> l'arrangement, comme les cinq qui y étaient déjà (Ctrl+A/C/V/D/X) et avec
+> les mêmes lettres que la table. Faire consulter la table des raccourcis à
+> l'arrangement est un autre chantier, et il devra déplacer les sept d'un
+> coup plutôt qu'en laisser cinq en dur et deux non. Les deux gestes sont
+> aussi au menu du clip. Annulables, et l'instantané n'est pris que si
+> quelque chose va changer.
+>
+> UN DÉFAUT TROUVÉ EN REGARDANT L'ÉCRAN, et qu'aucun test de `core/` ne
+> pouvait voir : après un Ctrl+E, seules les PREMIÈRES moitiés restaient
+> choisies (la seconde reçoit un identifiant neuf), si bien que le Ctrl+J
+> qui suivait ne trouvait qu'une moitié sur deux et ne recollait rien. Deux
+> raccourcis inverses qui ne s'annulent pas sont une paire cassée. Les deux
+> moitiés restent donc choisies — comme une duplication rend la sélection
+> des copies —, et la coupe à l'Alt+clic fait désormais pareil : couper à la
+> souris et couper au clavier sont le même geste et ne doivent pas laisser
+> deux sélections différentes. Symétriquement, joindre retire de la
+> sélection les identifiants absorbés, qui ne désignent plus rien.
+>
+> Sept tests `core/` : le clip joint rejoue événement pour événement ce que
+> jouait le clip entier (témoin : le projet non découpé, comparé au
+> planificateur, pas à la géométrie) ; fenêtres disjointes refusées et rien
+> déplacé ; trou sur la ligne de temps refusé ; boucle, warp et gains
+> différents refusés ; couper puis joindre rend le clip de départ, fondus
+> compris ; trois d'affilée deviennent un, et deux paires séparées par une
+> rupture donnent deux clips et un refus ; sur une piste audio les secondes
+> doivent s'enchaîner, et la même paire sur une piste MIDI se joint. Vu à
+> l'écran (`tout-choisir,tete:2,couper-clips[,joindre-clips]`) : un clip de
+> quatre mesures coupé en deux à la mesure 3, puis rendu entier.
+
 > **D16.4 EST FAITE (04/09/2026), et elle a pris le menu plutôt que le clic
 > droit sec.** Le tableau disait « clic droit le retire » ; un repère qui
 > disparaît sous un clic droit sans rien demander est une perte silencieuse,

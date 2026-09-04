@@ -459,6 +459,9 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
         menu.addItem(2, u8"Couleur\u2026");
         menu.addItem(3, u8"Couleur de la piste");
         menu.addItem(4, clip->muted ? u8"R\u00e9activer" : u8"Rendre muet");
+        menu.addSeparator();
+        menu.addItem(5, u8"Couper \u00e0 la t\u00eate de lecture (Ctrl+E)", !selection_.empty());
+        menu.addItem(6, u8"Joindre les clips choisis (Ctrl+J)", selection_.size() > 1);
         // LE SUIVI DE TEMPO (D12.6) N'EST PROPOSÉ QUE SUR UNE PISTE AUDIO :
         // un clip MIDI suit déjà le tempo par nature, et lui offrir le choix
         // laisserait croire qu'il pourrait ne pas le suivre.
@@ -503,11 +506,16 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
     if (event.mods.isAltDown()) {
         const vsm::midi::Tick ou = snapTick(xToTick(point.x));
         auto& track = project_->tracks[piste];
-        uint64_t compteur = project_->peekNextClipId();
+        const uint64_t depart = project_->peekNextClipId();
+        uint64_t compteur = depart;
         if (onEditStarted) onEditStarted(u8"Couper un clip");
         const size_t coupes = splitClips(track.clips, selection_, ou, materialEnd(track), compteur,
                                           [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); });
         project_->ensureClipIdAbove(compteur - 1);
+        // Les moitiés restent choisies, comme au Ctrl+E : couper à la souris
+        // et couper au clavier sont le même geste, et ne doivent pas laisser
+        // deux sélections différentes.
+        for (uint64_t id = depart; id < compteur; ++id) selection_.insert(id);
         if (coupes > 0) notifyChanged();
         repaint();
         return;
@@ -697,6 +705,72 @@ void ArrangementComponent::mouseUp(const juce::MouseEvent&) {
     reordonnancementOuvert_ = false;
 }
 
+void ArrangementComponent::joinSelection() {
+    if (project_ == nullptr || selection_.size() < 2) return;
+    size_t joints = 0, refuses = 0;
+    // L'INSTANTANÉ N'EST PRIS QUE SI QUELQUE CHOSE VA CHANGER : une jonction
+    // toute refusée qui laisserait « Joindre des clips » dans l'historique
+    // ferait annuler du vide. On mesure donc d'abord sur une copie.
+    std::vector<std::pair<size_t, std::vector<Clip>>> resultats;
+    for (size_t i = 0; i < project_->tracks.size(); ++i) {
+        auto& track = project_->tracks[i];
+        auto essai = track.clips;
+        const auto bilan =
+            vsm::sequencer::joinClips(essai, selection_, materialEnd(track),
+                                       track.kind == Track::Kind::Audio,
+                                       [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); });
+        joints += bilan.joined;
+        refuses += bilan.refused;
+        if (bilan.joined > 0) resultats.emplace_back(i, std::move(essai));
+    }
+    if (joints > 0) {
+        if (onEditStarted) onEditStarted(u8"Joindre des clips");
+        for (auto& [i, clips] : resultats) project_->tracks[i].clips = std::move(clips);
+        // Les clips absorbés ont disparu : leur identifiant ne désigne plus
+        // rien, et une sélection qui les garderait ferait porter le geste
+        // suivant sur du vide.
+        ClipSelection restants;
+        for (const auto& track : project_->tracks)
+            for (const auto& c : track.clips)
+                if (selection_.count(c.id) > 0) restants.insert(c.id);
+        selection_ = std::move(restants);
+        notifyChanged();
+        repaint();
+    }
+    if (refuses > 0 && onJoinRefused) onJoinRefused(refuses);
+}
+
+void ArrangementComponent::splitSelectionAtPlayhead() {
+    if (project_ == nullptr || selection_.empty()) return;
+    size_t coupes = 0;
+    const uint64_t depart = project_->peekNextClipId();
+    uint64_t compteur = depart;
+    // Même précaution : on compte avant de prendre l'instantané.
+    std::vector<std::pair<size_t, std::vector<Clip>>> resultats;
+    for (size_t i = 0; i < project_->tracks.size(); ++i) {
+        auto& track = project_->tracks[i];
+        auto essai = track.clips;
+        const size_t faites =
+            splitClips(essai, selection_, playhead_, materialEnd(track), compteur,
+                        [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); });
+        coupes += faites;
+        if (faites > 0) resultats.emplace_back(i, std::move(essai));
+    }
+    if (coupes == 0) return;
+    if (onEditStarted) onEditStarted(u8"Couper à la tête de lecture");
+    for (auto& [i, clips] : resultats) project_->tracks[i].clips = std::move(clips);
+    project_->ensureClipIdAbove(compteur - 1);
+    // LES DEUX MOITIÉS RESTENT CHOISIES, comme une duplication rend la
+    // sélection des copies : le geste suivant porte sur ce qu'on vient de
+    // faire. Sans cela, Ctrl+J juste après Ctrl+E ne trouvait qu'une moitié
+    // sur deux et ne recollait rien -- une paire de raccourcis inverses qui
+    // ne s'annulent pas est une paire cassée. Les identifiants neufs sont
+    // exactement ceux que le compteur a distribués.
+    for (uint64_t id = depart; id < compteur; ++id) selection_.insert(id);
+    notifyChanged();
+    repaint();
+}
+
 int ArrangementComponent::markerAt(float x) const {
     if (project_ == nullptr) return -1;
     int trouve = -1;
@@ -806,6 +880,8 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
                     if (selection_.count(c.id) > 0 || c.id == clipId) c.muted = muet;
             break;
         }
+        case 5: splitSelectionAtPlayhead(); return;
+        case 6: joinSelection(); return;
         case 10: case 11: case 12: case 16: {
             using vsm::sequencer::WarpMode;
             const WarpMode mode = choix == 11 ? WarpMode::KeepPitch
@@ -964,6 +1040,13 @@ bool ArrangementComponent::keyPressed(const juce::KeyPress& key) {
             case 'v': case 'V': paste(); return true;
             case 'd': case 'D': duplicateSelection(); return true;
             case 'x': case 'X': copySelection(); deleteSelection(); return true;
+            // D16.3 : Ctrl+J et Ctrl+E, les mêmes lettres que la table des
+            // raccourcis et que le piano roll. Elles sont écrites ici en
+            // clair, comme les cinq au-dessus : faire consulter la table à
+            // l'arrangement est un autre chantier, et il devra déplacer les
+            // sept d'un coup plutôt que d'en laisser cinq en dur et deux non.
+            case 'j': case 'J': joinSelection(); return true;
+            case 'e': case 'E': splitSelectionAtPlayhead(); return true;
             default: break;
         }
     }

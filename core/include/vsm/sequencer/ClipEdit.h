@@ -222,6 +222,49 @@ void toggleClipReverse(std::vector<Clip>& clips, const ClipSelection& selection)
 bool stretchClipsEnd(std::vector<Clip>& clips, const ClipSelection& selection, Tick deltaTicks,
                      Tick materialEnd, const std::function<double(Tick)>& ticksToSeconds);
 
+/// JOINDRE DES CLIPS (D16.3) : la Colle de Cubase, le Consolidate de Live.
+///
+/// L'INVERSE EXACT DE `splitClips`, et c'est la règle qui définit ce qui se
+/// joint. Deux clips fusionnent quand le second est précisément ce qu'une
+/// coupe aurait produit du premier :
+///
+///  1. ils se touchent sur la ligne de temps (la fin jouée de l'un est le
+///     début de l'autre) ;
+///  2. leur FENÊTRE se prolonge (la fin de la fenêtre de l'un est le début de
+///     celle de l'autre), sans quoi le clip joint jouerait autre chose que les
+///     deux clips séparés -- et le seul critère qui vaille ici est que le son
+///     ne change pas d'une note ;
+///  3. aucun des deux ne BOUCLE (durée jouée = fenêtre) : joindre deux boucles
+///     donnerait une fenêtre qui n'est plus celle qu'on répétait ;
+///  4. ils ont les mêmes réglages de montage (gain, phase, sens, muet) -- deux
+///     clips réglés différemment ne peuvent pas devenir un clip à un réglage
+///     sans qu'on perde silencieusement l'un des deux ;
+///  5. aucun ne SUIT LE TEMPO. Deux cartes de warp mises bout à bout ne font
+///     pas une carte : le prolongement des rapports aux bords se croiserait.
+///     Refusé plutôt que joint de travers.
+///  6. pour un clip AUDIO, la fenêtre dans le FICHIER se prolonge aussi, en
+///     secondes -- c'est la même exigence que 2, dans l'unité du matériau.
+///
+/// `audioTrack` DIT LEQUEL DES DEUX MATÉRIAUX ON JOINT, et il est explicite
+/// plutôt que deviné : un clip est une fenêtre, il ne sait pas s'il montre des
+/// notes ou un fichier -- c'est sa PISTE qui le sait (voir `Track::kind`). Le
+/// déduire de `sourceStartSeconds` marcherait presque, et « presque » veut dire
+/// qu'une paire de clips MIDI se ferait refuser sur un critère qui ne la
+/// concerne pas.
+///
+/// Le clip joint garde le fondu d'ENTRÉE du premier et celui de SORTIE du
+/// dernier : ce sont les deux bords qui restent des bords.
+///
+/// Ce qui ne peut pas se joindre est COMPTÉ et rendu à l'appelant, pour qu'il
+/// le dise. Rien n'est modifié à moitié : une paire refusée laisse ses deux
+/// clips exactement où ils étaient.
+struct ClipJoin {
+    size_t joined = 0;    ///< nombre de clips ABSORBÉS (deux clips joints = 1).
+    size_t refused = 0;   ///< paires voisines de la sélection qui n'ont pas pu.
+};
+ClipJoin joinClips(std::vector<Clip>& clips, const ClipSelection& selection, Tick materialEnd,
+                    bool audioTrack, const std::function<double(Tick)>& ticksToSeconds);
+
 size_t splitClips(std::vector<Clip>& clips, const ClipSelection& selection, Tick atTick,
                    Tick materialEnd, uint64_t& idCounter,
                    const std::function<double(Tick)>& ticksToSeconds);

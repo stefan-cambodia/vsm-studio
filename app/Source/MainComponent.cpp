@@ -266,6 +266,20 @@ MainComponent::MainComponent()
     arrangement_.onClipCreationRequested = [this](size_t piste, vsm::midi::Tick tick) {
         createClipOnTrack(piste, tick);
     };
+    // D16.3 : ce qui n'a pas pu être joint est DIT, avec la raison. Un
+    // Ctrl+J qui ne fait rien et se tait laisse chercher pourquoi.
+    arrangement_.onJoinRefused = [](size_t refuses) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Joindre des clips",
+            juce::String(static_cast<int>(refuses))
+                + juce::String(refuses > 1 ? u8" jonctions n'ont pas pu se faire"
+                                            : u8" jonction n'a pas pu se faire")
+                + juce::String(u8" : deux clips ne se joignent que s'ils se touchent sur la ligne "
+                               u8"de temps ET que leur fenêtre se prolonge — c'est-à-dire si le "
+                               u8"second est exactement ce qu'une coupe aurait produit du premier. "
+                               u8"Un clip bouclé, un clip qui suit le tempo, ou deux réglages de "
+                               u8"gain, de phase ou de sens différents ne se joignent pas."));
+    };
     // LA SAISIE PAS À PAS (D13.5) : le piano roll arme le moteur, le moteur
     // poste la note, le piano roll l'écrit. Un seul chemin pour le clavier
     // MIDI et le clavier d'ordinateur, puisque le second passe par le premier.
@@ -944,6 +958,20 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     // résultat qu'il faut regarder. Passe par la MÊME fonction que le
     // double-clic et que l'article du menu : photographier autre chose que ce
     // que l'utilisateur déclenche ne photographierait rien.
+    // D16.3 : couper à la tête et joindre, sur la sélection courante. Même
+    // raison d'être que `clip:` -- un raccourci clavier ne se photographie pas.
+    else if (nom == "tout-choisir") arrangement_.selectAll();
+    else if (nom == "couper-clips") arrangement_.splitSelectionAtPlayhead();
+    else if (nom == "joindre-clips") arrangement_.joinSelection();
+    else if (nom.startsWith("tete:")) {
+        const int mesure = std::max(0, nom.substring(5).getIntValue());
+        const vsm::midi::Tick parMesure =
+            project_.timeSignatureMap.ticksPerBar(0, project_.ticksPerQuarterNote);
+        const auto tick = static_cast<vsm::midi::Tick>(mesure) * parMesure;
+        transport_.seekToTick(tick);
+        audioEngine_.processGraph().seekSeconds(project_.ticksToSeconds(tick));
+        arrangement_.setPlayheadTick(tick);
+    }
     else if (nom.startsWith("clip:")) {
         auto morceaux = juce::StringArray::fromTokens(nom.substring(5), ":", "");
         const size_t piste = static_cast<size_t>(std::max(0, morceaux[0].getIntValue()));
