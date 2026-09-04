@@ -11,6 +11,7 @@ add_library(vsm_interchange STATIC
     src/ReconstructionReport.cpp
     src/PluginCatalogue.cpp
     src/SynthPreset.cpp
+    src/EffectPreset.cpp
     src/SoundFont.cpp
     src/MultisampleProfile.cpp
     src/EffectDescription.cpp
@@ -47,6 +48,7 @@ if (VSM_BUILD_TESTS)
         tests/test_daw_import.cpp
         tests/test_semantic_parameters.cpp
         tests/test_synth_preset.cpp
+        tests/test_effect_preset.cpp
         tests/test_multisample_profile.cpp
         tests/test_reconstruction_chain.cpp
         tests/test_midi_learn_store.cpp

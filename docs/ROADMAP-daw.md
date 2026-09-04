@@ -3325,6 +3325,28 @@ modèle temporel en dernier parce qu'il traverse tout.
 > lance la lecture, pour la photographier ; vu à l'écran sur le projet à
 > quatre pistes, crête à 167,8 Hz.
 
+> **D15.4 EST FAITE (04/09/2026), et elle a choisi la bibliothèque plutôt
+> que le dossier des préférences.** Le tableau disait « dans le dossier des
+> préférences » ; les presets de MACHINES vivent dans la bibliothèque de
+> l'utilisateur (`*.synth.json`, indexés par le navigateur), et deux
+> dossiers de presets pour deux sortes de presets seraient deux logiciels.
+> Donc : `*.effect.json` (`EffectPreset.h`, format `vsm-effect-preset`
+> version 1 -- type de fabrique, réglages en unités réelles sous leur nom
+> sémantique, état natif s'il existe ; le contournement n'en fait PAS
+> partie, c'est une décision de mixage), écrits dans `<bibliothèque>/effets`
+> si la bibliothèque est réglée, sinon `<projet>/effets`, sinon à côté des
+> préférences ; lus dans la bibliothèque ET le projet. Chaque rangée de la
+> chaîne porte un bouton « Preset » : enregistrer sous un nom, ou charger
+> l'un des presets DU MÊME TYPE trouvés (un preset de réverbération n'est
+> jamais proposé à un delay). Le navigateur les liste comme une sorte à
+> part (« Effet »), et un preset déposé sur une piste y ajoute l'insert
+> réglé ; un type que la fabrique ne construit pas est nommé, jamais
+> remplacé. Annulable. Quatre tests : aller-retour exact (valeur pour
+> valeur, état natif compris), refus par nom d'un preset de machine ou
+> d'une version inconnue, et l'index qui distingue `Salle claire.effect.json`
+> de `basse.synth.json`. Vu à l'écran : la rangée « On | Reverb | Preset |
+> ^ v X ».
+
 **Ce que l'audit a écarté, et pourquoi.** Le pré-roll (jouer les mesures
 qui précèdent le punch-in) : le décompte existe, et un punch-in se prépare
 en posant la tête avant. Le scrub audio : Live ne l'a pas, et la tête posée

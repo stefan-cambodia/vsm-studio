@@ -770,6 +770,8 @@ famille). Un effet tiers CLAP ou VST3 se pose de la même façon.
 
 **Contourner un insert** : chaque rangée de la chaîne commence par un interrupteur *On / Off* ; *Off* ne retire pas l'effet, il le contourne à la façon du *Bypass* de Cubase — l'effet continue de tourner et garde sa latence, seule sa sortie est remplacée par le signal sec retardé d'autant, si bien que la piste ne se déplace pas et que le retour est sans à-coup. *Contourner tout* / *Tout remettre* fait de même pour toute la chaîne de la piste. Le contournement est enregistré avec le projet et l'export le respecte.
 
+**Les presets d'effet** : le bouton *Preset* d'une rangée enregistre le réglage courant sous un nom (`nom.effect.json`, dans le dossier `effets` de la bibliothèque — ou du projet si aucune bibliothèque n'est réglée) ou charge l'un des presets du même type trouvés dans la bibliothèque et le projet. Le navigateur les liste sous la sorte « Effet » ; déposer l'un d'eux sur une piste y ajoute l'insert, réglé comme le fichier le dit.
+
 **Le rapport de reconstruction se lit dans l'application** : *Fichier ▸ Voir le
 rapport de reconstruction* (grisé quand le projet ouvert n'en a pas — un projet
 créé à la main n'en a pas, c'est normal). Il dit la distance globale, **quelle

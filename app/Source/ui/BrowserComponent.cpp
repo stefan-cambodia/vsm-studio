@@ -18,6 +18,7 @@ juce::Colour couleurDe(BrowserItemKind kind) {
         case BrowserItemKind::Preset:  return juce::Colours::lightgreen;
         case BrowserItemKind::Profile: return juce::Colours::orange;
         case BrowserItemKind::Sample:  return juce::Colours::violet;
+        case BrowserItemKind::EffectPreset: return juce::Colours::lightseagreen;
     }
     return juce::Colours::white;
 }
@@ -35,7 +36,7 @@ bool BrowserComponent::parseDragDescription(const juce::String& description,
     const int deuxPoints = reste.indexOfChar(':');
     if (deuxPoints <= 0) return false;
     const int numero = reste.substring(0, deuxPoints).getIntValue();
-    if (numero < 0 || numero > static_cast<int>(BrowserItemKind::Sample)) return false;
+    if (numero < 0 || numero > static_cast<int>(BrowserItemKind::EffectPreset)) return false;
     kind = static_cast<BrowserItemKind>(numero);
     reference = reste.substring(deuxPoints + 1);
     return true;

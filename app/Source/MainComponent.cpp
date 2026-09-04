@@ -19,6 +19,7 @@
 #include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/interchange/ParameterDescriptor.h"
 #include "vsm/interchange/EffectDescription.h"
+#include "vsm/interchange/EffectPreset.h"
 #include "vsm/interchange/OfflineReconstruction.h"
 #if VSM_WITH_CLAP
 #include "ClapPluginHost.h"
@@ -198,6 +199,25 @@ MainComponent::MainComponent()
     // Le projet est donné APRÈS le rappel : la toute première publication des
     // chaînes part alors vers le moteur au lieu de tomber dans le vide.
     effectChain_.setProject(&project_);
+    // D15.4 : où les presets d'effet se lisent (bibliothèque et projet) et
+    // où ils s'écrivent (la bibliothèque si elle est réglée, sinon le projet,
+    // sinon le dossier des préférences) ; le navigateur les voit aussitôt.
+    effectChain_.presetFoldersProvider = [this] {
+        std::vector<juce::File> dossiers;
+        const juce::String bibliotheque =
+            vsm::app::ui::UiScale::properties().getValue("dossierBibliotheque", "");
+        if (bibliotheque.isNotEmpty()) dossiers.emplace_back(bibliotheque);
+        if (currentProjectFolder_ != juce::File()) dossiers.push_back(currentProjectFolder_);
+        return dossiers;
+    };
+    effectChain_.presetSaveFolderProvider = [this] {
+        const juce::String bibliotheque =
+            vsm::app::ui::UiScale::properties().getValue("dossierBibliotheque", "");
+        if (bibliotheque.isNotEmpty()) return juce::File(bibliotheque).getChildFile("effets");
+        if (currentProjectFolder_ != juce::File()) return currentProjectFolder_.getChildFile("effets");
+        return vsm::app::ui::UiScale::properties().getFile().getParentDirectory().getChildFile("effets");
+    };
+    effectChain_.onPresetsChanged = [this] { refreshBrowser(); };
 
 #if VSM_WITH_CLAP || VSM_WITH_VST3
     // D7.5 : LE CATALOGUE EST RELU, PAS REFAIT. Rouvrir deux cents fichiers à
@@ -3758,6 +3778,31 @@ void MainComponent::applyBrowserItem(const vsm::interchange::BrowserItem& item,
     const juce::String chemin = juce::String::fromUTF8(item.reference.c_str());
 
     switch (item.kind) {
+        case Kind::EffectPreset: {
+            // D15.4 : le preset devient un insert de plus sur la piste, réglé
+            // comme le fichier le dit ; un type que la fabrique ne sait pas
+            // construire est nommé, jamais remplacé.
+            const auto lu = vsm::interchange::parseEffectPreset(
+                juce::File(chemin).loadFileAsString().toStdString());
+            if (!lu.success) {
+                juce::AlertWindow::showMessageBoxAsync(
+                    juce::AlertWindow::WarningIcon, "Preset d'effet illisible",
+                    juce::String::fromUTF8(lu.error.c_str()));
+                return;
+            }
+            if (!vsm::audio::effect::EffectFactory::create(lu.preset.type)) {
+                juce::AlertWindow::showMessageBoxAsync(
+                    juce::AlertWindow::WarningIcon, juce::String::fromUTF8(u8"Preset d'effet non appliqué"),
+                    juce::String::fromUTF8(u8"L'effet « ") + juce::String::fromUTF8(lu.preset.type.c_str())
+                        + juce::String::fromUTF8(u8" » n'est pas disponible."));
+                return;
+            }
+            beginProjectEdit(juce::String::fromUTF8(u8"Ajouter un preset d'effet"));
+            project_.tracks[trackIndex].effects.push_back(
+                vsm::interchange::descriptionFromEffectPreset(lu.preset));
+            effectChain_.rebuildFromProject();
+            break;
+        }
         case Kind::Machine:
             beginProjectEdit(juce::String::fromUTF8(u8"Changer de machine"));
             project_.tracks[trackIndex].instrumentId = item.reference;

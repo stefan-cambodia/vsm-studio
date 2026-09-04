@@ -1,4 +1,5 @@
 #include "vsm/interchange/BrowserIndex.h"
+#include "vsm/interchange/EffectPreset.h"
 #include <algorithm>
 #include <cctype>
 #include <filesystem>
@@ -39,6 +40,7 @@ const char* browserKindShortLabel(BrowserItemKind kind) {
         case BrowserItemKind::Preset:  return "Preset";
         case BrowserItemKind::Profile: return "Profil";
         case BrowserItemKind::Sample:  return "Échantillon";
+        case BrowserItemKind::EffectPreset: return "Effet";
     }
     return "?";
 }
@@ -49,6 +51,7 @@ const char* browserKindLabel(BrowserItemKind kind) {
         case BrowserItemKind::Preset:  return "Presets";
         case BrowserItemKind::Profile: return "Profils";
         case BrowserItemKind::Sample:  return "Échantillons";
+        case BrowserItemKind::EffectPreset: return "Presets d'effet";
     }
     return "?";
 }
@@ -74,6 +77,7 @@ void indexFolder(const std::string& folderPath, const std::string& origin,
         const std::string chemin = it->path().string();
         BrowserItem entree;
         if (isPresetFile(chemin))       entree.kind = BrowserItemKind::Preset;
+        else if (isEffectPresetFile(chemin)) entree.kind = BrowserItemKind::EffectPreset;
         else if (isProfileFile(chemin)) entree.kind = BrowserItemKind::Profile;
         else if (isSampleFile(chemin))  entree.kind = BrowserItemKind::Sample;
         else continue;
@@ -85,6 +89,8 @@ void indexFolder(const std::string& folderPath, const std::string& origin,
             entree.name = entree.name.substr(0, entree.name.size() - 11);
         else if (entree.kind == BrowserItemKind::Profile)
             entree.name = entree.name.substr(0, entree.name.size() - 13);
+        else if (entree.kind == BrowserItemKind::EffectPreset)
+            entree.name = entree.name.substr(0, entree.name.size() - 12);
         else
             entree.name = it->path().stem().string();
 

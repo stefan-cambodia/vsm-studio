@@ -24,6 +24,7 @@ enum class BrowserItemKind {
     Preset,        ///< `*.synth.json`
     Profile,       ///< `*.profile.json` (multi-échantillons)
     Sample,        ///< un fichier audio
+    EffectPreset,  ///< `*.effect.json` (D15.4) -- en dernier : le numéro voyage dans le glisser-déposer
 };
 
 struct BrowserItem {

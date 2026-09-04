@@ -1,5 +1,7 @@
 #include "EffectChainComponent.h"
 #include "vsm/audio/effect/BypassableEffect.h"
+#include "vsm/interchange/EffectPreset.h"
+#include <algorithm>
 #include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/interchange/EffectDescription.h"
 #include <cmath>
@@ -230,6 +232,11 @@ void EffectChainComponent::rebuildEffectList() {
         row.bypass->onClick = [this, index] { setEffectEnabled(static_cast<size_t>(index), !effectEnabled(static_cast<size_t>(index))); };
         addAndMakeVisible(*row.bypass);
 
+        row.preset = std::make_unique<juce::TextButton>("Preset");
+        row.preset->setTooltip(u8"Enregistrer ce réglage comme preset, ou en charger un du même type");
+        row.preset->onClick = [this, index] { showPresetMenu(static_cast<size_t>(index)); };
+        addAndMakeVisible(*row.preset);
+
         row.up = std::make_unique<juce::TextButton>("^");
         row.up->onClick = [this, index] {
             Chain* c = activeChain();
@@ -344,6 +351,7 @@ void EffectChainComponent::resized() {
         row.remove->setBounds(r.removeFromRight(28).reduced(1));
         row.down->setBounds(r.removeFromRight(26).reduced(1));
         row.up->setBounds(r.removeFromRight(26).reduced(1));
+        row.preset->setBounds(r.removeFromRight(70).reduced(1));
         row.bypass->setBounds(r.removeFromLeft(44).reduced(1));
         row.select->setBounds(r.reduced(1));
     }
@@ -399,4 +407,97 @@ void EffectChainComponent::setAllEffectsEnabled(bool enabled) {
             enrobe->setBypassed(!enabled);
     }
     rebuildEffectList();
+}
+
+// --- D15.4 : les presets d'effet ----------------------------------------------
+
+namespace {
+struct PresetTrouve { juce::File fichier; std::string nom; };
+
+std::vector<PresetTrouve> presetsDuType(const std::vector<juce::File>& dossiers, const std::string& type) {
+    std::vector<PresetTrouve> trouves;
+    for (const auto& dossier : dossiers) {
+        if (!dossier.isDirectory()) continue;
+        for (const auto& f : dossier.findChildFiles(juce::File::findFiles, true, "*.effect.json")) {
+            const auto lu = vsm::interchange::parseEffectPreset(f.loadFileAsString().toStdString());
+            if (!lu.success || lu.preset.type != type) continue;   // un autre type, ou illisible : pas proposé
+            trouves.push_back({f, lu.preset.name});
+        }
+    }
+    std::sort(trouves.begin(), trouves.end(), [](const PresetTrouve& a, const PresetTrouve& b) { return a.nom < b.nom; });
+    return trouves;
+}
+}
+
+void EffectChainComponent::showPresetMenu(size_t index) {
+    auto* d = activeDescription();
+    if (!d || index >= d->size()) return;
+    const std::string type = (*d)[index].type;
+    auto trouves = std::make_shared<std::vector<PresetTrouve>>(
+        presetsDuType(presetFoldersProvider ? presetFoldersProvider() : std::vector<juce::File>{}, type));
+
+    juce::PopupMenu menu;
+    menu.addItem(1, juce::String::fromUTF8(u8"Enregistrer comme preset..."));
+    menu.addSeparator();
+    if (trouves->empty())
+        menu.addItem(2, juce::String::fromUTF8(u8"(aucun preset de ce type dans la bibliothèque ni le projet)"), false);
+    for (size_t i = 0; i < trouves->size(); ++i)
+        menu.addItem(100 + static_cast<int>(i), juce::String::fromUTF8((*trouves)[i].nom.c_str()));
+
+    juce::Component* ancre = index < rows_.size() ? rows_[index].preset.get() : nullptr;
+    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(ancre),
+                       [this, index, trouves](int choix) {
+                           if (choix == 1) savePresetOf(index);
+                           else if (choix >= 100 && static_cast<size_t>(choix - 100) < trouves->size())
+                               loadPresetInto(index, (*trouves)[static_cast<size_t>(choix - 100)].fichier);
+                       });
+}
+
+void EffectChainComponent::savePresetOf(size_t index) {
+    auto* d = activeDescription();
+    if (!d || index >= d->size() || !presetSaveFolderProvider) return;
+    const auto description = (*d)[index];
+    auto fenetre = std::make_shared<juce::AlertWindow>(
+        juce::String::fromUTF8(u8"Enregistrer un preset d'effet"),
+        juce::String::fromUTF8(u8"Nom du preset (") + juce::String(description.type) + ") :",
+        juce::AlertWindow::NoIcon);
+    fenetre->addTextEditor("nom", "", "");
+    fenetre->addButton("Enregistrer", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton("Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+        [this, description, fenetre](int resultat) {
+            const juce::String nom = fenetre->getTextEditorContents("nom").trim();
+            fenetre->exitModalState(resultat);
+            fenetre->setVisible(false);
+            if (resultat != 1 || nom.isEmpty()) return;
+            const juce::File dossier = presetSaveFolderProvider();
+            dossier.createDirectory();
+            const juce::File fichier = dossier.getChildFile(
+                juce::File::createLegalFileName(nom) + juce::String(vsm::interchange::kEffectPresetExtension));
+            const auto preset = vsm::interchange::effectPresetFromDescription(description, nom.toStdString());
+            if (!fichier.replaceWithText(juce::String::fromUTF8(
+                    vsm::interchange::effectPresetToJson(preset).toString().c_str()))) {
+                juce::AlertWindow::showMessageBoxAsync(
+                    juce::AlertWindow::WarningIcon, juce::String::fromUTF8(u8"Preset non enregistré"),
+                    juce::String::fromUTF8(u8"Impossible d'écrire ") + fichier.getFullPathName());
+                return;
+            }
+            if (onPresetsChanged) onPresetsChanged();
+        }), false);
+}
+
+void EffectChainComponent::loadPresetInto(size_t index, const juce::File& fichier) {
+    Chain* c = activeChain();
+    auto* d = activeDescription();
+    if (!c || !d || index >= d->size() || d->size() != c->size()) return;
+    const auto lu = vsm::interchange::parseEffectPreset(fichier.loadFileAsString().toStdString());
+    if (!lu.success || lu.preset.type != (*d)[index].type) return;
+    if (onEditStarted) onEditStarted("Charger un preset d'effet");
+    auto description = vsm::interchange::descriptionFromEffectPreset(lu.preset);
+    description.enabled = (*d)[index].enabled;   // le contournement est une décision de mixage, il reste
+    (*d)[index] = description;
+    vsm::interchange::applyEffectDescription(description, *(*c)[index]);
+    selectedEffect_ = static_cast<int>(index);
+    rebuildEffectList();
+    rebuildParamControls();
 }

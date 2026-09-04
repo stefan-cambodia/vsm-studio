@@ -95,6 +95,17 @@ public:
     void setEffectEnabled(size_t index, bool enabled);
     void setAllEffectsEnabled(bool enabled);
 
+    /// D15.4 : LES PRESETS D'EFFET. D'où ils se lisent, où ils s'écrivent, et
+    /// qui prévenir quand il y en a un de plus (le navigateur).
+    std::function<std::vector<juce::File>()> presetFoldersProvider;
+    std::function<juce::File()> presetSaveFolderProvider;
+    std::function<void()> onPresetsChanged;
+    /// Le menu du bouton « Preset » d'une rangée : enregistrer, ou charger
+    /// l'un des presets DU MÊME TYPE trouvés dans les dossiers.
+    void showPresetMenu(size_t index);
+    void savePresetOf(size_t index);
+    void loadPresetInto(size_t index, const juce::File& fichier);
+
 private:
     void rebuildEffectList();
     void rebuildParamControls();
@@ -135,6 +146,7 @@ private:
     struct EffectRow {
         std::unique_ptr<juce::TextButton> select;
         std::unique_ptr<juce::TextButton> bypass; ///< D15.1 : On / Off
+        std::unique_ptr<juce::TextButton> preset; ///< D15.4 : enregistrer / charger
         std::unique_ptr<juce::TextButton> up;
         std::unique_ptr<juce::TextButton> down;
         std::unique_ptr<juce::TextButton> remove;
