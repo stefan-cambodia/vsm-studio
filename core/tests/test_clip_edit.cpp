@@ -1,4 +1,5 @@
 #include "TestFramework.h"
+#include "vsm/sequencer/AutomationEdit.h"
 #include "vsm/sequencer/ClipEdit.h"
 #include "vsm/sequencer/PlaybackScheduler.h"
 #include "vsm/sequencer/Project.h"
@@ -793,7 +794,7 @@ VSM_TEST(a_locked_track_refuses_every_edit_and_not_a_tick_moves) {
     piste.locked = true;
     const auto avant = piste.clips;
 
-    VSM_ASSERT_EQ(moveClips(piste, {1, 2}, 480), size_t(0));
+    VSM_ASSERT_EQ(moveClips(piste, {1, 2}, 480, false, 1920), size_t(0));
     VSM_ASSERT_EQ(resizeClipsEnd(piste, {1}, 480, 1920), size_t(0));
     VSM_ASSERT_EQ(resizeClipsStart(piste, {1}, 480, 1920, {}), size_t(0));
     VSM_ASSERT_EQ(stretchClipsEnd(piste, {1}, 480, 1920, {}), size_t(0));
@@ -814,7 +815,7 @@ VSM_TEST(a_locked_track_refuses_every_edit_and_not_a_tick_moves) {
     // Déverrouillée, le MÊME appel passe : c'est le cadenas qu'on mesure, pas
     // une sélection vide ou un geste impossible.
     piste.locked = false;
-    VSM_ASSERT_EQ(moveClips(piste, {1, 2}, 480), size_t(2));
+    VSM_ASSERT_EQ(moveClips(piste, {1, 2}, 480, false, 1920), size_t(2));
     VSM_ASSERT_EQ(piste.clips[0].startTick, Tick(480));
 }
 
@@ -827,7 +828,7 @@ VSM_TEST(a_selection_across_a_locked_and_a_free_track_only_moves_the_free_one) {
     VSM_ASSERT_EQ(lockedClipsInSelection(pistes, {1, 2, 3, 4}), size_t(2));
 
     size_t deplaces = 0;
-    for (auto& piste : pistes) deplaces += moveClips(piste, {1, 2, 3, 4}, 960);
+    for (auto& piste : pistes) deplaces += moveClips(piste, {1, 2, 3, 4}, 960, false, 1920);
     VSM_ASSERT_EQ(deplaces, size_t(2));                       // seuls ceux de la piste libre
     VSM_ASSERT_EQ(pistes[0].clips[0].startTick, avantVerrouillee[0].startTick);
     VSM_ASSERT_EQ(pistes[0].clips[1].startTick, avantVerrouillee[1].startTick);
@@ -870,4 +871,90 @@ VSM_TEST(locking_a_track_changes_nothing_to_what_it_plays) {
     VSM_ASSERT(!a.empty());
     for (size_t i = 0; i < a.size(); ++i)
         VSM_ASSERT_NEAR(b[i].timeSeconds, a[i].timeSeconds, 1e-12);
+}
+
+// --------------------------------------------------------------------------
+// D17.2 — L'AUTOMATION SUIT LES CLIPS.
+//
+// `ClipEdit` ne touchait à `Track::automation` nulle part : déplacer un clip
+// d'une mesure laissait sa courbe de volume où elle était, et le projet ne
+// jouait plus ce qu'il montrait.
+// --------------------------------------------------------------------------
+
+VSM_TEST(a_moved_clip_takes_its_automation_with_it_and_leaves_the_rest_alone) {
+    Track piste;
+    piste.clips = {clip(1, 0, 960)};
+    AutomationCurve courbe;
+    courbe.parameter = "mix.volume";
+    courbe.points = {{0, 0.2f, false}, {480, 0.6f, false},        // sous le clip
+                      {2880, 1.0f, false}};                        // ailleurs, et qui ne bouge pas
+    piste.automation.push_back(courbe);
+
+    VSM_ASSERT_EQ(moveClips(piste, {1}, 1920, true, 3840), size_t(1));
+    VSM_ASSERT_EQ(piste.clips[0].startTick, Tick(1920));
+
+    const auto& c = piste.automation[0];
+    // Ce que la courbe disait à 0 et à 480, elle le dit maintenant à 1920 et
+    // à 2400 : le clip a emporté sa courbe.
+    VSM_ASSERT_NEAR(automationValueAt(c, 1920), 0.2f, 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(c, 2400), 0.6f, 1e-6f);
+    // Et le point de 2880, hors de la plage du clip, n'a pas bougé.
+    bool trouve = false;
+    for (const auto& p : c.points)
+        if (p.tick == 2880) { trouve = true; VSM_ASSERT_NEAR(p.value, 1.0f, 1e-6f); }
+    VSM_ASSERT(trouve);
+}
+
+VSM_TEST(the_switch_off_leaves_the_curve_exactly_where_it_was) {
+    // Cubase rend le suivi débrayable, et le débrayer sert : quand on remonte
+    // une prise SOUS une courbe qu'on veut garder, c'est la courbe qui a
+    // raison, pas le clip.
+    Track piste;
+    piste.clips = {clip(1, 0, 960)};
+    AutomationCurve courbe;
+    courbe.points = {{0, 0.2f, false}, {480, 0.6f, false}};
+    piste.automation.push_back(courbe);
+
+    VSM_ASSERT_EQ(moveClips(piste, {1}, 1920, false, 3840), size_t(1));
+    VSM_ASSERT_EQ(piste.automation[0].points.size(), size_t(2));
+    VSM_ASSERT_EQ(piste.automation[0].points[0].tick, Tick(0));
+    VSM_ASSERT_EQ(piste.automation[0].points[1].tick, Tick(480));
+}
+
+VSM_TEST(the_curve_follows_the_distance_actually_travelled_not_the_one_asked_for) {
+    // `moveClips` réduit le décalage POUR TOUS quand l'un des clips buterait
+    // sur zéro. Décaler la courbe de ce qu'on a demandé au lieu de ce qui
+    // s'est fait la désaccorderait du clip qu'elle suit.
+    Track piste;
+    piste.clips = {clip(1, 480, 960)};
+    AutomationCurve courbe;
+    courbe.points = {{480, 0.4f, false}};
+    piste.automation.push_back(courbe);
+
+    moveClips(piste, {1}, -2000, true, 3840);       // réduit à -480 : le clip bute sur zéro
+    VSM_ASSERT_EQ(piste.clips[0].startTick, Tick(0));
+    VSM_ASSERT_EQ(piste.automation[0].points.size(), size_t(1));
+    VSM_ASSERT_EQ(piste.automation[0].points[0].tick, Tick(0));
+}
+
+VSM_TEST(a_clip_that_changes_track_hands_its_automation_to_the_new_one) {
+    // La courbe ne se DÉPLACE pas dans le temps -- le clip garde sa position,
+    // il change de piste --, elle DÉMÉNAGE.
+    std::vector<Track> pistes(2);
+    pistes[0].clips = {clip(1, 960, 960)};
+    AutomationCurve courbe;
+    courbe.parameter = "mix.pan";
+    courbe.points = {{960, -0.5f, false}, {1440, 0.5f, false}, {2880, 0.0f, false}};
+    pistes[0].automation.push_back(courbe);
+
+    const auto rapport = moveClipsAcrossTracks(pistes, {1}, 1, true, 3840);
+    VSM_ASSERT_EQ(rapport.moved, size_t(1));
+    VSM_ASSERT_EQ(pistes[1].clips.size(), size_t(1));
+    VSM_ASSERT_EQ(pistes[1].automation.size(), size_t(1));
+    VSM_ASSERT_EQ(pistes[1].automation[0].parameter, std::string("mix.pan"));
+    VSM_ASSERT_EQ(pistes[1].automation[0].points.size(), size_t(2));
+    VSM_ASSERT_EQ(pistes[1].automation[0].points[0].tick, Tick(960));
+    // Ce qui n'était pas sous le clip reste sur la piste d'origine.
+    VSM_ASSERT_EQ(pistes[0].automation[0].points.size(), size_t(1));
+    VSM_ASSERT_EQ(pistes[0].automation[0].points[0].tick, Tick(2880));
 }

@@ -164,6 +164,12 @@ public:
     /// fenêtre est une affaire d'application, pas de vue.
     std::function<void(size_t, uint64_t)> onClipBarsRequested;
 
+    /// D17.2 : « L'AUTOMATION SUIT LES ÉVÉNEMENTS », la préférence de Cubase,
+    /// active par défaut. Réglée par l'application, qui la retient ; la vue ne
+    /// fait que la transmettre à `ClipEdit`, qui décide.
+    void setAutomationFollowsClips(bool suit) { automationSuit_ = suit; }
+    bool automationFollowsClips() const { return automationSuit_; }
+
     /// D16.5 : des clips d'une piste VERROUILLÉE ont été refusés (leur
     /// nombre), pour que l'application le dise. Le refus lui-même est dans
     /// `ClipEdit` ; la vue ne teste jamais le cadenas, elle le rapporte.
@@ -257,6 +263,7 @@ private:
     vsm::midi::Tick scrollTick_ = 0;
     double pixelsPerTick_ = 0.06;
     bool snap_ = true;
+    bool automationSuit_ = true;
     /// Aimanter à la MESURE (le défaut, parce qu'on arrange par mesures) ou à
     /// la grille fine du piano roll. `G` bascule, `S` coupe l'aimantation.
     bool aimanteALaMesure_ = true;

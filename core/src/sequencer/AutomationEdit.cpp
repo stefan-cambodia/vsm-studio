@@ -26,6 +26,33 @@ float automationValueAt(const AutomationCurve& curve, Tick tick) {
     return points.back().value;
 }
 
+size_t shiftAutomationRange(AutomationCurve& curve, Tick fromTick, Tick toTick,
+                            Tick deltaTicks) {
+    if (deltaTicks == 0 || toTick <= fromTick || curve.points.empty()) return 0;
+
+    std::map<Tick, AutomationPoint> parTick;
+    std::vector<AutomationPoint> deplaces;
+    for (const auto& p : curve.points) {
+        if (p.tick >= fromTick && p.tick < toTick) {
+            AutomationPoint bouge = p;
+            bouge.tick = p.tick + deltaTicks;
+            // Aucun point ne passe avant zéro : la ligne de temps commence là,
+            // et un point négatif ne serait ni dessiné ni joué.
+            if (bouge.tick < 0) continue;
+            deplaces.push_back(bouge);
+        } else {
+            parTick[p.tick] = p;
+        }
+    }
+    // EN DERNIER, donc vainqueurs : ce qu'on vient de tirer.
+    for (const auto& p : deplaces) parTick[p.tick] = p;
+
+    curve.points.clear();
+    curve.points.reserve(parTick.size());
+    for (const auto& [tick, point] : parTick) curve.points.push_back(point);
+    return deplaces.size();
+}
+
 void writeAutomationRange(AutomationCurve& curve, Tick fromTick, Tick toTick,
                            const std::vector<AutomationPoint>& written) {
     if (written.empty() || toTick < fromTick) return;

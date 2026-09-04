@@ -160,7 +160,8 @@ struct ClipTrackMove {
     int applied = 0;
 };
 ClipTrackMove moveClipsAcrossTracks(std::vector<Track>& tracks, const ClipSelection& selection,
-                                    int deltaTracks);
+                                    int deltaTracks, bool automationFollows = false,
+                                    Tick materialEnd = 0);
 
 bool clipSelectionBounds(const std::vector<Clip>& clips, const ClipSelection& selection,
                           Tick materialEnd, Tick& startTick, Tick& endTick);
@@ -291,7 +292,15 @@ size_t splitClips(std::vector<Clip>& clips, const ClipSelection& selection, Tick
 /// LES SURCHARGES VERROUILLABLES (D16.5). Chacune rend le nombre de clips
 /// qu'elle a touchés -- zéro quand la piste est verrouillée, et alors PAS UN
 /// TICK n'a bougé.
-size_t moveClips(Track& track, const ClipSelection& selection, Tick deltaTicks);
+/// `automationFollows` (D17.2) : les courbes de la piste suivent les clips
+/// déplacés — c'est « l'automation suit les événements » de Cubase, actif par
+/// défaut chez lui. Passé jusqu'ici plutôt que lu quelque part : le réglage est
+/// une PRÉFÉRENCE de l'application, et `core/` n'en connaît aucune. Le mettre
+/// dans le paramètre plutôt qu'à côté de l'appel garantit qu'un appelant ne
+/// peut pas déplacer un clip en oubliant sa courbe — c'est le même
+/// raisonnement que pour le verrou.
+size_t moveClips(Track& track, const ClipSelection& selection, Tick deltaTicks,
+                  bool automationFollows, Tick materialEnd);
 size_t resizeClipsEnd(Track& track, const ClipSelection& selection, Tick deltaTicks,
                        Tick materialEnd);
 size_t resizeClipsStart(Track& track, const ClipSelection& selection, Tick deltaTicks,

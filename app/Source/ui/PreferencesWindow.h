@@ -38,7 +38,7 @@ public:
                   const juce::String& libraryFolder,
                   int shortcutCount, int midiMappingCount, bool returnToStartOnStop = false,
                   float metronomeLevel = 0.35f, bool metronomeCountInOnly = false,
-                  bool metronomeRecordOnly = false);
+                  bool metronomeRecordOnly = false, bool automationFollowsClips = true);
 
     std::function<void(float)> onUiScaleChanged;
     /// RETOUR AU DÉBUT À L'ARRÊT (D14.5) : la préférence de Cubase, le défaut
@@ -47,6 +47,10 @@ public:
     /// LE MÉTRONOME RÉGLABLE (D16.6) : son niveau, et les deux restrictions
     /// qui disent QUAND il bat. Le décompte, lui, n'est pas réglable — un
     /// décompte qu'on n'entend pas ne compte rien.
+    /// D17.2 : « l'automation suit les événements », la préférence de Cubase.
+    /// Débrayable, et le débrayer sert : quand on remonte une prise SOUS une
+    /// courbe qu'on veut garder, c'est la courbe qui a raison.
+    std::function<void(bool)> onAutomationFollowsClipsChanged;
     std::function<void(float)> onMetronomeLevelChanged;
     std::function<void(bool)> onMetronomeCountInOnlyChanged;
     std::function<void(bool)> onMetronomeRecordOnlyChanged;
@@ -64,7 +68,8 @@ private:
     juce::Label libelleEchelle_, libelleThreads_, libelleChaine_, etatChaine_;
     juce::ComboBox echelle_, threads_;
     juce::Label libelleRetour_;
-    juce::Label libelleClic_, libelleQuandClic_;
+    juce::Label libelleClic_, libelleQuandClic_, libelleSuiviAutomation_;
+    juce::ToggleButton automationSuit_ { juce::String::fromUTF8(u8"L'automation suit les clips") };
     juce::Slider niveauClic_ { juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight };
     juce::ToggleButton clicDecompteSeul_ { juce::String::fromUTF8(u8"Seulement au décompte") };
     juce::ToggleButton clicEnregistrementSeul_ { juce::String::fromUTF8(u8"Seulement à l'enregistrement") };

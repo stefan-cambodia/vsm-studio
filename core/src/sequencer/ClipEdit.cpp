@@ -1,4 +1,5 @@
 #include "vsm/sequencer/ClipEdit.h"
+#include "vsm/sequencer/AutomationEdit.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -175,10 +176,38 @@ size_t comptes(const std::vector<Clip>& clips, const ClipSelection& selection) {
 }
 } // namespace
 
-size_t moveClips(Track& track, const ClipSelection& selection, Tick deltaTicks) {
+size_t moveClips(Track& track, const ClipSelection& selection, Tick deltaTicks,
+                  bool automationFollows, Tick materialEnd) {
     if (track.locked) return 0;
     const size_t touches = comptes(track.clips, selection);
+    if (touches == 0) return 0;
+
+    // LES PLAGES SONT RELEVÉES AVANT LE DÉPLACEMENT, et le décalage
+    // RÉELLEMENT appliqué est mesuré sur un clip : `moveClips` réduit le
+    // décalage pour tous quand l'un buterait sur zéro, et décaler les courbes
+    // de ce qu'on a demandé au lieu de ce qui s'est fait les désaccorderait
+    // des clips qu'elles suivent.
+    std::vector<std::pair<Tick, Tick>> plages;
+    Tick avant = -1;
+    if (automationFollows)
+        for (const auto& clip : track.clips)
+            if (selected(selection, clip)) {
+                plages.emplace_back(clip.startTick,
+                                     clip.startTick + clipPlayedLength(clip, materialEnd));
+                if (avant < 0) avant = clip.startTick;
+            }
+
     moveClips(track.clips, selection, deltaTicks);
+
+    if (automationFollows && !plages.empty()) {
+        Tick applique = deltaTicks;
+        for (const auto& clip : track.clips)
+            if (selected(selection, clip)) { applique = clip.startTick - avant; break; }
+        if (applique != 0)
+            for (auto& courbe : track.automation)
+                for (const auto& [debut, fin] : plages)
+                    shiftAutomationRange(courbe, debut, fin, applique);
+    }
     return touches;
 }
 
@@ -239,7 +268,7 @@ size_t lockedClipsInSelection(const std::vector<Track>& tracks, const ClipSelect
 }
 
 ClipTrackMove moveClipsAcrossTracks(std::vector<Track>& tracks, const ClipSelection& selection,
-                                    int deltaTracks) {
+                                    int deltaTracks, bool automationFollows, Tick materialEnd) {
     ClipTrackMove rapport;
     if (selection.empty() || deltaTracks == 0 || tracks.empty()) return rapport;
 
@@ -301,6 +330,34 @@ ClipTrackMove moveClipsAcrossTracks(std::vector<Track>& tracks, const ClipSelect
         }
 
         Clip deplace = *it;
+        // L'AUTOMATION CHANGE DE PISTE AVEC LE CLIP (D17.2), et sur la plage
+        // qu'il couvre. Elle ne se DÉPLACE pas dans le temps -- le clip garde
+        // sa position, il change de piste --, elle DÉMÉNAGE : les points
+        // quittent la courbe de même paramètre de la piste d'origine et
+        // entrent dans celle de la cible, créée si elle manque. C'est la même
+        // règle que pour les notes, dix lignes plus haut, et pour la même
+        // raison : ce que le clip montre doit le suivre.
+        if (automationFollows) {
+            const Tick debut = deplace.startTick;
+            const Tick fin = debut + clipPlayedLength(deplace, materialEnd);
+            for (auto& courbe : source.automation) {
+                std::vector<AutomationPoint> emportes, restent;
+                for (const auto& p : courbe.points)
+                    (p.tick >= debut && p.tick < fin ? emportes : restent).push_back(p);
+                if (emportes.empty()) continue;
+                courbe.points.swap(restent);
+                AutomationCurve* destination = nullptr;
+                for (auto& c : cible.automation)
+                    if (c.parameter == courbe.parameter) { destination = &c; break; }
+                if (destination == nullptr) {
+                    AutomationCurve neuve;
+                    neuve.parameter = courbe.parameter;
+                    cible.automation.push_back(std::move(neuve));
+                    destination = &cible.automation.back();
+                }
+                for (const auto& p : emportes) setAutomationPoint(*destination, p.tick, p.value, p.step);
+            }
+        }
         source.clips.erase(it);
         cible.clips.push_back(deplace);
         std::stable_sort(cible.clips.begin(), cible.clips.end(),

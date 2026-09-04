@@ -55,6 +55,15 @@ PreferencesWindow::PreferencesWindow() {
     addAndMakeVisible(clicDecompteSeul_);
     addAndMakeVisible(clicEnregistrementSeul_);
 
+    // D17.2 : le suivi de l'automation. Dans « Audio » plutôt qu'ailleurs :
+    // c'est un réglage de montage, comme le retour au départ juste au-dessus.
+    ligne(libelleSuiviAutomation_, juce::String::fromUTF8(u8"En déplaçant"));
+    addAndMakeVisible(libelleSuiviAutomation_);
+    automationSuit_.onClick = [this] {
+        if (onAutomationFollowsClipsChanged) onAutomationFollowsClipsChanged(automationSuit_.getToggleState());
+    };
+    addAndMakeVisible(automationSuit_);
+
     ligne(libelleChaine_, juce::String::fromUTF8(u8"Dossier"));
     ligne(etatChaine_, "");
     for (auto* e : {&libelleEchelle_, &libelleThreads_, &libelleChaine_, &etatChaine_})
@@ -118,6 +127,7 @@ void PreferencesWindow::resized() {
     titreAudio_.setBounds(rangee(26));
     paire(rangee(30), libelleThreads_, threads_);
     paire(rangee(30), libelleRetour_, retourAuDepart_);
+    paire(rangee(30), libelleSuiviAutomation_, automationSuit_);
     paire(rangee(30), libelleClic_, niveauClic_);
     paire(rangee(28), libelleQuandClic_, clicDecompteSeul_);
     // La seconde case n'a pas de libellé à gauche : elle prolonge la première,
@@ -146,7 +156,8 @@ void PreferencesWindow::refresh(float uiScale, int renderThreads, int recommende
                                  const juce::String& libraryFolder,
                                  int shortcutCount, int midiMappingCount, bool returnToStartOnStop,
                                  float metronomeLevel, bool metronomeCountInOnly,
-                                 bool metronomeRecordOnly) {
+                                 bool metronomeRecordOnly, bool automationFollowsClips) {
+    automationSuit_.setToggleState(automationFollowsClips, juce::dontSendNotification);
     retourAuDepart_.setToggleState(returnToStartOnStop, juce::dontSendNotification);
     niveauClic_.setValue(metronomeLevel, juce::dontSendNotification);
     clicDecompteSeul_.setToggleState(metronomeCountInOnly, juce::dontSendNotification);

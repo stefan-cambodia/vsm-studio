@@ -86,7 +86,8 @@ void ArrangementComponent::nudgeSelection(vsm::midi::Tick delta) {
     if (verrouilles < selection_.size()) {
         if (onEditStarted) onEditStarted(u8"Déplacer des clips");
         for (auto& track : project_->tracks)
-            deplaces += vsm::sequencer::moveClips(track, selection_, delta);
+            deplaces += vsm::sequencer::moveClips(track, selection_, delta, automationSuit_,
+                                                   materialEnd(track));
         notifyChanged();
         repaint();
     }
@@ -97,7 +98,8 @@ void ArrangementComponent::nudgeSelection(vsm::midi::Tick delta) {
 void ArrangementComponent::moveSelectionAcrossTracks(int deltaTracks) {
     if (project_ == nullptr || selection_.empty() || deltaTracks == 0) return;
     if (onEditStarted) onEditStarted(u8"Déplacer des clips de piste");
-    const auto rapport = vsm::sequencer::moveClipsAcrossTracks(project_->tracks, selection_, deltaTracks);
+    const auto rapport = vsm::sequencer::moveClipsAcrossTracks(project_->tracks, selection_, deltaTracks,
+                                                                automationSuit_, project_->lastUsedTick());
     if (rapport.moved > 0) {
         const int cible = static_cast<int>(pisteCourante_) + rapport.applied;
         if (cible >= 0 && static_cast<size_t>(cible) < project_->tracks.size()) {
@@ -695,7 +697,7 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
         const vsm::midi::Tick fin = materialEnd(track);
         auto conversion = [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); };
         switch (geste_) {
-            case Geste::Deplacer:   moveClips(track, selection_, delta); break;
+            case Geste::Deplacer:   moveClips(track, selection_, delta, automationSuit_, fin); break;
             case Geste::BordDroit:  resizeClipsEnd(track, selection_, delta, fin); break;
             case Geste::Etirer:     stretchClipsEnd(track, selection_, delta, fin, conversion); break;
             case Geste::BordGauche: resizeClipsStart(track, selection_, delta, fin, conversion); break;

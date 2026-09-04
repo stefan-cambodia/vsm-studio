@@ -3791,6 +3791,54 @@ les jours ensuite, le modèle en dernier.
 | D17.7 | **L'automation ne sait pas courber.** `AutomationPoint` n'a que `step` : un segment est droit ou en marche d'escalier, jamais courbe. Un fondu de volume droit en gain sonne comme une chute brutale à la fin. Cubase : poignée de courbure sur chaque segment ; Live : la même | un `curve` par point (−1 à +1, 0 = droit), écrit seulement quand il n'est pas nul ; la MÊME interpolation dans `AutomationEdit` et dans `AutomationLane` du moteur (deux formules qui divergeraient feraient dessiner une courbe et en entendre une autre — c'est déjà la règle du § 6) ; la poignée se tire au milieu du segment dans la voie d'automation ; tests `core/` ET `audio/` sur les mêmes points |
 | D17.8 | **Le groove ne s'extrait ni ne s'applique.** La quantification ne connaît que la grille et le swing : on ne peut pas prendre le placement d'une batterie reconstruite et le donner à une basse écrite droite. Cubase : Groove Agent / Hitpoints → quantize ; Live : le Groove Pool | `sequencer::Groove` (une suite d'écarts en fraction de pas, plus une force), `extractGroove` depuis les notes d'une piste et `applyGroove` sur une sélection ; le groove s'enregistre dans la bibliothèque comme un preset (`*.groove.json`) ; test `core/` : extraire d'une piste puis appliquer à une copie DROITE de cette piste rend les ticks d'origine à un tick près |
 
+> **D17.2 EST FAITE (05/09/2026), et le décalage suivi est celui qui s'est
+> FAIT, pas celui qu'on a demandé.** `AutomationEdit::shiftAutomationRange`
+> déplace les points d'une plage ; les surcharges `Track&` de `moveClips` et
+> `moveClipsAcrossTracks` l'appellent pour chaque clip choisi. Le projet
+> jouait autre chose que ce qu'il montrait dès qu'on déplaçait un clip d'une
+> mesure ; il ne le fait plus.
+>
+> UN PIÈGE ÉVITÉ EN L'ÉCRIVANT AVANT DE CODER : `moveClips` RÉDUIT le
+> décalage pour tous quand l'un des clips buterait sur zéro (c'est la règle
+> qui garde à la sélection sa figure). Décaler les courbes de ce qu'on a
+> demandé au lieu de ce qui s'est fait les aurait désaccordées des clips
+> qu'elles suivent, et seulement dans ce cas-là — le genre de défaut qu'on ne
+> voit qu'un mois plus tard. Le décalage appliqué est donc RELU sur un clip
+> après coup. Un test l'exerce (−2000 demandé, −480 obtenu).
+>
+> AUCUN POINT N'EST CRÉÉ AUX BORDS, au contraire de `writeAutomationRange` qui
+> en pose deux. Écrire une plage REMPLACE ce qu'elle contenait, donc il faut
+> raccorder ; la déplacer TRANSPORTE ce qu'elle contenait, et poser des
+> raccords ajouterait deux points à chaque déplacement — au bout de dix
+> gestes, la courbe serait un peigne. Un point déplacé qui retombe sur un tick
+> occupé gagne : c'est celui qu'on vient de tirer.
+>
+> Changer de PISTE n'est pas la même chose que changer de PLACE : le clip
+> garde sa position, donc les points ne se déplacent pas dans le temps, ils
+> DÉMÉNAGENT — ils quittent la courbe de même paramètre de la piste d'origine
+> et entrent dans celle de la cible, créée si elle manque. C'est exactement la
+> règle que D11.1 avait écrite pour les notes, et pour la même raison : ce que
+> le clip montre doit le suivre.
+>
+> Le suivi est une PRÉFÉRENCE passée en paramètre à `ClipEdit` plutôt que lue
+> quelque part — `core/` ne connaît aucune préférence —, et dans le paramètre
+> plutôt qu'à côté de l'appel, pour qu'un appelant ne puisse pas déplacer un
+> clip en oubliant sa courbe : le même raisonnement que pour le verrou de
+> D16.5. Active par défaut comme chez Cubase, débrayable, retenue d'une
+> exécution à l'autre. La débrayer sert : quand on remonte une prise SOUS une
+> courbe qu'on veut garder, c'est la courbe qui a raison.
+>
+> `splitClips` n'a rien reçu, et c'est une décision : couper ne déplace rien
+> sur la ligne de temps, donc aucune courbe n'a à bouger. Le tableau le
+> nommait par prudence ; la vérification a montré qu'il n'y avait rien à y
+> faire.
+>
+> Quatre tests `core/` : le clip déplacé emporte sa courbe et laisse le reste
+> en place ; l'interrupteur éteint ne touche à rien ; le décalage suivi est
+> celui qui s'est fait ; le changement de piste fait déménager les points de
+> la plage et laisse les autres. Vu à l'écran : « En déplaçant ▸ L'automation
+> suit les clips » dans les préférences.
+
 > **D17.1 EST FAITE (05/09/2026), et le chiffre est celui du manuel.**
 > `FadeShape` (`Linear`, `EqualPower`, `Slow`, `Fast`), absente du fichier
 > quand c'est la droite — un projet d'avant D17.1 se réécrit octet pour

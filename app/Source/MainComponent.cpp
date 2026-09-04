@@ -792,6 +792,15 @@ MainComponent::MainComponent()
         audioEngine_.processGraph().setMetronomeRecordOnly(
             reglages.getBoolValue("metronomeEnregistrementSeul", false));
     }
+    // D17.2 : « l'automation suit les clips », active par défaut comme chez
+    // Cubase, et retenue d'une exécution à l'autre.
+    arrangement_.setAutomationFollowsClips(
+        vsm::app::ui::UiScale::properties().getBoolValue("automationSuitLesClips", true));
+    preferencesPanel_.onAutomationFollowsClipsChanged = [this](bool suit) {
+        arrangement_.setAutomationFollowsClips(suit);
+        vsm::app::ui::UiScale::properties().setValue("automationSuitLesClips", suit);
+        vsm::app::ui::UiScale::properties().saveIfNeeded();
+    };
     preferencesPanel_.onMetronomeLevelChanged = [this](float niveau) {
         audioEngine_.processGraph().setMetronomeLevel(niveau);
         vsm::app::ui::UiScale::properties().setValue("niveauMetronome", niveau);
@@ -3847,7 +3856,8 @@ void MainComponent::refreshPreferences() {
         static_cast<int>(audioEngine_.midiLearnMappingCount()), retourAuDepart_,
         audioEngine_.processGraph().metronomeLevel(),
         audioEngine_.processGraph().metronomeCountInOnly(),
-        audioEngine_.processGraph().metronomeRecordOnly());
+        audioEngine_.processGraph().metronomeRecordOnly(),
+        arrangement_.automationFollowsClips());
 }
 
 void MainComponent::showPreferences() {
@@ -3858,7 +3868,7 @@ void MainComponent::showPreferences() {
         // bat »). Une fenêtre restée à sa taille d'avant aurait coupé les
         // Commandes -- et « ça tient dans la case » ne l'emporte jamais sur
         // « ça se lit ».
-        preferencesWindow_->setDefaultSize(560, 562);
+        preferencesWindow_->setDefaultSize(560, 592);
     }
     refreshPreferences();
     preferencesWindow_->setVisible(true);

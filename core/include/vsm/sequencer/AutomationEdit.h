@@ -33,6 +33,29 @@ float automationValueAt(const AutomationCurve& curve, Tick tick);
 /// tick rendraient le segment entre eux indéfini.
 size_t setAutomationPoint(AutomationCurve& curve, Tick tick, float value, bool step = false);
 
+/// DÉPLACER UNE PLAGE (D17.2) : ce qu'un clip emporte quand il bouge.
+///
+/// Les points de `[fromTick, toTick)` glissent de `deltaTicks` ; les autres ne
+/// bougent pas. Un point déplacé qui retombe sur un tick déjà occupé GAGNE :
+/// c'est celui qu'on vient de tirer, et deux points au même tick rendraient le
+/// segment entre eux indéfini.
+///
+/// POURQUOI CETTE FONCTION EXISTE. `ClipEdit` ne touchait à `Track::automation`
+/// nulle part : déplacer un clip d'une mesure laissait sa courbe de volume là
+/// où elle était, et le projet ne jouait plus ce qu'il montrait. C'est le
+/// « l'automation suit les événements » de Cubase, actif par défaut chez lui
+/// comme ici.
+///
+/// AUCUN POINT N'EST CRÉÉ AUX BORDS, et c'est délibéré -- au contraire de
+/// `writeAutomationRange`, qui en pose deux. Écrire une plage REMPLACE ce
+/// qu'elle contenait, donc il faut raccorder ; la déplacer TRANSPORTE ce
+/// qu'elle contenait, et poser des raccords ajouterait à chaque déplacement
+/// deux points que personne n'a demandés -- au bout de dix gestes, la courbe
+/// serait un peigne.
+///
+/// Rend le nombre de points déplacés.
+size_t shiftAutomationRange(AutomationCurve& curve, Tick fromTick, Tick toTick, Tick deltaTicks);
+
 /// ÉCRIRE UNE PLAGE (D16.8) : ce qu'un passage d'automation en jeu dépose.
 ///
 /// Les points de `[fromTick, toTick]` sont REMPLACÉS par ceux qu'on vient de
