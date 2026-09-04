@@ -516,6 +516,52 @@ ailleurs, avec ses propres attendus écrits avant leur mesure.
 > Les attendus du paragraphe ci-dessous restent ceux qui ont été écrits
 > d'avance, et ils ne changent pas maintenant que la campagne est finie.
 
+### Ce que la première nuit de travail a établi (05/09/2026, 04:30) — le jeu, pas encore le modèle
+
+Le module existe (`analyse/analyzer/vsm_deux_mains.py`), **désactivé** : rien
+dans la chaîne ne l'importe, conformément à la décision ci-dessous. Ce qui est
+tranché à ce stade est le JEU D'APPRENTISSAGE, et c'est une mesure, pas un
+choix de confort.
+
+**On ne peut pas apprendre sur les notes VRAIES, et voici le chiffre.** Le
+premier jet construisait les paires de registres à partir de la vérité des
+morceaux générés — c'est gratuit, c'est exact, et c'est faux. Sur **80
+morceaux** (40 `deux-mains`, 40 `memes-machine-disjoints`, générés pour
+l'occasion), `registres_par_vides` ne pose la question que **7 fois**. Le
+garde-fou du fourre-tout, lui, passe 80 fois sur 100 (polyphonie médiane
+**9,85** pour un seuil de 3 ; ambitus médian **38 demi-tons** pour un seuil de
+36) : ce n'est donc pas lui qui bloque, ce sont les VIDES. Les parties d'un
+morceau se recouvrent en hauteur, et la densité lissée n'a pas de creux assez
+profond. Baisser le nombre de parties n'y change rien (**1 sur 14** à trois
+parties).
+
+**Sur la TRANSCRIPTION du même morceau, la question est posée du premier
+coup** : trois registres (MIDI 53-71, 37-51, 29-30) là où la vérité n'en
+donnait aucun. C'est le point : la chaîne ne juge pas des notes vraies, elle
+juge une transcription de stem séparé, dont les erreurs d'octave et les notes
+inventées creusent la densité là où la musique ne creusait pas. **Un modèle
+appris sur la vérité aurait été appris sur des paires que la chaîne ne voit
+jamais.**
+
+Le jeu se construit donc depuis les courses (`analyse/jeu_h25.py`) : chaque
+note transcrite est appariée à la note vraie la plus proche par la fonction du
+banc (±1 demi-ton, ±50 ms), hérite de la PARTIE d'où elle vient, et un
+registre appartient à la partie qui y pèse le plus. Deux registres voisins
+dominés par la même partie sont un seul instrument — la réponse reste connue
+par construction, elle est simplement lue à travers la transcription.
+
+**Le prix, mesuré : 424 s par morceau** en front-end seul (`--sans-recherche
+--sans-reglage-piste --sans-reglage-melange`, budget d'arbitrage au minimum).
+Trente morceaux sont en cours depuis 04:20 ; le modèle et son verdict
+s'écriront ici quand ils seront mesurés, et pas avant.
+
+Les six descripteurs sont ceux du § 8 et rien d'autre — synchronie des
+attaques dans les deux sens, co-occurrence temporelle, corrélation des
+densités d'attaques, rapport des ambitus, rapport des densités. **Aucun n'est
+timbral**, et le module ne reçoit que des notes : ni échantillon, ni spectre,
+ni nom de machine. C'est la seule contrainte que H25 impose sur la forme de la
+réponse.
+
 Écrit d'avance, dans l'en-tête du module (`analyse/analyzer/vsm_deux_mains.py`)
 le jour où il s'écrira, et repris ici :
 
