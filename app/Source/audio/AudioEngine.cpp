@@ -78,13 +78,35 @@ void AudioEngine::handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMe
         // réveil du thread MIDI, qui n'a aucune raison d'être régulier.
         // Certains pilotes ne datent rien (horodatage nul) ; on retombe alors
         // sur l'heure courante, qui est ce qu'on peut savoir de moins faux.
-        if (recording_.load(std::memory_order_acquire)) {
+        // D17.3 : LA FILE SE REMPLIT TOUJOURS, et non plus seulement pendant
+        // l'enregistrement. Hors enregistrement, l'application la vide dans le
+        // tampon rétrospectif à chaque tour de minuterie ; ce qui entre
+        // pendant l'enregistrement va au même endroit qu'avant, et le point
+        // d'entrée de `MidiRecorder` écarte comme toujours ce qui le précède.
+        {
             const double horodatage = message.getTimeStamp() > 0.0
                                           ? message.getTimeStamp()
                                           : juce::Time::getMillisecondCounterHiRes() * 0.001;
             vsm::sequencer::RecordedNoteEvent capture;
             uint64_t passe = 0;
             capture.seconds = transportSecondsAtClock(horodatage, &passe);
+            // TRANSPORT À L'ARRÊT : le temps du morceau ne passe pas, et
+            // l'ancre rendrait la même position pour toute une phrase -- un
+            // accord de douze notes là où l'on a joué une mélodie. On construit
+            // donc la position sur le temps RÉEL écoulé depuis la première note
+            // de la rafale, posée à la tête de lecture.
+            if (!graph_.isPlaying()) {
+                double ancre = burstAnchorClock_.load(std::memory_order_relaxed);
+                if (ancre <= 0.0) {
+                    burstAnchorClock_.store(horodatage, std::memory_order_relaxed);
+                    burstAnchorTransport_.store(capture.seconds, std::memory_order_relaxed);
+                    ancre = horodatage;
+                }
+                capture.seconds = burstAnchorTransport_.load(std::memory_order_relaxed)
+                                  + (horodatage - ancre);
+            } else {
+                burstAnchorClock_.store(0.0, std::memory_order_relaxed);
+            }
             capture.pass = static_cast<uint32_t>(passe);
             capture.note = note;
             capture.velocity = velocity;

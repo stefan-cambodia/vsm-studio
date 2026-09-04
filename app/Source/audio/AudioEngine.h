@@ -118,6 +118,20 @@ public:
     /// `MidiRecorder`, pas ici : le moteur date, il ne juge pas.
     /// D16.6 : le graphe l'apprend aussi — c'est lui qui décide si le clic
     /// bat, et « seulement à l'enregistrement » ne peut pas se deviner.
+    /// D17.3 : LA CAPTURE RÉTROSPECTIVE. La file se remplit MÊME hors
+    /// enregistrement, et c'est toute l'idée : on veut pouvoir récupérer ce
+    /// qu'on a joué avant d'y avoir pensé.
+    ///
+    /// TRANSPORT À L'ARRÊT, LE TEMPS DU MORCEAU NE PASSE PAS, et l'ancre
+    /// horloge→transport rendrait alors la MÊME position pour toutes les
+    /// notes d'une phrase : on récupérerait un accord de douze notes là où
+    /// l'on avait joué une mélodie. La position est donc construite sur le
+    /// TEMPS RÉEL écoulé depuis la première note de la rafale, posée à la tête
+    /// de lecture. L'ancre de rafale se remet à zéro dès que le transport
+    /// repart, et le chemin d'enregistrement, lui, ne change pas d'une ligne.
+    std::atomic<double> burstAnchorClock_{0.0};
+    std::atomic<double> burstAnchorTransport_{0.0};
+
     void setRecording(bool on) {
         recording_.store(on, std::memory_order_release);
         graph_.setRecording(on);

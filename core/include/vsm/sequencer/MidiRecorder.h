@@ -129,6 +129,56 @@ private:
 /// pas celles qui la traversent. Une note tenue commencée avant le point
 /// d'entrée appartient à ce qui précède ; l'effacer reviendrait à détruire hors
 /// de la région qu'on a désignée.
+/// LA CAPTURE RÉTROSPECTIVE (D17.3) — le Retrospective Record de Cubase, le
+/// Capture MIDI de Live.
+///
+/// LE PROBLÈME QU'ELLE RÉSOUT, et il est banal : on joue une phrase sans avoir
+/// armé quoi que ce soit, on la trouve bonne, et il n'existe aucun moyen de la
+/// garder. C'est le seul geste d'un séquenceur dont la valeur est entièrement
+/// dans ce qui a été fait AVANT qu'on y pense.
+///
+/// C'EST DONC UN TAMPON QUI TOURNE EN PERMANENCE, alimenté dès que
+/// l'application tourne et non seulement pendant l'enregistrement — un tampon
+/// qui ne se remplirait qu'une fois l'enregistrement lancé ne servirait à
+/// rien. Il garde les `capacity` derniers ÉVÉNEMENTS (pas les dernières
+/// minutes : une capacité en événements est bornée en mémoire quoi qu'on
+/// joue, alors qu'une capacité en minutes ne l'est pas).
+///
+/// IL NE FAIT PAS L'APPARIEMENT LUI-MÊME. Récupérer, c'est reverser ses
+/// événements dans un `MidiRecorder` neuf et lui demander ses notes : le seul
+/// vrai travail — apparier des touches en notes, avec les cas tordus qui vont
+/// avec — est déjà écrit et déjà testé, et l'écrire une seconde fois ici
+/// donnerait deux appariements qui finiraient par diverger.
+class RetrospectiveBuffer {
+public:
+    explicit RetrospectiveBuffer(size_t capacity = 4096) : capacite_(capacity ? capacity : 1) {}
+
+    void push(const RecordedNoteEvent& event);
+    void clear() { evenements_.clear(); debut_ = 0; }
+    bool empty() const { return evenements_.empty(); }
+    size_t size() const { return evenements_.size(); }
+
+    /// Les événements gardés, du plus ancien au plus récent.
+    std::vector<RecordedNoteEvent> events() const;
+
+    /// LA POSITION DU PLUS ANCIEN ÉVÉNEMENT GARDÉ, en secondes de morceau, ou
+    /// l'infini si le tampon est vide : c'est le point d'entrée à donner au
+    /// `MidiRecorder` pour ne rien écarter.
+    double earliestSeconds() const;
+
+private:
+    std::vector<RecordedNoteEvent> evenements_;
+    size_t capacite_;
+    size_t debut_ = 0;   ///< index du plus ancien, une fois le tampon plein
+};
+
+/// RÉCUPÉRER CE QUI VIENT D'ÊTRE JOUÉ (D17.3) : les notes du tampon, en ticks,
+/// à leur place RÉELLE sur la ligne de temps — celle où elles ont été jouées,
+/// pas le début du morceau. Vide si le tampon l'est.
+std::vector<Note> recoverRetrospective(const RetrospectiveBuffer& buffer,
+                                        const std::function<midi::Tick(double)>& secondsToTicks,
+                                        uint64_t& idCounter);
+
 void applyRecording(Track& track, const std::vector<Note>& take, RecordMode mode,
                      midi::Tick spanStart, midi::Tick spanEnd);
 

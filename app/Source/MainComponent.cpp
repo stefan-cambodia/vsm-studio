@@ -1221,6 +1221,17 @@ void MainComponent::timerCallback() {
     // ENREGISTREMENT : vider la file de capture à chaque tour, décompte
     // compris. `MidiRecorder` écarte lui-même ce qui précède le point d'entrée,
     // donc rien ne se perd et rien n'entre par erreur.
+    // D17.3 : LE TAMPON RÉTROSPECTIF SE REMPLIT TOUJOURS. Hors
+    // enregistrement, la file de capture n'était vidée par personne : ce qu'on
+    // jouait au clavier était perdu à mesure, et « récupérer ce qui vient
+    // d'être joué » n'aurait rien trouvé. Elle est donc vidée ici, et ce qui
+    // en sort part au tampon.
+    if (recordPhase_ == RecordPhase::Off) {
+        recordDrain_.clear();
+        audioEngine_.drainRecordedEvents(recordDrain_);
+        for (const auto& evenement : recordDrain_) retrospectif_.push(evenement);
+    }
+
     bool priseEmpilee = false;
     if (recordPhase_ != RecordPhase::Off) {
         drainRecording();
@@ -1696,6 +1707,16 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addItem(kMenuRecordQuantizeTake,
                               u8"Quantifier la dernière prise (grille du piano roll)",
                               !lastTake_.empty());
+                // D17.3 : ce qu'on vient de jouer sans avoir armé. Le nombre
+                // d'événements gardés est DIT : « récupérer » sur un tampon
+                // vide ne doit pas se découvrir en cliquant.
+                menu.addItem(kMenuRecordRetrospective,
+                              retrospectif_.empty()
+                                  ? juce::String::fromUTF8(u8"Récupérer ce qui vient d'être joué (rien en mémoire)")
+                                  : juce::String::fromUTF8(u8"Récupérer ce qui vient d'être joué (")
+                                        + juce::String(static_cast<int>(retrospectif_.size()))
+                                        + juce::String::fromUTF8(u8" événements)"),
+                              !retrospectif_.empty() && !project_.tracks.empty());
             }
             break;
         case 4:
@@ -1982,6 +2003,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             vsm::app::ui::UiScale::properties().setValue("latenceAllerRetour", 0.0);
             break;
         case kMenuRecordQuantizeTake: quantizeLastTake(); break;
+        case kMenuRecordRetrospective: recoverRetrospectiveTake(); break;
         case kMenuMixAddSend: {
             if (project_.sends.size() >= vsm::audio::engine::ProcessGraph::kMaxSends) break;
             beginProjectEdit(u8"Ajouter un bus de départ");
@@ -5820,6 +5842,45 @@ void MainComponent::toggleLockSelectedTrack() {
     arrangement_.repaint();
     trackList_.repaint();
     pianoRollPanel_.refresh();
+}
+
+void MainComponent::recoverRetrospectiveTake() {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size() || retrospectif_.empty()) return;
+    if (project_.tracks[piste].kind != vsm::sequencer::Track::Kind::Midi) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Récupérer ce qui vient d'être joué",
+            u8"Choisissez une piste MIDI : ce qui a été joué au clavier est fait de notes, "
+            u8"et une piste audio n'en porte pas.");
+        return;
+    }
+
+    uint64_t compteur = project_.peekNextNoteId();
+    const auto notes = vsm::sequencer::recoverRetrospective(
+        retrospectif_,
+        [this](double secondes) { return project_.secondsToTicks(secondes); }, compteur);
+    if (notes.empty()) return;
+
+    beginProjectEdit(u8"Récupérer ce qui vient d'être joué");
+    // SUPERPOSÉ, jamais substitué : on récupère ce qu'on vient de jouer
+    // par-dessus ce qui était là, comme un overdub. Remplacer effacerait un
+    // travail que personne n'a demandé d'effacer.
+    vsm::sequencer::applyRecording(project_.tracks[piste], notes,
+                                    vsm::sequencer::RecordMode::Overdub, 0, 0);
+    project_.ensureNoteIdAbove(compteur - 1);
+    // LE TAMPON EST VIDÉ : sans cela, un second « récupérer » reposerait les
+    // mêmes notes une seconde fois, en double et sans que rien ne le dise.
+    retrospectif_.clear();
+    rebuildFromProject(false);
+    refreshTransportSchedule();
+    pianoRollPanel_.refresh();
+    arrangement_.repaint();
+    refreshHistoryList();
+    juce::AlertWindow::showMessageBoxAsync(
+        juce::AlertWindow::InfoIcon, u8"Récupérer ce qui vient d'être joué",
+        juce::String(static_cast<int>(notes.size()))
+            + juce::String(notes.size() > 1 ? u8" notes posées sur « " : u8" note posée sur « ")
+            + juce::String(project_.tracks[piste].name) + juce::String(u8" », à leur place sur la ligne de temps."));
 }
 
 void MainComponent::createClipOnTrack(size_t trackIndex, vsm::midi::Tick tick) {

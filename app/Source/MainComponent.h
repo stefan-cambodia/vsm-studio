@@ -200,6 +200,8 @@ private:
         kMenuRecordReplace,
         kMenuRecordStack,
         kMenuRecordQuantizeTake,
+        /// D17.3 : récupérer ce qui vient d'être joué.
+        kMenuRecordRetrospective,
         kMenuRecordPunchToggle,
         kMenuRecordPunchFromLoop,
         kMenuRecordPunchClear,
@@ -628,6 +630,9 @@ private:
     /// endroit qui fabrique un clip à la demande : le double-clic de
     /// l'arrangement et l'article du menu Piste y passent tous les deux.
     void createClipOnTrack(size_t trackIndex, vsm::midi::Tick tick);
+    /// D17.3 : pose sur la piste choisie les notes du tampon rétrospectif, à
+    /// leur place réelle sur la ligne de temps. Annulable.
+    void recoverRetrospectiveTake();
     /// D16.5 : bascule le cadenas de la piste choisie. Annulable, comme tout
     /// ce qui change le projet.
     void toggleLockSelectedTrack();
@@ -724,6 +729,12 @@ private:
     vsm::audio::engine::Transport transport_;
 
     vsm::sequencer::MidiRecorder recorder_;
+    /// D17.3 : LE TAMPON RÉTROSPECTIF, alimenté dès que l'application tourne
+    /// et non seulement pendant l'enregistrement -- un tampon qui ne se
+    /// remplirait qu'une fois l'enregistrement lancé ne servirait à rien.
+    /// Quatre mille événements : environ mille notes, de quoi rattraper une
+    /// improvisation entière, pour deux cents kilo-octets.
+    vsm::sequencer::RetrospectiveBuffer retrospectif_{4096};
     RecordPhase recordPhase_ = RecordPhase::Off;
     /// Le POINT D'ENTRÉE de la prise en cours, en secondes et en ticks : la
     /// position à laquelle on a appuyé sur Rec, et non celle où le décompte a

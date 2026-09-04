@@ -3839,6 +3839,45 @@ les jours ensuite, le modèle en dernier.
 > la plage et laisse les autres. Vu à l'écran : « En déplaçant ▸ L'automation
 > suit les clips » dans les préférences.
 
+> **D17.3 EST FAITE (05/09/2026), et elle a fait tomber un piège que le
+> tableau n'avait pas vu.** `RetrospectiveBuffer` garde les quatre mille
+> derniers événements MIDI — une capacité en ÉVÉNEMENTS et non en minutes,
+> parce qu'elle est alors bornée en mémoire quoi qu'on joue —, alimenté dès
+> que l'application tourne. La file de capture du moteur ne se remplissait
+> que pendant l'enregistrement : elle se remplit maintenant toujours, et
+> l'application la vide au tampon à chaque tour de minuterie. Le chemin
+> d'enregistrement ne change pas d'une ligne, le point d'entrée de
+> `MidiRecorder` écartant comme toujours ce qui le précède.
+>
+> LA RÉCUPÉRATION NE FAIT PAS L'APPARIEMENT ELLE-MÊME : elle reverse ses
+> événements dans un `MidiRecorder` neuf et lui demande ses notes. Apparier
+> des touches en notes — avec ses cas tordus, la touche encore tenue, le
+> relâchement sans enfoncement — est déjà écrit et déjà testé ; l'écrire une
+> seconde fois donnerait deux appariements qui finiraient par diverger.
+>
+> LE PIÈGE, trouvé en lisant `transportSecondsAtClock` avant de s'en servir :
+> transport à l'ARRÊT, le temps du morceau ne passe pas, et l'ancre
+> horloge→transport rend la MÊME position pour toutes les notes d'une
+> phrase. On aurait récupéré un accord de douze notes là où l'on avait joué
+> une mélodie — et c'est justement à l'arrêt qu'on pianote en cherchant une
+> idée, donc le cas principal. Hors lecture, la position est donc construite
+> sur le TEMPS RÉEL écoulé depuis la première note de la rafale, posée à la
+> tête de lecture ; l'ancre de rafale se remet à zéro dès que le transport
+> repart.
+>
+> Les notes sont posées en OVERDUB, jamais en substitution : on récupère
+> par-dessus ce qui était là. Le tampon est VIDÉ après coup — sans cela, un
+> second « récupérer » reposerait les mêmes notes en double sans que rien ne
+> le dise. Le menu dit combien d'événements sont en mémoire, et l'article est
+> grisé quand il n'y en a pas : « récupérer » sur un tampon vide ne doit pas
+> se découvrir en cliquant. Une piste audio refuse, en le disant. Annulable.
+>
+> Quatre tests `core/` : trois notes récupérées aux ticks où elles ont été
+> jouées (à leur place réelle, pas au début du morceau) ; le tampon plein
+> oublie les plus anciennes et jamais les dernières ; un tampon vide ne rend
+> rien plutôt qu'une note de durée nulle ; une touche encore tenue rend une
+> note qui finit au dernier événement.
+
 > **D17.1 EST FAITE (05/09/2026), et le chiffre est celui du manuel.**
 > `FadeShape` (`Linear`, `EqualPower`, `Slow`, `Fast`), absente du fichier
 > quand c'est la droite — un projet d'avant D17.1 se réécrit octet pour

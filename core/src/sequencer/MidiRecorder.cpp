@@ -1,4 +1,5 @@
 #include "vsm/sequencer/MidiRecorder.h"
+#include <limits>
 #include <algorithm>
 #include <deque>
 #include <map>
@@ -137,6 +138,58 @@ std::vector<Note> MidiRecorder::apparier(const std::vector<RecordedNoteEvent>& e
         notes.push_back(note);
     }
     return notes;
+}
+
+// ---------------------------------------------------------------------------
+// LA CAPTURE RÉTROSPECTIVE (D17.3)
+// ---------------------------------------------------------------------------
+
+void RetrospectiveBuffer::push(const RecordedNoteEvent& event) {
+    if (evenements_.size() < capacite_) {
+        evenements_.push_back(event);
+        return;
+    }
+    // PLEIN : le plus ancien cède la place. Un tampon qui refuserait les
+    // nouveaux au lieu d'oublier les vieux garderait exactement ce dont on n'a
+    // pas besoin -- ce qu'on veut récupérer, c'est ce qu'on vient de jouer.
+    evenements_[debut_] = event;
+    debut_ = (debut_ + 1) % capacite_;
+}
+
+std::vector<RecordedNoteEvent> RetrospectiveBuffer::events() const {
+    std::vector<RecordedNoteEvent> ordonnes;
+    ordonnes.reserve(evenements_.size());
+    for (size_t i = 0; i < evenements_.size(); ++i)
+        ordonnes.push_back(evenements_[(debut_ + i) % evenements_.size()]);
+    return ordonnes;
+}
+
+double RetrospectiveBuffer::earliestSeconds() const {
+    if (evenements_.empty()) return std::numeric_limits<double>::infinity();
+    double plusTot = std::numeric_limits<double>::infinity();
+    for (const auto& e : evenements_) plusTot = std::min(plusTot, e.seconds);
+    return plusTot;
+}
+
+std::vector<Note> recoverRetrospective(const RetrospectiveBuffer& buffer,
+                                        const std::function<midi::Tick(double)>& secondsToTicks,
+                                        uint64_t& idCounter) {
+    const auto evenements = buffer.events();
+    if (evenements.empty()) return {};
+
+    // UN ENREGISTREUR NEUF, ET C'EST TOUT LE DESSIN : l'appariement des touches
+    // en notes est déjà écrit et déjà testé, avec ses cas tordus (une touche
+    // encore tenue à la fin, un relâchement sans enfoncement). L'écrire une
+    // seconde fois ici donnerait deux appariements qui finiraient par diverger.
+    MidiRecorder enregistreur;
+    // Le point d'entrée est le plus ancien événement gardé : sans cela, le
+    // point d'entrée par défaut (zéro) écarterait tout ce qui a été joué avant
+    // le début du morceau -- et l'on joue justement souvent avant.
+    double fin = -std::numeric_limits<double>::infinity();
+    for (const auto& e : evenements) fin = std::max(fin, e.seconds);
+    enregistreur.begin(buffer.earliestSeconds());
+    for (const auto& e : evenements) enregistreur.push(e);
+    return enregistreur.finish(fin, secondsToTicks, idCounter);
 }
 
 void applyRecording(Track& track, const std::vector<Note>& take, RecordMode mode,

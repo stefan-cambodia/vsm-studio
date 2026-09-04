@@ -283,3 +283,67 @@ VSM_TEST(a_note_held_across_the_loop_seam_closes_with_its_own_pass) {
     auto passe1 = enregistreur.finishPass(1, 2.0, conversion(projet), compteur);
     VSM_ASSERT(passe1.empty());                        // le relâchement orphelin est ignoré
 }
+
+// --------------------------------------------------------------------------
+// D17.3 — LA CAPTURE RÉTROSPECTIVE. On joue une phrase sans avoir armé, on la
+// trouve bonne, et il n'existait aucun moyen de la garder.
+// --------------------------------------------------------------------------
+
+VSM_TEST(what_was_just_played_comes_back_at_the_ticks_it_was_played_at) {
+    RetrospectiveBuffer tampon;
+    // Trois notes, à une seconde d'intervalle, à partir de la deuxième mesure.
+    for (int i = 0; i < 3; ++i) {
+        tampon.push({4.0 + i * 1.0, static_cast<uint8_t>(60 + i), 100, 0, true, 0});
+        tampon.push({4.5 + i * 1.0, static_cast<uint8_t>(60 + i), 0, 0, false, 0});
+    }
+    VSM_ASSERT_EQ(tampon.size(), size_t(6));
+
+    uint64_t ids = 1;
+    // 480 ticks par noire à 120 BPM : une seconde vaut 960 ticks.
+    const auto notes = recoverRetrospective(
+        tampon, [](double s) { return static_cast<vsm::midi::Tick>(std::llround(s * 960.0)); }, ids);
+
+    VSM_ASSERT_EQ(notes.size(), size_t(3));
+    // À LEUR PLACE RÉELLE sur la ligne de temps, pas au début du morceau.
+    VSM_ASSERT_EQ(notes[0].startTick, vsm::midi::Tick(3840));
+    VSM_ASSERT_EQ(notes[1].startTick, vsm::midi::Tick(4800));
+    VSM_ASSERT_EQ(notes[2].startTick, vsm::midi::Tick(5760));
+    VSM_ASSERT_EQ(int(notes[0].number), 60);
+    VSM_ASSERT_EQ(int(notes[2].number), 62);
+    VSM_ASSERT_EQ(notes[0].endTick, vsm::midi::Tick(4320));
+}
+
+VSM_TEST(the_buffer_forgets_the_oldest_and_never_the_newest) {
+    // Un tampon qui refuserait les nouveaux au lieu d'oublier les vieux
+    // garderait exactement ce dont on n'a pas besoin.
+    RetrospectiveBuffer tampon(4);
+    for (int i = 0; i < 10; ++i)
+        tampon.push({static_cast<double>(i), static_cast<uint8_t>(60 + i), 100, 0, true, 0});
+    VSM_ASSERT_EQ(tampon.size(), size_t(4));
+    const auto gardes = tampon.events();
+    VSM_ASSERT_EQ(int(gardes[0].note), 66);      // les quatre derniers, dans l'ordre
+    VSM_ASSERT_EQ(int(gardes[3].note), 69);
+    VSM_ASSERT_NEAR(tampon.earliestSeconds(), 6.0, 1e-12);
+}
+
+VSM_TEST(an_empty_buffer_recovers_nothing_rather_than_a_note_of_length_zero) {
+    RetrospectiveBuffer tampon;
+    uint64_t ids = 1;
+    VSM_ASSERT(recoverRetrospective(tampon, [](double s) {
+        return static_cast<vsm::midi::Tick>(s * 960.0);
+    }, ids).empty());
+}
+
+VSM_TEST(a_key_still_held_when_it_is_recovered_gives_a_note_that_ends_at_the_last_event) {
+    // Le cas tordu que l'appariement de `MidiRecorder` sait déjà traiter, et
+    // c'est la raison pour laquelle la récupération passe par lui.
+    RetrospectiveBuffer tampon;
+    tampon.push({1.0, 64, 100, 0, true, 0});
+    tampon.push({2.0, 67, 100, 0, true, 0});
+    tampon.push({2.5, 67, 0, 0, false, 0});
+    uint64_t ids = 1;
+    const auto notes = recoverRetrospective(
+        tampon, [](double s) { return static_cast<vsm::midi::Tick>(std::llround(s * 960.0)); }, ids);
+    VSM_ASSERT_EQ(notes.size(), size_t(2));
+    for (const auto& n : notes) VSM_ASSERT(n.endTick > n.startTick);
+}
