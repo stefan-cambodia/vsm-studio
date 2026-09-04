@@ -210,6 +210,9 @@ struct ProjectTrack {
     /// D17.4 : masquée dans les vues, jamais dans le son. Écrite seulement
     /// quand elle l'est.
     bool hidden = false;
+    /// D17.5 : la transposition de piste, en demi-tons. Écrite seulement
+    /// quand elle n'est pas nulle.
+    int transposeSemitones = 0;
 
     /// D16.7 : le décalage de piste, en millisecondes. Écrit seulement quand
     /// il n'est pas nul.

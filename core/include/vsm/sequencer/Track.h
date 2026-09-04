@@ -571,6 +571,27 @@ public:
     /// chercherait pendant une heure pourquoi la basse a disparu du mixage.
     bool hidden = false;
 
+    /// LA TRANSPOSITION DE PISTE (D17.5), en demi-tons — le Transpose de
+    /// l'inspecteur de Cubase.
+    ///
+    /// APPLIQUÉE À LA LECTURE, PAS AU MATÉRIAU, et c'est tout ce qui la
+    /// distingue d'un « transposer la sélection » du piano roll. Le matériau
+    /// ne bouge pas : on l'annule en remettant zéro, pas en défaisant un
+    /// historique, on l'essaie à l'oreille en tournant un chiffre, et deux
+    /// transpositions successives ne s'accumulent pas en erreurs d'arrondi
+    /// parce qu'il n'y a aucun arrondi.
+    ///
+    /// LE PRIX, ASSUMÉ : le piano roll montre le matériau, donc les notes
+    /// écrites, et non les notes entendues. C'est le comportement de Cubase et
+    /// il se comprend dès qu'on sait que le réglage existe -- la console
+    /// l'affiche en clair à côté du fader.
+    ///
+    /// LES NOTES QUI SORTENT DE 0..127 SONT ÉCARTÉES, jamais repliées à
+    /// l'octave : replier ferait sonner une note à une hauteur que personne
+    /// n'a demandée, ce qui est pire que de ne pas la jouer. Elles sont
+    /// COMPTÉES (`transposeDroppedNotes`), et l'application le dit.
+    int transposeSemitones = 0;
+
     /// LE DÉCALAGE DE PISTE (D16.7), en MILLISECONDES, négatif pour sonner
     /// plus tôt. Le Delay de l'inspecteur de Cubase, le Track Delay de Live.
     ///

@@ -1063,3 +1063,21 @@ VSM_TEST(a_hidden_track_survives_the_trip_and_a_visible_one_adds_nothing) {
     VSM_ASSERT(!rejoue.tracks[0].hidden);
     VSM_ASSERT(rejoue.tracks[1].hidden);
 }
+
+// D17.5 — LA TRANSPOSITION DE PISTE, écrite seulement quand elle n'est pas nulle.
+VSM_TEST(a_track_transpose_survives_the_trip_and_zero_writes_nothing) {
+    Project project = buildProject();
+    VSM_ASSERT(projectDocumentToJson(documentFromProject(project)).toString()
+                   .find("transpose") == std::string::npos);
+
+    project.tracks[0].transposeSemitones = -5;
+    const std::string ecrit = projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(ecrit.find("\"transpose\"") != std::string::npos);
+
+    const ProjectLoadResult relu = parseProjectDocument(ecrit);
+    VSM_ASSERT(relu.success);
+    Project rejoue = project;
+    for (auto& t : rejoue.tracks) t.transposeSemitones = 0;
+    applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT_EQ(rejoue.tracks[0].transposeSemitones, -5);
+}

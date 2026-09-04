@@ -99,6 +99,25 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     };
     addAndMakeVisible(delay_);
 
+    // D17.5 : la transposition, en demi-tons. Bornes à +/- 48 : quatre octaves
+    // de part et d'autre couvrent tout ce qu'un clavier peut demander, et
+    // au-delà toute note sortirait de la plage MIDI de toute façon.
+    transposition_.setSliderStyle(juce::Slider::LinearBar);
+    transposition_.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 44, 16);
+    transposition_.setRange(-48.0, 48.0, 1.0);
+    transposition_.setTextValueSuffix(" dt");
+    transposition_.setValue(track_.transposeSemitones, juce::dontSendNotification);
+    transposition_.setTooltip(juce::String::fromUTF8(
+        u8"Transposition de la piste, en demi-tons, appliquée À LA LECTURE : le matériau "
+        u8"ne bouge pas, et le piano roll continue de montrer les notes écrites. Une note "
+        u8"poussée hors de 0..127 ne sonne pas, et l'application le dit."));
+    transposition_.onDragStart = [this] { if (onMixEditStarted) onMixEditStarted(); };
+    transposition_.onValueChange = [this] {
+        track_.transposeSemitones = static_cast<int>(transposition_.getValue());
+        if (onMixChanged) onMixChanged();
+    };
+    addAndMakeVisible(transposition_);
+
     // UN BOUTON PAR BUS DÉCLARÉ, et son infobulle dit lequel : « send A » et
     // « send B » n'apprenaient rien, et le projet ne disait même pas ce qu'ils
     // alimentaient.
@@ -169,6 +188,7 @@ void ChannelStrip::resized() {
     nameLabel_.setBounds(r.removeFromTop(18));
     pan_.setBounds(r.removeFromTop(34).reduced(6, 2));
     delay_.setBounds(r.removeFromTop(18).reduced(4, 1));
+    transposition_.setBounds(r.removeFromTop(18).reduced(4, 1));
 
     // Deux petits knobs de send (A/B).
     auto sendRow = r.removeFromTop(28);

@@ -406,3 +406,61 @@ VSM_TEST(a_hidden_track_plays_exactly_what_it_played_before) {
     VSM_ASSERT_EQ(PlaybackScheduler::build(muetteEtMasquee, 0, 100000).size(),
                    PlaybackScheduler::build(muette, 0, 100000).size());
 }
+
+// --------------------------------------------------------------------------
+// D17.5 — LA TRANSPOSITION DE PISTE, appliquée À LA LECTURE et non au
+// matériau : on l'annule en remettant zéro, pas en défaisant un historique.
+// --------------------------------------------------------------------------
+
+VSM_TEST(a_track_transpose_moves_what_is_played_and_never_the_material) {
+    Project project = quatreNotes();          // do, do#, ré, ré# à partir de 60
+    const auto avant = project.tracks[0].notes;
+
+    project.tracks[0].transposeSemitones = 12;
+    const auto events = PlaybackScheduler::build(project, 0, 100000);
+
+    std::vector<int> hauteurs;
+    for (const auto& e : events)
+        if (const auto* on = std::get_if<vsm::midi::NoteOnEvent>(&e.data))
+            hauteurs.push_back(static_cast<int>(on->note));
+    std::sort(hauteurs.begin(), hauteurs.end());
+    VSM_ASSERT_EQ(hauteurs.size(), size_t(4));
+    for (int i = 0; i < 4; ++i) VSM_ASSERT_EQ(hauteurs[static_cast<size_t>(i)], 72 + i);
+
+    // LE MATÉRIAU N'A PAS BOUGÉ : c'est toute la différence avec le
+    // « transposer la sélection » du piano roll.
+    VSM_ASSERT_EQ(project.tracks[0].notes.size(), avant.size());
+    for (size_t i = 0; i < avant.size(); ++i)
+        VSM_ASSERT_EQ(int(project.tracks[0].notes[i].number), int(avant[i].number));
+
+    // Et remettre zéro rend exactement ce qu'on avait, sans historique.
+    project.tracks[0].transposeSemitones = 0;
+    const auto temoin = quatreNotes();
+    const auto a = PlaybackScheduler::build(temoin, 0, 100000);
+    const auto b = PlaybackScheduler::build(project, 0, 100000);
+    VSM_ASSERT_EQ(b.size(), a.size());
+}
+
+VSM_TEST(a_note_pushed_out_of_range_is_dropped_and_counted_never_folded) {
+    // Replier à l'octave ferait sonner une note à une hauteur que personne n'a
+    // demandée : c'est pire que de ne pas la jouer, et il faut le DIRE.
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    project.tempoMap.addTempoChange(0, 500000);
+    Track piste;
+    uint64_t ids = 1;
+    piste.addNote(0, 240, 120, 100, 0, ids);      // sortira de la plage à +12
+    piste.addNote(480, 720, 60, 100, 0, ids);     // restera
+    project.tracks.push_back(piste);
+
+    VSM_ASSERT_EQ(PlaybackScheduler::transposeDroppedNotes(project), size_t(0));
+    project.tracks[0].transposeSemitones = 12;
+    VSM_ASSERT_EQ(PlaybackScheduler::transposeDroppedNotes(project), size_t(1));
+
+    std::vector<int> hauteurs;
+    for (const auto& e : PlaybackScheduler::build(project, 0, 100000))
+        if (const auto* on = std::get_if<vsm::midi::NoteOnEvent>(&e.data))
+            hauteurs.push_back(static_cast<int>(on->note));
+    VSM_ASSERT_EQ(hauteurs.size(), size_t(1));
+    VSM_ASSERT_EQ(hauteurs[0], 72);               // et surtout PAS 120 + 12 - 12 = 120
+}

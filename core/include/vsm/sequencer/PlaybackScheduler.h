@@ -51,6 +51,12 @@ public:
     ///
     /// Respecte mute et solo, comme `build`.
     static std::vector<ScheduledEvent> chaseAt(const Project& project, midi::Tick startTick);
+
+    /// D17.5 : combien de notes la transposition des pistes ferait sortir de
+    /// 0..127, et qui ne sonneront donc pas. Zéro quand aucune piste n'est
+    /// transposée. À DIRE, jamais à taire : une note qu'on a écrite et qui ne
+    /// sonne pas est exactement le genre de silence qu'on cherche des heures.
+    static size_t transposeDroppedNotes(const Project& project);
 };
 
 } // namespace vsm::sequencer

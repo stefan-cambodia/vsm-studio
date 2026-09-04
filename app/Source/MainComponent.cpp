@@ -157,7 +157,27 @@ MainComponent::MainComponent()
         arrangement_.repaint();
         markProjectDirty();
     };
-    mixer_.onMixChanged = [this] { mixDirty_ = true; markProjectDirty(); };
+    mixer_.onMixChanged = [this] {
+        mixDirty_ = true;
+        markProjectDirty();
+        // D17.5 : une note poussée hors de 0..127 par la transposition ne
+        // sonne pas, et cela se DIT -- une fois par franchissement, pas à
+        // chaque cran du curseur, sinon régler le chiffre serait impossible.
+        const size_t perdues = vsm::sequencer::PlaybackScheduler::transposeDroppedNotes(project_);
+        // DIT UNE FOIS, au franchissement, et pas à chaque cran du curseur :
+        // une alerte par demi-ton rendrait le réglage inutilisable, et une
+        // alerte qui ne vient jamais laisserait chercher la note manquante.
+        if (perdues > 0 && notesPerduesParTransposition_ == 0)
+            juce::AlertWindow::showMessageBoxAsync(
+                juce::AlertWindow::InfoIcon, u8"Transposition",
+                juce::String(static_cast<int>(perdues))
+                    + juce::String(perdues > 1 ? u8" notes ne sonneront pas" : u8" note ne sonnera pas")
+                    + juce::String(u8" : la transposition les pousse hors de la plage MIDI (0 à 127). "
+                                   u8"Elles ne sont pas repliées à l'octave — les faire sonner à une "
+                                   u8"hauteur que personne n'a demandée serait pire. Le matériau, lui, "
+                                   u8"n'a pas bougé : remettez la transposition à zéro et tout revient."));
+        notesPerduesParTransposition_ = perdues;
+    };
     mixer_.onMasterParam = [this](vsm::audio::plugin::ParamId id, float v) {
         audioEngine_.processGraph().masterBus().setParameter(id, v);
     };

@@ -268,6 +268,7 @@ ProjectDocument documentFromProject(const Project& project) {
         entry.frozen = track.frozen;
         entry.locked = track.locked;
         entry.hidden = track.hidden;
+        entry.transposeSemitones = track.transposeSemitones;
         entry.delayMs = track.delayMs;
         entry.automationMode = track.automationMode == vsm::sequencer::AutomationMode::Touch ? "touch"
                              : track.automationMode == vsm::sequencer::AutomationMode::Latch ? "latch"
@@ -411,6 +412,7 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.frozen = source.frozen;
         target.locked = source.locked;
         target.hidden = source.hidden;
+        target.transposeSemitones = source.transposeSemitones;
         target.delayMs = source.delayMs;
         target.automationMode = source.automationMode == "touch" ? vsm::sequencer::AutomationMode::Touch
                               : source.automationMode == "latch" ? vsm::sequencer::AutomationMode::Latch
@@ -599,6 +601,8 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         // perdre le premier sur toute piste non gelée.
         if (track.locked) entry.set("locked", JsonValue::makeBoolean(true));
         if (track.hidden) entry.set("hidden", JsonValue::makeBoolean(true));
+        if (track.transposeSemitones != 0)
+            entry.set("transpose", JsonValue::makeNumber(track.transposeSemitones));
         if (track.delayMs != 0.0) entry.set("delayMs", JsonValue::makeFloat(track.delayMs));
         if (!track.automationMode.empty())
             entry.set("automationMode", JsonValue::makeString(track.automationMode));
@@ -816,6 +820,7 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         track.frozen = entry["frozen"].asBoolean(false);
         track.locked = entry["locked"].asBoolean(false);
         track.hidden = entry["hidden"].asBoolean(false);
+        track.transposeSemitones = static_cast<int>(entry["transpose"].asNumber(0.0));
         track.delayMs = entry["delayMs"].asNumber(0.0);
         track.automationMode = entry["automationMode"].asString();
         if (entry["frozenAudio"].isObject()) {

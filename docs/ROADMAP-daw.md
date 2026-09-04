@@ -3914,6 +3914,37 @@ les jours ensuite, le modèle en dernier.
 > Vu à l'écran (`masquer:0`) : Acid Bass disparaît de la liste ET de
 > l'arrangement, et Drums remonte à sa place sans laisser de blanc.
 
+> **D17.5 EST FAITE (05/09/2026), à la lecture et jamais dans le matériau.**
+> `Track::transposeSemitones`, absent du fichier quand il est nul, appliqué
+> par `PlaybackScheduler` au moment de fabriquer les événements. C'est tout
+> ce qui le distingue du « transposer la sélection » du piano roll, et c'est
+> ce qui le rend utile : on l'annule en remettant zéro plutôt qu'en défaisant
+> un historique, on l'essaie à l'oreille en tournant un chiffre, et deux
+> transpositions successives ne s'accumulent en rien puisqu'il n'y a aucun
+> arrondi. Un test vérifie que le matériau n'a pas bougé d'une note.
+>
+> LE PRIX, ASSUMÉ ET ÉCRIT : le piano roll montre le matériau, donc les notes
+> ÉCRITES et non celles qu'on entend. C'est le comportement de Cubase, et il
+> se comprend dès qu'on sait que le réglage existe — d'où le choix de le
+> mettre dans la CONSOLE, à côté du fader, qui est le seul endroit où il se
+> voit forcément.
+>
+> LES NOTES POUSSÉES HORS DE 0..127 SONT ÉCARTÉES, JAMAIS REPLIÉES à
+> l'octave : les faire sonner à une hauteur que personne n'a demandée serait
+> pire que de ne pas les jouer. Elles sont comptées
+> (`PlaybackScheduler::transposeDroppedNotes`) et l'application le dit — une
+> fois, au franchissement de zéro, et pas à chaque cran du curseur : une
+> alerte par demi-ton rendrait le réglage inutilisable, et une alerte qui ne
+> vient jamais laisserait chercher la note manquante. Le message rappelle que
+> le matériau n'a pas bougé et qu'un zéro remet tout.
+>
+> Trois tests : +12 rend les mêmes notes une octave au-dessus sans toucher au
+> matériau, et zéro rend exactement le témoin ; une note à 120 transposée de
+> +12 disparaît, le compteur passe de 0 à 1, et la note restante sort à 72
+> (et surtout pas repliée à 120) ; l'aller-retour disque avec le fichier
+> inchangé à zéro. Vu à l'écran : « -7 dt » sous le décalage dans la tranche
+> d'Acid Bass.
+
 > **D17.1 EST FAITE (05/09/2026), et le chiffre est celui du manuel.**
 > `FadeShape` (`Linear`, `EqualPower`, `Slow`, `Fast`), absente du fichier
 > quand c'est la droite — un projet d'avant D17.1 se réécrit octet pour

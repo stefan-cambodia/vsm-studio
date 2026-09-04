@@ -160,6 +160,12 @@ private:
     /// qu'on cherche à l'oreille -- et un bouton de dix pixels ne saurait pas
     /// donner le dixième de milliseconde.
     juce::Slider delay_;
+    /// LA TRANSPOSITION DE PISTE (D17.5), en demi-tons. Une case où l'on tape
+    /// un nombre, comme le décalage : on transpose de sept demi-tons ou de
+    /// douze, on ne cherche pas le chiffre à la molette. Elle est ICI, à côté
+    /// du fader, parce que le piano roll montre le matériau et non ce qui
+    /// sonne : c'est le seul endroit où le réglage se voit forcément.
+    juce::Slider transposition_;
     /// LE BOUTON W : off → touch → latch → off. Le mot « W » plutôt qu'un
     /// pictogramme, comme chez Cubase, et sa couleur dit lequel des deux
     /// modes est armé (l'ambre pour `touch`, plus vif pour `latch`).

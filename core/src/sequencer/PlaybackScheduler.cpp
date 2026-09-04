@@ -78,6 +78,19 @@ Tick lastOutBefore(const std::vector<Passage>& passages, Tick source, Tick limit
 
 } // namespace
 
+size_t PlaybackScheduler::transposeDroppedNotes(const Project& project) {
+    size_t perdues = 0;
+    for (const auto& track : project.tracks) {
+        if (track.transposeSemitones == 0) continue;
+        for (const auto& note : track.notes) {
+            if (note.muted) continue;
+            const int hauteur = static_cast<int>(note.number) + track.transposeSemitones;
+            if (hauteur < 0 || hauteur > 127) ++perdues;
+        }
+    }
+    return perdues;
+}
+
 std::vector<ScheduledEvent> PlaybackScheduler::chaseAt(const Project& project, Tick startTick) {
     std::vector<ScheduledEvent> resultat;
     if (startTick <= 0) return resultat;
@@ -193,11 +206,18 @@ std::vector<ScheduledEvent> PlaybackScheduler::build(const Project& project,
 
             for (const auto& note : track.notes) {
                 if (note.muted) continue; // note rendue muette dans l'éditeur (Note::muted)
+                // LA TRANSPOSITION DE PISTE (D17.5) s'applique ICI, à la
+                // lecture : le matériau ne bouge pas. Hors de 0..127, la note
+                // est ÉCARTÉE et non repliée à l'octave -- replier la ferait
+                // sonner à une hauteur que personne n'a demandée.
+                const int hauteur = static_cast<int>(note.number) + track.transposeSemitones;
+                if (hauteur < 0 || hauteur > 127) continue;
+                const auto numero = static_cast<uint8_t>(hauteur);
                 Tick debut = 0;
                 if (!lu(note.startTick, debut)) continue;
                 if (inRange(debut))
                     result.push_back({project.ticksToSeconds(debut), trackIndex,
-                                       NoteOnEvent{note.channel, note.number, note.velocity}});
+                                       NoteOnEvent{note.channel, numero, note.velocity}});
 
                 // LA FIN EST COUPÉE À LA FIN DU CLIP, jamais laissée pendre :
                 // une note dont le NoteOff tomberait au-delà resterait tenue
@@ -206,7 +226,7 @@ std::vector<ScheduledEvent> PlaybackScheduler::build(const Project& project,
                 const Tick fin = std::min(note.endTick + passage.shift, passage.outLimit);
                 if (inRange(fin))
                     result.push_back({project.ticksToSeconds(fin), trackIndex,
-                                       NoteOffEvent{note.channel, note.number, note.releaseVelocity}});
+                                       NoteOffEvent{note.channel, numero, note.releaseVelocity}});
             }
 
             Tick t = 0;

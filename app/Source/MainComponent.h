@@ -737,6 +737,9 @@ private:
     // être construit après lui et détruit avant.
     vsm::audio::engine::Transport transport_;
 
+    /// D17.5 : combien de notes la transposition fait sortir de la plage MIDI,
+    /// pour ne le dire qu'au franchissement.
+    size_t notesPerduesParTransposition_ = 0;
     vsm::sequencer::MidiRecorder recorder_;
     /// D17.3 : LE TAMPON RÉTROSPECTIF, alimenté dès que l'application tourne
     /// et non seulement pendant l'enregistrement -- un tampon qui ne se
