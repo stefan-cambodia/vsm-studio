@@ -3377,6 +3377,12 @@ Ceux de la fusion, plus cinq propres à cet axe :
    l'envers** : D12, D13 et D14 avaient ajouté des chemins dans `process()`
    que le garde-fou ne voyait pas. Vérifié : aucune allocation, aucun
    verrou, aucune entrée-sortie.
+   Le même jour, l'invariant n° 3 s'est étendu aux effets : chacun des seize
+   effets d'insert, réglé à 60 % de chaque paramètre, rend à l'échantillon
+   près le même signal à 128, 256, 1024 et 2048 échantillons par bloc qu'à
+   512 (`chaque_effet_d_insert_rend_pareil_quelle_que_soit_la_taille_de_bloc`).
+   Hypothèse écrite avant la mesure, confirmée sans écart ; les clips étirés
+   l'étaient déjà depuis D12.5.
 3. **Rendu temps réel et rendu hors ligne restent identiques**, à l'échantillon
    près, sur tout ce qui s'ajoute. ~~Le test existe pour CLAP ; il s'étend.~~
    **Il s'est étendu le 31/08/2026, a trouvé une exception, et l'exception a

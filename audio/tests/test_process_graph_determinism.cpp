@@ -1,6 +1,7 @@
 #include "TestFramework.h"
 #include "vsm/audio/engine/OfflineRenderer.h"
 #include "vsm/audio/engine/ProcessGraph.h"
+#include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/sequencer/Project.h"
 #include <algorithm>
 #include <chrono>
@@ -499,3 +500,48 @@ VSM_TEST(une_fin_de_note_SUR_une_frontiere_de_bloc_est_desormais_exacte) {
     }
 }
 
+
+VSM_TEST(chaque_effet_d_insert_rend_pareil_quelle_que_soit_la_taille_de_bloc) {
+    // INVARIANT N° 3 DE `ROADMAP-daw.md` § 6, ÉTENDU AUX EFFETS (04/09/2026).
+    //
+    // Le test ci-dessus ne montait aucun effet ; les seize effets d'insert
+    // (D13.5, D14.3) sont autant de chemins où une mémoire interne, une
+    // fenêtre de grains ou un anticipateur peut se caler sur la frontière de
+    // bloc sans que rien ne le dise. HYPOTHÈSE, écrite avant la mesure : chacun
+    // rend, à l'échantillon près, le même signal à 128, 256, 1024 et 2048
+    // qu'à 512. Ce qui s'écarte se nomme ici, effet par effet.
+    Project projet = buildSingleNoteProject();
+    for (const auto& info : vsm::audio::effect::EffectFactory::available()) {
+        auto rendre = [&](int bloc) {
+            ProcessGraph graphe;
+            graphe.prepare(48000.0, bloc);
+            graphe.setTrackInstrument(0, "vsm.testtone");
+            auto effet = vsm::audio::effect::EffectFactory::create(info.id);
+            effet->prepare(48000.0, bloc);
+            for (const auto& p : effet->parameterList())
+                effet->setParameter(p.id, p.minValue + 0.6f * (p.maxValue - p.minValue));
+            auto chaine = std::make_shared<ProcessGraph::EffectChain>();
+            chaine->push_back(std::move(effet));
+            graphe.setTrackEffectChain(0, chaine);
+            graphe.setProject(projet);
+            return OfflineRenderer::render(graphe, 48000.0, bloc, 0.7, false);
+        };
+        const auto reference = rendre(512);
+        for (int bloc : {128, 256, 1024, 2048}) {
+            const auto obtenu = rendre(bloc);
+            VSM_ASSERT_EQ(obtenu.numFrames(), reference.numFrames());
+            size_t premierEcart = reference.numFrames();
+            float pire = 0.0f;
+            for (size_t i = 0; i < reference.numFrames(); ++i) {
+                const float e = std::max(std::abs(obtenu.left[i] - reference.left[i]),
+                                         std::abs(obtenu.right[i] - reference.right[i]));
+                if (e > 0.0f && premierEcart == reference.numFrames()) premierEcart = i;
+                pire = std::max(pire, e);
+            }
+            if (pire > 0.0f)
+                std::printf("    ECART %s bloc %d : premier a %zu, pire %.3g\n",
+                            info.id.c_str(), bloc, premierEcart, static_cast<double>(pire));
+            VSM_ASSERT(pire == 0.0f);
+        }
+    }
+}
