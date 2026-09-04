@@ -3878,6 +3878,42 @@ les jours ensuite, le modèle en dernier.
 > rien plutôt qu'une note de durée nulle ; une touche encore tenue rend une
 > note qui finit au dernier événement.
 
+> **D17.4 EST FAITE (05/09/2026), et masquer se réduit à une hauteur nulle.**
+> `Track::hidden`, absent du fichier quand il est faux. La règle qui compte
+> tient en une phrase : MASQUER N'EST PAS COUPER. Une piste masquée sonne, se
+> mixe et s'exporte exactement comme avant — vérifié au planificateur,
+> événement par événement, et vérifié aussi qu'elle ne devient pas audible si
+> elle était muette (les deux drapeaux sont indépendants, et c'est le muet qui
+> décide du son). Un « masquer » qui ferait taire serait la pire des pannes
+> muettes : on chercherait une heure pourquoi la basse a disparu du mixage.
+> AUCUN calcul ne lit ce drapeau ; seules les trois vues qui dessinent des
+> pistes le lisent.
+>
+> DANS L'ARRANGEMENT, IL A SUFFI DE FAIRE RENDRE ZÉRO À `trackHeight`.
+> `trackTop`, `trackAtY`, les zones de pliage et le dessin somment tous cette
+> fonction : ils sautent donc la piste sans savoir qu'elle existe. Filtrer
+> dans chacun d'eux aurait été cinq endroits à ne pas oublier — et le sixième
+> écrit demain aurait été le mauvais. Seul le DESSIN reçoit un `continue`
+> explicite, parce que le trait de séparation se pose à `y + h` : à hauteur
+> nulle, il se serait posé sur celui de la piste précédente, deux traits l'un
+> sur l'autre à un endroit qui ne sépare rien.
+>
+> Dans la liste des pistes et dans la console, même idée (hauteur ou largeur
+> nulle) mais les rangées et les tranches restent CONSTRUITES et indexées
+> comme les pistes : ne pas les construire aurait décalé `rows_[idx]` et
+> `strips_[i]`, dont la sélection, le glisser-déposer et la mesure de niveau
+> se servent partout. La hauteur et la largeur totales ne comptent que les
+> visibles, sans quoi un blanc resterait à leur place.
+>
+> Le menu Piste dit combien de pistes sont masquées et grise « Afficher toutes
+> les pistes » quand il n'y en a aucune : on ne doit pas avoir à cliquer pour
+> savoir s'il en reste. Annulable des deux côtés.
+>
+> Deux tests : le rendu identique masquée ou non (`core/`), l'aller-retour
+> disque avec le fichier inchangé quand rien n'est masqué (`interchange/`).
+> Vu à l'écran (`masquer:0`) : Acid Bass disparaît de la liste ET de
+> l'arrangement, et Drums remonte à sa place sans laisser de blanc.
+
 > **D17.1 EST FAITE (05/09/2026), et le chiffre est celui du manuel.**
 > `FadeShape` (`Linear`, `EqualPower`, `Slow`, `Fast`), absente du fichier
 > quand c'est la droite — un projet d'avant D17.1 se réécrit octet pour

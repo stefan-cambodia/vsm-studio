@@ -1043,3 +1043,23 @@ VSM_TEST(the_fade_shape_survives_the_trip_and_linear_writes_nothing) {
     VSM_ASSERT_NEAR(rejoue.tracks[0].clips[0].gain, 1.0f, 1e-9f);
     VSM_ASSERT_NEAR(rejoue.tracks[0].clips[0].fadeInSeconds, 0.25, 1e-9);
 }
+
+// D17.4 — MASQUÉE, écrite seulement quand elle l'est.
+VSM_TEST(a_hidden_track_survives_the_trip_and_a_visible_one_adds_nothing) {
+    Project project = buildProject();
+    VSM_ASSERT(project.tracks.size() >= 2);
+    VSM_ASSERT(projectDocumentToJson(documentFromProject(project)).toString()
+                   .find("hidden") == std::string::npos);
+
+    project.tracks[1].hidden = true;
+    const std::string ecrit = projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(ecrit.find("\"hidden\"") != std::string::npos);
+
+    const ProjectLoadResult relu = parseProjectDocument(ecrit);
+    VSM_ASSERT(relu.success);
+    Project rejoue = project;
+    for (auto& t : rejoue.tracks) t.hidden = false;
+    applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT(!rejoue.tracks[0].hidden);
+    VSM_ASSERT(rejoue.tracks[1].hidden);
+}

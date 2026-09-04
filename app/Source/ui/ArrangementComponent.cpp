@@ -231,6 +231,11 @@ void ArrangementComponent::duplicateSelection() {
 }
 
 int ArrangementComponent::trackHeight(const Track& track) const {
+    // MASQUÉE = HAUTEUR NULLE (D17.4), et c'est tout ce qu'il a fallu changer
+    // ici : `trackTop`, `trackAtY`, les zones de pliage et le dessin somment
+    // tous cette fonction, donc tous sautent la piste sans le savoir. Filtrer
+    // dans chacun d'eux aurait été cinq endroits à ne pas oublier.
+    if (track.hidden) return 0;
     return track.folded ? kFoldedHeight
                         : juce::jlimit(kMinHeight, kMaxHeight, track.arrangementHeight);
 }
@@ -1222,6 +1227,11 @@ void ArrangementComponent::paint(juce::Graphics& g) {
         const auto& track = project_->tracks[i];
         const int y = trackTop(i);
         const int h = trackHeight(track);
+        // MASQUÉE (D17.4) : rien du tout. La hauteur nulle suffirait à ne rien
+        // montrer, mais le trait de séparation se dessine à `y + h`, donc au
+        // même endroit que celui de la piste d'avant -- deux traits l'un sur
+        // l'autre, plus épais, à un endroit qui ne sépare rien.
+        if (h <= 0) continue;
         if (y > bounds.getHeight()) break;
 
         g.setColour(i % 2 == 0 ? Palette::panel : Palette::panelRaised);

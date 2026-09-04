@@ -183,6 +183,9 @@ private:
         kMenuTrackCreateClip,
         /// D16.5 : verrouiller ou déverrouiller la piste choisie.
         kMenuTrackLock,
+        /// D17.4 : masquer la piste choisie, et tout réafficher.
+        kMenuTrackHide,
+        kMenuTrackShowAll,
     kMenuEditInsertTimeAtLocators,
     kMenuEditDeleteTimeAtLocators,
     kMenuEditLocatorsFromSelection,
@@ -636,6 +639,12 @@ private:
     /// D16.5 : bascule le cadenas de la piste choisie. Annulable, comme tout
     /// ce qui change le projet.
     void toggleLockSelectedTrack();
+    /// D17.4 : masquer la piste choisie (les vues seulement, jamais le son),
+    /// et réafficher toutes les pistes. Annulables.
+    void hideSelectedTrack();
+    void showAllTracks();
+    /// Les trois vues qui dessinent des pistes, rafraîchies ensemble (D17.4).
+    void refreshTrackViews();
     /// LA FENÊTRE IMPLICITE SE MATÉRIALISE (D16.1) : toute piste qui porte du
     /// matériau et aucun clip en reçoit un, « tout à zéro » -- exactement le
     /// passage que l'ordonnanceur fabriquait déjà pour elle, à l'échantillon

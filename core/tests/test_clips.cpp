@@ -371,3 +371,38 @@ VSM_TEST(a_track_delay_carries_the_chased_controllers_with_the_track) {
     VSM_ASSERT_EQ(events.size(), size_t(1));
     VSM_ASSERT_NEAR(events[0].timeSeconds, 1.0 - 0.01, 1e-12);
 }
+
+// --------------------------------------------------------------------------
+// D17.4 — MASQUER N'EST PAS COUPER.
+//
+// C'est la seule chose à vérifier, et c'est la plus importante : un
+// « masquer » qui ferait taire serait la pire des pannes muettes -- on
+// chercherait une heure pourquoi la basse a disparu du mixage.
+// --------------------------------------------------------------------------
+
+VSM_TEST(a_hidden_track_plays_exactly_what_it_played_before) {
+    Project visible = quatreNotes();
+    visible.tracks.push_back(visible.tracks[0]);
+    visible.tracks[1].muted = false;
+
+    Project masquee = visible;
+    masquee.tracks[0].hidden = true;
+
+    const auto a = PlaybackScheduler::build(visible, 0, 100000);
+    const auto b = PlaybackScheduler::build(masquee, 0, 100000);
+    VSM_ASSERT(!a.empty());
+    VSM_ASSERT_EQ(b.size(), a.size());
+    for (size_t i = 0; i < a.size(); ++i) {
+        VSM_ASSERT_NEAR(b[i].timeSeconds, a[i].timeSeconds, 1e-12);
+        VSM_ASSERT_EQ(b[i].trackIndex, a[i].trackIndex);
+    }
+
+    // Et masquer une piste MUETTE ne la rend pas audible non plus : les deux
+    // drapeaux sont indépendants, et c'est le muet qui décide du son.
+    Project muette = visible;
+    muette.tracks[0].muted = true;
+    Project muetteEtMasquee = muette;
+    muetteEtMasquee.tracks[0].hidden = true;
+    VSM_ASSERT_EQ(PlaybackScheduler::build(muetteEtMasquee, 0, 100000).size(),
+                   PlaybackScheduler::build(muette, 0, 100000).size());
+}

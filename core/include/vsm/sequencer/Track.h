@@ -558,6 +558,19 @@ public:
     /// calcule encore.
     bool locked = false;
 
+    /// PISTE MASQUÉE (D17.4) : la Visibility de Cubase, le repliement de Live.
+    ///
+    /// Une reconstruction à soixante pistes se parcourt en entier ou pas du
+    /// tout ; masquer est ce qui permet de travailler sur cinq d'entre elles.
+    ///
+    /// MASQUER N'EST PAS COUPER, et c'est la seule chose à retenir : une piste
+    /// masquée sonne, se mixe et s'exporte EXACTEMENT comme avant (un test le
+    /// vérifie au planificateur). Aucun calcul ne lit ce drapeau -- il est lu
+    /// par les trois vues qui dessinent des pistes, et par rien d'autre. Un
+    /// « masquer » qui ferait taire serait la pire des pannes muettes : on
+    /// chercherait pendant une heure pourquoi la basse a disparu du mixage.
+    bool hidden = false;
+
     /// LE DÉCALAGE DE PISTE (D16.7), en MILLISECONDES, négatif pour sonner
     /// plus tôt. Le Delay de l'inspecteur de Cubase, le Track Delay de Live.
     ///

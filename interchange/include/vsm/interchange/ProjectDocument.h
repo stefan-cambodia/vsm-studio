@@ -207,6 +207,9 @@ struct ProjectTrack {
     /// projet dont aucune piste n'est verrouillée garde le fichier qu'il a
     /// toujours eu, octet pour octet.
     bool locked = false;
+    /// D17.4 : masquée dans les vues, jamais dans le son. Écrite seulement
+    /// quand elle l'est.
+    bool hidden = false;
 
     /// D16.7 : le décalage de piste, en millisecondes. Écrit seulement quand
     /// il n'est pas nul.

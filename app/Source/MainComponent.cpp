@@ -1033,6 +1033,11 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     // D16.5 : verrouiller la piste N (à partir de 0), pour photographier le
     // cadenas et ce qu'il refuse -- l'article de menu ne s'atteint qu'à la
     // souris. Passe par la MÊME fonction que le menu.
+    // D17.4 : masquer la piste N, pour photographier ce qu'il en reste.
+    else if (nom.startsWith("masquer:")) {
+        trackList_.selectTrackIndex(static_cast<size_t>(std::max(0, nom.substring(8).getIntValue())));
+        hideSelectedTrack();
+    }
     else if (nom.startsWith("verrouiller:")) {
         trackList_.selectTrackIndex(static_cast<size_t>(std::max(0, nom.substring(12).getIntValue())));
         toggleLockSelectedTrack();
@@ -1549,6 +1554,17 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 const size_t choisie = trackList_.selectedTrackIndex();
                 const bool verrouillee = choisie < project_.tracks.size()
                                          && project_.tracks[choisie].locked;
+                size_t masquees = 0;
+                for (const auto& t : project_.tracks) if (t.hidden) ++masquees;
+                menu.addItem(kMenuTrackHide, u8"Masquer la piste (elle continue de sonner)",
+                              !project_.tracks.empty());
+                menu.addItem(kMenuTrackShowAll,
+                              masquees == 0
+                                  ? juce::String::fromUTF8(u8"Afficher toutes les pistes (aucune masquée)")
+                                  : juce::String::fromUTF8(u8"Afficher toutes les pistes (")
+                                        + juce::String(static_cast<int>(masquees))
+                                        + juce::String::fromUTF8(u8" masquées)"),
+                              masquees > 0);
                 menu.addItem(kMenuTrackLock,
                               verrouillee ? u8"Déverrouiller la piste (le montage reprend)"
                                           : u8"Verrouiller la piste (le montage s'arrête)",
@@ -2046,6 +2062,8 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         }
         case kMenuTrackFreeze:   toggleFreezeSelectedTrack(); break;
         case kMenuTrackLock:     toggleLockSelectedTrack(); break;
+        case kMenuTrackHide:     hideSelectedTrack(); break;
+        case kMenuTrackShowAll:  showAllTracks(); break;
 #if VSM_WITH_CLAP
         case kMenuTrackClapPlugin: loadClapPluginOnSelectedTrack(); break;
 #endif
@@ -5828,6 +5846,34 @@ bool MainComponent::materializeImplicitClips() {
     }
     project_.assignClipIds();
     return cree;
+}
+
+void MainComponent::hideSelectedTrack() {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    beginProjectEdit(u8"Masquer une piste");
+    project_.tracks[piste].hidden = true;
+    // RIEN N'EST REPUBLIÉ AU MOTEUR : masquer n'est pas couper, et la piste
+    // continue de sonner exactement comme avant. Seules les trois vues qui
+    // dessinent des pistes ont quelque chose à apprendre.
+    refreshTrackViews();
+}
+
+void MainComponent::showAllTracks() {
+    bool changement = false;
+    for (const auto& t : project_.tracks) if (t.hidden) { changement = true; break; }
+    if (!changement) return;
+    beginProjectEdit(u8"Afficher toutes les pistes");
+    for (auto& t : project_.tracks) t.hidden = false;
+    refreshTrackViews();
+}
+
+void MainComponent::refreshTrackViews() {
+    arrangement_.repaint();
+    trackList_.resized();
+    trackList_.repaint();
+    mixer_.resized();
+    mixer_.repaint();
 }
 
 void MainComponent::toggleLockSelectedTrack() {

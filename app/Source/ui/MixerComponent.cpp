@@ -479,8 +479,26 @@ void MixerComponent::resized() {
     master_.setBounds(r.removeFromRight(kMasterWidth));
     viewport_.setBounds(r);
 
-    const int n = strips_.size();
-    stripContainer_.setSize(juce::jmax(r.getWidth(), n * kStripWidth), r.getHeight() - 12);
-    for (int i = 0; i < n; ++i)
-        strips_[i]->setBounds(i * kStripWidth, 0, kStripWidth, stripContainer_.getHeight());
+    // D17.4 : les tranches masquées ne comptent pas dans la largeur totale.
+    int visibles = 0;
+    for (int i = 0; i < strips_.size(); ++i)
+        if (project_ == nullptr || static_cast<size_t>(i) >= project_->tracks.size()
+            || !project_->tracks[static_cast<size_t>(i)].hidden)
+            ++visibles;
+    stripContainer_.setSize(juce::jmax(r.getWidth(), visibles * kStripWidth), r.getHeight() - 12);
+    {
+        // D17.4 : une tranche masquée occupe une largeur nulle. Les tranches
+        // restent indexées comme les pistes -- `setMeasurement(i)` s'en sert à
+        // chaque image.
+        int x = 0;
+        for (int i = 0; i < strips_.size(); ++i) {
+            const bool masquee = project_ != nullptr
+                                 && static_cast<size_t>(i) < project_->tracks.size()
+                                 && project_->tracks[static_cast<size_t>(i)].hidden;
+            const int w = masquee ? 0 : kStripWidth;
+            strips_[i]->setBounds(x, 0, w, stripContainer_.getHeight());
+            strips_[i]->setVisible(!masquee);
+            x += w;
+        }
+    }
 }

@@ -332,7 +332,14 @@ void TrackListComponent::resized() {
     addButton_.setBounds(toolbar);
 
     viewport_.setBounds(area);
-    int totalHeight = rows_.size() * kRowHeight;
+    // D17.4 : les pistes masquées ne comptent pas dans la hauteur totale, sans
+    // quoi la liste garderait un blanc à leur place.
+    int visibles = 0;
+    for (int i = 0; i < rows_.size(); ++i)
+        if (project_ == nullptr || static_cast<size_t>(i) >= project_->tracks.size()
+            || !project_->tracks[static_cast<size_t>(i)].hidden)
+            ++visibles;
+    int totalHeight = visibles * kRowHeight;
     // LE DÉFILEMENT SURVIT À LA MISE EN PAGE. `setBounds(0, 0, …)` remettait le
     // conteneur en haut à chaque redimensionnement -- et chaque republication
     // du projet passe par ici : la liste sautait en haut pendant qu'on
@@ -342,8 +349,22 @@ void TrackListComponent::resized() {
     rowContainer_.setSize(viewport_.getWidth() - viewport_.getScrollBarThickness(), totalHeight);
     viewport_.setViewPosition(position);
 
-    for (int i = 0; i < rows_.size(); ++i)
-        rows_[i]->setBounds(0, i * kRowHeight, rowContainer_.getWidth(), kRowHeight);
+    {
+        // D17.4 : UNE PISTE MASQUÉE OCCUPE UNE HAUTEUR NULLE, et les rangées
+        // restent indexées comme les pistes. Ne pas les construire aurait
+        // décalé `rows_[idx]`, dont la sélection, le glisser-déposer et le
+        // rafraîchissement se servent partout.
+        int y = 0;
+        for (int i = 0; i < rows_.size(); ++i) {
+            const bool masquee = project_ != nullptr
+                                 && static_cast<size_t>(i) < project_->tracks.size()
+                                 && project_->tracks[static_cast<size_t>(i)].hidden;
+            const int h = masquee ? 0 : kRowHeight;
+            rows_[i]->setBounds(0, y, rowContainer_.getWidth(), h);
+            rows_[i]->setVisible(!masquee);
+            y += h;
+        }
+    }
     if (aMontrer_ >= 0) faireVoirLaPiste(static_cast<size_t>(aMontrer_));
 }
 
