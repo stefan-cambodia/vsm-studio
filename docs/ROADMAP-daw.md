@@ -3191,6 +3191,22 @@ de D12 (D13.2) et l'arrangement global (D13.3) avant le confort.
 > commande se lise sans connaître la date — et l'intitulé dit « (le défaut
 > de la chaîne) ». Deux tests corrigés dans le même sens.
 
+### Phase D14 — Le troisième audit : les gestes de tous les jours qui manquaient encore (04/09/2026)
+
+**Pourquoi.** Même méthode que D11 et D13 : un utilisateur de Cubase ou de
+Live s'assoit, cherche ses gestes, et l'on vérifie dans le code ce qui
+manque. Cinq absences, vérifiées ; l'ordre suit le § 3 — les gestes du
+quotidien d'abord, l'import et l'export ensuite, la préférence en dernier.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D14.1 | **Les locateurs sur la sélection** (le `P` de Cubase, `Ctrl+L` de Live) : la boucle ne se pose que sur la règle, à la main | une commande (dans la table des raccourcis) pose la région de boucle sur l'étendue de la sélection — les clips de l'arrangement, ou à défaut les notes du piano roll — et l'active ; les deux vues et le moteur la voient |
+| D14.2 | **Zoom sur tout / sur la sélection dans l'arrangement** : « Ajuster à la fenêtre » n'est entendu que par le piano roll, et l'arrangement n'a que +/− | le raccourci ajuste les deux vues ; le menu de l'arrangement offre « Zoom : tout voir » et « Zoom : la sélection », comme celui du piano roll |
+| D14.3 | **Importer un fichier MIDI sur de nouvelles pistes** : « Ouvrir MIDI… » REMPLACE le projet, et un `.mid` lâché sur la fenêtre n'est pas reçu | Fichier ▸ Importer un MIDI dans le projet… ajoute ses pistes à la suite, à la tête de lecture ; un `.mid` lâché sur la fenêtre fait pareil ; annulable ; test `core/` sur la fusion des pistes |
+| D14.4 | **Le dither à l'export 16 et 24 bits** : l'export tronque, et une queue de réverbération à −80 dB devient une distorsion de quantification — Cubase et Live dithérisent | un dither TPDF (± 1 LSB triangulaire) à l'écriture des formats entiers, actif par défaut, éteint par option ; test : un sinus à −90 dB exporté en 16 bits garde un spectre sans harmoniques de quantification (dit en chiffres) |
+| D14.5 | **Retour au début à l'arrêt** (préférence de Cubase ; c'est le défaut de Live) : Stop laisse la tête où elle est, et il faut `Début` ensuite | une préférence, retenue, qui ramène la tête à la position de départ de la lecture quand on arrête |
+
+
 ## 4. Les choix tranchés ici, et pourquoi
 
 Conformément à l'usage de ce dépôt, les questions ouvertes se referment en
