@@ -617,6 +617,13 @@ private:
     void rebuildFromProject(bool stopPlayback = true);
     /// Prend l'instantané d'annulation du projet, avec le nom du geste.
     void beginProjectEdit(const juce::String& label);
+    /// LES REPÈRES (D16.4) : posés, renommés, retirés depuis les DEUX règles
+    /// (piano roll et arrangement) par les mêmes trois fonctions, et les deux
+    /// vues rafraîchies ensemble.
+    void requestMarker(vsm::midi::Tick tick);
+    void renameMarker(size_t index);
+    void removeMarker(size_t index);
+    void refreshMarkerViews();
     void refreshTransportSchedule();
     void updateSynthRackForSelection();
     void togglePanel(PanelWindow& window);

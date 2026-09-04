@@ -164,6 +164,18 @@ public:
     /// fenêtre est une affaire d'application, pas de vue.
     std::function<void(size_t, uint64_t)> onClipBarsRequested;
 
+    /// LES REPÈRES DANS L'ARRANGEMENT (D16.4). `Project::markers` n'était
+    /// dessiné et posé que par la règle du piano roll ; on naviguait donc à
+    /// l'aveugle (Maj+N/B) là où l'on arrange. Mêmes rappels et mêmes gestes
+    /// que `PianoRollRulerComponent` -- les fenêtres (le nom) sont de
+    /// l'application, la vue ne fait que demander.
+    std::function<void(vsm::midi::Tick)> onMarkerRequested;
+    std::function<void(size_t)> onMarkerRenameRequested;
+    std::function<void(size_t)> onMarkerRemoved;
+    /// Le repère le plus proche d'une abscisse, à dix pixels près, ou -1 : on
+    /// vise un trait à la souris, pas un tick.
+    int markerAt(float x) const;
+
     static constexpr int kHeaderWidth = 150;
     static constexpr int kRulerHeight = 22;
     /// Hauteur d'une piste PLIÉE. Assez pour son nom et rien d'autre : c'est

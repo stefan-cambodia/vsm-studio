@@ -298,8 +298,25 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
     if (project_ == nullptr) return;
     const auto point = event.position;
 
-    // La règle : on y pose la tête de lecture, on n'y saisit pas de clip.
+    // La règle : on y pose la tête de lecture, on n'y saisit pas de clip ;
+    // le clic droit y pose, renomme ou retire un repère (D16.4).
     if (point.y < kRulerHeight) {
+        if (point.x < kHeaderWidth) return;
+        if (event.mods.isPopupMenu()) {
+            const vsm::midi::Tick tick = std::max<vsm::midi::Tick>(0, xToTick(point.x));
+            const int survole = markerAt(point.x);
+            juce::PopupMenu menu;
+            menu.addItem(1, u8"Poser un repère ici…");
+            menu.addItem(2, u8"Renommer ce repère…", survole >= 0);
+            menu.addItem(3, u8"Retirer ce repère", survole >= 0);
+            menu.showMenuAsync(juce::PopupMenu::Options(), [this, tick, survole](int choix) {
+                if (choix == 1 && onMarkerRequested) onMarkerRequested(tick);
+                if (choix == 2 && survole >= 0 && onMarkerRenameRequested)
+                    onMarkerRenameRequested(static_cast<size_t>(survole));
+                if (choix == 3 && survole >= 0 && onMarkerRemoved) onMarkerRemoved(static_cast<size_t>(survole));
+            });
+            return;
+        }
         if (onPlayheadRequested) onPlayheadRequested(std::max<vsm::midi::Tick>(0, xToTick(point.x)));
         return;
     }
@@ -680,8 +697,28 @@ void ArrangementComponent::mouseUp(const juce::MouseEvent&) {
     reordonnancementOuvert_ = false;
 }
 
+int ArrangementComponent::markerAt(float x) const {
+    if (project_ == nullptr) return -1;
+    int trouve = -1;
+    for (size_t i = 0; i < project_->markers.size(); ++i)
+        if (std::abs(tickToX(project_->markers[i].tick) - x) < 10.0f) trouve = static_cast<int>(i);
+    return trouve;
+}
+
 void ArrangementComponent::mouseDoubleClick(const juce::MouseEvent& event) {
     if (project_ == nullptr) return;
+    // Sur la règle : un double-clic sur un repère le renomme, ailleurs il en
+    // pose un (le double-clic de Cubase sur la piste de marqueurs).
+    if (event.position.y < kRulerHeight) {
+        if (event.position.x < kHeaderWidth) return;
+        const int survole = markerAt(event.position.x);
+        if (survole >= 0) {
+            if (onMarkerRenameRequested) onMarkerRenameRequested(static_cast<size_t>(survole));
+        } else if (onMarkerRequested) {
+            onMarkerRequested(std::max<vsm::midi::Tick>(0, xToTick(event.position.x)));
+        }
+        return;
+    }
     size_t piste = 0;
     Geste bord = Geste::Aucun;
     if (auto* clip = clipAt(event.position, piste, bord))
@@ -1008,6 +1045,35 @@ void ArrangementComponent::paint(juce::Graphics& g) {
             g.drawText(juce::String(static_cast<int>(t / parMesure) + 1),
                         static_cast<int>(x) + 3, 2, 40, kRulerHeight - 4,
                         juce::Justification::centredLeft);
+        }
+    }
+
+    // --- Repères (D16.4) : un trait sur toute la hauteur, le fanion et le
+    // nom dans la règle. Même dessin que la règle du piano roll, mêmes
+    // règles : le nom n'a que la place jusqu'au repère suivant, et quand il
+    // n'y a pas la place on n'écrit pas -- le fanion suffit.
+    {
+        const auto& markers = project_->markers;
+        for (size_t i = 0; i < markers.size(); ++i) {
+            const float x = tickToX(markers[i].tick);
+            if (x < static_cast<float>(kHeaderWidth) || x > static_cast<float>(bounds.getWidth())) continue;
+            g.setColour(Palette::accentTeal.withAlpha(0.45f));
+            g.drawLine(x, static_cast<float>(kRulerHeight), x, static_cast<float>(bounds.getHeight()), 1.0f);
+            g.setColour(Palette::accentTeal);
+            g.drawLine(x, 0.0f, x, static_cast<float>(kRulerHeight), 1.5f);
+            juce::Path fanion;
+            fanion.addTriangle(x, 0.0f, x + 9.0f, 3.5f, x, 7.0f);
+            g.fillPath(fanion);
+            float limite = static_cast<float>(bounds.getWidth());
+            if (i + 1 < markers.size()) limite = tickToX(markers[i + 1].tick) - 3.0f;
+            const int place = static_cast<int>(std::min(180.0f, limite - x - 11.0f));
+            if (place < 26) continue;
+            const juce::Rectangle<int> cadre(static_cast<int>(x) + 10, 1, place, kRulerHeight - 3);
+            g.setColour(Palette::panel.withAlpha(0.92f));
+            g.fillRect(cadre);
+            g.setColour(Palette::accentTeal);
+            g.setFont(juce::Font(juce::FontOptions(12.0f)));
+            g.drawText(juce::String(markers[i].name), cadre.reduced(3, 0), juce::Justification::centredLeft, true);
         }
     }
 

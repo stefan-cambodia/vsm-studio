@@ -144,10 +144,13 @@ void PianoRollRulerComponent::mouseDown(const juce::MouseEvent& event) {
                     survole = static_cast<int>(i);
 
         juce::PopupMenu menu;
-        menu.addItem(1, "Poser un repere ici...");
-        menu.addItem(2, "Retirer ce repere", survole >= 0);
+        menu.addItem(1, u8"Poser un repère ici…");
+        menu.addItem(3, u8"Renommer ce repère…", survole >= 0);
+        menu.addItem(2, u8"Retirer ce repère", survole >= 0);
         menu.showMenuAsync(juce::PopupMenu::Options(), [this, tick, survole](int choix) {
             if (choix == 1 && onMarkerRequested) onMarkerRequested(tick);
+            if (choix == 3 && survole >= 0 && onMarkerRenameRequested)
+                onMarkerRenameRequested(static_cast<size_t>(survole));
             if (choix == 2 && survole >= 0 && onMarkerRemoved) onMarkerRemoved(static_cast<size_t>(survole));
         });
         return;

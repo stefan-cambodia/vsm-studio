@@ -51,6 +51,9 @@ public:
         ruler_.onMarkerRemoved = [this](size_t index) {
             if (onMarkerRemoved) onMarkerRemoved(index);
         };
+        ruler_.onMarkerRenameRequested = [this](size_t index) {
+            if (onMarkerRenameRequested) onMarkerRenameRequested(index);
+        };
         velocityLane_.onVelocityEdited = [this] {
             pianoRoll_.repaint();
             if (onVelocityEdited) onVelocityEdited();
@@ -74,6 +77,7 @@ public:
     /// Poser un repère à ce tick (l'application demande son nom), ou retirer
     /// celui d'index donné.
     std::function<void(vsm::midi::Tick)> onMarkerRequested;
+    std::function<void(size_t)> onMarkerRenameRequested;
     std::function<void(size_t)> onMarkerRemoved;
 
     void resized() override {

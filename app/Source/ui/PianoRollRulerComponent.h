@@ -37,6 +37,9 @@ public:
     std::function<void(vsm::midi::Tick)> onMarkerRequested;
     /// Retirer le repère d'index donné.
     std::function<void(size_t)> onMarkerRemoved;
+    /// Renommer le repère d'index donné (D16.4 : le même geste que dans
+    /// l'arrangement ; deux vues, un geste).
+    std::function<void(size_t)> onMarkerRenameRequested;
     std::function<void(vsm::midi::Tick start, vsm::midi::Tick end, bool active)> onLoopRegionChanged;
     /// La région de punch a été dessinée à la souris (Alt + glisser).
     std::function<void(vsm::midi::Tick start, vsm::midi::Tick end, bool active)> onPunchRegionChanged;

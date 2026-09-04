@@ -244,33 +244,13 @@ MainComponent::MainComponent()
     // REPÈRES : posés sur la règle, nommés tout de suite. Un repère sans nom
     // ne repère rien, et c'est pourquoi l'interface demande le nom au moment de
     // la pose plutôt que d'en créer un « Repère 3 » à renommer plus tard.
-    pianoRollPanel_.onMarkerRequested = [this](vsm::midi::Tick tick) {
-        auto fenetre = std::make_shared<juce::AlertWindow>(
-            "Poser un repere", "Nom du repere :", juce::AlertWindow::NoIcon);
-        fenetre->addTextEditor("nom", "", "");
-        fenetre->addButton("Poser", 1, juce::KeyPress(juce::KeyPress::returnKey));
-        fenetre->addButton("Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
-        fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
-            [this, tick, fenetre](int resultat) {
-                const juce::String nom = fenetre->getTextEditorContents("nom").trim();
-                fenetre->exitModalState(resultat);
-                fenetre->setVisible(false);
-                if (resultat != 1 || nom.isEmpty()) return;
-                beginProjectEdit("Poser un repere");
-                project_.markers.push_back({tick, nom.toStdString()});
-                std::sort(project_.markers.begin(), project_.markers.end(),
-                           [](const vsm::sequencer::Marker& a, const vsm::sequencer::Marker& b) {
-                               return a.tick < b.tick;
-                           });
-                pianoRollPanel_.refresh();
-            }), false);
-    };
-    pianoRollPanel_.onMarkerRemoved = [this](size_t index) {
-        if (index >= project_.markers.size()) return;
-        beginProjectEdit("Retirer un repere");
-        project_.markers.erase(project_.markers.begin() + static_cast<long>(index));
-        pianoRollPanel_.refresh();
-    };
+    pianoRollPanel_.onMarkerRequested = [this](vsm::midi::Tick tick) { requestMarker(tick); };
+    pianoRollPanel_.onMarkerRenameRequested = [this](size_t index) { renameMarker(index); };
+    pianoRollPanel_.onMarkerRemoved = [this](size_t index) { removeMarker(index); };
+    // D16.4 : la règle de l'arrangement fait les mêmes trois gestes.
+    arrangement_.onMarkerRequested = [this](vsm::midi::Tick tick) { requestMarker(tick); };
+    arrangement_.onMarkerRenameRequested = [this](size_t index) { renameMarker(index); };
+    arrangement_.onMarkerRemoved = [this](size_t index) { removeMarker(index); };
 
     pianoRoll_.setHistory(&history_);
     pianoRoll_.onProjectRestored = [this] { rebuildFromProject(false); refreshHistoryList(); };
@@ -5649,6 +5629,59 @@ void MainComponent::beginProjectEdit(const juce::String& label) {
     // l'endroit qui ne peut pas être oublié, parce qu'oublier de l'appeler
     // casserait déjà l'annulation, ce qui se voit tout de suite.
     markProjectDirty();
+}
+
+void MainComponent::refreshMarkerViews() {
+    pianoRollPanel_.refresh();
+    arrangement_.repaint();
+}
+
+void MainComponent::requestMarker(vsm::midi::Tick tick) {
+    auto fenetre = std::make_shared<juce::AlertWindow>(
+        u8"Poser un repère", u8"Nom du repère :", juce::AlertWindow::NoIcon);
+    fenetre->addTextEditor("nom", "", "");
+    fenetre->addButton("Poser", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton("Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+        [this, tick, fenetre](int resultat) {
+            const juce::String nom = fenetre->getTextEditorContents("nom").trim();
+            fenetre->exitModalState(resultat);
+            fenetre->setVisible(false);
+            if (resultat != 1 || nom.isEmpty()) return;
+            beginProjectEdit(u8"Poser un repère");
+            project_.markers.push_back({tick, nom.toStdString()});
+            std::sort(project_.markers.begin(), project_.markers.end(),
+                       [](const vsm::sequencer::Marker& a, const vsm::sequencer::Marker& b) {
+                           return a.tick < b.tick;
+                       });
+            refreshMarkerViews();
+        }), false);
+}
+
+void MainComponent::renameMarker(size_t index) {
+    if (index >= project_.markers.size()) return;
+    auto fenetre = std::make_shared<juce::AlertWindow>(
+        u8"Renommer le repère", u8"Nom du repère :", juce::AlertWindow::NoIcon);
+    fenetre->addTextEditor("nom", juce::String(project_.markers[index].name), "");
+    fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton("Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+        [this, index, fenetre](int resultat) {
+            const juce::String nom = fenetre->getTextEditorContents("nom").trim();
+            fenetre->exitModalState(resultat);
+            fenetre->setVisible(false);
+            if (resultat != 1 || nom.isEmpty() || index >= project_.markers.size()) return;
+            beginProjectEdit(u8"Renommer un repère");
+            project_.markers[index].name = nom.toStdString();
+            refreshMarkerViews();
+        }), false);
+}
+
+void MainComponent::removeMarker(size_t index) {
+    if (index >= project_.markers.size()) return;
+    beginProjectEdit(u8"Retirer un repère");
+    project_.markers.erase(project_.markers.begin() + static_cast<long>(index));
+    refreshMarkerViews();
 }
 
 void MainComponent::rebuildFromProject(bool stopPlayback) {

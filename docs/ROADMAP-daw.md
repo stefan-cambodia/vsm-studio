@@ -3374,6 +3374,68 @@ l'entrée audio par piste : à revérifier avec une carte multi-entrées sous
 la main, pas sur un relevé de code.
 
 
+### Phase D16 — Le cinquième audit : ce qui manque encore une fois D15 posée (04/09/2026, 22:30)
+
+**Pourquoi.** Même méthode que D11, D13, D14 et D15, même garde-fou :
+quarante-cinq gestes de Cubase et de Live relevés et VÉRIFIÉS un par un
+dans `app/Source/`, `core/`, `interchange/` et `audio/` ; trente-sept
+existent déjà (dupliquer une piste, geler, marqueurs au piano roll, swing,
+humaniser, prises en boucle, fondus, historique, sauvegarde automatique,
+export par piste, MIDI learn, automation des inserts…). Huit manquent.
+L'ordre suit le § 3 : ce qui MENT d'abord (D16.1 et D16.2 rendent un
+projet qui ne dit pas ce qu'il contient), le geste de tous les jours
+ensuite, le modèle en dernier. Pendant la campagne S1 du banc synthétique
+(04/09 au soir), seules les étapes qui ne touchent que `app/` avancent :
+une retouche de `core/` ou d'`audio/` ferait crier « moteur périmé » aux
+courses suivantes.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D16.1 | **Créer un clip dans l'arrangement.** Sur une piste MIDI neuve, des notes écrites au piano roll ne produisent AUCUN clip visible tant qu'on n'a pas sauvegardé et rouvert : la matérialisation n'a lieu qu'à l'ouverture (`MainComponent.cpp:3181-3193`), et `mouseDoubleClick` de l'arrangement ne fait que renommer. Cubase : double-clic entre les locateurs ou crayon ; Live : double-clic sur la piste | `ClipEdit::createClip` (règle du chevauchement, compteur d'identifiants) ; double-clic sur le vide d'une piste crée un clip d'une mesure aimantée, article de menu de piste ; les notes déjà écrites sur la piste se matérialisent quand elles sont écrites, pas à la réouverture ; annulable ; test `core/` : créer un clip de 0 à une mesure sur une piste qui porte des notes → `PlaybackScheduler::build` rend exactement les notes de cette mesure ; sur une piste vide → clip présent, aucun événement |
+| D16.2 | **Chasser les contrôleurs à la mise en lecture.** `PlaybackScheduler::build` (`:100-119`) n'émet un CC, un bend, un aftertouch ou un programme que si son tick tombe dans la fenêtre : démarrer au refrain perd la pédale (CC64), le balayage de filtre et le programme posés plus tôt. Cubase : Chase Events, actif par défaut ; Live idem | avant la boucle, `build` émet à `startTick` la dernière valeur ≤ `startTick` de chaque (canal, contrôleur), du bend, de l'aftertouch et du programme, passages compris ; test `core/` : CC74 = 20 au tick 0 et 100 au tick 1920, `build(p, 960, 2880)` commence par `ControlChange{74, 20}` au temps de 960 |
+| D16.3 | **Joindre et couper les clips au clavier.** `Ctrl+J` et `Ctrl+E` sont dans la table (`ShortcutTable.cpp:30-31`) mais seul le piano roll les entend ; l'arrangement ne coupe qu'à l'Alt+clic sous le pointeur. Cubase : Colle, « Couper à la position du curseur » ; Live : Consolidate, Split | `ClipEdit::joinClips` (deux clips contigus de la même piste dont la fenêtre source se prolonge fusionnent, sinon refus dit) ; `Ctrl+E` coupe la sélection à la tête de lecture par `splitClips` ; menu du clip ; annulable ; test `core/` : [0,960[ + [960,1920[ contigus → un clip, rendu identique note pour note ; sources disjointes → refus, rien de modifié |
+| D16.4 | **Les repères dans l'arrangement.** `Project::markers` n'est dessiné et posé que par la règle du piano roll ; `Maj+N/B` navigue à l'aveugle là où l'on arrange. Cubase : piste de marqueurs ; Live : locateurs de la zone de scrub | la règle de l'arrangement dessine les repères (nom, trait), double-clic sur la règle en pose un, double-clic sur un repère le renomme, clic droit le retire — sur les rappels `onMarkerRequested` / `onMarkerRemoved` déjà écrits ; capture `VSM_VUE=arrangement` d'un projet à trois repères |
+| D16.5 | **Verrouiller une piste.** Aucun `locked` nulle part ; depuis D15.2 les flèches déplacent les clips, et une piste de référence finie part d'un coup de flèche. Cubase : cadenas par piste ; Live : verrou du clip figé | `Track::locked` (absent du fichier quand faux), refus CENTRALISÉ dans `ClipEdit` (`moveClips`, `resizeClips*`, `splitClips`, `moveClipsAcrossTracks`, `createClip`, `joinClips`) et dans l'édition de notes, pas dans la vue ; cadenas dans la liste des pistes, clips grisés ; test `core/` : `moveClips` sur une piste verrouillée rend 0 et ne touche pas un tick ; une sélection à cheval ne déplace que la libre, refus compté |
+| D16.6 | **Le métronome réglable.** `setMetronomeLevel` existe et n'est appelé nulle part ; l'interface n'a qu'un interrupteur. Cubase : Metronome Setup ; Live : volume et Count-in | niveau retenu dans les préférences et poussé au graphe ; « seulement au décompte » et « seulement à l'enregistrement » branchés sur `clicAudible` ; test `audio/` : niveau 0,25 → crête du clic au quart de celle à 1,0 à 10⁻⁶ près ; le décompte reste audible métronome éteint |
+| D16.7 | **Le décalage de piste.** `Track` n'a aucun `delayMs` ; la compensation de latence corrige, elle ne se règle pas. Cubase : Delay dans l'inspecteur ; Live : Track Delay | `Track::delayMs` (absent du fichier quand nul), lu par `ProcessGraph` et `PlaybackScheduler` (notes ET audio), saisi dans la console ; test `audio/` : une impulsion sur une piste à −10 ms sort 10 ms plus tôt à l'échantillon près, latence déclarée inchangée |
+| D16.8 | **Écrire l'automation en jouant.** L'automation ne s'obtient qu'au dessin ; aucun mode Write/Touch/Latch, aucun armement. Cubase : W/R par tranche ; Live : armement d'automation, la main sur un fader écrit | `AutomationEdit::writeAutomationRange` (remplace les points de la plage, raccorde les bords), un mode par piste (`off / touch / latch`, absent du fichier quand off), W dans la console, capture des rappels de volume/pan/sends avec la position du transport ; test `core/` : écrire 0,5 de 0 à 960 dans une courbe à 1,0 → deux points de raccord, `automationValueAt(961)` = 1,0 |
+
+> **D16.4 EST FAITE (04/09/2026), et elle a pris le menu plutôt que le clic
+> droit sec.** Le tableau disait « clic droit le retire » ; un repère qui
+> disparaît sous un clic droit sans rien demander est une perte silencieuse,
+> et le piano roll avait déjà tranché l'inverse (D10) : sa règle ouvre un
+> menu. Deux vues du même morceau ne demandent pas deux gestes pour la même
+> chose. Donc, sur la règle de l'arrangement comme sur celle du piano roll :
+> clic droit ouvre « Poser un repère ici… / Renommer ce repère… / Retirer ce
+> repère », les deux derniers grisés hors d'un repère ; double-clic sur un
+> repère le renomme, double-clic sur le vide en pose un ; le repère visé est
+> le plus proche à dix pixels près, jamais un tick exact qu'on ne saurait
+> viser à la souris. Le RENOMMAGE n'existait nulle part avant : on ne
+> pouvait que retirer et reposer, en perdant sa place. Les trois gestes sont
+> désormais trois fonctions de `MainComponent` (`requestMarker`,
+> `renameMarker`, `removeMarker`) que les deux règles appellent, et qui
+> rafraîchissent les deux vues ensemble -- l'ancienne version ne repeignait
+> que le piano roll, si bien qu'un repère posé n'apparaissait dans
+> l'arrangement qu'au prochain redessin. Annulable, chaque geste sous son
+> nom. Dans l'arrangement, le repère est un fanion et son nom dans la règle
+> plus un trait sur toute la hauteur des pistes (on voit où tombe le refrain
+> par rapport aux clips, ce qui est la raison d'être de la chose) ; le nom
+> n'a que la place jusqu'au repère suivant, et sous vingt-six pixels on
+> n'écrit pas -- le fanion suffit. Au passage, les libellés accentués : la
+> règle du piano roll affichait « Poser un repere ici... » depuis D10, faute
+> d'échappement UTF-8 dans la source. Vu à l'écran (`VSM_VUE=arrangement,
+> sans-rack,sans-mixer` sur un projet à trois repères) : Intro en 1,
+> Refrain en 3, Pont en 5, les trois traits traversant les deux pistes.
+
+**Ce que l'audit a écarté, et pourquoi.** Le solo safe (les retours restent
+audibles en solo, `ProcessGraph.cpp:1149`, le besoin est faible) ; le
+panic MIDI (à revoir avec un clavier externe branché) ; le repliement d'un
+groupe qui cacherait ses membres (le groupe est un bus, pas un dossier :
+§ 4) ; la règle en secondes (le transport affiche déjà les deux) ; la
+transposition d'un clip entier depuis l'arrangement (Cubase seul, le piano
+roll transpose à la flèche) ; le note repeat (l'arpégiateur temps réel est
+écarté depuis D11).
+
 ## 4. Les choix tranchés ici, et pourquoi
 
 Conformément à l'usage de ce dépôt, les questions ouvertes se referment en
