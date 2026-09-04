@@ -3992,6 +3992,67 @@ MachinePanel makeKalimba() {
     return panel;
 }
 
+/// `vsm.wavesequence` -- le timbre est une séquence. SEQUENCE : les huit pas
+/// en ligne, comme sur l'afficheur d'un Wavestation, le pas, le fondu, la
+/// boucle et la remise ; FILTER et ENVELOPE ensuite. Gris anthracite et
+/// bleu d'écran, l'esprit d'une station de travail des années 1990.
+MachinePanel makeWaveSequence() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.wavesequence";
+    panel.displayName = "Wave Sequence (le timbre est une séquence)";
+    panel.chassis = Chassis::Metal;
+    panel.panelColour = "#2E3238";
+    panel.sectionColour = "#1F2226";
+    panel.textColour = "#E8ECF0";
+    panel.knobColour = "#5FA8D3";
+    panel.gridColumns = 12;
+    panel.gridRows = 4;
+
+    PanelSection sequence;
+    sequence.title = "SEQUENCE";
+    sequence.accentColour = "#5FA8D3";
+    sequence.column = 0; sequence.row = 0; sequence.columnSpan = 8; sequence.rowSpan = 4;
+    sequence.controls = {
+        control("Step 1 Wave", "1", S::Knob, 0, 0),
+        control("Step 2 Wave", "2", S::Knob, 1, 0),
+        control("Step 3 Wave", "3", S::Knob, 2, 0),
+        control("Step 4 Wave", "4", S::Knob, 3, 0),
+        control("Step 5 Wave", "5", S::Knob, 4, 0),
+        control("Step 6 Wave", "6", S::Knob, 5, 0),
+        control("Step 7 Wave", "7", S::Knob, 6, 0),
+        control("Step 8 Wave", "8", S::Knob, 7, 0),
+        control("Step Time", "STEP", S::LargeKnob, 0, 1),
+        control("Crossfade", "XFADE", S::Knob, 2, 1),
+        control("Loop Start", "LOOP", S::Knob, 3, 1),
+        control("Key Restart", "RESTART", S::Knob, 4, 1),
+    };
+
+    PanelSection filtre;
+    filtre.title = "FILTER";
+    filtre.accentColour = "#E0A050";
+    filtre.column = 8; filtre.row = 0; filtre.columnSpan = 2; filtre.rowSpan = 4;
+    filtre.controls = {
+        control("Filter Cutoff", "CUTOFF", S::Knob, 0, 0),
+        control("Filter Resonance", "RES", S::Knob, 0, 1),
+    };
+
+    PanelSection env;
+    env.title = "ENVELOPE";
+    env.accentColour = "#B9C98A";
+    env.column = 10; env.row = 0; env.columnSpan = 2; env.rowSpan = 4;
+    env.controls = {
+        control("Attack", "A", S::Knob, 0, 0),
+        control("Decay", "D", S::Knob, 1, 0),
+        control("Sustain", "S", S::Knob, 0, 1),
+        control("Release", "R", S::Knob, 1, 1),
+        control("Velocity Sensitivity", "VEL", S::Knob, 0, 2),
+        control("Output Level", "VOLUME", S::Knob, 1, 2),
+    };
+
+    panel.sections = {sequence, filtre, env};
+    return panel;
+}
+
 /// `vsm.vibraphone` -- la barre, le tube et le moteur. Trois sections dans
 /// l'ordre où l'instrument se lit : BARS (creusement, temps, maillet),
 /// RESONATORS (la part du tube, et le MOTEUR en grand : c'est le réglage
@@ -4526,7 +4587,7 @@ const std::vector<MachinePanel>& panels() {
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
         makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev(),
         makeScanned(), makeMellotron(), makeSitar(), makeMembrane(), makeReed(),
-        makePlate(), makeClavichord(), makeHarpsichord(), makeHurdyGurdy(), makeBanjo(), makeMandolin(), makeKalimba(), makeVibraphone(), makeBagpipe(), makeCarillon(), makeClavinet(), makeGlass(), makeJewsHarp(),
+        makePlate(), makeClavichord(), makeHarpsichord(), makeHurdyGurdy(), makeBanjo(), makeMandolin(), makeKalimba(), makeWaveSequence(), makeVibraphone(), makeBagpipe(), makeCarillon(), makeClavinet(), makeGlass(), makeJewsHarp(),
         makeTheremin(), makeMusicBox(), makeTerrain(), makeSpectral()
     };
     return all;

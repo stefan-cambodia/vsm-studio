@@ -4102,6 +4102,20 @@ façade ; CDC machines-manquantes § 30.
 
 Le parc passe à **62 machines**.
 
+**ET UNE VINGT-DEUXIÈME : `vsm.wavesequence`, le seul synthé où le timbre
+est une SÉQUENCE.** Huit pas de forme d'onde lus dans la banque de
+`vsm.wavetable`, un pas de 10 ms à 2 s, un fondu, un point de retour, la
+remise à la note ou la course libre sur une horloge commune. Mesuré sur
+la2 : les centroïdes alternent 1,30 (pas impairs) et 20,43 (pas pairs),
+identiques d'un cycle à l'autre ; le fondu ramène le plus grand saut au
+franchissement d'un pas de 0,076 à 0,017 ; la boucle depuis le pas 5 ne
+rejoue que 5 à 8 (fenêtres 9–12 à 20,43) ; une note trois pas après le
+départ commence au pas 1 avec la remise (1,30) et au pas courant en course
+libre (20,43). Onze tests, empreinte, façade ; CDC machines-manquantes
+§ 31.
+
+Le parc passe à **63 machines**.
+
 ---
 
 ## 47. Ouvrir un projet fait ailleurs : `Inflate`, `Xml`, `DawImport`
