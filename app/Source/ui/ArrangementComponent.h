@@ -164,6 +164,11 @@ public:
     /// fenêtre est une affaire d'application, pas de vue.
     std::function<void(size_t, uint64_t)> onClipBarsRequested;
 
+    /// D17.6 : ROGNER LE CLIP À CE QUI SONNE. La vue demande ; la mesure a
+    /// besoin des ÉCHANTILLONS du fichier, que l'application seule sait
+    /// retrouver — un composant de dessin n'ouvre pas de fichier.
+    std::function<void(size_t, uint64_t)> onClipTrimToSoundRequested;
+
     /// D17.2 : « L'AUTOMATION SUIT LES ÉVÉNEMENTS », la préférence de Cubase,
     /// active par défaut. Réglée par l'application, qui la retient ; la vue ne
     /// fait que la transmettre à `ClipEdit`, qui décide.

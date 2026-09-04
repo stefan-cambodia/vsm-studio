@@ -5,6 +5,7 @@ add_library(vsm_audio STATIC
     src/io/WavStreamReader.cpp
     src/io/AudioTrackLoader.cpp
     src/io/WaveformPeaks.cpp
+    src/io/SilenceDetection.cpp
     src/engine/AudioTrackSource.cpp
     src/engine/SampleStore.cpp
     src/engine/ProcessGraph.cpp
@@ -140,6 +141,7 @@ if (VSM_BUILD_TESTS)
         tests/test_sinc_resampler.cpp
         tests/test_phase_vocoder.cpp
         tests/test_audio_track.cpp
+        tests/test_silence_detection.cpp
         tests/test_metronome.cpp
         tests/test_count_in.cpp
         tests/test_latency_probe.cpp

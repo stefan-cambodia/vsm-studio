@@ -3945,6 +3945,42 @@ les jours ensuite, le modèle en dernier.
 > inchangé à zéro. Vu à l'écran : « -7 dt » sous le décalage dans la tranche
 > d'Acid Bass.
 
+> **D17.6 EST FAITE (05/09/2026), et elle ne relit pas le cache d'aperçu.**
+> `io::detectSound` cherche les bornes de ce qui dépasse un seuil de crête,
+> avec une marge avant l'attaque et un silence minimal en deçà duquel on ne
+> touche à rien.
+>
+> LE CACHE D'APERÇU A ÉTÉ ENVISAGÉ ET ÉCARTÉ, alors qu'il est déjà là et que
+> « Normaliser » (D13.6) s'en sert justement pour ne pas relire le fichier :
+> ses tranches font 256 échantillons, soit 5,3 ms à 48 kHz, et cette étape
+> promet la milliseconde. Une attaque coupée cinq millisecondes trop tôt est
+> un clic ; coupée cinq millisecondes trop tard, c'est le transitoire qu'on
+> mange. On lit donc les échantillons, ce qu'une commande déclenchée à la
+> main peut se permettre.
+>
+> LA MARGE AVANT L'ATTAQUE (5 ms par défaut) n'est pas de la prudence
+> décorative : une attaque n'est jamais un mur, et couper à l'échantillon
+> exact où le seuil est franchi rabote le début du transitoire. LE SILENCE
+> MINIMAL (20 ms) est le garde-fou inverse : sans lui, la commande
+> grignoterait trois millisecondes à chaque clip qu'on lui donne, et l'on ne
+> saurait jamais si elle a fait quelque chose. Tout sous le seuil : on ne
+> rogne RIEN — un clip entièrement silencieux réduit à zéro tick disparaîtrait,
+> et personne n'a demandé de le supprimer.
+>
+> LE ROGNAGE PASSE PAR `resizeClipsStart` ET `resizeClipsEnd`, c'est-à-dire
+> par les deux mêmes gestes qu'à la main, mesurés au lieu d'être visés. Écrire
+> les champs du clip directement aurait été plus court et aurait perdu toutes
+> leurs règles : le verrou de la piste, la longueur minimale d'un tick, la
+> fenêtre en SECONDES d'un clip audio. Le fichier n'est pas touché — c'est la
+> fenêtre qui bouge —, et l'application dit combien de millisecondes sont
+> parties de chaque côté.
+>
+> Quatre tests `audio/` : 500 ms de plancher à −80 dB trouvées à la
+> milliseconde près (48 échantillons) ; la marge coupe AVANT l'attaque et
+> jamais dedans ; un fichier qui commence sur le son n'est pas touché ; les
+> deux bouts sont rognés, et un fichier entièrement silencieux est laissé tel
+> quel.
+
 > **D17.1 EST FAITE (05/09/2026), et le chiffre est celui du manuel.**
 > `FadeShape` (`Linear`, `EqualPower`, `Slow`, `Fast`), absente du fichier
 > quand c'est la droite — un projet d'avant D17.1 se réécrit octet pour

@@ -1,5 +1,6 @@
 #include "MainComponent.h"
 #include "vsm/sequencer/ClipEdit.h"
+#include "vsm/audio/io/SilenceDetection.h"
 #include "vsm/sequencer/TimeEdit.h"
 #include "vsm/sequencer/ProjectImport.h"
 #include "vsm/interchange/DawImport.h"
@@ -297,6 +298,9 @@ MainComponent::MainComponent()
     };
     arrangement_.onClipCreationRequested = [this](size_t piste, vsm::midi::Tick tick) {
         createClipOnTrack(piste, tick);
+    };
+    arrangement_.onClipTrimToSoundRequested = [this](size_t piste, uint64_t clipId) {
+        trimClipToSound(piste, clipId);
     };
     // D16.3 : ce qui n'a pas pu être joint est DIT, avec la raison. Un
     // Ctrl+J qui ne fait rien et se tait laisse chercher pourquoi.
@@ -5894,6 +5898,95 @@ void MainComponent::refreshTrackViews() {
     trackList_.repaint();
     mixer_.resized();
     mixer_.repaint();
+}
+
+void MainComponent::trimClipToSound(size_t trackIndex, uint64_t clipId) {
+    if (trackIndex >= project_.tracks.size()) return;
+    auto& piste = project_.tracks[trackIndex];
+    if (piste.kind != vsm::sequencer::Track::Kind::Audio || piste.audio.empty()) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Rogner au son",
+            u8"Cette commande cherche le silence dans un FICHIER : elle ne s'applique qu'à un "
+            u8"clip de piste audio. Sur une piste MIDI, une note qui ne sonne pas n'existe pas.");
+        return;
+    }
+    auto it = std::find_if(piste.clips.begin(), piste.clips.end(),
+                            [clipId](const vsm::sequencer::Clip& c) { return c.id == clipId; });
+    if (it == piste.clips.end()) return;
+
+    const juce::File fichier = currentProjectFolder_.getChildFile(juce::String(piste.audio.path));
+    const double sr = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate() : 48000.0;
+    auto charge = vsm::audio::io::loadAudioTrack(fichier.getFullPathName().toStdString(), sr);
+    if (!charge.source) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Rogner au son",
+            juce::String(u8"Le fichier de la piste n'a pas pu être relu : ")
+                + fichier.getFullPathName());
+        return;
+    }
+
+    // LA FENÊTRE DU CLIP DANS LE FICHIER, en trames.
+    vsm::midi::Tick finMateriau = 0;
+    if (piste.audio.sampleRate > 0.0)
+        finMateriau = project_.secondsToTicks(piste.audio.durationSeconds());
+    const auto jouee = vsm::sequencer::clipPlayedLength(*it, finMateriau);
+    const double duree = project_.ticksToSeconds(it->startTick + jouee)
+                         - project_.ticksToSeconds(it->startTick);
+    const auto depart = static_cast<int64_t>(std::llround(it->sourceStartSeconds * sr));
+    const auto compte = static_cast<int64_t>(std::llround(duree * sr));
+
+    const auto magasin = charge.source->samples;
+    if (!magasin || compte <= 0) return;
+    const auto bornes = vsm::audio::io::detectSound(
+        [&magasin, depart](int64_t i, float& g, float& d) {
+            return magasin->frameAt(depart + i, g, d);
+        },
+        compte, sr);
+    if (!bornes.found) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Rogner au son",
+            u8"Tout ce que ce clip joue est sous le seuil de silence : rien n'a été rogné. "
+            u8"Un clip entièrement silencieux réduit à rien disparaîtrait, et ce n'est pas "
+            u8"ce que vous avez demandé.");
+        return;
+    }
+    if (bornes.firstFrame == 0 && bornes.lastFrame == compte) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Rogner au son",
+            u8"Ce clip commence et finit déjà sur le son : rien à rogner.");
+        return;
+    }
+
+    // LES DEUX MÊMES GESTES QU'À LA MAIN, mesurés au lieu d'être visés :
+    // tirer le bord gauche masque du matériau par la tête en laissant ce qui
+    // reste exactement où il était, tirer le bord droit raccourcit la durée
+    // jouée. Passer par `ClipEdit` plutôt que d'écrire les champs à la main,
+    // c'est hériter de toutes leurs règles -- le verrou, la longueur minimale,
+    // la fenêtre en secondes d'un clip audio.
+    beginProjectEdit(u8"Rogner au son");
+    const auto enTicks = [this](double secondes) {
+        return project_.secondsToTicks(secondes);
+    };
+    const auto versSecondes = [this](vsm::midi::Tick t) { return project_.ticksToSeconds(t); };
+    const vsm::sequencer::ClipSelection cible{clipId};
+    if (bornes.lastFrame < compte)
+        vsm::sequencer::resizeClipsEnd(piste, cible,
+                                        -enTicks(static_cast<double>(compte - bornes.lastFrame) / sr),
+                                        finMateriau);
+    if (bornes.firstFrame > 0)
+        vsm::sequencer::resizeClipsStart(piste, cible,
+                                          enTicks(static_cast<double>(bornes.firstFrame) / sr),
+                                          finMateriau, versSecondes);
+    refreshTransportSchedule();
+    loadAudioTracks();
+    arrangement_.repaint();
+    juce::AlertWindow::showMessageBoxAsync(
+        juce::AlertWindow::InfoIcon, u8"Rogner au son",
+        juce::String(static_cast<double>(bornes.firstFrame) / sr * 1000.0, 0)
+            + juce::String(u8" ms retirées au début, ")
+            + juce::String(static_cast<double>(compte - bornes.lastFrame) / sr * 1000.0, 0)
+            + juce::String(u8" ms à la fin. Le fichier n'a pas été touché : c'est la fenêtre du "
+                           u8"clip qui a bougé."));
 }
 
 void MainComponent::toggleLockSelectedTrack() {

@@ -643,6 +643,9 @@ private:
     /// et réafficher toutes les pistes. Annulables.
     void hideSelectedTrack();
     void showAllTracks();
+    /// D17.6 : rogne le clip à ce qui sonne, en relisant les échantillons du
+    /// fichier. Annulable.
+    void trimClipToSound(size_t trackIndex, uint64_t clipId);
     /// Les trois vues qui dessinent des pistes, rafraîchies ensemble (D17.4).
     void refreshTrackViews();
     /// LA FENÊTRE IMPLICITE SE MATÉRIALISE (D16.1) : toute piste qui porte du

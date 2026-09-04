@@ -513,6 +513,7 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
                 menu.addSubMenu(u8"Forme des fondus", formes);
             }
             menu.addItem(18, u8"Normaliser (gain = 1 / cr\u00eate)", waveformProvider != nullptr);
+            menu.addItem(19, u8"Rogner au son (d\u00e9tecter le silence)");
             marqueurGeste_ = surMarqueur;
         }
         // LE ZOOM (D14.2), pour tout clip : tout voir, ou la sélection.
@@ -928,6 +929,9 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
                     if (selection_.count(c.id) > 0 || c.id == clipId) c.fadeShape = forme;
             break;
         }
+        case 19:
+            if (onClipTrimToSoundRequested) onClipTrimToSoundRequested(piste, clipId);
+            return;
         case 5: splitSelectionAtPlayhead(); return;
         case 6: joinSelection(); return;
         case 10: case 11: case 12: case 16: {
