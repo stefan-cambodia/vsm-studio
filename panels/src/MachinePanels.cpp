@@ -3885,6 +3885,113 @@ MachinePanel makeBanjo() {
     return panel;
 }
 
+/// `vsm.mandolin` -- les cordes par deux. COURSE en premier : l'écart des
+/// deux cordes et l'octave, en grand, le retard du plectre ; TREMOLO à part,
+/// c'est la main droite ; PICK et STRING parlent comme sur le banjo. Bois
+/// clair d'épicéa, filets sombres.
+MachinePanel makeMandolin() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.mandolin";
+    panel.displayName = "Mandolin (les cordes par deux)";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#C9A36B";
+    panel.sectionColour = "#3B2A1A";
+    panel.textColour = "#F7EEDC";
+    panel.knobColour = "#F1E4C8";
+    panel.gridColumns = 12;
+    panel.gridRows = 4;
+
+    PanelSection choeur;
+    choeur.title = "COURSE";
+    choeur.accentColour = "#F1E4C8";
+    choeur.column = 0; choeur.row = 0; choeur.columnSpan = 5; choeur.rowSpan = 4;
+    choeur.controls = {
+        control("Course Detune", "DETUNE", S::LargeKnob, 0, 0),
+        control("Octave Pair", "OCTAVE", S::LargeKnob, 1, 0),
+        control("Strum Spread", "SPREAD", S::Knob, 0, 1),
+    };
+
+    PanelSection tremolo;
+    tremolo.title = "TREMOLO";
+    tremolo.accentColour = "#D98C4A";
+    tremolo.column = 5; tremolo.row = 0; tremolo.columnSpan = 2; tremolo.rowSpan = 4;
+    tremolo.controls = {
+        control("Tremolo Rate", "RATE", S::LargeKnob, 0, 0),
+    };
+
+    PanelSection plectre;
+    plectre.title = "PICK";
+    plectre.accentColour = "#C9A96E";
+    plectre.column = 7; plectre.row = 0; plectre.columnSpan = 2; plectre.rowSpan = 4;
+    plectre.controls = {
+        control("Pick Position", "POSITION", S::Knob, 0, 0),
+        control("Pick Hardness", "HARDNESS", S::Knob, 0, 1),
+    };
+
+    PanelSection corde;
+    corde.title = "STRING";
+    corde.accentColour = "#B9C98A";
+    corde.column = 9; corde.row = 0; corde.columnSpan = 3; corde.rowSpan = 4;
+    corde.controls = {
+        control("String Decay", "DECAY", S::Knob, 0, 0),
+        control("String Damping", "DAMPING", S::Knob, 1, 0),
+        control("Velocity Sensitivity", "VEL", S::Knob, 0, 1),
+        control("Output Level", "VOLUME", S::Knob, 1, 1),
+    };
+
+    panel.sections = {choeur, tremolo, plectre, corde};
+    return panel;
+}
+
+/// `vsm.kalimba` -- la lame et la caisse. TINES en premier : le temps, la
+/// pente, le pouce ; CONTACT pour le buzz, seul et en grand ; BODY pour la
+/// caisse et ses trous. Bois de caisse rougeâtre, lames claires.
+MachinePanel makeKalimba() {
+    MachinePanel panel;
+    panel.pluginId = "vsm.kalimba";
+    panel.displayName = "Kalimba (la lame encastrée et la caisse qu’on bouche)";
+    panel.chassis = Chassis::Wood;
+    panel.panelColour = "#6B3A22";
+    panel.sectionColour = "#3E2114";
+    panel.textColour = "#F6EAD8";
+    panel.knobColour = "#D9D3C4";
+    panel.gridColumns = 12;
+    panel.gridRows = 4;
+
+    PanelSection lames;
+    lames.title = "TINES";
+    lames.accentColour = "#D9D3C4";
+    lames.column = 0; lames.row = 0; lames.columnSpan = 4; lames.rowSpan = 4;
+    lames.controls = {
+        control("Tine Decay", "DECAY", S::LargeKnob, 0, 0),
+        control("Decay Tilt", "TILT", S::Knob, 1, 0),
+        control("Thumb Hardness", "THUMB", S::Knob, 0, 1),
+        control("Velocity Sensitivity", "VEL", S::Knob, 1, 1),
+    };
+
+    PanelSection contact;
+    contact.title = "CONTACT";
+    contact.accentColour = "#E0A050";
+    contact.column = 4; contact.row = 0; contact.columnSpan = 3; contact.rowSpan = 4;
+    contact.controls = {
+        control("Buzz", "BUZZ", S::LargeKnob, 0, 0),
+    };
+
+    PanelSection caisse;
+    caisse.title = "BODY";
+    caisse.accentColour = "#B9C98A";
+    caisse.column = 7; caisse.row = 0; caisse.columnSpan = 5; caisse.rowSpan = 4;
+    caisse.controls = {
+        control("Body Resonance", "RESONANCE", S::LargeKnob, 0, 0),
+        control("Hole Cover", "HOLES", S::LargeKnob, 1, 0),
+        control("Body Level", "LEVEL", S::Knob, 0, 1),
+        control("Output Level", "VOLUME", S::Knob, 1, 1),
+    };
+
+    panel.sections = {lames, contact, caisse};
+    return panel;
+}
+
 /// `vsm.vibraphone` -- la barre, le tube et le moteur. Trois sections dans
 /// l'ordre où l'instrument se lit : BARS (creusement, temps, maillet),
 /// RESONATORS (la part du tube, et le MOTEUR en grand : c'est le réglage
@@ -4419,7 +4526,7 @@ const std::vector<MachinePanel>& panels() {
         makePerc(), makeAdditive(), makeWestCoast(), makeFmDrums(), makeVocal(), makePhaseDist(), makeDivider(), makePsg(), makeStochastic(),
         makeCone(), makeVector(), makeGranular(), makeCs80(), makeModal(), makeChebyshev(),
         makeScanned(), makeMellotron(), makeSitar(), makeMembrane(), makeReed(),
-        makePlate(), makeClavichord(), makeHarpsichord(), makeHurdyGurdy(), makeBanjo(), makeVibraphone(), makeBagpipe(), makeCarillon(), makeClavinet(), makeGlass(), makeJewsHarp(),
+        makePlate(), makeClavichord(), makeHarpsichord(), makeHurdyGurdy(), makeBanjo(), makeMandolin(), makeKalimba(), makeVibraphone(), makeBagpipe(), makeCarillon(), makeClavinet(), makeGlass(), makeJewsHarp(),
         makeTheremin(), makeMusicBox(), makeTerrain(), makeSpectral()
     };
     return all;

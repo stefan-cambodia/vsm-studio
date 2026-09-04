@@ -141,6 +141,12 @@ public:
     std::function<void(size_t, uint64_t)> onClipRenameRequested;
     std::function<void(size_t, uint64_t)> onClipColourRequested;
 
+    /// « LE CLIP FAIT N MESURES » (D12.6, § 6 du CDC d'étirement) : la vue
+    /// demande le nombre, l'application le saisit et dit le tempo déduit.
+    /// C'est la même division du travail que pour renommer et colorer -- une
+    /// fenêtre est une affaire d'application, pas de vue.
+    std::function<void(size_t, uint64_t)> onClipBarsRequested;
+
     static constexpr int kHeaderWidth = 150;
     static constexpr int kRulerHeight = 22;
     /// Hauteur d'une piste PLIÉE. Assez pour son nom et rien d'autre : c'est
@@ -155,7 +161,18 @@ private:
     /// trois booléens : « je déplace ET je redimensionne » n'existe pas, et
     /// l'écrire ainsi le rend impossible.
     enum class Geste { Aucun, Deplacer, BordGauche, BordDroit, Hauteur, Reordonner, Point,
-                        FonduEntree, FonduSortie, Lasso };
+                        FonduEntree, FonduSortie, Lasso, MarqueurWarp };
+
+    /// LE MARQUEUR DE WARP SOUS LE POINTEUR (D12.6), s'il y en a un. Rend
+    /// l'indice dans `clip.warpMarkers`, ou -1. Les marqueurs ne sont
+    /// saisissables que sur un clip qui suit le tempo : sur les autres il n'y
+    /// en a pas à voir, et huit pixels de la largeur d'un clip ne doivent pas
+    /// se comporter autrement sans raison visible.
+    int marqueurAt(const vsm::sequencer::Clip& clip, float x) const;
+    /// L'indice du marqueur qu'on déplace, et le tick du dernier clic droit --
+    /// le menu en a besoin pour savoir OÙ ajouter un marqueur.
+    int marqueurGeste_ = -1;
+    vsm::midi::Tick clicTick_ = 0;
 
     float tickToX(vsm::midi::Tick tick) const;
     vsm::midi::Tick xToTick(float x) const;

@@ -183,9 +183,9 @@ VSM_TEST(the_loader_streams_what_is_long_and_keeps_what_is_short) {
 
 VSM_TEST(streamed_store_resamples_like_the_resident_path) {
     // Un fichier à 44,1 kHz dans une session à 48 kHz : le cas le plus courant
-    // qui soit. Les deux chemins interpolent linéairement, et doivent donc
-    // tomber sur les mêmes valeurs -- sinon la même prise sonnerait autrement
-    // selon sa durée, ce qui serait absurde.
+    // qui soit. Les deux chemins passent par le MÊME noyau fenêtré (D12.1),
+    // et doivent donc tomber sur les mêmes valeurs -- sinon la même prise
+    // sonnerait autrement selon sa durée, ce qui serait absurde.
     const std::string chemin = ecrireFichierReperable("vsm-d82-4410.wav", 120000, 44100.0);
 
     auto resident = loadAudioTrack(chemin, 48000.0, AudioLoadPolicy::ForceResident);

@@ -35,9 +35,12 @@ std::shared_ptr<StreamedSampleStore> StreamedSampleStore::open(const std::string
     for (auto& demande : store->requested_) demande.store(-1, std::memory_order_relaxed);
 
     // LE TAMPON DE DÉCODAGE : une fenêtre de session vaut `ratio` trames de
-    // fichier, plus une pour l'interpolation qui regarde l'échantillon suivant.
+    // fichier, plus le noyau de part et d'autre (D12.1 : un sinc fenêtré
+    // regarde `taps/2` échantillons avant et après chaque position).
+    if (store->ratio_ != 1.0) store->noyau_.prepare(store->ratio_);
     const int64_t sourceFrames =
-        static_cast<int64_t>(std::ceil(static_cast<double>(kWindowFrames) * store->ratio_)) + 2;
+        static_cast<int64_t>(std::ceil(static_cast<double>(kWindowFrames) * store->ratio_))
+        + store->noyau_.taps() + 2;
     store->sourceL_.assign(static_cast<size_t>(sourceFrames), 0.0f);
     store->sourceR_.assign(static_cast<size_t>(sourceFrames), 0.0f);
 
@@ -133,25 +136,23 @@ void StreamedSampleStore::loadWindow(size_t windowIndex, int64_t chunk) {
         // le fichier se déduit de la position de session, pas d'un compteur
         // qu'on ferait avancer. C'est ce qui rend une fenêtre lisible sans
         // avoir lu les précédentes -- donc un saut de tête de lecture exact.
+        // Le tampon commence un demi-noyau AVANT la première position, pour
+        // que le noyau ait ses échantillons des deux côtés ; avant le
+        // fichier, `readFrames` livre du silence, comme le chargeur résident
+        // voit du silence hors de son vecteur : mêmes valeurs des deux côtés.
         const double debutSource = static_cast<double>(premiereTrame) * ratio_;
-        const int64_t sourceDebut = static_cast<int64_t>(std::floor(debutSource));
+        const int64_t marge = noyau_.taps() / 2;
+        const int64_t sourceDebut = static_cast<int64_t>(std::floor(debutSource)) - marge;
         const int64_t sourceCount = static_cast<int64_t>(sourceL_.size());
         reader_->readFrames(sourceDebut, sourceCount, sourceL_.data(), sourceR_.data());
+        // Au-delà de la fin du fichier, le noyau doit voir du silence, pas les
+        // zéros du tampon confondus avec du signal : `at` s'arrête à `count`.
+        const int64_t utiles = std::min(sourceCount, reader_->frames() - sourceDebut);
         for (int64_t i = 0; i < kWindowFrames; ++i) {
             const double position = debutSource + static_cast<double>(i) * ratio_
                                     - static_cast<double>(sourceDebut);
-            const int64_t bas = static_cast<int64_t>(std::floor(position));
-            if (bas < 0 || bas + 1 >= sourceCount) {
-                fenetre.left[static_cast<size_t>(i)] = 0.0f;
-                fenetre.right[static_cast<size_t>(i)] = 0.0f;
-                continue;
-            }
-            const float fraction = static_cast<float>(position - static_cast<double>(bas));
-            const auto b = static_cast<size_t>(bas);
-            fenetre.left[static_cast<size_t>(i)] =
-                sourceL_[b] * (1.0f - fraction) + sourceL_[b + 1] * fraction;
-            fenetre.right[static_cast<size_t>(i)] =
-                sourceR_[b] * (1.0f - fraction) + sourceR_[b + 1] * fraction;
+            fenetre.left[static_cast<size_t>(i)] = noyau_.at(sourceL_.data(), utiles, position);
+            fenetre.right[static_cast<size_t>(i)] = noyau_.at(sourceR_.data(), utiles, position);
         }
     }
 

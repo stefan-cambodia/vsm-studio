@@ -33,6 +33,8 @@ Un échantillon glissé depuis le navigateur tombe sur la piste survolée, **à 
 
 **Déplacer, choisir, se repérer.** Un clip se glisse **d'une piste à une autre** : il emporte les notes que sa fenêtre couvre (un clip est une fenêtre sur le matériau de sa piste, pas un sac qu'on transporte). Un clip audio ne va que vers une piste audio qui porte le même fichier, ou aucune ; ce qui est refusé vous est dit. Un rectangle tiré sur le vide choisit les clips qu'il touche (**lasso**, Maj pour ajouter), Ctrl+A les prend tous. La barre de transport affiche la position en **mesure · temps** à côté du temps ; l'arrangement **suit la tête de lecture** par pages (`F` pour cesser, la règle dit « suit ») ; `Début` ramène au début, `Maj+N` et `Maj+B` sautent au marqueur suivant ou précédent. Un **double-clic** sur un clip le renomme ; le **clic droit** donne sa couleur (ou lui rend celle de la piste) et le rend muet — sur toute la sélection. Le menu Piste sait **dupliquer la piste sélectionnée** (instrument, réglages, notes, clips, effets, automation et routage compris, avec des identifiants neufs), et le canal MIDI d'une piste (« Ch 3 ») se change par double-clic dans la liste des pistes.
 
+**Suivre le tempo.** Un clip audio est du temps réel : changer le tempo du projet le déplace sans changer ce qu'il joue. Le **clic droit** sur un clip audio propose *Suivre le tempo* — **Non** (l'état d'origine), **Hauteur conservée** (la durée suit le tempo, la hauteur ne bouge pas : c'est ce qu'il faut pour caler une prise ou changer le tempo d'un morceau reconstruit), **Rééchantillonné** (la hauteur suit avec, comme un vinyle qu'on ralentit) ou **Hauteur conservée (WSOLA, témoin)** — le premier algorithme, gardé pour comparer et comme repli ; le défaut est un vocodeur de phase, mesuré plus précis d'un facteur trois sur une voix. L'allumer ne change rien au son tant que rien n'est calé. La commande **Le clip fait N mesures…** répartit la boucle sur ce nombre de mesures et vous dit le tempo d'origine qu'elle en déduit, pour que vous le vérifiiez. Les **marqueurs** (un trait ambre sur le clip) se tirent à la souris : vous déplacez le temps musical où tombe cet endroit du fichier, sans toucher au fichier ; *Ajouter un marqueur ici* en pose un là où vous avez cliqué, *Retirer ce marqueur* l'enlève. La forme d'onde d'un clip qui suit le tempo est dessinée dans le temps étiré : ce que vous voyez sous la grille est ce que vous entendrez sur la grille. Tout s'annule avec Ctrl+Z, et l'export hors ligne joue exactement ce que l'application joue.
+
 ![La vue d'arrangement : quatre pistes nommées, des clips, une automation dessinée, seize pistes visibles à l'écran.](images/manuel/arrangement.png)
 
 *La vue d'arrangement : quatre pistes nommées, des clips, une automation dessinée, seize pistes visibles à l'écran.*
@@ -372,6 +374,34 @@ en différence (*Phase* : la différence creuse le fondamental, le son
 « nasal » du D6) ; *Mute* est le curseur de sourdine. Pas de molette.
 
 ![Façade de Clavinet (la corde qui sonne entière au relâchement)](images/manuel/vsm.clavinet.png)
+
+**Mandolin (les cordes par deux)** — `vsm.mandolin`
+
+Deux cordes par note, comme sur une mandoline, une douze-cordes ou un
+bouzouki. *Detune* les écarte de quelques cents : elles **battent**, et
+c'est le chatoiement du chœur, pas un chorus. *Octave* met la seconde
+corde à l'octave aiguë — la douze-cordes. *Spread* est le retard du
+plectre entre les deux. *Rate* fait le **trémolo** : tant que la touche
+tient, le plectre refrappe (huit à quatorze fois par seconde sur une
+mandoline), chaque coup avec son bruit ; à zéro, la note est simplement
+tenue. Lâcher la touche étouffe les deux cordes. Pas de molette : deux
+cordes frettées ne se tirent pas ensemble.
+
+![Façade de Mandolin (les cordes par deux)](images/manuel/vsm.mandolin.png)
+
+**Kalimba (la lame encastrée et la caisse qu’on bouche)** — `vsm.kalimba`
+
+Dix-sept lames de métal tenues d'un seul côté, que le pouce déplace puis
+lâche : un son presque pur, avec une pointe très haute (les partiels d'une
+lame encastrée, à 6,27 fois la note, pas à l'octave). *Thumb* est la
+pulpe ou l'ongle. *Buzz* rapproche la barre : un pouce ferme fait
+**crépiter** la note, un pouce doux non, et le crépitement s'éteint de
+lui-même. *Resonance* est la caisse, *Holes* les doigts qui bouchent ses
+trous au dos — le « wah » du kalimba, que la **molette de modulation** et
+l'aftertouch font aussi. Pas d'étouffoir : lâcher la touche ne change
+rien. Pas de molette de hauteur.
+
+![Façade de Kalimba (la lame encastrée et la caisse qu’on bouche)](images/manuel/vsm.kalimba.png)
 
 **Music Box (la lame qui doit revenir)** — `vsm.musicbox`
 

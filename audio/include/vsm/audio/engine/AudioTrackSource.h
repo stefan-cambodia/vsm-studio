@@ -1,4 +1,7 @@
 #pragma once
+#include "vsm/audio/dsp/PhaseVocoder.h"
+#include "vsm/audio/dsp/SincResampler.h"
+#include "vsm/audio/dsp/TimeStretch.h"
 #include "vsm/audio/engine/SampleStore.h"
 #include "vsm/sequencer/Track.h"
 #include <cstdint>
@@ -15,6 +18,49 @@ namespace vsm::audio::engine {
 /// doit connaître que des indices d'échantillons. La conversion se fait UNE
 /// FOIS, sur le thread de l'interface, au moment où la piste est publiée --
 /// jamais dans `process()`, qui n'a pas à connaître la carte de tempo.
+/// LE SUIVI DE TEMPO D'UNE PORTÉE (D12.5, `docs/CDC-etirement-temporel.md`).
+///
+/// Ce que le modèle exprime en ticks et en secondes est traduit ICI, une fois,
+/// en trames -- comme le reste de `AudioClipSpan`, et pour la même raison : le
+/// chemin temps réel ne doit connaître que des indices d'échantillons.
+///
+/// L'ÉTAT DE RENDU EST DANS LA PORTÉE, et il est `mutable` : `mixInto()` est
+/// const parce qu'elle ne change pas ce que la piste JOUE, mais un étireur a
+/// une mémoire (le grain précédent, le tampon de recouvrement) et il faut bien
+/// qu'elle vive quelque part. Elle est allouée à la publication, jamais dans
+/// `process()`.
+struct ClipWarp {
+    /// Un bloc plus long que celui-ci est rendu en plusieurs passes. L'étireur
+    /// est indépendant de la taille des blocs (testé au bit près), donc
+    /// découper ne change pas une valeur -- ce qui évite de faire descendre la
+    /// taille maximale de bloc jusqu'ici.
+    static constexpr int kMaxBlock = 8192;
+
+    /// `false` : hauteur conservée. `true` : rééchantillonné, la hauteur
+    /// suit la durée comme un vinyle qu'on ralentit.
+    bool repitch = false;
+    /// Hauteur conservée PAR LE VOCODEUR DE PHASE (D12.8) -- le défaut de
+    /// `WarpMode::KeepPitch` depuis que le banc 8 l'a tranché -- ou par le
+    /// WSOLA (`WarpMode::KeepPitchWsola`, le témoin). Décidé par le clip, à la
+    /// publication, jamais dans `process()`.
+    bool vocoder = false;
+    /// La carte, sur la ligne de temps ABSOLUE (trames), vers le fichier.
+    std::vector<vsm::audio::dsp::TimeStretch<SampleStore>::MapPoint> map;
+    /// Les attaques du matériau, partagées par toutes les portées d'une piste :
+    /// elles sont une propriété du FICHIER, pas du clip.
+    std::shared_ptr<const std::vector<int64_t>> transients;
+
+    mutable vsm::audio::dsp::TimeStretch<SampleStore> stretch;
+    mutable vsm::audio::dsp::PhaseVocoder<SampleStore> phaseVocoder;
+    mutable std::vector<float> scratchL, scratchR;
+    vsm::audio::dsp::SincResampler kernel;
+
+    /// Arme l'étireur et les tampons. Hors thread audio (alloue).
+    void prepare();
+    /// La position dans le fichier pour une trame de la ligne de temps.
+    double sourceFor(int64_t timelineFrame) const;
+};
+
 struct AudioClipSpan {
     int64_t startFrame = 0;        ///< où le clip commence, sur la ligne de temps
     int64_t lengthFrames = 0;      ///< combien de temps il dure
@@ -23,6 +69,9 @@ struct AudioClipSpan {
     int64_t fadeOutFrames = 0;
     float gain = 1.0f;
     bool invertPhase = false;
+    /// Nul quand le clip ne suit pas le tempo -- c'est-à-dire presque toujours,
+    /// et le chemin de lecture est alors exactement celui d'avant D12.
+    std::shared_ptr<ClipWarp> warp;
 };
 
 /// LE MATÉRIAU AUDIO D'UNE PISTE, prêt à jouer.
@@ -75,5 +124,12 @@ struct AudioTrackSource {
 std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
                                            double sampleRate,
                                            const std::function<double(int64_t)>& ticksToSeconds);
+
+/// ARME LES PORTÉES ÉTIRÉES d'une piste, une fois que son matériau est là
+/// (D12.5) : détecte les attaques du fichier -- UNE fois, partagées par toutes
+/// les portées -- et prépare les étireurs. Sans matériau ou sans portée
+/// étirée, elle ne fait rien. Hors thread audio : elle lit tout le matériau et
+/// elle alloue.
+void prepareWarpedSpans(AudioTrackSource& source);
 
 } // namespace vsm::audio::engine

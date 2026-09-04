@@ -3021,6 +3021,33 @@ chantier lourd en dernier.
 > tempo, la voix à ≤ 10 ms sur huit mesures). Il s'écrit le jour où sa
 > condition se réalise : la campagne 5 fusionne les machines et clôt les
 > campagnes de la parité.
+>
+> **D12.1 À D12.7 SONT FAITES ET MESURÉES (04/09/2026), le jour même.** Le
+> noyau sinc de Kaiser (64 points, choisis au banc : 10⁻⁵ à 20 kHz là où
+> l'interpolation linéaire de D2.3 était à 10⁻¹ dès 10 kHz), le WSOLA à
+> verrouillage de transitoires (0,0 cent, 0,0 % de flottement, seize
+> attaques à 0,98 ms, blocs de 256 = blocs de 4 096 au bit près), le
+> détecteur d'attaques, le modèle (mode et marqueurs relatifs, couper et
+> rogner transportent la carte), le format (version 3 seulement si un clip
+> s'en sert), le moteur (`ProcessGraph` intact, rapport un au bit près,
+> ×2 à 220 Hz conservés, rééchantillonné à 110 Hz), l'interface (sous-menu
+> du clip, « N mesures », marqueurs saisissables, forme d'onde en temps
+> étiré, vu à l'écran) et le critère de phase sur la voix de *Sky and Sand*
+> à +10 % de tempo : **−8 ms sur huit mesures, sans dérive**, contre une
+> voix ailleurs (r = 0,33, 13,8 s de dérive) sans D12 ; 14 ms sur la pire
+> mesure prise seule, chiffre publié et légué à D12.8. Les chiffres, les
+> attendus réécrits et les deux pannes trouvées par la mesure (un ordre
+> d'évaluation en C++, un rendu hors ligne qui exportait un clip calé sans
+> son calage) sont dans `docs/CDC-etirement-temporel.md`.
+>
+> **D12.8 AUSSI, LE JOUR MÊME : le vocodeur de phase, et il est le défaut.**
+> Écrit sur le chiffre que D12.7 lui léguait (14 ms de flottement de grain
+> sur la pire mesure), avec verrouillage de pics et phases remises à zéro
+> aux transitoires ; même banc que le WSOLA, tenu (0,0 cent, seize attaques
+> à 0,98 ms, partiels à 0,0 %, blocs au bit près), et le critère de phase
+> refait par le même script : **−2 ms sur huit mesures, 4 ms sur la pire**,
+> contre −8 et 14 au WSOLA — qui reste dans le dépôt comme témoin, une
+> option de clip écrite dans le projet.
 
 Ce que l'audit a trouvé et qui n'entre PAS ici, avec la raison : la
 sélection de notes par vélocité (le filtre existe sous forme d'opérations

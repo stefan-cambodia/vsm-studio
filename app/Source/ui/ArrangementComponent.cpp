@@ -412,6 +412,27 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
         menu.addItem(2, u8"Couleur\u2026");
         menu.addItem(3, u8"Couleur de la piste");
         menu.addItem(4, clip->muted ? u8"R\u00e9activer" : u8"Rendre muet");
+        // LE SUIVI DE TEMPO (D12.6) N'EST PROPOSÉ QUE SUR UNE PISTE AUDIO :
+        // un clip MIDI suit déjà le tempo par nature, et lui offrir le choix
+        // laisserait croire qu'il pourrait ne pas le suivre.
+        clicTick_ = xToTick(point.x);
+        if (project_->tracks[piste].kind == Track::Kind::Audio) {
+            using vsm::sequencer::WarpMode;
+            menu.addSeparator();
+            juce::PopupMenu suivi;
+            suivi.addItem(10, u8"Non", true, clip->warpMode == WarpMode::Off);
+            suivi.addItem(11, u8"Hauteur conserv\u00e9e", true, clip->warpMode == WarpMode::KeepPitch);
+            suivi.addItem(12, u8"R\u00e9\u00e9chantillonn\u00e9", true, clip->warpMode == WarpMode::Repitch);
+            suivi.addItem(16, u8"Hauteur conserv\u00e9e (WSOLA, t\u00e9moin)", true,
+                          clip->warpMode == WarpMode::KeepPitchWsola);
+            menu.addSubMenu(u8"Suivre le tempo", suivi);
+            menu.addItem(13, u8"Le clip fait N mesures\u2026");
+            const int surMarqueur = marqueurAt(*clip, point.x);
+            menu.addItem(14, u8"Ajouter un marqueur ici", vsm::sequencer::clipIsWarped(*clip)
+                                                          && surMarqueur < 0);
+            menu.addItem(15, u8"Retirer ce marqueur", surMarqueur > 0);
+            marqueurGeste_ = surMarqueur;
+        }
         const uint64_t id = clip->id;
         const size_t p = piste;
         menu.showMenuAsync(juce::PopupMenu::Options().withTargetScreenArea(
@@ -435,6 +456,19 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
                                           [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); });
         project_->ensureClipIdAbove(compteur - 1);
         if (coupes > 0) notifyChanged();
+        repaint();
+        return;
+    }
+
+    // UN MARQUEUR DE TEMPO SE SAISIT AVANT LE RESTE (D12.6) : il est dans le
+    // corps du clip, là où un clic déplacerait, et c'est le geste le plus
+    // précis des deux -- quatre pixels contre toute la largeur.
+    if (const int marqueur = marqueurAt(*clip, point.x); marqueur > 0) {
+        geste_ = Geste::MarqueurWarp;
+        marqueurGeste_ = marqueur;
+        clipFondu_ = clip->id;
+        gesteOrigine_ = gesteDernier_ = xToTick(point.x);
+        if (onEditStarted) onEditStarted(u8"Caler un marqueur de tempo");
         repaint();
         return;
     }
@@ -526,6 +560,21 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
         }
     }
 
+    // LE MARQUEUR SE TIRE EN ABSOLU : la poignée suit le pointeur. Ce qui
+    // bouge est sa position MUSICALE ; sa position dans le fichier ne change
+    // pas -- c'est exactement le geste de calage (D12.6).
+    if (geste_ == Geste::MarqueurWarp && marqueurGeste_ > 0) {
+        const vsm::midi::Tick ou = snapTick(xToTick(event.position.x));
+        for (auto& track : project_->tracks)
+            for (const auto& c : track.clips)
+                if (c.id == clipFondu_)
+                    moveWarpMarker(track.clips, clipFondu_, static_cast<size_t>(marqueurGeste_),
+                                    ou - c.startTick);
+        notifyChanged();
+        repaint();
+        return;
+    }
+
     // LES FONDUS SE TIRENT EN ABSOLU, pas en relatif : le coin suit le
     // pointeur, comme on l'attend d'une poignée qu'on tient.
     if (geste_ == Geste::FonduEntree || geste_ == Geste::FonduSortie) {
@@ -567,6 +616,7 @@ void ArrangementComponent::mouseDrag(const juce::MouseEvent& event) {
             case Geste::FonduEntree:
             case Geste::FonduSortie:
             case Geste::Lasso:
+            case Geste::MarqueurWarp:
             case Geste::Aucun: break;
         }
     }
@@ -594,6 +644,17 @@ void ArrangementComponent::mouseDoubleClick(const juce::MouseEvent& event) {
         if (onClipRenameRequested) onClipRenameRequested(piste, clip->id);
 }
 
+int ArrangementComponent::marqueurAt(const Clip& clip, float x) const {
+    if (!vsm::sequencer::clipIsWarped(clip)) return -1;
+    // LE PREMIER MARQUEUR NE SE SAISIT PAS : il est le début du clip, et le
+    // déplacer voudrait dire rogner -- ce que le bord gauche fait déjà.
+    for (size_t i = 1; i < clip.warpMarkers.size(); ++i) {
+        const float mx = tickToX(clip.startTick + clip.warpMarkers[i].tick);
+        if (std::abs(mx - x) <= 4.0f) return static_cast<int>(i);
+    }
+    return -1;
+}
+
 void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int choix) {
     if (project_ == nullptr || choix == 0 || piste >= project_->tracks.size()) return;
     auto& track = project_->tracks[piste];
@@ -617,6 +678,32 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
                     if (selection_.count(c.id) > 0 || c.id == clipId) c.muted = muet;
             break;
         }
+        case 10: case 11: case 12: case 16: {
+            using vsm::sequencer::WarpMode;
+            const WarpMode mode = choix == 11 ? WarpMode::KeepPitch
+                                : choix == 12 ? WarpMode::Repitch
+                                : choix == 16 ? WarpMode::KeepPitchWsola : WarpMode::Off;
+            if (it->warpMode == mode) return;
+            if (onEditStarted) onEditStarted(u8"Suivre le tempo");
+            // ALLUMER EST NEUTRE : la paire de marqueurs posée vaut le rapport
+            // un, et le moteur court-circuite alors l'étireur -- le son ne
+            // change pas d'un bit tant qu'on n'a rien calé (§ 0 du CDC).
+            setClipWarpMode(track.clips, {clipId}, mode, materialEnd(track),
+                             [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); });
+            break;
+        }
+        case 13: if (onClipBarsRequested) onClipBarsRequested(piste, clipId); return;
+        case 14: {
+            if (onEditStarted) onEditStarted(u8"Ajouter un marqueur de tempo");
+            if (addWarpMarker(track.clips, clipId, clicTick_ - it->startTick) < 0) return;
+            break;
+        }
+        case 15: {
+            if (marqueurGeste_ <= 0) return;
+            if (onEditStarted) onEditStarted(u8"Retirer un marqueur de tempo");
+            if (!removeWarpMarker(track.clips, clipId, static_cast<size_t>(marqueurGeste_))) return;
+            break;
+        }
         default: return;
     }
     notifyChanged();
@@ -627,12 +714,16 @@ void ArrangementComponent::mouseMove(const juce::MouseEvent& event) {
     size_t piste = 0;
     Geste bord = Geste::Aucun;
     const Geste avant = survol_;
-    survol_ = (project_ != nullptr && clipAt(event.position, piste, bord) != nullptr)
-                  ? bord : Geste::Aucun;
+    const Clip* sous = project_ != nullptr ? clipAt(event.position, piste, bord) : nullptr;
+    survol_ = sous != nullptr ? bord : Geste::Aucun;
+    // UN MARQUEUR SOUS LE POINTEUR L'EMPORTE sur le geste du clip : c'est ce
+    // qui se produira au clic, et le curseur doit le dire d'avance.
+    if (sous != nullptr && marqueurAt(*sous, event.position.x) > 0) survol_ = Geste::MarqueurWarp;
     if (survol_ != avant) updateMouseCursor();
 }
 
 juce::MouseCursor ArrangementComponent::getMouseCursor() {
+    if (survol_ == Geste::MarqueurWarp) return juce::MouseCursor::LeftRightResizeCursor;
     if (survol_ == Geste::BordGauche || survol_ == Geste::BordDroit)
         return juce::MouseCursor::LeftRightResizeCursor;
     // Le coin de fondu a son propre curseur : sans cela, rien ne distinguerait
@@ -875,8 +966,29 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                     const int64_t arrivee = depart + static_cast<int64_t>(dureeSecondes * sr);
                     const int colonnes = static_cast<int>(r.getWidth());
 
-                    const auto tracé = vsm::audio::io::peaksForRange(*cache, depart, arrivee,
-                                                                      colonnes);
+                    // LA FORME D'ONDE D'UN CLIP ÉTIRÉ SE DESSINE DANS LE TEMPS
+                    // ÉTIRÉ (D12.6) : chaque colonne demande au clip OÙ elle
+                    // est dans le fichier. Sans cela, un clip calé montrerait
+                    // ses temps ailleurs qu'où il les joue -- et le calage se
+                    // ferait à l'oreille, alors qu'il se fait à l'œil.
+                    std::vector<vsm::audio::io::PeakBin> tracé;
+                    if (vsm::sequencer::clipIsWarped(clip)) {
+                        const auto jouee = clipPlayedLength(clip, fin);
+                        tracé.resize(static_cast<size_t>(std::max(0, colonnes)));
+                        for (int c = 0; c < colonnes; ++c) {
+                            const auto t0 = static_cast<vsm::midi::Tick>(
+                                static_cast<double>(jouee) * c / std::max(1, colonnes));
+                            const auto t1 = static_cast<vsm::midi::Tick>(
+                                static_cast<double>(jouee) * (c + 1) / std::max(1, colonnes));
+                            const auto f0 = static_cast<int64_t>(warpSourceSecondsAt(clip, t0) * sr);
+                            const auto f1 = static_cast<int64_t>(warpSourceSecondsAt(clip, t1) * sr);
+                            const auto une = vsm::audio::io::peaksForRange(*cache, f0,
+                                                                            std::max(f1, f0 + 1), 1);
+                            if (!une.empty()) tracé[static_cast<size_t>(c)] = une[0];
+                        }
+                    } else {
+                        tracé = vsm::audio::io::peaksForRange(*cache, depart, arrivee, colonnes);
+                    }
                     const float milieu = r.getCentreY();
                     const float demi = r.getHeight() * 0.45f;
                     g.setColour(Palette::background.withAlpha(0.72f));
@@ -914,6 +1026,23 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                     g.fillPath(coin);
                 }
             }
+            // LES MARQUEURS DE TEMPO SE VOIENT (D12.6) : un trait vertical et
+            // une pointe en haut, là où on les saisit. Un marqueur qu'on ne
+            // verrait pas se déplacerait par surprise, en croyant déplacer le
+            // clip -- c'est pourquoi le trait est dessiné AVANT tout autre
+            // décor du clip et sur toute sa hauteur.
+            if (vsm::sequencer::clipIsWarped(clip)) {
+                for (size_t m = 1; m < clip.warpMarkers.size(); ++m) {
+                    const float mx = tickToX(clip.startTick + clip.warpMarkers[m].tick);
+                    if (mx < r.getX() || mx > r.getRight()) continue;
+                    g.setColour(Palette::accentAmber.withAlpha(0.9f));
+                    g.fillRect(mx - 0.5f, r.getY(), 1.5f, r.getHeight());
+                    juce::Path pointe;
+                    pointe.addTriangle(mx - 3.5f, r.getY(), mx + 3.5f, r.getY(), mx, r.getY() + 5.0f);
+                    g.fillPath(pointe);
+                }
+            }
+
             // LA PHASE INVERSÉE SE VOIT AUSSI : un liséré en tirets. Deux clips
             // identiques dont l'un est inversé s'annulent en s'additionnant, et
             // rien d'autre ne le dirait.

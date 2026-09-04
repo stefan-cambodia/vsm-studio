@@ -59,9 +59,13 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
         const std::string& pluginId = bundle.project.tracks[i].instrumentId;
         if (pluginId.empty()) {
             // UNE PISTE AUDIO N'A PAS D'INSTRUMENT, et ce n'est pas une
-            // anomalie : son matériau est un fichier. L'avertir de son silence
-            // serait faux, et noierait les vrais avertissements.
-            if (bundle.project.tracks[i].kind != vsm::sequencer::Track::Kind::Audio)
+            // anomalie : son matériau est un fichier. UN BUS DE GROUPE NON
+            // PLUS : il somme ce qu'on lui route. L'avertir de son silence
+            // serait faux, et noierait les vrais avertissements -- mesuré :
+            // sky-parite criait « Piste 6 (Batterie) : aucun instrument, elle
+            // restera silencieuse » pour le bus de sa batterie, à chaque rendu.
+            const auto genre = bundle.project.tracks[i].kind;
+            if (genre != vsm::sequencer::Track::Kind::Audio && genre != vsm::sequencer::Track::Kind::Group)
                 result.warnings.push_back("Piste " + std::to_string(i) + " (" + bundle.project.tracks[i].name +
                                            ") : aucun instrument, elle restera silencieuse");
             continue;
@@ -145,6 +149,12 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
                                        ") : aucun clip audio à jouer");
             continue;
         }
+        // LES CLIPS QUI SUIVENT LE TEMPO (D12.5) : le rendu hors ligne DOIT
+        // armer les portées étirées comme l'application le fait, sinon un
+        // clip calé s'exporterait sans son calage -- une panne muette, et
+        // c'est exactement ainsi qu'elle a été trouvée (la mesure du critère
+        // de phase D12.7 rendait trois fichiers identiques au bit près).
+        vsm::audio::engine::prepareWarpedSpans(*charge.source);
         graph.setTrackAudio(i, charge.source);
         ++result.tracksWithInstrument;
     }
