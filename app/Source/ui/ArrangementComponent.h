@@ -120,6 +120,13 @@ public:
     /// Supprime les clips sélectionnés.
     void deleteSelection();
     bool hasSelection() const { return !selection_.empty(); }
+    /// L'ÉTENDUE DE LA SÉLECTION (D14.1), en ticks, toutes pistes confondues.
+    /// Faux si rien n'est choisi.
+    bool selectionBounds(vsm::midi::Tick& debut, vsm::midi::Tick& fin) const;
+    /// ZOOM SUR TOUT / SUR LA SÉLECTION (D14.2) : ce que le piano roll avait
+    /// et que l'arrangement n'avait pas.
+    void zoomToFit();
+    void zoomToSelection();
     /// LES BORNES DE LA SÉLECTION sur la ligne de temps, toutes pistes
     /// confondues (D6.1 : « exporter la sélection »). Rend faux si rien n'est
     /// sélectionné. Les clips sélectionnés peuvent appartenir à des pistes

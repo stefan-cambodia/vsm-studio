@@ -3206,6 +3206,16 @@ quotidien d'abord, l'import et l'export ensuite, la préférence en dernier.
 | D14.4 | **Le dither à l'export 16 et 24 bits** : l'export tronque, et une queue de réverbération à −80 dB devient une distorsion de quantification — Cubase et Live dithérisent | un dither TPDF (± 1 LSB triangulaire) à l'écriture des formats entiers, actif par défaut, éteint par option ; test : un sinus à −90 dB exporté en 16 bits garde un spectre sans harmoniques de quantification (dit en chiffres) |
 | D14.5 | **Retour au début à l'arrêt** (préférence de Cubase ; c'est le défaut de Live) : Stop laisse la tête où elle est, et il faut `Début` ensuite | une préférence, retenue, qui ramène la tête à la position de départ de la lecture quand on arrête |
 
+> **D14.1 ET D14.2 SONT FAITES (04/09/2026).** « Locateurs sur la
+> sélection » (`P`, table des raccourcis, menu Édition) pose la boucle sur
+> l'étendue des clips choisis dans l'arrangement, toutes pistes confondues —
+> à défaut sur les notes choisies du piano roll — et l'active ; la région
+> est posée PARTOUT d'un coup (projet, transport, moteur, les deux vues, le
+> bouton Loop) par une seule fonction, qui remplace six lignes recopiées.
+> Annulable. Et l'arrangement zoome : « Zoom : tout voir » et « Zoom : la
+> sélection » dans son menu, et le raccourci « Ajuster à la fenêtre » vaut
+> désormais pour les deux vues — il n'était entendu que par le piano roll.
+
 
 ## 4. Les choix tranchés ici, et pourquoi
 

@@ -1360,6 +1360,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuEditDeleteTimeAtLocators,
                          u8"Supprimer le temps entre les locateurs (Ctrl+Maj+K)",
                          project_.loopEndTick > project_.loopStartTick);
+            menu.addItem(kMenuEditLocatorsFromSelection, u8"Locateurs sur la s\u00e9lection (P)",
+                         arrangement_.hasSelection() || pianoRoll_.hasSelection());
             break;
         case 2:
             menu.addItem(kMenuTrackAdd, "Ajouter une piste MIDI");
@@ -1635,6 +1637,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
 void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) {
     if (menuItemID == kMenuEditInsertTimeAtLocators) { editTimeAtLocators(true); return; }
     if (menuItemID == kMenuEditDeleteTimeAtLocators) { editTimeAtLocators(false); return; }
+    if (menuItemID == kMenuEditLocatorsFromSelection) { locatorsFromSelection(); return; }
     if (menuItemID >= kMenuFileRecentFirst && menuItemID <= kMenuFileRecentLast) {
         const auto liste = recentProjects();
         const int i = menuItemID - kMenuFileRecentFirst;
@@ -4229,6 +4232,10 @@ bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
         // d'atteindre. Sans marqueur avant, on revient au début.
         case Id::NavGoToStart: seekAllViews(0); return true;
         case Id::EditInsertTimeAtLocators: editTimeAtLocators(true); return true;
+        case Id::EditLocatorsFromSelection: locatorsFromSelection(); return true;
+        // AJUSTER À LA FENÊTRE vaut pour les DEUX vues (D14.2) : l'arrangement
+        // ne l'entendait pas, seul le piano roll répondait.
+        case Id::ViewZoomToFit: arrangement_.zoomToFit(); pianoRoll_.zoomToFit(); return true;
         case Id::EditDeleteTimeAtLocators: editTimeAtLocators(false); return true;
         case Id::ViewFullScreen: toggleFullScreen(); return true;
         case Id::NavNextMarker: {
@@ -4489,6 +4496,38 @@ void MainComponent::saveProjectAs() {
         folder.createDirectory();
         writeProjectTo(folder);
     });
+}
+
+void MainComponent::setLoopRegionEverywhere(vsm::midi::Tick start, vsm::midi::Tick end, bool active) {
+    if (end <= start) return;
+    project_.loopEnabled = active;
+    project_.loopStartTick = start;
+    project_.loopEndTick = end;
+    transport_.setLoopRegion(start, end, active);
+    audioEngine_.processGraph().setLoopRegion(project_.ticksToSeconds(start),
+                                               project_.ticksToSeconds(end), active);
+    pianoRoll_.setLoopRegion(start, end, active);
+    pianoRollPanel_.refresh();
+    transportBar_.setLooping(active);
+    arrangement_.repaint();
+}
+
+void MainComponent::locatorsFromSelection() {
+    vsm::midi::Tick debut = 0, fin = 0;
+    bool trouve = arrangement_.selectionBounds(debut, fin);
+    if (!trouve) {
+        // À défaut de clips : les notes choisies du piano roll.
+        if (const auto* track = pianoRoll_.activeTrack()) {
+            for (const auto& n : track->notes) {
+                if (pianoRoll_.selectedNoteIds().count(n.id) == 0) continue;
+                if (!trouve) { debut = n.startTick; fin = n.endTick; trouve = true; }
+                else { debut = std::min(debut, n.startTick); fin = std::max(fin, n.endTick); }
+            }
+        }
+    }
+    if (!trouve || fin <= debut) return;
+    beginProjectEdit(u8"Locateurs sur la sélection");
+    setLoopRegionEverywhere(debut, fin, true);
 }
 
 void MainComponent::editTimeAtLocators(bool inserer) {
