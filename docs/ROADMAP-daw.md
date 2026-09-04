@@ -3080,6 +3080,7 @@ dont une qui MENT, et qui passe donc en premier (règle 1 du § 3).
 | D13.4 | **Un clip audio à l'envers** (cymbale, traîne inversée) : `Clip` n'a pas de sens de lecture | menu du clip « À l'envers » ; le moteur lit le fichier à rebours sur la fenêtre du clip ; la forme d'onde se dessine à l'envers ; sauvegardé ; test moteur (la lecture inversée d'une rampe est une rampe descendante) |
 | D13.5 | **La saisie pas à pas** dans le piano roll (Cubase) : un clavier — d'ordinateur ou MIDI — pose des notes à la position d'insertion, qui avance d'un pas de grille à chaque note, sans que le transport tourne | un bouton de la barre du piano roll l'arme ; chaque note reçue s'écrit à la position, de la longueur de la grille ; Entrée avance sans note (un silence), Retour arrière recule ; vu à l'écran |
 | D13.6 | **Normaliser un clip** : le gain existe, personne ne le calcule | menu du clip « Normaliser » : le gain devient 1 / crête du matériau joué ; dit dans le gain du clip, annulable |
+| D13.8 | **Trois effets d'insert qu'une tranche de Cubase ou Live a et que le parc n'avait pas** : la forme (transient shaper), le mouvement (trémolo / auto-pan), la hauteur en temps réel (pitch shift) — l'audit D11 s'était arrêté aux gestes, pas aux inserts | dans `EffectFactory`, l'onglet Effets les propose (l'interface est générique) ; chacun mesuré sur son trait, empreinte, identités |
 | D13.7 | **Adopter le tempo du clip** : « N mesures » déduit le tempo d'origine d'une boucle et l'affiche — mais le projet reste à son tempo, et la boucle joue étirée. Le geste inverse manque : caler le PROJET sur la boucle (Live : « Set 1.1.1 here » et le tempo de la boucle ; Cubase : « Set Tempo from Event ») | la fenêtre du tempo déduit propose « Adopter ce tempo pour le projet » : le changement de tempo au tick 0 prend cette valeur, la boucle joue alors au rapport un (le court-circuit), les autres changements de tempo restent ; annulable |
 
 L'ordre suit le § 3 : ce qui ment (D13.1) avant ce qui manque ; le geste
@@ -3155,6 +3156,30 @@ de D12 (D13.2) et l'arrangement global (D13.3) avant le confort.
 > joue au rapport un — le court-circuit de l'étireur, pas un bit de
 > différence avec le fichier. Annulable comme tout ce qui passe par
 > `beginProjectEdit`.
+>
+> **D13.8 EST FAITE (04/09/2026), et deux de ses bancs ont eu une leçon à
+> donner.** `TremoloEffect` (LFO sur le gain, sinus → carré par une tangente
+> hyperbolique, phase stéréo 0 = trémolo, 180° = auto-pan : à 4 Hz et
+> profondeur 1, la gauche va de 0,015 à 0,343 et seize fenêtres sur
+> trente-deux sont en opposition gauche-droite). `TransientShaperEffect`
+> (deux suiveurs, 1/20 ms et 30/200 ms, leur différence est l'attaque : Attack
+> +1 fait ×4 sur les cinq premières ms d'une note et laisse la tenue à
+> +1,5 % ; Sustain −1 la ramène à 0,36) — la première version faisait +12 %
+> sur la tenue, parce que le suiveur lent ne montait que sous les crêtes de
+> la sinusoïde redressée : les deux suiveurs lisent désormais une enveloppe
+> lissée à 2 ms. `PitchShiftEffect` (deux têtes sur une ligne de retard,
+> fenêtres en demi-sinus, la recette de l'H910 ; latence déclarée d'un
+> demi-grain) : mesuré sur si♭3 transposé d'une octave, **466,1 Hz pour
+> 466,2 attendus**, reste à 233 Hz 0,011, battement du grain 2,9 % — après
+> deux leçons : à 220 Hz, un grain de 50 ms fait onze périodes tout rond et
+> les deux têtes tombaient en opposition de phase exacte (la porteuse
+> s'annulait : « la note du banc ne doit pas diviser le grain », comme pour
+> la machine à séquence) ; et sans alignement, la tête qui redémarre
+> reprenait la source 5,83 périodes plus tôt, un saut de 0,17 tour toutes
+> les 25 ms que la transformée lisait comme +25 cents (473,1 Hz). La tête
+> qui redémarre cherche donc, à ± 8 ms, le décalage qui la met en phase avec
+> l'autre — la recherche du WSOLA, une fois par grain. Le parc passe à
+> **16 effets d'insert**.
 >
 > **ET UNE CASE QUI S'ÉTAIT MISE À MENTIR, rattrapée le même jour.** Depuis
 > que la parité est le défaut de la chaîne (CDC multipiste § 8, 04/09), la

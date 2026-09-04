@@ -61,7 +61,7 @@ section 17). Tout testé (routage, sends, chaque effet, granularité sous-bloc,
 déterminisme, non-régression).
 
 **La Phase 2 est désormais COMPLÈTE, moteur ET interface.** Ajoutés côté UI :
-`EffectFactory` (liste/instancie les 13 effets), `EffectChainComponent` (onglet
+`EffectFactory` (liste/instancie les 16 effets), `EffectChainComponent` (onglet
 "Effets" : ajout/suppression/réordonnancement d'inserts par piste + réglage des
 paramètres, un knob par entrée de `parameterList()`), et 2 **knobs de send** par
 tranche du mixer routant vers 2 bus auxiliaires (Reverb sur A, Delay sur B par
@@ -4314,6 +4314,17 @@ la diffusion disque reste diffusée). Les gestes de `ClipEdit` transportent la
 carte (couper, rogner, étirer par le bord droit — D13.2), et le format écrit
 la version 3 seulement si un clip s'en sert, parce qu'un lecteur ancien
 jouerait un clip étiré sans l'étirer, en silence.
+
+### 48.4 Trois effets d'insert de plus (D13.8)
+
+`TremoloEffect`, `TransientShaperEffect`, `PitchShiftEffect`, dans
+`audio/include/vsm/audio/effect/`, sans façade à dessiner (l'onglet Effets
+est générique). Le pitch shift est un décaleur à deux têtes sur une ligne de
+retard (H910), et non le vocodeur de phase de D12.8 : un insert reçoit un
+flux, pas un fichier relisible ; sa tête qui redémarre s'aligne en phase sur
+l'autre par la recherche du WSOLA, une fois par grain, sans quoi la
+transformée lisait +25 cents sur un son tenu. Chiffres et leçons dans
+`ROADMAP-daw.md`, D13.8.
 
 ### 48.3 Le temps du morceau (D13.1, D13.3)
 

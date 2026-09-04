@@ -739,6 +739,17 @@ c'est la structure qui gagne — un projet qui met quatre instruments sur une
 piste ne se retravaille pas, quelle que soit sa distance — et l'écart se
 publie au lieu d'être caché.
 
+Seize effets d'insert sont proposés par l'onglet *Effets* : l'égaliseur, le
+compresseur (avec chaîne latérale), la porte, le limiteur, le filtre, la
+distorsion, le bit crusher, le chorus, le flanger, le phaser, le délai, la
+réverbération, la saturation à bande — et, depuis le 04/09/2026, le
+**transient shaper** (l'attaque et la tenue d'un son, sans seuil), le
+**trémolo / auto-pan** (un LFO sur le gain, à phase stéréo nulle les deux
+voies ensemble, à 180° l'une contre l'autre) et le **pitch shift** (transposer
+en temps réel de ± 12 demi-tons, la durée ne bougeant pas ; son grain bat
+légèrement sur un son tenu et transposé loin, c'est la signature de la
+famille). Un effet tiers CLAP ou VST3 se pose de la même façon.
+
 **Le rapport de reconstruction se lit dans l'application** : *Fichier ▸ Voir le
 rapport de reconstruction* (grisé quand le projet ouvert n'en a pas — un projet
 créé à la main n'en a pas, c'est normal). Il dit la distance globale, **quelle
