@@ -1026,6 +1026,30 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                     g.fillPath(coin);
                 }
             }
+            // LE FONDU ENCHAÎNÉ SE VOIT (D13.1) : la zone où ce clip en
+            // chevauche un autre de la piste est hachurée. C'est là que l'un
+            // s'éteint et que l'autre monte, et un chevauchement invisible
+            // s'entendrait sans se comprendre.
+            if (track.kind == Track::Kind::Audio) {
+                const auto finClip = clip.startTick + clipPlayedLength(clip, fin);
+                for (const auto& autre : track.clips) {
+                    if (autre.id == clip.id || autre.muted) continue;
+                    const auto finAutre = autre.startTick + clipPlayedLength(autre, fin);
+                    const auto debut = std::max(clip.startTick, autre.startTick);
+                    const auto arret = std::min(finClip, finAutre);
+                    if (arret <= debut) continue;
+                    const float x0 = std::max(r.getX(), tickToX(debut));
+                    const float x1 = std::min(r.getRight(), tickToX(arret));
+                    if (x1 <= x0) continue;
+                    g.setColour(Palette::background.withAlpha(0.35f));
+                    g.fillRect(x0, r.getY(), x1 - x0, r.getHeight());
+                    g.setColour(Palette::textPrimary.withAlpha(0.35f));
+                    for (float x = x0 - r.getHeight(); x < x1; x += 7.0f)
+                        g.drawLine(std::max(x0, x), r.getBottom(), std::min(x1, x + r.getHeight()),
+                                   r.getBottom() - std::min(r.getHeight(), std::min(x1, x + r.getHeight()) - std::max(x0, x)), 1.0f);
+                }
+            }
+
             // LES MARQUEURS DE TEMPO SE VOIENT (D12.6) : un trait vertical et
             // une pointe en haut, là où on les saisit. Un marqueur qu'on ne
             // verrait pas se déplacerait par surprise, en croyant déplacer le

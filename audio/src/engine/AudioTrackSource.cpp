@@ -251,6 +251,27 @@ std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
         }
     }
 
+    // DEUX CLIPS QUI SE CHEVAUCHENT SE FONDENT L'UN DANS L'AUTRE (D13.1). Sans
+    // cette règle, `mixInto` les ADDITIONNAIT sur le chevauchement : une prise
+    // posée sur la fin d'une autre doublait le son -- ce qu'aucun DAW ne fait,
+    // et ce que personne ne demande en posant deux prises bout à bout. Sur le
+    // chevauchement, le premier s'éteint et le second monte, linéairement :
+    // pour un même signal, la somme reste à un. Un fondu réglé plus long que
+    // le chevauchement est gardé (le plus long des deux) ; un fondu plus court
+    // serait un trou, et n'a pas de sens ici.
+    std::sort(spans.begin(), spans.end(),
+              [](const AudioClipSpan& a, const AudioClipSpan& b) { return a.startFrame < b.startFrame; });
+    for (size_t i = 1; i < spans.size(); ++i) {
+        auto& precedent = spans[i - 1];
+        auto& suivant = spans[i];
+        const int64_t finPrecedent = precedent.startFrame + precedent.lengthFrames;
+        const int64_t chevauchement = finPrecedent - suivant.startFrame;
+        if (chevauchement <= 0) continue;
+        const int64_t fondu = std::min({chevauchement, precedent.lengthFrames, suivant.lengthFrames});
+        precedent.fadeOutFrames = std::max(precedent.fadeOutFrames, fondu);
+        suivant.fadeInFrames = std::max(suivant.fadeInFrames, fondu);
+    }
+
     // UNE PISTE AUDIO SANS CLIP JOUE TOUT SON FICHIER, à sa place — la même
     // règle que pour une piste MIDI sans clip, et pour la même raison : « pas
     // de clip » veut dire « pas de découpe », pas « rien ».

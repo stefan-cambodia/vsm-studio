@@ -3084,6 +3084,16 @@ dont une qui MENT, et qui passe donc en premier (règle 1 du § 3).
 L'ordre suit le § 3 : ce qui ment (D13.1) avant ce qui manque ; le geste
 de D12 (D13.2) et l'arrangement global (D13.3) avant le confort.
 
+> **D13.1 EST FAITE (04/09/2026).** La règle vit dans `spansFromTrack`, là
+> où les clips deviennent des portées : sur un chevauchement, le premier
+> reçoit un fondu de sortie et le second un fondu d'entrée de la longueur du
+> chevauchement (le plus long des deux si un fondu réglé l'était déjà). Le
+> test joue deux clips d'un fichier CONSTANT qui se chevauchent d'une
+> seconde : le niveau reste à 0,5 partout, au bit près (pire écart 10⁻⁵),
+> là où l'addition donnait 1,0 sur la seconde commune. Le moteur n'a pas
+> changé d'une ligne — `mixInto` applique les fondus qu'il appliquait déjà.
+> L'arrangement hachure la zone de chevauchement sur chaque clip concerné.
+
 ## 4. Les choix tranchés ici, et pourquoi
 
 Conformément à l'usage de ce dépôt, les questions ouvertes se referment en
