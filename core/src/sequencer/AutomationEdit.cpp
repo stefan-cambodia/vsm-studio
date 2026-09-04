@@ -1,5 +1,6 @@
 #include "vsm/sequencer/AutomationEdit.h"
 #include <algorithm>
+#include <map>
 #include <cmath>
 
 namespace vsm::sequencer {
@@ -23,6 +24,41 @@ float automationValueAt(const AutomationCurve& curve, Tick tick) {
         return static_cast<float>(a.value + ratio * (b.value - a.value));
     }
     return points.back().value;
+}
+
+void writeAutomationRange(AutomationCurve& curve, Tick fromTick, Tick toTick,
+                           const std::vector<AutomationPoint>& written) {
+    if (written.empty() || toTick < fromTick) return;
+
+    // CE QUE LA COURBE DISAIT AUX BORDS, LU AVANT DE TOUCHER À QUOI QUE CE
+    // SOIT : après suppression, il n'y aurait plus rien à lire.
+    const bool avait = !curve.points.empty();
+    const float avant = avait ? automationValueAt(curve, fromTick > 0 ? fromTick - 1 : 0) : 0.0f;
+    const float apres = avait ? automationValueAt(curve, toTick + 1) : 0.0f;
+
+    // UNE CARTE PAR TICK, et non un tri suivi d'un dédoublonnage : deux points
+    // au même tick rendraient le segment entre eux indéfini, et il faut que ce
+    // soit le POINT JOUÉ qui gagne, pas celui que l'ordre de tri a mis devant.
+    // Un `std::unique` garde le premier, et le tri n'est pas stable sur les
+    // ex æquo : la courbe aurait dépendu de l'implémentation de `std::sort`.
+    std::map<Tick, AutomationPoint> parTick;
+    for (const auto& p : curve.points)
+        if (p.tick < fromTick || p.tick > toTick) parTick[p.tick] = p;
+
+    // LES RACCORDS, à UN TICK de la plage et non à ses bords : posés dessus,
+    // ils écraseraient le premier et le dernier point de ce qu'on vient de
+    // jouer. Seulement si la courbe disait quelque chose, et seulement s'il y
+    // a la place (une plage qui commence au tick 0 n'a pas de « juste avant »).
+    if (avait && fromTick > 0) parTick[fromTick - 1] = {fromTick - 1, avant, false};
+    if (avait) parTick[toTick + 1] = {toTick + 1, apres, false};
+
+    // EN DERNIER, donc vainqueurs : ce qu'on vient de jouer.
+    for (const auto& p : written)
+        if (p.tick >= fromTick && p.tick <= toTick) parTick[p.tick] = p;
+
+    curve.points.clear();
+    curve.points.reserve(parTick.size());
+    for (const auto& [tick, point] : parTick) curve.points.push_back(point);
 }
 
 size_t setAutomationPoint(AutomationCurve& curve, Tick tick, float value, bool step) {

@@ -1,4 +1,5 @@
 #pragma once
+#include <map>
 #include <JuceHeader.h>
 #include "vsm/audio/engine/Mixer.h"
 #include <string>
@@ -135,6 +136,17 @@ public:
     /// s'en servir empilerait trois cents pas d'annulation pour un seul
     /// mouvement de fader.
     std::function<void()> onMixEditStarted;
+    /// ÉCRIRE L'AUTOMATION EN JOUANT (D16.8) — le W de Cubase, l'armement de
+    /// Live. La tranche a besoin de deux choses que seule l'application sait :
+    /// OÙ en est le transport, et s'il roule. Sans elles, elle écrirait une
+    /// courbe à la position zéro pendant qu'on écoute la mesure trente.
+    std::function<vsm::midi::Tick()> playheadTickProvider;
+    std::function<bool()> transportPlayingProvider;
+    /// Une passe vient d'être déposée dans la courbe : republier au moteur.
+    std::function<void()> onAutomationWritten;
+    /// LE TRANSPORT S'EST ARRÊTÉ : c'est ce qui clôt les passes en `Latch`.
+    /// Appelée par l'application, parce que la tranche ne l'apprend pas.
+    void closeLatchedPasses();
 
 private:
     vsm::sequencer::Track& track_;
@@ -148,6 +160,31 @@ private:
     /// qu'on cherche à l'oreille -- et un bouton de dix pixels ne saurait pas
     /// donner le dixième de milliseconde.
     juce::Slider delay_;
+    /// LE BOUTON W : off → touch → latch → off. Le mot « W » plutôt qu'un
+    /// pictogramme, comme chez Cubase, et sa couleur dit lequel des deux
+    /// modes est armé (l'ambre pour `touch`, plus vif pour `latch`).
+    juce::TextButton armer_ { "W" };
+
+    /// UNE PASSE EN COURS, par paramètre : on peut tenir le fader d'une main
+    /// et le panoramique de l'autre, et ce sont deux courbes.
+    struct Passe {
+        vsm::midi::Tick debut = 0;
+        std::vector<vsm::sequencer::AutomationPoint> points;
+        bool relachee = false;   ///< vrai en `latch` après le lâcher
+    };
+    std::map<std::string, Passe> passes_;
+
+    /// Le geste commence sur `parametre` : ouvre une passe si la piste est
+    /// armée et que le transport roule.
+    void ouvrirPasse(const std::string& parametre);
+    /// La valeur a bougé : la note dans la passe, s'il y en a une.
+    void noterDansLaPasse(const std::string& parametre, float valeur);
+    /// Le geste finit : dépose en `touch`, laisse courir en `latch`.
+    void fermerPasse(const std::string& parametre, bool arretDuTransport);
+    /// La courbe de ce paramètre, créée si elle manque.
+    vsm::sequencer::AutomationCurve& courbeDe(const std::string& parametre);
+    void basculerArmement();
+    void rafraichirArmement();
     /// Un bouton par bus de départ du projet. `OwnedArray` et non deux membres :
     /// leur nombre n'est plus connu à la compilation.
     juce::OwnedArray<juce::Slider> sends_;
@@ -226,6 +263,15 @@ public:
 
     std::function<void()> onMixChanged;
     std::function<void()> onMixEditStarted;
+
+    /// D16.8 : passés à chaque tranche à sa construction (voir ChannelStrip).
+    std::function<vsm::midi::Tick()> playheadTickProvider;
+    std::function<bool()> transportPlayingProvider;
+    std::function<void()> onAutomationWritten;
+    /// LE TRANSPORT S'EST ARRÊTÉ : clôt les passes en `Latch` de toutes les
+    /// tranches. Sans cet appel, une passe en latch resterait ouverte et se
+    /// déposerait au prochain arrêt, longtemps après le geste.
+    void closeLatchedPasses();
     std::function<void(vsm::audio::plugin::ParamId, float)> onMasterParam;
     std::function<void(bool)> onMasterEnable;
     std::function<float(vsm::audio::plugin::ParamId)> masterParamProvider;

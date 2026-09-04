@@ -145,6 +145,18 @@ MainComponent::MainComponent()
         return audioEngine_.processGraph().masterBus().getParameter(id);
     };
     mixer_.onMixEditStarted = [this] { beginProjectEdit("Mixage"); };
+    // D16.8 : la console écrit l'automation en jouant, et il lui faut la
+    // position du transport et son état -- deux choses qu'elle ne peut pas
+    // connaître seule.
+    mixer_.playheadTickProvider = [this] { return transport_.currentTick(); };
+    mixer_.transportPlayingProvider = [this] {
+        return transport_.state() == TransportState::Playing;
+    };
+    mixer_.onAutomationWritten = [this] {
+        applyAutomationFromProject();
+        arrangement_.repaint();
+        markProjectDirty();
+    };
     mixer_.onMixChanged = [this] { mixDirty_ = true; markProjectDirty(); };
     mixer_.onMasterParam = [this](vsm::audio::plugin::ParamId id, float v) {
         audioEngine_.processGraph().masterBus().setParameter(id, v);
@@ -1166,7 +1178,15 @@ void MainComponent::timerCallback() {
     {
         const bool lecture = transport_.state() == TransportState::Playing;
         if (lecture && !etaitEnLecture_) departLecture_ = transport_.currentTick();
-        else if (!lecture && etaitEnLecture_ && retourAuDepart_) seekAllViews(departLecture_);
+        // D16.8 : L'ARRÊT CLÔT LES PASSES EN LATCH. Le front descendant est
+        // détecté ICI, et pas dans les six endroits qui appellent
+        // `transport_.stop()` : un seul de ces six oublié laisserait une passe
+        // ouverte pour toujours, et elle se déposerait au prochain arrêt --
+        // longtemps après le geste, et sur la mauvaise plage. Fermé AVANT le
+        // retour au départ, pour que la fin de la passe soit là où la lecture
+        // s'est arrêtée et non là où elle était partie.
+        if (!lecture && etaitEnLecture_) mixer_.closeLatchedPasses();
+        if (!lecture && etaitEnLecture_ && retourAuDepart_) seekAllViews(departLecture_);
         etaitEnLecture_ = lecture;
     }
 

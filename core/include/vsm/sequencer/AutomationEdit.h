@@ -1,6 +1,7 @@
 #pragma once
 #include "vsm/sequencer/Track.h"
 #include <cstddef>
+#include <vector>
 
 // Les gestes d'une courbe d'automation -- poser un point, le déplacer, le
 // retirer --, en fonctions PURES. Aucune dépendance à JUCE.
@@ -31,6 +32,26 @@ float automationValueAt(const AutomationCurve& curve, Tick tick);
 /// cliquer plusieurs fois au même endroit en corrigeant, et deux points au même
 /// tick rendraient le segment entre eux indéfini.
 size_t setAutomationPoint(AutomationCurve& curve, Tick tick, float value, bool step = false);
+
+/// ÉCRIRE UNE PLAGE (D16.8) : ce qu'un passage d'automation en jeu dépose.
+///
+/// Les points de `[fromTick, toTick]` sont REMPLACÉS par ceux qu'on vient de
+/// jouer, et les deux bords sont RACCORDÉS à ce que la courbe disait juste
+/// avant et juste après. Sans ce raccord, écrire deux mesures au milieu d'un
+/// fondu ferait sauter le paramètre à l'entrée et à la sortie de la plage --
+/// on aurait corrigé deux mesures en cassant les deux voisines.
+///
+/// LE RACCORD EST POSÉ AUX BORDS EXACTS, à un tick de la plage : la valeur
+/// d'avant est réinscrite à `fromTick - 1`, celle d'après à `toTick + 1`, et
+/// seulement si la courbe disait quelque chose là (elle est maintenue hors de
+/// sa plage définie, voir `automationValueAt`). Un raccord posé À L'INTÉRIEUR
+/// de la plage écraserait le début de ce qu'on vient de jouer.
+///
+/// `written` est la suite des points joués, en ordre de tick. Vide, la
+/// fonction ne fait rien : un passage où l'on n'a touché à rien ne doit pas
+/// effacer une courbe.
+void writeAutomationRange(AutomationCurve& curve, Tick fromTick, Tick toTick,
+                           const std::vector<AutomationPoint>& written);
 
 /// Retire le point le plus proche de `tick`, s'il est à moins de `tolerance`.
 /// Rend vrai si un point a été retiré.

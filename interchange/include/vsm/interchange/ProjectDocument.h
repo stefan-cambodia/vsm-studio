@@ -204,6 +204,10 @@ struct ProjectTrack {
     /// D16.7 : le décalage de piste, en millisecondes. Écrit seulement quand
     /// il n'est pas nul.
     double delayMs = 0.0;
+
+    /// D16.8 : le mode d'écriture de l'automation (« off », « touch »,
+    /// « latch »). Vide = off, et rien n'est écrit dans ce cas.
+    std::string automationMode;
     /// « midi » (défaut), « audio » ou « group ». Absent du fichier pour une piste MIDI :
     /// un projet qui n'a que des pistes MIDI garde octet pour octet le fichier
     /// qu'il avait avant que les pistes audio existent.

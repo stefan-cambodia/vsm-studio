@@ -1,4 +1,5 @@
 #include "MixerComponent.h"
+#include "vsm/sequencer/AutomationEdit.h"
 #include "LookAndFeel/VsmLookAndFeel.h"
 #include <cmath>
 
@@ -48,9 +49,18 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     volume_.setSkewFactorFromMidPoint(-12.0);
     volume_.setValue(gainToDb(track_.volume), juce::dontSendNotification);
     volume_.setTextValueSuffix(" dB");
-    volume_.onDragStart = [this] { if (onMixEditStarted) onMixEditStarted(); };
+    volume_.onDragStart = [this] {
+        if (onMixEditStarted) onMixEditStarted();
+        ouvrirPasse("mix.volume");
+    };
+    volume_.onDragEnd = [this] { fermerPasse("mix.volume", false); };
     volume_.onValueChange = [this] {
         track_.volume = dbToGain(static_cast<float>(volume_.getValue()));
+        // LA COURBE REÇOIT LE GAIN LINÉAIRE, pas les décibels du curseur :
+        // `mix.volume` est en gain (voir `AutomationCurve::parameter`), et
+        // écrire des dB ici ferait dessiner une courbe qui ne correspond pas
+        // à ce que le moteur applique.
+        noterDansLaPasse("mix.volume", track_.volume);
         if (onMixChanged) onMixChanged();
     };
     addAndMakeVisible(volume_);
@@ -59,9 +69,14 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     pan_.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
     pan_.setRange(-1.0, 1.0, 0.01);
     pan_.setValue(track_.pan, juce::dontSendNotification);
-    pan_.onDragStart = [this] { if (onMixEditStarted) onMixEditStarted(); };
+    pan_.onDragStart = [this] {
+        if (onMixEditStarted) onMixEditStarted();
+        ouvrirPasse("mix.pan");
+    };
+    pan_.onDragEnd = [this] { fermerPasse("mix.pan", false); };
     pan_.onValueChange = [this] {
         track_.pan = static_cast<float>(pan_.getValue());
+        noterDansLaPasse("mix.pan", track_.pan);
         if (onMixChanged) onMixChanged();
     };
     addAndMakeVisible(pan_);
@@ -94,14 +109,30 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
         s->setRange(0.0, 1.0, 0.01);
         s->setValue(track_.sendLevel(bus), juce::dontSendNotification);
         s->setTooltip(juce::String("Depart vers ") + juce::String(sendNames[bus]));
-        s->onDragStart = [this] { if (onMixEditStarted) onMixEditStarted(); };
-        s->onValueChange = [this, s, bus] {
+        const std::string parametre = "mix.send." + std::to_string(bus + 1);
+        s->onDragStart = [this, parametre] {
+            if (onMixEditStarted) onMixEditStarted();
+            ouvrirPasse(parametre);
+        };
+        s->onDragEnd = [this, parametre] { fermerPasse(parametre, false); };
+        s->onValueChange = [this, s, bus, parametre] {
             track_.setSendLevel(bus, static_cast<float>(s->getValue()));
+            noterDansLaPasse(parametre, static_cast<float>(s->getValue()));
             if (onMixChanged) onMixChanged();
         };
         addAndMakeVisible(s);
         sends_.add(s);
     }
+
+    // LE BOUTON W (D16.8), et le mot plutôt qu'un pictogramme, comme chez
+    // Cubase : trois états qui se lisent à la couleur, off → touch → latch.
+    armer_.setTooltip(juce::String::fromUTF8(
+        u8"Écrire l'automation en jouant. Un clic : Touch (la main sur un réglage écrit "
+        u8"tant qu'on la tient). Deux : Latch (elle écrit jusqu'à l'arrêt du transport). "
+        u8"Trois : éteint."));
+    armer_.onClick = [this] { basculerArmement(); };
+    addAndMakeVisible(armer_);
+    rafraichirArmement();
 
     mute_.setClickingTogglesState(true);
     mute_.setToggleState(track_.muted, juce::dontSendNotification);
@@ -149,14 +180,123 @@ void ChannelStrip::resized() {
         for (auto* s : sends_) s->setBounds(sendRow.removeFromLeft(largeur).reduced(2, 1));
     }
 
+    // D16.8 : LE W A SA PROPRE RANGÉE. Mis en tiers avec M et S, les trois
+    // libellés étaient tronqués en « ... » sur une tranche de 76 pixels à
+    // l'échelle 150 % -- et entre « ça tient dans la case » et « ça se lit »,
+    // c'est la lisibilité qui gagne : on agrandit la case.
     auto bottom = r.removeFromBottom(22);
     mute_.setBounds(bottom.removeFromLeft(bottom.getWidth() / 2).reduced(1));
     solo_.setBounds(bottom.reduced(1));
+    armer_.setBounds(r.removeFromBottom(22).reduced(1, 1));
 
     // Fader + mètre côte à côte.
     auto meterArea = r.removeFromRight(10);
     meter_.setBounds(meterArea.reduced(0, 2));
     volume_.setBounds(r);
+}
+
+// ---------------------------------------------------------------------------
+// D16.8 — ÉCRIRE L'AUTOMATION EN JOUANT.
+//
+// Touch et Latch ne sont pas deux mécanismes : le même enregistrement tourne,
+// et seul l'instant où il s'arrête change (le lâcher, ou l'arrêt du
+// transport). C'est pourquoi il n'y a qu'une `Passe` et qu'un `fermerPasse`.
+// ---------------------------------------------------------------------------
+
+void ChannelStrip::basculerArmement() {
+    using vsm::sequencer::AutomationMode;
+    track_.automationMode = track_.automationMode == AutomationMode::Off   ? AutomationMode::Touch
+                          : track_.automationMode == AutomationMode::Touch ? AutomationMode::Latch
+                                                                           : AutomationMode::Off;
+    // Désarmer clôt ce qui courait : sans cela, une passe en `latch` resterait
+    // ouverte pour toujours et se déposerait au prochain arrêt, longtemps
+    // après que l'utilisateur a cru avoir tout éteint.
+    if (track_.automationMode == vsm::sequencer::AutomationMode::Off) closeLatchedPasses();
+    rafraichirArmement();
+    if (onMixChanged) onMixChanged();
+}
+
+void ChannelStrip::rafraichirArmement() {
+    using vsm::sequencer::AutomationMode;
+    const bool arme = track_.automationMode != AutomationMode::Off;
+    armer_.setButtonText(track_.automationMode == AutomationMode::Latch  ? "W latch"
+                          : track_.automationMode == AutomationMode::Touch ? "W touch"
+                                                                           : "W");
+    armer_.setColour(juce::TextButton::buttonColourId,
+                      arme ? (track_.automationMode == AutomationMode::Latch
+                                  ? vsm::ui::Palette::accentRed
+                                  : vsm::ui::Palette::accentAmber)
+                           : vsm::ui::Palette::panelRaised);
+}
+
+vsm::sequencer::AutomationCurve& ChannelStrip::courbeDe(const std::string& parametre) {
+    for (auto& courbe : track_.automation)
+        if (courbe.parameter == parametre) return courbe;
+    vsm::sequencer::AutomationCurve neuve;
+    neuve.parameter = parametre;
+    track_.automation.push_back(std::move(neuve));
+    return track_.automation.back();
+}
+
+void ChannelStrip::ouvrirPasse(const std::string& parametre) {
+    if (track_.automationMode == vsm::sequencer::AutomationMode::Off) return;
+    // LE TRANSPORT DOIT ROULER. Écrire à l'arrêt déposerait toute la passe sur
+    // un seul tick -- c'est-à-dire rien de lisible --, et surtout cela
+    // transformerait un simple réglage de mixage en édition de courbe.
+    if (!transportPlayingProvider || !transportPlayingProvider()) return;
+    Passe passe;
+    passe.debut = playheadTickProvider ? playheadTickProvider() : 0;
+    passes_[parametre] = std::move(passe);
+}
+
+void ChannelStrip::noterDansLaPasse(const std::string& parametre, float valeur) {
+    auto it = passes_.find(parametre);
+    if (it == passes_.end()) return;
+    const vsm::midi::Tick ou = playheadTickProvider ? playheadTickProvider() : it->second.debut;
+    // Un point par tick : deux valeurs au même instant rendraient le segment
+    // entre elles indéfini, et la souris en produit plusieurs par milliseconde.
+    if (!it->second.points.empty() && it->second.points.back().tick == ou)
+        it->second.points.back().value = valeur;
+    else
+        it->second.points.push_back({ou, valeur, false});
+}
+
+void ChannelStrip::fermerPasse(const std::string& parametre, bool arretDuTransport) {
+    auto it = passes_.find(parametre);
+    if (it == passes_.end()) return;
+
+    // EN LATCH, LE LÂCHER NE CLÔT RIEN : on continue d'écrire la dernière
+    // valeur jusqu'à l'arrêt. C'est toute la différence avec Touch, et elle
+    // tient dans cette ligne.
+    if (track_.automationMode == vsm::sequencer::AutomationMode::Latch && !arretDuTransport) {
+        it->second.relachee = true;
+        return;
+    }
+
+    Passe passe = std::move(it->second);
+    passes_.erase(it);
+    if (passe.points.empty()) return;
+
+    vsm::midi::Tick fin = playheadTickProvider ? playheadTickProvider() : passe.points.back().tick;
+    if (fin < passe.points.back().tick) fin = passe.points.back().tick;
+    // En latch, la valeur tenue court du lâcher jusqu'à l'arrêt : un point de
+    // plus à la fin suffit à l'écrire, sans minuterie qui échantillonnerait
+    // une valeur qui ne bouge plus.
+    if (passe.relachee && fin > passe.points.back().tick)
+        passe.points.push_back({fin, passe.points.back().value, false});
+
+    vsm::sequencer::writeAutomationRange(courbeDe(parametre), passe.debut, fin, passe.points);
+    if (onAutomationWritten) onAutomationWritten();
+}
+
+void ChannelStrip::closeLatchedPasses() {
+    std::vector<std::string> ouvertes;
+    for (const auto& [parametre, passe] : passes_) ouvertes.push_back(parametre);
+    for (const auto& parametre : ouvertes) fermerPasse(parametre, true);
+}
+
+void MixerComponent::closeLatchedPasses() {
+    for (auto* strip : strips_) strip->closeLatchedPasses();
 }
 
 // ============================================================= MasterStrip
@@ -304,6 +444,11 @@ void MixerComponent::setProject(vsm::sequencer::Project* project) {
             }
             strip->onMixChanged = [this] { if (onMixChanged) onMixChanged(); };
             strip->onMixEditStarted = [this] { if (onMixEditStarted) onMixEditStarted(); };
+            // D16.8 : la tranche a besoin de savoir OÙ en est le transport et
+            // s'il roule ; ces deux réponses appartiennent à l'application.
+            strip->playheadTickProvider = playheadTickProvider;
+            strip->transportPlayingProvider = transportPlayingProvider;
+            strip->onAutomationWritten = [this] { if (onAutomationWritten) onAutomationWritten(); };
             stripContainer_.addAndMakeVisible(strip);
             strips_.add(strip);
         }

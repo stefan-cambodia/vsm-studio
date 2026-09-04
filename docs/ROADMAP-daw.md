@@ -3679,6 +3679,59 @@ départ, ce qui est exactement ce qu'on lui demande.
 > porte −12,5 ms) : « -12,5 ms » sous le panoramique d'Acid Bass, « 0,0 ms »
 > sous celui de Drums.
 
+> **D16.8 EST FAITE (04/09/2026), et Touch et Latch ne sont pas deux
+> mécanismes.** `AutomationEdit::writeAutomationRange` remplace les points de
+> la plage par ceux qu'on vient de jouer et RACCORDE les deux bords à ce que
+> la courbe disait — sans le raccord, corriger deux mesures au milieu d'un
+> fondu ferait sauter le paramètre à l'entrée et à la sortie : on aurait
+> réparé deux mesures en cassant les deux voisines. Le raccord est posé à UN
+> TICK de la plage et non sur ses bords ; posé dessus, il écraserait le
+> premier et le dernier point de ce qu'on vient de jouer. Sur une courbe
+> vide, aucun raccord n'est inventé : elle ne disait rien, et poser un zéro
+> ferait plonger le paramètre hors de la plage.
+>
+> Un détail qui aurait rendu la courbe non déterministe : la fusion se fait
+> par une carte indexée sur le tick, et non par un tri suivi d'un
+> dédoublonnage. `std::unique` garde le PREMIER des ex æquo et `std::sort`
+> n'est pas stable — la valeur retenue à un tick partagé aurait dépendu de
+> l'implémentation de la bibliothèque standard. C'est le point JOUÉ qui
+> gagne, toujours.
+>
+> `Track::automationMode` (`off / touch / latch`), absent du fichier quand il
+> est éteint. Les deux modes armés ne se distinguent QUE par l'instant où
+> l'enregistrement s'arrête — le lâcher pour Touch, l'arrêt du transport pour
+> Latch —, et c'est pourquoi il n'y a qu'une `Passe` et qu'un `fermerPasse`
+> dans la tranche. En Latch, la valeur tenue du lâcher jusqu'à l'arrêt s'écrit
+> par UN point de plus à la fin : pas de minuterie qui échantillonnerait une
+> valeur qui ne bouge plus. Une passe ne s'ouvre que si le transport ROULE —
+> écrire à l'arrêt déposerait tout sur un seul tick, et transformerait un
+> simple réglage de mixage en édition de courbe. La courbe reçoit le gain
+> LINÉAIRE et non les décibels du curseur : `mix.volume` est en gain, et
+> écrire des dB dessinerait une courbe que le moteur n'applique pas.
+>
+> L'ARRÊT EST DÉTECTÉ SUR LE FRONT DESCENDANT, dans la minuterie, et non dans
+> les six endroits qui appellent `transport_.stop()` : un seul des six oublié
+> laisserait une passe ouverte pour toujours, et elle se déposerait au
+> prochain arrêt — longtemps après le geste, et sur la mauvaise plage. Fermée
+> AVANT le retour au départ (D14.5), pour que la fin de la passe soit là où
+> la lecture s'est arrêtée et non là où elle était partie. Désarmer clôt
+> aussi ce qui courait.
+>
+> À l'écran, le bouton W a SA PROPRE RANGÉE dans la tranche. Mis en tiers
+> avec M et S, les trois libellés étaient tronqués en « ... » sur 76 pixels à
+> l'échelle 150 % — vu en regardant la capture, pas en le supposant. Il porte
+> maintenant « W touch » (ambre) ou « W latch » (rouge), lisible d'un coup
+> d'œil, et la hauteur par défaut du dock du bas passe de 260 à 282 pour que
+> le fader garde sa poignée. Sur une machine qui a déjà réglé cette hauteur,
+> c'est le réglage retenu qui l'emporte, comme il se doit.
+>
+> Six tests : cinq `core/` (la plage remplacée et le bord raccordé — écrire
+> 0,5 de 0 à 960 dans une courbe à 1,0 laisse 1,0 au tick 961 ; écrire au
+> milieu d'un fondu ne casse ni l'amont ni l'aval ; un passage sans point
+> joué n'efface rien ; le point joué gagne sur celui qui était là ; une
+> courbe vide ne reçoit pas de raccord inventé) et un `interchange/`
+> (aller-retour des trois modes, fichier inchangé quand tout est éteint).
+
 > **D16.4 EST FAITE (04/09/2026), et elle a pris le menu plutôt que le clic
 > droit sec.** Le tableau disait « clic droit le retire » ; un repère qui
 > disparaît sous un clic droit sans rien demander est une perte silencieuse,

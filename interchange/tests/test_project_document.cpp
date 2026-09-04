@@ -990,3 +990,26 @@ VSM_TEST(a_track_delay_survives_the_trip_and_a_zero_one_adds_nothing_to_the_file
     VSM_ASSERT_NEAR(rejoue.tracks[0].delayMs, 0.0, 1e-9);
     VSM_ASSERT_NEAR(rejoue.tracks[1].delayMs, -12.5, 1e-6);
 }
+
+// D16.8 — LE MODE D'ÉCRITURE DE L'AUTOMATION, absent du fichier quand il est
+// éteint : une piste qui n'a jamais rien armé s'écrit comme avant D16.8.
+VSM_TEST(the_automation_write_mode_survives_the_trip_and_off_writes_nothing) {
+    Project project = buildProject();
+    VSM_ASSERT(project.tracks.size() >= 2);
+    VSM_ASSERT(projectDocumentToJson(documentFromProject(project)).toString()
+                   .find("automationMode") == std::string::npos);
+
+    project.tracks[0].automationMode = vsm::sequencer::AutomationMode::Touch;
+    project.tracks[1].automationMode = vsm::sequencer::AutomationMode::Latch;
+    const std::string ecrit = projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(ecrit.find("\"touch\"") != std::string::npos);
+    VSM_ASSERT(ecrit.find("\"latch\"") != std::string::npos);
+
+    const ProjectLoadResult relu = parseProjectDocument(ecrit);
+    VSM_ASSERT(relu.success);
+    Project rejoue = project;
+    for (auto& t : rejoue.tracks) t.automationMode = vsm::sequencer::AutomationMode::Off;
+    applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT(rejoue.tracks[0].automationMode == vsm::sequencer::AutomationMode::Touch);
+    VSM_ASSERT(rejoue.tracks[1].automationMode == vsm::sequencer::AutomationMode::Latch);
+}

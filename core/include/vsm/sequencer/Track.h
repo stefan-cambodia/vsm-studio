@@ -344,6 +344,26 @@ struct AutomationCurve {
     std::vector<AutomationPoint> points;
 };
 
+/// LE MODE D'ÉCRITURE DE L'AUTOMATION (D16.8) — le W/R par tranche de
+/// Cubase, l'armement d'automation de Live.
+///
+/// `Off` : la courbe ne s'obtient qu'au dessin, comme depuis D5.4 ; c'est le
+/// défaut, et une piste qui n'a jamais rien armé s'écrit dans le fichier
+/// exactement comme avant que ce réglage existe.
+///
+/// `Touch` : la main sur un fader écrit TANT QU'ON LE TIENT, et la courbe
+/// reprend ce qu'elle disait dès qu'on lâche. C'est le mode des retouches --
+/// corriger deux mesures sans effacer le reste.
+///
+/// `Latch` : la main sur un fader écrit à partir du moment où on l'a touché
+/// et JUSQU'À L'ARRÊT du transport, même après avoir lâché. C'est le mode des
+/// premiers jets -- poser une courbe entière en un passage.
+///
+/// Les deux se distinguent SEULEMENT par ce qui se passe au relâchement, et
+/// c'est pourquoi ils ne sont pas deux mécanismes : le même enregistrement
+/// tourne, et seul l'instant où il s'arrête change.
+enum class AutomationMode : uint8_t { Off = 0, Touch = 1, Latch = 2 };
+
 /// Une piste MIDI éditable : notes + lanes de contrôleurs, plus les
 /// attributs de mixage/routing exposés par le Track Editor (section 4 du
 /// cahier des charges). Le routing vers un synthé virtuel (`instrumentId`)
@@ -518,6 +538,8 @@ public:
     /// `TrackEffect` pour la raison -- non décorative -- de les ranger ici.
     std::vector<TrackEffect> effects;
     std::vector<AutomationCurve> automation;
+    /// D16.8 : `Off` par défaut, et absent du fichier dans ce cas.
+    AutomationMode automationMode = AutomationMode::Off;
 
     /// Les prises empilées de la piste (D3.5).
     ///

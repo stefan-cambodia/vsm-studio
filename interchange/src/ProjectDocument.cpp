@@ -256,6 +256,9 @@ ProjectDocument documentFromProject(const Project& project) {
         entry.frozen = track.frozen;
         entry.locked = track.locked;
         entry.delayMs = track.delayMs;
+        entry.automationMode = track.automationMode == vsm::sequencer::AutomationMode::Touch ? "touch"
+                             : track.automationMode == vsm::sequencer::AutomationMode::Latch ? "latch"
+                                                                                        : "";
         entry.frozenAudio.path = track.frozenAudio.path;
         entry.frozenAudio.sampleRate = track.frozenAudio.sampleRate;
         entry.frozenAudio.frames = track.frozenAudio.frames;
@@ -395,6 +398,9 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.frozen = source.frozen;
         target.locked = source.locked;
         target.delayMs = source.delayMs;
+        target.automationMode = source.automationMode == "touch" ? vsm::sequencer::AutomationMode::Touch
+                              : source.automationMode == "latch" ? vsm::sequencer::AutomationMode::Latch
+                                                                 : vsm::sequencer::AutomationMode::Off;
         target.frozenAudio = {source.frozenAudio.path, source.frozenAudio.sampleRate,
                                source.frozenAudio.frames, source.frozenAudio.channels};
         target.audio = {source.audio.path, source.audio.sampleRate,
@@ -579,6 +585,8 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         // perdre le premier sur toute piste non gelée.
         if (track.locked) entry.set("locked", JsonValue::makeBoolean(true));
         if (track.delayMs != 0.0) entry.set("delayMs", JsonValue::makeFloat(track.delayMs));
+        if (!track.automationMode.empty())
+            entry.set("automationMode", JsonValue::makeString(track.automationMode));
         if (track.frozen || !track.frozenAudio.path.empty()) {
             entry.set("frozen", JsonValue::makeBoolean(track.frozen));
             JsonValue gel = JsonValue::makeObject();
@@ -793,6 +801,7 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         track.frozen = entry["frozen"].asBoolean(false);
         track.locked = entry["locked"].asBoolean(false);
         track.delayMs = entry["delayMs"].asNumber(0.0);
+        track.automationMode = entry["automationMode"].asString();
         if (entry["frozenAudio"].isObject()) {
             track.frozenAudio.path = entry["frozenAudio"]["file"].asString();
             // MÊME RÈGLE QUE PARTOUT : un chemin absolu est refusé, jamais

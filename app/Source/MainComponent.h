@@ -693,7 +693,11 @@ private:
     // Tailles des volets ancrés, en points, conservées d'une session à l'autre.
     int dockGauche_ = 300;
     int dockDroite_ = 380;
-    int dockBas_ = 260;
+    /// D16.8 : 282 et non 260 -- la tranche de console a gagné la rangée du
+    /// bouton W, et à 260 le fader perdait sa poignée. La hauteur reste
+    /// réglable et retenue ; c'est le DÉFAUT qui suit ce que la tranche
+    /// demande, plutôt que la tranche qui se serre.
+    int dockBas_ = 282;
     int dockBase_ = 0;  // taille au début du geste en cours
     SeparateurDock sepGauche_ { true };
     SeparateurDock sepDroite_ { true };
