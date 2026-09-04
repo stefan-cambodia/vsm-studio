@@ -599,7 +599,38 @@ le § 7 du CDC machines avait raison de séparer couverture et jeu — une
 machine de plus ne coûte rien à la distance quand le verdict au mélange
 arbitre, et peut la gagner ; le −0,4 % est dans le bruit de la mesure,
 c'est le clavecin retenu qui est le fait. La campagne 5 clôt les campagnes
-de la parité ; usandthem-v15 (06:49) reste à lire.
+de la parité.
+
+**usandthem-v15 — MESURÉE (06:49, lue à 10:15) : 0,18160, soit −5,0 % du
+témoin H22a-v2 (0,19104), quatre pistes (sans parité, comme son témoin).**
+L'hypothèse « ≈ témoin » (ROADMAP-fusion § 5 quaterdecies) est CONTREDITE
+dans le bon sens : avec NEUF finalistes au lieu de six, la basse change de
+machine — `vsm.sitar`, SEPTIÈME à l'arbitrage de piste (à 130,1 % du
+premier), gagne au verdict du mélange, qui a pris un troisième tour (bass
+seule au tour 2). Le sitar n'aurait jamais été entendu à six finalistes.
+Durée 4 294 s (1 h 11). Ce que cela dit : l'arbitrage au stem se trompe
+sur la basse d'*Us and Them* (elle sonne ailleurs, mêlée, que seule), et
+le nombre de finalistes est le budget de cette seconde chance. La règle du
+§ 5 s'applique : un second morceau avant de changer le défaut — c'est la
+campagne 6.
+
+## 10. Campagne 6 : le parc à 63 sur *Sky and Sand*, puis neuf finalistes — attendu écrit AVANT (04/09/2026, 10:20)
+
+Deux courses, l'une après l'autre, sur le moteur à 63 machines (mandoline,
+kalimba et séquençage d'ondes fusionnés à 10:20, commit de la fusion dans
+la provenance). La première est le TÉMOIN de la seconde, et elle mesure
+au passage le prix du parc sur le second morceau ; la seconde répond à
+v15 sur *Sky and Sand*.
+
+| Course | Témoin | Variable unique | Attendu, écrit d'avance |
+|---|---|---|---|
+| sky-parite-parc63 | sky-parite (0,24073, 7 pistes, moteur à 53 machines du 02/09) | le MOTEUR : 63 machines, le cône qui s'éteint, mêmes stems (sky-6s), mêmes options (parité, 120 × 21, 3 tours, 6 finalistes, 6 rendus) | comme parc60 sur *Us and Them* : entre −3 % et +5 %, sept pistes ; au moins une des dix nouvelles machines parmi les six finalistes de `bass` ou d'`other` — sur une piste électronique, le séquençage d'ondes ou le clavinet ne seraient pas absurdes sur `other` (musicbox à 0,2965 est battable) |
+| sky-parite-m9 | sky-parite-parc63 | `--machines-au-melange 9` | v15 a donné −5,0 % sur *Us and Them* par un septième finaliste qui gagne au mélange. Sur *Sky and Sand*, `bass` (vector, 0,3314 au stem) et `other` (0,2965) ont chacun cinq machines suivantes écartées de peu (0,2334 à 0,2513 contre 0,2284 au verdict) : j'attends entre −6 % et +1 %, et qu'au moins UNE piste change de machine par un finaliste de rang 7 à 9. **Décision écrite d'avance** : si l'écart est ≤ −2 % (deux morceaux dans le même sens), `--machines-au-melange 9` devient le défaut ; entre −2 % et +1 %, il reste une option et le chiffre se publie ; au-delà de +1 %, l'hypothèse est réfutée sur ce morceau et v15 reste un fait d'*Us and Them* |
+
+Durées attendues : 1 h 40 (sky-parite faisait 1 h 37 à 6 rendus) puis
+2 h 10 (le troisième tour de verdict et trois finalistes de plus). Le
+script `campagne-parite-6.sh` enchaîne les deux et s'arrête à la première
+qui échoue.
 
 ### En attente de la fin des campagnes (03/09/2026)
 
