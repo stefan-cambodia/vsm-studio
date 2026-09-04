@@ -276,6 +276,8 @@ struct ProjectDocument {
     std::vector<ProjectTrack> tracks;
     /// Repères nommés. Facultatif, comme les clips.
     std::vector<ProjectMarker> markers;
+    /// D18.6 : les notes du projet. Vides = rien n'est écrit.
+    std::string notes;
 };
 
 /// Décrit un projet en mémoire (hors notes, qui partent dans le `.mid`).

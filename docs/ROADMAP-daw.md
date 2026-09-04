@@ -4129,6 +4129,32 @@ les jours ensuite, le modèle en dernier.
 > donnerait une fonction que personne ne peut appeler, et ce dépôt préfère une
 > étape entière à deux moitiés.
 
+> **D18.6 EST FAITE (05/09/2026).** `Project::notes`, un texte libre écrit
+> dans `project.json` seulement s'il y a quelque chose à écrire. Affichage ▸
+> Notes du projet, une fenêtre flottante qui écrit dans le projet À CHAQUE
+> FRAPPE et marque le projet modifié : des notes qu'il faudrait penser à
+> valider seraient des notes perdues. Le panneau ne détient rien — le texte
+> vit dans le projet, et une seconde copie serait la première à mentir.
+>
+> POURQUOI CE PROJET-CI EN A PLUS BESOIN QU'UN AUTRE : une reconstruction est
+> faite de DÉCISIONS (« la basse vient du stem `other` parce que la séparation
+> l'y avait rangée », « la nappe est une hypothèse, le stem n'avait rien de
+> net », « cette piste est coupée exprès »). Le rapport de reconstruction dit
+> ce que la CHAÎNE a fait ; ceci dit ce que l'HUMAIN a décidé, et les deux ne
+> se remplacent pas.
+>
+> UN CAS QUE LE TEST ATTRAPE : des notes VIDES venant du document n'effacent
+> pas celles qui sont en mémoire. Un projet ouvert par une version qui ne
+> connaît pas le champ ne doit pas les perdre au réenregistrement — c'est la
+> même prudence que pour les presets d'un projet ancien. Le menu dit le nombre
+> de caractères : un bloc-notes vide et un bloc-notes plein s'ouvrent pareil,
+> et savoir qu'il y a quelque chose dedans est la moitié de son intérêt.
+>
+> Un test `interchange/` (aller-retour, fichier inchangé quand le texte est
+> vide, et des notes vides qui n'écrasent rien). Vu à l'écran par une capture
+> d'ÉCRAN et non un autoportrait — la fenêtre est flottante, donc absente du
+> rendu du composant principal.
+
 > **D18.1 EST FAITE (05/09/2026), et son critère a dû être réécrit par la
 > mesure.** « Piste ▸ Reporter la sélection en audio » rend hors ligne les
 > clips choisis — une piste neuve par piste source, posée À LA PLACE de la

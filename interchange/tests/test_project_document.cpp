@@ -1125,3 +1125,30 @@ VSM_TEST(an_edit_group_survives_the_trip_and_none_writes_nothing) {
     VSM_ASSERT_EQ(rejoue.tracks[0].editGroup, 3);
     VSM_ASSERT_EQ(rejoue.tracks[1].editGroup, 3);
 }
+
+// D18.6 — LES NOTES DU PROJET, écrites seulement s'il y en a.
+VSM_TEST(project_notes_survive_the_trip_and_an_empty_note_writes_nothing) {
+    Project project = buildProject();
+    VSM_ASSERT(projectDocumentToJson(documentFromProject(project)).toString()
+                   .find("\"notes\"") == std::string::npos);
+
+    project.notes = "La basse vient du stem other.\nLa nappe est une hypothese.";
+    const std::string ecrit = projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(ecrit.find("\"notes\"") != std::string::npos);
+
+    const ProjectLoadResult relu = parseProjectDocument(ecrit);
+    VSM_ASSERT(relu.success);
+    Project rejoue = project;
+    rejoue.notes.clear();
+    applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT_EQ(rejoue.notes, project.notes);
+
+    // ET DES NOTES VIDES N'EFFACENT PAS CELLES QUI SONT LÀ : un projet ouvert
+    // par une version qui ne les connaît pas ne doit pas les perdre en le
+    // réenregistrant.
+    Project gardees = project;
+    ProjectDocument sansNotes = relu.document;
+    sansNotes.notes.clear();
+    applyDocumentToProject(sansNotes, gardees);
+    VSM_ASSERT_EQ(gardees.notes, project.notes);
+}

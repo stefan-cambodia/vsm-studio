@@ -73,6 +73,20 @@ public:
     /// Repères nommés de la ligne de temps, triés par tick.
     std::vector<Marker> markers;
 
+    /// LES NOTES DU PROJET (D18.6) — le bloc-notes de Cubase.
+    ///
+    /// POURQUOI CE PROJET-CI EN A PLUS BESOIN QU'UN AUTRE. Une reconstruction
+    /// est faite de DÉCISIONS : « la basse vient du stem `other` parce que la
+    /// séparation l'y avait rangée », « la nappe est une hypothèse, le stem
+    /// n'avait rien de net », « cette piste est coupée exprès ». Rien n'en
+    /// gardait la trace, et six mois plus tard le projet ne dit plus pourquoi
+    /// il est ce qu'il est. Le rapport de reconstruction dit ce que la CHAÎNE
+    /// a fait ; ceci dit ce que l'HUMAIN a décidé, et les deux ne se
+    /// remplacent pas.
+    ///
+    /// Écrit dans `project.json` seulement s'il y a quelque chose à écrire.
+    std::string notes;
+
     /// LES BUS DE DÉPART (sends) DU PROJET (D4.2).
     ///
     /// Ils étaient DEUX, figés dans le constructeur de l'application sur une

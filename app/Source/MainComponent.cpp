@@ -1020,6 +1020,7 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     else if (nom == "flottant")    menuItemSelected(kMenuViewSingleWindow, 5);
     else if (nom == "historique")  menuItemSelected(kMenuViewHistory, 5);   // D11 : la fenêtre d'historique, pour la photographier
     else if (nom == "spectre")     menuItemSelected(kMenuViewSpectrum, 5);  // D15.3 : l'analyseur, pour le photographier
+    else if (nom == "notes")       menuItemSelected(kMenuViewProjectNotes, 5);  // D18.6
     // D16.6 : la fenêtre des préférences, pour photographier le réglage du
     // métronome — elle ne s'ouvre autrement qu'au menu Fichier, à la souris.
     else if (nom == "preferences") menuItemSelected(kMenuFilePreferences, 0);
@@ -1880,6 +1881,16 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuViewSpectrum,
                           juce::String::fromUTF8(u8"Analyseur de spectre..."),
                           true, spectrumWindow_ && spectrumWindow_->isVisible());
+            // D18.6 : LE NOMBRE DE CARACTÈRES EST DIT. Un bloc-notes vide et un
+            // bloc-notes plein s'ouvrent pareil ; savoir qu'il y a quelque
+            // chose dedans est la moitié de son intérêt.
+            menu.addItem(kMenuViewProjectNotes,
+                          project_.notes.empty()
+                              ? juce::String::fromUTF8(u8"Notes du projet... (vides)")
+                              : juce::String::fromUTF8(u8"Notes du projet... (")
+                                    + juce::String(static_cast<int>(project_.notes.size()))
+                                    + juce::String::fromUTF8(u8" caractères)"),
+                          true, projectNotesWindow_ && projectNotesWindow_->isVisible());
             menu.addItem(kMenuViewMidiLearn,
                           juce::String::fromUTF8(u8"Associations MIDI (")
                               + juce::String(static_cast<int>(audioEngine_.midiLearnMappingCount()))
@@ -2009,6 +2020,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             historyWindow_->setVisible(!visible);
             break;
         }
+        case kMenuViewProjectNotes: showProjectNotes(); break;
         case kMenuViewSpectrum: {
             if (!spectrumWindow_) {
                 spectrumWindow_ = std::make_unique<PanelWindow>(
@@ -3988,6 +4000,35 @@ void MainComponent::refreshPreferences() {
         audioEngine_.processGraph().metronomeCountInOnly(),
         audioEngine_.processGraph().metronomeRecordOnly(),
         arrangement_.automationFollowsClips());
+}
+
+void MainComponent::showProjectNotes() {
+    if (!projectNotesWindow_) {
+        projectNotesEditor_.setMultiLine(true, true);
+        projectNotesEditor_.setReturnKeyStartsNewLine(true);
+        projectNotesEditor_.setScrollbarsShown(true);
+        projectNotesEditor_.setFont(juce::Font(juce::FontOptions(14.0f)));
+        projectNotesEditor_.setTextToShowWhenEmpty(
+            juce::String::fromUTF8(
+                u8"Ce que la chaîne ne dit pas : pourquoi cette piste vient de ce stem, "
+                u8"ce qui est une hypothèse, ce qui est coupé exprès…"),
+            vsm::ui::Palette::textSecondary);
+        // ÉCRIT DANS LE PROJET À CHAQUE FRAPPE, et marqué modifié : des notes
+        // qu'il faudrait penser à valider seraient des notes perdues.
+        projectNotesEditor_.onTextChange = [this] {
+            project_.notes = projectNotesEditor_.getText().toStdString();
+            markProjectDirty();
+        };
+        projectNotesWindow_ = std::make_unique<PanelWindow>(
+            juce::String::fromUTF8(u8"Notes du projet"), projectNotesEditor_);
+        projectNotesWindow_->setDefaultSize(520, 380);
+    }
+    // RELU DEPUIS LE PROJET À CHAQUE OUVERTURE : un autre projet a d'autres
+    // notes, et l'éditeur ne doit pas montrer celles du précédent.
+    if (projectNotesEditor_.getText().toStdString() != project_.notes)
+        projectNotesEditor_.setText(juce::String(project_.notes), juce::dontSendNotification);
+    projectNotesWindow_->setVisible(true);
+    projectNotesWindow_->toFront(true);
 }
 
 void MainComponent::showPreferences() {

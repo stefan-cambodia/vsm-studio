@@ -262,6 +262,8 @@ private:
         kMenuViewShortcuts,
         kMenuViewHistory,
         kMenuViewSpectrum,
+        /// D18.6 : le bloc-notes du projet.
+        kMenuViewProjectNotes,
         kMenuFilePreferences,
         kMenuViewBrowser,
         kMenuFileReconstruct,
@@ -664,6 +666,13 @@ private:
     /// c'est ce qui distingue « reporter la sélection » de « reporter la
     /// piste », qui, lui, remplace le matériau.
     void bounceSelectionToNewTracks();
+    /// D18.6 : ouvre le bloc-notes du projet.
+    void showProjectNotes();
+    std::unique_ptr<PanelWindow> projectNotesWindow_;
+    /// LE PANNEAU NE DÉTIENT RIEN : le texte vit dans `project_`, et l'éditeur
+    /// l'y écrit à chaque frappe. Dupliquer l'état créerait une seconde
+    /// vérité, et c'est toujours la seconde qui finit par mentir.
+    juce::TextEditor projectNotesEditor_;
     /// D17.8 : les quatre gestes du groove. Le groove COURANT vit dans
     /// l'application et non dans le projet : c'est un outil qu'on porte d'un
     /// morceau à l'autre, comme un preset, pas une propriété du morceau.

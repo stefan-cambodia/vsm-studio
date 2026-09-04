@@ -221,6 +221,7 @@ ProjectDocument documentFromProject(const Project& project) {
                                                       1 << change.denominatorPow2});
     for (const auto& marker : project.markers)
         document.markers.push_back({marker.tick, marker.name});
+    document.notes = project.notes;
     document.master = project.masterParameters;
     document.transport.loopEnabled = project.loopEnabled;
     document.transport.loopStartTick = project.loopStartTick;
@@ -366,6 +367,10 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
                                                 denominatorToPow2(change.denominator));
     }
 
+    // D18.6 : les notes du projet suivent, s'il y en a. Vides, on ne les
+    // écrase pas -- un projet ouvert par une version qui ne les connaît pas ne
+    // doit pas les perdre en le réenregistrant.
+    if (!document.notes.empty()) project.notes = document.notes;
     if (!document.markers.empty()) {
         project.markers.clear();
         for (const auto& marker : document.markers)
@@ -498,6 +503,9 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         }
         root.set("markers", std::move(markers));
     }
+
+    // D18.6 : les notes du projet, écrites seulement s'il y en a.
+    if (!document.notes.empty()) root.set("notes", JsonValue::makeString(document.notes));
 
     if (!document.master.empty()) {
         JsonValue master = JsonValue::makeObject();
@@ -750,6 +758,7 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         // traîné jusqu'à l'écran.
         if (!marker.name.empty()) document.markers.push_back(std::move(marker));
     }
+    document.notes = json["notes"].asString();
     for (const auto& [name, value] : json["master"].members())
         if (value.isNumber()) document.master[name] = static_cast<float>(value.asNumber());
     document.midiPath = json["midi"]["file"].asString("midi/arrangement.mid");
