@@ -150,6 +150,7 @@ private:
     enum MenuItemId {
         kMenuFileNewProject = 1,
         kMenuFileOpen,
+    kMenuFileImportMidiIntoProject,
         kMenuFileOpenBundle,
         kMenuFileImportDaw,
         kMenuFileImportReport,
@@ -470,6 +471,10 @@ private:
     /// tempo, mesures, boucle et punch -- et ce qui est à cheval est coupé.
     /// Les locateurs sont la région de boucle, comme dans Cubase.
     void editTimeAtLocators(bool inserer);
+    /// IMPORTER UN MIDI DANS LE PROJET (D14.3) : ses pistes s'ajoutent à la
+    /// suite, posées à la tête de lecture ; « Ouvrir MIDI » le REMPLACE.
+    void importMidiIntoProject(const juce::File& file);
+    void chooseMidiToImport();
     /// LA RÉGION DE BOUCLE, POSÉE PARTOUT où elle se voit et s'entend (D14.1) :
     /// le projet, le transport, le moteur, les deux vues.
     void setLoopRegionEverywhere(vsm::midi::Tick start, vsm::midi::Tick end, bool active);

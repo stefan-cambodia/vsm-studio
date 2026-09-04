@@ -3215,6 +3215,15 @@ quotidien d'abord, l'import et l'export ensuite, la préférence en dernier.
 > Annulable. Et l'arrangement zoome : « Zoom : tout voir » et « Zoom : la
 > sélection » dans son menu, et le raccourci « Ajuster à la fenêtre » vaut
 > désormais pour les deux vues — il n'était entendu que par le piano roll.
+>
+> **D14.3 EST FAITE (04/09/2026).** `appendTracksFrom` vit dans `core/`
+> (`ProjectImport.h`) : les pistes de la source s'ajoutent à la suite,
+> leurs ticks ramenés à la résolution du projet (un fichier à 960 ppq
+> jouerait deux fois trop lentement dans un projet à 480), posées à la tête
+> de lecture, avec des identifiants de notes et de clips neufs ; le tempo et
+> les mesures du fichier sont IGNORÉS et comptés — le projet garde les
+> siens, et l'application le dit. Deux tests. Fichier ▸ Importer un MIDI
+> dans le projet…, et un `.mid` lâché sur la fenêtre fait pareil ; annulable.
 
 
 ## 4. Les choix tranchés ici, et pourquoi

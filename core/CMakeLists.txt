@@ -11,6 +11,7 @@ add_library(vsm_core STATIC
     src/sequencer/AutomationEdit.cpp
     src/sequencer/ClipEdit.cpp
     src/sequencer/TimeEdit.cpp
+    src/sequencer/ProjectImport.cpp
     src/sequencer/MidiRecorder.cpp
     src/sequencer/PlaybackScheduler.cpp
 )
@@ -44,6 +45,7 @@ if (VSM_BUILD_TESTS)
         tests/test_takes.cpp
         tests/test_clip_edit.cpp
         tests/test_time_edit.cpp
+        tests/test_project_import.cpp
         tests/test_automation_edit.cpp
     )
     target_link_libraries(vsm_core_tests PRIVATE vsm_core)

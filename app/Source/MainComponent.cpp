@@ -1,5 +1,6 @@
 #include "MainComponent.h"
 #include "vsm/sequencer/TimeEdit.h"
+#include "vsm/sequencer/ProjectImport.h"
 #include "vsm/interchange/DawImport.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
@@ -1210,6 +1211,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
         case 0:
             menu.addItem(kMenuFileNewProject, "Nouveau projet");
             menu.addItem(kMenuFileOpen, "Ouvrir MIDI...");
+            menu.addItem(kMenuFileImportMidiIntoProject, u8"Importer un MIDI dans le projet...");
             menu.addItem(kMenuFileOpenBundle, "Ouvrir un projet VSM...");
             {
                 // D11.6 : LES PROJETS RÉCENTS, dix au plus, le dernier ouvert
@@ -1638,6 +1640,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuEditInsertTimeAtLocators) { editTimeAtLocators(true); return; }
     if (menuItemID == kMenuEditDeleteTimeAtLocators) { editTimeAtLocators(false); return; }
     if (menuItemID == kMenuEditLocatorsFromSelection) { locatorsFromSelection(); return; }
+    if (menuItemID == kMenuFileImportMidiIntoProject) { chooseMidiToImport(); return; }
     if (menuItemID >= kMenuFileRecentFirst && menuItemID <= kMenuFileRecentLast) {
         const auto liste = recentProjects();
         const int i = menuItemID - kMenuFileRecentFirst;
@@ -3357,12 +3360,19 @@ void MainComponent::startReconstruction(const juce::File& audioFile) {
 }
 
 bool MainComponent::isInterestedInFileDrag(const juce::StringArray& files) {
-    for (const auto& f : files)
+    for (const auto& f : files) {
         if (vsm::interchange::isReconstructableAudio(f.toStdString())) return true;
+        if (f.endsWithIgnoreCase(".mid") || f.endsWithIgnoreCase(".midi")) return true;
+    }
     return false;
 }
 
 void MainComponent::filesDropped(const juce::StringArray& files, int, int) {
+    // UN FICHIER MIDI LÂCHÉ SUR LA FENÊTRE S'IMPORTE DANS LE PROJET (D14.3), à
+    // la tête de lecture -- le geste le moins ambigu des deux qu'on peut
+    // vouloir, et le seul qui ne perd rien.
+    for (const auto& f : files)
+        if (f.endsWithIgnoreCase(".mid") || f.endsWithIgnoreCase(".midi")) { importMidiIntoProject(juce::File(f)); return; }
     juce::File audio;
     for (const auto& f : files)
         if (vsm::interchange::isReconstructableAudio(f.toStdString())) { audio = juce::File(f); break; }
@@ -4496,6 +4506,38 @@ void MainComponent::saveProjectAs() {
         folder.createDirectory();
         writeProjectTo(folder);
     });
+}
+
+void MainComponent::chooseMidiToImport() {
+    auto chooser = std::make_shared<juce::FileChooser>(
+        u8"Importer un MIDI dans le projet...", juce::File(), "*.mid;*.midi");
+    chooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+                         [this, chooser](const juce::FileChooser& fc) {
+                             const juce::File file = fc.getResult();
+                             if (file != juce::File()) importMidiIntoProject(file);
+                         });
+}
+
+void MainComponent::importMidiIntoProject(const juce::File& file) {
+    try {
+        ParsedFile parsed = MidiFileParser::parseFile(file.getFullPathName().toStdString());
+        const Project source = Project::fromParsedFile(parsed);
+        beginProjectEdit(u8"Importer un MIDI");
+        const auto bilan = vsm::sequencer::appendTracksFrom(project_, source, transport_.currentTick());
+        rebuildFromProject();
+        if (!project_.tracks.empty()) trackList_.selectTrackIndex(project_.tracks.size() - 1);
+        // CE QUI EST IGNORÉ EST DIT : le tempo et les mesures du fichier.
+        if (bilan.tempoChangesIgnored > 0 || bilan.timeSignaturesIgnored > 0)
+            juce::AlertWindow::showMessageBoxAsync(
+                juce::AlertWindow::InfoIcon, u8"MIDI importé",
+                juce::String(static_cast<int>(bilan.tracksAdded)) + juce::String(u8" piste(s) ajoutée(s) à la tête de lecture. ")
+                    + juce::String(u8"Le tempo et les mesures du fichier ont été ignorés (")
+                    + juce::String(static_cast<int>(bilan.tempoChangesIgnored + bilan.timeSignaturesIgnored))
+                    + juce::String(u8" changement(s)) : le projet garde les siens."));
+    } catch (const std::exception& e) {
+        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                                                 u8"Erreur d'import MIDI", e.what());
+    }
 }
 
 void MainComponent::setLoopRegionEverywhere(vsm::midi::Tick start, vsm::midi::Tick end, bool active) {
