@@ -767,6 +767,34 @@ MainComponent::MainComponent()
         vsm::app::ui::UiScale::properties().setValue("retourAuDepartALArret", actif);
         vsm::app::ui::UiScale::properties().saveIfNeeded();
     };
+    // D16.6 : LE MÉTRONOME RÉGLABLE. Le niveau et les deux restrictions sont
+    // relus au démarrage et poussés au graphe -- sans cela, `setMetronomeLevel`
+    // existait et n'était appelé de nulle part, et le réglage se perdait à
+    // chaque fermeture.
+    {
+        auto& reglages = vsm::app::ui::UiScale::properties();
+        const auto niveau = static_cast<float>(reglages.getDoubleValue("niveauMetronome", 0.35));
+        audioEngine_.processGraph().setMetronomeLevel(juce::jlimit(0.0f, 1.0f, niveau));
+        audioEngine_.processGraph().setMetronomeCountInOnly(
+            reglages.getBoolValue("metronomeDecompteSeul", false));
+        audioEngine_.processGraph().setMetronomeRecordOnly(
+            reglages.getBoolValue("metronomeEnregistrementSeul", false));
+    }
+    preferencesPanel_.onMetronomeLevelChanged = [this](float niveau) {
+        audioEngine_.processGraph().setMetronomeLevel(niveau);
+        vsm::app::ui::UiScale::properties().setValue("niveauMetronome", niveau);
+        vsm::app::ui::UiScale::properties().saveIfNeeded();
+    };
+    preferencesPanel_.onMetronomeCountInOnlyChanged = [this](bool actif) {
+        audioEngine_.processGraph().setMetronomeCountInOnly(actif);
+        vsm::app::ui::UiScale::properties().setValue("metronomeDecompteSeul", actif);
+        vsm::app::ui::UiScale::properties().saveIfNeeded();
+    };
+    preferencesPanel_.onMetronomeRecordOnlyChanged = [this](bool actif) {
+        audioEngine_.processGraph().setMetronomeRecordOnly(actif);
+        vsm::app::ui::UiScale::properties().setValue("metronomeEnregistrementSeul", actif);
+        vsm::app::ui::UiScale::properties().saveIfNeeded();
+    };
     preferencesPanel_.onOpenMidiLearn = [this] { menuItemSelected(kMenuViewMidiLearn, 0); };
     shortcutsPanel_.onRebind = [this](vsm::interchange::ShortcutId id) {
         rebindPending_ = true;
@@ -946,6 +974,9 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     else if (nom == "flottant")    menuItemSelected(kMenuViewSingleWindow, 5);
     else if (nom == "historique")  menuItemSelected(kMenuViewHistory, 5);   // D11 : la fenêtre d'historique, pour la photographier
     else if (nom == "spectre")     menuItemSelected(kMenuViewSpectrum, 5);  // D15.3 : l'analyseur, pour le photographier
+    // D16.6 : la fenêtre des préférences, pour photographier le réglage du
+    // métronome — elle ne s'ouvre autrement qu'au menu Fichier, à la souris.
+    else if (nom == "preferences") menuItemSelected(kMenuFilePreferences, 0);
     // Ferme l'écran de rapport (import ou reconstruction) : VSM_IMPORT le
     // montre, et sans ce jeton l'arrangement d'un projet importé ne serait
     // photographiable qu'à travers lui. Pas dans le menu Affichage — le
@@ -3793,14 +3824,21 @@ void MainComponent::refreshPreferences() {
         reconstructionChain_, designe,
         vsm::app::ui::UiScale::properties().getValue("dossierBibliotheque", ""),
         static_cast<int>(vsm::interchange::shortcutCommands().size()),
-        static_cast<int>(audioEngine_.midiLearnMappingCount()), retourAuDepart_);
+        static_cast<int>(audioEngine_.midiLearnMappingCount()), retourAuDepart_,
+        audioEngine_.processGraph().metronomeLevel(),
+        audioEngine_.processGraph().metronomeCountInOnly(),
+        audioEngine_.processGraph().metronomeRecordOnly());
 }
 
 void MainComponent::showPreferences() {
     if (!preferencesWindow_) {
         preferencesWindow_ = std::make_unique<PanelWindow>(
             juce::String::fromUTF8(u8"Préférences"), preferencesPanel_);
-        preferencesWindow_->setDefaultSize(560, 472);
+        // D16.6 : trois rangées de plus (niveau du clic, et les deux « le clic
+        // bat »). Une fenêtre restée à sa taille d'avant aurait coupé les
+        // Commandes -- et « ça tient dans la case » ne l'emporte jamais sur
+        // « ça se lit ».
+        preferencesWindow_->setDefaultSize(560, 562);
     }
     refreshPreferences();
     preferencesWindow_->setVisible(true);

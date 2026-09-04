@@ -32,6 +32,29 @@ PreferencesWindow::PreferencesWindow() {
     addAndMakeVisible(libelleRetour_);
     retourAuDepart_.onClick = [this] { if (onReturnToStartChanged) onReturnToStartChanged(retourAuDepart_.getToggleState()); };
     addAndMakeVisible(retourAuDepart_);
+    // LE MÉTRONOME (D16.6). Le niveau est un GAIN LINÉAIRE, montré en pour
+    // cent : un métronome ne se règle pas en décibels, on le veut plus fort ou
+    // moins fort, et la crête suit le chiffre exactement.
+    ligne(libelleClic_, juce::String::fromUTF8(u8"Niveau du clic"));
+    addAndMakeVisible(libelleClic_);
+    niveauClic_.setRange(0.0, 1.0, 0.01);
+    niveauClic_.setTextValueSuffix("");
+    niveauClic_.setNumDecimalPlacesToDisplay(2);
+    niveauClic_.onValueChange = [this] {
+        if (onMetronomeLevelChanged) onMetronomeLevelChanged(static_cast<float>(niveauClic_.getValue()));
+    };
+    addAndMakeVisible(niveauClic_);
+    ligne(libelleQuandClic_, juce::String::fromUTF8(u8"Le clic bat"));
+    addAndMakeVisible(libelleQuandClic_);
+    clicDecompteSeul_.onClick = [this] {
+        if (onMetronomeCountInOnlyChanged) onMetronomeCountInOnlyChanged(clicDecompteSeul_.getToggleState());
+    };
+    clicEnregistrementSeul_.onClick = [this] {
+        if (onMetronomeRecordOnlyChanged) onMetronomeRecordOnlyChanged(clicEnregistrementSeul_.getToggleState());
+    };
+    addAndMakeVisible(clicDecompteSeul_);
+    addAndMakeVisible(clicEnregistrementSeul_);
+
     ligne(libelleChaine_, juce::String::fromUTF8(u8"Dossier"));
     ligne(etatChaine_, "");
     for (auto* e : {&libelleEchelle_, &libelleThreads_, &libelleChaine_, &etatChaine_})
@@ -95,6 +118,14 @@ void PreferencesWindow::resized() {
     titreAudio_.setBounds(rangee(26));
     paire(rangee(30), libelleThreads_, threads_);
     paire(rangee(30), libelleRetour_, retourAuDepart_);
+    paire(rangee(30), libelleClic_, niveauClic_);
+    paire(rangee(28), libelleQuandClic_, clicDecompteSeul_);
+    // La seconde case n'a pas de libellé à gauche : elle prolonge la première,
+    // et répéter « Le clic bat » ferait croire à deux réglages sans rapport.
+    {
+        auto r = rangee(28);
+        clicEnregistrementSeul_.setBounds(r.removeFromRight(240).reduced(0, 2));
+    }
     rangee(12);
     titreChaine_.setBounds(rangee(26));
     paire(rangee(30), libelleChaine_, choisirChaine_);
@@ -113,8 +144,13 @@ void PreferencesWindow::refresh(float uiScale, int renderThreads, int recommende
                                  const vsm::interchange::ReconstructionChain& chain,
                                  const juce::String& designatedChainFolder,
                                  const juce::String& libraryFolder,
-                                 int shortcutCount, int midiMappingCount, bool returnToStartOnStop) {
+                                 int shortcutCount, int midiMappingCount, bool returnToStartOnStop,
+                                 float metronomeLevel, bool metronomeCountInOnly,
+                                 bool metronomeRecordOnly) {
     retourAuDepart_.setToggleState(returnToStartOnStop, juce::dontSendNotification);
+    niveauClic_.setValue(metronomeLevel, juce::dontSendNotification);
+    clicDecompteSeul_.setToggleState(metronomeCountInOnly, juce::dontSendNotification);
+    clicEnregistrementSeul_.setToggleState(metronomeRecordOnly, juce::dontSendNotification);
     const auto& paliers = UiScale::steps();
     for (int i = 0; i < paliers.size(); ++i)
         if (std::abs(paliers[i] - uiScale) < 1.0e-3f)

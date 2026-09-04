@@ -116,6 +116,32 @@ public:
     void setMetronomeEnabled(bool on) { metronomeEnabled_.store(on, std::memory_order_relaxed); }
     bool metronomeEnabled() const { return metronomeEnabled_.load(std::memory_order_relaxed); }
     void setMetronomeLevel(float level) { metronome_.setLevel(level); }
+    float metronomeLevel() const { return metronome_.level(); }
+
+    /// D16.6 — QUAND LE CLIC BAT, au-delà de l'interrupteur (Metronome Setup
+    /// de Cubase, le Count-in de Live).
+    ///
+    /// `countInOnly` : le clic ne bat QUE pendant le décompte -- on veut
+    /// entrer en mesure et ne plus rien entendre ensuite. `recordOnly` : il
+    /// ne bat que pendant l'enregistrement -- c'est là qu'on en a besoin, et
+    /// nulle part ailleurs. Les deux se cumulent, et AUCUN des deux ne fait
+    /// taire le DÉCOMPTE : un décompte qu'on n'entend pas ne compte rien,
+    /// c'est sa seule raison d'être, et cette règle-là ne se règle pas.
+    void setMetronomeCountInOnly(bool actif) {
+        metronomeCountInOnly_.store(actif, std::memory_order_relaxed);
+    }
+    bool metronomeCountInOnly() const {
+        return metronomeCountInOnly_.load(std::memory_order_relaxed);
+    }
+    void setMetronomeRecordOnly(bool actif) {
+        metronomeRecordOnly_.store(actif, std::memory_order_relaxed);
+    }
+    bool metronomeRecordOnly() const {
+        return metronomeRecordOnly_.load(std::memory_order_relaxed);
+    }
+    /// L'application dit au graphe qu'elle enregistre : lui seul sait si le
+    /// clic doit battre, et il ne peut pas le deviner.
+    void setRecording(bool actif) { recording_.store(actif, std::memory_order_relaxed); }
 
     void resetEventCounters() {
         droppedNoteEvents_.store(0, std::memory_order_relaxed);
@@ -647,6 +673,9 @@ private:
     std::array<ChasedControlEvent, kMaxChasedPerBlock> drainedChase_{};
     int drainedChaseCount_ = 0;
     std::atomic<uint64_t> droppedChasedControls_{0};
+    std::atomic<bool> metronomeCountInOnly_{false};
+    std::atomic<bool> metronomeRecordOnly_{false};
+    std::atomic<bool> recording_{false};
 };
 
 } // namespace vsm::audio::engine

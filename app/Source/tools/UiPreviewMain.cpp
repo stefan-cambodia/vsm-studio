@@ -116,17 +116,20 @@ int main(int argc, char** argv) {
     // --- Préférences.
     {
         vsm::app::ui::PreferencesWindow panneau;
-        panneau.setBounds(0, 0, 560, 430);
+        panneau.setBounds(0, 0, 560, 520);
         panneau.resized();
         // L'ÉTAT, ET NON UNE PHRASE FABRIQUÉE ICI : c'est le panneau qui
         // compose, donc l'aperçu montre ce que l'application montrera.
         vsm::interchange::ReconstructionChain chaine;
         chaine.available = true;
         chaine.chainFolder = "/home/utilisateur/videcode/muz/vsm-studio/analyse";
+        // D16.6 : le métronome réglable fait grandir la fenêtre de trois
+        // rangées, et l'aperçu doit les montrer -- sinon il photographie une
+        // fenêtre qui n'existe plus.
         panneau.refresh(1.5f, -1, 8, chaine,
                          "/home/utilisateur/videcode/muz/vsm-studio/analyse",
-                         "/home/utilisateur/Sons", 30, 6);
-        rendus += ecrire(panneau, sortie, "preferences", 560, 430, echelle) ? 1 : 0;
+                         "/home/utilisateur/Sons", 30, 6, false, 0.35f, false, true);
+        rendus += ecrire(panneau, sortie, "preferences", 560, 520, echelle) ? 1 : 0;
     }
 
     // --- Navigateur, garni d'un inventaire représentatif.

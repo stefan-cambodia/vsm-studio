@@ -3606,6 +3606,41 @@ départ, ce qui est exactement ce qu'on lui demande.
 > verrouillé. Vu à l'écran (`verrouiller:0,tout-choisir,deplacer-clips`) :
 > le clip d'Acid Bass grisé et immobile, celui de Drums déplacé d'une mesure.
 
+> **D16.6 EST FAITE (04/09/2026), et le décompte reste hors de portée des
+> réglages.** `setMetronomeLevel` existait depuis D3 et n'était appelé de
+> nulle part : le niveau vivait dans le code, pas dans l'application. Il est
+> désormais un curseur des préférences, retenu d'une exécution à l'autre et
+> poussé au graphe au démarrage. Le niveau est un GAIN LINÉAIRE montré en
+> clair : on veut un clic plus fort ou moins fort, pas des décibels, et la
+> crête suit le chiffre exactement — 0,25 donne le quart de la crête de 1,0
+> à 10⁻⁶ près, et 0 donne le silence exact (« éteint » et « à zéro » doivent
+> se valoir à l'oreille).
+>
+> `Metronome::level_` est devenu ATOMIQUE au passage. C'était un `float` nu,
+> écrit par le fil de l'interface et lu par le fil audio à chaque
+> échantillon : une course de données bénigne en pratique et interdite en
+> droit, que personne n'avait payée pour la seule raison que le curseur
+> n'existait pas encore.
+>
+> Deux restrictions par-dessus l'interrupteur, branchées sur `clicAudible` :
+> « seulement au décompte » (entrer en mesure et ne plus rien entendre
+> ensuite) et « seulement à l'enregistrement » (c'est là qu'on en a besoin,
+> et nulle part ailleurs). Elles se cumulent. AUCUNE des deux ne fait taire
+> le décompte : un décompte qu'on n'entend pas ne compte rien, c'est sa
+> seule raison d'être, et cette règle-là ne se règle pas — trois tests le
+> vérifient, dont un qui montre que le clic se tait bien passé zéro en mode
+> « décompte seul ». Le graphe apprend qu'on enregistre par
+> `AudioEngine::setRecording`, qui le lui dit désormais en même temps qu'il
+> le note : « seulement à l'enregistrement » ne peut pas se deviner depuis
+> le fil audio.
+>
+> Six tests `audio/` (trois neufs et les trois du décompte, toujours verts).
+> Vu à l'écran (`vsm-ui-preview`, la fenêtre rendue hors écran à 150 %) :
+> « Niveau du clic » à 0,35 et « Le clic bat : seulement au décompte /
+> seulement à l'enregistrement ». La fenêtre passe de 472 à 562 pixels de
+> haut pour les trois rangées — « ça tient dans la case » ne l'emporte
+> jamais sur « ça se lit ».
+
 > **D16.4 EST FAITE (04/09/2026), et elle a pris le menu plutôt que le clic
 > droit sec.** Le tableau disait « clic droit le retire » ; un repère qui
 > disparaît sous un clic droit sans rien demander est une perte silencieuse,

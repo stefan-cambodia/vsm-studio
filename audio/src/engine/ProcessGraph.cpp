@@ -672,8 +672,16 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
     // négatives sont celles du décompte (voir `seekSeconds`), d'où la
     // condition -- qui donne aussi, gratuitement, le dernier clic sur le premier
     // temps du morceau, celui sur lequel on entre.
-    const bool clicAudible = metronomeEnabled_.load(std::memory_order_relaxed)
-                             || blockStartSeconds < 0.0;
+    // D16.6 : deux restrictions par-dessus l'interrupteur, et le décompte qui
+    // passe outre les trois. « Seulement au décompte » et « seulement à
+    // l'enregistrement » se cumulent ; le décompte, lui, n'est pas réglable.
+    const bool decompte = blockStartSeconds < 0.0;
+    bool clic = metronomeEnabled_.load(std::memory_order_relaxed);
+    if (clic && metronomeCountInOnly_.load(std::memory_order_relaxed)) clic = false;
+    if (clic && metronomeRecordOnly_.load(std::memory_order_relaxed)
+        && !recording_.load(std::memory_order_relaxed))
+        clic = false;
+    const bool clicAudible = clic || decompte;
     if (clicAudible) {
         const auto snapshot = snapshot_.load(std::memory_order_acquire);
         if (snapshot) {

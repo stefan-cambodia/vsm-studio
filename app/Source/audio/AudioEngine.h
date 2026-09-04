@@ -116,7 +116,12 @@ public:
 
     /// Arme la capture. Ce qui est joué avant le point d'entrée est écarté par
     /// `MidiRecorder`, pas ici : le moteur date, il ne juge pas.
-    void setRecording(bool on) { recording_.store(on, std::memory_order_release); }
+    /// D16.6 : le graphe l'apprend aussi — c'est lui qui décide si le clic
+    /// bat, et « seulement à l'enregistrement » ne peut pas se deviner.
+    void setRecording(bool on) {
+        recording_.store(on, std::memory_order_release);
+        graph_.setRecording(on);
+    }
     bool isRecording() const { return recording_.load(std::memory_order_acquire); }
 
     /// Les pistes armées, publiées d'un coup depuis le thread UI. Elles

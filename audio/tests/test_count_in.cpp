@@ -134,3 +134,87 @@ VSM_TEST(the_count_in_clicks_land_on_the_beats_and_nowhere_else) {
     // il ne doit rester que la note du morceau, et elle n'a pas d'instrument.
     for (double temps : {-0.25, 0.25, 0.75}) VSM_ASSERT(creteA(temps) < 1.0e-4f);
 }
+
+// --------------------------------------------------------------------------
+// D16.6 — LE MÉTRONOME RÉGLABLE. `setMetronomeLevel` existait et n'était
+// appelé nulle part ; l'interface n'avait qu'un interrupteur.
+// --------------------------------------------------------------------------
+
+namespace {
+
+/// La crête du CLIC SEUL, à un niveau donné : un projet sans instrument ne
+/// produit que le métronome, ce qui rend la mesure sans ambiguïté.
+float creteDuClic(float niveau) {
+    ProcessGraph graphe;
+    graphe.prepare(48000.0, 256);
+    graphe.setProject(projetDUneNote());   // aucune machine assignée : pas de son de piste
+    graphe.setMetronomeEnabled(true);
+    graphe.setMetronomeLevel(niveau);
+    graphe.seekSeconds(0.0);
+    graphe.setPlaying(true);
+    return crete(rendre(graphe, 48000.0, 256, 0.5));
+}
+
+} // namespace
+
+VSM_TEST(the_metronome_level_scales_the_click_exactly) {
+    const float plein = creteDuClic(1.0f);
+    VSM_ASSERT(plein > 0.01f);                       // sinon la mesure ne prouve rien
+    const float quart = creteDuClic(0.25f);
+    // Le niveau est un GAIN LINÉAIRE appliqué à l'échantillon : un quart du
+    // niveau donne un quart de la crête, à l'arrondi du flottant près.
+    VSM_ASSERT_NEAR(static_cast<double>(quart), static_cast<double>(plein) * 0.25, 1.0e-6);
+    // À zéro, il ne reste rien du tout -- « éteint » et « à zéro » doivent se
+    // valoir à l'oreille.
+    VSM_ASSERT_NEAR(static_cast<double>(creteDuClic(0.0f)), 0.0, 1.0e-9);
+}
+
+VSM_TEST(count_in_only_silences_the_song_but_never_the_count_in) {
+    // Un décompte qu'on n'entend pas ne compte rien : c'est sa seule raison
+    // d'être, et AUCUN réglage ne doit pouvoir le taire.
+    ProcessGraph graphe;
+    graphe.prepare(48000.0, 256);
+    graphe.setProject(projetDUneNote());
+    graphe.setMetronomeEnabled(true);
+    graphe.setMetronomeCountInOnly(true);
+    graphe.seekSeconds(-1.0);                        // deux temps de décompte à 120 BPM
+    graphe.setPlaying(true);
+    VSM_ASSERT(crete(rendre(graphe, 48000.0, 256, 0.9)) > 0.01f);
+
+    // Passé zéro, plus rien : c'est ce que « seulement au décompte » veut dire.
+    ProcessGraph apres;
+    apres.prepare(48000.0, 256);
+    apres.setProject(projetDUneNote());
+    apres.setMetronomeEnabled(true);
+    apres.setMetronomeCountInOnly(true);
+    apres.seekSeconds(0.0);
+    apres.setPlaying(true);
+    VSM_ASSERT_NEAR(static_cast<double>(crete(rendre(apres, 48000.0, 256, 0.5))), 0.0, 1.0e-9);
+}
+
+VSM_TEST(record_only_stays_quiet_until_the_application_says_it_records) {
+    auto creteEnLecture = [](bool enregistre) {
+        ProcessGraph graphe;
+        graphe.prepare(48000.0, 256);
+        graphe.setProject(projetDUneNote());
+        graphe.setMetronomeEnabled(true);
+        graphe.setMetronomeRecordOnly(true);
+        graphe.setRecording(enregistre);
+        graphe.seekSeconds(0.0);
+        graphe.setPlaying(true);
+        return crete(rendre(graphe, 48000.0, 256, 0.5));
+    };
+    VSM_ASSERT_NEAR(static_cast<double>(creteEnLecture(false)), 0.0, 1.0e-9);
+    VSM_ASSERT(creteEnLecture(true) > 0.01f);
+
+    // Et le décompte bat quand même, enregistrement ou non.
+    ProcessGraph graphe;
+    graphe.prepare(48000.0, 256);
+    graphe.setProject(projetDUneNote());
+    graphe.setMetronomeEnabled(true);
+    graphe.setMetronomeRecordOnly(true);
+    graphe.setRecording(false);
+    graphe.seekSeconds(-1.0);
+    graphe.setPlaying(true);
+    VSM_ASSERT(crete(rendre(graphe, 48000.0, 256, 0.9)) > 0.01f);
+}

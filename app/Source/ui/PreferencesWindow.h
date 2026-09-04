@@ -36,12 +36,20 @@ public:
                   const vsm::interchange::ReconstructionChain& chain,
                   const juce::String& designatedChainFolder,
                   const juce::String& libraryFolder,
-                  int shortcutCount, int midiMappingCount, bool returnToStartOnStop = false);
+                  int shortcutCount, int midiMappingCount, bool returnToStartOnStop = false,
+                  float metronomeLevel = 0.35f, bool metronomeCountInOnly = false,
+                  bool metronomeRecordOnly = false);
 
     std::function<void(float)> onUiScaleChanged;
     /// RETOUR AU DÉBUT À L'ARRÊT (D14.5) : la préférence de Cubase, le défaut
     /// de Live. Stop ramène la tête là où la lecture était partie.
     std::function<void(bool)> onReturnToStartChanged;
+    /// LE MÉTRONOME RÉGLABLE (D16.6) : son niveau, et les deux restrictions
+    /// qui disent QUAND il bat. Le décompte, lui, n'est pas réglable — un
+    /// décompte qu'on n'entend pas ne compte rien.
+    std::function<void(float)> onMetronomeLevelChanged;
+    std::function<void(bool)> onMetronomeCountInOnlyChanged;
+    std::function<void(bool)> onMetronomeRecordOnlyChanged;
     /// -1 = automatique.
     std::function<void(int)> onRenderThreadsChanged;
     std::function<void()> onChooseChainFolder;
@@ -56,6 +64,10 @@ private:
     juce::Label libelleEchelle_, libelleThreads_, libelleChaine_, etatChaine_;
     juce::ComboBox echelle_, threads_;
     juce::Label libelleRetour_;
+    juce::Label libelleClic_, libelleQuandClic_;
+    juce::Slider niveauClic_ { juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight };
+    juce::ToggleButton clicDecompteSeul_ { juce::String::fromUTF8(u8"Seulement au décompte") };
+    juce::ToggleButton clicEnregistrementSeul_ { juce::String::fromUTF8(u8"Seulement à l'enregistrement") };
     juce::ToggleButton retourAuDepart_ { juce::String::fromUTF8(u8"Revenir au point de départ") };
     juce::TextButton choisirChaine_ { u8"Choisir le dossier..." };
     juce::Label titreBibliotheque_, libelleBibliotheque_;

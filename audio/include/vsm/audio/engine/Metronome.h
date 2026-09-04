@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 #include <cmath>
 #include <cstdint>
 
@@ -26,7 +27,13 @@ public:
         restant_ = 0;
     }
 
-    void setLevel(float level) { level_ = level; }
+    /// LE NIVEAU (D16.6), ATOMIQUE : il est écrit par le fil de l'interface
+    /// (un curseur qu'on tire) et lu par le fil audio à chaque échantillon.
+    /// Un `float` nu était une course de données, bénigne en pratique et
+    /// interdite en droit -- et le curseur n'existait pas encore, ce qui est
+    /// la seule raison pour laquelle personne ne l'avait payée.
+    void setLevel(float level) { level_.store(level, std::memory_order_relaxed); }
+    float level() const { return level_.load(std::memory_order_relaxed); }
 
     /// Déclenche un clic. `accent` distingue le premier temps de la mesure.
     void trigger(bool accent) {
@@ -47,7 +54,7 @@ public:
         // Décroissance exponentielle : une coupure franche « claque » et se
         // confond avec une percussion du morceau.
         const float enveloppe = std::exp(-6.0f * avancement);
-        const float valeur = std::sin(phase_) * enveloppe * level_;
+        const float valeur = std::sin(phase_) * enveloppe * level();
         phase_ += static_cast<float>(2.0 * M_PI * frequence_ / sampleRate_);
         --restant_;
         return valeur;
@@ -55,7 +62,7 @@ public:
 
 private:
     double sampleRate_ = 48000.0;
-    float level_ = 0.35f;
+    std::atomic<float> level_{0.35f};
     float frequence_ = 1000.0f;
     float phase_ = 0.0f;
     int restant_ = 0;
