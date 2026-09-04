@@ -1,5 +1,6 @@
 #include "MainComponent.h"
 #include "vsm/sequencer/ClipEdit.h"
+#include "vsm/interchange/GroovePreset.h"
 #include "vsm/audio/io/SilenceDetection.h"
 #include "vsm/sequencer/TimeEdit.h"
 #include "vsm/sequencer/ProjectImport.h"
@@ -1566,6 +1567,22 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                          project_.loopEndTick > project_.loopStartTick);
             menu.addItem(kMenuEditLocatorsFromSelection, u8"Locateurs sur la s\u00e9lection (P)",
                          arrangement_.hasSelection() || pianoRoll_.hasSelection());
+            // D17.8 : LE GROOVE. Le nom du groove courant est DIT dans
+            // l'article qui l'applique : appliquer « quelque chose » qu'on ne
+            // nomme pas, c'est appliquer on ne sait quoi.
+            menu.addSeparator();
+            menu.addItem(kMenuEditExtractGroove,
+                          u8"Extraire le groove de la piste choisie",
+                          !project_.tracks.empty());
+            menu.addItem(kMenuEditApplyGroove,
+                          grooveCourant_.empty()
+                              ? juce::String::fromUTF8(u8"Appliquer le groove (aucun en mémoire)")
+                              : juce::String::fromUTF8(u8"Appliquer le groove \u00ab ")
+                                    + juce::String(grooveCourant_.name)
+                                    + juce::String::fromUTF8(u8" \u00bb"),
+                          !grooveCourant_.empty() && pianoRoll_.hasSelection());
+            menu.addItem(kMenuEditSaveGroove, u8"Enregistrer le groove\u2026", !grooveCourant_.empty());
+            menu.addItem(kMenuEditLoadGroove, u8"Charger un groove\u2026");
             break;
         case 2:
             menu.addItem(kMenuTrackAdd, "Ajouter une piste MIDI");
@@ -1876,6 +1893,10 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
 void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) {
     if (menuItemID == kMenuEditInsertTimeAtLocators) { editTimeAtLocators(true); return; }
     if (menuItemID == kMenuEditDeleteTimeAtLocators) { editTimeAtLocators(false); return; }
+    if (menuItemID == kMenuEditExtractGroove) { extractGrooveFromSelectedTrack(); return; }
+    if (menuItemID == kMenuEditApplyGroove)   { applyGrooveToSelection(); return; }
+    if (menuItemID == kMenuEditSaveGroove)    { saveCurrentGroove(); return; }
+    if (menuItemID == kMenuEditLoadGroove)    { loadGrooveFromLibrary(); return; }
     if (menuItemID == kMenuEditLocatorsFromSelection) { locatorsFromSelection(); return; }
     if (menuItemID == kMenuFileImportMidiIntoProject) { chooseMidiToImport(); return; }
     if (menuItemID >= kMenuFileRecentFirst && menuItemID <= kMenuFileRecentLast) {
@@ -6000,6 +6021,113 @@ void MainComponent::trimClipToSound(size_t trackIndex, uint64_t clipId) {
             + juce::String(static_cast<double>(compte - bornes.lastFrame) / sr * 1000.0, 0)
             + juce::String(u8" ms à la fin. Le fichier n'a pas été touché : c'est la fenêtre du "
                            u8"clip qui a bougé."));
+}
+
+// --- D17.8 : LE GROOVE ------------------------------------------------------
+//
+// Le groove COURANT vit dans l'application et non dans le projet : c'est un
+// outil qu'on porte d'un morceau à l'autre, comme un preset, pas une propriété
+// du morceau. Le projet garde les NOTES telles que le groove les a laissées ;
+// il n'a pas à se souvenir d'où elles tiennent leur placement.
+
+void MainComponent::extractGrooveFromSelectedTrack() {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    const auto& source = project_.tracks[piste];
+    if (source.notes.empty()) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Extraire le groove",
+            u8"Cette piste n'a aucune note : il n'y a pas de placement à en tirer.");
+        return;
+    }
+    const auto parMesure = project_.timeSignatureMap.ticksPerBar(0, project_.ticksPerQuarterNote);
+    grooveCourant_ = vsm::sequencer::extractGroove(source.notes, parMesure, 16,
+                                                    source.name.empty() ? std::string("Groove")
+                                                                        : source.name);
+    size_t presents = 0;
+    for (const auto& pas : grooveCourant_.steps) if (pas.present) ++presents;
+    juce::AlertWindow::showMessageBoxAsync(
+        juce::AlertWindow::InfoIcon, u8"Extraire le groove",
+        juce::String(u8"Groove \u00ab ") + juce::String(grooveCourant_.name)
+            + juce::String(u8" \u00bb : ") + juce::String(static_cast<int>(presents))
+            + juce::String(u8" pas sur 16 renseignés. Les pas où la piste ne jouait rien "
+                           u8"laisseront les notes tranquilles."));
+}
+
+void MainComponent::applyGrooveToSelection() {
+    auto* piste = pianoRoll_.activeTrack();
+    if (piste == nullptr || grooveCourant_.empty() || !pianoRoll_.hasSelection()) return;
+    const auto parMesure = project_.timeSignatureMap.ticksPerBar(0, project_.ticksPerQuarterNote);
+
+    // L'instantané n'est pris que si quelque chose va changer -- on mesure
+    // d'abord sur une copie, comme partout ailleurs.
+    auto essai = piste->notes;
+    const size_t deplacees = vsm::sequencer::applyGroove(
+        essai, pianoRoll_.selectedNoteIds(), grooveCourant_, parMesure, 1.0f, false);
+    if (deplacees == 0) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Appliquer le groove",
+            u8"Aucune note n'a bougé : elles tombent toutes sur des pas dont ce groove ne dit "
+            u8"rien, ou elles y sont déjà.");
+        return;
+    }
+    beginProjectEdit(u8"Appliquer le groove");
+    piste->notes = std::move(essai);
+    refreshTransportSchedule();
+    pianoRollPanel_.refresh();
+    arrangement_.repaint();
+    refreshHistoryList();
+}
+
+void MainComponent::saveCurrentGroove() {
+    if (grooveCourant_.empty()) return;
+    const juce::String bibliotheque =
+        vsm::app::ui::UiScale::properties().getValue("dossierBibliotheque", "");
+    // MÊME RANGEMENT QUE LES AUTRES PRESETS (D15.4) : la bibliothèque si elle
+    // est réglée, le projet sinon. Deux dossiers pour deux sortes de presets
+    // seraient deux logiciels.
+    juce::File dossier = bibliotheque.isNotEmpty()
+                             ? juce::File(bibliotheque).getChildFile("grooves")
+                             : (currentProjectFolder_ != juce::File()
+                                    ? currentProjectFolder_.getChildFile("grooves")
+                                    : juce::File::getSpecialLocation(
+                                          juce::File::userApplicationDataDirectory)
+                                          .getChildFile("VSM").getChildFile("grooves"));
+    dossier.createDirectory();
+    const juce::File fichier = dossier.getChildFile(
+        juce::File::createLegalFileName(juce::String(grooveCourant_.name))
+        + juce::String(vsm::interchange::kGroovePresetExtension));
+    const auto texte = vsm::interchange::grooveToJson(grooveCourant_).toString();
+    if (!fichier.replaceWithText(juce::String(texte))) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::WarningIcon, u8"Enregistrer le groove",
+            juce::String(u8"Écriture impossible : ") + fichier.getFullPathName());
+        return;
+    }
+    juce::AlertWindow::showMessageBoxAsync(
+        juce::AlertWindow::InfoIcon, u8"Enregistrer le groove",
+        juce::String(u8"Écrit dans ") + fichier.getFullPathName());
+}
+
+void MainComponent::loadGrooveFromLibrary() {
+    auto chooser = std::make_shared<juce::FileChooser>(
+        juce::String::fromUTF8(u8"Charger un groove"), juce::File(), "*.groove.json");
+    chooser->launchAsync(juce::FileBrowserComponent::openMode
+                              | juce::FileBrowserComponent::canSelectFiles,
+                          [this, chooser](const juce::FileChooser& fc) {
+        const juce::File fichier = fc.getResult();
+        if (fichier == juce::File()) return;
+        const auto lu = vsm::interchange::parseGroove(fichier.loadFileAsString().toStdString());
+        if (!lu.success) {
+            // NOMMÉ, JAMAIS DEVINÉ : un fichier qui n'est pas un groove dit ce
+            // qu'il est plutôt que de se charger vide.
+            juce::AlertWindow::showMessageBoxAsync(
+                juce::AlertWindow::WarningIcon, u8"Charger un groove",
+                juce::String(lu.error));
+            return;
+        }
+        grooveCourant_ = lu.groove;
+    });
 }
 
 void MainComponent::toggleLockSelectedTrack() {

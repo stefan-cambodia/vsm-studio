@@ -3768,7 +3768,7 @@ transposition d'un clip entier depuis l'arrangement (Cubase seul, le piano
 roll transpose à la flèche) ; le note repeat (l'arpégiateur temps réel est
 écarté depuis D11).
 
-### Phase D17 — Le sixième audit : ce qui manque une fois D16 posée (04/09/2026, 23:55)
+### Phase D17 — Le sixième audit : ce qui manque une fois D16 posée (04/09/2026, 23:55) — **TERMINÉE (05/09/2026, 01:05)**
 
 **Pourquoi.** Même méthode que D11 à D16, même garde-fou : chaque absence
 ci-dessous a été VÉRIFIÉE dans le code avant d'être écrite, jamais supposée.
@@ -4035,6 +4035,58 @@ les jours ensuite, le modèle en dernier.
 > le fichier inchangé à courbure nulle). Vu à l'écran : le premier segment
 > monte vite et s'aplatit, le second traîne et se précipite, et les deux
 > poignées disent laquelle est réglée.
+
+> **D17.8 EST FAITE (05/09/2026), et un pas muet reste muet.** `Groove` est
+> une suite d'écarts en FRACTION de pas, plus une vélocité moyenne par pas.
+> `extractGroove` prend le placement réel d'une partie, `applyGroove` le donne
+> à une autre.
+>
+> CE QUE LA QUANTIFICATION NE SAVAIT PAS FAIRE. `Quantizer` connaît la grille
+> et le swing : il RAPPROCHE d'un idéal calculé. Un groove fait l'inverse — il
+> prend le placement d'une partie qu'on trouve bonne et l'impose ailleurs. Sur
+> ce projet-ci, c'est le geste qui manquait le plus : la chaîne d'analyse
+> reconstruit une batterie avec son placement d'origine, et rien ne permettait
+> de le donner à une basse écrite droite.
+>
+> DES ÉCARTS ET NON DES POSITIONS, en fraction de pas et non en ticks : le même
+> groove s'applique à n'importe quel tempo et à n'importe quelle résolution, et
+> le fichier `*.groove.json` ne contient aucun tick. Une note est rattachée au
+> pas dont elle est la plus PROCHE et non à celui qui la précède — une note
+> jouée deux millisecondes en avance appartient au pas qu'elle anticipe. Les
+> écarts d'un même pas sont moyennés : une grosse caisse et un charley sur le
+> même temps décrivent le même instant musical.
+>
+> UN PAS ABSENT EST LA DÉCISION DE L'ÉTAPE. Quand la partie d'origine ne jouait
+> rien sur un pas, le groove ne dit RIEN de ce pas, et les notes qui y tombent
+> ne bougent pas. Un écart nul aurait l'air pareil et ferait le contraire : il
+> ramènerait ces notes sur la grille, c'est-à-dire qu'il les quantifierait sans
+> qu'on l'ait demandé. Le fichier écrit donc `present` à part, et un test
+> vérifie qu'un pas absent le reste après l'aller-retour.
+>
+> La FORCE est un paramètre de l'application et non du groove : le même groove
+> sert à cent pour cent sur une basse et à trente sur un piano. À un demi, la
+> note fait la moitié du chemin depuis là où elle est — c'est ce qui « teinte »
+> sans déplacer. L'accentuation suit SÉPARÉMENT : on veut souvent le placement
+> sans toucher aux nuances qu'on a écrites. Un groove ne change jamais la durée
+> d'une note : il déplace, il n'étire pas.
+>
+> Le groove courant vit dans l'APPLICATION et non dans le projet : c'est un
+> outil qu'on porte d'un morceau à l'autre, comme un preset. Le projet garde
+> les notes telles que le groove les a laissées, et n'a pas à se souvenir d'où
+> elles tiennent leur placement. Il s'enregistre dans la bibliothèque au même
+> endroit que les presets d'effet (D15.4) ; un fichier qui n'est pas un groove
+> est NOMMÉ, jamais lu comme un groove vide. Le menu Édition dit le nom du
+> groove en mémoire — appliquer « quelque chose » qu'on ne nomme pas, c'est
+> appliquer on ne sait quoi.
+>
+> Sept tests : cinq `core/` (extraire d'une partie qui balance puis appliquer à
+> une copie DROITE rend les ticks d'origine À UN TICK PRÈS — le critère de
+> l'étape ; la demi-force fait la moitié du chemin et la force nulle ne bouge
+> rien ; un pas muet laisse ses notes tranquilles ; l'accentuation ne suit que
+> si on le demande ; un groove vide n'applique rien) et deux `interchange/`
+> (l'aller-retour avec écarts, accents et pas muets ; un fichier d'un autre
+> format, une version future, un groove sans pas et un JSON cassé sont tous
+> refusés en le disant).
 
 > **D17.1 EST FAITE (05/09/2026), et le chiffre est celui du manuel.**
 > `FadeShape` (`Linear`, `EqualPower`, `Slow`, `Fast`), absente du fichier

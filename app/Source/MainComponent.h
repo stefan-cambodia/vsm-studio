@@ -3,6 +3,7 @@
 #include "vsm/sequencer/Project.h"
 #include "vsm/sequencer/MidiRecorder.h"
 #include "vsm/sequencer/ProjectHistory.h"
+#include "vsm/sequencer/Groove.h"
 #include "vsm/audio/engine/Transport.h"
 #include "vsm/interchange/ReconstructionChain.h"
 #include "reconstruction/ReconstructionRunner.h"
@@ -189,6 +190,13 @@ private:
     kMenuEditInsertTimeAtLocators,
     kMenuEditDeleteTimeAtLocators,
     kMenuEditLocatorsFromSelection,
+    /// D17.8 : LE GROOVE — l'extraire de la piste choisie, l'appliquer à la
+    /// sélection du piano roll, l'enregistrer dans la bibliothèque, en charger
+    /// un.
+    kMenuEditExtractGroove,
+    kMenuEditApplyGroove,
+    kMenuEditSaveGroove,
+    kMenuEditLoadGroove,
         kMenuTrackFreeze,
         kMenuTrackBounce,
         kMenuTrackClapPlugin,
@@ -646,6 +654,14 @@ private:
     /// D17.6 : rogne le clip à ce qui sonne, en relisant les échantillons du
     /// fichier. Annulable.
     void trimClipToSound(size_t trackIndex, uint64_t clipId);
+    /// D17.8 : les quatre gestes du groove. Le groove COURANT vit dans
+    /// l'application et non dans le projet : c'est un outil qu'on porte d'un
+    /// morceau à l'autre, comme un preset, pas une propriété du morceau.
+    void extractGrooveFromSelectedTrack();
+    void applyGrooveToSelection();
+    void saveCurrentGroove();
+    void loadGrooveFromLibrary();
+    vsm::sequencer::Groove grooveCourant_;
     /// Les trois vues qui dessinent des pistes, rafraîchies ensemble (D17.4).
     void refreshTrackViews();
     /// LA FENÊTRE IMPLICITE SE MATÉRIALISE (D16.1) : toute piste qui porte du
