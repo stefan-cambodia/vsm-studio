@@ -1023,6 +1023,7 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     else if (nom == "spectre")     menuItemSelected(kMenuViewSpectrum, 5);  // D15.3 : l'analyseur, pour le photographier
     else if (nom == "notes")       menuItemSelected(kMenuViewProjectNotes, 5);  // D18.6
     else if (nom == "ordre")       menuItemSelected(kMenuViewPlayOrder, 5);     // D18.4
+    else if (nom == "prises")      menuItemSelected(kMenuRecordCompTakes, 3);  // D18.2
     // D18.4 : `aplatir:0:0:1` pose l'ordre et l'aplatit tout de suite. Le
     // panneau se pilote à la souris, et le RÉSULTAT est ce qu'il faut
     // regarder : c'est l'arrangement qui doit avoir changé.
@@ -1811,6 +1812,21 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 // D17.3 : ce qu'on vient de jouer sans avoir armé. Le nombre
                 // d'événements gardés est DIT : « récupérer » sur un tampon
                 // vide ne doit pas se découvrir en cliquant.
+                // D18.2 : le nombre de prises est DIT. Sans prises il n'y a rien
+                // à assembler, et l'apprendre en ouvrant la fenêtre serait un
+                // aller-retour pour rien.
+                {
+                    const size_t p = trackList_.selectedTrackIndex();
+                    const size_t prises = p < project_.tracks.size()
+                                              ? project_.tracks[p].takes.size() : 0;
+                    menu.addItem(kMenuRecordCompTakes,
+                                  prises == 0
+                                      ? juce::String::fromUTF8(u8"Assembler les prises... (aucune)")
+                                      : juce::String::fromUTF8(u8"Assembler les prises... (")
+                                            + juce::String(static_cast<int>(prises))
+                                            + juce::String::fromUTF8(u8" prises)"),
+                                  prises > 1);
+                }
                 menu.addItem(kMenuRecordRetrospective,
                               retrospectif_.empty()
                                   ? juce::String::fromUTF8(u8"Récupérer ce qui vient d'être joué (rien en mémoire)")
@@ -2135,6 +2151,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             break;
         case kMenuRecordQuantizeTake: quantizeLastTake(); break;
         case kMenuRecordRetrospective: recoverRetrospectiveTake(); break;
+        case kMenuRecordCompTakes: showTakeComp(); break;
         case kMenuMixAddSend: {
             if (project_.sends.size() >= vsm::audio::engine::ProcessGraph::kMaxSends) break;
             beginProjectEdit(u8"Ajouter un bus de départ");
@@ -4033,6 +4050,53 @@ void MainComponent::refreshPreferences() {
         audioEngine_.processGraph().metronomeCountInOnly(),
         audioEngine_.processGraph().metronomeRecordOnly(),
         arrangement_.automationFollowsClips());
+}
+
+void MainComponent::showTakeComp() {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    if (!takeCompWindow_) {
+        takeCompPanel_.onCompose = [this](const std::vector<vsm::sequencer::CompSegment>& troncons) {
+            const size_t index = trackList_.selectedTrackIndex();
+            if (index >= project_.tracks.size() || troncons.empty()) return;
+            uint64_t compteur = project_.peekNextNoteId();
+            // On mesure sur une COPIE avant de prendre l'instantané : une
+            // composition qui ne produit rien ne doit pas laisser une entrée
+            // « Assembler les prises » dans l'historique.
+            auto essai = project_.tracks[index];
+            if (!vsm::sequencer::applyCompositeTake(essai, troncons, compteur)) {
+                juce::AlertWindow::showMessageBoxAsync(
+                    juce::AlertWindow::InfoIcon, u8"Assembler les prises",
+                    u8"Ces tronçons ne prennent aucune note : vérifiez les mesures et les "
+                    u8"prises choisies.");
+                return;
+            }
+            beginProjectEdit(u8"Assembler les prises");
+            project_.tracks[index] = std::move(essai);
+            project_.ensureNoteIdAbove(compteur - 1);
+            rebuildFromProject(false);
+            refreshTransportSchedule();
+            pianoRollPanel_.refresh();
+            arrangement_.repaint();
+            refreshHistoryList();
+            juce::AlertWindow::showMessageBoxAsync(
+                juce::AlertWindow::InfoIcon, u8"Assembler les prises",
+                juce::String(static_cast<int>(project_.tracks[index].notes.size()))
+                    + juce::String(u8" notes composées. Les passes sont conservées : on peut "
+                                    u8"recommencer autrement."));
+        };
+        takeCompWindow_ = std::make_unique<PanelWindow>(
+            juce::String::fromUTF8(u8"Assembler les prises"), takeCompPanel_);
+        takeCompWindow_->setDefaultSize(560, 420);
+    }
+    std::vector<juce::String> noms;
+    for (const auto& prise : project_.tracks[piste].takes)
+        noms.push_back(juce::String(prise.name));
+    takeCompPanel_.setTake(std::move(noms), project_.tracks[piste].activeTake,
+                            project_.timeSignatureMap.ticksPerBar(0, project_.ticksPerQuarterNote),
+                            project_.lastSoundingTick());
+    takeCompWindow_->setVisible(true);
+    takeCompWindow_->toFront(true);
 }
 
 void MainComponent::showPlayOrder() {

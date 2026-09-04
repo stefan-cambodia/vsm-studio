@@ -50,6 +50,7 @@ target_sources(VintageSynthMidiStudio PRIVATE
     Source/ui/HistoryWindow.cpp
     Source/ui/SpectrumComponent.cpp
     Source/ui/PlayOrderComponent.cpp
+    Source/ui/TakeCompComponent.cpp
     Source/ui/PreferencesWindow.cpp
     Source/ui/BrowserComponent.cpp
 )
@@ -292,6 +293,7 @@ target_sources(vsm-ui-preview PRIVATE
     Source/ui/HistoryWindow.cpp
     Source/ui/SpectrumComponent.cpp
     Source/ui/PlayOrderComponent.cpp
+    Source/ui/TakeCompComponent.cpp
     Source/ui/MidiLearnWindow.cpp
     Source/ui/PreferencesWindow.cpp
     Source/ui/BrowserComponent.cpp

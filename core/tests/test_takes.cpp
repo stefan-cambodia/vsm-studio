@@ -351,3 +351,118 @@ VSM_TEST(duplicating_a_track_keeps_routings_to_groups_that_moved_down) {
     VSM_ASSERT_EQ(projet.tracks[1].outputGroup, 3);   // la copie
     VSM_ASSERT_EQ(projet.tracks[2].outputGroup, 3);
 }
+
+// --------------------------------------------------------------------------
+// D18.2 — ASSEMBLER LES PRISES.
+//
+// `Track::takes` conserve chaque passe depuis D3.5 et l'on ne pouvait que
+// CHOISIR la meilleure : impossible de prendre le couplet de la deuxième et le
+// refrain de la quatrième. Or c'est le geste pour lequel on enregistre
+// plusieurs passes.
+// --------------------------------------------------------------------------
+
+namespace {
+
+/// Trois prises d'une même mesure, chacune sur une hauteur reconnaissable :
+/// la prise n joue la note 60+n à chaque temps.
+Track pisteATroisPrises() {
+    Track piste;
+    uint64_t ids = 1;
+    for (int p = 0; p < 3; ++p) {
+        Take prise;
+        prise.name = "Prise " + std::to_string(p + 1);
+        prise.startTick = 0;
+        prise.endTick = 1920;
+        for (int t = 0; t < 4; ++t)
+            prise.notes.push_back(Note{480 * t, 480 * t + 240, 0,
+                                        static_cast<uint8_t>(60 + p), 100, 64, ids++});
+        piste.takes.push_back(std::move(prise));
+    }
+    return piste;
+}
+
+} // namespace
+
+VSM_TEST(three_segments_taken_from_three_takes_give_each_takes_notes_on_its_range) {
+    // LE CRITÈRE DE L'ÉTAPE.
+    Track piste = pisteATroisPrises();
+    uint64_t ids = 1000;
+    const std::vector<CompSegment> troncons = {
+        {0, 0, 480},        // le premier temps vient de la prise 1
+        {1, 480, 1440},     // les deux suivants de la prise 2
+        {2, 1440, 1920},    // le dernier de la prise 3
+    };
+    const auto composite = buildCompositeTake(piste, troncons, ids);
+
+    VSM_ASSERT_EQ(composite.size(), size_t(4));
+    VSM_ASSERT_EQ(int(composite[0].number), 60);   // prise 1
+    VSM_ASSERT_EQ(int(composite[1].number), 61);   // prise 2
+    VSM_ASSERT_EQ(int(composite[2].number), 61);
+    VSM_ASSERT_EQ(int(composite[3].number), 62);   // prise 3
+    for (size_t i = 0; i < composite.size(); ++i)
+        VSM_ASSERT_EQ(composite[i].startTick, vsm::midi::Tick(480 * static_cast<int>(i)));
+    // Des identifiants NEUFS, et tous distincts : deux tronçons peuvent venir
+    // de la même prise, donc porter deux fois la même note d'origine.
+    VSM_ASSERT(composite[0].id != composite[1].id);
+}
+
+VSM_TEST(the_active_takes_material_is_read_from_the_track_and_not_from_the_stale_copy) {
+    // LE PIÈGE DU MODÈLE : quand `activeTake` désigne une prise, le contenu de
+    // `takes[activeTake]` est PÉRIMÉ. Lire la copie rangée rendrait l'état
+    // d'AVANT pour la passe qu'on est en train d'écouter — c'est-à-dire
+    // exactement celle qu'on vient de juger bonne.
+    Track piste = pisteATroisPrises();
+    selectTake(piste, 1);                       // la prise 2 devient le matériau courant
+    VSM_ASSERT_EQ(piste.activeTake, 1);
+    // On l'ÉDITE : la vérité est maintenant dans `piste.notes`, et la copie
+    // rangée dans `takes[1]` ne la connaît pas.
+    for (auto& note : piste.notes) note.number = 99;
+
+    uint64_t ids = 1000;
+    const auto composite = buildCompositeTake(piste, {{1, 0, 1920}}, ids);
+    VSM_ASSERT_EQ(composite.size(), size_t(4));
+    for (const auto& note : composite) VSM_ASSERT_EQ(int(note.number), 99);
+}
+
+VSM_TEST(applying_a_composite_files_the_take_that_was_playing_and_belongs_to_none) {
+    Track piste = pisteATroisPrises();
+    selectTake(piste, 2);
+    for (auto& note : piste.notes) note.velocity = 42;   // une édition qu'on ne veut pas perdre
+
+    uint64_t ids = 1000;
+    VSM_ASSERT(applyCompositeTake(piste, {{0, 0, 960}, {2, 960, 1920}}, ids));
+
+    // LA COMPOSITE N'APPARTIENT À AUCUNE PRISE : la dire active écraserait
+    // cette prise-là au prochain changement.
+    VSM_ASSERT_EQ(piste.activeTake, -1);
+    VSM_ASSERT_EQ(piste.notes.size(), size_t(4));
+    VSM_ASSERT_EQ(int(piste.notes[0].number), 60);
+    VSM_ASSERT_EQ(int(piste.notes[3].number), 62);
+    // LA PASSE QU'ON ÉCOUTAIT A ÉTÉ RANGÉE : son édition est dans sa prise.
+    VSM_ASSERT_EQ(piste.takes[2].notes.size(), size_t(4));
+    for (const auto& note : piste.takes[2].notes) VSM_ASSERT_EQ(int(note.velocity), 42);
+}
+
+VSM_TEST(a_note_that_would_overrun_its_segment_is_cut_and_empty_segments_do_nothing) {
+    Track piste;
+    uint64_t ids = 1;
+    Take longue;
+    longue.notes.push_back(Note{0, 1920, 0, 60, 100, 64, ids++});   // une ronde
+    piste.takes.push_back(std::move(longue));
+
+    uint64_t neufs = 100;
+    const auto composite = buildCompositeTake(piste, {{0, 0, 480}}, neufs);
+    VSM_ASSERT_EQ(composite.size(), size_t(1));
+    // Coupée au bord : laissée entière, elle sonnerait par-dessus le tronçon
+    // suivant, qui vient d'une AUTRE passe.
+    VSM_ASSERT_EQ(composite[0].endTick, vsm::midi::Tick(480));
+
+    // Un tronçon vide, à l'envers, ou qui désigne une prise inexistante ne
+    // fabrique rien -- et `applyCompositeTake` ne touche alors pas la piste.
+    Track temoin = piste;
+    VSM_ASSERT(buildCompositeTake(piste, {{0, 480, 480}}, neufs).empty());
+    VSM_ASSERT(buildCompositeTake(piste, {{0, 960, 480}}, neufs).empty());
+    VSM_ASSERT(buildCompositeTake(piste, {{7, 0, 1920}}, neufs).empty());
+    VSM_ASSERT(!applyCompositeTake(piste, {{7, 0, 1920}}, neufs));
+    VSM_ASSERT_EQ(piste.notes.size(), temoin.notes.size());
+}

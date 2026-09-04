@@ -4123,8 +4123,8 @@ les jours ensuite, le modèle en dernier.
 > posé, les deux pistes sont coupées à la mesure 3 ; groupe retiré, seule
 > Acid Bass est coupée et Drums reste entière.
 >
-> **D18.2 (assembler les prises) est prise APRÈS celle-ci, et c'est une
-> décision.** Le comping n'est utilisable qu'avec une vue des prises empilées
+> **D18.2 (assembler les prises) a été prise APRÈS celle-ci, et c'était une
+> décision — elle est faite depuis (voir sa note).** Le comping n'est utilisable qu'avec une vue des prises empilées
 > où l'on dessine la plage qu'on garde : livrer le modèle sans la vue
 > donnerait une fonction que personne ne peut appeler, et ce dépôt préfère une
 > étape entière à deux moitiés.
@@ -4234,6 +4234,47 @@ les jours ensuite, le modèle en dernier.
 > sont signalés ; un projet fait uniquement de clips audio a bien ses
 > sections. Vu à l'écran (`aplatir:2:0:1` sur A/B/C) : C occupe deux mesures,
 > puis A, puis B, repères et clips réordonnés ensemble.
+
+> **D18.2 EST FAITE (05/09/2026), et elle a une liste plutôt que des lanes —
+> c'est une décision, pas un raccourci.** Un tronçon dit « de tel tick à tel
+> tick, prends telle prise » ; la composite est la suite de ses tronçons et
+> rien d'autre, donc elle se RECALCULE au lieu de se recopier, et corriger une
+> frontière ne demande pas de tout refaire.
+>
+> POURQUOI PAS DES LANES SUPERPOSÉES : elles demandent une seconde vue du
+> piano roll, avec son défilement, son zoom et sa sélection — c'est-à-dire un
+> second éditeur. Une liste de tronçons dit exactement la même chose (« de la
+> mesure 1 à 4, la prise 2 »), se lit d'un coup d'œil et se corrige sans viser
+> au pixel. Ce qu'elle ne donne pas, et il faut le dire : VOIR les passes pour
+> choisir. On les écoute en changeant de prise, ce que le menu Enregistrement
+> fait déjà. Si l'usage montre que cela ne suffit pas, les lanes seront une
+> étape à part entière — pas un ajout discret à celle-ci.
+>
+> **LE PIÈGE DU MODÈLE, ET IL EST ÉCRIT DANS `Track.h` DEPUIS D3.5 :** quand
+> `activeTake` désigne une prise, le contenu de `takes[activeTake]` est
+> PÉRIMÉ — la vérité est dans `notes`. Lire aveuglément `takes[i].notes`
+> rendrait donc l'état d'AVANT pour la passe qu'on est en train d'écouter,
+> c'est-à-dire précisément celle qu'on vient de juger bonne. Un test l'exerce :
+> on choisit la prise 2, on l'édite, on en fait un tronçon, et ce sont les
+> notes éditées qui sortent.
+>
+> Composer RANGE d'abord la passe courante dans sa prise (sans quoi elle
+> serait perdue, et c'est souvent l'une de celles qu'on assemble), puis met
+> `activeTake` à −1 : une composite n'appartient à aucune prise, et la dire
+> active écraserait cette prise-là au prochain changement. Les passes sont
+> conservées — on peut recommencer autrement. Une note qui déborderait de son
+> tronçon est coupée à sa fin : laissée entière, elle sonnerait par-dessus le
+> tronçon suivant, qui vient d'une AUTRE passe. Annulable, et l'instantané
+> n'est pris que si la composition produit quelque chose.
+>
+> Quatre tests `core/` : trois tronçons pris dans trois prises rendent
+> exactement les notes de chacune sur sa plage, avec des identifiants
+> distincts ; la prise ACTIVE est lue dans la piste et non dans sa copie
+> périmée ; composer range la passe qu'on écoutait et n'appartient à aucune
+> prise ; une note à cheval est coupée, et un tronçon vide, à l'envers ou qui
+> désigne une prise inexistante ne fabrique rien. Vu à l'écran : le panneau
+> lit les trois prises de la piste, dit combien de mesures fait le morceau et
+> que ce qu'aucun tronçon ne couvre ne sonnera pas.
 
 > **D18.1 EST FAITE (05/09/2026), et son critère a dû être réécrit par la
 > mesure.** « Piste ▸ Reporter la sélection en audio » rend hors ligne les

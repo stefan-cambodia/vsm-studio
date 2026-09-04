@@ -735,4 +735,48 @@ void pushTake(Track& track, Take take, const std::string& nomDeLOrigine = "Origi
 /// désigne déjà la prise active.
 void selectTake(Track& track, int index);
 
+/// ASSEMBLER LES PRISES (D18.2) — les lanes de Cubase, les take lanes de Live.
+///
+/// `Track::takes` conserve chaque passe depuis D3.5, et l'on ne pouvait que
+/// CHOISIR la meilleure : impossible de prendre le couplet de la deuxième et
+/// le refrain de la quatrième. Or c'est le geste pour lequel on enregistre
+/// plusieurs passes.
+///
+/// UN TRONÇON dit « de tel tick à tel tick, prends telle prise ». La prise
+/// composite est la suite de ses tronçons, et rien d'autre : elle ne se
+/// recopie pas à la main, elle se RECALCULE — c'est ce qui permet de corriger
+/// une frontière sans avoir à tout refaire.
+struct CompSegment {
+    int takeIndex = 0;
+    Tick fromTick = 0;
+    Tick toTick = 0;      ///< exclu
+};
+
+/// Les notes que ces tronçons décrivent, prises dans leurs prises
+/// respectives, avec des identifiants neufs.
+///
+/// LE PIÈGE QUE CETTE FONCTION DOIT CONNAÎTRE, et qui est écrit plus haut :
+/// quand `activeTake` désigne une prise, le contenu de `takes[activeTake]` est
+/// PÉRIMÉ — la vérité est dans `notes`. Lire aveuglément `takes[i].notes`
+/// rendrait donc l'état d'AVANT pour la prise qu'on est en train d'écouter,
+/// c'est-à-dire précisément celle qu'on vient de juger bonne.
+///
+/// Une note est prise si son DÉBUT tombe dans le tronçon ; elle est coupée à
+/// la fin de celui-ci, comme au bord d'une section (D18.4) et d'un clip.
+std::vector<Note> buildCompositeTake(const Track& track,
+                                      const std::vector<CompSegment>& segments,
+                                      uint64_t& idCounter);
+
+/// Pose la composite comme matériau courant.
+///
+/// Le matériau courant est d'abord RANGÉ dans sa prise, sinon la passe qu'on
+/// écoutait serait perdue en la choisissant. Ensuite `activeTake` devient -1 :
+/// une composite n'appartient à aucune prise, et prétendre le contraire ferait
+/// écraser une passe au prochain changement.
+///
+/// Rend faux si les tronçons ne décrivent rien : la piste n'est alors pas
+/// touchée.
+bool applyCompositeTake(Track& track, const std::vector<CompSegment>& segments,
+                         uint64_t& idCounter);
+
 } // namespace vsm::sequencer

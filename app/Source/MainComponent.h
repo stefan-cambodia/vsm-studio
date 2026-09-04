@@ -16,6 +16,7 @@
 #include "ui/HistoryWindow.h"
 #include "ui/SpectrumComponent.h"
 #include "ui/PlayOrderComponent.h"
+#include "ui/TakeCompComponent.h"
 #include "ui/PreferencesWindow.h"
 #include "ui/BrowserComponent.h"
 #include "vsm/interchange/BrowserIndex.h"
@@ -219,6 +220,8 @@ private:
         kMenuRecordQuantizeTake,
         /// D17.3 : récupérer ce qui vient d'être joué.
         kMenuRecordRetrospective,
+        /// D18.2 : assembler les prises de la piste choisie.
+        kMenuRecordCompTakes,
         kMenuRecordPunchToggle,
         kMenuRecordPunchFromLoop,
         kMenuRecordPunchClear,
@@ -673,6 +676,10 @@ private:
     void showProjectNotes();
     /// D18.4 : ouvre l'ordre de jeu, sections relues depuis les repères.
     void showPlayOrder();
+    /// D18.2 : ouvre l'assemblage des prises pour la piste choisie.
+    void showTakeComp();
+    std::unique_ptr<PanelWindow> takeCompWindow_;
+    vsm::app::ui::TakeCompComponent takeCompPanel_;
     std::unique_ptr<PanelWindow> playOrderWindow_;
     vsm::app::ui::PlayOrderComponent playOrderPanel_;
     std::unique_ptr<PanelWindow> projectNotesWindow_;

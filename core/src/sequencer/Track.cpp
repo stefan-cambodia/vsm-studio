@@ -74,6 +74,52 @@ void pushTake(Track& track, Take take, const std::string& nomDeLOrigine) {
     sortirLeMateriau(track, track.takes[static_cast<size_t>(track.activeTake)]);
 }
 
+std::vector<Note> buildCompositeTake(const Track& track,
+                                      const std::vector<CompSegment>& segments,
+                                      uint64_t& idCounter) {
+    std::vector<Note> composite;
+    for (const auto& troncon : segments) {
+        if (troncon.toTick <= troncon.fromTick) continue;
+        if (troncon.takeIndex < 0 || troncon.takeIndex >= static_cast<int>(track.takes.size()))
+            continue;
+        // LA VÉRITÉ DE LA PRISE ACTIVE EST DANS LA PISTE, pas dans la prise :
+        // son contenu rangé est périmé tant qu'elle est active. Lire
+        // `takes[i].notes` pour celle-là rendrait l'état d'AVANT, c'est-à-dire
+        // exactement pas ce qu'on vient de juger bon.
+        const std::vector<Note>& source = (troncon.takeIndex == track.activeTake)
+                                              ? track.notes
+                                              : track.takes[static_cast<size_t>(troncon.takeIndex)].notes;
+        for (const auto& note : source) {
+            if (note.startTick < troncon.fromTick || note.startTick >= troncon.toTick) continue;
+            Note copie = note;
+            // Coupée au bord du tronçon : laissée entière, elle sonnerait
+            // par-dessus le tronçon suivant, qui vient d'une AUTRE passe.
+            copie.endTick = std::min(note.endTick, troncon.toTick);
+            if (copie.endTick <= copie.startTick) copie.endTick = copie.startTick + 1;
+            copie.id = idCounter++;
+            composite.push_back(copie);
+        }
+    }
+    std::stable_sort(composite.begin(), composite.end(),
+                      [](const Note& a, const Note& b) { return a.startTick < b.startTick; });
+    return composite;
+}
+
+bool applyCompositeTake(Track& track, const std::vector<CompSegment>& segments,
+                         uint64_t& idCounter) {
+    const auto composite = buildCompositeTake(track, segments, idCounter);
+    if (composite.empty()) return false;
+    // LA PASSE QU'ON ÉCOUTAIT EST RANGÉE D'ABORD : sans cela, choisir la
+    // composite la perdrait, et c'est souvent l'une de celles qu'on assemble.
+    rangerLeMateriauCourant(track);
+    track.notes = composite;
+    // UNE COMPOSITE N'APPARTIENT À AUCUNE PRISE. La dire active écraserait
+    // cette prise-là au prochain changement.
+    track.activeTake = -1;
+    track.sortEvents();
+    return true;
+}
+
 void selectTake(Track& track, int index) {
     if (index < 0 || index >= static_cast<int>(track.takes.size())) return;
     if (index == track.activeTake) return;
