@@ -47,6 +47,26 @@ Un échantillon glissé depuis le navigateur tombe sur la piste survolée, **à 
 
 **Suivre le tempo.** Un clip audio est du temps réel : changer le tempo du projet le déplace sans changer ce qu'il joue. Le **clic droit** sur un clip audio propose *Suivre le tempo* — **Non** (l'état d'origine), **Hauteur conservée** (la durée suit le tempo, la hauteur ne bouge pas : c'est ce qu'il faut pour caler une prise ou changer le tempo d'un morceau reconstruit), **Rééchantillonné** (la hauteur suit avec, comme un vinyle qu'on ralentit) ou **Hauteur conservée (WSOLA, témoin)** — le premier algorithme, gardé pour comparer et comme repli ; le défaut est un vocodeur de phase, mesuré plus précis d'un facteur trois sur une voix. L'allumer ne change rien au son tant que rien n'est calé. La commande **Le clip fait N mesures…** répartit la boucle sur ce nombre de mesures et vous dit le tempo d'origine qu'elle en déduit, pour que vous le vérifiiez. Les **marqueurs** (un trait ambre sur le clip) se tirent à la souris : vous déplacez le temps musical où tombe cet endroit du fichier, sans toucher au fichier ; *Ajouter un marqueur ici* en pose un là où vous avez cliqué, *Retirer ce marqueur* l'enlève. La forme d'onde d'un clip qui suit le tempo est dessinée dans le temps étiré : ce que vous voyez sous la grille est ce que vous entendrez sur la grille. Quand *Le clip fait N mesures* vous dit le tempo d'origine de la boucle, la même fenêtre propose **Adopter ce tempo pour le projet** : le projet se cale sur la boucle, qui joue alors telle quelle. **Ctrl** en tirant le bord droit d'un clip audio l'**étire** au lieu de le prolonger : le matériau suit le bord, la hauteur reste (le clip passe en « Hauteur conservée » s'il ne suivait pas le tempo). Tout s'annule avec Ctrl+Z, et l'export hors ligne joue exactement ce que l'application joue.
 
+**Répéter.** Un clip plus long que sa fenêtre la rejoue en boucle ; *Répéter
+la sélection* (clic droit, ou Édition) pose à la place des **copies
+indépendantes** à la suite — 2, 3, 4, 8, 16 fois, ou *jusqu'à la fin de la
+boucle*, l'entrée disant combien y tiennent — qu'on retouche ensuite une à
+une : rendre muette la troisième, couper la quatrième.
+
+**Découper aux transitoires.** Sur des clips audio choisis, *Découper aux
+transitoires* pose une coupe à chaque attaque trouvée — une boucle de
+batterie devient un clip par coup, à trois millisecondes avant la frappe pour
+ne pas raboter le transitoire. Le compte rendu dit le nombre de coupes et
+leurs instants, et ce qui n'a pas été découpé (piste MIDI, verrouillée, clip
+à l'envers, clip sans attaque). Le fichier n'est pas touché : ce sont des
+fenêtres, et chaque coupe s'annule.
+
+**Transcrire en MIDI.** *Transcrire en MIDI* sur un clip audio (clic droit,
+ou Édition) le donne au transcripteur de la chaîne d'analyse et pose une
+piste MIDI neuve juste après, avec un clip sur la même plage et les notes
+douteuses marquées — la piste arrive **sans instrument**, à vous d'en choisir
+un dans le rack. Sans Python, l'entrée est grisée avec sa raison.
+
 ![La vue d'arrangement : quatre pistes nommées, des clips, une automation dessinée, seize pistes visibles à l'écran.](images/manuel/arrangement.png)
 
 *La vue d'arrangement : quatre pistes nommées, des clips, une automation dessinée, seize pistes visibles à l'écran.*
@@ -633,6 +653,12 @@ assignée, ou la convention General MIDI si elle n'est pas connue. Une **piste
 audio** le dit : son matériau se voit et se coupe dans l'arrangement, il n'y a
 pas de notes à éditer ici.
 
+**Replier.** Le bouton *Replier* de la barre (ou *Replier sur les hauteurs
+jouées* dans le menu) ne garde qu'une rangée par hauteur présente sur la
+piste : une batterie tient sur ses cinq pièces au lieu de cent vingt-huit
+touches, chaque rangée nommée. Rien ne change dans le morceau ni dans le
+fichier ; une piste sans note ne se replie pas, et la ligne d'état le dit.
+
 ![Le piano roll d'une piste de batterie : le clavier nomme les pièces, la vue est cadrée sur le charleston.](images/manuel/piano-roll-batterie.png)
 
 **Les contrôleurs MIDI (CC) s'éditent dans l'onglet *MIDI CC* du bas.** Le **pitch bend** et l'**aftertouch de canal** y sont deux lanes comme les autres, en tête de la liste (le bend se lit autour de son centre ; un bend enregistré garde sa finesse tant qu'on ne touche pas la lane). Une
@@ -771,6 +797,14 @@ légèrement sur un son tenu et transposé loin, c'est la signature de la
 famille). Un effet tiers CLAP ou VST3 se pose de la même façon.
 
 **Contourner un insert** : chaque rangée de la chaîne commence par un interrupteur *On / Off* ; *Off* ne retire pas l'effet, il le contourne à la façon du *Bypass* de Cubase — l'effet continue de tourner et garde sa latence, seule sa sortie est remplacée par le signal sec retardé d'autant, si bien que la piste ne se déplace pas et que le retour est sans à-coup. *Contourner tout* / *Tout remettre* fait de même pour toute la chaîne de la piste. Le contournement est enregistré avec le projet et l'export le respecte.
+
+**Exporter en audio.** *Fichier ▸ Exporter audio…* demande la plage (le
+morceau, la boucle, la sélection), la fréquence, la profondeur et la queue,
+puis le fichier : **WAV**, **FLAC** ou **OGG** selon l'extension. Le rendu est
+le même dans les trois cas — celui de `vsm-render`, inserts et départs
+compris — ; FLAC le garde sans perte à 16 ou 24 bits, Ogg Vorbis le
+compresse à la qualité la plus haute, et le compte rendu le dit. Pas de MP3 :
+l'encodeur n'est pas dans JUCE, et le projet ne télécharge rien.
 
 **Les presets d'effet** : le bouton *Preset* d'une rangée enregistre le réglage courant sous un nom (`nom.effect.json`, dans le dossier `effets` de la bibliothèque — ou du projet si aucune bibliothèque n'est réglée) ou charge l'un des presets du même type trouvés dans la bibliothèque et le projet. Le navigateur les liste sous la sorte « Effet » ; déposer l'un d'eux sur une piste y ajoute l'insert, réglé comme le fichier le dit.
 
@@ -931,6 +965,15 @@ un projet reconstruit avec `--reverb-melange` porte un insert que personne
 n'a posé, et il doit se voir là où on le règle. `piste:N` choisit la piste N (à partir
 de 0), et `VSM_TAILLE=LARGEURxHAUTEUR` (pixels logiques, bornée par l'écran)
 donne à la fenêtre la taille à laquelle on veut vérifier une disposition.
+`premier-clip:N` choisit le premier clip de la piste N, et `tout-choisir`
+tous les clips. `VSM_MENU=libellé;libellé` exécute des entrées de menu par
+leur **libellé** avant la capture — le libellé exact d'abord, un début de
+libellé ensuite —, et dit sur le terminal quand rien ne correspond ou que
+l'entrée est grisée : c'est ainsi que se photographient les gestes qui ne
+vivent que dans un menu. `VSM_DELAI=ms` retarde l'autoportrait (une
+transcription met dix secondes), et `VSM_EXPORT=fichier.flac` exporte le
+projet ouvert sans fenêtre, en WAV, FLAC ou OGG selon l'extension, pour que
+le fichier se relise.
 `historique` et `spectre` ouvrent les fenêtres flottantes du même nom ; la
 photographie de `VSM_CAPTURE` ne couvre que la fenêtre principale, une fenêtre
 flottante se photographie avec `spectacle -b -n -f -o fichier.png` pendant que

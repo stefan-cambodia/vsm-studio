@@ -3185,46 +3185,139 @@ void MainComponent::exportStems() {
 }
 
 void MainComponent::exportAudioWithOptions(const vsm::interchange::RenderOptions& options) {
+    // D20.5 : TROIS FORMATS, ET LE SÉLECTEUR LES DIT. WAV tel quel ; FLAC et
+    // Ogg Vorbis par transcodage du même rendu. MP3 n'y est pas : l'encodeur
+    // n'est pas dans JUCE, et la règle n° 2 du § 0 interdit une dépendance à
+    // télécharger.
     auto chooser = std::make_shared<juce::FileChooser>(
-        "Exporter en audio WAV...", juce::File(), "*.wav");
+        u8"Exporter en audio (WAV, FLAC ou OGG)...", juce::File(), "*.wav;*.flac;*.ogg");
 
     chooser->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
                           [this, chooser, options](const juce::FileChooser& fc) {
         juce::File file = fc.getResult();
         if (file == juce::File()) return;
-
-        // L'EXPORT PASSE PAR LE MÊME CODE QUE `vsm-render`, et c'est la seule
-        // façon d'être sûr qu'il rende la même chose. La version précédente
-        // montait son propre graphe : elle y posait les instruments, le
-        // projet, l'automation et le master -- mais ni les inserts ni les
-        // départs. Le fichier exporté n'avait donc ni la réverbération ni le
-        // delay qu'on venait d'entendre, et rien ne le disait. Deux chemins de
-        // rendu, c'est deux vérités ; il n'y en a qu'un.
-        captureSessionIntoProject();
-        const vsm::interchange::LoadedBundle bundle = bundleFromSession();
-
-        const auto rendered = vsm::interchange::renderBundleToWav(
-            bundle, file.getFullPathName().toStdString(), options);
-        if (!rendered.success) {
-            juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
-                                                     "Erreur d'export audio", rendered.error);
-            return;
-        }
-
-        // Les avertissements du rendu sont MONTRÉS. Un export qui laisse une
-        // piste muette ou saute un effet doit le dire au moment où il le fait.
-        juce::String message = juce::String(u8"Rendu écrit :\n") + file.getFullPathName() + "\n\n"
-                              + juce::String(rendered.renderedSeconds, 1) + juce::String(u8" s, ")
-                              + juce::String(options.sampleRate / 1000.0, 1) + juce::String(u8" kHz, ")
-                              + juce::String(options.format == vsm::audio::io::SampleFormat::Int16 ? u8"16 bits"
-                                            : options.format == vsm::audio::io::SampleFormat::Float32 ? u8"32 bits flottants"
-                                                                                                       : u8"24 bits")
-                              + juce::String(u8", crête ") + juce::String(rendered.peakLevel, 3) + ".";
-        for (const auto& warning : rendered.warnings)
-            message += "\n" + juce::String(warning);
-        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon,
-                                                 u8"Export audio terminé", message);
+        if (file.getFileExtension().isEmpty()) file = file.withFileExtension("wav");
+        juce::String message;
+        const bool fait = exportProjectToFile(file, options, message);
+        juce::AlertWindow::showMessageBoxAsync(fait ? juce::AlertWindow::InfoIcon : juce::AlertWindow::WarningIcon,
+                                                 fait ? u8"Export audio terminé" : u8"Erreur d'export audio",
+                                                 message);
     });
+}
+
+bool MainComponent::exportProjectToFile(const juce::File& file, const vsm::interchange::RenderOptions& options,
+                                        juce::String& message) {
+    // L'EXPORT PASSE PAR LE MÊME CODE QUE `vsm-render`, et c'est la seule
+    // façon d'être sûr qu'il rende la même chose. La version précédente
+    // montait son propre graphe : elle y posait les instruments, le projet,
+    // l'automation et le master -- mais ni les inserts ni les départs. Le
+    // fichier exporté n'avait donc ni la réverbération ni le delay qu'on
+    // venait d'entendre, et rien ne le disait. Deux chemins de rendu, c'est
+    // deux vérités ; il n'y en a qu'un -- et FLAC ou OGG ne font que
+    // TRANSCODER ce rendu-là, jamais en rendre un autre.
+    captureSessionIntoProject();
+    const vsm::interchange::LoadedBundle bundle = bundleFromSession();
+    const juce::String extension = file.getFileExtension().toLowerCase();
+    const bool flac = extension == ".flac";
+    const bool ogg = extension == ".ogg";
+    const juce::File wav = (flac || ogg)
+        ? file.getSiblingFile(file.getFileNameWithoutExtension() + ".vsm-rendu.wav") : file;
+
+    const auto rendered = vsm::interchange::renderBundleToWav(
+        bundle, wav.getFullPathName().toStdString(), options);
+    if (!rendered.success) {
+        message = juce::String(rendered.error);
+        return false;
+    }
+    if (flac || ogg) {
+        juce::String erreur;
+        const bool fait = transcodeRenderedWav(wav, file, flac, options, erreur);
+        wav.deleteFile();
+        if (!fait) {
+            message = erreur;
+            return false;
+        }
+    }
+
+    // Les avertissements du rendu sont MONTRÉS. Un export qui laisse une
+    // piste muette ou saute un effet doit le dire au moment où il le fait.
+    const bool flottant = options.format == vsm::audio::io::SampleFormat::Float32;
+    const juce::String profondeur =
+        flac ? juce::String(options.format == vsm::audio::io::SampleFormat::Int16 ? u8"16 bits" : u8"24 bits")
+             : ogg ? juce::String(u8"Ogg Vorbis, qualité maximale (compression avec perte)")
+                   : juce::String(options.format == vsm::audio::io::SampleFormat::Int16 ? u8"16 bits"
+                                  : flottant ? u8"32 bits flottants" : u8"24 bits");
+    message = juce::String(u8"Rendu écrit :\n") + file.getFullPathName() + "\n\n"
+              + juce::String(rendered.renderedSeconds, 1) + juce::String(u8" s, ")
+              + juce::String(options.sampleRate / 1000.0, 1) + juce::String(u8" kHz, ") + profondeur
+              + juce::String(u8", crête ") + juce::String(rendered.peakLevel, 3) + ".";
+    if (flac && flottant)
+        message += juce::String(u8"\nFLAC ne porte pas de flottants : le rendu 32 bits a été écrit en 24 bits.");
+    for (const auto& warning : rendered.warnings)
+        message += "\n" + juce::String(warning);
+    return true;
+}
+
+bool MainComponent::transcodeRenderedWav(const juce::File& wav, const juce::File& sortie, bool flac,
+                                         const vsm::interchange::RenderOptions& options, juce::String& erreur) {
+    // LE WAV RENDU EST RELU PAR JUCE, PUIS RÉÉCRIT PAR SON ENCODEUR. Le
+    // décodage des imports vit déjà dans cette couche (WAV, AIFF, FLAC, Ogg,
+    // MP3) ; l'encodage y vit aussi, et le moteur garde ses zéro dépendance.
+    juce::WavAudioFormat formatWav;
+    std::unique_ptr<juce::AudioFormatReader> lecteur(
+        formatWav.createReaderFor(new juce::FileInputStream(wav), true));
+    if (!lecteur) {
+        erreur = juce::String(u8"Le rendu n'a pas pu être relu : ") + wav.getFullPathName();
+        return false;
+    }
+    sortie.deleteFile();
+    std::unique_ptr<juce::FileOutputStream> flux(sortie.createOutputStream());
+    if (!flux || !flux->openedOk()) {
+        erreur = juce::String(u8"Impossible d'écrire ") + sortie.getFullPathName();
+        return false;
+    }
+    std::unique_ptr<juce::AudioFormatWriter> ecrivain;
+    if (flac) {
+        // FLAC : 16 ou 24 bits, jamais de flottants -- un rendu 32 bits
+        // flottants s'écrit en 24, et le compte rendu le dit.
+        juce::FlacAudioFormat formatFlac;
+        const int bits = options.format == vsm::audio::io::SampleFormat::Int16 ? 16 : 24;
+        ecrivain.reset(formatFlac.createWriterFor(flux.get(), lecteur->sampleRate,
+                                                   lecteur->numChannels, bits, {}, 0));
+    } else {
+        // Ogg Vorbis : la qualité la plus haute que l'encodeur propose. Une
+        // compression avec perte n'a pas de « profondeur » ; 16 bits est ce
+        // que l'API demande, pas ce que le fichier porte.
+        juce::OggVorbisAudioFormat formatOgg;
+        const juce::StringArray qualites = formatOgg.getQualityOptions();
+        ecrivain.reset(formatOgg.createWriterFor(flux.get(), lecteur->sampleRate,
+                                                  lecteur->numChannels, 16, {},
+                                                  std::max(0, qualites.size() - 1)));
+    }
+    if (!ecrivain) {
+        erreur = juce::String(u8"L'encodeur ") + (flac ? "FLAC" : "Ogg Vorbis")
+                 + juce::String(u8" n'a pas pu être créé pour ") + sortie.getFileName();
+        return false;
+    }
+    flux.release();   // l'écrivain possède le flux et le ferme
+    const bool ecrit = ecrivain->writeFromAudioReader(*lecteur, 0, -1);
+    ecrivain.reset();
+    if (!ecrit) {
+        erreur = juce::String(u8"L'encodage ") + (flac ? "FLAC" : "Ogg Vorbis") + juce::String(u8" a échoué.");
+        sortie.deleteFile();
+        return false;
+    }
+    return true;
+}
+
+bool MainComponent::exportForCapture(const juce::File& file) {
+    vsm::interchange::RenderOptions options;
+    options.sampleRate = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate() : 48000.0;
+    options.format = vsm::audio::io::SampleFormat::Int24;
+    juce::String message;
+    const bool fait = exportProjectToFile(file, options, message);
+    std::fputs((juce::String(fait ? u8"VSM_EXPORT : " : u8"VSM_EXPORT : ÉCHEC — ") + message.replace("\n", " ; ") + "\n").toRawUTF8(), stderr);
+    return fait;
 }
 
 void MainComponent::showAudioSettings() {

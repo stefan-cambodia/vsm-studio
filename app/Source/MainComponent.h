@@ -119,6 +119,11 @@ public:
     /// D19.2 : pose le filtre de la liste des pistes (VSM_FILTRE), pour que la
     /// capture montre le filtre à l'œuvre.
     void setTrackFilterForCapture(const juce::String& texte) { trackList_.setFilterText(texte); }
+    /// D20.5 : exporter le projet ouvert dans `file` sans fenêtre
+    /// (VSM_EXPORT=fichier.flac), aux réglages par défaut -- la fréquence de
+    /// la session, 24 bits, le morceau entier, deux secondes de queue. Le
+    /// compte rendu va sur stderr : c'est un terminal qui pilote ce mode.
+    bool exportForCapture(const juce::File& file);
 
     bool openProjectFolderForCapture(const juce::File& dossier) {
         const auto lu = vsm::interchange::loadProjectBundle(dossier.getFullPathName().toStdString());
@@ -668,6 +673,14 @@ private:
     /// La seconde moitié de l'export : choisir le fichier, puis rendre avec les
     /// options que l'utilisateur vient de fixer (D6.1).
     void exportAudioWithOptions(const vsm::interchange::RenderOptions& options);
+    /// D20.5 : le rendu du projet dans `file`, WAV, FLAC ou OGG selon
+    /// l'extension -- le même rendu que `vsm-render`, puis JUCE transcode.
+    /// Rend faux avec le message d'erreur dans `message`, vrai avec le compte
+    /// rendu (durée, fréquence, profondeur, crête, avertissements).
+    bool exportProjectToFile(const juce::File& file, const vsm::interchange::RenderOptions& options,
+                             juce::String& message);
+    bool transcodeRenderedWav(const juce::File& wav, const juce::File& sortie, bool flac,
+                              const vsm::interchange::RenderOptions& options, juce::String& erreur);
     /// Republie tout ce qui dépend du projet. `stopPlayback` est faux après un
     /// annuler/rétablir : l'utilisateur qui corrige une note pendant que ça
     /// joue n'a aucune raison de voir la lecture s'arrêter.

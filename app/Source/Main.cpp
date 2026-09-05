@@ -148,6 +148,12 @@ public:
                 liste.addTokens(juce::String::fromUTF8(entrees), ";", "");
                 for (const auto& e : liste) content->runMenuEntryForCapture(e.trim());
             }
+            // VSM_EXPORT=fichier.flac : exporter le projet ouvert sans fenêtre
+            // (D20.5). Un export passe par un sélecteur de fichier et une
+            // boîte de dialogue, qu'aucune capture ne traverse ; le fichier
+            // écrit, lui, se relit -- c'est ainsi qu'on vérifie un format.
+            if (const char* sortie = std::getenv("VSM_EXPORT"); sortie != nullptr && *sortie)
+                content->exportForCapture(juce::File::getCurrentWorkingDirectory().getChildFile(sortie));
             if (const char* rapport = std::getenv("VSM_RAPPORT");
                 rapport != nullptr && *rapport)
                 content->showReconstructionReport();

@@ -5246,3 +5246,29 @@ déclarer une interface invérifiable, et cela vaut pour celle-ci.
 > après la piste audio, quatre notes, « (Aucun) » dans le rack. Deux
 > commandes de plus pour y arriver sans souris : `premier-clip:N` dans
 > VSM_VUE, et `VSM_DELAI=ms` pour que l'autoportrait attende la transcription.
+
+> **D20.5 EST FAITE (05/09/2026, 12:40), ET LA PHASE D20 EST CLOSE.** Le rendu
+> reste celui de `vsm-render` (`renderBundleToWav`) ; FLAC et Ogg Vorbis ne
+> font que TRANSCODER ce rendu-là par les encodeurs de JUCE, jamais en rendre
+> un autre -- deux chemins de rendu seraient deux vérités. FLAC à la
+> profondeur choisie, 16 ou 24 bits ; un rendu 32 bits flottants s'y écrit en
+> 24 et le compte rendu le dit, FLAC ne portant pas de flottants. Ogg Vorbis à
+> la qualité la plus haute que l'encodeur propose, et le compte rendu dit
+> « compression avec perte » plutôt qu'une profondeur qui n'existe pas. MP3
+> n'y est pas : l'encodeur n'est pas dans JUCE, et la règle n° 2 du § 0
+> interdit une dépendance à télécharger. Le sélecteur dit les trois formats.
+>
+> Vérifié en relisant les fichiers écrits depuis le projet d'exemple par
+> `VSM_EXPORT=fichier.{wav,flac,ogg}` : 3,827 s, 44,1 kHz, deux canaux dans
+> les trois cas -- WAV 1 013 Ko en PCM 24, FLAC 257 Ko en PCM 24, OGG 115 Ko
+> en Vorbis.
+>
+> **Ce que l'audit laisse écrit.** Cinq manques trouvés en lisant les
+> surfaces, cinq faits ; un réduit en l'écrivant (D20.1 : la boucle par
+> fenêtre existait) ; un détecteur réécrit deux fois par la mesure (D20.3 :
+> l'en-tête qui écartait le cas spectral décrivait le cas d'usage) ; et un
+> outil de vérification de plus, `VSM_MENU`, qui a raté sa première capture
+> sans le dire et a appris à préférer le libellé exact. Le moteur n'a pas été
+> recompilé de toute la phase : une campagne tournait.
+>
+> Tests : 261 core, 1 247 audio, 274 interchange, et 168 Python — tous verts.
