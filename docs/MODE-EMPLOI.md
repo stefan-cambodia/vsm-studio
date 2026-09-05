@@ -816,6 +816,19 @@ transcription, parité, arbitrage, et la distance face à la borne de la
 vraie machine. C'est un instrument de mesure, pas un remplaçant de
 l'écoute d'un vrai morceau (`docs/CDC-banc-synthetique.md`).
 
+**Soustraire ce qu'on sait rendre** (`--residuel N`, en ligne de commande
+seulement, et à 0 par défaut). Le séparateur décide des pistes, et le banc
+a montré qu'il rend une basse inutilisable. La boucle résiduelle prend la
+piste la plus sûre déjà reconstruite, la rend seule par le moteur, l'aligne
+sur le mélange et la soustrait, puis resépare ce qui reste et relance la
+chaîne dessus — N fois au plus. Rien de ce que vous entendez n'en dépend :
+le résidu reste dans le dossier de travail, et le projet ne reçoit que des
+pistes, nommées par leur itération (« other · r1 »). Le journal dit chaque
+rendu, sa corrélation, chaque soustraction avec son décalage et son gain,
+chaque doublon refusé, et pourquoi la boucle s'arrête. Ce que cela vaut se
+lit au banc et dans `docs/CDC-separation-par-synthese.md`, campagne
+écrite avant sa mesure.
+
 ## 6 bis. Ouvrir un projet fait ailleurs
 
 *Fichier ▸ Importer un projet (Ableton, FL Studio, Cubase)…* lit un `.als`, un

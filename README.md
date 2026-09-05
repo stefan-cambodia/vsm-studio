@@ -522,6 +522,33 @@ qu'il n'est pas : une validation sur disque, ni un corpus d'apprentissage
 — [`docs/CDC-banc-synthetique.md`](docs/CDC-banc-synthetique.md) dit
 pourquoi, avec les campagnes écrites avant leurs mesures.
 
+## Soustraire ce qu'on sait rendre : la boucle résiduelle
+
+Le nombre et le contenu des pistes sont décidés par le séparateur, et le
+banc a chiffré ce qu'il rend sur la basse : 0,21 dB de SDR, 0,26 de
+corrélation avec la vraie. Le projet a ce qu'aucun séparateur n'a — un
+moteur qui sait RENDRE une piste une fois trouvée. `--residuel N` prend la
+piste la plus sûre parmi celles déjà reconstruites, la rend seule, l'aligne
+sur le mélange (un décalage entier et un gain, publiés), la soustrait,
+resépare ce qui reste et relance la chaîne dessus, N fois au plus :
+
+```bash
+analyse/reconstruire.py morceau.mp3 --sortie projet --residuel 1
+```
+
+Le résidu est un objet de mesure, jamais joué : le DAW ne reçoit que des
+pistes reconstruites, nommées par leur itération (« other · r1 »). Une
+piste n'est soustraite que si son rendu est corrélé à son stem au-delà
+d'un seuil publié ; un stem du résidu dont les notes sont déjà portées par
+une piste retenue est un doublon, refusé avant l'arbitrage avec ses trois
+nombres ; chaque arrêt dit son motif. Sans l'option, la chaîne est celle
+d'hier, au bit près — un test le tient. Le banc juge chaque itération contre
+le résidu VRAI (le mélange moins les stems vrais des parties retenues), et
+la campagne R1 est écrite avant sa mesure dans
+[`docs/CDC-separation-par-synthese.md`](docs/CDC-separation-par-synthese.md),
+avec ce que les premiers tours ont déjà appris : la corrélation d'un rendu à
+son stem plafonne à 0,5 même avec la bonne machine et les bonnes notes.
+
 ## Ouvrir un projet fait ailleurs (Ableton, FL Studio, Cubase)
 
 *Fichier ▸ Importer un projet…* lit un **`.als`** d'Ableton Live, un **`.flp`**

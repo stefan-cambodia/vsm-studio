@@ -1359,6 +1359,21 @@ c'est ce paragraphe qu'il faudra venir corriger ce jour-là.
 > ne remplace pas la validation sur disque, il ne rouvre ni A1 ni A3) et la
 > campagne S1 écrite avant sa mesure : `docs/CDC-banc-synthetique.md`.
 
+> **CE QUE S1 A RÉPONDU (05/09/2026), ET LE CHANTIER QU'ELLE OUVRE.** La
+> séparation plafonne tout — `bass` à 0,21 dB et 0,26 de corrélation avec
+> la vraie —, et l'arbitrage bat la vérité de référence sur 42 pistes sur
+> 43 parce que le stem séparé n'est pas le stem vrai. D'où la **boucle
+> résiduelle** (`docs/CDC-separation-par-synthese.md`, `--residuel N`) :
+> rendre la partie la plus sûre, la soustraire du mélange, reséparer le
+> résidu, recommencer — le nombre de pistes émergeant du signal, le banc
+> jugeant contre le résidu VRAI. Trois anti-objectifs : rien d'entendu ne
+> change, la séparation n'est pas remplacée (sans option, la chaîne d'hier
+> au bit près, testé), pas de modèle appris. Le risque est nommé avant la
+> mesure : la corrélation d'un rendu à son stem, au niveau de
+> l'échantillon, plafonne à 0,5 avec la bonne machine et les bonnes notes
+> (phase, patch), et vaut 0,00 à 0,16 sur un morceau du banc passé par la
+> vraie chaîne. La campagne R1 et son verdict : au CDC.
+
 ---
 
 ## 5 septies. Le gagnant d'une note ne tient pas la piste : mesuré deux fois sur un morceau
