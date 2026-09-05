@@ -42,6 +42,7 @@ def main() -> int:
 
     donnees = np.load(args.jeu)
     X, y = donnees["X"], donnees["y"].astype(int)
+    groupes = donnees["groupes"] if "groupes" in donnees else None
     n_un, n_deux = int(np.sum(y == 1)), int(np.sum(y == 0))
     print(f"jeu : {X.shape[0]} paires ({n_un} « un seul », {n_deux} « deux »), "
           f"{X.shape[1]} descripteurs")
@@ -71,10 +72,20 @@ def main() -> int:
 
     modele = make_pipeline(StandardScaler(),
                             LogisticRegression(C=1.0, max_iter=2000, random_state=GRAINE))
-    plis = StratifiedKFold(n_splits=5, shuffle=True, random_state=GRAINE)
+    # PAR GROUPE quand on en a : deux transcriptions du même morceau ne doivent
+    # pas se retrouver de part et d'autre d'un pli. Sinon le score mesure ce
+    # qu'on a déjà vu.
+    if groupes is not None and len(set(groupes.tolist())) >= 5:
+        from sklearn.model_selection import StratifiedGroupKFold
+        plis = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=GRAINE)
+        decoupe = dict(groups=groupes)
+        print(f"  validation par GROUPE : {len(set(groupes.tolist()))} morceaux distincts")
+    else:
+        plis = StratifiedKFold(n_splits=5, shuffle=True, random_state=GRAINE)
+        decoupe = {}
     # VALIDATION CROISÉE, jamais le score sur ce qu'on a appris : avec six
     # descripteurs et quatre-vingts exemples, apprendre par cœur est facile.
-    predit = cross_val_predict(modele, X, y, cv=plis)
+    predit = cross_val_predict(modele, X, y, cv=plis, **decoupe)
 
     juste_mains = float(np.mean(predit[y == 1] == 1))
     juste_disjoints = float(np.mean(predit[y == 0] == 0))

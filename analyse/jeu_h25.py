@@ -139,8 +139,8 @@ def paires_du_morceau(course: Path, verite_chemin: Path) -> List[Tuple[np.ndarra
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--courses", type=Path, required=True,
-                    help="dossier des courses front-end (lot/morceau/)")
+    ap.add_argument("--courses", type=Path, required=True, nargs="+",
+                    help="dossiers de courses front-end (lot/morceau/), un ou plusieurs")
     ap.add_argument("--lots", type=Path, required=True, help="dossier des lots générés")
     ap.add_argument("--sortie", type=Path, required=True, help="jeu écrit ici (.npz)")
     ap.add_argument("--bavard", action="store_true")
@@ -148,9 +148,19 @@ def main() -> int:
 
     X: List[np.ndarray] = []
     y: List[int] = []
+    # LE GROUPE, C'EST LE MORCEAU. Un même morceau passé une fois sec et une
+    # fois produit donne deux transcriptions DIFFÉRENTES mais très corrélées :
+    # les laisser tomber dans deux plis de la validation croisée reviendrait à
+    # s'interroger sur ce qu'on a déjà vu, et à publier un score flatté.
+    groupes: List[str] = []
     morceaux = 0
     sans_paire = 0
-    for course in sorted(args.courses.glob("*/morceau-*")):
+    # LES DEUX SÉRIES SE LISENT ENSEMBLE : la première a donné les négatifs
+    # (le stem `other` d'un morceau ordinaire), la seconde les positifs (des
+    # morceaux à deux parties). Aucune n'est de trop, et les mélanger est
+    # honnête : c'est le MÊME découpage sur le MÊME genre de transcription.
+    courses = [c for racine in args.courses for c in sorted(racine.glob("*/morceau-*"))]
+    for course in courses:
         if not (course / "project.json").is_file():
             continue
         morceaux += 1
@@ -164,6 +174,7 @@ def main() -> int:
         for vecteur, etiquette, phrase in paires:
             X.append(vecteur)
             y.append(etiquette)
+            groupes.append(course.name)
             if args.bavard:
                 print("  " + phrase)
 
@@ -171,7 +182,8 @@ def main() -> int:
           f"({sum(y)} « un seul », {len(y) - sum(y)} « deux »)")
     if X:
         args.sortie.parent.mkdir(parents=True, exist_ok=True)
-        np.savez(args.sortie, X=np.vstack(X), y=np.asarray(y, dtype=int))
+        np.savez(args.sortie, X=np.vstack(X), y=np.asarray(y, dtype=int),
+                  groupes=np.asarray(groupes))
         print(f"jeu écrit : {args.sortie}")
     return 0
 
