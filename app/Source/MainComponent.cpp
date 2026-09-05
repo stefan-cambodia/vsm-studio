@@ -2,6 +2,7 @@
 #include "vsm/sequencer/ClipEdit.h"
 #include "vsm/sequencer/PlayOrder.h"
 #include "vsm/interchange/GroovePreset.h"
+#include "vsm/audio/io/OnsetDetection.h"
 #include "vsm/audio/io/SilenceDetection.h"
 #include "vsm/sequencer/TimeEdit.h"
 #include "vsm/sequencer/ProjectImport.h"
@@ -302,6 +303,7 @@ MainComponent::MainComponent()
     arrangement_.onClipCreationRequested = [this](size_t piste, vsm::midi::Tick tick) {
         createClipOnTrack(piste, tick);
     };
+    arrangement_.onClipSliceAtOnsetsRequested = [this] { sliceSelectedClipsAtOnsets(); };
     arrangement_.onClipTrimToSoundRequested = [this](size_t piste, uint64_t clipId) {
         trimClipToSound(piste, clipId);
     };
@@ -1650,6 +1652,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addSubMenu(u8"R\u00e9p\u00e9ter la s\u00e9lection (\u00e0 la suite)", repeter,
                                 arrangement_.hasSelection());
             }
+            menu.addItem(kMenuEditSliceAtOnsets,
+                         u8"D\u00e9couper la s\u00e9lection aux transitoires (clips audio)",
+                         arrangement_.hasSelection());
             // D17.8 : LE GROOVE. Le nom du groove courant est DIT dans
             // l'article qui l'applique : appliquer « quelque chose » qu'on ne
             // nomme pas, c'est appliquer on ne sait quoi.
@@ -2092,6 +2097,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuEditLocatorsFromSelection) { locatorsFromSelection(); return; }
     if (menuItemID == kMenuEditSelectAllClips) { arrangement_.selectAll(); return; }
     if (menuItemID == kMenuEditRepeatToLoopEnd) { arrangement_.repeatSelectionUntilLoopEnd(); return; }
+    if (menuItemID == kMenuEditSliceAtOnsets) { sliceSelectedClipsAtOnsets(); return; }
     if (menuItemID >= kMenuEditRepeatFirst && menuItemID <= kMenuEditRepeatLast) {
         static const int kNombres[] = {2, 3, 4, 8, 16};
         arrangement_.repeatSelection(kNombres[menuItemID - kMenuEditRepeatFirst]);
@@ -6507,6 +6513,120 @@ void MainComponent::refreshTrackViews() {
     trackList_.repaint();
     mixer_.resized();
     mixer_.repaint();
+}
+
+void MainComponent::sliceSelectedClipsAtOnsets() {
+    // D20.3 : LES CLIPS AUDIO CHOISIS, COUPÉS À CHAQUE ATTAQUE. Même lecture
+    // du fichier que « Rogner au son », même passage par `splitClips` : une
+    // coupe posée ici est exactement celle que Ctrl+E poserait à la main, la
+    // fenêtre en secondes du clip audio comprise.
+    const vsm::sequencer::ClipSelection selection = arrangement_.selectedClipIds();
+    if (selection.empty()) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Découper aux transitoires",
+            u8"Choisissez d'abord un clip audio dans l'arrangement.");
+        return;
+    }
+    const double sr = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate() : 48000.0;
+    const auto versSecondes = [this](vsm::midi::Tick t) { return project_.ticksToSeconds(t); };
+    int coupes = 0, clipsAudio = 0, sansAttaque = 0;
+    juce::StringArray refus;
+    bool debute = false;
+    for (size_t t = 0; t < project_.tracks.size(); ++t) {
+        auto& piste = project_.tracks[t];
+        std::vector<uint64_t> cibles;
+        for (const auto& c : piste.clips)
+            if (selection.count(c.id) > 0) cibles.push_back(c.id);
+        if (cibles.empty()) continue;
+        // CE QUI N'EST PAS DÉCOUPÉ EST DIT, piste par piste : un clip MIDI n'a
+        // pas de transitoire à trouver, une piste verrouillée ne se coupe pas.
+        if (piste.kind != vsm::sequencer::Track::Kind::Audio || piste.audio.empty()) {
+            refus.add(juce::String::fromUTF8(piste.name.c_str()) + juce::String(u8" : pas une piste audio"));
+            continue;
+        }
+        if (piste.locked) {
+            refus.add(juce::String::fromUTF8(piste.name.c_str()) + juce::String(u8" : piste verrouillée"));
+            continue;
+        }
+        const juce::File fichier = currentProjectFolder_.getChildFile(juce::String(piste.audio.path));
+        auto charge = vsm::audio::io::loadAudioTrack(fichier.getFullPathName().toStdString(), sr);
+        if (!charge.source || !charge.source->samples) {
+            refus.add(juce::String::fromUTF8(piste.name.c_str()) + juce::String(u8" : fichier illisible — ") + fichier.getFullPathName());
+            continue;
+        }
+        const auto magasin = charge.source->samples;
+        vsm::midi::Tick finMateriau = 0;
+        if (piste.audio.sampleRate > 0.0) finMateriau = project_.secondsToTicks(piste.audio.durationSeconds());
+        for (uint64_t id : cibles) {
+            auto it = std::find_if(piste.clips.begin(), piste.clips.end(),
+                                    [id](const vsm::sequencer::Clip& c) { return c.id == id; });
+            if (it == piste.clips.end()) continue;
+            if (it->reversed) {
+                refus.add(juce::String::fromUTF8(it->name.c_str()) + juce::String(u8" : clip à l'envers, non découpé"));
+                continue;
+            }
+            ++clipsAudio;
+            const auto jouee = vsm::sequencer::clipPlayedLength(*it, finMateriau);
+            const double duree = project_.ticksToSeconds(it->startTick + jouee) - project_.ticksToSeconds(it->startTick);
+            const auto depart = static_cast<int64_t>(std::llround(it->sourceStartSeconds * sr));
+            const auto compte = static_cast<int64_t>(std::llround(duree * sr));
+            const double sourceDebut = it->sourceStartSeconds;
+            const auto attaques = vsm::audio::io::detectOnsets(
+                [&magasin, depart](int64_t i, float& g, float& d) { return magasin->frameAt(depart + i, g, d); },
+                compte, sr);
+            if (attaques.empty()) { ++sansAttaque; continue; }
+            // CHAQUE COUPE EST DITE AVEC SON INSTANT (secondes dans le
+            // fichier) : c'est ainsi qu'on voit, au journal, une attaque
+            // trouvée là où il n'y en a pas.
+            {
+                juce::String instants;
+                for (int64_t attaque : attaques)
+                    instants += (instants.isEmpty() ? "" : ", ")
+                                + juce::String(sourceDebut + static_cast<double>(attaque) / sr, 3);
+                std::fputs((juce::String(u8"Découper aux transitoires : « ") + juce::String::fromUTF8(it->name.c_str())
+                            + juce::String(u8" » : ") + juce::String(static_cast<int>(attaques.size()))
+                            + juce::String(u8" attaque(s) à ") + instants + " s\n").toRawUTF8(), stderr);
+            }
+            if (!debute) { beginProjectEdit(u8"Découper aux transitoires"); debute = true; }
+            uint64_t compteur = project_.peekNextClipId();
+            for (int64_t attaque : attaques) {
+                // L'attaque est un instant DU FICHIER ; le clip qui le couvre
+                // -- après les coupes précédentes, c'est la moitié droite de
+                // la dernière -- dit où il tombe sur la ligne de temps.
+                const double sourceSecondes = sourceDebut + static_cast<double>(attaque) / sr;
+                uint64_t couvrant = 0;
+                vsm::midi::Tick tick = 0;
+                for (const auto& c : piste.clips) {
+                    const auto longueur = vsm::sequencer::clipPlayedLength(c, finMateriau);
+                    const vsm::midi::Tick ici = vsm::sequencer::clipIsWarped(c)
+                        ? c.startTick + vsm::sequencer::warpTickAtSeconds(c, sourceSecondes)
+                        : project_.secondsToTicks(project_.ticksToSeconds(c.startTick) + (sourceSecondes - c.sourceStartSeconds));
+                    if (c.startTick < ici && ici < c.startTick + longueur) { couvrant = c.id; tick = ici; break; }
+                }
+                if (couvrant == 0) continue;
+                coupes += static_cast<int>(vsm::sequencer::splitClips(piste, {couvrant}, tick, finMateriau,
+                                                                      compteur, versSecondes));
+            }
+            project_.ensureClipIdAbove(compteur - 1);
+        }
+    }
+    if (debute) {
+        refreshTransportSchedule();
+        loadAudioTracks();
+        arrangement_.repaint();
+    }
+    juce::String message = juce::String(coupes) + juce::String(u8" coupe(s) sur ") + juce::String(clipsAudio)
+                           + juce::String(u8" clip(s) audio.");
+    if (sansAttaque > 0)
+        message += "\n" + juce::String(sansAttaque) + juce::String(u8" clip(s) sans attaque trouvée, laissé(s) entier(s).");
+    for (const auto& r : refus) message += "\n" + r;
+    if (coupes > 0)
+        message += juce::String(u8"\nLe fichier n'a pas été touché : ce sont des fenêtres, et chaque coupe s'annule.");
+    // ET SUR STDERR AUSSI : une boîte de message n'entre pas dans un
+    // autoportrait (VSM_CAPTURE), et un geste piloté par VSM_MENU dont on ne
+    // lit pas le compte rendu est un geste qu'on croit fait.
+    std::fputs((juce::String(u8"Découper aux transitoires : ") + message.replace("\n", " ; ") + "\n").toRawUTF8(), stderr);
+    juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon, u8"Découper aux transitoires", message);
 }
 
 void MainComponent::trimClipToSound(size_t trackIndex, uint64_t clipId) {

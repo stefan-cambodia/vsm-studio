@@ -599,6 +599,11 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
             }
             menu.addItem(18, u8"Normaliser (gain = 1 / cr\u00eate)", waveformProvider != nullptr);
             menu.addItem(19, u8"Rogner au son (d\u00e9tecter le silence)");
+            // D20.3 : DÉCOUPER AUX TRANSITOIRES, sur les clips audio choisis.
+            // Le nombre de coupes se dit APRÈS, pas dans l'entrée : le compter
+            // d'avance lirait le fichier entier à chaque ouverture du menu, et
+            // neuf minutes de voix feraient attendre un clic droit.
+            menu.addItem(22, u8"D\u00e9couper aux transitoires (clips audio choisis)");
             marqueurGeste_ = surMarqueur;
         }
         // LE ZOOM (D14.2), pour tout clip : tout voir, ou la sélection.
@@ -1055,6 +1060,9 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
         }
         case 19:
             if (onClipTrimToSoundRequested) onClipTrimToSoundRequested(piste, clipId);
+            return;
+        case 22:
+            if (onClipSliceAtOnsetsRequested) onClipSliceAtOnsetsRequested();
             return;
         case 5: splitSelectionAtPlayhead(); return;
         case 6: joinSelection(); return;

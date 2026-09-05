@@ -194,6 +194,9 @@ public:
     /// besoin des ÉCHANTILLONS du fichier, que l'application seule sait
     /// retrouver — un composant de dessin n'ouvre pas de fichier.
     std::function<void(size_t, uint64_t)> onClipTrimToSoundRequested;
+    /// D20.3 : découper les clips audio CHOISIS aux transitoires. L'application
+    /// lit les fichiers et coupe ; la vue ne sait pas lire un fichier.
+    std::function<void()> onClipSliceAtOnsetsRequested;
 
     /// D17.2 : « L'AUTOMATION SUIT LES ÉVÉNEMENTS », la préférence de Cubase,
     /// active par défaut. Réglée par l'application, qui la retient ; la vue ne

@@ -5172,3 +5172,50 @@ déclarer une interface invérifiable, et cela vaut pour celle-ci.
 > silence derrière un `grep`, et la première capture « repliée » était celle
 > de l'ancien binaire. Le code de sortie d'un tube est celui de son dernier
 > maillon ; on lit désormais `PIPESTATUS`.
+
+> **D20.3 EST FAITE (05/09/2026, 11:50), ET LE DÉTECTEUR A ÉTÉ RÉÉCRIT DEUX
+> FOIS PAR LA MESURE.** La première version -- un flux d'énergie TOTALE,
+> trames de 5 ms -- passait ses tests sur des impulsions dans du bruit et ne
+> trouvait RIEN sur le stem de TR-909 du morceau minuscule : une grosse
+> caisse y traîne à -18 dB pendant toute la mesure, et chaque frappe de
+> charleston ne fait monter le tout que de 0,8 à 2,4 dB (mesuré aux huit
+> instants vrais ; seule la seconde grosse caisse atteignait 7,4 dB, sous
+> les 8 dB du seuil). L'en-tête disait « un détecteur spectral ferait mieux
+> sur une note tenue ; ce n'est pas le cas d'usage » -- c'était exactement le
+> cas d'usage. Le flux se calcule donc PAR BANDE (le tout, le grave sous
+> 200 Hz, le médium, l'aigu au-dessus de 2 kHz, trois biquads), chaque bande
+> avec sa propre moyenne de ce qui précède.
+>
+> **Puis vingt attaques sur quatre notes de basse.** À 5 ms, une dent de scie
+> de TB-303 à 92 Hz est un clic toutes les 10,8 ms dans la bande haute : la
+> trame qui contient le clic bondit de dix décibels au-dessus de celle qui ne
+> le contient pas. La fenêtre est passée à 20 ms (deux périodes), le pas à
+> 5 ms ; la précision de l'instant ne vient pas de la trame mais d'un
+> affinage à l'échantillon -- la montée la plus raide, énergie de la
+> milliseconde qui suit contre celle des cinq qui précèdent, DANS LA BANDE
+> QUI A BONDI : sur la queue de la grosse caisse, l'énergie totale par
+> milliseconde est plate à -18 dB et la caisse claire y est invisible, seule
+> la bande haute la voit (mesuré : huit millisecondes de retard avant, trois
+> millisecondes -- la marge -- après).
+>
+> Résultat sur les deux stems du morceau minuscule, posés en clips audio :
+> la batterie donne ses sept coupes (0,243 / 0,489 / 0,735 / 0,981 / 1,227 /
+> 1,472 / 1,718 s pour des frappes vraies à 0,246 / 0,492 / 0,738 / 0,984 /
+> 1,230 / 1,475 / 1,721 -- la marge de 3 ms, exactement), la basse ses trois
+> (0,489 / 0,981 / 1,472 pour 0,492 / 0,984 / 1,475). La première frappe, à
+> zéro, ne coupe rien : une coupe à moins d'un écart minimal du début ferait
+> un clip de dix millisecondes.
+>
+> Le nombre de coupes se dit APRÈS, avec les instants de chaque clip, sur
+> stderr aussi (une boîte de message n'entre pas dans un autoportrait) --
+> et non dans l'entrée de menu : le compter d'avance lirait le fichier
+> entier à chaque clic droit. Ce qui n'est pas découpé est dit : piste MIDI,
+> piste verrouillée, clip à l'envers, clip sans attaque. Le projet d'essai
+> se fabrique depuis les stems vrais commis (`vocal_audio_track` sur
+> `01-basse.wav` et `02-batterie.wav`, `write_project_bundle`) ; la capture
+> l'a piloté par `VSM_VUE=tout-choisir` et `VSM_MENU=Découper la sélection
+> aux transitoires`.
+>
+> Tests : 1 247 audio (+4, dont un motif de boîte à rythmes synthétique --
+> grosse caisse à hauteur descendante et charleston --, qui est le cas réel
+> et non les impulsions), tous verts.

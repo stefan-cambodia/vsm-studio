@@ -212,6 +212,8 @@ private:
     kMenuEditRepeatToLoopEnd,
     kMenuEditRepeatFirst,
     kMenuEditRepeatLast = kMenuEditRepeatFirst + 4,
+    /// D20.3 : découper la sélection aux transitoires (clips audio).
+    kMenuEditSliceAtOnsets,
     /// D17.8 : LE GROOVE — l'extraire de la piste choisie, l'appliquer à la
     /// sélection du piano roll, l'enregistrer dans la bibliothèque, en charger
     /// un.
@@ -687,6 +689,8 @@ private:
     /// D17.6 : rogne le clip à ce qui sonne, en relisant les échantillons du
     /// fichier. Annulable.
     void trimClipToSound(size_t trackIndex, uint64_t clipId);
+    /// D20.3 : les clips audio choisis, coupés à chaque attaque trouvée.
+    void sliceSelectedClipsAtOnsets();
     /// D18.1 : rend hors ligne les clips choisis et les pose sur une piste
     /// audio neuve, à leur place. La piste d'origine n'est pas touchée --
     /// c'est ce qui distingue « reporter la sélection » de « reporter la
