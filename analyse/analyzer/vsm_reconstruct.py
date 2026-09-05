@@ -666,6 +666,7 @@ def write_reconstruction_report(
     mix_verdict: Optional[Sequence[Dict[str, object]]] = None,
     partage: Optional[Sequence[Dict[str, object]]] = None,
     reverb: Optional[Dict[str, object]] = None,
+    residuel: Optional[Dict[str, object]] = None,
 ) -> None:
     """
     Écrit le rapport de reconstruction (étape 9.3).
@@ -715,6 +716,12 @@ def write_reconstruction_report(
         # LA RÉVERBÉRATION CHERCHÉE AU MÉLANGE (H24) : la grille essayée,
         # le point retenu et ce qu'il rapporte — ou le refus, avec son chiffre.
         **({"reverb": reverb} if reverb else {}),
+        # LA BOUCLE RÉSIDUELLE (docs/CDC-separation-par-synthese.md § 2.6) :
+        # candidates rendues et leurs corrélations, soustractions avec leur
+        # décalage et leur gain, énergies, stems refusés pour doublon, pistes
+        # ajoutées, distance en l'état, motif d'arrêt. Absent sans l'option :
+        # sans elle, le rapport est celui d'aujourd'hui.
+        **({"residuel": residuel} if residuel else {}),
         # COMMENT LE MORCEAU SE PARTAGE ENTRE LES PISTES, en part d'énergie.
         #
         # C'EST LE CHIFFRE QUI A RENDU LE DÉFAUT VISIBLE, et il n'était nulle

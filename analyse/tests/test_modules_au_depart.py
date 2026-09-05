@@ -21,7 +21,8 @@ import reconstruire  # noqa: E402
 def tous_les_modules_de_la_chaine_sont_charges_au_depart():
     reconstruire.charger_tous_les_modules()
     for nom in ("analyzer.vsm_mix_refine", "analyzer.vsm_voix", "analyzer.vsm_levels",
-                "analyzer.note_extraction", "analyzer.vsm_distance_cache", "analyzer.vsm_corpus"):
+                "analyzer.note_extraction", "analyzer.vsm_distance_cache", "analyzer.vsm_corpus",
+                "analyzer.vsm_residu", "analyzer.vsm_offline_render"):
         assert_true(nom in sys.modules, nom + " doit être en mémoire dès le départ")
 
 

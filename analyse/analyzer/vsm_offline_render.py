@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Sequence
 
 import numpy as np
 
@@ -55,7 +55,26 @@ def render_track_offline(
     remplacé par du silence, qui passerait pour une machine muette et fausserait
     toute comparaison.
     """
-    write_project_bundle([track], folder, title=title, tempo=tempo)
+    return render_tracks_offline([track], folder, sample_rate, duration=duration,
+                                 tempo=tempo, binary=binary, title=title)
+
+
+def render_tracks_offline(
+    tracks: Sequence[ExportTrack],
+    folder: Path,
+    sample_rate: int,
+    duration: Optional[float] = None,
+    tempo: float = 120.0,
+    binary: Optional[str] = None,
+    title: str = "rendu-pistes",
+) -> Optional[np.ndarray]:
+    """
+    PLUSIEURS pistes rendues ENSEMBLE, en mono -- le rendu d'une unité de la
+    boucle résiduelle (les pièces d'une batterie éclatée, les voix d'un stem
+    découpé), par le même chemin que le rendu d'une piste : c'est la même
+    fonction, appelée avec une liste d'un élément, et non une copie.
+    """
+    write_project_bundle(list(tracks), folder, title=title, tempo=tempo)
     sortie = Path(folder) / "rendu.wav"
     commande = [str(find_vsm_render(binary)), str(folder), str(sortie),
                 "--sample-rate", str(sample_rate)]

@@ -44,7 +44,10 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import dataclasses
 import os
+import shlex
+import shutil
 import struct
 import subprocess
 import sys
@@ -73,6 +76,7 @@ from analyzer.vsm_levels import VOLUME_MAX, match_track_levels  # noqa: E402
 from analyzer.vsm_mix_verdict import (MixAlternative, install_alternative,  # noqa: E402
                                       keep_what_helps_the_mix, project_mix_distance,
                                       restore_track_state, settle_verdict, track_state)
+from analyzer.vsm_offline_render import render_tracks_offline  # noqa: E402
 from analyzer.vsm_project_export import (DEFAULT_TRACK_VOLUME, ExportNote, ExportTrack,  # noqa: E402
                                           write_project_bundle)
 from analyzer.vsm_reconstruct import (StemNote, StemReconstruction, densite_du_stem,  # noqa: E402
@@ -80,6 +84,9 @@ from analyzer.vsm_reconstruct import (StemNote, StemReconstruction, densite_du_s
                                       nom_de_note, reconstruction_distance, registres_par_vides,
                                       separer_en_voix, stem_fourre_tout,
                                       write_reconstruction_report)
+from analyzer.vsm_residu import (Collaborateurs, DejaPortees, Passe, Unite,  # noqa: E402
+                                 boucle_residuelle, indices_frappes_nouvelles, indices_nouveaux)
+from analyzer.vsm_residu import Options as OptionsResiduelles  # noqa: E402
 from analyzer.vsm_track_arbitration import (ORIGINE_USINE, TrackCandidate, arbitrate_on_track,  # noqa: E402
                                              build_candidates, runners_up)
 from analyzer.vsm_track_refine import refine_patch_on_track  # noqa: E402
@@ -430,6 +437,14 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
             # inscrites au-dessus, chacune à sa valeur effective. On garde
             # quand même la trace de la façon dont la course a été demandée.
             "parite": args.parite,
+            # LA BOUCLE RÉSIDUELLE et ses trois seuils : à 0, la chaîne
+            # d'aujourd'hui ; au-delà, le nombre de pistes peut changer, et
+            # deux rapports qui n'ont pas la même valeur ne se comparent pas.
+            "residuel": args.residuel,
+            "residuelCorrelation": args.residuel_correlation,
+            "residuelEnergie": args.residuel_energie,
+            "residuelNotesMin": args.residuel_notes_min,
+            "residuelSeparateur": args.residuel_separateur or None,
         },
         # Les modèles CONSULTÉS, avec leur date d'entraînement -- ou « aucun »,
         # qui est une information et non une absence d'information.
@@ -733,6 +748,30 @@ def construire_parseur() -> argparse.ArgumentParser:
     parseur.add_argument("--garder-stems", default=None,
                          help="dossier où conserver les stems séparés, pour rejouer une "
                               "mesure sans repayer la séparation")
+    parseur.add_argument("--residuel", type=int, default=0, metavar="N",
+                         help="LA BOUCLE RÉSIDUELLE (docs/CDC-separation-par-synthese.md), N "
+                              "itérations au plus : la piste la plus sûre est rendue seule, "
+                              "alignée sur le mélange (décalage entier + gain, publiés), "
+                              "SOUSTRAITE ; le résidu est reséparé et la chaîne relancée sur "
+                              "ses stems seuls. Le résidu est un objet de mesure, jamais joué. "
+                              "0 (le défaut) : la chaîne d'aujourd'hui, au bit près")
+    parseur.add_argument("--residuel-correlation", type=float, default=0.5,
+                         help="garde-fou de la boucle : une unité ne se soustrait que si son "
+                              "rendu, aligné, est corrélé à son stem au moins autant (0,5 : la "
+                              "soustraction retire un quart de l'énergie de la partie ; en "
+                              "deçà, la réséparation la retrouverait presque entière)")
+    parseur.add_argument("--residuel-energie", type=float, default=5.0,
+                         help="arrêt de la boucle : part du mélange d'origine (en %%) sous "
+                              "laquelle le résidu ne contient plus rien à chercher")
+    parseur.add_argument("--residuel-notes-min", type=int, default=8,
+                         help="une piste issue du résidu se fait d'au moins autant de notes "
+                              "NOUVELLES — non déjà portées par une piste retenue (±1 demi-ton, "
+                              "±50 ms) ; en deçà, le stem est un doublon et il est refusé avant "
+                              "l'arbitrage, en le disant")
+    parseur.add_argument("--residuel-separateur", default=None, metavar="COMMANDE",
+                         help="pour les tests : la commande qui sépare le RÉSIDU (reçoit "
+                              "entrée, dossier, modèle) ; par défaut, python -m "
+                              "analyzer.separation, comme la séparation du départ")
     parseur.add_argument("--moteur", default=None, help="chemin de vsm-render")
     return parseur
 
@@ -828,6 +867,12 @@ class Contexte:
     # La part d'énergie de chaque stem, mesurée avant toute reconstruction :
     # c'est elle qui distingue une partie d'un résidu de séparation.
     parts: Dict[str, float] = field(default_factory=dict)
+    # LA BOUCLE RÉSIDUELLE : 0 pour la chaîne d'aujourd'hui, k pour la passe
+    # sur le résidu k. Au-delà de 0, les stems viennent d'un mélange dont on a
+    # soustrait des pistes rendues, et ce que les pistes retenues jouent DÉJÀ
+    # est connu : `deja_portees` sert à ne pas le refabriquer (CDC § 2.5).
+    iteration: int = 0
+    deja_portees: Optional[DejaPortees] = None
 
     def options_de_rendu(self, nom: str, audio: np.ndarray) -> Dict[str, object]:
         """Les réglages communs à tous les rendus hors ligne d'une piste :
@@ -863,6 +908,12 @@ class Chantier:
     # seule, et leur somme sortirait N fois trop fort.
     pistes_groupees: Dict[str, str] = field(default_factory=dict)
     rapport_batterie: Optional[Dict[str, object]] = None
+    # LA PASSE SUR UN RÉSIDU dit ce qu'elle a refusé de refabriquer : par stem,
+    # les notes transcrites, celles déjà portées par une piste retenue, et les
+    # nouvelles. `stems_refuses` : rien de nouveau, pas de piste ;
+    # `filtre_doublons` : la piste s'est faite sur les nouvelles seules.
+    stems_refuses: List[Dict[str, object]] = field(default_factory=list)
+    filtre_doublons: Dict[str, Dict[str, object]] = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -1221,24 +1272,41 @@ def _nom_courant(machine: str) -> str:
             "vsm.drums": "batterie modélisée"}.get(machine, machine)
 
 
-def reconstruire_batterie(ctx: Contexte, nom: str, chemin: Path) -> Optional[ResultatBatterie]:
+def reconstruire_batterie(ctx: Contexte, nom: str, chemin: Path,
+                          filtre_kit=None) -> Optional[ResultatBatterie]:
     """Le stem de batterie : coups détectés et classés, puis rejoués.
 
     Les frappes pilotent `vsm.drums`, qui MODÉLISE peaux et métal, au lieu de
     charger des coups découpés. On y gagne un kit réglable, on y perd la
     fidélité littérale au coup enregistré ; le compromis est mesuré, pas
     supposé. `--batterie-echantillonnee` rend l'ancien comportement.
+
+    `filtre_kit` (la passe sur un résidu seulement) reçoit le kit détecté et
+    rend celui des frappes NOUVELLES — ou None quand tout était déjà porté.
     """
     args = ctx.args
     audio = charger_audio(chemin)
+    # LA BATTERIE D'UN RÉSIDU EST MODÉLISÉE SEULEMENT (CDC séparation par
+    # synthèse § 5) : `build_drum_kit` écrit ses échantillons sous
+    # `samples/<famille>.wav`, et une seconde détection écraserait ceux de
+    # l'itération 0. Pas d'échantillons, donc pas de sampler.
+    residu = ctx.iteration > 0
+    if residu and args.batterie_echantillonnee:
+        print(f"      {nom:8s} : --batterie-echantillonnee ne s'applique pas à la batterie "
+              f"d'un résidu (ses échantillons écraseraient ceux du départ) : modélisée")
     kit = build_drum_kit(audio, SAMPLE_RATE, ctx.sortie / "samples",
-                         write_samples=not args.sans_sampler, hit_classifier=ctx.frappes,
+                         write_samples=not args.sans_sampler and not residu,
+                         hit_classifier=ctx.frappes,
                          drop_unisolated=not args.garder_pieces_non_isolees)
     if kit is None:
         print(f"      {nom:8s} : aucun coup détecté, piste ignorée")
         return None
+    if filtre_kit is not None:
+        kit = filtre_kit(nom, kit)
+        if kit is None:
+            return None
     detail = " ".join(f"{s.family}={s.hit_count}" for s in kit.slots)
-    if args.batterie_echantillonnee:
+    if args.batterie_echantillonnee and not residu:
         piste = drum_kit_track(kit, name=PISTE_BATTERIE)
         moyen = "sampler"
     else:
@@ -1481,19 +1549,28 @@ def regler_sur_piste(ctx: Contexte, nom: str, stem: StemReconstruction, audio: n
           f"{time.perf_counter()-depart:.0f} s) — {resume_des_axes(affine)}")
 
 
-def reconstruire_stem_melodique(ctx: Contexte, nom: str,
-                                chemin: Path) -> List[ResultatMelodique]:
+def reconstruire_stem_melodique(ctx: Contexte, nom: str, chemin: Path,
+                                filtre=None) -> List[ResultatMelodique]:
     """Transcription, découpe en voix s'il y a lieu, puis recherche par voix.
 
     Rend une LISTE : un stem ordinaire donne une piste, un stem fourre-tout
     découpé par `--voix-par-stem` en donne plusieurs. La liste vide signifie
     « rien d'exploitable », et cela a été dit au journal.
+
+    `filtre` (la passe sur un résidu seulement) reçoit les notes transcrites
+    et rend celles qui sont NOUVELLES — ou rien, quand le stem n'est qu'un
+    doublon de pistes déjà retenues. Il agit AVANT l'arbitrage, qui est le
+    poste coûteux, et il dit ce qu'il retire.
     """
     args = ctx.args
     notes = extraire_notes(chemin)
     if not notes:
         print(f"      {nom:8s} : aucune note détectée, piste ignorée")
         return []
+    if filtre is not None:
+        notes = filtre(nom, notes)
+        if not notes:
+            return []
     audio = charger_audio(chemin)
 
     # LA PLAINTE DU FOURRE-TOUT, sur le stem ENTIER et dans les deux chemins
@@ -1612,14 +1689,22 @@ def _reconstruire_notes(ctx: Contexte, nom: str, notes: List[StemNote],
     return resultat
 
 
-def reconstruire_les_stems(ctx: Contexte, pistes: Dict[str, Path]) -> Chantier:
-    """[3/5] Chaque stem vers sa voie : voix, batterie, ou recherche de patch."""
+def reconstruire_les_stems(ctx: Contexte, pistes: Dict[str, Path],
+                           chantier: Optional[Chantier] = None) -> Chantier:
+    """[3/5] Chaque stem vers sa voie : voix, batterie, ou recherche de patch.
+
+    `chantier` s'injecte par la passe sur un résidu, pour que ce qu'elle a
+    REFUSÉ (les stems sans note nouvelle) survive à l'`Abandon` « aucune
+    piste reconstruite » : un refus qui disparaîtrait avec l'exception
+    serait une panne muette.
+    """
     args = ctx.args
     print(f"[3/5] {len(ctx.candidates)} machine(s) candidate(s)")
     if args.sans_sampler:
         print("      sampler INTERDIT : la voix passe par la recherche de patch, "
               "la batterie modélisée n'écrit pas d'échantillons")
-    chantier = Chantier()
+    chantier = chantier if chantier is not None else Chantier()
+    filtre_notes, filtre_kit = filtres_de_doublons(ctx, chantier)
     for nom, chemin in sorted(pistes.items()):
         # UN RÉSIDU DE SÉPARATION N'EST PAS UNE PARTIE, et le reconstruire
         # fabriquerait une piste là où il n'y a rien. Mesuré sur *Clair de
@@ -1637,6 +1722,14 @@ def reconstruire_les_stems(ctx: Contexte, pistes: Dict[str, Path]) -> Chantier:
                   f"sous le seuil de {args.seuil_stem} % (résidu de séparation, pas une "
                   f"partie ; --seuil-stem 0 pour le reconstruire quand même)")
             continue
+        if nom == "vocals" and ctx.iteration > 0:
+            # LA VOIX N'EST PAS REPRISE DANS UN RÉSIDU (CDC séparation par
+            # synthèse § 5) : reportée telle quelle au départ, jamais rendue,
+            # donc jamais soustraite — son stem ici est le même stem moins
+            # rien, et en refaire une piste serait un doublon audio.
+            print(f"      {nom:8s} : voix d'un résidu IGNORÉE ({part} % du mélange) — "
+                  f"la voix est reportée une fois, au départ, et n'est pas soustraite")
+            continue
         if nom == "vocals" and not args.sans_sampler:
             for piste, audio in reporter_voix(nom, chemin, ctx.sortie,
                                               par_sampler=ctx.args.voix_sampler,
@@ -1645,7 +1738,7 @@ def reconstruire_les_stems(ctx: Contexte, pistes: Dict[str, Path]) -> Chantier:
                 chantier.audio_par_stem[piste.name] = audio
             continue
         if nom == "drums" or args.batterie:
-            batterie = reconstruire_batterie(ctx, nom, chemin)
+            batterie = reconstruire_batterie(ctx, nom, chemin, filtre_kit=filtre_kit)
             if batterie is not None:
                 pieces: List[ExportTrack] = []
                 if args.batterie_par_piece and batterie.kit is not None \
@@ -1693,7 +1786,7 @@ def reconstruire_les_stems(ctx: Contexte, pistes: Dict[str, Path]) -> Chantier:
                     if batterie.secondes:
                         chantier.machines_secondes.setdefault(PISTE_BATTERIE, []).extend(batterie.secondes)
             continue
-        for melodique in reconstruire_stem_melodique(ctx, nom, chemin):
+        for melodique in reconstruire_stem_melodique(ctx, nom, chemin, filtre=filtre_notes):
             chantier.reconstruits.append(melodique.stem)
             chantier.audio_par_stem[melodique.stem.name] = melodique.audio
             # Une VOIX d'un stem découpé porte le nom du stem suivi du sien :
@@ -2253,6 +2346,316 @@ def rendre_et_mesurer(args: argparse.Namespace, sortie: Path, melange: np.ndarra
 
 
 # ---------------------------------------------------------------------------
+# La boucle résiduelle : ce que la chaîne prête à `vsm_residu`
+# (docs/CDC-separation-par-synthese.md). La boucle elle-même ne connaît ni le
+# moteur, ni demucs, ni le chantier ; elle reçoit quatre gestes, écrits ici.
+# ---------------------------------------------------------------------------
+
+def stem_de_la_piste(nom: str) -> str:
+    """Le stem qu'une piste a été jugée contre, lu dans son nom : « other ·
+    voix 2 · r1 » → other ; « Batterie · kick » → drums. Le suffixe
+    d'itération est retiré d'abord."""
+    base = nom
+    if " · r" in base and base.rsplit(" · r", 1)[1].isdigit():
+        base = base.rsplit(" · r", 1)[0]
+    if base == PISTE_BATTERIE or base.startswith(PISTE_BATTERIE + " · "):
+        return "drums"
+    return base.split(" · ")[0]
+
+
+def deja_portees_de(pistes_export: Sequence[ExportTrack]) -> DejaPortees:
+    """Ce que les pistes retenues jouent déjà : les notes des pistes
+    mélodiques (hauteur, attaque), les attaques des pistes de batterie. Les
+    pistes audio (la voix) ne portent pas de note."""
+    deja = DejaPortees()
+    for piste in pistes_export:
+        if piste.audio_path or not piste.notes:
+            continue
+        if piste.is_drums or stem_de_la_piste(piste.name) == "drums":
+            deja.frappes.extend(float(n.start) for n in piste.notes)
+        else:
+            deja.notes.extend((int(n.note), float(n.start)) for n in piste.notes)
+    return deja
+
+
+def filtres_de_doublons(ctx: Contexte, chantier: Chantier):
+    """Les deux filtres de la passe sur un résidu (CDC § 2.5), ou (None, None).
+
+    Une note transcrite dans un stem du résidu et DÉJÀ portée par une piste
+    retenue n'est pas une note nouvelle ; ce qui reste est le matériau
+    nouveau. Moins de --residuel-notes-min notes nouvelles : le stem est un
+    doublon, refusé AVANT l'arbitrage, et le refus porte ses trois nombres.
+    """
+    deja = ctx.deja_portees
+    if deja is None:
+        return None, None
+    minimum = int(ctx.args.residuel_notes_min)
+
+    def filtre_notes(nom: str, notes: List[StemNote]) -> List[StemNote]:
+        garde = indices_nouveaux([(n.note, n.start) for n in notes], deja.notes)
+        fiche = {"stem": nom, "transcrites": len(notes),
+                 "dejaPortees": len(notes) - len(garde), "nouvelles": len(garde)}
+        if len(garde) < minimum:
+            fiche["motif"] = (f"moins de {minimum} notes nouvelles : doublon des pistes "
+                              f"retenues, refusé avant l'arbitrage")
+            chantier.stems_refuses.append(fiche)
+            print(f"      {nom:8s} : REFUSÉ (résidu r{ctx.iteration}) — {len(notes)} notes "
+                  f"transcrites, {fiche['dejaPortees']} déjà portées par les pistes retenues, "
+                  f"{len(garde)} nouvelles < {minimum}")
+            return []
+        chantier.filtre_doublons[nom] = fiche
+        print(f"      {nom:8s} : {len(notes)} notes transcrites dans le résidu r{ctx.iteration}, "
+              f"{fiche['dejaPortees']} déjà portées, {len(garde)} NOUVELLES gardées")
+        return [notes[i] for i in garde]
+
+    def filtre_kit(nom: str, kit):
+        frappes = [(emplacement, i, float(t)) for emplacement in kit.slots
+                   for i, t in enumerate(emplacement.onsets)]
+        gardees = set(indices_frappes_nouvelles([t for _, _, t in frappes], deja.frappes))
+        fiche = {"stem": nom, "transcrites": len(frappes),
+                 "dejaPortees": len(frappes) - len(gardees), "nouvelles": len(gardees)}
+        if len(gardees) < minimum:
+            fiche["motif"] = (f"moins de {minimum} frappes nouvelles : doublon de la batterie "
+                              f"retenue, refusé avant l'arbitrage")
+            chantier.stems_refuses.append(fiche)
+            print(f"      {nom:8s} : REFUSÉ (résidu r{ctx.iteration}) — {len(frappes)} frappes "
+                  f"détectées, {fiche['dejaPortees']} déjà portées par la batterie retenue, "
+                  f"{len(gardees)} nouvelles < {minimum}")
+            return None
+        a_garder: Dict[int, List[int]] = {}
+        for indice_global, (emplacement, i, _t) in enumerate(frappes):
+            if indice_global in gardees:
+                a_garder.setdefault(id(emplacement), []).append(i)
+        restants = []
+        for emplacement in kit.slots:
+            indices = a_garder.get(id(emplacement), [])
+            if not indices:
+                continue
+            emplacement.onsets = [emplacement.onsets[i] for i in indices]
+            if len(emplacement.velocities) >= len(indices):
+                emplacement.velocities = [emplacement.velocities[i] for i in indices]
+            emplacement.hit_count = len(indices)
+            restants.append(emplacement)
+        kit.slots = restants
+        kit.total_hits = sum(e.hit_count for e in restants)
+        chantier.filtre_doublons[nom] = fiche
+        print(f"      {nom:8s} : {len(frappes)} frappes détectées dans le résidu r{ctx.iteration}, "
+              f"{fiche['dejaPortees']} déjà portées, {len(gardees)} NOUVELLES gardées "
+              f"sur {len(restants)} pièce(s)")
+        return kit
+
+    return filtre_notes, filtre_kit
+
+
+def distances_de(chantier: Chantier) -> Dict[str, float]:
+    """La distance de piste de chaque piste du chantier, par nom : celle du
+    réglage pour les stems mélodiques, celle de la batterie pour ses pièces."""
+    distances: Dict[str, float] = {}
+    for stem in chantier.reconstruits:
+        if stem.track_distance is not None:
+            distances[stem.name] = float(stem.track_distance)
+    batterie = (chantier.rapport_batterie or {}).get("trackDistance")
+    if batterie is not None:
+        for piste in chantier.pistes_directes:
+            if piste.is_drums or stem_de_la_piste(piste.name) == "drums":
+                distances[piste.name] = float(batterie)
+    return distances
+
+
+def unites_du_chantier(chantier: Chantier, pistes_export: Sequence[ExportTrack],
+                       parts: Dict[str, float], iteration: int) -> List[Unite]:
+    """Les unités que la boucle peut soustraire : une piste, ou le groupe des
+    pistes d'un même stem (CDC § 2.1). Sans machine, sans note, ou audio (la
+    voix) : pas une unité, et c'est dit."""
+    distances = distances_de(chantier)
+    groupes: Dict[str, List[ExportTrack]] = {}
+    seules: List[ExportTrack] = []
+    for piste in pistes_export:
+        if piste.audio_path or not piste.machine or not piste.notes:
+            print(f"      résiduel : « {piste.name} » n'est pas une unité "
+                  f"({'piste audio' if piste.audio_path else 'sans machine ou sans note'}) — "
+                  f"pas rendue, pas soustraite")
+            continue
+        groupe = chantier.pistes_groupees.get(piste.name)
+        if groupe is not None:
+            groupes.setdefault(groupe, []).append(piste)
+        else:
+            seules.append(piste)
+    unites: List[Unite] = []
+    for nom, membres in list(groupes.items()) + [(p.name, [p]) for p in seules]:
+        stem_audio = chantier.audio_par_stem.get(nom)
+        if stem_audio is None:
+            print(f"      résiduel : « {nom} » sans stem de référence — pas soustraite")
+            continue
+        connues = [distances[m.name] for m in membres if m.name in distances]
+        unites.append(Unite(
+            nom=nom, membres=list(membres), stem=np.asarray(stem_audio, dtype=np.float32),
+            part=float(parts.get(stem_de_la_piste(nom), 0.0)),
+            distance=(float(np.mean(connues)) if connues else None),
+            iteration=iteration))
+    return unites
+
+
+def rendre_unite(ctx: Contexte, unite: Unite, longueur: int) -> Optional[np.ndarray]:
+    """L'unité rendue seule, ses membres ensemble, par le vrai moteur — avec
+    le patch réglé, le volume calé et l'automation du rendu final."""
+    duree = longueur / float(SAMPLE_RATE)
+    with tempfile.TemporaryDirectory(prefix="vsm-residuel-") as temporaire:
+        dossier = Path(temporaire) / "unite"
+        for piste in unite.membres:
+            for chemin_relatif in piste.samples.values():
+                source = ctx.sortie / chemin_relatif
+                if source.is_file():
+                    destination = dossier / chemin_relatif
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(source, destination)
+        return render_tracks_offline(list(unite.membres), dossier, SAMPLE_RATE, duration=duree,
+                                     tempo=ctx.args.tempo, binary=ctx.args.moteur,
+                                     title="residuel-unite")
+
+
+def suffixer_chantier(chantier: Chantier, suffixe: str) -> None:
+    """Les pistes d'un résidu portent leur itération dans leur nom — partout
+    où le chantier les nomme, en une fois, pour qu'aucun dictionnaire ne
+    parle d'une piste sous son ancien nom."""
+    for stem in chantier.reconstruits:
+        stem.name += suffixe
+    for piste in chantier.pistes_directes:
+        piste.name += suffixe
+    chantier.audio_par_stem = {nom + suffixe: audio for nom, audio in chantier.audio_par_stem.items()}
+    chantier.patchs_avant_reglage = {nom + suffixe: p for nom, p in chantier.patchs_avant_reglage.items()}
+    chantier.machines_secondes = {nom + suffixe: s for nom, s in chantier.machines_secondes.items()}
+    chantier.pistes_groupees = {nom + suffixe: groupe + suffixe
+                                for nom, groupe in chantier.pistes_groupees.items()}
+
+
+def partage_relatif(stems: Dict[str, Path], energie_reference: float) -> List[Dict[str, object]]:
+    """La part de chaque stem d'un résidu, EN PART DU MÉLANGE D'ORIGINE : le
+    seuil de stem se lit contre le morceau, pas contre ce qu'il en reste
+    (sinon un résidu de 5 % verrait tous ses stems passer 0,5 %)."""
+    partage = []
+    for nom, chemin in stems.items():
+        try:
+            e = float(np.sum(np.square(lire_wav(Path(chemin)), dtype=np.float64)))
+        except Exception as erreur:  # noqa: BLE001 — un stem illisible se DIT
+            print(f"      {nom:8s} : part d'énergie non mesurée ({erreur})")
+            e = 0.0
+        partage.append({"stem": nom, "partEnergie": round(100.0 * e / energie_reference, 2)
+                        if energie_reference > 0 else 0.0})
+    partage.sort(key=lambda p: -p["partEnergie"])
+    print("      partage du résidu, en part du mélange d'origine : "
+          + ", ".join(f"{p['stem']} {p['partEnergie']} %" for p in partage))
+    return partage
+
+
+def passe_du_residu(ctx: Contexte, chantier: Chantier, pistes_export: List[ExportTrack],
+                    stems: Dict[str, Path], k: int, deja: DejaPortees,
+                    energie_melange: float) -> Passe:
+    """La chaîne relancée sur les stems d'un résidu — transcription, parité,
+    arbitrage, réglage, assemblage — avec le budget ordinaire, puis versée
+    dans le chantier sous des noms suffixés. Les pistes d'avant ne bougent pas."""
+    depart = time.perf_counter()
+    partage = partage_relatif(stems, energie_melange)
+    parts = {p["stem"]: p["partEnergie"] for p in partage}
+    ctx_k = dataclasses.replace(ctx, travail=ctx.travail / f"residu-r{k}", parts=parts,
+                                iteration=k, deja_portees=deja)
+    chantier_k = Chantier()
+    try:
+        reconstruire_les_stems(ctx_k, stems, chantier=chantier_k)
+    except Abandon as arret:
+        print(f"      résiduel r{k} : {arret}")
+    suffixe = f" · r{k}"
+    suffixer_chantier(chantier_k, suffixe)
+    pistes_k: List[ExportTrack] = []
+    if chantier_k.reconstruits or chantier_k.pistes_directes:
+        pistes_k = assembler_pistes(ctx, chantier_k)
+    chantier.reconstruits.extend(chantier_k.reconstruits)
+    chantier.pistes_directes.extend(chantier_k.pistes_directes)
+    chantier.audio_par_stem.update(chantier_k.audio_par_stem)
+    chantier.patchs_avant_reglage.update(chantier_k.patchs_avant_reglage)
+    chantier.machines_secondes.update(chantier_k.machines_secondes)
+    chantier.pistes_groupees.update(chantier_k.pistes_groupees)
+    pistes_export.extend(pistes_k)
+    ajoutees = []
+    for piste in pistes_k:
+        fiche = chantier_k.filtre_doublons.get(stem_de_la_piste(piste.name), {})
+        ajoutees.append({"piste": piste.name, "machine": piste.machine, "notes": len(piste.notes),
+                         "transcrites": fiche.get("transcrites"),
+                         "dejaPortees": fiche.get("dejaPortees"), "nouvelles": fiche.get("nouvelles")})
+    return Passe(unites=unites_du_chantier(chantier_k, pistes_k, parts, k),
+                 pistes_ajoutees=ajoutees, stems_refuses=list(chantier_k.stems_refuses),
+                 partage=partage, drums=chantier_k.rapport_batterie,
+                 secondes=time.perf_counter() - depart)
+
+
+def boucle_residuelle_de_la_chaine(ctx: Contexte, chantier: Chantier,
+                                   pistes_export: List[ExportTrack],
+                                   melange: np.ndarray) -> Dict[str, object]:
+    """--residuel N : la boucle du CDC § 2.2, avec les vrais collaborateurs."""
+    args = ctx.args
+    energie_melange = float(np.sum(np.square(melange.astype(np.float64))))
+    commande = shlex.split(args.residuel_separateur) if args.residuel_separateur else None
+    if commande:
+        print(f"      résiduel : le résidu sera séparé par la commande « {args.residuel_separateur} » "
+              f"(--residuel-separateur), pas par {args.modele}")
+
+    def separer_residu(residu_wav: Path, dossier: Path) -> Dict[str, Path]:
+        print(f"      résiduel : séparation du résidu ({args.modele if not commande else 'commande injectée'})")
+        try:
+            return separer(residu_wav, dossier, args.modele, commande=commande)
+        except Exception as erreur:  # noqa: BLE001 — une séparation manquée se DIT, la boucle s'arrête
+            print(f"      résiduel : séparation du résidu ÉCHOUÉE ({erreur}) — aucun stem")
+            return {}
+
+    def distance_projet() -> float:
+        return project_mix_distance(pistes_export, melange, ctx.sortie,
+                                    ctx.travail / "residuel" / "distance", SAMPLE_RATE,
+                                    metric=args.metrique, tempo=args.tempo, binary=args.moteur)
+
+    unites = unites_du_chantier(chantier, pistes_export, ctx.parts, 0)
+    options = OptionsResiduelles(iterations=int(args.residuel),
+                                 correlation=float(args.residuel_correlation),
+                                 energie=float(args.residuel_energie),
+                                 notes_min=int(args.residuel_notes_min))
+    collab = Collaborateurs(
+        rendre=lambda unite, longueur: rendre_unite(ctx, unite, longueur),
+        separer=separer_residu,
+        reconstruire=lambda stems, k, deja: passe_du_residu(ctx, chantier, pistes_export, stems,
+                                                             k, deja, energie_melange),
+        distance_projet=distance_projet,
+        deja_portees=lambda: deja_portees_de(pistes_export),
+    )
+    rapport = boucle_residuelle(melange, unites, options, collab, ctx.travail, SAMPLE_RATE)
+    rapport["dossierTravail"] = str(ctx.travail)
+    rapport["modeleSeparation"] = args.modele
+    rapport["separateur"] = args.residuel_separateur or None
+    return rapport
+
+
+def aligner_residuel_sur_projet(rapport: Dict[str, object], pistes_export: Sequence[ExportTrack],
+                                distances_retenues: Dict[str, float]) -> None:
+    """Le bloc `residuel` décrit le projet ÉCRIT : le verdict du mélange peut
+    avoir changé la machine d'une piste ajoutée, ou la boîte d'une batterie
+    de résidu — même règle que `aligner_rapport_sur_projet`."""
+    par_nom = {piste.name: piste for piste in pistes_export}
+    for it in rapport.get("iterations", []):
+        for ajoutee in it.get("pistesAjoutees", []):
+            finale = par_nom.get(ajoutee["piste"])
+            if finale is not None:
+                ajoutee["machine"] = finale.machine
+                if ajoutee["piste"] in distances_retenues:
+                    ajoutee["trackDistance"] = distances_retenues[ajoutee["piste"]]
+        batterie = it.get("drums")
+        nom_batterie = f"{PISTE_BATTERIE} · r{it.get('iteration')}"
+        if batterie and nom_batterie in par_nom:
+            finale = par_nom[nom_batterie]
+            batterie["machine"] = finale.machine
+            batterie["parameters"] = {k: float(v) for k, v in sorted(finale.parameters.items())}
+            if nom_batterie in distances_retenues:
+                batterie["trackDistance"] = distances_retenues[nom_batterie]
+
+
+# ---------------------------------------------------------------------------
 # La chaîne
 # ---------------------------------------------------------------------------
 
@@ -2280,7 +2683,8 @@ def charger_tous_les_modules() -> None:
                 "analyzer.vsm_mix_refine", "analyzer.vsm_mix_verdict", "analyzer.vsm_distance_cache",
                 "analyzer.vsm_corpus", "analyzer.vsm_automation", "analyzer.vsm_track_refine",
                 "analyzer.vsm_track_arbitration", "analyzer.vsm_offline_render",
-                "analyzer.vsm_render_cache", "analyzer.vsm_project_export"):
+                "analyzer.vsm_render_cache", "analyzer.vsm_project_export",
+                "analyzer.vsm_residu"):
         importlib.import_module(nom)
 
 
@@ -2350,8 +2754,18 @@ def chaine(args: argparse.Namespace) -> None:
 
             print(f"[4/5] Écriture du projet dans {sortie}")
             pistes_export = assembler_pistes(ctx, chantier)
+            # LA BOUCLE RÉSIDUELLE, entre l'assemblage et le verdict : elle
+            # AJOUTE des pistes au chantier et à l'export, ne rejuge rien, et
+            # le verdict du mélange tourne ensuite une fois sur tout. Sans
+            # l'option, cette ligne ne fait rien et la chaîne est celle
+            # d'aujourd'hui.
+            rapport_residuel = None
+            if args.residuel > 0:
+                rapport_residuel = boucle_residuelle_de_la_chaine(ctx, chantier, pistes_export, melange)
             distances_retenues, verdict = verdict_du_melange(ctx, chantier, pistes_export, melange)
             aligner_rapport_sur_projet(chantier, pistes_export, distances_retenues)
+            if rapport_residuel is not None:
+                aligner_residuel_sur_projet(rapport_residuel, pistes_export, distances_retenues)
             figer_presets(moteur, pistes_export)
             groupes_crees = ajouter_groupes(pistes_export, chantier.pistes_groupees)
             if groupes_crees:
@@ -2376,6 +2790,7 @@ def chaine(args: argparse.Namespace) -> None:
             mix_verdict=verdict or None,
             partage=partage,
             reverb=reverb,
+            residuel=rapport_residuel,
         )
         write_reconstruction_report(chantier.reconstruits, sortie / "rapport.json",
                                     metric=args.metrique, iterations=args.iterations,
