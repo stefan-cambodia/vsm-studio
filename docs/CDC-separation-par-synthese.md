@@ -498,6 +498,108 @@ d'H25. Entre les deux (le résidu monte mais la parité ne suit pas) :
 l'option reste à 0, et le § 7 dit lequel des deux chaînons manque, avec le
 chiffre de chacun.
 
+## 6 bis. Ce que deux tours d'essai ont montré AVANT la campagne (05/09/2026, 09:45)
+
+Les attendus du § 6 restent écrits tels quels ; ce paragraphe les confronte
+à deux tours faits en écrivant le code, avant la campagne, et dit ce qu'il
+change au plan — pas aux attendus.
+
+**Le morceau minuscule commis** (3 s, stems VRAIS fournis, transcription
+exacte — F1 1,00 —, trois machines), `--residuel 1 --residuel-correlation 0`
+(le garde-fou levé pour VOIR les corrélations) :
+
+| unité | machine (vraie) | corrélation au stem | au reste | décalage | gain |
+|---|---|---|---|---|---|
+| `Batterie` (hihat + kick, TR-909 réglée) | TR-909 (**TR-909**) | **0,123** | 0,034 | +567 éch. (+12,9 ms) | 0,146 |
+| `bass` | Juno-106 (TB-303) | **0,496** | 0,034 | −1 877 éch. (−42,6 ms) | 0,568 |
+| `other` | TB-303 réglée (**TB-303**) | **0,497** | −0,005 | −1 183 éch. (−26,8 ms) | 0,485 |
+
+Avec la BONNE machine et les BONNES notes (`other`), la corrélation au
+niveau de l'échantillon vaut 0,5 : le patch réglé et la phase de
+l'oscillateur font le reste. La batterie, que le § 6 attendait entre 0,4
+et 0,8 parce que « ses transitoires se corrèlent mieux qu'un oscillateur »,
+est à 0,12 : un charleston à 6 kHz demande une précision d'attaque de
+moins d'un dixième de milliseconde pour se corréler, et la détection de
+frappes n'en a pas. Les décalages retrouvés (−43 ms sur la basse, −27 ms
+sur `other`) disent en passant que Basic Pitch place les attaques en
+RETARD de trois à quatre trames — l'alignement les rattrape, ce n'est pas
+lui qui manque.
+
+**Un morceau de S1 par la vraie chaîne** (`morceau-0008-g8`, lot sec :
+5 parties, pas de batterie, `bass` séparé à 16,5 dB — le meilleur cas de
+S1 —, 59 machines, séparation réelle), même option forcée :
+
+| unité | corrélation au stem | au reste | décalage | gain |
+|---|---|---|---|---|
+| `bass` (50 % du morceau) | **0,159** | 0,004 | +43 éch. (+1,0 ms) | 0,143 |
+| `other` | **0,003** | 0,002 | +1 951 éch. | 0,006 |
+| `guitar` | **0,004** | 0,002 | +932 éch. | 0,008 |
+
+Et la soustraction forcée de la basse, jugée par le banc :
+
+- énergie du résidu : **99,0 %** du mélange (c² = 2,5 % de la basse en
+  moins) ; SDR du résidu contre le résidu vrai **2,01 → 2,13 dB**, soit
+  +0,12 dB — l'arithmétique du § 2.3 en prédisait +0,11 ;
+- la séparation du résidu, contre les parties non retenues : `other` passe
+  de 3,89 dB (au départ) à **0,54 dB** ; le stem `bass` du résidu porte
+  encore 52 % de l'énergie (97,5 % de la basse, que le banc compte
+  hallucinée puisqu'elle est retenue) ; et le stem `drums`, à 0,3 % au
+  départ (sous le seuil, non reconstruit), monte à **1,9 %** sur le
+  résidu MONO — six fois plus de batterie hallucinée là où il n'y en a pas ;
+- la passe sur le résidu : **6 pistes ajoutées** — `bass · r1` (22 notes
+  nouvelles sur 128, doublon partiel), `guitar · r1` (21 sur 112),
+  `other · r1` (15 sur 20, sans partie), et TROIS pièces de batterie
+  fabriquées sur 284 frappes fantômes ; **aucun stem refusé** (le seuil de
+  8 notes nouvelles est franchi par des doublons partiels) ;
+- parité : 3 pistes → **9 pour 5 parties**, écart −2 → **+4**, parties
+  inventées **1 → 7**, fondues inchangées (3) ; distance de la chaîne
+  0,2410 → 0,2425 (+0,6 %) ; la distance en l'état a BAISSÉ (0,434 →
+  0,415) en ajoutant six pistes fausses — le critère `distance-sans-gain`
+  ne voit pas une invention ;
+- coût : **178 → 951 s** (× 5,3), dont 118 s pour l'itération et 195 s de
+  verdict sur neuf pistes au lieu de trois.
+
+**Ce que cela établit avant la campagne.** Au niveau de l'échantillon, un
+rendu ne ressemble pas assez à son stem pour en être soustrait : 0,5 au
+mieux quand tout est juste, 0,00 à 0,16 par la vraie chaîne. Au seuil
+publié (0,5), la boucle sera INERTE sur le banc — c'est le cas « réfuterait
+le seuil, pas la boucle » du § 6, sauf que la corrélation ne se revoit pas
+à la baisse sans dommage : forcée à 0,16, la soustraction enlève 2,5 % de
+la partie, et la passe sur le résidu fabrique six pistes. Le chaînon
+manquant est nommé au § 7 (l'hypothèse de repli, la soustraction sur le
+module du spectre) ; il n'est pas dans cette phase.
+
+**Ce que cela change au plan de R1, écrit avant de lancer :**
+
+1. `r1-sec` et `r1-prod` courent comme prévu, `--residuel 1` au seuil
+   publié. Leur valeur n'est plus la parité : c'est la TABLE DES
+   CORRÉLATIONS de toutes les unités des vingt morceaux (dont les seize
+   batteries que g8 n'a pas), et le témoin d'identité — un morceau où rien
+   n'est soustrait doit rendre la distance de S1 à la 4e décimale.
+2. Un lot FORCÉ, `r1f-sec` (dix morceaux secs, `--residuel-correlation
+   0`), pour répondre à la question de l'utilisateur telle qu'elle est
+   posée — le SDR de la basse dans le résidu après qu'une batterie a été
+   soustraite — sur les huit morceaux qui ont une batterie, par la mesure
+   et non par l'arithmétique.
+3. `--residuel 3` ne court que si `r1` a soustrait quelque chose quelque
+   part ; sinon il serait identique, et le script le dit au journal.
+4. Les deux disques : leurs corrélations se lisent sur leurs PROJETS
+   TÉMOINS (`analyse/correlations_residuelles.py`, qui rend chaque unité
+   par `vsm-render --stems-par groupe` et l'aligne par le même code que la
+   boucle), en quelques minutes, au lieu de deux courses de trois heures
+   dont on sait déjà qu'elles s'arrêteraient sur `aucune-piste-sure`. Les
+   courses complètes ne se lancent que si une unité passe le seuil, sur le
+   banc ou sur un disque.
+
+**Attendus révisés pour ce plan** (les originaux du § 6 restent au-dessus) :
+corrélation médiane des batteries du banc entre **0,05 et 0,30** ; aucune
+unité au-dessus de 0,5 dans **au moins 18 morceaux sur 20** ; sur les deux
+disques, aucune unité au-dessus de **0,3**. Lot forcé : SDR de la basse
+dans le résidu à **±0,3 dB** de S1 sur les morceaux où la batterie est
+soustraite ; résidu entre 95 et 100 % ; **+3 à +8 pistes inventées par
+morceau** ; coût × 3 à × 6. Distance de `r1` égale à S1 à la 4e décimale
+partout où rien n'est soustrait.
+
 ## 7. Campagne R1 — verdict
 
 *(à écrire après la mesure, avec les chiffres en face de chaque attendu du
