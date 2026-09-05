@@ -95,11 +95,52 @@ def main() -> int:
     print(f"  « deux » sur les registres disjoints : {juste_disjoints:.0%}  "
           f"({int(np.sum(predit[y == 0] == 0))}/{int(np.sum(y == 0))})")
 
+    # LE POINT DE FONCTIONNEMENT PRUDENT, et c'est la lecture juste du § 8.
+    # Sa condition est ASYMÉTRIQUE : dire « un seul » plus souvent sur les
+    # mains, SANS séparer moins souvent les registres disjoints. Un seuil à un
+    # demi n'a aucune raison d'y répondre — il équilibre les deux erreurs,
+    # alors que l'énoncé n'en tolère qu'une. On cherche donc le seuil le plus
+    # bas qui ne fonde AUCUN registre disjoint, et l'on regarde ce qu'il
+    # attrape de mains. Zéro serait un verdict honnête : cela voudrait dire
+    # qu'aucun réglage ne gagne quoi que ce soit sans rien casser.
+    # LE SEUIL SE CHOISIT DANS LE PLI, JAMAIS SUR LE RÉSULTAT. Le choisir sur
+    # les probabilités validées croisées reviendrait à le régler en regardant
+    # les réponses : le chiffre publié serait flatté d'une manière invisible.
+    # Ici chaque pli choisit son seuil sur SA PART D'ENTRAÎNEMENT — le plus bas
+    # qui n'y fonde aucun disjoint — et l'applique à des exemples qu'il n'a pas
+    # vus. C'est plus sévère, et c'est la seule version qui mesure quelque chose.
+    from sklearn.base import clone
+    prudent_pred = np.zeros(len(y), dtype=int)
+    seuils_par_pli: List[float] = []
+    for entrainement, essai in plis.split(X, y, **({"groups": decoupe["groups"]} if decoupe else {})):
+        m = clone(modele)
+        m.fit(X[entrainement], y[entrainement])
+        p_train = m.predict_proba(X[entrainement])[:, 1]
+        negatifs = p_train[y[entrainement] == 0]
+        # Le plus bas seuil qui ne fonde AUCUN disjoint de l'entraînement.
+        seuil = float(np.nextafter(negatifs.max(), 1.0)) if negatifs.size else 0.5
+        seuils_par_pli.append(seuil)
+        prudent_pred[essai] = (m.predict_proba(X[essai])[:, 1] >= seuil).astype(int)
+
+    mains_prudent = float(np.mean(prudent_pred[y == 1] == 1))
+    disjoints_prudent = float(np.mean(prudent_pred[y == 0] == 0))
+    prudent = (float(np.mean(seuils_par_pli)), mains_prudent,
+                int(np.sum(prudent_pred[y == 1] == 1)))
+    print(f"\n  point de fonctionnement PRUDENT, seuil choisi DANS chaque pli :")
+    print(f"    seuil moyen {prudent[0]:.3f}")
+    print(f"    « un seul » sur les mains           : {mains_prudent:.0%}  "
+          f"({int(np.sum(prudent_pred[y == 1] == 1))}/{int(np.sum(y == 1))})")
+    print(f"    « deux » sur les registres disjoints : {disjoints_prudent:.0%}  "
+          f"({int(np.sum(prudent_pred[y == 0] == 0))}/{int(np.sum(y == 0))})")
+
     # LES DEUX CONDITIONS DU § 8, ET ELLES SE LISENT ENSEMBLE : dire « un seul »
     # plus souvent que le départ NE VAUT RIEN si l'on se met à fondre les
     # registres disjoints, que S1 fond déjà trois fois sur trois.
-    mieux = juste_mains > base_mains
-    sans_degat = juste_disjoints >= base_disjoints
+    # LE VERDICT SE LIT AU POINT PRUDENT, puisque c'est lui qui répond à
+    # l'énoncé. Le seuil d'un demi reste publié au-dessus, pour qu'on voie ce
+    # que coûte l'équilibre.
+    mieux = mains_prudent > base_mains
+    sans_degat = disjoints_prudent >= base_disjoints
     print(f"\n  bat le départ sur les deux-mains   : {'OUI' if mieux else 'NON'}")
     print(f"  sans dégrader les disjoints        : {'OUI' if sans_degat else 'NON'}")
 

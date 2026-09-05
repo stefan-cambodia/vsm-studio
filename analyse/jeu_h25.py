@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -106,8 +107,18 @@ def paires_du_morceau(course: Path, verite_chemin: Path) -> List[Tuple[np.ndarra
     # LE NOM DU MIDI N'EST PAS CELUI DU PROJET : l'écriture SMF assainit le
     # point médian de « other · F3-B4 » en tiret. On accepte les deux plutôt
     # que d'aller réparer un écrivain MIDI qui a raison d'être prudent.
-    registres = [(nom, notes) for nom, notes in pistes.items()
-                 if nom.startswith("other · ") or nom.startswith("other - ")]
+    # SEULEMENT LES REGISTRES DES VIDES, et c'est un piège payé. La chaîne
+    # produit DEUX sortes de sous-pistes de `other` : « other · C3-C5 », que
+    # les VIDES ont découpée -- la question d'H25 -- et « other · voix 2 », que
+    # le partage par k-moyennes a produite (`--voix-par-stem`), qui répond à
+    # une tout autre question. Les mélanger revenait à apprendre sur deux
+    # décisions différentes en croyant n'en juger qu'une : six exemples sur
+    # dix-huit venaient de la seconde.
+    #
+    # Le nom trahit la provenance : `registres_par_vides` nomme par les BORNES
+    # (`nom_de_note(lo)-nom_de_note(hi)`), le partage par voix nomme « voix N ».
+    motif = re.compile(r"^other [·-] [A-G]#?-?\d+-[A-G]#?-?\d+$")
+    registres = [(nom, notes) for nom, notes in pistes.items() if motif.match(nom)]
     if len(registres) < 2:
         return []
 
