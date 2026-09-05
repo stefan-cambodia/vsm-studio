@@ -2942,6 +2942,21 @@ condition de rouverture), pas une empreinte à la main.
 > timbraux — cette mesure-ci a montré que le timbre ment), qui ne s'ouvre
 > qu'après la campagne S1 et seulement si elle le justifie.
 
+> **La voie structurelle est mesurée à son tour, et REFUSÉE (05/09/2026).**
+> Le § 8 du CDC banc a été instruit jusqu'au bout : six descripteurs
+> structurels, un modèle appris, validé par groupe sur 12 morceaux distincts.
+> Il rattrape **100 %** des deux-mains (le découpage par les vides en
+> rattrapait 0 %) mais fond **1 à 3 registres disjoints sur 6**, là où les
+> vides seuls n'en fondaient aucun. La condition « sans dégrader les
+> disjoints » n'est pas tenue : **le code reste désactivé**, comme la décision
+> l'avait écrit d'avance. Le vrai obstacle n'est pas le juge mais la question :
+> sur **86 courses**, `registres_par_vides` ne coupe `other` que **12 fois**,
+> et **jamais** sur *Us and Them* ni *Sky and Sand* — le modèle y serait inerte
+> par construction. Chiffres, méthode et deux corrections qui ont durci le
+> résultat : `docs/CDC-banc-synthetique.md` § 8, « VERDICT H25 ». Ne pas
+> rouvrir en cherchant un meilleur classifieur ; ce qui manque est en amont,
+> dans la séparation.
+
 ### H23 — diviser un stem polyphonique en VOIX ; écrite AVANT sa mesure
 
 Six stems ne suffiront pas : `other` restera un fourre-tout, plus maigre. La

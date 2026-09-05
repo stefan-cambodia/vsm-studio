@@ -604,3 +604,112 @@ derrière une option (`--deux-mains-appris`, dans la provenance), et la
 validation sur disque (anti-objectif n° 1) reste due : *Us and Them* et
 *Sky and Sand* n'ont montré aucun creux, le modèle y doit être INERTE, et
 c'est à mesurer.
+
+### VERDICT H25 (05/09/2026, 07:35) — le code reste DÉSACTIVÉ
+
+La condition écrite ci-dessus n'est pas tenue. Le modèle existe, il a été
+appris, il a été validé par groupe, et **il n'a pas été écrit sur disque** :
+`analyse/modeles/h25-deux-mains.json` est absent, et
+`analyse/analyzer/vsm_deux_mains.py` n'est importé que par les deux scripts
+d'expérience (`jeu_h25.py`, `apprendre_h25.py`) — jamais par `reconstruire.py`
+ni par `charger_tous_les_modules()`. « Désactivé » est ici un fait vérifiable,
+pas une intention.
+
+**Le jeu final.** 86 courses de front-end lues (les 30 du premier lot, les 36
+du lot ciblé, les 20 de S1), **74 sans aucune paire de registres**, **12 paires
+posées** sur **12 morceaux distincts**, 6 « un seul » et 6 « deux ». Empreinte
+`8a72a302512329d1`. Les 20 courses de S1 n'ont apporté aucune paire, et les 5
+dernières courses ciblées non plus : le chiffre était déjà stable à 12.
+
+**Le résultat, validation croisée à 5 plis groupée par morceau, graine
+20260905 :**
+
+| | départ (les vides seuls) | modèle, seuil naturel | modèle, point prudent |
+|---|---|---|---|
+| « un seul » sur les deux-mains | 0 % (0/6) | **100 %** (6/6) | **100 %** (6/6) |
+| « deux » sur les registres disjoints | 100 % (6/6) | 67 % (4/6) | 50 % (3/6) |
+
+- **bat le départ sur les deux-mains : OUI.**
+- **sans dégrader les disjoints : NON.**
+
+Le modèle rattrape *toutes* les mains que les vides avaient coupées — ce n'est
+pas rien, les descripteurs séparent bien et dans le sens prédit (synchronie
+0,541 contre 0,412 ; synchronie inverse 0,701 contre 0,499 ; co-occurrence
+0,840 contre 0,755 ; corrélation des attaques 0,433 contre 0,238 ; rapport des
+densités 3,69 contre 1,72) — mais il fond un à trois registres disjoints sur
+six. Le § 8 exigeait les DEUX ; il n'en obtient qu'un. Le code reste désactivé,
+comme prévu d'avance.
+
+### Trois choses que cette mesure a apprises, et qui valent plus que le verdict
+
+**1. Le point de fonctionnement prudent était un mirage de méthode.** Une
+première version cherchait le seuil le plus prudent qui ne fonde AUCUN
+disjoint, puis notait ce seuil… sur les probabilités de validation croisée
+qu'elle venait de servir à choisir. Elle annonçait 2 mains sur 8 rattrapées à
+coût nul, les deux conditions tenues. Choisi **dans chaque pli**, sur sa seule
+part d'entraînement, le même seuil ne rattrape plus rien de gratuit : la marge
+ne généralise pas. **Un seuil est un paramètre appris ; il se choisit du côté
+entraînement de la coupure, comme les autres.**
+
+**2. Six exemples sur dix-huit répondaient à une autre question.** La chaîne
+produit deux sortes de sous-pistes de `other` : `other · C3-C5`, née du
+découpage par les VIDES — la question d'H25 — et `other · voix 2`, née du
+partage par k-moyennes, qui juge tout autre chose. Le premier filtre prenait
+les deux. Le NOM porte la provenance (des bornes de notes contre « voix N ») ;
+il est maintenant lu comme tel. Les deux corrections vont dans le sens sévère,
+et le verdict n'a pas bougé — c'est ce qui permet de s'y fier.
+
+**3. Le lot ciblé a posé la question MOINS souvent, pas plus.** Le § 8
+supposait d'avance que des morceaux à deux parties feraient tomber la coupure
+là où la question se pose : *« les vides coupent donc là où la question se
+pose »*. Mesuré, c'est **faux**, et l'écart porte précisément sur la classe
+rare :
+
+| famille | courses avec ≥ 2 registres |
+|---|---|
+| `h25-mains` (général) | 4 / 15 — 27 % |
+| `h25-disjoints` (général) | 3 / 15 — 20 % |
+| `h25c-mains` (ciblé) | 4 / 18 — 22 % |
+| **`h25c-disjoints` (ciblé)** | **1 / 16 — 6 %** |
+
+Réduire le nombre de parties n'aide pas les vides à trouver la frontière ; sur
+les disjoints ciblés, la coupure a presque cessé d'avoir lieu. Au taux mesuré
+sur la classe rare (4 négatifs en 31 courses), réunir 20 négatifs demanderait
+≈ 155 courses, soit **≈ 18 h** de chaîne à 424 s la course. Ce n'est pas un
+budget à débattre : c'est la mesure que **la chaîne ne pose pas assez souvent
+la question pour qu'un modèle soit apprenable, et encore moins fiable**. Douze
+exemples ne font pas un modèle qu'on met en production, quel que soit son
+score.
+
+### La validation sur disque, faite : le modèle y serait INERTE
+
+L'anti-objectif n° 1 demandait de vérifier sur les vrais morceaux. Fait, sur
+les quatre courses complètes les plus récentes des deux morceaux nommés :
+
+```
+usandthem-voix     : bass, other, Batterie, Voix · tête, Voix · chœurs
+sky-parite-parc63  : bass, other, Batterie · tom+kick+kick2, Batterie ·
+                     percussion, Batterie · hihat, Voix, Batterie
+sky-v10            : bass, other, Batterie, Voix
+sky-parite-m9-v2   : bass, other, Batterie · tom+kick+kick2, Batterie ·
+                     percussion, Batterie · hihat, Voix, Batterie
+```
+
+Pas une seule piste `other · <note>-<note>` : le découpage par les vides ne
+coupe jamais `other` sur ces deux morceaux. Or le modèle ne se prononce que
+sur une PAIRE de registres déjà produite. **Sur *Us and Them* et *Sky and
+Sand*, il ne serait donc jamais consulté** — 0 appel, 0 changement de décision.
+C'est une propriété des morceaux, pas un mérite du modèle, et c'est la raison
+de fond pour laquelle ce chantier ne pouvait rien rapporter là où on l'espérait.
+
+### Ce qui reste ouvert, et à quelle condition le rouvrir
+
+Le module et les deux scripts sont conservés en l'état : le jeu se reconstruit
+d'une commande, l'empreinte le date, et la mesure est reproductible. **Le
+chantier ne se rouvre pas en cherchant un meilleur classifieur** — c'est le
+mauvais bout. Il se rouvrirait si, et seulement si, le DÉCOUPAGE amont posait
+la question : tant que `registres_par_vides` ne coupe `other` que 12 fois sur
+86, et jamais sur les morceaux réels, améliorer le juge n'a pas d'objet. La
+question utile n'est pas « comment mieux répondre » mais « pourquoi la chaîne
+ne demande presque jamais » — et celle-là appartient à la séparation de stems,
+pas à H25.
