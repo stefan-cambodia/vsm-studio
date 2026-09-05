@@ -17,8 +17,13 @@ public:
     /// parce qu'une ligne ne connaît que SA piste -- lui donner le projet
     /// entier pour lire la liste des groupes serait lui donner de quoi tout
     /// modifier.
+    /// `sourceName` : le nom de la piste dont celle-ci publie une sortie
+    /// (D18.7b), vide sinon. Passé plutôt que déduit, pour la même raison que
+    /// `groupes` -- la rangée n'a pas besoin du projet entier pour dire ce
+    /// qu'elle porte.
     TrackRowComponent(vsm::sequencer::Track& track, size_t trackIndex,
-                       const std::vector<std::pair<int, std::string>>& groupes);
+                       const std::vector<std::pair<int, std::string>>& groupes,
+                       const juce::String& sourceName = {});
 
     void paint(juce::Graphics&) override;
     void resized() override;

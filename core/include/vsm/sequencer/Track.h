@@ -712,6 +712,42 @@ public:
     /// copies d'accord à chaque note déplacée.
     int activeTake = -1;
 
+    /// LA SORTIE D'INSTRUMENT QUE CETTE PISTE PUBLIE (D18.7b) : l'index de la
+    /// piste dont on prend une sortie, et LAQUELLE.
+    ///
+    /// `-1` signifie « aucune », c'est-à-dire toute piste écrite jusqu'ici :
+    /// elle porte son propre instrument ou son propre fichier, et rien de ce
+    /// qui suit ne la concerne. Les deux champs sont absents du fichier dans
+    /// ce cas, et un projet d'avant D18.7b se relit octet pour octet.
+    ///
+    /// POURQUOI CE N'EST PAS UN BUS DE MIXAGE. `outputGroup` fait descendre le
+    /// son d'une piste dans un autre ; ici, il n'y a rien à faire descendre :
+    /// la sortie n° k d'un TR-808 n'existe NULLE PART tant qu'une piste ne la
+    /// demande pas. Le graphe rend alors la machine par `processMultiOut`, la
+    /// sortie 0 restant sur la piste qui porte l'instrument, et chaque autre
+    /// atterrissant sur la piste qui l'a réclamée. C'est une SOURCE, pas une
+    /// destination -- et c'est pourquoi ce n'est pas `outputGroup` avec un
+    /// numéro de plus.
+    ///
+    /// CE QUE CETTE PISTE N'A PAS. Pas d'instrument à elle (le graphe ignore
+    /// celui qu'on lui aurait mis), pas de notes jouées : ses notes restent
+    /// visibles et éditables, mais c'est l'instrument de la piste SOURCE qui
+    /// les recevrait, et le lui donner deux fois les jouerait deux fois. Ce
+    /// qu'elle a, en revanche, est tout ce qui fait une tranche de console :
+    /// volume, panoramique, muet, solo, inserts, départs, automation. C'est
+    /// l'objet de l'étape -- pouvoir compresser la caisse claire seule.
+    ///
+    /// CE QUE ÇA SERT, ET QUI N'EST PAS UN CONFORT. La chaîne d'analyse
+    /// SÉPARE la grosse caisse de la caisse claire ; les rejouer sur une seule
+    /// piste de boîte à rythmes les recolle, et la parité des pistes -- l'écart
+    /// qu'on mesure -- s'en trouve fausse. Voir le § 2 de
+    /// `docs/CDC-detection-multipiste.md`.
+    int outputSourceTrack = -1;
+    int outputIndex = 0;
+
+    /// Vrai quand la piste publie la sortie d'une autre (voir ci-dessus).
+    bool publishesInstrumentOutput() const { return outputSourceTrack >= 0; }
+
     /// Trie toutes les lanes par tick croissant. À appeler après toute
     /// édition manuelle en dehors des méthodes utilitaires ci-dessous.
     void sortEvents();

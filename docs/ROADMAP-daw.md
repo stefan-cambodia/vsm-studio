@@ -4333,6 +4333,88 @@ les jours ensuite, le modèle en dernier.
 > piste porte la sortie n° k d'une autre, et de le faire suivre au fichier, à
 > la console et au rendu hors ligne.
 
+> **D18.7b — CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (05/09/2026, 08:10).**
+> Le critère de D18.7 disait « la somme des sorties séparées est identique AU
+> BIT PRÈS au rendu stéréo d'avant ». Il a été tenu par D18.7a, **et il ne peut
+> pas l'être au niveau du GRAPHE** : chaque piste traverse son propre fader et
+> sa propre loi de panoramique, donc le mélange calcule `Σ(vₖ·g)` là où la
+> piste unique calculait `(Σvₖ)·g`. La multiplication flottante n'est pas
+> distributive sur l'addition, et les deux diffèrent du dernier bit. Prétendre
+> le contraire serait un critère qu'on contourne au lieu d'un critère qu'on
+> tient.
+>
+> Ce qui est donc attendu, et qui reste falsifiable :
+>
+> 1. **Ce qu'on entend ne change pas.** Un projet où les six sorties du TR-808
+>    sont publiées sur six pistes à gain unité et panoramique centré doit
+>    rendre le même master que le même projet sans publication, à l'erreur
+>    d'accumulation flottante près — que je MESURE et publie, et dont j'attends
+>    qu'elle reste **sous −120 dBFS** (≈ 1e-6 en relatif). Au-delà, ce n'est
+>    plus de l'arrondi : c'est une erreur de routage.
+> 2. **Rien ne change pour ce qui existe.** Tant qu'aucune piste ne publie, la
+>    table de routage n'est même pas allouée et le rendu emprunte le chemin
+>    d'avant — vérifié au bit près, pas seulement à l'oreille.
+> 3. **Aucune panne muette.** Une piste qui réclame la sortie n° 4 d'une
+>    machine qui n'en a que deux sort silencieuse ; ce silence est COMPTÉ
+>    (`droppedInstrumentOutputs()`) et non subi.
+> 4. **Le fichier reste compatible.** Un projet d'avant l'étape se relit et se
+>    réécrit octet pour octet.
+
+> **D18.7b EST FAITE (05/09/2026, 08:55), et les quatre attendus sont tenus.**
+> `Track::outputSourceTrack` / `outputIndex` disent qu'une piste porte la
+> sortie n° k d'une autre ; le graphe rend alors la machine par
+> `processMultiOut`, la sortie 0 restant sur la piste qui porte l'instrument.
+>
+> | | mesuré | attendu |
+> |---|---|---|
+> | projet publié contre projet simple | **2,98e-08, soit −143,4 dBFS** | < −120 dBFS |
+> | somme des six solos contre le rendu complet | **1,49e-08, soit −149,4 dBFS** | arrondi seul |
+> | deux pistes sur la MÊME sortie | **rapport de crête 2,0000** | exactement 2 |
+> | projet où personne ne publie | **écart 0,0 — au bit près** | inchangé |
+>
+> **CE QUE LA MESURE A OBLIGÉ À TRANCHER, ET QUI N'ÉTAIT PAS PRÉVU.** Trois
+> tests sur sept sont tombés d'un coup, tous pour la même raison : le
+> planificateur n'émet AUCUN événement pour une piste muette
+> (`PlaybackScheduler`), si bien que couper la piste porteuse affamait la
+> machine et TOUTES ses sorties avec elle. Couper la grosse caisse faisait
+> taire la caisse claire. La décision, écrite dans le code : **le muet d'une
+> piste coupe SA tranche de console, pas la machine qu'elle porte** — une piste
+> dont une autre publie les sorties reste JOUÉE même muette, et son propre
+> silence est assuré au mélange, là où il a toujours été. Le solo suit la même
+> règle, sans quoi « écouter la caisse claire seule » n'écouterait rien.
+>
+> **DEUX PIÈGES ÉVITÉS PARCE QU'ILS ÉTAIENT DÉJÀ ÉCRITS AILLEURS.**
+> `outputSourceTrack` est un INDEX, comme `outputGroup` : il suit désormais sa
+> piste à travers `moveTrack`, `duplicateTrack` et `removeTrack` (supprimer la
+> porteuse fait cesser de publier plutôt que pointer dans le vide), et un test
+> le tient. Et la table de routage alloue les tampons **par source et tout ou
+> rien** : à l'allouer à moitié, deux machines rendues en parallèle auraient
+> partagé un même tampon de rebut, c'est-à-dire une course.
+>
+> **LE PARALLÉLISME N'EST PAS SACRIFIÉ.** Le calcul d'une piste dépend
+> maintenant d'une autre, ce qui est exactement ce qui interdit le multicœur
+> aux chaînes latérales. Ici le rendu se fait en DEUX VAGUES — les pistes qui ne
+> lisent rien, puis celles qui lisent — chacune parallèle ; le MÉLANGE, lui,
+> garde l'ordre d'origine, parce que réordonner des additions flottantes
+> changerait le dernier bit sans raison.
+>
+> **CE QUE L'ÉCRAN A MONTRÉ, ET QUI A ÉTÉ CORRIGÉ.** La première capture
+> donnait à une piste publiée un sélecteur d'instrument « (Aucun) » — un
+> réglage que le graphe ignore délibérément, donc la pire espèce : celui qui se
+> règle et ne fait rien. Elle affiche maintenant ce qu'elle porte (« sortie
+> n° 1 de TR-808 »), et son bouton d'ARMEMENT a disparu pour la même raison :
+> sans instrument, il n'y a pas de clavier à lui livrer. Le mélangeur, lui,
+> n'a rien demandé — une piste publiée est une piste, et sa tranche existait
+> déjà.
+>
+> Reste visible dans la capture : sur un nom de source long, la ligne se coupe
+> (« sortie n° 1 de TR-808 (Grosse cais... »). C'est la largeur du dock qui
+> borne, pas la police ; l'essentiel — le numéro de sortie et la machine — se
+> lit.
+>
+> Tests : 1 808 C++ (244 / 1 236 / 273 / 25 / 11 / 19) et 150 Python, tous
+> verts.
+
 > **D18.1 EST FAITE (05/09/2026), et son critère a dû être réécrit par la
 > mesure.** « Piste ▸ Reporter la sélection en audio » rend hors ligne les
 > clips choisis — une piste neuve par piste source, posée À LA PLACE de la
@@ -4451,7 +4533,7 @@ le dither à l'export (D14.4).
 | D18.4 | **L'ordre de jeu.** Les repères nomment des endroits (D16.4) mais rien ne nomme des SECTIONS ni ne les rejoue dans un autre ordre : essayer « couplet, couplet, refrain » demande de tout recopier. Cubase : piste d'Arrangement | des sections nommées (début, fin), déduites des repères ou dessinées ; une liste d'ordre de jeu ; « Aplatir » écrit le résultat comme du vrai matériau, et c'est le SEUL moment où le projet change ; test `core/` : aplatir [A, A, B] rend un projet dont le planning est celui qu'on entendrait |
 | D18.5 | **La vitesse de lecture.** Aucun varispeed : on ne peut pas ralentir pour relever un passage. Cubase : Varispeed ; Live n'en a pas besoin parce que tout y suit le tempo, ce qui n'est pas notre cas (un clip audio ne suit le tempo que si on le lui demande, D12) | un facteur de vitesse appliqué à l'HORLOGE du transport, sans toucher au projet ni au tempo ; les clips qui suivent le tempo s'étirent, les autres changent de hauteur — c'est un varispeed, pas un étirement, et l'interface le dit ; test `audio/` : à 0,5, une impulsion posée à 1 s sort à 2 s |  ⟵ **ESSAYÉE ET REMISE (05/09/2026) : voir la note ci-dessous.**
 | D18.6 | **Les notes du projet.** Rien pour écrire « la basse vient du stem `other`, la nappe est une hypothèse » : une reconstruction est pleine de décisions dont il ne reste aucune trace, et c'est précisément ce projet-ci qui en produit le plus | un texte libre par projet, écrit dans `project.json`, montré dans une fenêtre ; test `interchange/` : aller-retour, et fichier inchangé octet pour octet quand le texte est vide |
-| D18.7 | **Une machine ne sort que sur DEUX canaux.** `ISynthPlugin::process` rend L/R : les huit voix d'un TR-808 arrivent mixées, et une reconstruction qui a séparé la grosse caisse de la caisse claire les recolle. C'est le § 2 de `CDC-detection-multipiste.md` qui le demande, et l'objectif de parité qui le paie | `ISynthPlugin` sait dire combien de sorties il a et les rendre séparément (défaut : une paire, aucune machine existante ne change) ; `ProcessGraph` publie chaque sortie sur une piste ; test `audio/` : la somme des sorties séparées est identique AU BIT PRÈS au rendu stéréo d'avant |  ⟵ **SCINDÉE EN DEUX (05/09/2026) : voir la note.**
+| D18.7 | **Une machine ne sort que sur DEUX canaux.** `ISynthPlugin::process` rend L/R : les huit voix d'un TR-808 arrivent mixées, et une reconstruction qui a séparé la grosse caisse de la caisse claire les recolle. C'est le § 2 de `CDC-detection-multipiste.md` qui le demande, et l'objectif de parité qui le paie | `ISynthPlugin` sait dire combien de sorties il a et les rendre séparément (défaut : une paire, aucune machine existante ne change) ; `ProcessGraph` publie chaque sortie sur une piste ; test `audio/` : la somme des sorties séparées est identique AU BIT PRÈS au rendu stéréo d'avant |  ⟵ **FAITE, EN DEUX MOITIÉS (05/09/2026) : voir les notes.**
 
 **Ce que l'audit a écarté, et pourquoi.** Les zooms mémorisés (le zoom sur la
 sélection et le zoom « tout voir » de D14.2 couvrent l'usage réel) ; le motif

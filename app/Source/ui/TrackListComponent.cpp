@@ -24,7 +24,8 @@ std::vector<std::pair<std::string, std::string>> availableInstruments() {
 // ---------------------------------------------------------------------------
 
 TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
-                                      const std::vector<std::pair<int, std::string>>& groupes)
+                                      const std::vector<std::pair<int, std::string>>& groupes,
+                                      const juce::String& sourceName)
     : track_(track), index_(trackIndex), audio_(track.kind == Track::Kind::Audio) {
     addAndMakeVisible(nameLabel_);
     nameLabel_.setText(track_.name.empty() ? ("Piste " + std::to_string(trackIndex + 1)) : track_.name,
@@ -64,6 +65,21 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
         audioSourceLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
         audioSourceLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
         refreshAudioSource();
+    } else if (track_.publishesInstrumentOutput()) {
+        // D18.7b : UNE PISTE QUI PUBLIE LA SORTIE D'UNE AUTRE N'A PAS
+        // D'INSTRUMENT À ELLE, et le graphe ignore délibérément celui qu'on lui
+        // mettrait. Lui laisser le sélecteur « (Aucun) » était donc offrir un
+        // réglage sans effet -- la pire espèce, celle qui se règle et ne fait
+        // rien. Elle dit ce qu'elle porte, et d'où ça vient.
+        addAndMakeVisible(audioSourceLabel_);
+        audioSourceLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
+        audioSourceLabel_.setColour(juce::Label::textColourId, Palette::accentTeal);
+        audioSourceLabel_.setText(juce::String(u8"sortie n° ")
+                                       + juce::String(track_.outputIndex)
+                                       + (sourceName.isEmpty()
+                                              ? juce::String()
+                                              : juce::String(u8" de ") + sourceName),
+                                   juce::dontSendNotification);
     } else if (track_.kind == Track::Kind::Group) {
         // UN BUS DE GROUPE N'A PAS D'INSTRUMENT NON PLUS : il additionne les
         // pistes routées vers lui. Un sélecteur « (Aucun) » lui promettait
@@ -209,14 +225,24 @@ void TrackRowComponent::resized() {
 
     area.removeFromTop(4);
     auto secondRow = area.removeFromTop(24);
-    if (audio_ || track_.kind == Track::Kind::Group) audioSourceLabel_.setBounds(secondRow.removeFromLeft(170));
-    else instrumentBox_.setBounds(secondRow.removeFromLeft(170));
+    // D18.7b : UNE PISTE QUI PUBLIE NE S'ARME PAS -- elle n'a pas d'instrument
+    // à qui livrer le clavier, et un bouton d'armement y serait un troisième
+    // réglage sans effet. La place qu'il libère va au texte, parce qu'entre
+    // « ça tient dans la case » et « ça se lit », c'est la lisibilité qui prime.
+    const bool publie = track_.publishesInstrumentOutput();
+    armButton_.setVisible(!publie);
+    const int largeurTexte = publie ? 170 + 4 + 28 : 170;
+    if (audio_ || track_.kind == Track::Kind::Group || publie)
+        audioSourceLabel_.setBounds(secondRow.removeFromLeft(largeurTexte));
+    else instrumentBox_.setBounds(secondRow.removeFromLeft(largeurTexte));
     secondRow.removeFromLeft(8);
     muteButton_.setBounds(secondRow.removeFromLeft(28));
     secondRow.removeFromLeft(4);
     soloButton_.setBounds(secondRow.removeFromLeft(28));
-    secondRow.removeFromLeft(4);
-    armButton_.setBounds(secondRow.removeFromLeft(28));
+    if (!publie) {
+        secondRow.removeFromLeft(4);
+        armButton_.setBounds(secondRow.removeFromLeft(28));
+    }
 
     area.removeFromTop(6);
     auto thirdRow = area.removeFromTop(20);
@@ -271,7 +297,11 @@ void TrackListComponent::loadProject(Project& project) {
                                       : project_->tracks[i].name);
 
     for (size_t i = 0; i < project_->tracks.size(); ++i) {
-        auto* row = rows_.add(new TrackRowComponent(project_->tracks[i], i, groupes));
+        juce::String nomSource;
+        const int source = project_->tracks[i].outputSourceTrack;
+        if (source >= 0 && static_cast<size_t>(source) < project_->tracks.size())
+            nomSource = juce::String(project_->tracks[static_cast<size_t>(source)].name);
+        auto* row = rows_.add(new TrackRowComponent(project_->tracks[i], i, groupes, nomSource));
         rowContainer_.addAndMakeVisible(row);
         row->onSelected = [this](size_t idx) { selectTrackIndex(idx); };
         row->onChanged = [this] { if (onTracksChanged) onTracksChanged(); };

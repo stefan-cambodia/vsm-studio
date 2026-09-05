@@ -271,6 +271,8 @@ ProjectDocument documentFromProject(const Project& project) {
         entry.hidden = track.hidden;
         entry.transposeSemitones = track.transposeSemitones;
         entry.editGroup = track.editGroup;
+        entry.outputSourceTrack = track.outputSourceTrack;
+        entry.outputIndex = track.outputIndex;
         entry.delayMs = track.delayMs;
         entry.automationMode = track.automationMode == vsm::sequencer::AutomationMode::Touch ? "touch"
                              : track.automationMode == vsm::sequencer::AutomationMode::Latch ? "latch"
@@ -426,6 +428,8 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.hidden = source.hidden;
         target.transposeSemitones = source.transposeSemitones;
         target.editGroup = source.editGroup;
+        target.outputSourceTrack = source.outputSourceTrack;
+        target.outputIndex = source.outputIndex;
         target.delayMs = source.delayMs;
         target.automationMode = source.automationMode == "touch" ? vsm::sequencer::AutomationMode::Touch
                               : source.automationMode == "latch" ? vsm::sequencer::AutomationMode::Latch
@@ -620,6 +624,14 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         if (track.transposeSemitones != 0)
             entry.set("transpose", JsonValue::makeNumber(track.transposeSemitones));
         if (track.editGroup != 0) entry.set("editGroup", JsonValue::makeNumber(track.editGroup));
+        // D18.7b : LA SOURCE D'ABORD, L'INDEX SEULEMENT S'IL Y A UNE SOURCE.
+        // Écrire un « outputIndex » orphelin décrirait une piste qui publie la
+        // sortie de personne, et le relecteur devrait deviner laquelle.
+        if (track.outputSourceTrack >= 0) {
+            entry.set("outputSourceTrack", JsonValue::makeNumber(track.outputSourceTrack));
+            if (track.outputIndex != 0)
+                entry.set("outputIndex", JsonValue::makeNumber(track.outputIndex));
+        }
         if (track.delayMs != 0.0) entry.set("delayMs", JsonValue::makeFloat(track.delayMs));
         if (!track.automationMode.empty())
             entry.set("automationMode", JsonValue::makeString(track.automationMode));
@@ -843,6 +855,13 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         track.hidden = entry["hidden"].asBoolean(false);
         track.transposeSemitones = static_cast<int>(entry["transpose"].asNumber(0.0));
         track.editGroup = static_cast<int>(entry["editGroup"].asNumber(0.0));
+        track.outputSourceTrack = static_cast<int>(entry["outputSourceTrack"].asNumber(-1.0));
+        // L'INDEX NE SURVIT PAS SANS SA SOURCE : sans elle il ne désigne rien,
+        // et le garder ferait ressusciter une publication au prochain
+        // enregistrement.
+        track.outputIndex = track.outputSourceTrack >= 0
+                                ? static_cast<int>(entry["outputIndex"].asNumber(0.0))
+                                : 0;
         track.delayMs = entry["delayMs"].asNumber(0.0);
         track.automationMode = entry["automationMode"].asString();
         if (entry["frozenAudio"].isObject()) {

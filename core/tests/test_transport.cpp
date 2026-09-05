@@ -87,3 +87,34 @@ VSM_TEST(scheduler_respects_solo) {
 // `audio/tests/test_transport_unifie.cpp` qui l'éprouve -- au bon endroit,
 // puisque c'est le moteur audio qui la produit.
 // ---------------------------------------------------------------------------
+
+// D18.7b — LE MUET D'UNE PISTE PORTEUSE NE TAIT PAS LA MACHINE.
+//
+// Quand d'autres pistes publient les sorties de son instrument, la piste qui
+// le porte doit continuer d'être JOUÉE même muette : son muet coupe SA tranche
+// de console, pas la boîte à rythmes entière. Sans cette règle, couper la
+// grosse caisse ferait taire la caisse claire et le charley -- et l'on
+// chercherait longtemps pourquoi.
+VSM_TEST(a_muted_track_whose_outputs_are_published_is_still_scheduled) {
+    Project projet;
+    projet.tracks.emplace_back();
+    uint64_t compteur = 1;
+    projet.tracks[0].addNote(0, 240, 36, 100, 0, compteur);
+    projet.tracks[0].muted = true;
+
+    // Muette et publiée par personne : elle ne produit rien, comme toujours.
+    VSM_ASSERT(PlaybackScheduler::build(projet, 0, 100000).empty());
+
+    // Muette mais dont une autre piste publie une sortie : elle est jouée.
+    projet.tracks.emplace_back();
+    projet.tracks[1].outputSourceTrack = 0;
+    projet.tracks[1].outputIndex = 1;
+    VSM_ASSERT(!PlaybackScheduler::build(projet, 0, 100000).empty());
+
+    // ET LE SOLO SUIT LA MÊME RÈGLE : une piste porteuse non soliste reste
+    // calculée si l'on solo la piste qui porte l'une de ses sorties, sans quoi
+    // « écouter la caisse claire seule » n'écouterait rien.
+    projet.tracks[0].muted = false;
+    projet.tracks[1].solo = true;
+    VSM_ASSERT(!PlaybackScheduler::build(projet, 0, 100000).empty());
+}

@@ -1668,6 +1668,22 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addItem(kMenuTrackBounceSelection,
                               u8"Reporter la sélection en audio (sur une piste neuve)",
                               arrangement_.hasSelection());
+                // D18.7b : PUBLIER LES SORTIES. L'entrée dit COMBIEN, parce
+                // qu'une commande grisée sans raison est une commande qu'on
+                // croit cassée -- et le nombre vient de la machine elle-même.
+                {
+                    int sorties = 1;
+                    if (piste < project_.tracks.size())
+                        if (auto* machine = audioEngine_.processGraph().trackInstrument(piste))
+                            sorties = machine->outputCount();
+                    menu.addItem(kMenuTrackPublishOutputs,
+                                  sorties > 1
+                                      ? juce::String(u8"Publier les ") + juce::String(sorties - 1)
+                                            + juce::String(u8" autres sorties sur des pistes")
+                                      : juce::String(u8"Publier les sorties de l'instrument "
+                                                      u8"(cette machine n'en a qu'une)"),
+                                  sorties > 1);
+                }
 #if VSM_WITH_CLAP || VSM_WITH_VST3
                 menu.addSeparator();
 #endif
@@ -2227,6 +2243,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
 #endif
         case kMenuTrackBounce:   bounceSelectedTrack(); break;
         case kMenuTrackBounceSelection: bounceSelectionToNewTracks(); break;
+        case kMenuTrackPublishOutputs: publishInstrumentOutputsOfSelectedTrack(); break;
         case kMenuViewSingleWindow:
             singleWindow_ = !singleWindow_;
             // Écrit DÈS le choix, comme les associations MIDI : une disposition
@@ -5516,6 +5533,36 @@ void MainComponent::bounceSelectedTrack() {
             if (choix == 0) return;
             performBounce(index);
         }));
+}
+
+void MainComponent::publishInstrumentOutputsOfSelectedTrack() {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    auto* machine = audioEngine_.processGraph().trackInstrument(piste);
+    if (machine == nullptr || machine->outputCount() < 2) return;
+
+    // LES NOMS VIENNENT DE LA MACHINE : « Caisse claire » plutôt que
+    // « sortie 2 », faute de quoi il faudrait écouter chaque piste pour savoir
+    // laquelle est laquelle.
+    std::vector<std::string> noms;
+    noms.reserve(static_cast<size_t>(machine->outputCount()));
+    for (int k = 0; k < machine->outputCount(); ++k) noms.emplace_back(machine->outputName(k));
+
+    captureSessionIntoProject();
+    beginProjectEdit(u8"Publier les sorties de l'instrument");
+    const size_t creees = vsm::sequencer::publishInstrumentOutputs(project_, piste, noms);
+    rebuildFromProject(false);
+
+    // PANNE MUETTE INTERDITE : zéro piste créée est un résultat, pas un
+    // silence. Il arrive quand tout est déjà publié, et le dire évite de
+    // relancer la commande en croyant qu'elle n'a pas marché.
+    juce::AlertWindow::showMessageBoxAsync(
+        juce::AlertWindow::InfoIcon, u8"Publier les sorties",
+        creees > 0
+            ? juce::String(creees) + juce::String(u8" piste(s) créée(s) — la sortie n° 0 reste "
+                                                   u8"sur la piste qui porte la machine.")
+            : juce::String(u8"Rien à faire : toutes les sorties de cette machine sont déjà "
+                            u8"publiées sur des pistes."));
 }
 
 void MainComponent::bounceSelectionToNewTracks() {

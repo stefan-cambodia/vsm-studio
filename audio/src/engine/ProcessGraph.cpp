@@ -32,6 +32,12 @@ void ProcessGraph::prepare(double sampleRate, int maxBlockSize) {
         groupR_[g].assign(static_cast<size_t>(maxBlockSize_), 0.0f);
     }
     scratchEvents_.assign(static_cast<size_t>(kMaxEventsPerBlock), MidiNoteEvent{});
+    // D18.7b : LES TAMPONS ANNEXES, alloués ici et jamais dans le rappel
+    // audio. Ils coûtent kMaxExtraOutputs paires de maxBlockSize flottants --
+    // un demi-mégaoctet à 1024 échantillons -- que le graphe paie qu'on
+    // publie ou non ; c'est le prix de ne jamais allouer sous le temps réel.
+    extraOutL_.assign(kMaxExtraOutputs, std::vector<float>(static_cast<size_t>(maxBlockSize_), 0.0f));
+    extraOutR_.assign(kMaxExtraOutputs, std::vector<float>(static_cast<size_t>(maxBlockSize_), 0.0f));
     meters_.resetAll();
     masterBus_.prepare(sampleRate_, maxBlockSize_);
     referenceTrack_.prepare(sampleRate_);
@@ -132,6 +138,8 @@ void ProcessGraph::setProject(const Project& project) {
     activeSends_.store(std::min(declares, kMaxSends), std::memory_order_release);
     snapshot_.store(snapshot, std::memory_order_release);
     refreshRenderOrder();    // les niveaux d'envoi ont pu changer
+    refreshOutputRouting();  // et la publication des sorties : APRÈS l'ordre,
+                             // dont elle dérive ses deux vagues
     refreshCompensation();   // le routage vers les groupes aussi
 }
 
@@ -234,6 +242,7 @@ void ProcessGraph::setTrackEffectChain(size_t trackIndex, std::shared_ptr<const 
     // Une chaîne peut contenir un effet qui ÉCOUTE un bus (l'ordre de rendu en
     // dépend) et un effet qui RETARDE (la compensation en dépend).
     refreshRenderOrder();
+    refreshOutputRouting();
     refreshCompensation();
 }
 
@@ -354,6 +363,107 @@ void ProcessGraph::refreshRenderOrder() {
         if (!deja) ordre->push_back(t);
     }
     renderOrder_.store(std::move(ordre), std::memory_order_release);
+}
+
+void ProcessGraph::refreshOutputRouting() {
+    auto snapshot = snapshot_.load(std::memory_order_acquire);
+    if (!snapshot) { outputRouting_.store(nullptr, std::memory_order_release); return; }
+    const auto& project = snapshot->project;
+    const size_t pistes = std::min(project.tracks.size(), kMaxTracks);
+
+    // Y A-T-IL SEULEMENT UNE PISTE QUI PUBLIE ? Tant que non, on ne publie
+    // AUCUNE table -- et le rendu emprunte alors exactement le chemin qu'il
+    // avait avant que cette étape existe, au bit près.
+    bool aucune = true;
+    for (size_t t = 0; t < pistes; ++t)
+        if (project.tracks[t].publishesInstrumentOutput()) { aucune = false; break; }
+    if (aucune) { outputRouting_.store(nullptr, std::memory_order_release); return; }
+
+    auto table = std::make_shared<OutputRouting>();
+    for (auto& ligne : table->slotOf) ligne.fill(-1);
+    table->readSlot.fill(-1);
+
+    // PREMIÈRE PASSE : QUI RÉCLAME QUOI, sans encore rien allouer.
+    //
+    // CE QU'ON REFUSE, ET POURQUOI CHACUN. Une source hors du projet ou égale
+    // à soi-même ne désigne rien ; une source qui publie elle-même ferait une
+    // chaîne dont l'ordre de rendu n'a pas de fin ; la sortie 0 est déjà celle
+    // de la piste source, la republier la jouerait deux fois.
+    std::array<int, kMaxTracks> plusHauteSortie{};
+    plusHauteSortie.fill(0);
+    uint64_t refusees = 0;
+    for (size_t t = 0; t < pistes; ++t) {
+        const auto& piste = project.tracks[t];
+        if (!piste.publishesInstrumentOutput()) continue;
+        const int source = piste.outputSourceTrack;
+        const int sortie = piste.outputIndex;
+        const bool valide =
+            source >= 0 && static_cast<size_t>(source) < pistes
+            && static_cast<size_t>(source) != t
+            && !project.tracks[static_cast<size_t>(source)].publishesInstrumentOutput()
+            && sortie >= 1 && sortie < kMaxInstrumentOutputs;
+        if (!valide) { ++refusees; continue; }
+        int& haute = plusHauteSortie[static_cast<size_t>(source)];
+        haute = std::max(haute, sortie);
+    }
+
+    // SECONDE PASSE : L'ALLOCATION, PAR SOURCE ET TOUT OU RIEN.
+    //
+    // Une machine à qui l'on demande n sorties les REMPLIT TOUTES : le contrat
+    // de `processMultiOut` ne connaît pas les trous. Il faut donc un tampon
+    // pour CHAQUE sortie de 1 à la plus haute réclamée, y compris celles que
+    // personne ne lit -- faute de quoi deux machines rendues en même temps
+    // écriraient dans le même tampon de rebut, et ce serait une course.
+    //
+    // Tout ou rien, parce qu'une source à moitié allouée est précisément le
+    // cas où ce tampon partagé réapparaîtrait.
+    size_t prochainSlot = 0;
+    for (size_t sce = 0; sce < pistes; ++sce) {
+        const int haute = plusHauteSortie[sce];
+        if (haute < 1) continue;
+        const size_t besoin = static_cast<size_t>(haute);   // les sorties 1..haute
+        if (prochainSlot + besoin > kMaxExtraOutputs) {
+            // Plus de tampons : cette source ne publiera rien, et chacune des
+            // pistes qui l'attendaient est comptée.
+            for (size_t t = 0; t < pistes; ++t) {
+                const auto& p = project.tracks[t];
+                if (p.publishesInstrumentOutput()
+                    && p.outputSourceTrack == static_cast<int>(sce))
+                    ++refusees;
+            }
+            continue;
+        }
+        for (int k = 1; k <= haute; ++k)
+            table->slotOf[sce][static_cast<size_t>(k)] = static_cast<int16_t>(prochainSlot++);
+        table->outputsToRender[sce] = haute + 1;
+    }
+    table->usedSlots = prochainSlot;
+
+    // TROISIÈME PASSE : QUI LIT QUOI. Deux pistes qui réclament la même sortie
+    // la PARTAGENT -- elles lisent le même tampon, la machine ne la rend
+    // qu'une fois.
+    for (size_t t = 0; t < pistes; ++t) {
+        const auto& piste = project.tracks[t];
+        if (!piste.publishesInstrumentOutput()) continue;
+        const int source = piste.outputSourceTrack;
+        const int sortie = piste.outputIndex;
+        if (source < 0 || static_cast<size_t>(source) >= pistes) continue;
+        if (sortie < 1 || sortie >= kMaxInstrumentOutputs) continue;
+        table->readSlot[t] = table->slotOf[static_cast<size_t>(source)][static_cast<size_t>(sortie)];
+    }
+    if (refusees > 0) droppedInstrumentOutputs_.fetch_add(refusees, std::memory_order_relaxed);
+
+    // LES DEUX VAGUES. Elles suivent l'ordre de rendu quand il y en a un, et
+    // l'ordre naturel sinon : on ne réordonne pas pour le plaisir.
+    auto ordre = renderOrder_.load(std::memory_order_acquire);
+    table->firstWave.reserve(pistes);
+    table->secondWave.reserve(pistes);
+    for (size_t rang = 0; rang < pistes; ++rang) {
+        const size_t t = ordre && rang < ordre->size() ? (*ordre)[rang] : rang;
+        if (t >= kMaxTracks) continue;
+        (table->readSlot[t] >= 0 ? table->secondWave : table->firstWave).push_back(t);
+    }
+    outputRouting_.store(std::move(table), std::memory_order_release);
 }
 
 void ProcessGraph::setSendEffect(size_t busIndex, std::shared_ptr<vsm::audio::effect::IAudioEffect> effect) {
@@ -922,10 +1032,24 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
 
     auto instrument = instruments_[trackIndex].load(std::memory_order_acquire);
     auto audioSource = audioSources_[trackIndex].load(std::memory_order_acquire);
+
+    // D18.7b : LA TABLE DE PUBLICATION, chargée une fois pour la piste. Nulle
+    // tant qu'aucune piste ne publie -- et tout ce qui suit se réduit alors au
+    // chemin d'avant.
+    auto routage = outputRouting_.load(std::memory_order_acquire);
+    const int lireSlot = routage ? routage->readSlot[trackIndex] : -1;
+    if (lireSlot >= 0) {
+        // UNE PISTE QUI PUBLIE N'A PAS D'INSTRUMENT À ELLE, et si on lui en a
+        // mis un, le graphe l'ignore : ses notes seraient jouées une seconde
+        // fois, par-dessus la sortie qu'elle est censée porter.
+        instrument = nullptr;
+    }
+
     // UNE PISTE AUDIO N'A PAS D'INSTRUMENT, et c'est normal : son matériau
     // est un fichier. La condition portait sur le seul instrument, ce qui
-    // aurait fait sauter la piste entière en silence.
-    if (!instrument && !audioSource) return false;
+    // aurait fait sauter la piste entière en silence. Une piste qui PUBLIE
+    // n'a ni l'un ni l'autre, et doit tout de même être rendue.
+    if (!instrument && !audioSource && lireSlot < 0) return false;
 
     const Track& track = project.tracks[trackIndex];
 
@@ -1141,7 +1265,55 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
 
     if (instrument && !track.frozen) {
         instrument->setTransportInfo(transport);
-        instrument->process(events, numEvents, destL, destR, sampleCount);
+        // D18.7b : LES SORTIES SÉPARÉES, mais SEULEMENT si quelqu'un les
+        // réclame. Une machine dont personne ne demande les sorties annexes --
+        // c'est-à-dire toutes, dans tout projet écrit jusqu'ici -- passe par
+        // `process` tel quel, au bit près.
+        const int reclamees = routage ? routage->outputsToRender[trackIndex] : 0;
+        if (reclamees >= 2) {
+            const int possibles = std::max(1, instrument->outputCount());
+            const int rendues = std::min(reclamees, possibles);
+            float* sortiesL[kMaxInstrumentOutputs];
+            float* sortiesR[kMaxInstrumentOutputs];
+            sortiesL[0] = destL;
+            sortiesR[0] = destR;
+            // CHAQUE SORTIE A SON PROPRE TAMPON, y compris celles que personne
+            // ne lit : `refreshOutputRouting` les alloue toutes ou aucune,
+            // pour qu'aucune machine n'écrive là où une autre écrit.
+            bool complet = true;
+            for (int k = 1; k < rendues; ++k) {
+                const int16_t slot = routage->slotOf[trackIndex][static_cast<size_t>(k)];
+                if (slot < 0) { complet = false; break; }
+                sortiesL[k] = extraOutL_[static_cast<size_t>(slot)].data();
+                sortiesR[k] = extraOutR_[static_cast<size_t>(slot)].data();
+            }
+            if (complet) {
+                instrument->processMultiOut(events, numEvents, sortiesL, sortiesR,
+                                            rendues, sampleCount);
+                // RÉCLAMÉE ET INEXISTANTE : la piste qui l'attend restera muette
+                // (son tampon a été mis à zéro en tête de segment), et on le DIT.
+                if (reclamees > possibles)
+                    droppedInstrumentOutputs_.fetch_add(1, std::memory_order_relaxed);
+            } else {
+                // Ne devrait pas arriver -- mais s'il arrivait, la machine
+                // garde son chemin d'avant plutôt que d'écrire n'importe où.
+                instrument->process(events, numEvents, destL, destR, sampleCount);
+                droppedInstrumentOutputs_.fetch_add(1, std::memory_order_relaxed);
+            }
+        } else {
+            instrument->process(events, numEvents, destL, destR, sampleCount);
+        }
+    }
+    // D18.7b : L'AUTRE BOUT — la piste qui LIT une sortie annexe. Le tampon a
+    // été rempli par la première vague, ou laissé à zéro si la machine source
+    // ne tournait pas (piste gelée, muette d'instrument, sortie inexistante).
+    if (lireSlot >= 0) {
+        const float* srcL = extraOutL_[static_cast<size_t>(lireSlot)].data();
+        const float* srcR = extraOutR_[static_cast<size_t>(lireSlot)].data();
+        for (int i = 0; i < sampleCount; ++i) {
+            destL[i] = srcL[static_cast<size_t>(i)];
+            destR[i] = srcR[static_cast<size_t>(i)];
+        }
     }
     if (audioSource && !audioSource->empty()) {
         // La position sur la LIGNE DE TEMPS, en échantillons. Elle vient du
@@ -1306,21 +1478,51 @@ void ProcessGraph::renderTrackRange(const GraphSnapshot& snapshot, bool anySolo,
                            && parallelL_.size() >= kMaxTracks
                            && !parallelEvents_.empty();
 
+    // D18.7b : LES DEUX VAGUES DE RENDU. Sans publication de sortie, il n'y en
+    // a qu'une et c'est l'ordre d'avant -- pas une addition ne change de place.
+    // Avec, on rend d'abord les pistes qui ne lisent rien (les machines y
+    // remplissent leurs tampons annexes), puis celles qui lisent.
+    auto routage = outputRouting_.load(std::memory_order_acquire);
+    const std::vector<size_t>* vagues[2] = {ordre.get(), nullptr};
+    size_t tailles[2] = {combien, 0};
+    size_t nombreDeVagues = 1;
+    if (routage) {
+        // REMISE À ZÉRO DES TAMPONS ANNEXES, en tête de segment et avant toute
+        // vague. C'est ce qui fait qu'une piste dont la machine source ne
+        // tourne pas (gelée, absente, sortie inexistante) sort SILENCIEUSE au
+        // lieu de rejouer le segment précédent -- un défaut qui ne
+        // ressemblerait pas à un défaut.
+        for (size_t slot = 0; slot < routage->usedSlots && slot < kMaxExtraOutputs; ++slot) {
+            std::fill_n(extraOutL_[slot].data(), sampleCount, 0.0f);
+            std::fill_n(extraOutR_[slot].data(), sampleCount, 0.0f);
+        }
+        vagues[0] = &routage->firstWave;
+        tailles[0] = routage->firstWave.size();
+        vagues[1] = &routage->secondWave;
+        tailles[1] = routage->secondWave.size();
+        nombreDeVagues = 2;
+    }
+
     if (parallele) {
-        VoiceBatch lot;
-        lot.self = this;
-        lot.snapshot = &snapshot;
-        lot.order = ordre.get();
-        lot.compensation = compensation.get();
-        lot.sampleStart = sampleStart;
-        lot.sampleCount = sampleCount;
-        lot.rangeStartSeconds = rangeStartSeconds;
-        lot.includeScheduledEvents = includeScheduledEvents;
-        parallelSpans_.fetch_add(1, std::memory_order_relaxed);
-        renderPool_.runParallel(&ProcessGraph::renderVoiceJob, &lot, combien);
+        for (size_t v = 0; v < nombreDeVagues; ++v) {
+            if (tailles[v] == 0) continue;
+            VoiceBatch lot;
+            lot.self = this;
+            lot.snapshot = &snapshot;
+            lot.order = vagues[v];
+            lot.compensation = compensation.get();
+            lot.sampleStart = sampleStart;
+            lot.sampleCount = sampleCount;
+            lot.rangeStartSeconds = rangeStartSeconds;
+            lot.includeScheduledEvents = includeScheduledEvents;
+            parallelSpans_.fetch_add(1, std::memory_order_relaxed);
+            renderPool_.runParallel(&ProcessGraph::renderVoiceJob, &lot, tailles[v]);
+        }
 
         // ET LE MIXAGE, LUI, DANS L'ORDRE : c'est ce qui rend le résultat
-        // identique au bit près à celui du chemin mono-cœur.
+        // identique au bit près à celui du chemin mono-cœur. Il suit l'ordre
+        // de rendu d'origine, PAS les vagues -- une piste publiée se mélange à
+        // sa place dans la liste, là où l'utilisateur l'a mise.
         for (size_t rang = 0; rang < combien; ++rang) {
             const size_t trackIndex = ordre ? (*ordre)[rang] : rang;
             if (trackIndex >= kMaxTracks || !parallelActive_[trackIndex]) continue;
@@ -1331,14 +1533,55 @@ void ProcessGraph::renderTrackRange(const GraphSnapshot& snapshot, bool anySolo,
         return;
     }
 
+    // LE CHEMIN MONO-CŒUR. Sans publication il n'a qu'une vague et le mixage
+    // suit le rendu, exactement comme avant. Avec, il faut RENDRE en deux
+    // vagues mais MÉLANGER dans l'ordre d'origine : on garde donc le résultat
+    // de chaque piste jusqu'au mélange, et c'est à cela que servent les
+    // tampons par piste -- ceux du rendu multicœur, qui existent déjà.
+    if (!routage) {
+        for (size_t rang = 0; rang < combien; ++rang) {
+            const size_t trackIndex = ordre ? (*ordre)[rang] : rang;
+            if (!renderTrackVoice(snapshot, trackIndex, sampleStart, sampleCount, rangeStartSeconds,
+                                  includeScheduledEvents, compensation.get(), scratchEvents_.data(),
+                                  scratchStereoL_.data(), scratchStereoR_.data()))
+                continue;
+            mixTrackInto(snapshot, anySolo, trackIndex, sampleStart, sampleCount,
+                         scratchStereoL_.data(), scratchStereoR_.data(), outputL, outputR);
+        }
+        return;
+    }
+
+    // SANS LES TAMPONS PAR PISTE, ON NE SAIT PAS DIFFÉRER LE MÉLANGE : on rend
+    // alors dans l'ordre des vagues et l'on mélange au fil, ce qui reste
+    // correct (chaque piste est mélangée une fois et une seule) mais change
+    // l'ordre des additions. C'est le cas d'un graphe sans rendu multicœur
+    // préparé, et il est DIT plutôt que subi.
+    const bool tamponsParPiste = parallelL_.size() >= kMaxTracks;
+    for (size_t v = 0; v < nombreDeVagues; ++v) {
+        for (size_t rang = 0; rang < tailles[v]; ++rang) {
+            const size_t trackIndex = (*vagues[v])[rang];
+            if (trackIndex >= kMaxTracks) continue;
+            float* gaucheL = tamponsParPiste ? parallelL_[trackIndex].data()
+                                             : scratchStereoL_.data();
+            float* gaucheR = tamponsParPiste ? parallelR_[trackIndex].data()
+                                             : scratchStereoR_.data();
+            const bool rendu = renderTrackVoice(
+                snapshot, trackIndex, sampleStart, sampleCount, rangeStartSeconds,
+                includeScheduledEvents, compensation.get(), scratchEvents_.data(),
+                gaucheL, gaucheR);
+            if (tamponsParPiste) { parallelActive_[trackIndex] = rendu ? 1u : 0u; continue; }
+            if (rendu)
+                mixTrackInto(snapshot, anySolo, trackIndex, sampleStart, sampleCount,
+                             gaucheL, gaucheR, outputL, outputR);
+        }
+    }
+    if (!tamponsParPiste) return;
     for (size_t rang = 0; rang < combien; ++rang) {
         const size_t trackIndex = ordre ? (*ordre)[rang] : rang;
-        if (!renderTrackVoice(snapshot, trackIndex, sampleStart, sampleCount, rangeStartSeconds,
-                              includeScheduledEvents, compensation.get(), scratchEvents_.data(),
-                              scratchStereoL_.data(), scratchStereoR_.data()))
-            continue;
+        if (trackIndex >= kMaxTracks || !parallelActive_[trackIndex]) continue;
         mixTrackInto(snapshot, anySolo, trackIndex, sampleStart, sampleCount,
-                     scratchStereoL_.data(), scratchStereoR_.data(), outputL, outputR);
+                     parallelL_[trackIndex].data(), parallelR_[trackIndex].data(),
+                     outputL, outputR);
     }
 }
 

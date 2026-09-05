@@ -222,4 +222,22 @@ void moveTrack(Project& project, size_t from, size_t to);
 /// avoir reconstruit le graphe.
 size_t duplicateTrack(Project& project, size_t index);
 
+/// PUBLIE LES SORTIES DE L'INSTRUMENT D'UNE PISTE SUR DES PISTES À ELLES
+/// (D18.7b), et rend le nombre de pistes créées.
+///
+/// Une piste neuve par sortie de 1 à `outputNames.size() - 1`, insérée JUSTE
+/// APRÈS la piste source pour que la boîte à rythmes et ses pièces se suivent
+/// dans la liste ; la sortie 0 reste sur la piste source, qui garde son
+/// instrument. Les noms viennent de la machine (`ISynthPlugin::outputName`),
+/// parce que « Caisse claire » vaut mieux que « sortie 2 ».
+///
+/// IDEMPOTENTE : une sortie que quelqu'un publie déjà n'est pas republiée --
+/// sans quoi lancer deux fois la commande ferait sonner chaque pièce deux
+/// fois, et l'on chercherait un compresseur fautif.
+///
+/// Les index des autres pistes sont RÉPARÉS comme pour `duplicateTrack` :
+/// routages de groupe et sources de publication suivent leurs pistes.
+size_t publishInstrumentOutputs(Project& project, size_t source,
+                                 const std::vector<std::string>& outputNames);
+
 } // namespace vsm::sequencer

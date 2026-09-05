@@ -109,6 +109,14 @@ public:
     /// plutôt que tues -- une pédale qui manque est le genre de silence qu'on
     /// cherche des heures.
     uint64_t droppedChasedControls() const { return droppedChasedControls_.load(std::memory_order_relaxed); }
+    /// D18.7b : les sorties d'instrument RÉCLAMÉES et non rendues -- une piste
+    /// qui demande la sortie n° 4 d'une machine qui n'en a que deux, ou une
+    /// publication de plus que le graphe ne sait porter. La piste sort alors
+    /// SILENCIEUSE, et c'est le genre de silence qu'on met une soirée à ne pas
+    /// comprendre : il est compté ici pour que l'interface puisse le dire.
+    uint64_t droppedInstrumentOutputs() const {
+        return droppedInstrumentOutputs_.load(std::memory_order_relaxed);
+    }
     /// LE MÉTRONOME. Éteint par défaut, et il doit le rester pour le rendu
     /// hors ligne : un clic dans un fichier exporté serait une faute grossière.
     /// Le rendu hors ligne monte son propre graphe et ne l'allume jamais ;
@@ -146,6 +154,7 @@ public:
     void resetEventCounters() {
         droppedNoteEvents_.store(0, std::memory_order_relaxed);
         ignoredControlEvents_.store(0, std::memory_order_relaxed);
+        droppedInstrumentOutputs_.store(0, std::memory_order_relaxed);
     }
 
     /// PLAFOND du nombre de bus de départ, et non plus leur nombre (D4.2).
@@ -547,6 +556,62 @@ private:
     /// chaîne d'inserts change, c'est-à-dire aux deux seuls endroits d'où la
     /// réponse peut bouger.
     void refreshRenderOrder();
+
+    // --- LA PUBLICATION DES SORTIES D'INSTRUMENT (D18.7b) ------------------
+    //
+    // LE PROBLÈME. Une boîte à rythmes rend ses six pièces MIXÉES sur deux
+    // canaux. Une reconstruction qui a séparé la grosse caisse de la caisse
+    // claire -- ce que la chaîne d'analyse fait, et c'est l'objectif de PARITÉ
+    // des pistes -- les recolle donc au moment de les jouer, et l'on ne peut
+    // ni compresser la caisse claire seule, ni la baisser de deux décibels.
+    //
+    // LA FORME RETENUE. Une piste dit « je porte la sortie n° k de la piste
+    // j » (`Track::outputSourceTrack`). Le graphe rend alors la machine de j
+    // par `processMultiOut` : la sortie 0 reste sur j -- donc une machine dont
+    // personne ne réclame les sorties annexes emprunte le chemin d'avant, au
+    // bit près -- et chaque autre atterrit dans un tampon ANNEXE que la piste
+    // qui l'a réclamée vient lire.
+    //
+    // CE QUE ÇA COÛTE, ET QUI EST ASSUMÉ. Le calcul d'une piste dépend
+    // désormais de celui d'une autre, ce qui est exactement ce qui interdisait
+    // le parallélisme aux chaînes latérales. On ne l'interdit pas ici : on rend
+    // en DEUX VAGUES -- d'abord les pistes qui ne lisent rien, ensuite celles
+    // qui lisent -- chacune parallèle. Le MÉLANGE, lui, garde l'ordre qu'il a
+    // toujours eu, parce que réordonner des additions flottantes changerait le
+    // dernier bit sans raison.
+    static constexpr int kMaxInstrumentOutputs = 16;
+    /// Le nombre de sorties ANNEXES (index >= 1) que le graphe sait porter en
+    /// tout, tous instruments confondus. Au-delà, la publication est REFUSÉE
+    /// et comptée -- jamais silencieusement ignorée.
+    static constexpr size_t kMaxExtraOutputs = 64;
+
+    struct OutputRouting {
+        /// Combien de sorties rendre pour la piste `t`. 0 ou 1 = le chemin
+        /// d'avant, `process` appelé tel quel.
+        std::array<int, kMaxTracks> outputsToRender{};
+        /// Le tampon annexe où verser la sortie `k` de la piste `t`, ou -1
+        /// quand personne ne la réclame.
+        std::array<std::array<int16_t, kMaxInstrumentOutputs>, kMaxTracks> slotOf{};
+        /// Le tampon annexe que la piste `t` doit LIRE, ou -1 si elle ne
+        /// publie la sortie de personne.
+        std::array<int16_t, kMaxTracks> readSlot{};
+        /// Combien de tampons annexes sont réellement utilisés : c'est le
+        /// nombre qu'il faut remettre à zéro au début de chaque segment.
+        size_t usedSlots = 0;
+        /// Les deux vagues de rendu (voir ci-dessus).
+        std::vector<size_t> firstWave, secondWave;
+    };
+    /// Nul tant qu'aucune piste ne publie de sortie -- et dans ce cas le rendu
+    /// emprunte exactement le chemin qu'il avait.
+    std::atomic<std::shared_ptr<const OutputRouting>> outputRouting_{nullptr};
+    /// Thread UI, appelée aux mêmes endroits que `refreshRenderOrder`.
+    void refreshOutputRouting();
+    /// Les tampons annexes, alloués par `prepare` et jamais dans le rappel
+    /// audio.
+    std::vector<std::vector<float>> extraOutL_, extraOutR_;
+    /// Une piste a réclamé une sortie que sa machine n'a pas, ou le graphe a
+    /// manqué de tampons. Compté, publié, jamais tu.
+    std::atomic<uint64_t> droppedInstrumentOutputs_{0};
 
     // --- COMPENSATION DE LATENCE (PDC, D4.5) -------------------------------
     //

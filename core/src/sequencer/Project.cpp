@@ -393,6 +393,16 @@ void moveTrack(Project& project, size_t from, size_t to) {
         if (cible >= 0 && static_cast<size_t>(cible) < n)
             destinations[i] = &project.tracks[static_cast<size_t>(cible)];
     }
+    // D18.7b : LA SOURCE D'UNE SORTIE PUBLIÉE EST UN INDEX ELLE AUSSI, et elle
+    // doit suivre la piste par le même chemin -- sinon déplacer une piste
+    // ferait porter à la caisse claire la sortie d'une autre machine, ce qui
+    // s'entend mais ne se comprend pas.
+    std::vector<const Track*> sources(n, nullptr);
+    for (size_t i = 0; i < n; ++i) {
+        const int cible = project.tracks[i].outputSourceTrack;
+        if (cible >= 0 && static_cast<size_t>(cible) < n)
+            sources[i] = &project.tracks[static_cast<size_t>(cible)];
+    }
     // Les adresses doivent rester valides : on déplace dans un vecteur de
     // pointeurs, pas dans le vecteur de pistes.
     std::vector<Track*> ordre(n);
@@ -416,13 +426,25 @@ void moveTrack(Project& project, size_t from, size_t to) {
     // Où chaque ANCIENNE piste se trouve-t-elle désormais ?
     for (size_t i = 0; i < n; ++i) {
         const Track* destination = nullptr;
+        const Track* source = nullptr;
         for (size_t j = 0; j < n; ++j)
-            if (anciennesAdresses[i] == ordre[j]) { destination = destinations[j]; break; }
-        int nouveau = -1;
-        if (destination != nullptr)
+            if (anciennesAdresses[i] == ordre[j]) {
+                destination = destinations[j];
+                source = sources[j];
+                break;
+            }
+        auto rangDe = [&](const Track* qui) {
+            if (qui == nullptr) return -1;
             for (size_t j = 0; j < n; ++j)
-                if (anciennesAdresses[j] == destination) { nouveau = static_cast<int>(j); break; }
-        remaniees[i].outputGroup = nouveau;
+                if (anciennesAdresses[j] == qui) return static_cast<int>(j);
+            return -1;
+        };
+        remaniees[i].outputGroup = rangDe(destination);
+        const int rangSource = rangDe(source);
+        remaniees[i].outputSourceTrack = rangSource;
+        // Une publication dont la source a disparu ne désigne plus rien : son
+        // index part avec elle plutôt que de rester à pointer au hasard.
+        if (rangSource < 0) remaniees[i].outputIndex = 0;
     }
     project.tracks = std::move(remaniees);
 }
@@ -437,9 +459,12 @@ size_t duplicateTrack(Project& project, size_t index) {
     // Les groupes situés APRÈS l'original reculent d'un rang pour tout le
     // monde, y compris pour la copie et l'original.
     const int insere = static_cast<int>(index) + 1;
-    for (auto& piste : project.tracks)
+    for (auto& piste : project.tracks) {
         if (piste.outputGroup >= insere) piste.outputGroup += 1;
+        if (piste.outputSourceTrack >= insere) piste.outputSourceTrack += 1;
+    }
     if (copie.outputGroup >= insere) copie.outputGroup += 1;
+    if (copie.outputSourceTrack >= insere) copie.outputSourceTrack += 1;
     project.tracks.insert(project.tracks.begin() + insere, std::move(copie));
     return static_cast<size_t>(insere);
 }
@@ -448,11 +473,66 @@ void removeTrack(Project& project, size_t index) {
     if (index >= project.tracks.size()) return;
     project.tracks.erase(project.tracks.begin() + static_cast<std::ptrdiff_t>(index));
     for (auto& piste : project.tracks) {
-        if (piste.outputGroup < 0) continue;
-        const size_t cible = static_cast<size_t>(piste.outputGroup);
-        if (cible == index) piste.outputGroup = -1;      // le groupe n'existe plus
-        else if (cible > index) piste.outputGroup -= 1;  // il a reculé d'un rang
+        if (piste.outputGroup >= 0) {
+            const size_t cible = static_cast<size_t>(piste.outputGroup);
+            if (cible == index) piste.outputGroup = -1;      // le groupe n'existe plus
+            else if (cible > index) piste.outputGroup -= 1;  // il a reculé d'un rang
+        }
+        // D18.7b : MÊME RÈGLE POUR LA SOURCE D'UNE SORTIE PUBLIÉE. Supprimer
+        // la piste qui portait la machine ne laisse pas six pistes à pointer
+        // dans le vide : elles cessent simplement de publier, et redeviennent
+        // des pistes ordinaires.
+        if (piste.outputSourceTrack >= 0) {
+            const size_t cible = static_cast<size_t>(piste.outputSourceTrack);
+            if (cible == index) { piste.outputSourceTrack = -1; piste.outputIndex = 0; }
+            else if (cible > index) piste.outputSourceTrack -= 1;
+        }
     }
+}
+
+size_t publishInstrumentOutputs(Project& project, size_t source,
+                                 const std::vector<std::string>& outputNames) {
+    if (source >= project.tracks.size() || outputNames.size() < 2) return 0;
+
+    // QUI PUBLIE DÉJÀ QUOI. On ne republie pas une sortie qui a sa piste :
+    // c'est ce qui rend la commande rejouable sans dégât.
+    std::vector<bool> deja(outputNames.size(), false);
+    for (const auto& piste : project.tracks) {
+        if (!piste.publishesInstrumentOutput()) continue;
+        if (piste.outputSourceTrack != static_cast<int>(source)) continue;
+        const size_t k = static_cast<size_t>(piste.outputIndex);
+        if (k < deja.size()) deja[k] = true;
+    }
+
+    std::vector<Track> neuves;
+    for (size_t k = 1; k < outputNames.size(); ++k) {
+        if (deja[k]) continue;
+        Track piste;
+        piste.kind = Track::Kind::Midi;
+        piste.name = outputNames[k].empty()
+                          ? project.tracks[source].name + " - sortie " + std::to_string(k)
+                          : outputNames[k];
+        piste.colorRgba = project.tracks[source].colorRgba;
+        piste.channel = project.tracks[source].channel;
+        piste.outputSourceTrack = static_cast<int>(source);
+        piste.outputIndex = static_cast<int>(k);
+        neuves.push_back(std::move(piste));
+    }
+    if (neuves.empty()) return 0;
+
+    // TOUT CE QUI POINTE APRÈS LE POINT D'INSERTION RECULE D'AUTANT, et les
+    // pistes neuves ne sont ajoutées qu'ENSUITE : leurs propres index sont
+    // déjà justes puisqu'elles désignent la source, qui ne bouge pas.
+    const int insere = static_cast<int>(source) + 1;
+    const int combien = static_cast<int>(neuves.size());
+    for (auto& piste : project.tracks) {
+        if (piste.outputGroup >= insere) piste.outputGroup += combien;
+        if (piste.outputSourceTrack >= insere) piste.outputSourceTrack += combien;
+    }
+    project.tracks.insert(project.tracks.begin() + insere,
+                           std::make_move_iterator(neuves.begin()),
+                           std::make_move_iterator(neuves.end()));
+    return static_cast<size_t>(combien);
 }
 
 } // namespace vsm::sequencer

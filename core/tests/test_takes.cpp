@@ -466,3 +466,114 @@ VSM_TEST(a_note_that_would_overrun_its_segment_is_cut_and_empty_segments_do_noth
     VSM_ASSERT(!applyCompositeTake(piste, {{7, 0, 1920}}, neufs));
     VSM_ASSERT_EQ(piste.notes.size(), temoin.notes.size());
 }
+
+// D18.7b — LA SOURCE D'UNE SORTIE PUBLIÉE EST UN INDEX, et un index survit mal
+// aux remaniements si personne ne s'en occupe. Les trois gestes qui déplacent
+// les pistes doivent le faire suivre, exactement comme `outputGroup`.
+VSM_TEST(a_published_output_follows_its_source_through_move_duplicate_and_remove) {
+    auto projetDeBase = [] {
+        Project p;
+        for (int i = 0; i < 4; ++i) p.tracks.emplace_back();
+        p.tracks[0].name = "Boite a rythmes";
+        p.tracks[2].name = "Caisse claire";
+        p.tracks[2].outputSourceTrack = 0;
+        p.tracks[2].outputIndex = 1;
+        return p;
+    };
+
+    // DÉPLACER la piste porteuse : la publication la suit.
+    {
+        Project p = projetDeBase();
+        moveTrack(p, 0, 3);                       // la porteuse passe en dernier
+        int publieuse = -1;
+        for (size_t i = 0; i < p.tracks.size(); ++i)
+            if (p.tracks[i].name == "Caisse claire") publieuse = static_cast<int>(i);
+        VSM_ASSERT(publieuse >= 0);
+        const int source = p.tracks[static_cast<size_t>(publieuse)].outputSourceTrack;
+        VSM_ASSERT(source >= 0);
+        VSM_ASSERT(p.tracks[static_cast<size_t>(source)].name == "Boite a rythmes");
+        VSM_ASSERT_EQ(p.tracks[static_cast<size_t>(publieuse)].outputIndex, 1);
+    }
+
+    // DUPLIQUER une piste AVANT la source : les index reculent d'un rang.
+    {
+        Project p = projetDeBase();
+        duplicateTrack(p, 0);                     // insère en 1, la source reste 0
+        VSM_ASSERT_EQ(p.tracks[3].outputSourceTrack, 0);
+        VSM_ASSERT(p.tracks[3].name == "Caisse claire");
+        // La COPIE de la porteuse ne publie rien de nouveau : elle porte la
+        // même machine, mais personne ne réclame ses sorties.
+        VSM_ASSERT_EQ(p.tracks[1].outputSourceTrack, -1);
+    }
+
+    // DUPLIQUER la piste qui publie : les deux copies lisent la même sortie,
+    // ce qui est le partage, pas un doublement.
+    {
+        Project p = projetDeBase();
+        duplicateTrack(p, 2);
+        VSM_ASSERT_EQ(p.tracks[2].outputSourceTrack, 0);
+        VSM_ASSERT_EQ(p.tracks[3].outputSourceTrack, 0);
+        VSM_ASSERT_EQ(p.tracks[3].outputIndex, 1);
+    }
+
+    // SUPPRIMER la source : la piste cesse de publier plutôt que de pointer
+    // dans le vide, et son index part avec.
+    {
+        Project p = projetDeBase();
+        removeTrack(p, 0);
+        VSM_ASSERT_EQ(p.tracks[1].outputSourceTrack, -1);
+        VSM_ASSERT_EQ(p.tracks[1].outputIndex, 0);
+    }
+
+    // SUPPRIMER une piste AVANT la source : l'index recule d'un rang.
+    {
+        Project p = projetDeBase();
+        p.tracks[3].outputSourceTrack = 0;
+        p.tracks[3].outputIndex = 2;
+        removeTrack(p, 1);
+        VSM_ASSERT_EQ(p.tracks[1].outputSourceTrack, 0);
+        VSM_ASSERT_EQ(p.tracks[2].outputSourceTrack, 0);
+        VSM_ASSERT_EQ(p.tracks[2].outputIndex, 2);
+    }
+}
+
+// D18.7b — LA COMMANDE QUI PUBLIE, et son idempotence.
+VSM_TEST(publishing_outputs_creates_one_track_each_and_never_twice) {
+    const std::vector<std::string> noms = {"Grosse caisse", "Caisse claire", "Charley"};
+    Project p;
+    p.tracks.emplace_back();
+    p.tracks[0].name = "TR-808";
+    p.tracks.emplace_back();
+    p.tracks[1].name = "Basse";
+    p.tracks[1].outputGroup = 1;   // se route sur elle-même, peu importe : c'est l'index qui compte
+
+    VSM_ASSERT_EQ(publishInstrumentOutputs(p, 0, noms), size_t(2));
+    VSM_ASSERT_EQ(p.tracks.size(), size_t(4));
+    // JUSTE APRÈS LA SOURCE, pour que la machine et ses pièces se suivent.
+    VSM_ASSERT(p.tracks[1].name == "Caisse claire");
+    VSM_ASSERT(p.tracks[2].name == "Charley");
+    VSM_ASSERT_EQ(p.tracks[1].outputSourceTrack, 0);
+    VSM_ASSERT_EQ(p.tracks[1].outputIndex, 1);
+    VSM_ASSERT_EQ(p.tracks[2].outputIndex, 2);
+    // LA SORTIE 0 RESTE SUR LA PISTE SOURCE : elle n'est pas republiée.
+    VSM_ASSERT_EQ(p.tracks[0].outputSourceTrack, -1);
+    // L'index de routage de la piste repoussée a suivi.
+    VSM_ASSERT(p.tracks[3].name == "Basse");
+    VSM_ASSERT_EQ(p.tracks[3].outputGroup, 3);
+
+    // IDEMPOTENTE : rejouer la commande ne crée rien et ne double aucune pièce.
+    VSM_ASSERT_EQ(publishInstrumentOutputs(p, 0, noms), size_t(0));
+    VSM_ASSERT_EQ(p.tracks.size(), size_t(4));
+
+    // Une sortie retirée à la main se republie, et elle seule.
+    removeTrack(p, 1);
+    VSM_ASSERT_EQ(publishInstrumentOutputs(p, 0, noms), size_t(1));
+    VSM_ASSERT_EQ(p.tracks.size(), size_t(4));
+    VSM_ASSERT_EQ(p.tracks[1].outputIndex, 1);
+
+    // Une machine à UNE seule sortie n'a rien à publier.
+    Project mono;
+    mono.tracks.emplace_back();
+    VSM_ASSERT_EQ(publishInstrumentOutputs(mono, 0, {"Sortie"}), size_t(0));
+    VSM_ASSERT_EQ(mono.tracks.size(), size_t(1));
+}

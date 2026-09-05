@@ -1,3 +1,4 @@
+#include <cctype>
 #include "LocaleAVirgule.h"
 #include "TestFramework.h"
 #include <algorithm>
@@ -1124,6 +1125,70 @@ VSM_TEST(an_edit_group_survives_the_trip_and_none_writes_nothing) {
     applyDocumentToProject(relu.document, rejoue);
     VSM_ASSERT_EQ(rejoue.tracks[0].editGroup, 3);
     VSM_ASSERT_EQ(rejoue.tracks[1].editGroup, 3);
+}
+
+// D18.7b — LA PUBLICATION D'UNE SORTIE D'INSTRUMENT, écrite seulement quand
+// il y en a une, et dont l'index ne survit JAMAIS sans sa source.
+VSM_TEST(a_published_instrument_output_survives_the_trip_and_none_writes_nothing) {
+    Project project = buildProject();
+    // RIEN DANS LE FICHIER tant que personne ne publie : un projet d'avant
+    // l'étape se réécrit octet pour octet.
+    const std::string vierge = projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(vierge.find("outputSourceTrack") == std::string::npos);
+    VSM_ASSERT(vierge.find("outputIndex") == std::string::npos);
+
+    project.tracks[1].outputSourceTrack = 0;
+    project.tracks[1].outputIndex = 3;
+    const std::string ecrit = projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(ecrit.find("\"outputSourceTrack\"") != std::string::npos);
+    VSM_ASSERT(ecrit.find("\"outputIndex\"") != std::string::npos);
+
+    const ProjectLoadResult relu = parseProjectDocument(ecrit);
+    VSM_ASSERT(relu.success);
+    Project rejoue = project;
+    for (auto& t : rejoue.tracks) { t.outputSourceTrack = -1; t.outputIndex = 0; }
+    applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT_EQ(rejoue.tracks[1].outputSourceTrack, 0);
+    VSM_ASSERT_EQ(rejoue.tracks[1].outputIndex, 3);
+    // LES VOISINS N'ONT PAS BOUGÉ : le piège de l'agrégat positionnel, payé
+    // trois fois en D17 et D18, se vérifie ici plutôt que se raconte.
+    VSM_ASSERT_EQ(rejoue.tracks[0].outputSourceTrack, -1);
+    VSM_ASSERT_EQ(rejoue.tracks[0].editGroup, project.tracks[0].editGroup);
+    VSM_ASSERT_NEAR(rejoue.tracks[1].delayMs, project.tracks[1].delayMs, 1e-9);
+
+    // UN INDEX ORPHELIN NE RESSUSCITE PAS UNE PUBLICATION. Un fichier écrit à
+    // la main, ou tronqué, peut porter « outputIndex » sans sa source : il ne
+    // désigne alors rien, et le garder ferait publier au prochain
+    // enregistrement une sortie que personne n'a demandée.
+    // On part du fichier VALIDE qu'on vient d'écrire et l'on en retire la
+    // seule clé « outputSourceTrack » : c'est exactement l'état qu'un fichier
+    // tronqué ou retouché à la main peut avoir, et il reste un projet
+    // lisible par ailleurs.
+    std::string ampute = ecrit;
+    const size_t ou = ampute.find("\"outputSourceTrack\"");
+    VSM_ASSERT(ou != std::string::npos);
+    // Jusqu'au séparateur, quel qu'il soit : les clés sont écrites dans
+    // l'ordre alphabétique, donc « outputSourceTrack » peut être la DERNIÈRE
+    // de l'objet -- auquel cas c'est la virgule qui la PRÉCÈDE qu'il faut
+    // retirer, sans quoi on recollerait deux pistes en une.
+    size_t fin = ou;
+    while (fin < ampute.size() && ampute[fin] != ',' && ampute[fin] != '}') ++fin;
+    if (fin < ampute.size() && ampute[fin] == ',') ++fin;
+    ampute.erase(ou, fin - ou);
+    // Le JSON est indenté : ce qui suit peut être des blancs avant l'accolade.
+    // Quand la clé retirée était la DERNIÈRE de l'objet, c'est la virgule qui
+    // la précédait qu'il faut retirer aussi, faute de quoi il reste « ..., } ».
+    size_t apres = ou;
+    while (apres < ampute.size() && std::isspace(static_cast<unsigned char>(ampute[apres]))) ++apres;
+    if (apres < ampute.size() && ampute[apres] == '}') {
+        size_t avant = ou;
+        while (avant > 0 && std::isspace(static_cast<unsigned char>(ampute[avant - 1]))) --avant;
+        if (avant > 0 && ampute[avant - 1] == ',') ampute.erase(avant - 1, 1);
+    }
+    const ProjectLoadResult orphelin = parseProjectDocument(ampute);
+    VSM_ASSERT(orphelin.success);
+    VSM_ASSERT_EQ(orphelin.document.tracks[1].outputSourceTrack, -1);
+    VSM_ASSERT_EQ(orphelin.document.tracks[1].outputIndex, 0);
 }
 
 // D18.6 — LES NOTES DU PROJET, écrites seulement s'il y en a.

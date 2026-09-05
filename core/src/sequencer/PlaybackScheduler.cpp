@@ -10,6 +10,31 @@ using namespace vsm::midi;
 
 namespace {
 
+/// D18.7b — UNE PISTE DONT UNE AUTRE PUBLIE LES SORTIES DOIT ÊTRE JOUÉE MÊME
+/// MUETTE, et ce n'est pas une exception commode.
+///
+/// Le muet d'une piste coupe SA tranche de console, pas la machine qu'elle
+/// porte. Quand les six sorties d'une boîte à rythmes sont publiées sur six
+/// pistes, couper la piste porteuse ne veut pas dire « tais la boîte » -- elle
+/// ne porte plus que sa sortie n° 0 -- mais « tais cette pièce-là ». Sans
+/// cette règle, couper la grosse caisse ferait taire la caisse claire, le
+/// charley et le reste, et l'on chercherait longtemps pourquoi.
+///
+/// Le silence de la piste porteuse elle-même reste assuré au MÉLANGE, où il a
+/// toujours été (`ProcessGraph::mixTrackInto`) : elle est calculée, elle n'est
+/// pas entendue.
+std::vector<bool> pistesPubliees(const Project& project) {
+    std::vector<bool> publiee(project.tracks.size(), false);
+    for (const auto& piste : project.tracks) {
+        if (!piste.publishesInstrumentOutput()) continue;
+        const int source = piste.outputSourceTrack;
+        if (source >= 0 && static_cast<size_t>(source) < publiee.size())
+            publiee[static_cast<size_t>(source)] = true;
+    }
+    return publiee;
+}
+
+
 /// Une RÉPÉTITION d'un clip : la portion du matériau qu'elle lit, et de
 /// combien elle la décale sur la ligne de temps.
 ///
@@ -98,10 +123,11 @@ std::vector<ScheduledEvent> PlaybackScheduler::chaseAt(const Project& project, T
     const bool anySolo = std::any_of(project.tracks.begin(), project.tracks.end(),
                                       [](const Track& t) { return t.solo; });
     const Tick materialEnd = project.lastUsedTick();
+    const std::vector<bool> publiee = pistesPubliees(project);
 
     for (size_t trackIndex = 0; trackIndex < project.tracks.size(); ++trackIndex) {
         const Track& track = project.tracks[trackIndex];
-        if (anySolo ? !track.solo : track.muted) continue;
+        if ((anySolo ? !track.solo : track.muted) && !publiee[trackIndex]) continue;
         const std::vector<Passage> passages = passagesOf(track, materialEnd);
 
     // ------------------------------------------------------------------
@@ -187,11 +213,12 @@ std::vector<ScheduledEvent> PlaybackScheduler::build(const Project& project,
     bool anySolo = std::any_of(project.tracks.begin(), project.tracks.end(),
                                 [](const Track& t) { return t.solo; });
     const Tick materialEnd = project.lastUsedTick();
+    const std::vector<bool> publiee = pistesPubliees(project);
 
     for (size_t trackIndex = 0; trackIndex < project.tracks.size(); ++trackIndex) {
         const Track& track = project.tracks[trackIndex];
         bool audible = anySolo ? track.solo : !track.muted;
-        if (!audible) continue;
+        if (!audible && !publiee[trackIndex]) continue;
 
         const std::vector<Passage> passages = passagesOf(track, materialEnd);
 

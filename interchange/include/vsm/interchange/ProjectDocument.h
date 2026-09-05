@@ -220,6 +220,12 @@ struct ProjectTrack {
     /// D18.3 : le groupe d'édition. 0 = aucun, et rien n'est écrit.
     int editGroup = 0;
 
+    /// D18.7b : la piste dont on publie une sortie d'instrument, et laquelle.
+    /// -1 = aucune, et les deux champs sont alors absents du fichier -- un
+    /// projet d'avant l'étape se relit octet pour octet.
+    int outputSourceTrack = -1;
+    int outputIndex = 0;
+
     /// D16.7 : le décalage de piste, en millisecondes. Écrit seulement quand
     /// il n'est pas nul.
     double delayMs = 0.0;
