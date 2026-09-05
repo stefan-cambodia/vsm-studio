@@ -4864,3 +4864,44 @@ Ceux de la fusion, plus cinq propres à cet axe :
 > millisecondes, ne peut pas suivre — et il a raison de ne pas suivre, puisque
 > personne ne joue mille fois plus vite que le temps réel. On mesure donc dans
 > la fenêtre déjà lue, qui est le régime permanent de la lecture.
+
+### Phase D19 — Le huitième audit : ce qui manque une fois D18 posée (05/09/2026, 10:10)
+
+**Pourquoi.** Même méthode que D11 à D18, et le même ordre du § 3 : le geste de
+tous les jours d'abord, l'outil de travail ensuite, le modèle en dernier.
+
+**LA RÈGLE DE D18 A ÉTÉ APPLIQUÉE, ET ELLE A SERVI DEUX FOIS.** L'audit
+précédent avait écrit un manque qui n'en était pas un, et en avait tiré la
+règle : *on cherche le CONCEPT, pas l'identifiant, et on cherche AUSSI dans la
+feuille de route.* Deux candidats de cet audit-ci sont tombés à cette
+vérification, et il faut le dire plutôt que de faire comme s'ils n'avaient
+jamais été écrits :
+
+- **« Les changements de signature rythmique »** — absent de tous les
+  documents, donc plausible. Faux : `Project::timeSignatureMap` porte une
+  CARTE de signatures depuis longtemps (`core/include/vsm/sequencer/
+  TimeSignatureMap.h`). Le mot n'était nulle part, la chose y était.
+- **« Nommer les pièces d'une batterie plutôt que leurs hauteurs »** — le mot
+  « drum map » n'apparaît ni dans `docs/` ni dans le code, et une piste de
+  batterie reconstruite est bien une rangée de 36/38/42/46. Faux également :
+  `PianoRollComponent` appelle déjà `drumVoiceName(instrumentId, note)` et
+  affiche « charleston fermé » là où l'on attendrait « F#2 », en tirant le nom
+  de la machine assignée ou, à défaut, de la convention General MIDI.
+
+Le relevé a également écarté, comme existant : l'export d'une plage (D6.1), le
+gel, le report d'une piste et d'une sélection (D5.5, D18.1), les prises et leur
+assemblage (D3.5, D18.2), les repères et les sections (D16.4, D18.4), les
+groupes de mixage (D4.2), les groupes d'édition (D18.3), la chaîne latérale,
+l'automation par courbes et ses modes W/R (D5.4, D16.8), le suivi de tempo et
+l'étirement (D12), les fondus et leurs formes (D17.1), les notes du projet
+(D18.6), la publication des sorties d'instrument (D18.7), le varispeed (D18.5),
+l'humanisation et le swing, les gammes et les accords, l'arpège.
+
+Quatre manques ont survécu à la vérification.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D19.1 | **Transformer les vélocités d'une sélection.** La ligne de vélocité se PEINT (`VelocityLaneComponent` : un point, une droite) et rien d'autre : on ne peut ni comprimer, ni mettre à l'échelle, ni limiter les nuances de ce qu'on a choisi. Sur une transcription c'est le geste de réparation le plus courant — les vélocités relevées sont bruitées, et les aplatir à la main note par note est le seul recours actuel. Cubase : Logical Editor / Velocity ; Live : Velocity MIDI effect | des transformations de vélocité dans `core/` (fonctions pures) : mettre à l'échelle, comprimer vers la moyenne, limiter à un intervalle, appliquer une rampe ; elles opèrent sur une SÉLECTION de notes, sont annulables, et ne déplacent aucune note ; test `core/` : comprimer à 0 rend toutes les vélocités égales à leur moyenne, et comprimer à 1 ne change rien AU BIT PRÈS |
+| D19.2 | **Retrouver une piste.** La parité pousse le nombre de pistes vers le haut — D18.7b vient d'en ajouter cinq pour une seule boîte à rythmes — et la liste n'a ni filtre ni recherche : on fait défiler. Cubase : Track Visibility / filtre ; Live : le repli des groupes | un champ de filtre au-dessus de la liste des pistes ; il masque les pistes dont le nom ne correspond pas, SANS toucher à `Track::hidden` (qui est un état du morceau, D17.4) ni au son ; vidé, tout revient ; vérifié à l'écran |
+| D19.3 | **Éclater une piste par hauteur.** Une piste de batterie reconstruite porte la grosse caisse, la caisse claire et le charley sur une seule ligne de temps. La chaîne d'analyse les a SÉPARÉS ; le DAW ne sait pas refaire ce geste à la main, ni le défaire. C'est le pendant manuel de l'objectif de parité, et le compagnon de D18.7b — qui a donné une piste à chaque SORTIE, quand celle-ci en donne une à chaque HAUTEUR. Cubase : Dissolve Part | « Piste ▸ Éclater par hauteur » : une piste neuve par hauteur présente, nommée par la pièce (`drumVoiceName`) quand la machine la nomme, insérées après l'originale, l'instrument recopié ; annulable ; les index de routage suivent comme en D18.7b ; test `core/` : éclater trois hauteurs rend trois pistes dont la réunion des notes est exactement le matériau d'origine |
+| D19.4 | **Les pistes dossier.** `Track::folded` replie UNE piste ; rien ne replie un GROUPE de pistes. Un groupe de mixage (D4.2) est un bus, pas un rangement : router huit micros de batterie dans un bus ne les fait pas disparaître de la vue quand on travaille sur les cordes. Cubase : Folder Tracks | une piste de type dossier qui CONTIENT des pistes, se replie et les masque toutes, et dont le repli est écrit dans `project.json` ; elle ne touche à aucun signal — un dossier n'est pas un bus, et un projet qui n'en a pas garde son fichier octet pour octet ; test `interchange/` : aller-retour, et absence totale du fichier quand il n'y a aucun dossier |
