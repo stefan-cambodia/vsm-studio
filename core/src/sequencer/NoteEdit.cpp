@@ -521,6 +521,20 @@ NoteSelection selectNotesWithSamePitch(const std::vector<Note>& notes, const Not
     return result;
 }
 
+NoteSelection selectNotesBelowVelocity(const std::vector<Note>& notes, uint8_t belowVelocity) {
+    NoteSelection result;
+    for (const auto& n : notes)
+        if (n.velocity < belowVelocity) result.insert(n.id);
+    return result;
+}
+
+NoteSelection selectNotesShorterThan(const std::vector<Note>& notes, Tick shorterThanTicks) {
+    NoteSelection result;
+    for (const auto& n : notes)
+        if (n.durationTicks() < shorterThanTicks) result.insert(n.id);
+    return result;
+}
+
 NoteSelection selectNotesInTimeRange(const std::vector<Note>& notes, Tick fromTick, Tick toTick) {
     NoteSelection result;
     for (const auto& n : notes)

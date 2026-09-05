@@ -130,6 +130,13 @@ public:
     }
 
     std::function<void()> onMixChanged;
+    /// D21.2 : Ctrl+clic sur Solo -- l'application met cette piste seule en solo.
+    std::function<void(size_t)> onExclusiveSoloRequested;
+    /// Relit muet et solo depuis la piste (après un solo exclusif).
+    void refreshMuteSolo() {
+        mute_.setToggleState(track_.muted, juce::dontSendNotification);
+        solo_.setToggleState(track_.solo, juce::dontSendNotification);
+    }
     /// Prévenu AVANT qu'un geste ne modifie le mixage : c'est là que
     /// l'application prend son instantané d'annulation. Séparé de
     /// `onMixChanged`, qui arrive après et à chaque échantillon d'un glissé --
@@ -268,6 +275,10 @@ public:
                       float masterCorrelation);
 
     std::function<void()> onMixChanged;
+    /// D21.2 : une tranche a demandé le solo EXCLUSIF (Ctrl+clic sur Solo).
+    std::function<void(size_t)> onExclusiveSoloRequested;
+    /// Relit muet et solo de chaque tranche depuis sa piste.
+    void refreshMuteSolo() { for (auto* strip : strips_) strip->refreshMuteSolo(); }
     std::function<void()> onMixEditStarted;
 
     /// D16.8 : passés à chaque tranche à sa construction (voir ChannelStrip).

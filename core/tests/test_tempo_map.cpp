@@ -144,3 +144,19 @@ VSM_TEST(flattening_a_ramp_into_quarter_note_steps_keeps_the_total_duration) {
     // le dernier autour de 61 -- descendants.
     VSM_ASSERT(paliers.front().microsecondsPerQuarterNote < paliers[15].microsecondsPerQuarterNote);
 }
+
+// D21.4 — RETIRER UN CHANGEMENT DE SIGNATURE. Exactement au tick demandé, et
+// jamais celui du tick zéro : un morceau a toujours une signature.
+VSM_TEST(a_time_signature_change_is_removed_at_its_tick_and_never_at_zero) {
+    TimeSignatureMap carte;
+    carte.addChange(1920, 3, 2);   // 3/4 à la deuxième mesure
+    carte.addChange(5760, 6, 3);   // 6/8 plus loin
+    VSM_ASSERT_EQ(carte.changes().size(), size_t(3));
+    VSM_ASSERT(!carte.removeChangeAt(1000));         // rien là
+    VSM_ASSERT(carte.removeChangeAt(1920));
+    VSM_ASSERT_EQ(carte.changes().size(), size_t(2));
+    VSM_ASSERT_EQ(static_cast<int>(carte.numeratorAt(2000)), 4);   // on retombe sur le 4/4 du départ
+    VSM_ASSERT_EQ(static_cast<int>(carte.numeratorAt(6000)), 6);
+    VSM_ASSERT(!carte.removeChangeAt(0));            // celui du départ ne se retire pas
+    VSM_ASSERT_EQ(carte.changes().size(), size_t(2));
+}

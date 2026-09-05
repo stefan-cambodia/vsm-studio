@@ -33,6 +33,7 @@ enum ContextMenuId {
     kCtxCut = 100010, kCtxCopy, kCtxPaste, kCtxDelete, kCtxDuplicate,
     kCtxSelectAll = 100020, kCtxSelectNone, kCtxSelectInvert, kCtxSelectSamePitch,
     kCtxSelectNextDoubtful, kCtxSelectPrevDoubtful, kCtxSelectDoubtful,
+    kCtxSelectWeak64 = 100420, kCtxSelectWeak32, kCtxSelectWeak16, kCtxSelectShortGrid, kCtxSelectShortHalfGrid,
     kCtxTransposeUp = 100030, kCtxTransposeDown, kCtxOctaveUp, kCtxOctaveDown,
     kCtxQuantizeFull = 100040, kCtxQuantizeHalf, kCtxQuantizeEnds, kCtxHumanize,
     kCtxLegato = 100050, kCtxRemoveOverlaps, kCtxLengthToGrid, kCtxLengthDouble, kCtxLengthHalve,
@@ -450,6 +451,26 @@ void PianoRollComponent::selectNone() {
 
 void PianoRollComponent::invertSelection() {
     if (Track* track = activeTrack()) selectedNoteIds_ = invertNoteSelection(track->notes, selectedNoteIds_);
+    notifyEditState();
+    repaint();
+}
+
+void PianoRollComponent::selectBelowVelocity(uint8_t velocity) {
+    if (Track* track = activeTrack())
+        selectedNoteIds_ = selectNotesBelowVelocity(track->notes, velocity);
+    if (onStatusChanged)
+        onStatusChanged(juce::String(static_cast<int>(selectedNoteIds_.size()))
+                        + juce::String(u8" note(s) plus faible(s) que ") + juce::String(static_cast<int>(velocity)));
+    notifyEditState();
+    repaint();
+}
+
+void PianoRollComponent::selectShorterThan(Tick ticks) {
+    if (Track* track = activeTrack())
+        selectedNoteIds_ = selectNotesShorterThan(track->notes, ticks);
+    if (onStatusChanged)
+        onStatusChanged(juce::String(static_cast<int>(selectedNoteIds_.size()))
+                        + juce::String(u8" note(s) plus courte(s) que ") + juce::String(static_cast<int>(ticks)) + " ticks");
     notifyEditState();
     repaint();
 }
@@ -878,6 +899,24 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
                        douteuses > 0 ? "Toutes les notes douteuses (" + juce::String(static_cast<int>(douteuses)) + ")"
                                      : juce::String("Toutes les notes douteuses"),
                        douteuses > 0);
+    // D21.1 : LES NOTES FANTÔMES D'UNE TRANSCRIPTION -- faibles, ou d'un
+    // soixante-quatrième -- se choisissent d'un coup, à des seuils FIXES
+    // plutôt que par une boîte de dialogue, pour que le geste enchaîne avec
+    // Supprimer. Chaque entrée dit combien de notes elle prendrait.
+    {
+        const Track* track = activeTrack();
+        const std::vector<Note> aucune;
+        const std::vector<Note>& notes = track ? track->notes : aucune;
+        const Tick grille = gridTicks();
+        auto compte = [](const NoteSelection& s) { return " (" + juce::String(static_cast<int>(s.size())) + ")"; };
+        selectMenu.addSeparator();
+        selectMenu.addItem(kCtxSelectWeak64, juce::String(u8"Notes plus faibles que 64") + compte(selectNotesBelowVelocity(notes, 64)));
+        selectMenu.addItem(kCtxSelectWeak32, juce::String(u8"Notes plus faibles que 32") + compte(selectNotesBelowVelocity(notes, 32)));
+        selectMenu.addItem(kCtxSelectWeak16, juce::String(u8"Notes plus faibles que 16") + compte(selectNotesBelowVelocity(notes, 16)));
+        selectMenu.addItem(kCtxSelectShortGrid, juce::String(u8"Notes plus courtes que la grille") + compte(selectNotesShorterThan(notes, grille)));
+        selectMenu.addItem(kCtxSelectShortHalfGrid, juce::String(u8"Notes plus courtes que la moitié de la grille")
+                                                        + compte(selectNotesShorterThan(notes, std::max<Tick>(1, grille / 2))));
+    }
     menu.addSubMenu(u8"Sélection", selectMenu);
 
     juce::PopupMenu pitchMenu;
@@ -982,6 +1021,11 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         case kCtxSelectNextDoubtful: selectNextDoubtfulNote(true); break;
         case kCtxSelectPrevDoubtful: selectNextDoubtfulNote(false); break;
         case kCtxSelectDoubtful:   selectDoubtfulNotes(); break;
+        case kCtxSelectWeak64:     selectBelowVelocity(64); break;
+        case kCtxSelectWeak32:     selectBelowVelocity(32); break;
+        case kCtxSelectWeak16:     selectBelowVelocity(16); break;
+        case kCtxSelectShortGrid:  selectShorterThan(gridTicks()); break;
+        case kCtxSelectShortHalfGrid: selectShorterThan(std::max<Tick>(1, gridTicks() / 2)); break;
         case kCtxTransposeUp:      transposeSelection(1); break;
         case kCtxTransposeDown:    transposeSelection(-1); break;
         case kCtxOctaveUp:         transposeSelection(12); break;

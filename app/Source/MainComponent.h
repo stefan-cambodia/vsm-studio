@@ -118,12 +118,15 @@ public:
     void showReconstructionReport();
     /// D19.2 : pose le filtre de la liste des pistes (VSM_FILTRE), pour que la
     /// capture montre le filtre à l'œuvre.
+    /// D21.5 : le niveau demandé à l'export -- tel quel, crête à -1 dBFS,
+    /// -14 LUFS (diffusion en flux), -23 LUFS (radiodiffusion).
+    enum class ExportLevel { AsIs, PeakMinus1, Lufs14, Lufs23 };
     void setTrackFilterForCapture(const juce::String& texte) { trackList_.setFilterText(texte); }
     /// D20.5 : exporter le projet ouvert dans `file` sans fenêtre
     /// (VSM_EXPORT=fichier.flac), aux réglages par défaut -- la fréquence de
     /// la session, 24 bits, le morceau entier, deux secondes de queue. Le
     /// compte rendu va sur stderr : c'est un terminal qui pilote ce mode.
-    bool exportForCapture(const juce::File& file);
+    bool exportForCapture(const juce::File& file, ExportLevel niveau = ExportLevel::AsIs);
 
     bool openProjectFolderForCapture(const juce::File& dossier) {
         const auto lu = vsm::interchange::loadProjectBundle(dossier.getFullPathName().toStdString());
@@ -204,6 +207,8 @@ private:
         kMenuTrackLock,
         /// D17.4 : masquer la piste choisie, et tout réafficher.
         kMenuTrackHide,
+        /// D21.2 : la piste choisie seule en solo (Ctrl+clic sur Solo fait de même).
+        kMenuTrackSoloExclusive,
         kMenuTrackShowAll,
         /// D18.3 : le groupe d'édition de la piste choisie (0 = aucun).
         kMenuTrackEditGroupNone,
@@ -222,6 +227,10 @@ private:
     kMenuEditSliceAtOnsets,
     /// D20.4 : transcrire le clip audio choisi en MIDI (Python).
     kMenuEditTranscribeClip,
+    /// D21.4 : la signature rythmique à la tête de lecture (2/4 … 7/8), et son retrait.
+    kMenuEditSignatureRemove,
+    kMenuEditSignatureFirst,
+    kMenuEditSignatureLast = kMenuEditSignatureFirst + 5,
     /// D17.8 : LE GROOVE — l'extraire de la piste choisie, l'appliquer à la
     /// sélection du piano roll, l'enregistrer dans la bibliothèque, en charger
     /// un.
@@ -672,15 +681,21 @@ private:
     vsm::interchange::LoadedBundle bundleFromSession();
     /// La seconde moitié de l'export : choisir le fichier, puis rendre avec les
     /// options que l'utilisateur vient de fixer (D6.1).
-    void exportAudioWithOptions(const vsm::interchange::RenderOptions& options);
+    void exportAudioWithOptions(const vsm::interchange::RenderOptions& options,
+                                ExportLevel niveau = ExportLevel::AsIs);
     /// D20.5 : le rendu du projet dans `file`, WAV, FLAC ou OGG selon
     /// l'extension -- le même rendu que `vsm-render`, puis JUCE transcode.
     /// Rend faux avec le message d'erreur dans `message`, vrai avec le compte
     /// rendu (durée, fréquence, profondeur, crête, avertissements).
     bool exportProjectToFile(const juce::File& file, const vsm::interchange::RenderOptions& options,
-                             juce::String& message);
-    bool transcodeRenderedWav(const juce::File& wav, const juce::File& sortie, bool flac,
-                              const vsm::interchange::RenderOptions& options, juce::String& erreur);
+                             juce::String& message, ExportLevel niveau = ExportLevel::AsIs);
+    /// Réécrit le WAV rendu dans `sortie` (WAV, FLAC ou OGG selon l'extension),
+    /// en appliquant `gain` (1 = tel quel).
+    bool transcodeRenderedWav(const juce::File& wav, const juce::File& sortie,
+                              const vsm::interchange::RenderOptions& options, double gain,
+                              juce::String& erreur);
+    /// La sonie intégrée (LUFS) d'un WAV, par le mesureur du moteur.
+    double measureLufsOf(const juce::File& wav);
     /// Republie tout ce qui dépend du projet. `stopPlayback` est faux après un
     /// annuler/rétablir : l'utilisateur qui corrige une note pendant que ça
     /// joue n'a aucune raison de voir la lecture s'arrêter.
@@ -703,12 +718,24 @@ private:
     /// D17.4 : masquer la piste choisie (les vues seulement, jamais le son),
     /// et réafficher toutes les pistes. Annulables.
     void hideSelectedTrack();
+    /// D21.2 : cette piste seule en solo ; si elle l'était déjà seule, plus aucun solo.
+    void soloTrackExclusively(size_t index);
+    /// D21.4 : poser (ou retirer, numerator = 0) un changement de signature
+    /// au début de la mesure qui contient la tête de lecture.
+    void setTimeSignatureAtPlayhead(int numerator, int denominator);
+    int derniereSignatureNum_ = 0, derniereSignatureDen_ = 0;
     void showAllTracks();
     /// D17.6 : rogne le clip à ce qui sonne, en relisant les échantillons du
     /// fichier. Annulable.
     void trimClipToSound(size_t trackIndex, uint64_t clipId);
     /// D20.3 : les clips audio choisis, coupés à chaque attaque trouvée.
     void sliceSelectedClipsAtOnsets();
+    /// D21.3 : la coupe demandée à `tick` sur la piste, déplacée au passage
+    /// par zéro le plus proche (±2 ms) lu dans la source que le moteur joue ;
+    /// telle quelle sur une piste MIDI, un clip étiré, ou sans zéro à portée.
+    /// `deplacementMs`, s'il est donné, reçoit de combien la coupe a bougé.
+    vsm::midi::Tick snapCutToZeroCrossing(size_t trackIndex, vsm::midi::Tick tick,
+                                          double* deplacementMs = nullptr);
     /// D20.4 : le premier clip audio choisi, transcrit en notes sur une piste neuve.
     void transcribeSelectedClip();
     /// D18.1 : rend hors ligne les clips choisis et les pose sur une piste

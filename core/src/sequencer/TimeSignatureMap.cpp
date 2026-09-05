@@ -31,6 +31,15 @@ void TimeSignatureMap::addChange(Tick tick, uint8_t numerator, uint8_t denominat
               [](const TimeSignatureChange& a, const TimeSignatureChange& b) { return a.tick < b.tick; });
 }
 
+bool TimeSignatureMap::removeChangeAt(Tick tick) {
+    if (tick == 0) return false;
+    auto it = std::find_if(changes_.begin(), changes_.end(),
+                            [tick](const TimeSignatureChange& c) { return c.tick == tick; });
+    if (it == changes_.end()) return false;
+    changes_.erase(it);
+    return true;
+}
+
 void TimeSignatureMap::clear() {
     changes_.clear();
     changes_.push_back({0, 4, 2});

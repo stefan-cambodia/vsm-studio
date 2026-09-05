@@ -30,6 +30,10 @@ public:
 
     void addChange(Tick tick, uint8_t numerator, uint8_t denominatorPow2);
     void clear();
+    /// D21.4 : retire le changement posé EXACTEMENT à `tick`. Celui du tick
+    /// zéro ne se retire pas -- un morceau a toujours une signature -- : il se
+    /// remplace par `addChange`. Rend vrai si quelque chose a été retiré.
+    bool removeChangeAt(Tick tick);
 
     uint32_t denominatorAt(Tick tick) const; // valeur réelle (4, 8, 16...)
     uint8_t numeratorAt(Tick tick) const;

@@ -183,6 +183,12 @@ NoteSelection selectNotesWithSamePitch(const std::vector<Note>& notes, const Not
 /// Toutes les notes qui commencent dans [fromTick, toTick).
 NoteSelection selectNotesInTimeRange(const std::vector<Note>& notes, Tick fromTick, Tick toTick);
 
+/// D21.1 : LES NOTES FANTÔMES D'UNE TRANSCRIPTION se reconnaissent à leur
+/// vélocité et à leur durée. Bornes STRICTES : « plus faibles que 32 » ne prend
+/// pas 32, « plus courtes que la grille » ne prend pas une note d'une grille.
+NoteSelection selectNotesBelowVelocity(const std::vector<Note>& notes, uint8_t belowVelocity);
+NoteSelection selectNotesShorterThan(const std::vector<Note>& notes, Tick shorterThanTicks);
+
 /// Résumé d'une sélection, pour la barre d'information du piano roll.
 struct SelectionStats {
     size_t count = 0;

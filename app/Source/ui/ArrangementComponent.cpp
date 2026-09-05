@@ -901,10 +901,13 @@ void ArrangementComponent::splitSelectionAtPlayhead() {
     for (size_t i = 0; i < project_->tracks.size(); ++i) {
         auto& track = project_->tracks[i];
         auto essai = track.clips;
+        // D21.3 : LA COUPE S'AIMANTE AU PASSAGE PAR ZÉRO sur une piste audio,
+        // piste par piste -- deux pistes n'ont pas leurs zéros au même endroit.
+        const vsm::midi::Tick coupe = cutSnapProvider ? cutSnapProvider(i, playhead_) : playhead_;
         const size_t faites =
             track.locked
                 ? 0u
-                : splitClips(essai, montage, playhead_, materialEnd(track), compteur,
+                : splitClips(essai, montage, coupe, materialEnd(track), compteur,
                               [this](vsm::midi::Tick t) { return project_->ticksToSeconds(t); });
         coupes += faites;
         if (faites > 0) resultats.emplace_back(i, std::move(essai));

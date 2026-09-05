@@ -175,6 +175,9 @@ public:
     /// jusqu'à la note sans changer le zoom -- ou les prendre toutes.
     void selectNextDoubtfulNote(bool forward);
     void selectDoubtfulNotes();
+    /// D21.1 : les notes fantômes d'une transcription, par vélocité ou par durée.
+    void selectBelowVelocity(uint8_t velocity);
+    void selectShorterThan(vsm::midi::Tick ticks);
     size_t doubtfulNoteCount() const;
     bool hasSelection() const { return !selectedNoteIds_.empty(); }
 

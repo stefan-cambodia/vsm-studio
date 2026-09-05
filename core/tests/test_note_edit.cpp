@@ -543,3 +543,30 @@ VSM_TEST(limiting_with_the_bounds_swapped_reads_them_the_right_way_round) {
     limitVelocity(notes, allIds(notes), 100, 20);
     VSM_ASSERT_EQ(static_cast<int>(findById(notes, 1)->velocity), 20);
 }
+
+// D21.1 — CHOISIR PAR VÉLOCITÉ OU PAR DURÉE. Les bornes sont strictes, et la
+// sélection rendue ne contient que les notes visées.
+
+VSM_TEST(selecting_below_a_velocity_and_shorter_than_a_length_is_strict) {
+    std::vector<Note> notes;
+    auto note = [&](uint64_t id, uint8_t velocity, Tick longueur) {
+        Note n; n.id = id; n.number = 60; n.velocity = velocity; n.startTick = 0; n.endTick = longueur;
+        notes.push_back(n);
+    };
+    note(1, 10, 480);
+    note(2, 32, 120);
+    note(3, 31, 119);
+    note(4, 100, 30);
+
+    const NoteSelection faibles = selectNotesBelowVelocity(notes, 32);
+    VSM_ASSERT_EQ(faibles.size(), size_t(2));
+    VSM_ASSERT(faibles.count(1) == 1 && faibles.count(3) == 1);   // 32 n'est pas « plus faible que 32 »
+
+    const NoteSelection courtes = selectNotesShorterThan(notes, 120);
+    VSM_ASSERT_EQ(courtes.size(), size_t(2));
+    VSM_ASSERT(courtes.count(3) == 1 && courtes.count(4) == 1);   // 120 n'est pas « plus courte que 120 »
+
+    VSM_ASSERT(selectNotesBelowVelocity(notes, 1).empty());
+    VSM_ASSERT(selectNotesShorterThan(notes, 1).empty());
+    VSM_ASSERT_EQ(selectNotesBelowVelocity(notes, 128).size(), size_t(4));
+}

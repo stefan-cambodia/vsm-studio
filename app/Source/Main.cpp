@@ -152,8 +152,18 @@ public:
             // (D20.5). Un export passe par un sélecteur de fichier et une
             // boîte de dialogue, qu'aucune capture ne traverse ; le fichier
             // écrit, lui, se relit -- c'est ainsi qu'on vérifie un format.
-            if (const char* sortie = std::getenv("VSM_EXPORT"); sortie != nullptr && *sortie)
-                content->exportForCapture(juce::File::getCurrentWorkingDirectory().getChildFile(sortie));
+            if (const char* sortie = std::getenv("VSM_EXPORT"); sortie != nullptr && *sortie) {
+                // VSM_EXPORT_NIVEAU=crete|lufs14|lufs23 (D21.5) : le niveau demandé.
+                auto niveau = MainComponent::ExportLevel::AsIs;
+                if (const char* n = std::getenv("VSM_EXPORT_NIVEAU"); n != nullptr && *n) {
+                    const juce::String demande(n);
+                    niveau = demande == "crete" ? MainComponent::ExportLevel::PeakMinus1
+                           : demande == "lufs14" ? MainComponent::ExportLevel::Lufs14
+                           : demande == "lufs23" ? MainComponent::ExportLevel::Lufs23
+                                                 : MainComponent::ExportLevel::AsIs;
+                }
+                content->exportForCapture(juce::File::getCurrentWorkingDirectory().getChildFile(sortie), niveau);
+            }
             if (const char* rapport = std::getenv("VSM_RAPPORT");
                 rapport != nullptr && *rapport)
                 content->showReconstructionReport();

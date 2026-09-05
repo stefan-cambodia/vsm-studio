@@ -166,6 +166,15 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     solo_.setToggleState(track_.solo, juce::dontSendNotification);
     solo_.setColour(juce::TextButton::buttonOnColourId, vsm::ui::Palette::accentAmber);
     solo_.onClick = [this] {
+        // D21.2 : CTRL+CLIC = SOLO EXCLUSIF. Le bouton a déjà basculé son
+        // état ; on le laisse à l'application, qui éteint les autres et
+        // resynchronise toutes les tranches.
+        if (juce::ModifierKeys::getCurrentModifiers().isCtrlDown()
+            || juce::ModifierKeys::getCurrentModifiers().isCommandDown()) {
+            solo_.setToggleState(track_.solo, juce::dontSendNotification);
+            if (onExclusiveSoloRequested) onExclusiveSoloRequested(index_);
+            return;
+        }
         track_.solo = solo_.getToggleState();
         if (onMixChanged) onMixChanged();
     };
@@ -463,6 +472,7 @@ void MixerComponent::setProject(vsm::sequencer::Project* project) {
                 strip->setMembers(membres);
             }
             strip->onMixChanged = [this] { if (onMixChanged) onMixChanged(); };
+            strip->onExclusiveSoloRequested = [this](size_t index) { if (onExclusiveSoloRequested) onExclusiveSoloRequested(index); };
             strip->onMixEditStarted = [this] { if (onMixEditStarted) onMixEditStarted(); };
             // D16.8 : la tranche a besoin de savoir OÙ en est le transport et
             // s'il roule ; ces deux réponses appartiennent à l'application.

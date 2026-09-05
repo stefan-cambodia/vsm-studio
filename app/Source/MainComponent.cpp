@@ -4,6 +4,8 @@
 #include "vsm/sequencer/PlayOrder.h"
 #include "vsm/interchange/GroovePreset.h"
 #include "vsm/audio/io/OnsetDetection.h"
+#include "vsm/audio/io/ZeroCrossing.h"
+#include "vsm/audio/dsp/LufsMeter.h"
 #include "vsm/audio/io/SilenceDetection.h"
 #include "vsm/sequencer/TimeEdit.h"
 #include "vsm/sequencer/ProjectImport.h"
@@ -151,6 +153,7 @@ MainComponent::MainComponent()
         return audioEngine_.processGraph().masterBus().getParameter(id);
     };
     mixer_.onMixEditStarted = [this] { beginProjectEdit("Mixage"); };
+    mixer_.onExclusiveSoloRequested = [this](size_t index) { soloTrackExclusively(index); };
     // D16.8 : la console écrit l'automation en jouant, et il lui faut la
     // position du transport et son état -- deux choses qu'elle ne peut pas
     // connaître seule.
@@ -306,6 +309,7 @@ MainComponent::MainComponent()
     };
     arrangement_.onClipSliceAtOnsetsRequested = [this] { sliceSelectedClipsAtOnsets(); };
     arrangement_.onClipTranscribeRequested = [this] { transcribeSelectedClip(); };
+    arrangement_.cutSnapProvider = [this](size_t piste, vsm::midi::Tick tick) { return snapCutToZeroCrossing(piste, tick); };
     arrangement_.onClipTrimToSoundRequested = [this](size_t piste, uint64_t clipId) {
         trimClipToSound(piste, clipId);
     };
@@ -1393,6 +1397,18 @@ void MainComponent::timerCallback() {
     pianoRoll_.setPlayheadTick(playhead);
     synthRack_.setPlayheadTick(playhead); // éclaire le pas en cours sur les grilles
     arrangement_.setPlayheadTick(playhead);
+    // D21.4 : LA SIGNATURE SOUS LA TÊTE, pas celle du tick zéro -- mise à
+    // jour seulement quand elle change, la barre n'a pas à se redessiner
+    // trente fois par seconde.
+    {
+        const int num = project_.timeSignatureMap.numeratorAt(std::max<vsm::midi::Tick>(0, playhead));
+        const int den = static_cast<int>(project_.timeSignatureMap.denominatorAt(std::max<vsm::midi::Tick>(0, playhead)));
+        if (num != derniereSignatureNum_ || den != derniereSignatureDen_) {
+            derniereSignatureNum_ = num;
+            derniereSignatureDen_ = den;
+            transportBar_.setTimeSignature(num, den);
+        }
+    }
     pianoRollPanel_.refresh(); // règle + barre d'outils suivent la tête de lecture et l'historique
 
     autosaveIfNeeded();
@@ -1665,6 +1681,29 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // D20.4 : TRANSCRIRE. Grisée AVEC sa raison quand la chaîne
             // d'analyse manque : une entrée grisée sans raison est une entrée
             // qu'on croit cassée.
+            // D21.4 : LA SIGNATURE. Des valeurs fixes, à la mesure qui contient
+            // la tête ; l'entrée de retrait dit s'il y a quelque chose à retirer.
+            {
+                static const int kSignatures[][2] = {{2, 4}, {3, 4}, {4, 4}, {5, 4}, {6, 8}, {7, 8}};
+                juce::PopupMenu signature;
+                const vsm::midi::Tick ici = std::max<vsm::midi::Tick>(0, transport_.currentTick());
+                const int actuelNum = project_.timeSignatureMap.numeratorAt(ici);
+                const int actuelDen = static_cast<int>(project_.timeSignatureMap.denominatorAt(ici));
+                for (int i = 0; i < 6; ++i)
+                    signature.addItem(kMenuEditSignatureFirst + i,
+                                      juce::String(kSignatures[i][0]) + "/" + juce::String(kSignatures[i][1]),
+                                      true, kSignatures[i][0] == actuelNum && kSignatures[i][1] == actuelDen);
+                bool changementIci = false;
+                for (const auto& c : project_.timeSignatureMap.changes())
+                    if (c.tick != 0 && c.tick <= ici && ici < c.tick + project_.timeSignatureMap.ticksPerBar(c.tick, project_.ticksPerQuarterNote))
+                        changementIci = true;
+                signature.addSeparator();
+                signature.addItem(kMenuEditSignatureRemove,
+                                  changementIci ? juce::String(u8"Retirer le changement de cette mesure")
+                                                : juce::String(u8"Retirer le changement de cette mesure (aucun ici)"),
+                                  changementIci);
+                menu.addSubMenu(u8"Signature \u00e0 la t\u00eate de lecture", signature);
+            }
             menu.addItem(kMenuEditTranscribeClip,
                          reconstructionChain_.available
                              ? juce::String(u8"Transcrire le clip audio choisi en MIDI (Basic Pitch)")
@@ -1705,6 +1744,18 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                          && project_.tracks[choisie].locked;
                 size_t masquees = 0;
                 for (const auto& t : project_.tracks) if (t.hidden) ++masquees;
+                // D21.2 : LE SOLO EXCLUSIF, aussi au menu -- pour le clavier, et pour que
+                // VSM_MENU puisse le photographier.
+                {
+                    const size_t p = trackList_.selectedTrackIndex();
+                    const bool seule = p < project_.tracks.size() && project_.tracks[p].solo
+                                       && std::count_if(project_.tracks.begin(), project_.tracks.end(),
+                                                        [](const Track& t) { return t.solo; }) == 1;
+                    menu.addItem(kMenuTrackSoloExclusive,
+                                 seule ? u8"Plus aucun solo (Ctrl+clic sur Solo)"
+                                       : u8"Solo exclusif de la piste choisie (Ctrl+clic sur Solo)",
+                                 p < project_.tracks.size());
+                }
                 menu.addItem(kMenuTrackHide, u8"Masquer la piste (elle continue de sonner)",
                               !project_.tracks.empty());
                 menu.addItem(kMenuTrackShowAll,
@@ -2116,6 +2167,13 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuEditRepeatToLoopEnd) { arrangement_.repeatSelectionUntilLoopEnd(); return; }
     if (menuItemID == kMenuEditSliceAtOnsets) { sliceSelectedClipsAtOnsets(); return; }
     if (menuItemID == kMenuEditTranscribeClip) { transcribeSelectedClip(); return; }
+    if (menuItemID == kMenuEditSignatureRemove) { setTimeSignatureAtPlayhead(0, 0); return; }
+    if (menuItemID >= kMenuEditSignatureFirst && menuItemID <= kMenuEditSignatureLast) {
+        static const int kSignatures[][2] = {{2, 4}, {3, 4}, {4, 4}, {5, 4}, {6, 8}, {7, 8}};
+        const int i = menuItemID - kMenuEditSignatureFirst;
+        setTimeSignatureAtPlayhead(kSignatures[i][0], kSignatures[i][1]);
+        return;
+    }
     if (menuItemID >= kMenuEditRepeatFirst && menuItemID <= kMenuEditRepeatLast) {
         static const int kNombres[] = {2, 3, 4, 8, 16};
         arrangement_.repeatSelection(kNombres[menuItemID - kMenuEditRepeatFirst]);
@@ -2337,6 +2395,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuTrackFreeze:   toggleFreezeSelectedTrack(); break;
         case kMenuTrackLock:     toggleLockSelectedTrack(); break;
         case kMenuTrackHide:     hideSelectedTrack(); break;
+        case kMenuTrackSoloExclusive: soloTrackExclusively(trackList_.selectedTrackIndex()); break;
         case kMenuTrackShowAll:  showAllTracks(); break;
         default: break;
     }
@@ -3049,6 +3108,17 @@ void MainComponent::exportAudioFile() {
     if (auto* box = fenetre->getComboBoxComponent("vitesse"))
         box->setSelectedId(1, juce::dontSendNotification);
 
+    // D21.5 : LE NIVEAU. Tel quel par défaut -- normaliser est un choix, jamais
+    // un accident -- ; la crête ou une sonie cible, mesurées sur le rendu.
+    juce::StringArray niveaux;
+    niveaux.add(u8"Tel quel (le niveau du mixage)");
+    niveaux.add(u8"Crete a -1 dBFS");
+    niveaux.add(u8"-14 LUFS (diffusion en flux)");
+    niveaux.add(u8"-23 LUFS (radiodiffusion)");
+    fenetre->addComboBox("niveau", niveaux, u8"Niveau");
+    if (auto* box = fenetre->getComboBoxComponent("niveau"))
+        box->setSelectedId(1, juce::dontSendNotification);
+
     fenetre->addButton(u8"Exporter...", 1, juce::KeyPress(juce::KeyPress::returnKey));
     fenetre->addButton(u8"Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
     fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
@@ -3058,6 +3128,7 @@ void MainComponent::exportAudioFile() {
         const int profondeur = fenetre->getComboBoxComponent("profondeur")->getSelectedId();
         const double queue = std::max(0.0, fenetre->getTextEditorContents("queue").getDoubleValue());
         const int vitesse = fenetre->getComboBoxComponent("vitesse")->getSelectedId();
+        const int niveau = fenetre->getComboBoxComponent("niveau")->getSelectedId();
         fenetre->exitModalState(resultat);
         fenetre->setVisible(false);
         if (resultat != 1) return;
@@ -3084,7 +3155,9 @@ void MainComponent::exportAudioFile() {
                 project_.ticksToSeconds(selFin) - options.startSeconds + queue;
         }
 
-        exportAudioWithOptions(options);
+        exportAudioWithOptions(options, niveau == 2 ? ExportLevel::PeakMinus1
+                                        : niveau == 3 ? ExportLevel::Lufs14
+                                        : niveau == 4 ? ExportLevel::Lufs23 : ExportLevel::AsIs);
     }), false);
 }
 
@@ -3184,7 +3257,8 @@ void MainComponent::exportStems() {
     }), false);
 }
 
-void MainComponent::exportAudioWithOptions(const vsm::interchange::RenderOptions& options) {
+void MainComponent::exportAudioWithOptions(const vsm::interchange::RenderOptions& options,
+                                           ExportLevel niveau) {
     // D20.5 : TROIS FORMATS, ET LE SÉLECTEUR LES DIT. WAV tel quel ; FLAC et
     // Ogg Vorbis par transcodage du même rendu. MP3 n'y est pas : l'encodeur
     // n'est pas dans JUCE, et la règle n° 2 du § 0 interdit une dépendance à
@@ -3193,12 +3267,12 @@ void MainComponent::exportAudioWithOptions(const vsm::interchange::RenderOptions
         u8"Exporter en audio (WAV, FLAC ou OGG)...", juce::File(), "*.wav;*.flac;*.ogg");
 
     chooser->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
-                          [this, chooser, options](const juce::FileChooser& fc) {
+                          [this, chooser, options, niveau](const juce::FileChooser& fc) {
         juce::File file = fc.getResult();
         if (file == juce::File()) return;
         if (file.getFileExtension().isEmpty()) file = file.withFileExtension("wav");
         juce::String message;
-        const bool fait = exportProjectToFile(file, options, message);
+        const bool fait = exportProjectToFile(file, options, message, niveau);
         juce::AlertWindow::showMessageBoxAsync(fait ? juce::AlertWindow::InfoIcon : juce::AlertWindow::WarningIcon,
                                                  fait ? u8"Export audio terminé" : u8"Erreur d'export audio",
                                                  message);
@@ -3206,22 +3280,22 @@ void MainComponent::exportAudioWithOptions(const vsm::interchange::RenderOptions
 }
 
 bool MainComponent::exportProjectToFile(const juce::File& file, const vsm::interchange::RenderOptions& options,
-                                        juce::String& message) {
+                                        juce::String& message, ExportLevel niveau) {
     // L'EXPORT PASSE PAR LE MÊME CODE QUE `vsm-render`, et c'est la seule
     // façon d'être sûr qu'il rende la même chose. La version précédente
     // montait son propre graphe : elle y posait les instruments, le projet,
     // l'automation et le master -- mais ni les inserts ni les départs. Le
     // fichier exporté n'avait donc ni la réverbération ni le delay qu'on
     // venait d'entendre, et rien ne le disait. Deux chemins de rendu, c'est
-    // deux vérités ; il n'y en a qu'un -- et FLAC ou OGG ne font que
-    // TRANSCODER ce rendu-là, jamais en rendre un autre.
+    // deux vérités ; il n'y en a qu'un -- FLAC, OGG et la normalisation ne
+    // font que RÉÉCRIRE ce rendu-là, jamais en rendre un autre.
     captureSessionIntoProject();
     const vsm::interchange::LoadedBundle bundle = bundleFromSession();
     const juce::String extension = file.getFileExtension().toLowerCase();
     const bool flac = extension == ".flac";
     const bool ogg = extension == ".ogg";
-    const juce::File wav = (flac || ogg)
-        ? file.getSiblingFile(file.getFileNameWithoutExtension() + ".vsm-rendu.wav") : file;
+    const bool reecrire = flac || ogg || niveau != ExportLevel::AsIs;
+    const juce::File wav = reecrire ? file.getSiblingFile(file.getFileNameWithoutExtension() + ".vsm-rendu.wav") : file;
 
     const auto rendered = vsm::interchange::renderBundleToWav(
         bundle, wav.getFullPathName().toStdString(), options);
@@ -3229,9 +3303,29 @@ bool MainComponent::exportProjectToFile(const juce::File& file, const vsm::inter
         message = juce::String(rendered.error);
         return false;
     }
-    if (flac || ogg) {
+
+    // D21.5 : LE GAIN, MESURÉ SUR LE RENDU ÉCRIT. La crête vient du rendu
+    // lui-même ; la sonie, du mesureur du moteur relisant le fichier.
+    double gain = 1.0;
+    juce::String niveauDit;
+    if (niveau == ExportLevel::PeakMinus1) {
+        const double crete = static_cast<double>(rendered.peakLevel);
+        if (crete > 1e-6) gain = std::pow(10.0, -1.0 / 20.0) / crete;
+        niveauDit = juce::String(u8"crête ramenée à -1 dBFS (") + juce::String(20.0 * std::log10(std::max(1e-9, gain)), 1) + " dB)";
+    } else if (niveau == ExportLevel::Lufs14 || niveau == ExportLevel::Lufs23) {
+        const double cible = niveau == ExportLevel::Lufs14 ? -14.0 : -23.0;
+        const double mesuree = measureLufsOf(wav);
+        if (mesuree > -100.0) {
+            gain = std::pow(10.0, (cible - mesuree) / 20.0);
+            niveauDit = juce::String(u8"sonie ") + juce::String(cible, 0) + juce::String(u8" LUFS (mesurée ")
+                        + juce::String(mesuree, 1) + ", " + juce::String(cible - mesuree, 1) + " dB)";
+        } else {
+            niveauDit = juce::String(u8"sonie non mesurable (silence) : niveau laissé tel quel");
+        }
+    }
+    if (reecrire) {
         juce::String erreur;
-        const bool fait = transcodeRenderedWav(wav, file, flac, options, erreur);
+        const bool fait = transcodeRenderedWav(wav, file, options, gain, erreur);
         wav.deleteFile();
         if (!fait) {
             message = erreur;
@@ -3250,7 +3344,8 @@ bool MainComponent::exportProjectToFile(const juce::File& file, const vsm::inter
     message = juce::String(u8"Rendu écrit :\n") + file.getFullPathName() + "\n\n"
               + juce::String(rendered.renderedSeconds, 1) + juce::String(u8" s, ")
               + juce::String(options.sampleRate / 1000.0, 1) + juce::String(u8" kHz, ") + profondeur
-              + juce::String(u8", crête ") + juce::String(rendered.peakLevel, 3) + ".";
+              + juce::String(u8", crête ") + juce::String(static_cast<double>(rendered.peakLevel) * gain, 3) + ".";
+    if (niveauDit.isNotEmpty()) message += "\n" + niveauDit;
     if (flac && flottant)
         message += juce::String(u8"\nFLAC ne porte pas de flottants : le rendu 32 bits a été écrit en 24 bits.");
     for (const auto& warning : rendered.warnings)
@@ -3258,11 +3353,32 @@ bool MainComponent::exportProjectToFile(const juce::File& file, const vsm::inter
     return true;
 }
 
-bool MainComponent::transcodeRenderedWav(const juce::File& wav, const juce::File& sortie, bool flac,
-                                         const vsm::interchange::RenderOptions& options, juce::String& erreur) {
+double MainComponent::measureLufsOf(const juce::File& wav) {
+    juce::WavAudioFormat formatWav;
+    std::unique_ptr<juce::AudioFormatReader> lecteur(formatWav.createReaderFor(new juce::FileInputStream(wav), true));
+    if (!lecteur || lecteur->numChannels == 0) return -200.0;
+    vsm::audio::dsp::LufsMeter mesureur;
+    mesureur.prepare(lecteur->sampleRate);
+    juce::AudioBuffer<float> bloc(static_cast<int>(lecteur->numChannels), 8192);
+    for (juce::int64 position = 0; position < lecteur->lengthInSamples; position += bloc.getNumSamples()) {
+        const int n = static_cast<int>(std::min<juce::int64>(bloc.getNumSamples(), lecteur->lengthInSamples - position));
+        lecteur->read(&bloc, 0, n, position, true, true);
+        const float* g = bloc.getReadPointer(0);
+        const float* d = lecteur->numChannels > 1 ? bloc.getReadPointer(1) : g;
+        for (int i = 0; i < n; ++i) mesureur.processStereo(g[i], d[i]);
+    }
+    return mesureur.integratedLufs();
+}
+
+bool MainComponent::transcodeRenderedWav(const juce::File& wav, const juce::File& sortie,
+                                         const vsm::interchange::RenderOptions& options, double gain,
+                                         juce::String& erreur) {
     // LE WAV RENDU EST RELU PAR JUCE, PUIS RÉÉCRIT PAR SON ENCODEUR. Le
     // décodage des imports vit déjà dans cette couche (WAV, AIFF, FLAC, Ogg,
     // MP3) ; l'encodage y vit aussi, et le moteur garde ses zéro dépendance.
+    const juce::String extension = sortie.getFileExtension().toLowerCase();
+    const bool flac = extension == ".flac";
+    const bool ogg = extension == ".ogg";
     juce::WavAudioFormat formatWav;
     std::unique_ptr<juce::AudioFormatReader> lecteur(
         formatWav.createReaderFor(new juce::FileInputStream(wav), true));
@@ -3270,21 +3386,25 @@ bool MainComponent::transcodeRenderedWav(const juce::File& wav, const juce::File
         erreur = juce::String(u8"Le rendu n'a pas pu être relu : ") + wav.getFullPathName();
         return false;
     }
-    sortie.deleteFile();
-    std::unique_ptr<juce::FileOutputStream> flux(sortie.createOutputStream());
+    // Vers un fichier PROVISOIRE quand la sortie est le rendu lui-même (un WAV
+    // normalisé) : on ne lit pas un fichier pendant qu'on l'écrase.
+    const bool surPlace = sortie == wav;
+    const juce::File cible = surPlace ? sortie.getSiblingFile(sortie.getFileNameWithoutExtension() + ".vsm-niveau.wav") : sortie;
+    cible.deleteFile();
+    std::unique_ptr<juce::FileOutputStream> flux(cible.createOutputStream());
     if (!flux || !flux->openedOk()) {
-        erreur = juce::String(u8"Impossible d'écrire ") + sortie.getFullPathName();
+        erreur = juce::String(u8"Impossible d'écrire ") + cible.getFullPathName();
         return false;
     }
     std::unique_ptr<juce::AudioFormatWriter> ecrivain;
+    const int bitsEntiers = options.format == vsm::audio::io::SampleFormat::Int16 ? 16 : 24;
     if (flac) {
         // FLAC : 16 ou 24 bits, jamais de flottants -- un rendu 32 bits
         // flottants s'écrit en 24, et le compte rendu le dit.
         juce::FlacAudioFormat formatFlac;
-        const int bits = options.format == vsm::audio::io::SampleFormat::Int16 ? 16 : 24;
         ecrivain.reset(formatFlac.createWriterFor(flux.get(), lecteur->sampleRate,
-                                                   lecteur->numChannels, bits, {}, 0));
-    } else {
+                                                   lecteur->numChannels, bitsEntiers, {}, 0));
+    } else if (ogg) {
         // Ogg Vorbis : la qualité la plus haute que l'encodeur propose. Une
         // compression avec perte n'a pas de « profondeur » ; 16 bits est ce
         // que l'API demande, pas ce que le fichier porte.
@@ -3293,29 +3413,51 @@ bool MainComponent::transcodeRenderedWav(const juce::File& wav, const juce::File
         ecrivain.reset(formatOgg.createWriterFor(flux.get(), lecteur->sampleRate,
                                                   lecteur->numChannels, 16, {},
                                                   std::max(0, qualites.size() - 1)));
+    } else {
+        const int bits = options.format == vsm::audio::io::SampleFormat::Float32 ? 32 : bitsEntiers;
+        ecrivain.reset(formatWav.createWriterFor(flux.get(), lecteur->sampleRate,
+                                                  lecteur->numChannels, bits, {}, 0));
     }
     if (!ecrivain) {
-        erreur = juce::String(u8"L'encodeur ") + (flac ? "FLAC" : "Ogg Vorbis")
-                 + juce::String(u8" n'a pas pu être créé pour ") + sortie.getFileName();
+        erreur = juce::String(u8"L'encodeur ") + (flac ? "FLAC" : ogg ? "Ogg Vorbis" : "WAV")
+                 + juce::String(u8" n'a pas pu être créé pour ") + cible.getFileName();
         return false;
     }
     flux.release();   // l'écrivain possède le flux et le ferme
-    const bool ecrit = ecrivain->writeFromAudioReader(*lecteur, 0, -1);
+    // BLOC PAR BLOC, LE GAIN APPLIQUÉ EN CHEMIN : `writeFromAudioReader` ne
+    // sait pas multiplier, et lire tout le fichier en mémoire pour un gain
+    // serait un détour de neuf minutes de stéréo.
+    juce::AudioBuffer<float> bloc(static_cast<int>(lecteur->numChannels), 8192);
+    bool ecrit = true;
+    for (juce::int64 position = 0; position < lecteur->lengthInSamples && ecrit; position += bloc.getNumSamples()) {
+        const int n = static_cast<int>(std::min<juce::int64>(bloc.getNumSamples(), lecteur->lengthInSamples - position));
+        lecteur->read(&bloc, 0, n, position, true, true);
+        if (gain != 1.0) bloc.applyGain(0, n, static_cast<float>(gain));
+        ecrit = ecrivain->writeFromAudioSampleBuffer(bloc, 0, n);
+    }
     ecrivain.reset();
+    lecteur.reset();
     if (!ecrit) {
-        erreur = juce::String(u8"L'encodage ") + (flac ? "FLAC" : "Ogg Vorbis") + juce::String(u8" a échoué.");
-        sortie.deleteFile();
+        erreur = juce::String(u8"L'encodage ") + (flac ? "FLAC" : ogg ? "Ogg Vorbis" : "WAV") + juce::String(u8" a échoué.");
+        cible.deleteFile();
         return false;
+    }
+    if (surPlace) {
+        wav.deleteFile();
+        if (!cible.moveFileTo(sortie)) {
+            erreur = juce::String(u8"Impossible de remplacer ") + sortie.getFullPathName();
+            return false;
+        }
     }
     return true;
 }
 
-bool MainComponent::exportForCapture(const juce::File& file) {
+bool MainComponent::exportForCapture(const juce::File& file, ExportLevel niveau) {
     vsm::interchange::RenderOptions options;
     options.sampleRate = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate() : 48000.0;
     options.format = vsm::audio::io::SampleFormat::Int24;
     juce::String message;
-    const bool fait = exportProjectToFile(file, options, message);
+    const bool fait = exportProjectToFile(file, options, message, niveau);
     std::fputs((juce::String(fait ? u8"VSM_EXPORT : " : u8"VSM_EXPORT : ÉCHEC — ") + message.replace("\n", " ; ") + "\n").toRawUTF8(), stderr);
     return fait;
 }
@@ -6598,6 +6740,60 @@ bool MainComponent::materializeImplicitClips() {
     return cree;
 }
 
+void MainComponent::setTimeSignatureAtPlayhead(int numerator, int denominator) {
+    // AU DÉBUT DE LA MESURE QUI CONTIENT LA TÊTE : une signature qui changerait
+    // au milieu d'une mesure ferait une mesure de longueur impossible.
+    auto& carte = project_.timeSignatureMap;
+    const vsm::midi::Tick ici = std::max<vsm::midi::Tick>(0, transport_.currentTick());
+    vsm::midi::Tick origine = 0;
+    for (const auto& c : carte.changes())
+        if (c.tick <= ici) origine = c.tick;
+    const vsm::midi::Tick parMesure = std::max<vsm::midi::Tick>(1, carte.ticksPerBar(ici, project_.ticksPerQuarterNote));
+    const vsm::midi::Tick debut = origine + ((ici - origine) / parMesure) * parMesure;
+    if (numerator <= 0) {
+        // RETIRER : seulement un changement posé au début de CETTE mesure.
+        if (debut == 0) {
+            juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon, u8"Signature",
+                                                     u8"La signature du départ ne se retire pas : un morceau en a toujours une. Changez-la.");
+            return;
+        }
+        beginProjectEdit(u8"Retirer un changement de signature");
+        if (!carte.removeChangeAt(debut)) {
+            juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon, u8"Signature",
+                                                     u8"Aucun changement de signature ne commence à cette mesure.");
+            return;
+        }
+    } else {
+        int pow2 = 2;
+        while ((1 << pow2) < denominator) ++pow2;
+        beginProjectEdit(juce::String(u8"Signature ") + juce::String(numerator) + "/" + juce::String(denominator));
+        carte.addChange(debut, static_cast<uint8_t>(numerator), static_cast<uint8_t>(pow2));
+    }
+    markProjectDirty();
+    derniereSignatureNum_ = 0;   // la barre de transport relira la signature sous la tête
+    arrangement_.repaint();
+    pianoRollPanel_.refresh();
+    pianoRoll_.repaint();
+    std::fputs((juce::String(u8"Signature : ") + juce::String(carte.numeratorAt(debut)) + "/"
+                + juce::String(static_cast<int>(carte.denominatorAt(debut))) + juce::String(u8" \u00e0 partir du tick ")
+                + juce::String(static_cast<int64_t>(debut)) + "\n").toRawUTF8(), stderr);
+}
+
+void MainComponent::soloTrackExclusively(size_t index) {
+    if (index >= project_.tracks.size()) return;
+    // SI ELLE ÉTAIT DÉJÀ SEULE EN SOLO, tout s'éteint : un second Ctrl+clic
+    // rend le mélange entier, comme dans Cubase et Live.
+    const size_t solos = static_cast<size_t>(std::count_if(
+        project_.tracks.begin(), project_.tracks.end(), [](const Track& t) { return t.solo; }));
+    const bool dejaSeule = project_.tracks[index].solo && solos == 1;
+    beginProjectEdit(u8"Solo exclusif");
+    for (size_t i = 0; i < project_.tracks.size(); ++i)
+        project_.tracks[i].solo = !dejaSeule && i == index;
+    mixer_.refreshMuteSolo();
+    trackList_.repaint();
+    if (mixer_.onMixChanged) mixer_.onMixChanged();
+}
+
 void MainComponent::hideSelectedTrack() {
     const size_t piste = trackList_.selectedTrackIndex();
     if (piste >= project_.tracks.size()) return;
@@ -6626,6 +6822,42 @@ void MainComponent::refreshTrackViews() {
     mixer_.repaint();
 }
 
+vsm::midi::Tick MainComponent::snapCutToZeroCrossing(size_t trackIndex, vsm::midi::Tick tick,
+                                                     double* deplacementMs) {
+    if (deplacementMs) *deplacementMs = 0.0;
+    if (trackIndex >= project_.tracks.size()) return tick;
+    const auto& piste = project_.tracks[trackIndex];
+    if (piste.kind != vsm::sequencer::Track::Kind::Audio || piste.audio.empty()) return tick;
+    // LA SOURCE QUE LE MOTEUR JOUE, déjà rééchantillonnée à la fréquence de la
+    // session : rien à relire, quelques échantillons à regarder.
+    const auto source = audioEngine_.processGraph().trackAudio(trackIndex);
+    if (!source || !source->samples) return tick;
+    const double sr = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate() : 48000.0;
+    vsm::midi::Tick finMateriau = 0;
+    if (piste.audio.sampleRate > 0.0) finMateriau = project_.secondsToTicks(piste.audio.durationSeconds());
+    for (const auto& c : piste.clips) {
+        const auto longueur = vsm::sequencer::clipPlayedLength(c, finMateriau);
+        if (!(c.startTick < tick && tick < c.startTick + longueur)) continue;
+        // Un clip étiré ou à l'envers : la correspondance tick → échantillon
+        // n'est plus une droite, la coupe reste où elle est.
+        if (vsm::sequencer::clipIsWarped(c) || c.reversed) return tick;
+        const double secondes = c.sourceStartSeconds + (project_.ticksToSeconds(tick) - project_.ticksToSeconds(c.startTick));
+        const auto trame = static_cast<int64_t>(std::llround(secondes * sr));
+        const auto magasin = source->samples;
+        const int64_t zero = vsm::audio::io::nearestZeroCrossing(
+            [&magasin](int64_t i, float& g, float& d) { return magasin->frameAt(i, g, d); },
+            trame, static_cast<int64_t>(std::llround(0.002 * sr)));
+        if (zero == trame) return tick;
+        const double nouvelles = c.sourceStartSeconds + static_cast<double>(zero) / sr;
+        const vsm::midi::Tick aimantee = project_.secondsToTicks(
+            project_.ticksToSeconds(c.startTick) + (nouvelles - c.sourceStartSeconds));
+        if (!(c.startTick < aimantee && aimantee < c.startTick + longueur)) return tick;
+        if (deplacementMs) *deplacementMs = 1000.0 * static_cast<double>(zero - trame) / sr;
+        return aimantee;
+    }
+    return tick;
+}
+
 void MainComponent::sliceSelectedClipsAtOnsets() {
     // D20.3 : LES CLIPS AUDIO CHOISIS, COUPÉS À CHAQUE ATTAQUE. Même lecture
     // du fichier que « Rogner au son », même passage par `splitClips` : une
@@ -6640,7 +6872,8 @@ void MainComponent::sliceSelectedClipsAtOnsets() {
     }
     const double sr = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate() : 48000.0;
     const auto versSecondes = [this](vsm::midi::Tick t) { return project_.ticksToSeconds(t); };
-    int coupes = 0, clipsAudio = 0, sansAttaque = 0;
+    int coupes = 0, clipsAudio = 0, sansAttaque = 0, aimantees = 0;
+    double plusGrandDeplacement = 0.0;
     juce::StringArray refus;
     bool debute = false;
     for (size_t t = 0; t < project_.tracks.size(); ++t) {
@@ -6715,6 +6948,10 @@ void MainComponent::sliceSelectedClipsAtOnsets() {
                     if (c.startTick < ici && ici < c.startTick + longueur) { couvrant = c.id; tick = ici; break; }
                 }
                 if (couvrant == 0) continue;
+                // D21.3 : chaque coupe s'aimante au passage par zéro.
+                double bouge = 0.0;
+                tick = snapCutToZeroCrossing(t, tick, &bouge);
+                if (bouge != 0.0) { ++aimantees; plusGrandDeplacement = std::max(plusGrandDeplacement, std::fabs(bouge)); }
                 coupes += static_cast<int>(vsm::sequencer::splitClips(piste, {couvrant}, tick, finMateriau,
                                                                       compteur, versSecondes));
             }
@@ -6731,6 +6968,9 @@ void MainComponent::sliceSelectedClipsAtOnsets() {
     if (sansAttaque > 0)
         message += "\n" + juce::String(sansAttaque) + juce::String(u8" clip(s) sans attaque trouvée, laissé(s) entier(s).");
     for (const auto& r : refus) message += "\n" + r;
+    if (aimantees > 0)
+        message += "\n" + juce::String(aimantees) + juce::String(u8" coupe(s) aimantée(s) au passage par zéro (au plus ")
+                   + juce::String(plusGrandDeplacement, 2) + " ms).";
     if (coupes > 0)
         message += juce::String(u8"\nLe fichier n'a pas été touché : ce sont des fenêtres, et chaque coupe s'annule.");
     // ET SUR STDERR AUSSI : une boîte de message n'entre pas dans un

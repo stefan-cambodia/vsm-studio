@@ -95,6 +95,13 @@ public:
     /// rééchantillonnage et la conversion des clips en échantillons ont eu lieu
     /// sur le thread de l'interface. `nullptr` efface le matériau de la piste.
     void setTrackAudio(size_t trackIndex, std::shared_ptr<const AudioTrackSource> source); // thread UI
+    /// D21.3 : le matériau audio d'une piste tel que le graphe le joue, pour
+    /// que l'interface lise quelques échantillons (le passage par zéro d'une
+    /// coupe) sans relire le fichier. Vide quand la piste n'en a pas.
+    std::shared_ptr<const AudioTrackSource> trackAudio(size_t trackIndex) const {
+        return trackIndex < audioSources_.size() ? audioSources_[trackIndex].load(std::memory_order_acquire)
+                                                  : std::shared_ptr<const AudioTrackSource>();
+    }
 
     /// Notes qui n'ont PAS été jouées faute de place dans le tableau de
     /// travail d'un sous-segment. Doit rester à zéro ; toute autre valeur est

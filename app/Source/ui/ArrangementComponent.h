@@ -199,6 +199,10 @@ public:
     std::function<void()> onClipSliceAtOnsetsRequested;
     /// D20.4 : transcrire le clip audio choisi en MIDI (l'application lance le transcripteur).
     std::function<void()> onClipTranscribeRequested;
+    /// D21.3 : où poser une coupe sur la piste `trackIndex` demandée à `tick` --
+    /// l'application aimante une coupe audio au passage par zéro le plus
+    /// proche ; la vue ne lit aucun échantillon. Absent : la coupe reste là.
+    std::function<vsm::midi::Tick(size_t trackIndex, vsm::midi::Tick tick)> cutSnapProvider;
 
     /// D17.2 : « L'AUTOMATION SUIT LES ÉVÉNEMENTS », la préférence de Cubase,
     /// active par défaut. Réglée par l'application, qui la retient ; la vue ne

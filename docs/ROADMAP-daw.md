@@ -5272,3 +5272,103 @@ déclarer une interface invérifiable, et cela vaut pour celle-ci.
 > recompilé de toute la phase : une campagne tournait.
 >
 > Tests : 261 core, 1 247 audio, 274 interchange, et 168 Python — tous verts.
+
+### Phase D21 — Le dixième audit : ce qui manque une fois D20 posée (05/09/2026, 11:35)
+
+**Pourquoi.** Même méthode, même ordre du § 3, et la règle de D19 : chaque
+manque cherché en LISANT la surface du module qui le porterait —
+`NoteEdit.h` (la sélection), `MixerComponent` (le solo), `ClipEdit.h` et le
+découpage de l'arrangement, `TimeSignatureMap.h` et les vues qui pourraient
+l'éditer, la boîte d'export — puis dans ce document.
+
+Le relevé a écarté, comme existant : la porte de bruit (`gate` est dans
+`EffectFactory`, avec quinze autres effets), le pitch shift par insert
+(D13.8), la sélection des notes douteuses, de même hauteur et d'une plage
+(`selectDoubtfulNotes`, `selectNotesWithSamePitch`, `selectNotesInTimeRange`),
+la carte des signatures dans le MODÈLE (`TimeSignatureMap::addChange`), les
+fondus enchaînés (D13.1), l'export d'une plage et des stems (D6), la
+normalisation d'un CLIP (D13.6).
+
+**Et il en a reporté un en le disant.** *Transposer un clip audio* (Live : le
+bouton Transpose d'un clip ; Cubase : la ligne d'information) demande un
+rendu différent dans le moteur — un rééchantillonnage suivi d'un étirement
+WSOLA pour garder la durée —, donc dans `vsm-render` aussi, que l'invariant
+n° 3 veut identique au temps réel et qu'on ne recompile pas pendant qu'une
+campagne tourne. Il attend la fin de la campagne R1.
+
+Cinq manques ont survécu.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D21.1 | **Choisir les notes par vélocité ou par durée.** Une transcription laisse des notes fantômes — faibles, ou d'un soixante-quatrième — et on les chasse une à une ; `NoteEdit` sait choisir par hauteur, par plage et par doute, pas par vélocité ni par durée. Cubase : Logical Editor ; Live : rien | `selectNotesBelowVelocity` et `selectNotesShorterThan` dans `core/`, pures ; le sous-menu Sélection du piano roll propose « plus faibles que 32 / que 16 » et « plus courtes que la grille / que sa moitié » — des seuils fixes plutôt qu'une boîte de dialogue, pour que le geste enchaîne avec Supprimer ; tests `core/` : les bornes sont strictes et la sélection rendue ne contient que les notes visées |
+| D21.2 | **Le solo exclusif.** Le bouton Solo d'une tranche s'ajoute aux autres ; écouter UNE piste sur douze demande d'éteindre onze solos. Cubase et Live : Ctrl+clic | Ctrl+clic sur Solo (et « Piste ▸ Solo exclusif ») met la piste seule en solo et éteint les autres ; un second Ctrl+clic rend tout ; le mélangeur et la liste suivent ; vérifié à l'écran |
+| D21.3 | **Couper au passage par zéro.** Une coupe audio tombe où la tête ou le transitoire la pose, et une coupe sur un ventre de forme d'onde fait un clic ; D20.3 en pose sept d'un coup. Cubase : Snap to Zero Crossing ; Live : coupe et fondu automatiques | chaque coupe d'un clip audio — Ctrl+E, le découpage aux transitoires — se déplace au passage par zéro le plus proche dans ±2 ms, lu dans la source audio DÉJÀ chargée par le moteur ; `io::nearestZeroCrossing` dans `audio/`, testé ; l'aimant se dit dans le compte rendu ; une coupe sur une piste MIDI ne bouge pas |
+| D21.4 | **Changer de mesure dans l'interface.** `Project::timeSignatureMap` porte une carte depuis longtemps (D19 l'a rappelé), la règle et l'arrangement la lisent, un MIDI importé la remplit, `project.json` l'écrit et la relit déjà (`transport.timeSignatures`, vérifié en lisant `ProjectDocument.cpp` avant d'écrire cette ligne) — et aucune vue ne l'ÉDITE, et la barre de transport dit la signature du tick ZÉRO, pas celle sous la tête : un morceau qui passe en 3/4 à la mesure 17 ne se compose pas ici. Cubase : piste de signature | « Édition ▸ Signature à la tête de lecture » propose 2/4, 3/4, 4/4, 5/4, 6/8, 7/8 et « Retirer le changement à la tête » ; `TimeSignatureMap::removeChangeAt` dans `core/`, testé ; la règle dessine les nouvelles mesures et la barre de transport dit la signature sous la tête ; vérifié à l'écran |
+| D21.5 | **Normaliser à l'export.** Le rendu sort au niveau du mixage, et un mixage qui crête à −9 dB s'envoie tel quel ; Live propose de normaliser, et les plateformes demandent une sonie. Le moteur mesure déjà la sonie (`LufsMeter`, D4) | un choix de niveau dans la boîte d'export : tel quel, crête à −1 dBFS, −14 LUFS, −23 LUFS ; la mesure se fait sur le rendu écrit, le gain s'applique en réécrivant par JUCE — WAV, FLAC ou OGG — et le compte rendu dit le gain en dB et la sonie obtenue ; `VSM_EXPORT_NIVEAU` pour le vérifier sans fenêtre, en relisant la crête du fichier |
+
+> **D21.1 EST FAITE (05/09/2026, 11:55).** `selectNotesBelowVelocity` et
+> `selectNotesShorterThan`, pures, bornes strictes (« plus faibles que 32 » ne
+> prend pas 32), testées. Le sous-menu Sélection du piano roll propose cinq
+> entrées à seuils FIXES — plus faibles que 64, 32, 16 ; plus courtes que la
+> grille, que sa moitié —, et chaque entrée ANNONCE combien de notes elle
+> prendrait, pour que « rien à choisir » se lise avant de cliquer. La ligne
+> d'état dit le compte après. Vérifié à l'écran par `VSM_MENU` sur la basse
+> du morceau minuscule et sur celle du projet d'exemple : « 0 note(s) plus
+> faible(s) que 64 », « 0 note(s) plus courte(s) que 120 ticks » — ces deux
+> basses n'ont ni note faible ni note brève, et c'est la bonne réponse ; la
+> sélection elle-même est tenue par le test `core/`.
+>
+> **D21.2 EST FAITE (05/09/2026, 11:55).** Ctrl+clic (ou Cmd) sur le Solo
+> d'une tranche laisse le bouton à l'application, qui met la piste seule en
+> solo, éteint les autres, et resynchronise toutes les tranches
+> (`refreshMuteSolo`) ; si elle était déjà seule, tout s'éteint — un second
+> Ctrl+clic rend le mélange entier. « Piste ▸ Solo exclusif de la piste
+> choisie » fait de même au clavier, et son libellé dit lequel des deux gestes
+> il fera. Vérifié à l'écran : Drums en solo, Acid Bass non.
+>
+> **D21.3 EST FAITE (05/09/2026, 11:55).** `io::nearestZeroCrossing` cherche,
+> en s'éloignant de l'instant demandé des deux côtés à la fois, le premier
+> changement de signe (ou zéro) dans ±2 ms, et rend celui des deux
+> échantillons dont la valeur est la plus petite ; sans passage — du continu,
+> un grave sous 250 Hz — l'instant reste. Testé sur une sinusoïde, du continu
+> et le bord du matériau. L'application lit les échantillons dans la source
+> que le MOTEUR joue (`ProcessGraph::trackAudio`, déjà rééchantillonnée à la
+> session) : rien à relire. Ctrl+E s'aimante piste par piste ; le découpage
+> aux transitoires aussi, et son compte rendu le dit : « 5 coupe(s)
+> aimantée(s) au passage par zéro (au plus 1,11 ms) » sur les dix coupes des
+> deux stems d'essai. Un clip étiré ou à l'envers n'est pas aimanté : la
+> correspondance tick → échantillon n'y est plus une droite.
+>
+> **D21.4 EST FAITE (05/09/2026, 11:55).** « Édition ▸ Signature à la tête de
+> lecture » : 2/4, 3/4, 4/4, 5/4, 6/8, 7/8, posés au DÉBUT de la mesure qui
+> contient la tête — une signature qui changerait au milieu d'une mesure
+> ferait une mesure de longueur impossible —, et « Retirer le changement de
+> cette mesure », qui dit s'il y a quelque chose à retirer.
+> `TimeSignatureMap::removeChangeAt` ne retire jamais celui du tick zéro : un
+> morceau a toujours une signature, on la change. La barre de transport dit
+> désormais la signature SOUS LA TÊTE, mise à jour seulement quand elle
+> change. `project.json` l'écrivait et la relisait déjà (vérifié avant
+> d'écrire l'étape, et dit dans son intitulé). Vérifié à l'écran : « 3/4 »
+> dans la barre, et onze mesures dans la règle là où il y en avait neuf.
+>
+> **D21.5 EST FAITE (05/09/2026, 11:55), ET LA PHASE D21 EST CLOSE.** Un
+> choix de niveau dans la boîte d'export — tel quel (le défaut : normaliser
+> est un choix, jamais un accident), crête à −1 dBFS, −14 LUFS, −23 LUFS.
+> La crête vient du rendu lui-même, la sonie du mesureur du moteur
+> (`dsp::LufsMeter`) relisant le fichier ; le gain s'applique bloc par bloc
+> en réécrivant par JUCE — WAV, FLAC ou OGG —, jamais en rendant autrement.
+> Le compte rendu dit le gain et la sonie mesurée. Vérifié en relisant les
+> fichiers du projet d'exemple par `VSM_EXPORT_NIVEAU` : crête à −1,00 dBFS
+> exactement (+4,0 dB), et « −14 LUFS (mesurée −18,2, +4,2 dB) » avec une
+> crête à −0,8 dBFS.
+>
+> **Ce que l'audit laisse écrit.** Cinq manques trouvés en lisant les
+> surfaces, cinq faits, un reporté en le disant (transposer un clip audio,
+> après la campagne) ; le détecteur d'attaques a rendu son biquad au moteur
+> (`dsp::Biquad`) plutôt que d'en garder une copie ; et une leçon d'outil :
+> un `grep` en zsh mange ses propres options quand elles ressemblent à des
+> motifs (`--include=*.cpp`), et une compilation à `-j 6` pendant qu'une
+> séparation demucs tourne a été tuée par le manque de mémoire — deux
+> travaux seulement, désormais, tant qu'une campagne court.
+>
+> Tests : 263 core, 1 249 audio, 274 interchange, 168 Python — tous verts.

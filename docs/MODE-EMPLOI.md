@@ -67,6 +67,18 @@ piste MIDI neuve juste après, avec un clip sur la même plage et les notes
 douteuses marquées — la piste arrive **sans instrument**, à vous d'en choisir
 un dans le rack. Sans Python, l'entrée est grisée avec sa raison.
 
+**Couper au passage par zéro.** Toute coupe d'un clip audio — Ctrl+E, le
+découpage aux transitoires — se déplace au passage par zéro le plus proche
+(dans deux millisecondes) : une coupe sur un ventre de forme d'onde fait un
+clic, une coupe sur un zéro n'en fait pas. Le compte rendu du découpage dit
+combien de coupes ont bougé, et de combien au plus.
+
+**Changer de mesure.** *Édition ▸ Signature à la tête de lecture* pose 2/4,
+3/4, 4/4, 5/4, 6/8 ou 7/8 au début de la mesure qui contient la tête, et
+*Retirer le changement de cette mesure* le défait ; la règle redessine les
+mesures, la barre de transport dit la signature sous la tête, le projet
+l'enregistre.
+
 ![La vue d'arrangement : quatre pistes nommées, des clips, une automation dessinée, seize pistes visibles à l'écran.](images/manuel/arrangement.png)
 
 *La vue d'arrangement : quatre pistes nommées, des clips, une automation dessinée, seize pistes visibles à l'écran.*
@@ -659,6 +671,12 @@ piste : une batterie tient sur ses cinq pièces au lieu de cent vingt-huit
 touches, chaque rangée nommée. Rien ne change dans le morceau ni dans le
 fichier ; une piste sans note ne se replie pas, et la ligne d'état le dit.
 
+**Chasser les notes fantômes.** Une transcription laisse des notes faibles ou
+d'un soixante-quatrième ; le sous-menu *Sélection* du piano roll les prend
+d'un coup — *plus faibles que 64 / 32 / 16*, *plus courtes que la grille /
+que sa moitié* —, chaque entrée annonçant combien de notes elle choisirait,
+et Supprimer fait le reste.
+
 ![Le piano roll d'une piste de batterie : le clavier nomme les pièces, la vue est cadrée sur le charleston.](images/manuel/piano-roll-batterie.png)
 
 **Les contrôleurs MIDI (CC) s'éditent dans l'onglet *MIDI CC* du bas.** Le **pitch bend** et l'**aftertouch de canal** y sont deux lanes comme les autres, en tête de la liste (le bend se lit autour de son centre ; un bend enregistré garde sa finesse tant qu'on ne touche pas la lane). Une
@@ -805,6 +823,14 @@ le même dans les trois cas — celui de `vsm-render`, inserts et départs
 compris — ; FLAC le garde sans perte à 16 ou 24 bits, Ogg Vorbis le
 compresse à la qualité la plus haute, et le compte rendu le dit. Pas de MP3 :
 l'encodeur n'est pas dans JUCE, et le projet ne télécharge rien.
+Un choix de **niveau** s'y ajoute : tel quel, crête à −1 dBFS, −14 LUFS
+(diffusion en flux) ou −23 LUFS (radiodiffusion) — la sonie est mesurée sur
+le rendu écrit, le gain appliqué en réécrivant, et le compte rendu dit les
+deux.
+
+**Le solo exclusif.** Ctrl+clic sur le *S* d'une tranche met cette piste
+seule en solo et éteint les autres ; un second Ctrl+clic rend tout. *Piste ▸
+Solo exclusif de la piste choisie* fait de même au clavier.
 
 **Les presets d'effet** : le bouton *Preset* d'une rangée enregistre le réglage courant sous un nom (`nom.effect.json`, dans le dossier `effets` de la bibliothèque — ou du projet si aucune bibliothèque n'est réglée) ou charge l'un des presets du même type trouvés dans la bibliothèque et le projet. Le navigateur les liste sous la sorte « Effet » ; déposer l'un d'eux sur une piste y ajoute l'insert, réglé comme le fichier le dit.
 
@@ -973,7 +999,7 @@ l'entrée est grisée : c'est ainsi que se photographient les gestes qui ne
 vivent que dans un menu. `VSM_DELAI=ms` retarde l'autoportrait (une
 transcription met dix secondes), et `VSM_EXPORT=fichier.flac` exporte le
 projet ouvert sans fenêtre, en WAV, FLAC ou OGG selon l'extension, pour que
-le fichier se relise.
+le fichier se relise. `VSM_EXPORT_NIVEAU=crete|lufs14|lufs23` y ajoute le niveau.
 `historique` et `spectre` ouvrent les fenêtres flottantes du même nom ; la
 photographie de `VSM_CAPTURE` ne couvre que la fenêtre principale, une fenêtre
 flottante se photographie avec `spectacle -b -n -f -o fichier.png` pendant que
