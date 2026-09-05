@@ -4865,7 +4865,7 @@ Ceux de la fusion, plus cinq propres à cet axe :
 > personne ne joue mille fois plus vite que le temps réel. On mesure donc dans
 > la fenêtre déjà lue, qui est le régime permanent de la lecture.
 
-### Phase D19 — Le huitième audit : ce qui manque une fois D18 posée (05/09/2026, 10:10)
+### Phase D19 — Le huitième audit : ce qui manque une fois D18 posée (05/09/2026, 08:12 — les heures de cette phase sont celles des commits ; celles écrites d'abord, de 10:10 à 12:05, venaient d'une horloge estimée et non lue)
 
 **Pourquoi.** Même méthode que D11 à D18, et le même ordre du § 3 : le geste de
 tous les jours d'abord, l'outil de travail ensuite, le modèle en dernier.
@@ -4927,7 +4927,7 @@ Quatre manques ont survécu à la vérification.
 | D19.3 | **Éclater une piste par hauteur.** Une piste de batterie reconstruite porte la grosse caisse, la caisse claire et le charley sur une seule ligne de temps. La chaîne d'analyse les a SÉPARÉS ; le DAW ne sait pas refaire ce geste à la main, ni le défaire. C'est le pendant manuel de l'objectif de parité, et le compagnon de D18.7b — qui a donné une piste à chaque SORTIE, quand celle-ci en donne une à chaque HAUTEUR. Cubase : Dissolve Part | « Piste ▸ Éclater par hauteur » : une piste neuve par hauteur présente, nommée par la pièce (`drumVoiceName`) quand la machine la nomme, insérées après l'originale, l'instrument recopié ; annulable ; les index de routage suivent comme en D18.7b ; test `core/` : éclater trois hauteurs rend trois pistes dont la réunion des notes est exactement le matériau d'origine |
 | D19.4 | **Les pistes dossier.** `Track::folded` replie UNE piste ; rien ne replie un GROUPE de pistes. Un groupe de mixage (D4.2) est un bus, pas un rangement : router huit micros de batterie dans un bus ne les fait pas disparaître de la vue quand on travaille sur les cordes. Cubase : Folder Tracks | une piste de type dossier qui CONTIENT des pistes, se replie et les masque toutes, et dont le repli est écrit dans `project.json` ; elle ne touche à aucun signal — un dossier n'est pas un bus, et un projet qui n'en a pas garde son fichier octet pour octet ; test `interchange/` : aller-retour, et absence totale du fichier quand il n'y a aucun dossier |
 
-> **D19.4 EST FAITE (05/09/2026, 12:05), ET LA PHASE D19 EST CLOSE.**
+> **D19.4 EST FAITE (05/09/2026, 08:40), ET LA PHASE D19 EST CLOSE.**
 > `Track::Kind::Folder` et `Track::folderDepth`, tous deux absents du fichier
 > quand ils valent le défaut — un projet sans dossier garde son fichier octet
 > pour octet, et un test l'exige.
@@ -4980,7 +4980,7 @@ Quatre manques ont survécu à la vérification.
 > verts.
 
 
-> **D19.2 EST FAITE (05/09/2026, 11:20).** Un champ « Filtrer les pistes... »
+> **D19.2 EST FAITE (05/09/2026, 08:29).** Un champ « Filtrer les pistes... »
 > sur sa propre ligne sous la barre d'outils — pas serré entre deux boutons :
 > entre « ça tient dans la case » et « ça se lit », c'est la lisibilité qui
 > prime. La comparaison ignore la casse : on tape « caisse » pour trouver
@@ -5013,7 +5013,7 @@ Quatre manques ont survécu à la vérification.
 > bouge pas.
 
 
-> **D19.1 EST FAITE (05/09/2026, 10:40), réduite à ce qui manquait vraiment.**
+> **D19.1 EST FAITE (05/09/2026, 08:22), réduite à ce qui manquait vraiment.**
 > `compressVelocity(notes, sélection, amount)` resserre vers la moyenne de la
 > SÉLECTION — pas de tout le morceau, sans quoi deux compressions successives
 > ne donneraient pas ce que la sélection réunie donne — et `limitVelocity`
@@ -5034,7 +5034,7 @@ Quatre manques ont survécu à la vérification.
 > roll, sous les quatre qui existaient déjà, et libellées par ce qu'elles font
 > (« Resserrer les nuances de moitié ») plutôt que par leur nom technique.
 
-> **D19.3 EST FAITE (05/09/2026, 10:55).** « Piste ▸ Éclater par hauteur » pose
+> **D19.3 EST FAITE (05/09/2026, 08:22).** « Piste ▸ Éclater par hauteur » pose
 > une piste par hauteur présente, nommée par la pièce quand la machine sait la
 > nommer.
 >
@@ -5119,7 +5119,7 @@ jusqu'à la fin de la boucle »), et « Tout sélectionner » entre dans le menu
 Édition pour que la sélection se fasse sans souris aussi. Le dépôt refuse de
 déclarer une interface invérifiable, et cela vaut pour celle-ci.
 
-> **D20.1 EST FAITE (05/09/2026, 10:50).** `repeatClips(piste, sélection,
+> **D20.1 EST FAITE (05/09/2026, 10:36).** `repeatClips(piste, sélection,
 > nombre, bloc)` pose les copies à la suite -- la répétition k décalée de
 > k × bloc, le bloc étant celui que « dupliquer » emploie déjà (la longueur de
 > la sélection arrondie à la mesure ou à la grille), calculé au même endroit
@@ -5148,7 +5148,7 @@ déclarer une interface invérifiable, et cela vaut pour celle-ci.
 >
 > Tests : 261 core (+3), tous verts.
 
-> **D20.2 EST FAITE (05/09/2026, 11:05).** Tout passe par des RANGÉES :
+> **D20.2 EST FAITE (05/09/2026, 10:41).** Tout passe par des RANGÉES :
 > dépliée, la rangée d'une hauteur est « 127 moins la hauteur » et rien n'a
 > changé au pixel ; repliée, c'est le nombre de hauteurs jouées plus aiguës
 > qu'elle. `noteToY`, `yToNote`, le clavier, la grille et la barre de
@@ -5173,7 +5173,7 @@ déclarer une interface invérifiable, et cela vaut pour celle-ci.
 > de l'ancien binaire. Le code de sortie d'un tube est celui de son dernier
 > maillon ; on lit désormais `PIPESTATUS`.
 
-> **D20.3 EST FAITE (05/09/2026, 11:50), ET LE DÉTECTEUR A ÉTÉ RÉÉCRIT DEUX
+> **D20.3 EST FAITE (05/09/2026, 11:01), ET LE DÉTECTEUR A ÉTÉ RÉÉCRIT DEUX
 > FOIS PAR LA MESURE.** La première version -- un flux d'énergie TOTALE,
 > trames de 5 ms -- passait ses tests sur des impulsions dans du bruit et ne
 > trouvait RIEN sur le stem de TR-909 du morceau minuscule : une grosse
@@ -5220,7 +5220,7 @@ déclarer une interface invérifiable, et cela vaut pour celle-ci.
 > grosse caisse à hauteur descendante et charleston --, qui est le cas réel
 > et non les impulsions), tous verts.
 
-> **D20.4 EST FAITE (05/09/2026, 12:20).** `analyse/transcrire_clip.py` --
+> **D20.4 EST FAITE (05/09/2026, 11:06).** `analyse/transcrire_clip.py` --
 > nouveau, il n'importe rien que la chaîne en cours n'ait déjà en mémoire, et
 > il RÉEMPLOIE `extraire_notes` de `reconstruire.py` plutôt que de recopier
 > ses vélocités tirées de l'énergie du son -- écrit les notes d'une plage d'un
@@ -5247,7 +5247,7 @@ déclarer une interface invérifiable, et cela vaut pour celle-ci.
 > commandes de plus pour y arriver sans souris : `premier-clip:N` dans
 > VSM_VUE, et `VSM_DELAI=ms` pour que l'autoportrait attende la transcription.
 
-> **D20.5 EST FAITE (05/09/2026, 12:40), ET LA PHASE D20 EST CLOSE.** Le rendu
+> **D20.5 EST FAITE (05/09/2026, 11:12), ET LA PHASE D20 EST CLOSE.** Le rendu
 > reste celui de `vsm-render` (`renderBundleToWav`) ; FLAC et Ogg Vorbis ne
 > font que TRANSCODER ce rendu-là par les encodeurs de JUCE, jamais en rendre
 > un autre -- deux chemins de rendu seraient deux vérités. FLAC à la
