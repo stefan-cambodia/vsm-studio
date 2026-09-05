@@ -31,8 +31,8 @@ Distortion **3,5x** -- le tout à empreintes audio inchangées (écart maximal
 0,001 %), ce que les tests de non-régression prouvent à chaque build. Le
 **piano roll est désormais complet** (section 9 quinquies) : outils, historique
 annuler/rétablir, ~30 opérations d'édition musicale, gammes, arpèges, accords,
-écoute au clic, et toute la logique testée hors JUCE. Total : **1 791 tests moteur** (237 core + 1 227 audio
-+ 272 interchange + 25 CLAP + 19 VST3 + 11 façades,
+écoute au clic, et toute la logique testée hors JUCE. Total : **1 830 tests moteur** (258 core + 1 243 audio
++ 274 interchange + 25 CLAP + 19 VST3 + 11 façades,
 tous verts, zéro warning sous les flags du build, `-Wall -Wextra -Wpedantic`.
 L'ancienne mention « y compris -Wfloat-equal -Wsign-conversion -Wshadow »
 est retirée : ces flags ne sont PAS dans le build, et les comparaisons à
@@ -139,7 +139,7 @@ vsm-studio/
 │
 ├── core/                       "vsm_core" — moteur MIDI/séquenceur (158 tests)
 │
-├── audio/                      "vsm_audio" — moteur audio temps réel (1 227 tests)
+├── audio/                      "vsm_audio" — moteur audio temps réel (1 243 tests)
 │   ├── include/vsm/audio/dsp/
 │   │   ├── LadderFilterZDF.h     GÉNÉRALISÉ à N pôles (2-4) -- voir section 7
 │   │   └── ...                   Oscillator, Envelope, Filter(SVF), AnalogDrift, ParameterSmoother
@@ -599,12 +599,12 @@ chorus produit bien une image stéréo).
 
 ## 9. Tests et qualité audio
 
-### Bilan actuel : 1 791 tests moteur + 73 tests d'analyse, tous verts (05/09/2026)
+### Bilan actuel : 1 830 tests moteur + 150 tests d'analyse, tous verts (05/09/2026)
 
-- **237 tests `vsm_core`** (dont l'édition du piano roll : opérations de
+- **258 tests `vsm_core`** (dont l'édition du piano roll : opérations de
   notes, gammes, accords, arpèges, historique annuler/rétablir, parcours des
   notes douteuses de la transcription),
-  **1 227 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
+  **1 243 tests `vsm_audio`** (dont le SIMD : équivalence avec le filtre
   scalaire, indépendance des lignes, bornes de l'approximation de tanh ; et la
   boucle : rebouclage échantillon-exact, notes relâchées au saut) : chorus BBD, Juno-106,
   bus master (biquad/compresseur/limiteur à plafond garanti/LUFS), oversampler,
@@ -4352,7 +4352,7 @@ repères, tempo, mesures, boucle et punch ensemble ; ce qui est à cheval est
 coupé — parce qu'un morceau est une ligne de temps, et que retirer une
 mesure piste par piste sans en oublier une n'était pas possible.
 
-## 49. Ce que D14 à D18 ont ajouté, et les cinq règles qu'elles ont établies
+## 49. Ce que D14 à D19 ont ajouté, et les huit règles qu'elles ont établies
 
 Cette section ne raconte pas les étapes — les feuilles de route le font, avec
 leurs chiffres. Elle dit où vivent les briques neuves, et surtout les
@@ -4438,6 +4438,53 @@ qu'elle a été trouvée. La même méthode a trouvé, la même nuit, un « W »
 en « ... » à l'échelle 150 %, une section manquante à l'aplatissement, et un
 `"locked"` écrit à l'intérieur du bloc réservé aux pistes GELÉES — donc perdu
 sur toute piste non gelée, c'est-à-dire presque toutes.
+
+### Règle 6 — un INDEX de piste se répare dans les trois gestes, ou il pourrit
+
+`Track::outputGroup` était le seul index d'une piste vers une autre.
+D18.7b en a ajouté un second, `outputSourceTrack`, et il a fallu le faire
+suivre dans `moveTrack`, `duplicateTrack` ET `removeTrack` — trois endroits,
+dont le troisième doit décider ce que devient une référence vers la piste
+qu'on supprime (ici : la publication cesse, plutôt que de pointer dans le
+vide). Un index oublié dans l'un des trois ne se voit pas tout de suite : il
+se voit le jour où une piste porte le son d'une autre.
+
+C'est pourquoi D19.4 n'a PAS pris d'index de parent pour les dossiers. La
+profondeur (`Track::folderDepth`) et la contiguïté ne référencent personne :
+il n'y a rien à réparer, et déplacer une piste ne peut au pire que la faire
+changer de tiroir. **Avant d'ajouter une référence d'une piste vers une autre,
+demander si une propriété LOCALE ferait le même travail.**
+
+### Règle 7 — un facteur neutre s'écrit pour être EXACT, pas pour être proche
+
+D18.5 multiplie cinq conversions « échantillons → secondes de morceau » par un
+facteur de vitesse. Elles s'écrivent `x * vitesse / sampleRate_` et jamais
+`x * (vitesse / sampleRate_)` : la multiplication par 1,0 est exacte en
+IEEE 754, donc à vitesse normale l'expression se réduit LITTÉRALEMENT à celle
+d'avant, arrondi pour arrondi. La forme parenthésée aurait divisé puis
+multiplié, changé l'arrondi et déplacé des échantillons sans rien annoncer.
+
+Même raison pour `compressVelocity` (D19.1), qui SORT avant de toucher à quoi
+que ce soit quand le taux vaut 1, au lieu de recalculer puis réécrire à
+l'identique. Faire reposer l'exactitude d'un cas neutre sur un arrondi qui
+tombe juste est la façon dont on découvre, six mois plus tard, qu'une note sur
+mille a bougé d'un cran.
+
+### Règle 8 — on ne cherche pas un manque par `grep`, on LIT la surface du module
+
+Le huitième audit (D19) a écrit trois manques qui n'en étaient pas. « Les
+changements de signature » — `Project::timeSignatureMap` existait. « Nommer les
+pièces d'une batterie » — `drumVoiceName()` existait et servait déjà au piano
+roll. « Transformer les vélocités » — `NoteEdit` exposait `setVelocity`,
+`scaleVelocity`, `rampVelocity` et `randomizeVelocity`, toutes câblées.
+
+Les trois recherches portaient sur des noms INVENTÉS par le chercheur
+(`velocityScale`, `drumMap`, `scaleVelocities`), au pluriel ou dans une autre
+casse que le dépôt. Un `grep` négatif sur trois motifs devinés ne prouve rien :
+il prouve que l'auteur d'avant n'a pas eu les mêmes idées de nommage. **Vingt
+lignes d'en-tête du module qui porterait la fonction répondent tout de suite.**
+La règle vaut pour tout audit à venir, et elle a fait passer D19 de quatre
+étapes supposées à trois vraies plus une réduite.
 
 ## 29. Façades « façon hardware », machine par machine (sections 6 et 21)
 
