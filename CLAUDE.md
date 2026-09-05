@@ -59,6 +59,19 @@ l'ordre de marche — pas de la documentation d'accompagnement.
 - Les nombres qui traversent une frontière (fichier, CLI, tube) se lisent et
   s'écrivent en locale C (interchange/NumberText.h) — la locale du processus
   est celle de JUCE, pas la tienne.
+- JAMAIS de build à plus de deux travaux (`-j 2`) pendant qu'une campagne
+  tourne : une compilation JUCE à `-j 6` pendant une séparation demucs a été
+  tuée par le manque de mémoire (05/09, 15 Go) — et c'est le build qui a
+  été tué, pas la course, par chance. Tuer la course coûterait des heures.
+- Le code de sortie d'un tube est celui de son DERNIER maillon : `cmake
+  --build … | grep …` rend 0 même quand la compilation échoue, et l'on
+  vérifie alors un ancien binaire en croyant vérifier le nouveau (payé deux
+  fois le 05/09). Lire `${PIPESTATUS[0]}`, ou ne pas filtrer.
+- En C++20, `u8"…"` est un `char8_t[]` : `juce::String + u8"…"` et `u8"…" +
+  juce::String` sont AMBIGUS et ne compilent pas. Envelopper :
+  `juce::String(u8"…")`. Payé quatre fois dans la même journée.
+- En zsh, `grep --include=*.cpp` est un glob que le shell mange (« no
+  matches found ») : quoter `--include='*.cpp'`, ou passer par `find`.
 - JAMAIS d'édition de analyse/analyzer/*.py pendant qu'une course tourne : la
   chaîne importait des modules À LA DEMANDE, cinq heures après le départ, dans
   l'état du disque à cet instant (parite-v2, 5 h 24 perdues au réglage final).
