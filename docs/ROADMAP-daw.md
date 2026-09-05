@@ -4205,6 +4205,82 @@ les jours ensuite, le modèle en dernier.
 > vitesse normale, puisque c'est lui que tous les rendus existants ont
 > emprunté. C'est une étape de moteur, pas une étape de transport.
 
+> **D18.5 EST FAITE À LA TROISIÈME TENTATIVE (05/09/2026, 09:40), et le plan
+> que le second examen avait écrit était le bon.** Les deux moitiés ont été
+> faites telles qu'annoncées : les conversions de temps, puis le
+> rééchantillonnage.
+>
+> | | x1 | x0,5 | x2 |
+> |---|---|---|---|
+> | impulsion posée à 1 s | **1,0000 s** | **2,0000 s** | **0,5000 s** |
+> | hauteur d'un instrument CALCULÉ | 440,4 Hz | **440,4 Hz** | — |
+> | hauteur d'un FICHIER à 440 Hz | 440,4 Hz | **220,2 Hz** | 872,7 Hz |
+> | fin d'un clip de 2 s | 2,000 s | **4,000 s** | — |
+> | rendu à vitesse 1 contre le rendu d'avant | **écart 0,0 — au bit près** | | |
+>
+> **CE QUI REND L'ADDITION SANS RISQUE, et c'est une question d'écriture.**
+> Chaque conversion est écrite `x * vitesse / sampleRate_` et jamais
+> `x * (vitesse / sampleRate_)` : la multiplication par 1,0 est EXACTE en
+> IEEE 754, donc à vitesse normale l'expression se réduit littéralement à
+> celle d'avant, arrondi pour arrondi. La forme parenthésée aurait divisé puis
+> multiplié, changé l'arrondi, et déplacé des échantillons sans rien annoncer.
+> Un test l'exige (`speed_one_renders_bit_for_bit_what_it_rendered_before`), et
+> les 1 243 tests audio le confirment par ailleurs — dont
+> `process_graph_loop_renders_the_same_audio_every_turn`, celui-là même que la
+> note d'échec désignait comme le gardien fragile.
+>
+> Les cinq endroits touchés : l'avance de bloc, la frontière de boucle, le
+> sous-segment d'automation (**la moitié qui manquait à la première
+> tentative**), la fin de segment de `renderTrackVoice`, et le placement des
+> événements — ce dernier en divisant l'écart d'échantillons de MORCEAU par la
+> vitesse, l'entier traversant le `double` sans bouger tant qu'elle vaut un.
+>
+> **LA SECONDE MOITIÉ, celle du fichier lu.** `AudioTrackSource::mixIntoAtSpeed`
+> lit à la position `timelineStart + i × vitesse` par le noyau fenêtré de
+> D12.1 — le même qui sert au mode « vinyle » de l'étirement, puisque lire à
+> une position fractionnaire est le même problème. À `vitesse == 1.0` elle
+> DÉLÈGUE à `mixInto` : c'est le même code, pas une approximation qui tombe
+> juste. Le noyau appartient au GRAPHE et non à la source, parce que sa table
+> dépend du rapport et que la construire alloue : elle est calculée dans
+> `setPlaybackSpeed`, sur le fil de l'interface, et **avant** que la nouvelle
+> vitesse soit publiée — l'ordre inverse laisserait un bloc lire une table
+> calculée pour l'ancien rapport.
+>
+> **UN POINT OÙ LE RÉSULTAT DIVERGE DE CE QUI AVAIT ÉTÉ ÉCRIT, et la raison.**
+> Le tableau annonçait « les clips qui suivent le tempo s'étirent, les autres
+> changent de hauteur ». Les seconds font bien ce qui était promis ; les
+> premiers, non : à vitesse ≠ 1, un clip étiré est lu par le même noyau et
+> change donc de hauteur comme les autres. Ce n'est pas un oubli. La cadence
+> d'un étireur est fixée par sa CARTE, pas par l'appel : lui faire rendre à
+> mi-vitesse à hauteur constante demande de republier la carte de chaque clip
+> en trames de SORTIE à chaque changement de vitesse, donc de modifier des
+> objets que le fil audio est en train de lire, aux deux endroits qui les
+> construisent (`MainComponent` et `OfflineReconstruction`). C'est une étape à
+> part entière, avec son propre danger. Et entre les deux comportements, celui
+> qui a été retenu est le plus cohérent : un varispeed qui rééchantillonne TOUT
+> est une machine à bande, tandis qu'un varispeed qui change la hauteur de
+> certains clips et pas d'autres ferait dépendre le résultat d'un drapeau que
+> l'utilisateur avait coché pour une tout autre raison.
+>
+> **CE QUI NE PEUT PAS ARRIVER, et c'est structurel plutôt qu'heureux.** Un
+> varispeed oublié ne se retrouve JAMAIS dans un fichier exporté : les cinq
+> chemins de rendu hors ligne de l'application passent tous par
+> `vsm::interchange::render*`, qui construit son PROPRE graphe, dont la vitesse
+> est celle d'usine. Le varispeed est un outil d'écoute, et il le reste sans
+> qu'on ait à y penser.
+>
+> **L'INTERFACE LE DIT**, comme le critère l'exigeait : un menu « x1 » dans la
+> barre de transport, entre « Tap » et l'écoute A/B. Un menu et non un
+> curseur — les vitesses utiles se nomment, et un curseur qu'on effleure
+> laisserait le morceau à 0,97 sans que rien ne le signale. Toute valeur autre
+> que x1 s'affiche en ROUGE : un varispeed qu'on oublie allumé fait chercher
+> longtemps pourquoi le morceau ne sonne pas juste. La vitesse est bornée à
+> [0,25 ; 4] et n'est écrite NULLE PART dans le projet — c'est un réglage de
+> séance, comme l'armement d'une piste.
+>
+> Tests : 1 815 C++ (244 / 1 243 / 273 / 25 / 11 / 19) et 150 Python, tous
+> verts.
+
 > **D18.4 EST FAITE (05/09/2026), et une réduction l'a rendue petite.** UNE
 > SECTION N'EST PAS UN OBJET DE PLUS : elle se DÉDUIT des repères — de
 > celui-ci jusqu'au suivant —, parce que c'est déjà ainsi qu'on s'en sert. On
@@ -4531,7 +4607,7 @@ le dither à l'export (D14.4).
 | D18.2 | **Assembler les prises.** `Track::takes` conserve chaque passe depuis D3.5 et l'on ne peut que CHOISIR la meilleure : impossible de prendre le couplet de la deuxième et le refrain de la quatrième. Cubase : lanes ; Live : take lanes | une prise composite se décrit par une suite de tronçons (prise, début, fin) dans `core/` ; la vue des prises montre les passes empilées, on y dessine la plage qu'on garde ; le matériau courant est RECALCULÉ depuis les tronçons, jamais recopié à la main ; annulable ; test `core/` : trois tronçons pris dans trois prises rendent exactement les notes de chacune sur sa plage |
 | D18.3 | **Éditer plusieurs pistes ensemble.** Rien ne lie deux pistes à l'édition : couper une reconstruction multipiste à la mesure 33 demande de couper douze fois, et un tick d'écart casse la phase entre deux micros. Cubase : Edit Groups | `Track::editGroup` (0 = aucun, absent du fichier), et les gestes de TEMPS de `ClipEdit` (couper, déplacer, joindre) s'appliquent à toutes les pistes du même groupe, au même tick ; test `core/` : couper une piste d'un groupe de trois coupe les trois au même tick, et une piste hors groupe n'est pas touchée |
 | D18.4 | **L'ordre de jeu.** Les repères nomment des endroits (D16.4) mais rien ne nomme des SECTIONS ni ne les rejoue dans un autre ordre : essayer « couplet, couplet, refrain » demande de tout recopier. Cubase : piste d'Arrangement | des sections nommées (début, fin), déduites des repères ou dessinées ; une liste d'ordre de jeu ; « Aplatir » écrit le résultat comme du vrai matériau, et c'est le SEUL moment où le projet change ; test `core/` : aplatir [A, A, B] rend un projet dont le planning est celui qu'on entendrait |
-| D18.5 | **La vitesse de lecture.** Aucun varispeed : on ne peut pas ralentir pour relever un passage. Cubase : Varispeed ; Live n'en a pas besoin parce que tout y suit le tempo, ce qui n'est pas notre cas (un clip audio ne suit le tempo que si on le lui demande, D12) | un facteur de vitesse appliqué à l'HORLOGE du transport, sans toucher au projet ni au tempo ; les clips qui suivent le tempo s'étirent, les autres changent de hauteur — c'est un varispeed, pas un étirement, et l'interface le dit ; test `audio/` : à 0,5, une impulsion posée à 1 s sort à 2 s |  ⟵ **ESSAYÉE ET REMISE (05/09/2026) : voir la note ci-dessous.**
+| D18.5 | **La vitesse de lecture.** Aucun varispeed : on ne peut pas ralentir pour relever un passage. Cubase : Varispeed ; Live n'en a pas besoin parce que tout y suit le tempo, ce qui n'est pas notre cas (un clip audio ne suit le tempo que si on le lui demande, D12) | un facteur de vitesse appliqué à l'HORLOGE du transport, sans toucher au projet ni au tempo ; les clips qui suivent le tempo s'étirent, les autres changent de hauteur — c'est un varispeed, pas un étirement, et l'interface le dit ; test `audio/` : à 0,5, une impulsion posée à 1 s sort à 2 s |  ⟵ **FAITE À LA TROISIÈME TENTATIVE (05/09/2026) : voir les notes.**
 | D18.6 | **Les notes du projet.** Rien pour écrire « la basse vient du stem `other`, la nappe est une hypothèse » : une reconstruction est pleine de décisions dont il ne reste aucune trace, et c'est précisément ce projet-ci qui en produit le plus | un texte libre par projet, écrit dans `project.json`, montré dans une fenêtre ; test `interchange/` : aller-retour, et fichier inchangé octet pour octet quand le texte est vide |
 | D18.7 | **Une machine ne sort que sur DEUX canaux.** `ISynthPlugin::process` rend L/R : les huit voix d'un TR-808 arrivent mixées, et une reconstruction qui a séparé la grosse caisse de la caisse claire les recolle. C'est le § 2 de `CDC-detection-multipiste.md` qui le demande, et l'objectif de parité qui le paie | `ISynthPlugin` sait dire combien de sorties il a et les rendre séparément (défaut : une paire, aucune machine existante ne change) ; `ProcessGraph` publie chaque sortie sur une piste ; test `audio/` : la somme des sorties séparées est identique AU BIT PRÈS au rendu stéréo d'avant |  ⟵ **FAITE, EN DEUX MOITIÉS (05/09/2026) : voir les notes.**
 

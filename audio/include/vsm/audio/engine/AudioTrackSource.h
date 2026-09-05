@@ -124,6 +124,25 @@ struct AudioTrackSource {
     /// Rend le nombre d'échantillons réellement écrits, pour que l'appelant
     /// puisse dire qu'une piste n'a rien joué plutôt que de le supposer.
     int mixInto(float* outLeft, float* outRight, int64_t timelineStart, int numSamples) const;
+
+    /// D18.5 — LA MÊME LECTURE, À VITESSE VARIABLE.
+    ///
+    /// `timelineStart` est la position de MORCEAU du premier échantillon de
+    /// sortie, en trames, et l'échantillon n° i lit la position
+    /// `timelineStart + i × speed` : à 0,5, on avance d'une demi-trame de
+    /// fichier par trame de sortie, c'est-à-dire qu'on RÉÉCHANTILLONNE. Un
+    /// varispeed audio n'est pas un décalage de position mais un changement de
+    /// pas de lecture, et c'est ce qui fait qu'il change la hauteur -- comme
+    /// une bande qu'on ralentit.
+    ///
+    /// À `speed == 1.0`, la fonction DÉLÈGUE à `mixInto` ci-dessus : le chemin
+    /// d'avant, sans un test de plus par échantillon et au bit près.
+    ///
+    /// Le noyau vient de l'APPELANT parce qu'il dépend de la vitesse (sa table
+    /// est calculée pour un rapport donné) et que la préparer alloue : elle se
+    /// fait sur le fil de l'interface, jamais ici.
+    int mixIntoAtSpeed(float* outLeft, float* outRight, double timelineStart, int numSamples,
+                        double speed, const vsm::audio::dsp::SincResampler& kernel) const;
 };
 
 /// Traduit les clips du modèle en portées d'échantillons.

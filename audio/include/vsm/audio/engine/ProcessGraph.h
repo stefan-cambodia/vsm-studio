@@ -253,6 +253,32 @@ public:
                                                            double seconds, bool playing);
     double currentSeconds() const { return currentSeconds_.load(std::memory_order_acquire); }
 
+    /// LA VITESSE DE LECTURE (D18.5) — le varispeed de Cubase, la machine à
+    /// bande qu'on ralentit pour relever un passage.
+    ///
+    /// C'est un facteur sur l'HORLOGE : à 0,5, une seconde de morceau prend
+    /// deux secondes à sortir. Le projet ne bouge pas, le tempo ne bouge pas,
+    /// et rien n'en est écrit dans `project.json` — c'est un réglage de
+    /// SESSION, comme l'armement : rouvrir un morceau à demi-vitesse parce
+    /// qu'on l'y avait laissé serait une surprise, pas un service.
+    ///
+    /// CE QUE ÇA FAIT AU SON, ET POURQUOI CE N'EST PAS UN ÉTIREMENT. Tout ce
+    /// que le moteur CALCULE (les instruments) suit l'horloge et sonne donc
+    /// plus lentement à la même hauteur. Ce qui est LU dans un fichier, lui,
+    /// est rééchantillonné : il change de hauteur, comme une bande ralentie.
+    /// Un clip qui SUIT LE TEMPO fait exception et s'étire à sa hauteur, parce
+    /// que sa carte dit où aller et qu'il suffit de l'étaler.
+    ///
+    /// À 1,0 EXACTEMENT, TOUT LE CHEMIN EST CELUI D'AVANT, au bit près : les
+    /// expressions sont écrites de sorte que la multiplication par 1,0 -- qui
+    /// est exacte en IEEE 754 -- laisse l'arithmétique inchangée. C'est
+    /// vérifié par un test, parce que c'est ce chemin qu'ont emprunté tous les
+    /// rendus existants.
+    /// THREAD UI : la table du noyau de rééchantillonnage dépend du rapport et
+    /// sa construction ALLOUE. Elle ne peut donc pas se faire dans `process()`.
+    void setPlaybackSpeed(double facteur);
+    double playbackSpeed() const { return playbackSpeed_.load(std::memory_order_acquire); }
+
     /// Rendu temps réel OU offline : à appeler en boucle depuis le callback
     /// audio (Phase 2) ou depuis OfflineRenderer (export WAV). Écrit
     /// EXACTEMENT numSamples dans outputL/outputR (déjà alloués par
@@ -612,6 +638,12 @@ private:
     /// Une piste a réclamé une sortie que sa machine n'a pas, ou le graphe a
     /// manqué de tampons. Compté, publié, jamais tu.
     std::atomic<uint64_t> droppedInstrumentOutputs_{0};
+    /// D18.5 : le facteur de vitesse de lecture. 1,0 = le chemin d'avant.
+    std::atomic<double> playbackSpeed_{1.0};
+    /// Le noyau qui lit un fichier à une position fractionnaire. Sa table est
+    /// calculée pour le rapport courant, sur le fil de l'interface ; le rendu
+    /// ne fait que la lire. Inutilisé -- et jamais consulté -- à vitesse 1.
+    vsm::audio::dsp::SincResampler speedKernel_;
 
     // --- COMPENSATION DE LATENCE (PDC, D4.5) -------------------------------
     //

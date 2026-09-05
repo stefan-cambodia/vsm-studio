@@ -13,6 +13,7 @@ TransportBarComponent::TransportBarComponent(vsm::audio::engine::Transport& tran
     addAndMakeVisible(loopButton_);
     addAndMakeVisible(metronomeButton_);
     addAndMakeVisible(tapButton_);
+    addAndMakeVisible(speedBox_);
     addAndMakeVisible(listenButton_);
     addAndMakeVisible(openButton_);
     addAndMakeVisible(exportButton_);
@@ -60,6 +61,35 @@ TransportBarComponent::TransportBarComponent(vsm::audio::engine::Transport& tran
     // TAP TEMPO. La moyenne des intervalles des quatre dernières frappes : une
     // seule mesure est trop bruyante pour être jouable, et davantage rendrait
     // le bouton paresseux quand on cherche le tempo.
+    // D18.5 : LA VITESSE DE LECTURE. « x1 » est le défaut et le reste : un
+    // varispeed qu'on oublie allumé fait chercher longtemps pourquoi le
+    // morceau ne sonne pas juste, et c'est pourquoi la valeur non normale
+    // s'affiche en ROUGE plutôt que discrètement.
+    {
+        const double vitesses[] = {0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0};
+        int id = 1;
+        for (double v : vitesses) {
+            speedBox_.addItem(juce::String("x") + juce::String(v, v == 1.0 ? 0 : 2), id);
+            if (v == 1.0) speedBox_.setSelectedId(id, juce::dontSendNotification);
+            ++id;
+        }
+        speedBox_.setTooltip(juce::String(
+            u8"Vitesse de lecture (varispeed) : ralentir pour relever un passage.\n"
+            u8"Le morceau et le tempo ne changent pas. Les instruments CALCULÉS gardent "
+            u8"leur hauteur ; ce qui est lu dans un fichier change de hauteur, comme une "
+            u8"bande qu'on ralentit."));
+        speedBox_.onChange = [this, vitesses] {
+            const int index = speedBox_.getSelectedItemIndex();
+            const int nombre = static_cast<int>(sizeof(vitesses) / sizeof(vitesses[0]));
+            if (index < 0 || index >= nombre) return;
+            const double v = vitesses[index];
+            speedBox_.setColour(juce::ComboBox::textColourId,
+                                 v == 1.0 ? Palette::textPrimary
+                                          : Palette::accentRed);
+            if (onPlaybackSpeedChanged) onPlaybackSpeedChanged(v);
+        };
+    }
+
     tapButton_.setTooltip("Frapper le tempo. Deux frappes suffisent ; une pause d'une "
                            "seconde et demie recommence le compte.");
     tapButton_.onClick = [this] {
@@ -161,6 +191,8 @@ void TransportBarComponent::resized() {
     metronomeButton_.setBounds(transportArea.removeFromLeft(tresSerre ? 50 : 56));
     transportArea.removeFromLeft(4);
     tapButton_.setBounds(transportArea.removeFromLeft(tresSerre ? 46 : 50));
+    transportArea.removeFromLeft(4);
+    speedBox_.setBounds(transportArea.removeFromLeft(tresSerre ? 62 : 70));
     transportArea.removeFromLeft(6);
     inputMeterBounds_ = transportArea.removeFromLeft(10).reduced(0, 2);
 

@@ -365,6 +365,18 @@ void ProcessGraph::refreshRenderOrder() {
     renderOrder_.store(std::move(ordre), std::memory_order_release);
 }
 
+void ProcessGraph::setPlaybackSpeed(double facteur) {
+    // Bornes : en dessous d'un quart, le noyau travaille sur des fenêtres si
+    // larges qu'il coûte plus que le rendu ; au-delà de quatre, on saute plus
+    // d'échantillons qu'on n'en lit. Borner est plus honnête que subir.
+    const double borne = facteur < 0.25 ? 0.25 : (facteur > 4.0 ? 4.0 : facteur);
+    // LA TABLE D'ABORD, LA VITESSE ENSUITE : le rendu qui verra la nouvelle
+    // vitesse doit trouver le noyau déjà prêt pour elle. L'ordre inverse
+    // laisserait un bloc lire une table calculée pour l'ancien rapport.
+    if (borne != 1.0) speedKernel_.prepare(borne);
+    playbackSpeed_.store(borne, std::memory_order_release);
+}
+
 void ProcessGraph::refreshOutputRouting() {
     auto snapshot = snapshot_.load(std::memory_order_acquire);
     if (!snapshot) { outputRouting_.store(nullptr, std::memory_order_release); return; }
@@ -679,7 +691,18 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
     const size_t actifs = activeSends_.load(std::memory_order_acquire);
 
     double blockStartSeconds = currentSeconds_.load(std::memory_order_acquire);
-    const double blockDurationSeconds = static_cast<double>(samplesToProcess) / sampleRate_;
+    // D18.5 : LA VITESSE DE LECTURE, lue UNE FOIS pour le bloc entier -- la
+    // changer au milieu d'un bloc ferait sauter la position d'un demi-bloc.
+    //
+    // ELLE MULTIPLIE PARTOUT OÙ DES ÉCHANTILLONS DEVIENNENT DES SECONDES DE
+    // MORCEAU, et nulle part ailleurs. Écrite `x * vitesse / sampleRate_`
+    // plutôt que `x * (vitesse / sampleRate_)` : à 1,0 la multiplication est
+    // EXACTE en IEEE 754, donc l'expression se réduit littéralement à celle
+    // d'avant, arrondi pour arrondi. C'est ce qui rend l'addition sans risque
+    // pour tous les rendus existants.
+    const double vitesse = playbackSpeed_.load(std::memory_order_acquire);
+    const double blockDurationSeconds =
+        static_cast<double>(samplesToProcess) * vitesse / sampleRate_;
     // Valeur par défaut : sans boucle, la position avance simplement de la
     // durée du bloc. Le rebouclage la remplace par la position réellement
     // atteinte (voir plus bas).
@@ -722,7 +745,11 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
 
             if (loopActive && loopEnd > loopStart && spanStartSeconds < loopEnd) {
                 const double untilLoopEnd = loopEnd - spanStartSeconds;
-                const int samplesUntilEnd = static_cast<int>(std::ceil(untilLoopEnd * sampleRate_));
+                // Combien d'échantillons de SORTIE avant la fin de boucle :
+                // à demi-vitesse, il en faut deux fois plus pour parcourir la
+                // même distance de morceau.
+                const int samplesUntilEnd =
+                    static_cast<int>(std::ceil(untilLoopEnd * sampleRate_ / vitesse));
                 count = std::min(count, std::max(1, samplesUntilEnd));
             }
 
@@ -730,7 +757,7 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
             wrapNoteOffPending_ = false; // consommé par TOUTES les pistes du segment
 
             rendered += count;
-            spanStartSeconds += static_cast<double>(count) / sampleRate_;
+            spanStartSeconds += static_cast<double>(count) * vitesse / sampleRate_;
 
             if (loopActive && loopEnd > loopStart && spanStartSeconds >= loopEnd - 1.0e-12) {
                 spanStartSeconds = loopStart;
@@ -893,9 +920,15 @@ void ProcessGraph::renderSpan(const GraphSnapshot& snapshot, bool anySolo, int s
     // 48 kHz) sans exiger que les synthés relisent leurs paramètres à chaque
     // échantillon.
     constexpr int kAutomationChunk = 64;
+    const double vitesse = playbackSpeed_.load(std::memory_order_acquire);
     for (int s = 0; s < sampleCount; s += kAutomationChunk) {
         const int count = std::min(kAutomationChunk, sampleCount - s);
-        const double segStart = startSeconds + static_cast<double>(s) / sampleRate_;
+        // D18.5 : le sous-segment avance lui aussi à la vitesse de lecture.
+        // C'était LA moitié manquante de la première tentative : ralentir
+        // l'avance de bloc sans ralentir celle-ci revenait à ralentir la
+        // pendule sans ralentir la trotteuse.
+        const double segStart =
+            startSeconds + static_cast<double>(s) * vitesse / sampleRate_;
         applyAutomationAt(segStart);
         renderTrackRange(snapshot, anySolo, sampleStart + s, count, segStart, outputL, outputR);
     }
@@ -1028,7 +1061,9 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
                                     MidiNoteEvent* events, float* destL, float* destR) {
     const Project& project = snapshot.project;
     if (trackIndex >= project.tracks.size() || trackIndex >= kMaxTracks) return false;
-    const double rangeEndSeconds = rangeStartSeconds + static_cast<double>(sampleCount) / sampleRate_;
+    const double vitesse = playbackSpeed_.load(std::memory_order_acquire);
+    const double rangeEndSeconds =
+        rangeStartSeconds + static_cast<double>(sampleCount) * vitesse / sampleRate_;
 
     auto instrument = instruments_[trackIndex].load(std::memory_order_acquire);
     auto audioSource = audioSources_[trackIndex].load(std::memory_order_acquire);
@@ -1131,7 +1166,8 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
     // quart d'échantillon sur la borne de recherche garantit qu'un événement
     // de frontière est VU par les deux blocs, et l'offset tranche : exactement
     // l'un des deux le joue.
-    const double margeFrontiere = 0.25 / sampleRate_;
+    // Un quart d'échantillon de SORTIE, exprimé en secondes de morceau.
+    const double margeFrontiere = 0.25 * vitesse / sampleRate_;
     const auto premierEvenement =
         std::lower_bound(debutDePiste, finDePiste, rangeStartSeconds - margeFrontiere,
                           [](const ScheduledEvent& ev, double t) { return ev.timeSeconds < t; });
@@ -1168,7 +1204,14 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
         // un événement faux.
         const long long echantillonBloc = std::llround(rangeStartSeconds * sampleRate_);
         const long long echantillonEvenement = std::llround(ev.timeSeconds * sampleRate_);
-        const long long decalage = echantillonEvenement - echantillonBloc;
+        const long long decalageMorceau = echantillonEvenement - echantillonBloc;
+        // DU MORCEAU VERS LA SORTIE : à demi-vitesse, un événement situé mille
+        // échantillons de morceau plus loin sort deux mille échantillons plus
+        // tard. La division par 1,0 est exacte, et l'entier traverse donc le
+        // `double` sans bouger tant que la vitesse est normale.
+        const long long decalage =
+            vitesse == 1.0 ? decalageMorceau
+                           : std::llround(static_cast<double>(decalageMorceau) / vitesse);
         if (decalage < 0) continue;
         if (decalage >= sampleCount) break;
         pluginEvent.sampleOffset = static_cast<int>(decalage);
@@ -1326,9 +1369,13 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
         // faute : là on déplace l'événement, ici on déplace la fenêtre par
         // laquelle on regarde le fichier.
         const double decalage = track.delayMs / 1000.0;
-        const int64_t depart =
-            static_cast<int64_t>(std::llround((rangeStartSeconds - decalage) * sampleRate_));
-        audioSource->mixInto(destL, destR, depart, sampleCount);
+        // D18.5 : À VITESSE ≠ 1, LA LECTURE CHANGE DE PAS. C'est la moitié du
+        // travail que le second examen avait isolée : ralentir l'horloge ne
+        // ralentit pas une lecture de trames consécutives, il faut
+        // rééchantillonner. À 1,0 exactement, `mixIntoAtSpeed` délègue au
+        // chemin d'avant, sans un test de plus par échantillon.
+        const double depart = (rangeStartSeconds - decalage) * sampleRate_;
+        audioSource->mixIntoAtSpeed(destL, destR, depart, sampleCount, vitesse, speedKernel_);
     }
 
     // Chaîne d'inserts (section 5) : TRACK -> SYNTH -> EFFECTS -> MIX.

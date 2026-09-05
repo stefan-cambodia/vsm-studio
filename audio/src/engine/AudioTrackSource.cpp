@@ -165,6 +165,78 @@ int AudioTrackSource::mixInto(float* outLeft, float* outRight,
     return ecrits;
 }
 
+int AudioTrackSource::mixIntoAtSpeed(float* outLeft, float* outRight, double timelineStart,
+                                      int numSamples, double speed,
+                                      const vsm::audio::dsp::SincResampler& kernel) const {
+    // VITESSE NORMALE : le chemin d'avant, tel quel. C'est la garantie qui
+    // compte -- tous les rendus existants l'ont emprunté.
+    if (speed == 1.0)
+        return mixInto(outLeft, outRight,
+                        static_cast<int64_t>(std::llround(timelineStart)), numSamples);
+    if (!samples || numSamples <= 0 || speed <= 0.0) return 0;
+
+    const SampleStore::ReadGuard garde(samples.get());
+    int ecrits = 0;
+
+    for (const auto& clip : clips) {
+        if (clip.lengthFrames <= 0) continue;
+        const SampleStore& magasin = clip.source ? *clip.source : *samples;
+        const bool etire = clip.warp && clip.warp->stretch.isPrepared();
+
+        // QUELS ÉCHANTILLONS DE SORTIE tombent dans ce clip. La position de
+        // morceau du n-ième est `timelineStart + n × speed` ; on inverse.
+        const double borneBasse =
+            (static_cast<double>(clip.startFrame) - timelineStart) / speed;
+        const double borneHaute =
+            (static_cast<double>(clip.startFrame + clip.lengthFrames) - timelineStart) / speed;
+        const int premier = static_cast<int>(std::max(0.0, std::ceil(borneBasse)));
+        const int dernier = static_cast<int>(
+            std::min(static_cast<double>(numSamples), std::ceil(borneHaute)));
+        if (dernier <= premier) continue;
+
+        // LA POSITION DANS LE FICHIER pour une position de morceau donnée :
+        // par la carte quand le clip suit le tempo, directement sinon.
+        const auto positionSource = [&clip, etire](double positionMorceau) {
+            const double dansLeClip = positionMorceau - static_cast<double>(clip.startFrame);
+            return etire ? clip.warp->stretch.sourceFor(positionMorceau)
+                         : static_cast<double>(clip.sourceStartFrame) + dansLeClip;
+        };
+
+        // ON DIT OÙ ON VA AVANT D'Y ALLER, comme le chemin ordinaire : c'est
+        // la seule façon pour un matériau DIFFUSÉ de savoir qu'on vient de
+        // sauter ailleurs dans le fichier.
+        {
+            const double a = positionSource(timelineStart + premier * speed);
+            const double b = positionSource(timelineStart + (dernier - 1) * speed);
+            magasin.requestRange(static_cast<int64_t>(std::floor(std::min(a, b))) - 64,
+                                  static_cast<int64_t>(std::abs(b - a)) + 128);
+        }
+
+        const float signe = clip.invertPhase ? -clip.gain : clip.gain;
+        const auto* magasinP = &magasin;
+        const auto lire = [magasinP](int64_t i, float& g, float& d) {
+            return magasinP->frameAt(i, g, d);
+        };
+
+        for (int n = premier; n < dernier; ++n) {
+            const double positionMorceau = timelineStart + static_cast<double>(n) * speed;
+            const double dansLeClip = positionMorceau - static_cast<double>(clip.startFrame);
+            float g = 0.0f, d = 0.0f;
+            // LE NOYAU FENÊTRÉ DE D12.1, celui-là même qui sert au mode
+            // « vinyle » de l'étirement : lire à une position fractionnaire
+            // est exactement le même problème.
+            kernel.stereoAt(lire, positionSource(positionMorceau), g, d);
+            const float gain = signe * fadeGain(static_cast<int64_t>(std::llround(dansLeClip)),
+                                                 clip.lengthFrames, clip.fadeInFrames,
+                                                 clip.fadeOutFrames, clip.fadeShape);
+            outLeft[static_cast<size_t>(n)] += g * gain;
+            outRight[static_cast<size_t>(n)] += d * gain;
+            ++ecrits;
+        }
+    }
+    return ecrits;
+}
+
 std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
                                            double sampleRate,
                                            const std::function<double(int64_t)>& ticksToSeconds) {

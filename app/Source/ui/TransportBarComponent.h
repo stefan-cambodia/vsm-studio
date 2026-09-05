@@ -45,6 +45,10 @@ public:
     /// clôt une prise en cours, et le bouton agissait jusqu'ici directement sur
     /// le transport sans que personne d'autre ne l'apprenne.
     std::function<void()> onStopPressed;
+    /// D18.5 : LA VITESSE DE LECTURE (varispeed). Le facteur, jamais un
+    /// pourcentage : « x0,5 » se lit sans calcul, « 50 % » se confond avec un
+    /// volume.
+    std::function<void(double)> onPlaybackSpeedChanged;
 
     /// Dit si l'enregistrement est possible, et pourquoi il ne l'est pas.
     /// Sans piste armée il n'y a nulle part où écrire, et le bouton doit le
@@ -90,6 +94,10 @@ private:
     bool recording_ = false;
     int countInBeats_ = 0;
     juce::TextButton tapButton_ { "Tap" };
+    /// D18.5 : le choix de vitesse. Un menu et non un curseur : les vitesses
+    /// utiles sont peu nombreuses et se nomment, et un curseur qu'on effleure
+    /// laisserait le morceau à 0,97 sans que rien ne le dise.
+    juce::ComboBox speedBox_;
     /// Instants des dernières frappes du bouton « Tap », pour en tirer un
     /// tempo. Une frappe isolée ne dit rien ; il en faut au moins deux.
     juce::Array<double> tapTimes_;

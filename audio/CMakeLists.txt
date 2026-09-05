@@ -151,6 +151,7 @@ if (VSM_BUILD_TESTS)
         tests/test_effects.cpp
         tests/test_tr808_synth.cpp
         tests/test_instrument_outputs.cpp
+        tests/test_varispeed.cpp
         tests/test_tr909_synth.cpp
         tests/test_sh101_synth.cpp
         tests/test_prophet_synth.cpp

@@ -377,6 +377,12 @@ MainComponent::MainComponent()
     // L'ARRÊT CLÔT LA PRISE. Sans ce fil, appuyer sur Stop laisserait
     // l'enregistrement ouvert : on aurait joué, et rien ne serait écrit.
     transportBar_.onStopPressed = [this] { stopRecording(); };
+    // D18.5 : LA VITESSE DE LECTURE. Elle va au graphe et à lui seul -- ni le
+    // projet ni le tempo ne bougent, et rien n'en est écrit dans le fichier :
+    // c'est un réglage de séance, comme l'armement d'une piste.
+    transportBar_.onPlaybackSpeedChanged = [this](double facteur) {
+        audioEngine_.processGraph().setPlaybackSpeed(facteur);
+    };
     trackList_.onArmChanged = [this] { refreshArmedTracks(); };
 
     // LA VUE D'ARRANGEMENT (D5.1). Elle ne connaît que le projet et ses propres
