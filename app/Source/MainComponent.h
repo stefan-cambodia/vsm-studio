@@ -108,6 +108,9 @@ public:
     /// dans un JSON que personne n'ouvre. Publique pour VSM_RAPPORT : cet
     /// écran doit se photographier sans souris.
     void showReconstructionReport();
+    /// D19.2 : pose le filtre de la liste des pistes (VSM_FILTRE), pour que la
+    /// capture montre le filtre à l'œuvre.
+    void setTrackFilterForCapture(const juce::String& texte) { trackList_.setFilterText(texte); }
 
     bool openProjectFolderForCapture(const juce::File& dossier) {
         const auto lu = vsm::interchange::loadProjectBundle(dossier.getFullPathName().toStdString());

@@ -132,6 +132,12 @@ public:
             // ouvert (VSM_PROJET) avant la capture. Même raison d'être que
             // VSM_IMPORT : cet écran ne s'atteint autrement qu'à la souris,
             // et une interface qu'on ne peut pas photographier ne se juge pas.
+            // VSM_FILTRE=texte : poser le filtre de la liste des pistes
+            // (D19.2). Même raison d'être que VSM_VUE — un champ de saisie ne
+            // se remplit qu'au clavier, et une capture d'un champ VIDE ne
+            // prouve pas que le filtre filtre.
+            if (const char* filtre = std::getenv("VSM_FILTRE"); filtre != nullptr && *filtre)
+                content->setTrackFilterForCapture(juce::String::fromUTF8(filtre));
             if (const char* rapport = std::getenv("VSM_RAPPORT");
                 rapport != nullptr && *rapport)
                 content->showReconstructionReport();

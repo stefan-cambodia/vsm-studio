@@ -122,6 +122,32 @@ private:
     juce::Component rowContainer_;
     juce::TextButton addButton_ { "+ Ajouter une piste" };
     juce::TextButton removeButton_ { "Supprimer" };
+    /// D19.2 : LE FILTRE DE LA LISTE. Un état de SÉANCE et non du morceau —
+    /// il n'est écrit nulle part, et rouvrir un projet ne cache jamais une
+    /// piste. C'est précisément ce qui le distingue de `Track::hidden`
+    /// (D17.4), lequel appartient au morceau et se sauvegarde.
+    juce::TextEditor filterBox_;
+    /// D19.2 : PANNE MUETTE INTERDITE, jusque dans une liste vide. Un filtre
+    /// qui ne trouve rien laisse un panneau vierge, et un panneau vierge
+    /// ressemble à des pistes supprimées. Il dit donc pourquoi il est vide.
+    juce::Label emptyLabel_;
+    /// Vrai quand le filtre est posé et que le nom de la piste ne lui répond
+    /// pas. N'a AUCUN effet sur le son : la piste continue de jouer, elle
+    /// n'est simplement plus dans la liste — masquer une piste et la taire
+    /// sont deux gestes différents, et les confondre ferait disparaître un
+    /// instrument d'un mélange pour avoir cherché son voisin.
+    bool masqueeParLeFiltre(size_t index) const;
+public:
+    /// D19.2 : pose le filtre sans souris, pour que la capture d'écran puisse
+    /// le MONTRER À L'ŒUVRE et pas seulement montrer un champ vide. Même
+    /// raison d'être que `VSM_VUE` : sous Wayland, une interface qu'on ne peut
+    /// pas piloter sans souris est une interface qu'on ne peut pas juger.
+    void setFilterText(const juce::String& texte) {
+        filterBox_.setText(texte, juce::dontSendNotification);
+        resized();
+        repaint();
+    }
+private:
     size_t selectedIndex_ = 0;
     /// La piste survolée pendant un glisser, ou -1. Sans ce retour, on lâche à
     /// l'aveugle et on découvre après coup sur laquelle.
@@ -131,4 +157,6 @@ private:
 
     static constexpr int kRowHeight = 88;
     static constexpr int kToolbarHeight = 36;
+    /// D19.2 : la ligne du filtre, sous la barre d'outils.
+    static constexpr int kFilterHeight = 30;
 };

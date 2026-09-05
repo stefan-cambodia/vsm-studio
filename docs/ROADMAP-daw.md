@@ -4927,6 +4927,39 @@ Quatre manques ont survécu à la vérification.
 | D19.3 | **Éclater une piste par hauteur.** Une piste de batterie reconstruite porte la grosse caisse, la caisse claire et le charley sur une seule ligne de temps. La chaîne d'analyse les a SÉPARÉS ; le DAW ne sait pas refaire ce geste à la main, ni le défaire. C'est le pendant manuel de l'objectif de parité, et le compagnon de D18.7b — qui a donné une piste à chaque SORTIE, quand celle-ci en donne une à chaque HAUTEUR. Cubase : Dissolve Part | « Piste ▸ Éclater par hauteur » : une piste neuve par hauteur présente, nommée par la pièce (`drumVoiceName`) quand la machine la nomme, insérées après l'originale, l'instrument recopié ; annulable ; les index de routage suivent comme en D18.7b ; test `core/` : éclater trois hauteurs rend trois pistes dont la réunion des notes est exactement le matériau d'origine |
 | D19.4 | **Les pistes dossier.** `Track::folded` replie UNE piste ; rien ne replie un GROUPE de pistes. Un groupe de mixage (D4.2) est un bus, pas un rangement : router huit micros de batterie dans un bus ne les fait pas disparaître de la vue quand on travaille sur les cordes. Cubase : Folder Tracks | une piste de type dossier qui CONTIENT des pistes, se replie et les masque toutes, et dont le repli est écrit dans `project.json` ; elle ne touche à aucun signal — un dossier n'est pas un bus, et un projet qui n'en a pas garde son fichier octet pour octet ; test `interchange/` : aller-retour, et absence totale du fichier quand il n'y a aucun dossier |
 
+> **D19.2 EST FAITE (05/09/2026, 11:20).** Un champ « Filtrer les pistes... »
+> sur sa propre ligne sous la barre d'outils — pas serré entre deux boutons :
+> entre « ça tient dans la case » et « ça se lit », c'est la lisibilité qui
+> prime. La comparaison ignore la casse : on tape « caisse » pour trouver
+> « Caisse claire », et personne ne devrait avoir à deviner la majuscule.
+>
+> **DEUX RAISONS DE NE PAS PARAÎTRE, ET ELLES NE SE MÉLANGENT PAS.**
+> `Track::hidden` (D17.4) appartient au MORCEAU et se sauvegarde ; le filtre
+> appartient à la SÉANCE et ne s'écrit nulle part. Rouvrir un projet ne cache
+> donc jamais une piste, et le filtre ne touche ni à `hidden` ni au son — la
+> capture le montre : la liste ne garde que ce qui correspond pendant que le
+> mélangeur garde toutes ses tranches.
+>
+> **PANNE MUETTE INTERDITE, JUSQUE DANS UNE LISTE VIDE.** Un filtre qui ne
+> trouve rien laissait un panneau vierge, et un panneau vierge ressemble à des
+> pistes supprimées. Il dit maintenant « Aucune des 4 pistes ne porte ce nom.
+> Elles jouent toujours — videz le filtre. » Le NOMBRE compte : il apprend du
+> même coup que les pistes sont là.
+>
+> **UNE VARIABLE D'ENVIRONNEMENT DE PLUS, ET POUR LA RAISON HABITUELLE.** Un
+> champ de saisie ne se remplit qu'au clavier, et une capture d'un champ VIDE
+> ne prouve pas qu'un filtre filtre. `VSM_FILTRE=texte` le pose avant la
+> capture, comme `VSM_VUE` pilote le menu Affichage : le dépôt refuse de
+> déclarer une interface invérifiable, et cela vaut aussi pour celle-ci.
+>
+> Vérifié à l'écran sur quatre valeurs. Le projet d'essai n'expose que quatre
+> pistes — son fichier MIDI n'en porte que quatre, quoi qu'en dise son
+> `project.json` — de sorte que « clap » et « voix » ne trouvent RIEN et que
+> c'est la bonne réponse. C'est « caisse » qui fait la démonstration : deux
+> pistes sur quatre restent, les deux autres s'effacent, le mélangeur ne
+> bouge pas.
+
+
 > **D19.1 EST FAITE (05/09/2026, 10:40), réduite à ce qui manquait vraiment.**
 > `compressVelocity(notes, sélection, amount)` resserre vers la moyenne de la
 > SÉLECTION — pas de tout le morceau, sans quoi deux compressions successives

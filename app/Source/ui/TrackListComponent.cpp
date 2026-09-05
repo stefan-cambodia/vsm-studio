@@ -258,6 +258,26 @@ void TrackRowComponent::resized() {
 // ---------------------------------------------------------------------------
 
 TrackListComponent::TrackListComponent() {
+    // D19.2 : LE FILTRE. La parité pousse le nombre de pistes vers le haut —
+    // D18.7b en ajoute cinq pour une seule boîte à rythmes, D19.3 une par
+    // pièce de batterie — et faire défiler pour retrouver « Caisse claire »
+    // n'est plus tenable.
+    addAndMakeVisible(filterBox_);
+    filterBox_.setTextToShowWhenEmpty(u8"Filtrer les pistes...", Palette::textSecondary);
+    filterBox_.setFont(juce::Font(juce::FontOptions(13.0f)));
+    filterBox_.setTooltip(juce::String(
+        u8"Ne montre que les pistes dont le nom contient ce texte.\n"
+        u8"N'AFFECTE PAS LE SON : les pistes filtrées continuent de jouer. "
+        u8"Rien n'est écrit dans le projet — videz le champ et tout revient."));
+    filterBox_.onTextChange = [this] { resized(); repaint(); };
+
+    addAndMakeVisible(emptyLabel_);
+    emptyLabel_.setJustificationType(juce::Justification::centredTop);
+    emptyLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
+    emptyLabel_.setFont(juce::Font(juce::FontOptions(13.0f)));
+    emptyLabel_.setVisible(false);
+    emptyLabel_.setInterceptsMouseClicks(false, false);
+
     addAndMakeVisible(viewport_);
     viewport_.setViewedComponent(&rowContainer_, false);
     viewport_.setScrollBarsShown(true, false);
@@ -353,6 +373,15 @@ void TrackListComponent::selectTrackIndex(size_t idx) {
     if (onTrackSelected) onTrackSelected(idx);
 }
 
+bool TrackListComponent::masqueeParLeFiltre(size_t index) const {
+    const juce::String motif = filterBox_.getText().trim();
+    if (motif.isEmpty()) return false;   // vidé, tout revient
+    if (project_ == nullptr || index >= project_->tracks.size()) return false;
+    // SANS TENIR COMPTE DE LA CASSE : on tape « caisse » pour trouver
+    // « Caisse claire », et personne ne devrait avoir à deviner la majuscule.
+    return !juce::String(project_->tracks[index].name).containsIgnoreCase(motif);
+}
+
 void TrackListComponent::resized() {
     auto area = getLocalBounds();
 
@@ -361,13 +390,18 @@ void TrackListComponent::resized() {
     toolbar.removeFromRight(6);
     addButton_.setBounds(toolbar);
 
+    // D19.2 : SA PROPRE LIGNE plutôt que serré entre deux boutons. Entre « ça
+    // tient dans la case » et « ça se lit », c'est la lisibilité qui prime.
+    filterBox_.setBounds(area.removeFromTop(kFilterHeight).reduced(8, 3));
+
     viewport_.setBounds(area);
     // D17.4 : les pistes masquées ne comptent pas dans la hauteur totale, sans
     // quoi la liste garderait un blanc à leur place.
     int visibles = 0;
     for (int i = 0; i < rows_.size(); ++i)
         if (project_ == nullptr || static_cast<size_t>(i) >= project_->tracks.size()
-            || !project_->tracks[static_cast<size_t>(i)].hidden)
+            || (!project_->tracks[static_cast<size_t>(i)].hidden
+                && !masqueeParLeFiltre(static_cast<size_t>(i))))
             ++visibles;
     int totalHeight = visibles * kRowHeight;
     // LE DÉFILEMENT SURVIT À LA MISE EN PAGE. `setBounds(0, 0, …)` remettait le
@@ -386,14 +420,30 @@ void TrackListComponent::resized() {
         // rafraîchissement se servent partout.
         int y = 0;
         for (int i = 0; i < rows_.size(); ++i) {
+            // DEUX RAISONS DE NE PAS PARAÎTRE, et elles ne se mélangent pas :
+            // `hidden` appartient au MORCEAU et se sauvegarde (D17.4), le
+            // filtre appartient à la SÉANCE et ne s'écrit nulle part.
             const bool masquee = project_ != nullptr
                                  && static_cast<size_t>(i) < project_->tracks.size()
-                                 && project_->tracks[static_cast<size_t>(i)].hidden;
+                                 && (project_->tracks[static_cast<size_t>(i)].hidden
+                                     || masqueeParLeFiltre(static_cast<size_t>(i)));
             const int h = masquee ? 0 : kRowHeight;
             rows_[i]->setBounds(0, y, rowContainer_.getWidth(), h);
             rows_[i]->setVisible(!masquee);
             y += h;
         }
+    }
+    // D19.2 : DIRE POURQUOI C'EST VIDE. Le nombre compte : « aucune des 9 »
+    // apprend du même coup que les pistes sont toujours là.
+    const bool filtre = filterBox_.getText().trim().isNotEmpty();
+    const bool rienAMontrer = filtre && visibles == 0 && !rows_.isEmpty();
+    emptyLabel_.setVisible(rienAMontrer);
+    if (rienAMontrer) {
+        emptyLabel_.setText(juce::String(u8"Aucune des ") + juce::String(rows_.size())
+                                + juce::String(u8" pistes ne porte ce nom.\n"
+                                                u8"Elles jouent toujours — videz le filtre."),
+                             juce::dontSendNotification);
+        emptyLabel_.setBounds(viewport_.getBounds().reduced(10).withHeight(60));
     }
     if (aMontrer_ >= 0) faireVoirLaPiste(static_cast<size_t>(aMontrer_));
 }
