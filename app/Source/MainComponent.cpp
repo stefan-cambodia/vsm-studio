@@ -1,5 +1,6 @@
 #include "MainComponent.h"
 #include "vsm/sequencer/ClipEdit.h"
+#include "vsm/sequencer/NoteEdit.h"
 #include "vsm/sequencer/PlayOrder.h"
 #include "vsm/interchange/GroovePreset.h"
 #include "vsm/audio/io/OnsetDetection.h"
@@ -304,6 +305,7 @@ MainComponent::MainComponent()
         createClipOnTrack(piste, tick);
     };
     arrangement_.onClipSliceAtOnsetsRequested = [this] { sliceSelectedClipsAtOnsets(); };
+    arrangement_.onClipTranscribeRequested = [this] { transcribeSelectedClip(); };
     arrangement_.onClipTrimToSoundRequested = [this](size_t piste, uint64_t clipId) {
         trimClipToSound(piste, clipId);
     };
@@ -1100,6 +1102,11 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     // CHOISIR UNE PISTE (piste:N, à partir de 0) : le piano roll, le rack et
     // l'onglet Effets suivent la piste choisie, et sans souris seule la
     // première se laissait photographier.
+    // CHOISIR LE PREMIER CLIP D'UNE PISTE (premier-clip:N) : pour photographier
+    // un geste qui porte sur UN clip -- transcrire, par exemple.
+    else if (nom.startsWith("premier-clip:"))
+        arrangement_.selectFirstClipOf(static_cast<size_t>(
+            std::max(0, nom.fromFirstOccurrenceOf(":", false, false).getIntValue())));
     else if (nom.startsWith("piste:"))
         trackList_.selectTrackIndex(static_cast<size_t>(std::max(0, nom.substring(6).getIntValue())));
     // LANCER LA LECTURE pour l'autoportrait : le compteur de CPU de la barre
@@ -1655,6 +1662,16 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuEditSliceAtOnsets,
                          u8"D\u00e9couper la s\u00e9lection aux transitoires (clips audio)",
                          arrangement_.hasSelection());
+            // D20.4 : TRANSCRIRE. Grisée AVEC sa raison quand la chaîne
+            // d'analyse manque : une entrée grisée sans raison est une entrée
+            // qu'on croit cassée.
+            menu.addItem(kMenuEditTranscribeClip,
+                         reconstructionChain_.available
+                             ? juce::String(u8"Transcrire le clip audio choisi en MIDI (Basic Pitch)")
+                             : juce::String(u8"Transcrire le clip audio choisi en MIDI (")
+                                   + juce::String::fromUTF8(reconstructionChain_.reason.c_str()) + ")",
+                         reconstructionChain_.available && arrangement_.hasSelection()
+                             && !clipTranscriber_.isRunning());
             // D17.8 : LE GROOVE. Le nom du groove courant est DIT dans
             // l'article qui l'applique : appliquer « quelque chose » qu'on ne
             // nomme pas, c'est appliquer on ne sait quoi.
@@ -2098,6 +2115,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuEditSelectAllClips) { arrangement_.selectAll(); return; }
     if (menuItemID == kMenuEditRepeatToLoopEnd) { arrangement_.repeatSelectionUntilLoopEnd(); return; }
     if (menuItemID == kMenuEditSliceAtOnsets) { sliceSelectedClipsAtOnsets(); return; }
+    if (menuItemID == kMenuEditTranscribeClip) { transcribeSelectedClip(); return; }
     if (menuItemID >= kMenuEditRepeatFirst && menuItemID <= kMenuEditRepeatLast) {
         static const int kNombres[] = {2, 3, 4, 8, 16};
         arrangement_.repeatSelection(kNombres[menuItemID - kMenuEditRepeatFirst]);
@@ -6627,6 +6645,152 @@ void MainComponent::sliceSelectedClipsAtOnsets() {
     // lit pas le compte rendu est un geste qu'on croit fait.
     std::fputs((juce::String(u8"Découper aux transitoires : ") + message.replace("\n", " ; ") + "\n").toRawUTF8(), stderr);
     juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon, u8"Découper aux transitoires", message);
+}
+
+void MainComponent::transcribeSelectedClip() {
+    // D20.4 : LE PREMIER CLIP AUDIO CHOISI DEVIENT DES NOTES, sur une piste
+    // neuve posée après la sienne. Le transcripteur est celui de la chaîne
+    // (`analyse/transcrire_clip.py`), lancé par l'interpréteur que D9 a
+    // trouvé, dans un processus enfant : Basic Pitch met plusieurs secondes à
+    // charger, et l'interface ne les attend pas.
+    if (!reconstructionChain_.available) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Transcrire en MIDI",
+            juce::String(u8"La chaîne d'analyse n'est pas disponible : ")
+                + juce::String::fromUTF8(reconstructionChain_.reason.c_str())
+                + (reconstructionChain_.remedy.empty() ? juce::String()
+                                                       : "\n" + juce::String::fromUTF8(reconstructionChain_.remedy.c_str())));
+        return;
+    }
+    if (clipTranscriber_.isRunning()) {
+        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon, u8"Transcrire en MIDI",
+                                                 u8"Une transcription est déjà en cours.");
+        return;
+    }
+    const vsm::sequencer::ClipSelection selection = arrangement_.selectedClipIds();
+    size_t index = project_.tracks.size();
+    const vsm::sequencer::Clip* choisi = nullptr;
+    for (size_t t = 0; t < project_.tracks.size() && choisi == nullptr; ++t) {
+        const auto& piste = project_.tracks[t];
+        if (piste.kind != vsm::sequencer::Track::Kind::Audio || piste.audio.empty()) continue;
+        for (const auto& c : piste.clips)
+            if (selection.count(c.id) > 0) { choisi = &c; index = t; break; }
+    }
+    if (choisi == nullptr) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Transcrire en MIDI",
+            u8"Choisissez d'abord un clip d'une piste AUDIO : une piste MIDI porte déjà ses notes.");
+        return;
+    }
+    const auto& piste = project_.tracks[index];
+    const vsm::sequencer::Clip clip = *choisi;
+    const juce::File fichier = currentProjectFolder_.getChildFile(juce::String(piste.audio.path));
+    if (!fichier.existsAsFile()) {
+        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon, u8"Transcrire en MIDI",
+                                                 juce::String(u8"Le fichier de la piste est introuvable : ") + fichier.getFullPathName());
+        return;
+    }
+    // LA PLAGE DU CLIP DANS LE FICHIER, en secondes : c'est ce que le
+    // transcripteur reçoit, et il rend des instants dans le fichier.
+    vsm::midi::Tick finMateriau = 0;
+    if (piste.audio.sampleRate > 0.0) finMateriau = project_.secondsToTicks(piste.audio.durationSeconds());
+    const auto jouee = vsm::sequencer::clipPlayedLength(clip, finMateriau);
+    const double debut = clip.sourceStartSeconds;
+    const double fin = vsm::sequencer::clipIsWarped(clip)
+                           ? vsm::sequencer::warpSourceSecondsAt(clip, jouee)
+                           : debut + (project_.ticksToSeconds(clip.startTick + jouee) - project_.ticksToSeconds(clip.startTick));
+    const juce::File json = juce::File::getSpecialLocation(juce::File::tempDirectory)
+                                .getChildFile("vsm-transcription-" + juce::String(juce::Time::currentTimeMillis()) + ".json");
+    juce::StringArray commande;
+    commande.add(juce::String::fromUTF8(reconstructionChain_.interpreterPath.c_str()));
+    commande.add(juce::File(juce::String::fromUTF8(reconstructionChain_.chainFolder.c_str()))
+                     .getChildFile("transcrire_clip.py").getFullPathName());
+    commande.add(fichier.getFullPathName());
+    commande.add("--debut"); commande.add(juce::String(debut, 3));
+    commande.add("--fin");   commande.add(juce::String(fin, 3));
+    commande.add("--sortie"); commande.add(json.getFullPathName());
+    std::fputs((juce::String(u8"Transcrire en MIDI : ") + commande.joinIntoString(" ") + "\n").toRawUTF8(), stderr);
+    const size_t plusieurs = selection.size();
+    clipTranscriber_.onFinished = [this, index, clip, json, plusieurs](bool succes, juce::File fichierJson,
+                                                                          juce::String journal) {
+        if (!succes) {
+            juce::StringArray lignes;
+            lignes.addLines(journal);
+            while (lignes.size() > 12) lignes.remove(0);
+            std::fputs((juce::String(u8"Transcrire en MIDI : ÉCHEC\n") + journal + "\n").toRawUTF8(), stderr);
+            juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon, u8"Transcrire en MIDI",
+                                                     juce::String(u8"La transcription a échoué :\n") + lignes.joinIntoString("\n"));
+            return;
+        }
+        const juce::var lu = juce::JSON::parse(fichierJson);
+        fichierJson.deleteFile();
+        const juce::var notesVar = lu.getProperty("notes", juce::var());
+        const juce::Array<juce::var>* tableau = notesVar.getArray();
+        if (index >= project_.tracks.size() || tableau == nullptr || tableau->isEmpty()) {
+            juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon, u8"Transcrire en MIDI",
+                                                     u8"Aucune note trouvée dans ce clip : aucune piste créée.");
+            return;
+        }
+        // LES INSTANTS DU FICHIER DEVIENNENT DES TICKS PAR LA FENÊTRE DU CLIP,
+        // suivi de tempo compris -- la même règle que pour une coupe.
+        auto tickDe = [this, &clip](double sourceSecondes) {
+            return vsm::sequencer::clipIsWarped(clip)
+                       ? clip.startTick + vsm::sequencer::warpTickAtSeconds(clip, sourceSecondes)
+                       : project_.secondsToTicks(project_.ticksToSeconds(clip.startTick)
+                                                  + (sourceSecondes - clip.sourceStartSeconds));
+        };
+        const auto& source = project_.tracks[index];
+        vsm::sequencer::Track neuve;
+        neuve.kind = vsm::sequencer::Track::Kind::Midi;
+        neuve.name = (clip.name.empty() ? source.name : clip.name) + " (transcrit)";
+        neuve.colorRgba = source.colorRgba;
+        neuve.folderDepth = source.folderDepth;
+        vsm::midi::Tick finMateriau = 0;
+        for (const auto& n : *tableau) {
+            vsm::sequencer::Note note;
+            const double depart = static_cast<double>(n.getProperty("start", 0.0));
+            const double duree = static_cast<double>(n.getProperty("duration", 0.0));
+            note.startTick = std::max<vsm::midi::Tick>(0, tickDe(depart));
+            note.endTick = std::max<vsm::midi::Tick>(note.startTick + 1, tickDe(depart + duree));
+            note.number = static_cast<uint8_t>(juce::jlimit(0, 127, static_cast<int>(n.getProperty("note", 60))));
+            note.velocity = static_cast<uint8_t>(juce::jlimit(1, 127, static_cast<int>(n.getProperty("velocity", 100))));
+            note.confidence = static_cast<float>(static_cast<double>(n.getProperty("confidence", 1.0)));
+            note.id = project_.nextNoteId();
+            finMateriau = std::max(finMateriau, note.endTick);
+            neuve.notes.push_back(note);
+        }
+        const size_t douteuses = vsm::sequencer::countDoubtfulNotes(neuve.notes);
+        beginProjectEdit(u8"Transcrire un clip en MIDI");
+        // UN CLIP SUR LA PLAGE DU CLIP AUDIO : la piste neuve joue là où il
+        // jouait, et rien d'autre.
+        uint64_t compteur = project_.peekNextClipId();
+        const auto fenetre = vsm::sequencer::createClip(neuve.clips, clip.startTick,
+                                                          std::max<vsm::midi::Tick>(1, finMateriau - clip.startTick),
+                                                          compteur, finMateriau);
+        project_.ensureClipIdAbove(compteur - 1);
+        for (auto& c : neuve.clips)
+            if (c.id == fenetre.id) { c.name = neuve.name; c.colorRgba = neuve.colorRgba; }
+        // APRÈS LA PISTE AUDIO, par `moveTrack`, qui répare les index de
+        // routage -- insérer au milieu à la main est la façon dont ils
+        // pourrissent (D18.7b).
+        project_.tracks.push_back(std::move(neuve));
+        vsm::sequencer::moveTrack(project_, project_.tracks.size() - 1, index + 1);
+        rebuildFromProject(false);
+        trackList_.selectTrackIndex(index + 1);
+        juce::String message = juce::String(static_cast<int>(tableau->size())) + juce::String(u8" note(s) posée(s) sur « ")
+                               + juce::String::fromUTF8(project_.tracks[index + 1].name.c_str())
+                               + juce::String(u8" », après la piste audio");
+        if (douteuses > 0)
+            message += juce::String(u8", dont ") + juce::String(static_cast<int>(douteuses))
+                       + juce::String(u8" douteuse(s) (confiance sous ") + juce::String(vsm::sequencer::kDoubtfulNoteThreshold, 2)
+                       + juce::String(u8" — « Note douteuse suivante » les parcourt)");
+        message += juce::String(u8".\nLa piste est SANS instrument : choisissez-en un dans le rack. ")
+                   + juce::String(u8"Les vélocités viennent de l'énergie du son, comme dans la chaîne.");
+        if (plusieurs > 1) message += juce::String(u8"\nUn clip à la fois : le premier choisi a été transcrit.");
+        std::fputs((juce::String(u8"Transcrire en MIDI : ") + message.replace("\n", " ; ") + "\n").toRawUTF8(), stderr);
+        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon, u8"Transcrire en MIDI", message);
+    };
+    clipTranscriber_.start(commande, json);
 }
 
 void MainComponent::trimClipToSound(size_t trackIndex, uint64_t clipId) {

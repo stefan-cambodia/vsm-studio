@@ -197,6 +197,8 @@ public:
     /// D20.3 : découper les clips audio CHOISIS aux transitoires. L'application
     /// lit les fichiers et coupe ; la vue ne sait pas lire un fichier.
     std::function<void()> onClipSliceAtOnsetsRequested;
+    /// D20.4 : transcrire le clip audio choisi en MIDI (l'application lance le transcripteur).
+    std::function<void()> onClipTranscribeRequested;
 
     /// D17.2 : « L'AUTOMATION SUIT LES ÉVÉNEMENTS », la préférence de Cubase,
     /// active par défaut. Réglée par l'application, qui la retient ; la vue ne

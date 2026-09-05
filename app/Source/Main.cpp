@@ -154,7 +154,13 @@ public:
             if (const char* sortie = std::getenv("VSM_CAPTURE"); sortie != nullptr && *sortie) {
                 const juce::File fichier =
                     juce::File::getCurrentWorkingDirectory().getChildFile(sortie);
-                juce::Timer::callAfterDelay(2000, [this, fichier] {
+                // VSM_DELAI=ms : le délai avant l'autoportrait (2 s par
+                // défaut). Une transcription (D20.4) met dix secondes à
+                // charger Basic Pitch, et la capture doit l'attendre.
+                int delai = 2000;
+                if (const char* d = std::getenv("VSM_DELAI"); d != nullptr && *d)
+                    delai = std::max(500, juce::String(d).getIntValue());
+                juce::Timer::callAfterDelay(delai, [this, fichier] {
                     if (auto* c = getContentComponent()) {
                         auto image = c->createComponentSnapshot(c->getLocalBounds());
                         fichier.deleteFile();

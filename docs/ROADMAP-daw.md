@@ -5219,3 +5219,30 @@ déclarer une interface invérifiable, et cela vaut pour celle-ci.
 > Tests : 1 247 audio (+4, dont un motif de boîte à rythmes synthétique --
 > grosse caisse à hauteur descendante et charleston --, qui est le cas réel
 > et non les impulsions), tous verts.
+
+> **D20.4 EST FAITE (05/09/2026, 12:20).** `analyse/transcrire_clip.py` --
+> nouveau, il n'importe rien que la chaîne en cours n'ait déjà en mémoire, et
+> il RÉEMPLOIE `extraire_notes` de `reconstruire.py` plutôt que de recopier
+> ses vélocités tirées de l'énergie du son -- écrit les notes d'une plage d'un
+> fichier en JSON, instants DANS LE FICHIER, confiance comprise. Trois tests
+> Python : sur la basse du morceau minuscule, les notes rendues sont celles de
+> la vérité à ±1 demi-ton et ±50 ms ; une plage coupée entre deux notes rend
+> les siennes aux instants du fichier ; une plage vide est une erreur nommée.
+>
+> `ClipTranscriber` lance le script par l'interpréteur que D9 a trouvé, dans
+> un processus enfant (Basic Pitch met dix secondes à charger, l'interface ne
+> les attend pas), garde le journal entier pour le montrer si ça échoue, et
+> tient qu'un code de sortie nul SANS fichier écrit est un échec. L'application
+> pose alors une piste MIDI neuve après la piste audio -- par `moveTrack`, qui
+> répare les index de routage, et non par une insertion à la main --, un clip
+> sur la plage du clip audio, les notes replacées sur la ligne de temps par la
+> fenêtre du clip (suivi de tempo compris, la même règle qu'une coupe), les
+> douteuses comptées et dites, la piste SANS instrument : on en choisit un
+> dans le rack, comme pour un projet importé d'un autre DAW. Un clip à la fois,
+> et c'est dit quand plusieurs sont choisis. Sans Python, l'entrée est grisée
+> avec la raison de D9.
+>
+> Vérifié à l'écran sur le projet d'essai : « Basse (audio) (transcrit) »
+> après la piste audio, quatre notes, « (Aucun) » dans le rack. Deux
+> commandes de plus pour y arriver sans souris : `premier-clip:N` dans
+> VSM_VUE, et `VSM_DELAI=ms` pour que l'autoportrait attende la transcription.

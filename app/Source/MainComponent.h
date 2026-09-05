@@ -6,6 +6,7 @@
 #include "vsm/sequencer/Groove.h"
 #include "vsm/audio/engine/Transport.h"
 #include "vsm/interchange/ReconstructionChain.h"
+#include "reconstruction/ClipTranscriber.h"
 #include "reconstruction/ReconstructionRunner.h"
 #include "ui/ReconstructionWindow.h"
 #include "ui/MidiLearnWindow.h"
@@ -214,6 +215,8 @@ private:
     kMenuEditRepeatLast = kMenuEditRepeatFirst + 4,
     /// D20.3 : découper la sélection aux transitoires (clips audio).
     kMenuEditSliceAtOnsets,
+    /// D20.4 : transcrire le clip audio choisi en MIDI (Python).
+    kMenuEditTranscribeClip,
     /// D17.8 : LE GROOVE — l'extraire de la piste choisie, l'appliquer à la
     /// sélection du piano roll, l'enregistrer dans la bibliothèque, en charger
     /// un.
@@ -316,6 +319,8 @@ private:
 
     vsm::interchange::ReconstructionChain reconstructionChain_;
     vsm::app::ReconstructionRunner reconstructionRunner_;
+    /// D20.4 : la transcription d'UN clip audio, dans un processus enfant.
+    vsm::app::ClipTranscriber clipTranscriber_;
     vsm::app::ui::ReconstructionWindow reconstructionPanel_;
     std::unique_ptr<PanelWindow> reconstructionWindow_;
     juce::File reconstructionOutput_;
@@ -691,6 +696,8 @@ private:
     void trimClipToSound(size_t trackIndex, uint64_t clipId);
     /// D20.3 : les clips audio choisis, coupés à chaque attaque trouvée.
     void sliceSelectedClipsAtOnsets();
+    /// D20.4 : le premier clip audio choisi, transcrit en notes sur une piste neuve.
+    void transcribeSelectedClip();
     /// D18.1 : rend hors ligne les clips choisis et les pose sur une piste
     /// audio neuve, à leur place. La piste d'origine n'est pas touchée --
     /// c'est ce qui distingue « reporter la sélection » de « reporter la

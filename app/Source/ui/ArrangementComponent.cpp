@@ -604,6 +604,9 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
             // d'avance lirait le fichier entier à chaque ouverture du menu, et
             // neuf minutes de voix feraient attendre un clic droit.
             menu.addItem(22, u8"D\u00e9couper aux transitoires (clips audio choisis)");
+            // D20.4 : TRANSCRIRE EN MIDI, un clip à la fois -- le premier
+            // choisi. L'application dit si Python manque, avec la raison.
+            menu.addItem(23, u8"Transcrire en MIDI (Basic Pitch, Python)");
             marqueurGeste_ = surMarqueur;
         }
         // LE ZOOM (D14.2), pour tout clip : tout voir, ou la sélection.
@@ -1063,6 +1066,9 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
             return;
         case 22:
             if (onClipSliceAtOnsetsRequested) onClipSliceAtOnsetsRequested();
+            return;
+        case 23:
+            if (onClipTranscribeRequested) onClipTranscribeRequested();
             return;
         case 5: splitSelectionAtPlayhead(); return;
         case 6: joinSelection(); return;
