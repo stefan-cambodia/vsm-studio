@@ -74,7 +74,7 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
     configureButton(zoomFitButton_, "Afficher toute la piste (Ctrl+0)");
     zoomFitButton_.onClick = [this] { pianoRoll_.zoomToFit(); };
 
-    for (auto* toggle : { &snapButton_, &ghostButton_, &followButton_, &scaleHighlightButton_, &stepButton_ })
+    for (auto* toggle : { &snapButton_, &ghostButton_, &foldButton_, &followButton_, &scaleHighlightButton_, &stepButton_ })
         addAndMakeVisible(*toggle);
     snapButton_.setToggleState(pianoRoll_.snapEnabled(), juce::dontSendNotification);
     snapButton_.onClick = [this] { pianoRoll_.setSnapEnabled(snapButton_.getToggleState()); };
@@ -82,6 +82,13 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
     stepButton_.onClick = [this] { pianoRoll_.setStepInputEnabled(stepButton_.getToggleState()); };
     ghostButton_.setToggleState(pianoRoll_.ghostNotesVisible(), juce::dontSendNotification);
     ghostButton_.onClick = [this] { pianoRoll_.setGhostNotesVisible(ghostButton_.getToggleState()); };
+    // D20.2 : REPLIER. Refusé sur une piste sans note -- le bouton revient
+    // alors, et le piano roll a dit pourquoi dans sa ligne d'état.
+    foldButton_.setTooltip(u8"Ne montrer que les hauteurs jouées sur la piste (Live : Fold)");
+    foldButton_.onClick = [this] {
+        if (!pianoRoll_.setFoldEnabled(foldButton_.getToggleState()))
+            foldButton_.setToggleState(false, juce::dontSendNotification);
+    };
     followButton_.setToggleState(pianoRoll_.followPlayhead(), juce::dontSendNotification);
     followButton_.onClick = [this] { pianoRoll_.setFollowPlayhead(followButton_.getToggleState()); };
     scaleHighlightButton_.setToggleState(false, juce::dontSendNotification);
@@ -164,6 +171,7 @@ void PianoRollToolbar::applyScaleFromCombos() {
 }
 
 void PianoRollToolbar::refreshFromPianoRoll() {
+    foldButton_.setToggleState(pianoRoll_.foldEnabled(), juce::dontSendNotification);
     const auto currentTool = pianoRoll_.tool();
     auto mark = [](juce::TextButton& b, bool active) {
         b.setColour(juce::TextButton::buttonColourId, active ? Palette::accentTeal : Palette::panelRaised);
@@ -237,5 +245,6 @@ void PianoRollToolbar::resized() {
     place(bottom, scaleHighlightButton_, 74);
     bottom.removeFromLeft(8);
     place(bottom, ghostButton_, 86);
+    place(bottom, foldButton_, 76);
     place(bottom, followButton_, 76);
 }

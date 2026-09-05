@@ -5147,3 +5147,28 @@ déclarer une interface invérifiable, et cela vaut pour celle-ci.
 > mesure.
 >
 > Tests : 261 core (+3), tous verts.
+
+> **D20.2 EST FAITE (05/09/2026, 11:05).** Tout passe par des RANGÉES :
+> dépliée, la rangée d'une hauteur est « 127 moins la hauteur » et rien n'a
+> changé au pixel ; repliée, c'est le nombre de hauteurs jouées plus aiguës
+> qu'elle. `noteToY`, `yToNote`, le clavier, la grille et la barre de
+> défilement lisent tous cette correspondance, si bien que dessiner, déplacer
+> et écouter tombent sur la bonne hauteur sans qu'un seul geste ait été
+> réécrit. Les rangées se relisent à chaque dessin : une note ajoutée fait
+> apparaître sa rangée. Rien dans le modèle, rien dans le fichier.
+>
+> Refusé sur une piste sans note, en le disant dans la ligne d'état, et le
+> bouton revient de lui-même ; l'entrée de menu annonce combien de hauteurs
+> elle montrerait. Repliée, chaque rangée est nommée : elles ne se suivent
+> pas, et « les do seulement » laisserait la caisse claire sans nom.
+>
+> Vérifié à l'écran sur la batterie du projet d'exemple, côte à côte : cent
+> vingt-huit rangées avant, deux après (« charleston fermé », « grosse
+> caisse »), la ligne de vélocité inchangée, la ligne d'état qui le dit.
+> `VSM_MENU=Replier sur les hauteurs jouées` a piloté la seconde capture.
+>
+> **UN PIÈGE DE C++20 AU PASSAGE** : un littéral `u8"…"` est un `char8_t[]`,
+> et `juce::String + u8"…"` est ambigu — la compilation avait échoué en
+> silence derrière un `grep`, et la première capture « repliée » était celle
+> de l'ancien binaire. Le code de sortie d'un tube est celui de son dernier
+> maillon ; on lit désormais `PIPESTATUS`.

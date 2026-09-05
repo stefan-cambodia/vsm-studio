@@ -3,6 +3,7 @@
 #include "Shortcuts.h"
 #include "LookAndFeel/VsmLookAndFeel.h"
 #include <algorithm>
+#include <set>
 #include <array>
 #include <cmath>
 
@@ -43,6 +44,7 @@ enum ContextMenuId {
     kCtxArpUp = 100090, kCtxArpDown, kCtxArpUpDown, kCtxArpRandom,
     kCtxChordBase = 100100, // + index dans allChordTypes()
     kCtxZoomFit = 100300, kCtxZoomSelection,
+    kCtxFold = 100400,
 };
 
 } // namespace
@@ -76,6 +78,7 @@ void PianoRollComponent::setActiveTrackIndex(size_t trackIndex) {
     if (autrePiste) stopAudition();
     activeTrackIndex_ = trackIndex;
     selectedNoteIds_.clear();
+    refreshFoldRows();
     // CADRER LES NOTES DE LA PISTE QU'ON VIENT DE CHOISIR, verticalement
     // seulement. Le piano roll s'ouvrait toujours sur C6 en haut, quelle que
     // soit la piste : une basse reconstruite (octave 1) montrait une fenêtre
@@ -118,13 +121,64 @@ Tick PianoRollComponent::xToTick(float x) const {
     return scrollTick_ + static_cast<Tick>(static_cast<double>(x - keyboardWidth()) / pixelsPerTick_);
 }
 
+// D20.2 : TOUT PASSE PAR LES RANGÉES. Dépliée, la rangée d'une hauteur est
+// « 127 moins la hauteur » et rien n'a changé ; repliée, c'est le nombre de
+// hauteurs jouées plus aiguës qu'elle. Une hauteur absente (le haut de la vue
+// pendant un défilement) tombe sur la rangée de la plus proche en dessous.
+int PianoRollComponent::rowOfNote(int note) const {
+    if (!folded()) return 127 - juce::jlimit(0, 127, note);
+    int rangee = 0;
+    for (uint8_t h : rangees_) {
+        if (static_cast<int>(h) > note) ++rangee;
+        else break;
+    }
+    return std::min(rangee, static_cast<int>(rangees_.size()) - 1);
+}
+
+int PianoRollComponent::noteOfRow(int row) const {
+    if (!folded()) return juce::jlimit(0, 127, 127 - row);
+    return rangees_[static_cast<size_t>(juce::jlimit(0, static_cast<int>(rangees_.size()) - 1, row))];
+}
+
 int PianoRollComponent::noteToY(uint8_t note) const {
-    return (topNote_ - static_cast<int>(note)) * noteHeight_;
+    return (rowOfNote(static_cast<int>(note)) - rowOfNote(topNote_)) * noteHeight_;
 }
 
 uint8_t PianoRollComponent::yToNote(float y) const {
-    const int n = topNote_ - static_cast<int>(std::floor(y / static_cast<float>(noteHeight_)));
-    return static_cast<uint8_t>(juce::jlimit(0, 127, n));
+    const int rangee = rowOfNote(topNote_) + static_cast<int>(std::floor(y / static_cast<float>(noteHeight_)));
+    return static_cast<uint8_t>(noteOfRow(rangee));
+}
+
+void PianoRollComponent::refreshFoldRows() {
+    rangees_.clear();
+    if (!fold_) return;
+    const Track* track = activeTrack();
+    if (!track) return;
+    std::set<uint8_t> hauteurs;
+    for (const auto& n : track->notes) hauteurs.insert(n.number);
+    rangees_.assign(hauteurs.rbegin(), hauteurs.rend());
+}
+
+bool PianoRollComponent::setFoldEnabled(bool enabled) {
+    fold_ = enabled;
+    refreshFoldRows();
+    if (fold_ && rangees_.empty()) {
+        // RIEN À REPLIER, ET C'EST DIT : un piano roll replié sur zéro rangée
+        // serait une grille vide sans explication.
+        fold_ = false;
+        if (onStatusChanged) onStatusChanged(u8"Rien \u00e0 replier : cette piste n'a aucune note.");
+        repaint();
+        return false;
+    }
+    // La rangée du haut est la plus aiguë jouée : replier montre tout.
+    if (fold_) topNote_ = rangees_.front();
+    if (onStatusChanged)
+        onStatusChanged(fold_ ? juce::String(u8"Repli\u00e9 sur ") + juce::String(static_cast<int>(rangees_.size()))
+                                    + juce::String(u8" hauteur(s) jou\u00e9e(s)")
+                              : juce::String(u8"D\u00e9pli\u00e9 : toutes les hauteurs"));
+    updateScrollBars();
+    repaint();
+    return true;
 }
 
 Tick PianoRollComponent::gridTicks() const {
@@ -890,6 +944,18 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
     menu.addSeparator();
     menu.addItem(kCtxZoomFit, "Zoom : tout voir");
     menu.addItem(kCtxZoomSelection, u8"Zoom : sur la sélection", sel);
+    // D20.2 : REPLIER. L'entrée dit combien de hauteurs elle montrerait --
+    // ou qu'il n'y en a aucune, auquel cas elle est grisée avec sa raison.
+    {
+        std::set<uint8_t> jouees;
+        if (const Track* t = activeTrack()) for (const auto& n : t->notes) jouees.insert(n.number);
+        menu.addItem(kCtxFold,
+                     fold_ ? juce::String(u8"Déplier (toutes les hauteurs)")
+                           : jouees.empty() ? juce::String(u8"Replier sur les hauteurs jouées (aucune note)")
+                                            : juce::String(u8"Replier sur les hauteurs jouées (")
+                                                  + juce::String(static_cast<int>(jouees.size())) + ")",
+                     fold_ || !jouees.empty(), fold_);
+    }
     return menu;
 }
 
@@ -951,6 +1017,7 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         case kCtxArpRandom:        arpeggiateSelection(ArpeggioMode::Random); break;
         case kCtxZoomFit:          zoomToFit(); break;
         case kCtxZoomSelection:    zoomToSelection(); break;
+        case kCtxFold:             setFoldEnabled(!fold_); break;
         default: break;
     }
 }
@@ -1427,6 +1494,7 @@ void PianoRollComponent::updateStatusText(juce::Point<float> mousePos, bool mous
 
 void PianoRollComponent::paint(juce::Graphics& g) {
     g.fillAll(Palette::background);
+    refreshFoldRows();   // les hauteurs jouées ont pu changer depuis le dernier dessin
 
     if (!project_ || !activeTrack()) {
         g.setColour(Palette::textSecondary);
@@ -1510,8 +1578,13 @@ void PianoRollComponent::drawKeyboard(juce::Graphics& g) const {
     const Track* pisteDeBatterie = nullptr;
     if (const Track* track = activeTrack(); track && track->channel == 9) pisteDeBatterie = track;
 
-    const int bottomNote = topNote_ - bounds.getHeight() / noteHeight_ - 1;
-    for (int note = std::max(0, bottomNote); note <= std::min(127, topNote_); ++note) {
+    // Rangée par rangée, de l'aiguë à la grave : repliée (D20.2), une rangée
+    // est une hauteur JOUÉE, et il n'y en a que quelques-unes.
+    const int premiereRangee = rowOfNote(topNote_);
+    const int derniereRangee = std::min(rowCount() - 1,
+                                        premiereRangee + bounds.getHeight() / noteHeight_ + 1);
+    for (int rangee = premiereRangee; rangee <= derniereRangee; ++rangee) {
+        const int note = noteOfRow(rangee);
         const int y = noteToY(static_cast<uint8_t>(note));
         const bool black = isBlackKey(note);
         const bool pressed = keyPressed[static_cast<size_t>(note)];
@@ -1541,7 +1614,8 @@ void PianoRollComponent::drawKeyboard(juce::Graphics& g) const {
                                                     static_cast<uint8_t>(note));
             if (!piece.empty() && noteHeight_ >= 9) etiquette = juce::String::fromUTF8(piece.c_str());
         }
-        if (etiquette.isNotEmpty() || note % 12 == 0 || noteHeight_ >= 14) {
+        // Repliée, chaque rangée est nommée : elles ne se suivent pas.
+        if (etiquette.isNotEmpty() || note % 12 == 0 || noteHeight_ >= 14 || folded()) {
             g.setColour(pressed ? juce::Colours::black
                                  : (etiquette.isNotEmpty() || note % 12 == 0 ? Palette::textPrimary
                                                                              : Palette::textSecondary));
@@ -1558,8 +1632,13 @@ void PianoRollComponent::drawKeyboard(juce::Graphics& g) const {
 void PianoRollComponent::drawGrid(juce::Graphics& g) const {
     const auto bounds = getLocalBounds();
 
-    const int bottomNote = topNote_ - bounds.getHeight() / noteHeight_ - 1;
-    for (int note = std::max(0, bottomNote); note <= std::min(127, topNote_); ++note) {
+    // Rangée par rangée, de l'aiguë à la grave : repliée (D20.2), une rangée
+    // est une hauteur JOUÉE, et il n'y en a que quelques-unes.
+    const int premiereRangee = rowOfNote(topNote_);
+    const int derniereRangee = std::min(rowCount() - 1,
+                                        premiereRangee + bounds.getHeight() / noteHeight_ + 1);
+    for (int rangee = premiereRangee; rangee <= derniereRangee; ++rangee) {
+        const int note = noteOfRow(rangee);
         const int y = noteToY(static_cast<uint8_t>(note));
         const bool isC = (note % 12 == 0);
 
@@ -1774,10 +1853,16 @@ void PianoRollComponent::updateScrollBars() {
     const double visibleNotes = static_cast<double>(area.getHeight()) / std::max(1, noteHeight_);
     // L'axe vertical est inversé (les aigus en haut) : la barre travaille sur
     // "note la plus grave visible", d'où la conversion.
-    const double lowestVisible = static_cast<double>(topNote_) - visibleNotes;
-    verticalScrollBar_.setRangeLimits(0.0, 128.0, juce::dontSendNotification);
-    verticalScrollBar_.setCurrentRange(juce::jlimit(0.0, 128.0 - visibleNotes, lowestVisible),
-                                        visibleNotes, juce::dontSendNotification);
+    // Repliée (D20.2), la barre travaille en RANGÉES depuis le bas : « la
+    // note la plus grave visible » n'a pas de sens sur des hauteurs qui ne se
+    // suivent pas.
+    const double total = static_cast<double>(rowCount());
+    const double lowestVisible =
+        folded() ? total - (static_cast<double>(rowOfNote(topNote_)) + visibleNotes)
+                 : static_cast<double>(topNote_) - visibleNotes;
+    verticalScrollBar_.setRangeLimits(0.0, total, juce::dontSendNotification);
+    verticalScrollBar_.setCurrentRange(juce::jlimit(0.0, std::max(0.0, total - visibleNotes), lowestVisible),
+                                        std::min(visibleNotes, total), juce::dontSendNotification);
     updatingScrollBars_ = false;
 }
 
@@ -1787,7 +1872,10 @@ void PianoRollComponent::scrollBarMoved(juce::ScrollBar* bar, double newRangeSta
         scrollTick_ = std::max<Tick>(0, static_cast<Tick>(newRangeStart));
     } else if (bar == &verticalScrollBar_) {
         const double visibleNotes = static_cast<double>(contentArea().getHeight()) / std::max(1, noteHeight_);
-        topNote_ = juce::jlimit(12, 127, static_cast<int>(std::lround(newRangeStart + visibleNotes)));
+        if (folded())
+            topNote_ = noteOfRow(static_cast<int>(std::lround(static_cast<double>(rowCount()) - newRangeStart - visibleNotes)));
+        else
+            topNote_ = juce::jlimit(12, 127, static_cast<int>(std::lround(newRangeStart + visibleNotes)));
     }
     repaint();
 }

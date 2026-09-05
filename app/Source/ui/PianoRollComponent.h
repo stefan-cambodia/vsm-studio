@@ -110,6 +110,13 @@ public:
     bool scaleHighlightEnabled() const { return scaleHighlight_; }
     void setGhostNotesVisible(bool visible);
     bool ghostNotesVisible() const { return ghostNotes_; }
+    /// D20.2 : REPLIER sur les hauteurs jouées -- seules les hauteurs présentes
+    /// sur la piste font une rangée (Live : Fold). Rien dans le modèle, rien
+    /// dans le fichier : c'est une façon de regarder. Refusé, et dit, quand la
+    /// piste n'a aucune note : il n'y aurait rien à montrer.
+    bool setFoldEnabled(bool enabled);
+    bool foldEnabled() const { return fold_; }
+    size_t foldedRowCount() const { return rangees_.size(); }
     void setFollowPlayhead(bool follow);
     bool followPlayhead() const { return followPlayhead_; }
 
@@ -310,6 +317,16 @@ private:
     bool scaleHighlight_ = false;
     bool ghostNotes_ = true;
     bool followPlayhead_ = true;
+    // D20.2 : LES RANGÉES, quand c'est replié -- les hauteurs jouées, de
+    // l'aiguë à la grave. Vide quand ce n'est pas replié : les rangées sont
+    // alors les cent vingt-huit hauteurs, comme toujours.
+    bool fold_ = false;
+    std::vector<uint8_t> rangees_;
+    void refreshFoldRows();
+    bool folded() const { return fold_ && !rangees_.empty(); }
+    int rowCount() const { return folded() ? static_cast<int>(rangees_.size()) : 128; }
+    int rowOfNote(int note) const;
+    int noteOfRow(int row) const;
 
     vsm::sequencer::NoteSelection selectedNoteIds_;
     std::vector<vsm::sequencer::Note> clipboard_;

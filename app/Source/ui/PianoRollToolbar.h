@@ -34,7 +34,7 @@ private:
     juce::TextButton quantizeButton_ { "Quantifier" }, legatoButton_ { "Legato" },
                      humanizeButton_ { "Humaniser" }, chordButton_ { "Accord" }, moreButton_ { "Plus..." };
     juce::TextButton zoomInButton_ { "+" }, zoomOutButton_ { "-" }, zoomFitButton_ { "Tout" };
-    juce::ToggleButton snapButton_ { "Aimant" }, ghostButton_ { u8"Fantômes" },
+    juce::ToggleButton snapButton_ { "Aimant" }, ghostButton_ { u8"Fantômes" }, foldButton_ { "Replier" },
                        followButton_ { "Suivre" }, scaleHighlightButton_ { "Gamme" },
                        stepButton_ { u8"Pas à pas" };
 
