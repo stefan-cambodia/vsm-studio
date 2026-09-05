@@ -226,6 +226,10 @@ struct ProjectTrack {
     int outputSourceTrack = -1;
     int outputIndex = 0;
 
+    /// D19.4 : la profondeur dans l'arborescence des dossiers. 0 = à la
+    /// racine, et le champ est alors absent du fichier.
+    int folderDepth = 0;
+
     /// D16.7 : le décalage de piste, en millisecondes. Écrit seulement quand
     /// il n'est pas nul.
     double delayMs = 0.0;

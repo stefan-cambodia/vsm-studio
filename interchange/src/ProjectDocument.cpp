@@ -273,6 +273,7 @@ ProjectDocument documentFromProject(const Project& project) {
         entry.editGroup = track.editGroup;
         entry.outputSourceTrack = track.outputSourceTrack;
         entry.outputIndex = track.outputIndex;
+        entry.folderDepth = track.folderDepth;
         entry.delayMs = track.delayMs;
         entry.automationMode = track.automationMode == vsm::sequencer::AutomationMode::Touch ? "touch"
                              : track.automationMode == vsm::sequencer::AutomationMode::Latch ? "latch"
@@ -283,6 +284,10 @@ ProjectDocument documentFromProject(const Project& project) {
         entry.frozenAudio.channels = track.frozenAudio.channels;
         if (track.kind == vsm::sequencer::Track::Kind::Group) {
             entry.kind = "group";
+        } else if (track.kind == vsm::sequencer::Track::Kind::Folder) {
+            // D19.4 : UN DOSSIER N'A NI MATÉRIAU NI SORTIE, seulement un nom,
+            // une couleur et un état replié. Rien d'autre n'est écrit pour lui.
+            entry.kind = "folder";
         } else if (track.kind == vsm::sequencer::Track::Kind::Audio) {
             entry.kind = "audio";
             entry.audio = {track.audio.path, track.audio.sampleRate,
@@ -419,6 +424,7 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
             target.effects.push_back({effect.type, effect.parameters, effect.nativeState, effect.enabled});
         target.kind = source.kind == "audio"  ? Track::Kind::Audio
                     : source.kind == "group"  ? Track::Kind::Group
+                    : source.kind == "folder" ? Track::Kind::Folder
                                                : Track::Kind::Midi;
         target.outputGroup = source.outputGroup;
         target.arrangementHeight = source.arrangementHeight;
@@ -430,6 +436,7 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.editGroup = source.editGroup;
         target.outputSourceTrack = source.outputSourceTrack;
         target.outputIndex = source.outputIndex;
+        target.folderDepth = source.folderDepth;
         target.delayMs = source.delayMs;
         target.automationMode = source.automationMode == "touch" ? vsm::sequencer::AutomationMode::Touch
                               : source.automationMode == "latch" ? vsm::sequencer::AutomationMode::Latch
@@ -627,6 +634,10 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         // D18.7b : LA SOURCE D'ABORD, L'INDEX SEULEMENT S'IL Y A UNE SOURCE.
         // Écrire un « outputIndex » orphelin décrirait une piste qui publie la
         // sortie de personne, et le relecteur devrait deviner laquelle.
+        // D19.4 : ÉCRITE SEULEMENT QUAND ELLE N'EST PAS NULLE. Un projet sans
+        // dossier garde donc le fichier qu'il a toujours eu, octet pour octet.
+        if (track.folderDepth != 0)
+            entry.set("folderDepth", JsonValue::makeNumber(track.folderDepth));
         if (track.outputSourceTrack >= 0) {
             entry.set("outputSourceTrack", JsonValue::makeNumber(track.outputSourceTrack));
             if (track.outputIndex != 0)
@@ -855,6 +866,7 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         track.hidden = entry["hidden"].asBoolean(false);
         track.transposeSemitones = static_cast<int>(entry["transpose"].asNumber(0.0));
         track.editGroup = static_cast<int>(entry["editGroup"].asNumber(0.0));
+        track.folderDepth = static_cast<int>(entry["folderDepth"].asNumber(0.0));
         track.outputSourceTrack = static_cast<int>(entry["outputSourceTrack"].asNumber(-1.0));
         // L'INDEX NE SURVIT PAS SANS SA SOURCE : sans elle il ne désigne rien,
         // et le garder ferait ressusciter une publication au prochain

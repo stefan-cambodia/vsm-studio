@@ -611,4 +611,55 @@ size_t explodeTrackByPitch(Project& project, size_t index,
     return static_cast<size_t>(combien);
 }
 
+std::vector<size_t> folderContents(const Project& project, size_t index) {
+    std::vector<size_t> contenu;
+    if (index >= project.tracks.size() || !project.tracks[index].isFolder()) return contenu;
+    const int profondeur = project.tracks[index].folderDepth;
+    for (size_t t = index + 1; t < project.tracks.size(); ++t) {
+        // ON S'ARRÊTE À LA PREMIÈRE PISTE QUI N'EST PAS PLUS PROFONDE : elle
+        // est soit la voisine du dossier, soit celle qui le suit dans un
+        // dossier parent. Dans les deux cas, elle n'est pas dedans.
+        if (project.tracks[t].folderDepth <= profondeur) break;
+        contenu.push_back(t);
+    }
+    return contenu;
+}
+
+bool hiddenByCollapsedFolder(const Project& project, size_t index) {
+    if (index >= project.tracks.size()) return false;
+    const int profondeur = project.tracks[index].folderDepth;
+    if (profondeur <= 0) return false;   // à la racine : aucun dossier au-dessus
+    // ON REMONTE VERS LE HAUT DE LA LISTE en cherchant, à chaque niveau, le
+    // dossier qui contient la piste. Dès qu'un ANCÊTRE est replié, la piste est
+    // cachée -- même si le dossier intermédiaire, lui, est déplié : un tiroir
+    // fermé ne laisse pas dépasser ce qu'il contient.
+    int niveau = profondeur;
+    for (size_t t = index; t > 0; --t) {
+        const Track& candidat = project.tracks[t - 1];
+        if (candidat.folderDepth >= niveau) continue;      // pas un ancêtre
+        // Premier moins profond : c'est le contenant de ce niveau.
+        if (candidat.isFolder() && candidat.folded) return true;
+        niveau = candidat.folderDepth;
+        if (niveau <= 0) break;
+    }
+    return false;
+}
+
+size_t normalizeFolderDepths(Project& project) {
+    size_t corrigees = 0;
+    int precedente = -1;              // profondeur de la piste d'avant
+    bool precedenteEstDossier = false;
+    for (auto& piste : project.tracks) {
+        // Le plafond : un cran de plus que la précédente, et SEULEMENT si
+        // celle-ci est un dossier. Sinon on reste à son niveau.
+        const int plafond = precedente < 0 ? 0
+                            : (precedenteEstDossier ? precedente + 1 : precedente);
+        const int voulue = std::max(0, std::min(piste.folderDepth, plafond));
+        if (voulue != piste.folderDepth) { piste.folderDepth = voulue; ++corrigees; }
+        precedente = piste.folderDepth;
+        precedenteEstDossier = piste.isFolder();
+    }
+    return corrigees;
+}
+
 } // namespace vsm::sequencer

@@ -4927,6 +4927,59 @@ Quatre manques ont survécu à la vérification.
 | D19.3 | **Éclater une piste par hauteur.** Une piste de batterie reconstruite porte la grosse caisse, la caisse claire et le charley sur une seule ligne de temps. La chaîne d'analyse les a SÉPARÉS ; le DAW ne sait pas refaire ce geste à la main, ni le défaire. C'est le pendant manuel de l'objectif de parité, et le compagnon de D18.7b — qui a donné une piste à chaque SORTIE, quand celle-ci en donne une à chaque HAUTEUR. Cubase : Dissolve Part | « Piste ▸ Éclater par hauteur » : une piste neuve par hauteur présente, nommée par la pièce (`drumVoiceName`) quand la machine la nomme, insérées après l'originale, l'instrument recopié ; annulable ; les index de routage suivent comme en D18.7b ; test `core/` : éclater trois hauteurs rend trois pistes dont la réunion des notes est exactement le matériau d'origine |
 | D19.4 | **Les pistes dossier.** `Track::folded` replie UNE piste ; rien ne replie un GROUPE de pistes. Un groupe de mixage (D4.2) est un bus, pas un rangement : router huit micros de batterie dans un bus ne les fait pas disparaître de la vue quand on travaille sur les cordes. Cubase : Folder Tracks | une piste de type dossier qui CONTIENT des pistes, se replie et les masque toutes, et dont le repli est écrit dans `project.json` ; elle ne touche à aucun signal — un dossier n'est pas un bus, et un projet qui n'en a pas garde son fichier octet pour octet ; test `interchange/` : aller-retour, et absence totale du fichier quand il n'y a aucun dossier |
 
+> **D19.4 EST FAITE (05/09/2026, 12:05), ET LA PHASE D19 EST CLOSE.**
+> `Track::Kind::Folder` et `Track::folderDepth`, tous deux absents du fichier
+> quand ils valent le défaut — un projet sans dossier garde son fichier octet
+> pour octet, et un test l'exige.
+>
+> **LE CONTENU SE LIT PAR CONTIGUÏTÉ, PAS PAR UN INDEX DE PARENT**, et le choix
+> est motivé par ce que cette session a payé ailleurs. Un dossier de
+> profondeur `d` contient les pistes qui le suivent tant qu'elles sont plus
+> profondes que lui — le modèle de Cubase. L'alternative, un index de parent,
+> serait plus directe à lire mais devrait être RÉPARÉE dans `moveTrack`,
+> `duplicateTrack` et `removeTrack` : c'est exactement ce qu'il a fallu faire
+> pour `outputSourceTrack` en D18.7b, et c'est là que ce genre de référence
+> pourrit en silence. Une profondeur ne référence personne — déplacer une piste
+> ne peut pas la faire pointer sur le mauvais dossier, au pire elle change de
+> tiroir, ce qui est ce qu'on voulait en la déplaçant.
+>
+> **L'INVARIANT EST RÉTABLI PLUTÔT QUE SUPPOSÉ.** `normalizeFolderDepths` fait
+> qu'une piste ne peut être plus profonde que « la précédente + 1 », et ne peut
+> descendre d'un cran que si la précédente est un DOSSIER — sinon elle
+> prétendrait être rangée dans une piste ordinaire, et le contenu lu serait
+> celui que personne n'a voulu. Elle est appelée après chaque changement de
+> profondeur, elle est idempotente, et un arbre légitime la traverse sans une
+> correction.
+>
+> **UN DOSSIER NE TOUCHE À AUCUN SIGNAL, et c'est là que ce dépôt s'écarte de
+> Cubase en le disant.** Cubase donne à ses dossiers un muet et un solo qui
+> agissent sur leur contenu ; ce serait ici un bus déguisé, et le rangement
+> cesserait d'être gratuit — on ne pourrait plus replier huit micros de
+> batterie sans se demander si l'on vient de changer le mélange. La rangée d'un
+> dossier n'a donc ni fader, ni panoramique, ni muet, ni solo, ni armement, ni
+> sortie : elle porte un chevron, un nom, et la mention « dossier (ne joue
+> rien) ».
+>
+> **CE QUE L'ÉCRAN A CORRIGÉ, une deuxième fois dans cette session.** La
+> première capture montrait un dossier avec un fader — un réglage sans effet,
+> la pire espèce — et sans sa mention, parce que `resized()` ne donnait de
+> bornes à l'étiquette que pour trois genres de piste sur quatre. Les deux se
+> voient d'un coup d'œil et ne se déduisent d'aucun test.
+>
+> Trois gestes qui se composent, plutôt qu'une grande commande qui devinerait
+> ce qu'on veut ranger : « Ranger cette piste dans un dossier neuf », « Entrer
+> dans le dossier du dessus », « Sortir du dossier ». Sortir un DOSSIER emmène
+> ce qu'il contenait — sans quoi ses pistes se retrouveraient rangées dans le
+> voisin d'à côté.
+>
+> Vérifié à l'écran, replié et déplié côte à côte : le chevron passe de ▾ à ▸,
+> les deux pistes rangées disparaissent, la piste qui suit le dossier ne bouge
+> pas, et les pistes contenues restent en retrait quand il est ouvert.
+>
+> Tests : 1 830 C++ (258 / 1 243 / 274 / 25 / 11 / 19) et 150 Python, tous
+> verts.
+
+
 > **D19.2 EST FAITE (05/09/2026, 11:20).** Un champ « Filtrer les pistes... »
 > sur sa propre ligne sous la barre d'outils — pas serré entre deux boutons :
 > entre « ça tient dans la case » et « ça se lit », c'est la lisibilité qui

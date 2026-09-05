@@ -477,7 +477,13 @@ public:
     /// piste. En faire un troisième objet aurait obligé le mixeur, l'éditeur
     /// d'effets, l'automation et le format à connaître deux choses là où une
     /// seule suffit.
-    enum class Kind { Midi, Audio, Group };
+    /// `Folder` (D19.4) NE JOUE RIEN ET NE REÇOIT RIEN : ce n'est pas un bus,
+    /// c'est un RANGEMENT. Un groupe (`Group`) additionne des pistes pour leur
+    /// mettre un compresseur commun ; un dossier les met dans un tiroir qu'on
+    /// referme quand on travaille ailleurs. Confondre les deux obligerait à
+    /// router huit micros de batterie dans un bus pour pouvoir les replier,
+    /// c'est-à-dire à changer le SON pour ranger la VUE.
+    enum class Kind { Midi, Audio, Group, Folder };
     Kind kind = Kind::Midi;
 
     std::string name;
@@ -744,6 +750,27 @@ public:
     /// `docs/CDC-detection-multipiste.md`.
     int outputSourceTrack = -1;
     int outputIndex = 0;
+
+    /// LA PROFONDEUR DANS L'ARBORESCENCE DES DOSSIERS (D19.4). 0 = à la
+    /// racine, ce qui est le cas de toute piste écrite jusqu'ici — le champ
+    /// est alors absent du fichier.
+    ///
+    /// LE CONTENU D'UN DOSSIER SE LIT PAR CONTIGUÏTÉ : un dossier de
+    /// profondeur `d` contient les pistes qui le SUIVENT tant qu'elles sont
+    /// plus profondes que lui, et s'arrête à la première de profondeur `d` ou
+    /// moins. C'est le modèle de Cubase.
+    ///
+    /// POURQUOI PAS UN INDEX DE PARENT, qui serait plus direct à lire. Parce
+    /// qu'un index de piste doit être RÉPARÉ à chaque déplacement, duplication
+    /// et suppression — `outputGroup` et `outputSourceTrack` le sont dans les
+    /// trois, et c'est exactement là que ce genre de référence pourrit en
+    /// silence. Une profondeur ne référence personne : déplacer une piste ne
+    /// peut pas la faire pointer sur le mauvais dossier, au pire elle change
+    /// de tiroir, ce qui est ce qu'on voulait en la déplaçant.
+    int folderDepth = 0;
+
+    /// Vrai si la piste est un dossier (raccourci de lecture).
+    bool isFolder() const { return kind == Kind::Folder; }
 
     /// Vrai quand la piste publie la sortie d'une autre (voir ci-dessus).
     bool publishesInstrumentOutput() const { return outputSourceTrack >= 0; }

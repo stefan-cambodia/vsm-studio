@@ -697,3 +697,93 @@ VSM_TEST(exploding_gives_every_piece_the_same_clips_with_fresh_ids) {
     // toute sélection sur les deux.
     VSM_ASSERT(p.tracks[1].clips[0].id != p.tracks[0].clips[0].id);
 }
+
+// D19.4 — LES PISTES DOSSIER : un rangement, pas un bus.
+namespace {
+/// Un projet : Dossier(0) [ Kick(1), Snare(2), SousDossier(3) [ HatA(4) ] ], Basse(5)
+Project projetAvecDossiers() {
+    Project p;
+    for (int i = 0; i < 6; ++i) p.tracks.emplace_back();
+    p.tracks[0].kind = Track::Kind::Folder; p.tracks[0].name = "Batterie"; p.tracks[0].folderDepth = 0;
+    p.tracks[1].name = "Kick";        p.tracks[1].folderDepth = 1;
+    p.tracks[2].name = "Snare";       p.tracks[2].folderDepth = 1;
+    p.tracks[3].kind = Track::Kind::Folder; p.tracks[3].name = "Charleys"; p.tracks[3].folderDepth = 1;
+    p.tracks[4].name = "HatA";        p.tracks[4].folderDepth = 2;
+    p.tracks[5].name = "Basse";       p.tracks[5].folderDepth = 0;
+    return p;
+}
+}
+
+VSM_TEST(a_folder_contains_what_follows_it_until_the_depth_comes_back) {
+    Project p = projetAvecDossiers();
+    const auto batterie = folderContents(p, 0);
+    // Kick, Snare, Charleys ET HatA : le contenu inclut les sous-dossiers.
+    VSM_ASSERT_EQ(batterie.size(), size_t(4));
+    VSM_ASSERT_EQ(batterie.front(), size_t(1));
+    VSM_ASSERT_EQ(batterie.back(), size_t(4));
+    // La Basse est DEHORS : sa profondeur ramène à la racine.
+    for (size_t t : batterie) VSM_ASSERT(t != 5);
+
+    const auto charleys = folderContents(p, 3);
+    VSM_ASSERT_EQ(charleys.size(), size_t(1));
+    VSM_ASSERT_EQ(charleys.front(), size_t(4));
+
+    // Une piste qui n'est pas un dossier ne contient rien.
+    VSM_ASSERT(folderContents(p, 1).empty());
+    VSM_ASSERT(folderContents(p, 99).empty());
+}
+
+VSM_TEST(collapsing_a_folder_hides_everything_it_holds_including_nested_ones) {
+    Project p = projetAvecDossiers();
+    // Déplié : rien n'est caché.
+    for (size_t t = 0; t < p.tracks.size(); ++t)
+        VSM_ASSERT(!hiddenByCollapsedFolder(p, t));
+
+    p.tracks[0].folded = true;
+    VSM_ASSERT(!hiddenByCollapsedFolder(p, 0));   // le dossier lui-même reste visible
+    VSM_ASSERT(hiddenByCollapsedFolder(p, 1));
+    VSM_ASSERT(hiddenByCollapsedFolder(p, 2));
+    VSM_ASSERT(hiddenByCollapsedFolder(p, 3));
+    // UN SOUS-DOSSIER DÉPLIÉ DANS UN DOSSIER REPLIÉ RESTE CACHÉ : un tiroir
+    // fermé ne laisse pas dépasser ce qu'il contient.
+    VSM_ASSERT(!p.tracks[3].folded);
+    VSM_ASSERT(hiddenByCollapsedFolder(p, 4));
+    // La Basse est dehors, elle ne bouge pas.
+    VSM_ASSERT(!hiddenByCollapsedFolder(p, 5));
+}
+
+VSM_TEST(collapsing_only_the_inner_folder_leaves_its_siblings_alone) {
+    Project p = projetAvecDossiers();
+    p.tracks[3].folded = true;
+    VSM_ASSERT(!hiddenByCollapsedFolder(p, 1));   // Kick
+    VSM_ASSERT(!hiddenByCollapsedFolder(p, 2));   // Snare
+    VSM_ASSERT(!hiddenByCollapsedFolder(p, 3));   // le sous-dossier lui-même
+    VSM_ASSERT(hiddenByCollapsedFolder(p, 4));    // HatA, dedans
+    VSM_ASSERT(!hiddenByCollapsedFolder(p, 5));   // Basse
+}
+
+VSM_TEST(folder_depths_are_put_back_in_order_rather_than_left_incoherent) {
+    Project p;
+    for (int i = 0; i < 4; ++i) p.tracks.emplace_back();
+    // Une première piste prétendument profonde : impossible, il n'y a rien
+    // au-dessus d'elle.
+    p.tracks[0].folderDepth = 3;
+    // Une piste rangée dans une piste ORDINAIRE : elle prétendrait être
+    // contenue par quelque chose qui ne contient rien.
+    p.tracks[1].folderDepth = 1;
+    p.tracks[2].kind = Track::Kind::Folder;
+    p.tracks[3].folderDepth = 5;   // un seul cran est permis après un dossier
+
+    VSM_ASSERT(normalizeFolderDepths(p) > 0);
+    VSM_ASSERT_EQ(p.tracks[0].folderDepth, 0);
+    VSM_ASSERT_EQ(p.tracks[1].folderDepth, 0);
+    VSM_ASSERT_EQ(p.tracks[2].folderDepth, 0);
+    VSM_ASSERT_EQ(p.tracks[3].folderDepth, 1);   // dans le dossier, un cran
+
+    // IDEMPOTENTE : un arbre déjà d'aplomb ne bouge plus.
+    VSM_ASSERT_EQ(normalizeFolderDepths(p), size_t(0));
+
+    // Et un arbre légitime traverse sans une correction.
+    Project q = projetAvecDossiers();
+    VSM_ASSERT_EQ(normalizeFolderDepths(q), size_t(0));
+}

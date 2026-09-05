@@ -267,4 +267,36 @@ size_t publishInstrumentOutputs(Project& project, size_t source,
 size_t explodeTrackByPitch(Project& project, size_t index,
                             const std::function<std::string(uint8_t)>& nameFor = {});
 
+/// LES PISTES CONTENUES PAR LE DOSSIER À `index` (D19.4), y compris celles des
+/// sous-dossiers, dans l'ordre de la liste.
+///
+/// Le contenu se lit par CONTIGUÏTÉ : les pistes qui suivent le dossier tant
+/// qu'elles sont PLUS PROFONDES que lui. Voir `Track::folderDepth` pour la
+/// raison de ce modèle plutôt qu'un index de parent. Rend un vecteur vide si
+/// l'index ne désigne pas un dossier.
+std::vector<size_t> folderContents(const Project& project, size_t index);
+
+/// Vrai si la piste est cachée parce qu'un dossier qui la CONTIENT est replié
+/// (`Track::folded` sur le dossier).
+///
+/// Regarde tous les ancêtres et pas seulement le plus proche : un sous-dossier
+/// déplié à l'intérieur d'un dossier replié reste caché, sans quoi replier un
+/// tiroir laisserait dépasser ce qu'il contient.
+bool hiddenByCollapsedFolder(const Project& project, size_t index);
+
+/// REMET LES PROFONDEURS DE DOSSIER D'APLOMB (D19.4), et rend le nombre de
+/// pistes corrigées.
+///
+/// L'INVARIANT : une piste ne peut pas être plus profonde que « la précédente
+/// + 1 », et elle ne peut descendre d'un cran que si la précédente est un
+/// DOSSIER — sinon elle prétendrait être rangée dans une piste ordinaire, et
+/// `folderContents` lirait un contenu que personne n'a voulu. La première
+/// piste est forcément à la racine.
+///
+/// Appelée après toute modification de profondeur et après tout déplacement :
+/// c'est le genre d'invariant qui pourrit en silence si personne ne le
+/// rétablit, et un arbre incohérent ne se voit qu'au moment où un dossier
+/// avale la moitié du morceau.
+size_t normalizeFolderDepths(Project& project);
+
 } // namespace vsm::sequencer

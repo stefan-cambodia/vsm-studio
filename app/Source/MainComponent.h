@@ -211,6 +211,7 @@ private:
         kMenuTrackBounceSelection,
         kMenuTrackPublishOutputs,
         kMenuTrackExplodeByPitch,
+        kMenuTrackNewFolder, kMenuTrackFolderIn, kMenuTrackFolderOut,
         kMenuTrackClapPlugin,
         kMenuTrackVst3Plugin,
         kMenuTrackPluginEditor,
@@ -681,6 +682,10 @@ private:
     void publishInstrumentOutputsOfSelectedTrack();
     /// D19.3 : une piste par hauteur présente dans la piste choisie.
     void explodeSelectedTrackByPitch();
+    /// D19.4 : crée un dossier au-dessus de la piste choisie et l'y range.
+    void newFolderAboveSelectedTrack();
+    /// D19.4 : fait entrer (+1) ou sortir (-1) la piste choisie d'un dossier.
+    void changeSelectedTrackFolderDepth(int delta);
     /// D18.6 : ouvre le bloc-notes du projet.
     void showProjectNotes();
     /// D18.4 : ouvre l'ordre de jeu, sections relues depuis les repères.

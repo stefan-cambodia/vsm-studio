@@ -1191,6 +1191,40 @@ VSM_TEST(a_published_instrument_output_survives_the_trip_and_none_writes_nothing
     VSM_ASSERT_EQ(orphelin.document.tracks[1].outputIndex, 0);
 }
 
+// D19.4 — LES PISTES DOSSIER : rien dans le fichier quand il n'y en a pas.
+VSM_TEST(a_folder_track_survives_the_trip_and_no_folder_writes_nothing) {
+    Project project = buildProject();
+    const std::string vierge = projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(vierge.find("folderDepth") == std::string::npos);
+    VSM_ASSERT(vierge.find("\"folder\"") == std::string::npos);
+
+    // Un dossier, et la piste qui suit dedans.
+    project.tracks[0].kind = Track::Kind::Folder;
+    project.tracks[0].name = "Batterie";
+    project.tracks[0].folded = true;
+    project.tracks[1].folderDepth = 1;
+
+    const std::string ecrit = projectDocumentToJson(documentFromProject(project)).toString();
+    VSM_ASSERT(ecrit.find("\"folder\"") != std::string::npos);
+    VSM_ASSERT(ecrit.find("\"folderDepth\"") != std::string::npos);
+
+    const ProjectLoadResult relu = parseProjectDocument(ecrit);
+    VSM_ASSERT(relu.success);
+    Project rejoue = project;
+    for (auto& t : rejoue.tracks) { t.kind = Track::Kind::Midi; t.folderDepth = 0; t.folded = false; }
+    applyDocumentToProject(relu.document, rejoue);
+    VSM_ASSERT(rejoue.tracks[0].kind == Track::Kind::Folder);
+    VSM_ASSERT(rejoue.tracks[0].isFolder());
+    VSM_ASSERT(rejoue.tracks[0].folded);
+    VSM_ASSERT_EQ(rejoue.tracks[0].folderDepth, 0);
+    VSM_ASSERT_EQ(rejoue.tracks[1].folderDepth, 1);
+    VSM_ASSERT(rejoue.tracks[1].kind == Track::Kind::Midi);
+    // LE PIÈGE DE L'AGRÉGAT, vérifié plutôt que raconté : les voisins du
+    // nouveau champ n'ont pas bougé.
+    VSM_ASSERT_EQ(rejoue.tracks[1].outputSourceTrack, -1);
+    VSM_ASSERT_EQ(rejoue.tracks[1].editGroup, project.tracks[1].editGroup);
+}
+
 // D18.6 — LES NOTES DU PROJET, écrites seulement s'il y en a.
 VSM_TEST(project_notes_survive_the_trip_and_an_empty_note_writes_nothing) {
     Project project = buildProject();

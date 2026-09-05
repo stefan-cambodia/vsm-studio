@@ -1692,6 +1692,25 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                         for (const auto& n : project_.tracks[piste].notes) vues.insert(n.number);
                         hauteurs = vues.size();
                     }
+                    // D19.4 : LES DOSSIERS. Trois gestes qui se composent —
+                    // créer un tiroir, y entrer, en sortir — plutôt qu'une
+                    // grande commande qui devinerait ce qu'on veut ranger.
+                    menu.addItem(kMenuTrackNewFolder,
+                                  u8"Ranger cette piste dans un dossier neuf",
+                                  piste < project_.tracks.size());
+                    {
+                        const bool peutEntrer =
+                            piste > 0 && piste < project_.tracks.size()
+                            && project_.tracks[piste - 1].isFolder()
+                            && project_.tracks[piste].folderDepth
+                                   <= project_.tracks[piste - 1].folderDepth;
+                        menu.addItem(kMenuTrackFolderIn, u8"Entrer dans le dossier du dessus",
+                                      peutEntrer);
+                        menu.addItem(kMenuTrackFolderOut, u8"Sortir du dossier",
+                                      piste < project_.tracks.size()
+                                          && project_.tracks[piste].folderDepth > 0);
+                    }
+                    menu.addSeparator();
                     menu.addItem(kMenuTrackExplodeByPitch,
                                   hauteurs >= 2
                                       ? juce::String(u8"Éclater par hauteur (")
@@ -2268,6 +2287,9 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuTrackBounceSelection: bounceSelectionToNewTracks(); break;
         case kMenuTrackPublishOutputs: publishInstrumentOutputsOfSelectedTrack(); break;
         case kMenuTrackExplodeByPitch: explodeSelectedTrackByPitch(); break;
+        case kMenuTrackNewFolder: newFolderAboveSelectedTrack(); break;
+        case kMenuTrackFolderIn:  changeSelectedTrackFolderDepth(+1); break;
+        case kMenuTrackFolderOut: changeSelectedTrackFolderDepth(-1); break;
         case kMenuViewSingleWindow:
             singleWindow_ = !singleWindow_;
             // Écrit DÈS le choix, comme les associations MIDI : une disposition
@@ -5557,6 +5579,53 @@ void MainComponent::bounceSelectedTrack() {
             if (choix == 0) return;
             performBounce(index);
         }));
+}
+
+void MainComponent::newFolderAboveSelectedTrack() {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    captureSessionIntoProject();
+    beginProjectEdit(u8"Nouveau dossier");
+
+    vsm::sequencer::Track dossier;
+    dossier.kind = vsm::sequencer::Track::Kind::Folder;
+    dossier.name = "Dossier";
+    dossier.colorRgba = project_.tracks[piste].colorRgba;
+    dossier.folderDepth = project_.tracks[piste].folderDepth;
+
+    // LES INDEX QUI POINTENT APRÈS L'INSERTION RECULENT D'UN RANG, comme
+    // partout ailleurs (D18.7b) : un dossier n'est pas un signal, mais il est
+    // bien une piste de plus dans la liste.
+    const int insere = static_cast<int>(piste);
+    for (auto& t : project_.tracks) {
+        if (t.outputGroup >= insere) t.outputGroup += 1;
+        if (t.outputSourceTrack >= insere) t.outputSourceTrack += 1;
+    }
+    project_.tracks.insert(project_.tracks.begin() + insere, std::move(dossier));
+    // La piste choisie, désormais juste après, entre dans le dossier.
+    project_.tracks[static_cast<size_t>(insere) + 1].folderDepth += 1;
+    vsm::sequencer::normalizeFolderDepths(project_);
+    rebuildFromProject(false);
+}
+
+void MainComponent::changeSelectedTrackFolderDepth(int delta) {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    captureSessionIntoProject();
+    beginProjectEdit(delta > 0 ? u8"Entrer dans le dossier" : u8"Sortir du dossier");
+    auto& cible = project_.tracks[piste];
+    cible.folderDepth = std::max(0, cible.folderDepth + delta);
+    // EN SORTANT, ON EMMÈNE CE QU'ON CONTENAIT : un dossier qu'on sort d'un
+    // tiroir ne laisse pas ses pistes derrière lui, sinon elles se
+    // retrouveraient rangées dans le voisin d'à côté.
+    if (cible.isFolder()) {
+        for (size_t t = piste + 1; t < project_.tracks.size(); ++t) {
+            if (project_.tracks[t].folderDepth <= cible.folderDepth - delta) break;
+            project_.tracks[t].folderDepth = std::max(0, project_.tracks[t].folderDepth + delta);
+        }
+    }
+    vsm::sequencer::normalizeFolderDepths(project_);
+    rebuildFromProject(false);
 }
 
 void MainComponent::explodeSelectedTrackByPitch() {

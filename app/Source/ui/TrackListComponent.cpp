@@ -65,6 +65,14 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
         audioSourceLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
         audioSourceLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
         refreshAudioSource();
+    } else if (track_.isFolder()) {
+        // D19.4 : UN DOSSIER NE JOUE RIEN. Ni instrument, ni fichier, ni bus :
+        // c'est un rangement. Lui laisser un sélecteur de machine serait lui
+        // promettre un choix sans effet, comme pour un groupe.
+        addAndMakeVisible(audioSourceLabel_);
+        audioSourceLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
+        audioSourceLabel_.setColour(juce::Label::textColourId, Palette::accentAmber);
+        audioSourceLabel_.setText(u8"dossier (ne joue rien)", juce::dontSendNotification);
     } else if (track_.publishesInstrumentOutput()) {
         // D18.7b : UNE PISTE QUI PUBLIE LA SORTIE D'UNE AUTRE N'A PAS
         // D'INSTRUMENT À ELLE, et le graphe ignore délibérément celui qu'on lui
@@ -106,6 +114,22 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
                                         : instruments[static_cast<size_t>(idx - 1)].first;
             track_.instrumentId = pluginId;
             if (onInstrumentChanged) onInstrumentChanged(index_, pluginId);
+        };
+    }
+
+    if (track_.isFolder()) {
+        addAndMakeVisible(folderButton_);
+        folderButton_.setTooltip(u8"Replier ou déployer le dossier. N'affecte que la VUE : "
+                                  u8"les pistes rangées dedans continuent de jouer.");
+        auto rafraichir = [this] {
+            folderButton_.setButtonText(track_.folded ? juce::String::fromUTF8(u8"▸")
+                                                       : juce::String::fromUTF8(u8"▾"));
+        };
+        rafraichir();
+        folderButton_.onClick = [this, rafraichir] {
+            track_.folded = !track_.folded;
+            rafraichir();
+            if (onChanged) onChanged();
         };
     }
 
@@ -219,7 +243,14 @@ void TrackRowComponent::resized() {
     area.removeFromLeft(6); // laisse la place au bandeau de couleur peint dans paint()
 
     auto topRow = area.removeFromTop(22);
-    nameLabel_.setBounds(topRow.removeFromLeft(140));
+    // D19.4 : le chevron du dossier prend le début de la ligne du nom.
+    if (track_.isFolder()) {
+        folderButton_.setBounds(topRow.removeFromLeft(24));
+        topRow.removeFromLeft(4);
+        nameLabel_.setBounds(topRow.removeFromLeft(112));
+    } else {
+        nameLabel_.setBounds(topRow.removeFromLeft(140));
+    }
     topRow.removeFromLeft(8);
     channelLabel_.setBounds(topRow.removeFromLeft(50));
 
@@ -230,22 +261,37 @@ void TrackRowComponent::resized() {
     // réglage sans effet. La place qu'il libère va au texte, parce qu'entre
     // « ça tient dans la case » et « ça se lit », c'est la lisibilité qui prime.
     const bool publie = track_.publishesInstrumentOutput();
-    armButton_.setVisible(!publie);
-    const int largeurTexte = publie ? 170 + 4 + 28 : 170;
-    if (audio_ || track_.kind == Track::Kind::Group || publie)
+    // D19.4 : UN DOSSIER NE TOUCHE À AUCUN SIGNAL, donc il n'a ni fader, ni
+    // panoramique, ni muet, ni solo, ni armement, ni sortie. Cubase donne un
+    // muet à ses dossiers ; ce serait ici un bus déguisé, et le rangement
+    // cesserait d'être gratuit — on ne pourrait plus replier huit micros sans
+    // se demander si l'on vient de changer le mélange.
+    const bool dossier = track_.isFolder();
+    armButton_.setVisible(!publie && !dossier);
+    muteButton_.setVisible(!dossier);
+    soloButton_.setVisible(!dossier);
+    volumeSlider_.setVisible(!dossier);
+    panSlider_.setVisible(!dossier);
+    outputBox_.setVisible(!dossier && track_.kind != Track::Kind::Group);
+
+    const int largeurTexte = (publie || dossier) ? 170 + 4 + 28 : 170;
+    if (audio_ || track_.kind == Track::Kind::Group || publie || dossier)
         audioSourceLabel_.setBounds(secondRow.removeFromLeft(largeurTexte));
     else instrumentBox_.setBounds(secondRow.removeFromLeft(largeurTexte));
-    secondRow.removeFromLeft(8);
-    muteButton_.setBounds(secondRow.removeFromLeft(28));
-    secondRow.removeFromLeft(4);
-    soloButton_.setBounds(secondRow.removeFromLeft(28));
-    if (!publie) {
+    if (!dossier) {
+        secondRow.removeFromLeft(8);
+        muteButton_.setBounds(secondRow.removeFromLeft(28));
         secondRow.removeFromLeft(4);
-        armButton_.setBounds(secondRow.removeFromLeft(28));
+        soloButton_.setBounds(secondRow.removeFromLeft(28));
+        if (!publie) {
+            secondRow.removeFromLeft(4);
+            armButton_.setBounds(secondRow.removeFromLeft(28));
+        }
     }
 
     area.removeFromTop(6);
     auto thirdRow = area.removeFromTop(20);
+    if (dossier) return;
     volumeSlider_.setBounds(thirdRow.removeFromLeft(170));
     thirdRow.removeFromLeft(8);
     panSlider_.setBounds(thirdRow.removeFromLeft(90));
@@ -401,7 +447,8 @@ void TrackListComponent::resized() {
     for (int i = 0; i < rows_.size(); ++i)
         if (project_ == nullptr || static_cast<size_t>(i) >= project_->tracks.size()
             || (!project_->tracks[static_cast<size_t>(i)].hidden
-                && !masqueeParLeFiltre(static_cast<size_t>(i))))
+                && !masqueeParLeFiltre(static_cast<size_t>(i))
+                && !vsm::sequencer::hiddenByCollapsedFolder(*project_, static_cast<size_t>(i))))
             ++visibles;
     int totalHeight = visibles * kRowHeight;
     // LE DÉFILEMENT SURVIT À LA MISE EN PAGE. `setBounds(0, 0, …)` remettait le
@@ -426,9 +473,18 @@ void TrackListComponent::resized() {
             const bool masquee = project_ != nullptr
                                  && static_cast<size_t>(i) < project_->tracks.size()
                                  && (project_->tracks[static_cast<size_t>(i)].hidden
-                                     || masqueeParLeFiltre(static_cast<size_t>(i)));
+                                     || masqueeParLeFiltre(static_cast<size_t>(i))
+                                     || vsm::sequencer::hiddenByCollapsedFolder(
+                                            *project_, static_cast<size_t>(i)));
             const int h = masquee ? 0 : kRowHeight;
-            rows_[i]->setBounds(0, y, rowContainer_.getWidth(), h);
+            // D19.4 : LES PISTES D'UN DOSSIER SONT EN RETRAIT. C'est ce qui
+            // rend l'arborescence lisible d'un coup d'œil, et c'est la seule
+            // chose que la profondeur change à l'écran.
+            const int retrait = project_ != nullptr
+                                        && static_cast<size_t>(i) < project_->tracks.size()
+                                    ? std::min(4, project_->tracks[static_cast<size_t>(i)].folderDepth) * 14
+                                    : 0;
+            rows_[i]->setBounds(retrait, y, rowContainer_.getWidth() - retrait, h);
             rows_[i]->setVisible(!masquee);
             y += h;
         }

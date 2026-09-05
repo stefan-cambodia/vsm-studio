@@ -60,6 +60,9 @@ private:
     juce::ComboBox outputBox_;     // master ou groupe (D4.2)
     juce::TextButton muteButton_ { "M" };
     juce::TextButton soloButton_ { "S" };
+    /// D19.4 : le repli d'un DOSSIER. Présent sur les seules pistes dossier,
+    /// et c'est lui qui range ou déploie tout ce qu'elles contiennent.
+    juce::TextButton folderButton_ { "" };
     juce::TextButton armButton_  { "R" };
     juce::Slider volumeSlider_;
     juce::Slider panSlider_;
