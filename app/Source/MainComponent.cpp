@@ -1017,6 +1017,37 @@ void MainComponent::layoutDockedPanels(juce::Rectangle<int> area) {
     pianoRollPanel_.setBounds(area);
 }
 
+bool MainComponent::runMenuEntryForCapture(const juce::String& libelle) {
+    const juce::String voulu = libelle.trim();
+    if (voulu.isEmpty()) return false;
+    const juce::StringArray noms = getMenuBarNames();
+    // LE LIBELLÉ EXACT D'ABORD, LE PRÉFIXE ENSUITE : « Tout sélectionner »
+    // existe deux fois (les notes du piano roll, les clips de l'arrangement),
+    // et le premier préfixe venu n'est pas forcément celui qu'on visait.
+    for (int passe = 0; passe < 2; ++passe)
+    for (int i = 0; i < noms.size(); ++i) {
+        juce::PopupMenu menu = getMenuForIndex(i, noms[i]);
+        for (juce::PopupMenu::MenuItemIterator it(menu, true); it.next();) {
+            const juce::PopupMenu::Item& item = it.getItem();
+            if (item.itemID == 0 || item.isSectionHeader || item.isSeparator) continue;
+            const juce::String texte = item.text.upToFirstOccurrenceOf(" (", false, false).trim();
+            if (passe == 0 ? !texte.equalsIgnoreCase(voulu) : !item.text.startsWithIgnoreCase(voulu)) continue;
+            // PANNE MUETTE INTERDITE, y compris dans l'outil qui sert à
+            // vérifier : une entrée grisée n'est pas exécutée, et c'est dit.
+            if (!item.isEnabled) {
+                std::fputs(("VSM_MENU : \u00ab " + item.text.toStdString()
+                            + " \u00bb est gris\u00e9e, rien n'a \u00e9t\u00e9 fait\n").c_str(), stderr);
+                return false;
+            }
+            menuItemSelected(item.itemID, i);
+            return true;
+        }
+    }
+    std::fputs(("VSM_MENU : aucune entr\u00e9e de menu ne commence par \u00ab "
+                + voulu.toStdString() + " \u00bb\n").c_str(), stderr);
+    return false;
+}
+
 void MainComponent::applyViewCommand(const juce::String& nom) {
     // Les MÊMES identifiants que le menu : tester autre chose que ce que
     // l'utilisateur clique ne testerait rien.
@@ -1597,6 +1628,28 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                          project_.loopEndTick > project_.loopStartTick);
             menu.addItem(kMenuEditLocatorsFromSelection, u8"Locateurs sur la s\u00e9lection (P)",
                          arrangement_.hasSelection() || pianoRoll_.hasSelection());
+            // D20.1 : RÉPÉTER LA SÉLECTION de l'arrangement, jumeau du menu
+            // contextuel du clip -- ici pour qu'il s'atteigne sans souris.
+            menu.addSeparator();
+            menu.addItem(kMenuEditSelectAllClips, u8"Tout s\u00e9lectionner dans l'arrangement (Ctrl+A)",
+                         !project_.tracks.empty());
+            {
+                juce::PopupMenu repeter;
+                static const int kNombres[] = {2, 3, 4, 8, 16};
+                for (int i = 0; i < 5; ++i)
+                    repeter.addItem(kMenuEditRepeatFirst + i, juce::String(kNombres[i]) + " fois",
+                                    arrangement_.hasSelection());
+                const int jusquALaBoucle = arrangement_.repeatsUntilLoopEnd();
+                repeter.addSeparator();
+                repeter.addItem(kMenuEditRepeatToLoopEnd,
+                                jusquALaBoucle > 0
+                                    ? juce::String(u8"Jusqu'\u00e0 la fin de la boucle (")
+                                          + juce::String(jusquALaBoucle) + " fois)"
+                                    : juce::String(u8"Jusqu'\u00e0 la fin de la boucle (rien n'y tient, ou pas de boucle)"),
+                                jusquALaBoucle > 0);
+                menu.addSubMenu(u8"R\u00e9p\u00e9ter la s\u00e9lection (\u00e0 la suite)", repeter,
+                                arrangement_.hasSelection());
+            }
             // D17.8 : LE GROOVE. Le nom du groove courant est DIT dans
             // l'article qui l'applique : appliquer « quelque chose » qu'on ne
             // nomme pas, c'est appliquer on ne sait quoi.
@@ -2037,6 +2090,13 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuEditSaveGroove)    { saveCurrentGroove(); return; }
     if (menuItemID == kMenuEditLoadGroove)    { loadGrooveFromLibrary(); return; }
     if (menuItemID == kMenuEditLocatorsFromSelection) { locatorsFromSelection(); return; }
+    if (menuItemID == kMenuEditSelectAllClips) { arrangement_.selectAll(); return; }
+    if (menuItemID == kMenuEditRepeatToLoopEnd) { arrangement_.repeatSelectionUntilLoopEnd(); return; }
+    if (menuItemID >= kMenuEditRepeatFirst && menuItemID <= kMenuEditRepeatLast) {
+        static const int kNombres[] = {2, 3, 4, 8, 16};
+        arrangement_.repeatSelection(kNombres[menuItemID - kMenuEditRepeatFirst]);
+        return;
+    }
     if (menuItemID == kMenuFileImportMidiIntoProject) { chooseMidiToImport(); return; }
     if (menuItemID >= kMenuFileRecentFirst && menuItemID <= kMenuFileRecentLast) {
         const auto liste = recentProjects();

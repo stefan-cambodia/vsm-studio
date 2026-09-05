@@ -163,6 +163,13 @@ public:
     void copySelection();
     void paste();
     void duplicateSelection();
+    /// D20.1 : RÉPÉTER la sélection `count` fois À LA SUITE -- les copies
+    /// contiguës, chacune décalée du bloc que « dupliquer » emploierait --,
+    /// ou autant de fois qu'il en tient avant la fin de la boucle. La vue
+    /// calcule le bloc et son arrondi ; le montage est dans `ClipEdit`.
+    void repeatSelection(int count);
+    int repeatsUntilLoopEnd() const;   ///< 0 sans boucle, sans sélection, ou quand rien n'y tient
+    void repeatSelectionUntilLoopEnd();
     /// Tous les clips de toutes les pistes (Ctrl+A, D11.2).
     void selectAll();
     /// D18.3 : ne choisir QUE le premier clip de la piste `index`. Sert à
@@ -330,6 +337,10 @@ private:
     juce::Point<float> lassoOrigine_;
     juce::Rectangle<float> lasso_;
     void selectClipsInLasso(bool etendre);
+    /// Les bornes de la sélection et la longueur du BLOC à répéter ou à
+    /// dupliquer : celle de la sélection, arrondie à la mesure (ou à la
+    /// grille) -- dupliquer une mesure doit tomber pile sur la suivante.
+    bool selectionSpan(vsm::midi::Tick& debut, vsm::midi::Tick& fin, vsm::midi::Tick& bloc) const;
     void clipMenuAction(size_t piste, uint64_t clipId, int choix);
 
     // --- Automation dessinée SUR l'arrangement (D5.4) ---------------------

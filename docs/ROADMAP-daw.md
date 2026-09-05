@@ -5065,3 +5065,85 @@ Quatre manques ont survécu à la vérification.
 > Tests : 254 core (dont 4 pour D19.3 et 6 pour D19.1), 1 243 audio, 273
 > interchange — tous verts.
 
+
+### Phase D20 — Le neuvième audit : ce qui manque une fois D19 posée (05/09/2026, 10:25)
+
+**Pourquoi.** Même méthode que D11 à D19, même ordre du § 3 : le geste de
+tous les jours d'abord, l'outil de travail ensuite, le modèle en dernier. Et
+la règle de D19 appliquée à la lettre : **chaque manque a été cherché en
+LISANT la surface du module qui le porterait** — `NoteEdit.h`, `ClipEdit.h`,
+`Project.h`, `SilenceDetection.h`, les en-têtes de `PianoRollComponent` et
+d'`ArrangementComponent`, et la construction des menus — puis dans ce
+document, sur le concept et non sur un nom deviné.
+
+Le relevé a écarté, comme existant : le legato et la suppression des
+chevauchements (`applyLegato`, `removeOverlaps`), le renversement et le
+miroir (`reverseNotesInTime`, `mirrorNotesPitch`), les gammes, les accords
+et l'arpège, les notes fantômes, la ligne de vélocité, le groove (D17.8), les
+fondus et leurs formes (D17.1), le fondu enchaîné sur un chevauchement
+(D13.1), la normalisation, l'envers et le rognage au son d'un clip audio
+(D13.6, D13.4, D17.6), le suivi de tempo et ses marqueurs (D12), la
+transposition à la lecture (D17.5), la sauvegarde automatique, la hauteur
+réglable des pistes de l'arrangement, l'export d'une plage et des stems
+(D6.1, D6.2), la reconstruction d'un fichier entier depuis l'application
+(D9).
+
+**Et il a écarté quatre candidats en le disant.** Le *modèle de piste*
+(Cubase : Track Presets) — le modèle de projet (D11.6) couvre l'usage réel de
+démarrer vite, et les pistes d'un projet reconstruit sont fabriquées par la
+chaîne, pas reprises d'un projet à l'autre ; à rouvrir le jour où l'on ajoute
+souvent la même piste à des projets différents. La *suppression des
+doublons* (Cubase : Delete Doubles) — la transcription n'écrit jamais deux
+notes identiques au même tick, et `removeOverlaps` puis `joinNotes` couvrent
+ce qu'elle produit réellement. Le *découpage aux silences* en plusieurs clips
+(Cubase : Detect Silence) — D17.6 rogne, et le découpage aux transitoires
+ci-dessous en est le complément naturel ; il viendra avec lui s'il manque
+encore. La *transposition d'un clip audio* — l'effet d'insert de hauteur
+(D13.8) existe et s'applique à la piste : le concept est là.
+
+Cinq manques ont survécu.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D20.1 | **Répéter un clip en copies indépendantes.** (ÉTAPE RÉDUITE EN L'ÉCRIVANT : la première version disait « poser un motif d'une mesure sur seize demande seize gestes » — c'est FAUX, un clip plus long que sa fenêtre la REJOUE en boucle depuis D1, `test_clips.cpp` le tient. Ce qui manque est plus étroit : des copies INDÉPENDANTES, qu'on retouche une à une — rendre muette la troisième, couper la quatrième —, là où la fenêtre étirée est une seule chose.) `ClipEdit` sait dupliquer UNE fois, à un décalage ; « jusqu'à la fin de la boucle » n'existe pas. Cubase : Repeat… ; Live : Ctrl+D répété | `repeatClips(piste, sélection, nombre)` dans `core/`, les copies à la suite l'une de l'autre, identifiants neufs ; le menu du clip propose « Répéter N fois… » et « Répéter jusqu'à la fin de la boucle » (grisé sans boucle, avec sa raison) ; annulable ; test `core/` : trois répétitions rendent trois clips contigus dont les fenêtres sont celles de l'original, et la piste verrouillée n'en rend aucune |
+| D20.2 | **Replier le piano roll sur les hauteurs jouées.** Une piste de batterie tient sur cinq hauteurs entre 36 et 46 ; le piano roll les montre parmi cent vingt-huit, et `cadrerSurLesNotes` ne fait que centrer. Live : Fold | un bouton « Replier » dans la barre du piano roll : seules les hauteurs présentes sur la piste font une rangée, le clavier les nomme, les gestes (dessiner, déplacer, écouter) tombent sur la bonne hauteur ; rien dans le modèle, rien dans le fichier ; une piste sans note ne se replie pas et le bouton le dit ; vérifié à l'écran, replié et déplié côte à côte |
+| D20.3 | **Découper un clip audio aux transitoires.** `io::detectSound` trouve les bornes du son, rien ne trouve les ATTAQUES : découper une boucle de batterie en huit coups se fait à l'œil. Cubase : hitpoints ; Live : Slice | `io::detectOnsets` dans `audio/` — un flux d'énergie sur des trames courtes, une attaque là où l'énergie bondit au-dessus de ce qui précède, un écart minimal entre deux ; le menu du clip « Découper aux transitoires (N coupes) », qui passe par `splitClips` et dit d'avance combien de coupes il ferait ; test `audio/` : huit impulsions dans du bruit sont trouvées à ±2 ms, une sinusoïde tenue n'en donne aucune, deux impulsions à 10 ms n'en donnent qu'une |
+| D20.4 | **Transcrire un clip audio en MIDI.** D9 reconstruit un FICHIER entier par la chaîne ; rien ne transcrit le clip qu'on a sous la souris. C'est le geste de Live (Convert to MIDI), et c'est la spécialité de ce projet : `analyzer/note_extraction.py` sait déjà le faire, personne ne l'appelle depuis l'application | `analyse/transcrire_clip.py` (nouveau, n'importe rien de la chaîne en cours) écrit les notes d'une plage d'un fichier en JSON, confiance comprise ; le menu du clip « Transcrire en MIDI » lance le script par l'interpréteur que D9 a trouvé, pose une piste MIDI neuve après la piste audio, sans instrument, avec un clip sur la plage et les notes douteuses marquées ; sans Python, l'entrée est grisée AVEC sa raison ; test Python : sur la basse du morceau minuscule, les notes rendues sont celles de la vérité à ±1 demi-ton |
+| D20.5 | **Exporter en FLAC et en OGG.** L'export ne propose que `*.wav` ; Cubase et Live exportent FLAC et Ogg Vorbis, et un mixage de neuf minutes en 24 bits pèse 150 Mo. MP3 est écarté : l'encodeur n'est pas dans JUCE, et la règle n° 2 du § 0 interdit une dépendance à télécharger | le rendu passe par le MÊME code (`renderBundleToWav`), puis le WAV est transcodé par JUCE (FLAC à la profondeur choisie, Ogg Vorbis en qualité haute) ; le sélecteur dit les trois formats ; `VSM_EXPORT=fichier.flac` exporte le projet ouvert sans fenêtre, pour qu'on puisse le vérifier ; vérifié en relisant le fichier écrit (durée, canaux, fréquence) |
+
+**Un outil de vérification de plus, et pour la raison habituelle.** Trois de
+ces cinq gestes ne vivent que dans le menu contextuel d'un clip, qui ne
+s'atteint qu'à la souris. `VSM_MENU=libellé[;libellé…]` exécute des entrées
+de menu par leur LIBELLÉ avant la capture (« Tout sélectionner ; Répéter
+jusqu'à la fin de la boucle »), et « Tout sélectionner » entre dans le menu
+Édition pour que la sélection se fasse sans souris aussi. Le dépôt refuse de
+déclarer une interface invérifiable, et cela vaut pour celle-ci.
+
+> **D20.1 EST FAITE (05/09/2026, 10:50).** `repeatClips(piste, sélection,
+> nombre, bloc)` pose les copies à la suite -- la répétition k décalée de
+> k × bloc, le bloc étant celui que « dupliquer » emploie déjà (la longueur de
+> la sélection arrondie à la mesure ou à la grille), calculé au même endroit
+> (`selectionSpan`) pour que les deux gestes tombent au même tick. Les copies
+> ont des identifiants neufs et deviennent la sélection : le geste suivant
+> porte sur ce qu'on vient de poser. La piste verrouillée n'en rend aucune.
+>
+> **DES NOMBRES FIXES PLUTÔT QU'UNE BOÎTE DE DIALOGUE** (2, 3, 4, 8, 16 fois) :
+> le geste est « encore, encore », pas « combien ? ». Et « jusqu'à la fin de
+> la boucle » dit d'avance combien de fois y tiennent -- ou pourquoi zéro
+> (« rien n'y tient, ou pas de boucle ») -- parce qu'une commande grisée sans
+> raison est une commande qu'on croit cassée ; `repeatsThatFit` ne déborde
+> jamais de la boucle, sinon la seizième mesure sonnerait après le rebouclage.
+> Le sous-menu vit dans le menu contextuel du clip ET dans Édition, le second
+> pour qu'il s'atteigne sans souris.
+>
+> **CE QUE VSM_MENU A APPRIS À SON PREMIER USAGE.** « Tout sélectionner »
+> existe deux fois dans le menu Édition -- les notes du piano roll d'abord, les
+> clips de l'arrangement ensuite --, et le premier préfixe venu a choisi les
+> notes : la capture d'après était identique à celle d'avant, sans un mot. Le
+> libellé EXACT est donc cherché avant le préfixe, et les entrées « N fois »
+> sont grisées sans sélection pour que VSM_MENU le DISE au lieu de ne rien
+> faire. Vérifié à l'écran sur le projet d'exemple : « Tout sélectionner dans
+> l'arrangement ; 4 fois » pose quatre copies contiguës de chaque clip, à la
+> mesure.
+>
+> Tests : 261 core (+3), tous verts.

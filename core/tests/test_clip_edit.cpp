@@ -1031,3 +1031,66 @@ VSM_TEST(without_a_group_the_selection_is_returned_untouched) {
     // Et une sélection vide reste vide : élargir le vide donnerait tout.
     VSM_ASSERT(expandSelectionToEditGroups(pistes, {}, 960).empty());
 }
+
+// D20.1 — RÉPÉTER. Les copies se posent à la suite, avec les fenêtres de
+// l'original et des identifiants neufs ; la piste verrouillée n'en rend
+// aucune ; « jusqu'à la fin de la boucle » ne déborde jamais de la boucle.
+
+VSM_TEST(repeating_three_times_lays_three_contiguous_copies_with_the_same_windows) {
+    std::vector<Clip> clips{clip(1, 0, 960, 480)};
+    clips[0].sourceStartSeconds = 0.25;
+    clips[0].gain = 0.5f;
+    uint64_t compteur = 100;
+    const ClipSelection copies = repeatClips(clips, {1}, 3, 960, compteur);
+
+    VSM_ASSERT_EQ(clips.size(), size_t(4));
+    VSM_ASSERT_EQ(copies.size(), size_t(3));
+    VSM_ASSERT_EQ(compteur, uint64_t(103));
+    for (size_t k = 0; k < 4; ++k) {
+        VSM_ASSERT_EQ(clips[k].startTick, Tick(k * 960));   // contiguës, triées
+        VSM_ASSERT_EQ(clips[k].length, Tick(960));
+        VSM_ASSERT_EQ(clips[k].sourceStart, Tick(480));      // la MÊME fenêtre
+        VSM_ASSERT_NEAR(clips[k].sourceStartSeconds, 0.25, 1e-12);
+        VSM_ASSERT_NEAR(clips[k].gain, 0.5f, 1e-6f);
+    }
+    for (uint64_t id : copies) VSM_ASSERT(id >= 100);
+    VSM_ASSERT(copies.count(1) == 0);   // l'original n'est pas dans la sélection rendue
+    // Une sélection à deux clips se répète en bloc : la longueur du bloc
+    // est celle que l'appelant donne, pas celle de chaque clip.
+    std::vector<Clip> bloc{clip(1, 0, 480), clip(2, 960, 480)};
+    uint64_t c2 = 10;
+    repeatClips(bloc, {1, 2}, 2, 1920, c2);
+    VSM_ASSERT_EQ(bloc.size(), size_t(6));
+    VSM_ASSERT_EQ(bloc[2].startTick, Tick(1920));
+    VSM_ASSERT_EQ(bloc[3].startTick, Tick(2880));
+    VSM_ASSERT_EQ(bloc[5].startTick, Tick(4800));
+}
+
+VSM_TEST(repeating_nothing_or_zero_times_does_nothing_and_a_locked_track_refuses) {
+    std::vector<Clip> clips{clip(1, 0, 960)};
+    uint64_t compteur = 5;
+    VSM_ASSERT(repeatClips(clips, {1}, 0, 960, compteur).empty());
+    VSM_ASSERT(repeatClips(clips, {}, 3, 960, compteur).empty());
+    VSM_ASSERT(repeatClips(clips, {1}, 3, 0, compteur).empty());
+    VSM_ASSERT_EQ(clips.size(), size_t(1));
+    VSM_ASSERT_EQ(compteur, uint64_t(5));   // aucun identifiant consommé
+
+    Track piste;
+    piste.clips = {clip(1, 0, 960)};
+    piste.locked = true;
+    VSM_ASSERT(repeatClips(piste, {1}, 3, 960, compteur).empty());
+    VSM_ASSERT_EQ(piste.clips.size(), size_t(1));
+    piste.locked = false;
+    VSM_ASSERT_EQ(repeatClips(piste, {1}, 3, 960, compteur).size(), size_t(3));
+}
+
+VSM_TEST(repeats_that_fit_never_overflow_the_loop) {
+    // Une mesure choisie de 0 à 960, boucle de quatre mesures : trois copies.
+    VSM_ASSERT_EQ(repeatsThatFit(960, 960, 3840), 3);
+    // Trois mesures et demie : deux seulement -- la troisième déborderait.
+    VSM_ASSERT_EQ(repeatsThatFit(960, 960, 3500), 2);
+    // La boucle finit avant la sélection, ou dessus : rien.
+    VSM_ASSERT_EQ(repeatsThatFit(960, 960, 500), 0);
+    VSM_ASSERT_EQ(repeatsThatFit(960, 960, 960), 0);
+    VSM_ASSERT_EQ(repeatsThatFit(960, 0, 3840), 0);
+}

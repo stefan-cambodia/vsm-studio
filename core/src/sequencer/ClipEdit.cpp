@@ -758,4 +758,35 @@ bool removeWarpMarker(std::vector<Clip>& clips, uint64_t clipId, size_t index) {
     return true;
 }
 
+
+ClipSelection repeatClips(std::vector<Clip>& clips, const ClipSelection& selection, int count,
+                          Tick spanTicks, uint64_t& idCounter) {
+    ClipSelection creees;
+    if (selection.empty() || count <= 0 || spanTicks <= 0) return creees;
+    // ON COLLECTE AVANT D'INSÉRER, comme pour dupliquer : ajouter dans le
+    // vecteur qu'on parcourt invaliderait les itérateurs -- et ici, en plus,
+    // les copies de la répétition 1 seraient reprises par la répétition 2.
+    std::vector<Clip> copies;
+    for (const auto& clip : clips) {
+        if (!selected(selection, clip)) continue;
+        for (int k = 1; k <= count; ++k) {
+            Clip copie = clip;
+            copie.id = idCounter++;
+            copie.startTick = clip.startTick + static_cast<Tick>(k) * spanTicks;
+            creees.insert(copie.id);
+            copies.push_back(std::move(copie));
+        }
+    }
+    for (auto& copie : copies) clips.push_back(std::move(copie));
+    std::stable_sort(clips.begin(), clips.end(),
+                      [](const Clip& a, const Clip& b) { return a.startTick < b.startTick; });
+    return creees;
+}
+
+ClipSelection repeatClips(Track& track, const ClipSelection& selection, int count,
+                          Tick spanTicks, uint64_t& idCounter) {
+    if (track.locked) return {};
+    return repeatClips(track.clips, selection, count, spanTicks, idCounter);
+}
+
 } // namespace vsm::sequencer

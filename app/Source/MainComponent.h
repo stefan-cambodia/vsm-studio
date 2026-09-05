@@ -90,6 +90,13 @@ public:
     /// du menu doit pouvoir être photographié sans souris, sans quoi « ça ne
     /// s'affiche pas » ne se vérifie qu'à la main.
     void applyViewCommand(const juce::String& nom);
+    /// Exécute une entrée de menu par son LIBELLÉ (VSM_MENU=libellé;… avant
+    /// VSM_CAPTURE), pour la même raison que `applyViewCommand` : les gestes
+    /// qui ne vivent que dans un menu doivent pouvoir être photographiés sans
+    /// souris. Le premier libellé qui COMMENCE par le texte, tous menus
+    /// confondus ; faux -- et dit sur stderr -- quand rien ne correspond ou
+    /// que l'entrée est grisée.
+    bool runMenuEntryForCapture(const juce::String& libelle);
 
     /// Ouvre un dossier de projet au démarrage (VSM_PROJET=dossier), pour la
     /// même raison que `applyViewCommand` : ce qu'on a besoin de regarder est
@@ -198,6 +205,13 @@ private:
     kMenuEditInsertTimeAtLocators,
     kMenuEditDeleteTimeAtLocators,
     kMenuEditLocatorsFromSelection,
+    /// D20.1 : répéter la sélection de l'arrangement, N fois ou jusqu'à la
+    /// fin de la boucle ; et « tout sélectionner » dans le menu, pour que la
+    /// sélection se fasse aussi sans souris (VSM_MENU).
+    kMenuEditSelectAllClips,
+    kMenuEditRepeatToLoopEnd,
+    kMenuEditRepeatFirst,
+    kMenuEditRepeatLast = kMenuEditRepeatFirst + 4,
     /// D17.8 : LE GROOVE — l'extraire de la piste choisie, l'appliquer à la
     /// sélection du piano roll, l'enregistrer dans la bibliothèque, en charger
     /// un.

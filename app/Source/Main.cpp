@@ -138,6 +138,16 @@ public:
             // prouve pas que le filtre filtre.
             if (const char* filtre = std::getenv("VSM_FILTRE"); filtre != nullptr && *filtre)
                 content->setTrackFilterForCapture(juce::String::fromUTF8(filtre));
+            // VSM_MENU=libellé[;libellé…] : exécuter des entrées de menu par
+            // leur LIBELLÉ avant la capture (D20). Trois gestes de cet audit
+            // ne vivent que dans le menu contextuel d'un clip ; leurs jumeaux
+            // du menu Édition s'atteignent ainsi sans souris, dans l'ordre
+            // écrit (« Tout sélectionner;Répéter la sélection ... »).
+            if (const char* entrees = std::getenv("VSM_MENU"); entrees != nullptr && *entrees) {
+                juce::StringArray liste;
+                liste.addTokens(juce::String::fromUTF8(entrees), ";", "");
+                for (const auto& e : liste) content->runMenuEntryForCapture(e.trim());
+            }
             if (const char* rapport = std::getenv("VSM_RAPPORT");
                 rapport != nullptr && *rapport)
                 content->showReconstructionReport();

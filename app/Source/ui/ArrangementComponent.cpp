@@ -197,24 +197,10 @@ void ArrangementComponent::duplicateSelection() {
 
     // LE DÉCALAGE EST LA LONGUEUR DE LA SÉLECTION, arrondie à la grille :
     // dupliquer une mesure doit tomber pile sur la suivante. C'est exactement
-    // la règle du piano roll, et elle vaut ici pour la même raison.
-    vsm::midi::Tick debut = 0, fin = 0;
-    bool trouve = false;
-    for (const auto& track : project_->tracks)
-        if (clipSelectionBounds(track.clips, selection_, materialEnd(track), debut, fin))
-            trouve = true;
-    if (!trouve) return;
-
-    vsm::midi::Tick decalage = fin - debut;
-    const vsm::midi::Tick pas =
-        aimanteALaMesure_
-            ? project_->timeSignatureMap.ticksPerBar(debut, project_->ticksPerQuarterNote)
-            : vsm::sequencer::gridResolutionToTicks(
-                  gridProvider ? gridProvider()
-                               : vsm::sequencer::GridResolution{vsm::sequencer::NoteValue::Quarter,
-                                                                 false, false},
-                  project_->ticksPerQuarterNote);
-    if (pas > 0) decalage = std::max(pas, ((decalage + pas - 1) / pas) * pas);
+    // la règle du piano roll, et elle vaut ici pour la même raison -- et
+    // « répéter » (D20.1) emploie le même bloc, calculé au même endroit.
+    vsm::midi::Tick debut = 0, fin = 0, decalage = 0;
+    if (!selectionSpan(debut, fin, decalage)) return;
 
     if (onEditStarted) onEditStarted(u8"Dupliquer des clips");
     uint64_t compteur = project_->peekNextClipId();
@@ -229,6 +215,58 @@ void ArrangementComponent::duplicateSelection() {
         notifyChanged();
     }
     repaint();
+}
+
+bool ArrangementComponent::selectionSpan(vsm::midi::Tick& debut, vsm::midi::Tick& fin,
+                                         vsm::midi::Tick& bloc) const {
+    if (project_ == nullptr || selection_.empty()) return false;
+    bool trouve = false;
+    for (const auto& track : project_->tracks)
+        if (clipSelectionBounds(track.clips, selection_, materialEnd(track), debut, fin))
+            trouve = true;
+    if (!trouve) return false;
+    bloc = fin - debut;
+    const vsm::midi::Tick pas =
+        aimanteALaMesure_
+            ? project_->timeSignatureMap.ticksPerBar(debut, project_->ticksPerQuarterNote)
+            : vsm::sequencer::gridResolutionToTicks(
+                  gridProvider ? gridProvider()
+                               : vsm::sequencer::GridResolution{vsm::sequencer::NoteValue::Quarter,
+                                                                 false, false},
+                  project_->ticksPerQuarterNote);
+    if (pas > 0) bloc = std::max(pas, ((bloc + pas - 1) / pas) * pas);
+    return bloc > 0;
+}
+
+void ArrangementComponent::repeatSelection(int count) {
+    vsm::midi::Tick debut = 0, fin = 0, bloc = 0;
+    if (count <= 0 || !selectionSpan(debut, fin, bloc)) return;
+    if (onEditStarted) onEditStarted(u8"R\u00e9p\u00e9ter des clips");
+    uint64_t compteur = project_->peekNextClipId();
+    ClipSelection creees;
+    for (auto& track : project_->tracks) {
+        const auto copies = vsm::sequencer::repeatClips(track, selection_, count, bloc, compteur);
+        creees.insert(copies.begin(), copies.end());
+    }
+    project_->ensureClipIdAbove(compteur - 1);
+    // LA SÉLECTION RENDUE EST CELLE DES COPIES, comme pour dupliquer : le
+    // geste suivant porte sur ce qu'on vient de poser.
+    if (!creees.empty()) {
+        selection_ = std::move(creees);
+        notifyChanged();
+    }
+    repaint();
+}
+
+int ArrangementComponent::repeatsUntilLoopEnd() const {
+    vsm::midi::Tick debut = 0, fin = 0, bloc = 0;
+    if (!selectionSpan(debut, fin, bloc)) return 0;
+    if (project_->loopEndTick <= project_->loopStartTick) return 0;
+    return vsm::sequencer::repeatsThatFit(fin, bloc, project_->loopEndTick);
+}
+
+void ArrangementComponent::repeatSelectionUntilLoopEnd() {
+    repeatSelection(repeatsUntilLoopEnd());
 }
 
 int ArrangementComponent::trackHeight(const Track& track) const {
@@ -507,6 +545,25 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
         menu.addSeparator();
         menu.addItem(5, u8"Couper \u00e0 la t\u00eate de lecture (Ctrl+E)", !selection_.empty());
         menu.addItem(6, u8"Joindre les clips choisis (Ctrl+J)", selection_.size() > 1);
+        // D20.1 : RÉPÉTER, à la suite. Des nombres fixes plutôt qu'une boîte de
+        // dialogue : le geste est « encore, encore », pas « combien ? ». Et
+        // l'entrée « jusqu'à la fin de la boucle » dit d'avance combien de
+        // fois : une commande grisée sans raison est une commande qu'on croit
+        // cassée.
+        {
+            juce::PopupMenu repeter;
+            static const int kNombres[] = {2, 3, 4, 8, 16};
+            for (int i = 0; i < 5; ++i)
+                repeter.addItem(40 + i, juce::String(kNombres[i]) + " fois");
+            const int jusquALaBoucle = repeatsUntilLoopEnd();
+            repeter.addSeparator();
+            repeter.addItem(45, jusquALaBoucle > 0
+                                    ? juce::String(u8"Jusqu'\u00e0 la fin de la boucle (")
+                                          + juce::String(jusquALaBoucle) + " fois)"
+                                    : juce::String(u8"Jusqu'\u00e0 la fin de la boucle (rien n'y tient, ou pas de boucle)"),
+                            jusquALaBoucle > 0);
+            menu.addSubMenu(u8"R\u00e9p\u00e9ter la s\u00e9lection", repeter, !selection_.empty());
+        }
         // LE SUIVI DE TEMPO (D12.6) N'EST PROPOSÉ QUE SUR UNE PISTE AUDIO :
         // un clip MIDI suit déjà le tempo par nature, et lui offrir le choix
         // laisserait croire qu'il pourrait ne pas le suivre.
@@ -1001,6 +1058,12 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
             return;
         case 5: splitSelectionAtPlayhead(); return;
         case 6: joinSelection(); return;
+        case 40: case 41: case 42: case 43: case 44: {
+            static const int kNombres[] = {2, 3, 4, 8, 16};
+            repeatSelection(kNombres[choix - 40]);
+            return;
+        }
+        case 45: repeatSelectionUntilLoopEnd(); return;
         case 10: case 11: case 12: case 16: {
             using vsm::sequencer::WarpMode;
             const WarpMode mode = choix == 11 ? WarpMode::KeepPitch

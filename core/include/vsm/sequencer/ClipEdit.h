@@ -340,4 +340,28 @@ ClipSelection expandSelectionToEditGroups(const std::vector<Track>& tracks,
 
 size_t lockedClipsInSelection(const std::vector<Track>& tracks, const ClipSelection& selection);
 
+
+// ---------------------------------------------------------------------------
+// RÉPÉTER (D20.1). Poser un motif d'une mesure sur seize demandait seize
+// « dupliquer » ; Cubase a « Repeat… », Live répète Ctrl+D. Les copies se
+// posent À LA SUITE l'une de l'autre : la répétition k est décalée de
+// k × spanTicks, où spanTicks est la longueur de la sélection (arrondie par
+// l'appelant à la mesure ou à la grille, comme pour dupliquer). Les copies
+// reçoivent des identifiants neufs et sont rendues, pour que le geste suivant
+// porte sur elles. Rien pour un nombre nul ou une sélection vide.
+// ---------------------------------------------------------------------------
+ClipSelection repeatClips(std::vector<Clip>& clips, const ClipSelection& selection, int count,
+                          Tick spanTicks, uint64_t& idCounter);
+/// Sur une piste : le verrou refuse tout, comme pour les autres gestes.
+ClipSelection repeatClips(Track& track, const ClipSelection& selection, int count,
+                          Tick spanTicks, uint64_t& idCounter);
+/// COMBIEN DE RÉPÉTITIONS TIENNENT avant `untilTick` (la fin de la boucle) :
+/// autant que de copies dont la FIN ne le dépasse pas. Zéro quand la
+/// première n'y tient pas -- « jusqu'à la fin de la boucle » ne déborde jamais
+/// de la boucle, sinon la seizième mesure sonnerait après le rebouclage.
+inline int repeatsThatFit(Tick selectionEnd, Tick spanTicks, Tick untilTick) {
+    if (spanTicks <= 0 || untilTick <= selectionEnd) return 0;
+    return static_cast<int>((untilTick - selectionEnd) / spanTicks);
+}
+
 } // namespace vsm::sequencer
