@@ -207,6 +207,7 @@ private:
         /// D18.1 : reporter en audio les CLIPS CHOISIS, sur une piste neuve.
         kMenuTrackBounceSelection,
         kMenuTrackPublishOutputs,
+        kMenuTrackExplodeByPitch,
         kMenuTrackClapPlugin,
         kMenuTrackVst3Plugin,
         kMenuTrackPluginEditor,
@@ -675,6 +676,8 @@ private:
     void bounceSelectionToNewTracks();
     /// D18.7b : une piste par sortie de la machine de la piste choisie.
     void publishInstrumentOutputsOfSelectedTrack();
+    /// D19.3 : une piste par hauteur présente dans la piste choisie.
+    void explodeSelectedTrackByPitch();
     /// D18.6 : ouvre le bloc-notes du projet.
     void showProjectNotes();
     /// D18.4 : ouvre l'ordre de jeu, sections relues depuis les repères.

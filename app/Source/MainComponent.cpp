@@ -25,6 +25,7 @@
 #include "vsm/interchange/EffectDescription.h"
 #include "vsm/interchange/EffectPreset.h"
 #include "vsm/interchange/OfflineReconstruction.h"
+#include "ui/DrumVoiceNames.h"
 #if VSM_WITH_CLAP
 #include "ClapPluginHost.h"
 #include "ClapPluginWindow.h"
@@ -1682,6 +1683,22 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                     if (piste < project_.tracks.size())
                         if (auto* machine = audioEngine_.processGraph().trackInstrument(piste))
                             sorties = machine->outputCount();
+                    // D19.3 : ÉCLATER PAR HAUTEUR. L'entrée dit combien de
+                    // hauteurs elle trouverait : une commande grisée sans
+                    // raison est une commande qu'on croit cassée.
+                    size_t hauteurs = 0;
+                    if (piste < project_.tracks.size()) {
+                        std::set<uint8_t> vues;
+                        for (const auto& n : project_.tracks[piste].notes) vues.insert(n.number);
+                        hauteurs = vues.size();
+                    }
+                    menu.addItem(kMenuTrackExplodeByPitch,
+                                  hauteurs >= 2
+                                      ? juce::String(u8"Éclater par hauteur (")
+                                            + juce::String(static_cast<int>(hauteurs))
+                                            + juce::String(u8" pistes)")
+                                      : juce::String(u8"Éclater par hauteur (une seule hauteur ici)"),
+                                  hauteurs >= 2);
                     menu.addItem(kMenuTrackPublishOutputs,
                                   sorties > 1
                                       ? juce::String(u8"Publier les ") + juce::String(sorties - 1)
@@ -2250,6 +2267,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuTrackBounce:   bounceSelectedTrack(); break;
         case kMenuTrackBounceSelection: bounceSelectionToNewTracks(); break;
         case kMenuTrackPublishOutputs: publishInstrumentOutputsOfSelectedTrack(); break;
+        case kMenuTrackExplodeByPitch: explodeSelectedTrackByPitch(); break;
         case kMenuViewSingleWindow:
             singleWindow_ = !singleWindow_;
             // Écrit DÈS le choix, comme les associations MIDI : une disposition
@@ -5539,6 +5557,33 @@ void MainComponent::bounceSelectedTrack() {
             if (choix == 0) return;
             performBounce(index);
         }));
+}
+
+void MainComponent::explodeSelectedTrackByPitch() {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+
+    // LE NOM DES PIÈCES VIENT D'ICI, pas de `core/` : c'est l'application qui
+    // connaît les machines. `drumVoiceName` sait déjà nommer « charleston
+    // fermé » à partir de la machine assignée ou de la convention General
+    // MIDI, et le piano roll s'en sert depuis longtemps -- il n'y avait aucune
+    // raison d'en écrire un second.
+    const std::string machine = project_.tracks[piste].instrumentId;
+    auto nommer = [machine](uint8_t note) {
+        return vsm::app::ui::drumVoiceName(machine, note);
+    };
+
+    captureSessionIntoProject();
+    beginProjectEdit(u8"Éclater par hauteur");
+    const size_t creees = vsm::sequencer::explodeTrackByPitch(project_, piste, nommer);
+    rebuildFromProject(false);
+
+    juce::AlertWindow::showMessageBoxAsync(
+        juce::AlertWindow::InfoIcon, u8"Éclater par hauteur",
+        creees > 0
+            ? juce::String(creees) + juce::String(u8" piste(s) créée(s) — la hauteur la plus "
+                                                   u8"grave reste sur la piste d'origine.")
+            : juce::String(u8"Rien à faire : cette piste n'a qu'une seule hauteur."));
 }
 
 void MainComponent::publishInstrumentOutputsOfSelectedTrack() {

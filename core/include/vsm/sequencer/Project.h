@@ -2,6 +2,7 @@
 #include "vsm/midi/MidiFileParser.h"
 #include "vsm/sequencer/TempoMap.h"
 #include "vsm/sequencer/TimeSignatureMap.h"
+#include <functional>
 #include "vsm/sequencer/Track.h"
 #include <cstdint>
 #include <map>
@@ -239,5 +240,31 @@ size_t duplicateTrack(Project& project, size_t index);
 /// routages de groupe et sources de publication suivent leurs pistes.
 size_t publishInstrumentOutputs(Project& project, size_t source,
                                  const std::vector<std::string>& outputNames);
+
+/// ÉCLATE UNE PISTE PAR HAUTEUR (D19.3), et rend le nombre de pistes créées.
+///
+/// Chaque hauteur présente dans le matériau reçoit sa propre piste. C'est le
+/// pendant MANUEL de l'objectif de parité : la chaîne d'analyse sépare la
+/// grosse caisse de la caisse claire, et le DAW doit savoir refaire ce geste —
+/// une batterie reconstruite arrive sur une seule ligne de temps, et l'on ne
+/// peut ni compresser la caisse claire seule ni la déplacer.
+///
+/// LA PLUS GRAVE RESTE SUR LA PISTE D'ORIGINE, et les autres partent sur des
+/// pistes neuves insérées juste après. C'est la même règle que
+/// `publishInstrumentOutputs`, où la sortie n° 0 reste sur la piste qui porte
+/// la machine : elle évite de laisser derrière soi une piste vide dont on ne
+/// saurait plus si elle a servi, et elle garde à la piste d'origine son nom,
+/// ses inserts et son automation.
+///
+/// LES NOTES SONT DÉPLACÉES, JAMAIS COPIÉES : la réunion des pistes obtenues
+/// est exactement le matériau de départ, ce qu'un test vérifie. Copier
+/// ferait sonner chaque pièce deux fois.
+///
+/// `nameFor` donne le nom d'une hauteur (« Caisse claire ») et vient de
+/// L'APPELANT, pour la même raison que `ticksToSeconds` dans `spansFromTrack` :
+/// `core/` ne connaît pas les machines et n'a pas à les connaître. Vide ou
+/// absente, la piste prend le nom de la note.
+size_t explodeTrackByPitch(Project& project, size_t index,
+                            const std::function<std::string(uint8_t)>& nameFor = {});
 
 } // namespace vsm::sequencer

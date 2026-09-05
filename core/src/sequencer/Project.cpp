@@ -1,4 +1,6 @@
 #include "vsm/sequencer/Project.h"
+#include "vsm/sequencer/NoteEdit.h"
+#include <set>
 #include <algorithm>
 #include <vector>
 
@@ -524,6 +526,80 @@ size_t publishInstrumentOutputs(Project& project, size_t source,
     // pistes neuves ne sont ajoutées qu'ENSUITE : leurs propres index sont
     // déjà justes puisqu'elles désignent la source, qui ne bouge pas.
     const int insere = static_cast<int>(source) + 1;
+    const int combien = static_cast<int>(neuves.size());
+    for (auto& piste : project.tracks) {
+        if (piste.outputGroup >= insere) piste.outputGroup += combien;
+        if (piste.outputSourceTrack >= insere) piste.outputSourceTrack += combien;
+    }
+    project.tracks.insert(project.tracks.begin() + insere,
+                           std::make_move_iterator(neuves.begin()),
+                           std::make_move_iterator(neuves.end()));
+    return static_cast<size_t>(combien);
+}
+
+size_t explodeTrackByPitch(Project& project, size_t index,
+                            const std::function<std::string(uint8_t)>& nameFor) {
+    if (index >= project.tracks.size()) return 0;
+    Track& source = project.tracks[index];
+
+    // QUELLES HAUTEURS SONT PRÉSENTES. Un `set` plutôt qu'un tri : on veut
+    // l'ordre croissant et l'unicité, et le nombre de hauteurs d'une piste de
+    // batterie se compte sur les doigts.
+    std::set<uint8_t> hauteurs;
+    for (const Note& n : source.notes) hauteurs.insert(n.number);
+    // UNE SEULE HAUTEUR N'A RIEN À ÉCLATER, et zéro non plus. Rendre 0 plutôt
+    // que créer une piste vide : la commande n'a pas échoué, elle n'avait rien
+    // à faire, et l'appelant le DIT.
+    if (hauteurs.size() < 2) return 0;
+
+    // LA PLUS GRAVE RESTE SUR LA PISTE D'ORIGINE (voir l'en-tête) : on ne
+    // fabrique donc une piste que pour les suivantes.
+    std::vector<Track> neuves;
+    neuves.reserve(hauteurs.size() - 1);
+    bool premiere = true;
+    for (uint8_t hauteur : hauteurs) {
+        if (premiere) { premiere = false; continue; }
+        Track piste;
+        piste.kind = source.kind;
+        piste.instrumentId = source.instrumentId;
+        piste.channel = source.channel;
+        piste.colorRgba = source.colorRgba;
+        piste.volume = source.volume;
+        piste.pan = source.pan;
+        piste.outputGroup = source.outputGroup;
+        const std::string nom = nameFor ? nameFor(hauteur) : std::string();
+        piste.name = !nom.empty() ? nom
+                                   : source.name + " - " + noteNumberToName(hauteur);
+        // LES NOTES SONT DÉPLACÉES : elles quittent la piste d'origine plus
+        // bas, une fois toutes les pistes constituées.
+        for (const Note& n : source.notes)
+            if (n.number == hauteur) piste.notes.push_back(n);
+        // LES CLIPS SONT DES FENÊTRES sur le matériau, pas des conteneurs : la
+        // découpe de la piste d'origine vaut pour chacune de ses pièces, et
+        // l'oublier ferait sonner les pièces éclatées là où l'originale se
+        // taisait.
+        for (const Clip& c : source.clips) {
+            Clip copie = c;
+            copie.id = project.nextClipId();
+            piste.clips.push_back(copie);
+        }
+        neuves.push_back(std::move(piste));
+    }
+    if (neuves.empty()) return 0;
+
+    // LA PISTE D'ORIGINE NE GARDE QUE LA PLUS GRAVE.
+    const uint8_t gardee = *hauteurs.begin();
+    std::vector<Note> restantes;
+    restantes.reserve(source.notes.size());
+    for (const Note& n : source.notes)
+        if (n.number == gardee) restantes.push_back(n);
+    source.notes = std::move(restantes);
+    if (const std::string nom = nameFor ? nameFor(gardee) : std::string(); !nom.empty())
+        source.name = nom;
+
+    // TOUT CE QUI POINTE APRÈS LE POINT D'INSERTION RECULE D'AUTANT, comme
+    // pour `publishInstrumentOutputs` et `duplicateTrack`.
+    const int insere = static_cast<int>(index) + 1;
     const int combien = static_cast<int>(neuves.size());
     for (auto& piste : project.tracks) {
         if (piste.outputGroup >= insere) piste.outputGroup += combien;

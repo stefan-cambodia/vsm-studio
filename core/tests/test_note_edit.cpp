@@ -424,3 +424,122 @@ VSM_TEST(next_doubtful_note_starts_from_the_playhead_and_goes_backwards) {
     // Avant la première, sans sélection : le tour aussi.
     VSM_ASSERT_EQ(nextDoubtfulNote(notes, {}, 0, false), uint64_t{4});
 }
+
+// D19.1 — COMPRIMER LES VÉLOCITÉS VERS LEUR MOYENNE.
+//
+// Sur une transcription, le même coup de caisse claire ressort à 71, 96 et 58
+// parce que l'estimation dépend de ce qui sonnait en même temps. Resserrer
+// rend à l'instrument la frappe régulière que le jeu avait et que l'analyse a
+// perdue. `scaleVelocity` ne peut pas faire cela : elle écarte les valeurs
+// autant qu'elle les monte.
+VSM_TEST(compressing_velocities_to_zero_puts_them_all_on_their_mean) {
+    std::vector<Note> notes;
+    const int valeurs[3] = {71, 96, 58};
+    for (int i = 0; i < 3; ++i) {
+        Note n;
+        n.startTick = i * 100;
+        n.endTick = i * 100 + 50;
+        n.id = static_cast<uint64_t>(i + 1);
+        n.velocity = static_cast<uint8_t>(valeurs[i]);
+        notes.push_back(n);
+    }
+    // (71 + 96 + 58) / 3 = 225 / 3 = 75, exactement.
+    compressVelocity(notes, allIds(notes), 0.0f);
+    for (const Note& n : notes) VSM_ASSERT_EQ(static_cast<int>(n.velocity), 75);
+}
+
+VSM_TEST(compressing_velocities_by_one_changes_nothing_at_all) {
+    // LE CAS NEUTRE EST EXACT, et pas seulement « très proche » : la vélocité
+    // n'est pas recalculée puis réécrite identique, elle est laissée en place.
+    // Faire reposer l'exactitude d'un cas neutre sur un arrondi qui tombe juste
+    // est la façon dont on découvre, six mois plus tard, qu'une note sur mille
+    // a bougé d'un cran.
+    std::vector<Note> notes;
+    const int valeurs[5] = {1, 37, 64, 100, 127};
+    for (int i = 0; i < 5; ++i) {
+        Note n;
+        n.startTick = i * 10;
+        n.endTick = i * 10 + 5;
+        n.id = static_cast<uint64_t>(i + 1);
+        n.velocity = static_cast<uint8_t>(valeurs[i]);
+        notes.push_back(n);
+    }
+    const std::vector<Note> avant = notes;
+    compressVelocity(notes, allIds(notes), 1.0f);
+    for (size_t i = 0; i < notes.size(); ++i)
+        VSM_ASSERT_EQ(static_cast<int>(notes[i].velocity), static_cast<int>(avant[i].velocity));
+}
+
+VSM_TEST(compressing_velocities_halfway_moves_them_halfway) {
+    std::vector<Note> notes;
+    const int valeurs[2] = {40, 80};   // moyenne 60
+    for (int i = 0; i < 2; ++i) {
+        Note n;
+        n.startTick = i * 10;
+        n.endTick = i * 10 + 5;
+        n.id = static_cast<uint64_t>(i + 1);
+        n.velocity = static_cast<uint8_t>(valeurs[i]);
+        notes.push_back(n);
+    }
+    compressVelocity(notes, allIds(notes), 0.5f);
+    VSM_ASSERT_EQ(static_cast<int>(findById(notes, 1)->velocity), 50);
+    VSM_ASSERT_EQ(static_cast<int>(findById(notes, 2)->velocity), 70);
+}
+
+VSM_TEST(compressing_uses_the_mean_of_the_selection_and_not_of_everything) {
+    // La moyenne se calcule sur ce qu'on a CHOISI. Sinon deux compressions
+    // successives ne donneraient pas ce que la sélection réunie donne, et le
+    // résultat dépendrait de notes qu'on n'a pas touchées.
+    std::vector<Note> notes;
+    const int valeurs[4] = {10, 30, 200, 200};   // les deux dernières hors sélection
+    for (int i = 0; i < 4; ++i) {
+        Note n;
+        n.startTick = i * 10;
+        n.endTick = i * 10 + 5;
+        n.id = static_cast<uint64_t>(i + 1);
+        n.velocity = static_cast<uint8_t>(std::min(valeurs[i], 127));
+        notes.push_back(n);
+    }
+    NoteSelection choix{1, 2};
+    compressVelocity(notes, choix, 0.0f);
+    VSM_ASSERT_EQ(static_cast<int>(findById(notes, 1)->velocity), 20);
+    VSM_ASSERT_EQ(static_cast<int>(findById(notes, 2)->velocity), 20);
+    // Les non choisies n'ont pas bougé.
+    VSM_ASSERT_EQ(static_cast<int>(findById(notes, 3)->velocity), 127);
+}
+
+// D19.1 — LIMITER : on RAMÈNE dans l'intervalle, on n'y remet pas à l'échelle.
+VSM_TEST(limiting_velocities_is_idempotent_and_leaves_those_already_inside) {
+    std::vector<Note> notes;
+    const int valeurs[4] = {5, 60, 90, 127};
+    for (int i = 0; i < 4; ++i) {
+        Note n;
+        n.startTick = i * 10;
+        n.endTick = i * 10 + 5;
+        n.id = static_cast<uint64_t>(i + 1);
+        n.velocity = static_cast<uint8_t>(valeurs[i]);
+        notes.push_back(n);
+    }
+    limitVelocity(notes, allIds(notes), 20, 100);
+    VSM_ASSERT_EQ(static_cast<int>(findById(notes, 1)->velocity), 20);   // remontée
+    VSM_ASSERT_EQ(static_cast<int>(findById(notes, 2)->velocity), 60);   // intacte
+    VSM_ASSERT_EQ(static_cast<int>(findById(notes, 3)->velocity), 90);   // intacte
+    VSM_ASSERT_EQ(static_cast<int>(findById(notes, 4)->velocity), 100);  // rabaissée
+
+    // IDEMPOTENTE : c'est la propriété qu'on attend d'une limite, et ce qui la
+    // distingue d'une mise à l'échelle vers l'intervalle.
+    const std::vector<Note> uneFois = notes;
+    limitVelocity(notes, allIds(notes), 20, 100);
+    for (size_t i = 0; i < notes.size(); ++i)
+        VSM_ASSERT_EQ(static_cast<int>(notes[i].velocity), static_cast<int>(uneFois[i].velocity));
+}
+
+VSM_TEST(limiting_with_the_bounds_swapped_reads_them_the_right_way_round) {
+    // Deux bornes saisies à l'envers sont une faute de frappe, pas une demande
+    // d'ignorer le geste en silence.
+    std::vector<Note> notes;
+    Note n; n.startTick = 0; n.endTick = 10; n.id = 1; n.velocity = 5;
+    notes.push_back(n);
+    limitVelocity(notes, allIds(notes), 100, 20);
+    VSM_ASSERT_EQ(static_cast<int>(findById(notes, 1)->velocity), 20);
+}

@@ -119,6 +119,37 @@ void rampVelocity(std::vector<Note>& notes, const NoteSelection& selection, uint
 /// comme humanizeNotes() du Quantizer.
 void randomizeVelocity(std::vector<Note>& notes, const NoteSelection& selection, int amount, uint64_t seed);
 
+/// D19.1 — RESSERRE LES VÉLOCITÉS VERS LEUR MOYENNE.
+///
+/// `amount` va de 0 à 1 : **1 ne change rien**, 0 rend toutes les notes égales
+/// à la moyenne arrondie de la sélection, et les valeurs intermédiaires
+/// interpolent. Le sens est celui d'un compresseur — c'est un RAPPORT de
+/// conservation, pas une quantité de compression — et il est choisi ainsi
+/// pour que la valeur neutre soit celle qui ne touche à rien.
+///
+/// POURQUOI CETTE FONCTION EXISTE, ET CE N'EST PAS UN OUTIL MUSICAL. Sur une
+/// TRANSCRIPTION, les vélocités relevées sont bruitées : le même coup de
+/// caisse claire ressort à 71, 96 et 58 parce que l'estimation dépend de ce
+/// qui sonnait en même temps. Les resserrer rend à l'instrument une frappe
+/// régulière que le jeu avait, et que l'analyse a perdue. `scaleVelocity`
+/// multiplie et ne peut donc pas faire cela : elle écarte les valeurs autant
+/// qu'elle les monte.
+void compressVelocity(std::vector<Note>& notes, const NoteSelection& selection, float amount);
+
+/// D19.1 — CONTIENT LES VÉLOCITÉS DANS UN INTERVALLE, en les y RAMENANT plutôt
+/// qu'en les y remettant à l'échelle : une note déjà comprise ne bouge pas.
+///
+/// C'est ce qui rend l'opération IDEMPOTENTE — l'appliquer deux fois donne le
+/// même résultat qu'une fois — et c'est la propriété qu'on attend d'une
+/// limite. Une mise à l'échelle vers l'intervalle, elle, déplacerait des notes
+/// qui n'avaient rien demandé.
+///
+/// `minVelocity > maxVelocity` est traité comme l'intervalle inversé plutôt
+/// que refusé en silence : deux bornes saisies à l'envers sont une faute de
+/// frappe, pas une demande d'ignorer le geste.
+void limitVelocity(std::vector<Note>& notes, const NoteSelection& selection,
+                    uint8_t minVelocity, uint8_t maxVelocity);
+
 void constrainNotesToScale(std::vector<Note>& notes, const NoteSelection& selection, Scale scale);
 
 void setNotesMuted(std::vector<Note>& notes, const NoteSelection& selection, bool muted);

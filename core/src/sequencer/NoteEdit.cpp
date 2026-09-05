@@ -323,6 +323,45 @@ void scaleVelocity(std::vector<Note>& notes, const NoteSelection& selection, flo
     });
 }
 
+void compressVelocity(std::vector<Note>& notes, const NoteSelection& selection, float amount) {
+    // LA MOYENNE D'ABORD, SUR LA SÉLECTION SEULE : comprimer vers la moyenne
+    // de TOUTES les notes ferait dépendre le résultat de ce qu'on n'a pas
+    // choisi, et deux sélections successives ne donneraient pas ce que la
+    // sélection réunie donne.
+    long long somme = 0;
+    size_t combien = 0;
+    for (const Note& n : notes)
+        if (selection.count(n.id) > 0) { somme += n.velocity; ++combien; }
+    if (combien == 0) return;
+
+    // ARRONDIE, et c'est ce qui rend le cas 0 exact : toutes les notes
+    // reçoivent le MÊME entier, pas des arrondis voisins d'un même réel.
+    const long long moyenne =
+        (somme + static_cast<long long>(combien) / 2) / static_cast<long long>(combien);
+    const float garde = std::clamp(amount, 0.0f, 1.0f);
+    // À 1, ON NE TOUCHE À RIEN, littéralement : la vélocité n'est pas
+    // recalculée puis réécrite identique, elle est laissée en place. Un aller
+    // simple par le flottant suffirait ici, mais l'exactitude d'un cas neutre
+    // ne doit pas reposer sur un arrondi qui tombe juste.
+    if (garde >= 1.0f) return;
+    forEachSelected(notes, selection, [moyenne, garde](Note& n) {
+        const double v = static_cast<double>(moyenne)
+                         + static_cast<double>(garde)
+                               * (static_cast<double>(n.velocity) - static_cast<double>(moyenne));
+        n.velocity = clampVelocity(static_cast<int>(std::llround(v)));
+    });
+}
+
+void limitVelocity(std::vector<Note>& notes, const NoteSelection& selection,
+                    uint8_t minVelocity, uint8_t maxVelocity) {
+    int bas = static_cast<int>(minVelocity);
+    int haut = static_cast<int>(maxVelocity);
+    if (bas > haut) std::swap(bas, haut);
+    forEachSelected(notes, selection, [bas, haut](Note& n) {
+        n.velocity = clampVelocity(std::clamp(static_cast<int>(n.velocity), bas, haut));
+    });
+}
+
 void rampVelocity(std::vector<Note>& notes, const NoteSelection& selection,
                    uint8_t fromVelocity, uint8_t toVelocity) {
     std::vector<Note*> sorted = selectedSortedByTime(notes, selection);

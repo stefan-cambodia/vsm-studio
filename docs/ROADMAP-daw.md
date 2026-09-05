@@ -4888,6 +4888,27 @@ jamais été écrits :
   affiche « charleston fermé » là où l'on attendrait « F#2 », en tirant le nom
   de la machine assignée ou, à défaut, de la convention General MIDI.
 
+**ET UN TROISIÈME EST PASSÉ, QUE LA RÈGLE N'A PAS SUFFI À ARRÊTER.** « D19.1 —
+transformer les vélocités » a d'abord été écrit comme un manque entier. Il ne
+l'était pas : `NoteEdit` expose `setVelocity`, `scaleVelocity`, `rampVelocity`
+et `randomizeVelocity` depuis longtemps, et les quatre sont câblées au piano
+roll. La recherche avait porté sur `scaleVelocities|compresserVelocites|
+velocityScale` — c'est-à-dire sur des noms que j'avais inventés moi-même, au
+pluriel et dans une autre casse que ceux du dépôt. C'est exactement le travers
+que la règle de D18 dénonçait, commis une ligne après l'avoir recopiée.
+
+**La règle se précise donc, et c'est la vraie leçon de cet audit : on ne
+cherche pas un manque par `grep`, on LIT LA SURFACE du module qui porterait la
+fonction.** Vingt lignes d'en-tête de `NoteEdit.h` auraient répondu tout de
+suite, là où trois motifs devinés ont répondu « absent » avec assurance.
+L'étape D19.1 a été RÉDUITE à ce qui manque vraiment plutôt que retirée : il
+reste deux transformations, et elles servent la réparation d'une transcription.
+
+Les trois manques restants ont été revérifiés de cette façon : la surface des
+opérations de piste de `Project.h` en compte quatre (`removeTrack`,
+`moveTrack`, `duplicateTrack`, `publishInstrumentOutputs`) et aucune n'éclate
+une piste ; `Track::Kind` vaut `{Midi, Audio, Group}` et rien d'autre.
+
 Le relevé a également écarté, comme existant : l'export d'une plage (D6.1), le
 gel, le report d'une piste et d'une sélection (D5.5, D18.1), les prises et leur
 assemblage (D3.5, D18.2), les repères et les sections (D16.4, D18.4), les
@@ -4901,7 +4922,60 @@ Quatre manques ont survécu à la vérification.
 
 | Étape | Contenu | Terminé quand |
 |---|---|---|
-| D19.1 | **Transformer les vélocités d'une sélection.** La ligne de vélocité se PEINT (`VelocityLaneComponent` : un point, une droite) et rien d'autre : on ne peut ni comprimer, ni mettre à l'échelle, ni limiter les nuances de ce qu'on a choisi. Sur une transcription c'est le geste de réparation le plus courant — les vélocités relevées sont bruitées, et les aplatir à la main note par note est le seul recours actuel. Cubase : Logical Editor / Velocity ; Live : Velocity MIDI effect | des transformations de vélocité dans `core/` (fonctions pures) : mettre à l'échelle, comprimer vers la moyenne, limiter à un intervalle, appliquer une rampe ; elles opèrent sur une SÉLECTION de notes, sont annulables, et ne déplacent aucune note ; test `core/` : comprimer à 0 rend toutes les vélocités égales à leur moyenne, et comprimer à 1 ne change rien AU BIT PRÈS |
+| D19.1 | **Comprimer et limiter les vélocités** (ÉTAPE RÉDUITE : voir la note ci-dessus — l'essentiel existait déjà). `NoteEdit` sait déjà poser (`setVelocity`), mettre à l'échelle (`scaleVelocity`), dégrader (`rampVelocity`) et humaniser (`randomizeVelocity`), et les quatre sont câblées au piano roll. Manquent les deux transformations qui servent une TRANSCRIPTION plutôt qu'une intention musicale : resserrer des nuances bruitées vers leur moyenne, et les contenir dans un intervalle. Cubase : Logical Editor / Velocity | `compressVelocity` et `limitVelocity` dans `NoteEdit`, fonctions pures sur une sélection, aucune note déplacée ; test `core/` : comprimer à 0 rend toutes les vélocités égales à la moyenne arrondie, comprimer à 1 ne change RIEN au bit près, et limiter est idempotent |
 | D19.2 | **Retrouver une piste.** La parité pousse le nombre de pistes vers le haut — D18.7b vient d'en ajouter cinq pour une seule boîte à rythmes — et la liste n'a ni filtre ni recherche : on fait défiler. Cubase : Track Visibility / filtre ; Live : le repli des groupes | un champ de filtre au-dessus de la liste des pistes ; il masque les pistes dont le nom ne correspond pas, SANS toucher à `Track::hidden` (qui est un état du morceau, D17.4) ni au son ; vidé, tout revient ; vérifié à l'écran |
 | D19.3 | **Éclater une piste par hauteur.** Une piste de batterie reconstruite porte la grosse caisse, la caisse claire et le charley sur une seule ligne de temps. La chaîne d'analyse les a SÉPARÉS ; le DAW ne sait pas refaire ce geste à la main, ni le défaire. C'est le pendant manuel de l'objectif de parité, et le compagnon de D18.7b — qui a donné une piste à chaque SORTIE, quand celle-ci en donne une à chaque HAUTEUR. Cubase : Dissolve Part | « Piste ▸ Éclater par hauteur » : une piste neuve par hauteur présente, nommée par la pièce (`drumVoiceName`) quand la machine la nomme, insérées après l'originale, l'instrument recopié ; annulable ; les index de routage suivent comme en D18.7b ; test `core/` : éclater trois hauteurs rend trois pistes dont la réunion des notes est exactement le matériau d'origine |
 | D19.4 | **Les pistes dossier.** `Track::folded` replie UNE piste ; rien ne replie un GROUPE de pistes. Un groupe de mixage (D4.2) est un bus, pas un rangement : router huit micros de batterie dans un bus ne les fait pas disparaître de la vue quand on travaille sur les cordes. Cubase : Folder Tracks | une piste de type dossier qui CONTIENT des pistes, se replie et les masque toutes, et dont le repli est écrit dans `project.json` ; elle ne touche à aucun signal — un dossier n'est pas un bus, et un projet qui n'en a pas garde son fichier octet pour octet ; test `interchange/` : aller-retour, et absence totale du fichier quand il n'y a aucun dossier |
+
+> **D19.1 EST FAITE (05/09/2026, 10:40), réduite à ce qui manquait vraiment.**
+> `compressVelocity(notes, sélection, amount)` resserre vers la moyenne de la
+> SÉLECTION — pas de tout le morceau, sans quoi deux compressions successives
+> ne donneraient pas ce que la sélection réunie donne — et `limitVelocity`
+> RAMÈNE dans un intervalle au lieu d'y remettre à l'échelle, ce qui la rend
+> idempotente : c'est la propriété qu'on attend d'une limite.
+>
+> Deux détails valent d'être dits parce qu'ils ne se voient pas. La moyenne est
+> ARRONDIE avant d'être distribuée : c'est ce qui fait qu'à `amount = 0` toutes
+> les notes reçoivent le MÊME entier, et non des arrondis voisins d'un même
+> réel. Et à `amount = 1` la vélocité n'est pas recalculée puis réécrite
+> identique — la fonction sort avant d'y toucher. Faire reposer l'exactitude
+> d'un cas neutre sur un arrondi qui tombe juste est la façon dont on découvre,
+> six mois plus tard, qu'une note sur mille a bougé d'un cran.
+>
+> Bornes saisies à l'envers : lues dans le bon sens plutôt que refusées en
+> silence — deux nombres inversés sont une faute de frappe, pas une demande
+> d'ignorer le geste. Les deux commandes sont dans le menu contextuel du piano
+> roll, sous les quatre qui existaient déjà, et libellées par ce qu'elles font
+> (« Resserrer les nuances de moitié ») plutôt que par leur nom technique.
+
+> **D19.3 EST FAITE (05/09/2026, 10:55).** « Piste ▸ Éclater par hauteur » pose
+> une piste par hauteur présente, nommée par la pièce quand la machine sait la
+> nommer.
+>
+> **RIEN N'A ÉTÉ RÉÉCRIT POUR LE NOMMAGE**, et c'est le faux manque n° 2 de cet
+> audit qui l'a évité : `drumVoiceName(instrumentId, note)` existait déjà et
+> sert au piano roll depuis longtemps. L'application la passe à `core/` en
+> paramètre, pour la même raison que `ticksToSeconds` dans `spansFromTrack` —
+> `core/` ne connaît pas les machines et n'a pas à les connaître.
+>
+> **LA PLUS GRAVE RESTE SUR LA PISTE D'ORIGINE**, comme la sortie n° 0 reste
+> sur la piste qui porte la machine en D18.7b. Deux raisons : aucune piste vide
+> n'est laissée derrière, et la piste d'origine garde son nom, ses inserts et
+> son automation. **Les notes sont DÉPLACÉES et jamais copiées** : un test
+> vérifie que la réunion des pistes obtenues est exactement le matériau de
+> départ, identifiant par identifiant — copier ferait sonner chaque pièce deux
+> fois.
+>
+> **LES CLIPS SUIVENT, avec des identifiants NEUFS.** Un clip est une FENÊTRE
+> sur le matériau, pas un conteneur : la découpe de la piste vaut pour chacune
+> de ses pièces, et l'oublier ferait sonner les pièces éclatées là où
+> l'originale se taisait. Deux clips qui partageraient un identifiant feraient
+> agir toute sélection sur les deux.
+>
+> Une piste à une seule hauteur rend **zéro** plutôt que de poser une piste
+> vide : la commande n'a pas échoué, elle n'avait rien à faire, et l'entrée de
+> menu le dit d'avance en affichant le nombre de hauteurs qu'elle trouverait.
+>
+> Tests : 254 core (dont 4 pour D19.3 et 6 pour D19.1), 1 243 audio, 273
+> interchange — tous verts.
+

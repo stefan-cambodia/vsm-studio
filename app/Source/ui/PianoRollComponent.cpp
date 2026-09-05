@@ -38,6 +38,7 @@ enum ContextMenuId {
     kCtxSplit = 100060, kCtxJoin, kCtxReverse, kCtxMirror, kCtxMute,
     kCtxVelocityFull = 100070, kCtxVelocityHalf, kCtxVelocityUp, kCtxVelocityDown,
     kCtxVelocityRampUp, kCtxVelocityRampDown, kCtxVelocityRandom,
+    kCtxVelocityCompress, kCtxVelocityCompressFull, kCtxVelocityLimit,
     kCtxScaleConstrain = 100080,
     kCtxArpUp = 100090, kCtxArpDown, kCtxArpUpDown, kCtxArpRandom,
     kCtxChordBase = 100100, // + index dans allChordTypes()
@@ -690,6 +691,23 @@ void PianoRollComponent::rampSelectionVelocity(uint8_t from, uint8_t to) {
     notifyEdited();
 }
 
+void PianoRollComponent::compressSelectionVelocity(float amount) {
+    Track* track = activeTrack();
+    if (!track || selectedNoteIds_.empty()) return;
+    if (!beginEdit(amount <= 0.0f ? juce::String(u8"Égaliser les nuances")
+                                  : juce::String(u8"Resserrer les nuances"))) return;
+    compressVelocity(track->notes, selectedNoteIds_, amount);
+    notifyEdited();
+}
+
+void PianoRollComponent::limitSelectionVelocity(uint8_t bas, uint8_t haut) {
+    Track* track = activeTrack();
+    if (!track || selectedNoteIds_.empty()) return;
+    if (!beginEdit(u8"Contenir les nuances")) return;
+    limitVelocity(track->notes, selectedNoteIds_, bas, haut);
+    notifyEdited();
+}
+
 void PianoRollComponent::randomizeSelectionVelocity(int amount) {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
@@ -842,6 +860,14 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
     velocityMenu.addItem(kCtxVelocityRampUp, "Crescendo", sel);
     velocityMenu.addItem(kCtxVelocityRampDown, "Decrescendo", sel);
     velocityMenu.addItem(kCtxVelocityRandom, u8"Aléatoire (±20)", sel);
+    velocityMenu.addSeparator();
+    // D19.1 : les deux gestes qui servent une TRANSCRIPTION plutôt qu'une
+    // intention musicale. Le libellé dit ce que ça fait, pas comment ça
+    // s'appelle : « resserrer de moitié » se comprend sans savoir qu'un
+    // compresseur a un rapport.
+    velocityMenu.addItem(kCtxVelocityCompress, u8"Resserrer les nuances de moitié", sel);
+    velocityMenu.addItem(kCtxVelocityCompressFull, u8"Égaliser les nuances (toutes à la moyenne)", sel);
+    velocityMenu.addItem(kCtxVelocityLimit, u8"Contenir entre 20 et 100", sel);
     menu.addSubMenu(u8"Vélocité", velocityMenu);
 
     juce::PopupMenu arpMenu;
@@ -915,6 +941,9 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         case kCtxVelocityRampUp:   rampSelectionVelocity(30, 120); break;
         case kCtxVelocityRampDown: rampSelectionVelocity(120, 30); break;
         case kCtxVelocityRandom:   randomizeSelectionVelocity(20); break;
+        case kCtxVelocityCompress:     compressSelectionVelocity(0.5f); break;
+        case kCtxVelocityCompressFull: compressSelectionVelocity(0.0f); break;
+        case kCtxVelocityLimit:        limitSelectionVelocity(20, 100); break;
         case kCtxScaleConstrain:   constrainSelectionToScale(); break;
         case kCtxArpUp:            arpeggiateSelection(ArpeggioMode::Up); break;
         case kCtxArpDown:          arpeggiateSelection(ArpeggioMode::Down); break;

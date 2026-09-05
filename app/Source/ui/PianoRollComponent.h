@@ -192,6 +192,11 @@ public:
     void setSelectionVelocity(uint8_t velocity);
     void scaleSelectionVelocity(float factor);
     void rampSelectionVelocity(uint8_t from, uint8_t to);
+    /// D19.1 : resserre les nuances de la sélection vers leur moyenne.
+    /// `amount` = 1 ne change rien, 0 les rend toutes égales.
+    void compressSelectionVelocity(float amount);
+    /// D19.1 : contient les nuances de la sélection dans un intervalle.
+    void limitSelectionVelocity(uint8_t bas, uint8_t haut);
     void randomizeSelectionVelocity(int amount);
     void constrainSelectionToScale();
     void toggleSelectionMuted();

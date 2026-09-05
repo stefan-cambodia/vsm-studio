@@ -1,3 +1,4 @@
+#include <set>
 #include "TestFramework.h"
 #include "vsm/sequencer/Project.h"
 #include "vsm/sequencer/Track.h"
@@ -576,4 +577,123 @@ VSM_TEST(publishing_outputs_creates_one_track_each_and_never_twice) {
     mono.tracks.emplace_back();
     VSM_ASSERT_EQ(publishInstrumentOutputs(mono, 0, {"Sortie"}), size_t(0));
     VSM_ASSERT_EQ(mono.tracks.size(), size_t(1));
+}
+
+// D19.3 — ÉCLATER UNE PISTE PAR HAUTEUR : le pendant manuel de la parité.
+VSM_TEST(exploding_a_track_by_pitch_splits_the_material_without_duplicating_a_note) {
+    Project p;
+    p.tracks.emplace_back();
+    p.tracks[0].name = "Batterie";
+    p.tracks[0].instrumentId = "vsm.tr808";
+    uint64_t compteur = 1;
+    // Trois hauteurs, entrelacées dans le temps : 36, 38, 42.
+    const int hauteurs[6] = {36, 42, 38, 36, 42, 38};
+    for (int i = 0; i < 6; ++i)
+        p.tracks[0].addNote(static_cast<Tick>(i * 120), static_cast<Tick>(i * 120 + 60),
+                             static_cast<uint8_t>(hauteurs[i]), 100, 0, compteur);
+    // Une piste APRÈS, qui se route sur un groupe situé plus loin : son index
+    // doit suivre l'insertion.
+    p.tracks.emplace_back();
+    p.tracks[1].name = "Basse";
+    p.tracks[1].outputGroup = 1;
+
+    const size_t avant = p.tracks[0].notes.size();
+    VSM_ASSERT_EQ(explodeTrackByPitch(p, 0), size_t(2));   // 3 hauteurs -> 2 pistes neuves
+    VSM_ASSERT_EQ(p.tracks.size(), size_t(4));
+
+    // LA RÉUNION EST EXACTEMENT LE MATÉRIAU DE DÉPART : aucune note perdue,
+    // aucune dupliquée. C'est le critère de l'étape.
+    std::set<uint64_t> reunion;
+    size_t total = 0;
+    for (size_t t = 0; t < 3; ++t) {
+        total += p.tracks[t].notes.size();
+        for (const auto& n : p.tracks[t].notes) reunion.insert(n.id);
+    }
+    VSM_ASSERT_EQ(total, avant);
+    VSM_ASSERT_EQ(reunion.size(), avant);
+
+    // CHAQUE PISTE NE PORTE QU'UNE HAUTEUR.
+    for (size_t t = 0; t < 3; ++t) {
+        VSM_ASSERT(!p.tracks[t].notes.empty());
+        const uint8_t h = p.tracks[t].notes.front().number;
+        for (const auto& n : p.tracks[t].notes) VSM_ASSERT_EQ(static_cast<int>(n.number), static_cast<int>(h));
+    }
+    // LA PLUS GRAVE RESTE SUR LA PISTE D'ORIGINE, les autres suivent en ordre.
+    VSM_ASSERT_EQ(static_cast<int>(p.tracks[0].notes.front().number), 36);
+    VSM_ASSERT_EQ(static_cast<int>(p.tracks[1].notes.front().number), 38);
+    VSM_ASSERT_EQ(static_cast<int>(p.tracks[2].notes.front().number), 42);
+    // L'instrument est recopié : chaque pièce se joue avec la même machine.
+    VSM_ASSERT(p.tracks[1].instrumentId == "vsm.tr808");
+    // L'index de routage de la piste repoussée a suivi.
+    VSM_ASSERT(p.tracks[3].name == "Basse");
+    VSM_ASSERT_EQ(p.tracks[3].outputGroup, 3);
+}
+
+VSM_TEST(exploding_a_track_that_has_nothing_to_split_creates_no_empty_track) {
+    Project p;
+    p.tracks.emplace_back();
+    uint64_t compteur = 1;
+    p.tracks[0].addNote(0, 60, 36, 100, 0, compteur);
+    p.tracks[0].addNote(120, 180, 36, 100, 0, compteur);
+    // UNE SEULE HAUTEUR : la commande n'a pas échoué, elle n'avait rien à
+    // faire — et elle le dit en rendant zéro plutôt qu'en posant une piste
+    // vide dont on ne saurait plus si elle a servi.
+    VSM_ASSERT_EQ(explodeTrackByPitch(p, 0), size_t(0));
+    VSM_ASSERT_EQ(p.tracks.size(), size_t(1));
+    VSM_ASSERT_EQ(p.tracks[0].notes.size(), size_t(2));
+
+    Project vide;
+    vide.tracks.emplace_back();
+    VSM_ASSERT_EQ(explodeTrackByPitch(vide, 0), size_t(0));
+    VSM_ASSERT_EQ(vide.tracks.size(), size_t(1));
+}
+
+VSM_TEST(exploding_names_each_track_from_the_machine_when_it_can) {
+    Project p;
+    p.tracks.emplace_back();
+    p.tracks[0].name = "Batterie";
+    uint64_t compteur = 1;
+    p.tracks[0].addNote(0, 60, 36, 100, 0, compteur);
+    p.tracks[0].addNote(120, 180, 38, 100, 0, compteur);
+    // Le nom vient de L'APPELANT : core/ ne connaît pas les machines.
+    auto nommer = [](uint8_t note) -> std::string {
+        return note == 36 ? "Grosse caisse" : (note == 38 ? "Caisse claire" : std::string());
+    };
+    VSM_ASSERT_EQ(explodeTrackByPitch(p, 0, nommer), size_t(1));
+    VSM_ASSERT(p.tracks[0].name == "Grosse caisse");
+    VSM_ASSERT(p.tracks[1].name == "Caisse claire");
+
+    // Sans nommeur, la piste prend le nom de la note plutôt qu'un numéro nu.
+    Project q;
+    q.tracks.emplace_back();
+    q.tracks[0].name = "Perc";
+    uint64_t c2 = 1;
+    q.tracks[0].addNote(0, 60, 36, 100, 0, c2);
+    q.tracks[0].addNote(120, 180, 38, 100, 0, c2);
+    VSM_ASSERT_EQ(explodeTrackByPitch(q, 0), size_t(1));
+    VSM_ASSERT(q.tracks[1].name.find("Perc - ") == 0);
+}
+
+VSM_TEST(exploding_gives_every_piece_the_same_clips_with_fresh_ids) {
+    // UN CLIP EST UNE FENÊTRE, pas un conteneur : la découpe de la piste vaut
+    // pour chacune de ses pièces. L'oublier ferait sonner les pièces éclatées
+    // là où l'originale se taisait.
+    Project p;
+    p.tracks.emplace_back();
+    uint64_t compteur = 1;
+    p.tracks[0].addNote(0, 60, 36, 100, 0, compteur);
+    p.tracks[0].addNote(120, 180, 38, 100, 0, compteur);
+    Clip c;
+    c.startTick = 0;
+    c.length = 480;
+    c.id = p.nextClipId();
+    p.tracks[0].clips.push_back(c);
+
+    VSM_ASSERT_EQ(explodeTrackByPitch(p, 0), size_t(1));
+    VSM_ASSERT_EQ(p.tracks[1].clips.size(), size_t(1));
+    VSM_ASSERT_EQ(p.tracks[1].clips[0].startTick, Tick(0));
+    VSM_ASSERT_EQ(p.tracks[1].clips[0].length, Tick(480));
+    // DES IDENTIFIANTS NEUFS : deux clips qui partagent un id feraient agir
+    // toute sélection sur les deux.
+    VSM_ASSERT(p.tracks[1].clips[0].id != p.tracks[0].clips[0].id);
 }
