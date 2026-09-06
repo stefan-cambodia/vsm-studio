@@ -24,6 +24,32 @@ public:
         addAndMakeVisible(velocityLane_);
         addAndMakeVisible(statusLabel_);
 
+        // D32.3 : LE CLAVIER À L'ÉCRAN, caché tant qu'on ne le demande pas.
+        addChildComponent(clavier_);
+        // SIX OCTAVES À PARTIR DE DO0, ET LA PREMIÈRE TOUCHE VISIBLE EST
+        // CELLE DU BAS. La plage commençait à 36 : la note 36 tombait alors
+        // sous le bouton de défilement du composant, et une basse jouée à C2
+        // n'allumait rien de visible -- le masque était pourtant juste. On
+        // descend la plage plutôt que de rogner le bouton.
+        clavier_.setAvailableRange(24, 96);
+        clavier_.setLowestVisibleKey(24);
+        clavier_.setKeyWidth(18.0f);
+        clavier_.setScrollButtonsVisible(false);
+        // LA TOUCHE ENFONCÉE DOIT SE VOIR. Le voile par défaut de JUCE est
+        // presque invisible sur une touche blanche : la première capture
+        // montrait un do sonnant sans qu'aucune touche ne change -- le masque
+        // était juste (0x1000000000, la note 36), c'est la PEINTURE qui ne
+        // disait rien. On lui donne l'ambre de l'application, opaque.
+        clavier_.setColour(juce::MidiKeyboardComponent::keyDownOverlayColourId,
+                            vsm::ui::Palette::accentAmber);
+        clavier_.setColour(juce::MidiKeyboardComponent::mouseOverKeyOverlayColourId,
+                            vsm::ui::Palette::accentTeal.withAlpha(0.5f));
+        clavier_.setColour(juce::MidiKeyboardComponent::shadowColourId,
+                            juce::Colours::black.withAlpha(0.35f));
+        clavier_.setVisible(false);
+        ecoute_.panneau = this;
+        etat_.addListener(&ecoute_);
+
         statusLabel_.setColour(juce::Label::textColourId, vsm::ui::Palette::textSecondary);
         statusLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
         statusLabel_.setText(u8"Prêt", juce::dontSendNotification);
@@ -84,10 +110,50 @@ public:
         auto area = getLocalBounds();
         toolbar_.setBounds(area.removeFromTop(92));   // D29.4 : trois rangées, la ligne d'information en bas
         statusLabel_.setBounds(area.removeFromBottom(20).reduced(8, 0));
+        // D32.3 : LE CLAVIER SOUS LA LANE DE VÉLOCITÉ, tout en bas. C'est là
+        // qu'un clavier se trouve sur un instrument, et c'est aussi l'endroit
+        // où il ne coupe pas la lecture du piano roll en deux.
+        if (clavier_.isVisible()) clavier_.setBounds(area.removeFromBottom(72).reduced(4, 2));
         velocityLane_.setBounds(area.removeFromBottom(110));
         ruler_.setBounds(area.removeFromTop(22));
         pianoRoll_.setBounds(area);
     }
+
+    /// D32.3 : montre ou cache le clavier à l'écran. Caché par défaut : le
+    /// piano roll a déjà son clavier vertical, et soixante-douze pixels pris à
+    /// l'édition doivent se demander.
+    void setKeyboardVisible(bool visible) {
+        clavier_.setVisible(visible);
+        resized();
+    }
+    bool keyboardVisible() const { return clavier_.isVisible(); }
+
+    /// D32.3 : allume les touches que la piste choisie joue en ce moment.
+    /// `basses` et `hautes` sont le masque de 128 bits du graphe.
+    void setSoundingNotes(uint64_t basses, uint64_t hautes) {
+        if (!clavier_.isVisible()) return;
+        if (basses == sonnantesBasses_ && hautes == sonnantesHautes_) return;
+        for (int note = 0; note < 128; ++note) {
+            const uint64_t mot = note < 64 ? basses : hautes;
+            const uint64_t avant = note < 64 ? sonnantesBasses_ : sonnantesHautes_;
+            const uint64_t bit = uint64_t{1} << (note % 64);
+            const bool maintenant = (mot & bit) != 0;
+            if (maintenant == ((avant & bit) != 0)) continue;
+            // LE MORCEAU JOUE SUR UN CANAL À PART (16). Sans cela, une note
+            // que le transport tient et qu'on relâche à la souris s'éteindrait
+            // deux fois, et une note qu'on tient pendant que le morceau la
+            // joue s'éteindrait quand le morceau la lâche.
+            if (maintenant) etat_.noteOn(16, note, 0.8f);
+            else etat_.noteOff(16, note, 0.0f);
+        }
+        sonnantesBasses_ = basses;
+        sonnantesHautes_ = hautes;
+    }
+
+    /// Une note jouée AU CLAVIER DE L'ÉCRAN. L'application l'envoie par le
+    /// même chemin que le clavier d'ordinateur -- deux chemins pour une seule
+    /// idée finiraient par ne plus jouer pareil.
+    std::function<void(int note, float velocity, bool on)> onKeyboardNote;
 
     void paint(juce::Graphics& g) override { g.fillAll(vsm::ui::Palette::background); }
 
@@ -97,4 +163,28 @@ private:
     PianoRollToolbar toolbar_;
     PianoRollRulerComponent ruler_;
     juce::Label statusLabel_;
+
+    // D32.3 — LE CLAVIER À L'ÉCRAN.
+    juce::MidiKeyboardState etat_;
+    juce::MidiKeyboardComponent clavier_ { etat_, juce::MidiKeyboardComponent::horizontalKeyboard };
+    uint64_t sonnantesBasses_ = 0, sonnantesHautes_ = 0;
+    /// Reçoit les notes de `etat_` -- celles de la souris comme celles qu'on y
+    /// pose pour le voyant. Le canal 16 est celui du MORCEAU : on ne le
+    /// renvoie pas à l'application, sans quoi le transport se rejouerait
+    /// lui-même.
+    struct EcouteClavier : juce::MidiKeyboardState::Listener {
+        PianoRollPanel* panneau = nullptr;
+        void handleNoteOn(juce::MidiKeyboardState*, int canal, int note, float velo) override {
+            if (canal != 16 && panneau && panneau->onKeyboardNote)
+                panneau->onKeyboardNote(note, velo, true);
+        }
+        void handleNoteOff(juce::MidiKeyboardState*, int canal, int note, float velo) override {
+            if (canal != 16 && panneau && panneau->onKeyboardNote)
+                panneau->onKeyboardNote(note, velo, false);
+        }
+    };
+    EcouteClavier ecoute_;
+
+public:
+    ~PianoRollPanel() override { etat_.removeListener(&ecoute_); }
 };

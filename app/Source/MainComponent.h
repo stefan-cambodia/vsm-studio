@@ -35,6 +35,7 @@
 #include "ui/MidiCcComponent.h"
 #include "ui/TempoLaneComponent.h"
 #include "ui/EffectChainComponent.h"
+#include "ui/EventListComponent.h"
 #include "ui/PanelWindow.h"
 #include "ui/ImportReportComponent.h"
 #include "ui/LookAndFeel/VsmLookAndFeel.h"
@@ -215,6 +216,7 @@ private:
         kMenuFileQuit,
         // D11.6 : modèle de projet et projets récents.
         kMenuFileSaveTemplate,
+        kMenuFileStatistics,      ///< D32.5
         kMenuFileNewFromTemplate,
         kMenuFileRecentFirst,
         kMenuFileRecentLast = kMenuFileRecentFirst + 9,
@@ -241,6 +243,7 @@ private:
         kMenuTrackMidiFxLast = kMenuTrackMidiFxFirst + 7,
         kMenuTrackMidiFxClear,    ///< D31.4
         kMenuTrackMidiFxBake,     ///< D31.5
+        kMenuTrackRenameSeries,   ///< D32.4
         kMenuTrackShowAll,
         /// D22.5 : la piste choisie comme preset, et un identifiant par preset
         /// du dossier `pistes` de la bibliothèque, pour l'appliquer.
@@ -930,6 +933,27 @@ private:
     /// D31.5 : les pistes dont l'export `.mid` ne portera pas ce qu'on entend
     /// -- chaîne MIDI ou transposition de piste (D17.5). Vide : rien à dire.
     juce::StringArray tracksWhoseMidiExportWillDiffer() const;
+    /// D32.1 : décode un fichier et le lance dans la pré-écoute du graphe.
+    /// Ne touche pas au projet et n'ouvre aucune entrée d'historique --
+    /// écouter n'est pas une modification.
+    void auditionSample(const juce::File& fichier);
+    /// D32.4 : renomme les pistes VISIBLES d'après un motif où `#` est
+    /// remplacé par le numéro d'ordre. Rend le nombre de pistes renommées.
+    /// Un motif vide ou sans `#` ne renomme RIEN plutôt qu'à moitié : quarante
+    /// pistes qui porteraient toutes le même nom seraient pires qu'avant.
+    size_t renameTracksInSeries(const juce::String& motif);
+    /// D32.4 : demande le motif, puis applique.
+    void promptRenameTracksInSeries();
+    /// D32.5 : le compte rendu chiffré du projet, en texte.
+    juce::String projectStatisticsText() const;
+    void showProjectStatistics();
+    /// D32.3 : écrire au journal le masque des notes sonnantes, à la demande.
+    bool journalClavier_ = false;
+    /// D32.3 : une note ÉPINGLÉE au clavier pour la capture. Tant qu'elle
+    /// l'est, le rafraîchissement périodique ne l'efface pas -- sans quoi la
+    /// touche s'allumerait puis s'éteindrait un vingtième de seconde plus
+    /// tard, et l'autoportrait ne montrerait jamais rien.
+    bool epingleClavier_ = false;
     /// LA FENÊTRE IMPLICITE SE MATÉRIALISE (D16.1) : toute piste qui porte du
     /// matériau et aucun clip en reçoit un, « tout à zéro » -- exactement le
     /// passage que l'ordonnanceur fabriquait déjà pour elle, à l'échantillon
@@ -1141,6 +1165,9 @@ private:
     double appliedSampleRate_ = 0.0;
 
     MidiCcComponent midiCc_;
+    /// D32.2 : la liste des événements de la piste choisie -- la seule vue qui
+    /// montre les programmes, les plis et les pressions.
+    vsm::app::ui::EventListComponent eventList_;
     TempoLaneComponent tempoLane_;
 
     PanelWindow trackListWindow_;

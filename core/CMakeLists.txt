@@ -15,6 +15,7 @@ add_library(vsm_core STATIC
     src/sequencer/TimeEdit.cpp
     src/sequencer/ProjectImport.cpp
     src/sequencer/MidiRecorder.cpp
+    src/sequencer/EventList.cpp
     src/sequencer/MidiEffects.cpp
     src/sequencer/PlaybackScheduler.cpp
 )
@@ -50,6 +51,7 @@ if (VSM_BUILD_TESTS)
         tests/test_time_edit.cpp
         tests/test_project_import.cpp
         tests/test_automation_edit.cpp
+        tests/test_event_list.cpp
         tests/test_midi_effects.cpp
         tests/test_groove.cpp
         tests/test_play_order.cpp

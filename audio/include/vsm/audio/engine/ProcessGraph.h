@@ -6,6 +6,7 @@
 #include "vsm/audio/dsp/SpectrumTap.h"
 #include "vsm/audio/engine/MasterBus.h"
 #include "vsm/audio/engine/ReferenceTrack.h"
+#include "vsm/audio/engine/AuditionPlayer.h"
 #include "vsm/audio/engine/Mixer.h"
 #include "vsm/audio/engine/RenderThreadPool.h"
 #include "vsm/audio/plugin/ISynthPlugin.h"
@@ -405,6 +406,29 @@ public:
     ReferenceTrack& referenceTrack() { return referenceTrack_; }
     const ReferenceTrack& referenceTrack() const { return referenceTrack_; }
 
+    /// D32.1 : LA PRÉ-ÉCOUTE DU NAVIGATEUR. Mêmes deux règles que la
+    /// référence -- après le master, jamais dans l'export --, plus une
+    /// troisième : elle ne suit pas le transport, elle tient sa propre
+    /// position. Voir `AuditionPlayer`.
+    /// D32.3 : LES NOTES QUI SONNENT sur une piste, en masque de 128 bits
+    /// (deux mots de 64), pour que le clavier à l'écran les allume.
+    ///
+    /// POURQUOI UN MASQUE ATOMIQUE ET NON LE TABLEAU DE BOOLÉENS QUI EXISTE
+    /// DÉJÀ. `soundingNotes_` est écrit par le thread audio ; le lire depuis
+    /// l'interface serait une course, et un `std::array<bool,128>` lu pendant
+    /// qu'on l'écrit n'a pas de valeur définie. Deux entiers atomiques en
+    /// lecture relâchée coûtent deux écritures par note -- rien à l'échelle
+    /// d'un bloc -- et donnent une vue toujours licite. Elle peut être en
+    /// retard d'un bloc : c'est un voyant, pas une horloge.
+    void soundingNotesOf(size_t trackIndex, uint64_t& basses, uint64_t& hautes) const {
+        if (trackIndex >= kMaxTracks) { basses = hautes = 0; return; }
+        basses = soundingMaskLow_[trackIndex].load(std::memory_order_relaxed);
+        hautes = soundingMaskHigh_[trackIndex].load(std::memory_order_relaxed);
+    }
+
+    AuditionPlayer& auditionPlayer() { return auditionPlayer_; }
+    const AuditionPlayer& auditionPlayer() const { return auditionPlayer_; }
+
 private:
     /// Annoncée ici parce que `renderTrackVoice` et `VoiceBatch` en portent un
     /// pointeur ; définie plus bas, avec l'explication de ce qu'elle compense.
@@ -593,6 +617,7 @@ private:
     MasterBus masterBus_;
     vsm::audio::dsp::SpectrumTap spectrumTap_;
     ReferenceTrack referenceTrack_;
+    AuditionPlayer auditionPlayer_;
 
     std::atomic<double> currentSeconds_{0.0};
     std::atomic<bool> playing_{false};
@@ -608,6 +633,21 @@ private:
     // trouve après la fin de boucle ne le recevrait jamais et sonnerait
     // indéfiniment. On les relâche donc explicitement au moment du saut.
     std::array<std::array<bool, 128>, kMaxTracks> soundingNotes_{};
+    /// D32.3 : le même état, en masque atomique, pour l'interface. Tenu à jour
+    /// par `marquerSonnante`, seul endroit qui écrit `soundingNotes_`.
+    mutable std::array<std::atomic<uint64_t>, kMaxTracks> soundingMaskLow_{};
+    mutable std::array<std::atomic<uint64_t>, kMaxTracks> soundingMaskHigh_{};
+    /// Pose ou retire une note sonnante, et tient le masque avec elle. Toutes
+    /// les écritures passent par ici : un `soundingNotes_[t][n] = x` écrit
+    /// ailleurs laisserait le voyant mentir.
+    void marquerSonnante(size_t trackIndex, uint8_t note, bool sonne) {
+        if (trackIndex >= kMaxTracks || note > 127) return;
+        soundingNotes_[trackIndex][note] = sonne;
+        auto& mot = note < 64 ? soundingMaskLow_[trackIndex] : soundingMaskHigh_[trackIndex];
+        const uint64_t bit = uint64_t{1} << (note % 64);
+        const uint64_t avant = mot.load(std::memory_order_relaxed);
+        mot.store(sonne ? (avant | bit) : (avant & ~bit), std::memory_order_relaxed);
+    }
     /// D25.1 : LA PÉDALE DE SUSTAIN, tenue par le graphe pour toutes les
     /// machines. Pédale enfoncée, un NoteOff est RETENU ici au lieu d'être
     /// livré ; relâchée, les retenus partent d'un coup. Thread audio seulement.

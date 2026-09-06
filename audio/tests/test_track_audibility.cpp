@@ -3,6 +3,7 @@
 #include "vsm/audio/effect/IAudioEffect.h"
 #include "vsm/audio/engine/OfflineRenderer.h"
 #include "vsm/audio/engine/ProcessGraph.h"
+#include "vsm/audio/io/WavFileReader.h"
 #include "vsm/sequencer/Project.h"
 #include "vsm/sequencer/Track.h"
 #include "vsm/sequencer/PlaybackScheduler.h"
@@ -310,4 +311,118 @@ VSM_TEST(a_zero_trim_changes_nothing_at_all) {
     projet.tracks[0].inputTrimDb = 0.0f;
     const RenderedAudio b = rendre(projet, {{0, "vsm.minimoog"}});
     VSM_ASSERT_EQ(ecartMax(a, b), 0.0f);
+}
+
+// ---------------------------------------------------------------------------
+// D32.1 — LA PRÉ-ÉCOUTE DU NAVIGATEUR.
+//
+// L'attendu, écrit avant la mesure : « le rendu hors ligne d'un projet est
+// identique AU BIT PRÈS qu'une pré-écoute soit chargée ou non. Si l'écart
+// n'est pas nul, la pré-écoute a fui dans l'export. »
+// ---------------------------------------------------------------------------
+
+namespace {
+
+/// Un tampon d'échantillon franc : une seconde de pleine amplitude. S'il fuit
+/// dans un rendu, la mesure ne peut pas le manquer.
+vsm::audio::io::SampleBufferPtr unEchantillonFranc(double sampleRate = 8000.0) {
+    auto buffer = std::make_shared<vsm::audio::io::SampleBuffer>();
+    buffer->sampleRate = sampleRate;
+    const size_t n = static_cast<size_t>(sampleRate);
+    buffer->left.assign(n, 0.0f);
+    for (size_t i = 0; i < n; ++i)
+        buffer->left[i] = 0.9f * std::sin(2.0 * 3.14159265358979 * 440.0
+                                           * static_cast<double>(i) / sampleRate);
+    return buffer;
+}
+
+} // namespace
+
+VSM_TEST(two_consecutive_renders_on_the_same_graph_are_not_identical) {
+    // LE TÉMOIN DU TEST SUIVANT, et il a fallu l'écrire pour ne pas accuser la
+    // pré-écoute d'une fuite qui n'en était pas une. Une machine a de la
+    // MÉMOIRE (phase d'oscillateur, charge de filtre, état d'enveloppe) : deux
+    // rendus enchaînés sur LE MÊME graphe ne sont pas identiques, et la leçon
+    // était déjà écrite à D18.1. Comparer une pré-écoute à un témoin rendu
+    // avant elle mesurait donc cette mémoire, pas la fuite.
+    Project projet;
+    projet.ticksPerQuarterNote = 480;
+    projet.tracks.push_back(uneNote("T", 57));
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setTrackInstrument(0, "vsm.minimoog");
+    graph.setProject(projet);
+    const RenderedAudio premier = OfflineRenderer::render(graph, 8000.0, 256, 1.0);
+    const RenderedAudio second = OfflineRenderer::render(graph, 8000.0, 256, 1.0);
+    VSM_ASSERT(peakOf(premier.left) > 0.05f);
+    VSM_ASSERT(ecartMax(premier, second) > 1e-6f);
+}
+
+VSM_TEST(an_audition_never_leaks_into_a_render) {
+    Project projet;
+    projet.ticksPerQuarterNote = 480;
+    projet.tracks.push_back(uneNote("T", 57));
+
+    // DEUX GRAPHES NEUFS, et UNE seule variable entre eux : la pré-écoute.
+    // Le même graphe rendu deux fois ne convient pas -- voir le témoin
+    // ci-dessus, une machine garde son état d'un rendu au suivant.
+    ProcessGraph temoin;
+    temoin.prepare(8000.0, 256);
+    temoin.setTrackInstrument(0, "vsm.minimoog");
+    temoin.setProject(projet);
+    const RenderedAudio sansPreEcoute = OfflineRenderer::render(temoin, 8000.0, 256, 1.0);
+
+    ProcessGraph avec;
+    avec.prepare(8000.0, 256);
+    avec.setTrackInstrument(0, "vsm.minimoog");
+    avec.setProject(projet);
+    avec.auditionPlayer().trigger(unEchantillonFranc());
+    VSM_ASSERT(avec.auditionPlayer().isPlaying());
+    const RenderedAudio avecPreEcoute = OfflineRenderer::render(avec, 8000.0, 256, 1.0);
+
+    VSM_ASSERT(peakOf(sansPreEcoute.left) > 0.05f);          // la mesure porte sur du son
+    VSM_ASSERT_EQ(ecartMax(sansPreEcoute, avecPreEcoute), 0.0f);   // au bit près
+    // ET ELLE EST REVENUE : une pré-écoute qui resterait coupée après un
+    // export ferait croire le navigateur muet.
+    VSM_ASSERT(avec.auditionPlayer().enabled());
+}
+
+VSM_TEST(an_audition_is_heard_when_the_transport_is_not_running) {
+    // Elle ne suit pas le transport : c'est ce qui la distingue de la piste de
+    // référence, et c'est ce qu'on attend d'un clic dans un navigateur.
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setPlaying(false);
+    graph.auditionPlayer().trigger(unEchantillonFranc());
+
+    std::vector<float> l(256, 0.0f), r(256, 0.0f);
+    graph.processBlock(l.data(), r.data(), 256);
+    VSM_ASSERT(peakOf(l) > 0.1f);
+    VSM_ASSERT(peakOf(r) > 0.1f);          // mono étalé sur les deux côtés
+}
+
+VSM_TEST(an_audition_stops_at_the_end_and_a_new_one_cuts_the_old) {
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    // Un tampon très court : deux blocs suffisent à le passer en entier.
+    auto court = std::make_shared<vsm::audio::io::SampleBuffer>();
+    court->sampleRate = 8000.0;
+    court->left.assign(300, 0.5f);
+    graph.auditionPlayer().trigger(court);
+
+    std::vector<float> l(256, 0.0f), r(256, 0.0f);
+    graph.processBlock(l.data(), r.data(), 256);
+    VSM_ASSERT(graph.auditionPlayer().isPlaying());
+    graph.processBlock(l.data(), r.data(), 256);
+    // ARRIVÉE AU BOUT : elle s'arrête plutôt que de boucler.
+    VSM_ASSERT(!graph.auditionPlayer().isPlaying());
+
+    // ET UN DÉCLENCHEMENT COUPE LE PRÉCÉDENT : deux échantillons superposés ne
+    // s'écoutent ni l'un ni l'autre.
+    graph.auditionPlayer().trigger(unEchantillonFranc());
+    graph.processBlock(l.data(), r.data(), 256);
+    graph.auditionPlayer().trigger(unEchantillonFranc());
+    VSM_ASSERT(graph.auditionPlayer().isPlaying());
+    graph.auditionPlayer().stop();
+    VSM_ASSERT(!graph.auditionPlayer().isPlaying());
 }

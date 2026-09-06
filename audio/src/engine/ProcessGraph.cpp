@@ -42,6 +42,7 @@ void ProcessGraph::prepare(double sampleRate, int maxBlockSize) {
     meters_.resetAll();
     masterBus_.prepare(sampleRate_, maxBlockSize_);
     referenceTrack_.prepare(sampleRate_);
+    auditionPlayer_.prepare(sampleRate_);
     // LE MÉTRONOME AUSSI, et il ne l'était PAS. Il gardait sa fréquence
     // d'échantillonnage par défaut de 48 kHz quoi que fasse la carte : à
     // 44,1 kHz son clic sortait un demi-ton trop bas et durait 9 % de trop, et
@@ -743,7 +744,7 @@ bool ProcessGraph::interceptSustain(size_t trackIndex, uint8_t channel,
         off.note = static_cast<uint8_t>(note);
         off.velocity = 64;
         events[static_cast<size_t>(numEvents++)] = off;
-        soundingNotes_[trackIndex][note] = false;
+        marquerSonnante(trackIndex, static_cast<uint8_t>(note), false);   // D32.3
         retenus[note] = false;
     }
     return true;
@@ -820,11 +821,25 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
         // refrain transport à l'arrêt doit régler les machines tout de suite,
         // sinon la première note jouée au clavier sonnerait avec les
         // contrôleurs d'avant le déplacement.
+        //
+        // D32.1 : LA PRÉ-ÉCOUTE SE MÉLANGE SUR CHACUNE DES SORTIES DE CE
+        // CHEMIN, y compris les deux court-circuits ci-dessous. C'est le
+        // défaut qu'un test a attrapé : mélangée seulement en fin de bloc,
+        // elle ne s'entendait que si un instrument avait par ailleurs quelque
+        // chose à dire -- c'est-à-dire jamais, puisqu'on parcourt un dossier
+        // d'échantillons transport arrêté et morceau muet. Elle passe après le
+        // master, et sur ces deux sorties le master n'a rien traité : elle est
+        // donc bien à sa place, pas avant lui.
+        auto sortieAvecPreEcoute = [&](int n) { auditionPlayer_.mixInto(outputL, outputR, n); };
+
         if (drainedLiveCount_ == 0 && drainedChaseCount_ == 0 && drainedLiveControlCount_ == 0
-            && !panicThisBlock_ && totalActiveVoices() == 0) return;
+            && !panicThisBlock_ && totalActiveVoices() == 0) { sortieAvecPreEcoute(numSamples); return; }
 
         auto idleSnapshot = snapshot_.load(std::memory_order_acquire);
-        if (!idleSnapshot || idleSnapshot->project.tracks.empty()) return;
+        if (!idleSnapshot || idleSnapshot->project.tracks.empty()) {
+            sortieAvecPreEcoute(numSamples);
+            return;
+        }
 
         const size_t actifs = activeSends_.load(std::memory_order_acquire);
         const int idleSamples = std::min(numSamples, static_cast<int>(scratchMonoL_.size()));
@@ -866,6 +881,14 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
         masterBus_.process(outputL, outputR, idleSamples);
         spectrumTap_.write(outputL, outputR, idleSamples);
         // À l'arrêt, la position ne bouge pas : la référence n'a rien à jouer.
+        //
+        // D32.1 : LA PRÉ-ÉCOUTE, ELLE, JOUE À L'ARRÊT -- c'est même le cas
+        // normal : on parcourt un dossier d'échantillons transport arrêté.
+        // Elle ne suit pas la tête de lecture mais sa propre position, et
+        // c'est ce qui la distingue de la référence. Ce chemin-ci l'oubliait,
+        // et un test l'a attrapé : le clic ne rendait rien tant que le morceau
+        // ne jouait pas, c'est-à-dire presque toujours.
+        auditionPlayer_.mixInto(outputL, outputR, idleSamples);
         return;
     }
 
@@ -1044,6 +1067,14 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
         std::fill(outputR, outputR + samplesToProcess, 0.0f);
     }
     referenceTrack_.mixInto(outputL, outputR, samplesToProcess, blockStartSeconds);
+
+    // D32.1 : LA PRÉ-ÉCOUTE, au même étage que la référence et pour les mêmes
+    // raisons -- après le master (un échantillon qu'on essaie ne traverse pas
+    // le compresseur du morceau) et jamais dans l'export (le rendu la coupe).
+    // Elle vient APRÈS le « original seul » de la référence, sans quoi ce
+    // dernier l'effacerait : on veut pouvoir essayer un échantillon même en
+    // écoutant l'original.
+    auditionPlayer_.mixInto(outputL, outputR, samplesToProcess);
 
     currentSeconds_.store(blockEndSeconds, std::memory_order_release);
 }
@@ -1306,7 +1337,7 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
             off.note = static_cast<uint8_t>(note);
             off.velocity = 64;
             events[static_cast<size_t>(numEvents++)] = off;
-            sounding[static_cast<size_t>(note)] = false;
+            marquerSonnante(trackIndex, static_cast<uint8_t>(note), false);   // D32.3
         }
     }
 
@@ -1327,7 +1358,7 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
             // D25.1 : sous pédale, le NoteOff est retenu ; un NoteOn oublie la retenue.
             if (live.noteOn) heldNoteOffs_[trackIndex][live.note] = false;
             else if (holdNoteOffIfSustained(trackIndex, live.note)) continue;
-            soundingNotes_[trackIndex][live.note] = live.noteOn;
+            marquerSonnante(trackIndex, live.note, live.noteOn);   // D32.3
             if (live.noteOn) notesSentToInstruments_.fetch_add(1, std::memory_order_relaxed);
             events[static_cast<size_t>(numEvents++)] = pluginEvent;
         }
@@ -1388,7 +1419,7 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
                 off.note = static_cast<uint8_t>(note);
                 off.velocity = 0;
                 events[static_cast<size_t>(numEvents++)] = off;
-                sonnent[note] = false;
+                marquerSonnante(trackIndex, static_cast<uint8_t>(note), false);   // D32.3
             }
         }
     }
@@ -1528,8 +1559,8 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
                 heldNoteOffs_[trackIndex][pluginEvent.note] = false;
             else if (holdNoteOffIfSustained(trackIndex, pluginEvent.note))
                 continue;
-            soundingNotes_[trackIndex][pluginEvent.note] =
-                (pluginEvent.kind == MidiNoteEvent::Kind::NoteOn);
+            marquerSonnante(trackIndex, pluginEvent.note,             // D32.3
+                             pluginEvent.kind == MidiNoteEvent::Kind::NoteOn);
             if (pluginEvent.kind == MidiNoteEvent::Kind::NoteOn)
                 notesSentToInstruments_.fetch_add(1, std::memory_order_relaxed);
             events[static_cast<size_t>(numEvents++)] = pluginEvent;

@@ -24,6 +24,14 @@ RenderedAudio OfflineRenderer::render(ProcessGraph& graph, double sampleRate, in
     const auto modeReference = graph.referenceTrack().mode();
     graph.referenceTrack().setMode(vsm::audio::engine::ReferenceTrack::Mode::Off);
 
+    // D32.1 : LA PRÉ-ÉCOUTE NON PLUS. Même raisonnement mot pour mot : un
+    // échantillon qu'on essayait au moment où l'export est parti n'a rien à
+    // faire dans le fichier. On la coupe, et on la remet dans l'état où on
+    // l'avait trouvée -- une pré-écoute qui ne reviendrait pas ferait croire
+    // le navigateur muet après le premier export.
+    const bool preEcouteActive = graph.auditionPlayer().enabled();
+    graph.auditionPlayer().setEnabled(false);
+
     graph.seekSeconds(0.0);
     graph.setPlaying(true);
 
@@ -53,6 +61,7 @@ RenderedAudio OfflineRenderer::render(ProcessGraph& graph, double sampleRate, in
 
     graph.setPlaying(false);
     graph.referenceTrack().setMode(modeReference);
+    graph.auditionPlayer().setEnabled(preEcouteActive);   // D32.1
     return result;
 }
 

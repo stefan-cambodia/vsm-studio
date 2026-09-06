@@ -42,6 +42,11 @@ public:
     /// L'utilisateur veut appliquer une entrée à la piste sélectionnée.
     std::function<void(const vsm::interchange::BrowserItem&)> onApply;
 
+    /// D32.1 : l'utilisateur veut ENTENDRE un échantillon avant de le poser.
+    /// Séparé de `onApply` : pré-écouter ne change pas le projet, n'ouvre
+    /// aucune entrée d'historique, et se fait d'un seul clic.
+    std::function<void(const vsm::interchange::BrowserItem&)> onAudition;
+
     /// La description d'une entrée pour le glisser-déposer. Publique parce que
     /// la liste des pistes doit la relire : deux écritures différentes du même
     /// message finiraient par se contredire.

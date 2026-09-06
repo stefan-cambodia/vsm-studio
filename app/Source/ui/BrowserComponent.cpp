@@ -79,6 +79,20 @@ public:
             g.setFont(juce::Font(juce::FontOptions(13.0f)));
             g.drawText(juce::String::fromUTF8(entree.origin.c_str()), ligne,
                         juce::Justification::centredRight);
+            // D32.1 : LE « ▶ » SUR LA LIGNE SURVOLÉE, et seulement sur un
+            // ÉCHANTILLON. Le clic simple la joue déjà ; le triangle est là
+            // pour le faire savoir, parce qu'un geste qu'on ne devine pas est
+            // un geste que personne n'utilise. Sur un preset ou une machine il
+            // n'apparaît pas : il promettrait un son qu'on ne sait pas rendre
+            // sans instrument.
+            if (i == survol_ && entree.kind == vsm::interchange::BrowserItemKind::Sample) {
+                g.setColour(juce::Colours::violet.brighter(0.4f));
+                g.setFont(juce::Font(juce::FontOptions(13.0f)));
+                g.drawText(juce::String::fromUTF8(u8"▶"),
+                            juce::Rectangle<int>(0, i * kHauteurLigne, kLargeurFamille,
+                                                  kHauteurLigne).reduced(3, 0),
+                            juce::Justification::centredRight);
+            }
         }
     }
 
@@ -89,6 +103,19 @@ public:
         repaint();
     }
     void mouseExit(const juce::MouseEvent&) override { survol_ = -1; repaint(); }
+
+    // D32.1 : LE CLIC SIMPLE PRÉ-ÉCOUTE UN ÉCHANTILLON, comme chez Live.
+    // Pas de bouton séparé : la ligne entière est la cible, ce qui est
+    // exactement ce dont on a besoin quand on parcourt deux cents fichiers à
+    // la volée. Le double-clic continue d'APPLIQUER -- les deux gestes ne se
+    // gênent pas, le premier clic d'un double-clic pré-écoute puis le second
+    // applique, ce qui est l'ordre qu'on veut.
+    void mouseDown(const juce::MouseEvent& e) override {
+        const auto* entree = itemAt(e.y);
+        if (entree == nullptr) return;
+        if (entree->kind != vsm::interchange::BrowserItemKind::Sample) return;
+        if (parent_.onAudition) parent_.onAudition(*entree);
+    }
 
     void mouseDoubleClick(const juce::MouseEvent& e) override {
         const auto* entree = itemAt(e.y);

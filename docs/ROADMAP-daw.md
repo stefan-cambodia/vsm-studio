@@ -6426,3 +6426,156 @@ les ports matériels de D27 — tous passent par là.
 >
 > Tests : 286 core, 1 266 audio, 282 interchange, 25 clap, 11 panels, 19 vst3
 > — tous verts (12 tests neufs) ; Python inchangé (168).
+
+### Phase D32 — Le dix-septième audit : ce qui manque une fois D31 posée (06/09/2026, 20:25)
+
+**Pourquoi.** Même méthode, et les zéros revérifiés en nommant ce qu'on a
+cherché ET où (`app/Source`, `core`, `audio/include`, `audio/src`,
+`interchange`). Le relevé a écarté, comme EXISTANT et retrouvé à la
+relecture : l'éditeur de contrôleurs (`MidiCcComponent`, avec ses paliers et
+son historique), le rognage d'un clip à son son (`trimClipToSound`), le
+report en place, les prises empilées, la piste de référence et son écoute
+A/B, le filtre de la liste des pistes, les notes de projet (D18.6) et le
+gel des pistes MIDI.
+
+**Cinq manques ont survécu, et trois d'entre eux servent le second axe du
+projet** — la fidélité de la reconstruction. Une reconstruction produit
+quarante pistes nommées par la machine et des milliers d'événements : rien
+aujourd'hui ne permet de les COMPTER, de les LIRE en nombres, ni de les
+renommer autrement qu'une par une.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D32.1 | **La pré-écoute dans le navigateur.** Live : un clic sur un échantillon le joue. Ici, le navigateur indexe les échantillons (`BrowserItemKind::Sample`) et n'a qu'un `onApply` : pour entendre l'un de deux cents fichiers, il faut le poser sur une piste, écouter, annuler | un `AuditionPlayer` dans le graphe, sur le modèle de `ReferenceTrack` : tampon publié par échange atomique, mélangé APRÈS le master, JAMAIS dans l'export, coupé net au déclenchement suivant ; un bouton « ▶ » par ligne d'échantillon dans le navigateur ; mesuré : le rendu hors ligne d'un projet dont la pré-écoute tourne est identique AU BIT PRÈS à celui d'avant |
+| D32.2 | **La liste des événements.** Cubase : l'éditeur de liste. Ici, les notes se voient au piano roll et les CC dans leur onglet ; les changements de programme, les plis de hauteur, la pression de canal et la pression polyphonique n'ont AUCUNE vue — le modèle les porte, le séquenceur les joue, l'import les garde, et personne ne peut les lire | un onglet « Liste » : tous les événements de la piste choisie, triés par tick, avec leur mesure·temps, leur nature, leurs nombres bruts ; filtrable par nature ; double-clic = la tête va là ; Suppr retire l'événement choisi (annulable) ; vérifié à l'écran sur une piste qui porte les cinq natures |
+| D32.3 | **Le clavier à l'écran.** Cubase : le clavier virtuel. Ici, le clavier d'ordinateur joue (D22.4) mais RIEN ne montre ce qui sonne — ni ce qu'on joue, ni ce que le morceau joue | un `juce::MidiKeyboardComponent` sous le piano roll, qui ENVOIE les notes par le même chemin que le clavier d'ordinateur et qui MONTRE les notes que le transport joue sur la piste choisie ; `VSM_VUE=clavier` ; vérifié à l'écran, touche enfoncée visible |
+| D32.4 | **Renommer les pistes en série.** Une reconstruction rend « Track 01 », « Track 02 »... ; les renommer se fait une par une | « Piste ▸ Renommer les pistes en série » : un motif avec `#` pour le numéro (« Batterie # » → « Batterie 1 »...), appliqué aux pistes VISIBLES, annulable ; dit combien il en a renommé ; `VSM_VUE=renommer-serie:motif` |
+| D32.5 | **Les statistiques du projet.** Rien ne dit combien un projet porte de pistes, de notes, de clips, ni sa durée — c'est précisément ce qu'on veut lire d'une reconstruction pour la comparer à l'original | « Fichier ▸ Statistiques du projet » : pistes (par nature), notes, clips, courbes et points d'automation, événements MIDI par nature, machines employées, durée du matériau ; sur stderr aussi, pour qu'un rendu piloté le publie ; `VSM_VUE=statistiques` |
+
+**Ce qui est attendu, écrit AVANT la mesure.**
+
+1. **D32.1** — j'attends que le rendu hors ligne d'un projet soit **identique
+   au bit près** (écart 0,0) qu'une pré-écoute soit chargée ou non. Si
+   l'écart n'est pas nul, la pré-écoute a fui dans l'export, ce qui est
+   exactement le piège que `ReferenceTrack` avait déjà eu à éviter.
+2. **D32.2** — j'attends que la liste compte, sur une piste portant les cinq
+   natures, **exactement autant de lignes que le modèle porte d'événements**.
+   Un écart dirait qu'une nature est oubliée par la vue, ce qui est le défaut
+   qu'on répare.
+3. **D32.4** — j'attends que le renommage laisse **le nombre de pistes et
+   leur ordre inchangés** : renommer n'est pas déplacer, et un motif mal formé
+   ne doit rien renommer plutôt que renommer à moitié.
+4. **D32.5** — le compte de notes des statistiques doit être **le même** que
+   celui que la liste de D32.2 affiche pour la même piste. Deux comptages qui
+   divergeraient diraient que l'un des deux ne regarde pas tout.
+
+> **D32.1 EST FAITE (06/09/2026, 20:55).** `AuditionPlayer` dans le graphe,
+> sur le modèle de `ReferenceTrack` : tampon publié par échange atomique,
+> mélangé APRÈS le master, coupé par l'export et remis dans l'état où il
+> l'avait trouvé. Un clic simple sur une ligne d'échantillon la joue —
+> comme chez Live, sans bouton séparé : la ligne entière est la cible, ce
+> qui est ce dont on a besoin quand on parcourt deux cents fichiers. Le
+> double-clic continue d'APPLIQUER. Un « ▶ » apparaît sur la ligne survolée,
+> et seulement sur un échantillon : sur un preset il promettrait un son
+> qu'on ne sait pas rendre sans instrument.
+>
+> | mesure | attendu | mesuré |
+> |---|---|---|
+> | rendu avec / sans pré-écoute chargée | écart 0,0 | **0,0 — au bit près** |
+> | pré-écoute transport ARRÊTÉ | s'entend | **crête > 0,1** |
+> | arrivée au bout | s'arrête, ne boucle pas | **arrêtée après 2 blocs** |
+>
+> **DEUX DÉFAUTS QUE LES TESTS ONT ATTRAPÉS, ET LE SECOND ÉTAIT DANS LE
+> TEST.**
+>
+> 1. **La pré-écoute ne s'entendait pas transport arrêté**, c'est-à-dire
+>    presque jamais — on parcourt un dossier d'échantillons morceau à
+>    l'arrêt. `processBlock` sort tôt par deux court-circuits quand rien n'a
+>    à être rendu, et le mélange n'était écrit qu'en fin de bloc. Il passe
+>    maintenant sur CHACUNE des sorties de ce chemin.
+> 2. **Le premier test de fuite accusait la pré-écoute à tort** : il
+>    comparait deux rendus enchaînés sur LE MÊME graphe, et mesurait donc la
+>    mémoire des machines (phase d'oscillateur, charge de filtre) — écart
+>    0,251, la leçon de D18.1 repayée. L'A/B se fait sur DEUX GRAPHES NEUFS
+>    avec une seule variable, et un test-témoin est resté pour dire pourquoi.
+
+> **D32.2 EST FAITE (06/09/2026, 21:10).** Un onglet « Liste » entre
+> « MIDI CC » et « Tempo » : tous les événements de la piste, triés par tick,
+> en NOMBRES BRUTS. `listTrackEvents` et `removeTrackEvent` sont des
+> fonctions pures de `core/`, ce qui rend l'attendu vérifiable sans ouvrir de
+> fenêtre.
+>
+> **L'attendu est tenu.** Sur une piste portant les six familles, la liste
+> compte **8 lignes pour 8 événements** dans le test, et **13 à l'écran**
+> pour une piste de 8 notes plus les cinq familles ajoutées — Programme 12,
+> Pli **-4096**, CC 74 = 64, Pression poly 60/90, Pression canal 55. Aucune
+> de ces cinq n'avait jamais eu de vue.
+>
+> La position se lit **mesure.temps ET tick brut** : la mesure pour se
+> repérer dans le morceau, le tick parce que c'est ce que le fichier porte et
+> ce que la chaîne d'analyse écrit ; donner l'un sans l'autre obligerait à
+> convertir de tête. Supprimer une ligne périmée est REFUSÉ et dit, plutôt
+> que de retirer le voisin — un test le tient.
+>
+> **UN PIÈGE POSÉ ET REFERMÉ DANS LA MÊME HEURE.** Insérer l'onglet avant
+> « Tempo » a décalé ce dernier d'un rang, et `VSM_VUE=tempo` ouvrait la
+> liste : les index d'onglets étaient écrits en dur. Ils se cherchent
+> désormais par NOM (`getTabNames().indexOf`), et un onglet introuvable se
+> dit. Un numéro en dur est un piège qui se referme au premier onglet ajouté.
+
+> **D32.3 EST FAITE (06/09/2026, 21:35).** Un `MidiKeyboardComponent` sous
+> la lane de vélocité, caché par défaut (`VSM_VUE=clavier`) : le piano roll a
+> déjà son clavier vertical, et soixante-douze pixels pris à l'édition
+> doivent se demander. Il ENVOIE par le même chemin que le clavier
+> d'ordinateur (D11.7) — deux chemins pour une seule idée finiraient par ne
+> plus jouer pareil — et il MONTRE ce que la piste choisie joue.
+>
+> **CE QUE MONTRER A COÛTÉ, ET POURQUOI CE N'ÉTAIT PAS GRATUIT.** Le graphe
+> tenait déjà `soundingNotes_`, un `std::array<bool,128>` par piste — écrit
+> par le thread audio. Le lire depuis l'interface aurait été une course, et
+> un tableau de booléens lu pendant qu'on l'écrit n'a pas de valeur définie.
+> Un masque de 128 bits en deux entiers atomiques l'accompagne désormais,
+> tenu par `marquerSonnante`, **seul endroit qui écrit l'un et l'autre** :
+> cinq sites d'écriture y passent, et un `soundingNotes_[t][n] = x` laissé
+> ailleurs aurait fait mentir le voyant. Lecture relâchée : le voyant peut
+> être en retard d'un bloc, il ne doit pas être une course.
+>
+> **TROIS CAPTURES POUR UNE TOUCHE, ET CHACUNE A ÉCARTÉ UNE CAUSE.** La
+> première ne montrait rien : le voile de touche enfoncée par défaut de JUCE
+> est presque invisible sur du blanc — le masque, lui, était juste
+> (`0x1000000000`, la note 36), et seul un journal l'a établi. La deuxième
+> non plus : la plage commençait à 36, et cette note tombait **sous le bouton
+> de défilement** du composant ; on a descendu la plage plutôt que de rogner
+> le bouton. La troisième non plus, et c'est la plus instructive : **le
+> morceau était fini**. La capture a lieu deux secondes après l'ouverture et
+> le matériau de démonstration dure 1,85 s ; il n'y avait rien à allumer.
+> `VSM_LECTURE=1500` retarde le départ, et la touche do2 s'allume en ambre
+> sous la tête de lecture. Une interface déclarée « cassée » l'était trois
+> fois pour trois raisons dont aucune n'était le code qu'on soupçonnait.
+
+> **D32.4 EST FAITE (06/09/2026, 21:45).** « Renommer les pistes en série » :
+> un motif où `#` devient le numéro d'ordre, appliqué aux pistes VISIBLES —
+> on renomme ce qu'on VOIT, et le numéro ne compte pas les masquées, un trou
+> dans la numérotation ferait chercher la piste manquante. **Un motif sans
+> `#` ne renomme RIEN** et le dit : quarante pistes portant toutes le même
+> nom seraient pires qu'avant, et l'on aurait perdu les noms d'origine
+> par-dessus le marché. L'attendu est tenu — le nombre de pistes et leur
+> ordre ne bougent pas, rien n'est republié au moteur : renommer n'est pas
+> déplacer.
+
+> **D32.5 EST FAITE (06/09/2026, 21:50), ET LA PHASE D32 EST CLOSE.**
+> « Fichier ▸ Statistiques du projet » : pistes par nature, notes, clips,
+> courbes et points, les cinq familles d'événements MIDI, les machines
+> employées avec leur nombre de pistes, la durée du matériau et le tempo de
+> départ. Sur stderr aussi — un chiffre qu'on ne peut pas relire hors de
+> l'écran ne sert pas à comparer deux reconstructions, et c'est justement à
+> cela qu'il sert ici.
+>
+> **L'ATTENDU N° 4 EST TENU, ET C'ÉTAIT SA RAISON D'ÊTRE.** Les statistiques
+> comptent **16 notes** sur le projet d'essai ; la liste de D32.2 en compte
+> **8 pour « Acid Bass »** et **8 sur les 13 lignes de « Drums »**. Deux
+> comptages écrits séparément qui tombent juste l'un sur l'autre : c'est ce
+> qui dit qu'aucun des deux ne regarde à côté.
+>
+> Tests : 292 core, 1 270 audio, 282 interchange, 25 clap, 11 panels, 19 vst3
+> — tous verts (10 tests neufs) ; Python inchangé (168).

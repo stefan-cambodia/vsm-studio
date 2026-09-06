@@ -15,6 +15,7 @@
 #include "vsm/midi/MidiFileParser.h"
 #include "vsm/midi/MidiFileWriter.h"
 #include "vsm/sequencer/MidiEffects.h"
+#include "vsm/sequencer/EventList.h"
 #include "vsm/audio/engine/OfflineRenderer.h"
 #include "vsm/audio/io/WavFileWriter.h"
 #include "vsm/audio/effect/Reverb.h"
@@ -112,6 +113,10 @@ MainComponent::MainComponent()
     bottomTabs_.addTab("Automation", vsm::ui::Palette::panel, &automation_, false);
     bottomTabs_.addTab("Effets", vsm::ui::Palette::panel, &effectChain_, false);
     bottomTabs_.addTab("MIDI CC", vsm::ui::Palette::panel, &midiCc_, false);
+    // D32.2 : APRÈS « MIDI CC » et avant « Tempo ». Sa voisine de gauche
+    // montre les contrôleurs en courbe ; celle-ci montre TOUT en nombres, y
+    // compris les quatre familles que rien ne montrait.
+    bottomTabs_.addTab(juce::String::fromUTF8(u8"Liste"), vsm::ui::Palette::panel, &eventList_, false);
     bottomTabs_.addTab("Tempo", vsm::ui::Palette::panel, &tempoLane_, false);
 
     // D11 : l'historique visible. Un clic sur un pas y revient par autant
@@ -137,6 +142,7 @@ MainComponent::MainComponent()
         updateSynthRackForSelection();
         effectChain_.setActiveTrack(static_cast<int>(idx));
         midiCc_.setActiveTrackIndex(idx);
+        eventList_.setActiveTrack(static_cast<int>(idx));   // D32.2
         audioEngine_.setLiveInputTrack(idx); // un clavier MIDI joue la piste sélectionnée
     };
     trackList_.onTracksChanged = [this] { refreshTransportSchedule(); };
@@ -245,6 +251,28 @@ MainComponent::MainComponent()
     // D31.4 : une chaîne MIDI changée change ce qui est JOUÉ. Le planning est
     // donc refait -- sans quoi le réglage ne s'entendrait qu'à la prochaine
     // relecture, ce qui est intenable pour un arpège qu'on règle à l'oreille.
+    // D32.2 : la liste retire un événement -- même grammaire que partout
+    // ailleurs : un instantané avant, une republication après.
+    // D32.3 : une note jouée au clavier de l'écran part par le MÊME chemin que
+    // le clavier d'ordinateur (D11.7). Deux chemins pour une seule idée
+    // finiraient par ne plus jouer pareil -- et c'est celui-là qui sait déjà
+    // trouver la piste armée.
+    pianoRollPanel_.onKeyboardNote = [this](int note, float velo, bool on) {
+        audioEngine_.playComputerKey(static_cast<uint8_t>(juce::jlimit(0, 127, note)),
+                                      static_cast<uint8_t>(juce::jlimit(1, 127,
+                                          static_cast<int>(velo * 127.0f))), on);
+    };
+    eventList_.onEditStarted = [this](const juce::String& libelle) { beginProjectEdit(libelle); };
+    eventList_.onEventsChanged = [this] {
+        refreshTransportSchedule();
+        refreshTrackViews();
+        pianoRollPanel_.refresh();
+    };
+    eventList_.onSeekRequested = [this](vsm::midi::Tick tick) {
+        transport_.seekToTick(tick);
+        audioEngine_.processGraph().seekSeconds(project_.ticksToSeconds(tick));
+        arrangement_.setPlayheadTick(tick);
+    };
     effectChain_.onMidiChainChanged = [this] {
         refreshTransportSchedule();
         refreshTrackViews();
@@ -799,6 +827,13 @@ MainComponent::MainComponent()
     browserPanel_.onApply = [this](const vsm::interchange::BrowserItem& entree) {
         applyBrowserItem(entree, trackList_.selectedTrackIndex());
     };
+    // D32.1 : LA PRÉ-ÉCOUTE. Le fichier est décodé par le MÊME chemin que la
+    // piste de référence -- WAV par le lecteur du moteur, le reste par JUCE --
+    // pour qu'un format qui s'importe s'écoute, et qu'un format qui ne
+    // s'importe pas le dise avec les mêmes mots.
+    browserPanel_.onAudition = [this](const vsm::interchange::BrowserItem& entree) {
+        auditionSample(juce::File(juce::String::fromUTF8(entree.reference.c_str())));
+    };
     trackList_.onBrowserItemDropped = [this](size_t piste, const juce::String& description) {
         applyBrowserDrop(piste, description);
     };
@@ -1117,7 +1152,18 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     else if (nom == "automation")  bottomTabs_.setCurrentTabIndex(1);
     else if (nom == "effets")      bottomTabs_.setCurrentTabIndex(2);
     else if (nom == "midi-cc")     bottomTabs_.setCurrentTabIndex(3);
-    else if (nom == "tempo")       bottomTabs_.setCurrentTabIndex(4);
+    // D32.2 : LES INDEX SONT NOMMÉS PAR LEUR ONGLET, et non écrits en clair.
+    // Insérer « Liste » avant « Tempo » a décalé ce dernier d'un rang, et
+    // `VSM_VUE=tempo` ouvrait la liste : un numéro en dur est un piège qui se
+    // referme au premier onglet ajouté. `getTabNames().indexOf` ne se trompe
+    // pas d'un rang, et rend -1 si l'onglet n'existe pas, ce qui se dit.
+    else if (nom == "liste" || nom == "tempo") {
+        const juce::String voulu = (nom == "liste") ? juce::String::fromUTF8(u8"Liste") : "Tempo";
+        const int rang = bottomTabs_.getTabNames().indexOf(voulu);
+        if (rang < 0) std::fputs(("VSM_VUE : onglet introuvable — " + voulu.toStdString() + "\n").c_str(),
+                                  stderr);
+        else bottomTabs_.setCurrentTabIndex(rang);
+    }
     // CHOISIR UNE PISTE (piste:N, à partir de 0) : le piano roll, le rack et
     // l'onglet Effets suivent la piste choisie, et sans souris seule la
     // première se laissait photographier.
@@ -1243,6 +1289,22 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     // écrit dans les notes.
     else if (nom.startsWith("fx-midi:")) addMidiEffectToSelectedTrack(nom.substring(8).toStdString());
     else if (nom.startsWith("defiler-effets:")) effectChain_.scrollBy(nom.substring(15).getIntValue());
+    // D32.4 / D32.5 : le renommage en série (motif après les deux points) et
+    // les statistiques, par les MÊMES fonctions que les menus -- la boîte de
+    // saisie et la boîte de message ne se pilotent pas sans souris.
+    else if (nom.startsWith("renommer-serie:")) renameTracksInSeries(nom.substring(15));
+    else if (nom == "statistiques") showProjectStatistics();
+    // D32.3 : montrer le clavier, et y poser une note pour la photographier
+    // (« clavier-note:60 »). Une touche enfoncée à la souris ne se capture pas.
+    else if (nom == "clavier") pianoRollPanel_.setKeyboardVisible(true);
+    else if (nom == "clavier-journal") { pianoRollPanel_.setKeyboardVisible(true); journalClavier_ = true; }
+    else if (nom.startsWith("clavier-note:")) {
+        const int note = juce::jlimit(0, 127, nom.substring(13).getIntValue());
+        pianoRollPanel_.setKeyboardVisible(true);
+        epingleClavier_ = true;
+        pianoRollPanel_.setSoundingNotes(note < 64 ? (uint64_t{1} << note) : 0,
+                                          note >= 64 ? (uint64_t{1} << (note - 64)) : 0);
+    }
     else if (nom == "fx-midi-vider") clearMidiEffectsOfSelectedTrack();
     else if (nom == "fx-midi-reporter") bakeMidiEffectsOfSelectedTrack();
     // D31.5 : ce que l'export MIDI ne portera pas, SANS ouvrir le sélecteur de
@@ -1631,6 +1693,23 @@ void MainComponent::timerCallback() {
     }
 
     auto& mb = audioEngine_.processGraph().masterBus();
+    // D32.3 : LE CLAVIER À L'ÉCRAN suit ce que la piste choisie joue. Lu par
+    // masque atomique -- voir `soundingNotesOf` : un voyant peut être en
+    // retard d'un bloc, il ne doit pas être une course.
+    if (pianoRollPanel_.keyboardVisible() && !epingleClavier_) {
+        uint64_t basses = 0, hautes = 0;
+        audioEngine_.processGraph().soundingNotesOf(trackList_.selectedTrackIndex(), basses, hautes);
+        pianoRollPanel_.setSoundingNotes(basses, hautes);
+        // D32.3 : le masque au journal quand on le demande. Un voyant qui ne
+        // s'allume pas peut mentir de trois façons -- rien ne sonne, le masque
+        // ne suit pas, la touche ne se peint pas -- et seule celle-ci les
+        // distingue.
+        if (journalClavier_ && (basses != 0 || hautes != 0))
+            std::fputs((juce::String::fromUTF8(u8"Clavier : notes sonnantes 0x")
+                         + juce::String::toHexString(static_cast<juce::int64>(hautes))
+                         + ":" + juce::String::toHexString(static_cast<juce::int64>(basses))
+                         + "\n").toRawUTF8(), stderr);
+    }
     mixer_.updateMeters(
         [this](size_t i) {
             vsm::audio::engine::TrackMeasurement m;
@@ -1732,6 +1811,10 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // tempo). « Nouveau depuis le modèle » rend un projet SANS chemin :
             // Ctrl+S demandera où, et le modèle ne s'écrase pas par mégarde.
             menu.addItem(kMenuFileSaveTemplate, u8"Enregistrer comme modèle de projet");
+            // D32.5 : LES CHIFFRES DU PROJET. Au menu Fichier parce qu'ils
+            // parlent du fichier entier, et non d'une piste.
+            menu.addItem(kMenuFileStatistics,
+                          juce::String::fromUTF8(u8"Statistiques du projet..."));
             menu.addItem(kMenuFileNewFromTemplate, u8"Nouveau depuis le modèle",
                          templateFolder().getChildFile("project.json").existsAsFile());
             menu.addSeparator();
@@ -1965,6 +2048,18 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                  protegee ? u8"Ne plus protéger cette piste du solo des autres (Alt+clic sur Solo)"
                                           : u8"Protéger cette piste du solo des autres (Alt+clic sur Solo)",
                                  p < project_.tracks.size());
+                }
+                // D32.4 : LE RENOMMAGE EN SÉRIE. Il dit sur COMBIEN de pistes
+                // il portera : « les pistes visibles » n'est pas un nombre, et
+                // c'est le nombre qu'on veut connaître avant de cliquer.
+                {
+                    size_t visibles = 0;
+                    for (const auto& t : project_.tracks) if (!t.hidden) ++visibles;
+                    menu.addItem(kMenuTrackRenameSeries,
+                                  juce::String::fromUTF8(u8"Renommer les pistes en série (")
+                                      + juce::String(static_cast<int>(visibles))
+                                      + juce::String::fromUTF8(u8" visibles)..."),
+                                  visibles > 0);
                 }
                 menu.addItem(kMenuTrackHide, u8"Masquer la piste (elle continue de sonner)",
                               !project_.tracks.empty());
@@ -2632,6 +2727,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             menuItemsChanged();
             break;
         }
+        case kMenuFileStatistics: showProjectStatistics(); break;                // D32.5
         case kMenuFileSave:      saveProject(); break;
         case kMenuFileSaveAs:    saveProjectAs(); break;
         case kMenuFileLoadReference: loadReferenceAudio(); break;
@@ -2820,6 +2916,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuTrackThinAutomation: thinAutomationOfSelectedTrack(); break;   // D30.5
         case kMenuTrackMidiFxClear: clearMidiEffectsOfSelectedTrack(); break;    // D31.4
         case kMenuTrackMidiFxBake:  bakeMidiEffectsOfSelectedTrack(); break;     // D31.5
+        case kMenuTrackRenameSeries: promptRenameTracksInSeries(); break;        // D32.4
         case kMenuTrackHide:     hideSelectedTrack(); break;
         case kMenuTrackSoloExclusive: soloTrackExclusively(trackList_.selectedTrackIndex()); break;
         case kMenuTrackShowAll:  showAllTracks(); break;
@@ -5846,6 +5943,7 @@ void MainComponent::applyAutomationFromProject() {
     audioEngine_.processGraph().setAutomationLanes(currentAutomation_);
     automation_.setProject(&project_);
     midiCc_.setProject(&project_);
+    eventList_.setProject(&project_);        // D32.2
     tempoLane_.setProject(&project_);
 }
 
@@ -7555,6 +7653,167 @@ juce::StringArray MainComponent::tracksWhoseMidiExportWillDiffer() const {
     return noms;
 }
 
+void MainComponent::auditionSample(const juce::File& fichier) {
+    if (!fichier.existsAsFile()) {
+        std::fputs((juce::String::fromUTF8(u8"Pré-écoute : fichier introuvable — ")
+                     + fichier.getFullPathName() + "\n").toRawUTF8(), stderr);
+        return;
+    }
+    // LE DÉCODAGE A LIEU ICI, sur le thread de l'interface, et le tampon est
+    // publié par échange atomique : le thread audio ne fait que lire un
+    // pointeur déjà valide. C'est la règle de la piste de référence et des
+    // échantillons du sampler, et elle vaut pour la même raison.
+    auto lu = vsm::app::loadReferenceAudioFile(fichier);
+    if (!lu.success) {
+        // PANNE MUETTE INTERDITE : un clic qui ne rend aucun son doit dire
+        // pourquoi, sans quoi on croit la pré-écoute cassée alors que c'est le
+        // fichier qui l'est.
+        std::fputs((juce::String::fromUTF8(u8"Pré-écoute impossible — ") + lu.error + "\n").toRawUTF8(),
+                    stderr);
+        return;
+    }
+    auto tampon = std::make_shared<vsm::audio::io::SampleBuffer>(std::move(lu.buffer));
+    const double duree = tampon->sampleRate > 0.0
+                             ? static_cast<double>(tampon->numFrames()) / tampon->sampleRate : 0.0;
+    audioEngine_.processGraph().auditionPlayer().trigger(std::move(tampon));
+    std::fputs((juce::String::fromUTF8(u8"Pré-écoute : ") + fichier.getFileName()
+                 + juce::String::fromUTF8(u8" (") + juce::String(duree, 2)
+                 + juce::String::fromUTF8(u8" s, ") + lu.decoder
+                 + juce::String::fromUTF8(u8")\n")).toRawUTF8(), stderr);
+}
+
+size_t MainComponent::renameTracksInSeries(const juce::String& motif) {
+    // UN MOTIF SANS « # » NE RENOMME RIEN. Quarante pistes qui porteraient
+    // toutes le même nom seraient pires qu'avant : on ne saurait plus laquelle
+    // est laquelle, et l'on aurait perdu les noms d'origine par-dessus le
+    // marché. Le refus est dit, pas subi.
+    if (motif.isEmpty() || !motif.contains("#")) {
+        std::fputs(juce::String::fromUTF8(
+                        u8"Renommage en série : le motif doit contenir « # » (le numéro). "
+                        u8"Rien n'a été renommé.\n").toRawUTF8(), stderr);
+        return 0;
+    }
+    size_t visibles = 0;
+    for (const auto& t : project_.tracks) if (!t.hidden) ++visibles;
+    if (visibles == 0) return 0;
+
+    beginProjectEdit(u8"Renommer les pistes en série");
+    int numero = 1;
+    size_t renommees = 0;
+    for (auto& piste : project_.tracks) {
+        // LES PISTES MASQUÉES SONT ÉPARGNÉES, et le numéro ne les compte pas :
+        // on renomme ce qu'on VOIT, et un trou dans la numérotation ferait
+        // chercher la piste manquante.
+        if (piste.hidden) continue;
+        piste.name = motif.replace("#", juce::String(numero)).toStdString();
+        ++numero;
+        ++renommees;
+    }
+    // RENOMMER N'EST PAS DÉPLACER : ni le nombre de pistes ni leur ordre ne
+    // bougent, et rien n'est republié au moteur -- seules les vues qui
+    // dessinent des noms ont quelque chose à apprendre.
+    refreshTrackViews();
+    mixer_.setProject(&project_);
+    eventList_.refresh();
+    std::fputs((juce::String::fromUTF8(u8"Renommage en série : ")
+                 + juce::String(static_cast<int>(renommees))
+                 + juce::String::fromUTF8(u8" piste(s) renommée(s) d'après « ") + motif
+                 + juce::String::fromUTF8(u8" ».\n")).toRawUTF8(), stderr);
+    return renommees;
+}
+
+void MainComponent::promptRenameTracksInSeries() {
+    auto fenetre = std::make_shared<juce::AlertWindow>(
+        juce::String::fromUTF8(u8"Renommer les pistes en série"),
+        juce::String::fromUTF8(u8"Le « # » est remplacé par le numéro d'ordre. "
+                               u8"Exemple : « Batterie # » donne « Batterie 1 », « Batterie 2 »...\n"
+                               u8"Seules les pistes VISIBLES sont renommées."),
+        juce::AlertWindow::QuestionIcon);
+    fenetre->addTextEditor("motif", "Piste #", juce::String::fromUTF8(u8"Motif"));
+    fenetre->addButton(juce::String::fromUTF8(u8"Renommer"), 1);
+    fenetre->addButton(juce::String::fromUTF8(u8"Annuler"), 0);
+    fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+        [this, fenetre](int choix) {
+            if (choix == 1) renameTracksInSeries(fenetre->getTextEditorContents("motif"));
+            fenetre->exitModalState(0);
+            fenetre->setVisible(false);
+        }), false);
+}
+
+juce::String MainComponent::projectStatisticsText() const {
+    size_t notes = 0, clips = 0, courbes = 0, points = 0;
+    size_t cc = 0, plis = 0, poly = 0, pression = 0, programmes = 0;
+    size_t midi = 0, audio = 0, groupes = 0, dossiers = 0, masquees = 0, eteintes = 0;
+    std::map<std::string, int> machines;
+    vsm::midi::Tick fin = 0;
+    for (const auto& piste : project_.tracks) {
+        notes += piste.notes.size();
+        clips += piste.clips.size();
+        courbes += piste.automation.size();
+        for (const auto& c : piste.automation) points += c.points.size();
+        cc += piste.controlChanges.size();
+        plis += piste.pitchBends.size();
+        poly += piste.polyAftertouch.size();
+        pression += piste.channelPressure.size();
+        programmes += piste.programChanges.size();
+        if (piste.isFolder()) ++dossiers;
+        else if (piste.kind == Track::Kind::Group) ++groupes;
+        else if (piste.kind == Track::Kind::Audio) ++audio;
+        else ++midi;
+        if (piste.hidden) ++masquees;
+        if (piste.disabled) ++eteintes;
+        if (!piste.instrumentId.empty()) ++machines[piste.instrumentId];
+        for (const auto& n : piste.notes) fin = std::max(fin, n.endTick);
+    }
+    const double secondes = project_.ticksToSeconds(fin);
+
+    juce::String t;
+    auto ligne = [&t](const juce::String& cle, const juce::String& valeur) {
+        t += cle + " : " + valeur + "\n";
+    };
+    ligne(juce::String::fromUTF8(u8"Pistes"),
+          juce::String(static_cast<int>(project_.tracks.size()))
+              + juce::String::fromUTF8(u8"  (") + juce::String(static_cast<int>(midi))
+              + juce::String::fromUTF8(u8" MIDI, ") + juce::String(static_cast<int>(audio))
+              + juce::String::fromUTF8(u8" audio, ") + juce::String(static_cast<int>(groupes))
+              + juce::String::fromUTF8(u8" groupe(s), ") + juce::String(static_cast<int>(dossiers))
+              + juce::String::fromUTF8(u8" dossier(s))"));
+    if (masquees > 0 || eteintes > 0)
+        ligne(juce::String::fromUTF8(u8"  dont"),
+              juce::String(static_cast<int>(masquees)) + juce::String::fromUTF8(u8" masquée(s), ")
+                  + juce::String(static_cast<int>(eteintes)) + juce::String::fromUTF8(u8" désactivée(s)"));
+    ligne(juce::String::fromUTF8(u8"Notes"), juce::String(static_cast<int>(notes)));
+    ligne(juce::String::fromUTF8(u8"Clips"), juce::String(static_cast<int>(clips)));
+    ligne(juce::String::fromUTF8(u8"Automation"),
+          juce::String(static_cast<int>(courbes)) + juce::String::fromUTF8(u8" courbe(s), ")
+              + juce::String(static_cast<int>(points)) + juce::String::fromUTF8(u8" point(s)"));
+    ligne(juce::String::fromUTF8(u8"Contrôleurs (CC)"), juce::String(static_cast<int>(cc)));
+    ligne(juce::String::fromUTF8(u8"Plis de hauteur"), juce::String(static_cast<int>(plis)));
+    ligne(juce::String::fromUTF8(u8"Pression polyphonique"), juce::String(static_cast<int>(poly)));
+    ligne(juce::String::fromUTF8(u8"Pression de canal"), juce::String(static_cast<int>(pression)));
+    ligne(juce::String::fromUTF8(u8"Changements de programme"), juce::String(static_cast<int>(programmes)));
+    ligne(juce::String::fromUTF8(u8"Machines employées"), juce::String(static_cast<int>(machines.size())));
+    for (const auto& [id, combien] : machines)
+        ligne("   " + juce::String::fromUTF8(id.c_str()),
+              juce::String(combien) + juce::String::fromUTF8(u8" piste(s)"));
+    ligne(juce::String::fromUTF8(u8"Durée du matériau"),
+          juce::String(secondes, 2) + " s  (" + juce::String(static_cast<int>(fin))
+              + juce::String::fromUTF8(u8" ticks)"));
+    ligne(juce::String::fromUTF8(u8"Tempo au départ"),
+          juce::String(project_.tempoMap.bpmAt(0), 2) + " BPM");
+    return t;
+}
+
+void MainComponent::showProjectStatistics() {
+    const juce::String texte = projectStatisticsText();
+    // SUR STDERR AUSSI, comme partout : une boîte de message n'entre pas dans
+    // un autoportrait, et un chiffre qu'on ne peut pas relire hors de l'écran
+    // ne sert pas à comparer deux reconstructions.
+    std::fputs((juce::String::fromUTF8(u8"Statistiques du projet —\n") + texte).toRawUTF8(), stderr);
+    juce::AlertWindow::showMessageBoxAsync(
+        juce::AlertWindow::InfoIcon, juce::String::fromUTF8(u8"Statistiques du projet"), texte);
+}
+
 void MainComponent::hideSelectedTrack() {
     const size_t piste = trackList_.selectedTrackIndex();
     if (piste >= project_.tracks.size()) return;
@@ -8696,6 +8955,7 @@ void MainComponent::rebuildFromProject(bool stopPlayback) {
     tempoLane_.setProject(&project_);
     pianoRoll_.setProject(&project_);
     pianoRoll_.setActiveTrackIndex(regardee);
+    eventList_.setActiveTrack(static_cast<int>(regardee));   // D32.2
     trackList_.selectTrackIndex(regardee);
     transportBar_.setBpm(project_.tempoMap.bpmAt(0));
     transportBar_.setTimeSignature(project_.timeSignatureMap.numeratorAt(0),
