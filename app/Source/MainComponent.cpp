@@ -1384,6 +1384,11 @@ void MainComponent::timerCallback() {
         recordDrain_.clear();
         audioEngine_.drainRecordedEvents(recordDrain_);
         for (const auto& evenement : recordDrain_) retrospectif_.push(evenement);
+        // D24.2 : hors enregistrement, les contrôleurs captés ne vont nulle
+        // part (le tampon rétrospectif est fait de notes) ; la file se vide
+        // pour ne pas déborder.
+        recordControlDrain_.clear();
+        audioEngine_.drainRecordedControls(recordControlDrain_);
     }
 
     bool priseEmpilee = false;
@@ -1632,6 +1637,10 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addItem(kMenuFileReferenceCycle, u8"Basculer l'écoute A/B (touche R)", aUneReference);
             }
             menu.addItem(kMenuFileExport, "Exporter MIDI...");
+            // D24.5 : un fichier audio sur une piste neuve, sans passer par le
+            // lâcher -- qui, lui, propose la reconstruction.
+            menu.addItem(kMenuFileImportAudio, u8"Importer un fichier audio sur une piste neuve...",
+                         currentProjectFolder_ != juce::File());
             // D23.3 : la piste choisie seule -- pour donner une partie, pas le morceau.
             {
                 const size_t p = trackList_.selectedTrackIndex();
@@ -2077,6 +2086,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                       u8"\u00c9coute quand une piste est arm\u00e9e (une piste audio arm\u00e9e, toujours)", true, monitoringMode_ == 2);
                         menu.addSubMenu(u8"\u00c9coute de l'entr\u00e9e", modes);
                     }
+                    // D24.4 : LE PANIC. Toujours actif : une note bloquée ne
+                    // prévient pas.
+                    menu.addItem(kMenuRecordPanic, u8"Couper toutes les notes (panic)");
                     menu.addItem(kMenuRecordMeasureLatency,
                                   u8"Mesurer (brancher la sortie sur l'entrée)...");
                     menu.addItem(kMenuRecordClearLatency, u8"Oublier la mesure", r > 0.0);
@@ -2300,6 +2312,16 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         return;
     }
     if (menuItemID == kMenuFileExportTrackMidi) { exportSelectedTrackMidi(); return; }
+    if (menuItemID == kMenuFileImportAudio) { importAudioFilePrompt(); return; }
+    if (menuItemID == kMenuRecordPanic) {
+        // Les touches d'ordinateur enfoncées sont relâchées aussi : sinon leur
+        // relâchement enverrait un NoteOff à une note déjà coupée, sans mal,
+        // mais leur maintien la relancerait à la répétition de la touche.
+        for (const auto& [code, note] : computerKeysDown_) audioEngine_.playComputerKey(note, 0, false);
+        computerKeysDown_.clear();
+        audioEngine_.processGraph().requestPanic();
+        return;
+    }
     if (menuItemID == kMenuMixMonoListen) {
         const bool on = !audioEngine_.processGraph().masterBus().monoListen();
         audioEngine_.processGraph().masterBus().setMonoListen(on);
@@ -5309,6 +5331,14 @@ bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
         // d'atteindre. Sans marqueur avant, on revient au début.
         case Id::NavGoToStart: seekAllViews(0); return true;
         case Id::NavGoToBar: promptGoToBar(); return true;
+        // D24.3 : le transport au clavier, par les boutons de la barre.
+        case Id::TransportRecord:
+            if (!transportBar_.toggleRecord())
+                std::fputs("Enregistrer (F9) : le bouton Rec est gris\u00e9 -- pas de carte son ouverte, ou aucune piste arm\u00e9e\n", stderr);
+            return true;
+        case Id::TransportLoop: transportBar_.toggleLoop(); return true;
+        case Id::TransportMetronome: transportBar_.toggleMetronome(); return true;
+        case Id::NavGoToEnd: seekAllViews(project_.secondsToTicks(transport_.endOfSongSeconds())); return true;
         case Id::EditInsertTimeAtLocators: editTimeAtLocators(true); return true;
         case Id::EditLocatorsFromSelection: locatorsFromSelection(); return true;
         // AJUSTER À LA FENÊTRE vaut pour les DEUX vues (D14.2) : l'arrangement
@@ -6714,6 +6744,10 @@ void MainComponent::drainRecording() {
     recordDrain_.clear();
     audioEngine_.drainRecordedEvents(recordDrain_);
     for (const auto& evenement : recordDrain_) recorder_.push(evenement);
+    // D24.2 : les contrôleurs avec les notes.
+    recordControlDrain_.clear();
+    audioEngine_.drainRecordedControls(recordControlDrain_);
+    for (const auto& c : recordControlDrain_) recorder_.pushControl(c);
 }
 
 void MainComponent::stopRecording() {
@@ -6811,6 +6845,13 @@ void MainComponent::stopRecording() {
         for (const auto& note : notes) ids.insert(note.id);
         vsm::sequencer::applyRecording(project_.tracks[index], notes, recordMode_,
                                         punchTick_, finTick);
+        // D24.2 : LES CONTRÔLEURS DE LA PRISE, sur la même piste, même plage,
+        // même règle -- remplacer efface, superposer ajoute.
+        if (recorder_.hasControls())
+            vsm::sequencer::applyRecordedControls(
+                project_.tracks[index],
+                recorder_.finishControls(finSecondes, [this](double s) { return project_.secondsToTicks(s); }),
+                recordMode_ == vsm::sequencer::RecordMode::Replace, punchTick_, finTick);
         lastTake_.emplace_back(index, std::move(ids));
     }
     if (compteur > 0) project_.ensureNoteIdAbove(compteur - 1);
@@ -7549,6 +7590,54 @@ bool MainComponent::writeSelectedTrackMidi(const juce::File& fichier) {
     std::fputs(("Piste \u00ab " + project_.tracks[piste].name + " \u00bb \u00e9crite en MIDI : "
                 + fichier.getFullPathName().toStdString() + "\n").c_str(), stderr);
     return true;
+}
+
+// --- D24.5 : un fichier audio sur une piste neuve --------------------------
+
+bool MainComponent::importAudioFileOnNewTrack(const juce::File& fichier) {
+    if (!fichier.existsAsFile()) {
+        std::fputs(("Importer un fichier audio : introuvable -- " + fichier.getFullPathName().toStdString() + "\n").c_str(), stderr);
+        return false;
+    }
+    if (currentProjectFolder_ == juce::File()) {
+        // MÊME EXIGENCE QUE LE LÂCHER SUR UNE PISTE : le fichier est COPIÉ dans
+        // le dossier du projet (D6.4), et sans dossier il n'y a nulle part où
+        // le copier. Dit avant de créer la piste, pour ne pas laisser une piste
+        // vide dans l'historique.
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::InfoIcon, u8"Projet jamais enregistr\u00e9",
+            juce::String(u8"Un fichier audio import\u00e9 est COPI\u00c9 dans le dossier du projet. "
+                          u8"Enregistrez d'abord le projet (Ctrl+S)."));
+        std::fputs("Importer un fichier audio : projet jamais enregistr\u00e9, rien n'a \u00e9t\u00e9 fait\n", stderr);
+        return false;
+    }
+    addTrack(Track::Kind::Audio);
+    const size_t index = project_.tracks.size() - 1;
+    project_.tracks[index].name = fichier.getFileNameWithoutExtension().toStdString();
+    trackList_.refreshTrackRow(index);   // la ligne a été créée avant le nom
+    if (!placeSampleOnTrack(index, 0, fichier)) {
+        // La piste neuve ne sert à rien sans son fichier : on la retire, et
+        // l'historique garde les deux gestes -- annuler deux fois ramène au
+        // point de départ, ce qui est exact.
+        trackList_.selectTrackIndex(index);
+        removeSelectedTrack();
+        return false;
+    }
+    trackList_.selectTrackIndex(index);
+    refreshTrackViews();
+    return true;
+}
+
+void MainComponent::importAudioFilePrompt() {
+    auto chooser = std::make_shared<juce::FileChooser>(
+        juce::String(u8"Importer un fichier audio sur une piste neuve"), juce::File(),
+        "*.wav;*.flac;*.ogg;*.mp3;*.aif;*.aiff");
+    chooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+                         [this, chooser](const juce::FileChooser& fc) {
+        const juce::File fichier = fc.getResult();
+        if (fichier == juce::File()) return;
+        importAudioFileOnNewTrack(fichier);
+    });
 }
 
 void MainComponent::exportSelectedTrackMidi() {

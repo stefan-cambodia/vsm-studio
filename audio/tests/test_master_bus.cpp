@@ -185,3 +185,68 @@ VSM_TEST(a_track_with_inverted_polarity_cancels_its_twin) {
     VSM_ASSERT(peakOf(rendu.left) < 1e-4f);
     VSM_ASSERT(peakOf(rendu.right) < 1e-4f);
 }
+
+// --- D24.1 : un contrôleur en direct atteint la machine ---------------------
+
+VSM_TEST(a_live_pitch_bend_is_delivered_to_the_track_instrument) {
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setTrackInstrument(0, "vsm.minimoog");
+    graph.setProject(buildSingleNoteProject());
+    vsm::audio::plugin::MidiControlEvent molette;
+    molette.kind = vsm::audio::plugin::MidiControlEvent::Kind::PitchBend;
+    molette.value = 1.0f;   // un demi-ton
+    VSM_ASSERT(graph.sendLiveControl(ProcessGraph::LiveNoteSource::MidiInput, 0, molette));
+    const uint64_t ignoresAvant = graph.ignoredControlEvents();
+    std::vector<float> l(256), r(256);
+    graph.processBlock(l.data(), r.data(), 256);   // transport à l'arrêt : le bloc est rendu pour la livrer
+    VSM_ASSERT_EQ(graph.liveControlsDelivered(), static_cast<uint64_t>(1));
+    VSM_ASSERT_EQ(graph.ignoredControlEvents(), ignoresAvant);
+    // Une piste hors bornes est refusée, jamais bloquante.
+    VSM_ASSERT(!graph.sendLiveControl(ProcessGraph::LiveNoteSource::Ui, ProcessGraph::kMaxTracks, molette));
+}
+
+// --- D24.4 : couper toutes les notes ---------------------------------------
+
+VSM_TEST(panic_silences_a_held_note) {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    Track track;
+    uint64_t id = 1;
+    track.addNote(0, 480 * 8, 57, 120, 0, id);   // quatre secondes à 120 BPM
+    project.tracks.push_back(track);
+    ProcessGraph graph;
+    graph.prepare(8000.0, 256);
+    graph.setTrackInstrument(0, "vsm.minimoog");
+    graph.setProject(project);
+    graph.seekSeconds(0.0);
+    graph.setPlaying(true);
+    std::vector<float> l(256), r(256);
+    auto rendre = [&](int blocs) {
+        float crete = 0.0f;
+        for (int b = 0; b < blocs; ++b) {
+            graph.processBlock(l.data(), r.data(), 256);
+            crete = std::max(crete, std::max(peakOf(l), peakOf(r)));
+        }
+        return crete;
+    };
+    const float tenue = rendre(16);            // 0,5 s : la note sonne
+    VSM_ASSERT(tenue > 0.05f);
+    graph.requestPanic();
+    (void)rendre(31);                          // une seconde après le panic
+    const float apres = rendre(1);
+    VSM_ASSERT(apres < tenue * 0.25f);
+    // Sans panic, la même note tenue sonnerait encore : le témoin.
+    ProcessGraph temoin;
+    temoin.prepare(8000.0, 256);
+    temoin.setTrackInstrument(0, "vsm.minimoog");
+    temoin.setProject(project);
+    temoin.seekSeconds(0.0);
+    temoin.setPlaying(true);
+    float creteTemoin = 0.0f;
+    for (int b = 0; b < 48; ++b) {
+        temoin.processBlock(l.data(), r.data(), 256);
+        if (b == 47) creteTemoin = std::max(peakOf(l), peakOf(r));
+    }
+    VSM_ASSERT(creteTemoin > tenue * 0.25f);
+}

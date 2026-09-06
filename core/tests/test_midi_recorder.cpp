@@ -347,3 +347,48 @@ VSM_TEST(a_key_still_held_when_it_is_recovered_gives_a_note_that_ends_at_the_las
     VSM_ASSERT_EQ(notes.size(), size_t(2));
     for (const auto& n : notes) VSM_ASSERT(n.endTick > n.startTick);
 }
+
+// --- D24.2 : les contrôleurs dans la prise ----------------------------------
+
+VSM_TEST(recorded_controllers_come_out_in_ticks_sorted_and_after_the_entry_point) {
+    Project projet = projetDeReference();   // 120 BPM : 1 s = 960 ticks
+    MidiRecorder enregistreur;
+    enregistreur.begin(1.0);
+    RecordedControlEvent molette;
+    molette.kind = RecordedControlEvent::Kind::PitchBend; molette.seconds = 2.0; molette.value = 4096;
+    RecordedControlEvent modulation;
+    modulation.kind = RecordedControlEvent::Kind::ControlChange; modulation.seconds = 1.5; modulation.index = 1; modulation.value = 100;
+    RecordedControlEvent avant;
+    avant.kind = RecordedControlEvent::Kind::ControlChange; avant.seconds = 0.5; avant.index = 1; avant.value = 7;
+    RecordedControlEvent tard;
+    tard.kind = RecordedControlEvent::Kind::ControlChange; tard.seconds = 1.25; tard.index = 64; tard.value = 127;
+    enregistreur.pushControl(molette);
+    enregistreur.pushControl(modulation);
+    enregistreur.pushControl(avant);   // avant le point d'entrée : écarté
+    enregistreur.pushControl(tard);
+    VSM_ASSERT(enregistreur.hasControls());
+
+    const RecordedControls c = enregistreur.finishControls(10.0, conversion(projet));
+    VSM_ASSERT_EQ(c.controlChanges.size(), static_cast<size_t>(2));
+    VSM_ASSERT_EQ(c.controlChanges[0].tick, static_cast<Tick>(1200));   // 1,25 s, la pédale d'abord
+    VSM_ASSERT_EQ(c.controlChanges[0].controller, static_cast<uint8_t>(64));
+    VSM_ASSERT_EQ(c.controlChanges[1].tick, static_cast<Tick>(1440));   // 1,5 s
+    VSM_ASSERT_EQ(c.controlChanges[1].value, static_cast<uint8_t>(100));
+    VSM_ASSERT_EQ(c.pitchBends.size(), static_cast<size_t>(1));
+    VSM_ASSERT_EQ(c.pitchBends[0].tick, static_cast<Tick>(1920));
+    VSM_ASSERT_EQ(c.pitchBends[0].value, static_cast<int16_t>(4096));
+
+    // Remplacer efface la plage ; superposer ajoute ; toujours trié.
+    Track piste;
+    piste.controlChanges = {{1300, 0, 1, 50}, {5000, 0, 1, 60}};
+    applyRecordedControls(piste, c, true, 960, 3840);
+    VSM_ASSERT_EQ(piste.controlChanges.size(), static_cast<size_t>(3));   // 1300 effacé, 5000 gardé, deux neufs
+    VSM_ASSERT_EQ(piste.controlChanges[2].tick, static_cast<Tick>(5000));
+    applyRecordedControls(piste, c, false, 960, 3840);
+    VSM_ASSERT_EQ(piste.controlChanges.size(), static_cast<size_t>(5));
+    for (size_t i = 1; i < piste.controlChanges.size(); ++i)
+        VSM_ASSERT(piste.controlChanges[i - 1].tick <= piste.controlChanges[i].tick);
+    // Une nouvelle prise repart vide.
+    enregistreur.begin(0.0);
+    VSM_ASSERT(!enregistreur.hasControls());
+}

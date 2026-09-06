@@ -10,6 +10,7 @@ namespace vsm::sequencer {
 using midi::Tick;
 
 void MidiRecorder::begin(double startSeconds, double endSeconds) {
+    controls_.clear();   // D24.2
     startSeconds_ = startSeconds;
     endSeconds_ = endSeconds;
     events_.clear();
@@ -206,6 +207,67 @@ void applyRecording(Track& track, const std::vector<Note>& take, RecordMode mode
         track.notes.push_back(note);
     }
     track.sortEvents();
+}
+
+
+// --- D24.2 : les contrôleurs de la prise ------------------------------------
+
+void MidiRecorder::pushControl(const RecordedControlEvent& event) {
+    if (event.seconds < startSeconds_) return;   // avant le point d'entrée : la définition même du point d'entrée
+    controls_.push_back(event);
+}
+
+RecordedControls MidiRecorder::finishControls(double endSeconds,
+                                              const std::function<Tick(double)>& secondsToTicks) const {
+    RecordedControls sortie;
+    if (controls_.empty() || !secondsToTicks) return sortie;
+    const double fin = std::min(endSeconds, endSeconds_);
+    for (const auto& c : controls_) {
+        if (c.seconds > fin) continue;
+        const Tick tick = std::max<Tick>(0, secondsToTicks(c.seconds));
+        switch (c.kind) {
+            case RecordedControlEvent::Kind::ControlChange:
+                sortie.controlChanges.push_back({tick, c.channel, c.index,
+                                                 static_cast<uint8_t>(std::clamp<int>(c.value, 0, 127))});
+                break;
+            case RecordedControlEvent::Kind::PitchBend:
+                sortie.pitchBends.push_back({tick, c.channel,
+                                             static_cast<int16_t>(std::clamp<int>(c.value, -8192, 8191))});
+                break;
+            case RecordedControlEvent::Kind::ChannelPressure:
+                sortie.channelPressure.push_back({tick, c.channel,
+                                                  static_cast<uint8_t>(std::clamp<int>(c.value, 0, 127))});
+                break;
+            case RecordedControlEvent::Kind::PolyPressure:
+                sortie.polyAftertouch.push_back({tick, c.channel, c.index,
+                                                 static_cast<uint8_t>(std::clamp<int>(c.value, 0, 127))});
+                break;
+        }
+    }
+    auto parTick = [](const auto& a, const auto& b) { return a.tick < b.tick; };
+    std::stable_sort(sortie.controlChanges.begin(), sortie.controlChanges.end(), parTick);
+    std::stable_sort(sortie.pitchBends.begin(), sortie.pitchBends.end(), parTick);
+    std::stable_sort(sortie.channelPressure.begin(), sortie.channelPressure.end(), parTick);
+    std::stable_sort(sortie.polyAftertouch.begin(), sortie.polyAftertouch.end(), parTick);
+    return sortie;
+}
+
+void applyRecordedControls(Track& track, const RecordedControls& controls, bool replaceRange,
+                           Tick rangeStart, Tick rangeEnd) {
+    auto poser = [&](auto& cible, const auto& neufs) {
+        if (replaceRange) {
+            cible.erase(std::remove_if(cible.begin(), cible.end(), [&](const auto& p) {
+                            return p.tick >= rangeStart && p.tick < rangeEnd; }),
+                        cible.end());
+        }
+        cible.insert(cible.end(), neufs.begin(), neufs.end());
+        std::stable_sort(cible.begin(), cible.end(),
+                         [](const auto& a, const auto& b) { return a.tick < b.tick; });
+    };
+    poser(track.controlChanges, controls.controlChanges);
+    poser(track.pitchBends, controls.pitchBends);
+    poser(track.channelPressure, controls.channelPressure);
+    poser(track.polyAftertouch, controls.polyAftertouch);
 }
 
 } // namespace vsm::sequencer

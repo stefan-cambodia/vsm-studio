@@ -15,6 +15,32 @@ namespace vsm::sequencer {
 /// transport. Le rendre autrement -- en passant ici une heure système et la
 /// carte de tempo -- ferait entrer le temps réel dans `core/`, qui n'en veut
 /// pas et qui n'a pas à savoir qu'une carte son existe.
+/// D24.2 : UN CONTRÔLEUR CAPTÉ -- molette de hauteur, CC, pression --, daté
+/// en secondes comme une note, avec son numéro de passe. `value` porte la
+/// valeur MIDI brute : 0..127 pour un CC ou une pression, -8192..8191 pour
+/// la molette de hauteur.
+struct RecordedControlEvent {
+    enum class Kind : uint8_t { ControlChange, PitchBend, ChannelPressure, PolyPressure };
+    double seconds = 0.0;
+    Kind kind = Kind::ControlChange;
+    uint8_t channel = 0;
+    uint8_t index = 0;    ///< numéro de CC, ou de note pour la pression polyphonique
+    int16_t value = 0;
+    uint32_t pass = 0;
+};
+
+/// D24.2 : ce qu'une prise rend en plus des notes, en ticks, prêt à être
+/// posé sur la piste.
+struct RecordedControls {
+    std::vector<CcPoint> controlChanges;
+    std::vector<PitchBendPoint> pitchBends;
+    std::vector<ChannelPressurePoint> channelPressure;
+    std::vector<PolyAftertouchPoint> polyAftertouch;
+    bool empty() const {
+        return controlChanges.empty() && pitchBends.empty() && channelPressure.empty() && polyAftertouch.empty();
+    }
+};
+
 struct RecordedNoteEvent {
     double seconds = 0.0;
     uint8_t note = 60;
@@ -75,6 +101,9 @@ public:
     /// en silence : ce n'est pas une perte, c'est la définition du point
     /// d'entrée.
     void push(const RecordedNoteEvent& event);
+    /// D24.2 : un contrôleur, même règle du point d'entrée.
+    void pushControl(const RecordedControlEvent& event);
+    bool hasControls() const { return !controls_.empty(); }
 
     bool empty() const { return events_.empty(); }
     size_t eventCount() const { return events_.size(); }
@@ -108,6 +137,11 @@ public:
                                   const std::function<midi::Tick(double)>& secondsToTicks,
                                   uint64_t& idCounter) const;
 
+    /// D24.2 : les contrôleurs de la prise, en ticks, triés ; ce qui dépasse
+    /// le point de sortie est écarté. CONST pour la même raison que `finish`.
+    RecordedControls finishControls(double endSeconds,
+                                    const std::function<midi::Tick(double)>& secondsToTicks) const;
+
 private:
     std::vector<Note> apparier(const std::vector<RecordedNoteEvent>& evenements, double endSeconds,
                                 const std::function<midi::Tick(double)>& secondsToTicks,
@@ -116,7 +150,15 @@ private:
     double startSeconds_ = 0.0;
     double endSeconds_ = std::numeric_limits<double>::infinity();
     std::vector<RecordedNoteEvent> events_;
+    std::vector<RecordedControlEvent> controls_;
 };
+
+/// D24.2 : pose les contrôleurs d'une prise sur la piste. En mode
+/// « remplacer », ce que la piste portait entre les deux bornes s'efface
+/// d'abord ; en mode « superposer », ils s'ajoutent. Toujours triés par tick
+/// à la fin : c'est ce que le planificateur attend.
+void applyRecordedControls(Track& track, const RecordedControls& controls, bool replaceRange,
+                           midi::Tick rangeStart, midi::Tick rangeEnd);
 
 /// Écrit une prise dans une piste.
 ///

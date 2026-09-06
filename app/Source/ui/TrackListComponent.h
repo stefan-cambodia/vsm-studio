@@ -44,6 +44,8 @@ public:
     /// Réaffiche le fichier de la piste (sans effet sur une piste MIDI).
     /// Appelée après une prise audio, qui vient de lui en donner un.
     void refreshAudioSource();
+    /// D24.5 : relit le nom de la piste (une ligne créée avant qu'on la nomme).
+    void refreshName();
 
 private:
     vsm::sequencer::Track& track_;

@@ -591,6 +591,27 @@ bool ProcessGraph::sendLiveNote(LiveNoteSource source, size_t trackIndex, uint8_
     return liveQueues_[queueIndex].push(event);
 }
 
+bool ProcessGraph::sendLiveControl(LiveNoteSource source, size_t trackIndex,
+                                    const vsm::audio::plugin::MidiControlEvent& event) {
+    if (trackIndex >= kMaxTracks) return false;
+    const size_t queueIndex = static_cast<size_t>(source);
+    if (queueIndex >= kNumLiveSources) return false;
+    LiveControlEvent live;
+    live.trackIndex = static_cast<uint32_t>(trackIndex);
+    live.event = event;
+    live.event.sampleOffset = 0;
+    return liveControlQueues_[queueIndex].push(live);
+}
+
+void ProcessGraph::drainLiveControls() {
+    drainedLiveControlCount_ = 0;
+    for (auto& queue : liveControlQueues_) {
+        LiveControlEvent event;
+        while (static_cast<size_t>(drainedLiveControlCount_) < kMaxLiveEventsPerBlock && queue.pop(event))
+            drainedLiveControls_[static_cast<size_t>(drainedLiveControlCount_++)] = event;
+    }
+}
+
 void ProcessGraph::drainLiveNotes() {
     drainedLiveCount_ = 0;
     for (auto& queue : liveQueues_) {
@@ -618,6 +639,8 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
 
     drainLiveNotes();
     drainChasedControls();
+    drainLiveControls();                                                       // D24.1
+    panicThisBlock_ = panicRequested_.exchange(false, std::memory_order_acq_rel);   // D24.4
 
     if (!playing_.load(std::memory_order_acquire)) {
         // À L'ARRÊT, la position ne bouge pas et le planning n'est pas rejoué
@@ -633,7 +656,8 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
         // refrain transport à l'arrêt doit régler les machines tout de suite,
         // sinon la première note jouée au clavier sonnerait avec les
         // contrôleurs d'avant le déplacement.
-        if (drainedLiveCount_ == 0 && drainedChaseCount_ == 0 && totalActiveVoices() == 0) return;
+        if (drainedLiveCount_ == 0 && drainedChaseCount_ == 0 && drainedLiveControlCount_ == 0
+            && !panicThisBlock_ && totalActiveVoices() == 0) return;
 
         auto idleSnapshot = snapshot_.load(std::memory_order_acquire);
         if (!idleSnapshot || idleSnapshot->project.tracks.empty()) return;
@@ -1144,6 +1168,38 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
             if (chasse.trackIndex != trackIndex) continue;
             if (!instrument->handleControlEvent(chasse.event))
                 ignoredControlEvents_.fetch_add(1, std::memory_order_relaxed);
+        }
+        // D24.1 : LES CONTRÔLEURS EN DIRECT, au même endroit et pour la même
+        // raison que les valeurs chassées -- avant les notes du bloc.
+        for (int i = 0; i < drainedLiveControlCount_; ++i) {
+            const LiveControlEvent& live = drainedLiveControls_[static_cast<size_t>(i)];
+            if (live.trackIndex != trackIndex) continue;
+            if (instrument->handleControlEvent(live.event))
+                liveControlsDelivered_.fetch_add(1, std::memory_order_relaxed);
+            else
+                ignoredControlEvents_.fetch_add(1, std::memory_order_relaxed);
+        }
+        // D24.4 : LE PANIC. Un NoteOff par note qui sonne, la pédale relâchée
+        // avant -- un NoteOff sous pédale ne coupe rien.
+        if (panicThisBlock_) {
+            vsm::audio::plugin::MidiControlEvent pedale;
+            pedale.kind = vsm::audio::plugin::MidiControlEvent::Kind::ControlChange;
+            pedale.channel = track.channel;
+            pedale.index = 64;
+            pedale.value = 0.0f;
+            instrument->handleControlEvent(pedale);
+            auto& sonnent = soundingNotes_[trackIndex];
+            for (size_t note = 0; note < sonnent.size() && numEvents < kMaxEventsPerBlock; ++note) {
+                if (!sonnent[note]) continue;
+                MidiNoteEvent off;
+                off.kind = MidiNoteEvent::Kind::NoteOff;
+                off.sampleOffset = 0;
+                off.channel = track.channel;
+                off.note = static_cast<uint8_t>(note);
+                off.velocity = 0;
+                events[static_cast<size_t>(numEvents++)] = off;
+                sonnent[note] = false;
+            }
         }
     }
 

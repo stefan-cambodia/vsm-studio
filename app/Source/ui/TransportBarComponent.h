@@ -82,6 +82,13 @@ public:
     /// témoin prend un liséré. Sans lui, un mode automatique qui s'allume et
     /// s'éteint tout seul serait un mode qu'on ne peut pas vérifier.
     void setInputMonitoring(bool on);
+    /// D24.3 : LES RACCOURCIS PASSENT PAR LES BOUTONS, jamais à côté : l'état
+    /// affiché et l'état réel ne peuvent pas diverger. `toggleRecord` rend
+    /// faux quand le bouton est grisé (pas de carte, pas de piste armée), et
+    /// l'appelant le dit.
+    bool toggleRecord();
+    void toggleLoop();
+    void toggleMetronome();
 
     void setListening(const juce::String& label, bool enabled, bool active);
     std::function<void()> onCycleListening;

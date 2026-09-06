@@ -5599,3 +5599,102 @@ Cinq manques ont survécu.
 >
 > Tests : 269 core, 1 251 audio, 278 interchange — tous verts ; Python
 > inchangé (168 à D21).
+
+### Phase D24 — Le treizième audit : ce qui manque une fois D23 posée (06/09/2026, 13:55)
+
+**Pourquoi.** Même méthode, même ordre du § 3 : vingt candidats sondés par
+script, chaque « absent » revérifié en lisant la surface qui le porterait —
+`AudioEngine::handleIncomingMidiMessage`, `MidiRecorder`, la table des
+raccourcis, `ProcessGraph`, le menu Fichier et le lâcher de fichiers.
+
+Le relevé a écarté, comme existant : la couleur des notes par vélocité,
+l'insertion d'accords, le lâcher de fichiers sur la fenêtre, le retour au
+départ à l'arrêt (préférence), le renommage d'une piste (double-clic),
+Ctrl+D, Suppr, Ctrl+Q, le clic de la règle pour se placer.
+
+**Et il a trouvé un trou plus grand qu'un manque de confort.** Un clavier
+MIDI branché ne fait entendre que ses NOTES : la molette de hauteur, la
+molette de modulation, la pression et la pédale de sustain sont jetées par
+`handleIncomingMidiMessage` (« `if (!message.isController()) return;` »,
+et les contrôleurs ne servent qu'au MIDI Learn) — alors que les machines
+savent les recevoir (`handleControlEvent`, joué depuis le planning) et que
+le fichier les écrit. Et la prise n'en garde rien : `RecordedNoteEvent`
+n'a que des notes. Une nappe jouée avec la molette se réécoute plate.
+
+**Et l'élément reporté de D21 reste reporté** : la campagne court.
+
+Cinq manques ont survécu.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D24.1 | **Les contrôleurs en direct.** Molette de hauteur, modulation (CC 1), sustain (CC 64), pression : jetés à l'entrée. Cubase et Live : évidemment transmis à l'instrument de la piste | `ProcessGraph::sendLiveControl` (une file par source, comme les notes d'écoute), livré en tête de bloc par `handleControlEvent` aux pistes armées ou à la piste choisie ; un CC lié par MIDI Learn continue d'aller au paramètre lié, un CC libre va à la machine ; test : un pitch bend envoyé en direct est reçu par la machine (compteur `ignoredControlEvents` inchangé, `liveControlsDelivered` incrémenté) |
+| D24.2 | **Les contrôleurs dans la prise.** Une prise ne garde que les notes ; la molette jouée pendant l'enregistrement disparaît | `RecordedControlEvent` et `MidiRecorder::pushControl` / `finishControls` dans `core/`, purs, testés : un CC et un pitch bend datés en secondes ressortent en ticks, ce qui précède le point d'entrée est écarté ; `applyRecordedControls` — remplacer efface la plage, superposer ajoute, trié ; la prise ordinaire les écrit sur chaque piste armée (les passes de boucle empilées : notes seulement, dit ici) |
+| D24.3 | **Les raccourcis du transport.** Ni enregistrer, ni boucle, ni métronome, ni « aller à la fin » n'ont de touche. Cubase : *, /, C, Fin ; Live : F9 | `TransportRecord` (F9), `TransportLoop` (/), `TransportMetronome` (C), `NavGoToEnd` (Fin) dans la table, par les MÊMES boutons que la barre de transport (le bouton Rec grisé reste grisé, et le raccourci le dit sur stderr) ; testés par la table (identifiants uniques, touches uniques) |
+| D24.4 | **Couper toutes les notes (panic).** Une note bloquée par un câble débranché ne se coupe qu'en arrêtant l'application. Cubase : Reset ; Live : rien de tel, et c'est un manque connu | `ProcessGraph::requestPanic()` : au bloc suivant, un NoteOff pour chaque note qui sonne sur chaque machine, sustain relâché (CC 64 = 0), le compte des notes qui sonnent remis à zéro ; « Enregistrement ▸ Couper toutes les notes (panic) » ; test : une note tenue puis coupée s'éteint (crête du dernier bloc < ¼ de la crête tenue, une seconde après) |
+| D24.5 | **Importer un fichier audio sur une piste neuve, au menu.** Un fichier lâché sur la fenêtre propose la RECONSTRUCTION ; le poser sur une piste demande de créer la piste puis de lâcher le fichier sur elle. Cubase : Import Audio File ; Live : le navigateur | « Fichier ▸ Importer un fichier audio sur une piste neuve… » : la piste, puis `placeSampleOnTrack` à la mesure 1 — la même fonction que le lâcher sur une piste ; `VSM_IMPORT_AUDIO=fichier.wav` ; vérifié à l'écran |
+
+> **D24.1 EST FAITE (06/09/2026, 14:08).** `ProcessGraph::sendLiveControl`,
+> une file par source comme les notes d'écoute, vidée en tête de bloc et
+> livrée par `handleControlEvent` au même endroit que les valeurs chassées
+> (D16.2), avant les notes du bloc ; comptée (`liveControlsDelivered`). Dans
+> `AudioEngine::handleIncomingMidiMessage`, la molette de hauteur (14 bits
+> signés vers ± 2 demi-tons, la même conversion que le planning), la
+> pression de canal, la pression polyphonique et tout CC LIBRE partent vers
+> les pistes qui écoutent — les mêmes que les notes : armées, sinon choisie.
+> Un CC lié par MIDI Learn reste au paramètre lié : c'est ce que l'utilisateur
+> a demandé en le liant. Test : un pitch bend envoyé en direct est livré à la
+> machine, transport à l'arrêt (le bloc est rendu pour cela), aucun
+> contrôleur ignoré, une piste hors bornes refusée sans bloquer.
+>
+> **D24.2 EST FAITE (06/09/2026, 14:08).** `RecordedControlEvent` (datée en
+> secondes, avec sa passe, valeur MIDI brute) dans sa PROPRE file de capture,
+> quatre fois plus large que celle des notes — une molette produit des
+> dizaines de messages par seconde et ne doit pas pousser une note hors de
+> la file. `MidiRecorder::pushControl` (même point d'entrée que les notes),
+> `finishControls` (ticks, triés, le point de sortie respecté),
+> `applyRecordedControls` (remplacer efface la plage, superposer ajoute,
+> trié). Testé : un CC et un pitch bend ressortent aux bons ticks, ce qui
+> précède le point d'entrée est écarté, remplacer puis superposer donne
+> trois puis cinq points en ordre. La prise ordinaire les écrit sur chaque
+> piste armée ; les passes de boucle EMPILÉES gardent leurs notes seulement,
+> et c'est dit ici : une passe est une prise conservée, et leur donner des
+> contrôleurs demanderait de les ranger par passe dans les prises — un
+> travail à part, non fait.
+>
+> **D24.3 EST FAITE (06/09/2026, 14:08).** `TransportRecord` (F9, comme
+> Live), `TransportLoop` (/), `TransportMetronome` (C), `NavGoToEnd` (Fin)
+> dans la table ; les touches passent par les BOUTONS de la barre
+> (`toggleRecord`, `toggleLoop`, `toggleMetronome`), pour que l'état affiché
+> et l'état réel ne divergent jamais ; Rec grisé reste grisé, et F9 le dit
+> sur stderr. La table est tenue par ses tests (identifiants et touches
+> uniques) : `/` et `C` n'étaient pris par rien.
+>
+> **D24.4 EST FAITE (06/09/2026, 14:08).** `ProcessGraph::requestPanic()` :
+> lu une fois par bloc ; sur chaque piste, la pédale relâchée d'abord (CC 64
+> à zéro — un NoteOff sous pédale ne coupe rien), puis un NoteOff par note
+> qui sonne, le compte remis à zéro ; le bloc est rendu même transport
+> arrêté. « Enregistrement ▸ Couper toutes les notes (panic) », qui relâche
+> aussi les touches d'ordinateur enfoncées. Test : une note tenue quatre
+> secondes, coupée à 0,5 s, a une crête inférieure au quart de la crête tenue
+> une seconde après ; le témoin sans panic sonne encore au même instant.
+>
+> **D24.5 EST FAITE (06/09/2026, 14:08), ET LA PHASE D24 EST CLOSE.**
+> « Fichier ▸ Importer un fichier audio sur une piste neuve… » : la piste,
+> nommée d'après le fichier, puis `placeSampleOnTrack` à la mesure 1 — la
+> même fonction que le lâcher sur une piste, donc la même copie dans
+> `audio/` (D6.4) et les mêmes refus ; sans dossier de projet, refusé et dit
+> AVANT de créer la piste ; si la pose échoue, la piste est retirée.
+> Vérifié à l'écran par `VSM_IMPORT_AUDIO` : la piste « voix », son clip
+> d'une mesure et demie, `audio/voix.wav` copié. Et une ligne de la liste des
+> pistes qui gardait « Audio 4 » : créée avant le nom, rafraîchie depuis.
+>
+> **Ce que l'audit laisse écrit.** Le trou des contrôleurs était plus grand
+> qu'un manque de confort : un clavier MIDI ne faisait entendre que ses
+> notes, et personne ne l'avait écrit, parce que les tests du moteur jouent
+> depuis le planning — où les contrôleurs passaient — et jamais depuis
+> l'entrée MIDI. Les deux tests neufs entrent par `sendLiveControl` et
+> `pushControl`, là où le trou était. La campagne court (lot forcé,
+> deuxième morceau).
+>
+> Tests : 270 core, 1 253 audio, 278 interchange — tous verts ; Python
+> inchangé (168 à D21).

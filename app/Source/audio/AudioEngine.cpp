@@ -138,6 +138,72 @@ void AudioEngine::handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMe
         return;
     }
 
+    // D24.1 / D24.2 : LES CONTRÔLEURS. Ils étaient jetés ici (« si ce n'est
+    // pas un CC, retour »), et les CC ne servaient qu'au MIDI Learn : un
+    // clavier branché ne faisait entendre que ses notes, et une prise ne
+    // gardait ni la molette ni la pédale. Chaque contrôleur va désormais à la
+    // machine des pistes qui écoutent (les mêmes que les notes) ET dans la file
+    // de capture, datée comme une note. Un CC lié par MIDI Learn reste au
+    // paramètre lié : c'est le geste que l'utilisateur a demandé.
+    auto versLesMachines = [this](const vsm::audio::plugin::MidiControlEvent& evenement) {
+        auto armees = armedTracks_.load(std::memory_order_acquire);
+        if (armees && !armees->empty()) {
+            for (size_t track : *armees)
+                graph_.sendLiveControl(vsm::audio::engine::ProcessGraph::LiveNoteSource::MidiInput, track, evenement);
+        } else {
+            graph_.sendLiveControl(vsm::audio::engine::ProcessGraph::LiveNoteSource::MidiInput,
+                                   liveInputTrack_.load(std::memory_order_acquire), evenement);
+        }
+    };
+    auto dansLaPrise = [this, &message](vsm::sequencer::RecordedControlEvent::Kind genre, uint8_t index, int16_t valeur) {
+        const double horodatage = message.getTimeStamp() > 0.0
+                                      ? message.getTimeStamp()
+                                      : juce::Time::getMillisecondCounterHiRes() * 0.001;
+        vsm::sequencer::RecordedControlEvent capture;
+        uint64_t passe = 0;
+        capture.seconds = transportSecondsAtClock(horodatage, &passe);
+        capture.pass = static_cast<uint32_t>(passe);
+        capture.kind = genre;
+        capture.channel = static_cast<uint8_t>(juce::jlimit(1, 16, message.getChannel()) - 1);
+        capture.index = index;
+        capture.value = valeur;
+        if (!recordControlQueue_.push(capture))
+            droppedRecorded_.fetch_add(1, std::memory_order_relaxed);
+    };
+    const auto canal = static_cast<uint8_t>(juce::jlimit(1, 16, message.getChannel()) - 1);
+    if (message.isPitchWheel()) {
+        vsm::audio::plugin::MidiControlEvent evenement;
+        evenement.kind = vsm::audio::plugin::MidiControlEvent::Kind::PitchBend;
+        evenement.channel = canal;
+        // Même conversion que le planning : 14 bits signés vers ± 2 demi-tons.
+        evenement.value = static_cast<float>(message.getPitchWheelValue() - 8192) / 8192.0f * 2.0f;
+        versLesMachines(evenement);
+        dansLaPrise(vsm::sequencer::RecordedControlEvent::Kind::PitchBend, 0,
+                    static_cast<int16_t>(message.getPitchWheelValue() - 8192));
+        return;
+    }
+    if (message.isChannelPressure()) {
+        vsm::audio::plugin::MidiControlEvent evenement;
+        evenement.kind = vsm::audio::plugin::MidiControlEvent::Kind::ChannelPressure;
+        evenement.channel = canal;
+        evenement.value = static_cast<float>(message.getChannelPressureValue()) / 127.0f;
+        versLesMachines(evenement);
+        dansLaPrise(vsm::sequencer::RecordedControlEvent::Kind::ChannelPressure, 0,
+                    static_cast<int16_t>(message.getChannelPressureValue()));
+        return;
+    }
+    if (message.isAftertouch()) {
+        vsm::audio::plugin::MidiControlEvent evenement;
+        evenement.kind = vsm::audio::plugin::MidiControlEvent::Kind::PolyPressure;
+        evenement.channel = canal;
+        evenement.index = static_cast<uint8_t>(message.getNoteNumber());
+        evenement.value = static_cast<float>(message.getAfterTouchValue()) / 127.0f;
+        versLesMachines(evenement);
+        dansLaPrise(vsm::sequencer::RecordedControlEvent::Kind::PolyPressure,
+                    static_cast<uint8_t>(message.getNoteNumber()),
+                    static_cast<int16_t>(message.getAfterTouchValue()));
+        return;
+    }
     if (!message.isController()) return;
     const auto cc = static_cast<uint8_t>(message.getControllerNumber());
     const auto value = static_cast<uint8_t>(message.getControllerValue());
@@ -159,7 +225,17 @@ void AudioEngine::handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMe
         std::lock_guard<std::mutex> lock(learnMutex_);
         resolved = learnMap_.resolve(cc, value, target, paramValue);
     }
-    if (!resolved) return;
+    if (!resolved) {
+        // CC LIBRE : à la machine, et dans la prise (D24.1, D24.2).
+        vsm::audio::plugin::MidiControlEvent evenement;
+        evenement.kind = vsm::audio::plugin::MidiControlEvent::Kind::ControlChange;
+        evenement.channel = canal;
+        evenement.index = cc;
+        evenement.value = static_cast<float>(value) / 127.0f;
+        versLesMachines(evenement);
+        dansLaPrise(vsm::sequencer::RecordedControlEvent::Kind::ControlChange, cc, static_cast<int16_t>(value));
+        return;
+    }
 
     // DEUX CHEMINS, ET LA FRONTIÈRE EST CELLE DES THREADS, pas celle du
     // confort. Un paramètre de machine se règle par un `std::atomic` : on peut
@@ -205,6 +281,16 @@ void AudioEngine::setMidiLearnMap(vsm::audio::engine::MidiLearnMap map) {
 void AudioEngine::setArmedTracks(std::vector<size_t> tracks) {
     armedTracks_.store(std::make_shared<const std::vector<size_t>>(std::move(tracks)),
                         std::memory_order_release);
+}
+
+size_t AudioEngine::drainRecordedControls(std::vector<vsm::sequencer::RecordedControlEvent>& out) {
+    size_t ajoutes = 0;
+    vsm::sequencer::RecordedControlEvent capture;
+    while (recordControlQueue_.pop(capture)) {
+        out.push_back(capture);
+        ++ajoutes;
+    }
+    return ajoutes;
 }
 
 size_t AudioEngine::drainRecordedEvents(std::vector<vsm::sequencer::RecordedNoteEvent>& out) {

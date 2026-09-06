@@ -151,6 +151,8 @@ public:
     /// Vide la file de capture dans `out` (thread UI). Renvoie le nombre
     /// d'événements ajoutés.
     size_t drainRecordedEvents(std::vector<vsm::sequencer::RecordedNoteEvent>& out);
+    /// D24.2 : la file des contrôleurs captés (thread UI).
+    size_t drainRecordedControls(std::vector<vsm::sequencer::RecordedControlEvent>& out);
 
     /// Notes perdues faute de place dans la file. Doit rester à zéro ; toute
     /// autre valeur est une note qu'on a jouée et qui n'est pas dans la prise.
@@ -291,6 +293,10 @@ private:
     std::atomic<std::shared_ptr<const std::vector<size_t>>> armedTracks_{nullptr};
     static constexpr size_t kRecordQueueCapacity = 1024;
     vsm::audio::util::LockFreeRingBuffer<vsm::sequencer::RecordedNoteEvent, kRecordQueueCapacity> recordQueue_;
+    /// D24.2 : les contrôleurs, dans leur propre file -- une molette produit
+    /// des dizaines de messages par seconde, ils ne doivent pas pousser une
+    /// note hors de la file des notes.
+    vsm::audio::util::LockFreeRingBuffer<vsm::sequencer::RecordedControlEvent, kRecordQueueCapacity * 4> recordControlQueue_;
     std::atomic<uint64_t> droppedRecorded_{0};
     std::atomic<double> declaredLatency_{0.0};
 

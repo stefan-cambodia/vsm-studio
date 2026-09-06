@@ -201,6 +201,11 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
     setInterceptsMouseClicks(true, true);
 }
 
+void TrackRowComponent::refreshName() {
+    nameLabel_.setText(track_.name.empty() ? ("Piste " + std::to_string(index_ + 1)) : track_.name,
+                       juce::dontSendNotification);
+}
+
 void TrackRowComponent::refreshAudioSource() {
     if (!audio_) return;
     const juce::String chemin(track_.audio.path);
@@ -408,6 +413,7 @@ void TrackListComponent::faireVoirLaPiste(size_t idx) {
 void TrackListComponent::refreshTrackRow(size_t idx) {
     if (idx >= static_cast<size_t>(rows_.size())) return;
     rows_[static_cast<int>(idx)]->refreshAudioSource();
+    rows_[static_cast<int>(idx)]->refreshName();
 }
 
 void TrackListComponent::selectTrackIndex(size_t idx) {

@@ -1011,7 +1011,8 @@ pendant trois secondes pour que les voyants se photographient allumés.
 `VSM_EXPORT_MIDI_PISTE=fichier.mid` écrit la piste choisie seule en MIDI
 (D23.3) ; `armer:N` arme la piste N, `polarite:N` inverse sa polarité,
 `pistes-a-la-fenetre` et `hauteur-pistes:N` règlent les hauteurs de
-l'arrangement comme le menu Affichage.
+l'arrangement comme le menu Affichage. `VSM_IMPORT_AUDIO=fichier.wav` pose
+un fichier audio sur une piste neuve (D24.5), comme le menu Fichier.
 `historique` et `spectre` ouvrent les fenêtres flottantes du même nom ; la
 photographie de `VSM_CAPTURE` ne couvre que la fenêtre principale, une fenêtre
 flottante se photographie avec `spectacle -b -n -f -o fichier.png` pendant que

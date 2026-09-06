@@ -64,6 +64,11 @@ enum class ShortcutId : uint16_t {
     ViewFullScreen,
     /// D22.2 : aller à une mesure saisie (« 17 », « 17.3 »).
     NavGoToBar,
+    /// D24.3 : enregistrer, la boucle, le métronome, la fin du morceau.
+    TransportRecord,
+    TransportLoop,
+    TransportMetronome,
+    NavGoToEnd,
 
     Count
 };

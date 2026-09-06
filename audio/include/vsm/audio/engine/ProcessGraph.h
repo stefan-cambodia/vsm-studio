@@ -226,6 +226,18 @@ public:
     /// perdre une note d'écoute qu'introduire une attente sur le chemin audio.
     bool sendLiveNote(LiveNoteSource source, size_t trackIndex, uint8_t note,
                       uint8_t velocity, bool noteOn);
+    /// D24.1 : UN CONTRÔLEUR EN DIRECT -- molette, modulation, pression,
+    /// pédale -- vers la machine d'une piste, livré en tête de bloc par
+    /// `handleControlEvent`. Même contrat que `sendLiveNote` : une file par
+    /// source, jamais bloquant, faux si la file est pleine.
+    bool sendLiveControl(LiveNoteSource source, size_t trackIndex,
+                         const vsm::audio::plugin::MidiControlEvent& event);
+    /// Contrôleurs en direct effectivement livrés à une machine (D24.1).
+    uint64_t liveControlsDelivered() const { return liveControlsDelivered_.load(std::memory_order_relaxed); }
+    /// D24.4 : COUPER TOUTES LES NOTES. Au bloc suivant, un NoteOff pour
+    /// chaque note qui sonne sur chaque machine, la pédale relâchée (CC 64 à
+    /// zéro) ; le compte des notes qui sonnent est remis à zéro.
+    void requestPanic() { panicRequested_.store(true, std::memory_order_release); }
 
     // --- Boucle de lecture -------------------------------------------------
     //
@@ -414,6 +426,12 @@ private:
         uint8_t velocity = 100;
         bool noteOn = true;
     };
+    /// D24.1 : un contrôleur en direct, en attente de sa piste.
+    struct LiveControlEvent {
+        uint32_t trackIndex = 0;
+        vsm::audio::plugin::MidiControlEvent event;
+    };
+    void drainLiveControls();
 
     /// Vide la file des valeurs chassées dans drainedChase_ (début de bloc).
     void drainChasedControls();
@@ -775,6 +793,14 @@ private:
     std::array<vsm::audio::util::LockFreeRingBuffer<LiveNoteEvent, kLiveQueueCapacity>, kNumLiveSources> liveQueues_;
     std::array<LiveNoteEvent, kMaxLiveEventsPerBlock> drainedLive_{};
     int drainedLiveCount_ = 0;
+    /// D24.1 : les contrôleurs en direct, une file par source comme les notes.
+    std::array<vsm::audio::util::LockFreeRingBuffer<LiveControlEvent, kLiveQueueCapacity>, kNumLiveSources> liveControlQueues_;
+    std::array<LiveControlEvent, kMaxLiveEventsPerBlock> drainedLiveControls_{};
+    int drainedLiveControlCount_ = 0;
+    std::atomic<uint64_t> liveControlsDelivered_{0};
+    /// D24.4 : le panic demandé, et sa lecture pour le bloc en cours.
+    std::atomic<bool> panicRequested_{false};
+    bool panicThisBlock_ = false;
 
     /// LA CHASSE AUX CONTRÔLEURS (D16.2). La file est large : un déplacement
     /// de tête peut rendre plusieurs valeurs par piste, sur des dizaines de

@@ -53,6 +53,11 @@ const std::vector<ShortcutCommand>& shortcutCommands() {
         {ShortcutId::ViewFullScreen,    "view.fullScreen",  "Affichage", "Plein écran",                    "F11",              ""},
         // D22.2 — aller à une mesure : Maj+P, comme Cubase (la position se tape, on ne zoome plus pour la rejoindre).
         {ShortcutId::NavGoToBar,        "nav.goToBar",      "Transport", "Aller à la mesure…",             "shift + P",        ""},
+        // D24.3 — le transport au clavier : F9 (Live) pour enregistrer, / et C (Cubase) pour la boucle et le clic, Fin pour la fin.
+        {ShortcutId::TransportRecord,   "transport.record", "Transport", "Enregistrer (démarrer / arrêter)", "F9",             ""},
+        {ShortcutId::TransportLoop,     "transport.loop",   "Transport", "Boucle (marche / arrêt)",        "/",                ""},
+        {ShortcutId::TransportMetronome,"transport.metronome","Transport","Métronome (marche / arrêt)",    "C",                ""},
+        {ShortcutId::NavGoToEnd,        "nav.goToEnd",      "Transport", "Aller à la fin du morceau",      "end",              ""},
     };
     return catalogue;
 }

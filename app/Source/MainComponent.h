@@ -114,6 +114,8 @@ public:
     /// D23.3 : VSM_EXPORT_MIDI_PISTE=fichier.mid -- la piste choisie écrite
     /// en MIDI sans fenêtre, pour que le fichier se relise.
     bool exportTrackMidiForCapture(const juce::File& fichier) { return writeSelectedTrackMidi(fichier); }
+    /// D24.5 : VSM_IMPORT_AUDIO=fichier.wav -- sur une piste neuve, sans boîte.
+    bool importAudioForCapture(const juce::File& fichier) { return importAudioFileOnNewTrack(fichier); }
 
     /// Ouvre un dossier de projet au démarrage (VSM_PROJET=dossier), pour la
     /// même raison que `applyViewCommand` : ce qu'on a besoin de regarder est
@@ -207,6 +209,8 @@ private:
         kMenuFileExportStems,
         /// D23.3 : la piste choisie seule, en MIDI.
         kMenuFileExportTrackMidi,
+        /// D24.5 : un fichier audio sur une piste neuve.
+        kMenuFileImportAudio,
         kMenuFileAudioSettings,
         kMenuFileQuit,
         // D11.6 : modèle de projet et projets récents.
@@ -296,6 +300,8 @@ private:
         kMenuRecordMonitorManual,
         kMenuRecordMonitorAuto,
         kMenuRecordMonitorArmed,
+        /// D24.4 : couper toutes les notes (panic).
+        kMenuRecordPanic,
         /// Un identifiant par prise de la piste sélectionnée, attribué à la
         /// suite -- comme les paliers d'échelle du menu Affichage.
         kMenuRecordTakeFirst,
@@ -836,6 +842,12 @@ private:
     /// D23.3 : la piste choisie seule, en MIDI -- la boîte, et l'écriture.
     void exportSelectedTrackMidi();
     bool writeSelectedTrackMidi(const juce::File& fichier);
+    /// D24.2 : les contrôleurs captés, vidés avec les notes.
+    std::vector<vsm::sequencer::RecordedControlEvent> recordControlDrain_;
+    /// D24.5 : un fichier audio posé sur une piste neuve, à la mesure 1 -- la
+    /// boîte, et le geste (la même fonction que le lâcher sur une piste).
+    void importAudioFilePrompt();
+    bool importAudioFileOnNewTrack(const juce::File& fichier);
     vsm::sequencer::Groove grooveCourant_;
     /// Les trois vues qui dessinent des pistes, rafraîchies ensemble (D17.4).
     void refreshTrackViews();

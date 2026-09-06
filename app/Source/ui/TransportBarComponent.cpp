@@ -268,6 +268,15 @@ void TransportBarComponent::resized() {
     poser(sampleRateLabel_, serre ? 90 : 120, 0);
 }
 
+bool TransportBarComponent::toggleRecord() {
+    if (!recordButton_.isEnabled()) return false;
+    recordButton_.triggerClick();
+    return true;
+}
+
+void TransportBarComponent::toggleLoop() { loopButton_.triggerClick(); }
+void TransportBarComponent::toggleMetronome() { metronomeButton_.triggerClick(); }
+
 void TransportBarComponent::setInputMonitoring(bool on) {
     if (on == inputMonitoring_) return;
     inputMonitoring_ = on;
