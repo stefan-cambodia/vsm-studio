@@ -5966,3 +5966,62 @@ décompte lit déjà le morceau depuis N mesures avant le point d'entrée).
 >
 > Tests : 271 core, 1 257 audio, 278 interchange — tous verts ; Python
 > inchangé (168 à D21).
+
+### Phase D29 — Le quinzième audit : ce qui manque une fois D28 posée (06/09/2026, 15:15)
+
+**Pourquoi.** Même méthode, cinq candidats sondés puis revérifiés en
+lisant les surfaces : la table des raccourcis, `applyLearnedControls`, la
+barre d'outils du piano roll, `gridTicks`.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D29.1 | **Les locateurs à la tête.** Cubase : I et O posent le début et la fin de la boucle à la tête ; ici, la région ne se pose qu'en tirant la règle ou sur une sélection (P) | `LoopStartAtPlayhead` (I) et `LoopEndAtPlayhead` (O) dans la table, par `setLoopRegionEverywhere` comme P ; poser un début après la fin repousse la fin d'une mesure, et l'inverse ; annulable ; `VSM_VUE=locateur-debut`, `locateur-fin` ; vérifié à l'écran |
+| D29.2 | **Déplacer la tête d'un temps ou d'une mesure au clavier.** Cubase : + / − ; Live : rien ; ici, la tête se place à la souris ou à la mesure saisie (Maj+P) | `NavNextBeat` / `NavPreviousBeat` (Alt+→ / Alt+←), `NavNextBar` / `NavPreviousBar` (Maj+Alt+→ / ←), selon la signature sous la tête, jamais avant zéro ; `VSM_VUE=tete-temps:N`, `tete-mesure:N` ; vérifié par la barre de transport |
+| D29.3 | **Le MIDI Learn écrit l'automation quand le W est armé.** Un potentiomètre lié au volume bouge le fader, mais la passe d'automation n'est ouverte que par la souris (D16.8) | `ChannelStrip::applyExternalControl` : la valeur reçue pose le curseur, la piste, et — W armé, transport en marche — ouvre ou nourrit la passe comme un glissé ; sans lâcher possible, la passe court jusqu'à l'arrêt (latch), quel que soit le mode, et c'est dit ; volume et panoramique ; les départs restent une valeur posée |
+| D29.4 | **La ligne d'information des notes.** Cubase : la ligne d'info ; Live 12 : les champs de note ; ici, une note se règle à la souris seulement | dans la barre du piano roll : « Début » (mesure.temps, « +ticks » si hors temps), « Durée » (ticks), « Vélocité », relus 8 fois par seconde, ÉDITABLES : le début déplace toute la sélection de l'écart (par `nudgeSelection`), la durée et la vélocité se posent sur toutes les notes choisies ; annulables ; vérifié à l'écran |
+| D29.5 | **La grille adaptative.** Live : la grille suit le zoom par défaut ; ici, 1/16 quel que soit le zoom | « Auto » dans le choix de grille : la subdivision la plus fine dont la case fait au moins 24 px, triolet et pointé respectés ; `gridTicks()` la calcule à chaque lecture ; vérifié à l'écran à deux zooms |
+
+> **D29.1 EST FAITE (06/09/2026, 15:13).** I et O dans la table, par
+> `setLoopRegionEverywhere` comme P ; un début posé après la fin repousse
+> la fin d'une mesure, une fin posée avant le début ramène le début d'une
+> mesure, une fin à zéro ne pose rien ; annulables. Vérifié à l'écran par
+> `VSM_VUE=tete-mesure:1,locateur-debut,tete-mesure:1,locateur-fin` : le
+> bouton Loop allumé, la région de la mesure 2 à la mesure 3 sur la règle du
+> piano roll.
+>
+> **D29.2 EST FAITE (06/09/2026, 15:13).** Alt+→ / Alt+← d'un temps,
+> Maj+Alt+→ / ← d'une mesure, selon la signature SOUS LA TÊTE, jamais avant
+> zéro ; `tete-temps:N`, `tete-mesure:N`. Vérifié par la barre de transport
+> : deux mesures puis deux temps donnent « mes. 3 · 3 », 4,615 s à 130 BPM.
+>
+> **D29.3 EST FAITE (06/09/2026, 15:13).** `ChannelStrip::applyExternalControl`
+> : la valeur du MIDI Learn pose le curseur SANS le déclencher (c'est nous
+> qui posons la piste et la passe, pas son rappel), et — W armé, transport
+> en marche — ouvre la passe au premier message puis la nourrit comme un
+> glissé ; un potentiomètre ne se lâche pas, la passe court jusqu'à l'arrêt
+> comme en latch, quel que soit le mode, et c'est dit ici. Volume et
+> panoramique ; les départs restent une valeur posée. Sans tranche (mélangeur
+> pas encore construit), la valeur va au projet comme avant.
+>
+> **D29.4 EST FAITE (06/09/2026, 15:13).** Une TROISIÈME rangée dans la
+> barre du piano roll : « Note : début · durée · vélocité », relus huit
+> fois par seconde sauf pendant l'édition, éditables — le début (« 17.3 »,
+> « 17.3+120 ») déplace toute la sélection de l'écart par `nudgeSelection`,
+> la durée (ticks) et la vélocité se posent sur toutes les notes choisies
+> (`setSelectionLength`, `setSelectionVelocity`), annulables. La première
+> disposition prenait 300 px à droite de la rangée des réglages et cachait
+> l'aimant, le pas à pas et le swing à la largeur du volet : la case a été
+> agrandie, pas le texte réduit. Vérifié à l'écran : « 1.1 · 220 · 127 · 8 »
+> pour les huit notes de la basse, la rangée des réglages intacte.
+>
+> **D29.5 EST FAITE (06/09/2026, 15:13), ET LA PHASE D29 EST CLOSE.**
+> « Auto » dans le choix de grille : `gridTicks()` prend, de la plus fine à
+> la ronde, la première subdivision dont la case fait 24 px, triolet et
+> pointé respectés ; l'aimant, la quantification et la durée « = grille »
+> la suivent d'office puisqu'ils lisent `gridTicks()`. Vérifié à l'écran
+> par `grille-auto` à deux zooms (`zoom-piano:0.35` et `3`) : des lignes de
+> mesure seules quand sept mesures tiennent dans le volet, des doubles-
+> croches quand une seule y tient.
+>
+> Tests : 271 core, 1 257 audio, 278 interchange — tous verts ; Python
+> inchangé (168 à D21).

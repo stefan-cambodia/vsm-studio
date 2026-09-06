@@ -1018,7 +1018,10 @@ port virtuel « VSM Studio », créé au démarrage, se lit avec `aseqdump -p
 <client>:2` (le client ALSA de l'application, `aconnect -l`). `VSM_TRACE_MIDIOUT=1`
 écrit sur le terminal les quarante premiers événements envoyés, avec leur retard.
 `programme:N:P:B` pose le programme P (1–128) et la banque B de la piste N,
-`canal-entree:N:C` son canal d'entrée MIDI (0 = tous) (D28).
+`canal-entree:N:C` son canal d'entrée MIDI (0 = tous) (D28). `locateur-debut`,
+`locateur-fin`, `tete-temps:N`, `tete-mesure:N`, `grille-auto` et `zoom-piano:F`
+pilotent les gestes de D29 (locateurs à la tête, tête au clavier, grille
+adaptative).
 `historique` et `spectre` ouvrent les fenêtres flottantes du même nom ; la
 photographie de `VSM_CAPTURE` ne couvre que la fenêtre principale, une fenêtre
 flottante se photographie avec `spectacle -b -n -f -o fichier.png` pendant que

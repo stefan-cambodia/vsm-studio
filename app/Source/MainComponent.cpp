@@ -1220,6 +1220,14 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
             setSelectedTrackInputChannel(m[1].getIntValue());
         }
     }
+    // D29.1 / D29.2 : les locateurs à la tête, la tête déplacée.
+    // D29.5 : la grille adaptative et le zoom du piano roll, pour la photographier à deux zooms.
+    else if (nom == "grille-auto") pianoRoll_.setAdaptiveGrid(true);
+    else if (nom.startsWith("zoom-piano:")) pianoRoll_.zoomHorizontally(nom.substring(11).getFloatValue());
+    else if (nom == "locateur-debut") setLoopBoundaryAtPlayhead(true);
+    else if (nom == "locateur-fin") setLoopBoundaryAtPlayhead(false);
+    else if (nom.startsWith("tete-temps:")) seekByBeats(nom.substring(11).getIntValue());
+    else if (nom.startsWith("tete-mesure:")) seekByBars(nom.substring(12).getIntValue());
     else if (nom.startsWith("hauteur-pistes:"))
         arrangement_.setAllTrackHeights(nom.substring(15).getIntValue());
     else if (nom == "phase-clip") {
@@ -4490,14 +4498,22 @@ void MainComponent::applyLearnedControls() {
         const bool piste = cible.trackIndex < project_.tracks.size();
         switch (cible.kind) {
             case Kind::TrackVolume:
-                if (piste) { project_.tracks[cible.trackIndex].volume = commande.value; projetTouche = true; }
+                // D29.3 : PAR LA TRANCHE quand elle existe -- le curseur suit, et la
+                // passe d'automation s'ouvre si le W est armé, comme sous la souris.
+                if (piste) {
+                    if (!mixer_.applyExternalControl(cible.trackIndex, "mix.volume", commande.value))
+                        project_.tracks[cible.trackIndex].volume = commande.value;
+                    projetTouche = true;
+                }
                 break;
             case Kind::TrackPan:
                 // La plage a été enregistrée AVEC l'association (-1 à +1) :
                 // la valeur arrive donc déjà à l'échelle du réglage. La borner
                 // reste utile pour un fichier de préférences édité à la main.
                 if (piste) {
-                    project_.tracks[cible.trackIndex].pan = juce::jlimit(-1.0f, 1.0f, commande.value);
+                    const float pan = juce::jlimit(-1.0f, 1.0f, commande.value);
+                    if (!mixer_.applyExternalControl(cible.trackIndex, "mix.pan", pan))
+                        project_.tracks[cible.trackIndex].pan = pan;
                     projetTouche = true;
                 }
                 break;
@@ -5423,6 +5439,13 @@ bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
         case Id::NavNextTrack: selectNeighbourTrack(+1); return true;
         case Id::NavPreviousTrack: selectNeighbourTrack(-1); return true;
         // D28.4 : la tête au début de la sélection -- l'arrangement d'abord, sinon le piano roll.
+        // D29.1 / D29.2 : les locateurs à la tête, la tête d'un temps ou d'une mesure.
+        case Id::LoopStartAtPlayhead: setLoopBoundaryAtPlayhead(true); return true;
+        case Id::LoopEndAtPlayhead: setLoopBoundaryAtPlayhead(false); return true;
+        case Id::NavNextBeat: seekByBeats(+1); return true;
+        case Id::NavPreviousBeat: seekByBeats(-1); return true;
+        case Id::NavNextBar: seekByBars(+1); return true;
+        case Id::NavPreviousBar: seekByBars(-1); return true;
         case Id::NavToSelection: {
             vsm::midi::Tick debut = 0;
             if (arrangement_.selectionStartTick(debut) || pianoRoll_.selectionStartTick(debut)) seekAllViews(debut);
@@ -7718,6 +7741,41 @@ void MainComponent::selectNeighbourTrack(int delta) {
         if (!project_.tracks[i].hidden) break;
     }
     trackList_.selectTrackIndex(i);
+}
+
+// --- D29.1 / D29.2 : les locateurs à la tête, la tête au clavier --------------
+
+void MainComponent::setLoopBoundaryAtPlayhead(bool debut) {
+    const vsm::midi::Tick tete = std::max<vsm::midi::Tick>(0, transport_.currentTick());
+    const vsm::midi::Tick mesure = std::max<vsm::midi::Tick>(
+        1, project_.timeSignatureMap.ticksPerBar(tete, project_.ticksPerQuarterNote));
+    vsm::midi::Tick de = project_.loopStartTick, a = project_.loopEndTick;
+    if (debut) {
+        de = tete;
+        // UN DÉBUT POSÉ APRÈS LA FIN repousse la fin d'une mesure : une région
+        // vide ou inversée ne se joue pas, et c'est ce qu'on voulait éviter.
+        if (a <= de) a = de + mesure;
+    } else {
+        a = tete;
+        if (de >= a) de = std::max<vsm::midi::Tick>(0, a - mesure);
+        if (a <= de) return;   // la tête à zéro : rien à poser
+    }
+    beginProjectEdit(debut ? u8"D\u00e9but de boucle \u00e0 la t\u00eate" : u8"Fin de boucle \u00e0 la t\u00eate");
+    setLoopRegionEverywhere(de, a, true);
+}
+
+void MainComponent::seekByBeats(int temps) {
+    const vsm::midi::Tick ici = std::max<vsm::midi::Tick>(0, transport_.currentTick());
+    const vsm::midi::Tick pas = std::max<vsm::midi::Tick>(
+        1, project_.timeSignatureMap.ticksPerBeat(ici, project_.ticksPerQuarterNote));
+    seekAllViews(std::max<vsm::midi::Tick>(0, ici + pas * temps));
+}
+
+void MainComponent::seekByBars(int mesures) {
+    const vsm::midi::Tick ici = std::max<vsm::midi::Tick>(0, transport_.currentTick());
+    const vsm::midi::Tick pas = std::max<vsm::midi::Tick>(
+        1, project_.timeSignatureMap.ticksPerBar(ici, project_.ticksPerQuarterNote));
+    seekAllViews(std::max<vsm::midi::Tick>(0, ici + pas * mesures));
 }
 
 // --- D27.4 : la sortie MIDI matérielle ---------------------------------------

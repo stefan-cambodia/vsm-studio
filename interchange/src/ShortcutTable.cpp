@@ -65,6 +65,13 @@ const std::vector<ShortcutCommand>& shortcutCommands() {
         {ShortcutId::NavPreviousTrack,  "nav.previousTrack","Piste",     "Piste précédente",               "alt + cursor up",  ""},
         // D28.4 — L, comme Cubase : la tête au début de la sélection (arrangement, sinon piano roll).
         {ShortcutId::NavToSelection,    "nav.toSelection",  "Transport", "Tête au début de la sélection",  "L",                ""},
+        // D29.1 / D29.2 — I et O (Cubase) posent les locateurs à la tête ; Alt+flèches déplacent la tête d'un temps, Maj+Alt d'une mesure.
+        {ShortcutId::LoopStartAtPlayhead,"loop.startHere",  "Transport", "Début de boucle à la tête",      "I",                ""},
+        {ShortcutId::LoopEndAtPlayhead, "loop.endHere",     "Transport", "Fin de boucle à la tête",        "O",                ""},
+        {ShortcutId::NavNextBeat,       "nav.nextBeat",     "Transport", "Tête : temps suivant",           "alt + cursor right", ""},
+        {ShortcutId::NavPreviousBeat,   "nav.previousBeat", "Transport", "Tête : temps précédent",         "alt + cursor left", ""},
+        {ShortcutId::NavNextBar,        "nav.nextBar",      "Transport", "Tête : mesure suivante",         "shift + alt + cursor right", ""},
+        {ShortcutId::NavPreviousBar,    "nav.previousBar",  "Transport", "Tête : mesure précédente",       "shift + alt + cursor left", ""},
     };
     return catalogue;
 }

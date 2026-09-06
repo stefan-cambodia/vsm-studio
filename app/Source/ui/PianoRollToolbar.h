@@ -11,7 +11,7 @@
 /// vérité pour "quel est l'outil courant" finiraient forcément par diverger
 /// -- typiquement quand l'utilisateur change d'outil au clavier (touches 1-6)
 /// sans passer par les boutons.
-class PianoRollToolbar : public juce::Component {
+class PianoRollToolbar : public juce::Component, private juce::Timer {
 public:
     explicit PianoRollToolbar(PianoRollComponent& pianoRoll);
 
@@ -20,11 +20,15 @@ public:
 
     /// Relit l'état du piano roll (outil, annuler/rétablir, sélection).
     void refreshFromPianoRoll();
+    /// D29.4 : la ligne d'information des notes choisies, relue par la minuterie.
+    void refreshSelectionInfo();
 
 private:
     void configureButton(juce::Button& button, const juce::String& tooltip);
     void applyGridFromCombos();
     void applyScaleFromCombos();
+    void timerCallback() override { refreshSelectionInfo(); }
+    void applyInfoLine(int champ);
 
     PianoRollComponent& pianoRoll_;
 
@@ -42,4 +46,7 @@ private:
     juce::Slider swingSlider_ { juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight };
     juce::Slider velocitySlider_ { juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight };
     juce::Label gridLabel_, swingLabel_, velocityLabel_, scaleLabel_;
+    /// D29.4 : « Début », « Durée », « Vélocité » des notes choisies, éditables.
+    juce::Label infoLabel_, debutEdit_, dureeEdit_, veloEdit_;
+    bool infoEnEdition_ = false;
 };

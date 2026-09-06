@@ -185,7 +185,21 @@ bool PianoRollComponent::setFoldEnabled(bool enabled) {
 
 Tick PianoRollComponent::gridTicks() const {
     if (!project_) return 120;
-    return gridResolutionToTicks(gridResolution_, project_->ticksPerQuarterNote);
+    if (!adaptiveGrid_) return gridResolutionToTicks(gridResolution_, project_->ticksPerQuarterNote);
+    // D29.5 : de la plus fine à la plus grosse, la première dont la case fait
+    // 24 px ; au-delà de la ronde, la ronde -- une grille qui disparaîtrait au
+    // dézoom serait une grille qu'on ne peut plus aimanter.
+    static const NoteValue kDeLaPlusFine[] = {
+        NoteValue::HundredTwentyEighth, NoteValue::SixtyFourth, NoteValue::ThirtySecond, NoteValue::Sixteenth,
+        NoteValue::Eighth, NoteValue::Quarter, NoteValue::Half, NoteValue::Whole };
+    Tick choisi = 0;
+    for (NoteValue v : kDeLaPlusFine) {
+        GridResolution r = gridResolution_;
+        r.value = v;
+        choisi = gridResolutionToTicks(r, project_->ticksPerQuarterNote);
+        if (static_cast<double>(choisi) * pixelsPerTick_ >= 24.0) break;
+    }
+    return std::max<Tick>(1, choisi);
 }
 
 Tick PianoRollComponent::ticksPerBeat() const {
@@ -612,6 +626,14 @@ void PianoRollComponent::nudgeSelection(int64_t deltaTicks) {
     if (!track || selectedNoteIds_.empty()) return;
     if (!beginEdit(u8"Décaler")) return;
     nudgeNotes(track->notes, selectedNoteIds_, deltaTicks);
+    notifyEdited();
+}
+
+void PianoRollComponent::setSelectionLength(vsm::midi::Tick ticks) {
+    Track* track = activeTrack();
+    if (!track || selectedNoteIds_.empty()) return;
+    if (!beginEdit(u8"Dur\u00e9e")) return;
+    setNoteLengths(track->notes, selectedNoteIds_, std::max<Tick>(1, ticks));
     notifyEdited();
 }
 

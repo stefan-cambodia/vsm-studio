@@ -254,6 +254,28 @@ void ChannelStrip::resized() {
 // transport). C'est pourquoi il n'y a qu'une `Passe` et qu'un `fermerPasse`.
 // ---------------------------------------------------------------------------
 
+void ChannelStrip::applyExternalControl(const std::string& parametre, float valeur) {
+    // LE CURSEUR SUIT SANS RIEN DÉCLENCHER : c'est nous qui posons la piste et
+    // la passe, pas le rappel du curseur (qui le ferait une seconde fois).
+    if (parametre == "mix.volume") {
+        track_.volume = valeur;
+        volume_.setValue(gainToDb(valeur), juce::dontSendNotification);
+    } else if (parametre == "mix.pan") {
+        track_.pan = valeur;
+        pan_.setValue(valeur, juce::dontSendNotification);
+    } else {
+        return;
+    }
+    // LA PASSE : ouverte au premier message si le W est armé et que le
+    // transport roule, nourrie ensuite. Un potentiomètre ne se « lâche » pas :
+    // la passe court jusqu'à l'arrêt du transport, comme en latch, quel que
+    // soit le mode -- Touch n'a pas de sens sans relâchement, et c'est dit
+    // dans la feuille de route (D29.3).
+    if (passes_.find(parametre) == passes_.end()) ouvrirPasse(parametre);
+    noterDansLaPasse(parametre, valeur);
+    if (onMixChanged) onMixChanged();
+}
+
 void ChannelStrip::basculerArmement() {
     using vsm::sequencer::AutomationMode;
     track_.automationMode = track_.automationMode == AutomationMode::Off   ? AutomationMode::Touch

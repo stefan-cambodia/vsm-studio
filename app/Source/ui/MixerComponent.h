@@ -133,6 +133,8 @@ public:
     /// D21.2 : Ctrl+clic sur Solo -- l'application met cette piste seule en solo.
     std::function<void(size_t)> onExclusiveSoloRequested;
     /// Relit muet et solo depuis la piste (après un solo exclusif).
+    /// D29.3 : voir MixerComponent::applyExternalControl.
+    void applyExternalControl(const std::string& parametre, float valeur);
     void refreshMuteSolo() {
         mute_.setToggleState(track_.muted, juce::dontSendNotification);
         solo_.setToggleState(track_.solo, juce::dontSendNotification);
@@ -287,6 +289,14 @@ public:
     std::function<void(size_t)> onExclusiveSoloRequested;
     /// Relit muet et solo de chaque tranche depuis sa piste.
     void refreshMuteSolo() { for (auto* strip : strips_) strip->refreshMuteSolo(); }
+    /// D29.3 : une valeur venue d'AILLEURS que la souris (MIDI Learn) posée sur
+    /// la tranche de la piste : le curseur, la piste, et la passe d'automation
+    /// si le W est armé. Faux si la tranche n'existe pas.
+    bool applyExternalControl(size_t track, const std::string& parametre, float valeur) {
+        if (track >= static_cast<size_t>(strips_.size())) return false;
+        strips_[static_cast<int>(track)]->applyExternalControl(parametre, valeur);
+        return true;
+    }
     std::function<void()> onMixEditStarted;
 
     /// D16.8 : passés à chaque tranche à sa construction (voir ChannelStrip).

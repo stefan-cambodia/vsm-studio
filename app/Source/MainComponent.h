@@ -869,6 +869,10 @@ private:
     void promptMidiProgram();
     void setSelectedTrackMidiProgram(int programme, int banque);
     void setSelectedTrackInputChannel(int canal);
+    /// D29.1 / D29.2 : les locateurs à la tête ; la tête déplacée de N temps ou N mesures.
+    void setLoopBoundaryAtPlayhead(bool debut);
+    void seekByBeats(int temps);
+    void seekByBars(int mesures);
     bool importAudioFileOnNewTrack(const juce::File& fichier);
     vsm::sequencer::Groove grooveCourant_;
     /// Les trois vues qui dessinent des pistes, rafraîchies ensemble (D17.4).

@@ -190,6 +190,12 @@ public:
     void transposeSelection(int semitones);
     void nudgeSelection(int64_t deltaTicks);
     void setSelectionLengthToGrid();
+    /// D29.4 : la durée posée sur toutes les notes choisies, en ticks (au moins 1).
+    void setSelectionLength(vsm::midi::Tick ticks);
+    /// D29.5 : LA GRILLE ADAPTATIVE -- la subdivision la plus fine dont la case
+    /// fait au moins 24 px à l'écran, triolet et pointé respectés.
+    void setAdaptiveGrid(bool on) { adaptiveGrid_ = on; repaint(); }
+    bool adaptiveGrid() const { return adaptiveGrid_; }
     void scaleSelectionLength(float factor);
     /// D22.3 : départs ET durées à l'échelle depuis le premier départ choisi.
     void scaleSelectionTime(double factor);
@@ -304,6 +310,7 @@ private:
     // Vue, exprimée en unités musicales (ticks/notes) plutôt qu'en pixels :
     // un changement de zoom ne déplace donc jamais le contenu sous le curseur.
     double pixelsPerTick_ = 0.08;
+    bool adaptiveGrid_ = false;   ///< D29.5
     vsm::midi::Tick scrollTick_ = 0;
     int noteHeight_ = 16;
     int topNote_ = 84;

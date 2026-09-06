@@ -97,6 +97,7 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
     addAndMakeVisible(gridCombo_);
     for (size_t i = 0; i < gridChoices().size(); ++i)
         gridCombo_.addItem(gridChoices()[i].second, static_cast<int>(i) + 1);
+    gridCombo_.addItem("Auto", 100);   // D29.5 : la grille suit le zoom
     gridCombo_.setSelectedId(5, juce::dontSendNotification); // 1/16
     gridCombo_.onChange = [this] { applyGridFromCombos(); };
 
@@ -129,6 +130,28 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
     velocitySlider_.setRange(1.0, 127.0, 1.0);
     velocitySlider_.setValue(100.0, juce::dontSendNotification);
     velocitySlider_.setTextBoxStyle(juce::Slider::TextBoxRight, false, 44, 18);
+    // D29.4 : LA LIGNE D'INFORMATION. Trois champs éditables, relus huit fois
+    // par seconde ; l'édition d'un champ ne pose que ce champ.
+    infoLabel_.setText(u8"Note :", juce::dontSendNotification);
+    infoLabel_.setJustificationType(juce::Justification::centredRight);
+    addAndMakeVisible(infoLabel_);
+    int champ = 0;
+    for (auto* e : { &debutEdit_, &dureeEdit_, &veloEdit_ }) {
+        e->setEditable(false, true, false);
+        e->setJustificationType(juce::Justification::centred);
+        e->setColour(juce::Label::outlineColourId, Palette::border);
+        e->setTooltip(champ == 0 ? u8"D\u00e9but : mesure.temps (\u00ab 17.3 \u00bb, \u00ab 17.3+120 \u00bb en ticks) ; double-clic pour \u00e9diter, d\u00e9place toute la s\u00e9lection"
+                    : champ == 1 ? u8"Dur\u00e9e en ticks, pos\u00e9e sur toutes les notes choisies"
+                                 : u8"V\u00e9locit\u00e9 (1-127), pos\u00e9e sur toutes les notes choisies");
+        const int ce = champ;
+        e->onEditorShow = [this] { infoEnEdition_ = true; };
+        e->onEditorHide = [this] { infoEnEdition_ = false; };
+        e->onTextChange = [this, ce] { applyInfoLine(ce); };
+        addAndMakeVisible(e);
+        ++champ;
+    }
+    startTimerHz(8);
+
     velocitySlider_.onValueChange = [this] {
         pianoRoll_.setDefaultVelocity(static_cast<uint8_t>(velocitySlider_.getValue()));
     };
@@ -154,7 +177,11 @@ void PianoRollToolbar::configureButton(juce::Button& button, const juce::String&
 
 void PianoRollToolbar::applyGridFromCombos() {
     GridResolution grid;
-    const int index = juce::jlimit(1, static_cast<int>(gridChoices().size()), gridCombo_.getSelectedId());
+    // D29.5 : « Auto » garde 1/16 comme base des modificateurs (triolet, pointé)
+    // et laisse le piano roll choisir la valeur selon le zoom.
+    pianoRoll_.setAdaptiveGrid(gridCombo_.getSelectedId() == 100);
+    const int index = gridCombo_.getSelectedId() == 100 ? 5
+                    : juce::jlimit(1, static_cast<int>(gridChoices().size()), gridCombo_.getSelectedId());
     grid.value = gridChoices()[static_cast<size_t>(index - 1)].first;
     grid.triplet = gridModifierCombo_.getSelectedId() == 2;
     grid.dotted = gridModifierCombo_.getSelectedId() == 3;
@@ -205,9 +232,15 @@ void PianoRollToolbar::resized() {
     // Deux rangées : outils et actions en haut, réglages en bas. La barre
     // reste utilisable sur une fenêtre étroite -- rien n'est jamais coupé,
     // les éléments se serrent.
+    // D29.4 : TROIS RANGÉES. La ligne d'information avait d'abord pris 300 px
+    // à droite de la rangée des réglages, et à la largeur du volet elle
+    // cachait l'aimant, le pas à pas et le swing : entre « ça tient » et « ça
+    // se lit », c'est la lisibilité qui gagne, on agrandit la case.
     auto area = getLocalBounds().reduced(6, 4);
-    auto top = area.removeFromTop(area.getHeight() / 2).reduced(0, 1);
-    auto bottom = area.reduced(0, 1);
+    const int rangee = area.getHeight() / 3;
+    auto top = area.removeFromTop(rangee).reduced(0, 1);
+    auto bottom = area.removeFromTop(rangee).reduced(0, 1);
+    auto info = area.reduced(0, 1);
 
     auto place = [](juce::Rectangle<int>& row, juce::Component& c, int width) {
         c.setBounds(row.removeFromLeft(width).reduced(1, 0));
@@ -228,6 +261,10 @@ void PianoRollToolbar::resized() {
     place(top, zoomInButton_, 26);
     place(top, zoomFitButton_, 46);
 
+    place(info, infoLabel_, 46);
+    place(info, debutEdit_, 110);
+    place(info, dureeEdit_, 90);
+    place(info, veloEdit_, 90);
     place(bottom, gridLabel_, 38);
     place(bottom, gridCombo_, 66);
     place(bottom, gridModifierCombo_, 78);
@@ -247,4 +284,65 @@ void PianoRollToolbar::resized() {
     place(bottom, ghostButton_, 86);
     place(bottom, foldButton_, 76);
     place(bottom, followButton_, 76);
+}
+
+// --- D29.4 : la ligne d'information des notes --------------------------------
+
+void PianoRollToolbar::refreshSelectionInfo() {
+    if (infoEnEdition_) return;   // on ne réécrit pas sous les doigts
+    const auto* track = pianoRoll_.activeTrack();
+    const auto* project = pianoRoll_.project();
+    const auto& ids = pianoRoll_.selectedNoteIds();
+    if (!track || !project || ids.empty()) {
+        for (auto* e : { &debutEdit_, &dureeEdit_, &veloEdit_ }) {
+            e->setText(juce::String::fromUTF8("\xe2\x80\x94"), juce::dontSendNotification);
+            e->setEnabled(false);
+        }
+        return;
+    }
+    const vsm::sequencer::Note* premiere = nullptr;
+    size_t combien = 0;
+    for (const auto& n : track->notes) {
+        if (ids.count(n.id) == 0) continue;
+        ++combien;
+        if (!premiere || n.startTick < premiere->startTick) premiere = &n;
+    }
+    if (!premiere) return;
+    const auto bb = project->timeSignatureMap.barBeatAt(premiere->startTick, project->ticksPerQuarterNote);
+    juce::String debut = juce::String(static_cast<long long>(bb.bar + 1)) + "."
+                       + juce::String(static_cast<long long>(bb.beat + 1));
+    if (bb.tickInBeat != 0) debut += "+" + juce::String(static_cast<long long>(bb.tickInBeat));
+    for (auto* e : { &debutEdit_, &dureeEdit_, &veloEdit_ }) e->setEnabled(true);
+    debutEdit_.setText(debut, juce::dontSendNotification);
+    dureeEdit_.setText(juce::String(static_cast<long long>(premiere->durationTicks())), juce::dontSendNotification);
+    veloEdit_.setText(juce::String(static_cast<int>(premiere->velocity))
+                          + (combien > 1 ? juce::String::fromUTF8(" \xc2\xb7 ") + juce::String(static_cast<int>(combien)) : juce::String()),
+                      juce::dontSendNotification);
+}
+
+void PianoRollToolbar::applyInfoLine(int champ) {
+    const auto* track = pianoRoll_.activeTrack();
+    const auto* project = pianoRoll_.project();
+    const auto& ids = pianoRoll_.selectedNoteIds();
+    if (!track || !project || ids.empty()) return;
+    if (champ == 0) {
+        // « 17.3 » ou « 17.3+120 » : la sélection entière est déplacée de l'écart
+        // entre son premier départ et la position saisie.
+        const juce::String texte = debutEdit_.getText().trim();
+        const juce::String position = texte.upToFirstOccurrenceOf("+", false, false);
+        const vsm::midi::Tick reste = texte.contains("+") ? static_cast<vsm::midi::Tick>(texte.fromFirstOccurrenceOf("+", false, false).getLargeIntValue()) : 0;
+        int64_t mesure = 0, temps = 0;
+        if (!vsm::sequencer::parseBarBeat(position.toStdString(), mesure, temps)) return;
+        const vsm::midi::Tick voulu = project->timeSignatureMap.tickAtBarBeat(mesure, temps, project->ticksPerQuarterNote) + reste;
+        vsm::midi::Tick premier = -1;
+        for (const auto& n : track->notes)
+            if (ids.count(n.id) > 0 && (premier < 0 || n.startTick < premier)) premier = n.startTick;
+        if (premier >= 0 && voulu != premier) pianoRoll_.nudgeSelection(voulu - premier);
+    } else if (champ == 1) {
+        const auto ticks = dureeEdit_.getText().trim().getLargeIntValue();
+        if (ticks > 0) pianoRoll_.setSelectionLength(static_cast<vsm::midi::Tick>(ticks));
+    } else {
+        const int velo = veloEdit_.getText().trim().upToFirstOccurrenceOf(" ", false, false).getIntValue();
+        if (velo >= 1 && velo <= 127) pianoRoll_.setSelectionVelocity(static_cast<uint8_t>(velo));
+    }
 }

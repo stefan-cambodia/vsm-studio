@@ -76,6 +76,13 @@ enum class ShortcutId : uint16_t {
     NavPreviousTrack,
     /// D28.4 : la tête au début de la sélection.
     NavToSelection,
+    /// D29.1 / D29.2 : les locateurs à la tête, la tête d'un temps ou d'une mesure.
+    LoopStartAtPlayhead,
+    LoopEndAtPlayhead,
+    NavNextBeat,
+    NavPreviousBeat,
+    NavNextBar,
+    NavPreviousBar,
 
     Count
 };

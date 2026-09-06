@@ -82,7 +82,7 @@ public:
 
     void resized() override {
         auto area = getLocalBounds();
-        toolbar_.setBounds(area.removeFromTop(64));
+        toolbar_.setBounds(area.removeFromTop(92));   // D29.4 : trois rangées, la ligne d'information en bas
         statusLabel_.setBounds(area.removeFromBottom(20).reduced(8, 0));
         velocityLane_.setBounds(area.removeFromBottom(110));
         ruler_.setBounds(area.removeFromTop(22));
