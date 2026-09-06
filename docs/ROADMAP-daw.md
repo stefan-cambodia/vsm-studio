@@ -5372,3 +5372,131 @@ Cinq manques ont survécu.
 > travaux seulement, désormais, tant qu'une campagne court.
 >
 > Tests : 263 core, 1 249 audio, 274 interchange, 168 Python — tous verts.
+
+### Phase D22 — Le onzième audit : ce qui manque une fois D21 posée (06/09/2026, 13:05)
+
+**Pourquoi.** Même méthode, même ordre du § 3, et la règle de D19 : chaque
+manque cherché en LISANT la surface du module qui le porterait — le menu
+contextuel du clip (`ArrangementComponent`), `ClipEdit.h`, `NoteEdit.h`,
+`TimeSignatureMap.h`, `TransportBarComponent` et `AudioEngine`, le menu
+Piste — puis dans ce document. Le relevé a été fait par sondage du code,
+vingt-cinq candidats d'un coup, et chaque « absent » revérifié à la main.
+
+Le relevé a écarté, comme existant : les notes fantômes des autres pistes
+(bouton « Fantômes » du piano roll), le tap tempo (bouton « Tap »), le
+copier-coller des clips (Ctrl+C / Ctrl+V dans l'arrangement), la crête
+tenue et l'écrêtage au mélangeur, le suivi de la tête, le repère suivant
+et précédent (Maj+N / Maj+B), la hauteur réglable des pistes, le swing de
+la quantification, la chaîne latérale, le compteur de charge.
+
+**Et l'élément reporté de D21 reste reporté, pour la même raison** : la
+campagne R1, morte avec un redémarrage de la machine pendant le neuvième
+morceau du lot prod (journal arrêté à 13:23 le 05/09, machine relancée le
+06/09 à 12:52), a été RELANCÉE à 12:54 — reprise automatique, les huit
+morceaux mesurés sont sautés — et `vsm-render` ne se recompile pas tant
+qu'elle court. *Transposer un clip audio* attend donc son verdict.
+
+Cinq manques ont survécu.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D22.1 | **Le gain et la phase d'un clip audio, à la main.** `Clip::gain` et `Clip::invertPhase` sont dans le modèle, le fichier et le moteur depuis D13 ; `setClipGain` et `toggleClipPhase` existent dans `core/`, testés — et aucune vue ne les appelle : l'application NORMALISE (gain = 1/crête) et rien d'autre, et le liséré de phase inversée se dessine pour un état que personne ne peut poser. Live : Clip Gain ; Cubase : le volume de la ligne d'information et le bouton Ø | le menu du clip audio propose « Gain du clip ▸ −6, −3, −1, +1, +3, +6 dB, 0 dB » (relatif au gain courant, borné à ±24 dB) et « Phase inversée » cochée ; sur toute la sélection ; le gain se lit sur le clip (« +3,0 dB ») et la phase par son liséré ; annulable ; vérifié à l'écran |
+| D22.2 | **Aller à une mesure.** La position se lit (D11.3) et ne se saisit pas : rejoindre la mesure 57 se fait à la souris, en zoomant. Cubase : Maj+P ; Live : le champ de position se tape | `TimeSignatureMap::tickAtBarBeat` (inverse de `barBeatAt`, changements de signature compris) et `parseBarBeat` (« 17 », « 17.3 », « 17:3 ») dans `core/`, testés en aller-retour à travers un passage en 3/4 ; « Édition ▸ Aller à la mesure… » (Maj+P, dans la table des raccourcis) et le double-clic sur la position de la barre de transport ouvrent la saisie ; `VSM_POSITION=17.3` pour le vérifier sans souris ; la barre de transport dit la nouvelle position ; vérifié à l'écran |
+| D22.3 | **Deux fois plus vite, deux fois plus lent.** « Durée ×2 » allonge chaque note sans bouger son départ : une phrase de croches devient une phrase de noires QUI SE CHEVAUCHENT, pas la même phrase jouée à moitié de vitesse. Live : les boutons ×2 et :2 du clip MIDI ; Cubase : « Double/Half tempo » du Logical Editor | `scaleNoteTimes` dans `core/`, pur : départs ET durées mis à l'échelle depuis le PREMIER départ de la sélection, durée d'au moins un tick, les notes non choisies immobiles ; « Temps et durée ▸ Deux fois plus lent (×2) » et « Deux fois plus vite (÷2) » dans le piano roll ; test : quatre noires ×2 donnent quatre blanches à 0, 960, 1920, 2880, et ÷2 deux fois de suite ne perd pas de note |
+| D22.4 | **Le voyant d'activité MIDI.** Un clavier branché qui ne joue rien laisse deux causes : le câble ou la piste. Rien ne dit si une note ARRIVE ; rien ne dit si une note PART vers une machine. Live : les deux voyants en haut à droite ; Cubase : l'activité MIDI de la barre de transport | deux voyants « IN » et « OUT » dans la barre de transport, à côté du témoin d'entrée audio : IN s'allume à chaque message reçu du clavier (MIDI ou d'ordinateur), OUT à chaque note envoyée à une machine (planning ou écoute) ; compteurs atomiques dans `AudioEngine` et `ProcessGraph`, lus par la minuterie de l'application, tenue de 250 ms ; `VSM_LECTURE=1` lance la lecture avant la capture pour que OUT se photographie ; vérifié à l'écran |
+| D22.5 | **Les presets de piste.** Un preset d'effet (D15.4) sauve UN insert, un preset de synthé sauve UNE machine ; la piste — sa machine et son état, ses inserts, ses départs, son volume, son panoramique, sa couleur, sa transposition, son décalage — se refait à la main à chaque projet. Cubase : Track Presets ; Live : enregistrer le rack de la piste par défaut | `TrackPreset` dans `interchange/` (format `vsm-track-preset` v1, extension `.track.json`), qui emboîte un `SynthPreset` pour la machine et les descriptions d'effets ; aller-retour JSON testé, un preset d'autre format refusé par son nom ; « Piste ▸ Enregistrer la piste comme preset… » (nom demandé) et « Piste ▸ Appliquer un preset de piste ▸ liste des fichiers du dossier `pistes` de la bibliothèque » ; appliquer garde les notes et les clips de la piste, remplace le reste, annulable ; vérifié à l'écran |
+
+> **D22.1 EST FAITE (06/09/2026, 13:34).** Le menu du clip audio propose
+> « Gain du clip (+0,0 dB) ▸ −6, −3, −1, +1, +3, +6 dB, 0 dB (remettre) » —
+> le titre du sous-menu DIT le gain d'où l'on part — et « Phase inversée »,
+> cochée quand elle l'est. Les pas sont RELATIFS et bornés à ±24 dB : « +3 dB »
+> sur six clips inégaux les monte tous de 3 dB, il ne les aligne pas. Le gain
+> se lit sur le clip, en haut à droite, sur un cartouche sombre — la couleur
+> du clip est celle de l'utilisateur, et un texte ambre sur un clip ambre ne
+> se lisait pas (première capture). Vérifié à l'écran sur un projet à piste
+> audio, par deux jetons neufs de `VSM_VUE` qui passent par la MÊME fonction
+> que le menu contextuel (`gain-clip:+3`, `phase-clip`) : « +3.0 dB » sur
+> « Voix prise 1 », et le liséré rouge en tirets de la phase. `setClipGain`
+> et `toggleClipPhase` étaient testés depuis D13 ; ils n'étaient appelés par
+> personne.
+>
+> **D22.2 EST FAITE (06/09/2026, 13:34).** `TimeSignatureMap::tickAtBarBeat`
+> est l'inverse de `barBeatAt`, changements de signature compris — testé en
+> aller-retour sur soixante mesures, tous les temps, à travers un passage en
+> 3/4 ; un temps au-delà de la mesure déborde sur la suivante plutôt que
+> d'être refusé, c'est ce que la saisie attend. `parseBarBeat` lit « 17 »,
+> « 17.3 », « 17:3 », « 17 3 » en numérotation humaine et REFUSE le reste
+> (« 0 », « 17.0 », « 17. », « mesure 17 ») : une faute de frappe qui serait
+> lue de travers enverrait la tête n'importe où sans le dire. « Édition ▸
+> Aller à la mesure… » (Maj+P, dans la table des raccourcis, à côté des
+> marqueurs) et le double-clic sur la position de la barre de transport
+> ouvrent la saisie, préremplie de la position courante. Vérifié à l'écran
+> par `VSM_POSITION=3.2` : « 00:04,154 | mes. 3 · 2 », qui est bien neuf
+> temps à 130 BPM.
+>
+> **D22.3 EST FAITE (06/09/2026, 13:34).** `scaleNoteTimes` met à l'échelle
+> les DÉPARTS et les durées depuis le premier départ de la sélection, qui ne
+> bouge pas ; durée d'au moins un tick ; les notes non choisies immobiles.
+> Testé : quatre noires ×2 donnent quatre blanches à 0, 960, 1920, 2880 ;
+> ÷2 douze fois de suite ne perd pas de note ; l'ancre est celle de la
+> sélection, pas du morceau. « Temps et durée ▸ Deux fois plus lent (départs
+> et durées ×2) » et « Deux fois plus vite (÷2) » dans le piano roll, sous
+> « Durée x2 » pour que la différence se lise là où l'on choisit. Vérifié à
+> l'écran par `VSM_MENU=Tout sélectionner;Deux fois plus lent` sur la basse
+> du projet d'exemple : la phrase qui finissait à la mesure 1,9 finit à la
+> 2,8, les barres de vélocité deux fois plus espacées, la sélection gardée.
+>
+> **D22.4 EST FAITE (06/09/2026, 13:34).** Deux voyants « IN » et « OUT »
+> dans la barre de transport, après le témoin d'entrée audio. IN compte les
+> messages reçus par `AudioEngine::handleIncomingMidiMessage` — AVANT tout
+> tri, un message qu'on ignore est quand même arrivé —, donc du clavier
+> branché comme du clavier d'ordinateur, qui passe par le même chemin ; OUT
+> compte les NoteOn au moment où ils entrent dans le tableau que la machine
+> lit (`ProcessGraph`, écoute et planning). La minuterie de l'application
+> compare deux lectures, la barre tient chaque voyant 250 ms et ne se
+> redessine que quand l'état visible change. Vérifié à l'écran par
+> `VSM_LECTURE=1` et `VSM_VUE=note:48` (une note par le chemin du clavier
+> d'ordinateur, rejouée pendant trois secondes) : IN et OUT allumés, Play
+> enfoncé, position 00:01,939.
+>
+> **Et une panne muette trouvée en posant les voyants.** Le témoin d'entrée
+> audio (D3.4) ne se dessinait plus : la zone de transport faisait 460 px
+> pour 466 px de boutons depuis le sélecteur de vitesse (D18.5), et le
+> témoin, servi en dernier, recevait un rectangle vide — que `paint` saute
+> sans rien dire. La zone est élargie pour lui et pour les voyants (540 px,
+> 494 en fenêtre serrée), la place reprise sur le bouton d'écoute A/B ; à
+> 1 280 px logiques, « Ouvrir MIDI… » et « Exporter MIDI… » tiennent encore.
+>
+> **D22.5 EST FAITE (06/09/2026, 13:34), ET LA PHASE D22 EST CLOSE.**
+> `TrackPreset` dans `interchange/` (format `vsm-track-preset` v1,
+> `.track.json`) emboîte un `SynthPreset` pour la machine et un
+> `EffectPreset` par insert, avec son contournement ; il sauve la machine,
+> les inserts, les départs, le volume, le panoramique, la couleur, le canal,
+> la transposition, le décalage, le groupe de sortie — et PAS les notes, les
+> clips, les prises, l'automation, ni le solo, le muet, l'armement, le gel,
+> le verrou : un preset est un réglage qu'on pose sur un contenu, pas un
+> contenu, et pas un état de session. Aller-retour JSON testé champ par
+> champ ; un preset d'autre format ou d'autre version refusé par son nom ;
+> un preset audio posé sur une piste MIDI lui laisse sa machine (ses notes
+> n'en auraient plus). « Piste ▸ Enregistrer la piste comme preset… » (nom
+> demandé, l'état de la machine pris sur la machine VIVANTE) et « Appliquer
+> un preset de piste ▸ » qui LISTE le dossier `pistes` de la bibliothèque —
+> sinon du projet, sinon des données de l'application, comme les grooves —
+> et dit lequel quand il est vide. Appliquer garde les notes et les clips,
+> remplace le reste, refabrique les inserts par le modèle, pose l'état de la
+> machine après, annulable. Vérifié à l'écran : « Basse acide » écrit depuis
+> la piste 1 (`VSM_PRESET_PISTE`), appliqué à « Drums » par
+> `VSM_MENU=Basse acide` — la piste porte désormais la TB-303 et le volume
+> −0,9 dB de la basse, ses notes de batterie sont restées.
+>
+> **Ce que l'audit laisse écrit.** Cinq manques trouvés en lisant les
+> surfaces, cinq faits, l'élément reporté de D21 toujours reporté (la
+> campagne court). La campagne R1 est morte une seconde fois avec un
+> redémarrage de la machine, à 12:58 dans le dixième morceau du lot prod ;
+> relancée à 13:18 par `setsid nohup`, les neuf morceaux mesurés sautés.
+> Tout ce qui touche l'application a été compilé à `-j 2` pendant qu'elle
+> court, et `vsm-render` n'a pas été recompilé.
+>
+> Tests : 268 core, 1 249 audio, 278 interchange — tous verts ; Python
+> inchangé (168 à D21).
+

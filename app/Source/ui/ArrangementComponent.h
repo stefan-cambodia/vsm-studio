@@ -130,6 +130,11 @@ public:
     /// Le pas d'aimantation à cet endroit du morceau (mesure ou grille fine).
     vsm::midi::Tick snapStep(vsm::midi::Tick tick) const;
     bool hasSelection() const { return !selection_.empty(); }
+    /// D22.1 : exécuter une entrée du menu contextuel du clip sur le premier
+    /// clip choisi, par son identifiant de menu -- pour l'autoportrait
+    /// (VSM_VUE=gain-clip:+3, phase-clip), le menu contextuel n'existant qu'à
+    /// la souris. Faux si rien n'est choisi.
+    bool runClipMenuActionForCapture(int choix);
 
     /// D18.3 : LA SÉLECTION TELLE QUE LE MONTAGE LA VOIT — celle de
     /// l'utilisateur, élargie aux pistes du même groupe d'édition.

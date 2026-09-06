@@ -82,6 +82,21 @@ public:
     void setListening(const juce::String& label, bool enabled, bool active);
     std::function<void()> onCycleListening;
 
+    /// D22.2 : le double-clic sur la position ouvre la saisie « Aller à la
+    /// mesure » (Live : le champ de position se tape). La barre ne connaît
+    /// pas le projet ; elle prévient.
+    std::function<void()> onPositionDoubleClicked;
+    void mouseDoubleClick(const juce::MouseEvent&) override;
+
+    /// D22.4 : LES VOYANTS « IN » ET « OUT ». `in` = un message MIDI est
+    /// arrivé depuis le dernier appel (clavier branché ou d'ordinateur) ;
+    /// `out` = une note est partie vers une machine (planning ou écoute).
+    /// Chaque voyant reste allumé 250 ms : un appel à 30 Hz s'éteindrait
+    /// avant d'être vu. Un clavier branché qui ne joue rien laisse deux
+    /// causes, le câble ou la piste ; IN qui clignote sans OUT désigne la
+    /// piste, IN éteint désigne le câble.
+    void setMidiActivity(bool in, bool out);
+
 private:
     void timerCallback() override; // rafraîchit l'affichage de la position de lecture
 
@@ -105,6 +120,9 @@ private:
     float inputPeak_ = 0.0f;
     int inputChannels_ = 0;
     juce::Rectangle<int> inputMeterBounds_;
+    juce::Rectangle<int> midiInBounds_, midiOutBounds_;   ///< D22.4
+    juce::uint32 midiInUntil_ = 0, midiOutUntil_ = 0;     ///< D22.4 : fin de tenue (ms)
+    bool midiInLit_ = false, midiOutLit_ = false;         ///< D22.4 : l'état dessiné
     juce::TextButton loopButton_   { "Loop" };
     juce::TextButton listenButton_ { u8"Écoute A/B : pas d'original" };
     juce::TextButton openButton_   { "Ouvrir MIDI..." };

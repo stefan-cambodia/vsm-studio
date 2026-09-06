@@ -41,6 +41,8 @@
 #include "vsm/interchange/ProjectBundle.h"
 #include "vsm/interchange/ReconstructionReport.h"
 #include "vsm/interchange/SynthPreset.h"
+#include "vsm/interchange/TrackPreset.h"
+#include <cstring>
 #include "audio/ReferenceAudioLoader.h"
 #include "vsm/audio/io/AudioTrackLoader.h"
 #include "vsm/audio/io/WavFileReader.h"
@@ -416,6 +418,7 @@ MainComponent::MainComponent()
         return juce::String(u8"mes. ") + juce::String(static_cast<long long>(bb.bar + 1))
                + juce::String(u8" \u00b7 ") + juce::String(static_cast<long long>(bb.beat + 1));
     };
+    transportBar_.onPositionDoubleClicked = [this] { promptGoToBar(); };
     arrangement_.onPlayheadRequested = [this](vsm::midi::Tick tick) {
         transport_.seekToTick(tick);
         audioEngine_.processGraph().seekSeconds(project_.ticksToSeconds(tick));
@@ -1147,6 +1150,24 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
         arrangement_.selectFirstClipOf(
             static_cast<size_t>(std::max(0, nom.substring(13).getIntValue())));
     else if (nom == "tout-choisir") arrangement_.selectAll();
+    // D22.1 : le gain et la phase du clip choisi (gain-clip:+3, gain-clip:-6,
+    // gain-clip:0, phase-clip), par la MÊME fonction que le menu contextuel.
+    else if (nom.startsWith("gain-clip:")) {
+        static const int kPas[] = {-6, -3, -1, 1, 3, 6};
+        const int voulu = nom.substring(10).getIntValue();
+        int choix = voulu == 0 ? 56 : -1;
+        for (int i = 0; i < 6; ++i) if (kPas[i] == voulu) choix = 50 + i;
+        if (choix < 0 || !arrangement_.runClipMenuActionForCapture(choix))
+            std::fputs("VSM_VUE gain-clip : pas parmi -6, -3, -1, +1, +3, +6, 0, ou aucun clip choisi\n", stderr);
+    }
+    // D22.4 : une note par le chemin du clavier d'ordinateur, pour
+    // photographier les voyants IN (elle arrive) et OUT (elle part).
+    else if (nom.startsWith("note:"))
+        playNoteForCapture(static_cast<uint8_t>(juce::jlimit(0, 127, nom.substring(5).getIntValue())), 15);
+    else if (nom == "phase-clip") {
+        if (!arrangement_.runClipMenuActionForCapture(57))
+            std::fputs("VSM_VUE phase-clip : aucun clip choisi\n", stderr);
+    }
     else if (nom == "couper-clips") arrangement_.splitSelectionAtPlayhead();
     else if (nom == "joindre-clips") arrangement_.joinSelection();
     else if (nom.startsWith("tete:")) {
@@ -1394,6 +1415,14 @@ void MainComponent::timerCallback() {
 
     transportBar_.setInputLevel(audioEngine_.readInputPeak(),
                                  audioEngine_.currentInputChannels());
+    // D22.4 : LES VOYANTS MIDI, sur ce qui a bougé depuis le dernier tour.
+    {
+        const uint64_t in = audioEngine_.midiInCount();
+        const uint64_t out = audioEngine_.processGraph().notesSentToInstruments();
+        transportBar_.setMidiActivity(in != midiInSeen_, out != notesOutSeen_);
+        midiInSeen_ = in;
+        notesOutSeen_ = out;
+    }
     pianoRoll_.setPlayheadTick(playhead);
     synthRack_.setPlayheadTick(playhead); // éclaire le pas en cours sur les grilles
     arrangement_.setPlayheadTick(playhead);
@@ -1653,6 +1682,10 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                          project_.loopEndTick > project_.loopStartTick);
             menu.addItem(kMenuEditLocatorsFromSelection, u8"Locateurs sur la s\u00e9lection (P)",
                          arrangement_.hasSelection() || pianoRoll_.hasSelection());
+            // D22.2 : ALLER À UNE MESURE. La position se lisait (D11.3) et ne
+            // se saisissait pas : rejoindre la mesure 57 se faisait à la
+            // souris, en zoomant.
+            menu.addItem(kMenuEditGoToBar, u8"Aller \u00e0 la mesure\u2026 (Maj+P, double-clic sur la position)");
             // D20.1 : RÉPÉTER LA SÉLECTION de l'arrangement, jumeau du menu
             // contextuel du clip -- ici pour qu'il s'atteigne sans souris.
             menu.addSeparator();
@@ -1765,6 +1798,31 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                         + juce::String(static_cast<int>(masquees))
                                         + juce::String::fromUTF8(u8" masquées)"),
                               masquees > 0);
+                // D22.5 : LES PRESETS DE PISTE. Le sous-menu LISTE le dossier,
+                // et dit lequel quand il est vide : un sous-menu vide sans
+                // raison est un sous-menu qu'on croit cassé.
+                menu.addSeparator();
+                menu.addItem(kMenuTrackSavePreset,
+                              u8"Enregistrer la piste comme preset\u2026",
+                              choisie < project_.tracks.size()
+                                  && !project_.tracks[choisie].isFolder());
+                {
+                    juce::PopupMenu presets;
+                    const auto fichiers = trackPresetFiles();
+                    for (int i = 0; i < fichiers.size() && i <= kMenuTrackPresetLast - kMenuTrackPresetFirst; ++i)
+                        presets.addItem(kMenuTrackPresetFirst + i,
+                                         fichiers[i].getFileName().dropLastCharacters(
+                                             static_cast<int>(std::strlen(vsm::interchange::kTrackPresetExtension))),
+                                         choisie < project_.tracks.size());
+                    if (fichiers.isEmpty())
+                        presets.addItem(999999,   // jamais choisi : grisé
+                                         juce::String(u8"(aucun preset dans ")
+                                             + trackPresetFolder().getFullPathName() + ")",
+                                         false);
+                    menu.addSubMenu(u8"Appliquer un preset de piste (les notes et les clips restent)",
+                                     presets, choisie < project_.tracks.size());
+                }
+                menu.addSeparator();
                 {
                     // D18.3 : LE GROUPE D'ÉDITION. Huit suffisent -- au-delà,
                     // on ne s'y retrouve plus, et le besoin réel est « les
@@ -2163,6 +2221,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuEditSaveGroove)    { saveCurrentGroove(); return; }
     if (menuItemID == kMenuEditLoadGroove)    { loadGrooveFromLibrary(); return; }
     if (menuItemID == kMenuEditLocatorsFromSelection) { locatorsFromSelection(); return; }
+    if (menuItemID == kMenuEditGoToBar) { promptGoToBar(); return; }
     if (menuItemID == kMenuEditSelectAllClips) { arrangement_.selectAll(); return; }
     if (menuItemID == kMenuEditRepeatToLoopEnd) { arrangement_.repeatSelectionUntilLoopEnd(); return; }
     if (menuItemID == kMenuEditSliceAtOnsets) { sliceSelectedClipsAtOnsets(); return; }
@@ -2397,7 +2456,14 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuTrackHide:     hideSelectedTrack(); break;
         case kMenuTrackSoloExclusive: soloTrackExclusively(trackList_.selectedTrackIndex()); break;
         case kMenuTrackShowAll:  showAllTracks(); break;
+        case kMenuTrackSavePreset: promptSaveTrackPreset(); break;
         default: break;
+    }
+    if (menuItemID >= kMenuTrackPresetFirst && menuItemID <= kMenuTrackPresetLast) {
+        const auto fichiers = trackPresetFiles();
+        const int i = menuItemID - kMenuTrackPresetFirst;
+        if (i < fichiers.size()) applyTrackPresetFile(fichiers[i]);
+        return;
     }
     if (menuItemID >= kMenuTrackEditGroupNone && menuItemID <= kMenuTrackEditGroupLast) {
         const size_t piste = trackList_.selectedTrackIndex();
@@ -5154,6 +5220,7 @@ bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
         // appui remonte bien au marqueur d'avant et non à celui qu'on vient
         // d'atteindre. Sans marqueur avant, on revient au début.
         case Id::NavGoToStart: seekAllViews(0); return true;
+        case Id::NavGoToBar: promptGoToBar(); return true;
         case Id::EditInsertTimeAtLocators: editTimeAtLocators(true); return true;
         case Id::EditLocatorsFromSelection: locatorsFromSelection(); return true;
         // AJUSTER À LA FENÊTRE vaut pour les DEUX vues (D14.2) : l'arrangement
@@ -7320,6 +7387,177 @@ void MainComponent::loadGrooveFromLibrary() {
         }
         grooveCourant_ = lu.groove;
     });
+}
+
+// --- D22.2 : aller à une mesure ---------------------------------------------
+
+bool MainComponent::goToBarText(const juce::String& texte) {
+    int64_t mesure = 0, temps = 0;
+    if (!vsm::sequencer::parseBarBeat(texte.trim().toStdString(), mesure, temps)) {
+        std::fputs(("Aller \u00e0 la mesure : \u00ab " + texte.toStdString()
+                    + " \u00bb n'est pas une position (attendu \u00ab 17 \u00bb ou \u00ab 17.3 \u00bb)\n").c_str(), stderr);
+        return false;
+    }
+    seekAllViews(project_.timeSignatureMap.tickAtBarBeat(mesure, temps, project_.ticksPerQuarterNote));
+    return true;
+}
+
+void MainComponent::promptGoToBar() {
+    const auto ici = project_.timeSignatureMap.barBeatAt(
+        std::max<vsm::midi::Tick>(0, transport_.currentTick()), project_.ticksPerQuarterNote);
+    auto* fenetre = new juce::AlertWindow(
+        u8"Aller \u00e0 la mesure",
+        u8"Mesure, ou mesure.temps (\u00ab 17 \u00bb, \u00ab 17.3 \u00bb). La premi\u00e8re mesure est la 1.",
+        juce::MessageBoxIconType::NoIcon);
+    fenetre->addTextEditor("position", juce::String(static_cast<long long>(ici.bar + 1)) + "."
+                                            + juce::String(static_cast<long long>(ici.beat + 1)),
+                            u8"Position :");
+    fenetre->addButton("Aller", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton("Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+        [this, fenetre](int resultat) {
+            if (resultat != 1) return;
+            const juce::String texte = fenetre->getTextEditorContents("position");
+            if (!goToBarText(texte))
+                juce::AlertWindow::showMessageBoxAsync(
+                    juce::AlertWindow::WarningIcon, u8"Aller \u00e0 la mesure",
+                    juce::String(u8"\u00ab ") + texte + juce::String(u8" \u00bb n'est pas une position : "
+                                  u8"attendu \u00ab 17 \u00bb ou \u00ab 17.3 \u00bb (mesure.temps)."));
+        }), true);
+}
+
+void MainComponent::startPlaybackForCapture() { transport_.play(); }
+
+void MainComponent::playNoteForCapture(uint8_t note, int restant) {
+    audioEngine_.playComputerKey(note, 100, true);
+    juce::Timer::callAfterDelay(100, [this, note] { audioEngine_.playComputerKey(note, 0, false); });
+    if (restant > 0)
+        juce::Timer::callAfterDelay(200, [this, note, restant] { playNoteForCapture(note, restant - 1); });
+}
+
+// --- D22.5 : les presets de piste -------------------------------------------
+
+juce::File MainComponent::trackPresetFolder() const {
+    const juce::String bibliotheque =
+        vsm::app::ui::UiScale::properties().getValue("dossierBibliotheque", "");
+    // MÊME RANGEMENT QUE LES GROOVES ET LES PRESETS D'EFFET (D15.4, D17.8) :
+    // la bibliothèque si elle est réglée, le projet sinon, les données de
+    // l'application à défaut.
+    return bibliotheque.isNotEmpty()
+               ? juce::File(bibliotheque).getChildFile("pistes")
+               : (currentProjectFolder_ != juce::File()
+                      ? currentProjectFolder_.getChildFile("pistes")
+                      : juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+                            .getChildFile("VSM").getChildFile("pistes"));
+}
+
+juce::Array<juce::File> MainComponent::trackPresetFiles() const {
+    juce::Array<juce::File> fichiers;
+    trackPresetFolder().findChildFiles(fichiers, juce::File::findFiles, false,
+                                       "*" + juce::String(vsm::interchange::kTrackPresetExtension));
+    // Triés par nom : un menu qui change d'ordre à chaque ouverture ne se
+    // parcourt pas.
+    std::sort(fichiers.begin(), fichiers.end(), [](const juce::File& a, const juce::File& b) {
+        return a.getFileName().compareIgnoreCase(b.getFileName()) < 0;
+    });
+    return fichiers;
+}
+
+bool MainComponent::saveSelectedTrackAsPreset(const juce::String& nom) {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size() || nom.trim().isEmpty()) return false;
+    captureSessionIntoProject();
+    const auto& track = project_.tracks[piste];
+    // L'ÉTAT DE LA MACHINE VIENT DE LA MACHINE VIVANTE (D0.1) : le modèle ne
+    // le porte pas, et un preset pris sur le patch d'usine ne sonnerait pas
+    // comme la piste qu'on vient de régler.
+    std::optional<vsm::interchange::SynthPreset> synth;
+    if (!track.instrumentId.empty())
+        if (auto* machine = audioEngine_.processGraph().trackInstrument(piste))
+            synth = vsm::interchange::capturePreset(*machine, track.instrumentId, nom.toStdString());
+    const auto preset = vsm::interchange::trackPresetFromTrack(track, nom.trim().toStdString(), synth);
+    const juce::File dossier = trackPresetFolder();
+    dossier.createDirectory();
+    const juce::File fichier = dossier.getChildFile(
+        juce::File::createLegalFileName(nom.trim()) + juce::String(vsm::interchange::kTrackPresetExtension));
+    const auto texte = vsm::interchange::trackPresetToJson(preset).toString();
+    if (!fichier.replaceWithText(juce::String(texte))) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::WarningIcon, u8"Enregistrer la piste comme preset",
+            juce::String(u8"\u00c9criture impossible : ") + fichier.getFullPathName());
+        std::fputs(("Preset de piste : \u00e9criture impossible dans "
+                    + fichier.getFullPathName().toStdString() + "\n").c_str(), stderr);
+        return false;
+    }
+    std::fputs(("Preset de piste \u00e9crit : " + fichier.getFullPathName().toStdString() + "\n").c_str(), stderr);
+    return true;
+}
+
+void MainComponent::promptSaveTrackPreset() {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    const auto& track = project_.tracks[piste];
+    auto* fenetre = new juce::AlertWindow(
+        u8"Enregistrer la piste comme preset",
+        juce::String(u8"La machine et son \u00e9tat, les inserts, les d\u00e9parts, le volume, le "
+                      u8"panoramique, la couleur, la transposition et le d\u00e9calage -- pas les "
+                      u8"notes ni les clips. \u00c9crit dans ")
+            + trackPresetFolder().getFullPathName(),
+        juce::MessageBoxIconType::NoIcon);
+    fenetre->addTextEditor("nom", juce::String(track.name.empty() ? "Piste " + std::to_string(piste + 1)
+                                                                  : track.name), u8"Nom :");
+    fenetre->addButton("Enregistrer", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton("Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+        [this, fenetre](int resultat) {
+            if (resultat != 1) return;
+            const juce::String nom = fenetre->getTextEditorContents("nom").trim();
+            if (nom.isEmpty()) return;
+            if (saveSelectedTrackAsPreset(nom))
+                juce::AlertWindow::showMessageBoxAsync(
+                    juce::AlertWindow::InfoIcon, u8"Enregistrer la piste comme preset",
+                    juce::String(u8"\u00c9crit : ") + trackPresetFolder().getChildFile(
+                        juce::File::createLegalFileName(nom)
+                        + juce::String(vsm::interchange::kTrackPresetExtension)).getFullPathName());
+        }), true);
+}
+
+void MainComponent::applyTrackPresetFile(const juce::File& fichier) {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    const auto lu = vsm::interchange::parseTrackPreset(fichier.loadFileAsString().toStdString());
+    if (!lu.success) {
+        // NOMMÉ, JAMAIS DEVINÉ : un fichier qui n'est pas un preset de piste
+        // dit ce qu'il est plutôt que de s'appliquer vide.
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::WarningIcon, u8"Appliquer un preset de piste",
+            fichier.getFileName() + " : " + juce::String::fromUTF8(lu.error.c_str()));
+        std::fputs(("Preset de piste illisible : " + lu.error + "\n").c_str(), stderr);
+        return;
+    }
+    beginProjectEdit(u8"Appliquer un preset de piste");
+    vsm::interchange::applyTrackPresetToTrack(lu.preset, project_.tracks[piste]);
+    // Les inserts, les départs, la machine : refabriqués depuis le modèle,
+    // comme après un annuler.
+    rebuildFromProject(false);
+    trackList_.selectTrackIndex(piste);
+    if (lu.preset.synth && project_.tracks[piste].kind == vsm::sequencer::Track::Kind::Midi) {
+        auto* machine = audioEngine_.processGraph().trackInstrument(piste);
+        if (machine == nullptr) {
+            juce::AlertWindow::showMessageBoxAsync(
+                juce::AlertWindow::WarningIcon, u8"Preset de piste appliqu\u00e9 sans sa machine",
+                juce::String::fromUTF8(u8"La machine \u00ab ")
+                    + juce::String::fromUTF8(lu.preset.instrumentId.c_str())
+                    + juce::String::fromUTF8(u8" \u00bb n'est pas disponible : les inserts et le mixage "
+                                             u8"sont appliqu\u00e9s, l'\u00e9tat de la machine non."));
+        } else {
+            vsm::interchange::applyPreset(*lu.preset.synth, *machine, project_.tracks[piste].instrumentId);
+            vsm::interchange::applyPresetSamples(*lu.preset.synth, *machine,
+                                                 fichier.getParentDirectory().getFullPathName().toStdString());
+        }
+    }
+    updateSynthRackForSelection();
+    refreshTrackViews();
 }
 
 void MainComponent::toggleLockSelectedTrack() {

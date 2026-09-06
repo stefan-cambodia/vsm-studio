@@ -98,6 +98,19 @@ public:
     /// confondus ; faux -- et dit sur stderr -- quand rien ne correspond ou
     /// que l'entrée est grisée.
     bool runMenuEntryForCapture(const juce::String& libelle);
+    /// D22.2 : VSM_POSITION=17.3 -- la tête à une position saisie, sans
+    /// souris ; faux et dit sur stderr si le texte n'est pas une position.
+    bool goToPositionForCapture(const juce::String& texte) { return goToBarText(texte); }
+    /// D22.4 : VSM_LECTURE=1 -- lancer la lecture avant la capture, pour que
+    /// le voyant OUT se photographie allumé.
+    void startPlaybackForCapture();
+    /// D22.4 : VSM_VUE=note:60 -- une note jouée par le chemin du clavier
+    /// d'ordinateur, rejouée toutes les 200 ms pendant trois secondes : un
+    /// voyant tenu 250 ms ne se photographie que s'il vient de s'allumer.
+    void playNoteForCapture(uint8_t note, int restant);
+    /// D22.5 : VSM_PRESET_PISTE=nom -- la piste choisie écrite comme preset
+    /// sous ce nom, sans boîte de dialogue (elle ne se photographie pas).
+    bool saveTrackPresetForCapture(const juce::String& nom) { return saveSelectedTrackAsPreset(nom); }
 
     /// Ouvre un dossier de projet au démarrage (VSM_PROJET=dossier), pour la
     /// même raison que `applyViewCommand` : ce qu'on a besoin de regarder est
@@ -210,6 +223,11 @@ private:
         /// D21.2 : la piste choisie seule en solo (Ctrl+clic sur Solo fait de même).
         kMenuTrackSoloExclusive,
         kMenuTrackShowAll,
+        /// D22.5 : la piste choisie comme preset, et un identifiant par preset
+        /// du dossier `pistes` de la bibliothèque, pour l'appliquer.
+        kMenuTrackSavePreset,
+        kMenuTrackPresetFirst,
+        kMenuTrackPresetLast = kMenuTrackPresetFirst + 63,
         /// D18.3 : le groupe d'édition de la piste choisie (0 = aucun).
         kMenuTrackEditGroupNone,
         kMenuTrackEditGroupLast = kMenuTrackEditGroupNone + 8,
@@ -238,6 +256,8 @@ private:
     kMenuEditApplyGroove,
     kMenuEditSaveGroove,
     kMenuEditLoadGroove,
+    /// D22.2 : aller à une mesure saisie (Maj+P, double-clic sur la position).
+    kMenuEditGoToBar,
         kMenuTrackFreeze,
         kMenuTrackBounce,
         /// D18.1 : reporter en audio les CLIPS CHOISIS, sur une piste neuve.
@@ -773,6 +793,24 @@ private:
     void applyGrooveToSelection();
     void saveCurrentGroove();
     void loadGrooveFromLibrary();
+    /// D22.2 : ALLER À UNE MESURE. La boîte de saisie, et la lecture d'un
+    /// texte (« 17 », « 17.3 ») qui rend faux -- et le dit -- s'il n'est pas
+    /// une position ; la tête et toutes les vues y vont.
+    void promptGoToBar();
+    bool goToBarText(const juce::String& texte);
+    /// D22.5 : LES PRESETS DE PISTE. Le dossier `pistes` de la bibliothèque
+    /// (sinon du projet, sinon des données de l'application, comme les
+    /// grooves) ; la piste choisie écrite sous un nom ; un fichier appliqué à
+    /// la piste choisie -- ses notes et ses clips restent, le reste est
+    /// remplacé, la machine reçoit son état si le preset en a un.
+    juce::File trackPresetFolder() const;
+    juce::Array<juce::File> trackPresetFiles() const;
+    void promptSaveTrackPreset();
+    bool saveSelectedTrackAsPreset(const juce::String& nom);
+    void applyTrackPresetFile(const juce::File& fichier);
+    /// D22.4 : les derniers compteurs lus, pour n'allumer un voyant que sur
+    /// ce qui vient d'arriver ou de partir.
+    uint64_t midiInSeen_ = 0, notesOutSeen_ = 0;
     vsm::sequencer::Groove grooveCourant_;
     /// Les trois vues qui dessinent des pistes, rafraîchies ensemble (D17.4).
     void refreshTrackViews();

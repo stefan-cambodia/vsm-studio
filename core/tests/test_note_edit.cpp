@@ -570,3 +570,42 @@ VSM_TEST(selecting_below_a_velocity_and_shorter_than_a_length_is_strict) {
     VSM_ASSERT(selectNotesShorterThan(notes, 1).empty());
     VSM_ASSERT_EQ(selectNotesBelowVelocity(notes, 128).size(), size_t(4));
 }
+
+// --- D22.3 : deux fois plus lent, deux fois plus vite ----------------------
+
+VSM_TEST(scale_note_times_halves_the_speed_from_the_first_start_without_overlaps) {
+    auto notes = makeNotes(); // quatre noires à 0, 480, 960, 1440
+    scaleNoteTimes(notes, allIds(notes), 2.0);
+    const Tick departs[4] = {0, 960, 1920, 2880};
+    for (int i = 0; i < 4; ++i) {
+        const Note* n = findById(notes, static_cast<uint64_t>(i + 1));
+        VSM_ASSERT(n != nullptr);
+        VSM_ASSERT_EQ(n->startTick, departs[i]);
+        VSM_ASSERT_EQ(n->durationTicks(), static_cast<Tick>(960));
+    }
+}
+
+VSM_TEST(scale_note_times_keeps_the_anchor_and_leaves_unselected_notes_alone) {
+    auto notes = makeNotes();
+    NoteSelection deuxDernieres{3, 4}; // à 960 et 1440
+    scaleNoteTimes(notes, deuxDernieres, 0.5);
+    // L'ancre est le premier départ DE LA SÉLECTION (960), pas du morceau.
+    VSM_ASSERT_EQ(findById(notes, 3)->startTick, static_cast<Tick>(960));
+    VSM_ASSERT_EQ(findById(notes, 3)->durationTicks(), static_cast<Tick>(240));
+    VSM_ASSERT_EQ(findById(notes, 4)->startTick, static_cast<Tick>(960 + 240));
+    VSM_ASSERT_EQ(findById(notes, 4)->durationTicks(), static_cast<Tick>(240));
+    VSM_ASSERT_EQ(findById(notes, 1)->startTick, static_cast<Tick>(0));
+    VSM_ASSERT_EQ(findById(notes, 2)->startTick, static_cast<Tick>(480));
+    VSM_ASSERT_EQ(findById(notes, 2)->durationTicks(), static_cast<Tick>(480));
+}
+
+VSM_TEST(scale_note_times_never_loses_a_note_when_halving_repeatedly) {
+    auto notes = makeNotes();
+    for (int i = 0; i < 12; ++i) scaleNoteTimes(notes, allIds(notes), 0.5);
+    VSM_ASSERT_EQ(notes.size(), static_cast<size_t>(4));
+    for (const auto& n : notes) VSM_ASSERT(n.durationTicks() >= 1);
+    // Un facteur nul ou négatif ne fait rien.
+    auto temoin = makeNotes();
+    scaleNoteTimes(temoin, allIds(temoin), 0.0);
+    VSM_ASSERT_EQ(findById(temoin, 4)->startTick, static_cast<Tick>(1440));
+}

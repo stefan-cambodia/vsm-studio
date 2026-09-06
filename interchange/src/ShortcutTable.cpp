@@ -51,6 +51,8 @@ const std::vector<ShortcutCommand>& shortcutCommands() {
         {ShortcutId::NavNextMarker,     "nav.nextMarker",   "Transport", "Marqueur suivant",               "shift + N",        ""},
         {ShortcutId::NavPreviousMarker, "nav.previousMarker","Transport","Marqueur précédent",             "shift + B",        ""},
         {ShortcutId::ViewFullScreen,    "view.fullScreen",  "Affichage", "Plein écran",                    "F11",              ""},
+        // D22.2 — aller à une mesure : Maj+P, comme Cubase (la position se tape, on ne zoome plus pour la rejoindre).
+        {ShortcutId::NavGoToBar,        "nav.goToBar",      "Transport", "Aller à la mesure…",             "shift + P",        ""},
     };
     return catalogue;
 }

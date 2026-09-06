@@ -202,6 +202,20 @@ void scaleNoteLengths(std::vector<Note>& notes, const NoteSelection& selection, 
     });
 }
 
+void scaleNoteTimes(std::vector<Note>& notes, const NoteSelection& selection, double factor) {
+    if (factor <= 0.0 || selection.empty()) return;
+    Tick ancre = -1;
+    for (const auto& n : notes)
+        if (selection.count(n.id) > 0 && (ancre < 0 || n.startTick < ancre)) ancre = n.startTick;
+    if (ancre < 0) return;
+    forEachSelected(notes, selection, [factor, ancre](Note& n) {
+        const double depart = static_cast<double>(n.startTick - ancre) * factor;
+        const double duree = static_cast<double>(n.durationTicks()) * factor;
+        n.startTick = ancre + static_cast<Tick>(std::llround(depart));
+        n.endTick = n.startTick + static_cast<Tick>(std::max<int64_t>(1, std::llround(duree)));
+    });
+}
+
 void applyLegato(std::vector<Note>& notes, const NoteSelection& selection) {
     if (selection.empty()) return;
     // Toutes les notes de la piste servent de référence (pas seulement les

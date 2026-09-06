@@ -51,6 +51,12 @@ public:
     /// zéro. Zéro veut dire « rien n'arrive » -- ce qui, sur une entrée
     /// ouverte, est une information et non un défaut.
     float readInputPeak() { return inputPeak_.exchange(0.0f, std::memory_order_acq_rel); }
+    /// D22.4 : LE VOYANT « IN ». Nombre de messages MIDI reçus depuis le
+    /// départ -- du clavier branché comme du clavier d'ordinateur, notes et
+    /// contrôleurs confondus. L'interface compare deux lectures : « ça a
+    /// bougé » suffit à allumer un voyant, et sépare « le câble » de « la
+    /// piste » quand un clavier branché ne joue rien.
+    uint64_t midiInCount() const { return midiInCount_.load(std::memory_order_relaxed); }
     /// Nombre de canaux d'entrée réellement ouverts. Zéro = la carte n'en a
     /// pas donné, et l'enregistrement est impossible : il faut le DIRE, pas
     /// laisser chercher.
@@ -259,6 +265,7 @@ private:
     std::atomic<int> currentBlockSize_{512};
     std::atomic<int> currentInputChannels_{0};
     std::atomic<float> inputPeak_{0.0f};
+    std::atomic<uint64_t> midiInCount_{0};   ///< D22.4 : messages MIDI reçus
     juce::String lastError_;
 
     // MIDI Learn : accédé par le thread MIDI (handleIncomingMidiMessage) ET

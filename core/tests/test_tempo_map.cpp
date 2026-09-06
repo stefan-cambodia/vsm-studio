@@ -160,3 +160,54 @@ VSM_TEST(a_time_signature_change_is_removed_at_its_tick_and_never_at_zero) {
     VSM_ASSERT(!carte.removeChangeAt(0));            // celui du départ ne se retire pas
     VSM_ASSERT_EQ(carte.changes().size(), size_t(2));
 }
+
+// --- D22.2 : aller à une mesure --------------------------------------------
+
+VSM_TEST(tick_at_bar_beat_inverts_bar_beat_at_across_a_signature_change) {
+    TimeSignatureMap map; // 4/4 puis 3/4 à la mesure 17 (0-indexée : 16)
+    const uint16_t ppq = 480;
+    map.addChange(16 * 1920, 3, 2);
+    VSM_ASSERT_EQ(map.tickAtBarBeat(0, 0, ppq), static_cast<Tick>(0));
+    VSM_ASSERT_EQ(map.tickAtBarBeat(1, 0, ppq), static_cast<Tick>(1920));
+    VSM_ASSERT_EQ(map.tickAtBarBeat(1, 2, ppq), static_cast<Tick>(1920 + 960));
+    // La mesure 17 (index 16) commence au changement ; la 18 fait 3 temps.
+    VSM_ASSERT_EQ(map.tickAtBarBeat(16, 0, ppq), static_cast<Tick>(16 * 1920));
+    VSM_ASSERT_EQ(map.tickAtBarBeat(17, 0, ppq), static_cast<Tick>(16 * 1920 + 1440));
+    VSM_ASSERT_EQ(map.tickAtBarBeat(17, 2, ppq), static_cast<Tick>(16 * 1920 + 1440 + 960));
+    // Aller-retour sur soixante mesures, tous les temps.
+    for (int64_t bar = 0; bar < 60; ++bar)
+        for (int64_t beat = 0; beat < (bar >= 16 ? 3 : 4); ++beat) {
+            const Tick t = map.tickAtBarBeat(bar, beat, ppq);
+            const BarBeat bb = map.barBeatAt(t, ppq);
+            VSM_ASSERT_EQ(bb.bar, bar);
+            VSM_ASSERT_EQ(bb.beat, beat);
+            VSM_ASSERT_EQ(bb.tickInBeat, static_cast<Tick>(0));
+        }
+    // Un temps au-delà de la mesure déborde sur la suivante, et le négatif
+    // est ramené au début.
+    VSM_ASSERT_EQ(map.tickAtBarBeat(0, 4, ppq), map.tickAtBarBeat(1, 0, ppq));
+    VSM_ASSERT_EQ(map.tickAtBarBeat(-3, -1, ppq), static_cast<Tick>(0));
+}
+
+VSM_TEST(parse_bar_beat_reads_human_positions_and_refuses_the_rest) {
+    int64_t bar = -1, beat = -1;
+    VSM_ASSERT(parseBarBeat("17", bar, beat));
+    VSM_ASSERT_EQ(bar, static_cast<int64_t>(16));
+    VSM_ASSERT_EQ(beat, static_cast<int64_t>(0));
+    VSM_ASSERT(parseBarBeat("17.3", bar, beat));
+    VSM_ASSERT_EQ(bar, static_cast<int64_t>(16));
+    VSM_ASSERT_EQ(beat, static_cast<int64_t>(2));
+    VSM_ASSERT(parseBarBeat("17:3", bar, beat));
+    VSM_ASSERT_EQ(beat, static_cast<int64_t>(2));
+    VSM_ASSERT(parseBarBeat("  17 3 ", bar, beat));
+    VSM_ASSERT_EQ(beat, static_cast<int64_t>(2));
+    VSM_ASSERT(parseBarBeat("1", bar, beat));
+    VSM_ASSERT_EQ(bar, static_cast<int64_t>(0));
+    // Refusés : la mesure 0, un temps 0, du texte, un séparateur sans temps.
+    VSM_ASSERT(!parseBarBeat("0", bar, beat));
+    VSM_ASSERT(!parseBarBeat("17.0", bar, beat));
+    VSM_ASSERT(!parseBarBeat("mesure 17", bar, beat));
+    VSM_ASSERT(!parseBarBeat("17.", bar, beat));
+    VSM_ASSERT(!parseBarBeat("", bar, beat));
+    VSM_ASSERT(!parseBarBeat("17.3.2", bar, beat));
+}

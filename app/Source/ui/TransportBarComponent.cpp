@@ -38,6 +38,11 @@ TransportBarComponent::TransportBarComponent(vsm::audio::engine::Transport& tran
         label->setFont(juce::Font(juce::FontOptions(15.0f).withName(juce::Font::getDefaultMonospacedFontName())));
     }
 
+    // D22.2 : le double-clic sur la position remonte au composant (voir
+    // mouseDoubleClick) ; un Label intercepte sinon les clics et ne dit rien.
+    positionLabel_.setInterceptsMouseClicks(false, false);
+    positionLabel_.setTooltip(u8"Double-clic : aller à une mesure (Maj+P)");
+
     playButton_.onClick = [this] { transport_.play(); };
     stopButton_.onClick = [this] {
         transport_.stop();
@@ -161,6 +166,41 @@ void TransportBarComponent::paint(juce::Graphics& g) {
             g.fillRect(inputMeterBounds_.withTop(inputMeterBounds_.getBottom() - hauteur).reduced(1, 0));
         }
     }
+
+    // D22.4 : LES VOYANTS MIDI. Le texte reste lisible éteint (on doit savoir
+    // que le voyant existe pour remarquer qu'il ne s'allume pas) ; allumé, le
+    // fond prend la couleur d'accent et le texte s'inverse.
+    const auto maintenant = juce::Time::getMillisecondCounter();
+    auto voyant = [&](juce::Rectangle<int> r, const char* texte, bool allume) {
+        if (r.isEmpty()) return;
+        g.setColour(allume ? Palette::accentTeal : Palette::background);
+        g.fillRoundedRectangle(r.toFloat(), 3.0f);
+        g.setColour(Palette::border);
+        g.drawRoundedRectangle(r.toFloat(), 3.0f, 1.0f);
+        g.setColour(allume ? Palette::background : Palette::textSecondary);
+        g.setFont(juce::Font(juce::FontOptions(12.0f).withStyle("Bold")));
+        g.drawText(texte, r, juce::Justification::centred, false);
+    };
+    midiInLit_ = midiInUntil_ > maintenant;
+    midiOutLit_ = midiOutUntil_ > maintenant;
+    voyant(midiInBounds_, "IN", midiInLit_);
+    voyant(midiOutBounds_, "OUT", midiOutLit_);
+}
+
+void TransportBarComponent::mouseDoubleClick(const juce::MouseEvent& e) {
+    if (positionLabel_.getBounds().contains(e.getPosition()) && onPositionDoubleClicked)
+        onPositionDoubleClicked();
+}
+
+void TransportBarComponent::setMidiActivity(bool in, bool out) {
+    const auto maintenant = juce::Time::getMillisecondCounter();
+    if (in) midiInUntil_ = maintenant + 250;
+    if (out) midiOutUntil_ = maintenant + 250;
+    // Redessiné seulement quand l'état VISIBLE change -- l'appel arrive à
+    // 30 Hz, et repeindre deux rectangles trente fois par seconde pour rien
+    // serait le genre de charge qu'on ne remarque qu'en la cumulant.
+    if ((midiInUntil_ > maintenant) != midiInLit_) repaint(midiInBounds_);
+    if ((midiOutUntil_ > maintenant) != midiOutLit_) repaint(midiOutBounds_);
 }
 
 void TransportBarComponent::resized() {
@@ -178,7 +218,11 @@ void TransportBarComponent::resized() {
     const bool serre = largeur < 1500;
     const bool tresSerre = largeur < 1300;
 
-    auto transportArea = area.removeFromLeft(tresSerre ? 420 : 460);
+    // D22.4 : la zone était de 460 px pour 466 px de boutons -- le témoin
+    // d'entrée, dernier servi, n'avait plus de place et ne se dessinait plus.
+    // Élargie pour lui et pour les deux voyants MIDI ; la place est reprise
+    // sur le bouton d'écoute A/B et l'écart qui le suit.
+    auto transportArea = area.removeFromLeft(tresSerre ? 494 : 540);
     const int boutonPlay = tresSerre ? 62 : 70;
     playButton_.setBounds(transportArea.removeFromLeft(boutonPlay));
     transportArea.removeFromLeft(4);
@@ -195,9 +239,13 @@ void TransportBarComponent::resized() {
     speedBox_.setBounds(transportArea.removeFromLeft(tresSerre ? 62 : 70));
     transportArea.removeFromLeft(6);
     inputMeterBounds_ = transportArea.removeFromLeft(10).reduced(0, 2);
+    transportArea.removeFromLeft(6);
+    midiInBounds_ = transportArea.removeFromLeft(tresSerre ? 26 : 28).reduced(0, 4);
+    transportArea.removeFromLeft(3);
+    midiOutBounds_ = transportArea.removeFromLeft(tresSerre ? 34 : 36).reduced(0, 4);
 
-    area.removeFromLeft(serre ? 8 : 12);
-    listenButton_.setBounds(area.removeFromLeft(serre ? 190 : 230));
+    area.removeFromLeft(serre ? 6 : 10);
+    listenButton_.setBounds(area.removeFromLeft(serre ? 170 : 210));
     area.removeFromLeft(serre ? 10 : 16);
     positionLabel_.setBounds(area.removeFromLeft(serre ? 130 : 140));
     area.removeFromLeft(serre ? 10 : 16);

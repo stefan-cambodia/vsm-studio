@@ -37,6 +37,7 @@ enum ContextMenuId {
     kCtxTransposeUp = 100030, kCtxTransposeDown, kCtxOctaveUp, kCtxOctaveDown,
     kCtxQuantizeFull = 100040, kCtxQuantizeHalf, kCtxQuantizeEnds, kCtxHumanize,
     kCtxLegato = 100050, kCtxRemoveOverlaps, kCtxLengthToGrid, kCtxLengthDouble, kCtxLengthHalve,
+    kCtxTimesDouble = 100430, kCtxTimesHalve,   // D22.3
     kCtxSplit = 100060, kCtxJoin, kCtxReverse, kCtxMirror, kCtxMute,
     kCtxVelocityFull = 100070, kCtxVelocityHalf, kCtxVelocityUp, kCtxVelocityDown,
     kCtxVelocityRampUp, kCtxVelocityRampDown, kCtxVelocityRandom,
@@ -630,6 +631,15 @@ void PianoRollComponent::scaleSelectionLength(float factor) {
     notifyEdited();
 }
 
+void PianoRollComponent::scaleSelectionTime(double factor) {
+    Track* track = activeTrack();
+    if (!track || selectedNoteIds_.empty()) return;
+    if (!beginEdit(factor > 1.0 ? juce::String(u8"Deux fois plus lent")
+                                : juce::String(u8"Deux fois plus vite"))) return;
+    scaleNoteTimes(track->notes, selectedNoteIds_, factor);
+    notifyEdited();
+}
+
 void PianoRollComponent::quantizeSelection(float strength, bool alsoQuantizeEnds) {
     Track* track = activeTrack();
     if (!track || !project_ || selectedNoteIds_.empty()) return;
@@ -937,6 +947,10 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
     timeMenu.addItem(kCtxLengthToGrid, u8"Durée = pas de grille", sel);
     timeMenu.addItem(kCtxLengthDouble, u8"Durée x2", sel);
     timeMenu.addItem(kCtxLengthHalve, u8"Durée /2", sel);
+    // D22.3 : LA PHRASE À MOITIÉ DE VITESSE, pas chaque note deux fois plus
+    // longue -- les départs bougent aussi, depuis le premier de la sélection.
+    timeMenu.addItem(kCtxTimesDouble, u8"Deux fois plus lent (départs et durées ×2)", sel);
+    timeMenu.addItem(kCtxTimesHalve, u8"Deux fois plus vite (départs et durées ÷2)", sel);
     timeMenu.addItem(kCtxLegato, "Legato", sel);
     timeMenu.addItem(kCtxRemoveOverlaps, "Retirer les chevauchements", sel);
     timeMenu.addSeparator();
@@ -1039,6 +1053,8 @@ void PianoRollComponent::performContextMenuAction(int menuItemId) {
         case kCtxLengthToGrid:     setSelectionLengthToGrid(); break;
         case kCtxLengthDouble:     scaleSelectionLength(2.0f); break;
         case kCtxLengthHalve:      scaleSelectionLength(0.5f); break;
+        case kCtxTimesDouble:      scaleSelectionTime(2.0); break;
+        case kCtxTimesHalve:       scaleSelectionTime(0.5); break;
         case kCtxSplit:            splitSelectionAtPlayhead(); break;
         case kCtxJoin:             joinSelection(); break;
         case kCtxReverse:          reverseSelection(); break;

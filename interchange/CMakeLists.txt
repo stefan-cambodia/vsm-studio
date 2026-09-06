@@ -12,6 +12,7 @@ add_library(vsm_interchange STATIC
     src/PluginCatalogue.cpp
     src/SynthPreset.cpp
     src/EffectPreset.cpp
+    src/TrackPreset.cpp
     src/GroovePreset.cpp
     src/SoundFont.cpp
     src/MultisampleProfile.cpp
@@ -50,6 +51,7 @@ if (VSM_BUILD_TESTS)
         tests/test_semantic_parameters.cpp
         tests/test_synth_preset.cpp
         tests/test_effect_preset.cpp
+        tests/test_track_preset.cpp
         tests/test_groove_preset.cpp
         tests/test_multisample_profile.cpp
         tests/test_reconstruction_chain.cpp

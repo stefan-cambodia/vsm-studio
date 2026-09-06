@@ -82,6 +82,14 @@ void nudgeNotes(std::vector<Note>& notes, const NoteSelection& selection, int64_
 void setNoteLengths(std::vector<Note>& notes, const NoteSelection& selection, Tick lengthTicks);
 void scaleNoteLengths(std::vector<Note>& notes, const NoteSelection& selection, float factor);
 
+/// D22.3 : deux fois plus lent (×2) ou plus vite (÷2) -- les DÉPARTS et les
+/// durées sont mis à l'échelle depuis le premier départ de la sélection,
+/// qui ne bouge pas. C'est ce qui distingue « la même phrase à moitié de
+/// vitesse » de « chaque note deux fois plus longue » (`scaleNoteLengths`),
+/// où les notes finissent par se chevaucher. Durée d'au moins un tick ; les
+/// notes non choisies sont immobiles.
+void scaleNoteTimes(std::vector<Note>& notes, const NoteSelection& selection, double factor);
+
 /// Legato : chaque note sélectionnée est étendue jusqu'au début de la note
 /// suivante de la piste (toutes hauteurs confondues, comme le font les DAW).
 /// La dernière note de la piste garde sa durée.

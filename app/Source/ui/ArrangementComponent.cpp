@@ -598,6 +598,22 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
                 menu.addSubMenu(u8"Forme des fondus", formes);
             }
             menu.addItem(18, u8"Normaliser (gain = 1 / cr\u00eate)", waveformProvider != nullptr);
+            // D22.1 : LE GAIN ET LA PHASE À LA MAIN. Des pas fixes relatifs au
+            // gain courant plutôt qu'une boîte de dialogue -- le geste est
+            // « un peu plus, un peu moins », et il s'enchaîne. Le titre du
+            // sous-menu DIT le gain d'où l'on part.
+            {
+                juce::PopupMenu gain;
+                static const int kPas[] = {-6, -3, -1, 1, 3, 6};
+                for (int i = 0; i < 6; ++i)
+                    gain.addItem(50 + i, juce::String(kPas[i] > 0 ? "+" : "") + juce::String(kPas[i]) + " dB");
+                gain.addSeparator();
+                gain.addItem(56, u8"0 dB (remettre)", std::abs(clip->gain - 1.0f) > 1e-4f);
+                const float dB = clip->gain > 0.0f ? 20.0f * std::log10(clip->gain) : -96.0f;
+                menu.addSubMenu(juce::String(u8"Gain du clip (") + (dB >= 0.0f ? "+" : "")
+                                    + juce::String(dB, 1) + " dB)", gain);
+                menu.addItem(57, u8"Phase invers\u00e9e", true, clip->invertPhase);
+            }
             menu.addItem(19, u8"Rogner au son (d\u00e9tecter le silence)");
             // D20.3 : DÉCOUPER AUX TRANSITOIRES, sur les clips audio choisis.
             // Le nombre de coupes se dit APRÈS, pas dans l'entrée : le compter
@@ -1027,6 +1043,14 @@ int ArrangementComponent::marqueurAt(const Clip& clip, float x) const {
     return -1;
 }
 
+bool ArrangementComponent::runClipMenuActionForCapture(int choix) {
+    if (!project_) return false;
+    for (size_t p = 0; p < project_->tracks.size(); ++p)
+        for (const auto& c : project_->tracks[p].clips)
+            if (selection_.count(c.id) > 0) { clipMenuAction(p, c.id, choix); return true; }
+    return false;
+}
+
 void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int choix) {
     if (project_ == nullptr || choix == 0 || piste >= project_->tracks.size()) return;
     auto& track = project_->tracks[piste];
@@ -1136,6 +1160,32 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
             if (marqueurGeste_ <= 0) return;
             if (onEditStarted) onEditStarted(u8"Retirer un marqueur de tempo");
             if (!removeWarpMarker(track.clips, clipId, static_cast<size_t>(marqueurGeste_))) return;
+            break;
+        }
+        case 50: case 51: case 52: case 53: case 54: case 55: case 56: {
+            // D22.1 : sur toute la sélection, chacun depuis SON gain -- « +3 dB »
+            // sur six clips inégaux les monte tous de 3 dB, il ne les aligne
+            // pas. Borné à ±24 dB : au-delà, c'est un autre outil.
+            static const int kPas[] = {-6, -3, -1, 1, 3, 6};
+            if (onEditStarted) onEditStarted(choix == 56 ? juce::String(u8"Gain du clip \u00e0 0 dB")
+                                                        : juce::String(u8"Gain du clip"));
+            ClipSelection cibles = selection_;
+            cibles.insert(clipId);
+            for (auto& t : project_->tracks)
+                for (auto& c : t.clips) {
+                    if (cibles.count(c.id) == 0) continue;
+                    if (choix == 56) { setClipGain(t.clips, {c.id}, 1.0f); continue; }
+                    const float actuel = c.gain > 0.0f ? 20.0f * std::log10(c.gain) : -24.0f;
+                    const float voulu = juce::jlimit(-24.0f, 24.0f, actuel + static_cast<float>(kPas[choix - 50]));
+                    setClipGain(t.clips, {c.id}, std::pow(10.0f, voulu / 20.0f));
+                }
+            break;
+        }
+        case 57: {
+            if (onEditStarted) onEditStarted(u8"Phase d'un clip");
+            ClipSelection cibles = selection_;
+            cibles.insert(clipId);
+            for (auto& t : project_->tracks) toggleClipPhase(t.clips, cibles);
             break;
         }
         default: return;
@@ -1630,6 +1680,22 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                 g.setFont(juce::Font(juce::FontOptions(11.0f)));
                 g.drawText(juce::String(clip.name), r.reduced(4.0f, 2.0f),
                             juce::Justification::topLeft, true);
+            }
+            // D22.1 : LE GAIN SE LIT SUR LE CLIP quand il n'est pas à 0 dB,
+            // en haut à droite -- un clip à -12 dB qu'on entend à peine ne
+            // doit pas faire chercher dans le mélangeur.
+            // Sur un cartouche sombre : la couleur du clip est celle de
+            // l'utilisateur, et un texte ambre sur un clip ambre ne se lit pas.
+            if (std::abs(clip.gain - 1.0f) > 1e-3f && r.getWidth() > 60.0f) {
+                const float dB = clip.gain > 0.0f ? 20.0f * std::log10(clip.gain) : -96.0f;
+                const juce::String texte = (dB >= 0.0f ? "+" : "") + juce::String(dB, 1) + " dB";
+                g.setFont(juce::Font(juce::FontOptions(11.0f)));
+                const float largeur = juce::GlyphArrangement::getStringWidth(g.getCurrentFont(), texte) + 8.0f;
+                const juce::Rectangle<float> cartouche(r.getRight() - 3.0f - largeur, r.getY() + 2.0f, largeur, 14.0f);
+                g.setColour(Palette::background.withAlpha(0.85f));
+                g.fillRoundedRectangle(cartouche, 3.0f);
+                g.setColour(Palette::accentAmber);
+                g.drawText(texte, cartouche, juce::Justification::centred, false);
             }
         }
     }

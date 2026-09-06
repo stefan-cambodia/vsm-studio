@@ -1,6 +1,7 @@
 #pragma once
 #include "vsm/midi/MidiEvent.h"
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace vsm::sequencer {
@@ -45,10 +46,23 @@ public:
 
     BarBeat barBeatAt(Tick tick, uint16_t ppq) const;
 
+    /// D22.2 : l'inverse de `barBeatAt` -- le tick où commence le temps
+    /// `beat` (0-indexé) de la mesure `bar` (0-indexée), changements de
+    /// signature compris. Une mesure ou un temps négatif est ramené à zéro ;
+    /// un temps au-delà de la mesure déborde sur la suivante (17.5 en 4/4
+    /// vaut 18.1), plutôt que d'être refusé : c'est ce que la saisie attend.
+    Tick tickAtBarBeat(int64_t bar, int64_t beat, uint16_t ppq) const;
+
     const std::vector<TimeSignatureChange>& changes() const { return changes_; }
 
 private:
     std::vector<TimeSignatureChange> changes_;
 };
+
+/// D22.2 : lit une position musicale SAISIE -- « 17 », « 17.3 », « 17:3 »,
+/// « 17 3 » --, en numérotation humaine (la première mesure est 1). Rend
+/// faux si le texte n'est pas une position ; `bar` et `beat` sortent
+/// 0-indexés, prêts pour `tickAtBarBeat`. Un temps absent vaut le premier.
+bool parseBarBeat(const std::string& text, int64_t& bar, int64_t& beat);
 
 } // namespace vsm::sequencer

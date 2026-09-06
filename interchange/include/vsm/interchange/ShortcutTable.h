@@ -62,6 +62,8 @@ enum class ShortcutId : uint16_t {
     NavNextMarker,
     NavPreviousMarker,
     ViewFullScreen,
+    /// D22.2 : aller à une mesure saisie (« 17 », « 17.3 »).
+    NavGoToBar,
 
     Count
 };

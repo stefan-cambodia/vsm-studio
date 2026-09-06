@@ -124,6 +124,13 @@ public:
     uint64_t droppedInstrumentOutputs() const {
         return droppedInstrumentOutputs_.load(std::memory_order_relaxed);
     }
+    /// D22.4 : LE VOYANT « OUT ». Nombre de NoteOn effectivement livrés à une
+    /// machine depuis le départ -- planning et écoute confondus. Compté au
+    /// moment où l'événement entre dans le tableau que la machine va lire :
+    /// une note comptée ici est une note que la machine a reçue.
+    uint64_t notesSentToInstruments() const {
+        return notesSentToInstruments_.load(std::memory_order_relaxed);
+    }
     /// LE MÉTRONOME. Éteint par défaut, et il doit le rester pour le rendu
     /// hors ligne : un clic dans un fichier exporté serait une faute grossière.
     /// Le rendu hors ligne monte son propre graphe et ne l'allume jamais ;
@@ -645,6 +652,8 @@ private:
     /// Une piste a réclamé une sortie que sa machine n'a pas, ou le graphe a
     /// manqué de tampons. Compté, publié, jamais tu.
     std::atomic<uint64_t> droppedInstrumentOutputs_{0};
+    /// D22.4 : NoteOn livrés aux machines (thread audio, relaxed).
+    std::atomic<uint64_t> notesSentToInstruments_{0};
     /// D18.5 : le facteur de vitesse de lecture. 1,0 = le chemin d'avant.
     std::atomic<double> playbackSpeed_{1.0};
     /// Le noyau qui lit un fichier à une position fractionnaire. Sa table est

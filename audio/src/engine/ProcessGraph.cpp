@@ -1124,6 +1124,7 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
             pluginEvent.note = live.note;
             pluginEvent.velocity = live.velocity;
             soundingNotes_[trackIndex][live.note] = live.noteOn;
+            if (live.noteOn) notesSentToInstruments_.fetch_add(1, std::memory_order_relaxed);
             events[static_cast<size_t>(numEvents++)] = pluginEvent;
         }
     }
@@ -1274,6 +1275,8 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
         if (issue == Issue::Note) {
             soundingNotes_[trackIndex][pluginEvent.note] =
                 (pluginEvent.kind == MidiNoteEvent::Kind::NoteOn);
+            if (pluginEvent.kind == MidiNoteEvent::Kind::NoteOn)
+                notesSentToInstruments_.fetch_add(1, std::memory_order_relaxed);
             events[static_cast<size_t>(numEvents++)] = pluginEvent;
         } else if (issue == Issue::Control) {
             // Livré TOUT DE SUITE : les contrôles ne passent pas par le

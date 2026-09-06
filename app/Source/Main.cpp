@@ -143,6 +143,13 @@ public:
             // ne vivent que dans le menu contextuel d'un clip ; leurs jumeaux
             // du menu Édition s'atteignent ainsi sans souris, dans l'ordre
             // écrit (« Tout sélectionner;Répéter la sélection ... »).
+            // VSM_PRESET_PISTE=nom : écrire la piste choisie comme preset de
+            // piste (D22.5) avant VSM_MENU, pour que « Appliquer un preset de
+            // piste ▸ nom » ait quelque chose à lister. La boîte qui demande
+            // le nom ne se photographie pas.
+            if (const char* nom = std::getenv("VSM_PRESET_PISTE"); nom != nullptr && *nom)
+                if (!content->saveTrackPresetForCapture(juce::String::fromUTF8(nom)))
+                    std::fputs("VSM_PRESET_PISTE : preset non \u00e9crit (aucune piste choisie, ou dossier illisible)\n", stderr);
             if (const char* entrees = std::getenv("VSM_MENU"); entrees != nullptr && *entrees) {
                 juce::StringArray liste;
                 liste.addTokens(juce::String::fromUTF8(entrees), ";", "");
@@ -164,6 +171,17 @@ public:
                 }
                 content->exportForCapture(juce::File::getCurrentWorkingDirectory().getChildFile(sortie), niveau);
             }
+            // VSM_POSITION=17.3 : la tête à une position saisie (D22.2), pour
+            // que « Aller à la mesure » se vérifie sans souris : la barre de
+            // transport doit dire la nouvelle position.
+            if (const char* position = std::getenv("VSM_POSITION"); position != nullptr && *position)
+                if (!content->goToPositionForCapture(juce::String::fromUTF8(position)))
+                    std::fputs(("VSM_POSITION : \u00ab " + std::string(position)
+                                + " \u00bb refus\u00e9e, la t\u00eate n'a pas boug\u00e9\n").c_str(), stderr);
+            // VSM_LECTURE=1 : lancer la lecture avant la capture (D22.4) --
+            // le voyant OUT ne s'allume que si des notes partent.
+            if (const char* lecture = std::getenv("VSM_LECTURE"); lecture != nullptr && *lecture && *lecture != '0')
+                content->startPlaybackForCapture();
             if (const char* rapport = std::getenv("VSM_RAPPORT");
                 rapport != nullptr && *rapport)
                 content->showReconstructionReport();

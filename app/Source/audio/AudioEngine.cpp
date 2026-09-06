@@ -50,6 +50,9 @@ void AudioEngine::stop() {
 }
 
 void AudioEngine::handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMessage& message) {
+    // D22.4 : compté AVANT tout tri -- un message qu'on ignore est quand même
+    // ARRIVÉ, et c'est ce que le voyant IN a à dire.
+    midiInCount_.fetch_add(1, std::memory_order_relaxed);
     // Notes : jouées immédiatement, et -- depuis D3.3 -- enregistrées si une
     // prise est en cours. Les DEUX chemins sont distincts et le restent :
     // l'écoute passe par la file "live" du ProcessGraph, la capture par la file

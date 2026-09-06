@@ -191,6 +191,8 @@ public:
     void nudgeSelection(int64_t deltaTicks);
     void setSelectionLengthToGrid();
     void scaleSelectionLength(float factor);
+    /// D22.3 : départs ET durées à l'échelle depuis le premier départ choisi.
+    void scaleSelectionTime(double factor);
     void quantizeSelection(float strength, bool alsoQuantizeEnds);
     void humanizeSelection(float timingTicks, float velocityAmount);
     void applyLegatoToSelection();

@@ -1000,6 +1000,14 @@ vivent que dans un menu. `VSM_DELAI=ms` retarde l'autoportrait (une
 transcription met dix secondes), et `VSM_EXPORT=fichier.flac` exporte le
 projet ouvert sans fenêtre, en WAV, FLAC ou OGG selon l'extension, pour que
 le fichier se relise. `VSM_EXPORT_NIVEAU=crete|lufs14|lufs23` y ajoute le niveau.
+`VSM_POSITION=17.3` pose la tête à une mesure saisie (D22.2), `VSM_LECTURE=1`
+lance la lecture avant la capture (les voyants IN et OUT de la barre de
+transport ne s'allument que si quelque chose passe), `VSM_PRESET_PISTE=nom`
+écrit la piste choisie comme preset de piste, sans la boîte qui demande le
+nom ; parmi les jetons de `VSM_VUE`, `gain-clip:+3` (ou -6, -3, -1, +1, +6, 0)
+et `phase-clip` agissent sur le clip choisi comme le menu contextuel, et
+`note:60` joue une note par le chemin du clavier d'ordinateur, rejouée
+pendant trois secondes pour que les voyants se photographient allumés.
 `historique` et `spectre` ouvrent les fenêtres flottantes du même nom ; la
 photographie de `VSM_CAPTURE` ne couvre que la fenêtre principale, une fenêtre
 flottante se photographie avec `spectacle -b -n -f -o fichier.png` pendant que
