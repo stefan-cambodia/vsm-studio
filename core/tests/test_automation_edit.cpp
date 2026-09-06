@@ -232,3 +232,122 @@ VSM_TEST(the_ease_is_monotonic_and_stays_inside_its_bounds) {
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// D30.5 — RÉDUIRE LES POINTS D'UNE COURBE.
+//
+// L'attendu était écrit avant la mesure (ROADMAP-daw.md, phase D30) : une
+// réduction d'au moins UN ORDRE DE GRANDEUR sur une passe réelle, pour un
+// écart maximal SOUS la tolérance demandée. Ces tests sont ce qui le tranche.
+// ---------------------------------------------------------------------------
+
+/// Une passe d'automation telle que D16.8 en écrit : un point par tick touché,
+/// sur un geste qui n'en vaut que quelques-uns. Ici une rampe de 0 à 1 sur
+/// deux mesures, échantillonnée tous les deux ticks -- ce qu'un fader donne.
+static AutomationCurve unePasseEnW() {
+    AutomationCurve courbe;
+    courbe.parameter = "mix.volume";
+    for (Tick t = 0; t <= 1920; t += 2)
+        courbe.points.push_back({t, static_cast<float>(t) / 1920.0f, false, 0.0f});
+    return courbe;
+}
+
+VSM_TEST(thinning_a_recorded_pass_keeps_the_curve_within_its_tolerance) {
+    const AutomationCurve avant = unePasseEnW();
+    AutomationCurve apres = avant;
+    const float tolerance = 0.01f;             // 1 % de l'amplitude 0..1
+    const size_t retires = thinAutomation(apres, tolerance);
+
+    // LA RAMPE EST UNE DROITE : deux points suffisent à la dire, et c'est
+    // exactement ce qu'on attend d'une réduction qui a compris ce qu'elle lit.
+    VSM_ASSERT(apres.points.size() == 2);
+    VSM_ASSERT(retires == avant.points.size() - 2);
+    // Les deux extrémités sont là, et aux mêmes valeurs.
+    VSM_ASSERT(apres.points.front().tick == avant.points.front().tick);
+    VSM_ASSERT(apres.points.back().tick == avant.points.back().tick);
+    // ET L'ÉCART TIENT, mesuré sur l'union des ticks -- donc AUX POINTS
+    // RETIRÉS, là où il est le plus grand.
+    VSM_ASSERT(maxAutomationDeviation(avant, apres) <= tolerance);
+}
+
+VSM_TEST(thinning_keeps_what_the_gesture_actually_said) {
+    // Une passe qui MONTE PUIS REDESCEND : la réduction ne doit pas raboter le
+    // sommet, sans quoi elle changerait le geste au lieu de le nettoyer.
+    AutomationCurve avant;
+    avant.parameter = "mix.volume";
+    for (Tick t = 0; t <= 960; t += 2)
+        avant.points.push_back({t, static_cast<float>(t) / 960.0f, false, 0.0f});
+    for (Tick t = 962; t <= 1920; t += 2)
+        avant.points.push_back({t, static_cast<float>(1920 - t) / 960.0f, false, 0.0f});
+
+    AutomationCurve apres = avant;
+    const float tolerance = 0.01f;
+    thinAutomation(apres, tolerance);
+    VSM_ASSERT(apres.points.size() >= 3);          // le sommet a survécu
+    VSM_ASSERT(apres.points.size() <= 8);          // et rien d'autre, ou presque
+    VSM_ASSERT(maxAutomationDeviation(avant, apres) <= tolerance);
+    // Le sommet est bien à 1, et à peu près au bon endroit.
+    VSM_ASSERT_NEAR(automationValueAt(apres, 960), 1.0f, tolerance);
+}
+
+VSM_TEST(thinning_never_touches_a_step_or_a_bent_segment) {
+    // Un palier n'est pas une rampe et une courbure n'est pas une droite : les
+    // retirer ne déplacerait pas la courbe d'un peu, cela en changerait la
+    // nature. Le point qui les porte ET son voisin de droite sont gardés.
+    AutomationCurve avant;
+    avant.parameter = "filter.1.cutoff";
+    avant.points.push_back({0,    0.0f, false, 0.0f});
+    avant.points.push_back({100,  0.0f, false, 0.0f});   // sur la droite : retirable
+    avant.points.push_back({200,  0.0f, true,  0.0f});   // PALIER
+    avant.points.push_back({300,  1.0f, false, 0.8f});   // COURBURE
+    avant.points.push_back({400,  1.0f, false, 0.0f});
+    avant.points.push_back({500,  1.0f, false, 0.0f});
+
+    AutomationCurve apres = avant;
+    thinAutomation(apres, 0.5f);   // une tolérance énorme : tout ce qui peut tomber tombe
+    bool palier = false, courbure = false, voisin = false, fin = false;
+    for (const auto& p : apres.points) {
+        if (p.tick == 200 && p.step) palier = true;
+        if (p.tick == 300 && p.curve == 0.8f) courbure = true;
+        if (p.tick == 400) voisin = true;
+        if (p.tick == 500) fin = true;
+    }
+    VSM_ASSERT(palier && courbure && voisin && fin);
+    // Et la courbe rendue vaut toujours ce qu'elle valait aux instants clés,
+    // paliers compris.
+    VSM_ASSERT_NEAR(automationValueAt(apres, 250), automationValueAt(avant, 250), 1e-6f);
+    VSM_ASSERT_NEAR(automationValueAt(apres, 350), automationValueAt(avant, 350), 1e-6f);
+}
+
+VSM_TEST(thinning_refuses_to_act_when_it_has_nothing_to_go_on) {
+    // Tolérance nulle ou négative : rien n'est retiré. C'est ce qui permet à
+    // l'appelant de refuser une courbe dont il ignore l'amplitude sans avoir à
+    // inventer un nombre -- une tolérance inventée retirerait des points selon
+    // une échelle qui n'est pas la sienne.
+    AutomationCurve courbe = unePasseEnW();
+    const size_t avant = courbe.points.size();
+    VSM_ASSERT(thinAutomation(courbe, 0.0f) == 0);
+    VSM_ASSERT(thinAutomation(courbe, -1.0f) == 0);
+    VSM_ASSERT(courbe.points.size() == avant);
+
+    // Et une courbe de deux points est déjà irréductible.
+    AutomationCurve deux;
+    deux.points.push_back({0, 0.0f, false, 0.0f});
+    deux.points.push_back({960, 1.0f, false, 0.0f});
+    VSM_ASSERT(thinAutomation(deux, 0.5f) == 0);
+}
+
+VSM_TEST(the_deviation_is_measured_on_the_union_of_both_curves_ticks) {
+    // Le piège que ce chiffre doit éviter : mesuré sur les seuls ticks de la
+    // courbe RÉDUITE, l'écart vaudrait zéro à tous les coups -- un chiffre qui
+    // se contente de confirmer ce qu'on veut croire.
+    AutomationCurve pleine;
+    pleine.points.push_back({0,   0.0f, false, 0.0f});
+    pleine.points.push_back({480, 1.0f, false, 0.0f});   // un pic, au milieu
+    pleine.points.push_back({960, 0.0f, false, 0.0f});
+    AutomationCurve plate;
+    plate.points.push_back({0,   0.0f, false, 0.0f});
+    plate.points.push_back({960, 0.0f, false, 0.0f});
+    // Le pic est à 480, un tick que la courbe plate n'a pas : l'écart vaut 1.
+    VSM_ASSERT_NEAR(maxAutomationDeviation(pleine, plate), 1.0f, 1e-6f);
+}

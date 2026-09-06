@@ -137,7 +137,7 @@ public:
     void applyExternalControl(const std::string& parametre, float valeur);
     void refreshMuteSolo() {
         mute_.setToggleState(track_.muted, juce::dontSendNotification);
-        solo_.setToggleState(track_.solo, juce::dontSendNotification);
+        rafraichirSolo();   // D30.1 : le libellé et la couleur du solo protégé aussi
     }
     /// Prévenu AVANT qu'un geste ne modifie le mixage : c'est là que
     /// l'application prend son instantané d'annulation. Séparé de
@@ -175,6 +175,13 @@ private:
     /// du fader, parce que le piano roll montre le matériau et non ce qui
     /// sonne : c'est le seul endroit où le réglage se voit forcément.
     juce::Slider transposition_;
+    /// D30.4 : LE TRIM D'ENTRÉE, en décibels. Une case où l'on tape un nombre,
+    /// comme le décalage et la transposition -- et ELLE EST EN HAUT DE LA
+    /// TRANCHE, avant le panoramique, parce que c'est sa place dans le
+    /// signal : ce qui se lit de haut en bas doit être ce qui se traverse du
+    /// premier au dernier, sans quoi la tranche raconte une chaîne qui n'est
+    /// pas celle qu'on entend.
+    juce::Slider trim_;
     /// LE BOUTON W : off → touch → latch → off. Le mot « W » plutôt qu'un
     /// pictogramme, comme chez Cubase, et sa couleur dit lequel des deux
     /// modes est armé (l'ambre pour `touch`, plus vif pour `latch`).
@@ -208,6 +215,10 @@ private:
     juce::OwnedArray<juce::Slider> sends_;
     juce::TextButton mute_ { "M" };
     juce::TextButton solo_ { "S" };
+    /// D30.1 : le bouton Solo dit s'il est PROTÉGÉ -- « S+ » et l'ambre du
+    /// solo à l'état éteint, parce qu'un réglage qui ne se voit pas est un
+    /// réglage qu'on croit ne pas avoir posé.
+    void rafraichirSolo();
     LevelMeter meter_;
 };
 
@@ -321,6 +332,9 @@ private:
     juce::OwnedArray<ChannelStrip> strips_;
     MasterStrip master_;
 
-    static constexpr int kStripWidth = 76;
+    /// D30.4 : 76 -> 88 px, pour que « Trim -6.0 dB » tienne en entier. Le
+    /// nombre seul se confondait avec le volume, et la règle du projet est
+    /// d'agrandir la case plutôt que de rétrécir le texte.
+    static constexpr int kStripWidth = 88;
     static constexpr int kMasterWidth = 150;
 };

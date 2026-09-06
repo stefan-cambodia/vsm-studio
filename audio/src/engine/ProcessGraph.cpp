@@ -225,6 +225,8 @@ void ProcessGraph::refreshAutomationMask() {
                         masque[lane.targetTrackIndex] |=
                             static_cast<uint16_t>(1u << (kAutoSendFirst + lane.targetSlot));
                     break;
+                case AutomationTarget::TrackTrim:
+                    masque[lane.targetTrackIndex] |= kAutoTrim; break;
                 default: break;
             }
         }
@@ -840,9 +842,7 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
         blockSumLR_.fill(0.0);
         blockCount_.fill(0);
 
-        const bool idleAnySolo = std::any_of(idleSnapshot->project.tracks.begin(),
-                                              idleSnapshot->project.tracks.end(),
-                                              [](const Track& t) { return t.solo; });
+        const bool idleAnySolo = vsm::sequencer::anySoloActive(idleSnapshot->project.tracks);
         renderTrackRange(*idleSnapshot, idleAnySolo, 0, idleSamples,
                           currentSeconds_.load(std::memory_order_acquire), outputL, outputR,
                           /*includeScheduledEvents=*/false);
@@ -899,8 +899,7 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
         const Project& project = snapshot->project;
         auto lanes = automationLanes_.load(std::memory_order_acquire);
 
-        bool anySolo = std::any_of(project.tracks.begin(), project.tracks.end(),
-                                    [](const Track& t) { return t.solo; });
+        const bool anySolo = vsm::sequencer::anySoloActive(project.tracks);
 
         // Réinitialise les buffers de sends et les pics pour ce bloc.
         for (size_t b = 0; b < actifs; ++b) {
@@ -1075,6 +1074,9 @@ void ProcessGraph::renderSpan(const GraphSnapshot& snapshot, bool anySolo, int s
                     if (t < kMaxTracks && lane.targetSlot < kMaxSends)
                         autoSend_[t][lane.targetSlot] = valeur;
                     break;
+                case AutomationTarget::TrackTrim:
+                    if (t < kMaxTracks) autoTrim_[t] = valeur;
+                    break;
                 case AutomationTarget::InsertParam: {
                     if (t >= kMaxTracks) break;
                     auto chain = effectChains_[t].load(std::memory_order_acquire);
@@ -1177,7 +1179,7 @@ void ProcessGraph::renderGroupBuses(const GraphSnapshot& snapshot, bool anySolo,
             for (const auto& fx : *chain)
                 if (fx) fx->process(groupL_[g].data(), groupR_[g].data(), numSamples);
 
-        const bool audible = anySolo ? track.solo : !track.muted;
+        const bool audible = vsm::sequencer::trackAudible(track, anySolo);
         // D23.1 : la polarité d'un groupe, par le signe de son volume (voir
         // la piste plus bas) -- un bus de batterie en opposition s'inverse
         // entier, départs compris.
@@ -1251,6 +1253,11 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
                                     MidiNoteEvent* events, float* destL, float* destR) {
     const Project& project = snapshot.project;
     if (trackIndex >= project.tracks.size() || trackIndex >= kMaxTracks) return false;
+    // D30.2 : UNE PISTE DÉSACTIVÉE N'EST PAS RENDUE DU TOUT. Le muet, lui,
+    // rend puis jette : c'est ce qui fait qu'une piste muette coûte encore
+    // tout ce qu'elle coûtait. Ici on sort avant l'instrument, avant le
+    // fichier, avant les inserts -- c'est là qu'est l'économie promise.
+    if (project.tracks[trackIndex].disabled) return false;
     const double vitesse = playbackSpeed_.load(std::memory_order_acquire);
     const double rangeEndSeconds =
         rangeStartSeconds + static_cast<double>(sampleCount) * vitesse / sampleRate_;
@@ -1651,6 +1658,23 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
         audioSource->mixIntoAtSpeed(destL, destR, depart, sampleCount, vitesse, speedKernel_);
     }
 
+    // D30.4 : LE TRIM D'ENTRÉE, AVANT LES INSERTS ET APRÈS TOUT LE RESTE.
+    // C'est là qu'il gagne son existence : appliqué ailleurs, il serait un
+    // second fader. Ici il change ce que la saturation, le compresseur et la
+    // distorsion REÇOIVENT, donc ce qu'ils rendent -- et sur une chaîne vide
+    // ou linéaire il redonne exactement ce qu'un fader inverse lui reprend.
+    //
+    // PAS SUR UNE PISTE GELÉE, pour la raison qui vaut pour les inserts : le
+    // trim est DANS le fichier gelé, et le repasser l'appliquerait deux fois.
+    {
+        const float trimDb = (autoMask_[trackIndex] & kAutoTrim) ? autoTrim_[trackIndex]
+                                                                  : track.inputTrimDb;
+        if (!track.frozen && trimDb != 0.0f) {
+            const float g = std::pow(10.0f, trimDb / 20.0f);
+            for (int i = 0; i < sampleCount; ++i) { destL[i] *= g; destR[i] *= g; }
+        }
+    }
+
     // Chaîne d'inserts (section 5) : TRACK -> SYNTH -> EFFECTS -> MIX.
     // LES INSERTS NON PLUS : ils sont DANS le fichier gelé, et les
     // repasser dessus les appliquerait deux fois.
@@ -1701,7 +1725,7 @@ void ProcessGraph::mixTrackInto(const GraphSnapshot& snapshot, bool anySolo, siz
     const Project& project = snapshot.project;
     if (trackIndex >= project.tracks.size() || trackIndex >= kMaxTracks) return;
     const Track& track = project.tracks[trackIndex];
-    const bool audible = anySolo ? track.solo : !track.muted;
+    const bool audible = vsm::sequencer::trackAudible(track, anySolo);
 
     // MIXAGE VERS SA DESTINATION : le master, ou le tampon d'un groupe. Le
     // groupe sera traité en fin de bloc, quand tous ses membres y auront

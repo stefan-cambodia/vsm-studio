@@ -243,6 +243,26 @@ void TrackRowComponent::paint(juce::Graphics& g) {
                static_cast<float>(getHeight() - 1), 1.0f);
 }
 
+// D30.2 : UNE PISTE DÉSACTIVÉE LE DIT, en toutes lettres comme le verrou, et
+// sa ligne est GRISÉE -- elle n'est plus dans le morceau, et rien ne doit
+// laisser croire qu'un de ses réglages agit encore. C'est le seul des états de
+// cette phase qui RETIRE quelque chose : ne pas le montrer ferait chercher
+// pendant dix minutes pourquoi une piste ne sonne pas.
+//
+// DANS `paintOverChildren` ET NON DANS `paint`, et la première capture l'a
+// prouvé : le voile posé dans `paint` est recouvert par le nom, le sélecteur
+// de machine et les boutons, qui se dessinent APRÈS leur parent. La ligne
+// paraissait à peine plus sombre, c'est-à-dire pas désactivée du tout.
+void TrackRowComponent::paintOverChildren(juce::Graphics& g) {
+    if (!track_.disabled) return;
+    g.setColour(Palette::panel.withAlpha(0.62f));
+    g.fillRect(getLocalBounds());
+    g.setColour(Palette::accentRed);
+    g.setFont(juce::Font(juce::FontOptions(11.0f)));
+    g.drawText(u8"désactivée", getLocalBounds().removeFromTop(18).reduced(8, 2),
+                juce::Justification::centredRight);
+}
+
 void TrackRowComponent::resized() {
     auto area = getLocalBounds().reduced(12, 8);
     area.removeFromLeft(6); // laisse la place au bandeau de couleur peint dans paint()

@@ -204,6 +204,12 @@ struct ProjectTrack {
     bool folded = false;
     /// D23.1 : la polarité, écrite seulement quand elle est inversée.
     bool invertPhase = false;
+    /// D30.1 : le solo protégé, écrit seulement quand il l'est.
+    bool soloSafe = false;
+    /// D30.2 : la piste désactivée, écrite seulement quand elle l'est.
+    bool disabled = false;
+    /// D30.4 : le trim d'entrée en dB, écrit seulement quand il n'est pas nul.
+    float inputTrimDb = 0.0f;
     /// La piste est GELÉE et joue `frozenAudio` au lieu de son instrument
     /// (D5.5). Facultatifs : une piste non gelée garde le fichier qu'elle avait.
     bool frozen = false;

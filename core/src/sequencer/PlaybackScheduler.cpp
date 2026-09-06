@@ -120,14 +120,20 @@ std::vector<ScheduledEvent> PlaybackScheduler::chaseAt(const Project& project, T
     std::vector<ScheduledEvent> resultat;
     if (startTick <= 0) return resultat;
 
-    const bool anySolo = std::any_of(project.tracks.begin(), project.tracks.end(),
-                                      [](const Track& t) { return t.solo; });
+    const bool anySolo = anySoloActive(project.tracks);
     const Tick materialEnd = project.lastUsedTick();
     const std::vector<bool> publiee = pistesPubliees(project);
 
     for (size_t trackIndex = 0; trackIndex < project.tracks.size(); ++trackIndex) {
         const Track& track = project.tracks[trackIndex];
-        if ((anySolo ? !track.solo : track.muted) && !publiee[trackIndex]) continue;
+        // D30.2 : DÉSACTIVÉE GAGNE SUR « PUBLIÉE ». Une piste muette dont
+        // une autre publie les sorties reste JOUÉE (D18.7b) -- couper la
+        // grosse caisse ne doit pas faire taire la caisse claire. Une piste
+        // DÉSACTIVÉE, elle, n'est plus dans le morceau : sa machine n'est même
+        // pas instanciée, et lui écrire des événements les enverrait à
+        // personne.
+        if (track.disabled) continue;
+        if (!trackAudible(track, anySolo) && !publiee[trackIndex]) continue;
         const std::vector<Passage> passages = passagesOf(track, materialEnd);
 
     // ------------------------------------------------------------------
@@ -210,14 +216,14 @@ std::vector<ScheduledEvent> PlaybackScheduler::build(const Project& project,
     std::vector<ScheduledEvent> chasse =
         startTick < endTick ? chaseAt(project, startTick) : std::vector<ScheduledEvent>{};
 
-    bool anySolo = std::any_of(project.tracks.begin(), project.tracks.end(),
-                                [](const Track& t) { return t.solo; });
+    const bool anySolo = anySoloActive(project.tracks);
     const Tick materialEnd = project.lastUsedTick();
     const std::vector<bool> publiee = pistesPubliees(project);
 
     for (size_t trackIndex = 0; trackIndex < project.tracks.size(); ++trackIndex) {
         const Track& track = project.tracks[trackIndex];
-        bool audible = anySolo ? track.solo : !track.muted;
+        if (track.disabled) continue;      // D30.2, voir `chaseAt`
+        const bool audible = trackAudible(track, anySolo);
         if (!audible && !publiee[trackIndex]) continue;
 
         const std::vector<Passage> passages = passagesOf(track, materialEnd);

@@ -231,6 +231,12 @@ private:
         kMenuTrackHide,
         /// D21.2 : la piste choisie seule en solo (Ctrl+clic sur Solo fait de même).
         kMenuTrackSoloExclusive,
+        kMenuTrackSoloSafe,      ///< D30.1
+        kMenuTrackDisable,       ///< D30.2
+        kMenuTrackCopyChain,     ///< D30.3
+        kMenuTrackPasteChain,    ///< D30.3
+        kMenuTrackAppendChain,   ///< D30.3
+        kMenuTrackThinAutomation, ///< D30.5
         kMenuTrackShowAll,
         /// D22.5 : la piste choisie comme preset, et un identifiant par preset
         /// du dossier `pistes` de la bibliothèque, pour l'appliquer.
@@ -877,6 +883,36 @@ private:
     vsm::sequencer::Groove grooveCourant_;
     /// Les trois vues qui dessinent des pistes, rafraîchies ensemble (D17.4).
     void refreshTrackViews();
+    /// D30.1 : protège la piste choisie du solo des autres, ou lève la
+    /// protection. Rien n'est republié au moteur au-delà du projet lui-même :
+    /// c'est `trackAudible` qui lit le champ, à chaque bloc.
+    void toggleSoloSafeSelectedTrack();
+    /// D30.2 : retire la piste choisie du morceau, ou l'y remet. C'est le seul
+    /// des trois qui REPUBLIE : l'instrument et les inserts sont défaits, puis
+    /// refaits tels quels au retour.
+    void toggleDisableSelectedTrack();
+    /// D30.3 : LA CHAÎNE D'INSERTS COPIÉE D'UNE PISTE À L'AUTRE.
+    ///
+    /// Le presse-papier tient des DESCRIPTIONS (`TrackEffect`), pas des
+    /// instances : identité, paramètres, état natif et contournement. C'est ce
+    /// qui rend le collage sur la piste d'origine inoffensif -- on n'y duplique
+    /// rien de vivant --, et ce qui fait qu'une chaîne collée sonne comme celle
+    /// qu'on a copiée, effets tiers compris.
+    void copySelectedTrackChain();
+    /// `remplace` : la chaîne prend la place de celle qui est là. Sinon elle
+    /// s'ajoute À LA SUITE, ce qui est l'autre geste qu'on fait vraiment
+    /// (monter la même paire d'inserts derrière ce qui existe déjà).
+    void pasteChainIntoSelectedTrack(bool remplace);
+    /// La chaîne copiée, vide tant qu'on n'a rien copié.
+    std::vector<vsm::sequencer::TrackEffect> chainClipboard_;
+    /// D30.5 : réduit les points de TOUTES les courbes de la piste choisie.
+    ///
+    /// De la piste et non d'une courbe : une passe en W écrit le volume et le
+    /// panoramique ensemble, et l'on veut nettoyer ce qu'on vient d'enregistrer,
+    /// pas le nettoyer courbe par courbe. La tolérance est UN CENTIÈME de
+    /// l'amplitude du paramètre, que l'application est seule à connaître --
+    /// `core/` reçoit un nombre en unités du paramètre, comme partout.
+    void thinAutomationOfSelectedTrack();
     /// LA FENÊTRE IMPLICITE SE MATÉRIALISE (D16.1) : toute piste qui porte du
     /// matériau et aucun clip en reçoit un, « tout à zéro » -- exactement le
     /// passage que l'ordonnanceur fabriquait déjà pour elle, à l'échantillon

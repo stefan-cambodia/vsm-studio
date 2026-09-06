@@ -219,6 +219,7 @@ if (VSM_BUILD_TESTS)
         tests/test_multisample_synth.cpp
         tests/test_midi_learn.cpp
         tests/test_effect_routing.cpp
+        tests/test_track_audibility.cpp
         tests/test_more_effects.cpp
         tests/test_effect_bypass.cpp
         tests/test_spectrum_analyzer.cpp

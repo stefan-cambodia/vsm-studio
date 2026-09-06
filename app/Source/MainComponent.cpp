@@ -457,6 +457,7 @@ MainComponent::MainComponent()
                                            float& mini, float& maxi) {
         if (parametre == "mix.volume") { mini = 0.0f; maxi = 1.5f; return true; }
         if (parametre == "mix.pan")    { mini = -1.0f; maxi = 1.0f; return true; }
+        if (parametre == "mix.trim")   { mini = -24.0f; maxi = 24.0f; return true; }  // D30.4, en dB
         if (parametre.rfind("mix.send.", 0) == 0) { mini = 0.0f; maxi = 1.0f; return true; }
         if (parametre.rfind("master.", 0) == 0) {
             const std::string nom = parametre.substr(7);
@@ -1196,6 +1197,46 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
         trackList_.selectTrackIndex(static_cast<size_t>(std::max(0, nom.substring(11).getIntValue())));
         toggleSoloSelectedTrack();
     }
+    // D30 : les quatre gestes de la phase, par les MÊMES fonctions que les
+    // menus -- un chemin de capture qui doublerait le code photographierait
+    // autre chose que ce qu'on livre.
+    else if (nom.startsWith("solo-protege:")) {              // D30.1
+        trackList_.selectTrackIndex(static_cast<size_t>(std::max(0, nom.substring(13).getIntValue())));
+        toggleSoloSafeSelectedTrack();
+    }
+    else if (nom.startsWith("piste-eteinte:")) {             // D30.2
+        trackList_.selectTrackIndex(static_cast<size_t>(std::max(0, nom.substring(14).getIntValue())));
+        toggleDisableSelectedTrack();
+    }
+    // trim-piste:N:dB -- « trim-piste:2:-6 » pose -6 dB sur la piste 2.
+    else if (nom.startsWith("trim-piste:")) {                // D30.4
+        const juce::String reste = nom.substring(11);
+        const int deuxPoints = reste.indexOfChar(':');
+        const size_t piste = static_cast<size_t>(std::max(0,
+            (deuxPoints >= 0 ? reste.substring(0, deuxPoints) : reste).getIntValue()));
+        if (deuxPoints < 0 || piste >= project_.tracks.size()) {
+            std::fputs("VSM_VUE trim-piste : attendu trim-piste:PISTE:DECIBELS\n", stderr);
+        } else {
+            beginProjectEdit(u8"Trim d'entrée");
+            project_.tracks[piste].inputTrimDb =
+                juce::jlimit(-24.0f, 24.0f, reste.substring(deuxPoints + 1).getFloatValue());
+            trackList_.selectTrackIndex(piste);
+            mixer_.setProject(&project_);
+            refreshTrackViews();
+        }
+    }
+    // D30.3 : la chaîne d'une piste à l'autre. EN COMMANDES DE VUE et pas
+    // seulement en entrées de menu, parce que le geste en demande TROIS à la
+    // suite -- copier, changer de piste, coller -- et que `VSM_MENU` s'exécute
+    // en bloc APRÈS `VSM_VUE` : on ne peut pas s'y intercaler un changement de
+    // piste. Les trois appellent les mêmes fonctions que le menu.
+    else if (nom == "copier-chaine") copySelectedTrackChain();
+    else if (nom == "coller-chaine") pasteChainIntoSelectedTrack(true);
+    else if (nom == "ajouter-chaine") pasteChainIntoSelectedTrack(false);
+    else if (nom.startsWith("reduire-automation:")) {        // D30.5
+        trackList_.selectTrackIndex(static_cast<size_t>(std::max(0, nom.substring(19).getIntValue())));
+        thinAutomationOfSelectedTrack();
+    }
     else if (nom == "pistes-a-la-fenetre") arrangement_.fitTracksToWindow();
     // D27.4 : sortie-midi:N:port -- le port de la piste N, par la même fonction que le menu.
     else if (nom.startsWith("sortie-midi:")) {
@@ -1252,6 +1293,18 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
         const vsm::midi::Tick parMesure =
             project_.timeSignatureMap.ticksPerBar(0, project_.ticksPerQuarterNote);
         createClipOnTrack(piste, static_cast<vsm::midi::Tick>(mesure) * parMesure);
+    }
+    // D30 : UNE COMMANDE INCONNUE SE DIT, et c'est la correction la plus utile
+    // de cette phase. `VSM_VUE=melangeur` (pour « mixer ») a été avalé sans un
+    // mot pendant la vérification de D30.1 : la capture est sortie, elle
+    // montrait l'écran d'accueil, et rien ne distinguait « la commande n'existe
+    // pas » de « le réglage n'a rien changé ». C'est exactement la panne muette
+    // que le projet s'interdit -- et elle vivait dans l'outil qui sert à
+    // prouver que les interfaces marchent, donc à l'endroit où elle coûte le
+    // plus cher.
+    else {
+        std::fputs(("VSM_VUE : commande inconnue « " + nom.toStdString()
+                    + " » — rien n'a été fait.\n").c_str(), stderr);
     }
 }
 
@@ -1878,6 +1931,16 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                        : u8"Solo exclusif de la piste choisie (Ctrl+clic sur Solo)",
                                  p < project_.tracks.size());
                 }
+                // D30.1 : LE SOLO PROTÉGÉ, au menu comme au bouton -- pour
+                // le clavier, et pour que VSM_MENU puisse le photographier.
+                {
+                    const size_t p = trackList_.selectedTrackIndex();
+                    const bool protegee = p < project_.tracks.size() && project_.tracks[p].soloSafe;
+                    menu.addItem(kMenuTrackSoloSafe,
+                                 protegee ? u8"Ne plus protéger cette piste du solo des autres (Alt+clic sur Solo)"
+                                          : u8"Protéger cette piste du solo des autres (Alt+clic sur Solo)",
+                                 p < project_.tracks.size());
+                }
                 menu.addItem(kMenuTrackHide, u8"Masquer la piste (elle continue de sonner)",
                               !project_.tracks.empty());
                 menu.addItem(kMenuTrackShowAll,
@@ -1979,6 +2042,60 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                               gelable);
                 menu.addItem(kMenuTrackBounce, u8"Reporter la piste en audio (définitif)",
                               gelable);
+                // D30.2 : DÉSACTIVER, à côté du gel parce que c'est à lui
+                // qu'on la compare -- et le libellé dit la différence, sans
+                // quoi on aurait deux commandes qu'on croit jumelles.
+                {
+                    const bool eteinte = piste < project_.tracks.size()
+                                         && project_.tracks[piste].disabled;
+                    menu.addItem(kMenuTrackDisable,
+                                  eteinte ? u8"Réactiver la piste (sa machine revient)"
+                                          : u8"Désactiver la piste (sa machine et ses inserts sont libérés)",
+                                  piste < project_.tracks.size());
+                }
+                // D30.3 : LA CHAÎNE D'INSERTS, D'UNE PISTE À L'AUTRE. Les
+                // libellés DISENT COMBIEN : une commande grisée sans raison est
+                // une commande qu'on croit cassée, et « coller 4 inserts » dit
+                // aussi qu'on a bien copié ce qu'on croyait.
+                {
+                    menu.addSeparator();
+                    const size_t combien = piste < project_.tracks.size()
+                                               ? project_.tracks[piste].effects.size() : 0;
+                    menu.addItem(kMenuTrackCopyChain,
+                                  juce::String::fromUTF8(u8"Copier la chaîne d'inserts (")
+                                      + juce::String(static_cast<int>(combien))
+                                      + juce::String::fromUTF8(u8")"),
+                                  combien > 0);
+                    const int presse = static_cast<int>(chainClipboard_.size());
+                    menu.addItem(kMenuTrackPasteChain,
+                                  presse == 0
+                                      ? juce::String::fromUTF8(u8"Coller la chaîne (rien de copié)")
+                                      : juce::String::fromUTF8(u8"Coller la chaîne (")
+                                            + juce::String(presse)
+                                            + juce::String::fromUTF8(u8" inserts, remplace)"),
+                                  presse > 0 && piste < project_.tracks.size());
+                    menu.addItem(kMenuTrackAppendChain,
+                                  presse == 0
+                                      ? juce::String::fromUTF8(u8"Ajouter la chaîne (rien de copié)")
+                                      : juce::String::fromUTF8(u8"Ajouter la chaîne à la suite (")
+                                            + juce::String(presse)
+                                            + juce::String::fromUTF8(u8" inserts)"),
+                                  presse > 0 && piste < project_.tracks.size());
+                }
+                // D30.5 : RÉDUIRE LES POINTS. Le libellé dit COMBIEN il y en
+                // a : c'est ce nombre qui fait comprendre pourquoi la commande
+                // existe, et c'est lui qu'on compare à celui d'après.
+                {
+                    size_t points = 0;
+                    if (piste < project_.tracks.size())
+                        for (const auto& c : project_.tracks[piste].automation)
+                            points += c.points.size();
+                    menu.addItem(kMenuTrackThinAutomation,
+                                  juce::String::fromUTF8(u8"Réduire les points d'automation (")
+                                      + juce::String(static_cast<int>(points))
+                                      + juce::String::fromUTF8(u8" points)"),
+                                  points > 2);
+                }
                 menu.addItem(kMenuTrackBounceSelection,
                               u8"Reporter la sélection en audio (sur une piste neuve)",
                               arrangement_.hasSelection());
@@ -2637,6 +2754,12 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         }
         case kMenuTrackFreeze:   toggleFreezeSelectedTrack(); break;
         case kMenuTrackLock:     toggleLockSelectedTrack(); break;
+        case kMenuTrackSoloSafe: toggleSoloSafeSelectedTrack(); break;   // D30.1
+        case kMenuTrackDisable:  toggleDisableSelectedTrack(); break;    // D30.2
+        case kMenuTrackCopyChain:   copySelectedTrackChain(); break;      // D30.3
+        case kMenuTrackPasteChain:  pasteChainIntoSelectedTrack(true); break;
+        case kMenuTrackAppendChain: pasteChainIntoSelectedTrack(false); break;
+        case kMenuTrackThinAutomation: thinAutomationOfSelectedTrack(); break;   // D30.5
         case kMenuTrackHide:     hideSelectedTrack(); break;
         case kMenuTrackSoloExclusive: soloTrackExclusively(trackList_.selectedTrackIndex()); break;
         case kMenuTrackShowAll:  showAllTracks(); break;
@@ -5594,6 +5717,9 @@ void MainComponent::applyAutomationFromProject() {
             } else if (curve.parameter == "mix.pan") {
                 lane.target = Cible::TrackPan;
                 resolue = true;
+            } else if (curve.parameter == "mix.trim") {   // D30.4
+                lane.target = Cible::TrackTrim;
+                resolue = true;
             } else if (curve.parameter.rfind("mix.send.", 0) == 0) {
                 const int numero = std::atoi(curve.parameter.substr(9).c_str());
                 if (numero >= 1 && numero <= static_cast<int>(
@@ -7102,6 +7228,143 @@ void MainComponent::soloTrackExclusively(size_t index) {
     if (mixer_.onMixChanged) mixer_.onMixChanged();
 }
 
+void MainComponent::toggleSoloSafeSelectedTrack() {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    auto& track = project_.tracks[piste];
+    beginProjectEdit(track.soloSafe ? u8"Ne plus protéger du solo" : u8"Protéger du solo");
+    track.soloSafe = !track.soloSafe;
+    // Le moteur lit le champ dans l'instantané du projet, à chaque bloc : il
+    // suffit de le lui republier. Les tranches, elles, ont un libellé à
+    // changer -- « S » devient « S+ ».
+    mixer_.refreshMuteSolo();
+    refreshTrackViews();
+    captureSessionIntoProject();
+}
+
+void MainComponent::toggleDisableSelectedTrack() {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    auto& track = project_.tracks[piste];
+    const bool eteinte = !track.disabled;
+    beginProjectEdit(eteinte ? u8"Désactiver une piste" : u8"Réactiver une piste");
+    track.disabled = eteinte;
+    // ICI IL FAUT REPUBLIER, et c'est toute la différence avec le muet, le
+    // masquage et le verrou : ce qui change n'est pas ce qu'on entend d'un
+    // rendu inchangé, c'est ce que le moteur TIENT -- l'instrument et la
+    // chaîne d'inserts sont défaits, puis refaits tels quels au retour.
+    rebuildFromProject(/*stopPlayback=*/false);
+    // PANNE MUETTE INTERDITE : une piste qui sort du morceau le DIT. Sur
+    // stderr et non dans une boîte : c'est un geste qu'on répète, et une boîte
+    // à fermer à chaque fois ne serait pas lue longtemps -- mais un geste
+    // piloté par VSM_MENU dont on ne lit aucun compte rendu est un geste qu'on
+    // croit fait.
+    juce::String message = juce::String::fromUTF8(eteinte ? u8"Piste désactivée : « "
+                                                          : u8"Piste réactivée : « ");
+    message += juce::String::fromUTF8(track.name.c_str());
+    message += juce::String::fromUTF8(eteinte
+        ? u8" ». Sa machine et ses inserts sont libérés ; ses notes et ses réglages restent.\n"
+        : u8" ». Sa machine et ses inserts sont revenus.\n");
+    std::fputs(message.toRawUTF8(), stderr);
+}
+
+void MainComponent::copySelectedTrackChain() {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    chainClipboard_ = project_.tracks[piste].effects;
+    // Pas d'entrée d'annulation : COPIER NE CHANGE RIEN au projet. Ce qui
+    // s'annule est le collage.
+    juce::String message = juce::String::fromUTF8(u8"Chaîne copiée : ")
+                           + juce::String(static_cast<int>(chainClipboard_.size()))
+                           + juce::String::fromUTF8(u8" insert(s) de « ")
+                           + juce::String::fromUTF8(project_.tracks[piste].name.c_str())
+                           + juce::String::fromUTF8(u8" ».\n");
+    std::fputs(message.toRawUTF8(), stderr);
+}
+
+void MainComponent::pasteChainIntoSelectedTrack(bool remplace) {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size() || chainClipboard_.empty()) return;
+    auto& cible = project_.tracks[piste];
+    const size_t avant = cible.effects.size();
+    beginProjectEdit(remplace ? u8"Coller la chaîne d'inserts"
+                              : u8"Ajouter la chaîne d'inserts");
+    if (remplace) cible.effects = chainClipboard_;
+    else cible.effects.insert(cible.effects.end(), chainClipboard_.begin(), chainClipboard_.end());
+    // Les instances sont refabriquées depuis la DESCRIPTION, par le chemin
+    // habituel : c'est ce qui garantit qu'une chaîne collée est montée
+    // exactement comme une chaîne saisie à la main, état natif compris.
+    effectChain_.rebuildFromProject();
+    effectChain_.setActiveTrack(static_cast<int>(piste));
+    refreshTrackViews();
+    juce::String message = juce::String::fromUTF8(remplace ? u8"Chaîne collée sur « "
+                                                           : u8"Chaîne ajoutée à « ");
+    message += juce::String::fromUTF8(cible.name.c_str());
+    message += juce::String::fromUTF8(u8" » : ") + juce::String(static_cast<int>(avant))
+               + juce::String::fromUTF8(u8" insert(s) avant, ")
+               + juce::String(static_cast<int>(cible.effects.size()))
+               + juce::String::fromUTF8(u8" après.\n");
+    std::fputs(message.toRawUTF8(), stderr);
+}
+
+void MainComponent::thinAutomationOfSelectedTrack() {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    auto& track = project_.tracks[piste];
+    if (track.automation.empty()) return;
+
+    // LE TÉMOIN D'ABORD : on garde une copie des courbes pour MESURER l'écart
+    // entre ce qu'on entendait et ce qu'on entendra. Sans elle, on annoncerait
+    // une réduction sans pouvoir dire ce qu'elle a coûté.
+    const std::vector<vsm::sequencer::AutomationCurve> avant = track.automation;
+
+    size_t pointsAvant = 0, retires = 0;
+    for (const auto& c : avant) pointsAvant += c.points.size();
+
+    beginProjectEdit(u8"Réduire les points d'automation");
+    float pireEcart = 0.0f;
+    float pireTolerance = 0.0f;
+    juce::StringArray sansBornes;
+    for (size_t i = 0; i < track.automation.size(); ++i) {
+        auto& courbe = track.automation[i];
+        float mini = 0.0f, maxi = 1.0f;
+        // LES BORNES VIENNENT D'OÙ ELLES VIENNENT DÉJÀ (D5.4) : la même
+        // fonction que la vue d'arrangement interroge pour dessiner. Deux
+        // sources d'amplitude finiraient par donner deux tolérances.
+        if (!arrangement_.automationRange(piste, courbe.parameter, mini, maxi)) {
+            // PANNE MUETTE INTERDITE : un paramètre dont on ne connaît pas
+            // l'amplitude n'est pas réduit « au jugé », il est LAISSÉ ENTIER et
+            // NOMMÉ. Une tolérance inventée retirerait des points selon une
+            // échelle qui n'est pas la sienne.
+            sansBornes.add(juce::String::fromUTF8(courbe.parameter.c_str()));
+            continue;
+        }
+        const float tolerance = std::fabs(maxi - mini) * 0.01f;   // 1 % de l'amplitude
+        pireTolerance = std::max(pireTolerance, tolerance);
+        retires += vsm::sequencer::thinAutomation(courbe, tolerance);
+        pireEcart = std::max(pireEcart, vsm::sequencer::maxAutomationDeviation(avant[i], courbe));
+    }
+
+    applyAutomationFromProject();
+    refreshTrackViews();
+
+    size_t pointsApres = 0;
+    for (const auto& c : track.automation) pointsApres += c.points.size();
+    juce::String message = juce::String::fromUTF8(u8"Réduire les points d'automation : ")
+                           + juce::String(static_cast<int>(pointsAvant))
+                           + juce::String::fromUTF8(u8" -> ")
+                           + juce::String(static_cast<int>(pointsApres))
+                           + juce::String::fromUTF8(u8" (") + juce::String(static_cast<int>(retires))
+                           + juce::String::fromUTF8(u8" retirés), écart maximal ")
+                           + juce::String(pireEcart, 6)
+                           + juce::String::fromUTF8(u8" pour une tolérance de ")
+                           + juce::String(pireTolerance, 6);
+    if (!sansBornes.isEmpty())
+        message += juce::String::fromUTF8(u8" ; laissée(s) entière(s) faute d'amplitude connue : ")
+                   + sansBornes.joinIntoString(", ");
+    std::fputs((message + "\n").toRawUTF8(), stderr);
+}
+
 void MainComponent::hideSelectedTrack() {
     const size_t piste = trackList_.selectedTrackIndex();
     if (piste >= project_.tracks.size()) return;
@@ -8254,8 +8517,13 @@ void MainComponent::rebuildFromProject(bool stopPlayback) {
     // vers le bas et l'ancien dernier index ne doit pas garder un synthé
     // fantôme. maxAssignedTracks_ mémorise le plus haut nombre de pistes déjà
     // vues pour savoir jusqu'où nettoyer.
+    // D30.2 : UNE PISTE DÉSACTIVÉE NE REÇOIT PAS D'INSTRUMENT. C'est ici que
+    // la désactivation coûte ce qu'elle promet : le slot est vidé, la machine
+    // n'est pas instanciée, et rien de son état n'est perdu -- `instrumentId`
+    // reste écrit dans la piste et la retrouve à la réactivation.
     for (size_t i = 0; i < project_.tracks.size(); ++i)
-        audioEngine_.processGraph().setTrackInstrument(i, project_.tracks[i].instrumentId);
+        audioEngine_.processGraph().setTrackInstrument(
+            i, project_.tracks[i].disabled ? std::string{} : project_.tracks[i].instrumentId);
     for (size_t i = project_.tracks.size(); i < maxAssignedTracks_; ++i)
         audioEngine_.processGraph().setTrackInstrument(i, "");
     maxAssignedTracks_ = std::max(maxAssignedTracks_, project_.tracks.size());

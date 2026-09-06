@@ -46,6 +46,7 @@ enum class AutomationTarget {
     TrackVolume,      ///< le fader de la piste
     TrackPan,         ///< son panoramique
     TrackSend,        ///< son niveau vers le bus `targetSlot`
+    TrackTrim,        ///< D30.4 : son trim d'entrée, en dB, AVANT les inserts
     InsertParam,      ///< un réglage de l'insert n° `targetSlot` de la piste
     MasterParam,      ///< un réglage de la tranche master (la piste est ignorée)
 };

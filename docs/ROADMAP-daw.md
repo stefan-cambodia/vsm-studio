@@ -6025,3 +6025,214 @@ barre d'outils du piano roll, `gridTicks`.
 >
 > Tests : 271 core, 1 257 audio, 278 interchange — tous verts ; Python
 > inchangé (168 à D21).
+
+### Phase D30 — Le seizième audit : ce qui manque une fois D29 posée (06/09/2026, 17:55)
+
+**Pourquoi.** Même méthode : des candidats sondés, puis REVÉRIFIÉS en
+nommant ce qu'on a cherché ET où. Le relevé a écarté, comme EXISTANT et
+trouvé à la relecture — le tap tempo (`TransportBarComponent.cpp:66`),
+l'aimantation au passage par zéro (D21.3), la sauvegarde automatique
+(`AutosaveService`), l'export FLAC et Ogg (D20.5), le contournement de
+toute la chaîne d'inserts (`setAllEffectsEnabled`), la courbure des
+segments d'automation (`AutomationPoint::curve`, D17.7), le solo exclusif
+(D21.2), les préréglages de piste (D22.5), le maintien de crête des
+vu-mètres, le dithering à l'export (D14.4), la sélection des notes de même
+hauteur, la saisie pas à pas (D13.5) et l'inversion temporelle des notes.
+
+**Un piège du relevé, et il a servi deux fois.** Un premier sondage a
+conclu « pas d'export FLAC ni Ogg » : le motif `mp3|flac|ogg` avait été
+noyé par `ogg` dans `setClickingTogglesState` et `getToggleState`, et les
+trois vraies lignes étaient au-delà du `head -3`. D20.5 avait fait ce
+travail un jour plus tôt. C'est la leçon de CLAUDE.md — un « zéro » sorti
+d'un grep se revérifie — appliquée à son symétrique : un « rien trouvé »
+qui vient d'un motif trop court est aussi faux qu'un zéro mal cherché.
+
+Cinq manques ont survécu à la revérification (cherchés dans `app/Source`,
+`core`, `audio/include`, `audio/src`, `audio/plugins` et `interchange`) :
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D30.1 | **Le solo protégé.** Cubase : *Solo Defeat* ; Live : rien d'équivalent. Ici, un solo sur une piste coupe TOUT le reste — y compris le bus de réverbération, dont la sortie est justement ce qu'on veut entendre avec la piste soloée. Écouter une voix seule la donne sèche, ce qu'elle n'est pas dans le morceau | `Track::soloSafe` ; l'audibilité devient UNE fonction (`trackAudible`) au lieu des cinq copies de `anySolo ? track.solo : !track.muted` (`ProcessGraph` ×3, `PlaybackScheduler` ×2) ; protégée, la piste ignore le solo des AUTRES et garde son propre muet ; Alt+clic sur Solo ; écrit dans `project.json` seulement quand il est vrai ; mesuré : le solo d'une piste avec un départ de réverbération laisse la queue au mélange, le témoin sans protection ne l'a pas |
+| D30.2 | **La piste désactivée.** Cubase : *Disable Track* ; ici, seul le muet existe, et une piste muette garde son instrument instancié et ses inserts en marche — un morceau reconstruit à quarante pistes paie les quarante machines même quand on n'en écoute qu'une | `Track::disabled` ; désactivée, la piste ne reçoit PAS d'instrument (`setTrackInstrument(i, "")`), pas de chaîne d'inserts, et le planificateur ne lui écrit aucun événement ; réactivée, tout revient (le matériau n'est jamais détruit) ; distinct du muet et du gel, et le dit ; écrit dans `project.json` ; mesuré : le nombre d'instruments tenus par le graphe tombe, et le rendu du reste ne bouge pas d'un bit |
+| D30.3 | **Copier la chaîne d'effets d'une piste à l'autre.** Les préréglages existent par EFFET (D15.4) ; monter la même chaîne de quatre inserts sur six pistes de batterie demande vingt-quatre gestes | dans le menu **Piste** (et non dans le volet des effets, voir la décision ci-dessous) : « Copier la chaîne » / « Coller la chaîne » (remplace) et « Ajouter la chaîne » (à la suite) ; les paramètres ET l'état natif suivent, le contournement aussi ; annulable ; coller sur la piste d'origine ne se refuse pas mais ne duplique rien de vivant (une chaîne est une DESCRIPTION, pas des instances) ; vérifié à l'écran |
+| D30.4 | **Le trim d'entrée.** Cubase : le gain avant le rack ; Live : un Utility en tête. Ici, le fader est APRÈS les inserts : pousser une piste dans son compresseur demande de rentrer dans le compresseur, ce qui déplace le réglage au lieu du niveau | `Track::inputTrimDb` (-24 à +24 dB, 0 par défaut), appliqué AVANT la chaîne d'inserts dans le graphe, sur la piste comme sur le groupe ; un curseur dans la tranche, remis à 0 dB au double-clic (D25.3) ; automatisable comme le volume (`mix.trim`) ; écrit seulement quand il n'est pas nul ; mesuré : à trim +6 dB et fader -6 dB, un insert NON linéaire (saturation) rend un signal DIFFÉRENT du même réglage sans trim — sans quoi le trim ne serait qu'un second fader |
+| D30.5 | **Réduire les points d'une courbe d'automation.** Une passe en W (D16.8, et depuis D29.3 un potentiomètre MIDI) pose un point par tick touché : la courbe est illisible et impossible à retoucher à la main | `thinAutomation(curve, tolerance)` dans `core/` : une réduction par écart maximal (Ramer-Douglas-Peucker) qui GARDE les deux extrémités, les paliers (`step`) et les points dont la courbe s'écarterait de plus de `tolerance` ; « Réduire les points » dans le menu de la voie d'automation, tolérance à 1 % de l'amplitude du paramètre ; annulable ; mesuré et publié : le nombre de points AVANT et APRÈS sur une passe réelle, et l'écart maximal entre les deux courbes relues tick par tick, qui doit rester **sous la tolérance demandée** |
+
+**Ce qui est attendu, écrit AVANT la mesure.**
+
+1. **D30.1** — le mélange d'un solo sur une piste qui envoie à un bus
+   protégé doit contenir la queue de réverbération ; le même projet sans
+   protection ne doit PAS la contenir. Deux rendus, un seul réglage qui
+   change : c'est l'A/B, et le témoin est le même code.
+2. **D30.2** — désactiver une piste qui ne sonne pas dans la plage rendue
+   doit laisser le rendu du reste **identique au bit près** (écart 0,0).
+   Si l'écart n'est pas nul, ce n'est pas de l'arrondi : c'est que la
+   désactivation a touché autre chose que la piste visée.
+3. **D30.4** — j'attends que `trim +6 / fader -6` DIFFÈRE du réglage neutre
+   dès qu'un insert non linéaire est en jeu, et qu'il soit **identique au
+   bit près** quand la chaîne est vide ou purement linéaire. Le second est
+   ce qui prouve que le trim est bien AVANT les inserts et nulle part
+   ailleurs : sans insert, un gain +6 suivi d'un gain -6 rend le signal
+   d'origine, à l'arrondi flottant près, que je mesure aussi.
+4. **D30.5** — j'attends une réduction d'au moins **un ordre de grandeur**
+   sur une passe réelle (des centaines de points vers des dizaines) pour un
+   écart maximal sous la tolérance. Si la réduction est faible, l'algorithme
+   ou la tolérance est en cause, et le chiffre le dira plutôt que de rester
+   tu.
+
+Aucune panne muette : ce qui est écarté, refusé ou remplacé est dit au
+journal et à l'écran, comme partout ailleurs.
+
+> **D30.1 EST FAITE (06/09/2026, 18:20).** `Track::soloSafe`, Alt+clic sur
+> Solo et « Protéger cette piste du solo des autres » au menu Piste. **Le
+> premier geste de l'étape n'a pas été d'ajouter un champ mais d'en finir
+> avec cinq copies** : la règle d'audibilité était écrite cinq fois
+> (`ProcessGraph` ×3 — le mélange d'une piste, celui d'un groupe, le rendu à
+> l'arrêt — et `PlaybackScheduler` ×2 — le planning et la chasse). L'ajouter
+> à quatre d'entre elles aurait donné une piste audible au mélange et muette
+> au planning, c'est-à-dire une piste dont les notes ne partent pas mais dont
+> la queue de réverbération sonne. Il n'y a plus qu'un `trackAudible(track,
+> anySolo)`, dans `core/include/vsm/sequencer/Track.h`, et un test tient
+> l'ancienne règle inchangée.
+>
+> **La mesure, un A/B dont la seule variable est la protection.** Une voix
+> routée vers un bus de groupe, la voix soloée : crête du mélange **0,0 sans
+> protection** (le bus n'est pas soloé, donc rien ne sort — le défaut qu'on
+> répare) contre **une crête franche avec**. Et « ignore le solo des AUTRES »
+> n'est pas « toujours audible » : une piste protégée ET muette reste muette,
+> ce qu'un test vérifie dans les quatre combinaisons.
+>
+> Vu à l'écran (`VSM_VUE=mixer,solo-protege:1`) : le bouton Solo de « Drums »
+> porte **« S+ » en turquoise**. Deux signes plutôt qu'un — le libellé et la
+> couleur : un seul suffirait à l'œil qui sait ce qu'il cherche, il en faut
+> deux à celui qui l'ignore.
+
+> **D30.2 EST FAITE (06/09/2026, 18:25).** `Track::disabled` : la piste ne
+> reçoit pas d'instrument (`setTrackInstrument(i, "")`), pas de chaîne
+> d'inserts (`EffectChainComponent::rebuildFromProject`), et `renderTrackVoice`
+> sort **avant** l'instrument, le fichier et les inserts — c'est là qu'est
+> l'économie promise, là où le muet, lui, calcule puis jette.
+>
+> | | mesuré | attendu |
+> |---|---|---|
+> | désactiver une piste qui ne sonne pas dans la plage rendue | **écart 0,0 — au bit près** | 0,0 |
+> | événements planifiés pour une piste désactivée | **0** | 0 |
+>
+> **CE QUE LA MESURE A OBLIGÉ À TRANCHER.** D18.7b avait posé que le muet
+> d'une piste dont une AUTRE publie les sorties ne coupe pas la machine —
+> couper la grosse caisse ne doit pas faire taire la caisse claire. Une piste
+> désactivée n'a pas ce droit : sa machine n'est même pas instanciée, et lui
+> écrire des événements les enverrait à personne. **Désactivée gagne donc sur
+> « publiée »**, et c'est écrit dans `PlaybackScheduler` aux deux endroits.
+>
+> **CE QUE L'ÉCRAN A MONTRÉ, ET QUI A ÉTÉ CORRIGÉ.** Le voile gris de la
+> ligne désactivée, posé dans `paint`, était **recouvert par le nom, le
+> sélecteur de machine et les boutons** — les enfants se dessinent après leur
+> parent. La ligne paraissait à peine plus sombre, c'est-à-dire pas
+> désactivée du tout. Il est passé dans `paintOverChildren`, et la capture
+> (`VSM_VUE=piste-eteinte:1`) montre « Drums » voilée avec **« désactivée »
+> en rouge** — pendant que le rack, lui, annonce « (aucun instrument
+> assigné) », ce qui est la vérité du moteur.
+
+> **D30.3 EST FAITE (06/09/2026, 18:35).** « Copier la chaîne d'inserts » /
+> « Coller la chaîne » / « Ajouter la chaîne à la suite », et les libellés
+> **disent combien** : une commande grisée sans raison est une commande qu'on
+> croit cassée. Le presse-papier tient des `TrackEffect`, c'est-à-dire des
+> DESCRIPTIONS — identité, paramètres, état natif, contournement — et les
+> instances sont refabriquées par le chemin habituel : une chaîne collée est
+> montée exactement comme une chaîne saisie à la main.
+>
+> **LE CHOIX D'EMPLACEMENT, TRANCHÉ ICI PLUTÔT QUE DEMANDÉ.** Le tableau
+> disait « dans le menu de la chaîne ». C'est le **menu Piste** qui l'a eu, et
+> pour une raison qui n'était pas visible à l'écriture : le geste en demande
+> TROIS à la suite — copier, changer de piste, coller — et le menu du volet
+> des effets n'est atteignable qu'à la souris, donc invérifiable sans écran
+> piloté. Trois commandes de vue (`copier-chaine`, `coller-chaine`,
+> `ajouter-chaine`) l'accompagnent pour la même raison, `VSM_MENU` s'exécutant
+> en bloc APRÈS `VSM_VUE` : on ne peut pas s'y intercaler un changement de
+> piste. Vérifié à l'écran par
+> `VSM_VUE=piste:0,copier-chaine,piste:1,coller-chaine,effets` : « Effets —
+> Drums » liste Reverb, Delay, Chorus, et le journal dit « 3 insert(s) de
+> "Acid Bass" » puis « 0 insert(s) avant, 3 après ».
+
+> **D30.4 EST FAITE (06/09/2026, 18:30).** `Track::inputTrimDb`, -24 à +24 dB,
+> appliqué dans `renderTrackVoice` **avant** la chaîne d'inserts et après tout
+> le reste ; automatisable par `mix.trim` (`AutomationTarget::TrackTrim`, bit
+> 10 du masque), **en décibels et non en gain** — le curseur est gradué en dB,
+> et une courbe qui interpolerait le gain dessinerait une rampe et en ferait
+> entendre une autre. Pas sur une piste gelée, pour la raison qui vaut pour
+> les inserts : il est déjà dans le fichier gelé.
+>
+> | | mesuré | attendu |
+> |---|---|---|
+> | trim +6,0206 dB / fader ×0,5, **chaîne vide** | **écart < 1e-6** | identique au bit près |
+> | le même réglage, **derrière un écrêteur** | **écart > 1e-3, et le RMS baisse** | différent |
+> | trim à 0 dB | **écart 0,0** | rien ne change |
+>
+> Le premier chiffre est celui qui compte : sans insert, un gain +6 suivi d'un
+> gain -6 rend le signal d'origine, ce qui prouve que le trim est bien AVANT
+> les inserts **et nulle part ailleurs**. Le second prouve qu'il sert à
+> quelque chose. Les deux ensemble sont ce qui distingue un trim d'un second
+> fader. (Le +6,0206 dB n'est pas une coquetterie : 6 dB rond n'est pas une
+> puissance de deux, et « au bit près » n'aurait pas eu de sens.)
+>
+> **CE QUE L'ÉCRAN A MONTRÉ, ET QUI A ÉTÉ CORRIGÉ DEUX FOIS.** La première
+> capture donnait « -6,0 dB » nu en tête de tranche, au-dessus d'un fader qui
+> n'écrit pas sa valeur : **rien ne distinguait le trim du volume**, et un
+> réglage qu'on prend pour un autre est pire qu'un réglage caché. La case
+> porte maintenant « Trim -6.0 dB », et la tranche a été **élargie de 76 à
+> 88 px** pour que le mot tienne — entre « ça tient dans la case » et « ça se
+> lit », c'est la lisibilité qui gagne. La seconde capture a montré le mot sur
+> la piste réglée et un « 0.0 » nu sur l'autre : `setValue` d'une valeur DÉJÀ
+> en place ne notifie rien, donc ne rappelle pas `textFromValueFunction` — le
+> libellé manquait précisément là où rien n'avait bougé, c'est-à-dire sur
+> presque toutes les tranches. Un `updateText()` le règle.
+
+> **D30.5 EST FAITE (06/09/2026, 18:45), ET LA PHASE D30 EST CLOSE.**
+> `thinAutomation(curve, tolerance)` dans `core/` : Ramer-Douglas-Peucker sur
+> l'écart **vertical** au segment — le classique mesure une distance
+> perpendiculaire, ce qui n'a pas de sens ici, l'axe horizontal étant du temps
+> et l'axe vertical une valeur de paramètre ; leur « distance » dépendrait du
+> zoom. Ce qu'on veut borner est l'écart entre ce qu'on entendait et ce qu'on
+> entendra, donc l'écart de VALEUR à tick égal.
+>
+> **CE QUI A FAILLI FAIRE MENTIR LA TOLÉRANCE.** Les paliers (`step`) coupent
+> la courbe en tronçons — évident. La COURBURE (`curve`, D17.7) aussi, et elle
+> avait été oubliée : sur un segment fléchi, la droite que la simplification
+> suppose n'existe pas, et l'écart qu'elle mesure est celui d'une courbe qu'on
+> ne joue pas. Les deux sortes de point sont gardées, avec leur voisin de
+> droite.
+>
+> | passe mesurée | avant | après | facteur | écart max | tolérance |
+> |---|---|---|---|---|---|
+> | rampe droite (2 mesures) | 961 | **2** | 480 | 0,000000 | 0,010 |
+> | montée puis descente | 961 | **3** | 320 | 0,000000 | 0,010 |
+> | passe au fader, avec le tremblement du geste | 1 921 | **16** | 120 | 0,008297 | 0,010 |
+> | la même, tolérance deux fois plus fine | 1 921 | **26** | 74 | 0,004722 | 0,005 |
+> | **la passe du projet d'essai, dans l'application** | **1 921** | **13** | **148** | **0,013957** | **0,015** |
+>
+> **L'attendu était « au moins un ordre de grandeur » : c'est deux.** Et
+> l'écart tient sous la tolérance dans les cinq cas — mesuré sur l'UNION des
+> ticks des deux courbes, donc AUX POINTS RETIRÉS, là où il est le plus grand.
+> Mesuré sur les seuls ticks de la courbe réduite, il vaudrait zéro à tous les
+> coups : un chiffre qui se contente de confirmer ce qu'on veut croire.
+>
+> Vu à l'écran (`VSM_VUE=arrangement,piste:0,courbes,reduire-automation:0`) :
+> avant, un ruban orange épais et sans prise ; après, la même forme avec
+> **treize poignées** qu'on peut saisir. La tolérance est 1 % de l'amplitude
+> du paramètre, prise de `arrangement_.automationRange` — la MÊME source que
+> le dessin, deux amplitudes finissant par donner deux tolérances. **Une
+> courbe dont l'amplitude est inconnue est laissée ENTIÈRE et NOMMÉE au
+> journal**, jamais réduite au jugé.
+
+> **UNE PANNE MUETTE TROUVÉE ET BOUCHÉE EN CHEMIN, ET C'EST PEUT-ÊTRE LE PLUS
+> UTILE DE LA PHASE.** La première vérification de D30.1 a été lancée avec
+> `VSM_VUE=melangeur` (pour « mixer »). La capture est sortie, elle montrait
+> l'écran d'accueil, et **rien** ne distinguait « la commande n'existe pas » de
+> « le réglage n'a rien changé » : la chaîne de `else if` d'`applyViewCommand`
+> n'avait pas de `else`. La panne muette vivait donc dans l'outil qui sert à
+> prouver que les interfaces marchent — l'endroit où elle coûte le plus cher.
+> Une commande inconnue est désormais dite sur stderr.
+>
+> Tests : 276 core, 1 266 audio, 280 interchange, 25 clap, 11 panels, 19 vst3
+> — tous verts (16 tests neufs) ; Python inchangé (168).

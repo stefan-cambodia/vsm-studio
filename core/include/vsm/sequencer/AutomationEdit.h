@@ -80,6 +80,43 @@ void writeAutomationRange(AutomationCurve& curve, Tick fromTick, Tick toTick,
 /// Rend vrai si un point a été retiré.
 bool removeAutomationPointNear(AutomationCurve& curve, Tick tick, Tick tolerance);
 
+/// RÉDUIRE LES POINTS D'UNE COURBE (D30.5) -- le « Reduce automation points »
+/// de Cubase.
+///
+/// POURQUOI IL EN FALLAIT UN. Une passe d'automation écrite en jouant (D16.8)
+/// pose un point par tick touché, et depuis D29.3 un potentiomètre MIDI en
+/// pose autant que le port en délivre : la courbe obtenue est juste, et
+/// illisible -- des centaines de points là où le geste en valait dix. On ne
+/// peut plus la retoucher à la main, ce qui est précisément ce qu'on veut
+/// faire d'une passe qu'on vient d'enregistrer.
+///
+/// L'ALGORITHME : Ramer-Douglas-Peucker, sur l'écart VERTICAL au segment. Le
+/// classique mesure une distance perpendiculaire, ce qui n'a pas de sens ici :
+/// l'axe horizontal est du temps et l'axe vertical une valeur de paramètre --
+/// deux grandeurs sans rapport, dont la « distance » dépendrait du zoom. Ce
+/// qu'on veut borner est l'écart entre ce qu'on entendait et ce qu'on
+/// entendra, c'est-à-dire l'écart de VALEUR à tick égal.
+///
+/// CE QUI EST TOUJOURS GARDÉ, et c'est ce qui rend la réduction sûre :
+///  - les DEUX EXTRÉMITÉS, sans quoi la courbe changerait de portée ;
+///  - tout point marqué `step` ET son voisin de droite : un palier n'est pas
+///    une rampe, et le supprimer ne déplacerait pas la courbe d'un peu, il en
+///    changerait la nature.
+///
+/// `tolerance` est en UNITÉS DU PARAMÈTRE, comme les valeurs elles-mêmes (la
+/// règle de tout le projet) : l'appelant la calcule sur l'amplitude, ce qu'il
+/// est le seul à connaître. Négative ou nulle, rien n'est retiré.
+///
+/// Rend le nombre de points RETIRÉS -- pour le dire à qui a demandé la
+/// réduction, plutôt que de la faire en silence.
+size_t thinAutomation(AutomationCurve& curve, float tolerance);
+
+/// Le plus grand écart de VALEUR entre deux courbes, mesuré sur l'union de
+/// leurs ticks. Sert à vérifier une réduction : c'est le chiffre qui dit si
+/// `thinAutomation` a tenu sa tolérance, et il est ici plutôt que dans un test
+/// parce que l'application le publie aussi.
+float maxAutomationDeviation(const AutomationCurve& a, const AutomationCurve& b);
+
 /// L'index du point le plus proche de `tick` à moins de `tolerance`, ou la
 /// taille de la courbe si aucun. Sert à savoir ce qu'on vient de saisir.
 size_t automationPointNear(const AutomationCurve& curve, Tick tick, Tick tolerance);

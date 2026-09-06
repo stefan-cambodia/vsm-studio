@@ -26,6 +26,8 @@ public:
                        const juce::String& sourceName = {});
 
     void paint(juce::Graphics&) override;
+    /// D30.2 : le voile de la piste désactivée, PAR-DESSUS ses enfants.
+    void paintOverChildren(juce::Graphics&) override;
     void resized() override;
     void mouseDown(const juce::MouseEvent&) override { if (onSelected) onSelected(index_); }
 

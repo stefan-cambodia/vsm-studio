@@ -160,7 +160,11 @@ void EffectChainComponent::rebuildFromProject() {
     if (project_ == nullptr) { rebuildEffectList(); rebuildParamControls(); return; }
     chains_.reserve(project_->tracks.size());
     for (const auto& track : project_->tracks)
-        chains_.push_back(buildChain(track.effects));
+        // D30.2 : UNE PISTE DÉSACTIVÉE NE FABRIQUE AUCUN INSERT. Sa
+        // description reste dans la piste et revient telle quelle à la
+        // réactivation -- ce qui cesse, c'est de construire des effets qui
+        // tourneraient à vide.
+        chains_.push_back(track.disabled ? Chain{} : buildChain(track.effects));
     for (size_t i = 0; i < chains_.size(); ++i) publishChain(i);
     rebuildEffectList();
     rebuildParamControls();

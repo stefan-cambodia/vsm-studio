@@ -575,13 +575,19 @@ private:
     std::array<float, kMaxTracks> autoVolume_{};
     std::array<float, kMaxTracks> autoPan_{};
     std::array<std::array<float, kMaxSends>, kMaxTracks> autoSend_{};
+    /// D30.4 : le trim d'entrée piloté, EN DÉCIBELS comme le réglage qu'il
+    /// remplace -- une automation qui interpolerait le gain linéaire et un
+    /// curseur gradué en dB ne dessineraient pas la même rampe.
+    std::array<float, kMaxTracks> autoTrim_{};
     /// Quels réglages sont pilotés, par piste : bit 0 volume, bit 1
-    /// panoramique, bits 2..9 les huit départs. Calculé quand les courbes sont
-    /// publiées, pour que le mixage n'ait qu'un entier à consulter.
+    /// panoramique, bits 2..9 les huit départs, bit 10 le trim. Calculé quand
+    /// les courbes sont publiées, pour que le mixage n'ait qu'un entier à
+    /// consulter.
     std::array<uint16_t, kMaxTracks> autoMask_{};
     static constexpr uint16_t kAutoVolume = 1u << 0;
     static constexpr uint16_t kAutoPan = 1u << 1;
     static constexpr uint16_t kAutoSendFirst = 2;
+    static constexpr uint16_t kAutoTrim = 1u << (kAutoSendFirst + kMaxSends);
     void refreshAutomationMask();
     MeterBank meters_;
     MasterBus masterBus_;

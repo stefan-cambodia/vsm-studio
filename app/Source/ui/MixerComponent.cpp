@@ -83,6 +83,54 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     };
     addAndMakeVisible(pan_);
 
+    // D30.4 : LE TRIM D'ENTRÉE. Bornes à +/- 24 dB : au-delà on ne corrige
+    // plus un niveau d'entrée, on refait le mixage -- et c'est le fader qui
+    // fait cela. Automatisable comme le volume et le panoramique, d'où la
+    // passe ouverte au glissé.
+    trim_.setSliderStyle(juce::Slider::LinearBar);
+    trim_.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 44, 16);
+    trim_.setRange(-24.0, 24.0, 0.1);
+    trim_.setDoubleClickReturnValue(true, 0.0);     // D25.3 : 0 dB
+    // « TRIM » DANS LA CASE, ET NON LE SEUL NOMBRE. La première capture
+    // donnait « -6,0 dB » en tête de tranche, au-dessus d'un fader qui n'écrit
+    // pas sa valeur : rien ne distinguait le trim du volume, et un réglage
+    // qu'on prend pour un autre est pire qu'un réglage caché. La tranche a été
+    // ÉLARGIE pour que le mot tienne (76 -> 88 px) plutôt que le texte
+    // rétréci -- entre « ça tient dans la case » et « ça se lit », c'est la
+    // lisibilité qui gagne.
+    trim_.textFromValueFunction = [](double v) {
+        return juce::String("Trim ") + juce::String(v, 1) + " dB";
+    };
+    trim_.valueFromTextFunction = [](const juce::String& t) {
+        return t.retainCharacters("-0123456789.").getDoubleValue();
+    };
+    trim_.setValue(track_.inputTrimDb, juce::dontSendNotification);
+    // ET IL FAUT REDEMANDER LE TEXTE. `setValue` d'une valeur DÉJÀ EN PLACE ne
+    // notifie rien, donc ne rappelle pas `textFromValueFunction` : la première
+    // capture montrait « Trim -6.0 dB » sur la piste réglée et un « 0.0 » nu
+    // sur celle qui ne l'était pas -- le libellé manquait précisément là où
+    // rien n'avait bougé, c'est-à-dire sur presque toutes les tranches.
+    trim_.updateText();
+    trim_.setTooltip(juce::String::fromUTF8(
+        u8"Trim d'entrée : le gain AVANT les inserts. Pousse la piste dans son "
+        u8"compresseur ou sa saturation sans toucher à leur réglage. Sans insert, "
+        u8"il fait ce que ferait le fader."));
+    trim_.onDragStart = [this] {
+        if (onMixEditStarted) onMixEditStarted();
+        ouvrirPasse("mix.trim");
+    };
+    trim_.onDragEnd = [this] { fermerPasse("mix.trim", false); };
+    trim_.onValueChange = [this] {
+        track_.inputTrimDb = static_cast<float>(trim_.getValue());
+        // EN DÉCIBELS DANS LA COURBE, comme dans le curseur : `mix.volume` est
+        // en gain parce que le fader l'est ; le trim est gradué en dB, et une
+        // courbe qui interpolerait son gain linéaire dessinerait une rampe et
+        // en ferait entendre une autre.
+        noterDansLaPasse("mix.trim", track_.inputTrimDb);
+        if (onMixChanged) onMixChanged();
+    };
+    addAndMakeVisible(trim_);
+
     // LE DÉCALAGE DE PISTE (D16.7). Bornes à +/- 200 ms : au-delà on ne
     // corrige plus un temps de réaction, on déplace la partie -- et cela se
     // fait au clip, où l'on VOIT ce qu'on déplace.
@@ -181,8 +229,8 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     addAndMakeVisible(mute_);
 
     solo_.setClickingTogglesState(true);
-    solo_.setToggleState(track_.solo, juce::dontSendNotification);
     solo_.setColour(juce::TextButton::buttonOnColourId, vsm::ui::Palette::accentAmber);
+    rafraichirSolo();
     solo_.onClick = [this] {
         // D21.2 : CTRL+CLIC = SOLO EXCLUSIF. Le bouton a déjà basculé son
         // état ; on le laisse à l'application, qui éteint les autres et
@@ -193,12 +241,42 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
             if (onExclusiveSoloRequested) onExclusiveSoloRequested(index_);
             return;
         }
+        // D30.1 : ALT+CLIC = SOLO PROTÉGÉ. Sur le bouton Solo parce que c'est
+        // du solo qu'il parle -- « celui des autres ne me concerne pas » --,
+        // et non un huitième bouton dans une tranche de 76 pixels.
+        if (juce::ModifierKeys::getCurrentModifiers().isAltDown()) {
+            if (onMixEditStarted) onMixEditStarted();
+            track_.soloSafe = !track_.soloSafe;
+            rafraichirSolo();
+            if (onMixChanged) onMixChanged();
+            return;
+        }
         track_.solo = solo_.getToggleState();
         if (onMixChanged) onMixChanged();
     };
     addAndMakeVisible(solo_);
 
     addAndMakeVisible(meter_);
+}
+
+void ChannelStrip::rafraichirSolo() {
+    solo_.setToggleState(track_.solo, juce::dontSendNotification);
+    // PROTÉGÉ, LE BOUTON LE DIT DE DEUX FAÇONS : son libellé (« S+ ») et sa
+    // couleur au repos. Un seul des deux suffirait à un œil qui sait ce qu'il
+    // cherche ; il en faut deux à celui qui ne le sait pas.
+    solo_.setButtonText(track_.soloSafe ? "S+" : "S");
+    if (track_.soloSafe)
+        solo_.setColour(juce::TextButton::buttonColourId, vsm::ui::Palette::accentTeal);
+    else
+        solo_.removeColour(juce::TextButton::buttonColourId);
+    solo_.setTooltip(juce::String::fromUTF8(
+        track_.soloSafe
+            ? u8"Solo PROTÉGÉ (Alt+clic) : le solo des autres pistes ne fait pas taire "
+              u8"celle-ci. Son propre muet reste le sien. À poser sur un retour d'effet, "
+              u8"pour qu'un solo garde sa réverbération."
+            : u8"Solo. Ctrl+clic : solo exclusif. Alt+clic : protéger cette piste du solo "
+              u8"des autres."));
+    solo_.repaint();
 }
 
 void ChannelStrip::paint(juce::Graphics& g) {
@@ -213,6 +291,7 @@ void ChannelStrip::resized() {
     auto r = getLocalBounds().reduced(4);
     r.removeFromTop(4); // bandeau couleur
     nameLabel_.setBounds(r.removeFromTop(18));
+    trim_.setBounds(r.removeFromTop(18).reduced(4, 1));       // D30.4, en tête de chaîne
     pan_.setBounds(r.removeFromTop(34).reduced(6, 2));
     delay_.setBounds(r.removeFromTop(18).reduced(4, 1));
     transposition_.setBounds(r.removeFromTop(18).reduced(4, 1));

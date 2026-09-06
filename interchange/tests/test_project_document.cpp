@@ -1267,3 +1267,59 @@ VSM_TEST(project_notes_survive_the_trip_and_an_empty_note_writes_nothing) {
     applyDocumentToProject(sansNotes, gardees);
     VSM_ASSERT_EQ(gardees.notes, project.notes);
 }
+
+// ---------------------------------------------------------------------------
+// D30 — LE SOLO PROTÉGÉ, LA PISTE DÉSACTIVÉE ET LE TRIM D'ENTRÉE DANS LE
+// FICHIER.
+//
+// L'attendu, comme pour tout ce qui s'ajoute à ce format : les trois réglages
+// font l'aller-retour, ET un projet qui n'en pose aucun garde EXACTEMENT le
+// fichier qu'il avait -- sans quoi chaque phase rendrait illisibles les projets
+// de la précédente.
+// ---------------------------------------------------------------------------
+
+VSM_TEST(the_three_d30_track_settings_survive_the_round_trip) {
+    vsm::sequencer::Project projet = buildProject();
+    projet.tracks[0].soloSafe = true;        // D30.1
+    projet.tracks[0].inputTrimDb = -3.5f;    // D30.4
+    projet.tracks[1].disabled = true;        // D30.2
+
+    const ProjectDocument original = documentFromProject(projet);
+    VSM_ASSERT(original.tracks[0].soloSafe);
+    VSM_ASSERT(original.tracks[1].disabled);
+    VSM_ASSERT_NEAR(original.tracks[0].inputTrimDb, -3.5f, 1e-6);
+
+    const ProjectLoadResult relu = parseProjectDocument(projectDocumentToJson(original).toString());
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT(relu.document.tracks[0].soloSafe);
+    VSM_ASSERT(!relu.document.tracks[1].soloSafe);
+    VSM_ASSERT(relu.document.tracks[1].disabled);
+    VSM_ASSERT(!relu.document.tracks[0].disabled);
+    VSM_ASSERT_NEAR(relu.document.tracks[0].inputTrimDb, -3.5f, 1e-6);
+    VSM_ASSERT_NEAR(relu.document.tracks[1].inputTrimDb, 0.0f, 1e-6);
+
+    // ET JUSQU'AU PROJET LUI-MÊME : le document n'est pas la destination, la
+    // piste l'est.
+    //
+    // SUR UN PROJET QUI A DÉJÀ SES PISTES, et non sur un projet vide : ce
+    // format ne PORTE PAS les notes (elles sont dans le .mid), donc appliquer
+    // un document ne crée pas de pistes -- il en règle. Sur un projet vide,
+    // `applyDocumentToProject` signale l'écart de nombre de pistes et ne
+    // touche rien, ce qui est exactement ce qu'un autre test de ce fichier
+    // vérifie. La première version de ce test l'ignorait et lisait
+    // `tracks[0]` d'un vecteur vide.
+    vsm::sequencer::Project retour = buildProject();
+    applyDocumentToProject(relu.document, retour);
+    VSM_ASSERT(retour.tracks[0].soloSafe);
+    VSM_ASSERT(retour.tracks[1].disabled);
+    VSM_ASSERT_NEAR(retour.tracks[0].inputTrimDb, -3.5f, 1e-6);
+}
+
+VSM_TEST(a_project_that_uses_none_of_them_keeps_the_file_it_had) {
+    // Le texte ne doit contenir AUCUNE des trois clés : un projet d'avant D30
+    // se relit et se réécrit octet pour octet.
+    const std::string texte = projectDocumentToJson(documentFromProject(buildProject())).toString();
+    VSM_ASSERT(texte.find("soloSafe") == std::string::npos);
+    VSM_ASSERT(texte.find("disabled") == std::string::npos);
+    VSM_ASSERT(texte.find("trimDb") == std::string::npos);
+}

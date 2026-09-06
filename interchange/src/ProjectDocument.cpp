@@ -269,6 +269,9 @@ ProjectDocument documentFromProject(const Project& project) {
         }
         entry.outputGroup = track.outputGroup;
         entry.invertPhase = track.invertPhase;
+        entry.soloSafe = track.soloSafe;              // D30.1
+        entry.disabled = track.disabled;              // D30.2
+        entry.inputTrimDb = track.inputTrimDb;        // D30.4
         entry.arrangementHeight = track.arrangementHeight;
         entry.folded = track.folded;
         entry.frozen = track.frozen;
@@ -420,6 +423,9 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.muted = source.muted;
         target.solo = source.solo;
         target.invertPhase = source.invertPhase;
+        target.soloSafe = source.soloSafe;            // D30.1
+        target.disabled = source.disabled;            // D30.2
+        target.inputTrimDb = source.inputTrimDb;      // D30.4
         target.midiOutputDevice = source.midiOutput;   // D27.1
         target.midiProgram = source.midiProgram;
         target.midiBank = source.midiBank;
@@ -623,6 +629,12 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         mix.set("muted", JsonValue::makeBoolean(track.muted));
         mix.set("solo", JsonValue::makeBoolean(track.solo));
         if (track.invertPhase) mix.set("invertPhase", JsonValue::makeBoolean(true));   // D23.1
+        // D30 : TROIS RÉGLAGES ÉCRITS SEULEMENT QUAND ILS DISENT QUELQUE
+        // CHOSE. Un projet d'avant la phase se relit et se réécrit octet pour
+        // octet, ce qui est la règle de tout ce qui s'ajoute ici.
+        if (track.soloSafe) mix.set("soloSafe", JsonValue::makeBoolean(true));         // D30.1
+        if (track.disabled) mix.set("disabled", JsonValue::makeBoolean(true));         // D30.2
+        if (track.inputTrimDb != 0.0f) mix.set("trimDb", JsonValue::makeFloat(track.inputTrimDb));  // D30.4
         JsonValue sends = JsonValue::makeArray();
         for (float level : track.sendLevels) sends.append(JsonValue::makeFloat(level));
         mix.set("sends", std::move(sends));
@@ -869,6 +881,9 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         track.muted = mix["muted"].asBoolean(false);
         track.solo = mix["solo"].asBoolean(false);
         track.invertPhase = mix["invertPhase"].asBoolean(false);
+        track.soloSafe = mix["soloSafe"].asBoolean(false);                        // D30.1
+        track.disabled = mix["disabled"].asBoolean(false);                        // D30.2
+        track.inputTrimDb = static_cast<float>(mix["trimDb"].asNumber(0.0));      // D30.4
         // LA TAILLE VIENT DU FICHIER, et c'est un piège qu'a tendu le passage
         // du tableau de deux au vecteur : borner la boucle par la taille du
         // VECTEUR, qui part vide, ne lisait plus rien du tout et faisait

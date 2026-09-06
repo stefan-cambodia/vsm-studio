@@ -126,4 +126,92 @@ bool removeAutomationPointNear(AutomationCurve& curve, Tick tick, Tick tolerance
     return true;
 }
 
+// ---------------------------------------------------------------------------
+// D30.5 — RÉDUIRE LES POINTS D'UNE COURBE.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+/// Un tronçon [debut, fin] gardé tel quel ; la récursion l'ouvre en deux au
+/// point qui s'écarte le plus.
+void simplifier(const std::vector<AutomationPoint>& points, size_t debut, size_t fin,
+                 float tolerance, std::vector<bool>& garde) {
+    if (fin <= debut + 1) return;
+    const AutomationPoint& a = points[debut];
+    const AutomationPoint& b = points[fin];
+    // LA DROITE DE RÉFÉRENCE EST CELLE QUI RESTERAIT si l'on retirait tout
+    // l'intérieur -- donc la même interpolation que `automationValueAt`, qui
+    // est linéaire entre deux points. Un palier est traité par l'appelant :
+    // ici la droite serait fausse, et c'est pourquoi `step` et `curve` coupent.
+    const double span = static_cast<double>(b.tick - a.tick);
+    size_t pire = debut;
+    double pireEcart = 0.0;
+    for (size_t i = debut + 1; i < fin; ++i) {
+        const double t = span > 0.0 ? static_cast<double>(points[i].tick - a.tick) / span : 0.0;
+        const double surLaDroite = a.value + (b.value - a.value) * t;
+        const double ecart = std::fabs(points[i].value - surLaDroite);
+        if (ecart > pireEcart) { pireEcart = ecart; pire = i; }
+    }
+    if (pireEcart <= static_cast<double>(tolerance)) return;   // tout l'intérieur tombe
+    garde[pire] = true;
+    simplifier(points, debut, pire, tolerance, garde);
+    simplifier(points, pire, fin, tolerance, garde);
+}
+
+} // namespace
+
+size_t thinAutomation(AutomationCurve& curve, float tolerance) {
+    if (tolerance <= 0.0f || curve.points.size() <= 2) return 0;
+    const auto& points = curve.points;
+    const size_t n = points.size();
+    std::vector<bool> garde(n, false);
+    garde[0] = true;
+    garde[n - 1] = true;
+
+    // LES SEGMENTS QUI NE SONT PAS DES DROITES COUPENT LA COURBE EN TRONÇONS,
+    // et l'on simplifie chacun séparément. Il y en a DEUX SORTES, et oublier
+    // la seconde aurait fait mentir la tolérance :
+    //  - le PALIER (`step`) : le segment qui en part est plat ;
+    //  - la COURBURE (`curve`, D17.7) : le segment qui en part est fléchi.
+    // Dans les deux cas, la droite que la simplification suppose entre deux
+    // points n'existe pas, et l'écart qu'elle mesurerait serait celui d'une
+    // courbe qu'on ne joue pas. On garde donc ce point ET celui qui le suit --
+    // retirer le second déplacerait la marche ou la flèche.
+    size_t debut = 0;
+    for (size_t i = 0; i < n; ++i) {
+        if (!points[i].step && points[i].curve == 0.0f) continue;
+        garde[i] = true;
+        if (i + 1 < n) garde[i + 1] = true;
+        simplifier(points, debut, i, tolerance, garde);
+        debut = i + 1 < n ? i + 1 : i;
+    }
+    simplifier(points, debut, n - 1, tolerance, garde);
+
+    std::vector<AutomationPoint> restants;
+    restants.reserve(n);
+    for (size_t i = 0; i < n; ++i)
+        if (garde[i]) restants.push_back(points[i]);
+    const size_t retires = n - restants.size();
+    curve.points = std::move(restants);
+    return retires;
+}
+
+float maxAutomationDeviation(const AutomationCurve& a, const AutomationCurve& b) {
+    // SUR L'UNION DES TICKS, et non sur ceux de l'une des deux : le pire écart
+    // d'une réduction se trouve précisément AUX POINTS RETIRÉS, qui ne sont
+    // plus dans la courbe réduite. Ne mesurer que sur celle-ci rendrait zéro à
+    // tous les coups -- un chiffre qui se contente de confirmer ce qu'on veut
+    // croire.
+    std::vector<Tick> ticks;
+    ticks.reserve(a.points.size() + b.points.size());
+    for (const auto& p : a.points) ticks.push_back(p.tick);
+    for (const auto& p : b.points) ticks.push_back(p.tick);
+    std::sort(ticks.begin(), ticks.end());
+    ticks.erase(std::unique(ticks.begin(), ticks.end()), ticks.end());
+    float pire = 0.0f;
+    for (Tick t : ticks)
+        pire = std::max(pire, std::fabs(automationValueAt(a, t) - automationValueAt(b, t)));
+    return pire;
+}
+
 } // namespace vsm::sequencer

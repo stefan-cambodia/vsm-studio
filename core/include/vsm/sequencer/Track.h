@@ -414,6 +414,10 @@ struct AutomationCurve {
     ///    les projets existants se relisent sans rien remarquer.
     ///  - `mix.volume` : le fader de la piste, en gain linéaire.
     ///  - `mix.pan` : son panoramique, de -1 à +1.
+    ///  - `mix.trim` : son trim d'entrée, EN DÉCIBELS (D30.4) -- et non en
+    ///    gain comme `mix.volume`, parce que le curseur est gradué en dB et
+    ///    qu'une courbe qui interpolerait le gain ne dessinerait pas la rampe
+    ///    qu'on entend.
     ///  - `mix.send.1` .. `mix.send.8` : son niveau vers le bus de départ.
     ///  - `insert.1.<identité>` : un réglage du PREMIER insert de la piste,
     ///    nommé par sa propre identité sémantique -- par exemple
@@ -524,6 +528,46 @@ public:
     /// par le signe du volume : la sortie ET les départs s'inversent, pré
     /// comme post -- deux micros en opposition le sont partout où ils vont.
     bool invertPhase = false;
+    /// D30.1 : LE SOLO PROTÉGÉ (le *Solo Defeat* de Cubase). Protégée, la
+    /// piste ignore le solo des AUTRES et garde son propre muet.
+    ///
+    /// POURQUOI IL EN FALLAIT UN. Le solo d'une voix coupait tout le reste, y
+    /// compris le bus de réverbération qui porte SA queue : on écoutait la
+    /// voix sèche, c'est-à-dire pas la voix telle qu'elle est dans le morceau.
+    /// C'est le retour d'effet qu'on protège, pas la piste source -- protéger
+    /// une piste ordinaire la rendrait audible sous tous les solos, ce qui est
+    /// un réglage qu'on regrette, mais c'est un choix laissé à qui le pose.
+    ///
+    /// « Ignore le solo des autres » et non « est toujours audible » : son
+    /// muet reste le sien. Deux façons de faire taire une piste dont une seule
+    /// obéirait serait exactement le genre de bouton qui ment.
+    bool soloSafe = false;
+    /// D30.2 : LA PISTE DÉSACTIVÉE (le *Disable Track* de Cubase). Elle ne
+    /// reçoit pas d'instrument, pas de chaîne d'inserts, et le planificateur
+    /// ne lui écrit aucun événement.
+    ///
+    /// CE QUE LE MUET NE FAIT PAS. Une piste muette garde sa machine
+    /// instanciée et ses inserts en marche : elle coûte tout ce qu'elle
+    /// coûtait, on a seulement cessé de l'entendre. Sur un morceau reconstruit
+    /// à quarante pistes, écouter une piste fait tourner les trente-neuf
+    /// autres pour rien.
+    ///
+    /// CE QUE LE GEL NE FAIT PAS NON PLUS. Geler remplace la machine par son
+    /// rendu : la piste s'entend encore et coûte une lecture de fichier.
+    /// Désactiver, c'est la retirer du morceau sans rien détruire -- les
+    /// notes, l'instrument et les inserts restent dans la piste et reviennent
+    /// intacts à la réactivation.
+    bool disabled = false;
+    /// D30.4 : LE TRIM D'ENTRÉE, en décibels, appliqué AVANT la chaîne
+    /// d'inserts. Zéro par défaut, et le champ est alors absent du fichier.
+    ///
+    /// POURQUOI IL N'EST PAS UN SECOND FADER. Le fader est APRÈS les inserts :
+    /// pousser une piste DANS son compresseur ou sa saturation demandait de
+    /// toucher au réglage de l'effet, ce qui déplace le son au lieu du niveau.
+    /// Sur une chaîne vide ou purement linéaire, trim +6 et fader -6 rendent
+    /// le signal d'origine -- c'est justement ce qui prouve qu'il est bien
+    /// avant les inserts et nulle part ailleurs.
+    float inputTrimDb = 0.0f;
     /// Niveaux d'envoi vers les bus auxiliaires (sends). 0 = pas d'envoi.
     /// Portés par Track (donnée de mixage) comme volume/pan.
     ///
@@ -856,5 +900,42 @@ std::vector<Note> buildCompositeTake(const Track& track,
 /// touchée.
 bool applyCompositeTake(Track& track, const std::vector<CompSegment>& segments,
                          uint64_t& idCounter);
+
+// ---------------------------------------------------------------------------
+// L'AUDIBILITÉ D'UNE PISTE (D30.1) — UNE définition, et une seule.
+//
+// La règle « le solo de l'un fait taire les autres » était écrite CINQ fois :
+// trois dans `ProcessGraph` (le mélange d'une piste, celui d'un groupe, le
+// rendu à l'arrêt) et deux dans `PlaybackScheduler` (le planning et la
+// chasse). Elles disaient toutes la même chose, ce qui est précisément le
+// danger : ajouter le solo protégé à quatre d'entre elles aurait donné une
+// piste audible au mélange et muette au planning, c'est-à-dire une piste dont
+// les notes ne partent pas mais dont la queue de réverbération sonne. Le
+// premier geste de D30.1 est donc de n'avoir qu'un endroit à changer.
+// ---------------------------------------------------------------------------
+
+/// Vrai si AU MOINS une piste du projet est en solo.
+inline bool anySoloActive(const std::vector<Track>& tracks) {
+    for (const auto& t : tracks)
+        if (t.solo) return true;
+    return false;
+}
+
+/// Cette piste s'entend-elle ? `anySolo` vient de `anySoloActive`, calculé une
+/// fois par bloc plutôt qu'une fois par piste.
+///
+/// TROIS RÈGLES, DANS CET ORDRE, ET L'ORDRE EST LE SENS :
+///  1. Une piste DÉSACTIVÉE (D30.2) ne s'entend jamais. Elle n'est plus dans
+///     le morceau : ni solo ni protection ne la ramènent.
+///  2. Une piste PROTÉGÉE (D30.1) ignore le solo des autres et ne consulte que
+///     son muet -- « le solo des autres ne me concerne pas », et non « je suis
+///     toujours audible ».
+///  3. Sinon, la règle d'avant, inchangée : sous un solo, seul le soloé
+///     s'entend ; sans solo, tout ce qui n'est pas muet.
+inline bool trackAudible(const Track& track, bool anySolo) {
+    if (track.disabled) return false;
+    if (track.soloSafe) return !track.muted;
+    return anySolo ? track.solo : !track.muted;
+}
 
 } // namespace vsm::sequencer
