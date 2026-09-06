@@ -153,6 +153,20 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     addAndMakeVisible(armer_);
     rafraichirArmement();
 
+    // D23.1 : LA POLARITÉ. Annulable comme un geste de fader : la piste
+    // porte l'état, le moteur le lit à la republication du projet.
+    phase_.setClickingTogglesState(true);
+    phase_.setToggleState(track_.invertPhase, juce::dontSendNotification);
+    phase_.setColour(juce::TextButton::buttonOnColourId, vsm::ui::Palette::accentTeal);
+    phase_.setTooltip(u8"Polarit\u00e9 invers\u00e9e (\u00d8) : la piste et ses d\u00e9parts changent de signe. "
+                      u8"Deux micros en opposition, un bus qui creuse le mixage.");
+    phase_.onClick = [this] {
+        if (onMixEditStarted) onMixEditStarted();
+        track_.invertPhase = phase_.getToggleState();
+        if (onMixChanged) onMixChanged();
+    };
+    addAndMakeVisible(phase_);
+
     mute_.setClickingTogglesState(true);
     mute_.setToggleState(track_.muted, juce::dontSendNotification);
     mute_.setColour(juce::TextButton::buttonOnColourId, vsm::ui::Palette::accentRed);
@@ -216,7 +230,11 @@ void ChannelStrip::resized() {
     auto bottom = r.removeFromBottom(22);
     mute_.setBounds(bottom.removeFromLeft(bottom.getWidth() / 2).reduced(1));
     solo_.setBounds(bottom.reduced(1));
-    armer_.setBounds(r.removeFromBottom(22).reduced(1, 1));
+    {
+        auto rangeeW = r.removeFromBottom(22);
+        armer_.setBounds(rangeeW.removeFromLeft(rangeeW.getWidth() / 2).reduced(1, 1));
+        phase_.setBounds(rangeeW.reduced(1, 1));   // D23.1
+    }
 
     // Fader + mètre côte à côte.
     auto meterArea = r.removeFromRight(10);
@@ -344,6 +362,15 @@ MasterStrip::MasterStrip() {
     };
     addAndMakeVisible(enableButton_);
 
+    // D23.5 : L'ÉCOUTE EN MONO. Ambre, comme un solo : c'est un état d'écoute
+    // qu'on doit remarquer allumé, pas un réglage qu'on laisse.
+    monoButton_.setClickingTogglesState(true);
+    monoButton_.setColour(juce::TextButton::buttonOnColourId, vsm::ui::Palette::accentAmber);
+    monoButton_.setTooltip(u8"\u00c9coute en mono : L+R repli\u00e9s apr\u00e8s le limiteur, la corr\u00e9lation "
+                           u8"lue devient ce qu'on entend. Jamais dans un export.");
+    monoButton_.onClick = [this] { if (onMonoListen) onMonoListen(monoButton_.getToggleState()); };
+    addAndMakeVisible(monoButton_);
+
     addKnob(MasterBus::kLowShelfGainDb, "LOW", -18.0f, 18.0f, 0.0f, " dB");
     addKnob(MasterBus::kMidGainDb, "MID", -18.0f, 18.0f, 0.0f, " dB");
     addKnob(MasterBus::kHighShelfGainDb, "HIGH", -18.0f, 18.0f, 0.0f, " dB");
@@ -419,7 +446,11 @@ void MasterStrip::paint(juce::Graphics& g) {
 void MasterStrip::resized() {
     auto r = getLocalBounds().reduced(6);
     titleLabel_.setBounds(r.removeFromTop(18));
-    enableButton_.setBounds(r.removeFromTop(22).reduced(8, 2));
+    {
+        auto rangee = r.removeFromTop(22).reduced(2, 2);
+        enableButton_.setBounds(rangee.removeFromLeft(rangee.getWidth() * 3 / 5).reduced(2, 0));
+        monoButton_.setBounds(rangee.reduced(2, 0));   // D23.5
+    }
     r.removeFromTop(4);
 
     // Grille de knobs 2 colonnes.
@@ -487,6 +518,7 @@ void MixerComponent::setProject(vsm::sequencer::Project* project) {
         if (onMasterParam) onMasterParam(id, v);
     };
     master_.onMasterEnable = [this](bool on) { if (onMasterEnable) onMasterEnable(on); };
+    master_.onMonoListen = [this](bool on) { if (onMonoListen) onMonoListen(on); };
     master_.masterParamProvider = masterParamProvider;
     master_.syncFromEngine();
     resized();

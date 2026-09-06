@@ -520,6 +520,10 @@ public:
     bool armed = false;
     float volume = 1.0f;  // gain linéaire, 1.0 = 0 dB
     float pan = 0.0f;      // -1 (gauche) .. +1 (droite)
+    /// D23.1 : LA POLARITÉ DE LA PISTE (le Ø de Cubase). Appliquée au fader,
+    /// par le signe du volume : la sortie ET les départs s'inversent, pré
+    /// comme post -- deux micros en opposition le sont partout où ils vont.
+    bool invertPhase = false;
     /// Niveaux d'envoi vers les bus auxiliaires (sends). 0 = pas d'envoi.
     /// Portés par Track (donnée de mixage) comme volume/pan.
     ///

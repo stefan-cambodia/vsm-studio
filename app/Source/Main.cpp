@@ -182,6 +182,10 @@ public:
             // le voyant OUT ne s'allume que si des notes partent.
             if (const char* lecture = std::getenv("VSM_LECTURE"); lecture != nullptr && *lecture && *lecture != '0')
                 content->startPlaybackForCapture();
+            // VSM_EXPORT_MIDI_PISTE=fichier.mid : la piste choisie seule, en
+            // MIDI, sans fenêtre (D23.3) -- le fichier relu doit compter UNE piste.
+            if (const char* sortie = std::getenv("VSM_EXPORT_MIDI_PISTE"); sortie != nullptr && *sortie)
+                content->exportTrackMidiForCapture(juce::File::getCurrentWorkingDirectory().getChildFile(sortie));
             if (const char* rapport = std::getenv("VSM_RAPPORT");
                 rapport != nullptr && *rapport)
                 content->showReconstructionReport();

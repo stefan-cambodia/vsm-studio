@@ -130,6 +130,12 @@ public:
     /// Le pas d'aimantation à cet endroit du morceau (mesure ou grille fine).
     vsm::midi::Tick snapStep(vsm::midi::Tick tick) const;
     bool hasSelection() const { return !selection_.empty(); }
+    /// D23.4 : TOUTES LES PISTES À LA FENÊTRE -- les pistes visibles et
+    /// dépliées se partagent la hauteur disponible (entre 24 et 400 px), les
+    /// pliées et les masquées gardent la leur ; et la même hauteur pour
+    /// toutes. Annulables : la hauteur est dans le projet (D5.3).
+    void fitTracksToWindow();
+    void setAllTrackHeights(int height);
     /// D22.1 : exécuter une entrée du menu contextuel du clip sur le premier
     /// clip choisi, par son identifiant de menu -- pour l'autoportrait
     /// (VSM_VUE=gain-clip:+3, phase-clip), le menu contextuel n'existant qu'à

@@ -192,6 +192,8 @@ MainComponent::MainComponent()
     mixer_.onMasterParam = [this](vsm::audio::plugin::ParamId id, float v) {
         audioEngine_.processGraph().masterBus().setParameter(id, v);
     };
+    // D23.5 : l'écoute en mono, du bouton MONO comme du menu Mixage.
+    mixer_.onMonoListen = [this](bool on) { audioEngine_.processGraph().masterBus().setMonoListen(on); };
     mixer_.onMasterEnable = [this](bool on) {
         audioEngine_.processGraph().masterBus().setEnabled(on);
     };
@@ -688,6 +690,7 @@ MainComponent::MainComponent()
     {
         auto& reglages = vsm::app::ui::UiScale::properties();
         countInBars_ = juce::jlimit(0, 2, reglages.getIntValue("recordCountInBars", 1));
+        monitoringMode_ = juce::jlimit(0, 2, reglages.getIntValue("monitoringMode", 0));   // D23.2
         // La latence mesurée est CONSERVÉE : elle décrit la machine et sa carte,
         // pas le morceau, et la remesurer à chaque lancement serait absurde.
         audioEngine_.setMeasuredRoundTripSeconds(
@@ -1164,6 +1167,29 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     // photographier les voyants IN (elle arrive) et OUT (elle part).
     else if (nom.startsWith("note:"))
         playNoteForCapture(static_cast<uint8_t>(juce::jlimit(0, 127, nom.substring(5).getIntValue())), 15);
+    // D23 : armer une piste (armer:N), inverser sa polarité (polarite:N), les
+    // hauteurs (pistes-a-la-fenetre, hauteur-pistes:N) -- par les MÊMES
+    // fonctions que les boutons et les menus.
+    else if (nom.startsWith("armer:")) {
+        const auto p = static_cast<size_t>(std::max(0, nom.substring(6).getIntValue()));
+        if (p < project_.tracks.size()) {
+            project_.tracks[p].armed = true;
+            trackList_.refreshTrackRow(p);
+            refreshArmedTracks();
+        }
+    }
+    else if (nom.startsWith("polarite:")) {
+        const auto p = static_cast<size_t>(std::max(0, nom.substring(9).getIntValue()));
+        if (p < project_.tracks.size()) {
+            beginProjectEdit("Mixage");
+            project_.tracks[p].invertPhase = !project_.tracks[p].invertPhase;
+            mixer_.setProject(&project_);
+            if (mixer_.onMixChanged) mixer_.onMixChanged();
+        }
+    }
+    else if (nom == "pistes-a-la-fenetre") arrangement_.fitTracksToWindow();
+    else if (nom.startsWith("hauteur-pistes:"))
+        arrangement_.setAllTrackHeights(nom.substring(15).getIntValue());
     else if (nom == "phase-clip") {
         if (!arrangement_.runClipMenuActionForCapture(57))
             std::fputs("VSM_VUE phase-clip : aucun clip choisi\n", stderr);
@@ -1423,6 +1449,10 @@ void MainComponent::timerCallback() {
         midiInSeen_ = in;
         notesOutSeen_ = out;
     }
+    // D23.2 : l'écoute automatique suit l'armement et le transport ; le
+    // témoin dit l'état réel, quel que soit le mode.
+    applyMonitoringMode();
+    transportBar_.setInputMonitoring(audioEngine_.inputMonitoring());
     pianoRoll_.setPlayheadTick(playhead);
     synthRack_.setPlayheadTick(playhead); // éclaire le pas en cours sur les grilles
     arrangement_.setPlayheadTick(playhead);
@@ -1602,6 +1632,16 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addItem(kMenuFileReferenceCycle, u8"Basculer l'écoute A/B (touche R)", aUneReference);
             }
             menu.addItem(kMenuFileExport, "Exporter MIDI...");
+            // D23.3 : la piste choisie seule -- pour donner une partie, pas le morceau.
+            {
+                const size_t p = trackList_.selectedTrackIndex();
+                const bool midi = p < project_.tracks.size() && project_.tracks[p].kind == Track::Kind::Midi;
+                menu.addItem(kMenuFileExportTrackMidi,
+                             midi ? juce::String(u8"Exporter la piste choisie en MIDI (\u00ab ")
+                                        + juce::String(project_.tracks[p].name) + juce::String(u8" \u00bb)...")
+                                  : juce::String(u8"Exporter la piste choisie en MIDI (choisir une piste MIDI)..."),
+                             midi);
+            }
             menu.addItem(kMenuFileExportWav, "Exporter audio (WAV)...");
             menu.addItem(kMenuFileExportStems, u8"Exporter les stems (un WAV par piste)...");
             menu.addSeparator();
@@ -2022,7 +2062,21 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                     // suivante mesure. Coché quand c'est actif ; jamais par défaut.
                     menu.addItem(kMenuRecordMonitorInput,
                                  u8"\u00c9couter l'entr\u00e9e en direct (latence du p\u00e9riph\u00e9rique)",
-                                 audioEngine_.isDeviceOpen(), audioEngine_.inputMonitoring());
+                                 audioEngine_.isDeviceOpen() && monitoringMode_ == 0, audioEngine_.inputMonitoring());
+                    // D23.2 : LE MODE. Chaque entrée dit QUAND elle écoute :
+                    // « automatique » sans sa règle serait une magie qu'on ne
+                    // peut ni prévoir ni vérifier.
+                    {
+                        juce::PopupMenu modes;
+                        modes.addItem(kMenuRecordMonitorManual,
+                                      u8"\u00c9coute manuelle (l'interrupteur ci-dessus)", true, monitoringMode_ == 0);
+                        modes.addItem(kMenuRecordMonitorAuto,
+                                      u8"\u00c9coute automatique (une piste audio arm\u00e9e, transport arr\u00eat\u00e9 ou en enregistrement)",
+                                      true, monitoringMode_ == 1);
+                        modes.addItem(kMenuRecordMonitorArmed,
+                                      u8"\u00c9coute quand une piste est arm\u00e9e (une piste audio arm\u00e9e, toujours)", true, monitoringMode_ == 2);
+                        menu.addSubMenu(u8"\u00c9coute de l'entr\u00e9e", modes);
+                    }
                     menu.addItem(kMenuRecordMeasureLatency,
                                   u8"Mesurer (brancher la sortie sur l'entrée)...");
                     menu.addItem(kMenuRecordClearLatency, u8"Oublier la mesure", r > 0.0);
@@ -2123,6 +2177,11 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addItem(kMenuMixAddSend, u8"Ajouter un bus de départ",
                               project_.sends.size() < vsm::audio::engine::ProcessGraph::kMaxSends);
             }
+            // D23.5 : L'ÉCOUTE EN MONO, aussi au menu -- pour le clavier, et pour
+            // que VSM_MENU puisse la photographier.
+            menu.addSeparator();
+            menu.addItem(kMenuMixMonoListen, u8"\u00c9coute en mono (jamais dans un export)", true,
+                         audioEngine_.processGraph().masterBus().monoListen());
             break;
         case 5:
             menu.addItem(kMenuViewSingleWindow, juce::String::fromUTF8(u8"Fenêtre unique"),
@@ -2186,6 +2245,17 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                               + juce::String(static_cast<int>(audioEngine_.midiLearnMappingCount()))
                               + ")",
                           true, midiLearnWindow_ && midiLearnWindow_->isVisible());
+            // D23.4 : TOUTES LES PISTES À LA FENÊTRE, et trois hauteurs fixes.
+            menu.addSeparator();
+            menu.addItem(kMenuViewFitTracks, u8"Toutes les pistes \u00e0 la fen\u00eatre (arrangement)",
+                         !project_.tracks.empty());
+            {
+                juce::PopupMenu hauteurs;
+                hauteurs.addItem(kMenuViewTrackHeightSmall, u8"Petite (24 px)", !project_.tracks.empty());
+                hauteurs.addItem(kMenuViewTrackHeightNormal, u8"Normale (56 px)", !project_.tracks.empty());
+                hauteurs.addItem(kMenuViewTrackHeightLarge, u8"Grande (112 px)", !project_.tracks.empty());
+                menu.addSubMenu(u8"Hauteur des pistes", hauteurs);
+            }
             menu.addSeparator();
             {
                 // TAILLE DE L'INTERFACE. Le facteur agrandit texte ET cases
@@ -2222,6 +2292,24 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuEditLoadGroove)    { loadGrooveFromLibrary(); return; }
     if (menuItemID == kMenuEditLocatorsFromSelection) { locatorsFromSelection(); return; }
     if (menuItemID == kMenuEditGoToBar) { promptGoToBar(); return; }
+    // D23 : l'écoute de l'entrée, la piste en MIDI, le mono, les hauteurs.
+    if (menuItemID >= kMenuRecordMonitorManual && menuItemID <= kMenuRecordMonitorArmed) {
+        monitoringMode_ = menuItemID - kMenuRecordMonitorManual;
+        vsm::app::ui::UiScale::properties().setValue("monitoringMode", monitoringMode_);
+        applyMonitoringMode();
+        return;
+    }
+    if (menuItemID == kMenuFileExportTrackMidi) { exportSelectedTrackMidi(); return; }
+    if (menuItemID == kMenuMixMonoListen) {
+        const bool on = !audioEngine_.processGraph().masterBus().monoListen();
+        audioEngine_.processGraph().masterBus().setMonoListen(on);
+        mixer_.setMonoListen(on);
+        return;
+    }
+    if (menuItemID == kMenuViewFitTracks) { arrangement_.fitTracksToWindow(); return; }
+    if (menuItemID == kMenuViewTrackHeightSmall)  { arrangement_.setAllTrackHeights(24); return; }
+    if (menuItemID == kMenuViewTrackHeightNormal) { arrangement_.setAllTrackHeights(56); return; }
+    if (menuItemID == kMenuViewTrackHeightLarge)  { arrangement_.setAllTrackHeights(112); return; }
     if (menuItemID == kMenuEditSelectAllClips) { arrangement_.selectAll(); return; }
     if (menuItemID == kMenuEditRepeatToLoopEnd) { arrangement_.repeatSelectionUntilLoopEnd(); return; }
     if (menuItemID == kMenuEditSliceAtOnsets) { sliceSelectedClipsAtOnsets(); return; }
@@ -7427,6 +7515,56 @@ void MainComponent::promptGoToBar() {
 }
 
 void MainComponent::startPlaybackForCapture() { transport_.play(); }
+
+// --- D23.2 : l'écoute automatique de l'entrée ---------------------------------
+
+void MainComponent::applyMonitoringMode() {
+    if (monitoringMode_ == 0) return;   // manuel : l'interrupteur du menu décide
+    bool audioArmee = false;
+    for (const auto& t : project_.tracks)
+        if (t.armed && t.kind == Track::Kind::Audio) { audioArmee = true; break; }
+    const bool lectureSimple = transport_.state() == TransportState::Playing && !audioEngine_.isRecording();
+    const bool voulu = audioArmee && (monitoringMode_ == 2 || !lectureSimple);
+    if (voulu != audioEngine_.inputMonitoring()) audioEngine_.setInputMonitoring(voulu);
+}
+
+// --- D23.3 : la piste choisie en MIDI ----------------------------------------
+
+bool MainComponent::writeSelectedTrackMidi(const juce::File& fichier) {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) {
+        std::fputs("Exporter la piste en MIDI : aucune piste choisie\n", stderr);
+        return false;
+    }
+    captureSessionIntoProject();
+    const Project seule = project_.extractTrack(piste);
+    try {
+        MidiFileWriter::writeFile(seule.toParsedFile(), fichier.getFullPathName().toStdString());
+    } catch (const std::exception& e) {
+        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                                               u8"Exporter la piste en MIDI", juce::String(e.what()));
+        std::fputs(("Exporter la piste en MIDI : " + std::string(e.what()) + "\n").c_str(), stderr);
+        return false;
+    }
+    std::fputs(("Piste \u00ab " + project_.tracks[piste].name + " \u00bb \u00e9crite en MIDI : "
+                + fichier.getFullPathName().toStdString() + "\n").c_str(), stderr);
+    return true;
+}
+
+void MainComponent::exportSelectedTrackMidi() {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    auto chooser = std::make_shared<juce::FileChooser>(
+        juce::String(u8"Exporter la piste \u00ab ") + juce::String(project_.tracks[piste].name)
+            + juce::String(u8" \u00bb en MIDI..."),
+        juce::File(), "*.mid");
+    chooser->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
+                         [this, chooser](const juce::FileChooser& fc) {
+        const juce::File fichier = fc.getResult();
+        if (fichier == juce::File()) return;
+        writeSelectedTrackMidi(fichier);
+    });
+}
 
 void MainComponent::playNoteForCapture(uint8_t note, int restant) {
     audioEngine_.playComputerKey(note, 100, true);

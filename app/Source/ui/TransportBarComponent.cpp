@@ -151,8 +151,8 @@ void TransportBarComponent::paint(juce::Graphics& g) {
     if (!inputMeterBounds_.isEmpty()) {
         g.setColour(Palette::background);
         g.fillRect(inputMeterBounds_);
-        g.setColour(Palette::border);
-        g.drawRect(inputMeterBounds_, 1);
+        g.setColour(inputMonitoring_ ? Palette::accentTeal : Palette::border);
+        g.drawRect(inputMeterBounds_.expanded(inputMonitoring_ ? 1 : 0), inputMonitoring_ ? 2 : 1);
         if (inputChannels_ <= 0) {
             g.setColour(Palette::textSecondary.withAlpha(0.5f));
             g.drawLine(static_cast<float>(inputMeterBounds_.getX()),
@@ -266,6 +266,12 @@ void TransportBarComponent::resized() {
     poser(openButton_, bouton, serre ? 10 : 16);
     poser(cpuLabel_, serre ? 76 : 90, 8);
     poser(sampleRateLabel_, serre ? 90 : 120, 0);
+}
+
+void TransportBarComponent::setInputMonitoring(bool on) {
+    if (on == inputMonitoring_) return;
+    inputMonitoring_ = on;
+    repaint(inputMeterBounds_.expanded(2));
 }
 
 void TransportBarComponent::setInputLevel(float peak, int channels) {

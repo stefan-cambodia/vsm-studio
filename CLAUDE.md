@@ -72,6 +72,11 @@ l'ordre de marche — pas de la documentation d'accompagnement.
   `juce::String(u8"…")`. Payé quatre fois dans la même journée.
 - En zsh, `grep --include=*.cpp` est un glob que le shell mange (« no
   matches found ») : quoter `--include='*.cpp'`, ou passer par `find`.
+- `VSM_MENU=libellé` prend le PREMIER libellé exact tous menus confondus
+  (Fichier d'abord) : « Automatique » a piloté les threads de rendu au lieu
+  du mode d'écoute (06/09). Un libellé de menu neuf doit être unique dans
+  toute la barre, et la capture qui le vérifie regarde l'EFFET, pas l'absence
+  d'erreur.
 - JAMAIS d'édition de analyse/analyzer/*.py pendant qu'une course tourne : la
   chaîne importait des modules À LA DEMANDE, cinq heures après le départ, dans
   l'état du disque à cet instant (parite-v2, 5 h 24 perdues au réglage final).

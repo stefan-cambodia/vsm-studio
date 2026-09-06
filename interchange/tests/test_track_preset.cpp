@@ -17,6 +17,7 @@ Track pisteReglee() {
     piste.colorRgba = 0xFF112233u;
     piste.volume = 0.5f;
     piste.pan = -0.25f;
+    piste.invertPhase = true;
     piste.sendLevels = {0.1f, 0.75f};
     piste.transposeSemitones = -12;
     piste.delayMs = 7.5;
@@ -63,6 +64,7 @@ VSM_TEST(a_track_preset_round_trips_through_json_and_carries_no_notes) {
     VSM_ASSERT_EQ(r.sendLevels[1], 0.75f);
     VSM_ASSERT_EQ(r.volume, 0.5f);
     VSM_ASSERT_EQ(r.pan, -0.25f);
+    VSM_ASSERT(r.invertPhase);
     VSM_ASSERT_EQ(r.colorRgba, 0xFF112233u);
     VSM_ASSERT_EQ(r.channel, 3);
     VSM_ASSERT_EQ(r.transposeSemitones, -12);
@@ -100,6 +102,7 @@ VSM_TEST(applying_a_track_preset_keeps_the_content_and_replaces_the_settings) {
     VSM_ASSERT_EQ(cible.effects.size(), size_t(2));
     VSM_ASSERT(!cible.effects[0].enabled);
     VSM_ASSERT_EQ(cible.volume, 0.5f);
+    VSM_ASSERT(cible.invertPhase);
     VSM_ASSERT_EQ(cible.transposeSemitones, -12);
     VSM_ASSERT_EQ(cible.channel, static_cast<uint8_t>(3));
 }

@@ -29,6 +29,7 @@ struct TrackPreset {
     std::vector<float> sendLevels;
     float volume = 1.0f;
     float pan = 0.0f;
+    bool invertPhase = false;                     ///< D23.1
     uint32_t colorRgba = 0xFF6B9BFFu;
     int channel = 0;
     int transposeSemitones = 0;

@@ -133,6 +133,12 @@ public:
 
     static Project fromParsedFile(const midi::ParsedFile& parsed);
     midi::ParsedFile toParsedFile() const;
+    /// D23.3 : le même projet réduit à UNE piste -- la carte de tempo, les
+    /// signatures et le reste du morceau gardés, les autres pistes retirées,
+    /// et les routages de la piste vers d'autres pistes (groupe de sortie,
+    /// piste source) défaits, puisqu'elles n'y sont plus. Un index hors
+    /// bornes rend le projet sans piste.
+    Project extractTrack(size_t index) const;
 
     double ticksToSeconds(midi::Tick tick) const { return tempoMap.ticksToSeconds(tick, ticksPerQuarterNote); }
     midi::Tick secondsToTicks(double seconds) const { return tempoMap.secondsToTicks(seconds, ticksPerQuarterNote); }

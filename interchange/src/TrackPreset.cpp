@@ -18,6 +18,7 @@ TrackPreset trackPresetFromTrack(const vsm::sequencer::Track& track, const std::
     preset.sendLevels = track.sendLevels;
     preset.volume = track.volume;
     preset.pan = track.pan;
+    preset.invertPhase = track.invertPhase;
     preset.colorRgba = track.colorRgba;
     preset.channel = track.channel;
     preset.transposeSemitones = track.transposeSemitones;
@@ -42,6 +43,7 @@ void applyTrackPresetToTrack(const TrackPreset& preset, vsm::sequencer::Track& t
     track.sendLevels = preset.sendLevels;
     track.volume = preset.volume;
     track.pan = preset.pan;
+    track.invertPhase = preset.invertPhase;
     track.colorRgba = preset.colorRgba;
     track.channel = static_cast<uint8_t>(std::clamp(preset.channel, 0, 15));
     track.transposeSemitones = preset.transposeSemitones;
@@ -69,6 +71,7 @@ JsonValue trackPresetToJson(const TrackPreset& preset) {
     root.set("sendLevels", std::move(departs));
     root.set("volume", JsonValue::makeFloat(preset.volume));
     root.set("pan", JsonValue::makeFloat(preset.pan));
+    if (preset.invertPhase) root.set("invertPhase", JsonValue::makeBoolean(true));
     root.set("colorRgba", JsonValue::makeNumber(static_cast<double>(preset.colorRgba)));
     root.set("channel", JsonValue::makeNumber(preset.channel));
     root.set("transposeSemitones", JsonValue::makeNumber(preset.transposeSemitones));
@@ -114,6 +117,7 @@ TrackPresetLoadResult trackPresetFromJson(const JsonValue& json) {
         preset.sendLevels.push_back(static_cast<float>(niveau.asNumber(0.0)));
     preset.volume = static_cast<float>(json["volume"].asNumber(1.0));
     preset.pan = static_cast<float>(json["pan"].asNumber(0.0));
+    preset.invertPhase = json["invertPhase"].asBoolean(false);
     preset.colorRgba = static_cast<uint32_t>(json["colorRgba"].asNumber(static_cast<double>(0xFF6B9BFFu)));
     preset.channel = static_cast<int>(json["channel"].asNumber(0.0));
     preset.transposeSemitones = static_cast<int>(json["transposeSemitones"].asNumber(0.0));

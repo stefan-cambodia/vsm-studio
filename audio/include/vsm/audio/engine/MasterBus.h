@@ -111,9 +111,29 @@ public:
     /// Corrélation de phase du bus final, de -1 à +1. Voir `phaseCorrelation`.
     float outputCorrelation() const { return outputCorrelation_.load(std::memory_order_relaxed); }
 
-    /// Traite le bus stéréo EN PLACE. No-op complet si désactivé.
+    /// D23.5 : L'ÉCOUTE EN MONO. Un outil d'écoute, pas un réglage du morceau :
+    /// il n'est ni dans les paramètres, ni dans le fichier, et le rendu hors
+    /// ligne monte son propre bus, où il est toujours faux. Le repli se fait
+    /// APRÈS le limiteur et AVANT les mesures : la corrélation lue passe à 1,
+    /// ce qui est exactement ce qu'on entend. Actif même quand la tranche est
+    /// contournée -- vérifier un mixage en mono ne demande pas de master.
+    void setMonoListen(bool on) { monoListen_.store(on, std::memory_order_relaxed); }
+    bool monoListen() const { return monoListen_.load(std::memory_order_relaxed); }
+
+    /// Traite le bus stéréo EN PLACE. No-op complet si désactivé (hors écoute
+    /// en mono, qui est un outil d'écoute et non un traitement du bus).
     void process(float* left, float* right, int numSamples) {
-        if (!isEnabled() || numSamples <= 0) return;
+        if (numSamples <= 0) return;
+        const bool mono = monoListen();
+        if (!isEnabled()) {
+            if (mono)
+                for (int i = 0; i < numSamples; ++i) {
+                    const float m = 0.5f * (left[i] + right[i]);
+                    left[i] = m;
+                    right[i] = m;
+                }
+            return;
+        }
 
         vsm::audio::dsp::ScopedNoDenormals noDenormals;
 
@@ -181,6 +201,13 @@ public:
             // Limiteur brickwall
             limiter_.processStereo(l, r);
 
+            // D23.5 : le repli mono, après tout, avant les mesures.
+            if (mono) {
+                const float m = 0.5f * (l + r);
+                l = m;
+                r = m;
+            }
+
             left[i] = l;
             right[i] = r;
             blockPeak = std::max(blockPeak, std::max(std::abs(l), std::abs(r)));
@@ -218,6 +245,7 @@ private:
     std::atomic<float> outputPeak_{0.0f};
     std::atomic<float> outputRms_{0.0f};
     std::atomic<float> outputCorrelation_{1.0f};
+    std::atomic<bool> monoListen_{false};   ///< D23.5
 };
 
 } // namespace vsm::audio::engine

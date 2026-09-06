@@ -128,3 +128,60 @@ VSM_TEST(process_graph_master_limiter_reduces_peak) {
     VSM_ASSERT(refPeak > ceiling);            // la référence dépassait bien le plafond
     VSM_ASSERT(outPeak <= ceiling + 1e-3f);   // le master l'a ramenée sous le plafond
 }
+
+// --- D23.5 : l'écoute en mono ---------------------------------------------
+
+VSM_TEST(mono_listen_folds_a_hard_left_signal_to_both_sides_even_when_bypassed) {
+    MasterBus bus;
+    bus.prepare(48000.0, 512);
+    std::vector<float> l(600), r(600, 0.0f);
+    for (size_t i = 0; i < l.size(); ++i)
+        l[i] = 0.8f * std::sin(static_cast<float>(kTwoPiD * 440.0 * static_cast<double>(i) / 48000.0));
+    // Tranche contournée : sans écoute mono, rien ne bouge (le test au-dessus) ;
+    // avec, les deux côtés reçoivent la demi-somme.
+    bus.setMonoListen(true);
+    bus.process(l.data(), r.data(), static_cast<int>(l.size()));
+    for (size_t i = 0; i < l.size(); ++i) {
+        VSM_ASSERT_NEAR(l[i], r[i], 1e-7);
+        const float attendu = 0.4f * std::sin(static_cast<float>(kTwoPiD * 440.0 * static_cast<double>(i) / 48000.0));
+        VSM_ASSERT_NEAR(l[i], attendu, 1e-6);
+    }
+    // Tranche active : la corrélation MESURÉE est celle de ce qu'on entend, 1.
+    bus.setEnabled(true);
+    std::vector<float> l2(600), r2(600);
+    for (size_t i = 0; i < l2.size(); ++i) { l2[i] = 0.5f * std::sin(0.05f * static_cast<float>(i)); r2[i] = -l2[i]; }
+    bus.process(l2.data(), r2.data(), static_cast<int>(l2.size()));
+    VSM_ASSERT_NEAR(bus.outputCorrelation(), 1.0, 1e-3);
+    // Éteinte, elle redevient transparente.
+    bus.setMonoListen(false);
+    bus.setEnabled(false);
+    std::vector<float> l3(4, 1.0f), r3(4, -1.0f);
+    bus.process(l3.data(), r3.data(), 4);
+    VSM_ASSERT_NEAR(l3[0], 1.0, 1e-7);
+    VSM_ASSERT_NEAR(r3[0], -1.0, 1e-7);
+}
+
+// --- D23.1 : la polarité d'une piste ---------------------------------------
+
+VSM_TEST(a_track_with_inverted_polarity_cancels_its_twin) {
+    Project project = buildSingleNoteProject();
+    project.tracks.push_back(project.tracks[0]);   // la jumelle, même notes
+    // Témoin : les deux en phase, le rendu est le double d'une piste.
+    ProcessGraph deux;
+    deux.prepare(8000.0, 256);
+    deux.setTrackInstrument(0, "vsm.minimoog");
+    deux.setTrackInstrument(1, "vsm.minimoog");
+    deux.setProject(project);
+    const float crete2 = peakOf(OfflineRenderer::render(deux, 8000.0, 256, 1.0).left);
+    VSM_ASSERT(crete2 > 0.05f);
+
+    project.tracks[1].invertPhase = true;
+    ProcessGraph oppose;
+    oppose.prepare(8000.0, 256);
+    oppose.setTrackInstrument(0, "vsm.minimoog");
+    oppose.setTrackInstrument(1, "vsm.minimoog");
+    oppose.setProject(project);
+    const RenderedAudio rendu = OfflineRenderer::render(oppose, 8000.0, 256, 1.0);
+    VSM_ASSERT(peakOf(rendu.left) < 1e-4f);
+    VSM_ASSERT(peakOf(rendu.right) < 1e-4f);
+}

@@ -177,6 +177,9 @@ private:
     /// pictogramme, comme chez Cubase, et sa couleur dit lequel des deux
     /// modes est armé (l'ambre pour `touch`, plus vif pour `latch`).
     juce::TextButton armer_ { "W" };
+    /// D23.1 : LA POLARITÉ, le Ø de Cubase. À côté du W, sur la même rangée :
+    /// deux libellés d'un caractère tiennent là où trois se tronquaient.
+    juce::TextButton phase_ { juce::String::fromUTF8("\xc3\x98") };
 
     /// UNE PASSE EN COURS, par paramètre : on peut tenir le fader d'une main
     /// et le panoramique de l'autre, et ce sont deux courbes.
@@ -235,6 +238,10 @@ public:
     std::function<void(vsm::audio::plugin::ParamId, float)> onMasterParam;
     std::function<void(bool)> onMasterEnable;
     std::function<float(vsm::audio::plugin::ParamId)> masterParamProvider;
+    /// D23.5 : l'écoute en mono, un outil d'écoute -- jamais un paramètre du
+    /// bus, jamais dans le fichier ni dans un export.
+    std::function<void(bool)> onMonoListen;
+    void setMonoListen(bool on) { monoButton_.setToggleState(on, juce::dontSendNotification); }
 
     /// Synchronise l'UI depuis les valeurs courantes du bus master.
     void syncFromEngine();
@@ -244,6 +251,7 @@ private:
                           float min, float max, float def, const juce::String& suffix);
 
     juce::TextButton enableButton_ { "MASTER" };
+    juce::TextButton monoButton_ { "MONO" };   ///< D23.5
     juce::Label titleLabel_, lufsLabel_, phaseLabel_;
     LevelMeter meter_;
 
@@ -292,6 +300,9 @@ public:
     std::function<void(vsm::audio::plugin::ParamId, float)> onMasterParam;
     std::function<void(bool)> onMasterEnable;
     std::function<float(vsm::audio::plugin::ParamId)> masterParamProvider;
+    /// D23.5 : l'écoute en mono, depuis le bouton MONO de la tranche master.
+    std::function<void(bool)> onMonoListen;
+    void setMonoListen(bool on) { master_.setMonoListen(on); }
 
 private:
     vsm::sequencer::Project* project_ = nullptr;

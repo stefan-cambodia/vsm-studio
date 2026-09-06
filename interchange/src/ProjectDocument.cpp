@@ -264,6 +264,7 @@ ProjectDocument documentFromProject(const Project& project) {
             entry.effects.push_back(std::move(described));
         }
         entry.outputGroup = track.outputGroup;
+        entry.invertPhase = track.invertPhase;
         entry.arrangementHeight = track.arrangementHeight;
         entry.folded = track.folded;
         entry.frozen = track.frozen;
@@ -414,6 +415,7 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.pan = std::clamp(source.pan, -1.0f, 1.0f);
         target.muted = source.muted;
         target.solo = source.solo;
+        target.invertPhase = source.invertPhase;
         target.sendLevels = source.sendLevels;
 
         // AVANT le `continue` ci-dessous, délibérément : une piste sans
@@ -608,6 +610,7 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         mix.set("pan", JsonValue::makeFloat(track.pan));
         mix.set("muted", JsonValue::makeBoolean(track.muted));
         mix.set("solo", JsonValue::makeBoolean(track.solo));
+        if (track.invertPhase) mix.set("invertPhase", JsonValue::makeBoolean(true));   // D23.1
         JsonValue sends = JsonValue::makeArray();
         for (float level : track.sendLevels) sends.append(JsonValue::makeFloat(level));
         mix.set("sends", std::move(sends));
@@ -849,6 +852,7 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         track.pan = static_cast<float>(mix["pan"].asNumber(0.0));
         track.muted = mix["muted"].asBoolean(false);
         track.solo = mix["solo"].asBoolean(false);
+        track.invertPhase = mix["invertPhase"].asBoolean(false);
         // LA TAILLE VIENT DU FICHIER, et c'est un piège qu'a tendu le passage
         // du tableau de deux au vecteur : borner la boucle par la taille du
         // VECTEUR, qui part vide, ne lisait plus rien du tout et faisait

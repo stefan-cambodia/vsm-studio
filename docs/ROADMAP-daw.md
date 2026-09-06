@@ -5500,3 +5500,102 @@ Cinq manques ont survécu.
 > Tests : 268 core, 1 249 audio, 278 interchange — tous verts ; Python
 > inchangé (168 à D21).
 
+
+### Phase D23 — Le douzième audit : ce qui manque une fois D22 posée (06/09/2026, 13:40)
+
+**Pourquoi.** Même méthode, même ordre du § 3, et la règle de D19 : chaque
+manque cherché en LISANT la surface du module qui le porterait — la tranche
+du mélangeur (`MixerComponent`), la tranche master et `MasterBus`, le menu
+Enregistrement et `AudioEngine`, le menu Fichier et `Project::toParsedFile`,
+le menu Affichage et `ArrangementComponent` — puis dans ce document. Le
+relevé a été fait par sondage du code, cinquante candidats d'un coup
+(un script de `grep` par candidat), et chaque « absent » revérifié à la main.
+
+Le relevé a écarté, comme existant : l'arpégiateur et la contrainte à la
+gamme du piano roll, les grilles en triolets et pointées, le zoom sur la
+sélection, la compensation de latence des inserts (D4.5), le copier-coller
+des notes, le dither à l'export (D14.4), les groupes, les dossiers, le gel,
+les prises et leur assemblage, les repères et leur renommage, « contourner
+tous les inserts », le clic pendant l'enregistrement seul et le niveau du
+métronome (D16.6), l'automation qui suit les clips, la chasse des
+contrôleurs, le solo exclusif, le déplacement fin, le tempo en rampes.
+
+**Et l'élément reporté de D21 reste reporté, pour la même raison** : la
+campagne R1 court (lot forcé `r1f-sec` depuis 13:31), et `vsm-render` ne
+se recompile pas tant qu'elle court.
+
+Cinq manques ont survécu.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D23.1 | **La polarité d'une piste.** Le clip audio a sa phase (D22.1) ; la PISTE n'en a pas — deux micros sur une caisse claire, un bus de groupe en opposition, rien ne s'inverse au mélangeur. Cubase : le bouton Ø de chaque tranche ; Live : le module Utility | `Track::invertPhase` dans le modèle et le fichier (`mix.invertPhase`, écrit seulement quand il l'est), appliqué par `ProcessGraph` au fader — signe sur le volume, donc sur la sortie ET les départs, pré comme post ; test audio : une piste inversée annule sa jumelle (crête < 10⁻⁴) ; bouton « Ø » sur la tranche, à côté du W, annulable ; dans le preset de piste (D22.5) ; vérifié à l'écran |
+| D23.2 | **Le monitoring automatique.** « Écouter l'entrée en direct » est un interrupteur global : on l'oublie allumé et la lecture repasse l'entrée, on l'oublie éteint et la prise se fait sans s'entendre. Cubase : Auto Monitoring (Tape Machine Style) ; Live : Monitor Auto par piste | « Enregistrement ▸ Écoute de l'entrée ▸ Manuelle / Automatique (une piste audio armée, transport arrêté ou en enregistrement) / Armée (une piste audio armée, toujours) », réglage d'application retenu ; la minuterie applique ; le témoin d'entrée de la barre de transport prend un liséré quand l'écoute est active, quel que soit le mode ; `VSM_VUE=armer:N` pour le vérifier ; vérifié à l'écran |
+| D23.3 | **Exporter la piste choisie en MIDI.** « Exporter MIDI… » écrit tout le morceau ; donner une partie à un autre musicien, ou la rejouer ailleurs, oblige à supprimer les autres pistes avant. Live : Export MIDI Clip ; Cubase : l'export des pistes choisies | `Project::extractTrack(i)` dans `core/`, pur : la carte de tempo et les signatures gardées, la piste seule, ses routages vers d'autres pistes défaits ; testé — un fichier d'une piste se relit avec ses notes et son tempo ; « Fichier ▸ Exporter la piste choisie en MIDI… » ; `VSM_EXPORT_MIDI_PISTE=fichier.mid` pour le vérifier sans fenêtre ; le fichier relu compte UNE piste |
+| D23.4 | **Toutes les pistes à la fenêtre.** La hauteur de chaque piste se tire à la main (D5.3) ; à quinze pistes, les ramener toutes dans la fenêtre se fait quinze fois. Live : H (optimiser les hauteurs) ; Cubase : Zoom Full / Zoom Tracks | « Affichage ▸ Toutes les pistes à la fenêtre » : les pistes visibles et dépliées se partagent la hauteur disponible, entre 24 et 400 px, les pliées gardent la leur ; « Hauteur des pistes ▸ Petite, Normale, Grande » ; annulable (la hauteur est dans le projet) ; `VSM_VUE=pistes-a-la-fenetre`, `hauteur-pistes:N` ; vérifié à l'écran |
+| D23.5 | **L'écoute en mono.** Le master mesure la corrélation de phase (D4.7) et la DIT ; on ne peut pas ENTENDRE ce qu'il reste en mono sans poser un effet. Cubase : Control Room, Mono ; Live : Utility sur le master | `MasterBus::setMonoListen` : repli L+R après le limiteur, avant les mesures — donc la corrélation lue passe à 1, ce qui est ce qu'on entend —, actif même quand la tranche master est contournée ; jamais dans un export (le rendu hors ligne monte son propre bus) ; test : un signal tout à gauche ressort égal des deux côtés ; bouton « MONO » sur la tranche master et « Mixage ▸ Écoute en mono » coché ; vérifié à l'écran |
+
+> **D23.1 EST FAITE (06/09/2026, 13:50).** `Track::invertPhase`, écrit dans
+> `mix.invertPhase` seulement quand il l'est (un projet sans piste inversée
+> garde son fichier octet pour octet), relu, dans le preset de piste. Le
+> moteur l'applique par le SIGNE du volume : la sortie, les départs
+> post-fader ET pré-fader s'inversent — deux micros en opposition le sont
+> dans la réverbération aussi —, pour une piste comme pour un groupe. Test
+> audio : une piste inversée annule sa jumelle (crête < 10⁻⁴ sur les deux
+> canaux, le témoin en phase à plus de 0,05). Bouton « Ø » sur la tranche, à
+> côté du W — deux libellés d'un caractère tiennent là où trois se
+> tronquaient (D16.8) —, annulable comme un geste de fader. Vérifié à l'écran
+> par `VSM_VUE=polarite:2` : le Ø de « Voix » allumé. Le rendu hors ligne
+> passe par le même graphe : `vsm-render` l'appliquera à sa prochaine
+> recompilation, après la campagne.
+>
+> **D23.2 EST FAITE (06/09/2026, 13:50).** « Enregistrement ▸ Écoute de
+> l'entrée ▸ Écoute manuelle / Écoute automatique (une piste audio armée,
+> transport arrêté ou en enregistrement) / Écoute quand une piste est armée »,
+> réglage d'application retenu ; en mode manuel, l'interrupteur d'avant reste
+> le maître, et il se grise sinon. La minuterie applique à chaque tour ; le
+> témoin d'entrée prend un liséré turquoise dès que l'écoute est active, quel
+> que soit le mode — un mode qui s'allume tout seul doit se VOIR. Vérifié à
+> l'écran par `VSM_VUE=armer:2` et `VSM_MENU=Écoute automatique` : le liséré,
+> transport arrêté. Et une leçon d'outil, payée une capture : `VSM_MENU`
+> prend le PREMIER libellé exact tous menus confondus, et « Automatique »
+> existait déjà dans Fichier (les threads de rendu) — un libellé neuf doit
+> être unique dans toute la barre, pas seulement dans son menu.
+>
+> **D23.3 EST FAITE (06/09/2026, 13:50).** `Project::extractTrack(i)`, pur :
+> la piste seule, la carte de tempo et les signatures gardées, `outputGroup`
+> et `outputSourceTrack` défaits (elles désignaient des pistes qui n'y sont
+> plus), un index hors bornes rend un projet sans piste. Testé : le fichier
+> d'une piste se relit avec ses deux notes et son tempo. « Fichier ▸ Exporter
+> la piste choisie en MIDI (« nom »)… », grisée avec sa raison sur une piste
+> qui n'est pas MIDI. Vérifié par `VSM_EXPORT_MIDI_PISTE` sur « Drums » du
+> projet d'exemple, relu par un lecteur SMF indépendant : format 1, UNE
+> piste, nommée « Drums », 8 NoteOn, tempo 461 538 µs (130 BPM).
+>
+> **D23.4 EST FAITE (06/09/2026, 13:50).** « Affichage ▸ Toutes les pistes à
+> la fenêtre » : les pistes visibles et dépliées se partagent la hauteur
+> disponible sous la règle, entre 24 et 400 px, les pliées et masquées
+> gardent la leur ; « Hauteur des pistes ▸ Petite (24), Normale (56), Grande
+> (112) ». Annulable — la hauteur est dans le projet (D5.3) —, et rien n'est
+> écrit dans l'historique si aucune hauteur ne change. Vérifié à l'écran par
+> `VSM_VUE=pistes-a-la-fenetre` : trois pistes qui remplissent l'arrangement.
+>
+> **D23.5 EST FAITE (06/09/2026, 13:50), ET LA PHASE D23 EST CLOSE.**
+> `MasterBus::setMonoListen` : le repli L+R après le limiteur, avant les
+> mesures — la corrélation lue devient ce qu'on entend, 1 —, actif même
+> quand la tranche est contournée (vérifier un mixage en mono ne demande pas
+> de master). Un `std::atomic<bool>` et non un paramètre : ni dans le fichier,
+> ni dans un export — le rendu hors ligne monte son propre bus. Test : un
+> signal tout à gauche ressort égal des deux côtés à la demi-somme, tranche
+> contournée ; deux canaux en opposition mesurent une corrélation de 1,00
+> tranche active ; éteinte, elle redevient transparente. Bouton « MONO » à
+> côté de « MASTER » (ambre, comme un solo : un état d'écoute qu'on doit
+> remarquer), et « Mixage ▸ Écoute en mono (jamais dans un export) » coché.
+> Vérifié à l'écran par `VSM_MENU=Écoute en mono` : le bouton allumé.
+>
+> **Ce que l'audit laisse écrit.** Cinquante candidats sondés par script,
+> cinq manques, cinq faits, l'élément reporté de D21 toujours reporté (la
+> campagne court : lot forcé `r1f-sec`, deuxième morceau à 13:44). Tout
+> compilé à `-j 2`, `vsm-render` intact.
+>
+> Tests : 269 core, 1 251 audio, 278 interchange — tous verts ; Python
+> inchangé (168 à D21).

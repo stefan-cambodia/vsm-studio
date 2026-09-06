@@ -39,6 +39,7 @@ Project buildProject() {
     pad.channel = 2;
     pad.instrumentId = "vsm.juno106";
     pad.muted = true;
+    pad.invertPhase = true;   // D23.1
     pad.addNote(0, 1920, 60, 80, 2, ids);
     project.tracks.push_back(pad);
     return project;
@@ -91,6 +92,7 @@ VSM_TEST(project_document_round_trips_through_json) {
         VSM_ASSERT_NEAR(copy.tracks[i].volume, original.tracks[i].volume, 1e-6);
         VSM_ASSERT_NEAR(copy.tracks[i].pan, original.tracks[i].pan, 1e-6);
         VSM_ASSERT_EQ(copy.tracks[i].muted, original.tracks[i].muted);
+        VSM_ASSERT_EQ(copy.tracks[i].invertPhase, original.tracks[i].invertPhase);
         // Les niveaux d'envoi sont un VECTEUR depuis D4.2 : on compare la liste
         // entière, pas son premier élément -- une piste peut n'en déclarer
         // aucun, et l'indexer aveuglément était précisément le défaut que ce
@@ -123,6 +125,8 @@ VSM_TEST(applying_a_document_restores_transport_and_mix) {
     VSM_ASSERT_NEAR(fromMidi.tracks[0].volume, 0.8f, 1e-6);
     VSM_ASSERT_NEAR(fromMidi.tracks[0].pan, -0.25f, 1e-6);
     VSM_ASSERT(fromMidi.tracks[1].muted);
+    VSM_ASSERT(fromMidi.tracks[1].invertPhase);
+    VSM_ASSERT(!fromMidi.tracks[0].invertPhase);
     VSM_ASSERT_NEAR(fromMidi.tempoMap.bpmAt(1920), 150.0, 0.01);
     VSM_ASSERT_EQ(static_cast<int>(fromMidi.timeSignatureMap.numeratorAt(1920)), 3);
     // Les notes du MIDI n'ont pas été touchées.

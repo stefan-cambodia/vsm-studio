@@ -237,3 +237,30 @@ VSM_TEST(a_midi_round_trip_keeps_every_tempo_and_time_signature_change) {
     // instant. Un tempo relu de travers ne se voit pas, il s'entend.
     VSM_ASSERT_NEAR(relu.ticksToSeconds(2400), project.ticksToSeconds(2400), 1e-9);
 }
+
+// --- D23.3 : exporter une seule piste -------------------------------------
+
+VSM_TEST(extracting_a_track_keeps_the_tempo_and_writes_a_one_track_file) {
+    auto bytes = buildTestSmf(480);
+    Project project = Project::fromParsedFile(MidiFileParser::parse(bytes));
+    VSM_ASSERT_EQ(project.tracks.size(), static_cast<size_t>(2));
+    project.tracks[1].outputGroup = 0;   // routée vers la piste 0, qui ne sera plus là
+
+    const Project seule = project.extractTrack(1);
+    VSM_ASSERT_EQ(seule.tracks.size(), static_cast<size_t>(1));
+    VSM_ASSERT_EQ(seule.tracks[0].name, std::string("Bass"));
+    VSM_ASSERT_EQ(seule.tracks[0].notes.size(), static_cast<size_t>(2));
+    VSM_ASSERT_EQ(seule.tracks[0].outputGroup, -1);
+    VSM_ASSERT_EQ(seule.ticksPerQuarterNote, project.ticksPerQuarterNote);
+    VSM_ASSERT_NEAR(seule.tempoMap.bpmAt(0), project.tempoMap.bpmAt(0), 1e-9);
+
+    // Le fichier écrit se relit : UNE piste, ses deux notes, le tempo.
+    const auto ecrit = MidiFileWriter::write(seule.toParsedFile());
+    const Project relu = Project::fromParsedFile(MidiFileParser::parse(ecrit));
+    VSM_ASSERT_EQ(relu.tracks.size(), static_cast<size_t>(1));
+    VSM_ASSERT_EQ(relu.tracks[0].notes.size(), static_cast<size_t>(2));
+    VSM_ASSERT_NEAR(relu.tempoMap.bpmAt(0), project.tempoMap.bpmAt(0), 1e-6);
+
+    // Hors bornes : un projet sans piste, jamais une faute.
+    VSM_ASSERT_EQ(project.extractTrack(7).tracks.size(), static_cast<size_t>(0));
+}

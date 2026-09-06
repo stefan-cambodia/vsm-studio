@@ -78,6 +78,10 @@ public:
     /// c'est la carte, le câble, ou le canal. Un témoin permanent sépare les
     /// deux questions avant qu'on ne les confonde.
     void setInputLevel(float peak, int channels);
+    /// D23.2 : l'écoute de l'entrée est ACTIVE (manuelle ou automatique) : le
+    /// témoin prend un liséré. Sans lui, un mode automatique qui s'allume et
+    /// s'éteint tout seul serait un mode qu'on ne peut pas vérifier.
+    void setInputMonitoring(bool on);
 
     void setListening(const juce::String& label, bool enabled, bool active);
     std::function<void()> onCycleListening;
@@ -119,6 +123,7 @@ private:
     double dernierBpm_ = 120.0;
     float inputPeak_ = 0.0f;
     int inputChannels_ = 0;
+    bool inputMonitoring_ = false;   ///< D23.2
     juce::Rectangle<int> inputMeterBounds_;
     juce::Rectangle<int> midiInBounds_, midiOutBounds_;   ///< D22.4
     juce::uint32 midiInUntil_ = 0, midiOutUntil_ = 0;     ///< D22.4 : fin de tenue (ms)

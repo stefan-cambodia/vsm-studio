@@ -292,6 +292,19 @@ Project Project::fromParsedFile(const ParsedFile& parsed) {
 }
 
 
+Project Project::extractTrack(size_t index) const {
+    Project seul = *this;
+    seul.tracks.clear();
+    if (index < tracks.size()) {
+        seul.tracks.push_back(tracks[index]);
+        Track& piste = seul.tracks.back();
+        piste.outputGroup = -1;
+        piste.outputSourceTrack = -1;
+        piste.folderDepth = 0;
+    }
+    return seul;
+}
+
 ParsedFile Project::toParsedFile() const {
     ParsedFile parsed;
     parsed.format = exportFormat;

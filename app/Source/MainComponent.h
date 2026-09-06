@@ -111,6 +111,9 @@ public:
     /// D22.5 : VSM_PRESET_PISTE=nom -- la piste choisie écrite comme preset
     /// sous ce nom, sans boîte de dialogue (elle ne se photographie pas).
     bool saveTrackPresetForCapture(const juce::String& nom) { return saveSelectedTrackAsPreset(nom); }
+    /// D23.3 : VSM_EXPORT_MIDI_PISTE=fichier.mid -- la piste choisie écrite
+    /// en MIDI sans fenêtre, pour que le fichier se relise.
+    bool exportTrackMidiForCapture(const juce::File& fichier) { return writeSelectedTrackMidi(fichier); }
 
     /// Ouvre un dossier de projet au démarrage (VSM_PROJET=dossier), pour la
     /// même raison que `applyViewCommand` : ce qu'on a besoin de regarder est
@@ -202,6 +205,8 @@ private:
         kMenuFileExport,
         kMenuFileExportWav,
         kMenuFileExportStems,
+        /// D23.3 : la piste choisie seule, en MIDI.
+        kMenuFileExportTrackMidi,
         kMenuFileAudioSettings,
         kMenuFileQuit,
         // D11.6 : modèle de projet et projets récents.
@@ -287,11 +292,17 @@ private:
         kMenuRecordMeasureLatency,
         kMenuRecordClearLatency,
         kMenuRecordMonitorInput,
+        /// D23.2 : le mode d'écoute de l'entrée -- manuel, automatique, armée.
+        kMenuRecordMonitorManual,
+        kMenuRecordMonitorAuto,
+        kMenuRecordMonitorArmed,
         /// Un identifiant par prise de la piste sélectionnée, attribué à la
         /// suite -- comme les paliers d'échelle du menu Affichage.
         kMenuRecordTakeFirst,
         kMenuRecordTakeLast = kMenuRecordTakeFirst + 63,
         kMenuMixAddSend,
+        /// D23.5 : l'écoute en mono du master.
+        kMenuMixMonoListen,
         /// Un identifiant par bus, pour le retirer.
         kMenuMixRemoveSendFirst,
         kMenuMixRemoveSendLast = kMenuMixRemoveSendFirst + 7,
@@ -312,6 +323,11 @@ private:
         kMenuViewArrangement,
         kMenuViewSingleWindow,
         kMenuViewFullScreen,
+        /// D23.4 : toutes les pistes à la fenêtre, et trois hauteurs fixes.
+        kMenuViewFitTracks,
+        kMenuViewTrackHeightSmall,
+        kMenuViewTrackHeightNormal,
+        kMenuViewTrackHeightLarge,
         kMenuViewComputerKeyboard,
         // Un identifiant par palier d'échelle, attribué à la suite :
         // kMenuViewScaleFirst + index dans UiScale::steps().
@@ -811,6 +827,15 @@ private:
     /// D22.4 : les derniers compteurs lus, pour n'allumer un voyant que sur
     /// ce qui vient d'arriver ou de partir.
     uint64_t midiInSeen_ = 0, notesOutSeen_ = 0;
+    /// D23.2 : LE MODE D'ÉCOUTE DE L'ENTRÉE. 0 = manuel (l'interrupteur du
+    /// menu), 1 = automatique (une piste audio armée, et le transport arrêté
+    /// ou en enregistrement -- pas pendant une simple lecture), 2 = armée (une
+    /// piste audio armée, toujours). Réglage d'application, retenu.
+    int monitoringMode_ = 0;
+    void applyMonitoringMode();
+    /// D23.3 : la piste choisie seule, en MIDI -- la boîte, et l'écriture.
+    void exportSelectedTrackMidi();
+    bool writeSelectedTrackMidi(const juce::File& fichier);
     vsm::sequencer::Groove grooveCourant_;
     /// Les trois vues qui dessinent des pistes, rafraîchies ensemble (D17.4).
     void refreshTrackViews();

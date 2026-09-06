@@ -1008,6 +1008,10 @@ nom ; parmi les jetons de `VSM_VUE`, `gain-clip:+3` (ou -6, -3, -1, +1, +6, 0)
 et `phase-clip` agissent sur le clip choisi comme le menu contextuel, et
 `note:60` joue une note par le chemin du clavier d'ordinateur, rejouée
 pendant trois secondes pour que les voyants se photographient allumés.
+`VSM_EXPORT_MIDI_PISTE=fichier.mid` écrit la piste choisie seule en MIDI
+(D23.3) ; `armer:N` arme la piste N, `polarite:N` inverse sa polarité,
+`pistes-a-la-fenetre` et `hauteur-pistes:N` règlent les hauteurs de
+l'arrangement comme le menu Affichage.
 `historique` et `spectre` ouvrent les fenêtres flottantes du même nom ; la
 photographie de `VSM_CAPTURE` ne couvre que la fenêtre principale, une fenêtre
 flottante se photographie avec `spectacle -b -n -f -o fichier.png` pendant que

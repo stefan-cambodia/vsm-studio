@@ -992,12 +992,16 @@ void ProcessGraph::renderGroupBuses(const GraphSnapshot& snapshot, bool anySolo,
                 if (fx) fx->process(groupL_[g].data(), groupR_[g].data(), numSamples);
 
         const bool audible = anySolo ? track.solo : !track.muted;
+        // D23.1 : la polarité d'un groupe, par le signe de son volume (voir
+        // la piste plus bas) -- un bus de batterie en opposition s'inverse
+        // entier, départs compris.
+        const float signeGroupe = track.invertPhase ? -1.0f : 1.0f;
         // BALANCE et non panoramique : le groupe reçoit un signal déjà stéréo,
         // qui a déjà traversé la loi à puissance constante de ses pistes. La
         // lui appliquer une seconde fois lui coûterait encore 3 dB, et grouper
         // deviendrait un choix qu'on paie. Voir `stereoBalance`.
         const float peak = mixStereoBalancedInto(groupL_[g].data(), groupR_[g].data(), numSamples,
-                                                  track.volume, track.pan, audible,
+                                                  track.volume * signeGroupe, track.pan, audible,
                                                   outputL, outputR);
         blockPeak_[trackIndex] = std::max(blockPeak_[trackIndex], peak);
 
@@ -1016,7 +1020,7 @@ void ProcessGraph::renderGroupBuses(const GraphSnapshot& snapshot, bool anySolo,
         if (audible) {
             const uint32_t preFader = preFaderMask_.load(std::memory_order_acquire);
             for (size_t b = 0; b < actifs; ++b) {
-                const float apresFader = (preFader & (1u << b)) ? 1.0f : track.volume;
+                const float apresFader = (preFader & (1u << b)) ? signeGroupe : track.volume * signeGroupe;
                 const float lvl = track.sendLevel(b) * apresFader;
                 if (lvl <= 0.0f) continue;
                 for (int i = 0; i < numSamples; ++i) {
@@ -1444,7 +1448,12 @@ void ProcessGraph::mixTrackInto(const GraphSnapshot& snapshot, bool anySolo, siz
     // PILOTE (D4.6), du projet sinon. Un entier consulté par piste, pas un
     // parcours des courbes : voir `refreshAutomationMask`.
     const uint16_t pilotes = autoMask_[trackIndex];
-    const float volume = (pilotes & kAutoVolume) ? autoVolume_[trackIndex] : track.volume;
+    // D23.1 : LA POLARITÉ EST LE SIGNE DU VOLUME. Portée par le fader, elle
+    // suit partout où le fader compte -- la sortie, les départs post-fader --
+    // et le signe est appliqué aussi aux départs pré-fader plus bas : deux
+    // micros en opposition le sont dans la réverbération aussi.
+    const float signe = track.invertPhase ? -1.0f : 1.0f;
+    const float volume = ((pilotes & kAutoVolume) ? autoVolume_[trackIndex] : track.volume) * signe;
     const float pan = (pilotes & kAutoPan) ? autoPan_[trackIndex] : track.pan;
 
     float peak = mixStereoInto(srcL, srcR, sampleCount,
@@ -1479,7 +1488,7 @@ void ProcessGraph::mixTrackInto(const GraphSnapshot& snapshot, bool anySolo, siz
             // pilote : un fondu écrit en automation doit emporter les
             // départs post-fader avec lui, comme le ferait la main sur le
             // fader.
-            const float apresFader = (preFader & (1u << b)) ? 1.0f : volume;
+            const float apresFader = (preFader & (1u << b)) ? signe : volume;
             const uint16_t bitDepart = static_cast<uint16_t>(1u << (kAutoSendFirst + b));
             const float niveau = (pilotes & bitDepart) ? autoSend_[trackIndex][b]
                                                         : track.sendLevel(b);

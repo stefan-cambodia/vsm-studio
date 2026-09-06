@@ -1051,6 +1051,31 @@ bool ArrangementComponent::runClipMenuActionForCapture(int choix) {
     return false;
 }
 
+void ArrangementComponent::fitTracksToWindow() {
+    if (project_ == nullptr) return;
+    int disponible = getHeight() - kRulerHeight;
+    int depliees = 0;
+    for (const auto& t : project_->tracks) {
+        if (t.hidden) continue;
+        if (t.folded) disponible -= kFoldedHeight; else ++depliees;
+    }
+    if (depliees == 0) return;
+    setAllTrackHeights(disponible / depliees);
+}
+
+void ArrangementComponent::setAllTrackHeights(int height) {
+    if (project_ == nullptr) return;
+    const int voulu = juce::jlimit(kMinHeight, kMaxHeight, height);
+    bool change = false;
+    for (const auto& t : project_->tracks)
+        if (!t.hidden && !t.folded && t.arrangementHeight != voulu) change = true;
+    if (!change) return;
+    if (onEditStarted) onEditStarted(u8"Hauteur des pistes");
+    for (auto& t : project_->tracks)
+        if (!t.hidden && !t.folded) t.arrangementHeight = voulu;
+    repaint();
+}
+
 void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int choix) {
     if (project_ == nullptr || choix == 0 || piste >= project_->tracks.size()) return;
     auto& track = project_->tracks[piste];
