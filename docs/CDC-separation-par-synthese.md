@@ -602,8 +602,74 @@ partout où rien n'est soustrait.
 
 ## 7. Campagne R1 — verdict
 
-*(à écrire après la mesure, avec les chiffres en face de chaque attendu du
-§ 6, l'écoute des deux disques, et la décision annoncée)*
+*Écrit en deux temps : le 06/09/2026 à 15:10 pour ce qui est définitif —
+les deux disques, `r1-sec`, `r1-prod` — ; le lot forcé `r1f-sec` et la
+décision sur `r3` seront ajoutés à la fin de la campagne (relancée deux fois
+après deux redémarrages de la machine, 05/09 13:23 et 06/09 12:58 ; le lot
+forcé en est au cinquième morceau à 15:05).*
+
+### 7.1 Le témoin d'identité — tenu
+
+Sur les vingt morceaux, la boucle n'a rien soustrait, et la distance de
+`r1` est celle de S1 **à la quatrième décimale sur 20/20** (sec : médiane
+0,1859 = 0,1859 ; prod : 0,1991 = 0,1991 ; parité −2 = −2 ; inventées 24 =
+24 et 31 = 31 ; SDR de la basse 0,21 = 0,21 et 0,05 = 0,05 dB). La mesure
+n'était pas cassée avant de commencer.
+
+### 7.2 La corrélation — le seuil publié n'est jamais atteint, de loin
+
+| Attendu du § 6 | Mesuré (sec / prod) | Verdict |
+|---|---|---|
+| batterie soustraite dans ≥ 6 morceaux sur 16 | **0 / 0** ; les 19 batteries candidates corrèlent à leur stem entre 0,001 et 0,049, médiane **0,011 / 0,014** | réfuté |
+| corrélation médiane des batteries entre 0,4 et 0,8 | 0,011 / 0,014 | réfuté, d'un facteur 40 |
+| unités mélodiques passant le garde-fou dans < 4 morceaux | 0 / 0 ; médiane 0,016 / 0,013, maximum 0,159 (une basse) | tenu, mais pour la mauvaise raison |
+| 6 à 14 morceaux sur 20 avec une soustraction | **0 sur 20**, tous arrêtés sur `aucune-piste-sure` | réfuté |
+| § 6 bis : aucune unité au-dessus de 0,5 dans ≥ 18 morceaux ; batteries entre 0,05 et 0,30 | aucune au-dessus de 0,3 sur **83 candidates** ; batteries **sous 0,05** | tenu, et plus bas encore que le § 6 bis n'attendait |
+| § 6 bis : sur les deux disques, aucune unité au-dessus de 0,3 | *Us and Them* : basse 0,005, other 0,010, batterie 0,002 ; *Sky and Sand* : basse 0,002, other 0,009, batterie **0,050** (78 % de l'énergie, la seule unité qui dépasse 0,02) | tenu |
+
+C'est exactement le cas que le § 6 nommait « *réfuterait le seuil, pas la
+boucle* », et que le § 6 bis avait prédit après le banc au niveau de
+l'échantillon (0,00 à 0,16 par la vraie chaîne) : **au niveau de
+l'échantillon, un rendu ne ressemble pas assez à son stem pour en être
+soustrait**, ni sur le banc synthétique — où pourtant la machine vraie est
+au rang 1 dans six morceaux — ni sur les deux disques. Le § 6 bis ajoutait
+que le seuil ne se revoit pas à la baisse sans dommage (forcé à 0,16, la
+soustraction retirait 2,5 % de la partie et fabriquait six pistes) ; le lot
+forcé est là pour le mesurer sur la question de l'utilisateur, et non pour
+sauver le seuil.
+
+### 7.3 Ce qui ne peut plus être mesuré par cette campagne
+
+Les attendus sur le SDR du résidu contre le résidu vrai (+1 à +4 dB), sur
+la parité (+0 à +2 pistes par morceau, ≤ 24 + 8 et 31 + 8 inventées), sur
+la distance finale (−3 % à +3 %) et sur le motif `distance-sans-gain`
+supposaient au moins une soustraction au seuil publié : **il n'y en a eu
+aucune**, ils sont sans objet pour `r1`, et `r3` serait identique à `r1`
+(le script le dit au journal et ne le court pas — décision 3 du § 6 bis).
+Le coût, lui, se lit : les courses `r1` durent **de −3 % à −10 %** de S1
+(sec : 1 212 s contre 1 224, 424 contre 472, 910 contre 959) — une
+itération qui s'arrête au garde-fou coûte le rendu des candidates et rien
+d'autre.
+
+### 7.4 Le lot forcé — en attente
+
+*(à écrire à la fin de `r1f-sec` : le SDR de la basse dans le résidu après
+soustraction forcée de la batterie sur les huit morceaux qui en ont, contre
+0,21 dB ; le résidu entre 95 et 100 % ; les pistes inventées en plus ; le
+coût.)*
+
+### 7.5 La décision — annoncée, en attente du lot forcé pour être signée
+
+Ce que `r1` établit suffit à la moitié de la décision : **la boucle
+résiduelle telle qu'elle est écrite — soustraction au niveau de
+l'échantillon, garde-fou de corrélation à 0,5 — est inerte sur tout ce
+qu'on lui a donné**, et elle le restera tant que le rendu d'une machine ne
+ressemblera pas à un stem séparé mieux qu'à 0,05. Elle n'entre pas dans la
+chaîne par défaut ; `--residuel` reste une option publiée, mesurée, et
+dite inerte dans son aide. L'hypothèse de repli ci-dessous est DÉSIGNÉE par
+R1 (la boucle est réfutée par la corrélation, pas par la parité) ; elle ne
+s'écrira qu'après le lot forcé, qui dit si soustraire quand même — même
+mal — rend quelque chose à la basse.
 
 **L'hypothèse de repli, écrite maintenant pour ne pas être inventée
 après.** Si la boucle est réfutée par la CORRÉLATION (les rendus mélodiques
