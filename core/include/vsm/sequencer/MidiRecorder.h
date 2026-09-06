@@ -196,8 +196,15 @@ public:
     explicit RetrospectiveBuffer(size_t capacity = 4096) : capacite_(capacity ? capacity : 1) {}
 
     void push(const RecordedNoteEvent& event);
-    void clear() { evenements_.clear(); debut_ = 0; }
-    bool empty() const { return evenements_.empty(); }
+    /// D25.4 : un contrôleur, dans la même fenêtre et la même capacité.
+    void pushControl(const RecordedControlEvent& event);
+    /// D25.4 : les contrôleurs de la fenêtre [startSeconds, endSeconds], en
+    /// ticks, triés ; sans vider le tampon (comme les notes).
+    RecordedControls takeControls(double startSeconds, double endSeconds,
+                                  const std::function<midi::Tick(double)>& secondsToTicks) const;
+
+    void clear() { evenements_.clear(); debut_ = 0; controles_.clear(); debutControles_ = 0; }
+    bool empty() const { return evenements_.empty() && controles_.empty(); }   // D25.4 : une molette seule se récupère aussi
     size_t size() const { return evenements_.size(); }
 
     /// Les événements gardés, du plus ancien au plus récent.
@@ -212,6 +219,10 @@ private:
     std::vector<RecordedNoteEvent> evenements_;
     size_t capacite_;
     size_t debut_ = 0;   ///< index du plus ancien, une fois le tampon plein
+    /// D25.4 : les contrôleurs, même anneau, même capacité, à part -- une
+    /// molette ne doit pas chasser les notes du tampon.
+    std::vector<RecordedControlEvent> controles_;
+    size_t debutControles_ = 0;
 };
 
 /// RÉCUPÉRER CE QUI VIENT D'ÊTRE JOUÉ (D17.3) : les notes du tampon, en ticks,

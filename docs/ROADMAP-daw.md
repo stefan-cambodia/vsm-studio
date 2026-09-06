@@ -5698,3 +5698,77 @@ Cinq manques ont survécu.
 >
 > Tests : 270 core, 1 253 audio, 278 interchange — tous verts ; Python
 > inchangé (168 à D21).
+
+### Phase D25 — Le quatorzième audit : ce qui manque une fois D24 posée (06/09/2026, 14:15)
+
+**Pourquoi.** Même méthode. Le relevé a écarté, comme existant : le choix
+des entrées MIDI (réglages audio), le clavier d'ordinateur et ses octaves,
+l'insertion de silence entre les locateurs, l'automation sur les clips.
+
+**Et il a mesuré l'étendue du trou de D24.** `handleControlEvent` est
+implémenté par AUCUNE des 57 machines (le défaut de `ISynthPlugin` rend
+faux) : pédale, molette de hauteur, modulation et pression — du planning
+comme de l'entrée MIDI — sont comptés « ignorés » et n'ont jamais eu
+d'effet. Chaque machine convertit sa note en fréquence elle-même (57
+dossiers, aucun assistant commun, aucun paramètre d'accord global) : la
+molette de hauteur demande de passer dans chacune, et c'est une phase à
+part, pas une ligne d'audit. Elle est REPORTÉE en le disant (D26). La
+pédale, elle, se règle SANS les machines : retenir les NoteOff tant qu'elle
+est enfoncée est un geste du graphe.
+
+Quatre manques ont survécu, et un cinquième est reporté.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D25.1 | **La pédale de sustain, pour toutes les machines.** CC 64 enfoncé, les notes relâchées doivent tenir ; aucune machine ne le fait | dans `ProcessGraph`, par piste : pédale enfoncée (CC 64 ≥ 64, du planning, de la chasse ou du direct), les NoteOff sont RETENUS ; relâchée, ils partent d'un coup ; une note rejouée sous pédale oublie son NoteOff retenu ; le rebouclage, l'arrêt et le panic vident la retenue ; la pédale n'est pas transmise à la machine (elle ne saurait qu'en faire) ni comptée ignorée ; test : une croche sous pédale sonne encore une seconde après son NoteOff, et se tait après le relâchement — contre un témoin sans pédale |
+| D25.2 | **Muet, solo et piste voisine au clavier.** Le muet et le solo de la piste choisie se cliquent ; la piste suivante se clique. Cubase : M, S, ↑/↓ ; Live : rien de tel pour muet/solo, ↑/↓ pour les pistes | `TrackMuteSelected` (Maj+M), `TrackSoloSelected` (Maj+S), `NavNextTrack` (Alt+↓), `NavPreviousTrack` (Alt+↑) dans la table — M et S nus sont pris par l'arrangement (aimant) et la saisie ; par les MÊMES fonctions que les boutons ; annulables ; `VSM_VUE=muet-piste:N`, `solo-piste:N` ; vérifié à l'écran |
+| D25.3 | **Le double-clic remet un réglage à sa valeur d'usine.** Fader, panoramique, décalage, transposition : un fader poussé à −7,3 dB se ramène à 0 dB à la main, en visant. Cubase : Ctrl+clic ; Live : Suppr sur le réglage choisi | `setDoubleClickReturnValue` sur les quatre curseurs de la tranche (0 dB, centre, 0 ms, 0 demi-ton), annulable comme un glissé |
+| D25.4 | **Les contrôleurs dans le tampon rétrospectif.** « Récupérer ce qui vient d'être joué » (D17.3) rend des notes ; la molette jouée avec est perdue | `RetrospectiveBuffer::pushControl` et `takeControls` dans `core/`, même capacité, même fenêtre de temps ; la récupération les pose avec les notes ; testé |
+| D25.5 | **La molette de hauteur dans les machines** — REPORTÉE : phase D26, un assistant commun `noteToHz(note, bend)` et une passe sur les 57 machines, avec sa mesure (une note pliée d'un demi-ton doit sortir à sa fréquence) | — |
+
+> **D25.1 EST FAITE (06/09/2026, 14:18).** La pédale est l'affaire du graphe :
+> par piste, `sustainDown_` et `heldNoteOffs_` ; CC 64 intercepté qu'il
+> vienne du planning, de la chasse (D16.2) ou du direct (D24.1), jamais
+> transmis à la machine ni compté « ignoré » ; enfoncée, les NoteOff sont
+> retenus (la note reste comptée comme sonnante, ce qu'elle est) ; relâchée,
+> ils partent d'un coup en tête de bloc ; une note rejouée sous pédale
+> oublie sa retenue ; le rebouclage et le panic vident tout. Test : une
+> croche sous pédale sonne encore à 1 s (crête > 0,05), le témoin sans
+> pédale s'est tu (< ¼), et après le relâchement à 2 s elle s'est tue
+> aussi ; zéro contrôleur ignoré.
+>
+> **D25.2 EST FAITE (06/09/2026, 14:18).** Maj+M, Maj+S, Alt+↓, Alt+↑ dans
+> la table — M et S nus étaient pris (l'aimant de l'arrangement, la
+> saisie). Les bascules passent par la MÊME republication que les boutons
+> (`refreshMuteSolo`, la liste, `onMixChanged`), annulables (« Mixage ») ;
+> la piste voisine saute les pistes masquées — on ne choisit pas ce qu'on
+> ne voit pas. Vérifié à l'écran par `VSM_VUE=muet-piste:1,solo-piste:2` :
+> M rouge sur « Drums », S ambre sur « Voix ».
+>
+> **D25.3 EST FAITE (06/09/2026, 14:18).** `setDoubleClickReturnValue` sur
+> les quatre curseurs de la tranche : 0 dB, centre, 0 ms, 0 demi-ton. Le
+> geste passe par le même `onDragStart`/`onDragEnd` que le glissé, donc par
+> la même entrée d'historique et la même passe d'automation.
+>
+> **D25.4 EST FAITE (06/09/2026, 14:18), ET LA PHASE D25 EST CLOSE.**
+> `RetrospectiveBuffer::pushControl` / `takeControls` : un anneau à part de
+> même capacité — une molette ne chasse pas les notes du tampon —, et la
+> même fenêtre de temps ; la conversion et le tri réemploient
+> `finishControls`, comme les notes réemploient `finish`. Hors
+> enregistrement, la file des contrôleurs va au tampon avec les notes ;
+> « Récupérer ce qui vient d'être joué » pose les deux, superposés ; un
+> tampon qui n'a que des contrôleurs n'est plus « vide ». Testé : trois
+> contrôleurs gardés sur cinq dans un anneau de trois, la note intacte, la
+> fenêtre bornée, le tampon vidé.
+>
+> **D25.5 RESTE REPORTÉE**, et devient la phase D26 : la molette de hauteur
+> dans les 57 machines, par un assistant commun et une mesure par machine.
+>
+> **Ce que l'audit laisse écrit.** Le comptage des machines qui répondent
+> aux contrôleurs — zéro sur cinquante-sept — est le chiffre de cette
+> phase, et il n'avait jamais été écrit parce que rien ne le mesurait :
+> `ignoredControlEvents` comptait, personne ne lisait. Il est désormais
+> tenu par un test (la pédale ne le fait plus grimper).
+>
+> Tests : 271 core, 1 254 audio, 278 interchange — tous verts ; Python
+> inchangé (168 à D21).

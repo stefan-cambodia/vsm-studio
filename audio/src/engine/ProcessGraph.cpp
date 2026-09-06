@@ -612,6 +612,31 @@ void ProcessGraph::drainLiveControls() {
     }
 }
 
+bool ProcessGraph::interceptSustain(size_t trackIndex, uint8_t channel,
+                                     const vsm::audio::plugin::MidiControlEvent& event,
+                                     MidiNoteEvent* events, int& numEvents) {
+    using vsm::audio::plugin::MidiControlEvent;
+    if (event.kind != MidiControlEvent::Kind::ControlChange || event.index != 64) return false;
+    const bool enfoncee = event.value >= 0.5f;
+    sustainDown_[trackIndex] = enfoncee;
+    if (enfoncee) return true;
+    // RELÂCHÉE : tout ce qui était retenu part maintenant, en tête de bloc.
+    auto& retenus = heldNoteOffs_[trackIndex];
+    for (size_t note = 0; note < retenus.size() && numEvents < kMaxEventsPerBlock; ++note) {
+        if (!retenus[note]) continue;
+        MidiNoteEvent off;
+        off.kind = MidiNoteEvent::Kind::NoteOff;
+        off.sampleOffset = 0;
+        off.channel = channel;
+        off.note = static_cast<uint8_t>(note);
+        off.velocity = 64;
+        events[static_cast<size_t>(numEvents++)] = off;
+        soundingNotes_[trackIndex][note] = false;
+        retenus[note] = false;
+    }
+    return true;
+}
+
 void ProcessGraph::drainLiveNotes() {
     drainedLiveCount_ = 0;
     for (auto& queue : liveQueues_) {
@@ -1123,6 +1148,7 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
     // boucle ne serait jamais relâchée et sonnerait indéfiniment -- le
     // "note bloquée" classique des séquenceurs.
     if (wrapNoteOffPending_) {
+        clearSustain(trackIndex);   // D25.1 : la pédale ne traverse pas la frontière de boucle
         auto& sounding = soundingNotes_[trackIndex];
         for (int note = 0; note < 128 && numEvents < kMaxEventsPerBlock; ++note) {
             if (!sounding[static_cast<size_t>(note)]) continue;
@@ -1151,6 +1177,9 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
             pluginEvent.channel = track.channel;
             pluginEvent.note = live.note;
             pluginEvent.velocity = live.velocity;
+            // D25.1 : sous pédale, le NoteOff est retenu ; un NoteOn oublie la retenue.
+            if (live.noteOn) heldNoteOffs_[trackIndex][live.note] = false;
+            else if (holdNoteOffIfSustained(trackIndex, live.note)) continue;
             soundingNotes_[trackIndex][live.note] = live.noteOn;
             if (live.noteOn) notesSentToInstruments_.fetch_add(1, std::memory_order_relaxed);
             events[static_cast<size_t>(numEvents++)] = pluginEvent;
@@ -1166,6 +1195,7 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
         for (int i = 0; i < drainedChaseCount_; ++i) {
             const ChasedControlEvent& chasse = drainedChase_[static_cast<size_t>(i)];
             if (chasse.trackIndex != trackIndex) continue;
+            if (interceptSustain(trackIndex, track.channel, chasse.event, events, numEvents)) continue;   // D25.1
             if (!instrument->handleControlEvent(chasse.event))
                 ignoredControlEvents_.fetch_add(1, std::memory_order_relaxed);
         }
@@ -1174,6 +1204,10 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
         for (int i = 0; i < drainedLiveControlCount_; ++i) {
             const LiveControlEvent& live = drainedLiveControls_[static_cast<size_t>(i)];
             if (live.trackIndex != trackIndex) continue;
+            if (interceptSustain(trackIndex, track.channel, live.event, events, numEvents)) {   // D25.1
+                liveControlsDelivered_.fetch_add(1, std::memory_order_relaxed);
+                continue;
+            }
             if (instrument->handleControlEvent(live.event))
                 liveControlsDelivered_.fetch_add(1, std::memory_order_relaxed);
             else
@@ -1188,6 +1222,7 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
             pedale.index = 64;
             pedale.value = 0.0f;
             instrument->handleControlEvent(pedale);
+            clearSustain(trackIndex);   // D25.1
             auto& sonnent = soundingNotes_[trackIndex];
             for (size_t note = 0; note < sonnent.size() && numEvents < kMaxEventsPerBlock; ++note) {
                 if (!sonnent[note]) continue;
@@ -1333,11 +1368,18 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
         }, ev.data);
 
         if (issue == Issue::Note) {
+            // D25.1 : sous pédale, le NoteOff est retenu ; un NoteOn oublie la retenue.
+            if (pluginEvent.kind == MidiNoteEvent::Kind::NoteOn)
+                heldNoteOffs_[trackIndex][pluginEvent.note] = false;
+            else if (holdNoteOffIfSustained(trackIndex, pluginEvent.note))
+                continue;
             soundingNotes_[trackIndex][pluginEvent.note] =
                 (pluginEvent.kind == MidiNoteEvent::Kind::NoteOn);
             if (pluginEvent.kind == MidiNoteEvent::Kind::NoteOn)
                 notesSentToInstruments_.fetch_add(1, std::memory_order_relaxed);
             events[static_cast<size_t>(numEvents++)] = pluginEvent;
+        } else if (issue == Issue::Control && interceptSustain(trackIndex, track.channel, controlEvent, events, numEvents)) {
+            // D25.1 : la pédale est l'affaire du graphe, pas de la machine.
         } else if (issue == Issue::Control) {
             // Livré TOUT DE SUITE : les contrôles ne passent pas par le
             // tableau d'événements de note, dont le contrat (et les

@@ -392,3 +392,29 @@ VSM_TEST(recorded_controllers_come_out_in_ticks_sorted_and_after_the_entry_point
     enregistreur.begin(0.0);
     VSM_ASSERT(!enregistreur.hasControls());
 }
+
+// --- D25.4 : les contrôleurs dans le tampon rétrospectif -------------------
+
+VSM_TEST(the_retrospective_buffer_keeps_controllers_in_their_own_ring) {
+    Project projet = projetDeReference();
+    RetrospectiveBuffer tampon(3);
+    for (int i = 0; i < 5; ++i) {
+        RecordedControlEvent c;
+        c.kind = RecordedControlEvent::Kind::ControlChange; c.index = 1;
+        c.seconds = 1.0 + 0.5 * i; c.value = static_cast<int16_t>(10 * i);
+        tampon.pushControl(c);
+    }
+    RecordedNoteEvent note; note.seconds = 2.0; note.note = 60; note.noteOn = true;
+    tampon.push(note);
+    // Trois contrôleurs gardés (les plus récents), la note intacte.
+    const RecordedControls c = tampon.takeControls(0.0, 10.0, conversion(projet));
+    VSM_ASSERT_EQ(c.controlChanges.size(), static_cast<size_t>(3));
+    VSM_ASSERT_EQ(c.controlChanges[0].value, static_cast<uint8_t>(20));   // 2,0 s
+    VSM_ASSERT_EQ(c.controlChanges[0].tick, static_cast<Tick>(1920));
+    VSM_ASSERT_EQ(c.controlChanges[2].value, static_cast<uint8_t>(40));
+    VSM_ASSERT_EQ(tampon.events().size(), static_cast<size_t>(1));
+    // La fenêtre borne : rien avant 2,5 s.
+    VSM_ASSERT_EQ(tampon.takeControls(2.5, 10.0, conversion(projet)).controlChanges.size(), static_cast<size_t>(2));
+    tampon.clear();
+    VSM_ASSERT(tampon.takeControls(0.0, 10.0, conversion(projet)).empty());
+}

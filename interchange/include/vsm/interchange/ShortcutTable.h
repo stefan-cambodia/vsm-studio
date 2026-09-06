@@ -69,6 +69,11 @@ enum class ShortcutId : uint16_t {
     TransportLoop,
     TransportMetronome,
     NavGoToEnd,
+    /// D25.2 : muet et solo de la piste choisie, piste voisine.
+    TrackMuteSelected,
+    TrackSoloSelected,
+    NavNextTrack,
+    NavPreviousTrack,
 
     Count
 };

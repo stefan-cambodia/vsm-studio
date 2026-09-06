@@ -847,6 +847,11 @@ private:
     /// D24.5 : un fichier audio posé sur une piste neuve, à la mesure 1 -- la
     /// boîte, et le geste (la même fonction que le lâcher sur une piste).
     void importAudioFilePrompt();
+    /// D25.2 : muet et solo de la piste choisie, par la même republication que
+    /// les boutons ; la piste voisine, visible.
+    void toggleMuteSelectedTrack();
+    void toggleSoloSelectedTrack();
+    void selectNeighbourTrack(int delta);
     bool importAudioFileOnNewTrack(const juce::File& fichier);
     vsm::sequencer::Groove grooveCourant_;
     /// Les trois vues qui dessinent des pistes, rafraîchies ensemble (D17.4).

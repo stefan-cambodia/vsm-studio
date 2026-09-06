@@ -165,6 +165,25 @@ std::vector<RecordedNoteEvent> RetrospectiveBuffer::events() const {
     return ordonnes;
 }
 
+void RetrospectiveBuffer::pushControl(const RecordedControlEvent& event) {
+    if (controles_.size() < capacite_) {
+        controles_.push_back(event);
+        return;
+    }
+    controles_[debutControles_] = event;
+    debutControles_ = (debutControles_ + 1) % capacite_;
+}
+
+RecordedControls RetrospectiveBuffer::takeControls(double startSeconds, double endSeconds,
+                                                   const std::function<Tick(double)>& secondsToTicks) const {
+    // UN ENREGISTREUR NEUF, comme pour les notes : le tri, les bornes et la
+    // conversion sont déjà écrits et testés dans `finishControls`.
+    MidiRecorder enregistreur;
+    enregistreur.begin(startSeconds);
+    for (const auto& c : controles_) enregistreur.pushControl(c);
+    return enregistreur.finishControls(endSeconds, secondsToTicks);
+}
+
 double RetrospectiveBuffer::earliestSeconds() const {
     if (evenements_.empty()) return std::numeric_limits<double>::infinity();
     double plusTot = std::numeric_limits<double>::infinity();

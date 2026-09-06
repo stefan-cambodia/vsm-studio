@@ -576,6 +576,27 @@ private:
     // trouve après la fin de boucle ne le recevrait jamais et sonnerait
     // indéfiniment. On les relâche donc explicitement au moment du saut.
     std::array<std::array<bool, 128>, kMaxTracks> soundingNotes_{};
+    /// D25.1 : LA PÉDALE DE SUSTAIN, tenue par le graphe pour toutes les
+    /// machines. Pédale enfoncée, un NoteOff est RETENU ici au lieu d'être
+    /// livré ; relâchée, les retenus partent d'un coup. Thread audio seulement.
+    std::array<bool, kMaxTracks> sustainDown_{};
+    std::array<std::array<bool, 128>, kMaxTracks> heldNoteOffs_{};
+    /// Vrai si l'événement est la pédale (CC 64) : l'état est mis à jour, les
+    /// NoteOff retenus libérés au relâchement, et l'événement n'est PAS
+    /// transmis à la machine.
+    bool interceptSustain(size_t trackIndex, uint8_t channel,
+                          const vsm::audio::plugin::MidiControlEvent& event,
+                          vsm::audio::plugin::MidiNoteEvent* events, int& numEvents);
+    /// Vrai si le NoteOff a été retenu (pédale enfoncée).
+    bool holdNoteOffIfSustained(size_t trackIndex, uint8_t note) {
+        if (!sustainDown_[trackIndex]) return false;
+        heldNoteOffs_[trackIndex][note] = true;
+        return true;
+    }
+    void clearSustain(size_t trackIndex) {
+        sustainDown_[trackIndex] = false;
+        heldNoteOffs_[trackIndex].fill(false);
+    }
     bool wrapNoteOffPending_ = false;
 
     // Buffers de travail, pré-alloués une seule fois dans prepare() --

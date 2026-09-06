@@ -1187,6 +1187,15 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
             if (mixer_.onMixChanged) mixer_.onMixChanged();
         }
     }
+    // D25.2 : muet et solo de la piste N, par les mêmes fonctions que Maj+M / Maj+S.
+    else if (nom.startsWith("muet-piste:")) {
+        trackList_.selectTrackIndex(static_cast<size_t>(std::max(0, nom.substring(11).getIntValue())));
+        toggleMuteSelectedTrack();
+    }
+    else if (nom.startsWith("solo-piste:")) {
+        trackList_.selectTrackIndex(static_cast<size_t>(std::max(0, nom.substring(11).getIntValue())));
+        toggleSoloSelectedTrack();
+    }
     else if (nom == "pistes-a-la-fenetre") arrangement_.fitTracksToWindow();
     else if (nom.startsWith("hauteur-pistes:"))
         arrangement_.setAllTrackHeights(nom.substring(15).getIntValue());
@@ -1384,11 +1393,10 @@ void MainComponent::timerCallback() {
         recordDrain_.clear();
         audioEngine_.drainRecordedEvents(recordDrain_);
         for (const auto& evenement : recordDrain_) retrospectif_.push(evenement);
-        // D24.2 : hors enregistrement, les contrôleurs captés ne vont nulle
-        // part (le tampon rétrospectif est fait de notes) ; la file se vide
-        // pour ne pas déborder.
+        // D25.4 : les contrôleurs vont au tampon rétrospectif avec les notes.
         recordControlDrain_.clear();
         audioEngine_.drainRecordedControls(recordControlDrain_);
+        for (const auto& c : recordControlDrain_) retrospectif_.pushControl(c);
     }
 
     bool priseEmpilee = false;
@@ -5339,6 +5347,11 @@ bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
         case Id::TransportLoop: transportBar_.toggleLoop(); return true;
         case Id::TransportMetronome: transportBar_.toggleMetronome(); return true;
         case Id::NavGoToEnd: seekAllViews(project_.secondsToTicks(transport_.endOfSongSeconds())); return true;
+        // D25.2 : la piste choisie au clavier.
+        case Id::TrackMuteSelected: toggleMuteSelectedTrack(); return true;
+        case Id::TrackSoloSelected: toggleSoloSelectedTrack(); return true;
+        case Id::NavNextTrack: selectNeighbourTrack(+1); return true;
+        case Id::NavPreviousTrack: selectNeighbourTrack(-1); return true;
         case Id::EditInsertTimeAtLocators: editTimeAtLocators(true); return true;
         case Id::EditLocatorsFromSelection: locatorsFromSelection(); return true;
         // AJUSTER À LA FENÊTRE vaut pour les DEUX vues (D14.2) : l'arrangement
@@ -7592,6 +7605,45 @@ bool MainComponent::writeSelectedTrackMidi(const juce::File& fichier) {
     return true;
 }
 
+// --- D25.2 : la piste choisie au clavier ------------------------------------
+
+void MainComponent::toggleMuteSelectedTrack() {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    beginProjectEdit("Mixage");
+    project_.tracks[piste].muted = !project_.tracks[piste].muted;
+    // LA MÊME REPUBLICATION QUE LE BOUTON : les tranches relisent, la liste
+    // se redessine, le moteur reçoit le projet.
+    mixer_.refreshMuteSolo();
+    trackList_.repaint();
+    if (mixer_.onMixChanged) mixer_.onMixChanged();
+}
+
+void MainComponent::toggleSoloSelectedTrack() {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    beginProjectEdit("Mixage");
+    project_.tracks[piste].solo = !project_.tracks[piste].solo;
+    mixer_.refreshMuteSolo();
+    trackList_.repaint();
+    if (mixer_.onMixChanged) mixer_.onMixChanged();
+}
+
+void MainComponent::selectNeighbourTrack(int delta) {
+    if (project_.tracks.empty()) return;
+    const size_t actuelle = std::min(trackList_.selectedTrackIndex(), project_.tracks.size() - 1);
+    // LA VOISINE VISIBLE : une piste masquée (D17.4) ne se choisit pas au
+    // clavier, sinon on la choisirait sans la voir.
+    size_t i = actuelle;
+    while (true) {
+        if (delta < 0 && i == 0) return;
+        if (delta > 0 && i + 1 >= project_.tracks.size()) return;
+        i = static_cast<size_t>(static_cast<long>(i) + delta);
+        if (!project_.tracks[i].hidden) break;
+    }
+    trackList_.selectTrackIndex(i);
+}
+
 // --- D24.5 : un fichier audio sur une piste neuve --------------------------
 
 bool MainComponent::importAudioFileOnNewTrack(const juce::File& fichier) {
@@ -7816,7 +7868,12 @@ void MainComponent::recoverRetrospectiveTake() {
     const auto notes = vsm::sequencer::recoverRetrospective(
         retrospectif_,
         [this](double secondes) { return project_.secondsToTicks(secondes); }, compteur);
-    if (notes.empty()) return;
+    // D25.4 : LES CONTRÔLEURS DE LA MÊME FENÊTRE -- la molette jouée avec
+    // les notes revient avec elles, superposée aussi.
+    const auto controles = retrospectif_.takeControls(
+        retrospectif_.earliestSeconds(), std::numeric_limits<double>::infinity(),
+        [this](double secondes) { return project_.secondsToTicks(secondes); });
+    if (notes.empty() && controles.empty()) return;
 
     beginProjectEdit(u8"Récupérer ce qui vient d'être joué");
     // SUPERPOSÉ, jamais substitué : on récupère ce qu'on vient de jouer
@@ -7824,6 +7881,7 @@ void MainComponent::recoverRetrospectiveTake() {
     // travail que personne n'a demandé d'effacer.
     vsm::sequencer::applyRecording(project_.tracks[piste], notes,
                                     vsm::sequencer::RecordMode::Overdub, 0, 0);
+    vsm::sequencer::applyRecordedControls(project_.tracks[piste], controles, false, 0, 0);
     project_.ensureNoteIdAbove(compteur - 1);
     // LE TAMPON EST VIDÉ : sans cela, un second « récupérer » reposerait les
     // mêmes notes une seconde fois, en double et sans que rien ne le dise.

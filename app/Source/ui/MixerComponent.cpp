@@ -46,6 +46,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     volume_.setSliderStyle(juce::Slider::LinearVertical);
     volume_.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 56, 16);
     volume_.setRange(-60.0, 6.0, 0.1);
+    volume_.setDoubleClickReturnValue(true, 0.0);   // D25.3 : 0 dB
     volume_.setSkewFactorFromMidPoint(-12.0);
     volume_.setValue(gainToDb(track_.volume), juce::dontSendNotification);
     volume_.setTextValueSuffix(" dB");
@@ -68,6 +69,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     pan_.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
     pan_.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
     pan_.setRange(-1.0, 1.0, 0.01);
+    pan_.setDoubleClickReturnValue(true, 0.0);      // D25.3 : centre
     pan_.setValue(track_.pan, juce::dontSendNotification);
     pan_.onDragStart = [this] {
         if (onMixEditStarted) onMixEditStarted();
@@ -87,6 +89,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     delay_.setSliderStyle(juce::Slider::LinearBar);
     delay_.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 44, 16);
     delay_.setRange(-200.0, 200.0, 0.1);
+    delay_.setDoubleClickReturnValue(true, 0.0);    // D25.3 : 0 ms
     delay_.setTextValueSuffix(" ms");
     delay_.setValue(track_.delayMs, juce::dontSendNotification);
     delay_.setTooltip(juce::String::fromUTF8(
@@ -105,6 +108,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     transposition_.setSliderStyle(juce::Slider::LinearBar);
     transposition_.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 44, 16);
     transposition_.setRange(-48.0, 48.0, 1.0);
+    transposition_.setDoubleClickReturnValue(true, 0.0);   // D25.3 : 0 demi-ton
     transposition_.setTextValueSuffix(" dt");
     transposition_.setValue(track_.transposeSemitones, juce::dontSendNotification);
     transposition_.setTooltip(juce::String::fromUTF8(

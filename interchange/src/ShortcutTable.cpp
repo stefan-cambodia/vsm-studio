@@ -58,6 +58,11 @@ const std::vector<ShortcutCommand>& shortcutCommands() {
         {ShortcutId::TransportLoop,     "transport.loop",   "Transport", "Boucle (marche / arrêt)",        "/",                ""},
         {ShortcutId::TransportMetronome,"transport.metronome","Transport","Métronome (marche / arrêt)",    "C",                ""},
         {ShortcutId::NavGoToEnd,        "nav.goToEnd",      "Transport", "Aller à la fin du morceau",      "end",              ""},
+        // D25.2 — la piste choisie au clavier. M et S nus sont pris par l'arrangement (aimant) et par la saisie.
+        {ShortcutId::TrackMuteSelected, "track.mute",       "Piste",     "Muet (piste choisie)",           "shift + M",        ""},
+        {ShortcutId::TrackSoloSelected, "track.solo",       "Piste",     "Solo (piste choisie)",           "shift + S",        ""},
+        {ShortcutId::NavNextTrack,      "nav.nextTrack",    "Piste",     "Piste suivante",                 "alt + cursor down", ""},
+        {ShortcutId::NavPreviousTrack,  "nav.previousTrack","Piste",     "Piste précédente",               "alt + cursor up",  ""},
     };
     return catalogue;
 }

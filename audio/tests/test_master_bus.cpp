@@ -250,3 +250,55 @@ VSM_TEST(panic_silences_a_held_note) {
     }
     VSM_ASSERT(creteTemoin > tenue * 0.25f);
 }
+
+// --- D25.1 : la pédale de sustain, tenue par le graphe -----------------------
+
+VSM_TEST(sustain_pedal_holds_a_released_note_until_the_pedal_is_released) {
+    // Une croche (0,25 s) à 120 BPM ; pédale enfoncée au départ, relâchée à 2 s.
+    auto construire = [](bool pedale) {
+        Project project;
+        project.ticksPerQuarterNote = 480;
+        Track track;
+        uint64_t id = 1;
+        track.addNote(0, 240, 57, 120, 0, id);
+        if (pedale) {
+            track.controlChanges.push_back({0, 0, 64, 127});
+            track.controlChanges.push_back({1920, 0, 64, 0});
+        }
+        project.tracks.push_back(track);
+        return project;
+    };
+    auto creteA = [](ProcessGraph& graph, int blocsAvant, int blocs) {
+        std::vector<float> l(256), r(256);
+        for (int b = 0; b < blocsAvant; ++b) graph.processBlock(l.data(), r.data(), 256);
+        float crete = 0.0f;
+        for (int b = 0; b < blocs; ++b) {
+            graph.processBlock(l.data(), r.data(), 256);
+            crete = std::max(crete, std::max(peakOf(l), peakOf(r)));
+        }
+        return crete;
+    };
+    // 8000 Hz, 256 échantillons : 31,25 blocs par seconde.
+    ProcessGraph avec;
+    avec.prepare(8000.0, 256);
+    avec.setTrackInstrument(0, "vsm.minimoog");
+    avec.setProject(construire(true));
+    avec.seekSeconds(0.0);
+    avec.setPlaying(true);
+    const float sousPedale = creteA(avec, 31, 4);      // à 1,0 s : le NoteOff (0,25 s) est retenu
+    const float apresRelache = creteA(avec, 40, 4);    // vers 2,4 s : relâchée à 2 s
+
+    ProcessGraph sans;
+    sans.prepare(8000.0, 256);
+    sans.setTrackInstrument(0, "vsm.minimoog");
+    sans.setProject(construire(false));
+    sans.seekSeconds(0.0);
+    sans.setPlaying(true);
+    const float temoin = creteA(sans, 31, 4);          // à 1,0 s, sans pédale : la note est finie
+
+    VSM_ASSERT(sousPedale > 0.05f);
+    VSM_ASSERT(temoin < sousPedale * 0.25f);
+    VSM_ASSERT(apresRelache < sousPedale * 0.25f);
+    // La pédale n'est pas comptée « ignorée » : le graphe l'a prise.
+    VSM_ASSERT_EQ(avec.ignoredControlEvents(), static_cast<uint64_t>(0));
+}
