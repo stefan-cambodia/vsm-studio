@@ -1017,6 +1017,8 @@ un fichier audio sur une piste neuve (D24.5), comme le menu Fichier.
 port virtuel « VSM Studio », créé au démarrage, se lit avec `aseqdump -p
 <client>:2` (le client ALSA de l'application, `aconnect -l`). `VSM_TRACE_MIDIOUT=1`
 écrit sur le terminal les quarante premiers événements envoyés, avec leur retard.
+`programme:N:P:B` pose le programme P (1–128) et la banque B de la piste N,
+`canal-entree:N:C` son canal d'entrée MIDI (0 = tous) (D28).
 `historique` et `spectre` ouvrent les fenêtres flottantes du même nom ; la
 photographie de `VSM_CAPTURE` ne couvre que la fenêtre principale, une fenêtre
 flottante se photographie avec `spectacle -b -n -f -o fichier.png` pendant que

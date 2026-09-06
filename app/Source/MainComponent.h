@@ -239,6 +239,10 @@ private:
         kMenuTrackMidiOutNone,
         kMenuTrackMidiOutFirst,
         kMenuTrackMidiOutLast = kMenuTrackMidiOutFirst + 15,
+        /// D28.2 / D28.3 : le programme MIDI (boîte), le canal d'entrée (Tous + 16).
+        kMenuTrackMidiProgram,
+        kMenuTrackInputChannelFirst,
+        kMenuTrackInputChannelLast = kMenuTrackInputChannelFirst + 16,
         kMenuTrackPresetFirst,
         kMenuTrackPresetLast = kMenuTrackPresetFirst + 63,
         /// D18.3 : le groupe d'édition de la piste choisie (0 = aucun).
@@ -860,6 +864,11 @@ private:
     /// toutes les pistes au moteur, à chaque republication du projet.
     void setSelectedTrackMidiOutput(const std::string& port);
     void syncMidiOutputs();
+    /// D28.2 / D28.3 : le programme et la banque de la piste choisie (boîte,
+    /// et pose directe), le canal d'entrée.
+    void promptMidiProgram();
+    void setSelectedTrackMidiProgram(int programme, int banque);
+    void setSelectedTrackInputChannel(int canal);
     bool importAudioFileOnNewTrack(const juce::File& fichier);
     vsm::sequencer::Groove grooveCourant_;
     /// Les trois vues qui dessinent des pistes, rafraîchies ensemble (D17.4).

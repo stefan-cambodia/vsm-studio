@@ -74,6 +74,8 @@ enum class ShortcutId : uint16_t {
     TrackSoloSelected,
     NavNextTrack,
     NavPreviousTrack,
+    /// D28.4 : la tête au début de la sélection.
+    NavToSelection,
 
     Count
 };

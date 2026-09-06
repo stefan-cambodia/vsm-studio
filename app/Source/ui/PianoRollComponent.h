@@ -193,6 +193,8 @@ public:
     void scaleSelectionLength(float factor);
     /// D22.3 : départs ET durées à l'échelle depuis le premier départ choisi.
     void scaleSelectionTime(double factor);
+    /// D28.4 : le tick de la première note choisie ; faux sans sélection.
+    bool selectionStartTick(vsm::midi::Tick& debut) const;
     void quantizeSelection(float strength, bool alsoQuantizeEnds);
     void humanizeSelection(float timingTicks, float velocityAmount);
     void applyLegatoToSelection();

@@ -241,6 +241,9 @@ ProjectDocument documentFromProject(const Project& project) {
         entry.colorRgba = track.colorRgba;
         entry.preferredPlugin = track.instrumentId;
         entry.midiOutput = track.midiOutputDevice;
+        entry.midiProgram = track.midiProgram;
+        entry.midiBank = track.midiBank;
+        entry.midiInputChannel = track.midiInputChannel;
         if (!track.instrumentId.empty()) {
             char buffer[64];
             std::snprintf(buffer, sizeof(buffer), "instruments/track_%02zu.synth.json", index);
@@ -418,6 +421,9 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.solo = source.solo;
         target.invertPhase = source.invertPhase;
         target.midiOutputDevice = source.midiOutput;   // D27.1
+        target.midiProgram = source.midiProgram;
+        target.midiBank = source.midiBank;
+        target.midiInputChannel = source.midiInputChannel;
         target.sendLevels = source.sendLevels;
 
         // AVANT le `continue` ci-dessous, délibérément : une piste sans
@@ -607,6 +613,9 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         instrument.set("preset", JsonValue::makeString(track.presetPath));
         entry.set("instrument", std::move(instrument));
         if (!track.midiOutput.empty()) entry.set("midiOutput", JsonValue::makeString(track.midiOutput));   // D27.1
+        if (track.midiProgram >= 0) entry.set("midiProgram", JsonValue::makeNumber(track.midiProgram));
+        if (track.midiBank >= 0) entry.set("midiBank", JsonValue::makeNumber(track.midiBank));
+        if (track.midiInputChannel > 0) entry.set("midiInputChannel", JsonValue::makeNumber(track.midiInputChannel));
 
         JsonValue mix = JsonValue::makeObject();
         mix.set("volume", JsonValue::makeFloat(track.volume));
@@ -845,6 +854,9 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         track.colorRgba = colourFromHex(entry["color"].asString(), 0xFF6B9BFFu);
         track.preferredPlugin = entry["instrument"]["preferredPlugin"].asString();
         track.midiOutput = entry["midiOutput"].asString();
+        track.midiProgram = static_cast<int>(entry["midiProgram"].asNumber(-1.0));
+        track.midiBank = static_cast<int>(entry["midiBank"].asNumber(-1.0));
+        track.midiInputChannel = static_cast<int>(entry["midiInputChannel"].asNumber(0.0));
         track.presetPath = entry["instrument"]["preset"].asString();
         if (!isPortableRelativePath(track.presetPath)) {
             result.error = "chemin de preset non portable : \"" + track.presetPath + "\"";

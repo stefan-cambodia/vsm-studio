@@ -143,15 +143,24 @@ void AudioEngine::handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMe
         // ÉCOUTE. Les pistes ARMÉES d'abord : armer une piste, c'est dire que
         // c'est elle qui écoute le clavier. Sans piste armée, la piste
         // sélectionnée, comme avant.
+        // D28.3 : UNE PISTE N'ÉCOUTE QUE SON CANAL, si elle en a un.
+        auto canaux = canalParPiste_.load(std::memory_order_acquire);
+        auto ecoute = [&](size_t track) {
+            if (!canaux || track >= canaux->size()) return true;
+            const uint8_t voulu = (*canaux)[track];
+            return voulu == 0 || voulu == static_cast<uint8_t>(message.getChannel());
+        };
         auto armees = armedTracks_.load(std::memory_order_acquire);
         if (armees && !armees->empty()) {
             for (size_t track : *armees)
-                graph_.sendLiveNote(vsm::audio::engine::ProcessGraph::LiveNoteSource::MidiInput,
-                                     track, note, velocity, noteOn);
+                if (ecoute(track))
+                    graph_.sendLiveNote(vsm::audio::engine::ProcessGraph::LiveNoteSource::MidiInput,
+                                         track, note, velocity, noteOn);
         } else {
-            graph_.sendLiveNote(vsm::audio::engine::ProcessGraph::LiveNoteSource::MidiInput,
-                                 liveInputTrack_.load(std::memory_order_acquire),
-                                 note, velocity, noteOn);
+            const size_t choisie = liveInputTrack_.load(std::memory_order_acquire);
+            if (ecoute(choisie))
+                graph_.sendLiveNote(vsm::audio::engine::ProcessGraph::LiveNoteSource::MidiInput,
+                                     choisie, note, velocity, noteOn);
         }
         return;
     }
@@ -163,14 +172,22 @@ void AudioEngine::handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMe
     // machine des pistes qui écoutent (les mêmes que les notes) ET dans la file
     // de capture, datée comme une note. Un CC lié par MIDI Learn reste au
     // paramètre lié : c'est le geste que l'utilisateur a demandé.
-    auto versLesMachines = [this](const vsm::audio::plugin::MidiControlEvent& evenement) {
+    auto versLesMachines = [this, &message](const vsm::audio::plugin::MidiControlEvent& evenement) {
+        auto canaux = canalParPiste_.load(std::memory_order_acquire);   // D28.3
+        auto ecoute = [&](size_t track) {
+            if (!canaux || track >= canaux->size()) return true;
+            const uint8_t voulu = (*canaux)[track];
+            return voulu == 0 || voulu == static_cast<uint8_t>(message.getChannel());
+        };
         auto armees = armedTracks_.load(std::memory_order_acquire);
         if (armees && !armees->empty()) {
             for (size_t track : *armees)
-                graph_.sendLiveControl(vsm::audio::engine::ProcessGraph::LiveNoteSource::MidiInput, track, evenement);
+                if (ecoute(track))
+                    graph_.sendLiveControl(vsm::audio::engine::ProcessGraph::LiveNoteSource::MidiInput, track, evenement);
         } else {
-            graph_.sendLiveControl(vsm::audio::engine::ProcessGraph::LiveNoteSource::MidiInput,
-                                   liveInputTrack_.load(std::memory_order_acquire), evenement);
+            const size_t choisie = liveInputTrack_.load(std::memory_order_acquire);
+            if (ecoute(choisie))
+                graph_.sendLiveControl(vsm::audio::engine::ProcessGraph::LiveNoteSource::MidiInput, choisie, evenement);
         }
     };
     auto dansLaPrise = [this, &message](vsm::sequencer::RecordedControlEvent::Kind genre, uint8_t index, int16_t valeur) {
@@ -662,10 +679,21 @@ void AudioEngine::setTrackMidiOutputs(std::vector<std::string> portsParPiste) {
                         std::memory_order_release);
 }
 
+void AudioEngine::setTrackInputChannels(std::vector<uint8_t> canauxParPiste) {
+    canalParPiste_.store(std::make_shared<const std::vector<uint8_t>>(std::move(canauxParPiste)),
+                         std::memory_order_release);
+}
+
 void AudioEngine::Emetteur::run() {
     using Evenement = vsm::audio::engine::ProcessGraph::MidiOutEvent;
     while (!threadShouldExit()) {
         Evenement e;
+        // LA FILE SYSTÈME D'ABORD : à heure égale, le tri est stable et garde
+        // l'ordre d'arrivée -- un Start doit précéder la première note du bloc.
+        while (moteur_.graph_.popMidiOutSystem(e)) {   // D28.1 : trackIndex = tous les ports employés
+            if (enAttente_.size() >= 8192) enAttente_.erase(enAttente_.begin());
+            enAttente_.push_back(e);
+        }
         while (moteur_.graph_.popMidiOut(e)) {
             // BORNÉ : une file qui gonflerait parce qu'un port ne répond pas
             // finirait par manger la mémoire ; au-delà, le plus ancien part.
@@ -683,17 +711,33 @@ void AudioEngine::Emetteur::run() {
             for (const auto& ev : enAttente_) {
                 if (ev.hostSeconds > maintenant + 0.0005) break;   // pas encore l'heure ; la liste est triée
                 ++envoyes;
-                juce::MidiOutput* port = nullptr;
-                if (ports && ev.trackIndex < ports->size()) {
-                    const std::string& nom = (*ports)[ev.trackIndex];
-                    if (nom == "VSM Studio") port = moteur_.portVirtuel_.get();
-                    else if (auto it = moteur_.ports_.find(nom); it != moteur_.ports_.end()) port = it->second.get();
+                auto portDe = [&](const std::string& nom) -> juce::MidiOutput* {
+                    if (nom == "VSM Studio") return moteur_.portVirtuel_.get();
+                    if (auto it = moteur_.ports_.find(nom); it != moteur_.ports_.end()) return it->second.get();
+                    return nullptr;
+                };
+                const int taille = ev.status >= 0xF8 || ev.status == 0xFA || ev.status == 0xFB || ev.status == 0xFC ? 1
+                                 : ((ev.status & 0xF0) == 0xC0 || (ev.status & 0xF0) == 0xD0 || ev.status == 0xF3) ? 2 : 3;
+                const juce::MidiMessage message = taille == 1 ? juce::MidiMessage(ev.status)
+                                                : taille == 2 ? juce::MidiMessage(ev.status, ev.data1)
+                                                              : juce::MidiMessage(ev.status, ev.data1, ev.data2);
+                if (ev.trackIndex == 0xFFFFFFFFu) {
+                    // D28.1 : un message SYSTÈME part sur chaque port employé, une fois.
+                    std::vector<juce::MidiOutput*> vus;
+                    if (ports)
+                        for (const auto& nom : *ports) {
+                            if (nom.empty()) continue;
+                            juce::MidiOutput* port = portDe(nom);
+                            if (port == nullptr || std::find(vus.begin(), vus.end(), port) != vus.end()) continue;
+                            vus.push_back(port);
+                            port->sendMessageNow(message);
+                        }
+                    if (!vus.empty()) moteur_.midiOutSent_.fetch_add(1, std::memory_order_relaxed);
+                    continue;
                 }
+                juce::MidiOutput* port = nullptr;
+                if (ports && ev.trackIndex < ports->size()) port = portDe((*ports)[ev.trackIndex]);
                 if (port == nullptr) { moteur_.midiOutSansPort_.fetch_add(1, std::memory_order_relaxed); continue; }
-                const int taille = ((ev.status & 0xF0) == 0xC0 || (ev.status & 0xF0) == 0xD0) ? 2 : 3;
-                const juce::MidiMessage message = taille == 2
-                    ? juce::MidiMessage(ev.status, ev.data1)
-                    : juce::MidiMessage(ev.status, ev.data1, ev.data2);
                 port->sendMessageNow(message);
                 moteur_.midiOutSent_.fetch_add(1, std::memory_order_relaxed);
                 // VSM_TRACE_MIDIOUT=1 : les quarante premiers événements sur stderr, datés

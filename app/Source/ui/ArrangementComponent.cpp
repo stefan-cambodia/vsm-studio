@@ -1497,8 +1497,15 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                                 : track.kind == Track::Kind::Group ? "groupe"
                                                                    : "midi";
             // D27.4 : le port de sortie se lit sur la piste.
+            // Avec un port, « midi » est redondant : « → VSM Studio · prog 6 »
+            // tient dans l'en-tête là où « midi → VSM Studio · prog 6 » se coupait.
             if (!track.midiOutputDevice.empty())
-                nature += juce::String(u8" \u2192 ") + juce::String(track.midiOutputDevice);
+                nature = juce::String(u8"\u2192 ") + juce::String(track.midiOutputDevice);
+            // D28.2 / D28.3 : le programme et le canal d'entrée se lisent aussi.
+            if (track.midiProgram >= 0 && !track.midiOutputDevice.empty())
+                nature += juce::String(u8" \u00b7 prog ") + juce::String(track.midiProgram + 1);
+            if (track.midiInputChannel > 0)
+                nature += juce::String(u8" \u00b7 entr\u00e9e ch. ") + juce::String(track.midiInputChannel);
             if (track.frozen) nature += u8" · gelé";
             // UNE PISTE VERROUILLÉE LE DIT AUSSI (D16.5), et pour la même
             // raison : sans cela on tirerait un clip en se demandant pourquoi

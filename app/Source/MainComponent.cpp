@@ -1205,6 +1205,21 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
             setSelectedTrackMidiOutput(morceaux[1].toStdString());
         }
     }
+    // D28 : programme:N:P:B (P de 1 à 128, B vide ou -1 = aucune), canal-entree:N:C.
+    else if (nom.startsWith("programme:")) {
+        const auto m = juce::StringArray::fromTokens(nom.substring(10), ":", "");
+        if (m.size() >= 2) {
+            trackList_.selectTrackIndex(static_cast<size_t>(std::max(0, m[0].getIntValue())));
+            setSelectedTrackMidiProgram(m[1].getIntValue() - 1, m.size() >= 3 ? m[2].getIntValue() : -1);
+        }
+    }
+    else if (nom.startsWith("canal-entree:")) {
+        const auto m = juce::StringArray::fromTokens(nom.substring(13), ":", "");
+        if (m.size() >= 2) {
+            trackList_.selectTrackIndex(static_cast<size_t>(std::max(0, m[0].getIntValue())));
+            setSelectedTrackInputChannel(m[1].getIntValue());
+        }
+    }
     else if (nom.startsWith("hauteur-pistes:"))
         arrangement_.setAllTrackHeights(nom.substring(15).getIntValue());
     else if (nom == "phase-clip") {
@@ -1881,6 +1896,26 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                     menu.addSubMenu(actuel.empty() ? juce::String(u8"Sortie MIDI mat\u00e9rielle")
                                                    : juce::String(u8"Sortie MIDI mat\u00e9rielle (\u2192 ") + juce::String(actuel) + ")",
                                     ports, choisie < project_.tracks.size() && project_.tracks[choisie].kind == Track::Kind::Midi);
+                    // D28.2 : le programme, dit dans l'entrée ; D28.3 : le canal d'entrée.
+                    const bool midi = choisie < project_.tracks.size() && project_.tracks[choisie].kind == Track::Kind::Midi;
+                    const int prog = midi ? project_.tracks[choisie].midiProgram : -1;
+                    menu.addItem(kMenuTrackMidiProgram,
+                                 prog >= 0 ? juce::String(u8"Programme MIDI (") + juce::String(prog + 1)
+                                                 + (project_.tracks[choisie].midiBank >= 0
+                                                        ? juce::String(u8", banque ") + juce::String(project_.tracks[choisie].midiBank) : juce::String())
+                                                 + ")..."
+                                           : juce::String(u8"Programme MIDI (aucun)..."),
+                                 midi && !actuel.empty());
+                    {
+                        juce::PopupMenu canaux;
+                        const int actuelCanal = midi ? project_.tracks[choisie].midiInputChannel : 0;
+                        canaux.addItem(kMenuTrackInputChannelFirst, u8"Tous les canaux", true, actuelCanal == 0);
+                        for (int c = 1; c <= 16; ++c)
+                            canaux.addItem(kMenuTrackInputChannelFirst + c, juce::String(u8"Canal ") + juce::String(c), true, actuelCanal == c);
+                        menu.addSubMenu(actuelCanal > 0 ? juce::String(u8"Canal d'entr\u00e9e MIDI (") + juce::String(actuelCanal) + ")"
+                                                        : juce::String(u8"Canal d'entr\u00e9e MIDI (tous)"),
+                                        canaux, midi);
+                    }
                 }
                 menu.addItem(kMenuTrackSavePreset,
                               u8"Enregistrer la piste comme preset\u2026",
@@ -2601,6 +2636,11 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         default: break;
     }
     if (menuItemID == kMenuTrackMidiOutNone) { setSelectedTrackMidiOutput(""); return; }
+    if (menuItemID == kMenuTrackMidiProgram) { promptMidiProgram(); return; }
+    if (menuItemID >= kMenuTrackInputChannelFirst && menuItemID <= kMenuTrackInputChannelLast) {
+        setSelectedTrackInputChannel(menuItemID - kMenuTrackInputChannelFirst);
+        return;
+    }
     if (menuItemID >= kMenuTrackMidiOutFirst && menuItemID <= kMenuTrackMidiOutLast) {
         const auto noms = audioEngine_.availableMidiOutputs();
         const size_t i = static_cast<size_t>(menuItemID - kMenuTrackMidiOutFirst);
@@ -5382,6 +5422,12 @@ bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
         case Id::TrackSoloSelected: toggleSoloSelectedTrack(); return true;
         case Id::NavNextTrack: selectNeighbourTrack(+1); return true;
         case Id::NavPreviousTrack: selectNeighbourTrack(-1); return true;
+        // D28.4 : la tête au début de la sélection -- l'arrangement d'abord, sinon le piano roll.
+        case Id::NavToSelection: {
+            vsm::midi::Tick debut = 0;
+            if (arrangement_.selectionStartTick(debut) || pianoRoll_.selectionStartTick(debut)) seekAllViews(debut);
+            return true;
+        }
         case Id::EditInsertTimeAtLocators: editTimeAtLocators(true); return true;
         case Id::EditLocatorsFromSelection: locatorsFromSelection(); return true;
         // AJUSTER À LA FENÊTRE vaut pour les DEUX vues (D14.2) : l'arrangement
@@ -7690,9 +7736,62 @@ void MainComponent::setSelectedTrackMidiOutput(const std::string& port) {
 
 void MainComponent::syncMidiOutputs() {
     std::vector<std::string> ports;
+    std::vector<uint8_t> canaux;
     ports.reserve(project_.tracks.size());
-    for (const auto& t : project_.tracks) ports.push_back(t.midiOutputDevice);
+    canaux.reserve(project_.tracks.size());
+    for (const auto& t : project_.tracks) {
+        ports.push_back(t.midiOutputDevice);
+        canaux.push_back(static_cast<uint8_t>(std::clamp(t.midiInputChannel, 0, 16)));
+    }
     audioEngine_.setTrackMidiOutputs(std::move(ports));
+    audioEngine_.setTrackInputChannels(std::move(canaux));   // D28.3
+}
+
+void MainComponent::setSelectedTrackMidiProgram(int programme, int banque) {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    auto& track = project_.tracks[piste];
+    const int p = programme < 0 ? -1 : std::clamp(programme, 0, 127);
+    const int b = banque < 0 ? -1 : std::clamp(banque, 0, 16383);
+    if (track.midiProgram == p && track.midiBank == b) return;
+    beginProjectEdit(u8"Programme MIDI");
+    track.midiProgram = p;
+    track.midiBank = b;
+    refreshTransportSchedule();   // le graphe voit le changement et l'envoie
+    arrangement_.repaint();
+}
+
+void MainComponent::promptMidiProgram() {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    const auto& track = project_.tracks[piste];
+    auto* fenetre = new juce::AlertWindow(
+        u8"Programme MIDI de la piste",
+        u8"Envoy\u00e9s sur le port de la piste au d\u00e9part de la lecture et \u00e0 chaque changement. "
+        u8"Programme de 1 \u00e0 128 (vide : aucun) ; banque de 0 \u00e0 16383 (vide : aucune).",
+        juce::MessageBoxIconType::NoIcon);
+    fenetre->addTextEditor("programme", track.midiProgram >= 0 ? juce::String(track.midiProgram + 1) : juce::String(), u8"Programme :");
+    fenetre->addTextEditor("banque", track.midiBank >= 0 ? juce::String(track.midiBank) : juce::String(), u8"Banque :");
+    fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton("Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
+        [this, fenetre](int resultat) {
+            if (resultat != 1) return;
+            const juce::String p = fenetre->getTextEditorContents("programme").trim();
+            const juce::String b = fenetre->getTextEditorContents("banque").trim();
+            setSelectedTrackMidiProgram(p.isEmpty() ? -1 : p.getIntValue() - 1, b.isEmpty() ? -1 : b.getIntValue());
+        }), true);
+}
+
+void MainComponent::setSelectedTrackInputChannel(int canal) {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    const int voulu = std::clamp(canal, 0, 16);
+    if (project_.tracks[piste].midiInputChannel == voulu) return;
+    beginProjectEdit(u8"Canal d'entr\u00e9e MIDI");
+    project_.tracks[piste].midiInputChannel = voulu;
+    syncMidiOutputs();
+    arrangement_.repaint();
 }
 
 // --- D24.5 : un fichier audio sur une piste neuve --------------------------

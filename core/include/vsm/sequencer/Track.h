@@ -574,6 +574,12 @@ public:
     /// interne seulement. Posé, la piste passe par le rendu même sans
     /// machine, et ce qu'elle livre part aussi sur le port.
     std::string midiOutputDevice;
+    /// D28.2 : le programme (0-127) et la banque (0-16383) envoyés sur le port
+    /// de la piste, -1 = rien à envoyer. D28.3 : le canal d'entrée MIDI que la
+    /// piste écoute (1-16), 0 = tous.
+    int midiProgram = -1;
+    int midiBank = -1;
+    int midiInputChannel = 0;
 
     /// Le fichier que joue une piste audio. Vide sur une piste MIDI.
     AudioSource audio;

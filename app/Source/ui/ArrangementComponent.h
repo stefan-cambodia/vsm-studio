@@ -135,6 +135,11 @@ public:
     /// pliées et les masquées gardent la leur ; et la même hauteur pour
     /// toutes. Annulables : la hauteur est dans le projet (D5.3).
     void fitTracksToWindow();
+    /// D28.4 : le tick où commence la sélection ; faux sans sélection.
+    bool selectionStartTick(vsm::midi::Tick& debut) const {
+        vsm::midi::Tick fin = 0, bloc = 0;
+        return hasSelection() && selectionSpan(debut, fin, bloc);
+    }
     void setAllTrackHeights(int height);
     /// D22.1 : exécuter une entrée du menu contextuel du clip sur le premier
     /// clip choisi, par son identifiant de menu -- pour l'autoportrait

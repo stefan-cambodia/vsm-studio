@@ -256,6 +256,10 @@ public:
         return false;
     }
     uint64_t droppedMidiOut() const { return droppedMidiOut_.load(std::memory_order_relaxed); }
+    /// D28.1 : LES MESSAGES SYSTÈME (horloge 0xF8, Start, Continue, Stop, Song
+    /// Position) pour TOUS les ports employés ; `trackIndex` n'y veut rien
+    /// dire. Même consommateur que `popMidiOut`.
+    bool popMidiOutSystem(MidiOutEvent& out) { return midiOutSystemQueue_.pop(out); }
     /// D24.4 : COUPER TOUTES LES NOTES. Au bloc suivant, un NoteOff pour
     /// chaque note qui sonne sur chaque machine, la pédale relâchée (CC 64 à
     /// zéro) ; le compte des notes qui sonnent est remis à zéro.
@@ -851,6 +855,14 @@ private:
     double blockHostSeconds_ = 0.0;
     double hostAnchorSeconds_ = 0.0;
     uint64_t samplesSinceAnchor_ = 0;
+    /// D28.1 / D28.2 : la file système, l'état de lecture vu par le bloc
+    /// précédent, et le dernier programme envoyé par piste (-2 = jamais).
+    vsm::audio::util::LockFreeRingBuffer<MidiOutEvent, kMidiOutQueueCapacity> midiOutSystemQueue_;
+    bool wasPlayingForMidiOut_ = false;
+    std::array<int, kMaxTracks> lastProgramSent_{};
+    void emitSystem(int sampleOffset, uint8_t status, uint8_t data1 = 0, uint8_t data2 = 0);
+    void emitMidiClockAndTransport(const vsm::sequencer::Project& project, double blockStartSeconds,
+                                   double blockDurationSeconds, bool playing);
     void emitMidiOut(size_t trackIndex, int sampleOffset, uint8_t status, uint8_t data1, uint8_t data2);
     void emitControlOut(size_t trackIndex, uint8_t channel, const vsm::audio::plugin::MidiControlEvent& event);
 

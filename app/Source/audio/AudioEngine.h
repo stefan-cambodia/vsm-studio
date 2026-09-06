@@ -66,6 +66,9 @@ public:
     /// Thread UI : le port de chaque piste (vide = aucun). Ouvre ce qui manque,
     /// ferme ce que plus personne n'emploie.
     void setTrackMidiOutputs(std::vector<std::string> portsParPiste);
+    /// D28.3 : le canal d'entrée MIDI que chaque piste écoute (0 = tous, 1-16),
+    /// publié d'un coup depuis le thread UI ; lu sur le thread MIDI.
+    void setTrackInputChannels(std::vector<uint8_t> canauxParPiste);
     /// Événements envoyés sur un port depuis le départ (thread émetteur).
     uint64_t midiOutSentCount() const { return midiOutSent_.load(std::memory_order_relaxed); }
     /// Événements dont le port était introuvable, comptés et jamais tus.
@@ -299,6 +302,7 @@ private:
     std::mutex portsMutex_;
     std::map<std::string, std::unique_ptr<juce::MidiOutput>> ports_;   ///< par nom, sous portsMutex_
     std::atomic<std::shared_ptr<const std::vector<std::string>>> portParPiste_{nullptr};
+    std::atomic<std::shared_ptr<const std::vector<uint8_t>>> canalParPiste_{nullptr};   ///< D28.3
     std::atomic<uint64_t> midiOutSent_{0};
     std::atomic<uint64_t> midiOutSansPort_{0};
     juce::String lastError_;

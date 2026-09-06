@@ -623,6 +623,74 @@ void ProcessGraph::emitMidiOut(size_t trackIndex, int sampleOffset, uint8_t stat
     if (trackIndex >= kMaxTracks || !midiOutQueues_[trackIndex].push(e)) droppedMidiOut_.fetch_add(1, std::memory_order_relaxed);
 }
 
+void ProcessGraph::emitSystem(int sampleOffset, uint8_t status, uint8_t data1, uint8_t data2) {
+    MidiOutEvent e;
+    e.trackIndex = 0xFFFFFFFFu;
+    e.hostSeconds = blockHostSeconds_ + static_cast<double>(std::max(0, sampleOffset)) / sampleRate_;
+    e.status = status;
+    e.data1 = data1;
+    e.data2 = data2;
+    if (!midiOutSystemQueue_.push(e)) droppedMidiOut_.fetch_add(1, std::memory_order_relaxed);
+}
+
+void ProcessGraph::emitMidiClockAndTransport(const Project& project, double blockStartSeconds,
+                                             double blockDurationSeconds, bool playing) {
+    // D28.1 : rien de tout cela sans port employé -- un projet sans matériel
+    // ne fabrique pas de messages pour personne.
+    bool unPort = false;
+    for (size_t t = 0; t < project.tracks.size() && t < kMaxTracks; ++t)
+        if (!project.tracks[t].midiOutputDevice.empty()) { unPort = true; break; }
+    if (!unPort) { wasPlayingForMidiOut_ = playing; return; }
+
+    const double vitesse = playbackSpeed_.load(std::memory_order_acquire);
+    const auto ppq = static_cast<double>(std::max<int>(1, project.ticksPerQuarterNote));
+    if (playing && !wasPlayingForMidiOut_) {
+        if (blockStartSeconds <= 1.0e-9) {
+            emitSystem(0, 0xFA);   // Start : du début
+        } else {
+            // Song Position en doubles-croches (14 bits, LSB d'abord), puis Continue.
+            const double tick = static_cast<double>(project.secondsToTicks(blockStartSeconds));
+            const int position = std::clamp(static_cast<int>(std::floor(tick / (ppq / 4.0))), 0, 16383);
+            emitSystem(0, 0xF2, static_cast<uint8_t>(position & 0x7F), static_cast<uint8_t>((position >> 7) & 0x7F));
+            emitSystem(0, 0xFB);
+        }
+        // D28.2 : le programme de chaque piste repart avec la lecture.
+        lastProgramSent_.fill(-2);
+    }
+    if (!playing && wasPlayingForMidiOut_) emitSystem(0, 0xFC);
+    wasPlayingForMidiOut_ = playing;
+
+    // D28.2 : LE PROGRAMME ET LA BANQUE, dès qu'ils changent.
+    for (size_t t = 0; t < project.tracks.size() && t < kMaxTracks; ++t) {
+        const Track& track = project.tracks[t];
+        if (track.midiOutputDevice.empty() || track.midiProgram < 0) continue;
+        const int cle = (std::max(-1, track.midiBank) + 1) * 128 + std::clamp(track.midiProgram, 0, 127);
+        if (lastProgramSent_[t] == cle) continue;
+        lastProgramSent_[t] = cle;
+        const uint8_t canal = static_cast<uint8_t>(track.channel & 0x0F);
+        if (track.midiBank >= 0) {
+            emitMidiOut(t, 0, static_cast<uint8_t>(0xB0 | canal), 0, static_cast<uint8_t>((track.midiBank >> 7) & 0x7F));
+            emitMidiOut(t, 0, static_cast<uint8_t>(0xB0 | canal), 32, static_cast<uint8_t>(track.midiBank & 0x7F));
+        }
+        emitMidiOut(t, 0, static_cast<uint8_t>(0xC0 | canal), static_cast<uint8_t>(std::clamp(track.midiProgram, 0, 127)), 0);
+    }
+
+    if (!playing || blockDurationSeconds <= 0.0) return;
+    // L'HORLOGE : 24 impulsions par noire, aux ticks multiples de ppq/24 dans
+    // [début, fin) du bloc, chacune datée à l'échantillon par la carte de tempo.
+    const double parImpulsion = ppq / 24.0;
+    const double tickDebut = static_cast<double>(project.secondsToTicks(blockStartSeconds));
+    const double tickFin = static_cast<double>(project.secondsToTicks(blockStartSeconds + blockDurationSeconds));
+    if (tickFin <= tickDebut) return;
+    long long k = static_cast<long long>(std::ceil(tickDebut / parImpulsion - 1.0e-9));
+    for (; static_cast<double>(k) * parImpulsion < tickFin; ++k) {
+        const auto tick = static_cast<vsm::midi::Tick>(std::llround(static_cast<double>(k) * parImpulsion));
+        const double secondes = project.ticksToSeconds(tick);
+        const int offset = static_cast<int>(std::llround((secondes - blockStartSeconds) * sampleRate_ / vitesse));
+        emitSystem(std::max(0, offset), 0xF8);
+    }
+}
+
 void ProcessGraph::emitControlOut(size_t trackIndex, uint8_t channel,
                                    const vsm::audio::plugin::MidiControlEvent& event) {
     using K = vsm::audio::plugin::MidiControlEvent::Kind;
@@ -724,6 +792,16 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
         }
         blockHostSeconds_ = hostAnchorSeconds_ + static_cast<double>(samplesSinceAnchor_) / sampleRate_;
         samplesSinceAnchor_ += static_cast<uint64_t>(numSamples);
+    }
+    // D28.1 / D28.2 : l'horloge, le transport et les programmes vers les
+    // ports -- EN TÊTE DE BLOC, avant le chemin « au repos » qui sort tôt :
+    // c'est là que le Stop d'un arrêt se voit. Un rebouclage à l'intérieur
+    // du bloc décale ses impulsions d'au plus un bloc, et c'est dit.
+    if (auto snapshotMidi = snapshot_.load(std::memory_order_acquire); snapshotMidi && !snapshotMidi->project.tracks.empty()) {
+        const double vitesseMidi = playbackSpeed_.load(std::memory_order_acquire);
+        emitMidiClockAndTransport(snapshotMidi->project, currentSeconds_.load(std::memory_order_acquire),
+                                  static_cast<double>(numSamples) * vitesseMidi / sampleRate_,
+                                  playing_.load(std::memory_order_acquire));
     }
 
     if (!playing_.load(std::memory_order_acquire)) {

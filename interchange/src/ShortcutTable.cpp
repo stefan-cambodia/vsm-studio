@@ -63,6 +63,8 @@ const std::vector<ShortcutCommand>& shortcutCommands() {
         {ShortcutId::TrackSoloSelected, "track.solo",       "Piste",     "Solo (piste choisie)",           "shift + S",        ""},
         {ShortcutId::NavNextTrack,      "nav.nextTrack",    "Piste",     "Piste suivante",                 "alt + cursor down", ""},
         {ShortcutId::NavPreviousTrack,  "nav.previousTrack","Piste",     "Piste précédente",               "alt + cursor up",  ""},
+        // D28.4 — L, comme Cubase : la tête au début de la sélection (arrangement, sinon piano roll).
+        {ShortcutId::NavToSelection,    "nav.toSelection",  "Transport", "Tête au début de la sélection",  "L",                ""},
     };
     return catalogue;
 }

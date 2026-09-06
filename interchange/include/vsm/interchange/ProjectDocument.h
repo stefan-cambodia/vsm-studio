@@ -253,6 +253,10 @@ struct ProjectTrack {
     std::string preferredPlugin;
     /// D27.1 : le port MIDI de sortie, écrit seulement quand il est posé.
     std::string midiOutput;
+    /// D28.2 / D28.3 : programme, banque, canal d'entrée -- écrits seulement quand ils sont posés.
+    int midiProgram = -1;
+    int midiBank = -1;
+    int midiInputChannel = 0;
     /// Chemin RELATIF du preset, ex. "instruments/track_00.synth.json".
     /// Vide = pas de preset associé.
     std::string presetPath;

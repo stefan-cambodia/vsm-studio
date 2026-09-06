@@ -375,3 +375,62 @@ VSM_TEST(a_midi_output_track_emits_each_note_once_at_48k) {
     VSM_ASSERT_EQ(on, static_cast<size_t>(8));
     VSM_ASSERT_EQ(off, static_cast<size_t>(8));
 }
+
+// --- D28.1 / D28.2 : l'horloge MIDI, le transport, le programme -------------
+
+VSM_TEST(midi_clock_start_stop_and_program_go_to_the_ports_in_use) {
+    Project project;
+    project.ticksPerQuarterNote = 480;
+    project.tempoMap.addTempoChange(0, 500000);   // 120 BPM : 2 noires par seconde, 48 impulsions
+    Track track;
+    uint64_t id = 1;
+    track.addNote(0, 480, 60, 100, 0, id);
+    track.midiOutputDevice = "VSM Studio";
+    track.midiProgram = 5;
+    track.midiBank = 130;   // MSB 1, LSB 2
+    project.tracks.push_back(track);
+    ProcessGraph graph;
+    graph.prepare(48000.0, 512);
+    graph.setProject(project);
+    graph.seekSeconds(0.0);
+    graph.setPlaying(true);
+    std::vector<float> l(512), r(512);
+    for (int b = 0; b < 94; ++b) graph.processBlock(l.data(), r.data(), 512);   // 1,0027 s
+    graph.setPlaying(false);
+    graph.processBlock(l.data(), r.data(), 512);
+
+    size_t horloges = 0, starts = 0, stops = 0, continues = 0;
+    ProcessGraph::MidiOutEvent e;
+    std::string premier;
+    while (graph.popMidiOutSystem(e)) {
+        if (premier.empty()) premier = e.status == 0xFA ? "start" : "autre";
+        if (e.status == 0xF8) ++horloges;
+        else if (e.status == 0xFA) ++starts;
+        else if (e.status == 0xFB) ++continues;
+        else if (e.status == 0xFC) ++stops;
+    }
+    VSM_ASSERT_EQ(premier, std::string("start"));
+    VSM_ASSERT_EQ(starts, static_cast<size_t>(1));
+    VSM_ASSERT_EQ(continues, static_cast<size_t>(0));
+    VSM_ASSERT_EQ(stops, static_cast<size_t>(1));
+    VSM_ASSERT(horloges >= 47 && horloges <= 49);
+
+    // Le programme : banque (CC 0 = 1, CC 32 = 2) puis 0xC0 5, UNE fois, avant la note.
+    std::string suite;
+    while (graph.popMidiOut(e)) {
+        char h[16];
+        std::snprintf(h, sizeof(h), "%02X:%d:%d ", e.status, e.data1, e.data2);
+        suite += h;
+    }
+    VSM_ASSERT_EQ(suite, std::string("B0:0:1 B0:32:2 C0:5:0 90:60:100 80:60:64 "));
+
+    // Sans port : aucun message système.
+    project.tracks[0].midiOutputDevice.clear();
+    ProcessGraph muet;
+    muet.prepare(48000.0, 512);
+    muet.setProject(project);
+    muet.seekSeconds(0.0);
+    muet.setPlaying(true);
+    for (int b = 0; b < 10; ++b) muet.processBlock(l.data(), r.data(), 512);
+    VSM_ASSERT(!muet.popMidiOutSystem(e));
+}

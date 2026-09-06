@@ -5823,7 +5823,7 @@ pour critère : une note pliée d'un demi-ton sort à la fréquence de la note
 du dessus, à 1 % près, mesurée sur le rendu. La phase reste ouverte, sans
 étape numérotée, et le prochain audit reprend l'ordre du § 3.
 
-### Phase D27 — La sortie MIDI matérielle par piste (06/09/2026, 15:00)
+### Phase D27 — La sortie MIDI matérielle par piste (06/09/2026, 14:25)
 
 **Pourquoi.** Le studio s'appelle « Vintage Synth » et ne sait parler à
 aucun synthé réel : `juce::MidiOutput` n'apparaît nulle part dans
@@ -5902,4 +5902,67 @@ matériel (`aseqdump`) et se branche sur n'importe quel logiciel.
 > avant qu'`aseqdump` ne soit branché.
 >
 > Tests : 271 core, 1 256 audio, 278 interchange — tous verts ; Python
+> inchangé (168 à D21).
+
+### Phase D28 — Le matériel, suite : l'horloge, le programme, le canal d'entrée (06/09/2026, 14:52)
+
+**Pourquoi.** Une piste parle désormais à un port (D27) ; il lui manque ce
+qu'un séquenceur dit à un synthé ou une boîte à rythmes réels au-delà des
+notes. Cubase et Live envoient l'horloge MIDI (une boîte à rythmes se
+synchronise dessus), le programme et la banque de la piste, et chaque
+piste choisit le canal d'entrée qu'elle écoute (deux claviers, deux
+pistes). Ici : pas d'horloge, pas de programme de piste, et tout ce qui
+entre va à la piste armée quel que soit le canal. Le relevé a écarté comme
+existant : le zoom de l'arrangement sur la sélection, le pré-roll (le
+décompte lit déjà le morceau depuis N mesures avant le point d'entrée).
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D28.1 | **L'horloge MIDI et le transport sur les ports employés.** | 24 impulsions par noire (0xF8) suivant la carte de tempo, datées à l'échantillon ; Start (0xFA) quand la lecture part de zéro, Song Position (0xF2) puis Continue (0xFB) sinon, Stop (0xFC) à l'arrêt — détectés dans le bloc, jamais depuis le fil d'interface ; envoyés sur tous les ports que des pistes emploient ; test : une seconde à 120 BPM donne un Start puis 48 impulsions ± 1, puis un Stop ; rien sans port |
+| D28.2 | **Le programme et la banque de la piste.** | `Track::midiProgram` (0–127, −1 = aucun) et `midiBank` (0–16383, −1 = aucune) dans le fichier ; envoyés sur le port de la piste — banque (CC 0, CC 32) puis programme — dès qu'ils changent et au départ de chaque lecture ; « Piste ▸ Programme MIDI… » ; l'en-tête dit « prog N » ; test : un programme posé donne CC 0, CC 32, 0xC0 une fois, pas une de plus |
+| D28.3 | **Le canal d'entrée MIDI par piste.** | `Track::midiInputChannel` (0 = tous, 1–16) dans le fichier ; une piste armée ou choisie n'écoute que son canal — notes ET contrôleurs ; « Piste ▸ Canal d'entrée MIDI ▸ Tous / 1…16 » ; `VSM_VUE=canal-entree:N:C` ; vérifié à l'écran (l'en-tête dit « entrée ch. C ») |
+| D28.4 | **Se placer sur la sélection.** | `NavToSelection` (L, comme Cubase) : la tête au début de la sélection de l'arrangement, sinon du piano roll ; dans la table ; rien s'il n'y a pas de sélection |
+| D28.5 | **La preuve.** | `aseqdump` sur le port virtuel pendant une lecture : Start, des Clock au bon nombre pour la durée jouée, Program change et Control change de banque avant la première note, Stop à la fin — comptés et écrits ici |
+
+> **D28.1 EST FAITE (06/09/2026, 15:01).** `emitMidiClockAndTransport`, EN
+> TÊTE DE BLOC — avant le chemin « au repos » qui sort tôt, sans quoi le
+> Stop d'un arrêt ne se voyait jamais (attrapé par le test) : Start (0xFA)
+> quand la lecture part de zéro, Song Position puis Continue sinon, Stop à
+> l'arrêt, 24 impulsions par noire aux ticks multiples de ppq/24 datées par
+> la carte de tempo à l'échantillon ; dans une file SYSTÈME à part, vidée
+> AVANT celles des pistes par l'émetteur — à heure égale, le tri stable
+> garde l'ordre d'arrivée, et un Start doit précéder la première note
+> (attrapé par la preuve : la première mesure avait « Note on, Start »).
+> Envoyés une fois sur chaque port employé. Test : une seconde à 120 BPM
+> donne un Start, 48 impulsions ± 1, un Stop ; rien sans port.
+>
+> **D28.2 EST FAITE (06/09/2026, 15:01).** `Track::midiProgram`, `midiBank`,
+> dans le fichier quand ils sont posés ; envoyés — CC 0, CC 32, puis 0xC0 —
+> dès qu'ils changent et au départ de chaque lecture (le dernier envoyé est
+> oublié au Start) ; « Piste ▸ Programme MIDI (6, banque 130)… », boîte à
+> deux champs, vide = rien ; l'en-tête dit « → VSM Studio · prog 6 » — le
+> « midi » devant le port est tombé, il coupait le programme. Test : la
+> suite exacte « B0:0:1 B0:32:2 C0:5:0 90:60:100 80:60:64 ».
+>
+> **D28.3 EST FAITE (06/09/2026, 15:01).** `Track::midiInputChannel`
+> (0 = tous), dans le fichier quand il est posé, publié au moteur avec les
+> ports ; sur le thread MIDI, une piste armée ou choisie n'écoute que son
+> canal, notes ET contrôleurs ; « Piste ▸ Canal d'entrée MIDI (3) ▸ Tous /
+> 1…16 » ; l'en-tête dit « midi · entrée ch. 3 » (vérifié à l'écran par
+> `VSM_VUE=canal-entree:1:3`).
+>
+> **D28.4 EST FAITE (06/09/2026, 15:01).** `NavToSelection` (L) : la tête au
+> début de la sélection de l'arrangement (`selectionStartTick`, par la même
+> `selectionSpan` que la répétition), sinon à la première note choisie du
+> piano roll ; rien sans sélection.
+>
+> **D28.5 EST FAITE (06/09/2026, 15:01), ET LA PHASE D28 EST CLOSE.**
+> `aseqdump` sur le port virtuel, projet d'exemple, programme 6 banque 130
+> posés sur la basse, lecture retardée de 4 s : **1 Start, puis CC 0 = 1,
+> CC 32 = 2, Program change 5, puis les 8 Note on, 121 Clock, 1 Stop** —
+> 121 impulsions font 5 noires à 130 BPM : le transport court jusqu'à la
+> fin du morceau, dernière note relâchée comprise, et c'est là que le Stop
+> part.
+>
+> Tests : 271 core, 1 257 audio, 278 interchange — tous verts ; Python
 > inchangé (168 à D21).
