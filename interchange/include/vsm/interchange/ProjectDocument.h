@@ -274,6 +274,16 @@ struct ProjectTrack {
     /// court que la liste des bus vaut « pas d'envoi » sur les suivants.
     std::vector<float> sendLevels;
     std::vector<ProjectEffect> effects;
+    /// D31.1 : LES EFFETS MIDI de la piste, appliqués à la LECTURE (D31.3) et
+    /// jamais aux notes. Champ FACULTATIF : une piste sans chaîne MIDI garde
+    /// exactement le fichier qu'elle avait avant la phase.
+    ///
+    /// `ProjectEffect` réemployé plutôt qu'un jumeau : les deux portent une
+    /// identité et une table de paramètres, et `nativeState` reste simplement
+    /// vide -- rien n'est prévu pour héberger un effet MIDI tiers. Deux
+    /// structures voisines obligeraient le lecteur, l'écrivain et la chaîne
+    /// d'analyse à connaître les deux.
+    std::vector<ProjectEffect> midiEffects;
     std::vector<ProjectAutomationLane> automation;
     /// Champ FACULTATIF : une piste sans clip n'est pas découpée, et son
     /// fichier reste identique octet pour octet à ce qu'il était.

@@ -267,6 +267,11 @@ ProjectDocument documentFromProject(const Project& project) {
             described.enabled = effect.enabled;
             entry.effects.push_back(std::move(described));
         }
+        // D31.1 : la chaîne MIDI, telle quelle -- ses paramètres sont déjà
+        // nommés (« Semitones », « Division »...) et n'ont pas de profil
+        // sémantique à traverser comme ceux des effets audio.
+        for (const auto& effect : track.midiEffects)
+            entry.midiEffects.push_back({effect.type, effect.parameters, {}, effect.enabled});
         entry.outputGroup = track.outputGroup;
         entry.invertPhase = track.invertPhase;
         entry.soloSafe = track.soloSafe;              // D30.1
@@ -438,6 +443,9 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.effects.clear();
         for (const auto& effect : source.effects)
             target.effects.push_back({effect.type, effect.parameters, effect.nativeState, effect.enabled});
+        target.midiEffects.clear();     // D31.1
+        for (const auto& effect : source.midiEffects)
+            target.midiEffects.push_back({effect.type, effect.parameters, effect.enabled});
         target.kind = source.kind == "audio"  ? Track::Kind::Audio
                     : source.kind == "group"  ? Track::Kind::Group
                     : source.kind == "folder" ? Track::Kind::Folder
@@ -712,6 +720,24 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         }
         entry.set("effects", std::move(effects));
 
+        // D31.1 : LA CHAÎNE MIDI, ÉCRITE SEULEMENT QUAND ELLE EXISTE. Un
+        // projet d'avant la phase se relit et se réécrit octet pour octet --
+        // la règle de tout ce qui s'ajoute à ce format.
+        if (!track.midiEffects.empty()) {
+            JsonValue midi = JsonValue::makeArray();
+            for (const auto& effect : track.midiEffects) {
+                JsonValue fx = JsonValue::makeObject();
+                fx.set("type", JsonValue::makeString(effect.type));
+                JsonValue parameters = JsonValue::makeObject();
+                for (const auto& [nom, valeur] : effect.parameters)
+                    parameters.set(nom, JsonValue::makeFloat(valeur));
+                fx.set("parameters", std::move(parameters));
+                if (!effect.enabled) fx.set("enabled", JsonValue::makeBoolean(false));
+                midi.append(std::move(fx));
+            }
+            entry.set("midiEffects", std::move(midi));
+        }
+
         // Écrits SEULEMENT s'il y en a : une piste non découpée garde le
         // fichier qu'elle a toujours eu.
         if (!track.clips.empty()) {
@@ -946,6 +972,15 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
             if (fx["nativeState"].isString()) effect.nativeState = fx["nativeState"].asString();
             if (fx["enabled"].isBoolean()) effect.enabled = fx["enabled"].asBoolean(true);
             if (!effect.type.empty()) track.effects.push_back(std::move(effect));
+        }
+
+        for (const auto& fx : entry["midiEffects"].elements()) {   // D31.1
+            ProjectEffect effect;
+            effect.type = fx["type"].asString();
+            for (const auto& [nom, valeur] : fx["parameters"].members())
+                if (valeur.isNumber()) effect.parameters[nom] = static_cast<float>(valeur.asNumber());
+            if (fx["enabled"].isBoolean()) effect.enabled = fx["enabled"].asBoolean(true);
+            if (!effect.type.empty()) track.midiEffects.push_back(std::move(effect));
         }
 
         for (const auto& clipJson : entry["clips"].elements())

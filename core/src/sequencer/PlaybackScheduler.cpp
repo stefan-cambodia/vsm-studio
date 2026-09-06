@@ -1,4 +1,5 @@
 #include "vsm/sequencer/PlaybackScheduler.h"
+#include "vsm/sequencer/MidiEffects.h"
 #include <algorithm>
 #include <limits>
 #include <map>
@@ -226,7 +227,29 @@ std::vector<ScheduledEvent> PlaybackScheduler::build(const Project& project,
         const bool audible = trackAudible(track, anySolo);
         if (!audible && !publiee[trackIndex]) continue;
 
+        // Le tampon qui PORTE les notes transformées quand il y a une chaîne.
+        // Déclaré ici pour vivre aussi longtemps que la référence `jouees` qui
+        // le regarde ; sans chaîne, il reste vide et l'on lit `track.notes`.
+        std::vector<Note> notesEffectuees;
+
         const std::vector<Passage> passages = passagesOf(track, materialEnd);
+
+        // D31.3 : LA CHAÎNE D'EFFETS MIDI, UNE FOIS PAR PISTE ET AVANT LES
+        // PASSAGES. Le matériau n'est jamais touché -- `applyMidiEffects` rend
+        // une liste neuve, et c'est tout ce qui sépare un effet d'une édition.
+        //
+        // AVANT LES PASSAGES ET NON DEDANS, pour deux raisons. La première est
+        // le coût : arpéger une fois plutôt qu'une fois par clip. La seconde
+        // est le sens : un arpège se calcule sur l'ACCORD, et un accord ne
+        // change pas selon le clip par lequel on le regarde.
+        //
+        // Chaîne vide : `applyMidiEffects` rend la liste telle quelle, et tout
+        // ce qui suit est exactement le code d'avant.
+        const std::vector<Note>& jouees =
+            track.midiEffects.empty()
+                ? track.notes
+                : (notesEffectuees = applyMidiEffects(track.midiEffects, track.notes,
+                                                       project.ticksPerQuarterNote));
 
         for (const auto& passage : passages) {
             // Le tick source appartient-il à ce passage, et où sort-il ?
@@ -237,7 +260,7 @@ std::vector<ScheduledEvent> PlaybackScheduler::build(const Project& project,
             };
             auto inRange = [&](Tick t) { return t >= startTick && t < endTick; };
 
-            for (const auto& note : track.notes) {
+            for (const auto& note : jouees) {
                 if (note.muted) continue; // note rendue muette dans l'éditeur (Note::muted)
                 // LA TRANSPOSITION DE PISTE (D17.5) s'applique ICI, à la
                 // lecture : le matériau ne bouge pas. Hors de 0..127, la note

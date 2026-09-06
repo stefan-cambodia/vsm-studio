@@ -34,6 +34,18 @@
 // que le projet ne porte pas.
 class EffectChainComponent : public juce::Component {
 public:
+    /// LE VOLET DÉFILE (D31.4). Sans cela, la chaîne MIDI ajoutée AU-DESSUS
+    /// des inserts audio poussait le bandeau de paramètres hors du dock : les
+    /// libellés des knobs étaient coupés par le bas de la fenêtre. Le défaut
+    /// existait déjà pour six inserts audio et un effet choisi -- il ne se
+    /// voyait simplement pas encore. Agrandir la case plutôt que rétrécir le
+    /// texte, et quand la case ne peut plus grandir, la faire défiler.
+    class Contenu : public juce::Component {
+    public:
+        std::function<void(juce::Rectangle<int>)> onResized;
+        void resized() override { if (onResized) onResized(getLocalBounds()); }
+    };
+
     using EffectPtr = std::shared_ptr<vsm::audio::effect::IAudioEffect>;
     using Chain = std::vector<EffectPtr>;
 
@@ -66,6 +78,10 @@ public:
 
     /// Publie la chaîne (immuable) de la piste au moteur.
     std::function<void(size_t trackIndex, std::shared_ptr<const Chain>)> onChainChanged;
+
+    /// D31.4 : la chaîne MIDI de la piste a changé -- l'application republie le
+    /// planning. Séparé de `onChainChanged`, qui ne parle que du son.
+    std::function<void()> onMidiChainChanged;
 
     /// D7.3 : LAISSE L'UTILISATEUR DÉSIGNER UN EFFET QU'ON N'A PAS ÉCRIT, et
     /// rappelle avec son identifiant (`clap:...` ou `vst3:...`).
@@ -153,6 +169,48 @@ private:
     };
     std::vector<EffectRow> rows_;
 
+    // -----------------------------------------------------------------------
+    // D31.4 — LA CHAÎNE D'EFFETS MIDI, AU-DESSUS DES INSERTS AUDIO.
+    //
+    // AU-DESSUS, et l'ordre est le sens : les effets MIDI agissent sur les
+    // NOTES, avant que la machine ne les joue ; les inserts audio agissent sur
+    // le SON qu'elle rend. Ce qui se lit de haut en bas doit être ce qui se
+    // traverse du premier au dernier, comme dans la tranche de console (D30.4).
+    //
+    // Des rangées à part et non un mélange dans `rows_` : un effet MIDI n'a ni
+    // preset, ni latence, ni chaîne latérale, et lui donner les boutons des
+    // autres serait promettre des réglages sans effet.
+    struct MidiRow {
+        std::unique_ptr<juce::TextButton> select;
+        std::unique_ptr<juce::TextButton> bypass;
+        std::unique_ptr<juce::TextButton> up;
+        std::unique_ptr<juce::TextButton> down;
+        std::unique_ptr<juce::TextButton> remove;
+    };
+    std::vector<MidiRow> midiRows_;
+    juce::Label midiHeader_;
+    /// Vrai quand la sélection porte sur la chaîne MIDI : les deux listes
+    /// partagent le même bandeau de paramètres, et il faut savoir laquelle
+    /// `selectedEffect_` désigne.
+    bool selectedIsMidi_ = false;
+    void rebuildMidiList();
+public:
+    /// D31.4 : choisit le DERNIER effet MIDI de la piste, pour que ses
+    /// paramètres s'affichent aussitôt. Ce qu'on vient d'ajouter est ce qu'on
+    /// veut régler -- la même règle que la duplication de clips, qui rend la
+    /// sélection des COPIES.
+    void selectLastMidiEffect();
+    /// D31.4 : fait défiler le volet de `pixels`. Sans souris, c'est le seul
+    /// moyen de PHOTOGRAPHIER ce qui se trouve sous le pli -- et une interface
+    /// qu'on ne peut pas photographier est une interface qu'on ne peut pas
+    /// déclarer vérifiée.
+    void scrollBy(int pixels);
+private:
+    std::vector<vsm::sequencer::MidiEffect>* activeMidiChain();
+    /// Republie le planning : une chaîne MIDI changée change ce qui est JOUÉ,
+    /// pas ce qui est calculé sur le son.
+    void notifyMidiChanged();
+
     // Contrôles de paramètres de l'effet sélectionné.
     struct ParamControl {
         std::unique_ptr<juce::Slider> slider;
@@ -160,4 +218,9 @@ private:
     };
     std::vector<ParamControl> params_;
     juce::Label paramHeader_;
+    Contenu contenu_;
+    juce::Viewport viewport_;
+    /// La hauteur dont le contenu a besoin, calculée à la mise en place.
+    int hauteurVoulue_ = 0;
+    void placerContenu(juce::Rectangle<int> area);
 };

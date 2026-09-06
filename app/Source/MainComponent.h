@@ -237,6 +237,10 @@ private:
         kMenuTrackPasteChain,    ///< D30.3
         kMenuTrackAppendChain,   ///< D30.3
         kMenuTrackThinAutomation, ///< D30.5
+        kMenuTrackMidiFxFirst,    ///< D31.4 : un identifiant par type d'effet MIDI
+        kMenuTrackMidiFxLast = kMenuTrackMidiFxFirst + 7,
+        kMenuTrackMidiFxClear,    ///< D31.4
+        kMenuTrackMidiFxBake,     ///< D31.5
         kMenuTrackShowAll,
         /// D22.5 : la piste choisie comme preset, et un identifiant par preset
         /// du dossier `pistes` de la bibliothèque, pour l'appliquer.
@@ -913,6 +917,19 @@ private:
     /// l'amplitude du paramètre, que l'application est seule à connaître --
     /// `core/` reçoit un nombre en unités du paramètre, comme partout.
     void thinAutomationOfSelectedTrack();
+    /// D31.4 : ajoute un effet MIDI à la piste choisie, à ses valeurs par
+    /// défaut. Les régler se fait dans le volet.
+    void addMidiEffectToSelectedTrack(const std::string& type);
+    /// D31.4 : vide la chaîne MIDI de la piste choisie.
+    void clearMidiEffectsOfSelectedTrack();
+    /// D31.5 : ÉCRIT dans les notes ce que la chaîne joue, puis vide la
+    /// chaîne. C'est le geste qui rend un arpège définitif -- l'inverse exact
+    /// de ce qu'est un effet, et c'est pourquoi il est nommé et annulable
+    /// plutôt qu'implicite.
+    void bakeMidiEffectsOfSelectedTrack();
+    /// D31.5 : les pistes dont l'export `.mid` ne portera pas ce qu'on entend
+    /// -- chaîne MIDI ou transposition de piste (D17.5). Vide : rien à dire.
+    juce::StringArray tracksWhoseMidiExportWillDiffer() const;
     /// LA FENÊTRE IMPLICITE SE MATÉRIALISE (D16.1) : toute piste qui porte du
     /// matériau et aucun clip en reçoit un, « tout à zéro » -- exactement le
     /// passage que l'ordonnanceur fabriquait déjà pour elle, à l'échantillon

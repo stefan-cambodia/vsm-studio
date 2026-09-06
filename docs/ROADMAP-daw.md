@@ -6236,3 +6236,193 @@ journal et à l'écran, comme partout ailleurs.
 >
 > Tests : 276 core, 1 266 audio, 280 interchange, 25 clap, 11 panels, 19 vst3
 > — tous verts (16 tests neufs) ; Python inchangé (168).
+
+### Phase D31 — Les effets MIDI de piste (06/09/2026, 19:00)
+
+**Pourquoi, et pourquoi ce n'est pas un audit de plus.** Le seizième audit
+a sondé six candidats de plus après D30 et en a écarté quatre comme
+existants (« Enregistrer sous » — le premier motif cherché, `sauvegarder
+sous`, était le mauvais français ; la compensation de latence D4.5 ;
+l'aimantation ; la vélocité de relâchement). Deux manques ont survécu, et
+l'un d'eux n'est pas un bouton absent mais **une catégorie entière** : les
+effets MIDI. `grep -riE "insert MIDI|midiInsert|effet MIDI"` sur
+`app/Source`, `core`, `audio/include`, `audio/src` et `interchange` ne rend
+RIEN.
+
+Ce sont les *MIDI inserts* de Cubase et le *MIDI Effects rack* de Live —
+chez Live, une fonction d'affiche. Ici, `arpeggiateNotes` existe bien
+(`core/src/sequencer/NoteEdit.cpp`), mais c'est une ÉDITION : elle écrit
+dans les notes, et l'on ne revient pas en arrière autrement qu'en annulant.
+Régler un arpège en écoutant, changer d'avis, garder le matériau intact :
+impossible aujourd'hui.
+
+**Où cela se branche, et pourquoi c'est le bon endroit.**
+`PlaybackScheduler` porte depuis la Phase 1 une promesse écrite dans son
+en-tête : « un seul et même calcul de timing pour la lecture live et
+l'export, donc pas de divergence possible entre ce qu'on entend et ce qu'on
+exporte ». La transposition de piste (D17.5) s'y applique déjà, à la
+lecture, sans toucher au matériau. Les effets MIDI suivent le même chemin
+et en héritent tout : la lecture, le rendu hors ligne, le gel, le report,
+les ports matériels de D27 — tous passent par là.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D31.1 | **La chaîne dans le modèle et le fichier.** `Track::midiEffects`, sur le modèle de `TrackEffect` (identité, paramètres, contournement) | `struct MidiEffect { type, parameters, enabled }` et `std::vector<MidiEffect> midiEffects` dans `Track` ; écrite dans `project.json` SEULEMENT quand elle n'est pas vide — un projet d'avant D31 se relit et se réécrit octet pour octet ; aller-retour testé |
+| D31.2 | **Les trois effets, en fonctions PURES dans `core/`.** « Gamme » est écartée : le piano roll contraint déjà à une gamme (`gridTicks`, D29.5, et le choix de gamme existant), et un second endroit qui décide de la même chose finirait par le décider autrement | `applyMidiEffects(effects, notes, ppq)` : **Transposition** (demi-tons ; hors 0..127 la note est ÉCARTÉE et COMPTÉE, jamais repliée à l'octave — comme D17.5) ; **Vélocité** (échelle en % puis décalage, bornée 1..127, jamais 0 — une vélocité nulle est un NoteOff déguisé) ; **Arpégiateur** (les notes qui SONNENT ENSEMBLE deviennent une suite, pas en ticks, modes montant / descendant / aller-retour, sur la durée de l'accord) ; testées séparément et enchaînées |
+| D31.3 | **L'application à la lecture, non destructive.** | dans `PlaybackScheduler::build`, UNE FOIS par piste avant la boucle des passages -- et NON dans `chaseAt`, vérifié en la lisant : la chasse ne rattrape que des contrôleurs, des plis et des programmes, jamais des notes, et lui donner une chaîne qui transforme des notes n'aurait rien eu à transformer ; `track.notes` n'est jamais modifié ; mesuré : le rendu hors ligne d'une piste arpégée contient N attaques là où le matériau en a une, et le projet rechargé a toujours ses notes d'origine |
+| D31.4 | **Le volet et l'écran.** | une section « Effets MIDI » au-dessus des inserts audio dans le volet des effets : ajouter, contourner (On/Off), monter/descendre, retirer, et les paramètres du choisi ; menu Piste pour le clavier et pour `VSM_MENU` ; vérifié à l'écran |
+| D31.5 | **La divergence de l'export MIDI, DITE.** L'export `.mid` écrit le matériau (`toParsedFile`), pas ce qui est joué : un `.mid` exporté d'une piste arpégée ne contient pas l'arpège — et la transposition de piste de D17.5 est dans le même cas depuis un an, en silence | l'export nomme les pistes dont le `.mid` ne portera ni les effets MIDI ni la transposition, et combien ; et « Piste ▸ Reporter les effets MIDI dans les notes » les rend définitifs quand c'est ce qu'on veut (annulable) |
+
+**Ce qui est attendu, écrit AVANT la mesure.**
+
+1. **D31.2/D31.3** — un accord de trois notes tenu une ronde, arpégé au pas
+   de la double-croche, doit donner **seize attaques** sur cette ronde
+   (quatre noires × quatre doubles-croches), et non trois. Si le compte
+   diffère, c'est le découpage de l'accord ou le pas qui est faux, et le
+   chiffre le dira.
+2. **Non-destructif** — après lecture, rendu et rechargement, `track.notes`
+   doit être **identique note pour note** au matériau d'origine. C'est ce
+   qui distingue un effet d'une édition, et c'est falsifiable.
+3. **Rien ne change pour ce qui existe** — une piste sans effet MIDI doit
+   donner un planning **identique événement pour événement** à celui
+   d'avant la phase, et un rendu **identique au bit près**.
+4. **D31.5** — j'attends que l'avertissement d'export nomme AUSSI les pistes
+   seulement transposées : la divergence de D17.5 existait déjà et n'avait
+   jamais été dite. Si l'avertissement ne les nomme pas, il ne couvre que le
+   neuf et laisse l'ancien mentir.
+
+> **D31.1 EST FAITE (06/09/2026, 19:20).** `Track::midiEffects`, une
+> `std::vector<MidiEffect>` de même forme que `TrackEffect` — identité,
+> paramètres, contournement — et sans `nativeState` : ces effets sont écrits
+> ici, leur son EST leur table de paramètres, et rien n'est prévu pour
+> héberger un effet MIDI tiers. Écrite dans `project.json` seulement quand
+> elle n'est pas vide ; un projet d'avant la phase n'y gagne pas un octet,
+> ce qu'un test vérifie en cherchant la clé dans le texte.
+
+> **D31.2 EST FAITE (06/09/2026, 19:30).** `applyMidiEffects` dans
+> `core/`, en fonctions pures. Le chiffre attendu était seize attaques, et
+> c'est seize.
+>
+> | mesure | attendu | mesuré |
+> |---|---|---|
+> | accord de 3 notes, une ronde, pas de double-croche | 16 attaques | **16** |
+> | l'arpège remplit la place de l'accord | début 0, fin 1920 | **0 → 1920** |
+> | aller-retour sur 3 notes | do, mi, sol, mi | **do, mi, sol, mi** |
+> | transposition de -24 sur une note n° 10 | écartée et comptée | **1 écartée** |
+> | vélocité × 0 puis -100 | jamais 0 | **1, sur les deux notes** |
+>
+> **TROIS CHOSES QU'IL A FALLU TRANCHER EN ÉCRIVANT, et qui ne se voyaient
+> pas depuis le tableau.**
+>
+> 1. **Ce qu'est un accord.** Les notes qui commencent AU MÊME TICK, et non
+>    celles qui se recouvrent : deux notes dont l'une commence au milieu de
+>    l'autre sont une tenue, et les arpéger déplacerait la seconde. Un test
+>    le tient.
+> 2. **L'aller-retour ne redouble pas ses extrêmes.** Do-mi-sol-mi et non
+>    do-mi-sol-sol-mi : rejouer la note du haut deux fois de suite marque un
+>    temps, ce qui n'est pas ce qu'on entend d'un arpégiateur.
+> 3. **La vélocité est bornée à 1 et non à 0.** Une vélocité nulle est un
+>    NoteOff déguisé dans le MIDI : une piste qu'on voulait seulement
+>    adoucir se serait arrêtée de sonner sans qu'aucune note ait disparu.
+>
+> Et le pas de l'arpégiateur est **en fractions de noire**, pas en ticks :
+> en ticks il dépendrait de `ticksPerQuarterNote`, et un projet relu à une
+> autre résolution n'arpégerait plus pareil. Chaque attaque reçoit un
+> IDENTIFIANT NEUF — seize attaques qui porteraient trois identifiants se
+> confondraient trois par trois pour la sélection, l'automation liée et le
+> tirage déterministe de l'humanisation.
+>
+> « Gamme » a été écartée en chemin, et c'est écrit dans le tableau : le
+> piano roll contraint déjà à une gamme, et un second endroit qui décide de
+> la même chose finirait par le décider autrement.
+
+> **D31.3 EST FAITE (06/09/2026, 19:35).** Dans `PlaybackScheduler::build`,
+> une fois par piste, avant la boucle des passages — avant et non dedans,
+> pour le coût (arpéger une fois plutôt qu'une fois par clip) et pour le
+> sens (un accord ne change pas selon le clip par lequel on le regarde).
+> Le planificateur étant le seul calcul de timing du projet, la lecture, le
+> rendu hors ligne, le gel, le report et les ports matériels de D27 en
+> héritent tous sans une ligne de plus.
+>
+> | mesure | attendu | mesuré |
+> |---|---|---|
+> | planning de l'accord sans chaîne | 6 événements | **6** |
+> | le même, arpégé | 32 événements | **32** |
+> | `track.notes` après lecture | intact | **3 notes, fin 1920 — intact** |
+> | piste sans chaîne | planning identique | **identique, transposition D17.5 comprise** |
+>
+> **UNE QUESTION QUE LE TABLEAU NE POSAIT PAS : les deux transpositions.**
+> Celle de la PISTE (D17.5) et l'effet MIDI de transposition (D31.2)
+> pourraient se remplacer ou s'ajouter. **Elles s'ajoutent**, et c'est
+> testé : 60 + 5 (effet) + 2 (piste) = 67. Ce sont deux réglages distincts,
+> posés à deux endroits, et faire disparaître l'un quand l'autre est posé
+> serait un réglage qui s'éteint sans qu'on l'ait touché.
+
+> **D31.4 EST FAITE (06/09/2026, 19:50).** Une section « Effets MIDI (sur
+> les notes, avant la machine) » AU-DESSUS des inserts audio dans le volet
+> des effets — et l'ordre est le sens : ce qui se lit de haut en bas doit
+> être ce qui se traverse du premier au dernier, comme dans la tranche de
+> console de D30.4. Rangées à part et non mêlées aux inserts : un effet MIDI
+> n'a ni preset, ni latence, ni chaîne latérale, et lui donner les boutons
+> des autres serait promettre des réglages sans effet. On ajoute par le
+> sous-menu « Piste ▸ Effets MIDI » (qui dit combien la chaîne en porte), on
+> contourne, on déplace, on retire ; le bandeau de paramètres est le MÊME que
+> celui des inserts audio, `selectedIsMidi_` disant seulement laquelle des
+> deux listes est visée. **Un effet qu'on vient d'ajouter est choisi** — ce
+> qu'on ajoute est ce qu'on veut régler, la même règle que la duplication de
+> clips qui rend la sélection des copies.
+>
+> **CE QUE L'ÉCRAN A MONTRÉ, ET QUI ÉTAIT UN DÉFAUT PLUS ANCIEN QUE LA
+> PHASE.** Avec la chaîne MIDI ajoutée au-dessus, les libellés des knobs
+> (« Division », « Mode ») tombaient sous le bas de la fenêtre. **Le volet
+> des effets ne défilait pas** : six inserts audio et un effet choisi
+> faisaient déjà déborder le dock, cela ne s'était simplement jamais vu. Tout
+> le contenu vit maintenant dans un `Viewport`, et la capture, défilée de
+> 80 px, montre les deux libellés en entier.
+>
+> **DEUX PIÈGES PAYÉS EN CHEMIN, ET C'EST DEUX FOIS LE MÊME.** `setSize`
+> d'une taille INCHANGÉE ne déclenche pas `resized()` : après un
+> `rebuildEffectList` qui n'avait pas changé la hauteur, les rangées neuves
+> restaient sans bornes, donc invisibles. Et `scrollBy` appelé depuis une
+> commande de vue ne faisait rien : les commandes s'exécutent avant que la
+> disposition ne soit posée, le contenu n'était pas encore plus haut que le
+> volet, et il n'y avait rien à faire défiler — la demande arrivait, ne
+> bougeait rien, et la capture montrait le haut de la liste comme si le
+> défilement n'existait pas. C'est exactement le `setValue` de D30.4, à un
+> autre étage : **une API qui ne fait rien quand rien n'a changé ne
+> rafraîchit pas non plus ce qui, lui, a changé.**
+
+> **D31.5 EST FAITE (06/09/2026, 20:00), ET LA PHASE D31 EST CLOSE.**
+> L'export `.mid` écrit le MATÉRIAU (`Project::toParsedFile`), pas ce que la
+> lecture en fait. Il nomme désormais les pistes dont le fichier ne portera
+> pas ce qu'on entend, et « Piste ▸ Effets MIDI ▸ Reporter les effets MIDI
+> dans les notes » les rend définitifs quand c'est ce qu'on veut (annulable ;
+> la chaîne est VIDÉE après le report, sans quoi elle s'appliquerait une
+> seconde fois à ce qu'elle vient d'écrire — un arpège arpégé, le geste rendu
+> deux fois pour un seul clic).
+>
+> **L'ATTENDU N° 4 EST TENU, ET C'EST LE PLUS INTÉRESSANT DES QUATRE.**
+> L'avertissement devait nommer AUSSI les pistes seulement transposées : la
+> divergence de D17.5 existait depuis un an et n'avait jamais été dite. Vérifié
+> par `VSM_VUE=piste:0,fx-midi:arpeggio,diagnostic-export-midi` sur un projet
+> dont la seconde piste est transposée de -5 :
+>
+> ```
+> Export MIDI — ne seront pas portées : Acid Bass (effets MIDI) ; Drums (transposition -5)
+> ```
+>
+> et, sur un projet où rien ne diverge, « le .mid portera tout ce qui est
+> joué » — un avertissement qui parlerait pour ne rien dire cesserait d'être
+> lu. `diagnostic-export-midi` existe pour cela : un avertissement qu'on ne
+> peut déclencher qu'en ouvrant un sélecteur de fichier est un avertissement
+> qu'on ne peut pas vérifier sans souris, donc qu'on ne peut pas déclarer
+> vérifié.
+>
+> **CE QUI EST MESURÉ DANS L'APPLICATION, ET CE QUI NE L'EST PAS.** Le report
+> a été exercé de bout en bout (`8 note(s) -> 8` sur une piste sans accord,
+> chaîne vidée) : cela prouve le CÂBLAGE. La TRANSFORMATION, elle, est prouvée
+> par les tests de `core/` (3 notes → 16 attaques), qui appellent la même
+> fonction. Les deux ensemble couvrent le chemin ; ni l'un ni l'autre seul.
+>
+> Tests : 286 core, 1 266 audio, 282 interchange, 25 clap, 11 panels, 19 vst3
+> — tous verts (12 tests neufs) ; Python inchangé (168).

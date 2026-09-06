@@ -14,6 +14,7 @@
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include "vsm/midi/MidiFileParser.h"
 #include "vsm/midi/MidiFileWriter.h"
+#include "vsm/sequencer/MidiEffects.h"
 #include "vsm/audio/engine/OfflineRenderer.h"
 #include "vsm/audio/io/WavFileWriter.h"
 #include "vsm/audio/effect/Reverb.h"
@@ -241,6 +242,13 @@ MainComponent::MainComponent()
         [this](size_t track, std::shared_ptr<const EffectChainComponent::Chain> chain) {
             audioEngine_.processGraph().setTrackEffectChain(track, chain);
         };
+    // D31.4 : une chaîne MIDI changée change ce qui est JOUÉ. Le planning est
+    // donc refait -- sans quoi le réglage ne s'entendrait qu'à la prochaine
+    // relecture, ce qui est intenable pour un arpège qu'on règle à l'oreille.
+    effectChain_.onMidiChainChanged = [this] {
+        refreshTransportSchedule();
+        refreshTrackViews();
+    };
 
     // Le projet est donné APRÈS le rappel : la toute première publication des
     // chaînes part alors vers le moteur au lieu de tomber dans le vide.
@@ -1230,6 +1238,23 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     // suite -- copier, changer de piste, coller -- et que `VSM_MENU` s'exécute
     // en bloc APRÈS `VSM_VUE` : on ne peut pas s'y intercaler un changement de
     // piste. Les trois appellent les mêmes fonctions que le menu.
+    // D31.4 : les effets MIDI, par les MÊMES fonctions que le sous-menu.
+    // « fx-midi:type » ajoute, « fx-midi-vider » retire, « fx-midi-reporter »
+    // écrit dans les notes.
+    else if (nom.startsWith("fx-midi:")) addMidiEffectToSelectedTrack(nom.substring(8).toStdString());
+    else if (nom.startsWith("defiler-effets:")) effectChain_.scrollBy(nom.substring(15).getIntValue());
+    else if (nom == "fx-midi-vider") clearMidiEffectsOfSelectedTrack();
+    else if (nom == "fx-midi-reporter") bakeMidiEffectsOfSelectedTrack();
+    // D31.5 : ce que l'export MIDI ne portera pas, SANS ouvrir le sélecteur de
+    // fichier -- un avertissement qu'on ne peut pas déclencher sans souris est
+    // un avertissement qu'on ne peut pas vérifier.
+    else if (nom == "diagnostic-export-midi") {
+        const juce::StringArray divergentes = tracksWhoseMidiExportWillDiffer();
+        std::fputs((divergentes.isEmpty()
+                        ? juce::String::fromUTF8(u8"Export MIDI : le .mid portera tout ce qui est joué.\n")
+                        : juce::String::fromUTF8(u8"Export MIDI — ne seront pas portées : ")
+                              + divergentes.joinIntoString(" ; ") + "\n").toRawUTF8(), stderr);
+    }
     else if (nom == "copier-chaine") copySelectedTrackChain();
     else if (nom == "coller-chaine") pasteChainIntoSelectedTrack(true);
     else if (nom == "ajouter-chaine") pasteChainIntoSelectedTrack(false);
@@ -2082,6 +2107,39 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                             + juce::String::fromUTF8(u8" inserts)"),
                                   presse > 0 && piste < project_.tracks.size());
                 }
+                // D31.4 : LA CHAÎNE D'EFFETS MIDI. Au menu Piste comme la
+                // chaîne d'inserts (D30.3), et pour la même raison : c'est le
+                // seul endroit qu'on atteint sans souris, donc le seul qui se
+                // vérifie à l'écran.
+                {
+                    menu.addSeparator();
+                    juce::PopupMenu midiFx;
+                    const auto types = vsm::sequencer::midiEffectTypes();
+                    for (size_t i = 0; i < types.size() && i < 8; ++i)
+                        // `u8"..."` est un `char8_t[]` en C++20 : le concaténer
+                        // à un `std::string` ne compile pas (piège de CLAUDE.md,
+                        // payé une fois de plus ici). On assemble en juce::String.
+                        midiFx.addItem(kMenuTrackMidiFxFirst + static_cast<int>(i),
+                                        juce::String::fromUTF8(u8"Ajouter : ")
+                                            + juce::String::fromUTF8(
+                                                  vsm::sequencer::midiEffectDisplayName(types[i]).c_str()),
+                                        piste < project_.tracks.size());
+                    const size_t combien = piste < project_.tracks.size()
+                                               ? project_.tracks[piste].midiEffects.size() : 0;
+                    midiFx.addSeparator();
+                    midiFx.addItem(kMenuTrackMidiFxBake,
+                                    juce::String::fromUTF8(u8"Reporter les effets MIDI dans les notes (définitif)"),
+                                    combien > 0);
+                    midiFx.addItem(kMenuTrackMidiFxClear,
+                                    juce::String::fromUTF8(u8"Retirer tous les effets MIDI"),
+                                    combien > 0);
+                    // LE NOMBRE DANS LE TITRE : un sous-menu qui ne dit pas ce
+                    // qu'il contient déjà se visite pour rien.
+                    menu.addSubMenu(juce::String::fromUTF8(u8"Effets MIDI de la piste (")
+                                        + juce::String(static_cast<int>(combien))
+                                        + juce::String::fromUTF8(u8")"),
+                                     midiFx, !project_.tracks.empty());
+                }
                 // D30.5 : RÉDUIRE LES POINTS. Le libellé dit COMBIEN il y en
                 // a : c'est ce nombre qui fait comprendre pourquoi la commande
                 // existe, et c'est lui qu'on compare à celui d'après.
@@ -2760,11 +2818,19 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuTrackPasteChain:  pasteChainIntoSelectedTrack(true); break;
         case kMenuTrackAppendChain: pasteChainIntoSelectedTrack(false); break;
         case kMenuTrackThinAutomation: thinAutomationOfSelectedTrack(); break;   // D30.5
+        case kMenuTrackMidiFxClear: clearMidiEffectsOfSelectedTrack(); break;    // D31.4
+        case kMenuTrackMidiFxBake:  bakeMidiEffectsOfSelectedTrack(); break;     // D31.5
         case kMenuTrackHide:     hideSelectedTrack(); break;
         case kMenuTrackSoloExclusive: soloTrackExclusively(trackList_.selectedTrackIndex()); break;
         case kMenuTrackShowAll:  showAllTracks(); break;
         case kMenuTrackSavePreset: promptSaveTrackPreset(); break;
         default: break;
+    }
+    if (menuItemID >= kMenuTrackMidiFxFirst && menuItemID <= kMenuTrackMidiFxLast) {   // D31.4
+        const auto types = vsm::sequencer::midiEffectTypes();
+        const size_t i = static_cast<size_t>(menuItemID - kMenuTrackMidiFxFirst);
+        if (i < types.size()) addMidiEffectToSelectedTrack(types[i]);
+        return;
     }
     if (menuItemID == kMenuTrackMidiOutNone) { setSelectedTrackMidiOutput(""); return; }
     if (menuItemID == kMenuTrackMidiProgram) { promptMidiProgram(); return; }
@@ -6637,6 +6703,27 @@ void MainComponent::exportMidiFile() {
         try {
             ParsedFile parsed = project_.toParsedFile();
             MidiFileWriter::writeFile(parsed, file.getFullPathName().toStdString());
+            // D31.5 : CE QUE LE .MID NE PORTE PAS, ON LE DIT. L'export écrit
+            // le MATÉRIAU (`toParsedFile`), pas ce qui est joué : ni la chaîne
+            // d'effets MIDI (D31), ni la transposition de piste (D17.5). Un
+            // fichier qui sonnerait autrement ailleurs sans qu'on l'ait dit
+            // est exactement la panne muette que ce projet s'interdit -- et
+            // celle de D17.5 durait depuis un an.
+            if (const juce::StringArray divergentes = tracksWhoseMidiExportWillDiffer();
+                !divergentes.isEmpty()) {
+                const juce::String texte =
+                    juce::String::fromUTF8(u8"Le fichier .mid porte les NOTES du projet, pas ce que la "
+                                           u8"lecture en fait. Ces pistes sonneront donc autrement dans "
+                                           u8"un autre logiciel :\n\n")
+                    + divergentes.joinIntoString("\n")
+                    + juce::String::fromUTF8(u8"\n\nPour les rendre définitives : Piste ▸ Effets MIDI ▸ "
+                                             u8"« Reporter les effets MIDI dans les notes ».");
+                std::fputs((juce::String::fromUTF8(u8"Export MIDI — divergence : ")
+                             + texte.replace("\n", " ; ") + "\n").toRawUTF8(), stderr);
+                juce::AlertWindow::showMessageBoxAsync(
+                    juce::AlertWindow::InfoIcon,
+                    juce::String::fromUTF8(u8"Ce que le .mid ne porte pas"), texte);
+            }
             // D15.5 : le MIDI ne connaît pas les rampes ; elles partent en
             // paliers d'une noire, et on le dit plutôt que de le taire.
             if (project_.tempoMap.hasRamps()) {
@@ -7363,6 +7450,109 @@ void MainComponent::thinAutomationOfSelectedTrack() {
         message += juce::String::fromUTF8(u8" ; laissée(s) entière(s) faute d'amplitude connue : ")
                    + sansBornes.joinIntoString(", ");
     std::fputs((message + "\n").toRawUTF8(), stderr);
+}
+
+void MainComponent::addMidiEffectToSelectedTrack(const std::string& type) {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    const auto params = vsm::sequencer::midiEffectParameters(type);
+    if (params.empty()) {
+        // PANNE MUETTE INTERDITE, jusque dans l'ajout : un type que `core/` ne
+        // connaît pas n'entre pas dans la chaîne, plutôt que d'y dormir.
+        std::fputs(("Effet MIDI inconnu, non ajouté : " + type + "\n").c_str(), stderr);
+        return;
+    }
+    beginProjectEdit(u8"Ajouter un effet MIDI");
+    vsm::sequencer::MidiEffect effet;
+    effet.type = type;
+    // LES DÉFAUTS VIENNENT DE `core/`, la même source que les bornes du volet :
+    // deux tables de défauts finiraient par en donner deux.
+    for (const auto& p : params) effet.parameters[p.name] = p.defaultValue;
+    project_.tracks[piste].midiEffects.push_back(std::move(effet));
+    effectChain_.rebuildFromProject();
+    effectChain_.setActiveTrack(static_cast<int>(piste));
+    // CE QU'ON VIENT D'AJOUTER EST CE QU'ON VEUT RÉGLER : le nouvel effet est
+    // choisi, ses paramètres s'affichent, et l'on n'a pas à le chercher.
+    effectChain_.selectLastMidiEffect();
+    refreshTransportSchedule();
+    refreshTrackViews();
+    std::fputs((juce::String::fromUTF8(u8"Effet MIDI ajouté à « ")
+                + juce::String::fromUTF8(project_.tracks[piste].name.c_str())
+                + juce::String::fromUTF8(u8" » : ")
+                + juce::String::fromUTF8(vsm::sequencer::midiEffectDisplayName(type).c_str())
+                + juce::String::fromUTF8(u8" (") 
+                + juce::String(static_cast<int>(project_.tracks[piste].midiEffects.size()))
+                + juce::String::fromUTF8(u8" en chaîne)\n")).toRawUTF8(), stderr);
+}
+
+void MainComponent::clearMidiEffectsOfSelectedTrack() {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size() || project_.tracks[piste].midiEffects.empty()) return;
+    beginProjectEdit(u8"Retirer les effets MIDI");
+    const size_t combien = project_.tracks[piste].midiEffects.size();
+    project_.tracks[piste].midiEffects.clear();
+    effectChain_.rebuildFromProject();
+    refreshTransportSchedule();
+    refreshTrackViews();
+    std::fputs((juce::String::fromUTF8(u8"Effets MIDI retirés : ")
+                + juce::String(static_cast<int>(combien))
+                + juce::String::fromUTF8(u8" ; les notes n'ont pas bougé.\n")).toRawUTF8(), stderr);
+}
+
+void MainComponent::bakeMidiEffectsOfSelectedTrack() {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size() || project_.tracks[piste].midiEffects.empty()) return;
+    auto& track = project_.tracks[piste];
+
+    vsm::sequencer::MidiEffectReport rapport;
+    std::vector<vsm::sequencer::Note> jouees = vsm::sequencer::applyMidiEffects(
+        track.midiEffects, track.notes, project_.ticksPerQuarterNote, &rapport);
+
+    const size_t avant = track.notes.size();
+    beginProjectEdit(u8"Reporter les effets MIDI dans les notes");
+    track.notes = std::move(jouees);
+    // LA CHAÎNE EST VIDÉE, sans quoi elle s'appliquerait une SECONDE fois à ce
+    // qu'elle vient d'écrire : un arpège arpégé, c'est-à-dire le geste rendu
+    // deux fois pour un seul clic.
+    track.midiEffects.clear();
+    effectChain_.rebuildFromProject();
+    refreshTransportSchedule();
+    refreshTrackViews();
+    pianoRollPanel_.refresh();
+
+    juce::String message = juce::String::fromUTF8(u8"Effets MIDI reportés dans « ")
+                           + juce::String::fromUTF8(track.name.c_str())
+                           + juce::String::fromUTF8(u8" » : ") + juce::String(static_cast<int>(avant))
+                           + juce::String::fromUTF8(u8" note(s) -> ")
+                           + juce::String(static_cast<int>(track.notes.size()));
+    if (rapport.droppedOutOfRange > 0)
+        message += juce::String::fromUTF8(u8" ; ") + juce::String(static_cast<int>(rapport.droppedOutOfRange))
+                   + juce::String::fromUTF8(u8" note(s) écartée(s) hors 0..127");
+    if (rapport.unknownEffects > 0)
+        message += juce::String::fromUTF8(u8" ; ") + juce::String(static_cast<int>(rapport.unknownEffects))
+                   + juce::String::fromUTF8(u8" effet(s) inconnu(s) sans effet");
+    std::fputs((message + ". La chaîne est vidée.\n").toRawUTF8(), stderr);
+}
+
+juce::StringArray MainComponent::tracksWhoseMidiExportWillDiffer() const {
+    juce::StringArray noms;
+    for (const auto& track : project_.tracks) {
+        // LA TRANSPOSITION DE PISTE COMPTE AUSSI, et c'est le point : sa
+        // divergence existait depuis D17.5 et n'avait jamais été dite. Un
+        // avertissement qui ne couvrirait que le neuf laisserait l'ancien
+        // mentir.
+        bool chaine = false;
+        for (const auto& fx : track.midiEffects) chaine = chaine || fx.enabled;
+        if (!chaine && track.transposeSemitones == 0) continue;
+        juce::String ligne = juce::String::fromUTF8(track.name.c_str()) + " (";
+        if (chaine) ligne += juce::String::fromUTF8(u8"effets MIDI");
+        if (chaine && track.transposeSemitones != 0) ligne += ", ";
+        if (track.transposeSemitones != 0)
+            ligne += juce::String::fromUTF8(u8"transposition ") + (track.transposeSemitones > 0 ? "+" : "")
+                     + juce::String(track.transposeSemitones);
+        noms.add(ligne + ")");
+    }
+    return noms;
 }
 
 void MainComponent::hideSelectedTrack() {

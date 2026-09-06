@@ -1323,3 +1323,47 @@ VSM_TEST(a_project_that_uses_none_of_them_keeps_the_file_it_had) {
     VSM_ASSERT(texte.find("disabled") == std::string::npos);
     VSM_ASSERT(texte.find("trimDb") == std::string::npos);
 }
+
+// ---------------------------------------------------------------------------
+// D31.1 — LA CHAÎNE D'EFFETS MIDI DANS LE FICHIER.
+// ---------------------------------------------------------------------------
+
+VSM_TEST(the_midi_effect_chain_survives_the_round_trip) {
+    vsm::sequencer::Project projet = buildProject();
+    vsm::sequencer::MidiEffect arpege;
+    arpege.type = "arpeggio";
+    arpege.parameters = {{"Division", 4.0f}, {"Mode", 2.0f}};
+    vsm::sequencer::MidiEffect transpose;
+    transpose.type = "transpose";
+    transpose.parameters = {{"Semitones", -12.0f}};
+    transpose.enabled = false;                    // contourné : doit survivre aussi
+    projet.tracks[0].midiEffects = {arpege, transpose};
+
+    const ProjectDocument original = documentFromProject(projet);
+    VSM_ASSERT_EQ(original.tracks[0].midiEffects.size(), size_t{2});
+
+    const ProjectLoadResult relu = parseProjectDocument(projectDocumentToJson(original).toString());
+    VSM_ASSERT(relu.success);
+    const auto& chaine = relu.document.tracks[0].midiEffects;
+    VSM_ASSERT_EQ(chaine.size(), size_t{2});
+    VSM_ASSERT_EQ(chaine[0].type, std::string("arpeggio"));
+    VSM_ASSERT_NEAR(chaine[0].parameters.at("Division"), 4.0f, 1e-6);
+    VSM_ASSERT_NEAR(chaine[0].parameters.at("Mode"), 2.0f, 1e-6);
+    VSM_ASSERT(chaine[0].enabled);
+    VSM_ASSERT_EQ(chaine[1].type, std::string("transpose"));
+    VSM_ASSERT(!chaine[1].enabled);
+    // L'ORDRE EST CELUI DE LA CHAÎNE, et il compte (D31.2).
+    VSM_ASSERT_EQ(relu.document.tracks[1].midiEffects.size(), size_t{0});
+
+    vsm::sequencer::Project retour = buildProject();
+    applyDocumentToProject(relu.document, retour);
+    VSM_ASSERT_EQ(retour.tracks[0].midiEffects.size(), size_t{2});
+    VSM_ASSERT_EQ(retour.tracks[0].midiEffects[0].type, std::string("arpeggio"));
+    VSM_ASSERT(!retour.tracks[0].midiEffects[1].enabled);
+}
+
+VSM_TEST(a_project_without_a_midi_chain_writes_no_such_key) {
+    // Un projet d'avant D31 se relit et se réécrit octet pour octet.
+    const std::string texte = projectDocumentToJson(documentFromProject(buildProject())).toString();
+    VSM_ASSERT(texte.find("midiEffects") == std::string::npos);
+}

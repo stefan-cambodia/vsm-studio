@@ -353,6 +353,30 @@ struct TrackEffect {
     bool enabled = true;
 };
 
+/// UN EFFET MIDI DE PISTE (D31) -- les *MIDI inserts* de Cubase, le *MIDI
+/// Effects rack* de Live.
+///
+/// CE QUI LE DISTINGUE D'UNE ÉDITION, et c'est toute sa raison d'être :
+/// `arpeggiateNotes` (NoteEdit.h) ÉCRIT dans les notes ; un effet MIDI, lui,
+/// s'applique À LA LECTURE et laisse le matériau intact. On peut donc régler
+/// un arpège en écoutant, changer d'avis, et retrouver l'accord.
+///
+/// MÊME FORME QUE `TrackEffect`, délibérément : une identité que la fabrique
+/// sait lire, une table de paramètres en UNITÉS RÉELLES, un contournement.
+/// Deux structures voisines qui divergeraient obligeraient le format, le
+/// lecteur et l'écrivain à connaître les deux.
+///
+/// PAS D'ÉTAT NATIF : ces effets sont écrits ici, leur son EST leur table de
+/// paramètres. Le champ existe sur `TrackEffect` pour les plugins des autres,
+/// et rien n'est prévu pour héberger un effet MIDI tiers.
+struct MidiEffect {
+    /// « transpose », « velocity » ou « arpeggio ».
+    std::string type;
+    std::map<std::string, float> parameters;
+    /// Absent du fichier quand vrai, comme pour les inserts audio.
+    bool enabled = true;
+};
+
 /// Un point d'automation. `value` est en UNITÉS RÉELLES (Hz, secondes), jamais
 /// en normalisé -- la règle de tout le projet. `step` dit que le segment
 /// PARTANT de ce point est un palier et non une rampe.
@@ -624,6 +648,14 @@ public:
     int midiProgram = -1;
     int midiBank = -1;
     int midiInputChannel = 0;
+
+    /// D31.1 : LA CHAÎNE D'EFFETS MIDI, appliquée À LA LECTURE par
+    /// `PlaybackScheduler` et jamais aux notes. Vide par défaut, et alors
+    /// absente du fichier : un projet d'avant D31 se relit octet pour octet.
+    ///
+    /// DANS LA PISTE, comme `effects` et pour la même raison : un index vers
+    /// une table extérieure se décalerait à la première suppression de piste.
+    std::vector<MidiEffect> midiEffects;
 
     /// Le fichier que joue une piste audio. Vide sur une piste MIDI.
     AudioSource audio;
