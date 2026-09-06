@@ -5772,3 +5772,53 @@ Quatre manques ont survécu, et un cinquième est reporté.
 >
 > Tests : 271 core, 1 254 audio, 278 interchange — tous verts ; Python
 > inchangé (168 à D21).
+
+> **RECTIFICATIF (06/09/2026, 14:45) — le chiffre de D25 était faux.** Le
+> relevé « `handleControlEvent` implémenté par aucune des 57 machines »
+> venait d'un `grep` sur `audio/src` et `audio/include` — où les machines
+> ne sont PAS : elles vivent dans `audio/plugins/`. Recompté au bon endroit :
+> **53 dossiers sur 65 implémentent `handleControlEvent`, 42 répondent à la
+> molette de hauteur, 21 à la pression de canal, 18 à des CC, 8 ont leur
+> propre étouffoir (CC 64)**. Le trou de D24 n'était donc pas dans les
+> machines mais à l'ENTRÉE (les messages jetés) et dans la PRISE (jamais
+> gardés) — ce que D24 a réparé. Ce que ce rectificatif change :
+> la pédale du graphe (D25.1) reste juste pour les 45 machines sans
+> étouffoir, et elle est désormais TRANSMISE aussi aux huit qui en ont un,
+> pour ne pas leur retirer le leur ; la molette (« D25.5 reportée ») n'est
+> pas une passe sur 57 machines mais sur celles qui ne la font pas encore,
+> et D26 est recadrée ci-dessous. La leçon est dans CLAUDE.md : un « zéro »
+> sorti d'un `grep` se revérifie en LISTANT ce qu'on a cherché et où, avant
+> de l'écrire. Le message du commit b503321 porte le chiffre faux ; il n'est
+> pas réécrit (l'historique ne se retouche pas), ce rectificatif le corrige.
+
+### Phase D26 — La molette de hauteur là où elle manque (recadrée le 06/09/2026, 14:50)
+
+**Ce que le recomptage donne.** Vingt-trois dossiers de `audio/plugins/`
+ne répondent pas à la molette : douze n'ont pas de `handleControlEvent`
+(divider, drums, epiano, flute, fmdrums, perc, piano, sampler, testtone,
+tonewheel, tr808, tr909) et onze en ont un sans la molette (bagpipe,
+carillon, clavinet, harpsichord, hurdygurdy, jewsharp, kalimba, mandolin,
+musicbox, pipeorgan, vibraphone). Parmi eux, **sept seulement sont des
+instruments où un musicien plie la hauteur** : la flûte, le piano
+électrique, le clavinet, la guimbarde, la vielle, la mandoline, le kalimba.
+Les seize autres sont des percussions, des orgues, des cloches, des boîtes
+à musique, un clavecin — des instruments qui ne se plient pas, et où une
+molette serait une invention.
+
+**Ce que chacun des sept demande.** Ces machines sont des modèles physiques
+qui fixent leur fréquence AU NOTE-ON (la longueur du guide d'ondes, la
+tine, la corde) : `EPianoSynth.cpp:14`, `FluteSynth.h:138`,
+`ClavinetSynth.h:94` — une fréquence calculée une fois. Plier la hauteur en
+cours de note demande, pour chacune, de rendre cette longueur variable par
+bloc dans le modèle même, sans casser sa justesse (mesurée par leurs
+tests) : un travail par machine, sur son modèle, une heure ou deux chacune.
+
+**Décision, écrite ici plutôt que faite.** Aucune mesure ne réclame cette
+phase : la chaîne d'analyse n'émet pas de pitch bend (`grep pitch_bend
+analyse/analyzer/` : rien), donc aucune reconstruction n'en dépend, et les
+42 machines qui plient couvrent les synthétiseurs — ceux qu'un musicien
+plie. Elle se fera **machine par machine, quand un morceau le réclamera**,
+en commençant par la flûte (le seul des sept où le pli est courant), avec
+pour critère : une note pliée d'un demi-ton sort à la fréquence de la note
+du dessus, à 1 % près, mesurée sur le rendu. La phase reste ouverte, sans
+étape numérotée, et le prochain audit reprend l'ordre du § 3.

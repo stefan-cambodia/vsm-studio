@@ -1195,7 +1195,10 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
         for (int i = 0; i < drainedChaseCount_; ++i) {
             const ChasedControlEvent& chasse = drainedChase_[static_cast<size_t>(i)];
             if (chasse.trackIndex != trackIndex) continue;
-            if (interceptSustain(trackIndex, track.channel, chasse.event, events, numEvents)) continue;   // D25.1
+            if (interceptSustain(trackIndex, track.channel, chasse.event, events, numEvents)) {   // D25.1
+                instrument->handleControlEvent(chasse.event);   // les huit machines qui ont leur propre étouffoir le gardent
+                continue;
+            }
             if (!instrument->handleControlEvent(chasse.event))
                 ignoredControlEvents_.fetch_add(1, std::memory_order_relaxed);
         }
@@ -1205,6 +1208,7 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
             const LiveControlEvent& live = drainedLiveControls_[static_cast<size_t>(i)];
             if (live.trackIndex != trackIndex) continue;
             if (interceptSustain(trackIndex, track.channel, live.event, events, numEvents)) {   // D25.1
+                instrument->handleControlEvent(live.event);   // transmis quand même : huit machines ont leur étouffoir
                 liveControlsDelivered_.fetch_add(1, std::memory_order_relaxed);
                 continue;
             }
@@ -1379,7 +1383,11 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
                 notesSentToInstruments_.fetch_add(1, std::memory_order_relaxed);
             events[static_cast<size_t>(numEvents++)] = pluginEvent;
         } else if (issue == Issue::Control && interceptSustain(trackIndex, track.channel, controlEvent, events, numEvents)) {
-            // D25.1 : la pédale est l'affaire du graphe, pas de la machine.
+            // D25.1 : la pédale est tenue par le graphe pour toutes les machines,
+            // ET transmise -- huit machines (piano, clavecin...) ont leur propre
+            // étouffoir, et le leur retirer changerait leur son. Le résultat de
+            // la machine n'est pas compté « ignoré » : la pédale a agi.
+            instrument->handleControlEvent(controlEvent);
         } else if (issue == Issue::Control) {
             // Livré TOUT DE SUITE : les contrôles ne passent pas par le
             // tableau d'événements de note, dont le contrat (et les

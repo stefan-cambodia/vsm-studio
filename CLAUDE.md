@@ -77,6 +77,11 @@ l'ordre de marche — pas de la documentation d'accompagnement.
   du mode d'écoute (06/09). Un libellé de menu neuf doit être unique dans
   toute la barre, et la capture qui le vérifie regarde l'EFFET, pas l'absence
   d'erreur.
+- Les MACHINES vivent dans audio/plugins/<machine>/, pas dans audio/src/ ni
+  audio/include/ : un `grep` limité à ces deux dossiers a produit « aucune
+  machine ne répond aux contrôleurs », écrit dans un commit, alors que 42
+  répondent à la molette (06/09). Un « zéro » sorti d'un grep se revérifie en
+  listant ce qu'on a cherché ET où, avant de l'écrire.
 - JAMAIS d'édition de analyse/analyzer/*.py pendant qu'une course tourne : la
   chaîne importait des modules À LA DEMANDE, cinq heures après le départ, dans
   l'état du disque à cet instant (parite-v2, 5 h 24 perdues au réglage final).
