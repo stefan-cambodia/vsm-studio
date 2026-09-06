@@ -699,3 +699,142 @@ VSM_TEST(the_default_shape_leaves_every_existing_project_sounding_the_same) {
     VSM_ASSERT(clip.fadeShape == vsm::sequencer::FadeShape::Linear);
     VSM_ASSERT(!defaut.empty());
 }
+
+// ---------------------------------------------------------------------------
+// D33.2 — LE FONDU DE SÉCURITÉ AUX BORDS DES CLIPS.
+//
+// L'attendu, écrit avant la mesure : « le saut au bord d'un clip qui tranche
+// une sinusoïde à pleine amplitude tombe d'AU MOINS UN FACTEUR DIX, et le
+// premier échantillon rendu est EXACTEMENT zéro. Et le fondu posé à la MAIN
+// est inchangé au bit près : un fondu de sécurité qui s'ajouterait au sien le
+// rendrait deux fois. »
+// ---------------------------------------------------------------------------
+
+namespace {
+
+/// Une sinusoïde à pleine amplitude, décalée d'un quart de période : le
+/// premier échantillon vaut 1, donc un clip qui commence là claque au maximum.
+/// C'est le pire cas, et c'est celui qu'on veut mesurer.
+std::shared_ptr<AudioTrackSource> uneSinusoidePleine(int64_t frames) {
+    auto source = std::make_shared<AudioTrackSource>();
+    std::vector<float> g(static_cast<size_t>(frames)), d(static_cast<size_t>(frames));
+    for (int64_t i = 0; i < frames; ++i) {
+        const auto v = static_cast<float>(std::cos(2.0 * 3.14159265358979 * 5.0
+                                                    * static_cast<double>(i) / 480.0));
+        g[static_cast<size_t>(i)] = v;
+        d[static_cast<size_t>(i)] = v;
+    }
+    source->setMemorySamples(std::move(g), std::move(d));
+    return source;
+}
+
+/// Le plus grand saut d'un échantillon au suivant, en partant du silence : le
+/// premier échantillon compte donc comme un saut depuis zéro. C'est ce qui
+/// s'entend comme un clic.
+float plusGrandSaut(const std::vector<float>& buffer, size_t depuis, size_t combien) {
+    float pire = 0.0f;
+    float precedent = 0.0f;
+    for (size_t i = depuis; i < depuis + combien && i < buffer.size(); ++i) {
+        pire = std::max(pire, std::fabs(buffer[i] - precedent));
+        precedent = buffer[i];
+    }
+    return pire;
+}
+
+} // namespace
+
+VSM_TEST(a_safety_fade_kills_the_click_at_a_clip_edge) {
+    auto source = uneSinusoidePleine(2000);
+    AudioClipSpan span;
+    span.startFrame = 100;
+    span.lengthFrames = 800;
+    span.sourceStartFrame = 0;      // le fichier commence à 1,0 : le pire cas
+    source->clips.push_back(span);
+
+    std::vector<float> g(1000, 0.0f), d(1000, 0.0f);
+    source->safetyFadeFrames = 0;                   // le comportement d'avant
+    source->mixInto(g.data(), d.data(), 0, 1000);
+    const float sautSans = plusGrandSaut(g, 100, 8);
+    VSM_ASSERT(sautSans > 0.9f);                    // le clic est bien là
+
+    std::fill(g.begin(), g.end(), 0.0f);
+    std::fill(d.begin(), d.end(), 0.0f);
+    source->safetyFadeFrames = 96;                  // 2 ms à 48 kHz
+    source->mixInto(g.data(), d.data(), 0, 1000);
+    const float sautAvec = plusGrandSaut(g, 100, 8);
+
+    // LE CHIFFRE DE L'ÉTAPE : au moins un facteur dix.
+    VSM_ASSERT(sautAvec * 10.0f < sautSans);
+    // ET LE PREMIER ÉCHANTILLON EST EXACTEMENT ZÉRO -- c'est ce qui fait qu'il
+    // n'y a plus de discontinuité du tout au bord, et non une plus petite.
+    VSM_ASSERT_EQ(g[100], 0.0f);
+    VSM_ASSERT_EQ(d[100], 0.0f);
+    // Le dernier échantillon du clip aussi : le fondu de sortie finit à zéro.
+    VSM_ASSERT(std::fabs(g[899]) < 0.05f);
+}
+
+VSM_TEST(a_hand_made_fade_is_never_doubled_by_the_safety_one) {
+    // L'AUTRE MOITIÉ DE L'ATTENDU. Un fondu d'une seconde soigneusement
+    // dessiné ne doit pas se mettre à commencer par une marche de deux
+    // millisecondes.
+    auto avec = uneSinusoidePleine(2000);
+    auto sans = uneSinusoidePleine(2000);
+    AudioClipSpan span;
+    span.startFrame = 0;
+    span.lengthFrames = 800;
+    span.sourceStartFrame = 0;
+    span.fadeInFrames = 400;
+    span.fadeOutFrames = 400;
+    avec->clips.push_back(span);
+    sans->clips.push_back(span);
+
+    std::vector<float> gA(800, 0.0f), dA(800, 0.0f), gS(800, 0.0f), dS(800, 0.0f);
+    avec->safetyFadeFrames = 96;
+    sans->safetyFadeFrames = 0;
+    avec->mixInto(gA.data(), dA.data(), 0, 800);
+    sans->mixInto(gS.data(), dS.data(), 0, 800);
+
+    for (size_t i = 0; i < 800; ++i) {
+        VSM_ASSERT_EQ(gA[i], gS[i]);      // au bit près
+        VSM_ASSERT_EQ(dA[i], dS[i]);
+    }
+}
+
+VSM_TEST(the_safety_fade_never_eats_more_than_half_a_clip) {
+    // Sur un clip plus court que deux fois le fondu, les deux se
+    // chevaucheraient : un grain de trois millisecondes deviendrait deux fois
+    // plus faible qu'il ne doit être. Le fondu est borné à la moitié du clip,
+    // donc le milieu garde son gain plein.
+    auto source = uneSinusoidePleine(2000);
+    AudioClipSpan span;
+    span.startFrame = 0;
+    span.lengthFrames = 40;            // bien plus court que 2 x 96
+    span.sourceStartFrame = 120;       // là où la sinusoïde vaut environ zéro
+    source->clips.push_back(span);
+    source->safetyFadeFrames = 96;
+
+    std::vector<float> g(40, 0.0f), d(40, 0.0f);
+    source->mixInto(g.data(), d.data(), 0, 40);
+    // Au milieu exact, le gain vaut 1 : les deux fondus se rejoignent sans se
+    // recouvrir.
+    float crete = 0.0f;
+    for (float v : g) crete = std::max(crete, std::fabs(v));
+    VSM_ASSERT(crete > 0.9f);
+}
+
+VSM_TEST(a_zero_safety_fade_leaves_the_old_path_untouched) {
+    // Un réglage qu'on éteint doit rendre EXACTEMENT ce qu'on rendait avant
+    // qu'il existe.
+    auto source = uneSinusoidePleine(2000);
+    AudioClipSpan span;
+    span.startFrame = 0;
+    span.lengthFrames = 500;
+    span.sourceStartFrame = 0;
+    source->clips.push_back(span);
+    source->safetyFadeFrames = 0;
+
+    std::vector<float> g(500, 0.0f), d(500, 0.0f);
+    source->mixInto(g.data(), d.data(), 0, 500);
+    // Le premier échantillon est le matériau tel quel : 1,0.
+    VSM_ASSERT_NEAR(g[0], 1.0f, 1e-6f);
+}

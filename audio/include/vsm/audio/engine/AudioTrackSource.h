@@ -102,6 +102,19 @@ struct AudioTrackSource {
     std::shared_ptr<const SampleStore> samples;
     std::vector<AudioClipSpan> clips;
 
+    /// D33.2 : LE FONDU DE SÉCURITÉ, en trames, appliqué aux bords des clips
+    /// où l'utilisateur n'a POSÉ AUCUN fondu. Le sien gagne toujours.
+    ///
+    /// POURQUOI EN TRAMES ET NON EN MILLISECONDES : ce que la lecture compte
+    /// sont des trames, et convertir à chaque échantillon pour une constante
+    /// serait payer une division par échantillon. L'appelant convertit une
+    /// fois, à la fréquence réelle du moteur.
+    ///
+    /// Zéro le désactive, et le chemin de lecture est alors EXACTEMENT celui
+    /// d'avant la phase -- ce qui est ce qu'on veut d'un réglage qu'on peut
+    /// éteindre.
+    int64_t safetyFadeFrames = 0;
+
     /// Raccourci pour les cas où le matériau tient en mémoire -- les tests, et
     /// tout ce qui est fabriqué plutôt que lu.
     void setMemorySamples(std::vector<float> left, std::vector<float> right) {

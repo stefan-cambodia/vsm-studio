@@ -23,6 +23,7 @@ public:
     void paint(juce::Graphics&) override;
     void mouseDown(const juce::MouseEvent&) override;
     void mouseDrag(const juce::MouseEvent&) override;
+    void mouseUp(const juce::MouseEvent&) override;   ///< D33.3 : fin du scrub
     void mouseDoubleClick(const juce::MouseEvent&) override;
 
     void setLoopRegion(vsm::midi::Tick start, vsm::midi::Tick end, bool active);
@@ -44,6 +45,32 @@ public:
     /// La région de punch a été dessinée à la souris (Alt + glisser).
     std::function<void(vsm::midi::Tick start, vsm::midi::Tick end, bool active)> onPunchRegionChanged;
 
+    /// D33.3 : LE SCRUB. Ctrl+glisser sur la règle fait ENTENDRE ce que la
+    /// tête traverse, à la vitesse du geste.
+    ///
+    /// CTRL ET NON ALT, contrairement à ce que le tableau de la phase
+    /// annonçait : Alt dessine déjà la région de punch, et Maj la boucle. Un
+    /// troisième geste sur une touche déjà prise aurait fait deux choses à la
+    /// fois -- exactement le genre de raccourci qu'on croit cassé.
+    ///
+    /// `vitesse` vaut 0 au relâchement : le scrub s'arrête, et l'appelant
+    /// remet le transport dans l'état où il l'a trouvé.
+    std::function<void(vsm::midi::Tick tick, double vitesse)> onScrub;
+
+private:
+    // D33.3 — LE SCRUB.
+    bool scrubActif_ = false;
+    float scrubDernierX_ = 0.0f;
+    double scrubDernierTemps_ = 0.0;
+    /// Combien de pixels une seconde de morceau occupe à l'écran. Posé par le
+    /// panneau à chaque changement de zoom : sans lui, la vitesse du geste se
+    /// mesurerait en pixels, ce qui voudrait dire deux choses différentes à
+    /// deux zooms.
+    double vitesseDeReference_ = 100.0;
+public:
+    void setScrubReference(double pixelsParSeconde) {
+        vitesseDeReference_ = pixelsParSeconde > 1.0 ? pixelsParSeconde : 1.0;
+    }
 private:
     PianoRollComponent& pianoRoll_;
     vsm::midi::Tick loopStart_ = 0, loopEnd_ = 0;

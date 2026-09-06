@@ -58,3 +58,55 @@ VSM_TEST(importing_an_empty_source_adds_nothing) {
     VSM_ASSERT_EQ(bilan.tracksAdded, size_t(0));
     VSM_ASSERT(dest.tracks.empty());
 }
+
+// ---------------------------------------------------------------------------
+// D33.5 — LES COULEURS DE PISTE À L'IMPORT MIDI.
+//
+// L'attendu, écrit avant la mesure : « douze pistes importées d'un .mid
+// portent douze couleurs prises dans l'ordre de la palette, et une piste qui
+// arrivait DÉJÀ colorée garde exactement sa couleur ».
+// ---------------------------------------------------------------------------
+
+VSM_TEST(imported_tracks_get_a_colour_of_their_own) {
+    Project source;
+    source.ticksPerQuarterNote = 480;
+    uint64_t id = 1;
+    for (int i = 0; i < 12; ++i) {
+        Track t;
+        t.name = "T" + std::to_string(i);
+        t.addNote(0, 480, static_cast<uint8_t>(60 + i), 100, 0, id);
+        source.tracks.push_back(std::move(t));
+    }
+
+    Project cible;
+    cible.ticksPerQuarterNote = 480;
+    appendTracksFrom(cible, source, 0);
+
+    VSM_ASSERT_EQ(cible.tracks.size(), size_t{12});
+    // DOUZE COULEURS PRISES DANS L'ORDRE : la palette en compte dix, donc les
+    // deux dernières la reprennent au début -- et c'est voulu, au-delà de dix
+    // des teintes voisines se confondraient.
+    for (size_t i = 0; i < cible.tracks.size(); ++i)
+        VSM_ASSERT_EQ(cible.tracks[i].colorRgba, trackColourForIndex(i));
+    // Et elles ne sont pas toutes la même : c'est tout l'objet de l'étape.
+    VSM_ASSERT(cible.tracks[0].colorRgba != cible.tracks[1].colorRgba);
+}
+
+VSM_TEST(an_already_coloured_track_keeps_its_colour_on_import) {
+    Project source;
+    source.ticksPerQuarterNote = 480;
+    uint64_t id = 1;
+    Track peinte;
+    peinte.name = "Déjà peinte";
+    peinte.colorRgba = 0xFF123456u;      // une couleur que la palette ne porte pas
+    peinte.addNote(0, 480, 60, 100, 0, id);
+    source.tracks.push_back(std::move(peinte));
+
+    Project cible;
+    cible.ticksPerQuarterNote = 480;
+    appendTracksFrom(cible, source, 0);
+    VSM_ASSERT_EQ(cible.tracks.size(), size_t{1});
+    // Une palette qui écraserait ce que l'import a trouvé perdrait ce qu'il
+    // avait su lire.
+    VSM_ASSERT_EQ(cible.tracks[0].colorRgba, uint32_t{0xFF123456u});
+}

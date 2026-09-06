@@ -175,6 +175,14 @@ void PianoRollRulerComponent::mouseDown(const juce::MouseEvent& event) {
         repaint();
         return;
     }
+    // D33.3 : CTRL+GLISSER = SCRUB. Au `mouseDown` on ne fait que poser
+    // l'ancre : un simple Ctrl+clic sans glissé ne doit pas lancer le son.
+    if (event.mods.isCtrlDown() || event.mods.isCommandDown()) {
+        scrubActif_ = true;
+        scrubDernierX_ = event.position.x;
+        scrubDernierTemps_ = juce::Time::getMillisecondCounterHiRes();
+        return;
+    }
     if (onPlayheadRequested) onPlayheadRequested(tick);
 }
 
@@ -196,7 +204,39 @@ void PianoRollRulerComponent::mouseDrag(const juce::MouseEvent& event) {
         repaint();
         return;
     }
+    if (scrubActif_) {
+        // LA VITESSE VIENT DU GESTE : combien de pixels par seconde, rapporté
+        // à ce qu'un pixel vaut en temps de morceau. Un geste deux fois plus
+        // rapide que la lecture normale joue à 2x.
+        const double maintenant = juce::Time::getMillisecondCounterHiRes();
+        const double dt = std::max(1.0, maintenant - scrubDernierTemps_) / 1000.0;
+        const double dx = std::abs(static_cast<double>(event.position.x - scrubDernierX_));
+        scrubDernierX_ = event.position.x;
+        scrubDernierTemps_ = maintenant;
+        // LE SENS EST IGNORÉ, et c'est une décision : le moteur ne sait pas
+        // lire à l'envers (`setPlaybackSpeed` borne à 0,25..4, tous positifs),
+        // et un scrub arrière rendu par des sauts en avant serait un bruit qui
+        // n'apprend rien. Tirer vers la gauche déplace donc la tête sans son
+        // -- ce qui est déjà ce qu'on veut : on cherche un point, on ne
+        // réécoute pas à l'envers.
+        const double pixelsParSeconde = dx / dt;
+        // Ce qu'un pixel vaut : la largeur d'une seconde de morceau à l'écran.
+        const double reference = std::max(1.0, vitesseDeReference_);
+        const double vitesse = juce::jlimit(0.25, 4.0, pixelsParSeconde / reference);
+        if (onScrub) onScrub(tick, vitesse);
+        repaint();
+        return;
+    }
     if (onPlayheadRequested) onPlayheadRequested(tick);
+}
+
+void PianoRollRulerComponent::mouseUp(const juce::MouseEvent&) {
+    // D33.3 : LE SCRUB S'ARRÊTE AU RELÂCHEMENT, toujours -- y compris si la
+    // souris sort du composant. Une vitesse de 0 dit « fini » ; l'appelant
+    // remet le transport dans l'état où il l'a trouvé.
+    if (!scrubActif_) return;
+    scrubActif_ = false;
+    if (onScrub) onScrub(0, 0.0);
 }
 
 void PianoRollRulerComponent::mouseDoubleClick(const juce::MouseEvent&) {

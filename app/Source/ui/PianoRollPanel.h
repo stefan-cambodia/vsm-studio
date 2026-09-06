@@ -71,6 +71,11 @@ public:
         ruler_.onPunchRegionChanged = [this](vsm::midi::Tick start, vsm::midi::Tick end, bool active) {
             if (pianoRoll_.onPunchRegionChanged) pianoRoll_.onPunchRegionChanged(start, end, active);
         };
+        // D33.3 : le scrub traverse le panneau sans qu'il en sache rien de plus
+        // que ce qu'il transmet.
+        ruler_.onScrub = [this](vsm::midi::Tick tick, double vitesse) {
+            if (onScrub) onScrub(tick, vitesse);
+        };
         ruler_.onMarkerRequested = [this](vsm::midi::Tick tick) {
             if (onMarkerRequested) onMarkerRequested(tick);
         };
@@ -154,6 +159,14 @@ public:
     /// même chemin que le clavier d'ordinateur -- deux chemins pour une seule
     /// idée finiraient par ne plus jouer pareil.
     std::function<void(int note, float velocity, bool on)> onKeyboardNote;
+
+    /// D33.3 : la tête est tirée sur la règle avec Ctrl. `vitesse` à 0 dit que
+    /// le geste est fini.
+    std::function<void(vsm::midi::Tick tick, double vitesse)> onScrub;
+    /// D33.3 : combien de pixels une seconde de morceau occupe -- à repasser
+    /// au changement de zoom, sans quoi la vitesse du geste voudrait dire deux
+    /// choses à deux zooms.
+    void setScrubReference(double pixelsParSeconde) { ruler_.setScrubReference(pixelsParSeconde); }
 
     void paint(juce::Graphics& g) override { g.fillAll(vsm::ui::Palette::background); }
 

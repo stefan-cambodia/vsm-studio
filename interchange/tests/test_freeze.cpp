@@ -5,6 +5,8 @@
 #include "vsm/audio/plugin/BuiltInPlugins.h"
 #include "vsm/interchange/OfflineReconstruction.h"
 #include <cmath>
+#include "vsm/audio/io/WavFileWriter.h"
+#include <filesystem>
 #include <mutex>
 
 using namespace vsm::interchange;
@@ -268,4 +270,106 @@ VSM_TEST(a_bounced_selection_is_not_the_song_and_the_reason_is_the_machines_memo
     VSM_ASSERT(crete(choisie.left) > 1.0e-4f);
     // ...et pourtant elles diffèrent : c'est la mémoire de la machine.
     VSM_ASSERT(pire > 1.0e-3);
+}
+
+// ---------------------------------------------------------------------------
+// D33.4 — GELER UNE PISTE AUDIO.
+//
+// L'attendu, écrit avant la mesure : « moins de -120 dBFS entre le gel et le
+// vif, et NON zéro : le gel traverse son propre rendu isolé, le vif traverse
+// le graphe complet, et deux chemins de mixage flottants ne donnent pas le
+// dernier bit. Exiger zéro serait un critère qu'on contourne. »
+// ---------------------------------------------------------------------------
+
+namespace {
+
+/// Un projet d'une seule piste AUDIO, dont le matériau est fabriqué en mémoire
+/// plutôt que lu : le gel doit marcher sur une piste audio comme sur une piste
+/// MIDI, et cela n'a rien à voir avec la façon dont le fichier est arrivé.
+LoadedBundle bundleAudio() {
+    LoadedBundle bundle;
+    bundle.project.ticksPerQuarterNote = 480;
+    Track piste;
+    piste.name = "Prise";
+    piste.kind = Track::Kind::Audio;
+    piste.audio.path = "prise.wav";
+    piste.audio.sampleRate = 8000.0;
+    piste.audio.frames = 8000;
+    bundle.project.tracks.push_back(std::move(piste));
+    bundle.document = documentFromProject(bundle.project);
+
+    // LE MATÉRIAU EST UN VRAI FICHIER, écrit dans un dossier temporaire : le
+    // rendu résout les chemins RELATIFS au dossier du bundle, et un tampon
+    // fourni en mémoire ne passerait pas par le même chemin que ce qu'on
+    // prétend mesurer.
+    const std::filesystem::path dossier =
+        std::filesystem::temp_directory_path() / "vsm-gel-audio";
+    std::filesystem::create_directories(dossier);
+    std::vector<float> g(8000), d(8000);
+    for (size_t i = 0; i < 8000; ++i) {
+        const auto v = static_cast<float>(0.7 * std::sin(2.0 * 3.14159265358979 * 220.0
+                                                          * static_cast<double>(i) / 8000.0));
+        g[i] = v;
+        d[i] = v;
+    }
+    vsm::audio::io::WavFileWriter::writeFile(g.data(), d.data(), 8000, 8000.0,
+                                              vsm::audio::io::SampleFormat::Float32,
+                                              (dossier / "prise.wav").string());
+    bundle.folderPath = dossier.string();
+    return bundle;
+}
+
+float dBFS(float ecart) {
+    return ecart <= 0.0f ? -240.0f : 20.0f * std::log10(ecart);
+}
+
+} // namespace
+
+VSM_TEST(an_audio_track_can_be_frozen_and_the_freeze_matches_the_live_render) {
+    static std::once_flag registration;
+    std::call_once(registration, [] { vsm::audio::plugin::registerBuiltInPlugins(); });
+
+    LoadedBundle bundle = bundleAudio();
+    vsm::audio::engine::RenderedAudio gel;
+    const RenderResult resultat = renderTrackForFreeze(bundle, 0, gel, options());
+    // LE GEL D'UNE PISTE AUDIO N'EST PAS REFUSÉ : c'est tout l'objet de
+    // l'étape, et la restriction ne vivait que dans un test de l'interface.
+    VSM_ASSERT(resultat.success);
+    VSM_ASSERT(resultat.peakLevel > 0.1f);
+
+    // LE VIF, ET LE PIÈGE QUE LA PREMIÈRE VERSION DE CE TEST A PAYÉ.
+    //
+    // Comparer le gel au rendu du projet TEL QUEL donne un écart énorme, et
+    // c'est normal : le gel capture le signal d'AVANT le fader et le
+    // panoramique (D5.5), donc chaque canal inaltéré ; le rendu tel quel passe
+    // par la loi de panoramique, qui vaut 0,707 sur les deux canaux au centre.
+    // L'écart mesuré n'était pas un défaut du gel, c'était la différence que
+    // le gel EST censé avoir. Le critère « moins de -120 dBFS » avait donc été
+    // écrit contre la mauvaise référence.
+    //
+    // La bonne référence est celle de D5.5 : la même piste rendue à fond à
+    // gauche puis à fond à droite, où la loi vaut exactement 1 et 0.
+    auto rendreCanal = [&](float pan, bool prendreGauche) {
+        LoadedBundle seule = bundle;
+        seule.project.tracks[0].pan = pan;
+        seule.project.tracks[0].volume = 1.0f;
+        vsm::audio::engine::RenderedAudio sortie;
+        renderBundleToBuffer(seule, sortie, options());
+        return prendreGauche ? sortie.left : sortie.right;
+    };
+    const auto attenduG = rendreCanal(-1.0f, true);
+    const auto attenduD = rendreCanal(1.0f, false);
+
+    const size_t n = std::min(gel.left.size(), attenduG.size());
+    VSM_ASSERT(n > 1000);
+    float pire = 0.0f;
+    for (size_t i = 0; i < n; ++i) {
+        pire = std::max(pire, std::fabs(gel.left[i] - attenduG[i]));
+        pire = std::max(pire, std::fabs(gel.right[i] - attenduD[i]));
+    }
+    // Une piste AUDIO ne traverse ni instrument ni insert : le chemin est le
+    // même des deux côtés, et l'écart est donc NUL, pas seulement petit.
+    // C'est plus fort que ce que la feuille de route demandait.
+    VSM_ASSERT(dBFS(pire) < -120.0f);
+    VSM_ASSERT_EQ(pire, 0.0f);
 }

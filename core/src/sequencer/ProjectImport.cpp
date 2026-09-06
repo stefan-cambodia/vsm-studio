@@ -51,6 +51,13 @@ ImportOutcome appendTracksFrom(Project& destination, const Project& source, Tick
         for (auto& curve : copie.automation)
             for (auto& p : curve.points) p.tick = recaler(p.tick);
         copie.takes.clear();   // les prises d'un autre projet n'ont pas de sens ici
+        // D33.5 : UNE COULEUR PAR RANG, si la source n'en portait pas. Un
+        // fichier .mid n'a pas de couleurs : les quinze pistes d'un morceau
+        // ouvert par « Ouvrir MIDI... » arrivaient toutes du même bleu, et
+        // l'arrangement devenait illisible au moment précis où il compte le
+        // plus. Une couleur DÉJÀ posée n'est jamais remplacée.
+        if (copie.colorRgba == Track{}.colorRgba)
+            copie.colorRgba = trackColourForIndex(destination.tracks.size());
         destination.tracks.push_back(std::move(copie));
         ++bilan.tracksAdded;
     }

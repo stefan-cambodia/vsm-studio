@@ -947,6 +947,27 @@ bool applyCompositeTake(Track& track, const std::vector<CompSegment>& segments,
 // ---------------------------------------------------------------------------
 
 /// Vrai si AU MOINS une piste du projet est en solo.
+/// LA COULEUR D'UNE PISTE D'APRÈS SON RANG (D33.5).
+///
+/// POURQUOI ELLE MANQUAIT LÀ OÙ ELLE SERT LE PLUS. Une palette existait, mais
+/// dans `interchange/src/DawImport.cpp` : un projet importé de Live ou de FL
+/// arrivait bariolé, et une reconstruction -- quinze pistes créées par la
+/// chaîne d'analyse -- arrivait toute bleue. C'est exactement l'inverse du
+/// besoin : le projet qu'on doit LIRE au premier coup d'œil est celui qu'on
+/// vient de reconstruire.
+///
+/// DIX TEINTES, ET ELLES TOURNENT. Un projet à quarante pistes en réemploie
+/// donc quatre fois : au-delà de dix, des teintes voisines se confondraient
+/// plus qu'elles ne distingueraient, et l'on aurait remplacé « tout bleu » par
+/// « tout pareil, en plus fatigant ».
+inline uint32_t trackColourForIndex(size_t index) {
+    static constexpr uint32_t kPalette[] = {
+        0xFF6B9BFFu, 0xFFFF6B9Bu, 0xFFFFB86Bu, 0xFFFFE66Bu, 0xFFB8FF6Bu,
+        0xFF6BFF9Bu, 0xFF6BFFE6u, 0xFF6BB8FFu, 0xFF9B6BFFu, 0xFFE66BFFu,
+    };
+    return kPalette[index % (sizeof(kPalette) / sizeof(kPalette[0]))];
+}
+
 inline bool anySoloActive(const std::vector<Track>& tracks) {
     for (const auto& t : tracks)
         if (t.solo) return true;

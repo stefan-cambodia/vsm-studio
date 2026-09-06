@@ -18,15 +18,39 @@ namespace {
 /// faux d'un fondu ENCHAÎNÉ, où deux droites qui se croisent creusent 3 dB sur
 /// du matériau décorrélé.
 inline float fadeGain(int64_t position, int64_t length, int64_t fadeIn, int64_t fadeOut,
-                       vsm::sequencer::FadeShape shape) {
+                       vsm::sequencer::FadeShape shape, int64_t securite) {
     float gain = 1.0f;
-    if (fadeIn > 0 && position < fadeIn)
-        gain *= vsm::sequencer::fadeShapeGain(
-            shape, static_cast<float>(position) / static_cast<float>(fadeIn));
+    // D33.2 : LE FONDU DE SÉCURITÉ, et il ne s'applique QUE là où
+    // l'utilisateur n'a rien posé. Le sien gagne toujours : un fondu de
+    // sécurité qui s'ajouterait au sien le rendrait DEUX FOIS, et un fondu
+    // d'une seconde soigneusement dessiné se mettrait à commencer par une
+    // marche de deux millisecondes.
+    //
+    // POURQUOI IL EN FALLAIT UN. `fadeGain` ne faisait rien tant que
+    // `fadeIn`/`fadeOut` valaient zéro, c'est-à-dire sur la quasi-totalité des
+    // clips : un clip dont le matériau ne commence pas à zéro claquait à
+    // chaque bord. C'est ce que Cubase et Live posent d'office, et pour la
+    // même raison.
+    //
+    // BORNÉ À LA MOITIÉ DU CLIP : sur un clip plus court que deux fois le
+    // fondu, les deux se chevaucheraient et le milieu serait atténué -- un
+    // grain de trois millisecondes deviendrait deux fois plus faible qu'il ne
+    // doit être.
+    const int64_t plafond = std::max<int64_t>(0, length / 2);
+    const int64_t entree = fadeIn > 0 ? fadeIn : std::min(securite, plafond);
+    const int64_t sortie = fadeOut > 0 ? fadeOut : std::min(securite, plafond);
+    // LA FORME DU FONDU DE SÉCURITÉ EST LINÉAIRE, toujours : il ne dit rien
+    // d'un geste musical, il ne fait qu'éviter une discontinuité, et deux
+    // millisecondes ne portent aucune courbe audible.
+    const auto forme = [&](int64_t pose, float ratio) {
+        return pose > 0 ? vsm::sequencer::fadeShapeGain(shape, ratio) : ratio;
+    };
+    if (entree > 0 && position < entree)
+        gain *= forme(fadeIn, static_cast<float>(position) / static_cast<float>(entree));
     const int64_t restant = length - position;
-    if (fadeOut > 0 && restant < fadeOut)
-        gain *= vsm::sequencer::fadeShapeGain(
-            shape, static_cast<float>(std::max<int64_t>(0, restant)) / static_cast<float>(fadeOut));
+    if (sortie > 0 && restant < sortie)
+        gain *= forme(fadeOut,
+                       static_cast<float>(std::max<int64_t>(0, restant)) / static_cast<float>(sortie));
     return gain;
 }
 
@@ -125,7 +149,8 @@ int AudioTrackSource::mixInto(float* outLeft, float* outRight,
                 for (int i = 0; i < n; ++i) {
                     const int64_t dansLeClip = position + i - clip.startFrame;
                     const float gain = signeW * fadeGain(dansLeClip, clip.lengthFrames,
-                                                          clip.fadeInFrames, clip.fadeOutFrames, clip.fadeShape);
+                                                          clip.fadeInFrames, clip.fadeOutFrames,
+                                                          clip.fadeShape, safetyFadeFrames);
                     const auto j = static_cast<size_t>(position + i - timelineStart);
                     outLeft[j] += w.scratchL[static_cast<size_t>(i)] * gain;
                     outRight[j] += w.scratchR[static_cast<size_t>(i)] * gain;
@@ -155,7 +180,8 @@ int AudioTrackSource::mixInto(float* outLeft, float* outRight,
             float g = 0.0f, d = 0.0f;
             if (!magasin.frameAt(dansLeFichier, g, d)) continue;
             const float gain = signe * fadeGain(dansLeClip, clip.lengthFrames,
-                                                 clip.fadeInFrames, clip.fadeOutFrames, clip.fadeShape);
+                                                 clip.fadeInFrames, clip.fadeOutFrames,
+                                                 clip.fadeShape, safetyFadeFrames);
             const auto j = static_cast<size_t>(position - timelineStart);
             outLeft[j] += g * gain;
             outRight[j] += d * gain;
@@ -228,7 +254,7 @@ int AudioTrackSource::mixIntoAtSpeed(float* outLeft, float* outRight, double tim
             kernel.stereoAt(lire, positionSource(positionMorceau), g, d);
             const float gain = signe * fadeGain(static_cast<int64_t>(std::llround(dansLeClip)),
                                                  clip.lengthFrames, clip.fadeInFrames,
-                                                 clip.fadeOutFrames, clip.fadeShape);
+                                                 clip.fadeOutFrames, clip.fadeShape, safetyFadeFrames);
             outLeft[static_cast<size_t>(n)] += g * gain;
             outRight[static_cast<size_t>(n)] += d * gain;
             ++ecrits;

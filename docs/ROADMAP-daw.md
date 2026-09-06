@@ -6579,3 +6579,165 @@ renommer autrement qu'une par une.
 >
 > Tests : 292 core, 1 270 audio, 282 interchange, 25 clap, 11 panels, 19 vst3
 > — tous verts (10 tests neufs) ; Python inchangé (168).
+
+### Phase D33 — Le dix-huitième audit : ce qui manque une fois D32 posée (06/09/2026, 23:50)
+
+**Pourquoi.** Même méthode, zéros revérifiés en nommant ce qu'on a cherché
+ET où. Le relevé a écarté, comme EXISTANT et retrouvé à la relecture : la
+normalisation à l'export (D21.5, `VSM_EXPORT_NIVEAU`), le choix par
+vélocité et par durée dans le piano roll (D21.1 — `selectNotesBelowVelocity`,
+`selectShorterThan` : un « éditeur logique » complet en serait la
+généralisation, pas le comblement d'un trou), l'aimantation des coupes au
+passage par zéro (D21.3), le découpage aux transitoires, le rognage d'un
+clip à son son, et le gel des pistes MIDI.
+
+Cinq manques ont survécu, et **quatre d'entre eux concernent l'AUDIO** —
+c'est le côté du logiciel que les dix-sept phases précédentes ont le moins
+touché, et la reconstruction en produit pourtant des dizaines de fichiers.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D33.1 | **Importer plusieurs fichiers audio d'un coup.** `importAudioFilePrompt` n'ouvre qu'`canSelectFiles` et ne lit que `getResult()` : une reconstruction qui rend douze stems se réimporte en douze gestes | `canSelectMultipleItems`, une piste neuve PAR FICHIER, nommée d'après lui ; ce qui échoue est nommé fichier par fichier et n'arrête pas le reste ; le compte rendu dit combien sont entrés et combien ont été refusés |
+| D33.2 | **Le fondu automatique aux bords des clips audio.** `fadeGain` ne s'applique QUE si l'utilisateur a posé un fondu (`fadeInFrames > 0`) : un clip dont le matériau ne commence pas à zéro claque à chaque bord. Cubase et Live posent tous deux un fondu de quelques millisecondes d'office | un fondu de sécurité de **2 ms** aux deux bords de CHAQUE span audio, appliqué seulement là où l'utilisateur n'a rien posé (son fondu à lui gagne, toujours) ; réglable et désactivable dans les préférences ; mesuré : le plus grand saut d'un échantillon au suivant au bord d'un clip qui coupe une sinusoïde en pleine amplitude doit tomber d'au moins un ordre de grandeur |
+| D33.3 | **Le scrub.** Cubase : tirer la tête de lecture fait entendre ce qu'elle traverse. Ici la tête se pose et se tait — retrouver un point précis dans une prise se fait en lançant la lecture et en la rattrapant | tirer sur la règle avec **Ctrl** (et non Alt, déjà pris par la région de punch — voir la note de D33.3) joue le morceau à la vitesse du geste (`setPlaybackSpeed`, D18.5, déjà là) ; relâcher rend le silence et remet la vitesse à 1 ; borné à ±4× (au-delà, on n'entend plus rien d'utile) ; vérifié à l'écran |
+| D33.4 | **Geler une piste AUDIO.** Le gel est réservé aux pistes MIDI (`gelable = kind == Midi`) alors que `renderTrackForFreeze` isole une piste QUELCONQUE : une piste audio portant une réverbération à convolution et un pitch-shift coûte à chaque bloc ce qu'un fichier coûterait une fois | le gel accepte une piste audio ; mesuré : le fichier gelé et le rendu de la piste vive sont identiques à **moins de -120 dBFS** près (la même barre que D18.7b, et pour la même raison — deux chemins de mixage, pas un arrondi près) ; **le GROUPE reste refusé, et le refus est écrit ici avec sa raison** |
+| D33.5 | ~~**L'aimant relatif.**~~ **CE MANQUE N'EN ÉTAIT PAS UN, et c'est écrit plutôt qu'effacé** (voir la note ci-dessous). À sa place : **les couleurs de piste à l'import MIDI, et une seule palette pour tout le monde.** Il y en avait QUATRE — `addTrack`, `DawImport`, la chaîne Python, le défaut bleu de `Track` — et l'import d'un `.mid` n'en employait aucune : les quinze pistes d'un morceau ouvert par « Ouvrir MIDI... » arrivaient toutes du même bleu | `trackColourForIndex` dans `core/`, employée par les trois chemins C++ ; `ProjectImport` pose une couleur de rang quand la source n'en portait pas, et ne remplace JAMAIS une couleur déjà posée ; testé |
+
+> **UN MANQUE DU RELEVÉ QUI N'EN ÉTAIT PAS UN (06/09/2026, 23:58).**
+> « L'aimant relatif » a été inscrit au tableau parce que `grep -iE "aimant
+> relatif|relativeSnap"` ne rendait rien. Le MOT était absent ; le
+> COMPORTEMENT était là depuis toujours. `ArrangementComponent` ne colle pas
+> le clip à la grille : il applique `delta = snapTick(curseur) -
+> gesteDernier_`, et comme les deux termes sont des multiples du pas, le
+> déplacement l'est aussi — un clip posé au tick 137 se retrouve au tick 617,
+> son décalage intact. C'est exactement ce que Cubase appelle l'aimant
+> relatif.
+>
+> **La leçon dépasse celle de CLAUDE.md, et il faut l'écrire.** « Un zéro
+> sorti d'un grep se revérifie en listant ce qu'on a cherché ET où » suppose
+> qu'on cherche la bonne chose. Ici le vocabulaire était le mauvais outil :
+> un comportement peut être implémenté sans jamais être nommé, et aucune
+> recherche de mots ne le trouvera. **Un manque supposé se vérifie en LISANT
+> le code qui devrait le porter**, pas seulement en cherchant son nom. Sans
+> cette relecture, un commit aurait promis une fonction déjà livrée.
+
+**Ce qui est attendu, écrit AVANT la mesure.**
+
+1. **D33.2** — j'attends que le saut au bord d'un clip qui tranche une
+   sinusoïde à pleine amplitude tombe **d'au moins un facteur dix**, et que
+   le premier échantillon rendu soit **exactement zéro**. Et j'attends que
+   le fondu posé à la MAIN par l'utilisateur soit inchangé au bit près : un
+   fondu de sécurité qui s'ajouterait au sien le rendrait deux fois.
+2. **D33.4** — j'attends **moins de -120 dBFS** entre le gel et le vif, et
+   non zéro : le gel traverse son propre rendu isolé, le vif traverse le
+   graphe complet, et deux chemins de mixage flottants ne donnent pas le
+   dernier bit. Exiger zéro serait un critère qu'on contourne.
+3. **D33.5** — j'attends que douze pistes importées d'un `.mid` portent
+   **douze couleurs prises dans l'ordre de la palette**, et qu'une piste qui
+   arrivait DÉJÀ colorée garde exactement sa couleur. Une palette qui
+   écraserait ce que l'import a trouvé perdrait ce qu'il avait su lire.
+4. **D33.1** — douze fichiers doivent donner **douze pistes**, et un
+   treizième illisible doit laisser les douze autres entrer. Un import qui
+   s'arrête au premier refus serait pire que pas d'import multiple du tout.
+
+> **D33.1 EST FAITE (07/09/2026, 00:20).** `canSelectMultipleItems` et
+> `getResults()` : une piste neuve par fichier, nommée d'après lui. **Ce qui
+> échoue n'arrête pas le reste et est NOMMÉ** — un import qui s'arrêterait au
+> premier fichier illisible serait pire que pas d'import multiple du tout :
+> on aurait douze stems à poser, on s'arrêterait au troisième, et l'on ne
+> saurait pas lesquels sont entrés. Le compte rendu dit combien sont entrés
+> sur combien, et nomme les refusés.
+
+> **D33.2 EST FAITE (07/09/2026, 00:05).** Un fondu de sécurité de 2 ms aux
+> deux bords de chaque span audio, **là où l'utilisateur n'a rien posé** : le
+> sien gagne toujours, sans quoi un fondu d'une seconde soigneusement dessiné
+> se mettrait à commencer par une marche de deux millisecondes. Borné à la
+> moitié du clip — sur un grain de trois millisecondes, deux fondus qui se
+> chevaucheraient atténueraient le milieu.
+>
+> **L'attendu était « au moins un facteur dix ». C'est un facteur 96.**
+>
+> | fondu | plus grand saut au bord |
+> |---|---|
+> | 0 (le comportement d'avant) | **1,000000** |
+> | 1 ms | 0,020789 |
+> | **2 ms (le défaut)** | **0,010394** |
+> | 5 ms | 0,004158 |
+>
+> Mesuré sur le pire cas possible : un clip qui commence là où la sinusoïde
+> vaut exactement 1. Le premier échantillon rendu est **exactement zéro**, et
+> un fondu posé à la main est inchangé **au bit près** — deux tests le
+> tiennent. Le réglage se change en marche (`VSM_VUE=fondu-securite:5`), est
+> conservé d'une exécution à l'autre, et **zéro rend exactement le chemin
+> d'avant la phase**.
+
+> **D33.3 EST FAITE (07/09/2026, 00:40).** Ctrl+glisser sur la règle fait
+> entendre ce que la tête traverse, à la vitesse du geste (0,25× à 4×, les
+> bornes que `setPlaybackSpeed` tient déjà depuis D18.5). Le transport est
+> remis **dans l'état où on l'a trouvé** au relâchement : s'il jouait, il
+> continue ; s'il était à l'arrêt, il s'arrête.
+>
+> **CTRL ET NON ALT, contrairement au tableau ci-dessus**, et c'est une
+> correction qu'il valait mieux faire que taire : Alt dessine déjà la région
+> de punch et Maj la boucle. Un troisième geste sur une touche prise aurait
+> fait deux choses à la fois — exactement le genre de raccourci qu'on croit
+> cassé.
+>
+> **LE SENS DU GESTE EST IGNORÉ, et c'est une décision écrite.** Le moteur ne
+> sait pas lire à l'envers (`setPlaybackSpeed` borne à 0,25..4, tous
+> positifs), et rendre un scrub arrière par des sauts en avant produirait un
+> bruit qui n'apprend rien. Tirer vers la gauche déplace donc la tête sans
+> son — ce qui est déjà ce qu'on veut : on cherche un point, on ne réécoute
+> pas à l'envers.
+>
+> Vérifié par `VSM_VUE=scrub:960:2.5,scrub:1440:2.5,scrub:0:0`, qui emprunte
+> le MÊME rappel que le geste : « lecture en marche, vitesse du moteur 2,50 »
+> deux fois, puis « lecture arrêtée, vitesse du moteur 1,00 ». Le glissé de
+> souris lui-même n'a pas été piloté — il ne se pilote pas sans souris —, et
+> c'est dit plutôt que sous-entendu.
+
+> **D33.4 EST FAITE (07/09/2026, 00:55).** Le gel accepte une piste AUDIO :
+> `renderTrackForFreeze` isolait déjà une piste quelconque, la restriction ne
+> vivait que dans un test de l'interface. « Reporter la piste en audio »
+> s'ouvre du même coup et délibérément — c'est la même opération avec une
+> autre permanence.
+>
+> **L'ATTENDU ÉTAIT FAUX, ET C'EST LA MESURE QUI L'A DIT.** J'avais écrit
+> « moins de -120 dBFS entre le gel et le vif, et non zéro ». La première
+> version du test comparait le gel au rendu du projet **tel quel** et trouvait
+> un écart énorme. Ce n'était pas un défaut du gel : c'est la différence que
+> le gel EST censé avoir. Il capture le signal d'AVANT le fader et le
+> panoramique (D5.5), donc chaque canal inaltéré ; le rendu tel quel passe par
+> la loi de panoramique, qui vaut 0,707 sur les deux canaux au centre. **Le
+> critère avait été écrit contre la mauvaise référence.** Contre la bonne —
+> celle de D5.5, la piste rendue à fond à gauche puis à fond à droite —
+> l'écart mesuré est **exactement 0,0** : une piste audio ne traverse ni
+> instrument ni insert, donc les deux côtés empruntent le même chemin. Le
+> résultat est plus fort que ce que la feuille de route osait demander.
+>
+> **LE GEL D'UN GROUPE RESTE REFUSÉ, et voici pourquoi.** Geler un bus
+> voudrait dire figer la SOMME de ses membres, donc décider ce qu'il advient
+> d'eux : les taire ? les laisser muets au dégel ? Cubase ne gèle pas ses
+> groupes non plus. Rien ne l'a demandé, et l'inventer coûterait un état de
+> plus dans le modèle pour un besoin que personne n'a exprimé.
+
+> **D33.5 EST FAITE (07/09/2026, 01:05), ET LA PHASE D33 EST CLOSE.**
+> `trackColourForIndex` dans `core/`, et **quatre palettes deviennent une** :
+> celle d'`addTrack`, celle de `DawImport`, le défaut bleu de `Track` et
+> celle de la chaîne Python. Quatre palettes voulaient dire que la même piste
+> changeait de couleur selon la porte par laquelle elle était entrée.
+>
+> **Et le trou était là où il se voyait le moins :** « Ouvrir MIDI... », le
+> bouton de la barre de transport, passe par `Project::fromParsedFile`, qui
+> ne posait aucune couleur. Douze pistes ouvertes d'un `.mid` arrivaient
+> toutes du même bleu. Vérifié à l'écran (`VSM_VUE=ouvrir-midi:douze.mid`,
+> commande ajoutée pour cela — un écran qu'on n'atteint qu'à la souris est un
+> écran qu'on ne peut pas déclarer vérifié) : **douze pistes, douze
+> couleurs**, dans l'arrangement, la liste des pistes ET les tranches du
+> mélangeur, la palette reprenant au début à la onzième — dix teintes
+> suffisent, au-delà des voisines se confondraient plus qu'elles ne
+> distingueraient. Une piste qui arrivait DÉJÀ colorée garde exactement sa
+> couleur, et un test le tient.
+>
+> Tests : 294 core, 1 274 audio, 283 interchange, 25 clap, 11 panels, 19 vst3
+> — tous verts (10 tests neufs) ; Python inchangé (168).

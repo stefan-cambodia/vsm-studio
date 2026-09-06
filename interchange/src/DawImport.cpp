@@ -37,12 +37,13 @@ double nombre(const std::string& texte, double defaut) {
 /// dans sa palette ; on en fait une teinte stable plutôt que d'inventer des
 /// valeurs exactes qu'on ne connaît pas.
 uint32_t couleurDepuisIndice(int indice) {
-    static constexpr uint32_t kPalette[] = {
-        0xFFFF6B9Bu, 0xFFFFB86Bu, 0xFFFFE66Bu, 0xFFB8FF6Bu, 0xFF6BFF9Bu,
-        0xFF6BFFE6u, 0xFF6BB8FFu, 0xFF9B6BFFu, 0xFFE66BFFu, 0xFFFF6BB8u,
-    };
-    if (indice < 0) return 0xFF6B9BFFu;
-    return kPalette[static_cast<size_t>(indice) % (sizeof(kPalette) / sizeof(kPalette[0]))];
+    // D33.5 : LA PALETTE VIENT DE `core/` (`trackColourForIndex`). Elle était
+    // écrite ici, et une piste importée de Live n'avait donc pas les mêmes
+    // couleurs qu'une piste créée dans l'application. Un indice négatif -- Live
+    // dit « pas de couleur » ainsi -- rend le bleu par défaut, ce qui laisse
+    // l'appelant décider s'il veut une couleur de rang à la place.
+    if (indice < 0) return vsm::sequencer::Track{}.colorRgba;
+    return vsm::sequencer::trackColourForIndex(static_cast<size_t>(indice));
 }
 
 /// POSE UN CLIP SUR LE MATÉRIAU IMPORTÉ, et c'est indispensable.

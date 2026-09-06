@@ -283,6 +283,14 @@ Project Project::fromParsedFile(const ParsedFile& parsed) {
         if (!blocVsm.empty()) applyVsmNoteBlock(blocVsm, track, project);
 
         track.sortEvents();
+        // D33.5 : UNE COULEUR PAR RANG. C'est ICI que passe « Ouvrir MIDI... »,
+        // le bouton de la barre de transport : un fichier .mid ne porte pas de
+        // couleurs, et les quinze pistes d'un morceau ouvert arrivaient toutes
+        // du même bleu -- l'arrangement devenait illisible au moment précis où
+        // il compte le plus. La palette vient de `Track.h`, la même que
+        // `addTrack` et que l'import d'un projet Live.
+        if (track.colorRgba == Track{}.colorRgba)
+            track.colorRgba = trackColourForIndex(project.tracks.size());
         project.tracks.push_back(std::move(track));
     }
 

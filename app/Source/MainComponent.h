@@ -954,6 +954,23 @@ private:
     /// touche s'allumerait puis s'éteindrait un vingtième de seconde plus
     /// tard, et l'autoportrait ne montrerait jamais rien.
     bool epingleClavier_ = false;
+    /// D33.2 : LE FONDU DE SÉCURITÉ aux bords des clips audio, en
+    /// millisecondes. Deux millisecondes par défaut -- assez pour supprimer un
+    /// clic, trop court pour s'entendre comme un fondu. Zéro le désactive, et
+    /// la lecture reprend exactement le chemin d'avant la phase. Conservé
+    /// d'une exécution à l'autre.
+    double safetyFadeMs_ = 2.0;
+    /// D33.3 : un scrub est en cours, et le transport jouait-il avant lui ?
+    /// C'est ce qui permet de le remettre dans l'état où on l'a trouvé.
+    bool scrubEnCours_ = false;
+    bool scrubJouaitDeja_ = false;
+    /// D33.1 : une piste neuve PAR FICHIER. Ce qui échoue est nommé et
+    /// n'arrête pas le reste.
+    void importAudioFiles(const juce::Array<juce::File>& fichiers);
+    /// D33.5 : ouvre un `.mid` SANS sélecteur de fichier, par le même chemin
+    /// que « Ouvrir MIDI... ». Un écran qu'on ne peut atteindre qu'à la souris
+    /// est un écran qu'on ne peut pas déclarer vérifié.
+    void openMidiFileDirect(const juce::File& fichier);
     /// LA FENÊTRE IMPLICITE SE MATÉRIALISE (D16.1) : toute piste qui porte du
     /// matériau et aucun clip en reçoit un, « tout à zéro » -- exactement le
     /// passage que l'ordonnanceur fabriquait déjà pour elle, à l'échantillon

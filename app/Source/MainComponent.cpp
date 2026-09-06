@@ -257,6 +257,26 @@ MainComponent::MainComponent()
     // le clavier d'ordinateur (D11.7). Deux chemins pour une seule idée
     // finiraient par ne plus jouer pareil -- et c'est celui-là qui sait déjà
     // trouver la piste armée.
+    // D33.3 : LE SCRUB. On lance le transport à la vitesse du geste et on le
+    // remet où on l'a trouvé au relâchement -- si le morceau jouait déjà, il
+    // continue ; s'il était à l'arrêt, il s'arrête.
+    pianoRollPanel_.onScrub = [this](vsm::midi::Tick tick, double vitesse) {
+        if (vitesse <= 0.0) {
+            audioEngine_.processGraph().setPlaybackSpeed(1.0);
+            if (!scrubJouaitDeja_) transport_.stop();
+            scrubEnCours_ = false;
+            return;
+        }
+        if (!scrubEnCours_) {
+            scrubEnCours_ = true;
+            scrubJouaitDeja_ = audioEngine_.processGraph().isPlaying();
+        }
+        transport_.seekToTick(tick);
+        audioEngine_.processGraph().seekSeconds(project_.ticksToSeconds(tick));
+        arrangement_.setPlayheadTick(tick);
+        audioEngine_.processGraph().setPlaybackSpeed(vitesse);
+        if (!audioEngine_.processGraph().isPlaying()) transport_.play();
+    };
     pianoRollPanel_.onKeyboardNote = [this](int note, float velo, bool on) {
         audioEngine_.playComputerKey(static_cast<uint8_t>(juce::jlimit(0, 127, note)),
                                       static_cast<uint8_t>(juce::jlimit(1, 127,
@@ -883,6 +903,12 @@ MainComponent::MainComponent()
         audioEngine_.processGraph().setMetronomeRecordOnly(
             reglages.getBoolValue("metronomeEnregistrementSeul", false));
     }
+    // D33.2 : LE FONDU DE SÉCURITÉ, relu au démarrage. Deux millisecondes par
+    // défaut : assez pour supprimer un clic, trop court pour s'entendre comme
+    // un fondu. Zéro le désactive, et la lecture reprend le chemin d'avant.
+    safetyFadeMs_ = juce::jlimit(0.0, 50.0,
+        vsm::app::ui::UiScale::properties().getDoubleValue("fonduDeSecuriteMs", 2.0));
+
     // D17.2 : « l'automation suit les clips », active par défaut comme chez
     // Cubase, et retenue d'une exécution à l'autre.
     arrangement_.setAutomationFollowsClips(
@@ -1294,6 +1320,39 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     // saisie et la boîte de message ne se pilotent pas sans souris.
     else if (nom.startsWith("renommer-serie:")) renameTracksInSeries(nom.substring(15));
     else if (nom == "statistiques") showProjectStatistics();
+    // D33.3 : « scrub:TICK:VITESSE » emprunte le MÊME rappel que le geste de
+    // la règle -- un glissé de souris ne se pilote pas sans souris, mais ce
+    // qu'il déclenche, si. « scrub:0:0 » le termine.
+    else if (nom.startsWith("scrub:")) {
+        const auto m = juce::StringArray::fromTokens(nom.substring(6), ":", "");
+        if (m.size() >= 2 && pianoRollPanel_.onScrub) {
+            pianoRollPanel_.onScrub(static_cast<vsm::midi::Tick>(m[0].getLargeIntValue()),
+                                     m[1].getDoubleValue());
+            std::fputs((juce::String::fromUTF8(u8"Scrub : tick ") + m[0]
+                         + juce::String::fromUTF8(u8", vitesse ") + m[1]
+                         + juce::String::fromUTF8(u8" -> lecture ")
+                         + (audioEngine_.processGraph().isPlaying() ? "en marche" : "arrêtée")
+                         + juce::String::fromUTF8(u8", vitesse du moteur ")
+                         + juce::String(audioEngine_.processGraph().playbackSpeed(), 2)
+                         + "\n").toRawUTF8(), stderr);
+        } else {
+            std::fputs("VSM_VUE scrub : attendu scrub:TICK:VITESSE\n", stderr);
+        }
+    }
+    else if (nom.startsWith("ouvrir-midi:"))
+        openMidiFileDirect(juce::File::getCurrentWorkingDirectory().getChildFile(nom.substring(12)));
+    // D33.2 : « fondu-securite:0 » l'éteint, « fondu-securite:5 » l'allonge --
+    // et les clips sont RECHARGÉS, sans quoi le réglage ne prendrait qu'au
+    // prochain chargement de projet.
+    else if (nom.startsWith("fondu-securite:")) {
+        safetyFadeMs_ = juce::jlimit(0.0, 50.0, nom.substring(15).getDoubleValue());
+        vsm::app::ui::UiScale::properties().setValue("fonduDeSecuriteMs", safetyFadeMs_);
+        loadAudioTracks();
+        std::fputs((juce::String::fromUTF8(u8"Fondu de sécurité : ")
+                     + juce::String(safetyFadeMs_, 2)
+                     + juce::String::fromUTF8(u8" ms aux bords des clips audio.\n")).toRawUTF8(),
+                    stderr);
+    }
     // D32.3 : montrer le clavier, et y poser une note pour la photographier
     // (« clavier-note:60 »). Une touche enfoncée à la souris ne se capture pas.
     else if (nom == "clavier") pianoRollPanel_.setKeyboardVisible(true);
@@ -2153,8 +2212,21 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addSeparator();
             {
                 const size_t piste = trackList_.selectedTrackIndex();
+                // D33.4 : LE GEL ACCEPTE AUSSI UNE PISTE AUDIO.
+                // `renderTrackForFreeze` isole une piste QUELCONQUE ; la
+                // restriction ne vivait que dans ce test. Une piste audio
+                // portant une réverbération à convolution et un pitch-shift
+                // coûte à chaque bloc ce qu'un fichier coûterait une fois.
+                //
+                // LE GROUPE RESTE REFUSÉ, et c'est écrit dans la feuille de
+                // route : geler un bus voudrait dire figer la SOMME de ses
+                // membres, donc décider ce qu'il advient d'eux -- les taire,
+                // et les laisser muets quand on dégèle ? Cubase ne gèle pas
+                // ses groupes non plus. Rien ne l'a demandé, et l'inventer
+                // coûterait un état de plus dans le modèle.
                 const bool gelable = piste < project_.tracks.size()
-                                     && project_.tracks[piste].kind == Track::Kind::Midi;
+                                     && (project_.tracks[piste].kind == Track::Kind::Midi
+                                         || project_.tracks[piste].kind == Track::Kind::Audio);
                 const bool gelee = gelable && project_.tracks[piste].frozen;
                 menu.addItem(kMenuTrackFreeze,
                               gelee ? u8"Dégeler la piste (l'instrument reprend)"
@@ -4072,6 +4144,29 @@ void MainComponent::openMidiFile() {
                                                      "Erreur d'import MIDI", e.what());
         }
     });
+}
+
+void MainComponent::openMidiFileDirect(const juce::File& fichier) {
+    if (!fichier.existsAsFile()) {
+        std::fputs((juce::String::fromUTF8(u8"Ouvrir MIDI : fichier introuvable — ")
+                     + fichier.getFullPathName() + "\n").toRawUTF8(), stderr);
+        return;
+    }
+    try {
+        ParsedFile parsed = MidiFileParser::parseFile(fichier.getFullPathName().toStdString());
+        history_.clear();
+        project_ = Project::fromParsedFile(parsed);
+        project_.title = fichier.getFileNameWithoutExtension().toStdString();
+        rebuildFromProject();
+        pianoRoll_.cadrerSurLesNotes();
+        std::fputs((juce::String::fromUTF8(u8"Ouvrir MIDI : ")
+                     + juce::String(static_cast<int>(project_.tracks.size()))
+                     + juce::String::fromUTF8(u8" piste(s) — ") + fichier.getFileName()
+                     + "\n").toRawUTF8(), stderr);
+    } catch (const std::exception& e) {
+        std::fputs((juce::String::fromUTF8(u8"Ouvrir MIDI : ") + juce::String(e.what())
+                     + "\n").toRawUTF8(), stderr);
+    }
 }
 
 void MainComponent::openProjectBundle() {
@@ -6171,6 +6266,12 @@ void MainComponent::loadAudioTracks() {
         // cherchent ICI, une fois par piste, hors du thread audio -- comme le
         // cache d'aperçu juste au-dessus, et pour la même raison.
         vsm::audio::engine::prepareWarpedSpans(*charge.source);
+        // D33.2 : LE FONDU DE SÉCURITÉ, converti UNE FOIS en trames à la
+        // fréquence réelle du moteur -- le chemin de lecture compte des
+        // trames, et convertir à chaque échantillon pour une constante serait
+        // payer une division par échantillon.
+        charge.source->safetyFadeFrames =
+            static_cast<int64_t>(std::llround(safetyFadeMs_ / 1000.0 * sr));
         audioEngine_.processGraph().setTrackAudio(i, charge.source);
     }
     // UNE PISTE AUDIO QUI NE CHARGE PAS NE SE DISTINGUE PAS, À L'OREILLE, D'UNE
@@ -6318,17 +6419,17 @@ void MainComponent::addTrack(Track::Kind kind) {
     beginProjectEdit(groupe ? juce::String(u8"Ajouter un groupe")
                     : audio  ? juce::String(u8"Ajouter une piste audio")
                               : juce::String(u8"Ajouter une piste"));
-    // Palette de couleurs cyclique pour distinguer visuellement les pistes.
-    static const uint32_t kColors[] = {
-        0xffE3A24Du, 0xff6B9BFFu, 0xff8ED081u, 0xffD08BC8u, 0xffE0C15Au, 0xff7FD0C8u
-    };
+    // D33.5 : LA PALETTE VIENT DE `core/`, comme partout ailleurs. Il y en
+    // avait QUATRE : celle-ci, celle de `DawImport`, celle de la chaîne Python
+    // et le défaut bleu de `Track`. Quatre palettes veulent dire que la même
+    // piste change de couleur selon la porte par laquelle elle est entrée.
     const size_t n = project_.tracks.size();
 
     Track t;
     t.kind = kind;
     t.name = (groupe ? "Groupe " : audio ? "Audio " : "Piste ") + std::to_string(n + 1);
     t.channel = static_cast<uint8_t>(n % 16);      // canaux MIDI 1..16 en boucle
-    t.colorRgba = kColors[n % (sizeof(kColors) / sizeof(kColors[0]))];
+    t.colorRgba = vsm::sequencer::trackColourForIndex(n);
     // Pas d'instrument par défaut : l'utilisateur le choisit dans le combo de
     // la piste (le Synth Rack se peuplera automatiquement à la sélection).
     project_.tracks.push_back(t);
@@ -8602,14 +8703,42 @@ bool MainComponent::importAudioFileOnNewTrack(const juce::File& fichier) {
 
 void MainComponent::importAudioFilePrompt() {
     auto chooser = std::make_shared<juce::FileChooser>(
-        juce::String(u8"Importer un fichier audio sur une piste neuve"), juce::File(),
+        juce::String::fromUTF8(u8"Importer des fichiers audio, un par piste neuve"), juce::File(),
         "*.wav;*.flac;*.ogg;*.mp3;*.aif;*.aiff");
-    chooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+    // D33.1 : PLUSIEURS FICHIERS D'UN COUP. Une reconstruction qui rend douze
+    // stems se réimportait en douze gestes ; `canSelectMultipleItems` et
+    // `getResults()` en font un.
+    chooser->launchAsync(juce::FileBrowserComponent::openMode
+                             | juce::FileBrowserComponent::canSelectFiles
+                             | juce::FileBrowserComponent::canSelectMultipleItems,
                          [this, chooser](const juce::FileChooser& fc) {
-        const juce::File fichier = fc.getResult();
-        if (fichier == juce::File()) return;
-        importAudioFileOnNewTrack(fichier);
+        importAudioFiles(fc.getResults());
     });
+}
+
+void MainComponent::importAudioFiles(const juce::Array<juce::File>& fichiers) {
+    if (fichiers.isEmpty()) return;
+    size_t entres = 0;
+    juce::StringArray refuses;
+    for (const auto& fichier : fichiers) {
+        // CE QUI ÉCHOUE N'ARRÊTE PAS LE RESTE, et est NOMMÉ. Un import qui
+        // s'arrêterait au premier fichier illisible serait pire que pas
+        // d'import multiple du tout : on aurait douze stems à poser et l'on
+        // s'arrêterait au troisième sans savoir lesquels sont entrés.
+        if (importAudioFileOnNewTrack(fichier)) ++entres;
+        else refuses.add(fichier.getFileName());
+    }
+    juce::String message = juce::String::fromUTF8(u8"Import audio : ")
+                           + juce::String(static_cast<int>(entres))
+                           + juce::String::fromUTF8(u8" piste(s) créée(s) sur ")
+                           + juce::String(fichiers.size())
+                           + juce::String::fromUTF8(u8" fichier(s)");
+    if (!refuses.isEmpty())
+        message += juce::String::fromUTF8(u8" ; refusé(s) : ") + refuses.joinIntoString(", ");
+    std::fputs((message + ".\n").toRawUTF8(), stderr);
+    if (!refuses.isEmpty())
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::AlertWindow::WarningIcon, juce::String::fromUTF8(u8"Import audio"), message);
 }
 
 void MainComponent::exportSelectedTrackMidi() {
