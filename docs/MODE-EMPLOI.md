@@ -1001,7 +1001,7 @@ transcription met dix secondes), et `VSM_EXPORT=fichier.flac` exporte le
 projet ouvert sans fenêtre, en WAV, FLAC ou OGG selon l'extension, pour que
 le fichier se relise. `VSM_EXPORT_NIVEAU=crete|lufs14|lufs23` y ajoute le niveau.
 `VSM_POSITION=17.3` pose la tête à une mesure saisie (D22.2), `VSM_LECTURE=1`
-lance la lecture avant la capture (les voyants IN et OUT de la barre de
+lance la lecture avant la capture (`VSM_LECTURE=4000` : après 4 s ; les voyants IN et OUT de la barre de
 transport ne s'allument que si quelque chose passe), `VSM_PRESET_PISTE=nom`
 écrit la piste choisie comme preset de piste, sans la boîte qui demande le
 nom ; parmi les jetons de `VSM_VUE`, `gain-clip:+3` (ou -6, -3, -1, +1, +6, 0)
@@ -1013,6 +1013,10 @@ pendant trois secondes pour que les voyants se photographient allumés.
 `pistes-a-la-fenetre` et `hauteur-pistes:N` règlent les hauteurs de
 l'arrangement comme le menu Affichage. `VSM_IMPORT_AUDIO=fichier.wav` pose
 un fichier audio sur une piste neuve (D24.5), comme le menu Fichier.
+`sortie-midi:N:port` pose le port MIDI de sortie de la piste N (D27) — le
+port virtuel « VSM Studio », créé au démarrage, se lit avec `aseqdump -p
+<client>:2` (le client ALSA de l'application, `aconnect -l`). `VSM_TRACE_MIDIOUT=1`
+écrit sur le terminal les quarante premiers événements envoyés, avec leur retard.
 `historique` et `spectre` ouvrent les fenêtres flottantes du même nom ; la
 photographie de `VSM_CAPTURE` ne couvre que la fenêtre principale, une fenêtre
 flottante se photographie avec `spectacle -b -n -f -o fichier.png` pendant que

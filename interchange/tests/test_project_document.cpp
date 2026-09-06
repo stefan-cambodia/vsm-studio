@@ -31,6 +31,7 @@ Project buildProject() {
     bass.volume = 0.8f;
     bass.pan = -0.25f;
     bass.sendLevels = {0.3f, 0.1f};
+    bass.midiOutputDevice = "Port A";   // D27.1
     bass.addNote(0, 480, 36, 100, 1, ids);
     project.tracks.push_back(bass);
 
@@ -93,6 +94,7 @@ VSM_TEST(project_document_round_trips_through_json) {
         VSM_ASSERT_NEAR(copy.tracks[i].pan, original.tracks[i].pan, 1e-6);
         VSM_ASSERT_EQ(copy.tracks[i].muted, original.tracks[i].muted);
         VSM_ASSERT_EQ(copy.tracks[i].invertPhase, original.tracks[i].invertPhase);
+        VSM_ASSERT_EQ(copy.tracks[i].midiOutput, original.tracks[i].midiOutput);
         // Les niveaux d'envoi sont un VECTEUR depuis D4.2 : on compare la liste
         // entière, pas son premier élément -- une piste peut n'en déclarer
         // aucun, et l'indexer aveuglément était précisément le défaut que ce
@@ -127,6 +129,8 @@ VSM_TEST(applying_a_document_restores_transport_and_mix) {
     VSM_ASSERT(fromMidi.tracks[1].muted);
     VSM_ASSERT(fromMidi.tracks[1].invertPhase);
     VSM_ASSERT(!fromMidi.tracks[0].invertPhase);
+    VSM_ASSERT_EQ(fromMidi.tracks[0].midiOutputDevice, std::string("Port A"));
+    VSM_ASSERT(fromMidi.tracks[1].midiOutputDevice.empty());
     VSM_ASSERT_NEAR(fromMidi.tempoMap.bpmAt(1920), 150.0, 0.01);
     VSM_ASSERT_EQ(static_cast<int>(fromMidi.timeSignatureMap.numeratorAt(1920)), 3);
     // Les notes du MIDI n'ont pas été touchées.

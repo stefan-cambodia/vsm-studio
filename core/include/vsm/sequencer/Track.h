@@ -569,6 +569,11 @@ public:
     /// le Synth Rack en Phase 2 via ISynthPlugin / PluginRegistry.
     std::string instrumentId;
     std::string presetId;
+    /// D27.1 : LE PORT MIDI MATÉRIEL (ou virtuel) qui reçoit ce que la piste
+    /// joue -- notes, contrôleurs, pédale --, par son nom. Vide : la machine
+    /// interne seulement. Posé, la piste passe par le rendu même sans
+    /// machine, et ce qu'elle livre part aussi sur le port.
+    std::string midiOutputDevice;
 
     /// Le fichier que joue une piste audio. Vide sur une piste MIDI.
     AudioSource audio;

@@ -1197,6 +1197,14 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
         toggleSoloSelectedTrack();
     }
     else if (nom == "pistes-a-la-fenetre") arrangement_.fitTracksToWindow();
+    // D27.4 : sortie-midi:N:port -- le port de la piste N, par la même fonction que le menu.
+    else if (nom.startsWith("sortie-midi:")) {
+        const auto morceaux = juce::StringArray::fromTokens(nom.substring(12), ":", "");
+        if (morceaux.size() >= 2) {
+            trackList_.selectTrackIndex(static_cast<size_t>(std::max(0, morceaux[0].getIntValue())));
+            setSelectedTrackMidiOutput(morceaux[1].toStdString());
+        }
+    }
     else if (nom.startsWith("hauteur-pistes:"))
         arrangement_.setAllTrackHeights(nom.substring(15).getIntValue());
     else if (nom == "phase-clip") {
@@ -1457,7 +1465,8 @@ void MainComponent::timerCallback() {
     // D22.4 : LES VOYANTS MIDI, sur ce qui a bougé depuis le dernier tour.
     {
         const uint64_t in = audioEngine_.midiInCount();
-        const uint64_t out = audioEngine_.processGraph().notesSentToInstruments();
+        const uint64_t out = audioEngine_.processGraph().notesSentToInstruments()
+                             + audioEngine_.midiOutSentCount();   // D27.3 : le port compte aussi
         transportBar_.setMidiActivity(in != midiInSeen_, out != notesOutSeen_);
         midiInSeen_ = in;
         notesOutSeen_ = out;
@@ -1859,6 +1868,20 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 // et dit lequel quand il est vide : un sous-menu vide sans
                 // raison est un sous-menu qu'on croit cassé.
                 menu.addSeparator();
+                // D27.4 : LE PORT MIDI DE SORTIE. Les ports par leur nom, le
+                // port virtuel en tête ; « (aucune) » remet la machine seule.
+                {
+                    juce::PopupMenu ports;
+                    const std::string actuel = choisie < project_.tracks.size()
+                                                   ? project_.tracks[choisie].midiOutputDevice : std::string();
+                    ports.addItem(kMenuTrackMidiOutNone, u8"(aucune : la machine interne seulement)", true, actuel.empty());
+                    const auto noms = audioEngine_.availableMidiOutputs();
+                    for (size_t i = 0; i < noms.size() && i <= static_cast<size_t>(kMenuTrackMidiOutLast - kMenuTrackMidiOutFirst); ++i)
+                        ports.addItem(kMenuTrackMidiOutFirst + static_cast<int>(i), juce::String(noms[i]), true, noms[i] == actuel);
+                    menu.addSubMenu(actuel.empty() ? juce::String(u8"Sortie MIDI mat\u00e9rielle")
+                                                   : juce::String(u8"Sortie MIDI mat\u00e9rielle (\u2192 ") + juce::String(actuel) + ")",
+                                    ports, choisie < project_.tracks.size() && project_.tracks[choisie].kind == Track::Kind::Midi);
+                }
                 menu.addItem(kMenuTrackSavePreset,
                               u8"Enregistrer la piste comme preset\u2026",
                               choisie < project_.tracks.size()
@@ -2576,6 +2599,13 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuTrackShowAll:  showAllTracks(); break;
         case kMenuTrackSavePreset: promptSaveTrackPreset(); break;
         default: break;
+    }
+    if (menuItemID == kMenuTrackMidiOutNone) { setSelectedTrackMidiOutput(""); return; }
+    if (menuItemID >= kMenuTrackMidiOutFirst && menuItemID <= kMenuTrackMidiOutLast) {
+        const auto noms = audioEngine_.availableMidiOutputs();
+        const size_t i = static_cast<size_t>(menuItemID - kMenuTrackMidiOutFirst);
+        if (i < noms.size()) setSelectedTrackMidiOutput(noms[i]);
+        return;
     }
     if (menuItemID >= kMenuTrackPresetFirst && menuItemID <= kMenuTrackPresetLast) {
         const auto fichiers = trackPresetFiles();
@@ -7644,6 +7674,27 @@ void MainComponent::selectNeighbourTrack(int delta) {
     trackList_.selectTrackIndex(i);
 }
 
+// --- D27.4 : la sortie MIDI matérielle ---------------------------------------
+
+void MainComponent::setSelectedTrackMidiOutput(const std::string& port) {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    if (project_.tracks[piste].midiOutputDevice == port) return;
+    beginProjectEdit(u8"Sortie MIDI");
+    project_.tracks[piste].midiOutputDevice = port;
+    refreshTransportSchedule();   // republie, et syncMidiOutputs() suit
+    arrangement_.repaint();
+    std::fputs(("Piste " + std::to_string(piste + 1) + " : sortie MIDI "
+                + (port.empty() ? std::string("aucune") : "\u2192 " + port) + "\n").c_str(), stderr);
+}
+
+void MainComponent::syncMidiOutputs() {
+    std::vector<std::string> ports;
+    ports.reserve(project_.tracks.size());
+    for (const auto& t : project_.tracks) ports.push_back(t.midiOutputDevice);
+    audioEngine_.setTrackMidiOutputs(std::move(ports));
+}
+
 // --- D24.5 : un fichier audio sur une piste neuve --------------------------
 
 bool MainComponent::importAudioFileOnNewTrack(const juce::File& fichier) {
@@ -8101,6 +8152,7 @@ void MainComponent::refreshTransportSchedule() {
     // que rafraîchir sa carte de tempo et l'endroit où le morceau finit.
     transport_.setProject(project_);
     audioEngine_.processGraph().setProject(project_);
+    syncMidiOutputs();   // D27.4 : les ports suivent le projet publié
 }
 
 void MainComponent::updateSynthRackForSelection() {

@@ -235,6 +235,10 @@ private:
         /// D22.5 : la piste choisie comme preset, et un identifiant par preset
         /// du dossier `pistes` de la bibliothèque, pour l'appliquer.
         kMenuTrackSavePreset,
+        /// D27.4 : le port MIDI de sortie de la piste choisie ((aucune) + 15 ports).
+        kMenuTrackMidiOutNone,
+        kMenuTrackMidiOutFirst,
+        kMenuTrackMidiOutLast = kMenuTrackMidiOutFirst + 15,
         kMenuTrackPresetFirst,
         kMenuTrackPresetLast = kMenuTrackPresetFirst + 63,
         /// D18.3 : le groupe d'édition de la piste choisie (0 = aucun).
@@ -852,6 +856,10 @@ private:
     void toggleMuteSelectedTrack();
     void toggleSoloSelectedTrack();
     void selectNeighbourTrack(int delta);
+    /// D27.4 : le port de la piste choisie ; et la publication des ports de
+    /// toutes les pistes au moteur, à chaque republication du projet.
+    void setSelectedTrackMidiOutput(const std::string& port);
+    void syncMidiOutputs();
     bool importAudioFileOnNewTrack(const juce::File& fichier);
     vsm::sequencer::Groove grooveCourant_;
     /// Les trois vues qui dessinent des pistes, rafraîchies ensemble (D17.4).

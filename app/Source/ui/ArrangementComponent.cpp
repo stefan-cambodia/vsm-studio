@@ -1496,6 +1496,9 @@ void ArrangementComponent::paint(juce::Graphics& g) {
             juce::String nature = track.kind == Track::Kind::Audio  ? "audio"
                                 : track.kind == Track::Kind::Group ? "groupe"
                                                                    : "midi";
+            // D27.4 : le port de sortie se lit sur la piste.
+            if (!track.midiOutputDevice.empty())
+                nature += juce::String(u8" \u2192 ") + juce::String(track.midiOutputDevice);
             if (track.frozen) nature += u8" · gelé";
             // UNE PISTE VERROUILLÉE LE DIT AUSSI (D16.5), et pour la même
             // raison : sans cela on tirerait un clip en se demandant pourquoi

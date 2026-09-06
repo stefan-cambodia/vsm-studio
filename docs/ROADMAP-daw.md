@@ -5822,3 +5822,84 @@ en commençant par la flûte (le seul des sept où le pli est courant), avec
 pour critère : une note pliée d'un demi-ton sort à la fréquence de la note
 du dessus, à 1 % près, mesurée sur le rendu. La phase reste ouverte, sans
 étape numérotée, et le prochain audit reprend l'ordre du § 3.
+
+### Phase D27 — La sortie MIDI matérielle par piste (06/09/2026, 15:00)
+
+**Pourquoi.** Le studio s'appelle « Vintage Synth » et ne sait parler à
+aucun synthé réel : `juce::MidiOutput` n'apparaît nulle part dans
+`app/Source/`. Cubase et Live envoient chaque piste MIDI vers un port
+matériel ou virtuel, et c'est la première chose qu'on attend d'un
+séquenceur devant un rack. Ici, une piste ne joue que sa machine interne.
+
+**Ce que ça exige du moteur.** Le graphe ne peut ni allouer ni bloquer sur
+le chemin audio ; il ne connaît pas JUCE. Il DÉPOSE donc ce qu'il livre à
+une piste (notes, contrôleurs, retenues de pédale, NoteOff de rebouclage et
+de panic) dans une file sans verrou, chaque événement daté sur l'horloge
+monotone du système au début du bloc plus son décalage d'échantillon ; un
+fil de l'application les envoie à leur heure. La gigue est celle du
+sondage de ce fil (1 ms), l'avance est nulle : le port reçoit l'événement
+au moment où la machine interne l'aurait rendu. Un port virtuel « VSM
+Studio » est créé au démarrage, pour que la sortie se vérifie sans
+matériel (`aseqdump`) et se branche sur n'importe quel logiciel.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D27.1 | **Le modèle et le fichier.** | `Track::midiOutputDevice` (nom du port, vide = machine interne seulement) ; `midiOutput` dans `project.json`, écrit seulement quand il est posé ; aller-retour testé ; pas dans le preset de piste (un port est une affaire de studio, pas de son) |
+| D27.2 | **La file de sortie du graphe.** | `ProcessGraph::popMidiOut` ; une piste dont le port est posé passe par le rendu même sans machine ; tout ce qui est livré à la piste est déposé, daté ; ce qui déborde est compté, jamais tu ; test : une note planifiée donne un NoteOn puis un NoteOff, dans l'ordre, datés croissants, et rien sans port |
+| D27.3 | **L'émetteur.** | un fil de `AudioEngine` sonde la file toutes les millisecondes et envoie à l'heure sur le port de la piste ; les ports s'ouvrent par nom depuis le fil d'interface ; le port virtuel « VSM Studio » existe toujours ; le voyant OUT (D22.4) compte aussi ces notes |
+| D27.4 | **Le choix du port.** | « Piste ▸ Sortie MIDI matérielle ▸ (aucune) / ports disponibles » coché ; annulable ; l'en-tête de la piste dans l'arrangement dit « midi → port » ; `VSM_VUE=sortie-midi:N:port` |
+| D27.5 | **La preuve.** | `aseqdump` branché sur « VSM Studio » pendant `VSM_LECTURE=1` sur le projet d'exemple : des Note on / Note off arrivent, comptés et écrits ici, avec la capture de l'en-tête « midi → VSM Studio » |
+
+> **D27.1 EST FAITE (06/09/2026, 14:49).** `Track::midiOutputDevice`,
+> `midiOutput` dans `project.json` (écrit seulement quand il est posé),
+> aller-retour et application testés ; pas dans le preset de piste.
+>
+> **D27.2 EST FAITE (06/09/2026, 14:49).** `ProcessGraph::popMidiOut`, UNE
+> file par piste — les fils de rendu (D8.1) rendent des pistes différentes
+> en parallèle, et un anneau à un producteur ne supporte pas deux
+> écrivains. Une piste à port passe par le rendu même sans machine ; tout ce
+> qu'elle reçoit est déposé : notes du planning et de l'écoute, contrôleurs
+> (le canal est celui de l'ÉVÉNEMENT, comme pour les notes), pédale, NoteOff
+> de rebouclage et de panic. L'heure est ANCRÉE sur l'horloge
+> d'échantillons — l'ancre plus les échantillons rendus, reposée seulement si
+> elle dérive de plus de 20 ms — et non l'heure du rappel : deux rappels
+> espacés de 9 puis 12 ms feraient sinon se chevaucher leurs événements
+> (attrapé par le test, hors ligne). Tests : une note et un CC sans machine
+> donnent « 92:60 B2:1 82:60 » ; huit notes à 48 kHz donnent huit NoteOn et
+> huit NoteOff, pas un de plus ; rien sans port ; rien de perdu.
+>
+> **D27.3 EST FAITE (06/09/2026, 14:49).** Un fil « VSM MIDI out » sonde la
+> file toutes les millisecondes, trie, envoie à l'heure (`sendMessageNow`)
+> sur le port de la piste ; les ports s'ouvrent par NOM depuis le fil
+> d'interface (un identifiant JUCE change d'une session à l'autre, un nom se
+> lit dans le fichier), se ferment quand plus personne ne les emploie ; ce
+> qui n'a pas de port est compté (`midiOutWithoutPort`). Le port virtuel
+> « VSM Studio » est créé au démarrage. Le voyant OUT compte ces notes.
+> `VSM_TRACE_MIDIOUT=1` écrit les quarante premiers envois avec leur retard —
+> mesuré entre −0,4 et +0,3 ms.
+>
+> **D27.4 EST FAITE (06/09/2026, 14:49).** « Piste ▸ Sortie MIDI matérielle
+> (→ port) ▸ (aucune) / ports », coché, annulable ; l'en-tête de la piste
+> dit « midi → VSM Studio » (vérifié à l'écran) ; `VSM_VUE=sortie-midi:N:port`.
+>
+> **D27.5 EST FAITE (06/09/2026, 14:49), ET LA PHASE D27 EST CLOSE.**
+> `aseqdump -p <client>:2` branché sur le port virtuel pendant une lecture
+> du projet d'exemple (`VSM_LECTURE=4000`, pour que l'outil soit branché
+> avant la première note) : **8 Note on, 8 Note off** — la basse du projet,
+> exactement (le fichier compte 8 NoteOn) —, velocités 127 et 90 conformes,
+> canal 1.
+>
+> **Ce que la preuve a attrapé, et qu'aucun test ne pouvait attraper.** La
+> première mesure donnait **3 440 Note on pour 8 jouées**. Ni la file (une
+> par piste depuis), ni la sélection du planning : le port virtuel de
+> sortie se présente AUSSI comme une entrée MIDI (le côté lisible d'un port
+> ALSA), et le moteur écoute toutes les entrées au démarrage — ce qui
+> sortait revenait, rejouait la piste choisie, ressortait, une note par
+> bloc. Le moteur n'écoute plus son propre port. Deux leçons dans
+> CLAUDE.md : un port de sortie virtuel est aussi une entrée ; et une preuve
+> par outil extérieur doit couvrir la FENÊTRE où le morceau joue — la
+> deuxième preuve comptait zéro parce que le morceau de 1,85 s était fini
+> avant qu'`aseqdump` ne soit branché.
+>
+> Tests : 271 core, 1 256 audio, 278 interchange — tous verts ; Python
+> inchangé (168 à D21).

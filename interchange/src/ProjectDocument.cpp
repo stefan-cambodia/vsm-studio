@@ -240,6 +240,7 @@ ProjectDocument documentFromProject(const Project& project) {
         entry.channel = track.channel;
         entry.colorRgba = track.colorRgba;
         entry.preferredPlugin = track.instrumentId;
+        entry.midiOutput = track.midiOutputDevice;
         if (!track.instrumentId.empty()) {
             char buffer[64];
             std::snprintf(buffer, sizeof(buffer), "instruments/track_%02zu.synth.json", index);
@@ -416,6 +417,7 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         target.muted = source.muted;
         target.solo = source.solo;
         target.invertPhase = source.invertPhase;
+        target.midiOutputDevice = source.midiOutput;   // D27.1
         target.sendLevels = source.sendLevels;
 
         // AVANT le `continue` ci-dessous, délibérément : une piste sans
@@ -604,6 +606,7 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
         instrument.set("preferredPlugin", JsonValue::makeString(track.preferredPlugin));
         instrument.set("preset", JsonValue::makeString(track.presetPath));
         entry.set("instrument", std::move(instrument));
+        if (!track.midiOutput.empty()) entry.set("midiOutput", JsonValue::makeString(track.midiOutput));   // D27.1
 
         JsonValue mix = JsonValue::makeObject();
         mix.set("volume", JsonValue::makeFloat(track.volume));
@@ -841,6 +844,7 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         track.channel = static_cast<int>(entry["channel"].asNumber(0.0));
         track.colorRgba = colourFromHex(entry["color"].asString(), 0xFF6B9BFFu);
         track.preferredPlugin = entry["instrument"]["preferredPlugin"].asString();
+        track.midiOutput = entry["midiOutput"].asString();
         track.presetPath = entry["instrument"]["preset"].asString();
         if (!isPortableRelativePath(track.presetPath)) {
             result.error = "chemin de preset non portable : \"" + track.presetPath + "\"";

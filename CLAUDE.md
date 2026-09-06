@@ -82,6 +82,12 @@ l'ordre de marche — pas de la documentation d'accompagnement.
   machine ne répond aux contrôleurs », écrit dans un commit, alors que 42
   répondent à la molette (06/09). Un « zéro » sorti d'un grep se revérifie en
   listant ce qu'on a cherché ET où, avant de l'écrire.
+- Un port MIDI de sortie VIRTUEL (ALSA) se présente aussi comme une ENTRÉE :
+  le moteur, qui écoute toutes les entrées au démarrage, a rebouclé sa
+  propre sortie (3 440 notes reçues pour 8 jouées, D27). Filtrer son propre
+  port ; et toute preuve par outil extérieur (aseqdump…) doit couvrir la
+  fenêtre où le morceau JOUE — un morceau de 1,85 s est fini avant que
+  l'outil ne soit branché (VSM_LECTURE=4000 retarde la lecture).
 - JAMAIS d'édition de analyse/analyzer/*.py pendant qu'une course tourne : la
   chaîne importait des modules À LA DEMANDE, cinq heures après le départ, dans
   l'état du disque à cet instant (parite-v2, 5 h 24 perdues au réglage final).

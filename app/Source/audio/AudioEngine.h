@@ -1,5 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
+#include <map>
 #include "vsm/audio/engine/MidiLearnMap.h"
 #include "vsm/audio/engine/ProcessGraph.h"
 #include "DiskRecorder.h"
@@ -57,6 +58,18 @@ public:
     /// bougé » suffit à allumer un voyant, et sépare « le câble » de « la
     /// piste » quand un clavier branché ne joue rien.
     uint64_t midiInCount() const { return midiInCount_.load(std::memory_order_relaxed); }
+
+    // --- D27.3 : LA SORTIE MIDI MATÉRIELLE -------------------------------------
+    /// Les ports de sortie disponibles, par nom -- le port virtuel « VSM
+    /// Studio » d'abord, toujours là, pour vérifier sans matériel.
+    std::vector<std::string> availableMidiOutputs() const;
+    /// Thread UI : le port de chaque piste (vide = aucun). Ouvre ce qui manque,
+    /// ferme ce que plus personne n'emploie.
+    void setTrackMidiOutputs(std::vector<std::string> portsParPiste);
+    /// Événements envoyés sur un port depuis le départ (thread émetteur).
+    uint64_t midiOutSentCount() const { return midiOutSent_.load(std::memory_order_relaxed); }
+    /// Événements dont le port était introuvable, comptés et jamais tus.
+    uint64_t midiOutWithoutPort() const { return midiOutSansPort_.load(std::memory_order_relaxed); }
     /// Nombre de canaux d'entrée réellement ouverts. Zéro = la carte n'en a
     /// pas donné, et l'enregistrement est impossible : il faut le DIRE, pas
     /// laisser chercher.
@@ -268,6 +281,26 @@ private:
     std::atomic<int> currentInputChannels_{0};
     std::atomic<float> inputPeak_{0.0f};
     std::atomic<uint64_t> midiInCount_{0};   ///< D22.4 : messages MIDI reçus
+    /// D27.3 : L'ÉMETTEUR. Un fil qui sonde la file du graphe toutes les
+    /// millisecondes et envoie chaque événement À SON HEURE (l'horloge
+    /// monotone que le graphe a lue au début du bloc) sur le port de sa
+    /// piste. Rien de tout cela sur le thread audio : ouvrir un port, chercher
+    /// un nom, envoyer un message -- tout alloue ou bloque.
+    class Emetteur : public juce::Thread {
+    public:
+        explicit Emetteur(AudioEngine& moteur) : juce::Thread("VSM MIDI out"), moteur_(moteur) {}
+        void run() override;
+    private:
+        AudioEngine& moteur_;
+        std::vector<vsm::audio::engine::ProcessGraph::MidiOutEvent> enAttente_;
+    };
+    Emetteur emetteur_{*this};
+    std::unique_ptr<juce::MidiOutput> portVirtuel_;
+    std::mutex portsMutex_;
+    std::map<std::string, std::unique_ptr<juce::MidiOutput>> ports_;   ///< par nom, sous portsMutex_
+    std::atomic<std::shared_ptr<const std::vector<std::string>>> portParPiste_{nullptr};
+    std::atomic<uint64_t> midiOutSent_{0};
+    std::atomic<uint64_t> midiOutSansPort_{0};
     juce::String lastError_;
 
     // MIDI Learn : accédé par le thread MIDI (handleIncomingMidiMessage) ET

@@ -1,4 +1,7 @@
 #include "AudioEngine.h"
+#include <chrono>
+#include <cstdio>
+#include <cstdlib>
 #include <algorithm>
 #include <cmath>
 
@@ -31,17 +34,32 @@ void AudioEngine::start(const juce::XmlElement* etatSauvegarde) {
     lastError_.clear();
     deviceManager_.addAudioCallback(this);
 
+    // D27.3 : LE PORT VIRTUEL, toujours là -- c'est ce qui permet de vérifier
+    // la sortie sans matériel (aseqdump, un autre logiciel). Et l'émetteur.
+    if (!portVirtuel_) portVirtuel_ = juce::MidiOutput::createNewDevice("VSM Studio");
+    if (!emetteur_.isThreadRunning()) emetteur_.startThread(juce::Thread::Priority::high);
+
     // Entrées MIDI : active tous les périphériques disponibles et s'abonne
     // à leurs messages (pour le MIDI Learn et le futur MIDI-thru).
     enabledMidiInputs_.clear();
     for (const auto& device : juce::MidiInput::getAvailableDevices()) {
-        deviceManager_.setMidiInputDeviceEnabled(device.identifier, true);
+        // D27.3 : NOTRE PROPRE PORT DE SORTIE SE PRÉSENTE AUSSI COMME UNE ENTRÉE
+        // (côté lisible d'un port virtuel ALSA). L'écouter referme la boucle :
+        // ce qui sort revient, rejoue la piste choisie, ressort -- une note
+        // par bloc, 3 440 reçues pour 8 jouées à la première preuve de D27.
+        if (device.name == "VSM Studio") continue;
         deviceManager_.addMidiInputDeviceCallback(device.identifier, this);
         enabledMidiInputs_.push_back(device.identifier);
     }
 }
 
 void AudioEngine::stop() {
+    emetteur_.stopThread(500);
+    {
+        std::lock_guard<std::mutex> verrou(portsMutex_);
+        ports_.clear();
+    }
+    portVirtuel_.reset();
     for (const auto& id : enabledMidiInputs_)
         deviceManager_.removeMidiInputDeviceCallback(id, this);
     enabledMidiInputs_.clear();
@@ -607,4 +625,90 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
     for (int ch = 2; ch < numOutputChannels; ++ch)
         if (outputChannelData[ch] != nullptr)
             std::fill(outputChannelData[ch], outputChannelData[ch] + numSamples, 0.0f);
+}
+
+// --- D27.3 : la sortie MIDI matérielle ----------------------------------------
+
+std::vector<std::string> AudioEngine::availableMidiOutputs() const {
+    std::vector<std::string> noms;
+    if (portVirtuel_) noms.push_back("VSM Studio");
+    for (const auto& d : juce::MidiOutput::getAvailableDevices()) {
+        const std::string nom = d.name.toStdString();
+        if (std::find(noms.begin(), noms.end(), nom) == noms.end()) noms.push_back(nom);
+    }
+    return noms;
+}
+
+void AudioEngine::setTrackMidiOutputs(std::vector<std::string> portsParPiste) {
+    std::lock_guard<std::mutex> verrou(portsMutex_);
+    // OUVRIR CE QUI MANQUE, par nom -- un identifiant JUCE change d'une
+    // session à l'autre, un nom se lit dans project.json.
+    for (const auto& nom : portsParPiste) {
+        if (nom.empty() || nom == "VSM Studio" || ports_.count(nom) > 0) continue;
+        for (const auto& d : juce::MidiOutput::getAvailableDevices())
+            if (d.name.toStdString() == nom) {
+                if (auto port = juce::MidiOutput::openDevice(d.identifier)) ports_[nom] = std::move(port);
+                break;
+            }
+    }
+    // FERMER CE QUE PLUS PERSONNE N'EMPLOIE.
+    for (auto it = ports_.begin(); it != ports_.end();) {
+        if (std::find(portsParPiste.begin(), portsParPiste.end(), it->first) == portsParPiste.end())
+            it = ports_.erase(it);
+        else
+            ++it;
+    }
+    portParPiste_.store(std::make_shared<const std::vector<std::string>>(std::move(portsParPiste)),
+                        std::memory_order_release);
+}
+
+void AudioEngine::Emetteur::run() {
+    using Evenement = vsm::audio::engine::ProcessGraph::MidiOutEvent;
+    while (!threadShouldExit()) {
+        Evenement e;
+        while (moteur_.graph_.popMidiOut(e)) {
+            // BORNÉ : une file qui gonflerait parce qu'un port ne répond pas
+            // finirait par manger la mémoire ; au-delà, le plus ancien part.
+            if (enAttente_.size() >= 8192) enAttente_.erase(enAttente_.begin());
+            enAttente_.push_back(e);
+        }
+        const double maintenant =
+            std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        if (!enAttente_.empty()) {
+            std::stable_sort(enAttente_.begin(), enAttente_.end(),
+                             [](const Evenement& a, const Evenement& b) { return a.hostSeconds < b.hostSeconds; });
+            auto ports = moteur_.portParPiste_.load(std::memory_order_acquire);
+            std::lock_guard<std::mutex> verrou(moteur_.portsMutex_);
+            size_t envoyes = 0;
+            for (const auto& ev : enAttente_) {
+                if (ev.hostSeconds > maintenant + 0.0005) break;   // pas encore l'heure ; la liste est triée
+                ++envoyes;
+                juce::MidiOutput* port = nullptr;
+                if (ports && ev.trackIndex < ports->size()) {
+                    const std::string& nom = (*ports)[ev.trackIndex];
+                    if (nom == "VSM Studio") port = moteur_.portVirtuel_.get();
+                    else if (auto it = moteur_.ports_.find(nom); it != moteur_.ports_.end()) port = it->second.get();
+                }
+                if (port == nullptr) { moteur_.midiOutSansPort_.fetch_add(1, std::memory_order_relaxed); continue; }
+                const int taille = ((ev.status & 0xF0) == 0xC0 || (ev.status & 0xF0) == 0xD0) ? 2 : 3;
+                const juce::MidiMessage message = taille == 2
+                    ? juce::MidiMessage(ev.status, ev.data1)
+                    : juce::MidiMessage(ev.status, ev.data1, ev.data2);
+                port->sendMessageNow(message);
+                moteur_.midiOutSent_.fetch_add(1, std::memory_order_relaxed);
+                // VSM_TRACE_MIDIOUT=1 : les quarante premiers événements sur stderr, datés
+                // par rapport à l'heure d'envoi -- l'outil qui a trouvé le défaut de D27.
+                static int traces = std::getenv("VSM_TRACE_MIDIOUT") ? 40 : 0;
+                if (traces > 0) {
+                    --traces;
+                    std::fprintf(stderr, "midi-out piste %u %02X %u %u heure %.6f retard %.4f s carte %d bloc %d sr %.0f\n",
+                                 ev.trackIndex, ev.status, ev.data1, ev.data2, ev.hostSeconds,
+                                 maintenant - ev.hostSeconds, moteur_.isDeviceOpen() ? 1 : 0,
+                                 moteur_.currentBlockSize(), moteur_.currentSampleRate());
+                }
+            }
+            enAttente_.erase(enAttente_.begin(), enAttente_.begin() + static_cast<long>(envoyes));
+        }
+        wait(1);
+    }
 }

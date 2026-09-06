@@ -234,6 +234,28 @@ public:
                          const vsm::audio::plugin::MidiControlEvent& event);
     /// Contrôleurs en direct effectivement livrés à une machine (D24.1).
     uint64_t liveControlsDelivered() const { return liveControlsDelivered_.load(std::memory_order_relaxed); }
+    /// D27.2 : LA SORTIE MIDI. Tout ce que le graphe livre à une piste dont
+    /// `Track::midiOutputDevice` est posé est déposé ici, daté sur l'horloge
+    /// monotone (secondes) au début du bloc plus son décalage d'échantillon ;
+    /// `status` porte le canal. Consommé par UN fil de l'application.
+    struct MidiOutEvent {
+        uint32_t trackIndex = 0;
+        double hostSeconds = 0.0;
+        uint8_t status = 0x90;
+        uint8_t data1 = 0;
+        uint8_t data2 = 0;
+    };
+    /// UNE FILE PAR PISTE : les fils de rendu (D8.1) rendent des pistes
+    /// différentes en parallèle, et un anneau à un producteur ne supporte pas
+    /// deux écrivains -- l'index corrompu faisait relire des cases périmées
+    /// (3 440 notes reçues pour 43 jouées, mesuré à la première preuve).
+    /// Le consommateur, unique, fait le tour des pistes.
+    bool popMidiOut(MidiOutEvent& out) {
+        for (auto& file : midiOutQueues_)
+            if (file.pop(out)) return true;
+        return false;
+    }
+    uint64_t droppedMidiOut() const { return droppedMidiOut_.load(std::memory_order_relaxed); }
     /// D24.4 : COUPER TOUTES LES NOTES. Au bloc suivant, un NoteOff pour
     /// chaque note qui sonne sur chaque machine, la pédale relâchée (CC 64 à
     /// zéro) ; le compte des notes qui sonnent est remis à zéro.
@@ -822,6 +844,15 @@ private:
     /// D24.4 : le panic demandé, et sa lecture pour le bloc en cours.
     std::atomic<bool> panicRequested_{false};
     bool panicThisBlock_ = false;
+    /// D27.2 : la file de sortie MIDI, l'heure du bloc, et le dépôt.
+    static constexpr size_t kMidiOutQueueCapacity = 1024;
+    std::array<vsm::audio::util::LockFreeRingBuffer<MidiOutEvent, kMidiOutQueueCapacity>, kMaxTracks> midiOutQueues_;
+    std::atomic<uint64_t> droppedMidiOut_{0};
+    double blockHostSeconds_ = 0.0;
+    double hostAnchorSeconds_ = 0.0;
+    uint64_t samplesSinceAnchor_ = 0;
+    void emitMidiOut(size_t trackIndex, int sampleOffset, uint8_t status, uint8_t data1, uint8_t data2);
+    void emitControlOut(size_t trackIndex, uint8_t channel, const vsm::audio::plugin::MidiControlEvent& event);
 
     /// LA CHASSE AUX CONTRÔLEURS (D16.2). La file est large : un déplacement
     /// de tête peut rendre plusieurs valeurs par piste, sur des dizaines de

@@ -251,6 +251,8 @@ struct ProjectTrack {
     /// installation n'a pas. On garde alors l'intention telle quelle (voir
     /// ImportReport::missingInstruments) au lieu d'y substituer autre chose.
     std::string preferredPlugin;
+    /// D27.1 : le port MIDI de sortie, écrit seulement quand il est posé.
+    std::string midiOutput;
     /// Chemin RELATIF du preset, ex. "instruments/track_00.synth.json".
     /// Vide = pas de preset associé.
     std::string presetPath;

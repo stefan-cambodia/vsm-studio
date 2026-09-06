@@ -180,8 +180,13 @@ public:
                                 + " \u00bb refus\u00e9e, la t\u00eate n'a pas boug\u00e9\n").c_str(), stderr);
             // VSM_LECTURE=1 : lancer la lecture avant la capture (D22.4) --
             // le voyant OUT ne s'allume que si des notes partent.
-            if (const char* lecture = std::getenv("VSM_LECTURE"); lecture != nullptr && *lecture && *lecture != '0')
-                content->startPlaybackForCapture();
+            // VSM_LECTURE=1 lance tout de suite ; VSM_LECTURE=4000 lance après
+            // 4 s -- le temps qu'un outil extérieur (aseqdump, D27.5) se branche.
+            if (const char* lecture = std::getenv("VSM_LECTURE"); lecture != nullptr && *lecture && *lecture != '0') {
+                const int delai = juce::String(lecture).getIntValue();
+                if (delai > 1) juce::Timer::callAfterDelay(delai, [content] { content->startPlaybackForCapture(); });
+                else content->startPlaybackForCapture();
+            }
             // VSM_IMPORT_AUDIO=fichier.wav : sur une piste neuve (D24.5), par la
             // même fonction que le menu ; refusé et dit si le projet n'a pas de
             // dossier.

@@ -1,4 +1,5 @@
 #include "vsm/audio/engine/ProcessGraph.h"
+#include <chrono>
 #include "vsm/audio/dsp/DenormalGuard.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
@@ -612,6 +613,47 @@ void ProcessGraph::drainLiveControls() {
     }
 }
 
+void ProcessGraph::emitMidiOut(size_t trackIndex, int sampleOffset, uint8_t status, uint8_t data1, uint8_t data2) {
+    MidiOutEvent e;
+    e.trackIndex = static_cast<uint32_t>(trackIndex);
+    e.hostSeconds = blockHostSeconds_ + static_cast<double>(std::max(0, sampleOffset)) / sampleRate_;
+    e.status = status;
+    e.data1 = static_cast<uint8_t>(data1 & 0x7F);
+    e.data2 = static_cast<uint8_t>(data2 & 0x7F);
+    if (trackIndex >= kMaxTracks || !midiOutQueues_[trackIndex].push(e)) droppedMidiOut_.fetch_add(1, std::memory_order_relaxed);
+}
+
+void ProcessGraph::emitControlOut(size_t trackIndex, uint8_t channel,
+                                   const vsm::audio::plugin::MidiControlEvent& event) {
+    using K = vsm::audio::plugin::MidiControlEvent::Kind;
+    // Le canal est celui de l'ÉVÉNEMENT (comme pour les notes), pas celui de la
+    // piste : un fichier multi-canal ressort tel qu'il est écrit.
+    (void)channel;
+    const uint8_t canal = static_cast<uint8_t>(event.channel & 0x0F);
+    auto a7 = [](float v) { return static_cast<uint8_t>(std::clamp(static_cast<int>(std::lround(v * 127.0f)), 0, 127)); };
+    switch (event.kind) {
+        case K::PitchBend: {
+            // Demi-tons vers 14 bits, l'inverse exact du planning (± 2 demi-tons).
+            const int brut = std::clamp(static_cast<int>(std::lround(event.value / kPitchBendRangeSemitones * 8192.0f)) + 8192, 0, 16383);
+            emitMidiOut(trackIndex, event.sampleOffset, static_cast<uint8_t>(0xE0 | canal),
+                        static_cast<uint8_t>(brut & 0x7F), static_cast<uint8_t>((brut >> 7) & 0x7F));
+            break;
+        }
+        case K::ControlChange:
+            emitMidiOut(trackIndex, event.sampleOffset, static_cast<uint8_t>(0xB0 | canal), event.index, a7(event.value));
+            break;
+        case K::ChannelPressure:
+            emitMidiOut(trackIndex, event.sampleOffset, static_cast<uint8_t>(0xD0 | canal), a7(event.value), 0);
+            break;
+        case K::PolyPressure:
+            emitMidiOut(trackIndex, event.sampleOffset, static_cast<uint8_t>(0xA0 | canal), event.index, a7(event.value));
+            break;
+        case K::ProgramChange:
+            emitMidiOut(trackIndex, event.sampleOffset, static_cast<uint8_t>(0xC0 | canal), event.index, 0);
+            break;
+    }
+}
+
 bool ProcessGraph::interceptSustain(size_t trackIndex, uint8_t channel,
                                      const vsm::audio::plugin::MidiControlEvent& event,
                                      MidiNoteEvent* events, int& numEvents) {
@@ -666,6 +708,23 @@ void ProcessGraph::processBlock(float* outputL, float* outputR, int numSamples) 
     drainChasedControls();
     drainLiveControls();                                                       // D24.1
     panicThisBlock_ = panicRequested_.exchange(false, std::memory_order_acq_rel);   // D24.4
+    // D27.2 : l'heure du bloc sur l'horloge monotone, pour dater la sortie MIDI.
+    // ANCRÉE SUR L'HORLOGE D'ÉCHANTILLONS : l'heure du bloc est l'ancre plus
+    // les échantillons rendus depuis elle, jamais l'heure de l'appel -- deux
+    // rappels espacés de 9 puis 12 ms feraient sinon se chevaucher leurs
+    // événements. L'ancre ne se repose que si elle dérive de plus de 20 ms
+    // (départ, décrochage, dérive d'horloge accumulée).
+    {
+        const double maintenant =
+            std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        const double attendu = hostAnchorSeconds_ + static_cast<double>(samplesSinceAnchor_) / sampleRate_;
+        if (hostAnchorSeconds_ <= 0.0 || std::abs(maintenant - attendu) > 0.02) {
+            hostAnchorSeconds_ = maintenant;
+            samplesSinceAnchor_ = 0;
+        }
+        blockHostSeconds_ = hostAnchorSeconds_ + static_cast<double>(samplesSinceAnchor_) / sampleRate_;
+        samplesSinceAnchor_ += static_cast<uint64_t>(numSamples);
+    }
 
     if (!playing_.load(std::memory_order_acquire)) {
         // À L'ARRÊT, la position ne bouge pas et le planning n'est pas rejoué
@@ -1137,7 +1196,10 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
     // est un fichier. La condition portait sur le seul instrument, ce qui
     // aurait fait sauter la piste entière en silence. Une piste qui PUBLIE
     // n'a ni l'un ni l'autre, et doit tout de même être rendue.
-    if (!instrument && !audioSource && lireSlot < 0) return false;
+    // D27.2 : UNE PISTE À PORT MIDI PASSE PAR LE RENDU même sans machine --
+    // ses notes doivent être construites pour être déposées.
+    const bool externe = !project.tracks[trackIndex].midiOutputDevice.empty();
+    if (!instrument && !audioSource && lireSlot < 0 && !externe) return false;
 
     const Track& track = project.tracks[trackIndex];
 
@@ -1191,15 +1253,16 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
     // devait tenir ne la tient pas. Comme les notes d'écoute, seulement dans
     // le premier sous-segment : le découpage de l'automation les rejouerait
     // sinon à chaque segment.
-    if (sampleStart == 0 && instrument != nullptr) {
+    if (sampleStart == 0 && (instrument != nullptr || externe)) {
         for (int i = 0; i < drainedChaseCount_; ++i) {
             const ChasedControlEvent& chasse = drainedChase_[static_cast<size_t>(i)];
             if (chasse.trackIndex != trackIndex) continue;
+            if (externe) emitControlOut(trackIndex, track.channel, chasse.event);   // D27.2
             if (interceptSustain(trackIndex, track.channel, chasse.event, events, numEvents)) {   // D25.1
-                instrument->handleControlEvent(chasse.event);   // les huit machines qui ont leur propre étouffoir le gardent
+                if (instrument) instrument->handleControlEvent(chasse.event);   // les huit machines qui ont leur propre étouffoir le gardent
                 continue;
             }
-            if (!instrument->handleControlEvent(chasse.event))
+            if (instrument && !instrument->handleControlEvent(chasse.event))
                 ignoredControlEvents_.fetch_add(1, std::memory_order_relaxed);
         }
         // D24.1 : LES CONTRÔLEURS EN DIRECT, au même endroit et pour la même
@@ -1207,11 +1270,13 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
         for (int i = 0; i < drainedLiveControlCount_; ++i) {
             const LiveControlEvent& live = drainedLiveControls_[static_cast<size_t>(i)];
             if (live.trackIndex != trackIndex) continue;
+            if (externe) emitControlOut(trackIndex, track.channel, live.event);   // D27.2
             if (interceptSustain(trackIndex, track.channel, live.event, events, numEvents)) {   // D25.1
-                instrument->handleControlEvent(live.event);   // transmis quand même : huit machines ont leur étouffoir
+                if (instrument) instrument->handleControlEvent(live.event);   // transmis quand même : huit machines ont leur étouffoir
                 liveControlsDelivered_.fetch_add(1, std::memory_order_relaxed);
                 continue;
             }
+            if (!instrument) continue;
             if (instrument->handleControlEvent(live.event))
                 liveControlsDelivered_.fetch_add(1, std::memory_order_relaxed);
             else
@@ -1225,7 +1290,8 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
             pedale.channel = track.channel;
             pedale.index = 64;
             pedale.value = 0.0f;
-            instrument->handleControlEvent(pedale);
+            if (instrument) instrument->handleControlEvent(pedale);
+            if (externe) emitControlOut(trackIndex, track.channel, pedale);   // D27.2
             clearSustain(trackIndex);   // D25.1
             auto& sonnent = soundingNotes_[trackIndex];
             for (size_t note = 0; note < sonnent.size() && numEvents < kMaxEventsPerBlock; ++note) {
@@ -1382,12 +1448,17 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
             if (pluginEvent.kind == MidiNoteEvent::Kind::NoteOn)
                 notesSentToInstruments_.fetch_add(1, std::memory_order_relaxed);
             events[static_cast<size_t>(numEvents++)] = pluginEvent;
+        } else if (issue == Issue::Control && externe && (emitControlOut(trackIndex, track.channel, controlEvent), false)) {
+            // D27.2 : déposé sur le port, puis traité comme avant (la virgule
+            // rend faux : on continue dans les branches suivantes).
         } else if (issue == Issue::Control && interceptSustain(trackIndex, track.channel, controlEvent, events, numEvents)) {
             // D25.1 : la pédale est tenue par le graphe pour toutes les machines,
             // ET transmise -- huit machines (piano, clavecin...) ont leur propre
             // étouffoir, et le leur retirer changerait leur son. Le résultat de
             // la machine n'est pas compté « ignoré » : la pédale a agi.
-            instrument->handleControlEvent(controlEvent);
+            if (instrument) instrument->handleControlEvent(controlEvent);
+        } else if (issue == Issue::Control && instrument == nullptr) {
+            // Piste à port sans machine : le contrôle est parti sur le port, rien d'autre à faire.
         } else if (issue == Issue::Control) {
             // Livré TOUT DE SUITE : les contrôles ne passent pas par le
             // tableau d'événements de note, dont le contrat (et les
@@ -1400,6 +1471,17 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
                 ignoredControlEvents_.fetch_add(1, std::memory_order_relaxed);
         }
     }
+
+    // D27.2 : LES NOTES DU BLOC PARTENT SUR LE PORT -- celles du planning,
+    // de l'écoute, les NoteOff de pédale, de rebouclage et de panic : tout
+    // ce que la machine interne aurait reçu, au même échantillon.
+    if (externe)
+        for (int i = 0; i < numEvents; ++i) {
+            const MidiNoteEvent& ev = events[static_cast<size_t>(i)];
+            const bool on = ev.kind == MidiNoteEvent::Kind::NoteOn;
+            emitMidiOut(trackIndex, sampleStart + ev.sampleOffset,
+                        static_cast<uint8_t>((on ? 0x90 : 0x80) | (ev.channel & 0x0F)), ev.note, ev.velocity);
+        }
 
     // Rendu STÉRÉO de la piste (L/R séparés) : un instrument, du matériau
     // audio, ou les deux -- rien n'interdit à une piste audio de porter
