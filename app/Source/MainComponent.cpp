@@ -908,6 +908,9 @@ MainComponent::MainComponent()
     // un fondu. Zéro le désactive, et la lecture reprend le chemin d'avant.
     safetyFadeMs_ = juce::jlimit(0.0, 50.0,
         vsm::app::ui::UiScale::properties().getDoubleValue("fonduDeSecuriteMs", 2.0));
+    // D34.4 : la règle retrouve le mode qu'on lui avait laissé.
+    arrangement_.setRulerInTime(
+        vsm::app::ui::UiScale::properties().getBoolValue("regleEnTemps", false));
 
     // D17.2 : « l'automation suit les clips », active par défaut comme chez
     // Cubase, et retenue d'une exécution à l'autre.
@@ -1295,6 +1298,31 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
         pendingDroppedAudio_ = juce::File();
         pendingDroppedAudios_.clear();
     }
+    // D34.4 : « regle:temps » et « regle:mesures », par la MÊME méthode que le
+    // menu. La règle DIT ce qu'elle affiche, parce qu'une capture d'écran d'une
+    // règle graduée « 0 · 5 · 10 » et d'une autre graduée « 1 · 2 · 3 » se
+    // distinguent mal quand on ne sait pas laquelle on regarde.
+    else if (nom.startsWith("regle:")) {
+        const juce::String demande = nom.substring(6);
+        if (demande != "temps" && demande != "mesures") {
+            std::fputs("VSM_VUE regle : attendu temps ou mesures\n", stderr);
+            return;
+        }
+        setRulerInTime(demande == "temps");
+        std::fputs((juce::String::fromUTF8(u8"Règle : ")
+                     + (arrangement_.rulerInTime()
+                            ? juce::String::fromUTF8(u8"minutes:secondes")
+                            : juce::String::fromUTF8(u8"mesures"))
+                     + juce::String::fromUTF8(u8", écart mini ")
+                     + juce::String(arrangement_.rulerSmallestGapForCapture(), 1)
+                     + juce::String::fromUTF8(u8" px, graduations : ")
+                     + arrangement_.rulerLabelsForCapture() + "\n").toRawUTF8(), stderr);
+    }
+    // D34.4 : zoomer l'arrangement, pour vérifier la règle À PLUSIEURS ZOOMS.
+    // Le pas des graduations n'a de sens qu'ainsi : une règle correcte à un
+    // seul zoom ne prouve rien de la règle qui la choisit.
+    else if (nom.startsWith("zoom-arrangement:"))
+        arrangement_.zoomHorizontally(nom.substring(17).getFloatValue());
     else if (nom == "copies-liees")
         std::fputs((juce::String::fromUTF8(u8"Copies liées : ") + juce::String(linkedMidiClipCount())
                      + juce::String::fromUTF8(u8" clip(s) MIDI partagent leur fenêtre.\n")).toRawUTF8(),
@@ -2780,6 +2808,18 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 hauteurs.addItem(kMenuViewTrackHeightLarge, u8"Grande (112 px)", !project_.tracks.empty());
                 menu.addSubMenu(u8"Hauteur des pistes", hauteurs);
             }
+            // D34.4 : LA RÈGLE, EN MESURES OU EN TEMPS. La barre de transport
+            // affiche les deux positions depuis D11.3 ; la règle n'en montrait
+            // qu'une, alors que ce logiciel compare une reconstruction à un
+            // enregistrement, qui se mesure en secondes.
+            {
+                juce::PopupMenu regle;
+                regle.addItem(kMenuViewRulerBars, juce::String::fromUTF8(u8"Mesures"),
+                               true, !arrangement_.rulerInTime());
+                regle.addItem(kMenuViewRulerTime, juce::String::fromUTF8(u8"Minutes:secondes"),
+                               true, arrangement_.rulerInTime());
+                menu.addSubMenu(juce::String::fromUTF8(u8"Règle"), regle);
+            }
             menu.addSeparator();
             {
                 // TAILLE DE L'INTERFACE. Le facteur agrandit texte ET cases
@@ -2852,6 +2892,10 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuViewTrackHeightSmall)  { arrangement_.setAllTrackHeights(24); return; }
     if (menuItemID == kMenuViewTrackHeightNormal) { arrangement_.setAllTrackHeights(56); return; }
     if (menuItemID == kMenuViewTrackHeightLarge)  { arrangement_.setAllTrackHeights(112); return; }
+    if (menuItemID == kMenuViewRulerBars || menuItemID == kMenuViewRulerTime) {
+        setRulerInTime(menuItemID == kMenuViewRulerTime);
+        return;
+    }
     if (menuItemID == kMenuEditSelectAllClips) { arrangement_.selectAll(); return; }
     if (menuItemID == kMenuEditRepeatToLoopEnd) { arrangement_.repeatSelectionUntilLoopEnd(); return; }
     if (menuItemID == kMenuEditSliceAtOnsets) { sliceSelectedClipsAtOnsets(); return; }
@@ -6349,6 +6393,18 @@ void MainComponent::editTimeAtLocators(bool inserer) {
 // photographie doit être ce que le geste fait, sans quoi la capture prouve
 // l'existence d'un second chemin et rien d'autre -- c'est ce que D33.3 avait
 // déjà écrit du scrub.
+// D34.4 : LA RÈGLE EN TEMPS OU EN MESURES, et elle est CONSERVÉE.
+//
+// Un seul chemin pour le menu et pour la commande de vérification, comme la
+// forme des fondus croisés : ce qu'on photographie doit être ce que le geste
+// fait. Le réglage est une préférence d'ATELIER, pas une donnée du morceau --
+// il ne change rien à ce que le projet sonne ni à ce qu'il contient --, donc il
+// va dans les propriétés de l'application et non dans `project.json`.
+void MainComponent::setRulerInTime(bool enTemps) {
+    arrangement_.setRulerInTime(enTemps);
+    vsm::app::ui::UiScale::properties().setValue("regleEnTemps", enTemps);
+}
+
 // D34.3 : POSER SUR UNE PISTE ce que le dépôt a mis de côté.
 //
 // NOMMÉE PLUTÔT QU'ÉCRITE DANS LE RAPPEL DE LA BOÎTE, pour que la commande de

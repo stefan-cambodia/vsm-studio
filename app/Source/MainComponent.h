@@ -363,6 +363,9 @@ private:
         kMenuViewTrackHeightSmall,
         kMenuViewTrackHeightNormal,
         kMenuViewTrackHeightLarge,
+        /// D34.4 : la règle de l'arrangement, en mesures ou en minutes:secondes.
+        kMenuViewRulerBars,
+        kMenuViewRulerTime,
         kMenuViewComputerKeyboard,
         // Un identifiant par palier d'échelle, attribué à la suite :
         // kMenuViewScaleFirst + index dans UiScale::steps().
@@ -448,6 +451,9 @@ private:
     int linkedMidiClipCount() const;
     /// D34.3 : combien de pistes audio le projet porte.
     size_t audioTrackCount() const;
+    /// D34.4 : la règle en minutes:secondes (`true`) ou en mesures. Conservée
+    /// d'une exécution à l'autre.
+    void setRulerInTime(bool enTemps);
     /// D34.3 : pose sur des pistes neuves les fichiers audio du dernier dépôt.
     /// Ce que le bouton « Poser » appelle, et ce que la vérification appelle.
     void placeDroppedAudioOnTracks();

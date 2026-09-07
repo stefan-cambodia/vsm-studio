@@ -1,4 +1,5 @@
 #include "ArrangementComponent.h"
+#include <limits>
 #include "LookAndFeel/VsmLookAndFeel.h"
 #include <algorithm>
 
@@ -1417,6 +1418,101 @@ void ArrangementComponent::notifyChanged() {
     if (onClipsChanged) onClipsChanged();
 }
 
+// D34.4 : LES GRADUATIONS DE LA RÈGLE EN TEMPS, calculées UNE fois.
+//
+// Le dessin et la vérification lisent la MÊME liste : une vérification qui
+// recalculerait les nombres de son côté prouverait que deux calculs sont
+// d'accord, pas que la règle affiche ce qu'elle prétend.
+//
+// LE PAS EST CHOISI POUR QUE DEUX GRADUATIONS NE SE RAPPROCHENT JAMAIS À MOINS
+// DE `kMinRulerGap` PIXELS. Un pas fixe donnerait, au zoom large, une bouillie
+// de traits illisible, et au zoom serré une règle vide sur toute la largeur.
+// Les paliers sont ceux qu'on lit sans calculer : un dixième, un quart, une
+// demi-seconde, une seconde, cinq, quinze, une minute, cinq, une demi-heure.
+std::vector<std::pair<double, juce::String>> ArrangementComponent::rulerTimeTicks() const {
+    std::vector<std::pair<double, juce::String>> graduations;
+    if (project_ == nullptr || getWidth() <= kHeaderWidth) return graduations;
+    static const double kPas[] = {0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 15.0,
+                                  30.0, 60.0, 120.0, 300.0, 600.0, 900.0, 1800.0};
+    const double debutSec = project_->ticksToSeconds(scrollTick_);
+    const double finSec = project_->ticksToSeconds(xToTick(static_cast<float>(getWidth())));
+    const double etendue = std::max(1.0e-6, finSec - debutSec);
+    const double parPixel = etendue / static_cast<double>(getWidth() - kHeaderWidth);
+    double pas = kPas[std::size(kPas) - 1];
+    for (double candidat : kPas)
+        if (candidat / std::max(1.0e-9, parPixel) >= kMinRulerGap) { pas = candidat; break; }
+
+    const double premier = std::floor(debutSec / pas) * pas;
+    for (double sec = premier; sec <= finSec + pas; sec += pas) {
+        if (sec < 0.0) continue;
+        const float x = tickToX(project_->secondsToTicks(sec));
+        if (x < static_cast<float>(kHeaderWidth)) continue;
+        if (x > static_cast<float>(getWidth())) break;
+        graduations.emplace_back(sec, formatRulerTime(sec, pas));
+    }
+    return graduations;
+}
+
+float ArrangementComponent::rulerSmallestGapForCapture() const {
+    if (!rulerInTime_ || project_ == nullptr) return 0.0f;
+    const auto graduations = rulerTimeTicks();
+    if (graduations.size() < 2) return 0.0f;
+    float mini = std::numeric_limits<float>::max();
+    for (size_t i = 1; i < graduations.size(); ++i)
+        mini = std::min(mini, tickToX(project_->secondsToTicks(graduations[i].first))
+                              - tickToX(project_->secondsToTicks(graduations[i - 1].first)));
+    return mini;
+}
+
+juce::String ArrangementComponent::rulerLabelsForCapture() const {
+    if (!rulerInTime_) {
+        // EN MESURES, ON REND CE QUE LA RÈGLE ÉCRIT AUSSI : sans quoi la
+        // commande ne saurait dire que le mode « mesures » est bien revenu.
+        juce::StringArray noms;
+        if (project_ != nullptr) {
+            const vsm::midi::Tick parMesure =
+                project_->timeSignatureMap.ticksPerBar(0, project_->ticksPerQuarterNote);
+            if (parMesure > 0)
+                for (vsm::midi::Tick t = (scrollTick_ / parMesure) * parMesure;
+                     tickToX(t) < static_cast<float>(getWidth()); t += parMesure)
+                    if (tickToX(t) >= static_cast<float>(kHeaderWidth))
+                        noms.add(juce::String(static_cast<int>(t / parMesure) + 1));
+        }
+        return noms.joinIntoString(" ");
+    }
+    juce::StringArray noms;
+    for (const auto& [sec, texte] : rulerTimeTicks()) { juce::ignoreUnused(sec); noms.add(texte); }
+    return noms.joinIntoString(" ");
+}
+
+juce::String ArrangementComponent::formatRulerTime(double secondes, double pas) {
+    const bool negatif = secondes < 0.0;
+    const double v = std::abs(secondes);
+    const int minutes = static_cast<int>(v / 60.0);
+    const double reste = v - minutes * 60.0;
+
+    // LE NOMBRE DE DÉCIMALES EST CELUI QU'IL FAUT POUR ÉCRIRE LE PAS EXACTEMENT,
+    // et il se CALCULE plutôt qu'il ne se devine. Une première version disait
+    // « une décimale en dessous d'une demi-seconde » : au pas d'un quart de
+    // seconde, elle affichait « 0,0  0,2  0,5  0,8  1,0 » -- deux libellés FAUX
+    // sur cinq, pour des positions qui, elles, étaient justes. Une règle qui
+    // ment sur ce qu'elle gradue est pire qu'une règle absente.
+    int decimales = 0;
+    for (int d = 0; d <= 3; ++d) {
+        const double echelle = std::pow(10.0, d);
+        if (std::abs(pas * echelle - std::round(pas * echelle)) < 1.0e-9) { decimales = d; break; }
+        decimales = d;
+    }
+
+    // LA VIRGULE, PAS LE POINT : la barre de transport écrit « 00:00,000 »
+    // depuis D11.3, et deux affichages du même temps dans la même fenêtre ne
+    // doivent pas se contredire sur leur séparateur décimal.
+    juce::String nombre = juce::String(reste, decimales).replaceCharacter('.', ',');
+    if (minutes > 0 && reste < 10.0) nombre = "0" + nombre;
+    const juce::String texte = minutes > 0 ? juce::String(minutes) + ":" + nombre : nombre;
+    return negatif ? "-" + texte : texte;
+}
+
 void ArrangementComponent::resized() {}
 
 void ArrangementComponent::paint(juce::Graphics& g) {
@@ -1424,9 +1520,25 @@ void ArrangementComponent::paint(juce::Graphics& g) {
     if (project_ == nullptr) return;
     const auto bounds = getLocalBounds();
 
-    // --- Règle : une graduation par mesure -----------------------------------
+    // --- Règle : en mesures, ou en minutes:secondes (D34.4) -------------------
+    //
+    // POURQUOI LES DEUX. Ce logiciel compare une reconstruction à un
+    // ENREGISTREMENT, qui se mesure en secondes ; la barre de transport affiche
+    // déjà les deux positions depuis D11.3, et la règle n'en montrait qu'une.
+    // Repérer « la voix entre à 1 min 12 » demandait de compter les mesures.
     g.setColour(Palette::panel);
     g.fillRect(0, 0, bounds.getWidth(), kRulerHeight);
+    if (rulerInTime_) {
+        for (const auto& [sec, texte] : rulerTimeTicks()) {
+            const float x = tickToX(project_->secondsToTicks(sec));
+            g.setColour(Palette::border);
+            g.drawLine(x, 0.0f, x, static_cast<float>(bounds.getHeight()), 1.0f);
+            g.setColour(Palette::textSecondary);
+            g.setFont(juce::Font(juce::FontOptions(11.0f)));
+            g.drawText(texte, static_cast<int>(x) + 3, 2, 60, kRulerHeight - 4,
+                        juce::Justification::centredLeft);
+        }
+    } else {
     const vsm::midi::Tick parMesure =
         project_->timeSignatureMap.ticksPerBar(0, project_->ticksPerQuarterNote);
     if (parMesure > 0) {
@@ -1442,6 +1554,7 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                         static_cast<int>(x) + 3, 2, 40, kRulerHeight - 4,
                         juce::Justification::centredLeft);
         }
+    }
     }
 
     // --- Repères (D16.4) : un trait sur toute la hauteur, le fanion et le

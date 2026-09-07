@@ -224,6 +224,18 @@ public:
     /// active par défaut. Réglée par l'application, qui la retient ; la vue ne
     /// fait que la transmettre à `ClipEdit`, qui décide.
     void setAutomationFollowsClips(bool suit) { automationSuit_ = suit; }
+    /// D34.4 : la règle en temps (`true`) ou en mesures (`false`).
+    void setRulerInTime(bool enTemps) { if (rulerInTime_ != enTemps) { rulerInTime_ = enTemps; repaint(); } }
+    bool rulerInTime() const { return rulerInTime_; }
+    /// D34.4 : les libellés que la règle trace en ce moment, séparés par des
+    /// espaces. Ce que la vérification LIT : deux règles graduées autrement se
+    /// distinguent mal sur une capture, leurs nombres non.
+    juce::String rulerLabelsForCapture() const;
+    /// D34.4 : le plus petit écart, en pixels, entre deux graduations de la
+    /// règle en temps. C'est LE critère de l'étape, et il ne se juge pas à
+    /// l'œil : une règle correcte à un seul zoom ne prouve rien de la règle
+    /// qui choisit le pas. Zéro s'il y a moins de deux graduations.
+    float rulerSmallestGapForCapture() const;
     bool automationFollowsClips() const { return automationSuit_; }
 
     /// D16.5 : des clips d'une piste VERROUILLÉE ont été refusés (leur
@@ -329,6 +341,14 @@ private:
     double pixelsPerTick_ = 0.06;
     bool snap_ = true;
     bool automationSuit_ = true;
+    /// D34.4 : la règle en minutes:secondes plutôt qu'en mesures. Conservée
+    /// d'une exécution à l'autre par l'appelant, comme les autres réglages de
+    /// vue.
+    bool rulerInTime_ = false;
+    /// L'écart minimal, en pixels, entre deux graduations de temps. En deçà,
+    /// on passe au pas supérieur : une règle dont les nombres se chevauchent
+    /// ne se lit pas, et c'est un défaut qui n'apparaît qu'à certains zooms.
+    static constexpr float kMinRulerGap = 60.0f;
     /// Aimanter à la MESURE (le défaut, parce qu'on arrange par mesures) ou à
     /// la grille fine du piano roll. `G` bascule, `S` coupe l'aimantation.
     bool aimanteALaMesure_ = true;
@@ -380,6 +400,13 @@ private:
     size_t pointSaisi_ = 0;
 
     /// La courbe actuellement montrée sur une piste, ou nullptr.
+    /// D34.4 : « 1:12 », « 1:12,5 » ou « 12,25 » selon le PAS de la règle.
+    /// Écrire trois décimales à tous les zooms rendrait la règle illisible ;
+    /// n'en écrire aucune rendrait deux graduations d'un dixième identiques.
+    static juce::String formatRulerTime(double secondes, double pas);
+    /// Les graduations de la règle en temps : (seconde, libellé). Le dessin et
+    /// la vérification lisent cette liste, et non deux calculs jumeaux.
+    std::vector<std::pair<double, juce::String>> rulerTimeTicks() const;
     vsm::sequencer::AutomationCurve* curveShownOn(size_t trackIndex);
     /// Convertit une valeur en ordonnée dans la bande d'automation, et
     /// réciproquement.

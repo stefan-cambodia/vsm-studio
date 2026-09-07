@@ -7005,3 +7005,51 @@ Cinq manques ont survécu.
 >
 > Tests : 1 279 audio, 301 core, 285 interchange, 25 clap, 11 panels — tous
 > verts.
+
+> **D34.4 EST FAITE (07/09/2026, 05:10).** *Affichage ▸ Règle ▸ Mesures /
+> Minutes:secondes*, conservé d'une exécution à l'autre. C'est une préférence
+> d'ATELIER et non une donnée du morceau — elle ne change ni ce que le projet
+> sonne ni ce qu'il contient —, donc elle va dans les propriétés de
+> l'application et non dans `project.json`. La distinction avec le fondu croisé
+> de D34.1, qui est allé dans le projet, tient à cette seule question : est-ce
+> que le fichier exporté en dépend ?
+>
+> **LE PAS DES GRADUATIONS EST LE CŒUR DE L'ÉTAPE, et il se mesure.** Un pas
+> fixe donne, au zoom large, une bouillie de traits, et au zoom serré une règle
+> vide. Le pas est donc choisi dans une échelle de paliers qu'on lit sans
+> calculer — un dixième, un quart, une demi-seconde, une seconde, deux, cinq,
+> quinze, une minute, cinq, une demi-heure — de façon que deux graduations ne se
+> rapprochent jamais à moins de **60 pixels**. Mesuré à sept zooms, en lisant
+> l'écart minimal RÉEL entre deux traits :
+>
+> | pas retenu | graduations affichées | écart mini |
+> |---|---|---|
+> | 1 s | 0 · 1 · 2 · 3 · 4 | **62,4 px** |
+> | 15 s | 0 · 15 · 30 · 45 · 1:00 | **62,4 px** |
+> | 2 s | 0 · 2 · 4 · 6 · 8 | **66,6 px** |
+> | 0,25 s | 0,00 · 0,25 · 0,50 · 0,75 · 1,00 | **66,6 px** |
+> | 0,1 s | 0,0 · 0,1 | **208,0 px** |
+>
+> **DEUX DÉFAUTS TROUVÉS PAR CETTE MESURE MÊME, et c'est pourquoi elle valait
+> mieux qu'un coup d'œil.**
+>
+> 1. **La règle mentait sur ce qu'elle graduait.** Une première version disait
+>    « une décimale en dessous d'une demi-seconde ». Au pas d'un quart de
+>    seconde, elle affichait « 0,0 · 0,2 · 0,5 · 0,8 · 1,0 » : **deux libellés
+>    faux sur cinq**, pour des positions qui, elles, étaient justes. Le nombre
+>    de décimales se CALCULE désormais — celui qu'il faut pour écrire le pas
+>    exactement — au lieu de se deviner par un seuil. Une règle qui ment sur ce
+>    qu'elle gradue est pire qu'une règle absente.
+> 2. **Le séparateur décimal contredisait la barre de transport**, qui écrit
+>    « 00:00,000 » depuis D11.3. Deux affichages du même temps dans la même
+>    fenêtre, l'un à la virgule et l'autre au point.
+>
+> **Le dessin et la vérification lisent la MÊME liste de graduations**
+> (`rulerTimeTicks`) : une vérification qui recalculerait les nombres de son
+> côté prouverait que deux calculs sont d'accord, pas que la règle affiche ce
+> qu'elle prétend. Vérifié par `VSM_VUE=regle:temps,zoom-arrangement:…` — une
+> commande de zoom ajoutée pour cela, **parce qu'une règle correcte à un seul
+> zoom ne prouve rien de la règle qui choisit le pas**.
+>
+> Tests : 1 279 audio, 301 core, 285 interchange — inchangés, l'étape est
+> entièrement dans l'interface.
