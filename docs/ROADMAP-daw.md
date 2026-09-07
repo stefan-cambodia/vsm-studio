@@ -8751,3 +8751,29 @@ Tests : **1 285 audio** (2 neufs), 319 core, 285 interchange, 25 clap,
 > l'était à cause du **graveur de fichiers**, deux couches plus bas, que
 > personne ne soupçonnait parce que sa faute ressemblait à un mixage fort. Une
 > promesse fausse ne dénonce pas toujours celui qui la fait.
+
+> **L'AVERTISSEMENT DE D47, VÉRIFIÉ SUR LE VRAI CHEMIN D'EXPORT (08/09/2026,
+> 01:50).** Exporté depuis l'application, `children-dream-v7` en WAV 24 bits —
+> le cas où borner est inévitable — rend exactement :
+>
+> ```
+> 232.5 s, 44.1 kHz, 24 bits, crête 1.405.
+>
+> ATTENTION : la crête dépasse 0 dBFS (3.0 dBFS). Ce format ne peut pas la
+> porter et l'a bornée. « Niveau : crête à -1 dBFS » à l'export l'évite, ou un
+> export en 32 bits flottants la conserve.
+> ```
+>
+> Le message donne le dépassement **en dBFS** (3,0) et non en nombre nu : c'est
+> l'unité dans laquelle on décide de baisser un fader. Et il nomme les deux
+> remèdes, qui existaient déjà dans le même menu — la phase n'a rien ajouté à
+> faire, elle a ajouté de le DIRE.
+>
+> **LES TROIS FORMATS SONT ÉCRITS ET BIEN FORMÉS** : WAV (`RIFF`, 61,5 Mo),
+> FLAC (`fLaC`, 44,0 Mo) et Ogg (`OggS`, 12,6 Mo) sur le même morceau de
+> 232,5 s.
+>
+> **ET LE LECTEUR EST SYMÉTRIQUE DE LA CORRECTION**, vérifié plutôt que
+> supposé : `WavDecoding.h` rend un `float32` **tel quel**, sans le borner. Ce
+> qu'on écrit au-delà de ±1 se relit au-delà de ±1 ; le défaut était bien du
+> seul côté du graveur.
