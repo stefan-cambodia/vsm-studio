@@ -446,6 +446,11 @@ private:
     int audioSpansWithCrossfade() const;
     /// D34.2 : combien de clips MIDI partagent leur fenêtre avec un autre.
     int linkedMidiClipCount() const;
+    /// D34.3 : combien de pistes audio le projet porte.
+    size_t audioTrackCount() const;
+    /// D34.3 : pose sur des pistes neuves les fichiers audio du dernier dépôt.
+    /// Ce que le bouton « Poser » appelle, et ce que la vérification appelle.
+    void placeDroppedAudioOnTracks();
 
     std::unique_ptr<vsm::app::AutosaveService> autosave_;
     bool projectDirty_ = false;
@@ -504,6 +509,10 @@ private:
     /// Le fichier qu'un glisser-déposer vient de proposer, retenu le temps que
     /// l'utilisateur réponde à la question.
     juce::File pendingDroppedAudio_;
+    /// D34.3 : TOUS les fichiers audio du même lâcher, pour « Poser sur une
+    /// piste ». `pendingDroppedAudio_` reste le seul que la reconstruction
+    /// sait traiter -- elle analyse un morceau, pas un lot.
+    juce::Array<juce::File> pendingDroppedAudios_;
 
     void timerCallback() override; // playhead, sync Play/Stop, CPU/sample rate (thread UI uniquement)
 
@@ -716,7 +725,12 @@ private:
     /// `Track::Kind`). Il n'existait aucun moyen d'en créer une depuis
     /// l'application -- elles ne pouvaient venir que d'un projet importé, ce qui
     /// rendait l'enregistrement audio de D3.4 inatteignable.
-    void addTrack(vsm::sequencer::Track::Kind kind = vsm::sequencer::Track::Kind::Midi);
+    /// `nom` vide = le nom automatique (« Piste 4 », « Audio 5 »). Fourni, il
+    /// est posé AVANT que les vues soient refaites (D34.3) : renommer après
+    /// coup ne rafraîchissait que la liste des pistes, et le mélangeur gardait
+    /// « Audio 5 » sur une piste appelée « prise3 ».
+    void addTrack(vsm::sequencer::Track::Kind kind = vsm::sequencer::Track::Kind::Midi,
+                   const std::string& nom = {});
     void removeSelectedTrack();
     /// D11.5 : dupliquer la piste choisie, état de l'instrument compris.
     void duplicateSelectedTrack();

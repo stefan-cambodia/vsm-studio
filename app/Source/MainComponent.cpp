@@ -1267,6 +1267,34 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
                                                             u8"ou ce clip n'était lié à rien)"))
                      + "\n").toRawUTF8(), stderr);
     }
+    // D34.3 : « deposer-audio:a.wav;b.wav » emprunte le MÊME point d'entrée que
+    // le glisser-déposer (`filesDropped`) : un fichier lâché sur la fenêtre ne
+    // se simule pas sans souris, et la boîte qui s'ouvre est justement ce que
+    // l'étape change. Les chemins sont séparés par « ; », la virgule servant
+    // déjà à séparer les commandes de VSM_VUE.
+    else if (nom.startsWith("deposer-audio:")) {
+        juce::StringArray chemins;
+        chemins.addTokens(nom.substring(14), ";", "");
+        juce::StringArray absolus;
+        for (const auto& c : chemins)
+            absolus.add(juce::File::getCurrentWorkingDirectory().getChildFile(c.trim())
+                            .getFullPathName());
+        std::fputs((juce::String::fromUTF8(u8"Dépôt simulé de ") + juce::String(absolus.size())
+                     + juce::String::fromUTF8(u8" fichier(s).\n")).toRawUTF8(), stderr);
+        const size_t avant = audioTrackCount();
+        filesDropped(absolus, 0, 0);
+        // LA BOÎTE S'OUVRE POUR UN HUMAIN ; ON PREND SA PLACE. Un clic ne se
+        // pilote pas sans souris, et JUCE ne pose ici aucune `AlertWindow`
+        // qu'on puisse retrouver dans l'arbre pour la presser. On appelle donc
+        // EXACTEMENT la méthode que le bouton « Poser » appelle, et l'on compte
+        // les pistes : ce qui est vérifié est tout le chemin sauf le clic.
+        placeDroppedAudioOnTracks();
+        std::fputs((juce::String::fromUTF8(u8"Pistes audio : ") + juce::String(int(avant))
+                     + juce::String::fromUTF8(u8" avant, ") + juce::String(int(audioTrackCount()))
+                     + juce::String::fromUTF8(u8" après le dépôt posé.\n")).toRawUTF8(), stderr);
+        pendingDroppedAudio_ = juce::File();
+        pendingDroppedAudios_.clear();
+    }
     else if (nom == "copies-liees")
         std::fputs((juce::String::fromUTF8(u8"Copies liées : ") + juce::String(linkedMidiClipCount())
                      + juce::String::fromUTF8(u8" clip(s) MIDI partagent leur fenêtre.\n")).toRawUTF8(),
@@ -4853,36 +4881,77 @@ void MainComponent::filesDropped(const juce::StringArray& files, int, int) {
     // vouloir, et le seul qui ne perd rien.
     for (const auto& f : files)
         if (f.endsWithIgnoreCase(".mid") || f.endsWithIgnoreCase(".midi")) { importMidiIntoProject(juce::File(f)); return; }
-    juce::File audio;
+    // D34.3 : TOUS LES FICHIERS AUDIO LÂCHÉS, ET NON LE PREMIER. Une
+    // reconstruction rend des dizaines de stems ; n'en retenir qu'un
+    // transformait un geste en autant de gestes qu'il y a de fichiers.
+    juce::Array<juce::File> audios;
     for (const auto& f : files)
-        if (vsm::interchange::isReconstructableAudio(f.toStdString())) { audio = juce::File(f); break; }
-    if (audio == juce::File()) return;
+        if (vsm::interchange::isReconstructableAudio(f.toStdString()))
+            audios.add(juce::File(f));
+    if (audios.isEmpty()) return;
 
     // ON DEMANDE AVANT DE PARTIR POUR DIX MINUTES. Un fichier lâché sur une
     // fenêtre est un geste ambigu -- on peut vouloir l'écouter, le poser sur
     // une piste, ou le reconstruire --, et lancer d'autorité l'opération la
     // plus longue des trois serait le pire des choix par défaut.
-    if (!reconstructionChain_.available) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon,
-            juce::String::fromUTF8(u8"Reconstruction indisponible"),
-            audio.getFileName() + "\n\n"
-                + juce::String::fromUTF8(reconstructionChain_.reason.c_str()) + "\n\n"
-                + juce::String::fromUTF8(reconstructionChain_.remedy.c_str()));
+    //
+    // D34.3 : ET C'EST POURQUOI LES DEUX RÉPONSES SONT OFFERTES. Ce commentaire
+    // nommait les trois choses qu'on peut vouloir depuis D14.3 et n'en
+    // proposait qu'une -- la plus longue. « Poser sur une piste » est
+    // l'opération qui prend une seconde, et c'est celle qu'on veut le plus
+    // souvent quand on lâche douze stems d'un coup.
+    pendingDroppedAudio_ = audios[0];
+    pendingDroppedAudios_ = audios;
+
+    const juce::String quoi = audios.size() == 1
+        ? audios[0].getFileName()
+        : juce::String(audios.size()) + juce::String::fromUTF8(u8" fichiers audio");
+
+    // LA RECONSTRUCTION N'EST PROPOSÉE QUE SI ELLE EST POSSIBLE, et d'un seul
+    // fichier : la chaîne analyse UN morceau, et lui en donner douze ne veut
+    // rien dire. Quand elle est hors service, on le dit dans la MÊME boîte au
+    // lieu d'une boîte d'erreur qui remplacerait le choix par un refus.
+    const bool reconstructible = reconstructionChain_.available && audios.size() == 1;
+    juce::String detail = quoi + "\n\n";
+    detail += reconstructible
+        ? juce::String::fromUTF8(u8"« Poser » crée une piste par fichier, tout de suite.\n"
+                                  u8"« Reconstruire » sépare, transcrit et cherche les machines : "
+                                  u8"plusieurs minutes.")
+        : (audios.size() > 1
+               ? juce::String::fromUTF8(u8"« Poser » crée une piste par fichier, tout de suite.\n"
+                                         u8"La reconstruction n'analyse qu'un morceau à la fois : "
+                                         u8"elle n'est pas proposée pour un lot.")
+               : juce::String::fromUTF8(u8"« Poser » crée une piste, tout de suite.\n"
+                                         u8"Reconstruction indisponible — ")
+                     + juce::String::fromUTF8(reconstructionChain_.reason.c_str()) + "\n"
+                     + juce::String::fromUTF8(reconstructionChain_.remedy.c_str()));
+
+    if (!reconstructible) {
+        juce::AlertWindow::showOkCancelBox(
+            juce::AlertWindow::QuestionIcon,
+            juce::String::fromUTF8(u8"Poser sur une piste ?"), detail,
+            juce::String::fromUTF8(u8"Poser"), "Annuler", this,
+            juce::ModalCallbackFunction::create([this](int resultat) {
+                if (resultat == 1) placeDroppedAudioOnTracks();
+                pendingDroppedAudio_ = juce::File();
+                pendingDroppedAudios_.clear();
+            }));
         return;
     }
-    pendingDroppedAudio_ = audio;
-    juce::AlertWindow::showOkCancelBox(
+    // TROIS BOUTONS quand les deux chemins sont ouverts : « Poser » en premier
+    // parce que c'est le geste courant, « Reconstruire » ensuite, « Annuler »
+    // au bout.
+    juce::AlertWindow::showYesNoCancelBox(
         juce::AlertWindow::QuestionIcon,
-        juce::String::fromUTF8(u8"Reconstruire ce morceau ?"),
-        audio.getFileName()
-            + juce::String::fromUTF8(u8"\n\nLa chaîne d'analyse va le séparer, le transcrire et "
-                                      u8"chercher les machines. Cela prend plusieurs minutes."),
+        juce::String::fromUTF8(u8"Que faire de ce fichier ?"), detail,
+        juce::String::fromUTF8(u8"Poser sur une piste"),
         juce::String::fromUTF8(u8"Reconstruire"), "Annuler", this,
         juce::ModalCallbackFunction::create([this](int resultat) {
-            if (resultat == 1 && pendingDroppedAudio_ != juce::File())
+            if (resultat == 1) placeDroppedAudioOnTracks();
+            else if (resultat == 2 && pendingDroppedAudio_ != juce::File())
                 startReconstruction(pendingDroppedAudio_);
             pendingDroppedAudio_ = juce::File();
+            pendingDroppedAudios_.clear();
         }));
 }
 
@@ -6280,6 +6349,25 @@ void MainComponent::editTimeAtLocators(bool inserer) {
 // photographie doit être ce que le geste fait, sans quoi la capture prouve
 // l'existence d'un second chemin et rien d'autre -- c'est ce que D33.3 avait
 // déjà écrit du scrub.
+// D34.3 : POSER SUR UNE PISTE ce que le dépôt a mis de côté.
+//
+// NOMMÉE PLUTÔT QU'ÉCRITE DANS LE RAPPEL DE LA BOÎTE, pour que la commande de
+// vérification appelle EXACTEMENT ce que le bouton appelle. Le clic lui-même
+// n'est pas pilotable sans souris, et c'est dit dans la feuille de route
+// plutôt que sous-entendu ; ce qui est vérifié est tout le reste du chemin.
+void MainComponent::placeDroppedAudioOnTracks() {
+    importAudioFiles(pendingDroppedAudios_);
+}
+
+/// Combien de pistes audio le projet porte : ce que la vérification de D34.3
+/// compte avant et après un dépôt.
+size_t MainComponent::audioTrackCount() const {
+    size_t compte = 0;
+    for (const auto& track : project_.tracks)
+        if (track.kind == vsm::sequencer::Track::Kind::Audio) ++compte;
+    return compte;
+}
+
 /// Combien de clips MIDI du projet partagent leur fenêtre avec un autre : ce
 /// que la commande de vérification affiche, faute de pouvoir juger un marqueur
 /// de six pixels sur une capture d'écran.
@@ -6529,7 +6617,7 @@ void MainComponent::newProject() {
     rebuildFromProject();
 }
 
-void MainComponent::addTrack(Track::Kind kind) {
+void MainComponent::addTrack(Track::Kind kind, const std::string& nom) {
     const bool audio = kind == Track::Kind::Audio;
     const bool groupe = kind == Track::Kind::Group;
     beginProjectEdit(groupe ? juce::String(u8"Ajouter un groupe")
@@ -6543,7 +6631,14 @@ void MainComponent::addTrack(Track::Kind kind) {
 
     Track t;
     t.kind = kind;
-    t.name = (groupe ? "Groupe " : audio ? "Audio " : "Piste ") + std::to_string(n + 1);
+    // LE NOM VIENT DE L'APPELANT QUAND IL EN A UN (D34.3), et il est posé
+    // AVANT `rebuildFromProject` : le poser après ne rafraîchissait que la
+    // liste des pistes, et le mélangeur gardait « Audio 5 » sur une piste que
+    // la liste appelait « prise3 ». Deux vues d'une même piste qui ne disent
+    // pas la même chose, sur le geste même — importer douze stems — que D33.1
+    // venait de rendre possible.
+    t.name = !nom.empty() ? nom
+           : (groupe ? "Groupe " : audio ? "Audio " : "Piste ") + std::to_string(n + 1);
     t.channel = static_cast<uint8_t>(n % 16);      // canaux MIDI 1..16 en boucle
     t.colorRgba = vsm::sequencer::trackColourForIndex(n);
     // Pas d'instrument par défaut : l'utilisateur le choisit dans le combo de
@@ -8800,10 +8895,8 @@ bool MainComponent::importAudioFileOnNewTrack(const juce::File& fichier) {
         std::fputs("Importer un fichier audio : projet jamais enregistr\u00e9, rien n'a \u00e9t\u00e9 fait\n", stderr);
         return false;
     }
-    addTrack(Track::Kind::Audio);
+    addTrack(Track::Kind::Audio, fichier.getFileNameWithoutExtension().toStdString());
     const size_t index = project_.tracks.size() - 1;
-    project_.tracks[index].name = fichier.getFileNameWithoutExtension().toStdString();
-    trackList_.refreshTrackRow(index);   // la ligne a été créée avant le nom
     if (!placeSampleOnTrack(index, 0, fichier)) {
         // La piste neuve ne sert à rien sans son fichier : on la retire, et
         // l'historique garde les deux gestes -- annuler deux fois ramène au
@@ -9174,6 +9267,29 @@ void MainComponent::removeMarker(size_t index) {
 }
 
 void MainComponent::rebuildFromProject(bool stopPlayback) {
+    // LE RACK LÂCHE SA PISTE AVANT TOUTE CHOSE (trouvé en D34.3).
+    //
+    // UNE LECTURE APRÈS LIBÉRATION, ET ELLE FAISAIT TOMBER L'APPLICATION.
+    // `updateSynthRackForSelection` donnait au rack un POINTEUR BRUT dans
+    // `project_.tracks` (`setTrack(&project_.tracks[idx])`), et le moindre
+    // `push_back` sur ce vecteur le réalloue : ajouter une piste pendant qu'une
+    // machine à grille de pas était choisie laissait le séquenceur relire les
+    // notes d'une piste détruite. `patternFromNotes` recevait un `std::vector`
+    // de capacité 2 345 625 308 412 et le processus mourait sur une faute de
+    // segmentation.
+    //
+    // TROUVÉ EN POSANT DEUX FICHIERS AUDIO LÂCHÉS SUR LA FENÊTRE, mais le
+    // chemin n'a rien de neuf : « Ajouter une piste », l'import audio du menu
+    // (D33.1) et tout ce qui allonge la liste des pistes passaient par là. Ce
+    // qui manquait n'était pas le code, c'était de LANCER l'application après
+    // l'avoir écrit -- exactement la leçon que ce dépôt avait déjà payée sur le
+    // point d'entrée de D7.5.
+    //
+    // ICI PLUTÔT QU'À CHAQUE MUTATION : toute modification de la liste des
+    // pistes finit par appeler cette fonction, et un seul endroit vaut mieux
+    // que quinze dont le seizième oubliera. Le pointeur est reposé juste après,
+    // par `updateSynthRackForSelection`.
+    synthRack_.setTrack(nullptr);
 #if VSM_WITH_VST3
     // LES FAÇADES NATIVES SE FERMENT D'ABORD (D7.4). Cette fonction refabrique
     // les instruments : une fenêtre qui resterait ouverte dessinerait un plugin

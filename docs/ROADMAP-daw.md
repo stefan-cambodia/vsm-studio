@@ -6933,3 +6933,75 @@ Cinq manques ont survécu.
 >
 > Tests : 1 279 audio, **301 core** (7 neufs), 285 interchange, 25 clap,
 > 11 panels — tous verts.
+
+> **D34.3 EST FAITE (07/09/2026, 04:20), ET ELLE A DÉTERRÉ DEUX DÉFAUTS QUI NE
+> LUI APPARTENAIENT PAS.** Un fichier audio lâché sur la fenêtre peut
+> désormais être **posé** : la boîte offre « Poser sur une piste » et
+> « Reconstruire », `Poser` en premier parce que c'est le geste courant. Tous
+> les fichiers du lâcher sont pris, et non le premier — une reconstruction rend
+> des dizaines de stems. La reconstruction, elle, n'est proposée que pour **un
+> seul** fichier : la chaîne analyse un morceau, pas un lot, et le dire dans la
+> boîte vaut mieux qu'un refus après coup. Quand elle est hors service, la
+> raison s'écrit dans la MÊME boîte au lieu de remplacer le choix par une
+> alerte.
+>
+> **PREMIER DÉFAUT : UNE LECTURE APRÈS LIBÉRATION QUI FAISAIT TOMBER
+> L'APPLICATION.** `updateSynthRackForSelection` donnait au rack un POINTEUR
+> BRUT dans `project_.tracks` (`setTrack(&project_.tracks[idx])`) ; le moindre
+> `push_back` sur ce vecteur le réalloue. Ajouter une piste pendant qu'une
+> machine à grille de pas était choisie laissait donc le séquenceur relire les
+> notes d'une piste **détruite** : `patternFromNotes` recevait un `std::vector`
+> annoncé de capacité **2 345 625 308 412**, et le processus mourait sur une
+> faute de segmentation.
+>
+> **Le chemin fautif n'a rien de neuf.** Il est dans `addTrack`, que l'import
+> audio du menu — **D33.1, la phase précédente** — emprunte à chaque fichier.
+> Le défaut ne se déclenche que si le vecteur réalloue à ce moment-là, ce qui
+> dépend de sa capacité : cinq « Ajouter une piste MIDI » de suite ne l'ont pas
+> réveillé, deux fichiers posés d'un coup, si. **C'est ce qui rend ce genre de
+> panne intermittente, et c'est pourquoi la seule façon de la trouver était de
+> LANCER l'application** — les 1 901 tests ne traversent pas une seule ligne
+> d'interface. C'est exactement la leçon payée sur le point d'entrée de D7.5,
+> et elle vient de resservir.
+>
+> Le pointeur est désormais lâché **en tête de `rebuildFromProject`**, et non à
+> chacune des quinze mutations possibles : toute modification de la liste des
+> pistes finit par appeler cette fonction, et un seul endroit vaut mieux que
+> quinze dont le seizième oubliera. Vérifié en A/B, une seule variable : sans
+> le correctif, faute de segmentation ; avec, « 1 piste audio avant, 3 après ».
+>
+> **SECOND DÉFAUT : DEUX VUES QUI NE DISAIENT PAS LA MÊME CHOSE.**
+> `importAudioFileOnNewTrack` renommait la piste APRÈS `addTrack` et ne
+> rafraîchissait que la liste des pistes : le mélangeur gardait « Audio 5 » sur
+> une piste que la liste appelait « prise3 ». Là encore, le geste concerné est
+> celui que D33.1 venait de rendre possible — importer douze stems laissait
+> douze tranches mal nommées, et seule la dernière restait fausse assez
+> longtemps pour se voir. `addTrack` prend maintenant le nom **à la
+> naissance** : la piste est correcte avant que la moindre vue soit refaite, et
+> il n'y a plus de second rafraîchissement à oublier.
+>
+> **Vérifié à l'écran** : `VSM_VUE=deposer-audio:prise2.wav;prise3.wav` rend
+> « Import audio : 2 piste(s) créée(s) sur 2 fichier(s) » et « Pistes audio :
+> 1 avant, 3 après le dépôt posé » ; la capture montre les deux pistes neuves,
+> nommées d'après leurs fichiers, dans l'arrangement **et** dans le mélangeur.
+>
+> **CE QUI N'A PAS ÉTÉ PILOTÉ, ET C'EST DIT.** Le CLIC sur « Poser » ne l'a pas
+> été : JUCE ne pose ici aucune `AlertWindow` qu'on puisse retrouver dans
+> l'arbre des composants pour la presser, et l'écran de la machine peut être
+> verrouillé quand la vérification tourne. La commande appelle donc
+> **exactement** la méthode que le bouton appelle (`placeDroppedAudioOnTracks`,
+> nommée pour cela) : ce qui est vérifié est tout le chemin sauf le clic — la
+> même honnêteté que le scrub de D33.3, dont le glissé de souris n'avait pas
+> été piloté non plus.
+>
+> **LE DÉPÔT NE TIENT TOUJOURS PAS COMPTE DE L'ENDROIT OÙ L'ON LÂCHE, et c'est
+> une décision.** `filesDropped` reçoit `x` et `y` et les ignore. Le fichier
+> arrive sur une piste NEUVE, comme par le menu, et non sur la piste survolée à
+> l'instant du lâcher. La raison est celle que D14.3 avait déjà écrite pour le
+> MIDI : « le geste le moins ambigu des deux, et le seul qui ne perd rien ».
+> Poser sur la piste survolée écraserait ou décalerait ce qui s'y trouve, et
+> douze stems lâchés ensemble n'ont de toute façon pas douze pistes sous le
+> curseur. À rouvrir le jour où l'on lâchera un fichier unique en visant.
+>
+> Tests : 1 279 audio, 301 core, 285 interchange, 25 clap, 11 panels — tous
+> verts.
