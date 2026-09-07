@@ -76,8 +76,13 @@ EffectChainComponent::EffectChainComponent() {
     midiHeader_.setFont(juce::Font(juce::FontOptions(11.0f).withStyle("Bold")));
     midiHeader_.setText(juce::String::fromUTF8(u8"Effets MIDI (sur les notes, avant la machine)"),
                          juce::dontSendNotification);
-    midiHeader_.setVisible(false);
-    contenu_.addAndMakeVisible(midiHeader_);
+    // `addChildComponent` ET NON `addAndMakeVisible` : ce dernier REND VISIBLE
+    // et annulait le `setVisible(false)` qui le précédait. Le défaut était
+    // LATENT -- `rebuildMidiList` repose la visibilité au premier
+    // rafraîchissement --, mais il contredisait le commentaire trois lignes
+    // plus haut, et le même motif a bel et bien caché quelque chose ailleurs
+    // (D48, la ligne de phase du master).
+    contenu_.addChildComponent(midiHeader_);
 }
 
 std::vector<vsm::sequencer::MidiEffect>* EffectChainComponent::activeMidiChain() {
