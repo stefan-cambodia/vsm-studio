@@ -8554,3 +8554,38 @@ son propre test (`process_block_allocates_nothing_while_streaming_from_disk`),
 mais son coût n'est pas chiffré ici.
 
 Tests : 1 283 audio, 319 core, 285 interchange, 25 clap, 11 panels — verts.
+
+> **D42.3, RÉGLÉ PAR UNE VRAIE RECONSTRUCTION — ET LE PIXEL AMBRE EST ENFIN
+> PHOTOGRAPHIÉ (07/09/2026, 23:50).** Toutes les captures de cette journée
+> utilisaient le projet de démonstration : **une** piste, 1,85 s. En ouvrant
+> `reconstruction/children-dream-v7` — six pistes, six machines différentes, de
+> vraies notes —, deux défauts du marquage sont apparus, que ni le banc ni le
+> projet de démo ne pouvaient montrer.
+>
+> **PREMIER DÉFAUT : LE SEUIL NE SE DÉCLENCHAIT JAMAIS.** Trois fois la médiane
+> venait du PARC, où D41 a mesuré un rapport de 45 entre les extrêmes. Mais un
+> projet réel n'est pas le parc : coûts mesurés en jeu **86, 58, 136, 62, 152 et
+> 34 µs**, médiane 86, maximum 152 — **1,8 fois**. La fonction n'aurait servi à
+> personne. Ce qu'il faut désigner n'est pas une aberration mais **la plus
+> chère** : la question « laquelle je gèle ? » a une réponse même quand l'écart
+> est modeste, et geler la piste à 152 µs rend cinq fois ce que rend celle à 34.
+>
+> **SECOND DÉFAUT : LA DÉSIGNATION CLIGNOTAIT.** Deux relevés à une seconde
+> d'intervalle sur le même morceau : `86 58 136 62 152 34` puis
+> `80 63 106 17 49 17`. Les coûts d'un bloc varient du simple au triple selon
+> les notes qui tombent ; recalculée à chaque image, la désignation sautait
+> d'une tranche à l'autre. **Une étiquette qui clignote ne se lit pas** — et
+> celle-ci sert à décider. On ne change donc d'avis que si la prétendante
+> dépasse la désignée en titre d'un **quart** : c'est ce qui distingue « une
+> autre piste vient de jouer une note » de « c'est l'autre qui coûte ».
+>
+> **CE QUE CELA DIT DE LA MÉTHODE.** Le banc validait la règle dans ses deux
+> sens et ne pouvait pas voir ces deux défauts : il donnait des coûts FIXES,
+> choisis par moi, et un écart de douze. **Un banc mesure ce qu'on lui donne à
+> mesurer.** Les deux défauts tenaient à la forme des données réelles — un écart
+> modeste, et du bruit — c'est-à-dire à ce que personne n'invente en écrivant un
+> banc. Ouvrir un vrai projet aurait dû être le premier geste, pas le dixième.
+>
+> Vérifié à l'écran : sur `children-dream-v7` en lecture, la tranche **`other`**
+> porte son nom en ambre, et elle seule — c'est bien la piste que les deux
+> relevés donnaient la plus chère (136 puis 106 µs).

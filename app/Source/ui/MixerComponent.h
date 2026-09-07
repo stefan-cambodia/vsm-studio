@@ -425,13 +425,27 @@ public:
     ///
     /// LE SEUIL EST RELATIF À LA MÉDIANE, et non absolu : sur un projet de
     /// pistes toutes semblables, aucune n'est « la chère », et c'est juste --
-    /// il n'y a rien à geler en particulier. Trois fois la médiane est
-    /// l'endroit où une piste se détache vraiment ; D41 a mesuré un rapport de
-    /// 42 entre les extrêmes du parc, si bien qu'une piste qui dépasse ce
-    /// facteur trois est presque toujours une machine d'une autre famille.
+    /// il n'y a rien à geler en particulier.
     ///
     /// LA MÉDIANE ET NON LA MOYENNE : une seule piste très chère tire la
     /// moyenne au point de se cacher elle-même derrière son propre seuil.
+    ///
+    /// TROIS FOIS LA MÉDIANE ÉTAIT TROP HAUT, ET C'EST UNE VRAIE
+    /// RECONSTRUCTION QUI L'A DIT. Le seuil venait du parc : D41 y a mesuré un
+    /// rapport de 45 entre les extrêmes, d'où l'idée qu'une piste qui dépasse
+    /// trois fois la médiane est « d'une autre famille ». Mais un projet réel
+    /// n'est pas le parc. Sur `children-dream-v7` -- six pistes, six machines
+    /// différentes, de vraies notes -- les coûts mesurés en jeu sont
+    /// 86, 58, 136, 62, 152 et 34 µs : médiane 86, maximum 152, soit **1,8
+    /// fois**. Le seuil de trois ne se déclenchait donc JAMAIS, et la fonction
+    /// n'aurait servi à personne.
+    ///
+    /// **CE QU'IL FAUT DÉSIGNER N'EST PAS UNE ABERRATION, C'EST LA PLUS
+    /// CHÈRE.** La question de l'utilisateur est « laquelle je gèle ? », et
+    /// elle a une réponse même quand l'écart est modeste -- geler la piste à
+    /// 152 µs rend cinq fois ce que rend celle à 34. On désigne donc **la
+    /// plus chère**, et seulement si elle se détache un peu (1,5 fois la
+    /// médiane), pour qu'un projet plat n'en désigne aucune.
     /// D42.3 : les tranches désignées chères, pour la mesure.
     std::vector<size_t> pistesCheres() const {
         std::vector<size_t> v;
@@ -460,9 +474,35 @@ public:
         std::vector<float> tries = couts;
         std::sort(tries.begin(), tries.end());
         const float mediane = tries[tries.size() / 2];
+        const float sommet = tries.back();
+        // UNE SEULE désignée : « laquelle je gèle » n'a qu'une réponse, et en
+        // désigner trois ferait recommencer le choix.
+        //
+        // ET LA DÉCISION EST TENUE, PAS RECALCULÉE À CHAQUE IMAGE. Mesuré sur
+        // `children-dream-v7` en lecture, deux relevés à une seconde
+        // d'intervalle : `86 58 136 62 152 34` puis `80 63 106 17 49 17`. Les
+        // coûts d'un bloc oscillent du simple au triple selon les notes qui
+        // tombent, si bien qu'une désignation recalculée à chaque fois saute
+        // d'une tranche à l'autre. **Une étiquette qui clignote ne se lit
+        // pas** -- et celle-ci sert à choisir quoi geler, c'est-à-dire à
+        // décider.
+        //
+        // On ne change donc d'avis que si la prétendante dépasse la désignée
+        // en titre d'un QUART. C'est ce qui distingue « une autre piste vient
+        // de jouer une note » de « c'est l'autre qui coûte ».
+        size_t candidate = strips_.size();
+        for (size_t i = 0; i < couts.size(); ++i)
+            if (couts[i] >= sommet) { candidate = i; break; }
+        const bool ilYAUneCoupable = mediane > 0.0f && sommet > 1.5f * mediane;
+        if (!ilYAUneCoupable) {
+            designee_ = strips_.size();
+        } else if (designee_ >= couts.size()) {
+            designee_ = candidate;
+        } else if (candidate != designee_ && sommet > 1.25f * couts[designee_]) {
+            designee_ = candidate;
+        }
         for (size_t i = 0; i < strips_.size(); ++i)
-            strips_[static_cast<int>(i)]->setRenderCost(
-                couts[i], mediane > 0.0f && couts[i] > 3.0f * mediane);
+            strips_[static_cast<int>(i)]->setRenderCost(couts[i], i == designee_);
     }
     /// D37 : chaque tranche relit sa piste (nom, volume, panoramique).
     void refreshFromTracks() {
@@ -517,6 +557,9 @@ public:
 
 private:
     vsm::sequencer::Project* project_ = nullptr;
+    /// D42.3 : la tranche désignée la plus chère, tenue d'une image à l'autre
+    /// (voir `publishRenderCosts`). Hors bornes = aucune.
+    size_t designee_ = static_cast<size_t>(-1);
     juce::Viewport viewport_;
     juce::Component stripContainer_;
     juce::OwnedArray<ChannelStrip> strips_;
