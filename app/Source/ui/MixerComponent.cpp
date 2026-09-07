@@ -463,6 +463,20 @@ MasterStrip::MasterStrip() {
     titleLabel_.setFont(juce::Font(juce::FontOptions(12.0f).withStyle("Bold")));
     addAndMakeVisible(titleLabel_);
 
+    // D48 : LE TÉMOIN DE SATURATION, caché tant qu'il n'y a rien à dire.
+    // Un voyant allumé en permanence devient un meuble ; celui-ci n'apparaît
+    // que lorsqu'il a quelque chose à annoncer, comme le compte de craquements
+    // de D41.3 et le témoin « SANS SON » de D43.
+    satLabel_.setJustificationType(juce::Justification::centred);
+    satLabel_.setFont(juce::Font(juce::FontOptions(12.0f).withStyle("Bold")));
+    satLabel_.addMouseListener(this, false);
+    // `addChildComponent` ET NON `addAndMakeVisible` : ce dernier REND VISIBLE,
+    // et annulait donc le `setVisible(false)` qui le précédait. Le témoin vide
+    // occupait alors la ligne en permanence et en chassait la phase, qui la
+    // partage -- un composant invisible qui reste visible ne se voit pas, il
+    // se voit à ce qu'il cache.
+    addChildComponent(satLabel_);
+
     enableButton_.setClickingTogglesState(true);
     enableButton_.setColour(juce::TextButton::buttonOnColourId, vsm::ui::Palette::accentTeal);
     enableButton_.onClick = [this] {
@@ -564,12 +578,29 @@ void MasterStrip::resized() {
     // Grille de knobs 2 colonnes.
     auto meterArea = r.removeFromRight(12);
     meter_.setBounds(meterArea.reduced(0, 2));
+    // LA SATURATION PREND LA PLACE DE LA PHASE, ELLE N'EN AJOUTE PAS.
+    //
+    // La tranche master est DÉJÀ trop courte pour ce qu'elle porte : huit
+    // potentiomètres sur quatre rangées de 46 pixels, plus un titre, deux
+    // boutons et deux étiquettes, dépassent la hauteur disponible. Réserver de
+    // la place pour une troisième ligne ne suffisait donc pas -- la grille de
+    // knobs a une hauteur fixe et déborde par le bas quoi qu'on réserve : le
+    // témoin s'écrivait par-dessus les libellés RATIO et SAT.
+    //
+    // LA DÉCISION, ET SA RAISON : quand la sortie sature, le témoin occupe la
+    // ligne de la PHASE. La corrélation est un diagnostic qu'on va consulter ;
+    // la saturation est un fait qu'il faut voir maintenant. Les deux ne se
+    // disputent la place que le temps de l'écrêtage, et la phase reste lisible
+    // dans l'infobulle du témoin.
     {
         auto bas = getLocalBounds().reduced(6);
         lufsLabel_.setBounds(bas.removeFromBottom(16));
-        phaseLabel_.setBounds(bas.removeFromBottom(14));
+        auto ligneDePhase = bas.removeFromBottom(14);
+        phaseLabel_.setBounds(ligneDePhase);
+        satLabel_.setBounds(ligneDePhase);
+        phaseLabel_.setVisible(!satLabel_.isVisible());
     }
-    r.removeFromBottom(18);
+    r.removeFromBottom(30);
 
     const int cols = 2;
     const int knobH = 46;

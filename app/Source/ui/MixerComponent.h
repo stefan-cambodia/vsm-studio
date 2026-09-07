@@ -323,6 +323,34 @@ public:
     void paint(juce::Graphics&) override;
 
     void setMeters(double lufs, float linearPeak, float linearRms, float correlation) {
+        // D48 : LA SATURATION SE VOIT, ET ELLE RESTE VISIBLE.
+        //
+        // L'aiguille disait le niveau et ne disait pas le DÉPASSEMENT : au-delà
+        // de 1, la barre est simplement en butée, et l'on ne distingue pas 1,0
+        // de 1,4. Or `children-dream-v7` sort à **1,405** — jouer ce morceau
+        // sature, et rien à l'écran ne le disait.
+        //
+        // LE TÉMOIN GARDE SA MÉMOIRE, comme sur toutes les consoles : une
+        // crête dure quelques échantillons, un voyant qui s'éteindrait aussitôt
+        // ne serait jamais vu. Il retient aussi le PIRE dépassement, en dB,
+        // parce que « ça a saturé » et « ça a saturé de 3 dB » n'appellent pas
+        // le même geste. On l'éteint en cliquant dessus, comme partout.
+        if (linearPeak > 1.0f) {
+            satVue_ = true;
+            pireDepassement_ = juce::jmax(pireDepassement_, linearPeak);
+            satLabel_.setText(juce::String::fromUTF8(u8"SAT +")
+                                  + juce::String(20.0f * std::log10(pireDepassement_), 1),
+                              juce::dontSendNotification);
+            satLabel_.setColour(juce::Label::textColourId, vsm::ui::Palette::accentRed);
+            satLabel_.setTooltip(juce::String::fromUTF8(
+                    u8"La sortie a dépassé 0 dBFS : ce qui part vers la carte son est écrêté. "
+                    u8"Baisser le fader master, ou activer le limiteur. Cliquez pour effacer.\n\n")
+                + phaseLabel_.getText()   // la phase reste lisible, elle cède seulement sa ligne
+                );
+            const bool apparait = !satLabel_.isVisible();
+            satLabel_.setVisible(true);
+            if (apparait) resized();
+        }
         meter_.setLevel(linearPeak);
         meter_.setRms(linearRms);
         meter_.setCorrelation(correlation);
@@ -347,6 +375,20 @@ public:
     /// bus, jamais dans le fichier ni dans un export.
     std::function<void(bool)> onMonoListen;
     void setMonoListen(bool on) { monoButton_.setToggleState(on, juce::dontSendNotification); }
+    /// D48 : on efface le témoin de saturation en cliquant dessus, comme sur
+    /// une console. Le pire dépassement repart de zéro avec lui : garder
+    /// l'ancien ferait réapparaître un chiffre qu'on vient d'acquitter.
+    void mouseDown(const juce::MouseEvent&) override {
+        if (!satVue_) return;
+        satVue_ = false;
+        pireDepassement_ = 0.0f;
+        satLabel_.setVisible(false);
+        resized();
+    }
+    /// D48 : pour la mesure -- ce que le témoin annonce, ou rien.
+    juce::String saturationAffichee() const {
+        return satLabel_.isVisible() ? satLabel_.getText() : juce::String();
+    }
 
     /// Synchronise l'UI depuis les valeurs courantes du bus master.
     void syncFromEngine();
@@ -358,6 +400,10 @@ private:
     juce::TextButton enableButton_ { "MASTER" };
     juce::TextButton monoButton_ { "MONO" };   ///< D23.5
     juce::Label titleLabel_, lufsLabel_, phaseLabel_;
+    /// D48 : le témoin de saturation, et le pire dépassement qu'il retient.
+    juce::Label satLabel_;
+    bool satVue_ = false;
+    float pireDepassement_ = 0.0f;
     LevelMeter meter_;
 
     struct Knob {

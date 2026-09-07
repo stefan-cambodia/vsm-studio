@@ -120,8 +120,35 @@ public:
     void setMonoListen(bool on) { monoListen_.store(on, std::memory_order_relaxed); }
     bool monoListen() const { return monoListen_.load(std::memory_order_relaxed); }
 
+    /// D48 : LES MESURES DE SORTIE, sans toucher au signal. Appelée par les
+    /// deux chemins de `process` -- celui qui traite et celui qui ne traite
+    /// pas --, pour qu'un bus désactivé montre tout de même ce qui en sort.
+    /// Aucune allocation, aucun verrou : arithmétique et trois `store`.
+    void mesurer(const float* left, const float* right, int numSamples) {
+        float blockPeak = 0.0f;
+        double sommeL2 = 0.0, sommeR2 = 0.0, sommeLR = 0.0;
+        for (int i = 0; i < numSamples; ++i) {
+            const float l = left[i], r = right[i];
+            blockPeak = std::max(blockPeak, std::max(std::abs(l), std::abs(r)));
+            sommeL2 += static_cast<double>(l) * l;
+            sommeR2 += static_cast<double>(r) * r;
+            sommeLR += static_cast<double>(l) * r;
+            lufs_.processStereo(l, r);
+        }
+        outputPeak_.store(blockPeak, std::memory_order_relaxed);
+        outputRms_.store(numSamples > 0
+                             ? static_cast<float>(std::sqrt((sommeL2 + sommeR2) / (2.0 * numSamples)))
+                             : 0.0f,
+                          std::memory_order_relaxed);
+        const double denom = std::sqrt(sommeL2 * sommeR2);
+        outputCorrelation_.store(denom > 1.0e-20 ? static_cast<float>(sommeLR / denom) : 1.0f,
+                                  std::memory_order_relaxed);
+    }
+
     /// Traite le bus stéréo EN PLACE. No-op complet si désactivé (hors écoute
-    /// en mono, qui est un outil d'écoute et non un traitement du bus).
+    /// en mono, qui est un outil d'écoute et non un traitement du bus) --
+    /// « no-op » portant sur le SIGNAL : les mètres, eux, tournent toujours
+    /// (D48).
     void process(float* left, float* right, int numSamples) {
         if (numSamples <= 0) return;
         const bool mono = monoListen();
@@ -132,6 +159,22 @@ public:
                     left[i] = m;
                     right[i] = m;
                 }
+            // D48 : LES MÈTRES TOURNENT MÊME QUAND LE BUS NE TRAITE PAS.
+            //
+            // Cette branche sortait ici, et emportait avec elle le pic, la
+            // valeur efficace, la corrélation et la sonie. Or un bus master
+            // DÉSACTIVÉ laisse passer le son : ce que l'utilisateur voyait
+            // alors était un mètre mort, « -inf LUFS » et « phase 1.00 »
+            // pendant que le morceau jouait.
+            //
+            // ET CE N'EST PAS UN CAS RARE : tout projet écrit par la chaîne de
+            // reconstruction arrive avec « Master Enabled: 0 ». Le seul mètre
+            // de SORTIE du logiciel était donc éteint par défaut, sur les
+            // projets qui font l'objet de ce dépôt.
+            //
+            // « No-op complet si désactivé » reste vrai de ce qui compte : le
+            // SIGNAL n'est pas touché. Mesurer n'est pas traiter.
+            mesurer(left, right, numSamples);
             return;
         }
 

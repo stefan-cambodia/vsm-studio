@@ -8819,3 +8819,55 @@ Tests : **1 285 audio** (2 neufs), 319 core, 285 interchange, 25 clap,
 > n'avais pas cherchés. C'est l'inverse de la faute de portée commise quatre
 > fois aujourd'hui : ici la mesure d'un seul cas valait pour tous, non parce que
 > je l'ai décidé, mais parce que le code n'a qu'un chemin.
+
+### Phase D48 — Le mètre du master était mort par défaut, et rien ne disait que la sortie saturait (08/09/2026, 02:40)
+
+**Suite directe de D47, mais du côté vivant.** D47 a fait dire à l'export qu'il
+écrête. Reste la lecture : `children-dream-v7` sort à **1,405** — jouer ce
+morceau sature la carte son, et rien à l'écran ne le disait.
+
+**PREMIER DÉFAUT, ET IL EST PLUS GRAVE QUE LE SECOND : LE MÈTRE NE MESURAIT
+RIEN.** `MasterBus::process` sortait au premier `if (!isEnabled())`, emportant
+avec lui le pic, la valeur efficace, la corrélation **et** la sonie. Or un bus
+master désactivé LAISSE PASSER le son. Ce que l'utilisateur voyait alors était
+une aiguille morte, « phase 1.00 » et « **-inf LUFS** » pendant que le morceau
+jouait.
+
+**ET CE N'EST PAS UN CAS RARE : tout projet écrit par la chaîne de
+reconstruction arrive avec `"Master Enabled": 0`.** Le seul mètre de SORTIE du
+logiciel était donc éteint **par défaut, sur les projets qui font l'objet de ce
+dépôt**. Mesuré à l'écran, même morceau, même instant : « -inf LUFS » avant,
+« **-16,3 LUFS**, phase 0,98 » après.
+
+Le contrat « no-op complet si désactivé » reste tenu pour ce qui compte : le
+**signal** n'est pas touché. **Mesurer n'est pas traiter.**
+
+**SECOND DÉFAUT : L'AIGUILLE NE DIT PAS LE DÉPASSEMENT.** Au-delà de 1 la barre
+est en butée, et l'on ne distingue pas 1,0 de 1,4. Un témoin **SAT** rouge
+s'allume, retient le PIRE dépassement en dB — « ça a saturé » et « ça a saturé
+de 3 dB » n'appellent pas le même geste — et **garde sa mémoire** : une crête
+dure quelques échantillons, un voyant qui s'éteindrait aussitôt ne serait jamais
+vu. On l'efface d'un clic, comme sur une console.
+
+**LA PLACE A DÛ ÊTRE PRISE À QUELQU'UN, ET C'EST ÉCRIT.** La tranche master est
+déjà trop courte pour ce qu'elle porte : huit potentiomètres sur quatre rangées
+de 46 pixels dépassent la hauteur disponible, si bien que réserver une ligne de
+plus ne suffisait pas — le témoin s'écrivait **par-dessus** les libellés RATIO
+et SAT. Il occupe donc la ligne de la PHASE tant que dure l'écrêtage : la
+corrélation est un diagnostic qu'on va consulter, la saturation est un fait
+qu'il faut voir maintenant. La phase reste lisible dans l'infobulle du témoin.
+
+**ET UN DÉFAUT QUE SEULE LA CAPTURE POUVAIT MONTRER.** Le témoin, écrit
+`setVisible(false)` **avant** `addAndMakeVisible`, était en fait VISIBLE :
+`addAndMakeVisible` rend visible, et annulait la ligne précédente. Une étiquette
+vide occupait donc la ligne en permanence et en chassait la phase. **Un
+composant invisible qui reste visible ne se voit pas — il se voit à ce qu'il
+cache**, et c'est la disparition de « phase 0.98 » qui l'a dénoncé, pas la
+lecture du code. `addChildComponent` ajoute sans montrer, et c'est le geste
+juste.
+
+Vérifié à l'écran, deux positions du même morceau : mesure 5 (rien ne sature) →
+« phase 0.98, -16,3 LUFS » ; mesure 67 (le pic) → « **SAT +1.6** » en rouge à la
+place de la phase.
+
+Tests : 1 285 audio, 319 core, 285 interchange, 25 clap, 11 panels — verts.
