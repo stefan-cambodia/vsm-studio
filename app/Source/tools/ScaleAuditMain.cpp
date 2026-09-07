@@ -26,6 +26,7 @@
 #include "vsm/sequencer/Project.h"
 #include <algorithm>
 #include <chrono>
+#include <fstream>
 #include <cmath>
 #include <cstdio>
 #include <string>
@@ -59,6 +60,28 @@ Project projetDeNPistes(int n, const std::string& machine) {
     return projet;
 }
 
+/// LA MÉMOIRE RÉSIDENTE DU PROCESSUS, EN MÉGAOCTETS. Lue dans /proc, donc
+/// Linux seulement -- rend -1 ailleurs, et le banc le DIT plutôt que d'écrire
+/// un zéro qu'on prendrait pour une mesure.
+///
+/// POURQUOI CE CHIFFRE COMPTE ICI : une reconstruction à parité instancie
+/// autant de machines qu'elle a de pistes. Si soixante-quatre en pesaient un
+/// gigaoctet, le projet ne s'ouvrirait pas sur cette machine-ci (15 Go, dont
+/// une séparation demucs prend déjà l'essentiel). C'est le chiffre que D40
+/// avait annoncé ne pas prendre.
+double memoireResidenteMo() {
+    std::ifstream f("/proc/self/status");
+    if (!f) return -1.0;
+    std::string ligne;
+    while (std::getline(f, ligne))
+        if (ligne.rfind("VmRSS:", 0) == 0) {
+            const size_t debut = ligne.find_first_of("0123456789");
+            if (debut == std::string::npos) return -1.0;
+            return std::stod(ligne.substr(debut)) / 1024.0;
+        }
+    return -1.0;
+}
+
 double millisecondes(std::function<void()> f) {
     const auto t0 = std::chrono::steady_clock::now();
     f();
@@ -78,17 +101,22 @@ struct Mesure {
 
 int main(int argc, char** argv) {
     juce::ScopedJuceInitialiser_GUI juceInit;
-    (void)argc; (void)argv;
     vsm::audio::plugin::registerBuiltInPlugins();
+    // LA MACHINE SE CHOISIT EN LIGNE DE COMMANDE, et le défaut est nommé dans
+    // le rapport : mesurer une seule machine et conclure « les machines pèsent
+    // tant » ferait passer la plus légère pour la règle. C'est une option de
+    // banc, pas une constante éditée entre deux passes.
+    const std::string machine = (argc > 1) ? argv[1] : "vsm.minimoog";
 
     const size_t machines = vsm::audio::plugin::PluginRegistry::instance().listAvailable().size();
     std::printf("=== D40 : LE DAW À %zu MACHINES, MESURÉ DE 8 À 64 PISTES ===\n", machines);
+    std::printf("  machine mesurée : %s (première option de la ligne de commande)\n", machine.c_str());
     std::printf("  (chaque ligne de piste remplit un sélecteur avec TOUT le registre)\n\n");
 
     std::printf("  %-8s %12s %12s %12s\n", "pistes", "liste (ms)", "mixeur (ms)", "notes");
     std::vector<Mesure> mesures;
     for (int n : { 8, 16, 32, 64 }) {
-        Project projet = projetDeNPistes(n, "vsm.minimoog");
+        Project projet = projetDeNPistes(n, machine);
         Mesure m;
         m.pistes = n;
         for (const auto& t : projet.tracks) m.notes += static_cast<double>(t.notes.size());
@@ -118,7 +146,7 @@ int main(int argc, char** argv) {
 
     // LE COÛT D'UN RAFRAÎCHISSEMENT, celui qui part à chaque geste de mixage.
     {
-        Project projet = projetDeNPistes(64, "vsm.minimoog");
+        Project projet = projetDeNPistes(64, machine);
         TrackListComponent liste;
         liste.setBounds(0, 0, 300, 900);
         liste.loadProject(projet);
@@ -153,13 +181,13 @@ int main(int argc, char** argv) {
                     kBlock, kSampleRate / 1000.0, budgetMs);
         std::printf("  %-8s %10s %14s %10s\n", "pistes", "montage", "un bloc (ms)", "du budget");
         for (int n : { 8, 16, 32, 64 }) {
-            Project projet = projetDeNPistes(n, "vsm.minimoog");
+            Project projet = projetDeNPistes(n, machine);
             vsm::audio::engine::ProcessGraph graphe;
             graphe.prepare(kSampleRate, kBlock);
             const double montage = millisecondes([&] {
                 graphe.setProject(projet);
                 for (int i = 0; i < n; ++i)
-                    graphe.setTrackInstrument(static_cast<size_t>(i), "vsm.minimoog");
+                    graphe.setTrackInstrument(static_cast<size_t>(i), machine);
             });
 
             std::vector<float> gauche(kBlock, 0.0f), droite(kBlock, 0.0f);
@@ -190,6 +218,125 @@ int main(int argc, char** argv) {
             std::printf("  %-8d %8.1f ms %12.3f %9.1f %%   crête %.3f%s\n",
                         n, montage, parBloc, 100.0 * parBloc / budgetMs, crete,
                         crete < 1.0e-6 ? "  <- SILENCE : LE BANC NE MESURE RIEN" : "");
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // LA MÉMOIRE — le chiffre que D40 avait annoncé ne pas prendre
+    // ------------------------------------------------------------------
+    {
+        const double base = memoireResidenteMo();
+        if (base < 0.0) {
+            std::printf("\n=== LA MÉMOIRE : non mesurable ici (/proc absent) ===\n");
+        } else {
+            std::printf("\n=== LA MÉMOIRE : ce que pèsent N machines instanciées ===\n");
+            std::printf("  au départ, le processus tient %.0f Mo\n", base);
+            std::printf("  %-8s %14s %16s\n", "pistes", "total (Mo)", "par machine (Mo)");
+            // LES GRAPHES SONT GARDÉS VIVANTS ENSEMBLE : les détruire entre deux
+            // tailles rendrait la mémoire au tas et l'on mesurerait le tas, pas
+            // les machines. Chaque ligne dit donc le CUMUL, et la colonne « par
+            // machine » divise l'écart par les machines ajoutées.
+            std::vector<std::unique_ptr<vsm::audio::engine::ProcessGraph>> graphes;
+            double avant = base;
+            int cumulPistes = 0;
+            for (int n : { 8, 16, 32, 64 }) {
+                Project projet = projetDeNPistes(n, machine);
+                auto graphe = std::make_unique<vsm::audio::engine::ProcessGraph>();
+                graphe->prepare(48000.0, 512);
+                graphe->setProject(projet);
+                for (int i = 0; i < n; ++i)
+                    graphe->setTrackInstrument(static_cast<size_t>(i), machine);
+                graphes.push_back(std::move(graphe));
+                cumulPistes += n;
+                const double apres = memoireResidenteMo();
+                std::printf("  +%-7d %14.0f %16.2f\n", n, apres, (apres - avant) / n);
+                avant = apres;
+            }
+            std::printf("  -> %d machines vivantes, %.0f Mo au total\n",
+                        cumulPistes, memoireResidenteMo());
+            std::printf("  (cette machine a 15 Go, dont une séparation demucs prend l'essentiel)\n");
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // D41.1 — LE COÛT DE CHAQUE MACHINE DU PARC
+    // ------------------------------------------------------------------
+    // POURQUOI PARCOURIR LE REGISTRE ET NON UNE LISTE ÉCRITE À LA MAIN : une
+    // machine ajoutée demain doit entrer dans la mesure sans qu'on y pense.
+    // C'est la discipline que `regression_every_registered_machine_has_a_reference`
+    // applique déjà aux empreintes audio.
+    //
+    // ET POURQUOI CETTE TABLE COMPTE AU-DELÀ DU DAW : la reconstruction CHOISIT
+    // les machines qu'elle assigne. Savoir laquelle coûte cinq fois une autre
+    // est une donnée de la parité autant que du confort.
+    if (argc <= 1 || std::string(argv[1]) == "--table") {
+        constexpr double kSampleRate = 48000.0;
+        constexpr int kBlock = 512;
+        constexpr int kPistes = 16;   // assez pour que l'écart se voie, assez peu
+                                       // pour que la table entière tienne en une minute
+        const double budgetMs = 1000.0 * kBlock / kSampleRate;
+        std::printf("\n=== D41.1 : LE PRIX DE CHAQUE MACHINE (%d pistes, bloc de %d) ===\n",
+                    kPistes, kBlock);
+
+        struct Prix { std::string id; double ms = 0.0; double crete = 0.0; };
+        std::vector<Prix> prix;
+        for (const auto& [id, nom] : vsm::audio::plugin::PluginRegistry::instance().listAvailable()) {
+            if (id.rfind("vsm.", 0) != 0) continue;
+            Project projet = projetDeNPistes(kPistes, id);
+            vsm::audio::engine::ProcessGraph graphe;
+            graphe.prepare(kSampleRate, kBlock);
+            graphe.setProject(projet);
+            for (int i = 0; i < kPistes; ++i)
+                graphe.setTrackInstrument(static_cast<size_t>(i), id);
+            std::vector<float> g(kBlock, 0.0f), d(kBlock, 0.0f);
+            graphe.seekSeconds(0.0);
+            graphe.setPlaying(true);
+            graphe.processBlock(g.data(), d.data(), kBlock);
+            Prix p;
+            p.id = id;
+            constexpr int kBlocs = 60;
+            const double total = millisecondes([&] {
+                for (int b = 0; b < kBlocs; ++b) {
+                    graphe.processBlock(g.data(), d.data(), kBlock);
+                    for (int i = 0; i < kBlock; ++i)
+                        p.crete = std::max(p.crete, static_cast<double>(std::abs(g[i])));
+                }
+            });
+            p.ms = total / kBlocs;
+            prix.push_back(std::move(p));
+        }
+        std::sort(prix.begin(), prix.end(), [](const Prix& a, const Prix& b) { return a.ms < b.ms; });
+        for (const auto& p : prix)
+            std::printf("  %-22s %7.3f ms  %5.1f %% du budget%s\n", p.id.c_str(), p.ms,
+                        100.0 * p.ms / budgetMs,
+                        p.crete < 1.0e-6 ? "   <- SILENCE : ne joue pas, prix non mesure" : "");
+        if (prix.size() >= 2) {
+            const double rapport = prix.back().ms / std::max(1.0e-9, prix.front().ms);
+            std::printf("  -> %zu machines ; de %s (%.3f ms) a %s (%.3f ms), un rapport de %.1f\n",
+                        prix.size(), prix.front().id.c_str(), prix.front().ms,
+                        prix.back().id.c_str(), prix.back().ms, rapport);
+            // LA PLUS CHÈRE EST REMESURÉE À 64 PISTES, ET NON EXTRAPOLÉE.
+            // Multiplier par quatre le prix de seize pistes DONNAIT UN CHIFFRE
+            // FAUX, et faux dans le sens rassurant : `vsm.plate` annonçait
+            // ainsi 100 % du budget quand la mesure directe en rend 258. Le
+            // coût ne suit pas le nombre de pistes, parce que le nombre de
+            // VOIX simultanées, lui, ne le suit pas non plus.
+            Project gros = projetDeNPistes(64, prix.back().id);
+            vsm::audio::engine::ProcessGraph g64;
+            g64.prepare(kSampleRate, kBlock);
+            g64.setProject(gros);
+            for (int i = 0; i < 64; ++i) g64.setTrackInstrument(static_cast<size_t>(i), prix.back().id);
+            std::vector<float> gg(kBlock, 0.0f), dd(kBlock, 0.0f);
+            g64.seekSeconds(0.0);
+            g64.setPlaying(true);
+            g64.processBlock(gg.data(), dd.data(), kBlock);
+            constexpr int kB64 = 60;
+            const double t64 = millisecondes([&] {
+                for (int b = 0; b < kB64; ++b) g64.processBlock(gg.data(), dd.data(), kBlock);
+            }) / kB64;
+            std::printf("     %s a 64 pistes, MESURE : %.3f ms, soit %.1f %% du budget%s\n",
+                        prix.back().id.c_str(), t64, 100.0 * t64 / budgetMs,
+                        t64 > budgetMs ? "  <- LE MOTEUR NE TIENT PLUS" : "");
         }
     }
 

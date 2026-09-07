@@ -1917,6 +1917,7 @@ void MainComponent::timerCallback() {
     if (!playing && recordPhase_ == RecordPhase::Recording) stopRecording();
 
     transportBar_.setCpuUsage(audioEngine_.currentCpuUsagePercent());
+    transportBar_.setXrunCount(audioEngine_.xrunCount());   // D41.3
     transportBar_.setSampleRate(audioEngine_.currentSampleRate());
 
     // Republication coalescée des changements de mix (fader/pan/mute/solo)

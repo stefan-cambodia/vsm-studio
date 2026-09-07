@@ -78,6 +78,16 @@ public:
     /// laisser chercher.
     int currentInputChannels() const { return currentInputChannels_.load(std::memory_order_acquire); }
     float currentCpuUsagePercent() const;
+    /// D41.3 : LE NOMBRE DE DÉCROCHAGES depuis l'ouverture du périphérique.
+    ///
+    /// La charge moyenne de JUCE lisse précisément ce qui compte : un seul bloc
+    /// rendu en retard s'entend — un craquement — et ne bouge presque pas une
+    /// moyenne. Le compte, lui, est un FAIT.
+    ///
+    /// Rend -1 quand le pilote ne sait pas le dire, et l'appelant doit le
+    /// distinguer de zéro : « aucun décrochage » et « je ne sais pas » ne se
+    /// montrent pas de la même façon.
+    int xrunCount() const;
     juce::String lastError() const { return lastError_; }
     bool isDeviceOpen() const { return deviceManager_.getCurrentAudioDevice() != nullptr; }
 

@@ -8041,3 +8041,141 @@ combien**. Un chiffre qu'on n'a pas est plus dangereux qu'un chiffre mauvais.
 >
 > Tests : 1 283 audio, 319 core, 285 interchange, 25 clap, 11 panels — verts ;
 > banc d'édition : 11 gestes, 0 muet, 0 désaccord.
+
+### Phase D41 — « Il les tient largement » était vrai d'UNE machine sur soixante-quatre (07/09/2026, 19:00)
+
+**CETTE PHASE COMMENCE PAR CORRIGER CELLE D'AVANT.** La conclusion de D40 dit :
+« Le DAW tient 64 pistes, et il les tient largement », sur la foi de 2,229 ms
+par bloc, soit 20,9 % du budget. **Ce chiffre est celui du Minimoog**, et le
+banc ne mesurait que lui. Rejoué sur d'autres machines, une option de ligne de
+commande plutôt qu'une constante éditée :
+
+| machine | un bloc de 512 à 64 pistes | du budget temps réel |
+|---|---|---|
+| `vsm.minimoog` | 2,27 ms | 21,3 % |
+| `vsm.granular` | 3,66 ms | 34,3 % |
+| `vsm.pipeorgan` | 7,72 ms | 72,3 % |
+| **`vsm.cs80`** | **10,79 ms** | **101,2 %** |
+
+**À 64 pistes de CS-80, le moteur ne tient plus.** Le facteur entre la machine
+la plus légère et la plus lourde est de **cinq**, et D40 a généralisé depuis la
+plus légère. C'est exactement la faute que D39 venait de nommer — mesurer un
+seul chemin et conclure — commise à la phase suivante, sur un autre objet.
+
+**LA MÉMOIRE, ELLE, N'EST PAS UN PROBLÈME, et c'est le chiffre que D40 avait
+annoncé ne pas prendre** : **120 machines vivantes tiennent dans 33 Mo**, soit
+13 Mo au-dessus du processus vide, et le coût marginal par machine DÉCROÎT
+(0,40 puis 0,06 Mo) — ce qui dit qu'on mesure la granularité du tas plutôt
+qu'un poids par machine. Identique pour les quatre machines essayées.
+
+**ET LE TÉMOIN QUI DIRAIT TOUT CELA À L'UTILISATEUR EST LE PREMIER QU'ON
+EFFACE.** `TransportBarComponent` affiche une charge CPU — et la pose **en
+dernier, et seulement si elle tient** : « à droite, par ordre d'importance :
+exporter, ouvrir, puis les deux étiquettes seulement si elles tiennent ». À la
+largeur de fenêtre de tous les autoportraits de ce document, elle est
+**invisible**. Le seul indicateur qui dise si le morceau va jouer disparaît
+avant deux boutons qui, eux, ont un menu.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D41.1 | **Le coût de CHAQUE machine, mesuré et publié.** Le parc en compte 64 ; on n'en connaît le prix d'aucune. C'est une donnée pour le DAW *et* pour la reconstruction, qui choisit les machines qu'elle assigne | une table des 64, à polyphonie et bloc fixés, du moins cher au plus cher |
+| D41.2 | **La charge se voit quand elle compte.** Elle ne doit pas être la première rognée ; et un nombre gris ne dit pas le danger | la charge reste affichée, et **change d'aspect** au-delà d'un seuil ; vérifié à l'écran, à la largeur où elle disparaissait |
+| D41.3 | **Un décrochage est un fait, pas une impression.** La moyenne de JUCE lisse ce qui compte : un bloc en retard s'entend et ne se voit pas | ou bien l'application compte les blocs en retard et le DIT, ou bien il est écrit pourquoi elle ne le peut pas |
+| D41.4 | **Le banc garde la table.** Une machine ajoutée demain doit entrer dans la mesure sans qu'on y pense — c'est la discipline que `regression_every_registered_machine_has_a_reference` applique déjà aux empreintes | le banc parcourt le REGISTRE, pas une liste écrite à la main |
+
+**Ce qui est attendu, écrit AVANT la mesure.**
+
+1. **D41.1** — j'attends un rapport d'au moins **dix** entre la machine la
+   moins chère et la plus chère, et j'attends que les plus chères soient celles
+   qui empilent des voix complètes : le CS-80 (deux couches par voix, écrit dans
+   son CDC), l'orgue à tuyaux (une soufflerie commune et des tuyaux qui
+   parlent), les modèles physiques (`vsm.string`, `vsm.modal`, `vsm.scanned`).
+   Je me trompe si l'écart est inférieur à cinq, ou si le haut du classement est
+   occupé par des soustractifs ordinaires.
+2. **D41.2** — j'attends de devoir choisir quoi rogner à sa place, et le
+   candidat est la fréquence d'échantillonnage : elle ne change jamais en cours
+   de séance, alors que la charge change à chaque note. Une étiquette qui ne
+   varie pas n'a pas besoin d'être sous les yeux.
+3. **D41.3** — je ne sais pas si JUCE expose un compteur de décrochages, et je
+   m'attends à devoir écrire que non plutôt qu'à en trouver un. Si c'est le
+   cas, l'honnêteté est de le dire et de mesurer ce qui est mesurable — la
+   charge crête plutôt que moyenne — au lieu d'inventer un chiffre qui aurait
+   l'air d'un compte.
+
+> **LA PHASE D41 EST FAITE (07/09/2026, 19:55), ET ELLE CORRIGE D40 SUR LE
+> POINT QUI COMPTAIT.**
+>
+> **D41.1 — les 64 machines du parc, mesurées.** Rapport de **42** entre la
+> moins chère et la plus chère, à 16 pistes et bloc de 512 :
+>
+> | | machine | un bloc | du budget |
+> |---|---|---|---|
+> | la moins chère | `vsm.testtone` | 0,12 ms | 1,1 % |
+> | | `vsm.tb303` | 0,40 ms | 3,7 % |
+> | | `vsm.cs80` | 1,44 ms | 13,5 % |
+> | | `vsm.dx7` | 1,70 ms | 15,9 % |
+> | | `vsm.divider` | 2,56 ms | 24,0 % |
+> | | `vsm.plate` | 2,66 ms | 25,0 % |
+> | **la plus chère** | **`vsm.additive`** | **3,23 ms** | **30,3 %** |
+>
+> **MON PRONOSTIC SUR *LESQUELLES* ÉTAIT FAUX.** J'attendais en tête les
+> machines qui empilent des voix complètes — le CS-80 et ses deux couches,
+> l'orgue à tuyaux. Mesurés : **13,5 %** et **12,5 %**, en milieu de tableau. Le
+> haut est occupé par ce qui somme beaucoup d'oscillateurs ou fait tourner un
+> modèle physique : l'additif, la plaque, le diviseur, le modal. L'écart
+> annoncé (« au moins dix ») était juste ; la raison que je lui donnais ne
+> l'était pas.
+>
+> **TROIS MACHINES NE JOUENT PAS SANS ÉCHANTILLONS** — `vsm.sampler`,
+> `vsm.perc`, `vsm.multisample` — et le banc l'ÉCRIT (« SILENCE : ne joue pas,
+> prix non mesuré ») au lieu de publier leur prix de repos comme s'il était
+> leur prix.
+>
+> **ET L'EXTRAPOLATION ÉTAIT FAUSSE, DANS LE SENS RASSURANT.** Multiplier par
+> quatre le prix de seize pistes donnait 100 % du budget pour `vsm.plate` ; la
+> mesure directe à 64 pistes en rend **258 %**. Le coût ne suit pas le nombre de
+> pistes, parce que le nombre de VOIX simultanées ne le suit pas non plus. Le
+> banc remesure donc la plus chère à 64 pistes au lieu de multiplier :
+> `vsm.additive` y coûte **13,3 ms, soit 125 % du budget — le moteur ne tient
+> plus**.
+>
+> **CE QUE DEVIENT LA CONCLUSION DE D40.** « Le DAW tient 64 pistes, et il les
+> tient largement » est vrai du Minimoog (21 %) et **faux** du CS-80 (108 %), de
+> l'additif (125 %) et de la plaque (258 %). La phrase juste est : **le DAW tient
+> 64 pistes des machines légères, et le choix de la machine pèse plus lourd que
+> le nombre de pistes.** C'est la faute que D39 venait de nommer — mesurer un
+> seul chemin et conclure — refaite à la phase suivante sur un autre objet.
+>
+> **LA MÉMOIRE N'EST PAS UN PROBLÈME**, et c'était le chiffre annoncé manquant :
+> **120 machines vivantes tiennent dans 33 Mo**, 13 Mo au-dessus du processus
+> vide, identique pour les quatre machines essayées. Le coût marginal DÉCROÎT
+> (0,40 puis 0,06 Mo), ce qui dit qu'on mesure la granularité du tas plutôt
+> qu'un poids par machine.
+>
+> **D41.2 — la charge se voit, et elle change d'aspect.** Elle était posée en
+> dernier, « seulement si elle tient », et n'apparaissait sur AUCUN des
+> autoportraits de ce document. Elle passe maintenant avant les deux boutons —
+> qui ont chacun leur entrée de menu — et avant la fréquence d'échantillonnage,
+> **qui est la bonne chose à rogner : elle ne change jamais en cours de séance,
+> alors que la charge change à chaque note.** Trois états plutôt que deux : gris
+> sous 70 %, ambre entre 70 et 90, rouge au-delà — parce qu'un témoin qui
+> n'alerte qu'une fois le mal fait arrive trop tard. **Le prix est dit** : à
+> 1 264 px, « Ouvrir MIDI… » cède la place ; il reste au menu Fichier.
+>
+> **D41.3 — MON ATTENTE ÉTAIT FAUSSE, ET C'EST TANT MIEUX.** J'annonçais devoir
+> écrire que JUCE n'expose pas de compteur de décrochages. **Il en expose un** :
+> `AudioDeviceManager::getXRunCount()`, qui interroge le pilote quand celui-ci
+> sait répondre. La barre affiche « 3 craquements » **et seulement s'il y en
+> a** — un compteur à zéro en permanence devient un meuble qu'on ne lit plus, et
+> c'est le jour où il change qu'il faut le voir. Il passe avant la charge : **la
+> charge dit un risque, le compte dit un dégât déjà fait.** Le cas « le pilote
+> ne sait pas le dire » (-1) se distingue de « aucun » (0) et n'affiche rien
+> plutôt qu'un zéro rassurant.
+>
+> **D41.4 — le banc parcourt le REGISTRE**, pas une liste écrite à la main :
+> une machine ajoutée demain entre dans la table sans qu'on y pense, comme
+> `regression_every_registered_machine_has_a_reference` l'impose déjà aux
+> empreintes.
+>
+> Tests : 1 283 audio, 319 core, 285 interchange, 25 clap, 11 panels — verts ;
+> banc d'édition : 11 gestes, 0 muet, 0 désaccord.

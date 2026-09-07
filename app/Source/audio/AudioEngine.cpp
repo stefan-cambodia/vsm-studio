@@ -453,6 +453,13 @@ float AudioEngine::currentCpuUsagePercent() const {
     return static_cast<float>(deviceManager_.getCpuUsage() * 100.0);
 }
 
+int AudioEngine::xrunCount() const {
+    // JUCE le tient, et il l'obtient du pilote quand celui-ci sait le dire
+    // (ALSA le sait). Une attente écrite avant la mesure disait qu'il faudrait
+    // sans doute constater son absence : elle était fausse, et c'est tant mieux.
+    return deviceManager_.getXRunCount();
+}
+
 void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* device) {
     double sampleRate = device->getCurrentSampleRate();
     int bufferSize = device->getCurrentBufferSizeSamples();

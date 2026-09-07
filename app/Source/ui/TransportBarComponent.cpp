@@ -32,7 +32,10 @@ TransportBarComponent::TransportBarComponent(vsm::audio::engine::Transport& tran
     };
     setRecordAvailable(false, 0);
 
-    for (auto* label : { &positionLabel_, &bpmLabel_, &timeSigLabel_, &cpuLabel_, &sampleRateLabel_ }) {
+    addAndMakeVisible(xrunLabel_);
+    xrunLabel_.setVisible(false);   // rien tant qu'il n'y a rien à dire
+    for (auto* label : { &positionLabel_, &bpmLabel_, &timeSigLabel_, &cpuLabel_, &sampleRateLabel_,
+                          &xrunLabel_ }) {
         addAndMakeVisible(label);
         label->setJustificationType(juce::Justification::centredLeft);
         label->setFont(juce::Font(juce::FontOptions(15.0f).withName(juce::Font::getDefaultMonospacedFontName())));
@@ -262,9 +265,25 @@ void TransportBarComponent::resized() {
         c.setBounds(area.removeFromRight(w));
         area.removeFromRight(ecart);
     };
+    // D41.2 : LA CHARGE PASSE AVANT LA FRÉQUENCE D'ÉCHANTILLONNAGE, ET AVANT
+    // LES DEUX BOUTONS.
+    //
+    // Elle était posée en DERNIER, « seulement si elle tient » : à la largeur
+    // de fenêtre de tous les autoportraits de ce document, elle était
+    // invisible. C'est le seul indicateur qui dise si le morceau va JOUER, et
+    // D41 a mesuré qu'à 64 pistes de `vsm.additive` on est à 125 % du budget --
+    // c'est-à-dire que le son craque. Le faire disparaître avant deux boutons
+    // qui ont chacun leur entrée de menu était le mauvais ordre.
+    //
+    // ET LA FRÉQUENCE D'ÉCHANTILLONNAGE EST LA BONNE CHOSE À ROGNER : elle ne
+    // change jamais en cours de séance, alors que la charge change à chaque
+    // note. Une étiquette qui ne varie pas n'a pas besoin d'être sous les yeux.
+    // LES CRAQUEMENTS PASSENT MÊME AVANT LA CHARGE : la charge dit un risque,
+    // le compte dit un dégât déjà fait.
+    if (xrunLabel_.isVisible()) poser(xrunLabel_, serre ? 110 : 130, 8);
+    poser(cpuLabel_, serre ? 76 : 90, 8);
     poser(exportButton_, bouton, 8);
     poser(openButton_, bouton, serre ? 10 : 16);
-    poser(cpuLabel_, serre ? 76 : 90, 8);
     poser(sampleRateLabel_, serre ? 90 : 120, 0);
 }
 
@@ -360,6 +379,40 @@ void TransportBarComponent::setTimeSignature(int numerator, int denominator) {
 
 void TransportBarComponent::setCpuUsage(float percent) {
     cpuLabel_.setText("CPU " + juce::String(percent, 1) + "%", juce::dontSendNotification);
+    // D41.2 : UN NOMBRE GRIS NE DIT PAS LE DANGER. Trois états, parce que deux
+    // ne suffisent pas : au-delà de 90 % le son craque DÉJÀ, et entre 70 et
+    // 90 il ne craque pas encore mais la moindre note de plus le fera. Un
+    // témoin qui n'alerte qu'une fois le mal fait arrive trop tard pour servir.
+    //
+    // LES SEUILS SONT CEUX DE LA MESURE, pas des chiffres ronds choisis pour
+    // faire joli : D41.1 a relevé `vsm.additive` à 125 % du budget sur
+    // 64 pistes et `vsm.plate` à 258 %, quand le Minimoog en tient 21 %. La
+    // zone où l'on bascule de l'un à l'autre est bien celle-là.
+    const juce::Colour couleur = percent >= 90.0f ? vsm::ui::Palette::accentRed
+                               : percent >= 70.0f ? vsm::ui::Palette::accentAmber
+                                                  : vsm::ui::Palette::textSecondary;
+    cpuLabel_.setColour(juce::Label::textColourId, couleur);
+    cpuLabel_.setTooltip(percent >= 90.0f
+        ? juce::String::fromUTF8(u8"Le moteur n'a plus le temps de calculer un bloc : le son craque. "
+                                  u8"Geler une piste (Piste ▸ Geler) ou agrandir le tampon audio.")
+        : juce::String::fromUTF8(u8"Part du temps réel consommée par le calcul du son."));
+}
+
+void TransportBarComponent::setXrunCount(int count) {
+    if (count == derniersXruns_) return;
+    derniersXruns_ = count;
+    if (count <= 0) {                 // aucun, ou pilote muet : rien à dire
+        xrunLabel_.setVisible(false);
+        return;
+    }
+    xrunLabel_.setVisible(true);
+    xrunLabel_.setText(juce::String(count) + (count > 1 ? " craquements" : " craquement"),
+                        juce::dontSendNotification);
+    xrunLabel_.setColour(juce::Label::textColourId, Palette::accentRed);
+    xrunLabel_.setTooltip(juce::String::fromUTF8(
+        u8"Le moteur n'a pas rendu un bloc à temps : ce que vous avez entendu comportait un trou. "
+        u8"Compté depuis l'ouverture du périphérique audio."));
+    resized();
 }
 
 void TransportBarComponent::setSampleRate(double sampleRate) {

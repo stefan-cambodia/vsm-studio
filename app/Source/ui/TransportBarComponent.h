@@ -17,6 +17,11 @@ public:
     void setBpm(double bpm);
     void setTimeSignature(int numerator, int denominator);
     void setCpuUsage(float percent);      // câblé sur AudioEngine en Phase 2
+    /// D41.3 : le nombre de décrochages (-1 = le pilote ne sait pas le dire).
+    /// Ne s'affiche QUE s'il y en a : un compteur à zéro en permanence devient
+    /// un meuble qu'on ne lit plus, et c'est justement le jour où il change
+    /// qu'il faut le voir.
+    void setXrunCount(int count);
     void setSampleRate(double sampleRate); // idem
 
     /// D11.3 : « mes. 33 · 2 » à côté du temps ; sans fournisseur, le tick brut.
@@ -140,6 +145,8 @@ private:
     juce::TextButton openButton_   { "Ouvrir MIDI..." };
     juce::TextButton exportButton_ { "Exporter MIDI..." };
 
+    juce::Label xrunLabel_;          ///< D41.3 : montré seulement s'il y a eu un trou
+    int derniersXruns_ = -2;         ///< -2 = jamais posé (distinct de -1 « pilote muet »)
     juce::Label positionLabel_;
     juce::Label bpmLabel_;
     juce::Label timeSigLabel_;
