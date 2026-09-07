@@ -1318,6 +1318,16 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
                      + juce::String::fromUTF8(u8" px, graduations : ")
                      + arrangement_.rulerLabelsForCapture() + "\n").toRawUTF8(), stderr);
     }
+    // D35 : « pistes » écrit l'arbre des pistes -- nom, profondeur, muet, solo
+    // --, et « monter-piste » / « descendre-piste » empruntent la MÊME méthode
+    // que le menu. Un ordre de pistes ne se juge pas sur une capture d'écran de
+    // douze lignes ; écrit sur une ligne, il se compare d'un coup d'œil.
+    else if (nom == "pistes") std::fputs((trackTreeForCapture() + "\n").toRawUTF8(), stderr);
+    else if (nom == "monter-piste" || nom == "descendre-piste") {
+        const bool fait = moveSelectedTrack(nom == "monter-piste" ? -1 : +1);
+        std::fputs(((fait ? juce::String() : juce::String::fromUTF8(u8"(refusé) "))
+                     + trackTreeForCapture() + "\n").toRawUTF8(), stderr);
+    }
     // D34.5 : « auto-forme:sinus » et ses variantes, par la MÊME méthode que
     // le menu. Le tracé DIT combien de points il pose et combien il remplace :
     // une courbe de six pixels de haut sur une capture ne se juge pas, et le
@@ -2227,6 +2237,15 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                          !project_.tracks.empty());
             menu.addItem(kMenuTrackCreateClip, u8"Créer un clip d'une mesure à la tête de lecture",
                          !project_.tracks.empty());
+            // D35.1 : MONTER ET DESCENDRE. `moveTrack` répare les routages
+            // depuis D5.3, est couverte de tests, et AUCUN geste ne l'appelait :
+            // l'ordre des pistes était celui du fichier MIDI, définitivement.
+            menu.addSeparator();
+            menu.addItem(kMenuTrackMoveUp, u8"Monter la piste",
+                         trackList_.selectedTrackIndex() > 0);
+            menu.addItem(kMenuTrackMoveDown, u8"Descendre la piste",
+                         !project_.tracks.empty()
+                             && trackList_.selectedTrackIndex() + 1 < project_.tracks.size());
             {
                 const size_t choisie = trackList_.selectedTrackIndex();
                 const bool verrouillee = choisie < project_.tracks.size()
@@ -2934,6 +2953,8 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuViewTrackHeightSmall)  { arrangement_.setAllTrackHeights(24); return; }
     if (menuItemID == kMenuViewTrackHeightNormal) { arrangement_.setAllTrackHeights(56); return; }
     if (menuItemID == kMenuViewTrackHeightLarge)  { arrangement_.setAllTrackHeights(112); return; }
+    if (menuItemID == kMenuTrackMoveUp)   { moveSelectedTrack(-1); return; }
+    if (menuItemID == kMenuTrackMoveDown) { moveSelectedTrack(+1); return; }
     if (menuItemID >= kMenuEditDrawAutomationRampUp
         && menuItemID <= kMenuEditDrawAutomationSquare) {
         using vsm::sequencer::AutomationShape;
@@ -6448,6 +6469,49 @@ void MainComponent::editTimeAtLocators(bool inserer) {
 // photographie doit être ce que le geste fait, sans quoi la capture prouve
 // l'existence d'un second chemin et rien d'autre -- c'est ce que D33.3 avait
 // déjà écrit du scrub.
+// L'ARBRE DES PISTES SUR UNE LIGNE (D35), pour la vérification.
+//
+// « Batterie/0! Kick1 Snare1 Basse0 » : le nom, la profondeur, `/` pour un
+// dossier, `!` pour un muet, `*` pour un solo. Une liste de douze pistes ne se
+// juge pas sur une capture d'écran ; écrite ainsi, elle se compare d'un coup
+// d'œil, et un aller-retour qui ne revient pas au point de départ se voit.
+juce::String MainComponent::trackTreeForCapture() const {
+    juce::String texte;
+    for (const auto& t : project_.tracks) {
+        texte += juce::String::fromUTF8(t.name.c_str()) + (t.isFolder() ? "/" : "")
+               + juce::String(t.folderDepth);
+        if (t.muted) texte += "!";
+        if (t.solo) texte += "*";
+        texte += " ";
+    }
+    return texte.trim();
+}
+
+// D35.1 : MONTER ET DESCENDRE UNE PISTE, avec ce qu'elle contient.
+//
+// D'UN CRAN À LA FOIS, et pour un dossier c'est d'un cran APRÈS son bloc : ce
+// qui monte ou descend est la piste et son contenu, jamais l'en-tête seul.
+//
+// UNE PISTE QUI MONTE ENTRE DANS LE DOSSIER QU'ELLE TRAVERSE, puis en ressort
+// par le haut au cran suivant. Ce n'est pas un effet de bord, c'est la règle
+// d'adoption de `moveTrackWithFolder` vue de près -- et c'est ce qui rend le
+// rangement possible au clavier, sans jamais avoir à viser à la souris.
+bool MainComponent::moveSelectedTrack(int direction) {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size() || direction == 0) return false;
+    const size_t taille = 1 + vsm::sequencer::folderContents(project_, piste).size();
+    if (direction < 0 && piste == 0) return false;
+    if (direction > 0 && piste + taille >= project_.tracks.size()) return false;
+
+    captureSessionIntoProject();
+    beginProjectEdit(direction < 0 ? u8"Monter la piste" : u8"Descendre la piste");
+    const size_t cible = direction < 0 ? piste - 1 : piste + taille + 1;
+    const size_t rang = vsm::sequencer::moveTrackWithFolder(project_, piste, cible);
+    rebuildFromProject(false);
+    trackList_.selectTrackIndex(rang);
+    return true;
+}
+
 // D34.4 : LA RÈGLE EN TEMPS OU EN MESURES, et elle est CONSERVÉE.
 //
 // Un seul chemin pour le menu et pour la commande de vérification, comme la
@@ -6771,8 +6835,18 @@ void MainComponent::removeSelectedTrack() {
 
     // La suppression et la RÉPARATION DES ROUTAGES sont une règle du modèle,
     // pas de l'interface : voir `vsm::sequencer::removeTrack`.
-    vsm::sequencer::removeTrack(project_, idx);
+    //
+    // D35.3 : UN DOSSIER EMPORTE SON CONTENU, ET ON LE DIT. Avant, l'en-tête
+    // seul disparaissait et `normalizeFolderDepths` mettait ses membres à
+    // plat : le tiroir se dissolvait sans que personne l'ait demandé. Emporter
+    // le contenu est franc, annulable — et n'est honnête qu'à condition d'être
+    // annoncé.
+    const size_t retirees = vsm::sequencer::removeTrackWithFolder(project_, idx);
     rebuildFromProject();
+    if (retirees > 1)
+        std::fputs((juce::String::fromUTF8(u8"Dossier supprimé : ") + juce::String(int(retirees))
+                     + juce::String::fromUTF8(u8" piste(s) retirée(s) avec lui.\n")).toRawUTF8(),
+                    stderr);
 
     if (!project_.tracks.empty()) {
         const size_t next = std::min(idx, project_.tracks.size() - 1);
@@ -6784,7 +6858,11 @@ void MainComponent::duplicateSelectedTrack() {
     const size_t idx = trackList_.selectedTrackIndex();
     if (idx >= project_.tracks.size()) return;
     beginProjectEdit(u8"Dupliquer une piste");
-    const size_t copie = vsm::sequencer::duplicateTrack(project_, idx);
+    // D35.3 : UN DOSSIER SE DUPLIQUE AVEC SON CONTENU. Avant, la copie de
+    // l'en-tête s'insérait ENTRE le dossier et ses membres : ceux-ci passaient
+    // sous la copie et l'original restait vide -- dupliquer un dossier lui
+    // VOLAIT son contenu.
+    const size_t copie = vsm::sequencer::duplicateTrackWithFolder(project_, idx);
     rebuildFromProject();
     // L'ÉTAT VIVANT DE L'INSTRUMENT n'est pas dans le modèle (D0.1 : il vit
     // dans la machine, le fichier le relit à l'ouverture). La copie vient

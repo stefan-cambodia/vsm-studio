@@ -599,6 +599,31 @@ void MixerComponent::setProject(vsm::sequencer::Project* project) {
                                                   : bus.name);
     if (project_ != nullptr) {
         for (size_t i = 0; i < project_->tracks.size(); ++i) {
+            // D35.5 : UN DOSSIER N'A PAS DE TRANCHE, et voici pourquoi.
+            //
+            // Le mélangeur fabriquait une tranche par piste, dossiers compris.
+            // Or un dossier n'est PAS un bus -- `Kind::Group` l'est, et fait
+            // descendre le son de ses membres ; un dossier n'est qu'une
+            // profondeur, aucun signal n'y passe. Son fader, son panoramique,
+            // son trim, ses départs, ses inserts et ses vumètres étaient donc
+            // six commandes mortes : on tirait le fader d'un dossier de douze
+            // micros et rien ne bougeait. Une commande qui ne fait rien est
+            // pire qu'une commande absente, parce qu'elle promet.
+            //
+            // SON MUET ET SON SOLO, EUX, AGISSENT depuis D35.4 -- et ils
+            // restent atteignables là où le dossier vit, dans la liste des
+            // pistes. C'est aussi là qu'on le replie, le renomme et le range :
+            // le dossier est un objet de RANGEMENT, et sa place est dans la
+            // liste, pas dans le mélangeur. Cubase cache ses pistes-dossiers
+            // de la MixConsole pour cette raison exacte.
+            //
+            // CE QUE CELA COÛTE, ET COMMENT C'EST PAYÉ : un membre tu par son
+            // dossier n'a plus, dans le mélangeur, de tranche qui l'explique.
+            // Sa propre tranche le dit donc à sa place -- son bouton M
+            // s'allume quand le silence lui vient d'un dossier (voir
+            // `refreshMuteSolo`), sans quoi on aurait une tranche silencieuse
+            // dont aucun bouton n'est enfoncé, c'est-à-dire une panne muette.
+            if (project_->tracks[i].isFolder()) continue;
             auto* strip = new ChannelStrip(project_->tracks[i], i, sendNames);
             if (project_->tracks[i].kind == vsm::sequencer::Track::Kind::Group) {
                 juce::StringArray membres;
@@ -632,8 +657,13 @@ void MixerComponent::setProject(vsm::sequencer::Project* project) {
 void MixerComponent::updateMeters(
     const std::function<vsm::audio::engine::TrackMeasurement(size_t)>& trackMeasure,
     double masterLufs, float masterPeak, float masterRms, float masterCorrelation) {
+    // D35.5 : PAR `trackIndex()` ET NON PAR LE RANG. Depuis qu'un dossier n'a
+    // plus de tranche, la n-ième tranche n'est plus la n-ième piste : lire les
+    // vumètres au rang aurait montré, sous un dossier, le niveau de la piste
+    // d'à côté -- une erreur qu'on ne voit pas, parce qu'un vumètre qui bouge a
+    // l'air juste.
     for (int i = 0; i < strips_.size(); ++i)
-        strips_[i]->setMeasurement(trackMeasure(static_cast<size_t>(i)));
+        strips_[i]->setMeasurement(trackMeasure(strips_[i]->trackIndex()));
     master_.setMeters(masterLufs, masterPeak, masterRms, masterCorrelation);
 }
 
@@ -647,21 +677,21 @@ void MixerComponent::resized() {
     viewport_.setBounds(r);
 
     // D17.4 : les tranches masquées ne comptent pas dans la largeur totale.
+    // D35.5 : et l'on demande à la TRANCHE quelle piste elle montre.
+    const auto masqueeLa = [this](const ChannelStrip* strip) {
+        if (project_ == nullptr) return false;
+        const size_t i = strip->trackIndex();
+        return i < project_->tracks.size() && project_->tracks[i].hidden;
+    };
     int visibles = 0;
     for (int i = 0; i < strips_.size(); ++i)
-        if (project_ == nullptr || static_cast<size_t>(i) >= project_->tracks.size()
-            || !project_->tracks[static_cast<size_t>(i)].hidden)
-            ++visibles;
+        if (!masqueeLa(strips_[i])) ++visibles;
     stripContainer_.setSize(juce::jmax(r.getWidth(), visibles * kStripWidth), r.getHeight() - 12);
     {
-        // D17.4 : une tranche masquée occupe une largeur nulle. Les tranches
-        // restent indexées comme les pistes -- `setMeasurement(i)` s'en sert à
-        // chaque image.
+        // D17.4 : une tranche masquée occupe une largeur nulle.
         int x = 0;
         for (int i = 0; i < strips_.size(); ++i) {
-            const bool masquee = project_ != nullptr
-                                 && static_cast<size_t>(i) < project_->tracks.size()
-                                 && project_->tracks[static_cast<size_t>(i)].hidden;
+            const bool masquee = masqueeLa(strips_[i]);
             const int w = masquee ? 0 : kStripWidth;
             strips_[i]->setBounds(x, 0, w, stripContainer_.getHeight());
             strips_[i]->setVisible(!masquee);

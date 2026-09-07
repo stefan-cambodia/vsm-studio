@@ -426,3 +426,108 @@ VSM_TEST(an_audition_stops_at_the_end_and_a_new_one_cuts_the_old) {
     graph.auditionPlayer().stop();
     VSM_ASSERT(!graph.auditionPlayer().isPlaying());
 }
+
+// ---------------------------------------------------------------------------
+// D35.4 — LE MUET ET LE SOLO D'UN DOSSIER ATTEIGNENT SON CONTENU.
+//
+// L'attendu, écrit avant la mesure : « le rendu d'un projet dont le dossier est
+// muet est IDENTIQUE AU BIT PRÈS au rendu du même projet où l'on aurait rendu
+// muet chaque piste du dossier à la main. Comparer deux booléens ne prouverait
+// que l'accord de deux `if` ; comparer deux rendus prouve que le son se tait. »
+// ---------------------------------------------------------------------------
+
+namespace {
+
+/// `Batterie/(0) Kick(1) Snare(1) Basse(0)` — deux pistes dans un dossier, une
+/// à la racine. Les trois sonnent.
+Project projetADossier() {
+    Project p;
+    p.ticksPerQuarterNote = 480;
+    p.tempoMap.addTempoChange(0, 500000);
+    Track dossier; dossier.name = "Batterie";
+    dossier.kind = Track::Kind::Folder; dossier.folderDepth = 0;
+    p.tracks.push_back(dossier);
+    Track kick = uneNote("Kick", 40);   kick.folderDepth = 1;
+    Track snare = uneNote("Snare", 47); snare.folderDepth = 1;
+    Track basse = uneNote("Basse", 33); basse.folderDepth = 0;
+    p.tracks.push_back(kick);
+    p.tracks.push_back(snare);
+    p.tracks.push_back(basse);
+    return p;
+}
+
+const std::vector<std::pair<size_t, std::string>> kTroisMachines = {
+    {1, "vsm.minimoog"}, {2, "vsm.minimoog"}, {3, "vsm.minimoog"}};
+
+} // namespace
+
+VSM_TEST(muting_a_folder_silences_its_tracks_exactly_as_muting_each_one_would) {
+    // LE TÉMOIN EST LE MÊME CODE : deux projets, une seule variable -- le muet
+    // posé sur le dossier d'un côté, sur chaque membre de l'autre.
+    Project parLeDossier = projetADossier();
+    parLeDossier.tracks[0].muted = true;
+    Project aLaMain = projetADossier();
+    aLaMain.tracks[1].muted = true;
+    aLaMain.tracks[2].muted = true;
+
+    const RenderedAudio a = rendre(parLeDossier, kTroisMachines);
+    const RenderedAudio b = rendre(aLaMain, kTroisMachines);
+    std::printf("      [D35.4] dossier muet vs membres muets : écart max %.9f\n", ecartMax(a, b));
+    VSM_ASSERT_EQ(ecartMax(a, b), 0.0f);
+
+    // ET LA BASSE, HORS DU DOSSIER, SONNE TOUJOURS : sans quoi le test
+    // passerait aussi sur un projet entièrement muet.
+    VSM_ASSERT(peakOf(a.left) > 1.0e-4f);
+    const RenderedAudio complet = rendre(projetADossier(), kTroisMachines);
+    VSM_ASSERT(peakOf(complet.left) > peakOf(a.left));
+}
+
+VSM_TEST(soloing_a_folder_leaves_only_its_tracks_sounding) {
+    Project parLeDossier = projetADossier();
+    parLeDossier.tracks[0].solo = true;
+    Project aLaMain = projetADossier();
+    aLaMain.tracks[1].solo = true;
+    aLaMain.tracks[2].solo = true;
+
+    const RenderedAudio a = rendre(parLeDossier, kTroisMachines);
+    const RenderedAudio b = rendre(aLaMain, kTroisMachines);
+    std::printf("      [D35.4] dossier en solo vs membres en solo : écart max %.9f\n",
+                ecartMax(a, b));
+    VSM_ASSERT_EQ(ecartMax(a, b), 0.0f);
+    VSM_ASSERT(peakOf(a.left) > 1.0e-4f);
+}
+
+VSM_TEST(a_solo_safe_track_does_not_escape_a_muted_folder) {
+    // L'ATTENDU DE LA FEUILLE DE ROUTE ÉTAIT FAUX, ET C'EST ÉCRIT LÀ-BAS AUSSI.
+    // Il annonçait qu'une piste protégée resterait audible sous un dossier
+    // muet. `soloSafe` veut dire « le solo des AUTRES ne me concerne pas », et
+    // non « je suis toujours audible » -- la règle n° 2 de `trackAudible` le dit
+    // déjà, puisqu'une piste protégée obéit à son propre muet. Le muet d'un
+    // dossier est un muet posé sur elle, pas le solo d'un tiers.
+    Project p = projetADossier();
+    p.tracks[0].muted = true;
+    p.tracks[1].soloSafe = true;
+    const RenderedAudio protege = rendre(p, kTroisMachines);
+
+    Project sansProtection = projetADossier();
+    sansProtection.tracks[0].muted = true;
+    const RenderedAudio ordinaire = rendre(sansProtection, kTroisMachines);
+    std::printf("      [D35.4] protégée sous un dossier muet : écart max %.9f\n",
+                ecartMax(protege, ordinaire));
+    VSM_ASSERT_EQ(ecartMax(protege, ordinaire), 0.0f);
+}
+
+VSM_TEST(a_folder_that_says_nothing_leaves_the_render_bit_for_bit_as_before) {
+    // LE CHEMIN D'AVANT L'ÉTAPE, INTACT : un dossier ni muet ni soloé ni
+    // désactivé ne doit rien changer au son, sans quoi D35.4 aurait modifié des
+    // morceaux finis sans le dire.
+    const RenderedAudio avecDossier = rendre(projetADossier(), kTroisMachines);
+    Project sansDossier = projetADossier();
+    for (auto& t : sansDossier.tracks) t.folderDepth = 0;
+    sansDossier.tracks.erase(sansDossier.tracks.begin());
+    const RenderedAudio sans = rendre(sansDossier, {{0, "vsm.minimoog"}, {1, "vsm.minimoog"},
+                                                     {2, "vsm.minimoog"}});
+    std::printf("      [D35.4] avec dossier vs sans dossier : écart max %.9f\n",
+                ecartMax(avecDossier, sans));
+    VSM_ASSERT_EQ(ecartMax(avecDossier, sans), 0.0f);
+}

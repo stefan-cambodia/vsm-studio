@@ -135,8 +135,20 @@ public:
     /// Relit muet et solo depuis la piste (après un solo exclusif).
     /// D29.3 : voir MixerComponent::applyExternalControl.
     void applyExternalControl(const std::string& parametre, float valeur);
-    void refreshMuteSolo() {
-        mute_.setToggleState(track_.muted, juce::dontSendNotification);
+    /// L'index de la piste que cette tranche montre. Nécessaire depuis D35.5 :
+    /// les tranches ne sont plus en correspondance de rang avec les pistes, un
+    /// dossier n'en ayant pas.
+    size_t trackIndex() const { return index_; }
+
+    /// D35.5 : le bouton M s'allume AUSSI quand le silence vient d'un dossier.
+    /// Un dossier n'a plus de tranche (voir `MixerComponent::rebuild`) : sans
+    /// cela, on aurait une tranche silencieuse dont aucun bouton n'est
+    /// enfoncé, et l'on chercherait la panne dans le fader.
+    void refreshMuteSolo(bool tuParUnDossier = false) {
+        mute_.setToggleState(track_.muted || tuParUnDossier, juce::dontSendNotification);
+        mute_.setTooltip(tuParUnDossier && !track_.muted
+                             ? juce::String::fromUTF8(u8"Rendu muet par son dossier")
+                             : juce::String());
         rafraichirSolo();   // D30.1 : le libellé et la couleur du solo protégé aussi
     }
     /// Prévenu AVANT qu'un geste ne modifie le mixage : c'est là que
@@ -299,14 +311,34 @@ public:
     /// D21.2 : une tranche a demandé le solo EXCLUSIF (Ctrl+clic sur Solo).
     std::function<void(size_t)> onExclusiveSoloRequested;
     /// Relit muet et solo de chaque tranche depuis sa piste.
-    void refreshMuteSolo() { for (auto* strip : strips_) strip->refreshMuteSolo(); }
+    void refreshMuteSolo() {
+        for (auto* strip : strips_) {
+            // D35.5 : le muet HÉRITÉ d'un dossier s'affiche sur la tranche du
+            // membre, puisque le dossier n'en a plus.
+            bool herite = false;
+            if (project_ != nullptr) {
+                const size_t i = strip->trackIndex();
+                if (i < project_->tracks.size())
+                    herite = !vsm::sequencer::trackAudible(project_->tracks, i, false)
+                          && !project_->tracks[i].muted && !project_->tracks[i].disabled;
+            }
+            strip->refreshMuteSolo(herite);
+        }
+    }
     /// D29.3 : une valeur venue d'AILLEURS que la souris (MIDI Learn) posée sur
     /// la tranche de la piste : le curseur, la piste, et la passe d'automation
     /// si le W est armé. Faux si la tranche n'existe pas.
     bool applyExternalControl(size_t track, const std::string& parametre, float valeur) {
-        if (track >= static_cast<size_t>(strips_.size())) return false;
-        strips_[static_cast<int>(track)]->applyExternalControl(parametre, valeur);
-        return true;
+        // D35.5 : ON CHERCHE LA TRANCHE DE CETTE PISTE plutôt que de prendre la
+        // n-ième. Un dossier n'a plus de tranche, donc les rangs ont glissé :
+        // au rang, un potentiomètre MIDI appris sur une piste aurait piloté sa
+        // voisine, et l'on aurait cherché la panne dans le MIDI Learn.
+        for (auto* strip : strips_)
+            if (strip->trackIndex() == track) {
+                strip->applyExternalControl(parametre, valeur);
+                return true;
+            }
+        return false;
     }
     std::function<void()> onMixEditStarted;
 

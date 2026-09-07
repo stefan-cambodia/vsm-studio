@@ -7140,3 +7140,150 @@ d'import de D33.1, trouvée en LANÇANT le binaire. Les 1 908 tests ne traversen
 pas une ligne d'interface, et c'est la seconde fois que ce dépôt paie ce prix
 (la première fut le point d'entrée de D7.5). **Vérifier une interface, c'est
 l'ouvrir.**
+
+---
+
+### Phase D35 — Le vingtième audit : deux fonctions de `core/` que rien n'appelle (07/09/2026, 06:40)
+
+**Pourquoi, et comment cet audit a été mené autrement.** Les trois audits
+précédents ont cherché des ABSENCES, et deux fois sur trois se sont trompés :
+la fonction était là, sous un autre nom. D34 en a tiré la leçon inverse — **une
+fonction qui existe sans être dite est plus dangereuse qu'une fonction
+absente** — et cet audit l'a prise pour méthode. Au lieu de chercher ce qui
+manque, il a cherché **ce qui existe et que personne n'appelle**, puis ce que
+les gestes voisins font de ce qui existe.
+
+Deux fonctions de `core/`, écrites avec soin et couvertes de tests, n'ont
+**aucun appelant venant d'un geste de l'utilisateur** :
+
+- **`moveTrack`** répare méticuleusement les index de routage (`outputGroup`,
+  `outputSourceTrack`) au déplacement d'une piste — et n'est appelée qu'une
+  fois, à l'intérieur de la transcription, pour ranger une piste neuve.
+  **L'utilisateur ne peut pas réordonner ses pistes**, ni au menu, ni à la
+  souris, ni au clavier.
+- **`folderContents`** rend les pistes que contient un dossier. Elle n'est
+  appelée **nulle part**, et cela explique tout le reste : les dossiers sont
+  des étiquettes de profondeur que quatre gestes sur cinq ignorent.
+
+**Le relevé a été mesuré, pas supposé.** Un petit programme a construit un
+arbre — `Batterie/(0) Kick(1) Snare(1) Basse(0) Voix(0)` — et lui a appliqué
+les gestes existants :
+
+| geste | résultat mesuré |
+|---|---|
+| `moveTrack(dossier 0 → 3)` | `Kick(1) Snare(1) Basse(0) Batterie/(0) Voix(0)` puis, normalisé, `Kick(0) Snare(0) …` — **le dossier part seul et se vide** |
+| `moveTrack(Voix 4 → 1)` | `Batterie/(0) Voix(0) Kick(1) Snare(1) …` — une piste posée entre le dossier et ses membres **les orpheline** |
+| `removeTrack(dossier 0)` | `Kick(1) Snare(1) …` puis, normalisé, tout à plat — **supprimer l'étiquette dissout le tiroir en silence** |
+| `duplicateTrack(dossier 0)` | `Batterie/ Batterie (copie)/ Kick(1) Snare(1) …` — **la copie VOLE le contenu de l'original** |
+
+Le principe était pourtant connu et écrit : `changeSelectedTrackFolderDepth`
+porte le commentaire « EN SORTANT, ON EMMÈNE CE QU'ON CONTENAIT ». Il a été
+appliqué **une fois sur cinq**.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D35.1 | **Réordonner les pistes.** `moveTrack` existe, est testée, et aucun geste ne l'appelle : l'ordre des pistes est celui du fichier MIDI, définitivement. C'est le geste le plus banal d'un DAW | *Piste ▸ Monter / Descendre* (et les raccourcis), plus le glisser dans la liste des pistes ; les routages survivent — c'est ce que `moveTrack` sait déjà faire, et c'est pourquoi le geste passe par elle et ne réécrit rien |
+| D35.2 | **Un dossier qui bouge emporte ce qu'il contient**, et une piste posée entre un dossier et ses membres est **adoptée** plutôt que de les orpheliner | `moveTrackWithFolder` dans `core/` ; mesuré sur l'arbre du relevé : après chaque déplacement, `folderContents` rend exactement les mêmes pistes qu'avant, et `normalizeFolderDepths` n'a **rien** à corriger — un arbre qui a besoin d'être normalisé après un geste est un arbre que le geste a cassé |
+| D35.3 | **Supprimer et dupliquer un dossier.** La suppression dissout le tiroir en silence ; la duplication fait pire, elle **transfère** le contenu à la copie | supprimer un dossier **emporte son contenu**, et le DIT (« 3 pistes supprimées avec le dossier ») ; dupliquer un dossier copie son contenu ; testé des deux côtés |
+| D35.4 | **Le muet et le solo d'un dossier agissent sur ce qu'il contient.** `trackAudible` ne regarde que la piste elle-même : rendre muet un dossier de douze micros de batterie n'en tait aucun. C'est la raison d'être des dossiers au-delà du rangement | `trackAudible` prend l'arbre ; un dossier muet tait son contenu, un dossier en solo le fait entendre seul ; **une piste `soloSafe` reste audible sous un dossier muet**, comme elle l'est déjà sous un solo (D30.1) ; mesuré sur le rendu, pas sur un booléen |
+| D35.5 | **Une tranche de mélangeur pour un dossier, dont le fader ne fait rien.** `MixerComponent` fabrique une tranche par piste, dossiers compris ; or un dossier n'est pas un bus (`Kind::Group` l'est), aucun signal n'y passe, et tirer son fader ne change rien | ou bien le dossier n'a pas de tranche, ou bien sa tranche ne montre que ce qui agit ; **la décision est écrite avec sa raison**, et vérifiée à l'écran |
+
+**Ce qui est attendu, écrit AVANT la mesure.**
+
+1. **D35.2** — j'attends que, sur l'arbre du relevé, `normalizeFolderDepths`
+   rende **zéro correction** après chacun des quatre gestes. C'est le critère
+   qui vaut, et il est plus fort que « le contenu a suivi » : la normalisation
+   est le filet qui rattrapait les dégâts, et un geste correct ne doit rien lui
+   laisser à rattraper. Aujourd'hui elle en corrige deux à quatre.
+2. **D35.4** — j'attends que le rendu d'un projet dont le dossier est muet soit
+   **identique au bit près** au rendu du même projet où l'on aurait rendu muet
+   chaque piste du dossier à la main. Comparer deux booléens ne prouverait que
+   l'accord de deux `if` ; comparer deux rendus prouve que le son se tait.
+3. **D35.1** — j'attends qu'après avoir monté puis redescendu une piste, le
+   projet soit **exactement** celui de départ, routages compris. Un aller-retour
+   qui ne revient pas au point de départ est le symptôme d'un index réparé de
+   travers, et c'est précisément le défaut que `moveTrack` a été écrite pour
+   éviter.
+
+> **LA PHASE D35 EST FAITE (07/09/2026, 08:05).** Les cinq étapes ensemble,
+> parce qu'elles n'en font qu'une : les dossiers étaient une profondeur que
+> quatre gestes sur cinq ignoraient.
+>
+> **D35.1 — Réordonner les pistes.** *Piste ▸ Monter / Descendre*, par
+> `moveTrackWithFolder`. Une piste qui monte **entre dans le dossier qu'elle
+> traverse**, et en ressort en franchissant sa frontière par le bas : le
+> rangement se fait au clavier, sans jamais viser à la souris.
+>
+> **D35.2 — Un dossier emporte ce qu'il contient.** Le critère écrit avant la
+> mesure était « `normalizeFolderDepths` rend **zéro** correction après chaque
+> geste », et il est tenu sur les sept cas du banc — contre deux à quatre
+> corrections avant l'étape. C'est un critère plus fort que « le contenu a
+> suivi » : la normalisation était le filet qui rattrapait les dégâts, et **un
+> arbre qui a besoin d'être normalisé après un geste est un arbre que le geste
+> a cassé**.
+>
+> **LA RÈGLE DE PROFONDEUR A ÉTÉ CORRIGÉE PAR LA MESURE.** La première version
+> adoptait toujours au PLAFOND. Vérifiée dans l'application, elle rendait
+> `Prise1` là où l'on était parti de `Prise0` : « descendre » une piste jusqu'en
+> bas la faisait entrer dans le dossier qu'elle venait de traverser. La règle
+> est devenue **« on garde sa profondeur, sauf là où la place l'interdit »** —
+> un plafond venu de la piste d'avant, un plancher venu de la piste d'après.
+> Elle adopte là où aucun autre arbre ne serait valide, et seulement là.
+>
+> **ET L'ATTENDU DE D35.1 ÉTAIT TROP LARGE.** « Un aller-retour rend exactement
+> le projet de départ » est vrai **tant que le chemin ne traverse pas un
+> dossier**, et faux quand il en traverse un — par nécessité : entre deux
+> membres d'un dossier, il n'existe aucun arbre valide où la piste serait à la
+> racine. Deux tests écrivent les deux cas plutôt que d'en taire un. Quand un
+> dossier va jusqu'au bout de la liste, sa dernière ligne est encore dedans : on
+> en sort par *Piste ▸ Sortir du dossier*.
+>
+> **D35.3 — Supprimer et dupliquer.** Supprimer un dossier **emporte son
+> contenu et le DIT** (« Dossier supprimé : 3 piste(s) retirée(s) avec lui »).
+> L'autre choix — ne retirer que l'étiquette — avait pour lui la prudence, et
+> contre lui d'être exactement ce que le code faisait **par accident**. La
+> duplication était pire : la copie de l'en-tête s'insérait **entre** le dossier
+> et ses membres, qui passaient sous la copie — dupliquer un dossier lui
+> **volait** son contenu.
+>
+> **D35.4 — Le muet et le solo d'un dossier atteignent son contenu.** Mesuré sur
+> le RENDU et non sur un booléen : le rendu d'un projet dont le dossier est muet
+> est identique **à 0,000000000 près** au rendu du même projet où chaque membre
+> serait muet à la main ; idem pour le solo ; et un dossier qui ne dit rien
+> laisse le rendu identique au bit près à ce qu'il était avant la phase.
+>
+> **L'ATTENDU ÉTAIT FAUX SUR UN POINT, ET LE RAISONNEMENT SUFFISAIT À LE DIRE.**
+> Il annonçait qu'une piste `soloSafe` resterait audible sous un dossier muet.
+> `soloSafe` veut dire « le solo des **autres** ne me concerne pas », et non
+> « je suis toujours audible » — la règle n° 2 de `trackAudible` le disait déjà,
+> puisqu'une piste protégée obéit à son propre muet. Le muet d'un dossier est un
+> muet posé sur elle, pas le solo d'un tiers.
+>
+> **ET LES CINQ BANCS « AUCUNE ALLOCATION DANS `process()` » ONT ATTRAPÉ LA
+> PREMIÈRE VERSION.** Elle copiait la piste pour y écraser trois champs —
+> jusqu'à **6 424 allocations** par bloc, sur le thread audio. Ces bancs n'ont
+> pas seulement dit « c'est faux » : ils ont dit *où*, en une seconde.
+>
+> **D35.5 — Un dossier n'a plus de tranche au mélangeur.** Il n'est pas un bus
+> (`Kind::Group` l'est) : aucun signal n'y passe, et son fader, son panoramique,
+> son trim, ses départs, ses inserts et ses vumètres étaient six commandes
+> mortes. **Une commande qui ne fait rien est pire qu'une commande absente,
+> parce qu'elle promet.** Son muet et son solo, eux, agissent depuis D35.4 et
+> restent là où le dossier vit : dans la liste des pistes.
+>
+> **CE QUE CELA COÛTAIT, ET COMMENT C'EST PAYÉ.** Un membre tu par son dossier
+> n'aurait plus eu, dans le mélangeur, de tranche qui l'explique : une tranche
+> silencieuse dont aucun bouton n'est enfoncé, c'est-à-dire une panne muette.
+> **Son bouton M s'allume donc quand le silence lui vient d'un dossier**, avec
+> l'infobulle qui le dit. Vérifié à l'écran : trois tranches pour quatre pistes,
+> et les deux M des membres allumés en rouge.
+>
+> **ET RETIRER UNE TRANCHE A CASSÉ TROIS CHOSES QU'IL A FALLU RÉPARER**, parce
+> que la n-ième tranche n'est plus la n-ième piste : les vumètres lisaient au
+> rang (on aurait vu, sous un dossier, le niveau de la voisine — et un vumètre
+> qui bouge a l'air juste), la largeur des tranches masquées de D17.4 aussi, et
+> le MIDI Learn de D29.3 aurait piloté la piste d'à côté. Les trois passent
+> désormais par `ChannelStrip::trackIndex()`.
+>
+> Tests : **1 283 audio** (4 neufs), **316 core** (8 neufs), 285 interchange,
+> 25 clap, 11 panels — tous verts.

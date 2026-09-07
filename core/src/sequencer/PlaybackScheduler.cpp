@@ -134,7 +134,9 @@ std::vector<ScheduledEvent> PlaybackScheduler::chaseAt(const Project& project, T
         // pas instanciée, et lui écrire des événements les enverrait à
         // personne.
         if (track.disabled) continue;
-        if (!trackAudible(track, anySolo) && !publiee[trackIndex]) continue;
+        // D35.4 : L'AUDIBILITÉ SE LIT SUR L'ARBRE et non sur la piste seule --
+        // un dossier muet tait ce qu'il contient.
+        if (!trackAudible(project.tracks, trackIndex, anySolo) && !publiee[trackIndex]) continue;
         const std::vector<Passage> passages = passagesOf(track, materialEnd);
 
     // ------------------------------------------------------------------
@@ -224,7 +226,7 @@ std::vector<ScheduledEvent> PlaybackScheduler::build(const Project& project,
     for (size_t trackIndex = 0; trackIndex < project.tracks.size(); ++trackIndex) {
         const Track& track = project.tracks[trackIndex];
         if (track.disabled) continue;      // D30.2, voir `chaseAt`
-        const bool audible = trackAudible(track, anySolo);
+        const bool audible = trackAudible(project.tracks, trackIndex, anySolo);   // D35.4
         if (!audible && !publiee[trackIndex]) continue;
 
         // Le tampon qui PORTE les notes transformées quand il y a une chaîne.

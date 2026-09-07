@@ -991,4 +991,65 @@ inline bool trackAudible(const Track& track, bool anySolo) {
     return anySolo ? track.solo : !track.muted;
 }
 
+/// LE MUET, LE SOLO ET LA DÉSACTIVATION D'UN DOSSIER ATTEIGNENT SON CONTENU
+/// (D35.4).
+///
+/// POURQUOI IL LE FALLAIT. `trackAudible` ci-dessus ne regarde que la piste
+/// elle-même : rendre muet un dossier de douze micros de batterie n'en taisait
+/// aucun. C'est pourtant la raison d'être d'un dossier au-delà du rangement --
+/// on le replie pour y voir clair, on le tait pour l'écarter du mixage.
+///
+/// LA RÈGLE : les trois états se PROPAGENT vers le bas. Le muet effectif d'une
+/// piste est le sien ou celui d'un de ses dossiers ; il en va de même du solo
+/// et de la désactivation. Ensuite, les trois règles de `trackAudible`
+/// s'appliquent telles quelles à ces valeurs effectives -- il n'y a pas une
+/// seconde logique d'audibilité à côté de la première, qui pourrait diverger.
+///
+/// **`soloSafe` NE PROTÈGE PAS D'UN DOSSIER MUET, et la feuille de route
+/// annonçait le contraire.** L'attendu écrit en ouvrant D35 disait « une piste
+/// protégée reste audible sous un dossier muet, comme elle l'est déjà sous un
+/// solo ». C'est faux, et le raisonnement le montre sans qu'il faille mesurer :
+/// `soloSafe` veut dire « le solo des AUTRES ne me concerne pas », et non « je
+/// suis toujours audible » -- la règle n° 2 le dit déjà, puisqu'une piste
+/// protégée obéit à son propre muet. Or le muet d'un dossier est un muet posé
+/// sur elle, pas le solo d'un tiers. Taire la batterie et entendre quand même
+/// la caisse claire parce qu'elle était protégée serait une surprise, pas une
+/// protection.
+/// PAS UNE SEULE ALLOCATION, et ce n'est pas un détail de style : cette
+/// fonction est appelée par `ProcessGraph` À CHAQUE BLOC, sur le thread audio.
+/// Une première version copiait la piste (`Track effective = tracks[index]`)
+/// pour y écraser les trois champs -- et les cinq bancs « aucune allocation
+/// dans process() » sont tombés d'un coup, jusqu'à 6 424 allocations par
+/// mesure. On ne copie donc rien : on calcule les trois booléens et on les
+/// passe aux mêmes règles.
+inline bool trackAudible(const std::vector<Track>& tracks, size_t index, bool anySolo) {
+    if (index >= tracks.size()) return false;
+    const Track& piste = tracks[index];
+    bool muted = piste.muted;
+    bool solo = piste.solo;
+    bool disabled = piste.disabled;
+    // ON REMONTE VERS LE HAUT DE LA LISTE en cherchant, à chaque niveau, le
+    // dossier qui contient la piste -- le même parcours que
+    // `hiddenByCollapsedFolder`, et pour la même raison : un dossier n'est pas
+    // un conteneur, c'est une profondeur, et ses ancêtres sont les pistes
+    // moins profondes qui le précèdent.
+    int niveau = piste.folderDepth;
+    for (size_t t = index; t > 0 && niveau > 0; --t) {
+        const Track& candidat = tracks[t - 1];
+        if (candidat.folderDepth >= niveau) continue;   // pas un ancêtre
+        if (candidat.isFolder()) {
+            muted = muted || candidat.muted;
+            solo = solo || candidat.solo;
+            disabled = disabled || candidat.disabled;
+        }
+        niveau = candidat.folderDepth;
+    }
+    // LES MÊMES TROIS RÈGLES QUE CI-DESSUS, dans le même ordre, appliquées aux
+    // valeurs effectives : il n'y a pas une seconde logique d'audibilité qui
+    // pourrait diverger de la première.
+    if (disabled) return false;
+    if (piste.soloSafe) return !muted;
+    return anySolo ? solo : !muted;
+}
+
 } // namespace vsm::sequencer

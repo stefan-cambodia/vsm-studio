@@ -374,6 +374,10 @@ private:
         kMenuEditDrawAutomationSine,
         kMenuEditDrawAutomationTriangle,
         kMenuEditDrawAutomationSquare,
+        /// D35.1 : monter et descendre la piste choisie. `moveTrack` existait,
+        /// était testée, et aucun geste ne l'appelait.
+        kMenuTrackMoveUp,
+        kMenuTrackMoveDown,
         kMenuViewComputerKeyboard,
         // Un identifiant par palier d'échelle, attribué à la suite :
         // kMenuViewScaleFirst + index dans UiScale::steps().
@@ -459,6 +463,13 @@ private:
     int linkedMidiClipCount() const;
     /// D34.3 : combien de pistes audio le projet porte.
     size_t audioTrackCount() const;
+    /// D35.1 : monte (`-1`) ou descend (`+1`) la piste choisie, avec ce
+    /// qu'elle contient. Rend faux si le geste n'était pas possible.
+    bool moveSelectedTrack(int direction);
+    /// D35 : l'arbre des pistes sur une ligne — nom, profondeur, muet, solo.
+    /// Ce que la vérification lit, faute de pouvoir juger douze lignes sur une
+    /// capture d'écran.
+    juce::String trackTreeForCapture() const;
     /// D34.4 : la règle en minutes:secondes (`true`) ou en mesures. Conservée
     /// d'une exécution à l'autre.
     void setRulerInTime(bool enTemps);

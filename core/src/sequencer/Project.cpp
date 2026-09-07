@@ -401,75 +401,186 @@ midi::Tick Project::lastSoundingTick() const {
     return last;
 }
 
-void moveTrack(Project& project, size_t from, size_t to) {
+void reorderTracks(Project& project, const std::vector<size_t>& nouvelOrdre) {
     const size_t n = project.tracks.size();
-    if (from >= n || to >= n || from == to) return;
+    if (nouvelOrdre.size() != n) return;
 
     // LES ROUTAGES SUIVENT LES PISTES, PAS LES INDEX. On note d'abord, pour
     // chaque piste, VERS QUELLE PISTE elle envoie -- une identité qui survivra
     // au remaniement --, puis on retrouve les nouveaux index après coup. Tenter
     // de corriger les index au fil du déplacement demanderait de raisonner sur
     // trois cas de figure, et le troisième serait faux.
+    //
+    // ÉCRITE POUR UNE PERMUTATION QUELCONQUE (D35.2) et non pour le
+    // déplacement d'UNE piste, comme elle l'était : déplacer un dossier, c'est
+    // déplacer un BLOC, et la réparation des routages n'a aucune raison d'être
+    // écrite deux fois -- la seconde copie serait celle qui oublierait
+    // `outputSourceTrack`.
     std::vector<const Track*> destinations(n, nullptr);
-    for (size_t i = 0; i < n; ++i) {
-        const int cible = project.tracks[i].outputGroup;
-        if (cible >= 0 && static_cast<size_t>(cible) < n)
-            destinations[i] = &project.tracks[static_cast<size_t>(cible)];
-    }
-    // D18.7b : LA SOURCE D'UNE SORTIE PUBLIÉE EST UN INDEX ELLE AUSSI, et elle
-    // doit suivre la piste par le même chemin -- sinon déplacer une piste
-    // ferait porter à la caisse claire la sortie d'une autre machine, ce qui
-    // s'entend mais ne se comprend pas.
     std::vector<const Track*> sources(n, nullptr);
     for (size_t i = 0; i < n; ++i) {
-        const int cible = project.tracks[i].outputSourceTrack;
-        if (cible >= 0 && static_cast<size_t>(cible) < n)
-            sources[i] = &project.tracks[static_cast<size_t>(cible)];
+        const int groupe = project.tracks[i].outputGroup;
+        if (groupe >= 0 && static_cast<size_t>(groupe) < n)
+            destinations[i] = &project.tracks[static_cast<size_t>(groupe)];
+        // D18.7b : LA SOURCE D'UNE SORTIE PUBLIÉE EST UN INDEX ELLE AUSSI, et
+        // elle doit suivre la piste par le même chemin -- sinon déplacer une
+        // piste ferait porter à la caisse claire la sortie d'une autre
+        // machine, ce qui s'entend mais ne se comprend pas.
+        const int source = project.tracks[i].outputSourceTrack;
+        if (source >= 0 && static_cast<size_t>(source) < n)
+            sources[i] = &project.tracks[static_cast<size_t>(source)];
     }
-    // Les adresses doivent rester valides : on déplace dans un vecteur de
-    // pointeurs, pas dans le vecteur de pistes.
-    std::vector<Track*> ordre(n);
+    // Les adresses doivent rester valides : on remanie un vecteur de
+    // pointeurs, pas le vecteur de pistes.
+    std::vector<const Track*> ordre(n);
     for (size_t i = 0; i < n; ++i) ordre[i] = &project.tracks[i];
 
-    std::vector<Track> remaniees;
-    remaniees.reserve(n);
     std::vector<const Track*> anciennesAdresses;
     anciennesAdresses.reserve(n);
-    {
-        std::vector<Track*> deplace = ordre;
-        Track* saisie = deplace[from];
-        deplace.erase(deplace.begin() + static_cast<std::ptrdiff_t>(from));
-        deplace.insert(deplace.begin() + static_cast<std::ptrdiff_t>(to), saisie);
-        for (Track* t : deplace) {
-            anciennesAdresses.push_back(t);
-            remaniees.push_back(*t);
-        }
+    std::vector<Track> remaniees;
+    remaniees.reserve(n);
+    for (size_t rang : nouvelOrdre) {
+        if (rang >= n) return;                 // ordre invalide : on ne touche à rien
+        anciennesAdresses.push_back(ordre[rang]);
+        remaniees.push_back(project.tracks[rang]);
     }
 
     // Où chaque ANCIENNE piste se trouve-t-elle désormais ?
-    for (size_t i = 0; i < n; ++i) {
-        const Track* destination = nullptr;
-        const Track* source = nullptr;
+    auto rangDe = [&](const Track* qui) {
+        if (qui == nullptr) return -1;
         for (size_t j = 0; j < n; ++j)
-            if (anciennesAdresses[i] == ordre[j]) {
-                destination = destinations[j];
-                source = sources[j];
-                break;
-            }
-        auto rangDe = [&](const Track* qui) {
-            if (qui == nullptr) return -1;
-            for (size_t j = 0; j < n; ++j)
-                if (anciennesAdresses[j] == qui) return static_cast<int>(j);
-            return -1;
-        };
-        remaniees[i].outputGroup = rangDe(destination);
-        const int rangSource = rangDe(source);
+            if (anciennesAdresses[j] == qui) return static_cast<int>(j);
+        return -1;
+    };
+    for (size_t i = 0; i < n; ++i) {
+        const size_t avant = nouvelOrdre[i];
+        remaniees[i].outputGroup = rangDe(destinations[avant]);
+        const int rangSource = rangDe(sources[avant]);
         remaniees[i].outputSourceTrack = rangSource;
         // Une publication dont la source a disparu ne désigne plus rien : son
         // index part avec elle plutôt que de rester à pointer au hasard.
         if (rangSource < 0) remaniees[i].outputIndex = 0;
     }
     project.tracks = std::move(remaniees);
+}
+
+void moveTrack(Project& project, size_t from, size_t to) {
+    const size_t n = project.tracks.size();
+    if (from >= n || to >= n || from == to) return;
+    std::vector<size_t> ordre(n);
+    for (size_t i = 0; i < n; ++i) ordre[i] = i;
+    ordre.erase(ordre.begin() + static_cast<std::ptrdiff_t>(from));
+    ordre.insert(ordre.begin() + static_cast<std::ptrdiff_t>(to), from);
+    reorderTracks(project, ordre);
+}
+
+size_t moveTrackWithFolder(Project& project, size_t from, size_t to) {
+    const size_t n = project.tracks.size();
+    if (from >= n || to > n) return from;
+
+    // LE BLOC : la piste, et ce qu'elle contient si c'est un dossier.
+    const size_t taille = 1 + folderContents(project, from).size();
+    if (from + taille > n) return from;
+    // ON NE SE DÉPOSE PAS DANS SON PROPRE CONTENU : un dossier glissé au
+    // milieu de ses membres n'a pas de sens, et le laisser faire produirait un
+    // ordre où le dossier suit ses propres pistes.
+    if (to > from && to < from + taille) return from;
+
+    // L'ORDRE VISÉ, en index d'origine : le bloc retiré, puis réinséré.
+    std::vector<size_t> reste;
+    reste.reserve(n - taille);
+    for (size_t i = 0; i < n; ++i)
+        if (i < from || i >= from + taille) reste.push_back(i);
+    // `to` est un rang dans la liste COMPLÈTE ; après retrait du bloc, tout ce
+    // qui était après lui a reculé de `taille`.
+    size_t insertion = to <= from ? to : to - taille;
+    insertion = std::min(insertion, reste.size());
+
+    // LA PROFONDEUR D'ARRIVÉE EST BORNÉE PAR LE POINT DE DÉPÔT, ET LA PISTE
+    // GARDE LA SIENNE QUAND LA PLACE LE PERMET.
+    //
+    // LE PLAFOND vient de la piste d'AVANT : un cran de plus si c'est un
+    // dossier, sa profondeur sinon. C'est exactement l'invariant que
+    // `normalizeFolderDepths` impose, et s'y tenir d'emblée ne lui laisse rien
+    // à corriger.
+    //
+    // LE PLANCHER vient de la piste d'APRÈS : si elle est plus profonde que
+    // nous et que nous ne sommes pas un dossier, elle se retrouverait
+    // orpheline. Il faut donc être au moins aussi profond qu'elle.
+    //
+    // POURQUOI PAS « TOUJOURS LE PLAFOND », qui était la première version.
+    // Elle adoptait partout, y compris à la FIN de la liste où les deux
+    // profondeurs sont valides -- et « descendre » une piste jusqu'en bas la
+    // faisait entrer dans le dossier qu'elle venait de traverser. Mesuré :
+    // monter trois fois puis descendre trois fois rendait `Prise1` là où l'on
+    // était parti de `Prise0`. Un aller-retour qui ne revient pas au point de
+    // départ est une surprise, et la feuille de route en avait fait un critère.
+    // La règle est donc : **on garde sa profondeur, sauf là où la place
+    // l'interdit** -- ce qui adopte quand il le faut, et seulement alors.
+    int plafond = 0;
+    if (insertion > 0) {
+        const Track& avant = project.tracks[reste[insertion - 1]];
+        plafond = avant.isFolder() ? avant.folderDepth + 1 : avant.folderDepth;
+    }
+    int plancher = 0;
+    if (insertion < reste.size() && !project.tracks[from].isFolder())
+        plancher = project.tracks[reste[insertion]].folderDepth;
+    plancher = std::min(plancher, plafond);
+    const int sienne = project.tracks[from].folderDepth;
+    const int voulue = std::max(plancher, std::min(sienne, plafond));
+    const int delta = voulue - sienne;
+
+    std::vector<size_t> ordre;
+    ordre.reserve(n);
+    ordre.insert(ordre.end(), reste.begin(), reste.begin() + static_cast<std::ptrdiff_t>(insertion));
+    for (size_t k = 0; k < taille; ++k) ordre.push_back(from + k);
+    ordre.insert(ordre.end(), reste.begin() + static_cast<std::ptrdiff_t>(insertion), reste.end());
+
+    // LES PROFONDEURS SE DÉCALENT AVANT LE REMANIEMENT, pendant que les index
+    // d'origine désignent encore les bonnes pistes.
+    for (size_t k = 0; k < taille; ++k) {
+        Track& piste = project.tracks[from + k];
+        piste.folderDepth = std::max(0, piste.folderDepth + delta);
+    }
+    reorderTracks(project, ordre);
+    return insertion;
+}
+
+size_t removeTrackWithFolder(Project& project, size_t index) {
+    if (index >= project.tracks.size()) return 0;
+    const size_t taille = 1 + folderContents(project, index).size();
+    // ON RETIRE PAR LA FIN : chaque `removeTrack` répare les routages de ce qui
+    // reste, et commencer par le début décalerait les index qu'on s'apprête à
+    // retirer. Passer par `removeTrack` plutôt que par un `erase` en bloc est
+    // ce qui garantit qu'aucun routage ne survit en pointant dans le vide --
+    // la règle de D5.3, appliquée autant de fois qu'il y a de pistes.
+    for (size_t k = taille; k > 0; --k) removeTrack(project, index + k - 1);
+    return taille;
+}
+
+size_t duplicateTrackWithFolder(Project& project, size_t index) {
+    if (index >= project.tracks.size()) return index;
+    const size_t taille = 1 + folderContents(project, index).size();
+    if (taille == 1) return duplicateTrack(project, index);
+
+    // ON DUPLIQUE PAR LA FIN, chaque copie se posant juste après son original :
+    // le bloc copié se reconstitue alors en ordre, intercalé, puis on le
+    // déplace d'un coup. Dupliquer par le début insérerait la copie de
+    // l'en-tête entre le dossier et ses membres -- exactement le défaut qu'on
+    // répare.
+    for (size_t k = taille; k > 0; --k) duplicateTrack(project, index + k - 1);
+
+    // LE BLOC COPIÉ EST ALORS INTERCALÉ -- original, copie, original, copie… --
+    // et il ne reste qu'à le démêler : les `taille` originaux occupent les
+    // rangs PAIRS de la zone, les copies les rangs impairs.
+    std::vector<size_t> nouvelOrdre;
+    nouvelOrdre.reserve(project.tracks.size());
+    for (size_t i = 0; i < index; ++i) nouvelOrdre.push_back(i);
+    for (size_t k = 0; k < taille; ++k) nouvelOrdre.push_back(index + 2 * k);
+    for (size_t k = 0; k < taille; ++k) nouvelOrdre.push_back(index + 2 * k + 1);
+    for (size_t i = index + 2 * taille; i < project.tracks.size(); ++i) nouvelOrdre.push_back(i);
+    reorderTracks(project, nouvelOrdre);
+    return index + taille;
 }
 
 size_t duplicateTrack(Project& project, size_t index) {

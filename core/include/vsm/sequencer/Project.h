@@ -229,6 +229,73 @@ void removeTrack(Project& project, size_t index);
 /// un groupe continue d'y aller, où que ce groupe se retrouve.
 void moveTrack(Project& project, size_t from, size_t to);
 
+/// RÉORDONNE TOUTES LES PISTES d'un coup, `nouvelOrdre[i]` étant l'ancien rang
+/// de la piste qui occupera le rang `i`, ET RÉPARE LES ROUTAGES.
+///
+/// C'est la fonction générale dont `moveTrack` est un cas particulier (D35.2).
+/// Elle a été dégagée parce que déplacer un DOSSIER, c'est déplacer un BLOC :
+/// écrire une seconde fois la réparation des routages pour ce cas-là aurait
+/// donné une copie, et la copie est celle qui aurait oublié
+/// `outputSourceTrack`. Un ordre de mauvaise taille ou hors bornes ne fait
+/// rien -- on ne remanie pas à moitié.
+void reorderTracks(Project& project, const std::vector<size_t>& nouvelOrdre);
+
+/// DÉPLACE UNE PISTE **AVEC CE QU'ELLE CONTIENT** (D35.2), et rend son nouveau
+/// rang.
+///
+/// POURQUOI `moveTrack` NE SUFFISAIT PAS. Un dossier n'est pas un conteneur :
+/// c'est une profondeur, et ses membres sont simplement les pistes plus
+/// profondes qui le suivent. Déplacer l'en-tête seul laissait donc son contenu
+/// sur place, dans un arbre invalide que `normalizeFolderDepths` mettait
+/// ensuite à plat -- le dossier se vidait, en silence, et l'on avait
+/// « seulement déplacé une piste ». Mesuré au § D35.
+///
+/// LA PROFONDEUR D'ARRIVÉE : **on garde la sienne, sauf là où la place
+/// l'interdit**. Le PLAFOND vient de la piste d'avant (un cran de plus si c'est
+/// un dossier, sa profondeur sinon) ; le PLANCHER vient de la piste d'après (on
+/// ne peut pas être moins profond qu'elle sans l'orpheliner). Entre les deux,
+/// la piste garde ce qu'elle avait, et tout le bloc se décale d'autant.
+///
+/// Poser une piste juste après un en-tête de dossier, ou entre deux de ses
+/// membres, l'y fait donc ENTRER -- le plancher l'y force --, comme dans
+/// Cubase. Mais la poser en FIN de liste, où les deux profondeurs seraient
+/// valides, ne l'adopte pas : « toujours le plafond » était la première règle,
+/// et « descendre » une piste jusqu'en bas la faisait entrer dans le dossier
+/// qu'elle venait de traverser -- un aller-retour qui ne revenait pas au point
+/// de départ.
+///
+/// Ces bornes sont exactement l'invariant que `normalizeFolderDepths` impose :
+/// s'y tenir d'emblée ne lui laisse rien à corriger, et **un arbre qui a besoin
+/// d'être normalisé après un geste est un arbre que le geste a cassé**.
+///
+/// Un dossier ne se dépose pas dans son propre contenu : le geste est refusé
+/// et rend le rang inchangé.
+size_t moveTrackWithFolder(Project& project, size_t from, size_t to);
+
+/// SUPPRIME UNE PISTE **ET CE QU'ELLE CONTIENT** (D35.3), et rend le nombre de
+/// pistes retirées.
+///
+/// LA DÉCISION, ÉCRITE PARCE QU'ELLE SE DISCUTE : supprimer un dossier EMPORTE
+/// son contenu. L'autre choix -- libérer les pistes et ne retirer que
+/// l'étiquette -- avait pour lui la prudence, et contre lui d'être exactement
+/// ce que le code faisait déjà **par accident** : `removeTrack` effaçait
+/// l'en-tête, laissait les membres dans un arbre invalide, et
+/// `normalizeFolderDepths` les mettait ensuite à plat. Un tiroir se dissolvait
+/// sans que personne l'ait demandé. Cubase et Live emportent tous deux le
+/// contenu, le geste est annulable, et **ce qui est retiré est DIT** -- c'est
+/// ce qui rend la suppression franche plutôt que dangereuse.
+size_t removeTrackWithFolder(Project& project, size_t index);
+
+/// DUPLIQUE UNE PISTE **ET CE QU'ELLE CONTIENT** (D35.3), et rend l'index de la
+/// copie de la piste elle-même.
+///
+/// POURQUOI C'ÉTAIT PIRE QUE LA SUPPRESSION. `duplicateTrack` insérait la copie
+/// de l'en-tête juste après l'original, donc **entre le dossier et ses
+/// membres** : les pistes du dossier se retrouvaient sous la COPIE, et
+/// l'original restait vide. Dupliquer un dossier lui VOLAIT son contenu. Mesuré
+/// au § D35.
+size_t duplicateTrackWithFolder(Project& project, size_t index);
+
 /// D11.5 — DUPLIQUE une piste, juste après elle, et rend l'index de la copie.
 ///
 /// Tout est copié : genre, nom (suffixé « (copie) »), couleur, canal, notes,

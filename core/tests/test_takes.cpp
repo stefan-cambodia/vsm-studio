@@ -787,3 +787,182 @@ VSM_TEST(folder_depths_are_put_back_in_order_rather_than_left_incoherent) {
     Project q = projetAvecDossiers();
     VSM_ASSERT_EQ(normalizeFolderDepths(q), size_t(0));
 }
+
+// ---------------------------------------------------------------------------
+// D35.2 — UN DOSSIER QUI BOUGE EMPORTE CE QU'IL CONTIENT.
+//
+// L'attendu, écrit avant la mesure : « `normalizeFolderDepths` rend ZÉRO
+// correction après chacun des gestes. C'est le critère qui vaut, et il est plus
+// fort que "le contenu a suivi" : la normalisation est le filet qui rattrapait
+// les dégâts, et un geste correct ne doit rien lui laisser à rattraper. »
+// Avant l'étape, elle en corrigeait deux à quatre.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+/// `Batterie/(0) Kick(1) Snare(1) Basse(0) Voix(0)` — un dossier de deux
+/// pistes, et deux pistes à la racine derrière lui.
+Project arbreDeDossiers() {
+    Project p;
+    p.tracks.resize(5);
+    p.tracks[0].kind = Track::Kind::Folder; p.tracks[0].name = "Batterie"; p.tracks[0].folderDepth = 0;
+    p.tracks[1].name = "Kick";  p.tracks[1].folderDepth = 1;
+    p.tracks[2].name = "Snare"; p.tracks[2].folderDepth = 1;
+    p.tracks[3].name = "Basse"; p.tracks[3].folderDepth = 0;
+    p.tracks[4].name = "Voix";  p.tracks[4].folderDepth = 0;
+    return p;
+}
+
+/// LE CRITÈRE DE L'ÉTAPE : combien la normalisation aurait à corriger. Zéro
+/// veut dire que l'arbre est resté valide de lui-même.
+size_t aCorriger(const Project& p) {
+    Project copie = p;
+    return normalizeFolderDepths(copie);
+}
+
+std::string ordreDe(const Project& p) {
+    std::string texte;
+    for (const auto& t : p.tracks)
+        texte += t.name + (t.isFolder() ? "/" : "") + std::to_string(t.folderDepth) + " ";
+    return texte;
+}
+
+} // namespace
+
+VSM_TEST(moving_a_folder_takes_its_tracks_with_it_and_leaves_a_valid_tree) {
+    Project p = arbreDeDossiers();
+    moveTrackWithFolder(p, 0, 4);
+    VSM_ASSERT_EQ(ordreDe(p), std::string("Basse0 Batterie/0 Kick1 Snare1 Voix0 "));
+    VSM_ASSERT_EQ(aCorriger(p), size_t(0));
+    // Le contenu du dossier est le MÊME qu'avant, pas seulement « non vide ».
+    const auto dedans = folderContents(p, 1);
+    VSM_ASSERT_EQ(dedans.size(), size_t(2));
+    VSM_ASSERT_EQ(p.tracks[dedans[0]].name, std::string("Kick"));
+    VSM_ASSERT_EQ(p.tracks[dedans[1]].name, std::string("Snare"));
+}
+
+VSM_TEST(a_track_dropped_inside_a_folder_is_adopted_instead_of_orphaning_it) {
+    // POSÉE JUSTE APRÈS L'EN-TÊTE : elle entre dans le dossier. Avant l'étape,
+    // elle s'y posait à la profondeur 0 et orphelinait Kick et Snare, que la
+    // normalisation mettait ensuite à plat -- le dossier se vidait en silence.
+    Project p = arbreDeDossiers();
+    moveTrackWithFolder(p, 4, 1);
+    VSM_ASSERT_EQ(ordreDe(p), std::string("Batterie/0 Voix1 Kick1 Snare1 Basse0 "));
+    VSM_ASSERT_EQ(aCorriger(p), size_t(0));
+    VSM_ASSERT_EQ(folderContents(p, 0).size(), size_t(3));
+
+    // ENTRE DEUX MEMBRES : même règle.
+    Project q = arbreDeDossiers();
+    moveTrackWithFolder(q, 4, 2);
+    VSM_ASSERT_EQ(ordreDe(q), std::string("Batterie/0 Kick1 Voix1 Snare1 Basse0 "));
+    VSM_ASSERT_EQ(aCorriger(q), size_t(0));
+}
+
+VSM_TEST(a_track_dropped_before_a_folder_stays_at_the_root) {
+    Project p = arbreDeDossiers();
+    moveTrackWithFolder(p, 3, 0);
+    VSM_ASSERT_EQ(ordreDe(p), std::string("Basse0 Batterie/0 Kick1 Snare1 Voix0 "));
+    VSM_ASSERT_EQ(aCorriger(p), size_t(0));
+}
+
+VSM_TEST(a_folder_refuses_to_be_dropped_inside_its_own_contents) {
+    // Le laisser faire produirait un ordre où le dossier suit ses propres
+    // pistes -- un arbre que rien ne saurait relire.
+    Project p = arbreDeDossiers();
+    const std::string avant = ordreDe(p);
+    VSM_ASSERT_EQ(moveTrackWithFolder(p, 0, 2), size_t(0));
+    VSM_ASSERT_EQ(ordreDe(p), avant);
+}
+
+VSM_TEST(moving_a_track_there_and_back_gives_exactly_the_project_you_started_from) {
+    // L'ATTENDU DE D35.1 : un aller-retour qui ne revient pas au point de
+    // départ est le symptôme d'un index réparé de travers, et c'est
+    // précisément le défaut que `moveTrack` a été écrite pour éviter.
+    Project p = arbreDeDossiers();
+    p.tracks[1].outputGroup = 3;      // Kick sort dans Basse
+    p.tracks[2].outputSourceTrack = 1; // Snare publie une sortie de Kick
+    p.tracks[2].outputIndex = 2;
+    const std::string avant = ordreDe(p);
+    const int groupeAvant = p.tracks[1].outputGroup;
+
+    const size_t rang = moveTrackWithFolder(p, 4, 0);
+    moveTrackWithFolder(p, rang, 5);
+    VSM_ASSERT_EQ(ordreDe(p), avant);
+    VSM_ASSERT_EQ(p.tracks[1].outputGroup, groupeAvant);
+    VSM_ASSERT_EQ(p.tracks[2].outputSourceTrack, 1);
+    VSM_ASSERT_EQ(p.tracks[2].outputIndex, 2);
+    VSM_ASSERT_EQ(aCorriger(p), size_t(0));
+}
+
+VSM_TEST(moving_a_folder_keeps_the_routings_of_the_tracks_it_carries) {
+    // C'est ce que `reorderTracks` garantit pour une permutation QUELCONQUE, et
+    // c'est la raison pour laquelle elle a été dégagée de `moveTrack` : une
+    // seconde copie de cette réparation aurait oublié `outputSourceTrack`.
+    Project p = arbreDeDossiers();
+    p.tracks[1].outputGroup = 3;       // Kick -> Basse
+    p.tracks[2].outputGroup = 3;       // Snare -> Basse
+    moveTrackWithFolder(p, 0, 5);      // le dossier passe tout à la fin
+    VSM_ASSERT_EQ(ordreDe(p), std::string("Basse0 Voix0 Batterie/0 Kick1 Snare1 "));
+    // Basse est désormais en tête : les deux routages la suivent.
+    VSM_ASSERT_EQ(p.tracks[3].outputGroup, 0);
+    VSM_ASSERT_EQ(p.tracks[4].outputGroup, 0);
+    VSM_ASSERT_EQ(aCorriger(p), size_t(0));
+}
+
+VSM_TEST(a_track_that_walks_through_a_folder_keeps_the_folder_it_entered) {
+    // L'ATTENDU DE LA FEUILLE DE ROUTE ÉTAIT TROP LARGE, et il faut le dire :
+    // « après avoir monté puis redescendu une piste, le projet est exactement
+    // celui de départ ». C'est vrai TANT QUE LE CHEMIN NE TRAVERSE PAS UN
+    // DOSSIER (le banc précédent le tient), et faux quand il en traverse un --
+    // par nécessité, pas par négligence.
+    //
+    // Entre deux membres d'un dossier, il n'existe AUCUN arbre valide où la
+    // piste serait à la racine : elle orphelinerait ceux qui la suivent. Monter
+    // l'y fait donc entrer. Redescendre en queue de liste, où les deux
+    // profondeurs seraient valides, ne l'en fait PAS sortir : elle garde le
+    // dossier où elle est entrée, ce qui est le sens même de l'adoption. On en
+    // sort par *Piste ▸ Sortir du dossier*, qui est le geste fait pour cela.
+    Project p = arbreDeDossiers();
+    size_t rang = 4;                                  // Voix, à la racine
+    rang = moveTrackWithFolder(p, rang, rang - 1);    // entre Snare et Basse -> racine
+    VSM_ASSERT_EQ(p.tracks[rang].folderDepth, 0);
+    rang = moveTrackWithFolder(p, rang, rang - 1);    // entre Kick et Snare -> ADOPTÉE
+    VSM_ASSERT_EQ(p.tracks[rang].folderDepth, 1);
+    VSM_ASSERT_EQ(ordreDe(p), std::string("Batterie/0 Kick1 Voix1 Snare1 Basse0 "));
+    VSM_ASSERT_EQ(aCorriger(p), size_t(0));
+
+    // ELLE REDESCEND, ET LA SORTIE SE FAIT EN PASSANT UNE PISTE MOINS
+    // PROFONDE. Un cran : elle reste dans le dossier (le plafond y vaut encore
+    // 1, puisque Snare est à 1). Un cran de plus, par-dessus Basse qui est à la
+    // racine : le plafond tombe à 0 et elle en SORT. Le dossier se quitte donc
+    // en franchissant sa frontière, ce qui est exactement ce qu'on attend d'une
+    // frontière -- et non par un compte de crans.
+    rang = moveTrackWithFolder(p, rang, rang + 2);
+    VSM_ASSERT_EQ(ordreDe(p), std::string("Batterie/0 Kick1 Snare1 Voix1 Basse0 "));
+    VSM_ASSERT_EQ(p.tracks[rang].folderDepth, 1);
+    rang = moveTrackWithFolder(p, rang, rang + 2);
+    VSM_ASSERT_EQ(ordreDe(p), std::string("Batterie/0 Kick1 Snare1 Basse0 Voix0 "));
+    VSM_ASSERT_EQ(p.tracks[rang].folderDepth, 0);
+    VSM_ASSERT_EQ(aCorriger(p), size_t(0));
+}
+
+VSM_TEST(the_last_row_of_a_folder_is_still_inside_it) {
+    // LE CAS QUI SURPREND, ET QUI EST JUSTE. Quand le dossier va jusqu'au BOUT
+    // de la liste, la dernière ligne est encore dedans : il n'y a rien
+    // par-dessous pour marquer la frontière, et le plafond y vaut la profondeur
+    // du dernier membre. Une piste descendue là y entre et y reste -- on en
+    // sort par *Piste ▸ Sortir du dossier*.
+    //
+    // Vérifié aussi dans l'application (§ D35) : `Batterie/0 Acid Bass1 Drums1
+    // Prise0`, trois montées puis trois descentes, rendent `… Prise1`.
+    Project p;
+    p.tracks.resize(3);
+    p.tracks[0].kind = Track::Kind::Folder; p.tracks[0].name = "Batterie"; p.tracks[0].folderDepth = 0;
+    p.tracks[1].name = "Kick"; p.tracks[1].folderDepth = 1;
+    p.tracks[2].name = "Voix"; p.tracks[2].folderDepth = 0;
+    const size_t rang = moveTrackWithFolder(p, 2, 1);   // Voix monte : adoptée
+    VSM_ASSERT_EQ(p.tracks[rang].folderDepth, 1);
+    moveTrackWithFolder(p, rang, 3);                     // et redescend en queue
+    VSM_ASSERT_EQ(ordreDe(p), std::string("Batterie/0 Kick1 Voix1 "));
+    VSM_ASSERT_EQ(aCorriger(p), size_t(0));
+}

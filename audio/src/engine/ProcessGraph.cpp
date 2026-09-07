@@ -1210,7 +1210,8 @@ void ProcessGraph::renderGroupBuses(const GraphSnapshot& snapshot, bool anySolo,
             for (const auto& fx : *chain)
                 if (fx) fx->process(groupL_[g].data(), groupR_[g].data(), numSamples);
 
-        const bool audible = vsm::sequencer::trackAudible(track, anySolo);
+        // D35.4 : sur l'ARBRE, pour qu'un dossier muet taise ce qu'il contient.
+        const bool audible = vsm::sequencer::trackAudible(project.tracks, trackIndex, anySolo);
         // D23.1 : la polarité d'un groupe, par le signe de son volume (voir
         // la piste plus bas) -- un bus de batterie en opposition s'inverse
         // entier, départs compris.
@@ -1756,7 +1757,7 @@ void ProcessGraph::mixTrackInto(const GraphSnapshot& snapshot, bool anySolo, siz
     const Project& project = snapshot.project;
     if (trackIndex >= project.tracks.size() || trackIndex >= kMaxTracks) return;
     const Track& track = project.tracks[trackIndex];
-    const bool audible = vsm::sequencer::trackAudible(track, anySolo);
+    const bool audible = vsm::sequencer::trackAudible(project.tracks, trackIndex, anySolo);  // D35.4
 
     // MIXAGE VERS SA DESTINATION : le master, ou le tampon d'un groupe. Le
     // groupe sera traité en fin de bloc, quand tous ses membres y auront
