@@ -8633,3 +8633,44 @@ pouvait pas voir (D42.3). Cette fois elle n'en montre aucun — **et c'est un
 résultat, pas une absence de résultat** : « rien ne se perd » cesse d'être une
 règle écrite pour devenir un chiffre mesuré sur les données que le logiciel
 rencontre vraiment.
+
+### Vérification D46 — L'export du DAW et `vsm-render` rendent le MÊME son, mesuré sur un vrai morceau (08/09/2026, 00:20)
+
+**L'invariant n° 3 du § 6** exige que le rendu temps réel et le rendu hors ligne
+soient identiques à l'échantillon près. Il a un test pour CLAP, un pour les
+tailles de bloc, un pour le déterminisme — **tous sur des projets construits
+pour l'occasion**. Jamais sur un vrai morceau.
+
+**Le protocole.** `reconstruction/children-dream-v7` : six pistes, six machines,
+5 584 notes, **232,53 secondes**. Exporté par l'application (`VSM_EXPORT`), puis
+rendu par `vsm-render` à la même fréquence.
+
+| comparaison | corrélation | écart |
+|---|---|---|
+| **export du DAW vs `vsm-render`, aujourd'hui** | **1,000000** | **−129,96 dB** |
+| `vsm-render` vs `reconstruit.wav` (22 août) | 0,911369 | −7,12 dB |
+
+**LES DEUX CHEMINS RENDENT LE MÊME SON.** −130 dB est le plancher de
+quantification : l'application écrit en 24 bits, `vsm-render` en 32 bits
+flottants. Il n'y a rien d'autre entre eux. L'invariant tient, et il tient
+désormais sur les données que le logiciel rencontre vraiment.
+
+**ET J'AI FAILLI PUBLIER UN DÉFAUT QUI N'EXISTE PAS.** La première mesure
+comparait l'export du DAW à `reconstruit.wav`, le fichier rendu par la chaîne et
+rangé dans le dossier : **−7,13 dB, corrélation 0,911**. Un tel écart n'est pas
+du bruit — c'est un autre son. J'ai d'abord cherché un décalage temporel (il n'y
+en avait pas : zéro échantillon), puis regardé la DATE du fichier : **22 août**,
+c'est-à-dire avant l'essentiel de D0 à D45. **Comparer l'export d'aujourd'hui à
+un rendu d'août compare deux moteurs**, et l'écart mesure ce que le moteur a
+appris depuis, pas une faute.
+
+La mesure qui tranche est celle où les deux termes sortent du même code — c'est
+la règle des A/B du projet, appliquée ici à une comparaison que je n'avais pas
+vue comme un A/B. **Un fichier rangé dans un dossier n'est pas un témoin ; c'est
+un souvenir.**
+
+**ET LE FICHIER PÉRIMÉ NE TROMPE PERSONNE**, vérifié plutôt que supposé :
+l'écoute A/B ne lit jamais `reconstruit.wav`. Elle prend l'ORIGINAL — la source
+nommée dans la provenance de `rapport.json`, ou à défaut le canal gauche de
+`comparaison.wav` — et met en face le moteur VIVANT. La comparaison que
+l'utilisateur entend est donc toujours celle d'aujourd'hui.
