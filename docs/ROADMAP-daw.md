@@ -8777,3 +8777,26 @@ Tests : **1 285 audio** (2 neufs), 319 core, 285 interchange, 25 clap,
 > supposé : `WavDecoding.h` rend un `float32` **tel quel**, sans le borner. Ce
 > qu'on écrit au-delà de ±1 se relit au-delà de ±1 ; le défaut était bien du
 > seul côté du graveur.
+
+> **D47 INVALIDE-T-IL LES MESURES DÉJÀ FAITES ? NON, ET C'EST VÉRIFIÉ
+> (08/09/2026, 02:05).** La question se posait d'elle-même : si la chaîne
+> d'analyse comparait des rendus écrits par `WavFileWriter`, alors **toute
+> distance mesurée sur un morceau fort l'aurait été sur du son raboté**, et les
+> campagnes seraient à refaire.
+>
+> **Elle ne l'était pas.** La boucle de recherche parle au moteur par
+> `vsm-render --serve`, qui lui rend l'audio en **base64 flottant** dans sa
+> réponse JSON (`PatchRenderService`, `returnAudio: base64-f32-mono`) : une
+> somme mono des tampons du moteur, sans passer par aucun fichier et **sans
+> écrêtage**. Vérifié des deux côtés : `vsm_engine.py` ne demande jamais autre
+> chose que `base64-f32-mono`, et le service ne borne cette somme nulle part.
+>
+> **CE QUI ÉTAIT BIEN ATTEINT, EN REVANCHE** : le `reconstruit.wav` final, le
+> `comparaison.wav`, et tout export d'utilisateur — c'est-à-dire **ce qu'on
+> écoute et ce qu'on livre**, jamais ce qu'on mesure. D47 améliore donc le
+> produit sans toucher au verdict d'aucune campagne passée.
+>
+> **CE QUE CETTE VÉRIFICATION AURAIT COÛTÉ SI ON NE L'AVAIT PAS FAITE.** Rien
+> d'immédiat — et c'est bien le problème. Une correction dont on ignore la
+> portée laisse planer un doute sur tout ce qui l'a précédée, et ce doute finit
+> par être tranché de mémoire, dans le sens qui arrange, six mois plus tard.
