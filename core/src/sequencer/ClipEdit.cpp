@@ -789,4 +789,83 @@ ClipSelection repeatClips(Track& track, const ClipSelection& selection, int coun
     return repeatClips(track.clips, selection, count, spanTicks, idCounter);
 }
 
+// ---------------------------------------------------------------------------
+// LES COPIES LIÉES (D34.2)
+// ---------------------------------------------------------------------------
+
+namespace {
+
+/// La fenêtre effective d'un clip, celle sur laquelle deux clips se comparent.
+/// `sourceLength == 0` veut dire « jusqu'au bout du matériau » : deux clips qui
+/// portent tous deux zéro lisent bien la même chose, et les comparer tels quels
+/// est donc juste.
+std::pair<Tick, Tick> fenetreDe(const Clip& clip) {
+    return {clip.sourceStart, clip.sourceLength};
+}
+
+} // namespace
+
+bool clipIsShared(const std::vector<Clip>& clips, uint64_t clipId) {
+    const auto lui = std::find_if(clips.begin(), clips.end(),
+                                   [clipId](const Clip& c) { return c.id == clipId; });
+    if (lui == clips.end()) return false;
+    for (const auto& autre : clips) {
+        if (autre.id == clipId) continue;
+        if (fenetreDe(autre) == fenetreDe(*lui)) return true;
+    }
+    return false;
+}
+
+size_t makeClipIndependent(Track& track, uint64_t clipId, Tick materialEnd,
+                            uint64_t& noteIdCounter) {
+    if (track.locked) return 0;
+    if (!clipIsShared(track.clips, clipId)) return 0;
+    // `clipIsShared` vient de garantir qu'il existe : la recherche ne peut pas
+    // échouer, et l'écrire ainsi vaut mieux qu'un test mort.
+    Clip& lui = *std::find_if(track.clips.begin(), track.clips.end(),
+                               [clipId](const Clip& c) { return c.id == clipId; });
+    Clip* const clip = &lui;
+
+    const Tick depuis = clip->sourceStart;
+    const Tick fenetre = clip->sourceLength > 0 ? clip->sourceLength
+                                                : std::max<Tick>(0, materialEnd - depuis);
+    if (fenetre <= 0) return 0;
+    const Tick jusqua = depuis + fenetre;
+
+    // LA ZONE LIBRE : après tout ce que la piste contient, marge d'une ronde.
+    // `materialEnd` vient de l'appelant et peut être en deçà d'une note tenue ;
+    // on prend donc le maximum des deux plutôt que de faire confiance à un seul.
+    Tick fin = materialEnd;
+    for (const auto& note : track.notes) fin = std::max(fin, note.endTick);
+    const Tick vers = fin + 1920;
+
+    // ON RELÈVE AVANT D'AJOUTER : `addNote` écrit dans le vecteur qu'on
+    // parcourt, et une réallocation en plein parcours invaliderait tout.
+    std::vector<Note> copies;
+    for (const auto& note : track.notes) {
+        if (note.startTick < depuis || note.startTick >= jusqua) continue;
+        Note copie = note;
+        copie.startTick = note.startTick - depuis + vers;
+        // LA NOTE EST TRONQUÉE À LA FENÊTRE, comme la lecture la tronque déjà
+        // (`a_note_crossing_the_end_of_a_clip_is_cut_there_not_left_hanging`).
+        // Recopier sa longueur ENTIÈRE ferait sonner, après le déliage, une
+        // queue que le clip lié ne jouait pas.
+        copie.endTick = std::min(note.endTick, jusqua) - depuis + vers;
+        if (copie.endTick <= copie.startTick) continue;
+        copies.push_back(copie);
+    }
+    // ON POSE LA NOTE ENTIÈRE, ET PAS SEULEMENT CE QU'`addNote` PREND. Une
+    // copie déliée doit être la même note : sans cela elle perdrait sa vélocité
+    // de relâchement, son silence et sa confiance -- trois champs qu'un clip
+    // lié montrait, et dont la perte ne se verrait qu'à l'oreille.
+    for (auto& copie : copies) {
+        copie.id = noteIdCounter++;
+        track.notes.push_back(copie);
+    }
+    clip->sourceStart = vers;
+    if (clip->sourceLength == 0) clip->sourceLength = fenetre;
+    track.sortEvents();
+    return copies.size();
+}
+
 } // namespace vsm::sequencer

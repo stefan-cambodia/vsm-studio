@@ -6878,3 +6878,58 @@ Cinq manques ont survécu.
 >
 > Tests : **1 279 audio** (5 neufs), 294 core, **285 interchange** (2 neufs) —
 > tous verts.
+
+> **D34.2 EST FAITE (07/09/2026, 03:05), ET LE PREMIER TRAVAIL A ÉTÉ DE
+> VÉRIFIER LA PRÉMISSE.** L'attendu écrit avant la fonction demandait « un test
+> qui confirme que l'édition se propage AUJOURD'HUI entre deux copies ». Elle
+> se propage — et le test existait déjà, depuis **D1.2** :
+> `two_clips_on_the_same_material_share_it_by_construction`. La copie liée n'est
+> donc pas un accident : c'est une décision de D1, écrite dans `Track.h`
+> (« un clip est une RÉGION du matériau, il ne l'emporte pas ») et tenue par
+> `passagesOf` (« aucune note n'est copiée : c'est le décalage qui est répété,
+> pas le matériau »).
+>
+> **CE QUI MANQUAIT N'ÉTAIT PAS LA FONCTION : C'ÉTAIT DE POUVOIR EN SORTIR, ET
+> DE LE SAVOIR.** Une fonction utile qu'on ne peut ni voir ni défaire devient
+> un piège : on duplique un motif pour en faire une variante, on l'édite, et
+> l'original change aussi. C'est ce que ce dépôt appelle ailleurs une panne
+> muette, appliqué cette fois à un comportement **voulu**.
+>
+> **Ce qui a été fait.** `clipIsShared` et `makeClipIndependent` dans `core/` ;
+> deux maillons de chaîne en haut à droite du clip et son nom **en italique**
+> quand il est lié — la convention de Cubase, qui appelle cela une copie
+> partagée ; et « Convertir en copie indépendante » au menu contextuel, **grisée
+> plutôt qu'absente** quand le clip n'est lié à rien : une entrée qui apparaît
+> et disparaît ne s'apprend jamais, tandis qu'une entrée grisée enseigne que la
+> notion existe.
+>
+> **Trois décisions, écrites parce qu'elles se discutent.**
+>
+> 1. **« La même FENÊTRE » et non « le même début ».** Deux clips qui partent du
+>    même tick source mais dont l'un a été rogné ne lisent pas les mêmes notes :
+>    les dire liés promettrait une propagation qui n'aura pas lieu sur la partie
+>    qu'ils ne partagent pas.
+> 2. **Délier l'un ne délie pas les autres.** Sur trois copies, en délier une en
+>    laisse deux liées : on demandait UNE variante, pas la dissolution du groupe.
+> 3. **Aux pistes MIDI seulement.** Deux clips audio de la même fenêtre lisent
+>    le même fichier, mais rien ne s'y « édite » — le montage ne change pas les
+>    échantillons. Un marqueur de lien n'y avertirait de rien.
+>
+> Les notes recopiées vont **à la suite du matériau**, avec une mesure de marge,
+> et non « quelque part » : le matériau d'une piste est une ligne de temps, et y
+> insérer au milieu décalerait ce que TOUS les autres clips lisent. Elles sont
+> **tronquées à la fenêtre**, comme la lecture les tronque déjà, et elles
+> emportent **tous** leurs champs — vélocité de relâchement, silence, confiance
+> — qu'`addNote` seul aurait laissés derrière, et dont la perte ne se serait
+> entendue qu'après coup.
+>
+> **Vérifié à l'écran** : `VSM_VUE=copies-liees,choisir-clip:0,delier-clip,
+> copies-liees` sur trois clips d'un même motif rend « **3 clip(s) MIDI
+> partagent leur fenêtre** », puis « **3 avant, 2 après** », puis « **2** ». La
+> capture montre le premier clip sans marqueur et le second avec — la commande
+> emprunte la MÊME fonction que le menu contextuel
+> (`runClipMenuActionForCapture`). Le nombre est ce qui prouve l'effet : un
+> marqueur de six pixels ne se juge pas sur une capture d'écran.
+>
+> Tests : 1 279 audio, **301 core** (7 neufs), 285 interchange, 25 clap,
+> 11 panels — tous verts.

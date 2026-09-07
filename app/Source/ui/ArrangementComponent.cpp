@@ -545,6 +545,16 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
         menu.addSeparator();
         menu.addItem(5, u8"Couper \u00e0 la t\u00eate de lecture (Ctrl+E)", !selection_.empty());
         menu.addItem(6, u8"Joindre les clips choisis (Ctrl+J)", selection_.size() > 1);
+        // D34.2 : DÉLIER UNE COPIE PARTAGÉE. L'entrée est GRISÉE quand le clip
+        // n'est lié à rien, plutôt qu'absente : sa présence enseigne que la
+        // notion existe, et son grisé dit que ce clip-ci n'est pas concerné.
+        // Une entrée qui apparaît et disparaît ne s'apprend jamais.
+        {
+            const bool liable = clip != nullptr
+                             && project_->tracks[piste].kind == Track::Kind::Midi
+                             && clipIsShared(project_->tracks[piste].clips, clip->id);
+            menu.addItem(24, u8"Convertir en copie indépendante", liable);
+        }
         // D20.1 : RÉPÉTER, à la suite. Des nombres fixes plutôt qu'une boîte de
         // dialogue : le geste est « encore, encore », pas « combien ? ». Et
         // l'entrée « jusqu'à la fin de la boucle » dit d'avance combien de
@@ -1097,6 +1107,21 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
             for (auto& t : project_->tracks)
                 for (auto& c : t.clips)
                     if (selection_.count(c.id) > 0 || c.id == clipId) c.muted = muet;
+            break;
+        }
+        case 24: {
+            // LES NOTES DE LA FENÊTRE DEVIENNENT LES SIENNES. Les autres clips
+            // liés gardent la leur et continuent de se partager : on demandait
+            // UNE variante, pas la dissolution du groupe.
+            if (onEditStarted) onEditStarted(u8"Copie indépendante");
+            uint64_t compteur = project_->peekNextNoteId();
+            const size_t recopiees = vsm::sequencer::makeClipIndependent(
+                track, clipId, materialEnd(track), compteur);
+            // ON RECALE LE PROJET SUR CE QUI A ÉTÉ CONSOMMÉ, comme partout
+            // ailleurs : deux notes de même identifiant casseraient la
+            // sélection et l'annulation sans rien dire.
+            if (compteur > 0) project_->ensureNoteIdAbove(compteur - 1);
+            if (recopiees == 0) return;   // rien fait : rien à publier
             break;
         }
         case 30: case 31: case 32: case 33: {
@@ -1710,10 +1735,34 @@ void ArrangementComponent::paint(juce::Graphics& g) {
 
             g.setColour(choisi ? Palette::textPrimary : Palette::border);
             g.drawRoundedRectangle(r, 3.0f, choisi ? 2.0f : 1.0f);
+
+            // D34.2 : UN CLIP LIÉ SE VOIT. Deux clips MIDI nés d'un
+            // « dupliquer » lisent les mêmes notes (D1.2) : éditer l'un modifie
+            // l'autre. C'est une fonction, et elle était invisible -- on
+            // dupliquait un motif pour en faire une variante, on l'éditait, et
+            // l'original changeait aussi. Deux maillons de chaîne en haut à
+            // droite, et le nom en italique quand il y en a un : la convention
+            // de Cubase, qui appelle cela une copie partagée.
+            //
+            // AUX PISTES MIDI SEULEMENT : deux clips audio de la même fenêtre
+            // lisent le même fichier, mais rien ne s'y « édite » -- le montage
+            // ne change pas les échantillons. Le marquer là n'avertirait de
+            // rien.
+            const bool lie = track.kind == Track::Kind::Midi
+                          && clipIsShared(track.clips, clip.id);
+            if (lie && r.getWidth() > 22.0f) {
+                const float d = 5.0f;
+                const float cx = r.getRight() - 13.0f, cy = r.getY() + 6.0f;
+                g.setColour(Palette::textPrimary.withAlpha(0.85f));
+                g.drawEllipse(cx - d, cy - d * 0.55f, d, d * 1.1f, 1.3f);
+                g.drawEllipse(cx - 1.0f, cy - d * 0.55f, d, d * 1.1f, 1.3f);
+            }
             if (!clip.name.empty() && r.getWidth() > 30.0f) {
                 g.setColour(Palette::textPrimary);
-                g.setFont(juce::Font(juce::FontOptions(11.0f)));
-                g.drawText(juce::String(clip.name), r.reduced(4.0f, 2.0f),
+                g.setFont(juce::Font(juce::FontOptions(11.0f)).withStyle(
+                    lie ? juce::Font::italic : juce::Font::plain));
+                g.drawText(juce::String(clip.name),
+                            r.reduced(4.0f, 2.0f).withTrimmedRight(lie ? 14.0f : 0.0f),
                             juce::Justification::topLeft, true);
             }
             // D22.1 : LE GAIN SE LIT SUR LE CLIP quand il n'est pas à 0 dB,

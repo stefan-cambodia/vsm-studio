@@ -364,4 +364,53 @@ inline int repeatsThatFit(Tick selectionEnd, Tick spanTicks, Tick untilTick) {
     return static_cast<int>((untilTick - selectionEnd) / spanTicks);
 }
 
+// ---------------------------------------------------------------------------
+// LES COPIES LIÉES (D34.2) — les « copies partagées » de Cubase, les alias de
+// Logic.
+//
+// ELLES EXISTENT DEPUIS D1.2, ET PAR CONSTRUCTION. Un clip MIDI est une
+// FENÊTRE sur le matériau de sa piste (voir `Clip` dans Track.h) ;
+// `duplicateClips` recopie la fenêtre en gardant `sourceStart`, et
+// `passagesOf` ne copie aucune note -- « c'est le décalage qui est répété, pas
+// le matériau ». Deux clips nés d'un « dupliquer » LISENT donc les mêmes
+// notes : éditer l'un modifie l'autre, ce que le test
+// `two_clips_on_the_same_material_share_it_by_construction` tient depuis D1.
+//
+// CE QUI MANQUAIT N'EST PAS LA FONCTION, C'EST DE POUVOIR EN SORTIR -- et de
+// le SAVOIR. Rien ne disait qu'un clip était lié, et rien ne permettait de le
+// délier : on dupliquait un motif pour en faire une variante, on éditait, et
+// l'original changeait aussi. Une fonction utile devenue un piège faute
+// d'être dite. C'est le même défaut que ce dépôt appelle ailleurs une panne
+// muette, appliqué à un comportement voulu.
+// ---------------------------------------------------------------------------
+
+/// Vrai si un AUTRE clip de la piste lit la même fenêtre de matériau.
+///
+/// « LA MÊME FENÊTRE » ET NON « LE MÊME DÉBUT » : deux clips qui partent du
+/// même tick source mais dont l'un a été rogné ne lisent pas les mêmes notes,
+/// et les dire liés promettrait une propagation qui n'aura pas lieu sur la
+/// partie qu'ils ne partagent pas. Le critère est l'égalité exacte du couple
+/// (début, longueur) -- celui que `makeClipIndependent` sait défaire.
+bool clipIsShared(const std::vector<Clip>& clips, uint64_t clipId);
+
+/// DÉLIER UN CLIP : ses notes deviennent les siennes.
+///
+/// Les notes de sa fenêtre sont RECOPIÉES à la suite du matériau de la piste,
+/// et la fenêtre du clip y est repointée. Les autres clips liés gardent la
+/// fenêtre d'origine et continuent de se partager : délier l'un ne délie pas
+/// les autres, ce qui est bien ce qu'on demande en voulant UNE variante.
+///
+/// POURQUOI À LA SUITE DU MATÉRIAU et non « quelque part ». Le matériau d'une
+/// piste est une ligne de temps, pas un sac : y insérer au milieu décalerait
+/// ce que TOUS les autres clips lisent. La zone libre est donc après la fin,
+/// et l'on y laisse une mesure de marge pour qu'une note tenue du dernier clip
+/// ne se retrouve pas collée à la première copie.
+///
+/// Rend le nombre de notes recopiées. Zéro si le clip est introuvable, si la
+/// piste est verrouillée, ou s'il n'était lié à rien -- dans ce dernier cas il
+/// n'y a rien à défaire, et recopier ses notes ne ferait qu'allonger le
+/// matériau sans rien changer à ce qu'on entend.
+size_t makeClipIndependent(Track& track, uint64_t clipId, Tick materialEnd,
+                            uint64_t& noteIdCounter);
+
 } // namespace vsm::sequencer

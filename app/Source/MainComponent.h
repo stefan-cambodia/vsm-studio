@@ -444,6 +444,8 @@ private:
     void setCrossfadeShape(vsm::sequencer::FadeShape forme);
     /// Combien de bords de clips audio portent effectivement un fondu croisé.
     int audioSpansWithCrossfade() const;
+    /// D34.2 : combien de clips MIDI partagent leur fenêtre avec un autre.
+    int linkedMidiClipCount() const;
 
     std::unique_ptr<vsm::app::AutosaveService> autosave_;
     bool projectDirty_ = false;

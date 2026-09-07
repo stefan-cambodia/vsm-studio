@@ -1094,3 +1094,152 @@ VSM_TEST(repeats_that_fit_never_overflow_the_loop) {
     VSM_ASSERT_EQ(repeatsThatFit(960, 960, 960), 0);
     VSM_ASSERT_EQ(repeatsThatFit(960, 0, 3840), 0);
 }
+
+// ---------------------------------------------------------------------------
+// D34.2 — LES COPIES LIÉES : LES DIRE, ET POUVOIR LES ROMPRE.
+//
+// L'attendu, écrit avant la fonction : « un test confirme que l'édition se
+// propage AUJOURD'HUI entre deux copies. Si elle ne se propageait pas,
+// l'analyse de `duplicateClips` serait fausse et l'étape entière serait à
+// réécrire. » Elle se propage, et D1.2 le tenait déjà
+// (`two_clips_on_the_same_material_share_it_by_construction`) : le manque
+// n'était donc pas la fonction, mais de pouvoir en SORTIR et de le SAVOIR.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+/// Une piste de quatre noires et un clip d'une mesure, dupliqué : deux clips
+/// liés par construction, exactement ce que « dupliquer » produit.
+Track deuxClipsLies(uint64_t& notes, uint64_t& clips) {
+    Track track;
+    for (int i = 0; i < 4; ++i)
+        track.addNote(480 * i, 480 * i + 240, static_cast<uint8_t>(60 + i), 100, 0, notes);
+    Clip premier;
+    premier.id = clips++;
+    premier.sourceStart = 0; premier.sourceLength = 1920; premier.startTick = 0;
+    track.clips.push_back(premier);
+    ClipSelection choix{premier.id};
+    duplicateClips(track.clips, choix, 1920, clips);
+    return track;
+}
+
+/// Les hauteurs jouées, dans l'ordre, pour un clip donné.
+std::vector<int> hauteursDuClip(const Track& track, size_t index) {
+    const Clip& clip = track.clips[index];
+    std::vector<int> notes;
+    for (const auto& note : track.notes)
+        if (note.startTick >= clip.sourceStart
+            && note.startTick < clip.sourceStart + clip.sourceLength)
+            notes.push_back(note.number);
+    return notes;
+}
+
+} // namespace
+
+VSM_TEST(a_duplicated_clip_is_a_shared_copy_and_the_edit_travels) {
+    // CE QUI EST VRAI AUJOURD'HUI, écrit avant d'y toucher.
+    uint64_t notes = 1, clips = 1;
+    Track track = deuxClipsLies(notes, clips);
+    VSM_ASSERT_EQ(track.clips.size(), size_t(2));
+    VSM_ASSERT(clipIsShared(track.clips, track.clips[0].id));
+    VSM_ASSERT(clipIsShared(track.clips, track.clips[1].id));
+
+    // On transpose une note du matériau : LES DEUX clips la voient.
+    track.notes[0].number = 72;
+    VSM_ASSERT_EQ(hauteursDuClip(track, 0)[0], 72);
+    VSM_ASSERT_EQ(hauteursDuClip(track, 1)[0], 72);
+}
+
+VSM_TEST(making_a_clip_independent_stops_the_edit_from_travelling) {
+    uint64_t notes = 1, clips = 1;
+    Track track = deuxClipsLies(notes, clips);
+    const uint64_t second = track.clips[1].id;
+
+    const size_t recopiees = makeClipIndependent(track, second, 1920, notes);
+    VSM_ASSERT_EQ(recopiees, size_t(4));
+    // NI L'UN NI L'AUTRE N'EST PLUS LIÉ : il n'en restait que deux, et délier
+    // l'un laisse l'autre seul sur sa fenêtre.
+    VSM_ASSERT(!clipIsShared(track.clips, track.clips[0].id));
+    VSM_ASSERT(!clipIsShared(track.clips, second));
+
+    // Ce qu'on entend n'a pas changé : mêmes hauteurs, dans le même ordre.
+    VSM_ASSERT(hauteursDuClip(track, 0) == std::vector<int>({60, 61, 62, 63}));
+    VSM_ASSERT(hauteursDuClip(track, 1) == std::vector<int>({60, 61, 62, 63}));
+
+    // Et l'édition ne voyage plus : c'est tout l'objet du geste.
+    track.notes[0].number = 72;
+    VSM_ASSERT_EQ(hauteursDuClip(track, 0)[0], 72);
+    VSM_ASSERT_EQ(hauteursDuClip(track, 1)[0], 60);
+}
+
+VSM_TEST(only_the_clip_asked_for_is_unlinked_and_the_others_stay_together) {
+    // TROIS COPIES : délier la troisième laisse les deux premières liées. On
+    // veut UNE variante, pas la dissolution du groupe.
+    uint64_t notes = 1, clips = 1;
+    Track track = deuxClipsLies(notes, clips);
+    ClipSelection choix{track.clips[0].id};
+    duplicateClips(track.clips, choix, 3840, clips);
+    VSM_ASSERT_EQ(track.clips.size(), size_t(3));
+
+    const uint64_t troisieme = track.clips[2].id;
+    VSM_ASSERT(makeClipIndependent(track, troisieme, 1920, notes) == size_t(4));
+    VSM_ASSERT(clipIsShared(track.clips, track.clips[0].id));
+    VSM_ASSERT(clipIsShared(track.clips, track.clips[1].id));
+    VSM_ASSERT(!clipIsShared(track.clips, troisieme));
+}
+
+VSM_TEST(unlinking_a_clip_that_is_not_shared_copies_nothing) {
+    // Rien à défaire : recopier ses notes n'allongerait le matériau sans rien
+    // changer à ce qu'on entend.
+    uint64_t notes = 1, clips = 1;
+    Track track;
+    for (int i = 0; i < 4; ++i)
+        track.addNote(480 * i, 480 * i + 240, static_cast<uint8_t>(60 + i), 100, 0, notes);
+    Clip seul;
+    seul.id = clips++;
+    seul.sourceStart = 0; seul.sourceLength = 1920; seul.startTick = 0;
+    track.clips.push_back(seul);
+    const size_t avant = track.notes.size();
+    VSM_ASSERT_EQ(makeClipIndependent(track, seul.id, 1920, notes), size_t(0));
+    VSM_ASSERT_EQ(track.notes.size(), avant);
+}
+
+VSM_TEST(a_locked_track_refuses_to_unlink_like_it_refuses_everything_else) {
+    uint64_t notes = 1, clips = 1;
+    Track track = deuxClipsLies(notes, clips);
+    track.locked = true;
+    VSM_ASSERT_EQ(makeClipIndependent(track, track.clips[1].id, 1920, notes), size_t(0));
+    VSM_ASSERT(clipIsShared(track.clips, track.clips[1].id));
+}
+
+VSM_TEST(two_clips_that_share_a_start_but_not_a_length_are_not_called_linked) {
+    // « LA MÊME FENÊTRE » ET NON « LE MÊME DÉBUT » : l'un a été rogné, ils ne
+    // lisent plus les mêmes notes, et les dire liés promettrait une
+    // propagation qui n'aura pas lieu sur la partie qu'ils ne partagent pas.
+    uint64_t notes = 1, clips = 1;
+    Track track = deuxClipsLies(notes, clips);
+    track.clips[1].sourceLength = 960;
+    VSM_ASSERT(!clipIsShared(track.clips, track.clips[0].id));
+    VSM_ASSERT(!clipIsShared(track.clips, track.clips[1].id));
+}
+
+VSM_TEST(an_unlinked_clip_keeps_the_velocity_and_the_mute_of_the_notes_it_copies) {
+    // Une copie déliée doit être la MÊME note : `addNote` ne prend que
+    // l'essentiel, et s'en contenter perdrait trois champs sans le dire.
+    uint64_t notes = 1, clips = 1;
+    Track track = deuxClipsLies(notes, clips);
+    track.notes[1].velocity = 37;
+    track.notes[1].releaseVelocity = 11;
+    track.notes[2].muted = true;
+
+    makeClipIndependent(track, track.clips[1].id, 1920, notes);
+    const Clip& delie = track.clips[1];
+    int vus = 0;
+    for (const auto& note : track.notes) {
+        if (note.startTick < delie.sourceStart) continue;
+        if (note.number == 61) { VSM_ASSERT_EQ(int(note.velocity), 37);
+                                  VSM_ASSERT_EQ(int(note.releaseVelocity), 11); ++vus; }
+        if (note.number == 62) { VSM_ASSERT(note.muted); ++vus; }
+    }
+    VSM_ASSERT_EQ(vus, 2);
+}

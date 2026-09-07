@@ -1253,6 +1253,24 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
         if (choix < 0 || !arrangement_.runClipMenuActionForCapture(choix))
             std::fputs("VSM_VUE gain-clip : pas parmi -6, -3, -1, +1, +3, +6, 0, ou aucun clip choisi\n", stderr);
     }
+    // D34.2 : délier le clip choisi, par la MÊME fonction que le menu
+    // contextuel. Et DIRE ce qui a changé : un marqueur de lien sur un clip de
+    // vingt pixels ne se juge pas sur une capture, et le nombre de clips liés
+    // avant et après, si.
+    else if (nom == "delier-clip") {
+        const int avant = linkedMidiClipCount();
+        const bool fait = arrangement_.runClipMenuActionForCapture(24);
+        std::fputs((juce::String::fromUTF8(u8"Copies liées : ") + juce::String(avant)
+                     + juce::String::fromUTF8(u8" avant, ") + juce::String(linkedMidiClipCount())
+                     + juce::String::fromUTF8(u8" après")
+                     + (fait ? "" : juce::String::fromUTF8(u8" (rien fait : aucun clip choisi, "
+                                                            u8"ou ce clip n'était lié à rien)"))
+                     + "\n").toRawUTF8(), stderr);
+    }
+    else if (nom == "copies-liees")
+        std::fputs((juce::String::fromUTF8(u8"Copies liées : ") + juce::String(linkedMidiClipCount())
+                     + juce::String::fromUTF8(u8" clip(s) MIDI partagent leur fenêtre.\n")).toRawUTF8(),
+                    stderr);
     // D22.4 : une note par le chemin du clavier d'ordinateur, pour
     // photographier les voyants IN (elle arrive) et OUT (elle part).
     else if (nom.startsWith("note:"))
@@ -6262,6 +6280,19 @@ void MainComponent::editTimeAtLocators(bool inserer) {
 // photographie doit être ce que le geste fait, sans quoi la capture prouve
 // l'existence d'un second chemin et rien d'autre -- c'est ce que D33.3 avait
 // déjà écrit du scrub.
+/// Combien de clips MIDI du projet partagent leur fenêtre avec un autre : ce
+/// que la commande de vérification affiche, faute de pouvoir juger un marqueur
+/// de six pixels sur une capture d'écran.
+int MainComponent::linkedMidiClipCount() const {
+    int compte = 0;
+    for (const auto& track : project_.tracks) {
+        if (track.kind != vsm::sequencer::Track::Kind::Midi) continue;
+        for (const auto& clip : track.clips)
+            if (vsm::sequencer::clipIsShared(track.clips, clip.id)) ++compte;
+    }
+    return compte;
+}
+
 /// Combien de bords de clips audio portent un fondu croisé, tous chargés
 /// confondus. Ce que la commande de vérification AFFICHE : « la forme est
 /// posée » ne prouve rien si aucune jonction ne la reçoit.
