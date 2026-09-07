@@ -2595,3 +2595,87 @@ regardée en aperçu PNG (vsm-panel-preview), disposition et sérigraphie
 lisibles. Le parc
 passe à 35 machines. Le critère d'arbitrage sur le stem de ténor réel se
 mesurera à la première course qui suivra la recompilation du moteur.
+
+## 33. LE PRIX DE CHAQUE MACHINE, MESURÉ (07/09/2026)
+
+**Pourquoi cette table est ici et non seulement dans la feuille de route du
+DAW.** Ce document gouverne le choix des machines : le § 7 en fixe l'ordre, le
+§ 9 leur rendement, et la chaîne d'analyse ASSIGNE une machine à chaque stem.
+Jusqu'ici ce choix ne pesait qu'un son ; il pèse aussi un temps de calcul, et
+**le rapport entre la moins chère et la plus chère du parc est de 45**. Sur une
+reconstruction à parité — quinze, trente, soixante-quatre pistes —, ce facteur
+cesse d'être une curiosité.
+
+**COMMENT ELLE A ÉTÉ PRISE, ET COMMENT LA REPRENDRE.** Seize pistes de la même
+machine, trente-deux notes chacune, bloc de 512 échantillons à 48 kHz, huit
+fils de rendu (le réglage « automatique » de l'application). Le budget d'un tel
+bloc est de **10,67 ms** : c'est de lui que le pourcentage est pris.
+
+```
+build/app/vsm-scale-audit_artefacts/RelWithDebInfo/vsm-scale-audit --table
+```
+
+Le banc parcourt le REGISTRE et non une liste écrite à la main : **une machine
+ajoutée demain entre dans la table sans qu'on y pense**, comme
+`regression_every_registered_machine_has_a_reference` l'impose déjà aux
+empreintes audio. Ces chiffres valent pour la machine de développement (Core
+Ultra 7 155H) ; ce qui se transporte d'une machine à l'autre est le RAPPORT
+entre les lignes, pas la valeur absolue.
+
+| machine | ms | % | | machine | ms | % |
+|---|---:|---:|---|---|---:|---:|
+| `vsm.sampler` ¹ | 0.072 | 0.7 | | `vsm.kalimba` | 0.699 | 6.6 |
+| `vsm.testtone` | 0.117 | 1.1 | | `vsm.granular` | 0.717 | 6.7 |
+| `vsm.fmdrums` | 0.148 | 1.4 | | `vsm.clavinet` | 0.766 | 7.2 |
+| `vsm.stochastic` | 0.148 | 1.4 | | `vsm.musicbox` | 0.797 | 7.5 |
+| `vsm.tr808` | 0.180 | 1.7 | | `vsm.generic` | 0.808 | 7.6 |
+| `vsm.psg` | 0.197 | 1.8 | | `vsm.terrain` | 0.812 | 7.6 |
+| `vsm.spectral` | 0.210 | 2.0 | | `vsm.westcoast` | 0.835 | 7.8 |
+| `vsm.perc` ¹ | 0.212 | 2.0 | | `vsm.vibraphone` | 0.836 | 7.8 |
+| `vsm.reed` | 0.233 | 2.2 | | `vsm.pcmhybrid` | 0.880 | 8.2 |
+| `vsm.string` | 0.237 | 2.2 | | `vsm.chebyshev` | 0.979 | 9.2 |
+| `vsm.multisample` ¹ | 0.254 | 2.4 | | `vsm.wavetable` | 1.011 | 9.5 |
+| `vsm.scanned` | 0.295 | 2.8 | | `vsm.epiano` | 1.020 | 9.6 |
+| `vsm.wind` | 0.311 | 2.9 | | `vsm.mandolin` | 1.110 | 10.4 |
+| `vsm.jewsharp` | 0.319 | 3.0 | | `vsm.sitar` | 1.173 | 11.0 |
+| `vsm.phasedist` | 0.324 | 3.0 | | `vsm.prophet` | 1.190 | 11.2 |
+| `vsm.glass` | 0.357 | 3.3 | | `vsm.harpsichord` | 1.195 | 11.2 |
+| `vsm.tr909` | 0.362 | 3.4 | | `vsm.tonewheel` | 1.269 | 11.9 |
+| `vsm.cone` | 0.374 | 3.5 | | `vsm.juno106` | 1.309 | 12.3 |
+| `vsm.tb303` | 0.396 | 3.7 | | `vsm.pipeorgan` | 1.331 | 12.5 |
+| `vsm.theremin` | 0.434 | 4.1 | | `vsm.jupiter8` | 1.370 | 12.8 |
+| `vsm.clavichord` | 0.468 | 4.4 | | `vsm.supersaw` | 1.376 | 12.9 |
+| `vsm.vocal` | 0.526 | 4.9 | | `vsm.hurdygurdy` | 1.435 | 13.5 |
+| `vsm.arpodyssey` | 0.534 | 5.0 | | `vsm.membrane` | 1.446 | 13.6 |
+| `vsm.minimoog` | 0.559 | 5.2 | | `vsm.cs80` | 1.478 | 13.9 |
+| `vsm.piano` | 0.570 | 5.3 | | `vsm.vector` | 1.496 | 14.0 |
+| `vsm.bagpipe` | 0.583 | 5.5 | | `vsm.mellotron` | 1.736 | 16.3 |
+| `vsm.sh101` | 0.611 | 5.7 | | `vsm.dx7` | 1.753 | 16.4 |
+| `vsm.wavesequence` | 0.619 | 5.8 | | `vsm.carillon` | 1.923 | 18.0 |
+| `vsm.ms20` | 0.621 | 5.8 | | `vsm.modal` | 2.129 | 20.0 |
+| `vsm.obx` | 0.652 | 6.1 | | `vsm.divider` | 2.606 | 24.4 |
+| `vsm.banjo` | 0.659 | 6.2 | | `vsm.plate` | 2.668 | 25.0 |
+| `vsm.drums` | 0.692 | 6.5 | | `vsm.additive` | 3.242 | 30.4 |
+
+¹ **Ces trois machines ne jouent pas sans échantillons** (`vsm.sampler`,
+`vsm.perc`, `vsm.multisample`) : le banc mesure alors leur coût AU REPOS et le
+DIT, plutôt que de le publier comme s'il était leur prix. Leur ligne est un
+plancher, pas une mesure.
+
+**CE QUE LA TABLE APPREND, ET QUI N'ÉTAIT PAS DEVINABLE.** Le haut du
+classement n'est pas occupé par les machines qui empilent des voix complètes —
+le CS-80 et ses deux couches par voix, l'orgue à tuyaux et sa soufflerie
+commune, que j'attendais en tête, sont en milieu de tableau. Il est occupé par
+**ce qui somme beaucoup d'oscillateurs ou fait tourner un modèle physique** :
+l'additif, la plaque, le diviseur, le modal, le carillon.
+
+**CE QU'ELLE NE DIT PAS.** Le coût ne suit pas le nombre de pistes : multiplier
+par quatre le prix de seize pistes annonçait 100 % du budget pour `vsm.plate`,
+quand la mesure directe à 64 pistes en rend **258 %** (à un cœur) — parce que le
+nombre de VOIX simultanées ne suit pas le nombre de pistes non plus. Une
+extrapolation depuis cette table est fausse, et fausse dans le sens rassurant.
+
+**ET CE QU'ELLE NE CONDAMNE PAS.** Une machine chère n'est pas une machine à
+éviter : le gel d'une piste divise son coût par 36 sur l'additif et ne laisse
+que la lecture du fichier (D44 de `ROADMAP-daw.md`). La table sert à SAVOIR ce
+qu'on dépense, pas à s'interdire ce qui sonne juste.
