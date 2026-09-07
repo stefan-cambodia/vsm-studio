@@ -1000,6 +1000,22 @@ vivent que dans un menu. `VSM_DELAI=ms` retarde l'autoportrait (une
 transcription met dix secondes), et `VSM_EXPORT=fichier.flac` exporte le
 projet ouvert sans fenêtre, en WAV, FLAC ou OGG selon l'extension, pour que
 le fichier se relise. `VSM_EXPORT_NIVEAU=crete|lufs14|lufs23` y ajoute le niveau.
+`VSM_GESTE_PISTE=geste[;geste…]` joue les gestes qui n'existent **qu'au bouton
+ou au clic d'une ligne de piste**, par les mêmes méthodes que la souris :
+`muet`, `renommer:Nom`, `volume:0.25`, `couleur:22DD55`, `machine:vsm.additive`
+et `choisir:0,1,2` (la sélection multiple de D38, qu'aucun menu ne porte).
+`VSM_TOUCHE="shift + M"[;…]` enfonce des touches et traverse la table des
+raccourcis — **un autre chemin que le bouton**, et c'est tout l'intérêt : D38
+avait mesuré son muet deux fois, par un banc et par une capture, et les deux
+passaient par le même code, si bien que le raccourci clavier faisait autre
+chose sans que rien ne le dise. Ces deux variables sont lues **après**
+`VSM_MENU`, dans cet ordre : monter la scène par les menus, puis agir. L'ordre
+a été payé deux fois — placés avant, ils agissaient sur une liste d'une seule
+piste et la capture montrait un résultat vraisemblable et faux.
+`VSM_TRACE_COUTS=1` écrit sur la sortie d'erreur le temps de calcul de chaque
+piste, une fois par seconde : une capture qui ne montre pas la piste la plus
+chère en ambre laisse deux explications ouvertes — la règle est fausse, ou la
+capture n'a rien attrapé — et c'est le seul moyen de les départager sans écran.
 `VSM_POSITION=17.3` pose la tête à une mesure saisie (D22.2), `VSM_LECTURE=1`
 lance la lecture avant la capture (`VSM_LECTURE=4000` : après 4 s ; les voyants IN et OUT de la barre de
 transport ne s'allument que si quelque chose passe), `VSM_PRESET_PISTE=nom`
