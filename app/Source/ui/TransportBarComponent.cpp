@@ -32,10 +32,12 @@ TransportBarComponent::TransportBarComponent(vsm::audio::engine::Transport& tran
     };
     setRecordAvailable(false, 0);
 
+    addAndMakeVisible(sansSonLabel_);
+    sansSonLabel_.setVisible(false);   // rien tant que le son est là
     addAndMakeVisible(xrunLabel_);
     xrunLabel_.setVisible(false);   // rien tant qu'il n'y a rien à dire
     for (auto* label : { &positionLabel_, &bpmLabel_, &timeSigLabel_, &cpuLabel_, &sampleRateLabel_,
-                          &xrunLabel_ }) {
+                          &xrunLabel_, &sansSonLabel_ }) {
         addAndMakeVisible(label);
         label->setJustificationType(juce::Justification::centredLeft);
         label->setFont(juce::Font(juce::FontOptions(15.0f).withName(juce::Font::getDefaultMonospacedFontName())));
@@ -278,8 +280,12 @@ void TransportBarComponent::resized() {
     // ET LA FRÉQUENCE D'ÉCHANTILLONNAGE EST LA BONNE CHOSE À ROGNER : elle ne
     // change jamais en cours de séance, alors que la charge change à chaque
     // note. Une étiquette qui ne varie pas n'a pas besoin d'être sous les yeux.
-    // LES CRAQUEMENTS PASSENT MÊME AVANT LA CHARGE : la charge dit un risque,
-    // le compte dit un dégât déjà fait.
+    // L'ABSENCE DE SON PASSE AVANT TOUT LE RESTE : une charge et un compte de
+    // craquements n'ont aucun sens quand rien ne sort, et c'est la seule chose
+    // qu'il faille lire dans ce cas-là.
+    if (sansSonLabel_.isVisible()) poser(sansSonLabel_, serre ? 90 : 100, 8);
+    // LES CRAQUEMENTS PASSENT ENSUITE, AVANT LA CHARGE : la charge dit un
+    // risque, le compte dit un dégât déjà fait.
     if (xrunLabel_.isVisible()) poser(xrunLabel_, serre ? 110 : 130, 8);
     poser(cpuLabel_, serre ? 76 : 90, 8);
     poser(exportButton_, bouton, 8);
@@ -407,6 +413,28 @@ void TransportBarComponent::setCpuUsage(float percent) {
                                   u8"« Piste ▸ Geler la piste » libère son instrument, "
                                   u8"ou agrandir le tampon audio.")
         : juce::String::fromUTF8(u8"Part du temps réel consommée par le calcul du son."));
+}
+
+void TransportBarComponent::setAudioUnavailable(const juce::String& raison) {
+    if (raison == derniereRaisonSon_) return;
+    derniereRaisonSon_ = raison;
+    if (raison.isEmpty()) {                 // le son est là : rien à dire
+        sansSonLabel_.setVisible(false);
+        resized();
+        return;
+    }
+    sansSonLabel_.setVisible(true);
+    sansSonLabel_.setText(u8"SANS SON", juce::dontSendNotification);
+    sansSonLabel_.setColour(juce::Label::textColourId, Palette::accentRed);
+    // LA RAISON DU PILOTE, TELLE QUELLE. La reformuler la rendrait plus jolie
+    // et moins utile : « ALSA : device busy » se cherche dans un moteur de
+    // recherche, « le son n'est pas disponible » ne se cherche pas.
+    sansSonLabel_.setTooltip(
+        juce::String::fromUTF8(u8"Aucun périphérique audio : l'application édite, mixe et exporte, "
+                                u8"mais ne joue rien.\n\nRaison donnée par le système : ")
+        + raison
+        + juce::String::fromUTF8(u8"\n\n« Fichier ▸ Réglages audio… » permet d'en choisir un autre."));
+    resized();
 }
 
 void TransportBarComponent::setXrunCount(int count) {

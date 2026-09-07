@@ -22,6 +22,11 @@ public:
     /// un meuble qu'on ne lit plus, et c'est justement le jour où il change
     /// qu'il faut le voir.
     void setXrunCount(int count);
+    /// D43.1 : PAS DE SON, ET POURQUOI. `raison` est le texte du pilote (vide
+    /// si le périphérique est ouvert). Un témoin permanent tant que le son
+    /// manque, et non une boîte à fermer : une boîte se ferme et l'on cherche
+    /// ensuite pendant vingt minutes pourquoi rien ne sort.
+    void setAudioUnavailable(const juce::String& raison);
     void setSampleRate(double sampleRate); // idem
 
     /// D11.3 : « mes. 33 · 2 » à côté du temps ; sans fournisseur, le tick brut.
@@ -145,6 +150,8 @@ private:
     juce::TextButton openButton_   { "Ouvrir MIDI..." };
     juce::TextButton exportButton_ { "Exporter MIDI..." };
 
+    juce::Label sansSonLabel_;       ///< D43.1 : montré seulement quand il n'y a pas de son
+    juce::String derniereRaisonSon_ { "?" };   ///< "?" = jamais posée
     juce::Label xrunLabel_;          ///< D41.3 : montré seulement s'il y a eu un trou
     int derniersXruns_ = -2;         ///< -2 = jamais posé (distinct de -1 « pilote muet »)
     juce::Label positionLabel_;

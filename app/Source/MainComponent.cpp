@@ -1918,6 +1918,14 @@ void MainComponent::timerCallback() {
 
     transportBar_.setCpuUsage(audioEngine_.currentCpuUsagePercent());
     transportBar_.setXrunCount(audioEngine_.xrunCount());   // D41.3
+    // D43.1 : `lastError()` existait, était publique, et n'était appelée NULLE
+    // PART. Le moteur notait pourquoi il n'y aurait pas de son, et personne ne
+    // le lisait : l'application s'ouvrait, tous ses boutons répondaient, et
+    // elle ne faisait aucun bruit sans un mot. Le repli lui-même est juste --
+    // éditer, mixer et exporter n'ont pas besoin de carte son ; le défaut
+    // n'était pas de continuer, il était de continuer EN SILENCE.
+    transportBar_.setAudioUnavailable(audioEngine_.isDeviceOpen() ? juce::String()
+                                                                  : audioEngine_.lastError());
     // D42.3 : QUELLE PISTE COÛTE. Le total dit qu'il faut alléger ; celui-ci
     // dit quoi. Publié au même rythme que les vumètres, dont il partage la
     // banque.

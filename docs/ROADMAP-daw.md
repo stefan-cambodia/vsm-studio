@@ -8344,3 +8344,123 @@ dans Live : on regarde la colonne, on gèle la piste qui dépasse, on continue.
 >
 > Tests : 1 283 audio, 319 core, 285 interchange, 25 clap, 11 panels — verts ;
 > banc d'édition : 11 gestes, 0 muet, 0 désaccord.
+
+### Phase D43 — Le moteur note pourquoi il n'y a pas de son, et personne ne le lit (07/09/2026, 21:50)
+
+**Trouvé en cherchant autre chose.** D42 n'a pas pu photographier son marquage
+parce qu'aucun bloc n'était rendu ; la cause s'est révélée être le périphérique
+audio, **pris par un autre processus** (`aplay -l` : « Sous-périphériques :
+0/1 »). En remontant ce fil, on tombe sur ceci :
+
+```cpp
+    if (error.isNotEmpty()) {
+        lastError_ = error;
+        return; // pas de device : l'app reste utilisable, juste sans son
+    }
+```
+
+`AudioEngine::lastError()` existe, est publique, et **n'est appelée nulle
+part**. Le moteur écrit soigneusement la raison pour laquelle il n'y aura pas
+de son, et personne ne la lit. Ce que l'utilisateur obtient est une application
+qui s'ouvre normalement, dont tous les boutons répondent, et qui **ne fait
+aucun bruit** — sans un mot.
+
+**C'EST L'INTERDIT LE PLUS EXPLICITE DU PROJET**, appliqué à son cas le plus
+grave. La règle dit : « ce qui est écarté, ignoré ou remplacé est DIT ». Ici ce
+qui est écarté est le son lui-même. Et l'on ne parle pas d'un cas de
+laboratoire : il se produit **sur cette machine, en ce moment**.
+
+**CE QUI EST DÉJÀ BIEN, ET QU'IL NE FAUT PAS CASSER.** Le repli est juste : une
+application qui refuserait de démarrer sans carte son serait inutilisable pour
+éditer, mixer et exporter — ce que `vsm-render` fait très bien sans périphérique.
+Le défaut n'est pas de continuer, il est de continuer **en silence**.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D43.1 | **La raison se lit.** `lastError()` cesse d'être une fonction que personne n'appelle : ce qu'elle contient s'affiche | l'application sans carte son dit qu'elle est sans son, **et pourquoi**, avec le texte du pilote |
+| D43.2 | **Là où l'on peut agir**, pas dans une boîte à fermer : le réglage existe (*Fichier ▸ Réglages audio…*) et le message doit y mener | le témoin est permanent tant que le son manque, et nomme le geste |
+| D43.3 | **Le repli reste entier** : rien de ce qui marche sans son ne doit se mettre à exiger une carte | l'édition, le mixage et l'export continuent de fonctionner sans périphérique |
+| D43.4 | **Et l'inverse : quand le son revient, le témoin part.** Une carte peut apparaître en cours de séance (`refreshArmedTracks` le sait déjà) | branché/débranché en cours de route, le témoin suit |
+
+**Ce qui est attendu, écrit AVANT la mesure.**
+
+1. J'attends que `isDeviceOpen()` soit **faux** sur cette machine et que
+   `lastError()` porte un texte venu d'ALSA. **Si `lastError()` est VIDE alors
+   que le périphérique est fermé**, il y a un second défaut : le repli
+   `initialise(0, 2, …)` écrase l'erreur du premier essai par la sienne, ou par
+   rien — et l'application n'aurait alors même pas de raison à donner.
+2. **L'inversion de cette phase, et elle est plaisante à écrire** : d'ordinaire
+   le cas sain se photographie et le cas de panne se raisonne. Ici c'est
+   l'inverse — la panne est l'état de cette machine, et c'est **le bon
+   fonctionnement** qui sera le plus difficile à montrer. Je m'attends donc à
+   photographier le témoin allumé sans effort, et à devoir libérer la carte pour
+   vérifier qu'il s'éteint.
+
+> **CORRECTION DE D42, ÉCRITE AVANT D'ALLER PLUS LOIN (07/09/2026, 22:10) :
+> LA CAUSE PUBLIÉE ÉTAIT FAUSSE.** D42 explique que son marquage n'a pas pu être
+> photographié parce que « le périphérique audio est PRIS par un autre
+> processus », en citant `aplay -l` (« Sous-périphériques : 0/1 »).
+>
+> **C'est faux, et une mesure d'une ligne le dit** : `isDeviceOpen=1`. Le
+> périphérique s'ouvre parfaitement sur cette machine ; la carte `default`
+> passe par dmix, que l'occupation de `hw:0,0` ne bloque pas. J'ai lu une
+> sortie d'`aplay`, j'y ai trouvé une explication plausible à ce que je voyais,
+> et je l'ai publiée sans la vérifier — alors que la vérifier tenait en un
+> `fprintf`.
+>
+> **LA VRAIE RAISON, MESURÉE.** Les coûts par piste sont bel et bien publiés :
+> `0:65,9 µs 1:59,8 µs 2:48,2 µs 3:9,6 µs`. Mais le transport ne JOUAIT pas
+> (`lecture=0`), les quatre pistes ne portaient donc que le coût d'un
+> instrument au repos, et elles se valaient à quelques microsecondes près.
+> **Aucune ne dépassait trois fois la médiane, donc aucune n'était désignée —
+> ce qui est exactement ce que la règle doit faire.** Le marquage n'était pas en
+> panne : il n'avait rien à désigner. Ce que je prenais pour l'absence d'une
+> fonction était la fonction en train de répondre « rien à signaler ».
+>
+> **CE QUI RESTE VRAI DE D42** : la mesure par piste, le garde RAII, les neuf
+> tests d'allocation, les trois attentes et leur bilan, la règle relue au banc.
+> Seule la phrase sur le périphérique était fausse.
+
+> **LA PHASE D43 EST FAITE (07/09/2026, 22:20), ET SA PRÉMISSE A ÉTÉ CORRIGÉE
+> EN COURS DE ROUTE.**
+>
+> Le tableau d'ouverture annonçait que le défaut « se produit sur cette machine,
+> en ce moment ». **C'était faux**, hérité de l'erreur de D42 corrigée
+> ci-dessus. Le défaut, lui, est bien réel — et il se trouve par la LECTURE,
+> pas par l'observation : `AudioEngine::lastError()` est publique, documentée,
+> et **n'a aucun appelant** dans tout l'arbre. Le moteur écrit soigneusement
+> pourquoi il n'y aura pas de son, et rien ne le lit.
+>
+> **CE QUE CELA VAUT, MÊME SANS L'AVOIR VU.** Une application qui s'ouvre, dont
+> tous les boutons répondent, et qui ne fait aucun bruit sans un mot, est le cas
+> le plus grave de l'interdit le plus explicite du projet : « ce qui est écarté,
+> ignoré ou remplacé est DIT ». Ce qui est écarté ici est le son. Le repli est
+> juste — éditer, mixer et exporter n'ont pas besoin de carte —, et le défaut
+> n'était pas de continuer mais de continuer **en silence**.
+>
+> **CE QUI EST FAIT.** Un témoin « SANS SON » en rouge, permanent tant que le
+> son manque, **avant les craquements et avant la charge** — une charge et un
+> compte de craquements n'ont aucun sens quand rien ne sort. Son infobulle
+> donne **le texte du pilote tel quel** : « ALSA : device or resource busy » se
+> cherche dans un moteur de recherche, « le son n'est pas disponible » ne se
+> cherche pas. Et elle nomme le geste : *Fichier ▸ Réglages audio…*.
+>
+> **CE QUE LA CAPTURE A PU MONTRER, ET CE QU'ELLE N'A PAS PU.** Le cas sain est
+> photographié : le périphérique s'ouvre, aucun témoin — ce qui prouve l'absence
+> de fausse alerte, et rien de plus. **Deux tentatives pour provoquer la panne
+> ont échoué** : occuper `hw:0,0` (dmix le contourne) et blanchir
+> `ALSA_CONFIG_PATH` (JUCE le surmonte). La branche que la capture n'atteint pas
+> est donc mesurée au banc, qui construit la barre et relit la visibilité du
+> témoin : caché au départ, **visible** quand on lui donne une raison, **caché à
+> nouveau** quand le son revient (D43.4). Trois états, trois lectures.
+>
+> **L'ATTENTE N° 2 ÉTAIT FAUSSE, ET DE FAÇON INSTRUCTIVE.** J'annonçais que la
+> panne serait facile à photographier et le bon fonctionnement difficile,
+> puisque la machine était censée être en panne. C'est l'inverse qui s'est
+> produit — parce que la prémisse elle-même était fausse. **Une attente écrite
+> avant la mesure ne protège pas d'une prémisse fausse ; elle la rend
+> seulement visible plus tôt.** Ici elle l'a rendue visible au premier
+> `fprintf`, avant que quoi que ce soit ne soit bâti dessus.
+>
+> Tests : 1 283 audio, 319 core, 285 interchange, 25 clap, 11 panels — verts ;
+> banc d'édition : 11 gestes, 0 muet, 0 désaccord.

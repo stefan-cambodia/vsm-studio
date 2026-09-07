@@ -22,6 +22,8 @@
 #include <JuceHeader.h>
 #include "ui/TrackListComponent.h"
 #include "ui/MixerComponent.h"
+#include "ui/TransportBarComponent.h"
+#include "vsm/audio/engine/Transport.h"
 #include "ui/machines/StepSequencerComponent.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
 #include "vsm/sequencer/Project.h"
@@ -262,6 +264,42 @@ int main(int argc, char** argv) {
                     static_cast<int>(liste.selectedTracks().size()),
                     horsBornes ? "OUI -- le geste suivant tairait une voisine" : "aucun");
         if (horsBornes) desaccords = 1;
+    }
+
+    // ------------------------------------------------------------------
+    // D43.1 — « SANS SON » S'ALLUME, ET S'ÉTEINT
+    // ------------------------------------------------------------------
+    // POURQUOI ICI PLUTÔT QU'À L'ÉCRAN, ET C'EST DIT PLUTÔT QUE CONTOURNÉ :
+    // sur cette machine le périphérique audio S'OUVRE, si bien que la capture
+    // ne montre que le cas sain -- ce qui prouve l'absence de fausse alerte, et
+    // rien de plus. Deux tentatives pour provoquer la panne ont échoué (occuper
+    // `hw:0,0`, que dmix contourne ; blanchir `ALSA_CONFIG_PATH`, que JUCE
+    // surmonte). La branche que la capture n'atteint pas se mesure donc ici.
+    {
+        vsm::audio::engine::ProcessGraph grapheBarre;
+        vsm::audio::engine::Transport transport(grapheBarre);
+        TransportBarComponent barre(transport);
+        barre.setBounds(0, 0, 1200, 60);
+        std::printf("=== D43.1 : LE TEMOIN « SANS SON » ===\n");
+        const auto visible = [&] {
+            for (int i = 0; i < barre.getNumChildComponents(); ++i)
+                if (auto* l = dynamic_cast<juce::Label*>(barre.getChildComponent(i)))
+                    if (l->getText() == "SANS SON") return l->isVisible();
+            return false;
+        };
+        const bool auDepart = visible();
+        barre.setAudioUnavailable("ALSA : device or resource busy");
+        const bool apresPanne = visible();
+        barre.setAudioUnavailable({});
+        const bool apresRetour = visible();
+        std::printf("  au depart=%s | peripherique absent=%s | peripherique revenu=%s -> %s\n",
+                    auDepart ? "visible" : "cache",
+                    apresPanne ? "visible" : "CACHE",
+                    apresRetour ? "VISIBLE" : "cache",
+                    (!auDepart && apresPanne && !apresRetour)
+                        ? "le temoin suit l'etat du son"
+                        : "LE TEMOIN NE SUIT PAS");
+        if (auDepart || !apresPanne || apresRetour) desaccords = 1;
     }
 
     // ------------------------------------------------------------------

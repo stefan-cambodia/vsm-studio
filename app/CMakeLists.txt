@@ -175,6 +175,7 @@ target_sources(vsm-edit-audit PRIVATE
     Source/tools/EditAuditMain.cpp
     Source/ui/TrackListComponent.cpp
     Source/ui/MixerComponent.cpp
+    Source/ui/TransportBarComponent.cpp
     Source/ui/machines/StepSequencerComponent.cpp
 )
 target_include_directories(vsm-edit-audit PRIVATE Source)
