@@ -8502,3 +8502,55 @@ Le défaut n'est pas de continuer, il est de continuer **en silence**.
 > « il faut insister » : c'est qu'une mesure qui refuse de donner le résultat
 > attendu a quelque chose à dire, et que la trace qui départage trois
 > hypothèses coûte moins cher que la quatrième tentative de deviner laquelle.
+
+### Phase D44 — Geler une piste : le conseil que l'application donne, mesuré (07/09/2026, 23:15)
+
+**UNE ENTORSE À LA MÉTHODE, DITE PLUTÔT QUE MAQUILLÉE.** Toutes les phases de
+ce document écrivent leur attendu AVANT la mesure. Celle-ci ne l'a pas fait :
+la mesure est partie la première, et écrire après coup une « prédiction » dont
+je connais déjà la réponse serait exactement la malhonnêteté que cette règle
+existe pour empêcher. C'est donc une phase de VÉRIFICATION, pas d'hypothèse, et
+elle vaut ce que vaut ce genre de phase : elle confirme ou dément, elle ne
+tranche rien.
+
+**CE QU'IL Y AVAIT À VÉRIFIER.** Depuis D41.2, l'infobulle de la charge dit à
+l'utilisateur : « *Piste ▸ Geler la piste* libère son instrument ». C'est un
+conseil que le logiciel donne, et rien ne l'avait jamais éprouvé. **Un conseil
+faux est pire qu'aucun conseil** : il fait perdre le temps de l'essayer, et il
+détourne de la vraie cause.
+
+**LA MESURE**, 16 pistes, huit fils de rendu, le fichier gelé publié au moteur
+comme l'application le publie (`setTrackAudio`) :
+
+| machine | en jeu | gelées | rapport | ce qu'il RESTE |
+|---|---|---|---|---|
+| `vsm.additive` | 1,098 ms | **0,030 ms** | **÷ 36,2** | 2,8 % |
+| `vsm.minimoog` | 0,222 ms | **0,031 ms** | ÷ 7,1 | 14,0 % |
+
+**Le conseil est juste.** Geler saute l'instrument ET la chaîne d'inserts
+(`renderTrackVoice`), et ne garde que la lecture du fichier.
+
+**LE CHIFFRE QUI COMPTE N'EST PAS LE RAPPORT, C'EST LA COLONNE « GELÉES ».**
+Elle vaut **0,030 et 0,031 ms** — la même, à 3 % près, pour la machine la plus
+chère du parc et pour un soustractif ordinaire. C'est attendu une fois qu'on le
+voit : une piste gelée ne fait plus que lire un fichier stéréo, et lire un
+fichier coûte ce qu'il coûte, quelle que soit la machine qui l'a produit.
+**Le gain du gel est donc proportionnel à ce que la piste coûtait** — il paie
+d'autant plus qu'on gèle une piste chère. C'est exactement la propriété qu'il
+faut pour que le conseil de D41.2 soit bon là où il est donné : la barre passe
+au rouge quand quelque chose coûte cher, et c'est précisément là que geler rend
+le plus.
+
+**ET CELA ACHÈVE DE JUSTIFIER D42.3.** Le conseil « gelez une piste » ne sert
+que si l'on sait LAQUELLE : geler la moins chère de seize pistes rendrait
+0,03 ms sur 0,22, et l'on conclurait que le gel ne sert à rien.
+
+**CE QUE CETTE MESURE NE DIT PAS, ET C'EST DIT.** Le fichier gelé du banc est
+un signal constant en mémoire, pas un vrai rendu sur disque : le COÛT est
+représentatif (lire et rééchantillonner deux canaux), le SON ne l'est pas — les
+crêtes diffèrent (1,131 contre 0,991) pour cette seule raison. Et le banc ne
+mesure pas la lecture depuis le DISQUE, que l'application fait par flux : elle a
+son propre test (`process_block_allocates_nothing_while_streaming_from_disk`),
+mais son coût n'est pas chiffré ici.
+
+Tests : 1 283 audio, 319 core, 285 interchange, 25 clap, 11 panels — verts.

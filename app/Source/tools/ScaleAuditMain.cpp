@@ -20,6 +20,7 @@
 #include <JuceHeader.h>
 #include "ui/MixerComponent.h"
 #include "ui/TrackListComponent.h"
+#include "vsm/audio/engine/AudioTrackSource.h"
 #include "vsm/audio/engine/ProcessGraph.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
@@ -411,6 +412,76 @@ int main(int argc, char** argv) {
         std::printf("  RAPPEL : ce temps se compare aux AUTRES PISTES, pas au budget --\n"
                     "  en parallele huit pistes tournent ensemble et leur somme depasse le bloc.\n");
         (void)budgetMs;
+    }
+
+    // ------------------------------------------------------------------
+    // D44 — GELER UNE PISTE : LE CONSEIL DE L'APPLICATION, MESURÉ
+    // ------------------------------------------------------------------
+    // Depuis D41.2, l'infobulle de la charge dit : « Piste ▸ Geler la piste
+    // libère son instrument ». C'est un conseil que le logiciel donne à
+    // l'utilisateur, et rien ne l'avait jamais vérifié. Un conseil faux est
+    // pire qu'aucun conseil : il fait perdre le temps de l'essayer.
+    //
+    // CE QUE GELER FAIT, DANS LE MOTEUR : `renderTrackVoice` saute
+    // l'instrument ET la chaîne d'inserts, et lit le fichier gelé à la place.
+    // Le gain n'est donc PAS total -- lire et rééchantillonner coûte aussi --
+    // et c'est ce reste qu'on veut chiffrer.
+    {
+        constexpr double kSampleRate = 48000.0;
+        constexpr int kBlock = 512;
+        const double budgetMs = 1000.0 * kBlock / kSampleRate;
+        std::printf("\n=== D44 : CE QUE GELER FAIT GAGNER (16 pistes de %s) ===\n",
+                    machine.c_str());
+
+        const auto mesurer = [&](bool geler) {
+            Project projet = projetDeNPistes(16, machine);
+            vsm::audio::engine::ProcessGraph graphe;
+            graphe.prepare(kSampleRate, kBlock);
+            graphe.setRenderThreadCount(fils);
+            if (geler) for (auto& t : projet.tracks) t.frozen = true;
+            graphe.setProject(projet);
+            for (size_t i = 0; i < projet.tracks.size(); ++i) {
+                graphe.setTrackInstrument(i, machine);
+                if (geler) {
+                    // LE FICHIER GELÉ, EN MÉMOIRE : ce que l'application publie
+                    // au moteur après un gel (`setTrackAudio`). Sans lui on
+                    // mesurerait une piste qui ne joue RIEN, et l'on
+                    // annoncerait un gain que le gel ne donne pas.
+                    auto source = std::make_shared<vsm::audio::engine::AudioTrackSource>();
+                    source->setMemorySamples(std::vector<float>(48000 * 4, 0.1f),
+                                              std::vector<float>(48000 * 4, -0.1f));
+                    vsm::audio::engine::AudioClipSpan span;
+                    span.lengthFrames = 48000 * 4;
+                    source->clips.push_back(span);
+                    graphe.setTrackAudio(i, source);
+                }
+            }
+            std::vector<float> g(kBlock, 0.0f), d(kBlock, 0.0f);
+            graphe.seekSeconds(0.0);
+            graphe.setPlaying(true);
+            graphe.processBlock(g.data(), d.data(), kBlock);
+            double crete = 0.0;
+            const double t = millisecondes([&] {
+                for (int b = 0; b < 200; ++b) {
+                    graphe.processBlock(g.data(), d.data(), kBlock);
+                    for (int i = 0; i < kBlock; ++i)
+                        crete = std::max(crete, static_cast<double>(std::abs(g[i])));
+                }
+            }) / 200.0;
+            return std::pair<double, double>{ t, crete };
+        };
+
+        const auto chaud = mesurer(false);
+        const auto gele = mesurer(true);
+        std::printf("  en jeu   : %.3f ms (%.1f %% du budget), crête %.3f\n",
+                    chaud.first, 100.0 * chaud.first / budgetMs, chaud.second);
+        std::printf("  gelées   : %.3f ms (%.1f %% du budget), crête %.3f%s\n",
+                    gele.first, 100.0 * gele.first / budgetMs, gele.second,
+                    gele.second < 1.0e-6 ? "  <- SILENCE : le gel ne joue rien, mesure sans valeur" : "");
+        std::printf("  -> geler divise le coût par %.1f ; il en RESTE %.1f %% "
+                    "(lire et rééchantillonner le fichier)\n",
+                    chaud.first / std::max(1.0e-9, gele.first),
+                    100.0 * gele.first / std::max(1.0e-9, chaud.first));
     }
 
     return 0;
