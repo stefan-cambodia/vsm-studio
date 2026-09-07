@@ -170,6 +170,29 @@ bool usesWarp(const ProjectDocument& document) {
 /// Un clip du MODÈLE vers le document, et retour. Un seul endroit pour les
 /// deux sens : un champ ajouté au clip (le suivi de tempo, D12) se recopie
 /// ici, pas dans quatre agrégats positionnels.
+/// LE NOM D'UNE FORME DE FONDU, et son chemin de retour. Écrits UNE fois : la
+/// correspondance était recopiée aux deux bouts du fichier, et D34.1 en
+/// ajoutait un troisième usage -- trois copies d'une même table, dont la
+/// troisième aurait fini par diverger.
+const char* fadeShapeName(vsm::sequencer::FadeShape shape) {
+    switch (shape) {
+        case vsm::sequencer::FadeShape::EqualPower: return "equalPower";
+        case vsm::sequencer::FadeShape::Slow:       return "slow";
+        case vsm::sequencer::FadeShape::Fast:       return "fast";
+        case vsm::sequencer::FadeShape::Linear:
+        default:                                    return "linear";
+    }
+}
+/// Un nom inconnu -- ou absent -- rend `Linear`, qui est le défaut d'un CLIP.
+/// Le défaut d'un PROJET est `EqualPower`, et c'est l'appelant qui ne consulte
+/// pas cette fonction quand le champ est vide.
+vsm::sequencer::FadeShape fadeShapeFromName(const std::string& nom) {
+    if (nom == "equalPower") return vsm::sequencer::FadeShape::EqualPower;
+    if (nom == "slow") return vsm::sequencer::FadeShape::Slow;
+    if (nom == "fast") return vsm::sequencer::FadeShape::Fast;
+    return vsm::sequencer::FadeShape::Linear;
+}
+
 ProjectClip clipToDocument(const vsm::sequencer::Clip& clip) {
     ProjectClip c{clip.sourceStart, clip.sourceLength, clip.startTick,
                   clip.length, clip.muted, clip.name, clip.colorRgba,
@@ -178,10 +201,10 @@ ProjectClip clipToDocument(const vsm::sequencer::Clip& clip) {
     c.warpMode = static_cast<int>(clip.warpMode);
     for (const auto& m : clip.warpMarkers) c.warpMarkers.emplace_back(m.sourceSeconds, m.tick);
     c.reversed = clip.reversed;
-    c.fadeShape = clip.fadeShape == vsm::sequencer::FadeShape::EqualPower ? "equalPower"
-                : clip.fadeShape == vsm::sequencer::FadeShape::Slow       ? "slow"
-                : clip.fadeShape == vsm::sequencer::FadeShape::Fast       ? "fast"
-                                                                          : "";
+    // VIDE POUR `Linear`, et non "linear" : c'est le défaut d'un clip, et
+    // l'écrire allongerait tous les fichiers déjà sur le disque sans rien dire.
+    c.fadeShape = clip.fadeShape == vsm::sequencer::FadeShape::Linear
+                ? "" : fadeShapeName(clip.fadeShape);
     return c;
 }
 vsm::sequencer::Clip clipToModel(const ProjectClip& clip) {
@@ -196,10 +219,7 @@ vsm::sequencer::Clip clipToModel(const ProjectClip& clip) {
                                     : vsm::sequencer::WarpMode::Off;
     for (const auto& [secondes, tick] : clip.warpMarkers) c.warpMarkers.push_back({secondes, tick});
     c.reversed = clip.reversed;
-    c.fadeShape = clip.fadeShape == "equalPower" ? vsm::sequencer::FadeShape::EqualPower
-                : clip.fadeShape == "slow"       ? vsm::sequencer::FadeShape::Slow
-                : clip.fadeShape == "fast"       ? vsm::sequencer::FadeShape::Fast
-                                                 : vsm::sequencer::FadeShape::Linear;
+    c.fadeShape = fadeShapeFromName(clip.fadeShape);
     return c;
 }
 
@@ -223,6 +243,7 @@ ProjectDocument documentFromProject(const Project& project) {
         document.markers.push_back({marker.tick, marker.name});
     document.notes = project.notes;
     document.master = project.masterParameters;
+    document.crossfadeShape = fadeShapeName(project.crossfadeShape);
     document.transport.loopEnabled = project.loopEnabled;
     document.transport.loopStartTick = project.loopStartTick;
     document.transport.loopEndTick = project.loopEndTick;
@@ -397,6 +418,8 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
             project.markers.push_back({marker.tick, marker.name});
     }
     if (!document.master.empty()) project.masterParameters = document.master;
+    if (!document.crossfadeShape.empty())
+        project.crossfadeShape = fadeShapeFromName(document.crossfadeShape);
     project.loopEnabled = document.transport.loopEnabled;
     project.loopStartTick = document.transport.loopStartTick;
     project.loopEndTick = document.transport.loopEndTick;
@@ -541,6 +564,12 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
 
     // D18.6 : les notes du projet, écrites seulement s'il y en a.
     if (!document.notes.empty()) root.set("notes", JsonValue::makeString(document.notes));
+    // ÉCRIT SEULEMENT S'IL DIFFÈRE DU DÉFAUT : un projet qui n'a jamais touché
+    // à la forme de ses fondus croisés garde EXACTEMENT le fichier qu'il avait,
+    // et les 283 tests d'interchange qui comparent des fichiers entiers ne
+    // bougent pas d'un octet.
+    if (!document.crossfadeShape.empty() && document.crossfadeShape != "equalPower")
+        root.set("crossfadeShape", JsonValue::makeString(document.crossfadeShape));
 
     if (!document.master.empty()) {
         JsonValue master = JsonValue::makeObject();
@@ -835,6 +864,7 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         if (!marker.name.empty()) document.markers.push_back(std::move(marker));
     }
     document.notes = json["notes"].asString();
+    document.crossfadeShape = json["crossfadeShape"].asString();
     for (const auto& [name, value] : json["master"].members())
         if (value.isNumber()) document.master[name] = static_cast<float>(value.asNumber());
     document.midiPath = json["midi"]["file"].asString("midi/arrangement.mid");

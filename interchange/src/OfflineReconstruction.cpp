@@ -3,6 +3,7 @@
 #include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/audio/io/AudioTrackLoader.h"
 #include <filesystem>
+#include "vsm/audio/engine/AudioTrackSource.h"
 #include "vsm/audio/engine/AutomationLane.h"
 #include "vsm/interchange/EffectDescription.h"
 #include "vsm/audio/engine/OfflineRenderer.h"
@@ -144,7 +145,19 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
         pourLesClips.audio.frames = charge.source->frames();
         charge.source->clips = vsm::audio::engine::spansFromTrack(
             pourLesClips, options.sampleRate,
-            [&](int64_t tick) { return bundle.project.ticksToSeconds(tick); });
+            [&](int64_t tick) { return bundle.project.ticksToSeconds(tick); },
+            bundle.project.crossfadeShape);
+        // D34.1 : LE FONDU DE SÉCURITÉ MANQUAIT AU RENDU HORS LIGNE, et
+        // personne ne l'avait vu. D33.2 l'avait posé dans `loadAudioTracks`, du
+        // côté de l'application seule : un projet EXPORTÉ claquait donc aux
+        // bords de ses clips là où sa LECTURE ne claquait pas. C'est la panne
+        // muette type -- deux chemins pour un seul son --, et c'est le
+        // troisième exemple que ce fichier collectionne (le calage des portées
+        // étirées, les inserts, ceci). La valeur est celle du modèle, 2 ms :
+        // le rendu n'a pas de préférences à lire, et une valeur différente de
+        // celle qu'on écoute reproduirait la divergence qu'on répare.
+        charge.source->safetyFadeFrames = static_cast<int64_t>(
+            std::llround(vsm::audio::engine::kDefaultSafetyFadeMs / 1000.0 * options.sampleRate));
         if (charge.source->clips.empty()) {
             result.warnings.push_back("Piste " + std::to_string(i) + " (" + track.name +
                                        ") : aucun clip audio à jouer");

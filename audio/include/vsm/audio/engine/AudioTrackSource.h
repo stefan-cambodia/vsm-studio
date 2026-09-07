@@ -11,6 +11,15 @@
 
 namespace vsm::audio::engine {
 
+/// D33.2 : LA DURÉE DU FONDU DE SÉCURITÉ PAR DÉFAUT, en millisecondes.
+///
+/// ÉCRITE ICI ET NON DANS L'APPLICATION (D34.1) : elle vivait dans
+/// `MainComponent`, et le rendu hors ligne -- qui n'a pas de préférences à
+/// lire -- n'en avait donc aucune. Un projet s'exportait sans le fondu qu'il
+/// jouait. Une valeur que DEUX chemins doivent partager se range là où les
+/// deux la voient.
+inline constexpr double kDefaultSafetyFadeMs = 2.0;
+
 /// UN CLIP AUDIO, TRADUIT EN ÉCHANTILLONS.
 ///
 /// Le modèle (`vsm::sequencer::Clip`) parle en ticks pour la position et en
@@ -70,6 +79,20 @@ struct AudioClipSpan {
     /// D17.1 : la forme des deux fondus. `Linear` par défaut, et le chemin de
     /// lecture est alors exactement celui d'avant.
     vsm::sequencer::FadeShape fadeShape = vsm::sequencer::FadeShape::Linear;
+    /// D34.1 : LE FONDU CROISÉ, posé par `spansFromTrack` sur la durée exacte
+    /// du recouvrement avec la portée voisine. Séparé des fondus de
+    /// l'utilisateur, et non écrit par-dessus eux, pour la raison qui a déjà
+    /// séparé le fondu de sécurité : un réglage automatique ne doit jamais
+    /// effacer un geste. La préséance, sur un bord donné, est donc
+    /// **le fondu de l'utilisateur, puis le fondu croisé, puis le fondu de
+    /// sécurité** -- du plus intentionnel au plus machinal.
+    int64_t crossfadeInFrames = 0;
+    int64_t crossfadeOutFrames = 0;
+    /// La forme du fondu croisé, distincte de `fadeShape` : la forme choisie
+    /// pour un fondu d'entrée dessiné à la main n'a aucune raison d'être celle
+    /// qui joint deux prises, et confondre les deux ferait changer l'une en
+    /// réglant l'autre.
+    vsm::sequencer::FadeShape crossfadeShape = vsm::sequencer::FadeShape::EqualPower;
     float gain = 1.0f;
     bool invertPhase = false;
     /// À l'envers (D13.4). Traduit à la publication par `prepareWarpedSpans`
@@ -162,9 +185,34 @@ struct AudioTrackSource {
 ///
 /// `ticksToSeconds` est passée par l'appelant : `audio/` ne connaît pas la
 /// carte de tempo, qui vit dans `core/`, et n'a pas à la connaître.
-std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
-                                           double sampleRate,
-                                           const std::function<double(int64_t)>& ticksToSeconds);
+///
+/// D34.1 : LE FONDU CROISÉ EST POSÉ ICI, ET NON CHEZ L'APPELANT. Il y a deux
+/// chemins qui publient des portées -- l'application et le rendu hors ligne --
+/// et ce dépôt a déjà payé deux fois le prix d'un traitement qu'un seul des
+/// deux appliquait (le calage des portées étirées, D12.5 ; les inserts du
+/// rendu hors ligne). Ce qui doit valoir pour les deux se met dans la
+/// fonction qu'ils appellent tous les deux.
+std::vector<AudioClipSpan> spansFromTrack(
+    const vsm::sequencer::Track& track, double sampleRate,
+    const std::function<double(int64_t)>& ticksToSeconds,
+    vsm::sequencer::FadeShape crossfadeShape = vsm::sequencer::FadeShape::EqualPower);
+
+/// LE FONDU CROISÉ AUX RECOUVREMENTS (D34.1).
+///
+/// Deux portées d'une même piste qui se recouvrent étaient jusqu'ici
+/// simplement ADDITIONNÉES : deux prises du même passage qui se chevauchent
+/// jouaient, dans la zone commune, la somme des deux -- +3 dB sur du matériau
+/// décorrélé, +6 dB sur deux copies du même son. Chaque portée reçoit donc,
+/// sur la durée EXACTE du recouvrement, la moitié descendante et la moitié
+/// montante d'un fondu croisé.
+///
+/// APPELÉE SUR DES PORTÉES TRIÉES par `startFrame`, et elle les trie
+/// elle-même : `spansFromTrack` les produit clip par clip, et deux clips
+/// peuvent s'entrelacer.
+///
+/// IDEMPOTENTE : elle n'écrit que là où rien n'est encore posé, donc la
+/// rappeler ne double aucun fondu.
+void applyCrossfades(std::vector<AudioClipSpan>& spans, vsm::sequencer::FadeShape shape);
 
 /// ARME LES PORTÉES ÉTIRÉES ET À L'ENVERS d'une piste, une fois que son
 /// matériau est là (D12.5, D13.4) : détecte les attaques du fichier -- UNE fois, partagées par toutes

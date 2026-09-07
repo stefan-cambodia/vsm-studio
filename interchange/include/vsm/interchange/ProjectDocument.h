@@ -302,6 +302,11 @@ struct ProjectDocument {
     /// fichier qu'il a toujours eu, et un fichier ancien se charge sans rien
     /// remarquer.
     std::map<std::string, float> master;
+    /// D34.1 : la forme des fondus croisés, par son nom (`linear`,
+    /// `equalPower`, `slow`, `fast`). Facultatif : absent vaut `equalPower`,
+    /// le défaut du modèle. Écrit dans le fichier parce qu'il change ce que le
+    /// morceau SONNE -- un projet doit s'exporter comme il se joue.
+    std::string crossfadeShape;
     /// Chemin RELATIF du fichier MIDI qui porte les notes.
     std::string midiPath = "midi/arrangement.mid";
     ProjectTransport transport;

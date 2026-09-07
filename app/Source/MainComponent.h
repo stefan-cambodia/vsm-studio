@@ -5,6 +5,7 @@
 #include "vsm/sequencer/ProjectHistory.h"
 #include "vsm/sequencer/Groove.h"
 #include "vsm/audio/engine/Transport.h"
+#include "vsm/audio/engine/AudioTrackSource.h"
 #include "vsm/interchange/ReconstructionChain.h"
 #include "reconstruction/ClipTranscriber.h"
 #include "reconstruction/ReconstructionRunner.h"
@@ -330,6 +331,13 @@ private:
         kMenuMixAddSend,
         /// D23.5 : l'écoute en mono du master.
         kMenuMixMonoListen,
+        /// D34.1 : la forme des fondus croisés, quatre entrées à la suite.
+        /// Elles doivent rester CONTIGUËS et dans l'ordre de `FadeShape` :
+        /// `menuItemSelected` en déduit la forme par soustraction.
+        kMenuMixCrossfadeLinear,
+        kMenuMixCrossfadeEqualPower,
+        kMenuMixCrossfadeSlow,
+        kMenuMixCrossfadeFast,
         /// Un identifiant par bus, pour le retirer.
         kMenuMixRemoveSendFirst,
         kMenuMixRemoveSendLast = kMenuMixRemoveSendFirst + 7,
@@ -431,6 +439,11 @@ private:
     void autosaveIfNeeded();
     /// Le projet a été modifié depuis la dernière photo.
     void markProjectDirty() { projectDirty_ = true; }
+    /// D34.1 : la forme des fondus croisés du projet, changée en marche.
+    /// Empruntée par l'entrée de menu ET par « VSM_VUE=fondu-croise:… ».
+    void setCrossfadeShape(vsm::sequencer::FadeShape forme);
+    /// Combien de bords de clips audio portent effectivement un fondu croisé.
+    int audioSpansWithCrossfade() const;
 
     std::unique_ptr<vsm::app::AutosaveService> autosave_;
     bool projectDirty_ = false;
@@ -959,7 +972,7 @@ private:
     /// clic, trop court pour s'entendre comme un fondu. Zéro le désactive, et
     /// la lecture reprend exactement le chemin d'avant la phase. Conservé
     /// d'une exécution à l'autre.
-    double safetyFadeMs_ = 2.0;
+    double safetyFadeMs_ = vsm::audio::engine::kDefaultSafetyFadeMs;
     /// D33.3 : un scrub est en cours, et le transport jouait-il avant lui ?
     /// C'est ce qui permet de le remettre dans l'état où on l'a trouvé.
     bool scrubEnCours_ = false;

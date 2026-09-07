@@ -17,8 +17,11 @@ namespace {
 /// « ne s'entend pas sur des fondus courts » ; c'est vrai d'un fondu simple et
 /// faux d'un fondu ENCHAÎNÉ, où deux droites qui se croisent creusent 3 dB sur
 /// du matériau décorrélé.
-inline float fadeGain(int64_t position, int64_t length, int64_t fadeIn, int64_t fadeOut,
-                       vsm::sequencer::FadeShape shape, int64_t securite) {
+inline float fadeGain(const AudioClipSpan& clip, int64_t position, int64_t securite) {
+    const int64_t length = clip.lengthFrames;
+    const int64_t fadeIn = clip.fadeInFrames;
+    const int64_t fadeOut = clip.fadeOutFrames;
+    const vsm::sequencer::FadeShape shape = clip.fadeShape;
     float gain = 1.0f;
     // D33.2 : LE FONDU DE SÉCURITÉ, et il ne s'applique QUE là où
     // l'utilisateur n'a rien posé. Le sien gagne toujours : un fondu de
@@ -36,20 +39,38 @@ inline float fadeGain(int64_t position, int64_t length, int64_t fadeIn, int64_t 
     // fondu, les deux se chevaucheraient et le milieu serait atténué -- un
     // grain de trois millisecondes deviendrait deux fois plus faible qu'il ne
     // doit être.
+    //
+    // D34.1 : SUR UN BORD QUI JOINT DEUX PORTÉES, C'EST LE FONDU CROISÉ QUI
+    // DÉCIDE -- de sa longueur ET de sa forme. `applyCrossfades` ne le pose que
+    // là où il est PLUS LONG que ce que l'utilisateur avait mis : un fondu
+    // dessiné plus long que le recouvrement reste donc intact, longueur et
+    // forme comprises, et c'est exactement la règle du « plus long des deux »
+    // que D13.1 appliquait déjà. Ce qui change est la FORME de la partie que la
+    // machine ajoute : un fondu croisé n'est pas un fondu d'entrée, et lui
+    // donner la courbe d'un fondu d'entrée creusait 3 dB (voir plus haut).
     const int64_t plafond = std::max<int64_t>(0, length / 2);
-    const int64_t entree = fadeIn > 0 ? fadeIn : std::min(securite, plafond);
-    const int64_t sortie = fadeOut > 0 ? fadeOut : std::min(securite, plafond);
+    const int64_t securiteBornee = std::min(securite, plafond);
+    const int64_t entree = clip.crossfadeInFrames > 0 ? clip.crossfadeInFrames
+                          : fadeIn > 0                ? fadeIn
+                                                      : securiteBornee;
+    const int64_t sortie = clip.crossfadeOutFrames > 0 ? clip.crossfadeOutFrames
+                          : fadeOut > 0                ? fadeOut
+                                                       : securiteBornee;
     // LA FORME DU FONDU DE SÉCURITÉ EST LINÉAIRE, toujours : il ne dit rien
     // d'un geste musical, il ne fait qu'éviter une discontinuité, et deux
-    // millisecondes ne portent aucune courbe audible.
-    const auto forme = [&](int64_t pose, float ratio) {
-        return pose > 0 ? vsm::sequencer::fadeShapeGain(shape, ratio) : ratio;
+    // millisecondes ne portent aucune courbe audible. Celle du fondu croisé est
+    // la sienne (`crossfadeShape`), distincte de celle des fondus dessinés.
+    const auto forme = [&](int64_t croise, int64_t pose, float ratio) {
+        if (croise > 0) return vsm::sequencer::fadeShapeGain(clip.crossfadeShape, ratio);
+        if (pose > 0) return vsm::sequencer::fadeShapeGain(shape, ratio);
+        return ratio;
     };
     if (entree > 0 && position < entree)
-        gain *= forme(fadeIn, static_cast<float>(position) / static_cast<float>(entree));
+        gain *= forme(clip.crossfadeInFrames, fadeIn,
+                       static_cast<float>(position) / static_cast<float>(entree));
     const int64_t restant = length - position;
     if (sortie > 0 && restant < sortie)
-        gain *= forme(fadeOut,
+        gain *= forme(clip.crossfadeOutFrames, fadeOut,
                        static_cast<float>(std::max<int64_t>(0, restant)) / static_cast<float>(sortie));
     return gain;
 }
@@ -148,9 +169,7 @@ int AudioTrackSource::mixInto(float* outLeft, float* outRight,
                 }
                 for (int i = 0; i < n; ++i) {
                     const int64_t dansLeClip = position + i - clip.startFrame;
-                    const float gain = signeW * fadeGain(dansLeClip, clip.lengthFrames,
-                                                          clip.fadeInFrames, clip.fadeOutFrames,
-                                                          clip.fadeShape, safetyFadeFrames);
+                    const float gain = signeW * fadeGain(clip, dansLeClip, safetyFadeFrames);
                     const auto j = static_cast<size_t>(position + i - timelineStart);
                     outLeft[j] += w.scratchL[static_cast<size_t>(i)] * gain;
                     outRight[j] += w.scratchR[static_cast<size_t>(i)] * gain;
@@ -179,9 +198,7 @@ int AudioTrackSource::mixInto(float* outLeft, float* outRight,
             // n'a pas encore livré : le trou est alors COMPTÉ (`cacheMisses`).
             float g = 0.0f, d = 0.0f;
             if (!magasin.frameAt(dansLeFichier, g, d)) continue;
-            const float gain = signe * fadeGain(dansLeClip, clip.lengthFrames,
-                                                 clip.fadeInFrames, clip.fadeOutFrames,
-                                                 clip.fadeShape, safetyFadeFrames);
+            const float gain = signe * fadeGain(clip, dansLeClip, safetyFadeFrames);
             const auto j = static_cast<size_t>(position - timelineStart);
             outLeft[j] += g * gain;
             outRight[j] += d * gain;
@@ -252,9 +269,8 @@ int AudioTrackSource::mixIntoAtSpeed(float* outLeft, float* outRight, double tim
             // « vinyle » de l'étirement : lire à une position fractionnaire
             // est exactement le même problème.
             kernel.stereoAt(lire, positionSource(positionMorceau), g, d);
-            const float gain = signe * fadeGain(static_cast<int64_t>(std::llround(dansLeClip)),
-                                                 clip.lengthFrames, clip.fadeInFrames,
-                                                 clip.fadeOutFrames, clip.fadeShape, safetyFadeFrames);
+            const float gain = signe * fadeGain(clip, static_cast<int64_t>(std::llround(dansLeClip)),
+                                                 safetyFadeFrames);
             outLeft[static_cast<size_t>(n)] += g * gain;
             outRight[static_cast<size_t>(n)] += d * gain;
             ++ecrits;
@@ -263,9 +279,51 @@ int AudioTrackSource::mixIntoAtSpeed(float* outLeft, float* outRight, double tim
     return ecrits;
 }
 
+// DEUX PORTÉES QUI SE CHEVAUCHENT SE FONDENT L'UNE DANS L'AUTRE (D13.1,
+// recadré en D34.1). Sans cette règle, `mixInto` les ADDITIONNAIT sur le
+// chevauchement : une prise posée sur la fin d'une autre doublait le son -- ce
+// qu'aucun DAW ne fait, et ce que personne ne demande en posant deux prises
+// bout à bout.
+//
+// LA FORME ÉTAIT LINÉAIRE, ET C'ÉTAIT LE MAUVAIS CHOIX (D34.1). Le
+// raisonnement d'origine -- « pour un même signal, la somme reste à un » --
+// est juste, et ne vaut que pour un MÊME signal. Or un fondu croisé joint
+// presque toujours deux matériaux DIFFÉRENTS : deux prises, deux montages. Sur
+// du décorrélé, ce sont les PUISSANCES qui s'ajoutent, et deux droites qui se
+// croisent y creusent 3 dB au milieu. La forme est donc devenue un choix, et
+// son défaut est la puissance constante -- celui de Cubase, pour cette raison
+// exactement. Le cas des deux copies du même son reste servi par
+// `FadeShape::Linear`, qu'on peut demander.
+//
+// UN FONDU RÉGLÉ PLUS LONG QUE LE CHEVAUCHEMENT EST GARDÉ (le plus long des
+// deux) ; un fondu plus court serait un trou, et n'a pas de sens ici. Le fondu
+// croisé n'est donc posé que là où il est PLUS LONG que ce que l'utilisateur
+// avait mis -- sans quoi il lui changerait sa courbe sans rien allonger.
+void applyCrossfades(std::vector<AudioClipSpan>& spans, vsm::sequencer::FadeShape shape) {
+    std::sort(spans.begin(), spans.end(),
+              [](const AudioClipSpan& a, const AudioClipSpan& b) { return a.startFrame < b.startFrame; });
+    for (size_t i = 1; i < spans.size(); ++i) {
+        auto& precedent = spans[i - 1];
+        auto& suivant = spans[i];
+        const int64_t finPrecedent = precedent.startFrame + precedent.lengthFrames;
+        const int64_t chevauchement = finPrecedent - suivant.startFrame;
+        if (chevauchement <= 0) continue;
+        const int64_t fondu = std::min({chevauchement, precedent.lengthFrames, suivant.lengthFrames});
+        if (fondu > precedent.fadeOutFrames) {
+            precedent.crossfadeOutFrames = fondu;
+            precedent.crossfadeShape = shape;
+        }
+        if (fondu > suivant.fadeInFrames) {
+            suivant.crossfadeInFrames = fondu;
+            suivant.crossfadeShape = shape;
+        }
+    }
+}
+
 std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
                                            double sampleRate,
-                                           const std::function<double(int64_t)>& ticksToSeconds) {
+                                           const std::function<double(int64_t)>& ticksToSeconds,
+                                           vsm::sequencer::FadeShape crossfadeShape) {
     std::vector<AudioClipSpan> spans;
     if (track.kind != vsm::sequencer::Track::Kind::Audio || track.audio.empty())
         return spans;
@@ -361,26 +419,7 @@ std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
         }
     }
 
-    // DEUX CLIPS QUI SE CHEVAUCHENT SE FONDENT L'UN DANS L'AUTRE (D13.1). Sans
-    // cette règle, `mixInto` les ADDITIONNAIT sur le chevauchement : une prise
-    // posée sur la fin d'une autre doublait le son -- ce qu'aucun DAW ne fait,
-    // et ce que personne ne demande en posant deux prises bout à bout. Sur le
-    // chevauchement, le premier s'éteint et le second monte, linéairement :
-    // pour un même signal, la somme reste à un. Un fondu réglé plus long que
-    // le chevauchement est gardé (le plus long des deux) ; un fondu plus court
-    // serait un trou, et n'a pas de sens ici.
-    std::sort(spans.begin(), spans.end(),
-              [](const AudioClipSpan& a, const AudioClipSpan& b) { return a.startFrame < b.startFrame; });
-    for (size_t i = 1; i < spans.size(); ++i) {
-        auto& precedent = spans[i - 1];
-        auto& suivant = spans[i];
-        const int64_t finPrecedent = precedent.startFrame + precedent.lengthFrames;
-        const int64_t chevauchement = finPrecedent - suivant.startFrame;
-        if (chevauchement <= 0) continue;
-        const int64_t fondu = std::min({chevauchement, precedent.lengthFrames, suivant.lengthFrames});
-        precedent.fadeOutFrames = std::max(precedent.fadeOutFrames, fondu);
-        suivant.fadeInFrames = std::max(suivant.fadeInFrames, fondu);
-    }
+    applyCrossfades(spans, crossfadeShape);
 
     // UNE PISTE AUDIO SANS CLIP JOUE TOUT SON FICHIER, à sa place — la même
     // règle que pour une piste MIDI sans clip, et pour la même raison : « pas

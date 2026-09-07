@@ -131,6 +131,20 @@ public:
     /// export ne ressemblait pas à ce qu'on venait d'écouter.
     std::map<std::string, float> masterParameters;
 
+    /// LA FORME DES FONDUS CROISÉS (D34.1).
+    ///
+    /// POURQUOI DANS LE PROJET ET NON DANS LES PRÉFÉRENCES. Elle change ce que
+    /// le morceau SONNE, pas ce que l'atelier montre : un projet doit s'exporter
+    /// comme il se joue. C'est mot pour mot la raison qui a fait entrer
+    /// `masterParameters` ici, après qu'un morceau mixé s'est rouvert avec un
+    /// master d'usine. Le fondu de SÉCURITÉ (D33.2), lui, reste une préférence :
+    /// il n'enlève qu'un clic.
+    ///
+    /// `EqualPower` par défaut, parce qu'un fondu croisé joint presque toujours
+    /// deux matériaux DIFFÉRENTS, dont les puissances s'ajoutent. `Linear` sert
+    /// le cas inverse -- deux copies du même son --, où c'est lui qui tient.
+    FadeShape crossfadeShape = FadeShape::EqualPower;
+
     static Project fromParsedFile(const midi::ParsedFile& parsed);
     midi::ParsedFile toParsedFile() const;
     /// D23.3 : le même projet réduit à UNE piste -- la carte de tempo, les

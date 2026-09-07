@@ -1367,3 +1367,41 @@ VSM_TEST(a_project_without_a_midi_chain_writes_no_such_key) {
     const std::string texte = projectDocumentToJson(documentFromProject(buildProject())).toString();
     VSM_ASSERT(texte.find("midiEffects") == std::string::npos);
 }
+
+// ---------------------------------------------------------------------------
+// D34.1 — LA FORME DES FONDUS CROISÉS EST UNE DONNÉE DU MORCEAU.
+//
+// Elle change ce que le projet SONNE, donc elle voyage avec lui : le rendu
+// hors ligne doit croiser ses prises comme la lecture les croise. C'est la
+// raison qui avait déjà fait entrer les réglages du master dans le fichier.
+// ---------------------------------------------------------------------------
+
+VSM_TEST(the_crossfade_shape_survives_the_round_trip) {
+    vsm::sequencer::Project original = buildProject();
+    original.crossfadeShape = vsm::sequencer::FadeShape::Linear;
+    const std::string texte = projectDocumentToJson(documentFromProject(original)).toString();
+    VSM_ASSERT(texte.find("crossfadeShape") != std::string::npos);
+
+    const ProjectLoadResult relu = parseProjectDocument(texte);
+    VSM_ASSERT(relu.success);
+    vsm::sequencer::Project retour = buildProject();
+    applyDocumentToProject(relu.document, retour);
+    VSM_ASSERT(retour.crossfadeShape == vsm::sequencer::FadeShape::Linear);
+}
+
+VSM_TEST(a_project_on_the_default_crossfade_shape_keeps_the_file_it_had) {
+    // Le défaut ne s'écrit pas : un projet qui n'y a jamais touché garde son
+    // fichier octet pour octet, et un fichier d'avant la phase se relit sans
+    // rien remarquer -- il prend alors la puissance constante, qui est ce que
+    // l'application lui joue désormais.
+    const std::string texte = projectDocumentToJson(documentFromProject(buildProject())).toString();
+    VSM_ASSERT(texte.find("crossfadeShape") == std::string::npos);
+
+    const ProjectLoadResult relu = parseProjectDocument(texte);
+    vsm::sequencer::Project retour = buildProject();
+    retour.crossfadeShape = vsm::sequencer::FadeShape::Slow;   // pour voir s'il est écrasé
+    applyDocumentToProject(relu.document, retour);
+    // ABSENT NE VEUT PAS DIRE « LINÉAIRE » : un champ que le fichier ne porte
+    // pas ne doit rien changer à ce que le projet a déjà.
+    VSM_ASSERT(retour.crossfadeShape == vsm::sequencer::FadeShape::Slow);
+}

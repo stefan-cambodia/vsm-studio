@@ -6741,3 +6741,140 @@ touché, et la reconstruction en produit pourtant des dizaines de fichiers.
 >
 > Tests : 294 core, 1 274 audio, 283 interchange, 25 clap, 11 panels, 19 vst3
 > — tous verts (10 tests neufs) ; Python inchangé (168).
+
+---
+
+### Phase D34 — Le dix-neuvième audit : ce qui manque une fois D33 posée (07/09/2026, 01:20)
+
+**Pourquoi.** Même méthode, et la leçon de D33.5 appliquée d'emblée : **un
+manque supposé se vérifie en LISANT le code qui devrait le porter**, pas en
+cherchant son nom. Elle a servi deux fois dans l'heure.
+
+**Écartés comme EXISTANTS, en nommant ce qu'on a cherché ET où** : le
+défilement automatique pendant la lecture (`autoScroll` ne rend rien, mais
+`ArrangementComponent::setPlayheadTick` tourne la page depuis D11.3 — le mot
+était le mauvais outil, encore) ; le tempo frappé (`tapButton_`,
+`TransportBarComponent`) ; le décalage de piste (`Track::delayMs`) ; l'écoute
+en mono (D23.5) ; le rassemblement du projet et de ses fichiers
+(`interchange/ProjectBundle.cpp`) ; les préréglages de piste
+(`interchange/TrackPreset.h`) ; la duplication de piste
+(`Project::duplicateTrack`) ; la recherche dans le navigateur
+(`BrowserComponent`) ; l'entrée pas-à-pas (`PianoRollComponent::stepInput`) ;
+la sauvegarde automatique (`AutosaveService`) ; la poursuite des contrôleurs à
+la localisation (`PlaybackScheduler`, chase) ; les départs auxiliaires
+(`Track::sendLevel`) ; les dossiers de pistes (`Track::isFolder`) ; les
+groupes d'édition (D18.3) ; les mesures de niveau LUFS et de corrélation
+(`MixerComponent`) ; la chaîne latérale (`ProcessGraph`) ; le décompte ; les
+repères ; le gel ; l'étirement temporel ; l'inversion ; les formes de fondu.
+
+Cinq manques ont survécu.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D34.1 | **Le crossfade aux recouvrements audio.** `spansFromTrack` fabrique chaque portée sans jamais regarder sa voisine, et `mixInto` les ADDITIONNE : deux prises du même passage qui se chevauchent de 200 ms jouent, dans le recouvrement, la somme des deux. Cubase et Live écrivent tous deux un fondu croisé dans la zone commune | les portées qui se recouvrent reçoivent un fondu croisé **à puissance constante** (`FadeShape::EqualPower`, déjà dans le modèle depuis D17.1) sur la durée exacte du recouvrement, **et seulement là où l'utilisateur n'a rien posé** — le sien gagne, comme pour le fondu de sécurité ; la forme est réglable ; mesuré sur deux matériaux décorrélés ET sur deux matériaux identiques |
+| D34.2 | **Les copies liées : les DIRE, et pouvoir les rompre.** Un clip MIDI est une fenêtre sur le matériau de sa piste (`Track.h`), et `duplicateClips` recopie la fenêtre en gardant `sourceStart` : la copie est donc une **copie liée** — éditer une note dans l'une change l'autre. C'est une vraie fonction, celle que Cubase appelle « copie partagée » ; ici elle est **invisible et irréversible**. Rien ne dessine le lien, et rien ne permet d'en sortir | deux clips d'une piste qui partagent leur fenêtre source se dessinent comme liés (une marque dans le clip, et son nom en italique — la convention de Cubase) ; « Convertir en copie indépendante » recopie les notes de la fenêtre dans une région LIBRE du matériau et y repointe la fenêtre ; testé des DEUX côtés — qu'avant conversion l'édition se propage, qu'après elle ne se propage plus |
+| D34.3 | **Un fichier audio lâché sur la fenêtre peut être POSÉ, pas seulement reconstruit.** `filesDropped` jette `x` et `y`, ne retient que le PREMIER fichier audio, et n'offre qu'un seul choix : une reconstruction de plusieurs minutes. Son propre commentaire nomme les trois choses qu'on peut vouloir — « l'écouter, le poser sur une piste, ou le reconstruire » — et part d'office sur la plus longue | la question posée offre **« Poser sur une piste »** à côté de « Reconstruire » ; poser crée une piste PAR fichier lâché, en empruntant le chemin de D33.1 plutôt qu'en le réécrivant ; ce qui échoue est nommé et n'arrête pas le reste ; le compte rendu dit combien sont entrés |
+| D34.4 | **La règle en TEMPS.** `ArrangementComponent::paint` ne trace qu'une graduation par mesure, numérotée en mesures, toujours. Or ce logiciel compare une reconstruction à un enregistrement qui, lui, se mesure en secondes — et la barre de transport affiche DÉJÀ les deux depuis D11.3. La règle en montre une | *Affichage ▸ Règle ▸ Mesures / Minutes:secondes*, conservé d'une exécution à l'autre ; le pas des graduations est choisi pour qu'elles ne se rapprochent jamais à moins de 60 px, quel que soit le zoom ; vérifié à l'écran |
+| D34.5 | **Dessiner une automation par une FORME.** `AutomationEdit.h` n'offre que `setAutomationPoint` (un point) et `writeAutomationRange` (une valeur constante sur une plage) ; la bande d'automation de l'arrangement s'édite point par point. Un balayage de filtre sur seize mesures se pose donc à la main, point après point. L'outil « ligne » de Cubase trace une droite, une parabole, un sinus, un triangle, un carré | `drawAutomationShape(courbe, deTick, àTick, forme, valeurDébut, valeurFin, périodes)` dans `core/`, formes **Ligne, Sinus, Triangle, Carré** ; appliquée sur la plage choisie de la bande d'automation ; mesuré : le sinus rendu par `automationValueAt` s'écarte du sinus idéal de moins de **1 %** de l'étendue, et le nombre de points posés reste **borné** — une forme qui poserait un point par tick serait illisible et impossible à retoucher |
+
+**Ce qui est attendu, écrit AVANT la mesure.**
+
+1. **D34.1** — sur deux matériaux **décorrélés** (deux bruits indépendants),
+   j'attends que le niveau efficace dans le recouvrement passe de **+3,0 dB**
+   (la somme de deux puissances) à **moins de 0,5 dB** de ce que chacun joue
+   seul : c'est exactement ce que « puissance constante » veut dire, et c'est
+   le cas ordinaire d'un fondu croisé, qui joint deux prises DIFFÉRENTES.
+   Sur deux matériaux **identiques**, j'attends que la crête passe de
+   **+6,0 dB** à **+3,0 dB** avec la puissance constante, et à **0 dB** avec
+   la forme linéaire. **La puissance constante n'est donc pas parfaite
+   partout, et c'est pourquoi la forme reste réglable** : un fondu croisé
+   entre deux copies du même son est le cas où le linéaire gagne, et il est
+   rare. Choisir un défaut ne doit pas revenir à cacher l'autre cas.
+2. **D34.2** — j'attends qu'un test écrit AVANT la fonction confirme que
+   l'édition se propage **aujourd'hui** entre deux copies. Si elle ne se
+   propageait pas, l'analyse de `duplicateClips` serait fausse et l'étape
+   entière serait à réécrire — c'est le genre de vérification qu'on doit
+   faire avant d'annoncer une fonction, pas après.
+3. **D34.5** — j'attends **moins de 1 %** d'écart sur le sinus et **au plus
+   deux points par période** au-delà de ce qu'il faut pour tenir ce 1 % : le
+   critère de tolérance et celui de parcimonie tirent en sens contraires, et
+   ne mesurer que le premier laisserait passer une forme qui triche en
+   posant mille points.
+
+> **D34.1 EST FAITE (07/09/2026, 02:10), ET L'AUDIT AVAIT MAL POSÉ LE MANQUE.**
+> Le tableau ci-dessus dit « `spansFromTrack` fabrique chaque portée sans
+> jamais regarder sa voisine ». **C'est faux, et c'est écrit plutôt
+> qu'effacé.** Le fondu croisé existe depuis **D13.1** : les portées sont
+> triées et les recouvrements traités, à la fin de la même fonction — vingt
+> lignes plus bas que là où j'avais arrêté ma lecture. `grep -i crossfade` ne
+> rendait rien parce que le code dit « chevauchent » et « se fondent l'une
+> dans l'autre ».
+>
+> **C'est la deuxième phase de suite où le vocabulaire est le mauvais outil**
+> (D33.5 : l'aimant relatif ; ici : le fondu croisé), et cette fois la leçon
+> était DÉJÀ écrite au-dessus de ma table. La relire ne suffit donc pas : ce
+> qui manquait est la discipline de lire la fonction **jusqu'au bout**. Un
+> `sed -n '266,346p'` n'est pas une lecture, c'est un autre grep.
+>
+> **LE VRAI MANQUE EST PLUS FIN, ET D17.1 L'AVAIT LUI-MÊME MESURÉ SANS EN
+> TIRER LA CONSÉQUENCE.** D17.1 a mesuré que deux droites qui se croisent
+> creusent 3 dB sur du matériau décorrélé, a donné une forme au clip — et a
+> laissé `Linear` par défaut pour ne rien changer aux projets existants. Le
+> fondu croisé **automatique**, celui que personne ne demande et que tout le
+> monde reçoit, est donc resté sur la courbe que la même étape avait démontrée
+> fausse. Et les tests de D17.1 posaient leurs fondus **à la main, sur deux
+> pistes séparées** : ils ne traversaient pas une seule fois le chemin
+> automatique.
+>
+> **Ce qui a été fait.** Le fondu croisé a désormais son propre champ
+> (`crossfadeInFrames`, `crossfadeOutFrames`, `crossfadeShape`), distinct des
+> fondus dessinés. Il peut donc porter SA forme sans toucher à la leur : un
+> fondu d'entrée reste `Linear` par défaut, au bit près, et la jonction entre
+> deux prises passe à la puissance constante. La préséance, sur chaque bord,
+> va **du plus intentionnel au plus machinal** — le fondu de l'utilisateur
+> (quand il est le plus long, règle de D13.1 conservée), puis le fondu croisé,
+> puis le fondu de sécurité de D33.2.
+>
+> **L'attendu était juste des deux côtés, y compris là où il annonçait un
+> revers.**
+>
+> | matériau | linéaire (avant) | puissance constante (après) |
+> |---|---|---|
+> | **décorrélé** (deux prises) | **−3,07 dB** | **−0,07 dB** |
+> | **identique** (deux copies) | +0,00 dB | **+3,01 dB** |
+>
+> Le nouveau défaut est meilleur là où l'on croise vraiment deux prises, et
+> **moins bon** là où l'on croise un son avec lui-même. Ce second chiffre est
+> mesuré et publié plutôt que tu : c'est pourquoi **la forme est une donnée du
+> PROJET** (`Project::crossfadeShape`, écrite dans `project.json` seulement si
+> elle diffère du défaut) et non une préférence — elle change ce que le morceau
+> SONNE, et un projet doit s'exporter comme il se joue. C'est mot pour mot la
+> raison qui avait fait entrer les réglages du master dans le fichier.
+>
+> **UNE PANNE MUETTE TROUVÉE EN CHEMIN, ET RÉPARÉE.** Le **fondu de sécurité
+> de D33.2 manquait au rendu hors ligne** : il avait été posé dans
+> `loadAudioTracks`, du côté de l'application seule. Un projet EXPORTÉ claquait
+> donc aux bords de ses clips là où sa LECTURE ne claquait pas. C'est le
+> troisième exemplaire de la même erreur que `OfflineReconstruction.cpp`
+> collectionne — le calage des portées étirées (D12.5), les inserts, ceci — et
+> la parade a été prise cette fois-ci : **le fondu croisé est posé DANS
+> `spansFromTrack`**, la fonction que les deux chemins appellent, plutôt que
+> chez chacun d'eux. Ce qui doit valoir pour deux appelants se met dans ce
+> qu'ils appellent.
+>
+> **Vérifié à l'écran**, sur un projet à deux clips audio qui se recouvrent
+> d'une seconde : `VSM_VUE=fondu-croise:lineaire` puis `VSM_MENU="Puissance
+> constante"` rendent « appliquée à **2 jonction(s)** de clips audio » et
+> « *Puissance constante (deux prises différentes)* exécutée (menu Mixage) ».
+> Les deux chemins empruntent la MÊME méthode (`setCrossfadeShape`) : ce qu'on
+> photographie est ce que le geste fait.
+>
+> **ET `VSM_MENU` DIT ENFIN CE QU'IL A EXÉCUTÉ.** Il se taisait en cas de
+> succès, si bien qu'« aucune erreur » ne distinguait pas « l'entrée a été
+> jouée » de « la commande n'a pas tourné du tout ». Il écrit désormais le
+> libellé RETENU en entier et le menu d'où il vient — précisément ce qui aurait
+> évité la panne du 06/09, où « Automatique » a piloté les threads de rendu au
+> lieu du mode d'écoute.
+>
+> Tests : **1 279 audio** (5 neufs), 294 core, **285 interchange** (2 neufs) —
+> tous verts.

@@ -1124,6 +1124,15 @@ bool MainComponent::runMenuEntryForCapture(const juce::String& libelle) {
                 return false;
             }
             menuItemSelected(item.itemID, i);
+            // D34.1 : ON DIT CE QU'ON A EXÉCUTÉ. Le silence en cas de succès
+            // rendait la vérification bancale : « aucune erreur » ne distingue
+            // pas « l'entrée a été jouée » de « la commande n'a pas tourné du
+            // tout ». Le libellé retenu est écrit en entier, parce qu'un
+            // préfixe peut avoir attrapé une AUTRE entrée que celle qu'on
+            // visait -- c'est exactement la panne du 06/09 (« Automatique »).
+            std::fputs(("VSM_MENU : \u00ab " + item.text.toStdString()
+                        + " \u00bb ex\u00e9cut\u00e9e (menu " + noms[i].toStdString() + ")\n").c_str(),
+                       stderr);
             return true;
         }
     }
@@ -1344,6 +1353,28 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     // D33.2 : « fondu-securite:0 » l'éteint, « fondu-securite:5 » l'allonge --
     // et les clips sont RECHARGÉS, sans quoi le réglage ne prendrait qu'au
     // prochain chargement de projet.
+    // D34.1 : « fondu-croise:puissance|lineaire|lente|rapide ». Elle emprunte
+    // la MÊME méthode que l'entrée de menu, et DIT la forme obtenue -- une
+    // capture d'écran ne montre pas une courbe de fondu, et vérifier l'absence
+    // d'erreur ne vérifie rien.
+    else if (nom.startsWith("fondu-croise:")) {
+        const juce::String demande = nom.substring(13);
+        const auto forme = demande == "lineaire" ? vsm::sequencer::FadeShape::Linear
+                         : demande == "lente"    ? vsm::sequencer::FadeShape::Slow
+                         : demande == "rapide"   ? vsm::sequencer::FadeShape::Fast
+                                                 : vsm::sequencer::FadeShape::EqualPower;
+        if (demande != "puissance" && demande != "lineaire" && demande != "lente"
+            && demande != "rapide") {
+            std::fputs("VSM_VUE fondu-croise : attendu puissance, lineaire, lente ou rapide\n", stderr);
+            return;
+        }
+        setCrossfadeShape(forme);
+        std::fputs((juce::String::fromUTF8(u8"Forme des fondus croisés : ") + demande
+                     + juce::String::fromUTF8(u8" — appliquée à ")
+                     + juce::String(audioSpansWithCrossfade())
+                     + juce::String::fromUTF8(u8" jonction(s) de clips audio.\n")).toRawUTF8(),
+                    stderr);
+    }
     else if (nom.startsWith("fondu-securite:")) {
         safetyFadeMs_ = juce::jlimit(0.0, 50.0, nom.substring(15).getDoubleValue());
         vsm::app::ui::UiScale::properties().setValue("fonduDeSecuriteMs", safetyFadeMs_);
@@ -2610,6 +2641,25 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addSeparator();
             menu.addItem(kMenuMixMonoListen, u8"\u00c9coute en mono (jamais dans un export)", true,
                          audioEngine_.processGraph().masterBus().monoListen());
+            // D34.1 : LA FORME DES FONDUS CROISÉS. Une donnée du MORCEAU, et
+            // non une préférence : elle change ce que l'export contient.
+            {
+                juce::PopupMenu formes;
+                const auto coche = [&](vsm::sequencer::FadeShape f) {
+                    return project_.crossfadeShape == f;
+                };
+                formes.addItem(kMenuMixCrossfadeEqualPower,
+                                juce::String::fromUTF8(u8"Puissance constante (deux prises différentes)"),
+                                true, coche(vsm::sequencer::FadeShape::EqualPower));
+                formes.addItem(kMenuMixCrossfadeLinear,
+                                juce::String::fromUTF8(u8"Linéaire (deux copies du même son)"),
+                                true, coche(vsm::sequencer::FadeShape::Linear));
+                formes.addItem(kMenuMixCrossfadeSlow, juce::String::fromUTF8(u8"Lente"),
+                                true, coche(vsm::sequencer::FadeShape::Slow));
+                formes.addItem(kMenuMixCrossfadeFast, juce::String::fromUTF8(u8"Rapide"),
+                                true, coche(vsm::sequencer::FadeShape::Fast));
+                menu.addSubMenu(juce::String::fromUTF8(u8"Forme des fondus croisés"), formes);
+            }
             break;
         case 5:
             menu.addItem(kMenuViewSingleWindow, juce::String::fromUTF8(u8"Fenêtre unique"),
@@ -2736,6 +2786,14 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         for (const auto& [code, note] : computerKeysDown_) audioEngine_.playComputerKey(note, 0, false);
         computerKeysDown_.clear();
         audioEngine_.processGraph().requestPanic();
+        return;
+    }
+    if (menuItemID >= kMenuMixCrossfadeLinear && menuItemID <= kMenuMixCrossfadeFast) {
+        // LES QUATRE ENTRÉES SONT CONTIGUES ET DANS L'ORDRE DE `FadeShape` :
+        // la soustraction suffit, et une cinquième forme n'exigerait rien
+        // d'autre qu'une ligne de menu.
+        setCrossfadeShape(static_cast<vsm::sequencer::FadeShape>(
+            static_cast<uint8_t>(menuItemID - kMenuMixCrossfadeLinear)));
         return;
     }
     if (menuItemID == kMenuMixMonoListen) {
@@ -6198,6 +6256,32 @@ void MainComponent::editTimeAtLocators(bool inserer) {
     juce::ignoreUnused(touches);
 }
 
+// D34.1 : LA FORME DES FONDUS CROISÉS, changée EN MARCHE.
+//
+// UN SEUL CHEMIN POUR LE MENU ET POUR LA COMMANDE DE VÉRIFICATION. Ce qu'on
+// photographie doit être ce que le geste fait, sans quoi la capture prouve
+// l'existence d'un second chemin et rien d'autre -- c'est ce que D33.3 avait
+// déjà écrit du scrub.
+/// Combien de bords de clips audio portent un fondu croisé, tous chargés
+/// confondus. Ce que la commande de vérification AFFICHE : « la forme est
+/// posée » ne prouve rien si aucune jonction ne la reçoit.
+int MainComponent::audioSpansWithCrossfade() const {
+    int compte = 0;
+    for (size_t i = 0; i < project_.tracks.size(); ++i)
+        if (const auto source = audioEngine_.processGraph().trackAudio(i))
+            for (const auto& span : source->clips)
+                if (span.crossfadeInFrames > 0 || span.crossfadeOutFrames > 0) ++compte;
+    return compte;
+}
+
+void MainComponent::setCrossfadeShape(vsm::sequencer::FadeShape forme) {
+    project_.crossfadeShape = forme;
+    // LES CLIPS SONT RECHARGÉS : sans quoi le réglage ne prendrait qu'au
+    // prochain chargement de projet -- la leçon de D33.2, telle quelle.
+    loadAudioTracks();
+    markProjectDirty();
+}
+
 void MainComponent::loadAudioTracks() {
     const double sr = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate()
                                                               : 48000.0;
@@ -6261,7 +6345,8 @@ void MainComponent::loadAudioTracks() {
         }
 
         charge.source->clips = vsm::audio::engine::spansFromTrack(
-            pourLesClips, sr, [this](int64_t tick) { return project_.ticksToSeconds(tick); });
+            pourLesClips, sr, [this](int64_t tick) { return project_.ticksToSeconds(tick); },
+            project_.crossfadeShape);
         // LES CLIPS QUI SUIVENT LE TEMPO (D12.5) : les attaques du fichier se
         // cherchent ICI, une fois par piste, hors du thread audio -- comme le
         // cache d'aperçu juste au-dessus, et pour la même raison.

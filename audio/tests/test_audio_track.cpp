@@ -435,10 +435,14 @@ VSM_TEST(overlapping_audio_clips_crossfade_instead_of_summing) {
     a.id = 1; a.startTick = 0; a.length = 1920; a.sourceLength = 1920;
     b.id = 2; b.startTick = 960; b.length = 1920; b.sourceLength = 1920; b.sourceStartSeconds = 1.0;
     piste.clips = {a, b};
-    source->clips = spansFromTrack(piste, 48000.0, enSecondes960);
+    // D34.1 : LE FONDU CROISÉ A SON PROPRE CHAMP, distinct des fondus que
+    // l'utilisateur dessine. Il l'a acquis pour pouvoir porter SA forme sans
+    // toucher à la leur -- voir le banc D34.1 plus bas.
+    source->clips = spansFromTrack(piste, 48000.0, enSecondes960,
+                                    vsm::sequencer::FadeShape::Linear);
     VSM_ASSERT_EQ(source->clips.size(), size_t(2));
-    VSM_ASSERT_EQ(source->clips[0].fadeOutFrames, int64_t(48000));
-    VSM_ASSERT_EQ(source->clips[1].fadeInFrames, int64_t(48000));
+    VSM_ASSERT_EQ(source->clips[0].crossfadeOutFrames, int64_t(48000));
+    VSM_ASSERT_EQ(source->clips[1].crossfadeInFrames, int64_t(48000));
     auto [ol, orr] = jouer(*source, 48000 * 3, 512);
     double pire = 0.0;
     for (size_t i = 0; i < ol.size(); ++i) pire = std::max(pire, std::abs(static_cast<double>(ol[i]) - 0.5));
@@ -447,11 +451,30 @@ VSM_TEST(overlapping_audio_clips_crossfade_instead_of_summing) {
                 ol[24000], ol[72000], ol[120000], pire);
     VSM_ASSERT(pire < 1e-4);
 
-    // Un fondu réglé PLUS LONG que le chevauchement est gardé.
+    // ET VOICI LE PRIX DU NOUVEAU DÉFAUT, mesuré sur le MÊME banc plutôt que
+    // caché (D34.1). Ce fichier est CONSTANT, donc parfaitement corrélé : c'est
+    // le seul cas où le linéaire est exact, et la puissance constante y monte de
+    // 3 dB. Le banc D34.1 mesure l'autre cas, celui du montage réel, où les rôles
+    // s'inversent. La forme est un réglage du PROJET parce qu'aucune des deux
+    // n'est bonne partout.
+    auto puissance = std::make_shared<vsm::audio::engine::AudioTrackSource>();
+    puissance->setMemorySamples(std::vector<float>(48000 * 4, 0.5f),
+                                 std::vector<float>(48000 * 4, 0.5f));
+    puissance->clips = spansFromTrack(piste, 48000.0, enSecondes960,
+                                       vsm::sequencer::FadeShape::EqualPower);
+    auto [pl, pr] = jouer(*puissance, 48000 * 3, 512);
+    std::printf("    [banc fondu enchaîné] à puissance constante, à 1,5 s : %.4f (contre 0,5000)\n",
+                pl[72000]);
+    VSM_ASSERT_NEAR(pl[72000], 0.5f * 1.41421356f, 1e-3f);
+
+    // Un fondu réglé PLUS LONG que le chevauchement est gardé, et il reste dans
+    // SON champ : le fondu croisé ne s'y pose pas.
     piste.clips[0].fadeOutSeconds = 1.5;
-    auto spans = spansFromTrack(piste, 48000.0, enSecondes960);
+    auto spans = spansFromTrack(piste, 48000.0, enSecondes960,
+                                 vsm::sequencer::FadeShape::Linear);
     VSM_ASSERT_EQ(spans[0].fadeOutFrames, int64_t(72000));
-    VSM_ASSERT_EQ(spans[1].fadeInFrames, int64_t(48000));
+    VSM_ASSERT_EQ(spans[0].crossfadeOutFrames, int64_t(0));
+    VSM_ASSERT_EQ(spans[1].crossfadeInFrames, int64_t(48000));
 }
 
 // ---------------------------------------------------------------------------
@@ -837,4 +860,168 @@ VSM_TEST(a_zero_safety_fade_leaves_the_old_path_untouched) {
     source->mixInto(g.data(), d.data(), 0, 500);
     // Le premier échantillon est le matériau tel quel : 1,0.
     VSM_ASSERT_NEAR(g[0], 1.0f, 1e-6f);
+}
+
+// ---------------------------------------------------------------------------
+// D34.1 — LA FORME DU FONDU CROISÉ AUTOMATIQUE.
+//
+// CE QUE L'AUDIT AVAIT MAL POSÉ, et il faut le dire : le manque écrit dans la
+// feuille de route était « il n'y a pas de fondu croisé ». Il y en a un depuis
+// D13.1, et `grep -i crossfade` ne rendait rien parce que le code dit
+// « chevauchent » et « se fondent l'une dans l'autre ». C'est, pour la
+// deuxième phase d'affilée, la leçon de D33.5 : un manque supposé se vérifie
+// en LISANT le code qui devrait le porter.
+//
+// LE VRAI MANQUE EST PLUS FIN, et D17.1 l'avait lui-même mesuré sans en tirer
+// la conséquence : deux droites qui se croisent creusent 3 dB sur du matériau
+// décorrélé. D17.1 a donné la forme au CLIP, avec `Linear` par défaut pour ne
+// rien changer aux projets existants -- et le fondu croisé AUTOMATIQUE, celui
+// que personne ne demande et que tout le monde reçoit, est donc resté sur la
+// courbe que la même étape avait démontrée fausse. Les tests de D17.1 posaient
+// leurs fondus à la MAIN, sur deux pistes séparées : ils ne traversaient pas
+// `applyCrossfades` une seule fois.
+//
+// L'attendu, écrit avant la mesure : « sur deux matériaux décorrélés, le creux
+// au croisement passe de -3,0 dB à moins de 0,5 dB. Sur deux matériaux
+// IDENTIQUES, la crête passe de 0 dB (le linéaire, qui y est parfait) à
+// +3,0 dB : la puissance constante n'est donc pas meilleure partout, et c'est
+// pourquoi la forme reste un choix du projet. »
+// ---------------------------------------------------------------------------
+
+namespace {
+
+/// Du bruit reproductible, assez long pour qu'on y prenne deux fenêtres
+/// éloignées -- donc décorrélées -- dans le MÊME matériau de piste.
+std::shared_ptr<AudioTrackSource> unBruitLong(int64_t frames) {
+    auto source = std::make_shared<AudioTrackSource>();
+    std::vector<float> g(static_cast<size_t>(frames)), d(static_cast<size_t>(frames));
+    uint32_t etat = 12345u;
+    for (int64_t i = 0; i < frames; ++i) {
+        etat = etat * 1664525u + 1013904223u;
+        const float v = static_cast<float>(static_cast<int32_t>(etat >> 8) % 20001 - 10000) / 10000.0f;
+        g[static_cast<size_t>(i)] = v;
+        d[static_cast<size_t>(i)] = v;
+    }
+    source->setMemorySamples(std::move(g), std::move(d));
+    return source;
+}
+
+/// DEUX PORTÉES QUI SE RECOUVRENT SUR LA MÊME PISTE, passées par
+/// `applyCrossfades` -- le chemin automatique, celui que l'application et le
+/// rendu hors ligne empruntent tous les deux. `sourceB` décide si les deux
+/// matériaux sont décorrélés (deux fenêtres éloignées) ou identiques (la même).
+std::vector<float> recouvrementAutomatique(vsm::sequencer::FadeShape forme, int64_t sourceB) {
+    constexpr int64_t kLong = 96000;    // deux secondes à 48 kHz
+    constexpr int64_t kDecalage = 48000; // le second entre une seconde avant la fin
+
+    auto source = unBruitLong(400000);
+    AudioClipSpan a;
+    a.startFrame = 0; a.lengthFrames = kLong; a.sourceStartFrame = 0;
+    AudioClipSpan b;
+    b.startFrame = kDecalage; b.lengthFrames = kLong; b.sourceStartFrame = sourceB;
+    source->clips = {a, b};
+    applyCrossfades(source->clips, forme);
+
+    const auto total = static_cast<size_t>(kDecalage + kLong);
+    std::vector<float> gauche(total, 0.0f), droite(total, 0.0f);
+    source->mixInto(gauche.data(), droite.data(), 0, static_cast<int>(total));
+    return gauche;
+}
+
+} // namespace
+
+VSM_TEST(the_automatic_crossfade_digs_three_decibels_when_it_is_linear) {
+    // LE TÉMOIN EST LA MÊME PASSE, forme changée : une seule variable, et elle
+    // est un ARGUMENT, jamais une constante éditée entre deux mesures.
+    const auto lineaire = recouvrementAutomatique(vsm::sequencer::FadeShape::Linear, 200000);
+    const auto puissance = recouvrementAutomatique(vsm::sequencer::FadeShape::EqualPower, 200000);
+
+    // La référence : hors du recouvrement, une seule portée sonne.
+    const double refLin = niveauDb(lineaire, 4000, 36000);
+    const double refPui = niveauDb(puissance, 4000, 36000);
+    VSM_ASSERT(refLin > -30.0);   // sinon le test ne prouve rien
+
+    // Au point de croisement : le milieu de la seconde de recouvrement.
+    const size_t croisement = 48000 + 48000 / 2;
+    const double creuxLin = niveauDb(lineaire, croisement - 2000, 4000) - refLin;
+    const double creuxPui = niveauDb(puissance, croisement - 2000, 4000) - refPui;
+
+    std::printf("      [D34.1] décorrélé, croisement : linéaire %+.2f dB, égale puissance %+.2f dB\n",
+                creuxLin, creuxPui);
+    VSM_ASSERT(creuxLin < -2.0);              // le défaut d'avant la phase
+    VSM_ASSERT(std::abs(creuxPui) < 0.5);     // ce que le nouveau défaut tient
+}
+
+VSM_TEST(the_equal_power_crossfade_bumps_three_decibels_on_identical_material) {
+    // LE REVERS, MESURÉ ET PUBLIÉ PLUTÔT QUE TU. Sur deux copies du MÊME son,
+    // ce sont les amplitudes qui s'ajoutent, et c'est le linéaire qui tient le
+    // niveau. Le nouveau défaut est donc meilleur là où l'on croise vraiment
+    // deux prises, et moins bon là où l'on croise un son avec lui-même -- ce
+    // qui n'arrive qu'en dupliquant un clip sur place.
+    // 48 000 ET NON ZÉRO : la seconde portée entre une seconde plus tard, donc
+    // sa fenêtre doit commencer une seconde plus loin pour qu'au même instant
+    // les deux jouent la MÊME trame. Avec zéro, les deux matériaux étaient
+    // décalés d'une seconde de bruit -- c'est-à-dire décorrélés, et la mesure
+    // rendait deux fois le même chiffre que le banc précédent.
+    const auto lineaire = recouvrementAutomatique(vsm::sequencer::FadeShape::Linear, 48000);
+    const auto puissance = recouvrementAutomatique(vsm::sequencer::FadeShape::EqualPower, 48000);
+
+    const double refLin = niveauDb(lineaire, 4000, 36000);
+    const double refPui = niveauDb(puissance, 4000, 36000);
+    const size_t croisement = 48000 + 48000 / 2;
+    const double ecartLin = niveauDb(lineaire, croisement - 2000, 4000) - refLin;
+    const double ecartPui = niveauDb(puissance, croisement - 2000, 4000) - refPui;
+
+    std::printf("      [D34.1] identique, croisement : linéaire %+.2f dB, égale puissance %+.2f dB\n",
+                ecartLin, ecartPui);
+    VSM_ASSERT(std::abs(ecartLin) < 0.5);            // parfait, et c'est son cas
+    VSM_ASSERT(ecartPui > 2.0 && ecartPui < 4.0);    // +3 dB, et on le dit
+}
+
+VSM_TEST(a_hand_drawn_fade_longer_than_the_overlap_keeps_its_length_and_its_shape) {
+    // LA RÈGLE DU PLUS LONG DES DEUX, celle de D13.1, tient toujours : un
+    // fondu dessiné plus long que le recouvrement n'est pas remplacé. Et il
+    // garde SA forme -- sans quoi la phase changerait un geste en réglant un
+    // automatisme.
+    AudioClipSpan a;
+    a.startFrame = 0; a.lengthFrames = 96000;
+    a.fadeOutFrames = 60000;                                  // plus long que les 48 000
+    a.fadeShape = vsm::sequencer::FadeShape::Slow;
+    AudioClipSpan b;
+    b.startFrame = 48000; b.lengthFrames = 96000;
+
+    std::vector<AudioClipSpan> spans = {a, b};
+    applyCrossfades(spans, vsm::sequencer::FadeShape::EqualPower);
+
+    // Rien posé sur le bord de sortie du premier : le sien était déjà plus long.
+    VSM_ASSERT(spans[0].crossfadeOutFrames == 0);
+    VSM_ASSERT(spans[0].fadeOutFrames == 60000);
+    VSM_ASSERT(spans[0].fadeShape == vsm::sequencer::FadeShape::Slow);
+    // Le second, lui, n'avait rien : il reçoit le fondu croisé et sa forme.
+    VSM_ASSERT(spans[1].crossfadeInFrames == 48000);
+    VSM_ASSERT(spans[1].crossfadeShape == vsm::sequencer::FadeShape::EqualPower);
+}
+
+VSM_TEST(applying_the_crossfades_twice_changes_nothing) {
+    // Elle est appelée par `spansFromTrack`, et rien n'interdit qu'un appelant
+    // la rappelle. Un fondu qui doublerait serait un trou au milieu.
+    AudioClipSpan a; a.startFrame = 0; a.lengthFrames = 96000;
+    AudioClipSpan b; b.startFrame = 48000; b.lengthFrames = 96000;
+    std::vector<AudioClipSpan> une = {a, b};
+    applyCrossfades(une, vsm::sequencer::FadeShape::EqualPower);
+    std::vector<AudioClipSpan> deux = une;
+    applyCrossfades(deux, vsm::sequencer::FadeShape::EqualPower);
+    VSM_ASSERT(une[0].crossfadeOutFrames == deux[0].crossfadeOutFrames);
+    VSM_ASSERT(une[1].crossfadeInFrames == deux[1].crossfadeInFrames);
+}
+
+VSM_TEST(clips_that_do_not_touch_get_no_crossfade_at_all) {
+    // Le chemin d'avant la phase, intact : sans recouvrement, aucun fondu
+    // croisé, et le fondu de sécurité reste seul maître des bords.
+    AudioClipSpan a; a.startFrame = 0; a.lengthFrames = 48000;
+    AudioClipSpan b; b.startFrame = 96000; b.lengthFrames = 48000;
+    std::vector<AudioClipSpan> spans = {a, b};
+    applyCrossfades(spans, vsm::sequencer::FadeShape::EqualPower);
+    VSM_ASSERT(spans[0].crossfadeOutFrames == 0);
+    VSM_ASSERT(spans[1].crossfadeInFrames == 0);
 }
