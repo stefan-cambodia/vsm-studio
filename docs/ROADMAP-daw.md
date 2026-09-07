@@ -8589,3 +8589,47 @@ Tests : 1 283 audio, 319 core, 285 interchange, 25 clap, 11 panels — verts.
 > Vérifié à l'écran : sur `children-dream-v7` en lecture, la tranche **`other`**
 > porte son nom en ambre, et elle seule — c'est bien la piste que les deux
 > relevés donnaient la plus chère (136 puis 106 µs).
+
+### Vérification D45 — Ouvrir puis enregistrer une VRAIE reconstruction ne perd rien (07/09/2026, 23:58)
+
+**Pourquoi cette vérification n'avait jamais été faite.** L'invariant n° 5 du
+§ 6 dit « rien ne se perd et rien ne ment », et chaque champ a son test
+d'aller-retour dans `test_project_document.cpp`. Mais **aucun n'avait jamais
+traversé un vrai projet** : ils construisent tous leur propre exemple. Or c'est
+un vrai projet que l'utilisateur ouvre.
+
+**Le protocole**, sur une COPIE — jamais sur les données de l'utilisateur :
+ouvrir `reconstruction/children-dream-v7` (six pistes, six machines, 5 584
+notes), presser Ctrl+S par le chemin du clavier (`VSM_TOUCHE`), et comparer.
+
+**LES NOTES SONT IDENTIQUES, PISTE PAR PISTE** : 876, 580, 2192, 421, 416,
+1099 — lues avec le lecteur MIDI du projet, non avec un comptage d'octets (le
+premier essai, à l'octet, rendait 4 166 puis 6 145 et n'aurait rien prouvé).
+**Rien n'est perdu, rien n'est inventé.**
+
+**LE FICHIER MIDI DOUBLE POURTANT DE TAILLE** — 45 868 → 84 758 octets —, et
+c'est la seule chose qui demandait une explication. Elle tient en cinq
+méta-événements : le bloc privé `0x7F` de D6.3, qui fait voyager le `muted` et
+la CONFIANCE de chaque note. Le fichier d'origine, écrit par la chaîne, ne les
+portait pas ; le DAW les ajoute. **Il grossit parce qu'il conserve davantage,
+pas parce qu'il réécrit mal.**
+
+**CE QUI CHANGE DANS `project.json`, ET POURQUOI CHACUN EST LÉGITIME :**
+version 1 → 2 (conversion vide, documentée) ; les paramètres du master écrits
+avec leurs valeurs par défaut ; les clips matérialisés (« une piste avec du
+matériau et sans clip joue mais ne se voit pas ») ; la couleur `#06D6A0FF`
+rendue opaque — une réparation **délibérée et commentée** des projets écrits
+avant que la chaîne ne corrige son ordre d'octets.
+
+**LE SEUL VRAI ÉCART EST LA PRÉCISION DES VOLUMES**, et il est chiffré :
+6,731937604802863 devient 6,731937 — le modèle les tient en `float`, le fichier
+en double. Écart maximal **2,05 × 10⁻⁷**, soit **0,000000 dB**. C'est le prix
+d'un `float`, et il est payé sous le seuil de l'audible par six ordres de
+grandeur.
+
+**ET LA LEÇON DE LA JOURNÉE SE CONFIRME ICI ENCORE.** Ce contrôle a été fait
+parce qu'une vraie reconstruction venait de montrer deux défauts que le banc ne
+pouvait pas voir (D42.3). Cette fois elle n'en montre aucun — **et c'est un
+résultat, pas une absence de résultat** : « rien ne se perd » cesse d'être une
+règle écrite pour devenir un chiffre mesuré sur les données que le logiciel
+rencontre vraiment.
