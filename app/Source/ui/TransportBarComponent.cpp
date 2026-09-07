@@ -384,17 +384,28 @@ void TransportBarComponent::setCpuUsage(float percent) {
     // 90 il ne craque pas encore mais la moindre note de plus le fera. Un
     // témoin qui n'alerte qu'une fois le mal fait arrive trop tard pour servir.
     //
-    // LES SEUILS SONT CEUX DE LA MESURE, pas des chiffres ronds choisis pour
-    // faire joli : D41.1 a relevé `vsm.additive` à 125 % du budget sur
-    // 64 pistes et `vsm.plate` à 258 %, quand le Minimoog en tient 21 %. La
-    // zone où l'on bascule de l'un à l'autre est bien celle-là.
+    // LES SEUILS SONT CEUX DE LA MESURE, et la mesure a été REFAITE.
+    //
+    // Une première version de ce commentaire citait 125 % et 258 % du budget
+    // pour `vsm.additive` et `vsm.plate` à 64 pistes. Ces chiffres étaient
+    // MONO-CŒUR : le banc ne réglait pas les fils de rendu, que l'application
+    // met sur « automatique » (jusqu'à huit). Remesuré comme joue le logiciel :
+    // Minimoog 5,5 %, CS-80 26,2 %, additif 28,6 %, plaque 53,5 % -- tout tient
+    // largement, et la plus chère laisse encore la moitié du budget.
+    //
+    // LES SEUILS RESTENT LES MÊMES, et pour une raison qui ne dépend pas de ces
+    // chiffres-là : 90 % est l'endroit où un bloc finit par arriver en retard,
+    // quelle que soit la machine qui a consommé le temps. Ce que la correction
+    // change, c'est l'idée qu'on s'en fait -- on n'atteint ces seuils qu'avec
+    // des inserts, des effets et un projet chargé, pas avec 64 pistes nues.
     const juce::Colour couleur = percent >= 90.0f ? vsm::ui::Palette::accentRed
                                : percent >= 70.0f ? vsm::ui::Palette::accentAmber
                                                   : vsm::ui::Palette::textSecondary;
     cpuLabel_.setColour(juce::Label::textColourId, couleur);
     cpuLabel_.setTooltip(percent >= 90.0f
         ? juce::String::fromUTF8(u8"Le moteur n'a plus le temps de calculer un bloc : le son craque. "
-                                  u8"Geler une piste (Piste ▸ Geler) ou agrandir le tampon audio.")
+                                  u8"« Piste ▸ Geler la piste » libère son instrument, "
+                                  u8"ou agrandir le tampon audio.")
         : juce::String::fromUTF8(u8"Part du temps réel consommée par le calcul du son."));
 }
 

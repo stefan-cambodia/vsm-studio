@@ -107,10 +107,25 @@ int main(int argc, char** argv) {
     // tant » ferait passer la plus légère pour la règle. C'est une option de
     // banc, pas une constante éditée entre deux passes.
     const std::string machine = (argc > 1) ? argv[1] : "vsm.minimoog";
+    // LES FILS DE RENDU SONT UNE OPTION DU BANC, ET C'EST UNE CORRECTION.
+    //
+    // La première version ne les réglait pas : la réserve restait à ZÉRO fil et
+    // le banc mesurait le moteur sur UN cœur, alors que l'application le règle
+    // sur « automatique » (jusqu'à huit, mesurés en D8). Les 125 % et 258 % du
+    // budget publiés par D41 sont donc des chiffres mono-cœur présentés comme
+    // ceux du logiciel.
+    //
+    // Passé en OPTION plutôt qu'en constante : le témoin (un fil) et la mesure
+    // (huit) sortent du même binaire, comme l'exige la règle des A/B du projet.
+    const size_t fils = (argc > 2)
+        ? static_cast<size_t>(std::stoul(argv[2]))
+        : vsm::audio::engine::ProcessGraph::recommendedRenderThreadCount();
 
     const size_t machines = vsm::audio::plugin::PluginRegistry::instance().listAvailable().size();
     std::printf("=== D40 : LE DAW À %zu MACHINES, MESURÉ DE 8 À 64 PISTES ===\n", machines);
-    std::printf("  machine mesurée : %s (première option de la ligne de commande)\n", machine.c_str());
+    std::printf("  machine mesurée : %s ; fils de rendu : %zu (recommandé : %zu)\n",
+                machine.c_str(), fils,
+                vsm::audio::engine::ProcessGraph::recommendedRenderThreadCount());
     std::printf("  (chaque ligne de piste remplit un sélecteur avec TOUT le registre)\n\n");
 
     std::printf("  %-8s %12s %12s %12s\n", "pistes", "liste (ms)", "mixeur (ms)", "notes");
@@ -184,6 +199,7 @@ int main(int argc, char** argv) {
             Project projet = projetDeNPistes(n, machine);
             vsm::audio::engine::ProcessGraph graphe;
             graphe.prepare(kSampleRate, kBlock);
+            graphe.setRenderThreadCount(fils);
             const double montage = millisecondes([&] {
                 graphe.setProject(projet);
                 for (int i = 0; i < n; ++i)
@@ -213,10 +229,17 @@ int main(int argc, char** argv) {
                 }
             });
             const double parBloc = total / kBlocs;
+            // D42 : LE RENDU PARALLÈLE SERT-IL EN LECTURE ? Le moteur a une
+            // réserve de fils (`RenderThreadPool`) et compte les portées qu'il
+            // rend en parallèle. Si ce compteur reste à zéro pendant que le
+            // transport joue, le DAW calcule sur UN cœur pendant que la machine
+            // en a douze -- et les 125 % du budget de D41 en seraient 21 %.
+            const unsigned long long portees = graphe.parallelSpansRendered();
             // LA CRÊTE EST LA PREUVE QUE ÇA JOUE. Sans elle, un temps de calcul
             // ridicule passerait pour une performance.
-            std::printf("  %-8d %8.1f ms %12.3f %9.1f %%   crête %.3f%s\n",
+            std::printf("  %-8d %8.1f ms %12.3f %9.1f %%   crête %.3f   fils=%zu portées//=%llu%s\n",
                         n, montage, parBloc, 100.0 * parBloc / budgetMs, crete,
+                        graphe.renderThreadCount(), portees,
                         crete < 1.0e-6 ? "  <- SILENCE : LE BANC NE MESURE RIEN" : "");
         }
     }

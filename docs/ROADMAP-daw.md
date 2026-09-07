@@ -8179,3 +8179,55 @@ avant deux boutons qui, eux, ont un menu.
 >
 > Tests : 1 283 audio, 319 core, 285 interchange, 25 clap, 11 panels — verts ;
 > banc d'édition : 11 gestes, 0 muet, 0 désaccord.
+
+> **CORRECTION DE D41, ÉCRITE LE JOUR MÊME (07/09/2026, 20:30) : L'ALARME
+> ÉTAIT UN ARTEFACT DU BANC.** Elle est corrigée ici plutôt qu'effacée, parce
+> que c'est la **troisième fois de la journée** que la même faute est commise,
+> et que sa répétition est plus instructive que le chiffre.
+>
+> **CE QUE LE BANC NE FAISAIT PAS.** Il ne réglait pas les fils de rendu. La
+> réserve (`RenderThreadPool`) restait à **zéro travailleur**, et le moteur
+> calculait tout sur un cœur — alors que l'application met ce réglage sur
+> « automatique » depuis D8, c'est-à-dire jusqu'à **huit** fils, un plafond
+> lui-même choisi par une mesure (×3,70 sur le p99 à huit, contre ×1,80 à
+> douze). **Le banc mesurait une configuration que le logiciel n'emploie
+> jamais.**
+>
+> **LES VRAIS CHIFFRES, À 64 PISTES, TÉMOIN ET MESURE SORTIS DU MÊME BINAIRE**
+> (les fils sont devenus une option de ligne de commande, pas une constante) :
+>
+> | machine | 1 cœur (ce que D41 a publié) | 8 fils (ce que le logiciel fait) |
+> |---|---|---|
+> | `vsm.minimoog` | 2,24 ms — 21,0 % | **0,58 ms — 5,5 %** |
+> | `vsm.cs80` | 10,70 ms — 100,3 % | **2,79 ms — 26,2 %** |
+> | `vsm.additive` | 15,55 ms — 145,8 % | **3,05 ms — 28,6 %** |
+> | `vsm.plate` | 27,37 ms — 256,6 % | **5,71 ms — 53,5 %** |
+>
+> **Le DAW tient 64 pistes de N'IMPORTE LAQUELLE des machines mesurées**, et la
+> plus chère laisse encore la moitié du budget. Le rendu parallèle s'engage bien
+> en lecture — 201 portées parallèles sur 200 blocs —, ce que le compteur
+> `parallelSpansRendered()` dit désormais dans le rapport du banc.
+>
+> **CE QUI RESTE VRAI DE D41.** Le rapport de **42** entre la machine la moins
+> chère et la plus chère ne dépend pas du nombre de fils, et il reste la donnée
+> utile : elle vaut pour le DAW comme pour la reconstruction, qui choisit les
+> machines qu'elle assigne. Le témoin de charge rendu visible, ses trois états
+> et le compte de craquements valent indépendamment de ces chiffres — un bloc
+> arrive en retard au-delà de 90 %, quelle que soit la machine qui a consommé le
+> temps. Ce que la correction change est l'idée qu'on s'en fait : **on n'atteint
+> ces seuils qu'avec des inserts, des effets et un projet chargé, pas avec
+> 64 pistes nues.**
+>
+> **LA MÊME FAUTE, TROIS FOIS, ET SA FORME EST CHAQUE FOIS LA MÊME.** D39 :
+> deux instruments braqués sur le même chemin de code. D41 : une seule machine
+> mesurée, conclusion pour toutes. Ici : une seule configuration du moteur,
+> conclusion pour le logiciel. **À chaque fois j'ai mesuré quelque chose de
+> réel, et j'en ai tiré une phrase plus large que ce que la mesure couvrait.**
+> Ce n'est pas un défaut d'instrument, c'est un défaut de portée.
+>
+> **LA RÈGLE QUI EN SORT, ET ELLE EST PLUS ÉTROITE QU'UNE BONNE RÉSOLUTION.**
+> *Un banc qui mesure le moteur doit le CONFIGURER comme l'application le
+> configure, ou dire dans son rapport quelle configuration il mesure.* Le banc
+> imprime désormais `fils=8 portées//=201` à chaque ligne : le lecteur voit du
+> même coup ce qui a été mesuré et si le chemin parallèle a servi. Un rapport
+> qui tait sa configuration laisse croire qu'il n'y en avait qu'une.
