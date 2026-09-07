@@ -117,11 +117,30 @@ std::vector<uint8_t> WavFileWriter::write(const float* left, const float* right,
                 break;
             }
             case SampleFormat::Float32: {
-                float lc = clampSample(left[i]);
+                // LE FLOTTANT NE S'ÉCRÊTE PAS, ET C'EST TOUTE SA RAISON D'ÊTRE.
+                //
+                // Cette branche appelait `clampSample`. Un WAV 32 bits flottants
+                // porte parfaitement les valeurs au-delà de ±1 -- c'est
+                // précisément pourquoi on exporte en flottant : pour garder la
+                // marge et la rattraper au mastering. Les ramener à ±1 détruit
+                // ce que le format sait tenir, et le détruit EN SILENCE.
+                //
+                // MESURÉ SUR UN VRAI MORCEAU : `children-dream-v7` rend un
+                // mixage dont le pic vaut **1,405** ; le fichier flottant écrit
+                // en rendait 1,0000, et **602 échantillons sur 20,5 millions**
+                // étaient rabotés. Trouvé en vérifiant que la somme des stems
+                // redonne le mixage : elle le redonne à -98 dB partout, sauf là
+                // où le mixage avait été écrêté à l'écriture.
+                //
+                // Les formats ENTIERS, eux, continuent de borner : 16 et 24 bits
+                // ne savent pas représenter au-delà de l'échelle, et y écrire
+                // un dépassement produirait un repliement, c'est-à-dire un son
+                // faux plutôt qu'un son fort.
+                const float lc = left[i];
                 const uint8_t* lp = reinterpret_cast<const uint8_t*>(&lc);
                 out.insert(out.end(), lp, lp + 4);
                 if (right) {
-                    float rc = clampSample(right[i]);
+                    const float rc = right[i];
                     const uint8_t* rp = reinterpret_cast<const uint8_t*>(&rc);
                     out.insert(out.end(), rp, rp + 4);
                 }

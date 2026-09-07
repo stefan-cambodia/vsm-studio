@@ -4257,6 +4257,24 @@ bool MainComponent::exportProjectToFile(const juce::File& file, const vsm::inter
               + juce::String(options.sampleRate / 1000.0, 1) + juce::String(u8" kHz, ") + profondeur
               + juce::String(u8", crête ") + juce::String(static_cast<double>(rendered.peakLevel) * gain, 3) + ".";
     if (niveauDit.isNotEmpty()) message += "\n" + niveauDit;
+    // CE QUI SERA ÉCRÊTÉ EST DIT, ET SEULEMENT QUAND ÇA L'EST.
+    //
+    // Un rendu dont la crête dépasse 1 tient dans un fichier 32 bits flottants
+    // -- c'est sa raison d'être -- mais PAS dans un entier 16 ou 24 bits, qui
+    // le bornera. Le message affichait « crête 1,405 » et laissait
+    // l'utilisateur en tirer la conséquence tout seul.
+    //
+    // Trouvé en mesurant qu'un vrai morceau (`children-dream-v7`) rend un pic
+    // de 1,405 : dans un fichier entier, 602 échantillons sur 20,5 millions
+    // sont rabotés. On le dit, et l'on nomme le remède, qui existe déjà dans
+    // ce même menu.
+    const double cretePubliee = static_cast<double>(rendered.peakLevel) * gain;
+    if (cretePubliee > 1.0 && !flottant)
+        message += juce::String::fromUTF8(u8"\n\nATTENTION : la crête dépasse 0 dBFS (")
+                 + juce::String(20.0 * std::log10(cretePubliee), 1)
+                 + juce::String::fromUTF8(u8" dBFS). Ce format ne peut pas la porter et l'a bornée. "
+                                           u8"« Niveau : crête à -1 dBFS » à l'export l'évite, "
+                                           u8"ou un export en 32 bits flottants la conserve.");
     if (flac && flottant)
         message += juce::String(u8"\nFLAC ne porte pas de flottants : le rendu 32 bits a été écrit en 24 bits.");
     for (const auto& warning : rendered.warnings)

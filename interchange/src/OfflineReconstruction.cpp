@@ -28,6 +28,12 @@ std::string RenderResult::summary() const {
     out << "rendu " << renderedSeconds << " s (" << framesWritten << " échantillons), "
         << tracksWithInstrument << "/" << trackCount << " piste(s) sonorisée(s), pic "
         << peakLevel;
+    // UN PIC AU-DESSUS DE 1 SE DIT, il ne se laisse pas déduire. Le nombre
+    // était déjà là ; « pic 1.40517 » suppose que le lecteur sache qu'au-delà
+    // de 1 un format entier bornera. Le flottant, lui, le porte (voir
+    // WavFileWriter.cpp) -- d'où « selon le format » plutôt qu'une alarme.
+    if (peakLevel > 1.0f)
+        out << " -- AU-DESSUS DE 0 dBFS : conservé en 32 bits flottants, borné en 16 ou 24 bits";
     for (const auto& warning : warnings) out << "\n  " << warning;
     return out.str();
 }

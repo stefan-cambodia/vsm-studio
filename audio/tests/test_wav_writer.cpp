@@ -196,3 +196,38 @@ VSM_TEST(dither_turns_quantisation_distortion_into_noise_and_stays_reproducible)
     VSM_ASSERT(WavFileWriter::write(sinus.data(), nullptr, n, sr, SampleFormat::Float32, true)
                == WavFileWriter::write(sinus.data(), nullptr, n, sr, SampleFormat::Float32, false));
 }
+
+// --- Le flottant garde ce que l'entier ne peut pas tenir --------------------
+// LA RÉGRESSION QUE CE TEST INTERDIT. La branche Float32 appelait
+// `clampSample` comme les branches entières : un mixage dont le pic vaut 1,405
+// s'écrivait à 1,0000 dans un fichier 32 bits flottants, qui sait pourtant le
+// porter. Mesuré sur `children-dream-v7` : 602 échantillons sur 20,5 millions
+// rabotés, sans un mot. Le seul test d'écrêtage existant portait sur Int16,
+// c'est-à-dire sur le cas où borner est JUSTE -- rien ne surveillait l'autre.
+VSM_TEST(wav_writer_float32_keeps_what_exceeds_full_scale) {
+    std::vector<float> left = {1.405f, -1.405f, 3.0f, 0.5f};
+    auto bytes = WavFileWriter::write(left.data(), nullptr, left.size(), 44100.0, SampleFormat::Float32);
+    ParsedWav parsed = parseWav(bytes);
+    for (size_t i = 0; i < left.size(); ++i) {
+        float decoded;
+        std::memcpy(&decoded, parsed.data.data() + i * 4, 4);
+        VSM_ASSERT_NEAR(decoded, left[i], 1e-7);
+    }
+}
+
+// Et l'inverse reste vrai : les formats ENTIERS bornent, parce qu'ils ne
+// savent pas représenter au-delà de l'échelle et qu'y écrire un dépassement
+// replierait le signal -- un son faux plutôt qu'un son fort.
+VSM_TEST(wav_writer_int24_still_clamps_what_it_cannot_hold) {
+    std::vector<float> left = {2.0f, -2.0f};
+    auto bytes = WavFileWriter::write(left.data(), nullptr, left.size(), 44100.0, SampleFormat::Int24, false);
+    ParsedWav parsed = parseWav(bytes);
+    const auto lire24 = [&](size_t i) {
+        const uint8_t* p = parsed.data.data() + i * 3;
+        int32_t v = p[0] | (p[1] << 8) | (p[2] << 16);
+        if (v & 0x800000) v -= 0x1000000;
+        return v;
+    };
+    VSM_ASSERT_EQ(lire24(0), static_cast<int32_t>(8388607));
+    VSM_ASSERT_EQ(lire24(1), static_cast<int32_t>(-8388607));
+}

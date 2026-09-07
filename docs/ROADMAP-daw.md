@@ -8674,3 +8674,57 @@ l'écoute A/B ne lit jamais `reconstruit.wav`. Elle prend l'ORIGINAL — la sour
 nommée dans la provenance de `rapport.json`, ou à défaut le canal gauche de
 `comparaison.wav` — et met en face le moteur VIVANT. La comparaison que
 l'utilisateur entend est donc toujours celle d'aujourd'hui.
+
+### Phase D47 — L'export en 32 bits flottants écrêtait, et les stems avec lui (08/09/2026, 01:10)
+
+**Trouvé en vérifiant une phrase que l'outil affiche lui-même.** L'aide de
+`vsm-render` promet : « **la somme des stems redonne le mixage** avant la
+tranche master ». Personne ne l'avait mesurée. Sur `children-dream-v7` — six
+pistes, 232,53 s —, la somme des six stems donnait **−51 dB** d'écart avec le
+mixage, avec un maximum de **0,405** sur un échantillon. Ce n'est pas de la
+précision : c'est un autre signal.
+
+**LA CAUSE ÉTAIT DANS LE GRAVEUR DE FICHIERS, ET ELLE TENAIT EN UN APPEL.** La
+branche `Float32` de `WavFileWriter` appelait `clampSample`, comme les branches
+entières :
+
+```cpp
+    case SampleFormat::Float32: {
+        float lc = clampSample(left[i]);   // <- le flottant n'a pas à borner
+```
+
+**Un WAV 32 bits flottants porte parfaitement au-delà de ±1 — c'est sa raison
+d'être.** On exporte en flottant précisément pour garder la marge et la
+rattraper au mastering. Les ramener à ±1 détruit ce que le format sait tenir,
+et le détruit **en silence**.
+
+**LES CHIFFRES.** Le mixage de ce morceau a un pic de **1,40517** ; le fichier
+flottant en rendait **1,0000**, et **602 échantillons sur 20,5 millions**
+étaient rabotés. Après correction, le fichier porte 1,40517 et la somme des
+stems retrouve le mixage à **−148,7 dB** — la précision du flottant, c'est-à-dire
+l'égalité. La promesse de l'aide est donc vraie ; c'était le graveur qui
+mentait.
+
+**ET C'ÉTAIT PIRE QUE LE MIXAGE : LES STEMS AUSSI.** Le premier relevé donnait
+`01 - bass.wav crête 1,0000` — un pic à exactement 1,0000 sur un stem est la
+signature d'un écrêtage, pas un hasard. C'est ce qui explique que l'écart
+subsistât (−98 dB) **là même où le mixage n'écrêtait pas** : c'était la basse
+qui était rabotée dans son propre fichier. **Un jeu de stems livré à un
+mixeur arrivait donc amputé**, sans que rien ne le dise.
+
+**CE QUI CONTINUE DE BORNER, ET C'EST JUSTE.** Les formats 16 et 24 bits ne
+savent pas représenter au-delà de l'échelle : y écrire un dépassement replierait
+le signal, c'est-à-dire produirait un son FAUX plutôt qu'un son fort. Ils
+bornent toujours, et un test neuf l'épingle — car le seul test d'écrêtage qui
+existait portait sur `Int16`, **le cas où borner est juste**. Rien ne surveillait
+l'autre.
+
+**LE DÉPASSEMENT SE DIT MAINTENANT, DES DEUX CÔTÉS.** `vsm-render` ajoute à son
+résumé « AU-DESSUS DE 0 dBFS : conservé en 32 bits flottants, borné en 16 ou
+24 bits » ; l'application, dont le message affichait « crête 1,405 » en laissant
+l'utilisateur en tirer la conséquence, dit désormais que le format a borné **et
+nomme les deux remèdes qui existent déjà dans le même menu** — « crête à
+-1 dBFS », ou l'export en flottant.
+
+Tests : **1 285 audio** (2 neufs), 319 core, 285 interchange, 25 clap,
+11 panels — tous verts, empreintes comprises.
