@@ -7463,3 +7463,58 @@ machine **remplace les notes de la piste**, et rien ne les rend.
 >
 > Tests : **1 283 audio**, **319 core** (3 neufs), 285 interchange, 25 clap,
 > 11 panels — tous verts, plus le banc `vsm-edit-audit` (11 gestes, 0 muet).
+
+> **CORRECTION DE D36, ÉCRITE LE JOUR MÊME (07/09/2026, 12:05) : LA MOITIÉ
+> « PHOTOGRAPHIE » DE CETTE PHASE ÉTAIT LARGEMENT FAUSSE.** Elle est corrigée
+> ici plutôt qu'effacée, parce que la façon dont elle s'est trompée compte plus
+> que le chiffre.
+>
+> **CE QUI A ÉTÉ AFFIRMÉ SANS ÊTRE MESURÉ.** J'ai lu que `beginProjectEdit`
+> appelait `markProjectDirty()`, constaté que le piano roll ne passait pas par
+> `beginProjectEdit`, et conclu que ses trente-deux gestes n'étaient jamais
+> photographiés. **Je n'ai pas suivi l'autre chemin.** `refreshTransportSchedule`
+> appelle `markProjectDirty()` **depuis D10.4**, la phase même qui a créé la
+> sauvegarde automatique, et son commentaire l'annonce en toutes lettres : « la
+> sauvegarde automatique doit le savoir, **même quand le changement n'est pas
+> passé par l'historique** ». Le piano roll y arrive par `onNotesEdited`. Ses
+> éditions étaient photographiées. C'est exactement la faute que le paragraphe
+> d'à côté reprochait à l'audit — conclure d'un chemin qu'on a lu qu'aucun
+> autre n'existe —, commise dans le même mouvement que sa dénonciation.
+>
+> **LE RELEVÉ EXACT, CETTE FOIS TRACÉ APPEL PAR APPEL.** Des neuf gestes de la
+> ligne de piste, **six** atteignaient `markProjectDirty` : le canal, le repli,
+> le muet, le solo, le volume et le panoramique appellent tous `onChanged`, donc
+> `onTracksChanged`, donc `refreshTransportSchedule`. **Trois** ne
+> l'atteignaient pas, et ceux-là étaient bien perdus à la coupure :
+>
+> | geste | chemin d'avant | photographié |
+> |---|---|---|
+> | **renommer** | aucun rappel du tout (`TrackListComponent.cpp:34`) | non |
+> | **machine de la piste** | `onInstrumentChanged` → le moteur, rien d'autre | non |
+> | **sortie de la piste** | `onOutputChanged` → `mixDirty_`, qui republie au moteur sans jamais marquer le projet | non |
+> | canal, repli, muet, solo, volume, panoramique | `onChanged` → `refreshTransportSchedule` | **oui** |
+>
+> **CE QUI RESTE ENTIÈREMENT VRAI.** La moitié « annulation » de la phase :
+> **neuf** gestes n'empilaient aucun pas, mesuré à neuf avant et à zéro après
+> par un banc qui actionne les widgets. Le séquenceur pas à pas n'en empilait
+> aucun non plus. D36.6 (la grille effaçait des hauteurs qu'elle ne montre pas)
+> et D36.7 (deux panneaux qui se contredisent) sont mesurés et vérifiés à
+> l'écran, et ne dépendent pas de cette erreur.
+>
+> **CE QUE DEVIENT LA CORRECTION DE D36.2.** Déduire le drapeau de la
+> profondeur de l'historique se garde, mais pour ce qu'elle vaut réellement :
+> non pas « elle sauve les trente-deux gestes du piano roll », qui l'étaient
+> déjà, mais **elle rend la photographie indépendante du fait que quelqu'un
+> pense à passer par `refreshTransportSchedule`**. Les trois gestes du tableau
+> ci-dessus, qui n'y passaient pas, sont désormais couverts deux fois : par le
+> pas d'historique que D36.1 leur donne, et par la déduction. Le gain est réel
+> et il est petit ; l'annoncer comme grand était une faute de mesure, pas
+> d'intention.
+>
+> **LA LEÇON, ET ELLE VISE UNE HABITUDE PRÉCISE.** Un chemin d'appel n'est pas
+> mesuré tant qu'on n'a pas cherché **les autres**. J'ai suivi
+> `beginProjectEdit` jusqu'au bout et je me suis arrêté là, alors que la
+> question posée — « qui marque le projet ? » — se répondait en cherchant les
+> appelants de `markProjectDirty`, ce qui prend une commande et rend neuf
+> lignes. Chercher où une chose est FAITE, et non où l'on croyait qu'elle
+> l'était.
