@@ -8871,3 +8871,19 @@ Vérifié à l'écran, deux positions du même morceau : mesure 5 (rien ne satur
 place de la phase.
 
 Tests : 1 285 audio, 319 core, 285 interchange, 25 clap, 11 panels — verts.
+
+> **AUCUNE COMMANDE MORTE, VÉRIFIÉ PAR BALAYAGE (08/09/2026, 02:55).**
+> L'invariant de D0.8 — « aucun contrôle affiché n'est sans effet » — n'avait
+> jamais été revérifié depuis. Les **64** boutons, curseurs et listes déclarés
+> dans `app/Source` ont été confrontés à leur gestionnaire (`onClick`,
+> `onValueChange`, `onChange`, `addListener`).
+>
+> **Trois seulement n'en avaient pas, et les trois sont légitimes**, vérifiés un
+> par un plutôt que comptés : `prise_` et `sectionAAjouter_` sont des SÉLECTEURS
+> dont un bouton voisin lit la valeur au moment d'agir (`getSelectedId()`), et
+> `selectTool_` reçoit son `onClick` par une lambda d'assistance qui câble les
+> six outils du piano roll d'un coup. **Un contrôle sans gestionnaire n'est pas
+> mort s'il est LU** — la question n'est pas « qui écoute ce bouton » mais « ce
+> bouton change-t-il quelque chose ».
+>
+> L'invariant tient donc, et il tient sur un chiffre plutôt que sur un souvenir.
