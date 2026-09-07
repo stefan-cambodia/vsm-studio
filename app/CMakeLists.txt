@@ -174,6 +174,7 @@ juce_add_console_app(vsm-edit-audit PRODUCT_NAME "vsm-edit-audit")
 target_sources(vsm-edit-audit PRIVATE
     Source/tools/EditAuditMain.cpp
     Source/ui/TrackListComponent.cpp
+    Source/ui/MixerComponent.cpp
     Source/ui/machines/StepSequencerComponent.cpp
 )
 target_include_directories(vsm-edit-audit PRIVATE Source)

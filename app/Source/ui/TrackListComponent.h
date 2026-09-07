@@ -43,6 +43,11 @@ public:
     /// décision de son en-tête) : elle dit qu'elle va écrire, et `MainComponent`
     /// décide ce que cela veut dire. Le libellé est celui du menu Édition.
     std::function<void(const juce::String& label)> onEditStarted;
+    /// D37.1 : LA PISTE VIENT D'ÊTRE RENOMMÉE. Séparé de `onChanged`, qui part
+    /// aussi à chaque pixel d'un glissé de fader : le nom s'affiche dans sept
+    /// panneaux dont trois le rangent dans un widget, et les reconstruire
+    /// trois cents fois pour un mouvement de curseur serait insupportable.
+    std::function<void()> onRenamed;
     std::function<void()> onChanged; // mute/solo/volume/pan modifiés -> reconstruire le scheduler
     /// L'armement a changé. SÉPARÉ de `onChanged` : armer ne touche ni au
     /// planning de lecture ni au mixage, et republier le projet au moteur pour
@@ -58,6 +63,11 @@ public:
     /// pas avoir deux chemins : le second finit toujours par oublier ce que le
     /// premier a appris (ici, le pas d'historique de D36.1).
     void basculerMuet();
+    /// D37.1 : renomme la piste par le chemin du champ de nom (le libellé
+    /// change, donc `onTextChange` part, donc le pas d'historique aussi).
+    void renommer(const juce::String& nom);
+    /// D37.2 : règle le volume par le chemin du curseur.
+    void reglerVolume(float valeur);
 
     void setSelected(bool selected) { selected_ = selected; repaint(); }
     /// Réaffiche le fichier de la piste (sans effet sur une piste MIDI).
@@ -70,6 +80,10 @@ public:
     /// bouton une seule fois, à sa construction : rendre une piste muette dans
     /// l'un laissait l'autre montrer le contraire, indéfiniment.
     void refreshMuteSolo();
+    /// D37 : relit le volume et le panoramique (l'autre sens de l'accord avec
+    /// la tranche du mélangeur). Le nom a son propre chemin : il se relit par
+    /// `refreshName`, qui existait déjà.
+    void refreshMix();
 
 private:
     /// Dit qu'un geste va écrire dans la piste. Un seul chemin, pour qu'un
@@ -120,6 +134,8 @@ public:
     /// elle ne sait pas plus que la ligne ce qu'est un historique.
     std::function<void(const juce::String& label)> onEditStarted;
     std::function<void()> onTracksChanged;
+    /// D37.1 : une piste a été renommée (voir `TrackRowComponent::onRenamed`).
+    std::function<void()> onRenamed;
     std::function<void(size_t, const std::string&)> onInstrumentChanged;
     /// L'armement d'une piste a changé (voir TrackRowComponent::onArmChanged).
     std::function<void()> onArmChanged;
@@ -146,8 +162,17 @@ public:
     /// Bascule le muet de la piste `index` par le chemin du bouton M.
     /// Sans effet hors bornes.
     void basculerMuet(size_t index);
+    /// D37 : les deux autres gestes qu'aucun menu ne porte.
+    void renommer(size_t index, const juce::String& nom);
+    void reglerVolume(size_t index, float valeur);
     /// D36.7 : relit le muet et le solo de toutes les lignes.
     void refreshMuteSolo();
+    /// D37 : toutes les lignes relisent nom, volume et panoramique.
+    void refreshFromTracks();
+    /// D37.2 : toutes les lignes relisent le volume et le panoramique SEULS.
+    /// Séparé de `refreshFromTracks` parce qu'un glissé de fader l'appelle à
+    /// chaque pixel : relire aussi les noms y serait du travail pour rien.
+    void refreshMix();
 
     /// Sélectionne une piste par index (met à jour l'état visuel et notifie
     /// via onTrackSelected). Sans effet si l'index est hors bornes.

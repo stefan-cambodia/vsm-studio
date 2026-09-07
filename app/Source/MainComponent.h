@@ -117,8 +117,19 @@ public:
     /// qu'aucun menu ne porte. Rend false si le geste est inconnu, plutôt que
     /// de ne rien faire en silence.
     bool runTrackGestureForCapture(const juce::String& geste) {
-        if (geste.equalsIgnoreCase("muet")) {
-            trackList_.basculerMuet(trackList_.selectedTrackIndex());
+        const size_t piste = trackList_.selectedTrackIndex();
+        if (geste.equalsIgnoreCase("muet")) { trackList_.basculerMuet(piste); return true; }
+        if (geste.startsWithIgnoreCase("renommer:")) {
+            trackList_.renommer(piste, geste.fromFirstOccurrenceOf(":", false, false));
+            return true;
+        }
+        if (geste.startsWithIgnoreCase("couleur:")) {
+            appliquerCouleurDePiste(
+                piste, juce::Colour::fromString("ff" + geste.fromFirstOccurrenceOf(":", false, false)));
+            return true;
+        }
+        if (geste.startsWithIgnoreCase("volume:")) {
+            trackList_.reglerVolume(piste, geste.fromFirstOccurrenceOf(":", false, false).getFloatValue());
             return true;
         }
         return false;
@@ -515,6 +526,18 @@ private:
     vsm::app::ui::SpectrumComponent spectrumPanel_;
     std::unique_ptr<PanelWindow> spectrumWindow_;
     void refreshHistoryList();
+    /// D37.1 : LE NOM D'UNE PISTE S'AFFICHE À SEPT ENDROITS. Mesuré à l'écran :
+    /// deux le suivaient (la ligne elle-même et l'arrangement, qui le lit au
+    /// dessin), cinq montraient l'ancien -- le mélangeur, le rack, la liste
+    /// déroulante de l'automation, la liste d'événements et la chaîne
+    /// d'effets, tous rangeant le nom dans un widget à leur construction.
+    /// Un seul endroit les rappelle, pour qu'un huitième panneau n'ait qu'une
+    /// ligne à ajouter ici.
+    void refreshTrackNamesEverywhere();
+    /// D37.3 : pose la couleur d'une piste et la fait voir aux trois panneaux
+    /// qui la montrent. Un seul chemin, partagé par le sélecteur de couleur et
+    /// par `VSM_GESTE_PISTE` -- un second finirait par oublier un panneau.
+    void appliquerCouleurDePiste(size_t index, juce::Colour couleur);
     std::unique_ptr<PanelWindow> shortcutsWindow_;
     void loadShortcuts();
     void saveShortcuts();

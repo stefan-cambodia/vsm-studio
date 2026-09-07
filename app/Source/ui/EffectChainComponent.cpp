@@ -308,21 +308,30 @@ void EffectChainComponent::rebuildFromProject() {
     rebuildParamControls();
 }
 
+void EffectChainComponent::refreshTrackName() {
+    // LE NOM DE LA PISTE, PAS SON NUMÉRO : « Effets — Batterie » se lit,
+    // « piste 11 » se compte sur la liste.
+    //
+    // D37.1 : SORTI DE `setActiveTrack`, où il était enfermé. Renommer une
+    // piste n'est pas en changer : repasser par `setActiveTrack` pour rafraîchir
+    // ce titre aurait effacé l'effet choisi (`selectedEffect_ = -1`) au milieu
+    // d'un réglage -- une correction d'affichage qui casse ce qu'on faisait est
+    // pire que l'affichage faux qu'elle corrige.
+    juce::String titre = "Effets - aucune piste";
+    if (activeTrack_ >= 0) {
+        titre = "Effets - piste " + juce::String(activeTrack_ + 1);
+        if (project_ != nullptr && static_cast<size_t>(activeTrack_) < project_->tracks.size()
+            && !project_->tracks[static_cast<size_t>(activeTrack_)].name.empty())
+            titre = juce::String::fromUTF8("Effets \u2014 ")
+                  + juce::String::fromUTF8(project_->tracks[static_cast<size_t>(activeTrack_)].name.c_str());
+    }
+    titleLabel_.setText(titre, juce::dontSendNotification);
+}
+
 void EffectChainComponent::setActiveTrack(int trackIndex) {
     activeTrack_ = trackIndex;
     selectedEffect_ = -1;
-    // LE NOM DE LA PISTE, PAS SON NUMÉRO : « Effets — Batterie » se lit,
-    // « piste 11 » se compte sur la liste.
-    juce::String titre = "Effets - aucune piste";
-    if (trackIndex >= 0) {
-        titre = "Effets - piste " + juce::String(trackIndex + 1);
-        if (project_ != nullptr && static_cast<size_t>(trackIndex) < project_->tracks.size()
-            && !project_->tracks[static_cast<size_t>(trackIndex)].name.empty())
-            titre = juce::String::fromUTF8("Effets \u2014 ")
-                  + juce::String::fromUTF8(project_->tracks[static_cast<size_t>(trackIndex)].name.c_str());
-    }
-    titleLabel_.setText(titre,
-                        juce::dontSendNotification);
+    refreshTrackName();
     selectedIsMidi_ = false;   // D31.4 : changer de piste ne garde pas une sélection MIDI
     rebuildEffectList();
     rebuildMidiList();

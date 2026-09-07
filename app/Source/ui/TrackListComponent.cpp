@@ -37,6 +37,7 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
         debutEdition(u8"Renommer la piste");
         track_.name = nameLabel_.getText().toStdString();
         if (onChanged) onChanged();
+        if (onRenamed) onRenamed();
     };
 
     addAndMakeVisible(channelLabel_);
@@ -239,6 +240,19 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
     };
 
     setInterceptsMouseClicks(true, true);
+}
+
+void TrackRowComponent::refreshMix() {
+    volumeSlider_.setValue(track_.volume, juce::dontSendNotification);
+    panSlider_.setValue(track_.pan, juce::dontSendNotification);
+}
+
+void TrackRowComponent::renommer(const juce::String& nom) {
+    nameLabel_.setText(nom, juce::sendNotificationSync);
+}
+
+void TrackRowComponent::reglerVolume(float valeur) {
+    volumeSlider_.setValue(valeur, juce::sendNotificationSync);
 }
 
 void TrackRowComponent::refreshMuteSolo() {
@@ -462,6 +476,7 @@ void TrackListComponent::loadProject(Project& project) {
             if (onEditStarted) onEditStarted(libelle);
         };
         row->onChanged = [this] { if (onTracksChanged) onTracksChanged(); };
+        row->onRenamed = [this] { if (onRenamed) onRenamed(); };
         row->onArmChanged = [this] { if (onArmChanged) onArmChanged(); };
         row->onOutputChanged = [this] { if (onOutputChanged) onOutputChanged(); };
         row->onInstrumentChanged = [this](size_t idx, const std::string& pluginId) {
@@ -475,8 +490,24 @@ void TrackListComponent::loadProject(Project& project) {
     faireVoirLaPiste(selectedIndex_);
 }
 
+void TrackListComponent::renommer(size_t index, const juce::String& nom) {
+    if (index < static_cast<size_t>(rows_.size())) rows_[static_cast<int>(index)]->renommer(nom);
+}
+
+void TrackListComponent::reglerVolume(size_t index, float valeur) {
+    if (index < static_cast<size_t>(rows_.size())) rows_[static_cast<int>(index)]->reglerVolume(valeur);
+}
+
 void TrackListComponent::refreshMuteSolo() {
     for (auto* row : rows_) row->refreshMuteSolo();
+}
+
+void TrackListComponent::refreshMix() {
+    for (auto* row : rows_) row->refreshMix();
+}
+
+void TrackListComponent::refreshFromTracks() {
+    for (auto* row : rows_) { row->refreshName(); row->refreshMix(); row->refreshMuteSolo(); }
 }
 
 void TrackListComponent::basculerMuet(size_t index) {

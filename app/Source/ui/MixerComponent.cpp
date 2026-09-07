@@ -5,11 +5,6 @@
 
 using vsm::audio::engine::MasterBus;
 
-namespace {
-float gainToDb(float g) { return g > 1.0e-5f ? 20.0f * std::log10(g) : -60.0f; }
-float dbToGain(float db) { return std::pow(10.0f, db / 20.0f); }
-} // namespace
-
 // ============================================================ ChannelStrip
 
 void ChannelStrip::setMembers(const juce::StringArray& membres) {

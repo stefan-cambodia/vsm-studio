@@ -21,9 +21,11 @@
 
 #include <JuceHeader.h>
 #include "ui/TrackListComponent.h"
+#include "ui/MixerComponent.h"
 #include "ui/machines/StepSequencerComponent.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
 #include "vsm/sequencer/Project.h"
+#include <cmath>
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -115,6 +117,8 @@ bool actionner(juce::Component& c) {
 constexpr int kLargeurLibelleLigne = 92;
 
 } // namespace
+
+int desaccords = 0;   ///< D37 : panneaux qui montrent autre chose que la piste
 
 int main(int argc, char** argv) {
     juce::ScopedJuceInitialiser_GUI juceInit;
@@ -243,7 +247,58 @@ int main(int argc, char** argv) {
         ligneMuet.setBounds(0, 0, 900, 90);
         const bool avantMuet = seule.muted;
         ligneMuet.basculerMuet();
-        std::printf("=== D36.1 : LE GESTE ATTEINT-IL LA PISTE ? ===\n");
+        // D37 : UNE VALEUR, DEUX PANNEAUX. Le nom, le volume et le panoramique
+    // s'affichent dans la ligne de piste ET dans la tranche du mélangeur.
+    // Chacun les recevait à sa construction et ne les relisait jamais : régler
+    // un fader dans l'un laissait l'autre montrer l'ancienne valeur. On mesure
+    // ce que chaque panneau AFFICHE, et non ce que la piste contient -- c'est
+    // le désaccord entre les deux qui est le défaut.
+    {
+        Project deux;
+        uint64_t idsD = 1;
+        Track p;
+        p.name = "Avant";
+        p.volume = 1.0f;
+        p.pan = 0.0f;
+        p.addNote(0, 480, 60, 100, 0, idsD);
+        deux.tracks.push_back(p);
+
+        TrackRowComponent ligne(deux.tracks[0], 0, {});
+        ligne.setBounds(0, 0, 900, 90);
+        ChannelStrip tranche(deux.tracks[0], 0, {});
+        tranche.setBounds(0, 0, 90, 400);
+
+        // Le geste part de la LIGNE, comme le ferait l'utilisateur.
+        ligne.renommer("Apres");
+        ligne.reglerVolume(0.25f);
+        std::printf("=== D37 : LA TRANCHE SUIT-ELLE LA LIGNE ? ===\n");
+        std::printf("  avant rafraichissement : nom=%s volume=%.3f\n",
+                    tranche.nomAffiche().toRawUTF8(), tranche.volumeAffiche());
+        tranche.refreshFromTrack();
+        // LES DEUX PANNEAUX N'AFFICHENT PAS DANS LA MÊME UNITÉ : le curseur de
+        // la ligne est en gain linéaire, le fader de la tranche en décibels.
+        // « S'accorder » veut donc dire que la conversion retombe sur ses
+        // pieds, et non que les deux nombres sont égaux -- les comparer tels
+        // quels aurait déclaré un désaccord là où il n'y en a pas, et masqué
+        // celui qu'on cherche.
+        const bool nomOk = tranche.nomAffiche() == juce::String("Apres");
+        // COMPARÉ EN DÉCIBELS, ET LA TOLÉRANCE EST CELLE DU FADER. Il avance
+        // par pas de 0,1 dB : exiger l'égalité des GAINS échouait de 0,001 sur
+        // un gain de 0,25, non parce que les panneaux se contredisent mais
+        // parce qu'un fader n'a pas de position pour cette valeur-là. Une
+        // tolérance prise ailleurs que dans la résolution de l'instrument est
+        // un chiffre qu'on ajuste jusqu'à ce que le banc passe.
+        const double dbAttendu = gainToDb(0.25f);
+        const double dbAffiche = tranche.volumeAffiche();
+        const bool volOk = std::abs(dbAffiche - dbAttendu) <= 0.05;   // un demi-pas
+        std::printf("  apres rafraichissement : nom=%s volume=%.2f dB (attendu %.2f dB) -> %s\n",
+                    tranche.nomAffiche().toRawUTF8(), dbAffiche, dbAttendu,
+                    (nomOk && volOk) ? "les deux panneaux s'accordent"
+                                     : "LES DEUX PANNEAUX SE CONTREDISENT");
+        if (!nomOk || !volOk) desaccords = 1;
+    }
+
+    std::printf("=== D36.1 : LE GESTE ATTEINT-IL LA PISTE ? ===\n");
         std::printf("  muted avant=%s apres=%s -> %s\n",
                     avantMuet ? "vrai" : "faux", seule.muted ? "vrai" : "faux",
                     (seule.muted != avantMuet) ? "la piste a bien change"
@@ -275,5 +330,7 @@ int main(int argc, char** argv) {
     }
     std::printf("=== %d geste(s) actionne(s), %d sans pas d'historique ===\n",
                 static_cast<int>(gestes.size()), muets);
-    return muets == 0 ? 0 : 1;
+    if (desaccords > 0)
+        std::printf("=== %d panneau(x) en desaccord avec la piste ===\n", desaccords);
+    return (muets == 0 && desaccords == 0) ? 0 : 1;
 }

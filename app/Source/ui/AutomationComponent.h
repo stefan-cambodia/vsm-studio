@@ -36,6 +36,11 @@ public:
     /// Émis après chaque édition : liste complète des lanes à publier.
     std::function<void(const std::vector<vsm::audio::engine::AutomationLane>&)> onAutomationChanged;
 
+    /// D37.1 : relit les NOMS des pistes dans la liste déroulante, sans
+    /// toucher aux lanes. Le nom d'une piste s'affiche à sept endroits ; celui
+    /// d'ici était posé une fois pour toutes et montrait l'ancien indéfiniment.
+    void refreshTrackNames() { rebuildTrackBox(); }
+
 private:
     void rebuildTrackBox();
     void rebuildParamBox();

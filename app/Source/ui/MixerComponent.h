@@ -12,6 +12,15 @@
 #include <memory>
 #include <vector>
 
+/// LE FADER D'UNE TRANCHE EST EN DÉCIBELS, LE GAIN D'UNE PISTE EST LINÉAIRE.
+/// Les deux conversions vivaient dans un espace anonyme du .cpp, donc
+/// invisibles depuis l'en-tête : `refreshFromTrack` y a écrit un gain brut
+/// dans un curseur en dB, et 0,25 de gain s'y est affiché « 0,3 dB » sans que
+/// rien ne proteste -- la valeur tombait dans la plage sans y avoir de sens.
+/// Un même calcul à deux endroits finit toujours par n'être fait qu'à un seul.
+inline float gainToDb(float g) { return g > 1.0e-5f ? 20.0f * std::log10(g) : -60.0f; }
+inline float dbToGain(float db) { return std::pow(10.0f, db / 20.0f); }
+
 // Console de mixage (section 15/21, "Phase 2 UI"). Une tranche par piste +
 // une tranche master. Le Mixer n'est PAS une source de vérité : il lit/écrit
 // directement les champs de vsm::sequencer::Track (volume/pan/muted/solo) --
@@ -144,6 +153,32 @@ public:
     /// Un dossier n'a plus de tranche (voir `MixerComponent::rebuild`) : sans
     /// cela, on aurait une tranche silencieuse dont aucun bouton n'est
     /// enfoncé, et l'on chercherait la panne dans le fader.
+    /// D37 : RELIT DE LA PISTE TOUT CE QUI S'AFFICHE AUSSI AILLEURS -- le nom,
+    /// le volume, le panoramique. Chacun était posé une seule fois, ici, à la
+    /// construction : régler un fader dans la ligne de piste laissait la
+    /// tranche montrer l'ancienne valeur, indéfiniment.
+    ///
+    /// `dontSendNotification` partout : on REFLÈTE, on ne modifie pas. Avec une
+    /// notification, rafraîchir la tranche depuis la liste rappellerait la
+    /// liste, et les deux panneaux se renverraient la balle sans fin.
+    /// D37 : CE QUE LA TRANCHE AFFICHE, et non ce que la piste contient. Les
+    /// deux se mesurent séparément : c'est leur DÉSACCORD qui est le défaut, et
+    /// le lire dans la piste des deux côtés ne le montrerait jamais.
+    juce::String nomAffiche() const { return nameLabel_.getText(); }
+    double volumeAffiche() const { return volume_.getValue(); }
+
+    void refreshFromTrack() {
+        nameLabel_.setText(track_.name.empty() ? "Track" : track_.name, juce::dontSendNotification);
+        nameLabel_.setTooltip(juce::String::fromUTF8(track_.name.c_str()));
+        // LE FADER DE LA TRANCHE EST EN DÉCIBELS (-60..+6), le curseur de la
+        // ligne de piste en gain linéaire (0..1,5). Y poser le gain brut
+        // donnait 0,3 dB pour un gain de 0,25 -- la valeur tombait dans la
+        // plage sans y avoir de sens, donc sans rien signaler. Écrit ici parce
+        // que c'est le banc qui l'a montré : mesurer ce que le panneau AFFICHE,
+        // et non ce que la piste contient, est ce qui rend ce défaut visible.
+        volume_.setValue(gainToDb(track_.volume), juce::dontSendNotification);
+        pan_.setValue(track_.pan, juce::dontSendNotification);
+    }
     void refreshMuteSolo(bool tuParUnDossier = false) {
         mute_.setToggleState(track_.muted || tuParUnDossier, juce::dontSendNotification);
         mute_.setTooltip(tuParUnDossier && !track_.muted
@@ -310,6 +345,10 @@ public:
     std::function<void()> onMixChanged;
     /// D21.2 : une tranche a demandé le solo EXCLUSIF (Ctrl+clic sur Solo).
     std::function<void(size_t)> onExclusiveSoloRequested;
+    /// D37 : chaque tranche relit sa piste (nom, volume, panoramique).
+    void refreshFromTracks() {
+        for (auto* strip : strips_) strip->refreshFromTrack();
+    }
     /// Relit muet et solo de chaque tranche depuis sa piste.
     void refreshMuteSolo() {
         for (auto* strip : strips_) {

@@ -70,6 +70,9 @@ public:
     void rebuildFromProject();
 
     void setActiveTrack(int trackIndex);
+    /// D37.1 : relit le NOM de la piste dans le titre, sans rien changer
+    /// d'autre -- ni la piste choisie, ni l'effet sélectionné.
+    void refreshTrackName();
 
     /// Prévenu AVANT chaque geste qui modifie la chaîne : c'est là que
     /// l'application prend son instantané d'annulation. Le libellé nomme le

@@ -7518,3 +7518,128 @@ machine **remplace les notes de la piste**, et rien ne les rend.
 > appelants de `markProjectDirty`, ce qui prend une commande et rend neuf
 > lignes. Chercher où une chose est FAITE, et non où l'on croyait qu'elle
 > l'était.
+
+### Phase D37 — Le vingt-deuxième audit : une valeur, plusieurs panneaux, un seul qui la relit (07/09/2026, 12:20)
+
+**D'où vient cet audit : d'un défaut que seule la capture a montré.** D36.7 n'a
+pas été trouvé en lisant le code ni en passant un banc. Les deux captures du
+contrôle et du geste ne différaient que par un bouton *Annuler* devenu actif, et
+c'est **ce qui n'avait PAS changé** qui a parlé : le M du mélangeur restait
+éteint alors que la piste était muette. Chaque panneau posait son bouton une
+seule fois, à sa construction, et ne le relisait jamais.
+
+Ce défaut n'a aucune raison d'être seul. Il tient à une forme d'écriture — un
+widget qui reçoit `track_.quelquechose` dans un constructeur — et cette forme est
+partout. **La question de cet audit est donc : quelles valeurs s'affichent à
+plus d'un endroit, et lesquelles sont relues ?**
+
+**Le relevé des recoupements, mesuré sur les champs que chaque panneau lit.**
+
+| valeur | panneaux qui l'affichent |
+|---|---|
+| `name` | liste des pistes, mélangeur, arrangement, liste d'événements, automation, chaîne d'effets — **six** |
+| `volume`, `pan` | liste des pistes, mélangeur |
+| `colorRgba` | liste des pistes, mélangeur, arrangement |
+| `muted`, `solo` | liste des pistes, mélangeur — **réglé par D36.7** |
+
+Le nom est le cas le plus lourd : **six panneaux**, dont trois le mettent dans
+un widget à la construction (le libellé d'une tranche, une liste déroulante de
+pistes, une liste d'événements) et trois le lisent au dessin. Les premiers
+mentent jusqu'à leur reconstruction ; les seconds non. Rien ne distingue les uns
+des autres à l'écran.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D37.1 | **Renommer une piste, et voir combien de panneaux le savent.** Mesuré à l'écran par deux exécutions du même binaire ne différant que par le geste, comme D36.7 | le relevé dit, panneau par panneau, lequel affiche le nom neuf et lequel l'ancien ; puis tous affichent le neuf |
+| D37.2 | **Le volume et le panoramique**, qui existent au fader du mélangeur ET au curseur de la ligne | bouger l'un déplace l'autre, dans les deux sens, sans que le geste ne se rejoue |
+| D37.3 | **La couleur d'une piste**, affichée à trois endroits | les trois suivent |
+| D37.4 | **Le banc, étendu à la classe entière.** D36.4 a montré qu'un banc qui parcourt vaut mieux qu'une liste qu'on tient à jour : celui-ci compare, pour chaque valeur partagée, ce que chaque panneau affiche à ce que la piste dit | il ÉCHOUE dès qu'un panneau montre autre chose que la piste ; un panneau ajouté demain y entre sans qu'on ait à s'en souvenir |
+
+**Ce qui est attendu, écrit AVANT la mesure.**
+
+1. **D37.1** — j'attends que l'**arrangement suive** le renommage sans rien
+   faire (il lit `track.name` au dessin) et que la **tranche du mélangeur ne le
+   suive pas** (son libellé est posé au constructeur). C'est une prédiction qui
+   peut se tromper des deux côtés, et c'est pour cela qu'elle est écrite.
+2. **D37.2** — j'attends que **ni** le fader **ni** le curseur ne suivent
+   l'autre : tous deux reçoivent leur valeur au constructeur, exactement comme
+   les boutons de D36.7.
+3. **La boucle.** J'attends que brancher les deux sens ne rejoue pas le geste :
+   un rafraîchissement qui notifie renverrait la balle à l'autre panneau
+   indéfiniment. C'est le risque propre à cette correction, et le seul —
+   `dontSendNotification` est la réponse, encore faut-il le vérifier plutôt que
+   de l'affirmer, un curseur n'ayant pas les mêmes règles de notification qu'un
+   bouton.
+
+> **LA PHASE D37 EST FAITE (07/09/2026, 13:30), ET LES TROIS PRÉDICTIONS
+> ÉTAIENT JUSTES — CE QUI N'A PAS EMPÊCHÉ LA MESURE DE TROUVER PLUS.**
+>
+> **D37.1 — le nom d'une piste s'affiche à SEPT endroits, pas six.** Le relevé
+> écrit d'avance en comptait six ; la capture en a montré un septième que
+> `grep` ne pouvait pas trouver, parce qu'il ne lit pas `track.name` : le
+> **rack de machines**, dont le grand titre reçoit le nom en paramètre
+> (`setSynth(synth, trackName, …)`). Mesuré à l'écran, deux exécutions du même
+> binaire ne différant que par `VSM_GESTE_PISTE=renommer:ZZTOP` :
+>
+> | panneau | avant la correction |
+> |---|---|
+> | ligne de piste | ZZTOP |
+> | arrangement | ZZTOP — il lit le nom au dessin |
+> | mélangeur | **Bass** |
+> | rack de machines | **Bass** |
+> | automation (liste « Piste ») | **Bass** |
+> | liste d'événements | **Bass** |
+> | chaîne d'effets | **Bass** |
+>
+> **Deux sur sept.** La prédiction — l'arrangement suit, le mélangeur non —
+> était juste des deux côtés, et c'est la seule raison pour laquelle elle
+> valait d'être écrite. Les sept suivent désormais, par un seul
+> `refreshTrackNamesEverywhere()` : un huitième panneau n'aura qu'une ligne à
+> ajouter là.
+>
+> **ET RAFRAÎCHIR UN TITRE A FAILLI CASSER CE QU'ON FAISAIT.** Le titre de la
+> chaîne d'effets était calculé DANS `setActiveTrack`, qui remet aussi
+> `selectedEffect_ = -1`. Le rafraîchir par ce chemin aurait effacé l'effet
+> choisi au milieu d'un réglage : **une correction d'affichage qui casse ce
+> qu'on était en train de faire est pire que l'affichage faux qu'elle
+> corrige.** Le calcul du titre a donc son propre `refreshTrackName()`.
+>
+> **D37.2 — LE BANC A ATTRAPÉ UN DÉFAUT QUE J'AI ÉCRIT EN CORRIGEANT.** La
+> prédiction (ni le fader ni le curseur ne suivent l'autre) était juste. Mais
+> `refreshFromTrack` posait `track_.volume` — un gain linéaire — dans le fader
+> de la tranche, **qui est en décibels** (-60 à +6). Un gain de 0,25 s'y
+> affichait « 0,3 dB » : la valeur tombait dans la plage sans y avoir de sens,
+> donc sans que rien ne proteste. Les deux conversions vivaient dans un espace
+> anonyme du `.cpp`, invisibles depuis l'en-tête où j'écrivais ; elles sont
+> remontées dans l'en-tête, à un seul endroit.
+>
+> **CE QUI A RENDU CE DÉFAUT VISIBLE EST LA FORME DE LA MESURE.** Le banc
+> compare ce que chaque panneau **AFFICHE** (`nomAffiche()`, `volumeAffiche()`),
+> et non ce que la piste contient. Lire la piste des deux côtés aurait donné
+> deux fois la même valeur juste et n'aurait rien montré : **c'est le désaccord
+> entre deux affichages qui est le défaut, pas la valeur.**
+>
+> **ET LA TOLÉRANCE A DÛ ÊTRE PRISE DANS L'INSTRUMENT.** Comparer les gains
+> échouait de 0,001 sur 0,25 — non parce que les panneaux se contredisent, mais
+> parce qu'un fader qui avance par pas de 0,1 dB **n'a pas de position** pour
+> ce gain-là. La comparaison se fait en décibels, à un demi-pas près. Une
+> tolérance prise ailleurs que dans la résolution de l'instrument est un
+> chiffre qu'on ajuste jusqu'à ce que le banc passe.
+>
+> **D37.3 — la couleur suivait déjà, et c'est le MOYEN qui était mauvais.**
+> L'audit attendait un défaut ; il n'y en avait pas. `ColourApplier` appelait
+> `trackList_.loadProject()` et `mixer_.setProject()`, c'est-à-dire
+> **détruisait et refabriquait toutes les lignes et toutes les tranches** — des
+> dizaines de fois pendant un seul glissé, le sélecteur de couleur émettant un
+> changement par pixel. Or les trois panneaux lisent `colorRgba` **au dessin** :
+> trois `repaint()` suffisent. Refabriquer une ligne pendant qu'on s'en sert
+> détruit le widget qui a le focus ; **la bonne mesure d'un rafraîchissement est
+> ce que le panneau LIT, pas ce qu'il contient.** Vérifié à l'écran : le bandeau
+> de couleur devient vert dans les trois panneaux, sans une reconstruction.
+>
+> **La boucle attendue n'a pas eu lieu**, et c'était le seul risque de cette
+> phase : `dontSendNotification` des deux côtés, et l'application traverse les
+> deux sens sans se renvoyer la balle.
+>
+> Tests : 1 283 audio, 319 core, 285 interchange, 25 clap, 11 panels — tous
+> verts ; banc `vsm-edit-audit` : 11 gestes, 0 muet, 0 désaccord.

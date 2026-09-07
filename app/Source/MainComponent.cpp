@@ -150,6 +150,7 @@ MainComponent::MainComponent()
     // photographier -- `beginProjectEdit` fait les deux, et c'est pour cela
     // qu'ils passent par lui plutôt que par `history_` directement.
     trackList_.onEditStarted = [this](const juce::String& libelle) { beginProjectEdit(libelle); };
+    trackList_.onRenamed = [this] { refreshTrackNamesEverywhere(); };
     trackList_.onTracksChanged = [this] {
         refreshTransportSchedule();
         // D36.7 : LES DEUX PANNEAUX SE DISENT LA MÊME CHOSE. Le muet et le solo
@@ -159,6 +160,7 @@ MainComponent::MainComponent()
         // aussi. Deux affichages d'une même valeur qui se contredisent, c'est
         // la panne muette sous sa forme la plus ordinaire.
         mixer_.refreshMuteSolo();
+        mixer_.refreshFromTracks();   // D37.2 : le fader suit le curseur de la ligne
     };
     trackList_.onInstrumentChanged = [this](size_t idx, const std::string& pluginId) {
         audioEngine_.processGraph().setTrackInstrument(idx, pluginId);
@@ -193,6 +195,7 @@ MainComponent::MainComponent()
         mixDirty_ = true;
         markProjectDirty();
         trackList_.refreshMuteSolo();   // D36.7 : l'autre sens du même accord
+        trackList_.refreshMix();        // D37.2 : et le curseur suit le fader
         // D17.5 : une note poussée hors de 0..127 par la transposition ne
         // sonne pas, et cela se DIT -- une fois par franchissement, pas à
         // chaque cran du curseur, sinon régler le chiffre serait impossible.
@@ -6017,6 +6020,35 @@ void MainComponent::toggleFullScreen() {
         fenetre->setFullScreen(!fenetre->isFullScreen());
 }
 
+void MainComponent::appliquerCouleurDePiste(size_t index, juce::Colour couleur) {
+    if (index >= project_.tracks.size()) return;
+    project_.tracks[index].colorRgba = couleur.getARGB();
+    // D37.3 : TROIS REPEINTS, LÀ OÙ IL Y AVAIT DEUX RECONSTRUCTIONS.
+    // La couleur est lue au DESSIN par les trois panneaux qui la montrent
+    // (`TrackListComponent.cpp:304`, `MixerComponent.cpp:281`, l'arrangement) :
+    // aucun ne range sa couleur dans un widget, donc aucun n'a besoin d'être
+    // refabriqué. `loadProject` détruisait et recréait toutes les lignes, et
+    // `setProject` toutes les tranches -- des dizaines de fois pendant un seul
+    // glissé dans le sélecteur de couleur, qui émet un changement par pixel.
+    //
+    // CE N'EST PAS QU'UNE QUESTION DE COÛT : refabriquer une ligne pendant
+    // qu'on s'en sert détruit le widget qui a le focus. La bonne mesure d'un
+    // rafraîchissement est ce que le panneau lit, pas ce qu'il contient.
+    arrangement_.repaint();
+    trackList_.repaint();
+    mixer_.repaint();
+}
+
+void MainComponent::refreshTrackNamesEverywhere() {
+    mixer_.refreshFromTracks();
+    updateSynthRackForSelection();   // le grand titre du rack est le nom de la piste
+    automation_.refreshTrackNames();
+    eventList_.refresh();
+    effectChain_.refreshTrackName();  // et NON `rebuildFromProject` : renommer
+                                      // une piste ne refabrique pas ses effets
+    arrangement_.repaint();          // il lit le nom au dessin : un repaint suffit
+}
+
 void MainComponent::refreshHistoryList() {
     if (!historyWindow_ || !historyWindow_->isVisible()) return;
     historyPanel_.setEntries(history_.undoLabels(), history_.redoLabels());
@@ -6755,10 +6787,7 @@ void MainComponent::ColourApplier::changeListenerCallback(juce::ChangeBroadcaste
         parent_.colourEditOpen_ = true;
         parent_.beginProjectEdit(u8"Couleur d'une piste");
     }
-    parent_.project_.tracks[index_].colorRgba = selecteur->getCurrentColour().getARGB();
-    parent_.arrangement_.repaint();
-    parent_.trackList_.loadProject(parent_.project_);
-    parent_.mixer_.setProject(&parent_.project_);
+    parent_.appliquerCouleurDePiste(index_, selecteur->getCurrentColour());
 }
 
 void MainComponent::ClipColourApplier::changeListenerCallback(juce::ChangeBroadcaster* source) {
