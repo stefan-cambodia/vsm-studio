@@ -8887,3 +8887,45 @@ Tests : 1 285 audio, 319 core, 285 interchange, 25 clap, 11 panels — verts.
 > bouton change-t-il quelque chose ».
 >
 > L'invariant tient donc, et il tient sur un chiffre plutôt que sur un souvenir.
+
+### Phase D49 — Le remède contre l'écrêtage produisait un fichier écrêté (08/09/2026, 03:20)
+
+**Trouvé en vérifiant un conseil que je venais d'écrire.** D47 et D48 disent à
+l'utilisateur, quand la sortie dépasse 0 dBFS : « *Niveau : crête à -1 dBFS* à
+l'export l'évite », et « activer le limiteur ». Comme en D44, un conseil se
+mesure avant d'être donné.
+
+**LE LIMITEUR TIENT PAROLE**, et exactement : master activé, plafond à
+−0,3 dBFS, le pic de `children-dream-v7` passe de **1,40517 à 0,966051** —
+c'est-à-dire **−0,30 dBFS** au centième près.
+
+**L'AUTRE REMÈDE, LUI, NE TENAIT PAS.** Export en « crête à -1 dBFS » : le
+message annonçait « crête ramenée à -1 dBFS (-4.0 dB) », et le fichier sortait
+à **−3,95 dBFS**. Trois décibels d'écart, sur l'option dont c'est toute la
+raison d'être.
+
+**LA CAUSE, ET C'EST D47 UNE TROISIÈME FOIS.** Quand l'export doit réécrire
+(normalisation, FLAC, OGG), il rend d'abord un fichier intermédiaire — **dans le
+format cible**, donc en 24 bits le plus souvent. Le rendu à 1,405 y était borné
+à 1,0 **avant** que le gain de 0,634 ne s'applique : 1,0 × 0,634 = **0,634**,
+soit les −3,95 dBFS mesurés. Le remède contre l'écrêtage produisait un fichier
+**écrêté puis baissé**, c'est-à-dire le pire des deux.
+
+**ET LE MESSAGE DISAIT VRAI SUR CE QU'IL AVAIT CALCULÉ, PAS SUR CE QU'IL AVAIT
+ÉCRIT.** « crête 0,891 » est `peakLevel × gain` — la valeur PRÉVUE. Le fichier,
+lui, en portait 0,634. **Un compte rendu qui répète l'intention ne vérifie
+rien** : il aurait fallu relire le fichier, comme ce banc l'a fait.
+
+**LA CORRECTION TIENT EN DEUX LIGNES** : l'intermédiaire est écrit en 32 bits
+flottants, toujours. Il n'a aucune raison d'être dans le format cible — il est
+effacé juste après —, et le flottant le porte sans rien perdre, ce pour quoi il
+existe. Mesuré après : **0,89125, soit −1,00 dBFS**, exactement ce qui était
+demandé.
+
+**CE QUE CES TROIS PHASES DESSINENT ENSEMBLE.** Un même geste — borner à ±1 là
+où le format n'y oblige pas — a produit **quatre** symptômes : le mixage
+exporté, les stems, le gel, et la normalisation. Aucun ne ressemblait aux
+autres, et chacun avait l'air d'un problème de niveau plutôt que d'un problème
+d'écriture.
+
+Tests : 1 285 audio, 319 core, 285 interchange, 25 clap, 11 panels — verts.

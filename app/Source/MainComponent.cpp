@@ -4208,8 +4208,24 @@ bool MainComponent::exportProjectToFile(const juce::File& file, const vsm::inter
     const bool reecrire = flac || ogg || niveau != ExportLevel::AsIs;
     const juce::File wav = reecrire ? file.getSiblingFile(file.getFileNameWithoutExtension() + ".vsm-rendu.wav") : file;
 
+    // LE FICHIER INTERMÉDIAIRE EST EN 32 BITS FLOTTANTS, TOUJOURS.
+    //
+    // Il était écrit dans le FORMAT CIBLE, donc en 24 bits le plus souvent :
+    // un rendu dont le pic vaut 1,405 y était borné à 1,0 **avant** que le gain
+    // de normalisation ne s'applique. Le remède contre l'écrêtage produisait
+    // donc un fichier écrêté, et il manquait sa cible : demandé à -1 dBFS, il
+    // sortait à **-3,95 dBFS** — le gain (0,634) appliqué à 1,0 au lieu de
+    // 1,405. Le message, lui, annonçait « crête 0,891 », c'est-à-dire ce que le
+    // calcul PRÉVOYAIT et non ce que le fichier CONTENAIT.
+    //
+    // Un intermédiaire n'a aucune raison d'être dans le format cible : il est
+    // effacé juste après. Le flottant le porte sans rien perdre, et c'est
+    // exactement ce pour quoi il existe (D47).
+    vsm::interchange::RenderOptions optionsRendu = options;
+    if (reecrire) optionsRendu.format = vsm::audio::io::SampleFormat::Float32;
+
     const auto rendered = vsm::interchange::renderBundleToWav(
-        bundle, wav.getFullPathName().toStdString(), options);
+        bundle, wav.getFullPathName().toStdString(), optionsRendu);
     if (!rendered.success) {
         message = juce::String(rendered.error);
         return false;
