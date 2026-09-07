@@ -8728,3 +8728,26 @@ nomme les deux remèdes qui existent déjà dans le même menu** — « crête �
 
 Tests : **1 285 audio** (2 neufs), 319 core, 285 interchange, 25 clap,
 11 panels — tous verts, empreintes comprises.
+
+> **CE QUE `vsm-render` PROMET, VÉRIFIÉ (08/09/2026, 01:30).** D47 est né du
+> contrôle d'une phrase de l'aide de l'outil. Les autres ont été passées au même
+> crible, sur `children-dream-v7` :
+>
+> | ce que l'aide promet | mesuré |
+> |---|---|
+> | « le rendu part toujours de zéro et la plage est découpée ensuite » | `--start 60 --duration 10` rend **exactement** le même passage que le rendu complet découpé : écart **nul**, au bit près |
+> | « la somme des stems redonne le mixage » | **−148,7 dB** après D47 (c'était −51 dB avant, et c'est ce qui a mené à D47) |
+> | « [le temps réel est] inutile aux machines de ce projet, qui sont déterministes » | `--temps-reel` rend le fichier **identique au bit près** — et prend bien 8,0 s pour 8 s d'audio |
+> | « [le dither est] actif par défaut, sans effet sur le flottant » | `--sans-dither` change le rendu **int24** et ne change **rien** au **float32** |
+>
+> **ET LE RENDU EST DÉTERMINISTE JUSQUE DANS LES FORMATS ENTIERS** : deux
+> exécutions du même rendu donnent le même fichier au **hachage près**, en
+> float32 comme en int24. Le bruit du dither est donc semé de façon
+> reproductible — ce qui n'allait pas de soi, un dither étant par définition du
+> hasard, et ce dont dépend toute la chaîne de mesure du projet.
+>
+> **CE QUE CE CONTRÔLE APPREND SUR D47.** Quatre promesses sur cinq étaient
+> vraies. Celle qui ne l'était pas ne l'était pas à cause de l'outil : elle
+> l'était à cause du **graveur de fichiers**, deux couches plus bas, que
+> personne ne soupçonnait parce que sa faute ressemblait à un mixage fort. Une
+> promesse fausse ne dénonce pas toujours celui qui la fait.
