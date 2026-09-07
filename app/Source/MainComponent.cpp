@@ -1918,6 +1918,12 @@ void MainComponent::timerCallback() {
 
     transportBar_.setCpuUsage(audioEngine_.currentCpuUsagePercent());
     transportBar_.setXrunCount(audioEngine_.xrunCount());   // D41.3
+    // D42.3 : QUELLE PISTE COÛTE. Le total dit qu'il faut alléger ; celui-ci
+    // dit quoi. Publié au même rythme que les vumètres, dont il partage la
+    // banque.
+    mixer_.publishRenderCosts([this](size_t piste) {
+        return audioEngine_.processGraph().readTrackRenderMicros(piste);
+    });
     transportBar_.setSampleRate(audioEngine_.currentSampleRate());
 
     // Republication coalescée des changements de mix (fader/pan/mute/solo)

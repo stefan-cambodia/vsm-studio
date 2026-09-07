@@ -265,6 +265,57 @@ int main(int argc, char** argv) {
     }
 
     // ------------------------------------------------------------------
+    // D42.3 — LA RÈGLE QUI DÉSIGNE LA PISTE CHÈRE
+    // ------------------------------------------------------------------
+    // POURQUOI ICI ET NON À L'ÉCRAN, ET C'EST DIT PLUTÔT QUE CONTOURNÉ : le
+    // marquage dépend du temps de calcul, donc de blocs réellement rendus. Sur
+    // cette machine le périphérique audio est PRIS par un autre processus
+    // (« Sous-périphériques : 0/1 »), le moteur ne rend aucun bloc dans une
+    // capture, et toutes les pistes y coûtent zéro. La règle se mesure donc
+    // ici, en donnant les temps à la place du moteur ; ce qu'aucune capture ne
+    // pourra montrer sur cette machine est le PIXEL ambre, pas la décision.
+    {
+        Project p;
+        uint64_t idsP = 1;
+        for (int i = 0; i < 5; ++i) {
+            Track t;
+            t.name = "P" + std::to_string(i);
+            t.addNote(0, 240, 60, 100, 0, idsP);
+            p.tracks.push_back(t);
+        }
+        MixerComponent mel;
+        mel.setBounds(0, 0, 600, 300);
+        mel.setProject(&p);
+        // Quatre pistes à ~40 us, une à 500 : la médiane vaut 40, le seuil 120.
+        const float couts[] = { 38.0f, 41.0f, 500.0f, 39.0f, 42.0f };
+        mel.publishRenderCosts([&](size_t i) { return i < 5 ? couts[i] : 0.0f; });
+        std::printf("=== D42.3 : QUELLE PISTE EST DESIGNEE CHERE ===\n");
+        const auto cheres = mel.pistesCheres();
+        const bool uneSeule = cheres.size() == 1 && cheres[0] == 2;
+        std::printf("  couts (us) 38 41 500 39 42 -> designees : %zu (%s) -> %s\n",
+                    cheres.size(), cheres.empty() ? "aucune" : std::to_string(cheres[0]).c_str(),
+                    uneSeule ? "la piste 2, celle qui coute 12 fois la mediane"
+                             : "MAUVAISE DESIGNATION");
+        if (!uneSeule) desaccords = 1;
+        // ET LE CAS QUI COMPTE AUTANT : des pistes toutes semblables ne doivent
+        // en designer AUCUNE. Un projet de quatre flutes n'a rien a geler, et
+        // un seuil absolu en aurait designe une.
+        const float egaux[] = { 40.0f, 41.0f, 39.0f, 42.0f, 40.0f };
+        MixerComponent mel2;
+        mel2.setBounds(0, 0, 600, 300);
+        mel2.setProject(&p);
+        mel2.publishRenderCosts([&](size_t i) { return i < 5 ? egaux[i] : 0.0f; });
+        const auto aucune = mel2.pistesCheres();
+        std::printf("  couts egaux 40 41 39 42 40 -> designees : %zu -> %s\n",
+                    aucune.size(),
+                    aucune.empty() ? "aucune, comme il se doit"
+                                   : "UNE PISTE DESIGNEE LA OU IL N'Y A RIEN A GELER");
+        if (!aucune.empty()) desaccords = 1;
+        std::printf("  (la decision se lit dans l'infobulle de chaque tranche ;\n"
+                    "   le pixel ambre, lui, demande un peripherique audio libre)\n");
+    }
+
+    // ------------------------------------------------------------------
     // D36.1 — LE GESTE ATTEINT-IL LA PISTE ?
     // ------------------------------------------------------------------
     // Le pas d'historique prouve qu'on a SIGNALÉ ; il ne prouve pas qu'on a

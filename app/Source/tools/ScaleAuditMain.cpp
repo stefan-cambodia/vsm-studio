@@ -363,5 +363,55 @@ int main(int argc, char** argv) {
         }
     }
 
+    // ------------------------------------------------------------------
+    // D42 — LA CHARGE PAR PISTE
+    // ------------------------------------------------------------------
+    {
+        constexpr double kSampleRate = 48000.0;
+        constexpr int kBlock = 512;
+        const double budgetMs = 1000.0 * kBlock / kSampleRate;
+        std::printf("\n=== D42 : LE TEMPS PAR PISTE (%s, 16 pistes) ===\n", machine.c_str());
+        // UNE PISTE CHÈRE PARMI DES LÉGÈRES : c'est le cas qui donne son sens
+        // au chiffre. Un banc où toutes les pistes coûtent pareil ne dirait pas
+        // si la mesure DISTINGUE, seulement si elle mesure.
+        Project mixte = projetDeNPistes(16, machine);
+        mixte.tracks[3].instrumentId = "vsm.additive";
+        for (size_t fils : { size_t{0}, size_t{8} }) {
+            vsm::audio::engine::ProcessGraph graphe;
+            graphe.prepare(kSampleRate, kBlock);
+            graphe.setRenderThreadCount(fils);
+            graphe.setProject(mixte);
+            for (size_t i = 0; i < mixte.tracks.size(); ++i)
+                graphe.setTrackInstrument(i, mixte.tracks[i].instrumentId);
+            std::vector<float> g(kBlock, 0.0f), d(kBlock, 0.0f);
+            graphe.seekSeconds(0.0);
+            graphe.setPlaying(true);
+            for (int b = 0; b < 200; ++b) graphe.processBlock(g.data(), d.data(), kBlock);
+
+            double somme = 0.0;
+            size_t muettes = 0;
+            double chere = 0.0, legere = 1.0e9;
+            for (size_t i = 0; i < mixte.tracks.size(); ++i) {
+                const double us = graphe.readTrackRenderMicros(i);
+                somme += us;
+                if (us <= 0.0) ++muettes;
+                if (i == 3) chere = us; else legere = std::min(legere, us);
+            }
+            const double totalBloc = millisecondes([&] {
+                for (int b = 0; b < 200; ++b) graphe.processBlock(g.data(), d.data(), kBlock);
+            }) / 200.0;
+            std::printf("  %zu fil(s) : somme des pistes %.3f ms, bloc %.3f ms (%.0f %% du bloc)\n",
+                        fils, somme / 1000.0, totalBloc, 100.0 * (somme / 1000.0) / totalBloc);
+            std::printf("            piste chere (additive) %.1f us, la plus legere %.1f us,"
+                        " rapport %.1f ; pistes sans temps : %zu\n",
+                        chere, legere, chere / std::max(1.0, legere), muettes);
+            if (muettes > 0)
+                std::printf("            <- UNE PISTE SANS TEMPS EST UNE PISTE NON MESUREE\n");
+        }
+        std::printf("  RAPPEL : ce temps se compare aux AUTRES PISTES, pas au budget --\n"
+                    "  en parallele huit pistes tournent ensemble et leur somme depasse le bloc.\n");
+        (void)budgetMs;
+    }
+
     return 0;
 }

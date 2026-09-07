@@ -385,6 +385,11 @@ public:
     /// Corrélation de phase entre les deux canaux de la piste, de -1 à +1.
     /// Négative, la piste disparaît en mono.
     float readMeterCorrelation(size_t trackIndex) const { return meters_.readCorrelation(trackIndex); }
+    /// D42.1 : le temps de calcul de la piste, en microsecondes (voir
+    /// `MeterBank::reportRenderMicros` pour ce que ce chiffre n'est PAS).
+    float readTrackRenderMicros(size_t trackIndex) const {
+        return meters_.readRenderMicros(trackIndex);
+    }
     int totalActiveVoices() const;
 
     /// Tranche master appliquée au bus stéréo final. Désactivée par défaut :

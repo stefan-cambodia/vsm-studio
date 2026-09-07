@@ -1283,6 +1283,27 @@ bool ProcessGraph::renderTrackVoice(const GraphSnapshot& snapshot, size_t trackI
                                     int sampleStart, int sampleCount, double rangeStartSeconds,
                                     bool includeScheduledEvents, Compensation* compensation,
                                     MidiNoteEvent* events, float* destL, float* destR) {
+    // D42.1 : LE CHRONOMÈTRE EST ICI, ET NULLE PART AILLEURS. Les deux chemins
+    // de rendu -- le séquentiel et le parallèle qui porte les 64 pistes --
+    // passent tous deux par cette fonction : instrumenter ici couvre les deux
+    // PAR CONSTRUCTION, là où deux chronomètres posés dans chaque chemin
+    // auraient fini par diverger, ou par n'être posés que dans celui qu'on
+    // regarde. `steady_clock` ne fait ni allocation, ni verrou, ni
+    // entrée-sortie : l'invariant n° 2 du § 6 tient.
+    // UN GARDE PLUTÔT QU'UN APPEL À CHAQUE `return` : cette fonction en compte
+    // une dizaine, et le onzième qu'on ajoutera un jour oublierait le
+    // chronomètre sans que rien ne le dise -- la piste concernée afficherait
+    // alors un coût figé, c'est-à-dire un chiffre plausible et faux.
+    struct GardeChrono {
+        MeterBank& banque;
+        size_t piste;
+        std::chrono::steady_clock::time_point debut;
+        ~GardeChrono() {
+            banque.reportRenderMicros(
+                piste, static_cast<float>(std::chrono::duration<double, std::micro>(
+                           std::chrono::steady_clock::now() - debut).count()));
+        }
+    } gardeChrono{ meters_, trackIndex, std::chrono::steady_clock::now() };
     const Project& project = snapshot.project;
     if (trackIndex >= project.tracks.size() || trackIndex >= kMaxTracks) return false;
     // D30.2 : UNE PISTE DÉSACTIVÉE N'EST PAS RENDUE DU TOUT. Le muet, lui,

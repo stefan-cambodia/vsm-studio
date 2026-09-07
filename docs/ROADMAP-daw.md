@@ -8231,3 +8231,116 @@ avant deux boutons qui, eux, ont un menu.
 > imprime désormais `fils=8 portées//=201` à chaque ligne : le lecteur voit du
 > même coup ce qui a été mesuré et si le chemin parallèle a servi. Un rapport
 > qui tait sa configuration laisse croire qu'il n'y en avait qu'une.
+
+### Phase D42 — La charge PAR PISTE : à 64 pistes, le total ne dit pas quoi geler (07/09/2026, 20:45)
+
+**Ce que D41 a laissé à moitié fait.** La barre affiche désormais « CPU 92 % »
+et le nombre de craquements. C'est un progrès sur rien — mais devant un projet
+en parité, **le total est inutilisable** : il dit qu'il faut alléger, pas QUOI
+alléger. L'infobulle conseille « Piste ▸ Geler la piste » sans dire laquelle, et
+D41 a mesuré un rapport de **42** entre la machine la moins chère et la plus
+chère : sur 64 pistes, une seule peut coûter ce que quarante autres coûtent
+ensemble.
+
+C'est le geste de tous les jours dans Cubase (*Performance Meter* par piste) et
+dans Live : on regarde la colonne, on gèle la piste qui dépasse, on continue.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D42.1 | **Le moteur mesure le temps passé par piste**, publié comme les vumètres — banque de taille fixe, atomiques, aucune allocation | l'invariant n° 2 du § 6 tient, vérifié par le banc « aucune allocation dans `process()` » |
+| D42.2 | **Les deux chemins de rendu sont couverts**, le séquentiel et le parallèle : c'est le second qui porte les 64 pistes, et l'oublier mesurerait le cas qui n'arrive pas | le banc dit, pour chaque piste, un temps non nul dans les deux configurations |
+| D42.3 | **Le chiffre s'affiche là où l'on choisit quoi geler** : la tranche du mélangeur | photographié à 64 pistes, avec une piste chère et des pistes légères |
+| D42.4 | **Ce que ce chiffre NE dit pas est écrit** | voir l'attendu n° 3, qui est le piège de cette phase |
+
+**Ce qui est attendu, écrit AVANT la mesure.**
+
+1. **La somme des temps par piste sera INFÉRIEURE au temps du bloc** en rendu
+   séquentiel, parce que le bloc contient aussi le mixage, le bus master et ce
+   qui n'appartient à aucune piste. J'attends un écart visible — dix à trente
+   pour cent. **Si la somme par piste égale le temps du bloc, c'est que je
+   mesure autre chose que ce que je crois.**
+2. **Le coût de la mesure elle-même** : deux lectures d'horloge par piste et par
+   bloc, soit 128 à 64 pistes. J'attends **moins de 1 %** du budget. Au-delà de
+   cinq, l'instrument coûte plus qu'il n'informe et doit devenir facultatif ou
+   disparaître — un mètre qui fait craquer ce qu'il mesure est pire qu'aucun
+   mètre.
+3. **LE PIÈGE, ÉCRIT MAINTENANT POUR NE PAS Y TOMBER.** En rendu parallèle, huit
+   pistes sont calculées **en même temps** : chacune rapporte sa propre durée, et
+   leur somme peut donc dépasser la durée du bloc. Ce n'est pas une erreur,
+   c'est ce que « huit fils » veut dire. **Un affichage en « pourcentage du
+   bloc » montrerait donc 300 % et mentirait.** Le chiffre par piste est un
+   temps, et il se compare aux AUTRES PISTES — pas au budget. C'est exactement
+   la faute de portée commise trois fois aujourd'hui, prévue d'avance cette
+   fois-ci.
+
+> **LA PHASE D42 EST FAITE (07/09/2026, 21:30). UNE ATTENTE JUSTE, UNE FAUSSE,
+> ET UNE VÉRIFIÉE PAR UNE AUTRE MÉTHODE QUE LA PRÉVUE.**
+>
+> **D42.1 et D42.2 — le chronomètre est dans `renderTrackVoice`, et nulle part
+> ailleurs.** Les deux chemins de rendu — le séquentiel et le parallèle qui
+> porte les 64 pistes — passent tous deux par cette fonction : les couvrir tous
+> les deux est une conséquence de l'endroit choisi, pas une chose dont il faut
+> se souvenir. Un **garde RAII** plutôt qu'un appel à chaque `return` : la
+> fonction en compte une dizaine, et le onzième qu'on ajoutera oublierait le
+> chronomètre sans que rien ne le dise — la piste afficherait alors un coût
+> figé, c'est-à-dire un chiffre plausible et faux. Les **neuf** tests « aucune
+> allocation dans `process()` » passent, balayage du parc entier compris :
+> l'invariant n° 2 du § 6 tient.
+>
+> **L'ATTENTE N° 3 ÉTAIT JUSTE, ET C'ÉTAIT LE PIÈGE.** En rendu parallèle, la
+> somme des temps par piste vaut **301 %** de la durée du bloc — huit pistes
+> calculées ensemble rapportent chacune sa propre durée. Écrit avant la mesure,
+> donc l'affichage ne présente jamais ce temps comme une part du budget : il se
+> compare aux **autres pistes**, et c'est dit dans l'en-tête de `MeterBank`, seul
+> endroit que lira qui voudra s'en servir ailleurs.
+>
+> **L'ATTENTE N° 1 ÉTAIT FAUSSE, ET SON GARDE-FOU L'ÉTAIT AUSSI.** J'annonçais
+> une somme par piste inférieure de 10 à 30 % au temps du bloc, et j'avais
+> écrit : « si la somme égale le temps du bloc, c'est que je mesure autre chose
+> que ce que je crois ». Mesuré en séquentiel : **98 %**. Le garde-fou aurait
+> donc dû condamner l'instrument — **et il avait tort**, parce qu'il supposait
+> un travail hors pistes important. Avec un bus master vide et aucun départ, le
+> hors-piste vaut **0,019 ms sur 0,803**, soit 2,4 % : un mélange de seize
+> pistes est une addition pondérée, et un master sans effet est un passage.
+> **Ce qui départage les deux hypothèses n'est pas la somme mais la
+> DISPERSION** : les pistes diffèrent entre elles d'un facteur 7,5 à 12,6, ce
+> qu'un chronomètre posé par erreur sur quelque chose de partagé ne pourrait pas
+> produire — il rendrait seize valeurs identiques, et une somme de seize fois le
+> bloc, pas de 0,98 fois.
+>
+> **L'ATTENTE N° 2 EST CONFIRMÉE, MAIS PAS PAR LA MÉTHODE PRÉVUE, ET C'EST LA
+> LEÇON DE CETTE PHASE.** Comparer le temps du bloc avant et après
+> l'instrumentation donnait **+10,8 %** — au-dessus des 5 % où j'avais écrit que
+> l'instrument devrait disparaître. Cinq exécutions du même banc rendent 0,545 ;
+> 0,673 ; 0,644 ; 0,674 ; 0,741 ms : **le bruit est de ±18 %, et la mesure
+> d'avant tombe dedans.** Une différence de 1 % ne se mesure pas par la
+> différence de deux nombres bruités ; elle se mesure **directement** : 128
+> lectures d'horloge (deux par piste, 64 pistes) prennent **0,0020 ms, soit
+> 0,02 % du budget**. J'ai failli condamner un instrument correct sur une
+> comparaison que le bruit rendait vide de sens.
+>
+> **D42.3 — le nom en ambre, le chiffre dans l'infobulle.** Une console est
+> étroite ; y glisser un nombre de plus aurait demandé une police plus petite,
+> exactement ce que l'échelle à 150 % existe pour éviter. **Le seuil est
+> relatif : trois fois la MÉDIANE**, et non un seuil absolu — un projet de
+> quatre flûtes n'a pas de piste chère, et un projet de soixante-quatre additifs
+> en aurait soixante-quatre. La médiane et non la moyenne : une seule piste très
+> chère tire la moyenne au point de se cacher derrière son propre seuil.
+>
+> **CE QUI N'A PAS PU ÊTRE PHOTOGRAPHIÉ, ET POURQUOI — DIT PLUTÔT QUE
+> CONTOURNÉ.** Le marquage dépend de blocs réellement rendus. Sur cette machine
+> le périphérique audio est **pris par un autre processus** (`aplay -l` :
+> « Sous-périphériques : 0/1 »), le moteur ne rend aucun bloc pendant une
+> capture, et toutes les pistes y coûtent zéro — trois captures successives l'ont
+> montré avant que j'en cherche la cause ailleurs. La **règle** est donc mesurée
+> au banc, qui relit la décision (`pistesCheres()`) au lieu de la décrire : sur
+> 38, 41, 500, 39, 42 µs elle désigne la seule piste à 500 ; sur des coûts
+> voisins elle n'en désigne **aucune**. Ce qui reste non photographié est le
+> pixel ambre, pas la décision.
+>
+> **ET LE PREMIER BANC DE D42.3 NE MESURAIT RIEN** : il imprimait les coûts
+> d'entrée et annonçait ce qui devait arriver, sans relire ce qui était arrivé.
+> Un banc qui décrit sa propre attente la confirme toujours.
+>
+> Tests : 1 283 audio, 319 core, 285 interchange, 25 clap, 11 panels — verts ;
+> banc d'édition : 11 gestes, 0 muet, 0 désaccord.

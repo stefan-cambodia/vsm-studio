@@ -101,6 +101,10 @@ public:
     /// D37.1 : renomme la piste par le chemin du champ de nom (le libellé
     /// change, donc `onTextChange` part, donc le pas d'historique aussi).
     void renommer(const juce::String& nom);
+    /// D42.3 : choisit une machine PAR LE CHEMIN DU SÉLECTEUR (le même
+    /// `onChange` que le clic), pour que ce qu'on photographie soit ce que
+    /// l'utilisateur obtient. Rend false si l'identifiant n'est pas au parc.
+    bool choisirMachine(const juce::String& pluginId);
     /// D37.2 : règle le volume par le chemin du curseur.
     void reglerVolume(float valeur);
 
@@ -238,6 +242,7 @@ public:
     void basculerSolo(size_t index);
     /// D37 : les deux autres gestes qu'aucun menu ne porte.
     void renommer(size_t index, const juce::String& nom);
+    bool choisirMachine(size_t index, const juce::String& pluginId);
     void reglerVolume(size_t index, float valeur);
     /// D36.7 : relit le muet et le solo de toutes les lignes.
     void refreshMuteSolo();

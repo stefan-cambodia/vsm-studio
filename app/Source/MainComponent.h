@@ -152,6 +152,9 @@ public:
             trackList_.setSelectedTracks(choix, *choix.begin());
             return true;
         }
+        if (geste.startsWithIgnoreCase("machine:")) {
+            return trackList_.choisirMachine(piste, geste.fromFirstOccurrenceOf(":", false, false));
+        }
         if (geste.startsWithIgnoreCase("couleur:")) {
             appliquerCouleurDePiste(
                 piste, juce::Colour::fromString("ff" + geste.fromFirstOccurrenceOf(":", false, false)));

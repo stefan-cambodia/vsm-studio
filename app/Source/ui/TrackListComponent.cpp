@@ -243,6 +243,16 @@ void TrackRowComponent::refreshMix() {
     panSlider_.setValue(track_.pan, juce::dontSendNotification);
 }
 
+bool TrackRowComponent::choisirMachine(const juce::String& pluginId) {
+    const auto instruments = availableInstruments();
+    for (int i = 0; i < static_cast<int>(instruments.size()); ++i)
+        if (juce::String(instruments[static_cast<size_t>(i)].first) == pluginId) {
+            instrumentBox_.setSelectedId(i + 2, juce::sendNotificationSync);
+            return true;
+        }
+    return false;
+}
+
 void TrackRowComponent::renommer(const juce::String& nom) {
     nameLabel_.setText(nom, juce::sendNotificationSync);
 }
@@ -515,6 +525,11 @@ void TrackListComponent::loadProject(Project& project) {
 
 void TrackListComponent::renommer(size_t index, const juce::String& nom) {
     if (index < static_cast<size_t>(rows_.size())) rows_[static_cast<int>(index)]->renommer(nom);
+}
+
+bool TrackListComponent::choisirMachine(size_t index, const juce::String& pluginId) {
+    if (index >= static_cast<size_t>(rows_.size())) return false;
+    return rows_[static_cast<int>(index)]->choisirMachine(pluginId);
 }
 
 void TrackListComponent::reglerVolume(size_t index, float valeur) {

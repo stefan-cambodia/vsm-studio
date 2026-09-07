@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <map>
 #include <set>
 #include <JuceHeader.h>
@@ -165,6 +166,41 @@ public:
     /// D37 : CE QUE LA TRANCHE AFFICHE, et non ce que la piste contient. Les
     /// deux se mesurent séparément : c'est leur DÉSACCORD qui est le défaut, et
     /// le lire dans la piste des deux côtés ne le montrerait jamais.
+    /// D42.3 : CE QUE COÛTE CETTE PISTE, et si elle est parmi les plus chères.
+    ///
+    /// LE CHIFFRE VA DANS L'INFOBULLE, PAS DANS LA TRANCHE. Une console est
+    /// étroite, et y glisser un nombre de plus demanderait une police plus
+    /// petite -- exactement ce que l'échelle d'interface à 150 % existe pour
+    /// éviter. Ce qu'on lit d'un coup d'oeil est donc le NOM EN AMBRE ; le
+    /// nombre est là pour qui veut le vérifier.
+    ///
+    /// « Chère » veut dire chère PAR RAPPORT AUX AUTRES de ce projet, et non
+    /// au-dessus d'un seuil absolu : un projet de quatre flûtes n'a pas de
+    /// piste chère, et un projet de soixante-quatre additifs en aurait
+    /// soixante-quatre. C'est la comparaison qui dit quoi geler.
+    void setRenderCost(float micros, bool parmiLesPlusCheres) {
+        coutMicros_ = micros;
+        if (parmiLesPlusCheres != chere_) {
+            chere_ = parmiLesPlusCheres;
+            nameLabel_.setColour(juce::Label::textColourId,
+                                 chere_ ? vsm::ui::Palette::accentAmber
+                                        : vsm::ui::Palette::textPrimary);
+            repaint();
+        }
+        nameLabel_.setTooltip(juce::String::fromUTF8(track_.name.c_str())
+            + juce::String::fromUTF8(u8" — calcul : ") + juce::String(micros, 0)
+            + juce::String::fromUTF8(u8" µs par bloc")
+            + (chere_ ? juce::String::fromUTF8(
+                            u8" (l'une des plus chères de ce projet : « Piste ▸ Geler la piste » "
+                            u8"la remplace par son enregistrement)")
+                      : juce::String()));
+    }
+    float coutMicros() const { return coutMicros_; }
+    /// D42.3 : cette tranche est-elle DÉSIGNÉE comme l'une des plus chères ?
+    /// Exposé pour être mesuré : un banc qui décrirait la règle sans la relire
+    /// ne vérifierait rien.
+    bool estChere() const { return chere_; }
+
     /// D39.4 : cette tranche est-elle celle d'une piste choisie ?
     void setChoisie(bool choisie) { if (choisie != choisie_) { choisie_ = choisie; repaint(); } }
 
@@ -268,6 +304,9 @@ private:
     juce::TextButton solo_ { "S" };
     /// D39.4 : dessinée comme choisie.
     bool choisie_ = false;
+    /// D42.3 : le temps de calcul de la piste, et si elle est parmi les chères.
+    float coutMicros_ = 0.0f;
+    bool chere_ = false;
     /// D30.1 : le bouton Solo dit s'il est PROTÉGÉ -- « S+ » et l'ambre du
     /// solo à l'état éteint, parce qu'un réglage qui ne se voit pas est un
     /// réglage qu'on croit ne pas avoir posé.
@@ -382,6 +421,35 @@ public:
     /// dossier n'a plus de tranche, et la n-ième tranche n'est plus la n-ième
     /// piste. Cette confusion a été payée trois fois dans cette phase-là.
     void faireVoirLaTranche(size_t trackIndex);
+    /// D42.3 : PUBLIE LE COÛT DE CHAQUE PISTE, et désigne les plus chères.
+    ///
+    /// LE SEUIL EST RELATIF À LA MÉDIANE, et non absolu : sur un projet de
+    /// pistes toutes semblables, aucune n'est « la chère », et c'est juste --
+    /// il n'y a rien à geler en particulier. Trois fois la médiane est
+    /// l'endroit où une piste se détache vraiment ; D41 a mesuré un rapport de
+    /// 42 entre les extrêmes du parc, si bien qu'une piste qui dépasse ce
+    /// facteur trois est presque toujours une machine d'une autre famille.
+    ///
+    /// LA MÉDIANE ET NON LA MOYENNE : une seule piste très chère tire la
+    /// moyenne au point de se cacher elle-même derrière son propre seuil.
+    /// D42.3 : les tranches désignées chères, pour la mesure.
+    std::vector<size_t> pistesCheres() const {
+        std::vector<size_t> v;
+        for (auto* strip : strips_) if (strip->estChere()) v.push_back(strip->trackIndex());
+        return v;
+    }
+    void publishRenderCosts(const std::function<float(size_t)>& coutDeLaPiste) {
+        std::vector<float> couts;
+        couts.reserve(strips_.size());
+        for (auto* strip : strips_) couts.push_back(coutDeLaPiste(strip->trackIndex()));
+        if (couts.empty()) return;
+        std::vector<float> tries = couts;
+        std::sort(tries.begin(), tries.end());
+        const float mediane = tries[tries.size() / 2];
+        for (size_t i = 0; i < strips_.size(); ++i)
+            strips_[static_cast<int>(i)]->setRenderCost(
+                couts[i], mediane > 0.0f && couts[i] > 3.0f * mediane);
+    }
     /// D37 : chaque tranche relit sa piste (nom, volume, panoramique).
     void refreshFromTracks() {
         for (auto* strip : strips_) strip->refreshFromTrack();

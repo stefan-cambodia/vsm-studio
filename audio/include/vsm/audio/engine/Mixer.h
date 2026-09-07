@@ -102,16 +102,46 @@ public:
         return channelIndex < kMaxChannels ? correlation_[channelIndex].load(std::memory_order_relaxed) : 1.0f;
     }
 
+    /// D42.1 : LE TEMPS DE CALCUL DE LA PISTE, en microsecondes, lissé.
+    ///
+    /// CE QU'IL EST : une durée, à comparer aux AUTRES PISTES. Il dit laquelle
+    /// geler quand la barre passe au rouge -- à 64 pistes, le total dit qu'il
+    /// faut alléger, jamais QUOI alléger, et D41 a mesuré un rapport de 42
+    /// entre la machine la moins chère et la plus chère.
+    ///
+    /// CE QU'IL N'EST PAS : une part du budget du bloc. En rendu parallèle,
+    /// huit pistes sont calculées EN MÊME TEMPS et leur somme dépasse
+    /// légitimement la durée du bloc. L'afficher en pourcentage montrerait
+    /// 300 % et mentirait. C'est écrit ici parce que c'est le seul endroit que
+    /// lira celui qui voudra s'en servir ailleurs.
+    ///
+    /// LISSÉ À LA SOURCE, et non à l'affichage : un bloc où la piste ne joue
+    /// pas coûte presque rien, et un chiffre qui tombe à zéro entre deux notes
+    /// serait illisible. La constante vaut ~0,2 s à 512 échantillons.
+    void reportRenderMicros(size_t channelIndex, float micros) {
+        if (channelIndex >= kMaxChannels) return;
+        const float avant = renderMicros_[channelIndex].load(std::memory_order_relaxed);
+        constexpr float kSuivi = 0.05f;
+        renderMicros_[channelIndex].store(avant + kSuivi * (micros - avant),
+                                           std::memory_order_relaxed);
+    }
+    float readRenderMicros(size_t channelIndex) const {
+        return channelIndex < kMaxChannels ? renderMicros_[channelIndex].load(std::memory_order_relaxed)
+                                           : 0.0f;
+    }
+
     void resetAll() {
         for (auto& level : levels_) level.store(0.0f, std::memory_order_relaxed);
         for (auto& v : rms_) v.store(0.0f, std::memory_order_relaxed);
         for (auto& v : correlation_) v.store(1.0f, std::memory_order_relaxed);
+        for (auto& v : renderMicros_) v.store(0.0f, std::memory_order_relaxed);
     }
 
 private:
     std::array<std::atomic<float>, kMaxChannels> levels_{};
     std::array<std::atomic<float>, kMaxChannels> rms_{};
     std::array<std::atomic<float>, kMaxChannels> correlation_{};
+    std::array<std::atomic<float>, kMaxChannels> renderMicros_{};
 };
 
 /// La corrélation de phase d'un bloc stéréo : Σ(L·R) / √(ΣL²·ΣR²).
