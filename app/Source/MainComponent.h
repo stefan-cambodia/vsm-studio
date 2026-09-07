@@ -366,6 +366,14 @@ private:
         /// D34.4 : la règle de l'arrangement, en mesures ou en minutes:secondes.
         kMenuViewRulerBars,
         kMenuViewRulerTime,
+        /// D34.5 : dessiner une automation par une forme. CINQ entrées
+        /// CONTIGUËS, dans cet ordre : `menuItemSelected` en déduit la forme et
+        /// le sens par soustraction.
+        kMenuEditDrawAutomationRampUp,
+        kMenuEditDrawAutomationRampDown,
+        kMenuEditDrawAutomationSine,
+        kMenuEditDrawAutomationTriangle,
+        kMenuEditDrawAutomationSquare,
         kMenuViewComputerKeyboard,
         // Un identifiant par palier d'échelle, attribué à la suite :
         // kMenuViewScaleFirst + index dans UiScale::steps().

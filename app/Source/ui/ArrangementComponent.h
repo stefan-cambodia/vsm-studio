@@ -68,6 +68,25 @@ public:
     /// Bascule l'affichage des courbes. `A` au clavier.
     void toggleAutomation();
     bool automationVisible() const { return automationVisible_; }
+    /// D34.5 : TRACE UNE FORME sur la courbe montrée de la piste choisie.
+    ///
+    /// LA PLAGE EST LA SÉLECTION DE CLIPS s'il y en a une, et la BOUCLE sinon.
+    /// C'est le choix qui demande le moins : on vient presque toujours de
+    /// choisir le passage qu'on veut automatiser, en cliquant un clip ou en
+    /// posant la boucle. Aucune des deux, et rien n'est tracé -- inventer une
+    /// plage (« tout le morceau ? quatre mesures ? ») serait un geste dont on
+    /// ne pourrait pas prévoir l'étendue.
+    ///
+    /// LES VALEURS SONT LES BORNES DU PARAMÈTRE, lues par `automationRange` :
+    /// le geste dessine la forme sur toute sa course. La resserrer se fait
+    /// ensuite à la main, sur une forme qu'on voit, plutôt qu'avant, dans une
+    /// boîte de dialogue qui demanderait deux nombres.
+    ///
+    /// `descendante` retourne la forme (la rampe descend, l'oscillation part
+    /// du haut). Rend faux si rien n'a été tracé, avec la raison au journal.
+    bool drawAutomationShapeOnSelection(size_t trackIndex,
+                                        vsm::sequencer::AutomationShape forme, bool descendante);
+
     /// Choisit la courbe montrée sur une piste (index dans `Track::automation`).
     void showAutomationCurve(size_t trackIndex, int curveIndex);
 

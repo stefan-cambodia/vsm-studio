@@ -7053,3 +7053,90 @@ Cinq manques ont survécu.
 >
 > Tests : 1 279 audio, 301 core, 285 interchange — inchangés, l'étape est
 > entièrement dans l'interface.
+
+> **D34.5 EST FAITE (07/09/2026, 06:15), ET LA PHASE D34 EST CLOSE.**
+> `drawAutomationShape` dans `core/`, quatre formes — **Ligne, Sinus, Triangle,
+> Carré** —, au menu *Édition ▸ Dessiner l'automation sur la sélection*.
+>
+> **L'ATTENDU ÉTAIT DOUBLE, ET C'EST CE QUI L'A RENDU UTILE.** « Moins de 1 %
+> d'écart au sinus idéal ET un nombre de points borné » : les deux moitiés
+> tirent en sens contraires, et ne mesurer que la première laisserait passer
+> une forme qui triche en posant mille points. Le compromis est donc publié
+> plutôt que résumé à un seul chiffre :
+>
+> | tolérance demandée | écart mesuré au sinus | points posés (4 périodes) |
+> |---|---|---|
+> | 5 % | 4,45 % | **25** |
+> | **1 % (le défaut)** | **0,94 %** | **62** |
+> | 0,2 % | 0,19 % | **165** |
+>
+> Un sinus de quatre mesures tient donc en **62 points**, soit une quinzaine
+> par période, là où l'échantillonnage en avait posé mille. La réduction est
+> celle de **D30.5**, écrite pour les passes jouées : lui confier la parcimonie
+> valait mieux que de la deviner forme par forme.
+>
+> **LA MESURE A CORRIGÉ LA FONCTION, ET DE JUSTESSE.** La première version
+> rendait **1,01 %** pour 1 % promis. Un dépassement de rien du tout, qui
+> restait un dépassement — et sa cause est instructive : la tolérance promise
+> porte sur l'écart à la forme IDÉALE, or **deux** erreurs s'y ajoutent, celle
+> de la réduction et celle de la polyligne échantillonnée elle-même, dont les
+> cordes coupent les sommets. Dépenser tout le budget à la réduction seule,
+> c'est promettre ce qu'on ne tient qu'au bord. L'échantillonnage est passé de
+> 64 à 256 points par période et la réduction ne dépense plus que 95 % du
+> budget.
+>
+> **Trois décisions, écrites parce qu'elles se discutent.**
+>
+> 1. **Un carré ne s'échantillonne pas.** Approché par des rampes très raides,
+>    il devient une suite de fondus courts — et cela s'entend. Ses paliers se
+>    posent en deux points par période, marqués `step`.
+> 2. **Une oscillation par MESURE**, plutôt qu'un nombre demandé dans une
+>    boîte. Un trémolo, un balayage, un panoramique qui va et vient se pensent
+>    en mesures ; poser d'abord la question « combien de périodes ? » ferait
+>    répondre « quatre » à quelqu'un qui voulait dire « une par mesure ». On
+>    resserre ensuite à la main, sur une forme qu'on VOIT.
+> 3. **La plage est la sélection de clips, et la boucle à défaut.** Ni l'une ni
+>    l'autre, et rien n'est tracé : inventer une plage — tout le morceau ?
+>    quatre mesures ? — serait un geste dont on ne pourrait pas prévoir
+>    l'étendue. Les valeurs sont les BORNES du paramètre, la forme couvrant
+>    toute sa course ; la resserrer se fait après, sur ce qu'on voit.
+>
+> Les bords sont raccordés comme dans `writeAutomationRange` et pour la même
+> raison : tracer quatre mesures au milieu d'un fondu ferait autrement sauter
+> le paramètre à l'entrée et à la sortie — on aurait dessiné quatre mesures en
+> cassant les deux voisines.
+>
+> **Vérifié à l'écran** : `VSM_VUE=courbes,auto-forme:sinus` sur une boucle de
+> quatre mesures rend « Automation tracée : **62 point(s) posé(s), 2
+> remplacé(s), 4 période(s) sur 7 680 ticks** » — le même 62 que le banc —, et
+> la capture montre les quatre oscillations dans la bande d'automation de la
+> piste. Le tracé DIT ses nombres parce qu'une courbe de six pixels de haut ne
+> se juge pas sur une capture, et que le critère de l'étape est justement un
+> nombre de points.
+>
+> Tests : 1 279 audio, **308 core** (7 neufs), 285 interchange, 25 clap,
+> 11 panels — tous verts.
+
+---
+
+**BILAN DE LA PHASE D34.** Cinq étapes, et **deux des cinq manques n'en étaient
+pas** — le fondu croisé existait depuis D13.1, les copies liées depuis D1.2.
+Après D33.5, cela fait **trois audits de suite** où le vocabulaire a été le
+mauvais outil. La leçon en est donc affinée une dernière fois : **lire la
+fonction jusqu'au bout**. Un `sed -n '266,346p'` n'est pas une lecture, c'est un
+autre grep, et c'est précisément ce qui avait fait écrire « `spansFromTrack` ne
+regarde jamais sa voisine » vingt lignes au-dessus du code qui la regarde.
+
+Mais les deux « faux manques » ont donné les deux meilleures étapes de la
+phase, et ce n'est pas un hasard : une fonction qui existe sans être dite est
+plus dangereuse qu'une fonction absente. Le fondu croisé avait la courbe que
+D17.1 avait elle-même démontrée fausse ; les copies liées piégeaient qui
+dupliquait un motif pour en faire une variante. **Un audit qui ne cherche que
+des absences ne trouve pas ces défauts-là.**
+
+**Et ce qui a coûté le plus cher n'était dans aucune des cinq cases** : une
+lecture après libération qui faisait tomber l'application, dans le chemin
+d'import de D33.1, trouvée en LANÇANT le binaire. Les 1 908 tests ne traversent
+pas une ligne d'interface, et c'est la seconde fois que ce dépôt paie ce prix
+(la première fut le point d'entrée de D7.5). **Vérifier une interface, c'est
+l'ouvrir.**

@@ -114,6 +114,67 @@ void ArrangementComponent::moveSelectionAcrossTracks(int deltaTracks) {
     repaint();
 }
 
+bool ArrangementComponent::drawAutomationShapeOnSelection(size_t trackIndex,
+                                                           vsm::sequencer::AutomationShape forme,
+                                                           bool descendante) {
+    // LA PISTE VIENT DE L'APPELANT : la vue d'arrangement ne tient pas la
+    // notion de « piste choisie », qui vit dans la liste des pistes. La lui
+    // inventer ici ferait deux sélections capables de diverger.
+    if (project_ == nullptr) return false;
+    const size_t piste = trackIndex;
+    if (piste >= project_->tracks.size()) return false;
+    auto* courbe = curveShownOn(piste);
+    if (courbe == nullptr) {
+        std::fputs("Dessiner une automation : cette piste n'a aucune courbe.\n", stderr);
+        return false;
+    }
+
+    vsm::midi::Tick de = 0, a = 0;
+    if (!selectionTickRange(de, a)) {
+        if (!project_->loopEnabled || project_->loopEndTick <= project_->loopStartTick) {
+            std::fputs("Dessiner une automation : ni clip choisi ni boucle pos\u00e9e, "
+                       "rien n'a \u00e9t\u00e9 trac\u00e9.\n", stderr);
+            return false;
+        }
+        de = project_->loopStartTick;
+        a = project_->loopEndTick;
+    }
+    if (a <= de) return false;
+
+    float mini = 0.0f, maxi = 1.0f;
+    if (automationRange) automationRange(piste, courbe->parameter, mini, maxi);
+
+    // UNE OSCILLATION PAR MESURE, et c'est une décision musicale plutôt qu'un
+    // nombre demandé dans une boîte. Un trémolo, un balayage, un panoramique
+    // qui va et vient se pensent en mesures ; poser d'abord la question
+    // « combien de périodes ? » ferait répondre « quatre » à quelqu'un qui
+    // voulait dire « une par mesure ». On la resserre ensuite à la main, sur
+    // une forme qu'on voit.
+    const vsm::midi::Tick parMesure =
+        project_->timeSignatureMap.ticksPerBar(de, project_->ticksPerQuarterNote);
+    const int periodes = parMesure > 0 ? std::max(1, static_cast<int>((a - de) / parMesure)) : 1;
+
+    // LA TOLÉRANCE EST UN CENTIÈME DE L'ÉTENDUE DU PARAMÈTRE : c'est la même
+    // règle que partout, la tolérance est en unités du paramètre et l'appelant
+    // la calcule sur l'amplitude, qu'il est le seul à connaître.
+    const float tolerance = std::abs(maxi - mini) * 0.01f;
+
+    if (onEditStarted) onEditStarted(u8"Dessiner une automation");
+    const auto fait = vsm::sequencer::drawAutomationShape(
+        *courbe, de, a, forme, descendante ? maxi : mini, descendante ? mini : maxi,
+        periodes, tolerance);
+    std::fputs((juce::String::fromUTF8(u8"Automation trac\u00e9e : ")
+                 + juce::String(static_cast<int>(fait.added))
+                 + juce::String::fromUTF8(u8" point(s) pos\u00e9(s), ")
+                 + juce::String(static_cast<int>(fait.removed))
+                 + juce::String::fromUTF8(u8" remplac\u00e9(s), ")
+                 + juce::String(periodes) + juce::String::fromUTF8(u8" p\u00e9riode(s) sur ")
+                 + juce::String(static_cast<int>(a - de)) + " ticks.\n").toRawUTF8(), stderr);
+    notifyChanged();
+    repaint();
+    return fait.added > 0;
+}
+
 AutomationCurve* ArrangementComponent::curveShownOn(size_t trackIndex) {
     if (project_ == nullptr || trackIndex >= project_->tracks.size()) return nullptr;
     auto& courbes = project_->tracks[trackIndex].automation;

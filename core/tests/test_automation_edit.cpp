@@ -351,3 +351,141 @@ VSM_TEST(the_deviation_is_measured_on_the_union_of_both_curves_ticks) {
     // Le pic est à 480, un tick que la courbe plate n'a pas : l'écart vaut 1.
     VSM_ASSERT_NEAR(maxAutomationDeviation(pleine, plate), 1.0f, 1e-6f);
 }
+
+// ---------------------------------------------------------------------------
+// D34.5 — DESSINER UNE AUTOMATION PAR UNE FORME.
+//
+// L'attendu, écrit avant la mesure : « le sinus rendu par `automationValueAt`
+// s'écarte du sinus idéal de moins de 1 % de l'étendue, et le nombre de points
+// posés reste borné -- au plus deux par période au-delà de ce qu'il faut pour
+// tenir ce 1 %. Le critère de tolérance et celui de parcimonie tirent en sens
+// contraires, et ne mesurer que le premier laisserait passer une forme qui
+// triche en posant mille points. »
+// ---------------------------------------------------------------------------
+
+namespace {
+
+/// Le plus grand écart entre la courbe tracée et la forme idéale, mesuré sur
+/// 512 points de la plage -- c'est-à-dire là où l'échantillonnage n'a PAS posé
+/// de point, ce qui est le seul endroit où une réduction peut mentir.
+double ecartAuSinus(const AutomationCurve& courbe, Tick de, Tick a, float bas, float haut,
+                     int periodes) {
+    double pire = 0.0;
+    for (int i = 0; i <= 512; ++i) {
+        const double x = static_cast<double>(i) / 512.0;
+        const Tick tick = de + static_cast<Tick>(std::llround((a - de) * x));
+        const double ideal = bas + (haut - bas)
+            * (1.0 - std::cos(x * periodes * 2.0 * 3.14159265358979323846)) * 0.5;
+        pire = std::max(pire, std::abs(automationValueAt(courbe, tick) - ideal));
+    }
+    return pire;
+}
+
+size_t pointsDansLaPlage(const AutomationCurve& courbe, Tick de, Tick a) {
+    size_t n = 0;
+    for (const auto& p : courbe.points) if (p.tick >= de && p.tick <= a) ++n;
+    return n;
+}
+
+} // namespace
+
+VSM_TEST(a_drawn_sine_follows_the_ideal_within_one_percent_and_stays_sparse) {
+    // QUATRE MESURES, QUATRE PÉRIODES, valeurs de 0 à 1 : la tolérance de 1 %
+    // vaut donc 0,01 en unités du paramètre.
+    AutomationCurve courbe;
+    const Tick de = 0, a = 4 * 1920;
+    const auto fait = drawAutomationShape(courbe, de, a, AutomationShape::Sine,
+                                           0.0f, 1.0f, 4, 0.01f);
+    const double ecart = ecartAuSinus(courbe, de, a, 0.0f, 1.0f, 4);
+    const size_t poses = pointsDansLaPlage(courbe, de, a);
+    std::printf("      [D34.5] sinus 4 périodes : écart max %.4f, %zu points posés\n",
+                ecart, poses);
+
+    VSM_ASSERT(ecart < 0.01);                 // le 1 % annoncé
+    VSM_ASSERT_EQ(fait.added, poses);
+    // LA PARCIMONIE, mesurée elle aussi : un sinus se décrit en une poignée de
+    // points par période, et l'échantillonnage en avait posé 64.
+    VSM_ASSERT(poses < 20 * 4);
+    VSM_ASSERT(poses >= 3 * 4);               // sinon ce n'est plus un sinus
+}
+
+VSM_TEST(a_tighter_tolerance_buys_accuracy_with_points_and_the_trade_is_measured) {
+    // LE COMPROMIS EST LA CHOSE À MONTRER : serrer la tolérance doit rapprocher
+    // du sinus ET coûter des points. Une mesure qui ne montrerait qu'un des
+    // deux ne dirait pas si la fonction travaille ou si elle triche.
+    const Tick de = 0, a = 4 * 1920;
+    for (float tol : {0.05f, 0.01f, 0.002f}) {
+        AutomationCurve courbe;
+        drawAutomationShape(courbe, de, a, AutomationShape::Sine, 0.0f, 1.0f, 4, tol);
+        std::printf("      [D34.5] tolérance %.3f : écart %.4f, %zu points\n",
+                    tol, ecartAuSinus(courbe, de, a, 0.0f, 1.0f, 4),
+                    pointsDansLaPlage(courbe, de, a));
+    }
+    AutomationCurve large, serree;
+    drawAutomationShape(large, de, a, AutomationShape::Sine, 0.0f, 1.0f, 4, 0.05f);
+    drawAutomationShape(serree, de, a, AutomationShape::Sine, 0.0f, 1.0f, 4, 0.002f);
+    VSM_ASSERT(ecartAuSinus(serree, de, a, 0.0f, 1.0f, 4)
+                < ecartAuSinus(large, de, a, 0.0f, 1.0f, 4));
+    VSM_ASSERT(pointsDansLaPlage(serree, de, a) > pointsDansLaPlage(large, de, a));
+}
+
+VSM_TEST(a_drawn_line_is_two_points_and_not_one_per_tick) {
+    AutomationCurve courbe;
+    drawAutomationShape(courbe, 0, 1920, AutomationShape::Line, 0.2f, 0.8f, 1, 0.01f);
+    VSM_ASSERT_EQ(pointsDansLaPlage(courbe, 0, 1920), size_t(2));
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 0), 0.2f, 1e-5f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 960), 0.5f, 1e-3f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 1920), 0.8f, 1e-5f);
+}
+
+VSM_TEST(a_drawn_square_uses_steps_and_never_ramps_between_its_levels) {
+    // UN CARRÉ APPROCHÉ PAR UNE RAMPE TRÈS RAIDE N'EST PAS UN CARRÉ : c'est une
+    // suite de fondus courts, et cela s'entend. Chaque point est un palier.
+    AutomationCurve courbe;
+    drawAutomationShape(courbe, 0, 1920, AutomationShape::Square, 0.0f, 1.0f, 2, 0.01f);
+    for (const auto& p : courbe.points)
+        if (p.tick >= 0 && p.tick <= 1920) VSM_ASSERT(p.step);
+    // Deux périodes : bas, haut, bas, haut, puis le retour au bas à la fin.
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 100), 0.0f, 1e-5f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 600), 1.0f, 1e-5f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 1100), 0.0f, 1e-5f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 1600), 1.0f, 1e-5f);
+}
+
+VSM_TEST(drawing_a_shape_joins_the_curve_at_both_edges_instead_of_stepping) {
+    // Tracer au MILIEU d'un fondu ne doit pas casser les deux voisines : c'est
+    // la règle de `writeAutomationRange`, et elle vaut ici pour la même raison.
+    AutomationCurve courbe;
+    setAutomationPoint(courbe, 0, 0.0f);
+    setAutomationPoint(courbe, 4000, 1.0f);
+    const float avant = automationValueAt(courbe, 999);
+    const float apres = automationValueAt(courbe, 2001);
+
+    drawAutomationShape(courbe, 1000, 2000, AutomationShape::Line, 0.9f, 0.9f, 1, 0.01f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 999), avant, 1e-5f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 2001), apres, 1e-5f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 1500), 0.9f, 1e-5f);
+}
+
+VSM_TEST(drawing_a_shape_replaces_what_the_range_held_and_says_how_much) {
+    AutomationCurve courbe;
+    for (Tick t = 0; t <= 2000; t += 100) setAutomationPoint(courbe, t, 0.5f);
+    const auto fait = drawAutomationShape(courbe, 500, 1500, AutomationShape::Line,
+                                           0.0f, 1.0f, 1, 0.01f);
+    // Onze points étaient dans [500, 1500] : ils sont remplacés, et le nombre
+    // est RENDU plutôt que perdu.
+    VSM_ASSERT_EQ(fait.removed, size_t(11));
+    VSM_ASSERT(fait.added >= 2);
+    // Hors de la plage, rien n'a bougé.
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 200), 0.5f, 1e-5f);
+    VSM_ASSERT_NEAR(automationValueAt(courbe, 1800), 0.5f, 1e-5f);
+}
+
+VSM_TEST(an_empty_or_backwards_range_draws_nothing_at_all) {
+    AutomationCurve courbe;
+    VSM_ASSERT_EQ(drawAutomationShape(courbe, 1000, 1000, AutomationShape::Sine,
+                                       0.0f, 1.0f, 4, 0.01f).added, size_t(0));
+    VSM_ASSERT_EQ(drawAutomationShape(courbe, 2000, 1000, AutomationShape::Sine,
+                                       0.0f, 1.0f, 4, 0.01f).added, size_t(0));
+    VSM_ASSERT(courbe.points.empty());
+}

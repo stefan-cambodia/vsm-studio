@@ -214,4 +214,131 @@ float maxAutomationDeviation(const AutomationCurve& a, const AutomationCurve& b)
     return pire;
 }
 
+// ---------------------------------------------------------------------------
+// DESSINER UNE FORME (D34.5)
+// ---------------------------------------------------------------------------
+
+namespace {
+
+/// La forme, sur un avancement `x` de 0 à 1, ramenée entre 0 et 1.
+/// `Line` monte tout droit ; les autres oscillent `periods` fois en partant du
+/// creux, comme le fait un LFO qu'on met en marche.
+float formeA(AutomationShape shape, double x, int periods) {
+    if (shape == AutomationShape::Line) return static_cast<float>(x);
+    const double phase = x * periods;
+    const double dansLaPeriode = phase - std::floor(phase);
+    switch (shape) {
+        case AutomationShape::Sine:
+            // DÉPART AU CREUX ET RETOUR AU CREUX : `(1 - cos)/2` plutôt qu'un
+            // sinus brut, qui commencerait à mi-course. Un LFO qu'on met en
+            // marche part du bas, et c'est ce qu'on dessine à la main.
+            return static_cast<float>((1.0 - std::cos(dansLaPeriode * 2.0 * 3.14159265358979323846)) * 0.5);
+        case AutomationShape::Triangle:
+            return static_cast<float>(dansLaPeriode < 0.5 ? dansLaPeriode * 2.0
+                                                          : (1.0 - dansLaPeriode) * 2.0);
+        case AutomationShape::Square:
+            return dansLaPeriode < 0.5 ? 0.0f : 1.0f;
+        case AutomationShape::Line:
+        default:
+            return static_cast<float>(x);
+    }
+}
+
+} // namespace
+
+AutomationDraw drawAutomationShape(AutomationCurve& curve, Tick fromTick, Tick toTick,
+                                    AutomationShape shape, float from, float to,
+                                    int periods, float tolerance) {
+    AutomationDraw fait;
+    if (toTick <= fromTick) return fait;
+    if (periods <= 0) periods = 1;   // une forme sans oscillation n'a pas de sens
+
+    // CE QUE LA COURBE DISAIT AUX BORDS, relevé AVANT de toucher à quoi que ce
+    // soit : les raccords s'appuient dessus, et les lire après le retrait
+    // rendrait la valeur maintenue de la plage voisine.
+    const bool avaitQuelqueChose = !curve.points.empty();
+    const float avant = avaitQuelqueChose ? automationValueAt(curve, fromTick - 1) : 0.0f;
+    const float apres = avaitQuelqueChose ? automationValueAt(curve, toTick + 1) : 0.0f;
+
+    const size_t nAvant = curve.points.size();
+    curve.points.erase(std::remove_if(curve.points.begin(), curve.points.end(),
+                                       [&](const AutomationPoint& p) {
+                                           return p.tick >= fromTick && p.tick <= toTick;
+                                       }),
+                        curve.points.end());
+    fait.removed = nAvant - curve.points.size();
+
+    const Tick etendue = toTick - fromTick;
+    std::vector<AutomationPoint> traces;
+
+    if (shape == AutomationShape::Square) {
+        // UN CARRÉ NE S'ÉCHANTILLONNE PAS. Approché par des rampes très
+        // raides, il n'est plus un carré : il devient une suite de fondus
+        // courts, ce qui s'entend. Deux points par période, marqués `step`, et
+        // la courbe dit exactement ce qu'elle joue.
+        for (int k = 0; k < periods; ++k) {
+            const Tick base = fromTick + static_cast<Tick>(etendue * k / periods);
+            const Tick mi = fromTick + static_cast<Tick>(etendue * (2 * k + 1) / (2 * periods));
+            traces.push_back({base, from, true, 0.0f});
+            if (mi > base) traces.push_back({mi, to, true, 0.0f});
+        }
+        traces.push_back({toTick, from, true, 0.0f});
+    } else {
+        // ON ÉCHANTILLONNE FIN, PUIS ON RÉDUIT. Le nombre de points de départ
+        // n'a pas à être malin : `thinAutomation` (D30.5) est écrite pour
+        // exactement ce problème, et lui confier la parcimonie vaut mieux que
+        // de la deviner ici forme par forme.
+        // 256 ÉCHANTILLONS PAR PÉRIODE, ET NON 64. La tolérance promise porte
+        // sur l'écart à la forme IDÉALE, or DEUX erreurs s'y ajoutent : celle
+        // de la réduction, que `thinAutomation` borne, et celle de la
+        // POLYLIGNE échantillonnée elle-même, dont les cordes coupent les
+        // sommets. À 64 points par période, cette seconde erreur vaut à elle
+        // seule un huitième du budget, et la mesure rendait 1,01 % pour 1 %
+        // promis -- un dépassement de rien du tout, qui restait un dépassement.
+        // À 256 elle tombe d'un facteur seize et devient négligeable.
+        const int parPeriode = shape == AutomationShape::Line ? 1 : 256;
+        const int echantillons = std::max(2, parPeriode * std::max(1, periods));
+        for (int i = 0; i <= echantillons; ++i) {
+            const double x = static_cast<double>(i) / echantillons;
+            const Tick tick = fromTick + static_cast<Tick>(std::llround(etendue * x));
+            traces.push_back({tick, from + (to - from) * formeA(shape, x, periods), false, 0.0f});
+        }
+    }
+
+    for (const auto& point : traces) setAutomationPoint(curve, point.tick, point.value, point.step);
+
+    // LES RACCORDS, à un tick de la plage et jamais dedans : un raccord posé à
+    // l'intérieur écraserait le début de la forme qu'on vient de tracer.
+    if (avaitQuelqueChose) {
+        if (fromTick > 0) setAutomationPoint(curve, fromTick - 1, avant);
+        setAutomationPoint(curve, toTick + 1, apres);
+    }
+
+    // LA RÉDUCTION NE TOUCHE QUE CE QU'ON VIENT DE POSER : `thinAutomation`
+    // travaille sur toute la courbe, ce qui amincirait aussi des passages que
+    // personne n'a demandé de retoucher. On réduit donc une courbe qui ne
+    // contient que la plage, puis on la recolle.
+    if (shape != AutomationShape::Square && tolerance > 0.0f) {
+        // ET L'ON RÉSERVE UN VINGTIÈME DU BUDGET à ce qui reste d'erreur
+        // d'échantillonnage : promettre `tolerance` puis en dépenser la
+        // totalité à la réduction seule, c'est promettre ce qu'on ne tient
+        // qu'au bord. Le témoin est la mesure, qui doit passer SOUS le chiffre
+        // annoncé, pas dessus.
+        const float budget = tolerance * 0.95f;
+        AutomationCurve plage;
+        AutomationCurve reste;
+        for (const auto& p : curve.points)
+            (p.tick >= fromTick && p.tick <= toTick ? plage : reste).points.push_back(p);
+        thinAutomation(plage, budget);
+        curve.points = std::move(reste.points);
+        for (const auto& p : plage.points) curve.points.push_back(p);
+        std::sort(curve.points.begin(), curve.points.end(),
+                  [](const AutomationPoint& a, const AutomationPoint& b) { return a.tick < b.tick; });
+    }
+
+    for (const auto& p : curve.points)
+        if (p.tick >= fromTick && p.tick <= toTick) ++fait.added;
+    return fait;
+}
+
 } // namespace vsm::sequencer

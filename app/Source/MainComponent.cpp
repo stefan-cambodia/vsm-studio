@@ -1318,6 +1318,28 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
                      + juce::String::fromUTF8(u8" px, graduations : ")
                      + arrangement_.rulerLabelsForCapture() + "\n").toRawUTF8(), stderr);
     }
+    // D34.5 : « auto-forme:sinus » et ses variantes, par la MÊME méthode que
+    // le menu. Le tracé DIT combien de points il pose et combien il remplace :
+    // une courbe de six pixels de haut sur une capture ne se juge pas, et le
+    // critère de l'étape est justement un nombre de points.
+    else if (nom.startsWith("auto-forme:")) {
+        using vsm::sequencer::AutomationShape;
+        const juce::String demande = nom.substring(11);
+        AutomationShape forme = AutomationShape::Line;
+        bool descendante = false;
+        if (demande == "rampe") forme = AutomationShape::Line;
+        else if (demande == "rampe-bas") { forme = AutomationShape::Line; descendante = true; }
+        else if (demande == "sinus") forme = AutomationShape::Sine;
+        else if (demande == "triangle") forme = AutomationShape::Triangle;
+        else if (demande == "carre") forme = AutomationShape::Square;
+        else {
+            std::fputs("VSM_VUE auto-forme : attendu rampe, rampe-bas, sinus, triangle ou carre\n",
+                        stderr);
+            return;
+        }
+        arrangement_.drawAutomationShapeOnSelection(trackList_.selectedTrackIndex(),
+                                                     forme, descendante);
+    }
     // D34.4 : zoomer l'arrangement, pour vérifier la règle À PLUSIEURS ZOOMS.
     // Le pas des graduations n'a de sens qu'ainsi : une règle correcte à un
     // seul zoom ne prouve rien de la règle qui la choisit.
@@ -2105,6 +2127,26 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addSeparator();
             menu.addItem(kMenuEditSelectAllClips, u8"Tout s\u00e9lectionner dans l'arrangement (Ctrl+A)",
                          !project_.tracks.empty());
+            // D34.5 : DESSINER UNE AUTOMATION PAR UNE FORME. Un balayage de
+            // filtre sur seize mesures se posait point par point, et un
+            // trémolo régulier ne se posait pas du tout.
+            {
+                juce::PopupMenu formes;
+                const bool possible = !project_.tracks.empty()
+                                   && (arrangement_.hasSelection() || project_.loopEnabled);
+                formes.addItem(kMenuEditDrawAutomationRampUp,
+                                juce::String::fromUTF8(u8"Rampe montante"), possible);
+                formes.addItem(kMenuEditDrawAutomationRampDown,
+                                juce::String::fromUTF8(u8"Rampe descendante"), possible);
+                formes.addItem(kMenuEditDrawAutomationSine,
+                                juce::String::fromUTF8(u8"Sinus (une période par mesure)"), possible);
+                formes.addItem(kMenuEditDrawAutomationTriangle,
+                                juce::String::fromUTF8(u8"Triangle (une période par mesure)"), possible);
+                formes.addItem(kMenuEditDrawAutomationSquare,
+                                juce::String::fromUTF8(u8"Carré (une période par mesure)"), possible);
+                menu.addSubMenu(juce::String::fromUTF8(u8"Dessiner l'automation sur la sélection"),
+                                 formes, possible);
+            }
             {
                 juce::PopupMenu repeter;
                 static const int kNombres[] = {2, 3, 4, 8, 16};
@@ -2892,6 +2934,19 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
     if (menuItemID == kMenuViewTrackHeightSmall)  { arrangement_.setAllTrackHeights(24); return; }
     if (menuItemID == kMenuViewTrackHeightNormal) { arrangement_.setAllTrackHeights(56); return; }
     if (menuItemID == kMenuViewTrackHeightLarge)  { arrangement_.setAllTrackHeights(112); return; }
+    if (menuItemID >= kMenuEditDrawAutomationRampUp
+        && menuItemID <= kMenuEditDrawAutomationSquare) {
+        using vsm::sequencer::AutomationShape;
+        static const struct { AutomationShape forme; bool descendante; } kFormes[] = {
+            {AutomationShape::Line, false}, {AutomationShape::Line, true},
+            {AutomationShape::Sine, false}, {AutomationShape::Triangle, false},
+            {AutomationShape::Square, false},
+        };
+        const auto& choix = kFormes[menuItemID - kMenuEditDrawAutomationRampUp];
+        arrangement_.drawAutomationShapeOnSelection(trackList_.selectedTrackIndex(),
+                                                     choix.forme, choix.descendante);
+        return;
+    }
     if (menuItemID == kMenuViewRulerBars || menuItemID == kMenuViewRulerTime) {
         setRulerInTime(menuItemID == kMenuViewRulerTime);
         return;

@@ -1,6 +1,7 @@
 #pragma once
 #include "vsm/sequencer/Track.h"
 #include <cstddef>
+#include <cstdint>
 #include <vector>
 
 // Les gestes d'une courbe d'automation -- poser un point, le déplacer, le
@@ -116,6 +117,59 @@ size_t thinAutomation(AutomationCurve& curve, float tolerance);
 /// `thinAutomation` a tenu sa tolérance, et il est ici plutôt que dans un test
 /// parce que l'application le publie aussi.
 float maxAutomationDeviation(const AutomationCurve& a, const AutomationCurve& b);
+
+// ---------------------------------------------------------------------------
+// DESSINER UNE AUTOMATION PAR UNE FORME (D34.5) -- l'outil « ligne » de Cubase.
+//
+// POURQUOI IL EN FALLAIT UN. `setAutomationPoint` pose UN point et
+// `writeAutomationRange` dépose ce qu'on vient de JOUER : un balayage de filtre
+// sur seize mesures se posait donc à la main, point après point, et un
+// trémolo régulier ne se posait pas du tout. C'est le geste d'automation le
+// plus mécanique qui soit, et c'est celui qui coûtait le plus cher.
+// ---------------------------------------------------------------------------
+
+/// Les formes qu'on sait tracer. `Line` couvre la rampe et le palier plat
+/// (mêmes valeurs aux deux bouts) : ce sont le même geste, et les séparer
+/// aurait fait trois entrées de menu pour une seule idée.
+enum class AutomationShape : uint8_t { Line = 0, Sine = 1, Triangle = 2, Square = 3 };
+
+/// Ce qu'un tracé a fait, pour le DIRE plutôt que de le faire en silence.
+struct AutomationDraw {
+    size_t removed = 0;   ///< points de la plage qui ont été remplacés
+    size_t added = 0;     ///< points posés
+};
+
+/// TRACE UNE FORME SUR `[fromTick, toTick]`, en remplaçant ce qui s'y trouvait.
+///
+/// `from` et `to` sont les valeurs aux deux bouts. Pour `Line`, la forme les
+/// joint ; pour les trois autres, elles bornent l'oscillation -- `from` est le
+/// creux et `to` la crête, et les inverser retourne la forme.
+///
+/// `periods` est le nombre d'oscillations sur la plage. Ignoré par `Line`.
+/// Zéro ou négatif vaut une période : une forme sans oscillation n'a pas de
+/// sens, et refuser silencieusement serait pire que corriger.
+///
+/// LES BORDS SONT RACCORDÉS comme dans `writeAutomationRange`, et pour la même
+/// raison : tracer quatre mesures au milieu d'un fondu ferait autrement sauter
+/// le paramètre à l'entrée et à la sortie -- on aurait dessiné quatre mesures
+/// en cassant les deux voisines.
+///
+/// COMBIEN DE POINTS. Le critère est double et les deux moitiés tirent en sens
+/// contraires : la forme rendue doit s'écarter de la forme idéale de moins de
+/// `tolerance` (en unités du paramètre), ET le nombre de points doit rester
+/// PARCIMONIEUX -- une forme qui poserait un point par tick serait juste,
+/// illisible et impossible à retoucher, c'est-à-dire inutile. Ne mesurer que la
+/// première moitié laisserait passer une forme qui triche en posant mille
+/// points.
+///
+/// D'où la méthode : on échantillonne la forme finement, puis on RÉDUIT par
+/// `thinAutomation` -- la fonction de D30.5, écrite pour exactement ce
+/// problème sur les passes jouées. Un carré, lui, ne s'échantillonne pas : ses
+/// paliers se posent en deux points par période, marqués `step`, parce qu'un
+/// carré approché par une rampe très raide n'est pas un carré.
+AutomationDraw drawAutomationShape(AutomationCurve& curve, Tick fromTick, Tick toTick,
+                                    AutomationShape shape, float from, float to,
+                                    int periods, float tolerance);
 
 /// L'index du point le plus proche de `tick` à moins de `tolerance`, ou la
 /// taille de la courbe si aucun. Sert à savoir ce qu'on vient de saisir.
