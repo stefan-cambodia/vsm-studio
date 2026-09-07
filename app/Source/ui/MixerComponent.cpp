@@ -277,6 +277,14 @@ void ChannelStrip::rafraichirSolo() {
 void ChannelStrip::paint(juce::Graphics& g) {
     g.setColour(vsm::ui::Palette::panel);
     g.fillRoundedRectangle(getLocalBounds().toFloat().reduced(2.0f), 4.0f);
+    // D39.4 : LE MÊME CONTOUR AMBRE QUE LA LIGNE DE PISTE ET QUE L'EN-TÊTE DE
+    // L'ARRANGEMENT. Trois panneaux montrent la même sélection ; leur donner
+    // trois marques différentes obligerait à apprendre trois codes pour une
+    // seule idée.
+    if (choisie_) {
+        g.setColour(vsm::ui::Palette::accentAmber.withAlpha(0.85f));
+        g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(2.0f), 4.0f, 2.0f);
+    }
     // Bandeau couleur de la piste en haut.
     g.setColour(juce::Colour(track_.colorRgba));
     g.fillRoundedRectangle(getLocalBounds().toFloat().reduced(2.0f).removeFromTop(4.0f), 2.0f);

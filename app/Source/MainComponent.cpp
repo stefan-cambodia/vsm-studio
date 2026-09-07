@@ -503,6 +503,19 @@ MainComponent::MainComponent()
         audioEngine_.processGraph().seekSeconds(project_.ticksToSeconds(tick));
     };
     arrangement_.onTrackSelected = [this](size_t index) { trackList_.selectTrackIndex(index); };
+    // D39.3 : UN SEUL ENDROIT TIENT LA SÉLECTION, et c'est la liste. Le clic
+    // d'en-tête de l'arrangement lui passe les modificateurs plutôt que de
+    // calculer sa propre sélection : deux endroits qui la calculeraient
+    // finiraient par ne pas être d'accord, et l'on ne saurait pas lequel croire.
+    arrangement_.onTrackSelectedWithMods = [this](size_t index, juce::ModifierKeys mods) {
+        trackList_.cliquerSurLaPiste(index, mods);
+    };
+    // D39.3 / D39.4 : la sélection va aux deux autres panneaux qui dessinent des
+    // pistes. Ils la reçoivent, ils ne la tiennent pas.
+    trackList_.onSelectionChanged = [this] {
+        arrangement_.setSelectedTracks(trackList_.selectedTracks());
+        mixer_.setSelectedTracks(trackList_.selectedTracks());
+    };
     // D11.1 : ce qu'un changement de piste a refusé se DIT — un clip audio
     // vers une piste qui porte un autre fichier, un groupe, un genre qui ne
     // correspond pas. Le geste a fait le reste ; ceci n'est pas une erreur.
@@ -6154,6 +6167,10 @@ bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
         case Id::TrackSoloSelected: toggleSoloSelectedTrack(); return true;
         case Id::NavNextTrack: selectNeighbourTrack(+1); return true;
         case Id::NavPreviousTrack: selectNeighbourTrack(-1); return true;
+        // D39.2 : étendre, plutôt que déplacer.
+        case Id::TrackExtendNext: trackList_.etendreSelection(+1); return true;
+        case Id::TrackExtendPrevious: trackList_.etendreSelection(-1); return true;
+        case Id::TrackSelectAll: trackList_.choisirToutesLesPistes(); return true;
         // D28.4 : la tête au début de la sélection -- l'arrangement d'abord, sinon le piano roll.
         // D29.1 / D29.2 : les locateurs à la tête, la tête d'un temps ou d'une mesure.
         case Id::LoopStartAtPlayhead: setLoopBoundaryAtPlayhead(true); return true;
@@ -9004,26 +9021,28 @@ bool MainComponent::writeSelectedTrackMidi(const juce::File& fichier) {
 
 // --- D25.2 : la piste choisie au clavier ------------------------------------
 
+// D39.1 : LE RACCOURCI PASSE PAR LE CHEMIN DU BOUTON, ET C'EST UNE CORRECTION
+// D'UN DÉFAUT QUE D38 A CRÉÉ.
+//
+// Ces deux fonctions écrivaient `project_.tracks[piste].muted` en direct, sur
+// la seule piste active. Tant que le bouton M en faisait autant, les deux se
+// valaient. D38 a appris au bouton à taire toute la sélection et n'a pas
+// touché à celles-ci : le même geste rendait dès lors six pistes muettes à la
+// souris et une au clavier.
+//
+// NI LE BANC NI LA CAPTURE DE D38 NE POUVAIENT LE VOIR : tous deux passaient
+// par `TrackListComponent::basculerMuet`, c'est-à-dire par le même chemin. Deux
+// instruments braqués au même endroit ne valent pas mieux qu'un seul.
 void MainComponent::toggleMuteSelectedTrack() {
     const size_t piste = trackList_.selectedTrackIndex();
     if (piste >= project_.tracks.size()) return;
-    beginProjectEdit("Mixage");
-    project_.tracks[piste].muted = !project_.tracks[piste].muted;
-    // LA MÊME REPUBLICATION QUE LE BOUTON : les tranches relisent, la liste
-    // se redessine, le moteur reçoit le projet.
-    mixer_.refreshMuteSolo();
-    trackList_.repaint();
-    if (mixer_.onMixChanged) mixer_.onMixChanged();
+    trackList_.basculerMuet(piste);
 }
 
 void MainComponent::toggleSoloSelectedTrack() {
     const size_t piste = trackList_.selectedTrackIndex();
     if (piste >= project_.tracks.size()) return;
-    beginProjectEdit("Mixage");
-    project_.tracks[piste].solo = !project_.tracks[piste].solo;
-    mixer_.refreshMuteSolo();
-    trackList_.repaint();
-    if (mixer_.onMixChanged) mixer_.onMixChanged();
+    trackList_.basculerSolo(piste);
 }
 
 void MainComponent::selectNeighbourTrack(int delta) {

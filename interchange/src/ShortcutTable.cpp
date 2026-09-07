@@ -63,6 +63,10 @@ const std::vector<ShortcutCommand>& shortcutCommands() {
         {ShortcutId::TrackSoloSelected, "track.solo",       "Piste",     "Solo (piste choisie)",           "shift + S",        ""},
         {ShortcutId::NavNextTrack,      "nav.nextTrack",    "Piste",     "Piste suivante",                 "alt + cursor down", ""},
         {ShortcutId::NavPreviousTrack,  "nav.previousTrack","Piste",     "Piste précédente",               "alt + cursor up",  ""},
+        // D39.2 — Maj+Alt+flèches ÉTENDENT, dans la famille d'Alt+flèches qui déplacent.
+        {ShortcutId::TrackExtendNext,   "track.extendNext", "Piste",     "Étendre le choix vers le bas",   "shift + alt + cursor down", ""},
+        {ShortcutId::TrackExtendPrevious,"track.extendPrev","Piste",     "Étendre le choix vers le haut",  "shift + alt + cursor up", ""},
+        {ShortcutId::TrackSelectAll,    "track.selectAll",  "Piste",     "Choisir toutes les pistes",      "ctrl + shift + A", ""},
         // D28.4 — L, comme Cubase : la tête au début de la sélection (arrangement, sinon piano roll).
         {ShortcutId::NavToSelection,    "nav.toSelection",  "Transport", "Tête au début de la sélection",  "L",                ""},
         // D29.1 / D29.2 — I et O (Cubase) posent les locateurs à la tête ; Alt+flèches déplacent la tête d'un temps, Maj+Alt d'une mesure.

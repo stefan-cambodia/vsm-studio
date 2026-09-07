@@ -177,6 +177,26 @@ public:
                     if (g.trim().isNotEmpty() && !content->runTrackGestureForCapture(g.trim()))
                         std::fputs("VSM_GESTE_PISTE : geste inconnu\n", stderr);
             }
+            // VSM_TOUCHE=« shift + M »[;…] : enfoncer des touches (D39.1).
+            // Distinct de VSM_GESTE_PISTE, et c'est tout l'intérêt : elle
+            // traverse `keyPressed` et la table des raccourcis, c'est-à-dire un
+            // AUTRE chemin que le bouton. Deux instruments braqués au même
+            // endroit ne valent pas mieux qu'un seul.
+            //
+            // APRÈS VSM_GESTE_PISTE, ET C'EST LA MÊME CORRECTION QU'À D38 :
+            // placée avant, la touche agissait sur la piste active D'ALORS --
+            // la dernière ajoutée par le menu -- et la sélection posée ensuite
+            // effaçait la trace du désordre. La capture montrait une quatrième
+            // tranche muette hors de la sélection, ce qui ressemblait trait
+            // pour trait au défaut cherché. **L'ordre des variables d'un banc
+            // fait partie du banc.**
+            if (const char* touches = std::getenv("VSM_TOUCHE"); touches != nullptr && *touches) {
+                juce::StringArray suite;
+                suite.addTokens(juce::String::fromUTF8(touches), ";", "");
+                for (const auto& t : suite)
+                    if (t.trim().isNotEmpty() && !content->runKeyForCapture(t.trim()))
+                        std::fputs("VSM_TOUCHE : touche inconnue ou sans commande\n", stderr);
+            }
             // VSM_EXPORT=fichier.flac : exporter le projet ouvert sans fenêtre
             // (D20.5). Un export passe par un sélecteur de fichier et une
             // boîte de dialogue, qu'aucune capture ne traverse ; le fichier

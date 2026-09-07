@@ -113,6 +113,21 @@ public:
     /// D22.5 : VSM_PRESET_PISTE=nom -- la piste choisie écrite comme preset
     /// sous ce nom, sans boîte de dialogue (elle ne se photographie pas).
     bool saveTrackPresetForCapture(const juce::String& nom) { return saveSelectedTrackAsPreset(nom); }
+    /// D39.1 : JOUE UNE TOUCHE, PAR LE CHEMIN DU CLAVIER. Pas un geste de plus
+    /// à côté : `juce::KeyPress::createFromDescription` fabrique la touche que
+    /// l'utilisateur enfoncerait, et `keyPressed` la traverse comme d'habitude
+    /// -- table des raccourcis comprise.
+    ///
+    /// POURQUOI IL LE FALLAIT : D38 a mesuré son muet par le banc ET par la
+    /// capture, et les deux passaient par `TrackListComponent::basculerMuet`.
+    /// Le chemin du clavier, resté seul, faisait autre chose sans que rien ne
+    /// le dise. Deux instruments braqués au même endroit ne valent pas mieux
+    /// qu'un seul.
+    bool runKeyForCapture(const juce::String& description) {
+        const juce::KeyPress touche = juce::KeyPress::createFromDescription(description);
+        if (!touche.isValid()) return false;
+        return keyPressed(touche, this);
+    }
     /// D36.1 : joue, sans souris, un geste de la LIGNE de piste -- ceux
     /// qu'aucun menu ne porte. Rend false si le geste est inconnu, plutôt que
     /// de ne rien faire en silence.

@@ -596,6 +596,10 @@ void TrackListComponent::selectTrackIndex(size_t idx) {
 void TrackListComponent::rafraichirDessinDeLaSelection() {
     for (int r = 0; r < rows_.size(); ++r)
         rows_[r]->setSelected(selection_.count(static_cast<size_t>(r)) > 0);
+    // UN SEUL ENDROIT ANNONCE, celui qui redessine : toutes les façons de
+    // changer la sélection passent par ici, et lier l'annonce au dessin est ce
+    // qui garantit qu'aucune ne l'oublie -- la leçon de D36, appliquée d'avance.
+    if (onSelectionChanged) onSelectionChanged();
 }
 
 void TrackListComponent::setSelectedTracks(std::set<size_t> tracks, size_t active) {
@@ -611,6 +615,43 @@ void TrackListComponent::setSelectedTracks(std::set<size_t> tracks, size_t activ
     rafraichirDessinDeLaSelection();
     faireVoirLaPiste(active);
     if (onTrackSelected) onTrackSelected(active);
+}
+
+void TrackListComponent::etendreSelection(int delta) {
+    const size_t n = static_cast<size_t>(rows_.size());
+    if (n == 0 || project_ == nullptr) return;
+    size_t i = selectedIndex_;
+    // La VOISINE VISIBLE, comme `selectNeighbourTrack` : une piste masquée ne
+    // s'ajoute pas à un lot qu'on ne peut pas regarder.
+    while (true) {
+        if (delta < 0 && i == 0) return;
+        if (delta > 0 && i + 1 >= n) return;
+        i = static_cast<size_t>(static_cast<long>(i) + delta);
+        if (i >= project_->tracks.size() || !project_->tracks[i].hidden) break;
+    }
+    const size_t de = std::min(ancreSelection_, i);
+    const size_t a  = std::max(ancreSelection_, i);
+    std::set<size_t> plage;
+    for (size_t k = de; k <= a && k < n; ++k)
+        if (k >= project_->tracks.size() || !project_->tracks[k].hidden) plage.insert(k);
+    selection_ = std::move(plage);
+    selectedIndex_ = i;
+    selection_.insert(i);
+    rafraichirDessinDeLaSelection();
+    faireVoirLaPiste(i);
+    if (onTrackSelected) onTrackSelected(i);
+}
+
+void TrackListComponent::choisirToutesLesPistes() {
+    const size_t n = static_cast<size_t>(rows_.size());
+    if (n == 0 || project_ == nullptr) return;
+    std::set<size_t> toutes;
+    for (size_t i = 0; i < n; ++i)
+        if (i >= project_->tracks.size() || !project_->tracks[i].hidden) toutes.insert(i);
+    if (toutes.empty()) return;
+    selection_ = std::move(toutes);
+    selection_.insert(selectedIndex_);
+    rafraichirDessinDeLaSelection();
 }
 
 const std::set<size_t>& TrackListComponent::selectionPourUnGesteSur(size_t index) {

@@ -7778,3 +7778,145 @@ MIDI CC : ils éditent une piste, pas six). La sélection multiple s'ajoute donc
 >
 > Tests : 1 283 audio, 319 core, 285 interchange, 25 clap, 11 panels — verts ;
 > banc : 11 gestes, 0 muet, 0 désaccord.
+
+### Phase D39 — La sélection s'arrête à la liste : le clavier et les deux autres panneaux l'ignorent (07/09/2026, 16:10)
+
+**Cette phase commence par un défaut que D38 a CRÉÉ, et que ni son banc ni sa
+capture n'ont vu.** La table des raccourcis porte depuis longtemps
+`TrackMuteSelected` et `TrackSoloSelected`. Ils appellent
+`toggleMuteSelectedTrack`, qui écrit `project_.tracks[piste].muted` **en
+direct**, sur la seule piste active :
+
+| chemin | ce que fait « rendre muet » avec six pistes choisies |
+|---|---|
+| le bouton **M** d'une ligne | tait les **six**, un pas d'annulation (D38.2) |
+| le **raccourci clavier** | tait **une** piste, un pas d'annulation |
+
+**Le même geste, deux résultats, selon qu'on a pris la souris ou le clavier.**
+Avant D38 les deux faisaient la même chose — une piste — et se valaient ; c'est
+la phase précédente qui les a désaccordés, en n'en corrigeant qu'un.
+
+**POURQUOI LA MESURE DE D38 NE L'A PAS VU, ET C'EST LA VRAIE LEÇON.** Le banc
+appelle `TrackListComponent::basculerMuet`, et la capture clique le bouton :
+**les deux mesuraient le même chemin.** Un troisième existait, et deux
+instruments braqués au même endroit ne valent pas mieux qu'un seul. D36 avait
+déjà nommé ce défaut sous sa forme « deux panneaux » ; il revient ici sous sa
+forme « deux entrées », et la parade est la même — chercher **tous** les
+chemins, pas le premier.
+
+**Le reste de l'audit : la sélection s'arrête à la liste.** Trois panneaux
+dessinent des pistes ; un seul sait laquelle est choisie.
+
+| panneau | sait qui est choisi | permet de choisir |
+|---|---|---|
+| liste des pistes | oui (D38) | oui |
+| arrangement | **non** — il dessine les en-têtes (`ArrangementComponent.cpp:1686`) sans jamais lire la sélection | **non** — aucun clic d'en-tête |
+| mélangeur | **non** — aucune notion de tranche choisie | **non** |
+
+Dans Cubase comme dans Live, choisir une piste dans l'un des trois la choisit
+dans les trois : c'est ainsi qu'on navigue dans un morceau à quinze pistes.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D39.1 | **Les raccourcis rejoignent le lot.** Muet et solo au clavier passent par le chemin de la liste — celui qui consulte la sélection et n'ouvre qu'un pas | six pistes choisies, le raccourci en tait six ; mesuré par un chemin QUI N'EST PAS celui du bouton |
+| D39.2 | **Étendre au clavier.** Maj+↑ et Maj+↓ agrandissent la sélection au lieu de la déplacer ; « tout choisir » existe pour les pistes | la navigation simple continue de ramener à une piste, et l'extension part de l'ancre, comme le Maj+clic de D38.1 |
+| D39.3 | **L'arrangement montre et pose la sélection.** Cliquer un en-tête de piste la choisit ; les pistes choisies s'y voient | le contour ambre de D38.1 y a son équivalent, et Ctrl+clic y fait ce qu'il fait dans la liste |
+| D39.4 | **Le mélangeur aussi** | une tranche choisie se voit ; cliquer son nom choisit la piste |
+| D39.5 | **Le banc apprend à ne pas mesurer deux fois le même chemin.** C'est ce qui a laissé passer D39.1 | pour chaque geste multipliable, le banc éprouve **toutes** ses entrées — le bouton ET le raccourci — et échoue si elles ne s'accordent pas |
+
+**Ce qui est attendu, écrit AVANT la mesure.**
+
+1. **D39.1** — j'attends que le raccourci, mesuré sur six pistes choisies, en
+   taise **six** et n'ouvre **qu'un** pas, exactement comme le bouton. Le
+   critère qui compte n'est pas « le raccourci marche » mais « les deux entrées
+   rendent la même chose » : c'est leur désaccord qui est le défaut.
+2. **D39.3 et D39.4** — j'attends de devoir trancher une question que le § 2 ne
+   règle pas : le mélangeur montre **les tranches**, et une tranche n'existe pas
+   pour un dossier (D35.5). Choisir un dossier dans la liste n'a donc rien à
+   éclairer dans le mélangeur. J'attends que ce cas apparaisse à la mesure et
+   qu'il soit écrit plutôt que corrigé en silence.
+3. **Ce qui n'est PAS sauvegardé.** J'attends de confirmer que la sélection
+   reste un état de SESSION, comme l'armement (D3.3) et l'ordre de jeu (D18.4) :
+   rouvrir un projet ne doit pas ressusciter une sélection qu'on ne se rappelle
+   pas avoir posée, et l'invariant n° 5 du § 6 (« rien ne se perd ») ne
+   s'applique pas à ce qui ne décrit pas le morceau.
+
+> **LA PHASE D39 EST FAITE (07/09/2026, 17:20), ET SON PROPRE RELEVÉ S'EST
+> TROMPÉ D'UNE CASE.**
+>
+> **D39.1 — le raccourci rejoint le lot, et le défaut était bien de D38.**
+> `toggleMuteSelectedTrack` écrivait `project_.tracks[piste].muted` en direct.
+> Il appelle désormais `trackList_.basculerMuet`, celui du bouton. Mesuré par un
+> chemin qui n'est PAS celui du bouton — `VSM_TOUCHE="shift + M"`, qui traverse
+> `keyPressed` et la table des raccourcis : sur trois pistes choisies, trois M
+> rouges dans les trois contours ambre, la quatrième tranche intacte.
+>
+> **LA LEÇON QUI VAUT AU-DELÀ DE CE DÉFAUT.** D38 a mesuré son muet deux fois —
+> par le banc et par la capture — et les deux passaient par
+> `TrackListComponent::basculerMuet`. **Deux instruments braqués au même endroit
+> ne valent pas mieux qu'un seul.** Ce n'est pas le nombre de mesures qui fait
+> la preuve, c'est le nombre de CHEMINS qu'elles traversent.
+>
+> **LE RELEVÉ DISAIT « AUCUN CLIC D'EN-TÊTE » DANS L'ARRANGEMENT, ET C'EST
+> FAUX.** Le clic existe depuis longtemps, appelle `onTrackSelected` et change
+> la piste du piano roll. Ce qui manquait est l'autre moitié : l'arrangement
+> **connaissait** la piste courante (`pisteCourante_`) et ne l'a **jamais
+> dessinée**. C'est la troisième fois de la journée qu'un relevé de ma main
+> annonce absent ce qui est présent sans être montré (D36.2 la lane de
+> vélocité, D37.3 la couleur, ici l'en-tête). Le point commun des trois : j'ai
+> cherché si la fonction EXISTE, alors que la question était si elle SE VOIT.
+>
+> **D39.2 — étendre au clavier.** Maj+Alt+↑/↓ agrandissent depuis l'ancre,
+> Ctrl+Maj+A choisit tout. `Ctrl+A` n'était pas disponible : il veut déjà dire
+> « tout sélectionner » **dans la vue qui a le focus** — les clips de
+> l'arrangement, les notes du piano roll. Lui donner un troisième sens selon
+> l'endroit où l'on a cliqué en dernier rendrait la touche imprévisible, et une
+> touche imprévisible ne s'apprend jamais. Les pistes masquées sont sautées,
+> comme pour la navigation simple (D17.4).
+>
+> **D39.3 et D39.4 — les trois panneaux portent la MÊME marque**, le contour
+> ambre : trois codes différents pour une seule idée obligeraient à en
+> apprendre trois. La liste reste seule à TENIR la sélection ; l'arrangement et
+> le mélangeur la reçoivent et la dessinent. Deux endroits qui la calculeraient
+> finiraient par ne pas être d'accord.
+>
+> **LA QUESTION ANNONCÉE AVANT LA MESURE A BIEN EU LIEU, ET ELLE SE TRANCHE
+> PAR « ON NE CORRIGE PAS ».** Un dossier n'a plus de tranche depuis D35.5 : le
+> choisir dans la liste n'éclaire rien au mélangeur. Lui rendre une tranche pour
+> qu'elle puisse être choisie remettrait les six commandes mortes que D35.5 a
+> retirées. Le mélangeur montre les chemins du signal, et un dossier n'en est
+> pas un ; le dossier choisi se voit là où il vit.
+>
+> **D39.5 — ce que le banc peut garder, et ce qu'il ne peut pas.** Le raccourci
+> vit dans `MainComponent`, qui exige le moteur audio et une fenêtre : il ne se
+> monte pas dans un banc console, et **cela est écrit plutôt que contourné** —
+> son chemin se vérifie à l'écran. Ce que le banc garde est ce qui a laissé
+> passer D39.1 : l'apparition d'un chemin d'écriture de plus. Il relit les
+> sources et compte les endroits qui posent `muted` ou `solo`, chacun nommé avec
+> sa raison (le chemin unique, les boutons d'une tranche, le MIDI Learn lié à
+> UNE piste nommée, le solo exclusif, le muet d'un CLIP).
+>
+> **ET LE BANC S'EST MIS EN DÉFAUT TOUT SEUL À SA PREMIÈRE EXÉCUTION**, ce qui
+> est exactement ce qu'on lui demande : il a signalé l'arrangement, où
+> `c.muted = muet` porte sur un CLIP et non sur une piste. Son repérage est
+> TEXTUEL et ne distingue pas les deux. **La limite est écrite dans le banc** :
+> il attrape l'apparition d'un chemin dans un fichier NEUF, pas l'ajout d'un
+> chemin dans un fichier déjà nommé. Il vaut ce qu'il vaut, à condition de
+> savoir laquelle des deux choses il fait.
+>
+> **L'ORDRE DES VARIABLES D'UN BANC FAIT PARTIE DU BANC — payé deux fois le
+> même jour.** `VSM_TOUCHE` était lu avant `VSM_GESTE_PISTE` : la touche
+> agissait sur la piste active d'alors, et la capture montrait une quatrième
+> tranche muette **hors de la sélection** — c'est-à-dire quelque chose qui
+> ressemblait trait pour trait au défaut cherché. La même faute avait été payée
+> à D38 avec `VSM_GESTE_PISTE` avant `VSM_MENU`. Un banc qui se trompe d'ordre
+> ne rend pas « rien » : il rend un résultat vraisemblable.
+>
+> **LA SÉLECTION N'EST PAS SAUVEGARDÉE**, et l'attendu n° 3 est confirmé : c'est
+> un état de SESSION, comme l'armement (D3.3) et l'ordre de jeu (D18.4).
+> Rouvrir un projet ne doit pas ressusciter une sélection qu'on ne se rappelle
+> pas avoir posée, et l'invariant n° 5 du § 6 ne s'applique pas à ce qui ne
+> décrit pas le morceau.
+>
+> Tests : 1 283 audio, 319 core, 285 interchange, 25 clap, 11 panels — verts ;
+> banc : 11 gestes, 0 muet, 8 écritures déclarées, 0 non déclarée.

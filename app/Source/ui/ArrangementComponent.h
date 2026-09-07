@@ -1,4 +1,5 @@
 #pragma once
+#include <set>
 #include <JuceHeader.h>
 #include "vsm/audio/io/WaveformPeaks.h"
 #include "vsm/sequencer/AutomationEdit.h"
@@ -29,6 +30,20 @@ public:
     ArrangementComponent();
 
     void setProject(vsm::sequencer::Project* project);
+    /// D39.3 : les pistes choisies, pour les dessiner. L'arrangement SAVAIT
+    /// déjà laquelle était courante (`pisteCourante_`) et ne l'a jamais
+    /// montrée : on cliquait un en-tête, la piste devenait celle du piano roll,
+    /// et rien à l'écran ne le disait.
+    /// D39.3 : un en-tête cliqué, modificateurs compris. L'arrangement ne
+    /// décide pas ce qu'ils veulent dire -- c'est la liste qui tient la
+    /// sélection, et deux endroits qui la calculeraient finiraient par ne pas
+    /// être d'accord.
+    std::function<void(size_t, juce::ModifierKeys)> onTrackSelectedWithMods;
+
+    void setSelectedTracks(const std::set<size_t>& tracks) {
+        pistesChoisies_ = tracks;
+        repaint();
+    }
     void paint(juce::Graphics&) override;
     void resized() override;
 
@@ -379,6 +394,15 @@ private:
     /// La piste d'où vient le presse-papiers, pour y recoller par défaut.
     size_t pistePressePapiers_ = 0;
     size_t pisteCourante_ = 0;
+    /// D39.3 : les pistes choisies, telles que la liste les connaît. Nommée
+    /// `pistesChoisies_` et non `selection_` : ce dernier nom est PRIS, par la
+    /// sélection de CLIPS. Deux sélections cohabitent dans ce panneau -- des
+    /// clips et des pistes --, et leur donner le même nom aurait été le plus
+    /// court chemin pour agir sur l'une en croyant tenir l'autre.
+    ///
+    /// L'arrangement ne la modifie jamais : il la reçoit de la liste et la
+    /// dessine. Une seconde vérité serait celle qui ment.
+    std::set<size_t> pistesChoisies_ { 0 };
 
     Geste geste_ = Geste::Aucun;
     vsm::midi::Tick gesteOrigine_ = 0;

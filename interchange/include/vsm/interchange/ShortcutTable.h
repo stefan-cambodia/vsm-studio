@@ -74,6 +74,15 @@ enum class ShortcutId : uint16_t {
     TrackSoloSelected,
     NavNextTrack,
     NavPreviousTrack,
+    /// D39.2 : ÉTENDRE la sélection de pistes au lieu de la déplacer.
+    TrackExtendNext,
+    TrackExtendPrevious,
+    /// D39.2 : toutes les pistes. `Ctrl+A` n'était pas disponible : il veut
+    /// déjà dire « tout sélectionner » DANS la vue qui a le focus (les clips de
+    /// l'arrangement, les notes du piano roll). Lui donner un troisième sens
+    /// selon l'endroit où l'on a cliqué en dernier rendrait la touche
+    /// imprévisible -- et une touche imprévisible ne s'apprend jamais.
+    TrackSelectAll,
     /// D28.4 : la tête au début de la sélection.
     NavToSelection,
     /// D29.1 / D29.2 : les locateurs à la tête, la tête d'un temps ou d'une mesure.

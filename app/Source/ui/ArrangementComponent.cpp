@@ -443,7 +443,11 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
         if (piste < 0) return;
         const size_t index = static_cast<size_t>(piste);
         pisteCourante_ = index;
-        if (onTrackSelected) onTrackSelected(index);
+        // D39.3 : LES MODIFICATEURS COMPTENT ICI AUSSI. Ctrl+clic et Maj+clic
+        // font dans l'arrangement ce qu'ils font dans la liste ; sans cela on
+        // apprendrait un geste qui ne marche qu'à un endroit.
+        if (onTrackSelectedWithMods) onTrackSelectedWithMods(index, event.mods);
+        else if (onTrackSelected) onTrackSelected(index);
         auto& track = project_->tracks[index];
 
         // LE TRIANGLE PLIE ET DÉPLIE. Plier n'écrase pas la hauteur réglée : on
@@ -1679,6 +1683,15 @@ void ArrangementComponent::paint(juce::Graphics& g) {
                                       z.getCentreX(), z.getBottom());
             g.setColour(Palette::textSecondary);
             g.fillPath(triangle);
+        }
+
+        // D39.3 : L'EN-TÊTE D'UNE PISTE CHOISIE SE VOIT. Le contour ambre est
+        // celui de la ligne de piste (D38.1) : deux panneaux qui montrent la
+        // même chose doivent la montrer PAREIL, sans quoi il faut apprendre
+        // deux codes pour une seule idée.
+        if (pistesChoisies_.count(i) > 0) {
+            g.setColour(Palette::accentAmber.withAlpha(0.85f));
+            g.drawRect(0, y, kHeaderWidth, h, 2);
         }
 
         g.setColour(Palette::textPrimary);

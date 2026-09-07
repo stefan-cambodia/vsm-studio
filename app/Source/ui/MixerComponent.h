@@ -1,5 +1,6 @@
 #pragma once
 #include <map>
+#include <set>
 #include <JuceHeader.h>
 #include "vsm/audio/engine/Mixer.h"
 #include <string>
@@ -164,6 +165,9 @@ public:
     /// D37 : CE QUE LA TRANCHE AFFICHE, et non ce que la piste contient. Les
     /// deux se mesurent séparément : c'est leur DÉSACCORD qui est le défaut, et
     /// le lire dans la piste des deux côtés ne le montrerait jamais.
+    /// D39.4 : cette tranche est-elle celle d'une piste choisie ?
+    void setChoisie(bool choisie) { if (choisie != choisie_) { choisie_ = choisie; repaint(); } }
+
     juce::String nomAffiche() const { return nameLabel_.getText(); }
     double volumeAffiche() const { return volume_.getValue(); }
 
@@ -262,6 +266,8 @@ private:
     juce::OwnedArray<juce::Slider> sends_;
     juce::TextButton mute_ { "M" };
     juce::TextButton solo_ { "S" };
+    /// D39.4 : dessinée comme choisie.
+    bool choisie_ = false;
     /// D30.1 : le bouton Solo dit s'il est PROTÉGÉ -- « S+ » et l'ambre du
     /// solo à l'état éteint, parce qu'un réglage qui ne se voit pas est un
     /// réglage qu'on croit ne pas avoir posé.
@@ -345,6 +351,23 @@ public:
     std::function<void()> onMixChanged;
     /// D21.2 : une tranche a demandé le solo EXCLUSIF (Ctrl+clic sur Solo).
     std::function<void(size_t)> onExclusiveSoloRequested;
+    /// D39.4 : LES TRANCHES DES PISTES CHOISIES SE VOIENT.
+    ///
+    /// ET LA QUESTION ANNONCÉE AVANT LA MESURE A BIEN EU LIEU : un DOSSIER
+    /// n'a plus de tranche depuis D35.5 (il n'est pas un bus, aucun signal n'y
+    /// passe). Choisir un dossier dans la liste n'a donc rien à éclairer ici.
+    /// **Ce n'est pas un défaut à corriger** : le mélangeur montre les chemins
+    /// du signal, et un dossier n'en est pas un. Lui rendre une tranche pour
+    /// qu'elle puisse être choisie remettrait les six commandes mortes que
+    /// D35.5 a retirées. La sélection est donc dessinée sur les tranches QUI
+    /// EXISTENT, et le dossier choisi se voit là où il vit : dans la liste.
+    ///
+    /// C'est aussi pourquoi l'appariement passe par `trackIndex()` et non par
+    /// le rang de la tranche -- la n-ième tranche n'est plus la n-ième piste,
+    /// et D35.5 a payé trois fois pour l'avoir oublié.
+    void setSelectedTracks(const std::set<size_t>& tracks) {
+        for (auto* strip : strips_) strip->setChoisie(tracks.count(strip->trackIndex()) > 0);
+    }
     /// D37 : chaque tranche relit sa piste (nom, volume, panoramique).
     void refreshFromTracks() {
         for (auto* strip : strips_) strip->refreshFromTrack();

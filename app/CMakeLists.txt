@@ -179,6 +179,11 @@ target_sources(vsm-edit-audit PRIVATE
 )
 target_include_directories(vsm-edit-audit PRIVATE Source)
 target_compile_definitions(vsm-edit-audit PRIVATE
+    # D39.5 : le banc relit les SOURCES pour garder l'unicité des chemins
+    # d'écriture. Le chemin vient de CMake plutôt que d'un calcul relatif au
+    # binaire : un banc qui cherche ses fichiers à tâtons finit par n'en
+    # trouver aucun et par se déclarer content.
+    VSM_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/Source"
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
     JUCE_STANDALONE_APPLICATION=1

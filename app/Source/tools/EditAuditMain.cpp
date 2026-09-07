@@ -27,6 +27,8 @@
 #include "vsm/sequencer/Project.h"
 #include <cmath>
 #include <cstdio>
+#include <cstring>
+#include <fstream>
 #include <string>
 #include <vector>
 
@@ -129,6 +131,70 @@ void collecterLignes(juce::Component& racine, std::vector<TrackRowComponent*>& s
 }
 
 int desaccords = 0;   ///< panneaux ou lots qui ne font pas ce qu'ils annoncent
+
+/// D39.5 — QU'AUCUN QUATRIÈME CHEMIN NE RÉAPPARAISSE.
+///
+/// CE QUE CE BANC NE PEUT PAS FAIRE, ET C'EST DIT PLUTÔT QUE CONTOURNÉ : le
+/// raccourci clavier vit dans `MainComponent`, qui exige le moteur audio, une
+/// application JUCE et une fenêtre. Il ne se monte pas ici. Le chemin du
+/// clavier se vérifie donc à l'ÉCRAN (`VSM_TOUCHE="shift + M"` sur une
+/// sélection de trois pistes), et non par ce banc.
+///
+/// Ce que ce banc PEUT garder, en revanche, est ce qui a laissé passer le
+/// défaut de D39.1 : l'apparition d'un chemin d'écriture de plus. Il relit les
+/// sources et compte les endroits qui posent `muted` ou `solo` sur une piste.
+/// Chacun est nommé ci-dessous avec sa raison ; un endroit de plus fait échouer
+/// le banc, et il faudra soit le faire passer par la liste, soit écrire
+/// pourquoi il n'a pas à le faire.
+struct CheminAutorise { const char* fichier; const char* raison; };
+const CheminAutorise kCheminsDEcriture[] = {
+    { "ui/TrackListComponent.cpp",
+      "le chemin unique : poserMuet/poserSolo, appeles par la LISTE qui consulte "
+      "la selection et n'ouvre qu'un pas (D38.2)" },
+    { "ui/MixerComponent.cpp",
+      "les boutons M et S d'une TRANCHE, qui agissent sur leur propre piste et "
+      "passent par onMixEditStarted" },
+    { "MainComponent.cpp",
+      "deux exceptions ecrites : le MIDI Learn, ou un bouton materiel est lie a "
+      "UNE piste nommee et non a la selection, et le solo EXCLUSIF, dont le "
+      "propre est d'ecrire toutes les pistes" },
+    { "ui/ArrangementComponent.cpp",
+      "le muet d'un CLIP, qui n'est pas celui d'une piste : un clip tu laisse "
+      "sonner les autres clips de sa piste (D5)" },
+};
+
+/// LA LIMITE DE CETTE GARDE, ÉCRITE PLUTÔT QUE TUE. Le repérage est TEXTUEL :
+/// il voit `.muted =` sans savoir si l'objet à gauche est une piste ou un clip.
+/// C'est pourquoi l'arrangement figure ci-dessus alors qu'il n'écrit qu'un
+/// clip -- le banc l'a signalé dès sa première exécution, ce qui est le bon
+/// comportement pour un garde-fou, mais la déclaration ne dit plus rien de ce
+/// fichier : quelqu'un pourrait y ajouter une écriture de PISTE sans que le
+/// compte bouge. Cette garde attrape l'apparition d'un chemin dans un fichier
+/// NEUF, pas l'ajout d'un chemin dans un fichier déjà nommé. Elle vaut ce
+/// qu'elle vaut, et c'est mieux que rien, à condition de savoir laquelle des
+/// deux choses elle fait.
+
+/// Compte, dans un fichier, les écritures directes de `muted`/`solo`.
+int ecrituresDirectes(const std::string& chemin) {
+    std::ifstream f(chemin);
+    if (!f) return -1;
+    int n = 0;
+    std::string ligne;
+    while (std::getline(f, ligne)) {
+        // On cherche « .muted =' » ou « .solo = », sans « == ».
+        for (const char* champ : { ".muted", ".solo" }) {
+            size_t p = 0;
+            while ((p = ligne.find(champ, p)) != std::string::npos) {
+                size_t q = p + std::strlen(champ);
+                while (q < ligne.size() && ligne[q] == ' ') ++q;
+                if (q < ligne.size() && ligne[q] == '=' && (q + 1 >= ligne.size() || ligne[q + 1] != '='))
+                    ++n;
+                p += std::strlen(champ);
+            }
+        }
+    }
+    return n;
+}
 
 } // namespace
 
@@ -388,6 +454,44 @@ int main(int argc, char** argv) {
             }
             gestes.push_back(std::move(g));
         }
+    }
+
+    // ------------------------------------------------------------------
+    // D39.5 — LES CHEMINS D'ÉCRITURE DU MUET ET DU SOLO
+    // ------------------------------------------------------------------
+    {
+        std::printf("=== D39.5 : QUI ECRIT muted / solo ===\n");
+        const std::string racine = VSM_SOURCE_DIR;
+        int total = 0;
+        for (const auto& c : kCheminsDEcriture) {
+            const int n = ecrituresDirectes(racine + "/" + c.fichier);
+            if (n < 0) {
+                std::printf("  %-30s FICHIER ILLISIBLE -- le banc ne garde rien\n", c.fichier);
+                desaccords = 1;
+                continue;
+            }
+            total += n;
+            std::printf("  %-30s %d ecriture(s) : %s\n", c.fichier, n, c.raison);
+        }
+        // Tout autre fichier de app/Source ne doit en porter AUCUNE.
+        static const char* ailleurs[] = {
+            "ui/EventListComponent.cpp",
+            "ui/EffectChainComponent.cpp", "ui/AutomationComponent.cpp",
+            "ui/MidiCcComponent.cpp", "ui/PianoRollComponent.cpp",
+        };
+        // Les fichiers DÉCLARÉS ne sont pas relus ici : y figurer deux fois
+        // ferait compter leurs écritures comme intruses, et le banc se serait
+        // mis en défaut tout seul (il l'a fait, à sa première exécution).
+        int intrus = 0;
+        for (const char* f : ailleurs) {
+            bool declare = false;
+            for (const auto& d : kCheminsDEcriture) if (std::strcmp(d.fichier, f) == 0) declare = true;
+            if (declare) continue;
+            const int n = ecrituresDirectes(racine + "/" + f);
+            if (n > 0) { std::printf("  %-30s %d ECRITURE(S) NON DECLAREE(S)\n", f, n); intrus += n; }
+        }
+        std::printf("  -> %d ecriture(s) declaree(s), %d non declaree(s)\n", total, intrus);
+        if (intrus > 0) desaccords = 1;
     }
 
     std::printf("=== D36.4 : LES GESTES DE LA LIGNE DE PISTE ===\n");

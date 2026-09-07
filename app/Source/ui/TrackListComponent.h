@@ -171,6 +171,10 @@ public:
     std::function<void()> onTracksChanged;
     /// D37.1 : une piste a été renommée (voir `TrackRowComponent::onRenamed`).
     std::function<void()> onRenamed;
+    /// D39.3 : LA SÉLECTION A CHANGÉ. Les autres panneaux qui dessinent des
+    /// pistes en ont besoin pour la montrer -- la liste n'était pas seule à
+    /// devoir la connaître, elle était seule à la connaître.
+    std::function<void()> onSelectionChanged;
     std::function<void(size_t, const std::string&)> onInstrumentChanged;
     /// L'armement d'une piste a changé (voir TrackRowComponent::onArmChanged).
     std::function<void()> onArmChanged;
@@ -204,6 +208,20 @@ public:
     const std::set<size_t>& selectedTracks() const { return selection_; }
     /// D38.1 : pose la sélection (l'index actif y est toujours ajouté).
     void setSelectedTracks(std::set<size_t> tracks, size_t active);
+    /// D39.2 : ÉTEND la sélection d'une piste vers le bas (+1) ou le haut (-1),
+    /// depuis l'ancre -- exactement comme le Maj+clic de D38.1, et pour la même
+    /// raison : étendre depuis le résultat de l'extension précédente ferait
+    /// grandir la sélection à chaque touche au lieu de la redessiner.
+    /// Les pistes MASQUÉES sont sautées, comme elles le sont pour la navigation
+    /// simple (D17.4) : on ne choisit pas ce qu'on ne voit pas.
+    void etendreSelection(int delta);
+    /// D39.2 : toutes les pistes visibles.
+    void choisirToutesLesPistes();
+    /// D39.3 : un clic sur une piste, modificateurs compris -- d'où qu'il
+    /// vienne. La liste des pistes l'appelle depuis ses rangées, l'arrangement
+    /// depuis ses en-têtes : un seul calcul de sélection, deux endroits d'où
+    /// l'on clique.
+    void cliquerSurLaPiste(size_t index, juce::ModifierKeys mods) { cliqueSurLaLigne(index, mods); }
     /// D38.4 : appelée AVANT un geste multipliable venu de la ligne `index`.
     /// Si cette piste n'est pas dans la sélection, la sélection devient elle
     /// seule -- agir sur des pistes qu'on ne regarde pas est le pire des
