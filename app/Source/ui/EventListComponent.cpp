@@ -1,4 +1,5 @@
 #include "EventListComponent.h"
+#include "vsm/sequencer/NoteEdit.h"
 
 using namespace vsm::ui;
 using vsm::sequencer::EventKind;
@@ -36,7 +37,8 @@ EventListComponent::EventListComponent() {
     table_.getHeader().addColumn(juce::String::fromUTF8(u8"Position"), kColPosition, 130);
     table_.getHeader().addColumn(juce::String::fromUTF8(u8"Nature"), kColNature, 120);
     table_.getHeader().addColumn(juce::String::fromUTF8(u8"Canal"), kColCanal, 60);
-    table_.getHeader().addColumn(juce::String::fromUTF8(u8"N°"), kColPremier, 80);
+    // Plus large depuis que la hauteur s'y écrit en toutes lettres (« C#2 (37) »).
+    table_.getHeader().addColumn(juce::String::fromUTF8(u8"N°"), kColPremier, 110);
     table_.getHeader().addColumn(juce::String::fromUTF8(u8"Valeur"), kColSecond, 90);
     table_.getHeader().addColumn(juce::String::fromUTF8(u8"Durée (ticks)"), kColDuree, 110);
     table_.setHeaderHeight(22);
@@ -130,8 +132,24 @@ juce::String EventListComponent::texteDe(const EventRow& ligne, int columnId) co
             // Les familles sans « numéro » montrent un tiret plutôt qu'un zéro
             // : un zéro se lit comme une valeur, et l'on chercherait ce qu'il
             // veut dire.
-            return (ligne.kind == EventKind::PitchBend || ligne.kind == EventKind::ChannelPressure)
-                       ? juce::String::fromUTF8(u8"—") : juce::String(ligne.first);
+            if (ligne.kind == EventKind::PitchBend || ligne.kind == EventKind::ChannelPressure)
+                return juce::String::fromUTF8(u8"—");
+            // LA HAUTEUR D'UNE NOTE SE LIT, elle ne se compte pas. « 37 » ne
+            // dit rien à personne ; « C#2 (37) », si -- et c'est exactement
+            // l'argument que la colonne Position applique déjà en écrivant
+            // « 1.3+168 (1128) » plutôt que le seul tick. Le nombre reste, à
+            // côté : c'est lui qu'on tape dans un autre logiciel.
+            //
+            // TROUVÉ EN OUVRANT UNE VRAIE RECONSTRUCTION, où la colonne
+            // alignait 29, 37, 48 sur une piste de basse pendant que le piano
+            // roll, à trois centimètres de là, écrivait C#2 sur son clavier.
+            // `noteNumberToName` existait déjà et servait au piano roll : la
+            // fonction était là, elle n'était pas montrée ici.
+            if (ligne.kind == EventKind::Note || ligne.kind == EventKind::PolyPressure)
+                return juce::String(vsm::sequencer::noteNumberToName(
+                           static_cast<uint8_t>(ligne.first)))
+                       + " (" + juce::String(ligne.first) + ")";
+            return juce::String(ligne.first);
         case kColSecond:
             return ligne.kind == EventKind::ProgramChange ? juce::String::fromUTF8(u8"—")
                                                            : juce::String(ligne.second);
