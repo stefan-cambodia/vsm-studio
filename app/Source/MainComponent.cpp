@@ -515,6 +515,10 @@ MainComponent::MainComponent()
     trackList_.onSelectionChanged = [this] {
         arrangement_.setSelectedTracks(trackList_.selectedTracks());
         mixer_.setSelectedTracks(trackList_.selectedTracks());
+        // D40.3 : et la console défile jusqu'à la tranche de la piste ACTIVE.
+        // À 64 pistes elle en montre treize : sans cela, la marque de sélection
+        // se dessine sur une tranche que personne ne voit.
+        mixer_.faireVoirLaTranche(trackList_.selectedTrackIndex());
     };
     // D11.1 : ce qu'un changement de piste a refusé se DIT — un clip audio
     // vers une piste qui porte un autre fichier, un groupe, un genre qui ne

@@ -194,6 +194,29 @@ target_link_libraries(vsm-edit-audit PRIVATE
 )
 juce_generate_juce_header(vsm-edit-audit)
 
+# --- Le DAW a 64 pistes (D40) ----------------------------------------------
+# L'objectif de parite de la reconstruction engage aussi l'application : elle
+# doit rester utilisable et VERIFIEE a 64 pistes. Le plus gros projet du depot
+# en compte six, et les quarante phases D0 a D39 ont ete mesurees sur une a
+# quatre. Ce banc donne les chiffres qui manquaient.
+juce_add_console_app(vsm-scale-audit PRODUCT_NAME "vsm-scale-audit")
+target_sources(vsm-scale-audit PRIVATE
+    Source/tools/ScaleAuditMain.cpp
+    Source/ui/TrackListComponent.cpp
+    Source/ui/MixerComponent.cpp
+)
+target_include_directories(vsm-scale-audit PRIVATE Source)
+target_compile_definitions(vsm-scale-audit PRIVATE
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_STANDALONE_APPLICATION=1
+)
+target_link_libraries(vsm-scale-audit PRIVATE
+    vsm_core vsm_audio
+    juce::juce_gui_basics juce::juce_graphics
+)
+juce_generate_juce_header(vsm-scale-audit)
+
 
 # --- Vérification du chargement d'un enregistrement d'origine ---------------
 # Le chargement de la référence A/B est du code d'interface, et l'interface ne

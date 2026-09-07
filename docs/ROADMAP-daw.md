@@ -7920,3 +7920,124 @@ dans les trois : c'est ainsi qu'on navigue dans un morceau à quinze pistes.
 >
 > Tests : 1 283 audio, 319 core, 285 interchange, 25 clap, 11 panels — verts ;
 > banc : 11 gestes, 0 muet, 8 écritures déclarées, 0 non déclarée.
+
+### Phase D40 — Le DAW à 64 pistes : la parité engage aussi l'application (07/09/2026, 17:45)
+
+**Pourquoi celle-ci, et d'où elle vient.** Ce n'est pas un audit de plus : c'est
+une exigence déjà écrite, et jamais vérifiée. L'objectif de parité — « si un
+original comporte 15 postes, la reconstruction doit comporter 15 pistes ; s'il
+en comporte 64, elle doit en comporter 64 » — porte une seconde moitié qu'on a
+lue sans la mesurer : **la parité vaut à toute échelle, ce qui engage aussi le
+DAW, qui doit rester utilisable et vérifié à 64 pistes, pas seulement à huit.**
+
+Or **le plus gros projet du dépôt fait six pistes** (`reconstruction/
+children-dream-v7/`), et toutes les phases D0 à D39 ont été mesurées et
+photographiées sur un à quatre. Une reconstruction à parité rendra un projet
+que rien n'a jamais ouvert.
+
+**Ce que cette phase mesure, et ce qu'elle ne mesure pas.** Elle ne cherche pas
+à rendre le DAW rapide : elle cherche à savoir **ce qui casse, et à partir de
+combien**. Un chiffre qu'on n'a pas est plus dangereux qu'un chiffre mauvais.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D40.1 | **Un banc qui construit N pistes et chronomètre** la liste des pistes, le mélangeur, l'arrangement et la publication au moteur, à 8, 16, 32 et 64 | les quatre temps sont écrits pour chaque taille, et le banc dit lequel croît plus vite que N |
+| D40.2 | **Ce qui croît en N² est nommé** — et corrigé seulement si le chiffre le demande. Un N² de 4 096 opérations triviales n'est pas un défaut, c'en est un s'il porte une allocation ou un balayage | chaque croissance super-linéaire est mesurée et tranchée par son coût réel, pas par sa forme |
+| D40.3 | **Ce qui devient illisible ou inatteignable à 64 pistes.** Le mélangeur aligne les tranches : 64 × ~85 px font 5 440 px, soit six écrans. La liste défile-t-elle ? Le sélecteur de sortie propose-t-il 64 entrées ? | photographié à 64 pistes ; ce qui est inatteignable est nommé, et corrigé ou écrit |
+| D40.4 | **Le moteur** : 64 pistes qui jouent ensemble, sans allocation dans `process()` et sans dépassement du budget de bloc | l'invariant n° 2 du § 6 vérifié à 64 pistes, et le temps de calcul d'un bloc mesuré |
+| D40.5 | **Ce qui est décidé plutôt que corrigé.** Certaines limites sont légitimes (un écran ne montre pas 64 tranches) ; elles s'écrivent avec leur raison plutôt que de rester des surprises | la décision est écrite dans le document et dans le code |
+
+**Ce qui est attendu, écrit AVANT la mesure.**
+
+1. **La construction de la liste des pistes croît plus vite que N**, parce que
+   chaque ligne remplit un sélecteur d'instrument avec **tout le registre** —
+   65 machines aujourd'hui. À 64 pistes cela fait 4 160 entrées de liste
+   déroulante, plus une dizaine de widgets par ligne. J'attends que cela reste
+   sous **une demi-seconde**, c'est-à-dire perceptible mais supportable, et je
+   me trompe si c'est au-delà de deux secondes.
+2. **Le mélangeur sera le premier à devenir inutilisable**, non par lenteur mais
+   par largeur : je m'attends à ce que les tranches au-delà de la douzième
+   soient hors de l'écran, et je ne sais pas si un défilement existe. C'est la
+   prédiction que je tiens le moins fermement, et c'est pourquoi elle est
+   écrite.
+3. **`refreshMuteSolo` est en N²** : il parcourt les tranches et appelle
+   `trackAudible` pour chacune, qui parcourt les pistes (D35.4, le muet hérité
+   d'un dossier). À 64 pistes cela fait ~4 096 tours de boucle sans allocation :
+   j'attends que ce soit **négligeable**, et donc à ne PAS corriger. Une forme
+   en N² n'est pas un défaut ; c'est son coût qui en fait un.
+4. **Le moteur tiendra**, parce que `ProcessGraph` a été mesuré à huit pistes
+   et que rien dans sa structure ne dépend du nombre — mais 64 machines
+   instanciées, c'est 64 fois la mémoire d'une machine, et je n'ai aucune idée
+   de ce que cela pèse. C'est le chiffre que je veux le plus.
+
+> **LA PHASE D40 EST FAITE (07/09/2026, 18:30), ET TROIS ATTENTES SUR QUATRE
+> ÉTAIENT FAUSSES — DANS LE BON SENS.**
+>
+> **LES CHIFFRES QUI MANQUAIENT.** Projet synthétique, une machine par piste
+> (`vsm.minimoog`), 32 notes par piste :
+>
+> | pistes | liste (ms) | mélangeur (ms) | un bloc de 512 (ms) | du budget |
+> |---|---|---|---|---|
+> | 8 | 0,5 | 0,4 | 0,280 | 2,6 % |
+> | 16 | 0,7 | 0,8 | 0,555 | 5,2 % |
+> | 32 | 1,2 | 1,6 | 1,123 | 10,5 % |
+> | 64 | **2,5** | **3,2** | **2,229** | **20,9 %** |
+>
+> Tout est **linéaire** (×2,03 et ×2,02 au dernier doublement). **Le DAW tient
+> 64 pistes, et il les tient largement.**
+>
+> **L'ATTENTE N° 1 ÉTAIT FAUSSE D'UN FACTEUR DEUX CENTS.** J'annonçais une
+> construction super-linéaire « sous une demi-seconde » parce que chaque ligne
+> remplit un sélecteur avec les 64 machines du registre — 4 096 entrées à
+> 64 pistes. Mesuré : **2,5 ms**, et linéaire. Mon modèle de ce qui coûte cher
+> était faux de deux ordres de grandeur, et aucune lecture de code ne me
+> l'aurait dit : seule la mesure fixe l'échelle.
+>
+> **L'ATTENTE N° 3 ÉTAIT JUSTE, ET SA CONCLUSION AUSSI.** `refreshMuteSolo` est
+> bien en N² (chaque tranche appelle `trackAudible`, qui parcourt les pistes) :
+> **0,037 ms** à 64 pistes, soit un quatre-centième de ce qu'un glissé de fader
+> peut dépenser entre deux images. **Une forme en N² n'est pas un défaut ; c'est
+> son coût qui en fait un.** Elle n'est pas corrigée, et c'est écrit.
+>
+> **L'ATTENTE N° 2 ÉTAIT À MOITIÉ FAUSSE, ET C'EST CELLE QUE JE TENAIS LE MOINS
+> FERMEMENT.** Le mélangeur défile bien — il montre treize tranches sur 64. Mais
+> le vrai défaut était ailleurs, et l'échelle l'a fait apparaître : **choisir la
+> piste 41 dessinait son contour ambre sur une tranche hors de l'écran.** La
+> marque de sélection que D39.4 venait d'ajouter existait et ne se voyait pas —
+> le défaut même que D38.1 et D39.3 avaient corrigé ailleurs, revenu par le
+> nombre. La liste des pistes avait `faireVoirLaPiste` depuis longtemps, et son
+> commentaire annonçait déjà le cas (« un projet en parité en a onze ») ; le
+> mélangeur n'avait pas son jumeau. Il l'a, par `trackIndex()` et non par le
+> rang de la tranche — un dossier n'en a plus depuis D35.5.
+>
+> **LE BANC A RENDU UN CHIFFRE IMPOSSIBLE, ET C'EST SON IMPOSSIBILITÉ QUI L'A
+> DÉNONCÉ.** Première exécution : **0,002 ms par bloc à 64 pistes**, soit deux
+> microsecondes pour 512 échantillons de soixante-quatre Minimoog. Le moteur
+> n'était pas en lecture : il ne déclenchait aucune note, et le banc mesurait
+> soixante-quatre machines au repos. **Un chiffre trop beau se vérifie avant de
+> se publier** — et la parade est écrite dans le banc, qui relève désormais la
+> CRÊTE de sortie et dit « SILENCE : LE BANC NE MESURE RIEN » si elle est nulle.
+> Une mesure de performance sans preuve que le calcul a eu lieu ne mesure que
+> l'absence de calcul.
+>
+> **UNE OBSERVATION, AVEC SA RÉSERVE.** À 64 pistes la crête de sortie atteint
+> **4,05** — le mélange écrête largement. **Ce n'est pas un défaut du DAW mais
+> une propriété du banc** : mes 64 pistes jouent le même motif dense à la même
+> vélocité sur la même machine, ce qu'aucun morceau réel ne fait. Ce que le
+> chiffre dit tout de même : **rien dans la chaîne n'empêche la somme
+> d'écrêter**, et une reconstruction à parité en aura soixante-quatre
+> contributeurs au lieu de quatre. À vérifier sur un vrai morceau à parité —
+> pas ici, où le témoin ne ressemble à rien.
+>
+> **CE QUI N'EST PAS MESURÉ, ET C'EST DIT.** Le banc ne pèse pas la MÉMOIRE des
+> 64 machines instanciées — c'était l'autre moitié de l'attente n° 4, et un
+> compteur d'allocations demanderait d'instrumenter le moteur. Le montage des
+> 64 machines prend 0,7 ms, ce qui exclut au moins qu'il fasse quelque chose de
+> lourd. Le chiffre de mémoire reste à prendre.
+>
+> Vérifié à l'écran à 64 pistes (63 « Ajouter une piste MIDI » par `VSM_MENU`) :
+> la liste défile, l'arrangement défile, le mélangeur défile — et, après
+> correction, la tranche de la piste choisie vient se montrer.
+>
+> Tests : 1 283 audio, 319 core, 285 interchange, 25 clap, 11 panels — verts ;
+> banc d'édition : 11 gestes, 0 muet, 0 désaccord.

@@ -657,6 +657,27 @@ void MixerComponent::setProject(vsm::sequencer::Project* project) {
     resized();
 }
 
+void MixerComponent::faireVoirLaTranche(size_t trackIndex) {
+    ChannelStrip* cible = nullptr;
+    for (auto* strip : strips_) if (strip->trackIndex() == trackIndex) cible = strip;
+    // UN DOSSIER N'A PAS DE TRANCHE (D35.5) : il n'y a alors rien à montrer, et
+    // ce n'est pas une erreur. On ne bouge pas plutôt que de faire défiler au
+    // hasard -- un défilement sans raison est plus déroutant qu'aucun.
+    if (cible == nullptr || viewport_.getViewWidth() <= 0) return;
+
+    const auto bornes = cible->getBounds();
+    const int gauche = viewport_.getViewPositionX();
+    const int droite = gauche + viewport_.getViewWidth();
+    // JUSTE ASSEZ POUR LA MONTRER ENTIÈRE, et pas plus : recentrer à chaque
+    // changement de piste ferait sauter la console sous les doigts alors qu'on
+    // travaille sur les tranches voisines.
+    if (bornes.getX() < gauche)
+        viewport_.setViewPosition(bornes.getX(), viewport_.getViewPositionY());
+    else if (bornes.getRight() > droite)
+        viewport_.setViewPosition(bornes.getRight() - viewport_.getViewWidth(),
+                                   viewport_.getViewPositionY());
+}
+
 void MixerComponent::updateMeters(
     const std::function<vsm::audio::engine::TrackMeasurement(size_t)>& trackMeasure,
     double masterLufs, float masterPeak, float masterRms, float masterCorrelation) {

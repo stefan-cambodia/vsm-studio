@@ -368,6 +368,20 @@ public:
     void setSelectedTracks(const std::set<size_t>& tracks) {
         for (auto* strip : strips_) strip->setChoisie(tracks.count(strip->trackIndex()) > 0);
     }
+    /// D40.3 : FAIRE DÉFILER JUSQU'À LA TRANCHE DE CETTE PISTE.
+    ///
+    /// À 64 pistes, le mélangeur en montre treize : choisir la piste 41 dans la
+    /// liste dessinait son contour ambre sur une tranche **hors de l'écran**.
+    /// La marque existait et ne se voyait pas -- le défaut même que D38.1 et
+    /// D39.3 ont corrigé ailleurs, revenu par l'échelle. La liste des pistes
+    /// avait `faireVoirLaPiste` depuis longtemps, et son commentaire annonçait
+    /// déjà le cas (« un projet en parité en a onze ») ; le mélangeur n'avait
+    /// pas son jumeau.
+    ///
+    /// PAR `trackIndex()` ET NON PAR LE RANG DE LA TRANCHE : depuis D35.5 un
+    /// dossier n'a plus de tranche, et la n-ième tranche n'est plus la n-ième
+    /// piste. Cette confusion a été payée trois fois dans cette phase-là.
+    void faireVoirLaTranche(size_t trackIndex);
     /// D37 : chaque tranche relit sa piste (nom, volume, panoramique).
     void refreshFromTracks() {
         for (auto* strip : strips_) strip->refreshFromTrack();
