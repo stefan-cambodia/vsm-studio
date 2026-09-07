@@ -8464,3 +8464,41 @@ Le défaut n'est pas de continuer, il est de continuer **en silence**.
 >
 > Tests : 1 283 audio, 319 core, 285 interchange, 25 clap, 11 panels — verts ;
 > banc d'édition : 11 gestes, 0 muet, 0 désaccord.
+
+> **D42.3, AFFINÉ PAR CE QUE LA CHASSE À LA CAPTURE A TROUVÉ (07/09/2026,
+> 22:50).** En cherchant à photographier le marquage ambre, j'ai construit le
+> cas qui devait l'allumer : la piste de démo dupliquée trois fois, la
+> quatrième passée en `vsm.additive` — la machine la plus chère du parc,
+> **5,8 fois** le Minimoog en jeu (3,197 ms contre 0,555 à seize pistes). Le
+> marquage ne s'est pas allumé. Trois causes plausibles se présentaient ; au
+> lieu d'en choisir une, une trace les a départagées :
+>
+> ```
+> [couts] lecture=0 0=74,8 1=82,9 2=83,9 3=16,3 us
+> ```
+>
+> **AU REPOS, L'ADDITIVE EST LA MOINS CHÈRE DES QUATRE** — 16,3 µs contre 75 à
+> 84. Une machine sans voix active ne somme rien, tandis qu'un soustractif fait
+> tourner ses oscillateurs et son filtre quoi qu'il arrive. **Le classement à
+> l'arrêt est non seulement inutile : il est INVERSÉ.**
+>
+> **CONSÉQUENCE, ET C'EST UNE CORRECTION DU CODE, PAS UNE NOTE.** Recalculer la
+> désignation à l'arrêt revenait à désigner une piste au hasard dès qu'on appuie
+> sur Stop — et à désigner la MOINS chère aussi souvent qu'une autre.
+> `publishRenderCosts` ne recalcule donc plus qu'en LECTURE : ce qu'on lit à
+> l'arrêt est la dernière désignation qui voulait dire quelque chose.
+>
+> **ET LE PIXEL AMBRE RESTE NON PHOTOGRAPHIÉ**, cette fois pour une raison
+> précise et non pour une raison inventée : la capture doit tomber **pendant**
+> la lecture, et le morceau de démo dure **1,85 s** — le même chiffre qui avait
+> déjà piégé D27.5 avec `aseqdump`. Trois réglages de délai (7 000, 1 200 et
+> 900 ms) n'ont pas attrapé la fenêtre. La règle, elle, reste mesurée au banc
+> dans les deux sens.
+>
+> **CE QUE CETTE POURSUITE A COÛTÉ ET RAPPORTÉ.** Elle a coûté beaucoup de
+> tentatives pour une image que je n'ai pas. Elle a rapporté un défaut réel que
+> ni le banc ni la lecture du code n'auraient montré — **parce qu'il fallait
+> comparer des machines en jeu et à l'arrêt pour le voir**. La leçon n'est pas
+> « il faut insister » : c'est qu'une mesure qui refuse de donner le résultat
+> attendu a quelque chose à dire, et que la trace qui départage trois
+> hypothèses coûte moins cher que la quatrième tentative de deviner laquelle.

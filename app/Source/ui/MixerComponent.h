@@ -438,7 +438,21 @@ public:
         for (auto* strip : strips_) if (strip->estChere()) v.push_back(strip->trackIndex());
         return v;
     }
-    void publishRenderCosts(const std::function<float(size_t)>& coutDeLaPiste) {
+    /// D42.3 (corrigé) : `enLecture` dit si le transport JOUE.
+    ///
+    /// AU REPOS, LE CLASSEMENT NE VEUT RIEN DIRE, et c'est une mesure qui l'a
+    /// montré : sur quatre pistes dont une en `vsm.additive` -- la machine la
+    /// plus chère du parc, 5,8 fois le Minimoog en jeu --, l'additive au repos
+    /// coûte **16,3 µs contre 75 à 84** aux trois autres. C'est la MOINS chère.
+    /// Une machine sans voix active ne somme rien, tandis qu'un soustractif
+    /// fait tourner ses oscillateurs et son filtre quoi qu'il arrive.
+    ///
+    /// Recalculer la désignation à l'arrêt reviendrait donc à désigner une
+    /// piste au hasard dès qu'on appuie sur Stop. On GARDE la dernière
+    /// désignation faite en jeu : ce qu'on lit est alors la dernière mesure
+    /// qui voulait dire quelque chose, et non un classement de repos.
+    void publishRenderCosts(const std::function<float(size_t)>& coutDeLaPiste, bool enLecture = true) {
+        if (!enLecture) return;
         std::vector<float> couts;
         couts.reserve(strips_.size());
         for (auto* strip : strips_) couts.push_back(coutDeLaPiste(strip->trackIndex()));

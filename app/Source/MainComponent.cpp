@@ -1929,9 +1929,26 @@ void MainComponent::timerCallback() {
     // D42.3 : QUELLE PISTE COÛTE. Le total dit qu'il faut alléger ; celui-ci
     // dit quoi. Publié au même rythme que les vumètres, dont il partage la
     // banque.
-    mixer_.publishRenderCosts([this](size_t piste) {
-        return audioEngine_.processGraph().readTrackRenderMicros(piste);
-    });
+    mixer_.publishRenderCosts(
+        [this](size_t piste) { return audioEngine_.processGraph().readTrackRenderMicros(piste); },
+        transport_.state() == vsm::audio::engine::TransportState::Playing);
+    // VSM_TRACE_COUTS=1 : écrire les coûts par piste sur la sortie d'erreur, une
+    // fois par seconde. Ce n'est pas une trace de mise au point laissée là : le
+    // marquage ambre de D42.3 ne se photographie que si une piste dépasse ses
+    // voisines, et une capture qui ne le montre pas laisse deux explications
+    // ouvertes -- « la règle est fausse » et « la capture n'a rien attrapé ».
+    // Cette trace les départage, et c'est le seul moyen de le faire sans écran.
+    if (const char* t = std::getenv("VSM_TRACE_COUTS"); t != nullptr && *t) {
+        static int tours = 0;
+        if (++tours % 30 == 0) {
+            std::fprintf(stderr, "[couts] lecture=%d ",
+                         transport_.state() == vsm::audio::engine::TransportState::Playing ? 1 : 0);
+            for (size_t i = 0; i < project_.tracks.size() && i < 8; ++i)
+                std::fprintf(stderr, "%zu=%.1f ", i,
+                             audioEngine_.processGraph().readTrackRenderMicros(i));
+            std::fprintf(stderr, "us\n");
+        }
+    }
     transportBar_.setSampleRate(audioEngine_.currentSampleRate());
 
     // Republication coalescée des changements de mix (fader/pan/mute/solo)
