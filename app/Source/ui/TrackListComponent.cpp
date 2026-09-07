@@ -31,7 +31,13 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
     nameLabel_.setText(track_.name.empty() ? ("Piste " + std::to_string(trackIndex + 1)) : track_.name,
                         juce::dontSendNotification);
     nameLabel_.setEditable(false, true, false);
-    nameLabel_.onTextChange = [this] { track_.name = nameLabel_.getText().toStdString(); };
+    nameLabel_.onTextChange = [this] {
+        // D36.1 : le signal part AVANT l'écriture. L'historique mémorise l'état
+        // d'avant ; signaler après ferait photographier le nom déjà changé.
+        debutEdition(u8"Renommer la piste");
+        track_.name = nameLabel_.getText().toStdString();
+        if (onChanged) onChanged();
+    };
 
     addAndMakeVisible(channelLabel_);
     channelLabel_.setText(audio_ ? juce::String("Audio")
@@ -47,7 +53,8 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
         channelLabel_.setTooltip(u8"Canal MIDI (1 \u00e0 16) \u2014 double-clic pour le changer");
         channelLabel_.onTextChange = [this] {
             const int saisi = channelLabel_.getText().retainCharacters("0123456789").getIntValue();
-            if (saisi >= 1 && saisi <= 16) {
+            if (saisi >= 1 && saisi <= 16 && saisi - 1 != static_cast<int>(track_.channel)) {
+                debutEdition(u8"Canal MIDI");
                 track_.channel = static_cast<uint8_t>(saisi - 1);
                 if (onChanged) onChanged();
             }
@@ -112,6 +119,8 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
             std::string pluginId = (idx <= 0 || idx > static_cast<int>(instruments.size()))
                                         ? ""
                                         : instruments[static_cast<size_t>(idx - 1)].first;
+            if (pluginId == track_.instrumentId) return;
+            debutEdition(u8"Machine de la piste");
             track_.instrumentId = pluginId;
             if (onInstrumentChanged) onInstrumentChanged(index_, pluginId);
         };
@@ -127,6 +136,12 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
         };
         rafraichir();
         folderButton_.onClick = [this, rafraichir] {
+            // LE REPLI EST DANS LE FICHIER (`folded`, format version 2), donc
+            // c'est de l'état de MORCEAU et non d'écran : il se photographie.
+            // Qu'il s'annule aussi est la conséquence, assumée -- un Ctrl+Z qui
+            // redéploie un dossier surprend une fois ; un rangement perdu à la
+            // reprise après coupure coûte plus cher.
+            debutEdition(u8"Replier le dossier");
             track_.folded = !track_.folded;
             rafraichir();
             if (onChanged) onChanged();
@@ -143,8 +158,16 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
     soloButton_.setColour(juce::TextButton::buttonOnColourId, Palette::accentAmber);
     armButton_.setColour(juce::TextButton::buttonOnColourId, Palette::accentRed);
 
-    muteButton_.onClick = [this] { track_.muted = muteButton_.getToggleState(); if (onChanged) onChanged(); };
-    soloButton_.onClick = [this] { track_.solo = soloButton_.getToggleState(); if (onChanged) onChanged(); };
+    // LE MÊME BOUTON QUE DANS LA TRANCHE DU MÉLANGEUR, ET DÉSORMAIS LE MÊME
+    // COMPORTEMENT (D36.1). Le muet, le solo, le volume et le panoramique
+    // existent aux deux endroits ; jusqu'ici ils s'annulaient dans l'un et pas
+    // dans l'autre, et rien à l'écran ne le laissait deviner.
+    muteButton_.onClick = [this] { basculerMuet(); };
+    soloButton_.onClick = [this] {
+        debutEdition("Solo");
+        track_.solo = soloButton_.getToggleState();
+        if (onChanged) onChanged();
+    };
     // ARMEMENT (D3.3). `Track::armed` était écrit ici et LU PAR PERSONNE : on
     // pouvait armer une piste, et rien n'arrivait -- d'où un bouton désactivé
     // qui l'avouait. Il agit maintenant sur deux choses à la fois, et c'est
@@ -177,6 +200,7 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
         outputBox_.setTooltip("Ou va cette piste : le master, ou un groupe.");
         outputBox_.onChange = [this, groupes] {
             const int choix = outputBox_.getSelectedItemIndex();
+            debutEdition(u8"Sortie de la piste");
             track_.outputGroup = (choix <= 0 || choix > static_cast<int>(groupes.size()))
                                      ? -1
                                      : groupes[static_cast<size_t>(choix - 1)].first;
@@ -189,16 +213,55 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
     volumeSlider_.setRange(0.0, 1.5, 0.001);
     volumeSlider_.setValue(track_.volume, juce::dontSendNotification);
     volumeSlider_.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-    volumeSlider_.onValueChange = [this] { track_.volume = static_cast<float>(volumeSlider_.getValue()); if (onChanged) onChanged(); };
+    volumeSlider_.onDragStart = [this] { glisseEnCours_ = true; debutEdition("Volume"); };
+    volumeSlider_.onDragEnd = [this] { glisseEnCours_ = false; };
+    volumeSlider_.onValueChange = [this] {
+        // UN PAS PAR GESTE, PAS UN PAR PIXEL. Le glissé a déjà signalé à son
+        // départ ; ce qui reste ici est la molette, le clavier et la saisie,
+        // que `onDragStart` ne voit jamais -- et qui, sans cette ligne,
+        // resteraient inannulables tout en ayant l'air couvertes.
+        if (!glisseEnCours_) debutEdition("Volume");
+        track_.volume = static_cast<float>(volumeSlider_.getValue());
+        if (onChanged) onChanged();
+    };
 
     addAndMakeVisible(panSlider_);
     panSlider_.setSliderStyle(juce::Slider::LinearHorizontal);
     panSlider_.setRange(-1.0, 1.0, 0.01);
     panSlider_.setValue(track_.pan, juce::dontSendNotification);
     panSlider_.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-    panSlider_.onValueChange = [this] { track_.pan = static_cast<float>(panSlider_.getValue()); if (onChanged) onChanged(); };
+    panSlider_.onDragStart = [this] { glisseEnCours_ = true; debutEdition(u8"Panoramique"); };
+    panSlider_.onDragEnd = [this] { glisseEnCours_ = false; };
+    panSlider_.onValueChange = [this] {
+        if (!glisseEnCours_) debutEdition(u8"Panoramique");
+        track_.pan = static_cast<float>(panSlider_.getValue());
+        if (onChanged) onChanged();
+    };
 
     setInterceptsMouseClicks(true, true);
+}
+
+void TrackRowComponent::refreshMuteSolo() {
+    // `dontSendNotification` : on REFLÈTE la piste, on ne la modifie pas. Avec
+    // une notification, rafraîchir la liste depuis le mélangeur rappellerait
+    // le mélangeur, et les deux panneaux se renverraient la balle.
+    muteButton_.setToggleState(track_.muted, juce::dontSendNotification);
+    soloButton_.setToggleState(track_.solo, juce::dontSendNotification);
+}
+
+void TrackRowComponent::basculerMuet() {
+    debutEdition(u8"Muet");
+    // Le bouton porte l'état : appelée depuis lui, il vient de basculer ;
+    // appelée d'ailleurs, on le fait basculer d'abord pour que l'écran et la
+    // piste ne se contredisent jamais.
+    if (muteButton_.getToggleState() == track_.muted)
+        muteButton_.setToggleState(!track_.muted, juce::dontSendNotification);
+    track_.muted = muteButton_.getToggleState();
+    if (onChanged) onChanged();
+}
+
+void TrackRowComponent::debutEdition(const juce::String& libelle) {
+    if (onEditStarted) onEditStarted(libelle);
 }
 
 void TrackRowComponent::refreshName() {
@@ -395,6 +458,9 @@ void TrackListComponent::loadProject(Project& project) {
         auto* row = rows_.add(new TrackRowComponent(project_->tracks[i], i, groupes, nomSource));
         rowContainer_.addAndMakeVisible(row);
         row->onSelected = [this](size_t idx) { selectTrackIndex(idx); };
+        row->onEditStarted = [this](const juce::String& libelle) {
+            if (onEditStarted) onEditStarted(libelle);
+        };
         row->onChanged = [this] { if (onTracksChanged) onTracksChanged(); };
         row->onArmChanged = [this] { if (onArmChanged) onArmChanged(); };
         row->onOutputChanged = [this] { if (onOutputChanged) onOutputChanged(); };
@@ -407,6 +473,15 @@ void TrackListComponent::loadProject(Project& project) {
 
     resized();
     faireVoirLaPiste(selectedIndex_);
+}
+
+void TrackListComponent::refreshMuteSolo() {
+    for (auto* row : rows_) row->refreshMuteSolo();
+}
+
+void TrackListComponent::basculerMuet(size_t index) {
+    if (index >= static_cast<size_t>(rows_.size())) return;
+    rows_[static_cast<int>(index)]->basculerMuet();
 }
 
 void TrackListComponent::faireVoirLaPiste(size_t idx) {

@@ -75,11 +75,21 @@ void writePatternToTrack(Track& track, const StepPattern& pattern, uint64_t& idC
     const Tick from = pattern.startTick;
     const Tick to = pattern.startTick + pattern.lengthTicks();
 
-    // Seule la fenêtre du motif est remplacée : une grille de 16 pas ne doit
-    // pas emporter le reste du morceau avec elle.
+    // CE QUE LE MOTIF POSSÈDE, ET RIEN DE PLUS (D36.6). La fenêtre de temps
+    // ne suffit pas : un motif percussif ne possède, dans cette fenêtre, que
+    // les hauteurs de ses lignes. Ce qui joue autre chose y a été mis par
+    // quelqu'un d'autre -- au piano roll --, et la grille le disait déjà en le
+    // laissant hors de sa lecture.
+    const bool possedeToutesLesHauteurs = pattern.melodic;
+    std::vector<bool> sienne(128, possedeToutesLesHauteurs);
+    if (!possedeToutesLesHauteurs)
+        for (const auto& lane : pattern.lanes)
+            if (lane.noteNumber < 128) sienne[lane.noteNumber] = true;
+
     track.notes.erase(std::remove_if(track.notes.begin(), track.notes.end(),
-                                      [from, to](const Note& note) {
-                                          return note.startTick >= from && note.startTick < to;
+                                      [from, to, &sienne](const Note& note) {
+                                          if (note.startTick < from || note.startTick >= to) return false;
+                                          return note.number < 128 && sienne[note.number];
                                       }),
                        track.notes.end());
 
@@ -104,7 +114,11 @@ StepPattern makeDrumPattern(const std::vector<std::pair<std::string, uint8_t>>& 
 }
 
 StepPattern makeMonoPattern(uint8_t defaultNote, int stepCount, Tick stepTicks) {
+    // Mélodique : voir `StepPattern::melodic`. Posé ICI et non deviné plus
+    // tard, parce qu'un motif mélodique intact ne se distingue pas d'un motif
+    // percussif à une ligne.
     StepPattern pattern;
+    pattern.melodic = true;
     pattern.stepCount = std::max(1, stepCount);
     pattern.stepTicks = std::max<Tick>(1, stepTicks);
     StepLane lane;

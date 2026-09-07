@@ -29,6 +29,9 @@ SynthRackComponent::SynthRackComponent() {
         if (learnMode_ && onParamTouched) onParamTouched(id);
     };
     machinePanel_.onPatternEdited = [this] { if (onPatternEdited) onPatternEdited(); };
+    machinePanel_.onEditStarted = [this](const juce::String& libelle) {
+        if (onEditStarted) onEditStarted(libelle);
+    };
     addAndMakeVisible(viewport_);
     viewport_.setViewedComponent(&controlContainer_, false);
     viewport_.setScrollBarsShown(true, false);

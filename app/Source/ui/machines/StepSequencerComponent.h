@@ -31,6 +31,11 @@ public:
     /// Une édition a modifié les notes de la piste : l'application doit
     /// reconstruire le planning de lecture.
     std::function<void()> onPatternEdited;
+    /// D36.3 : UN PAS VA ÊTRE ÉCRIT. Émis AVANT `writePatternToTrack`, qui
+    /// RÉÉCRIT le vecteur de notes de la piste entière -- c'était, des trois
+    /// oublis de cet audit, le plus cher : basculer un pas remplaçait les
+    /// notes et rien ne les rendait.
+    std::function<void(const juce::String& label)> onEditStarted;
 
     void paint(juce::Graphics&) override;
     void mouseDown(const juce::MouseEvent&) override;

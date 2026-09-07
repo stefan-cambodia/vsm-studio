@@ -183,3 +183,74 @@ VSM_TEST(mono_pattern_carries_a_pitch_per_step) {
     VSM_ASSERT_EQ(static_cast<int>(reread.lanes[0].steps[0].noteNumber), 40);
     VSM_ASSERT_EQ(static_cast<int>(reread.lanes[0].steps[3].noteNumber), 52);
 }
+
+// --- D36.6 : CE QUE LE MOTIF POSSÈDE, ET RIEN DE PLUS ----------------------
+// LA RÉGRESSION QUE CES DEUX TESTS INTERDISENT. `writePatternToTrack` effaçait
+// sa fenêtre de temps SANS REGARDER LES HAUTEURS, alors que `patternFromNotes`
+// annonce depuis toujours que « les notes hors grille sont ignorées : elles
+// restent dans la piste ». La lecture les ignorait, l'écriture les tuait :
+// basculer un pas de charleston effaçait, en silence, une note de tom posée au
+// piano roll dans la même mesure. Aucun test ne traversait ce cas parce que
+// tous partaient d'une piste dont les seules notes venaient du motif.
+
+VSM_TEST(a_drum_grid_does_not_eat_the_pitches_it_cannot_show) {
+    Track track;
+    uint64_t ids = 1;
+    // Une note de TOM (45) : dans la fenêtre du motif, sur une hauteur dont la
+    // grille n'a pas de ligne.
+    track.addNote(240, 340, 45, 90, 9, ids);
+    // Et une note de CAISSE CLAIRE (38) : celle-là, la grille la représente,
+    // donc elle lui appartient et doit être remplacée.
+    track.addNote(480, 580, 38, 90, 9, ids);
+
+    StepPattern pattern = drumGrid();
+    pattern.lanes[0].steps[0].active = true;   // grosse caisse au premier pas
+
+    uint64_t counter = ids;
+    writePatternToTrack(track, pattern, counter);
+
+    bool tomSurvit = false, claireSurvit = false, kickPose = false;
+    for (const auto& n : track.notes) {
+        if (n.number == 45) tomSurvit = true;
+        if (n.number == 38) claireSurvit = true;
+        if (n.number == 36) kickPose = true;
+    }
+    VSM_ASSERT(tomSurvit);      // la grille ne la montre pas : elle n'y touche pas
+    VSM_ASSERT(!claireSurvit);  // la grille la montre, éteinte : elle l'efface
+    VSM_ASSERT(kickPose);
+}
+
+VSM_TEST(a_melodic_pattern_owns_its_whole_window) {
+    // Un motif mélodique peut poser n'importe quel pas sur n'importe quelle
+    // hauteur : épargner une hauteur y laisserait traîner la note d'avant.
+    Track track;
+    uint64_t ids = 1;
+    track.addNote(0, 60, 52, 90, 0, ids);   // ce qu'un pas avait produit avant
+
+    StepPattern pattern = makeMonoPattern(36);
+    VSM_ASSERT(pattern.melodic);
+    pattern.lanes[0].steps[0].active = true;
+    pattern.lanes[0].steps[0].noteNumber = 40;
+
+    uint64_t counter = ids;
+    writePatternToTrack(track, pattern, counter);
+
+    VSM_ASSERT_EQ(track.notes.size(), size_t{1});
+    VSM_ASSERT_EQ(static_cast<int>(track.notes[0].number), 40);
+}
+
+VSM_TEST(a_pattern_still_leaves_the_rest_of_the_song_alone) {
+    // La borne de TEMPS, qui existait déjà : elle ne doit pas se perdre en
+    // gagnant la borne de hauteur.
+    Track track;
+    uint64_t ids = 1;
+    StepPattern pattern = drumGrid();
+    const Tick apres = pattern.lengthTicks() + 100;
+    track.addNote(apres, apres + 60, 36, 90, 9, ids);   // MÊME hauteur, hors fenêtre
+
+    uint64_t counter = ids;
+    writePatternToTrack(track, pattern, counter);
+
+    VSM_ASSERT_EQ(track.notes.size(), size_t{1});
+    VSM_ASSERT_EQ(static_cast<long long>(track.notes[0].startTick), static_cast<long long>(apres));
+}

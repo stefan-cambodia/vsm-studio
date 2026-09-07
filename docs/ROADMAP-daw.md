@@ -7287,3 +7287,179 @@ appliqué **une fois sur cinq**.
 >
 > Tests : **1 283 audio** (4 neufs), **316 core** (8 neufs), 285 interchange,
 > 25 clap, 11 panels — tous verts.
+
+### Phase D36 — Le vingt et unième audit : les gestes qui échappent à l'annulation et à la sauvegarde (07/09/2026, 09:10)
+
+**Pourquoi cet audit a changé de lunette.** D35 a cherché « ce qui existe et
+que personne n'appelle », et la même lunette, repassée sur `core/`, ne rend
+plus que des primitives enveloppées ailleurs : `snapNoteToScale` sert à
+`constrainNotesToScale`, `setNotesMuted` à `toggleNotesMuted`. La veine est
+épuisée, et s'obstiner y aurait produit exactement la faute que D34 s'était
+promis d'éviter : annoncer absent ce qui est là sous un autre nom.
+
+La lunette de cet audit est autre, et elle vient d'une phrase écrite dans le
+code lui-même. `MainComponent::beginProjectEdit` porte ce commentaire :
+
+> *TOUTES LES MODIFICATIONS ANNULABLES PASSENT PAR ICI (D10.4) : c'est
+> l'endroit qui ne peut pas être oublié, parce qu'oublier de l'appeler
+> casserait déjà l'annulation, ce qui se voit tout de suite.*
+
+**Cette phrase est fausse sur ses deux moitiés**, et la seconde explique la
+première : l'oubli ne « se voit pas tout de suite », parce que l'annulation
+n'est pas absente — elle est DÉCALÉE. `SnapshotHistory` restaure un instantané
+du projet ENTIER. Un geste qui n'empile rien n'ôte donc pas le Ctrl+Z : il
+laisse le Ctrl+Z suivant remonter à l'instantané d'AVANT, c'est-à-dire annuler
+le geste précédent **et** celui qu'on vient de faire, en une fois et sans le
+dire. Rien ne clignote, rien n'échoue ; on croit avoir annulé une chose, on en
+a perdu deux.
+
+**Et `beginProjectEdit` fait une SECONDE chose que son nom ne dit pas** : il
+appelle `markProjectDirty()`. Le drapeau `projectDirty_` commande la
+sauvegarde automatique (`autosaveIfNeeded`). Un geste qui ne passe pas par là
+n'est donc pas seulement inannulable : **il n'est jamais photographié**. Une
+séance passée à renommer des pistes et à régler des faders dans la liste laisse
+la copie de secours dans l'état où elle était avant — et une coupure de courant
+la rend telle quelle, sans un mot.
+
+**Le relevé, mesuré et non supposé.** Trois endroits de l'interface écrivent
+dans le matériau du projet sans passer par l'historique :
+
+| endroit | ce qu'il écrit | annulable | photographié |
+|---|---|---|---|
+| `TrackListComponent` (la ligne de piste) | `name`, `channel`, `instrumentId`, `folded`, `muted`, `solo`, `outputGroup`, `volume`, `pan` — **neuf champs** (plus `armed`, qui est de session et n'en demande pas) | non | non |
+| `VelocityLaneComponent` | `note.velocity`, au clic et au trait (`:111`, `:132`) | non | non |
+| `StepSequencerComponent` | `writePatternToTrack` — **il RÉÉCRIT le vecteur de notes de la piste** | non | non |
+
+**Le fait qui résume la phase : le même bouton, deux comportements.** Le muet,
+le solo, le volume et le panoramique d'une piste existent à DEUX endroits — la
+tranche du mélangeur et la ligne de la liste des pistes. Dans le mélangeur ils
+passent par `onMixEditStarted`, donc s'annulent et se photographient ; dans la
+liste ils ne passent par rien. **Le geste est le même, la valeur est la même,
+et le résultat dépend du panneau où l'on a cliqué.** Rien à l'écran ne le
+laisse deviner.
+
+Le troisième est le plus coûteux : basculer un pas dans le séquenceur d'une
+machine **remplace les notes de la piste**, et rien ne les rend.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D36.1 | **La liste des pistes rejoint l'historique.** Neuf champs écrits à la volée. La ligne ne doit pas connaître l'historique — elle ne connaît même pas le projet, et c'est une décision de son en-tête — : elle reçoit un `onEditStarted`, comme la tranche du mélangeur, et c'est `MainComponent` qui appelle `beginProjectEdit` | chacun des neuf gestes empile un pas nommé (« Renommer la piste », « Muet », « Volume »…) et marque le projet à photographier ; `armed` continue de n'en empiler aucun, et **c'est écrit**, parce qu'il n'est pas dans le fichier |
+| D36.2 | **La lane de vélocité rejoint l'historique.** Un trait de vélocité change autant de notes qu'un coup de quantification, et s'annule moins bien qu'elle | un trait empile UN pas, pas un par note traversée — le glissé est un geste, pas une rafale de gestes |
+| D36.3 | **Le séquenceur pas à pas rejoint l'historique**, lui qui réécrit tout le vecteur de notes | basculer un pas s'annule et rend la piste telle qu'elle était, notes non issues du motif comprises |
+| D36.4 | **Le banc qui empêche le prochain oubli.** Trois oublis en vingt phases ne se réparent pas un par un : ce qui manque est la mesure qui les nomme | un banc parcourt les gestes d'édition et dit, pour chacun, s'il empile un pas et s'il marque le projet ; il ÉCHOUE sur un geste qui n'en fait ni l'un ni l'autre sans être inscrit dans la liste des exceptions dites |
+| D36.5 | **`presetId` : un champ que personne ne remplit.** Cinq endroits l'effacent, aucun ne l'écrit, `project.json` l'ignore. C'est `monitoring` une seconde fois — le champ que D3.3 avait retiré pour la même raison | ou bien il disparaît, ou bien il est rempli et écrit ; **la décision est écrite avec sa raison** |
+
+**Ce qui est attendu, écrit AVANT la mesure.**
+
+1. **D36.1 à D36.3** — j'attends que le banc de D36.4, passé AVANT les
+   corrections, compte **onze gestes** sans pas d'historique (neuf dans la
+   liste des pistes, la vélocité, le motif), et **zéro** après. Le chiffre est
+   écrit d'avance pour qu'on ne puisse pas, ensuite, appeler « tout » ce qu'on
+   aura trouvé.
+2. **D36.3** — j'attends que l'annulation d'un pas basculé rende le vecteur de
+   notes **identique**, y compris les notes que le motif ne décrit pas. Un
+   séquenceur qui rend « le motif d'avant » mais mange ce qui n'en faisait pas
+   partie aurait l'air correct sur un projet de banc et perdrait du travail sur
+   un vrai morceau.
+3. **D36.2** — j'attends **un** pas d'historique pour un glissé, pas un par
+   note. Ce critère est plus fort que « le trait s'annule » : un trait qui
+   s'annule note à note s'annule, en effet, et demande quarante Ctrl+Z.
+4. **La photographie.** J'attends qu'une séance qui ne fait QUE renommer une
+   piste déclenche une sauvegarde automatique après les corrections, et
+   **aucune** avant. C'est la moitié de la panne que l'annulation cachait, et
+   celle qui coûte le plus cher.
+
+> **LA PHASE D36 EST FAITE (07/09/2026, 11:40), ET L'AUDIT S'EST TROMPÉ SUR UN
+> TIERS DE SON TABLEAU.** Le relevé nommait trois endroits ; le deuxième était
+> faux, et le vrai défaut caché derrière lui était bien plus grave que les
+> trois réunis.
+>
+> **CE QUE LE TABLEAU DISAIT DE FAUX.** « `VelocityLaneComponent` écrit
+> `note.velocity` sans passer par l'historique » : **non**. Il appelle
+> `pianoRoll_.beginExternalEdit(…)` à `mouseDown`, un pas par geste, exactement
+> ce que D36.2 demandait. Je l'avais conclu de l'absence du mot `history_` dans
+> le fichier — c'est-à-dire d'un `grep`, encore, et c'est la **troisième**
+> phase de suite où le vocabulaire est le mauvais outil (D33.5 l'aimant
+> relatif, D34.1 le fondu croisé). La leçon ne se retient pas en la réécrivant :
+> ce qui a fini par marcher, ici, est d'avoir suivi l'appel jusqu'à ce qu'il
+> fasse.
+>
+> **ET C'EST EN LE SUIVANT QU'EST APPARU LE VRAI DÉFAUT.**
+> `PianoRollComponent::beginEdit` empile bien dans `history_` — mais
+> `beginProjectEdit` faisait DEUX choses, et lui n'en fait qu'une : il n'appelle
+> jamais `markProjectDirty()`. Le piano roll, la lane de vélocité, l'onglet MIDI
+> CC et la piste de tempo prennent tous ce chemin-là. **Les trente-deux gestes
+> d'édition de notes — le cœur du logiciel — s'annulaient parfaitement et
+> n'étaient JAMAIS photographiés.** Une séance entière de travail sur les notes
+> laissait la copie de secours dans l'état d'avant la séance, et une coupure de
+> courant la rendait telle quelle, sans un mot.
+>
+> **LA CORRECTION RENVERSE LE SENS DE LA DÉCLARATION.** Le drapeau ne
+> s'annonce plus, il se DÉDUIT : `autosaveIfNeeded` compare la profondeur de
+> l'historique à celle de la dernière photo. Un pas d'historique EST la preuve
+> qu'on a modifié le projet ; le déduire ne peut pas s'oublier, alors que le
+> déclarer s'est oublié quatre fois. `clearHistory()` remet les deux ensemble,
+> parce que les vider séparément ferait croire, au réveil suivant, qu'on vient
+> d'annuler autant de pas que la pile en contenait.
+>
+> **D36.1 — la liste des pistes.** Neuf gestes écrivaient dans la piste sans
+> rien empiler. Le chiffre était écrit d'avance ; le banc en a mesuré **neuf**
+> avant, **zéro** après. Les curseurs signalent à `onDragStart` — un pas par
+> glissé et non un par pixel — et aussi à `onValueChange` quand aucun glissé
+> n'est en cours, sans quoi la molette et le clavier resteraient inannulables
+> tout en ayant l'air couverts.
+>
+> **D36.3 — le séquenceur pas à pas**, le plus cher des trois : basculer un pas
+> appelle `writePatternToTrack`, qui réécrit le vecteur de notes de la piste.
+> Il n'avait aucun pas d'historique. Il en a un.
+>
+> **D36.4 — LE BANC, ET CE QU'IL A TROUVÉ TOUT SEUL.** `vsm-edit-audit`
+> n'énumère pas des gestes connus : il PARCOURT les widgets d'une ligne de
+> piste et exige de chacun un signal. Un widget ajouté demain sans être câblé
+> le fait échouer le jour où on l'ajoute. Et en mesurant D36.3 plutôt qu'en
+> l'affirmant, il a montré ce que personne ne cherchait : **le clic sur un pas
+> mangeait une note que la grille ne montre pas.**
+>
+> **D36.6 (né du banc) — la grille n'efface plus que ses propres hauteurs.**
+> `writePatternToTrack` bornait son effacement dans le TEMPS et pas dans la
+> HAUTEUR, alors que `patternFromNotes` annonce, à la lecture, que « les notes
+> hors grille sont ignorées : elles restent dans la piste ». **La lecture les
+> ignorait, l'écriture les tuait** : basculer un pas de charleston effaçait une
+> note de tom posée au piano roll dans la même mesure. Un motif percussif ne
+> possède désormais que les hauteurs de ses lignes ; un motif mélodique garde
+> sa fenêtre entière, parce qu'il peut poser n'importe quel pas sur n'importe
+> quelle hauteur. Le drapeau `StepPattern::melodic` est POSÉ par
+> `makeMonoPattern` et non deviné : un motif mélodique dont aucun pas n'a été
+> déplacé ressemble trait pour trait à un motif percussif à une ligne.
+>
+> **D36.7 (né de la vérification à l'écran) — les deux panneaux se disent enfin
+> la même chose.** La capture de contrôle et celle du geste ne différaient que
+> par un bouton *Annuler* devenu actif : le M du mélangeur, lui, n'avait pas
+> bougé. La piste ÉTAIT muette — le banc le mesure —, mais chaque panneau posait
+> son bouton **une seule fois, à sa construction**. Rendre une piste muette dans
+> la liste laissait le mélangeur montrer le contraire, et l'inverse aussi.
+> `refreshMuteSolo` existait déjà du côté du mélangeur et n'était appelé par
+> aucun geste de la liste ; il a son jumeau côté liste, et les deux sens sont
+> branchés. **Sans la capture, ce défaut passait : les tests étaient verts et le
+> banc aussi.**
+>
+> **D36.5 — `presetId` est parti.** Cinq endroits l'effaçaient, aucun ne
+> l'écrivait, `project.json` l'ignorait. Le preset d'une piste vit dans
+> `instruments/track_NN.synth.json`, que le format référence par son chemin ; une
+> seconde façon de le désigner aurait fini par le désigner autrement. C'est
+> `monitoring` une seconde fois, retiré par D3.3 pour la même raison.
+>
+> **CE QUI RESTE VRAI DE L'ATTENDU, ET CE QUI NE L'EST PAS.** Les neuf gestes de
+> la liste : tenu, au chiffre près. Un pas par glissé : tenu. L'annulation qui
+> rend le vecteur de notes entier : tenue par construction, puisque l'instantané
+> est celui du projet. **« Onze gestes sans pas d'historique » était faux** : il
+> y en avait dix (neuf plus le séquenceur), la vélocité en étant déjà pourvue —
+> et il y avait, à la place du onzième, une panne d'un autre ordre que le
+> chiffre ne pouvait pas compter.
+>
+> Vérifié à l'écran, deux exécutions du même binaire ne différant que par
+> `VSM_GESTE_PISTE=muet` : *Annuler* passe de grisé à actif, et le M du
+> mélangeur de sombre à rouge.
+>
+> Tests : **1 283 audio**, **319 core** (3 neufs), 285 interchange, 25 clap,
+> 11 panels — tous verts, plus le banc `vsm-edit-audit` (11 gestes, 0 muet).

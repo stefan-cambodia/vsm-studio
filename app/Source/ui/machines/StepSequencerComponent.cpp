@@ -52,6 +52,9 @@ void StepSequencerComponent::reloadFromTrack() {
 
 void StepSequencerComponent::commitToTrack() {
     if (!track_) return;
+    // AVANT L'ÉCRITURE, jamais après : `writePatternToTrack` remplace les
+    // notes, et un instantané pris ensuite mémoriserait le résultat.
+    if (onEditStarted) onEditStarted(juce::String::fromUTF8(u8"Pas de séquenceur"));
     // Le compteur d'identifiants repart des notes existantes : deux notes de
     // même identifiant casseraient silencieusement la sélection du piano roll.
     uint64_t idCounter = 0;

@@ -32,6 +32,17 @@ public:
     void mouseDown(const juce::MouseEvent&) override { if (onSelected) onSelected(index_); }
 
     std::function<void(size_t)> onSelected;
+    /// D36.1 : UN GESTE VA COMMENCER À MODIFIER LA PISTE.
+    ///
+    /// Émis AVANT l'écriture, jamais après : `SnapshotHistory` mémorise l'état
+    /// d'AVANT, et un signal émis après ferait photographier la modification
+    /// elle-même -- l'annulation rendrait alors le projet déjà modifié, ce qui
+    /// ne se distingue pas, à l'écran, d'une annulation qui ne marche pas.
+    ///
+    /// La ligne ne connaît toujours ni l'historique ni le projet (c'est la
+    /// décision de son en-tête) : elle dit qu'elle va écrire, et `MainComponent`
+    /// décide ce que cela veut dire. Le libellé est celui du menu Édition.
+    std::function<void(const juce::String& label)> onEditStarted;
     std::function<void()> onChanged; // mute/solo/volume/pan modifiés -> reconstruire le scheduler
     /// L'armement a changé. SÉPARÉ de `onChanged` : armer ne touche ni au
     /// planning de lecture ni au mixage, et republier le projet au moteur pour
@@ -42,14 +53,29 @@ public:
     std::function<void()> onOutputChanged;
     std::function<void(size_t, const std::string&)> onInstrumentChanged; // trackIndex, pluginId ("" = aucun)
 
+    /// Bascule le muet de la piste, EXACTEMENT comme le bouton M -- il appelle
+    /// cette méthode et rien d'autre. Publique parce qu'un même geste ne doit
+    /// pas avoir deux chemins : le second finit toujours par oublier ce que le
+    /// premier a appris (ici, le pas d'historique de D36.1).
+    void basculerMuet();
+
     void setSelected(bool selected) { selected_ = selected; repaint(); }
     /// Réaffiche le fichier de la piste (sans effet sur une piste MIDI).
     /// Appelée après une prise audio, qui vient de lui en donner un.
     void refreshAudioSource();
     /// D24.5 : relit le nom de la piste (une ligne créée avant qu'on la nomme).
     void refreshName();
+    /// D36.7 : relit le muet et le solo. Le muet et le solo s'affichent à DEUX
+    /// endroits -- ici et dans la tranche du mélangeur --, et chacun posait son
+    /// bouton une seule fois, à sa construction : rendre une piste muette dans
+    /// l'un laissait l'autre montrer le contraire, indéfiniment.
+    void refreshMuteSolo();
 
 private:
+    /// Dit qu'un geste va écrire dans la piste. Un seul chemin, pour qu'un
+    /// geste ajouté plus tard n'ait pas à se souvenir de deux choses.
+    void debutEdition(const juce::String& libelle);
+
     vsm::sequencer::Track& track_;
     size_t index_;
     bool selected_ = false;
@@ -70,6 +96,10 @@ private:
     juce::TextButton armButton_  { "R" };
     juce::Slider volumeSlider_;
     juce::Slider panSlider_;
+    /// Un glissé est EN COURS : ses `onValueChange` suivants ne rouvrent pas
+    /// de pas d'historique. Un seul drapeau pour la ligne : on ne glisse
+    /// qu'un curseur à la fois.
+    bool glisseEnCours_ = false;
 };
 
 /// Liste verticale de pistes (Track Editor, section 4). Reconstruit ses
@@ -85,6 +115,10 @@ public:
     void paint(juce::Graphics&) override;
 
     std::function<void(size_t)> onTrackSelected;
+    /// D36.1 : une ligne va modifier sa piste (voir
+    /// `TrackRowComponent::onEditStarted`). La liste ne fait que transmettre :
+    /// elle ne sait pas plus que la ligne ce qu'est un historique.
+    std::function<void(const juce::String& label)> onEditStarted;
     std::function<void()> onTracksChanged;
     std::function<void(size_t, const std::string&)> onInstrumentChanged;
     /// L'armement d'une piste a changé (voir TrackRowComponent::onArmChanged).
@@ -109,6 +143,11 @@ public:
     void itemDropped(const SourceDetails& details) override;
 
     size_t selectedTrackIndex() const { return selectedIndex_; }
+    /// Bascule le muet de la piste `index` par le chemin du bouton M.
+    /// Sans effet hors bornes.
+    void basculerMuet(size_t index);
+    /// D36.7 : relit le muet et le solo de toutes les lignes.
+    void refreshMuteSolo();
 
     /// Sélectionne une piste par index (met à jour l'état visuel et notifie
     /// via onTrackSelected). Sans effet si l'index est hors bornes.

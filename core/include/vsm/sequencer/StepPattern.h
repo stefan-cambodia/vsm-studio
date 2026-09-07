@@ -49,6 +49,18 @@ struct StepPattern {
     midi::Tick stepTicks = 120;
     midi::Tick startTick = 0;
     std::vector<StepLane> lanes;
+    /// MÉLODIQUE : chaque pas porte sa propre hauteur (TB-303), par opposition
+    /// à percussif, où la hauteur DÉSIGNE la pièce et où les lignes épuisent
+    /// donc les hauteurs du motif.
+    ///
+    /// D36.6 : ce n'est pas un ornement, c'est ce qui dit CE QUE LE MOTIF
+    /// EFFACE en s'écrivant. Un motif percussif ne possède que les hauteurs de
+    /// ses lignes ; un motif mélodique peut mettre n'importe quel pas sur
+    /// n'importe quelle hauteur (la molette), et possède donc sa fenêtre
+    /// entière. Déduire l'un de l'autre était possible et faux : un motif
+    /// mélodique dont aucun pas n'a encore été déplacé ressemble trait pour
+    /// trait à un motif percussif à une ligne.
+    bool melodic = false;
 
     /// Longueur totale du motif en ticks.
     midi::Tick lengthTicks() const { return static_cast<midi::Tick>(stepCount) * stepTicks; }
@@ -80,9 +92,22 @@ std::vector<Note> patternToNotes(const StepPattern& pattern, uint8_t channel, ui
 /// piano roll, mais la grille ne prétend pas les représenter.
 StepPattern patternFromNotes(const std::vector<Note>& notes, const StepPattern& reference);
 
-/// Remplace, dans la piste, la zone couverte par le motif. Les notes situées
-/// hors de cette zone ne sont pas touchées : une grille de 16 pas ne doit pas
-/// effacer le reste du morceau.
+/// Remplace, dans la piste, la zone couverte par le motif.
+///
+/// DEUX BORNES, ET LA SECONDE A MANQUÉ VINGT PHASES (D36.6). La première est
+/// le TEMPS : une grille de 16 pas ne doit pas effacer le reste du morceau.
+/// La seconde est la HAUTEUR, et elle n'existait pas -- l'effacement prenait
+/// tout ce qui tombait dans la fenêtre, quelle qu'en soit la hauteur. Or
+/// `patternFromNotes` dit, à la lecture, que « les notes hors grille sont
+/// ignorées : elles restent dans la piste [...] mais la grille ne prétend pas
+/// les représenter ». La lecture les ignorait, l'écriture les tuait : basculer
+/// un pas de charleston effaçait une note de tom posée au piano roll, en
+/// silence.
+///
+/// Un motif PERCUSSIF n'efface donc que les hauteurs de ses lignes. Un motif
+/// MÉLODIQUE efface toute sa fenêtre, parce qu'il peut poser n'importe quel
+/// pas sur n'importe quelle hauteur et qu'épargner une hauteur y laisserait
+/// traîner la note d'avant.
 void writePatternToTrack(Track& track, const StepPattern& pattern, uint64_t& idCounter);
 
 /// Grille toute faite pour une boîte à rythmes, à partir de ses pièces.

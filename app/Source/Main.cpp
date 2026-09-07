@@ -150,6 +150,16 @@ public:
             if (const char* nom = std::getenv("VSM_PRESET_PISTE"); nom != nullptr && *nom)
                 if (!content->saveTrackPresetForCapture(juce::String::fromUTF8(nom)))
                     std::fputs("VSM_PRESET_PISTE : preset non \u00e9crit (aucune piste choisie, ou dossier illisible)\n", stderr);
+            // VSM_GESTE_PISTE=muet : basculer le muet de la piste choisie DANS
+            // LA LISTE DES PISTES, avant VSM_MENU (D36.1). Ce geste n'existe
+            // qu'au bouton M d'une ligne : aucun menu ne le porte, et sans lui
+            // l'effet de D36.1 -- un pas d'historique là où il n'y en avait
+            // aucun -- ne se photographierait pas. Il passe par la MÊME
+            // méthode que le bouton, faute de quoi il vérifierait un chemin
+            // que personne n'emprunte.
+            if (const char* geste = std::getenv("VSM_GESTE_PISTE"); geste != nullptr && *geste)
+                if (!content->runTrackGestureForCapture(juce::String::fromUTF8(geste).trim()))
+                    std::fputs("VSM_GESTE_PISTE : geste inconnu\n", stderr);
             if (const char* entrees = std::getenv("VSM_MENU"); entrees != nullptr && *entrees) {
                 juce::StringArray liste;
                 liste.addTokens(juce::String::fromUTF8(entrees), ";", "");

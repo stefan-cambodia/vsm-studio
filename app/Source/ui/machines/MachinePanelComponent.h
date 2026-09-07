@@ -31,6 +31,8 @@ public:
     void setPlayheadTick(vsm::midi::Tick tick);
     /// Le motif a été édité : l'application doit republier le planning.
     std::function<void()> onPatternEdited;
+    /// D36.3 : voir `StepSequencerComponent::onEditStarted`.
+    std::function<void(const juce::String& label)> onEditStarted;
 
     /// Émis quand l'utilisateur touche une commande (MIDI Learn).
     std::function<void(vsm::audio::plugin::ParamId)> onParamTouched;

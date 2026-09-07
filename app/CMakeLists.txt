@@ -165,6 +165,29 @@ target_link_libraries(vsm-pianoroll-preview PRIVATE
 )
 juce_generate_juce_header(vsm-pianoroll-preview)
 
+# --- Le banc des gestes qui echappent a l'annulation (D36.4) ---------------
+# Il ACTIONNE les widgets de la ligne de piste et exige de chacun un signal de
+# debut d'edition. Ce n'est pas une liste de gestes connus : un widget ajoute
+# demain et non cable fait echouer ce banc le jour ou on l'ajoute, ce qui est
+# exactement ce qui a manque pendant vingt phases.
+juce_add_console_app(vsm-edit-audit PRODUCT_NAME "vsm-edit-audit")
+target_sources(vsm-edit-audit PRIVATE
+    Source/tools/EditAuditMain.cpp
+    Source/ui/TrackListComponent.cpp
+    Source/ui/machines/StepSequencerComponent.cpp
+)
+target_include_directories(vsm-edit-audit PRIVATE Source)
+target_compile_definitions(vsm-edit-audit PRIVATE
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_STANDALONE_APPLICATION=1
+)
+target_link_libraries(vsm-edit-audit PRIVATE
+    vsm_core vsm_audio vsm_panels
+    juce::juce_gui_basics juce::juce_graphics
+)
+juce_generate_juce_header(vsm-edit-audit)
+
 
 # --- Vérification du chargement d'un enregistrement d'origine ---------------
 # Le chargement de la référence A/B est du code d'interface, et l'interface ne

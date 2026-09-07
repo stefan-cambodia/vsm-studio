@@ -40,6 +40,9 @@ MachinePanelComponent::MachinePanelComponent() {
     addAndMakeVisible(sequencer_);
     sequencer_.setVisible(false);
     sequencer_.onPatternEdited = [this] { if (onPatternEdited) onPatternEdited(); };
+    sequencer_.onEditStarted = [this](const juce::String& libelle) {
+        if (onEditStarted) onEditStarted(libelle);
+    };
     startTimerHz(15); // suit les changements venus d'ailleurs (automation, MIDI, presets)
 }
 

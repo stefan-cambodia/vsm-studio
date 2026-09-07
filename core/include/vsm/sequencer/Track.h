@@ -636,7 +636,13 @@ public:
     /// Identifiant du plugin instrument assigné (vide = aucun). Résolu par
     /// le Synth Rack en Phase 2 via ISynthPlugin / PluginRegistry.
     std::string instrumentId;
-    std::string presetId;
+    /// UN CHAMP `presetId` A VÉCU ICI, ET IL EST PARTI (D36.5). Cinq endroits
+    /// l'effaçaient, aucun ne l'écrivait, et `project.json` ne le portait pas :
+    /// c'était un nom de preset que rien ne nommait. Le preset d'une piste vit
+    /// dans `instruments/track_NN.synth.json`, que le format référence par son
+    /// chemin -- une seconde façon de le désigner aurait fini par le désigner
+    /// autrement. C'est `monitoring` une seconde fois, retiré par D3.3 pour la
+    /// même raison : un champ que personne ne remplit finit par être lu.
     /// D27.1 : LE PORT MIDI MATÉRIEL (ou virtuel) qui reçoit ce que la piste
     /// joue -- notes, contrôleurs, pédale --, par son nom. Vide : la machine
     /// interne seulement. Posé, la piste passe par le rendu même sans

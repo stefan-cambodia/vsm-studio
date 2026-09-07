@@ -113,6 +113,16 @@ public:
     /// D22.5 : VSM_PRESET_PISTE=nom -- la piste choisie écrite comme preset
     /// sous ce nom, sans boîte de dialogue (elle ne se photographie pas).
     bool saveTrackPresetForCapture(const juce::String& nom) { return saveSelectedTrackAsPreset(nom); }
+    /// D36.1 : joue, sans souris, un geste de la LIGNE de piste -- ceux
+    /// qu'aucun menu ne porte. Rend false si le geste est inconnu, plutôt que
+    /// de ne rien faire en silence.
+    bool runTrackGestureForCapture(const juce::String& geste) {
+        if (geste.equalsIgnoreCase("muet")) {
+            trackList_.basculerMuet(trackList_.selectedTrackIndex());
+            return true;
+        }
+        return false;
+    }
     /// D23.3 : VSM_EXPORT_MIDI_PISTE=fichier.mid -- la piste choisie écrite
     /// en MIDI sans fenêtre, pour que le fichier se relise.
     bool exportTrackMidiForCapture(const juce::File& fichier) { return writeSelectedTrackMidi(fichier); }
@@ -454,6 +464,11 @@ private:
     void autosaveIfNeeded();
     /// Le projet a été modifié depuis la dernière photo.
     void markProjectDirty() { projectDirty_ = true; }
+    /// D36.2 : vide l'historique ET remet le repère de la sauvegarde
+    /// automatique. Les deux vont ENSEMBLE depuis que le drapeau « sale » se
+    /// déduit de la profondeur : la vider seule ferait croire, au prochain
+    /// réveil, qu'on vient d'annuler autant de pas qu'elle en contenait.
+    void clearHistory() { history_.clear(); lastAutosaveUndoDepth_ = 0; }
     /// D34.1 : la forme des fondus croisés du projet, changée en marche.
     /// Empruntée par l'entrée de menu ET par « VSM_VUE=fondu-croise:… ».
     void setCrossfadeShape(vsm::sequencer::FadeShape forme);
@@ -483,6 +498,9 @@ private:
     /// critère dit « pas plus d'une minute », et une marge de deux vaut mieux
     /// qu'une marge nulle sur un disque qui hésite.
     double lastAutosaveSeconds_ = 0.0;
+    /// D36.2 : la profondeur de l'historique à la dernière photo. Sert à
+    /// DÉDUIRE qu'il y a eu édition, plutôt qu'à attendre qu'on le déclare.
+    size_t lastAutosaveUndoDepth_ = 0;
     static constexpr double kAutosaveIntervalSeconds = 30.0;
 
     // --- D10.3 : les raccourcis se lisent et se changent --------------------

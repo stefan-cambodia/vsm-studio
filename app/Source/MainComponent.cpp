@@ -145,7 +145,21 @@ MainComponent::MainComponent()
         eventList_.setActiveTrack(static_cast<int>(idx));   // D32.2
         audioEngine_.setLiveInputTrack(idx); // un clavier MIDI joue la piste sélectionnée
     };
-    trackList_.onTracksChanged = [this] { refreshTransportSchedule(); };
+    // D36.1 : LA LISTE DES PISTES REJOINT L'HISTORIQUE. Neuf de ses gestes
+    // écrivaient dans la piste sans empiler de pas et sans marquer le projet à
+    // photographier -- `beginProjectEdit` fait les deux, et c'est pour cela
+    // qu'ils passent par lui plutôt que par `history_` directement.
+    trackList_.onEditStarted = [this](const juce::String& libelle) { beginProjectEdit(libelle); };
+    trackList_.onTracksChanged = [this] {
+        refreshTransportSchedule();
+        // D36.7 : LES DEUX PANNEAUX SE DISENT LA MÊME CHOSE. Le muet et le solo
+        // vivent ici ET dans la tranche du mélangeur ; chacun posait son bouton
+        // à sa construction et ne le relisait jamais. Rendre une piste muette
+        // dans la liste laissait donc le M du mélangeur éteint -- et l'inverse
+        // aussi. Deux affichages d'une même valeur qui se contredisent, c'est
+        // la panne muette sous sa forme la plus ordinaire.
+        mixer_.refreshMuteSolo();
+    };
     trackList_.onInstrumentChanged = [this](size_t idx, const std::string& pluginId) {
         audioEngine_.processGraph().setTrackInstrument(idx, pluginId);
         if (idx == trackList_.selectedTrackIndex()) updateSynthRackForSelection();
@@ -178,6 +192,7 @@ MainComponent::MainComponent()
     mixer_.onMixChanged = [this] {
         mixDirty_ = true;
         markProjectDirty();
+        trackList_.refreshMuteSolo();   // D36.7 : l'autre sens du même accord
         // D17.5 : une note poussée hors de 0..127 par la transposition ne
         // sonne pas, et cela se DIT -- une fois par franchissement, pas à
         // chaque cran du curseur, sinon régler le chiffre serait impossible.
@@ -412,6 +427,9 @@ MainComponent::MainComponent()
     audioEngine_.onStepInputNote = [this](uint8_t note, uint8_t velocity) {
         pianoRoll_.stepInputNote(note, velocity);
     };
+    // D36.3 : basculer un pas RÉÉCRIT les notes de la piste. Il lui fallait
+    // donc un pas d'historique -- il n'en avait aucun.
+    synthRack_.onEditStarted = [this](const juce::String& libelle) { beginProjectEdit(libelle); };
     synthRack_.onPatternEdited = [this] {
         refreshTransportSchedule();
         pianoRoll_.repaint(); // le piano roll montre les mêmes notes
@@ -3476,7 +3494,6 @@ void MainComponent::loadClapPluginOnSelectedTrack() {
             // LE PRESET DE L'ANCIENNE MACHINE NE SUIT PAS : ses identifiants
             // sémantiques ne veulent rien dire pour celle-ci, et les appliquer
             // en silence donnerait un son que personne n'a réglé.
-            cible.presetId.clear();
             rebuildFromProject();
             juce::AlertWindow::showMessageBoxAsync(
                 juce::AlertWindow::InfoIcon, u8"Plugin charge",
@@ -3603,7 +3620,6 @@ void MainComponent::chooseInstrumentFromCatalogue() {
             // les fabriques savent lire : le balayage ne sert à rien s'il ne
             // débouche pas sur la même porte que le reste (D7.1 à D7.3).
             cible.instrumentId = instruments[static_cast<size_t>(choix) - 1].instrumentId();
-            cible.presetId.clear();
             rebuildFromProject();
         }), false);
 #endif
@@ -3844,7 +3860,6 @@ void MainComponent::loadVst3PluginOnSelectedTrack() {
                 fichier.getFullPathName().toStdString(), pluginId);
             // LE PRESET DE L'ANCIENNE MACHINE NE SUIT PAS : ses identités
             // sémantiques ne veulent rien dire pour celle-ci.
-            cible.presetId.clear();
             rebuildFromProject();
             juce::AlertWindow::showMessageBoxAsync(
                 juce::AlertWindow::InfoIcon, u8"Instrument charge",
@@ -4358,7 +4373,7 @@ void MainComponent::openMidiFile() {
 
         try {
             ParsedFile parsed = MidiFileParser::parseFile(file.getFullPathName().toStdString());
-            history_.clear();
+            clearHistory();
             project_ = Project::fromParsedFile(parsed);
             project_.title = file.getFileNameWithoutExtension().toStdString();
             rebuildFromProject();
@@ -4378,7 +4393,7 @@ void MainComponent::openMidiFileDirect(const juce::File& fichier) {
     }
     try {
         ParsedFile parsed = MidiFileParser::parseFile(fichier.getFullPathName().toStdString());
-        history_.clear();
+        clearHistory();
         project_ = Project::fromParsedFile(parsed);
         project_.title = fichier.getFileNameWithoutExtension().toStdString();
         rebuildFromProject();
@@ -4449,7 +4464,7 @@ bool MainComponent::applyDawImport(const juce::File& fichier) {
         return false;
     }
 
-    history_.clear();
+    clearHistory();
     project_ = resultat.project;
     currentProjectFolder_ = juce::File();   // un import n'a pas de dossier à réécrire
     if (auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
@@ -4737,7 +4752,7 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
         return;
     }
 
-    history_.clear();
+    clearHistory();
     project_ = loaded.bundle.project;
     if (project_.title.empty())
         project_.title = folder.getFileName().toStdString();
@@ -5286,10 +5301,29 @@ void MainComponent::offerCrashRecovery() {
 }
 
 void MainComponent::autosaveIfNeeded() {
+    // D36.2 : LE PROJET EST SALE DÈS QUE L'HISTORIQUE A BOUGÉ, et cela ne se
+    // déclare plus geste par geste.
+    //
+    // POURQUOI CE RENVERSEMENT. `markProjectDirty` était appelé À LA MAIN, et
+    // `beginProjectEdit` le faisait au passage -- mais le piano roll, la lane
+    // de vélocité, l'onglet MIDI CC et la piste de tempo n'empruntent pas
+    // `beginProjectEdit` : ils poussent leur instantané dans `history_`
+    // directement. Leurs éditions -- les trente-deux gestes de notes, c'est-à-
+    // dire le coeur du logiciel -- s'annulaient donc parfaitement et n'étaient
+    // JAMAIS photographiées : une coupure de courant rendait la copie de
+    // secours telle qu'avant la séance, sans un mot.
+    //
+    // Un pas d'historique EST la preuve qu'on a modifié le projet : le déduire
+    // ne peut pas s'oublier, alors que le déclarer s'est oublié quatre fois.
+    // `!=` et non `>` : l'annulation aussi modifie le projet, et fait
+    // décroître la pile.
+    const size_t pasDHistorique = history_.undoDepth();
+    if (pasDHistorique != lastAutosaveUndoDepth_) projectDirty_ = true;
     if (!autosave_ || !projectDirty_) return;
     const double maintenant = juce::Time::getMillisecondCounterHiRes() / 1000.0;
     if (maintenant - lastAutosaveSeconds_ < kAutosaveIntervalSeconds) return;
     lastAutosaveSeconds_ = maintenant;
+    lastAutosaveUndoDepth_ = pasDHistorique;
     projectDirty_ = false;
 
     // LA PHOTO EST PRISE ICI, L'ÉCRITURE A LIEU AILLEURS. Capturer les presets
@@ -5764,7 +5798,6 @@ bool MainComponent::placeSampleOnTrack(size_t trackIndex, vsm::midi::Tick tick,
     if (piste.kind != Track::Kind::Audio) {
         piste.kind = Track::Kind::Audio;
         piste.instrumentId.clear();
-        piste.presetId.clear();
     }
     piste.audio.path = relatif.toStdString();
     piste.audio.sampleRate = sr;
@@ -6785,7 +6818,7 @@ void MainComponent::applySendBuses() {
 }
 
 void MainComponent::newProject() {
-    history_.clear();   // l'annulation d'un autre morceau n'a aucun sens ici
+    clearHistory();   // l'annulation d'un autre morceau n'a aucun sens ici
     project_ = Project{};
     project_.title = "Nouveau projet";
     project_.sends = defaultSendBuses();
@@ -7274,7 +7307,6 @@ void MainComponent::performBounce(size_t index) {
     // une seconde fois, par-dessus leur propre rendu.
     piste.notes.clear();
     piste.instrumentId.clear();
-    piste.presetId.clear();
     piste.effects.clear();
     piste.clips.clear();
     piste.frozen = false;
