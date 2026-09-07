@@ -8800,3 +8800,22 @@ Tests : **1 285 audio** (2 neufs), 319 core, 285 interchange, 25 clap,
 > d'immédiat — et c'est bien le problème. Une correction dont on ignore la
 > portée laisse planer un doute sur tout ce qui l'a précédée, et ce doute finit
 > par être tranché de mémoire, dans le sens qui arrange, six mois plus tard.
+
+> **D47 A AUSSI RÉPARÉ LE GEL, SANS QUE JE LE SACHE (08/09/2026, 02:15).**
+> `toggleFreezeSelectedTrack` écrit son rendu en `SampleFormat::Float32` — donc
+> par la branche que D47 vient de corriger. **Geler une piste dont le pic
+> dépasse 1 changeait son son**, alors que le gel est censé être transparent :
+> c'est le remède que D41 conseille et que D44 a chiffré, et il abîmait ce qu'il
+> soulageait.
+>
+> **Mesuré sur le même morceau**, une fois le graveur corrigé : la piste `bass`
+> a un pic réel de **1,04219**, et **13 échantillons** au-dessus de 1. Geler
+> cette piste avant D47 les rabotait ; les cinq autres pistes, toutes sous 0,96,
+> n'auraient rien perdu.
+>
+> **CE QUE CELA DIT DU DÉFAUT.** Il n'était pas dans l'export, ni dans les
+> stems, ni dans le gel : il était dans le **graveur**, et il atteignait donc
+> tout ce qui écrit un fichier — un endroit, trois symptômes, dont deux que je
+> n'avais pas cherchés. C'est l'inverse de la faute de portée commise quatre
+> fois aujourd'hui : ici la mesure d'un seul cas valait pour tous, non parce que
+> je l'ai décidé, mais parce que le code n'a qu'un chemin.
