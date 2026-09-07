@@ -163,12 +163,8 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
     // COMPORTEMENT (D36.1). Le muet, le solo, le volume et le panoramique
     // existent aux deux endroits ; jusqu'ici ils s'annulaient dans l'un et pas
     // dans l'autre, et rien à l'écran ne le laissait deviner.
-    muteButton_.onClick = [this] { basculerMuet(); };
-    soloButton_.onClick = [this] {
-        debutEdition("Solo");
-        track_.solo = soloButton_.getToggleState();
-        if (onChanged) onChanged();
-    };
+    muteButton_.onClick = [this] { if (onGesteMuet) onGesteMuet(index_); };
+    soloButton_.onClick = [this] { if (onGesteSolo) onGesteSolo(index_); };
     // ARMEMENT (D3.3). `Track::armed` était écrit ici et LU PAR PERSONNE : on
     // pouvait armer une piste, et rien n'arrivait -- d'où un bouton désactivé
     // qui l'avouait. Il agit maintenant sur deux choses à la fois, et c'est
@@ -263,15 +259,14 @@ void TrackRowComponent::refreshMuteSolo() {
     soloButton_.setToggleState(track_.solo, juce::dontSendNotification);
 }
 
-void TrackRowComponent::basculerMuet() {
-    debutEdition(u8"Muet");
-    // Le bouton porte l'état : appelée depuis lui, il vient de basculer ;
-    // appelée d'ailleurs, on le fait basculer d'abord pour que l'écran et la
-    // piste ne se contredisent jamais.
-    if (muteButton_.getToggleState() == track_.muted)
-        muteButton_.setToggleState(!track_.muted, juce::dontSendNotification);
-    track_.muted = muteButton_.getToggleState();
-    if (onChanged) onChanged();
+void TrackRowComponent::poserMuet(bool muet) {
+    track_.muted = muet;
+    muteButton_.setToggleState(muet, juce::dontSendNotification);
+}
+
+void TrackRowComponent::poserSolo(bool solo) {
+    track_.solo = solo;
+    soloButton_.setToggleState(solo, juce::dontSendNotification);
 }
 
 void TrackRowComponent::debutEdition(const juce::String& libelle) {
@@ -299,6 +294,18 @@ void TrackRowComponent::paint(juce::Graphics& g) {
     auto bounds = getLocalBounds();
     g.setColour(selected_ ? Palette::panelRaised : Palette::panel);
     g.fillRect(bounds);
+
+    // D38.1 : LA SÉLECTION SE VOIT, ET IL A FALLU LA MESURER POUR S'EN
+    // APERCEVOIR. Elle ne tenait qu'à l'écart entre `panel` (#1f1f24) et
+    // `panelRaised` (#26262c) : sept unités de gris par canal. Trois lignes
+    // choisies et trois lignes ordinaires donnaient une capture dont la
+    // différence était indiscernable -- et cette sélection commande désormais
+    // la SUPPRESSION. Une sélection qu'on ne voit pas est exactement le
+    // « faire quelque chose d'invisible » contre quoi D38.4 a été écrite.
+    if (selected_) {
+        g.setColour(Palette::accentAmber.withAlpha(0.85f));
+        g.drawRect(bounds, 2);
+    }
 
     // Bandeau de couleur de piste (à gauche), comme sur une console hardware
     g.setColour(juce::Colour(track_.colorRgba));
@@ -453,6 +460,17 @@ void TrackListComponent::loadProject(Project& project) {
     // sélection à zéro faisait surligner la première piste pendant que le
     // piano roll et le rack en montraient une autre.
     if (selectedIndex_ >= project.tracks.size()) selectedIndex_ = 0;
+    // D38.1 : LA SÉLECTION AUSSI SURVIT, MAIS PURGÉE. Une piste supprimée
+    // laisserait sinon son numéro dans l'ensemble, et le geste suivant tairait
+    // sa VOISINE -- un index survivant à ce qu'il désigne est la façon la plus
+    // silencieuse de se tromper de piste.
+    {
+        std::set<size_t> propre;
+        for (size_t i : selection_) if (i < project.tracks.size()) propre.insert(i);
+        propre.insert(selectedIndex_);
+        selection_ = std::move(propre);
+        if (ancreSelection_ >= project.tracks.size()) ancreSelection_ = selectedIndex_;
+    }
 
     // La liste des groupes, calculée UNE fois : chaque ligne la reçoit pour
     // remplir son sélecteur de sortie.
@@ -472,18 +490,23 @@ void TrackListComponent::loadProject(Project& project) {
         auto* row = rows_.add(new TrackRowComponent(project_->tracks[i], i, groupes, nomSource));
         rowContainer_.addAndMakeVisible(row);
         row->onSelected = [this](size_t idx) { selectTrackIndex(idx); };
+        row->onSelectedWithMods = [this](size_t idx, juce::ModifierKeys mods) {
+            cliqueSurLaLigne(idx, mods);
+        };
         row->onEditStarted = [this](const juce::String& libelle) {
             if (onEditStarted) onEditStarted(libelle);
         };
         row->onChanged = [this] { if (onTracksChanged) onTracksChanged(); };
         row->onRenamed = [this] { if (onRenamed) onRenamed(); };
+        row->onGesteMuet = [this](size_t i) { basculerMuet(i); };
+        row->onGesteSolo = [this](size_t i) { basculerSolo(i); };
         row->onArmChanged = [this] { if (onArmChanged) onArmChanged(); };
         row->onOutputChanged = [this] { if (onOutputChanged) onOutputChanged(); };
         row->onInstrumentChanged = [this](size_t idx, const std::string& pluginId) {
             if (onInstrumentChanged) onInstrumentChanged(idx, pluginId);
         };
     }
-    if (!rows_.isEmpty()) rows_[static_cast<int>(selectedIndex_)]->setSelected(true);
+    if (!rows_.isEmpty()) rafraichirDessinDeLaSelection();
     removeButton_.setEnabled(!rows_.isEmpty());
 
     resized();
@@ -511,8 +534,26 @@ void TrackListComponent::refreshFromTracks() {
 }
 
 void TrackListComponent::basculerMuet(size_t index) {
-    if (index >= static_cast<size_t>(rows_.size())) return;
-    rows_[static_cast<int>(index)]->basculerMuet();
+    if (index >= static_cast<size_t>(rows_.size()) || project_ == nullptr) return;
+    const std::set<size_t> cible = selectionPourUnGesteSur(index);
+    const bool etat = !project_->tracks[index].muted;
+    // UN SEUL PAS POUR LE LOT (D38.2). Un pas par piste s'annulerait piste par
+    // piste : taire six micros de batterie demanderait six Ctrl+Z pour revenir,
+    // ce qui n'est pas annuler le geste, c'est le défaire à la main.
+    if (onEditStarted) onEditStarted(u8"Muet");
+    for (size_t i : cible)
+        if (i < static_cast<size_t>(rows_.size())) rows_[static_cast<int>(i)]->poserMuet(etat);
+    if (onTracksChanged) onTracksChanged();
+}
+
+void TrackListComponent::basculerSolo(size_t index) {
+    if (index >= static_cast<size_t>(rows_.size()) || project_ == nullptr) return;
+    const std::set<size_t> cible = selectionPourUnGesteSur(index);
+    const bool etat = !project_->tracks[index].solo;
+    if (onEditStarted) onEditStarted("Solo");
+    for (size_t i : cible)
+        if (i < static_cast<size_t>(rows_.size())) rows_[static_cast<int>(i)]->poserSolo(etat);
+    if (onTracksChanged) onTracksChanged();
 }
 
 void TrackListComponent::faireVoirLaPiste(size_t idx) {
@@ -545,10 +586,79 @@ void TrackListComponent::refreshTrackRow(size_t idx) {
 void TrackListComponent::selectTrackIndex(size_t idx) {
     if (idx >= static_cast<size_t>(rows_.size())) return;
     selectedIndex_ = idx;
-    for (int r = 0; r < rows_.size(); ++r)
-        rows_[r]->setSelected(static_cast<size_t>(r) == idx);
+    ancreSelection_ = idx;      // D38.1 : un clic simple repose l'ancre
+    selection_ = { idx };
+    rafraichirDessinDeLaSelection();
     faireVoirLaPiste(idx);
     if (onTrackSelected) onTrackSelected(idx);
+}
+
+void TrackListComponent::rafraichirDessinDeLaSelection() {
+    for (int r = 0; r < rows_.size(); ++r)
+        rows_[r]->setSelected(selection_.count(static_cast<size_t>(r)) > 0);
+}
+
+void TrackListComponent::setSelectedTracks(std::set<size_t> tracks, size_t active) {
+    const size_t n = static_cast<size_t>(rows_.size());
+    if (active >= n) return;
+    // AUCUN INDEX HORS BORNES N'ENTRE : une piste supprimée laisserait sinon
+    // son numéro dans la sélection, et le geste suivant tairait sa voisine.
+    std::set<size_t> propre;
+    for (size_t i : tracks) if (i < n) propre.insert(i);
+    propre.insert(active);      // la piste active est TOUJOURS de la sélection
+    selection_ = std::move(propre);
+    selectedIndex_ = active;
+    rafraichirDessinDeLaSelection();
+    faireVoirLaPiste(active);
+    if (onTrackSelected) onTrackSelected(active);
+}
+
+const std::set<size_t>& TrackListComponent::selectionPourUnGesteSur(size_t index) {
+    // D38.4 : LA RÈGLE DE CUBASE, ET LA RAISON DE LA PRÉFÉRER. Six pistes
+    // choisies, on clique le M d'une septième : ou bien on tait la septième
+    // seule (et on la choisit), ou bien on l'ajoute au lot. Le second choix
+    // fait agir sur six pistes que l'on ne regarde pas -- le geste porte alors
+    // sur ce qu'on a oublié d'avoir sélectionné, ce qui est exactement la
+    // surprise qu'une sélection est censée éviter.
+    if (selection_.count(index) == 0) selectTrackIndex(index);
+    return selection_;
+}
+
+void TrackListComponent::cliqueSurLaLigne(size_t index, juce::ModifierKeys mods) {
+    const size_t n = static_cast<size_t>(rows_.size());
+    if (index >= n) return;
+    if (mods.isShiftDown()) {
+        // ÉTENDRE DEPUIS L'ANCRE, qui est le dernier clic SIMPLE : étendre
+        // depuis la piste active ferait grandir la sélection à chaque Maj+clic
+        // au lieu de la redessiner.
+        const size_t de = std::min(ancreSelection_, index);
+        const size_t a  = std::max(ancreSelection_, index);
+        std::set<size_t> plage;
+        for (size_t i = de; i <= a && i < n; ++i) plage.insert(i);
+        selection_ = std::move(plage);
+        selectedIndex_ = index;
+        rafraichirDessinDeLaSelection();
+        faireVoirLaPiste(index);
+        if (onTrackSelected) onTrackSelected(index);
+        return;
+    }
+    if (mods.isCommandDown()) {
+        if (selection_.count(index) > 0 && selection_.size() > 1) {
+            // ON PEUT EN RETIRER, MAIS JAMAIS LA DERNIÈRE : une liste sans
+            // piste active n'a rien à montrer au piano roll ni au rack.
+            selection_.erase(index);
+            if (selectedIndex_ == index) selectedIndex_ = *selection_.begin();
+        } else {
+            selection_.insert(index);
+            selectedIndex_ = index;
+        }
+        ancreSelection_ = index;
+        rafraichirDessinDeLaSelection();
+        faireVoirLaPiste(selectedIndex_);
+        if (onTrackSelected) onTrackSelected(selectedIndex_);
+        return;
+    }
+    selectTrackIndex(index);
 }
 
 bool TrackListComponent::masqueeParLeFiltre(size_t index) const {

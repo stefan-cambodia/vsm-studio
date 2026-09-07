@@ -6022,6 +6022,11 @@ void MainComponent::toggleFullScreen() {
 
 void MainComponent::appliquerCouleurDePiste(size_t index, juce::Colour couleur) {
     if (index >= project_.tracks.size()) return;
+    // D38.2 : LA COULEUR SUIT LA SÉLECTION. C'est même le geste où elle sert le
+    // plus : on colore un groupe de pistes pour le reconnaître d'un coup d'oeil,
+    // et le colorer une par une donne surtout l'occasion d'en manquer une.
+    for (size_t i : trackList_.selectedTracks())
+        if (i < project_.tracks.size()) project_.tracks[i].colorRgba = couleur.getARGB();
     project_.tracks[index].colorRgba = couleur.getARGB();
     // D37.3 : TROIS REPEINTS, LÀ OÙ IL Y AVAIT DEUX RECONSTRUCTIONS.
     // La couleur est lue au DESSIN par les trois panneaux qui la montrent
@@ -6890,10 +6895,22 @@ void MainComponent::removeSelectedTrack() {
     if (project_.tracks.empty()) return;
     size_t idx = trackList_.selectedTrackIndex();
     if (idx >= project_.tracks.size()) return;
+    // D38.2 : TOUTE LA SÉLECTION, ET DE LA FIN VERS LE DÉBUT.
+    //
+    // POURQUOI CET ORDRE, ET C'EST LA FAUTE CLASSIQUE DE CE GESTE : supprimer
+    // les pistes 2, 5 et 7 en montant supprime la 2, ce qui fait glisser tout
+    // ce qui suit d'un rang -- la « 5 » qu'on supprime ensuite est l'ancienne
+    // 6, et la « 7 » l'ancienne 9. On efface trois pistes, dont deux qu'on
+    // n'avait pas désignées, et rien ne le dit. En descendant, ce qu'on
+    // supprime ne déplace que des index déjà traités.
+    std::vector<size_t> aSupprimer(trackList_.selectedTracks().begin(),
+                                    trackList_.selectedTracks().end());
+    std::sort(aSupprimer.begin(), aSupprimer.end(), std::greater<size_t>());
     // Après l'instant où l'on sait qu'il y a bien quelque chose à supprimer :
     // un instantané pris pour un geste sans effet ajouterait un pas
     // d'annulation qui ne défait rien.
-    beginProjectEdit("Supprimer une piste");
+    beginProjectEdit(aSupprimer.size() > 1 ? juce::String::fromUTF8(u8"Supprimer des pistes")
+                                            : juce::String("Supprimer une piste"));
 
     // La suppression et la RÉPARATION DES ROUTAGES sont une règle du modèle,
     // pas de l'interface : voir `vsm::sequencer::removeTrack`.
@@ -6903,11 +6920,16 @@ void MainComponent::removeSelectedTrack() {
     // plat : le tiroir se dissolvait sans que personne l'ait demandé. Emporter
     // le contenu est franc, annulable — et n'est honnête qu'à condition d'être
     // annoncé.
-    const size_t retirees = vsm::sequencer::removeTrackWithFolder(project_, idx);
+    size_t retirees = 0;
+    for (size_t i : aSupprimer)
+        if (i < project_.tracks.size()) retirees += vsm::sequencer::removeTrackWithFolder(project_, i);
     rebuildFromProject();
-    if (retirees > 1)
-        std::fputs((juce::String::fromUTF8(u8"Dossier supprimé : ") + juce::String(int(retirees))
-                     + juce::String::fromUTF8(u8" piste(s) retirée(s) avec lui.\n")).toRawUTF8(),
+    // CE QUI EST PARTI EST DIT quand ce n'est pas exactement ce qu'on a
+    // désigné : un dossier emporte son contenu (D35.3), et un lot en emporte
+    // d'autant plus.
+    if (retirees > aSupprimer.size())
+        std::fputs((juce::String::fromUTF8(u8"Supprimé : ") + juce::String(int(retirees))
+                     + juce::String::fromUTF8(u8" piste(s), dossiers et contenus compris.\n")).toRawUTF8(),
                     stderr);
 
     if (!project_.tracks.empty()) {
@@ -8379,8 +8401,10 @@ void MainComponent::showProjectStatistics() {
 void MainComponent::hideSelectedTrack() {
     const size_t piste = trackList_.selectedTrackIndex();
     if (piste >= project_.tracks.size()) return;
-    beginProjectEdit(u8"Masquer une piste");
-    project_.tracks[piste].hidden = true;
+    const std::set<size_t> cible = trackList_.selectedTracks();   // D38.2
+    beginProjectEdit(cible.size() > 1 ? juce::String::fromUTF8(u8"Masquer des pistes")
+                                       : juce::String::fromUTF8(u8"Masquer une piste"));
+    for (size_t i : cible) if (i < project_.tracks.size()) project_.tracks[i].hidden = true;
     // RIEN N'EST REPUBLIÉ AU MOTEUR : masquer n'est pas couper, et la piste
     // continue de sonner exactement comme avant. Seules les trois vues qui
     // dessinent des pistes ont quelque chose à apprendre.

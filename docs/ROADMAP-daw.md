@@ -7643,3 +7643,138 @@ des autres à l'écran.
 >
 > Tests : 1 283 audio, 319 core, 285 interchange, 25 clap, 11 panels — tous
 > verts ; banc `vsm-edit-audit` : 11 gestes, 0 muet, 0 désaccord.
+
+### Phase D38 — Une seule piste à la fois : la sélection multiple manque entièrement (07/09/2026, 14:00)
+
+**Pourquoi celle-ci, et pas un vingt-troisième audit.** Les deux phases
+précédentes ont cherché des défauts dans ce qui existe. Ici le manque est
+franc, il est nommé par le § 2 (« digne de Cubase, Live, FL Studio ») et il se
+constate en une ligne : `TrackListComponent::selectedIndex_` est un `size_t`.
+**Il n'y a pas de sélection de pistes ; il y a une piste courante.** Les clips,
+eux, ont une vraie sélection (`ClipSelection`, un ensemble d'identifiants)
+depuis D5 — le modèle sait donc faire, c'est la liste des pistes qui ne sait
+pas.
+
+`TrackRowComponent::mouseDown` le dit d'un trait : il appelle `onSelected` et
+**ne regarde pas les modificateurs**. Ni Ctrl+clic, ni Maj+clic.
+
+**Ce que cela coûte, en gestes.** Une reconstruction en parité aligne quinze
+pistes, dont huit micros de batterie. Les taire toutes demande **huit clics et
+huit pas d'annulation** — huit Ctrl+Z pour revenir. Les dossiers de D35
+couvrent le cas *si* les pistes sont rangées dans un dossier ; une
+reconstruction les rend à plat. Changer la couleur de six pistes, en supprimer
+trois, en masquer quatre : autant de fois le même geste.
+
+**LA DÉCISION QUI REND CETTE PHASE PETITE, et elle est écrite ici parce que
+c'est elle qui décide de tout le reste.** `selectedTrackIndex()` est appelé
+**soixante-deux fois** dans `MainComponent`. Le remplacer partout par un
+ensemble serait un chantier de plusieurs jours et casserait tout ce qui ne
+s'applique QU'À UNE piste (le piano roll, le rack, la chaîne d'effets, l'onglet
+MIDI CC : ils éditent une piste, pas six). La sélection multiple s'ajoute donc
+**à côté** de la piste courante, sans la remplacer :
+
+- `selectedTrackIndex()` garde exactement son sens — **la piste ACTIVE**, celle
+  qu'on vient de désigner, celle qu'éditent le piano roll et le rack. Les
+  soixante-deux appels restent justes, mot pour mot.
+- `selectedTracks()` est neuf : l'ensemble, qui contient toujours la piste
+  active. Seuls les gestes qui ont un sens sur plusieurs pistes le consultent.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D38.1 | **La sélection existe et se voit.** Ctrl+clic ajoute ou retire, Maj+clic étend depuis la piste active, un clic simple ramène à une seule. Elle survit à une reconstruction de la liste, et une piste supprimée en sort | les lignes choisies se dessinent comme telles ; `selectedTracks()` ne contient jamais d'index hors bornes |
+| D38.2 | **Les gestes qui se multiplient**, et UN SEUL pas d'annulation pour le lot : muet, solo, couleur, masquer, supprimer | taire six pistes choisies demande un clic et rend un seul Ctrl+Z ; mesuré, pas supposé |
+| D38.3 | **Les gestes qui NE se multiplient PAS, et pourquoi.** Renommer (six pistes du même nom ne sont plus distinguables), le canal MIDI, la machine, l'armement (D3.3 : une seule piste audio armée à la fois) | la décision est écrite avec sa raison, dans le code et ici |
+| D38.4 | **Agir sur une piste hors de la sélection la REMPLACE.** Six pistes choisies, on clique le M d'une septième : Cubase tait la septième seule, et la choisit. L'autre règle — ajouter la septième au lot — ferait agir sur des pistes qu'on ne regarde pas | un geste sur une ligne non choisie ramène la sélection à elle seule, avant d'agir |
+| D38.5 | **Le banc suit.** `vsm-edit-audit` mesure aujourd'hui qu'un geste empile UN pas ; il doit mesurer qu'un geste sur six pistes en empile UN aussi, et en touche six | le banc échoue si un geste multiplié empile un pas par piste |
+
+**Ce qui est attendu, écrit AVANT la mesure.**
+
+1. **D38.2** — j'attends **un** pas d'historique pour six pistes tues, et
+   **six** pistes muettes. Les deux moitiés comptent : un seul pas qui ne
+   tairait qu'une piste serait aussi faux que six pas qui en taisent six. C'est
+   le même critère qu'en D36.2 pour le glissé, et pour la même raison — un lot
+   qui s'annule pièce par pièce s'annule, en effet, et demande six Ctrl+Z.
+2. **D38.4** — j'attends que la règle « une piste hors sélection remplace la
+   sélection » se vérifie **à l'écran** et pas seulement dans le banc : c'est
+   une règle d'usage, et son défaut serait de faire quelque chose d'invisible.
+3. **La suppression.** J'attends que supprimer plusieurs pistes à la fois ne
+   décale pas les index en cours de route — supprimer les pistes 2, 5 et 7 en
+   remontant depuis la fin, jamais en descendant. C'est la faute classique de
+   ce geste, et elle est silencieuse : on supprime la 5 puis la 7, qui n'est
+   plus la même.
+
+> **LA PHASE D38 EST FAITE (07/09/2026, 15:40).** Les cinq étapes, et deux
+> défauts que seule la mesure a montrés.
+>
+> **D38.1 — la sélection existe.** Ctrl+clic ajoute ou retire, Maj+clic étend
+> **depuis l'ancre** — le dernier clic simple — et non depuis la piste active :
+> étendre depuis le résultat de l'extension précédente ferait grandir la
+> sélection à chaque Maj+clic au lieu de la redessiner. On ne peut jamais en
+> retirer la dernière : une liste sans piste active n'a rien à montrer au piano
+> roll ni au rack.
+>
+> **LA DÉCISION QUI A RENDU LA PHASE PETITE A TENU.** `selectedTracks()`
+> s'ajoute à côté de `selectedTrackIndex()` sans le remplacer : les
+> **soixante-deux** appels de `MainComponent` sont restés justes mot pour mot,
+> et pas une ligne du piano roll, du rack ou de la chaîne d'effets n'a bougé.
+>
+> **D38.2 — un geste, un pas.** Mesuré : six pistes choisies, un clic sur le M
+> de l'une d'elles, **six pistes tues et UN pas d'historique**. Les deux
+> moitiés étaient écrites d'avance et comptent autant : un pas unique qui n'en
+> tairait qu'une ne ferait pas le geste ; six pas qui en taisent six ne
+> s'annulent pas d'un coup. Le lot pose **le même état sur toutes** — celui de
+> la piste cliquée, renversé — plutôt que de renverser chacune : sur six pistes
+> dont deux muettes, se renverser chacune en laisserait quatre muettes et deux
+> non, ce qui ne ressemble à aucune intention.
+>
+> **LA SUPPRESSION DESCEND, ET L'ATTENDU N° 3 VISAIT JUSTE.** Supprimer les
+> pistes 2, 5 et 7 en montant supprime la 2, ce qui fait glisser tout ce qui
+> suit : la « 5 » suivante est l'ancienne 6, la « 7 » l'ancienne 9. On efface
+> trois pistes dont deux qu'on n'avait pas désignées, sans un mot. Le lot est
+> donc trié **décroissant** avant d'être appliqué.
+>
+> **D38.3 — quatre gestes ne se multiplient pas, et la règle est écrite.**
+> Renommer (six pistes du même nom ne se distinguent plus, et le nom est
+> justement ce qui les distingue), le canal MIDI (mettre six pistes sur le même
+> canal les fait jouer l'une par-dessus l'autre : le geste a l'air d'un réglage
+> et fait une fusion), la machine, l'armement (D3.3 l'interdisait déjà).
+> **La règle générale : un geste se multiplie quand il pose la MÊME valeur sur
+> toutes les pistes sans les rendre indistinctes.**
+>
+> **D38.4 — agir hors de la sélection la remplace**, et c'est la règle de
+> Cubase. L'autre choix — ajouter la piste cliquée au lot — ferait porter le
+> geste sur six pistes qu'on ne regarde pas, c'est-à-dire sur ce qu'on a oublié
+> d'avoir sélectionné : exactement la surprise qu'une sélection est censée
+> éviter.
+>
+> **ET LA SÉLECTION ÉTAIT INVISIBLE — TROUVÉ PAR LA CAPTURE, PAS PAR LA
+> LECTURE.** Les deux exécutions, avec et sans `choisir:0,1,2`, rendaient des
+> images dont la différence était **exactement nulle**. Une ligne choisie ne
+> tenait qu'à l'écart entre `panel` (#1f1f24) et `panelRaised` (#26262c) : sept
+> unités de gris par canal. Or cette sélection commande désormais la
+> **suppression**. Une sélection qu'on ne voit pas est précisément le « faire
+> quelque chose d'invisible » contre quoi D38.4 venait d'être écrite — le
+> défaut était donc dans la phase elle-même, deux étapes après sa mise en
+> garde. Les lignes choisies portent maintenant un contour ambre.
+>
+> **LA CAPTURE A AUSSI CORRIGÉ L'OUTIL DE MESURE.** `VSM_GESTE_PISTE` était lu
+> **avant** `VSM_MENU` : le `choisir:0,1,2` s'appliquait à une liste d'une seule
+> piste, puis les pistes ajoutées par le menu reconstruisaient la liste et
+> emportaient la sélection. La variable est passée après, et accepte désormais
+> plusieurs gestes séparés par « ; » — montrer un lot demande d'abord de le
+> choisir, puis d'agir dessus.
+>
+> **LE BANC A DÛ CHANGER D'ASSEMBLAGE, ET C'EST UNE LEÇON.** Depuis que le muet
+> passe par la LISTE — seule à connaître la sélection —, une rangée construite
+> à part ne signale plus rien : le banc de D36.4 aurait déclaré une régression
+> là où il n'y a qu'un déplacement de responsabilité. Il conduit désormais une
+> vraie `TrackListComponent` et descend son arbre pour trouver ses rangées.
+> **Un banc qui monte son propre assemblage mesure son assemblage** ; celui-ci
+> mesure celui de l'application.
+>
+> Vérifié à l'écran, un binaire et une variable : `choisir:0,1,2` dessine trois
+> contours ambre, `choisir:0,1,2;muet` allume trois M rouges au mélangeur sur
+> quatre tranches.
+>
+> Tests : 1 283 audio, 319 core, 285 interchange, 25 clap, 11 panels — verts ;
+> banc : 11 gestes, 0 muet, 0 désaccord.

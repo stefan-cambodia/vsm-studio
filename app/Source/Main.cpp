@@ -150,20 +150,32 @@ public:
             if (const char* nom = std::getenv("VSM_PRESET_PISTE"); nom != nullptr && *nom)
                 if (!content->saveTrackPresetForCapture(juce::String::fromUTF8(nom)))
                     std::fputs("VSM_PRESET_PISTE : preset non \u00e9crit (aucune piste choisie, ou dossier illisible)\n", stderr);
-            // VSM_GESTE_PISTE=muet : basculer le muet de la piste choisie DANS
-            // LA LISTE DES PISTES, avant VSM_MENU (D36.1). Ce geste n'existe
-            // qu'au bouton M d'une ligne : aucun menu ne le porte, et sans lui
-            // l'effet de D36.1 -- un pas d'historique là où il n'y en avait
-            // aucun -- ne se photographierait pas. Il passe par la MÊME
-            // méthode que le bouton, faute de quoi il vérifierait un chemin
-            // que personne n'emprunte.
-            if (const char* geste = std::getenv("VSM_GESTE_PISTE"); geste != nullptr && *geste)
-                if (!content->runTrackGestureForCapture(juce::String::fromUTF8(geste).trim()))
-                    std::fputs("VSM_GESTE_PISTE : geste inconnu\n", stderr);
             if (const char* entrees = std::getenv("VSM_MENU"); entrees != nullptr && *entrees) {
                 juce::StringArray liste;
                 liste.addTokens(juce::String::fromUTF8(entrees), ";", "");
                 for (const auto& e : liste) content->runMenuEntryForCapture(e.trim());
+            }
+            // VSM_GESTE_PISTE=muet|renommer:…|volume:…|couleur:…|choisir:…
+            // Les gestes qui n'existent qu'au bouton ou au clic d'une ligne :
+            // aucun menu ne les porte, et sans eux l'effet de D36.1, D37 et
+            // D38 ne se photographierait pas. Ils passent par les MÊMES
+            // méthodes que la souris, faute de quoi ils vérifieraient un
+            // chemin que personne n'emprunte.
+            //
+            // APRÈS VSM_MENU, ET C'EST UNE CORRECTION (D38) : placé avant, un
+            // « choisir:0,1,2 » s'appliquait à une liste d'une seule piste,
+            // puis les pistes ajoutées par le menu reconstruisaient la liste et
+            // emportaient la sélection. La capture ne montrait alors AUCUNE
+            // différence -- et c'est la mesure, non la lecture, qui l'a dit.
+            // PLUSIEURS GESTES, SÉPARÉS PAR « ; », comme VSM_MENU : montrer un
+            // lot demande d'abord de le choisir, puis d'agir dessus, et deux
+            // variables pour un enchaînement en cacheraient l'ordre.
+            if (const char* gestes = std::getenv("VSM_GESTE_PISTE"); gestes != nullptr && *gestes) {
+                juce::StringArray suite;
+                suite.addTokens(juce::String::fromUTF8(gestes), ";", "");
+                for (const auto& g : suite)
+                    if (g.trim().isNotEmpty() && !content->runTrackGestureForCapture(g.trim()))
+                        std::fputs("VSM_GESTE_PISTE : geste inconnu\n", stderr);
             }
             // VSM_EXPORT=fichier.flac : exporter le projet ouvert sans fenêtre
             // (D20.5). Un export passe par un sélecteur de fichier et une

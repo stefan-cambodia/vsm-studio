@@ -2,6 +2,7 @@
 #include <JuceHeader.h>
 #include "vsm/sequencer/Project.h"
 #include <functional>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -29,9 +30,19 @@ public:
     /// D30.2 : le voile de la piste désactivée, PAR-DESSUS ses enfants.
     void paintOverChildren(juce::Graphics&) override;
     void resized() override;
-    void mouseDown(const juce::MouseEvent&) override { if (onSelected) onSelected(index_); }
+    /// D38.1 : LES MODIFICATEURS SONT TRANSMIS, ils étaient jetés. La rangée
+    /// ne décide pas ce qu'ils veulent dire -- elle ne connaît pas ses
+    /// voisines, et « étendre depuis la piste active » demande de les connaître
+    /// toutes. Elle dit ce qui a été cliqué et avec quoi ; la liste tranche.
+    void mouseDown(const juce::MouseEvent& e) override {
+        if (onSelectedWithMods) onSelectedWithMods(index_, e.mods);
+        else if (onSelected) onSelected(index_);
+    }
 
     std::function<void(size_t)> onSelected;
+    /// D38.1 : cliqué, et avec quels modificateurs (Ctrl : ajouter/retirer,
+    /// Maj : étendre).
+    std::function<void(size_t, juce::ModifierKeys)> onSelectedWithMods;
     /// D36.1 : UN GESTE VA COMMENCER À MODIFIER LA PISTE.
     ///
     /// Émis AVANT l'écriture, jamais après : `SnapshotHistory` mémorise l'état
@@ -58,11 +69,35 @@ public:
     std::function<void()> onOutputChanged;
     std::function<void(size_t, const std::string&)> onInstrumentChanged; // trackIndex, pluginId ("" = aucun)
 
-    /// Bascule le muet de la piste, EXACTEMENT comme le bouton M -- il appelle
-    /// cette méthode et rien d'autre. Publique parce qu'un même geste ne doit
-    /// pas avoir deux chemins : le second finit toujours par oublier ce que le
-    /// premier a appris (ici, le pas d'historique de D36.1).
-    void basculerMuet();
+    /// D38.2 : LA RANGÉE NE TAIT PLUS ELLE-MÊME. Elle dit qu'on a cliqué son
+    /// M ou son S ; c'est la LISTE qui applique le geste, parce qu'elle seule
+    /// connaît la sélection. La rangée reste « bête », comme son en-tête
+    /// l'annonce depuis toujours.
+    std::function<void(size_t)> onGesteMuet;
+    std::function<void(size_t)> onGesteSolo;
+    /// D38.3 — CE QUI NE SE MULTIPLIE PAS, ET POURQUOI. Quatre gestes de cette
+    /// rangée restent sur SA piste, et n'ont donc pas de jumeau ci-dessus :
+    ///
+    ///  - **renommer** : six pistes du même nom ne se distinguent plus, et le
+    ///    nom est justement ce qui les distingue. Cubase numérote les copies ;
+    ///    inventer des numéros à la place de l'utilisateur serait décider pour
+    ///    lui de ce qu'il allait taper.
+    ///  - **le canal MIDI** : mettre six pistes sur le même canal les fait
+    ///    jouer l'une par-dessus l'autre sur le même instrument matériel. Le
+    ///    geste a l'air d'un réglage et fait une fusion.
+    ///  - **la machine** : le rack, la chaîne d'effets et l'automation
+    ///    n'éditent qu'UNE piste (c'est la décision qui a rendu D38 petite) ;
+    ///    en changer six laisserait cinq machines réglées que rien ne montre.
+    ///  - **l'armement** : D3.3 l'interdit déjà -- une seule piste audio armée
+    ///    à la fois, sans quoi une prise s'écrirait dans plusieurs fichiers.
+    ///
+    /// La règle générale : un geste se multiplie quand il pose la MÊME valeur
+    /// sur toutes les pistes sans les rendre indistinctes. Un nom, un canal et
+    /// une machine ne remplissent pas cette condition.
+    /// Pose l'état muet de CETTE piste (sans historique : la liste l'a déjà
+    /// ouvert pour tout le lot) et met son bouton d'accord.
+    void poserMuet(bool muet);
+    void poserSolo(bool solo);
     /// D37.1 : renomme la piste par le chemin du champ de nom (le libellé
     /// change, donc `onTextChange` part, donc le pas d'historique aussi).
     void renommer(const juce::String& nom);
@@ -158,10 +193,31 @@ public:
     void itemDragExit(const SourceDetails& details) override;
     void itemDropped(const SourceDetails& details) override;
 
+    /// LA PISTE ACTIVE : celle qu'éditent le piano roll, le rack, la chaîne
+    /// d'effets et l'onglet MIDI CC. Son sens n'a pas changé en D38, et c'est
+    /// la décision qui a rendu cette phase petite : soixante-deux appels
+    /// restent justes mot pour mot.
     size_t selectedTrackIndex() const { return selectedIndex_; }
-    /// Bascule le muet de la piste `index` par le chemin du bouton M.
-    /// Sans effet hors bornes.
+    /// D38.1 : LA SÉLECTION, qui contient toujours la piste active. Seuls les
+    /// gestes qui ont un sens sur plusieurs pistes la consultent -- taire,
+    /// colorer, masquer, supprimer. Éditer des notes n'en a pas.
+    const std::set<size_t>& selectedTracks() const { return selection_; }
+    /// D38.1 : pose la sélection (l'index actif y est toujours ajouté).
+    void setSelectedTracks(std::set<size_t> tracks, size_t active);
+    /// D38.4 : appelée AVANT un geste multipliable venu de la ligne `index`.
+    /// Si cette piste n'est pas dans la sélection, la sélection devient elle
+    /// seule -- agir sur des pistes qu'on ne regarde pas est le pire des
+    /// défauts de ce genre de fonction. Rend la sélection à employer.
+    const std::set<size_t>& selectionPourUnGesteSur(size_t index);
+    /// Bascule le muet de la piste `index` PAR LE CHEMIN DU BOUTON M : la
+    /// sélection est consultée (D38.4), un seul pas d'historique est ouvert
+    /// pour le lot, et toutes les pistes choisies prennent le même état --
+    /// celui de la piste cliquée, renversé. « Toutes prennent le même » plutôt
+    /// que « chacune se renverse » : sur six pistes dont deux muettes, se
+    /// renverser chacune en laisserait quatre muettes et deux non, ce qui ne
+    /// ressemble à aucune intention.
     void basculerMuet(size_t index);
+    void basculerSolo(size_t index);
     /// D37 : les deux autres gestes qu'aucun menu ne porte.
     void renommer(size_t index, const juce::String& nom);
     void reglerVolume(size_t index, float valeur);
@@ -220,11 +276,23 @@ public:
     }
 private:
     size_t selectedIndex_ = 0;
+    /// D38.1 : la sélection. Contient TOUJOURS `selectedIndex_` -- une
+    /// sélection vide et une piste active seraient deux vérités sur la même
+    /// chose, et c'est toujours la seconde qui ment.
+    std::set<size_t> selection_ { 0 };
+    /// D38.1 : d'où Maj+clic étend. C'est la dernière piste désignée par un
+    /// clic SIMPLE, et non la piste active : étendre depuis le résultat de
+    /// l'extension précédente ferait grandir la sélection à chaque Maj+clic.
+    size_t ancreSelection_ = 0;
     /// La piste survolée pendant un glisser, ou -1. Sans ce retour, on lâche à
     /// l'aveugle et on découvre après coup sur laquelle.
     int dropRow_ = -1;
     /// L'index de piste sous un point de la liste, ou -1.
     int trackIndexAt(juce::Point<int> position) const;
+    /// D38.1 : un clic sur une ligne, modificateurs compris.
+    void cliqueSurLaLigne(size_t index, juce::ModifierKeys mods);
+    /// D38.1 : chaque ligne se dessine choisie ou non, d'après `selection_`.
+    void rafraichirDessinDeLaSelection();
 
     static constexpr int kRowHeight = 88;
     static constexpr int kToolbarHeight = 36;

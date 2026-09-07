@@ -123,6 +123,20 @@ public:
             trackList_.renommer(piste, geste.fromFirstOccurrenceOf(":", false, false));
             return true;
         }
+        // D38 : CHOISIR PLUSIEURS PISTES SANS SOURIS. « choisir:0,2,3 » pose la
+        // sélection ; c'est le seul geste de cette phase qui ne s'atteint ni
+        // par un menu ni par un bouton -- il vit dans le Ctrl+clic --, et sans
+        // lui la règle de D38.4 ne se photographierait pas.
+        if (geste.startsWithIgnoreCase("choisir:")) {
+            std::set<size_t> choix;
+            juce::StringArray parts;
+            parts.addTokens(geste.fromFirstOccurrenceOf(":", false, false), ",", "");
+            for (const auto& p : parts)
+                if (p.trim().isNotEmpty()) choix.insert(static_cast<size_t>(p.trim().getIntValue()));
+            if (choix.empty()) return false;
+            trackList_.setSelectedTracks(choix, *choix.begin());
+            return true;
+        }
         if (geste.startsWithIgnoreCase("couleur:")) {
             appliquerCouleurDePiste(
                 piste, juce::Colour::fromString("ff" + geste.fromFirstOccurrenceOf(":", false, false)));
