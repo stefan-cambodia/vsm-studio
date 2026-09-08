@@ -9086,3 +9086,67 @@ dépend d'aucune horloge** ; le temps n'est qu'une indication, et il est écrit
 comme telle plutôt que lissé en un gain.
 
 Tests : 1 285 audio, 319 core, 286 interchange, 25 clap, 11 panels — verts.
+
+### Phase D52 — « Rien n'est jamais appliqué en douce » : quatre appelants jetaient le rapport qui le garantissait (08/09/2026, 17:20)
+
+**Trouvé en cherchant à la machine, et le grep a d'abord menti.** D50 et D51
+sont deux trouvailles de la même forme : un fait mesuré que personne ne lit.
+Plutôt qu'une troisième trouvée à la main, j'ai listé les 181 champs des
+38 structures « résultat » du dépôt et compté leurs lectures. **Le résultat brut
+était inexploitable** — l'expression régulière prenait des variables locales
+pour des champs de structure, et douze des seize « champs jamais lus » étaient
+des faux (`LatencyProbe::Resultat` n'a ni `somme` ni `produit`). C'est
+exactement l'avertissement du § « Pièges payés » : *un « zéro » sorti d'un grep
+se revérifie avant de l'écrire*. Deux candidats ont survécu à la vérification à
+la main, et l'un a ouvert cette phase.
+
+**CE QUE `PresetApplyReport` PROMET.** Son en-tête dit : *« Ce qui s'est
+réellement passé à l'application d'un preset — jamais silencieux : chaque
+paramètre non appliqué est nommé, avec sa raison. »* Et celui de `applyPreset` :
+*« Rien n'est jamais appliqué en douce. »*
+
+**QUATRE APPELANTS LE JETAIENT.**
+
+| Où | Ce qui disparaissait |
+|---|---|
+| `MainComponent.cpp:5769` | le rapport des ÉCHANTILLONS, **à deux lignes** de celui des paramètres qui, lui, ouvrait une boîte |
+| `MainComponent.cpp:9546` | le rapport des paramètres, chemin « Appliquer un preset de piste » |
+| `MainComponent.cpp:9547` | le rapport des échantillons, même chemin |
+| `clap/adapter/VsmClapAdapter.cpp:271` | l'état relu par l'hôte CLAP, à la réouverture d'une session |
+
+**MESURÉ SUR UN BANC, AVANT ET APRÈS.** Un preset de piste posé sur un Minimoog,
+portant quatre paramètres qu'il connaît, un hors bornes et deux venus d'une
+autre architecture (`oscillator.sub.level`, `filter.2.cutoff`) :
+
+| | ce que l'application dit |
+|---|---|
+| avant | `VSM_MENU : « bancD52 » exécutée (menu Piste)` — **rien d'autre** |
+| après | `VSM_PRESET : réserves — 4 paramètre(s) appliqué(s), 1 borné(s), 2 non pris en charge : filter.2.cutoff, oscillator.sub.level` |
+
+Un premier banc, plus brutal, avait donné **0 appliqué sur 6** — un preset
+entièrement perdu, sans un mot, et la façade de la machine à l'écran ne laissait
+rien deviner.
+
+**LA BOÎTE NE SE PHOTOGRAPHIE PAS, ET C'EST DIT PLUTÔT QUE CONTOURNÉ.**
+`VSM_CAPTURE` fait l'autoportrait de la FENÊTRE PRINCIPALE ; une `AlertWindow`
+est une fenêtre à part et n'y figure pas. La capture de ce banc montre donc la
+machine, pas le message — d'où la ligne `VSM_PRESET : réserves — …` sur la
+sortie d'erreur, qui est la seule trace vérifiable sans souris. Écrire « boîte
+vérifiée » sur la foi d'une capture qui ne la contient pas aurait été la faute
+de D49 sous un autre déguisement.
+
+**LE CAS CLAP EST TRANCHÉ ICI, ET LA RAISON EST ÉCRITE.** Un plugin n'ouvre pas
+de boîte, et rendre `false` serait pire : l'hôte jetterait l'état ENTIER parce
+qu'un seul paramètre est inconnu. La réserve va donc sur la sortie d'erreur —
+le journal de l'hôte —, et seulement quand il y a quelque chose à dire. Le cas
+n'est pas théorique : c'est celui d'une session écrite par une version où la
+machine avait d'autres paramètres.
+
+Test : `the_apply_report_tells_the_truth_about_what_the_machine_took` exige les
+trois comptes (4 appliqués, 1 borné, 2 non pris en charge), exige que les deux
+inconnus soient NOMMÉS dans le résumé — un compte sans les noms ne se vérifie
+pas —, et **relit chaque paramètre dans la machine** pour confronter
+`appliedValue` à ce qu'elle porte vraiment. C'est la leçon de D49 appliquée à un
+rapport plutôt qu'à un fichier.
+
+Tests : 1 285 audio, 319 core, 287 interchange, 25 clap, 11 panels — verts.

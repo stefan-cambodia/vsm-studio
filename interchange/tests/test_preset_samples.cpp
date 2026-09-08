@@ -5,6 +5,7 @@
 #include "vsm/interchange/OfflineReconstruction.h"
 #include "vsm/interchange/ProjectBundle.h"
 #include "vsm/interchange/ProjectDocument.h"
+#include "vsm/interchange/ParameterDescriptor.h"
 #include "vsm/interchange/SynthPreset.h"
 #include <cmath>
 #include <filesystem>
@@ -100,6 +101,54 @@ VSM_TEST(preset_samples_are_loaded_into_the_machine) {
     VSM_ASSERT(report.failures.empty());
     VSM_ASSERT_EQ(report.loaded.front().first, 2);
     fs::remove_all(folder);
+}
+
+/// D52 : LE RAPPORT D'APPLICATION DIT VRAI DE LA MACHINE, et ce n'est pas une
+/// formalité : trois appels de l'application le JETAIENT, dont celui du preset
+/// de PISTE — un paramètre que la machine cible ne connaît pas disparaissait
+/// sans un mot, à deux fenêtres d'un chemin voisin qui, lui, ouvrait une boîte.
+///
+/// Mesuré sur le banc qui a servi à trouver la panne (un preset posé sur un
+/// Minimoog) : 4 paramètres appliqués, 1 borné, 2 non pris en charge. Ce test
+/// exige les trois comptes ET vérifie ce que la machine porte réellement,
+/// plutôt que de croire le compte rendu sur parole (leçon de D49).
+VSM_TEST(the_apply_report_tells_the_truth_about_what_the_machine_took) {
+    vsm::audio::plugin::registerBuiltInPlugins();
+    auto machine = vsm::audio::plugin::PluginRegistry::instance().create("vsm.minimoog");
+    VSM_ASSERT(machine != nullptr);
+    machine->initialize(48000.0, 512);
+
+    SynthPreset preset;
+    preset.pluginId = "vsm.minimoog";
+    preset.values["oscillator.1.waveform"] = 0.3f;
+    preset.values["oscillator.2.detune"]   = 0.42f;
+    preset.values["filter.1.cutoff"]       = 0.55f;
+    preset.values["envelope.1.attack"]     = 0.2f;
+    preset.values["oscillator.sub.level"]  = 0.6f;   // pas de sous-oscillateur ici
+    preset.values["filter.2.cutoff"]       = 0.8f;   // ni de second filtre
+
+    const PresetApplyReport rapport = applyPreset(preset, *machine, "vsm.minimoog");
+    VSM_ASSERT_EQ(rapport.unsupportedCount(), size_t(2));
+    VSM_ASSERT_EQ(rapport.appliedCount() + rapport.unsupportedCount(), preset.values.size());
+
+    // LES DEUX INCONNUS SONT NOMMÉS : un compte sans les noms ne se vérifie pas.
+    const std::string dit = rapport.summary();
+    VSM_ASSERT(dit.find("oscillator.sub.level") != std::string::npos);
+    VSM_ASSERT(dit.find("filter.2.cutoff") != std::string::npos);
+
+    // ET CE QUE LE RAPPORT DIT AVOIR APPLIQUÉ, LA MACHINE LE PORTE. C'est la
+    // leçon de D49 : un compte rendu qui répète l'intention ne vérifie rien.
+    const SemanticProfile profil = buildSemanticProfile("vsm.minimoog");
+    size_t verifies = 0;
+    for (const auto& entree : rapport.entries) {
+        if (entree.status == SupportStatus::Unsupported) continue;
+        const ParameterDescriptor* d = profil.findBySemanticId(entree.semanticId);
+        VSM_ASSERT(d != nullptr);
+        VSM_ASSERT_NEAR(machine->getParameter(d->paramId), entree.appliedValue, 1e-5f);
+        ++verifies;
+    }
+    VSM_ASSERT_EQ(verifies, rapport.appliedCount());
+    VSM_ASSERT(verifies > 0);
 }
 
 VSM_TEST(a_missing_sample_is_reported_never_silently_skipped) {

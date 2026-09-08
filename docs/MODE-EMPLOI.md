@@ -1000,6 +1000,11 @@ vivent que dans un menu. `VSM_DELAI=ms` retarde l'autoportrait (une
 transcription met dix secondes), et `VSM_EXPORT=fichier.flac` exporte le
 projet ouvert sans fenêtre, en WAV, FLAC ou OGG selon l'extension, pour que
 le fichier se relise. `VSM_EXPORT_NIVEAU=crete|lufs14|lufs23` y ajoute le niveau.
+Appliquer un preset — de synthé ou de piste — qui porte des paramètres que la
+machine cible ne connaît pas ouvre « Preset appliqué, avec des réserves » et
+les nomme (D52) ; la même phrase part sur le terminal (`VSM_PRESET : réserves
+— …`), parce qu'une boîte de dialogue est une fenêtre à part que
+`VSM_CAPTURE` ne photographie pas.
 Une piste audio dont le fichier n'est pas à la fréquence de la session porte
 la mention sur sa ligne, à côté du nom du fichier — `res0.wav · 96 → 44.1 kHz`
 (D51) —, et `· disque` quand le matériau est diffusé au lieu d'être tenu en

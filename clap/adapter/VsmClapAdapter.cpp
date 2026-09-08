@@ -23,6 +23,7 @@
 #include <mutex>
 #include <string>
 #include <vector>
+#include <cstdio>
 
 namespace {
 
@@ -268,7 +269,20 @@ bool stateLoad(const clap_plugin* plugin, const clap_istream* stream) {
     auto* instance = self(plugin);
     auto loaded = vsm::interchange::parseSynthPreset(text);
     if (!loaded.success) return false;
-    vsm::interchange::applyPreset(loaded.preset, *instance->instrument, instance->vsmPluginId);
+    // D52 : LE QUATRIÈME RAPPORT JETÉ, et le plus discret des quatre. Un état
+    // écrit par une version où la machine avait d'autres paramètres se relit
+    // ici : ce que la machine actuelle ne connaît plus est écarté, et la
+    // session rouvrait avec un autre son sans que rien ne l'ait dit.
+    //
+    // UN PLUGIN N'OUVRE PAS DE BOÎTE, et rendre `false` serait pire : l'hôte
+    // jetterait l'état ENTIER parce qu'un paramètre est inconnu. La sortie
+    // d'erreur est le journal de l'hôte, c'est là que la chose va -- et
+    // seulement quand il y a quelque chose à dire.
+    const auto rapport =
+        vsm::interchange::applyPreset(loaded.preset, *instance->instrument, instance->vsmPluginId);
+    if (rapport.unsupportedCount() > 0 || rapport.clampedCount() > 0)
+        std::fprintf(stderr, "vsm-clap (%s) : état relu avec des réserves — %s\n",
+                      instance->vsmPluginId.c_str(), rapport.summary().c_str());
     return true;
 }
 

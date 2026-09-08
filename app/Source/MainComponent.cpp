@@ -5766,17 +5766,30 @@ void MainComponent::applyBrowserItem(const vsm::interchange::BrowserItem& item,
             }
             const auto rapport = vsm::interchange::applyPreset(lu.preset, *machine,
                                                                 project_.tracks[trackIndex].instrumentId);
-            vsm::interchange::applyPresetSamples(
+            // D52 : LE RAPPORT DES ÉCHANTILLONS ÉTAIT JETÉ ICI AUSSI, à deux
+            // lignes de celui des paramètres qui, lui, était dit. Un
+            // échantillon introuvable rend la machine muette sur ces
+            // touches-là : c'est exactement ce que la ligne suivante refuse de
+            // laisser passer pour un paramètre.
+            const auto echantillons = vsm::interchange::applyPresetSamples(
                 lu.preset, *machine,
                 fichier.getParentDirectory().getFullPathName().toStdString());
             updateSynthRackForSelection();
             refreshTransportSchedule();
             // CE QUI N'A PAS PU ÊTRE APPLIQUÉ EST DIT. Un preset à moitié posé
             // qui se tait donne un son qu'on croit être celui du fichier.
+            juce::StringArray reserves;
             if (rapport.unsupportedCount() > 0 || rapport.clampedCount() > 0)
+                reserves.add(juce::String::fromUTF8(rapport.summary().c_str()));
+            if (!echantillons.failures.empty())
+                reserves.add(juce::String::fromUTF8(echantillons.summary().c_str()));
+            if (!reserves.isEmpty()) {
                 juce::AlertWindow::showMessageBoxAsync(
                     juce::AlertWindow::InfoIcon, "Preset appliqué, avec des reserves",
-                    juce::String::fromUTF8(rapport.summary().c_str()));
+                    reserves.joinIntoString("\n"));
+                std::fputs((juce::String(u8"VSM_PRESET : réserves — ")
+                            + reserves.joinIntoString(" ; ") + "\n").toRawUTF8(), stderr);
+            }
             return;
         }
 
@@ -9543,9 +9556,34 @@ void MainComponent::applyTrackPresetFile(const juce::File& fichier) {
                     + juce::String::fromUTF8(u8" \u00bb n'est pas disponible : les inserts et le mixage "
                                              u8"sont appliqu\u00e9s, l'\u00e9tat de la machine non."));
         } else {
-            vsm::interchange::applyPreset(*lu.preset.synth, *machine, project_.tracks[piste].instrumentId);
-            vsm::interchange::applyPresetSamples(*lu.preset.synth, *machine,
-                                                 fichier.getParentDirectory().getFullPathName().toStdString());
+            // D52 : CES DEUX RAPPORTS ÉTAIENT JETÉS. `applyPreset` et
+            // `applyPresetSamples` rendent chacun un compte rendu dont
+            // l'en-tête promet que « rien n'est jamais appliqué en douce » --
+            // et le chemin du preset de SYNTHÉ, dans ce même fichier, ouvre
+            // une boîte « Preset appliqué, avec des reserves ». Le chemin du
+            // preset de PISTE, lui, appelait les deux fonctions comme des
+            // instructions et laissait tomber ce qu'elles disaient : un
+            // paramètre que la machine cible ne connaît pas disparaissait sans
+            // un mot, et l'on croyait entendre le preset du fichier.
+            const auto applique = vsm::interchange::applyPreset(
+                *lu.preset.synth, *machine, project_.tracks[piste].instrumentId);
+            const auto echantillons = vsm::interchange::applyPresetSamples(
+                *lu.preset.synth, *machine,
+                fichier.getParentDirectory().getFullPathName().toStdString());
+            juce::StringArray reserves;
+            if (applique.unsupportedCount() > 0 || applique.clampedCount() > 0)
+                reserves.add(juce::String::fromUTF8(applique.summary().c_str()));
+            if (!echantillons.failures.empty())
+                reserves.add(juce::String::fromUTF8(echantillons.summary().c_str()));
+            if (!reserves.isEmpty()) {
+                juce::AlertWindow::showMessageBoxAsync(
+                    juce::AlertWindow::InfoIcon, u8"Preset de piste appliqué, avec des réserves",
+                    reserves.joinIntoString("\n"));
+                // Et sur le terminal, pour que la boîte -- qu'aucune capture ne
+                // traverse -- ne soit pas le seul endroit où la chose existe.
+                std::fputs((juce::String(u8"VSM_PRESET : réserves — ")
+                            + reserves.joinIntoString(" ; ") + "\n").toRawUTF8(), stderr);
+            }
         }
     }
     updateSynthRackForSelection();
