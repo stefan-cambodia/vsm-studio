@@ -13,6 +13,8 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <iomanip>
+#include <locale>
 #include <map>
 #include <mutex>
 #include <sstream>
@@ -598,6 +600,18 @@ StemResult renderStems(const LoadedBundle& bundle, StemGranularity granularity,
             return result;
         }
         result.renderedSeconds = un.renderedSeconds;
+        // LA CRÊTE DU STEM VIENT DU RENDU LUI-MÊME (D50), pas d'un second
+        // parcours : `renderBundleToBuffer` la mesure déjà pour son mixage.
+        stem.peakLevel = un.peakLevel;
+        stem.sampleCount = stem.audio.numFrames() * (stem.audio.right.empty() ? 1 : 2);
+        if (stem.peakLevel > 1.0f) {
+            // Le comptage ne se paie QUE pour un stem qui dépasse. Ailleurs la
+            // réponse est zéro et le parcours serait gratuit.
+            size_t au_dessus = 0;
+            for (float v : stem.audio.left)  if (std::fabs(v) > 1.0f) ++au_dessus;
+            for (float v : stem.audio.right) if (std::fabs(v) > 1.0f) ++au_dessus;
+            stem.samplesAboveFullScale = au_dessus;
+        }
         result.stems.push_back(std::move(stem));
     }
 
@@ -609,6 +623,36 @@ StemResult renderStemsToFolder(const LoadedBundle& bundle, const std::string& fo
                                 StemGranularity granularity, const RenderOptions& options) {
     StemResult result = renderStems(bundle, granularity, options);
     if (!result.success) return result;
+
+    // CE QUE LE FORMAT CHOISI VA RABOTER EST DIT AVANT DE L'ÉCRIRE (D50).
+    //
+    // Le mixage exporté prévient depuis D48 quand sa crête dépasse 0 dBFS ;
+    // les stems, eux, sortaient en silence. Or ce sont eux dont la somme est
+    // censée redonner le mixage : un stem borné casse cette promesse, et rien
+    // dans le dossier écrit ne permettait de s'en apercevoir.
+    //
+    // Le remède nommé est le 32 bits flottants, et c'est le seul honnête :
+    // baisser un stem seul ferait mentir la somme, et les baisser tous
+    // donnerait un jeu de stems qui ne redonne plus CE mixage-là.
+    const bool entier = options.format != vsm::audio::io::SampleFormat::Float32;
+    if (entier) {
+        for (const auto& stem : result.stems) {
+            if (stem.peakLevel <= 1.0f) continue;
+            std::ostringstream dit;
+            dit.imbue(std::locale::classic());
+            // LE SIGNE EST ÉCRIT : « 0.37 dBFS » se lit comme un niveau sous
+            // l'échelle pleine, alors que c'est exactement l'inverse qui est
+            // le problème.
+            dit << "le stem \"" << stem.name << "\" culmine à "
+                << std::showpos << std::fixed << std::setprecision(2)
+                << (20.0 * std::log10(stem.peakLevel)) << std::noshowpos
+                << " dBFS : ce format entier l'a borné (" << stem.samplesAboveFullScale
+                << " échantillon(s) sur " << stem.sampleCount
+                << "). Exporter les stems en 32 bits flottants les conserve ; "
+                   "leur somme ne redonne plus le mixage sans cela";
+            result.warnings.push_back(dit.str());
+        }
+    }
 
     std::error_code code;
     std::filesystem::create_directories(folderPath, code);

@@ -213,6 +213,28 @@ public:
                 }
                 content->exportForCapture(juce::File::getCurrentWorkingDirectory().getChildFile(sortie), niveau);
             }
+            // VSM_EXPORT_STEMS=dossier : l'export par stems sans fenêtre (D50).
+            // Il vit derrière DEUX modales -- options puis sélecteur de
+            // dossier --, donc son compte rendu était jusqu'ici invérifiable ;
+            // c'est pourtant lui qui dit désormais la crête de chaque stem et
+            // ce que le format demandé rabote.
+            // VSM_EXPORT_STEMS_FORMAT=float32|int24|int16 (défaut int24, comme
+            // le menu) ; VSM_EXPORT_STEMS_PAR=piste|groupe (défaut piste).
+            if (const char* sortie = std::getenv("VSM_EXPORT_STEMS"); sortie != nullptr && *sortie) {
+                auto format = vsm::audio::io::SampleFormat::Int24;
+                if (const char* f = std::getenv("VSM_EXPORT_STEMS_FORMAT"); f != nullptr && *f) {
+                    const juce::String demande(f);
+                    format = demande == "float32" ? vsm::audio::io::SampleFormat::Float32
+                           : demande == "int16"   ? vsm::audio::io::SampleFormat::Int16
+                                                  : vsm::audio::io::SampleFormat::Int24;
+                }
+                auto granularite = vsm::interchange::StemGranularity::Tracks;
+                if (const char* g = std::getenv("VSM_EXPORT_STEMS_PAR"); g != nullptr && *g)
+                    if (juce::String(g) == "groupe")
+                        granularite = vsm::interchange::StemGranularity::Groups;
+                content->exportStemsForCapture(
+                    juce::File::getCurrentWorkingDirectory().getChildFile(sortie), format, granularite);
+            }
             // VSM_POSITION=17.3 : la tête à une position saisie (D22.2), pour
             // que « Aller à la mesure » se vérifie sans souris : la barre de
             // transport doit dire la nouvelle position.

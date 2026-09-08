@@ -1000,6 +1000,13 @@ vivent que dans un menu. `VSM_DELAI=ms` retarde l'autoportrait (une
 transcription met dix secondes), et `VSM_EXPORT=fichier.flac` exporte le
 projet ouvert sans fenêtre, en WAV, FLAC ou OGG selon l'extension, pour que
 le fichier se relise. `VSM_EXPORT_NIVEAU=crete|lufs14|lufs23` y ajoute le niveau.
+`VSM_EXPORT_STEMS=dossier` écrit les stems sans fenêtre (D50), avec
+`VSM_EXPORT_STEMS_FORMAT=float32|int24|int16` (24 bits par défaut, comme le
+menu) et `VSM_EXPORT_STEMS_PAR=piste|groupe` : l'export par stems vivait
+derrière **deux** modales — une fenêtre d'options, puis un sélecteur de
+dossier —, si bien que son compte rendu ne se relisait par aucun moyen ; c'est
+pourtant lui qui dit la crête de chaque stem et ce que le format demandé
+rabote.
 `VSM_GESTE_PISTE=geste[;geste…]` joue les gestes qui n'existent **qu'au bouton
 ou au clic d'une ligne de piste**, par les mêmes méthodes que la souris :
 `muet`, `renommer:Nom`, `volume:0.25`, `couleur:22DD55`, `machine:vsm.additive`

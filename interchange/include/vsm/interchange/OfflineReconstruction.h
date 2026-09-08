@@ -144,6 +144,17 @@ struct Stem {
     /// contribution.
     size_t trackIndex = 0;
     vsm::audio::engine::RenderedAudio audio;
+    /// LA CRÊTE DE CE STEM, MESURÉE SUR CE QUI A ÉTÉ RENDU (D50). Le mixage
+    /// exporté dit la sienne depuis D48 et prévient quand un format entier la
+    /// borne ; les stems ne disaient rien du tout -- alors que ce sont EUX
+    /// dont la somme est censée redonner le mixage. Un stem raboté en douce
+    /// casse cette promesse sans qu'aucun compte rendu ne l'indique.
+    float peakLevel = 0.0f;
+    /// Combien d'échantillons dépassent 1,0, et sur combien. Renseigné
+    /// seulement quand `peakLevel > 1` (sinon la réponse est zéro et le
+    /// parcours serait gratuit).
+    size_t samplesAboveFullScale = 0;
+    size_t sampleCount = 0;
 };
 
 struct StemResult {
@@ -167,6 +178,16 @@ StemResult renderStems(const LoadedBundle& bundle, StemGranularity granularity,
                         const RenderOptions& options = {});
 
 /// Écrit les stems dans un dossier, un WAV par stem, nommés d'après la piste.
+///
+/// CE QUI SERA RABOTÉ EST DIT (D50). Un stem dont la crête dépasse 1,0 tient
+/// dans un fichier 32 bits flottants et PAS dans un entier 16 ou 24 bits, qui
+/// le bornera : le fichier écrit n'est alors plus la contribution de la piste,
+/// et leur somme n'est plus le mixage. Mesuré sur `children-dream-v7` : la
+/// basse culmine à 1,043 (+0,37 dBFS), 14 échantillons sur 22,3 millions sont
+/// rabotés en 24 bits, et l'écart somme-mixage passe de -137,8 dB à -27,2 dB
+/// de crête. Un avertissement le nomme, par stem, et nomme le remède -- qui
+/// est le 32 bits flottants, et non une normalisation : normaliser un stem
+/// seul romprait la somme, qui est toute leur raison d'être.
 StemResult renderStemsToFolder(const LoadedBundle& bundle, const std::string& folderPath,
                                 StemGranularity granularity, const RenderOptions& options = {});
 

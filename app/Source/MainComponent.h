@@ -201,6 +201,17 @@ public:
     /// compte rendu va sur stderr : c'est un terminal qui pilote ce mode.
     bool exportForCapture(const juce::File& file, ExportLevel niveau = ExportLevel::AsIs);
 
+    /// D50 : exporter les stems dans `dossier` sans fenêtre
+    /// (VSM_EXPORT_STEMS=dossier, VSM_EXPORT_STEMS_FORMAT=float32|int24|int16,
+    /// VSM_EXPORT_STEMS_PAR=piste|groupe). Le menu passe par deux modales que
+    /// nulle capture ne traverse ; le compte rendu, lui, doit se relire, et
+    /// c'est lui qui dit désormais la crête de chaque stem et ce que le format
+    /// choisi rabote.
+    bool exportStemsForCapture(const juce::File& dossier,
+                                vsm::audio::io::SampleFormat format = vsm::audio::io::SampleFormat::Int24,
+                                vsm::interchange::StemGranularity granularite =
+                                    vsm::interchange::StemGranularity::Tracks);
+
     bool openProjectFolderForCapture(const juce::File& dossier) {
         const auto lu = vsm::interchange::loadProjectBundle(dossier.getFullPathName().toStdString());
         if (!lu.success) return false;
@@ -886,6 +897,14 @@ private:
                               juce::String& erreur);
     /// La sonie intégrée (LUFS) d'un WAV, par le mesureur du moteur.
     double measureLufsOf(const juce::File& wav);
+    /// D50 : le rendu par stems dans `dossier`, et son compte rendu -- un
+    /// fichier par piste (ou par groupe), la crête de chacun, et ce que le
+    /// format demandé rabote. Partagé par le menu et par la capture, pour
+    /// qu'il n'y ait qu'un seul texte à vérifier.
+    bool exportStemsToFolder(const juce::File& dossier,
+                             const vsm::interchange::RenderOptions& options,
+                             vsm::interchange::StemGranularity granularite,
+                             juce::String& message);
     /// Republie tout ce qui dépend du projet. `stopPlayback` est faux après un
     /// annuler/rétablir : l'utilisateur qui corrige une note pendant que ça
     /// joue n'a aucune raison de voir la lecture s'arrêter.

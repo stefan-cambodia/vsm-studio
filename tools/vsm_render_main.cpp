@@ -8,6 +8,7 @@
 #include "vsm/interchange/NumberText.h"
 #include "vsm/interchange/PatchRenderService.h"
 #include <iostream>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <string>
@@ -199,9 +200,30 @@ int main(int argc, char** argv) {
             std::fprintf(stderr, "vsm-render : %s\n", sortie.error.c_str());
             return 2;
         }
-        if (!quiet)
+        if (!quiet) {
             std::printf("%zu stems écrits dans %s (%.2f s)\n", sortie.stems.size(),
                          positional[1].c_str(), sortie.renderedSeconds);
+            // CHAQUE STEM DIT SA CRÊTE (D50). Le mixage la dit depuis toujours
+            // dans son `summary()` ; les stems ne disaient qu'un nombre de
+            // fichiers, et un stem borné par le format demandé s'écrivait sans
+            // un mot -- alors que leur somme est censée redonner le mixage.
+            for (const auto& stem : sortie.stems) {
+                const double pic = static_cast<double>(stem.peakLevel);
+                // LA LIGNE RESTE VRAIE DU FICHIER QU'ELLE NOMME (leçon de D49) :
+                // en format entier, ce que le fichier porte est 1,0, pas la
+                // crête du rendu -- et le dire est tout l'intérêt de l'écrire.
+                const bool entier = options.format != vsm::audio::io::SampleFormat::Float32;
+                if (pic > 1e-9)
+                    std::printf("  %s.wav : pic %.5f (%+.2f dBFS)%s\n", stem.name.c_str(), pic,
+                                 20.0 * std::log10(pic),
+                                 stem.peakLevel > 1.0f
+                                     ? (entier ? " -- AU-DESSUS DE 0 dBFS, borné à 1,0 dans le fichier"
+                                               : " -- AU-DESSUS DE 0 dBFS, conservé par le flottant")
+                                     : "");
+                else
+                    std::printf("  %s.wav : silencieux\n", stem.name.c_str());
+            }
+        }
         return 0;
     }
 

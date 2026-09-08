@@ -8929,3 +8929,86 @@ autres, et chacun avait l'air d'un problème de niveau plutôt que d'un problèm
 d'écriture.
 
 Tests : 1 285 audio, 319 core, 285 interchange, 25 clap, 11 panels — verts.
+
+### Phase D50 — Le mixage disait son écrêtage, les stems sortaient en silence (08/09/2026, 15:45)
+
+**La quatrième fois que le même geste se paie, et la première où il ne
+s'agissait plus d'écrire un fichier mais d'en parler.** D47 avait borné à ±1
+là où le format n'y obligeait pas ; D48 avait donné au mixage exporté un
+avertissement quand sa crête dépasse 0 dBFS ; D49 avait mesuré que le remède
+annoncé tenait parole. **L'export PAR STEMS n'avait rien reçu de tout cela** :
+`renderStemsToFolder` écrivait chaque fichier dans le format demandé sans
+jamais regarder sa crête, `Stem` ne portait aucun pic, et les deux comptes
+rendus — « 6 stems écrits dans … » dans l'application, un nombre de fichiers
+dans `vsm-render` — ne disaient pas un mot du niveau.
+
+**HYPOTHÈSE, ÉCRITE AVANT LA MESURE.** Sur `children-dream-v7` (mixage à
+1,405), au moins un stem dépasse 1,0 ; exporté en 24 bits — **le défaut de
+l'interface** —, il est borné sans un mot ; et la somme des stems s'écarte
+alors du mixage bien plus que les −148,7 dB annoncés en D47, qui avaient été
+mesurés en 32 bits flottants.
+
+**LES TROIS SONT VRAIES, ET LE CHIFFRE DU MILIEU EST LE PLUS PARLANT.**
+
+| | 32 bits flottants | 24 bits entiers |
+|---|---|---|
+| crête du stem `01 - bass` | **1,04341** (+0,37 dBFS) | 1,00000 (borné) |
+| échantillons rabotés | 0 | **14** sur 22 322 454 |
+| écart somme-mixage, RMS | −163,0 dB | −93,6 dB |
+| écart somme-mixage, **crête** | **−137,8 dB** | **−27,2 dB** |
+
+**−27,2 dB, c'est-à-dire 0,0437 d'amplitude** — et 0,0437 est exactement
+1,04341 − 1,0. **La promesse « la somme des stems redonne le mixage » ne tombe
+donc pas un peu : elle tombe de cent dix décibels, à cause de quatorze
+échantillons sur vingt-deux millions**, et rien dans le dossier écrit ne
+permettait de s'en apercevoir. Cinq stems sur six étaient parfaits.
+
+**CE QUI EST AJOUTÉ.** `Stem` porte sa crête — prise du rendu, qui la mesure
+déjà — et, seulement quand elle dépasse 1, le nombre d'échantillons concernés
+(le parcours ne se paie que là où il apprend quelque chose). L'écriture
+prévient, par stem, en nommant le fichier, le dépassement et le remède. Les
+deux comptes rendus listent désormais la crête de chaque stem.
+
+**LE REMÈDE NOMMÉ EST LE 32 BITS FLOTTANTS, ET C'EST LE SEUL HONNÊTE.** Le
+mixage, lui, a le choix : « crête à -1 dBFS » le baisse et le fichier reste
+juste. Un stem non : le baisser seul ferait mentir la somme, et les baisser
+tous donnerait un jeu de stems qui ne redonne plus CE mixage-là. Le tableau
+ci-dessus est la mesure de ce conseil, faite **avant** de le donner — la règle
+de D44 et D49.
+
+**ET LA LEÇON DE D49 S'APPLIQUAIT À CE QUE J'ÉCRIVAIS À L'INSTANT.** La
+première version de la liste affichait « `01 - bass.wav` — crête +0,36 dBFS »
+en face d'un fichier 24 bits qui, relu, en portait 1,00000. C'était exactement
+la faute que D49 venait de nommer : *un compte rendu qui répète l'intention ne
+vérifie rien*. La ligne dit maintenant « crête +0,36 dBFS, **bornée à 0 dBFS
+par ce format** », et elle est vraie du fichier qu'elle nomme. Les six fichiers
+écrits par l'application ont été relus, dans les deux formats : chaque nombre
+annoncé est celui du fichier, au centième de décibel. (Les chiffres de
+l'application diffèrent de ceux de `vsm-render` — +0,36 dBFS et 13 échantillons
+sur 20 508 756 — parce qu'elle rend à la fréquence de la session, 44,1 kHz, et
+non à 48 kHz ; c'est le même stem, pas un désaccord.)
+
+**L'EXPORT PAR STEMS ÉTAIT INVÉRIFIABLE, ET C'EST CE QUI L'AVAIT LAISSÉ
+DERRIÈRE.** Il vit derrière **deux** modales — une fenêtre d'options, puis un
+sélecteur de dossier — que nulle capture ne traverse : son compte rendu ne
+pouvait donc être relu par personne, et c'est très exactement ce que le § de
+conduite sur l'interface interdit de laisser. `VSM_EXPORT_STEMS=dossier`,
+`VSM_EXPORT_STEMS_FORMAT` et `VSM_EXPORT_STEMS_PAR` le rendent exécutable sans
+souris, **par le même code que le menu** : le texte du menu et celui du
+terminal sont le même texte, il n'y a donc qu'une chose à vérifier. Le mode
+d'emploi les liste.
+
+**CE QUE CETTE PHASE AJOUTE À LA SÉRIE D47–D49.** Le même geste initial a
+produit quatre symptômes (mixage, stems, gel, normalisation) ; D50 en montre un
+cinquième d'une autre nature — non plus un fichier faux, mais un fichier juste
+qu'aucun compte rendu ne décrivait. **Réparer l'écriture ne suffit pas si
+l'écriture reste muette** : le § « Mesure » dit qu'une panne muette est
+interdite, et un stem raboté en silence en était une.
+
+Test : `a_stem_above_full_scale_says_so_and_names_the_format_that_clips_it`
+monte un stem à 1,05 par le seul fader (une variable, le témoin étant le même
+projet rendu en flottant), vérifie sa prémisse avant tout le reste, exige un
+avertissement et **un seul**, nommant le stem et le remède, et **relit les deux
+fichiers écrits** pour confronter l'annonce au contenu.
+
+Tests : 1 285 audio, 319 core, 286 interchange, 25 clap, 11 panels — verts.

@@ -4148,24 +4148,79 @@ void MainComponent::exportStems() {
             const juce::File dossier = fc.getResult();
             if (dossier == juce::File()) return;
 
-            captureSessionIntoProject();
-            const auto bundle = bundleFromSession();
-            const auto sortie = vsm::interchange::renderStemsToFolder(
-                bundle, dossier.getFullPathName().toStdString(), granularite, options);
-            if (!sortie.success) {
-                juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
-                                                         u8"Erreur d'export des stems", sortie.error);
-                return;
-            }
-            juce::String message = juce::String(sortie.stems.size())
-                                  + juce::String(u8" stems ecrits dans :\n")
-                                  + dossier.getFullPathName() + "\n";
-            for (const auto& stem : sortie.stems) message += "\n" + juce::String(stem.name) + ".wav";
-            for (const auto& warning : sortie.warnings) message += "\n\n" + juce::String(warning);
-            juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon,
-                                                     u8"Export des stems termine", message);
+            juce::String message;
+            const bool fait = exportStemsToFolder(dossier, options, granularite, message);
+            juce::AlertWindow::showMessageBoxAsync(fait ? juce::AlertWindow::InfoIcon
+                                                        : juce::AlertWindow::WarningIcon,
+                                                     fait ? u8"Export des stems terminé"
+                                                          : u8"Erreur d'export des stems",
+                                                     message);
         });
     }), false);
+}
+
+bool MainComponent::exportStemsToFolder(const juce::File& dossier,
+                                         const vsm::interchange::RenderOptions& options,
+                                         vsm::interchange::StemGranularity granularite,
+                                         juce::String& message) {
+    captureSessionIntoProject();
+    const auto bundle = bundleFromSession();
+    const auto sortie = vsm::interchange::renderStemsToFolder(
+        bundle, dossier.getFullPathName().toStdString(), granularite, options);
+    if (!sortie.success) {
+        message = juce::String(sortie.error);
+        return false;
+    }
+    // CHAQUE STEM DIT SA CRÊTE (D50), comme le mixage exporté dit la sienne.
+    // La liste ne portait que des noms : un stem raboté par le format entier
+    // choisi juste au-dessus sortait sans un mot, et la somme des fichiers ne
+    // redonnait plus le mixage -- ce qui est pourtant toute la raison d'être
+    // d'un jeu de stems.
+    const bool entier = options.format != vsm::audio::io::SampleFormat::Float32;
+    message = juce::String(sortie.stems.size())
+            + juce::String(u8" stems écrits dans :\n") + dossier.getFullPathName() + "\n";
+    for (const auto& stem : sortie.stems) {
+        message += "\n" + juce::String(stem.name) + ".wav";
+        if (stem.peakLevel > 1e-9) {
+            // LE SIGNE EST ÉCRIT : « crête 0,36 dBFS » se lit comme un niveau
+            // SOUS l'échelle pleine, alors que c'est exactement l'inverse qui
+            // fait perdre des échantillons.
+            const double dbfs = 20.0 * std::log10(static_cast<double>(stem.peakLevel));
+            message += juce::String(u8" — crête ") + (dbfs > 0.0 ? "+" : "")
+                     + juce::String(dbfs, 2) + " dBFS";
+            // ET LA LIGNE RESTE VRAIE DU FICHIER QU'ELLE NOMME. C'est la leçon
+            // de D49 : annoncer la crête du RENDU en face d'un nom de fichier
+            // que le format entier a borné à 0 dBFS, c'est répéter l'intention
+            // au lieu de décrire ce qui a été écrit.
+            if (stem.peakLevel > 1.0f && entier)
+                message += juce::String(u8", bornée à 0 dBFS par ce format");
+        } else {
+            message += juce::String(u8" — silencieux");
+        }
+    }
+    for (const auto& warning : sortie.warnings) message += "\n\n" + juce::String(warning);
+    return true;
+}
+
+bool MainComponent::exportStemsForCapture(const juce::File& dossier,
+                                           vsm::audio::io::SampleFormat format,
+                                           vsm::interchange::StemGranularity granularite) {
+    // L'EXPORT PAR STEMS SE VÉRIFIE SANS SOURIS (D50). Il vit derrière DEUX
+    // modales -- une fenêtre d'options, puis un sélecteur de dossier --, que
+    // nulle capture ne traverse : son compte rendu était donc invérifiable, et
+    // c'est exactement ce que le § « Interface » interdit de laisser. Le
+    // chemin est le MÊME que celui du menu ; seule la façon de désigner le
+    // dossier change.
+    vsm::interchange::RenderOptions options;
+    options.blockSize = 512;
+    options.tailSeconds = 2.0;
+    options.sampleRate = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate() : 48000.0;
+    options.format = format;
+    juce::String message;
+    const bool fait = exportStemsToFolder(dossier, options, granularite, message);
+    std::fputs((juce::String(fait ? u8"VSM_EXPORT_STEMS : " : u8"VSM_EXPORT_STEMS : ÉCHEC — ")
+                + message.replace("\n", " ; ") + "\n").toRawUTF8(), stderr);
+    return fait;
 }
 
 void MainComponent::exportAudioWithOptions(const vsm::interchange::RenderOptions& options,

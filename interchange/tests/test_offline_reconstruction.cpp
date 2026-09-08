@@ -1,5 +1,6 @@
 #include "TestFramework.h"
 #include "vsm/interchange/OfflineReconstruction.h"
+#include "vsm/audio/io/WavFileReader.h"
 #include "vsm/audio/effect/EffectFactory.h"
 #include "vsm/interchange/EffectDescription.h"
 #include "vsm/audio/io/WavFileWriter.h"
@@ -480,6 +481,81 @@ VSM_TEST(stems_are_written_one_file_per_track_with_readable_names) {
     VSM_ASSERT(std::filesystem::exists(std::filesystem::path(sortie) / "01 - Basse.wav"));
     VSM_ASSERT(std::filesystem::exists(std::filesystem::path(sortie) / "02 - Lead.wav"));
     VSM_ASSERT(std::filesystem::exists(std::filesystem::path(sortie) / "03 - Nappe.wav"));
+}
+
+/// D50 : UN STEM QUI DÉPASSE 0 dBFS LE DIT, et le format entier qui le rabote
+/// aussi. Le mixage exporté prévient depuis D48 ; les stems sortaient en
+/// silence — alors que ce sont EUX dont la somme est censée redonner le
+/// mixage, et qu'un stem borné casse précisément cette promesse.
+///
+/// Mesuré sur un vrai morceau avant d'écrire ce test (`children-dream-v7`) :
+/// la basse culmine à 1,043, 14 échantillons sur 22,3 millions sont rabotés en
+/// 24 bits, et l'écart somme-mixage passe de -137,8 dB à -27,2 dB de crête.
+VSM_TEST(a_stem_above_full_scale_says_so_and_names_the_format_that_clips_it) {
+    TempFolder folder("stems-ecretage");
+    Project projet = buildStemProject();
+    // Le fader monte le stem au-dessus de 1 sans rien changer d'autre : c'est
+    // UNE variable, et le témoin est le même projet rendu en flottant. Le
+    // facteur est choisi pour placer la crête à 1,05 environ -- comme le vrai
+    // morceau qui a fait trouver la panne, et non à un dépassement grossier
+    // qu'un raccourci d'implémentation attraperait par chance.
+    projet.tracks[0].volume = 6.0f;
+    saveProjectBundle(projet, folder.str());
+    const auto chargé = loadProjectBundle(folder.str());
+    VSM_ASSERT(chargé.success);
+
+    RenderOptions flottant;
+    flottant.durationSeconds = 2.0;
+    flottant.format = vsm::audio::io::SampleFormat::Float32;
+    const StemResult f32 =
+        renderStemsToFolder(chargé.bundle, folder.file("f32"), StemGranularity::Tracks, flottant);
+    VSM_ASSERT(f32.success);
+
+    // La prémisse du test est vérifiée, pas supposée : sans stem au-dessus de
+    // 1, tout ce qui suit passerait pour la mauvaise raison.
+    VSM_ASSERT(f32.stems[0].peakLevel > 1.0f);
+    VSM_ASSERT(f32.stems[0].samplesAboveFullScale > 0);
+    VSM_ASSERT_EQ(f32.stems[0].sampleCount,
+                  f32.stems[0].audio.numFrames() * 2);
+    // LE FLOTTANT PORTE LA CRÊTE : aucun avertissement d'écrêtage ici.
+    for (const auto& avertissement : f32.warnings)
+        VSM_ASSERT(avertissement.find("culmine") == std::string::npos);
+
+    RenderOptions entier = flottant;
+    entier.format = vsm::audio::io::SampleFormat::Int24;
+    const StemResult i24 =
+        renderStemsToFolder(chargé.bundle, folder.file("i24"), StemGranularity::Tracks, entier);
+    VSM_ASSERT(i24.success);
+
+    // LE MÊME RENDU, DONC LA MÊME CRÊTE : le format ne change que l'écriture.
+    VSM_ASSERT_EQ(i24.stems[0].peakLevel, f32.stems[0].peakLevel);
+
+    // ET IL EST DIT, UNE FOIS, EN NOMMANT LE STEM ET LE REMÈDE.
+    size_t nommés = 0;
+    for (const auto& avertissement : i24.warnings) {
+        if (avertissement.find("culmine") == std::string::npos) continue;
+        ++nommés;
+        VSM_ASSERT(avertissement.find(i24.stems[0].name) != std::string::npos);
+        VSM_ASSERT(avertissement.find("32 bits flottants") != std::string::npos);
+    }
+    VSM_ASSERT_EQ(nommés, static_cast<size_t>(1));
+
+    // ET CE QUE L'AVERTISSEMENT ANNONCE EST VRAI DU FICHIER, pas seulement du
+    // rendu : c'est la leçon de D49 -- un compte rendu qui répète l'intention
+    // ne vérifie rien. On relit les deux fichiers écrits.
+    const auto crêteDuFichier = [](const std::string& chemin) {
+        const auto lu = vsm::audio::io::WavFileReader::readFile(chemin);
+        VSM_ASSERT(lu.success);
+        float pic = 0.0f;
+        for (const float v : lu.buffer.left)  pic = std::max(pic, std::abs(v));
+        for (const float v : lu.buffer.right) pic = std::max(pic, std::abs(v));
+        return pic;
+    };
+    const std::string nom = i24.stems[0].name + ".wav";
+    const float picFlottant = crêteDuFichier((std::filesystem::path(folder.file("f32")) / nom).string());
+    const float picEntier   = crêteDuFichier((std::filesystem::path(folder.file("i24")) / nom).string());
+    VSM_ASSERT(picFlottant > 1.0f);              // le flottant conserve
+    VSM_ASSERT_NEAR(picEntier, 1.0f, 1e-4);      // l'entier borne, comme annoncé
 }
 
 /// Les noms à accents, ligatures et points médians — ceux que la chaîne de
