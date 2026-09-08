@@ -6792,6 +6792,7 @@ void MainComponent::loadAudioTracks() {
     const double sr = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate()
                                                               : 48000.0;
     juce::StringArray manquants;
+    juce::StringArray reechantillonnees;   // D51
     waveformCache_.clear();
     for (size_t i = 0; i < project_.tracks.size(); ++i) {
         const auto& track = project_.tracks[i];
@@ -6801,6 +6802,7 @@ void MainComponent::loadAudioTracks() {
         const auto& source = gelee ? track.frozenAudio : track.audio;
         if ((!gelee && track.kind != vsm::sequencer::Track::Kind::Audio) || source.empty()) {
             audioEngine_.processGraph().setTrackAudio(i, nullptr);
+            trackList_.setAudioSourceRate(i, 0.0, 0.0);   // D51 : rien à dire
             continue;
         }
         // Le chemin est RELATIF au dossier du projet. Sans dossier -- projet
@@ -6809,6 +6811,7 @@ void MainComponent::loadAudioTracks() {
         if (currentProjectFolder_ == juce::File()) {
             manquants.add(juce::String(track.name) + " (projet jamais enregistre)");
             audioEngine_.processGraph().setTrackAudio(i, nullptr);
+            trackList_.setAudioSourceRate(i, 0.0, 0.0);
             continue;
         }
         const juce::File fichier = currentProjectFolder_.getChildFile(source.path);
@@ -6816,8 +6819,26 @@ void MainComponent::loadAudioTracks() {
         if (!charge.success || !charge.source) {
             manquants.add(juce::String(track.name) + " : " + juce::String(charge.error));
             audioEngine_.processGraph().setTrackAudio(i, nullptr);
+            trackList_.setAudioSourceRate(i, 0.0, 0.0);
             continue;
         }
+        // D51 : LE RÉÉCHANTILLONNAGE SE DIT. `AudioTrackLoadResult` le porte
+        // depuis D2 -- son en-tête écrit même que « l'interface doit pouvoir
+        // l'écrire » --, et un grep sur tout le dépôt ne trouvait QU'UN lecteur
+        // de `resampled` : le rendu hors ligne, qui en fait un avertissement.
+        // L'application, elle, chargeait un fichier à 96 kHz dans une session à
+        // 44,1 kHz sans un mot. Deux vérités pour un même fait, c'est-à-dire
+        // celle qu'on lit et celle qu'on n'a pas.
+        //
+        // LA MENTION VA SUR LA LIGNE, PAS DANS UNE BOÎTE (règle de D43) : la
+        // fréquence d'un fichier ne change pas, on la relit chaque fois qu'on
+        // se demande ce que joue cette piste, et une boîte fermée se ferme.
+        trackList_.setAudioSourceRate(i, charge.resampled ? charge.fileSampleRate : 0.0, sr,
+                                       charge.streamed, charge.residentBytes);
+        if (charge.resampled)
+            reechantillonnees.add(juce::String(track.name) + " : "
+                                  + juce::String(charge.fileSampleRate, 0) + juce::String(u8" → ")
+                                  + juce::String(charge.sessionSampleRate, 0) + " Hz");
         // La longueur vient du FICHIER CHARGÉ, pas de ce que le projet déclare :
         // quand les deux divergent, c'est le fichier qui a raison.
         vsm::sequencer::Track pourLesClips = track;
@@ -6873,6 +6894,14 @@ void MainComponent::loadAudioTracks() {
             juce::AlertWindow::WarningIcon, u8"Audio non chargé",
             juce::String(u8"Ces pistes audio n'ont pas pu être lues :\n\n")
                 + manquants.joinIntoString("\n"));
+    // D51 : ET LE MÊME FAIT SUR LE TERMINAL, pour les mêmes raisons que les
+    // avertissements de `vsm-render` -- une capture montre la ligne, un banc
+    // automatique a besoin d'une phrase à lire. Ce n'est pas une trace de mise
+    // au point : c'est le seul moyen de vérifier sans écran que la mention est
+    // bien celle du fichier chargé.
+    for (const auto& dit : reechantillonnees)
+        std::fputs((juce::String(u8"VSM_AUDIO : rééchantillonné — ") + dit + "\n").toRawUTF8(), stderr);
+    audioTracksLoadedAtRate_ = sr;   // D51.2
 }
 
 void MainComponent::applyAudioConfig() {
@@ -6888,7 +6917,15 @@ void MainComponent::applyAudioConfig() {
     // Les pistes audio sont rééchantillonnées à la nouvelle fréquence : leur
     // matériau est décodé pour UNE fréquence, et le graphe ne rééchantillonne
     // pas en temps réel.
-    loadAudioTracks();
+    //
+    // D51.2 : MAIS SEULEMENT SI LA FRÉQUENCE A VRAIMENT CHANGÉ POUR ELLES.
+    // `appliedSampleRate_` part de zéro, si bien que le premier passage du
+    // minuteur rechargeait TOUT -- y compris ce que l'ouverture du projet
+    // venait de charger à la même fréquence une milliseconde plus tôt. Trouvé
+    // en lisant la trace de D51, qui écrivait chaque rééchantillonnage DEUX
+    // fois : douze chargements pour six pistes. Ce n'est pas un doublon
+    // d'affichage, c'est un double décodage.
+    if (std::abs(audioTracksLoadedAtRate_ - sr) > 0.5) loadAudioTracks();
 
     // Les effets de bus : mêmes types, mêmes réglages, à la bonne fréquence.
     applySendBuses();

@@ -1326,6 +1326,12 @@ private:
     /// Dernière configuration audio appliquée aux effets, pour ne refabriquer
     /// que lorsqu'elle change réellement.
     double appliedSampleRate_ = 0.0;
+    /// D51.2 : LA FRÉQUENCE À LAQUELLE LES PISTES AUDIO SONT DÉJÀ CHARGÉES.
+    /// `applyAudioConfig()` rechargeait tout au premier passage du minuteur --
+    /// `appliedSampleRate_` part de zéro -- même quand l'ouverture du projet
+    /// venait de le faire à la MÊME fréquence. Mesuré : douze chargements pour
+    /// six pistes. Recharger n'a de sens que si la fréquence a changé.
+    double audioTracksLoadedAtRate_ = 0.0;
 
     MidiCcComponent midiCc_;
     /// D32.2 : la liste des événements de la piste choisie -- la seule vue qui

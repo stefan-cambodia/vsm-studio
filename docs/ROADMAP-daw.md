@@ -9012,3 +9012,77 @@ avertissement et **un seul**, nommant le stem et le remède, et **relit les deux
 fichiers écrits** pour confronter l'annonce au contenu.
 
 Tests : 1 285 audio, 319 core, 286 interchange, 25 clap, 11 panels — verts.
+
+### Phase D51 — Le chargeur mesure le rééchantillonnage depuis D2, et l'application ne l'a jamais écrit (08/09/2026, 16:30)
+
+**Trouvé en appliquant la leçon de D50 à l'autre bout de la chaîne.** D50 dit :
+*réparer l'écriture ne suffit pas si l'écriture reste muette*. La même question
+posée à la LECTURE donne ceci — `AudioTrackLoadResult` porte `resampled`,
+`fileSampleRate`, `sessionSampleRate`, `streamed` et `residentBytes`, et son
+en-tête écrit, en toutes lettres :
+
+> *« le rééchantillonnage a eu lieu, et le rapport le dit »* … *« Le rapport le
+> dit, comme il dit le rééchantillonnage : c'est une propriété de ce qui a été
+> chargé, et **l'interface doit pouvoir l'écrire** »*
+
+**UN GREP SUR TOUT LE DÉPÔT NE TROUVE QU'UN SEUL LECTEUR DE `resampled`** : le
+rendu hors ligne, qui en fait un avertissement. `streamed` et `residentBytes`
+n'en ont **aucun**. L'application les remplissait et n'en lisait pas un.
+
+**MESURÉ, PAS DÉDUIT.** Un projet portant un fichier à 96 kHz, ouvert dans une
+session à 44,1 kHz :
+
+| | ce qui est dit |
+|---|---|
+| `vsm-render` | `avertissement : Piste 0 (Sinus 96k) : audio rééchantillonné de 96000 à 48000 Hz` |
+| l'application | **rien** — pas une boîte, pas une ligne, pas un mot sur la ligne de piste (capture et sortie d'erreur vides) |
+
+**Deux vérités pour un même fait**, c'est-à-dire celle qu'on lit et celle qu'on
+n'a pas. Et le fait n'est pas mince : un fichier rééchantillonné n'est plus le
+fichier qu'on a posé — c'est exactement ce que D2 a payé en remplaçant
+l'interpolation linéaire par un noyau sinc.
+
+**LA MENTION VA SUR LA LIGNE, PAS DANS UNE BOÎTE.** C'est la règle de D43 (« un
+témoin permanent tant que le son manque, et non une boîte à fermer ») appliquée
+telle quelle : la fréquence d'un fichier ne change pas, on la relit chaque fois
+qu'on se demande ce que joue cette piste, et une boîte fermée se ferme.
+La ligne de piste porte donc `res0.wav · 96 → 44.1 kHz`, et `· disque` quand le
+matériau est diffusé (D8.2) plutôt que résident. L'infobulle porte la phrase
+entière, y compris les mégaoctets résidents. Vérifié à l'écran sur trois bancs :
+un fichier court rééchantillonné, un fichier de trente secondes (donc diffusé),
+et six pistes à la fois.
+
+**ET SUR LE TERMINAL AUSSI**, pour la même raison que les avertissements de
+`vsm-render` : une capture montre la ligne, un banc automatique a besoin d'une
+phrase à lire (`VSM_AUDIO : rééchantillonné — …`). L'interface cesse d'être
+invérifiable sur ce point.
+
+#### D51.2 — La trace neuve écrivait tout DEUX fois, et ce n'était pas l'affichage
+
+**La première chose que la nouvelle ligne a apprise porte sur autre chose
+qu'elle-même.** Elle sortait en double à chaque ouverture. Ce n'était pas un
+doublon d'affichage : `applyAudioConfig()` recharge toutes les pistes audio
+quand la fréquence change, et `appliedSampleRate_` **part de zéro** — le premier
+passage du minuteur rechargeait donc TOUT, y compris ce que l'ouverture du
+projet venait de charger à la MÊME fréquence une milliseconde plus tôt.
+
+**Mesuré sur six pistes de dix-neuf secondes à 96 kHz** (résidentes, donc
+décodées et rééchantillonnées en entier) : **douze chargements pour six
+pistes**, comptés sur la sortie d'erreur, en quatre ouvertures — 48 lignes pour
+24 attendues. Après correction : **6 par ouverture**, exactement.
+
+La correction est un compteur : `audioTracksLoadedAtRate_` retient la fréquence
+à laquelle les pistes sont chargées, et `applyAudioConfig()` ne recharge que si
+elle a bougé. Les autres appelants de `loadAudioTracks()` (import, gel, prise)
+ne sont pas touchés : eux ont une raison de recharger.
+
+**LE TEMPS, DIT COMME IL A ÉTÉ MESURÉ.** Ouverture complète du même projet :
+1 323–1 358 ms avant (4 mesures), 901–1 204 ms après (12 mesures). **Ce n'est
+pas un A/B propre** au sens du § « Mesure » — le témoin n'est pas derrière une
+option, c'est le code d'avant —, et la distribution d'après est bimodale
+(~905 ms et ~1 200 ms en alternance) sans que je sache pourquoi. **Le chiffre
+qui tranche est donc le compte de chargements, 12 → 6, qui est exact et ne
+dépend d'aucune horloge** ; le temps n'est qu'une indication, et il est écrit
+comme telle plutôt que lissé en un gain.
+
+Tests : 1 285 audio, 319 core, 286 interchange, 25 clap, 11 panels — verts.

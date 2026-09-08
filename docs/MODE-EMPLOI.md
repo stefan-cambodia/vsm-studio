@@ -1000,6 +1000,12 @@ vivent que dans un menu. `VSM_DELAI=ms` retarde l'autoportrait (une
 transcription met dix secondes), et `VSM_EXPORT=fichier.flac` exporte le
 projet ouvert sans fenêtre, en WAV, FLAC ou OGG selon l'extension, pour que
 le fichier se relise. `VSM_EXPORT_NIVEAU=crete|lufs14|lufs23` y ajoute le niveau.
+Une piste audio dont le fichier n'est pas à la fréquence de la session porte
+la mention sur sa ligne, à côté du nom du fichier — `res0.wav · 96 → 44.1 kHz`
+(D51) —, et `· disque` quand le matériau est diffusé au lieu d'être tenu en
+mémoire (au-delà de vingt secondes). L'infobulle donne la phrase entière. Sur
+le terminal, la même chose s'écrit `VSM_AUDIO : rééchantillonné — <piste> :
+<fichier> → <session> Hz`, pour qu'un banc sans écran puisse la lire.
 `VSM_EXPORT_STEMS=dossier` écrit les stems sans fenêtre (D50), avec
 `VSM_EXPORT_STEMS_FORMAT=float32|int24|int16` (24 bits par défaut, comme le
 menu) et `VSM_EXPORT_STEMS_PAR=piste|groupe` : l'export par stems vivait

@@ -112,6 +112,23 @@ public:
     /// Réaffiche le fichier de la piste (sans effet sur une piste MIDI).
     /// Appelée après une prise audio, qui vient de lui en donner un.
     void refreshAudioSource();
+    /// D51 : LA FRÉQUENCE DU FICHIER, quand elle n'est pas celle de la
+    /// session. Le chargeur mesure le rééchantillonnage depuis D2 et le porte
+    /// dans son résultat ; personne, dans l'application, ne le lisait -- seul
+    /// le rendu hors ligne en faisait un avertissement. Un fichier
+    /// rééchantillonné n'est plus le fichier qu'on a posé, et c'est une
+    /// propriété PERMANENTE de cette piste à cette fréquence de session : elle
+    /// s'écrit donc sur la ligne, à côté du nom de fichier qu'elle concerne,
+    /// et non dans une boîte à fermer (la règle de D43).
+    /// `fileRate <= 0` ou `fileRate == sessionRate` efface la mention.
+    ///
+    /// `streamed` dit que le matériau est DIFFUSÉ depuis le disque au lieu
+    /// d'être résident (D8.2) -- l'autre champ que le chargeur remplissait et
+    /// que personne ne lisait. Ce n'est pas un détail d'implémentation pour qui
+    /// se demande pourquoi son projet tient en mémoire, ni pour qui vient de
+    /// débrancher le disque où vit le fichier.
+    void setAudioSourceRate(double fileRate, double sessionRate, bool streamed = false,
+                             size_t residentBytes = 0);
     /// D24.5 : relit le nom de la piste (une ligne créée avant qu'on la nomme).
     void refreshName();
     /// D36.7 : relit le muet et le solo. Le muet et le solo s'affichent à DEUX
@@ -140,6 +157,12 @@ private:
     juce::Label channelLabel_;
     juce::ComboBox instrumentBox_; // rempli depuis PluginRegistry::listAvailable()
     juce::Label audioSourceLabel_; // à sa place, sur une piste audio
+    /// D51 : fréquence du FICHIER et fréquence de la SESSION, telles que le
+    /// chargeur les a mesurées. Zéro = rien à dire.
+    double fileSampleRate_ = 0.0;
+    double sessionSampleRate_ = 0.0;
+    bool audioStreamed_ = false;
+    size_t audioResidentBytes_ = 0;
     juce::ComboBox outputBox_;     // master ou groupe (D4.2)
     juce::TextButton muteButton_ { "M" };
     juce::TextButton soloButton_ { "S" };
@@ -264,6 +287,10 @@ public:
     /// remettrait la sélection et le défilement à zéro. Sert après une prise
     /// audio, qui vient de donner un fichier à sa piste.
     void refreshTrackRow(size_t idx);
+    /// D51 : pose sur la ligne `idx` la fréquence du fichier et celle de la
+    /// session. Sans effet si la ligne n'existe pas ou n'est pas audio.
+    void setAudioSourceRate(size_t idx, double fileRate, double sessionRate,
+                             bool streamed = false, size_t residentBytes = 0);
 
 private:
     vsm::sequencer::Project* project_ = nullptr;

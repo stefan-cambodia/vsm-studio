@@ -2,6 +2,7 @@
 #include "LookAndFeel/VsmLookAndFeel.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
+#include <cmath>
 
 using namespace vsm::sequencer;
 using namespace vsm::ui;
@@ -291,13 +292,59 @@ void TrackRowComponent::refreshName() {
 void TrackRowComponent::refreshAudioSource() {
     if (!audio_) return;
     const juce::String chemin(track_.audio.path);
+    // D51 : LA FRÉQUENCE DU FICHIER QUAND ELLE N'EST PAS CELLE DE LA SESSION.
+    // Le chargeur la mesure depuis D2 (`AudioTrackLoadResult::resampled`) et
+    // son en-tête dit que « l'interface doit pouvoir l'écrire » ; aucun
+    // composant ne la lisait. Un fichier rééchantillonné n'est plus celui
+    // qu'on a posé : le dire à côté de son nom, en permanence, est le seul
+    // endroit où l'on regarde en se demandant ce que joue cette piste.
+    const auto khz = [](double hz) {
+        return juce::String(hz / 1000.0, hz >= 100000.0 || std::fmod(hz, 1000.0) == 0.0 ? 0 : 1);
+    };
+    const bool converti = fileSampleRate_ > 0.0 && sessionSampleRate_ > 0.0
+                       && std::abs(fileSampleRate_ - sessionSampleRate_) > 0.5;
+    juce::String mention;
+    if (converti)
+        mention += juce::String(u8" · ") + khz(fileSampleRate_) + juce::String(u8" → ")
+                 + khz(sessionSampleRate_) + " kHz";
+    // LA DIFFUSION DISQUE AUSSI (D8.2) : l'autre champ que le chargeur
+    // remplissait et que personne ne lisait. Elle se dit quand elle a lieu et
+    // se tait sinon -- un « résident » écrit sur chaque ligne deviendrait un
+    // meuble, et c'est le cas rare qu'il faut voir.
+    if (audioStreamed_) mention += juce::String(u8" · disque");
     audioSourceLabel_.setText(
         chemin.isEmpty() ? juce::String(u8"(aucun fichier — armer et enregistrer)")
-                         : chemin.fromLastOccurrenceOf("/", false, false),
+                         : chemin.fromLastOccurrenceOf("/", false, false) + mention,
         juce::dontSendNotification);
-    audioSourceLabel_.setTooltip(chemin.isEmpty()
-                                     ? juce::String(u8"Cette piste audio n'a pas encore de matériau.")
-                                     : chemin);
+    audioSourceLabel_.setTooltip(
+        chemin.isEmpty()
+            ? juce::String(u8"Cette piste audio n'a pas encore de matériau.")
+            : converti ? chemin + juce::String(u8"\n\nCe fichier est enregistré à ")
+                             + juce::String(fileSampleRate_, 0)
+                             + juce::String(u8" Hz et la session tourne à ")
+                             + juce::String(sessionSampleRate_, 0)
+                             + juce::String(u8" Hz : il est rééchantillonné à la lecture "
+                                             u8"comme à l'export. Ce que vous entendez n'est "
+                                             u8"donc pas exactement le fichier posé.")
+                       : chemin);
+    if (!chemin.isEmpty() && audioStreamed_)
+        audioSourceLabel_.setTooltip(
+            audioSourceLabel_.getTooltip()
+            + juce::String(u8"\n\nCe mat\u00e9riau est DIFFUS\u00c9 depuis le disque (au-del\u00e0 de "
+                            u8"vingt secondes) et non tenu en m\u00e9moire : ")
+            + juce::String(static_cast<double>(audioResidentBytes_) / (1024.0 * 1024.0), 1)
+            + juce::String(u8" Mo r\u00e9sidents. Le fichier doit rester accessible pendant "
+                            u8"toute la s\u00e9ance."));
+}
+
+void TrackRowComponent::setAudioSourceRate(double fileRate, double sessionRate, bool streamed,
+                                            size_t residentBytes) {
+    if (!audio_) return;
+    fileSampleRate_ = fileRate;
+    sessionSampleRate_ = sessionRate;
+    audioStreamed_ = streamed;
+    audioResidentBytes_ = residentBytes;
+    refreshAudioSource();
 }
 
 void TrackRowComponent::paint(juce::Graphics& g) {
@@ -596,6 +643,12 @@ void TrackListComponent::refreshTrackRow(size_t idx) {
     if (idx >= static_cast<size_t>(rows_.size())) return;
     rows_[static_cast<int>(idx)]->refreshAudioSource();
     rows_[static_cast<int>(idx)]->refreshName();
+}
+
+void TrackListComponent::setAudioSourceRate(size_t idx, double fileRate, double sessionRate,
+                                            bool streamed, size_t residentBytes) {
+    if (idx >= static_cast<size_t>(rows_.size())) return;
+    rows_[static_cast<int>(idx)]->setAudioSourceRate(fileRate, sessionRate, streamed, residentBytes);
 }
 
 void TrackListComponent::selectTrackIndex(size_t idx) {
