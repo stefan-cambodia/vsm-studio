@@ -836,7 +836,14 @@ Solo exclusif de la piste choisie* fait de même au clavier.
 
 **Le rapport de reconstruction se lit dans l'application** : *Fichier ▸ Voir le
 rapport de reconstruction* (grisé quand le projet ouvert n'en a pas — un projet
-créé à la main n'en a pas, c'est normal). Il dit la distance globale, **quelle
+créé à la main n'en a pas, c'est normal). Il dit la distance globale **et ce qui la rend
+comparable** — la métrique et le budget d'itérations (D53) : deux distances de
+métriques différentes ne se comparent pas, et un nombre nu invitait à le faire.
+Il dit aussi **la distance de CHAQUE piste**, avec la plus éloignée marquée en
+ambre (« la plus loin de l'original ») : c'est le seul chiffre qui dise par où
+commencer, là où une distance globale les résume toutes sans en désigner
+aucune. Le `gate` d'une piste apparaît quand il n'est pas à 1 — il conditionne
+la distance autant que la métrique. Il dit enfin **quelle
 part du morceau chaque piste porte** (en rouge au-delà de la moitié : « cette
 piste porte le morceau à elle seule »), la machine et le profil retenus, et la
 densité de chaque piste — polyphonie et ambitus, avec l'avertissement

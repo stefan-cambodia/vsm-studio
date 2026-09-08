@@ -9150,3 +9150,70 @@ pas —, et **relit chaque paramètre dans la machine** pour confronter
 rapport plutôt qu'à un fichier.
 
 Tests : 1 285 audio, 319 core, 287 interchange, 25 clap, 11 panels — verts.
+
+### Phase D53 — Une distance publiée sans sa métrique, et cinq distances par piste que personne ne voyait (08/09/2026, 18:05)
+
+**Le second candidat survivant de l'audit de D52.** `StemReport::distance` était
+lu par `ReconstructionReport.cpp` et par personne d'autre. Ce n'est pas un champ
+anodin : c'est le seul chiffre qui dise **où** travailler.
+
+**CE QUE L'ÉCRAN MONTRAIT.** « 6 piste(s) reconstruite(s) · distance globale
+0.2325 (0 = identique, 1 = silence) », puis `bass → vsm.piano`,
+`guitar → vsm.minimoog`… — les machines, sans un chiffre.
+
+**CE QUE LE FICHIER PORTAIT AU MÊME MOMENT** (`children-dream-v7/rapport.json`,
+relu directement) :
+
+| stem | machine | distance |
+|---|---|---|
+| guitar | `vsm.minimoog` | **0,1755** |
+| bass | `vsm.piano` | 0,1896 |
+| other | `vsm.string` | 0,2196 |
+| vocals | `vsm.obx` | 0,2217 |
+| piano | `vsm.wind` | **0,2224** |
+
+**La pire piste est 26,7 % plus loin que la meilleure**, et l'écran ne le disait
+pas. Une seule distance globale de 0,2325 les résume toutes et n'en désigne
+aucune : le musicien qui veut gagner du terrain ne sait pas par où commencer.
+La ligne du piano porte désormais « — la plus loin de l'original », en ambre,
+comme le fourre-tout et le porteur d'énergie.
+
+**ET LE NOMBRE ÉTAIT PUBLIÉ SANS CE QUI LE REND COMPARABLE.** L'ordre de marche
+du projet dit : « *deux distances ne se comparent que si métrique, budget, gate
+et stems sont identiques* », et l'en-tête de `ReconstructionReport` répète que
+« les distances v1 et v2 ne se comparent pas ». L'écran affichait pourtant
+`0.2325` tout nu, alors que `metric` (« v2 ») et `iterations` (20) étaient dans
+le même fichier, à deux champs de là. **Un nombre sans sa métrique invite
+exactement la comparaison que le projet interdit, et il l'invite d'autant plus
+qu'il a l'air simple.** La ligne « Ne se compare qu'à une distance de métrique
+v2 et de budget 20 itération(s) » suit désormais le résumé.
+
+**LE `gate` AUSSI, MAIS SEULEMENT QUAND IL N'EST PAS À 1.** Il conditionne la
+distance au même titre que la métrique — le faire passer de 0,95 à sa vraie
+valeur 0,24 sur un violoncelle à l'archet change la distance d'un facteur 1,6 et
+**inverse le classement des machines**, sans toucher une ligne de DSP
+(ARCHITECTURE.md § 32). Mais « gate 1.00 » sur chaque ligne deviendrait un
+meuble : il ne s'écrit que lorsqu'il dit quelque chose. Vérifié à l'écran sur un
+rapport truqué à `gate` 0,24 et 0,71 — les deux lignes le portent, les trois
+autres restent nettes.
+
+**UNE DÉCISION PRISE ET ÉCRITE PLUTÔT QUE FAITE EN DOUCE.** J'ai d'abord ajouté
+la distance à la liste montrée À L'OUVERTURE du projet, puis je l'ai retirée :
+cette liste alimente la boîte « **Projet ouvert, avec des reserves** ». Une
+distance n'est pas une réserve, et l'y mettre ferait s'ouvrir une boîte
+d'avertissement sur **chaque** reconstruction, y compris les meilleures — un
+avertissement qui s'allume toujours devient un meuble qu'on ne lit plus, le même
+raisonnement que le compteur de décrochages de D41.3. La distance par stem vit
+donc dans « Voir le rapport de reconstruction », où on la cherche quand on la
+cherche. La raison est écrite dans le code, à l'endroit où la tentation
+reviendra.
+
+**CE QUE CETTE PHASE DOIT À D52.** Elle ne vient pas d'une intuition : elle
+vient du second des deux candidats que le comptage de lectures avait laissés
+debout après vérification à la main. La méthode a donc produit deux phases, et
+la moitié du travail a consisté à jeter ce que le grep avait cru trouver.
+
+Vérifié à l'écran : trois captures (l'écran d'avant, l'écran d'après, et le cas
+`gate`), chaque nombre affiché confronté au JSON relu séparément.
+
+Tests : 1 285 audio, 319 core, 287 interchange, 25 clap, 11 panels — verts.

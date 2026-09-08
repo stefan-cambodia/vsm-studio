@@ -4682,6 +4682,31 @@ void MainComponent::showReconstructionReport() {
                << juce::String::fromUTF8(" (0 = identique, 1 = silence)");
     lignes.add({resume, Ton::resume});
 
+    // D53 : CE QUI REND UNE DISTANCE COMPARABLE EST ÉCRIT AVEC ELLE.
+    //
+    // La règle du projet dit : « deux distances ne se comparent que si
+    // métrique, budget, gate et stems sont identiques » -- et l'en-tête de
+    // `ReconstructionReport` répète que « les distances v1 et v2 ne se
+    // comparent pas ». Cet écran publiait pourtant « 0.2325 » tout nu. Un
+    // nombre sans sa métrique invite exactement la comparaison que le projet
+    // interdit, et il l'invite d'autant plus qu'il a l'air simple.
+    if (distance >= 0.0) {
+        const std::string metrique = racine["metric"].asString("");
+        const int budget = static_cast<int>(racine["iterations"].asNumber(-1.0));
+        juce::String conditions;
+        if (!metrique.empty())
+            conditions << juce::String::fromUTF8("de métrique ")
+                       << juce::String::fromUTF8(metrique.c_str());
+        if (budget >= 0) {
+            if (conditions.isNotEmpty()) conditions << juce::String::fromUTF8(" et ");
+            conditions << juce::String::fromUTF8("de budget ") << budget
+                       << juce::String::fromUTF8(" itération(s)");
+        }
+        if (conditions.isNotEmpty())
+            lignes.add({juce::String::fromUTF8("Ne se compare qu'à une distance ") + conditions,
+                        Ton::info});
+    }
+
     // --- Le partage : qui porte le morceau -------------------------------
     const auto& partage = racine["partage"];
     if (partage.isArray() && partage.size() > 0) {
@@ -4705,11 +4730,33 @@ void MainComponent::showReconstructionReport() {
     const auto& stems = racine["stems"];
     if (stems.isArray() && stems.size() > 0) {
         lignes.add({{}, Ton::info});
+        // D53 : LA PIRE PISTE EST NOMMÉE, parce que c'est la seule information
+        // sur laquelle on agit. `StemReport::distance` existait dans le type,
+        // était lue par le lecteur typé, et n'était affichée nulle part : le
+        // musicien voyait « distance globale 0,2325 » sans savoir laquelle de
+        // ses six pistes la tirait vers le haut. Mesuré sur children-dream-v7 :
+        // de 0,1755 (guitar) à 0,2224 (piano), soit 27 % d'écart entre la
+        // meilleure et la pire.
+        double pire = -1.0;
+        for (const auto& stem : stems.elements())
+            pire = std::max(pire, stem["distance"].asNumber(-1.0));
         for (const auto& stem : stems.elements()) {
             juce::String texte;
             texte << juce::String::fromUTF8(stem["name"].asString("?").c_str())
                   << juce::String::fromUTF8(" → ")
                   << juce::String::fromUTF8(stem["machine"].asString("?").c_str());
+            const double d = stem["distance"].asNumber(-1.0);
+            if (d >= 0.0) {
+                texte << juce::String::fromUTF8(" · distance ") << juce::String(d, 4);
+                // LE GATE SEULEMENT QUAND IL N'EST PAS À 1. Il conditionne la
+                // distance au même titre que la métrique (le faire passer de
+                // 0,95 à 0,24 sur un violoncelle change la distance d'un
+                // facteur 1,6 et INVERSE le classement des machines), mais
+                // « gate 1.00 » sur chaque ligne deviendrait un meuble.
+                const double gate = stem["gate"].asNumber(-1.0);
+                if (gate >= 0.0 && std::abs(gate - 1.0) > 1e-6)
+                    texte << juce::String::fromUTF8(" · gate ") << juce::String(gate, 2);
+            }
             const std::string profil = stem["profile"].asString("");
             if (!profil.empty())
                 texte << juce::String::fromUTF8(" [") << juce::String::fromUTF8(profil.c_str())
@@ -4735,7 +4782,12 @@ void MainComponent::showReconstructionReport() {
                     texte << juce::String::fromUTF8(" — PLUSIEURS parties sur une "
                                                     "seule piste");
             }
-            lignes.add({texte, fourreTout ? Ton::attention : Ton::info});
+            // La pire piste est marquée -- et seulement s'il y en a plusieurs :
+            // sur un seul stem, « la plus loin » ne dit rien.
+            const bool laPlusLoin = d >= 0.0 && stems.size() > 1 && std::abs(d - pire) < 1e-12;
+            if (laPlusLoin)
+                texte << juce::String::fromUTF8(" — la plus loin de l'original");
+            lignes.add({texte, (fourreTout || laPlusLoin) ? Ton::attention : Ton::info});
         }
     }
 
@@ -4998,6 +5050,16 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
                             + juce::String(static_cast<int>(marquees))
                             + juce::String(u8" transcrite(s) : elles sont marquées dans le "
                                             u8"piano roll, et la touche D y mène une par une"));
+            // D53 : LA DISTANCE N'EST PAS AJOUTÉE ICI, ET LA RAISON EST
+            // ÉCRITE PLUTÔT QUE TUE. Cette liste alimente la boîte « Projet
+            // ouvert, avec des reserves » : une distance n'est pas une
+            // réserve, et l'y mettre ferait s'ouvrir une boîte
+            // d'avertissement sur CHAQUE reconstruction, y compris les
+            // meilleures. Un avertissement qui s'allume toujours devient un
+            // meuble qu'on ne lit plus -- le même raisonnement que le
+            // compteur de décrochages de D41.3. La distance par stem est donc
+            // publiée dans l'écran « Voir le rapport de reconstruction », où
+            // on la cherche quand on la cherche.
             // Le projet a changé : le piano roll doit relire les notes.
             pianoRoll_.repaint();
         } else {
