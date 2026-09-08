@@ -954,6 +954,45 @@ VSM_TEST(warp_survives_the_trip_through_the_model_and_bumps_the_version_only_whe
     const ProjectLoadResult reluEnvers = parseProjectDocument(jsonEnvers);
     VSM_ASSERT(reluEnvers.success && reluEnvers.document.tracks[0].clips[0].reversed);
 
+    // D54 : LA HAUTEUR D'UN CLIP FAIT L'ALLER-RETOUR, et elle fait monter la
+    // version — un lecteur de la version 2 jouerait le clip à sa hauteur
+    // d'origine sans un mot, ce qui est la panne muette que ce format refuse.
+    // Un réglage qui ne survit pas à l'enregistrement est pire que pas de
+    // réglage : on l'a posé, on l'entend, et il disparaît à la réouverture.
+    {
+        Project transpose = buildProject();
+        vsm::sequencer::Clip aigu;
+        aigu.length = 960; aigu.sourceLength = 960; aigu.pitchSemitones = 12.0;
+        vsm::sequencer::Clip cents;
+        cents.startTick = 960; cents.length = 960; cents.sourceLength = 960;
+        cents.pitchSemitones = -0.17;   // dix-sept cents : un accord de montage
+        transpose.tracks[0].clips.push_back(aigu);
+        transpose.tracks[0].clips.push_back(cents);
+        const std::string jsonAigu = projectDocumentToJson(documentFromProject(transpose)).toString();
+        VSM_ASSERT(jsonAigu.find("\"pitch\"") != std::string::npos);
+        VSM_ASSERT(jsonAigu.find("\"version\": 3") != std::string::npos
+                    || jsonAigu.find("\"version\":3") != std::string::npos);
+        const ProjectLoadResult reluAigu = parseProjectDocument(jsonAigu);
+        VSM_ASSERT(reluAigu.success);
+        VSM_ASSERT_NEAR(reluAigu.document.tracks[0].clips[0].pitchSemitones, 12.0, 1e-5);
+        // LES CENTS SURVIVENT AUSSI : c'est pour eux que le champ est un
+        // flottant et non un entier de demi-tons.
+        VSM_ASSERT_NEAR(reluAigu.document.tracks[0].clips[1].pitchSemitones, -0.17, 1e-5);
+        // Et jusqu'au MODÈLE, pas seulement jusqu'au document.
+        Project rejoueAigu = transpose;
+        for (auto& t : rejoueAigu.tracks) t.clips.clear();
+        applyDocumentToProject(reluAigu.document, rejoueAigu);
+        VSM_ASSERT_EQ(rejoueAigu.tracks[0].clips.size(), size_t(2));
+        VSM_ASSERT_NEAR(rejoueAigu.tracks[0].clips[0].pitchSemitones, 12.0, 1e-5);
+        VSM_ASSERT_NEAR(rejoueAigu.tracks[0].clips[1].pitchSemitones, -0.17, 1e-5);
+    }
+    // UN PROJET SANS TRANSPOSITION N'ÉCRIT RIEN, et reste en version 2 : le
+    // champ ne doit pas allonger les fichiers déjà sur le disque.
+    {
+        const std::string jsonNu = projectDocumentToJson(documentFromProject(buildProject())).toString();
+        VSM_ASSERT(jsonNu.find("\"pitch\"") == std::string::npos);
+    }
+
     // Le témoin (WSOLA) est un mode à part entière, et il fait l'aller-retour.
     project.tracks[0].clips[0].warpMode = vsm::sequencer::WarpMode::KeepPitchWsola;
     const ProjectLoadResult temoin = parseProjectDocument(

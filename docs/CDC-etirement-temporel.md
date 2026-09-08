@@ -456,10 +456,61 @@ reste le défaut, et le chiffre du vocodeur se publie à côté du sien.
 - **Le suiveur de temps** (détection automatique des temps d'une prise) :
   un chantier de mesure à part entière (un banc de morceaux annotés) ; D12
   pose les marqueurs à la main et par N mesures, et le dit.
-- **La transposition sans changer la durée** (*pitch shift*) : c'est un
-  WSOLA au rapport r suivi d'un rééchantillonnage à 1/r, donc D12.1 + D12.2 —
-  elle viendra comme réglage du clip quand une main la demandera, et sans
-  nouvel algorithme.
+- ~~**La transposition sans changer la durée** (*pitch shift*)~~ — **FAITE
+  le 08/09/2026 (D54)**, voir le § 9. La prédiction écrite ici tenait sur
+  l'essentiel (« sans nouvel algorithme ») et se trompait sur deux points, qui
+  sont notés là-bas plutôt qu'effacés.
 - **L'étirement des clips MIDI** : ils suivent déjà le tempo, par nature.
 - **Une bibliothèque** (Rubber Band, SoundTouch, élastique) : refusée par
   la règle n° 2 du § 0 de `ROADMAP-daw.md`, et par le choix n° 3 de son § 4.
+
+
+## 9. D54 — La transposition d'un clip, et ce que la prédiction du § 8 avait mal vu (08/09/2026)
+
+Le § 8 rangeait la transposition dans « pas au programme » en annonçant ce
+qu'elle coûterait : « *un WSOLA au rapport r suivi d'un rééchantillonnage à
+1/r, donc D12.1 + D12.2 — elle viendra comme réglage du clip quand une main la
+demandera, et sans nouvel algorithme* ». La main l'a demandée par la feuille de
+route : c'est l'élément que D21 avait reporté, puis D22, D23 et D24, chaque
+fois parce qu'une campagne tournait et qu'on ne recompile pas `vsm-render`
+pendant qu'elle court.
+
+**CE QUE LA PRÉDICTION AVAIT BIEN VU.** Aucun algorithme neuf : le noyau sinc
+de D12.1 et le vocodeur de D12.8 font tout le travail, et le code ajouté au
+DSP est un décorateur de vingt lignes.
+
+**CE QU'ELLE AVAIT MAL VU, ET C'EST DIT PLUTÔT QUE RÉÉCRIT.**
+
+1. **L'ORDRE EST L'INVERSE.** Le § 8 disait « étirer, puis rééchantillonner ».
+   C'est **rééchantillonner d'abord** qui est juste ici, et pour une raison
+   d'architecture : l'étireur lit un `SampleStore` et rien d'autre. Un
+   `PitchedSampleStore` qui rend la trame `i` à la position `i x r` de son
+   magasin se glisse donc SOUS l'étireur sans que celui-ci apprenne quoi que ce
+   soit — la même couture que `MirroredSampleStore` a utilisée pour le clip à
+   l'envers. Dans l'autre ordre, il aurait fallu un tampon intermédiaire, une
+   gestion de recouvrement entre blocs, et l'indépendance à la taille de bloc
+   aurait été à reconquérir.
+2. **CE N'EST PAS LE WSOLA MAIS LE VOCODEUR DE PHASE.** Le § 8 a été écrit
+   avant D12.8, qui a mesuré le vocodeur meilleur (banc 8 : −2 ms sur huit
+   mesures contre −8 au WSOLA) et en a fait le défaut de « hauteur
+   conservée ». La transposition hérite de ce choix-là, pas de celui de D12.2.
+
+**CE QUE LE BANC MESURE** (`audio/tests/test_clip_pitch.cpp`, écrit avant la
+première mesure) : un la 440 transposé rend **880,00 Hz à +12** (0,00 cent),
+**220,00 Hz à −12**, et **659,30 Hz à +7** pour 659,26 attendus (**0,12 cent**)
+— la durée inchangée dans les trois cas. Puis, de bout en bout, par
+l'application : le geste, le projet enregistré, l'export relu au spectre —
+**440,02 / 880,02 / 329,65 Hz**, à un dixième de cent, sur des fichiers de
+232,5 s tous de la même longueur.
+
+**DEUX BORNES, DÉCIDÉES ET ÉCRITES.**
+
+- **±24 demi-tons.** Au-delà, il ne reste plus grand-chose du timbre : monter
+  de trois octaves lit le matériau huit fois plus vite et l'étire d'autant,
+  ce qui n'est plus une transposition mais un effet.
+- **Le mode `Repitch` refuse la transposition, et l'interface grise le geste
+  en disant pourquoi.** `Repitch` signifie « la hauteur suit la durée » : elle
+  y est une CONSÉQUENCE du tempo, pas un réglage. Lui ajouter une hauteur
+  indépendante demanderait une seconde étape d'étirement, c'est-à-dire
+  exactement ce que ce mode existe pour éviter. Le refus est vérifié par un
+  test plutôt que supposé.

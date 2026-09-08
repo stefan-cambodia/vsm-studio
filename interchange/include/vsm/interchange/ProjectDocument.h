@@ -42,10 +42,12 @@ inline constexpr const char* kProjectFormat = "vsm-project";
 /// comprend pas.
 ///
 /// VERSION 3 : le suivi de tempo d'un clip audio (D12, `warp` et
-/// `warpMarkers`) et le clip à l'envers (D13.4, `reversed`). Écrite SEULEMENT si un clip s'en sert — un projet qui ne
-/// suit pas le tempo garde son fichier de version 2, octet pour octet — parce
-/// qu'un lecteur de la version 2 jouerait un clip étiré SANS l'étirer, en
-/// silence, et que ce format refuse plutôt qu'il ne devine.
+/// `warpMarkers`), le clip à l'envers (D13.4, `reversed`) et la transposition
+/// d'un clip audio (D54, `pitch`). Écrite SEULEMENT si un clip s'en sert — un
+/// projet qui ne suit pas le tempo garde son fichier de version 2, octet pour
+/// octet — parce qu'un lecteur de la version 2 jouerait un clip étiré SANS
+/// l'étirer, ou un clip transposé à sa hauteur d'origine, en silence, et que
+/// ce format refuse plutôt qu'il ne devine.
 inline constexpr int kProjectVersion = 3;
 /// La version qu'un projet sans suivi de tempo continue d'écrire.
 inline constexpr int kProjectVersionWithoutWarp = 2;
@@ -151,6 +153,12 @@ struct ProjectClip {
     /// À l'envers (D13.4). Comme le suivi de tempo, il fait monter la version
     /// du fichier : un lecteur ancien jouerait le clip à l'endroit sans un mot.
     bool reversed = false;
+    /// D54 : la transposition du clip audio, en demi-tons (0 = aucune).
+    /// Comme le suivi de tempo et l'inversion, elle fait monter la version du
+    /// fichier : un lecteur ancien jouerait le clip à sa hauteur d'origine
+    /// sans un mot, ce qui est exactement la panne muette que le projet
+    /// refuse.
+    double pitchSemitones = 0.0;
     /// D17.1 : la forme des fondus — « linear » (défaut, non écrit),
     /// « equalPower », « slow », « fast ».
     ///

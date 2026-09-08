@@ -202,6 +202,27 @@ struct Clip {
     /// le sens change, et le moteur lit un miroir du fichier.
     bool reversed = false;
 
+    /// LA HAUTEUR DU CLIP AUDIO, EN DEMI-TONS (D54 -- l'élément que D21 avait
+    /// reporté, puis D22, D23 et D24 après lui).
+    ///
+    /// C'est le *Transpose* d'un clip de Live et la ligne d'information de
+    /// Cubase : monter une prise de basse d'une quarte sans toucher au tempo.
+    /// La DURÉE NE BOUGE PAS -- c'est toute la différence avec `Repitch`, qui
+    /// est le vinyle qu'on ralentit : la hauteur y suit la durée parce que
+    /// l'une cause l'autre. Ici les deux sont séparées, au prix d'un étirement.
+    ///
+    /// EN DOUBLE, ET NON EN ENTIER : un désaccord de quelques cents (0,01
+    /// demi-ton) est un réglage de montage courant -- accorder une prise sur
+    /// une autre --, et le stocker en demi-tons fractionnaires évite d'avoir
+    /// deux champs qui disent la même chose. Zéro laisse le clip EXACTEMENT
+    /// sur le chemin de lecture d'avant D54, sans un test de plus par
+    /// échantillon.
+    ///
+    /// Sans effet sur un clip MIDI : la transposition d'une piste MIDI est
+    /// `Track::transposeSemitones`, qui déplace des notes et non des
+    /// échantillons.
+    double pitchSemitones = 0.0;
+
     /// IDENTIFIANT STABLE, pour que la sélection de la vue d'arrangement
     /// survive aux gestes (D5.1).
     ///

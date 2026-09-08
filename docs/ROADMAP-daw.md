@@ -9217,3 +9217,91 @@ Vérifié à l'écran : trois captures (l'écran d'avant, l'écran d'après, et 
 `gate`), chaque nombre affiché confronté au JSON relu séparément.
 
 Tests : 1 285 audio, 319 core, 287 interchange, 25 clap, 11 panels — verts.
+
+### Phase D54 — Transposer un clip audio : l'élément que D21 avait reporté, et que trois phases après elle ont reporté avec (08/09/2026, 19:40)
+
+**Un élément reporté quatre fois pour une raison qui a cessé d'exister.** D21 :
+« *Transposer un clip audio demande un rendu différent dans le moteur, donc dans
+`vsm-render` aussi, qu'on ne recompile pas pendant qu'une campagne tourne. Il
+attend la fin de la campagne R1.* » D22, D23 et D24 l'ont reporté à leur tour,
+chaque fois en le disant, chaque fois pour la même raison. **La campagne R1 est
+finie ; aucune ne tourne** (`pgrep` avant d'y croire, comme le § « Pièges
+payés » l'exige). L'élément se prend donc, et il se prend en premier parce
+qu'un report dont le motif a expiré n'est plus un report, c'est un oubli.
+
+**LE PRINCIPE TIENT EN UNE LIGNE.** Lire un matériau `r` fois plus vite monte
+sa hauteur d'un facteur `r` et raccourcit sa durée d'autant — le vinyle qu'on
+accélère, que le mode `Repitch` fait depuis D12. Étirer le résultat par le même
+`r` rend la durée sans retoucher la hauteur — ce que le vocodeur de phase fait
+depuis D12.8. **Aucune des deux moitiés n'est neuve ; c'est leur composition qui
+l'est**, et le code ajouté au DSP est un décorateur de vingt lignes,
+`PitchedSampleStore`, glissé SOUS l'étireur — la même couture que
+`MirroredSampleStore` avait utilisée pour le clip à l'envers.
+
+**LA PRÉDICTION DU CDC ÉTAIT BONNE SUR L'ESSENTIEL ET FAUSSE SUR DEUX POINTS**,
+notés au § 9 de `CDC-etirement-temporel.md` plutôt qu'effacés : l'ordre est
+l'inverse de celui annoncé (rééchantillonner d'abord, sans quoi il faudrait un
+tampon intermédiaire et reconquérir l'indépendance à la taille de bloc), et
+l'étireur est le vocodeur et non le WSOLA — le § 8 avait été écrit avant que
+D12.8 ne tranche.
+
+**CE QUE LE BANC MESURE**, écrit avant la première mesure :
+
+| demandé | attendu | mesuré | écart |
+|---|---|---|---|
+| +12 demi-tons | 880 Hz | **880,00 Hz** | 0,00 cent |
+| −12 demi-tons | 220 Hz | **220,00 Hz** | −0,00 cent |
+| +7 demi-tons | 659,26 Hz | **659,30 Hz** | 0,12 cent |
+
+La durée ne bouge dans aucun des trois — c'est là que `Repitch` échoue par
+construction, et c'est toute la raison d'être de cette phase. Le banc vérifie
+aussi que **zéro demi-ton laisse le chemin d'avant au bit près** (ni étireur ni
+magasin enveloppant : un réglage neutre qui change le son est un réglage cassé)
+et que le rendu est **identique à 128, 512 et 2 048 échantillons par bloc** —
+l'invariant n° 3, sans lequel la lecture et `vsm-render` ne produiraient pas le
+même fichier.
+
+**ET LE BANC A ÉTÉ CASSÉ EXPRÈS POUR VOIR S'IL MORD.** `preparePitchedSpans`
+désactivée, les trois mesures tombent à 702, 348 et 550 Hz — c'est-à-dire au
+bord de la fenêtre de recherche — et les trois tests échouent. Un banc qui
+passe du premier coup mérite qu'on vérifie qu'il mesure quelque chose. Le même
+traitement a été appliqué à l'aller-retour de sérialisation : la lecture du
+champ neutralisée, le test tombe.
+
+**DE BOUT EN BOUT, PAR L'APPLICATION.** Le geste (`hauteur-clip:+12`), le
+projet enregistré, l'export relu au spectre : **440,02 / 880,02 / 329,65 Hz**, à
+un dixième de cent, sur trois fichiers de 232,5 s tous de la même longueur. Ce
+n'est pas le rendu qui est mesuré, c'est le fichier — la leçon de D49.
+
+**DEUX BORNES, DÉCIDÉES ET ÉCRITES PLUTÔT QUE DEMANDÉES.**
+
+- **±24 demi-tons** : au-delà, monter de trois octaves lit le matériau huit fois
+  plus vite et l'étire d'autant, ce qui n'est plus une transposition mais un
+  effet.
+- **Le mode `Repitch` la refuse, et le menu grise le geste EN DISANT POURQUOI**
+  (« Hauteur du clip — suit la durée (mode Rééchantillonné) »). Dans ce mode la
+  hauteur est une conséquence du tempo, pas un réglage ; lui ajouter une hauteur
+  indépendante demanderait une seconde étape d'étirement, c'est-à-dire ce que ce
+  mode existe pour éviter. Un geste qui ne ferait rien sans le dire serait pire
+  que pas de geste.
+
+**DEUX DÉFAUTS TROUVÉS EN VÉRIFIANT, ET CORRIGÉS DANS LA FOULÉE.**
+
+1. **Le geste posait la hauteur sur les clips MIDI aussi.** Le sous-menu ne
+   s'offre que sur un clip audio, mais la sélection, elle, peut en couvrir
+   d'autres — et « tout choisir » les couvre toutes. Vu sur la première trace :
+   « la440 +12,00, guitar +12,00, other +12,00… ». Un champ écrit dans le projet
+   pour ne rien faire est un mensonge à retardement ; le geste ne touche plus
+   que les pistes audio.
+2. **LE CARTOUCHE DE GAIN DE D22.1 ÉTAIT INVISIBLE SUR TOUT CLIP UN PEU LONG.**
+   Il était posé au bord DROIT du rectangle du clip : sur une prise plus large
+   que la vue — c'est-à-dire sur toute prise de plus de quelques mesures — ce
+   bord est hors de l'écran, et le gain ne s'affichait **nulle part**. Trouvé en
+   cherchant mon propre cartouche de hauteur sur une capture où il n'y était
+   pas. Borné à la fenêtre, il reste sur le clip et se voit toujours : la
+   capture montre maintenant « −3.0 dB » sur les six clips et « +12 st » sur le
+   seul clip audio.
+
+Tests : 1 291 audio, 319 core, 287 interchange, 25 clap, 11 panels — verts
+(six bancs neufs pour la hauteur d'un clip, un aller-retour de sérialisation
+avec ses cents).

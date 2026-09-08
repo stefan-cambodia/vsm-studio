@@ -690,6 +690,35 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
                                     + juce::String(dB, 1) + " dB)", gain);
                 menu.addItem(57, u8"Phase invers\u00e9e", true, clip->invertPhase);
             }
+            // D54 : LA HAUTEUR DU CLIP — l'élément que D21 avait reporté. Même
+            // forme que le gain, et pour la même raison : le geste est « un
+            // demi-ton de plus », il s'enchaîne, et le titre dit d'où l'on
+            // part. Les pas sont musicaux — le demi-ton, la quarte, l'octave —
+            // et non une progression régulière : on transpose une basse d'une
+            // octave et une voix d'un ton, jamais de quatre demi-tons.
+            {
+                juce::PopupMenu hauteur;
+                static const int kDemiTons[] = {-12, -5, -1, 1, 5, 12};
+                // GRISÉ EN MODE « VINYLE », et le titre dit pourquoi : dans ce
+                // mode la hauteur SUIT la durée, elle n'est pas un réglage. Un
+                // geste qui ne ferait rien sans le dire serait pire que pas de
+                // geste du tout.
+                const bool vinyle = clip->warpMode == vsm::sequencer::WarpMode::Repitch;
+                for (int i = 0; i < 6; ++i)
+                    hauteur.addItem(60 + i,
+                                     juce::String(kDemiTons[i] > 0 ? "+" : "") + juce::String(kDemiTons[i])
+                                         + juce::String(u8" demi-ton") + (std::abs(kDemiTons[i]) > 1 ? "s" : ""),
+                                     !vinyle);
+                hauteur.addSeparator();
+                hauteur.addItem(66, u8"0 (remettre)", !vinyle && std::abs(clip->pitchSemitones) > 1e-6);
+                juce::String titre = juce::String(u8"Hauteur du clip (")
+                                   + (clip->pitchSemitones >= 0.0 ? "+" : "")
+                                   + juce::String(clip->pitchSemitones, 2) + juce::String(u8" demi-ton");
+                if (std::abs(clip->pitchSemitones) > 1.0) titre += "s";
+                titre += ")";
+                if (vinyle) titre = juce::String(u8"Hauteur du clip — suit la dur\u00e9e (mode R\u00e9\u00e9chantillonn\u00e9)");
+                menu.addSubMenu(titre, hauteur, !vinyle);
+            }
             menu.addItem(19, u8"Rogner au son (d\u00e9tecter le silence)");
             // D20.3 : DÉCOUPER AUX TRANSITOIRES, sur les clips audio choisis.
             // Le nombre de coupes se dit APRÈS, pas dans l'entrée : le compter
@@ -1302,6 +1331,33 @@ void ArrangementComponent::clipMenuAction(size_t piste, uint64_t clipId, int cho
             ClipSelection cibles = selection_;
             cibles.insert(clipId);
             for (auto& t : project_->tracks) toggleClipPhase(t.clips, cibles);
+            break;
+        }
+        case 60: case 61: case 62: case 63: case 64: case 65: case 66: {
+            // D54 : sur toute la sélection, chacun depuis SA hauteur -- comme
+            // le gain, « +12 » monte six clips d'une octave, il ne les aligne
+            // pas sur la même note.
+            static const int kDemiTons[] = {-12, -5, -1, 1, 5, 12};
+            if (onEditStarted) onEditStarted(choix == 66 ? juce::String(u8"Hauteur du clip \u00e0 z\u00e9ro")
+                                                        : juce::String(u8"Hauteur du clip"));
+            ClipSelection cibles = selection_;
+            cibles.insert(clipId);
+            for (auto& t : project_->tracks) {
+                // SEULEMENT LES PISTES AUDIO. Le sous-menu ne s'offre que sur
+                // un clip audio, mais la sélection, elle, peut en couvrir
+                // d'autres -- et « tout choisir » les couvre toutes. Poser le
+                // champ sur un clip MIDI l'écrirait dans le projet pour ne
+                // rien faire : un réglage qui ne fait rien mais qu'on relit
+                // est un mensonge à retardement. Transposer une piste MIDI est
+                // un autre geste, qui déplace des NOTES.
+                if (t.kind != vsm::sequencer::Track::Kind::Audio) continue;
+                for (auto& c : t.clips) {
+                    if (cibles.count(c.id) == 0) continue;
+                    const double voulu = choix == 66 ? 0.0
+                                                     : c.pitchSemitones + kDemiTons[choix - 60];
+                    setClipPitch(t.clips, {c.id}, voulu);
+                }
+            }
             break;
         }
         default: return;
@@ -1957,12 +2013,46 @@ void ArrangementComponent::paint(juce::Graphics& g) {
             // doit pas faire chercher dans le mélangeur.
             // Sur un cartouche sombre : la couleur du clip est celle de
             // l'utilisateur, et un texte ambre sur un clip ambre ne se lit pas.
+            // D54 : LA HAUTEUR SE LIT DE MÊME, sous le gain quand les deux
+            // sont posés. Un clip transposé qui ne le dit pas est la même
+            // panne qu'un clip à -12 dB qu'on cherche dans le mélangeur : on
+            // s'étonne d'entendre autre chose que le fichier, et rien à
+            // l'écran ne répond. Le cartouche EST celui du gain, à quelques
+            // pixels plus bas -- deux conventions différentes pour deux
+            // réglages du même clip seraient un piège.
+            // LE CARTOUCHE SUIT LA PARTIE VISIBLE DU CLIP (D54). Il était posé
+            // au bord DROIT du rectangle : sur un clip plus large que la vue --
+            // c'est-à-dire sur toute prise un peu longue --, ce bord est hors
+            // de l'écran et le gain ne s'affichait nulle part. Le réglage
+            // existait, le témoin aussi, et personne ne pouvait le lire. Borné
+            // à la fenêtre, il reste sur le clip et se voit toujours.
+            const float droiteVisible = std::min(r.getRight(),
+                                                  static_cast<float>(bounds.getRight()));
+            float ySousLeGain = r.getY() + 2.0f;
             if (std::abs(clip.gain - 1.0f) > 1e-3f && r.getWidth() > 60.0f) {
                 const float dB = clip.gain > 0.0f ? 20.0f * std::log10(clip.gain) : -96.0f;
                 const juce::String texte = (dB >= 0.0f ? "+" : "") + juce::String(dB, 1) + " dB";
                 g.setFont(juce::Font(juce::FontOptions(11.0f)));
                 const float largeur = juce::GlyphArrangement::getStringWidth(g.getCurrentFont(), texte) + 8.0f;
-                const juce::Rectangle<float> cartouche(r.getRight() - 3.0f - largeur, r.getY() + 2.0f, largeur, 14.0f);
+                const juce::Rectangle<float> cartouche(droiteVisible - 3.0f - largeur, ySousLeGain, largeur, 14.0f);
+                g.setColour(Palette::background.withAlpha(0.85f));
+                g.fillRoundedRectangle(cartouche, 3.0f);
+                g.setColour(Palette::accentAmber);
+                g.drawText(texte, cartouche, juce::Justification::centred, false);
+                ySousLeGain += 15.0f;
+            }
+            if (std::abs(clip.pitchSemitones) > 1e-6 && r.getWidth() > 60.0f
+                && ySousLeGain + 14.0f < r.getBottom()) {
+                // Écrite en DEMI-TONS, avec son signe et sans décimale quand
+                // elle est entière : « +12 » se lit, « +12.00 » se déchiffre.
+                const double n = clip.pitchSemitones;
+                const juce::String texte = juce::String(n > 0.0 ? "+" : "")
+                    + (std::abs(n - std::round(n)) < 1e-6 ? juce::String(static_cast<int>(std::lround(n)))
+                                                          : juce::String(n, 2))
+                    + " st";
+                g.setFont(juce::Font(juce::FontOptions(11.0f)));
+                const float largeur = juce::GlyphArrangement::getStringWidth(g.getCurrentFont(), texte) + 8.0f;
+                const juce::Rectangle<float> cartouche(droiteVisible - 3.0f - largeur, ySousLeGain, largeur, 14.0f);
                 g.setColour(Palette::background.withAlpha(0.85f));
                 g.fillRoundedRectangle(cartouche, 3.0f);
                 g.setColour(Palette::accentAmber);

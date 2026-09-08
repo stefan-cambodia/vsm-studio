@@ -41,6 +41,16 @@ Un échantillon glissé depuis le navigateur tombe sur la piste survolée, **à 
 
 **Normaliser.** Le clic droit sur un clip audio propose *Normaliser* : le gain du clip devient l'inverse de la crête de ce qu'il joue, et la forme d'onde le montre.
 
+**Transposer un clip audio.** Le clic droit sur un clip audio propose *Hauteur
+du clip*, en demi-tons (±1, ±5, ±12, et « 0 (remettre) ») : la hauteur monte ou
+descend et **la durée ne bouge pas** — c'est ce qui la distingue du mode de
+suivi *Rééchantillonné*, où la hauteur suit le tempo comme un vinyle qu'on
+ralentit. Les pas s'enchaînent (deux fois +12 font deux octaves), la sélection
+entière suit, et chaque clip part de SA hauteur. Bornée à ±24 demi-tons ; la
+valeur s'écrit sur le clip (« +12 st ») et se sauvegarde. Sur un clip en mode
+*Rééchantillonné* le geste est grisé et le titre dit pourquoi : là-bas la
+hauteur est une conséquence du tempo, pas un réglage.
+
 **À l'envers.** Le clic droit sur un clip audio propose *À l'envers* : le clip lit sa fenêtre à rebours (une cymbale inversée, une traîne qui monte), sa forme d'onde se dessine à l'envers, et cela se sauvegarde ; un clip qui suit le tempo reste étiré, à l'envers.
 
 **Deux prises bout à bout.** Deux clips audio qui se chevauchent sur une même piste se **fondent** l'un dans l'autre sur leur chevauchement (hachuré) : le premier s'éteint pendant que le second monte, comme dans Cubase ou Live — ils ne s'additionnent pas. Un fondu que vous avez réglé plus long est gardé.
@@ -1045,7 +1055,9 @@ capture n'a rien attrapé — et c'est le seul moyen de les départager sans éc
 lance la lecture avant la capture (`VSM_LECTURE=4000` : après 4 s ; les voyants IN et OUT de la barre de
 transport ne s'allument que si quelque chose passe), `VSM_PRESET_PISTE=nom`
 écrit la piste choisie comme preset de piste, sans la boîte qui demande le
-nom ; parmi les jetons de `VSM_VUE`, `gain-clip:+3` (ou -6, -3, -1, +1, +6, 0)
+nom ; parmi les jetons de `VSM_VUE`, `hauteur-clip:+12` (ou -12, -5, -1, +1, +5, 0)
+transpose les clips AUDIO choisis et écrit la hauteur obtenue sur le terminal,
+`gain-clip:+3` (ou -6, -3, -1, +1, +6, 0)
 et `phase-clip` agissent sur le clip choisi comme le menu contextuel, et
 `note:60` joue une note par le chemin du clavier d'ordinateur, rejouée
 pendant trois secondes pour que les voyants se photographient allumés.

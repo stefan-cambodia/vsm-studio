@@ -2,6 +2,7 @@
 #include "vsm/audio/dsp/SincResampler.h"
 #include "vsm/audio/io/WavStreamReader.h"
 #include <array>
+#include <cmath>
 #include <atomic>
 #include <cstdint>
 #include <mutex>
@@ -147,6 +148,82 @@ public:
     uint64_t cacheMisses() const override { return base_ ? base_->cacheMisses() : 0; }
 private:
     std::shared_ptr<const SampleStore> base_;
+};
+
+/// LA HAUTEUR D'UN CLIP (D54) : la trame `i` de ce magasin est la position
+/// FRACTIONNAIRE `i x ratio` du magasin qu'il enveloppe, interpolée par le
+/// noyau sinc de D12.1.
+///
+/// C'EST LA MOITIÉ D'UNE TRANSPOSITION, et la moitié la plus simple. Lire un
+/// matériau `r` fois plus vite monte sa hauteur d'un facteur `r` ET raccourcit
+/// sa durée d'autant -- c'est le vinyle qu'on accélère. L'autre moitié rend la
+/// durée : le vocodeur de phase étire ce magasin-ci par le même `r`, et le
+/// résultat est un clip de la MÊME longueur, transposé. Aucune des deux
+/// moitiés n'est neuve ; c'est leur composition qui l'est.
+///
+/// POURQUOI UN MAGASIN PLUTÔT QU'UNE ÉTAPE DE PLUS DANS LA LECTURE : le
+/// vocodeur lit un `SampleStore` et ne sait rien d'autre. L'envelopper ici
+/// laisse le vocodeur, l'étireur, le miroir et la diffusion disque exactement
+/// où ils sont -- la même couture que `MirroredSampleStore` a utilisée pour le
+/// clip à l'envers, et pour la même raison.
+///
+/// SANS ÉTAT, DONC INDÉPENDANT DE LA TAILLE DE BLOC : `frameAt(i)` ne dépend
+/// que de `i`. C'est ce que l'invariant n° 3 exige, et cela s'obtient ici en ne
+/// gardant rien entre deux appels.
+class PitchedSampleStore final : public SampleStore {
+public:
+    /// ALLOUE (la table du noyau) : construit hors thread audio, à la
+    /// publication de la piste, comme le miroir et l'étireur.
+    ///
+    /// LE NOYAU EST RÉGLÉ SUR LE RAPPORT, et ce n'est pas un détail : sa
+    /// coupure vaut `0,5 x min(1, 1/ratio)`. Monter d'une octave lit le
+    /// matériau deux fois plus vite, donc SOUS-ÉCHANTILLONNE -- sans cette
+    /// coupure, tout ce qui dépasse la moitié de la nouvelle fréquence de
+    /// Nyquist se replierait, et un aigu propre reviendrait en grave sale.
+    PitchedSampleStore(std::shared_ptr<const SampleStore> base, double ratio)
+        : base_(std::move(base)), ratio_(ratio > 1e-9 ? ratio : 1.0) {
+        noyau_.prepare(ratio_);
+    }
+
+    /// La durée RACCOURCIT quand on monte : c'est la durée avant que
+    /// l'étirement ne la rende.
+    int64_t frames() const override {
+        if (!base_) return 0;
+        return static_cast<int64_t>(static_cast<double>(base_->frames()) / ratio_);
+    }
+
+    bool frameAt(int64_t index, float& left, float& right) const override {
+        if (!base_) return false;
+        const double position = static_cast<double>(index) * ratio_;
+        if (position < 0.0 || position >= static_cast<double>(base_->frames())) return false;
+        const SampleStore* b = base_.get();
+        const auto lire = [b](int64_t i, float& g, float& d) { return b->frameAt(i, g, d); };
+        left = 0.0f;
+        right = 0.0f;
+        noyau_.stereoAt(lire, position, left, right);
+        return true;
+    }
+
+    /// LA DEMANDE DE PLAGE EST MISE À L'ÉCHELLE, et débordée de la largeur du
+    /// noyau : sans cela, un matériau diffusé livrerait la fenêtre demandée et
+    /// pas les 64 trames que l'interpolation lit de part et d'autre.
+    void requestRange(int64_t startFrame, int64_t count) const override {
+        if (!base_ || count <= 0) return;
+        const auto debut = static_cast<int64_t>(std::floor(static_cast<double>(startFrame) * ratio_)) - 64;
+        const auto n = static_cast<int64_t>(std::ceil(static_cast<double>(count) * ratio_)) + 128;
+        base_->requestRange(debut, n);
+    }
+    void beginRead() const override { if (base_) base_->beginRead(); }
+    void endRead() const override { if (base_) base_->endRead(); }
+    size_t residentBytes() const override { return 0; }   // rien à lui : tout est à l'original
+    uint64_t cacheMisses() const override { return base_ ? base_->cacheMisses() : 0; }
+
+    double ratio() const { return ratio_; }
+
+private:
+    std::shared_ptr<const SampleStore> base_;
+    double ratio_ = 1.0;
+    vsm::audio::dsp::SincResampler noyau_;
 };
 
 class StreamedSampleStore final : public SampleStore {

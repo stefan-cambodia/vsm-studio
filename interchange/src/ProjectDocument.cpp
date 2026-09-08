@@ -128,6 +128,10 @@ JsonValue clipToJson(const ProjectClip& clip) {
         c.set("warpMarkers", std::move(marqueurs));
     }
     if (clip.reversed) c.set("reversed", JsonValue::makeBoolean(true));
+    // D54 : écrite seulement quand elle n'est pas nulle -- un projet sans
+    // transposition se réécrit octet pour octet, comme avant.
+    if (clip.pitchSemitones != 0.0)
+        c.set("pitch", JsonValue::makeFloat(static_cast<float>(clip.pitchSemitones)));
     return c;
 }
 
@@ -153,6 +157,7 @@ ProjectClip clipFromJson(const JsonValue& clipJson) {
         clip.warpMarkers.emplace_back(m["seconds"].asNumber(0.0),
                                       static_cast<int64_t>(m["tick"].asNumber(0.0)));
     clip.reversed = clipJson["reversed"].asBoolean(false);
+    clip.pitchSemitones = clipJson["pitch"].asNumber(0.0);
     return clip;
 }
 
@@ -160,9 +165,11 @@ ProjectClip clipFromJson(const JsonValue& clipJson) {
 /// version écrite.
 bool usesWarp(const ProjectDocument& document) {
     for (const auto& track : document.tracks) {
-        for (const auto& clip : track.clips) if (clip.warpMode != 0 || clip.reversed) return true;
+        for (const auto& clip : track.clips)
+            if (clip.warpMode != 0 || clip.reversed || clip.pitchSemitones != 0.0) return true;
         for (const auto& take : track.takes)
-            for (const auto& clip : take.clips) if (clip.warpMode != 0 || clip.reversed) return true;
+            for (const auto& clip : take.clips)
+                if (clip.warpMode != 0 || clip.reversed || clip.pitchSemitones != 0.0) return true;
     }
     return false;
 }
@@ -201,6 +208,7 @@ ProjectClip clipToDocument(const vsm::sequencer::Clip& clip) {
     c.warpMode = static_cast<int>(clip.warpMode);
     for (const auto& m : clip.warpMarkers) c.warpMarkers.emplace_back(m.sourceSeconds, m.tick);
     c.reversed = clip.reversed;
+    c.pitchSemitones = clip.pitchSemitones;   // D54
     // VIDE POUR `Linear`, et non "linear" : c'est le défaut d'un clip, et
     // l'écrire allongerait tous les fichiers déjà sur le disque sans rien dire.
     c.fadeShape = clip.fadeShape == vsm::sequencer::FadeShape::Linear
@@ -219,6 +227,7 @@ vsm::sequencer::Clip clipToModel(const ProjectClip& clip) {
                                     : vsm::sequencer::WarpMode::Off;
     for (const auto& [secondes, tick] : clip.warpMarkers) c.warpMarkers.push_back({secondes, tick});
     c.reversed = clip.reversed;
+    c.pitchSemitones = clip.pitchSemitones;   // D54
     c.fadeShape = fadeShapeFromName(clip.fadeShape);
     return c;
 }

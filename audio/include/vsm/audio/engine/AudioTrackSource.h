@@ -98,6 +98,10 @@ struct AudioClipSpan {
     /// À l'envers (D13.4). Traduit à la publication par `prepareWarpedSpans`
     /// en un miroir du matériau et une fenêtre convertie.
     bool reversed = false;
+    /// D54 : LA TRANSPOSITION DU CLIP, en demi-tons. Zéro laisse la portée sur
+    /// le chemin d'avant. Traduite à la publication par `prepareWarpedSpans`
+    /// en un `PitchedSampleStore` et un étirement qui rend la durée.
+    double pitchSemitones = 0.0;
     /// Nul quand le clip ne suit pas le tempo -- c'est-à-dire presque toujours,
     /// et le chemin de lecture est alors exactement celui d'avant D12.
     std::shared_ptr<ClipWarp> warp;

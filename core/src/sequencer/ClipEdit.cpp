@@ -133,6 +133,17 @@ void setClipFadeOut(std::vector<Clip>& clips, uint64_t clipId, Tick atTick, Tick
     }
 }
 
+void setClipPitch(std::vector<Clip>& clips, const ClipSelection& selection, double semitones) {
+    if (selection.empty()) return;
+    const double valeur = std::max(-24.0, std::min(24.0, semitones));
+    for (auto& clip : clips) {
+        if (!selected(selection, clip)) continue;
+        // Le mode « vinyle » a déjà sa hauteur, et elle vient du tempo.
+        if (clip.warpMode == WarpMode::Repitch) continue;
+        clip.pitchSemitones = valeur;
+    }
+}
+
 void setClipGain(std::vector<Clip>& clips, const ClipSelection& selection, float gain) {
     if (selection.empty()) return;
     // JAMAIS NÉGATIF : une inversion de phase est un réglage à part, et la

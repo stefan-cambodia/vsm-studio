@@ -1294,6 +1294,33 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
         if (choix < 0 || !arrangement_.runClipMenuActionForCapture(choix))
             std::fputs("VSM_VUE gain-clip : pas parmi -6, -3, -1, +1, +3, +6, 0, ou aucun clip choisi\n", stderr);
     }
+    // D54 : la hauteur du clip choisi (hauteur-clip:+12, hauteur-clip:-5,
+    // hauteur-clip:0), par la MÊME fonction que le menu contextuel. Et l'on
+    // DIT la hauteur obtenue : deux demi-tons ne se lisent pas sur une capture
+    // d'un clip de vingt pixels, alors qu'un nombre, si.
+    else if (nom.startsWith("hauteur-clip:")) {
+        static const int kDemiTons[] = {-12, -5, -1, 1, 5, 12};
+        const int voulu = nom.substring(13).getIntValue();
+        int choix = voulu == 0 ? 66 : -1;
+        for (int i = 0; i < 6; ++i) if (kDemiTons[i] == voulu) choix = 60 + i;
+        const bool fait = choix >= 0 && arrangement_.runClipMenuActionForCapture(choix);
+        if (!fait) {
+            std::fputs("VSM_VUE hauteur-clip : pas parmi -12, -5, -1, +1, +5, +12, 0, "
+                        "ou aucun clip choisi\n", stderr);
+        } else {
+            juce::String dit;
+            for (const auto& piste : project_.tracks)
+                for (const auto& clip : piste.clips)
+                    if (clip.pitchSemitones != 0.0)
+                        dit << (dit.isEmpty() ? "" : ", ") << juce::String(clip.name)
+                            << " " << (clip.pitchSemitones > 0 ? "+" : "")
+                            << juce::String(clip.pitchSemitones, 2);
+            std::fputs((juce::String::fromUTF8(u8"VSM_VUE hauteur-clip : ")
+                         + (dit.isEmpty() ? juce::String::fromUTF8(u8"aucun clip transposé")
+                                          : dit + juce::String::fromUTF8(u8" demi-ton(s)"))
+                         + "\n").toRawUTF8(), stderr);
+        }
+    }
     // D34.2 : délier le clip choisi, par la MÊME fonction que le menu
     // contextuel. Et DIRE ce qui a changé : un marqueur de lien sur un clip de
     // vingt pixels ne se juge pas sur une capture, et le nombre de clips liés

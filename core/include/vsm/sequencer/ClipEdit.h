@@ -135,6 +135,21 @@ void setClipGain(std::vector<Clip>& clips, const ClipSelection& selection, float
 /// Inverse la phase des clips sélectionnés (bascule).
 void toggleClipPhase(std::vector<Clip>& clips, const ClipSelection& selection);
 
+/// D54 : règle la HAUTEUR des clips audio sélectionnés, en demi-tons.
+///
+/// BORNÉE À ±24 DEMI-TONS, deux octaves de part et d'autre. Au-delà, il ne
+/// reste plus grand-chose du timbre d'origine — monter de trois octaves lit le
+/// matériau huit fois plus vite et l'étire d'autant, ce qui n'est plus une
+/// transposition mais un effet. La borne est écrite ici, une fois, plutôt qu'à
+/// chaque appelant.
+///
+/// SANS EFFET SUR UN CLIP EN MODE `Repitch` : dans ce mode la hauteur suit la
+/// durée par construction (c'est le vinyle qu'on ralentit), et une hauteur
+/// indépendante y demanderait une seconde étape d'étirement — c'est-à-dire ce
+/// que ce mode existe pour éviter. Le refus est SILENCIEUX ici et DIT par
+/// l'interface, qui grise le geste : le modèle n'a pas de voix.
+void setClipPitch(std::vector<Clip>& clips, const ClipSelection& selection, double semitones);
+
 /// Les bornes d'une sélection sur la ligne de temps, pour savoir de combien
 /// décaler une duplication. Rend faux si la sélection est vide.
 /// D11.1 — LE CLIP CHANGE DE PISTE, ET IL EMPORTE CE QUE SA FENÊTRE COUVRE.

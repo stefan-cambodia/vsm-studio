@@ -119,6 +119,7 @@ endif()
 if (VSM_BUILD_TESTS)
     add_executable(vsm_audio_tests
         tests/test_main.cpp
+        tests/test_clip_pitch.cpp
         tests/test_oscillator.cpp
         tests/test_envelope.cpp
         tests/test_filter.cpp

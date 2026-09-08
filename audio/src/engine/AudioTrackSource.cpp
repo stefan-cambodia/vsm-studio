@@ -360,6 +360,7 @@ std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
             span.gain = clip.gain;
             span.invertPhase = clip.invertPhase;
             span.reversed = clip.reversed;
+            span.pitchSemitones = clip.pitchSemitones;   // D54
             auto warp = std::make_shared<ClipWarp>();
             warp->repitch = clip.warpMode == vsm::sequencer::WarpMode::Repitch;
             // LE VOCODEUR EST LE DÉFAUT DE « HAUTEUR CONSERVÉE » (D12.8, banc
@@ -415,6 +416,7 @@ std::vector<AudioClipSpan> spansFromTrack(const vsm::sequencer::Track& track,
             span.gain = clip.gain;
             span.invertPhase = clip.invertPhase;
             span.reversed = clip.reversed;
+            span.pitchSemitones = clip.pitchSemitones;   // D54
             if (span.lengthFrames > 0) spans.push_back(span);
         }
     }
@@ -460,9 +462,64 @@ void prepareReversedSpans(AudioTrackSource& source) {
     }
 }
 
+/// D54 : LA TRANSPOSITION D'UN CLIP AUDIO — l'élément que D21 avait reporté.
+///
+/// LE PRINCIPE TIENT EN UNE LIGNE : lire le matériau `r` fois plus vite monte
+/// sa hauteur d'un facteur `r` et raccourcit sa durée d'autant ; étirer le
+/// résultat par le même `r` rend la durée sans retoucher la hauteur. La
+/// première moitié est un `PitchedSampleStore`, la seconde le vocodeur de
+/// phase de D12.8. Ni l'une ni l'autre n'est neuve : c'est leur composition.
+///
+/// APPELÉE APRÈS `prepareReversedSpans`, et l'ordre compte : un clip à l'envers
+/// a déjà remplacé son magasin par le miroir et converti sa fenêtre. On
+/// enveloppe donc CE magasin-là, et la carte se construit sur la fenêtre déjà
+/// convertie — sans quoi un clip à la fois inversé et transposé lirait le
+/// mauvais bout du fichier.
+///
+/// LE MODE `Repitch` EST REFUSÉ, ET C'EST ÉCRIT PLUTÔT QUE SUBI. `Repitch`
+/// signifie « la hauteur suit la durée », c'est-à-dire le vinyle qu'on
+/// ralentit : la hauteur y est une CONSÉQUENCE du tempo, pas un réglage. Lui
+/// ajouter une hauteur indépendante demanderait une seconde étape d'étirement,
+/// c'est-à-dire précisément ce que ce mode existe pour éviter. Le clip garde
+/// alors sa hauteur de vinyle, et l'application le dit (elle grise le geste).
+void preparePitchedSpans(AudioTrackSource& source) {
+    if (!source.samples) return;
+    for (auto& span : source.clips) {
+        if (std::abs(span.pitchSemitones) < 1e-9) continue;
+        // Un clip déjà en mode « vinyle » n'a pas de hauteur indépendante.
+        if (span.warp && span.warp->repitch) continue;
+
+        const double r = std::pow(2.0, span.pitchSemitones / 12.0);
+        auto base = span.source ? span.source : source.samples;
+        auto hauteur = std::make_shared<PitchedSampleStore>(base, r);
+
+        if (span.warp) {
+            // LE CLIP SUIT DÉJÀ LE TEMPO : la carte pointe vers le magasin de
+            // base, et le magasin devient le transposé. Chaque position source
+            // se divise donc par `r` — le même contenu, dans les coordonnées
+            // du nouveau magasin.
+            for (auto& point : span.warp->map) point.sourceFrame /= r;
+        } else {
+            // LE CLIP NE SUIT PAS LE TEMPO : il n'avait pas d'étireur, il lui
+            // en faut un, dont le seul travail est de rendre la durée. Deux
+            // points suffisent — la relation est linéaire d'un bout à l'autre.
+            auto warp = std::make_shared<ClipWarp>();
+            warp->repitch = false;
+            warp->vocoder = true;   // le défaut de « hauteur conservée » depuis D12.8
+            warp->map.push_back({span.startFrame,
+                                  static_cast<double>(span.sourceStartFrame) / r});
+            warp->map.push_back({span.startFrame + span.lengthFrames,
+                                  static_cast<double>(span.sourceStartFrame + span.lengthFrames) / r});
+            span.warp = std::move(warp);
+        }
+        span.source = std::move(hauteur);
+    }
+}
+
 void prepareWarpedSpans(AudioTrackSource& source) {
     if (!source.samples) return;
     prepareReversedSpans(source);
+    preparePitchedSpans(source);
     bool besoin = false;
     for (const auto& span : source.clips) if (span.warp) { besoin = true; break; }
     if (!besoin) return;
@@ -473,7 +530,7 @@ void prepareWarpedSpans(AudioTrackSource& source) {
     // est faite quand au moins une portée conserve la hauteur.
     std::shared_ptr<const std::vector<int64_t>> attaques;
     for (const auto& span : source.clips) {
-        if (span.warp && !span.warp->repitch) {
+        if (span.warp && !span.warp->repitch && span.pitchSemitones == 0.0 && !span.source) {
             const SampleStore::ReadGuard garde(source.samples.get());
             attaques = std::make_shared<const std::vector<int64_t>>(
                 vsm::audio::dsp::TransientDetector::detect(*source.samples, 0, source.samples->frames()));
@@ -482,7 +539,18 @@ void prepareWarpedSpans(AudioTrackSource& source) {
     }
     for (auto& span : source.clips) {
         if (!span.warp) continue;
-        span.warp->transients = attaques;
+        // LES ATTAQUES SONT CELLES DU MAGASIN QUE LA PORTÉE LIT (D54). Une
+        // portée transposée — ou inversée — ne lit pas le magasin de la piste
+        // mais un enveloppe dont les indices sont AUTRES : lui donner les
+        // attaques de l'original placerait les points de recollement n'importe
+        // où. Elles se cherchent donc dans son magasin à elle.
+        if (span.source) {
+            const SampleStore::ReadGuard garde(span.source.get());
+            span.warp->transients = std::make_shared<const std::vector<int64_t>>(
+                vsm::audio::dsp::TransientDetector::detect(*span.source, 0, span.source->frames()));
+        } else {
+            span.warp->transients = attaques;
+        }
         span.warp->prepare();
     }
 }
