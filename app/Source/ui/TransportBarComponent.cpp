@@ -208,89 +208,98 @@ void TransportBarComponent::setMidiActivity(bool in, bool out) {
     if ((midiOutUntil_ > maintenant) != midiOutLit_) repaint(midiOutBounds_);
 }
 
-void TransportBarComponent::resized() {
-    auto area = getLocalBounds().reduced(8, 6);
+namespace {
+/// La rangée vaut 44 px de contenu ; avec les six pixels de marge en haut et en
+/// bas, une rangée fait les 56 px que `MainComponent` réservait en dur.
+constexpr int kHauteurRangee = 44;
+constexpr int kMargeX = 8;
+constexpr int kMargeY = 6;
+constexpr int kMargeInterne = 0;
+} // namespace
 
-    // LA RANGÉE DOIT TENIR DANS LA FENÊTRE, À 150 % AUSSI. Elle était posée
-    // en largeurs fixes -- 1 062 px à gauche, 542 à droite -- et sur un écran
-    // de 1 920 px à l'échelle par défaut (1 280 px logiques), les boutons de
-    // droite recouvraient la signature rythmique et le tempo : « Ouvrir… »
-    // disparaissait, le compteur de charge se lisait « 0 … ». Les commandes
-    // sont posées d'abord ; les deux étiquettes d'information (charge,
-    // fréquence) ne s'affichent que s'il reste de la place, et les largeurs
-    // secondaires se resserrent avant qu'un bouton ne soit coupé.
-    const int largeur = area.getWidth();
+void TransportBarComponent::resized() { disposer(getWidth(), true); }
+
+int TransportBarComponent::hauteurUtile(int largeur) {
+    return 2 * kMargeY + disposer(largeur, false) * kHauteurRangee;
+}
+
+int TransportBarComponent::disposer(int largeurTotale, bool placer) {
+    // LA BARRE SE REPLIE (D68). Elle posait tout sur UNE rangée : sa moitié
+    // droite savait déjà s'effacer par ordre d'importance (D41.2), mais sa
+    // moitié GAUCHE coupait -- `removeFromLeft` avec des largeurs constantes,
+    // et ce qui dépassait recevait zéro pixel. Mesuré à 900x660 : la signature
+    // rythmique était à ZÉRO, le tempo rogné à 64 px au lieu de 100, et la
+    // moitié gauche réclamant 986 px pour 884 disponibles, RIEN de la moitié
+    // droite ne pouvait plus se poser -- ni la charge, ni les deux boutons.
+    //
+    // Pire, mesuré aussi : le bouton « Ouvrir… » n'apparaissait à AUCUNE des
+    // largeurs que cet écran permet (plafond 1 280 px logiques). Il lui en faut
+    // environ 1 400. Une commande qui ne se montre jamais est la promesse de
+    // D35.5, et c'est la troisième fois que ce document la rencontre.
+    //
+    // Ce qui ne tient pas passe donc à la rangée suivante, comme le bandeau
+    // d'aide de D60 et la barre du piano roll de D61. La barre reste sur UNE
+    // rangée dès que la fenêtre le permet.
+    const int largeur = std::max(120, largeurTotale - 2 * kMargeX);
     const bool serre = largeur < 1500;
     const bool tresSerre = largeur < 1300;
 
-    // D22.4 : la zone était de 460 px pour 466 px de boutons -- le témoin
-    // d'entrée, dernier servi, n'avait plus de place et ne se dessinait plus.
-    // Élargie pour lui et pour les deux voyants MIDI ; la place est reprise
-    // sur le bouton d'écoute A/B et l'écart qui le suit.
-    auto transportArea = area.removeFromLeft(tresSerre ? 494 : 540);
+    // Le mètre d'entrée et les deux voyants MIDI sont DESSINÉS, pas des
+    // composants : ils réservent leur place par un rectangle que la peinture
+    // relit. Un élément porte donc l'un OU l'autre, jamais les deux.
+    struct Element { juce::Component* composant; juce::Rectangle<int>* zone;
+                     int largeur; int ecartApres; };
+    struct Groupe { std::vector<Element> elements; int ecartAvant; };
+
+    // Le bloc de transport ne se coupe jamais : ses dix commandes forment un
+    // geste unique, et les deux voyants MIDI n'ont de sens que collés au reste.
     const int boutonPlay = tresSerre ? 62 : 70;
-    playButton_.setBounds(transportArea.removeFromLeft(boutonPlay));
-    transportArea.removeFromLeft(4);
-    stopButton_.setBounds(transportArea.removeFromLeft(boutonPlay));
-    transportArea.removeFromLeft(4);
-    recordButton_.setBounds(transportArea.removeFromLeft(tresSerre ? 54 : 60));
-    transportArea.removeFromLeft(4);
-    loopButton_.setBounds(transportArea.removeFromLeft(tresSerre ? 54 : 60));
-    transportArea.removeFromLeft(4);
-    metronomeButton_.setBounds(transportArea.removeFromLeft(tresSerre ? 50 : 56));
-    transportArea.removeFromLeft(4);
-    tapButton_.setBounds(transportArea.removeFromLeft(tresSerre ? 46 : 50));
-    transportArea.removeFromLeft(4);
-    speedBox_.setBounds(transportArea.removeFromLeft(tresSerre ? 62 : 70));
-    transportArea.removeFromLeft(6);
-    inputMeterBounds_ = transportArea.removeFromLeft(10).reduced(0, 2);
-    transportArea.removeFromLeft(6);
-    midiInBounds_ = transportArea.removeFromLeft(tresSerre ? 26 : 28).reduced(0, 4);
-    transportArea.removeFromLeft(3);
-    midiOutBounds_ = transportArea.removeFromLeft(tresSerre ? 34 : 36).reduced(0, 4);
-
-    area.removeFromLeft(serre ? 6 : 10);
-    listenButton_.setBounds(area.removeFromLeft(serre ? 170 : 210));
-    area.removeFromLeft(serre ? 10 : 16);
-    positionLabel_.setBounds(area.removeFromLeft(serre ? 130 : 140));
-    area.removeFromLeft(serre ? 10 : 16);
-    bpmLabel_.setBounds(area.removeFromLeft(serre ? 100 : 110));
-    area.removeFromLeft(8);
-    timeSigLabel_.setBounds(area.removeFromLeft(serre ? 60 : 70));
-
-    // À droite, par ordre d'importance : exporter, ouvrir, puis les deux
-    // étiquettes seulement si elles tiennent.
-    const int bouton = serre ? 120 : 150;
-    auto poser = [&](juce::Component& c, int w, int ecart) {
-        if (area.getWidth() < w) { c.setVisible(false); c.setBounds({}); return; }
-        c.setVisible(true);
-        c.setBounds(area.removeFromRight(w));
-        area.removeFromRight(ecart);
+    std::vector<Groupe> groupes = {
+        { { { &playButton_, nullptr, boutonPlay, 4 }, { &stopButton_, nullptr, boutonPlay, 4 },
+            { &recordButton_, nullptr, tresSerre ? 54 : 60, 4 },
+            { &loopButton_, nullptr, tresSerre ? 54 : 60, 4 },
+            { &metronomeButton_, nullptr, tresSerre ? 50 : 56, 4 },
+            { &tapButton_, nullptr, tresSerre ? 46 : 50, 4 },
+            { &speedBox_, nullptr, tresSerre ? 62 : 70, 6 },
+            { nullptr, &inputMeterBounds_, 10, 6 },
+            { nullptr, &midiInBounds_, tresSerre ? 26 : 28, 3 },
+            { nullptr, &midiOutBounds_, tresSerre ? 34 : 36, 0 } }, 0 },
+        { { { &listenButton_, nullptr, serre ? 170 : 210, 0 } }, serre ? 6 : 10 },
+        { { { &positionLabel_, nullptr, serre ? 130 : 140, 0 } }, serre ? 10 : 16 },
+        { { { &bpmLabel_, nullptr, serre ? 100 : 110, 0 } }, serre ? 10 : 16 },
+        { { { &timeSigLabel_, nullptr, serre ? 60 : 70, 0 } }, 8 },
     };
-    // D41.2 : LA CHARGE PASSE AVANT LA FRÉQUENCE D'ÉCHANTILLONNAGE, ET AVANT
-    // LES DEUX BOUTONS.
-    //
-    // Elle était posée en DERNIER, « seulement si elle tient » : à la largeur
-    // de fenêtre de tous les autoportraits de ce document, elle était
-    // invisible. C'est le seul indicateur qui dise si le morceau va JOUER, et
-    // D41 a mesuré qu'à 64 pistes de `vsm.additive` on est à 125 % du budget --
-    // c'est-à-dire que le son craque. Le faire disparaître avant deux boutons
-    // qui ont chacun leur entrée de menu était le mauvais ordre.
-    //
-    // ET LA FRÉQUENCE D'ÉCHANTILLONNAGE EST LA BONNE CHOSE À ROGNER : elle ne
-    // change jamais en cours de séance, alors que la charge change à chaque
-    // note. Une étiquette qui ne varie pas n'a pas besoin d'être sous les yeux.
-    // L'ABSENCE DE SON PASSE AVANT TOUT LE RESTE : une charge et un compte de
-    // craquements n'ont aucun sens quand rien ne sort, et c'est la seule chose
-    // qu'il faille lire dans ce cas-là.
-    if (sansSonLabel_.isVisible()) poser(sansSonLabel_, serre ? 90 : 100, 8);
-    // LES CRAQUEMENTS PASSENT ENSUITE, AVANT LA CHARGE : la charge dit un
-    // risque, le compte dit un dégât déjà fait.
-    if (xrunLabel_.isVisible()) poser(xrunLabel_, serre ? 110 : 130, 8);
-    poser(cpuLabel_, serre ? 76 : 90, 8);
-    poser(exportButton_, bouton, 8);
-    poser(openButton_, bouton, serre ? 10 : 16);
-    poser(sampleRateLabel_, serre ? 90 : 120, 0);
+    // L'ordre de la moitié droite est celui que D41.2 a établi et qui reste
+    // vrai : l'absence de son d'abord, les craquements, la charge, puis les
+    // deux boutons qui ont chacun leur entrée de menu, la fréquence en dernier.
+    if (sansSonLabel_.isVisible()) groupes.push_back({ { { &sansSonLabel_, nullptr, serre ? 90 : 100, 0 } }, 8 });
+    if (xrunLabel_.isVisible())    groupes.push_back({ { { &xrunLabel_, nullptr, serre ? 110 : 130, 0 } }, 8 });
+    groupes.push_back({ { { &cpuLabel_, nullptr, serre ? 76 : 90, 0 } }, 8 });
+    groupes.push_back({ { { &exportButton_, nullptr, serre ? 120 : 150, 0 } }, 8 });
+    groupes.push_back({ { { &openButton_, nullptr, serre ? 120 : 150, 0 } }, 8 });
+    groupes.push_back({ { { &sampleRateLabel_, nullptr, serre ? 90 : 120, 0 } }, 8 });
+
+    const int gauche = kMargeX, droite = kMargeX + largeur;
+    int x = gauche, y = kMargeY, rangees = 1;
+    for (const auto& groupe : groupes) {
+        int voulue = 0;
+        for (const auto& e : groupe.elements) voulue += e.largeur + e.ecartApres;
+        const bool debut = (x == gauche);
+        if (!debut && x + groupe.ecartAvant + voulue > droite) {
+            x = gauche; y += kHauteurRangee; ++rangees;
+        } else if (!debut) {
+            x += groupe.ecartAvant;
+        }
+        for (const auto& e : groupe.elements) {
+            const juce::Rectangle<int> place(x, y, e.largeur, kHauteurRangee - 2 * kMargeInterne);
+            if (placer) {
+                if (e.composant != nullptr) { e.composant->setVisible(true); e.composant->setBounds(place); }
+                else if (e.zone != nullptr) { *e.zone = place.reduced(0, 2); }
+            }
+            x += e.largeur + e.ecartApres;
+        }
+    }
+    return rangees;
 }
 
 bool TransportBarComponent::toggleRecord() {

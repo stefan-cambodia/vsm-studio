@@ -10310,3 +10310,68 @@ machine : deux rangées de voix plutôt qu'une, ou un rack plus large pour elles
 Nommé, chiffré, non fait.
 
 Tests : 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — verts.
+
+### Phase D68 — La barre de transport coupait sa moitié gauche, et « Ouvrir… » ne s'est jamais montré (10/09/2026, 09:00)
+
+**LA MOITIÉ DROITE SAVAIT S'EFFACER, LA GAUCHE COUPAIT.** D41.2 avait donné à la
+barre un ordre d'importance — l'absence de son, les craquements, la charge, puis
+les deux boutons, la fréquence en dernier — et un `poser()` qui CACHE ce qui ne
+tient pas. La moitié gauche, elle, est restée sur des `removeFromLeft` à
+largeurs constantes : ce qui dépasse reçoit zéro pixel, comme la barre du piano
+roll avant D61.
+
+**MESURÉ**, témoin dans un fichier, aux trois largeurs que cet écran permet :
+
+| élément | 900 | 1024 | 1280 |
+|---|---|---|---|
+| tempo | **64 px** (au lieu de 100) | 100 px | 100 px |
+| signature rythmique | **ZÉRO px** | 60 px | 60 px |
+| charge | caché | caché | 76 px |
+| Exporter MIDI… | caché | caché | 120 px |
+| **Ouvrir MIDI…** | **caché** | **caché** | **caché** |
+| fréquence | caché | caché | caché |
+
+**TROIS FAITS, ET LE TROISIÈME EST LE PIRE.**
+
+1. La signature rythmique est à **zéro pixel** au plancher — coupée, pas cachée.
+2. La moitié gauche réclame 986 px pour 884 disponibles : **rien** de la moitié
+   droite ne peut plus se poser. La charge disparaît donc au plancher — or
+   D41.2 écrit noir sur blanc qu'elle est « le seul indicateur qui dise si le
+   morceau va JOUER », et qu'elle doit passer AVANT les deux boutons.
+3. **« Ouvrir MIDI… » ne s'affiche à aucune des largeurs que cet écran permet.**
+   Il lui en faut environ 1 400 ; le plafond est 1 280 px logiques (D58). Le
+   bouton est posé, compté, et jamais vu. C'est la promesse de D35.5 pour la
+   troisième fois dans ce document, après la septième commande du master (D59)
+   et les onze commandes du piano roll (D61).
+
+**CE QUI EST FAIT : LA BARRE SE REPLIE**, comme le bandeau d'aide de D60 et la
+barre du piano roll de D61. Elle demande sa hauteur (`hauteurUtile(largeur)`, un
+seul parcours pour mesurer et pour poser) et `MainComponent` la lui accorde, au
+lieu des 56 px en dur. **Le bloc de transport ne se coupe jamais** : ses dix
+commandes forment un geste unique, et les deux voyants MIDI n'ont de sens que
+collés au reste. L'ordre de D41.2 est conservé tel quel — il décide désormais de
+l'ordre de repli au lieu de l'ordre de disparition.
+
+| élément | avant → après, à 900 px |
+|---|---|
+| tempo | 64 px → **100 px** |
+| signature | ZÉRO → **60 px** |
+| charge | caché → **76 px** |
+| Exporter MIDI… | caché → **120 px** |
+| Ouvrir MIDI… | caché → **120 px** |
+| fréquence | caché → **90 px** |
+
+**ET CE QUE CELA COÛTE, PARCE QUE CELA SE PAIE.** Il faut ~1 400 px pour une
+seule rangée ; sur cet écran la barre en fait donc **deux à toutes les tailles**,
+et passe de 56 à 100 px. Quarante-quatre pixels pris à l'arrangement, en
+permanence. Le compromis est assumé dans ce sens-là : six éléments qui
+n'existaient pas à l'écran, dont un bouton qui ne s'était jamais montré et
+l'indicateur qui dit si le son va tenir, valent mieux qu'une rangée fine où l'on
+ne voit ni l'un ni l'autre. Sur un écran plus large, la barre reprend une seule
+rangée sans rien changer d'autre.
+
+**VU À L'ÉCRAN, à 900x660** : rangée du haut — Play, Stop, Rec, Loop, Clic, Tap,
+x1, les deux voyants, « Écoute : reconstruction », le temps ; rangée du bas —
+120.0 BPM, 4/4, CPU 0.1 %, « Exporter MIDI… », « Ouvrir MIDI… », 44.1 kHz.
+
+Tests : 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — verts.

@@ -1108,7 +1108,11 @@ void MainComponent::resized() {
     menuBarComponent_.setBounds(area.removeFromTop(26));
 #endif
     if (singleWindow_ && trackList_.getParentComponent() == this) {
-        transportBar_.setBounds(area.removeFromTop(56));
+        // D68 : la barre DEMANDE sa hauteur. Elle se replie sur une seconde
+        // rangée quand une seule ne suffit pas ; les 56 px fixes d'avant
+        // coupaient sa moitié gauche (signature rythmique à zéro pixel à
+        // 900x660) et empêchaient toute sa moitié droite de se poser.
+        transportBar_.setBounds(area.removeFromTop(transportBar_.hauteurUtile(area.getWidth())));
         layoutDockedPanels(area);
         return;
     }

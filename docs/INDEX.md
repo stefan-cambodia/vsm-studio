@@ -113,6 +113,8 @@ dernier. Chaque élément porte sa source ; **aucun n'est inventé ici**.
 | A3 | **La molette de hauteur manque à six machines** où un musicien plie la note (e-piano, clavinet, guimbarde, vielle, mandoline, kalimba) — un travail par machine, sur son modèle physique. *La flûte, septième de la liste d'origine, n'est pas dans le parc : hors build, résultat négatif assumé* | `ROADMAP-daw.md` D26 | 42 machines la tiennent, **6** la devraient |
 | A4 | **`--batterie-par-piece` n'a pas de mesure de distance** — l'option est câblée et testée, son effet sur la fidélité n'est pas chiffré | `CDC-detection-multipiste.md` § 4.4 | — |
 
+| A6 | **La barre de transport prend deux rangées sur cet écran** (100 px au lieu de 56) parce qu'il lui faut ~1 400 px pour une seule, et que le plafond est 1 280. Le compromis est assumé — six éléments invisibles auparavant, dont un bouton jamais montré — mais sur un écran plus large la question ne se pose pas | `ROADMAP-daw.md` D68 | 44 px pris à l'arrangement |
+
 ### B. Ce que la mesure réclame
 
 | # | Travail | Source | Pourquoi |

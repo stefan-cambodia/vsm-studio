@@ -14,6 +14,11 @@ public:
     void paint(juce::Graphics&) override;
     void resized() override;
 
+    /// D68 : la hauteur qu'il faut à cette largeur. La barre se replie quand
+    /// une rangée ne suffit pas ; `MainComponent` lui accorde ce qu'elle
+    /// demande, au lieu des 56 px fixes qui coupaient sa moitié gauche.
+    int hauteurUtile(int largeur);
+
     void setBpm(double bpm);
     void setTimeSignature(int numerator, int denominator);
     void setCpuUsage(float percent);      // câblé sur AudioEngine en Phase 2
@@ -141,6 +146,10 @@ private:
     float inputPeak_ = 0.0f;
     int inputChannels_ = 0;
     bool inputMonitoring_ = false;   ///< D23.2
+    /// Pose (ou seulement compte) les rangées pour cette largeur : un seul
+    /// parcours sert à mesurer et à poser.
+    int disposer(int largeurTotale, bool placer);
+
     juce::Rectangle<int> inputMeterBounds_;
     juce::Rectangle<int> midiInBounds_, midiOutBounds_;   ///< D22.4
     juce::uint32 midiInUntil_ = 0, midiOutUntil_ = 0;     ///< D22.4 : fin de tenue (ms)
