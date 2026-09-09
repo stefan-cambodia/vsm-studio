@@ -356,13 +356,13 @@ MachinePanel makeSh101() {
     panel.sectionColour = "#3B444E";
     panel.textColour = "#EDEFF2";
     panel.knobColour = "#20242A";
-    panel.gridColumns = 16;
-    panel.gridRows = 5;
+    panel.gridColumns = 8;
+    panel.gridRows = 8;
 
     PanelSection source;
     source.title = "SOURCE MIXER";
     source.accentColour = "#E0A33C";
-    source.column = 0; source.row = 0; source.columnSpan = 5; source.rowSpan = 5;
+    source.column = 0; source.row = 0; source.columnSpan = 8; source.rowSpan = 2;
     source.controls = {
         control("Saw Level", "SAW", S::VerticalSlider, 0, 0),
         control("Pulse Level", "PULSE", S::VerticalSlider, 1, 0),
@@ -375,7 +375,7 @@ MachinePanel makeSh101() {
     PanelSection modulation;
     modulation.title = "LFO / PWM";
     modulation.accentColour = "#79B4D0";
-    modulation.column = 5; modulation.row = 0; modulation.columnSpan = 4; modulation.rowSpan = 5;
+    modulation.column = 0; modulation.row = 2; modulation.columnSpan = 8; modulation.rowSpan = 2;
     modulation.controls = {
         control("LFO Rate", "RATE", S::VerticalSlider, 0, 0),
         control("LFO Pitch Amount", "TO PITCH", S::VerticalSlider, 1, 0),
@@ -388,7 +388,7 @@ MachinePanel makeSh101() {
     PanelSection filter;
     filter.title = "VCF";
     filter.accentColour = "#E0A33C";
-    filter.column = 9; filter.row = 0; filter.columnSpan = 4; filter.rowSpan = 5;
+    filter.column = 0; filter.row = 4; filter.columnSpan = 8; filter.rowSpan = 2;
     filter.controls = {
         control("Filter Cutoff", "CUTOFF", S::VerticalSlider, 0, 0),
         control("Filter Resonance", "RESONANCE", S::VerticalSlider, 1, 0),
@@ -399,7 +399,7 @@ MachinePanel makeSh101() {
     PanelSection envelope;
     envelope.title = "ENV / VCA";
     envelope.accentColour = "#79B4D0";
-    envelope.column = 13; envelope.row = 0; envelope.columnSpan = 3; envelope.rowSpan = 5;
+    envelope.column = 0; envelope.row = 6; envelope.columnSpan = 8; envelope.rowSpan = 2;
     envelope.controls = {
         control("Env Attack", "A", S::VerticalSlider, 0, 0),
         control("Env Decay", "D", S::VerticalSlider, 1, 0),
@@ -431,13 +431,13 @@ MachinePanel makeJuno106() {
     panel.sectionColour = "#1B1C20";
     panel.textColour = "#E9EBEF";
     panel.knobColour = "#3A3C42";
-    panel.gridColumns = 18;
-    panel.gridRows = 6;
+    panel.gridColumns = 8;
+    panel.gridRows = 8;
 
     PanelSection lfo;
     lfo.title = "LFO";
     lfo.accentColour = "#5FA8D3";
-    lfo.column = 0; lfo.row = 0; lfo.columnSpan = 3; lfo.rowSpan = 6;
+    lfo.column = 0; lfo.row = 0; lfo.columnSpan = 8; lfo.rowSpan = 2;
     lfo.controls = {
         control("LFO Rate", "RATE", S::VerticalSlider, 0, 0),
         control("LFO Delay", "DELAY", S::VerticalSlider, 1, 0),
@@ -447,7 +447,7 @@ MachinePanel makeJuno106() {
     PanelSection dco;
     dco.title = "DCO";
     dco.accentColour = "#E2B04A";
-    dco.column = 3; dco.row = 0; dco.columnSpan = 5; dco.rowSpan = 6;
+    dco.column = 0; dco.row = 2; dco.columnSpan = 8; dco.rowSpan = 2;
     dco.controls = {
         control("DCO Saw Level", "SAW", S::VerticalSlider, 0, 0),
         control("DCO Pulse Level", "PULSE", S::VerticalSlider, 1, 0),
@@ -460,7 +460,7 @@ MachinePanel makeJuno106() {
     PanelSection filter;
     filter.title = "HPF / VCF";
     filter.accentColour = "#E2B04A";
-    filter.column = 8; filter.row = 0; filter.columnSpan = 6; filter.rowSpan = 6;
+    filter.column = 0; filter.row = 4; filter.columnSpan = 8; filter.rowSpan = 2;
     filter.controls = {
         control("HPF Cutoff", "HPF", S::VerticalSlider, 0, 0),
         control("VCF Cutoff", "FREQ", S::VerticalSlider, 1, 0),
@@ -473,7 +473,7 @@ MachinePanel makeJuno106() {
     PanelSection envelope;
     envelope.title = "ENV / CHORUS";
     envelope.accentColour = "#5FA8D3";
-    envelope.column = 14; envelope.row = 0; envelope.columnSpan = 4; envelope.rowSpan = 6;
+    envelope.column = 0; envelope.row = 6; envelope.columnSpan = 8; envelope.rowSpan = 2;
     envelope.controls = {
         control("Env Attack", "A", S::VerticalSlider, 0, 0),
         control("Env Decay", "D", S::VerticalSlider, 1, 0),
@@ -503,13 +503,13 @@ MachinePanel makeJupiter8() {
     panel.sectionColour = "#1C1D21";
     panel.textColour = "#EAECF0";
     panel.knobColour = "#33353B";
-    panel.gridColumns = 20;
-    panel.gridRows = 7;
+    panel.gridColumns = 8;
+    panel.gridRows = 8;
 
     PanelSection lfo;
     lfo.title = "LFO / MOD";
     lfo.accentColour = "#5FA8D3";
-    lfo.column = 0; lfo.row = 0; lfo.columnSpan = 4; lfo.rowSpan = 7;
+    lfo.column = 0; lfo.row = 0; lfo.columnSpan = 8; lfo.rowSpan = 2;
     lfo.controls = {
         control("LFO Rate", "RATE", S::VerticalSlider, 0, 0),
         control("LFO to Pitch", "TO VCO", S::VerticalSlider, 1, 0),
@@ -520,7 +520,7 @@ MachinePanel makeJupiter8() {
     PanelSection oscillators;
     oscillators.title = "VCO 1 / VCO 2";
     oscillators.accentColour = "#E2803C";
-    oscillators.column = 4; oscillators.row = 0; oscillators.columnSpan = 6; oscillators.rowSpan = 7;
+    oscillators.column = 0; oscillators.row = 2; oscillators.columnSpan = 8; oscillators.rowSpan = 2;
     oscillators.controls = {
         control("VCO-1 Level", "VCO 1", S::VerticalSlider, 0, 0),
         control("VCO-1 Shape", "SHAPE 1", S::Selector, 1, 0),
@@ -536,7 +536,7 @@ MachinePanel makeJupiter8() {
     PanelSection filter;
     filter.title = "HPF / VCF";
     filter.accentColour = "#E2803C";
-    filter.column = 10; filter.row = 0; filter.columnSpan = 5; filter.rowSpan = 7;
+    filter.column = 0; filter.row = 4; filter.columnSpan = 8; filter.rowSpan = 2;
     filter.controls = {
         control("HPF Cutoff", "HPF", S::VerticalSlider, 0, 0),
         control("Filter Cutoff", "FREQ", S::VerticalSlider, 1, 0),
@@ -548,7 +548,7 @@ MachinePanel makeJupiter8() {
     PanelSection envelopes;
     envelopes.title = "ENV 1 / ENV 2";
     envelopes.accentColour = "#5FA8D3";
-    envelopes.column = 15; envelopes.row = 0; envelopes.columnSpan = 5; envelopes.rowSpan = 7;
+    envelopes.column = 0; envelopes.row = 6; envelopes.columnSpan = 8; envelopes.rowSpan = 2;
     envelopes.controls = {
         control("Env 1 Attack", "A1", S::VerticalSlider, 0, 0),
         control("Env 1 Decay", "D1", S::VerticalSlider, 1, 0),
@@ -808,13 +808,19 @@ MachinePanel makeDx7() {
     panel.sectionColour = "#2C2B29";
     panel.textColour = "#E9E4D8";
     panel.knobColour = "#22211F";
-    panel.gridColumns = 16;
-    panel.gridRows = 8;
+    // D67 : LA MATRICE PASSE DE 6x1 À 3x2. Les six opérateurs alignés sur
+    // une rangée de seize colonnes donnaient, dans le rack, des cellules de
+    // 11 px : « RATIO », « LEVEL » et les quatre lettres d'enveloppe y
+    // étaient des points. Trois par rangée, deux rangées -- la comparaison
+    // d'un opérateur à l'autre, qui est tout l'intérêt de la matrice, se
+    // fait aussi bien en deux rangées de trois qu'en une de six.
+    panel.gridColumns = 6;
+    panel.gridRows = 12;
 
     PanelSection global;
     global.title = "ALGORITHM / GLOBAL";
     global.accentColour = "#7FA8B8";
-    global.column = 0; global.row = 0; global.columnSpan = 4; global.rowSpan = 8;
+    global.column = 0; global.row = 0; global.columnSpan = 6; global.rowSpan = 4;
     global.controls = {
         control("Algorithm", "ALGORITHM", S::LargeKnob, 0, 0, 2, 2),
         control("Feedback", "FEEDBACK", S::Knob, 2, 0),
@@ -835,10 +841,10 @@ MachinePanel makeDx7() {
         PanelSection section;
         section.title = "OP " + std::to_string(op);
         section.accentColour = operatorAccents[op - 1];
-        section.column = 4 + (op - 1) * 2;
-        section.row = 0;
+        section.column = ((op - 1) % 3) * 2;
+        section.row = 4 + ((op - 1) / 3) * 4;
         section.columnSpan = 2;
-        section.rowSpan = 8;
+        section.rowSpan = 4;
         const std::string prefix = "Op" + std::to_string(op) + " ";
         section.controls = {
             control(prefix + "Ratio", "RATIO", S::Knob, 0, 0),
@@ -1502,14 +1508,14 @@ MachinePanel makeTonewheel() {
     panel.sectionColour = "#1E1712";
     panel.textColour = "#EDE4D3";
     panel.knobColour = "#D8CFBC";
-    panel.gridColumns = 18;
-    panel.gridRows = 6;
+    panel.gridColumns = 8;
+    panel.gridRows = 8;
 
     // Les deux tirettes graves : brunes sur la machine d'origine.
     PanelSection sub;
     sub.title = "SUB";
     sub.accentColour = "#8A5A34";
-    sub.column = 0; sub.row = 0; sub.columnSpan = 3; sub.rowSpan = 6;
+    sub.column = 0; sub.row = 0; sub.columnSpan = 8; sub.rowSpan = 2;
     sub.controls = {
         control("Drawbar 16", "16'", S::VerticalSlider, 0, 0, 1, 2),
         control("Drawbar 5 1/3", "5 1/3'", S::VerticalSlider, 1, 0, 1, 2),
@@ -1520,7 +1526,7 @@ MachinePanel makeTonewheel() {
     PanelSection drawbars;
     drawbars.title = "DRAWBARS";
     drawbars.accentColour = "#D8CFBC";
-    drawbars.column = 3; drawbars.row = 0; drawbars.columnSpan = 7; drawbars.rowSpan = 6;
+    drawbars.column = 0; drawbars.row = 2; drawbars.columnSpan = 8; drawbars.rowSpan = 2;
     drawbars.controls = {
         control("Drawbar 8", "8'", S::VerticalSlider, 0, 0, 1, 2),
         control("Drawbar 4", "4'", S::VerticalSlider, 1, 0, 1, 2),
@@ -1534,7 +1540,7 @@ MachinePanel makeTonewheel() {
     PanelSection percussion;
     percussion.title = "PERCUSSION";
     percussion.accentColour = "#C4462F";
-    percussion.column = 10; percussion.row = 0; percussion.columnSpan = 3; percussion.rowSpan = 6;
+    percussion.column = 0; percussion.row = 4; percussion.columnSpan = 4; percussion.rowSpan = 2;
     percussion.controls = {
         control("Percussion Level", "ON / SOFT", S::Knob, 0, 0),
         control("Percussion Harmonic", "2ND / 3RD", S::Toggle, 1, 0),
@@ -1545,7 +1551,7 @@ MachinePanel makeTonewheel() {
     PanelSection vibrato;
     vibrato.title = "VIBRATO";
     vibrato.accentColour = "#5E7F9B";
-    vibrato.column = 13; vibrato.row = 0; vibrato.columnSpan = 2; vibrato.rowSpan = 6;
+    vibrato.column = 4; vibrato.row = 4; vibrato.columnSpan = 4; vibrato.rowSpan = 2;
     vibrato.controls = {
         control("Vibrato Depth", "DEPTH", S::Knob, 0, 0),
         control("Vibrato Rate", "RATE", S::Knob, 0, 1),
@@ -1557,7 +1563,7 @@ MachinePanel makeTonewheel() {
     PanelSection rotary;
     rotary.title = "ROTARY";
     rotary.accentColour = "#C4462F";
-    rotary.column = 15; rotary.row = 0; rotary.columnSpan = 3; rotary.rowSpan = 6;
+    rotary.column = 0; rotary.row = 6; rotary.columnSpan = 8; rotary.rowSpan = 2;
     rotary.controls = {
         control("Rotary Fast", "SLOW / FAST", S::Toggle, 0, 0),
         control("Rotary Depth", "DEPTH", S::Knob, 1, 0),
@@ -1890,13 +1896,13 @@ MachinePanel makeDrums() {
     panel.sectionColour = "#1A1718";
     panel.textColour = "#EDE6DC";
     panel.knobColour = "#B9B2A6";
-    panel.gridColumns = 20;
-    panel.gridRows = 4;
+    panel.gridColumns = 8;
+    panel.gridRows = 6;
 
     PanelSection kick;
     kick.title = "KICK";
     kick.accentColour = "#C4562B";
-    kick.column = 0; kick.row = 0; kick.columnSpan = 4; kick.rowSpan = 4;
+    kick.column = 0; kick.row = 0; kick.columnSpan = 4; kick.rowSpan = 2;
     kick.controls = {
         control("Kick Level", "LEVEL", S::Knob, 0, 0),
         control("Kick Tune", "TUNE", S::Knob, 1, 0),
@@ -1907,7 +1913,7 @@ MachinePanel makeDrums() {
     PanelSection snare;
     snare.title = "SNARE";
     snare.accentColour = "#D8A13F";
-    snare.column = 4; snare.row = 0; snare.columnSpan = 4; snare.rowSpan = 4;
+    snare.column = 4; snare.row = 0; snare.columnSpan = 4; snare.rowSpan = 2;
     snare.controls = {
         control("Snare Level", "LEVEL", S::Knob, 0, 0),
         control("Snare Tune", "TUNE", S::Knob, 1, 0),
@@ -1918,7 +1924,7 @@ MachinePanel makeDrums() {
     PanelSection toms;
     toms.title = "TOMS";
     toms.accentColour = "#C4562B";
-    toms.column = 8; toms.row = 0; toms.columnSpan = 3; toms.rowSpan = 4;
+    toms.column = 0; toms.row = 2; toms.columnSpan = 4; toms.rowSpan = 2;
     toms.controls = {
         control("Tom Level", "LEVEL", S::Knob, 0, 0),
         control("Tom Tune", "TUNE", S::Knob, 1, 0),
@@ -1928,7 +1934,7 @@ MachinePanel makeDrums() {
     PanelSection hats;
     hats.title = "HI-HAT";
     hats.accentColour = "#7FA8C4";
-    hats.column = 11; hats.row = 0; hats.columnSpan = 3; hats.rowSpan = 4;
+    hats.column = 4; hats.row = 2; hats.columnSpan = 4; hats.rowSpan = 2;
     hats.controls = {
         control("Closed Hat Level", "CL LVL", S::Knob, 0, 0),
         control("Closed Hat Decay", "CL DEC", S::Knob, 1, 0),
@@ -1939,7 +1945,7 @@ MachinePanel makeDrums() {
     PanelSection cymbals;
     cymbals.title = "CYMBALS";
     cymbals.accentColour = "#7FA8C4";
-    cymbals.column = 14; cymbals.row = 0; cymbals.columnSpan = 3; cymbals.rowSpan = 4;
+    cymbals.column = 0; cymbals.row = 4; cymbals.columnSpan = 4; cymbals.rowSpan = 2;
     cymbals.controls = {
         control("Ride Level", "RIDE", S::Knob, 0, 0),
         control("Ride Decay", "RD DEC", S::Knob, 1, 0),
@@ -1952,7 +1958,7 @@ MachinePanel makeDrums() {
     PanelSection room;
     room.title = "ROOM";
     room.accentColour = "#8E9B7A";
-    room.column = 17; room.row = 0; room.columnSpan = 3; room.rowSpan = 4;
+    room.column = 4; room.row = 4; room.columnSpan = 4; room.rowSpan = 2;
     room.controls = {
         control("Room Level", "LEVEL", S::Knob, 0, 0),
         control("Room Size", "SIZE", S::Knob, 1, 0),
@@ -1992,13 +1998,13 @@ MachinePanel makeWind() {
     panel.sectionColour = "#141311";
     panel.textColour = "#F2E9D6";
     panel.knobColour = "#D0AC63";
-    panel.gridColumns = 16;
-    panel.gridRows = 4;
+    panel.gridColumns = 8;
+    panel.gridRows = 6;
 
     PanelSection mouth;
     mouth.title = "MOUTHPIECE";
     mouth.accentColour = "#D0AC63";
-    mouth.column = 0; mouth.row = 0; mouth.columnSpan = 5; mouth.rowSpan = 4;
+    mouth.column = 0; mouth.row = 0; mouth.columnSpan = 4; mouth.rowSpan = 2;
     mouth.controls = {
         control("Breath Pressure", "BREATH", S::LargeKnob, 0, 0),
         control("Reed Stiffness", "REED", S::Knob, 1, 0),
@@ -2009,7 +2015,7 @@ MachinePanel makeWind() {
     PanelSection bore;
     bore.title = "BORE";
     bore.accentColour = "#B08A4E";
-    bore.column = 5; bore.row = 0; bore.columnSpan = 3; bore.rowSpan = 4;
+    bore.column = 4; bore.row = 0; bore.columnSpan = 4; bore.rowSpan = 2;
     bore.controls = {
         control("Bell Damping", "BELL", S::Knob, 0, 0),
         control("Brassiness", "BRASS", S::Knob, 0, 1),
@@ -2018,7 +2024,7 @@ MachinePanel makeWind() {
     PanelSection envelope;
     envelope.title = "ARTICULATION";
     envelope.accentColour = "#8FA9C9";
-    envelope.column = 8; envelope.row = 0; envelope.columnSpan = 3; envelope.rowSpan = 4;
+    envelope.column = 0; envelope.row = 2; envelope.columnSpan = 4; envelope.rowSpan = 2;
     envelope.controls = {
         control("Attack", "TONGUE", S::VerticalSlider, 0, 0, 1, 2),
         control("Release", "RELEASE", S::VerticalSlider, 1, 0, 1, 2),
@@ -2027,7 +2033,7 @@ MachinePanel makeWind() {
     PanelSection vibrato;
     vibrato.title = "VIBRATO";
     vibrato.accentColour = "#8FA9C9";
-    vibrato.column = 11; vibrato.row = 0; vibrato.columnSpan = 3; vibrato.rowSpan = 4;
+    vibrato.column = 4; vibrato.row = 2; vibrato.columnSpan = 4; vibrato.rowSpan = 2;
     vibrato.controls = {
         control("Vibrato Depth", "DEPTH", S::Knob, 0, 0),
         control("Vibrato Rate", "RATE", S::Knob, 1, 0),
@@ -2037,7 +2043,7 @@ MachinePanel makeWind() {
     PanelSection output;
     output.title = "OUTPUT";
     output.accentColour = "#D0AC63";
-    output.column = 14; output.row = 0; output.columnSpan = 2; output.rowSpan = 4;
+    output.column = 0; output.row = 4; output.columnSpan = 8; output.rowSpan = 2;
     output.controls = {
         control("Tone Bass", "BASS", S::Knob, 0, 0),
         control("Tone Treble", "TREBLE", S::Knob, 0, 1),
@@ -2914,13 +2920,13 @@ MachinePanel makeCone() {
     panel.sectionColour = "#191106";
     panel.textColour = "#F5E8C8";
     panel.knobColour = "#E0B45C";
-    panel.gridColumns = 16;
-    panel.gridRows = 4;
+    panel.gridColumns = 8;
+    panel.gridRows = 6;
 
     PanelSection mouth;
     mouth.title = "MOUTHPIECE";
     mouth.accentColour = "#E0B45C";
-    mouth.column = 0; mouth.row = 0; mouth.columnSpan = 5; mouth.rowSpan = 4;
+    mouth.column = 0; mouth.row = 0; mouth.columnSpan = 4; mouth.rowSpan = 2;
     mouth.controls = {
         control("Breath Pressure", "BREATH", S::LargeKnob, 0, 0),
         control("Reed Stiffness", "REED", S::Knob, 1, 0),
@@ -2931,7 +2937,7 @@ MachinePanel makeCone() {
     PanelSection bore;
     bore.title = "CONICAL BORE";
     bore.accentColour = "#C29140";
-    bore.column = 5; bore.row = 0; bore.columnSpan = 3; bore.rowSpan = 4;
+    bore.column = 4; bore.row = 0; bore.columnSpan = 4; bore.rowSpan = 2;
     bore.controls = {
         control("Bell Damping", "BELL", S::Knob, 0, 0),
         control("Brassiness", "EMBOUCHURE", S::Knob, 0, 1),
@@ -2940,7 +2946,7 @@ MachinePanel makeCone() {
     PanelSection envelope;
     envelope.title = "ARTICULATION";
     envelope.accentColour = "#9CB0C9";
-    envelope.column = 8; envelope.row = 0; envelope.columnSpan = 3; envelope.rowSpan = 4;
+    envelope.column = 0; envelope.row = 2; envelope.columnSpan = 4; envelope.rowSpan = 2;
     envelope.controls = {
         control("Attack", "TONGUE", S::VerticalSlider, 0, 0, 1, 2),
         control("Release", "RELEASE", S::VerticalSlider, 1, 0, 1, 2),
@@ -2949,7 +2955,7 @@ MachinePanel makeCone() {
     PanelSection vibrato;
     vibrato.title = "VIBRATO";
     vibrato.accentColour = "#9CB0C9";
-    vibrato.column = 11; vibrato.row = 0; vibrato.columnSpan = 3; vibrato.rowSpan = 4;
+    vibrato.column = 4; vibrato.row = 2; vibrato.columnSpan = 4; vibrato.rowSpan = 2;
     vibrato.controls = {
         control("Vibrato Depth", "DEPTH", S::Knob, 0, 0),
         control("Vibrato Rate", "RATE", S::Knob, 1, 0),
@@ -2959,7 +2965,7 @@ MachinePanel makeCone() {
     PanelSection output;
     output.title = "OUTPUT";
     output.accentColour = "#E0B45C";
-    output.column = 14; output.row = 0; output.columnSpan = 2; output.rowSpan = 4;
+    output.column = 0; output.row = 4; output.columnSpan = 8; output.rowSpan = 2;
     output.controls = {
         control("Tone Bass", "BASS", S::Knob, 0, 0),
         control("Tone Treble", "TREBLE", S::Knob, 0, 1),
@@ -3384,13 +3390,13 @@ MachinePanel makeScanned() {
     panel.sectionColour = "#0C1312";
     panel.textColour = "#DDF2ED";
     panel.knobColour = "#5FC2A8";
-    panel.gridColumns = 16;
+    panel.gridColumns = 8;
     panel.gridRows = 4;
 
     PanelSection chaine;
     chaine.title = "CHAIN";
     chaine.accentColour = "#5FC2A8";
-    chaine.column = 0; chaine.row = 0; chaine.columnSpan = 6; chaine.rowSpan = 4;
+    chaine.column = 0; chaine.row = 0; chaine.columnSpan = 4; chaine.rowSpan = 2;
     chaine.controls = {
         control("Damping", "DAMPING", S::LargeKnob, 0, 0),
         control("Tension", "TENSION", S::Knob, 1, 0),
@@ -3400,7 +3406,7 @@ MachinePanel makeScanned() {
     PanelSection pincement;
     pincement.title = "PLUCK";
     pincement.accentColour = "#8FD9C4";
-    pincement.column = 6; pincement.row = 0; pincement.columnSpan = 4; pincement.rowSpan = 4;
+    pincement.column = 4; pincement.row = 0; pincement.columnSpan = 4; pincement.rowSpan = 2;
     pincement.controls = {
         control("Pluck Force", "FORCE", S::Knob, 0, 0),
         control("Pluck Position", "POSITION", S::Knob, 1, 0),
@@ -3411,7 +3417,7 @@ MachinePanel makeScanned() {
     PanelSection lecture;
     lecture.title = "OUTPUT";
     lecture.accentColour = "#C9B06A";
-    lecture.column = 10; lecture.row = 0; lecture.columnSpan = 6; lecture.rowSpan = 4;
+    lecture.column = 0; lecture.row = 2; lecture.columnSpan = 8; lecture.rowSpan = 2;
     lecture.controls = {
         control("Filter Cutoff", "CUTOFF", S::Knob, 0, 0),
         control("Filter Resonance", "RESO", S::Knob, 1, 0),

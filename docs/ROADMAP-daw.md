@@ -10248,3 +10248,65 @@ règle de D65 tient, on ne corrige pas une façade sur la foi d'un calcul quand 
 diamètre rendu est mesurable. Elles attendent leur projet d'essai.
 
 Tests : 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — verts.
+
+### Phase D67 — Les soixante-trois façades passées au crible, et le calcul avait désigné les mauvaises (10/09/2026, 07:15)
+
+**D66 LAISSAIT « ONZE FAÇADES QUE LE CALCUL SIGNALE ». LE CALCUL SE TROMPAIT
+DE MACHINES.** Un projet d'essai portant les **soixante-trois** façades décrites
+a été écrit par l'exporteur de la chaîne, et chacune ouverte à 900x660 — une
+course par piste, le rack ne posant que la façade de la piste choisie. Le témoin
+a relevé chaque cellule réellement posée.
+
+| | façades avec un bouton sous 18 px | boutons concernés |
+|---|---|---|
+| avant D67 | **13 / 63** | **89** |
+| après D67 | **4 / 63** | **37** |
+
+**LA LISTE MESURÉE N'EST PAS LA LISTE CALCULÉE.** Le TR-909, la percussion, les
+FM drums, le Juno-106, le SH-101 et le sampler y figurent alors que la table de
+largeur de D64 ne les signalait pas ; d'autres qu'elle signalait s'y révèlent
+propres. La raison est simple et vaut d'être écrite : la largeur réclamée par la
+grille est un PROXY, le diamètre rendu est le fait. **On ne corrige pas une
+façade sur la foi d'un calcul quand le rendu est mesurable** — la règle posée en
+D65 a servi ici à ne pas toucher les bonnes machines pour de mauvaises raisons.
+
+**NEUF FAÇADES CORRIGÉES.** Huit par l'outil d'empilement de D66 — Jupiter-8,
+orgue à roues phoniques, vent, cône, Juno-106, SH-101, batterie acoustique,
+`vsm.scanned` — et une à la main : le **DX7**, dont les six opérateurs étaient
+alignés sur une rangée de seize colonnes et donnaient des cellules de 11 px.
+Sa matrice passe de **6x1 à 3x2**. Comparer un opérateur à l'autre est tout
+l'intérêt de cette façade, et cela se fait aussi bien en deux rangées de trois
+qu'en une de six.
+
+#### L'outil a refusé cinq façades, et il a eu raison de refuser
+
+Son lecteur reconnaît les blocs déclarés un par un ; le DX7, le TR-909, la
+percussion, les FM drums et le sampler construisent les leurs **dans une
+boucle** — un bloc par opérateur, un par voix. L'outil n'en voyait qu'un seul et
+aurait empilé celui-là en laissant les autres à leurs anciennes coordonnées.
+
+**IL A FALLU DEUX TESTS ROUGES POUR L'APPRENDRE, ET C'EST LA BONNE FAÇON DE
+L'APPRENDRE.** La première version n'avait pas ce garde-fou : les suites de
+`panels/` sont passées de onze vertes à neuf, et le message nommait la façade et
+les deux blocs qui se chevauchaient. Le garde-fou compare désormais le nombre de
+blocs LUS au nombre de blocs DÉCLARÉS, et refuse quand ils diffèrent — une
+façade qu'on ne comprend pas ne se réécrit pas.
+
+**CE QUI RESTE, ET POURQUOI ON NE LE TOUCHE PAS À LA LÉGÈRE.**
+
+| machine | boutons | plus petit | sous 18 px |
+|---|---|---|---|
+| `vsm.sampler` | 4 | 11 px | 4 |
+| `vsm.tr909` | 17 | 15 px | 6 |
+| `vsm.perc` | 14 | 15 px | 11 |
+| `vsm.fmdrums` | 21 | 15 px | 16 |
+
+Quatre boîtes à rythmes, et leur disposition **est** leur identité : le README
+en fait l'éloge sous le nom de « colonne par pièce des TR-808/909 et du
+sampler-boîte à rythmes ». Empiler leurs voix les rendrait méconnaissables pour
+gagner quatre pixels — le compromis n'est pas le même que sur un synthé dont les
+blocs suivent un signal. Le remède, s'il en faut un, est une décision par
+machine : deux rangées de voix plutôt qu'une, ou un rack plus large pour elles.
+Nommé, chiffré, non fait.
+
+Tests : 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — verts.
