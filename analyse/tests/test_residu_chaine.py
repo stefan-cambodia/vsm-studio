@@ -4,8 +4,10 @@
   - identité sans option : deux courses, l'une sans --residuel et l'autre avec
     --residuel 0, rendent project.json, le MIDI et rapport.json identiques
     octet pour octet, et la boucle n'est jamais appelée ; et la course sans
-    option rend le PROJET de la course commise le 04/09 (d'avant le chantier),
-    octet pour octet — la chaîne d'aujourd'hui est la chaîne d'hier ;
+    option redonne la course commise le 04/09 (d'avant le chantier) — la
+    chaîne d'aujourd'hui est la chaîne d'hier, à ceci près que les nombres
+    qui SORTENT DU MOTEUR ne se comparent octet pour octet que si le moteur
+    est le même binaire (voir `TOLERANCE_MOTEUR`) ;
   - la boucle de bout en bout (--residuel 1, séparateur du résidu injecté) :
     une soustraction dite avec ses chiffres, un résidu écrit, les doublons
     refusés avant l'arbitrage avec leurs trois nombres, une piste « · r1 »
@@ -38,6 +40,41 @@ from analyzer import vsm_banc  # noqa: E402
 from analyzer.vsm_morceaux import ecrire_wav_float, stems_attendus  # noqa: E402
 
 FIXTURE = Path(__file__).resolve().parent / "donnees" / "banc-minuscule"
+# CE QUE LA COURSE COMMISE PEUT PROUVER, ET CE QU'ELLE NE PEUT PAS.
+#
+# `course/project.json` porte des nombres qui sortent du MOTEUR — un binaire
+# qui ne vit pas dans le dépôt et que chaque `cmake --build` refait. Les exiger
+# octet pour octet, c'est demander au test de tomber à la première compilation
+# du moteur, et de dire « la chaîne a changé » quand ce qui a changé est le
+# moteur. C'est arrivé : la référence a été enregistrée avec le moteur du
+# 04/09/2026 15:37:58 (162 513 544 octets) ; celui du 09/09 17:05:01
+# (166 864 936 octets, mêmes 64 machines) rejoue la MÊME course et donne
+#
+#   - le même arrangement.mid, octet pour octet ;
+#   - les mêmes patchs : dans rapport.json, aucun champ des deux stems ne bouge ;
+#   - la même automation, au dernier chiffre ;
+#   - les mêmes volumes au dernier bit pour bass et les deux pièces de batterie ;
+#   - et DEUX nombres qui bougent : le volume de « other », la seule piste
+#     automatisée (2,597493237337678 contre 2,5974931425397476, soit 3,65e-08
+#     en relatif) et la distance globale (7,41e-08).
+#
+# Les deux tiennent sous la résolution du float32 dans lequel le moteur rend
+# son audio (eps = 1,19e-07) : c'est le dernier bit d'un rendu, pas une
+# décision. Aucun verdict, aucune machine, aucune note ne change.
+#
+# Le test garde donc deux exigences SÉPARÉES plutôt qu'une seule affaiblie :
+#   - ce qui ne passe pas par le moteur — structure, machines, presets, ticks,
+#     et le MIDI entier — se compare à l'identique, sans tolérance ;
+#   - les FLOTTANTS se comparent au millionième relatif, et l'écart absorbé est
+#     IMPRIMÉ, jamais avalé (une tolérance muette est une panne muette).
+# Et si le moteur qui tourne EST celui de la référence (même date, même
+# taille), l'exigence redevient l'égalité octet pour octet : la relaxation ne
+# vaut que là où elle est nécessaire.
+#
+# POURQUOI 1e-06 : quinze fois le plus grand écart observé, et cent fois plus
+# serré que la 4e décimale à laquelle la chaîne publie et compare ses
+# distances. Un écart qui changerait une décision est très au-dessus.
+TOLERANCE_MOTEUR = 1e-6
 SEPARATEUR_FACTICE = Path(__file__).resolve().parent / "donnees" / "separateur_factice.py"
 # Les options de la course commise (rapport.json de la fixture, provenance).
 OPTIONS_DE_LA_COURSE = ["--machines", "vsm.juno106,vsm.tb303,vsm.minimoog", "--budget-piste", "4",
@@ -65,6 +102,42 @@ def _courir(dossier: Path, nom: str, options: list) -> tuple:
     with contextlib.redirect_stdout(tampon):
         reconstruire.chaine(args)
     return sortie, travail, tampon.getvalue()
+
+
+def _differences(obtenu, attendu, tolerance: float, chemin: str = "") -> tuple:
+    """Compare deux documents JSON : tout à l'identique, sauf les FLOTTANTS,
+    tolérés sous `tolerance` en écart RELATIF.
+
+    Rend `(dures, absorbees)` : ce qui diffère vraiment, et les écarts
+    flottants passés sous la tolérance, avec leur chemin. La seconde liste
+    existe pour être IMPRIMÉE — un test qui tolère en silence ne dit plus ce
+    qu'il a vu.
+    """
+    dures: list = []
+    absorbees: list = []
+    if isinstance(attendu, dict) and isinstance(obtenu, dict):
+        if set(obtenu) != set(attendu):
+            return [f"{chemin or '/'} : clés {sorted(obtenu)} contre {sorted(attendu)}"], absorbees
+        for cle in attendu:
+            d, a = _differences(obtenu[cle], attendu[cle], tolerance, f"{chemin}/{cle}")
+            dures += d
+            absorbees += a
+    elif isinstance(attendu, list) and isinstance(obtenu, list):
+        if len(obtenu) != len(attendu):
+            return [f"{chemin} : {len(obtenu)} élément(s) contre {len(attendu)}"], absorbees
+        for i, (o, att) in enumerate(zip(obtenu, attendu, strict=True)):   # les longueurs viennent d'être vérifiées
+            d, a = _differences(o, att, tolerance, f"{chemin}[{i}]")
+            dures += d
+            absorbees += a
+    elif isinstance(attendu, float) and isinstance(obtenu, (int, float)) and not isinstance(obtenu, bool):
+        ecart = abs(float(obtenu) - attendu) / max(abs(attendu), 1e-12)
+        if ecart > tolerance:
+            dures.append(f"{chemin} : {obtenu!r} contre {attendu!r} ({ecart:.2e} en relatif)")
+        elif ecart > 0.0:
+            absorbees.append(f"{chemin} {ecart:.2e}")
+    elif obtenu != attendu:
+        dures.append(f"{chemin} : {obtenu!r} contre {attendu!r}")
+    return dures, absorbees
 
 
 def _sans_provenance(rapport: dict) -> dict:
@@ -95,15 +168,42 @@ def identite_sans_option_et_la_boucle_n_est_jamais_appelee():
             assert_true("residuel" not in ra, "pas de bloc residuel sans l'option")
             assert_true("résiduel" not in journal_a and "résiduel" not in journal_b,
                         "et le journal n'en parle pas")
-            # ET LA CHAÎNE D'HIER : le projet de la course commise le 04/09,
-            # d'avant le chantier, aux mêmes options et sur les mêmes stems.
-            assert_equal((a / "project.json").read_bytes(), (FIXTURE / "course" / "project.json").read_bytes(),
-                         "project.json de la course commise, octet pour octet")
+            # ET LA CHAÎNE D'HIER : la course commise le 04/09, d'avant le
+            # chantier, aux mêmes options et sur les mêmes stems.
+            commis = json.loads((FIXTURE / "course" / "rapport.json").read_text(encoding="utf-8"))
+            # LE MIDI NE TRAVERSE PAS LE MOTEUR AUDIO : il se compare octet
+            # pour octet quel que soit le binaire qui a rendu le son.
             assert_equal((a / "midi" / "arrangement.mid").read_bytes(),
                          (FIXTURE / "course" / "midi" / "arrangement.mid").read_bytes(),
                          "arrangement.mid de la course commise, octet pour octet")
-            commis = json.loads((FIXTURE / "course" / "rapport.json").read_text(encoding="utf-8"))
-            assert_near(ra["globalDistance"], commis["globalDistance"], 1e-9, "même distance globale")
+            hier = commis["provenance"]["moteur"]
+            aujourdhui = ra["provenance"]["moteur"]
+            meme_moteur = (hier.get("compile") == aujourdhui.get("compile")
+                           and hier.get("octets") == aujourdhui.get("octets"))
+            if meme_moteur:
+                # Le binaire de la référence est celui qui tourne : plus rien
+                # ne justifie une tolérance.
+                assert_equal((a / "project.json").read_bytes(),
+                             (FIXTURE / "course" / "project.json").read_bytes(),
+                             "project.json de la course commise, octet pour octet (même moteur)")
+                assert_near(ra["globalDistance"], commis["globalDistance"], 1e-12,
+                            "même distance globale (même moteur)")
+            else:
+                print(f"      moteur de la référence : {hier.get('compile')} "
+                      f"({hier.get('octets')} octets) ; moteur d'aujourd'hui : "
+                      f"{aujourdhui.get('compile')} ({aujourdhui.get('octets')} octets)")
+                dures, absorbees = _differences(
+                    json.loads((a / "project.json").read_text(encoding="utf-8")),
+                    json.loads((FIXTURE / "course" / "project.json").read_text(encoding="utf-8")),
+                    TOLERANCE_MOTEUR)
+                print(f"      project.json : {len(absorbees)} nombre(s) sous "
+                      f"{TOLERANCE_MOTEUR:.0e} — {', '.join(absorbees) if absorbees else 'aucun'}")
+                assert_equal(dures, [], "project.json de la course commise, aux nombres du moteur près")
+                ecart = abs(ra["globalDistance"] - commis["globalDistance"]) / abs(commis["globalDistance"])
+                print(f"      distance globale : {ra['globalDistance']!r} contre "
+                      f"{commis['globalDistance']!r} ({ecart:.2e} en relatif)")
+                assert_true(ecart <= TOLERANCE_MOTEUR,
+                            f"distance globale à {TOLERANCE_MOTEUR:.0e} près : écart {ecart:.2e}")
     finally:
         reconstruire.boucle_residuelle_de_la_chaine = originale
 

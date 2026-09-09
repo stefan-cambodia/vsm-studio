@@ -395,6 +395,38 @@ leur raison, pour ne pas être retranchés après la mesure.
   premier, et tout est reprenable (une course dont `rapport.json` existe
   n'est pas rejouée).
 
+- **La course COMMISE ne se compare pas octet pour octet, parce qu'elle
+  porte des nombres qui sortent d'un binaire non commis** (tranché le
+  09/09/2026, après quatre jours d'échec du test). Le critère du § 4 porte
+  sur DEUX courses de la même session — sans `--residuel` contre
+  `--residuel 0` — et celui-là tient au bit près : même processus, même
+  moteur. Le test y avait ajouté une troisième comparaison, contre le
+  `project.json` de la course du 04/09 gardée en fixture, elle aussi octet
+  pour octet. Or `build/tools/vsm-render` n'est pas dans le dépôt et chaque
+  `cmake --build` le refait : cette assertion tombe à la première
+  recompilation du moteur, et elle annonce « la chaîne a changé » quand ce
+  qui a changé est le moteur — la panne de provenance de v13/v14, retournée.
+
+  MESURÉ. Moteur du 04/09 15:37:58 (162 513 544 octets) contre celui du
+  09/09 17:05:01 (166 864 936 octets, mêmes 64 machines), même course :
+  `arrangement.mid` identique octet pour octet, aucun champ des deux stems
+  de `rapport.json` ne bouge (mêmes machines, mêmes patchs), automation
+  identique au dernier chiffre, volumes de `bass` et des deux pièces de
+  batterie identiques au dernier bit. **Deux nombres bougent** : le volume
+  de `other`, la seule piste automatisée (3,65e-08 en relatif) et la
+  distance globale (7,41e-08). Les deux sont sous la résolution du float32
+  dans lequel le moteur rend son audio (eps = 1,19e-07). Aucune décision ne
+  change.
+
+  DÉCISION. Le test sépare ce qui ne traverse pas le moteur — structure,
+  machines, presets, ticks, et le MIDI entier — comparé à l'identique, de ce
+  qui en sort — les flottants, comparés au **millionième relatif**, quinze
+  fois le plus grand écart observé et cent fois plus serré que la 4e
+  décimale à laquelle la chaîne publie ses distances. L'écart absorbé est
+  IMPRIMÉ avec les deux identités de moteur : une tolérance muette serait
+  une panne muette. Et si le binaire qui tourne EST celui de la référence
+  (même date, même taille), l'exigence redevient l'égalité octet pour octet.
+
 ## 6. Campagne R1 — attendus écrits AVANT la mesure (05/09/2026, 09:05)
 
 Sur les vingt morceaux de S1 (lots `s1-sec` et `s1-prod`, graines 1 à 10,
