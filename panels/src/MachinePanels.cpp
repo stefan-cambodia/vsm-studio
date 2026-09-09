@@ -583,13 +583,13 @@ MachinePanel makeProphet() {
     panel.sectionColour = "#1A1A1D";
     panel.textColour = "#E8E6E0";
     panel.knobColour = "#1A1A1C";
-    panel.gridColumns = 20;
-    panel.gridRows = 4;
+    panel.gridColumns = 8;
+    panel.gridRows = 9;
 
     PanelSection polyMod;
     polyMod.title = "POLY-MOD";
     polyMod.accentColour = "#C86A4A";
-    polyMod.column = 0; polyMod.row = 0; polyMod.columnSpan = 5; polyMod.rowSpan = 4;
+    polyMod.column = 0; polyMod.row = 0; polyMod.columnSpan = 8; polyMod.rowSpan = 2;
     polyMod.controls = {
         control("PolyMod Filt Env", "SOURCE : FILT ENV", S::Knob, 0, 0),
         control("PolyMod Osc B", "SOURCE : OSC B", S::Knob, 1, 0),
@@ -601,7 +601,7 @@ MachinePanel makeProphet() {
     PanelSection oscillators;
     oscillators.title = "OSCILLATOR A / B";
     oscillators.accentColour = "#D8B25A";
-    oscillators.column = 5; oscillators.row = 0; oscillators.columnSpan = 6; oscillators.rowSpan = 4;
+    oscillators.column = 0; oscillators.row = 2; oscillators.columnSpan = 8; oscillators.rowSpan = 2;
     oscillators.controls = {
         control("Osc A Level", "A LEVEL", S::Knob, 0, 0),
         control("Osc A Shape", "A SHAPE", S::Selector, 1, 0),
@@ -616,7 +616,7 @@ MachinePanel makeProphet() {
     PanelSection filter;
     filter.title = "FILTER";
     filter.accentColour = "#D8B25A";
-    filter.column = 11; filter.row = 0; filter.columnSpan = 5; filter.rowSpan = 4;
+    filter.column = 0; filter.row = 4; filter.columnSpan = 8; filter.rowSpan = 3;
     filter.controls = {
         control("Filter Cutoff", "CUTOFF", S::LargeKnob, 0, 0, 2, 2),
         control("Filter Resonance", "RESONANCE", S::Knob, 2, 0),
@@ -631,7 +631,7 @@ MachinePanel makeProphet() {
     PanelSection envelopes;
     envelopes.title = "FILTER ENV / AMP ENV";
     envelopes.accentColour = "#8FA9C0";
-    envelopes.column = 16; envelopes.row = 0; envelopes.columnSpan = 4; envelopes.rowSpan = 4;
+    envelopes.column = 0; envelopes.row = 7; envelopes.columnSpan = 8; envelopes.rowSpan = 2;
     envelopes.controls = {
         control("Filter Attack", "F ATTACK", S::Knob, 0, 0),
         control("Filter Decay", "F DECAY", S::Knob, 1, 0),
@@ -731,13 +731,13 @@ MachinePanel makeArpOdyssey() {
     panel.sectionColour = "#17171A";
     panel.textColour = "#E7D9A8";
     panel.knobColour = "#2C2C30";
-    panel.gridColumns = 18;
+    panel.gridColumns = 8;
     panel.gridRows = 6;
 
     PanelSection oscillators;
     oscillators.title = "VCO 1 / VCO 2 / RING";
     oscillators.accentColour = "#D9B75A";
-    oscillators.column = 0; oscillators.row = 0; oscillators.columnSpan = 7; oscillators.rowSpan = 6;
+    oscillators.column = 0; oscillators.row = 0; oscillators.columnSpan = 8; oscillators.rowSpan = 2;
     oscillators.controls = {
         control("VCO-1 Level", "VCO 1", S::VerticalSlider, 0, 0),
         control("VCO-2 Level", "VCO 2", S::VerticalSlider, 1, 0),
@@ -754,7 +754,7 @@ MachinePanel makeArpOdyssey() {
     PanelSection filter;
     filter.title = "FILTER";
     filter.accentColour = "#D9B75A";
-    filter.column = 7; filter.row = 0; filter.columnSpan = 5; filter.rowSpan = 6;
+    filter.column = 0; filter.row = 2; filter.columnSpan = 8; filter.rowSpan = 2;
     filter.controls = {
         control("HPF Cutoff", "HPF", S::VerticalSlider, 0, 0),
         control("Filter Cutoff", "CUTOFF", S::VerticalSlider, 1, 0),
@@ -766,7 +766,7 @@ MachinePanel makeArpOdyssey() {
     PanelSection modulation;
     modulation.title = "LFO / ADSR";
     modulation.accentColour = "#8FB4C4";
-    modulation.column = 12; modulation.row = 0; modulation.columnSpan = 6; modulation.rowSpan = 6;
+    modulation.column = 0; modulation.row = 4; modulation.columnSpan = 8; modulation.rowSpan = 2;
     modulation.controls = {
         control("LFO Rate", "LFO RATE", S::VerticalSlider, 0, 0),
         control("LFO to Pitch", "TO VCO", S::VerticalSlider, 1, 0),
@@ -1183,15 +1183,15 @@ MachinePanel makeSupersaw() {
     panel.sectionColour = "#242A33";
     panel.textColour = "#F0F3F7";
     panel.knobColour = "#C8CDD4";
-    panel.gridColumns = 18;
-    panel.gridRows = 6;
+    panel.gridColumns = 8;
+    panel.gridRows = 10;
 
     // Le bloc qui fait le son : deux grands potentiomètres, comme sur
     // l'original où ils sont les seuls de cette taille.
     PanelSection superSaw;
     superSaw.title = "SUPER SAW";
     superSaw.accentColour = "#4FC3E8";
-    superSaw.column = 0; superSaw.row = 0; superSaw.columnSpan = 5; superSaw.rowSpan = 6;
+    superSaw.column = 0; superSaw.row = 0; superSaw.columnSpan = 4; superSaw.rowSpan = 2;
     superSaw.controls = {
         control("Detune", "DETUNE", S::LargeKnob, 0, 0),
         control("Mix", "MIX", S::LargeKnob, 1, 0),
@@ -1202,7 +1202,7 @@ MachinePanel makeSupersaw() {
     PanelSection oscillator;
     oscillator.title = "OSC";
     oscillator.accentColour = "#4FC3E8";
-    oscillator.column = 5; oscillator.row = 0; oscillator.columnSpan = 2; oscillator.rowSpan = 6;
+    oscillator.column = 4; oscillator.row = 0; oscillator.columnSpan = 4; oscillator.rowSpan = 2;
     oscillator.controls = {
         control("Sub Level", "SUB", S::Knob, 0, 0),
         control("Noise Level", "NOISE", S::Knob, 0, 1),
@@ -1211,7 +1211,7 @@ MachinePanel makeSupersaw() {
     PanelSection filter;
     filter.title = "FILTER";
     filter.accentColour = "#E8A33D";
-    filter.column = 7; filter.row = 0; filter.columnSpan = 4; filter.rowSpan = 6;
+    filter.column = 0; filter.row = 2; filter.columnSpan = 8; filter.rowSpan = 2;
     filter.controls = {
         control("Filter Cutoff", "CUTOFF", S::VerticalSlider, 0, 0, 1, 2),
         control("Filter Resonance", "RESO", S::VerticalSlider, 1, 0, 1, 2),
@@ -1223,7 +1223,7 @@ MachinePanel makeSupersaw() {
     PanelSection filterEnv;
     filterEnv.title = "FILTER ENV";
     filterEnv.accentColour = "#8FA9C9";
-    filterEnv.column = 11; filterEnv.row = 0; filterEnv.columnSpan = 2; filterEnv.rowSpan = 6;
+    filterEnv.column = 0; filterEnv.row = 4; filterEnv.columnSpan = 8; filterEnv.rowSpan = 2;
     filterEnv.controls = {
         control("Filter Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
         control("Filter Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
@@ -1234,7 +1234,7 @@ MachinePanel makeSupersaw() {
     PanelSection ampEnv;
     ampEnv.title = "AMP ENV";
     ampEnv.accentColour = "#8FA9C9";
-    ampEnv.column = 13; ampEnv.row = 0; ampEnv.columnSpan = 2; ampEnv.rowSpan = 6;
+    ampEnv.column = 0; ampEnv.row = 6; ampEnv.columnSpan = 8; ampEnv.rowSpan = 2;
     ampEnv.controls = {
         control("Amp Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
         control("Amp Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
@@ -1245,7 +1245,7 @@ MachinePanel makeSupersaw() {
     PanelSection performance;
     performance.title = "LFO / PLAY";
     performance.accentColour = "#4FC3E8";
-    performance.column = 15; performance.row = 0; performance.columnSpan = 3; performance.rowSpan = 6;
+    performance.column = 0; performance.row = 8; performance.columnSpan = 8; performance.rowSpan = 2;
     performance.controls = {
         control("LFO Rate", "RATE", S::Knob, 0, 0),
         control("LFO to Pitch", "PITCH", S::Knob, 1, 0),
@@ -1280,13 +1280,13 @@ MachinePanel makeWavetable() {
     panel.sectionColour = "#16171B";
     panel.textColour = "#DFE3EA";
     panel.knobColour = "#2A2C33";
-    panel.gridColumns = 20;
-    panel.gridRows = 6;
+    panel.gridColumns = 8;
+    panel.gridRows = 14;
 
     PanelSection wave;
     wave.title = "WAVE";
     wave.accentColour = "#7BD389";
-    wave.column = 0; wave.row = 0; wave.columnSpan = 5; wave.rowSpan = 6;
+    wave.column = 0; wave.row = 0; wave.columnSpan = 8; wave.rowSpan = 2;
     wave.controls = {
         control("Wavetable", "TABLE", S::Selector, 0, 0),
         control("Position", "POSITION", S::LargeKnob, 1, 0),
@@ -1299,7 +1299,7 @@ MachinePanel makeWavetable() {
     PanelSection waveEnv;
     waveEnv.title = "WAVE ENVELOPE";
     waveEnv.accentColour = "#7BD389";
-    waveEnv.column = 5; waveEnv.row = 0; waveEnv.columnSpan = 3; waveEnv.rowSpan = 6;
+    waveEnv.column = 0; waveEnv.row = 2; waveEnv.columnSpan = 8; waveEnv.rowSpan = 2;
     waveEnv.controls = {
         control("Wave Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
         control("Wave Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
@@ -1310,7 +1310,7 @@ MachinePanel makeWavetable() {
     PanelSection oscB;
     oscB.title = "OSC B";
     oscB.accentColour = "#7BD389";
-    oscB.column = 8; oscB.row = 0; oscB.columnSpan = 2; oscB.rowSpan = 6;
+    oscB.column = 0; oscB.row = 4; oscB.columnSpan = 8; oscB.rowSpan = 2;
     oscB.controls = {
         control("Osc B Level", "LEVEL", S::Knob, 0, 0),
         control("Osc B Detune", "DETUNE", S::Knob, 1, 0),
@@ -1321,7 +1321,7 @@ MachinePanel makeWavetable() {
     PanelSection filter;
     filter.title = "FILTER";
     filter.accentColour = "#E0A458";
-    filter.column = 10; filter.row = 0; filter.columnSpan = 3; filter.rowSpan = 6;
+    filter.column = 0; filter.row = 6; filter.columnSpan = 8; filter.rowSpan = 2;
     filter.controls = {
         control("Filter Cutoff", "CUTOFF", S::VerticalSlider, 0, 0, 1, 2),
         control("Filter Resonance", "RESO", S::VerticalSlider, 1, 0, 1, 2),
@@ -1333,7 +1333,7 @@ MachinePanel makeWavetable() {
     PanelSection filterEnv;
     filterEnv.title = "FILTER ENV";
     filterEnv.accentColour = "#8FA9C9";
-    filterEnv.column = 13; filterEnv.row = 0; filterEnv.columnSpan = 2; filterEnv.rowSpan = 6;
+    filterEnv.column = 0; filterEnv.row = 8; filterEnv.columnSpan = 8; filterEnv.rowSpan = 2;
     filterEnv.controls = {
         control("Filter Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
         control("Filter Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
@@ -1344,7 +1344,7 @@ MachinePanel makeWavetable() {
     PanelSection ampEnv;
     ampEnv.title = "AMP ENV";
     ampEnv.accentColour = "#8FA9C9";
-    ampEnv.column = 15; ampEnv.row = 0; ampEnv.columnSpan = 2; ampEnv.rowSpan = 6;
+    ampEnv.column = 0; ampEnv.row = 10; ampEnv.columnSpan = 8; ampEnv.rowSpan = 2;
     ampEnv.controls = {
         control("Amp Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
         control("Amp Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
@@ -1355,7 +1355,7 @@ MachinePanel makeWavetable() {
     PanelSection modulation;
     modulation.title = "LFO";
     modulation.accentColour = "#7BD389";
-    modulation.column = 17; modulation.row = 0; modulation.columnSpan = 3; modulation.rowSpan = 6;
+    modulation.column = 0; modulation.row = 12; modulation.columnSpan = 8; modulation.rowSpan = 2;
     modulation.controls = {
         control("LFO Rate", "RATE", S::Knob, 0, 0),
         control("LFO to Filter", "FILTER", S::Knob, 1, 0),
@@ -1390,13 +1390,13 @@ MachinePanel makePcmHybrid() {
     panel.sectionColour = "#313337";
     panel.textColour = "#E8E9EB";
     panel.knobColour = "#202225";
-    panel.gridColumns = 20;
-    panel.gridRows = 6;
+    panel.gridColumns = 8;
+    panel.gridRows = 12;
 
     PanelSection attack;
     attack.title = "PARTIAL A - PCM ATTACK";
     attack.accentColour = "#C8553D";
-    attack.column = 0; attack.row = 0; attack.columnSpan = 6; attack.rowSpan = 6;
+    attack.column = 0; attack.row = 0; attack.columnSpan = 4; attack.rowSpan = 2;
     attack.controls = {
         control("Attack Sample", "SAMPLE", S::Selector, 0, 0),
         control("Attack Level", "LEVEL", S::Knob, 1, 0),
@@ -1411,7 +1411,7 @@ MachinePanel makePcmHybrid() {
     PanelSection structure;
     structure.title = "STRUCTURE";
     structure.accentColour = "#E8B84B";
-    structure.column = 6; structure.row = 0; structure.columnSpan = 2; structure.rowSpan = 6;
+    structure.column = 4; structure.row = 0; structure.columnSpan = 4; structure.rowSpan = 2;
     structure.controls = {
         control("Structure", "RING MOD", S::Toggle, 0, 0),
     };
@@ -1419,7 +1419,7 @@ MachinePanel makePcmHybrid() {
     PanelSection tone;
     tone.title = "PARTIAL B - SYNTH";
     tone.accentColour = "#4E8098";
-    tone.column = 8; tone.row = 0; tone.columnSpan = 3; tone.rowSpan = 6;
+    tone.column = 0; tone.row = 2; tone.columnSpan = 8; tone.rowSpan = 2;
     tone.controls = {
         control("Tone Shape", "WAVE", S::Selector, 0, 0),
         control("Tone Level", "LEVEL", S::Knob, 1, 0),
@@ -1429,7 +1429,7 @@ MachinePanel makePcmHybrid() {
     PanelSection filter;
     filter.title = "TVF";
     filter.accentColour = "#E8B84B";
-    filter.column = 11; filter.row = 0; filter.columnSpan = 3; filter.rowSpan = 6;
+    filter.column = 0; filter.row = 4; filter.columnSpan = 8; filter.rowSpan = 2;
     filter.controls = {
         control("Filter Cutoff", "CUTOFF", S::VerticalSlider, 0, 0, 1, 2),
         control("Filter Resonance", "RESO", S::VerticalSlider, 1, 0, 1, 2),
@@ -1441,7 +1441,7 @@ MachinePanel makePcmHybrid() {
     PanelSection filterEnv;
     filterEnv.title = "TVF ENV";
     filterEnv.accentColour = "#8FA9C9";
-    filterEnv.column = 14; filterEnv.row = 0; filterEnv.columnSpan = 2; filterEnv.rowSpan = 6;
+    filterEnv.column = 0; filterEnv.row = 6; filterEnv.columnSpan = 8; filterEnv.rowSpan = 2;
     filterEnv.controls = {
         control("Filter Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
         control("Filter Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
@@ -1452,7 +1452,7 @@ MachinePanel makePcmHybrid() {
     PanelSection ampEnv;
     ampEnv.title = "TVA ENV";
     ampEnv.accentColour = "#8FA9C9";
-    ampEnv.column = 16; ampEnv.row = 0; ampEnv.columnSpan = 2; ampEnv.rowSpan = 6;
+    ampEnv.column = 0; ampEnv.row = 8; ampEnv.columnSpan = 8; ampEnv.rowSpan = 2;
     ampEnv.controls = {
         control("Amp Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
         control("Amp Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
@@ -1463,7 +1463,7 @@ MachinePanel makePcmHybrid() {
     PanelSection modulation;
     modulation.title = "LFO";
     modulation.accentColour = "#4E8098";
-    modulation.column = 18; modulation.row = 0; modulation.columnSpan = 2; modulation.rowSpan = 6;
+    modulation.column = 0; modulation.row = 10; modulation.columnSpan = 8; modulation.rowSpan = 2;
     modulation.controls = {
         control("LFO Rate", "RATE", S::Knob, 0, 0),
         control("LFO to Pitch", "PITCH", S::Knob, 1, 0),
@@ -2990,13 +2990,13 @@ MachinePanel makeVector() {
     panel.sectionColour = "#0F0D16";
     panel.textColour = "#E9E4F5";
     panel.knobColour = "#8E7CC3";
-    panel.gridColumns = 18;
-    panel.gridRows = 4;
+    panel.gridColumns = 8;
+    panel.gridRows = 11;
 
     PanelSection cornerA;
     cornerA.title = "A";
     cornerA.accentColour = "#8E7CC3";
-    cornerA.column = 0; cornerA.row = 0; cornerA.columnSpan = 2; cornerA.rowSpan = 2;
+    cornerA.column = 0; cornerA.row = 0; cornerA.columnSpan = 4; cornerA.rowSpan = 2;
     cornerA.controls = {
         control("A Shape", "SHAPE", S::Knob, 0, 0),
         control("A Detune", "DETUNE", S::Knob, 1, 0),
@@ -3004,7 +3004,7 @@ MachinePanel makeVector() {
     PanelSection cornerC;
     cornerC.title = "C";
     cornerC.accentColour = "#8E7CC3";
-    cornerC.column = 0; cornerC.row = 2; cornerC.columnSpan = 2; cornerC.rowSpan = 2;
+    cornerC.column = 4; cornerC.row = 0; cornerC.columnSpan = 4; cornerC.rowSpan = 2;
     cornerC.controls = {
         control("C Shape", "SHAPE", S::Knob, 0, 0),
         control("C Detune", "DETUNE", S::Knob, 1, 0),
@@ -3013,7 +3013,7 @@ MachinePanel makeVector() {
     PanelSection vecteur;
     vecteur.title = "VECTOR";
     vecteur.accentColour = "#C3B1F0";
-    vecteur.column = 2; vecteur.row = 0; vecteur.columnSpan = 5; vecteur.rowSpan = 4;
+    vecteur.column = 0; vecteur.row = 2; vecteur.columnSpan = 4; vecteur.rowSpan = 2;
     vecteur.controls = {
         control("Vector X", "X", S::LargeKnob, 0, 0),
         control("Vector Y", "Y", S::LargeKnob, 1, 0),
@@ -3024,7 +3024,7 @@ MachinePanel makeVector() {
     PanelSection cornerB;
     cornerB.title = "B";
     cornerB.accentColour = "#8E7CC3";
-    cornerB.column = 7; cornerB.row = 0; cornerB.columnSpan = 2; cornerB.rowSpan = 2;
+    cornerB.column = 4; cornerB.row = 2; cornerB.columnSpan = 4; cornerB.rowSpan = 2;
     cornerB.controls = {
         control("B Shape", "SHAPE", S::Knob, 0, 0),
         control("B Detune", "DETUNE", S::Knob, 1, 0),
@@ -3032,7 +3032,7 @@ MachinePanel makeVector() {
     PanelSection cornerD;
     cornerD.title = "D";
     cornerD.accentColour = "#8E7CC3";
-    cornerD.column = 7; cornerD.row = 2; cornerD.columnSpan = 2; cornerD.rowSpan = 2;
+    cornerD.column = 0; cornerD.row = 4; cornerD.columnSpan = 4; cornerD.rowSpan = 2;
     cornerD.controls = {
         control("D Shape", "SHAPE", S::Knob, 0, 0),
         control("D Detune", "DETUNE", S::Knob, 1, 0),
@@ -3041,7 +3041,7 @@ MachinePanel makeVector() {
     PanelSection filtre;
     filtre.title = "FILTER";
     filtre.accentColour = "#7CA6C3";
-    filtre.column = 9; filtre.row = 0; filtre.columnSpan = 3; filtre.rowSpan = 4;
+    filtre.column = 4; filtre.row = 4; filtre.columnSpan = 4; filtre.rowSpan = 2;
     filtre.controls = {
         control("Filter Cutoff", "CUTOFF", S::LargeKnob, 0, 0),
         control("Filter Resonance", "RES", S::Knob, 1, 0),
@@ -3052,7 +3052,7 @@ MachinePanel makeVector() {
     PanelSection envs;
     envs.title = "ENVELOPES";
     envs.accentColour = "#7CA6C3";
-    envs.column = 12; envs.row = 0; envs.columnSpan = 4; envs.rowSpan = 4;
+    envs.column = 0; envs.row = 6; envs.columnSpan = 8; envs.rowSpan = 3;
     envs.controls = {
         control("Amp Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
         control("Amp Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
@@ -3067,7 +3067,7 @@ MachinePanel makeVector() {
     PanelSection output;
     output.title = "OUTPUT";
     output.accentColour = "#C3B1F0";
-    output.column = 16; output.row = 0; output.columnSpan = 2; output.rowSpan = 4;
+    output.column = 0; output.row = 9; output.columnSpan = 8; output.rowSpan = 2;
     output.controls = {
         control("Velocity Sensitivity", "TOUCH", S::Knob, 0, 0),
         control("Output Level", "VOLUME", S::Knob, 0, 1),
@@ -3170,13 +3170,13 @@ MachinePanel makeCs80() {
     panel.sectionColour = "#191309";
     panel.textColour = "#F2E7D2";
     panel.knobColour = "#C9A961";
-    panel.gridColumns = 20;
-    panel.gridRows = 4;
+    panel.gridColumns = 8;
+    panel.gridRows = 8;
 
     PanelSection coucheI;
     coucheI.title = "CHANNEL I";
     coucheI.accentColour = "#C9A961";
-    coucheI.column = 0; coucheI.row = 0; coucheI.columnSpan = 6; coucheI.rowSpan = 4;
+    coucheI.column = 0; coucheI.row = 0; coucheI.columnSpan = 8; coucheI.rowSpan = 2;
     coucheI.controls = {
         control("I Shape", "WAVE", S::Knob, 0, 0),
         control("I Pulse Width", "PW", S::Knob, 1, 0),
@@ -3191,7 +3191,7 @@ MachinePanel makeCs80() {
     PanelSection melange;
     melange.title = "MIX";
     melange.accentColour = "#E5C87F";
-    melange.column = 6; melange.row = 0; melange.columnSpan = 2; melange.rowSpan = 4;
+    melange.column = 0; melange.row = 2; melange.columnSpan = 8; melange.rowSpan = 2;
     melange.controls = {
         control("Layer Mix", "I / II", S::LargeKnob, 0, 0),
         control("Output Level", "VOLUME", S::Knob, 0, 1),
@@ -3200,7 +3200,7 @@ MachinePanel makeCs80() {
     PanelSection coucheII;
     coucheII.title = "CHANNEL II";
     coucheII.accentColour = "#C9A961";
-    coucheII.column = 8; coucheII.row = 0; coucheII.columnSpan = 6; coucheII.rowSpan = 4;
+    coucheII.column = 0; coucheII.row = 4; coucheII.columnSpan = 8; coucheII.rowSpan = 2;
     coucheII.controls = {
         control("II Shape", "WAVE", S::Knob, 0, 0),
         control("II Pulse Width", "PW", S::Knob, 1, 0),
@@ -3215,7 +3215,7 @@ MachinePanel makeCs80() {
     PanelSection toucher;
     toucher.title = "TOUCH";
     toucher.accentColour = "#D98F5A";
-    toucher.column = 14; toucher.row = 0; toucher.columnSpan = 3; toucher.rowSpan = 4;
+    toucher.column = 0; toucher.row = 6; toucher.columnSpan = 4; toucher.rowSpan = 2;
     toucher.controls = {
         control("Pressure to Cutoff", "AFT>LPF", S::LargeKnob, 0, 0),
         control("Pressure to Level", "AFT>VOL", S::Knob, 1, 0),
@@ -3226,7 +3226,7 @@ MachinePanel makeCs80() {
     PanelSection envs;
     envs.title = "ENVELOPES";
     envs.accentColour = "#8FA9C9";
-    envs.column = 17; envs.row = 0; envs.columnSpan = 3; envs.rowSpan = 4;
+    envs.column = 4; envs.row = 6; envs.columnSpan = 4; envs.rowSpan = 2;
     envs.controls = {
         control("I Amp Attack", "IA", S::Knob, 0, 0),
         control("I Amp Release", "IR", S::Knob, 1, 0),
@@ -3315,13 +3315,13 @@ MachinePanel makeChebyshev() {
     panel.sectionColour = "#101315";
     panel.textColour = "#E4EEF2";
     panel.knobColour = "#7FB2C9";
-    panel.gridColumns = 16;
-    panel.gridRows = 4;
+    panel.gridColumns = 8;
+    panel.gridRows = 9;
 
     PanelSection drive;
     drive.title = "INDEX";
     drive.accentColour = "#A7D4E8";
-    drive.column = 0; drive.row = 0; drive.columnSpan = 3; drive.rowSpan = 4;
+    drive.column = 0; drive.row = 0; drive.columnSpan = 8; drive.rowSpan = 2;
     drive.controls = {
         control("Index", "INDEX", S::LargeKnob, 0, 0),
         control("Velocity to Index", "VEL", S::Knob, 0, 1),
@@ -3330,7 +3330,7 @@ MachinePanel makeChebyshev() {
     PanelSection rangs;
     rangs.title = "PARTIALS";
     rangs.accentColour = "#7FB2C9";
-    rangs.column = 3; rangs.row = 0; rangs.columnSpan = 8; rangs.rowSpan = 4;
+    rangs.column = 0; rangs.row = 2; rangs.columnSpan = 8; rangs.rowSpan = 3;
     rangs.controls = {
         control("Partial 1", "1", S::VerticalSlider, 0, 0, 1, 3),
         control("Partial 2", "2", S::VerticalSlider, 1, 0, 1, 3),
@@ -3345,7 +3345,7 @@ MachinePanel makeChebyshev() {
     PanelSection env;
     env.title = "ENVELOPE";
     env.accentColour = "#8FA9C9";
-    env.column = 11; env.row = 0; env.columnSpan = 4; env.rowSpan = 4;
+    env.column = 0; env.row = 5; env.columnSpan = 8; env.rowSpan = 2;
     env.controls = {
         control("Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
         control("Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
@@ -3356,7 +3356,7 @@ MachinePanel makeChebyshev() {
     PanelSection sortie;
     sortie.title = "OUT";
     sortie.accentColour = "#A7D4E8";
-    sortie.column = 15; sortie.row = 0; sortie.columnSpan = 1; sortie.rowSpan = 4;
+    sortie.column = 0; sortie.row = 7; sortie.columnSpan = 8; sortie.rowSpan = 2;
     sortie.controls = {
         control("Output Level", "VOL", S::Knob, 0, 0),
     };

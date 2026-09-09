@@ -10184,3 +10184,67 @@ filtre dessous ; l'OB-X montre CONTROL avec ses trois curseurs et ses deux
 boutons, puis OSCILLATOR 1 et OSCILLATOR 2 côte à côte.
 
 Tests : 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — verts.
+
+### Phase D66 — Les huit façades qui restaient : soixante-sept boutons sous le plancher, zéro après (10/09/2026, 05:30)
+
+**D65 AVAIT LAISSÉ TROIS FAÇADES FAUTE DE MESURE**, et la raison en était un
+projet d'essai mal formé : huit pistes déclarées dans `project.json`, **deux**
+seulement dans le fichier MIDI. Le chargeur apparie les deux, et les six
+dernières n'existaient pas. Refait avec l'exporteur de la chaîne
+(`write_project_bundle`), qui écrit les deux du même mouvement, les huit
+machines s'ouvrent.
+
+**CE QUE LE TÉMOIN A RELEVÉ**, sur les huit façades que la table de D64 place en
+tête, à 900x660 :
+
+| machine | boutons | avant : plus petit / sous 18 px | après : plus petit / sous 18 px |
+|---|---|---|---|
+| `vsm.chebyshev` | 3 | 1 px / 1 | **47 px** / **0** |
+| `vsm.wavetable` | 14 | 4 px / 10 | **40 px** / **0** |
+| `vsm.pcmhybrid` | 15 | 4 px / 9 | **35 px** / **0** |
+| `vsm.vector` | 16 | 8 px / 6 | **38 px** / **0** |
+| `vsm.cs80` | 20 | 9 px / 10 | **35 px** / **0** |
+| `vsm.prophet` | 29 | 10 px / 15 | **40 px** / **0** |
+| `vsm.supersaw` | 13 | 11 px / 7 | **38 px** / **0** |
+| `vsm.arpodyssey` | 9 | 13 px / 9 | **35 px** / **0** |
+| `vsm.minimoog` (D64) | 22 | 20 px / 0 | 20 px / 0 |
+
+**Soixante-sept boutons sous le plancher de 18 px, zéro après.** Un bouton d'UN
+pixel sur le Chebyshev — la commande de volume.
+
+**LE REMÈDE EST CELUI DE D65, APPLIQUÉ PAR UN OUTIL.** Toutes ces façades ont la
+même forme : tous leurs blocs sur la rangée 0, sur seize à vingt colonnes. Un
+script relit chaque bloc — ses colonnes et ses rangées INTERNES, déduites de ses
+commandes — et réécrit ses seules coordonnées de grille : huit colonnes, blocs
+empilés, deux côte à côte quand ils sont étroits. **L'ordre des blocs, leurs
+commandes, leurs couleurs et leurs sérigraphies ne sont pas touchés** : le sens
+de lecture de chaque machine est conservé, seul son pliage change.
+
+#### Deux défauts de l'outil, et qui les a trouvés
+
+**LE PREMIER A ÉTÉ ATTRAPÉ PAR UN TEST, SANS ÉCRAN.** Quand un bloc de demi-
+largeur attendait un partenaire et que le suivant prenait toute la largeur,
+l'outil n'avançait que d'UNE rangée au lieu de la hauteur du bloc en attente :
+les deux se chevauchaient. `sections_never_overlap` l'a nommé —
+« façade vsm.prophet : les blocs "POLY-MOD" et "OSCILLATOR A / B" se
+chevauchent ». C'est exactement ce pour quoi `panels/` est une bibliothèque de
+DONNÉES testables plutôt que du code de dessin : une erreur de disposition s'y
+attrape sans serveur graphique, avant toute capture.
+
+**LE SECOND A ÉTÉ ATTRAPÉ PAR L'ŒIL, que la mesure ne remplace pas.** Les
+chiffres étaient déjà bons — 35 px partout, zéro sous le plancher — et le
+POLY-MOD du Prophet occupait la moitié gauche de la façade en laissant un grand
+rectangle vide à droite : lisible, et l'air inachevé. Un bloc resté seul sur sa
+rangée prend désormais toute la largeur, et ses cinq commandes s'y étalent avec
+leur sérigraphie à côté.
+
+**VU À L'ÉCRAN.** Le POLY-MOD du Prophet montre ses cinq sources et destinations
+nommées en entier (SOURCE : FILT ENV, SOURCE : OSC B, TO FREQ A, TO PW A, TO
+FILTER), OSCILLATOR A / B dessous.
+
+**CE QUE CELA LAISSE.** Onze façades sur soixante-trois réclament encore, PAR LE
+CALCUL de D64, plus que le rack ne donne. Aucune n'a été mesurée à l'écran : la
+règle de D65 tient, on ne corrige pas une façade sur la foi d'un calcul quand le
+diamètre rendu est mesurable. Elles attendent leur projet d'essai.
+
+Tests : 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — verts.
