@@ -1784,8 +1784,17 @@ void MainComponent::showFloatingPanels() {
                         .getBoolValue("fenetreUnique", true);
     if (singleWindow_) {
         // UNE fenêtre, la taille de l'écran de travail : c'est elle le studio.
-        if (auto* socle = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
-            socle->setBounds(screenArea.reduced(8));
+        //
+        // SAUF SI `VSM_TAILLE` L'A FIXÉE (D58). Cette ligne recouvrait la
+        // taille demandée juste après que `Main.cpp` l'avait posée : quatre
+        // valeurs différentes rendaient la MÊME image de 1264x742, soit la
+        // largeur de l'écran divisée par l'échelle d'interface. Un réglage de
+        // vérification qui promet et ne fait rien est pire qu'un réglage
+        // absent, et il rendait invérifiable toute disposition qui ne tient
+        // qu'à une certaine largeur.
+        if (!tailleImposee_)
+            if (auto* socle = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
+                socle->setBounds(screenArea.reduced(8));
         dockPanels();
         return;
     }

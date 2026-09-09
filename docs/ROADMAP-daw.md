@@ -9630,3 +9630,74 @@ Tests : 1 291 audio, **327 core** (4 neufs), 292 interchange, 25 clap,
 >    les prises étaient le seul cas. Repères, bus de départ, inserts, effets
 >    MIDI, marqueurs de warp, points d'automation, associations MIDI Learn,
 >    pistes et clips ont tous leur geste de retrait.
+
+### Phase D58 — `VSM_TAILLE` ne faisait rien depuis le 31/08, et l'image obtenue ressemblait assez à celle qu'on attendait pour que personne ne le voie (09/09/2026, 18:00)
+
+**COMMENT CELA S'EST TROUVÉ.** En ouvrant la plus grosse reconstruction réelle
+du dépôt — `usandthem-parite-v3`, **onze pistes** : sept MIDI, deux audio, deux
+groupes — pour la regarder à 1600x1000. La capture est sortie à **1264x742**.
+Quatre valeurs différentes de `VSM_TAILLE`, mesurées :
+
+| demandé | image obtenue |
+|---|---|
+| (absent) | 1264x742 |
+| 800x600 | **1264x742** |
+| 1280x800 | **1264x742** |
+| 1600x1000 | **1264x742** |
+
+**LE RÉGLAGE NE FAISAIT RIEN DU TOUT.** `showFloatingPanels()` recouvre la
+fenêtre socle par l'écran de travail entier en mode « fenêtre unique »
+(`socle->setBounds(screenArea.reduced(8))`) — le défaut depuis le commit du
+31/08 « La fenêtre unique devient le défaut » —, et cette ligne s'exécute
+**juste après** que `Main.cpp` a posé la taille demandée. 1264, c'est
+`(1920 − 16) / 1,5` : la largeur de l'écran moins la marge, divisée par
+l'échelle d'interface. Tout autoportrait de ce document pris depuis le 31/08 a
+la taille de l'écran, quoi qu'ait demandé son auteur.
+
+**CE QUE CELA A COÛTÉ, ET IL FAUT LE DIRE.** D22.4 écrit « à 1 280 px logiques,
+« Ouvrir MIDI… » et « Exporter MIDI… » tiennent encore ». La vérification a en
+réalité eu lieu à **1 264** px. L'affirmation reste vraie — à seize pixels près,
+et par hasard : si l'écran de développement avait été plus large, elle aurait
+été fausse et personne ne l'aurait su. **Un réglage de vérification qui promet
+et ne fait rien est pire qu'un réglage absent**, parce qu'il fait écrire des
+chiffres qu'on n'a pas mesurés.
+
+**CE QUI EST FAIT.**
+
+1. **`VSM_TAILLE` gagne** : la disposition en fenêtre unique ne recouvre plus la
+   taille imposée. Mesuré après correction : 900x660 demandé → **900x660**,
+   1280x800 → **1280x742**, 1600x1000 → **1280x742**.
+2. **Elle DIT ce qu'elle a demandé ET ce qu'elle a obtenu**, ce dernier lu sur
+   **l'image écrite** et non sur le composant — c'est la leçon de D49, et elle
+   a servi tout de suite : interrogé juste après le redimensionnement, le
+   composant rendait encore 1600x1000 alors que l'image faisait 1280x742. Seule
+   l'image dit la vérité. Le plafond est l'écran **divisé par l'échelle
+   d'interface** : à 150 % sur un écran de 1920, il vaut 1280.
+3. **Un PLANCHER, mesuré et non choisi** : `setResizeLimits(900, 660, …)`.
+   Rien n'en fixait, et l'on pouvait réduire la fenêtre jusqu'à ce que la
+   façade de machine perde **toutes** ses légendes — à 800x600 logiques,
+   « OSCILL… » et des rangées de points à la place des noms de potentiomètres.
+   À 900x660 elles se lisent encore, abrégées. La lisibilité prime sur « ça
+   tient dans la case ». Une demande sous le plancher est **remontée en le
+   disant** ; un écran plus petit se règle par *Affichage ▸ Taille de
+   l'interface*, pas en rendant l'application illisible.
+
+**CE QUE LA PREMIÈRE VRAIE PETITE FENÊTRE A MONTRÉ, ET QUI RESTE.** Au plancher,
+le bandeau de la tranche master écrit « phase 1.00 » et « -inf LUFS »
+**par-dessus** sa dernière rangée de potentiomètres. Ce n'est pas une
+régression : c'est une disposition que personne n'avait jamais vue, faute d'un
+réglage qui marche. Elle est **nommée ici plutôt que corrigée en silence dans
+la même phase**, avec son seuil : à 1024x742 le recouvrement disparaît.
+
+**ET LA RECONSTRUCTION À ONZE PISTES S'OUVRE.** C'est la première fois qu'un
+projet réel de cette taille est ouvert et regardé — D40 avait mesuré à 64
+pistes, mais sur un projet SYNTHÉTIQUE. Onze tranches au mélangeur, onze lignes
+dans l'arrangement, chaque piste avec sa machine (`vsm.vocal` sur la basse,
+`vsm.divider`, `vsm.tb303`, deux `vsm.multisample`, `vsm.drums`) et les deux
+groupes en fin de liste. `diagnostic-export-midi` rend « le .mid portera tout
+ce qui est joué », ce qui est vrai depuis D56 : aucune de ces pistes n'est
+muette, décalée ni transposée.
+
+Tests : 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — verts
+(la phase ne touche qu'`app/Source/`, dont aucune suite ne traverse le point
+d'entrée : c'est la mesure à l'écran qui la tranche, et elle est ci-dessus).

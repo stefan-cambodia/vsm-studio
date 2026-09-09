@@ -23,6 +23,15 @@
 // macOS, Visual Studio sous Windows — voir app/CMakeLists.txt)
 // ---------------------------------------------------------------------------
 
+/// D58 : LE PLANCHER DE LA FENÊTRE, en pixels LOGIQUES (donc à l'échelle de
+/// l'interface). Mesuré : à 900x660 les légendes de la façade de machine se
+/// lisent encore, abrégées ; à 800x600 elles ont TOUTES disparu (« OSCILL... »
+/// et des rangées de points) et le bandeau du master déborde. La lisibilité
+/// prime sur « ça tient dans la case ». Un écran plus petit se règle par
+/// « Affichage ▸ Taille de l'interface ».
+inline constexpr int kLargeurMinimale = 900;
+inline constexpr int kHauteurMinimale = 660;
+
 class VintageSynthMidiStudioApplication : public juce::JUCEApplication {
 public:
     const juce::String getApplicationName() override { return "Vintage Synth MIDI Studio"; }
@@ -57,9 +66,24 @@ public:
                               DocumentWindow::allButtons) {
             setUsingNativeTitleBar(true);
             auto* content = new MainComponent();
+            std::pair<int, int> tailleDemandee { 0, 0 };   // D58
             setContentOwned(content, true); // la fenêtre s'ajuste à la taille du contenu (menu + transport)
             centreWithSize(content->getWidth(), content->getHeight());
             setResizable(true, true);
+            // D58 : UN PLANCHER, MESURÉ. Rien n'en fixait, et l'on pouvait
+            // réduire la fenêtre jusqu'à ce que la façade de machine perde
+            // TOUTES ses légendes (à 800x600 logiques : « OSCILL... » et des
+            // rangées de points) et que le bandeau du master déborde. Le
+            // plancher est pris là où la mesure le place : à 900x660 les
+            // légendes se lisent encore, abrégées ; en dessous elles
+            // disparaissent. La lisibilité prime sur « ça tient dans la
+            // case », comme partout dans cette application.
+            //
+            // EN PIXELS LOGIQUES, donc à l'échelle de l'interface : à 150 %
+            // ce plancher vaut 1350x990 pixels réels, et un écran plus petit
+            // se règle par « Affichage ▸ Taille de l'interface » plutôt qu'en
+            // rendant l'application illisible.
+            setResizeLimits(kLargeurMinimale, kHauteurMinimale, 32000, 32000);
             // VSM_TAILLE=LARGEURxHAUTEUR (pixels logiques) : la taille de la
             // fenêtre pour un autoportrait. Sans elle, l'autoportrait prend
             // la taille mémorisée, et une disposition qui ne tient qu'à une
@@ -67,9 +91,35 @@ public:
             // vérifie pas.
             if (const char* taille = std::getenv("VSM_TAILLE"); taille != nullptr && *taille) {
                 const juce::String t(taille);
-                const int l = t.upToFirstOccurrenceOf("x", false, true).getIntValue();
-                const int h = t.fromFirstOccurrenceOf("x", false, true).getIntValue();
-                if (l > 200 && h > 100) centreWithSize(l, h);
+                int l = t.upToFirstOccurrenceOf("x", false, true).getIntValue();
+                int h = t.fromFirstOccurrenceOf("x", false, true).getIntValue();
+                if (l > 200 && h > 100) {
+                    // D58 : LE PLANCHER VAUT AUSSI ICI. Une image prise sous
+                    // le plancher montrerait une disposition que l'application
+                    // n'accepte pas à la souris -- c'est-à-dire un défaut que
+                    // personne ne peut atteindre, et l'on passerait du temps à
+                    // le corriger.
+                    const int lBorne = juce::jmax(l, kLargeurMinimale);
+                    const int hBorne = juce::jmax(h, kHauteurMinimale);
+                    if (lBorne != l || hBorne != h)
+                        std::fputs(("VSM_TAILLE : " + std::to_string(l) + "x" + std::to_string(h)
+                                    + " est sous le plancher de "
+                                    + std::to_string(kLargeurMinimale) + "x"
+                                    + std::to_string(kHauteurMinimale)
+                                    + " \u2014 remont\u00e9\n").c_str(), stderr);
+                    l = lBorne; h = hBorne;
+                    centreWithSize(l, h);
+                    // D58 : ET ON LE DIT À LA FENÊTRE, sans quoi la
+                    // disposition en fenêtre unique recouvre la taille
+                    // demandée trois lignes plus bas.
+                    content->forceWindowSize();
+                    tailleDemandee = { l, h };
+                } else {
+                    std::fputs(("VSM_TAILLE : \"" + std::string(taille)
+                                + "\" illisible ou hors bornes (largeur > 200, hauteur > 100) "
+                                  "\u2014 la taille m\u00e9moris\u00e9e est gard\u00e9e\n").c_str(),
+                               stderr);
+                }
             }
             setVisible(true);
 
@@ -77,6 +127,8 @@ public:
             // d'écran réelle, les fenêtres flottantes peuvent se
             // positionner par rapport à elle (voir MainComponent.h).
             content->showFloatingPanels();
+
+
 
             // AUTOPORTRAIT (VSM_CAPTURE=sortie.png) : la fenêtre se rend
             // elle-même en PNG deux secondes après l'ouverture, puis quitte.
@@ -280,9 +332,29 @@ public:
                 int delai = 2000;
                 if (const char* d = std::getenv("VSM_DELAI"); d != nullptr && *d)
                     delai = std::max(500, juce::String(d).getIntValue());
-                juce::Timer::callAfterDelay(delai, [this, fichier] {
+                juce::Timer::callAfterDelay(delai, [this, fichier, tailleDemandee] {
                     if (auto* c = getContentComponent()) {
                         auto image = c->createComponentSnapshot(c->getLocalBounds());
+                        // D58 : CE QU'ON A DEMANDÉ ET CE QU'ON A OBTENU, tous
+                        // deux dits, et l'obtenu lu sur L'IMAGE -- la leçon de
+                        // D49. La taille est bornée par l'écran DIVISÉ par
+                        // l'échelle d'interface : à 150 % sur un écran de 1920,
+                        // le plafond logique est 1280. Demander 1600 et
+                        // recevoir 1280 sans un mot ferait écrire « vérifié à
+                        // 1 600 px » sous une image de 1 280. Et le composant,
+                        // lui, rend encore la taille DEMANDÉE à cet instant :
+                        // seule l'image dit la vérité.
+                        if (tailleDemandee.first > 0)
+                            std::fputs(("VSM_TAILLE : " + std::to_string(tailleDemandee.first) + "x"
+                                        + std::to_string(tailleDemandee.second) + " demand\u00e9, "
+                                        + std::to_string(image.getWidth()) + "x"
+                                        + std::to_string(image.getHeight()) + " obtenu"
+                                        + ((image.getWidth() != tailleDemandee.first
+                                            || image.getHeight() != tailleDemandee.second)
+                                               ? " \u2014 BORN\u00c9 par l'\u00e9cran divis\u00e9 "
+                                                 "par l'\u00e9chelle d'interface"
+                                               : "")
+                                        + "\n").c_str(), stderr);
                         fichier.deleteFile();
                         juce::FileOutputStream flux(fichier);
                         if (flux.openedOk())

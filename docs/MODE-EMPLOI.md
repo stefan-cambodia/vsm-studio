@@ -1006,8 +1006,13 @@ qu'il faut regarder pour juger un projet à soixante-quatre machines. (Éprouvé
 choisissent l'onglet du bas — `mixer`, `automation`, `effets`, `midi-cc` — :
 un projet reconstruit avec `--reverb-melange` porte un insert que personne
 n'a posé, et il doit se voir là où on le règle. `piste:N` choisit la piste N (à partir
-de 0), et `VSM_TAILLE=LARGEURxHAUTEUR` (pixels logiques, bornée par l'écran)
-donne à la fenêtre la taille à laquelle on veut vérifier une disposition.
+de 0), et `VSM_TAILLE=LARGEURxHAUTEUR` (pixels logiques, bornée en HAUT par
+l'écran divisé par l'échelle d'interface et en BAS par le plancher de
+900x660) donne à la fenêtre la taille à laquelle on veut vérifier une
+disposition. **Elle DIT ce qu'elle a demandé et ce qu'elle a obtenu**, ce
+dernier lu sur l'image écrite : jusqu'au 09/09/2026 elle ne faisait rien du
+tout en mode fenêtre unique, quatre valeurs différentes rendant la même image
+(D58 de `ROADMAP-daw.md`).
 `premier-clip:N` choisit le premier clip de la piste N, et `tout-choisir`
 tous les clips. `VSM_MENU=libellé;libellé` exécute des entrées de menu par
 leur **libellé** avant la capture — le libellé exact d'abord, un début de

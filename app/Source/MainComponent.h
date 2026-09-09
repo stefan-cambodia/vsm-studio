@@ -176,6 +176,13 @@ public:
     /// D57 : retirer la prise `index` du tiroir de la piste choisie, en
     /// réparant les tronçons d'assemblage et en DISANT ce que cela a coûté.
     void removeTakeFromSelectedTrack(int index);
+    /// D58 : LA TAILLE DEMANDÉE PAR `VSM_TAILLE` EST IMPOSÉE.
+    ///
+    /// Sans cela elle ne servait à rien : `showFloatingPanels()` recouvre la
+    /// fenêtre socle par l'écran entier en mode « fenêtre unique » — le défaut
+    /// depuis le 31/08 —, juste après que `Main.cpp` a posé la taille demandée.
+    /// Quatre valeurs différentes rendaient la MÊME image de 1264x742.
+    void forceWindowSize() { tailleImposee_ = true; }
     /// D57 : republier le panneau d'assemblage depuis la piste choisie.
     void refreshTakeCompPanel();
     /// D24.5 : VSM_IMPORT_AUDIO=fichier.wav -- sur une piste neuve, sans boîte.
@@ -1188,6 +1195,9 @@ private:
     void undockPanels();
     void layoutDockedPanels(juce::Rectangle<int> area);
     bool singleWindow_ = true;
+    /// D58 : vrai quand `VSM_TAILLE` a fixé la taille de la fenêtre socle ;
+    /// la disposition en fenêtre unique ne la recouvre alors plus.
+    bool tailleImposee_ = false;
     bool centerShowsArrangement_ = false;
     // Tailles des volets ancrés, en points, conservées d'une session à l'autre.
     int dockGauche_ = 300;
