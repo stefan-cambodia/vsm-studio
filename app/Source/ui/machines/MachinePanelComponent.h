@@ -40,6 +40,14 @@ public:
     void paint(juce::Graphics&) override;
     void resized() override;
 
+    /// D63 : LA HAUTEUR AU-DESSOUS DE LAQUELLE LA GRILLE NE PEUT PLUS ÊTRE
+    /// POSÉE. Chaque rangée de commandes doit tenir un bouton d'au moins
+    /// 18 px -- le plancher mesuré en D62 -- et sa sérigraphie, et chaque bloc
+    /// son titre. Le rack demande ceci et fait défiler en dessous, au lieu
+    /// d'écraser la façade jusqu'à des cellules de hauteur nulle.
+    /// Rend 0 quand il n'y a pas de façade.
+    int hauteurUtile() const;
+
     /// Proportions naturelles de la façade, pour que le conteneur puisse lui
     /// réserver une place cohérente.
     double aspectRatio() const;

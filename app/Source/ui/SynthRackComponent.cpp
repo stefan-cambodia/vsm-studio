@@ -23,8 +23,10 @@ SynthRackComponent::SynthRackComponent() {
         if (onLearnModeChanged) onLearnModeChanged(learnMode_);
     };
 
-    addAndMakeVisible(machinePanel_);
-    machinePanel_.setVisible(false);
+    vueFacade_.setViewedComponent(&machinePanel_, false);
+    vueFacade_.setScrollBarsShown(true, false);
+    addChildComponent(vueFacade_);
+    machinePanel_.setVisible(true);
     machinePanel_.onParamTouched = [this](vsm::audio::plugin::ParamId id) {
         if (learnMode_ && onParamTouched) onParamTouched(id);
     };
@@ -49,7 +51,7 @@ void SynthRackComponent::setSynth(ISynthPlugin* synth, const juce::String& track
     const vsm::panels::MachinePanel* panel = synth_ ? vsm::panels::findMachinePanel(pluginId) : nullptr;
     usingMachinePanel_ = (panel != nullptr);
     machinePanel_.setPanel(panel, synth_);
-    machinePanel_.setVisible(usingMachinePanel_);
+    vueFacade_.setVisible(usingMachinePanel_);
     viewport_.setVisible(!usingMachinePanel_);
 
     if (synth_) {
@@ -138,7 +140,20 @@ void SynthRackComponent::resized() {
     area.removeFromTop(8);
 
     if (usingMachinePanel_) {
-        machinePanel_.setBounds(area);
+        // D63 : LA FAÇADE REÇOIT LA HAUTEUR QU'ELLE RÉCLAME, ET DÉFILE SOUS
+        // ELLE. Elle recevait `area` telle quelle, quelle qu'en soit la
+        // hauteur — pendant que la façade GÉNÉRIQUE, juste en dessous, était
+        // protégée par son viewport depuis toujours. L'asymétrie était à
+        // l'envers du bon sens : c'est la façade DESSINÉE, celle qui a une
+        // grille et des blocs, qui ne supporte pas d'être écrasée. Mesuré à
+        // 900x660 sur le TB-303 : la section « RÉGLAGES » recevait une
+        // cellule de 43x0 — un bouton qui n'existe pas.
+        vueFacade_.setBounds(area);
+        const int voulue = machinePanel_.hauteurUtile();
+        const bool defile = voulue > area.getHeight();
+        machinePanel_.setSize(defile ? area.getWidth() - vueFacade_.getScrollBarThickness()
+                                     : area.getWidth(),
+                               std::max(voulue, area.getHeight()));
         return;
     }
     viewport_.setBounds(area);

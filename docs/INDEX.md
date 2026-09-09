@@ -107,8 +107,8 @@ dernier. Chaque élément porte sa source ; **aucun n'est inventé ici**.
 
 | # | Travail | Source | Chiffre en main |
 |---|---|---|---|
-| A1 | **Deux cellules de façade n'ont aucune hauteur** — cellule `43x0`, le bouton ne peut pas exister quelle que soit la mise en page ; c'est la grille de la description de machine qu'il faut revoir | `ROADMAP-daw.md` D62 | 2 boutons à 0 px à 900×660 |
-| A2 | **Vingt et un boutons restent sous 18 px au plancher** — la contrainte n'est plus la sérigraphie mais la LARGEUR de la cellule (21 px) ; à traiter par la description des façades, pas par la mise en page | `ROADMAP-daw.md` D62 | 21 / 49 sous 18 px |
+| ~~A1~~ | ~~Deux cellules de façade n'ont aucune hauteur~~ — **CLOS par D63** : la façade réclame la hauteur de sa grille et défile en dessous | `ROADMAP-daw.md` D63 | 2 boutons à 0 px → **0** |
+| A2 | **Quatre boutons du Minimoog restent sous 18 px** — ce n'est plus la hauteur mais la **largeur** de la cellule (11 px), et le rack est une colonne étroite par construction. Une largeur minimale ferait défiler le rack horizontalement : seconde variable, sa propre phase | `ROADMAP-daw.md` D63 | 21 → **4 / 49** sous 18 px |
 | A3 | **La molette de hauteur manque à sept machines** où un musicien plie la note (flûte, e-piano, clavinet, guimbarde, vielle, mandoline, kalimba) — un travail par machine, sur son modèle | `ROADMAP-daw.md` D26 | 42 machines la tiennent, 7 la devraient |
 | A4 | **`--batterie-par-piece` n'a pas de mesure de distance** — l'option est câblée et testée, son effet sur la fidélité n'est pas chiffré | `CDC-detection-multipiste.md` § 4.4 | — |
 

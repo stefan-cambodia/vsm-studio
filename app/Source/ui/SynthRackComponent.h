@@ -65,6 +65,10 @@ private:
     juce::Viewport viewport_;
     juce::Component controlContainer_;
     MachinePanelComponent machinePanel_;
+    /// D63 : la façade dédiée défile elle aussi. Elle recevait la hauteur du
+    /// rack, quelle qu'elle soit, pendant que la façade GÉNÉRIQUE — celle des
+    /// machines sans dessin — était protégée par `viewport_` depuis toujours.
+    juce::Viewport vueFacade_;
     bool usingMachinePanel_ = false;
 
     struct ParamControl {

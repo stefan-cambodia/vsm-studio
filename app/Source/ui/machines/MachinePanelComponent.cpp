@@ -245,6 +245,47 @@ juce::Rectangle<float> MachinePanelComponent::gridToPixels(juce::Rectangle<float
              gridBounds.getHeight() * cellHeight };
 }
 
+int MachinePanelComponent::hauteurUtile() const {
+    if (!panel_) return 0;
+
+    // CE QU'UNE CELLULE DE COMMANDE RÉCLAME. Un bouton de 18 px est le
+    // plancher mesuré en D62 : au-dessous, l'anneau et le repère ne se
+    // distinguent plus. La sérigraphie en prend 12. Une cellule vaut donc
+    // 30 px, et c'est un MINIMUM -- au-dessus, tout s'agrandit comme avant.
+    constexpr float kCelluleMinimale = 18.0f + 12.0f;
+
+    // ET CE QUE LA RANGÉE PERD AVANT D'ARRIVER À LA CELLULE. Quarante pixels,
+    // sur le chemin de `resized()` : la marge du bloc (6 de chaque côté), son
+    // titre (18), la marge de son contenu (2) et celle de la cellule (3).
+    //
+    // CE CHIFFRE A ÉTÉ MESURÉ, ET IL A FALLU LE MESURER DEUX FOIS. Écrit de
+    // tête, il valait d'abord 6, puis 28 ; un témoin qui imprime la cellule
+    // réellement posée a rendu « 42x19 » pour le bloc RÉGLAGES du TB-303 à
+    // une façade de 340 px, ce qui ne laisse que 19 - 12 = 7 px au bouton.
+    // 58,8 (la rangée) - 40 = 18,8 : le compte tombe juste avec 40 et avec
+    // rien d'autre. Une addition de constantes lues dans le code voisin se
+    // vérifie à l'écran comme le reste.
+    constexpr float kFraisDeBloc = 2.0f * 6.0f + 18.0f + 2.0f * 2.0f + 2.0f * 3.0f;
+
+    // Un bloc haut d'une seule rangée paie ces frais sur cette seule rangée ;
+    // un bloc de deux rangées les amortit. On prend donc la rangée la plus
+    // exigeante, et non une moyenne qui laisserait le bloc le plus serré sans
+    // place -- c'est exactement le cas du « RÉGLAGES » du TB-303.
+    float parRangee = kCelluleMinimale + kFraisDeBloc;
+    for (const auto& section : panel_->sections) {
+        const float rangees = static_cast<float>(std::max(1, section.rowSpan));
+        parRangee = std::max(parRangee, (rangees * kCelluleMinimale + kFraisDeBloc) / rangees);
+    }
+
+    // `gridRows` porte DÉJÀ les rangées du séquenceur (les descriptions font
+    // `gridRows += sequencer.rowSpan`) : on ne les compte pas deux fois.
+    const float grille = parRangee * static_cast<float>(std::max(1, panel_->gridRows));
+    // Les marges de `gridToPixels` (14 px en haut et en bas) et le bandeau de
+    // l'afficheur de valeur (22, la valeur que prend le chemin du séquenceur),
+    // qui ne sont pas de la grille.
+    return static_cast<int>(std::lround(grille + 2.0f * 14.0f + 22.0f));
+}
+
 void MachinePanelComponent::resized() {
     if (!panel_) return;
     valueReadout_.setBounds(getLocalBounds().removeFromBottom(20).reduced(18, 2));

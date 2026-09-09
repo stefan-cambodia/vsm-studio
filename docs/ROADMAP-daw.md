@@ -9954,3 +9954,69 @@ CL DEC, OP LVL, OP DEC, RIDE, RD DEC, CRASH, CR DEC, LEVEL, SIZE, VOLUME s'y
 lisent comme avant — c'est la seconde condition qui l'a préservée.
 
 Tests : 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — verts.
+
+### Phase D63 — La façade GÉNÉRIQUE défilait, la façade DESSINÉE était écrasée : l'asymétrie était à l'envers (10/09/2026, 01:10)
+
+**LES DEUX DÉFAUTS QUE D62 AVAIT NOMMÉS**, et qui n'en font qu'un. Le rack pose
+la façade d'une machine ainsi :
+
+```cpp
+if (usingMachinePanel_) { machinePanel_.setBounds(area); return; }
+viewport_.setBounds(area);                       // la façade générique, elle, défile
+```
+
+La façade **générique** — celle des machines qui n'ont pas de dessin, une simple
+liste de potentiomètres — vit dans un `juce::Viewport` depuis toujours et reçoit
+`max(rangées × hauteur, hauteur du volet)`. La façade **dessinée** — celle qui a
+une grille, des blocs et des titres, celle pour laquelle `panels/` existe —
+recevait la hauteur du rack, quelle qu'elle soit. **L'asymétrie était à l'envers
+du bon sens** : c'est la seconde qui ne supporte pas d'être écrasée.
+
+**CE QUE CELA DONNAIT.** À 900x660, le bloc « RÉGLAGES » du TB-303 recevait une
+cellule de **42x19** : la sérigraphie en prend 12 au plancher, il en restait
+**sept** pour le bouton. Deux commandes de la façade étaient à **zéro pixel**.
+
+**CE QUI EST FAIT.** `MachinePanelComponent::hauteurUtile()` calcule la hauteur
+que la grille réclame, et le rack la lui donne — dans son propre volet, qui
+défile en dessous. Le calcul part du plancher mesuré en D62 : un bouton de 18 px
+et sa sérigraphie de 12, soit une cellule de 30, plus ce que la rangée perd en
+chemin. **Un bloc d'une seule rangée paie ses frais sur cette seule rangée** ; un
+bloc de deux les amortit. On prend donc la rangée la plus exigeante, et non une
+moyenne — sans quoi le bloc le plus serré reste sans place, ce qui est
+exactement le cas de « RÉGLAGES ».
+
+**LE CHIFFRE DES FRAIS A DÛ ÊTRE MESURÉ, ET DEUX FOIS.** Écrit de tête depuis le
+code voisin, il valait d'abord 6, puis 28 — et la façade sortait à 340 px avec
+une cellule de 19. Un témoin qui imprime la cellule **réellement posée** a rendu
+le compte juste : `58,8 − 40 = 18,8`, et 40 est la somme de quatre réductions
+dont un `reduced(6)` que la lecture avait sauté. Une addition de constantes lues
+dans le code se vérifie à l'écran comme le reste ; c'est la leçon de D49 sous une
+forme de plus.
+
+**MESURÉ, sur les 49 cellules que le rack pose pour cette machine** (témoin issu
+du même binaire, retiré après) :
+
+| | fenêtre | plus petit bouton | à ZÉRO pixel | sous 18 px |
+|---|---|---|---|---|
+| après D62 | 900x660 | 0 px | **2** | **21** |
+| après D63 | 900x660 | **11 px** | **0** | **4** |
+| après D62 | 1280x742 | 18 px | 0 | 0 |
+| après D63 | 1280x742 | **23 px** | 0 | 0 |
+
+La façade du TB-303 réclame **400 px** et les obtient aux deux tailles ; elle en
+recevait 340 en fenêtre pleine, donc **le plafond aussi était trop bas** — le
+défaut n'était pas propre à la petite fenêtre.
+
+**CE QUI RESTE, ET C'EST UNE AUTRE VARIABLE.** Les quatre boutons encore sous
+18 px sont ceux du Minimoog, dans des cellules de **11x24** : c'est la LARGEUR
+qui les borne, pas la hauteur, et le rack est une colonne étroite par
+construction. Une largeur minimale se déclarerait de la même façon, mais elle
+ferait défiler le rack horizontalement — une seconde variable, à mesurer dans sa
+propre phase plutôt qu'à glisser dans celle-ci.
+
+**VU À L'ÉCRAN, AUX DEUX BOUTS.** À 900x660, les sept commandes de
+« SYNTHESIZER » sont des potentiomètres pleins avec leur sérigraphie entière, et
+« RÉGLAGES » porte deux vrais boutons sous eux, atteignables en défilant. À
+1280x742, la façade gagne les soixante pixels qui lui manquaient.
+
+Tests : 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — verts.
