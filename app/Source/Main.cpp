@@ -312,8 +312,13 @@ public:
                             const juce::String titre =
                                 fenetre->getName().retainCharacters(
                                     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
+                            // LE RANG DANS LE NOM : deux fenêtres peuvent porter le
+                            // MÊME titre -- une boîte d'alerte reprend celui du
+                            // panneau qui l'a ouverte --, et la seconde écrasait
+                            // alors la première sans un mot.
                             const juce::File cible = fichier.getParentDirectory().getChildFile(
-                                fichier.getFileNameWithoutExtension() + "-" + titre + ".png");
+                                fichier.getFileNameWithoutExtension() + "-" + juce::String(i)
+                                + "-" + titre + ".png");
                             cible.deleteFile();
                             juce::FileOutputStream f2(cible);
                             if (f2.openedOk())

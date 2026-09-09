@@ -128,4 +128,32 @@ void selectTake(Track& track, int index) {
     sortirLeMateriau(track, track.takes[static_cast<size_t>(index)]);
 }
 
+
+TakeRemoval removeTake(Track& track, int index) {
+    TakeRemoval bilan;
+    if (index < 0 || index >= static_cast<int>(track.takes.size())) return bilan;
+
+    bilan.done = true;
+    bilan.name = track.takes[static_cast<size_t>(index)].name;
+    bilan.wasActive = (track.activeTake == index);
+
+    track.takes.erase(track.takes.begin() + index);
+
+    // LE MATÉRIAU COURANT NE BOUGE PAS. S'il appartenait à la prise retirée, il
+    // n'appartient plus à aucune ; sinon, la prise à laquelle il appartient a
+    // peut-être reculé d'un rang.
+    if (track.activeTake == index) track.activeTake = -1;
+    else if (track.activeTake > index) --track.activeTake;
+
+    std::vector<CompSegment> restants;
+    restants.reserve(track.compSegments.size());
+    for (auto troncon : track.compSegments) {
+        if (troncon.takeIndex == index) { ++bilan.droppedSegments; continue; }
+        if (troncon.takeIndex > index) { --troncon.takeIndex; ++bilan.shiftedSegments; }
+        restants.push_back(troncon);
+    }
+    track.compSegments = std::move(restants);
+    return bilan;
+}
+
 } // namespace vsm::sequencer

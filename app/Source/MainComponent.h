@@ -173,6 +173,11 @@ public:
     /// complet ne s'atteignait qu'à la souris, si bien que ce qu'il ÉCRIT --
     /// et non ce qu'il annonce -- n'avait jamais été relu par une vérification.
     bool exportProjectMidiForCapture(const juce::File& fichier);
+    /// D57 : retirer la prise `index` du tiroir de la piste choisie, en
+    /// réparant les tronçons d'assemblage et en DISANT ce que cela a coûté.
+    void removeTakeFromSelectedTrack(int index);
+    /// D57 : republier le panneau d'assemblage depuis la piste choisie.
+    void refreshTakeCompPanel();
     /// D24.5 : VSM_IMPORT_AUDIO=fichier.wav -- sur une piste neuve, sans boîte.
     bool importAudioForCapture(const juce::File& fichier) { return importAudioFileOnNewTrack(fichier); }
 
@@ -396,6 +401,10 @@ private:
         /// suite -- comme les paliers d'échelle du menu Affichage.
         kMenuRecordTakeFirst,
         kMenuRecordTakeLast = kMenuRecordTakeFirst + 63,
+        /// D57 : un identifiant par prise, pour la RETIRER du tiroir. Même
+        /// forme que ci-dessus, et pour la même raison.
+        kMenuRecordDeleteTakeFirst,
+        kMenuRecordDeleteTakeLast = kMenuRecordDeleteTakeFirst + 63,
         kMenuMixAddSend,
         /// D23.5 : l'écoute en mono du master.
         kMenuMixMonoListen,

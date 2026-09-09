@@ -953,6 +953,37 @@ void pushTake(Track& track, Take take, const std::string& nomDeLOrigine = "Origi
 /// désigne déjà la prise active.
 void selectTake(Track& track, int index);
 
+/// CE QUE COÛTE LA SUPPRESSION D'UNE PRISE, avant et après l'avoir faite.
+struct TakeRemoval {
+    bool done = false;              ///< faux si l'index est hors bornes
+    std::string name;               ///< le nom de la prise retirée
+    bool wasActive = false;         ///< elle était celle qu'on entend
+    size_t droppedSegments = 0;     ///< tronçons d'assemblage qui la désignaient
+    size_t shiftedSegments = 0;     ///< tronçons dont l'index a reculé
+};
+
+/// RETIRE UNE PRISE DU TIROIR (D57).
+///
+/// POURQUOI IL FALLAIT CE GESTE. `pushTake` empile depuis D3.5 et rien ne
+/// dépile : le tiroir d'une piste qu'on retravaille grossit à chaque passe,
+/// et les passes ratées y restent pour toujours. C'est un geste banal de tout
+/// DAW (les lanes de Cubase, les takes de Live se suppriment).
+///
+/// LA PRISE ACTIVE EST DÉTACHÉE, PAS DÉTRUITE. Quand `index` est celle qu'on
+/// entend, le matériau courant RESTE sur la piste et `activeTake` passe à -1 :
+/// il n'appartient plus à aucune passe, exactement comme après un assemblage.
+/// Supprimer ce qu'on écoute sans prévenir serait la pire des surprises ; ce
+/// qu'on retire, c'est l'entrée du tiroir, et l'appelant le DIT (`wasActive`).
+///
+/// LES INDEX SONT RÉPARÉS, ET C'EST LE POINT DÉLICAT. `Track::compSegments`
+/// (D55.2) désigne les prises par leur RANG : retirer la prise n° 1 sans
+/// toucher aux tronçons ferait recomposer avec la n° 2 sous le nom de la n° 1
+/// — un mensonge silencieux, et la faute même que D35 a payée sur les
+/// dossiers. Les tronçons qui désignaient la prise retirée sont donc ÉCARTÉS,
+/// ceux qui désignaient une prise située après elle RECULENT d'un rang, et les
+/// deux nombres sont rendus pour être dits.
+TakeRemoval removeTake(Track& track, int index);
+
 /// Les tronçons d'assemblage vivent maintenant AVANT `Track`, qui les porte
 /// (`Track::compSegments`, D55.2). Voir leur déclaration plus haut.
 

@@ -966,3 +966,82 @@ VSM_TEST(the_last_row_of_a_folder_is_still_inside_it) {
     VSM_ASSERT_EQ(ordreDe(p), std::string("Batterie/0 Kick1 Voix1 "));
     VSM_ASSERT_EQ(aCorriger(p), size_t(0));
 }
+
+// --- D57 : RETIRER UNE PRISE DU TIROIR -------------------------------------
+//
+// `pushTake` empilait depuis D3.5 et rien ne dépilait : les passes ratées
+// restaient pour toujours. Le point délicat n'est pas la suppression mais les
+// INDEX : `Track::compSegments` (D55.2) désigne les prises par leur rang.
+
+namespace {
+
+Track pisteATroisPrisesD57() {
+    Track t;
+    t.name = "Voix";
+    uint64_t id = 1;
+    t.addNote(0, 480, 60, 100, 0, id);
+    for (int n = 0; n < 3; ++n) {
+        Take prise;
+        prise.name = "Passe " + std::to_string(n + 1);
+        prise.endTick = 1920;
+        prise.notes.push_back(Note{0, 480, 0, static_cast<uint8_t>(48 + n), 100, 64, id++});
+        t.takes.push_back(std::move(prise));
+    }
+    return t;
+}
+
+} // namespace
+
+VSM_TEST(retirer_une_prise_repare_les_troncons_d_assemblage) {
+    Track t = pisteATroisPrisesD57();
+    t.compSegments.push_back(CompSegment{0, 0, 960});      // survit tel quel
+    t.compSegments.push_back(CompSegment{1, 960, 1920});   // désigne la retirée
+    t.compSegments.push_back(CompSegment{2, 1920, 2880});  // recule d'un rang
+
+    const auto bilan = removeTake(t, 1);
+    VSM_ASSERT(bilan.done);
+    VSM_ASSERT_EQ(bilan.name, std::string("Passe 2"));
+    VSM_ASSERT_EQ(bilan.droppedSegments, size_t{1});
+    VSM_ASSERT_EQ(bilan.shiftedSegments, size_t{1});
+    VSM_ASSERT_EQ(t.takes.size(), size_t{2});
+    VSM_ASSERT_EQ(t.compSegments.size(), size_t{2});
+    VSM_ASSERT_EQ(t.compSegments[0].takeIndex, 0);
+    // CELUI QUI DÉSIGNAIT LA PRISE 2 DÉSIGNE MAINTENANT LA 1, qui est bien la
+    // même passe : sans ce recul il aurait recomposé avec une autre, sous le
+    // nom de celle qu'on avait choisie.
+    VSM_ASSERT_EQ(t.compSegments[1].takeIndex, 1);
+    VSM_ASSERT_EQ(t.takes[1].name, std::string("Passe 3"));
+}
+
+VSM_TEST(retirer_la_prise_qu_on_entend_laisse_le_materiau_sur_la_piste) {
+    Track t = pisteATroisPrisesD57();
+    t.activeTake = 1;
+    const size_t notesAvant = t.notes.size();
+
+    const auto bilan = removeTake(t, 1);
+    VSM_ASSERT(bilan.done);
+    VSM_ASSERT(bilan.wasActive);
+    // LE MATÉRIAU RESTE : ce qu'on retire est l'entrée du tiroir.
+    VSM_ASSERT_EQ(t.notes.size(), notesAvant);
+    // Et il n'appartient plus à aucune passe, comme après un assemblage.
+    VSM_ASSERT_EQ(t.activeTake, -1);
+}
+
+VSM_TEST(retirer_une_prise_d_avant_fait_reculer_la_prise_active) {
+    Track t = pisteATroisPrisesD57();
+    t.activeTake = 2;
+    const auto bilan = removeTake(t, 0);
+    VSM_ASSERT(bilan.done);
+    VSM_ASSERT(!bilan.wasActive);
+    VSM_ASSERT_EQ(t.activeTake, 1);
+    VSM_ASSERT_EQ(t.takes[1].name, std::string("Passe 3"));
+}
+
+VSM_TEST(retirer_une_prise_qui_n_existe_pas_ne_touche_a_rien) {
+    Track t = pisteATroisPrisesD57();
+    for (int index : {-1, 3, 99}) {
+        const auto bilan = removeTake(t, index);
+        VSM_ASSERT(!bilan.done);
+        VSM_ASSERT_EQ(t.takes.size(), size_t{3});
+    }
+}

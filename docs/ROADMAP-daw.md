@@ -9550,3 +9550,64 @@ laisse les paramètres de piste au projet.
 >
 > Tests : 1 291 audio, **323 core** (4 neufs), 292 interchange, 25 clap,
 > 11 panels — tous verts.
+
+### Phase D57 — Le tiroir des prises s'empilait depuis D3.5 et rien ne le dépilait (09/09/2026, 17:05)
+
+**LE GESTE MANQUANT, TROUVÉ EN CHERCHANT AUTRE CHOSE.** D55.2 vient de poser la
+recette de l'assemblage sur la piste. En vérifiant qu'un tronçon désignant une
+prise absente est bien écarté, une question s'est imposée : **comment une prise
+peut-elle devenir absente ?** `pushTake` empile depuis D3.5 ; `selectTake`
+choisit ; **rien ne retire**. `grep -rn "removeTake\|takes.erase"` rend zéro
+occurrence dans tout le dépôt. Le tiroir d'une piste qu'on retravaille grossit
+donc à chaque passe, et les passes ratées y restent pour toujours. C'est un
+geste banal de tout DAW — les lanes de Cubase, les takes de Live se
+suppriment.
+
+**ET LE POINT DÉLICAT N'EST PAS LA SUPPRESSION, CE SONT LES INDEX.**
+`Track::compSegments` désigne les prises par leur RANG. Retirer la prise n° 1
+sans toucher aux tronçons ferait recomposer avec la n° 2 sous le nom de la
+n° 1 : un mensonge silencieux, et exactement la faute que D35 a payée sur les
+dossiers (« `moveTrack` répare méticuleusement les index… et n'est appelée par
+aucun geste »). Ici l'index existe depuis une heure, et le geste qui le casse
+arrive en même temps que lui.
+
+**LA RÈGLE, ÉCRITE AVEC SA RAISON.** Les tronçons qui désignaient la prise
+retirée sont **écartés** ; ceux qui désignaient une prise située après elle
+**reculent d'un rang** ; les deux nombres sont rendus à l'appelant, qui les
+DIT. Et **la prise active est détachée, pas détruite** : quand on retire celle
+qu'on entend, le matériau RESTE sur la piste et `activeTake` passe à -1 — il
+n'appartient plus à aucune passe, comme après un assemblage. Ce qu'on retire,
+c'est l'entrée du tiroir. Faire disparaître ce qu'on écoute sans prévenir
+serait la pire des surprises.
+
+**MESURÉ DE BOUT EN BOUT, PAR L'APPLICATION**, sur le projet à trois passes de
+D55.2 : deux tronçons posés (mesures 1 à 3 → Passe 2, mesures 3 à 5 → Passe 3),
+composés, puis « Passe 2 » retirée.
+
+> Prise « Passe 2 » retirée du tiroir. **1 tronçon(s) d'assemblage la
+> désignaient : retirés. 1 tronçon(s) ont reculé d'un rang.**
+
+Le projet enregistré puis rouvert montre, dans le panneau : **« mesures 3 à 5 →
+Passe 3 »** — le tronçon qui pointait le rang 2 pointe maintenant le rang 1, et
+nomme toujours la MÊME passe. C'est la capture qui le prouve, pas le compteur.
+
+**UN DÉFAUT TROUVÉ PAR LA VÉRIFICATION ELLE-MÊME, ET CORRIGÉ.** La première
+mesure a rendu « **2 au panneau, 1 sur la piste** ». Le panneau d'assemblage ne
+relisait la piste qu'à son OUVERTURE : retirer une prise, en choisir une autre
+— il marque « celle qu'on entend » — ou composer le laissaient sur ce qu'il
+avait lu. Une valeur, deux endroits, un seul qui la relit : la faute que D37 a
+nommée. `refreshTakeCompPanel()` est appelée par les trois gestes, et la mesure
+donne maintenant « 1 au panneau, 1 sur la piste ».
+
+**ET UN SECOND, DANS L'OUTIL DE VÉRIFICATION DE D55.2.**
+`VSM_CAPTURE_PANNEAUX` nommait ses images d'après le TITRE de la fenêtre — or
+une boîte d'alerte reprend celui du panneau qui l'a ouverte, si bien que la
+seconde écrasait la première sans un mot. J'ai cherché la capture du panneau et
+trouvé celle de l'alerte. Le rang est désormais dans le nom.
+
+**LE BANC A ÉTÉ CASSÉ EXPRÈS.** Le recul des index supprimé, le test des
+tronçons tombe (`shiftedSegments` 0 au lieu de 1) ; les trois autres passent,
+ce qui est juste — ils portent sur le matériau, la prise active et les bornes.
+
+Tests : 1 291 audio, **327 core** (4 neufs), 292 interchange, 25 clap,
+11 panels — tous verts.

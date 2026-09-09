@@ -1214,6 +1214,10 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
                      + juce::String(takeCompPanel_.segmentCount())
                      + juce::String::fromUTF8(u8" au total\n")).toRawUTF8(), stderr);
     }
+    // D57 : retirer la prise n° N de la piste choisie, par la MÊME fonction que
+    // l'entrée de menu -- un sous-menu ne se clique pas sans souris.
+    else if (nom.startsWith("retirer-prise:"))
+        removeTakeFromSelectedTrack(nom.substring(14).getIntValue());
     else if (nom == "composer") {
         if (!takeCompWindow_) showTakeComp();
         const bool fait = takeCompPanel_.composeForCapture();
@@ -2838,6 +2842,21 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                                        : prises[i].name),
                                       true,
                                       static_cast<int>(i) == project_.tracks[pisteChoisie].activeTake);
+                    // D57 : LES RETIRER. `pushTake` empilait depuis D3.5 et
+                    // rien ne dépilait : les passes ratées restaient pour
+                    // toujours. Dans un sous-menu, parce que supprimer et
+                    // choisir ne se confondent pas d'un clic distrait.
+                    juce::PopupMenu retirer;
+                    for (size_t i = 0; i < prises.size() && i <= 63; ++i)
+                        retirer.addItem(kMenuRecordDeleteTakeFirst + static_cast<int>(i),
+                                         juce::String(prises[i].name.empty()
+                                                          ? ("Prise " + std::to_string(i + 1))
+                                                          : prises[i].name)
+                                         + (static_cast<int>(i) == project_.tracks[pisteChoisie].activeTake
+                                                ? juce::String::fromUTF8(u8"  (celle qu'on entend)")
+                                                : juce::String()));
+                    menu.addSubMenu(juce::String::fromUTF8(u8"Retirer une prise du tiroir"),
+                                     std::move(retirer));
                     menu.addSeparator();
                 }
                 menu.addItem(kMenuRecordQuantizeTake,
@@ -3542,6 +3561,11 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
                 vsm::sequencer::selectTake(project_.tracks[piste],
                                             menuItemID - kMenuRecordTakeFirst);
                 rebuildFromProject(false);
+                refreshTakeCompPanel();   // D57 : « celle qu'on entend » a changé
+            }
+            // D57 : RETIRER UNE PRISE DU TIROIR, et dire ce que cela coûte.
+            if (menuItemID >= kMenuRecordDeleteTakeFirst && menuItemID <= kMenuRecordDeleteTakeLast) {
+                removeTakeFromSelectedTrack(menuItemID - kMenuRecordDeleteTakeFirst);
             }
             break;
     }
@@ -5693,6 +5717,7 @@ void MainComponent::showTakeComp() {
             pianoRollPanel_.refresh();
             arrangement_.repaint();
             refreshHistoryList();
+            refreshTakeCompPanel();   // D57 : la prise active est devenue « aucune »
             juce::AlertWindow::showMessageBoxAsync(
                 juce::AlertWindow::InfoIcon, u8"Assembler les prises",
                 juce::String(static_cast<int>(project_.tracks[index].notes.size()))
@@ -5703,13 +5728,7 @@ void MainComponent::showTakeComp() {
             juce::String::fromUTF8(u8"Assembler les prises"), takeCompPanel_);
         takeCompWindow_->setDefaultSize(560, 420);
     }
-    std::vector<juce::String> noms;
-    for (const auto& prise : project_.tracks[piste].takes)
-        noms.push_back(juce::String(prise.name));
-    takeCompPanel_.setTake(std::move(noms), project_.tracks[piste].activeTake,
-                            project_.timeSignatureMap.ticksPerBar(0, project_.ticksPerQuarterNote),
-                            project_.lastSoundingTick(),
-                            project_.tracks[piste].compSegments);   // D55.2
+    refreshTakeCompPanel();
     takeCompWindow_->setVisible(true);
     takeCompWindow_->toFront(true);
 }
@@ -8552,6 +8571,65 @@ void MainComponent::bakeMidiEffectsOfSelectedTrack() {
         message += juce::String::fromUTF8(u8" ; ") + juce::String(static_cast<int>(rapport.unknownEffects))
                    + juce::String::fromUTF8(u8" effet(s) inconnu(s) sans effet");
     std::fputs((message + ". La chaîne est vidée.\n").toRawUTF8(), stderr);
+}
+
+/// REPUBLIER LE PANNEAU D'ASSEMBLAGE depuis la piste choisie.
+///
+/// SÉPARÉ DE `showTakeComp` PARCE QUE TROIS GESTES LE CHANGENT SANS L'OUVRIR :
+/// retirer une prise (D57), en choisir une autre — le panneau marque « celle
+/// qu'on entend » —, et composer. Sans cela le panneau restait sur ce qu'il
+/// avait lu à l'ouverture : « 2 au panneau, 1 sur la piste », mesuré à la
+/// vérification de D57. Une valeur, deux endroits, un seul qui la relit : c'est
+/// la faute que D37 a nommée.
+void MainComponent::refreshTakeCompPanel() {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    std::vector<juce::String> noms;
+    for (const auto& prise : project_.tracks[piste].takes)
+        noms.push_back(juce::String(prise.name));
+    takeCompPanel_.setTake(std::move(noms), project_.tracks[piste].activeTake,
+                            project_.timeSignatureMap.ticksPerBar(0, project_.ticksPerQuarterNote),
+                            project_.lastSoundingTick(),
+                            project_.tracks[piste].compSegments);   // D55.2
+}
+
+void MainComponent::removeTakeFromSelectedTrack(int index) {
+    const size_t piste = trackList_.selectedTrackIndex();
+    if (piste >= project_.tracks.size()) return;
+    // ON MESURE SUR UNE COPIE avant de prendre l'instantané : une suppression
+    // qui n'a rien à retirer ne doit pas laisser une entrée dans l'historique.
+    auto essai = project_.tracks[piste];
+    const auto bilan = vsm::sequencer::removeTake(essai, index);
+    if (!bilan.done) {
+        std::fputs("Retirer une prise : index hors bornes\n", stderr);
+        return;
+    }
+    beginProjectEdit(u8"Retirer une prise");
+    project_.tracks[piste] = std::move(essai);
+    rebuildFromProject(false);
+    refreshTransportSchedule();
+    pianoRollPanel_.refresh();
+    arrangement_.repaint();
+    refreshHistoryList();
+    refreshTakeCompPanel();
+
+    // CE QUE CELA A COÛTÉ EST DIT, jamais subi : un tronçon d'assemblage qui
+    // disparaît sans un mot ferait recomposer autre chose la fois d'après.
+    juce::String texte = juce::String::fromUTF8(u8"Prise « ")
+                       + juce::String::fromUTF8(bilan.name.c_str())
+                       + juce::String::fromUTF8(u8" » retirée du tiroir.");
+    if (bilan.wasActive)
+        texte += juce::String::fromUTF8(u8" C'était celle qu'on entend : son matériau RESTE "
+                                         u8"sur la piste, il n'appartient plus à aucune passe.");
+    if (bilan.droppedSegments > 0)
+        texte += juce::String::fromUTF8(u8" ") + juce::String(static_cast<int>(bilan.droppedSegments))
+               + juce::String::fromUTF8(u8" tronçon(s) d'assemblage la désignaient : retirés.");
+    if (bilan.shiftedSegments > 0)
+        texte += juce::String::fromUTF8(u8" ") + juce::String(static_cast<int>(bilan.shiftedSegments))
+               + juce::String::fromUTF8(u8" tronçon(s) ont reculé d'un rang.");
+    std::fputs((texte + "\n").toRawUTF8(), stderr);
+    juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon,
+                                            juce::String::fromUTF8(u8"Retirer une prise"), texte);
 }
 
 bool MainComponent::exportProjectMidiForCapture(const juce::File& fichier) {
