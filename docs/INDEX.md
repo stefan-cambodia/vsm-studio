@@ -1,0 +1,164 @@
+# Index des documents — ce que chacun commande, et où en est le projet
+
+*Écrit le 10/09/2026. Ce document ne décide rien : il **oriente**. La règle du
+dépôt ne change pas — les feuilles de route et les cahiers des charges sont les
+critères d'acceptation et l'ordre de marche, et c'est dans EUX que se tranchent
+les choix, jamais ici. Quand cet index et un document se contredisent, c'est le
+document qui a raison et cet index qui est périmé.*
+
+---
+
+## 1. Comment lire le dépôt
+
+Trois niveaux, et ils ne se confondent pas :
+
+| Niveau | Ce que c'est | Qui commande |
+|---|---|---|
+| **Feuilles de route** (`ROADMAP-*.md`) | l'ordre de marche, phase par phase, avec les mesures qui les ont tranchées | elles décident **quoi faire ensuite** |
+| **Cahiers des charges** (`CDC-*.md`) | ce qu'un chantier doit tenir, écrit **avant** de l'écrire | ils décident **quand c'est fini** |
+| **Références** (`ARCHITECTURE.md`, `MODE-EMPLOI.md`, `GUIDE-*.md`) | l'état des lieux et les modes d'emploi | ils **décrivent**, ils ne prescrivent pas |
+
+Deux axes de travail coexistent, et l'un passe devant l'autre quand il faut
+choisir : **le DAW d'abord**, la chaîne d'analyse ensuite.
+
+---
+
+## 2. Index
+
+### Feuilles de route
+
+| Document | Ce qu'il commande | État |
+|---|---|---|
+| [`ROADMAP-daw.md`](ROADMAP-daw.md) (9 956 l.) | faire du démonstrateur un logiciel de studio « digne de Cubase, Live, FL Studio » | **62 phases** écrites (D0 → D62), toutes closes ; le document est en régime d'**audits successifs** (D11, D13-D16, D22-D25, D29-D40, D55, D60-D62) |
+| [`ROADMAP-fusion.md`](ROADMAP-fusion.md) (3 647 l.) | la chaîne d'analyse : d'un enregistrement à un projet jouable | phases 8 à 11 **toutes closes** ; le travail vit désormais dans les § 5 *bis* → *quaterdecies* (les pannes muettes, les hypothèses H13 à H25) |
+| [`ROADMAP-interop.md`](ROADMAP-interop.md) (276 l.) | Python ↔ CLAP ↔ formats d'échange | **P0 à P10 tous faits** — c'est la seule feuille de route entièrement terminée |
+| [`ROADMAP-apprentissage.md`](ROADMAP-apprentissage.md) (1 049 l.) | les modèles appris (classifieur de machine, gabarits de batterie, estimateur) | A0, A1, A2, A4 faites ; **A3 refusée par la mesure** ; **A5 close sauf l'écoute** |
+
+### Cahiers des charges
+
+| Document | Le chantier | État |
+|---|---|---|
+| [`CDC-machines-manquantes.md`](CDC-machines-manquantes.md) (2 681 l.) | élargir le parc de machines, et le prix de chacune | § 1-8 livrés ; **21 hypothèses H tranchées**, 20 succès, 1 échec assumé (la guitare électrique, non écrite) ; § 33 donne le **coût CPU mesuré des 64 machines** |
+| [`CDC-detection-multipiste.md`](CDC-detection-multipiste.md) (843 l.) | la parité des pistes : un original à N parties doit donner N pistes | § 4 ordre de marche : **1, 2, 4, 5, 6, 7 faits** ; le § 4.3 se croit ouvert alors que l'écran du rapport porte désormais densités, partage et avertissements |
+| [`CDC-separation-par-synthese.md`](CDC-separation-par-synthese.md) (715 l.) | la boucle résiduelle : soustraire ce qu'on sait rendre, reséparer le reste | câblée et testée de bout en bout ; § 5 porte les décisions tranchées en écrivant, § 6-7 la campagne R1 |
+| [`CDC-banc-synthetique.md`](CDC-banc-synthetique.md) (715 l.) | mesurer la chaîne sur des morceaux à vérité connue | **campagne S1 mesurée** (20 morceaux) — et elle a réfuté la chaîne à tous les étages ; § 7 liste ce que le banc ne sait pas encore faire |
+| [`CDC-multisample.md`](CDC-multisample.md) (610 l.) | `vsm.multisample` : l'acoustique par échantillons | M1 (profil piano) et M2 (import SoundFont) livrés |
+| [`CDC-etirement-temporel.md`](CDC-etirement-temporel.md) (516 l.) | qu'un clip audio suive le tempo | D12 livrée (WSOLA + vocodeur de phase) ; § 9 porte D54, la transposition |
+| [`CDC-apprentissage.md`](CDC-apprentissage.md) (369 l.) | ce que les modèles appris doivent tenir | rempli par `ROADMAP-apprentissage.md` |
+| [`CDC-nouvelle-machine.md`](CDC-nouvelle-machine.md) (259 l.) | la liste de contrôle d'une machine neuve | **permanent** — ses cases se cochent à chaque machine, jamais dans le document |
+| [`CDC-import-daw.md`](CDC-import-daw.md) (170 l.) | importer un projet FL Studio / Ableton / Cubase | livré (D7) ; Cubase reste hors de portée, et le document dit pourquoi |
+
+### Références
+
+| Document | Ce que c'est |
+|---|---|
+| [`../ARCHITECTURE.md`](../ARCHITECTURE.md) (4 722 l.) | la conception complète, machine par machine, avec les mesures |
+| [`../README.md`](../README.md) (688 l.) | la porte d'entrée : quoi, comment compiler, comment s'en servir |
+| [`MODE-EMPLOI.md`](MODE-EMPLOI.md) (1 106 l.) | le manuel de l'application |
+| [`GUIDE-ajout-machine.md`](GUIDE-ajout-machine.md) (508 l.) | comment on écrit une machine, pas à pas |
+| [`../analyse/PONT-VSM.md`](../analyse/PONT-VSM.md) (102 l.) | le protocole du pont Python ↔ moteur |
+
+---
+
+## 3. Où en est le projet, en chiffres
+
+| | |
+|---|---|
+| **Machines** | 64 (plus la tonalité d'essai), **16 effets** d'insert |
+| **Tests** | 1 946 côté moteur — 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — et **168 côté Python** |
+| **Lignes** | `analyse/` 132 k · `audio/` 69 k · `app/` **33 k** · `interchange/` 20 k · `core/` 16 k |
+| **Vérification** | `ruff check .` (lint) et `mypy analyse tools` (types, 104 fichiers) |
+
+**Le déséquilibre qui ouvrait `ROADMAP-daw.md` s'est refermé.** Le § 1.1 mesurait
+`app/` à **7 303 lignes** contre 95 837 pour `analyse/` — « le parc a été nourri
+sans relâche ; l'atelier est resté un démonstrateur ». `app/` en fait
+aujourd'hui **32 873**, soit **4,5 fois plus**, et les cinq critères du § 2
+(sauvegarder, faire entrer du son, arranger, mixer, exporter) sont tenus —
+posés par D0 à D10, puis **vérifiés sur un projet réel** par D45 (ouvrir et
+réenregistrer une reconstruction ne perd rien) et D46 (l'export du DAW et
+`vsm-render` rendent le même son).
+
+**Ce que la mesure a refusé, et qu'il ne faut pas rouvrir sans raison neuve :**
+
+- **l'estimateur de paramètres appris** (A3) — le fossé de domaine ; code
+  conservé et documenté ;
+- **la guitare électrique modélisée** (H10) — mesurée, écart insuffisant, la
+  machine ne sera pas écrite ;
+- **la reconstruction de la voix** — reportée telle quelle, et c'est le plus
+  honnête ;
+- **l'étirement temporel comme besoin de mesure** (D11.8) — c'est un besoin de
+  production, tranché et livré séparément en D12.
+
+---
+
+## 4. Liste de travaux
+
+Ordonnée : ce qui ment d'abord, ce qui manque ensuite, la documentation en
+dernier. Chaque élément porte sa source ; **aucun n'est inventé ici**.
+
+### A. Ce qui est nommé, mesuré, et pas encore corrigé
+
+| # | Travail | Source | Chiffre en main |
+|---|---|---|---|
+| A1 | **Deux cellules de façade n'ont aucune hauteur** — cellule `43x0`, le bouton ne peut pas exister quelle que soit la mise en page ; c'est la grille de la description de machine qu'il faut revoir | `ROADMAP-daw.md` D62 | 2 boutons à 0 px à 900×660 |
+| A2 | **Vingt et un boutons restent sous 18 px au plancher** — la contrainte n'est plus la sérigraphie mais la LARGEUR de la cellule (21 px) ; à traiter par la description des façades, pas par la mise en page | `ROADMAP-daw.md` D62 | 21 / 49 sous 18 px |
+| A3 | **La molette de hauteur manque à sept machines** où un musicien plie la note (flûte, e-piano, clavinet, guimbarde, vielle, mandoline, kalimba) — un travail par machine, sur son modèle | `ROADMAP-daw.md` D26 | 42 machines la tiennent, 7 la devraient |
+| A4 | **`--batterie-par-piece` n'a pas de mesure de distance** — l'option est câblée et testée, son effet sur la fidélité n'est pas chiffré | `CDC-detection-multipiste.md` § 4.4 | — |
+
+### B. Ce que la mesure réclame
+
+| # | Travail | Source | Pourquoi |
+|---|---|---|---|
+| B1 | **Réengendrer le corpus et réentraîner le classifieur de machine**, puis reprendre **A5.2** | `ROADMAP-apprentissage.md` A5 | le modèle a été REFUSÉ au chargement (empreinte périmée) ; A5.2 juge des abstentions d'un modèle qui n'a pas parlé |
+| B2 | **Écouter** — A5.3 : l'A/B dans le DAW contre l'original, les notes douteuses une par une | `ROADMAP-apprentissage.md` A5.3, `CDC-apprentissage.md` § 10 | « il reste exactement une chose : écouter » ; aucune mesure ne la remplace |
+| B3 | **Contre-épreuve de `htdemucs_6s` sur un troisième original** | `CDC-detection-multipiste.md` § 4.2 | −10,4 % sur un morceau qui a guitare et piano, **+3,9 %** sur un morceau qui ne les a pas ; le défaut tient, la réserve est écrite |
+| B4 | **Écouter les deux wav de `--voix-tete-choeurs`** — les fuites de réverbération de la tête dans les chœurs ne se jugent qu'à l'oreille | `CDC-detection-multipiste.md` § 4.5 | distance mesurée neutre (+0,05 %) ; la qualité, non |
+| B5 | **Un lot de morceaux LONGS (3-5 min) avec des parties qui entrent et sortent** | `CDC-banc-synthetique.md` § 7 | le banc mesure une texture stable de 30 s, la chaîne travaille sur des disques de 4 min |
+| B6 | **Le banc ne couvre ni les parties à échantillons ni la voix** | `CDC-banc-synthetique.md` § 7 | deux branches de la chaîne ne sont mesurées par rien |
+
+### C. Ce que S1 a réfuté, et qui appelle un chantier
+
+La campagne S1 a mesuré la chaîne à vérité connue sur vingt morceaux et **elle
+est plus faible que prévu à tous les étages**. Ces chiffres sont le vrai plafond
+du projet ; toute autre optimisation est en aval d'eux.
+
+| # | Travail | Chiffre |
+|---|---|---|
+| C1 | **La séparation de la basse est le premier plafond** | SDR **0,21 dB**, corrélation **0,26** — attendu ≥ 6 dB / ≥ 0,85 |
+| C2 | **La transcription est le second** | F1 **0,367** — attendu 0,50 à 0,70 ; et le rappel (0,345) est SOUS la précision (0,426), l'inverse de ce qui était prédit |
+| C3 | **La séparation hallucine des sources**, et la chaîne les reconstruit consciencieusement | 19,8 % d'énergie hallucinée — la seule attente tenue, et c'est celle qui fait mal |
+
+C'est la boucle résiduelle (`CDC-separation-par-synthese.md`) qui a été écrite
+pour attaquer C1 et C3 ; sa campagne R1 est le prochain chiffre à produire.
+
+### D. Documentation qui a pris du retard sur le code
+
+| # | Travail | Écart constaté |
+|---|---|---|
+| D1 | **`README.md` annonce 53 machines et 1 486 tests moteur** | le parc en compte **64** et les suites **1 946** |
+| D2 | **`ROADMAP-daw.md` § 1.1 donne `app/` à 7 303 lignes** | 32 873 aujourd'hui — la mesure d'ouverture est un instantané daté, à signaler comme tel |
+| D3 | **`CDC-detection-multipiste.md` § 4.3 dit que le DAW ne montre pas ce que la chaîne sait** | faux depuis D53 : l'écran du rapport porte densités, partage d'énergie, bloc batterie, distance par stem, métrique et `gate` |
+| D4 | **`ROADMAP-fusion.md` § 1 annonce « 33 machines, 13 effets »** | 64 machines, 16 effets |
+
+### E. Dette d'outillage
+
+| # | Travail | Source |
+|---|---|---|
+| E1 | **54 signalements `ruff`** dans `analyse/` et `tools/` (F401 imports inutiles, B905 `zip()` sans `strict=`, E702, E741) — tous antérieurs, aucun n'est une erreur de type | `ruff.toml`, `ruff check .` |
+| E2 | **`mypy` et `ruff` ne sont pas dans `requirements.txt`** (choix assumé : outils d'atelier) et **rien ne les lance automatiquement** — pas de CI dans le dépôt | `mypy.ini`, `README.md` |
+
+---
+
+## 5. Ce qui n'est pas au programme, et pourquoi
+
+Rassemblé ici pour qu'on ne le repropose pas : chaque refus est mesuré ou
+argumenté dans son document.
+
+- **Une API réseau** — le tube JSON suffit (`ROADMAP-interop.md` § 0).
+- **Des machines de caractère ajoutées pour la couverture** — elles élargissent
+  le catalogue, pas la couverture ; à faire pour le plaisir de jouer, jamais en
+  s'en réclamant pour la reconstruction (`ROADMAP-fusion.md` § 6). *L'élargissement
+  du vivier reste une demande permanente, à ce titre-là et pas à l'autre.*
+- **Un modèle appris de bout en bout (audio → paramètres)** — mené jusqu'au
+  bout, mesuré, refusé (`ROADMAP-fusion.md` § 7).
+- **Reconstruire la voix par synthèse** (`ROADMAP-fusion.md` § 6).
