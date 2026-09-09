@@ -71,7 +71,7 @@ choisir : **le DAW d'abord**, la chaîne d'analyse ensuite.
 
 | | |
 |---|---|
-| **Machines** | 64 (plus la tonalité d'essai), **16 effets** d'insert |
+| **Machines** | **63**, plus la tonalité d'essai — 64 identifiants au registre ; **16 effets** d'insert ; **63 façades** dessinées |
 | **Tests** | 1 946 côté moteur — 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — et **168 côté Python** |
 | **Lignes** | `analyse/` 132 k · `audio/` 69 k · `app/` **33 k** · `interchange/` 20 k · `core/` 16 k |
 | **Vérification** | `ruff check .` (lint) et `mypy analyse tools` (types, 104 fichiers) |
@@ -109,8 +109,8 @@ dernier. Chaque élément porte sa source ; **aucun n'est inventé ici**.
 |---|---|---|---|
 | ~~A1~~ | ~~Deux cellules de façade n'ont aucune hauteur~~ — **CLOS par D63** : la façade réclame la hauteur de sa grille et défile en dessous | `ROADMAP-daw.md` D63 | 2 boutons à 0 px → **0** |
 | ~~A2~~ | ~~Quatre boutons du Minimoog sous 18 px~~ — **CLOS par D64** : son mélangeur est une bande verticale sur la machine d'origine, le dessiner en carré coûtait 11 px de large | `ROADMAP-daw.md` D64 | 23 → 4 → **0 / 49** sous 18 px |
-| A5 | **Vingt-six façades sur 54 demandent plus de largeur que le rack** — `vsm.generic` 1 372 px, `vsm.obx`/`vsm.wavetable`/`vsm.pcmhybrid` 1 148, pour un rack de 426. Grilles trop fines pour une colonne latérale ; le remède est du côté des **descriptions**, machine par machine | `ROADMAP-daw.md` D64 | médiane 420 px, min 156, max 1 372 |
-| A3 | **La molette de hauteur manque à sept machines** où un musicien plie la note (flûte, e-piano, clavinet, guimbarde, vielle, mandoline, kalimba) — un travail par machine, sur son modèle | `ROADMAP-daw.md` D26 | 42 machines la tiennent, 7 la devraient |
+| A5 | **Trente et une façades sur 63 demandent plus de largeur que le rack** — `vsm.generic` 1 372 px, `vsm.obx`/`vsm.wavetable`/`vsm.pcmhybrid` 1 148, pour un rack de 426. Grilles trop fines pour une colonne latérale ; le remède est du côté des **descriptions**, machine par machine | `ROADMAP-daw.md` D64 | médiane 420 px, min 156, max 1 372 |
+| A3 | **La molette de hauteur manque à six machines** où un musicien plie la note (e-piano, clavinet, guimbarde, vielle, mandoline, kalimba) — un travail par machine, sur son modèle physique. *La flûte, septième de la liste d'origine, n'est pas dans le parc : hors build, résultat négatif assumé* | `ROADMAP-daw.md` D26 | 42 machines la tiennent, **6** la devraient |
 | A4 | **`--batterie-par-piece` n'a pas de mesure de distance** — l'option est câblée et testée, son effet sur la fidélité n'est pas chiffré | `CDC-detection-multipiste.md` § 4.4 | — |
 
 ### B. Ce que la mesure réclame
@@ -139,14 +139,21 @@ du projet ; toute autre optimisation est en aval d'eux.
 C'est la boucle résiduelle (`CDC-separation-par-synthese.md`) qui a été écrite
 pour attaquer C1 et C3 ; sa campagne R1 est le prochain chiffre à produire.
 
-### D. Documentation qui a pris du retard sur le code
+### D. Documentation qui avait pris du retard — REFERMÉ le 10/09/2026
 
-| # | Travail | Écart constaté |
+| # | Ce que le document annonçait | Ce qui est écrit maintenant |
 |---|---|---|
-| D1 | **`README.md` annonce 53 machines et 1 486 tests moteur** | le parc en compte **64** et les suites **1 946** |
-| D2 | **`ROADMAP-daw.md` § 1.1 donne `app/` à 7 303 lignes** | 32 873 aujourd'hui — la mesure d'ouverture est un instantané daté, à signaler comme tel |
-| D3 | **`CDC-detection-multipiste.md` § 4.3 dit que le DAW ne montre pas ce que la chaîne sait** | faux depuis D53 : l'écran du rapport porte densités, partage d'énergie, bloc batterie, distance par stem, métrique et `gate` |
-| D4 | **`ROADMAP-fusion.md` § 1 annonce « 33 machines, 13 effets »** | 64 machines, 16 effets |
+| ~~D1~~ | `README` : « 53 machines », « 1 486 tests moteur » | **63 machines**, **1 946 tests** moteur et 168 Python ; « cinquante-deux façades » → soixante-trois |
+| ~~D2~~ | `ROADMAP-daw` § 1.1 : `app/` à 7 303 lignes | le tableau reste **daté du 31/08** — c'est sa raison d'être, il justifie une phrase — avec un renvoi à l'état courant (32 873 lignes) |
+| ~~D3~~ | `CDC-multipiste` § 4.3 : « le DAW ne montre pas ce que la chaîne sait » | l'écran du rapport porte partage, densités, bloc batterie, distance par stem, métrique et `gate` (D53) |
+| ~~D4~~ | `ROADMAP-fusion` § 1 : « 33 machines, 13 effets » | 63 machines, 16 effets d'insert |
+| ~~D5~~ | `ROADMAP-daw` D26 : la molette « en commençant par la flûte » | la flûte **n'est pas au registre** — hors build, résultat négatif assumé (`0edd7cc`) ; la phase porte sur six machines |
+| ~~D6~~ | `MODE-EMPLOI` : « 53 machines · 13 effets · 1 081 paramètres · 1 486 tests » | **63 · 16 · 1 146 · 1 946**, relus au moteur |
+
+Les cinq occurrences restantes de « 53 machines » et « 1 486 tests » dans les
+cahiers des charges sont des **relevés datés** — un jalon, un moteur nommé dans
+un A/B, un procès-verbal de recette. Elles restent telles quelles : un chiffre
+historique qu'on rafraîchit cesse de dire ce qu'il disait.
 
 ### E. Dette d'outillage
 

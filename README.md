@@ -4,10 +4,12 @@ Séquenceur MIDI + rack de synthétiseurs vintage virtuels. Voir
 [`ARCHITECTURE.md`](ARCHITECTURE.md) pour la conception complète et l'état
 d'avancement détaillé par phase.
 
-**État actuel** : le moteur MIDI (`core/`, 158 tests) et le moteur audio
-temps réel (`audio/`, 1 025 tests, dont un test de concurrence réel vérifié
-sous ThreadSanitizer) sont implémentés et **entièrement testés** — **1 486
-tests moteur**, tous verts, zéro warning. Les 53 machines (Minimoog, TB-303, Juno-106,
+**État actuel** : le moteur MIDI (`core/`, 327 tests) et le moteur audio
+temps réel (`audio/`, 1 291 tests, dont un test de concurrence réel vérifié
+sous ThreadSanitizer) sont implémentés et **entièrement testés** — **1 946
+tests moteur** (avec `interchange/` 292, `clap/` 25, `panels/` 11), tous verts,
+zéro warning ; plus **168 tests** côté chaîne d'analyse Python.
+Les 63 machines (Minimoog, TB-303, Juno-106,
 TR-808, TR-909, SH-101, Prophet, Jupiter-8, ARP Odyssey, MS-20, DX7, sampler
 16 emplacements, e-piano, OB-X, supersaw, table d'ondes, hybride PCM, orgue à
 roues phoniques, Generic Synth, String — corde pincée et frottée par guide
@@ -53,7 +55,7 @@ du code du DAW. Exemples de fichiers dans [`docs/examples/`](docs/examples).
 
 ## Façades « façon hardware »
 
-**Les cinquante-deux machines** ont leur propre façade, avec la disposition de
+**Les soixante-trois machines** ont leur propre façade, avec la disposition de
 l'original : trajet du signal du Minimoog, rangée unique du TB-303, colonne
 par pièce des TR-808/909 et du sampler-boîte à rythmes, curseurs du Juno-106,
 du Jupiter-8, du SH-101 et de l'ARP Odyssey, double filtre du MS-20, bloc

@@ -513,7 +513,7 @@
       <dl class="chiffres">
         <div>
           <dt class="serigraphie">Machines</dt>
-          <dd>64<small>plus la tonalité d'essai, et 16 effets d'insert</small></dd>
+          <dd>63<small>plus la tonalité d'essai · 16 effets d'insert · 63 façades dessinées</small></dd>
         </div>
         <div>
           <dt class="serigraphie">Tests moteur</dt>
@@ -572,14 +572,14 @@
               </tr>
               <tr>
                 <td class="cle">A5</td>
-                <td><strong>Vingt-six façades sur 54</strong> demandent plus de largeur que le rack n'en donne&nbsp;: <code>vsm.generic</code> 1&nbsp;372&nbsp;px, <code>vsm.obx</code>, <code>vsm.wavetable</code> et <code>vsm.pcmhybrid</code> 1&nbsp;148, pour un rack de 426. Des grilles trop fines pour une colonne latérale&nbsp;; le remède est du côté des <em>descriptions</em>, machine par machine.</td>
+                <td><strong>Trente et une façades sur 63</strong> demandent plus de largeur que le rack n'en donne&nbsp;: <code>vsm.generic</code> 1&nbsp;372&nbsp;px, <code>vsm.obx</code>, <code>vsm.wavetable</code> et <code>vsm.pcmhybrid</code> 1&nbsp;148, pour un rack de 426. Des grilles trop fines pour une colonne latérale&nbsp;; le remède est du côté des <em>descriptions</em>, machine par machine.</td>
                 <td>médiane <span class="chiffre">420 px</span><br>min 156, max 1 372</td>
                 <td class="ref">ROADMAP-daw<br>D64</td>
               </tr>
               <tr>
                 <td class="cle">A3</td>
-                <td>La <strong>molette de hauteur</strong> manque à sept machines où un musicien plie la note — flûte, e-piano, clavinet, guimbarde, vielle, mandoline, kalimba. Un travail par machine, sur son modèle physique.</td>
-                <td><span class="chiffre">42</span> machines la tiennent, <span class="chiffre">7</span> le devraient</td>
+                <td>La <strong>molette de hauteur</strong> manque à six machines où un musicien plie la note — e-piano, clavinet, guimbarde, vielle, mandoline, kalimba. Un travail par machine, sur son modèle physique. <em>La flûte, septième de la liste d'origine, n'est pas dans le parc&nbsp;: hors build, résultat négatif assumé.</em></td>
+                <td><span class="chiffre">42</span> machines la tiennent, <span class="chiffre">6</span> le devraient</td>
                 <td class="ref">ROADMAP-daw<br>D26</td>
               </tr>
               <tr>
@@ -679,35 +679,38 @@
       </div>
 
       <div class="groupe">
-        <div class="groupe-tete"><span class="groupe-lettre">D</span><h3>Documentation en retard sur le code</h3></div>
+        <div class="groupe-tete"><span class="groupe-lettre">D</span><h3>Documentation en retard sur le code — <span class="etat etat--clos">refermé le 10/09</span></h3></div>
         <div class="scroll">
           <table>
-            <thead><tr><th scope="col">#</th><th scope="col">Ce que le document annonce</th><th scope="col">Ce qui est vrai</th></tr></thead>
+            <thead><tr><th scope="col">#</th><th scope="col">Ce que le document annonçait</th><th scope="col">Ce qui est écrit maintenant</th></tr></thead>
             <tbody>
-              <tr>
-                <td class="cle">D1</td>
-                <td><span class="doc">README</span> — « 53 machines », « 1 486 tests moteur »</td>
-                <td><span class="chiffre">64</span> machines, <span class="chiffre">1 946</span> tests</td>
-              </tr>
-              <tr>
-                <td class="cle">D2</td>
-                <td><span class="doc">ROADMAP-daw</span> § 1.1 — <code>app/</code> à 7 303 lignes</td>
-                <td><span class="chiffre">32 873</span> — la mesure d'ouverture est un instantané daté, à signaler comme tel</td>
-              </tr>
-              <tr>
-                <td class="cle">D3</td>
-                <td><span class="doc">CDC-multipiste</span> § 4.3 — « le DAW ne montre pas ce que la chaîne sait »</td>
-                <td>faux depuis D53&nbsp;: l'écran porte densités, partage d'énergie, bloc batterie, distance par stem, métrique et <code>gate</code></td>
-              </tr>
-              <tr>
-                <td class="cle">D4</td>
-                <td><span class="doc">ROADMAP-fusion</span> § 1 — « 33 machines, 13 effets »</td>
-                <td><span class="chiffre">64</span> machines, <span class="chiffre">16</span> effets</td>
-              </tr>
+              <tr><td class="cle" style="text-decoration:line-through">D1</td>
+                  <td><s><span class="doc">README</span> — « 53 machines », « 1 486 tests moteur »</s></td>
+                  <td><span class="chiffre">63</span> machines, <span class="chiffre">1 946</span> tests moteur et 168 Python</td></tr>
+              <tr><td class="cle" style="text-decoration:line-through">D2</td>
+                  <td><s><span class="doc">ROADMAP-daw</span> § 1.1 — <code>app/</code> à 7 303 lignes</s></td>
+                  <td>le tableau reste <strong>daté du 31/08</strong> — c'est sa raison d'être, il justifie une phrase — avec un renvoi à l'état courant</td></tr>
+              <tr><td class="cle" style="text-decoration:line-through">D3</td>
+                  <td><s><span class="doc">CDC-multipiste</span> § 4.3 — « le DAW ne montre pas ce que la chaîne sait »</s></td>
+                  <td>l'écran du rapport porte partage, densités, bloc batterie, distance par stem, métrique et <code>gate</code> (D53)</td></tr>
+              <tr><td class="cle" style="text-decoration:line-through">D4</td>
+                  <td><s><span class="doc">ROADMAP-fusion</span> § 1 — « 33 machines, 13 effets »</s></td>
+                  <td>63 machines, 16 effets d'insert</td></tr>
+              <tr><td class="cle" style="text-decoration:line-through">D5</td>
+                  <td><s><span class="doc">ROADMAP-daw</span> D26 — la molette « en commençant par la flûte »</s></td>
+                  <td>la flûte <strong>n'est pas au registre</strong> : hors build, résultat négatif assumé&nbsp;; la phase porte sur six machines</td></tr>
+              <tr><td class="cle" style="text-decoration:line-through">D6</td>
+                  <td><s><span class="doc">MODE-EMPLOI</span> — « 53 machines · 13 effets · 1 081 paramètres · 1 486 tests »</s></td>
+                  <td><span class="chiffre">63 · 16 · 1 146 · 1 946</span>, relus au moteur</td></tr>
             </tbody>
           </table>
         </div>
       </div>
+
+      <p class="note" style="max-width:66ch">Les cinq occurrences restantes de « 53 machines » et « 1 486 tests » dans les
+        cahiers des charges sont des <strong>relevés datés</strong> — un jalon, un moteur nommé dans un A/B,
+        un procès-verbal de recette. Elles restent telles quelles&nbsp;: un chiffre historique qu'on
+        rafraîchit cesse de dire ce qu'il disait.</p>
 
       <div class="groupe">
         <div class="groupe-tete"><span class="groupe-lettre">E</span><h3>Dette d'outillage</h3></div>

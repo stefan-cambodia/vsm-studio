@@ -82,6 +82,13 @@ Sur 75 commits, **sept** touchent `app/`. Le parc a été nourri sans relâche ;
 l'atelier qui l'accueille est resté un démonstrateur — de bonne facture, mais un
 démonstrateur.
 
+> **CE TABLEAU EST DATÉ, ET C'EST SA RAISON D'ÊTRE.** Il mesure l'état du
+> 31/08/2026, celui qui a fait écrire cette feuille de route ; il ne se met pas
+> à jour, sans quoi la phrase qu'il justifie n'aurait plus de sens. Pour
+> mémoire, au 10/09/2026 : `app/` fait **32 873 lignes**, soit 4,5 fois plus,
+> et les cinq critères du § 2 sont tenus. L'état courant se lit dans
+> `docs/INDEX.md`.
+
 ### 1.2 Le fait qui résume tout : la voix passe par une case de boîte à rythmes
 
 Dans la reconstruction de *Sky and Sand* (`reconstruction/travail/sky-v4/`), la
@@ -5817,10 +5824,24 @@ tests) : un travail par machine, sur son modèle, une heure ou deux chacune.
 phase : la chaîne d'analyse n'émet pas de pitch bend (`grep pitch_bend
 analyse/analyzer/` : rien), donc aucune reconstruction n'en dépend, et les
 42 machines qui plient couvrent les synthétiseurs — ceux qu'un musicien
-plie. Elle se fera **machine par machine, quand un morceau le réclamera**,
-en commençant par la flûte (le seul des sept où le pli est courant), avec
+plie. Elle se fera **machine par machine, quand un morceau le réclamera**, avec
 pour critère : une note pliée d'un demi-ton sort à la fréquence de la note
-du dessus, à 1 % près, mesurée sur le rendu. La phase reste ouverte, sans
+du dessus, à 1 % près, mesurée sur le rendu.
+
+> **RECTIFICATIF (10/09/2026) : SIX MACHINES, PAS SEPT — LA FLÛTE N'EST PAS
+> DANS LE PARC.** Ce paragraphe disait « en commençant par la flûte, le seul
+> des sept où le pli est courant ». Vérification faite au moteur :
+> `vsm.flute` **n'est pas enregistrée**. Son source vit bien dans
+> `audio/plugins/flute/`, avec sa macro `VSM_REGISTER_SYNTH_PLUGIN` et son
+> test — mais aucun `CMakeLists.txt` ne les compile, et c'est **volontaire** :
+> commit `0edd7cc`, « la flûte oscille enfin, et elle joue faux », un résultat
+> négatif documenté (elle s'accroche à un mode élevé de sa boucle : +41
+> demi-tons sur la note 45). Mesures dans `ARCHITECTURE.md` § 44.
+>
+> La phase porte donc sur **six** machines — e-piano, clavinet, guimbarde,
+> vielle, mandoline, kalimba — toutes vérifiées présentes au registre. Et si la
+> flûte revenait un jour, la molette serait le dernier de ses problèmes : une
+> machine qui ne joue pas la note qu'on lui donne ne se plie pas non plus. La phase reste ouverte, sans
 étape numérotée, et le prochain audit reprend l'ordre du § 3.
 
 ### Phase D27 — La sortie MIDI matérielle par piste (06/09/2026, 14:25)
@@ -10054,9 +10075,9 @@ D62-D63-D64 est close.
 
 **1. Prendre la largeur de la façade comme plancher de la poignée du rack**,
 comme le dock du bas prend celle de la tranche master depuis D59. Écrit, puis
-retiré par la mesure : les 54 façades décrites réclament de **156 à 1 372 px**,
-médiane **420**, et **26 d'entre elles** demandent plus que les 426 px que le
-rack reçoit. Le plancher aurait donc élargi le rack de force sur la moitié du
+retiré par la mesure : les **63** façades décrites réclament de **156 à
+1 372 px**, médiane **420**, et **31 d'entre elles** demandent plus que les
+426 px que le rack reçoit. Le plancher aurait donc élargi le rack de force sur la moitié du
 parc, en écrasant une largeur que l'utilisateur choisit et que l'application
 retient (`dock.droite`). **Une disposition réglable ne se reprend pas à son
 propriétaire.**
@@ -10073,16 +10094,36 @@ blocs entiers.**
 première version posait un plancher de 40 px par colonne de grille
 *indépendamment des blocs* — comme si chaque colonne devait porter un bloc à
 elle seule. Elle annonçait 428 px pour la façade la moins exigeante là où le
-compte juste en donne 156, et gonflait les cinquante-quatre d'un coup. Corrigée,
+compte juste en donne 156, et gonflait toutes les façades d'un coup. Corrigée,
 la table ci-dessus est celle qui a servi à décider. Le calcul lui-même a été
 retiré avec le témoin : il a fait son travail, qui était de produire ce chiffre.
 
-**CE QUE LA TABLE LAISSE OUVERT.** Vingt-six façades demandent plus que le rack
-par défaut ; les plus gourmandes sont `vsm.generic` (1 372 px, grille de 24
-colonnes), `vsm.obx`, `vsm.wavetable` et `vsm.pcmhybrid` (1 148, grille de 20).
+**CE QUE LA TABLE LAISSE OUVERT.** **Trente et une** façades sur soixante-trois
+demandent plus que le rack par défaut ; les plus gourmandes sont `vsm.generic`
+(1 372 px, grille de 24 colonnes), `vsm.obx`, `vsm.wavetable` et `vsm.pcmhybrid`
+(1 148, grille de 20).
 Ce sont des grilles trop fines pour une colonne latérale, et le remède est du
 côté des DESCRIPTIONS — comme celui du Minimoog vient de l'être, et en y
 gagnant en fidélité. À faire machine par machine, quand une mesure ou une
 écoute le réclame, pas en bloc.
 
 Tests : 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — verts.
+
+> **RECTIFICATIF DE D64, LE JOUR MÊME : LA TABLE DISAIT « 54 FAÇADES », IL Y EN
+> A 63.** Le témoin écrivait sur la sortie d'erreur et la mesure passait par un
+> tube (`… | grep …`) : **neuf lignes s'y sont perdues**, et ce sont les neuf
+> PREMIÈRES de la liste — TB-303, TR-808, TR-909, SH-101, Juno-106, Jupiter-8,
+> MS-20, DX7, CS-80. Un début de flot avalé avant que le filtre ne lise.
+>
+> Refaite avec un témoin qui écrit DIRECTEMENT dans un fichier, la mesure donne
+> **63 façades** et **31** au-dessus de 426 px, au lieu de 54 et 26. Le minimum
+> (156), la médiane (420) et le maximum (1 372) ne bougent pas, et la conclusion
+> non plus : les deux remèdes ont été retirés pour des raisons qui ne dépendent
+> pas du compte. Les chiffres de D64 sont corrigés en place.
+>
+> **C'est la règle du dépôt prise en défaut par son auteur** : *un nombre sorti
+> d'un grep se revérifie en listant ce qu'on a cherché ET où, avant de
+> l'écrire*. Le dénominateur était vérifiable en une commande —
+> `grep -c "^MachinePanel make" panels/src/MachinePanels.cpp` en rend 63 — et
+> il ne l'a pas été. La leçon d'exploitation qui s'ajoute aux précédentes :
+> **un témoin de mesure écrit dans un FICHIER, jamais dans un tube.**

@@ -46,7 +46,7 @@ client, jamais une dépendance.
 
 **Acquis, mesuré :**
 
-- **33 machines (+ tonalité d'essai), 13 effets**, moteur temps réel,
+- **63 machines (+ tonalité d'essai), 16 effets d'insert**, moteur temps réel,
   **1 216 tests moteur + 60 tests d'analyse** verts, zéro warning.
   *(Ces trois chiffres disaient « 24 machines, 9 effets, 760 tests » jusqu'au
   31/08/2026 : ils avaient été écrits une fois et jamais repris, pendant que le

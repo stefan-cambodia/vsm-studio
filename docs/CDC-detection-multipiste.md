@@ -119,12 +119,15 @@ déplacent rien, et la stabilité par empreintes est démontrée en course.
      calage voix par voix (§ 7) ; recalé, il vaut −0,1 % sur *Us and Them*
      et +3,1 % sur *Sky and Sand* (§ 8). **`--parite` est le défaut**, et
      `--sans-parite` le témoin.
-3. **Le DAW montre ce que la chaîne sait** : les densités, le partage et les
-   avertissements de fourre-tout existent dans `rapport.json` et nulle part
-   dans l'application. Un projet reconstruit qui s'ouvre devrait dire « cette
-   piste porte plusieurs parties » là où on la voit — forme à concevoir
-   (colonne de la liste de pistes ? panneau du rapport de reconstruction,
-   comme le rapport d'import ?).
+3. **Le DAW montre ce que la chaîne sait — FAIT (D53, 08/09/2026).** La forme
+   retenue est l'écran « Voir le rapport de reconstruction », et non une
+   colonne de la liste de pistes : il porte le partage d'énergie stem par
+   stem, les densités, le bloc batterie (machine, pièces, frappes, parité) et
+   **la distance de chaque piste** — que l'écran taisait, alors que la pire
+   était 26,7 % plus loin que la meilleure. La métrique et le `gate`
+   l'accompagnent, parce qu'une distance sans ses conditions invite la
+   comparaison que le projet interdit. Le `gate` ne s'écrit que lorsqu'il
+   n'est pas à 1 : un « gate 1.00 » sur chaque ligne serait un meuble.
 4. **La batterie éclatée par pièce — CÂBLÉE (03/09/2026)** :
    `--batterie-par-piece` rend une piste par pièce détectée, même machine et
    même patch pour toutes (le kit reste un instrument réglé une fois). Les
