@@ -9898,3 +9898,59 @@ visibles.
 Tests : 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — verts
 (la phase ne touche qu'`app/Source/`, dont aucune suite ne traverse le point
 d'entrée : c'est la mesure à l'écran qui la tranche, et elle est ci-dessus).
+
+### Phase D62 — Un potentiomètre de SIX pixels à la plus grande fenêtre de l'écran : la sérigraphie prenait la cellule entière (10/09/2026, 00:20)
+
+**CE QUE D61 AVAIT NOMMÉ SANS LE CORRIGER**, et qui valait sa phase. La hauteur
+de la sérigraphie vaut `jlimit(12, 26, hauteur × 0,26)` : son **plancher de
+douze pixels s'applique même à une cellule qui en fait dix-huit**, et il n'en
+reste que six pour le bouton. Mesuré à 1280x742 — la plus grande fenêtre que
+cet écran donne — sur la section « RÉGLAGES » du TB-303 : cellule **66x18**,
+sérigraphie 12, **bouton 6 pixels**, et le nom écrit par-dessus. Ce n'est pas un
+défaut de petite fenêtre.
+
+**LA CORRECTION : LA SÉRIGRAPHIE PASSE À CÔTÉ QUAND LA CELLULE EST BASSE.** Le
+bouton prend alors toute la hauteur, le nom la largeur qui reste. Mais
+l'arrangement n'est retenu que si les DEUX conditions tiennent, et la seconde a
+été ajoutée après une mesure qui a réfuté la première version :
+
+1. **il donne un bouton plus grand** — sans quoi une cellule étroite et haute
+   (21x28, bouton déjà à 16) y perdrait ;
+2. **le nom n'y perd pas de place** — on compare les deux surfaces offertes au
+   texte, largeur × nombre de lignes que `drawFittedText` peut écrire. Sans
+   cette condition, la batterie acoustique y perdait : ses cellules sont
+   étroites, le bouton y gagnait trois pixels et « DECAY » devenait « DEC… »,
+   « CL LVL » devenait « … ». Vu à l'écran, puis corrigé.
+
+**SAUF QUAND L'EMPILEMENT NE LAISSE RIEN.** Un bouton de zéro pixel est une
+commande qu'on ne peut pas atteindre — la promesse de D35.5, encore — et cela ne
+se compare pas à quelques pixels de nom en moins. La cellule de **43x11** du
+TB-303 n'avait AUCUN bouton : la sérigraphie y prenait ses onze pixels et un de
+plus. Elle passe à côté quoi qu'il en coûte au nom.
+
+**MESURÉ, avec un témoin issu du même binaire, sur les 49 cellules que le rack
+pose pour cette machine** (le témoin imprime cellule, diamètre et arrangement,
+puis a été retiré) :
+
+| | fenêtre | plus petit bouton | à ZÉRO pixel | sous 12 px | sous 18 px | passés à côté |
+|---|---|---|---|---|---|---|
+| avant | 1280x742 | **6 px** | 0 | 2 | 2 | — |
+| après | 1280x742 | **18 px** | 0 | **0** | **0** | 7 |
+| avant | 900x660 | 0 px | 4 | 16 | 26 | — |
+| après | 900x660 | 0 px | **2** | **6** | **21** | 16 |
+
+**LES DEUX QUI RESTENT À ZÉRO À 900x660 SONT D'UNE AUTRE NATURE**, et il faut le
+dire : leur cellule fait **43x0** — la grille de la façade ne leur donne aucune
+hauteur du tout. Aucun arrangement ne peut rien pour une cellule sans hauteur ;
+c'est la description de la machine qu'il faudrait revoir. Nommé ici, pas corrigé.
+
+**VU À L'ÉCRAN, AUX DEUX BOUTS.** À 1280x742, les deux commandes de « RÉGLAGES »
+sont deux vrais boutons avec leur repère et leur nom à côté, là où c'étaient
+deux points. À 900x660, la rangée « SYNTHESIZER » du TB-303 — sept points
+alignés jusqu'ici — montre sept boutons nommés (WAVEFORM, CUT OFF FREQ sur deux
+lignes, RESONA…, ENV MOD, DECAY, ACCENT, SLIDE TIME). Et la batterie
+acoustique est **inchangée** : LEVEL, TUNE, DECAY, BEATER, SNARES, CL LVL,
+CL DEC, OP LVL, OP DEC, RIDE, RD DEC, CRASH, CR DEC, LEVEL, SIZE, VOLUME s'y
+lisent comme avant — c'est la seconde condition qui l'a préservée.
+
+Tests : 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — verts.

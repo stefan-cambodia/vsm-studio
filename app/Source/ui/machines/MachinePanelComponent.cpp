@@ -323,6 +323,60 @@ void MachinePanelComponent::resized() {
         // La sérigraphie prend une part FIXE de la cellule : sur une petite
         // façade elle rétrécit avec le reste, au lieu de dévorer le bouton.
         const float captionHeight = juce::jlimit(12.0f, 26.0f, cell.getHeight() * 0.26f);
+
+        // D62 : UNE CELLULE BASSE ET LARGE MET SA SÉRIGRAPHIE À CÔTÉ, PAS
+        // DESSOUS. Le plancher de douze pixels ci-dessus s'applique même à une
+        // cellule qui en fait dix-huit : il n'en restait SIX pour le bouton.
+        // Mesuré le 09/09/2026 sur la section « RÉGLAGES » du TB-303, à
+        // 1280x742 — la plus grande fenêtre que cet écran donne : cellule de
+        // 66x18, sérigraphie 12, bouton 6 pixels, et le nom écrit par-dessus.
+        // Un bouton de six pixels n'est pas une commande.
+        //
+        // Côte à côte, la sérigraphie garde 55 % de la largeur (c'est elle la
+        // plus longue des deux) et le bouton prend le reste, borné par la
+        // hauteur. L'arrangement n'est retenu QUE s'il donne un bouton plus
+        // grand que l'empilement : une cellule étroite et haute (21x28, où le
+        // bouton fait déjà 16) n'y gagnerait rien et n'y passe pas.
+        const float diametreDessous = std::min(cell.getWidth(), cell.getHeight() - captionHeight);
+        const float diametreACote = std::min(cell.getHeight(), cell.getWidth() * 0.45f);
+
+        // ET LE NOM N'Y PERD JAMAIS DE PLACE. Sans cette seconde condition, la
+        // batterie acoustique y perdait : ses cellules sont étroites, le bouton
+        // y gagnait quelques pixels et « DECAY » devenait « DEC… », « CL LVL »
+        // devenait « … ». On compare donc les deux surfaces offertes au texte
+        // -- largeur × nombre de lignes que `drawFittedText` peut écrire -- et
+        // l'on ne bascule que si celle d'à côté est au moins égale. Empilé, le
+        // nom a toute la largeur sur une ligne ; à côté, une bande plus étroite
+        // mais sur toute la hauteur, donc souvent deux lignes.
+        const float policeACote = juce::jlimit(8.0f, 11.0f, cell.getHeight() * 0.45f);
+        const float policeDessous = juce::jlimit(8.0f, 11.0f, captionHeight * 0.45f);
+        const float largeurNomACote = std::max(0.0f, cell.getWidth() - diametreACote - 3.0f);
+        const float surfaceACote =
+            largeurNomACote * std::max(1.0f, std::floor(cell.getHeight() / policeACote));
+        const float surfaceDessous =
+            cell.getWidth() * std::max(1.0f, std::floor(captionHeight / policeDessous));
+        // SAUF QUAND L'EMPILEMENT NE LAISSE RIEN. Un bouton de zéro pixel est
+        // une commande qu'on ne peut pas atteindre -- la promesse de D35.5 --
+        // et cela ne se compare pas à quelques pixels de nom en moins : la
+        // cellule de 43x11 du TB-303 n'avait AUCUN bouton, la sérigraphie ayant
+        // pris ses onze pixels et un de plus.
+        const bool serigraphieACote = !isSlider && diametreACote > diametreDessous &&
+                                       (surfaceACote >= surfaceDessous || diametreDessous <= 0.0f);
+
+        if (serigraphieACote) {
+            auto place = cell;
+            auto pourLeBouton = place.removeFromLeft(diametreACote);
+            place.removeFromLeft(3.0f);   // sans quoi le nom touche l'anneau du bouton
+            control.caption->setBounds(place.toNearestInt());
+            control.caption->setJustificationType(juce::Justification::centredLeft);
+            control.caption->setFont(juce::Font(juce::FontOptions(
+                juce::jlimit(8.0f, 11.0f, cell.getHeight() * 0.45f))));
+            control.widget->setBounds(
+                pourLeBouton.withSizeKeepingCentre(diametreACote, diametreACote).toNearestInt());
+            continue;
+        }
+
+        control.caption->setJustificationType(juce::Justification::centredTop);
         control.caption->setBounds(cell.removeFromBottom(captionHeight).toNearestInt());
         control.caption->setFont(juce::Font(juce::FontOptions(juce::jlimit(8.0f, 11.0f, captionHeight * 0.45f))));
 
