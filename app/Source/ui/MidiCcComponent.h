@@ -21,6 +21,20 @@
 /// en PALIERS (un CC vaut jusqu'au suivant, il n'interpole pas) et la valeur
 /// va de 0 à 127. Chaque édition passe par l'historique du projet (Ctrl+Z
 /// la défait comme une note) et republie le projet au séquenceur.
+/// D60 : L'AIDE SE PLIE PLUTÔT QUE DE SE COUPER.
+///
+/// Le bandeau d'aide tenait sur UNE ligne de 26 pixels quoi qu'il arrive, et
+/// `juce::Label` coupe ce qui dépasse en posant des points de suspension. À
+/// 900 px de large -- le plancher de la fenêtre depuis D58 --, la dernière
+/// clause disparaissait : « ... ne bouge qu'en v... », « ... un CC vaut
+/// jus... ». Or c'est justement la clause qui explique le comportement
+/// surprenant, celle qu'on vient lire.
+///
+/// La règle de cette application est d'agrandir la case, jamais de rétrécir le
+/// texte : le bandeau prend DEUX lignes quand une ne suffit pas, et le graphe
+/// commence d'autant plus bas -- d'où `hauteurEnTete_`, que `editorArea()`
+/// consulte au lieu de la constante 30 qu'il portait en dur (deux endroits
+/// pour la même hauteur, et le second aurait divergé au premier changement).
 class MidiCcComponent : public juce::Component {
 public:
     MidiCcComponent();
@@ -83,4 +97,6 @@ private:
     vsm::midi::Tick maxTick_ = 1920 * 4;
 
     static constexpr int kPointRadius = 5;
+    /// D60 : 26 pixels sur une ligne, 42 quand l'aide en demande deux.
+    int hauteurEnTete_ = 26;
 };

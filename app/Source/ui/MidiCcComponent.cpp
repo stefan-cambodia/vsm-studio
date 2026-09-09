@@ -213,7 +213,7 @@ void MidiCcComponent::commit(const juce::String& label) {
 // ------------------------------------------------------------- géométrie ---
 
 juce::Rectangle<int> MidiCcComponent::editorArea() const {
-    return getLocalBounds().withTrimmedTop(30).reduced(8);
+    return getLocalBounds().withTrimmedTop(hauteurEnTete_ + 4).reduced(8);
 }
 
 int MidiCcComponent::tickToX(Tick tick) const {
@@ -368,7 +368,13 @@ void MidiCcComponent::paint(juce::Graphics& g) {
 }
 
 void MidiCcComponent::resized() {
-    auto top = getLocalBounds().removeFromTop(26).reduced(6, 2);
+    // D60 : DEUX LIGNES QUAND UNE NE SUFFIT PAS. Voir l'en-tête de la classe.
+    const int largeurDeLAide = getWidth() - 12 - 524;
+    const float largeurDuTexte =
+        juce::GlyphArrangement::getStringWidth(hintLabel_.getFont(), hintLabel_.getText());
+    hauteurEnTete_ = (largeurDeLAide > 0 && largeurDuTexte > static_cast<float>(largeurDeLAide))
+                       ? 42 : 26;
+    auto top = getLocalBounds().removeFromTop(hauteurEnTete_).reduced(6, 2);
     trackLabel_.setBounds(top.removeFromLeft(44));
     trackBox_.setBounds(top.removeFromLeft(170));
     top.removeFromLeft(10);

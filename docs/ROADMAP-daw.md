@@ -9702,7 +9702,7 @@ Tests : 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — verts
 (la phase ne touche qu'`app/Source/`, dont aucune suite ne traverse le point
 d'entrée : c'est la mesure à l'écran qui la tranche, et elle est ci-dessus).
 
-### Phase D59 — La septième commande du master n'était visible à AUCUNE taille de fenêtre, et c'est celle que D49 a rendue honnête (09/09/2026, 18:30)
+### Phase D59 — La septième commande du master n'était visible à AUCUNE taille de fenêtre, et c'est celle que D49 a rendue honnête (09/09/2026, 18:10)
 
 **D58 A NOMMÉ CE DÉFAUT ET NE L'A PAS CORRIGÉ, EXPRÈS.** Il valait sa phase :
 en le regardant, il s'est révélé bien pire que « le bandeau du master déborde
@@ -9759,5 +9759,39 @@ estimé** : le mélangeur reçoit 221 px quand le dock en fait 282.
 **VU À L'ÉCRAN, aux deux bouts** : à 900x660 comme en plein écran, les sept
 potentiomètres sont là, chacun avec son libellé, et les deux témoins du bas
 sont sous eux et non dessus.
+
+Tests : 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — verts.
+
+### Phase D60 — Le premier balayage à la taille plancher : deux aides coupées au milieu de la clause qui compte (09/09/2026, 18:20)
+
+**LA PREMIÈRE FOIS QUE LES ONGLETS DU BAS SONT REGARDÉS AILLEURS QU'EN PLEIN
+ÉCRAN.** `VSM_TAILLE` marchant enfin (D58), les cinq onglets ont été
+photographiés à 900x660, la taille plancher, sur la reconstruction réelle à
+onze pistes. Trois tiennent — Mixer, Effets, Automation, Liste. **Deux coupent
+leur bandeau d'aide au milieu d'un mot** :
+
+| onglet | ce qu'on lisait à 900 px |
+|---|---|
+| Tempo | « … rampe jusqu'au suivant - **le tempo de départ (tick 0) ne bouge qu'en v…** » |
+| MIDI CC | « … Clic droit : supprimer - **un CC vaut jus…** » |
+
+**ET CE SONT LES CLAUSES QUI COMPTENT.** Les trois premières de chaque bandeau
+énoncent l'évident — clic, glisser, clic droit. La dernière est la seule qu'on
+vient lire : elle explique un comportement qui SURPREND (le tempo du tick 0 se
+déplace en valeur mais pas en temps ; un CC vaut jusqu'au suivant et
+n'interpole pas). `juce::Label` coupe par la fin ; la coupure emporte donc
+exactement le renseignement.
+
+**LA RÈGLE DE CETTE APPLICATION EST D'AGRANDIR LA CASE, JAMAIS DE RÉTRÉCIR LE
+TEXTE.** Le bandeau prend désormais **deux lignes quand une ne suffit pas** (42
+px au lieu de 26), et le graphe commence d'autant plus bas. La hauteur d'en-tête
+était écrite DEUX fois — 26 dans `resized()`, 30 en dur dans `editorArea()` —
+et les deux auraient divergé au premier changement : il n'y a plus qu'un
+`hauteurEnTete_`, que les deux consultent.
+
+**MESURÉ AUX DEUX BOUTS, sur les mêmes onglets et le même projet** : à 900 px
+les deux aides se plient et se lisent en entier ; à 1264 px elles tiennent sur
+une ligne et le bandeau reprend ses 26 pixels — aucune régression sur la taille
+où tous les autoportraits antérieurs ont été pris.
 
 Tests : 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — verts.
