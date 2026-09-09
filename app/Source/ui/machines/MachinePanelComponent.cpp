@@ -167,6 +167,17 @@ void MachinePanelComponent::rebuild() {
             // La sérigraphie se rétrécit plutôt que de se faire couper : un
             // libellé tronqué en "OSC 1 WAVEF..." ne sert plus à rien.
             caption->setMinimumHorizontalScale(0.55f);
+            // ET ELLE DISPOSE DE TOUTE SA CASE (D61). `juce::Label` réserve
+            // CINQ pixels de marge de chaque côté par défaut -- dix en tout,
+            // pris sur la largeur du texte. Sur une cellule étroite, il n'en
+            // restait presque rien : les quatre curseurs d'enveloppe du Vocal,
+            // dont les intitulés font UNE lettre, s'écrivaient « ... » à 900 px
+            // de fenêtre, et « A D S R » à 1280. Des points à la place d'un nom
+            // ne disent rien du tout, et la marge n'apporte rien ici : la
+            // sérigraphie est centrée sous son bouton, sans fond ni cadre.
+            // C'est la règle de lisibilité prise par l'autre bout -- on
+            // agrandit la case au lieu de rétrécir le texte.
+            caption->setBorderSize(juce::BorderSize<int>(0));
             addAndMakeVisible(*caption);
             control.caption = std::move(caption);
 

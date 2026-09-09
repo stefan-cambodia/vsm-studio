@@ -9795,3 +9795,106 @@ une ligne et le bandeau reprend ses 26 pixels — aucune régression sur la tail
 où tous les autoportraits antérieurs ont été pris.
 
 Tests : 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — verts.
+
+### Phase D61 — Le balayage au plancher, suite : la barre du piano roll perdait ONZE commandes, à toute taille de fenêtre (09/09/2026, 23:40)
+
+**CE QUE D60 N'AVAIT PAS REGARDÉ.** Le premier balayage à 900x660 s'était
+arrêté aux cinq onglets du dock. Le HAUT de la fenêtre — arrangement, piano
+roll, rack de machines — n'avait jamais été photographié ailleurs qu'en plein
+écran. Il l'a été, sur la même reconstruction réelle à onze pistes.
+
+#### 1. La barre du piano roll posait à ZÉRO PIXEL ce qui ne tenait pas
+
+`PianoRollToolbar::resized()` posait chacune de ses trois bandes sur UNE
+rangée, à coups de `removeFromLeft(largeur)` avec des largeurs constantes.
+Quand la rangée est épuisée, `removeFromLeft` rend un rectangle vide : tout ce
+qui suit reçoit une largeur de **zéro** — invisible, incliquable, sans un mot.
+Et le commentaire promettait l'inverse : « *La barre reste utilisable sur une
+fenêtre étroite -- rien n'est jamais coupé, les éléments se serrent.* » Rien ne
+se serrait : les largeurs sont des constantes.
+
+**MESURÉ, avec un témoin issu du même binaire** (l'ancien calcul rejoué à côté
+du nouveau, puis retiré) sur les 36 éléments de la barre — commandes et
+intitulés :
+
+| fenêtre | rack | largeur de la barre | AVANT : éléments à zéro pixel | APRÈS : rangées |
+|---|---|---|---|---|
+| 900x660 | ouvert | 248 px | **27 / 36** | 15 |
+| 900x660 | fermé | 705 px | **12 / 36** | 5 |
+| 1280x742 | ouvert | 438 px | **19 / 36** | 8 |
+| 1280x742 | fermé | 1093 px | **3 / 36** | 4 |
+
+**LA DERNIÈRE LIGNE EST CELLE QUI COMPTE** : 1 093 px est le plus large que cet
+écran puisse donner à la barre, et **trois commandes y étaient déjà à zéro
+pixel** — « Replier », « Suivre » et la ligne d'information de D29.4. Ce n'est
+donc pas un défaut de petite fenêtre : la barre réclame ~950 px pour sa seule
+bande du haut et ~1 100 px pour celle du milieu. Le compte de ce qu'on voyait à
+l'écran le confirme : à 900x660 avec le rack, les outils s'arrêtaient sur
+« C… » (pour « Coll. ») et l'on ne pouvait ni couper le son d'une note, ni
+annuler, ni quantifier, ni zoomer.
+
+**CE QUI EST FAIT : LES BANDES SE REPLIENT.** Ce qui ne tient pas passe à la
+rangée suivante, jamais à zéro. La case grandit, le texte ne rétrécit pas —
+c'est la règle de D60, à qui le bandeau d'aide devait déjà sa seconde ligne. Un
+GROUPE ne se coupe jamais : un intitulé reste avec ce qu'il nomme (« Swing »
+avec son curseur), et une paire indissociable reste entière (annuler/rétablir,
+les trois zooms).
+
+**ET LA BARRE NE DÉVORE PAS L'ÉDITEUR.** Quinze rangées à 248 px, c'est plus que
+le panneau n'a de hauteur. La barre vit donc dans un `juce::Viewport` : elle
+DEMANDE sa hauteur (`hauteurUtile(largeur)`, un seul parcours sert à mesurer et
+à poser, sans quoi les deux divergeraient), le panneau lui en accorde **au plus
+deux cinquièmes** de sa hauteur — plancher à 92 px, la valeur de D29.4, pour que
+rien ne change là où tout tenait déjà — et le reste défile. Aucune commande
+n'est plus hors d'atteinte ; certaines demandent un coup de molette.
+
+#### 2. Les sérigraphies des façades s'écrivaient « … » — deux pixels pour une lettre
+
+Sur la façade du Vocal à 900x660, les quatre curseurs d'enveloppe portent
+**« … » à la place de « A D S R »**. Le mécanisme, mesuré : `juce::Label`
+réserve **cinq pixels de marge de chaque côté** par défaut, dix en tout, pris
+sur la largeur du texte.
+
+| | case | reste pour le texte | la lettre veut |
+|---|---|---|---|
+| 900x660 | 12 px | **2 px** | 6 à 7 px |
+| 1280x742 | 22 px | 12 px | 6 à 7 px |
+
+Deux pixels pour une lettre : `drawFittedText` met des points. **Des points à
+la place d'un nom ne disent rien du tout**, et la marge n'apporte rien ici — la
+sérigraphie est centrée sous son bouton, sans fond ni cadre. Elle passe à zéro :
+c'est la règle de lisibilité prise par l'autre bout, on agrandit la case au lieu
+de rétrécir le texte.
+
+**MESURÉ sur les 64 sérigraphies que le rack pose réellement** (le témoin
+compare, pour chacune, la largeur voulue par le texte à la place laissée) :
+
+| fenêtre | écrasées pour tenir | réduites à des points |
+|---|---|---|
+| 900x660 avant | 48 | **30** |
+| 900x660 après | 15 | **11** |
+| 1280x742 avant | 14 | 7 |
+| 1280x742 après | 9 | 4 |
+
+#### 3. CE QUE LE BALAYAGE A VU ET QUI RESTE — les potentiomètres des sections basses
+
+Nommé ici plutôt que corrigé en silence dans la même phase, avec son chiffre.
+La section **RÉGLAGES** du TB-303 porte deux potentiomètres, « ACCENT
+THRESHOLD » et « ANALOG DRIFT » : ils font **5 pixels de diamètre à 1280x742**
+— le plus large que cet écran donne — et leur sérigraphie se dessine par-dessus.
+Ce n'est pas un défaut de petite fenêtre : `captionHeight` vaut
+`jlimit(12, 26, hauteur × 0,26)`, et son PLANCHER de 12 px s'applique même
+quand la cellule en fait 18 : il en reste six pour le bouton. Un bouton de cinq
+pixels n'est pas une commande — c'est la promesse de D35.5 à nouveau. À
+regarder dans sa propre phase.
+
+**VU À L'ÉCRAN, AUX DEUX BOUTS.** À 900x660 : les outils du piano roll se lisent
+en entier sur quatre rangées (« Coll. » et « Muet » ne sont plus « C… » et
+rien), et l'enveloppe du Vocal écrit « A D S R ». À 1280x742 sans le rack : la
+barre tient sur **quatre** rangées et montre TOUT, « Replier », « Suivre » et la
+ligne d'information comprises — trois éléments qui n'avaient jamais été
+visibles.
+
+Tests : 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — verts
+(la phase ne touche qu'`app/Source/`, dont aucune suite ne traverse le point
+d'entrée : c'est la mesure à l'écran qui la tranche, et elle est ci-dessus).

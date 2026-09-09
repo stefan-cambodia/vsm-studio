@@ -18,7 +18,15 @@ public:
     PianoRollPanel(PianoRollComponent& pianoRoll, VelocityLaneComponent& velocityLane)
         : pianoRoll_(pianoRoll), velocityLane_(velocityLane),
           toolbar_(pianoRoll), ruler_(pianoRoll) {
-        addAndMakeVisible(toolbar_);
+        // D61 : LA BARRE VIT DANS UN VOLET QUI DÉFILE. Ses bandes se
+        // replient maintenant sur autant de rangées qu'il faut ; à 243 px de
+        // large elle en réclame plus que le panneau n'en a. Plutôt que de
+        // rendre onze commandes invisibles (ce qu'elle faisait) ou de dévorer
+        // l'éditeur (ce qu'elle ferait sans plafond), elle prend ce qu'on lui
+        // accorde et le reste défile.
+        vueBarre_.setViewedComponent(&toolbar_, false);
+        vueBarre_.setScrollBarsShown(true, false);
+        addAndMakeVisible(vueBarre_);
         addAndMakeVisible(ruler_);
         addAndMakeVisible(pianoRoll_);
         addAndMakeVisible(velocityLane_);
@@ -113,7 +121,22 @@ public:
 
     void resized() override {
         auto area = getLocalBounds();
-        toolbar_.setBounds(area.removeFromTop(92));   // D29.4 : trois rangées, la ligne d'information en bas
+        // D61 : la barre DEMANDE sa hauteur pour la largeur qu'elle a, et le
+        // panneau la lui donne -- jusqu'à deux cinquièmes de sa hauteur, pas
+        // plus : l'éditeur est ce qu'on est venu voir. Le plancher de 92 px
+        // est celui de D29.4, trois rangées, pour que rien ne change là où
+        // tout tenait déjà.
+        int largeurBarre = area.getWidth();
+        int voulue = toolbar_.hauteurUtile(largeurBarre);
+        const int plafond = std::max(92, area.getHeight() * 2 / 5);
+        if (voulue > plafond) {
+            // L'ascenseur mange de la largeur, ce qui peut ajouter une rangée :
+            // on remesure avec la largeur qui restera VRAIMENT.
+            largeurBarre = std::max(60, area.getWidth() - vueBarre_.getScrollBarThickness());
+            voulue = toolbar_.hauteurUtile(largeurBarre);
+        }
+        vueBarre_.setBounds(area.removeFromTop(std::min(voulue, plafond)));
+        toolbar_.setSize(largeurBarre, voulue);
         statusLabel_.setBounds(area.removeFromBottom(20).reduced(8, 0));
         // D32.3 : LE CLAVIER SOUS LA LANE DE VÉLOCITÉ, tout en bas. C'est là
         // qu'un clavier se trouve sur un instrument, et c'est aussi l'endroit
@@ -174,6 +197,7 @@ private:
     PianoRollComponent& pianoRoll_;
     VelocityLaneComponent& velocityLane_;
     PianoRollToolbar toolbar_;
+    juce::Viewport vueBarre_;   // D61 : la barre repliée défile plutôt que de disparaître
     PianoRollRulerComponent ruler_;
     juce::Label statusLabel_;
 

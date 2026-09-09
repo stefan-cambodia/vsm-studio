@@ -17,6 +17,13 @@ const std::vector<std::pair<NoteValue, const char*>>& gridChoices() {
 }
 const char8_t* kNoteNames[12] = { u8"Do", u8"Do#", u8"Ré", u8"Ré#", u8"Mi", u8"Fa",
                                   u8"Fa#", u8"Sol", u8"Sol#", u8"La", u8"La#", u8"Si" };
+
+/// La rangée fait 26 px visibles, plus un pixel de marge en haut et en bas.
+/// C'est exactement ce que valaient les trois rangées de D29.4 (92 px pour
+/// trois, marges comprises) : là où tout tenait déjà, rien ne bouge.
+constexpr int kHauteurRangee = 28;
+constexpr int kMargeX = 6;
+constexpr int kMargeY = 4;
 } // namespace
 
 PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(pianoRoll) {
@@ -228,62 +235,91 @@ void PianoRollToolbar::paint(juce::Graphics& g) {
                 static_cast<float>(getWidth()), static_cast<float>(getHeight()) - 0.5f, 1.0f);
 }
 
-void PianoRollToolbar::resized() {
-    // Deux rangées : outils et actions en haut, réglages en bas. La barre
-    // reste utilisable sur une fenêtre étroite -- rien n'est jamais coupé,
-    // les éléments se serrent.
-    // D29.4 : TROIS RANGÉES. La ligne d'information avait d'abord pris 300 px
-    // à droite de la rangée des réglages, et à la largeur du volet elle
-    // cachait l'aimant, le pas à pas et le swing : entre « ça tient » et « ça
-    // se lit », c'est la lisibilité qui gagne, on agrandit la case.
-    auto area = getLocalBounds().reduced(6, 4);
-    const int rangee = area.getHeight() / 3;
-    auto top = area.removeFromTop(rangee).reduced(0, 1);
-    auto bottom = area.removeFromTop(rangee).reduced(0, 1);
-    auto info = area.reduced(0, 1);
+void PianoRollToolbar::resized() { disposer(getWidth(), true); }
 
-    auto place = [](juce::Rectangle<int>& row, juce::Component& c, int width) {
-        c.setBounds(row.removeFromLeft(width).reduced(1, 0));
+int PianoRollToolbar::hauteurUtile(int largeur) {
+    return 2 * kMargeY + disposer(largeur, false) * kHauteurRangee;
+}
+
+int PianoRollToolbar::disposer(int largeurTotale, bool placer) {
+    // TROIS BANDES QUI SE REPLIENT, et c'est une CORRECTION (D61). La version
+    // d'avant posait chaque bande sur UNE rangée, à coups de
+    // `removeFromLeft(largeur)` avec des largeurs constantes : quand la rangée
+    // était épuisée, `removeFromLeft` rendait un rectangle vide et tout ce qui
+    // suivait recevait une largeur de ZÉRO -- invisible, incliquable, sans un
+    // mot. Le commentaire promettait l'inverse (« rien n'est jamais coupé, les
+    // éléments se serrent ») ; mesuré le 09/09/2026, la bande du haut réclame
+    // 950 px et le volet lui en donne 428 en fenêtre pleine, 243 au plancher :
+    // ONZE des vingt-quatre commandes étaient à zéro pixel, à TOUTE taille de
+    // fenêtre. Une commande qu'on ne peut pas atteindre est pire qu'une
+    // commande absente (D35.5, D59) : elle promet.
+    //
+    // Ici, ce qui ne tient pas passe à la rangée SUIVANTE, jamais à zéro. La
+    // case grandit, le texte ne rétrécit pas -- c'est la règle de D60, à qui
+    // le bandeau d'aide devait déjà sa seconde ligne. Le panneau demande
+    // `hauteurUtile()` et fait défiler au-delà de son plafond.
+    struct Element { juce::Component* composant; int largeur; };
+    // Un GROUPE ne se coupe jamais : un intitulé reste avec ce qu'il nomme
+    // (« Swing » avec son curseur), et une paire indissociable reste entière
+    // (annuler/rétablir, les trois zooms). `rompt` ouvre une bande.
+    struct Groupe { std::vector<Element> elements; int ecartAvant; bool rompt; };
+    const std::vector<Groupe> groupes = {
+        // Bande 1 : les outils, puis les actions.
+        { { { &selectTool_, 52 } },   0, true  },
+        { { { &drawTool_, 52 } },     0, false },
+        { { { &eraseTool_, 52 } },    0, false },
+        { { { &splitTool_, 52 } },    0, false },
+        { { { &glueTool_, 52 } },     0, false },
+        { { { &muteTool_, 52 } },     0, false },
+        { { { &undoButton_, 66 }, { &redoButton_, 70 } },        10, false },
+        { { { &quantizeButton_, 80 } },                          10, false },
+        { { { &legatoButton_, 62 } },                             0, false },
+        { { { &humanizeButton_, 78 } },                           0, false },
+        { { { &chordButton_, 62 } },                              0, false },
+        { { { &moreButton_, 62 } },                               0, false },
+        { { { &zoomOutButton_, 26 }, { &zoomInButton_, 26 }, { &zoomFitButton_, 46 } }, 10, false },
+        // Bande 2 : les réglages.
+        { { { &gridLabel_, 38 }, { &gridCombo_, 66 }, { &gridModifierCombo_, 78 } }, 0, true },
+        { { { &snapButton_, 74 } },                               0, false },
+        { { { &stepButton_, 88 } },                               0, false },
+        { { { &swingLabel_, 40 }, { &swingSlider_, 120 } },       8, false },
+        { { { &velocityLabel_, 30 }, { &velocitySlider_, 120 } }, 0, false },
+        { { { &scaleLabel_, 44 }, { &scaleRootCombo_, 62 } },     8, false },
+        { { { &scaleTypeCombo_, 140 } },                          0, false },
+        { { { &scaleHighlightButton_, 74 } },                     0, false },
+        { { { &ghostButton_, 86 } },                              8, false },
+        { { { &foldButton_, 76 } },                               0, false },
+        { { { &followButton_, 76 } },                             0, false },
+        // Bande 3 : la ligne d'information des notes choisies (D29.4).
+        { { { &infoLabel_, 46 }, { &debutEdit_, 110 } },          0, true },
+        { { { &dureeEdit_, 90 } },                                0, false },
+        { { { &veloEdit_, 90 } },                                 0, false },
     };
-    for (auto* b : { &selectTool_, &drawTool_, &eraseTool_, &splitTool_, &glueTool_, &muteTool_ })
-        place(top, *b, 52);
-    top.removeFromLeft(10);
-    place(top, undoButton_, 66);
-    place(top, redoButton_, 70);
-    top.removeFromLeft(10);
-    place(top, quantizeButton_, 80);
-    place(top, legatoButton_, 62);
-    place(top, humanizeButton_, 78);
-    place(top, chordButton_, 62);
-    place(top, moreButton_, 62);
-    top.removeFromLeft(10);
-    place(top, zoomOutButton_, 26);
-    place(top, zoomInButton_, 26);
-    place(top, zoomFitButton_, 46);
 
-    place(info, infoLabel_, 46);
-    place(info, debutEdit_, 110);
-    place(info, dureeEdit_, 90);
-    place(info, veloEdit_, 90);
-    place(bottom, gridLabel_, 38);
-    place(bottom, gridCombo_, 66);
-    place(bottom, gridModifierCombo_, 78);
-    place(bottom, snapButton_, 74);
-    place(bottom, stepButton_, 88);
-    bottom.removeFromLeft(8);
-    place(bottom, swingLabel_, 40);
-    place(bottom, swingSlider_, 120);
-    place(bottom, velocityLabel_, 30);
-    place(bottom, velocitySlider_, 120);
-    bottom.removeFromLeft(8);
-    place(bottom, scaleLabel_, 44);
-    place(bottom, scaleRootCombo_, 62);
-    place(bottom, scaleTypeCombo_, 140);
-    place(bottom, scaleHighlightButton_, 74);
-    bottom.removeFromLeft(8);
-    place(bottom, ghostButton_, 86);
-    place(bottom, foldButton_, 76);
-    place(bottom, followButton_, 76);
+    const int gauche = kMargeX;
+    const int droite = std::max(gauche + 60, largeurTotale - kMargeX);
+    int x = gauche, y = kMargeY, rangees = 1;
+    for (const auto& groupe : groupes) {
+        int largeur = 0;
+        for (const auto& e : groupe.elements) largeur += e.largeur;
+        const bool debutDeRangee = (x == gauche);
+        const bool aLaLigne = !debutDeRangee &&
+                              (groupe.rompt || x + groupe.ecartAvant + largeur > droite);
+        if (aLaLigne) {
+            x = gauche;
+            y += kHauteurRangee;
+            ++rangees;
+        } else if (!debutDeRangee) {
+            x += groupe.ecartAvant;
+        }
+        for (const auto& e : groupe.elements) {
+            if (placer)
+                e.composant->setBounds(
+                    juce::Rectangle<int>(x, y + 1, e.largeur, kHauteurRangee - 2).reduced(1, 0));
+            x += e.largeur;
+        }
+    }
+    return rangees;
 }
 
 // --- D29.4 : la ligne d'information des notes --------------------------------
