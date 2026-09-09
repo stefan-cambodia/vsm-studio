@@ -147,6 +147,33 @@ public:
 
     static Project fromParsedFile(const midi::ParsedFile& parsed);
     midi::ParsedFile toParsedFile() const;
+
+    /// LE PROJET TEL QU'IL EST ARRANGÉ (D56.1) — ce que l'EXPORT écrit.
+    ///
+    /// `toParsedFile` écrit le MATÉRIAU : toutes les notes de la piste, à leur
+    /// tick d'origine. C'est ce qu'il faut pour `midi/arrangement.mid` dans un
+    /// dossier de projet, où les clips sont conservés à côté, dans
+    /// `project.json`. Ce n'est PAS ce qu'il faut pour un fichier qu'on donne à
+    /// quelqu'un d'autre : celui-là ne recevra pas les clips, et jouerait donc
+    /// les notes qu'aucun clip ne montre tout en perdant les reprises des
+    /// boucles. Mesuré sur une piste de huit notes dont un clip bouclé montre
+    /// deux mesures : la lecture en joue 4, l'export en écrivait 8.
+    ///
+    /// CE QUI EST APPLIQUÉ ICI : la fenêtre de chaque clip, ses répétitions,
+    /// sa fin qui coupe une note qui pendrait, et l'exclusion des clips muets
+    /// — c'est-à-dire l'ARRANGEMENT, la seule chose que le format sache
+    /// porter, et par les MÊMES passages que la lecture (`clipPassages`).
+    ///
+    /// CE QUI NE L'EST PAS, ET QUI EST DIT À L'UTILISATEUR PLUTÔT QUE CUIT :
+    /// les effets MIDI (D31.5 offre un geste explicite pour les reporter), la
+    /// transposition de piste, le muet, le solo, le désactivé, le décalage de
+    /// piste. Ce sont des processus de lecture ou des états de mixage : les
+    /// cuire ferait dépendre le fichier exporté du bouton sur lequel on a
+    /// appuyé une minute plus tôt.
+    ///
+    /// UNE PISTE SANS CLIP DONNE LE FICHIER D'AVANT, à l'octet près : son
+    /// passage est l'identité.
+    midi::ParsedFile toParsedFileArranged() const;
     /// D23.3 : le même projet réduit à UNE piste -- la carte de tempo, les
     /// signatures et le reste du morceau gardés, les autres pistes retirées,
     /// et les routages de la piste vers d'autres pistes (groupe de sortie,

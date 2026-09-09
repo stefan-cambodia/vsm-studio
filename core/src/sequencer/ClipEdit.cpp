@@ -879,4 +879,33 @@ size_t makeClipIndependent(Track& track, uint64_t clipId, Tick materialEnd,
     return copies.size();
 }
 
+
+// --- D56.1 : les passages d'une piste, un seul calcul pour deux appelants ---
+
+std::vector<ClipPassage> clipPassages(const Track& track, Tick materialEnd) {
+    std::vector<ClipPassage> passages;
+    if (track.clips.empty()) {
+        passages.push_back(ClipPassage{});
+        return passages;
+    }
+
+    for (const auto& clip : track.clips) {
+        if (clip.muted) continue;
+        const Tick fenetre = clip.sourceLength > 0 ? clip.sourceLength
+                                                   : std::max<Tick>(0, materialEnd - clip.sourceStart);
+        if (fenetre <= 0) continue;   // fenêtre vide : rien à lire, et pas de boucle infinie
+        const Tick jouee = clip.length > 0 ? clip.length : fenetre;
+
+        for (Tick depart = 0; depart < jouee; depart += fenetre) {
+            ClipPassage passage;
+            passage.sourceFrom = clip.sourceStart;
+            passage.sourceTo = clip.sourceStart + fenetre;
+            passage.shift = clip.startTick + depart - clip.sourceStart;
+            passage.outLimit = clip.startTick + jouee;
+            passages.push_back(passage);
+        }
+    }
+    return passages;
+}
+
 } // namespace vsm::sequencer

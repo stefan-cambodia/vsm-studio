@@ -9434,3 +9434,119 @@ banc qui passe du premier coup mérite qu'on vérifie qu'il mesure quelque chose
 >
 > Tests : 1 291 audio, 319 core, **292 interchange** (5 neufs), 25 clap,
 > 11 panels — tous verts.
+
+### Phase D56 — « Le .mid portera tout ce qui est joué » : l'application le dit, et c'est faux dès qu'une piste est découpée (09/09/2026, 16:45)
+
+**LA MÊME LUNETTE QUE D55, D'UN CRAN PLUS LOIN.** D55 a demandé ce qu'un
+aller-retour par le disque perd. Cette phase demande ce qu'un aller-retour par
+un AUTRE LOGICIEL perd : ce que le `.mid` exporté ne porte pas de ce qu'on
+entend. La question n'est pas cosmétique — un export MIDI sert précisément à
+donner son travail à quelqu'un d'autre, et un fichier qui ne joue pas ce que
+l'auteur entendait est un fichier faux.
+
+**D31.5 AVAIT DÉJÀ POSÉ LA RÈGLE — et l'a appliquée à deux causes sur six.**
+L'export prévient quand une piste porte une chaîne d'effets MIDI ou une
+transposition ; sinon il affiche « **le .mid portera tout ce qui est joué** ».
+Cette phrase est FAUSSE dès qu'une piste est découpée en clips, et c'est le cas
+de tout arrangement.
+
+**MESURÉ, sur une piste de huit notes (une par mesure) dont un seul clip montre
+les mesures 3 et 4, posé à la mesure 1 et long de deux fenêtres — donc bouclé
+une fois :**
+
+| | notes |
+|---|---|
+| matériau de la piste | 8 |
+| ce que la LECTURE joue (`PlaybackScheduler`) | **4** |
+| ce que l'EXPORT écrit (`toParsedFile`) | **8** |
+
+Et l'application, ce projet n'ayant ni effet MIDI ni transposition, annonce que
+le fichier portera tout ce qui est joué. Il porte quatre notes que personne
+n'entend, et perd la reprise de la boucle.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D56.1 | **L'export écrit l'ARRANGEMENT, clips compris** : la fenêtre de chaque clip, ses répétitions, sa fin qui coupe les notes qui pendent, et les clips muets exclus. Par la MÊME fonction que la lecture, déplacée dans `core/` — deux calculs de passage finiraient par diverger, et c'est justement de cette divergence que la phase parle | `clipPassages` dans `ClipEdit`, appelée par `PlaybackScheduler` ET par un export « tel qu'arrangé » ; sur la mesure ci-dessus, le `.mid` porte **4** notes aux positions jouées |
+| D56.2 | **L'avertissement devient complet, et sa phrase rassurante conditionnelle.** Restent non portées par le format : les effets MIDI, la transposition de piste, le muet/solo/désactivé, le muet venu d'un dossier, le décalage de piste. Chacune est NOMMÉE ; « le .mid portera tout ce qui est joué » ne s'affiche que lorsque la liste est vide | l'avertissement nomme les cinq causes, piste par piste ; la phrase rassurante n'apparaît plus que quand elle est vraie |
+
+**CE QUI EST BAKÉ ET CE QUI EST DIT — LA DÉCISION, ÉCRITE AVEC SA RAISON.**
+Le clip est l'ARRANGEMENT : il dit où le matériau se trouve dans le temps, et
+c'est exactement ce qu'un fichier MIDI sait porter. Le reste — une chaîne
+d'effets, une transposition de piste, un muet, un décalage — est un PROCESSUS
+DE LECTURE ou un ÉTAT DE MIXAGE : le cuire dans le fichier ferait dépendre
+l'export du bouton sur lequel on a appuyé une minute plus tôt, et D31.5 a déjà
+tranché en offrant un geste explicite (« Reporter les effets MIDI dans les
+notes ») plutôt qu'une cuisson silencieuse. C'est aussi la coupure que font
+Cubase et Live : leur export MIDI écrit les parties telles qu'arrangées, et
+laisse les paramètres de piste au projet.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.**
+
+1. Sur la mesure ci-dessus, le `.mid` exporté porte **4** notes, aux ticks 0,
+   1920, 3840 et 5760 — les deux passages du clip —, et non 8.
+2. **Un projet SANS clip exporte le fichier d'avant, octet pour octet.** Une
+   piste sans clip donne un passage identité, ce qui est déjà la règle de la
+   lecture : il n'y a pas un chemin historique à côté du chemin des clips.
+3. La note dont la fin dépasse la fin du clip est **coupée** à cette fin, comme
+   à la lecture — sans quoi elle resterait tenue pour toujours chez celui qui
+   ouvre le fichier.
+
+> **LA PHASE D56 EST FAITE (09/09/2026, 16:55), et les trois attendus sont
+> tenus.**
+>
+> **D56.1 — L'EXPORT ÉCRIT L'ARRANGEMENT.** `Project::toParsedFileArranged()`,
+> à côté de `toParsedFile()` qui reste le matériau — c'est lui qu'il faut pour
+> `midi/arrangement.mid` dans un dossier de projet, où les clips l'accompagnent
+> dans `project.json`. Les deux partagent leur corps : un seul `buildParsedFile`
+> avec un drapeau, parce que deux écritures du même fichier finiraient par
+> diverger.
+>
+> **ET LES PASSAGES ONT DÉMÉNAGÉ DANS `ClipEdit`.** Ils vivaient privés dans
+> `PlaybackScheduler.cpp` ; l'export en avait besoin. Les recopier aurait donné
+> deux calculs de passage — c'est-à-dire, à la première correction de l'un,
+> exactement la divergence entre ce qu'on entend et ce qu'on exporte que cette
+> phase corrige.
+>
+> | | attendu | mesuré |
+> |---|---|---|
+> | notes du matériau | — | 8 |
+> | notes jouées (`PlaybackScheduler`) | — | 4 |
+> | notes exportées AVANT | — | **8** |
+> | notes exportées APRÈS | 4 | **4**, aux ticks 0, 1920, 3840, 5760 |
+> | projet sans clip, fichier écrit | identique | **identique, octet pour octet** |
+> | note qui dépasse la fin du clip | coupée à 1920 | **1920** |
+> | clip muet | rien | **0 note** |
+>
+> **LE FICHIER EST RELU, PAS LE RENDU** — la leçon de D49. `VSM_EXPORT_MIDI=f.mid`
+> écrit le projet entier par la même fonction que « Fichier ▸ Exporter MIDI… » ;
+> l'export complet ne s'atteignait qu'à la souris, si bien que ce qu'il ÉCRIT
+> n'avait jamais été relu par une vérification — seulement ce qu'il ANNONCE, et
+> c'est justement l'écart entre les deux dont parle cette phase. Le `.mid` relu
+> donne, piste par piste : **Découpée 4** (0, 1920, 3840, 5760), Muette 8,
+> Décalée 8, Transposée 8, Ordinaire 8.
+>
+> **LE BLOC PRIVÉ DE D6.3 N'EST PAS ÉCRIT SUR UNE PISTE RÉARRANGÉE**, et c'est
+> une décision : il retrouve ses notes muettes et ses confiances par leur tick
+> de MATÉRIAU, et ces ticks n'existent plus dans un fichier où les clips ont été
+> appliqués — une note bouclée y figure même deux fois. Un bloc qui pointe à
+> côté serait pire que pas de bloc. Une piste sans clip garde le sien, et c'est
+> ce qui laisse le témoin sans clip identique octet pour octet ; le test le
+> vérifie sur un projet qui porte justement une note muette et une confiance.
+>
+> **D56.2 — L'AVERTISSEMENT COUVRAIT DEUX CAUSES SUR SIX.** Il nomme désormais
+> les effets MIDI, la transposition, le muet — en disant D'OÙ il vient : la
+> piste, le solo d'une autre, ou son dossier — la piste désactivée et le
+> décalage. Mesuré sur un projet à cinq pistes : « **Muette (piste muette) ;
+> Décalée (décalage -25.0 ms) ; Transposée (transposition +5)** ». La piste
+> découpée n'y est plus, puisque l'export la porte maintenant ; et la phrase
+> « le .mid portera tout ce qui est joué » ne s'affiche que lorsqu'elle est
+> vraie.
+>
+> **LE BANC A ÉTÉ CASSÉ EXPRÈS.** `toParsedFileArranged` renvoyée au matériau,
+> **trois** tests sur quatre tombent (8 notes au lieu de 4, fin à 3840 au lieu
+> de 1920, 8 notes pour un clip muet) — et le quatrième, celui du témoin sans
+> clip, passe encore : c'est exactement ce qu'il doit faire, puisqu'il affirme
+> que les deux chemins coïncident quand il n'y a pas de découpe.
+>
+> Tests : 1 291 audio, **323 core** (4 neufs), 292 interchange, 25 clap,
+> 11 panels — tous verts.

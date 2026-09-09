@@ -43,6 +43,7 @@ if (VSM_BUILD_TESTS)
         tests/test_step_pattern.cpp
         tests/test_edit_history.cpp
         tests/test_clips.cpp
+        tests/test_export_arranged.cpp
         tests/test_project_history.cpp
         tests/test_transport.cpp
         tests/test_midi_recorder.cpp

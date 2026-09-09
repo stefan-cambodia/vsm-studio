@@ -1,4 +1,5 @@
 #include "vsm/sequencer/PlaybackScheduler.h"
+#include "vsm/sequencer/ClipEdit.h"
 #include "vsm/sequencer/MidiEffects.h"
 #include <algorithm>
 #include <limits>
@@ -36,51 +37,11 @@ std::vector<bool> pistesPubliees(const Project& project) {
 }
 
 
-/// Une RÉPÉTITION d'un clip : la portion du matériau qu'elle lit, et de
-/// combien elle la décale sur la ligne de temps.
-///
-/// Un clip non bouclé en produit une seule ; un clip plus long que sa fenêtre
-/// en produit autant qu'il contient de répétitions. Aucune note n'est copiée :
-/// c'est le décalage qui est répété, pas le matériau.
-struct Passage {
-    Tick sourceFrom = 0;                                   ///< inclus
-    Tick sourceTo = std::numeric_limits<Tick>::max();      ///< exclu
-    Tick shift = 0;                                        ///< à ajouter au tick source
-    Tick outLimit = std::numeric_limits<Tick>::max();      ///< fin dure sur la ligne de temps
-};
-
-/// Les passages d'une piste.
-///
-/// UNE PISTE SANS CLIP DONNE UN PASSAGE IDENTITÉ, et c'est ce qui rend
-/// l'absence de régression DÉMONTRABLE plutôt que promise : il n'y a pas un
-/// « chemin historique » à côté du chemin des clips, qui pourrait diverger de
-/// lui à la première correction. Il y a un seul chemin, et le cas sans découpe
-/// est la fenêtre qui ne coupe rien.
-std::vector<Passage> passagesOf(const Track& track, Tick materialEnd) {
-    std::vector<Passage> passages;
-    if (track.clips.empty()) {
-        passages.push_back(Passage{});
-        return passages;
-    }
-
-    for (const auto& clip : track.clips) {
-        if (clip.muted) continue;
-        const Tick fenetre = clip.sourceLength > 0 ? clip.sourceLength
-                                                   : std::max<Tick>(0, materialEnd - clip.sourceStart);
-        if (fenetre <= 0) continue;   // fenêtre vide : rien à lire, et pas de boucle infinie
-        const Tick jouee = clip.length > 0 ? clip.length : fenetre;
-
-        for (Tick depart = 0; depart < jouee; depart += fenetre) {
-            Passage passage;
-            passage.sourceFrom = clip.sourceStart;
-            passage.sourceTo = clip.sourceStart + fenetre;
-            passage.shift = clip.startTick + depart - clip.sourceStart;
-            passage.outLimit = clip.startTick + jouee;
-            passages.push_back(passage);
-        }
-    }
-    return passages;
-}
+/// LES PASSAGES VIVENT DANS `ClipEdit` DEPUIS D56.1 : l'export MIDI en a
+/// besoin lui aussi, et deux calculs de passage auraient fini par diverger --
+/// c'est-à-dire par faire jouer au fichier exporté autre chose que ce qu'on
+/// entend, la panne même que D56 corrige.
+using Passage = ClipPassage;
 
 /// LE DERNIER TICK DE SORTIE, STRICTEMENT AVANT `limite`, où cet événement du
 /// matériau est joué -- tous passages confondus. -1 s'il n'est jamais joué
@@ -137,7 +98,7 @@ std::vector<ScheduledEvent> PlaybackScheduler::chaseAt(const Project& project, T
         // D35.4 : L'AUDIBILITÉ SE LIT SUR L'ARBRE et non sur la piste seule --
         // un dossier muet tait ce qu'il contient.
         if (!trackAudible(project.tracks, trackIndex, anySolo) && !publiee[trackIndex]) continue;
-        const std::vector<Passage> passages = passagesOf(track, materialEnd);
+        const std::vector<Passage> passages = clipPassages(track, materialEnd);
 
     // ------------------------------------------------------------------
     // LA CHASSE AUX CONTRÔLEURS (D16.2) — « Chase Events » de Cubase.
@@ -234,7 +195,7 @@ std::vector<ScheduledEvent> PlaybackScheduler::build(const Project& project,
         // le regarde ; sans chaîne, il reste vide et l'on lit `track.notes`.
         std::vector<Note> notesEffectuees;
 
-        const std::vector<Passage> passages = passagesOf(track, materialEnd);
+        const std::vector<Passage> passages = clipPassages(track, materialEnd);
 
         // D31.3 : LA CHAÎNE D'EFFETS MIDI, UNE FOIS PAR PISTE ET AVANT LES
         // PASSAGES. Le matériau n'est jamais touché -- `applyMidiEffects` rend

@@ -169,6 +169,10 @@ public:
     /// D23.3 : VSM_EXPORT_MIDI_PISTE=fichier.mid -- la piste choisie écrite
     /// en MIDI sans fenêtre, pour que le fichier se relise.
     bool exportTrackMidiForCapture(const juce::File& fichier) { return writeSelectedTrackMidi(fichier); }
+    /// D56.1 : LE PROJET ENTIER en MIDI, sans sélecteur de fichier. L'export
+    /// complet ne s'atteignait qu'à la souris, si bien que ce qu'il ÉCRIT --
+    /// et non ce qu'il annonce -- n'avait jamais été relu par une vérification.
+    bool exportProjectMidiForCapture(const juce::File& fichier);
     /// D24.5 : VSM_IMPORT_AUDIO=fichier.wav -- sur une piste neuve, sans boîte.
     bool importAudioForCapture(const juce::File& fichier) { return importAudioFileOnNewTrack(fichier); }
 

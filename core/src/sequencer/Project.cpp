@@ -1,4 +1,5 @@
 #include "vsm/sequencer/Project.h"
+#include "vsm/sequencer/ClipEdit.h"
 #include "vsm/sequencer/NoteEdit.h"
 #include <set>
 #include <algorithm>
@@ -313,9 +314,20 @@ Project Project::extractTrack(size_t index) const {
     return seul;
 }
 
-ParsedFile Project::toParsedFile() const {
+/// LE CORPS COMMUN DES DEUX EXPORTS (D56.1). `arrange` vrai : les passages des
+/// clips sont appliqués -- fenêtre, répétitions, fin qui coupe. Faux : le
+/// matériau brut, ce que `midi/arrangement.mid` doit porter puisque les clips
+/// l'accompagnent dans `project.json`.
+static ParsedFile buildParsedFile(const Project& projet, bool arrange) {
+    const auto& tracks = projet.tracks;
+    const auto& markers = projet.markers;
+    const auto& tempoMap = projet.tempoMap;
+    const auto& timeSignatureMap = projet.timeSignatureMap;
+    const uint16_t ticksPerQuarterNote = projet.ticksPerQuarterNote;
+    const Tick materialEnd = projet.lastUsedTick();
+
     ParsedFile parsed;
-    parsed.format = exportFormat;
+    parsed.format = projet.exportFormat;
     parsed.ticksPerQuarterNote = ticksPerQuarterNote;
     parsed.isSmpteTiming = false; // Phase 1 : export en timing métrique uniquement
 
@@ -342,32 +354,66 @@ ParsedFile Project::toParsedFile() const {
         if (!t.name.empty())
             events.push_back({0, TrackNameEvent{t.name}});
 
-        for (const auto& note : t.notes) {
-            // Les notes rendues muettes dans l'éditeur ne sont pas exportées :
-            // le SMF n'a aucun moyen de représenter "présente mais silencieuse",
-            // et les écrire produirait un fichier qui joue autre chose que ce
-            // qu'on entend dans l'application (voir Note::muted).
-            if (note.muted) continue;
-            events.push_back({note.startTick, NoteOnEvent{note.channel, note.number, note.velocity}});
-            events.push_back({note.endTick, NoteOffEvent{note.channel, note.number, note.releaseVelocity}});
+        // D56.1 : LES PASSAGES. Sans découpe -- et toujours en mode matériau --
+        // il n'y en a qu'un, l'identité, et tout ce qui suit écrit exactement
+        // le fichier d'avant.
+        const std::vector<ClipPassage> passages =
+            arrange ? clipPassages(t, materialEnd) : std::vector<ClipPassage>{ClipPassage{}};
+        const bool identite = passages.size() == 1
+                            && passages.front().shift == 0
+                            && passages.front().sourceFrom == 0
+                            && passages.front().sourceTo == std::numeric_limits<Tick>::max();
+
+        for (const auto& passage : passages) {
+            for (const auto& note : t.notes) {
+                // Les notes rendues muettes dans l'éditeur ne sont pas exportées :
+                // le SMF n'a aucun moyen de représenter "présente mais silencieuse",
+                // et les écrire produirait un fichier qui joue autre chose que ce
+                // qu'on entend dans l'application (voir Note::muted).
+                if (note.muted) continue;
+                const Tick debut = passageOut(passage, note.startTick);
+                if (debut < 0) continue;
+                events.push_back({debut, NoteOnEvent{note.channel, note.number, note.velocity}});
+                // LA FIN EST COUPÉE À LA FIN DU CLIP, jamais laissée pendre :
+                // une note dont le NoteOff tomberait au-delà resterait tenue
+                // pour toujours chez celui qui ouvre le fichier. Même règle
+                // qu'à la lecture, et sans clip la limite est infinie.
+                const Tick fin = std::min(note.endTick + passage.shift, passage.outLimit);
+                events.push_back({fin, NoteOffEvent{note.channel, note.number, note.releaseVelocity}});
+            }
+            Tick out = 0;
+            for (const auto& cc : t.controlChanges)
+                if ((out = passageOut(passage, cc.tick)) >= 0)
+                    events.push_back({out, ControlChangeEvent{cc.channel, cc.controller, cc.value}});
+            for (const auto& pb : t.pitchBends)
+                if ((out = passageOut(passage, pb.tick)) >= 0)
+                    events.push_back({out, PitchBendEvent{pb.channel, pb.value}});
+            for (const auto& pa : t.polyAftertouch)
+                if ((out = passageOut(passage, pa.tick)) >= 0)
+                    events.push_back({out, PolyPressureEvent{pa.channel, pa.note, pa.pressure}});
+            for (const auto& cp : t.channelPressure)
+                if ((out = passageOut(passage, cp.tick)) >= 0)
+                    events.push_back({out, ChannelPressureEvent{cp.channel, cp.pressure}});
+            for (const auto& pc : t.programChanges)
+                if ((out = passageOut(passage, pc.tick)) >= 0)
+                    events.push_back({out, ProgramChangeEvent{pc.channel, pc.program}});
         }
-        for (const auto& cc : t.controlChanges)
-            events.push_back({cc.tick, ControlChangeEvent{cc.channel, cc.controller, cc.value}});
-        for (const auto& pb : t.pitchBends)
-            events.push_back({pb.tick, PitchBendEvent{pb.channel, pb.value}});
-        for (const auto& pa : t.polyAftertouch)
-            events.push_back({pa.tick, PolyPressureEvent{pa.channel, pa.note, pa.pressure}});
-        for (const auto& cp : t.channelPressure)
-            events.push_back({cp.tick, ChannelPressureEvent{cp.channel, cp.pressure}});
-        for (const auto& pc : t.programChanges)
-            events.push_back({pc.tick, ProgramChangeEvent{pc.channel, pc.program}});
+        // Les événements qu'on n'a pas su lire ne sont pas du matériau de clip
+        // (méta inconnus, sysex) : ils passent tels quels, comme avant.
         for (const auto& misc : t.miscEvents)
             events.push_back(misc);
 
         // D6.3 : le bloc privé, posé au tick 0 avec le nom de la piste. Rien
         // n'est écrit quand il n'y a rien à dire.
-        if (const auto bloc = encodeVsmNoteBlock(t); !bloc.empty())
-            events.push_back({0, UnknownMetaEvent{kVsmMetaType, bloc}});
+        //
+        // PAS SUR UNE PISTE RÉARRANGÉE (D56.1) : le bloc retrouve ses notes par
+        // leur tick de MATÉRIAU, et ces ticks n'existent plus dans un fichier
+        // où les clips ont été appliqués -- une note bouclée y figure même deux
+        // fois. Un bloc qui pointe à côté serait pire que pas de bloc. Une
+        // piste sans clip garde le sien, et donc son fichier octet pour octet.
+        if (identite)
+            if (const auto bloc = encodeVsmNoteBlock(t); !bloc.empty())
+                events.push_back({0, UnknownMetaEvent{kVsmMetaType, bloc}});
 
         // Les repères sont globaux : écrits une seule fois, sur la première
         // piste. Les écrire sur chacune les multiplierait par le nombre de
@@ -382,6 +428,9 @@ ParsedFile Project::toParsedFile() const {
 
     return parsed;
 }
+
+ParsedFile Project::toParsedFile() const { return buildParsedFile(*this, false); }
+ParsedFile Project::toParsedFileArranged() const { return buildParsedFile(*this, true); }
 
 midi::Tick Project::lastUsedTick() const {
     Tick last = 0;

@@ -1,4 +1,5 @@
 #pragma once
+#include <limits>
 #include "vsm/sequencer/Track.h"
 #include <cstdint>
 #include <functional>
@@ -427,5 +428,42 @@ bool clipIsShared(const std::vector<Clip>& clips, uint64_t clipId);
 /// matériau sans rien changer à ce qu'on entend.
 size_t makeClipIndependent(Track& track, uint64_t clipId, Tick materialEnd,
                             uint64_t& noteIdCounter);
+
+// --- LES PASSAGES D'UNE PISTE (D56.1) --------------------------------------
+//
+// UNE RÉPÉTITION d'un clip : la portion du matériau qu'elle lit, et de combien
+// elle la décale sur la ligne de temps. Un clip non bouclé en produit une
+// seule ; un clip plus long que sa fenêtre en produit autant qu'il contient de
+// répétitions. Aucune note n'est copiée : c'est le décalage qui est répété, pas
+// le matériau.
+//
+// CE CALCUL VIVAIT DANS `PlaybackScheduler.cpp`, PRIVÉ. Il est ici parce que
+// l'EXPORT MIDI en a besoin aussi (D56.1) : jusque-là il écrivait le matériau
+// brut, si bien qu'un arrangement découpé s'exportait avec les notes qu'aucun
+// clip ne montre et sans les reprises des boucles. Le recopier dans l'export
+// aurait donné deux calculs de passage, et c'est exactement la divergence que
+// cette phase corrige.
+struct ClipPassage {
+    Tick sourceFrom = 0;                                   ///< inclus
+    Tick sourceTo = std::numeric_limits<Tick>::max();      ///< exclu
+    Tick shift = 0;                                        ///< à ajouter au tick source
+    Tick outLimit = std::numeric_limits<Tick>::max();      ///< fin dure sur la ligne de temps
+};
+
+/// Les passages d'une piste.
+///
+/// UNE PISTE SANS CLIP DONNE UN PASSAGE IDENTITÉ, et c'est ce qui rend
+/// l'absence de régression DÉMONTRABLE plutôt que promise : il n'y a pas un
+/// « chemin historique » à côté du chemin des clips, qui pourrait diverger de
+/// lui à la première correction. Il y a un seul chemin, et le cas sans découpe
+/// est la fenêtre qui ne coupe rien.
+std::vector<ClipPassage> clipPassages(const Track& track, Tick materialEnd);
+
+/// Le tick de sortie de `source` dans ce passage, ou -1 s'il n'y sort pas.
+inline Tick passageOut(const ClipPassage& passage, Tick source) {
+    if (source < passage.sourceFrom || source >= passage.sourceTo) return -1;
+    const Tick out = source + passage.shift;
+    return out < passage.outLimit ? out : -1;
+}
 
 } // namespace vsm::sequencer

@@ -7717,7 +7717,11 @@ void MainComponent::exportMidiFile() {
         if (file == juce::File()) return;
 
         try {
-            ParsedFile parsed = project_.toParsedFile();
+            // D56.1 : L'ARRANGEMENT, pas le matériau. Celui qui ouvre ce
+            // fichier ne reçoit pas les clips : lui écrire les notes qu'aucun
+            // clip ne montre, et lui retirer les reprises des boucles, lui
+            // donnerait un morceau que personne n'a jamais entendu.
+            ParsedFile parsed = project_.toParsedFileArranged();
             MidiFileWriter::writeFile(parsed, file.getFullPathName().toStdString());
             // D31.5 : CE QUE LE .MID NE PORTE PAS, ON LE DIT. L'export écrit
             // le MATÉRIAU (`toParsedFile`), pas ce qui est joué : ni la chaîne
@@ -8550,23 +8554,59 @@ void MainComponent::bakeMidiEffectsOfSelectedTrack() {
     std::fputs((message + ". La chaîne est vidée.\n").toRawUTF8(), stderr);
 }
 
+bool MainComponent::exportProjectMidiForCapture(const juce::File& fichier) {
+    captureSessionIntoProject();
+    try {
+        MidiFileWriter::writeFile(project_.toParsedFileArranged(),
+                                   fichier.getFullPathName().toStdString());
+    } catch (const std::exception& e) {
+        std::fputs(("VSM_EXPORT_MIDI : " + std::string(e.what()) + "\n").c_str(), stderr);
+        return false;
+    }
+    std::fputs(("VSM_EXPORT_MIDI : " + fichier.getFullPathName().toStdString() + "\n").c_str(), stderr);
+    return true;
+}
+
 juce::StringArray MainComponent::tracksWhoseMidiExportWillDiffer() const {
     juce::StringArray noms;
-    for (const auto& track : project_.tracks) {
-        // LA TRANSPOSITION DE PISTE COMPTE AUSSI, et c'est le point : sa
-        // divergence existait depuis D17.5 et n'avait jamais été dite. Un
-        // avertissement qui ne couvrirait que le neuf laisserait l'ancien
-        // mentir.
+    // D56.2 : L'AVERTISSEMENT COUVRAIT DEUX CAUSES SUR SIX, et sa phrase de
+    // repli — « le .mid portera tout ce qui est joué » — était donc fausse dès
+    // qu'une piste était découpée, muette ou décalée. Les clips ne sont plus
+    // de la liste : depuis D56.1 l'export les APPLIQUE. Ce qui reste ici est ce
+    // que le format ne sait pas porter et qu'on refuse de cuire en silence.
+    const bool unSolo = vsm::sequencer::anySoloActive(project_.tracks);
+    for (size_t i = 0; i < project_.tracks.size(); ++i) {
+        const auto& track = project_.tracks[i];
+        if (track.isFolder()) continue;   // un dossier ne porte pas de note
+        juce::StringArray causes;
         bool chaine = false;
         for (const auto& fx : track.midiEffects) chaine = chaine || fx.enabled;
-        if (!chaine && track.transposeSemitones == 0) continue;
-        juce::String ligne = juce::String::fromUTF8(track.name.c_str()) + " (";
-        if (chaine) ligne += juce::String::fromUTF8(u8"effets MIDI");
-        if (chaine && track.transposeSemitones != 0) ligne += ", ";
+        if (chaine) causes.add(juce::String::fromUTF8(u8"effets MIDI"));
+        // LA TRANSPOSITION DE PISTE : sa divergence existait depuis D17.5 et
+        // n'avait jamais été dite avant D31.5.
         if (track.transposeSemitones != 0)
-            ligne += juce::String::fromUTF8(u8"transposition ") + (track.transposeSemitones > 0 ? "+" : "")
-                     + juce::String(track.transposeSemitones);
-        noms.add(ligne + ")");
+            causes.add(juce::String::fromUTF8(u8"transposition ")
+                        + (track.transposeSemitones > 0 ? "+" : "")
+                        + juce::String(track.transposeSemitones));
+        // LE SILENCE, ET D'OÙ IL VIENT. Le muet n'est pas cuit dans le fichier
+        // — c'est un état de mixage qu'on change dix fois par heure, et l'y
+        // écrire ferait dépendre l'export du dernier bouton pressé. Mais une
+        // piste qu'on n'entend pas et qui sonnera ailleurs doit être NOMMÉE.
+        if (!vsm::sequencer::trackAudible(project_.tracks, i, unSolo)) {
+            if (track.disabled) causes.add(juce::String::fromUTF8(u8"piste désactivée"));
+            else if (track.muted) causes.add(juce::String::fromUTF8(u8"piste muette"));
+            else if (unSolo && !track.solo)
+                causes.add(juce::String::fromUTF8(u8"tue par le solo d'une autre"));
+            else causes.add(juce::String::fromUTF8(u8"tue par son dossier"));
+        }
+        // D16.7 : le décalage de piste ne suit pas le tempo et n'a pas
+        // d'équivalent dans le format.
+        if (track.delayMs != 0.0)
+            causes.add(juce::String::fromUTF8(u8"décalage ") + juce::String(track.delayMs, 1)
+                        + juce::String::fromUTF8(u8" ms"));
+        if (causes.isEmpty()) continue;
+        noms.add(juce::String::fromUTF8(track.name.c_str()) + " ("
+                  + causes.joinIntoString(", ") + ")");
     }
     return noms;
 }
@@ -9324,7 +9364,8 @@ bool MainComponent::writeSelectedTrackMidi(const juce::File& fichier) {
     captureSessionIntoProject();
     const Project seule = project_.extractTrack(piste);
     try {
-        MidiFileWriter::writeFile(seule.toParsedFile(), fichier.getFullPathName().toStdString());
+        MidiFileWriter::writeFile(seule.toParsedFileArranged(),   // D56.1
+                                   fichier.getFullPathName().toStdString());
     } catch (const std::exception& e) {
         juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
                                                u8"Exporter la piste en MIDI", juce::String(e.what()));

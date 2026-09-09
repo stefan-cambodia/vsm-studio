@@ -260,6 +260,14 @@ public:
             // MIDI, sans fenêtre (D23.3) -- le fichier relu doit compter UNE piste.
             if (const char* sortie = std::getenv("VSM_EXPORT_MIDI_PISTE"); sortie != nullptr && *sortie)
                 content->exportTrackMidiForCapture(juce::File::getCurrentWorkingDirectory().getChildFile(sortie));
+            // VSM_EXPORT_MIDI=fichier.mid : LE PROJET ENTIER, par la même
+            // fonction que « Fichier ▸ Exporter MIDI… » (D56.1). Sans lui, ce
+            // que l'export ÉCRIT ne se relisait pas -- seulement ce qu'il
+            // annonce, et c'est justement l'écart entre les deux que D56
+            // corrige.
+            if (const char* sortie = std::getenv("VSM_EXPORT_MIDI"); sortie != nullptr && *sortie)
+                content->exportProjectMidiForCapture(
+                    juce::File::getCurrentWorkingDirectory().getChildFile(sortie));
             if (const char* rapport = std::getenv("VSM_RAPPORT");
                 rapport != nullptr && *rapport)
                 content->showReconstructionReport();
