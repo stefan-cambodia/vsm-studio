@@ -1098,6 +1098,10 @@ void MainComponent::paint(juce::Graphics& g) {
     g.fillAll(vsm::ui::Palette::background);
 }
 
+/// D59 : la barre d'onglets et les marges du dock du bas, MESURÉES plutôt
+/// qu'estimées : le mélangeur reçoit 221 pixels quand le dock en fait 282.
+static constexpr int kSurcoutDockBas = 61;
+
 void MainComponent::resized() {
     auto area = getLocalBounds();
 #if !JUCE_MAC
@@ -1119,7 +1123,15 @@ void MainComponent::layoutDockedPanels(juce::Rectangle<int> area) {
     // frontière porte une POIGNÉE : les tailles se tirent à la souris et
     // survivent au redémarrage. Les bornes gardent toujours un centre lisible.
     constexpr int poignee = 7;
-    dockBas_ = juce::jlimit(120, juce::jmax(121, area.getHeight() - 220), dockBas_);
+    // D59 : LE DOCK DU BAS NE DESCEND PLUS SOUS CE QUE LA CONSOLE RÉCLAME.
+    // Il pouvait descendre à 120 px, et la tranche master perdait alors sa
+    // septième commande -- le PLAFOND DU LIMITEUR, celui-là même que D49 a
+    // rendu honnête -- hors de l'écran, sans libellé et à moitié coupée. Le
+    // surcoût (barre d'onglets et marges du dock) est mesuré : le mélangeur
+    // reçoit 221 px quand le dock en fait 282.
+    const int plancherDuBas = juce::jmax(120, mixer_.hauteurMinimale() + kSurcoutDockBas);
+    dockBas_ = juce::jlimit(plancherDuBas, juce::jmax(plancherDuBas + 1, area.getHeight() - 220),
+                             dockBas_);
     dockGauche_ = juce::jlimit(180, juce::jmax(181, area.getWidth() / 2), dockGauche_);
     dockDroite_ = juce::jlimit(220, juce::jmax(221, area.getWidth() / 2), dockDroite_);
 

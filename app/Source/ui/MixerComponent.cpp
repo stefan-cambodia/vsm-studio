@@ -602,8 +602,26 @@ void MasterStrip::resized() {
     }
     r.removeFromBottom(30);
 
+    // D59 : LA RANGÉE S'ADAPTE À CE QUI RESTE, ET NE DÉBORDE PLUS.
+    //
+    // Elle valait 46 pixels quoi qu'il arrive, et le commentaire ci-dessus
+    // constatait déjà le résultat : « la grille de knobs a une hauteur fixe et
+    // déborde par le bas quoi qu'on réserve ». Personne ne l'avait VU, parce
+    // que `VSM_TAILLE` ne faisait rien (D58) et que tous les autoportraits
+    // étaient pris à la taille de l'écran, où la place ne manque pas. À la
+    // première petite fenêtre, « phase 1.00 » et « -inf LUFS » s'écrivaient
+    // par-dessus les libellés RATIO et SAT.
+    //
+    // LE PLANCHER EST UNE QUESTION DE LISIBILITÉ, pas de place : sous 34
+    // pixels, l'étiquette de 12 points et son potentiomètre ne cohabitent
+    // plus. La tranche préfère alors DÉFILER (le mélangeur a déjà sa barre)
+    // plutôt que d'écraser ; et c'est le sens de `hauteurUtile()`, que le
+    // mélangeur consulte pour donner à la tranche la hauteur qu'elle demande.
     const int cols = 2;
-    const int knobH = 46;
+    const int rangees = (static_cast<int>(knobs_.size()) + cols - 1) / cols;
+    const int knobH = rangees > 0
+                        ? juce::jlimit(kHauteurRangeeMinimale, 46, r.getHeight() / rangees)
+                        : 46;
     for (size_t i = 0; i < knobs_.size(); ++i) {
         const int col = static_cast<int>(i) % cols;
         const int row = static_cast<int>(i) / cols;
@@ -612,6 +630,14 @@ void MasterStrip::resized() {
         knobs_[i].label->setBounds(cell.removeFromBottom(12));
         knobs_[i].slider->setBounds(cell.reduced(2));
     }
+}
+
+int MasterStrip::hauteurUtile() const {
+    const int cols = 2;
+    const int rangees = (static_cast<int>(knobs_.size()) + cols - 1) / cols;
+    // 6 d'encadrement en haut, 18 de titre, 22 de boutons, 4 d'écart, la
+    // grille, puis les deux étiquettes du bas (16 + 14) et 6 d'encadrement.
+    return 6 + 18 + 22 + 4 + rangees * kHauteurRangeeMinimale + 30 + 6;
 }
 
 // =========================================================== MixerComponent
@@ -725,6 +751,8 @@ void MixerComponent::updateMeters(
 void MixerComponent::paint(juce::Graphics& g) {
     g.fillAll(vsm::ui::Palette::background);
 }
+
+int MixerComponent::hauteurMinimale() const { return master_.hauteurUtile(); }   // D59
 
 void MixerComponent::resized() {
     auto r = getLocalBounds();

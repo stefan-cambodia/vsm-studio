@@ -318,6 +318,15 @@ private:
 /// mètre LUFS + crête. Liée aux paramètres du MasterBus via callbacks.
 class MasterStrip : public juce::Component {
 public:
+    /// D59 : SOUS CETTE HAUTEUR DE RANGÉE, l'étiquette de 12 points et son
+    /// potentiomètre ne cohabitent plus. La tranche demande alors à défiler
+    /// plutôt qu'à écraser — la lisibilité prime sur « ça tient dans la case ».
+    static constexpr int kHauteurRangeeMinimale = 34;
+
+    /// La hauteur en dessous de laquelle cette tranche ne se dispose plus sans
+    /// recouvrement. Le mélangeur la consulte pour décider s'il faut défiler.
+    int hauteurUtile() const;
+
     MasterStrip();
     void resized() override;
     void paint(juce::Graphics&) override;
@@ -418,6 +427,13 @@ private:
 /// fixe à droite.
 class MixerComponent : public juce::Component {
 public:
+    /// D59 : LA HAUTEUR EN DESSOUS DE LAQUELLE LA CONSOLE NE SE DISPOSE PLUS
+    /// SANS RECOUVREMENT — celle que réclame la tranche master, qui est la plus
+    /// haute. `MainComponent` s'en sert pour borner le dock du bas : sans elle,
+    /// tirer la poignée vers le bas faisait réapparaître le défaut que cette
+    /// phase corrige, et la septième commande du master redevenait invisible.
+    int hauteurMinimale() const;
+
     MixerComponent();
     void resized() override;
     void paint(juce::Graphics&) override;

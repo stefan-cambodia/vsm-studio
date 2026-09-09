@@ -9701,3 +9701,63 @@ muette, décalée ni transposée.
 Tests : 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — verts
 (la phase ne touche qu'`app/Source/`, dont aucune suite ne traverse le point
 d'entrée : c'est la mesure à l'écran qui la tranche, et elle est ci-dessus).
+
+### Phase D59 — La septième commande du master n'était visible à AUCUNE taille de fenêtre, et c'est celle que D49 a rendue honnête (09/09/2026, 18:30)
+
+**D58 A NOMMÉ CE DÉFAUT ET NE L'A PAS CORRIGÉ, EXPRÈS.** Il valait sa phase :
+en le regardant, il s'est révélé bien pire que « le bandeau du master déborde
+en petite fenêtre ».
+
+**LA TRANCHE MASTER PORTE SEPT POTENTIOMÈTRES** — LOW, MID, HIGH, COMP, RATIO,
+SAT et **CEIL**, le plafond du limiteur. Sur la capture pleine taille d'un
+projet réel, on en voit six. Le septième est dessiné **à moitié hors de la
+tranche, sans son libellé**, et « phase 1.00 » et « -inf LUFS » s'écrivent
+par-dessus. Ce n'est pas un défaut de petite fenêtre : la tranche reçoit
+**221 pixels quelle que soit la taille de la fenêtre**, le dock du bas ayant
+sa propre hauteur.
+
+**CE QUE CELA VEUT DIRE.** Le plafond du limiteur est le réglage que D47 à D50
+ont passé quatre phases à rendre honnête — l'export qui écrêtait, le mètre mort
+par défaut, le remède qui produisait un fichier écrêté, les stems silencieux.
+**Et sa commande était inatteignable à la souris depuis toujours.** Une
+commande qu'on ne peut pas atteindre est pire qu'une commande absente, pour la
+raison exacte de D35.5 : elle promet.
+
+**POURQUOI PERSONNE NE L'AVAIT VU.** Le commentaire de `MasterStrip::resized()`
+constatait déjà le mécanisme — « la grille de knobs a une hauteur fixe et
+déborde par le bas quoi qu'on réserve » — et la conclusion tirée à l'époque
+avait été de faire partager une LIGNE à la phase et à la saturation. Le
+débordement, lui, est resté. Et il n'a jamais été vu parce que `VSM_TAILLE` ne
+faisait rien (D58) : tous les autoportraits étaient pris à la taille de
+l'écran, où l'on ne cherche pas ce qui manque en bas d'une tranche de deux
+cents pixels.
+
+**MESURÉ, avec le témoin issu du même binaire** (une hauteur de rangée en
+option dans le code, mesurée puis retirée) :
+
+| hauteur de rangée | place disponible | libellés hors de la tranche | pire dépassement |
+|---|---|---|---|
+| **46 px (avant)** | 135 px | **1** | **13 px** |
+| **34 px (après)** | 135 px | **0** | **0** |
+
+La rangée n'est plus une constante : elle vaut `place / rangées`, bornée à
+[34, 46]. **Le plancher de 34 est une question de lisibilité**, pas de place :
+en dessous, l'étiquette de 12 points et son potentiomètre ne cohabitent plus.
+C'est la règle de la mémoire de lisibilité — agrandir la case, jamais
+rétrécir le texte —, et ici la case ne peut pas grandir, alors le nombre de
+rangées visibles ne diminue pas non plus : elles se resserrent jusqu'au
+plancher, et le dock est empêché de descendre plus bas.
+
+**ET LE DOCK DU BAS EST BORNÉ PAR CE QUE LA CONSOLE RÉCLAME.** Il pouvait
+descendre à 120 px : `MixerComponent::hauteurMinimale()` rend ce que la tranche
+master demande (`MasterStrip::hauteurUtile()`), et `MainComponent` en fait le
+plancher de la poignée. Sans cela, tirer la poignée vers le bas aurait fait
+réapparaître le défaut, et la correction n'aurait tenu qu'à la hauteur par
+défaut. Le surcoût du dock — barre d'onglets et marges — est **mesuré et non
+estimé** : le mélangeur reçoit 221 px quand le dock en fait 282.
+
+**VU À L'ÉCRAN, aux deux bouts** : à 900x660 comme en plein écran, les sept
+potentiomètres sont là, chacun avec son libellé, et les deux témoins du bas
+sont sous eux et non dessus.
+
+Tests : 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — verts.
