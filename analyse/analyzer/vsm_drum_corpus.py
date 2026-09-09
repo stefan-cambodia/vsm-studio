@@ -32,7 +32,7 @@ import hashlib
 import platform
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -169,7 +169,7 @@ def engendre_corpus_frappes(engine: VsmEngine, sample_rate: int = 44100,
         pieces = list(notes)
         # Variations de réglage : quelques tirages de l'espace déclaré de la
         # machine, pour que le modèle ne connaisse pas qu'UN kick de 808.
-        variantes = [{}]
+        variantes: List[Dict[str, float]] = [{}]
         try:
             from .vsm_patch_optimizer import search_space_for_machine, _vector_to_parameters
             espace = search_space_for_machine(machine, engine)
@@ -228,11 +228,11 @@ class ClassifieurFrappes:
     pieces: Tuple[str, ...]
     moyenne: np.ndarray
     echelle: np.ndarray
-    modeles: Dict[str, object]     # un modèle binaire par pièce
+    modeles: Dict[str, Any]        # un modèle binaire par pièce
     seuil: float
     date: str
     versions: Dict[str, str]
-    mesures: Dict[str, object] = field(default_factory=dict)
+    mesures: Dict[str, Any] = field(default_factory=dict)
     # Empreinte de chaque boîte au moment de l'entraînement : c'est ce qui
     # permet de REFUSER le modèle le jour où un kick change (A4.1).
     empreintes: Dict[str, str] = field(default_factory=dict)
@@ -300,7 +300,7 @@ SEUIL_DECISION = 0.25
 
 def entraine_frappes(corpus: CorpusFrappes, graine: int = 20260823, seuil: float = SEUIL_DECISION,
                      part_epreuve: float = 0.25, iterations: int = 150,
-                     ) -> Tuple[ClassifieurFrappes, Dict[str, object]]:
+                     ) -> Tuple[ClassifieurFrappes, Dict[str, Any]]:
     """Un modèle binaire par pièce, éprouvé sur des SITUATIONS jamais vues.
 
     La coupure se fait par SITUATION (« hihat après snare (214 ms) » entier d'un
@@ -326,7 +326,7 @@ def entraine_frappes(corpus: CorpusFrappes, graine: int = 20260823, seuil: float
         p = paire_de(sit)
         if p:
             paires_epreuve.setdefault(p, []).append(sit)
-    toutes = {}
+    toutes: Dict[str, List[str]] = {}
     for sit in situations:
         p = paire_de(sit)
         if p:
@@ -342,8 +342,8 @@ def entraine_frappes(corpus: CorpusFrappes, graine: int = 20260823, seuil: float
     echelle[echelle < 1e-9] = 1.0
     Z = (X - moyenne) / echelle
 
-    modeles: Dict[str, object] = {}
-    mesures: Dict[str, object] = {"parPiece": {}}
+    modeles: Dict[str, Any] = {}
+    mesures: Dict[str, Any] = {"parPiece": {}}
     for i, p in enumerate(corpus.pieces):
         y = corpus.Y[:, i]
         if y[~masque_epreuve].sum() == 0 or (1 - y[~masque_epreuve]).sum() == 0:

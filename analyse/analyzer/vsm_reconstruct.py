@@ -26,7 +26,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence
 
 import numpy as np
 
@@ -39,6 +39,10 @@ from .vsm_levels import VOLUME_MAX
 from .vsm_patch_optimizer import choose_machine
 from .vsm_project_export import DEFAULT_TRACK_VOLUME
 from .vsm_project_export import ExportNote, ExportTrack, write_project_bundle
+
+if TYPE_CHECKING:  # le classifieur est optionnel à l'exécution ; son type
+    # ne sert qu'à la vérification.
+    from .vsm_classifier import Classifieur
 
 # Machines proposées par défaut pour un stem MÉLODIQUE. La liste exclut les
 # boîtes à rythmes et le sampler : on ne cherche pas le timbre d'un kit par
@@ -505,7 +509,7 @@ def reconstruct_stem(
     max_dimensions: Optional[int] = None,
     metric: str = "v2",
     shortlist: Optional[int] = None,
-    classifieur: Optional[object] = None,
+    classifieur: Optional["Classifieur"] = None,
     preselection_apprise: int = 0,
     level_bound: bool = True,
 ) -> Optional[StemReconstruction]:
@@ -564,6 +568,28 @@ def reconstruct_stem(
                       f"{len(ecartees)} écartée(s) sans être mesurée(s)")
                 candidates = retenues
 
+    # LES OPTIONS QU'ON NE PASSE QUE SI L'ON EN A UNE : les omettre laisse
+    # `choose_machine` appliquer sa règle par défaut, ce qui n'est pas la même
+    # chose que de lui passer None.
+    options: Dict[str, Any] = {}
+    if shortlist is not None:
+        # Sa règle par défaut : la moitié des candidates en finale. La passer
+        # explicitement sert aux MESURES, où une candidate écartée au
+        # dégrossissage n'aurait pas de score comparable aux autres.
+        options["shortlist"] = shortlist
+    if max_dimensions is not None:
+        # Sa règle à deux étages : 6 axes pour classer, 10 pour régler les
+        # finalistes (mesuré).
+        options["max_dimensions"] = max_dimensions
+    if level_bound:
+        # BORNE DE NIVEAU, la même que sur la piste (VOLUME_MAX / volume de
+        # base) : un patch qu'il faudrait amplifier davantage ne sera jamais
+        # retenu à l'arbitrage, donc le chercher est du budget perdu. Mesuré sur
+        # B4 Wuz Then AVANT cette borne : deux gagnants sur deux étaient « trop
+        # faibles, ×42 ». `level_bound=False` rend l'ancien comportement, pour
+        # l'A/B.
+        options["max_gain"] = VOLUME_MAX / DEFAULT_TRACK_VOLUME
+
     best, everyone = choose_machine(
         excerpt,
         reference.note,
@@ -573,21 +599,7 @@ def reconstruct_stem(
         metric=metric,
         gate=gate,
         max_iterations=max_iterations,
-        # None laisse `choose_machine` appliquer sa règle par défaut : la
-        # moitié des candidates en finale. La passer explicitement sert aux
-        # MESURES, où une candidate écartée au dégrossissage n'aurait pas de
-        # score comparable aux autres.
-        **({"shortlist": shortlist} if shortlist is not None else {}),
-        # None laisse `choose_machine` appliquer sa règle à deux étages :
-        # 6 axes pour classer, 10 pour régler les finalistes (mesuré).
-        **({"max_dimensions": max_dimensions} if max_dimensions is not None else {}),
-        # BORNE DE NIVEAU, la même que sur la piste (VOLUME_MAX / volume de
-        # base) : un patch qu'il faudrait amplifier davantage ne sera jamais
-        # retenu à l'arbitrage, donc le chercher est du budget perdu. Mesuré sur
-        # B4 Wuz Then AVANT cette borne : deux gagnants sur deux étaient « trop
-        # faibles, ×42 ». `level_bound=False` rend l'ancien comportement, pour
-        # l'A/B.
-        **({"max_gain": VOLUME_MAX / DEFAULT_TRACK_VOLUME} if level_bound else {}),
+        **options,
     )
     return StemReconstruction(
         name=name,

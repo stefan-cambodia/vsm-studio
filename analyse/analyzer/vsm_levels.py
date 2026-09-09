@@ -110,8 +110,8 @@ def match_track_levels(
             continue
 
         duree = stem.size / float(sample_rate)
-        with tempfile.TemporaryDirectory(prefix="vsm-niveau-") as dossier:
-            dossier = Path(dossier)
+        with tempfile.TemporaryDirectory(prefix="vsm-niveau-") as temporaire:
+            dossier = Path(temporaire)
             # Les échantillons du kit vivent dans le dossier de sortie ; le
             # mini-projet les référence par chemin relatif, il lui faut donc
             # sa propre copie.
@@ -204,8 +204,8 @@ def _caler_un_groupe(nom_groupe: str, pistes: List[ExportTrack],
     for piste in pistes:
         if not piste.machine or not piste.notes:
             continue
-        with tempfile.TemporaryDirectory(prefix="vsm-niveau-") as dossier:
-            dossier = Path(dossier)
+        with tempfile.TemporaryDirectory(prefix="vsm-niveau-") as temporaire:
+            dossier = Path(temporaire)
             for chemin_relatif in piste.samples.values():
                 source = samples_root / chemin_relatif
                 if source.is_file():

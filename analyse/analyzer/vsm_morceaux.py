@@ -41,7 +41,7 @@ import subprocess
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -393,9 +393,9 @@ def notes_batterie(rng: np.random.Generator, s: Structure, machine: str) -> Tupl
 # Le tirage d'un morceau
 # ---------------------------------------------------------------------------
 
-def _tirer_roles(rng: np.random.Generator, nombre: int, cas: str) -> List[Dict[str, object]]:
+def _tirer_roles(rng: np.random.Generator, nombre: int, cas: str) -> List[Dict[str, Any]]:
     """La liste des rôles, avec le cas de parité posé sur une ou deux parties."""
-    roles: List[Dict[str, object]] = []
+    roles: List[Dict[str, Any]] = []
     if cas == "deux-mains":
         roles.append({"role": ROLE_DEUX_MAINS, "registre": [list(r) for r in REGISTRES_DEUX_MAINS], "cas": cas})
     elif cas == "memes-machine-disjoints":

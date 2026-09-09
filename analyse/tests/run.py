@@ -21,6 +21,8 @@ def main() -> int:
     filtre = sys.argv[1] if len(sys.argv) > 1 else ""
     for chemin in sorted(ICI.glob("test_*.py")):
         specification = importlib.util.spec_from_file_location(chemin.stem, chemin)
+        if specification is None or specification.loader is None:
+            raise SystemExit(f"[ERREUR] suite illisible, non chargée : {chemin}")
         module = importlib.util.module_from_spec(specification)
         specification.loader.exec_module(module)
     return framework.run(filtre)

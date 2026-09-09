@@ -33,6 +33,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Dict, List, Tuple
 
 import numpy as np
 
@@ -187,7 +188,8 @@ def fabriquer(dossier: Path, variante: str = "registres") -> dict:
     voix_tete = np.zeros(n)
     voix_g = np.zeros(n)
     voix_d = np.zeros(n)
-    notes_verite = {"bass": [], "grave": [], "medium": [], "aigu": [], "tete": [], "choeurs": []}
+    notes_verite: Dict[str, List[Tuple[int, float]]] = {
+        "bass": [], "grave": [], "medium": [], "aigu": [], "tete": [], "choeurs": []}
 
     melodie_aigu = [0, 2, 4, 2, 7, 4, 2, 0]      # degrés sur la gamme de la mineur, octave 6
     gamme = [0, 2, 3, 5, 7, 8, 10, 12]
@@ -319,7 +321,7 @@ def fabriquer(dossier: Path, variante: str = "registres") -> dict:
 def compter(sortie: Path, verite: dict) -> dict:
     projet = json.loads((sortie / "project.json").read_text(encoding="utf-8"))
     rapport = json.loads((sortie / "rapport.json").read_text(encoding="utf-8"))
-    par_stem = {"bass": [], "other": [], "drums": [], "vocals": []}
+    par_stem: Dict[str, List[str]] = {"bass": [], "other": [], "drums": [], "vocals": []}
     for piste in projet["tracks"]:
         nom = piste["name"]
         # Un BUS de groupe n'est pas une partie : c'est le fader commun des

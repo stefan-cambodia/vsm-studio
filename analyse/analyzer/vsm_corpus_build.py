@@ -443,7 +443,7 @@ def genere_lot(
             doit_degrader = float(rng_augmentation.random()) < proportion_augmentee
             choix = float(rng_augmentation.random())
             if (choisies or fuite_active) and doit_degrader:
-                possibles = list(choisies)
+                possibles: List[Optional[Augmentation]] = list(choisies)
                 # La fuite n'est proposée QUE si l'on dispose du son d'une autre
                 # machine. À défaut, on ne la remplace pas par un écho du rendu
                 # précédent : une augmentation qui ne dégrade pas ce qu'elle

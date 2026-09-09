@@ -241,7 +241,7 @@ def try_cutoff_automation(
     sample_rate: int,
     track: ExportTrack,
     engine: VsmEngine,
-) -> Tuple[Optional[List[Tuple[float, float]]], Optional[float], Optional[float]]:
+) -> Tuple[Optional[List[Tuple[float, float]]], Optional[float], Optional[float], str]:
     """
     Met la courbe à l'épreuve : (courbe, distance sans, distance avec, motif).
 

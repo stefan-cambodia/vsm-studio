@@ -50,7 +50,7 @@ from __future__ import annotations
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -60,6 +60,13 @@ from .vsm_project_export import ExportNote, ExportTrack
 # Origine d'une candidate, écrite telle quelle dans le journal et le rapport :
 # savoir qu'une machine l'emporte AVEC SON PATCH D'USINE est une information
 # sur la recherche, pas seulement sur la machine.
+# UN profil par machine, ou PLUSIEURS. Le second cas n'est pas une
+# tolérance : c'est ainsi que `vsm.multisample` part à l'arbitrage une fois par
+# profil installé (voir `build_candidates`). L'annotation le dit, sans quoi le
+# jour où quelqu'un supprimerait la branche « liste » du code, rien ne le
+# contredirait.
+Profils = Dict[str, Union[str, Sequence[str]]]
+
 ORIGINE_CHERCHE = "patch cherché"
 ORIGINE_USINE = "patch d'usine"
 
@@ -140,7 +147,7 @@ class TrackVerdict:
 def build_candidates(
     searched: Sequence[Tuple[str, Dict[str, float]]],
     factory_machines: Sequence[str],
-    profiles: Optional[Dict[str, str]] = None,
+    profiles: Optional[Profils] = None,
 ) -> List[TrackCandidate]:
     """
     La liste des candidates : les patchs trouvés, plus les patchs d'usine.

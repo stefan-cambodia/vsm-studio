@@ -33,9 +33,13 @@ import json
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
+
+if TYPE_CHECKING:  # torch n'est importé qu'au moment de séparer ; le nom
+    # ne sert ici qu'aux annotations, différées par `from __future__`.
+    import torch
 
 from .vsm_corpus import descriptors
 from .vsm_corpus_build import graine_de_machine, machines_de_recherche
@@ -72,7 +76,8 @@ class Vivier:
                par_stem: int = 60) -> "Vivier":
         import soundfile as sf
 
-        tranches, origines = [], []
+        tranches: List[np.ndarray] = []
+        origines: List[str] = []
         n = int(DUREE * sample_rate)
         for dossier in dossiers:
             for nom in ("drums", "bass", "vocals"):
@@ -286,7 +291,7 @@ def _separe_other(melange: np.ndarray, sample_rate: int, dossier: Path, pas: int
 
 
 def _separe_par_tranches(melange: np.ndarray, sample_rate: int, pas: int,
-                         separer: Callable[["torch.Tensor"], "torch.Tensor"], indice_other: int,  # noqa: F821
+                         separer: Callable[["torch.Tensor"], "torch.Tensor"], indice_other: int,
                          progression: Optional[Callable[[str], None]] = None) -> np.ndarray:
     """Le découpage, séparé du modèle pour être testé sans lui : `separer`
     reçoit un tenseur (2, T) NORMALISÉ et rend (sources, 2, T)."""
@@ -323,7 +328,7 @@ class ModeleSimple:
     noms: List[str]
     moyenne: np.ndarray
     echelle: np.ndarray
-    modele: object
+    modele: Any                          # estimateur scikit-learn
 
     def rangs(self, X: np.ndarray) -> np.ndarray:
         P = self.modele.predict_proba((np.atleast_2d(X) - self.moyenne) / self.echelle)

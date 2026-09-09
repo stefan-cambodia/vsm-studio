@@ -25,6 +25,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+from typing import Any, Dict, List
 
 import numpy as np
 
@@ -64,7 +65,7 @@ def main() -> int:
         print(f"rendu des unités : {' '.join(commande)}")
         subprocess.run(commande, check=True)
         fichiers = sorted(dossier.glob("*.wav"))
-        resultats = []
+        resultats: List[Dict[str, Any]] = []
         for fichier in fichiers:
             nom = re.sub(r"^\d+ - ", "", fichier.stem)
             stem = stem_de_la_piste(nom)

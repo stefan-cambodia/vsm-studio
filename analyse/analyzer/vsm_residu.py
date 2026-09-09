@@ -34,9 +34,13 @@ import struct
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
+
+if TYPE_CHECKING:  # le module n'importe PAS la chaîne à l'exécution (voir
+    # l'en-tête) ; le nom ne sert qu'à la vérification de types.
+    from .vsm_project_export import ExportTrack
 
 # L'alignement se cherche dans ±50 ms : au-delà, un rendu n'est plus « la
 # même partie un peu décalée », c'est une autre note. À 44,1 kHz.
@@ -67,7 +71,7 @@ class Unite:
     parce qu'elle est fausse mais parce qu'elle est un quart (CDC § 2.1).
     """
     nom: str
-    membres: List[object]           # les ExportTrack, tels que le rendu final les joue
+    membres: List["ExportTrack"]    # les pistes, telles que le rendu final les joue
     stem: np.ndarray                # le stem séparé contre lequel les membres ont été jugés (mono)
     part: float                     # part d'énergie de ce stem dans le mélange D'ORIGINE, en %
     distance: Optional[float]       # distance de piste (moyenne des membres) ; None = inconnue
@@ -270,7 +274,7 @@ def _candidate(unite: Unite, residu: np.ndarray, rendu: Optional[np.ndarray],
                options: Options, sample_rate: int) -> dict:
     """Une candidate, mesurée : alignée sur le résidu, corrélée à son stem et
     au reste, et jugée par le garde-fou. Tout est publié, retenue ou non."""
-    fiche: Dict[str, object] = {
+    fiche: Dict[str, Any] = {
         "unite": unite.nom, "membres": [getattr(m, "name", str(m)) for m in unite.membres],
         "iteration": unite.iteration, "part": unite.part, "distance": unite.distance,
         "score": unite.score, "retenue": False,
@@ -316,7 +320,7 @@ def boucle_residuelle(melange: np.ndarray, unites: List[Unite], options: Options
     journal = collab.journal
     m = np.asarray(melange, dtype=np.float32)
     e0 = energie(m)
-    rapport: Dict[str, object] = {
+    rapport: Dict[str, Any] = {
         "demande": int(options.iterations),
         "options": {"correlation": options.correlation, "energie": options.energie,
                     "notesMin": options.notes_min},
@@ -339,7 +343,7 @@ def boucle_residuelle(melange: np.ndarray, unites: List[Unite], options: Options
     soustraites: List[int] = []   # identités (id()) des unités déjà soustraites
     for k in range(1, options.iterations + 1):
         depart = time.perf_counter()
-        it: Dict[str, object] = {"iteration": k, "candidats": [], "secondes": {}}
+        it: Dict[str, Any] = {"iteration": k, "candidats": [], "secondes": {}}
         rapport["iterations"].append(it)
 
         # a. Choisir la plus sûre : tout est rendu, tout est publié.

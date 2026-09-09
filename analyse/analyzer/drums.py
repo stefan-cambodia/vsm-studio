@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Dict, List
 
 import librosa
 import numpy as np
@@ -40,7 +41,7 @@ def detect_drums(audio_path: Path):
         n_fft=2048,
     )
 
-    result = {
+    result: Dict[str, List[float]] = {
         "kick": [],
         "snare": [],
         "hihat": [],

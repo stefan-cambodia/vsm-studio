@@ -34,7 +34,7 @@ import math
 import re
 from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Set, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 
 import numpy as np
 
@@ -258,7 +258,8 @@ def _scores(nb_vraies: int, nb_transcrites: int, nb_paires: int) -> dict:
             "precision": precision, "rappel": rappel, "f1": f1}
 
 
-def mesurer_transcription(verite: dict, pistes: Sequence[dict]) -> dict:
+def mesurer_transcription(verite: dict, pistes: Sequence[dict]
+                          ) -> Tuple[dict, List[Tuple[int, int]], List[List[float]], List[List[float]]]:
     parties = verite["parties"]
     vraies: List[List[float]] = []
     role_de_la_note: List[str] = []
@@ -275,8 +276,9 @@ def mesurer_transcription(verite: dict, pistes: Sequence[dict]) -> dict:
         transcrites.extend(list(n) for n in piste["notes"])
     paires = apparier(vraies, transcrites)
     exactes = apparier(vraies, transcrites, tolerance_hauteur=0)
-    resultat = {"melodique": _scores(len(vraies), len(transcrites), len(paires)),
-                "melodique_hauteur_exacte": _scores(len(vraies), len(transcrites), len(exactes))}
+    resultat: Dict[str, Any] = {
+        "melodique": _scores(len(vraies), len(transcrites), len(paires)),
+        "melodique_hauteur_exacte": _scores(len(vraies), len(transcrites), len(exactes))}
     if paires:
         dv = [abs(vraies[i][1] - transcrites[j][1]) for i, j in paires]
         dd = [abs(vraies[i][3] - transcrites[j][3]) for i, j in paires]
@@ -433,9 +435,9 @@ def mesurer_arbitrage_et_bornes(verite: dict, morceau: Path, rapport: dict, pist
     # pour que, sans production, elle SOIT le mélange et que la borne soit 0.
     somme_stereo = np.zeros((original.size, 2))
     for partie in parties:
-        stem = lire_wav_float(morceau / partie["fichier"]).astype(np.float64)
-        n = min(stem.shape[0], original.size)
-        somme_stereo[:n] += stem[:n]
+        audio_du_stem = lire_wav_float(morceau / partie["fichier"]).astype(np.float64)
+        n = min(audio_du_stem.shape[0], original.size)
+        somme_stereo[:n] += audio_du_stem[:n]
     somme_vraie = _mono(somme_stereo.astype(np.float32))
     borne_production = reconstruction_distance(original, somme_vraie, SR, metric=metrique)
 
@@ -465,10 +467,11 @@ def mesurer_arbitrage_et_bornes(verite: dict, morceau: Path, rapport: dict, pist
                 continue
             indice = indices[0]
         else:
-            indice = attribution.get(nom)
-            if indice is None:
+            attribuee = attribution.get(nom)
+            if attribuee is None:
                 arbitrage.append({"piste": nom, "partie": None, "note": "aucune partie vraie appariée : inventée"})
                 continue
+            indice = attribuee
         partie = parties[indice]
         entree: dict = {"piste": nom, "partie": f"{indice + 1:02d}-{partie['role']}", "machine_vraie": partie["machine"]}
         classement = None
@@ -723,7 +726,7 @@ def agreger(mesures: Sequence[dict]) -> dict:
     def col(chemin: Sequence[str]):
         sortie = []
         for m in mesures:
-            v = m
+            v: Any = m
             for cle in chemin:
                 v = v.get(cle) if isinstance(v, dict) else None
                 if v is None:

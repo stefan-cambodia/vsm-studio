@@ -33,7 +33,7 @@ import shutil
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
 
@@ -225,6 +225,15 @@ class VsmEngine:
             text=True,
             bufsize=1,
         )
+        # `Popen` vient d'ouvrir les trois tubes ; on les retient sous un nom
+        # non optionnel. Sans cela, chaque écriture doit re-tester `None`, ce
+        # que personne n'écrit — et le jour où le tube manquerait vraiment, la
+        # panne se dirait « NoneType n'a pas d'attribut write » au lieu de se
+        # nommer.
+        if self._process.stdin is None or self._process.stdout is None:
+            raise VsmEngineError("le moteur de rendu n'a pas ouvert ses tubes")
+        self._stdin = self._process.stdin
+        self._stdout = self._process.stdout
 
     # -- cycle de vie ---------------------------------------------------
 
@@ -237,7 +246,7 @@ class VsmEngine:
     def close(self) -> None:
         if self._process.poll() is None:
             try:
-                self._process.stdin.close()
+                self._stdin.close()
                 self._process.wait(timeout=5)
             except Exception:
                 self._process.kill()
@@ -255,7 +264,7 @@ class VsmEngine:
 
     # -- rendu ----------------------------------------------------------
 
-    def _query(self, payload: Dict[str, object]) -> Dict[str, object]:
+    def _query(self, payload: Dict[str, object]) -> Dict[str, Any]:
         """
         Envoie une CONSULTATION au moteur et renvoie sa réponse.
 
@@ -271,10 +280,10 @@ class VsmEngine:
         self._request_id += 1
         request = {k: v for k, v in payload.items() if not k.startswith("_")}
         request["id"] = self._request_id
-        self._process.stdin.write(json.dumps(request) + "\n")
-        self._process.stdin.flush()
+        self._stdin.write(json.dumps(request) + "\n")
+        self._stdin.flush()
 
-        line = self._process.stdout.readline()
+        line = self._stdout.readline()
         if not line:
             stderr = self._process.stderr.read() if self._process.stderr else ""
             raise VsmEngineError(f"aucune réponse du moteur. {stderr}")
@@ -308,7 +317,7 @@ class VsmEngine:
     # Python pourrait retenir un profil que le moteur refuse -- et l'écart ne
     # se verrait qu'au moment où toutes les distances seraient déjà fausses.
 
-    def profiles(self) -> List[Dict[str, object]]:
+    def profiles(self) -> List[Dict[str, Any]]:
         """Profils multi-échantillons installés, tels que le moteur les voit."""
         try:
             return list(self._query({"query": "profiles", "_expect": "profiles"})["profiles"])
@@ -393,7 +402,7 @@ class VsmEngine:
             for entry in response.get("dimensions", [])
         ]
 
-    def parameters(self, machine: str) -> List[Dict[str, object]]:
+    def parameters(self, machine: str) -> List[Dict[str, Any]]:
         """Tous les paramètres sémantiques d'une machine, avec leurs bornes."""
         return list(
             self._query({"query": "parameters", "machine": machine, "_expect": "parameters"})["parameters"]
@@ -442,10 +451,10 @@ class VsmEngine:
             # qu'un coup découpé d'un enregistrement se rejoue tel quel.
             request["samples"] = {str(int(slot)): str(path) for slot, path in samples.items()}
 
-        self._process.stdin.write(json.dumps(request) + "\n")
-        self._process.stdin.flush()
+        self._stdin.write(json.dumps(request) + "\n")
+        self._stdin.flush()
 
-        line = self._process.stdout.readline()
+        line = self._stdout.readline()
         if not line:
             stderr = self._process.stderr.read() if self._process.stderr else ""
             raise VsmEngineError(f"aucune réponse du moteur. {stderr}")
@@ -504,9 +513,9 @@ class VsmEngine:
         if samples:
             request["samples"] = {str(int(slot)): str(path) for slot, path in samples.items()}
 
-        self._process.stdin.write(json.dumps(request) + "\n")
-        self._process.stdin.flush()
-        line = self._process.stdout.readline()
+        self._stdin.write(json.dumps(request) + "\n")
+        self._stdin.flush()
+        line = self._stdout.readline()
         if not line:
             stderr = self._process.stderr.read() if self._process.stderr else ""
             raise VsmEngineError(f"aucune réponse du moteur. {stderr}")

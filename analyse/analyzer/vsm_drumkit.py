@@ -62,9 +62,13 @@ from __future__ import annotations
 import wave
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
+
+if TYPE_CHECKING:  # le classifieur de frappes vient du corpus de batterie
+    # et n'est importé qu'au moment de s'en servir (voir `build_drum_kit`).
+    from .vsm_drum_corpus import ClassifieurFrappes
 
 from .vsm_project_export import ExportNote, ExportTrack
 
@@ -537,7 +541,7 @@ def build_drum_kit(
     relative_prefix: str = "samples",
     max_slots: int = 16,
     write_samples: bool = True,
-    hit_classifier: Optional[object] = None,
+    hit_classifier: Optional["ClassifieurFrappes"] = None,
     drop_unisolated: bool = False,
 ) -> Optional[DrumKit]:
     """
@@ -806,8 +810,8 @@ def build_drum_kit(
             avertissements.append(
                 f"{famille} : aucune frappe isolée, l'échantillon contient les autres pièces"
             )
-        empreintes = [_hit_features(extraits[i], sample_rate) for i in candidats]
-        representatif = extraits[candidats[_medoid_index(empreintes)]]
+        descripteurs = [_hit_features(extraits[i], sample_rate) for i in candidats]
+        representatif = extraits[candidats[_medoid_index(descripteurs)]]
 
         nom_fichier = f"{famille}.wav"
         if write_samples:

@@ -32,7 +32,7 @@ comparable qu'à « v3 ». La chaîne reste en v2 par défaut tant que v3 n'a pa
 
 from __future__ import annotations
 
-from typing import Dict
+from typing import Any, Dict
 
 import numpy as np
 
@@ -98,8 +98,8 @@ def pitch_term(target_pitch: tuple, candidate_pitch: tuple) -> float:
 
 
 def distance_terms(
-    target_features: Dict[str, object],
-    candidate_features: Dict[str, object],
+    target_features: Dict[str, Any],
+    candidate_features: Dict[str, Any],
     target_envelope: np.ndarray,
     candidate_envelope: np.ndarray,
     target_contrast: np.ndarray,

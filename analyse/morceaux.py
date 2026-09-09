@@ -22,6 +22,7 @@ import json
 import sys
 import time
 from pathlib import Path
+from typing import Any, Dict
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -49,7 +50,7 @@ def main() -> int:
     args.sortie.mkdir(parents=True, exist_ok=True)
     machines = [m for m in args.machines.split(",") if m] or None
     depart = time.time()
-    bilan = {"format": "vsm-lot-synthetique", "version": 1, "options": vars(args) | {"sortie": str(args.sortie)},
+    bilan: Dict[str, Any] = {"format": "vsm-lot-synthetique", "version": 1, "options": vars(args) | {"sortie": str(args.sortie)},
              "morceaux": []}
     code = 0
     try:

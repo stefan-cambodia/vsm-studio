@@ -81,7 +81,8 @@ def lire_notes(midi: Path, piste: str) -> List[ExportNote]:
     for tampon in fichier.tracks:
         if tampon.name != piste:
             continue
-        tick, ouvertes = 0, {}
+        tick = 0
+        ouvertes: Dict[int, List[Tuple[int, int]]] = {}
         for message in tampon:
             tick += message.time
             if message.type == "note_on" and message.velocity > 0:

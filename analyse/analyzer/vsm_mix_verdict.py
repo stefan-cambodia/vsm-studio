@@ -115,6 +115,11 @@ _deja_dit: Dict[str, Tuple[float, float]] = {}
 
 TrackState = Tuple[str, Dict[str, float], float, str, List[ExportNote]]
 
+# Le meilleur en lice : libellé, distance du MÉLANGE, état à remettre en place
+# si on l'abandonne, distance de PISTE (inconnue pour le réglage courant, qui
+# n'a pas concouru sur la piste) et volumes de toutes les pistes.
+Meilleur = Tuple[str, float, TrackState, Optional[float], Dict[str, float]]
+
 
 def track_state(track: ExportTrack) -> TrackState:
     """L'état d'une piste tel que le verdict le photographie : machine, patch,
@@ -326,7 +331,7 @@ def keep_what_helps_the_mix(
         # rendre leurs volumes aussi.
         volumes_courants = {t.name: float(t.volume) for t in tracks}
         d_courant = distance_du_projet()
-        meilleur = ("réglage", d_courant, etat_courant, None, volumes_courants)
+        meilleur: Meilleur = ("réglage", d_courant, etat_courant, None, volumes_courants)
         ecartees: List[Tuple[str, float]] = []
 
         for proposition in propositions:

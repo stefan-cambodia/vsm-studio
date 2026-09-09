@@ -320,6 +320,24 @@ Aucune dépendance externe : ça doit fonctionner tel quel sur Linux/macOS/
 Windows avec n'importe quel compilateur récent (GCC 11+, Clang 14+, MSVC
 2022+).
 
+## Vérifier le Python (lint et types)
+
+Deux outils d'atelier, hors `requirements.txt` parce qu'ils ne servent pas à
+faire tourner la chaîne. Ils se lancent depuis la racine et couvrent
+`analyse/` et `tools/` :
+
+```bash
+analyse/.venv/bin/python -m pip install ruff mypy
+analyse/.venv/bin/ruff check .                     # pyflakes, erreurs pycodestyle, bugbear (ruff.toml)
+analyse/.venv/bin/python -m mypy analyse tools     # vérification de types (mypy.ini)
+```
+
+Ce que la vérification de types garantit et ce qu'elle ne garantit pas est
+écrit dans `mypy.ini` : les corps non annotés ne sont pas visités, la règle est
+« ce qui est annoté doit être vrai ». C'est ainsi qu'elle a trouvé deux
+fonctions dont le type de retour mentait sur ce qu'elles rendent, et cinq noms
+qui désignaient deux choses différentes dans la même fonction.
+
 ## Mesurer les performances (banc CPU, Phase 6)
 
 Cible optionnelle (désactivée par défaut) qui mesure le coût par bloc de

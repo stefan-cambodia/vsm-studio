@@ -57,7 +57,7 @@ import wave
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Iterator, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Sequence, Tuple
 
 import math
 
@@ -66,8 +66,8 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from analyzer.vsm_automation import try_cutoff_automation  # noqa: E402
-from analyzer.vsm_drumkit import (build_drum_kit, drum_kit_track, drum_machine_track,  # noqa: E402
-                                  eclater_par_piece,
+from analyzer.vsm_drumkit import (DrumKit, build_drum_kit, drum_kit_track,  # noqa: E402
+                                  drum_machine_track, eclater_par_piece,
                                   modelled_drum_track, vocal_audio_track,
                                   vocal_sampler_track)
 from analyzer.vsm_engine import (VsmEngine, find_vsm_render, identite_du_moteur,  # noqa: E402
@@ -87,9 +87,14 @@ from analyzer.vsm_reconstruct import (StemNote, StemReconstruction, densite_du_s
 from analyzer.vsm_residu import (Collaborateurs, DejaPortees, Passe, Unite,  # noqa: E402
                                  boucle_residuelle, indices_frappes_nouvelles, indices_nouveaux)
 from analyzer.vsm_residu import Options as OptionsResiduelles  # noqa: E402
-from analyzer.vsm_track_arbitration import (ORIGINE_USINE, TrackCandidate, arbitrate_on_track,  # noqa: E402
-                                             build_candidates, runners_up)
+from analyzer.vsm_track_arbitration import (ORIGINE_USINE, Profils, TrackCandidate,  # noqa: E402
+                                             arbitrate_on_track, build_candidates, runners_up)
 from analyzer.vsm_track_refine import refine_patch_on_track  # noqa: E402
+
+if TYPE_CHECKING:  # les deux modèles appris sont relus à la demande, et une
+    # course peut tourner sans eux ; leurs types ne servent qu'aux annotations.
+    from analyzer.vsm_classifier import Classifieur
+    from analyzer.vsm_drum_corpus import ClassifieurFrappes
 
 SAMPLE_RATE = 44100
 
@@ -338,7 +343,7 @@ def profil_de(moteur, machine: str) -> str:
     return ""
 
 
-def profils_pour_arbitrage(moteur, machines: Sequence[str]) -> Dict[str, object]:
+def profils_pour_arbitrage(moteur, machines: Sequence[str]) -> Profils:
     """Comme `profils_de`, mais `vsm.multisample` part avec TOUS ses profils.
 
     Le premier morceau à saxophone (*Us and Them*, 31/08/2026) a montré le
@@ -347,7 +352,7 @@ def profils_pour_arbitrage(moteur, machines: Sequence[str]) -> Dict[str, object]
     L'arbitrage de piste est l'endroit exact où plusieurs profils se
     départagent, au même tarif qu'une machine de plus (~15 s par candidate).
     """
-    d: Dict[str, object] = dict(profils_de(moteur, machines))
+    d: Profils = dict(profils_de(moteur, machines))
     if "vsm.multisample" in d:
         noms = [str(p.get("name") or "") for p in moteur.profiles()]
         noms = [n for n in noms if n]
@@ -862,8 +867,8 @@ class Contexte:
     sortie: Path
     travail: Path
     candidates: List[str]
-    classifieur: Optional[object] = None
-    frappes: Optional[object] = None
+    classifieur: Optional["Classifieur"] = None
+    frappes: Optional["ClassifieurFrappes"] = None
     # La part d'énergie de chaque stem, mesurée avant toute reconstruction :
     # c'est elle qui distingue une partie d'un résidu de séparation.
     parts: Dict[str, float] = field(default_factory=dict)
@@ -874,7 +879,7 @@ class Contexte:
     iteration: int = 0
     deja_portees: Optional[DejaPortees] = None
 
-    def options_de_rendu(self, nom: str, audio: np.ndarray) -> Dict[str, object]:
+    def options_de_rendu(self, nom: str, audio: np.ndarray) -> Dict[str, Any]:
         """Les réglages communs à tous les rendus hors ligne d'une piste :
         arbitrage et réglage jugent avec la même mesure et la même règle de
         niveau, sans quoi leurs chiffres ne se compareraient pas."""
@@ -907,7 +912,7 @@ class Chantier:
     # stem entier recevrait le gain qu'il faudrait pour le remplacer à elle
     # seule, et leur somme sortirait N fois trop fort.
     pistes_groupees: Dict[str, str] = field(default_factory=dict)
-    rapport_batterie: Optional[Dict[str, object]] = None
+    rapport_batterie: Optional[Dict[str, Any]] = None
     # LA PASSE SUR UN RÉSIDU dit ce qu'elle a refusé de refabriquer : par stem,
     # les notes transcrites, celles déjà portées par une piste retenue, et les
     # nouvelles. `stems_refuses` : rien de nouveau, pas de piste ;
@@ -920,7 +925,7 @@ class Chantier:
 # [2/5] Les stems
 # ---------------------------------------------------------------------------
 
-def partage_du_morceau(pistes: Dict[str, Path]) -> List[Dict[str, object]]:
+def partage_du_morceau(pistes: Dict[str, Path]) -> List[Dict[str, Any]]:
     """QUELLE PART DU MORCEAU CHAQUE STEM PORTE-T-IL ?
 
     POURQUOI CE CHIFFRE MANQUAIT ET CE QU'IL A RÉVÉLÉ. Le rapport donnait
@@ -949,7 +954,7 @@ def partage_du_morceau(pistes: Dict[str, Path]) -> List[Dict[str, object]]:
     total = sum(energies.values())
     if total <= 0.0:
         return []
-    partage = [
+    partage: List[Dict[str, Any]] = [
         {"stem": nom, "partEnergie": round(100.0 * valeur / total, 1)}
         for nom, valeur in sorted(energies.items(), key=lambda kv: -kv[1])
     ]
@@ -1139,10 +1144,10 @@ def resume_des_axes(affine) -> str:
 class ResultatBatterie:
     piste: ExportTrack
     audio: np.ndarray
-    rapport: Dict[str, object]
+    rapport: Dict[str, Any]
     # Le kit détecté : c'est lui qui sait quelles frappes appartiennent à
     # quelle pièce, et l'éclatement par pièce (--batterie-par-piece) en vit.
-    kit: Optional[object] = None
+    kit: Optional[DrumKit] = None
     # Le patch d'usine de la boîte retenue, quand elle a été réglée : le
     # verdict du mélange le remet en concurrence.
     patch_avant_reglage: Optional[Dict[str, float]] = None
@@ -1151,7 +1156,7 @@ class ResultatBatterie:
 
 
 def arbitrer_batterie(ctx: Contexte, nom: str, kit, piste: ExportTrack, audio: np.ndarray,
-                      rapport: Dict[str, object]
+                      rapport: Dict[str, Any]
                       ) -> Tuple[ExportTrack, Dict[str, ExportTrack], List[str], list]:
     """Les boîtes à rythmes du parc concourent contre la batterie modélisée.
 
@@ -1220,7 +1225,7 @@ def arbitrer_batterie(ctx: Contexte, nom: str, kit, piste: ExportTrack, audio: n
 
 
 def regler_batterie(ctx: Contexte, nom: str, piste: ExportTrack, en_lice: Dict[str, ExportTrack],
-                    a_regler: List[str], audio: np.ndarray, rapport: Dict[str, object]
+                    a_regler: List[str], audio: np.ndarray, rapport: Dict[str, Any]
                     ) -> Dict[str, Tuple[ExportTrack, float, Dict[str, float]]]:
     """Règle sur la piste entière chaque boîte à régler.
 
@@ -1359,7 +1364,7 @@ def reconstruire_batterie(ctx: Contexte, nom: str, chemin: Path,
     # lourde du mélange -- arbitrée, réglée, départagée -- n'y laissait aucune
     # trace. Un rapport qui tait la décision la plus coûteuse n'est pas un
     # rapport.
-    rapport: Dict[str, object] = {
+    rapport: Dict[str, Any] = {
         "machine": piste.machine,
         "means": moyen,
         "hits": int(kit.total_hits),
@@ -1614,10 +1619,10 @@ def reconstruire_stem_melodique(ctx: Contexte, nom: str, chemin: Path,
         if len(voix) > 1:
             # LE DÉCOUPAGE EST DIT, registre par registre : c'est une décision
             # qui change le nombre de pistes du résultat, pas un détail.
-            registres = ", ".join(
+            detail_registres = ", ".join(
                 f"voix {k} = MIDI {min(n.note for n in v)}-{max(n.note for n in v)}"
                 f" ({len(v)} notes)" for k, v in enumerate(voix, 1))
-            print(f"      {nom:8s} : DÉCOUPÉ en {len(voix)} voix par registres — {registres}")
+            print(f"      {nom:8s} : DÉCOUPÉ en {len(voix)} voix par registres — {detail_registres}")
             resultats = []
             for k, notes_voix in enumerate(voix, 1):
                 sous_nom = f"{nom} · voix {k}"
@@ -1662,7 +1667,7 @@ def _reconstruire_notes(ctx: Contexte, nom: str, notes: List[StemNote],
         return resultat
 
     depart = time.perf_counter()
-    stem = reconstruct_stem(
+    cherche = reconstruct_stem(
         nom, audio, notes, ctx.moteur,
         sample_rate=SAMPLE_RATE,
         machines=ctx.candidates,
@@ -1672,9 +1677,10 @@ def _reconstruire_notes(ctx: Contexte, nom: str, notes: List[StemNote],
         classifieur=ctx.classifieur,
         preselection_apprise=args.preselection_apprise,
     )
-    if stem is None:
+    if cherche is None:
         print(f"      {nom:8s} : aucune note exploitable")
         return None
+    stem = cherche
     podium = ", ".join(
         f"{m.split('.')[-1]}={d:.2f}" for m, d in sorted(stem.considered, key=lambda x: x[1])[:3]
     )
@@ -2039,7 +2045,7 @@ def verdict_du_melange(ctx: Contexte, chantier: Chantier, pistes_export: List[Ex
 
     verdict: List[Dict[str, object]] = []
     for decision in decisions:
-        ecartees = ", ".join(f"{lib} {d:.4f}" for lib, d in decision.rejected)
+        libelle_ecartees = ", ".join(f"{lib} {d:.4f}" for lib, d in decision.rejected)
         # LE TÉMOIN DE COUPURE EST DIT AVEC LE VERDICT, et pas seulement inscrit
         # au rapport : sans lui, « la meilleure des variantes » se lit comme
         # « une bonne piste », ce qui n'est pas la même chose (§ 5 decies).
@@ -2047,7 +2053,7 @@ def verdict_du_melange(ctx: Contexte, chantier: Chantier, pistes_export: List[Ex
                   else f" [sans la piste : {decision.muted_distance:.4f}]")
         print(f"      {decision.track:8s} : verdict du mélange -> "
               f"{decision.kept} ({decision.distance_kept:.4f}){coupee}"
-              + (f" — écartées : {ecartees}" if ecartees else ""))
+              + (f" — écartées : {libelle_ecartees}" if libelle_ecartees else ""))
         verdict.append({
             "track": decision.track, "kept": decision.kept,
             "mixDistance": decision.distance_kept,
@@ -2256,9 +2262,10 @@ def chercher_reverb_au_melange(args: argparse.Namespace, sortie: Path,
                   for nom, pt in points}
         distances = {nom: float(f.result()) for nom, f in futurs.items()}
     temoin = distances["temoin"]
-    grille = [{"taille": t, "dosage": d, "distance": distances[nom],
-               "ecartPourcent": (distances[nom] / temoin - 1.0) * 100.0 if temoin else None}
-              for nom, (t, d) in [(n, p) for n, p in points if p is not None]]
+    grille: List[Dict[str, Any]] = [
+        {"taille": t, "dosage": d, "distance": distances[nom],
+         "ecartPourcent": (distances[nom] / temoin - 1.0) * 100.0 if temoin else None}
+        for nom, (t, d) in [(n, p) for n, p in points if p is not None]]
     meilleur = min(grille, key=lambda g: (g["distance"], g["dosage"], g["taille"]))
     lignes = ", ".join(f"pièce {g['taille']:.1f} à {100 * g['dosage']:.0f} % → {g['distance']:.4f} "
                        f"({g['ecartPourcent']:+.2f} %)" for g in grille)
@@ -2309,7 +2316,7 @@ def ajouter_groupes(pistes_export: List[ExportTrack], groupes: Dict[str, str]) -
 
 
 def rendre_et_mesurer(args: argparse.Namespace, sortie: Path, melange: np.ndarray,
-                      chantier: Chantier, complements: Dict[str, object]) -> float:
+                      chantier: Chantier, complements: Dict[str, Any]) -> float:
     """Rend le projet écrit, mesure sa distance au mélange, écrit l'écoute A/B."""
     print("[5/5] Rendu du projet et mesure")
     rendu = sortie / "reconstruit.wav"
@@ -2529,11 +2536,11 @@ def suffixer_chantier(chantier: Chantier, suffixe: str) -> None:
                                 for nom, groupe in chantier.pistes_groupees.items()}
 
 
-def partage_relatif(stems: Dict[str, Path], energie_reference: float) -> List[Dict[str, object]]:
+def partage_relatif(stems: Dict[str, Path], energie_reference: float) -> List[Dict[str, Any]]:
     """La part de chaque stem d'un résidu, EN PART DU MÉLANGE D'ORIGINE : le
     seuil de stem se lit contre le morceau, pas contre ce qu'il en reste
     (sinon un résidu de 5 % verrait tous ses stems passer 0,5 %)."""
-    partage = []
+    partage: List[Dict[str, Any]] = []
     for nom, chemin in stems.items():
         try:
             e = float(np.sum(np.square(lire_wav(Path(chemin)), dtype=np.float64)))
@@ -2632,7 +2639,7 @@ def boucle_residuelle_de_la_chaine(ctx: Contexte, chantier: Chantier,
     return rapport
 
 
-def aligner_residuel_sur_projet(rapport: Dict[str, object], pistes_export: Sequence[ExportTrack],
+def aligner_residuel_sur_projet(rapport: Dict[str, Any], pistes_export: Sequence[ExportTrack],
                                 distances_retenues: Dict[str, float]) -> None:
     """Le bloc `residuel` décrit le projet ÉCRIT : le verdict du mélange peut
     avoir changé la machine d'une piste ajoutée, ou la boîte d'une batterie
@@ -2784,7 +2791,7 @@ def chaine(args: argparse.Namespace) -> None:
         # distance globale, écrasait le fichier sans elle, et le rapport final
         # -- le seul qu'on lit -- ne disait ni commit, ni options, ni modèles.
         # A4.2 était « fait » et son résultat n'existait pas sur disque.
-        complements: Dict[str, object] = dict(
+        complements: Dict[str, Any] = dict(
             provenance=provenance(args, classifieur, frappes, identite_moteur),
             drums=chantier.rapport_batterie,
             mix_verdict=verdict or None,

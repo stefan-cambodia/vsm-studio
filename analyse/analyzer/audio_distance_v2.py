@@ -38,7 +38,7 @@ lequel des deux changements a produit l'effet observé.
 
 from __future__ import annotations
 
-from typing import Dict
+from typing import Any, Dict
 
 import numpy as np
 
@@ -77,8 +77,8 @@ def spectral_contrast(y: np.ndarray, sr: int) -> np.ndarray:
 
 
 def distance_terms(
-    target_features: Dict[str, object],
-    candidate_features: Dict[str, object],
+    target_features: Dict[str, Any],
+    candidate_features: Dict[str, Any],
     target_envelope: np.ndarray,
     candidate_envelope: np.ndarray,
     target_contrast: np.ndarray,

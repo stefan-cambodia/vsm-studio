@@ -37,7 +37,7 @@ import platform
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 
@@ -151,14 +151,14 @@ def exemples_ambigus(X_entrainement: np.ndarray, y_entrainement: np.ndarray,
     # l'ambiguïté se mesurerait alors surtout contre les classes abondantes.
     if len(A) > reference_maximale:
         rng = np.random.default_rng(graine)
-        garde = []
+        par_classe_gardes = []
         par_classe = max(1, reference_maximale // max(1, len(np.unique(y_entrainement))))
         for classe in np.unique(y_entrainement):
             indices = np.flatnonzero(y_entrainement == classe)
             if len(indices) > par_classe:
                 indices = rng.choice(indices, par_classe, replace=False)
-            garde.append(indices)
-        garde = np.concatenate(garde)
+            par_classe_gardes.append(indices)
+        garde = np.concatenate(par_classe_gardes)
         A, y_entrainement = A[garde], y_entrainement[garde]
 
     # Distances par produit matriciel : ||a-b||² = ||a||² + ||b||² - 2·a·b.
@@ -192,7 +192,7 @@ class Classifieur:
     noms: List[str]
     moyenne: np.ndarray
     echelle: np.ndarray
-    modele: object                       # estimateur scikit-learn
+    modele: Any                          # estimateur scikit-learn
     empreintes: Dict[str, str]           # celles du corpus d'entraînement
     seuil_abstention: float
     rayon_nouveaute: float
@@ -200,7 +200,7 @@ class Classifieur:
     graine: int
     date: str
     versions: Dict[str, str]
-    mesures: Dict[str, object] = field(default_factory=dict)
+    mesures: Dict[str, Any] = field(default_factory=dict)
 
     # -- inférence ----------------------------------------------------------
 
@@ -299,7 +299,7 @@ QUANTILE_RAYON = 0.90
 
 def entraine(corpus: CorpusCharge, graine: int = 20260823, part_epreuve: float = 0.2,
              seuil_abstention: float = 0.20, quantile_rayon: float = QUANTILE_RAYON,
-             progression=None) -> Tuple[Classifieur, Dict[str, object]]:
+             progression=None) -> Tuple[Classifieur, Dict[str, Any]]:
     """Entraîne et MESURE. Rend le classifieur et le rapport de son épreuve."""
     from sklearn.ensemble import HistGradientBoostingClassifier
 
