@@ -61,11 +61,18 @@ MachinePanel makeMinimoog() {
     mixer.title = "MIXER";
     mixer.accentColour = "#C8A24D";
     mixer.column = 5; mixer.row = 0; mixer.columnSpan = 2; mixer.rowSpan = 4;
+    // UNE COLONNE, QUATRE RANGÉES — et c'est à la fois plus juste et plus
+    // lisible (D64). Sur la machine d'origine, le mélangeur est une BANDE
+    // VERTICALE : les trois volumes d'oscillateur et le bruit s'empilent, ils
+    // ne forment pas un carré. La disposition en 2x2 tenait dans deux colonnes
+    // de grille sur seize, ce qui donnait des cellules de 11 px de large et des
+    // potentiomètres illisibles ; en colonne, chaque cellule reçoit les deux
+    // colonnes de grille et le bouton triple de taille.
     mixer.controls = {
         control("Osc1 Level", "OSC 1", S::Knob, 0, 0),
-        control("Osc2 Level", "OSC 2", S::Knob, 1, 0),
-        control("Osc3 Level", "OSC 3", S::Knob, 0, 1),
-        control("Noise Level", "NOISE", S::Knob, 1, 1),
+        control("Osc2 Level", "OSC 2", S::Knob, 0, 1),
+        control("Osc3 Level", "OSC 3", S::Knob, 0, 2),
+        control("Noise Level", "NOISE", S::Knob, 0, 3),
     };
 
     PanelSection modifiers;

@@ -10020,3 +10020,69 @@ propre phase plutôt qu'à glisser dans celle-ci.
 1280x742, la façade gagne les soixante pixels qui lui manquaient.
 
 Tests : 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — verts.
+
+### Phase D64 — Le mélangeur du Minimoog est une BANDE VERTICALE, et le dessiner en carré coûtait 11 pixels de large (10/09/2026, 02:30)
+
+**LES QUATRE BOUTONS QUE D63 AVAIT LAISSÉS.** Cellules de **11x24** : c'est la
+largeur qui les borne, pas la hauteur. Ils appartiennent tous au bloc « MIXER »
+du Minimoog, à qui la description donne **deux colonnes sur seize** pour une
+grille interne de **2x2**. Deux colonnes de grille valent 50 px à un rack de
+426 ; moins les frais du bloc, il reste 34 px pour deux colonnes internes, donc
+17 par cellule, donc 11 pour le bouton.
+
+**LA CORRECTION EST DANS LA DESCRIPTION, ET ELLE REND LA FAÇADE PLUS JUSTE.**
+Sur la machine d'origine, le mélangeur n'est pas un carré : c'est une **bande
+verticale** où les trois volumes d'oscillateur et le bruit s'empilent. Le 2x2
+était une licence de dessin, pas une fidélité. En colonne — quatre rangées,
+une seule colonne interne — chaque cellule reçoit les deux colonnes de grille
+entières, et le bouton **triple** de taille.
+
+| | | plus petit bouton | boutons sous 18 px |
+|---|---|---|---|
+| après D62 | 900x660 | 0 px | 23 |
+| après D63 | 900x660 | 11 px | 4 |
+| **après D64** | 900x660 | **19 px** | **0** |
+| après D62 | 1280x742 | 18 px | 0 |
+| après D63 | 1280x742 | 23 px | 0 |
+| **après D64** | 1280x742 | **29 px** | 0 |
+
+Sur les 49 cellules que le rack pose pour ces machines, **plus aucun bouton
+n'est sous le plancher de 18 px**, aux deux tailles de fenêtre. La série
+D62-D63-D64 est close.
+
+#### Deux remèdes écrits, mesurés, et RETIRÉS — c'est la moitié du travail
+
+**1. Prendre la largeur de la façade comme plancher de la poignée du rack**,
+comme le dock du bas prend celle de la tranche master depuis D59. Écrit, puis
+retiré par la mesure : les 54 façades décrites réclament de **156 à 1 372 px**,
+médiane **420**, et **26 d'entre elles** demandent plus que les 426 px que le
+rack reçoit. Le plancher aurait donc élargi le rack de force sur la moitié du
+parc, en écrasant une largeur que l'utilisateur choisit et que l'application
+retient (`dock.droite`). **Une disposition réglable ne se reprend pas à son
+propriétaire.**
+
+**2. Faire défiler la façade HORIZONTALEMENT** quand elle ne tient pas, comme
+D63 l'a fait en hauteur. Écrit, compilé, REGARDÉ : sur le Divider, on ne voyait
+plus que **trois blocs sur six**, « ENVELO… » coupé au bord droit, et il fallait
+défiler dans les deux sens pour trouver un réglage. Retiré le jour même. La
+différence avec la hauteur n'est pas une question de goût : **une façade
+tronquée en bas reste lisible en haut, une façade tronquée à droite perd des
+blocs entiers.**
+
+**ET LE CALCUL DE CETTE LARGEUR AVAIT UN DÉFAUT, TROUVÉ EN LE RELISANT.** Sa
+première version posait un plancher de 40 px par colonne de grille
+*indépendamment des blocs* — comme si chaque colonne devait porter un bloc à
+elle seule. Elle annonçait 428 px pour la façade la moins exigeante là où le
+compte juste en donne 156, et gonflait les cinquante-quatre d'un coup. Corrigée,
+la table ci-dessus est celle qui a servi à décider. Le calcul lui-même a été
+retiré avec le témoin : il a fait son travail, qui était de produire ce chiffre.
+
+**CE QUE LA TABLE LAISSE OUVERT.** Vingt-six façades demandent plus que le rack
+par défaut ; les plus gourmandes sont `vsm.generic` (1 372 px, grille de 24
+colonnes), `vsm.obx`, `vsm.wavetable` et `vsm.pcmhybrid` (1 148, grille de 20).
+Ce sont des grilles trop fines pour une colonne latérale, et le remède est du
+côté des DESCRIPTIONS — comme celui du Minimoog vient de l'être, et en y
+gagnant en fidélité. À faire machine par machine, quand une mesure ou une
+écoute le réclame, pas en bloc.
+
+Tests : 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — verts.

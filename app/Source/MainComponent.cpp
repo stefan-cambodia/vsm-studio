@@ -1133,6 +1133,15 @@ void MainComponent::layoutDockedPanels(juce::Rectangle<int> area) {
     dockBas_ = juce::jlimit(plancherDuBas, juce::jmax(plancherDuBas + 1, area.getHeight() - 220),
                              dockBas_);
     dockGauche_ = juce::jlimit(180, juce::jmax(181, area.getWidth() / 2), dockGauche_);
+    // D64 : LE PLANCHER DU RACK RESTE 220, ET C'EST UNE DÉCISION. Le prendre
+    // sur ce que la façade réclame — comme le dock du bas prend celui de la
+    // tranche master depuis D59 — a été écrit, puis RETIRÉ par la mesure : les
+    // 54 façades décrites demandent de 428 à 1372 px, contre 426 que le rack
+    // reçoit par défaut. Le plancher aurait donc élargi le rack de force sur
+    // presque toutes les machines, en écrasant une largeur que l'utilisateur a
+    // choisie et que l'application retient (`dock.droite`). Une disposition
+    // réglable ne se reprend pas à son propriétaire ; c'est la façade qui
+    // défile quand elle ne tient pas.
     dockDroite_ = juce::jlimit(220, juce::jmax(221, area.getWidth() / 2), dockDroite_);
 
     sepBas_.setVisible(bottomTabs_.isVisible());

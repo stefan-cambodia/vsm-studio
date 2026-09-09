@@ -48,6 +48,7 @@ public:
     /// Rend 0 quand il n'y a pas de façade.
     int hauteurUtile() const;
 
+
     /// Proportions naturelles de la façade, pour que le conteneur puisse lui
     /// réserver une place cohérente.
     double aspectRatio() const;

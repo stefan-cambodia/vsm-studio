@@ -108,7 +108,8 @@ dernier. Chaque élément porte sa source ; **aucun n'est inventé ici**.
 | # | Travail | Source | Chiffre en main |
 |---|---|---|---|
 | ~~A1~~ | ~~Deux cellules de façade n'ont aucune hauteur~~ — **CLOS par D63** : la façade réclame la hauteur de sa grille et défile en dessous | `ROADMAP-daw.md` D63 | 2 boutons à 0 px → **0** |
-| A2 | **Quatre boutons du Minimoog restent sous 18 px** — ce n'est plus la hauteur mais la **largeur** de la cellule (11 px), et le rack est une colonne étroite par construction. Une largeur minimale ferait défiler le rack horizontalement : seconde variable, sa propre phase | `ROADMAP-daw.md` D63 | 21 → **4 / 49** sous 18 px |
+| ~~A2~~ | ~~Quatre boutons du Minimoog sous 18 px~~ — **CLOS par D64** : son mélangeur est une bande verticale sur la machine d'origine, le dessiner en carré coûtait 11 px de large | `ROADMAP-daw.md` D64 | 23 → 4 → **0 / 49** sous 18 px |
+| A5 | **Vingt-six façades sur 54 demandent plus de largeur que le rack** — `vsm.generic` 1 372 px, `vsm.obx`/`vsm.wavetable`/`vsm.pcmhybrid` 1 148, pour un rack de 426. Grilles trop fines pour une colonne latérale ; le remède est du côté des **descriptions**, machine par machine | `ROADMAP-daw.md` D64 | médiane 420 px, min 156, max 1 372 |
 | A3 | **La molette de hauteur manque à sept machines** où un musicien plie la note (flûte, e-piano, clavinet, guimbarde, vielle, mandoline, kalimba) — un travail par machine, sur son modèle | `ROADMAP-daw.md` D26 | 42 machines la tiennent, 7 la devraient |
 | A4 | **`--batterie-par-piece` n'a pas de mesure de distance** — l'option est câblée et testée, son effet sur la fidélité n'est pas chiffré | `CDC-detection-multipiste.md` § 4.4 | — |
 

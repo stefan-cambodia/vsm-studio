@@ -149,6 +149,14 @@ void SynthRackComponent::resized() {
         // 900x660 sur le TB-303 : la section « RÉGLAGES » recevait une
         // cellule de 43x0 — un bouton qui n'existe pas.
         vueFacade_.setBounds(area);
+        // D64 : LA LARGEUR NE DÉFILE PAS, et c'est une décision prise APRÈS
+        // l'avoir écrite et regardée. Le faire donnait à la façade la largeur
+        // qu'elle réclame — de beaux potentiomètres — mais n'en montrait plus
+        // que la moitié : sur le Divider, trois blocs sur six et « ENVELO… »
+        // coupé au bord. Un rack où l'on cherche un réglage en défilant dans
+        // les deux sens est pire qu'un rack où on le voit petit. La hauteur,
+        // elle, défile (D63) : une façade tronquée EN BAS reste lisible en
+        // haut, une façade tronquée à DROITE perd des blocs entiers.
         const int voulue = machinePanel_.hauteurUtile();
         const bool defile = voulue > area.getHeight();
         machinePanel_.setSize(defile ? area.getWidth() - vueFacade_.getScrollBarThickness()

@@ -69,6 +69,7 @@ private:
     /// rack, quelle qu'elle soit, pendant que la façade GÉNÉRIQUE — celle des
     /// machines sans dessin — était protégée par `viewport_` depuis toujours.
     juce::Viewport vueFacade_;
+
     bool usingMachinePanel_ = false;
 
     struct ParamControl {
