@@ -10127,3 +10127,60 @@ Tests : 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — verts.
 > `grep -c "^MachinePanel make" panels/src/MachinePanels.cpp` en rend 63 — et
 > il ne l'a pas été. La leçon d'exploitation qui s'ajoute aux précédentes :
 > **un témoin de mesure écrit dans un FICHIER, jamais dans un tube.**
+
+### Phase D65 — Un synoptique dont aucun poste ne se voit : les deux façades les plus larges, empilées (10/09/2026, 04:00)
+
+**LA TABLE DE D64 DÉSIGNAIT DES COUPABLES ; ENCORE FALLAIT-IL LES REGARDER.**
+Elle donnait une largeur *réclamée par la grille* — un calcul. Ce qui juge une
+façade, c'est le diamètre RENDU de ses boutons. Les cinq plus exigeantes ont
+donc été mises dans un projet d'essai et ouvertes, et le témoin a relevé chaque
+cellule posée :
+
+| façade | boutons relevés | plus petit | sous 18 px | cellule la plus étroite |
+|---|---|---|---|---|
+| `vsm.generic` | 25 | **0 px** | **25 / 25** | **3x12** — « RATE » |
+| `vsm.obx` | 8 | **4 px** | **8 / 8** | 5x16 — « WAVE » |
+
+**AUCUN bouton du synthé générique n'atteignait le plancher de 18 px**, et le
+plus petit n'avait aucune surface du tout. C'est la machine que
+`CDC-machines-manquantes.md` a conçue POUR LA RECHERCHE, celle qui gagne le stem
+de basse : sa façade n'existait pas.
+
+**LA CAUSE EST LA MÊME POUR LES DEUX, ET ELLE EST DANS LA DESCRIPTION.** Les
+sept blocs du générique tenaient sur **une seule rangée de vingt-quatre
+colonnes** ; les sept de l'OB-X sur une rangée de vingt. Une lecture de gauche à
+droite, superbe sur un écran large — et le rack est une colonne de 426 px.
+
+**CE QUI CHANGE : LES BLOCS S'EMPILENT.** Huit colonnes, dix rangées, deux blocs
+côte à côte quand ils sont étroits (les deux oscillateurs, les deux enveloppes).
+**Le sens de lecture est conservé** : sources, filtre, enveloppes, modulation,
+sortie — de haut en bas au lieu de gauche à droite, ce qu'un synoptique supporte
+sans rien perdre.
+
+| | plus petit bouton | sous 18 px | cellule la plus étroite |
+|---|---|---|---|
+| `vsm.generic` avant | 0 px | 25 | 3x12 |
+| `vsm.generic` après | **35 px** | **0** | **55x47** |
+| `vsm.obx` avant | 4 px | 8 | 5x16 |
+| `vsm.obx` après | **35 px** | **0** | **40x47** |
+
+**ET C'EST D63 QUI REND CELA POSSIBLE.** Empiler rend la façade plus HAUTE — le
+générique réclame maintenant plus que le rack n'a. Avant D63, cela l'aurait
+écrasée ; depuis, elle défile. **La hauteur est devenue bon marché, la largeur
+ne l'est pas** : c'est la conclusion de D64 employée, et non plus seulement
+écrite.
+
+**CE QUI N'EST PAS FAIT, ET POURQUOI.** `vsm.wavetable`, `vsm.pcmhybrid` et
+`vsm.supersaw` ont exactement la même forme — tous leurs blocs sur la rangée 0,
+sur dix-huit à vingt colonnes — et la table de D64 les place juste derrière.
+Mais **ils n'ont pas été mesurés à l'écran** : dans les courses du témoin, ils
+n'ont pas été posés. Corriger une façade sur la foi d'un calcul quand le
+diamètre rendu est mesurable serait exactement ce que ce document interdit
+ailleurs. Ils attendent leur mesure, et le compte d'A5 reste à trente et une.
+
+**VU À L'ÉCRAN.** Le générique montre ses douze sources nommées (SHAPE 1, LVL 1,
+PW 1, DETUNE, SUB, NOISE / SHAPE 2, LVL 2, PW 2, OCTAVE, SUB SH, COLOUR) et son
+filtre dessous ; l'OB-X montre CONTROL avec ses trois curseurs et ses deux
+boutons, puis OSCILLATOR 1 et OSCILLATOR 2 côte à côte.
+
+Tests : 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — verts.

@@ -1064,8 +1064,11 @@ MachinePanel makeObx() {
     panel.sectionColour = "#0F0F10";
     panel.textColour = "#EDE7DA";
     panel.knobColour = "#DFD8C6";
-    panel.gridColumns = 20;
-    panel.gridRows = 6;
+    // D65 : HUIT COLONNES, SEPT BLOCS EMPILÉS. Les sept tenaient sur une
+    // rangée de vingt : dans le rack, les huit commandes mesurées faisaient
+    // toutes moins de 18 px, la plus petite QUATRE. On empile.
+    panel.gridColumns = 8;
+    panel.gridRows = 10;
 
     // Note de disposition : les curseurs portent rowSpan 2 pour occuper toute
     // la hauteur de leur bloc, et les commandes à positions discrètes
@@ -1075,7 +1078,7 @@ MachinePanel makeObx() {
     PanelSection control_;
     control_.title = "CONTROL";
     control_.accentColour = "#D9722E";
-    control_.column = 0; control_.row = 0; control_.columnSpan = 4; control_.rowSpan = 6;
+    control_.column = 0; control_.row = 0; control_.columnSpan = 8; control_.rowSpan = 2;
     control_.controls = {
         control("LFO Rate", "RATE", S::VerticalSlider, 0, 0, 1, 2),
         control("LFO to Pitch", "FREQ", S::VerticalSlider, 1, 0, 1, 2),
@@ -1087,7 +1090,7 @@ MachinePanel makeObx() {
     PanelSection osc1;
     osc1.title = "OSCILLATOR 1";
     osc1.accentColour = "#E8C24A";
-    osc1.column = 4; osc1.row = 0; osc1.columnSpan = 3; osc1.rowSpan = 6;
+    osc1.column = 0; osc1.row = 2; osc1.columnSpan = 4; osc1.rowSpan = 2;
     osc1.controls = {
         control("Osc1 Level", "LEVEL", S::VerticalSlider, 0, 0, 1, 2),
         control("Osc1 Pulse Width", "PW", S::VerticalSlider, 1, 0, 1, 2),
@@ -1097,7 +1100,7 @@ MachinePanel makeObx() {
     PanelSection osc2;
     osc2.title = "OSCILLATOR 2";
     osc2.accentColour = "#E8C24A";
-    osc2.column = 7; osc2.row = 0; osc2.columnSpan = 3; osc2.rowSpan = 6;
+    osc2.column = 4; osc2.row = 2; osc2.columnSpan = 4; osc2.rowSpan = 2;
     osc2.controls = {
         control("Osc2 Level", "LEVEL", S::VerticalSlider, 0, 0, 1, 2),
         control("Osc2 Pulse Width", "PW", S::VerticalSlider, 1, 0, 1, 2),
@@ -1109,7 +1112,7 @@ MachinePanel makeObx() {
     PanelSection filter;
     filter.title = "FILTER";
     filter.accentColour = "#D9722E";
-    filter.column = 10; filter.row = 0; filter.columnSpan = 4; filter.rowSpan = 6;
+    filter.column = 0; filter.row = 4; filter.columnSpan = 8; filter.rowSpan = 2;
     filter.controls = {
         control("Filter Cutoff", "FREQUENCY", S::VerticalSlider, 0, 0, 1, 2),
         control("Filter Resonance", "RESONANCE", S::VerticalSlider, 1, 0, 1, 2),
@@ -1125,7 +1128,7 @@ MachinePanel makeObx() {
     PanelSection filterEnv;
     filterEnv.title = "FILTER ENVELOPE";
     filterEnv.accentColour = "#8FA9C9";
-    filterEnv.column = 14; filterEnv.row = 0; filterEnv.columnSpan = 2; filterEnv.rowSpan = 6;
+    filterEnv.column = 0; filterEnv.row = 6; filterEnv.columnSpan = 4; filterEnv.rowSpan = 2;
     filterEnv.controls = {
         control("Filter Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
         control("Filter Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
@@ -1136,7 +1139,7 @@ MachinePanel makeObx() {
     PanelSection ampEnv;
     ampEnv.title = "AMP ENVELOPE";
     ampEnv.accentColour = "#8FA9C9";
-    ampEnv.column = 16; ampEnv.row = 0; ampEnv.columnSpan = 2; ampEnv.rowSpan = 6;
+    ampEnv.column = 4; ampEnv.row = 6; ampEnv.columnSpan = 4; ampEnv.rowSpan = 2;
     ampEnv.controls = {
         control("Amp Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
         control("Amp Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
@@ -1147,7 +1150,7 @@ MachinePanel makeObx() {
     PanelSection performance;
     performance.title = "MANUAL";
     performance.accentColour = "#D9722E";
-    performance.column = 18; performance.row = 0; performance.columnSpan = 2; performance.rowSpan = 6;
+    performance.column = 0; performance.row = 8; performance.columnSpan = 8; performance.rowSpan = 2;
     performance.controls = {
         control("Unison", "UNISON", S::Toggle, 0, 0),
         control("Unison Detune", "DETUNE", S::Knob, 1, 0),
@@ -1576,9 +1579,17 @@ MachinePanel makeTonewheel() {
 // doit voir au premier regard qu'on est devant un outil, pas devant un
 // instrument qui a une histoire.
 //
-// La disposition suit le signal de gauche à droite, comme un synoptique :
-// sources, filtre, enveloppes, modulation, sortie. C'est la lecture la plus
-// neutre possible, celle d'un manuel.
+// La disposition suit le signal comme un synoptique : sources, filtre,
+// enveloppes, modulation, sortie. C'est la lecture la plus neutre possible,
+// celle d'un manuel.
+//
+// DE GAUCHE À DROITE, PUIS DE HAUT EN BAS (D65). Les sept blocs tenaient sur
+// UNE rangée de vingt-quatre colonnes : superbe sur un écran large, illisible
+// dans le rack, qui est une colonne de 426 px. Mesuré : les vingt-cinq
+// commandes étaient TOUTES sous le plancher de 18 px, la plus étroite dans une
+// cellule de 3x12 -- un synoptique dont aucun poste ne se voit n'est plus un
+// synoptique. Les blocs s'empilent donc sur huit colonnes, et le sens de
+// lecture reste le même : la hauteur défile depuis D63, la largeur non.
 // ---------------------------------------------------------------------------
 MachinePanel makeGeneric() {
     MachinePanel panel;
@@ -1589,13 +1600,14 @@ MachinePanel makeGeneric() {
     panel.sectionColour = "#232528";
     panel.textColour = "#DDE0E4";
     panel.knobColour = "#8C9096";
-    panel.gridColumns = 24;
-    panel.gridRows = 6;
+    // D65 : HUIT COLONNES ET DIX RANGÉES, là où c'était vingt-quatre sur six.
+    panel.gridColumns = 8;
+    panel.gridRows = 10;
 
     PanelSection sources;
     sources.title = "SOURCES";
     sources.accentColour = "#7E8A96";
-    sources.column = 0; sources.row = 0; sources.columnSpan = 7; sources.rowSpan = 6;
+    sources.column = 0; sources.row = 0; sources.columnSpan = 8; sources.rowSpan = 2;
     sources.controls = {
         // La forme est un potentiomètre CONTINU et non un sélecteur : c'est
         // l'exigence centrale de cette machine, et la façade doit le dire.
@@ -1616,7 +1628,7 @@ MachinePanel makeGeneric() {
     PanelSection filter;
     filter.title = "FILTER";
     filter.accentColour = "#7E8A96";
-    filter.column = 7; filter.row = 0; filter.columnSpan = 5; filter.rowSpan = 6;
+    filter.column = 0; filter.row = 2; filter.columnSpan = 8; filter.rowSpan = 2;
     filter.controls = {
         // Le type aussi est continu : LP -> BP -> HP sans palier.
         control("Filter Type", "TYPE", S::LargeKnob, 0, 0),
@@ -1631,7 +1643,7 @@ MachinePanel makeGeneric() {
     PanelSection ampEnv;
     ampEnv.title = "AMP ENV";
     ampEnv.accentColour = "#8FA9C9";
-    ampEnv.column = 12; ampEnv.row = 0; ampEnv.columnSpan = 2; ampEnv.rowSpan = 6;
+    ampEnv.column = 0; ampEnv.row = 4; ampEnv.columnSpan = 4; ampEnv.rowSpan = 2;
     ampEnv.controls = {
         control("Amp Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
         control("Amp Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
@@ -1642,7 +1654,7 @@ MachinePanel makeGeneric() {
     PanelSection filterEnv;
     filterEnv.title = "FILTER ENV";
     filterEnv.accentColour = "#8FA9C9";
-    filterEnv.column = 14; filterEnv.row = 0; filterEnv.columnSpan = 2; filterEnv.rowSpan = 6;
+    filterEnv.column = 4; filterEnv.row = 4; filterEnv.columnSpan = 4; filterEnv.rowSpan = 2;
     filterEnv.controls = {
         control("Filter Attack", "A", S::VerticalSlider, 0, 0, 1, 2),
         control("Filter Decay", "D", S::VerticalSlider, 1, 0, 1, 2),
@@ -1653,7 +1665,7 @@ MachinePanel makeGeneric() {
     PanelSection lfo1;
     lfo1.title = "LFO 1";
     lfo1.accentColour = "#9FA6AD";
-    lfo1.column = 16; lfo1.row = 0; lfo1.columnSpan = 3; lfo1.rowSpan = 6;
+    lfo1.column = 0; lfo1.row = 6; lfo1.columnSpan = 4; lfo1.rowSpan = 2;
     lfo1.controls = {
         control("LFO1 Rate", "RATE", S::Knob, 0, 0),
         control("LFO1 Shape", "SHAPE", S::Knob, 1, 0),
@@ -1666,7 +1678,7 @@ MachinePanel makeGeneric() {
     PanelSection lfo2;
     lfo2.title = "LFO 2";
     lfo2.accentColour = "#9FA6AD";
-    lfo2.column = 19; lfo2.row = 0; lfo2.columnSpan = 2; lfo2.rowSpan = 6;
+    lfo2.column = 4; lfo2.row = 6; lfo2.columnSpan = 4; lfo2.rowSpan = 2;
     lfo2.controls = {
         control("LFO2 Rate", "RATE", S::Knob, 0, 0),
         control("LFO2 Shape", "SHAPE", S::Knob, 1, 0),
@@ -1677,7 +1689,7 @@ MachinePanel makeGeneric() {
     PanelSection output;
     output.title = "OUTPUT";
     output.accentColour = "#7E8A96";
-    output.column = 21; output.row = 0; output.columnSpan = 3; output.rowSpan = 6;
+    output.column = 0; output.row = 8; output.columnSpan = 8; output.rowSpan = 2;
     output.controls = {
         control("Drive", "DRIVE", S::Knob, 0, 0),
         control("Output Level", "LEVEL", S::Knob, 1, 0),
