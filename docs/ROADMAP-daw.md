@@ -9305,3 +9305,132 @@ n'est pas le rendu qui est mesuré, c'est le fichier — la leçon de D49.
 Tests : 1 291 audio, 319 core, 287 interchange, 25 clap, 11 panels — verts
 (six bancs neufs pour la hauteur d'un clip, un aller-retour de sérialisation
 avec ses cents).
+
+### Phase D55 — Le vingt-troisième audit : ce que « enregistrer puis rouvrir » perd, champ par champ (09/09/2026, 16:25)
+
+**POURQUOI CETTE LUNETTE-LÀ.** Les audits précédents ont cherché des gestes
+absents (D32, D33), puis du code que personne n'appelle (D35), puis des valeurs
+qu'un seul panneau relisait (D37). Il reste une famille qu'aucun n'a couverte,
+et c'est celle qui coûte le plus cher à l'utilisateur : **un réglage qu'on pose,
+qu'on enregistre, et qui n'est plus là quand on rouvre**. Elle ne se voit pas en
+lisant le code — le champ EXISTE, le geste EXISTE, la sauvegarde RÉUSSIT — et
+elle ne se découvre qu'à l'usage, longtemps après, quand plus personne ne sait
+ce qui l'a mangé.
+
+**LA MÉTHODE : LE MODÈLE EST LA LISTE DE CONTRÔLE.** Plutôt que de deviner quel
+champ pourrait manquer, on les prend TOUS. Un projet dont chaque champ de
+`Project`, de `Track`, de `Clip`, de `Take`, de `Marker`, de `SendBusDescription`,
+de `TrackEffect`, de `MidiEffect`, d'`AutomationPoint` et de `WarpMarker` porte
+une valeur DISTINCTIVE (jamais son défaut, sans quoi « conservé » ne prouverait
+rien), écrit par le chemin réel de l'application (`saveProjectBundle`), relu par
+le chemin réel (`loadProjectBundle`), puis comparé champ par champ.
+
+**CE QUE L'AUDIT A RENDU : 122 champs éprouvés, 120 conservés, 2 non — et LES
+DEUX SONT DES DÉCISIONS DÉJÀ PRISES**, pas des pannes.
+
+| champ | verdict |
+|---|---|
+| `Track::armed` | **volontairement absent.** D22.5 l'a déjà écrit : l'armement est « un état de séance », au même titre que le varispeed de D18.5 qui n'est « écrit NULLE PART dans le projet ». Rouvrir un projet dont une piste s'arme toute seule est un piège, pas un service |
+| `Clip::id` | **régénéré, et c'est équivalent.** L'identifiant d'un clip est une poignée de séance (sélection, `clipById`) ; rien dans le fichier ne le référence, et `assignClipIds()` en pose un neuf à l'ouverture. Le LIEN entre deux clips, lui, ne passe pas par l'identifiant mais par la fenêtre (`clipIsShared` compare `sourceStart`/`sourceLength`) : il survit donc à l'aller-retour, ce que l'audit vérifie aussi |
+
+**L'AUDIT A ÉTÉ CASSÉ EXPRÈS POUR VOIR S'IL MORD**, comme celui de D54. Deux
+sabotages dans le sérialiseur — `Clip::gain` non écrit, `midiInputChannel`
+forcé à zéro — font tomber **trois** assertions (le gain est éprouvé sur le clip
+d'une piste ET sur celui d'une prise), et le compte passe de 2 à 5 perdus. Un
+banc qui passe du premier coup mérite qu'on vérifie qu'il mesure quelque chose.
+
+| Étape | Contenu | Terminé quand |
+|---|---|---|
+| D55.1 | **L'aller-retour champ par champ devient un test permanent.** Le banc ci-dessus a trouvé zéro défaut aujourd'hui ; sa valeur n'est pas là. Elle est dans le PROCHAIN champ ajouté au modèle et oublié dans le sérialiseur — le défaut de D51 et de D53, deux fois le même — qu'il fera tomber le jour où il est écrit | un test d'`interchange/` qui construit le projet distinctif, l'écrit, le relit et compare les 122 champs ; les deux non-conservés y sont écrits comme des décisions, avec leur raison, et non passés sous silence |
+| D55.2 | **La recette de l'assemblage des prises est jetée après usage.** `TakeCompComponent` détient la liste des tronçons — « de la mesure 1 à 4, la prise 2 » — et son propre en-tête promet qu'on peut « corriger une frontière sans avoir à tout refaire ». C'est faux : `setTake` vide la liste À CHAQUE ouverture du panneau, même sur la même piste, et rien ne l'écrit dans le projet. On compose, on écoute, on rouvre pour déplacer une frontière — et l'on retape tout | les tronçons vivent dans `Track`, sont écrits dans `project.json` quand il y en a (et seulement alors : un projet sans assemblage garde son fichier octet pour octet), et le panneau les RELIT au lieu de les vider |
+
+**CE QUI EST ATTENDU DE D55.2, ÉCRIT AVANT LA MESURE.**
+
+1. Deux tronçons posés, « Composer » cliqué, le panneau fermé puis rouvert :
+   j'attends **2** tronçons affichés, là où la mesure d'aujourd'hui en donne
+   **0**. C'est le geste exact que l'en-tête du panneau promet.
+2. Le même après enregistrement et réouverture du projet : **2** encore.
+3. Un projet sans assemblage garde son `project.json` **octet pour octet** —
+   vérifié par comparaison des deux fichiers, pas par lecture.
+4. Un tronçon qui désigne une prise disparue est **écarté en le disant** au
+   rapport d'import, jamais gardé pointant à côté.
+
+> **LA PHASE D55 EST FAITE (09/09/2026, 16:45), et les quatre attendus de
+> D55.2 sont tenus.**
+>
+> **D55.1 — LE BANC EST DEVENU UN TEST** (`interchange/tests/test_project_roundtrip.cpp`).
+> Six pistes, une par forme que le modèle sait prendre — MIDI chargée, audio
+> avec ses clips, publiée, dossier, membre de dossier, groupe — et 122 champs
+> comparés après un aller-retour par le disque. Les deux qui ne survivent pas
+> y sont AFFIRMÉS plutôt que tus : le jour où l'armement se mettrait à
+> survivre, le test tombe et l'on décide, au lieu de le découvrir en
+> s'étonnant qu'une piste s'arme toute seule.
+>
+> **UN DÉTAIL QUE LA MESURE A OBLIGÉ À ÉCRIRE, ET QUI ÉTAIT UN FAUX DÉFAUT.**
+> La confiance d'une note revient à **0,500008** pour 0,5 demandé. Ce n'est pas
+> une perte mais la traversée d'un entier 16 bits dans le bloc privé du SMF
+> (1/65535). Le test le dit dans sa tolérance, plutôt que de prétendre à
+> l'exactitude d'un flottant qui ne traverse pas le fichier — et un premier
+> jet, avec sa tolérance à 1e-6, l'avait compté comme un champ perdu.
+>
+> **DEUX AUTRES FAUSSES ALERTES, DITES PARCE QU'ELLES INSTRUISENT.**
+> `Track::instrumentId` est d'abord ressorti « PERDU » : le banc demandait la
+> machine « minimoog » quand le registre la nomme `vsm.minimoog`, et le
+> chargeur avait raison de refuser de deviner (il le SIGNALE, c'est la règle de
+> D18.7). Et `Clip::id` a été suspecté de casser les copies liées, jusqu'à ce
+> que la lecture de `clipIsShared` montre que le lien passe par la FENÊTRE et
+> non par l'identifiant — le test le vérifie maintenant sur deux clips
+> réellement liés.
+>
+> **D55.2 — LA RECETTE DE L'ASSEMBLAGE VIT DANS LA PISTE.**
+> `Track::compSegments`, écrite dans `project.json` sous la clé `comp` **et
+> seulement quand il y en a une**. Le panneau la RELIT au lieu de la vider.
+>
+> | | avant | après |
+> |---|---|---|
+> | panneau rouvert dans la même séance (fermer, rouvrir) | **0 tronçon** | **2** |
+> | projet enregistré puis rouvert | **0** | **2** |
+> | `comp` dans le fichier d'un projet sans assemblage | absent | **absent** |
+> | version du fichier | 2 | **2** |
+>
+> Le témoin est le MÊME BINAIRE sur un projet écrit avant l'étape : il ouvre
+> à `0 au panneau, 0 sur la piste`, et rien n'est inventé. C'est aussi
+> exactement ce que faisait le code d'avant, dont la piste ne pouvait rien
+> porter.
+>
+> **LA VERSION DU FICHIER NE MONTE PAS, ET C'EST UNE DÉCISION.** Le suivi de
+> tempo (D12), l'inversion (D13.4) et la transposition d'un clip (D54) l'ont
+> fait monter parce qu'ils changent CE QU'ON ENTEND : un lecteur ancien qui les
+> ignore joue autre chose sans le dire. Une recette d'assemblage ne change rien
+> à ce qu'on entend — le matériau composé est déjà dans les notes. Un lecteur
+> qui l'ignore joue le même morceau ; il perd seulement le moyen de recomposer
+> autrement. Faire monter la version pour cela rendrait illisibles, chez les
+> autres, des projets qui sonnent pareil.
+>
+> **ET LA RECETTE EST POSÉE PAR « COMPOSER », PAR LUI SEUL.** Les tronçons
+> qu'on ajoute et retire avant de composer restent dans le panneau : écrire
+> dans le projet une recette qui ne décrit pas le matériau présent donnerait un
+> fichier qui se contredit. Ce que la piste porte décrit donc toujours ce qu'on
+> entend — et c'est posé dans la MÊME édition annulable que le matériau, sans
+> quoi annuler l'assemblage laisserait une recette orpheline.
+>
+> **UN TRONÇON QUI DÉSIGNE UNE PRISE ABSENTE EST ÉCARTÉ ET NOMMÉ** au rapport
+> d'import (« 2 tronçon(s) d'assemblage écarté(s) »), bornes vides comprises.
+> Le commentaire du panneau annonçait déjà cette règle (« des tronçons qui
+> désignent des prises disparues ne désignent rien ») ; elle est passée du
+> commentaire au code, et à l'endroit qui peut la DIRE.
+>
+> **CE QUE L'ÉCRAN A OBLIGÉ À AJOUTER.** L'autoportrait ne prend que la fenêtre
+> socle : un panneau FLOTTANT n'y figure pas. Et la capture d'écran du système
+> rend, sous XWayland, une fenêtre au cadre correct et au **contenu blanc** —
+> le contenu JUCE n'est pas dans le pixmap que le compositeur donne (mesuré :
+> `spectacle -b -n -f` rend une image de moyenne 0, `-a` rend le cadre
+> « Assembler les prises » vide). Un panneau flottant aurait donc été
+> « invérifiable faute d'écran », ce que ce projet s'interdit de dire depuis
+> D7.4. `VSM_CAPTURE_PANNEAUX=1` photographie désormais **chaque fenêtre
+> flottante visible**, par le rendu hors écran de l'application elle-même, une
+> image par panneau. La capture montre, sur un projet rouvert : « mesures 1 à 3
+> → Passe 2 », « mesures 3 à 5 → Passe 3 ».
+>
+> Tests : 1 291 audio, 319 core, **292 interchange** (5 neufs), 25 clap,
+> 11 panels — tous verts.

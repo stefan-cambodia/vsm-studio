@@ -279,6 +279,8 @@ ProjectDocument documentFromProject(const Project& project) {
             std::snprintf(buffer, sizeof(buffer), "instruments/track_%02zu.synth.json", index);
             entry.presetPath = buffer;
         }
+        for (const auto& troncon : track.compSegments)   // D55.2
+            entry.compSegments.push_back({troncon.takeIndex, troncon.fromTick, troncon.toTick});
         entry.volume = track.volume;
         entry.pan = track.pan;
         entry.muted = track.muted;
@@ -519,6 +521,27 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
         }
         target.activeTake = source.activeTake < static_cast<int>(target.takes.size())
                                 ? source.activeTake : -1;
+
+        // D55.2 : LA RECETTE DE L'ASSEMBLAGE. Un tronçon qui désigne une prise
+        // absente est ÉCARTÉ ET NOMMÉ -- le garder ferait recomposer autre
+        // chose que ce que la liste annonce, et le taire serait la panne muette
+        // que ce projet refuse.
+        target.compSegments.clear();
+        int troncons_ecartes = 0;
+        for (const auto& troncon : source.compSegments) {
+            if (troncon.takeIndex < 0
+                || troncon.takeIndex >= static_cast<int>(target.takes.size())
+                || troncon.toTick <= troncon.fromTick) {
+                ++troncons_ecartes;
+                continue;
+            }
+            target.compSegments.push_back({troncon.takeIndex, troncon.fromTick, troncon.toTick});
+        }
+        if (troncons_ecartes > 0)
+            report.warnings.push_back("piste \"" + target.name + "\" : "
+                                       + std::to_string(troncons_ecartes)
+                                       + " tron\u00e7on(s) d'assemblage \u00e9cart\u00e9(s) "
+                                         "(prise absente ou bornes vides)");
 
         target.clips.clear();
         for (const auto& clip : source.clips)
@@ -814,6 +837,20 @@ JsonValue projectDocumentToJson(const ProjectDocument& document) {
             entry.set("activeTake", JsonValue::makeNumber(static_cast<double>(track.activeTake)));
         }
 
+        // D55.2 : LA RECETTE DE L'ASSEMBLAGE, écrite seulement quand il y en a
+        // une -- une piste jamais assemblée garde le fichier qu'elle avait.
+        if (!track.compSegments.empty()) {
+            JsonValue troncons = JsonValue::makeArray();
+            for (const auto& troncon : track.compSegments) {
+                JsonValue t = JsonValue::makeObject();
+                t.set("take", JsonValue::makeNumber(static_cast<double>(troncon.takeIndex)));
+                t.set("from", JsonValue::makeNumber(static_cast<double>(troncon.fromTick)));
+                t.set("to", JsonValue::makeNumber(static_cast<double>(troncon.toTick)));
+                troncons.append(std::move(t));
+            }
+            entry.set("comp", std::move(troncons));
+        }
+
         // L'automation n'est écrite QUE si elle existe : un projet sans
         // automation garde exactement le fichier qu'il a toujours eu.
         if (!track.automation.empty()) {
@@ -1051,6 +1088,18 @@ ProjectLoadResult projectDocumentFromJson(const JsonValue& json) {
         }
         track.activeTake = static_cast<int>(entry["activeTake"].asNumber(-1.0));
         if (track.activeTake >= static_cast<int>(track.takes.size())) track.activeTake = -1;
+
+        // D55.2 : les tronçons. UN TRONÇON QUI DÉSIGNE UNE PRISE ABSENTE NE
+        // DÉSIGNE RIEN : il est écarté, et l'appelant le DIT (voir
+        // `applyDocumentToProject`). Le garder pointant à côté ferait
+        // recomposer autre chose que ce que la recette annonce.
+        for (const auto& tronconJson : entry["comp"].elements()) {
+            ProjectCompSegment troncon;
+            troncon.takeIndex = static_cast<int>(tronconJson["take"].asNumber(0.0));
+            troncon.fromTick = static_cast<int64_t>(tronconJson["from"].asNumber(0.0));
+            troncon.toTick = static_cast<int64_t>(tronconJson["to"].asNumber(0.0));
+            track.compSegments.push_back(troncon);
+        }
 
         for (const auto& laneJson : entry["automation"].elements()) {
             ProjectAutomationLane lane;

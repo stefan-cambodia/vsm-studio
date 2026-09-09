@@ -71,6 +71,7 @@ if (VSM_BUILD_TESTS)
         tests/test_search_profile.cpp
         tests/test_preset_samples.cpp
         tests/test_reconstruction_report.cpp
+        tests/test_project_roundtrip.cpp
     )
     target_link_libraries(vsm_interchange_tests PRIVATE vsm_interchange)
     target_include_directories(vsm_interchange_tests PRIVATE tests)

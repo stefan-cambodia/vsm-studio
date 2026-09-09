@@ -502,6 +502,28 @@ struct AutomationCurve {
 /// tourne, et seul l'instant où il s'arrête change.
 enum class AutomationMode : uint8_t { Off = 0, Touch = 1, Latch = 2 };
 
+/// ASSEMBLER LES PRISES (D18.2) — les lanes de Cubase, les take lanes de Live.
+///
+/// `Track::takes` conserve chaque passe depuis D3.5, et l'on ne pouvait que
+/// CHOISIR la meilleure : impossible de prendre le couplet de la deuxième et
+/// le refrain de la quatrième. Or c'est le geste pour lequel on enregistre
+/// plusieurs passes.
+///
+/// UN TRONÇON dit « de tel tick à tel tick, prends telle prise ». La prise
+/// composite est la suite de ses tronçons, et rien d'autre : elle ne se
+/// recopie pas à la main, elle se RECALCULE — c'est ce qui permet de corriger
+/// une frontière sans avoir à tout refaire.
+///
+/// DÉCLARÉ AVANT `Track` DEPUIS D55.2, parce que la piste le porte : la
+/// recette était détenue par le seul panneau, qui la vidait à chaque
+/// ouverture, et « corriger une frontière sans tout refaire » était donc
+/// faux — on retapait tout.
+struct CompSegment {
+    int takeIndex = 0;
+    Tick fromTick = 0;
+    Tick toTick = 0;      ///< exclu
+};
+
 /// Une piste MIDI éditable : notes + lanes de contrôleurs, plus les
 /// attributs de mixage/routing exposés par le Track Editor (section 4 du
 /// cahier des charges). Le routing vers un synthé virtuel (`instrumentId`)
@@ -887,6 +909,21 @@ public:
     /// de tiroir, ce qui est ce qu'on voulait en la déplaçant.
     int folderDepth = 0;
 
+    /// LA RECETTE DE L'ASSEMBLAGE (D55.2) : les tronçons qui ont produit le
+    /// matériau courant, « de tel tick à tel tick, prends telle prise ».
+    ///
+    /// ELLE EST POSÉE PAR « COMPOSER », ET PAR LUI SEUL. Les tronçons qu'on
+    /// ajoute et retire avant de composer restent dans le panneau : mettre
+    /// dans le projet une recette qui ne décrit pas le matériau présent
+    /// donnerait un fichier qui se contredit. Ce qui est écrit ici décrit
+    /// donc toujours ce qu'on entend, et c'est ce qui permet de rouvrir le
+    /// panneau, de déplacer une frontière et de recomposer.
+    ///
+    /// Vide sur toute piste qu'on n'a jamais assemblée — c'est-à-dire sur
+    /// presque toutes, et c'est pourquoi le format ne l'écrit qu'à partir du
+    /// premier tronçon.
+    std::vector<CompSegment> compSegments;
+
     /// Vrai si la piste est un dossier (raccourci de lecture).
     bool isFolder() const { return kind == Kind::Folder; }
 
@@ -916,22 +953,8 @@ void pushTake(Track& track, Take take, const std::string& nomDeLOrigine = "Origi
 /// désigne déjà la prise active.
 void selectTake(Track& track, int index);
 
-/// ASSEMBLER LES PRISES (D18.2) — les lanes de Cubase, les take lanes de Live.
-///
-/// `Track::takes` conserve chaque passe depuis D3.5, et l'on ne pouvait que
-/// CHOISIR la meilleure : impossible de prendre le couplet de la deuxième et
-/// le refrain de la quatrième. Or c'est le geste pour lequel on enregistre
-/// plusieurs passes.
-///
-/// UN TRONÇON dit « de tel tick à tel tick, prends telle prise ». La prise
-/// composite est la suite de ses tronçons, et rien d'autre : elle ne se
-/// recopie pas à la main, elle se RECALCULE — c'est ce qui permet de corriger
-/// une frontière sans avoir à tout refaire.
-struct CompSegment {
-    int takeIndex = 0;
-    Tick fromTick = 0;
-    Tick toTick = 0;      ///< exclu
-};
+/// Les tronçons d'assemblage vivent maintenant AVANT `Track`, qui les porte
+/// (`Track::compSegments`, D55.2). Voir leur déclaration plus haut.
 
 /// Les notes que ces tronçons décrivent, prises dans leurs prises
 /// respectives, avec des identifiants neufs.

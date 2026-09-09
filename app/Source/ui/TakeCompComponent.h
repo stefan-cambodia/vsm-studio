@@ -31,10 +31,25 @@ public:
 
     /// Republie les prises de la piste choisie. `ticksPerBar` sert à afficher
     /// et à saisir les bornes en MESURES : personne ne compte en ticks.
+    ///
+    /// `segments` EST LA RECETTE QUE LA PISTE PORTE (D55.2), et le panneau la
+    /// montre au lieu de repartir d'une liste vide. Avant cette étape il
+    /// vidait la sienne à chaque ouverture, y compris sur la même piste : on
+    /// composait, on écoutait, on rouvrait pour déplacer une frontière, et
+    /// l'on retapait tout.
     void setTake(std::vector<juce::String> takeNames, int activeTake,
-                  vsm::midi::Tick ticksPerBar, vsm::midi::Tick lastTick);
+                  vsm::midi::Tick ticksPerBar, vsm::midi::Tick lastTick,
+                  std::vector<vsm::sequencer::CompSegment> segments);
 
     std::function<void(const std::vector<vsm::sequencer::CompSegment>&)> onCompose;
+
+    /// SANS SOURIS, pour la vérification à l'écran : poser un tronçon et
+    /// composer par le chemin EXACT des deux boutons (leur `onClick`), et
+    /// compter ce que la liste montre. Un marqueur de trois lignes ne se juge
+    /// pas sur une capture ; ce nombre, si.
+    bool addSegmentForCapture(int takeIndex, int fromBar, int toBar);
+    bool composeForCapture();
+    int segmentCount() const { return static_cast<int>(troncons_.size()); }
 
 private:
     int getNumRows() override;

@@ -1196,6 +1196,53 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     else if (nom == "notes")       menuItemSelected(kMenuViewProjectNotes, 5);  // D18.6
     else if (nom == "ordre")       menuItemSelected(kMenuViewPlayOrder, 5);     // D18.4
     else if (nom == "prises")      menuItemSelected(kMenuRecordCompTakes, 3);  // D18.2
+    // D55.2 : poser un tronçon, composer, fermer, et surtout COMPTER ce que le
+    // panneau montre quand on le rouvre. C'est ce nombre qui dit si la recette
+    // a survécu -- une liste de trois lignes ne se juge pas sur une capture.
+    // `troncon:PRISE:DE:A` passe par le `onClick` du bouton « Ajouter ».
+    else if (nom.startsWith("troncon:")) {
+        if (!takeCompWindow_) showTakeComp();
+        const auto morceaux = juce::StringArray::fromTokens(nom.substring(8), ":", "");
+        const bool pose = morceaux.size() == 3
+                        && takeCompPanel_.addSegmentForCapture(morceaux[0].getIntValue(),
+                                                                morceaux[1].getIntValue(),
+                                                                morceaux[2].getIntValue());
+        std::fputs((juce::String::fromUTF8(u8"Tronçon ") + nom.substring(8)
+                     + (pose ? juce::String::fromUTF8(u8" : posé, ")
+                             : juce::String::fromUTF8(u8" : REFUSÉ (prise inconnue ou bornes à "
+                                                       u8"l'envers), "))
+                     + juce::String(takeCompPanel_.segmentCount())
+                     + juce::String::fromUTF8(u8" au total\n")).toRawUTF8(), stderr);
+    }
+    else if (nom == "composer") {
+        if (!takeCompWindow_) showTakeComp();
+        const bool fait = takeCompPanel_.composeForCapture();
+        std::fputs((juce::String::fromUTF8(u8"Composer : ")
+                     + (fait ? juce::String::fromUTF8(u8"demandé")
+                             : juce::String::fromUTF8(u8"rien à composer"))
+                     + "\n").toRawUTF8(), stderr);
+    }
+    // D55.2 : enregistrer le projet ouvert, par l'entrée de menu même
+    // (« Fichier ▸ Enregistrer ») -- sans quoi la survie de la recette au
+    // disque ne se vérifierait qu'en écrivant le fichier autrement que
+    // l'application ne l'écrit.
+    else if (nom == "enregistrer") {
+        menuItemSelected(kMenuFileSave, 0);
+        std::fputs("Projet : enregistr\u00e9\n", stderr);
+    }
+    else if (nom == "fermer-prises") {
+        if (takeCompWindow_) takeCompWindow_->setVisible(false);
+        std::fputs("Panneau d'assemblage : ferm\u00e9\n", stderr);
+    }
+    else if (nom == "troncons") {
+        const size_t piste = trackList_.selectedTrackIndex();
+        const int surLaPiste = piste < project_.tracks.size()
+                             ? static_cast<int>(project_.tracks[piste].compSegments.size()) : -1;
+        std::fputs((juce::String::fromUTF8(u8"Tronçons : ")
+                     + juce::String(takeCompPanel_.segmentCount())
+                     + juce::String::fromUTF8(u8" au panneau, ") + juce::String(surLaPiste)
+                     + juce::String::fromUTF8(u8" sur la piste\n")).toRawUTF8(), stderr);
+    }
     // D18.4 : `aplatir:0:0:1` pose l'ordre et l'aplatit tout de suite. Le
     // panneau se pilote à la souris, et le RÉSULTAT est ce qu'il faut
     // regarder : c'est l'arrangement qui doit avoir changé.
@@ -5635,6 +5682,11 @@ void MainComponent::showTakeComp() {
             }
             beginProjectEdit(u8"Assembler les prises");
             project_.tracks[index] = std::move(essai);
+            // D55.2 : LA RECETTE EST POSÉE SUR LA PISTE, en même temps que le
+            // matériau qu'elle décrit et dans la MÊME édition annulable --
+            // annuler l'assemblage doit rendre les deux, sans quoi la recette
+            // décrirait un matériau qui n'est plus là.
+            project_.tracks[index].compSegments = troncons;
             project_.ensureNoteIdAbove(compteur - 1);
             rebuildFromProject(false);
             refreshTransportSchedule();
@@ -5656,7 +5708,8 @@ void MainComponent::showTakeComp() {
         noms.push_back(juce::String(prise.name));
     takeCompPanel_.setTake(std::move(noms), project_.tracks[piste].activeTake,
                             project_.timeSignatureMap.ticksPerBar(0, project_.ticksPerQuarterNote),
-                            project_.lastSoundingTick());
+                            project_.lastSoundingTick(),
+                            project_.tracks[piste].compSegments);   // D55.2
     takeCompWindow_->setVisible(true);
     takeCompWindow_->toFront(true);
 }

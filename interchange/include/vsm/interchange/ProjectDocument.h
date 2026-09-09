@@ -200,6 +200,14 @@ struct ProjectTake {
     std::vector<ProjectClip> clips;
 };
 
+/// UN TRONÇON d'assemblage de prises (D55.2). Voir
+/// `vsm::sequencer::CompSegment` pour ce qu'il décrit.
+struct ProjectCompSegment {
+    int takeIndex = 0;
+    int64_t fromTick = 0;
+    int64_t toTick = 0;
+};
+
 struct ProjectTrack {
     /// Où va la sortie : index de la piste de GROUPE qui la reçoit, -1 pour le
     /// master. Facultatif : absent vaut -1, donc les projets d'avant les
@@ -301,6 +309,21 @@ struct ProjectTrack {
     /// n'écrit rien de plus qu'avant.
     std::vector<ProjectTake> takes;
     int activeTake = -1;
+    /// D55.2 : LA RECETTE DE L'ASSEMBLAGE des prises, « de tel tick à tel
+    /// tick, prends telle prise ». Champ FACULTATIF : une piste qu'on n'a
+    /// jamais assemblée n'écrit rien de plus qu'avant, et un projet entier
+    /// sans assemblage garde son fichier octet pour octet.
+    ///
+    /// ELLE NE FAIT PAS MONTER LA VERSION DU FICHIER, contrairement au suivi
+    /// de tempo (D12) ou à la transposition d'un clip (D54), et la raison
+    /// tient en une phrase : ces champs-là changent CE QU'ON ENTEND, si bien
+    /// qu'un lecteur ancien qui les ignore joue autre chose sans le dire. Une
+    /// recette d'assemblage ne change rien à ce qu'on entend — le matériau
+    /// composé est déjà dans les notes. Un lecteur qui l'ignore joue
+    /// exactement le même morceau ; il perd seulement le moyen de le
+    /// recomposer autrement. Faire monter la version pour cela reviendrait à
+    /// rendre illisibles, chez les autres, des projets qui sonnent pareil.
+    std::vector<ProjectCompSegment> compSegments;
 };
 
 struct ProjectDocument {

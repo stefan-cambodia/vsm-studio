@@ -280,6 +280,41 @@ public:
                         if (flux.openedOk())
                             juce::PNGImageFormat().writeImageToStream(image, flux);
                     }
+                    // D55.2 : VSM_CAPTURE_PANNEAUX=1 photographie AUSSI chaque
+                    // fenêtre flottante visible, une image par panneau.
+                    //
+                    // POURQUOI IL A FALLU L'AJOUTER. L'autoportrait ne prend que
+                    // la fenêtre socle : un panneau flottant -- l'assemblage des
+                    // prises, l'ordre de jeu, l'historique -- n'y figure pas, et
+                    // la capture d'écran du système, elle, rend une fenêtre
+                    // BLANCHE sous XWayland (le contenu JUCE n'est pas dans le
+                    // pixmap que le compositeur donne). Sans cela, tout panneau
+                    // flottant serait « invérifiable faute d'écran », ce que ce
+                    // projet s'interdit de dire.
+                    if (const char* pans = std::getenv("VSM_CAPTURE_PANNEAUX");
+                        pans != nullptr && *pans && *pans != '0') {
+                        for (int i = 0; i < juce::TopLevelWindow::getNumTopLevelWindows(); ++i) {
+                            auto* fenetre = juce::TopLevelWindow::getTopLevelWindow(i);
+                            if (fenetre == nullptr || fenetre == this || !fenetre->isVisible())
+                                continue;
+                            juce::Component* contenu = fenetre;
+                            if (auto* doc = dynamic_cast<juce::DocumentWindow*>(fenetre))
+                                if (auto* c = doc->getContentComponent()) contenu = c;
+                            if (contenu->getWidth() <= 0 || contenu->getHeight() <= 0) continue;
+                            const juce::String titre =
+                                fenetre->getName().retainCharacters(
+                                    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
+                            const juce::File cible = fichier.getParentDirectory().getChildFile(
+                                fichier.getFileNameWithoutExtension() + "-" + titre + ".png");
+                            cible.deleteFile();
+                            juce::FileOutputStream f2(cible);
+                            if (f2.openedOk())
+                                juce::PNGImageFormat().writeImageToStream(
+                                    contenu->createComponentSnapshot(contenu->getLocalBounds()), f2);
+                            std::fputs(("VSM_CAPTURE_PANNEAUX : " + cible.getFullPathName().toStdString()
+                                        + "\n").c_str(), stderr);
+                        }
+                    }
                     juce::JUCEApplication::getInstance()->systemRequestedQuit();
                 });
             }

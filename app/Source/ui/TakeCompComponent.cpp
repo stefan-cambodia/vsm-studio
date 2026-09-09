@@ -66,15 +66,36 @@ TakeCompComponent::TakeCompComponent() {
 }
 
 void TakeCompComponent::setTake(std::vector<juce::String> takeNames, int activeTake,
-                                 vsm::midi::Tick ticksPerBar, vsm::midi::Tick lastTick) {
+                                 vsm::midi::Tick ticksPerBar, vsm::midi::Tick lastTick,
+                                 std::vector<vsm::sequencer::CompSegment> segments) {
     prises_ = std::move(takeNames);
     active_ = activeTake;
     parMesure_ = ticksPerBar > 0 ? ticksPerBar : 1920;
     fin_ = lastTick;
-    // DES TRONÇONS QUI DÉSIGNENT DES PRISES DISPARUES NE DÉSIGNENT RIEN : on
-    // les vide plutôt que de les laisser pointer à côté. On change de piste.
-    troncons_.clear();
+    // D55.2 : LA RECETTE VIENT DE LA PISTE, elle n'est plus jetée. Le panneau
+    // vidait sa liste ici, à chaque ouverture -- le commentaire disait « on
+    // change de piste », mais le code ne le vérifiait pas et vidait aussi
+    // quand on rouvrait la même. Les tronçons qui désignaient une prise
+    // disparue sont écartés en amont, à la lecture du projet, et nommés au
+    // rapport : ce que la piste porte ici a déjà été vérifié.
+    troncons_ = std::move(segments);
     rafraichir();
+}
+
+bool TakeCompComponent::addSegmentForCapture(int takeIndex, int fromBar, int toBar) {
+    if (takeIndex < 0 || takeIndex >= static_cast<int>(prises_.size())) return false;
+    prise_.setSelectedId(takeIndex + 1, juce::dontSendNotification);
+    de_.setText(juce::String(fromBar), juce::dontSendNotification);
+    a_.setText(juce::String(toBar), juce::dontSendNotification);
+    const size_t avant = troncons_.size();
+    ajouter_.onClick();
+    return troncons_.size() > avant;
+}
+
+bool TakeCompComponent::composeForCapture() {
+    if (troncons_.empty()) return false;
+    composer_.onClick();
+    return true;
 }
 
 void TakeCompComponent::rafraichir() {
