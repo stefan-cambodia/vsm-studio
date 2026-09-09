@@ -6,6 +6,13 @@ critères d'acceptation et l'ordre de marche, et c'est dans EUX que se tranchent
 les choix, jamais ici. Quand cet index et un document se contredisent, c'est le
 document qui a raison et cet index qui est périmé.*
 
+**Une page consultable en donne le même contenu** :
+[`ordre-de-marche.html`](ordre-de-marche.html), publiée à
+<https://claude.ai/code/artifact/549ce2bb-a1e1-4a98-b0ac-3b4921bb42f1>. Elle est
+un RENDU de ce fichier, pas une seconde source : deux copies du même contenu
+divergent toujours, et c'est ce fichier-ci qui a raison. Qui modifie l'un
+refait l'autre.
+
 ---
 
 ## 1. Comment lire le dépôt

@@ -1,0 +1,752 @@
+<title>Ordre de marche VSM Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Literata:opsz,wght@7..72,400;7..72,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+  /* ---------------------------------------------------------------
+     Palette : le panneau d'une machine du parc. Gris de sérigraphie
+     légèrement vert, ambre et turquoise de l'application elle-même
+     (vsm::ui::Palette::accentAmber / accentTeal).
+     ---------------------------------------------------------------*/
+  :root {
+    --ground:      #E9EBE6;
+    --surface:     #F7F8F5;
+    --surface-2:   #FDFDFC;
+    --ink:         #191C1B;
+    --ink-soft:    #5B6360;
+    --ink-faint:   #868D89;
+    --rule:        #D2D6CF;
+    --rule-strong: #B4BAB2;
+    --amber:       #B67714;
+    --amber-soft:  #F0E2C6;
+    --teal:        #17786E;
+    --teal-soft:   #D6E9E5;
+    --crit:        #A33A2A;
+    --crit-soft:   #F2DED9;
+
+    --sc-1: clamp(1.9rem, 1.3rem + 2.2vw, 2.85rem);
+    --sc-2: clamp(1.35rem, 1.1rem + 0.9vw, 1.7rem);
+    --sc-3: 1.06rem;
+    --body: 1rem;
+    --small: 0.86rem;
+    --tiny: 0.735rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #14171A;
+      --surface:     #1B1F22;
+      --surface-2:   #21262A;
+      --ink:         #E4E7E3;
+      --ink-soft:    #A0A8A4;
+      --ink-faint:   #7B8480;
+      --rule:        #2E3439;
+      --rule-strong: #414A4E;
+      --amber:       #E0A83F;
+      --amber-soft:  #3A2F17;
+      --teal:        #4FC2B2;
+      --teal-soft:   #123430;
+      --crit:        #E28571;
+      --crit-soft:   #3B211A;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:      #14171A;
+    --surface:     #1B1F22;
+    --surface-2:   #21262A;
+    --ink:         #E4E7E3;
+    --ink-soft:    #A0A8A4;
+    --ink-faint:   #7B8480;
+    --rule:        #2E3439;
+    --rule-strong: #414A4E;
+    --amber:       #E0A83F;
+    --amber-soft:  #3A2F17;
+    --teal:        #4FC2B2;
+    --teal-soft:   #123430;
+    --crit:        #E28571;
+    --crit-soft:   #3B211A;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Literata", Georgia, "Times New Roman", serif;
+    font-size: var(--body);
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* --- sérigraphie : l'étiquette d'un potentiomètre ------------- */
+  .serigraphie {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: var(--tiny);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--ink-faint);
+  }
+
+  h1, h2, h3 {
+    font-family: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 clamp(1rem, 4vw, 2.5rem) 5rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0 3.5rem;
+  }
+  @media (min-width: 1000px) {
+    .page { grid-template-columns: 15rem minmax(0, 1fr); }
+    .masthead { grid-column: 1 / -1; }
+  }
+
+  /* --- bandeau ------------------------------------------------- */
+  .masthead {
+    padding: clamp(2.5rem, 5vw, 4rem) 0 2rem;
+    border-bottom: 2px solid var(--rule-strong);
+    margin-bottom: 2.5rem;
+  }
+  .masthead h1 {
+    font-size: var(--sc-1);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.08;
+    margin: 0.55rem 0 0;
+  }
+  .lede {
+    margin: 1.1rem 0 0;
+    max-width: 62ch;
+    color: var(--ink-soft);
+    font-size: 1.06rem;
+  }
+  .caveat {
+    margin: 1.6rem 0 0;
+    max-width: 62ch;
+    padding: 0.85rem 1.1rem;
+    border-left: 3px solid var(--amber);
+    background: var(--amber-soft);
+    color: var(--ink);
+    font-size: var(--small);
+    line-height: 1.55;
+  }
+  .caveat strong { font-weight: 600; }
+
+  /* --- sommaire ------------------------------------------------ */
+  nav.sommaire { align-self: start; margin-bottom: 3rem; }
+  @media (min-width: 1000px) {
+    nav.sommaire { position: sticky; top: 1.75rem; margin-bottom: 0; }
+  }
+  nav.sommaire ol {
+    list-style: none;
+    margin: 0.7rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+  nav.sommaire a {
+    display: block;
+    padding: 0.3rem 0 0.3rem 0.75rem;
+    border-left: 2px solid var(--rule);
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-family: "Archivo", Arial, sans-serif;
+    font-size: var(--small);
+    line-height: 1.35;
+  }
+  nav.sommaire a:hover, nav.sommaire a:focus-visible {
+    color: var(--ink);
+    border-left-color: var(--teal);
+    background: var(--surface);
+  }
+
+  main { min-width: 0; }
+
+  section { margin: 0 0 3.5rem; }
+  section > h2 {
+    font-size: var(--sc-2);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0.45rem 0 0.4rem;
+  }
+  section > p, section > .note { max-width: 66ch; }
+  section > p { margin: 0 0 1rem; }
+  h3 {
+    font-size: var(--sc-3);
+    font-weight: 600;
+    margin: 2rem 0 0.6rem;
+    letter-spacing: -0.005em;
+  }
+
+  a { color: var(--teal); text-underline-offset: 0.18em; }
+  a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; border-radius: 2px; }
+
+  code, .mono {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.875em;
+  }
+  code { color: var(--ink); background: var(--surface); padding: 0.06em 0.32em; border-radius: 2px; }
+
+  /* --- tableaux ------------------------------------------------ */
+  .scroll { overflow-x: auto; margin: 0 0 1.2rem; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 34rem;
+    font-size: var(--small);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.45;
+  }
+  caption {
+    text-align: left;
+    padding: 0 0 0.5rem;
+    color: var(--ink-faint);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: var(--tiny);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+  th, td { text-align: left; padding: 0.62rem 0.9rem 0.62rem 0; vertical-align: top; }
+  th {
+    font-family: "Archivo", Arial, sans-serif;
+    font-weight: 600;
+    font-size: var(--tiny);
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--ink-faint);
+    border-bottom: 1px solid var(--rule-strong);
+    padding-bottom: 0.45rem;
+    white-space: nowrap;
+  }
+  td { border-bottom: 1px solid var(--rule); }
+  tbody tr:last-child td { border-bottom: 0; }
+  td:last-child, th:last-child { padding-right: 0; }
+
+  td.ref {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: var(--tiny);
+    color: var(--ink-soft);
+    white-space: nowrap;
+  }
+  td.cle {
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 600;
+    font-size: var(--tiny);
+    color: var(--ink-faint);
+    white-space: nowrap;
+    padding-right: 1.1rem;
+  }
+  .chiffre { font-weight: 600; color: var(--ink); }
+  .doc { font-family: "Archivo", Arial, sans-serif; font-weight: 600; font-size: 0.94em; }
+
+  /* --- pastilles d'état ---------------------------------------- */
+  .etat {
+    display: inline-block;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: var(--tiny);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    padding: 0.12em 0.5em;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .etat--clos   { background: var(--teal-soft);  color: var(--teal); }
+  .etat--ouvert { background: var(--amber-soft); color: var(--amber); }
+  .etat--refute { background: var(--crit-soft);  color: var(--crit); }
+
+  /* --- chiffres du projet -------------------------------------- */
+  .chiffres {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 0;
+    border-top: 1px solid var(--rule-strong);
+    border-bottom: 1px solid var(--rule-strong);
+    margin: 0 0 1.4rem;
+  }
+  .chiffres div {
+    padding: 0.9rem 1.1rem 0.9rem 0;
+    border-right: 1px solid var(--rule);
+  }
+  .chiffres div:last-child { border-right: 0; }
+  .chiffres dt { margin: 0 0 0.15rem; }
+  .chiffres dd {
+    margin: 0;
+    font-family: "Archivo", Arial, sans-serif;
+    font-size: 1.45rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .chiffres small {
+    display: block;
+    font-family: "Literata", serif;
+    font-size: var(--tiny);
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--ink-soft);
+    line-height: 1.4;
+    margin-top: 0.15rem;
+  }
+
+  /* --- bloc de travaux ----------------------------------------- */
+  .groupe { margin: 0 0 2.2rem; }
+  .groupe-tete {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    padding-bottom: 0.45rem;
+    border-bottom: 2px solid var(--rule-strong);
+    margin-bottom: 0.2rem;
+  }
+  .groupe-lettre {
+    font-family: "Archivo", Arial, sans-serif;
+    font-weight: 700;
+    font-size: 1.45rem;
+    line-height: 1;
+    color: var(--amber);
+  }
+  .groupe-tete h3 { margin: 0; font-size: var(--sc-3); }
+  .groupe > p { max-width: 66ch; margin: 0.7rem 0 1rem; color: var(--ink-soft); font-size: var(--small); }
+
+  .note {
+    font-size: var(--small);
+    color: var(--ink-soft);
+    border-left: 2px solid var(--rule-strong);
+    padding-left: 1rem;
+    margin: 1.2rem 0;
+  }
+
+  ul.refus { list-style: none; padding: 0; margin: 0; max-width: 66ch; }
+  ul.refus li {
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--rule);
+    font-size: var(--small);
+  }
+  ul.refus li:last-child { border-bottom: 0; }
+  ul.refus b { font-family: "Archivo", Arial, sans-serif; font-weight: 600; }
+
+  footer {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--rule);
+    padding-top: 1.3rem;
+    color: var(--ink-faint);
+    font-size: var(--tiny);
+    max-width: 66ch;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="page">
+
+  <header class="masthead">
+    <p class="serigraphie" style="margin:0">VSM Studio &middot; docs/INDEX.md &middot; 10 septembre 2026</p>
+    <h1>Ordre de marche</h1>
+    <p class="lede">
+      Vingt-neuf mille lignes de feuilles de route et de cahiers des charges, et aucune porte
+      d'entrée. Voici ce que chaque document commande, où en est le projet, et ce que ces
+      documents déclarent eux-mêmes inachevé.
+    </p>
+    <p class="caveat">
+      <strong>Cet index ne décide rien.</strong> Les feuilles de route et les cahiers des charges
+      restent les critères d'acceptation et l'ordre de marche&nbsp;; c'est dans <em>eux</em> que se
+      tranchent les choix. Quand cette page et un document se contredisent, c'est le document qui a
+      raison et cette page qui est périmée.
+    </p>
+  </header>
+
+  <nav class="sommaire" aria-label="Sommaire">
+    <p class="serigraphie" style="margin:0">Sommaire</p>
+    <ol>
+      <li><a href="#lire">Comment lire le dépôt</a></li>
+      <li><a href="#index">Index des documents</a></li>
+      <li><a href="#etat">Où en est le projet</a></li>
+      <li><a href="#travaux">Liste de travaux</a></li>
+      <li><a href="#refus">Hors programme</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <section id="lire">
+      <p class="serigraphie">Niveau 1</p>
+      <h2>Comment lire le dépôt</h2>
+      <p>Trois niveaux, et ils ne se confondent pas.</p>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr><th scope="col">Niveau</th><th scope="col">Ce que c'est</th><th scope="col">Ce qu'il décide</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="doc">Feuilles de route<br><span class="mono" style="color:var(--ink-faint)">ROADMAP-*.md</span></td>
+              <td>l'ordre de marche, phase par phase, avec les mesures qui les ont tranchées</td>
+              <td><strong>quoi faire ensuite</strong></td>
+            </tr>
+            <tr>
+              <td class="doc">Cahiers des charges<br><span class="mono" style="color:var(--ink-faint)">CDC-*.md</span></td>
+              <td>ce qu'un chantier doit tenir, écrit <em>avant</em> de l'écrire</td>
+              <td><strong>quand c'est fini</strong></td>
+            </tr>
+            <tr>
+              <td class="doc">Références<br><span class="mono" style="color:var(--ink-faint)">ARCHITECTURE, MODE-EMPLOI, GUIDE</span></td>
+              <td>l'état des lieux et les modes d'emploi</td>
+              <td>rien — ils décrivent</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">
+        Deux axes coexistent, et l'un passe devant l'autre quand il faut choisir&nbsp;:
+        <strong>le DAW d'abord</strong>, la chaîne d'analyse ensuite.
+      </p>
+    </section>
+
+    <section id="index">
+      <p class="serigraphie">Niveau 2</p>
+      <h2>Index des documents</h2>
+
+      <h3>Feuilles de route</h3>
+      <div class="scroll">
+        <table>
+          <caption>Quatre documents, 14 928 lignes</caption>
+          <thead>
+            <tr><th scope="col">Document</th><th scope="col">Ce qu'il commande</th><th scope="col">État</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="doc">ROADMAP-daw<br><span class="mono" style="color:var(--ink-faint)">9 956 l.</span></td>
+              <td>faire du démonstrateur un logiciel de studio « digne de Cubase, Live, FL&nbsp;Studio »</td>
+              <td><span class="etat etat--clos">62 phases closes</span><br><small>D0 → D62, en régime d'audits successifs</small></td>
+            </tr>
+            <tr>
+              <td class="doc">ROADMAP-fusion<br><span class="mono" style="color:var(--ink-faint)">3 647 l.</span></td>
+              <td>la chaîne d'analyse : d'un enregistrement à un projet jouable</td>
+              <td><span class="etat etat--clos">phases 8 à 11 closes</span><br><small>le travail vit dans les § 5 <em>bis</em> → <em>quaterdecies</em></small></td>
+            </tr>
+            <tr>
+              <td class="doc">ROADMAP-interop<br><span class="mono" style="color:var(--ink-faint)">276 l.</span></td>
+              <td>Python ↔ CLAP ↔ formats d'échange</td>
+              <td><span class="etat etat--clos">P0 à P10 faits</span><br><small>la seule feuille de route entièrement terminée</small></td>
+            </tr>
+            <tr>
+              <td class="doc">ROADMAP-apprentissage<br><span class="mono" style="color:var(--ink-faint)">1 049 l.</span></td>
+              <td>les modèles appris : classifieur de machine, gabarits de batterie, estimateur</td>
+              <td><span class="etat etat--ouvert">A5 close sauf l'écoute</span><br><small>A0, A1, A2, A4 faites ; A3 refusée par la mesure</small></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Cahiers des charges</h3>
+      <div class="scroll">
+        <table>
+          <caption>Neuf documents, 6 878 lignes</caption>
+          <thead>
+            <tr><th scope="col">Document</th><th scope="col">Le chantier</th><th scope="col">État</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="doc">CDC-machines-manquantes<br><span class="mono" style="color:var(--ink-faint)">2 681 l.</span></td>
+              <td>élargir le parc de machines, et le prix de chacune</td>
+              <td><span class="etat etat--clos">livré</span><br><small>21 hypothèses tranchées : 20 succès, 1 échec assumé (la guitare électrique, non écrite). Le § 33 donne le coût CPU mesuré des 64 machines.</small></td>
+            </tr>
+            <tr>
+              <td class="doc">CDC-detection-multipiste<br><span class="mono" style="color:var(--ink-faint)">843 l.</span></td>
+              <td>la parité des pistes : un original à N parties doit donner N pistes</td>
+              <td><span class="etat etat--ouvert">6 points sur 7</span><br><small>le § 4.3 se croit ouvert alors que l'écran du rapport porte densités, partage et avertissements depuis D53</small></td>
+            </tr>
+            <tr>
+              <td class="doc">CDC-separation-par-synthese<br><span class="mono" style="color:var(--ink-faint)">715 l.</span></td>
+              <td>la boucle résiduelle : soustraire ce qu'on sait rendre, reséparer le reste</td>
+              <td><span class="etat etat--clos">câblée, testée</span><br><small>la campagne R1 est le prochain chiffre à produire</small></td>
+            </tr>
+            <tr>
+              <td class="doc">CDC-banc-synthetique<br><span class="mono" style="color:var(--ink-faint)">715 l.</span></td>
+              <td>mesurer la chaîne sur des morceaux à vérité connue</td>
+              <td><span class="etat etat--refute">S1 a réfuté la chaîne</span><br><small>20 morceaux mesurés ; voir le groupe C</small></td>
+            </tr>
+            <tr>
+              <td class="doc">CDC-multisample<br><span class="mono" style="color:var(--ink-faint)">610 l.</span></td>
+              <td><code>vsm.multisample</code> : l'acoustique par échantillons</td>
+              <td><span class="etat etat--clos">M1 et M2 livrés</span><br><small>profil piano, import SoundFont</small></td>
+            </tr>
+            <tr>
+              <td class="doc">CDC-etirement-temporel<br><span class="mono" style="color:var(--ink-faint)">516 l.</span></td>
+              <td>qu'un clip audio suive le tempo</td>
+              <td><span class="etat etat--clos">D12 livrée</span><br><small>WSOLA + vocodeur de phase ; § 9 porte la transposition (D54)</small></td>
+            </tr>
+            <tr>
+              <td class="doc">CDC-apprentissage<br><span class="mono" style="color:var(--ink-faint)">369 l.</span></td>
+              <td>ce que les modèles appris doivent tenir</td>
+              <td><span class="etat etat--clos">rempli</span><br><small>par ROADMAP-apprentissage</small></td>
+            </tr>
+            <tr>
+              <td class="doc">CDC-nouvelle-machine<br><span class="mono" style="color:var(--ink-faint)">259 l.</span></td>
+              <td>la liste de contrôle d'une machine neuve</td>
+              <td><span class="etat etat--ouvert">permanent</span><br><small>ses cases se cochent à chaque machine, jamais dans le document</small></td>
+            </tr>
+            <tr>
+              <td class="doc">CDC-import-daw<br><span class="mono" style="color:var(--ink-faint)">170 l.</span></td>
+              <td>importer un projet FL Studio, Ableton, Cubase</td>
+              <td><span class="etat etat--clos">livré (D7)</span><br><small>Cubase reste hors de portée, et le document dit pourquoi</small></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="etat">
+      <p class="serigraphie">Niveau 3</p>
+      <h2>Où en est le projet</h2>
+
+      <dl class="chiffres">
+        <div>
+          <dt class="serigraphie">Machines</dt>
+          <dd>64<small>plus la tonalité d'essai, et 16 effets d'insert</small></dd>
+        </div>
+        <div>
+          <dt class="serigraphie">Tests moteur</dt>
+          <dd>1 946<small>1 291 audio · 327 core · 292 interchange · 25 clap · 11 panels</small></dd>
+        </div>
+        <div>
+          <dt class="serigraphie">Tests Python</dt>
+          <dd>168<small>plus ruff (lint) et mypy (types, 104 fichiers)</small></dd>
+        </div>
+        <div>
+          <dt class="serigraphie">Lignes dans app/</dt>
+          <dd>32 873<small>7 303 à l'ouverture de ROADMAP-daw</small></dd>
+        </div>
+      </dl>
+
+      <p>
+        <strong>Le déséquilibre qui ouvrait <span class="doc">ROADMAP-daw</span> s'est refermé.</strong>
+        Son § 1.1 mesurait <code>app/</code> à 7 303 lignes contre 95 837 pour <code>analyse/</code> —
+        « le parc a été nourri sans relâche&nbsp;; l'atelier est resté un démonstrateur ».
+        <code>app/</code> en fait aujourd'hui <span class="chiffre">32 873</span>, soit
+        <span class="chiffre">4,5 fois plus</span>, et les cinq critères du § 2 — sauvegarder, faire
+        entrer du son, arranger, mixer, exporter — sont tenus&nbsp;: posés par D0 à D10, puis vérifiés
+        sur un projet réel par D45 (ouvrir et réenregistrer une reconstruction ne perd rien) et D46
+        (l'export du DAW et <code>vsm-render</code> rendent le même son).
+      </p>
+    </section>
+
+    <section id="travaux">
+      <p class="serigraphie">Niveau 4</p>
+      <h2>Liste de travaux</h2>
+      <p>
+        Cinq groupes, et ce sont des <em>natures</em>, pas des étapes&nbsp;: ce qui ment d'abord, ce
+        qui manque ensuite, la documentation en dernier. Chaque élément porte sa source&nbsp;;
+        <strong>aucun n'est inventé ici.</strong>
+      </p>
+
+      <div class="groupe">
+        <div class="groupe-tete"><span class="groupe-lettre">A</span><h3>Nommé, mesuré, pas encore corrigé</h3></div>
+        <div class="scroll">
+          <table>
+            <thead><tr><th scope="col">#</th><th scope="col">Travail</th><th scope="col">Chiffre en main</th><th scope="col">Source</th></tr></thead>
+            <tbody>
+              <tr>
+                <td class="cle">A1</td>
+                <td>Deux cellules de façade n'ont <strong>aucune hauteur</strong> — cellule <code>43×0</code>&nbsp;: le bouton ne peut pas exister quelle que soit la mise en page. C'est la grille de la description de machine qu'il faut revoir.</td>
+                <td>2 boutons à <span class="chiffre">0 px</span> à 900×660</td>
+                <td class="ref">ROADMAP-daw<br>D62</td>
+              </tr>
+              <tr>
+                <td class="cle">A2</td>
+                <td>Vingt et un boutons restent <strong>sous 18 px</strong> au plancher. La contrainte n'est plus la sérigraphie mais la <em>largeur</em> de la cellule (21 px)&nbsp;: à traiter par la description des façades, pas par la mise en page.</td>
+                <td><span class="chiffre">21 / 49</span> sous 18 px</td>
+                <td class="ref">ROADMAP-daw<br>D62</td>
+              </tr>
+              <tr>
+                <td class="cle">A3</td>
+                <td>La <strong>molette de hauteur</strong> manque à sept machines où un musicien plie la note — flûte, e-piano, clavinet, guimbarde, vielle, mandoline, kalimba. Un travail par machine, sur son modèle physique.</td>
+                <td><span class="chiffre">42</span> machines la tiennent, <span class="chiffre">7</span> le devraient</td>
+                <td class="ref">ROADMAP-daw<br>D26</td>
+              </tr>
+              <tr>
+                <td class="cle">A4</td>
+                <td><code>--batterie-par-piece</code> n'a <strong>pas de mesure de distance</strong>&nbsp;: l'option est câblée et testée, son effet sur la fidélité n'est pas chiffré.</td>
+                <td>—</td>
+                <td class="ref">CDC-multipiste<br>§ 4.4</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="groupe">
+        <div class="groupe-tete"><span class="groupe-lettre">B</span><h3>Ce que la mesure réclame</h3></div>
+        <div class="scroll">
+          <table>
+            <thead><tr><th scope="col">#</th><th scope="col">Travail</th><th scope="col">Pourquoi</th><th scope="col">Source</th></tr></thead>
+            <tbody>
+              <tr>
+                <td class="cle">B1</td>
+                <td><strong>Réengendrer le corpus</strong> et réentraîner le classifieur de machine, puis reprendre A5.2</td>
+                <td>le modèle a été <em>refusé</em> au chargement (empreinte périmée)&nbsp;; A5.2 juge les abstentions d'un modèle qui n'a pas parlé</td>
+                <td class="ref">ROADMAP-appr.<br>A5</td>
+              </tr>
+              <tr>
+                <td class="cle">B2</td>
+                <td><strong>Écouter</strong> — l'A/B dans le DAW contre l'original, les notes douteuses une par une</td>
+                <td>« il reste exactement une chose : écouter »&nbsp;; aucune mesure ne la remplace</td>
+                <td class="ref">ROADMAP-appr.<br>A5.3</td>
+              </tr>
+              <tr>
+                <td class="cle">B3</td>
+                <td><strong>Contre-épreuve de <code>htdemucs_6s</code></strong> sur un troisième original</td>
+                <td><span class="chiffre">−10,4 %</span> sur un morceau qui a guitare et piano, <span class="chiffre">+3,9 %</span> sur un morceau qui ne les a pas&nbsp;; le défaut tient, la réserve est écrite</td>
+                <td class="ref">CDC-multipiste<br>§ 4.2</td>
+              </tr>
+              <tr>
+                <td class="cle">B4</td>
+                <td><strong>Écouter les deux wav</strong> de <code>--voix-tete-choeurs</code></td>
+                <td>distance mesurée neutre (<span class="chiffre">+0,05 %</span>)&nbsp;; les fuites de réverbération de la tête dans les chœurs ne se jugent qu'à l'oreille</td>
+                <td class="ref">CDC-multipiste<br>§ 4.5</td>
+              </tr>
+              <tr>
+                <td class="cle">B5</td>
+                <td>Un lot de morceaux <strong>longs (3-5 min)</strong> avec des parties qui entrent et sortent</td>
+                <td>le banc mesure une texture stable de 30 s&nbsp;; la chaîne travaille sur des disques de 4 minutes</td>
+                <td class="ref">CDC-banc<br>§ 7</td>
+              </tr>
+              <tr>
+                <td class="cle">B6</td>
+                <td>Le banc ne couvre <strong>ni les parties à échantillons ni la voix</strong></td>
+                <td>deux branches de la chaîne ne sont mesurées par rien</td>
+                <td class="ref">CDC-banc<br>§ 7</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="groupe">
+        <div class="groupe-tete"><span class="groupe-lettre">C</span><h3>Ce que S1 a réfuté</h3></div>
+        <p>
+          La campagne S1 a mesuré la chaîne à vérité connue sur vingt morceaux, et elle est plus
+          faible que prévu <em>à tous les étages</em>. Ces trois chiffres sont le vrai plafond du
+          projet&nbsp;; toute autre optimisation est en aval d'eux.
+        </p>
+        <div class="scroll">
+          <table>
+            <thead><tr><th scope="col">#</th><th scope="col">Le plafond</th><th scope="col">Mesuré</th><th scope="col">Attendu</th></tr></thead>
+            <tbody>
+              <tr>
+                <td class="cle">C1</td>
+                <td>La <strong>séparation de la basse</strong> est le premier plafond</td>
+                <td><span class="chiffre">0,21 dB</span> de SDR<br>corrélation <span class="chiffre">0,26</span></td>
+                <td>≥ 6 dB<br>≥ 0,85</td>
+              </tr>
+              <tr>
+                <td class="cle">C2</td>
+                <td>La <strong>transcription</strong> est le second — et le rappel est <em>sous</em> la précision, l'inverse de ce qui était prédit</td>
+                <td>F1 <span class="chiffre">0,367</span><br>rappel 0,345 &lt; précision 0,426</td>
+                <td>0,50 à 0,70<br>rappel &gt; précision</td>
+              </tr>
+              <tr>
+                <td class="cle">C3</td>
+                <td>La séparation <strong>hallucine des sources</strong>, et la chaîne les reconstruit consciencieusement</td>
+                <td><span class="chiffre">19,8 %</span> d'énergie hallucinée</td>
+                <td>5 à 25 % — <em>la seule attente tenue</em></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">
+          C'est la boucle résiduelle (<span class="doc">CDC-separation-par-synthese</span>) qui a été
+          écrite pour attaquer C1 et C3. Sa campagne R1 est le prochain chiffre à produire.
+        </p>
+      </div>
+
+      <div class="groupe">
+        <div class="groupe-tete"><span class="groupe-lettre">D</span><h3>Documentation en retard sur le code</h3></div>
+        <div class="scroll">
+          <table>
+            <thead><tr><th scope="col">#</th><th scope="col">Ce que le document annonce</th><th scope="col">Ce qui est vrai</th></tr></thead>
+            <tbody>
+              <tr>
+                <td class="cle">D1</td>
+                <td><span class="doc">README</span> — « 53 machines », « 1 486 tests moteur »</td>
+                <td><span class="chiffre">64</span> machines, <span class="chiffre">1 946</span> tests</td>
+              </tr>
+              <tr>
+                <td class="cle">D2</td>
+                <td><span class="doc">ROADMAP-daw</span> § 1.1 — <code>app/</code> à 7 303 lignes</td>
+                <td><span class="chiffre">32 873</span> — la mesure d'ouverture est un instantané daté, à signaler comme tel</td>
+              </tr>
+              <tr>
+                <td class="cle">D3</td>
+                <td><span class="doc">CDC-multipiste</span> § 4.3 — « le DAW ne montre pas ce que la chaîne sait »</td>
+                <td>faux depuis D53&nbsp;: l'écran porte densités, partage d'énergie, bloc batterie, distance par stem, métrique et <code>gate</code></td>
+              </tr>
+              <tr>
+                <td class="cle">D4</td>
+                <td><span class="doc">ROADMAP-fusion</span> § 1 — « 33 machines, 13 effets »</td>
+                <td><span class="chiffre">64</span> machines, <span class="chiffre">16</span> effets</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="groupe">
+        <div class="groupe-tete"><span class="groupe-lettre">E</span><h3>Dette d'outillage</h3></div>
+        <div class="scroll">
+          <table>
+            <thead><tr><th scope="col">#</th><th scope="col">Travail</th><th scope="col">Détail</th></tr></thead>
+            <tbody>
+              <tr>
+                <td class="cle">E1</td>
+                <td><span class="chiffre">54</span> signalements <code>ruff</code> dans <code>analyse/</code> et <code>tools/</code></td>
+                <td>F401 imports inutiles, B905 <code>zip()</code> sans <code>strict=</code>, E702, E741 — tous antérieurs, aucun n'est une erreur de type</td>
+              </tr>
+              <tr>
+                <td class="cle">E2</td>
+                <td><strong>Rien ne lance <code>ruff</code> ni <code>mypy</code> automatiquement</strong></td>
+                <td>pas de CI dans le dépôt&nbsp;; les deux outils sont hors de <code>requirements.txt</code> — choix assumé, ce sont des outils d'atelier</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="refus">
+      <p class="serigraphie">Niveau 5</p>
+      <h2>Hors programme</h2>
+      <p>
+        Rassemblé ici pour qu'on ne le repropose pas. Chaque refus est mesuré ou argumenté dans son
+        document&nbsp;; un refus mesuré ne se rouvre que sur une raison neuve.
+      </p>
+      <ul class="refus">
+        <li><b>Une API réseau.</b> Le tube JSON suffit et supprime tout un pan de problèmes — port, authentification, cycle de vie. <span class="mono" style="color:var(--ink-faint)">ROADMAP-interop § 0</span></li>
+        <li><b>Des machines de caractère ajoutées pour la couverture.</b> Elles élargissent le catalogue, pas la couverture — à faire pour le plaisir de jouer, jamais en s'en réclamant pour la reconstruction. <em>L'élargissement du vivier reste une demande permanente, à ce titre-là et pas à l'autre.</em> <span class="mono" style="color:var(--ink-faint)">ROADMAP-fusion § 6</span></li>
+        <li><b>Un modèle appris de bout en bout</b> (audio → paramètres). Piste menée jusqu'au bout, mesurée, refusée&nbsp;; le code est conservé et documenté. <span class="mono" style="color:var(--ink-faint)">ROADMAP-fusion § 7</span></li>
+        <li><b>Reconstruire la voix par synthèse.</b> Hors de portée&nbsp;; la séparation la rend disponible en audio, c'est le mieux qu'on puisse en faire honnêtement. <span class="mono" style="color:var(--ink-faint)">ROADMAP-fusion § 6</span></li>
+        <li><b>La guitare électrique modélisée.</b> Hypothèse H10, mesurée, écart insuffisant&nbsp;: la machine ne sera pas écrite. <span class="mono" style="color:var(--ink-faint)">CDC-machines-manquantes § 12</span></li>
+      </ul>
+    </section>
+
+  </main>
+
+  <footer>
+    <strong>Cette page est le rendu de <code>docs/INDEX.md</code>, pas une seconde source.</strong>
+    Deux copies du même contenu divergent toujours&nbsp;: quand celle-ci et le fichier Markdown ne
+    disent pas la même chose, c'est le Markdown qui a raison et cette page qui est à refaire. Les
+    comptes cités ont été relus à la source&nbsp;; les dix-huit liens de l'index résolvent tous vers
+    un fichier existant.
+  </footer>
+
+</div>
