@@ -8033,7 +8033,10 @@ combien**. Un chiffre qu'on n'a pas est plus dangereux qu'un chiffre mauvais.
 > 64 machines instanciées — c'était l'autre moitié de l'attente n° 4, et un
 > compteur d'allocations demanderait d'instrumenter le moteur. Le montage des
 > 64 machines prend 0,7 ms, ce qui exclut au moins qu'il fasse quelque chose de
-> lourd. Le chiffre de mémoire reste à prendre.
+> lourd. Le chiffre de mémoire reste à prendre. **— PRIS PAR D41** : 120
+> machines vivantes tiennent dans 33 Mo, 13 Mo au-dessus du processus vide.
+> (Renvoi ajouté le 09/09/2026 : sans lui, cette ligne fait rechercher un
+> chiffre déjà publié deux phases plus loin.)
 >
 > Vérifié à l'écran à 64 pistes (63 « Ajouter une piste MIDI » par `VSM_MENU`) :
 > la liste défile, l'arrangement défile, le mélangeur défile — et, après
@@ -9611,3 +9614,19 @@ ce qui est juste — ils portent sur le matériau, la prise active et les bornes
 
 Tests : 1 291 audio, **327 core** (4 neufs), 292 interchange, 25 clap,
 11 panels — tous verts.
+
+> **DEUX LUNETTES REPASSÉES LE 09/09/2026, SANS RIEN TROUVER — et l'écrire
+> évite de les repasser une troisième fois.**
+>
+> 1. **Celle de D35, « ce qui existe et que personne n'appelle »**, rejouée sur
+>    les 285 fonctions déclarées dans les en-têtes publics de `core/` et
+>    `audio/` : **zéro orpheline**. Les huit candidates d'un premier passage
+>    étaient toutes des faux positifs — six appels depuis d'autres EN-TÊTES que
+>    la recherche n'incluait pas, et deux variables locales (`gPow`, `tiny`)
+>    que l'expression régulière avait prises pour des déclarations. Un « zéro »
+>    sorti d'un grep se revérifie en listant ce qu'on a cherché ET où : la règle
+>    du § « Pièges payés » a servi ici contre son auteur.
+> 2. **« Ce qu'on peut créer et jamais retirer »**, la lunette qui a donné D57 :
+>    les prises étaient le seul cas. Repères, bus de départ, inserts, effets
+>    MIDI, marqueurs de warp, points d'automation, associations MIDI Learn,
+>    pistes et clips ont tous leur geste de retrait.
