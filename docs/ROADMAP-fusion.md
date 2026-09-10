@@ -1088,6 +1088,54 @@ existe, refera cette erreur.
 
 ---
 
+### 8. Un chemin RELATIF coûtait la séparation entière, et la course avait l'air d'avoir réussi (10/09/2026)
+
+**TROUVÉ EN LANÇANT UNE CAMPAGNE, PAR LA CAMPAGNE ELLE-MÊME.** Le script de P1
+appelait la chaîne depuis la racine du dépôt avec
+`reconstruction/travail/sources/sky-and-sand.wav`. Les deux courses sont allées
+au bout, code 0, rapport, distance, projet. Et **aucune des deux n'avait
+séparé**.
+
+**LE MÉCANISME.** `separer()` lance demucs dans un sous-processus qui MEURT —
+il le faut, torch et demucs restent résidents à ~7 Go et l'addition avec Basic
+Pitch a fait abattre deux courses par l'OOM killer le 02/09. Ce sous-processus
+tourne dans `analyse/`, parce qu'il doit y trouver le module
+`analyzer.separation`. **Un chemin relatif donné en ligne de commande est
+relatif au dossier de l'appelant, pas à `analyse/`** : demucs rendait « No such
+file or directory », le sous-processus sortait en 1, et la chaîne se repliait
+sur le mélange entier.
+
+```
+      échec (séparation en sous-processus : code 1) — repli sur le mélange entier
+      partage du morceau : melange 100.0 %
+      ATTENTION : « melange » porte 100.0 % du morceau à lui seul.
+```
+
+**LA CHAÎNE LE DIT — ET CELA NE SUFFIT PAS.** Elle imprime trois lignes qui
+disent exactement ce qui se passe : c'est le § 5 bis appliqué, et il a
+fonctionné. Mais la course **a l'air d'avoir réussi** : code de sortie 0, un
+`rapport.json`, une distance globale, un projet jouable. Et surtout, **deux
+courses ainsi repliées se comparent très bien l'une à l'autre** — même source,
+mêmes options, une variable qui change — en ne mesurant plus rien de ce qu'on
+croit mesurer. C'est le piège que le § 10.3 nomme sous une autre forme : une
+distance n'est un chiffre que si l'on sait à quelles conditions elle a été
+obtenue, et « le mélange entier en une piste » est une condition.
+
+**CE QUI EST FAIT.** Les deux chemins — l'entrée et le dossier de sortie — sont
+**résolus en absolu avant de partir**. C'est une ligne, et la chaîne savait déjà
+le faire ailleurs : la provenance écrit `str(Path(args.entree).resolve())`
+depuis A4.2. Un test tient la correction en interceptant la ligne de commande
+construite, sans rien lancer : les deux arguments partent absolus, et le
+sous-processus tourne bien dans `analyse/` — ce qui est la cause et doit le
+rester.
+
+**CE QUE CELA A COÛTÉ** : la campagne P1 a été lancée, a tourné, et a été jetée.
+C'est le prix normal d'un défaut trouvé par une mesure plutôt que par une
+relecture — et il est plus bas que celui d'un verdict publié sur deux courses
+qui ne séparaient pas.
+
+---
+
 ### 7. Le classifieur restait « frais » en ne connaissant qu'un tiers du parc (10/09/2026)
 
 **LA FRAÎCHEUR NE PORTE PAS SUR CE QU'ON CROIT.** `verifie_fraicheur` bâtit son

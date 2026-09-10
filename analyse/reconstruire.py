@@ -307,7 +307,19 @@ def separer(chemin: Path, dossier: Path, modele: str,
     """
     if commande is None:
         commande = [sys.executable, "-m", "analyzer.separation"]
-    complet = commande + [str(chemin), str(dossier), modele]
+    # LES DEUX CHEMINS SONT RÉSOLUS AVANT DE PARTIR, et c'est une correction.
+    # Le sous-processus tourne dans `analyse/` — il le faut, pour trouver le
+    # module `analyzer.separation` —, si bien qu'un chemin RELATIF donné en
+    # ligne de commande, relatif au dossier de l'appelant, n'y existe pas.
+    # demucs rendait alors « No such file or directory », le sous-processus
+    # sortait en 1, et la chaîne se repliait sur LE MÉLANGE ENTIER : une course
+    # qui va au bout, rend un rapport, une distance et un projet — d'un morceau
+    # reconstruit en UNE piste. Elle le DIT (« repli sur le mélange entier »),
+    # mais elle a l'air d'avoir réussi, et deux courses ainsi repliées se
+    # comparent très bien l'une à l'autre en ne mesurant plus rien de ce qu'on
+    # croit. Trouvé le 10/09/2026 en lançant la campagne P1 depuis la racine du
+    # dépôt.
+    complet = commande + [str(Path(chemin).resolve()), str(Path(dossier).resolve()), modele]
     resultat = subprocess.run(complet, cwd=str(Path(__file__).resolve().parent))
     if resultat.returncode != 0:
         raise RuntimeError(f"séparation en sous-processus : code {resultat.returncode}")
