@@ -4897,8 +4897,8 @@ void MainComponent::showReconstructionReport() {
         rapportReconstruction_.loadFileAsString().toStdString());
     if (!lu.success) {
         clientDuRapport_ = ClientDuRapport::autre;   // D84
-        importReport_.showFailure(juce::String::fromUTF8("Rapport illisible"),
-                                  juce::String::fromUTF8(lu.error.c_str()));
+        importReport_.showFailure(tr(u8"Rapport illisible"),
+                                  vsm::app::ui::trPhrase(juce::String::fromUTF8(lu.error.c_str())));
         return;
     }
     const auto& racine = lu.value;
@@ -4911,14 +4911,17 @@ void MainComponent::showReconstructionReport() {
     int pistesJouees = 0, bus = 0;
     for (const auto& piste : project_.tracks)
         (piste.kind == vsm::sequencer::Track::Kind::Group ? bus : pistesJouees) += 1;
-    juce::String resume;
-    resume << pistesJouees << juce::String::fromUTF8(" piste(s) reconstruite(s)");
-    if (bus > 0) resume << juce::String::fromUTF8(" sous ") << bus << juce::String::fromUTF8(" bus de groupe");
+    // D92 : UNE LIGNE, UN MODÈLE -- la phrase entière, remplie après traduction ;
+    // l'ordre des mots change d'une langue à l'autre, et un fragment traduit seul
+    // ne fait pas une phrase. Les données (noms, machines) se posent en dernier.
+    juce::String resume = (bus > 0 ? tr(u8"%1 piste(s) reconstruite(s) sous %2 bus de groupe")
+                                   : tr(u8"%1 piste(s) reconstruite(s)"))
+                              .replace("%1", juce::String(pistesJouees))
+                              .replace("%2", juce::String(bus));
     const double distance = racine["globalDistance"].asNumber(-1.0);
     if (distance >= 0.0)
-        resume << juce::String::fromUTF8(" · distance globale ")
-               << juce::String(distance, 4)
-               << juce::String::fromUTF8(" (0 = identique, 1 = silence)");
+        resume << tr(u8" · distance globale %1 (0 = identique, 1 = silence)")
+                      .replace("%1", juce::String(distance, 4));
     lignes.add({resume, Ton::resume});
 
     // D53 : CE QUI REND UNE DISTANCE COMPARABLE EST ÉCRIT AVEC ELLE.
@@ -4932,17 +4935,16 @@ void MainComponent::showReconstructionReport() {
     if (distance >= 0.0) {
         const std::string metrique = racine["metric"].asString("");
         const int budget = static_cast<int>(racine["iterations"].asNumber(-1.0));
-        juce::String conditions;
-        if (!metrique.empty())
-            conditions << juce::String::fromUTF8("de métrique ")
-                       << juce::String::fromUTF8(metrique.c_str());
-        if (budget >= 0) {
-            if (conditions.isNotEmpty()) conditions << juce::String::fromUTF8(" et ");
-            conditions << juce::String::fromUTF8("de budget ") << budget
-                       << juce::String::fromUTF8(" itération(s)");
-        }
-        if (conditions.isNotEmpty())
-            lignes.add({juce::String::fromUTF8("Ne se compare qu'à une distance ") + conditions,
+        juce::String condition;
+        if (!metrique.empty() && budget >= 0)
+            condition = tr(u8"Ne se compare qu'à une distance de métrique %1 et de budget %2 itération(s)");
+        else if (!metrique.empty())
+            condition = tr(u8"Ne se compare qu'à une distance de métrique %1");
+        else if (budget >= 0)
+            condition = tr(u8"Ne se compare qu'à une distance de budget %2 itération(s)");
+        if (condition.isNotEmpty())
+            lignes.add({condition.replace("%2", juce::String(budget))
+                                 .replace("%1", juce::String::fromUTF8(metrique.c_str())),
                         Ton::info});
     }
 
@@ -4952,15 +4954,14 @@ void MainComponent::showReconstructionReport() {
         lignes.add({{}, Ton::info});
         for (const auto& part : partage.elements()) {
             const double pourcent = part["partEnergie"].asNumber(0.0);
-            juce::String texte;
-            texte << juce::String::fromUTF8(part["stem"].asString("?").c_str())
-                  << juce::String::fromUTF8(" : ") << juce::String(pourcent, 1)
-                  << juce::String::fromUTF8(" % de l'énergie du morceau");
             // Le même seuil que le cri de la chaîne : au-delà de la moitié
             // sur un stem, « N pistes » est une description trompeuse.
-            if (pourcent >= 50.0)
-                texte << juce::String::fromUTF8(" — cette piste porte le morceau "
-                                                "à elle seule");
+            const juce::String texte =
+                tr(pourcent >= 50.0
+                       ? u8"%1 : %2 % de l'énergie du morceau — cette piste porte le morceau à elle seule"
+                       : u8"%1 : %2 % de l'énergie du morceau")
+                    .replace("%2", juce::String(pourcent, 1))
+                    .replace("%1", juce::String::fromUTF8(part["stem"].asString("?").c_str()));
             lignes.add({texte, pourcent >= 50.0 ? Ton::attention : Ton::info});
         }
     }
@@ -5004,13 +5005,10 @@ void MainComponent::showReconstructionReport() {
             const double ambitus = stem["ambitusDemiTons"].asNumber(-1.0);
             bool fourreTout = false;
             if (poly >= 0.0 && ambitus >= 0.0) {
-                texte << juce::String::fromUTF8(" · polyphonie ")
-                      << juce::String(poly, 1)
-                      << juce::String::fromUTF8(" (max ")
-                      << static_cast<int>(stem["polyphonieMax"].asNumber(0.0))
-                      << juce::String::fromUTF8(") · ambitus ")
-                      << static_cast<int>(ambitus)
-                      << juce::String::fromUTF8(" demi-tons");
+                texte << tr(u8" · polyphonie %1 (max %2) · ambitus %3 demi-tons")
+                             .replace("%1", juce::String(poly, 1))
+                             .replace("%2", juce::String(static_cast<int>(stem["polyphonieMax"].asNumber(0.0))))
+                             .replace("%3", juce::String(static_cast<int>(ambitus)));
                 // LES SEUILS DU FOURRE-TOUT, les mêmes que ceux de la chaîne
                 // (analyse/analyzer/vsm_reconstruct.py, `stem_fourre_tout`) :
                 // au moins 3 notes simultanées en moyenne ET 3 octaves. Le
@@ -5018,14 +5016,13 @@ void MainComponent::showReconstructionReport() {
                 // recalcul disparaîtra — c'est noté au § 4.3 du CDC.
                 fourreTout = poly >= 3.0 && ambitus >= 36.0;
                 if (fourreTout)
-                    texte << juce::String::fromUTF8(" — PLUSIEURS parties sur une "
-                                                    "seule piste");
+                    texte << tr(u8" — PLUSIEURS parties sur une seule piste");
             }
             // La pire piste est marquée -- et seulement s'il y en a plusieurs :
             // sur un seul stem, « la plus loin » ne dit rien.
             const bool laPlusLoin = d >= 0.0 && stems.size() > 1 && std::abs(d - pire) < 1e-12;
             if (laPlusLoin)
-                texte << juce::String::fromUTF8(" — la plus loin de l'original");
+                texte << tr(u8" — la plus loin de l'original");
             lignes.add({texte, (fourreTout || laPlusLoin) ? Ton::attention : Ton::info});
         }
     }
@@ -5040,42 +5037,34 @@ void MainComponent::showReconstructionReport() {
     if (batterie.isObject()) {
         lignes.add({{}, Ton::info});
         const auto& pieces = batterie["pieces"];
-        juce::String tete;
-        tete << juce::String::fromUTF8("Batterie → ")
-             << juce::String::fromUTF8(batterie["machine"].asString("?").c_str())
-             << juce::String::fromUTF8(" · ") << static_cast<int>(pieces.size())
-             << juce::String::fromUTF8(" pièce(s), ")
-             << static_cast<int>(batterie["hits"].asNumber(0.0))
-             << juce::String::fromUTF8(" frappe(s)");
+        juce::String tete = tr(u8"Batterie → %1 · %2 pièce(s), %3 frappe(s)")
+                                .replace("%2", juce::String(static_cast<int>(pieces.size())))
+                                .replace("%3", juce::String(static_cast<int>(batterie["hits"].asNumber(0.0))))
+                                .replace("%1", juce::String::fromUTF8(batterie["machine"].asString("?").c_str()));
         // LE DÉCOUPAGE PAR PIÈCE, quand il a eu lieu : sans cette ligne, un
         // projet à huit pistes de batterie ne se distinguerait pas d'un
         // projet à une seule dans ce rapport.
         const auto& decoupe = batterie["splitByPiece"];
         const bool eclatee = decoupe.isArray() && decoupe.size() > 1;
         if (eclatee)
-            tete << juce::String::fromUTF8(", ÉCLATÉE en ")
-                 << static_cast<int>(decoupe.size()) << juce::String::fromUTF8(" pistes");
+            tete << tr(u8", ÉCLATÉE en %1 pistes").replace("%1", juce::String(static_cast<int>(decoupe.size())));
         lignes.add({tete, Ton::info});
         for (const auto& piece : pieces.elements()) {
-            juce::String ligne;
-            ligne << juce::String::fromUTF8("    ")
-                  << juce::String::fromUTF8(piece["family"].asString("?").c_str())
-                  << juce::String::fromUTF8(" : ")
-                  << static_cast<int>(piece["hits"].asNumber(0.0))
-                  << juce::String::fromUTF8(" frappe(s)");
+            const juce::String ligne =
+                "    " + tr(u8"%1 : %2 frappe(s)")
+                            .replace("%2", juce::String(static_cast<int>(piece["hits"].asNumber(0.0))))
+                            .replace("%1", juce::String::fromUTF8(piece["family"].asString("?").c_str()));
             lignes.add({ligne, Ton::info});
         }
         // Ce que la machine a dû concéder — familles sans voix, toms rabattus
         // sur un clap : le rapport les portait, l'écran les taisait.
         for (const auto& avertissement : batterie["warnings"].elements())
-            lignes.add({juce::String::fromUTF8("    ")
-                        + juce::String::fromUTF8(avertissement.asString("").c_str()),
+            lignes.add({"    " + vsm::app::ui::trPhrase(juce::String::fromUTF8(avertissement.asString("").c_str())),
                         Ton::perte});
         if (!eclatee && pieces.size() >= 2)
-            lignes.add({juce::String::fromUTF8("    ")
-                        + juce::String(static_cast<int>(pieces.size()))
-                        + juce::String::fromUTF8(" parties sur une seule piste — la chaîne "
-                                                 "sait les séparer (--batterie-par-piece)"),
+            lignes.add({"    " + tr(u8"%1 parties sur une seule piste — la chaîne sait les séparer "
+                                   u8"(--batterie-par-piece)")
+                                    .replace("%1", juce::String(static_cast<int>(pieces.size()))),
                         Ton::perte});
     }
 
@@ -5095,19 +5084,22 @@ void MainComponent::showReconstructionReport() {
             const juce::String gardee = juce::String::fromUTF8(decision["kept"].asString("").c_str());
             juce::Array<Ligne> nouvelles;
             if (avec >= 0.0 && sans >= 0.0 && sans < avec - 1e-6)
-                nouvelles.add({piste + juce::String::fromUTF8(" : le morceau mesuré est MEILLEUR sans cette "
-                                                             "piste (")
-                               + juce::String(sans, 4) + juce::String::fromUTF8(" contre ")
-                               + juce::String(avec, 4)
-                               + juce::String::fromUTF8(") — conservée : couper est une décision humaine"),
+                nouvelles.add({tr(u8"%1 : le morceau mesuré est MEILLEUR sans cette piste (%2 contre %3) "
+                                  u8"— conservée : couper est une décision humaine")
+                                   .replace("%2", juce::String(sans, 4))
+                                   .replace("%3", juce::String(avec, 4))
+                                   .replace("%1", piste),
                                Ton::perte});
             if (gardee.isNotEmpty() && gardee != juce::String::fromUTF8("réglage"))
-                nouvelles.add({piste + juce::String::fromUTF8(" : au mélange, gardé « ") + gardee
-                               + juce::String::fromUTF8(" » plutôt que le réglage de piste"),
+                // Le libellé gardé est celui de la CHAÎNE (« arbitrage », « machine
+                // suivante (…) ») : un nom de choix, pas une donnée -- traduit à l'affichage.
+                nouvelles.add({tr(u8"%1 : au mélange, gardé « %2 » plutôt que le réglage de piste")
+                                   .replace("%2", vsm::app::ui::trPhrase(gardee))
+                                   .replace("%1", piste),
                                Ton::info});
             if (!nouvelles.isEmpty() && !entete) {
                 lignes.add({{}, Ton::info});
-                lignes.add({juce::String::fromUTF8("Verdict du mélange"), Ton::info});
+                lignes.add({tr(u8"Verdict du mélange"), Ton::info});
                 entete = true;
             }
             lignes.addArray(nouvelles);
@@ -5132,12 +5124,10 @@ void MainComponent::showReconstructionReport() {
                 if (std::abs(point["taille"].asNumber(-1.0) - taille) < 1e-9
                     && std::abs(point["dosage"].asNumber(-1.0) - dosage) < 1e-9)
                     distanceRetenue = point["distance"].asNumber(-1.0);
-            texte << juce::String::fromUTF8("Réverbération au mélange : RETENUE, pièce ")
-                  << juce::String(taille, 1) << juce::String::fromUTF8(" à ")
-                  << static_cast<int>(std::lround(dosage * 100.0))
-                  << juce::String::fromUTF8(" % sur ")
-                  << static_cast<int>(reverb["pistes"].size())
-                  << juce::String::fromUTF8(" piste(s) mélodique(s)");
+            texte = tr(u8"Réverbération au mélange : RETENUE, pièce %1 à %2 % sur %3 piste(s) mélodique(s)")
+                        .replace("%1", juce::String(taille, 1))
+                        .replace("%2", juce::String(static_cast<int>(std::lround(dosage * 100.0))))
+                        .replace("%3", juce::String(static_cast<int>(reverb["pistes"].size())));
             if (temoin > 0.0 && distanceRetenue >= 0.0)
                 texte << juce::String::fromUTF8(" · ") << juce::String(temoin, 4)
                       << juce::String::fromUTF8(" → ") << juce::String(distanceRetenue, 4)
@@ -5146,18 +5136,17 @@ void MainComponent::showReconstructionReport() {
                       << juce::String::fromUTF8(" %)");
             lignes.add({texte, Ton::info});
         } else {
-            texte << juce::String::fromUTF8("Réverbération au mélange : aucune — aucun point "
-                                            "de la grille ne rapproche de l'original");
+            texte = tr(u8"Réverbération au mélange : aucune — aucun point de la grille ne rapproche "
+                       u8"de l'original");
             if (temoin > 0.0)
-                texte << juce::String::fromUTF8(" (témoin sec ") << juce::String(temoin, 4)
-                      << juce::String::fromUTF8(")");
+                texte << tr(u8" (témoin sec %1)").replace("%1", juce::String(temoin, 4));
             lignes.add({texte, Ton::info});
         }
     }
 
     clientDuRapport_ = ClientDuRapport::autre;   // D84
     importReport_.showLines(
-        juce::String::fromUTF8("Rapport de reconstruction"),
+        tr(u8"Rapport de reconstruction"),
         currentProjectFolder_ != juce::File() ? currentProjectFolder_.getFileName()
                                               : juce::String(),
         lignes);

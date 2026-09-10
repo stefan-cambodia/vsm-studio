@@ -12585,3 +12585,82 @@ D91.
 >
 > Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
 > 172 Python, ruff et mypy — tout vert.
+
+### Phase D92 — A9 : le rapport de reconstruction, en anglais (10/09/2026)
+
+**CE QUI RESTE LE PLUS VISIBLE D'A9 APRÈS D91.** Le volet qui montre le rapport
+de reconstruction (`showReconstructionReport`, 270 lignes) fabrique ses lignes
+en français à partir de `rapport.json` : 65 fragments cousus autour des
+chiffres — « 6 piste(s) reconstruite(s) · distance globale 0.2325 (0 =
+identique, 1 = silence) », « … % de l'énergie du morceau », « Batterie → … »,
+« Verdict du mélange », « Réverbération au mélange : RETENUE… ». En anglais,
+tout le volet est français, sauf son cadre. C'est pourtant l'écran du second
+axe du projet : celui où l'on juge une reconstruction.
+
+**LA DÉCISION : UNE LIGNE, UN MODÈLE.** Chaque ligne devient un modèle `tr()`
+rempli après traduction — la PHRASE entière, et non ses fragments : l'ordre
+des mots change d'une langue à l'autre, et « % de l'énergie du morceau »
+traduit seul ne donne pas une phrase anglaise. Les compléments facultatifs
+(gate, profil, polyphonie, « la plus loin de l'original ») restent des
+segments ajoutés, chacun son modèle. Les données — noms de stems, machines,
+familles de pièces, chiffres — passent intactes. Les avertissements de la
+batterie viennent de la chaîne d'analyse (Python) : `trPhrase` s'y essaie, et
+ce qu'il ne reconnaît pas passe tel quel — compté à part.
+
+**LA MESURE, ET CE QU'IL A FALLU LUI RENDRE.** `VSM_RAPPORT_LISTE` (D89)
+listait le volet AVANT que `VSM_RAPPORT` n'y pose le rapport de
+reconstruction : elle aurait listé le rapport d'ouverture. Elle est déplacée
+après, seule, et ce binaire est le témoin.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (10/09/2026).**
+>
+> 1. **En anglais, les lignes du volet sont anglaises** : les lignes identiques
+>    en français et en anglais tombent à celles qui n'ont rien à traduire,
+>    chacune nommée ; aucun mot français ne reste dans les lignes changées,
+>    hors données et hors avertissements de la chaîne non reconnus — comptés à
+>    part.
+> 2. **Le français ne change pas d'un caractère.**
+> 3. **Les chiffres sont les mêmes dans les deux langues** : chaque ligne
+>    anglaise porte la même suite de nombres que la ligne française qui lui
+>    répond.
+> 4. **D89 est intacte** : sans `VSM_RAPPORT`, la liste du rapport d'ouverture
+>    est la même qu'avant le déplacement de la commande.
+
+> **D92 EST FAITE (10/09/2026), ET LES QUATRE ATTENDUS SONT TENUS.** Témoin et
+> D92 dans les mêmes conditions (`HOME` isolé, préférences de l'utilisateur
+> intactes), sur quatre rapports réels copiés hors de `reconstruction/` :
+>
+> | rapport | lignes identiques FR / EN, témoin | D92 | ce qui reste identique |
+> |---|---|---|---|
+> | `sky-v4` (batterie, verdict) | 26 / 26 | **7 / 26** | le dossier, 5 lignes vides, « bass → vsm.wavetable · distance 0.2190 » |
+> | `sky-parite` (partage, batterie éclatée) | 28 / 28 | **7 / 28** | le dossier, 6 lignes vides |
+> | `parite-reverb` (réverbération, verdict) | 31 / 31 | **8 / 31** | le dossier, 7 lignes vides |
+> | `children-dream-v7` (cinq stems) | 12 / 12 | **8 / 12** | le dossier, 3 lignes vides, 4 lignes « stem → machine · distance » |
+>
+> « distance » s'écrit de même dans les deux langues : une ligne faite de noms,
+> d'une flèche et de ce mot n'a rien à traduire. Le français est **identique
+> au témoin** sur les quatre rapports ; les **97 lignes sur 97** portent la
+> même suite de nombres en français et en anglais. La recherche de mots
+> français dans les lignes anglaises changées en trouve deux, qui sont des
+> données : `--batterie-par-piece`, le nom d'une option de la chaîne, et
+> « Batterie · hihat », le nom d'une piste. **D89 est intacte** : la liste du
+> rapport d'ouverture du témoin est celle de D89, au caractère près, en
+> français et en anglais, et D92 ne la change pas.
+>
+> **LES PHRASES DE LA CHAÎNE D'ANALYSE.** Les avertissements de la batterie
+> viennent de `vsm_drumkit.py` : sept modèles pour `trPhrase` (famille écartée,
+> frappe non isolée, voix absente et repli par le spectre, par la table, ou
+> aucun). Les libellés du verdict du mélange — « machine suivante (…) »,
+> « arbitrage » — sont dans les rapports du banc, écrits par une version
+> antérieure de la chaîne : le source actuel ne les produit plus en toutes
+> lettres, et seul « réglage » y reste. Tous sont traduits à l'AFFICHAGE ;
+> `rapport.json`, que la chaîne relit, reste en français.
+>
+> **CE QUI RESTE.** La bascule de langue en direct ne redessine pas CE rapport
+> (elle redessine le rapport d'ouverture, D84) : `VSM_MENU`, qui bascule,
+> passe avant `VSM_RAPPORT` dans le banc, qui ne sait donc pas le tester. Le
+> rapport rouvert paraît dans la nouvelle langue. Table à **811** paires,
+> **52** modèles de phrases.
+>
+> Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
+> 172 Python, ruff et mypy (106 fichiers) — tout vert.

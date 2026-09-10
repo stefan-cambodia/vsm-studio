@@ -331,9 +331,6 @@ public:
             // de l'état photographié.
             if (const char* liste = std::getenv("VSM_MENU_LISTE"); liste != nullptr && *liste && *liste != '0')
                 content->listMenusForCapture();
-            // VSM_RAPPORT_LISTE=1 (D89) : le texte du volet de rapport, tel qu'affiché.
-            if (const char* rapport = std::getenv("VSM_RAPPORT_LISTE"); rapport != nullptr && *rapport && *rapport != '0')
-                content->listReportForCapture();
             // VSM_EXPORT_MIDI_PISTE=fichier.mid : la piste choisie seule, en
             // MIDI, sans fenêtre (D23.3) -- le fichier relu doit compter UNE piste.
             if (const char* sortie = std::getenv("VSM_EXPORT_MIDI_PISTE"); sortie != nullptr && *sortie)
@@ -349,6 +346,11 @@ public:
             if (const char* rapport = std::getenv("VSM_RAPPORT");
                 rapport != nullptr && *rapport)
                 content->showReconstructionReport();
+            // VSM_RAPPORT_LISTE=1 (D89) : le texte du volet de rapport, tel qu'affiché.
+            // D92 : APRÈS VSM_RAPPORT. Placée avant, elle listait le rapport
+            // d'ouverture que le rapport de reconstruction allait remplacer.
+            if (const char* liste = std::getenv("VSM_RAPPORT_LISTE"); liste != nullptr && *liste && *liste != '0')
+                content->listReportForCapture();
             if (const char* sortie = std::getenv("VSM_CAPTURE"); sortie != nullptr && *sortie) {
                 const juce::File fichier =
                     juce::File::getCurrentWorkingDirectory().getChildFile(sortie);
