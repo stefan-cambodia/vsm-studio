@@ -66,7 +66,14 @@ public:
         for (int i = premier; i < dernier; ++i) {
             const auto& entree = (*items_)[static_cast<size_t>(i)];
             auto ligne = juce::Rectangle<int>(0, i * kHauteurLigne, getWidth(), kHauteurLigne);
-            if (i == survol_) g.fillAll(juce::Colour(0x18ffffff));
+            // D88 : LA LIGNE SURVOLÉE, ET ELLE SEULE. `fillAll` remplit toute la
+            // zone à repeindre : le pointeur au-dessus d'une ligne éclaircissait
+            // la liste entière -- 301 562 pixels sur une capture anglaise où la
+            // souris passait par là, pris d'abord pour un effet de la largeur.
+            if (i == survol_) {
+                g.setColour(juce::Colour(0x18ffffff));
+                g.fillRect(ligne);
+            }
             g.setColour(couleurDe(entree.kind));
             g.setFont(juce::Font(juce::FontOptions(14.0f)));
             g.drawText(juce::String::fromUTF8(vsm::interchange::browserKindShortLabel(entree.kind)),
@@ -176,7 +183,11 @@ void BrowserComponent::resized() {
     recherche_.setBounds(haut);
     zone.removeFromTop(6);
     defilement_.setBounds(zone);
-    liste_->setSize(zone.getWidth(), liste_->getHeight());
+    // D88 : LA LARGEUR VISIBLE, PAS CELLE DE LA ZONE. La barre de défilement
+    // occupe le bord droit ; une liste aussi large que la zone passait dessous,
+    // et la colonne de la source, alignée à droite, sortait « Parc VSI… » -- dans
+    // les deux langues.
+    liste_->setSize(defilement_.getMaximumVisibleWidth(), liste_->getHeight());
 }
 
 void BrowserComponent::setItems(std::vector<BrowserItem> items) {
@@ -187,7 +198,7 @@ void BrowserComponent::setItems(std::vector<BrowserItem> items) {
 void BrowserComponent::refilter() {
     filtres_ = vsm::interchange::filterBrowserItems(tous_, recherche_.getText().toStdString());
     liste_->setItems(&filtres_);
-    liste_->setSize(defilement_.getWidth(), liste_->getHeight());
+    liste_->setSize(defilement_.getMaximumVisibleWidth(), liste_->getHeight());   // D88
     compte_.setText(juce::String(static_cast<int>(filtres_.size())) + " / "
                         + juce::String(static_cast<int>(tous_.size())),
                     juce::dontSendNotification);

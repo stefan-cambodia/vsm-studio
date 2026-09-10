@@ -12222,3 +12222,60 @@ français est vérifié par ses littéraux, comme en D77.
 >
 > Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
 > 172 Python, ruff et mypy — tout vert.
+
+### Phase D88 — La colonne de la source du navigateur passait sous la barre de défilement (10/09/2026, 21:50)
+
+**CE QUE D87 A VU.** Sur l'image du navigateur, la source de chaque ligne se
+lisait « Parc VSI… » : coupée par le bord, dans les deux langues. La lecture
+du code l'explique : la liste reçoit la largeur ENTIÈRE de sa zone de
+défilement, alors que la barre verticale en occupe le bord droit ; la colonne
+de la source, alignée à droite, passe dessous. Un défaut de lisibilité, que la
+règle du projet place avant tout goût : ce qui s'affiche doit se lire.
+
+**LA CORRECTION.** La liste reçoit la largeur VISIBLE
+(`Viewport::getMaximumVisibleWidth()`), à la mise en page et après chaque
+filtrage — la manière dont JUCE l'entend.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (10/09/2026, 21:50).**
+>
+> 1. **« Parc VSM » se lit en entier**, en français et en anglais, et le texte
+>    le plus à droite de chaque ligne s'arrête AVANT la barre de défilement —
+>    mesuré sur l'image, colonne de pixels par colonne.
+> 2. **Rien d'autre ne bouge qu'à cause de ce changement** : les pixels qui
+>    diffèrent entre l'avant (les captures de D87) et l'après sont situés, et
+>    ils sont dans les lignes de la liste, pas dans le champ de recherche ni
+>    dans le compteur.
+
+> **D88 EST FAITE (10/09/2026, 22:06), ET LES DEUX ATTENDUS SONT TENUS — APRÈS
+> QU'UN TROISIÈME CHIFFRE A DÉNONCÉ UN AUTRE DÉFAUT.** Avant : les captures de
+> D87 (le même binaire). Après : le binaire de D88, mêmes conditions.
+>
+> | | avant (D87) | après |
+> |---|---|---|
+> | texte de la source, première ligne | x 562-603, **42 px** — « Parc VSI » | x 554-602, **49 px** — « Parc VSM », arrêté avant le curseur de la barre (x 605) |
+> | pixels changés, français | — | 7 006, y 51-551, x 387-603 : les lignes de la liste |
+> | pixels changés, anglais | — | 7 006, même zone |
+>
+> Les 7 006 pixels sont la correction et sa conséquence : la colonne des noms,
+> taillée en proportion d'une largeur devenue plus étroite, coupe ses points de
+> suspension un peu plus tôt. Le champ de recherche et le compteur n'ont pas
+> bougé.
+>
+> **LE TROISIÈME CHIFFRE.** La première série d'après donnait, en anglais,
+> **301 562 pixels** changés sur toute la liste — trop pour cette correction.
+> L'image l'a montré : tout le fond de la liste était éclairci. La cause était
+> dans le dessin du survol, `if (i == survol_) g.fillAll(…)` : `fillAll`
+> remplit toute la zone à repeindre, pas la ligne. Le pointeur de la souris
+> passait au-dessus de la liste pendant cette capture, et c'est la liste
+> entière qui s'éclaircissait. Corrigé : la ligne survolée, et elle seule
+> (`fillRect`). **Ce qui est vérifié, et ce qui ne l'est pas** : la série
+> refaite donne les mêmes 7 006 pixels dans les deux langues, et aucune ligne
+> éclaircie (0 sur 19) — mais le pointeur n'était au-dessus d'aucune ligne
+> cette fois. La correction du survol est donc établie par le code et par
+> l'explication du chiffre, pas par une image qui montrerait une seule ligne
+> éclaircie : la position de la souris ne se pilote pas. Les deux `fillAll`
+> de la liste d'événements ont été relus : ils sont dans `paintRowBackground`,
+> où JUCE limite le dessin à la ligne, et ils sont justes.
+>
+> Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
+> 172 Python, ruff et mypy — tout vert.
