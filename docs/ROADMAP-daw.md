@@ -11444,3 +11444,75 @@ session, et ce qui n'y vit pas est remplacé par un défaut, ou par rien.
 >
 > Tests : **330** core (+3), 1 291 audio, **297** interchange (+2), 25 clap,
 > 11 panels, 172 Python, ruff et mypy — tout vert.
+
+### Phase D77 — A9, suite : le panneau des effets traduit, et changer de langue ne l'atteignait pas (10/09/2026, 18:25)
+
+**CE QUI ÉTAIT EN COURS, ET CE QUE LA RELECTURE Y A TROUVÉ.** La session
+précédente a laissé un travail sans commit : sept paires de traduction (le
+titre et deux libellés du panneau des effets, « Prêt » dans la barre d'état du
+piano roll, « Vél. » sur la ligne de vélocité, les boutons « Ouvrir MIDI… » et
+« Exporter MIDI… » repris par la re-traduction du transport). Relu avant d'être
+repris, et non commité tel quel : il traduisait le panneau des effets **à sa
+construction et nulle part ailleurs**. Un changement de langue en cours de
+séance — la règle n° 3 de D73, « immédiat, pas au prochain démarrage » — ne
+l'atteignait donc pas. Et le panneau gardait **dix** autres chaînes affichées en
+français, dont une, « - parametres », privée de son accent pour échapper au
+piège Latin-1 que `tr()` résout.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (10/09/2026, 18:25).**
+>
+> 1. **Le panneau des effets est traduit entièrement**, sauf les noms d'effets
+>    et de paramètres : ils viennent des effets eux-mêmes, comme les
+>    sérigraphies viennent des machines. Couverture publiée : combien de
+>    chaînes affichées, combien par `tr()`, combien de paires dans la table.
+> 2. **Changer de langue l'atteint SANS redémarrer** : lancée en français,
+>    basculée par le menu (« English »), l'application est photographiée, et
+>    le panneau doit être en anglais sur la même image que la barre de menus.
+> 3. **Le français ne bouge pas**, sauf l'accent rendu à « paramètres », qui
+>    est le défaut corrigé — mesuré par capture, avant et après.
+> 4. **« Prêt » suit aussi la bascule** tant qu'aucun message ne l'a remplacé.
+
+> **D77 EST FAITE (10/09/2026, 18:36), ET LES QUATRE ATTENDUS SONT TENUS.**
+> Mesuré par capture sur une copie de la démo portant une réverbération
+> (onglet Effets, `VSM_VUE=effets`), sous un `HOME` isolé — voir plus bas
+> pourquoi.
+>
+> | attendu | mesuré |
+> |---|---|
+> | 1. panneau des effets traduit | **31** chaînes par `tr()`, **0** chaîne affichée hors de `tr()` ; table à **306** paires (296 avec le travail repris, dix de plus) |
+> | 2. la bascule l'atteint sans redémarrer | lancée en français, basculée par « English » : « Effects — Acid Bass », « Add: », « choose an effect », « Bypass all » sur la même image que la barre de menus anglaise |
+> | 3. le français ne bouge pas | **0** pixel sur 937 888 entre le binaire d'avant et celui d'après ; le contre-exemple français/anglais en donne **17 433** — le zéro n'est pas aveugle |
+> | 4. « Prêt » suit la bascule | « Ready » dans la barre d'état du piano roll après la bascule |
+>
+> L'accent rendu à « paramètres » n'est pas sur ces images : l'en-tête des
+> paramètres ne s'affiche que quand un effet est choisi, ce qu'aucune commande
+> sans souris ne fait. Les chaînes françaises passées à `tr()` ont été
+> vérifiées une par une contre la version commitée : **29 sur 29** existaient
+> telles quelles, et « — paramètres » est celle de l'en-tête des effets MIDI,
+> deux lignes plus haut.
+>
+> **CE QUE LA MESURE A TROUVÉ, ET QUE D74 NE POUVAIT PAS VOIR.** D74 mesurait
+> la barre du piano roll traduite à 27/27 **au démarrage**. Une capture lancée
+> directement en anglais et une capture basculée en direct diffèrent de
+> **4 056 pixels**, en deux endroits exactement : le bouton d'écoute A/B
+> (« A/B monitoring: no original » au démarrage, « Écoute A/B : pas
+> d'original » après la bascule) et le sélecteur de subdivision (« Straight »
+> contre « Droit »). La règle n° 3 de D73 — la bascule est immédiate — y est
+> donc violée. Et présents sur les deux images, donc traduits nulle part :
+> « Gamme », les noms de gammes (« Chromatique ») et « mes. » dans la position.
+> Nommés et comptés ici, pour la phase suivante.
+>
+> **UN PIÈGE PAYÉ PENDANT LA MESURE, ÉCRIT DANS `CLAUDE.md`.** Un premier
+> essai de photographier les panneaux en mode flottant (`VSM_VUE=flottant`) a
+> basculé la disposition **de l'utilisateur**, et elle s'est conservée : les
+> captures suivantes montraient une fenêtre vide sous la barre de transport,
+> et deux images vides ont donné « 0 pixel de différence » — un zéro qui ne
+> mesurait rien, attrapé parce que l'image a été regardée. Les bancs de
+> D75 et D76 avaient aussi inscrit leurs dossiers de brouillon dans les
+> projets récents de l'utilisateur. Le fichier de préférences a été rétabli
+> (fenêtre unique, projets récents réduits aux deux chemins réels), et les
+> bancs tournent désormais sous `HOME=<brouillon>` : `cmp` a vérifié, après
+> chaque série, que le fichier de l'utilisateur n'avait pas bougé d'un octet.
+>
+> Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
+> 172 Python, ruff et mypy — tout vert.

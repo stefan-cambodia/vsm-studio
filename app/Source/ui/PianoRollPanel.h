@@ -3,6 +3,7 @@
 #include "PianoRollComponent.h"
 #include "PianoRollRulerComponent.h"
 #include "PianoRollToolbar.h"
+#include "Langue.h"
 #include "VelocityLaneComponent.h"
 #include "LookAndFeel/VsmLookAndFeel.h"
 
@@ -60,9 +61,10 @@ public:
 
         statusLabel_.setColour(juce::Label::textColourId, vsm::ui::Palette::textSecondary);
         statusLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
-        statusLabel_.setText(u8"Prêt", juce::dontSendNotification);
+        statusLabel_.setText(vsm::app::ui::tr(u8"Prêt"), juce::dontSendNotification);
 
         pianoRoll_.onStatusChanged = [this](const juce::String& text) {
+            statusPret_ = false;   // D77
             statusLabel_.setText(text, juce::dontSendNotification);
         };
         pianoRoll_.onEditStateChanged = [this] { toolbar_.refreshFromPianoRoll(); };
@@ -196,7 +198,12 @@ public:
     /// D74 : la barre d'outils repose ses libellés après un changement de
     /// langue. Le panneau la porte, donc c'est lui qui relaie -- `MainComponent`
     /// n'a pas à connaître les enfants des enfants.
-    void retraduireBarre() { toolbar_.retraduire(); }
+    void retraduireBarre() {
+        toolbar_.retraduire();
+        // D77 : « Prêt » est posé une fois ; tant qu'aucun message ne l'a
+        // remplacé, il suit la langue.
+        if (statusPret_) statusLabel_.setText(vsm::app::ui::tr(u8"Prêt"), juce::dontSendNotification);
+    }
 
 private:
     PianoRollComponent& pianoRoll_;
@@ -205,6 +212,7 @@ private:
     juce::Viewport vueBarre_;   // D61 : la barre repliée défile plutôt que de disparaître
     PianoRollRulerComponent ruler_;
     juce::Label statusLabel_;
+    bool statusPret_ = true;   // D77 : le libellé est encore « Prêt »
 
     // D32.3 — LE CLAVIER À L'ÉCRAN.
     juce::MidiKeyboardState etat_;

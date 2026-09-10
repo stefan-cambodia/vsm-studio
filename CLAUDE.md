@@ -88,6 +88,14 @@ l'ordre de marche — pas de la documentation d'accompagnement.
   port ; et toute preuve par outil extérieur (aseqdump…) doit couvrir la
   fenêtre où le morceau JOUE — un morceau de 1,85 s est fini avant que
   l'outil ne soit branché (VSM_LECTURE=4000 retarde la lecture).
+- Un banc qui LANCE l'application écrit dans les préférences de
+  l'utilisateur (`~/VintageSynthMidiStudio/*.settings`) : chaque
+  `VSM_PROJET` s'inscrit dans ses projets récents, et `VSM_VUE=flottant`
+  a basculé sa disposition en panneaux flottants, conservée au lancement
+  suivant (10/09, D77 — les captures d'après montraient une fenêtre vide, et
+  deux images vides donnaient « 0 pixel de différence »). Lancer les bancs
+  sous `HOME=<brouillon>` ; et vérifier par `cmp` que le fichier de
+  l'utilisateur n'a pas bougé.
 - JAMAIS d'édition de analyse/analyzer/*.py pendant qu'une course tourne : la
   chaîne importait des modules À LA DEMANDE, cinq heures après le départ, dans
   l'état du disque à cet instant (parite-v2, 5 h 24 perdues au réglage final).

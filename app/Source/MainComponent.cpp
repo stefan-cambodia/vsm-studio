@@ -7361,6 +7361,7 @@ void MainComponent::retraduire() {
     transportBar_.retraduire();
     trackList_.retraduire();
     pianoRollPanel_.retraduireBarre();
+    effectChain_.retraduire();   // D77
     menuItemsChanged();
     repaint();
 }

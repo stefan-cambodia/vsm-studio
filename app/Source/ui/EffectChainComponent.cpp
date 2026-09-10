@@ -1,4 +1,5 @@
 #include "EffectChainComponent.h"
+#include "Langue.h"
 #include "vsm/sequencer/MidiEffects.h"
 #include "vsm/audio/effect/BypassableEffect.h"
 #include "vsm/interchange/EffectPreset.h"
@@ -21,12 +22,12 @@ EffectChainComponent::EffectChainComponent() {
     viewport_.setScrollBarsShown(true, false);
     addAndMakeVisible(viewport_);
 
-    titleLabel_.setText("Effets - aucune piste", juce::dontSendNotification);
+    titleLabel_.setText(vsm::app::ui::tr("Effets - aucune piste"), juce::dontSendNotification);
     titleLabel_.setFont(juce::Font(juce::FontOptions(14.0f).withStyle("Bold")));
     titleLabel_.setColour(juce::Label::textColourId, Palette::textPrimary);
     contenu_.addAndMakeVisible(titleLabel_);
 
-    addLabel_.setText("Ajouter :", juce::dontSendNotification);
+    addLabel_.setText(vsm::app::ui::tr("Ajouter :"), juce::dontSendNotification);
     addLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
     addLabel_.setFont(juce::Font(juce::FontOptions(11.0f)));
     contenu_.addAndMakeVisible(addLabel_);
@@ -35,7 +36,7 @@ EffectChainComponent::EffectChainComponent() {
     for (const auto& info : EffectFactory::available())
         addBox_.addItem(juce::String(info.displayName), id++);
     prochainIdMenu_ = id;
-    addBox_.setTextWhenNothingSelected("choisir un effet");
+    addBox_.setTextWhenNothingSelected(vsm::app::ui::tr("choisir un effet"));
     addBox_.onChange = [this] {
         const int selection = addBox_.getSelectedId();
         addBox_.setSelectedId(0, juce::dontSendNotification);
@@ -74,7 +75,7 @@ EffectChainComponent::EffectChainComponent() {
     // existe : un titre au-dessus de rien fait chercher ce qui manque.
     midiHeader_.setColour(juce::Label::textColourId, Palette::accentAmber);
     midiHeader_.setFont(juce::Font(juce::FontOptions(11.0f).withStyle("Bold")));
-    midiHeader_.setText(juce::String::fromUTF8(u8"Effets MIDI (sur les notes, avant la machine)"),
+    midiHeader_.setText(vsm::app::ui::tr(u8"Effets MIDI (sur les notes, avant la machine)"),
                          juce::dontSendNotification);
     // `addChildComponent` ET NON `addAndMakeVisible` : ce dernier REND VISIBLE
     // et annulait le `setVisible(false)` qui le précédait. Le défaut était
@@ -151,7 +152,7 @@ void EffectChainComponent::rebuildMidiList() {
         row.bypass->setColour(juce::TextButton::buttonOnColourId, Palette::accentAmber);
         row.bypass->setClickingTogglesState(true);
         row.bypass->setToggleState(actif, juce::dontSendNotification);
-        row.bypass->setTooltip(juce::String::fromUTF8(
+        row.bypass->setTooltip(vsm::app::ui::tr(
             u8"Actif / contourné : contourné, l'effet ne transforme plus rien, et les "
             u8"notes passent telles qu'elles sont écrites."));
         row.bypass->onClick = [this, index] {
@@ -214,7 +215,7 @@ void EffectChainComponent::setPluginEffectChooser(
     // titre que les natifs » veut dire exactement cela.
     idMenuPlugin_ = prochainIdMenu_;
     addBox_.addSeparator();
-    addBox_.addItem(juce::String(u8"Un plugin (.clap / .vst3)..."), idMenuPlugin_);
+    addBox_.addItem(vsm::app::ui::tr(u8"Un plugin (.clap / .vst3)..."), idMenuPlugin_);
 }
 
 bool EffectChainComponent::addEffectById(const std::string& effectId) {
@@ -339,6 +340,24 @@ void EffectChainComponent::rebuildFromProject() {
     rebuildParamControls();
 }
 
+void EffectChainComponent::retraduire() {
+    // D77 : CE QUI EST ÉCRIT UNE FOIS, À LA CONSTRUCTION, SE REPOSE ICI. Sans
+    // cette fonction, le panneau restait dans la langue du démarrage : la
+    // règle de D73 -- le changement de langue est immédiat -- s'arrêtait à sa
+    // porte. Le reste (lignes d'effets, en-têtes de paramètres) se refabrique
+    // à chaque geste, et une fois de plus maintenant.
+    addLabel_.setText(vsm::app::ui::tr("Ajouter :"), juce::dontSendNotification);
+    addBox_.setTextWhenNothingSelected(vsm::app::ui::tr("choisir un effet"));
+    if (idMenuPlugin_ > 0)
+        addBox_.changeItemText(idMenuPlugin_, vsm::app::ui::tr(u8"Un plugin (.clap / .vst3)..."));
+    midiHeader_.setText(vsm::app::ui::tr(u8"Effets MIDI (sur les notes, avant la machine)"),
+                        juce::dontSendNotification);
+    refreshTrackName();
+    rebuildEffectList();
+    rebuildMidiList();
+    rebuildParamControls();
+}
+
 void EffectChainComponent::refreshTrackName() {
     // LE NOM DE LA PISTE, PAS SON NUMÉRO : « Effets — Batterie » se lit,
     // « piste 11 » se compte sur la liste.
@@ -348,12 +367,12 @@ void EffectChainComponent::refreshTrackName() {
     // ce titre aurait effacé l'effet choisi (`selectedEffect_ = -1`) au milieu
     // d'un réglage -- une correction d'affichage qui casse ce qu'on faisait est
     // pire que l'affichage faux qu'elle corrige.
-    juce::String titre = "Effets - aucune piste";
+    juce::String titre = vsm::app::ui::tr("Effets - aucune piste");
     if (activeTrack_ >= 0) {
-        titre = "Effets - piste " + juce::String(activeTrack_ + 1);
+        titre = vsm::app::ui::tr("Effets - piste ") + juce::String(activeTrack_ + 1);
         if (project_ != nullptr && static_cast<size_t>(activeTrack_) < project_->tracks.size()
             && !project_->tracks[static_cast<size_t>(activeTrack_)].name.empty())
-            titre = juce::String::fromUTF8("Effets \u2014 ")
+            titre = vsm::app::ui::tr(u8"Effets \u2014 ")
                   + juce::String::fromUTF8(project_->tracks[static_cast<size_t>(activeTrack_)].name.c_str());
     }
     titleLabel_.setText(titre, juce::dontSendNotification);
@@ -391,7 +410,7 @@ void EffectChainComponent::rebuildEffectList() {
         // tant qu'un seul est actif, sinon les remettre tous.
         bool unActif = false;
         for (const auto& e : *description) unActif = unActif || e.enabled;
-        allButton_.setButtonText(unActif ? "Contourner tout" : "Tout remettre");
+        allButton_.setButtonText(vsm::app::ui::tr(unActif ? "Contourner tout" : "Tout remettre"));
     }
 
     for (size_t i = 0; i < chain->size(); ++i) {
@@ -402,7 +421,7 @@ void EffectChainComponent::rebuildEffectList() {
         row.select = std::make_unique<juce::TextButton>((*chain)[i]->effectName());
         row.select->setColour(juce::TextButton::buttonOnColourId, Palette::accentTeal);
         row.select->setAlpha(actif ? 1.0f : 0.45f);
-        row.select->setTooltip(actif ? juce::String() : juce::String(u8"Contourné : le signal passe sec, retardé de la latence de l'effet"));
+        row.select->setTooltip(actif ? juce::String() : vsm::app::ui::tr(u8"Contourné : le signal passe sec, retardé de la latence de l'effet"));
         row.select->setClickingTogglesState(true);
         row.select->setToggleState(index == selectedEffect_, juce::dontSendNotification);
         row.select->onClick = [this, index] { selectedEffect_ = index; rebuildEffectList(); rebuildParamControls(); };
@@ -412,12 +431,12 @@ void EffectChainComponent::rebuildEffectList() {
         row.bypass->setColour(juce::TextButton::buttonOnColourId, Palette::accentTeal);
         row.bypass->setClickingTogglesState(true);
         row.bypass->setToggleState(actif, juce::dontSendNotification);
-        row.bypass->setTooltip(u8"Actif / contourné (Bypass) : l'effet tourne encore et garde sa latence");
+        row.bypass->setTooltip(vsm::app::ui::tr(u8"Actif / contourné (Bypass) : l'effet tourne encore et garde sa latence"));
         row.bypass->onClick = [this, index] { setEffectEnabled(static_cast<size_t>(index), !effectEnabled(static_cast<size_t>(index))); };
         contenu_.addAndMakeVisible(*row.bypass);
 
         row.preset = std::make_unique<juce::TextButton>("Preset");
-        row.preset->setTooltip(u8"Enregistrer ce réglage comme preset, ou en charger un du même type");
+        row.preset->setTooltip(vsm::app::ui::tr(u8"Enregistrer ce réglage comme preset, ou en charger un du même type"));
         row.preset->onClick = [this, index] { showPresetMenu(static_cast<size_t>(index)); };
         contenu_.addAndMakeVisible(*row.preset);
 
@@ -478,7 +497,7 @@ void EffectChainComponent::rebuildParamControls() {
         auto& effet = (*midi)[static_cast<size_t>(selectedEffect_)];
         paramHeader_.setText(juce::String::fromUTF8(
                                   vsm::sequencer::midiEffectDisplayName(effet.type).c_str())
-                                  + juce::String::fromUTF8(u8" — paramètres"),
+                                  + vsm::app::ui::tr(u8" — paramètres"),
                               juce::dontSendNotification);
         // LES BORNES VIENNENT DE `core/`, la même source que les défauts posés
         // à l'ajout : deux tables finiraient par en donner deux.
@@ -533,7 +552,10 @@ void EffectChainComponent::rebuildParamControls() {
         return;
     }
     auto* fx = (*chain)[static_cast<size_t>(selectedEffect_)].get();
-    paramHeader_.setText(juce::String(fx->effectName()) + " - parametres", juce::dontSendNotification);
+    // D77 : le tiret long et l'accent de l'en-tête des effets MIDI, deux lignes
+    // plus haut. « - parametres » les évitait pour ne pas lire ses octets en
+    // Latin-1 ; `tr()` passe par `fromUTF8`, et le détour n'a plus de raison.
+    paramHeader_.setText(juce::String(fx->effectName()) + vsm::app::ui::tr(u8" — paramètres"), juce::dontSendNotification);
 
     for (const auto& info : fx->parameterList()) {
         ParamControl pc;
@@ -725,10 +747,10 @@ void EffectChainComponent::showPresetMenu(size_t index) {
         presetsDuType(presetFoldersProvider ? presetFoldersProvider() : std::vector<juce::File>{}, type));
 
     juce::PopupMenu menu;
-    menu.addItem(1, juce::String::fromUTF8(u8"Enregistrer comme preset..."));
+    menu.addItem(1, vsm::app::ui::tr(u8"Enregistrer comme preset..."));
     menu.addSeparator();
     if (trouves->empty())
-        menu.addItem(2, juce::String::fromUTF8(u8"(aucun preset de ce type dans la bibliothèque ni le projet)"), false);
+        menu.addItem(2, vsm::app::ui::tr(u8"(aucun preset de ce type dans la bibliothèque ni le projet)"), false);
     for (size_t i = 0; i < trouves->size(); ++i)
         menu.addItem(100 + static_cast<int>(i), juce::String::fromUTF8((*trouves)[i].nom.c_str()));
 

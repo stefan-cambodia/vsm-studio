@@ -73,6 +73,9 @@ public:
     /// D37.1 : relit le NOM de la piste dans le titre, sans rien changer
     /// d'autre -- ni la piste choisie, ni l'effet sélectionné.
     void refreshTrackName();
+    /// D77 : repose les libellés écrits une fois à la construction, pour que
+    /// changer de langue atteigne ce panneau sans redémarrer.
+    void retraduire();
 
     /// Prévenu AVANT chaque geste qui modifie la chaîne : c'est là que
     /// l'application prend son instantané d'annulation. Le libellé nomme le

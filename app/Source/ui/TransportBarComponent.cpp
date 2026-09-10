@@ -500,5 +500,7 @@ void TransportBarComponent::retraduire() {
     // et les faire passer par la table reviendrait à traduire un mot vers
     // lui-même, avec le risque qu'une faute de frappe dans la table le change.
     metronomeButton_.setButtonText(vsm::app::ui::tr("Clic"));
+    openButton_.setButtonText(vsm::app::ui::tr("Ouvrir MIDI..."));
+    exportButton_.setButtonText(vsm::app::ui::tr("Exporter MIDI..."));
     listenButton_.setTooltip(vsm::app::ui::tr(u8"Écoute A/B : reconstruction, les deux, original (touche R)"));
 }
