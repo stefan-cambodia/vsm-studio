@@ -1,4 +1,5 @@
 #include "HistoryWindow.h"
+#include "Langue.h"
 #include "LookAndFeel/VsmLookAndFeel.h"
 
 using namespace vsm::ui;
@@ -10,12 +11,19 @@ HistoryWindow::HistoryWindow() {
     liste_.setRowHeight(24);
     liste_.setColour(juce::ListBox::backgroundColourId, Palette::panel);
     addAndMakeVisible(liste_);
-    explication_.setText(u8"Un clic sur un pas y revient. Le pas en surbrillance est l'état courant ; "
-                         u8"au-dessous, ce que Rétablir rendrait.",
-                         juce::dontSendNotification);
+    retraduire();
     explication_.setColour(juce::Label::textColourId, Palette::textSecondary);
     explication_.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(explication_);
+}
+
+void HistoryWindow::retraduire() {
+    // D82 : posée une fois à la construction, l'explication restait dans la
+    // langue du démarrage ; les noms des pas, eux, sont traduits à la peinture.
+    explication_.setText(tr(u8"Un clic sur un pas y revient. Le pas en surbrillance est l'état courant ; "
+                            u8"au-dessous, ce que Rétablir rendrait."),
+                         juce::dontSendNotification);
+    liste_.repaint();
 }
 
 void HistoryWindow::setEntries(std::vector<std::string> undo, std::vector<std::string> redo) {
@@ -32,9 +40,9 @@ int HistoryWindow::getNumRows() { return static_cast<int>(undo_.size() + 1 + red
 void HistoryWindow::paintListBoxItem(int row, juce::Graphics& g, int width, int height, bool) {
     const int courant = static_cast<int>(undo_.size());
     juce::String texte;
-    if (row < courant) texte = juce::String::fromUTF8(undo_[static_cast<size_t>(row)].c_str());
-    else if (row == courant) texte = u8"► état courant";
-    else texte = juce::String::fromUTF8(redo_[static_cast<size_t>(row - courant - 1)].c_str());
+    if (row < courant) texte = trGeste(juce::String::fromUTF8(undo_[static_cast<size_t>(row)].c_str()));   // D82
+    else if (row == courant) texte = tr(u8"► état courant");
+    else texte = trGeste(juce::String::fromUTF8(redo_[static_cast<size_t>(row - courant - 1)].c_str()));
 
     if (row == courant) {
         g.setColour(Palette::accentTeal.withAlpha(0.25f));

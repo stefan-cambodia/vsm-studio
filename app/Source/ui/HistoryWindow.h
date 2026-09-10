@@ -21,6 +21,8 @@ public:
 
     /// Les libellés des pas annulables (du plus ancien au plus récent) et
     /// des pas rétablissables (du prochain au plus lointain).
+    /// D82 : repose l'explication dans la langue courante.
+    void retraduire();
     void setEntries(std::vector<std::string> undo, std::vector<std::string> redo);
 
     /// « Reviens N pas en arrière » / « avance de N pas ».

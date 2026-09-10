@@ -445,7 +445,7 @@ void EffectChainComponent::rebuildEffectList() {
             Chain* c = activeChain();
             auto* d = activeDescription();
             if (c && d && index > 0 && d->size() == c->size()) {
-                if (onEditStarted) onEditStarted("Deplacer un effet");
+                if (onEditStarted) onEditStarted(u8"Déplacer un effet");
                 std::swap((*c)[static_cast<size_t>(index)], (*c)[static_cast<size_t>(index - 1)]);
                 std::swap((*d)[static_cast<size_t>(index)], (*d)[static_cast<size_t>(index - 1)]);
                 selectedEffect_ = index - 1; publishActiveChain(); rebuildEffectList(); rebuildParamControls(); }
@@ -457,7 +457,7 @@ void EffectChainComponent::rebuildEffectList() {
             Chain* c = activeChain();
             auto* d = activeDescription();
             if (c && d && index + 1 < static_cast<int>(c->size()) && d->size() == c->size()) {
-                if (onEditStarted) onEditStarted("Deplacer un effet");
+                if (onEditStarted) onEditStarted(u8"Déplacer un effet");
                 std::swap((*c)[static_cast<size_t>(index)], (*c)[static_cast<size_t>(index + 1)]);
                 std::swap((*d)[static_cast<size_t>(index)], (*d)[static_cast<size_t>(index + 1)]);
                 selectedEffect_ = index + 1; publishActiveChain(); rebuildEffectList(); rebuildParamControls(); }
@@ -569,7 +569,7 @@ void EffectChainComponent::rebuildParamControls() {
         const auto pid = info.id;
         juce::Slider* raw = pc.slider.get();
         const int slot = selectedEffect_;
-        raw->onDragStart = [this] { if (onEditStarted) onEditStarted("Reglage d'effet"); };
+        raw->onDragStart = [this] { if (onEditStarted) onEditStarted(u8"Réglage d'effet"); };
         raw->onValueChange = [this, fx, raw, pid, slot] {
             fx->setParameter(pid, static_cast<float>(raw->getValue()));
             // ET dans la piste, tout de suite : un réglage qui ne vit que dans

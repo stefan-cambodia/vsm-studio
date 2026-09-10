@@ -67,4 +67,9 @@ juce::String tr(const char* texte);
 juce::String tr(const char8_t* texte);   ///< littéraux `u8"…"` du C++20
 juce::String tr(const juce::String& texte);
 
+/// D82 : le NOM D'UN GESTE, tel que l'historique le garde (en français), traduit
+/// à l'affichage. Un seul nom est fabriqué -- « Signature 3/4 » -- et il se
+/// reconnaît à son modèle ; les autres sont des chaînes de la table.
+juce::String trGeste(const juce::String& libelle);
+
 } // namespace vsm::app::ui

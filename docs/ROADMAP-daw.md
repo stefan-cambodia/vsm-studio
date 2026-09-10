@@ -11861,3 +11861,70 @@ laisse l'anglais écrire l'ordre des mots qu'il veut.
 >
 > Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
 > 172 Python, ruff et mypy — tout vert.
+
+### Phase D82 — A9 : les noms des gestes, dans « Undo: … » et dans l'historique (10/09/2026, 19:45)
+
+**CE QUE L'INTERFACE ANGLAISE MONTRE ENCORE EN FRANÇAIS, À CHAQUE GESTE.** La
+première entrée du menu Édition dit ce qu'Annuler défera : « Undo: Ajouter une
+piste ». La fenêtre d'historique liste les mêmes noms. Ils viennent de
+`beginProjectEdit`, qui les reçoit en français, et l'inventaire des appels les
+compte : **143 libellés littéraux, dont 12 ont une paire** ; **un seul est
+fabriqué** (« Signature 3/4 ») ; et deux sont écrits sans leur accent
+(« Deplacer un effet », « Reglage d'effet »). La fenêtre d'historique, elle,
+affiche les libellés sans passer par `tr()`, et son texte d'explication est
+posé une fois, à sa construction.
+
+**TROIS DÉCISIONS.**
+
+1. **Le libellé reste français dans l'historique, et se traduit à
+   l'AFFICHAGE.** L'historique garde ce qu'on lui a donné ; le traduire au
+   moment du geste figerait sa langue, et une bascule en cours de séance
+   laisserait les pas déjà faits dans l'ancienne — contre la règle n° 3 de
+   D73.
+2. **Le libellé fabriqué se reconnaît par son modèle** (« Signature %1 ») à
+   l'affichage : c'est le seul, et il ne justifie pas de changer ce que
+   l'historique stocke.
+3. **Les deux accents manquants sont rendus** — seule modification du
+   français, et c'est la correction d'un défaut.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (10/09/2026, 19:45).**
+>
+> 1. **Les 143 libellés ont une paire**, et c'est vérifié à l'écran, pas
+>    seulement dans la table (leçon de D80) : après une suite de gestes, le
+>    menu Édition anglais dit « Undo: … » en anglais (`VSM_MENU_LISTE`), et la
+>    fenêtre d'historique photographiée en anglais aussi.
+> 2. **La bascule l'atteint** : lancée en français, basculée par « English »,
+>    la fenêtre d'historique et son explication sont en anglais.
+> 3. **Le français ne change pas**, sauf les deux accents — liste du menu et
+>    capture de la fenêtre, avant et après.
+
+> **D82 EST FAITE (10/09/2026, 19:59), ET LES TROIS ATTENDUS SONT TENUS.**
+> Même suite de gestes avec le binaire d'avant et celui d'après — « Ajouter une
+> piste MIDI », « Désactiver la piste », « Réactiver la piste », puis la bascule
+> « English » —, la fenêtre d'historique ouverte (`VSM_VUE=historique`) et
+> photographiée (`VSM_CAPTURE_PANNEAUX`), `HOME` isolé, préférences de
+> l'utilisateur intactes.
+>
+> | | avant | après |
+> |---|---|---|
+> | libellés littéraux d'historique ayant une paire | 12 / 143 | **143 / 143** |
+> | première entrée du menu Édition, basculé en anglais | « Undo: Réactiver une piste » | **« Undo: Re-enable a track »** |
+> | fenêtre d'historique, basculée en anglais | tout en français — les pas, « état courant », l'explication | **tout en anglais** |
+> | fenêtre d'historique en français, avant / après | — | **0 pixel** (contre-exemple anglais : 7 055) |
+> | menu en français, aligné par contenu | — | **310 entrées égales** |
+>
+> Les deux blocs qui diffèrent dans le menu français sont ceux de D80, et pour
+> la même raison : le binaire témoin a été lancé depuis le brouillon, où il ne
+> trouve pas `analyse/`. *D81 avait appris à le lancer du dossier du build ;
+> cette phase l'a oublié. L'écart est d'environnement, il est identifié, et
+> il n'a pas été refait parce qu'il ne touche aucune entrée de cette phase —
+> mais c'est écrit, pour que le prochain banc ne l'oublie pas une troisième
+> fois.*
+>
+> Les deux accents rendus (« Déplacer un effet », « Réglage d'effet ») ne sont
+> sur aucune image : la suite de gestes ne déplace ni ne règle d'effet. Ils
+> sont vérifiés par la table — les 143 libellés, accents corrigés compris, ont
+> leur paire. La table compte **538** paires (133 de plus).
+>
+> Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
+> 172 Python, ruff et mypy — tout vert.

@@ -919,8 +919,8 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
     juce::PopupMenu menu;
     const bool sel = hasSelection();
 
-    menu.addItem(kCtxUndo, canUndo() ? tr(u8"Annuler : ") + tr(undoLabel()) : tr("Annuler"), canUndo());
-    menu.addItem(kCtxRedo, canRedo() ? tr(u8"Rétablir : ") + tr(redoLabel()) : tr(u8"Rétablir"), canRedo());
+    menu.addItem(kCtxUndo, canUndo() ? tr(u8"Annuler : ") + vsm::app::ui::trGeste(undoLabel()) : tr("Annuler"), canUndo());
+    menu.addItem(kCtxRedo, canRedo() ? tr(u8"Rétablir : ") + vsm::app::ui::trGeste(redoLabel()) : tr(u8"Rétablir"), canRedo());
     menu.addSeparator();
     menu.addItem(kCtxCut, tr("Couper"), sel);
     menu.addItem(kCtxCopy, tr("Copier"), sel);

@@ -7372,6 +7372,7 @@ void MainComponent::retraduire() {
     trackList_.retraduire();
     pianoRollPanel_.retraduireBarre();
     effectChain_.retraduire();   // D77
+    historyPanel_.retraduire();   // D82
     // D78 : LE BOUTON D'ÉCOUTE, par la fonction qui le pose au démarrage --
     // D77 a trouvé « Écoute A/B : pas d'original » sur une image basculée en
     // anglais, là où le démarrage écrivait « A/B monitoring: no original ».
