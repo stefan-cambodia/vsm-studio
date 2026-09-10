@@ -37,7 +37,7 @@ import platform
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Sequence, Tuple
 
 import numpy as np
 
@@ -201,6 +201,11 @@ class Classifieur:
     date: str
     versions: Dict[str, str]
     mesures: Dict[str, Any] = field(default_factory=dict)
+    # Les machines EN LICE que ce modèle n'a jamais entendues. Rempli au
+    # CHARGEMENT, jamais à l'entraînement : il dépend du vivier de la course,
+    # pas du corpus. Un modèle relu d'un fichier antérieur à ce champ le reçoit
+    # vide, ce qui est la bonne valeur par défaut — on ne sait pas encore.
+    machines_inconnues: List[str] = field(default_factory=list)
 
     # -- inférence ----------------------------------------------------------
 
@@ -260,6 +265,31 @@ class Classifieur:
             reference_nouveaute=donnees["reference_nouveaute"],
             graine=int(donnees["graine"]), date=str(donnees["date"]),
             versions=dict(donnees["versions"]), mesures=dict(donnees.get("mesures", {})))
+
+    def couverture(self, candidates: Sequence[str]) -> Tuple[List[str], List[str]]:
+        """Ce que ce modèle SAIT nommer parmi les machines qui concourent.
+
+        POURQUOI CE CONTRÔLE EXISTE, ET IL A MANQUÉ LONGTEMPS. `verifie_fraicheur`
+        vérifie que le SON des machines connues n'a pas bougé — elle construit
+        son manifeste à partir des empreintes du modèle lui-même, et ne peut
+        donc rien dire des machines qu'il n'a JAMAIS entendues. Le parc, lui,
+        s'élargit sans arrêt : un modèle entraîné sur vingt machines reste
+        « frais » pendant que le vivier en compte soixante-trois, et la ligne
+        imprimée au chargement — « empreintes vérifiées » — se lit comme une
+        approbation.
+
+        Or un classifieur ne peut nommer QUE ce qu'il a appris. Sur un stem
+        joué par une machine hors de sa liste, il ne s'abstient pas : il
+        désigne la moins improbable de celles qu'il connaît. C'est le défaut
+        que le § 5 bis de `ROADMAP-fusion.md` appelle une panne muette — la
+        chaîne ne coupe pas, mais elle doit le DIRE.
+
+        Rend `(connues, inconnues)`, dans l'ordre des candidates.
+        """
+        connu = set(self.noms)
+        connues = [m for m in candidates if m in connu]
+        inconnues = [m for m in candidates if m not in connu]
+        return connues, inconnues
 
     def verifie_fraicheur(self, engine: VsmEngine, sample_rate: int = 44100):
         """Le son des machines a-t-il bougé depuis l'entraînement ?

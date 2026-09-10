@@ -119,7 +119,7 @@ dernier. Chaque élément porte sa source ; **aucun n'est inventé ici**.
 
 | # | Travail | Source | Pourquoi |
 |---|---|---|---|
-| B1 | **Réengendrer le corpus et réentraîner le classifieur de machine**, puis reprendre **A5.2** | `ROADMAP-apprentissage.md` A5 | le modèle a été REFUSÉ au chargement (empreinte périmée) ; A5.2 juge des abstentions d'un modèle qui n'a pas parlé |
+| B1 | **Réengendrer le corpus et réentraîner le classifieur de machine**, puis reprendre **A5.2** | `ROADMAP-apprentissage.md` A5, `ROADMAP-fusion.md` § 5 bis.7 | le modèle a été REFUSÉ au chargement (empreinte périmée) ; et **il ne connaît que 20 machines sur 63** — mesuré le 10/09. La chaîne le DIT désormais, elle ne coupe pas ; mais l'avis reste sans portée sur les deux tiers du vivier |
 | B2 | **Écouter** — A5.3 : l'A/B dans le DAW contre l'original, les notes douteuses une par une | `ROADMAP-apprentissage.md` A5.3, `CDC-apprentissage.md` § 10 | « il reste exactement une chose : écouter » ; aucune mesure ne la remplace |
 | B3 | **Contre-épreuve de `htdemucs_6s` sur un troisième original** | `CDC-detection-multipiste.md` § 4.2 | −10,4 % sur un morceau qui a guitare et piano, **+3,9 %** sur un morceau qui ne les a pas ; le défaut tient, la réserve est écrite |
 | B4 | **Écouter les deux wav de `--voix-tete-choeurs`** — les fuites de réverbération de la tête dans les chœurs ne se jugent qu'à l'oreille | `CDC-detection-multipiste.md` § 4.5 | distance mesurée neutre (+0,05 %) ; la qualité, non |

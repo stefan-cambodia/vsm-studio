@@ -1088,6 +1088,58 @@ existe, refera cette erreur.
 
 ---
 
+### 7. Le classifieur restait « frais » en ne connaissant qu'un tiers du parc (10/09/2026)
+
+**LA FRAÎCHEUR NE PORTE PAS SUR CE QU'ON CROIT.** `verifie_fraicheur` bâtit son
+manifeste à partir des empreintes **du modèle lui-même** et vérifie que le son
+de SES machines n'a pas bougé. Elle ne peut donc rien dire de celles qu'il n'a
+jamais entendues — et le parc, lui, s'élargit sans arrêt.
+
+**MESURÉ LE 10/09/2026.** `modeles/classifieur.joblib`, entraîné le 28/08,
+connaît **20 machines**. Le parc en compte **63** : quarante-trois lui sont
+inconnues, soit une couverture de **32 %**. La ligne que la chaîne imprimait au
+chargement était :
+
+```
+      classifieur du 2026-08-28T17:50:18+00:00, 20 machines, empreintes vérifiées
+```
+
+**« Empreintes vérifiées » se lit comme une approbation**, et rien ne disait que
+le modèle ne pouvait nommer qu'un tiers du vivier. Or un classifieur ne
+s'abstient pas devant une machine qu'il ignore : il désigne **la moins
+improbable de sa liste**. C'est la panne muette type du § 5 bis, et elle était
+LATENTE — aujourd'hui l'empreinte refuse ce modèle pour `vsm.multisample`, donc
+la chaîne tourne sans lui ; le jour où cette machine cessera de dériver, l'avis
+reviendrait sans que rien ne signale sa portée.
+
+**CE QUI EST FAIT — LA CHAÎNE LE DIT, ELLE NE COUPE PAS.** Le modèle reste
+consultatif (§ 7 : il ne produit jamais une seconde d'audio) ; refuser sur un
+seuil de couverture serait décider à la place de l'utilisateur. Deux lignes
+s'ajoutent au chargement, et un champ à la provenance :
+
+```
+      il sait nommer 20 des 27 machines en lice (74 %)
+      les 7 autres lui sont INCONNUES (carillon, chebyshev, kalimba, plate,
+      reed, scanned, …) : sur un stem qu'elles jouent, son avis nommera l'une
+      des siennes, pas la bonne
+```
+
+`rapport.json` porte `classifieurMachinesInconnues` **dans la provenance**, au
+même titre que la métrique et le budget : la couverture conditionne l'avis comme
+la métrique conditionne une distance.
+
+**UNE INVERSION D'ORDRE A ÉTÉ NÉCESSAIRE**, et elle vaut d'être dite : le vivier
+se constitue désormais AVANT le chargement du modèle, sans quoi celui-ci ne peut
+pas dire ce qu'il sait nommer *parmi les machines en lice*. La couverture est
+annoncée sur le vivier complet, avant `--machines-exclues` — c'est le pire cas,
+donc la bonne borne.
+
+Trois tests tiennent la contrepartie (`test_classifieur_couverture.py`) :
+couverture totale, machines inconnues **nommées une par une** et non comptées,
+et machines connues du modèle mais hors lice qui ne pèsent d'aucun côté.
+
+---
+
 ## 5 ter. Children v10 : la chaîne entière, sampler compris
 
 Première exécution de bout en bout avec le SAMPLER AUTORISÉ — donc avec la voix

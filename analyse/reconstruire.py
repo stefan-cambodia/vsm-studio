@@ -454,6 +454,12 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
         # qui est une information et non une absence d'information.
         "modeles": {
             "classifieurMachine": (classifieur.date if classifieur is not None else "aucun"),
+            # LA COUVERTURE VA DANS LA PROVENANCE, parce qu'elle conditionne
+            # l'avis exactement comme la métrique conditionne une distance :
+            # un modèle qui ne connaît qu'un tiers du vivier ne dit pas la même
+            # chose qu'un modèle qui le connaît tout entier.
+            "classifieurMachinesInconnues": (
+                len(classifieur.machines_inconnues) if classifieur is not None else None),
             "classifieurFrappes": (frappes.date if frappes is not None else "aucun"),
         },
         "profilMultisample": os.environ.get("VSM_PROFIL", "") or "(premier installé)",
@@ -1006,7 +1012,8 @@ def obtenir_stems(args: argparse.Namespace, entree: Path, travail: Path) -> Dict
 # il classe plausiblement et faux.
 # ---------------------------------------------------------------------------
 
-def charger_classifieur(args: argparse.Namespace, moteur: VsmEngine):
+def charger_classifieur(args: argparse.Namespace, moteur: VsmEngine,
+                         args_candidates: Sequence[str] = ()):
     """Le classifieur de MACHINE (phase A1), ou None."""
     if not args.classifieur or args.sans_apprentissage:
         return None
@@ -1019,8 +1026,25 @@ def charger_classifieur(args: argparse.Namespace, moteur: VsmEngine):
             print(f"      classifieur REFUSÉ — {verdict.resume()}")
             print("      la chaîne continue SANS lui, exactement comme avant")
             return None
+        # CE QU'IL SAIT NOMMER PARMI CE QUI CONCOURT, et pas seulement
+        # combien de machines il connaît. Un modèle entraîné sur vingt machines
+        # reste « frais » quand le vivier en compte soixante-trois : la
+        # fraîcheur porte sur le SON des machines connues, jamais sur celles
+        # qu'il n'a jamais entendues. Sur un stem joué par l'une d'elles, il ne
+        # s'abstient pas — il désigne la moins improbable de SA liste.
+        connues, inconnues = modele.couverture(sorted(args_candidates))
+        total = len(connues) + len(inconnues)
+        part = (100.0 * len(connues) / total) if total else 0.0
         print(f"      classifieur du {modele.date}, "
               f"{len(modele.noms)} machines, empreintes vérifiées")
+        print(f"      il sait nommer {len(connues)} des {total} machines en lice "
+              f"({part:.0f} %)")
+        if inconnues:
+            apercu = ", ".join(m.split(".")[-1] for m in inconnues[:6])
+            print(f"      les {len(inconnues)} autres lui sont INCONNUES ({apercu}"
+                  f"{', …' if len(inconnues) > 6 else ''}) : sur un stem qu'elles jouent, "
+                  f"son avis nommera l'une des siennes, pas la bonne")
+        modele.machines_inconnues = inconnues
         return modele
     except Exception as erreur:  # noqa: BLE001
         print(f"      classifieur illisible ({type(erreur).__name__}) — ignoré")
@@ -2730,12 +2754,18 @@ def chaine(args: argparse.Namespace) -> None:
             # L'IDENTITÉ SE CAPTURE ICI, moteur vivant : `machines()` parle au
             # processus. La provenance, elle, s'écrit après sa fermeture.
             identite_moteur = identite_du_moteur(moteur)
-            classifieur = charger_classifieur(args, moteur)
+            # LE VIVIER SE CONSTITUE AVANT LE CLASSIFIEUR, et c'est une
+            # inversion voulue : le chargement dit désormais ce que le modèle
+            # sait nommer PARMI LES MACHINES EN LICE, ce qu'il ne peut pas dire
+            # sans les connaître. L'exclusion, elle, se fait juste après et
+            # rétrécit le vivier : la couverture est donc annoncée sur le
+            # vivier COMPLET, ce qui est le pire cas et la bonne borne.
+            candidates = ([m.strip() for m in args.machines.split(",") if m.strip()]
+                          or melodic_machines(moteur))
+            classifieur = charger_classifieur(args, moteur, candidates)
             if args.sans_apprentissage:
                 print("      --sans-apprentissage : aucun modèle appris n'est consulté")
             frappes = charger_classifieur_frappes(args, moteur)
-            candidates = ([m.strip() for m in args.machines.split(",") if m.strip()]
-                          or melodic_machines(moteur))
             exclues = [m.strip() for m in args.machines_exclues.split(",") if m.strip()]
             if exclues:
                 # PANNE MUETTE INTERDITE : une exclusion qui ne correspond à
