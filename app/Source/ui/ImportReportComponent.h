@@ -61,7 +61,11 @@ public:
     // Montre un rapport composé PAR L'APPELANT : un titre, un sous-titre, des
     // lignes tonalisées. Même défilement, même repli, même bouton Copier.
     void showLines(const juce::String& titre, const juce::String& sousTitre,
-                   const juce::Array<LigneExterne>& lignes);
+                   const juce::Array<LigneExterne>& lignes, bool montrerLeVolet = true);
+    /// D84 : repose les boutons dans la langue courante. Le CONTENU, lui, est
+    /// refait par le client qui l'a fabriqué : le volet ne reçoit que des
+    /// textes déjà traduits, et un texte assemblé ne se re-traduit pas.
+    void retraduire();
 
     // Montre un ÉCHEC, avec le message du lecteur EN ENTIER. Celui d'un `.cpr`
     // nomme les deux chemins praticables (Track Archive XML, MIDI Type 1) : le

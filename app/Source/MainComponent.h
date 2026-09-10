@@ -764,6 +764,17 @@ private:
     /// non, et le même dossier avait donc deux verdicts.
     void noterReserveDEffet(const juce::String& reserve);
     std::vector<juce::String> reservesEffets_;
+    /// D84 : LE RAPPORT D'OUVERTURE EST REFAIT À LA BASCULE DE LANGUE. Ses
+    /// lignes brutes (celles que disent aussi `vsm-render` et `VSM_OUVERTURE`) et
+    /// le nom du dossier sont gardés ; la fonction qui a fabriqué le titre et le
+    /// résumé les refabrique. `clientDuRapport_` dit qui a rempli le volet en
+    /// dernier : refaire le rapport d'ouverture par-dessus un rapport d'import
+    /// en effacerait un autre.
+    juce::StringArray rapportOuverture_;
+    juce::String dossierRapportOuverture_;
+    enum class ClientDuRapport { aucun, ouverture, autre };
+    ClientDuRapport clientDuRapport_ = ClientDuRapport::aucun;
+    void afficherRapportDOuverture(bool montrerLeVolet);
 
     /// D76 : QUELLE PISTE OCCUPE CHAQUE EMPLACEMENT DU GRAPHE (son `Track::uid`,
     /// 0 = aucune). C'est ce qui permet à `rebuildFromProject` de ne PAS

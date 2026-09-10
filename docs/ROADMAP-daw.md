@@ -11995,3 +11995,61 @@ Les libellés à nombre deviennent des modèles entiers (règle de D81).
 >
 > Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
 > 172 Python, ruff et mypy — tout vert.
+
+### Phase D84 — Le volet de rapport gardait la langue de son ouverture (10/09/2026, 20:25)
+
+**CE QUE D83 A MESURÉ.** Lancée en anglais, l'application montre le rapport
+d'ouverture avec « Project opened, with reservations », « 5 reservations on
+opening », « Copy », « Close ». Lancée en français puis basculée en anglais,
+elle garde « Projet ouvert, avec des réserves », « 5 réserves à l'ouverture »,
+« Copier », « Fermer » : **3 482 pixels** entre les deux images, tous dans ce
+volet. Le volet sert trois clients — le rapport d'ouverture, l'import d'un
+autre DAW, le rapport de reconstruction — et il stocke des TEXTES déjà
+traduits, fabriqués par l'appelant au moment de l'ouverture.
+
+**LA DÉCISION.** Le volet ne re-traduit pas un texte qu'on lui a donné tout
+fait ; c'est le **client** qui sait fabriquer son rapport, et c'est lui qui le
+refait à la bascule — la même fonction qui l'a fabriqué la première fois, avec
+les mêmes données. Les boutons, eux, sont au volet, et il les repose lui-même.
+Les LIGNES qui viennent de `interchange/` (« aucun instrument, elle restera
+silencieuse ») restent françaises : `interchange/` n'a pas de table, c'est
+écrit dans A9 depuis D73, et cette phase ne le prétend pas autrement.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (10/09/2026, 20:25).**
+>
+> 1. **« Lancée en anglais » et « basculée en anglais » donnent la même image**
+>    du volet d'ouverture : 3 482 pixels à D83, attendu **0**, sur le projet
+>    abîmé de D75.
+> 2. **Le français ne bouge pas** : 0 pixel entre le binaire d'avant et celui
+>    d'après, avec un contre-exemple anglais.
+> 3. **Rouvrir le rapport après la bascule** (« Voir le dernier rapport »)
+>    le montre dans la nouvelle langue, et non dans l'ancienne.
+
+> **D84 EST FAITE (10/09/2026, 20:30), ET LES TROIS ATTENDUS SONT TENUS AU PIXEL
+> PRÈS.** Le projet abîmé de D75, `HOME` isolé, préférences de l'utilisateur
+> intactes ; le binaire de D83 gardé comme témoin.
+>
+> | | D83 | D84 |
+> |---|---|---|
+> | volet d'ouverture, « lancée en anglais » / « basculée en anglais » | 3 482 px | **0 px** |
+> | français, binaire d'avant / d'après | — | **0 px** (contre-exemple anglais : 18 878) |
+> | volet fermé, bascule, puis « Show the last import report » / lancée en anglais | — | **0 px** |
+>
+> **Ce qui a été fait, en une ligne par pièce.** Le volet repose ses deux
+> boutons (`ImportReportComponent::retraduire`) ; le rapport d'ouverture garde
+> ses lignes brutes et son dossier, et sa fabrication — titre, résumé, tons —
+> est sortie dans `afficherRapportDOuverture`, que la bascule rappelle volet
+> ouvert OU fermé (`showLines(…, montrerLeVolet)`) ; `clientDuRapport_` retient
+> qui a rempli le volet en dernier, pour que refaire le rapport d'ouverture
+> n'efface pas un rapport d'import ou de reconstruction venu après lui.
+>
+> **Ce qui reste, et que la phase ne prétend pas avoir fait** : les LIGNES du
+> rapport qui viennent de `interchange/` (« aucun instrument, elle restera
+> silencieuse ») sont en français dans les deux langues — le 0 pixel les
+> compare à elles-mêmes. Les deux autres clients du volet (rapport d'import
+> d'un autre DAW, rapport de reconstruction) fabriquent un texte français sans
+> `tr()` : ils ne suivent pas la bascule parce qu'ils ne sont pas traduits du
+> tout. C'est A9, nommé.
+>
+> Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
+> 172 Python, ruff et mypy — tout vert.

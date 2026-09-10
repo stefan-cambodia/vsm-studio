@@ -4788,6 +4788,7 @@ bool MainComponent::applyDawImport(const juce::File& fichier) {
         // LE MESSAGE DU LECTEUR EST MONTRÉ TEL QUEL, et c'est voulu : pour un
         // `.cpr` il nomme les deux chemins praticables, ce qu'aucun « échec de
         // l'import » générique ne ferait.
+        clientDuRapport_ = ClientDuRapport::autre;   // D84
         importReport_.showFailure(juce::String::fromUTF8("Import impossible"),
                                   juce::String::fromUTF8(erreur.what()));
         std::fputs((std::string("Import : ") + erreur.what() + "\n").c_str(), stderr);
@@ -4810,6 +4811,7 @@ bool MainComponent::applyDawImport(const juce::File& fichier) {
     // rapport d'import). Il est aussi la seule forme que l'autoportrait
     // photographie : VSM_CAPTURE rend le composant de contenu, où une alerte
     // asynchrone n'apparaît pas.
+    clientDuRapport_ = ClientDuRapport::autre;   // D84
     importReport_.showReport(resultat.report);
     // AU TERMINAL AUSSI : un import lancé par VSM_IMPORT se juge depuis le
     // terminal qui l'a lancé, et le rapport doit y être lisible sans image.
@@ -4848,6 +4850,7 @@ void MainComponent::showReconstructionReport() {
     const auto lu = vsm::interchange::parseJson(
         rapportReconstruction_.loadFileAsString().toStdString());
     if (!lu.success) {
+        clientDuRapport_ = ClientDuRapport::autre;   // D84
         importReport_.showFailure(juce::String::fromUTF8("Rapport illisible"),
                                   juce::String::fromUTF8(lu.error.c_str()));
         return;
@@ -5106,6 +5109,7 @@ void MainComponent::showReconstructionReport() {
         }
     }
 
+    clientDuRapport_ = ClientDuRapport::autre;   // D84
     importReport_.showLines(
         juce::String::fromUTF8("Rapport de reconstruction"),
         currentProjectFolder_ != juce::File() ? currentProjectFolder_.getFileName()
@@ -5319,35 +5323,43 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     // lire des phrases sur une capture, c'est comparer des impressions.
     for (const auto& ligne : rapport)
         std::fputs(("VSM_OUVERTURE : " + ligne + "\n").toRawUTF8(), stderr);
+    rapportOuverture_ = rapport;                         // D84
+    dossierRapportOuverture_ = folder.getFileName();
     if (!rapport.isEmpty()) {
-        using Rapport = vsm::app::ui::ImportReportComponent;
-        using Ton = Rapport::Ton;
-        juce::Array<Rapport::LigneExterne> lignes;
-        lignes.add({juce::String(rapport.size()) + (rapport.size() > 1
-                                                     ? tr(u8" réserves à l'ouverture")
-                                                     : tr(u8" réserve à l'ouverture")),
-                    Ton::resume});
-        for (const auto& ligne : rapport) {
-            // LE TON SUIT LA CONVENTION DÉJÀ ÉTABLIE PAR LES DEUX AUTRES
-            // CLIENTS DU VOLET, et il a fallu la lire pour ne pas l'inverser :
-            // `attention` est ROUGE et veut dire « regarde MAINTENANT »,
-            // `perte` est AMBRE et veut dire « ceci a été perdu ». Un manque
-            // est un fait, pas une alarme -- l'écran de reconstruction range
-            // ainsi ses stems perdus en ambre et ses parts anormales en rouge.
-            // Une première version peignait l'inverse : les effets non
-            // appliqués en ambre discret et l'avertissement le plus anodin en
-            // rouge vif. La capture l'a montrée, pas la lecture du code.
-            const bool perte = ligne.contains(juce::String::fromUTF8("introuvable"))
-                            || ligne.contains(juce::String::fromUTF8("illisible"))
-                            || ligne.contains(juce::String::fromUTF8("non appliqué"))
-                            || ligne.contains(juce::String::fromUTF8("inconnu"))
-                            || ligne.contains(juce::String::fromUTF8("indisponible"))   // D75
-                            || ligne.contains(juce::String::fromUTF8("silencieuse"));
-            lignes.add({ligne, perte ? Ton::perte : Ton::info});
-        }
-        importReport_.showLines(tr(u8"Projet ouvert, avec des réserves"),
-                                 folder.getFileName(), lignes);
+        clientDuRapport_ = ClientDuRapport::ouverture;
+        afficherRapportDOuverture(true);
     }
+}
+
+void MainComponent::afficherRapportDOuverture(bool montrerLeVolet) {
+    if (rapportOuverture_.isEmpty()) return;
+    using Rapport = vsm::app::ui::ImportReportComponent;
+    using Ton = Rapport::Ton;
+    juce::Array<Rapport::LigneExterne> lignes;
+    lignes.add({juce::String(rapportOuverture_.size()) + (rapportOuverture_.size() > 1
+                                                 ? tr(u8" réserves à l'ouverture")
+                                                 : tr(u8" réserve à l'ouverture")),
+                Ton::resume});
+    for (const auto& ligne : rapportOuverture_) {
+        // LE TON SUIT LA CONVENTION DÉJÀ ÉTABLIE PAR LES DEUX AUTRES
+        // CLIENTS DU VOLET, et il a fallu la lire pour ne pas l'inverser :
+        // `attention` est ROUGE et veut dire « regarde MAINTENANT »,
+        // `perte` est AMBRE et veut dire « ceci a été perdu ». Un manque
+        // est un fait, pas une alarme -- l'écran de reconstruction range
+        // ainsi ses stems perdus en ambre et ses parts anormales en rouge.
+        // Une première version peignait l'inverse : les effets non
+        // appliqués en ambre discret et l'avertissement le plus anodin en
+        // rouge vif. La capture l'a montrée, pas la lecture du code.
+        const bool perte = ligne.contains(juce::String::fromUTF8("introuvable"))
+                        || ligne.contains(juce::String::fromUTF8("illisible"))
+                        || ligne.contains(juce::String::fromUTF8("non appliqué"))
+                        || ligne.contains(juce::String::fromUTF8("inconnu"))
+                        || ligne.contains(juce::String::fromUTF8("indisponible"))   // D75
+                        || ligne.contains(juce::String::fromUTF8("silencieuse"));
+        lignes.add({ligne, perte ? Ton::perte : Ton::info});
+    }
+    importReport_.showLines(tr(u8"Projet ouvert, avec des réserves"),
+                             dossierRapportOuverture_, lignes, montrerLeVolet);
 }
 
 // --- D9 : reconstruire depuis l'application --------------------------------
@@ -7375,6 +7387,10 @@ void MainComponent::retraduire() {
     pianoRollPanel_.retraduireBarre();
     effectChain_.retraduire();   // D77
     historyPanel_.retraduire();   // D82
+    // D84 : le volet de rapport -- ses boutons, et le rapport d'ouverture s'il
+    // est le dernier à l'avoir rempli, refait volet ouvert ou fermé.
+    importReport_.retraduire();
+    if (clientDuRapport_ == ClientDuRapport::ouverture) afficherRapportDOuverture(importReport_.isVisible());
     // D78 : LE BOUTON D'ÉCOUTE, par la fonction qui le pose au démarrage --
     // D77 a trouvé « Écoute A/B : pas d'original » sur une image basculée en
     // anglais, là où le démarrage écrivait « A/B monitoring: no original ».

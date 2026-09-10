@@ -131,7 +131,7 @@ void ImportReportComponent::showReport(const vsm::interchange::DawImportReport& 
 }
 
 void ImportReportComponent::showLines(const juce::String& titre, const juce::String& sousTitre,
-                                      const juce::Array<LigneExterne>& lignes) {
+                                      const juce::Array<LigneExterne>& lignes, bool montrerLeVolet) {
     titre_ = titre;
     sousTitre_ = sousTitre;
     source_.clear();
@@ -146,7 +146,16 @@ void ImportReportComponent::showLines(const juce::String& titre, const juce::Str
         }
         source_.add({ligne.texte, couleur, enTete});
     }
-    montrer();
+    // D84 : REFAIT SANS ÊTRE MONTRÉ quand la langue change volet fermé -- pour que
+    // « Voir le dernier rapport » le rouvre dans la langue d'aujourd'hui.
+    if (montrerLeVolet) montrer();
+    else { largeurRepliee_ = -1; if (isVisible()) resized(); }
+}
+
+void ImportReportComponent::retraduire() {
+    fermer_.setButtonText(vsm::app::ui::tr("Fermer"));
+    copier_.setButtonText(vsm::app::ui::tr("Copier"));
+    repaint();
 }
 
 void ImportReportComponent::showFailure(const juce::String& titre, const juce::String& message) {
