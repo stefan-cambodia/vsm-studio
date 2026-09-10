@@ -10375,3 +10375,43 @@ x1, les deux voyants, « Écoute : reconstruction », le temps ; rangée du bas 
 120.0 BPM, 4/4, CPU 0.1 %, « Exporter MIDI… », « Ouvrir MIDI… », 44.1 kHz.
 
 Tests : 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — verts.
+
+### Vérification D69 — Les deux dernières zones du plancher ne trouvent rien, et la série se referme (10/09/2026, 11:20)
+
+**CE QUI RESTAIT À REGARDER.** La série ouverte par D58 — `VSM_TAILLE` qui ne
+faisait rien — a balayé la fenêtre zone par zone à 900x660, et chaque passage a
+trouvé quelque chose :
+
+| zone | phase | ce qui a été trouvé |
+|---|---|---|
+| tranche master | D59 | la 7ᵉ commande invisible à toute taille |
+| onglets du dock | D60 | deux aides coupées au milieu de la clause utile |
+| barre du piano roll | D61 | 27 éléments sur 36 à zéro pixel |
+| façades de machine | D62 → D67 | 89 boutons sous 18 px, dont un à zéro |
+| barre de transport | D68 | la signature à zéro, « Ouvrir… » jamais visible |
+| **liste de pistes** | **D69** | **rien** |
+| **mélangeur** | **D69** | **rien** |
+
+**LA LISTE DE PISTES TIENT.** Les noms se lisent en entier (« other · voix 1 »),
+le champ de filtre garde son intitulé, « + Ajouter une piste » se plie sur deux
+lignes plutôt que de se couper, et les sélecteurs de machine abrègent par la fin
+— « Vocal (conduit voc… » — en gardant le nom de la machine, qui est la partie
+qui renseigne. Aucun élément à zéro pixel, aucune sérigraphie réduite à des
+points.
+
+**LE MÉLANGEUR TIENT AUSSI**, et pour une raison écrite ailleurs : il a son
+viewport depuis le § 4.6 du CDC détection-multipiste, où 64 pistes ont été
+regardées. Neuf tranches se voient au plancher, le MASTER reste épinglé à
+droite, le reste défile. La tranche coupée au bord droit est le comportement
+d'un volet qui défile, pas une troncature.
+
+**UN RÉSULTAT NÉGATIF SE PUBLIE COMME LES AUTRES.** Il dit deux choses. La
+première : les deux zones qui n'avaient jamais été photographiées au plancher
+n'avaient rien à cacher, et la série s'arrête là plutôt que de continuer à
+chercher. La seconde, plus utile : **ce qui tient tient pour une raison**, et
+c'est la même dans les deux cas — un volet qui défile (le mélangeur) ou un
+texte qui se plie (le bouton d'ajout). Les six défauts trouvés par la série
+avaient tous la forme inverse : une largeur constante posée par
+`removeFromLeft`, et ce qui dépasse à zéro pixel.
+
+Aucun code n'a changé. `./verifier.sh` : tout vert.
