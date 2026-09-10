@@ -683,12 +683,32 @@ Le coût, lui, se lit : les courses `r1` durent **de −3 % à −10 %** de S1
 itération qui s'arrête au garde-fou coûte le rendu des candidates et rien
 d'autre.
 
-### 7.4 Le lot forcé — en attente
+### 7.4 Le lot forcé — INTERROMPU au sixième morceau, et il faut le dire
 
 *(à écrire à la fin de `r1f-sec` : le SDR de la basse dans le résidu après
 soustraction forcée de la batterie sur les huit morceaux qui en ont, contre
 0,21 dB ; le résidu entre 95 et 100 % ; les pistes inventées en plus ; le
 coût.)*
+
+> **ÉTAT RELEVÉ LE 10/09/2026 : LA COURSE NE S'EST JAMAIS TERMINÉE.**
+> `reconstruction/travail/r1f-sec-banc/` porte **cinq morceaux mesurés** sur
+> dix (g1 à g5), et la dernière ligne du journal est
+> `[15:49:14] DÉBUT morceau-0006-g6` — jamais close. C'est la panne
+> d'exploitation que le § 9 du CDC multipiste nomme déjà : une campagne lancée
+> depuis le shell de l'outil meurt avec la session, et le journal ne le dit pas
+> — il s'arrête, ce qui ressemble à une course qui continue.
+>
+> **Ce n'est donc pas « en attente », c'est ARRÊTÉ**, et la différence compte :
+> une campagne en attente se laisse finir, une campagne arrêtée se relance. Elle
+> est reprenable telle quelle — un morceau dont `rapport.json` existe n'est pas
+> rejoué —, il reste cinq morceaux à courir, et le § 7.5 ne peut pas être signé
+> avant.
+>
+> **Ce que les cinq morceaux mesurés disent déjà**, sans valoir verdict : les
+> courses forcées durent de 1 007 s à 3 420 s, F1 de 0,32 à 0,36, distance
+> globale de 0,169 à 0,227 — le même ordre de grandeur que S1, ce qui est
+> cohérent avec une soustraction qui retire peu. Les chiffres du § 7.4 se
+> liront sur les dix, pas sur cinq.
 
 ### 7.5 La décision — annoncée, en attente du lot forcé pour être signée
 

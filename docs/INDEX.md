@@ -125,6 +125,7 @@ dernier. Chaque élément porte sa source ; **aucun n'est inventé ici**.
 | B4 | **Écouter les deux wav de `--voix-tete-choeurs`** — les fuites de réverbération de la tête dans les chœurs ne se jugent qu'à l'oreille | `CDC-detection-multipiste.md` § 4.5 | distance mesurée neutre (+0,05 %) ; la qualité, non |
 | B5 | **Un lot de morceaux LONGS (3-5 min) avec des parties qui entrent et sortent** | `CDC-banc-synthetique.md` § 7 | le banc mesure une texture stable de 30 s, la chaîne travaille sur des disques de 4 min |
 | B6 | **Le banc ne couvre ni les parties à échantillons ni la voix** | `CDC-banc-synthetique.md` § 7 | deux branches de la chaîne ne sont mesurées par rien |
+| B7 | **Terminer le lot forcé de R1** (`r1f-sec`), écrire le § 7.4 et **signer la décision du § 7.5** | `CDC-separation-par-synthese.md` § 7.4-7.5 | la course s'est arrêtée au **6ᵉ morceau sur 10** (dernière ligne du journal : « DÉBUT morceau-0006-g6 », jamais close) ; elle est reprenable — un morceau dont `rapport.json` existe n'est pas rejoué |
 
 ### C. Ce que S1 a réfuté, et qui appelle un chantier
 
@@ -138,8 +139,17 @@ du projet ; toute autre optimisation est en aval d'eux.
 | C2 | **La transcription est le second** | F1 **0,367** — attendu 0,50 à 0,70 ; et le rappel (0,345) est SOUS la précision (0,426), l'inverse de ce qui était prédit |
 | C3 | **La séparation hallucine des sources**, et la chaîne les reconstruit consciencieusement | 19,8 % d'énergie hallucinée — la seule attente tenue, et c'est celle qui fait mal |
 
-C'est la boucle résiduelle (`CDC-separation-par-synthese.md`) qui a été écrite
-pour attaquer C1 et C3 ; sa campagne R1 est le prochain chiffre à produire.
+**LA BOUCLE RÉSIDUELLE A ÉTÉ ÉCRITE POUR ATTAQUER C1 ET C3, ET R1 L'A MESURÉE :
+ELLE EST INERTE.** Zéro soustraction sur les vingt morceaux ; les dix-neuf
+batteries candidates corrèlent à leur stem entre 0,001 et 0,049 quand le seuil
+publié est 0,5 — réfuté d'un facteur quarante. Au niveau de l'échantillon, un
+rendu ne ressemble pas assez à son stem pour en être soustrait, ni sur le banc
+ni sur les deux disques. `--residuel` reste une option publiée, mesurée, et
+**dite inerte dans son aide**.
+
+L'hypothèse de repli est déjà écrite (§ 7.5 du CDC), pour ne pas être inventée
+après : soustraire sur le **module du spectre** plutôt que sur l'échantillon,
+la phase du mélange gardée. Elle ne s'écrira qu'une fois le lot forcé terminé.
 
 ### D. Documentation qui avait pris du retard — REFERMÉ le 10/09/2026
 
