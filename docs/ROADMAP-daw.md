@@ -11792,3 +11792,72 @@ gammes en D78.
 >
 > Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
 > 172 Python, ruff et mypy — tout vert.
+
+### Phase D81 — A9 : les six autres menus, jusqu'aux seules entrées neutres (10/09/2026, 19:25)
+
+**CE QUE D80 A LAISSÉ, TRIÉ.** Des 69 entrées encore identiques en français et
+en anglais, **34 sont neutres** et le resteront : dix chemins de projets
+récents, deux ports MIDI, les onze du menu Édition (« Octave + », « Legato »,
+les signatures), les quatre noms de vues que l'interface française emploie
+déjà en anglais (« Piano Roll », « Synth Rack », « Mixer », « Arrangement »),
+les cinq tailles « 100 % » à « 200 % », et « Français » / « English ». **Les 35
+autres sont du français** : 3 dans Fichier, 12 dans Piste, 3 dans
+Enregistrement, 5 dans Mixage, 12 dans Affichage — surtout des libellés
+FABRIQUÉS avec un compte entre parenthèses (« Copier la chaîne d'inserts
+(1) »), dont le texte affiché n'est la clé d'aucune paire.
+
+**LA RÈGLE POUR LES LIBELLÉS FABRIQUÉS, TRANCHÉE ICI.** Un libellé qui porte un
+nombre ou un nom se traduit comme UN modèle entier (`… (%1)`), jamais par
+morceaux : c'est la décision prise pour le groove en D80, et c'est la seule qui
+laisse l'anglais écrire l'ordre des mots qu'il veut.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (10/09/2026, 19:25).**
+>
+> 1. **Les entrées identiques dans les deux langues se réduisent aux 35
+>    neutres**, et la liste d'après est publiée : ni plus, ni une de moins
+>    sans explication. *Corrigé avant la mesure : le tri ci-dessus comptait 34
+>    neutres ; « Active » (la région de punch) passe déjà par `tr()` et reste
+>    « Active » en anglais parce que c'est le même mot — elle est neutre, et
+>    les entrées françaises sont 34.*
+> 2. **Le français ne change pas** : les listes d'avant et d'après, alignées
+>    par contenu, sont égales — le témoin est lancé depuis le dossier du
+>    build, pour que l'environnement ne fabrique plus de différence (leçon de
+>    D80).
+> 3. **Aucun doublon anglais neuf** dans la barre.
+
+> **D81 EST FAITE (10/09/2026, 19:32), ET LES TROIS ATTENDUS SONT TENUS AU
+> CHIFFRE PRÈS.** Les listes d'avant sont celles d'après D80 (le même binaire,
+> lancé du dossier du build) ; celles d'après, prises par le binaire de D81 au
+> même endroit, `HOME` isolé, préférences de l'utilisateur intactes.
+>
+> | | avant (D80) | après |
+> |---|---|---|
+> | entrées identiques en français et en anglais | 69 | **35** |
+> | dont neutres | 35 | **35** |
+> | dont françaises | 34 | **0** |
+> | français, aligné par contenu | — | **312 / 312** entrées égales, 0 bloc différent |
+> | doublons anglais neufs | — | **0** |
+>
+> **La barre de menus est traduite entièrement, et cette fois c'est mesuré sur
+> ce qu'elle affiche** — ce que D73 affirmait et que D80 a réfuté.
+>
+> **CE QUI EXPLIQUE LE CHIFFRE DE D73, ENTIÈREMENT.** Des 40 traductions dont
+> ces 34 entrées avaient besoin, **26 existaient déjà dans la table** : D73 les
+> avait écrites, et le code affichait ces entrées par
+> `juce::String::fromUTF8(u8"…")`, sans jamais appeler `tr()`. Le compte
+> statique voyait une paire pour chaque chaîne et concluait « traduite » ; il
+> ne regardait pas si l'affichage passait par la table. Les 14 autres étaient
+> des libellés FABRIQUÉS : ils deviennent douze modèles entiers
+> (« Copier la chaîne d'inserts (%1) »), la règle tranchée en tête de phase.
+> Il ne reste **aucun** `fromUTF8(u8"…")` dans `getMenuForIndex`, et la table
+> compte **405** paires.
+>
+> **CE QUI RESTE D'A9, NOMMÉ.** Les fenêtres flottantes, les menus contextuels
+> de l'arrangement, les phrases fabriquées dans `interchange/`, les
+> infobulles longues de D74, « RÉGLAGES » sur la façade de la TB-303, et le
+> nom du geste dans « Undo: … », qui vient de l'historique et reste en
+> français. La commande `VSM_MENU_LISTE` ne couvre que la barre ; les
+> surfaces restantes demanderont leur propre mesure.
+>
+> Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
+> 172 Python, ruff et mypy — tout vert.

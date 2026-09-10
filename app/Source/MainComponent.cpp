@@ -2237,7 +2237,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // D32.5 : LES CHIFFRES DU PROJET. Au menu Fichier parce qu'ils
             // parlent du fichier entier, et non d'une piste.
             menu.addItem(kMenuFileStatistics,
-                          juce::String::fromUTF8(u8"Statistiques du projet..."));
+                          tr(u8"Statistiques du projet..."));
             menu.addItem(kMenuFileNewFromTemplate, tr(u8"Nouveau depuis le modèle"),
                          templateFolder().getChildFile("project.json").existsAsFile());
             menu.addSeparator();
@@ -2288,25 +2288,25 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 const bool dispo = reconstructionChain_.available
                                    && !reconstructionRunner_.isRunning();
                 menu.addItem(kMenuFileReconstruct,
-                              juce::String::fromUTF8(u8"Reconstruire un morceau..."), dispo);
+                              tr(u8"Reconstruire un morceau..."), dispo);
                 if (!reconstructionChain_.available) {
-                    menu.addItem(-1, juce::String::fromUTF8(u8"    ↳ ")
+                    menu.addItem(-1, tr(u8"    ↳ ")
                                           + juce::String::fromUTF8(reconstructionChain_.reason.c_str()),
                                   false, false);
                     if (!reconstructionChain_.remedy.empty())
-                        menu.addItem(-1, juce::String::fromUTF8(u8"    ↳ ")
+                        menu.addItem(-1, tr(u8"    ↳ ")
                                               + juce::String::fromUTF8(reconstructionChain_.remedy.c_str()),
                                       false, false);
                     menu.addItem(kMenuFileChainFolder,
-                                  juce::String::fromUTF8(u8"Indiquer le dossier de la chaîne..."));
+                                  tr(u8"Indiquer le dossier de la chaîne..."));
                 } else if (reconstructionRunner_.isRunning()) {
-                    menu.addItem(-1, juce::String::fromUTF8(u8"    ↳ une reconstruction est déjà en cours"),
+                    menu.addItem(-1, tr(u8"    ↳ une reconstruction est déjà en cours"),
                                   false, false);
                 }
             }
             menu.addSeparator();
             menu.addItem(kMenuFileAudioSettings, tr(u8"Réglages audio..."));
-            menu.addItem(kMenuFilePreferences, juce::String::fromUTF8(u8"Préférences..."));
+            menu.addItem(kMenuFilePreferences, tr(u8"Préférences..."));
             {
                 // THREADS DE RENDU (D8.1). Le multicœur ne change pas un seul
                 // échantillon du résultat -- un test le vérifie -- donc ce
@@ -2510,19 +2510,15 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                     size_t visibles = 0;
                     for (const auto& t : project_.tracks) if (!t.hidden) ++visibles;
                     menu.addItem(kMenuTrackRenameSeries,
-                                  juce::String::fromUTF8(u8"Renommer les pistes en série (")
-                                      + juce::String(static_cast<int>(visibles))
-                                      + juce::String::fromUTF8(u8" visibles)..."),
+                                  tr(u8"Renommer les pistes en série (%1 visibles)...").replace("%1", juce::String(static_cast<int>(visibles))),
                                   visibles > 0);
                 }
                 menu.addItem(kMenuTrackHide, tr(u8"Masquer la piste (elle continue de sonner)"),
                               !project_.tracks.empty());
                 menu.addItem(kMenuTrackShowAll,
                               masquees == 0
-                                  ? juce::String::fromUTF8(u8"Afficher toutes les pistes (aucune masquée)")
-                                  : juce::String::fromUTF8(u8"Afficher toutes les pistes (")
-                                        + juce::String(static_cast<int>(masquees))
-                                        + juce::String::fromUTF8(u8" masquées)"),
+                                  ? tr(u8"Afficher toutes les pistes (aucune masquée)")
+                                  : tr(u8"Afficher toutes les pistes (%1 masquées)").replace("%1", juce::String(static_cast<int>(masquees))),
                               masquees > 0);
                 // D22.5 : LES PRESETS DE PISTE. Le sous-menu LISTE le dossier,
                 // et dit lequel quand il est vide : un sous-menu vide sans
@@ -2649,24 +2645,18 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                     const size_t combien = piste < project_.tracks.size()
                                                ? project_.tracks[piste].effects.size() : 0;
                     menu.addItem(kMenuTrackCopyChain,
-                                  juce::String::fromUTF8(u8"Copier la chaîne d'inserts (")
-                                      + juce::String(static_cast<int>(combien))
-                                      + juce::String::fromUTF8(u8")"),
+                                  tr(u8"Copier la chaîne d'inserts (%1)").replace("%1", juce::String(static_cast<int>(combien))),
                                   combien > 0);
                     const int presse = static_cast<int>(chainClipboard_.size());
                     menu.addItem(kMenuTrackPasteChain,
                                   presse == 0
-                                      ? juce::String::fromUTF8(u8"Coller la chaîne (rien de copié)")
-                                      : juce::String::fromUTF8(u8"Coller la chaîne (")
-                                            + juce::String(presse)
-                                            + juce::String::fromUTF8(u8" inserts, remplace)"),
+                                      ? tr(u8"Coller la chaîne (rien de copié)")
+                                      : tr(u8"Coller la chaîne (%1 inserts, remplace)").replace("%1", juce::String(presse)),
                                   presse > 0 && piste < project_.tracks.size());
                     menu.addItem(kMenuTrackAppendChain,
                                   presse == 0
-                                      ? juce::String::fromUTF8(u8"Ajouter la chaîne (rien de copié)")
-                                      : juce::String::fromUTF8(u8"Ajouter la chaîne à la suite (")
-                                            + juce::String(presse)
-                                            + juce::String::fromUTF8(u8" inserts)"),
+                                      ? tr(u8"Ajouter la chaîne (rien de copié)")
+                                      : tr(u8"Ajouter la chaîne à la suite (%1 inserts)").replace("%1", juce::String(presse)),
                                   presse > 0 && piste < project_.tracks.size());
                 }
                 // D31.4 : LA CHAÎNE D'EFFETS MIDI. Au menu Piste comme la
@@ -2682,24 +2672,21 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                         // à un `std::string` ne compile pas (piège de CLAUDE.md,
                         // payé une fois de plus ici). On assemble en juce::String.
                         midiFx.addItem(kMenuTrackMidiFxFirst + static_cast<int>(i),
-                                        juce::String::fromUTF8(u8"Ajouter : ")
-                                            + juce::String::fromUTF8(
-                                                  vsm::sequencer::midiEffectDisplayName(types[i]).c_str()),
+                                        tr(u8"Ajouter : %1").replace("%1", tr(juce::String::fromUTF8(
+                                            vsm::sequencer::midiEffectDisplayName(types[i]).c_str()))),
                                         piste < project_.tracks.size());
                     const size_t combien = piste < project_.tracks.size()
                                                ? project_.tracks[piste].midiEffects.size() : 0;
                     midiFx.addSeparator();
                     midiFx.addItem(kMenuTrackMidiFxBake,
-                                    juce::String::fromUTF8(u8"Reporter les effets MIDI dans les notes (définitif)"),
+                                    tr(u8"Reporter les effets MIDI dans les notes (définitif)"),
                                     combien > 0);
                     midiFx.addItem(kMenuTrackMidiFxClear,
-                                    juce::String::fromUTF8(u8"Retirer tous les effets MIDI"),
+                                    tr(u8"Retirer tous les effets MIDI"),
                                     combien > 0);
                     // LE NOMBRE DANS LE TITRE : un sous-menu qui ne dit pas ce
                     // qu'il contient déjà se visite pour rien.
-                    menu.addSubMenu(juce::String::fromUTF8(u8"Effets MIDI de la piste (")
-                                        + juce::String(static_cast<int>(combien))
-                                        + juce::String::fromUTF8(u8")"),
+                    menu.addSubMenu(tr(u8"Effets MIDI de la piste (%1)").replace("%1", juce::String(static_cast<int>(combien))),
                                      midiFx, !project_.tracks.empty());
                 }
                 // D30.5 : RÉDUIRE LES POINTS. Le libellé dit COMBIEN il y en
@@ -2711,9 +2698,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                         for (const auto& c : project_.tracks[piste].automation)
                             points += c.points.size();
                     menu.addItem(kMenuTrackThinAutomation,
-                                  juce::String::fromUTF8(u8"Réduire les points d'automation (")
-                                      + juce::String(static_cast<int>(points))
-                                      + juce::String::fromUTF8(u8" points)"),
+                                  tr(u8"Réduire les points d'automation (%1 points)").replace("%1", juce::String(static_cast<int>(points))),
                                   points > 2);
                 }
                 menu.addItem(kMenuTrackBounceSelection,
@@ -2931,9 +2916,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                                           ? (tr("Prise ") + std::to_string(i + 1))
                                                           : prises[i].name)
                                          + (static_cast<int>(i) == project_.tracks[pisteChoisie].activeTake
-                                                ? juce::String::fromUTF8(u8"  (celle qu'on entend)")
+                                                ? tr(u8"  (celle qu'on entend)")
                                                 : juce::String()));
-                    menu.addSubMenu(juce::String::fromUTF8(u8"Retirer une prise du tiroir"),
+                    menu.addSubMenu(tr(u8"Retirer une prise du tiroir"),
                                      std::move(retirer));
                     menu.addSeparator();
                 }
@@ -2952,18 +2937,14 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                               ? project_.tracks[p].takes.size() : 0;
                     menu.addItem(kMenuRecordCompTakes,
                                   prises == 0
-                                      ? juce::String::fromUTF8(u8"Assembler les prises... (aucune)")
-                                      : juce::String::fromUTF8(u8"Assembler les prises... (")
-                                            + juce::String(static_cast<int>(prises))
-                                            + juce::String::fromUTF8(u8" prises)"),
+                                      ? tr(u8"Assembler les prises... (aucune)")
+                                      : tr(u8"Assembler les prises... (%1 prises)").replace("%1", juce::String(static_cast<int>(prises))),
                                   prises > 1);
                 }
                 menu.addItem(kMenuRecordRetrospective,
                               retrospectif_.empty()
-                                  ? juce::String::fromUTF8(u8"Récupérer ce qui vient d'être joué (rien en mémoire)")
-                                  : juce::String::fromUTF8(u8"Récupérer ce qui vient d'être joué (")
-                                        + juce::String(static_cast<int>(retrospectif_.size()))
-                                        + juce::String::fromUTF8(u8" événements)"),
+                                  ? tr(u8"Récupérer ce qui vient d'être joué (rien en mémoire)")
+                                  : tr(u8"Récupérer ce qui vient d'être joué (%1 événements)").replace("%1", juce::String(static_cast<int>(retrospectif_.size()))),
                               !retrospectif_.empty() && !project_.tracks.empty());
             }
             break;
@@ -3025,23 +3006,23 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                     return project_.crossfadeShape == f;
                 };
                 formes.addItem(kMenuMixCrossfadeEqualPower,
-                                juce::String::fromUTF8(u8"Puissance constante (deux prises différentes)"),
+                                tr(u8"Puissance constante (deux prises différentes)"),
                                 true, coche(vsm::sequencer::FadeShape::EqualPower));
                 formes.addItem(kMenuMixCrossfadeLinear,
-                                juce::String::fromUTF8(u8"Linéaire (deux copies du même son)"),
+                                tr(u8"Linéaire (deux copies du même son)"),
                                 true, coche(vsm::sequencer::FadeShape::Linear));
-                formes.addItem(kMenuMixCrossfadeSlow, juce::String::fromUTF8(u8"Lente"),
+                formes.addItem(kMenuMixCrossfadeSlow, tr(u8"Lente"),
                                 true, coche(vsm::sequencer::FadeShape::Slow));
-                formes.addItem(kMenuMixCrossfadeFast, juce::String::fromUTF8(u8"Rapide"),
+                formes.addItem(kMenuMixCrossfadeFast, tr(u8"Rapide"),
                                 true, coche(vsm::sequencer::FadeShape::Fast));
-                menu.addSubMenu(juce::String::fromUTF8(u8"Forme des fondus croisés"), formes);
+                menu.addSubMenu(tr(u8"Forme des fondus croisés"), formes);
             }
             break;
         case 5:
-            menu.addItem(kMenuViewSingleWindow, juce::String::fromUTF8(u8"Fenêtre unique"),
+            menu.addItem(kMenuViewSingleWindow, tr(u8"Fenêtre unique"),
                           true, singleWindow_);
             menu.addItem(kMenuViewComputerKeyboard,
-                         juce::String::fromUTF8(u8"Clavier d'ordinateur (A S D F… jouent la piste choisie, Z/X : octave)"),
+                         tr(u8"Clavier d'ordinateur (A S D F… jouent la piste choisie, Z/X : octave)"),
                          true, computerKeyboard_);
             {
                 auto* fenetre = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent());
@@ -3059,16 +3040,16 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                           singleWindow_ ? bottomTabs_.isVisible() : mixerWindow_.isVisible());
             menu.addItem(kMenuViewArrangement, tr("Arrangement"), true,
                           singleWindow_ ? arrangement_.isVisible() : arrangementWindow_.isVisible());
-            menu.addItem(kMenuViewBrowser, juce::String::fromUTF8(u8"Navigateur"),
+            menu.addItem(kMenuViewBrowser, tr(u8"Navigateur"),
                           true, browserWindow_ && browserWindow_->isVisible());
             menu.addItem(kMenuViewShortcuts,
-                          juce::String::fromUTF8(u8"Raccourcis clavier..."),
+                          tr(u8"Raccourcis clavier..."),
                           true, shortcutsWindow_ && shortcutsWindow_->isVisible());
             menu.addItem(kMenuViewHistory,
-                          juce::String::fromUTF8(u8"Historique des modifications..."),
+                          tr(u8"Historique des modifications..."),
                           true, historyWindow_ && historyWindow_->isVisible());
             menu.addItem(kMenuViewSpectrum,
-                          juce::String::fromUTF8(u8"Analyseur de spectre..."),
+                          tr(u8"Analyseur de spectre..."),
                           true, spectrumWindow_ && spectrumWindow_->isVisible());
             // D18.6 : LE NOMBRE DE CARACTÈRES EST DIT. Un bloc-notes vide et un
             // bloc-notes plein s'ouvrent pareil ; savoir qu'il y a quelque
@@ -3080,24 +3061,18 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 const auto sections = vsm::sequencer::sectionsFromMarkers(project_);
                 menu.addItem(kMenuViewPlayOrder,
                               sections.empty()
-                                  ? juce::String::fromUTF8(u8"Ordre de jeu... (aucune section)")
-                                  : juce::String::fromUTF8(u8"Ordre de jeu... (")
-                                        + juce::String(static_cast<int>(sections.size()))
-                                        + juce::String::fromUTF8(u8" sections)"),
+                                  ? tr(u8"Ordre de jeu... (aucune section)")
+                                  : tr(u8"Ordre de jeu... (%1 sections)").replace("%1", juce::String(static_cast<int>(sections.size()))),
                               !sections.empty(),
                               playOrderWindow_ && playOrderWindow_->isVisible());
             }
             menu.addItem(kMenuViewProjectNotes,
                           project_.notes.empty()
-                              ? juce::String::fromUTF8(u8"Notes du projet... (vides)")
-                              : juce::String::fromUTF8(u8"Notes du projet... (")
-                                    + juce::String(static_cast<int>(project_.notes.size()))
-                                    + juce::String::fromUTF8(u8" caractères)"),
+                              ? tr(u8"Notes du projet... (vides)")
+                              : tr(u8"Notes du projet... (%1 caractères)").replace("%1", juce::String(static_cast<int>(project_.notes.size()))),
                           true, projectNotesWindow_ && projectNotesWindow_->isVisible());
             menu.addItem(kMenuViewMidiLearn,
-                          juce::String::fromUTF8(u8"Associations MIDI (")
-                              + juce::String(static_cast<int>(audioEngine_.midiLearnMappingCount()))
-                              + tr(")"),
+                          tr(u8"Associations MIDI (%1)").replace("%1", juce::String(static_cast<int>(audioEngine_.midiLearnMappingCount()))),
                           true, midiLearnWindow_ && midiLearnWindow_->isVisible());
             // D23.4 : TOUTES LES PISTES À LA FENÊTRE, et trois hauteurs fixes.
             menu.addSeparator();
@@ -3116,11 +3091,11 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // enregistrement, qui se mesure en secondes.
             {
                 juce::PopupMenu regle;
-                regle.addItem(kMenuViewRulerBars, juce::String::fromUTF8(u8"Mesures"),
+                regle.addItem(kMenuViewRulerBars, tr(u8"Mesures"),
                                true, !arrangement_.rulerInTime());
-                regle.addItem(kMenuViewRulerTime, juce::String::fromUTF8(u8"Minutes:secondes"),
+                regle.addItem(kMenuViewRulerTime, tr(u8"Minutes:secondes"),
                                true, arrangement_.rulerInTime());
-                menu.addSubMenu(juce::String::fromUTF8(u8"Règle"), regle);
+                menu.addSubMenu(tr(u8"Règle"), regle);
             }
             menu.addSeparator();
             {
