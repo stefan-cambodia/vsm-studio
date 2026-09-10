@@ -49,7 +49,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 import numpy as np
 
 from .vsm_engine import find_vsm_render
-from .vsm_levels import match_track_levels, recaler_avec_son_groupe
+from .vsm_levels import recaler_avec_son_groupe
 from .vsm_offline_render import read_render_wav
 from .vsm_project_export import ExportNote, ExportTrack, write_project_bundle
 

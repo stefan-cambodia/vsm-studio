@@ -86,7 +86,7 @@ def le_stem_other_d_us_and_them_est_retrouve_au_centieme():
     nombres plausibles.
     """
     notes = []
-    for i, hauteur in enumerate((31, 48, 60, 72, 97)):
+    for hauteur in (31, 48, 60, 72, 97):
         notes.append(note(hauteur, 0.0, 10.0))
     d = densite_du_stem(notes)
     assert_near(d["polyphonieMoyenne"], 5.0, 0.01, "cinq voix tenues d'un bout à l'autre")

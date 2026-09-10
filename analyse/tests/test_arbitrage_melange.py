@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from framework import assert_equal, assert_true, test  # noqa: E402
 
-from analyzer.vsm_track_arbitration import (TrackCandidate, TrackVerdict,  # noqa: E402
+from analyzer.vsm_track_arbitration import (TrackVerdict,  # noqa: E402
                                              build_candidates, runners_up)
 
 

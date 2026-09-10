@@ -59,9 +59,12 @@ def la_somme_du_groupe_atteint_le_niveau_du_stem():
     n = TAUX
     # Deux signaux décorrélés (l'un pair, l'autre impair) : leur somme a
     # exactement l'énergie des deux, comme deux pièces de batterie disjointes.
-    a = np.zeros(n); a[0::2] = 0.1 * np.sqrt(2)
-    b = np.zeros(n); b[1::2] = 0.1 * np.sqrt(2)
-    stem = np.zeros(n); stem[:] = 0.0
+    a = np.zeros(n)
+    a[0::2] = 0.1 * np.sqrt(2)
+    b = np.zeros(n)
+    b[1::2] = 0.1 * np.sqrt(2)
+    stem = np.zeros(n)
+    stem[:] = 0.0
     stem[0::2] = 0.4 * np.sqrt(2)
 
     pistes = [piste("Batterie · kick"), piste("Batterie · hihat")]
@@ -76,7 +79,7 @@ def la_somme_du_groupe_atteint_le_niveau_du_stem():
     attendu = 0.9 * vsm_levels._rms(stem) / rms_somme
     for p in pistes:
         assert_near(p.volume, attendu, 1e-6, f"{p.name} reçoit le facteur du GROUPE")
-    assert_true(any("groupe « Batterie »" in l for l in lignes),
+    assert_true(any("groupe « Batterie »" in ligne for ligne in lignes),
                 "le rapport dit que le calage est groupé : " + str(lignes))
 
 
@@ -86,9 +89,12 @@ def l_equilibre_interne_du_groupe_ne_bouge_pas():
     autre : le calage change le poids du GROUPE dans le mélange, jamais le
     rapport entre ses membres."""
     n = TAUX
-    a = np.zeros(n); a[0::2] = 0.2
-    b = np.zeros(n); b[1::2] = 0.1
-    stem = np.zeros(n); stem[0::2] = 0.8
+    a = np.zeros(n)
+    a[0::2] = 0.2
+    b = np.zeros(n)
+    b[1::2] = 0.1
+    stem = np.zeros(n)
+    stem[0::2] = 0.8
 
     pistes = [piste("Batterie · kick", volume=0.8), piste("Batterie · hihat", volume=0.4)]
     stems = {p.name: stem for p in pistes}
@@ -107,8 +113,10 @@ def une_piste_hors_groupe_garde_le_calage_individuel():
     """Le chemin d'origine ne doit pas bouger : une piste ordinaire se cale
     seule, contre son propre stem."""
     n = TAUX
-    rendu = np.zeros(n); rendu[0::2] = 0.1
-    stem = np.zeros(n); stem[0::2] = 0.3
+    rendu = np.zeros(n)
+    rendu[0::2] = 0.1
+    stem = np.zeros(n)
+    stem[0::2] = 0.3
 
     seule = piste("bass", volume=0.9)
     avec_rendus({"bass": rendu},
@@ -122,7 +130,7 @@ def un_groupe_sans_stem_le_dit_au_lieu_de_deviner():
     pistes = [piste("Batterie · kick"), piste("Batterie · hihat")]
     lignes = avec_rendus({}, lambda: vsm_levels.match_track_levels(
         pistes, {}, Path("."), TAUX, groupes={p.name: "Batterie" for p in pistes}))
-    assert_true(any("pas de stem de référence" in l for l in lignes),
+    assert_true(any("pas de stem de référence" in ligne for ligne in lignes),
                 "le refus est dit : " + str(lignes))
     assert_equal(pistes[0].volume, 0.9, "et rien n'est touché au hasard")
 

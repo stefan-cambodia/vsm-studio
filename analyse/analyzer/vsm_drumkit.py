@@ -182,7 +182,11 @@ def describe_band_shares(shares: Sequence[float]) -> str:
     if not shares:
         return "profil non mesuré"
     etiquettes = ["20-80", "80-200", "200-600", "600-2k", "2k-6k", "6k-16k"]
-    return " ".join(f"{nom}={part*100:.0f}%" for nom, part in zip(etiquettes, shares))
+    # `strict=False` ASSUMÉ : cette fonction fabrique une ligne de journal.
+    # Un profil plus court que les six bandes s'imprime tel quel ; lever une
+    # exception au milieu d'un compte rendu serait pire que la ligne courte.
+    return " ".join(f"{nom}={part*100:.0f}%"
+                    for nom, part in zip(etiquettes, shares, strict=False))
 
 # Fenêtres de la mesure de montée, autour de l'instant d'attaque.
 #

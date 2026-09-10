@@ -745,7 +745,7 @@ def agreger(mesures: Sequence[dict]) -> dict:
     avec_borne = [m["arbitrage"].get("pistes_avec_borne") for m in mesures if m["arbitrage"].get("mesure")]
     pertes_t = col(["global", "perte_transcription_parite"])
     pertes_a = col(["global", "perte_arbitrage_reglage_calage"])
-    premier_poste = sum(1 for t, a in zip(pertes_t, pertes_a) if t is not None and a is not None and t > a)
+    premier_poste = sum(1 for t, a in zip(pertes_t, pertes_a, strict=True) if t is not None and a is not None and t > a)
     residuels = [m["residuel"] for m in mesures if (m.get("residuel") or {}).get("mesure")]
     premieres = [f for r in residuels for f in r["iterations"] if f.get("unite") and f["iteration"] == 1]
     toutes = [f for r in residuels for f in r["iterations"] if f.get("unite")]
@@ -811,7 +811,7 @@ def agreger(mesures: Sequence[dict]) -> dict:
             "perte_transcription_parite_mediane": _mediane(pertes_t),
             "perte_arbitrage_reglage_calage_mediane": _mediane(pertes_a),
             "transcription_premier_poste": premier_poste,
-            "morceaux_compares": sum(1 for t, a in zip(pertes_t, pertes_a) if t is not None and a is not None),
+            "morceaux_compares": sum(1 for t, a in zip(pertes_t, pertes_a, strict=True) if t is not None and a is not None),
         },
     }
 

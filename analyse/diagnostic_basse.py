@@ -50,7 +50,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from analyzer.vsm_distance_cache import cached_distance_for      # noqa: E402
 from analyzer.vsm_engine import find_vsm_render                  # noqa: E402
 from analyzer.vsm_offline_render import read_render_wav          # noqa: E402
-from analyzer.vsm_project_export import ExportNote, ExportTrack   # noqa: E402
+from analyzer.vsm_project_export import ExportNote   # noqa: E402
 
 SAMPLE_RATE = 44100
 

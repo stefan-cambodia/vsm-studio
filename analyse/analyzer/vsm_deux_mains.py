@@ -65,7 +65,7 @@ class Descripteurs:
         return np.asarray(self.valeurs, dtype=float)
 
     def as_dict(self) -> Dict[str, float]:
-        return {nom: float(v) for nom, v in zip(DESCRIPTEURS, self.valeurs)}
+        return {nom: float(v) for nom, v in zip(DESCRIPTEURS, self.valeurs, strict=True)}
 
 
 def _attaques(notes: Sequence[Sequence[float]]) -> np.ndarray:

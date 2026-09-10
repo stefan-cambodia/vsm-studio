@@ -55,7 +55,6 @@ import tempfile
 import time
 import wave
 from dataclasses import dataclass, field
-from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Sequence, Tuple
 
@@ -265,7 +264,7 @@ def extraire_notes(chemin: Path) -> List[StemNote]:
     reference = float(np.percentile(positifs, 90)) if positifs else 1.0
 
     notes = []
-    for brut, niveau in zip(brutes, niveaux):
+    for brut, niveau in zip(brutes, niveaux, strict=True):
         confiance = float(brut.get("confidence", 0.8))
         # RACINE CARRÉE : l'oreille entend le niveau en gros comme sa racine,
         # et une échelle linéaire tasserait toutes les nuances moyennes vers le
@@ -2280,7 +2279,7 @@ def chercher_reverb_au_melange(args: argparse.Namespace, sortie: Path,
         retenu = {"taille": meilleur["taille"], "dosage": meilleur["dosage"]}
     else:
         print(f"      réverb au mélange : témoin {temoin:.4f} ; {lignes}")
-        print(f"      réverb au mélange : AUCUN point ne rapproche — les pistes restent sèches")
+        print("      réverb au mélange : AUCUN point ne rapproche — les pistes restent sèches")
         retenu = None
     return {"pistes": touchees, "temoin": temoin, "grille": grille, "retenu": retenu}
 

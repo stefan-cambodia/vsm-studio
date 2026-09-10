@@ -185,7 +185,7 @@ def arret_aucune_piste_sure():
     assert_equal(len(rapport["iterations"]), 1, "l'itération est publiée avec ses candidates")
     assert_equal(len(rapport["iterations"][0]["candidats"]), 1, "une candidate, écartée")
     assert_true("soustraction" not in rapport["iterations"][0], "et rien de soustrait")
-    assert_true(any("ARRÊT" in l and "aucune-piste-sure" in l for l in lignes), "l'arrêt est imprimé")
+    assert_true(any("ARRÊT" in ligne and "aucune-piste-sure" in ligne for ligne in lignes), "l'arrêt est imprimé")
 
 
 @test
@@ -201,7 +201,7 @@ def arret_residu_sous_le_seuil():
     assert_near(it["energie"]["partApres"], 0.0, 1e-6, "et il ne reste rien")
     assert_true(Path(it["residu"]).name == "residu.wav", "le résidu a été écrit")
     assert_true("stems" not in it, "pas de réséparation : rien à chercher")
-    assert_true(any("SOUSTRAIT" in l for l in lignes), "la soustraction est imprimée")
+    assert_true(any("SOUSTRAIT" in ligne for ligne in lignes), "la soustraction est imprimée")
 
 
 @test
@@ -234,7 +234,7 @@ def arret_distance_sans_gain_garde_les_pistes():
     stem = _sinus(110.0, 0.5)
     melange = stem + _sinus(330.0, 0.5)
     unites = [_unite("bass", stem, 50.0, 0.2)]
-    rapport, lignes = _boucle(unites, melange, vr.Options(iterations=3), rendre=lambda u, n: stem.copy(),
+    rapport, _lignes = _boucle(unites, melange, vr.Options(iterations=3), rendre=lambda u, n: stem.copy(),
                               passe=_passe_qui_ajoute(), distances=(0.30, 0.31))
     assert_equal(rapport["arret"]["motif"], "distance-sans-gain", "motif")
     assert_true("GARDÉES" in rapport["arret"]["detail"], "les pistes restent : " + rapport["arret"]["detail"])

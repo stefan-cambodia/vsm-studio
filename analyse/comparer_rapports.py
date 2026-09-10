@@ -6,7 +6,8 @@ seule distance globale : c'est de savoir SI le verdict du melange a change
 d'avis, et grace a quelle proposition. Un gain global sans changement de
 decision voudrait dire qu'on mesure autre chose que ce qu'on croit.
 """
-import json, sys
+import json
+import sys
 from pathlib import Path
 
 def lire(p):

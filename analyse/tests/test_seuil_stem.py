@@ -22,7 +22,6 @@ from __future__ import annotations
 import contextlib
 import io as flux
 import sys
-import types
 from pathlib import Path
 
 RACINE = Path(__file__).resolve().parents[1]
@@ -84,7 +83,9 @@ def le_conseil_ne_conseille_pas_ce_qui_est_deja_fait():
     def ecrire(chemin, amplitude, n=4800):
         valeur = int(amplitude * 32767)
         with wave.open(str(chemin), "wb") as w:
-            w.setnchannels(1); w.setsampwidth(2); w.setframerate(48000)
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(48000)
             w.writeframes(valeur.to_bytes(2, "little", signed=True) * n)
 
     def journal(noms, gros):

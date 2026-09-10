@@ -157,12 +157,18 @@ cahiers des charges sont des **relevés datés** — un jalon, un moteur nommé 
 un A/B, un procès-verbal de recette. Elles restent telles quelles : un chiffre
 historique qu'on rafraîchit cesse de dire ce qu'il disait.
 
-### E. Dette d'outillage
+### E. Dette d'outillage — REFERMÉ le 10/09/2026
 
-| # | Travail | Source |
+| # | Ce que c'était | Ce qui est fait |
 |---|---|---|
-| E1 | **54 signalements `ruff`** dans `analyse/` et `tools/` (F401 imports inutiles, B905 `zip()` sans `strict=`, E702, E741) — tous antérieurs, aucun n'est une erreur de type | `ruff.toml`, `ruff check .` |
-| E2 | **`mypy` et `ruff` ne sont pas dans `requirements.txt`** (choix assumé : outils d'atelier) et **rien ne les lance automatiquement** — pas de CI dans le dépôt | `mypy.ini`, `README.md` |
+| ~~E1~~ | 54 signalements `ruff` dans `analyse/` et `tools/` | **zéro**. 18 corrections automatiques relues avant application ; les 13 `zip()` tranchés **un par un** (11 en `strict=True`, où les deux suites sont construites ensemble et le contrôle ne peut pas se déclencher ; 2 en `strict=False` avec leur raison écrite) ; le reste à la main |
+| ~~E2~~ | rien ne lançait `ruff` ni `mypy` | `./verifier.sh` passe les cinq suites du moteur, la suite Python, `ruff` et `mypy` en une commande, et **nomme ce qu'il a sauté** |
+
+**Une correction de lint a cassé le code, et le lint l'a rattrapée.** En
+renommant `l` en `ligne` dans `epreuve_parite.py`, le corps de la boucle est
+resté sur l'ancien nom : `ruff` a rendu quatre `F821 Undefined name 'l'` avant
+qu'aucun test ne tourne. C'est l'argument pour le garde-fou, écrit par le
+garde-fou lui-même.
 
 ---
 

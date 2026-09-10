@@ -29,7 +29,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 from .vsm_engine import VsmEngine, VsmEngineError
-from .vsm_levels import match_track_levels, recaler_avec_son_groupe
+from .vsm_levels import recaler_avec_son_groupe
 from .vsm_mix_verdict import _copy_samples, _render_project
 from .vsm_track_refine import _probe_values
 

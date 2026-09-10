@@ -387,8 +387,9 @@ def main() -> int:
     bilan = compter(course, verite)
     print()
     print(f"{'stem':8s} {'attendu':>7s} {'obtenu':>7s}  pistes")
-    for l in bilan["lignes"]:
-        print(f"{l['stem']:8s} {l['attendu']:7d} {l['obtenu']:7d}  {', '.join(l['pistes'])}")
+    for ligne in bilan["lignes"]:
+        print(f"{ligne['stem']:8s} {ligne['attendu']:7d} {ligne['obtenu']:7d}  "
+              f"{', '.join(ligne['pistes'])}")
     print(f"{'TOTAL':8s} {bilan['parties']:7d} {bilan['pistes']:7d}  distance {bilan['distance']:.4f} "
           f"({bilan['metrique']})")
     (args.sortie / (course.name + "-bilan.json")).write_text(json.dumps(bilan, indent=1, ensure_ascii=False),

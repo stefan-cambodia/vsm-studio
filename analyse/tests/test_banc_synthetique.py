@@ -47,7 +47,7 @@ def meme_graine_meme_morceau_au_bit_pres():
             p.pop("cout_rendu_s")
         assert_equal(json.dumps(va, sort_keys=True), json.dumps(vb, sort_keys=True), "même vérité")
         assert_true(np.array_equal(a[2], b[2]), "même mélange au bit près")
-        for sa, sb in zip(a[1], b[1]):
+        for sa, sb in zip(a[1], b[1], strict=True):
             assert_true(np.array_equal(sa, sb), "mêmes stems au bit près")
         # et les FICHIERS aussi : l'écrivain WAV n'horodate rien
         ecrire_morceau(Path(d) / "x", a[0], a[1], a[2])
@@ -82,7 +82,7 @@ def la_production_change_le_melange_et_la_verite_le_dit():
         g = _generateur(moteur)
         sec = g.fabriquer(31, duree=1.0, nombre_de_parties=3, cas="aucun", production=False)
         prod = g.fabriquer(31, duree=1.0, nombre_de_parties=3, cas="aucun", production=True)
-        for a, b in zip(sec[1], prod[1]):
+        for a, b in zip(sec[1], prod[1], strict=True):
             assert_true(np.array_equal(a, b), "les stems vrais sont les mêmes : la production ne touche que le mélange")
         assert_true(not np.array_equal(sec[2], prod[2]), "le mélange produit diffère")
         assert_true(prod[0]["production"] is not None and not prod[0]["melange_est_la_somme_des_stems"],
@@ -122,7 +122,7 @@ def les_trois_cas_de_parite_se_declarent():
         v, _, _ = g.fabriquer(51, duree=1.0, nombre_de_parties=3, cas="deux-mains")
         mains = [p for p in v["parties"] if p["role"] == "piano-deux-mains"]
         assert_equal(len(mains), 1, "UNE partie deux-mains")
-        (gb, gh), (db, dh) = mains[0]["registre"]
+        (_gb, gh), (db, _dh) = mains[0]["registre"]
         assert_true(gh + 8 <= db, "les deux mains sont séparées par un vide")
         graves = [n[0] for n in mains[0]["notes"] if n[0] <= gh]
         aigus = [n[0] for n in mains[0]["notes"] if n[0] >= db]

@@ -20,14 +20,12 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import List, Optional, Sequence, Tuple
+from typing import List
 
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from analyzer.vsm_deux_mains import (DESCRIPTEURS, Modele, descripteurs,  # noqa: E402
-                                      empreinte_des_exemples)
-from analyzer.vsm_reconstruct import StemNote, registres_par_vides  # noqa: E402
+from analyzer.vsm_deux_mains import (DESCRIPTEURS, Modele, empreinte_des_exemples)
 
 GRAINE = 20260905
 
@@ -126,7 +124,7 @@ def main() -> int:
     disjoints_prudent = float(np.mean(prudent_pred[y == 0] == 0))
     prudent = (float(np.mean(seuils_par_pli)), mains_prudent,
                 int(np.sum(prudent_pred[y == 1] == 1)))
-    print(f"\n  point de fonctionnement PRUDENT, seuil choisi DANS chaque pli :")
+    print("\n  point de fonctionnement PRUDENT, seuil choisi DANS chaque pli :")
     print(f"    seuil moyen {prudent[0]:.3f}")
     print(f"    « un seul » sur les mains           : {mains_prudent:.0%}  "
           f"({int(np.sum(prudent_pred[y == 1] == 1))}/{int(np.sum(y == 1))})")

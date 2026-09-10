@@ -296,7 +296,7 @@ def notes_melodie(rng: np.random.Generator, s: Structure, registre: Tuple[int, i
     for bloc in range(0, s.mesures, 2):
         t = bloc * 4 * s.battement
         variation = (bloc // 2) % 2 == 1
-        for i, (d, longueur) in enumerate(zip(degres, rythme)):
+        for i, (d, longueur) in enumerate(zip(degres, rythme, strict=True)):
             indice = d
             if variation and i in (2, len(rythme) - 1):
                 indice = max(0, min(21, d + int(rng.choice([-1, 1]))))
@@ -606,7 +606,7 @@ class Generateur:
             melange32 = appliquer_production(melange32, prod, graine_reverb)
         cout_mix = time.perf_counter() - depart_mix
 
-        for partie, stem in zip(parties, stems):
+        for partie, stem in zip(parties, stems, strict=True):
             partie.empreinte = hashlib.sha256(np.ascontiguousarray(stem).tobytes()).hexdigest()
         cout_total = time.perf_counter() - depart_total
         verite = {
@@ -630,7 +630,7 @@ class Generateur:
 
     def _rendre_partie(self, partie: Partie, duree: float, rng: np.random.Generator) -> np.ndarray:
         notes = [Note(int(n[0]), int(n[1]), float(n[2]), float(n[3])) for n in partie.notes]
-        for essai in range(TIRAGES_DE_PATCH + 1):
+        for _essai in range(TIRAGES_DE_PATCH + 1):
             audio = self.rendre(partie.machine, partie.patch, notes, duree)
             if audio.size and np.isfinite(audio).all() and _rms(audio) >= RMS_STEM_MINIMAL:
                 return np.asarray(audio, dtype=np.float32)
@@ -736,7 +736,7 @@ def lire_wav_float(chemin: Path) -> np.ndarray:
 def ecrire_morceau(dossier: Path, verite: dict, stems: Sequence[np.ndarray], melange: np.ndarray) -> None:
     dossier.mkdir(parents=True, exist_ok=True)
     (dossier / "stems-vrais").mkdir(exist_ok=True)
-    for partie, stem in zip(verite["parties"], stems):
+    for partie, stem in zip(verite["parties"], stems, strict=True):
         ecrire_wav_float(dossier / partie["fichier"], stem)
     ecrire_wav_float(dossier / "morceau.wav", melange)
     provisoire = dossier / "verite.json.tmp"

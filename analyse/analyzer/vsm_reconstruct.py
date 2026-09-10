@@ -347,7 +347,7 @@ def separer_en_voix(notes: List["StemNote"], maximum: int) -> List[List["StemNot
                                     for n in groupe) / poids)
             else:
                 nouveaux.append(centres[k])
-        if all(abs(a - b) < 1e-9 for a, b in zip(nouveaux, centres)):
+        if all(abs(a - b) < 1e-9 for a, b in zip(nouveaux, centres, strict=True)):
             break
         centres = nouveaux
 

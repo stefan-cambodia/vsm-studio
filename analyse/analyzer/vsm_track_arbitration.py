@@ -305,7 +305,7 @@ def arbitrate_on_track(
     else:
         mesures = [evaluer(i) for i in range(len(candidates))]
 
-    for candidate, (rms_rendu, distance) in zip(candidates, mesures):
+    for candidate, (rms_rendu, distance) in zip(candidates, mesures, strict=True):
         if rms_rendu is None or distance is None:
             # ABANDON DIT, jamais tu. Un rendu vide vient soit d'un moteur qui a
             # refusé la requête, soit d'une machine sans sa donnée -- et dans les

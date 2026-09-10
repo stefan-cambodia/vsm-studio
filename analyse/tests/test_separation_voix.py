@@ -77,7 +77,9 @@ def un_fourre_tout_se_partage_en_registres_disjoints():
 
     bornes = [(min(n.note for n in v), max(n.note for n in v)) for v in voix]
     # de l'aiguë à la grave, et disjointes
-    for (bas_haut, _), (_, haut_bas) in zip(bornes, bornes[1:]):
+    # `strict=False` ASSUMÉ : c'est l'idiome des paires consécutives, où la
+    # seconde suite est volontairement plus courte d'un élément.
+    for (bas_haut, _), (_, haut_bas) in zip(bornes, bornes[1:], strict=False):
         assert_true(bas_haut > haut_bas,
                     "registres disjoints attendus : " + str(bornes))
 
@@ -134,7 +136,8 @@ def la_separation_est_deterministe():
                   round(rng.uniform(0.6, 2.0), 3)) for _ in range(400)]
     a = separer_en_voix(list(notes), maximum=4)
     b = separer_en_voix(list(reversed(notes)), maximum=4)
-    cle = lambda voix: [[(n.note, n.start, n.duration) for n in v] for v in voix]
+    def cle(voix):
+        return [[(n.note, n.start, n.duration) for n in v] for v in voix]
     assert_equal(cle(a), cle(b), "l'ordre d'arrivée ne change rien")
 
 

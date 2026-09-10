@@ -97,7 +97,8 @@ def l_eclatement_est_deterministe():
     piste2 = ExportTrack(name="Batterie", machine="vsm.tr909", is_drums=True,
                          notes=list(reversed(notes)))
     b = eclater_par_piece(piste2, kit)
-    cle = lambda ps: [(p.name, [(n.note, n.start) for n in p.notes]) for p in ps]
+    def cle(ps):
+        return [(p.name, [(n.note, n.start) for n in p.notes]) for p in ps]
     assert_equal(cle(a), cle(b), "l'ordre d'arrivée des notes ne change rien")
 
 

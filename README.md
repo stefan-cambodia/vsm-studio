@@ -322,6 +322,18 @@ Aucune dépendance externe : ça doit fonctionner tel quel sur Linux/macOS/
 Windows avec n'importe quel compilateur récent (GCC 11+, Clang 14+, MSVC
 2022+).
 
+## Tout vérifier d'un coup
+
+```bash
+./verifier.sh              # les suites déjà compilées, puis Python, lint, types
+./verifier.sh --compiler   # compile d'abord les cibles de test (deux travaux)
+```
+
+Il passe les cinq suites du moteur, la suite Python, `ruff` et `mypy`, et **dit
+ce qu'il n'a pas pu passer** — un garde-fou sauté ne garde rien. Il ne compile
+rien sans qu'on le lui demande : remplacer `build/tools/vsm-render` pendant
+qu'une reconstruction tourne tue la course.
+
 ## Vérifier le Python (lint et types)
 
 Deux outils d'atelier, hors `requirements.txt` parce qu'ils ne servent pas à

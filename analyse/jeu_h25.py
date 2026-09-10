@@ -129,7 +129,7 @@ def paires_du_morceau(course: Path, verite_chemin: Path) -> List[Tuple[np.ndarra
     def dominante(notes: Sequence[Sequence[float]]) -> Optional[int]:
         paires = apparier(vraies, list(notes))
         poids: Dict[int, float] = {}
-        for i, j in paires:
+        for i, _j in paires:
             poids[origine[i]] = poids.get(origine[i], 0.0) + max(1e-6, float(vraies[i][3]))
         if not poids:
             return None

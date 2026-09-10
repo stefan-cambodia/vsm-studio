@@ -103,7 +103,7 @@ def main() -> int:
                   f"corr. stem {fiche['correlationStem']:.3f} reste {fiche['correlationReste']:.3f} "
                   f"gain {gain:.3f} décalage {decalage:+d} éch. ({fiche['decalageMs']:+.2f} ms)")
     meilleure = max(resultats, key=lambda f: f["correlationStem"], default=None)
-    print(f"meilleure corrélation au stem : "
+    print("meilleure corrélation au stem : "
           + (f"{meilleure['correlationStem']:.3f} ({meilleure['unite']})" if meilleure else "aucune unité")
           + f" — seuil publié 0,5 ; {time.time() - depart:.0f} s")
     if args.sortie:

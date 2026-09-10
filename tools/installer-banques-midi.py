@@ -33,7 +33,7 @@ import sys
 import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 # Troncature des échantillons, en secondes — la valeur mesurée du CDC
 # multisample (§ 12 : à six secondes, une note de piano a déjà perdu 50 dB).
