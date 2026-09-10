@@ -218,7 +218,7 @@ public:
     /// parties » devient visible dans l'application, et non plus seulement
     /// dans un JSON que personne n'ouvre. Publique pour VSM_RAPPORT : cet
     /// écran doit se photographier sans souris.
-    void showReconstructionReport();
+    void showReconstructionReport(bool montrerLeVolet = true);
     /// D19.2 : pose le filtre de la liste des pistes (VSM_FILTRE), pour que la
     /// capture montre le filtre à l'œuvre.
     /// D21.5 : le niveau demandé à l'export -- tel quel, crête à -1 dBFS,
@@ -781,9 +781,17 @@ private:
     /// en effacerait un autre.
     juce::StringArray rapportOuverture_;
     juce::String dossierRapportOuverture_;
-    enum class ClientDuRapport { aucun, ouverture, autre };
+    /// D93 : CHAQUE CLIENT A SON NOM. `autre` voulait dire « ne rien refaire »,
+    /// et trois clients s'y rangeaient -- l'import, son échec, la reconstruction :
+    /// la bascule de langue les laissait dans la langue de leur ouverture.
+    enum class ClientDuRapport { aucun, ouverture, importDaw, echecImport, reconstruction };
     ClientDuRapport clientDuRapport_ = ClientDuRapport::aucun;
     void afficherRapportDOuverture(bool montrerLeVolet);
+    /// D93 : ce que l'import et son échec ont dit, EN FRANÇAIS (la donnée) --
+    /// refait dans la langue courante par le volet et par `afficherEchecImport`.
+    vsm::interchange::DawImportReport dernierImport_;
+    juce::String dernierEchecImport_;
+    void afficherEchecImport(bool montrerLeVolet);
 
     /// D76 : QUELLE PISTE OCCUPE CHAQUE EMPLACEMENT DU GRAPHE (son `Track::uid`,
     /// 0 = aucune). C'est ce qui permet à `rebuildFromProject` de ne PAS

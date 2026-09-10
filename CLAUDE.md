@@ -104,6 +104,11 @@ l'ordre de marche — pas de la documentation d'accompagnement.
   pendant qu'on travaille, et le 10/09 à 21:13 son propre usage a fait
   échouer le contrôle. Un fichier changé se lit clé par clé avant de conclure,
   et ne se « rétablit » jamais par-dessus ce qu'il a fait.
+- JAMAIS la suite Python complète (`verifier.sh`) pendant qu'une campagne
+  tourne : le 11/09, à côté du corpus A6 (59 machines, 15 Go), elle a été
+  arrêtée faute de mémoire — le matin même elle était passée à côté du même
+  corpus, qui démarrait. Le corpus a survécu, par chance. Passer les tests
+  ciblés (`run.py <filtre>`), ruff et mypy, ou attendre la fin de la course.
 - JAMAIS d'édition de analyse/analyzer/*.py pendant qu'une course tourne : la
   chaîne importait des modules À LA DEMANDE, cinq heures après le départ, dans
   l'état du disque à cet instant (parite-v2, 5 h 24 perdues au réglage final).

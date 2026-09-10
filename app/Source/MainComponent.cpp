@@ -4809,7 +4809,7 @@ void MainComponent::openProjectBundle() {
 /// lui dire (l'archive de pistes, l'export MIDI).
 void MainComponent::importDawProject() {
     auto chooser = std::make_shared<juce::FileChooser>(
-        juce::String::fromUTF8("Importer un projet d'un autre DAW..."), juce::File(),
+        tr(u8"Importer un projet d'un autre DAW..."), juce::File(),
         "*.als;*.flp;*.xml;*.cpr");
     chooser->launchAsync(juce::FileBrowserComponent::openMode
                              | juce::FileBrowserComponent::canSelectFiles,
@@ -4834,9 +4834,11 @@ bool MainComponent::applyDawImport(const juce::File& fichier) {
         // LE MESSAGE DU LECTEUR EST MONTRÉ TEL QUEL, et c'est voulu : pour un
         // `.cpr` il nomme les deux chemins praticables, ce qu'aucun « échec de
         // l'import » générique ne ferait.
-        clientDuRapport_ = ClientDuRapport::autre;   // D84
-        importReport_.showFailure(juce::String::fromUTF8("Import impossible"),
-                                  juce::String::fromUTF8(erreur.what()));
+        // D93 : le message est gardé EN FRANÇAIS (la donnée), traduit à
+        // l'affichage, et refait par la bascule de langue.
+        clientDuRapport_ = ClientDuRapport::echecImport;
+        dernierEchecImport_ = juce::String::fromUTF8(erreur.what());
+        afficherEchecImport(true);
         std::fputs((std::string("Import : ") + erreur.what() + "\n").c_str(), stderr);
         return false;
     }
@@ -4857,8 +4859,9 @@ bool MainComponent::applyDawImport(const juce::File& fichier) {
     // rapport d'import). Il est aussi la seule forme que l'autoportrait
     // photographie : VSM_CAPTURE rend le composant de contenu, où une alerte
     // asynchrone n'apparaît pas.
-    clientDuRapport_ = ClientDuRapport::autre;   // D84
-    importReport_.showReport(resultat.report);
+    clientDuRapport_ = ClientDuRapport::importDaw;   // D93
+    dernierImport_ = resultat.report;
+    importReport_.showReport(dernierImport_);
     // AU TERMINAL AUSSI : un import lancé par VSM_IMPORT se juge depuis le
     // terminal qui l'a lancé, et le rapport doit y être lisible sans image.
     // Le « ! » marque les lignes que le lecteur a étiquetées attention ou
@@ -4876,6 +4879,11 @@ bool MainComponent::importDawProjectForCapture(const juce::File& fichier) {
     return applyDawImport(fichier);
 }
 
+void MainComponent::afficherEchecImport(bool montrerLeVolet) {
+    importReport_.showFailure(tr(u8"Import impossible"),
+                              vsm::app::ui::trPhrase(dernierEchecImport_), montrerLeVolet);
+}
+
 void MainComponent::showLastImportReport() {
     importReport_.reopen();
 }
@@ -4891,14 +4899,15 @@ void MainComponent::showLastImportReport() {
 /// confiances note à note ; ici on AFFICHE ce que le rapport sait, champ
 /// présent par champ présent — un rapport d'une version antérieure, sans
 /// densités, montre simplement moins de lignes.
-void MainComponent::showReconstructionReport() {
+void MainComponent::showReconstructionReport(bool montrerLeVolet) {
     if (rapportReconstruction_ == juce::File()) return;
     const auto lu = vsm::interchange::parseJson(
         rapportReconstruction_.loadFileAsString().toStdString());
     if (!lu.success) {
-        clientDuRapport_ = ClientDuRapport::autre;   // D84
+        clientDuRapport_ = ClientDuRapport::reconstruction;   // D93
         importReport_.showFailure(tr(u8"Rapport illisible"),
-                                  vsm::app::ui::trPhrase(juce::String::fromUTF8(lu.error.c_str())));
+                                  vsm::app::ui::trPhrase(juce::String::fromUTF8(lu.error.c_str())),
+                                  montrerLeVolet);
         return;
     }
     const auto& racine = lu.value;
@@ -5144,12 +5153,12 @@ void MainComponent::showReconstructionReport() {
         }
     }
 
-    clientDuRapport_ = ClientDuRapport::autre;   // D84
+    clientDuRapport_ = ClientDuRapport::reconstruction;   // D93
     importReport_.showLines(
         tr(u8"Rapport de reconstruction"),
         currentProjectFolder_ != juce::File() ? currentProjectFolder_.getFileName()
                                               : juce::String(),
-        lignes);
+        lignes, montrerLeVolet);
 }
 
 /// OUVRIR UN DOSSIER DE PROJET, séparé du sélecteur de fichiers qui le
@@ -7434,7 +7443,16 @@ void MainComponent::retraduire() {
     refreshMidiLearnList();
     browserPanel_.retraduire();
     refreshPreferences();             // les textes d'état, refaits par leur client
-    if (clientDuRapport_ == ClientDuRapport::ouverture) afficherRapportDOuverture(importReport_.isVisible());
+    // D93 : CHAQUE CLIENT REFAIT SON RAPPORT, volet ouvert ou fermé -- le dernier
+    // à l'avoir rempli, et lui seul (D84 ne connaissait que le rapport d'ouverture).
+    const bool voletOuvert = importReport_.isVisible();
+    switch (clientDuRapport_) {
+        case ClientDuRapport::ouverture:      afficherRapportDOuverture(voletOuvert); break;
+        case ClientDuRapport::importDaw:      importReport_.showReport(dernierImport_, voletOuvert); break;
+        case ClientDuRapport::echecImport:    afficherEchecImport(voletOuvert); break;
+        case ClientDuRapport::reconstruction: showReconstructionReport(voletOuvert); break;
+        case ClientDuRapport::aucun:          break;
+    }
     // D78 : LE BOUTON D'ÉCOUTE, par la fonction qui le pose au démarrage --
     // D77 a trouvé « Écoute A/B : pas d'original » sur une image basculée en
     // anglais, là où le démarrage écrivait « A/B monitoring: no original ».

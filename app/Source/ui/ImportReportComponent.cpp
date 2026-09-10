@@ -74,16 +74,20 @@ ImportReportComponent::ImportReportComponent() {
     setVisible(false);
 }
 
-void ImportReportComponent::showReport(const vsm::interchange::DawImportReport& rapport) {
-    titre_ = juce::String::fromUTF8("Rapport d'import");
+void ImportReportComponent::showReport(const vsm::interchange::DawImportReport& rapport,
+                                      bool montrerLeVolet) {
+    titre_ = tr(u8"Rapport d'import");
     // LE FORMAT ET LA VERSION, sans les redire deux fois : Live annonce
     // « Ableton Live 11.3.4 », qui contient déjà le nom du format, et
-    // « Ableton Live — Ableton Live 11.3.4 » ne renseignait personne.
+    // « Ableton Live — Ableton Live 11.3.4 » ne renseignait personne. La
+    // comparaison se fait sur le français (la donnée) ; ce qui s'affiche passe
+    // par la table -- « Cubase (archive de pistes) », « version non déclarée » --
+    // et un nom propre (« Ableton Live 11.3.4 ») y ressort tel quel.
     const auto format = juce::String::fromUTF8(rapport.sourceFormat.c_str());
     const auto version = juce::String::fromUTF8(rapport.sourceVersion.c_str());
-    if (version.isEmpty())             sousTitre_ = format;
-    else if (version.contains(format)) sousTitre_ = version;
-    else                               sousTitre_ = format + juce::String::fromUTF8(" \xe2\x80\x94 ") + version;
+    if (version.isEmpty())             sousTitre_ = tr(format);
+    else if (version.contains(format)) sousTitre_ = tr(version);
+    else                               sousTitre_ = tr(format) + juce::String::fromUTF8(" \xe2\x80\x94 ") + tr(version);
 
     source_.clear();
 
@@ -92,42 +96,43 @@ void ImportReportComponent::showReport(const vsm::interchange::DawImportReport& 
     // pose, elle mérite la première ligne.
     // « lu(s) » pour les clips, et le mot compte : `clipsSeen` dénombre ce que
     // le FICHIER contenait, pas ce que le projet a reçu.
-    juce::String resume;
-    resume << rapport.midiTracksImported << juce::String::fromUTF8(" piste(s) reprise(s), ")
-           << rapport.notesImported << juce::String::fromUTF8(" note(s), ")
-           << rapport.clipsSeen << juce::String::fromUTF8(" clip(s) lu(s)");
-    source_.add({resume, P::textPrimary, true});
+    // D93 : UNE LIGNE, UN MODÈLE (la règle de D92), rempli après traduction.
+    source_.add({tr(u8"%1 piste(s) reprise(s), %2 note(s), %3 clip(s) lu(s)")
+                     .replace("%1", juce::String(rapport.midiTracksImported))
+                     .replace("%2", juce::String(rapport.notesImported))
+                     .replace("%3", juce::String(rapport.clipsSeen)),
+                 P::textPrimary, true});
 
-    if (rapport.audioTracksSeen > 0) {
-        juce::String audio;
-        audio << rapport.audioTracksSeen
-              << juce::String::fromUTF8(" piste(s) audio vue(s), NON import\xc3\xa9""e(s)");
-        source_.add({audio, P::accentAmber, false});
-    }
-    if (rapport.tracksWithoutInstrument > 0) {
-        juce::String sansInstrument;
-        sansInstrument << rapport.tracksWithoutInstrument
-                       << juce::String::fromUTF8(" piste(s) sans instrument assign\xc3\xa9");
-        source_.add({sansInstrument, P::accentAmber, false});
-    }
+    if (rapport.audioTracksSeen > 0)
+        source_.add({tr(u8"%1 piste(s) audio vue(s), NON importée(s)")
+                         .replace("%1", juce::String(rapport.audioTracksSeen)),
+                     P::accentAmber, false});
+    if (rapport.tracksWithoutInstrument > 0)
+        source_.add({tr(u8"%1 piste(s) sans instrument assigné")
+                         .replace("%1", juce::String(rapport.tracksWithoutInstrument)),
+                     P::accentAmber, false});
     if (rapport.eventsRead > 0) {
         // LE GARDE-FOU DES FORMATS BINAIRES (§ 3 bis du CDC), remonté à
         // l'écran. Le sens des identifiants d'un `.flp` est reconstitué, pas
         // garanti : ce « compris sur lus » est ce qui permet au musicien de
         // voir si la lecture a mordu, sans avoir à nous croire sur parole.
-        juce::String compte;
-        compte << rapport.eventsUnderstood
-               << juce::String::fromUTF8(" \xc3\xa9v\xc3\xa9nement(s) compris sur ")
-               << rapport.eventsRead << juce::String::fromUTF8(" lus");
-        source_.add({compte, P::textSecondary, false});
+        source_.add({tr(u8"%1 événement(s) compris sur %2 lus")
+                         .replace("%1", juce::String(rapport.eventsUnderstood))
+                         .replace("%2", juce::String(rapport.eventsRead)),
+                     P::textSecondary, false});
     }
     source_.add({{}, P::textSecondary, false});
 
+    // Les lignes du LECTEUR (interchange/src/DawImport.cpp), écrites en français
+    // avec leurs données cousues dedans : reconnues par les modèles de
+    // `trPhrase`. Une ligne qu'aucun modèle ne reconnaît passe telle quelle --
+    // en français, jamais vide. La gravité reste celle que le lecteur a posée.
     for (const auto& ligne : rapport.lines)
-        source_.add({juce::String::fromUTF8(ligne.texte.c_str()),
+        source_.add({trPhrase(juce::String::fromUTF8(ligne.texte.c_str())),
                      couleurDeGravite(ligne.gravite), false});
 
-    montrer();
+    if (montrerLeVolet) montrer();
+    else { largeurRepliee_ = -1; if (isVisible()) resized(); }
 }
 
 void ImportReportComponent::showLines(const juce::String& titre, const juce::String& sousTitre,
@@ -158,7 +163,8 @@ void ImportReportComponent::retraduire() {
     repaint();
 }
 
-void ImportReportComponent::showFailure(const juce::String& titre, const juce::String& message) {
+void ImportReportComponent::showFailure(const juce::String& titre, const juce::String& message,
+                                        bool montrerLeVolet) {
     titre_ = titre;
     sousTitre_ = {};
     source_.clear();
@@ -167,7 +173,8 @@ void ImportReportComponent::showFailure(const juce::String& titre, const juce::S
     // intérêt. Le repli à la largeur du cadre s'occupe de le rendre lisible.
     source_.add({message, P::accentRed, false});
 
-    montrer();
+    if (montrerLeVolet) montrer();
+    else { largeurRepliee_ = -1; if (isVisible()) resized(); }
 }
 
 void ImportReportComponent::reopen() {

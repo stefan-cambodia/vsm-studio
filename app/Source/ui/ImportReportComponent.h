@@ -44,8 +44,11 @@ class ImportReportComponent : public juce::Component {
 public:
     ImportReportComponent();
 
-    // Montre un rapport d'import réussi (même partiellement).
-    void showReport(const vsm::interchange::DawImportReport& rapport);
+    // Montre un rapport d'import réussi (même partiellement). D93 : traduit À
+    // L'AFFICHAGE -- le lecteur écrit en français, la donnée que les tests et le
+    // terminal relisent ; `montrerLeVolet` à faux le refait volet fermé, quand la
+    // langue change (D84), pour que « Voir le dernier rapport » le rouvre traduit.
+    void showReport(const vsm::interchange::DawImportReport& rapport, bool montrerLeVolet = true);
 
     // LE TON D'UNE LIGNE fournie par un client extérieur. Le panneau est né
     // pour le rapport d'IMPORT ; le rapport de RECONSTRUCTION (§ 4.3 de
@@ -70,7 +73,8 @@ public:
     // Montre un ÉCHEC, avec le message du lecteur EN ENTIER. Celui d'un `.cpr`
     // nomme les deux chemins praticables (Track Archive XML, MIDI Type 1) : le
     // tronquer transformerait une explication utile en une porte fermée.
-    void showFailure(const juce::String& titre, const juce::String& message);
+    void showFailure(const juce::String& titre, const juce::String& message,
+                     bool montrerLeVolet = true);
 
     // Remontre le dernier contenu — rapport OU échec. Le panneau garde ce
     // qu'il a affiché plutôt que de le faire regarnir par l'appelant : sinon

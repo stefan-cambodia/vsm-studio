@@ -12664,3 +12664,117 @@ après, seule, et ce binaire est le témoin.
 >
 > Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
 > 172 Python, ruff et mypy (106 fichiers) — tout vert.
+
+### Phase D93 — A9 : le rapport d'import d'un autre DAW, en anglais, et les deux rapports suivent la bascule (11/09/2026)
+
+**LES DEUX RESTES D'A9 QUI SE TIENNENT PAR LA MAIN.** Le volet de rapport a
+quatre clients : le rapport d'ouverture (D84, D89), le rapport de
+reconstruction (D92), le rapport d'import d'un autre DAW et l'échec d'un
+import. Après D92, deux restent en défaut :
+
+- **le rapport d'import est entièrement français en anglais** — son titre, ses
+  quatre lignes de résumé fabriquées par le volet, et les lignes du lecteur
+  (`interchange/src/DawImport.cpp`), écrites en français avec leurs données
+  cousues dedans ; l'échec (« Import impossible », le message du `.cpr` qui
+  nomme les deux chemins praticables) aussi ;
+- **la bascule de langue ne refait ni lui ni le rapport de reconstruction** :
+  `retraduire()` ne refait que le rapport d'ouverture, les trois autres clients
+  étant rangés sous `ClientDuRapport::autre`, qui veut dire « ne rien faire ».
+
+Les deux se tranchent ensemble parce que le banc ne sait mesurer le premier
+que par le second : `VSM_IMPORT` passe avant `VSM_MENU` au démarrage, donc un
+rapport d'import photographié en anglais est un rapport refait par la bascule.
+
+**LES DÉCISIONS.**
+
+1. **Traduit à l'affichage, comme D89 et D92.** Le lecteur continue d'écrire
+   en français : c'est la donnée que les tests d'`interchange/` relisent (un
+   test cherche « Piste AUDIO » dans le rapport) et ce que le terminal imprime
+   après un `VSM_IMPORT`. Le volet fait passer chaque ligne par `trPhrase`, et
+   la table reçoit un modèle par forme de phrase du lecteur : les noms de
+   pistes, les formats et les versions passent intacts, les nombres ne se
+   reconnaissent que comme nombres (`%#N`).
+2. **Chaque client a son nom, et c'est lui qui refait son rapport.**
+   `ClientDuRapport::autre` disparaît au profit de `import`, `echecImport` et
+   `reconstruction`. L'application garde le rapport d'import (la structure, pas
+   le texte) et le message d'échec en français ; le rapport de reconstruction
+   se relit sur `rapport.json`. La bascule refait le dernier client, volet
+   ouvert ou fermé — la règle de D84 : le volet ne reçoit que des textes déjà
+   traduits, un texte assemblé ne se re-traduit pas.
+3. **Les messages de `Inflate` sont traduits aussi** : un `.als` corrompu les
+   montre tels quels dans l'échec, et ce sont seize phrases fixes.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (11/09/2026).** Banc : les trois
+> projets d'épreuve des tests d'`interchange/` écrits sur disque (le `.als`
+> gzippé, le `.flp` octet pour octet, l'archive Cubase), plus un `.cpr`,
+> ouverts par `VSM_IMPORT` sous `HOME` isolé, chacun en français et basculé en
+> anglais ; témoin : le binaire de D92.
+>
+> 1. **En anglais, le rapport d'import est anglais** : les lignes identiques
+>    FR / EN tombent à celles qui n'ont rien à traduire (lignes vides, un nom
+>    propre de format ou de version), chacune nommée ; aucun mot français ne
+>    reste dans les lignes changées, hors données (noms de pistes, de canaux).
+> 2. **Le français ne change pas d'un caractère** contre le témoin, sur les
+>    quatre fichiers.
+> 3. **Les nombres sont les mêmes** dans les deux langues, ligne pour ligne.
+> 4. **La bascule refait le rapport de reconstruction** : lancé en français,
+>    basculé par « English » APRÈS `VSM_RAPPORT`, le volet liste le même texte
+>    que D92 lancé en anglais — au caractère près, sur deux projets.
+> 5. **Le rapport d'ouverture de D89 ne bouge pas** (même liste que le témoin).
+
+> **D93 EST FAITE (11/09/2026).** Témoin : le binaire de D92, recompilé depuis
+> le même arbre, les changements de D93 mis de côté (`git stash`) le temps de
+> la compilation — le témoin est du même code que ce qu'il témoigne. `HOME`
+> isolé ; le fichier de préférences de l'utilisateur comparé par `cmp` à une
+> copie prise juste avant la série : inchangé.
+>
+> | fichier | lignes | identiques FR / EN, témoin | D93 | ce qui reste identique |
+> |---|---|---|---|---|
+> | `projet.als` (Ableton Live 11.3.4) | 14 | 14 / 14 | **4 / 14** | le nom et la version (« Ableton Live 11.3.4 »), 3 lignes vides |
+> | `projet.flp` (FL Studio 20.8) | 13 | 13 / 13 | **4 / 13** | « FL Studio — 20.8.3.2304 », 3 lignes vides |
+> | `archive.xml` (Cubase) | 12 | 12 / 12 | **3 / 12** | 3 lignes vides |
+> | `projet.cpr` (refusé) | 4 | 4 / 4 | **2 / 4** | 2 lignes vides |
+>
+> **Les cinq attendus :**
+>
+> 1. **Tenu.** En anglais, 43 lignes sur 43 → **13**, toutes des noms propres
+>    de format ou de version, ou des lignes vides. La recherche de mots
+>    français dans les lignes anglaises changées ne trouve rien ; restent les
+>    DONNÉES, entre guillemets anglais : « Voix enregistree », « Basse »,
+>    « Lead Été », les noms de pistes et de canaux du projet d'origine.
+> 2. **Tenu.** Le français est identique au témoin, au caractère près, sur les
+>    quatre fichiers.
+> 3. **Tenu.** 43 lignes sur 43 portent la même suite de nombres en français et
+>    en anglais.
+> 4. **Tenu.** Lancé en français, le rapport ouvert par le menu (« Voir le rapport de
+>    reconstruction »), puis basculé par « English » : le volet liste le même
+>    texte que D92 lancé en anglais, **au caractère près** — 12 lignes sur
+>    `children-dream-v7`, 9 sur `children-dream-v12`. Le rapport de
+>    reconstruction en français est identique à D92 sur les deux.
+> 5. **Tenu.** Le rapport d'ouverture de D89 est identique au témoin, au
+>    caractère près, sur les deux projets et dans les deux langues —
+>    4 lancements sur 4, 6 lignes chacun (« Project opened, with
+>    reservations » en anglais).
+>
+> **L'IMAGE.** L'autoportrait du `.als` basculé en anglais montre le volet
+> entier en anglais, les pertes en ambre comme en français, les lignes longues
+> repliées avec leur retrait. Il montre aussi, derrière le voile, un reste
+> qu'aucune liste ne nommait : le rack affiche « (aucun instrument assigné) »
+> (`SynthRackComponent.cpp:69`, écrit sans `tr()`).
+>
+> **CE QUI RESTE D'A9.** Le rack sans instrument (trouvé par cette image) ; les
+> réserves d'un preset appliqué à la main ; le message d'import audio ; les
+> raisons pour lesquelles la reconstruction est indisponible
+> (`ReconstructionChain`) ; les descriptions des machines et la source « Parc
+> VSM » du navigateur ; « RÉGLAGES », titre de section des façades ; deux
+> textes aux retours à la ligne forcés (D91). Le terminal d'un `VSM_IMPORT`
+> reste en français, et c'est voulu : c'est la donnée, celle que relisent les
+> tests d'`interchange/`.
+>
+> Table à **866** paires, **72** modèles de phrases.
+>
+> Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels, relancés
+> après D93 — tout vert. Python : 172 tests, ruff et mypy verts ce matin sur
+> le même code Python ; D93 ne touche que `app/Source/` et la documentation. La
+> suite Python relancée à côté du corpus A6 a été ARRÊTÉE faute de mémoire —
+> le corpus a survécu (piège ajouté à CLAUDE.md).
