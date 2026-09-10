@@ -1109,3 +1109,54 @@ soit le nombre de machines**.
 >    et absente du manifeste, jamais présente avec un lot vide.
 > 5. **La campagne P1 survit.** Vérifié par `pgrep` avant et après, et le
 >    rendu du corpus tourne à parallélisme réduit.
+
+### A6.1 — Le corpus REPRIS, pas refait : ce qui l'autorise, vérifié avant de relancer (11/09/2026, 05:22)
+
+**CE QUI S'EST PASSÉ.** Le corpus `corpus/parc59` avait été lancé le 10/09 à
+11:19 avec exactement les réglages écrits plus haut (300 patchs, graine
+20260823, six augmentations, proportion 0,5). Il s'est arrêté à **15:31**, sur
+`vsm.glass` — dossier créé, aucun lot écrit — sans avoir écrit son manifeste :
+28 machines complètes sur 59, et rien au journal pour le dire. C'est le piège
+nommé par CLAUDE.md : une course lancée depuis le shell de l'outil meurt avec
+la session. L'élément B1 de `INDEX.md` disait « EN COURS » ; aucun processus
+ne tournait.
+
+**LA DÉCISION : REPRENDRE, ET CE QUI LA REND HONNÊTE.** La phase demandait un
+corpus « d'un seul tenant » pour que la seule variable soit le nombre de
+machines. Reprendre mêle deux dates ; c'est acceptable si, et seulement si, le
+SON des machines n'a pas bougé entre les deux. Vérifié avant de relancer :
+
+- le dernier commit sous `audio/` date du **08/09** (D54) — avant le départ du
+  corpus ; aucun commit sous `audio/`, `tools/`, ni dans les modules de la
+  chaîne que `corpus.py` importe, depuis le 10/09 à 11:00 ;
+- le seul commit du moteur depuis, D76, touche l'identité des pistes (`core/`)
+  et la capture des échantillons d'un preset (`interchange/`) : aucune voix ne
+  sonne autrement ;
+- aucune source sous `audio/`, `core/`, `tools/` n'est plus récente que le
+  binaire `build/tools/vsm-render` qui rend la reprise.
+
+La commande relancée est la même, chemins absolus (ROADMAP-fusion § 8), sous
+`setsid nohup` ; `corpus.py` saute les lots présents et les RELIT pour le
+compte, si bien que le manifeste final porte les 59 machines. Journal :
+`corpus/journaux/parc59-reprise.log`. **Premier attendu déjà tenu en partie** :
+les 59 empreintes ont été prises au départ, aucune machine « INJOUABLE ».
+
+**LA COMPARAISON DU § 2 DES ATTENDUS, DÉFINIE AVANT D'ENTRAÎNER.** « Le top 1
+restreint aux 20 anciennes classes » peut se lire de deux façons, et elles ne
+disent pas la même chose ; les deux sont publiées, par une option de
+`classifieur.py` et non par un calcul fait à côté :
+
+    classifieur.py --corpus corpus/parc59 --comparer-a modeles/classifieur.joblib
+
+sur les exemples d'épreuve des vingt machines communes,
+
+- **top 1 parmi les communes** : l'argmax pris sur les seules vingt colonnes
+  des anciennes machines — la question de l'ancien modèle, posée au nouveau.
+  C'est lui qui se compare à **0,938**, et c'est lui que l'attendu borne à
+  **0,85** ;
+- **top 1 parmi les 59** : l'argmax sur toutes — l'écart entre les deux est ce
+  que les nouvelles venues prennent aux anciennes.
+
+`--confusions N` imprime les N paires les plus confondues au lieu de douze :
+l'attendu 3 demande de publier les paires, pas seulement leur compte. Trois
+tests tiennent la règle du calcul (`test_classifieur_comparaison.py`).

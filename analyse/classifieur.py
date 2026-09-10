@@ -22,6 +22,7 @@ import argparse
 import sys
 import time
 from pathlib import Path
+from typing import Sequence, Tuple
 
 import numpy as np
 
@@ -30,6 +31,62 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from analyzer.vsm_classifier import (Classifieur, charge_corpus, coupe_par_patch,
                                       entraine, matrice_de_confusion)
 from analyzer.vsm_engine import VsmEngine, VsmEngineError
+
+
+def top1_restreint(probabilites: np.ndarray, vraies: np.ndarray, noms: Sequence[str],
+                   communes: Sequence[str]) -> Tuple[float, float, int]:
+    """LE TOP 1 D'UN MODÈLE PLUS LARGE, RAMENÉ À LA QUESTION D'UN PLUS ÉTROIT.
+
+    Deux top 1 ne se comparent que s'ils répondent à la même question : 0,938
+    sur vingt machines et un top 1 sur cinquante-neuf ne sont pas deux mesures
+    de la même chose (ROADMAP-apprentissage.md, A6). On garde les exemples des
+    machines COMMUNES aux deux modèles et l'on rend deux chiffres : le top 1
+    parmi les seules communes -- la question de l'ancien modèle, posée au
+    nouveau -- et le top 1 parmi toutes -- ce que les nouvelles venues coûtent
+    aux anciennes. La colonne j de `probabilites` est la machine `noms[j]`.
+
+    Rend (restreint, complet, nombre d'exemples gardés) ; NaN et 0 si aucune
+    machine commune n'a d'exemple.
+    """
+    index = {nom: i for i, nom in enumerate(noms)}
+    colonnes = np.array([index[n] for n in communes if n in index], dtype=int)
+    if colonnes.size == 0:
+        return float("nan"), float("nan"), 0
+    garde = np.isin(vraies, colonnes)
+    if not garde.any():
+        return float("nan"), float("nan"), 0
+    p, y = probabilites[garde], vraies[garde]
+    restreint = float(np.mean(colonnes[np.argmax(p[:, colonnes], axis=1)] == y))
+    complet = float(np.mean(np.argmax(p, axis=1) == y))
+    return restreint, complet, int(garde.sum())
+
+
+def comparer_a(arguments, corpus, classifieur) -> None:
+    """--comparer-a : le nouveau modèle, éprouvé sur la question de l'ancien."""
+    ancien = Classifieur.relit(arguments.comparer_a)
+    communes = [n for n in ancien.noms if n in corpus.noms]
+    absentes = [n for n in ancien.noms if n not in corpus.noms]
+    _, indices_epreuve = coupe_par_patch(corpus, arguments.part_epreuve, arguments.graine)
+    X = ((corpus.X[indices_epreuve].astype(np.float64) - classifieur.moyenne)
+         / classifieur.echelle)
+    # LES COLONNES DE `predict_proba` SONT `classes_`, pas forcément 0..n-1 : une
+    # machine sans exemple d'entraînement en manquerait, et tout serait décalé
+    # d'une colonne sans un mot. On le vérifie au lieu de le supposer.
+    if not np.array_equal(classifieur.modele.classes_, np.arange(len(corpus.noms))):
+        print("\ncomparaison impossible : les classes du modèle ne sont pas 0..n-1")
+        return
+    restreint, complet, n = top1_restreint(classifieur.modele.predict_proba(X),
+                                           corpus.machines[indices_epreuve],
+                                           corpus.noms, communes)
+    ancien_top1 = getattr(ancien, "mesures", {}).get("top1")
+    print(f"\ncomparé à {arguments.comparer_a} ({len(ancien.noms)} machines, du {ancien.date}) :")
+    print(f"  {len(communes)} machines communes, {n} exemples d'épreuve de ces machines")
+    if absentes:
+        print(f"  ABSENTES du corpus neuf, donc hors comparaison : {', '.join(absentes)}")
+    print(f"  top 1 parmi les {len(communes)} communes : {restreint:.1%}"
+          + (f"   (l'ancien modèle : {ancien_top1:.1%})" if ancien_top1 is not None else ""))
+    print(f"  top 1 parmi les {len(corpus.noms)} : {complet:.1%} — l'écart est ce que "
+          f"les nouvelles venues prennent aux anciennes")
 
 
 def entrainer(arguments) -> int:
@@ -76,8 +133,11 @@ def entrainer(arguments) -> int:
             for j, predite in enumerate(corpus.noms):
                 if i != j and matrice[i, j]:
                     paires.append((int(matrice[i, j]), vraie, predite, int(matrice[i].sum())))
-        for compte, vraie, predite, total in sorted(paires, reverse=True)[:12]:
+        for compte, vraie, predite, total in sorted(paires, reverse=True)[:arguments.confusions]:
             print(f"  {vraie:18s} -> {predite:18s} {compte:5d} / {total} ({compte / total:.0%})")
+
+    if arguments.comparer_a is not None:
+        comparer_a(arguments, corpus, classifieur)
 
     if arguments.sortie:
         arguments.sortie.parent.mkdir(parents=True, exist_ok=True)
@@ -148,6 +208,12 @@ def main() -> int:
                             help="score maximal en deçà duquel le modèle s'abstient")
     analyseur.add_argument("--confusion", action="store_true",
                             help="imprimer les confusions les plus fréquentes")
+    analyseur.add_argument("--confusions", type=int, default=12,
+                            help="combien de confusions imprimer avec --confusion (défaut 12)")
+    analyseur.add_argument("--comparer-a", type=Path, default=None,
+                            help="un modèle PLUS ÉTROIT : imprimer le top 1 du nouveau restreint "
+                                 "à ses machines -- la seule comparaison honnête entre deux "
+                                 "modèles qui ne connaissent pas le même nombre de machines")
     analyseur.add_argument("--eprouver", type=Path, default=None,
                             help="au lieu d'entraîner : classer un fichier avec ce modèle")
     analyseur.add_argument("--audio", type=Path, default=None)
