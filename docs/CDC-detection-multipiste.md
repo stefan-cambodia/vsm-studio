@@ -140,6 +140,49 @@ déplacent rien, et la stabilité par empreintes est démontrée en course.
    distance n'est PAS mesuré (campagnes en pause) — chaque pièce devient une
    instance séparée de la machine, les pièces ne se volent plus de voix, et
    ce changement de rendu attendra sa mesure.
+> **CAMPAGNE P1 — L'EFFET DE `--batterie-par-piece` SUR LA DISTANCE, ATTENDUS
+> ÉCRITS AVANT LA MESURE (10/09/2026, 10:30).**
+>
+> Le § 4.4 dit depuis le 03/09 que l'effet de cette option sur la distance n'est
+> PAS mesuré. Vérifié le 10/09 : aucune course du dépôt ne fait témoin. Les huit
+> `sky-*` existantes portent toutes `batterieParPiece` à `True` sauf `sky-hd`,
+> qui diffère AUSSI par le nombre de tours de verdict (aucun contre trois) —
+> deux variables, donc pas un A/B.
+>
+> **PROTOCOLE, UNE SEULE VARIABLE.** *Sky and Sand*, choisi parce que sa
+> batterie porte **78 % de l'énergie du morceau** et compte **5 pièces pour
+> 3 309 frappes** (§ 4.7) : c'est le morceau où l'option a le plus à changer.
+> Les stems sont séparés UNE fois et repris par les deux courses (`--stems`),
+> si bien que la séparation ne peut pas différer. Options identiques à
+> `sky-parite` — métrique v2, budget de piste 120 sur 21 axes, 3 tours de
+> verdict, 6 finalistes, parité — et un seul jeton change :
+> `--batterie-par-piece` présent d'un côté, absent de l'autre. Même binaire de
+> moteur pour les deux, même graine.
+>
+> **CE QUI EST CERTAIN PAR CONSTRUCTION, ET NE PROUVE DONC RIEN** : la course
+> avec l'option rendra PLUS de pistes — une par pièce détectée au lieu d'une
+> pour le kit. C'est ce que l'option fait ; le mesurer serait mesurer sa propre
+> définition.
+>
+> **CE QUI EST EN JEU : LA DISTANCE, ET DEUX EFFETS TIRENT EN SENS CONTRAIRE.**
+> (1) Une instance de machine par pièce supprime le vol de voix entre pièces —
+> un charleston ne coupe plus la queue d'une caisse claire —, ce qui devrait
+> RAPPROCHER. (2) Le volume par pièce n'est PAS calé sur le stem, renoncement
+> dit au journal dès le câblage : cinq pistes calées chacune sur rien peuvent
+> sommer faux, ce qui devrait ÉLOIGNER.
+>
+> **ATTENDU CHIFFRÉ, ÉCRIT MAINTENANT** : l'écart tient entre **−5 % et +10 %**.
+> Au-delà de **±15 %**, l'attendu est réfuté et il faudra dire lequel des deux
+> effets domine.
+>
+> **CE QUE CHAQUE ISSUE DÉCIDE.** Si l'option rapproche ou coûte moins de 5 % :
+> elle peut devenir le défaut avec la parité, puisque la structure gagne et la
+> ressemblance ne perd presque rien. Si elle coûte plus de 10 % : elle reste une
+> option, et le § 4.4 portera son prix à côté de son gain — comme
+> `--modele htdemucs_6s` porte le sien depuis le § 4.7. **Le prix se publie dans
+> les deux cas** : une option dont on ignore le coût est une option qu'on
+> recommande à l'aveugle.
+
 5. **La voix — CÂBLÉE (03/09/2026)** : `--voix-tete-choeurs` sépare la voix
    de TÊTE des CHŒURS **par le champ stéréo** (extraction de centre par
    masque spectral, `analyzer/vsm_voix.py`) — le séparateur ne reconnaît pas
