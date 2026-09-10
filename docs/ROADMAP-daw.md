@@ -10727,3 +10727,79 @@ le moins.
 >
 > Tests : 327 core, 1 291 audio, **293** interchange (un de plus), 25 clap,
 > 11 panels, 172 Python, ruff et mypy — tout vert.
+
+### Phase D72 — A7 : le rapport d'ouverture était une boîte modale que le banc ratait six fois sur sept (10/09/2026, 16:40)
+
+**CE QUE D71 A LAISSÉ.** L'écran de rapport d'ouverture — celui qui dit ce qu'un
+projet a perdu en s'ouvrant — passe par `juce::AlertWindow::showMessageBoxAsync`.
+D71 l'a photographié **une fois sur sept**, à des délais de 1 800 à 3 000 ms, et
+a montré que ce n'est pas un délai trop court mais une course. Un banc qui rate
+sa cible six fois sur sept est pire qu'un banc qui la rate toujours : le jour où
+il la trouve, on croit qu'il la trouve toujours.
+
+**ET L'APPLICATION A DÉJÀ L'ÉCRAN QU'IL FAUT.** `ImportReportComponent` est un
+volet DANS la fenêtre principale — donc dans l'autoportrait —, avec son
+défilement, son repli, son bouton Copier, ses quatre tons et son `reportText()`
+« que le test peut lire sans avoir à déchiffrer une image ». Il sert déjà
+l'import DAW et le rapport de reconstruction. **Le rapport d'ouverture est son
+troisième client naturel, et il était le seul à ouvrir une boîte.**
+
+**CE QUE LA BOÎTE COÛTAIT, AU-DELÀ DU BANC.** Elle est modale : elle arrête le
+travail pour une liste qu'on ne peut ni faire défiler, ni copier, ni rouvrir.
+Un projet reconstruit qui perd huit presets affichait huit lignes dans une
+alerte, et une fois « OK » cliqué, plus rien ne les redonnait — alors que
+« Voir le dernier rapport » existe au menu et ne les a jamais vues.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (10/09/2026, 16:40).**
+>
+> 1. **Le rapport se photographie à tous les coups** : dix captures sur dix,
+>    dans l'autoportrait de la fenêtre principale, sans `VSM_CAPTURE_PANNEAUX`
+>    — contre 1 sur 7 aujourd'hui, et seulement avec lui.
+> 2. **Les lignes sont les mêmes, au mot près.** Ce n'est pas une phase qui
+>    change ce qui est dit ; elle change où c'est dit. Comparé par
+>    `reportText()`, pas à l'œil.
+> 3. **Un projet sain n'ouvre rien.** La règle de D71 tient : aucun écran quand
+>    il n'y a rien à dire.
+> 4. **Le rapport se ROUVRE.** « Voir le dernier rapport » le retrouve après
+>    fermeture, ce que la boîte ne permettait pas.
+
+> **D72 EST FAITE (10/09/2026, 17:10), ET LES QUATRE ATTENDUS SONT TENUS.**
+>
+> | | avant (D71) | après |
+> |---|---|---|
+> | captures montrant le rapport | **1 / 7**, et seulement avec `VSM_CAPTURE_PANNEAUX` | **10 / 10**, dans l'autoportrait ordinaire |
+> | lignes affichées | 7 | **7, au mot près** |
+> | projet sain | rien | **rien** |
+> | rouvrable après fermeture | non | **oui** (« Voir le dernier rapport d'import ») |
+>
+> **LA MESURE NE CROIT PAS LE NOM DU FICHIER.** « Dix captures écrites » ne dit
+> rien : un PNG s'écrit même si le volet n'est pas là. Le témoin lit **le pixel
+> (450, 200)**, au cœur du bandeau du rapport — `srgba(31,31,36)` sur les dix, la
+> couleur du volet, contre `srgba(7,7,9)` sur le projet sain, qui est la fenêtre
+> nue. C'est la leçon de D49 : on lit l'IMAGE, pas la trace qui dit qu'on l'a
+> écrite.
+>
+> **UN DÉTAIL QUE SEULE LA CAPTURE POUVAIT MONTRER, ET QUI ÉTAIT À L'ENVERS.**
+> La première version peignait les effets non appliqués en ambre discret et
+> l'avertissement le plus anodin — « le projet décrit 2 pistes, le MIDI en
+> contient 3 » — en rouge vif. Le volet a en effet deux tons dont les noms
+> trompent qui ne lit pas leur table : **`attention` est ROUGE** (« regarde
+> maintenant ») et **`perte` est AMBRE** (« ceci a été perdu »). Les deux autres
+> clients du volet suivent déjà cette convention — l'écran de reconstruction
+> range ses stems perdus en ambre et ses parts anormales en rouge. Le rapport
+> d'ouverture la suit maintenant : ses six pertes en ambre, sa note de comptage
+> en gris.
+>
+> **CE QUE LA BOÎTE EMPORTAIT AVEC ELLE**, et qui revient sans qu'on l'ait
+> demandé : le défilement (une reconstruction qui perd huit presets tenait mal
+> dans une alerte), le bouton **Copier**, la fermeture par Échap, et
+> `reportText()` — c'est-à-dire un rapport qu'un test peut lire « sans avoir à
+> déchiffrer une image », ce que l'en-tête du volet promettait déjà à ses deux
+> autres clients.
+>
+> **A7 EST CLOSE.** Reste A8 — les deux lecteurs qui ne numérotent pas les
+> pistes pareil —, qui attend la fin de la campagne : recompiler `vsm-render`
+> pendant qu'elle tourne tue la course.
+>
+> Tests : 327 core, 1 291 audio, 293 interchange, 25 clap, 11 panels,
+> 172 Python, ruff et mypy — tout vert.

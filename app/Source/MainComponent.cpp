@@ -5222,12 +5222,41 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     // Un projet incomplet s'OUVRE et DIT ce qui lui manque. Le taire
     // donnerait un morceau amputé sans explication -- c'est précisément
     // le genre de panne que ce projet refuse.
+    //
+    // D72 : DANS LE VOLET DE RAPPORT, PLUS DANS UNE BOÎTE MODALE. Elle était
+    // le seul des trois rapports de l'application à ouvrir une `AlertWindow`,
+    // et cela coûtait trois choses : le banc ne la photographiait qu'une fois
+    // sur sept (D71 -- une course, pas un délai), on ne pouvait ni la faire
+    // défiler ni la copier, et « Voir le dernier rapport » ne la retrouvait
+    // jamais. Le volet, lui, est dans l'autoportrait, garde ce qu'il a montré
+    // et se rouvre.
     if (!rapport.isEmpty()) {
-        juce::String texte;
-        for (const auto& ligne : rapport) texte << ligne << "\n";
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon,
-            juce::String::fromUTF8("Projet ouvert, avec des réserves"), texte);
+        using Rapport = vsm::app::ui::ImportReportComponent;
+        using Ton = Rapport::Ton;
+        juce::Array<Rapport::LigneExterne> lignes;
+        lignes.add({juce::String(rapport.size()) + (rapport.size() > 1
+                                                     ? juce::String::fromUTF8(" réserves à l'ouverture")
+                                                     : juce::String::fromUTF8(" réserve à l'ouverture")),
+                    Ton::resume});
+        for (const auto& ligne : rapport) {
+            // LE TON SUIT LA CONVENTION DÉJÀ ÉTABLIE PAR LES DEUX AUTRES
+            // CLIENTS DU VOLET, et il a fallu la lire pour ne pas l'inverser :
+            // `attention` est ROUGE et veut dire « regarde MAINTENANT »,
+            // `perte` est AMBRE et veut dire « ceci a été perdu ». Un manque
+            // est un fait, pas une alarme -- l'écran de reconstruction range
+            // ainsi ses stems perdus en ambre et ses parts anormales en rouge.
+            // Une première version peignait l'inverse : les effets non
+            // appliqués en ambre discret et l'avertissement le plus anodin en
+            // rouge vif. La capture l'a montrée, pas la lecture du code.
+            const bool perte = ligne.contains(juce::String::fromUTF8("introuvable"))
+                            || ligne.contains(juce::String::fromUTF8("illisible"))
+                            || ligne.contains(juce::String::fromUTF8("non appliqué"))
+                            || ligne.contains(juce::String::fromUTF8("inconnu"))
+                            || ligne.contains(juce::String::fromUTF8("silencieuse"));
+            lignes.add({ligne, perte ? Ton::perte : Ton::info});
+        }
+        importReport_.showLines(juce::String::fromUTF8("Projet ouvert, avec des réserves"),
+                                 folder.getFileName(), lignes);
     }
 }
 
