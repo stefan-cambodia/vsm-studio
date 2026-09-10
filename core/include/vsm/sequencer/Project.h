@@ -212,6 +212,13 @@ public:
             for (auto& clip : track.clips)
                 if (clip.id == 0) clip.id = nextClipId();
     }
+    /// D76 : donne une identité de session (`Track::uid`) à toute piste qui
+    /// n'en a pas -- ou qui porte celle d'une piste PRÉCÉDENTE de la liste,
+    /// ce qu'une piste dupliquée par copie fait. Le compteur est celui du
+    /// PROCESSUS, pas du projet : l'annulation remet d'anciennes pistes en
+    /// place avec leur identité, et un compteur restauré avec le projet
+    /// redistribuerait des identités déjà prises.
+    void assignTrackUids();
 
     /// Prochain identifiant SANS le consommer. Utile avec les opérations de
     /// NoteEdit.h, qui prennent un compteur par référence et l'incrémentent

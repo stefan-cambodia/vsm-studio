@@ -478,3 +478,31 @@ VSM_TEST(the_sample_report_speaks_up_for_reserves_not_only_for_failures) {
     VSM_ASSERT(avec_echec.aQuelqueChoseADire());
     VSM_ASSERT(avec_echec.summary().find("en échec") != std::string::npos);
 }
+
+VSM_TEST(capturing_a_live_sampler_keeps_its_samples_relative_to_the_project) {
+    // D76 : LA CAPTURE IGNORAIT LES ÉCHANTILLONS. L'enregistrement, l'export
+    // et le gel fabriquent leurs presets depuis les machines vivantes : un
+    // sampler s'y écrivait sans ses échantillons, et `sky-v4` ouvert puis
+    // enregistré tel quel perdait la voix de son sampler (1 -> 0).
+    const fs::path folder = scratchFolder("capture");
+    writeToneWav(folder / "samples" / "voix.wav");
+    auto sampler = makeSampler();
+    VSM_ASSERT(sampler != nullptr);
+    SynthPreset lu;
+    lu.pluginId = "vsm.sampler";
+    lu.samples[0] = "samples/voix.wav";
+    const auto charge = applyPresetSamples(lu, *sampler, folder.string());
+    VSM_ASSERT_EQ(charge.loaded.size(), size_t(1));
+
+    // Avec le dossier : le chemin redevient celui du fichier, relatif.
+    const SynthPreset capture = capturePreset(*sampler, "vsm.sampler", "capture", folder.string());
+    VSM_ASSERT_EQ(capture.samples.size(), size_t(1));
+    VSM_ASSERT_EQ(capture.samples.at(0), std::string("samples/voix.wav"));
+
+    // Et le preset capturé se recharge dans une machine NEUVE : c'est ce que
+    // fait un projet rouvert après l'enregistrement.
+    auto neuve = makeSampler();
+    const auto recharge = applyPresetSamples(capture, *neuve, folder.string());
+    VSM_ASSERT_EQ(recharge.loaded.size(), size_t(1));
+    VSM_ASSERT(recharge.failures.empty());
+}

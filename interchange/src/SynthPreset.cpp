@@ -17,7 +17,8 @@ float SynthPreset::valueOr(const std::string& semanticId, float fallback) const 
     return it == values.end() ? fallback : it->second;
 }
 
-SynthPreset capturePreset(const ISynthPlugin& plugin, const std::string& pluginId, std::string presetName) {
+SynthPreset capturePreset(const ISynthPlugin& plugin, const std::string& pluginId, std::string presetName,
+                          const std::string& projectFolder) {
     SynthPreset preset;
     preset.name = std::move(presetName);
     preset.pluginId = pluginId;
@@ -35,6 +36,31 @@ SynthPreset capturePreset(const ISynthPlugin& plugin, const std::string& pluginI
     // fichier au nom juste et au contenu vide, et rouvrir le morceau donnerait
     // un autre son sans que rien ne le signale.
     preset.nativeState = plugin.saveNativeState();
+
+    // D76 : ET LES ÉCHANTILLONS. `setParameter` ne transporte que des
+    // flottants ; les échantillons vivent à part (`ISampleLoader`), et cette
+    // capture les ignorait. Tout ce qui fabrique un preset depuis une machine
+    // vivante -- l'enregistrement, l'export, le gel -- écrivait donc un sampler
+    // sans ses échantillons. Mesuré : `sky-v4` ouvert puis enregistré tel quel
+    // perdait la voix de son sampler (1 échantillon -> 0), et son export en
+    // stems depuis l'application rendait cette voix silencieuse.
+    //
+    // LE CHEMIN EST RENDU RELATIF AU DOSSIER DU PROJET : la machine tient le
+    // chemin complet qu'on lui a donné (dossier / chemin relatif), et la
+    // relecture refuse un chemin absolu.
+    if (const auto* loader = dynamic_cast<const vsm::audio::plugin::ISampleLoader*>(&plugin)) {
+        for (int slot = 0; slot < loader->slotCount(); ++slot) {
+            const std::string chemin = loader->samplePath(slot);
+            if (chemin.empty()) continue;
+            std::filesystem::path p(chemin);
+            if (!projectFolder.empty()) {
+                const auto relatif = p.lexically_normal().lexically_relative(
+                    std::filesystem::path(projectFolder).lexically_normal());
+                if (!relatif.empty()) p = relatif;
+            }
+            preset.samples[slot] = p.generic_string();
+        }
+    }
     return preset;
 }
 

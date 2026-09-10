@@ -98,9 +98,18 @@ struct SynthPreset {
     float valueOr(const std::string& semanticId, float fallback) const;
 };
 
-/// Capture l'état courant d'une machine sous forme de preset sémantique.
+/// Capture l'état courant d'une machine sous forme de preset sémantique :
+/// ses paramètres, son état natif, et -- depuis D76 -- ses ÉCHANTILLONS.
+///
+/// `projectFolder` : le dossier d'où les échantillons ont été chargés. Leurs
+/// chemins y sont rendus relatifs, comme le format l'exige (la relecture
+/// refuse un chemin absolu). Vide : les chemins restent tels que la machine
+/// les tient -- un projet jamais enregistré n'a pas de dossier auquel se
+/// rapporter, et un chemin que la relecture refusera EN LE DISANT vaut mieux
+/// qu'un échantillon perdu sans un mot.
 SynthPreset capturePreset(const vsm::audio::plugin::ISynthPlugin& plugin,
-                           const std::string& pluginId, std::string presetName);
+                           const std::string& pluginId, std::string presetName,
+                           const std::string& projectFolder = {});
 
 /// Ce qui s'est réellement passé à l'application d'un preset -- jamais
 /// silencieux : chaque paramètre non appliqué est nommé, avec sa raison.

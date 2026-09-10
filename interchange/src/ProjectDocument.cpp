@@ -269,12 +269,16 @@ ProjectDocument documentFromProject(const Project& project) {
         entry.name = track.name;
         entry.channel = track.channel;
         entry.colorRgba = track.colorRgba;
-        entry.preferredPlugin = track.instrumentId;
+        // D76 : LA MACHINE DEMANDÉE, absente de ce build, s'écrit tant que la
+        // piste n'en a pas reçu d'autre -- sans quoi le premier enregistrement
+        // l'effaçait du fichier, et le chemin de son preset avec elle.
+        entry.preferredPlugin = !track.instrumentId.empty() ? track.instrumentId
+                                                            : track.requestedInstrumentId;
         entry.midiOutput = track.midiOutputDevice;
         entry.midiProgram = track.midiProgram;
         entry.midiBank = track.midiBank;
         entry.midiInputChannel = track.midiInputChannel;
-        if (!track.instrumentId.empty()) {
+        if (!entry.preferredPlugin.empty()) {
             char buffer[64];
             std::snprintf(buffer, sizeof(buffer), "instruments/track_%02zu.synth.json", index);
             entry.presetPath = buffer;
@@ -555,10 +559,16 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
             target.automation.push_back(std::move(curve));
         }
 
+        target.requestedInstrumentId.clear();
         if (source.preferredPlugin.empty()) continue;
         if (pluginIsInstalled(source.preferredPlugin)) {
             target.instrumentId = source.preferredPlugin;
         } else {
+            // D76 : LA DEMANDE EST GARDÉE DANS LA PISTE, pas seulement dans ce
+            // rapport. L'enregistrement réécrit le document depuis le projet ;
+            // sans elle, le premier Ctrl+S effaçait la machine demandée du
+            // fichier (mesuré : 1 fois sur 1).
+            target.requestedInstrumentId = source.preferredPlugin;
             // Machine absente : on NE substitue rien. L'intention est
             // conservée telle quelle (piste, notes, identifiant demandé), et
             // signalée -- une reconstruction silencieuse avec une autre

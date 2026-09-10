@@ -143,3 +143,52 @@ VSM_TEST(history_lists_its_labels_in_the_order_a_window_shows_them) {
     VSM_ASSERT_EQ(retablissables[1], std::string("trois"));
     VSM_ASSERT_EQ(histoire.undoLabels().size(), size_t{1});
 }
+
+// D76 — L'IDENTITÉ DES PISTES. Reconstruire le graphe recréait toutes les
+// machines, réglages remis à l'usine, parce que rien ne distinguait « la piste
+// qui occupait cet emplacement » de « celle qui l'occupe maintenant ».
+// L'identité de session le dit ; ces trois tests en tiennent les promesses.
+
+VSM_TEST(every_track_gets_a_distinct_session_identity_and_keeps_it) {
+    Project project = deuxPistes();
+    project.assignTrackUids();
+    const uint64_t basse = project.tracks[0].uid, lead = project.tracks[1].uid;
+    VSM_ASSERT(basse != 0);
+    VSM_ASSERT(lead != 0);
+    VSM_ASSERT(basse != lead);
+    project.assignTrackUids();                       // redonner ne change rien
+    VSM_ASSERT_EQ(project.tracks[0].uid, basse);
+    VSM_ASSERT_EQ(project.tracks[1].uid, lead);
+}
+
+VSM_TEST(a_copied_track_gets_its_own_identity_and_the_original_keeps_hers) {
+    Project project = deuxPistes();
+    project.assignTrackUids();
+    const uint64_t basse = project.tracks[0].uid;
+    project.tracks.insert(project.tracks.begin() + 1, project.tracks[0]);   // une duplication
+    project.assignTrackUids();
+    VSM_ASSERT_EQ(project.tracks[0].uid, basse);
+    VSM_ASSERT(project.tracks[1].uid != basse);
+    VSM_ASSERT(project.tracks[1].uid != 0);
+}
+
+VSM_TEST(an_undone_project_never_hands_a_used_identity_to_a_new_track) {
+    // Le compteur est celui du PROCESSUS : restaurer un projet par
+    // l'annulation ne le fait pas revenir en arrière. Sans cela, un réglage
+    // gardé pour une piste défaite se reposerait sur une piste neuve qui
+    // aurait reçu la même identité.
+    Project project = deuxPistes();
+    project.assignTrackUids();
+    const Project avant = project;
+    Track troisieme;
+    troisieme.name = "Troisieme";
+    project.tracks.push_back(troisieme);
+    project.assignTrackUids();
+    const uint64_t defaite = project.tracks[2].uid;
+    project = avant;                                  // l'annulation
+    project.tracks.push_back(troisieme);
+    project.assignTrackUids();
+    VSM_ASSERT(project.tracks[2].uid != defaite);
+    VSM_ASSERT(project.tracks[2].uid != project.tracks[0].uid);
+    VSM_ASSERT(project.tracks[2].uid != project.tracks[1].uid);
+}

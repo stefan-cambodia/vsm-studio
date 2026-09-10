@@ -1,3 +1,5 @@
+#include <filesystem>
+#include "vsm/audio/plugin/ISampleLoader.h"
 #include "MainComponent.h"
 #include "vsm/sequencer/ClipEdit.h"
 #include "vsm/sequencer/NoteEdit.h"
@@ -174,6 +176,9 @@ MainComponent::MainComponent()
         mixer_.refreshFromTracks();   // D37.2 : le fader suit le curseur de la ligne
     };
     trackList_.onInstrumentChanged = [this](size_t idx, const std::string& pluginId) {
+        // D76 : la piste a reçu une machine (ou « aucune ») par un choix : la
+        // demande d'une machine absente de ce build ne s'écrira plus.
+        if (idx < project_.tracks.size()) project_.tracks[idx].requestedInstrumentId.clear();
         audioEngine_.processGraph().setTrackInstrument(idx, pluginId);
         if (idx == trackList_.selectedTrackIndex()) updateSynthRackForSelection();
     };
@@ -3720,6 +3725,7 @@ void MainComponent::loadClapPluginOnSelectedTrack() {
                                              const std::string& nomAffiche) {
             beginProjectEdit(u8"Charger un plugin CLAP");
             auto& cible = project_.tracks[piste];
+            cible.requestedInstrumentId.clear();   // D76
             cible.instrumentId = vsm::clap::clapInstrumentId(
                 fichier.getFullPathName().toStdString(), pluginId);
             // LE PRESET DE L'ANCIENNE MACHINE NE SUIT PAS : ses identifiants
@@ -3850,6 +3856,7 @@ void MainComponent::chooseInstrumentFromCatalogue() {
             // L'IDENTIFIANT VIENT DU CATALOGUE, et c'est exactement celui que
             // les fabriques savent lire : le balayage ne sert à rien s'il ne
             // débouche pas sur la même porte que le reste (D7.1 à D7.3).
+            cible.requestedInstrumentId.clear();   // D76
             cible.instrumentId = instruments[static_cast<size_t>(choix) - 1].instrumentId();
             rebuildFromProject();
         }), false);
@@ -4087,6 +4094,7 @@ void MainComponent::loadVst3PluginOnSelectedTrack() {
                                              const std::string& nomAffiche) {
             beginProjectEdit(u8"Charger un instrument VST3");
             auto& cible = project_.tracks[piste];
+            cible.requestedInstrumentId.clear();   // D76
             cible.instrumentId = vsm::vst3::vst3InstrumentId(
                 fichier.getFullPathName().toStdString(), pluginId);
             // LE PRESET DE L'ANCIENNE MACHINE NE SUIT PAS : ses identités
@@ -4262,12 +4270,10 @@ vsm::interchange::LoadedBundle MainComponent::bundleFromSession() {
     bundle.folderPath = currentProjectFolder_ == juce::File()
                             ? std::string()
                             : currentProjectFolder_.getFullPathName().toStdString();
-    for (size_t i = 0; i < project_.tracks.size(); ++i) {
-        if (project_.tracks[i].instrumentId.empty()) continue;
-        if (auto* plugin = audioEngine_.processGraph().trackInstrument(i))
-            bundle.presetsByTrack[i] = vsm::interchange::capturePreset(
-                *plugin, project_.tracks[i].instrumentId, project_.tracks[i].name);
-    }
+    // D76 : LES ÉCHANTILLONS AVEC. Sans eux, l'export rendait silencieuse la
+    // voix de `sky-v4` -- que l'application faisait pourtant entendre, et que
+    // `vsm-render` rendait à -6,41 dBFS depuis le même dossier.
+    bundle.presetsByTrack = presetsDeLaSession();
     return bundle;
 }
 
@@ -4695,6 +4701,7 @@ void MainComponent::openMidiFile() {
             ParsedFile parsed = MidiFileParser::parseFile(file.getFullPathName().toStdString());
             clearHistory();
             project_ = Project::fromParsedFile(parsed);
+            oublierLesMachines();   // D76
             project_.title = file.getFileNameWithoutExtension().toStdString();
             rebuildFromProject();
             pianoRoll_.cadrerSurLesNotes();  // un projet qui arrive se regarde là où sont ses notes
@@ -4715,6 +4722,7 @@ void MainComponent::openMidiFileDirect(const juce::File& fichier) {
         ParsedFile parsed = MidiFileParser::parseFile(fichier.getFullPathName().toStdString());
         clearHistory();
         project_ = Project::fromParsedFile(parsed);
+        oublierLesMachines();   // D76
         project_.title = fichier.getFileNameWithoutExtension().toStdString();
         rebuildFromProject();
         pianoRoll_.cadrerSurLesNotes();
@@ -4786,6 +4794,7 @@ bool MainComponent::applyDawImport(const juce::File& fichier) {
 
     clearHistory();
     project_ = resultat.project;
+    oublierLesMachines();   // D76
     currentProjectFolder_ = juce::File();   // un import n'a pas de dossier à réécrire
     if (auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
         window->setName(juce::String::fromUTF8("Vintage Synth MIDI Studio -- ")
@@ -5126,6 +5135,7 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
 
     clearHistory();
     project_ = loaded.bundle.project;
+    oublierLesMachines();   // D76
     if (project_.title.empty())
         project_.title = folder.getFileName().toStdString();
     // UNE COULEUR QUASI TRANSPARENTE N'EST PAS UNE COULEUR. La chaîne
@@ -5211,13 +5221,13 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
         auto* instrument = audioEngine_.processGraph().trackInstrument(index);
         if (instrument == nullptr) {
             // La machine ABSENTE est déjà dite juste au-dessus, avec les mots du
-            // rendu. Reste la piste DÉSACTIVÉE, dont la machine n'est pas
-            // absente mais non instanciée (D30.2) : « machine indisponible »
-            // était faux pour elle. Ce qui est vrai, c'est que son preset n'est
-            // pas posé.
-            if (project_.tracks[index].disabled)
-                rapport.add(juce::String::fromUTF8(
-                    (vsm::interchange::libellePiste(index) + " : désactivée, preset non appliqué").c_str()));
+            // rendu. D76 : ET SON PRESET EST GARDÉ, comme celui d'une piste
+            // DÉSACTIVÉE (dont la machine n'est pas instanciée, D30.2) : il sera
+            // reposé à la réactivation, et l'enregistrement l'écrira tel quel.
+            // Il n'est donc plus une réserve -- D75 écrivait « désactivée,
+            // preset non appliqué », ce qui était vrai tant que le preset se
+            // perdait au premier Ctrl+S (mesuré : 4 réglages sur 9).
+            reglagesGardes_[project_.tracks[index].uid] = preset;
             continue;
         }
         const auto applique = vsm::interchange::applyPreset(
@@ -5787,13 +5797,7 @@ void MainComponent::autosaveIfNeeded() {
     // demande les machines vivantes, donc le thread de l'interface ; écrire
     // demande le disque, donc surtout pas lui.
     captureSessionIntoProject();
-    std::map<size_t, vsm::interchange::SynthPreset> presets;
-    for (size_t i = 0; i < project_.tracks.size(); ++i) {
-        const auto& piste = project_.tracks[i];
-        if (piste.instrumentId.empty()) continue;
-        if (auto* machine = audioEngine_.processGraph().trackInstrument(i))
-            presets[i] = vsm::interchange::capturePreset(*machine, piste.instrumentId, piste.name);
-    }
+    const std::map<size_t, vsm::interchange::SynthPreset> presets = presetsDeLaSession();   // D76
     autosave_->requestSave(project_, presets, currentProjectFolder_);
 }
 
@@ -6046,6 +6050,7 @@ void MainComponent::applyBrowserItem(const vsm::interchange::BrowserItem& item,
         case Kind::Machine:
             beginProjectEdit(juce::String::fromUTF8(u8"Changer de machine"));
             project_.tracks[trackIndex].instrumentId = item.reference;
+            project_.tracks[trackIndex].requestedInstrumentId.clear();   // D76
             audioEngine_.processGraph().setTrackInstrument(trackIndex, item.reference);
             trackList_.refreshTrackRow(trackIndex);
             updateSynthRackForSelection();
@@ -6069,6 +6074,7 @@ void MainComponent::applyBrowserItem(const vsm::interchange::BrowserItem& item,
             if (!lu.preset.pluginId.empty()
                 && project_.tracks[trackIndex].instrumentId != lu.preset.pluginId) {
                 project_.tracks[trackIndex].instrumentId = lu.preset.pluginId;
+                project_.tracks[trackIndex].requestedInstrumentId.clear();   // D76
                 audioEngine_.processGraph().setTrackInstrument(trackIndex, lu.preset.pluginId);
                 trackList_.refreshTrackRow(trackIndex);
             }
@@ -6855,13 +6861,11 @@ bool MainComponent::writeProjectTo(const juce::File& folder) {
     // Les presets sont capturés depuis les machines VIVANTES : sans cela,
     // `saveProjectBundle` retombe sur l'état PAR DÉFAUT de chaque machine et
     // écrit un projet qui ne sonne pas comme celui qu'on vient de régler.
-    std::map<size_t, vsm::interchange::SynthPreset> presets;
-    for (size_t i = 0; i < project_.tracks.size(); ++i) {
-        const auto& track = project_.tracks[i];
-        if (track.instrumentId.empty()) continue;
-        if (auto* plugin = audioEngine_.processGraph().trackInstrument(i))
-            presets[i] = vsm::interchange::capturePreset(*plugin, track.instrumentId, track.name);
-    }
+    // D76 : AVEC LES ÉCHANTILLONS, ET AVEC CE QUE LES MACHINES ABSENTES OU
+    // LIBÉRÉES NE PEUVENT PLUS DIRE (`presetsDeLaSession`). Mesuré avant : une
+    // piste désactivée s'écrivait avec le réglage d'usine, une machine absente
+    // disparaissait du fichier, et le sampler de `sky-v4` perdait sa voix.
+    const std::map<size_t, vsm::interchange::SynthPreset> presets = presetsDeLaSession();
 
     // D6.4 : ENREGISTRER, C'EST AUSSI EMPORTER LES MÉDIAS. `saveProjectBundle`
     // n'écrit que le projet, le MIDI et les presets. Enregistrer SOUS un autre
@@ -7409,6 +7413,7 @@ void MainComponent::applySendBuses() {
 void MainComponent::newProject() {
     clearHistory();   // l'annulation d'un autre morceau n'a aucun sens ici
     project_ = Project{};
+    oublierLesMachines();   // D76
     project_.title = "Nouveau projet";
     project_.sends = defaultSendBuses();
     rebuildFromProject();
@@ -7556,7 +7561,8 @@ void MainComponent::toggleFreezeSelectedTrack() {
     if (!project_.tracks[index].instrumentId.empty())
         if (auto* machine = audioEngine_.processGraph().trackInstrument(index))
             bundle.presetsByTrack[index] = vsm::interchange::capturePreset(
-                *machine, project_.tracks[index].instrumentId, project_.tracks[index].name);
+                *machine, project_.tracks[index].instrumentId, project_.tracks[index].name,
+                bundle.folderPath);   // D76 : avec ses échantillons
 
     vsm::interchange::RenderOptions options;
     options.sampleRate = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate()
@@ -7788,7 +7794,7 @@ void MainComponent::bounceSelectionToNewTracks() {
         if (!piste.instrumentId.empty())
             if (auto* machine = audioEngine_.processGraph().trackInstrument(index))
                 bundle.presetsByTrack[index] = vsm::interchange::capturePreset(
-                    *machine, piste.instrumentId, piste.name);
+                    *machine, piste.instrumentId, piste.name, bundle.folderPath);   // D76
 
         vsm::audio::engine::RenderedAudio rendu;
         // LE MÊME RENDU QUE LE GEL ET QUE LE REPORT DE PISTE : trois chemins
@@ -7868,7 +7874,8 @@ void MainComponent::performBounce(size_t index) {
     if (!project_.tracks[index].instrumentId.empty())
         if (auto* machine = audioEngine_.processGraph().trackInstrument(index))
             bundle.presetsByTrack[index] = vsm::interchange::capturePreset(
-                *machine, project_.tracks[index].instrumentId, project_.tracks[index].name);
+                *machine, project_.tracks[index].instrumentId, project_.tracks[index].name,
+                bundle.folderPath);   // D76 : avec ses échantillons
 
     vsm::interchange::RenderOptions options;
     options.sampleRate = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate()
@@ -10222,6 +10229,66 @@ void MainComponent::removeMarker(size_t index) {
     refreshMarkerViews();
 }
 
+namespace {
+
+/// D76 : REPOSER UN RÉGLAGE GARDÉ sur la machine recréée de sa piste. Un
+/// réglage capturé sur une machine puis reposé sur la même doit passer
+/// entier : s'il ne passe pas, c'est un défaut, et il se DIT (`VSM_REGLAGE`).
+void reposerReglage(size_t piste, vsm::audio::plugin::ISynthPlugin& machine,
+                    const vsm::interchange::SynthPreset& reglage, const std::string& dossier) {
+    const auto applique = vsm::interchange::applyPreset(reglage, machine, reglage.pluginId);
+    if (applique.unsupportedCount() > 0 || applique.clampedCount() > 0)
+        std::fputs(("VSM_REGLAGE : " + vsm::interchange::libellePiste(piste) + " : "
+                    + applique.summary() + "\n").c_str(), stderr);
+    // LES ÉCHANTILLONS À CHEMIN ABSOLU sont ceux d'un projet jamais enregistré,
+    // qui n'a pas de dossier auquel les rapporter. `applyPresetSamples` les
+    // refuse, et il a raison pour un FICHIER (un projet doit rester
+    // transportable) ; dans la session, le chemin est juste, et on le recharge
+    // tel quel.
+    vsm::interchange::SynthPreset relatifs = reglage;
+    relatifs.samples.clear();
+    auto* chargeur = dynamic_cast<vsm::audio::plugin::ISampleLoader*>(&machine);
+    for (const auto& [emplacement, chemin] : reglage.samples) {
+        if (!std::filesystem::path(chemin).is_absolute()) { relatifs.samples[emplacement] = chemin; continue; }
+        std::string erreur;
+        if (chargeur == nullptr || !chargeur->loadSample(emplacement, chemin, erreur))
+            std::fputs(("VSM_REGLAGE : " + vsm::interchange::libellePiste(piste) + " : échantillon « "
+                        + chemin + " » non rechargé" + (erreur.empty() ? "" : " : " + erreur) + "\n").c_str(),
+                       stderr);
+    }
+    const auto echantillons = vsm::interchange::applyPresetSamples(relatifs, machine, dossier);
+    if (echantillons.aQuelqueChoseADire())
+        std::fputs(("VSM_REGLAGE : " + vsm::interchange::libellePiste(piste) + " : "
+                    + echantillons.summary() + "\n").c_str(), stderr);
+}
+
+} // namespace
+
+std::map<size_t, vsm::interchange::SynthPreset> MainComponent::presetsDeLaSession() {
+    const std::string dossier = currentProjectFolder_ == juce::File()
+                                    ? std::string()
+                                    : currentProjectFolder_.getFullPathName().toStdString();
+    std::map<size_t, vsm::interchange::SynthPreset> presets;
+    for (size_t i = 0; i < project_.tracks.size(); ++i) {
+        const auto& piste = project_.tracks[i];
+        if (piste.instrumentId.empty() && piste.requestedInstrumentId.empty()) continue;
+        auto* machine = (piste.instrumentId.empty() || piste.disabled)
+                            ? nullptr : audioEngine_.processGraph().trackInstrument(i);
+        if (machine != nullptr)
+            presets[i] = vsm::interchange::capturePreset(*machine, piste.instrumentId, piste.name, dossier);
+        else if (auto garde = reglagesGardes_.find(piste.uid); garde != reglagesGardes_.end())
+            presets[i] = garde->second;
+    }
+    return presets;
+}
+
+void MainComponent::oublierLesMachines() {
+    // Les instances restent en place jusqu'à la reconstruction qui suit : un
+    // emplacement dont l'occupant est « inconnu » (0) est recréé, jamais gardé.
+    std::fill(uidParEmplacement_.begin(), uidParEmplacement_.end(), uint64_t{0});
+    reglagesGardes_.clear();
+}
+
 void MainComponent::rebuildFromProject(bool stopPlayback) {
     // LE RACK LÂCHE SA PISTE AVANT TOUTE CHOSE (trouvé en D34.3).
     //
@@ -10288,12 +10355,74 @@ void MainComponent::rebuildFromProject(bool stopPlayback) {
     // la désactivation coûte ce qu'elle promet : le slot est vidé, la machine
     // n'est pas instanciée, et rien de son état n'est perdu -- `instrumentId`
     // reste écrit dans la piste et la retrouve à la réactivation.
-    for (size_t i = 0; i < project_.tracks.size(); ++i)
-        audioEngine_.processGraph().setTrackInstrument(
-            i, project_.tracks[i].disabled ? std::string{} : project_.tracks[i].instrumentId);
-    for (size_t i = project_.tracks.size(); i < maxAssignedTracks_; ++i)
-        audioEngine_.processGraph().setTrackInstrument(i, "");
+    //
+    // D76 : ET CETTE BOUCLE RECRÉAIT TOUTES LES MACHINES À CHAQUE APPEL.
+    // `setTrackInstrument` fabrique une instance neuve même pour un identifiant
+    // inchangé ; or tout ce qui touche la liste des pistes, et TOUTE annulation,
+    // passe par ici. Mesuré : « Ajouter une piste MIDI » remettait à l'usine 4
+    // réglages sur 9 d'une TB-303 qu'on n'avait pas touchée, et le commentaire
+    // de D30.2 ci-dessus (« rien de son état n'est perdu ») était faux.
+    //
+    // TROIS CAS, DÉSORMAIS. L'emplacement garde sa piste et sa machine : on n'y
+    // touche pas -- rien n'est détruit, rien ne peut être perdu, c'est le cas
+    // courant. Sa piste a bougé ou sa machine est libérée : le réglage est
+    // CAPTURÉ AVANT toute réaffectation (une réaffectation peut détruire la
+    // machine qu'une autre piste attend), puis REPOSÉ sur la machine recréée.
+    // Aucune piste ne le reprend (piste désactivée, supprimée) : il reste gardé
+    // pour la réactivation, l'annulation, ou l'enregistrement qui l'écrit tel
+    // quel. L'instance n'est jamais DÉPLACÉE d'un emplacement à l'autre : le
+    // graphe ne dit pas quand le fil audio a fini le bloc où il la tient encore
+    // par l'ancien, et deux fils de rendu la joueraient à la fois.
+    project_.assignTrackUids();
+    auto& graphe = audioEngine_.processGraph();
+    const size_t emplacements = std::max(maxAssignedTracks_, project_.tracks.size());
+    if (uidParEmplacement_.size() < emplacements) uidParEmplacement_.resize(emplacements, 0);
+    const std::string dossierDuProjet = currentProjectFolder_ == juce::File()
+                                            ? std::string()
+                                            : currentProjectFolder_.getFullPathName().toStdString();
+    const auto voulue = [this](size_t i) {
+        return i >= project_.tracks.size() || project_.tracks[i].disabled ? std::string{}
+                                                                           : project_.tracks[i].instrumentId;
+    };
+    const auto gardee = [&](size_t i) {
+        return i < project_.tracks.size() && uidParEmplacement_[i] == project_.tracks[i].uid
+            && !voulue(i).empty() && graphe.trackInstrumentId(i) == voulue(i)
+            && graphe.trackInstrument(i) != nullptr;
+    };
+    std::vector<bool> garder(emplacements);
+    for (size_t s = 0; s < emplacements; ++s) garder[s] = gardee(s);
+    for (size_t s = 0; s < emplacements; ++s) {
+        if (garder[s] || uidParEmplacement_[s] == 0) continue;
+        if (auto* machine = graphe.trackInstrument(s))
+            reglagesGardes_[uidParEmplacement_[s]] = vsm::interchange::capturePreset(
+                *machine, graphe.trackInstrumentId(s), std::string(), dossierDuProjet);
+    }
+    size_t gardees = 0, recreees = 0, neuves = 0;
+    for (size_t i = 0; i < emplacements; ++i) {
+        if (garder[i]) { ++gardees; continue; }
+        const std::string id = voulue(i);
+        graphe.setTrackInstrument(i, id);
+        uidParEmplacement_[i] = 0;
+        auto* machine = graphe.trackInstrument(i);
+        if (machine == nullptr) continue;
+        const uint64_t uid = project_.tracks[i].uid;
+        uidParEmplacement_[i] = uid;
+        const auto reglage = reglagesGardes_.find(uid);
+        if (reglage != reglagesGardes_.end() && reglage->second.pluginId == id) {
+            reposerReglage(i, *machine, reglage->second, dossierDuProjet);
+            reglagesGardes_.erase(reglage);
+            ++recreees;
+        } else {
+            ++neuves;
+        }
+    }
     maxAssignedTracks_ = std::max(maxAssignedTracks_, project_.tracks.size());
+    // LE CHEMIN PRIS SE DIT : sans cette ligne, un banc vérifierait un
+    // résultat en croyant vérifier un chemin.
+    std::fputs((juce::String("VSM_MACHINES : ") + juce::String(static_cast<int>(gardees))
+                + juce::String(u8" gardée(s), ") + juce::String(static_cast<int>(recreees))
+                + juce::String(u8" recréée(s) avec leur réglage, ") + juce::String(static_cast<int>(neuves))
+                + juce::String(u8" neuve(s)\n")).toRawUTF8(), stderr);
 
     // Les chaînes d'inserts sont refabriquées EN BLOC depuis les descriptions
     // des pistes : après une suppression, aucune ne peut rester accrochée à un

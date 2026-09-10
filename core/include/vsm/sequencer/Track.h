@@ -679,6 +679,21 @@ public:
     /// Identifiant du plugin instrument assigné (vide = aucun). Résolu par
     /// le Synth Rack en Phase 2 via ISynthPlugin / PluginRegistry.
     std::string instrumentId;
+    /// D76 : LA MACHINE QUE LE PROJET DEMANDE ET QUE CE BUILD N'A PAS. Le
+    /// chargement vide `instrumentId` d'une machine absente -- rien ne doit
+    /// jouer à sa place --, et l'enregistrement réécrivait le document depuis
+    /// `instrumentId` : la demande disparaissait du fichier au premier Ctrl+S,
+    /// contre la promesse de `ProjectDocument.h` (« l'utilisateur peut
+    /// installer la machine et rouvrir »). Elle survit ici, et s'écrit tant que
+    /// la piste n'a pas reçu d'autre machine.
+    std::string requestedInstrumentId;
+    /// D76 : L'IDENTITÉ DE LA PISTE POUR LA SESSION, jamais écrite dans le
+    /// fichier. Sans elle, « la piste qui occupait l'emplacement 3 » ne se
+    /// distinguait pas de « celle qui l'occupe maintenant », et reconstruire
+    /// le graphe recréait TOUTES les machines, réglages remis à l'usine, à
+    /// chaque ajout de piste et à chaque annulation. 0 = pas encore donnée
+    /// (`Project::assignTrackUids`).
+    uint64_t uid = 0;
     /// UN CHAMP `presetId` A VÉCU ICI, ET IL EST PARTI (D36.5). Cinq endroits
     /// l'effaçaient, aucun ne l'écrivait, et `project.json` ne le portait pas :
     /// c'était un nom de preset que rien ne nommait. Le preset d'une piste vit

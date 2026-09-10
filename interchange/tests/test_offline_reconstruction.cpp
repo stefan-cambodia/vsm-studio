@@ -803,3 +803,35 @@ VSM_TEST(a_missing_audio_file_is_named_not_silently_ignored) {
         if (avertissement.find("introuvable.wav") != std::string::npos) nomme = true;
     VSM_ASSERT(nomme);
 }
+
+VSM_TEST(an_absent_machine_survives_opening_and_saving_again) {
+    // D76 : le chargement vide l'identifiant d'une machine absente -- rien ne
+    // doit jouer à sa place --, et l'enregistrement réécrivait le document
+    // depuis le projet : la demande disparaissait du fichier au premier
+    // enregistrement (mesuré : 1 fois sur 1), et le chemin de son preset avec
+    // elle. La promesse de `ProjectDocument.h` -- « l'utilisateur peut installer
+    // la machine et rouvrir » -- ne tenait que jusqu'au premier Ctrl+S.
+    TempFolder source("absente_source");
+    Project project = buildPlayableProject();
+    project.tracks[0].instrumentId = "com.autre.editeur.synth-absent";
+    SynthPreset preset;
+    preset.pluginId = "com.autre.editeur.synth-absent";
+    preset.values["filter.1.cutoff"] = 480.0f;
+    saveProjectBundle(project, source.str(), {{0, preset}});
+
+    const BundleLoadResult lu = loadProjectBundle(source.str());
+    VSM_ASSERT(lu.success);
+    VSM_ASSERT(lu.bundle.project.tracks[0].instrumentId.empty());   // rien ne joue à sa place
+    VSM_ASSERT_EQ(lu.bundle.project.tracks[0].requestedInstrumentId,
+                  std::string("com.autre.editeur.synth-absent"));
+
+    TempFolder copie("absente_copie");
+    saveProjectBundle(lu.bundle.project, copie.str(), lu.bundle.presetsByTrack);
+    const BundleLoadResult relu = loadProjectBundle(copie.str());
+    VSM_ASSERT(relu.success);
+    VSM_ASSERT_EQ(relu.bundle.document.tracks[0].preferredPlugin,
+                  std::string("com.autre.editeur.synth-absent"));
+    VSM_ASSERT(!relu.bundle.document.tracks[0].presetPath.empty());
+    VSM_ASSERT_EQ(relu.bundle.presetsByTrack.count(0), size_t{1});
+    VSM_ASSERT_NEAR(relu.bundle.presetsByTrack.at(0).valueOr("filter.1.cutoff", 0.0f), 480.0f, 1e-3);
+}

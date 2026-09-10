@@ -3,11 +3,22 @@
 #include "vsm/sequencer/NoteEdit.h"
 #include <set>
 #include <algorithm>
+#include <atomic>
 #include <vector>
 
 namespace vsm::sequencer {
 
 using namespace vsm::midi;
+
+void Project::assignTrackUids() {
+    // UN COMPTEUR DE PROCESSUS, jamais remis à zéro : voir la déclaration.
+    static std::atomic<uint64_t> prochain{1};
+    std::set<uint64_t> vues;
+    for (auto& track : tracks) {
+        if (track.uid == 0 || vues.count(track.uid) != 0) track.uid = prochain.fetch_add(1);
+        vues.insert(track.uid);
+    }
+}
 
 namespace {
 constexpr size_t kPendingSlots = 16 * 128; // canal * 128 + note

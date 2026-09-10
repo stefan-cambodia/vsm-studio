@@ -7,6 +7,7 @@
 #include "vsm/audio/engine/Transport.h"
 #include "vsm/audio/engine/AudioTrackSource.h"
 #include "vsm/interchange/ReconstructionChain.h"
+#include "vsm/interchange/SynthPreset.h"
 #include "reconstruction/ClipTranscriber.h"
 #include "reconstruction/ReconstructionRunner.h"
 #include "ui/ReconstructionWindow.h"
@@ -759,6 +760,28 @@ private:
     /// non, et le même dossier avait donc deux verdicts.
     void noterReserveDEffet(const juce::String& reserve);
     std::vector<juce::String> reservesEffets_;
+
+    /// D76 : QUELLE PISTE OCCUPE CHAQUE EMPLACEMENT DU GRAPHE (son `Track::uid`,
+    /// 0 = aucune). C'est ce qui permet à `rebuildFromProject` de ne PAS
+    /// recréer une machine dont la piste n'a pas bougé : il la recréait
+    /// toujours, réglages remis à l'usine, à chaque ajout de piste et à chaque
+    /// annulation (mesuré : 4 réglages sur 9 perdus par « Ajouter une piste »).
+    std::vector<uint64_t> uidParEmplacement_;
+    /// D76 : LES RÉGLAGES QU'AUCUNE MACHINE VIVANTE NE PORTE, par piste : ceux
+    /// d'une piste désactivée (capturés quand sa machine est libérée), d'une
+    /// piste dont la machine est absente de ce build (lus à l'ouverture), ou
+    /// d'une piste qui change d'emplacement (capturés avant, reposés après).
+    /// Enregistrer les écrit TELS QUELS ; jamais recapturés d'une machine neuve.
+    std::map<uint64_t, vsm::interchange::SynthPreset> reglagesGardes_;
+    /// Les presets à écrire ou à rendre : ceux des machines vivantes, capturés
+    /// avec leurs échantillons, et ceux que `reglagesGardes_` tient pour les
+    /// pistes qui n'en ont pas. UN SEUL endroit, pour l'enregistrement, la
+    /// sauvegarde automatique et l'export : trois copies de cette boucle ont
+    /// existé, et c'est ainsi que les trois oubliaient la même chose.
+    std::map<size_t, vsm::interchange::SynthPreset> presetsDeLaSession();
+    /// Un autre projet arrive : les emplacements et les réglages gardés de
+    /// l'ancien ne le concernent pas.
+    void oublierLesMachines();
     /// Republie les bus au moteur ET reconstruit les boutons du mixeur : leur
     /// nombre a pu changer, et une tranche garderait sinon un bouton vers un
     /// bus disparu.

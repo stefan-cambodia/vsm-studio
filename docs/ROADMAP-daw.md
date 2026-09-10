@@ -11194,3 +11194,253 @@ corrigé, puisqu'il n'y a rien à corriger.
 >
 > Tests : 327 core, 1 291 audio, **295** interchange (deux de plus), 25 clap,
 > 11 panels, 172 Python, ruff et mypy — tout vert.
+
+### Phase D76 — A10 : enregistrer détruit-il ce qu'on n'a pas pu ouvrir ? (10/09/2026, 17:00)
+
+**LE SOUPÇON, TEL QUE D75 L'A LU DANS LE CODE.** Trois chemins, et une seule
+forme de défaut : l'enregistrement recapture l'état depuis ce qui VIT dans la
+session, et ce qui n'y vit pas est remplacé par un défaut, ou par rien.
+
+| cas | ce que le code fait | ce qu'on perdrait |
+|---|---|---|
+| une piste demande une machine absente de ce build | le chargement vide `instrumentId` (`ProjectDocument.cpp:567`) ; l'enregistrement réécrit `preferredPlugin = instrumentId` (`:272`) ; `saveProjectBundle` efface le chemin du preset, faute de pouvoir créer la machine | l'identifiant demandé et la référence au preset — contre la promesse écrite dans `ProjectDocument.h` : « l'utilisateur peut installer la machine et rouvrir » |
+| une piste désactivée à l'ouverture | aucune machine n'est instanciée (D30.2) ; `writeProjectTo` ne capture que les machines vivantes ; `saveProjectBundle` comble le trou avec l'état par défaut d'une machine NEUVE | le réglage de la piste, remplacé par le réglage d'usine |
+| une piste désactivée puis réactivée dans la session | `setTrackInstrument("")` détruit l'instance ; la réactivation en crée une neuve, et rien ne lui repose son réglage | le réglage — alors que le compte rendu dit « ses notes et ses réglages restent », et le menu « sa machine revient » |
+
+> **HYPOTHÈSE, ÉCRITE AVANT LA MESURE (10/09/2026, 17:00).** Les trois pertes
+> sont réelles :
+>
+> 1. ouvrir puis enregistrer (Ctrl+S) un projet dont une piste demande une
+>    machine absente fait disparaître `preferredPlugin` et `preset` de cette
+>    piste dans `project.json` ;
+> 2. ouvrir puis enregistrer un projet dont une piste désactivée porte un
+>    preset réglé réécrit son `track_NN.synth.json` avec les valeurs d'usine ;
+> 3. désactiver puis réactiver une piste, puis enregistrer, fait de même.
+>
+> Mesuré en comparant les fichiers ÉCRITS aux fichiers d'origine, paramètre
+> par paramètre — pas en relisant le code une seconde fois. **Ce qui la
+> réfuterait** : un fichier intact dans l'un des trois cas. Le cas sort alors
+> de la phase, et c'est écrit.
+
+> **MESURÉ (10/09/2026) : LES TROIS PERTES SONT RÉELLES, ET LE TÉMOIN
+> PROUVE QUE LA MESURE N'EST PAS AVEUGLE.** Quatre copies de
+> `docs/examples/demo-project` (Basse = TB-303 réglée, Drums = TR-909), ouvertes
+> par l'application et enregistrées par `VSM_MENU=…;Enregistrer`, avec le
+> binaire d'avant la phase gardé comme témoin. Chaque `project.json` a bien été
+> réécrit (horodatage comparé) : aucune colonne ne mesure un fichier resté tel
+> quel.
+>
+> | cas | la machine demandée par la piste 2 | le réglage de la Basse |
+> |---|---|---|
+> | **témoin** (rien d'anormal) | gardée | **0 écart sur 9** |
+> | machine absente de ce build | **effacée** — ni `preferredPlugin` ni `preset` ; le fichier du preset reste sur le disque, orphelin | 0 / 9 |
+> | Basse désactivée dans le fichier | gardée | **4 / 9 remis à l'usine** : coupure 480 → 800 Hz, résonance 0,9 → 0,6, enveloppe 0,85 → 0,5, accent 0,8 → 0,6 |
+> | Basse désactivée puis réactivée dans la session | gardée | **les mêmes 4 / 9** — pendant que l'application écrit « ses notes et ses réglages restent », puis « sa machine et ses inserts sont revenus » |
+>
+> Le troisième cas est le plus grave des trois parce qu'il est le plus
+> ordinaire : désactiver une piste pour soulager le processeur est exactement
+> l'usage que D30.2 annonçait, et le geste coûtait le réglage de la machine
+> sans un mot — en affirmant le contraire.
+
+> **UN QUATRIÈME CAS, ÉCRIT AVANT SA MESURE (10/09/2026).** Chercher où
+> corriger le troisième a fait lire `rebuildFromProject` en entier, et le
+> défaut n'y est peut-être pas propre à la désactivation : la fonction appelle
+> `setTrackInstrument` pour **chaque** piste, et `setTrackInstrument` crée une
+> instance neuve même quand l'identifiant n'a pas changé — sans rien capturer
+> avant, ni rien reposer après. Or tout geste qui touche la liste des pistes
+> finit par elle (son propre commentaire le dit : « toute modification de la
+> liste des pistes finit par appeler cette fonction »).
+>
+> **Hypothèse** : ajouter une piste, puis enregistrer, remet à l'usine le
+> réglage de TOUTES les machines du projet, et pas seulement celui d'une piste
+> désactivée. Mesuré avec le même banc : la Basse réglée, « Ajouter une piste »,
+> « Enregistrer », et son preset comparé à l'original. **Ce qui la réfuterait** :
+> 0 écart sur 9 ; le défaut serait alors propre à la désactivation, et la
+> correction resterait à sa taille.
+>
+> **MESURÉ : CONFIRMÉ.** « Ajouter une piste MIDI », puis
+> « Enregistrer » : la Basse perd **les mêmes 4 réglages sur 9** que dans les
+> cas désactivés, sans qu'on l'ait touchée. Le défaut n'est donc pas celui de la
+> désactivation : c'est celui de `rebuildFromProject`, et la désactivation n'en
+> est qu'un chemin. Ajouter une piste, en supprimer une, annuler, déplacer —
+> tout ce qui touche la liste des pistes remet **toutes** les machines à
+> l'usine, et on l'ENTEND : l'instance neuve joue dès le bloc suivant avec les
+> valeurs d'usine.
+>
+> **ET UN CINQUIÈME CHEMIN, LU EN CHERCHANT LE QUATRIÈME** : l'annulation
+> rappelle `onProjectRestored`, qui appelle `rebuildFromProject(false)`
+> (`MainComponent.cpp:393`). **Annuler n'importe quoi — une note déplacée,
+> un volume — recrée toutes les machines.** Lu, pas encore mesuré : le banc
+> neuf le mesurera (cas « annulation » ci-dessous).
+>
+> **UN SIXIÈME CAS, ÉCRIT AVANT SA MESURE (10/09/2026).** En vérifiant
+> que la capture pouvait servir de remède (décision n° 3), une recherche de
+> qui remplit `SynthPreset::samples` n'a trouvé que l'analyseur de fichier et
+> le service de rendu de patch : **aucune capture depuis une machine vivante**.
+> Or l'enregistrement ne connaît les presets que par capture (`writeProjectTo`).
+> **Hypothèse** : ouvrir un projet dont un preset déclare des échantillons,
+> puis l'enregistrer tel quel, efface la liste des échantillons de ce preset —
+> et le projet rouvert rend un sampler muet. C'est aussi une contradiction
+> possible avec D45 (« ouvrir puis réenregistrer une vraie reconstruction ne
+> perd rien »), qui n'a peut-être pas eu de sampler à perdre. **Ce qui la
+> réfuterait** : la liste intacte dans le preset réécrit.
+>
+> **MESURÉ : CONFIRMÉ, SUR LA VRAIE RECONSTRUCTION.** Une copie de
+> `sky-v4` ouverte puis enregistrée telle quelle, sans un geste : le preset de
+> son sampler (`track_03`, la voix) déclarait **1** échantillon
+> (`samples/voix.wav`) ; réécrit, il en déclare **0**. Le projet rouvert rendrait
+> une voix muette, et le premier Ctrl+S après une reconstruction suffit à le
+> provoquer. L'original n'a pas été touché : la mesure porte sur une copie.
+>
+> **UN SEPTIÈME CAS, ÉCRIT AVANT SA MESURE (10/09/2026), ET C'EST LE
+> PLUS LOURD POUR LA RECONSTRUCTION.** L'export du DAW ne relit pas le dossier :
+> il fabrique ses presets par la MÊME capture (`bundleFromSession`), qui ne
+> prend pas les échantillons. **Hypothèse** : exporter `sky-v4` depuis
+> l'application rend la voix — la piste du sampler — **muette**, alors que
+> `vsm-render`, qui relit le fichier, la rend. Ce serait une contradiction
+> directe avec D46 (« l'export du DAW et `vsm-render` rendent le même son,
+> mesuré sur un vrai morceau ») : ou D46 a mesuré un morceau sans sampler, ou
+> l'hypothèse est fausse. Mesuré par l'export en stems (`VSM_EXPORT_STEMS`),
+> qui dit la crête de chaque stem ou « silencieux » (D50). **Ce qui la
+> réfuterait** : un stem de la voix non silencieux.
+>
+> **MESURÉ : CONFIRMÉ, AVEC SON TÉMOIN.** Sur la même copie de
+> `sky-v4`, non modifiée :
+>
+> | stem | export du DAW (binaire d'avant) | `vsm-render --stems` (témoin) |
+> |---|---|---|
+> | 01 - bass | −7,94 dBFS | −7,93 dBFS |
+> | 02 - other | −6,33 dBFS | −6,58 dBFS |
+> | 03 - Batterie | +1,15 dBFS | +0,84 dBFS |
+> | **04 - Voix** | **silencieux** | **−6,41 dBFS** |
+>
+> L'application FAIT ENTENDRE la voix — l'ouverture applique les échantillons
+> du fichier à la machine vivante — et l'EXPORTE muette, parce que l'export
+> recapture le preset sans eux. Ce qu'on écoute et ce qu'on livre divergent sur
+> la piste la plus exposée d'une reconstruction. D46 n'a pas pu mesurer cela
+> sur ce morceau : ou il en a mesuré un autre, ou il a comparé autre chose que
+> les stems ; la phrase de D46 reste vraie de ce qu'elle a mesuré, et fausse
+> de `sky-v4`. (Les écarts de crête des trois autres stems — quelques
+> dixièmes de dB — viennent du dither et du format entier de l'export du DAW
+> contre le flottant de `vsm-render` ; ils ne sont pas l'objet de cette phase.)
+
+**LA DÉCISION, ET SES RAISONS.**
+
+1. **Une machine dont la piste n'a pas bougé n'est pas recréée.**
+   `rebuildFromProject` compare, emplacement par emplacement, la piste qui
+   l'occupait et la machine qu'elle y avait avec celles qu'il faut
+   maintenant ; identiques, il n'y touche pas. C'est de loin le cas le plus
+   fréquent — toute annulation qui ne déplace pas de piste, tout ajout en fin
+   de liste —, et c'est le seul qui ne peut rien perdre, puisque rien n'est
+   détruit. Cubase et Live ne réinstancient pas un instrument parce qu'on a
+   ajouté une piste à côté.
+2. **Une piste reçoit une identité** (`Track::uid`), de session, jamais
+   écrite dans le fichier. Sans elle, « la piste qui occupait l'emplacement 3 »
+   ne se distingue pas de « celle qui l'occupe maintenant » après une
+   suppression. Elle vient d'un compteur **de processus**, jamais réutilisé :
+   l'annulation remet d'anciennes pistes en place, et un compteur propre au
+   projet, restauré avec lui, redistribuerait des identités déjà prises.
+3. **Quand une piste change d'emplacement, son réglage est capturé avant et
+   reposé après — l'instance n'est pas déplacée.** La déplacer serait plus
+   fidèle (voix en cours, état complet), mais le graphe n'offre aucun moyen de
+   savoir que le fil audio a fini le bloc où il la tient encore par l'ancien
+   emplacement : la même instance serait jouée par deux fils de rendu à la
+   fois. La capture est ce que l'enregistrement fait déjà, et le témoin montre
+   qu'elle est fidèle (0 écart sur 9) — **à une lacune près, que le sixième cas
+   a mesurée** : elle ne prenait pas les échantillons, qui vivent à part des
+   paramètres (`SynthPreset::samples`). Ils sont désormais **capturés à la
+   source** : la machine sait ce qu'elle tient (`ISampleLoader::samplePath`),
+   et `capturePreset` le lui demande, en rendant le chemin relatif au dossier
+   du projet comme le format l'exige. *Première version de ce point, écrite avec
+   les attendus : « repris du dernier preset connu de la piste ». Abandonnée avant
+   d'être codée, parce qu'elle aurait réparé la capture pour ce seul chemin et
+   laissé l'enregistrement, l'export et le gel écrire des samplers muets.*
+4. **Un réglage qu'aucune machine vivante ne porte est GARDÉ, jamais
+   recapturé depuis une machine neuve.** Piste désactivée : capturé au moment
+   où la machine est libérée, reposé à la réactivation, écrit tel quel à
+   l'enregistrement. Machine absente de ce build : le preset lu à l'ouverture
+   est gardé et réécrit, et l'identifiant demandé survit dans la piste
+   (`Track::requestedInstrumentId`), écrit comme `preferredPlugin` tant que la
+   piste n'a pas reçu d'autre machine — la promesse de `ProjectDocument.h`,
+   tenue jusqu'à l'enregistrement.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA CORRECTION (10/09/2026).**
+>
+> 1. **0 écart sur 9 dans tous les cas du banc**, y compris deux neufs : la
+>    suppression d'une piste placée AVANT la Basse (chemin « recréée avec son
+>    réglage ») et l'ajout suivi d'une annulation. La machine absente garde
+>    `preferredPlugin` et `preset`.
+> 2. **Le témoin reste à 0, et le banc de D75 redonne ses cinq lignes au mot
+>    près** : cette phase ne doit rien changer à ce que disent les lecteurs.
+> 3. **Le chemin pris se dit** : une ligne `VSM_MACHINES : N gardée(s),
+>    M recréée(s) avec leur réglage, K neuve(s)` par reconstruction, sur la
+>    sortie d'erreur. L'ajout en fin de liste doit dire **0 recréée** ; la
+>    suppression d'une piste de tête doit en dire au moins une. Sans cette
+>    ligne, on vérifierait un résultat en croyant vérifier un chemin.
+> 4. **Aucun test existant ne change de verdict** ; des tests neufs tiennent
+>    l'identité des pistes (`core/`) et l'aller-retour de la machine absente
+>    (`interchange/`).
+> 5. **Ce qui n'est pas couvert est dit, pas découvert** : une machine
+>    RECRÉÉE (piste déplacée) perd ses voix en cours — une note tenue pendant
+>    qu'on supprime une piste au-dessus s'arrête ; et l'état natif d'un plugin
+>    tiers passe par `saveNativeState`, qu'aucun plugin tiers installé ici ne
+>    permet de mesurer.
+
+> **D76 EST FAITE (10/09/2026, 18:16). QUATRE ATTENDUS SUR CINQ SONT TENUS ;
+> LE PREMIER L'EST POUR SIX CAS SUR SEPT, ET LE SEPTIÈME A TROUVÉ UN AUTRE
+> DÉFAUT.**
+>
+> Le même banc, rejoué avec le binaire d'avant (témoin, copié avant la
+> compilation) puis avec celui d'après ; chaque `project.json` vérifié réécrit,
+> le preset de la Basse retrouvé PAR SON NOM — son numéro de fichier change
+> quand une piste disparaît au-dessus d'elle.
+>
+> | cas | avant | après | chemin dit par `VSM_MACHINES` |
+> |---|---|---|---|
+> | témoin | 0 / 9 | 0 / 9 | — |
+> | machine absente de ce build | demande et preset **effacés** | **gardés** | — |
+> | Basse désactivée dans le fichier | 4 / 9 perdus | **0 / 9** | — |
+> | désactiver puis réactiver | 4 / 9 perdus | **0 / 9** | « 1 gardée, 1 recréée avec leur réglage » à la réactivation |
+> | ajouter une piste MIDI | 4 / 9 perdus | **0 / 9** | « 2 gardée(s), 0 recréée(s), 0 neuve(s) » |
+> | supprimer une piste placée avant la Basse | 4 / 9 perdus | **0 / 9** | « 0 gardée, 2 recréée(s) avec leur réglage » |
+> | sampler de `sky-v4`, ouvert puis enregistré | 1 échantillon → **0** | **1 → 1**, identique | — |
+> | stem « Voix » de `sky-v4` exporté par le DAW | **silencieux** | **−6,44 dBFS** (`vsm-render` : −6,41) | — |
+>
+> **Le septième cas du premier attendu — ajouter puis annuler — n'a PAS été
+> mesuré, et il faut le dire parce que le tableau le laisserait croire.** Le
+> projet écrit compte **3 pistes**, avant comme après : Ctrl+Z n'a rien annulé,
+> et le cas a mesuré un second ajout. `VSM_TOUCHE` a répondu « touche inconnue
+> ou sans commande ». Ce n'est pas le banc : **l'application ne sait annuler
+> que depuis le piano roll** — `MainComponent::keyPressed` ne connaît pas
+> `EditUndo`, et le menu Édition n'a ni « Annuler » ni « Rétablir ». C'est
+> A11. Le cinquième chemin de perte (« annuler recrée toutes les machines »)
+> reste donc une LECTURE du code, que la correction couvre par construction
+> (`onProjectRestored` passe par la même reconstruction) sans que rien ne l'ait
+> joué.
+>
+> **Les attendus 2 à 5.** Le témoin reste à 0, et le banc de D75 redonne ses
+> lignes au mot près sur les trois projets (5 et 5, 0 et 0, 0 et 1). La
+> ligne `VSM_MACHINES` distingue les chemins comme demandé : **0 recréée** à
+> l'ajout, **2 recréées** à la suppression. Aucun test existant ne change de
+> verdict ; cinq tests neufs tiennent l'identité des pistes (`core/`, trois),
+> la capture des échantillons et l'aller-retour de la machine absente
+> (`interchange/`, deux). Et ce qui n'est pas couvert est écrit : les voix en
+> cours d'une machine recréée, l'état natif d'un plugin tiers — et un preset de
+> PISTE (bibliothèque) d'un sampler, qui capture désormais ses échantillons en
+> chemin absolu, faute de dossier de projet auquel les rapporter : la relecture
+> les refusera EN LE DISANT, là où ils disparaissaient sans un mot.
+>
+> **CE QUE CETTE PHASE CORRIGE DE D46.** « L'export du DAW et `vsm-render`
+> rendent le même son, mesuré sur un vrai morceau » restait vrai du morceau
+> mesuré ; sur `sky-v4`, l'export du DAW perdait la voix. La phrase de D46 n'est
+> pas réécrite — un relevé daté dit ce qu'il a mesuré — ; c'est ici que la
+> réserve est écrite.
+>
+> **CE QUE L'HORLOGE A CORRIGÉ.** Plusieurs paragraphes de cette phase avaient
+> été datés à l'estime, et certains portaient des heures qui n'étaient pas
+> encore arrivées quand ils ont été écrits. Ils portent désormais la date seule :
+> l'ordre hypothèse-puis-mesure est celui du texte, et c'est lui qui compte ;
+> une minute inventée ne l'aurait pas prouvé mieux.
+>
+> Tests : **330** core (+3), 1 291 audio, **297** interchange (+2), 25 clap,
+> 11 panels, 172 Python, ruff et mypy — tout vert.
