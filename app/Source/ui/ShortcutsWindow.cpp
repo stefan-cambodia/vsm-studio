@@ -1,4 +1,5 @@
 #include "ShortcutsWindow.h"
+#include "Langue.h"
 
 namespace vsm::app::ui {
 
@@ -26,7 +27,7 @@ public:
             if (categorie != famille) {
                 famille = categorie;
                 auto titre = std::make_unique<juce::Label>();
-                titre->setText(famille, juce::dontSendNotification);
+                titre->setText(tr(famille), juce::dontSendNotification);   // D87 : traduit à l'affichage
                 titre->setFont(juce::Font(juce::FontOptions(15.0f, juce::Font::bold)));
                 titre->setColour(juce::Label::textColourId, juce::Colours::skyblue);
                 addAndMakeVisible(*titre);
@@ -34,13 +35,13 @@ public:
             }
 
             auto libelle = std::make_unique<juce::Label>();
-            libelle->setText(juce::String::fromUTF8(commande.label), juce::dontSendNotification);
+            libelle->setText(tr(juce::String::fromUTF8(commande.label)), juce::dontSendNotification);
             libelle->setFont(juce::Font(juce::FontOptions(15.0f)));
             addAndMakeVisible(*libelle);
 
             const std::string touche = table->keyFor(commande.id);
             auto bouton = std::make_unique<juce::TextButton>(
-                touche.empty() ? juce::String::fromUTF8(u8"(désactivé)")
+                touche.empty() ? tr(u8"(désactivé)")
                                : juce::String::fromUTF8(touche.c_str()));
             const auto id = commande.id;
             bouton->onClick = [rebind, id] { if (rebind) rebind(id); };
@@ -52,8 +53,7 @@ public:
                 // DÉFAIRE : un bouton toujours présent et inerte quinze fois
                 // sur seize n'apprend rien.
                 defaut = std::make_unique<juce::TextButton>(juce::String::fromUTF8(u8"↺"));
-                defaut->setTooltip(juce::String::fromUTF8(u8"Rétablir ")
-                                        + juce::String::fromUTF8(commande.defaultKey));
+                defaut->setTooltip(tr(u8"Rétablir %1").replace("%1", juce::String::fromUTF8(commande.defaultKey)));
                 defaut->onClick = [reset, id] { if (reset) reset(id); };
                 addAndMakeVisible(*defaut);
             }
@@ -62,7 +62,7 @@ public:
 
         // CE QUI NE BOUGE PAS EST LISTÉ AUSSI. Voir `fixedShortcuts()`.
         auto titre = std::make_unique<juce::Label>();
-        titre->setText(juce::String::fromUTF8(u8"Navigation (non modifiable)"),
+        titre->setText(tr(u8"Navigation (non modifiable)"),
                         juce::dontSendNotification);
         titre->setFont(juce::Font(juce::FontOptions(15.0f, juce::Font::bold)));
         titre->setColour(juce::Label::textColourId, juce::Colours::skyblue);
@@ -71,7 +71,7 @@ public:
 
         for (const auto& fixe : vsm::interchange::fixedShortcuts()) {
             auto libelle = std::make_unique<juce::Label>();
-            libelle->setText(juce::String::fromUTF8(fixe.label), juce::dontSendNotification);
+            libelle->setText(tr(juce::String::fromUTF8(fixe.label)), juce::dontSendNotification);
             libelle->setFont(juce::Font(juce::FontOptions(15.0f)));
             addAndMakeVisible(*libelle);
             auto touche = std::make_unique<juce::Label>();
@@ -131,6 +131,14 @@ ShortcutsWindow::ShortcutsWindow() : contenu_(std::make_unique<Contenu>()) {
     toutRetablir_.onClick = [this] { if (onResetAll) onResetAll(); };
     addAndMakeVisible(toutRetablir_);
     setWantsKeyboardFocus(true);
+    retraduire();
+}
+
+void ShortcutsWindow::retraduire() {
+    // D87 : les deux boutons, initialisés en français dans l'en-tête. Les lignes
+    // sont refaites par le client (`refreshShortcutList`), qui les traduit.
+    exporter_.setButtonText(tr(u8"Enregistrer la table..."));
+    toutRetablir_.setButtonText(tr(u8"Tout rétablir"));
 }
 
 ShortcutsWindow::~ShortcutsWindow() = default;
@@ -167,8 +175,8 @@ bool ShortcutsWindow::keyPressed(const juce::KeyPress& key) {
 void ShortcutsWindow::setCapturing(const juce::String& commande) {
     attente_.setText(commande.isEmpty()
                           ? juce::String()
-                          : juce::String::fromUTF8(u8"Appuyez sur la nouvelle touche pour « ")
-                                + commande + juce::String::fromUTF8(u8" » (Échap : annuler)"),
+                          : tr(u8"Appuyez sur la nouvelle touche pour « %1 » (Échap : annuler)")
+                                .replace("%1", tr(commande)),
                       juce::dontSendNotification);
     if (!commande.isEmpty()) grabKeyboardFocus();
 }

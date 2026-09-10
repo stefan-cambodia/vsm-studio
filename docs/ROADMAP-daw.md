@@ -12165,3 +12165,60 @@ d'état en modèles entiers, la bascule rappelle les deux.
 >
 > Table à **626** paires (19 de plus). Tests : 330 core, 1 291 audio,
 > 297 interchange, 25 clap, 11 panels, 172 Python, ruff et mypy — tout vert.
+
+### Phase D87 — A9 : les raccourcis, les associations MIDI, le navigateur et la fenêtre de reconstruction (10/09/2026, 21:35)
+
+**LES QUATRE DERNIÈRES FENÊTRES FLOTTANTES.** Les raccourcis affichent 56
+commandes groupées en six familles, dont libellés et familles viennent de la
+table de `interchange/` (« Édition », « Lecture / arrêt ») : ils se traduisent
+à l'AFFICHAGE, comme les gammes (D78) et les accords (D80) — la table des
+raccourcis s'écrit aussi dans un fichier, et ses noms ne doivent pas dépendre
+de la langue. Les associations MIDI, le navigateur et la fenêtre de
+reconstruction ont leurs textes et leurs boutons en français, initialisés dans
+l'en-tête pour trois d'entre eux, et aucune re-traduction.
+
+**UNE LIMITE DE LA MESURE, DITE D'AVANCE.** La fenêtre de reconstruction ne
+s'ouvre qu'après le choix d'un fichier audio dans une boîte du système, que
+rien ne pilote sans souris : elle est traduite, mais **pas photographiée** ; son
+français est vérifié par ses littéraux, comme en D77.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (10/09/2026, 21:35).**
+>
+> 1. **Lancées en anglais, les trois fenêtres photographiables sont en
+>    anglais** — raccourcis, associations MIDI, navigateur — et rien n'y est
+>    tronqué.
+> 2. **Basculées en anglais, elles sont la même image** que lancées en anglais.
+> 3. **Le français ne bouge pas** : 0 pixel, témoin lancé du dossier du build.
+
+> **D87 EST FAITE (10/09/2026, 21:39). LES TROIS ATTENDUS SONT TENUS, AVEC UNE
+> RÉSERVE ÉCRITE SUR LE NAVIGATEUR.** Le témoin lancé du dossier du build, les
+> fenêtres ouvertes par leurs entrées de menu (`VSM_MENU`), photographiées par
+> `VSM_CAPTURE_PANNEAUX`, `HOME` isolé, préférences de l'utilisateur intactes
+> (comparées à une copie prise juste avant la série).
+>
+> | fenêtre | FR / EN avant | FR / EN après | lancée / basculée en anglais | français avant / après |
+> |---|---|---|---|---|
+> | raccourcis clavier | **0 px** | 9 494 px | **0 px** | **0 px** |
+> | associations MIDI | **0 px** | 6 506 px | **0 px** | **0 px** |
+> | navigateur | **0 px** | 1 841 px | **0 px** | **0 px** |
+>
+> Trois fenêtres de plus qui étaient **la même image dans les deux langues**.
+> Les 56 commandes, les 6 familles et les 4 raccourcis fixes de la table des
+> raccourcis ont leur paire, traduits à l'affichage ; les boutons initialisés
+> dans les en-têtes sont reposés par `retraduire()` ; la bascule rappelle les
+> clients (`refreshShortcutList`, `refreshMidiLearnList`). La fenêtre de
+> reconstruction est traduite et **non photographiée**, comme annoncé. Table à
+> **688** paires (62 de plus).
+>
+> **LA RÉSERVE, VUE SUR L'IMAGE DU NAVIGATEUR.** Le champ de recherche est en
+> anglais ; les lignes ne le sont qu'à moitié. Les **descriptions des machines**
+> (« Clavinet (la corde qui sonne entière au relâchement) ») viennent des
+> machines elles-mêmes (`displayName`), et la source « Parc VSM » de
+> `interchange/` : ce sont des chaînes du moteur, pas de l'application, et
+> elles relèvent du reste d'A9. La même image montre la colonne de la source
+> **coupée par le bord de la fenêtre** (« Parc VSI… ») — dans les deux
+> langues, donc un défaut de disposition antérieur, pas un effet de la
+> traduction. Nommé, non fait.
+>
+> Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
+> 172 Python, ruff et mypy — tout vert.

@@ -1,4 +1,5 @@
 #include "MidiLearnWindow.h"
+#include "Langue.h"
 
 namespace vsm::app::ui {
 
@@ -20,7 +21,7 @@ public:
             addAndMakeVisible(*etiquette);
             etiquettes_.push_back(std::move(etiquette));
 
-            auto bouton = std::make_unique<juce::TextButton>("Retirer");
+            auto bouton = std::make_unique<juce::TextButton>(tr("Retirer"));
             const int cc = ligne.controller;
             bouton->onClick = [retirer, cc] { if (retirer) retirer(cc); };
             addAndMakeVisible(*bouton);
@@ -54,10 +55,6 @@ MidiLearnWindow::MidiLearnWindow() : contenu_(std::make_unique<Contenu>()) {
 
     // QUAND IL N'Y A RIEN, ON LE DIT. Une liste vide et une fenêtre qui n'a
     // pas fini de charger se ressemblent trop.
-    vide_.setText(juce::String::fromUTF8(
-                       u8"Aucune association.\n\nDans le Synth Rack, clic droit sur un réglage ▸ "
-                       u8"« Apprendre un contrôleur MIDI », puis tournez le potentiomètre."),
-                   juce::dontSendNotification);
     vide_.setJustificationType(juce::Justification::centred);
     vide_.setFont(juce::Font(juce::FontOptions(15.0f)));
     addAndMakeVisible(vide_);
@@ -76,6 +73,17 @@ MidiLearnWindow::MidiLearnWindow() : contenu_(std::make_unique<Contenu>()) {
     attente_.setFont(juce::Font(juce::FontOptions(15.0f, juce::Font::bold)));
     attente_.setColour(juce::Label::textColourId, juce::Colours::gold);
     addAndMakeVisible(attente_);
+    retraduire();
+}
+
+void MidiLearnWindow::retraduire() {
+    // D87 : l'état vide et les deux boutons ; les lignes sont refaites par le
+    // client (`refreshMidiLearnList`).
+    vide_.setText(tr(u8"Aucune association.\n\nDans le Synth Rack, clic droit sur un réglage ▸ "
+                     u8"« Apprendre un contrôleur MIDI », puis tournez le potentiomètre."),
+                  juce::dontSendNotification);
+    toutEffacer_.setButtonText(tr(u8"Tout effacer"));
+    apprendre_.setButtonText(tr(u8"Apprendre..."));
 }
 
 MidiLearnWindow::~MidiLearnWindow() = default;
@@ -97,8 +105,7 @@ void MidiLearnWindow::resized() {
 
 void MidiLearnWindow::setWaiting(const juce::String& quoi) {
     attente_.setText(quoi.isEmpty() ? juce::String()
-                                     : juce::String::fromUTF8(u8"Tournez un potentiomètre pour ")
-                                           + quoi + juce::String::fromUTF8(u8"..."),
+                                     : tr(u8"Tournez un potentiomètre pour %1...").replace("%1", quoi),
                       juce::dontSendNotification);
 }
 

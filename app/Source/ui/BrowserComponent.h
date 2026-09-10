@@ -26,6 +26,8 @@ namespace vsm::app::ui {
 class BrowserComponent : public juce::Component,
                           public juce::DragAndDropContainer {
 public:
+    /// D87 : repose les textes fixes dans la langue courante.
+    void retraduire();
     BrowserComponent();
     // Défini dans le .cpp : `Liste` y est complète, et `unique_ptr` a besoin
     // de sa taille pour la détruire.

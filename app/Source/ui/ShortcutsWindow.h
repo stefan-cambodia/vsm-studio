@@ -20,6 +20,8 @@ namespace vsm::app::ui {
 /// ne ferait aucune de ces trois choses.
 class ShortcutsWindow : public juce::Component {
 public:
+    /// D87 : repose les textes fixes dans la langue courante.
+    void retraduire();
     ShortcutsWindow();
     ~ShortcutsWindow() override;
 

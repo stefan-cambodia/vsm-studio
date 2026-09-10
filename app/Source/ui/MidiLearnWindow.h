@@ -20,6 +20,8 @@ namespace vsm::app::ui {
 /// pour le mixeur -- un panneau n'est jamais une source de vérité.
 class MidiLearnWindow : public juce::Component {
 public:
+    /// D87 : repose les textes fixes dans la langue courante.
+    void retraduire();
     struct Row {
         int controller = 0;
         juce::String description;

@@ -1,4 +1,5 @@
 #include "BrowserComponent.h"
+#include "Langue.h"
 
 namespace vsm::app::ui {
 
@@ -143,9 +144,6 @@ private:
 };
 
 BrowserComponent::BrowserComponent() : liste_(std::make_unique<Liste>(*this)) {
-    recherche_.setTextToShowWhenEmpty(
-        juce::String::fromUTF8(u8"Chercher une machine, un preset, un échantillon..."),
-        juce::Colours::grey);
     recherche_.onTextChange = [this] { refilter(); };
     addAndMakeVisible(recherche_);
 
@@ -157,6 +155,13 @@ BrowserComponent::BrowserComponent() : liste_(std::make_unique<Liste>(*this)) {
     defilement_.setViewedComponent(liste_.get(), false);
     defilement_.setScrollBarsShown(true, false);
     addAndMakeVisible(defilement_);
+    retraduire();
+}
+
+void BrowserComponent::retraduire() {
+    recherche_.setTextToShowWhenEmpty(tr(u8"Chercher une machine, un preset, un échantillon..."),
+                                      juce::Colours::grey);   // D87
+    repaint();
 }
 
 BrowserComponent::~BrowserComponent() = default;
