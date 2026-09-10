@@ -131,6 +131,7 @@ public:
                              size_t residentBytes = 0);
     /// D24.5 : relit le nom de la piste (une ligne créée avant qu'on la nomme).
     void refreshName();
+    void retraduire();   // D83
     /// D36.7 : relit le muet et le solo. Le muet et le solo s'affichent à DEUX
     /// endroits -- ici et dans la tranche du mélangeur --, et chacun posait son
     /// bouton une seule fois, à sa construction : rendre une piste muette dans

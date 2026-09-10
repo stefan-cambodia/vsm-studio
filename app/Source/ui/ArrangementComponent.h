@@ -218,7 +218,10 @@ public:
     /// ou autant de fois qu'il en tient avant la fin de la boucle. La vue
     /// calcule le bloc et son arrondi ; le montage est dans `ClipEdit`.
     void repeatSelection(int count);
-    int repeatsUntilLoopEnd() const;   ///< 0 sans boucle, sans sélection, ou quand rien n'y tient
+    int repeatsUntilLoopEnd() const;
+    /// D83 : les menus du clic droit, construits sans clic -- pour que `VSM_MENU_LISTE`
+    /// les écrive comme la barre. Premier clip MIDI, premier clip audio.
+    std::vector<std::pair<juce::String, juce::PopupMenu>> menusPourCapture() const;   ///< 0 sans boucle, sans sélection, ou quand rien n'y tient
     void repeatSelectionUntilLoopEnd();
     /// Tous les clips de toutes les pistes (Ctrl+A, D11.2).
     void selectAll();
@@ -338,6 +341,8 @@ private:
     /// en a pas à voir, et huit pixels de la largeur d'un clip ne doivent pas
     /// se comporter autrement sans raison visible.
     int marqueurAt(const vsm::sequencer::Clip& clip, float x) const;
+    juce::PopupMenu menuDeLaRegle(int survole) const;   // D83
+    juce::PopupMenu menuDuClip(size_t piste, const vsm::sequencer::Clip& clip, int surMarqueur) const;
     /// L'indice du marqueur qu'on déplace, et le tick du dernier clic droit --
     /// le menu en a besoin pour savoir OÙ ajouter un marqueur.
     int marqueurGeste_ = -1;

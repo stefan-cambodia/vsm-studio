@@ -30,7 +30,8 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
                                       const juce::String& sourceName)
     : track_(track), index_(trackIndex), audio_(track.kind == Track::Kind::Audio) {
     addAndMakeVisible(nameLabel_);
-    nameLabel_.setText(track_.name.empty() ? ("Piste " + std::to_string(trackIndex + 1)) : track_.name,
+    nameLabel_.setText(track_.name.empty() ? vsm::app::ui::tr(u8"Piste %1").replace("%1", juce::String(static_cast<int>(trackIndex) + 1))
+                                         : juce::String::fromUTF8(track_.name.c_str()),
                         juce::dontSendNotification);
     nameLabel_.setEditable(false, true, false);
     nameLabel_.onTextChange = [this] {
@@ -108,7 +109,7 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
         audioSourceLabel_.setText(u8"bus de groupe", juce::dontSendNotification);
     } else {
         addAndMakeVisible(instrumentBox_);
-        instrumentBox_.addItem("(Aucun)", 1);
+        instrumentBox_.addItem(vsm::app::ui::tr("(Aucun)"), 1);   // D83
         auto instruments = availableInstruments();
         int selectedId = 1;
         for (int i = 0; i < static_cast<int>(instruments.size()); ++i) {
@@ -285,8 +286,22 @@ void TrackRowComponent::debutEdition(const juce::String& libelle) {
     if (onEditStarted) onEditStarted(libelle);
 }
 
+void TrackRowComponent::retraduire() {
+    // D83 : ce que la ligne écrit une fois -- le nom de repli « Piste N » et
+    // l'entrée « (Aucun) » de sa machine -- suit la bascule de langue. La
+    // sélection se lit AVANT de renommer : JUCE rend 0 pour une entrée choisie
+    // dont le texte ne correspond plus (D78).
+    refreshName();
+    if (instrumentBox_.getNumItems() > 0) {
+        const bool aucune = instrumentBox_.getSelectedId() == 1;
+        instrumentBox_.changeItemText(1, vsm::app::ui::tr("(Aucun)"));
+        if (aucune) instrumentBox_.setSelectedId(1, juce::dontSendNotification);
+    }
+}
+
 void TrackRowComponent::refreshName() {
-    nameLabel_.setText(track_.name.empty() ? ("Piste " + std::to_string(index_ + 1)) : track_.name,
+    nameLabel_.setText(track_.name.empty() ? vsm::app::ui::tr(u8"Piste %1").replace("%1", juce::String(static_cast<int>(index_) + 1))
+                                         : juce::String::fromUTF8(track_.name.c_str()),
                        juce::dontSendNotification);
 }
 
@@ -923,5 +938,6 @@ void TrackListComponent::retraduire() {
     removeButton_.setButtonText(vsm::app::ui::tr("Supprimer"));
     filterBox_.setTextToShowWhenEmpty(vsm::app::ui::tr(u8"Filtrer les pistes..."),
                                        Palette::textSecondary);
+    for (auto* ligne : rows_) ligne->retraduire();   // D83
     repaint();
 }

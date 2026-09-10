@@ -11928,3 +11928,70 @@ posé une fois, à sa construction.
 >
 > Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
 > 172 Python, ruff et mypy — tout vert.
+
+### Phase D83 — A9 : les menus de l'arrangement, sortis de `mouseDown` pour être mesurés (10/09/2026, 20:10)
+
+**CE QUI RESTE, ET POURQUOI IL ÉCHAPPAIT À LA MESURE.** Les menus du clic
+droit dans l'arrangement — celui de la règle (repères) et celui du clip, avec
+ses sous-menus (répéter, suivi de tempo, formes des fondus, gain, hauteur) —
+comptent **40 appels `addItem`/`addSubMenu`, aucun par `tr()`**. Ils sont
+construits EN LIGNE dans `mouseDown`, au moment du clic : ni une capture ni
+`VSM_MENU_LISTE` ne les atteignent. S'y ajoutent trois listes déroulantes
+toujours à l'écran : « (Aucun) » et « -> Master » dans la liste des pistes,
+« Tout » dans la liste d'événements.
+
+**LA DÉCISION.** **D'abord rendre mesurable, ensuite traduire, et mesurer
+entre les deux** : la construction des deux menus sort de `mouseDown` dans
+deux fonctions, `mouseDown` les appelle, et `VSM_MENU_LISTE` les liste —
+sur un clip MIDI et sur un clip audio importé (`VSM_IMPORT_AUDIO`), puisque
+la moitié du menu n'existe que pour l'audio. La liste « avant » est prise
+avec ce code-là, sans traduction ; c'est la règle du témoin de même code.
+Les libellés à nombre deviennent des modèles entiers (règle de D81).
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (10/09/2026, 20:10).**
+>
+> 1. **Les menus de l'arrangement sont listés**, règle et clip, MIDI et
+>    audio ; après traduction, leurs seules entrées identiques en français et
+>    en anglais sont neutres (« +3 dB », « 16 fois » ne l'est pas), et la
+>    liste est publiée.
+> 2. **Le français ne change pas** : liste d'avant et liste d'après égales,
+>    alignées par contenu, les deux binaires lancés du dossier du build
+>    (l'oubli de D82 ne se répète pas).
+> 3. **Les listes déroulantes de la liste des pistes** sont en anglais sur une
+>    capture en anglais.
+
+> **D83 EST FAITE (10/09/2026, 20:17), ET LES TROIS ATTENDUS SONT TENUS.** Le
+> relevé « avant » a été pris par le code refactorisé et encore non traduit —
+> le témoin de même code —, les deux binaires lancés du dossier du build, sur
+> une copie de la démo où un WAV est importé (`VSM_IMPORT_AUDIO`) pour que le
+> menu d'un clip audio existe. `HOME` isolé, préférences de l'utilisateur
+> intactes.
+>
+> | | avant | après |
+> |---|---|---|
+> | entrées des menus de l'arrangement (règle, clip MIDI, clip audio) | 70 | 70 |
+> | identiques en français et en anglais | **70** | **6** — « -6 dB » … « +6 dB », neutres |
+> | liste entière en français, alignée par contenu | 382 | **381 égales**, et la 382ᵉ est une entrée des projets récents du `HOME` isolé, déplacée par une capture du banc lui-même |
+> | liste des pistes lancée en anglais | « (Aucun) » | **« (None) »**, et « Track N » pour une piste sans nom |
+>
+> La refactorisation ne change pas le menu : `mouseDown` appelle les deux
+> fonctions avec ce qu'il calculait avant (la position du clic, le marqueur
+> survolé), et le relevé d'avant a été pris par ce code-là. Les libellés à
+> nombre sont des modèles entiers ; « demi-ton » et « demi-tons » en sont deux,
+> choisis par la règle française, parce que l'anglais n'accorde pas au même
+> endroit. La liste d'événements traduit à l'affichage les types qui sortent
+> de `core/` (« Pli » → « Bend »). Table à **583** paires (45 de plus).
+>
+> **CE QUE LA MESURE A TROUVÉ EN PLUS — UN OUBLI DE LA BASCULE, NOMMÉ ET NON
+> FAIT.** La liste des pistes a désormais sa re-traduction ligne par ligne, et
+> la capture basculée montre « (None) ». Mais entre la capture lancée en
+> anglais et la capture basculée, **3 482 pixels** diffèrent encore, et ils
+> sont dans le **volet du rapport d'ouverture** : son titre (« Projet ouvert,
+> avec des réserves »), son résumé (« 5 réserves à l'ouverture ») et ses
+> boutons « Copier » et « Fermer » restent dans la langue de l'ouverture. Le
+> titre et le résumé sont fabriqués par l'appelant au moment où le rapport
+> s'ouvre ; les re-traduire demande que le volet garde ses clés plutôt que ses
+> textes — une phase à part.
+>
+> Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
+> 172 Python, ruff et mypy — tout vert.

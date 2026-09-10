@@ -1,4 +1,5 @@
 #include "AutomationComponent.h"
+#include "Langue.h"
 #include <algorithm>
 
 using vsm::audio::engine::AutomationLane;
@@ -60,7 +61,7 @@ void AutomationComponent::rebuildTrackBox() {
     if (project_ != nullptr) {
         for (size_t i = 0; i < project_->tracks.size(); ++i) {
             const auto& name = project_->tracks[i].name;
-            trackBox_.addItem(name.empty() ? ("Piste " + juce::String(i + 1))
+            trackBox_.addItem(name.empty() ? vsm::app::ui::tr(u8"Piste %1").replace("%1", juce::String(i + 1))
                                            : juce::String(name),
                               static_cast<int>(i) + 1);
         }

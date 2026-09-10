@@ -1,4 +1,5 @@
 #include "ArrangementComponent.h"
+#include "Langue.h"
 #include <limits>
 #include "LookAndFeel/VsmLookAndFeel.h"
 #include <algorithm>
@@ -412,6 +413,165 @@ Clip* ArrangementComponent::clipAt(juce::Point<float> point, size_t& trackIndex,
     return nullptr;
 }
 
+juce::PopupMenu ArrangementComponent::menuDeLaRegle(int survole) const {
+    using vsm::app::ui::tr;   // D83
+    juce::PopupMenu menu;
+    menu.addItem(1, tr(u8"Poser un repère ici…"));
+    menu.addItem(2, tr(u8"Renommer ce repère…"), survole >= 0);
+    menu.addItem(3, tr(u8"Retirer ce repère"), survole >= 0);
+    return menu;
+}
+
+juce::PopupMenu ArrangementComponent::menuDuClip(size_t piste, const vsm::sequencer::Clip& clip,
+                                                 int surMarqueur) const {
+    using vsm::app::ui::tr;   // D83 : aucune entrée ne passait par la table
+    juce::PopupMenu menu;
+    menu.addItem(1, tr(u8"Renommer\u2026"));
+    menu.addItem(2, tr(u8"Couleur\u2026"));
+    menu.addItem(3, tr(u8"Couleur de la piste"));
+    menu.addItem(4, tr(clip.muted ? u8"R\u00e9activer" : u8"Rendre muet"));
+    menu.addSeparator();
+    menu.addItem(5, tr(u8"Couper \u00e0 la t\u00eate de lecture (Ctrl+E)"), !selection_.empty());
+    menu.addItem(6, tr(u8"Joindre les clips choisis (Ctrl+J)"), selection_.size() > 1);
+    // D34.2 : DÉLIER UNE COPIE PARTAGÉE. L'entrée est GRISÉE quand le clip
+    // n'est lié à rien, plutôt qu'absente : sa présence enseigne que la
+    // notion existe, et son grisé dit que ce clip-ci n'est pas concerné.
+    // Une entrée qui apparaît et disparaît ne s'apprend jamais.
+    {
+        const bool liable = project_->tracks[piste].kind == Track::Kind::Midi
+                         && clipIsShared(project_->tracks[piste].clips, clip.id);
+        menu.addItem(24, tr(u8"Convertir en copie indépendante"), liable);
+    }
+    // D20.1 : RÉPÉTER, à la suite. Des nombres fixes plutôt qu'une boîte de
+    // dialogue : le geste est « encore, encore », pas « combien ? ». Et
+    // l'entrée « jusqu'à la fin de la boucle » dit d'avance combien de
+    // fois : une commande grisée sans raison est une commande qu'on croit
+    // cassée.
+    {
+        juce::PopupMenu repeter;
+        static const int kNombres[] = {2, 3, 4, 8, 16};
+        for (int i = 0; i < 5; ++i)
+            repeter.addItem(40 + i, tr(u8"%1 fois").replace("%1", juce::String(kNombres[i])));
+        const int jusquALaBoucle = repeatsUntilLoopEnd();
+        repeter.addSeparator();
+        repeter.addItem(45, jusquALaBoucle > 0
+                                ? tr(u8"Jusqu'\u00e0 la fin de la boucle (%1 fois)").replace("%1", juce::String(jusquALaBoucle))
+                                : tr(u8"Jusqu'\u00e0 la fin de la boucle (rien n'y tient, ou pas de boucle)"),
+                        jusquALaBoucle > 0);
+        menu.addSubMenu(tr(u8"R\u00e9p\u00e9ter la s\u00e9lection"), repeter, !selection_.empty());
+    }
+    // LE SUIVI DE TEMPO (D12.6) N'EST PROPOSÉ QUE SUR UNE PISTE AUDIO :
+    // un clip MIDI suit déjà le tempo par nature, et lui offrir le choix
+    // laisserait croire qu'il pourrait ne pas le suivre.
+    if (project_->tracks[piste].kind == Track::Kind::Audio) {
+        using vsm::sequencer::WarpMode;
+        menu.addSeparator();
+        juce::PopupMenu suivi;
+        suivi.addItem(10, tr(u8"Non"), true, clip.warpMode == WarpMode::Off);
+        suivi.addItem(11, tr(u8"Hauteur conserv\u00e9e"), true, clip.warpMode == WarpMode::KeepPitch);
+        suivi.addItem(12, tr(u8"R\u00e9\u00e9chantillonn\u00e9"), true, clip.warpMode == WarpMode::Repitch);
+        suivi.addItem(16, tr(u8"Hauteur conserv\u00e9e (WSOLA, t\u00e9moin)"), true,
+                      clip.warpMode == WarpMode::KeepPitchWsola);
+        menu.addSubMenu(tr(u8"Suivre le tempo"), suivi);
+        menu.addItem(13, tr(u8"Le clip fait N mesures\u2026"));
+        menu.addItem(14, tr(u8"Ajouter un marqueur ici"), vsm::sequencer::clipIsWarped(clip)
+                                                      && surMarqueur < 0);
+        menu.addItem(15, tr(u8"Retirer ce marqueur"), surMarqueur > 0);
+        menu.addItem(17, tr(u8"\u00c0 l'envers"), true, clip.reversed);
+        // D17.1 : LA FORME DES FONDUS. Sur une piste audio seulement --
+        // un clip MIDI n'a pas de fondu à donner une forme.
+        {
+            using vsm::sequencer::FadeShape;
+            juce::PopupMenu formes;
+            formes.addItem(30, tr(u8"Droite (mat\u00e9riau corr\u00e9l\u00e9)"), true,
+                            clip.fadeShape == FadeShape::Linear);
+            formes.addItem(31, tr(u8"\u00c9gale puissance (mat\u00e9riau d\u00e9corr\u00e9l\u00e9)"), true,
+                            clip.fadeShape == FadeShape::EqualPower);
+            formes.addItem(32, tr(u8"Lente au d\u00e9part"), true, clip.fadeShape == FadeShape::Slow);
+            formes.addItem(33, tr(u8"Rapide au d\u00e9part"), true, clip.fadeShape == FadeShape::Fast);
+            menu.addSubMenu(tr(u8"Forme des fondus"), formes);
+        }
+        menu.addItem(18, tr(u8"Normaliser (gain = 1 / cr\u00eate)"), waveformProvider != nullptr);
+        // D22.1 : LE GAIN ET LA PHASE À LA MAIN. Des pas fixes relatifs au
+        // gain courant plutôt qu'une boîte de dialogue -- le geste est
+        // « un peu plus, un peu moins », et il s'enchaîne. Le titre du
+        // sous-menu DIT le gain d'où l'on part.
+        {
+            juce::PopupMenu gain;
+            static const int kPas[] = {-6, -3, -1, 1, 3, 6};
+            for (int i = 0; i < 6; ++i)
+                gain.addItem(50 + i, juce::String(kPas[i] > 0 ? "+" : "") + juce::String(kPas[i]) + " dB");
+            gain.addSeparator();
+            gain.addItem(56, tr(u8"0 dB (remettre)"), std::abs(clip.gain - 1.0f) > 1e-4f);
+            const float dB = clip.gain > 0.0f ? 20.0f * std::log10(clip.gain) : -96.0f;
+            menu.addSubMenu(tr(u8"Gain du clip (%1 dB)").replace("%1", juce::String(dB >= 0.0f ? "+" : "") + juce::String(dB, 1)), gain);
+            menu.addItem(57, tr(u8"Phase invers\u00e9e"), true, clip.invertPhase);
+        }
+        // D54 : LA HAUTEUR DU CLIP — l'élément que D21 avait reporté. Même
+        // forme que le gain, et pour la même raison : le geste est « un
+        // demi-ton de plus », il s'enchaîne, et le titre dit d'où l'on
+        // part. Les pas sont musicaux — le demi-ton, la quarte, l'octave —
+        // et non une progression régulière : on transpose une basse d'une
+        // octave et une voix d'un ton, jamais de quatre demi-tons.
+        {
+            juce::PopupMenu hauteur;
+            static const int kDemiTons[] = {-12, -5, -1, 1, 5, 12};
+            // GRISÉ EN MODE « VINYLE », et le titre dit pourquoi : dans ce
+            // mode la hauteur SUIT la durée, elle n'est pas un réglage. Un
+            // geste qui ne ferait rien sans le dire serait pire que pas de
+            // geste du tout.
+            const bool vinyle = clip.warpMode == vsm::sequencer::WarpMode::Repitch;
+            for (int i = 0; i < 6; ++i)
+                hauteur.addItem(60 + i,
+                                 tr(std::abs(kDemiTons[i]) > 1 ? u8"%1 demi-tons" : u8"%1 demi-ton")
+                                     .replace("%1", juce::String(kDemiTons[i] > 0 ? "+" : "") + juce::String(kDemiTons[i])),
+                                 !vinyle);
+            hauteur.addSeparator();
+            hauteur.addItem(66, tr(u8"0 (remettre)"), !vinyle && std::abs(clip.pitchSemitones) > 1e-6);
+            juce::String titre = tr(std::abs(clip.pitchSemitones) > 1.0 ? u8"Hauteur du clip (%1 demi-tons)"
+                                                                : u8"Hauteur du clip (%1 demi-ton)")
+                                   .replace("%1", juce::String(clip.pitchSemitones >= 0.0 ? "+" : "")
+                                                      + juce::String(clip.pitchSemitones, 2));
+            if (vinyle) titre = tr(u8"Hauteur du clip — suit la dur\u00e9e (mode R\u00e9\u00e9chantillonn\u00e9)");
+            menu.addSubMenu(titre, hauteur, !vinyle);
+        }
+        menu.addItem(19, tr(u8"Rogner au son (d\u00e9tecter le silence)"));
+        // D20.3 : DÉCOUPER AUX TRANSITOIRES, sur les clips audio choisis.
+        // Le nombre de coupes se dit APRÈS, pas dans l'entrée : le compter
+        // d'avance lirait le fichier entier à chaque ouverture du menu, et
+        // neuf minutes de voix feraient attendre un clic droit.
+        menu.addItem(22, tr(u8"D\u00e9couper aux transitoires (clips audio choisis)"));
+        // D20.4 : TRANSCRIRE EN MIDI, un clip à la fois -- le premier
+        // choisi. L'application dit si Python manque, avec la raison.
+        menu.addItem(23, tr(u8"Transcrire en MIDI (Basic Pitch, Python)"));
+    }
+    // LE ZOOM (D14.2), pour tout clip : tout voir, ou la sélection.
+    menu.addSeparator();
+    menu.addItem(20, tr(u8"Zoom : tout voir"));
+    menu.addItem(21, tr(u8"Zoom : la s\u00e9lection"));
+    return menu;
+}
+
+std::vector<std::pair<juce::String, juce::PopupMenu>> ArrangementComponent::menusPourCapture() const {
+    // D83 : les deux menus du clic droit, sur le premier clip MIDI et le premier
+    // clip audio du projet -- la moitié du menu du clip n'existe que pour l'audio.
+    std::vector<std::pair<juce::String, juce::PopupMenu>> menus;
+    menus.emplace_back(juce::String(u8"Arrangement / règle"), menuDeLaRegle(-1));
+    if (project_ == nullptr) return menus;
+    bool vuMidi = false, vuAudio = false;
+    for (size_t p = 0; p < project_->tracks.size(); ++p) {
+        const auto& piste = project_->tracks[p];
+        if (piste.clips.empty()) continue;
+        const bool audio = piste.kind == Track::Kind::Audio;
+        bool& vu = audio ? vuAudio : vuMidi;
+        if (vu) continue;
+        vu = true;
+        menus.emplace_back(juce::String(audio ? "Arrangement / clip audio" : "Arrangement / clip MIDI"),
+                           menuDuClip(p, piste.clips.front(), -1));
+    }
+    return menus;
+}
+
 void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
     if (project_ == nullptr) return;
     const auto point = event.position;
@@ -423,10 +583,7 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
         if (event.mods.isPopupMenu()) {
             const vsm::midi::Tick tick = std::max<vsm::midi::Tick>(0, xToTick(point.x));
             const int survole = markerAt(point.x);
-            juce::PopupMenu menu;
-            menu.addItem(1, u8"Poser un repère ici…");
-            menu.addItem(2, u8"Renommer ce repère…", survole >= 0);
-            menu.addItem(3, u8"Retirer ce repère", survole >= 0);
+            juce::PopupMenu menu = menuDeLaRegle(survole);   // D83
             menu.showMenuAsync(juce::PopupMenu::Options(), [this, tick, survole](int choix) {
                 if (choix == 1 && onMarkerRequested) onMarkerRequested(tick);
                 if (choix == 2 && survole >= 0 && onMarkerRenameRequested)
@@ -603,137 +760,15 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
     // LE MENU DU CLIP (D11.4) : renommer, colorer, reprendre la couleur de la
     // piste, rendre muet. Le clic droit a d'abord choisi le clip, ci-dessus.
     if (event.mods.isPopupMenu()) {
-        juce::PopupMenu menu;
-        menu.addItem(1, u8"Renommer\u2026");
-        menu.addItem(2, u8"Couleur\u2026");
-        menu.addItem(3, u8"Couleur de la piste");
-        menu.addItem(4, clip->muted ? u8"R\u00e9activer" : u8"Rendre muet");
-        menu.addSeparator();
-        menu.addItem(5, u8"Couper \u00e0 la t\u00eate de lecture (Ctrl+E)", !selection_.empty());
-        menu.addItem(6, u8"Joindre les clips choisis (Ctrl+J)", selection_.size() > 1);
-        // D34.2 : DÉLIER UNE COPIE PARTAGÉE. L'entrée est GRISÉE quand le clip
-        // n'est lié à rien, plutôt qu'absente : sa présence enseigne que la
-        // notion existe, et son grisé dit que ce clip-ci n'est pas concerné.
-        // Une entrée qui apparaît et disparaît ne s'apprend jamais.
-        {
-            const bool liable = clip != nullptr
-                             && project_->tracks[piste].kind == Track::Kind::Midi
-                             && clipIsShared(project_->tracks[piste].clips, clip->id);
-            menu.addItem(24, u8"Convertir en copie indépendante", liable);
-        }
-        // D20.1 : RÉPÉTER, à la suite. Des nombres fixes plutôt qu'une boîte de
-        // dialogue : le geste est « encore, encore », pas « combien ? ». Et
-        // l'entrée « jusqu'à la fin de la boucle » dit d'avance combien de
-        // fois : une commande grisée sans raison est une commande qu'on croit
-        // cassée.
-        {
-            juce::PopupMenu repeter;
-            static const int kNombres[] = {2, 3, 4, 8, 16};
-            for (int i = 0; i < 5; ++i)
-                repeter.addItem(40 + i, juce::String(kNombres[i]) + " fois");
-            const int jusquALaBoucle = repeatsUntilLoopEnd();
-            repeter.addSeparator();
-            repeter.addItem(45, jusquALaBoucle > 0
-                                    ? juce::String(u8"Jusqu'\u00e0 la fin de la boucle (")
-                                          + juce::String(jusquALaBoucle) + " fois)"
-                                    : juce::String(u8"Jusqu'\u00e0 la fin de la boucle (rien n'y tient, ou pas de boucle)"),
-                            jusquALaBoucle > 0);
-            menu.addSubMenu(u8"R\u00e9p\u00e9ter la s\u00e9lection", repeter, !selection_.empty());
-        }
-        // LE SUIVI DE TEMPO (D12.6) N'EST PROPOSÉ QUE SUR UNE PISTE AUDIO :
-        // un clip MIDI suit déjà le tempo par nature, et lui offrir le choix
-        // laisserait croire qu'il pourrait ne pas le suivre.
+        // D83 : LE MENU EST CONSTRUIT PAR UNE FONCTION, et non plus ici : c'est ce
+        // qui permet de le LISTER sans souris (`VSM_MENU_LISTE`). Ce qui dépend
+        // du point cliqué -- la position, le marqueur survolé -- se calcule ici
+        // et se passe en paramètre.
         clicTick_ = xToTick(point.x);
-        if (project_->tracks[piste].kind == Track::Kind::Audio) {
-            using vsm::sequencer::WarpMode;
-            menu.addSeparator();
-            juce::PopupMenu suivi;
-            suivi.addItem(10, u8"Non", true, clip->warpMode == WarpMode::Off);
-            suivi.addItem(11, u8"Hauteur conserv\u00e9e", true, clip->warpMode == WarpMode::KeepPitch);
-            suivi.addItem(12, u8"R\u00e9\u00e9chantillonn\u00e9", true, clip->warpMode == WarpMode::Repitch);
-            suivi.addItem(16, u8"Hauteur conserv\u00e9e (WSOLA, t\u00e9moin)", true,
-                          clip->warpMode == WarpMode::KeepPitchWsola);
-            menu.addSubMenu(u8"Suivre le tempo", suivi);
-            menu.addItem(13, u8"Le clip fait N mesures\u2026");
-            const int surMarqueur = marqueurAt(*clip, point.x);
-            menu.addItem(14, u8"Ajouter un marqueur ici", vsm::sequencer::clipIsWarped(*clip)
-                                                          && surMarqueur < 0);
-            menu.addItem(15, u8"Retirer ce marqueur", surMarqueur > 0);
-            menu.addItem(17, u8"\u00c0 l'envers", true, clip->reversed);
-            // D17.1 : LA FORME DES FONDUS. Sur une piste audio seulement --
-            // un clip MIDI n'a pas de fondu à donner une forme.
-            {
-                using vsm::sequencer::FadeShape;
-                juce::PopupMenu formes;
-                formes.addItem(30, u8"Droite (mat\u00e9riau corr\u00e9l\u00e9)", true,
-                                clip->fadeShape == FadeShape::Linear);
-                formes.addItem(31, u8"\u00c9gale puissance (mat\u00e9riau d\u00e9corr\u00e9l\u00e9)", true,
-                                clip->fadeShape == FadeShape::EqualPower);
-                formes.addItem(32, u8"Lente au d\u00e9part", true, clip->fadeShape == FadeShape::Slow);
-                formes.addItem(33, u8"Rapide au d\u00e9part", true, clip->fadeShape == FadeShape::Fast);
-                menu.addSubMenu(u8"Forme des fondus", formes);
-            }
-            menu.addItem(18, u8"Normaliser (gain = 1 / cr\u00eate)", waveformProvider != nullptr);
-            // D22.1 : LE GAIN ET LA PHASE À LA MAIN. Des pas fixes relatifs au
-            // gain courant plutôt qu'une boîte de dialogue -- le geste est
-            // « un peu plus, un peu moins », et il s'enchaîne. Le titre du
-            // sous-menu DIT le gain d'où l'on part.
-            {
-                juce::PopupMenu gain;
-                static const int kPas[] = {-6, -3, -1, 1, 3, 6};
-                for (int i = 0; i < 6; ++i)
-                    gain.addItem(50 + i, juce::String(kPas[i] > 0 ? "+" : "") + juce::String(kPas[i]) + " dB");
-                gain.addSeparator();
-                gain.addItem(56, u8"0 dB (remettre)", std::abs(clip->gain - 1.0f) > 1e-4f);
-                const float dB = clip->gain > 0.0f ? 20.0f * std::log10(clip->gain) : -96.0f;
-                menu.addSubMenu(juce::String(u8"Gain du clip (") + (dB >= 0.0f ? "+" : "")
-                                    + juce::String(dB, 1) + " dB)", gain);
-                menu.addItem(57, u8"Phase invers\u00e9e", true, clip->invertPhase);
-            }
-            // D54 : LA HAUTEUR DU CLIP — l'élément que D21 avait reporté. Même
-            // forme que le gain, et pour la même raison : le geste est « un
-            // demi-ton de plus », il s'enchaîne, et le titre dit d'où l'on
-            // part. Les pas sont musicaux — le demi-ton, la quarte, l'octave —
-            // et non une progression régulière : on transpose une basse d'une
-            // octave et une voix d'un ton, jamais de quatre demi-tons.
-            {
-                juce::PopupMenu hauteur;
-                static const int kDemiTons[] = {-12, -5, -1, 1, 5, 12};
-                // GRISÉ EN MODE « VINYLE », et le titre dit pourquoi : dans ce
-                // mode la hauteur SUIT la durée, elle n'est pas un réglage. Un
-                // geste qui ne ferait rien sans le dire serait pire que pas de
-                // geste du tout.
-                const bool vinyle = clip->warpMode == vsm::sequencer::WarpMode::Repitch;
-                for (int i = 0; i < 6; ++i)
-                    hauteur.addItem(60 + i,
-                                     juce::String(kDemiTons[i] > 0 ? "+" : "") + juce::String(kDemiTons[i])
-                                         + juce::String(u8" demi-ton") + (std::abs(kDemiTons[i]) > 1 ? "s" : ""),
-                                     !vinyle);
-                hauteur.addSeparator();
-                hauteur.addItem(66, u8"0 (remettre)", !vinyle && std::abs(clip->pitchSemitones) > 1e-6);
-                juce::String titre = juce::String(u8"Hauteur du clip (")
-                                   + (clip->pitchSemitones >= 0.0 ? "+" : "")
-                                   + juce::String(clip->pitchSemitones, 2) + juce::String(u8" demi-ton");
-                if (std::abs(clip->pitchSemitones) > 1.0) titre += "s";
-                titre += ")";
-                if (vinyle) titre = juce::String(u8"Hauteur du clip — suit la dur\u00e9e (mode R\u00e9\u00e9chantillonn\u00e9)");
-                menu.addSubMenu(titre, hauteur, !vinyle);
-            }
-            menu.addItem(19, u8"Rogner au son (d\u00e9tecter le silence)");
-            // D20.3 : DÉCOUPER AUX TRANSITOIRES, sur les clips audio choisis.
-            // Le nombre de coupes se dit APRÈS, pas dans l'entrée : le compter
-            // d'avance lirait le fichier entier à chaque ouverture du menu, et
-            // neuf minutes de voix feraient attendre un clic droit.
-            menu.addItem(22, u8"D\u00e9couper aux transitoires (clips audio choisis)");
-            // D20.4 : TRANSCRIRE EN MIDI, un clip à la fois -- le premier
-            // choisi. L'application dit si Python manque, avec la raison.
-            menu.addItem(23, u8"Transcrire en MIDI (Basic Pitch, Python)");
-            marqueurGeste_ = surMarqueur;
-        }
-        // LE ZOOM (D14.2), pour tout clip : tout voir, ou la sélection.
-        menu.addSeparator();
-        menu.addItem(20, u8"Zoom : tout voir");
-        menu.addItem(21, u8"Zoom : la s\u00e9lection");
+        const bool surPisteAudio = project_->tracks[piste].kind == Track::Kind::Audio;
+        const int surMarqueur = surPisteAudio ? marqueurAt(*clip, point.x) : -1;
+        if (surPisteAudio) marqueurGeste_ = surMarqueur;
+        juce::PopupMenu menu = menuDuClip(piste, *clip, surMarqueur);
         const uint64_t id = clip->id;
         const size_t p = piste;
         menu.showMenuAsync(juce::PopupMenu::Options().withTargetScreenArea(

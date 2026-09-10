@@ -1,4 +1,5 @@
 #include "EventListComponent.h"
+#include "Langue.h"
 #include "vsm/sequencer/NoteEdit.h"
 
 using namespace vsm::ui;
@@ -18,10 +19,9 @@ EventListComponent::EventListComponent() {
     titre_.setColour(juce::Label::textColourId, Palette::textPrimary);
     addAndMakeVisible(titre_);
 
-    filtre_.addItem(juce::String::fromUTF8(u8"Tout"), 1);
+    filtre_.addItem(vsm::app::ui::tr(u8"Tout"), 1);   // D83
     for (int k = 0; k < 6; ++k)
-        filtre_.addItem(juce::String::fromUTF8(
-                            vsm::sequencer::eventKindLabel(static_cast<EventKind>(k)).c_str()),
+        filtre_.addItem(vsm::app::ui::tr(juce::String::fromUTF8(vsm::sequencer::eventKindLabel(static_cast<EventKind>(k)).c_str())),
                         k + 2);
     filtre_.setSelectedId(1, juce::dontSendNotification);
     filtre_.onChange = [this] { rebuild(); };
@@ -125,8 +125,7 @@ juce::String EventListComponent::texteDe(const EventRow& ligne, int columnId) co
                    + (ticks != 0 ? "+" + juce::String(static_cast<int>(ticks)) : juce::String())
                    + "  (" + juce::String(static_cast<int>(ligne.tick)) + ")";
         }
-        case kColNature: return juce::String::fromUTF8(
-                                    vsm::sequencer::eventKindLabel(ligne.kind).c_str());
+        case kColNature: return vsm::app::ui::tr(juce::String::fromUTF8(vsm::sequencer::eventKindLabel(ligne.kind).c_str()));
         case kColCanal:  return juce::String(ligne.channel + 1);
         case kColPremier:
             // Les familles sans « numéro » montrent un tiret plutôt qu'un zéro

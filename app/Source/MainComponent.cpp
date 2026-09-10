@@ -1250,6 +1250,8 @@ void MainComponent::listMenusForCapture() {
             }
         };
     for (int i = 0; i < noms.size(); ++i) parcourir(getMenuForIndex(i, noms[i]), noms[i]);
+    // D83 : et les menus du clic droit de l'arrangement.
+    for (const auto& [nom, menu] : arrangement_.menusPourCapture()) parcourir(menu, nom);
 }
 
 void MainComponent::applyViewCommand(const juce::String& nom) {

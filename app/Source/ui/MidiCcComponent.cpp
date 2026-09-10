@@ -1,4 +1,5 @@
 #include "MidiCcComponent.h"
+#include "Langue.h"
 #include <algorithm>
 
 using vsm::midi::Tick;
@@ -90,7 +91,7 @@ void MidiCcComponent::rebuildTrackBox() {
     if (project_ != nullptr) {
         for (size_t i = 0; i < project_->tracks.size(); ++i) {
             const auto& name = project_->tracks[i].name;
-            trackBox_.addItem(name.empty() ? ("Piste " + juce::String(i + 1))
+            trackBox_.addItem(name.empty() ? vsm::app::ui::tr(u8"Piste %1").replace("%1", juce::String(i + 1))
                                            : juce::String::fromUTF8(name.c_str()),
                               static_cast<int>(i) + 1);
         }
