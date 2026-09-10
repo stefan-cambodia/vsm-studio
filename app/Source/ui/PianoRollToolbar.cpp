@@ -136,7 +136,9 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
     addAndMakeVisible(scaleTypeCombo_);
     const auto scales = allScaleTypes();
     for (size_t i = 0; i < scales.size(); ++i)
-        scaleTypeCombo_.addItem(scaleTypeName(scales[i]), static_cast<int>(i) + 1);
+        // D78 : TRADUIT À L'AFFICHAGE, le nom reste français dans `core/` ; et
+        // `tr()` lit l'UTF-8 que `juce::String(const char*)` lisait en Latin-1.
+        scaleTypeCombo_.addItem(vsm::app::ui::tr(scaleTypeName(scales[i])), static_cast<int>(i) + 1);
     scaleTypeCombo_.setSelectedId(1, juce::dontSendNotification);
     scaleTypeCombo_.onChange = [this] { applyScaleFromCombos(); };
 
@@ -185,7 +187,7 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
     label(gridLabel_, vsm::app::ui::tr("Grille"));
     label(swingLabel_, "Swing");
     label(velocityLabel_, vsm::app::ui::tr(u8"Vél."));
-    label(scaleLabel_, "Gamme");
+    label(scaleLabel_, vsm::app::ui::tr("Gamme"));   // D78
 
     refreshFromPianoRoll();
     // D74 : les libellés des initialiseurs de membres sont en français ; la
@@ -433,5 +435,29 @@ void PianoRollToolbar::retraduire() {
     gridLabel_.setText(tr("Grille"), juce::dontSendNotification);
     velocityLabel_.setText(tr(u8"Vél."), juce::dontSendNotification);
     infoLabel_.setText(tr(u8"Note :"), juce::dontSendNotification);
+    // D78 : LES ENTRÉES DES SÉLECTEURS, que la bascule oubliait. D77 a trouvé
+    // « Droit » sur une image basculée en anglais, là où le démarrage écrivait
+    // « Straight ». `changeItemText` ne change que l'entrée, pas le texte
+    // affiché de celle qui est choisie : reposer la même sélection, sans
+    // notification, le rafraîchit sans rien changer au réglage.
+    //
+    // LA SÉLECTION SE LIT AVANT DE RENOMMER, et c'est ce que la première
+    // version ratait : `ComboBox::getSelectedId` ne rend l'identifiant que si
+    // le texte affiché est ENCORE celui de l'entrée. Une fois l'entrée
+    // renommée, il rendait 0, la condition était fausse, et l'image basculée
+    // gardait « Droit » et « Chromatique » -- 527 pixels, mesurés.
+    const auto retitrer = [](juce::ComboBox& boite, int id, const juce::String& texte) {
+        const bool choisie = boite.getSelectedId() == id;
+        boite.changeItemText(id, texte);
+        if (choisie) boite.setSelectedId(id, juce::dontSendNotification);
+    };
+    retitrer(gridCombo_, 100, tr("Auto"));
+    retitrer(gridModifierCombo_, 1, tr("Droit"));
+    retitrer(gridModifierCombo_, 2, tr("Triolet"));
+    retitrer(gridModifierCombo_, 3, tr(u8"Pointé"));
+    const auto gammes = vsm::sequencer::allScaleTypes();
+    for (size_t i = 0; i < gammes.size(); ++i)
+        retitrer(scaleTypeCombo_, static_cast<int>(i) + 1, tr(vsm::sequencer::scaleTypeName(gammes[i])));
+    scaleLabel_.setText(tr("Gamme"), juce::dontSendNotification);
     repaint();
 }

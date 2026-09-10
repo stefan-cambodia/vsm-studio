@@ -516,7 +516,7 @@ MainComponent::MainComponent()
     // La barre de transport ne connaît pas le projet ; elle demande.
     transportBar_.positionInBarsProvider = [this](vsm::midi::Tick tick) {
         const auto bb = project_.timeSignatureMap.barBeatAt(tick, project_.ticksPerQuarterNote);
-        return juce::String(u8"mes. ") + juce::String(static_cast<long long>(bb.bar + 1))
+        return tr(u8"mes. ") + juce::String(static_cast<long long>(bb.bar + 1))   // D78
                + juce::String(u8" \u00b7 ") + juce::String(static_cast<long long>(bb.beat + 1));
     };
     transportBar_.onPositionDoubleClicked = [this] { promptGoToBar(); };
@@ -7362,6 +7362,10 @@ void MainComponent::retraduire() {
     trackList_.retraduire();
     pianoRollPanel_.retraduireBarre();
     effectChain_.retraduire();   // D77
+    // D78 : LE BOUTON D'ÉCOUTE, par la fonction qui le pose au démarrage --
+    // D77 a trouvé « Écoute A/B : pas d'original » sur une image basculée en
+    // anglais, là où le démarrage écrivait « A/B monitoring: no original ».
+    refreshListeningIndicator();
     menuItemsChanged();
     repaint();
 }

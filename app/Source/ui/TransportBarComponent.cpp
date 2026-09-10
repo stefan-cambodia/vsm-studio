@@ -370,7 +370,7 @@ void TransportBarComponent::setCountIn(int beatsRemaining) {
     // la tête de lecture est encore AVANT le morceau, et afficher un tick
     // négatif ne dirait rien à personne.
     if (countInBeats_ > 0)
-        positionLabel_.setText("Decompte " + juce::String(countInBeats_),
+        positionLabel_.setText(vsm::app::ui::tr(u8"Décompte ") + juce::String(countInBeats_),   // D78 : l'accent, et la traduction
                                 juce::dontSendNotification);
 }
 

@@ -11516,3 +11516,78 @@ piège Latin-1 que `tr()` résout.
 >
 > Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
 > 172 Python, ruff et mypy — tout vert.
+
+### Phase D78 — La bascule de langue rattrapée : ce que D77 a mesuré et que D74 ne voyait pas (10/09/2026, 18:45)
+
+**CE QUE D77 A LAISSÉ, COMPTÉ.** Deux libellés que la bascule en direct
+oublie alors que le démarrage les traduit — le bouton d'écoute A/B et le
+sélecteur de subdivision (4 056 pixels entre « lancé en anglais » et « basculé
+en anglais ») —, et des mots traduits nulle part : l'étiquette « Gamme », les
+treize noms de gammes, « mes. » dans la position. Lu à côté : « Decompte », le
+compte à rebours du transport, écrit sans son accent.
+
+**TROIS DÉCISIONS, ÉCRITES AVANT D'ÊTRE CODÉES.**
+
+1. **Les noms de gammes restent en français dans `core/`.** `scaleTypeName` n'a
+   qu'un appelant, la barre du piano roll : c'est à l'affichage qu'on traduit,
+   comme D74 l'a décidé pour les noms de notes — un nom fabriqué dans `core/`
+   peut finir dans un fichier, et il ne doit pas dépendre de la langue de
+   l'interface. Au passage, l'affichage passe par `fromUTF8` : l'appel
+   actuel convertit un `const char*` en `juce::String`, donc lit « Mineure
+   mélodique » en Latin-1. *Lu dans le code, pas photographié : la liste
+   déroulante ne s'ouvre pas sans souris.*
+2. **La bascule repose ce que le démarrage pose, par le même chemin.** Le
+   bouton d'écoute est reposé par la fonction qui le pose au démarrage — pas
+   par une copie de ses quatre textes, qui divergerait à la première retouche ;
+   les entrées des sélecteurs le sont par `changeItemText`, qui ne touche pas à
+   la sélection de l'utilisateur.
+3. **« Décompte » reprend son accent.** C'est la seule modification du
+   français que la phase s'autorise, et c'est la correction d'un défaut.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (10/09/2026, 18:45).**
+>
+> 1. **« Lancée en anglais » et « basculée en anglais » donnent la même image
+>    dans toutes les zones de texte** : D77 y a trouvé 4 056 pixels, attendu
+>    **0**. Ce qui reste est situé et nommé — un état de survol, un compteur
+>    qui bat — plutôt que noyé dans un total.
+> 2. **« Gamme », les noms de gammes et « mes. » sont en anglais** sur les
+>    deux images.
+> 3. **Le français ne bouge pas** : 0 pixel entre le binaire d'avant et celui
+>    d'après, avec l'image anglaise pour contre-exemple.
+> 4. **La couverture est publiée** : paires ajoutées, taille de la table.
+
+> **D78 EST FAITE (10/09/2026, 18:51), ET LES QUATRE ATTENDUS SONT TENUS —
+> AU SECOND ESSAI, ET LE PREMIER A APPRIS QUELQUE CHOSE SUR JUCE.** Même
+> démo, même onglet, `HOME` isolé ; le fichier de préférences de l'utilisateur
+> vérifié par `cmp` après chaque série : intact.
+>
+> | | D77 | première version | D78 |
+> |---|---|---|---|
+> | « lancée en anglais » / « basculée en anglais » | 4 056 px | 527 px | **0 px** sur 937 888 |
+> | français, binaire d'avant / d'après | — | 0 px | **0 px** |
+> | français / anglais (contre-exemple) | 17 433 px | 16 509 px | 17 036 px |
+>
+> Sur l'image basculée : « bar 1 · 1 », « Scale », « Straight », « Chromatic »,
+> « A/B monitoring: no original », « Ready ». Table à **321** paires (quinze de
+> plus : « mes. », « Décompte » et les treize noms de gammes).
+>
+> **CE QUE LA PREMIÈRE VERSION A RATÉ, ET POURQUOI.** Elle renommait l'entrée
+> choisie (`changeItemText`) puis demandait si elle était choisie, pour
+> reposer la sélection et rafraîchir le texte affiché. Or
+> `ComboBox::getSelectedId` ne rend l'identifiant **que si le texte affiché est
+> encore celui de l'entrée** (`juce_ComboBox.cpp:262`) : une fois l'entrée
+> renommée, il rendait 0, la condition était fausse, et l'image gardait
+> « Droit » et « Chromatique ». Les 527 pixels l'ont montré, les deux zones
+> agrandies côte à côte l'ont expliqué, et la source de JUCE l'a confirmé avant
+> que la correction — lire la sélection AVANT de renommer — soit écrite. La
+> leçon, pour tout sélecteur qu'on re-traduira : **renommer une entrée choisie
+> la « dé-choisit » aux yeux de JUCE jusqu'à ce qu'on la repose.**
+>
+> **CE QUI RESTE, VU SUR LA MÊME IMAGE.** « RÉGLAGES », en tête d'une section
+> de la façade de la TB-303, à côté de « SYNTHESIZER » en anglais sur la même
+> façade. Les sérigraphies ne se traduisent pas (D73), mais une façade qui
+> mêle les deux langues n'imite aucune machine : c'est un titre ajouté par
+> l'application, pas une sérigraphie, et il relève d'A9. Nommé ici, non fait.
+>
+> Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
+> 172 Python, ruff et mypy — tout vert.
