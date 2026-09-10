@@ -193,6 +193,11 @@ public:
 
     void paint(juce::Graphics& g) override { g.fillAll(vsm::ui::Palette::background); }
 
+    /// D74 : la barre d'outils repose ses libellés après un changement de
+    /// langue. Le panneau la porte, donc c'est lui qui relaie -- `MainComponent`
+    /// n'a pas à connaître les enfants des enfants.
+    void retraduireBarre() { toolbar_.retraduire(); }
+
 private:
     PianoRollComponent& pianoRoll_;
     VelocityLaneComponent& velocityLane_;

@@ -10942,3 +10942,94 @@ traduction complète.
 >
 > Tests : 327 core, 1 291 audio, 293 interchange, 25 clap, 11 panels,
 > 172 Python, ruff et mypy — tout vert.
+
+### Phase D74 — La barre du piano roll, le mélangeur, et deux conventions de noms de notes à trois centimètres l'une de l'autre (10/09/2026, 21:15)
+
+**CE QUE D73 A LAISSÉ (A9).** La barre de menus est traduite entièrement ; les
+panneaux du dock et la barre du piano roll ne le sont pas. Cette phase prend
+**les surfaces qui sont à l'écran en permanence** — la barre du piano roll et le
+mélangeur — et laisse les fenêtres flottantes et les menus contextuels de
+l'arrangement à une passe suivante, en les comptant.
+
+**ET ELLE TROUVE AUTRE CHOSE, QUI N'EST PAS UNE AFFAIRE DE LANGUE.**
+L'application écrit les noms de notes de **deux façons différentes, dans la même
+fenêtre** :
+
+| où | ce qui s'affiche |
+|---|---|
+| clavier du piano roll | `C#2` |
+| liste des événements | `C#2 (37)` |
+| séquenceur des boîtes à rythmes | `C#2` |
+| **sélecteur de tonique de la barre du piano roll** | **`Do#`** |
+
+Le commentaire de `EventListComponent.cpp:145` avait vu la moitié du problème —
+« le piano roll, à trois centimètres de là, écrivait C#2 sur son clavier » — et
+l'a corrigé pour la liste, sans regarder la barre juste au-dessus.
+
+**LA DÉCISION, ET SA RAISON.** Les noms de notes sont des **lettres**, dans les
+deux langues : `C`, `C#`, `D`… Ce n'est donc PAS une entrée de la table de
+traduction, et c'est délibéré. Trois raisons, dans l'ordre où elles pèsent :
+
+1. **C'est ce que fait l'étalon nommé par ce document.** Cubase et Ableton Live
+   en français affichent `C3`, pas `Do3`. Le § 2 dit que le DAW se juge à leur
+   aune ; sur ce point précis, l'usage du métier a tranché avant nous.
+2. **L'application le fait déjà partout ailleurs.** Trois surfaces sur quatre
+   écrivent des lettres ; c'est le sélecteur de tonique qui est l'exception, pas
+   la règle.
+3. **`noteNumberToName` vit dans `core/`, et doit y rester en lettres.** Il ne
+   sert pas qu'à l'affichage : `Project.cpp:753` s'en sert pour NOMMER les
+   pistes qu'« Éclater par hauteur » fabrique, et ce nom part dans le fichier de
+   projet. Un nom de piste qui changerait selon la langue de l'interface
+   changerait le contenu enregistré — exactement ce que le § 6 interdit.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (10/09/2026, 21:15).**
+>
+> 1. **Une seule convention de noms de notes dans toute l'application**, et
+>    c'est celle des lettres. Vérifié en cherchant les deux tables : il ne doit
+>    en rester qu'une.
+> 2. **La barre du piano roll et le mélangeur sont traduits**, et la couverture
+>    est publiée comme en D73 : combien de chaînes, combien traduites.
+> 3. **Les infobulles longues restent en français, et c'est écrit plutôt que
+>    subi.** Elles sont fabriquées en collant trois ou quatre morceaux de phrase
+>    répartis sur autant de lignes ; en traduire la moitié donnerait une phrase
+>    mi-française mi-anglaise, ce qui est pire qu'une phrase non traduite. Elles
+>    demandent d'être recollées d'abord, ce qui est un travail à part.
+> 4. **Le français ne bouge pas**, sauf sur le sélecteur de tonique, qui est le
+>    défaut corrigé — et cette exception est mesurée, pas affirmée.
+
+> **D74 EST FAITE (10/09/2026, 22:05), ET LES QUATRE ATTENDUS SONT TENUS.**
+>
+> | attendu | mesuré |
+> |---|---|
+> | 1. une seule convention de noms de notes | **une** — la recherche de « Do », « Ré », « Sol », « Si » dans `app/` et `core/` ne rend plus rien |
+> | 2. barre du piano roll traduite | **27 / 27** chaînes, 0 sans traduction ; table à **289** paires |
+> | 3. infobulles longues laissées en français | écrit, avec la raison |
+> | 4. le français ne bouge pas, sauf le sélecteur de tonique | vérifié par capture |
+>
+> **CE QUE LA SECONDE LANGUE A RÉVÉLÉ, ET QUE LA PREMIÈRE CACHAIT DEPUIS
+> TOUJOURS.** Le sélecteur de subdivision est large de 78 px, ce qui suffit à
+> « Droit » et **pas** à « Straight » : la capture en anglais rendait
+> « Strai… ». La case est passée à **96 px**. C'est la règle de lisibilité du
+> projet appliquée telle quelle — entre « ça tient dans la case » et « ça se
+> lit », c'est la lisibilité qui prime, et l'on agrandit la case plutôt que de
+> rétrécir le texte. **Une largeur taillée sur une seule langue est un défaut
+> que seule la seconde langue révèle** : c'est le premier bénéfice de la
+> traduction qui n'a rien à voir avec la traduction.
+>
+> **LES ABRÉGÉS NE SE TRADUISENT PAS COMME DES ABRÉGÉS.** « Coup. » devient
+> « Cut » et non « Cu. », « Dess. » devient « Draw » : on traduit le MOT ENTIER
+> puis on regarde s'il faut l'abréger, et en anglais il ne le faut presque
+> jamais — les mots y sont plus courts. Traduire l'abrégé aurait fabriqué des
+> moignons qui ne veulent rien dire.
+>
+> **CE QUI RESTE, COMPTÉ.** Les infobulles longues du mélangeur et de la barre
+> — celles qui expliquent le Trim, la polarité inversée, l'écriture
+> d'automation — sont **fabriquées en collant trois ou quatre morceaux de phrase
+> répartis sur autant de lignes de code**. En traduire la moitié donnerait une
+> phrase mi-française mi-anglaise, ce qui est pire qu'une phrase non traduite ;
+> elles demandent d'être recollées d'abord. Restent aussi les menus contextuels
+> de l'arrangement (109 chaînes brutes), les fenêtres flottantes et les autres
+> panneaux du dock. A9 reste ouvert, avec ce compte.
+>
+> Tests : 327 core, 1 291 audio, 293 interchange, 25 clap, 11 panels,
+> 172 Python, ruff et mypy — tout vert.

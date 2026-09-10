@@ -16,6 +16,10 @@ public:
     explicit PianoRollToolbar(PianoRollComponent& pianoRoll);
 
     void paint(juce::Graphics&) override;
+    /// D74 : repose les libellés écrits une fois à la construction, après un
+    /// changement de langue (voir `ui/Langue.h`).
+    void retraduire();
+
     void resized() override;
 
     /// D61 : LA HAUTEUR QU'IL FAUT À CETTE LARGEUR. Les bandes se replient ;

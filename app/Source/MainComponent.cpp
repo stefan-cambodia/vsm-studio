@@ -6384,13 +6384,13 @@ void MainComponent::refreshListeningIndicator() {
     using Mode = vsm::audio::engine::ReferenceTrack::Mode;
     const auto& reference = audioEngine_.processGraph().referenceTrack();
     if (!reference.hasAudio()) {
-        transportBar_.setListening(u8"Écoute A/B : pas d'original", false, false);
+        transportBar_.setListening(tr(u8"Écoute A/B : pas d'original"), false, false);
         return;
     }
     switch (reference.mode()) {
-        case Mode::Off:  transportBar_.setListening(u8"Écoute : reconstruction", true, false); break;
-        case Mode::Mix:  transportBar_.setListening(u8"Écoute : les deux", true, true); break;
-        case Mode::Solo: transportBar_.setListening(u8"Écoute : original", true, true); break;
+        case Mode::Off:  transportBar_.setListening(tr(u8"Écoute : reconstruction"), true, false); break;
+        case Mode::Mix:  transportBar_.setListening(tr(u8"Écoute : les deux"), true, true); break;
+        case Mode::Solo: transportBar_.setListening(tr(u8"Écoute : original"), true, true); break;
     }
 }
 
@@ -7319,6 +7319,7 @@ void MainComponent::retraduire() {
         bottomTabs_.setTabName(i, tr(nomsDesOnglets_[i]));
     transportBar_.retraduire();
     trackList_.retraduire();
+    pianoRollPanel_.retraduireBarre();
     menuItemsChanged();
     repaint();
 }

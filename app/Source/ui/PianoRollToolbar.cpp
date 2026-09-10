@@ -1,4 +1,5 @@
 #include "PianoRollToolbar.h"
+#include "Langue.h"
 #include "LookAndFeel/VsmLookAndFeel.h"
 
 using namespace vsm::sequencer;
@@ -15,8 +16,20 @@ const std::vector<std::pair<NoteValue, const char*>>& gridChoices() {
     };
     return choices;
 }
-const char8_t* kNoteNames[12] = { u8"Do", u8"Do#", u8"Ré", u8"Ré#", u8"Mi", u8"Fa",
-                                  u8"Fa#", u8"Sol", u8"Sol#", u8"La", u8"La#", u8"Si" };
+// D74 : DES LETTRES, ET DANS LES DEUX LANGUES. Ce sélecteur écrivait la
+// tonique en solfège — « Do# » — pendant que le clavier du piano roll, à trois
+// centimètres au-dessous, écrivait « C#2 », et que la liste des événements et
+// le séquenceur des boîtes à rythmes écrivaient des lettres eux aussi. Trois
+// surfaces sur quatre : c'était celle-ci l'exception.
+//
+// CE N'EST PAS UNE ENTRÉE DE LA TABLE DE TRADUCTION, et c'est délibéré. Cubase
+// et Live en français affichent « C3 » ; le § 2 de ce document dit que le DAW
+// se juge à leur aune, et sur ce point l'usage du métier a tranché avant nous.
+// Surtout, `noteNumberToName` vit dans `core/` et sert à NOMMER les pistes que
+// « Éclater par hauteur » fabrique : ce nom part dans le fichier de projet, et
+// un nom qui changerait selon la langue changerait le contenu enregistré.
+const char8_t* kNoteNames[12] = { u8"C", u8"C#", u8"D", u8"D#", u8"E", u8"F",
+                                  u8"F#", u8"G", u8"G#", u8"A", u8"A#", u8"B" };
 
 /// La rangée fait 26 px visibles, plus un pixel de marge en haut et en bas.
 /// C'est exactement ce que valaient les trois rangées de D29.4 (92 px pour
@@ -104,14 +117,14 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
     addAndMakeVisible(gridCombo_);
     for (size_t i = 0; i < gridChoices().size(); ++i)
         gridCombo_.addItem(gridChoices()[i].second, static_cast<int>(i) + 1);
-    gridCombo_.addItem("Auto", 100);   // D29.5 : la grille suit le zoom
+    gridCombo_.addItem(vsm::app::ui::tr("Auto"), 100);   // D29.5 : la grille suit le zoom
     gridCombo_.setSelectedId(5, juce::dontSendNotification); // 1/16
     gridCombo_.onChange = [this] { applyGridFromCombos(); };
 
     addAndMakeVisible(gridModifierCombo_);
-    gridModifierCombo_.addItem("Droit", 1);
-    gridModifierCombo_.addItem("Triolet", 2);
-    gridModifierCombo_.addItem(u8"Pointé", 3);
+    gridModifierCombo_.addItem(vsm::app::ui::tr("Droit"), 1);
+    gridModifierCombo_.addItem(vsm::app::ui::tr("Triolet"), 2);
+    gridModifierCombo_.addItem(vsm::app::ui::tr(u8"Pointé"), 3);
     gridModifierCombo_.setSelectedId(1, juce::dontSendNotification);
     gridModifierCombo_.onChange = [this] { applyGridFromCombos(); };
 
@@ -139,7 +152,7 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
     velocitySlider_.setTextBoxStyle(juce::Slider::TextBoxRight, false, 44, 18);
     // D29.4 : LA LIGNE D'INFORMATION. Trois champs éditables, relus huit fois
     // par seconde ; l'édition d'un champ ne pose que ce champ.
-    infoLabel_.setText(u8"Note :", juce::dontSendNotification);
+    infoLabel_.setText(vsm::app::ui::tr(u8"Note :"), juce::dontSendNotification);
     infoLabel_.setJustificationType(juce::Justification::centredRight);
     addAndMakeVisible(infoLabel_);
     int champ = 0;
@@ -169,12 +182,15 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
         l.setFont(juce::Font(juce::FontOptions(11.0f)));
         addAndMakeVisible(l);
     };
-    label(gridLabel_, "Grille");
+    label(gridLabel_, vsm::app::ui::tr("Grille"));
     label(swingLabel_, "Swing");
-    label(velocityLabel_, u8"Vél.");
+    label(velocityLabel_, vsm::app::ui::tr(u8"Vél."));
     label(scaleLabel_, "Gamme");
 
     refreshFromPianoRoll();
+    // D74 : les libellés des initialiseurs de membres sont en français ; la
+    // langue étant déjà posée au démarrage, on les repose ici.
+    retraduire();
 }
 
 void PianoRollToolbar::configureButton(juce::Button& button, const juce::String& tooltip) {
@@ -279,7 +295,12 @@ int PianoRollToolbar::disposer(int largeurTotale, bool placer) {
         { { { &moreButton_, 62 } },                               0, false },
         { { { &zoomOutButton_, 26 }, { &zoomInButton_, 26 }, { &zoomFitButton_, 46 } }, 10, false },
         // Bande 2 : les réglages.
-        { { { &gridLabel_, 38 }, { &gridCombo_, 66 }, { &gridModifierCombo_, 78 } }, 0, true },
+        // D74 : 96 ET NON 78. « Droit » tient dans 78 px, « Straight » non -- il
+        // sortait « Strai… ». La règle du projet est d'agrandir la case, pas de
+        // rétrécir le texte : entre « ça tient » et « ça se lit », c'est la
+        // lisibilité qui prime. Une largeur taillée sur une seule langue est un
+        // défaut que seule la seconde langue révèle.
+        { { { &gridLabel_, 38 }, { &gridCombo_, 66 }, { &gridModifierCombo_, 96 } }, 0, true },
         { { { &snapButton_, 74 } },                               0, false },
         { { { &stepButton_, 88 } },                               0, false },
         { { { &swingLabel_, 40 }, { &swingSlider_, 120 } },       8, false },
@@ -381,4 +402,36 @@ void PianoRollToolbar::applyInfoLine(int champ) {
         const int velo = veloEdit_.getText().trim().upToFirstOccurrenceOf(" ", false, false).getIntValue();
         if (velo >= 1 && velo <= 127) pianoRoll_.setSelectionVelocity(static_cast<uint8_t>(velo));
     }
+}
+
+void PianoRollToolbar::retraduire() {
+    using vsm::app::ui::tr;
+    // LES SIX OUTILS D'ABORD : ce sont ceux qu'on lit à chaque geste, et ils
+    // sont abrégés faute de place. L'abrégé anglais n'est pas la traduction de
+    // l'abrégé français mais celle du MOT entier -- « Coup. » devient « Cut »
+    // et non « Cu. », parce qu'un mot anglais court n'a pas besoin d'être coupé.
+    selectTool_.setButtonText(tr(u8"Sél."));
+    drawTool_.setButtonText(tr("Dess."));
+    eraseTool_.setButtonText(tr("Eff."));
+    splitTool_.setButtonText(tr("Coup."));
+    glueTool_.setButtonText(tr("Coll."));
+    muteTool_.setButtonText(tr("Muet"));
+    undoButton_.setButtonText(tr("Annuler"));
+    redoButton_.setButtonText(tr(u8"Rétablir"));
+    quantizeButton_.setButtonText(tr("Quantifier"));
+    legatoButton_.setButtonText(tr("Legato"));
+    humanizeButton_.setButtonText(tr("Humaniser"));
+    chordButton_.setButtonText(tr("Accord"));
+    moreButton_.setButtonText(tr("Plus..."));
+    zoomFitButton_.setButtonText(tr("Tout"));
+    snapButton_.setButtonText(tr("Aimant"));
+    ghostButton_.setButtonText(tr(u8"Fantômes"));
+    foldButton_.setButtonText(tr("Replier"));
+    followButton_.setButtonText(tr("Suivre"));
+    scaleHighlightButton_.setButtonText(tr("Gamme"));
+    stepButton_.setButtonText(tr(u8"Pas à pas"));
+    gridLabel_.setText(tr("Grille"), juce::dontSendNotification);
+    velocityLabel_.setText(tr(u8"Vél."), juce::dontSendNotification);
+    infoLabel_.setText(tr(u8"Note :"), juce::dontSendNotification);
+    repaint();
 }
