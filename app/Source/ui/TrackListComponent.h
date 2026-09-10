@@ -188,6 +188,10 @@ public:
 
     void loadProject(vsm::sequencer::Project& project);
     void resized() override;
+    /// D73 : repose les libellés écrits une fois à la construction, après un
+    /// changement de langue.
+    void retraduire();
+
     void paint(juce::Graphics&) override;
 
     std::function<void(size_t)> onTrackSelected;

@@ -1,4 +1,5 @@
 #include "TransportBarComponent.h"
+#include "Langue.h"
 #include "LookAndFeel/VsmLookAndFeel.h"
 
 using namespace vsm::sequencer;
@@ -129,8 +130,8 @@ TransportBarComponent::TransportBarComponent(vsm::audio::engine::Transport& tran
     };
 
     listenButton_.onClick = [this] { if (onCycleListening) onCycleListening(); };
-    listenButton_.setTooltip(u8"Écoute A/B : reconstruction, les deux, original (touche R)");
-    setListening(u8"Écoute A/B : pas d'original", false, false);
+    listenButton_.setTooltip(vsm::app::ui::tr(u8"Écoute A/B : reconstruction, les deux, original (touche R)"));
+    setListening(vsm::app::ui::tr(u8"Écoute A/B : pas d'original"), false, false);
     openButton_.onClick = [this] { if (onOpenMidiFile) onOpenMidiFile(); };
     exportButton_.onClick = [this] { if (onExportMidiFile) onExportMidiFile(); };
 
@@ -140,6 +141,10 @@ TransportBarComponent::TransportBarComponent(vsm::audio::engine::Transport& tran
     setSampleRate(48000.0);
 
     startTimerHz(30); // rafraîchit position/CPU à 30 Hz (affichage uniquement, jamais le chemin audio)
+    // D73 : la langue est déjà posée au démarrage ; les libellés écrits
+    // dans les initialiseurs de membres, eux, sont en français. On les
+    // repose ici plutôt que de les dupliquer.
+    retraduire();
 }
 
 TransportBarComponent::~TransportBarComponent() { stopTimer(); }
@@ -486,4 +491,14 @@ void TransportBarComponent::timerCallback() {
 
     bool playing = transport_.state() == TransportState::Playing;
     playButton_.setToggleState(playing, juce::dontSendNotification);
+}
+
+void TransportBarComponent::retraduire() {
+    // D73 : LE CLIC EST LE SEUL BOUTON DE CETTE BARRE QUI CHANGE DE MOT.
+    // « Play », « Stop », « Rec », « Loop » et « Tap » sont les mêmes des deux
+    // côtés de la Manche -- ils viennent du magnétophone, pas de la langue --
+    // et les faire passer par la table reviendrait à traduire un mot vers
+    // lui-même, avec le risque qu'une faute de frappe dans la table le change.
+    metronomeButton_.setButtonText(vsm::app::ui::tr("Clic"));
+    listenButton_.setTooltip(vsm::app::ui::tr(u8"Écoute A/B : reconstruction, les deux, original (touche R)"));
 }

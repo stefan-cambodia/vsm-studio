@@ -115,6 +115,7 @@ dernier. Chaque élément porte sa source ; **aucun n'est inventé ici**.
 
 | ~~A7~~ | ~~L'écran de rapport d'ouverture ne se photographie qu'une fois sur sept~~ — **CLOS par D72** : il passe de la boîte modale au volet de rapport, qui est dans l'autoportrait. Il y gagne le défilement, le bouton Copier et la réouverture par le menu | `ROADMAP-daw.md` D71 → D72 | 1/7 → **10/10** captures, pixel du volet lu sur l'image |
 | A8 | **Les deux lecteurs d'un projet ne numérotent pas les pistes pareil** — l'application à partir de 1, `vsm-render` à partir de 0, sur la même anomalie ; et `vsm-render` signale une piste sans instrument que l'application tait. Non corrigé : recompiler `vsm-render` pendant une campagne tue la course | `ROADMAP-daw.md` D71 | 2 divergences sur le même dossier |
+| A9 | **L'interface n'est traduite qu'en partie** — la barre de menus l'est entièrement (227/227), mais les panneaux du dock, les fenêtres flottantes et les phrases fabriquées dans `interchange/` restent en français. Une chaîne sans traduction ressort en français, jamais vide | `ROADMAP-daw.md` D73 | **270** paires dans la table ; ~1 000 chaînes affichées au total |
 | A6 | **La barre de transport prend deux rangées sur cet écran** (100 px au lieu de 56) parce qu'il lui faut ~1 400 px pour une seule, et que le plafond est 1 280. Le compromis est assumé — six éléments invisibles auparavant, dont un bouton jamais montré — mais sur un écran plus large la question ne se pose pas | `ROADMAP-daw.md` D68 | 44 px pris à l'arrangement |
 
 ### B. Ce que la mesure réclame

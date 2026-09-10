@@ -467,6 +467,12 @@ private:
         // kMenuViewScaleFirst + index dans UiScale::steps().
         kMenuViewScaleFirst,
         kMenuViewScaleLast = kMenuViewScaleFirst + 15,
+        // D73 : LA LANGUE DE L'INTERFACE. Un identifiant par langue, à la
+        // suite, comme les paliers d'échelle -- et pour la même raison : la
+        // liste est une donnée (`Langue::Choix`), pas une suite d'entrées
+        // écrites à la main qu'il faudrait retoucher en ajoutant une langue.
+        kMenuViewLangueFirst,
+        kMenuViewLangueLast = kMenuViewLangueFirst + 7,
         // THREADS DE RENDU (D8.1). Le premier identifiant est « automatique » ;
         // les suivants valent kMenuAudioThreadsFirst + 1 + n threads auxiliaires.
         kMenuAudioThreadsFirst,
@@ -735,6 +741,14 @@ private:
     /// constructeur, et rien dans le projet ne disait ce que les boutons
     /// « send » du mixeur alimentaient.
     void applySendBuses();
+
+    /// D73 : repose les libellés que les composants écrivent UNE FOIS à leur
+    /// construction, après un changement de langue. La barre de menus n'y
+    /// figure pas : elle se reconstruit à chaque ouverture.
+    void retraduire();
+    /// Les noms FRANÇAIS des onglets du dock, gardés parce que ce sont les
+    /// clés de la table : relire le nom affiché ne marcherait qu'une fois.
+    juce::StringArray nomsDesOnglets_;
 
     /// D71 : UNE RÉSERVE D'EFFET, NOTÉE PLUTÔT QU'AVALÉE. Un insert ou un bus
     /// de départ que cette version ne sait pas poser tel quel -- type inconnu,

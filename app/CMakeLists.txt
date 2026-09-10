@@ -42,6 +42,7 @@ target_sources(VintageSynthMidiStudio PRIVATE
     Source/ui/ImportReportComponent.cpp
     Source/ui/LookAndFeel/VsmLookAndFeel.cpp
     Source/ui/UiScale.cpp
+    Source/ui/Langue.cpp
     Source/plugins/PluginScanner.cpp
     Source/reconstruction/ReconstructionRunner.cpp
     Source/reconstruction/ClipTranscriber.cpp
@@ -356,6 +357,7 @@ target_sources(vsm-ui-preview PRIVATE
     Source/ui/ImportReportComponent.cpp
     Source/ui/LookAndFeel/VsmLookAndFeel.cpp
     Source/ui/UiScale.cpp
+    Source/ui/Langue.cpp
     Source/reconstruction/ReconstructionRunner.cpp
     Source/reconstruction/ClipTranscriber.cpp
 )

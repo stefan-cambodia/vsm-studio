@@ -1030,6 +1030,13 @@ ligne du même dossier dit les mêmes choses depuis toujours ; jusqu'à D71,
 l'application les taisait, si bien que le même projet s'ouvrait muet et
 s'exportait bavard.
 
+`VSM_LANGUE=fr|en` pose la langue de l'interface pour une course, **sans
+écraser** le réglage conservé — sans quoi une vérification en anglais laisserait
+le DAW en anglais. La langue se choisit aussi au menu *Affichage ▸ Langue*, elle
+prend effet immédiatement (pas au prochain démarrage) et elle est conservée.
+Le français reste le défaut ; une phrase que la table anglaise ne connaît pas
+ressort en français, jamais vide (D73).
+
 `VSM_MESURE_FACADE=fichier.tsv` écrit, pour chaque façade de machine posée, une
 ligne par commande — machine, taille de la façade, bloc, sérigraphie, cellule et
 **diamètre rendu du bouton**. C'est la mesure qui juge la lisibilité d'une

@@ -3,6 +3,7 @@
 #include "MainComponent.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
 #include "ui/UiScale.h"
+#include "ui/Langue.h"
 #if VSM_WITH_CLAP || VSM_WITH_VST3
 #include "plugins/PluginScanner.h"
 #include <cstdio>
@@ -50,6 +51,10 @@ public:
         // qui existe déjà. Réglage conservé d'une exécution à l'autre --
         // voir ui/UiScale.h.
         vsm::app::ui::UiScale::applySavedAtStartup();
+        // D73 : LA LANGUE AVANT LA PREMIÈRE FENÊTRE, comme l'échelle. Les
+        // libellés sont lus à la construction des composants ; une langue posée
+        // après aurait laissé la moitié de l'interface dans l'autre.
+        vsm::app::ui::Langue::appliquerAuDemarrage();
 
         mainWindow.reset(new MainWindow(getApplicationName()));
     }

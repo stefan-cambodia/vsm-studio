@@ -49,12 +49,17 @@
 #include "vsm/audio/io/AudioTrackLoader.h"
 #include "vsm/audio/io/WavFileReader.h"
 #include "ui/UiScale.h"
+#include "ui/Langue.h"
 #include "vsm/interchange/Json.h"
 #include "ui/Shortcuts.h"
 
 using namespace vsm::sequencer;
 using namespace vsm::midi;
 using vsm::audio::engine::TransportState;
+// D73 : `tr()` sans qualification dans tout ce fichier -- il porte la barre
+// de menus entière, et « vsm::app::ui::tr » devant chaque libellé rendrait
+// illisible ce qu'on lit justement pour vérifier un libellé.
+using vsm::app::ui::tr;
 
 MainComponent::MainComponent()
     : transport_(audioEngine_.processGraph()),
@@ -109,15 +114,21 @@ MainComponent::MainComponent()
         transportBar_.setBpm(project_.tempoMap.bpmAt(0));
         pianoRollPanel_.refresh();
     };
-    bottomTabs_.addTab("Mixer", vsm::ui::Palette::panel, &mixer_, false);
-    bottomTabs_.addTab("Automation", vsm::ui::Palette::panel, &automation_, false);
-    bottomTabs_.addTab("Effets", vsm::ui::Palette::panel, &effectChain_, false);
-    bottomTabs_.addTab("MIDI CC", vsm::ui::Palette::panel, &midiCc_, false);
+    // D73 : LES NOMS FRANÇAIS SONT GARDÉS À PART. Un onglet posé porte son
+    // libellé TRADUIT ; pour le re-traduire en cours de séance, il faut la clé,
+    // c'est-à-dire le français. Le relire dans l'onglet ne marcherait qu'une
+    // fois -- au second changement de langue, on chercherait « Effects » dans
+    // une table indexée par « Effets ».
+    nomsDesOnglets_ = { "Mixer", "Automation", "Effets", "MIDI CC", "Liste", "Tempo" };
+    bottomTabs_.addTab(tr("Mixer"), vsm::ui::Palette::panel, &mixer_, false);
+    bottomTabs_.addTab(tr("Automation"), vsm::ui::Palette::panel, &automation_, false);
+    bottomTabs_.addTab(tr("Effets"), vsm::ui::Palette::panel, &effectChain_, false);
+    bottomTabs_.addTab(tr("MIDI CC"), vsm::ui::Palette::panel, &midiCc_, false);
     // D32.2 : APRÈS « MIDI CC » et avant « Tempo ». Sa voisine de gauche
     // montre les contrôleurs en courbe ; celle-ci montre TOUT en nombres, y
     // compris les quatre familles que rien ne montrait.
-    bottomTabs_.addTab(juce::String::fromUTF8(u8"Liste"), vsm::ui::Palette::panel, &eventList_, false);
-    bottomTabs_.addTab("Tempo", vsm::ui::Palette::panel, &tempoLane_, false);
+    bottomTabs_.addTab(tr(u8"Liste"), vsm::ui::Palette::panel, &eventList_, false);
+    bottomTabs_.addTab(tr("Tempo"), vsm::ui::Palette::panel, &tempoLane_, false);
 
     // D11 : l'historique visible. Un clic sur un pas y revient par autant
     // d'annulations (ou de rétablissements) qu'il faut, par le MÊME chemin
@@ -2135,17 +2146,17 @@ void MainComponent::setRenderThreadChoice(int choice) {
 // --- Menu ------------------------------------------------------------------
 
 juce::StringArray MainComponent::getMenuBarNames() {
-    return { "Fichier", u8"Édition", "Piste", "Enregistrement", "Mixage", "Affichage", "Aide" };
+    return { tr("Fichier"), tr(u8"Édition"), tr("Piste"), tr("Enregistrement"), tr("Mixage"), tr("Affichage"), tr("Aide") };
 }
 
 juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce::String&) {
     juce::PopupMenu menu;
     switch (topLevelMenuIndex) {
         case 0:
-            menu.addItem(kMenuFileNewProject, "Nouveau projet");
-            menu.addItem(kMenuFileOpen, "Ouvrir MIDI...");
-            menu.addItem(kMenuFileImportMidiIntoProject, u8"Importer un MIDI dans le projet...");
-            menu.addItem(kMenuFileOpenBundle, "Ouvrir un projet VSM...");
+            menu.addItem(kMenuFileNewProject, tr("Nouveau projet"));
+            menu.addItem(kMenuFileOpen, tr("Ouvrir MIDI..."));
+            menu.addItem(kMenuFileImportMidiIntoProject, tr(u8"Importer un MIDI dans le projet..."));
+            menu.addItem(kMenuFileOpenBundle, tr("Ouvrir un projet VSM..."));
             {
                 // D11.6 : LES PROJETS RÉCENTS, dix au plus, le dernier ouvert
                 // en tête. Un dossier disparu reste listé barré de sa raison :
@@ -2156,55 +2167,55 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                     const juce::File dossier(liste[i]);
                     const bool existe = dossier.isDirectory();
                     recents.addItem(kMenuFileRecentFirst + i,
-                                    dossier.getFileName() + juce::String(u8"  \u2014  ") + dossier.getParentDirectory().getFullPathName()
-                                        + (existe ? juce::String() : juce::String(u8"  (introuvable)")),
+                                    dossier.getFileName() + juce::String(tr(u8"  \u2014  ")) + dossier.getParentDirectory().getFullPathName()
+                                        + (existe ? juce::String() : juce::String(tr(u8"  (introuvable)"))),
                                     existe);
                 }
-                if (liste.isEmpty()) recents.addItem(kMenuFileRecentFirst, "(aucun)", false);
-                menu.addSubMenu(u8"Projets récents", recents);
+                if (liste.isEmpty()) recents.addItem(kMenuFileRecentFirst, tr("(aucun)"), false);
+                menu.addSubMenu(tr(u8"Projets récents"), recents);
             }
             menu.addItem(kMenuFileImportDaw,
-                         u8"Importer un projet (Ableton, FL Studio, Cubase)...");
+                         tr(u8"Importer un projet (Ableton, FL Studio, Cubase)..."));
             // GRISÉE tant qu'aucun import n'a eu lieu, plutôt qu'absente : une
             // entrée qui apparaît puis disparaît ne s'apprend pas. Là, on voit
             // qu'un rapport EXISTE et où le retrouver.
-            menu.addItem(kMenuFileImportReport, u8"Voir le dernier rapport d'import",
+            menu.addItem(kMenuFileImportReport, tr(u8"Voir le dernier rapport d'import"),
                          importReport_.hasReport(), false);
             // Le rapport de RECONSTRUCTION du projet ouvert (§ 4.3 du CDC
             // multipiste) : grisé quand le projet n'en a pas — un projet
             // ouvert à la main n'en a pas, et c'est normal.
             menu.addItem(kMenuFileReconstructionReport,
-                         u8"Voir le rapport de reconstruction",
+                         tr(u8"Voir le rapport de reconstruction"),
                          rapportReconstruction_ != juce::File(), false);
             // LA PARITÉ, COCHÉE PAR DÉFAUT : autant de pistes que le morceau a
             // de parties. C'est un choix de travail — il vaut pour toutes les
             // reconstructions — et il se voit, coché, plutôt que de vivre
             // dans un fichier de préférences que personne n'ouvre.
             menu.addItem(kMenuFileParite,
-                         u8"Reconstruire en visant la parité des pistes (le défaut de la chaîne)", true,
+                         tr(u8"Reconstruire en visant la parité des pistes (le défaut de la chaîne)"), true,
                          vsm::app::ui::UiScale::properties()
-                             .getBoolValue("reconstruireEnParite", true));
-            menu.addItem(kMenuFileSave, "Enregistrer" +
+                             .getBoolValue(tr("reconstruireEnParite"), true));
+            menu.addItem(kMenuFileSave, tr("Enregistrer") +
                           juce::String(currentProjectFolder_ == juce::File() ? "..." : "")
-                          + " (Ctrl+S)");
-            menu.addItem(kMenuFileSaveAs, "Enregistrer sous...");
+                          + tr(" (Ctrl+S)"));
+            menu.addItem(kMenuFileSaveAs, tr("Enregistrer sous..."));
             menu.addSeparator();
             // D11.6 : LE MODÈLE. Un seul, dans le dossier des préférences : le
             // projet qu'on ouvre pour commencer (pistes, machines, routage,
             // tempo). « Nouveau depuis le modèle » rend un projet SANS chemin :
             // Ctrl+S demandera où, et le modèle ne s'écrase pas par mégarde.
-            menu.addItem(kMenuFileSaveTemplate, u8"Enregistrer comme modèle de projet");
+            menu.addItem(kMenuFileSaveTemplate, tr(u8"Enregistrer comme modèle de projet"));
             // D32.5 : LES CHIFFRES DU PROJET. Au menu Fichier parce qu'ils
             // parlent du fichier entier, et non d'une piste.
             menu.addItem(kMenuFileStatistics,
                           juce::String::fromUTF8(u8"Statistiques du projet..."));
-            menu.addItem(kMenuFileNewFromTemplate, u8"Nouveau depuis le modèle",
+            menu.addItem(kMenuFileNewFromTemplate, tr(u8"Nouveau depuis le modèle"),
                          templateFolder().getChildFile("project.json").existsAsFile());
             menu.addSeparator();
             // Écoute A/B : l'enregistrement d'origine en regard de la
             // reconstruction. Les trois modes sont dans le même menu, cochés,
             // pour qu'on voie d'un coup d'œil ce qu'on est en train d'écouter.
-            menu.addItem(kMenuFileLoadReference, u8"Charger l'original (référence A/B)...");
+            menu.addItem(kMenuFileLoadReference, tr(u8"Charger l'original (référence A/B)..."));
             {
                 const bool aUneReference = audioEngine_.processGraph().referenceTrack().hasAudio();
                 const auto mode = audioEngine_.processGraph().referenceTrack().mode();
@@ -2212,31 +2223,31 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 if (aUneReference && referenceDescription_.isNotEmpty()) {
                     menu.addSectionHeader(referenceDescription_);
                 }
-                menu.addItem(kMenuFileReferenceOff, u8"Écoute : reconstruction", aUneReference,
+                menu.addItem(kMenuFileReferenceOff, tr(u8"Écoute : reconstruction"), aUneReference,
                               mode == Mode::Off);
-                menu.addItem(kMenuFileReferenceMix, u8"Écoute : les deux", aUneReference,
+                menu.addItem(kMenuFileReferenceMix, tr(u8"Écoute : les deux"), aUneReference,
                               mode == Mode::Mix);
-                menu.addItem(kMenuFileReferenceSolo, u8"Écoute : original", aUneReference,
+                menu.addItem(kMenuFileReferenceSolo, tr(u8"Écoute : original"), aUneReference,
                               mode == Mode::Solo);
-                menu.addItem(kMenuFileReferenceCycle, u8"Basculer l'écoute A/B (touche R)", aUneReference);
+                menu.addItem(kMenuFileReferenceCycle, tr(u8"Basculer l'écoute A/B (touche R)"), aUneReference);
             }
-            menu.addItem(kMenuFileExport, "Exporter MIDI...");
+            menu.addItem(kMenuFileExport, tr("Exporter MIDI..."));
             // D24.5 : un fichier audio sur une piste neuve, sans passer par le
             // lâcher -- qui, lui, propose la reconstruction.
-            menu.addItem(kMenuFileImportAudio, u8"Importer un fichier audio sur une piste neuve...",
+            menu.addItem(kMenuFileImportAudio, tr(u8"Importer un fichier audio sur une piste neuve..."),
                          currentProjectFolder_ != juce::File());
             // D23.3 : la piste choisie seule -- pour donner une partie, pas le morceau.
             {
                 const size_t p = trackList_.selectedTrackIndex();
                 const bool midi = p < project_.tracks.size() && project_.tracks[p].kind == Track::Kind::Midi;
                 menu.addItem(kMenuFileExportTrackMidi,
-                             midi ? juce::String(u8"Exporter la piste choisie en MIDI (\u00ab ")
-                                        + juce::String(project_.tracks[p].name) + juce::String(u8" \u00bb)...")
-                                  : juce::String(u8"Exporter la piste choisie en MIDI (choisir une piste MIDI)..."),
+                             midi ? juce::String(tr(u8"Exporter la piste choisie en MIDI (\u00ab "))
+                                        + juce::String(project_.tracks[p].name) + juce::String(tr(u8" \u00bb)..."))
+                                  : juce::String(tr(u8"Exporter la piste choisie en MIDI (choisir une piste MIDI)...")),
                              midi);
             }
-            menu.addItem(kMenuFileExportWav, "Exporter audio (WAV)...");
-            menu.addItem(kMenuFileExportStems, u8"Exporter les stems (un WAV par piste)...");
+            menu.addItem(kMenuFileExportWav, tr("Exporter audio (WAV)..."));
+            menu.addItem(kMenuFileExportStems, tr(u8"Exporter les stems (un WAV par piste)..."));
             menu.addSeparator();
             menu.addSeparator();
             {
@@ -2265,7 +2276,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 }
             }
             menu.addSeparator();
-            menu.addItem(kMenuFileAudioSettings, u8"Réglages audio...");
+            menu.addItem(kMenuFileAudioSettings, tr(u8"Réglages audio..."));
             menu.addItem(kMenuFilePreferences, juce::String::fromUTF8(u8"Préférences..."));
             {
                 // THREADS DE RENDU (D8.1). Le multicœur ne change pas un seul
@@ -2278,25 +2289,25 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 const size_t recommande =
                     vsm::audio::engine::ProcessGraph::recommendedRenderThreadCount();
                 threads.addItem(kMenuAudioThreadsFirst,
-                                 juce::String(juce::CharPointer_UTF8("Automatique ("))
+                                 tr("Automatique (")
                                      + juce::String(static_cast<int>(recommande))
-                                     + " threads auxiliaires ici)",
+                                     + tr(" threads auxiliaires ici)"),
                                  true, choix == kRenderThreadsAutomatic);
                 threads.addSeparator();
                 const int maximum = std::min<int>(
                     static_cast<int>(vsm::audio::engine::RenderThreadPool::kMaxWorkers),
                     std::max(1, static_cast<int>(std::thread::hardware_concurrency())) - 1);
                 for (int n = 0; n <= maximum; ++n) {
-                    const juce::String pluriel = n > 1 ? juce::String("s") : juce::String();
+                    const juce::String pluriel = n > 1 ? juce::String(tr("s")) : juce::String();
                     const juce::String libelle =
-                        n == 0 ? juce::String(juce::CharPointer_UTF8("Mono-cœur (aucun thread auxiliaire)"))
-                               : juce::String(n) + " thread" + pluriel + " auxiliaire" + pluriel;
+                        n == 0 ? tr("Mono-cœur (aucun thread auxiliaire)")
+                               : juce::String(n) + tr(" thread") + pluriel + tr(" auxiliaire") + pluriel;
                     threads.addItem(kMenuAudioThreadsFirst + 1 + n, libelle, true, choix == n);
                 }
-                menu.addSubMenu("Threads de rendu", threads);
+                menu.addSubMenu(tr("Threads de rendu"), threads);
             }
             menu.addSeparator();
-            menu.addItem(kMenuFileQuit, "Quitter");
+            menu.addItem(kMenuFileQuit, tr("Quitter"));
             break;
         case 1:
             // Le menu Édition EST le menu contextuel du piano roll : une seule
@@ -2308,21 +2319,21 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // déplacent aussi les clips, les repères et le tempo.
             menu.addSeparator();
             menu.addItem(kMenuEditInsertTimeAtLocators,
-                         u8"Insérer du silence entre les locateurs (Ctrl+Maj+I)",
+                         tr(u8"Insérer du silence entre les locateurs (Ctrl+Maj+I)"),
                          project_.loopEndTick > project_.loopStartTick);
             menu.addItem(kMenuEditDeleteTimeAtLocators,
-                         u8"Supprimer le temps entre les locateurs (Ctrl+Maj+K)",
+                         tr(u8"Supprimer le temps entre les locateurs (Ctrl+Maj+K)"),
                          project_.loopEndTick > project_.loopStartTick);
-            menu.addItem(kMenuEditLocatorsFromSelection, u8"Locateurs sur la s\u00e9lection (P)",
+            menu.addItem(kMenuEditLocatorsFromSelection, tr(u8"Locateurs sur la s\u00e9lection (P)"),
                          arrangement_.hasSelection() || pianoRoll_.hasSelection());
             // D22.2 : ALLER À UNE MESURE. La position se lisait (D11.3) et ne
             // se saisissait pas : rejoindre la mesure 57 se faisait à la
             // souris, en zoomant.
-            menu.addItem(kMenuEditGoToBar, u8"Aller \u00e0 la mesure\u2026 (Maj+P, double-clic sur la position)");
+            menu.addItem(kMenuEditGoToBar, tr(u8"Aller \u00e0 la mesure\u2026 (Maj+P, double-clic sur la position)"));
             // D20.1 : RÉPÉTER LA SÉLECTION de l'arrangement, jumeau du menu
             // contextuel du clip -- ici pour qu'il s'atteigne sans souris.
             menu.addSeparator();
-            menu.addItem(kMenuEditSelectAllClips, u8"Tout s\u00e9lectionner dans l'arrangement (Ctrl+A)",
+            menu.addItem(kMenuEditSelectAllClips, tr(u8"Tout s\u00e9lectionner dans l'arrangement (Ctrl+A)"),
                          !project_.tracks.empty());
             // D34.5 : DESSINER UNE AUTOMATION PAR UNE FORME. Un balayage de
             // filtre sur seize mesures se posait point par point, et un
@@ -2348,21 +2359,21 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 juce::PopupMenu repeter;
                 static const int kNombres[] = {2, 3, 4, 8, 16};
                 for (int i = 0; i < 5; ++i)
-                    repeter.addItem(kMenuEditRepeatFirst + i, juce::String(kNombres[i]) + " fois",
+                    repeter.addItem(kMenuEditRepeatFirst + i, juce::String(kNombres[i]) + tr(" fois"),
                                     arrangement_.hasSelection());
                 const int jusquALaBoucle = arrangement_.repeatsUntilLoopEnd();
                 repeter.addSeparator();
                 repeter.addItem(kMenuEditRepeatToLoopEnd,
                                 jusquALaBoucle > 0
-                                    ? juce::String(u8"Jusqu'\u00e0 la fin de la boucle (")
-                                          + juce::String(jusquALaBoucle) + " fois)"
-                                    : juce::String(u8"Jusqu'\u00e0 la fin de la boucle (rien n'y tient, ou pas de boucle)"),
+                                    ? juce::String(tr(u8"Jusqu'\u00e0 la fin de la boucle ("))
+                                          + juce::String(jusquALaBoucle) + tr(" fois)")
+                                    : juce::String(tr(u8"Jusqu'\u00e0 la fin de la boucle (rien n'y tient, ou pas de boucle)")),
                                 jusquALaBoucle > 0);
-                menu.addSubMenu(u8"R\u00e9p\u00e9ter la s\u00e9lection (\u00e0 la suite)", repeter,
+                menu.addSubMenu(tr(u8"R\u00e9p\u00e9ter la s\u00e9lection (\u00e0 la suite)"), repeter,
                                 arrangement_.hasSelection());
             }
             menu.addItem(kMenuEditSliceAtOnsets,
-                         u8"D\u00e9couper la s\u00e9lection aux transitoires (clips audio)",
+                         tr(u8"D\u00e9couper la s\u00e9lection aux transitoires (clips audio)"),
                          arrangement_.hasSelection());
             // D20.4 : TRANSCRIRE. Grisée AVEC sa raison quand la chaîne
             // d'analyse manque : une entrée grisée sans raison est une entrée
@@ -2377,7 +2388,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 const int actuelDen = static_cast<int>(project_.timeSignatureMap.denominatorAt(ici));
                 for (int i = 0; i < 6; ++i)
                     signature.addItem(kMenuEditSignatureFirst + i,
-                                      juce::String(kSignatures[i][0]) + "/" + juce::String(kSignatures[i][1]),
+                                      juce::String(kSignatures[i][0]) + tr("/") + juce::String(kSignatures[i][1]),
                                       true, kSignatures[i][0] == actuelNum && kSignatures[i][1] == actuelDen);
                 bool changementIci = false;
                 for (const auto& c : project_.timeSignatureMap.changes())
@@ -2385,15 +2396,15 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                         changementIci = true;
                 signature.addSeparator();
                 signature.addItem(kMenuEditSignatureRemove,
-                                  changementIci ? juce::String(u8"Retirer le changement de cette mesure")
-                                                : juce::String(u8"Retirer le changement de cette mesure (aucun ici)"),
+                                  changementIci ? juce::String(tr(u8"Retirer le changement de cette mesure"))
+                                                : juce::String(tr(u8"Retirer le changement de cette mesure (aucun ici)")),
                                   changementIci);
-                menu.addSubMenu(u8"Signature \u00e0 la t\u00eate de lecture", signature);
+                menu.addSubMenu(tr(u8"Signature \u00e0 la t\u00eate de lecture"), signature);
             }
             menu.addItem(kMenuEditTranscribeClip,
                          reconstructionChain_.available
-                             ? juce::String(u8"Transcrire le clip audio choisi en MIDI (Basic Pitch)")
-                             : juce::String(u8"Transcrire le clip audio choisi en MIDI (")
+                             ? juce::String(tr(u8"Transcrire le clip audio choisi en MIDI (Basic Pitch)"))
+                             : juce::String(tr(u8"Transcrire le clip audio choisi en MIDI ("))
                                    + juce::String::fromUTF8(reconstructionChain_.reason.c_str()) + ")",
                          reconstructionChain_.available && arrangement_.hasSelection()
                              && !clipTranscriber_.isRunning());
@@ -2402,7 +2413,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // nomme pas, c'est appliquer on ne sait quoi.
             menu.addSeparator();
             menu.addItem(kMenuEditExtractGroove,
-                          u8"Extraire le groove de la piste choisie",
+                          tr(u8"Extraire le groove de la piste choisie"),
                           !project_.tracks.empty());
             menu.addItem(kMenuEditApplyGroove,
                           grooveCourant_.empty()
@@ -2411,26 +2422,26 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                     + juce::String(grooveCourant_.name)
                                     + juce::String::fromUTF8(u8" \u00bb"),
                           !grooveCourant_.empty() && pianoRoll_.hasSelection());
-            menu.addItem(kMenuEditSaveGroove, u8"Enregistrer le groove\u2026", !grooveCourant_.empty());
-            menu.addItem(kMenuEditLoadGroove, u8"Charger un groove\u2026");
+            menu.addItem(kMenuEditSaveGroove, tr(u8"Enregistrer le groove\u2026"), !grooveCourant_.empty());
+            menu.addItem(kMenuEditLoadGroove, tr(u8"Charger un groove\u2026"));
             break;
         case 2:
-            menu.addItem(kMenuTrackAdd, "Ajouter une piste MIDI");
-            menu.addItem(kMenuTrackAddAudio, "Ajouter une piste audio");
-            menu.addItem(kMenuTrackAddGroup, "Ajouter un groupe");
-            menu.addItem(kMenuTrackRemove, u8"Supprimer la piste sélectionnée",
+            menu.addItem(kMenuTrackAdd, tr("Ajouter une piste MIDI"));
+            menu.addItem(kMenuTrackAddAudio, tr("Ajouter une piste audio"));
+            menu.addItem(kMenuTrackAddGroup, tr("Ajouter un groupe"));
+            menu.addItem(kMenuTrackRemove, tr(u8"Supprimer la piste sélectionnée"),
                          !project_.tracks.empty());
-            menu.addItem(kMenuTrackDuplicate, u8"Dupliquer la piste sélectionnée",
+            menu.addItem(kMenuTrackDuplicate, tr(u8"Dupliquer la piste sélectionnée"),
                          !project_.tracks.empty());
-            menu.addItem(kMenuTrackCreateClip, u8"Créer un clip d'une mesure à la tête de lecture",
+            menu.addItem(kMenuTrackCreateClip, tr(u8"Créer un clip d'une mesure à la tête de lecture"),
                          !project_.tracks.empty());
             // D35.1 : MONTER ET DESCENDRE. `moveTrack` répare les routages
             // depuis D5.3, est couverte de tests, et AUCUN geste ne l'appelait :
             // l'ordre des pistes était celui du fichier MIDI, définitivement.
             menu.addSeparator();
-            menu.addItem(kMenuTrackMoveUp, u8"Monter la piste",
+            menu.addItem(kMenuTrackMoveUp, tr(u8"Monter la piste"),
                          trackList_.selectedTrackIndex() > 0);
-            menu.addItem(kMenuTrackMoveDown, u8"Descendre la piste",
+            menu.addItem(kMenuTrackMoveDown, tr(u8"Descendre la piste"),
                          !project_.tracks.empty()
                              && trackList_.selectedTrackIndex() + 1 < project_.tracks.size());
             {
@@ -2447,8 +2458,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                        && std::count_if(project_.tracks.begin(), project_.tracks.end(),
                                                         [](const Track& t) { return t.solo; }) == 1;
                     menu.addItem(kMenuTrackSoloExclusive,
-                                 seule ? u8"Plus aucun solo (Ctrl+clic sur Solo)"
-                                       : u8"Solo exclusif de la piste choisie (Ctrl+clic sur Solo)",
+                                 seule ? tr(u8"Plus aucun solo (Ctrl+clic sur Solo)")
+                                       : tr(u8"Solo exclusif de la piste choisie (Ctrl+clic sur Solo)"),
                                  p < project_.tracks.size());
                 }
                 // D30.1 : LE SOLO PROTÉGÉ, au menu comme au bouton -- pour
@@ -2457,8 +2468,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                     const size_t p = trackList_.selectedTrackIndex();
                     const bool protegee = p < project_.tracks.size() && project_.tracks[p].soloSafe;
                     menu.addItem(kMenuTrackSoloSafe,
-                                 protegee ? u8"Ne plus protéger cette piste du solo des autres (Alt+clic sur Solo)"
-                                          : u8"Protéger cette piste du solo des autres (Alt+clic sur Solo)",
+                                 protegee ? tr(u8"Ne plus protéger cette piste du solo des autres (Alt+clic sur Solo)")
+                                          : tr(u8"Protéger cette piste du solo des autres (Alt+clic sur Solo)"),
                                  p < project_.tracks.size());
                 }
                 // D32.4 : LE RENOMMAGE EN SÉRIE. Il dit sur COMBIEN de pistes
@@ -2473,7 +2484,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                       + juce::String::fromUTF8(u8" visibles)..."),
                                   visibles > 0);
                 }
-                menu.addItem(kMenuTrackHide, u8"Masquer la piste (elle continue de sonner)",
+                menu.addItem(kMenuTrackHide, tr(u8"Masquer la piste (elle continue de sonner)"),
                               !project_.tracks.empty());
                 menu.addItem(kMenuTrackShowAll,
                               masquees == 0
@@ -2492,36 +2503,36 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                     juce::PopupMenu ports;
                     const std::string actuel = choisie < project_.tracks.size()
                                                    ? project_.tracks[choisie].midiOutputDevice : std::string();
-                    ports.addItem(kMenuTrackMidiOutNone, u8"(aucune : la machine interne seulement)", true, actuel.empty());
+                    ports.addItem(kMenuTrackMidiOutNone, tr(u8"(aucune : la machine interne seulement)"), true, actuel.empty());
                     const auto noms = audioEngine_.availableMidiOutputs();
                     for (size_t i = 0; i < noms.size() && i <= static_cast<size_t>(kMenuTrackMidiOutLast - kMenuTrackMidiOutFirst); ++i)
                         ports.addItem(kMenuTrackMidiOutFirst + static_cast<int>(i), juce::String(noms[i]), true, noms[i] == actuel);
-                    menu.addSubMenu(actuel.empty() ? juce::String(u8"Sortie MIDI mat\u00e9rielle")
-                                                   : juce::String(u8"Sortie MIDI mat\u00e9rielle (\u2192 ") + juce::String(actuel) + ")",
+                    menu.addSubMenu(actuel.empty() ? juce::String(tr(u8"Sortie MIDI mat\u00e9rielle"))
+                                                   : juce::String(tr(u8"Sortie MIDI mat\u00e9rielle (\u2192 ")) + juce::String(actuel) + tr(")"),
                                     ports, choisie < project_.tracks.size() && project_.tracks[choisie].kind == Track::Kind::Midi);
                     // D28.2 : le programme, dit dans l'entrée ; D28.3 : le canal d'entrée.
                     const bool midi = choisie < project_.tracks.size() && project_.tracks[choisie].kind == Track::Kind::Midi;
                     const int prog = midi ? project_.tracks[choisie].midiProgram : -1;
                     menu.addItem(kMenuTrackMidiProgram,
-                                 prog >= 0 ? juce::String(u8"Programme MIDI (") + juce::String(prog + 1)
+                                 prog >= 0 ? juce::String(tr(u8"Programme MIDI (")) + juce::String(prog + 1)
                                                  + (project_.tracks[choisie].midiBank >= 0
-                                                        ? juce::String(u8", banque ") + juce::String(project_.tracks[choisie].midiBank) : juce::String())
-                                                 + ")..."
-                                           : juce::String(u8"Programme MIDI (aucun)..."),
+                                                        ? juce::String(tr(u8", banque ")) + juce::String(project_.tracks[choisie].midiBank) : juce::String())
+                                                 + tr(")...")
+                                           : juce::String(tr(u8"Programme MIDI (aucun)...")),
                                  midi && !actuel.empty());
                     {
                         juce::PopupMenu canaux;
                         const int actuelCanal = midi ? project_.tracks[choisie].midiInputChannel : 0;
-                        canaux.addItem(kMenuTrackInputChannelFirst, u8"Tous les canaux", true, actuelCanal == 0);
+                        canaux.addItem(kMenuTrackInputChannelFirst, tr(u8"Tous les canaux"), true, actuelCanal == 0);
                         for (int c = 1; c <= 16; ++c)
-                            canaux.addItem(kMenuTrackInputChannelFirst + c, juce::String(u8"Canal ") + juce::String(c), true, actuelCanal == c);
-                        menu.addSubMenu(actuelCanal > 0 ? juce::String(u8"Canal d'entr\u00e9e MIDI (") + juce::String(actuelCanal) + ")"
-                                                        : juce::String(u8"Canal d'entr\u00e9e MIDI (tous)"),
+                            canaux.addItem(kMenuTrackInputChannelFirst + c, juce::String(tr(u8"Canal ")) + juce::String(c), true, actuelCanal == c);
+                        menu.addSubMenu(actuelCanal > 0 ? juce::String(tr(u8"Canal d'entr\u00e9e MIDI (")) + juce::String(actuelCanal) + tr(")")
+                                                        : juce::String(tr(u8"Canal d'entr\u00e9e MIDI (tous)")),
                                         canaux, midi);
                     }
                 }
                 menu.addItem(kMenuTrackSavePreset,
-                              u8"Enregistrer la piste comme preset\u2026",
+                              tr(u8"Enregistrer la piste comme preset\u2026"),
                               choisie < project_.tracks.size()
                                   && !project_.tracks[choisie].isFolder());
                 {
@@ -2534,10 +2545,10 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                          choisie < project_.tracks.size());
                     if (fichiers.isEmpty())
                         presets.addItem(999999,   // jamais choisi : grisé
-                                         juce::String(u8"(aucun preset dans ")
-                                             + trackPresetFolder().getFullPathName() + ")",
+                                         juce::String(tr(u8"(aucun preset dans "))
+                                             + trackPresetFolder().getFullPathName() + tr(")"),
                                          false);
-                    menu.addSubMenu(u8"Appliquer un preset de piste (les notes et les clips restent)",
+                    menu.addSubMenu(tr(u8"Appliquer un preset de piste (les notes et les clips restent)"),
                                      presets, choisie < project_.tracks.size());
                 }
                 menu.addSeparator();
@@ -2549,17 +2560,17 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                     const int actuel = choisie < project_.tracks.size()
                                            ? project_.tracks[choisie].editGroup : 0;
                     juce::PopupMenu groupes;
-                    groupes.addItem(kMenuTrackEditGroupNone, u8"Aucun", true, actuel == 0);
+                    groupes.addItem(kMenuTrackEditGroupNone, tr(u8"Aucun"), true, actuel == 0);
                     for (int g = 1; g <= 8; ++g)
                         groupes.addItem(kMenuTrackEditGroupNone + g,
-                                         juce::String(u8"Groupe ") + juce::String(g),
+                                         juce::String(tr(u8"Groupe ")) + juce::String(g),
                                          true, actuel == g);
-                    menu.addSubMenu(u8"Groupe d'édition (couper et déplacer ensemble)", groupes,
+                    menu.addSubMenu(tr(u8"Groupe d'édition (couper et déplacer ensemble)"), groupes,
                                      !project_.tracks.empty());
                 }
                 menu.addItem(kMenuTrackLock,
-                              verrouillee ? u8"Déverrouiller la piste (le montage reprend)"
-                                          : u8"Verrouiller la piste (le montage s'arrête)",
+                              verrouillee ? tr(u8"Déverrouiller la piste (le montage reprend)")
+                                          : tr(u8"Verrouiller la piste (le montage s'arrête)"),
                               !project_.tracks.empty());
             }
             menu.addSeparator();
@@ -2582,10 +2593,10 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                          || project_.tracks[piste].kind == Track::Kind::Audio);
                 const bool gelee = gelable && project_.tracks[piste].frozen;
                 menu.addItem(kMenuTrackFreeze,
-                              gelee ? u8"Dégeler la piste (l'instrument reprend)"
-                                    : u8"Geler la piste (l'instrument s'arrête)",
+                              gelee ? tr(u8"Dégeler la piste (l'instrument reprend)")
+                                    : tr(u8"Geler la piste (l'instrument s'arrête)"),
                               gelable);
-                menu.addItem(kMenuTrackBounce, u8"Reporter la piste en audio (définitif)",
+                menu.addItem(kMenuTrackBounce, tr(u8"Reporter la piste en audio (définitif)"),
                               gelable);
                 // D30.2 : DÉSACTIVER, à côté du gel parce que c'est à lui
                 // qu'on la compare -- et le libellé dit la différence, sans
@@ -2594,8 +2605,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                     const bool eteinte = piste < project_.tracks.size()
                                          && project_.tracks[piste].disabled;
                     menu.addItem(kMenuTrackDisable,
-                                  eteinte ? u8"Réactiver la piste (sa machine revient)"
-                                          : u8"Désactiver la piste (sa machine et ses inserts sont libérés)",
+                                  eteinte ? tr(u8"Réactiver la piste (sa machine revient)")
+                                          : tr(u8"Désactiver la piste (sa machine et ses inserts sont libérés)"),
                                   piste < project_.tracks.size());
                 }
                 // D30.3 : LA CHAÎNE D'INSERTS, D'UNE PISTE À L'AUTRE. Les
@@ -2675,7 +2686,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                   points > 2);
                 }
                 menu.addItem(kMenuTrackBounceSelection,
-                              u8"Reporter la sélection en audio (sur une piste neuve)",
+                              tr(u8"Reporter la sélection en audio (sur une piste neuve)"),
                               arrangement_.hasSelection());
                 // D18.7b : PUBLIER LES SORTIES. L'entrée dit COMBIEN, parce
                 // qu'une commande grisée sans raison est une commande qu'on
@@ -2698,7 +2709,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                     // créer un tiroir, y entrer, en sortir — plutôt qu'une
                     // grande commande qui devinerait ce qu'on veut ranger.
                     menu.addItem(kMenuTrackNewFolder,
-                                  u8"Ranger cette piste dans un dossier neuf",
+                                  tr(u8"Ranger cette piste dans un dossier neuf"),
                                   piste < project_.tracks.size());
                     {
                         const bool peutEntrer =
@@ -2706,50 +2717,49 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                             && project_.tracks[piste - 1].isFolder()
                             && project_.tracks[piste].folderDepth
                                    <= project_.tracks[piste - 1].folderDepth;
-                        menu.addItem(kMenuTrackFolderIn, u8"Entrer dans le dossier du dessus",
+                        menu.addItem(kMenuTrackFolderIn, tr(u8"Entrer dans le dossier du dessus"),
                                       peutEntrer);
-                        menu.addItem(kMenuTrackFolderOut, u8"Sortir du dossier",
+                        menu.addItem(kMenuTrackFolderOut, tr(u8"Sortir du dossier"),
                                       piste < project_.tracks.size()
                                           && project_.tracks[piste].folderDepth > 0);
                     }
                     menu.addSeparator();
                     menu.addItem(kMenuTrackExplodeByPitch,
                                   hauteurs >= 2
-                                      ? juce::String(u8"Éclater par hauteur (")
+                                      ? juce::String(tr(u8"Éclater par hauteur ("))
                                             + juce::String(static_cast<int>(hauteurs))
-                                            + juce::String(u8" pistes)")
-                                      : juce::String(u8"Éclater par hauteur (une seule hauteur ici)"),
+                                            + juce::String(tr(u8" pistes)"))
+                                      : juce::String(tr(u8"Éclater par hauteur (une seule hauteur ici)")),
                                   hauteurs >= 2);
                     menu.addItem(kMenuTrackPublishOutputs,
                                   sorties > 1
-                                      ? juce::String(u8"Publier les ") + juce::String(sorties - 1)
-                                            + juce::String(u8" autres sorties sur des pistes")
-                                      : juce::String(u8"Publier les sorties de l'instrument "
-                                                      u8"(cette machine n'en a qu'une)"),
+                                      ? juce::String(tr(u8"Publier les ")) + juce::String(sorties - 1)
+                                            + juce::String(tr(u8" autres sorties sur des pistes"))
+                                      : juce::String(tr(u8"Publier les sorties de l'instrument (cette machine n'en a qu'une)")),
                                   sorties > 1);
                 }
 #if VSM_WITH_CLAP || VSM_WITH_VST3
                 menu.addSeparator();
 #endif
 #if VSM_WITH_CLAP
-                menu.addItem(kMenuTrackClapPlugin, u8"Charger un plugin CLAP sur la piste...",
+                menu.addItem(kMenuTrackClapPlugin, tr(u8"Charger un plugin CLAP sur la piste..."),
                               piste < project_.tracks.size()
                                   && project_.tracks[piste].kind == Track::Kind::Midi);
 #endif
 #if VSM_WITH_CLAP || VSM_WITH_VST3
                 menu.addItem(kMenuTrackScanPlugins,
                               pluginScanner_ != nullptr
-                                  ? juce::String(u8"Balayage des plugins en cours...")
-                                  : juce::String(u8"Rechercher les plugins installes..."),
+                                  ? juce::String(tr(u8"Balayage des plugins en cours..."))
+                                  : juce::String(tr(u8"Rechercher les plugins installes...")),
                               pluginScanner_ == nullptr);
                 menu.addItem(kMenuTrackPluginFromCatalogue,
-                              u8"Instrument parmi les plugins trouves...",
+                              tr(u8"Instrument parmi les plugins trouves..."),
                               !pluginCatalogue_.instruments().empty()
                                   && piste < project_.tracks.size()
                                   && project_.tracks[piste].kind == Track::Kind::Midi);
 #endif
 #if VSM_WITH_VST3
-                menu.addItem(kMenuTrackVst3Plugin, u8"Charger un instrument VST3 sur la piste...",
+                menu.addItem(kMenuTrackVst3Plugin, tr(u8"Charger un instrument VST3 sur la piste..."),
                               piste < project_.tracks.size()
                                   && project_.tracks[piste].kind == Track::Kind::Midi);
 #endif
@@ -2777,7 +2787,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
 #endif
                         }
                     menu.addItem(kMenuTrackPluginEditor,
-                                  u8"Ouvrir l'interface du plugin de la piste", aFacade);
+                                  tr(u8"Ouvrir l'interface du plugin de la piste"), aFacade);
                 }
 #endif
             }
@@ -2788,23 +2798,22 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // qui était déjà là -- plus la quantification de la dernière prise.
             {
                 const int mesures = countInBars_;
-                menu.addSectionHeader(u8"Décompte");
-                menu.addItem(kMenuRecordCountInNone, "Aucun", true, mesures == 0);
-                menu.addItem(kMenuRecordCountInOne, "1 mesure", true, mesures == 1);
-                menu.addItem(kMenuRecordCountInTwo, "2 mesures", true, mesures == 2);
-                menu.addSectionHeader(u8"Ce que fait la prise MIDI");
-                menu.addItem(kMenuRecordOverdub, "Superposer",
+                menu.addSectionHeader(tr(u8"Décompte"));
+                menu.addItem(kMenuRecordCountInNone, tr("Aucun"), true, mesures == 0);
+                menu.addItem(kMenuRecordCountInOne, tr("1 mesure"), true, mesures == 1);
+                menu.addItem(kMenuRecordCountInTwo, tr("2 mesures"), true, mesures == 2);
+                menu.addSectionHeader(tr(u8"Ce que fait la prise MIDI"));
+                menu.addItem(kMenuRecordOverdub, tr("Superposer"),
                               true, recordMode_ == vsm::sequencer::RecordMode::Overdub);
-                menu.addItem(kMenuRecordReplace, "Remplacer",
+                menu.addItem(kMenuRecordReplace, tr("Remplacer"),
                               true, recordMode_ == vsm::sequencer::RecordMode::Replace);
-                menu.addItem(kMenuRecordStack, u8"Empiler les prises",
+                menu.addItem(kMenuRecordStack, tr(u8"Empiler les prises"),
                               true, recordMode_ == vsm::sequencer::RecordMode::Stack);
                 // HORS DU MODE EMPILÉ, une prise audio remplace toujours le
                 // matériau de sa piste -- une piste audio porte un seul fichier.
                 // Le menu le dit plutôt que de laisser croire que
                 // « superposer » la concerne.
-                menu.addItem(-1, u8"(en boucle et en mode empilé, chaque passage "
-                                  u8"devient une prise)", false, false);
+                menu.addItem(-1, tr(u8"(en boucle et en mode empilé, chaque passage devient une prise)"), false, false);
                 menu.addSeparator();
 
                 // LA RÉGION DE PUNCH : entre ces deux points, et seulement là,
@@ -2812,11 +2821,11 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 // règle du piano roll avec Alt -- comme la boucle avec Maj --
                 // et le menu offre les deux gestes qu'on fait le plus souvent.
                 const bool punchPose = project_.punchEndTick > project_.punchStartTick;
-                menu.addSectionHeader(u8"Région de punch (Alt sur la règle)");
-                menu.addItem(kMenuRecordPunchToggle, u8"Active", punchPose, project_.punchEnabled);
-                menu.addItem(kMenuRecordPunchFromLoop, u8"La prendre sur la boucle",
+                menu.addSectionHeader(tr(u8"Région de punch (Alt sur la règle)"));
+                menu.addItem(kMenuRecordPunchToggle, tr(u8"Active"), punchPose, project_.punchEnabled);
+                menu.addItem(kMenuRecordPunchFromLoop, tr(u8"La prendre sur la boucle"),
                               project_.loopEndTick > project_.loopStartTick);
-                menu.addItem(kMenuRecordPunchClear, u8"L'effacer", punchPose);
+                menu.addItem(kMenuRecordPunchClear, tr(u8"L'effacer"), punchPose);
                 menu.addSeparator();
 
                 // LA LATENCE, PUBLIÉE. Le critère de D3.6 dit « le chiffre est
@@ -2826,20 +2835,19 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 {
                     const double r = audioEngine_.measuredRoundTripSeconds();
                     const double sr = audioEngine_.currentSampleRate();
-                    menu.addSectionHeader(u8"Latence d'entrée");
+                    menu.addSectionHeader(tr(u8"Latence d'entrée"));
                     menu.addItem(-2,
                                   r > 0.0
-                                      ? juce::String(u8"Mesurée : ") + juce::String(r * 1000.0, 2)
-                                            + " ms (" + juce::String(juce::roundToInt(r * sr))
-                                            + juce::String(u8" échantillons)")
-                                      : juce::String(u8"Jamais mesurée — les prises audio ne sont "
-                                                      u8"pas compensées"),
+                                      ? juce::String(tr(u8"Mesurée : ")) + juce::String(r * 1000.0, 2)
+                                            + tr(" ms (") + juce::String(juce::roundToInt(r * sr))
+                                            + juce::String(tr(u8" échantillons)"))
+                                      : juce::String(tr(u8"Jamais mesurée — les prises audio ne sont pas compensées")),
                                   false, false);
                     // D11.7 : S'ENTENDRE. L'entrée recopiée vers la sortie, en
                     // direct — à la latence du périphérique, que la commande
                     // suivante mesure. Coché quand c'est actif ; jamais par défaut.
                     menu.addItem(kMenuRecordMonitorInput,
-                                 u8"\u00c9couter l'entr\u00e9e en direct (latence du p\u00e9riph\u00e9rique)",
+                                 tr(u8"\u00c9couter l'entr\u00e9e en direct (latence du p\u00e9riph\u00e9rique)"),
                                  audioEngine_.isDeviceOpen() && monitoringMode_ == 0, audioEngine_.inputMonitoring());
                     // D23.2 : LE MODE. Chaque entrée dit QUAND elle écoute :
                     // « automatique » sans sa règle serait une magie qu'on ne
@@ -2847,20 +2855,20 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                     {
                         juce::PopupMenu modes;
                         modes.addItem(kMenuRecordMonitorManual,
-                                      u8"\u00c9coute manuelle (l'interrupteur ci-dessus)", true, monitoringMode_ == 0);
+                                      tr(u8"\u00c9coute manuelle (l'interrupteur ci-dessus)"), true, monitoringMode_ == 0);
                         modes.addItem(kMenuRecordMonitorAuto,
-                                      u8"\u00c9coute automatique (une piste audio arm\u00e9e, transport arr\u00eat\u00e9 ou en enregistrement)",
+                                      tr(u8"\u00c9coute automatique (une piste audio arm\u00e9e, transport arr\u00eat\u00e9 ou en enregistrement)"),
                                       true, monitoringMode_ == 1);
                         modes.addItem(kMenuRecordMonitorArmed,
-                                      u8"\u00c9coute quand une piste est arm\u00e9e (une piste audio arm\u00e9e, toujours)", true, monitoringMode_ == 2);
-                        menu.addSubMenu(u8"\u00c9coute de l'entr\u00e9e", modes);
+                                      tr(u8"\u00c9coute quand une piste est arm\u00e9e (une piste audio arm\u00e9e, toujours)"), true, monitoringMode_ == 2);
+                        menu.addSubMenu(tr(u8"\u00c9coute de l'entr\u00e9e"), modes);
                     }
                     // D24.4 : LE PANIC. Toujours actif : une note bloquée ne
                     // prévient pas.
-                    menu.addItem(kMenuRecordPanic, u8"Couper toutes les notes (panic)");
+                    menu.addItem(kMenuRecordPanic, tr(u8"Couper toutes les notes (panic)"));
                     menu.addItem(kMenuRecordMeasureLatency,
-                                  u8"Mesurer (brancher la sortie sur l'entrée)...");
-                    menu.addItem(kMenuRecordClearLatency, u8"Oublier la mesure", r > 0.0);
+                                  tr(u8"Mesurer (brancher la sortie sur l'entrée)..."));
+                    menu.addItem(kMenuRecordClearLatency, tr(u8"Oublier la mesure"), r > 0.0);
                 }
                 menu.addSeparator();
 
@@ -2871,13 +2879,13 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 if (pisteChoisie < project_.tracks.size()
                     && !project_.tracks[pisteChoisie].takes.empty()) {
                     const auto& prises = project_.tracks[pisteChoisie].takes;
-                    menu.addSectionHeader(juce::String(u8"Prises de « ")
+                    menu.addSectionHeader(juce::String(tr(u8"Prises de « "))
                                            + juce::String(project_.tracks[pisteChoisie].name)
-                                           + juce::String(u8" »"));
+                                           + juce::String(tr(u8" »")));
                     for (size_t i = 0; i < prises.size() && i <= 63; ++i)
                         menu.addItem(kMenuRecordTakeFirst + static_cast<int>(i),
                                       juce::String(prises[i].name.empty()
-                                                       ? ("Prise " + std::to_string(i + 1))
+                                                       ? (tr("Prise ") + std::to_string(i + 1))
                                                        : prises[i].name),
                                       true,
                                       static_cast<int>(i) == project_.tracks[pisteChoisie].activeTake);
@@ -2889,7 +2897,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                     for (size_t i = 0; i < prises.size() && i <= 63; ++i)
                         retirer.addItem(kMenuRecordDeleteTakeFirst + static_cast<int>(i),
                                          juce::String(prises[i].name.empty()
-                                                          ? ("Prise " + std::to_string(i + 1))
+                                                          ? (tr("Prise ") + std::to_string(i + 1))
                                                           : prises[i].name)
                                          + (static_cast<int>(i) == project_.tracks[pisteChoisie].activeTake
                                                 ? juce::String::fromUTF8(u8"  (celle qu'on entend)")
@@ -2899,7 +2907,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                     menu.addSeparator();
                 }
                 menu.addItem(kMenuRecordQuantizeTake,
-                              u8"Quantifier la dernière prise (grille du piano roll)",
+                              tr(u8"Quantifier la dernière prise (grille du piano roll)"),
                               !lastTake_.empty());
                 // D17.3 : ce qu'on vient de jouer sans avoir armé. Le nombre
                 // d'événements gardés est DIT : « récupérer » sur un tampon
@@ -2934,7 +2942,7 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // réverbération et un delay, et rien -- ni le projet, ni
             // l'interface -- ne disait ce que les boutons alimentaient.
             {
-                menu.addSectionHeader(u8"Bus de départ");
+                menu.addSectionHeader(tr(u8"Bus de départ"));
                 const auto& effets = vsm::audio::effect::EffectFactory::available();
                 for (size_t bus = 0; bus < project_.sends.size() && bus < 8; ++bus) {
                     const auto& decrit = project_.sends[bus];
@@ -2953,30 +2961,30 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                     // commutateur, il faudrait choisir entre une réverbération
                     // parasite et pas de chaîne latérale du tout.
                     sousMenu.addItem(kMenuMixSendReturnFirst + static_cast<int>(bus),
-                                      u8"Retour audible", true, decrit.returnGain > 0.0f);
+                                      tr(u8"Retour audible"), true, decrit.returnGain > 0.0f);
                     sousMenu.addItem(kMenuMixSendPreFaderFirst + static_cast<int>(bus),
                                       decrit.preFader
-                                          ? u8"Pré-fader (le fader ne l'affecte pas)"
-                                          : u8"Post-fader (le fader l'emporte avec lui)",
+                                          ? tr(u8"Pré-fader (le fader ne l'affecte pas)")
+                                          : tr(u8"Post-fader (le fader l'emporte avec lui)"),
                                       true, decrit.preFader);
                     sousMenu.addSeparator();
                     sousMenu.addItem(kMenuMixRemoveSendFirst + static_cast<int>(bus),
-                                      u8"Retirer ce bus");
-                    menu.addSubMenu(juce::String(decrit.name.empty() ? "Bus" : decrit.name)
-                                         + "  (" + juce::String(decrit.effectType) + ")",
+                                      tr(u8"Retirer ce bus"));
+                    menu.addSubMenu(juce::String(decrit.name.empty() ? tr("Bus") : decrit.name)
+                                         + tr("  (") + juce::String(decrit.effectType) + tr(")"),
                                      sousMenu);
                 }
                 if (project_.sends.empty())
-                    menu.addItem(-1, u8"(aucun — les tranches n'ont pas de bouton de départ)",
+                    menu.addItem(-1, tr(u8"(aucun — les tranches n'ont pas de bouton de départ)"),
                                   false, false);
                 menu.addSeparator();
-                menu.addItem(kMenuMixAddSend, u8"Ajouter un bus de départ",
+                menu.addItem(kMenuMixAddSend, tr(u8"Ajouter un bus de départ"),
                               project_.sends.size() < vsm::audio::engine::ProcessGraph::kMaxSends);
             }
             // D23.5 : L'ÉCOUTE EN MONO, aussi au menu -- pour le clavier, et pour
             // que VSM_MENU puisse la photographier.
             menu.addSeparator();
-            menu.addItem(kMenuMixMonoListen, u8"\u00c9coute en mono (jamais dans un export)", true,
+            menu.addItem(kMenuMixMonoListen, tr(u8"\u00c9coute en mono (jamais dans un export)"), true,
                          audioEngine_.processGraph().masterBus().monoListen());
             // D34.1 : LA FORME DES FONDUS CROISÉS. Une donnée du MORCEAU, et
             // non une préférence : elle change ce que l'export contient.
@@ -3006,19 +3014,19 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                          true, computerKeyboard_);
             {
                 auto* fenetre = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent());
-                menu.addItem(kMenuViewFullScreen, u8"Plein \u00e9cran (F11)", fenetre != nullptr,
+                menu.addItem(kMenuViewFullScreen, tr(u8"Plein \u00e9cran (F11)"), fenetre != nullptr,
                               fenetre != nullptr && fenetre->isFullScreen());
             }
             menu.addSeparator();
-            menu.addItem(kMenuViewTracks, "Pistes", true,
+            menu.addItem(kMenuViewTracks, tr("Pistes"), true,
                           singleWindow_ ? trackList_.isVisible() : trackListWindow_.isVisible());
-            menu.addItem(kMenuViewPianoRoll, "Piano Roll", true,
+            menu.addItem(kMenuViewPianoRoll, tr("Piano Roll"), true,
                           singleWindow_ ? pianoRollPanel_.isVisible() : pianoRollWindow_.isVisible());
-            menu.addItem(kMenuViewSynthRack, "Synth Rack", true,
+            menu.addItem(kMenuViewSynthRack, tr("Synth Rack"), true,
                           singleWindow_ ? synthRack_.isVisible() : synthRackWindow_.isVisible());
-            menu.addItem(kMenuViewMixer, "Mixer", true,
+            menu.addItem(kMenuViewMixer, tr("Mixer"), true,
                           singleWindow_ ? bottomTabs_.isVisible() : mixerWindow_.isVisible());
-            menu.addItem(kMenuViewArrangement, "Arrangement", true,
+            menu.addItem(kMenuViewArrangement, tr("Arrangement"), true,
                           singleWindow_ ? arrangement_.isVisible() : arrangementWindow_.isVisible());
             menu.addItem(kMenuViewBrowser, juce::String::fromUTF8(u8"Navigateur"),
                           true, browserWindow_ && browserWindow_->isVisible());
@@ -3058,18 +3066,18 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             menu.addItem(kMenuViewMidiLearn,
                           juce::String::fromUTF8(u8"Associations MIDI (")
                               + juce::String(static_cast<int>(audioEngine_.midiLearnMappingCount()))
-                              + ")",
+                              + tr(")"),
                           true, midiLearnWindow_ && midiLearnWindow_->isVisible());
             // D23.4 : TOUTES LES PISTES À LA FENÊTRE, et trois hauteurs fixes.
             menu.addSeparator();
-            menu.addItem(kMenuViewFitTracks, u8"Toutes les pistes \u00e0 la fen\u00eatre (arrangement)",
+            menu.addItem(kMenuViewFitTracks, tr(u8"Toutes les pistes \u00e0 la fen\u00eatre (arrangement)"),
                          !project_.tracks.empty());
             {
                 juce::PopupMenu hauteurs;
-                hauteurs.addItem(kMenuViewTrackHeightSmall, u8"Petite (24 px)", !project_.tracks.empty());
-                hauteurs.addItem(kMenuViewTrackHeightNormal, u8"Normale (56 px)", !project_.tracks.empty());
-                hauteurs.addItem(kMenuViewTrackHeightLarge, u8"Grande (112 px)", !project_.tracks.empty());
-                menu.addSubMenu(u8"Hauteur des pistes", hauteurs);
+                hauteurs.addItem(kMenuViewTrackHeightSmall, tr(u8"Petite (24 px)"), !project_.tracks.empty());
+                hauteurs.addItem(kMenuViewTrackHeightNormal, tr(u8"Normale (56 px)"), !project_.tracks.empty());
+                hauteurs.addItem(kMenuViewTrackHeightLarge, tr(u8"Grande (112 px)"), !project_.tracks.empty());
+                menu.addSubMenu(tr(u8"Hauteur des pistes"), hauteurs);
             }
             // D34.4 : LA RÈGLE, EN MESURES OU EN TEMPS. La barre de transport
             // affiche les deux positions depuis D11.3 ; la règle n'en montrait
@@ -3098,11 +3106,34 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                                     true,
                                     std::abs(paliers[i] - actuelle) < 1.0e-3f);
                 }
-                menu.addSubMenu("Taille de l'interface", tailles);
+                menu.addSubMenu(tr("Taille de l'interface"), tailles);
+
+                // D73 : LA LANGUE, à côté de la taille -- ce sont les deux
+                // réglages qui décident de ce qu'on LIT, et ils se cherchent au
+                // même endroit. Chaque langue est écrite DANS SA PROPRE LANGUE
+                // (« Français », « English ») : c'est la convention de tous les
+                // sélecteurs de langue, et la seule qui permette de retrouver
+                // la sienne quand l'interface est posée dans une autre.
+                //
+                // « Langue », « Français » et « English » sont UNIQUES dans
+                // toute la barre, et ce n'est pas un hasard : `VSM_MENU` prend
+                // le PREMIER libellé exact tous menus confondus, et un doublon
+                // ferait piloter autre chose que ce qu'on croit (piège payé le
+                // 06/09 avec « Automatique »).
+                juce::PopupMenu langues;
+                const vsm::app::ui::Langue::Choix choix[] = {
+                    vsm::app::ui::Langue::Choix::Francais,
+                    vsm::app::ui::Langue::Choix::Anglais,
+                };
+                for (int i = 0; i < static_cast<int>(std::size(choix)); ++i)
+                    langues.addItem(kMenuViewLangueFirst + i,
+                                    vsm::app::ui::Langue::libelle(choix[i]), true,
+                                    vsm::app::ui::Langue::courante() == choix[i]);
+                menu.addSubMenu(tr("Langue"), langues);
             }
             break;
         case 6:
-            menu.addItem(kMenuHelpAbout, u8"À propos de Vintage Synth MIDI Studio");
+            menu.addItem(kMenuHelpAbout, tr(u8"À propos de Vintage Synth MIDI Studio"));
             break;
         default:
             break;
@@ -3582,6 +3613,16 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
                 setRenderThreadChoice(menuItemID == kMenuAudioThreadsFirst
                                            ? kRenderThreadsAutomatic
                                            : menuItemID - kMenuAudioThreadsFirst - 1);
+                break;
+            }
+            if (menuItemID >= kMenuViewLangueFirst && menuItemID <= kMenuViewLangueLast) {
+                const vsm::app::ui::Langue::Choix choix[] = {
+                    vsm::app::ui::Langue::Choix::Francais,
+                    vsm::app::ui::Langue::Choix::Anglais,
+                };
+                const int index = menuItemID - kMenuViewLangueFirst;
+                if (index >= 0 && index < static_cast<int>(std::size(choix)))
+                    if (vsm::app::ui::Langue::appliquer(choix[index])) retraduire();
                 break;
             }
             if (menuItemID >= kMenuViewScaleFirst && menuItemID <= kMenuViewScaleLast) {
@@ -5235,8 +5276,8 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
         using Ton = Rapport::Ton;
         juce::Array<Rapport::LigneExterne> lignes;
         lignes.add({juce::String(rapport.size()) + (rapport.size() > 1
-                                                     ? juce::String::fromUTF8(" réserves à l'ouverture")
-                                                     : juce::String::fromUTF8(" réserve à l'ouverture")),
+                                                     ? tr(u8" réserves à l'ouverture")
+                                                     : tr(u8" réserve à l'ouverture")),
                     Ton::resume});
         for (const auto& ligne : rapport) {
             // LE TON SUIT LA CONVENTION DÉJÀ ÉTABLIE PAR LES DEUX AUTRES
@@ -5255,7 +5296,7 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
                             || ligne.contains(juce::String::fromUTF8("silencieuse"));
             lignes.add({ligne, perte ? Ton::perte : Ton::info});
         }
-        importReport_.showLines(juce::String::fromUTF8("Projet ouvert, avec des réserves"),
+        importReport_.showLines(tr(u8"Projet ouvert, avec des réserves"),
                                  folder.getFileName(), lignes);
     }
 }
@@ -7261,6 +7302,25 @@ void MainComponent::noterReserveDEffet(const juce::String& reserve) {
         return;
     reservesEffets_.push_back(reserve);
     std::fputs(("VSM_EFFET : " + reserve.toStdString() + "\n").c_str(), stderr);
+}
+
+void MainComponent::retraduire() {
+    // D73 : CE QUE LA BARRE DE MENUS N'A PAS BESOIN QU'ON FASSE. Elle se
+    // reconstruit à chaque ouverture (`getMenuForIndex`), donc elle parle la
+    // langue courante toute seule ; il suffit de lui redemander ses NOMS de
+    // menus, qui sont posés une fois. Le reste -- ce qui est écrit une fois
+    // pour toutes à la construction d'un composant -- se repose ici.
+    //
+    // POURQUOI PAS « AU PROCHAIN DÉMARRAGE », qui aurait tenu en une ligne :
+    // Cubase et Live le demandent, et c'est précisément ce qu'on leur reproche.
+    // Une interface qui exige de relancer le logiciel pour lire son propre menu
+    // dans sa langue n'a pas fini le travail.
+    for (int i = 0; i < bottomTabs_.getNumTabs() && i < nomsDesOnglets_.size(); ++i)
+        bottomTabs_.setTabName(i, tr(nomsDesOnglets_[i]));
+    transportBar_.retraduire();
+    trackList_.retraduire();
+    menuItemsChanged();
+    repaint();
 }
 
 void MainComponent::applySendBuses() {

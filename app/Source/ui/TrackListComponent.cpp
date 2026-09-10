@@ -1,4 +1,5 @@
 #include "TrackListComponent.h"
+#include "Langue.h"
 #include "LookAndFeel/VsmLookAndFeel.h"
 #include "vsm/audio/plugin/PluginRegistry.h"
 #include <algorithm>
@@ -475,7 +476,7 @@ TrackListComponent::TrackListComponent() {
     // pièce de batterie — et faire défiler pour retrouver « Caisse claire »
     // n'est plus tenable.
     addAndMakeVisible(filterBox_);
-    filterBox_.setTextToShowWhenEmpty(u8"Filtrer les pistes...", Palette::textSecondary);
+    filterBox_.setTextToShowWhenEmpty(vsm::app::ui::tr(u8"Filtrer les pistes..."), Palette::textSecondary);
     filterBox_.setFont(juce::Font(juce::FontOptions(13.0f)));
     filterBox_.setTooltip(juce::String(
         u8"Ne montre que les pistes dont le nom contient ce texte.\n"
@@ -507,6 +508,10 @@ TrackListComponent::TrackListComponent() {
         if (project_ != nullptr && !project_->tracks.empty() && onRemoveTrack)
             onRemoveTrack(selectedIndex_);
     };
+    // D73 : la langue est déjà posée au démarrage ; les libellés écrits
+    // dans les initialiseurs de membres, eux, sont en français. On les
+    // repose ici plutôt que de les dupliquer.
+    retraduire();
 }
 
 void TrackListComponent::loadProject(Project& project) {
@@ -911,4 +916,12 @@ void TrackListComponent::itemDropped(const SourceDetails& details) {
     selectTrackIndex(static_cast<size_t>(rang));
     if (onBrowserItemDropped) onBrowserItemDropped(static_cast<size_t>(rang),
                                                     details.description.toString());
+}
+
+void TrackListComponent::retraduire() {
+    addButton_.setButtonText(vsm::app::ui::tr("+ Ajouter une piste"));
+    removeButton_.setButtonText(vsm::app::ui::tr("Supprimer"));
+    filterBox_.setTextToShowWhenEmpty(vsm::app::ui::tr(u8"Filtrer les pistes..."),
+                                       Palette::textSecondary);
+    repaint();
 }

@@ -1,4 +1,5 @@
 #include "ImportReportComponent.h"
+#include "Langue.h"
 
 namespace vsm::app::ui {
 namespace P = vsm::ui::Palette;
@@ -57,14 +58,14 @@ ImportReportComponent::ImportReportComponent() {
     // et l'aperçu hors écran (vsm-ui-preview) l'installe désormais lui aussi,
     // au lieu que chaque composant recopie les couleurs à la main.
 
-    fermer_.setButtonText(juce::String::fromUTF8("Fermer"));
+    fermer_.setButtonText(vsm::app::ui::tr("Fermer"));
     addAndMakeVisible(fermer_);
     fermer_.onClick = [this] { fermer(); };
 
     // COPIER : un rapport d'import sert souvent à être montré à quelqu'un
     // d'autre -- sur un forum, dans un message -- quand l'import ne donne pas
     // ce qu'on attendait. Le retaper depuis une capture d'écran serait absurde.
-    copier_.setButtonText(juce::String::fromUTF8("Copier"));
+    copier_.setButtonText(vsm::app::ui::tr("Copier"));
     addAndMakeVisible(copier_);
     copier_.onClick = [this] { juce::SystemClipboard::copyTextToClipboard(reportText()); };
 

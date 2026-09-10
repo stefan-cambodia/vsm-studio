@@ -10803,3 +10803,142 @@ alerte, et une fois « OK » cliqué, plus rien ne les redonnait — alors que
 >
 > Tests : 327 core, 1 291 audio, 293 interchange, 25 clap, 11 panels,
 > 172 Python, ruff et mypy — tout vert.
+
+### Phase D73 — L'anglais comme seconde langue de l'interface (10/09/2026, 18:00)
+
+**LA DEMANDE, ET LE MOT QUI LA BORNE.** « Ajoute **aussi** l'anglais comme
+langue. » L'anglais s'ajoute au français, il ne le remplace pas : le français
+reste la langue par défaut, et l'anglais est un choix.
+
+**CE QUE CELA OUVRE, ET CE QUE CELA N'OUVRE PAS.** L'application compte
+**33 181 lignes** et **2 581 chaînes littérales**, dont environ mille
+ressemblent à du texte affiché — le reste étant des identifiants, des clés de
+préférences et des traces de banc. Traduire les mille d'un coup, à la main,
+serait long et surtout invérifiable : on ne saurait pas ce qui a été oublié.
+La phase pose donc **le mécanisme et les surfaces que l'utilisateur lit en
+premier**, et elle **publie sa couverture** plutôt que de laisser croire à une
+traduction complète.
+
+**TROIS DÉCISIONS, ÉCRITES ICI PLUTÔT QUE DEVINÉES.**
+
+1. **La table est indexée par le FRANÇAIS.** C'est le mécanisme de
+   `juce::LocalisedStrings` : la chaîne d'origine est la clé. Une chaîne sans
+   traduction ressort donc **en français**, jamais vide et jamais en clé brute
+   — la dégradation est lisible, ce qui est la condition pour livrer une
+   couverture partielle sans mentir.
+2. **Le passage par `tr()` corrige un piège au passage.** `juce::String(const
+   char*)` lit les octets en **Latin-1** — c'est le défaut qui rendait
+   « s'éclaircit » en « s'Â©claircit » dans le rack, et qui a obligé D71 à
+   écrire un en-tête de colonne sans accent. `tr()` a deux surcharges, `const
+   char*` et `const char8_t*` (les littéraux `u8"…"` du C++20), et **passe
+   toujours par `fromUTF8`**. Traduire et bien lire les accents deviennent le
+   même geste.
+3. **Le changement de langue est IMMÉDIAT, pas au prochain démarrage.** Cubase
+   et Live demandent un redémarrage, et c'était la solution facile. Elle est
+   refusée : la barre de menus se reconstruit à chaque ouverture, et les
+   libellés fixes qu'on traduit ici tiennent dans une seule fonction de
+   re-traduction. Une interface qui demande de relancer le logiciel pour lire
+   son propre menu dans sa langue est une interface qui n'a pas fini le travail.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (10/09/2026, 18:00).**
+>
+> 1. **La barre de menus est traduite ENTIÈREMENT** — les sept menus et toutes
+>    leurs entrées. C'est la surface qu'on lit en premier et la seule qu'on ne
+>    peut pas contourner ; une barre à moitié anglaise serait pire que rien.
+>    Mesuré en comptant les chaînes qui passent par `tr()` et celles qui ont une
+>    traduction, pas à l'œil.
+> 2. **Rien ne sort vide ni en français au milieu de l'anglais**, sur les
+>    surfaces déclarées traduites. Une capture en anglais et une en français,
+>    côte à côte, et la liste des chaînes sans traduction publiée — même si
+>    elle est vide.
+> 3. **Le français ne bouge pas d'un pixel.** La table est un aiguillage : en
+>    français, `tr()` rend son argument. Vérifié par capture, avant et après.
+> 4. **La langue se choisit sans souris et se conserve.** `VSM_LANGUE=en|fr`
+>    pour le banc, le menu *Affichage ▸ Langue* pour l'utilisateur, et le choix
+>    survit au redémarrage comme l'échelle d'interface.
+> 5. **Le libellé de menu neuf est UNIQUE dans toute la barre.** Piège payé le
+>    06/09 : `VSM_MENU` prend le premier libellé exact tous menus confondus, et
+>    « Automatique » avait piloté les threads de rendu au lieu du mode d'écoute.
+
+> **RECTIFICATIF DE D72 (10/09/2026, 19:30), TROUVÉ EN VÉRIFIANT D73.** Le
+> « 10 / 10 » de D72 est juste ; **la façon dont je l'ai vérifié ne l'était
+> pas**, et il faut le dire parce que la méthode est ce que les phases suivantes
+> réemploient.
+>
+> D72 lisait **un pixel**, (450, 200), et le comparait à un « projet sain ». Deux
+> fautes dans une seule mesure : la couleur `srgba(31,31,36)` n'est pas propre au
+> volet de rapport — c'est aussi le fond du piano roll et des façades —, et le
+> « projet sain » n'était pas sain : le projet des 63 façades décrit 63 pistes
+> pour 64 tronçons MIDI, et il ouvre donc un rapport lui aussi. Ce rapport-là ne
+> tenant qu'UNE ligne, il est plus court, et le point (450, 200) tombait
+> au-dessus de lui. Un témoin qui répond « rien » parce qu'il regarde à côté est
+> le pire des témoins : il confirme.
+>
+> **REFAIT AVEC UNE SONDE SPÉCIFIQUE**, l'empreinte de la bande du titre du
+> rapport (280x24 px à partir de (36, 188)), et un projet **vraiment** sain —
+> deux pistes décrites, deux tronçons MIDI, aucun avertissement :
+>
+> | | résultat |
+> |---|---|
+> | projet abîmé, dix captures | **10 / 10** portent le bandeau, empreinte identique |
+> | projet vraiment sain | **aucun rapport** — la fenêtre nue |
+>
+> La conclusion de D72 tient donc, et sa preuve est maintenant falsifiable. La
+> leçon est celle de D49 encore une fois, un cran plus loin : **il ne suffit pas
+> de lire l'image, il faut lire un endroit de l'image qui ne peut pas dire oui
+> par hasard** — et le contre-exemple doit être un vrai contre-exemple.
+
+> **D73 EST FAITE (10/09/2026, 19:45), ET LES CINQ ATTENDUS SONT TENUS.**
+>
+> | attendu | mesuré |
+> |---|---|
+> | 1. barre de menus traduite entièrement | **227 / 227** chaînes, **0** sans traduction |
+> | 2. rien de vide ni de français sur les surfaces déclarées | captures FR et EN côte à côte |
+> | 3. le français ne bouge pas | **0 pixel** de différence sur la bande des menus |
+> | 4. langue sans souris et conservée | `VSM_LANGUE`, menu, et relance sans variable |
+> | 5. libellés de menu neufs uniques | « Langue », « Français », « English » |
+>
+> **LA TABLE COMPTE 270 PAIRES**, écrites à la main. La traduction automatique se
+> trompe précisément là où cela compte : « piste » est *track*, « prise » est
+> *take* et non *plug*, « écoute » est *monitoring* et non *listening*, « départ »
+> est *send*. Ces mots ont un sens fixé par le métier, et c'est celui-là qu'un
+> musicien cherche dans un menu.
+>
+> **LE FRANÇAIS EST INTACT, ET C'EST MESURÉ PLUTÔT QU'AFFIRMÉ.** La bande de la
+> barre de menus, comparée entre une capture d'avant la phase et une d'après :
+> **0 pixel** de différence. La même sonde entre le français et l'anglais :
+> **2 876 pixels** — la mesure n'est donc pas aveugle, ce qu'un « 0 » tout seul
+> ne prouverait pas (la leçon du rectificatif ci-dessus, appliquée le jour même).
+> Les deux ou trois pixels qui bougent dans la bande du transport sont le
+> **compteur de charge**, qui bat en continu.
+>
+> **LA LANGUE SE CONSERVE**, vérifié en la posant par le menu puis en relançant
+> **sans** `VSM_LANGUE` : la barre revient en anglais. Et `VSM_LANGUE` ne
+> l'écrase pas — un banc choisit sa langue pour une course sans changer le
+> réglage de l'utilisateur, sans quoi une vérification en anglais laisserait le
+> DAW en anglais.
+>
+> **CE QUI N'EST PAS TRADUIT, NOMMÉ ET CHIFFRÉ.** La phase couvre la barre de
+> menus (227), les onglets du dock, la barre de transport, la liste de pistes et
+> l'écran de rapport — 270 chaînes. Restent en français, et c'est écrit ici
+> plutôt que découvert à l'usage :
+>
+> | surface | pourquoi |
+> |---|---|
+> | les phrases des rapports (« effet « … » inconnu, non appliqué ») | elles sont fabriquées dans `interchange/`, qui ne dépend pas de JUCE et n'a donc pas de table ; les traduire demande son propre mécanisme |
+> | les panneaux du dock (mixeur, automation, effets, liste, tempo) | chacun a ses libellés, et ce sont autant de `retraduire()` à écrire |
+> | les fenêtres flottantes (préférences, raccourcis, historique…) | même raison |
+> | les sérigraphies des façades (« CUTOFF », « BASS DRUM ») | **ne se traduisent dans aucun sens** : elles imitent des machines réelles |
+>
+> Une chaîne sans traduction ressort **en français**, jamais vide et jamais en
+> clé technique : c'est ce qui rend cette couverture partielle honnête, et ce qui
+> permet de l'étendre une ligne à la fois.
+>
+> **UN PIÈGE RÉPARÉ EN PASSANT.** `tr()` a deux surcharges, `const char*` et
+> `const char8_t*` (les `u8"…"` du C++20), et passe **toujours** par `fromUTF8`.
+> Traduire une chaîne et lire ses accents correctement sont devenus le même
+> geste — là où `juce::String(const char*)` lit ses octets en Latin-1 et rendait
+> « s'éclaircit » en « s'Â©claircit ».
+>
+> Tests : 327 core, 1 291 audio, 293 interchange, 25 clap, 11 panels,
+> 172 Python, ruff et mypy — tout vert.

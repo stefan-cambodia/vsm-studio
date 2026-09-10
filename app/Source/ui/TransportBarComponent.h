@@ -11,6 +11,12 @@ public:
     explicit TransportBarComponent(vsm::audio::engine::Transport& transport);
     ~TransportBarComponent() override;
 
+    /// D73 : repose les libellés écrits une fois à la construction, après un
+    /// changement de langue. « Play », « Stop », « Rec », « Loop » et « Tap »
+    /// n'y figurent pas : ce sont les mêmes mots dans les deux langues, et les
+    /// traduire reviendrait à traduire une chose vers elle-même.
+    void retraduire();
+
     void paint(juce::Graphics&) override;
     void resized() override;
 
