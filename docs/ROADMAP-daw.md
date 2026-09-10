@@ -11672,3 +11672,123 @@ par ne pas annuler la même chose.
 >
 > Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
 > 172 Python, ruff et mypy — tout vert.
+
+### Phase D80 — A9 : le menu Édition, et une barre de menus comptée sur ce qu'elle affiche (10/09/2026, 19:05)
+
+**CE QUE D79 A COMPTÉ.** Le menu Édition est le menu contextuel du piano roll :
+**64 entrées, aucune par `tr()`**. En anglais, il est entièrement en français.
+Le « 227 / 227 » de D73 était un compte STATIQUE — les chaînes qui passent par
+`tr()` dans `MainComponent.cpp` — et il ne voyait pas un menu construit
+ailleurs. Des libellés y sont en plus FABRIQUÉS : « Annuler : » suivi du nom
+du geste, des comptes entre parenthèses, et les noms d'accords, qui sortent
+de `core/` et passent par `juce::String(const char*)` — donc en Latin-1.
+
+**LA DÉCISION SUR LA MESURE, AVANT LA TRADUCTION.** Un menu déroulant ne se
+photographie pas, et un compte statique a déjà menti une fois. L'application
+**dira donc son menu elle-même** : `VSM_MENU_LISTE=1` écrit chaque entrée de
+la barre, sous-menus compris, sur la sortie d'erreur, telle qu'elle
+s'affiche. Une entrée IDENTIQUE en français et en anglais est soit non
+traduite, soit neutre (« Legato », « Crescendo », « Octave + ») : la liste de
+ces entrées se publie et se lit, plutôt qu'un pourcentage. Les noms d'accords
+restent français dans `core/` et se traduisent à l'affichage, comme les
+gammes en D78.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (10/09/2026, 19:05).**
+>
+> 1. **La barre entière est comptée sur ce qu'elle affiche**, en français et
+>    en anglais, et le chiffre de D73 est confronté à ce compte-là.
+> 2. **Le menu Édition est traduit** : après la phase, les seules entrées
+>    identiques dans les deux langues sont neutres, et elles sont nommées.
+> 3. **Le français ne change pas** : la liste française d'après est celle
+>    qu'affichait le binaire d'avant, entrée pour entrée.
+> 4. **Aucun libellé anglais neuf n'en double un autre** dans la barre
+>    (piège `VSM_MENU` du 06/09), vérifié sur la liste.
+
+> **LE RELEVÉ D'AVANT (10/09/2026, 19:10), ET CE QU'IL FAIT DE D73.** Le binaire
+> d'avant la traduction — le même code, commande de liste comprise —, la démo
+> à réverbération ouverte, `HOME` isolé. La barre affiche **315 entrées**, et
+> **150 sont identiques en français et en anglais** :
+>
+> | menu | entrées | identiques FR / EN |
+> |---|---|---|
+> | Fichier | 65 | 16 |
+> | Édition | 108 | **89** |
+> | Piste | 74 | 14 |
+> | Enregistrement | 26 | 3 |
+> | Mixage | 9 | 5 |
+> | Affichage | 32 | 23 |
+> | Aide | 1 | 0 |
+>
+> **RECTIFICATIF DE D73.** « La barre de menus est traduite ENTIÈREMENT —
+> 227 / 227 chaînes, 0 sans traduction » était un compte fait dans le code :
+> les chaînes de `MainComponent.cpp` passées à `tr()` et présentes dans la
+> table. Il ne voyait pas le menu Édition, construit par le piano roll, et il
+> ne voyait pas que les libellés FABRIQUÉS — « Copier la chaîne d'inserts
+> (1) », « Réduire les points d'automation (0 points) », « Ordre de jeu…
+> (aucune section) » — n'ont pas la clé de la table : le texte affiché n'est
+> pas la chaîne qu'on a traduite. Une partie des 150 est neutre par nature
+> (les chemins des projets récents, les ports MIDI, « 150 % », « Français » et
+> « English », « Legato », « Crescendo ») ; le reste est du français que D73
+> déclarait traduit. **La leçon est celle de D72, un cran plus loin : on
+> mesure ce que l'application AFFICHE, pas ce que le code contient.**
+>
+> **ET UN DÉFAUT DU FRANÇAIS, VU CETTE FOIS ET NON PLUS LU** : « DiminuÃ© sur
+> C4 » et « AugmentÃ© sur C4 » dans le sous-menu des accords — le nom sort de
+> `core/` en UTF-8 et `juce::String(const char*)` le lisait en Latin-1. Le
+> même piège que D78 soupçonnait pour les gammes sans pouvoir l'ouvrir.
+
+> **D80 EST FAITE (10/09/2026, 19:18), ET LES QUATRE ATTENDUS SONT TENUS.**
+> Les listes d'après, prises par le binaire d'après dans les mêmes conditions
+> (démo à réverbération, `HOME` isolé, préférences de l'utilisateur vérifiées
+> intactes par `cmp`).
+>
+> | menu | entrées | identiques FR / EN avant | après |
+> |---|---|---|---|
+> | Fichier | 65 | 16 | 13 |
+> | **Édition** | 108 | **89** | **11** |
+> | Piste | 74 | 14 | 14 |
+> | Enregistrement | 26 | 3 | 3 |
+> | Mixage | 9 | 5 | 5 |
+> | Affichage | 32 | 23 | 23 |
+> | Aide | 1 | 0 | 0 |
+> | **barre entière** | 315 | **150** | **69** |
+>
+> **Les onze du menu Édition sont neutres**, et les voici : « Octave + »,
+> « Octave - », « Legato », « Crescendo », « Decrescendo », « 2/4 », « 3/4 »,
+> « 4/4 », « 5/4 », « 6/8 », « 7/8 ». Le modèle du groove, qu'aucune liste ne
+> montrait sans groove en mémoire, a été affiché en extrayant d'abord celui de
+> la Basse : « Appliquer le groove « Acid Bass » » en français,
+> « Apply the groove “Acid Bass” » en anglais.
+>
+> **Le français ne change pas** : alignées par leur contenu (`difflib`), les
+> listes d'avant et d'après ont **308 entrées égales** et trois blocs
+> différents. Deux tiennent à l'ENVIRONNEMENT et non au code : le binaire
+> témoin, lancé depuis le brouillon, ne trouve pas `analyse/` « à côté de
+> l'application » et le dit dans le menu Fichier et dans l'entrée de
+> transcription. Le troisième est la correction voulue : « Diminué » et
+> « Augmenté » au lieu de « DiminuÃ© » et « AugmentÃ© ». *Une première lecture,
+> ligne par ligne, avait donné « 278 entrées différentes » : le décalage de
+> trois lignes du menu Fichier faisait tout glisser. Le chiffre n'a pas été
+> écrit tel quel ; il a été expliqué, puis refait par contenu.*
+>
+> **Aucun libellé anglais neuf n'en double un autre** : les deux doublons de
+> la liste anglaise (« None », « Quantise ») recouvrent exactement deux
+> doublons que le français avait déjà (« Aucun », « Quantifier (100 %) /
+> (50 %) »).
+>
+> **CE QUE LA PHASE A TROUVÉ EN PLUS, ET QUI EXPLIQUE UNE PARTIE DU CHIFFRE DE
+> D73.** Sept paires de la table existaient DÉJÀ pour des entrées du menu
+> Édition — les quatre formes d'automation, « Triangle », « Carré »,
+> « Appliquer le groove (aucun en mémoire) » — mais le code les écrivait par
+> `juce::String::fromUTF8`, sans passer par `tr()`. Le compte statique les
+> voyait « traduites » ; l'écran ne l'était pas. La table compte désormais
+> **391** paires.
+>
+> **CE QUI RESTE, COMPTÉ SUR L'ÉCRAN** : 69 entrées identiques dans les deux
+> langues, dont une part neutre (chemins, ports, pourcentages, « Français » et
+> « English », noms de vues) ; le reste — des libellés fabriqués avec un compte
+> entre parenthèses surtout, dans Piste, Affichage, Mixage et Fichier — est
+> la suite d'A9, avec désormais une commande qui le mesure.
+>
+> Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
+> 172 Python, ruff et mypy — tout vert.

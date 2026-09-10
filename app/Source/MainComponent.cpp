@@ -1229,6 +1229,29 @@ bool MainComponent::runMenuEntryForCapture(const juce::String& libelle) {
     return false;
 }
 
+void MainComponent::listMenusForCapture() {
+    // D80 : LE MENU DIT LUI-MÊME CE QU'IL AFFICHE. Le « 227 / 227 » de D73 était
+    // un compte fait dans le code, qui ne voyait pas le menu Édition construit
+    // par le piano roll : 64 entrées, aucune traduite. Une ligne par entrée,
+    // dans la langue courante, avec son chemin de sous-menus ; une entrée
+    // grisée et un titre de section sont marqués, pour que deux listes prises
+    // dans deux langues se comparent ligne à ligne.
+    const juce::StringArray noms = getMenuBarNames();
+    std::function<void(const juce::PopupMenu&, const juce::String&)> parcourir =
+        [&parcourir](const juce::PopupMenu& menu, const juce::String& chemin) {
+            for (juce::PopupMenu::MenuItemIterator it(menu, false); it.next();) {
+                const auto& item = it.getItem();
+                if (item.isSeparator) continue;
+                const juce::String ligne = chemin + " > " + item.text
+                    + (item.isSectionHeader ? juce::String(" [titre]")
+                                            : !item.isEnabled ? juce::String(u8" [grisée]") : juce::String());
+                std::fputs(("VSM_MENU_LISTE : " + ligne + "\n").toRawUTF8(), stderr);
+                if (item.subMenu != nullptr) parcourir(*item.subMenu, chemin + " > " + item.text);
+            }
+        };
+    for (int i = 0; i < noms.size(); ++i) parcourir(getMenuForIndex(i, noms[i]), noms[i]);
+}
+
 void MainComponent::applyViewCommand(const juce::String& nom) {
     // Les MÊMES identifiants que le menu : tester autre chose que ce que
     // l'utilisateur clique ne testerait rien.
@@ -2349,16 +2372,16 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 const bool possible = !project_.tracks.empty()
                                    && (arrangement_.hasSelection() || project_.loopEnabled);
                 formes.addItem(kMenuEditDrawAutomationRampUp,
-                                juce::String::fromUTF8(u8"Rampe montante"), possible);
+                                tr(u8"Rampe montante"), possible);
                 formes.addItem(kMenuEditDrawAutomationRampDown,
-                                juce::String::fromUTF8(u8"Rampe descendante"), possible);
+                                tr(u8"Rampe descendante"), possible);
                 formes.addItem(kMenuEditDrawAutomationSine,
-                                juce::String::fromUTF8(u8"Sinus (une période par mesure)"), possible);
+                                tr(u8"Sinus (une période par mesure)"), possible);
                 formes.addItem(kMenuEditDrawAutomationTriangle,
-                                juce::String::fromUTF8(u8"Triangle (une période par mesure)"), possible);
+                                tr(u8"Triangle (une période par mesure)"), possible);
                 formes.addItem(kMenuEditDrawAutomationSquare,
-                                juce::String::fromUTF8(u8"Carré (une période par mesure)"), possible);
-                menu.addSubMenu(juce::String::fromUTF8(u8"Dessiner l'automation sur la sélection"),
+                                tr(u8"Carré (une période par mesure)"), possible);
+                menu.addSubMenu(tr(u8"Dessiner l'automation sur la sélection"),
                                  formes, possible);
             }
             {
@@ -2423,10 +2446,12 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                           !project_.tracks.empty());
             menu.addItem(kMenuEditApplyGroove,
                           grooveCourant_.empty()
-                              ? juce::String::fromUTF8(u8"Appliquer le groove (aucun en mémoire)")
-                              : juce::String::fromUTF8(u8"Appliquer le groove \u00ab ")
-                                    + juce::String(grooveCourant_.name)
-                                    + juce::String::fromUTF8(u8" \u00bb"),
+                              ? tr(u8"Appliquer le groove (aucun en mémoire)")
+                              // D80 : UN MODÈLE ENTIER, et non trois morceaux : traduits
+                              // un par un, ils laissaient des guillemets français autour
+                              // d'un nom dans une phrase anglaise.
+                              : tr(u8"Appliquer le groove \u00ab %1 \u00bb")
+                                    .replace("%1", juce::String::fromUTF8(grooveCourant_.name.c_str())),
                           !grooveCourant_.empty() && pianoRoll_.hasSelection());
             menu.addItem(kMenuEditSaveGroove, tr(u8"Enregistrer le groove\u2026"), !grooveCourant_.empty());
             menu.addItem(kMenuEditLoadGroove, tr(u8"Charger un groove\u2026"));

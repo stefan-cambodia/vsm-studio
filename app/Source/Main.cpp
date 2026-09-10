@@ -254,6 +254,12 @@ public:
                     if (t.trim().isNotEmpty() && !content->runKeyForCapture(t.trim()))
                         std::fputs("VSM_TOUCHE : touche inconnue ou sans commande\n", stderr);
             }
+            // VSM_MENU_LISTE=1 (D80) : la barre de menus entière, telle qu'elle
+            // s'affiche, sur la sortie d'erreur -- APRÈS les gestes du banc, pour
+            // que les libellés qui en dépendent (« Annuler : … ») soient ceux
+            // de l'état photographié.
+            if (const char* liste = std::getenv("VSM_MENU_LISTE"); liste != nullptr && *liste && *liste != '0')
+                content->listMenusForCapture();
             // VSM_EXPORT=fichier.flac : exporter le projet ouvert sans fenêtre
             // (D20.5). Un export passe par un sélecteur de fichier et une
             // boîte de dialogue, qu'aucune capture ne traverse ; le fichier

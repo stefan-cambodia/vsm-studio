@@ -1,4 +1,5 @@
 #include "PianoRollComponent.h"
+#include "Langue.h"
 #include "DrumVoiceNames.h"
 #include "Shortcuts.h"
 #include "LookAndFeel/VsmLookAndFeel.h"
@@ -912,33 +913,36 @@ void PianoRollComponent::stepInputBack() {
 // ---------------------------------------------------------------------------
 
 juce::PopupMenu PianoRollComponent::buildContextMenu() const {
+    // D80 : le menu Édition EST ce menu ; 64 entrées écrites sans `tr()`
+    // le laissaient entièrement en français dans l'interface anglaise.
+    using vsm::app::ui::tr;
     juce::PopupMenu menu;
     const bool sel = hasSelection();
 
-    menu.addItem(kCtxUndo, "Annuler" + (canUndo() ? " : " + undoLabel() : juce::String()), canUndo());
-    menu.addItem(kCtxRedo, juce::String(u8"Rétablir") + (canRedo() ? " : " + redoLabel() : juce::String()), canRedo());
+    menu.addItem(kCtxUndo, canUndo() ? tr(u8"Annuler : ") + tr(undoLabel()) : tr("Annuler"), canUndo());
+    menu.addItem(kCtxRedo, canRedo() ? tr(u8"Rétablir : ") + tr(redoLabel()) : tr(u8"Rétablir"), canRedo());
     menu.addSeparator();
-    menu.addItem(kCtxCut, "Couper", sel);
-    menu.addItem(kCtxCopy, "Copier", sel);
-    menu.addItem(kCtxPaste, u8"Coller à la tête de lecture", !clipboard_.empty());
-    menu.addItem(kCtxDuplicate, "Dupliquer", sel);
-    menu.addItem(kCtxDelete, "Supprimer", sel);
+    menu.addItem(kCtxCut, tr("Couper"), sel);
+    menu.addItem(kCtxCopy, tr("Copier"), sel);
+    menu.addItem(kCtxPaste, tr(u8"Coller à la tête de lecture"), !clipboard_.empty());
+    menu.addItem(kCtxDuplicate, tr("Dupliquer"), sel);
+    menu.addItem(kCtxDelete, tr("Supprimer"), sel);
     menu.addSeparator();
 
     juce::PopupMenu selectMenu;
-    selectMenu.addItem(kCtxSelectAll, u8"Tout sélectionner");
-    selectMenu.addItem(kCtxSelectNone, u8"Tout désélectionner", sel);
-    selectMenu.addItem(kCtxSelectInvert, u8"Inverser la sélection");
-    selectMenu.addItem(kCtxSelectSamePitch, u8"Toutes les notes de même hauteur", sel);
+    selectMenu.addItem(kCtxSelectAll, tr(u8"Tout sélectionner"));
+    selectMenu.addItem(kCtxSelectNone, tr(u8"Tout désélectionner"), sel);
+    selectMenu.addItem(kCtxSelectInvert, tr(u8"Inverser la sélection"));
+    selectMenu.addItem(kCtxSelectSamePitch, tr(u8"Toutes les notes de même hauteur"), sel);
     // Les notes douteuses de la transcription (étape 11.3) : on y VA, une par
     // une, au lieu de les chercher à l'œil sur un morceau entier.
     const size_t douteuses = doubtfulNoteCount();
     selectMenu.addSeparator();
-    selectMenu.addItem(kCtxSelectNextDoubtful, "Note douteuse suivante (D)", douteuses > 0);
-    selectMenu.addItem(kCtxSelectPrevDoubtful, u8"Note douteuse précédente (Maj+D)", douteuses > 0);
+    selectMenu.addItem(kCtxSelectNextDoubtful, tr("Note douteuse suivante (D)"), douteuses > 0);
+    selectMenu.addItem(kCtxSelectPrevDoubtful, tr(u8"Note douteuse précédente (Maj+D)"), douteuses > 0);
     selectMenu.addItem(kCtxSelectDoubtful,
-                       douteuses > 0 ? "Toutes les notes douteuses (" + juce::String(static_cast<int>(douteuses)) + ")"
-                                     : juce::String("Toutes les notes douteuses"),
+                       douteuses > 0 ? tr("Toutes les notes douteuses") + " (" + juce::String(static_cast<int>(douteuses)) + ")"
+                                     : tr("Toutes les notes douteuses"),
                        douteuses > 0);
     // D21.1 : LES NOTES FANTÔMES D'UNE TRANSCRIPTION -- faibles, ou d'un
     // soixante-quatrième -- se choisissent d'un coup, à des seuils FIXES
@@ -951,92 +955,94 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
         const Tick grille = gridTicks();
         auto compte = [](const NoteSelection& s) { return " (" + juce::String(static_cast<int>(s.size())) + ")"; };
         selectMenu.addSeparator();
-        selectMenu.addItem(kCtxSelectWeak64, juce::String(u8"Notes plus faibles que 64") + compte(selectNotesBelowVelocity(notes, 64)));
-        selectMenu.addItem(kCtxSelectWeak32, juce::String(u8"Notes plus faibles que 32") + compte(selectNotesBelowVelocity(notes, 32)));
-        selectMenu.addItem(kCtxSelectWeak16, juce::String(u8"Notes plus faibles que 16") + compte(selectNotesBelowVelocity(notes, 16)));
-        selectMenu.addItem(kCtxSelectShortGrid, juce::String(u8"Notes plus courtes que la grille") + compte(selectNotesShorterThan(notes, grille)));
-        selectMenu.addItem(kCtxSelectShortHalfGrid, juce::String(u8"Notes plus courtes que la moitié de la grille")
+        selectMenu.addItem(kCtxSelectWeak64, tr(u8"Notes plus faibles que 64") + compte(selectNotesBelowVelocity(notes, 64)));
+        selectMenu.addItem(kCtxSelectWeak32, tr(u8"Notes plus faibles que 32") + compte(selectNotesBelowVelocity(notes, 32)));
+        selectMenu.addItem(kCtxSelectWeak16, tr(u8"Notes plus faibles que 16") + compte(selectNotesBelowVelocity(notes, 16)));
+        selectMenu.addItem(kCtxSelectShortGrid, tr(u8"Notes plus courtes que la grille") + compte(selectNotesShorterThan(notes, grille)));
+        selectMenu.addItem(kCtxSelectShortHalfGrid, tr(u8"Notes plus courtes que la moitié de la grille")
                                                         + compte(selectNotesShorterThan(notes, std::max<Tick>(1, grille / 2))));
     }
-    menu.addSubMenu(u8"Sélection", selectMenu);
+    menu.addSubMenu(tr(u8"Sélection"), selectMenu);
 
     juce::PopupMenu pitchMenu;
-    pitchMenu.addItem(kCtxTransposeUp, "Transposer +1 demi-ton", sel);
-    pitchMenu.addItem(kCtxTransposeDown, "Transposer -1 demi-ton", sel);
-    pitchMenu.addItem(kCtxOctaveUp, "Octave +", sel);
-    pitchMenu.addItem(kCtxOctaveDown, "Octave -", sel);
-    pitchMenu.addItem(kCtxMirror, "Miroir des hauteurs", sel);
-    pitchMenu.addItem(kCtxScaleConstrain, u8"Contraindre à la gamme", sel && scale_.type != ScaleType::Chromatic);
-    menu.addSubMenu("Hauteur", pitchMenu);
+    pitchMenu.addItem(kCtxTransposeUp, tr("Transposer +1 demi-ton"), sel);
+    pitchMenu.addItem(kCtxTransposeDown, tr("Transposer -1 demi-ton"), sel);
+    pitchMenu.addItem(kCtxOctaveUp, tr("Octave +"), sel);
+    pitchMenu.addItem(kCtxOctaveDown, tr("Octave -"), sel);
+    pitchMenu.addItem(kCtxMirror, tr("Miroir des hauteurs"), sel);
+    pitchMenu.addItem(kCtxScaleConstrain, tr(u8"Contraindre à la gamme"), sel && scale_.type != ScaleType::Chromatic);
+    menu.addSubMenu(tr("Hauteur"), pitchMenu);
 
     juce::PopupMenu timeMenu;
-    timeMenu.addItem(kCtxQuantizeFull, "Quantifier (100 %)", sel);
-    timeMenu.addItem(kCtxQuantizeHalf, "Quantifier (50 %)", sel);
-    timeMenu.addItem(kCtxQuantizeEnds, u8"Quantifier début ET fin", sel);
-    timeMenu.addItem(kCtxHumanize, "Humaniser", sel);
+    timeMenu.addItem(kCtxQuantizeFull, tr("Quantifier (100 %)"), sel);
+    timeMenu.addItem(kCtxQuantizeHalf, tr("Quantifier (50 %)"), sel);
+    timeMenu.addItem(kCtxQuantizeEnds, tr(u8"Quantifier début ET fin"), sel);
+    timeMenu.addItem(kCtxHumanize, tr("Humaniser"), sel);
     timeMenu.addSeparator();
-    timeMenu.addItem(kCtxLengthToGrid, u8"Durée = pas de grille", sel);
-    timeMenu.addItem(kCtxLengthDouble, u8"Durée x2", sel);
-    timeMenu.addItem(kCtxLengthHalve, u8"Durée /2", sel);
+    timeMenu.addItem(kCtxLengthToGrid, tr(u8"Durée = pas de grille"), sel);
+    timeMenu.addItem(kCtxLengthDouble, tr(u8"Durée x2"), sel);
+    timeMenu.addItem(kCtxLengthHalve, tr(u8"Durée /2"), sel);
     // D22.3 : LA PHRASE À MOITIÉ DE VITESSE, pas chaque note deux fois plus
     // longue -- les départs bougent aussi, depuis le premier de la sélection.
-    timeMenu.addItem(kCtxTimesDouble, u8"Deux fois plus lent (départs et durées ×2)", sel);
-    timeMenu.addItem(kCtxTimesHalve, u8"Deux fois plus vite (départs et durées ÷2)", sel);
-    timeMenu.addItem(kCtxLegato, "Legato", sel);
-    timeMenu.addItem(kCtxRemoveOverlaps, "Retirer les chevauchements", sel);
+    timeMenu.addItem(kCtxTimesDouble, tr(u8"Deux fois plus lent (départs et durées ×2)"), sel);
+    timeMenu.addItem(kCtxTimesHalve, tr(u8"Deux fois plus vite (départs et durées ÷2)"), sel);
+    timeMenu.addItem(kCtxLegato, tr("Legato"), sel);
+    timeMenu.addItem(kCtxRemoveOverlaps, tr("Retirer les chevauchements"), sel);
     timeMenu.addSeparator();
-    timeMenu.addItem(kCtxSplit, u8"Couper à la tête de lecture", sel);
-    timeMenu.addItem(kCtxJoin, "Fusionner", selectedNoteIds_.size() >= 2);
-    timeMenu.addItem(kCtxReverse, u8"Rétrograder", selectedNoteIds_.size() >= 2);
-    menu.addSubMenu(u8"Temps et durée", timeMenu);
+    timeMenu.addItem(kCtxSplit, tr(u8"Couper à la tête de lecture"), sel);
+    timeMenu.addItem(kCtxJoin, tr("Fusionner"), selectedNoteIds_.size() >= 2);
+    timeMenu.addItem(kCtxReverse, tr(u8"Rétrograder"), selectedNoteIds_.size() >= 2);
+    menu.addSubMenu(tr(u8"Temps et durée"), timeMenu);
 
     juce::PopupMenu velocityMenu;
-    velocityMenu.addItem(kCtxVelocityFull, u8"Vélocité 127", sel);
-    velocityMenu.addItem(kCtxVelocityHalf, u8"Vélocité 64", sel);
-    velocityMenu.addItem(kCtxVelocityUp, u8"Vélocité +10 %", sel);
-    velocityMenu.addItem(kCtxVelocityDown, u8"Vélocité -10 %", sel);
-    velocityMenu.addItem(kCtxVelocityRampUp, "Crescendo", sel);
-    velocityMenu.addItem(kCtxVelocityRampDown, "Decrescendo", sel);
-    velocityMenu.addItem(kCtxVelocityRandom, u8"Aléatoire (±20)", sel);
+    velocityMenu.addItem(kCtxVelocityFull, tr(u8"Vélocité 127"), sel);
+    velocityMenu.addItem(kCtxVelocityHalf, tr(u8"Vélocité 64"), sel);
+    velocityMenu.addItem(kCtxVelocityUp, tr(u8"Vélocité +10 %"), sel);
+    velocityMenu.addItem(kCtxVelocityDown, tr(u8"Vélocité -10 %"), sel);
+    velocityMenu.addItem(kCtxVelocityRampUp, tr("Crescendo"), sel);
+    velocityMenu.addItem(kCtxVelocityRampDown, tr("Decrescendo"), sel);
+    velocityMenu.addItem(kCtxVelocityRandom, tr(u8"Aléatoire (±20)"), sel);
     velocityMenu.addSeparator();
     // D19.1 : les deux gestes qui servent une TRANSCRIPTION plutôt qu'une
     // intention musicale. Le libellé dit ce que ça fait, pas comment ça
     // s'appelle : « resserrer de moitié » se comprend sans savoir qu'un
     // compresseur a un rapport.
-    velocityMenu.addItem(kCtxVelocityCompress, u8"Resserrer les nuances de moitié", sel);
-    velocityMenu.addItem(kCtxVelocityCompressFull, u8"Égaliser les nuances (toutes à la moyenne)", sel);
-    velocityMenu.addItem(kCtxVelocityLimit, u8"Contenir entre 20 et 100", sel);
-    menu.addSubMenu(u8"Vélocité", velocityMenu);
+    velocityMenu.addItem(kCtxVelocityCompress, tr(u8"Resserrer les nuances de moitié"), sel);
+    velocityMenu.addItem(kCtxVelocityCompressFull, tr(u8"Égaliser les nuances (toutes à la moyenne)"), sel);
+    velocityMenu.addItem(kCtxVelocityLimit, tr(u8"Contenir entre 20 et 100"), sel);
+    menu.addSubMenu(tr(u8"Vélocité"), velocityMenu);
 
     juce::PopupMenu arpMenu;
-    arpMenu.addItem(kCtxArpUp, u8"Arpéger : montant", sel);
-    arpMenu.addItem(kCtxArpDown, u8"Arpéger : descendant", sel);
-    arpMenu.addItem(kCtxArpUpDown, u8"Arpéger : aller-retour", sel);
-    arpMenu.addItem(kCtxArpRandom, u8"Arpéger : aléatoire", sel);
-    menu.addSubMenu(u8"Arpèges", arpMenu);
+    arpMenu.addItem(kCtxArpUp, tr(u8"Arpéger : montant"), sel);
+    arpMenu.addItem(kCtxArpDown, tr(u8"Arpéger : descendant"), sel);
+    arpMenu.addItem(kCtxArpUpDown, tr(u8"Arpéger : aller-retour"), sel);
+    arpMenu.addItem(kCtxArpRandom, tr(u8"Arpéger : aléatoire"), sel);
+    menu.addSubMenu(tr(u8"Arpèges"), arpMenu);
 
     juce::PopupMenu chordMenu;
     const auto chordTypes = allChordTypes();
     for (size_t i = 0; i < chordTypes.size(); ++i)
         chordMenu.addItem(kCtxChordBase + static_cast<int>(i),
-                           juce::String(chordTypeName(chordTypes[i])) + " sur " +
+                           // D80 : traduit à l'affichage ; le nom reste français dans `core/`, et
+                           // `tr()` lit en UTF-8 le « Diminué » que `juce::String` lisait en Latin-1.
+                           tr(chordTypeName(chordTypes[i])) + tr(" sur ") +
                            juce::String(noteNumberToName(static_cast<uint8_t>(60 + scale_.root))));
-    menu.addSubMenu(u8"Insérer un accord", chordMenu);
+    menu.addSubMenu(tr(u8"Insérer un accord"), chordMenu);
 
     menu.addSeparator();
-    menu.addItem(kCtxMute, "Rendre muet / audible", sel);
+    menu.addItem(kCtxMute, tr("Rendre muet / audible"), sel);
     menu.addSeparator();
-    menu.addItem(kCtxZoomFit, "Zoom : tout voir");
-    menu.addItem(kCtxZoomSelection, u8"Zoom : sur la sélection", sel);
+    menu.addItem(kCtxZoomFit, tr("Zoom : tout voir"));
+    menu.addItem(kCtxZoomSelection, tr(u8"Zoom : sur la sélection"), sel);
     // D20.2 : REPLIER. L'entrée dit combien de hauteurs elle montrerait --
     // ou qu'il n'y en a aucune, auquel cas elle est grisée avec sa raison.
     {
         std::set<uint8_t> jouees;
         if (const Track* t = activeTrack()) for (const auto& n : t->notes) jouees.insert(n.number);
         menu.addItem(kCtxFold,
-                     fold_ ? juce::String(u8"Déplier (toutes les hauteurs)")
-                           : jouees.empty() ? juce::String(u8"Replier sur les hauteurs jouées (aucune note)")
-                                            : juce::String(u8"Replier sur les hauteurs jouées (")
+                     fold_ ? tr(u8"Déplier (toutes les hauteurs)")
+                           : jouees.empty() ? tr(u8"Replier sur les hauteurs jouées (aucune note)")
+                                            : tr(u8"Replier sur les hauteurs jouées") + " ("
                                                   + juce::String(static_cast<int>(jouees.size())) + ")",
                      fold_ || !jouees.empty(), fold_);
     }

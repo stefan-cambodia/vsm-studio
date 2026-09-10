@@ -124,6 +124,10 @@ public:
     /// Le chemin du clavier, resté seul, faisait autre chose sans que rien ne
     /// le dise. Deux instruments braqués au même endroit ne valent pas mieux
     /// qu'un seul.
+    /// D80 : VSM_MENU_LISTE=1 -- chaque entrée de la barre de menus, sous-menus
+    /// compris, écrite sur la sortie d'erreur TELLE QU'ELLE S'AFFICHE dans la
+    /// langue courante. Un menu déroulant ne se photographie pas.
+    void listMenusForCapture();
     bool runKeyForCapture(const juce::String& description) {
         const juce::KeyPress touche = juce::KeyPress::createFromDescription(description);
         if (!touche.isValid()) return false;
