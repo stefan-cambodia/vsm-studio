@@ -121,4 +121,44 @@ StandaloneExportResult exportStandaloneProject(const LoadedBundle& bundle,
 bool readTextFile(const std::string& path, std::string& outText, std::string& outError);
 bool writeTextFile(const std::string& path, const std::string& text, std::string& outError);
 
+// --- D75 : les phrases qui nomment une piste --------------------------------
+//
+// DEUX LECTEURS, UNE SEULE FAÇON DE DIRE. L'application et `vsm-render` lisent
+// le même dossier et doivent en dire les mêmes anomalies avec les mêmes mots.
+// D71 les a trouvés comptant les pistes l'un à partir de 0, l'autre à partir
+// de 1, et l'un disant d'une piste sans machine ce que l'autre taisait.
+// Corriger les deux textes à la main les ferait rediverger à la retouche
+// suivante : ils sont donc fabriqués ICI, et les deux lecteurs les appellent.
+
+/// « Piste N », N COMPTÉ À PARTIR DE 1 : c'est le numéro que montrent la liste
+/// de pistes et le mélangeur, là où l'on va chercher la piste qu'une phrase
+/// nomme. Les index à partir de 0 restent ce qu'ils sont -- des index -- dans
+/// les noms de fichiers (`track_00.synth.json`) et dans le JSON.
+std::string libellePiste(size_t index);
+
+/// Une piste qui a BESOIN d'une machine pour sonner : une piste MIDI active.
+/// Ni une piste audio (son matériau est un fichier), ni un bus de groupe (il
+/// somme ce qu'on lui route), ni une piste désactivée (sortie du morceau par
+/// un geste de l'utilisateur, D30.2) : dire leur silence serait faux, et
+/// noierait les vrais avertissements -- sky-parite criait ainsi à chaque rendu
+/// que le bus de sa batterie « restera silencieuse ».
+bool pisteAttendUneMachine(const vsm::sequencer::Track& track);
+
+/// « Piste N (nom) : aucun instrument, elle restera silencieuse ».
+std::string avertissementSansMachine(size_t index, const vsm::sequencer::Track& track);
+
+/// « Piste N : instrument "id" indisponible » : la piste désigne une machine
+/// que ce build ne sait pas créer -- un plugin non installé, une machine
+/// renommée depuis l'écriture du projet.
+std::string avertissementMachineIndisponible(size_t index, const std::string& pluginId);
+
+/// Faut-il dire de cette piste qu'elle « restera silencieuse » faute de
+/// machine ? Oui pour une piste qui en attend une et n'en désigne AUCUNE. Non
+/// pour celle qui en désigne une absente de ce build : le chargement vide son
+/// identifiant et la dit déjà, par son numéro (« instrument … indisponible ») ;
+/// la redire « aucun instrument » faisait deux lignes pour un seul manque, et
+/// la seconde était fausse -- la piste n'est pas sans instrument, elle en
+/// demande un qu'on n'a pas.
+bool pisteADireSansMachine(const LoadedBundle& bundle, size_t index);
+
 } // namespace vsm::interchange

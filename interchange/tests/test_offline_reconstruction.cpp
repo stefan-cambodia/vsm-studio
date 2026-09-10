@@ -199,6 +199,71 @@ VSM_TEST(a_group_bus_has_no_instrument_and_is_not_warned_about) {
     VSM_ASSERT(oublieeAvertie);
 }
 
+VSM_TEST(warnings_count_tracks_from_one_like_the_track_list) {
+    // D75 : l'application écrit « Piste 1 » de la première piste -- c'est le
+    // numéro de sa liste de pistes -- et le rendu écrivait « Piste 0 » de la
+    // même. Les deux lecteurs d'un dossier doivent nommer une piste pareil.
+    TempFolder folder("track_numbering");
+    Project project = buildPlayableProject();
+    project.tracks[0].instrumentId = "com.autre.editeur.synth-absent";
+    saveProjectBundle(project, folder.str());
+
+    const RenderResult result = renderProjectFolderToWav(folder.str(), folder.file("out.wav"));
+    VSM_ASSERT(result.success);
+    bool un = false, zero = false, redite = false;
+    for (const auto& warning : result.warnings) {
+        if (warning == "Piste 1 : instrument \"com.autre.editeur.synth-absent\" indisponible") un = true;
+        if (warning.rfind("Piste 0", 0) == 0) zero = true;
+        // La machine absente est dite UNE fois : la piste n'est pas « sans
+        // instrument », elle en demande un qu'on n'a pas.
+        if (warning.find("aucun instrument") != std::string::npos) redite = true;
+    }
+    VSM_ASSERT(un);
+    VSM_ASSERT(!zero);
+    VSM_ASSERT(!redite);
+    VSM_ASSERT_EQ(libellePiste(0), std::string("Piste 1"));
+}
+
+VSM_TEST(neither_a_folder_nor_a_disabled_track_is_warned_as_silent) {
+    // D75 : la règle était « tout sauf l'audio et le groupe », et le dossier
+    // (`Kind::Folder`), qui ne joue rien, s'entendait dire « elle restera
+    // silencieuse ». Une piste désactivée non plus : son silence est un geste
+    // de l'utilisateur. Sa machine ABSENTE, en revanche, reste dite -- une
+    // fois, par le chargement, et c'est vrai : elle manquera le jour où l'on
+    // réactivera la piste.
+    TempFolder folder("folder_disabled_silence");
+    Project project = buildPlayableProject();
+    Track dossier;
+    dossier.name = "Cordes";
+    dossier.kind = Track::Kind::Folder;
+    project.tracks.push_back(dossier);
+    Track eteinte;
+    eteinte.name = "Eteinte";
+    eteinte.disabled = true;
+    project.tracks.push_back(eteinte);
+    Track eteinteInconnue;
+    eteinteInconnue.name = "Rangee";
+    eteinteInconnue.disabled = true;
+    eteinteInconnue.instrumentId = "com.autre.editeur.synth-absent";
+    project.tracks.push_back(eteinteInconnue);
+    saveProjectBundle(project, folder.str());
+
+    const RenderResult result = renderProjectFolderToWav(folder.str(), folder.file("out.wav"));
+    VSM_ASSERT(result.success);
+    size_t machineAbsente = 0;
+    for (const auto& warning : result.warnings) {
+        VSM_ASSERT(warning.find("aucun instrument") == std::string::npos);
+        if (warning.find("synth-absent") != std::string::npos) {
+            ++machineAbsente;
+            VSM_ASSERT(warning.find("indisponible") != std::string::npos);
+        }
+    }
+    VSM_ASSERT_EQ(machineAbsente, size_t{1});
+    VSM_ASSERT(pisteAttendUneMachine(project.tracks[0]));
+    VSM_ASSERT(!pisteAttendUneMachine(dossier));
+    VSM_ASSERT(!pisteAttendUneMachine(eteinte));
+}
+
 VSM_TEST(loading_reports_a_missing_preset_without_refusing_the_project) {
     // Un projet auquel il manque un preset doit s'ouvrir avec les réglages par
     // défaut, en le disant -- pas refuser de s'ouvrir.
@@ -211,7 +276,8 @@ VSM_TEST(loading_reports_a_missing_preset_without_refusing_the_project) {
     VSM_ASSERT_EQ(loaded.bundle.presetsByTrack.size(), size_t{0});
     bool mentioned = false;
     for (const auto& warning : loaded.warnings)
-        if (warning.find("Preset introuvable") != std::string::npos) mentioned = true;
+        // D75 : numérotée comme la liste de pistes, et non plus « piste 0 ».
+        if (warning.find("Piste 1 : preset introuvable") != std::string::npos) mentioned = true;
     VSM_ASSERT(mentioned);
 }
 

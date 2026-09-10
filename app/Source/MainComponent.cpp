@@ -276,7 +276,8 @@ MainComponent::MainComponent()
     // D71 : les réserves des inserts remontent par le MÊME canal que celles des
     // bus de départ, pour qu'un projet n'ait qu'un seul endroit où se plaindre.
     effectChain_.onEffectReserve = [this](size_t piste, const juce::String& reserve) {
-        noterReserveDEffet("Piste " + juce::String(static_cast<int>(piste) + 1) + " : " + reserve);
+        noterReserveDEffet(juce::String::fromUTF8(vsm::interchange::libellePiste(piste).c_str())
+                           + " : " + reserve);
     };
     effectChain_.onChainChanged =
         [this](size_t track, std::shared_ptr<const EffectChainComponent::Chain> chain) {
@@ -5174,27 +5175,56 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
 
     // --- presets et échantillons, machine par machine --------------------
     juce::StringArray rapport;
+    // D75 : LES PISTES QUI NE SONNERONT PAS, DITES AVEC LES MOTS DE
+    // `vsm-render`. Le rendu hors ligne du même dossier écrit « aucun
+    // instrument, elle restera silencieuse » et « instrument … indisponible » ;
+    // l'application taisait la première, et ne disait la seconde que si la
+    // piste avait un preset -- la ligne vivait dans la boucle des presets, et
+    // une piste à machine inconnue SANS preset s'ouvrait muette sans un mot.
+    // Les phrases sortent de la fonction qu'appelle le rendu : deux lecteurs
+    // qui écrivent chacun la leur finissent par ne plus dire la même chose.
+    for (size_t i = 0; i < project_.tracks.size(); ++i) {
+        const auto& piste = project_.tracks[i];
+        if (piste.instrumentId.empty()) {
+            // Une machine ABSENTE de ce build n'est pas redite ici : le
+            // chargement a vidé son identifiant et l'a déjà nommée par sa piste
+            // (`loaded.warnings`, plus bas). La dire « aucun instrument » en
+            // plus ferait deux lignes pour un manque, dont une fausse.
+            if (vsm::interchange::pisteADireSansMachine(loaded.bundle, i))
+                rapport.add(juce::String::fromUTF8(
+                    vsm::interchange::avertissementSansMachine(i, piste).c_str()));
+        } else if (!piste.disabled && audioEngine_.processGraph().trackInstrument(i) == nullptr) {
+            rapport.add(juce::String::fromUTF8(
+                vsm::interchange::avertissementMachineIndisponible(i, piste.instrumentId).c_str()));
+        }
+    }
     for (const auto& [index, preset] : loaded.bundle.presetsByTrack) {
         // Un `project.json` peut déclarer un preset pour une piste que le
         // MIDI ne contient pas : le fichier a pu être édité à la main, ou
         // produit par une version antérieure. On l'IGNORE en le disant,
         // plutôt que de lire hors des bornes.
         if (index >= project_.tracks.size()) {
-            rapport.add("Preset pour une piste inexistante (" + juce::String(static_cast<int>(index) + 1)
-                        + ") : ignore");
+            rapport.add(juce::String(u8"Preset pour une piste inexistante (")
+                        + juce::String(static_cast<int>(index) + 1) + juce::String(u8") : ignoré"));
             continue;
         }
         auto* instrument = audioEngine_.processGraph().trackInstrument(index);
         if (instrument == nullptr) {
-            rapport.add("Piste " + juce::String(static_cast<int>(index) + 1)
-                        + juce::String(u8" : machine indisponible, preset non appliqué"));
+            // La machine ABSENTE est déjà dite juste au-dessus, avec les mots du
+            // rendu. Reste la piste DÉSACTIVÉE, dont la machine n'est pas
+            // absente mais non instanciée (D30.2) : « machine indisponible »
+            // était faux pour elle. Ce qui est vrai, c'est que son preset n'est
+            // pas posé.
+            if (project_.tracks[index].disabled)
+                rapport.add(juce::String::fromUTF8(
+                    (vsm::interchange::libellePiste(index) + " : désactivée, preset non appliqué").c_str()));
             continue;
         }
         const auto applique = vsm::interchange::applyPreset(
             preset, *instrument, project_.tracks[index].instrumentId);
         if (applique.unsupportedCount() > 0 || applique.clampedCount() > 0)
-            rapport.add("Piste " + juce::String(static_cast<int>(index) + 1) + " : "
-                        + juce::String::fromUTF8(applique.summary().c_str()));
+            rapport.add(juce::String::fromUTF8(
+                (vsm::interchange::libellePiste(index) + " : " + applique.summary()).c_str()));
 
         // Échantillons : chargés ICI, sur le thread de l'interface, et
         // jamais depuis le thread audio -- ce sont des lectures de
@@ -5203,8 +5233,8 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
         const auto echantillons = vsm::interchange::applyPresetSamples(
             preset, *instrument, loaded.bundle.folderPath);
         if (echantillons.aQuelqueChoseADire())
-            rapport.add("Piste " + juce::String(static_cast<int>(index) + 1) + " : "
-                        + juce::String::fromUTF8(echantillons.summary().c_str()));
+            rapport.add(juce::String::fromUTF8(
+                (vsm::interchange::libellePiste(index) + " : " + echantillons.summary()).c_str()));
     }
 
     for (const auto& avertissement : loaded.warnings)
@@ -5271,6 +5301,12 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     // défiler ni la copier, et « Voir le dernier rapport » ne la retrouvait
     // jamais. Le volet, lui, est dans l'autoportrait, garde ce qu'il a montré
     // et se rouvre.
+    // D75 : LE RAPPORT PART AUSSI SUR LA SORTIE D'ERREUR, ligne par ligne,
+    // comme `VSM_EFFET` en D71. Comparer ce que disent les deux lecteurs d'un
+    // dossier -- l'application et `vsm-render` -- doit être un diff de texte ;
+    // lire des phrases sur une capture, c'est comparer des impressions.
+    for (const auto& ligne : rapport)
+        std::fputs(("VSM_OUVERTURE : " + ligne + "\n").toRawUTF8(), stderr);
     if (!rapport.isEmpty()) {
         using Rapport = vsm::app::ui::ImportReportComponent;
         using Ton = Rapport::Ton;
@@ -5293,6 +5329,7 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
                             || ligne.contains(juce::String::fromUTF8("illisible"))
                             || ligne.contains(juce::String::fromUTF8("non appliqué"))
                             || ligne.contains(juce::String::fromUTF8("inconnu"))
+                            || ligne.contains(juce::String::fromUTF8("indisponible"))   // D75
                             || ligne.contains(juce::String::fromUTF8("silencieuse"));
             lignes.add({ligne, perte ? Ton::perte : Ton::info});
         }

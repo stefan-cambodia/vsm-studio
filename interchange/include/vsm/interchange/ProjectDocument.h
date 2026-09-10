@@ -360,6 +360,11 @@ struct ImportReport {
     /// l'utilisateur peut installer la machine et rouvrir, ou choisir lui-même
     /// un remplacement.
     std::vector<std::string> missingInstruments;
+    /// D75 : L'INDEX DE LA PISTE de chacune, dans le même ordre. Sans lui, la
+    /// ligne « Instrument manquant : … » ne pouvait pas dire DE QUELLE piste
+    /// elle parlait -- deux pistes à machine absente donnaient deux lignes
+    /// identiques, et l'on cherchait laquelle des deux était muette.
+    std::vector<size_t> missingInstrumentTracks;
     /// Pistes du projet sans équivalent dans le MIDI (ou l'inverse).
     size_t tracksInDocument = 0;
     size_t tracksInProject = 0;

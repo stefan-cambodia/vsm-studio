@@ -66,7 +66,8 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
     graph.setProject(bundle.project);
 
     for (size_t i = 0; i < bundle.project.tracks.size() && i < ProcessGraph::kMaxTracks; ++i) {
-        const std::string& pluginId = bundle.project.tracks[i].instrumentId;
+        const auto& piste = bundle.project.tracks[i];
+        const std::string& pluginId = piste.instrumentId;
         if (pluginId.empty()) {
             // UNE PISTE AUDIO N'A PAS D'INSTRUMENT, et ce n'est pas une
             // anomalie : son matériau est un fichier. UN BUS DE GROUPE NON
@@ -74,17 +75,22 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
             // serait faux, et noierait les vrais avertissements -- mesuré :
             // sky-parite criait « Piste 6 (Batterie) : aucun instrument, elle
             // restera silencieuse » pour le bus de sa batterie, à chaque rendu.
-            const auto genre = bundle.project.tracks[i].kind;
-            if (genre != vsm::sequencer::Track::Kind::Audio && genre != vsm::sequencer::Track::Kind::Group)
-                result.warnings.push_back("Piste " + std::to_string(i) + " (" + bundle.project.tracks[i].name +
-                                           ") : aucun instrument, elle restera silencieuse");
+            // La règle et la phrase sont celles de l'application (D75).
+            if (pisteADireSansMachine(bundle, i))
+                result.warnings.push_back(avertissementSansMachine(i, piste));
             continue;
         }
+        // D75 : UNE PISTE DÉSACTIVÉE NE REÇOIT PAS DE MACHINE, ICI COMME DANS
+        // L'APPLICATION (D30.2). Le graphe ne la rend de toute façon pas
+        // (`ProcessGraph` sort avant l'instrument) : l'instancier coûtait pour
+        // rien, et une machine installée qui refuserait de s'instancier se
+        // ferait dire « indisponible » par le rendu et pas par l'application,
+        // qui ne l'instancie pas -- une divergence de plus entre les deux.
+        if (piste.disabled) continue;
         graph.setTrackInstrument(i, pluginId);
         auto* instrument = graph.trackInstrument(i);
         if (instrument == nullptr) {
-            result.warnings.push_back("Piste " + std::to_string(i) + " : instrument \"" + pluginId +
-                                       "\" indisponible");
+            result.warnings.push_back(avertissementMachineIndisponible(i, pluginId));
             continue;
         }
         ++result.tracksWithInstrument;
@@ -95,7 +101,7 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
         if (preset == bundle.presetsByTrack.end()) continue;
         const PresetApplyReport applyReport = applyPreset(preset->second, *instrument, pluginId);
         if (applyReport.unsupportedCount() > 0 || applyReport.clampedCount() > 0)
-            result.warnings.push_back("Piste " + std::to_string(i) + " : " + applyReport.summary());
+            result.warnings.push_back(libellePiste(i) + " : " + applyReport.summary());
 
         // ÉCHANTILLONS. Chargés après le preset, et avant toute lecture : la
         // lecture de fichiers n'a rien à faire dans le thread audio.
@@ -107,7 +113,7 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
         const SampleLoadReport sampleReport =
             applyPresetSamples(preset->second, *instrument, bundle.folderPath);
         if (sampleReport.aQuelqueChoseADire())
-            result.warnings.push_back("Piste " + std::to_string(i) + " : " + sampleReport.summary());
+            result.warnings.push_back(libellePiste(i) + " : " + sampleReport.summary());
     }
 
     // PISTES AUDIO. Le fichier est décodé et rééchantillonné ICI, sur le thread
@@ -119,7 +125,7 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
         const auto& track = bundle.project.tracks[i];
         if (track.kind != vsm::sequencer::Track::Kind::Audio) continue;
         if (track.audio.empty()) {
-            result.warnings.push_back("Piste " + std::to_string(i) + " (" + track.name +
+            result.warnings.push_back(libellePiste(i) + " (" + track.name +
                                        ") : piste audio sans fichier, elle restera silencieuse");
             continue;
         }
@@ -134,12 +140,12 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
         auto charge = vsm::audio::io::loadAudioTrack(
             chemin, options.sampleRate, vsm::audio::io::AudioLoadPolicy::Offline);
         if (!charge.success || !charge.source) {
-            result.warnings.push_back("Piste " + std::to_string(i) + " : " + charge.error);
+            result.warnings.push_back(libellePiste(i) + " : " + charge.error);
             continue;
         }
         if (charge.resampled)
             result.warnings.push_back(
-                "Piste " + std::to_string(i) + " (" + track.name + ") : audio rééchantillonné de " +
+                libellePiste(i) + " (" + track.name + ") : audio rééchantillonné de " +
                 std::to_string(static_cast<int>(charge.fileSampleRate)) + " à " +
                 std::to_string(static_cast<int>(charge.sessionSampleRate)) + " Hz");
         // LA LONGUEUR VIENT DU FICHIER RÉELLEMENT CHARGÉ, et non du nombre de
@@ -167,7 +173,7 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
         charge.source->safetyFadeFrames = static_cast<int64_t>(
             std::llround(vsm::audio::engine::kDefaultSafetyFadeMs / 1000.0 * options.sampleRate));
         if (charge.source->clips.empty()) {
-            result.warnings.push_back("Piste " + std::to_string(i) + " (" + track.name +
+            result.warnings.push_back(libellePiste(i) + " (" + track.name +
                                        ") : aucun clip audio à jouer");
             continue;
         }
@@ -194,7 +200,7 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
             auto effect = vsm::audio::effect::EffectFactory::create(entry.type);
             if (!effect) {
                 // Type inconnu : nommé, jamais remplacé par un autre effet.
-                result.warnings.push_back("Piste " + std::to_string(i) + " : effet « " + entry.type +
+                result.warnings.push_back(libellePiste(i) + " : effet « " + entry.type +
                                            " » inconnu, non appliqué");
                 continue;
             }
@@ -206,7 +212,7 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
             effect->prepare(options.sampleRate, options.blockSize);
             const EffectApplyReport applyReport = applyEffectDescription(entry, *effect);
             for (const auto& unknown : applyReport.unknownParameters)
-                result.warnings.push_back("Piste " + std::to_string(i) + " : effet « " + entry.type +
+                result.warnings.push_back(libellePiste(i) + " : effet « " + entry.type +
                                            " », réglage inconnu « " + unknown + " »");
             chain->push_back(std::move(effect));
         }
@@ -261,7 +267,7 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
         if (i >= bundle.project.tracks.size()) continue;
         const std::string& pluginId = bundle.project.tracks[i].instrumentId;
         if (pluginId.empty()) {
-            result.warnings.push_back("Piste " + std::to_string(i) +
+            result.warnings.push_back(libellePiste(i) +
                                        " : automation sans instrument, ignorée");
             continue;
         }
@@ -269,7 +275,7 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
         for (const auto& lane : documentTrack.automation) {
             const ParameterDescriptor* descriptor = profile.findBySemanticId(lane.parameter);
             if (descriptor == nullptr) {
-                result.warnings.push_back("Piste " + std::to_string(i) + " : automation « " +
+                result.warnings.push_back(libellePiste(i) + " : automation « " +
                                            lane.parameter + " » : la machine n'a pas ce paramètre");
                 continue;
             }

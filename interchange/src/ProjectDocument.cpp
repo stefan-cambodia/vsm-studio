@@ -564,6 +564,7 @@ ImportReport applyDocumentToProject(const ProjectDocument& document, Project& pr
             // signalée -- une reconstruction silencieuse avec une autre
             // machine donnerait un résultat faux que personne ne remarquerait.
             report.missingInstruments.push_back(source.preferredPlugin);
+            report.missingInstrumentTracks.push_back(i);   // D75
             target.instrumentId.clear();
         }
     }

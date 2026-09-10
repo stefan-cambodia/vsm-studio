@@ -72,7 +72,7 @@ choisir : **le DAW d'abord**, la chaîne d'analyse ensuite.
 | | |
 |---|---|
 | **Machines** | **63**, plus la tonalité d'essai — 64 identifiants au registre ; **16 effets** d'insert ; **63 façades** dessinées |
-| **Tests** | 1 946 côté moteur — 1 291 audio, 327 core, 292 interchange, 25 clap, 11 panels — et **168 côté Python** |
+| **Tests** | 1 949 côté moteur — 1 291 audio, 327 core, 295 interchange, 25 clap, 11 panels — et **172 côté Python** (relevé du 10/09, D75) |
 | **Lignes** | `analyse/` 132 k · `audio/` 69 k · `app/` **33 k** · `interchange/` 20 k · `core/` 16 k |
 | **Vérification** | `ruff check .` (lint) et `mypy analyse tools` (types, 104 fichiers) |
 
@@ -114,7 +114,8 @@ dernier. Chaque élément porte sa source ; **aucun n'est inventé ici**.
 | A4 | **`--batterie-par-piece` n'a pas de mesure de distance** — l'option est câblée et testée, son effet sur la fidélité n'est pas chiffré | `CDC-detection-multipiste.md` § 4.4 | — |
 
 | ~~A7~~ | ~~L'écran de rapport d'ouverture ne se photographie qu'une fois sur sept~~ — **CLOS par D72** : il passe de la boîte modale au volet de rapport, qui est dans l'autoportrait. Il y gagne le défilement, le bouton Copier et la réouverture par le menu | `ROADMAP-daw.md` D71 → D72 | 1/7 → **10/10** captures, pixel du volet lu sur l'image |
-| A8 | **Les deux lecteurs d'un projet ne numérotent pas les pistes pareil** — l'application à partir de 1, `vsm-render` à partir de 0, sur la même anomalie ; et `vsm-render` signale une piste sans instrument que l'application tait. Non corrigé : recompiler `vsm-render` pendant une campagne tue la course | `ROADMAP-daw.md` D71 | 2 divergences sur le même dossier |
+| ~~A8~~ | ~~Les deux lecteurs d'un projet ne numérotent pas les pistes pareil~~ — **CLOS par D75** : les deux fabriquent leurs phrases par les mêmes fonctions de `interchange/`, comptent depuis 1 comme la liste de pistes, et ne disent plus « silencieuse » d'un dossier ni d'une piste désactivée. L'application comptait déjà des deux façons à elle seule, en recopiant les phrases du chargement | `ROADMAP-daw.md` D71 → D75 | 9 et 4 lignes, 8 numéros faux → **5 et 5, diff vide** |
+| A10 | **Enregistrer détruirait ce qu'on n'a pas pu ouvrir** — SOUPÇON lu dans le code, pas encore mesuré : l'identifiant d'une machine absente est vidé au chargement puis le document est réécrit depuis le projet ; une piste désactivée n'a pas de machine vivante, et l'enregistrement écrit alors le preset PAR DÉFAUT à la place du sien | `ROADMAP-daw.md` D75 → D76 | — |
 | A9 | **L'interface n'est traduite qu'en partie** — la barre de menus l'est entièrement (227/227), mais les panneaux du dock, les fenêtres flottantes et les phrases fabriquées dans `interchange/` restent en français. Une chaîne sans traduction ressort en français, jamais vide | `ROADMAP-daw.md` D73 → D74 | **289** paires dans la table ; barre de menus 227/227, barre du piano roll 27/27 ; ~1 000 chaînes affichées au total |
 | A6 | **La barre de transport prend deux rangées sur cet écran** (100 px au lieu de 56) parce qu'il lui faut ~1 400 px pour une seule, et que le plafond est 1 280. Le compromis est assumé — six éléments invisibles auparavant, dont un bouton jamais montré — mais sur un écran plus large la question ne se pose pas | `ROADMAP-daw.md` D68 | 44 px pris à l'arrangement |
 

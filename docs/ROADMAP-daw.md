@@ -11033,3 +11033,164 @@ traduction, et c'est délibéré. Trois raisons, dans l'ordre où elles pèsent 
 >
 > Tests : 327 core, 1 291 audio, 293 interchange, 25 clap, 11 panels,
 > 172 Python, ruff et mypy — tout vert.
+
+### Phase D75 — A8 : les deux lecteurs comptaient les pistes différemment, et l'application comptait déjà des deux façons à elle seule (10/09/2026, 16:30)
+
+**CE QUE D71 A LAISSÉ (A8).** Sur le même dossier, l'application écrit
+« Piste 1 » et `vsm-render` « Piste 0 » pour la même piste et la même anomalie ;
+et `vsm-render` dit d'une piste MIDI sans machine qu'« elle restera
+silencieuse », quand l'application se tait. D71 l'a nommé et ne l'a pas corrigé
+parce qu'une campagne tournait. **Aucune ne tourne aujourd'hui** — `pgrep` ne
+rend ni `vsm-render`, ni chaîne d'analyse, ni séparation, vérifié avant
+d'écrire ces lignes —, et recompiler `vsm-render` ne tue plus rien.
+
+**L'INVENTAIRE CHANGE LA NATURE DU DÉFAUT.** Ce ne sont pas « deux lecteurs qui
+comptent différemment » : **l'application affiche déjà les deux
+numérotations**, parce qu'elle recopie telles quelles des phrases fabriquées
+dans `interchange/`.
+
+| où, dans l'application | ce qui s'affiche pour la première piste |
+|---|---|
+| liste de pistes, mélangeur, menus contextuels | « Piste 1 » |
+| rapport d'ouverture, lignes écrites par l'application (preset, échantillons, effets) | « Piste 1 » |
+| rapport d'ouverture, ligne venue de `loadProjectBundle` (preset introuvable) | « piste **0** » |
+| message d'export, lignes venues du rendu hors ligne | « Piste **0** » |
+
+Un rapport d'ouverture peut donc écrire « Piste 1 : … » et « Preset introuvable
+pour la piste 0 » **de la même piste, l'une sous l'autre**. Le compte : **14**
+phrases de `interchange/` numérotent à partir de 0 (13 dans le rendu hors ligne,
+une au chargement), et aucune de l'application.
+
+**LA DÉCISION : À PARTIR DE 1, PARTOUT OÙ UN HUMAIN LIT.** Trois raisons :
+
+1. **C'est ce que montre l'écran** où l'on va chercher la piste — la liste, le
+   mélangeur, les menus. Une phrase qui nomme une piste doit la nommer comme
+   l'endroit où on la cherche.
+2. **C'est ce que font Cubase et Live**, l'étalon du § 2.
+3. **Les index à partir de 0 restent là où ce sont des index** : les noms de
+   fichiers (`track_00.synth.json`), le JSON, les champs des structures. Ce ne
+   sont pas des phrases, et les changer casserait des projets écrits.
+
+**LA PISTE SANS MACHINE, ET LA PISTE À MACHINE INCONNUE.** **Les deux lecteurs
+fabriqueront désormais ces phrases par la même fonction**, dans
+`interchange/` : corriger le texte des deux côtés à la main les ferait
+rediverger à la prochaine retouche, et c'est exactement ainsi que D71 les a
+trouvés divergents.
+
+> **RECTIFICATIF, ÉCRIT APRÈS LA MESURE « AVANT » ET AVANT LA CORRECTION
+> (10/09/2026, 16:50).** La première version de ce paragraphe affirmait qu'une
+> piste désignant une machine absente de ce build, et sans preset, « s'ouvre
+> muette, sans un mot » dans l'application. **C'est faux, et le banc l'a
+> montré** : le chargement (`applyDocumentToProject`) VIDE l'identifiant d'une
+> machine absente et écrit « Instrument manquant : com.autre… », ligne que les
+> deux lecteurs recopient. L'inventaire avait lu le code de l'application seul ;
+> la ligne vient d'en dessous. Ce que la mesure montre à la place est un autre
+> défaut : cette ligne **ne dit pas de quelle piste elle parle** — deux pistes
+> à machine absente donnent deux lignes identiques —, et le rendu redit la même
+> piste « aucun instrument, elle restera silencieuse » juste en dessous. Deux
+> lignes pour un seul manque, dont une fausse : la piste n'est pas sans
+> instrument, elle en demande un qu'on n'a pas. La ligne du chargement prend
+> donc le numéro de sa piste et la phrase commune (« Piste 3 : instrument « … »
+> indisponible »), et « aucun instrument » ne se dit plus d'une piste dont la
+> machine a été demandée.
+
+**UNE FAUSSE PISTE ÉCARTÉE, ÉCRITE POUR QU'ON NE LA REPRENNE PAS.** Le message
+d'export recopie les avertissements du rendu par `juce::String(warning)`, et
+D73 a montré que `juce::String(const char*)` lit ses octets en Latin-1. Le
+soupçon était donc un « rÃ©Ã©chantillonnÃ© » dans le message d'export. **Il est
+faux** : le constructeur depuis `std::string` passe par `CharPointer_UTF8`
+(`juce_String.cpp:386`, `createFromFixedLength`). Seul le `const char*` nu
+lit du Latin-1. Vérifié dans la source de JUCE avant de l'écrire, et pas
+corrigé, puisqu'il n'y a rien à corriger.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA CORRECTION (10/09/2026, 16:30).**
+>
+> 1. **Chaque anomalie que les deux lecteurs voient porte le MÊME numéro des
+>    deux côtés**, et c'est celui de la liste de pistes. Mesuré sur un projet
+>    abîmé exprès, en comparant les lignes de l'application à celles de
+>    `vsm-render` — un diff de texte, pas une lecture d'image.
+> 2. **La piste MIDI sans machine et la piste à machine inconnue sont dites par
+>    l'application**, avec la phrase de `vsm-render` au mot près — ce qui n'est
+>    tenable que si c'est la même fonction qui l'écrit.
+> 3. **Ni un bus de groupe, ni une piste audio, ni une piste désactivée ne sont
+>    dits « sans instrument »**, par aucun des deux. Une piste désactivée est
+>    sortie du morceau par un geste de l'utilisateur (D30.2) : son silence est
+>    voulu, et le dire noierait les vrais avertissements — la leçon du bus de
+>    batterie de sky-parite. **Ajouté à 16:40, avant toute mesure**, quand
+>    l'énumération `Track::Kind` a montré un quatrième genre : **ni un
+>    dossier** (`Kind::Folder`, « ne joue rien »), que la règle du rendu —
+>    « tout sauf l'audio et le groupe » — faisait dire silencieux.
+> 4. **Un projet sain ne dit toujours rien** (règle de D71), et un vrai projet
+>    reconstruit ne gagne aucune ligne qui ne soit vraie : compté avant et après.
+> 5. **Le rapport d'ouverture part AUSSI sur la sortie d'erreur**, ligne par
+>    ligne (`VSM_OUVERTURE : …`), comme `VSM_EFFET` en D71 : c'est ce qui fait
+>    du n° 1 un diff et non une impression.
+
+> **D75 EST FAITE (10/09/2026, 16:55), ET LES CINQ ATTENDUS SONT TENUS.**
+>
+> **Le banc** : un projet abîmé exprès, huit pistes, une anomalie par piste —
+> preset déclaré et absent, piste MIDI sans machine, machine inconnue, dossier,
+> deux pistes désactivées (l'une sans machine, l'autre à machine inconnue),
+> insert de type inconnu, bus de groupe. Ouvert par l'application, rendu par
+> `vsm-render`. **Les binaires d'avant ont été copiés AVANT la compilation** et
+> ont servi de témoins : la colonne « avant » est une exécution, pas une lecture
+> du diff.
+>
+> | | `vsm-render` avant | application avant | **les deux après** |
+> |---|---|---|---|
+> | lignes dites | 9 | 4 | **5, les mêmes au mot près** |
+> | sans numéro de piste (« Instrument manquant : … ») | 2 | 2 | **0** |
+> | numérotées à partir de 0 | **7** | 1 | **0** |
+> | fausses (le dossier, les deux pistes désactivées, la machine demandée dite « aucun instrument ») | **4** | 0 | **0** |
+> | la piste MIDI sans machine | dite | **tue** | dite |
+> | la septième piste s'appelle | « Piste 6 » | « Piste 7 » | « Piste 7 » |
+>
+> **Le n° 1 est un diff, et il est vide** : les lignes `VSM_OUVERTURE` de
+> l'application et les avertissements de `vsm-render`, triées, sont identiques.
+> Triées, et c'est dit : l'application range sa boucle des pistes avant les
+> lignes du chargement, le rendu après — l'ordre diffère, pas le contenu. Le
+> « avant » de l'application est lu sur l'autoportrait (le binaire témoin
+> n'avait pas `VSM_OUVERTURE`, c'est cette phase qui l'ajoute) ; le volet y
+> montre les quatre lignes, dont « Preset introuvable pour la piste 0 » posée
+> juste au-dessus de « Piste 7 ». L'autoportrait d'après montre les cinq lignes,
+> toutes en ambre : « indisponible » est entré dans la liste des mots de perte,
+> où il manquait.
+>
+> **Les projets sains** (n° 4) : la démo `demo-project`, **0** ligne des deux
+> côtés, avant comme après. La vraie reconstruction `sky-v4` : **0** ligne de
+> `vsm-render` avant et après, et **une** ligne de l'application avant et après
+> — la même, sur les notes douteuses, que seule l'application peut dire
+> puisqu'elle vient du `rapport.json` de la chaîne et non du projet.
+>
+> **CE QUE LA PHASE A CHANGÉ, EN UNE LISTE.** Quatre fonctions dans
+> `ProjectBundle.h` — `libellePiste`, `pisteAttendUneMachine`,
+> `pisteADireSansMachine` et les deux phrases — appelées par les deux lecteurs ;
+> **14** phrases qui comptaient depuis 0 ; la règle « attend une machine »
+> écrite en liste positive (MIDI et active) au lieu de « tout sauf l'audio et le
+> groupe » ; le chargement qui garde l'index de piste de chaque machine absente
+> (`ImportReport::missingInstrumentTracks`) ; une piste désactivée qui ne
+> reçoit plus de machine dans le rendu, comme dans l'application ; et la fausse
+> réserve « machine indisponible » d'une piste désactivée à preset, qui devient
+> ce qui est vrai : « désactivée, preset non appliqué ».
+>
+> **CE QUE LA MESURE A MONTRÉ EN PASSANT, ET QUI OUVRE D76 (A10).** Lire le
+> chargement pour comprendre les deux lignes sans numéro a fait voir deux
+> choses qui ne sont PAS des affaires de phrases, et qui sont plus graves :
+>
+> 1. Le chargement **vide** l'identifiant d'une machine absente, alors que son
+>    en-tête promet que « l'identifiant demandé est conservé : l'utilisateur
+>    peut installer la machine et rouvrir ». Il l'est dans le document lu ; mais
+>    l'application **réécrit le document à partir du projet** en enregistrant
+>    (`documentFromProject`), et le projet ne l'a plus.
+> 2. Une piste désactivée n'a pas de machine vivante, et l'enregistrement ne
+>    capture un preset que depuis une machine vivante (`writeProjectTo`) ; là où
+>    il n'en trouve pas, `saveProjectBundle` capture **l'état par défaut** d'une
+>    machine neuve et l'écrit à la place.
+>
+> Si les deux lectures sont justes, **enregistrer un projet détruit ce qu'on
+> n'a pas pu ouvrir** : la machine qu'on n'a pas installée, le réglage de la
+> piste qu'on a mise de côté. Ce sont des soupçons lus dans le code, pas des
+> mesures, et ils sont écrits ici comme tels. D76 les tranche.
+>
+> Tests : 327 core, 1 291 audio, **295** interchange (deux de plus), 25 clap,
+> 11 panels, 172 Python, ruff et mypy — tout vert.

@@ -33,6 +33,38 @@ std::string presetPathForTrack(size_t index) {
 
 } // namespace
 
+// --- D75 : les phrases qui nomment une piste --------------------------------
+
+std::string libellePiste(size_t index) { return "Piste " + std::to_string(index + 1); }
+
+bool pisteAttendUneMachine(const vsm::sequencer::Track& track) {
+    // UNE LISTE POSITIVE, ET NON « TOUT SAUF L'AUDIO ET LE GROUPE ». C'est
+    // ainsi qu'était écrite la règle du rendu hors ligne, et le quatrième
+    // genre -- le dossier (`Kind::Folder`), qui ne joue rien -- s'y faisait
+    // dire « elle restera silencieuse ». Un genre ajouté demain devra se
+    // déclarer ici plutôt que d'hériter d'un avertissement qui ne le vise pas.
+    return track.kind == vsm::sequencer::Track::Kind::Midi && !track.disabled;
+}
+
+std::string avertissementSansMachine(size_t index, const vsm::sequencer::Track& track) {
+    return libellePiste(index) + " (" + track.name + ") : aucun instrument, elle restera silencieuse";
+}
+
+std::string avertissementMachineIndisponible(size_t index, const std::string& pluginId) {
+    return libellePiste(index) + " : instrument \"" + pluginId + "\" indisponible";
+}
+
+bool pisteADireSansMachine(const LoadedBundle& bundle, size_t index) {
+    if (index >= bundle.project.tracks.size()) return false;
+    const auto& piste = bundle.project.tracks[index];
+    if (!pisteAttendUneMachine(piste) || !piste.instrumentId.empty()) return false;
+    // Demandée par le document et vidée au chargement : déjà dite, par son
+    // numéro, avec l'identifiant qu'elle demande.
+    const bool demandee = index < bundle.document.tracks.size()
+                       && !bundle.document.tracks[index].preferredPlugin.empty();
+    return !demandee;
+}
+
 bool readTextFile(const std::string& path, std::string& outText, std::string& outError) {
     std::ifstream stream(path, std::ios::binary);
     if (!stream) { outError = "impossible d'ouvrir : " + path; return false; }
@@ -90,8 +122,15 @@ BundleLoadResult loadProjectBundle(const std::string& folderPath) {
     result.bundle.folderPath = folderPath;
     result.bundle.report = applyDocumentToProject(document.document, result.bundle.project);
     result.bundle.document = document.document;
-    for (const auto& missing : result.bundle.report.missingInstruments)
-        result.warnings.push_back("Instrument manquant : " + missing);
+    // D75 : NOMMÉE PAR SA PISTE, ET AVEC LES MOTS DU RENDU. « Instrument
+    // manquant : X » ne disait pas de quelle piste il s'agissait -- deux pistes
+    // à machine absente donnaient deux lignes identiques --, et le rendu
+    // redisait la même piste « aucun instrument » juste en dessous : deux
+    // lignes pour un seul manque, dont une fausse.
+    const ImportReport& lu = result.bundle.report;
+    for (size_t k = 0; k < lu.missingInstruments.size() && k < lu.missingInstrumentTracks.size(); ++k)
+        result.warnings.push_back(
+            avertissementMachineIndisponible(lu.missingInstrumentTracks[k], lu.missingInstruments[k]));
     for (const auto& warning : result.bundle.report.warnings)
         result.warnings.push_back(warning);
 
@@ -139,8 +178,11 @@ BundleLoadResult loadProjectBundle(const std::string& folderPath) {
         const fs::path presetFile = resolve(folderPath, relative);
         std::string presetText;
         if (!readTextFile(presetFile.string(), presetText, error)) {
-            result.warnings.push_back("Preset introuvable pour la piste " + std::to_string(i) +
-                                       " : " + relative);
+            // D75 : NUMÉROTÉE COMME LA LISTE DE PISTES. Cette ligne est
+            // recopiée telle quelle dans le rapport d'ouverture de
+            // l'application, sous des lignes qui comptent à partir de 1 : elle
+            // y nommait « piste 0 » la piste que ses voisines nommaient « Piste 1 ».
+            result.warnings.push_back(libellePiste(i) + " : preset introuvable (" + relative + ")");
             continue;
         }
         SynthPresetLoadResult preset = parseSynthPreset(presetText);
