@@ -1047,3 +1047,65 @@ petite distance obtenue en trichant sur ce qu'on mesure.
     dans rapport.json
 [ ] Corpus, entraînement, inférence : seedés, regénérables, rejouables
 ```
+
+---
+
+## Phase A6 — L'empreinte musicale des machines que le classifieur n'a jamais entendues (10/09/2026, 20:10)
+
+**LE FAIT QUI OUVRE LA PHASE.** `modeles/classifieur.joblib` date du
+**28/08/2026** et connaît **20 machines**. Le parc en compte **63**. Le modèle a
+donc un avis sur un tiers du vivier et aucun sur les deux autres tiers — et
+c'est l'élément B1 de `docs/INDEX.md`, ouvert depuis le 10/09 au matin.
+
+**LE COMPTE EXACT, ET IL N'EST PAS DE 43.** Le chiffre « 43 machines sans
+empreinte », écrit ce matin, mélangeait deux corpus qui n'ont pas le même objet :
+
+| | machines | état |
+|---|---|---|
+| candidates **mélodiques** (corpus du classifieur de machine) | **59** | 20 connues, **39 à faire** |
+| **percussions** (corpus de frappes, phase A2, `modeles/frappes.joblib`) | 4 | `vsm.drums`, `vsm.tr808`, `vsm.tr909` connues ; **`vsm.sampler` non** |
+| hors corpus par construction | 1 | `vsm.testtone` — un signal d'essai n'est pas une machine à reconnaître |
+
+Ce sont donc **39 machines** que cette phase ajoute, et **une** (`vsm.sampler`)
+qui relève du corpus de frappes et reste nommée ouverte. Écrire « 43 » revenait
+à compter comme manquantes trois boîtes à rythmes qui ont bel et bien leur
+empreinte, simplement dans l'autre modèle.
+
+**CE QUE ÇA COÛTE, MESURÉ AVANT DE LANCER.** Le manifeste du corpus existant
+publie son coût réel : **67 s par machine** à 300 patchs, soit 0,4 h pour 20.
+Les 59 en demandent donc **environ une heure**, et le corpus complet pèse
+~42 Mo. C'est assez peu pour tourner **à côté** de la campagne P1 sans la
+gêner — la charge de la machine est à 2,2 sur 22 cœurs — et le corpus se
+régénère par lots autonomes, donc une coupure ne perd que le lot en cours.
+
+**UN CORPUS NEUF ET COMPLET, PAS UNE RUSTINE SUR L'ANCIEN.** Le corpus
+`ab-augmente-v2` est **périmé pour `vsm.multisample`** (son empreinte a changé
+depuis la génération), et y ajouter 39 machines donnerait un assemblage à deux
+dates, deux commits et deux fraîcheurs. Pour une heure de calcul, on en fait un
+d'un seul tenant : mêmes réglages que l'ancien — 300 patchs, graine 20260823,
+44 100 Hz, les six augmentations, proportion 0,5 — pour que **la seule variable
+soit le nombre de machines**.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (10/09/2026, 20:10).**
+>
+> 1. **Le modèle connaît les 59 candidates mélodiques**, et la chaîne cesse de
+>    dire qu'il n'en connaît que 20. C'est le seul attendu binaire de la phase.
+> 2. **Le top-1 va BAISSER, et ce ne sera pas une régression.** Passer de 20 à
+>    59 classes, c'est répondre à une question presque trois fois plus dure :
+>    un top-1 de 0,938 sur 20 et un top-1 sur 59 **ne se comparent pas**, et
+>    présenter la baisse comme une perte serait tordre la mesure. Ce qui se
+>    compare, et que je publierai : le top-1 du nouveau modèle **restreint aux
+>    20 anciennes classes**, contre 0,938. J'attends qu'il tienne **au-dessus de
+>    0,85** ; en dessous, ce sont les nouvelles machines qui brouillent les
+>    anciennes, et il faudra le dire.
+> 3. **Le compte des INDISTINGUABLES va monter, et c'est le chiffre
+>    intéressant.** Le parc a gagné des familles proches (trois clavecins-
+>    clavicordes, quatre cordes pincées, deux orgues). Le § 1.4 du cahier des
+>    charges exclut ces cas du dénominateur et les compte à part : je publie le
+>    compte ET les paires qui se confondent, parce que « ces deux machines
+>    sonnent pareil » est un résultat sur le PARC, pas un échec du modèle.
+> 4. **Aucune machine ne sort à zéro exemple en silence.** Une machine qui ne
+>    rend rien (patch sans son, moteur qui refuse) doit être NOMMÉE au journal
+>    et absente du manifeste, jamais présente avec un lot vide.
+> 5. **La campagne P1 survit.** Vérifié par `pgrep` avant et après, et le
+>    rendu du corpus tourne à parallélisme réduit.
