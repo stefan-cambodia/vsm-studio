@@ -11591,3 +11591,84 @@ compte à rebours du transport, écrit sans son accent.
 >
 > Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
 > 172 Python, ruff et mypy — tout vert.
+
+### Phase D79 — A11 : Ctrl+Z n'agissait que dans le piano roll — et le menu Annuler existait, contrairement à ce que D76 a écrit (10/09/2026, 18:55)
+
+> **RECTIFICATIF DE D76, ET DE LA LIGNE A11 DE L'INDEX (10/09/2026, 19:00).**
+> D76 a écrit : « le menu Édition n'a ni « Annuler » ni « Rétablir » ». **C'est
+> faux.** Le menu Édition EST le menu contextuel du piano roll
+> (`MainComponent.cpp` : `menu = pianoRoll_.buildContextMenu();`), et ce
+> menu commence par « Annuler : … » et « Rétablir : … » (`kCtxUndo`,
+> `kCtxRedo`), transmis par `performContextMenuAction`. La recherche qui a
+> fondé la phrase ne portait que sur `MainComponent.cpp` ; l'entrée vit dans
+> `PianoRollComponent.cpp`. C'est la faute que `CLAUDE.md` décrit pour les
+> machines (« un zéro sorti d'un grep se revérifie en listant ce qu'on a
+> cherché ET où »), commise une fois de plus — et trouvée en ouvrant la
+> fonction qui construit le menu avant d'y ajouter les entrées qu'on croyait
+> manquantes. La moitié vraie de A11 tient : **Ctrl+Z n'agit que si le piano
+> roll a le focus**, parce que `MainComponent::keyPressed` ne connaît pas
+> `EditUndo` (son `default` rend `false`) — c'est ce que le banc de D76 a
+> buté, et c'est ce que cette phase corrige.
+
+**CE QUI MANQUE VRAIMENT.** Le raccourci. Dans la liste des pistes,
+l'arrangement ou le mélangeur, Ctrl+Z ne fait rien, sans un mot ; Cubase et
+Live annulent quelle que soit la zone qui a le focus. **Et le menu qui
+existait permet enfin de jouer le cinquième chemin de perte de D76**
+(« annuler recrée toutes les machines »), resté une lecture du code faute de
+savoir annuler depuis le banc.
+
+**LA DÉCISION.** **Un seul chemin d'annulation** : la touche appelle
+`pianoRoll_.undo()` et `redo()`, que le menu, le bouton de la barre et la
+fenêtre d'historique appellent déjà. Une annulation à deux chemins finirait
+par ne pas annuler la même chose.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (10/09/2026, 19:00).**
+>
+> 1. **Le cinquième chemin de D76, joué par le menu** : ajouter une piste,
+>    « Annuler », enregistrer. Avec le binaire d'AVANT D76, la Basse perd ses
+>    4 réglages sur 9 (hypothèse : l'annulation reconstruit tout, comme
+>    l'ajout) ; avec le binaire d'après, **0 / 9**, et la ligne
+>    `VSM_MACHINES` de l'annulation dit « gardée(s) ». Le projet écrit doit
+>    compter 2 pistes : sinon l'annulation n'a pas eu lieu et le cas ne mesure
+>    rien (la leçon du cas raté de D76).
+> 2. **Ctrl+Z et Ctrl+Maj+Z (ou Ctrl+Y) agissent hors du piano roll** : le
+>    cas « annulation » par `VSM_TOUCHE`, qui passe par
+>    `MainComponent::keyPressed`, doit écrire 2 pistes, et non 3.
+> 3. **Ce que la relecture du menu a montré est compté** : le menu Édition
+>    étant celui du piano roll, ses entrées écrites sans `tr()` restent en
+>    français dans l'interface anglaise — contrairement au « 227 / 227 » de
+>    D73, qui ne les comptait pas. Le compte est publié ; la traduction relève
+>    d'A9.
+
+> **D79 EST FAITE (10/09/2026, 18:58), ET LES TROIS ATTENDUS SONT TENUS.** Le
+> banc de D76, rejoué sous un `HOME` isolé ; le fichier de préférences de
+> l'utilisateur vérifié intact par `cmp`.
+>
+> **1. Le cinquième chemin de perte de D76, enfin joué** (ajouter une piste,
+> « Annuler » par le menu, enregistrer) :
+>
+> | binaire | pistes écrites | réglages de la Basse | reconstruction de l'annulation |
+> |---|---|---|---|
+> | d'avant D76 | 2 — l'annulation a eu lieu | **4 / 9 perdus** | — |
+> | d'après D76 | 2 | **0 / 9** | « 2 gardée(s), 0 recréée(s) avec leur réglage » |
+>
+> L'hypothèse lue par D76 est confirmée : **annuler, avant D76, remettait
+> toutes les machines à l'usine** — le geste censé tout rendre tel quel. Les
+> quatre chiffres de A10 deviennent donc sept cas mesurés sur sept.
+>
+> **2. Le raccourci, hors du piano roll** (`VSM_TOUCHE`, qui passe par
+> `MainComponent::keyPressed`) :
+>
+> | cas | avant | après |
+> |---|---|---|
+> | ajouter, Ctrl+Z, Ctrl+S | 3 pistes, « touche inconnue ou sans commande » | **2 pistes**, 0 / 9, aucun message |
+> | ajouter, Ctrl+Z, Ctrl+Maj+Z, Ctrl+S | — | **3 pistes** (refait), 0 / 9 |
+>
+> **3. Le menu Édition, compté** : c'est le menu contextuel du piano roll,
+> **64 entrées, 0 par `tr()`**. En anglais, le menu Édition est entièrement en
+> français — et le « barre de menus traduite entièrement, 227 / 227 » de D73
+> ne valait donc que pour les six autres menus. Écrit dans la ligne A9 de
+> l'INDEX, pour la phase qui le traduira.
+>
+> Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
+> 172 Python, ruff et mypy — tout vert.

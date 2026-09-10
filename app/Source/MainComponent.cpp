@@ -6645,6 +6645,16 @@ bool MainComponent::keyPressed(const juce::KeyPress& key, juce::Component*) {
             if (arrangement_.selectionStartTick(debut) || pianoRoll_.selectionStartTick(debut)) seekAllViews(debut);
             return true;
         }
+        // D79 : ANNULER ET RÉTABLIR, QUELLE QUE SOIT LA ZONE QUI A LE FOCUS. Le
+        // piano roll traitait ces deux touches lui-même, et elles n'arrivaient
+        // ici que quand il n'avait PAS le focus -- pour y tomber dans le
+        // `default` et ne rien faire, sans un mot. Même chemin que le menu
+        // Édition, le bouton de la barre et la fenêtre d'historique : une
+        // annulation à deux chemins finirait par ne pas annuler la même chose.
+        // Quand le piano roll a le focus, il consomme la touche avant nous :
+        // elle n'annule pas deux fois.
+        case Id::EditUndo: pianoRoll_.undo(); return true;
+        case Id::EditRedo: pianoRoll_.redo(); return true;
         case Id::EditInsertTimeAtLocators: editTimeAtLocators(true); return true;
         case Id::EditLocatorsFromSelection: locatorsFromSelection(); return true;
         // AJUSTER À LA FENÊTRE vaut pour les DEUX vues (D14.2) : l'arrangement
