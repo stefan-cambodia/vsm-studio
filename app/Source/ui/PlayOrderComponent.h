@@ -23,6 +23,8 @@ namespace vsm::app::ui {
 class PlayOrderComponent : public juce::Component,
                             private juce::ListBoxModel {
 public:
+    /// D86 : repose les textes fixes dans la langue courante.
+    void retraduire();
     PlayOrderComponent();
 
     void resized() override;

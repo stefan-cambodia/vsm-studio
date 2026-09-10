@@ -7391,6 +7391,8 @@ void MainComponent::retraduire() {
     // est le dernier à l'avoir rempli, refait volet ouvert ou fermé.
     importReport_.retraduire();
     preferencesPanel_.retraduire();   // D85
+    takeCompPanel_.retraduire();      // D86
+    playOrderPanel_.retraduire();
     refreshPreferences();             // les textes d'état, refaits par leur client
     if (clientDuRapport_ == ClientDuRapport::ouverture) afficherRapportDOuverture(importReport_.isVisible());
     // D78 : LE BOUTON D'ÉCOUTE, par la fonction qui le pose au démarrage --

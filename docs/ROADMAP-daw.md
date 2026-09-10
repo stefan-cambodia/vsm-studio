@@ -12108,3 +12108,60 @@ paires, chacune avec sa capture.
 >
 > Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
 > 172 Python, ruff et mypy — tout vert.
+
+### Phase D86 — A9 : l'assemblage des prises et l'ordre de jeu (10/09/2026, 20:55)
+
+**CE QUI RESTE DES FENÊTRES FLOTTANTES, LES DEUX QUI ÉCRIVENT LE MATÉRIAU.**
+L'assemblage des prises (11 chaînes) et l'ordre de jeu (7) sont les deux
+fenêtres dont un bouton RÉÉCRIT le morceau — « Composer », « Aplatir » : ce
+sont les deux où une phrase mal comprise coûte le plus. Aucune chaîne n'y
+passe par `tr()`, leurs boutons sont initialisés en français dans l'en-tête,
+et aucune n'a de re-traduction. Même traitement que les Préférences (D85) :
+`retraduire()` pose les textes fixes, le rafraîchissement fabrique les textes
+d'état en modèles entiers, la bascule rappelle les deux.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (10/09/2026, 20:55).**
+>
+> 1. **Lancées en anglais, les deux fenêtres sont en anglais** — photographiées
+>    dans un état qui montre leurs textes d'état et, pour l'assemblage, une
+>    ligne de tronçon (le modèle « mesures %1 à %2 → %3 »).
+> 2. **Basculées en anglais, elles sont la même image** que lancées en anglais.
+> 3. **Le français ne bouge pas** : 0 pixel, témoin lancé du dossier du build.
+> 4. **Rien n'est tronqué en anglais** — regardé sur l'image, pas compté.
+
+> **D86 EST FAITE (10/09/2026, 21:24). LES QUATRE ATTENDUS SONT TENUS — LE
+> QUATRIÈME AU SECOND ESSAI, ET CE SECOND ESSAI A CORRIGÉ LE FRANÇAIS AUSSI.**
+> Un projet fabriqué pour l'occasion (trois prises, trois repères, un tronçon
+> posé par `troncon:0:1:3`), le témoin lancé du dossier du build, `HOME`
+> isolé.
+>
+> | fenêtre | FR / EN avant | FR / EN après | lancée / basculée en anglais | français avant / après |
+> |---|---|---|---|---|
+> | assemblage des prises | **0 px** — rien n'était traduit | 9 698 px | **0 px** | 1 980 px, situés (voir plus bas) |
+> | ordre de jeu | **0 px** | 4 819 px | **0 px** | **0 px** |
+>
+> **Ce que la première image anglaise a montré, et qu'aucun compte n'aurait
+> vu.** L'étiquette entre les deux champs de mesure s'affichait « … » : sa
+> case faisait 16 px, taillés pour « à », et « to » n'y tient pas. Elle se
+> taille désormais sur son texte (au moins ses 16 px d'origine), et la
+> re-traduction la replace. La même image disait « The song is 1 bars long » :
+> le défaut était **français d'abord** — « Le morceau fait 1 mesures » —, et le
+> singulier a maintenant son propre modèle.
+>
+> **Les 1 980 pixels du français, situés** : la ligne d'aide (y 20-59), où
+> « 1 mesures » devient « 1 mesure » et décale la fin de la phrase ; et la
+> rangée des champs (y 80-119), où la case de « à », taillée sur son texte,
+> s'élargit de quelques pixels et décale ce qui la suit (x 163-283). Rien ailleurs. Ce sont les deux corrections, et
+> seulement elles — c'est pourquoi le chiffre est publié au lieu d'un « 0 »
+> qu'il aurait fallu obtenir en laissant les défauts.
+>
+> **Et une leçon d'exploitation, écrite dans `CLAUDE.md`.** Pendant la série de
+> captures, le fichier de préférences de l'utilisateur a changé : le contrôle
+> `cmp` a échoué. Lu clé par clé, le changement venait de **l'utilisateur
+> lui-même** — des projets récents que le banc n'a jamais ouverts, une fenêtre
+> déplacée —, qui se servait de l'application pendant ce temps. Le fichier n'a
+> pas été « rétabli », ce qui aurait effacé ce qu'il venait de faire ; le
+> contrôle compare désormais à une copie prise juste avant chaque série.
+>
+> Table à **626** paires (19 de plus). Tests : 330 core, 1 291 audio,
+> 297 interchange, 25 clap, 11 panels, 172 Python, ruff et mypy — tout vert.

@@ -24,6 +24,8 @@ namespace vsm::app::ui {
 class TakeCompComponent : public juce::Component,
                            private juce::ListBoxModel {
 public:
+    /// D86 : repose les textes fixes dans la langue courante.
+    void retraduire();
     TakeCompComponent();
 
     void resized() override;

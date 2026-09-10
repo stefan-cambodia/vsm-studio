@@ -1,10 +1,10 @@
 #include "TakeCompComponent.h"
+#include <cmath>
+#include "Langue.h"
 
 namespace vsm::app::ui {
 
 TakeCompComponent::TakeCompComponent() {
-    titre_.setText(juce::String::fromUTF8(u8"Tronçons — « de telle mesure à telle mesure, telle prise »"),
-                    juce::dontSendNotification);
     titre_.setFont(juce::Font(juce::FontOptions(14.0f, juce::Font::bold)));
     titre_.setColour(juce::Label::textColourId, vsm::ui::Palette::accentTeal);
     addAndMakeVisible(titre_);
@@ -14,8 +14,6 @@ TakeCompComponent::TakeCompComponent() {
     aide_.setJustificationType(juce::Justification::topLeft);
     addAndMakeVisible(aide_);
 
-    deLabel_.setText(juce::String::fromUTF8(u8"de la mesure"), juce::dontSendNotification);
-    aLabel_.setText(juce::String::fromUTF8(u8"à"), juce::dontSendNotification);
     for (auto* l : {&deLabel_, &aLabel_}) {
         l->setFont(juce::Font(juce::FontOptions(13.0f)));
         l->setColour(juce::Label::textColourId, vsm::ui::Palette::textPrimary);
@@ -62,7 +60,20 @@ TakeCompComponent::TakeCompComponent() {
     liste_.setRowHeight(24);
     liste_.setColour(juce::ListBox::backgroundColourId, vsm::ui::Palette::panel);
     addAndMakeVisible(liste_);
+    retraduire();   // D86 : les textes fixes, puis le rafraîchissement
+}
+
+void TakeCompComponent::retraduire() {
+    // D86 : rien n'y passait par la table, et les boutons étaient initialisés
+    // en français dans l'en-tête.
+    titre_.setText(tr(u8"Tronçons — « de telle mesure à telle mesure, telle prise »"), juce::dontSendNotification);
+    deLabel_.setText(tr(u8"de la mesure"), juce::dontSendNotification);
+    aLabel_.setText(tr(u8"à"), juce::dontSendNotification);
+    ajouter_.setButtonText(tr(u8"Ajouter le tronçon"));
+    retirer_.setButtonText(tr(u8"Retirer"));
+    composer_.setButtonText(tr(u8"Composer (écrit le matériau)"));
     rafraichir();
+    resized();   // la case de « à / to » suit la longueur du mot
 }
 
 void TakeCompComponent::setTake(std::vector<juce::String> takeNames, int activeTake,
@@ -103,9 +114,9 @@ void TakeCompComponent::rafraichir() {
     for (size_t i = 0; i < prises_.size(); ++i) {
         // LA PRISE ACTIVE EST DITE : c'est celle qu'on entend, donc celle
         // qu'on est en train de juger.
-        const juce::String nom = prises_[i]
-            + (static_cast<int>(i) == active_ ? juce::String::fromUTF8(u8"  (celle qu'on entend)")
-                                               : juce::String());
+        const juce::String nom = static_cast<int>(i) == active_
+            ? tr(u8"%1  (celle qu'on entend)").replace("%1", prises_[i])
+            : prises_[i];
         prise_.addItem(nom, static_cast<int>(i) + 1);
     }
     if (prise_.getSelectedId() == 0 && !prises_.empty())
@@ -113,13 +124,13 @@ void TakeCompComponent::rafraichir() {
 
     const int mesures = static_cast<int>(fin_ / juce::jmax<vsm::midi::Tick>(1, parMesure_)) + 1;
     aide_.setText(prises_.empty()
-                      ? juce::String::fromUTF8(
-                            u8"Cette piste n'a aucune prise conservée. Enregistrez en mode "
-                            u8"« empiler » pour en garder plusieurs.")
-                      : juce::String::fromUTF8(u8"Le morceau fait ")
-                            + juce::String(mesures)
-                            + juce::String::fromUTF8(
-                                  u8" mesures. Ce qu'aucun tronçon ne couvre ne sonnera pas."),
+                      ? tr(u8"Cette piste n'a aucune prise conservée. Enregistrez en mode "
+                           u8"« empiler » pour en garder plusieurs.")
+                      // D86 : « 1 mesures » était faux en français aussi -- le
+                      // singulier a son propre modèle.
+                      : tr(mesures > 1 ? u8"Le morceau fait %1 mesures. Ce qu'aucun tronçon ne couvre ne sonnera pas."
+                                       : u8"Le morceau fait %1 mesure. Ce qu'aucun tronçon ne couvre ne sonnera pas.")
+                            .replace("%1", juce::String(mesures)),
                   juce::dontSendNotification);
 
     ajouter_.setEnabled(!prises_.empty());
@@ -141,11 +152,11 @@ void TakeCompComponent::paintListBoxItem(int row, juce::Graphics& g, int width, 
     const juce::String nom = (t.takeIndex >= 0 && t.takeIndex < static_cast<int>(prises_.size()))
                                  ? prises_[static_cast<size_t>(t.takeIndex)]
                                  : juce::String("?");
-    g.drawText(juce::String::fromUTF8(u8"mesures ")
-                   + juce::String(static_cast<int>(t.fromTick / parMesure_) + 1)
-                   + juce::String::fromUTF8(u8" à ")
-                   + juce::String(static_cast<int>(t.toTick / parMesure_) + 1)
-                   + juce::String::fromUTF8(u8"   →   ") + nom,
+    // D86 : un modèle entier -- traduit par morceaux, « bars 1 à 3 » serait sorti.
+    g.drawText(tr(u8"mesures %1 à %2   →   %3")
+                   .replace("%1", juce::String(static_cast<int>(t.fromTick / parMesure_) + 1))
+                   .replace("%2", juce::String(static_cast<int>(t.toTick / parMesure_) + 1))
+                   .replace("%3", nom),
                 8, 0, width - 16, height, juce::Justification::centredLeft);
 }
 
@@ -161,7 +172,12 @@ void TakeCompComponent::resized() {
     deLabel_.setBounds(rangee.removeFromLeft(92));
     de_.setBounds(rangee.removeFromLeft(48).reduced(0, 2));
     rangee.removeFromLeft(6);
-    aLabel_.setBounds(rangee.removeFromLeft(16));
+    // D86 : LA CASE SE TAILLE SUR SON TEXTE. 16 px tenaient « à » et pas
+    // « to », que la capture anglaise montrait « … ». La lisibilité prime : on
+    // agrandit la case, on ne rétrécit pas le mot (règle de D74, « Straight »).
+    // Le cadre d'un juce::Label prend 5 px de chaque côté.
+    aLabel_.setBounds(rangee.removeFromLeft(juce::jmax(16, static_cast<int>(std::ceil(
+        juce::GlyphArrangement::getStringWidth(aLabel_.getFont(), aLabel_.getText()))) + 10)));
     a_.setBounds(rangee.removeFromLeft(48).reduced(0, 2));
     rangee.removeFromLeft(10);
     prise_.setBounds(rangee.reduced(0, 2));

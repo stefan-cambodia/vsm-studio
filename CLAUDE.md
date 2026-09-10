@@ -95,7 +95,11 @@ l'ordre de marche — pas de la documentation d'accompagnement.
   suivant (10/09, D77 — les captures d'après montraient une fenêtre vide, et
   deux images vides donnaient « 0 pixel de différence »). Lancer les bancs
   sous `HOME=<brouillon>` ; et vérifier par `cmp` que le fichier de
-  l'utilisateur n'a pas bougé.
+  l'utilisateur n'a pas bougé — contre une copie prise JUSTE AVANT la série,
+  jamais contre une copie ancienne : l'utilisateur se sert de l'application
+  pendant qu'on travaille, et le 10/09 à 21:13 son propre usage a fait
+  échouer le contrôle. Un fichier changé se lit clé par clé avant de conclure,
+  et ne se « rétablit » jamais par-dessus ce qu'il a fait.
 - JAMAIS d'édition de analyse/analyzer/*.py pendant qu'une course tourne : la
   chaîne importait des modules À LA DEMANDE, cinq heures après le départ, dans
   l'état du disque à cet instant (parite-v2, 5 h 24 perdues au réglage final).

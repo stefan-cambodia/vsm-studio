@@ -1,4 +1,5 @@
 #include "PlayOrderComponent.h"
+#include "Langue.h"
 
 namespace vsm::app::ui {
 
@@ -8,8 +9,8 @@ PlayOrderComponent::PlayOrderComponent() {
         l.setFont(juce::Font(juce::FontOptions(14.0f, juce::Font::bold)));
         l.setColour(juce::Label::textColourId, vsm::ui::Palette::accentTeal);
     };
-    titre(titreSections_, juce::String::fromUTF8(u8"Sections (déduites des repères)"));
-    titre(titreOrdre_, juce::String::fromUTF8(u8"Ordre de jeu"));
+    titre(titreSections_, juce::String());
+    titre(titreOrdre_, juce::String());
     addAndMakeVisible(titreSections_);
     addAndMakeVisible(titreOrdre_);
 
@@ -52,6 +53,17 @@ PlayOrderComponent::PlayOrderComponent() {
     liste_.setRowHeight(24);
     liste_.setColour(juce::ListBox::backgroundColourId, vsm::ui::Palette::panel);
     addAndMakeVisible(liste_);
+    retraduire();   // D86
+}
+
+void PlayOrderComponent::retraduire() {
+    titreSections_.setText(tr(u8"Sections (déduites des repères)"), juce::dontSendNotification);
+    titreOrdre_.setText(tr(u8"Ordre de jeu"), juce::dontSendNotification);
+    ajouter_.setButtonText(tr(u8"Ajouter ▸"));
+    retirer_.setButtonText(tr(u8"Retirer"));
+    monter_.setButtonText(tr(u8"Monter"));
+    descendre_.setButtonText(tr(u8"Descendre"));
+    aplatir_.setButtonText(tr(u8"Aplatir (écrit le matériau)"));
     rafraichir();
 }
 
@@ -77,14 +89,12 @@ void PlayOrderComponent::rafraichir() {
     // matériau, et la carte de tempo, elle, ne bouge pas.
     juce::String message;
     if (sections_.empty())
-        message = juce::String::fromUTF8(
-            u8"Aucune section : posez des repères sur la règle. Une section va d'un "
-            u8"repère au suivant.");
+        message = tr(u8"Aucune section : posez des repères sur la règle. Une section va d'un "
+                     u8"repère au suivant.");
     else if (tempoSeraLaisse_)
-        message = juce::String::fromUTF8(
-            u8"Ce morceau a plusieurs tempos ou signatures. Aplatir déplace le matériau "
-            u8"et LAISSE la carte de tempo en place : un ralenti joué deux fois ne suivra "
-            u8"pas sa section.");
+        message = tr(u8"Ce morceau a plusieurs tempos ou signatures. Aplatir déplace le matériau "
+                     u8"et LAISSE la carte de tempo en place : un ralenti joué deux fois ne suivra "
+                     u8"pas sa section.");
     avertissement_.setText(message, juce::dontSendNotification);
 
     ajouter_.setEnabled(!sections_.empty());
