@@ -1022,6 +1022,15 @@ vivent que dans un menu. `VSM_DELAI=ms` retarde l'autoportrait (une
 transcription met dix secondes), et `VSM_EXPORT=fichier.flac` exporte le
 projet ouvert sans fenêtre, en WAV, FLAC ou OGG selon l'extension, pour que
 le fichier se relise. `VSM_EXPORT_NIVEAU=crete|lufs14|lufs23` y ajoute le niveau.
+`VSM_MESURE_FACADE=fichier.tsv` écrit, pour chaque façade de machine posée, une
+ligne par commande — machine, taille de la façade, bloc, sérigraphie, cellule et
+**diamètre rendu du bouton**. C'est la mesure qui juge la lisibilité d'une
+façade : le plancher est 18 px (D62 de `ROADMAP-daw.md`), et la largeur que la
+grille réclame n'en est qu'un indice — D67 a corrigé les mauvaises machines en
+s'y fiant. Le fichier s'ajoute d'une exécution à l'autre, si bien qu'une boucle
+sur `VSM_GESTE_PISTE=choisir:N` balaie tout un projet dans un seul tableau ;
+la façade étant posée plusieurs fois pendant le montage, seule la DERNIÈRE
+taille rencontrée pour une machine est la bonne.
 Appliquer un preset — de synthé ou de piste — qui porte des paramètres que la
 machine cible ne connaît pas ouvre « Preset appliqué, avec des réserves » et
 les nomme (D52) ; la même phrase part sur le terminal (`VSM_PRESET : réserves

@@ -53,6 +53,16 @@ public:
     /// réserver une place cohérente.
     double aspectRatio() const;
 
+    /// D70 : LE TÉMOIN DE MESURE, PERMANENT ET GRATUIT. D63, D66 et D67 ont
+    /// chacune ajouté un outil qui imprime la cellule RÉELLEMENT posée, puis
+    /// l'ont retiré -- trois fois le même, et c'est lui qui a démenti le calcul
+    /// de largeur en D67 (« la liste mesurée n'est pas la liste calculée »).
+    /// `VSM_MESURE_FACADE=fichier.tsv` l'allume : une ligne par commande, avec
+    /// sa cellule et le DIAMÈTRE RENDU, qui est le fait -- la largeur réclamée
+    /// par la grille n'en est qu'un proxy. Sans la variable, rien n'est lu ni
+    /// écrit.
+    void mesurerSiDemande() const;
+
 private:
     struct Control {
         vsm::audio::plugin::ParamId paramId = 0;

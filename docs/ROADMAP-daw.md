@@ -10415,3 +10415,175 @@ avaient tous la forme inverse : une largeur constante posée par
 `removeFromLeft`, et ce qui dépasse à zéro pixel.
 
 Aucun code n'a changé. `./verifier.sh` : tout vert.
+
+### Phase D70 — « Une colonne par pièce » descend d'un cran : ce qui serre les quatre boîtes à rythmes est la grille INTERNE du bloc (10/09/2026, 12:10)
+
+**CE QUE D67 A LAISSÉ, ET POURQUOI IL FAUT LE REPRENDRE.** Quatre façades sur
+soixante-trois gardent des boutons sous le plancher de 18 px mesuré en D62 —
+`vsm.sampler`, `vsm.tr909`, `vsm.perc`, `vsm.fmdrums`, soit **37 boutons**. D67
+a nommé deux remèdes et n'en a pris aucun : « deux rangées de voix plutôt
+qu'une, ou un rack plus large pour elles ». **Les deux sont refusés, et chacun
+par une décision déjà écrite ailleurs :**
+
+- **Empiler les voix** est ce que fait l'outil de D66, et D67 a eu raison de ne
+  pas le lâcher sur ces quatre-là : la rangée de pièces côte à côte **est** leur
+  identité, celle que le README loue sous le nom de « colonne par pièce des
+  TR-808/909 ».
+- **Élargir le rack** est refusé par D64, et deux fois : le plancher du rack ne
+  se prend pas sur ce que la façade réclame (« une disposition réglable ne se
+  reprend pas à son propriétaire »), et le défilement horizontal a été écrit,
+  regardé, puis RETIRÉ — sur le Divider, il ne montrait plus que trois blocs sur
+  six.
+
+**IL EXISTE UN TROISIÈME REMÈDE, QUE NI D64 NI D67 N'ONT NOMMÉ, ET C'EST LUI
+QU'ON PREND.** Ce qui serre ces façades n'est pas la rangée de blocs : c'est la
+grille **à l'intérieur** du bloc. Le bloc « COWBELL / WOOD » de la percussion
+tient trois colonnes de grille et y range **trois colonnes de commandes** ; le
+bloc « TOM / BELL » des FM drums en tient cinq pour **cinq colonnes**. À 410 px
+de rack, une colonne de grille vaut 27 px : trois colonnes de commandes dans
+trois colonnes de grille laissent 16 px au bouton, et c'est tout le défaut.
+
+**LA DÉCISION, ET SA RAISON.** « Une colonne par pièce » cesse d'être la
+disposition des **blocs** pour devenir celle des **commandes dans le bloc** :
+une pièce est une **colonne verticale de ses réglages**. Le charleston fermé
+garde LEVEL au-dessus de DECAY ; la cloche et le bois deviennent deux colonnes
+de trois au lieu de deux rangées de trois. **Aucun bloc ne change de rangée ni
+d'ordre** — les voix restent côte à côte, dans le sens de lecture de la machine
+d'origine —, le rack garde la largeur que l'utilisateur lui a donnée, et rien ne
+défile horizontalement. C'est la conclusion de D65 (« la hauteur est devenue bon
+marché, la largeur ne l'est pas ») appliquée un cran plus bas que D65 et D66 ne
+l'avaient appliquée : eux empilaient des blocs, celle-ci empile des commandes.
+
+Et ce n'est pas un pis-aller : le commentaire du sampler décrit déjà la machine
+comme « seize pièces, **une colonne de réglages par pièce** » alors que ses
+emplacements portent un carré de deux sur deux. La façade se met à ressembler à
+ce que son propre code annonce.
+
+**UN DÉFAUT DE CALCUL QUE CE CHANGEMENT MET AU JOUR, ET QUI EST RÉPARÉ
+D'ABORD.** `MachinePanelComponent::hauteurUtile()` réserve la hauteur d'un bloc
+en divisant par `section.rowSpan` — le nombre de rangées de **grille** — alors
+que `resized()` découpe le bloc par son nombre de rangées de **commandes**. Tant
+que les deux coïncident, le compte tombe juste ; une sonde sur les soixante-trois
+façades le confirme : **aucun bloc n'a aujourd'hui plus de rangées de commandes
+que de rangées de grille**. Empiler les commandes crée précisément ce cas. Le
+calcul prend donc `max(rowSpan, rangées de commandes)` — une forme choisie pour
+qu'elle ne puisse pas changer une façade existante, et non pour qu'elle tombe
+juste sur les quatre nouvelles.
+
+**ET UNE MESURE QUI RESTE, AU LIEU D'ÊTRE REFAITE À CHAQUE PHASE.** D63, D66 et
+D67 ont chacune ajouté un témoin qui imprime la cellule réellement posée, puis
+l'ont retiré. Trois fois le même outil, et c'est lui qui a démenti le calcul en
+D67. Il devient permanent et gratuit : **`VSM_MESURE_FACADE=fichier.tsv`** écrit,
+pour la façade posée, une ligne par commande — machine, bloc, sérigraphie,
+cellule, diamètre rendu. Ce qui se mesure à chaque phase se lit désormais sans
+rien recompiler.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (10/09/2026, 12:10).**
+>
+> 1. **Les quatre façades passent le plancher à 900x660** : zéro bouton sous
+>    18 px, contre 37 aujourd'hui. C'est le seul chiffre qui juge la phase ; s'il
+>    reste un bouton dessous, la disposition choisie est insuffisante et il
+>    faudra le dire plutôt que baisser le plancher.
+> 2. **Aucune voix ne bouge.** Pour chacune des quatre, le `row` de tous les
+>    blocs reste celui d'aujourd'hui, et leur ordre en `column` est inchangé :
+>    ce qui change est la grille interne, et sur `vsm.tr909` la répartition des
+>    colonnes de grille entre deux blocs voisins (à somme constante, 15).
+> 3. **Les cinquante-neuf autres façades ne bougent pas d'un pixel.** Mesuré par
+>    le même témoin sur les soixante-trois, avant et après, et non supposé de la
+>    forme de la formule.
+> 4. **Les façades s'allongent, et c'est le prix assumé.** Une pièce en colonne
+>    est plus haute qu'en carré ; la façade réclame donc plus de hauteur et
+>    défile sous le rack (D63). J'attends que la plus haute des quatre reste
+>    sous **deux fois** la hauteur du rack à 900x660 — au-delà, chercher un
+>    réglage demanderait trop de défilement, et il faudrait alors rouvrir la
+>    question de la largeur.
+
+> **D70 EST FAITE (10/09/2026, 13:40). TROIS ATTENDUS SUR QUATRE SONT TENUS, ET
+> LE QUATRIÈME ÉTAIT MAL POSÉ — PAR MOI, AVANT DE SAVOIR CE QUE MESURAIT SA
+> BARRE.**
+>
+> | | avant | après | attendu |
+> |---|---|---|---|
+> | boutons sous 18 px, parc entier | **98** | **0** | 0 |
+> | façades concernées | 4 / 63 | **0 / 63** | 0 |
+> | plus petit bouton, `vsm.sampler` | 11 px | **26 px** | ≥ 18 |
+> | plus petit bouton, `vsm.tr909` | 15 px | **24 px** | ≥ 18 |
+> | plus petit bouton, `vsm.perc` | 15 px | **26 px** | ≥ 18 |
+> | plus petit bouton, `vsm.fmdrums` | 15 px | **21 px** | ≥ 18 |
+> | les 59 autres façades (1 029 cellules) | — | **identiques au pixel** | inchangées |
+>
+> **LE COMPTE DE D67 ÉTAIT FAUX, ET C'EST LE PREMIER RÉSULTAT DE LA PHASE.** Son
+> tableau annonçait « 37 boutons sous 18 px », dont « 4 » pour le sampler. Le
+> sampler en a **soixante-quatre**, et les soixante-quatre étaient sous le
+> plancher, à 11 px — seize emplacements de quatre réglages chacun. Le total
+> n'était pas 37 mais **98**. Le témoin de D67 n'a relevé qu'un emplacement sur
+> seize, et son chiffre a été recopié dans `INDEX.md` puis dans un commit. C'est
+> exactement pourquoi le témoin devient permanent : un outil qu'on rebâtit à
+> chaque phase se retrompe à chaque phase, et rien ne le contredit.
+>
+> **CE QUI A ÉTÉ FAIT, MACHINE PAR MACHINE**, sans qu'aucun bloc quitte sa
+> rangée ni change d'ordre :
+>
+> | machine | ce qui change | colonnes de grille |
+> |---|---|---|
+> | `vsm.sampler` | les 4 réglages d'un emplacement passent du carré 2x2 à **une colonne de quatre** | inchangées |
+> | `vsm.tr909` | TOM / CLAP passe à **une colonne par pièce** et rend une colonne de grille à CYMBAL / HAT | 4+4+4+3 → 4+4+**3**+**4** |
+> | `vsm.perc` | COWBELL / WOOD et SHAKEN passent à **une colonne par pièce** | inchangées |
+> | `vsm.fmdrums` | les quatre blocs redistribuent leurs colonnes, aucune ne mêle deux pièces | 4+4+5+3 → **3**+4+5+**4** |
+>
+> **LA RÈGLE EXACTE N'EST PAS « UNE COLONNE PAR PIÈCE » MAIS « UNE COLONNE NE
+> PORTE JAMAIS DEUX PIÈCES ».** La formulation d'avant la mesure était trop
+> serrée : le tom des FM drums a cinq réglages et en prend deux colonnes, la
+> caisse claire aussi. Ce qui est interdit, et qui était le vrai défaut, c'est
+> qu'une colonne descende du tom à la cloche — ce que le commentaire de cette
+> façade reprochait déjà à une version antérieure d'elle-même (« une façade qui
+> mente sur ce qu'elle groupe est pire qu'une façade serrée »).
+>
+> **UN SECOND DÉFAUT, TROUVÉ EN CHEMIN ET RÉPARÉ D'ABORD.** `hauteurUtile()` ne
+> se trompait pas seulement de rangées (attendu écrit plus haut) : il comptait la
+> marge de cellule — 3 px en haut et en bas — **une fois par bloc** alors que
+> `resized()` la retire de **chaque rangée**. Un bloc de quatre rangées en payait
+> une et en devait quatre. Les deux erreurs étaient invisibles pour la même
+> raison : le plancher d'une rangée (70 px) couvre tout bloc de deux rangées ou
+> moins, et aucune façade n'en avait davantage. La colonne du sampler en a
+> quatre, et la cellule serait tombée à 20 px avec un bouton de 8. La formule
+> écrite — `(rangées de commandes x 36 + 34) / rangées de grille` — rend
+> exactement l'ancienne valeur sur les soixante-trois façades d'aujourd'hui, ce
+> que la colonne « identiques au pixel » vérifie plutôt que de le supposer.
+>
+> **L'ATTENDU N° 4 N'EST PAS TENU, ET SA BARRE ÉTAIT FAUSSE.** J'attendais que la
+> plus haute des quatre reste « sous deux fois la hauteur du rack ». Le sampler
+> passe de 540 à **680 px** pour un volet de rack de **330 px** à 900x660, soit
+> **2,06 fois** — au-dessus de la barre. Mais cette barre a été écrite sans que je
+> sache ce que valait le volet : je l'imaginais vers 470. Mesurée, elle condamne
+> **dix façades que la série D65–D66 a délibérément créées** et dont personne ne
+> s'est plaint — `vsm.wavetable` tient 1 030 px, soit 3,1 volets. Le sampler
+> devient la onzième, et la plus basse des onze. La barre ne mesurait donc pas ce
+> que je croyais : elle disait « cette façade est-elle plus haute que la
+> moyenne », pas « chercher un réglage y coûte-t-il trop de défilement ». Je la
+> retire au lieu de la contourner, et je publie le chiffre qu'elle visait :
+> **11 façades sur 63 dépassent deux volets, contre 10 avant la phase.**
+>
+> **UNE QUATRIÈME MESURE, QUI DIT NON.** Avant de conclure, j'ai cherché un
+> garde-fou sans pixels : « un bloc ne range jamais autant de colonnes de
+> commandes qu'il a de colonnes de grille ». Il est vrai des quatre façades
+> corrigées — et **vingt-six blocs du parc le violent en mesurant tous au-dessus
+> de 18 px** (`vsm.chebyshev`, les six opérateurs du DX7, sept enveloppes…). La
+> largeur réclamée par la grille reste un proxy, et le diamètre rendu reste le
+> fait : c'est la leçon de D67, vérifiée une fois de plus dans la phase qui
+> corrige D67. **Il n'y a donc pas de test de données qui tienne ce plancher**, et
+> ce n'est pas un manque à combler : le garde-fou est le témoin, et il est
+> désormais permanent.
+>
+> **VU À L'ÉCRAN**, à 900x660, les quatre façades. Le sampler montre huit
+> colonnes colorées — « 1 KICK », « 2 SN… », « 3 HH… » jusqu'à « 8 RIDE » —,
+> chacune LVL, TUNE, DEC, PAN de haut en bas : c'est un panneau de boîte à
+> rythmes, ce que le carré de deux sur deux ne donnait pas. Le TR-909 montre
+> BASS DRUM et SNARE DRUM en gros potentiomètres, TOM / CLAP en deux colonnes et
+> CYMBAL / HAT en trois. Les FM drums montrent leurs quatre blocs, TOM / BELL en
+> quatre colonnes. **Ce qui reste visible et n'est pas nouveau** : les titres des
+> emplacements du sampler s'abrègent (« 2 SN… ») — deux colonnes de grille font
+> 49 px, et c'était déjà le cas avant la phase.
+>
+> Tests : 327 core, 1 291 audio, 292 interchange, 25 clap, 11 panels, 172 Python,
+> ruff et mypy — tout vert.

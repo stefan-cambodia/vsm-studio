@@ -1,5 +1,6 @@
 #include "MachinePanelComponent.h"
 #include <algorithm>
+#include <cstdlib>
 
 using namespace vsm::panels;
 
@@ -248,33 +249,54 @@ juce::Rectangle<float> MachinePanelComponent::gridToPixels(juce::Rectangle<float
 int MachinePanelComponent::hauteurUtile() const {
     if (!panel_) return 0;
 
-    // CE QU'UNE CELLULE DE COMMANDE RÉCLAME. Un bouton de 18 px est le
+    // CE QU'UNE RANGÉE DE COMMANDES RÉCLAME. Un bouton de 18 px est le
     // plancher mesuré en D62 : au-dessous, l'anneau et le repère ne se
-    // distinguent plus. La sérigraphie en prend 12. Une cellule vaut donc
-    // 30 px, et c'est un MINIMUM -- au-dessus, tout s'agrandit comme avant.
-    constexpr float kCelluleMinimale = 18.0f + 12.0f;
+    // distinguent plus. La sérigraphie en prend 12, et la cellule se réduit
+    // elle-même de 3 en haut et en bas. Une rangée vaut donc 36 px.
+    //
+    // D70 A CORRIGÉ CE DÉCOMPTE, ET LE CHANGEMENT NE SE VOIT SUR AUCUNE FAÇADE
+    // D'AUJOURD'HUI. La marge de cellule (2 x 3) était comptée avec les frais
+    // du BLOC, c'est-à-dire une fois pour le bloc entier, alors que `resized()`
+    // la retire de CHAQUE rangée. Un bloc de quatre rangées en payait donc une
+    // et en devait quatre. Tant qu'aucun bloc ne dépassait deux rangées de
+    // commandes, le plancher d'une rangée (70 px, ci-dessous) couvrait l'écart ;
+    // la colonne par pièce du sampler, elle, en a quatre.
+    constexpr float kRangeeMinimale = 18.0f + 12.0f + 2.0f * 3.0f;
 
-    // ET CE QUE LA RANGÉE PERD AVANT D'ARRIVER À LA CELLULE. Quarante pixels,
-    // sur le chemin de `resized()` : la marge du bloc (6 de chaque côté), son
-    // titre (18), la marge de son contenu (2) et celle de la cellule (3).
+    // ET CE QUE LE BLOC PERD AVANT D'ARRIVER À SES RANGÉES. Trente-quatre
+    // pixels, sur le chemin de `resized()` : la marge du bloc (6 de chaque
+    // côté), son titre (18) et la marge de son contenu (2 de chaque côté).
     //
     // CE CHIFFRE A ÉTÉ MESURÉ, ET IL A FALLU LE MESURER DEUX FOIS. Écrit de
     // tête, il valait d'abord 6, puis 28 ; un témoin qui imprime la cellule
     // réellement posée a rendu « 42x19 » pour le bloc RÉGLAGES du TB-303 à
     // une façade de 340 px, ce qui ne laisse que 19 - 12 = 7 px au bouton.
-    // 58,8 (la rangée) - 40 = 18,8 : le compte tombe juste avec 40 et avec
-    // rien d'autre. Une addition de constantes lues dans le code voisin se
-    // vérifie à l'écran comme le reste.
-    constexpr float kFraisDeBloc = 2.0f * 6.0f + 18.0f + 2.0f * 2.0f + 2.0f * 3.0f;
+    // 58,8 (la rangée) - 40 = 18,8 : le compte tombait juste avec 40 quand la
+    // marge de cellule y était comprise. Une addition de constantes lues dans
+    // le code voisin se vérifie à l'écran comme le reste.
+    constexpr float kFraisDeBloc = 2.0f * 6.0f + 18.0f + 2.0f * 2.0f;
 
     // Un bloc haut d'une seule rangée paie ces frais sur cette seule rangée ;
     // un bloc de deux rangées les amortit. On prend donc la rangée la plus
     // exigeante, et non une moyenne qui laisserait le bloc le plus serré sans
     // place -- c'est exactement le cas du « RÉGLAGES » du TB-303.
-    float parRangee = kCelluleMinimale + kFraisDeBloc;
+    //
+    // ET CE SONT LES RANGÉES DE COMMANDES QUI COMPTENT, PAS CELLES DE GRILLE
+    // (D70). `resized()` découpe un bloc par le nombre de rangées que ses
+    // COMMANDES occupent ; ce calcul divisait par `rowSpan`, le nombre de
+    // rangées de GRILLE. Tant que les deux coïncidaient -- et une sonde sur les
+    // soixante-trois façades dit qu'ils coïncidaient partout -- le compte
+    // tombait juste. Empiler les commandes d'une pièce en colonne crée
+    // précisément le cas où ils diffèrent : quatre rangées de commandes dans
+    // deux rangées de grille, et la cellule est écrasée de moitié.
+    float parRangee = kRangeeMinimale + kFraisDeBloc;
     for (const auto& section : panel_->sections) {
-        const float rangees = static_cast<float>(std::max(1, section.rowSpan));
-        parRangee = std::max(parRangee, (rangees * kCelluleMinimale + kFraisDeBloc) / rangees);
+        int rangeesDeCommandes = 1;
+        for (const auto& spec : section.controls)
+            rangeesDeCommandes = std::max(rangeesDeCommandes, spec.row + spec.rowSpan);
+        const float rangees = static_cast<float>(rangeesDeCommandes);
+        const float grille = static_cast<float>(std::max(1, section.rowSpan));
+        parRangee = std::max(parRangee, (rangees * kRangeeMinimale + kFraisDeBloc) / grille);
     }
 
     // `gridRows` porte DÉJÀ les rangées du séquenceur (les descriptions font
@@ -434,6 +456,46 @@ void MachinePanelComponent::resized() {
             control.widget->setBounds(cell.toNearestInt());
         }
     }
+
+    mesurerSiDemande();
+}
+
+void MachinePanelComponent::mesurerSiDemande() const {
+    const char* chemin = std::getenv("VSM_MESURE_FACADE");
+    if (chemin == nullptr || *chemin == '\0' || panel_ == nullptr) return;
+
+    // AJOUT ET NON ÉCRASEMENT : une course qui ouvre les soixante-trois façades
+    // l'une après l'autre écrit dans le même fichier, et le balayage se lit d'un
+    // seul coup. Le nom du fichier porte la course, pas la machine.
+    juce::File fichier(juce::File::getCurrentWorkingDirectory().getChildFile(juce::String(chemin)));
+    juce::String lignes;
+    for (const auto& control : controls_) {
+        if (control.sectionIndex >= panel_->sections.size()) continue;
+        const auto& section = panel_->sections[control.sectionIndex];
+        const auto cadre = control.widget->getBounds();
+        const auto cellule = cadre.getUnion(control.caption->getBounds());
+        // LE DIAMÈTRE EST LE PLUS PETIT CÔTÉ du bouton posé : c'est lui que D62
+        // a mesuré à 18 px de plancher, et lui qui décide si l'anneau et le
+        // repère se distinguent. Pour un curseur, la course est la dimension
+        // utile ; elle est donnée telle quelle et la colonne le dit.
+        const bool estCurseur = control.style == ControlStyle::VerticalSlider ||
+                                 control.style == ControlStyle::HorizontalSlider;
+        lignes << toJuce(panel_->pluginId) << "\t" << getWidth() << "x" << getHeight() << "\t"
+               << toJuce(section.title) << "\t" << control.caption->getText() << "\t"
+               << (estCurseur ? "curseur" : "bouton") << "\t"
+               << cellule.getWidth() << "\t" << cellule.getHeight() << "\t"
+               << cadre.getWidth() << "\t" << cadre.getHeight() << "\t"
+               << juce::jmin(cadre.getWidth(), cadre.getHeight()) << "\n";
+    }
+    if (lignes.isEmpty()) return;
+    if (!fichier.existsAsFile())
+        // EN-TÊTE SANS ACCENT : `juce::String(const char*)` lit les octets en
+        // Latin-1 (la leçon du rack), et « posé » sortait « posÃ© » dans le
+        // fichier. Un en-tête de colonne n'a pas besoin d'accent ; le fichier
+        // reste lisible par `cut` et par un tableur.
+        fichier.replaceWithText("machine\tfacade\tbloc\tserigraphie\ttype\t"
+                                "cellule_l\tcellule_h\tpose_l\tpose_h\tdiametre\n");
+    fichier.appendText(lignes);
 }
 
 void MachinePanelComponent::timerCallback() {

@@ -302,14 +302,22 @@ MachinePanel makeTr909() {
             control("Snare Snappy", "SNAPPY", S::Knob, 0, 1),
             control("Snare Decay", "DECAY", S::Knob, 1, 1),
         }),
-        voice("TOM / CLAP", orange, 8, 4, {
+        // D70 : UNE COLONNE PAR PIÈCE, ET UNE COLONNE DE GRILLE RENDUE AU
+        // VOISIN. Ce bloc rangeait ses deux pièces en TROIS colonnes sur deux
+        // rangées, ce qui mêlait le tom et le clap dans la même colonne ; le
+        // charleston d'à côté, lui, tenait trois colonnes dans trois colonnes de
+        // grille et ses six boutons sortaient à 15 px. Le tom prend la colonne
+        // de gauche, le clap celle de droite, le bloc se contente de trois
+        // colonnes de grille, et la quatrième va au charleston. La somme reste
+        // quinze : aucune voix ne change de place ni d'ordre.
+        voice("TOM / CLAP", orange, 8, 3, {
             control("Tom Level", "TOM LEVEL", S::Knob, 0, 0),
-            control("Tom Tune", "TOM TUNE", S::Knob, 1, 0),
-            control("Tom Decay", "TOM DECAY", S::Knob, 0, 1),
-            control("Clap Level", "CLAP LEVEL", S::Knob, 1, 1),
-            control("Clap Decay", "CLAP DECAY", S::Knob, 2, 1),
+            control("Tom Tune", "TOM TUNE", S::Knob, 0, 1),
+            control("Tom Decay", "TOM DECAY", S::Knob, 0, 2),
+            control("Clap Level", "CLAP LEVEL", S::Knob, 1, 0),
+            control("Clap Decay", "CLAP DECAY", S::Knob, 1, 1),
         }),
-        voice("CYMBAL / HAT", steel, 12, 3, {
+        voice("CYMBAL / HAT", steel, 11, 4, {
             control("Closed Hat Level", "CH LEVEL", S::Knob, 0, 0),
             control("Open Hat Level", "OH LEVEL", S::Knob, 1, 0),
             control("Closed Hat Decay", "CH DECAY", S::Knob, 0, 1),
@@ -889,7 +897,11 @@ MachinePanel makeSampler() {
     panel.textColour = "#EDEEF0";
     panel.knobColour = "#1E2024";
     panel.gridColumns = 16;
-    panel.gridRows = 4;
+    // D70 : TROIS RANGÉES DE GRILLE PAR RANGÉE D'EMPLACEMENTS, contre deux. La
+    // colonne par pièce empile quatre réglages là où le carré en posait deux, et
+    // une rangée de commandes réclame 36 px (voir `hauteurUtile`) : à deux
+    // rangées de grille, la cellule tombait à 20 px et le bouton à 8.
+    panel.gridRows = 6;
 
     // Deux rangées de huit. Les couleurs suivent les FAMILLES de pièces, comme
     // les capuchons colorés d'une boîte à rythmes : on repère la grosse caisse
@@ -926,17 +938,28 @@ MachinePanel makeSampler() {
         section.title = std::to_string(slot + 1) + " " + pieces[slot];
         section.accentColour = accents[slot];
         section.column = (slot % 8) * 2;
-        section.row = (slot / 8) * 2;
+        section.row = (slot / 8) * 3;
         section.columnSpan = 2;
-        section.rowSpan = 2;
+        section.rowSpan = 3;
         const std::string prefix = "Slot " + std::to_string(slot + 1) + " ";
-        // Deux par deux plutôt qu'en ligne : à deux colonnes de large, quatre
-        // commandes alignées seraient minuscules.
+        // D70 : UNE COLONNE, QUATRE RÉGLAGES EMPILÉS -- et c'est la façade qui
+        // rejoint ce que ce commentaire annonçait déjà, dix lignes plus haut :
+        // « une colonne de réglages par pièce ». Le carré de deux sur deux
+        // donnait DEUX colonnes de commandes dans deux colonnes de grille, soit
+        // onze pixels de bouton : les soixante-quatre boutons de cette façade
+        // étaient sous le plancher de 18 px, le pire cas du parc. En colonne,
+        // ils passent à 26.
+        //
+        // LA LARGEUR EST CE QUI MANQUE, PAS LA HAUTEUR (D64, D65), et seize
+        // emplacements côte à côte en consomment huit fois plus que n'importe
+        // quel synthé. L'alternative -- quatre rangées de quatre emplacements --
+        // aurait rendu de la largeur, mais en déplaçant les pièces : D67 a
+        // écrit que leur rangée EST leur identité, et cette façade la garde.
         section.controls = {
             control(prefix + "Level", "LVL", S::Knob, 0, 0),
-            control(prefix + "Tune", "TUNE", S::Knob, 1, 0),
-            control(prefix + "Decay", "DEC", S::Knob, 0, 1),
-            control(prefix + "Pan", "PAN", S::Knob, 1, 1),
+            control(prefix + "Tune", "TUNE", S::Knob, 0, 1),
+            control(prefix + "Decay", "DEC", S::Knob, 0, 2),
+            control(prefix + "Pan", "PAN", S::Knob, 0, 3),
         };
         panel.sections.push_back(section);
     }
@@ -2182,20 +2205,27 @@ MachinePanel makePerc() {
             control("Timbale Tune", "TUNE", S::Knob, 1, 0),
             control("Timbale Decay", "DECAY", S::Knob, 0, 1),
         }),
+        // D70 : UNE COLONNE PAR PIÈCE. Ces deux blocs portent DEUX pièces
+        // chacun et les rangeaient en trois colonnes sur deux rangées -- trois
+        // colonnes de commandes dans trois colonnes de grille, soit 15 px au
+        // bouton. En colonnes, la cloche est à gauche et le bois à droite,
+        // chacun avec ses trois réglages de haut en bas : le bloc garde sa
+        // largeur, et le bouton passe à 26 px. La hauteur, elle, est bon marché
+        // depuis D63 -- la façade défile.
         piece("COWBELL / WOOD", bois, 9, 3, {
             control("Cowbell Level", "BELL", S::Knob, 0, 0),
-            control("Cowbell Tune", "BELL TUNE", S::Knob, 1, 0),
-            control("Cowbell Decay", "BELL DEC", S::Knob, 2, 0),
-            control("Wood Level", "WOOD", S::Knob, 0, 1),
+            control("Cowbell Tune", "BELL TUNE", S::Knob, 0, 1),
+            control("Cowbell Decay", "BELL DEC", S::Knob, 0, 2),
+            control("Wood Level", "WOOD", S::Knob, 1, 0),
             control("Wood Tune", "WOOD TUNE", S::Knob, 1, 1),
-            control("Wood Decay", "WOOD DEC", S::Knob, 2, 1),
+            control("Wood Decay", "WOOD DEC", S::Knob, 1, 2),
         }),
         piece("SHAKEN", metal, 12, 3, {
             control("Shaker Level", "SHAKER", S::Knob, 0, 0),
-            control("Shaker Tone", "TONE", S::Knob, 1, 0),
-            control("Shaker Decay", "DECAY", S::Knob, 0, 1),
-            control("Tambourine Level", "TAMB", S::Knob, 1, 1),
-            control("Tambourine Decay", "TAMB DEC", S::Knob, 2, 1),
+            control("Shaker Tone", "TONE", S::Knob, 0, 1),
+            control("Shaker Decay", "DECAY", S::Knob, 0, 2),
+            control("Tambourine Level", "TAMB", S::Knob, 1, 0),
+            control("Tambourine Decay", "TAMB DEC", S::Knob, 1, 1),
         }),
     };
 
@@ -2446,40 +2476,54 @@ MachinePanel makeFmDrums() {
     const std::string acier = "#9BA9B8";
 
     panel.sections = {
-        piece("BASS DRUM", cyan, 0, 4, {
+        // D70 : LES QUATRE BLOCS REDISTRIBUENT LEURS COLONNES DE GRILLE, À
+        // SOMME CONSTANTE (seize), ET AUCUNE COLONNE DE COMMANDES NE MÊLE DEUX
+        // PIÈCES. C'était la façade la plus serrée du parc : dix-sept boutons
+        // sous le plancher, le bloc TOM / BELL rangeant ses cinq colonnes dans
+        // cinq colonnes de grille (16 px) et SNARE / CLAP quatre dans quatre
+        // (15 px). La grosse caisse, qui est seule dans son bloc et tenait
+        // large, rend une colonne ; le charleston, qui n'a que quatre réglages,
+        // en gagne une.
+        piece("BASS DRUM", cyan, 0, 3, {
             control("Kick Level", "LEVEL", S::Knob, 0, 0),
-            control("Kick Tune", "TUNE", S::Knob, 1, 0),
-            control("Kick Decay", "DECAY", S::Knob, 2, 0),
-            control("Kick Ratio", "RATIO", S::Knob, 0, 1),
+            control("Kick Tune", "TUNE", S::Knob, 0, 1),
+            control("Kick Decay", "DECAY", S::Knob, 0, 2),
+            control("Kick Ratio", "RATIO", S::Knob, 1, 0),
             control("Kick Clang", "CLANG", S::LargeKnob, 1, 1),
         }),
-        piece("SNARE / CLAP", cyan, 4, 4, {
+        piece("SNARE / CLAP", cyan, 3, 4, {
             control("Snare Level", "LEVEL", S::Knob, 0, 0),
-            control("Snare Tune", "TUNE", S::Knob, 1, 0),
-            control("Snare Decay", "DECAY", S::Knob, 2, 0),
-            control("Snare Ratio", "RATIO", S::Knob, 0, 1),
+            control("Snare Tune", "TUNE", S::Knob, 0, 1),
+            control("Snare Decay", "DECAY", S::Knob, 0, 2),
+            control("Snare Ratio", "RATIO", S::Knob, 1, 0),
             control("Snare Clang", "CLANG", S::Knob, 1, 1),
-            control("Clap Level", "CLAP", S::Knob, 2, 1),
-            control("Clap Decay", "CLAP DEC", S::Knob, 3, 1),
+            control("Clap Level", "CLAP", S::Knob, 2, 0),
+            control("Clap Decay", "CLAP DEC", S::Knob, 2, 1),
         }),
         // LES DIX COMMANDES DE LA CLOCHE ET DU TOM TIENNENT ICI, et pas
         // ailleurs : l'aperçu a montré « BELL RATIO » et « BELL CLANG » posées
         // dans le bloc HAT faute de place, ce qui range deux réglages de cloche
         // sous un intitulé de charleston. Une façade qui ment sur ce qu'elle
         // groupe est pire qu'une façade serrée.
-        piece("TOM / BELL", ambre, 8, 5, {
+        // LE TOM PREND LES DEUX COLONNES DE GAUCHE, LA CLOCHE LES DEUX DE
+        // DROITE : la règle de D70 vaut par pièce et non par colonne, et une
+        // pièce à cinq réglages a le droit d'en prendre deux. Ce qui est
+        // interdit est qu'une colonne porte deux pièces -- c'est ce qui avait
+        // fait écrire, plus haut, qu'« une façade qui mente sur ce qu'elle
+        // groupe est pire qu'une façade serrée ».
+        piece("TOM / BELL", ambre, 7, 5, {
             control("Tom Level", "TOM", S::Knob, 0, 0),
-            control("Tom Tune", "TOM TUNE", S::Knob, 1, 0),
-            control("Tom Decay", "TOM DEC", S::Knob, 2, 0),
-            control("Tom Ratio", "TOM RATIO", S::Knob, 3, 0),
-            control("Tom Clang", "TOM CLANG", S::Knob, 4, 0),
-            control("Bell Level", "BELL", S::Knob, 0, 1),
-            control("Bell Tune", "BELL TUNE", S::Knob, 1, 1),
-            control("Bell Decay", "BELL DEC", S::Knob, 2, 1),
-            control("Bell Ratio", "BELL RATIO", S::Knob, 3, 1),
-            control("Bell Clang", "BELL CLANG", S::Knob, 4, 1),
+            control("Tom Tune", "TOM TUNE", S::Knob, 0, 1),
+            control("Tom Decay", "TOM DEC", S::Knob, 0, 2),
+            control("Tom Ratio", "TOM RATIO", S::Knob, 1, 0),
+            control("Tom Clang", "TOM CLANG", S::Knob, 1, 1),
+            control("Bell Level", "BELL", S::Knob, 2, 0),
+            control("Bell Tune", "BELL TUNE", S::Knob, 2, 1),
+            control("Bell Decay", "BELL DEC", S::Knob, 2, 2),
+            control("Bell Ratio", "BELL RATIO", S::Knob, 3, 0),
+            control("Bell Clang", "BELL CLANG", S::Knob, 3, 1),
         }),
-        piece("HAT", acier, 13, 3, {
+        piece("HAT", acier, 12, 4, {
             control("Hat Level", "LEVEL", S::Knob, 0, 0),
             control("Hat Tone", "TONE", S::Knob, 1, 0),
             control("Closed Hat Decay", "CH DECAY", S::Knob, 0, 1),
