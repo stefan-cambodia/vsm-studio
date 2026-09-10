@@ -147,8 +147,18 @@ struct SampleLoadReport {
     /// produit une piste muette, et une piste muette sans message est le genre
     /// de panne qu'on cherche pendant une heure.
     std::vector<std::string> failures;
+    /// RÉSERVES : ce qui a été lu et NON appliqué sans que ce soit un échec --
+    /// les champs d'un profil multi-échantillons que la machine ne comprend
+    /// pas. D71 : `applyMultisampleProfile` les nomme depuis toujours dans son
+    /// `ignored`, le service de rendu les publie, et le chemin du PROJET les
+    /// jetait. Un champ ignoré n'est pas une panne, mais le taire en est une.
+    std::vector<std::string> reserves;
 
-    bool empty() const { return loaded.empty() && failures.empty(); }
+    bool empty() const { return loaded.empty() && failures.empty() && reserves.empty(); }
+    /// Vrai quand le rapport a quelque chose à dire à l'utilisateur. Distinct
+    /// de `empty()` : un preset dont tous les échantillons se chargent a des
+    /// `loaded` et n'a rien à signaler.
+    bool aQuelqueChoseADire() const { return !failures.empty() || !reserves.empty(); }
     std::string summary() const;
 };
 

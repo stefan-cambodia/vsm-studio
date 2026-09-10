@@ -255,7 +255,8 @@ std::vector<TrackEffect>* EffectChainComponent::activeDescription() {
 }
 
 EffectChainComponent::Chain
-EffectChainComponent::buildChain(const std::vector<TrackEffect>& described) const {
+EffectChainComponent::buildChain(const std::vector<TrackEffect>& described,
+                                  std::vector<juce::String>* rapport) const {
     Chain chain;
     for (const auto& entry : described) {
         auto fx = EffectFactory::create(entry.type);
@@ -264,13 +265,32 @@ EffectChainComponent::buildChain(const std::vector<TrackEffect>& described) cons
         // substituer une voisine. Le décalage d'index qui en résulterait est
         // évité en n'ajoutant rien à la chaîne vivante -- la description, elle,
         // reste intacte et sera réécrite telle quelle.
-        if (!fx) continue;
+        //
+        // D71 : ET ON LE DIT. Le commentaire ci-dessus expliquait avec soin
+        // pourquoi on ne le REMPLACE pas, sans se demander s'il fallait le
+        // DIRE. Un projet dont un insert saute s'ouvrait, jouait, se réécrivait
+        // intact -- et sonnait sans son effet, sans un mot ; le rendu hors
+        // ligne du MÊME dossier, lui, le nommait.
+        if (!fx) {
+            if (rapport != nullptr)
+                rapport->push_back(juce::String(u8"effet « ")
+                                   + juce::String::fromUTF8(entry.type.c_str())
+                                   + juce::String(u8" » inconnu, non appliqué"));
+            continue;
+        }
         // D15.1 : chaque insert vivant est enrobé pour pouvoir être contourné
         // sans reconstruire la chaîne ; le drapeau suit la description.
         auto enrobe = std::make_unique<vsm::audio::effect::BypassableEffect>(std::move(fx));
         enrobe->setBypassed(!entry.enabled);
         enrobe->prepare(sampleRate_, blockSize_);
-        vsm::interchange::applyEffectDescription(entry, *enrobe);
+        const auto applique = vsm::interchange::applyEffectDescription(entry, *enrobe);
+        if (rapport != nullptr)
+            for (const auto& inconnu : applique.unknownParameters)
+                rapport->push_back(juce::String(u8"effet « ")
+                                   + juce::String::fromUTF8(entry.type.c_str())
+                                   + juce::String(u8" » : réglage inconnu « ")
+                                   + juce::String::fromUTF8(inconnu.c_str())
+                                   + juce::String(u8" »"));
         chain.push_back(std::move(enrobe));
     }
     return chain;
@@ -301,12 +321,18 @@ void EffectChainComponent::rebuildFromProject() {
     chains_.clear();
     if (project_ == nullptr) { rebuildEffectList(); rebuildParamControls(); return; }
     chains_.reserve(project_->tracks.size());
-    for (const auto& track : project_->tracks)
+    for (size_t piste = 0; piste < project_->tracks.size(); ++piste) {
+        const auto& track = project_->tracks[piste];
         // D30.2 : UNE PISTE DÉSACTIVÉE NE FABRIQUE AUCUN INSERT. Sa
         // description reste dans la piste et revient telle quelle à la
         // réactivation -- ce qui cesse, c'est de construire des effets qui
-        // tourneraient à vide.
-        chains_.push_back(track.disabled ? Chain{} : buildChain(track.effects));
+        // tourneraient à vide. Elle n'a donc rien à signaler non plus : ce
+        // n'est pas une panne, c'est une décision de l'utilisateur.
+        if (track.disabled) { chains_.push_back(Chain{}); continue; }
+        std::vector<juce::String> reserves;
+        chains_.push_back(buildChain(track.effects, onEffectReserve ? &reserves : nullptr));
+        for (const auto& reserve : reserves) onEffectReserve(piste, reserve);
+    }
     for (size_t i = 0; i < chains_.size(); ++i) publishChain(i);
     rebuildEffectList();
     rebuildMidiList();
@@ -758,7 +784,17 @@ void EffectChainComponent::loadPresetInto(size_t index, const juce::File& fichie
     auto description = vsm::interchange::descriptionFromEffectPreset(lu.preset);
     description.enabled = (*d)[index].enabled;   // le contournement est une décision de mixage, il reste
     (*d)[index] = description;
-    vsm::interchange::applyEffectDescription(description, *(*c)[index]);
+    // D71 : UN PRESET D'EFFET VENU D'UNE AUTRE VERSION PEUT PORTER DES RÉGLAGES
+    // QUE CELLE-CI NE CONNAÎT PAS -- exactement le cas de D52 pour les presets
+    // de machine, à ceci près que le rapport était jeté ici aussi.
+    const auto applique = vsm::interchange::applyEffectDescription(description, *(*c)[index]);
+    if (onEffectReserve && activeTrack_ >= 0)
+        for (const auto& inconnu : applique.unknownParameters)
+            onEffectReserve(static_cast<size_t>(activeTrack_),
+                            juce::String(u8"preset d'effet « ")
+                            + fichier.getFileNameWithoutExtension()
+                            + juce::String(u8" » : réglage inconnu « ")
+                            + juce::String::fromUTF8(inconnu.c_str()) + juce::String(u8" »"));
     selectedEffect_ = static_cast<int>(index);
     rebuildEffectList();
     rebuildParamControls();

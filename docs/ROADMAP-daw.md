@@ -10587,3 +10587,143 @@ rien recompiler.
 >
 > Tests : 327 core, 1 291 audio, 292 interchange, 25 clap, 11 panels, 172 Python,
 > ruff et mypy — tout vert.
+
+### Phase D71 — Le vingt-quatrième audit : D52 a corrigé UN rapport jeté, et n'a pas demandé si ses frères l'étaient aussi (10/09/2026, 14:20)
+
+**LA LUNETTE, ET POURQUOI ELLE EST NEUVE.** D52 a trouvé quatre appelants qui
+jetaient `PresetApplyReport` — le rapport dont l'en-tête promet que « rien n'est
+jamais appliqué en douce ». Elle les a réparés, et elle s'est arrêtée là. Or ce
+rapport n'est pas seul : le dépôt en compte **neuf de la même famille**, tous
+bâtis sur la même idée — une fonction qui applique quelque chose et rend la liste
+de ce qu'elle n'a pas pu appliquer. **Personne n'a demandé si les huit autres
+étaient lus.** C'est la faute de D52 sous une forme de plus : réparer l'exemplaire
+qu'on a trouvé plutôt que la classe à laquelle il appartient.
+
+**ET UNE SECONDE LUNETTE, QUI DONNE À LA PREMIÈRE SON TÉMOIN.** Un projet a
+**deux lecteurs** : l'application, et le rendu hors ligne de `vsm-render`. D46 a
+vérifié qu'ils rendent le même SON, au bit près. Personne n'a vérifié qu'ils
+disent les mêmes ANOMALIES. Or c'est le même dossier, les mêmes structures et la
+même règle — « panne muette interdite » —, et si les deux divergent, l'un des
+deux ment.
+
+**CE QUE L'AUDIT A RENDU.** Sur le même `project.json`, quatre anomalies que le
+rendu hors ligne NOMME et que l'application AVALE :
+
+| anomalie dans le projet | `vsm-render` | l'application |
+|---|---|---|
+| insert d'un type inconnu | « Piste 3 : effet « xyz » inconnu, non appliqué » | **rien** |
+| insert portant un réglage inconnu | « …, réglage inconnu « q » » | **rien** |
+| bus de départ d'un type inconnu | « Bus de départ « Rev » : effet « xyz » inconnu » | **rien** |
+| bus de départ portant un réglage inconnu | « …, réglage inconnu « q » » | **rien** |
+
+Les trois appelants fautifs sont `EffectChainComponent.cpp:273`, `:761` et
+`MainComponent.cpp:7234` : tous trois appellent `applyEffectDescription` et
+**jettent l'`EffectApplyReport` qu'elle rend**. Deux sites de plus sautent un
+effet dont le type est inconnu sans un mot (`EffectChainComponent.cpp:266`,
+`MainComponent.cpp:7224`) — et le commentaire du premier explique soigneusement
+pourquoi on ne le REMPLACE pas, sans se demander s'il faut le DIRE.
+
+**CE QUE CELA COÛTE À L'UTILISATEUR.** Il ouvre un projet écrit par une version
+où l'effet s'appelait autrement, ou par la chaîne d'analyse avec un insert que
+cette version ne connaît pas. Le projet s'ouvre, la piste joue, la description
+de l'effet reste dans le fichier et se réécrit intacte — et le son n'a pas
+l'effet. Rien à l'écran ne le dit ; le mélangeur montre un insert qui existe
+dans le projet et pas dans le graphe. Puis il exporte, et **`vsm-render` le lui
+dit** : deux lecteurs, deux vérités, et celle qui parle est celle qu'on consulte
+le moins.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA CORRECTION (10/09/2026, 14:20).**
+>
+> 1. **Les quatre lignes du tableau passent de « rien » à une phrase**, et la
+>    phrase NOMME l'effet et le réglage — un compte sans les noms ne se vérifie
+>    pas (la leçon du test de D52).
+> 2. **La phrase se lit sans souris.** L'écran de rapport d'ouverture est une
+>    fenêtre que `VSM_CAPTURE` photographie ; la ligne part AUSSI sur la sortie
+>    d'erreur (`VSM_EFFET : …`), comme `VSM_PRESET` en D52, pour qu'un banc sans
+>    écran la relise. La capture DOIT montrer l'écran de rapport, faute de quoi
+>    ce sont deux chemins déclarés et un seul vérifié.
+> 3. **Un projet sain ne dit rien.** Aucune ligne ajoutée quand tous les effets
+>    sont connus et tous leurs réglages compris : un rapport qui parle toujours
+>    ne se lit plus.
+> 4. **Les sept autres rapports de la famille sont comptés**, appelant par
+>    appelant, et le compte est publié ici — y compris s'il est nul. C'est la
+>    partie de D52 qui n'a pas été faite, et la refaire à moitié serait la
+>    refaire pour rien.
+
+> **D71 EST FAITE (10/09/2026, 16:05). LES QUATRE ATTENDUS SONT TENUS, ET LA
+> VÉRIFICATION DU SECOND A TROUVÉ UN DÉFAUT DU BANC LUI-MÊME.**
+>
+> **Mesuré sur un projet abîmé exprès** — un insert de type inconnu, un insert
+> portant deux réglages inconnus, un bus de départ de type inconnu, un bus de
+> départ portant deux réglages inconnus — ouvert par l'application, et rendu par
+> le `vsm-render` du dépôt (binaire d'avant cette phase, donc témoin intact) :
+>
+> | | avant | après |
+> |---|---|---|
+> | lignes dites par l'application | **0** | **6** |
+> | lignes dites par `vsm-render` | 6 | 6 |
+> | le mot `VSM_EFFET` dans le binaire | **absent** | présent |
+> | projet sain (63 façades) | 0 | **0** |
+> | vraie reconstruction (`sky-v4`) | 0 | **0** |
+>
+> Le « 0 » d'avant n'est pas une lecture du diff : le binaire d'avant a été
+> reconstruit (`git stash`), lancé sur le même dossier, et il n'a rien dit.
+>
+> **CE QUE L'APPLICATION ÉCRIT MAINTENANT**, mot pour mot :
+>
+> ```
+> VSM_EFFET : bus de départ « Rev » : effet « reverb-a-plaque-de-1974 » inconnu, non appliqué
+> VSM_EFFET : bus de départ « Delai » : réglage inconnu « delay.retro.inverse »
+> VSM_EFFET : Piste 1 : effet « chorus-de-1987 » inconnu, non appliqué
+> VSM_EFFET : Piste 2 : effet « reverb » : réglage inconnu « reverb.densite.stochastique »
+> ```
+>
+> **LA RÉPONSE À L'ATTENDU N° 4 : DEUX FAMILLES SUR NEUF, ET NON UNE.** Les neuf
+> rapports ont été suivis appelant par appelant. Sept sont lus partout. Deux ne
+> l'étaient pas :
+>
+> | famille | sites qui la jetaient | où |
+> |---|---|---|
+> | `EffectApplyReport` | **3** | `EffectChainComponent.cpp:273` et `:761`, `MainComponent.cpp:7234` — tous dans `app/` |
+> | `MultisampleProfileApplyReport::ignored` | **1** | `SynthPreset.cpp:318`, c'est-à-dire le chemin qu'emprunte un PROJET qui s'ouvre ; `PatchRenderService` le publiait déjà |
+>
+> Deux sites de plus sautaient un effet de type inconnu sans un mot. La seconde
+> famille a demandé une troisième catégorie dans `SampleLoadReport` — les
+> **réserves**, qui ne sont ni un chargement ni un échec — et un test tient
+> désormais son contrat, y compris qu'un preset dont tout se charge ne dise
+> RIEN : un rapport qui parle toujours ne se lit plus.
+>
+> **LE BANC A UN DÉFAUT, ET C'EST LA VÉRIFICATION DE L'ATTENDU N° 2 QUI L'A
+> TROUVÉ.** L'écran de rapport a bien été photographié, avec ses six lignes
+> (`VSM_CAPTURE_PANNEAUX`, D55.2) — **une fois sur sept tentatives**, à des
+> délais de 1 800 à 3 000 ms, sans que le délai explique quoi que ce soit : ce
+> n'est pas une attente trop courte, c'est une course. La boîte est ouverte par
+> `showMessageBoxAsync`, et le photographe passe sans la voir la plupart du
+> temps. **Cela corrige aussi D52**, qui écrivait « une `AlertWindow` est une
+> fenêtre à part et n'y figure pas » : elle y figure, par intermittence — ce qui
+> est pire, parce qu'un banc qui rate sa cible six fois sur sept et la trouve la
+> septième laisse croire, le jour où il la trouve, qu'il la trouve toujours.
+> **Nommé, chiffré, non fait** : la ligne `VSM_EFFET` sur la sortie d'erreur,
+> elle, est déterministe, et c'est elle qui porte la preuve ici.
+>
+> **DEUX DIVERGENCES DE PLUS ENTRE LES DEUX LECTEURS, NOMMÉES ET NON FAITES.**
+>
+> 1. **La numérotation des pistes.** L'application dit « Piste 1 », `vsm-render`
+>    dit « Piste 0 » — pour la même piste et la même anomalie. Chacun est
+>    cohérent avec lui-même (l'application compte à partir de 1 partout dans son
+>    écran de rapport) ; mis côte à côte, ils se contredisent. Non corrigé
+>    **parce que le corriger demanderait de recompiler `vsm-render`, et qu'une
+>    campagne tourne** — remplacer ce binaire tue la course (règle du dépôt).
+> 2. **`vsm-render` dit « Piste 2 () : aucun instrument, elle restera
+>    silencieuse » ; l'application ne le dit pas.** C'est une divergence sur les
+>    INSTRUMENTS, pas sur les effets ; elle sort de la lunette de cette phase et
+>    y entre par la porte que cette phase vient d'ouvrir — la comparaison des
+>    deux lecteurs sur le même dossier. Elle attend sa mesure.
+>
+> **CORRIGÉ EN CHEMIN, PARCE QUE LA CAPTURE LE MONTRAIT** : le titre de la boîte
+> lisait « Projet ouvert, avec des reserves », sans son accent. Il passe par
+> `juce::String::fromUTF8`, la seule façon d'écrire un accent ici sans le
+> transformer en « rÃ©serves ».
+>
+> Tests : 327 core, 1 291 audio, **293** interchange (un de plus), 25 clap,
+> 11 panels, 172 Python, ruff et mypy — tout vert.

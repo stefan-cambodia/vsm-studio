@@ -262,6 +262,11 @@ MainComponent::MainComponent()
     // Éditeur de chaîne d'effets d'insert (dernière pièce UI de la Phase 2).
     // La chaîne est DÉCRITE dans la piste ; ce composant n'en garde rien.
     effectChain_.onEditStarted = [this](const juce::String& label) { beginProjectEdit(label); };
+    // D71 : les réserves des inserts remontent par le MÊME canal que celles des
+    // bus de départ, pour qu'un projet n'ait qu'un seul endroit où se plaindre.
+    effectChain_.onEffectReserve = [this](size_t piste, const juce::String& reserve) {
+        noterReserveDEffet("Piste " + juce::String(static_cast<int>(piste) + 1) + " : " + reserve);
+    };
     effectChain_.onChainChanged =
         [this](size_t track, std::shared_ptr<const EffectChainComponent::Chain> chain) {
             audioEngine_.processGraph().setTrackEffectChain(track, chain);
@@ -5115,6 +5120,13 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     // rebuildFromProject() assigne les instruments d'après le projet : les
     // machines n'existent donc PAS avant cet appel, et appliquer les
     // presets plus tôt reviendrait à les appliquer à rien.
+    //
+    // D71 : LES RÉSERVES D'EFFET SE VIDENT JUSTE AVANT, pas après. C'est cet
+    // appel qui construit les chaînes et les bus, donc qui les produit ; les
+    // vider ensuite les effacerait toutes, et garder celles du projet
+    // précédent ferait lire les manques d'un morceau sous le titre d'un autre
+    // -- la faute que `rapportReconstruction_` évite dix lignes plus bas.
+    reservesEffets_.clear();
     rebuildFromProject();
     pianoRoll_.cadrerSurLesNotes();  // un projet qui arrive se regarde là où sont ses notes
     chargerOriginalDuProjet(folder);
@@ -5149,13 +5161,16 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
         // c'est l'affaire de la machine.
         const auto echantillons = vsm::interchange::applyPresetSamples(
             preset, *instrument, loaded.bundle.folderPath);
-        if (!echantillons.failures.empty())
+        if (echantillons.aQuelqueChoseADire())
             rapport.add("Piste " + juce::String(static_cast<int>(index) + 1) + " : "
                         + juce::String::fromUTF8(echantillons.summary().c_str()));
     }
 
     for (const auto& avertissement : loaded.warnings)
         rapport.add(juce::String::fromUTF8(avertissement.c_str()));
+    // D71 : et ce que les EFFETS n'ont pas pu poser. Le rendu hors ligne du
+    // même dossier le disait déjà ; l'ouverture le taisait.
+    for (const auto& reserve : reservesEffets_) rapport.add(reserve);
 
     // --- rapport de reconstruction, s'il y en a un ------------------------
     //
@@ -5212,7 +5227,7 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
         for (const auto& ligne : rapport) texte << ligne << "\n";
         juce::AlertWindow::showMessageBoxAsync(
             juce::AlertWindow::InfoIcon,
-            "Projet ouvert, avec des reserves", texte);
+            juce::String::fromUTF8("Projet ouvert, avec des réserves"), texte);
     }
 }
 
@@ -5976,7 +5991,7 @@ void MainComponent::applyBrowserItem(const vsm::interchange::BrowserItem& item,
             juce::StringArray reserves;
             if (rapport.unsupportedCount() > 0 || rapport.clampedCount() > 0)
                 reserves.add(juce::String::fromUTF8(rapport.summary().c_str()));
-            if (!echantillons.failures.empty())
+            if (echantillons.aQuelqueChoseADire())
                 reserves.add(juce::String::fromUTF8(echantillons.summary().c_str()));
             if (!reserves.isEmpty()) {
                 juce::AlertWindow::showMessageBoxAsync(
@@ -7207,6 +7222,18 @@ void MainComponent::sendBusesChanged() {
     mixDirty_ = true;               // republie le projet (niveaux d'envoi) au moteur
 }
 
+void MainComponent::noterReserveDEffet(const juce::String& reserve) {
+    // LA SORTIE D'ERREUR TOUT DE SUITE, comme `VSM_PRESET` en D52 : l'écran de
+    // rapport est une fenêtre, et un banc sans souris doit pouvoir relire la
+    // phrase. Les doublons sont écartés -- `applySendBuses` est rappelée à
+    // chaque republication du projet, et répéter la même réserve à chaque
+    // geste ferait un journal qu'on n'ouvre plus.
+    if (std::find(reservesEffets_.begin(), reservesEffets_.end(), reserve) != reservesEffets_.end())
+        return;
+    reservesEffets_.push_back(reserve);
+    std::fputs(("VSM_EFFET : " + reserve.toStdString() + "\n").c_str(), stderr);
+}
+
 void MainComponent::applySendBuses() {
     const double sr = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate() : 48000.0;
     const int blockSize = audioEngine_.currentBlockSize() > 0 ? audioEngine_.currentBlockSize() : 512;
@@ -7222,6 +7249,15 @@ void MainComponent::applySendBuses() {
         const auto& decrit = project_.sends[bus];
         auto fx = vsm::audio::effect::EffectFactory::create(decrit.effectType);
         if (!fx) {
+            // D71 : DIT, ET PAS SEULEMENT SAUTÉ. Le rendu hors ligne du même
+            // dossier écrit « Bus de départ « … » : effet « … » inconnu, non
+            // appliqué » ; ici le bus devenait muet sans un mot, et un projet
+            // qui envoie 40 % dans une réverbération inconnue s'ouvrait sec.
+            noterReserveDEffet(juce::String(u8"bus de départ « ")
+                               + juce::String::fromUTF8(decrit.name.c_str())
+                               + juce::String(u8" » : effet « ")
+                               + juce::String::fromUTF8(decrit.effectType.c_str())
+                               + juce::String(u8" » inconnu, non appliqué"));
             audioEngine_.processGraph().setSendEffect(bus, nullptr);
             continue;
         }
@@ -7231,7 +7267,12 @@ void MainComponent::applySendBuses() {
         vsm::sequencer::TrackEffect described;
         described.type = decrit.effectType;
         described.parameters = decrit.parameters;
-        vsm::interchange::applyEffectDescription(described, *fx);
+        const auto applique = vsm::interchange::applyEffectDescription(described, *fx);
+        for (const auto& inconnu : applique.unknownParameters)
+            noterReserveDEffet(juce::String(u8"bus de départ « ")
+                               + juce::String::fromUTF8(decrit.name.c_str())
+                               + juce::String(u8" » : réglage inconnu « ")
+                               + juce::String::fromUTF8(inconnu.c_str()) + juce::String(u8" »"));
         fx->prepare(sr, blockSize);
         audioEngine_.processGraph().setSendEffect(bus, std::shared_ptr<vsm::audio::effect::IAudioEffect>(std::move(fx)));
         audioEngine_.processGraph().setSendReturn(bus, decrit.returnGain);
@@ -9868,7 +9909,7 @@ void MainComponent::applyTrackPresetFile(const juce::File& fichier) {
             juce::StringArray reserves;
             if (applique.unsupportedCount() > 0 || applique.clampedCount() > 0)
                 reserves.add(juce::String::fromUTF8(applique.summary().c_str()));
-            if (!echantillons.failures.empty())
+            if (echantillons.aQuelqueChoseADire())
                 reserves.add(juce::String::fromUTF8(echantillons.summary().c_str()));
             if (!reserves.isEmpty()) {
                 juce::AlertWindow::showMessageBoxAsync(

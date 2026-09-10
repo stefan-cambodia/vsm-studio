@@ -735,6 +735,16 @@ private:
     /// constructeur, et rien dans le projet ne disait ce que les boutons
     /// « send » du mixeur alimentaient.
     void applySendBuses();
+
+    /// D71 : UNE RÉSERVE D'EFFET, NOTÉE PLUTÔT QU'AVALÉE. Un insert ou un bus
+    /// de départ que cette version ne sait pas poser tel quel -- type inconnu,
+    /// réglage inconnu. La phrase part sur la sortie d'erreur (`VSM_EFFET`)
+    /// tout de suite, pour qu'un banc sans écran la relise, et s'accumule dans
+    /// `reservesEffets_` que l'ouverture d'un projet verse à son écran de
+    /// rapport. Le rendu hors ligne les nommait depuis toujours ; l'ouverture,
+    /// non, et le même dossier avait donc deux verdicts.
+    void noterReserveDEffet(const juce::String& reserve);
+    std::vector<juce::String> reservesEffets_;
     /// Republie les bus au moteur ET reconstruit les boutons du mixeur : leur
     /// nombre a pu changer, et une tranche garderait sinon un bouton vers un
     /// bus disparu.

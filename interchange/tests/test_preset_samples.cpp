@@ -440,3 +440,41 @@ VSM_TEST(automation_targeting_a_missing_parameter_is_reported) {
 
     fs::remove_all(folder);
 }
+
+// D71 : LE RAPPORT D'ÉCHANTILLONS A UNE TROISIÈME CATÉGORIE, ET SES QUATRE
+// LECTEURS DOIVENT LA VOIR.
+//
+// `applyMultisampleProfile` nomme depuis toujours les champs de profil qu'elle
+// ignore ; le service de rendu les publiait, le chemin d'un PROJET qui s'ouvre
+// les jetait — deux lecteurs du même profil, deux verdicts. Les réserves
+// remontent maintenant dans `SampleLoadReport`, et ce test tient le contrat sur
+// lequel les quatre appelants se sont alignés : un rapport qui n'a QUE des
+// réserves a quelque chose à dire, et son résumé les NOMME. Un compte sans les
+// noms ne se vérifie pas (la leçon du test de D52).
+VSM_TEST(the_sample_report_speaks_up_for_reserves_not_only_for_failures) {
+    using namespace vsm::interchange;
+
+    SampleLoadReport muet;
+    VSM_ASSERT(muet.empty());
+    VSM_ASSERT(!muet.aQuelqueChoseADire());
+
+    SampleLoadReport tout_va_bien;
+    tout_va_bien.loaded.emplace_back(0, "kick.wav");
+    VSM_ASSERT(!tout_va_bien.empty());
+    // Un preset dont tout se charge n'a RIEN à signaler : un rapport qui parle
+    // toujours ne se lit plus.
+    VSM_ASSERT(!tout_va_bien.aQuelqueChoseADire());
+
+    SampleLoadReport avec_reserve;
+    avec_reserve.loaded.emplace_back(-1, "piano.vsmprofile");
+    avec_reserve.reserves.push_back("profil (« piano.vsmprofile ») : champ ignoré « boucle.xfade »");
+    VSM_ASSERT(avec_reserve.aQuelqueChoseADire());
+    VSM_ASSERT(avec_reserve.summary().find("boucle.xfade") != std::string::npos);
+    VSM_ASSERT(avec_reserve.summary().find("réserve") != std::string::npos);
+
+    // Et les échecs restent des échecs : la troisième catégorie ne les absorbe pas.
+    SampleLoadReport avec_echec;
+    avec_echec.failures.push_back("emplacement 3 : fichier introuvable");
+    VSM_ASSERT(avec_echec.aQuelqueChoseADire());
+    VSM_ASSERT(avec_echec.summary().find("en échec") != std::string::npos);
+}

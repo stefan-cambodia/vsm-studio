@@ -246,6 +246,10 @@ std::string SampleLoadReport::summary() const {
         out << ", " << failures.size() << " en échec :";
         for (const auto& failure : failures) out << "\n  - " << failure;
     }
+    if (!reserves.empty()) {
+        out << ", " << reserves.size() << " réserve(s) :";
+        for (const auto& reserve : reserves) out << "\n  - " << reserve;
+    }
     return out.str();
 }
 
@@ -320,6 +324,13 @@ SampleLoadReport applyPresetSamples(const SynthPreset& preset,
                     report.loaded.emplace_back(-1, preset.profile);
                 else
                     report.failures.push_back("profil (« " + preset.profile + " ») : " + applied.error);
+                // D71 : LES CHAMPS IGNORÉS DU PROFIL REMONTENT. Le service de
+                // rendu les publie depuis toujours (`PatchRenderService`), ce
+                // chemin-ci -- celui qu'emprunte un PROJET qui s'ouvre -- les
+                // jetait. Deux lecteurs du même profil, deux verdicts.
+                for (const auto& ignore : applied.ignored)
+                    report.reserves.push_back("profil (« " + preset.profile
+                                               + " ») : champ ignoré « " + ignore + " »");
             }
         }
     }

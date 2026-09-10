@@ -1022,6 +1022,14 @@ vivent que dans un menu. `VSM_DELAI=ms` retarde l'autoportrait (une
 transcription met dix secondes), et `VSM_EXPORT=fichier.flac` exporte le
 projet ouvert sans fenêtre, en WAV, FLAC ou OGG selon l'extension, pour que
 le fichier se relise. `VSM_EXPORT_NIVEAU=crete|lufs14|lufs23` y ajoute le niveau.
+Un projet dont un effet ne peut pas être posé tel quel — type inconnu, réglage
+que cette version ne comprend pas — s'ouvre en le DISANT : l'écran « Projet
+ouvert, avec des réserves » les liste, et la même phrase part sur la sortie
+d'erreur (`VSM_EFFET : …`, D71), qui est la trace déterministe. Le rendu hors
+ligne du même dossier dit les mêmes choses depuis toujours ; jusqu'à D71,
+l'application les taisait, si bien que le même projet s'ouvrait muet et
+s'exportait bavard.
+
 `VSM_MESURE_FACADE=fichier.tsv` écrit, pour chaque façade de machine posée, une
 ligne par commande — machine, taille de la façade, bloc, sérigraphie, cellule et
 **diamètre rendu du bouton**. C'est la mesure qui juge la lisibilité d'une

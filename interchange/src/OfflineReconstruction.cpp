@@ -106,7 +106,7 @@ RenderResult renderBundleToBuffer(const LoadedBundle& bundle,
         // muette doit dire pourquoi elle est muette.
         const SampleLoadReport sampleReport =
             applyPresetSamples(preset->second, *instrument, bundle.folderPath);
-        if (!sampleReport.failures.empty())
+        if (sampleReport.aQuelqueChoseADire())
             result.warnings.push_back("Piste " + std::to_string(i) + " : " + sampleReport.summary());
     }
 

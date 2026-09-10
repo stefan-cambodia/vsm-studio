@@ -78,6 +78,11 @@ public:
     /// l'application prend son instantané d'annulation. Le libellé nomme le
     /// geste dans le menu Édition.
     std::function<void(const juce::String& label)> onEditStarted;
+    /// D71 : appelé pour chaque effet qu'une chaîne n'a pas pu poser tel quel,
+    /// avec le numéro de piste. L'application décide quoi en faire (écran de
+    /// rapport à l'ouverture, sortie d'erreur) ; ce composant ne garde rien,
+    /// comme il ne garde pas la description.
+    std::function<void(size_t track, const juce::String& reserve)> onEffectReserve;
 
     /// Publie la chaîne (immuable) de la piste au moteur.
     std::function<void(size_t trackIndex, std::shared_ptr<const Chain>)> onChainChanged;
@@ -135,7 +140,13 @@ private:
     /// modifie ; la chaîne vivante suit.
     std::vector<vsm::sequencer::TrackEffect>* activeDescription();
     /// Fabrique une chaîne vivante à partir d'une description, prête à publier.
-    Chain buildChain(const std::vector<vsm::sequencer::TrackEffect>& described) const;
+    /// D71 : CE QUE LA CONSTRUCTION N'A PAS PU APPLIQUER. `rapport`, s'il est
+    /// fourni, reçoit une phrase par anomalie -- un type d'effet inconnu, un
+    /// réglage que l'effet ne comprend pas. Le rendu hors ligne les nommait
+    /// déjà (`OfflineReconstruction`) ; ce chemin-ci les jetait, si bien que le
+    /// MÊME projet s'ouvrait muet et s'exportait bavard.
+    Chain buildChain(const std::vector<vsm::sequencer::TrackEffect>& described,
+                      std::vector<juce::String>* rapport = nullptr) const;
 
     std::function<void(std::function<void(std::string)>)> pluginEffectChooser_;
     /// L'identifiant de menu de l'entrée « un plugin », ou 0 tant qu'elle
