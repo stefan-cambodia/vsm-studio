@@ -132,6 +132,10 @@ public:
     void showPresetMenu(size_t index);
     void savePresetOf(size_t index);
     void loadPresetInto(size_t index, const juce::File& fichier);
+    /// D91 : une entrée du menu de preset de l'effet `index`, exécutée sans souris
+    /// par la même fonction que le clic (libellé exact, sinon son début).
+    bool presetMenuPourCapture(size_t index, const juce::String& libelle);
+    void presetMenuAction(size_t index, int choix, const std::vector<juce::File>& fichiers);
 
 private:
     void rebuildEffectList();

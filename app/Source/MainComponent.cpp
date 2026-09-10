@@ -617,9 +617,9 @@ MainComponent::MainComponent()
         auto* clip = findClip(piste, clipId);
         if (clip == nullptr) return;
         auto* fenetre = new juce::AlertWindow(
-            u8"Renommer le clip", u8"Le nom s'affiche sur le clip et se sauvegarde avec le projet.",
+            tr(u8"Renommer le clip"), tr(u8"Le nom s'affiche sur le clip et se sauvegarde avec le projet."),
             juce::MessageBoxIconType::NoIcon);
-        fenetre->addTextEditor("nom", juce::String(clip->name), u8"Nom :");
+        fenetre->addTextEditor("nom", juce::String(clip->name), tr(u8"Nom :"));
         fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
         fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
         fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
@@ -641,11 +641,11 @@ MainComponent::MainComponent()
         auto* clip = findClip(piste, clipId);
         if (clip == nullptr || piste >= project_.tracks.size()) return;
         auto* fenetre = new juce::AlertWindow(
-            u8"Le clip fait N mesures",
-            u8"Le clip s'étirera pour durer ce nombre de mesures, sans changer de hauteur.\n"
-            u8"Le tempo d'origine du matériau sera déduit et affiché.",
+            tr(u8"Le clip fait N mesures"),
+            tr(u8"Le clip s'étirera pour durer ce nombre de mesures, sans changer de hauteur.\n"
+               u8"Le tempo d'origine du matériau sera déduit et affiché."),
             juce::MessageBoxIconType::NoIcon);
-        fenetre->addTextEditor("mesures", "4", u8"Mesures :");
+        fenetre->addTextEditor("mesures", "4", tr(u8"Mesures :"));
         fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
         fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
         fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
@@ -1252,6 +1252,25 @@ void MainComponent::listMenusForCapture() {
     for (int i = 0; i < noms.size(); ++i) parcourir(getMenuForIndex(i, noms[i]), noms[i]);
     // D83 : et les menus du clic droit de l'arrangement.
     for (const auto& [nom, menu] : arrangement_.menusPourCapture()) parcourir(menu, nom);
+}
+
+bool MainComponent::runContextMenuForCapture(const juce::String& entree) {
+    const juce::String quel = entree.upToFirstOccurrenceOf(":", false, false).trim();
+    const juce::String libelle = entree.fromFirstOccurrenceOf(":", false, false).trim();
+    // « effets » : le premier effet de la chaîne affichée, celle de la piste choisie.
+    const bool fait = quel == "effets" ? effectChain_.presetMenuPourCapture(0, libelle)
+                                       : arrangement_.actionDeMenuPourCapture(quel, libelle);
+    std::fputs((juce::String("VSM_MENU_CONTEXTE : ")
+                + (fait ? juce::String(u8"« ") + libelle + juce::String(u8" » exécutée (") + quel + ")"
+                        : juce::String(u8"aucune entrée « ") + libelle + juce::String(u8" » dans le menu ") + quel)
+                + "\n").toRawUTF8(), stderr);
+    return fait;
+}
+
+void MainComponent::dropFileForCapture(const juce::File& fichier) {
+    std::fputs((juce::String("VSM_DEPOSER : ") + fichier.getFullPathName()
+                + (fichier.existsAsFile() ? juce::String() : juce::String(u8" — introuvable")) + "\n").toRawUTF8(), stderr);
+    filesDropped(juce::StringArray(fichier.getFullPathName()), 0, 0);
 }
 
 void MainComponent::listReportForCapture() {
@@ -5549,7 +5568,7 @@ void MainComponent::filesDropped(const juce::StringArray& files, int, int) {
 
     const juce::String quoi = audios.size() == 1
         ? audios[0].getFileName()
-        : juce::String(audios.size()) + juce::String::fromUTF8(u8" fichiers audio");
+        : tr(u8"%1 fichiers audio").replace("%1", juce::String(audios.size()));
 
     // LA RECONSTRUCTION N'EST PROPOSÉE QUE SI ELLE EST POSSIBLE, et d'un seul
     // fichier : la chaîne analyse UN morceau, et lui en donner douze ne veut
@@ -5558,23 +5577,23 @@ void MainComponent::filesDropped(const juce::StringArray& files, int, int) {
     const bool reconstructible = reconstructionChain_.available && audios.size() == 1;
     juce::String detail = quoi + "\n\n";
     detail += reconstructible
-        ? juce::String::fromUTF8(u8"« Poser » crée une piste par fichier, tout de suite.\n"
-                                  u8"« Reconstruire » sépare, transcrit et cherche les machines : "
-                                  u8"plusieurs minutes.")
+        ? tr(u8"« Poser » crée une piste par fichier, tout de suite.\n"
+             u8"« Reconstruire » sépare, transcrit et cherche les machines : "
+             u8"plusieurs minutes.")
         : (audios.size() > 1
-               ? juce::String::fromUTF8(u8"« Poser » crée une piste par fichier, tout de suite.\n"
-                                         u8"La reconstruction n'analyse qu'un morceau à la fois : "
-                                         u8"elle n'est pas proposée pour un lot.")
-               : juce::String::fromUTF8(u8"« Poser » crée une piste, tout de suite.\n"
-                                         u8"Reconstruction indisponible — ")
+               ? tr(u8"« Poser » crée une piste par fichier, tout de suite.\n"
+                    u8"La reconstruction n'analyse qu'un morceau à la fois : "
+                    u8"elle n'est pas proposée pour un lot.")
+               : tr(u8"« Poser » crée une piste, tout de suite.\n"
+                    u8"Reconstruction indisponible — ")
                      + juce::String::fromUTF8(reconstructionChain_.reason.c_str()) + "\n"
                      + juce::String::fromUTF8(reconstructionChain_.remedy.c_str()));
 
     if (!reconstructible) {
         juce::AlertWindow::showOkCancelBox(
             juce::AlertWindow::QuestionIcon,
-            juce::String::fromUTF8(u8"Poser sur une piste ?"), detail,
-            juce::String::fromUTF8(u8"Poser"), vsm::app::ui::trSelon("bouton", u8"Annuler"), this,
+            tr(u8"Poser sur une piste ?"), detail,
+            tr(u8"Poser"), vsm::app::ui::trSelon("bouton", u8"Annuler"), this,
             juce::ModalCallbackFunction::create([this](int resultat) {
                 if (resultat == 1) placeDroppedAudioOnTracks();
                 pendingDroppedAudio_ = juce::File();
@@ -5587,9 +5606,9 @@ void MainComponent::filesDropped(const juce::StringArray& files, int, int) {
     // au bout.
     juce::AlertWindow::showYesNoCancelBox(
         juce::AlertWindow::QuestionIcon,
-        juce::String::fromUTF8(u8"Que faire de ce fichier ?"), detail,
-        juce::String::fromUTF8(u8"Poser sur une piste"),
-        juce::String::fromUTF8(u8"Reconstruire"), vsm::app::ui::trSelon("bouton", u8"Annuler"), this,
+        tr(u8"Que faire de ce fichier ?"), detail,
+        tr(u8"Poser sur une piste"),
+        tr(u8"Reconstruire"), vsm::app::ui::trSelon("bouton", u8"Annuler"), this,
         juce::ModalCallbackFunction::create([this](int resultat) {
             if (resultat == 1) placeDroppedAudioOnTracks();
             else if (resultat == 2 && pendingDroppedAudio_ != juce::File())
@@ -5943,13 +5962,12 @@ void MainComponent::showPlayOrder() {
             // c'est irréversible autrement que par l'annulation : on le dit
             // avant, comme le report de piste (D5.5).
             juce::AlertWindow::showOkCancelBox(
-                juce::AlertWindow::QuestionIcon, u8"Aplatir l'ordre de jeu",
-                juce::String(u8"Les notes, les clips, les courbes et les repères seront "
-                              u8"réécrits pour jouer l'ordre demandé (")
-                    + juce::String(static_cast<int>(ordre.size()))
-                    + juce::String(u8" sections). C'est annulable tant que la session est "
-                                    u8"ouverte, et définitif ensuite."),
-                u8"Aplatir", vsm::app::ui::trSelon("bouton", u8"Annuler"), nullptr,
+                juce::AlertWindow::QuestionIcon, tr(u8"Aplatir l'ordre de jeu"),
+                tr(u8"Les notes, les clips, les courbes et les repères seront réécrits pour "
+                   u8"jouer l'ordre demandé (%1 sections). C'est annulable tant que la session "
+                   u8"est ouverte, et définitif ensuite.")
+                    .replace("%1", juce::String(static_cast<int>(ordre.size()))),
+                tr(u8"Aplatir"), vsm::app::ui::trSelon("bouton", u8"Annuler"), nullptr,
                 juce::ModalCallbackFunction::create([this, ordre](int choix) {
                     if (choix == 0) return;
                     beginProjectEdit(u8"Aplatir l'ordre de jeu");
@@ -7691,13 +7709,12 @@ void MainComponent::bounceSelectedTrack() {
     // dans la session, mais pas après une fermeture -- c'est exactement ce que
     // veut dire « définitif », et le dire vaut mieux que de le découvrir.
     juce::AlertWindow::showOkCancelBox(
-        juce::AlertWindow::QuestionIcon, u8"Reporter la piste en audio",
-        juce::String(u8"Les notes, l'instrument et les inserts de « ")
-            + juce::String(project_.tracks[index].name)
-            + juce::String(u8" » seront remplacés par leur rendu. C'est annulable tant que "
-                            u8"la session est ouverte, et définitif ensuite.\n\nPour un "
-                            u8"allègement réversible, préférez GELER la piste."),
-        u8"Reporter", vsm::app::ui::trSelon("bouton", u8"Annuler"), nullptr,
+        juce::AlertWindow::QuestionIcon, tr(u8"Reporter la piste en audio"),
+        tr(u8"Les notes, l'instrument et les inserts de « %1 » seront remplacés par leur rendu. "
+           u8"C'est annulable tant que la session est ouverte, et définitif ensuite.\n\nPour un "
+           u8"allègement réversible, préférez GELER la piste.")
+            .replace("%1", juce::String(project_.tracks[index].name)),
+        tr(u8"Reporter"), vsm::app::ui::trSelon("bouton", u8"Annuler"), nullptr,
         juce::ModalCallbackFunction::create([this, index](int choix) {
             if (choix == 0) return;
             performBounce(index);
@@ -9040,13 +9057,13 @@ size_t MainComponent::renameTracksInSeries(const juce::String& motif) {
 
 void MainComponent::promptRenameTracksInSeries() {
     auto fenetre = std::make_shared<juce::AlertWindow>(
-        juce::String::fromUTF8(u8"Renommer les pistes en série"),
-        juce::String::fromUTF8(u8"Le « # » est remplacé par le numéro d'ordre. "
-                               u8"Exemple : « Batterie # » donne « Batterie 1 », « Batterie 2 »...\n"
-                               u8"Seules les pistes VISIBLES sont renommées."),
+        tr(u8"Renommer les pistes en série"),
+        tr(u8"Le « # » est remplacé par le numéro d'ordre. "
+           u8"Exemple : « Batterie # » donne « Batterie 1 », « Batterie 2 »...\n"
+           u8"Seules les pistes VISIBLES sont renommées."),
         juce::AlertWindow::QuestionIcon);
-    fenetre->addTextEditor("motif", "Piste #", juce::String::fromUTF8(u8"Motif"));
-    fenetre->addButton(juce::String::fromUTF8(u8"Renommer"), 1);
+    fenetre->addTextEditor("motif", tr(u8"Piste #"), tr(u8"Motif"));
+    fenetre->addButton(tr(u8"Renommer"), 1);
     fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0);
     fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
         [this, fenetre](int choix) {
@@ -9677,13 +9694,13 @@ void MainComponent::promptGoToBar() {
     const auto ici = project_.timeSignatureMap.barBeatAt(
         std::max<vsm::midi::Tick>(0, transport_.currentTick()), project_.ticksPerQuarterNote);
     auto* fenetre = new juce::AlertWindow(
-        u8"Aller \u00e0 la mesure",
-        u8"Mesure, ou mesure.temps (\u00ab 17 \u00bb, \u00ab 17.3 \u00bb). La premi\u00e8re mesure est la 1.",
+        tr(u8"Aller à la mesure"),
+        tr(u8"Mesure, ou mesure.temps (« 17 », « 17.3 »). La première mesure est la 1."),
         juce::MessageBoxIconType::NoIcon);
     fenetre->addTextEditor("position", juce::String(static_cast<long long>(ici.bar + 1)) + "."
                                             + juce::String(static_cast<long long>(ici.beat + 1)),
-                            u8"Position :");
-    fenetre->addButton("Aller", 1, juce::KeyPress(juce::KeyPress::returnKey));
+                            tr(u8"Position :"));
+    fenetre->addButton(tr(u8"Aller"), 1, juce::KeyPress(juce::KeyPress::returnKey));
     fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
     fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
         [this, fenetre](int resultat) {
@@ -9857,12 +9874,12 @@ void MainComponent::promptMidiProgram() {
     if (piste >= project_.tracks.size()) return;
     const auto& track = project_.tracks[piste];
     auto* fenetre = new juce::AlertWindow(
-        u8"Programme MIDI de la piste",
-        u8"Envoy\u00e9s sur le port de la piste au d\u00e9part de la lecture et \u00e0 chaque changement. "
-        u8"Programme de 1 \u00e0 128 (vide : aucun) ; banque de 0 \u00e0 16383 (vide : aucune).",
+        tr(u8"Programme MIDI de la piste"),
+        tr(u8"Envoyés sur le port de la piste au départ de la lecture et à chaque changement. "
+           u8"Programme de 1 à 128 (vide : aucun) ; banque de 0 à 16383 (vide : aucune)."),
         juce::MessageBoxIconType::NoIcon);
-    fenetre->addTextEditor("programme", track.midiProgram >= 0 ? juce::String(track.midiProgram + 1) : juce::String(), u8"Programme :");
-    fenetre->addTextEditor("banque", track.midiBank >= 0 ? juce::String(track.midiBank) : juce::String(), u8"Banque :");
+    fenetre->addTextEditor("programme", track.midiProgram >= 0 ? juce::String(track.midiProgram + 1) : juce::String(), tr(u8"Programme :"));
+    fenetre->addTextEditor("banque", track.midiBank >= 0 ? juce::String(track.midiBank) : juce::String(), tr(u8"Banque :"));
     fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
     fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
     fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
@@ -10044,15 +10061,15 @@ void MainComponent::promptSaveTrackPreset() {
     if (piste >= project_.tracks.size()) return;
     const auto& track = project_.tracks[piste];
     auto* fenetre = new juce::AlertWindow(
-        u8"Enregistrer la piste comme preset",
-        juce::String(u8"La machine et son \u00e9tat, les inserts, les d\u00e9parts, le volume, le "
-                      u8"panoramique, la couleur, la transposition et le d\u00e9calage -- pas les "
-                      u8"notes ni les clips. \u00c9crit dans ")
-            + trackPresetFolder().getFullPathName(),
+        tr(u8"Enregistrer la piste comme preset"),
+        tr(u8"La machine et son état, les inserts, les départs, le volume, le "
+           u8"panoramique, la couleur, la transposition et le décalage -- pas les "
+           u8"notes ni les clips. Écrit dans %1")
+            .replace("%1", trackPresetFolder().getFullPathName()),
         juce::MessageBoxIconType::NoIcon);
-    fenetre->addTextEditor("nom", juce::String(track.name.empty() ? "Piste " + std::to_string(piste + 1)
-                                                                  : track.name), u8"Nom :");
-    fenetre->addButton("Enregistrer", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addTextEditor("nom", track.name.empty() ? tr(u8"Piste %1").replace("%1", juce::String(piste + 1))
+                                                     : juce::String(track.name), tr(u8"Nom :"));
+    fenetre->addButton(tr(u8"Enregistrer"), 1, juce::KeyPress(juce::KeyPress::returnKey));
     fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
     fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
         [this, fenetre](int resultat) {
@@ -10241,10 +10258,9 @@ void MainComponent::createClipOnTrack(size_t trackIndex, vsm::midi::Tick tick) {
     // l'écran ne dirait pourquoi il fait une demi-mesure.
     if (faite.truncated)
         juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Créer un clip",
-            juce::String(u8"Le clip s'arrête au clip suivant : il fait ")
-                + juce::String(static_cast<double>(faite.length) / static_cast<double>(mesure), 2)
-                + juce::String(u8" mesure au lieu d'une."));
+            juce::AlertWindow::InfoIcon, tr(u8"Créer un clip"),
+            tr(u8"Le clip s'arrête au clip suivant : il fait %1 mesure au lieu d'une.")
+                .replace("%1", juce::String(static_cast<double>(faite.length) / static_cast<double>(mesure), 2)));
 }
 
 void MainComponent::refreshMarkerViews() {
@@ -10254,9 +10270,11 @@ void MainComponent::refreshMarkerViews() {
 
 void MainComponent::requestMarker(vsm::midi::Tick tick) {
     auto fenetre = std::make_shared<juce::AlertWindow>(
-        u8"Poser un repère", u8"Nom du repère :", juce::AlertWindow::NoIcon);
+        tr(u8"Poser un repère"), tr(u8"Nom du repère :"), juce::AlertWindow::NoIcon);
     fenetre->addTextEditor("nom", "", "");
-    fenetre->addButton("Poser", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    // D91 : « Poser » un repère se dit « Add » ; « Poser » un fichier sur une
+    // piste, « Place ». Un mot français, deux verbes anglais : trSelon.
+    fenetre->addButton(vsm::app::ui::trSelon("repere", u8"Poser"), 1, juce::KeyPress(juce::KeyPress::returnKey));
     fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
     fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
         [this, tick, fenetre](int resultat) {
@@ -10277,7 +10295,7 @@ void MainComponent::requestMarker(vsm::midi::Tick tick) {
 void MainComponent::renameMarker(size_t index) {
     if (index >= project_.markers.size()) return;
     auto fenetre = std::make_shared<juce::AlertWindow>(
-        u8"Renommer le repère", u8"Nom du repère :", juce::AlertWindow::NoIcon);
+        tr(u8"Renommer le repère"), tr(u8"Nom du repère :"), juce::AlertWindow::NoIcon);
     fenetre->addTextEditor("nom", juce::String(project_.markers[index].name), "");
     fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
     fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));

@@ -109,3 +109,7 @@ l'ordre de marche — pas de la documentation d'accompagnement.
   l'état du disque à cet instant (parite-v2, 5 h 24 perdues au réglage final).
   `charger_tous_les_modules()` importe tout au départ depuis le 03/09 ; la
   règle reste : ce qui n'a pas été importé au départ ne se touche pas.
+- Une BOÎTE MODALE absente d'une photo (`VSM_CAPTURE_PANNEAUX`) ne prouve
+  rien : c'est la course de D72, une photo sur sept au pire. Relancer avant de
+  conclure. Trois ratés de suite ont failli faire écrire « le port MIDI ferme
+  la boîte » (D91) ; relancée, elle est venue du premier coup, quatre fois.

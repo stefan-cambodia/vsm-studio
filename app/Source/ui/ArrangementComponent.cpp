@@ -572,6 +572,52 @@ std::vector<std::pair<juce::String, juce::PopupMenu>> ArrangementComponent::menu
     return menus;
 }
 
+void ArrangementComponent::regleMenuAction(vsm::midi::Tick tick, int survole, int choix) {
+    if (choix == 1 && onMarkerRequested) onMarkerRequested(tick);
+    if (choix == 2 && survole >= 0 && onMarkerRenameRequested)
+        onMarkerRenameRequested(static_cast<size_t>(survole));
+    if (choix == 3 && survole >= 0 && onMarkerRemoved) onMarkerRemoved(static_cast<size_t>(survole));
+}
+
+/// D91 : l'identifiant de l'entrée dont le libellé est `libelle` -- exact, sinon
+/// son début --, sous-menus compris ; 0 si aucune, ou si elle est grisée : une
+/// entrée grisée ne se clique pas, et le banc ne doit pas pouvoir plus que la souris.
+static int entreeParLibelle(const juce::PopupMenu& menu, const juce::String& libelle) {
+    int parDebut = 0;
+    for (juce::PopupMenu::MenuItemIterator it(menu, true); it.next();) {
+        const auto& item = it.getItem();
+        if (item.itemID == 0 || !item.isEnabled) continue;
+        if (item.text == libelle) return item.itemID;
+        if (parDebut == 0 && item.text.startsWith(libelle)) parDebut = item.itemID;
+    }
+    return parDebut;
+}
+
+bool ArrangementComponent::actionDeMenuPourCapture(const juce::String& quel, const juce::String& libelle) {
+    if (project_ == nullptr) return false;
+    if (quel == "regle") {
+        const int survole = project_->markers.empty() ? -1 : 0;
+        const juce::PopupMenu menu = menuDeLaRegle(survole);
+        const int choix = entreeParLibelle(menu, libelle);
+        if (choix == 0) return false;
+        regleMenuAction(0, survole, choix);
+        return true;
+    }
+    const bool audio = quel == "clip-audio";
+    if (!audio && quel != "clip-midi") return false;
+    for (size_t p = 0; p < project_->tracks.size(); ++p) {
+        const auto& piste = project_->tracks[p];
+        if (piste.clips.empty() || (piste.kind == Track::Kind::Audio) != audio) continue;
+        const uint64_t id = piste.clips.front().id;
+        const juce::PopupMenu menu = menuDuClip(p, piste.clips.front(), -1);
+        const int choix = entreeParLibelle(menu, libelle);
+        if (choix == 0) return false;
+        clipMenuAction(p, id, choix);
+        return true;
+    }
+    return false;
+}
+
 void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
     if (project_ == nullptr) return;
     const auto point = event.position;
@@ -585,10 +631,7 @@ void ArrangementComponent::mouseDown(const juce::MouseEvent& event) {
             const int survole = markerAt(point.x);
             juce::PopupMenu menu = menuDeLaRegle(survole);   // D83
             menu.showMenuAsync(juce::PopupMenu::Options(), [this, tick, survole](int choix) {
-                if (choix == 1 && onMarkerRequested) onMarkerRequested(tick);
-                if (choix == 2 && survole >= 0 && onMarkerRenameRequested)
-                    onMarkerRenameRequested(static_cast<size_t>(survole));
-                if (choix == 3 && survole >= 0 && onMarkerRemoved) onMarkerRemoved(static_cast<size_t>(survole));
+                regleMenuAction(tick, survole, choix);   // D91 : une fonction, que le banc appelle aussi
             });
             return;
         }

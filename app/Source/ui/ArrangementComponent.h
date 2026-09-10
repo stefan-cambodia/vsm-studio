@@ -222,6 +222,11 @@ public:
     /// D83 : les menus du clic droit, construits sans clic -- pour que `VSM_MENU_LISTE`
     /// les écrive comme la barre. Premier clip MIDI, premier clip audio.
     std::vector<std::pair<juce::String, juce::PopupMenu>> menusPourCapture() const;   ///< 0 sans boucle, sans sélection, ou quand rien n'y tient
+    /// D91 : EXÉCUTER une entrée d'un menu du clic droit sans souris, par la MÊME
+    /// fonction que le clic. `quel` : « regle » (premier repère survolé s'il y en
+    /// a), « clip-midi », « clip-audio » (premier clip de ce genre) ; le libellé
+    /// tel qu'affiché, exact sinon son début. Faux si rien ne répond.
+    bool actionDeMenuPourCapture(const juce::String& quel, const juce::String& libelle);
     void repeatSelectionUntilLoopEnd();
     /// Tous les clips de toutes les pistes (Ctrl+A, D11.2).
     void selectAll();
@@ -435,6 +440,7 @@ private:
     /// grille) -- dupliquer une mesure doit tomber pile sur la suivante.
     bool selectionSpan(vsm::midi::Tick& debut, vsm::midi::Tick& fin, vsm::midi::Tick& bloc) const;
     void clipMenuAction(size_t piste, uint64_t clipId, int choix);
+    void regleMenuAction(vsm::midi::Tick tick, int survole, int choix);   // D91
 
     // --- Automation dessinée SUR l'arrangement (D5.4) ---------------------
     //

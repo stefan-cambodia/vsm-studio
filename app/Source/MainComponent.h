@@ -131,6 +131,12 @@ public:
     /// D89 : VSM_RAPPORT_LISTE=1 -- ce que le volet de rapport AFFICHE, ligne par
     /// ligne, dans la langue courante (VSM_OUVERTURE dit les lignes brutes).
     void listReportForCapture();
+    /// D91 : VSM_MENU_CONTEXTE=quel:libellé -- une entrée d'un menu du clic droit
+    /// (« regle », « clip-midi », « clip-audio », « effets »), par la même fonction
+    /// que le clic. Dit sur la sortie d'erreur ce qu'elle a exécuté, ou pas.
+    bool runContextMenuForCapture(const juce::String& entree);
+    /// D91 : VSM_DEPOSER=fichier -- un dépôt de fichier, par `filesDropped`.
+    void dropFileForCapture(const juce::File& fichier);
     bool runKeyForCapture(const juce::String& description) {
         const juce::KeyPress touche = juce::KeyPress::createFromDescription(description);
         if (!touche.isValid()) return false;

@@ -12492,3 +12492,96 @@ les deux fenêtres ouvertes par `VSM_MENU` et photographiées par
 >
 > Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
 > 172 Python, ruff et mypy — tout vert.
+
+### Phase D91 — A9 : les boîtes dont seul le bouton était traduit (10/09/2026)
+
+**CE QUE D90 A LAISSÉ.** Treize boutons d'annulation disent « Cancel » en
+anglais, dans des boîtes dont tout le reste est français : renommer un clip ;
+« le clip fait N mesures » ; un fichier déposé (deux boîtes : poser, ou poser
+et reconstruire) ; aplatir l'ordre de jeu ; reporter la piste en audio ;
+renommer les pistes en série ; aller à la mesure ; programme MIDI ; enregistrer
+la piste comme preset ; poser et renommer un repère ; enregistrer un preset
+d'effet. S'y ajoute la boîte qui dit qu'un clip créé a été raccourci par son
+voisin.
+
+**LA DÉCISION.** Tout par `tr()`, en modèles `%1` remplis après traduction. Un
+mot, deux verbes : « Poser » un fichier sur une piste se dit « Place », « Poser »
+un repère se dit « Add » — `trSelon("repere", …)`, le mécanisme de D90. Les
+raisons pour lesquelles la reconstruction est indisponible, fabriquées par
+`interchange/` (`ReconstructionChain`), restent hors de cette phase : ce sont
+des phrases du moteur, à traiter avec les autres.
+
+**CE QU'IL FAUT D'ABORD DONNER À LA MESURE.** Six de ces boîtes s'ouvrent par la
+barre de menus (`VSM_MENU`) ; les autres par un clic droit dans l'arrangement,
+un dépôt de fichier ou le menu d'un effet, qu'aucune commande du banc
+n'atteint. Deux commandes sont donc ajoutées AVANT la traduction, et compilées
+seules pour faire le témoin : `VSM_MENU_CONTEXTE=quel:libellé` (`regle`,
+`clip-midi`, `clip-audio`, `effets`), qui exécute une entrée d'un menu
+contextuel par la MÊME méthode que le clic ; et `VSM_DEPOSER=fichier`, qui
+appelle `filesDropped` comme le fait un dépôt. Chaque boîte est photographiée
+par `VSM_CAPTURE_PANNEAUX`, en français et en anglais, avec le témoin puis avec
+D91.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (10/09/2026).**
+>
+> 1. **Les deux commandes ouvrent, avec le témoin, les boîtes qu'elles
+>    visent** : chaque photo porte le titre de la sienne.
+> 2. **En anglais, plus un mot français dans les boîtes photographiées**, hors
+>    les données (noms de pistes, de clips, chemins).
+> 3. **En français, chaque boîte est la même image que celle du témoin, à 0
+>    pixel près** — et la paire français / anglais d'une même boîte, elle,
+>    diffère : c'est ce qui prouve que la photo voit le texte.
+> 4. **Les boîtes non photographiées sont nommées**, avec la raison.
+
+> **D91 EST FAITE (10/09/2026) ; LES ATTENDUS 1 À 3 SONT TENUS, ET LE 4 NOMME
+> CE QUE LE BANC N'ATTEINT PAS.** Avec le témoin — les deux commandes seules,
+> compilées avant la traduction —, **les 11 cas** ouvrent leur boîte, dans
+> les deux langues, chaque photo portant son titre : aller à la mesure,
+> enregistrer la piste comme preset, renommer les pistes en série, reporter la
+> piste en audio, programme MIDI (barre de menus) ; poser un repère, renommer un repère,
+> renommer un clip, « le clip fait N mesures » après un import audio,
+> enregistrer un preset d'effet (`VSM_MENU_CONTEXTE`) ; « Que faire de ce
+> fichier ? » (`VSM_DEPOSER`).
+>
+> | les 11 boîtes photographiées | témoin → D91 | |
+> |---|---|---|
+> | en français | **0 pixel pour 10** ; 2 188 pour l'onzième | |
+> | en anglais | toutes changent (taille ou texte) | |
+> | français / anglais, avec D91 | toutes diffèrent | la photo voit le texte |
+>
+> Les 2 188 pixels de « Enregistrer la piste comme preset » sont le **chemin**
+> que la boîte affiche : le dossier de presets passe par la copie du projet du
+> banc, `…/d91/avant/…` pour le témoin et `…/d91/apres/…` pour D91 — une
+> donnée, lue sur les deux photos côte à côte. En anglais, les onze boîtes ne
+> portent plus un mot français ; restent les données : « Acid Bass »,
+> « Refrain », « abime.wav », le type d'effet `reverb`, le chemin. « Poser »
+> y devient « Place » sur un fichier déposé et « Add » sur un repère.
+>
+> **CE QUE LE BANC N'ATTEINT PAS.** « Aplatir l'ordre de jeu » s'ouvre depuis
+> la fenêtre de l'ordre de jeu, sur des sections ; la boîte « Créer un clip »
+> ne paraît que si le clip créé est raccourci par son voisin. Aucune commande
+> du banc ne les ouvre : leur texte se vérifie dans le code et la table.
+>
+> **« PROGRAMME MIDI », OU LA COURSE DE D72 REVENUE.** Sur le projet du banc,
+> l'entrée était grisée : elle demande une piste MIDI qui a un port de sortie,
+> et le projet n'en donne aucun. Une copie où la piste 0 reçoit un port
+> l'active — et la boîte n'a pas été photographiée, trois fois de suite.
+> `gdb` montrait pourtant `promptMidiProgram` atteinte par le menu. L'A/B
+> suivant a raté AUSSI « Aller à la mesure », photographiée dans la série
+> juste avant : ce n'était pas le port, c'était la course que D72 a mesurée
+> sur les boîtes modales (une photo sur sept au pire), et non un délai.
+> Relancée, la boîte est venue du premier coup dans les quatre cas (témoin et
+> D91, français et anglais) : **0 pixel** en français, l'anglais change. Le
+> diagnostic « le port ferme la boîte » a failli s'écrire sur trois ratés.
+>
+> **VU SANS ÊTRE TRAITÉ.** Deux textes gardent des retours à la ligne forcés
+> qui coupent mal à 150 % : « pitch. » seul sur sa ligne dans « Clip is N
+> bars », et « Drums # » coupé entre deux lignes dans le renommage en série —
+> comme « Batterie # » en français, déjà sur la photo de D90. Les retirer
+> changerait l'image française, que cette phase devait laisser intacte : c'est
+> un geste à part, comme celui de D90 pour les stems.
+>
+> Table : **786** paires, **44** modèles de phrases.
+>
+> Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
+> 172 Python, ruff et mypy — tout vert.

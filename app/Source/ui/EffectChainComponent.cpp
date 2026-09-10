@@ -737,6 +737,25 @@ std::vector<PresetTrouve> presetsDuType(const std::vector<juce::File>& dossiers,
     std::sort(trouves.begin(), trouves.end(), [](const PresetTrouve& a, const PresetTrouve& b) { return a.nom < b.nom; });
     return trouves;
 }
+
+/// D91 : LE MENU DE PRESET, CONSTRUIT PAR UNE FONCTION -- le clic l'affiche, le
+/// banc y cherche une entrée ; un seul menu, donc un seul chemin.
+juce::PopupMenu menuDePreset(const std::vector<PresetTrouve>& trouves) {
+    juce::PopupMenu menu;
+    menu.addItem(1, vsm::app::ui::tr(u8"Enregistrer comme preset..."));
+    menu.addSeparator();
+    if (trouves.empty())
+        menu.addItem(2, vsm::app::ui::tr(u8"(aucun preset de ce type dans la bibliothèque ni le projet)"), false);
+    for (size_t i = 0; i < trouves.size(); ++i)
+        menu.addItem(100 + static_cast<int>(i), juce::String::fromUTF8(trouves[i].nom.c_str()));
+    return menu;
+}
+
+std::vector<juce::File> fichiersDe(const std::vector<PresetTrouve>& trouves) {
+    std::vector<juce::File> fichiers;
+    for (const auto& t : trouves) fichiers.push_back(t.fichier);
+    return fichiers;
+}
 }
 
 void EffectChainComponent::showPresetMenu(size_t index) {
@@ -746,21 +765,35 @@ void EffectChainComponent::showPresetMenu(size_t index) {
     auto trouves = std::make_shared<std::vector<PresetTrouve>>(
         presetsDuType(presetFoldersProvider ? presetFoldersProvider() : std::vector<juce::File>{}, type));
 
-    juce::PopupMenu menu;
-    menu.addItem(1, vsm::app::ui::tr(u8"Enregistrer comme preset..."));
-    menu.addSeparator();
-    if (trouves->empty())
-        menu.addItem(2, vsm::app::ui::tr(u8"(aucun preset de ce type dans la bibliothèque ni le projet)"), false);
-    for (size_t i = 0; i < trouves->size(); ++i)
-        menu.addItem(100 + static_cast<int>(i), juce::String::fromUTF8((*trouves)[i].nom.c_str()));
-
+    juce::PopupMenu menu = menuDePreset(*trouves);   // D91
     juce::Component* ancre = index < rows_.size() ? rows_[index].preset.get() : nullptr;
     menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(ancre),
-                       [this, index, trouves](int choix) {
-                           if (choix == 1) savePresetOf(index);
-                           else if (choix >= 100 && static_cast<size_t>(choix - 100) < trouves->size())
-                               loadPresetInto(index, (*trouves)[static_cast<size_t>(choix - 100)].fichier);
-                       });
+                       [this, index, trouves](int choix) { presetMenuAction(index, choix, fichiersDe(*trouves)); });
+}
+
+void EffectChainComponent::presetMenuAction(size_t index, int choix, const std::vector<juce::File>& fichiers) {
+    if (choix == 1) savePresetOf(index);
+    else if (choix >= 100 && static_cast<size_t>(choix - 100) < fichiers.size())
+        loadPresetInto(index, fichiers[static_cast<size_t>(choix - 100)]);
+}
+
+bool EffectChainComponent::presetMenuPourCapture(size_t index, const juce::String& libelle) {
+    auto* d = activeDescription();
+    if (!d || index >= d->size()) return false;
+    const auto trouves =
+        presetsDuType(presetFoldersProvider ? presetFoldersProvider() : std::vector<juce::File>{}, (*d)[index].type);
+    const juce::PopupMenu menu = menuDePreset(trouves);
+    int choix = 0, parDebut = 0;
+    for (juce::PopupMenu::MenuItemIterator it(menu, true); it.next();) {
+        const auto& item = it.getItem();
+        if (item.itemID == 0 || !item.isEnabled) continue;
+        if (item.text == libelle) { choix = item.itemID; break; }
+        if (parDebut == 0 && item.text.startsWith(libelle)) parDebut = item.itemID;
+    }
+    if (choix == 0) choix = parDebut;
+    if (choix == 0) return false;
+    presetMenuAction(index, choix, fichiersDe(trouves));
+    return true;
 }
 
 void EffectChainComponent::savePresetOf(size_t index) {
@@ -768,11 +801,11 @@ void EffectChainComponent::savePresetOf(size_t index) {
     if (!d || index >= d->size() || !presetSaveFolderProvider) return;
     const auto description = (*d)[index];
     auto fenetre = std::make_shared<juce::AlertWindow>(
-        juce::String::fromUTF8(u8"Enregistrer un preset d'effet"),
-        juce::String::fromUTF8(u8"Nom du preset (") + juce::String(description.type) + ") :",
+        vsm::app::ui::tr(u8"Enregistrer un preset d'effet"),
+        vsm::app::ui::tr(u8"Nom du preset (%1) :").replace("%1", juce::String(description.type)),
         juce::AlertWindow::NoIcon);
     fenetre->addTextEditor("nom", "", "");
-    fenetre->addButton("Enregistrer", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton(vsm::app::ui::tr(u8"Enregistrer"), 1, juce::KeyPress(juce::KeyPress::returnKey));
     fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
     fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
         [this, description, fenetre](int resultat) {
@@ -788,8 +821,8 @@ void EffectChainComponent::savePresetOf(size_t index) {
             if (!fichier.replaceWithText(juce::String::fromUTF8(
                     vsm::interchange::effectPresetToJson(preset).toString().c_str()))) {
                 juce::AlertWindow::showMessageBoxAsync(
-                    juce::AlertWindow::WarningIcon, juce::String::fromUTF8(u8"Preset non enregistré"),
-                    juce::String::fromUTF8(u8"Impossible d'écrire ") + fichier.getFullPathName());
+                    juce::AlertWindow::WarningIcon, vsm::app::ui::tr(u8"Preset non enregistré"),
+                    vsm::app::ui::tr(u8"Impossible d'écrire %1").replace("%1", fichier.getFullPathName()));
                 return;
             }
             if (onPresetsChanged) onPresetsChanged();

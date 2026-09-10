@@ -313,6 +313,18 @@ public:
             // dossier.
             if (const char* audio = std::getenv("VSM_IMPORT_AUDIO"); audio != nullptr && *audio)
                 content->importAudioForCapture(juce::File::getCurrentWorkingDirectory().getChildFile(audio));
+            // VSM_DEPOSER=fichier (D91) : un dépôt de fichier, par `filesDropped` --
+            // la boîte « Que faire de ce fichier ? » n'avait aucun autre chemin.
+            if (const char* depot = std::getenv("VSM_DEPOSER"); depot != nullptr && *depot)
+                content->dropFileForCapture(juce::File::getCurrentWorkingDirectory().getChildFile(depot));
+            // VSM_MENU_CONTEXTE=quel:libellé;… (D91) : les menus du clic droit, par la
+            // même fonction que le clic -- APRÈS l'import audio, dont le clip est
+            // celui que vise « clip-audio ».
+            if (const char* ctx = std::getenv("VSM_MENU_CONTEXTE"); ctx != nullptr && *ctx) {
+                juce::StringArray liste;
+                liste.addTokens(juce::String::fromUTF8(ctx), ";", "");
+                for (const auto& e : liste) content->runContextMenuForCapture(e.trim());
+            }
             // VSM_MENU_LISTE=1 (D80 ; déplacée par D83 après l'import audio, dont le clip doit y figurer) : la barre de menus entière, telle qu'elle
             // s'affiche, sur la sortie d'erreur -- APRÈS les gestes du banc, pour
             // que les libellés qui en dépendent (« Annuler : … ») soient ceux
