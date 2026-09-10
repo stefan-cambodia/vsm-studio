@@ -12053,3 +12053,58 @@ silencieuse ») restent françaises : `interchange/` n'a pas de table, c'est
 >
 > Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
 > 172 Python, ruff et mypy — tout vert.
+
+### Phase D85 — A9 : la fenêtre des Préférences (10/09/2026, 20:40)
+
+**CE QUE L'INVENTAIRE DES FENÊTRES FLOTTANTES A COMPTÉ.** Sept fenêtres,
+une cinquantaine de chaînes affichées hors de `tr()` : les Préférences (24,
+dont 3 traduites), l'assemblage des prises (11), l'ordre de jeu (7), les
+raccourcis (6), la reconstruction (6), les associations MIDI (5), le
+navigateur (2). Aucune n'a de re-traduction : même traduites, elles
+resteraient dans la langue du démarrage à la bascule. La phase prend **les
+Préférences**, la plus visitée ; les six autres suivent, une par une ou par
+paires, chacune avec sa capture.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (10/09/2026, 20:40).**
+>
+> 1. **Lancée en anglais, la fenêtre des Préférences est en anglais**, titres,
+>    libellés, listes et textes d'état compris — photographiée.
+> 2. **Basculée en anglais, elle est la même image** que lancée en anglais.
+> 3. **Le français ne bouge pas** : 0 pixel entre le binaire d'avant et celui
+>    d'après, avec un contre-exemple anglais.
+
+> **D85 EST FAITE (10/09/2026, 20:42), ET LES TROIS ATTENDUS SONT TENUS AU PIXEL
+> PRÈS.** Captures de la fenêtre (`VSM_VUE=preferences`,
+> `VSM_CAPTURE_PANNEAUX=1`), `HOME` isolé, préférences de l'utilisateur
+> intactes. **Le témoin a été lancé depuis le dossier du build**, à côté du
+> vrai binaire : l'état de la chaîne d'analyse, que la fenêtre affiche, dépend
+> de l'emplacement de l'exécutable, et deux phases (D80, D82) ont payé cet
+> écart.
+>
+> | | avant | après |
+> |---|---|---|
+> | français / anglais, lancées chacune dans sa langue | **0 px** — rien n'était traduit | **23 384 px** |
+> | « lancée en anglais » / « basculée en anglais » | — | **0 px** |
+> | français, binaire d'avant / d'après | — | **0 px** |
+>
+> Le « 0 px » d'avant est le chiffre qui compte : **la fenêtre des
+> Préférences était la même image dans les deux langues**, et le décompte
+> statique lui créditait trois chaînes traduites. Après, elle est entièrement
+> en anglais, rien n'est tronqué — vérifié sur l'image, pas seulement compté.
+>
+> **Ce qui a été fait.** Le constructeur ne pose plus que les polices et
+> appelle `retraduire()`, qui pose tous les textes fixes — y compris ceux des
+> cases et des boutons, que l'en-tête initialisait en français ; les entrées
+> « Mono-cœur » / « N thread(s) » sont renommées en lisant la sélection avant
+> (piège de D78). Les textes d'état sont des modèles entiers dans `refresh()`
+> (« Automatique (%1 ici) », « Prête — trouvée dans %1 »), et la bascule
+> rappelle `refreshPreferences()` — le client refait ce qu'il a fabriqué, la
+> règle de D84. Table à **607** paires (24 de plus).
+>
+> **Ce qui reste** : la raison et le remède affichés quand la chaîne est
+> introuvable viennent de `interchange/` et restent français (A9) ; les six
+> autres fenêtres flottantes — prises, ordre de jeu, raccourcis,
+> reconstruction, associations MIDI, navigateur — suivent.
+>
+> Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
+> 172 Python, ruff et mypy — tout vert.

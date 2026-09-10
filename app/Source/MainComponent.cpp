@@ -7390,6 +7390,8 @@ void MainComponent::retraduire() {
     // D84 : le volet de rapport -- ses boutons, et le rapport d'ouverture s'il
     // est le dernier à l'avoir rempli, refait volet ouvert ou fermé.
     importReport_.retraduire();
+    preferencesPanel_.retraduire();   // D85
+    refreshPreferences();             // les textes d'état, refaits par leur client
     if (clientDuRapport_ == ClientDuRapport::ouverture) afficherRapportDOuverture(importReport_.isVisible());
     // D78 : LE BOUTON D'ÉCOUTE, par la fonction qui le pose au démarrage --
     // D77 a trouvé « Écoute A/B : pas d'original » sur une image basculée en

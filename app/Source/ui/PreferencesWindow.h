@@ -32,6 +32,8 @@ public:
     /// de la chaîne y apparaissait deux fois là où l'application ne l'écrit
     /// qu'une. Une phrase construite à deux endroits finit toujours par
     /// diverger, et c'est le second qui ment.
+    /// D85 : repose les textes fixes dans la langue courante.
+    void retraduire();
     void refresh(float uiScale, int renderThreads, int recommendedThreads,
                   const vsm::interchange::ReconstructionChain& chain,
                   const juce::String& designatedChainFolder,
