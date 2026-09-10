@@ -1,4 +1,7 @@
 #include "Langue.h"
+#include <cctype>
+#include <cstring>
+#include <regex>
 #include "UiScale.h"
 #include <cstdlib>
 
@@ -1498,6 +1501,151 @@ juce::String trGeste(const juce::String& libelle) {
     if (libelle.startsWith(signature))
         return tr(u8"Signature %1").replace("%1", libelle.substring(signature.length()));
     return tr(libelle);
+}
+
+namespace {
+
+/// D89 : LES MODÈLES DES PHRASES DU MOTEUR. « %N » est une DONNÉE (nom de piste,
+/// identifiant, chemin), recopiée telle quelle ; « %PN » est une PHRASE, traduite
+/// à son tour. L'ordre compte : le plus précis d'abord, « Piste %1 : %P2 » -- le
+/// préfixe d'un résumé -- en dernier.
+struct ModeleDePhrase { const char8_t* fr; const char8_t* en; };   // des `u8"…"` : char8_t en C++20
+const ModeleDePhrase kModeles[] = {
+    { u8"Piste %#1 (%2) : aucun instrument, elle restera silencieuse", u8"Track %1 (%2): no instrument, it will stay silent" },
+    { u8"Piste %#1 : instrument \"%2\" indisponible", u8"Track %1: instrument \"%2\" unavailable" },
+    { u8"Piste %#1 : preset introuvable (%2)", u8"Track %1: preset not found (%2)" },
+    { u8"Piste %#1 : effet « %2 » inconnu, non appliqué", u8"Track %1: effect “%2” unknown, not applied" },
+    { u8"Piste %#1 : effet « %2 » : réglage inconnu « %3 »", u8"Track %1: effect “%2”: unknown setting “%3”" },
+    { u8"bus de départ « %1 » : effet « %2 » inconnu, non appliqué", u8"send bus “%1”: effect “%2” unknown, not applied" },
+    { u8"bus de départ « %1 » : réglage inconnu « %2 »", u8"send bus “%1”: unknown setting “%2”" },
+    { u8"Preset illisible (%1) : %2", u8"Unreadable preset (%1): %2" },
+    { u8"prises introuvables : %1 -- elles s'ouvrent vides", u8"takes not found: %1 -- they open empty" },
+    { u8"prises illisibles (%1) : %2", u8"unreadable takes (%1): %2" },
+    { u8"Le projet décrit %#1 piste(s) mais le MIDI en contient %#2 : seules les pistes communes sont configurées.",
+      u8"The project describes %1 track(s) but the MIDI contains %2: only the common tracks are configured." },
+    { u8"piste \"%1\" : %2 tronçon(s) d'assemblage écarté(s) (prise absente ou bornes vides)",
+      u8"track \"%1\": %2 comp segment(s) discarded (missing take or empty bounds)" },
+    { u8"Preset pour une piste inexistante (%#1) : ignoré", u8"Preset for a nonexistent track (%1): ignored" },
+    { u8"%#1 note(s) signalée(s) comme douteuses sur %#2 transcrite(s) : elles sont marquées dans le piano roll, et la touche D y mène une par une",
+      u8"%1 note(s) flagged as doubtful out of %2 transcribed: they are marked in the piano roll, and the D key goes to them one by one" },
+    { u8"Rapport de reconstruction illisible : %1", u8"Unreadable reconstruction report: %1" },
+    // les segments des résumés de preset et d'échantillons
+    { u8"%#1 paramètre(s) appliqué(s)", u8"%1 parameter(s) applied" },
+    { u8"%#1 borné(s)", u8"%1 clamped" },
+    { u8"%#1 non pris en charge : %2", u8"%1 unsupported: %2" },
+    { u8"état natif reposé", u8"native state restored" },
+    { u8"aucun échantillon déclaré", u8"no sample declared" },
+    { u8"%#1 échantillon(s) chargé(s)", u8"%1 sample(s) loaded" },
+    { u8"%#1 en échec :", u8"%1 failed:" },
+    { u8"%#1 réserve(s) :", u8"%1 reservation(s):" },
+    { u8"emplacement %#1 hors bornes (0..%#2)", u8"slot %1 out of range (0..%2)" },
+    { u8"emplacement %#1 : chemin absolu refusé (« %2 ») -- un projet doit rester transportable",
+      u8"slot %1: absolute path refused (“%2”) -- a project must stay portable" },
+    { u8"emplacement %#1 (« %2 ») : %P3", u8"slot %1 (“%2”): %P3" },
+    { u8"impossible d'ouvrir : %1", u8"cannot open: %1" },
+    { u8"la machine \"%1\" n'accepte pas d'échantillons, %2 déclaré(s) ignoré(s)",
+      u8"machine \"%1\" does not accept samples, %2 declared ignored" },
+    { u8"profil (« %1 ») : champ ignoré « %2 »", u8"profile (“%1”): field ignored “%2”" },
+    { u8"Piste %#1 : %P2", u8"Track %1: %P2" },
+};
+
+struct ModeleCompile {
+    std::regex motif;
+    std::vector<bool> estPhrase;   // par groupe capturé : phrase (%PN) ou donnée (%N)
+    std::vector<int> numero;       // par groupe capturé : le N du modèle
+    std::string en;
+};
+
+const std::vector<ModeleCompile>& modelesCompiles() {
+    static const std::vector<ModeleCompile> compiles = [] {
+        std::vector<ModeleCompile> v;
+        for (const auto& m : kModeles) {
+            const std::string fr = reinterpret_cast<const char*>(m.fr);
+            ModeleCompile c;
+            c.en = reinterpret_cast<const char*>(m.en);
+            std::string rx = "^";
+            for (size_t k = 0; k < fr.size(); ++k) {
+                if (fr[k] == '%' && k + 1 < fr.size()) {
+                    // %N : une donnée ; %PN : une phrase ; %#N : un NOMBRE. Sans ce
+                    // dernier, un segment comme « %1 non pris en charge : %2 »
+                    // reconnaissait une ligne ENTIÈRE, son « %1 » avalant le préfixe
+                    // français, recopié comme une donnée dans la phrase anglaise.
+                    const bool phrase = fr[k + 1] == 'P';
+                    const bool nombre = fr[k + 1] == '#';
+                    const size_t chiffre = k + ((phrase || nombre) ? 2 : 1);
+                    if (chiffre < fr.size() && std::isdigit(static_cast<unsigned char>(fr[chiffre]))) {
+                        c.estPhrase.push_back(phrase);
+                        c.numero.push_back(fr[chiffre] - '0');
+                        rx += nombre ? "([0-9]+)" : "(.+?)";
+                        k = chiffre;
+                        continue;
+                    }
+                }
+                if (std::strchr(".^$|()[]{}*+?\\", fr[k]) != nullptr) rx += '\\';
+                rx += fr[k];
+            }
+            rx += "$";
+            c.motif = std::regex(rx);
+            v.push_back(std::move(c));
+        }
+        return v;
+    }();
+    return compiles;
+}
+
+juce::String traduireSegments(const juce::String& texte, int profondeur);
+
+juce::String traduireUnePhrase(const juce::String& phrase, int profondeur) {
+    if (profondeur > 4 || phrase.isEmpty()) return phrase;
+    const juce::String exacte = tr(phrase);
+    if (exacte != phrase) return exacte;
+    const std::string s = phrase.toStdString();
+    for (const auto& m : modelesCompiles()) {
+        std::smatch trouve;
+        if (!std::regex_match(s, trouve, m.motif)) continue;
+        juce::String en = juce::String::fromUTF8(m.en.c_str());
+        for (size_t g = 0; g < m.numero.size(); ++g) {
+            juce::String argument = juce::String::fromUTF8(trouve[g + 1].str().c_str());
+            juce::String cle = "%" + juce::String(m.numero[g]);
+            if (m.estPhrase[g]) { argument = traduireSegments(argument, profondeur + 1); cle = "%P" + juce::String(m.numero[g]); }
+            en = en.replace(cle, argument);
+        }
+        return en;
+    }
+    return phrase;
+}
+
+juce::String traduireSegments(const juce::String& texte, int profondeur) {
+    const juce::String entiere = traduireUnePhrase(texte, profondeur);
+    if (entiere != texte) return entiere;
+    // LE SÉPARATEUR EXACT « , », coupé à la main : `addTokens` couperait sur
+    // chaque caractère du séparateur, donc sur chaque espace.
+    juce::StringArray segments;
+    int debut = 0;
+    for (int k = texte.indexOf(", "); k >= 0; k = texte.indexOf(debut, ", ")) {
+        segments.add(texte.substring(debut, k));
+        debut = k + 2;
+    }
+    segments.add(texte.substring(debut));
+    for (auto& segment : segments) segment = traduireUnePhrase(segment, profondeur + 1);
+    return segments.joinIntoString(", ");
+}
+
+} // namespace
+
+juce::String trPhrase(const juce::String& texte) {
+    // EN FRANÇAIS, RIEN : la phrase EST le français, et un modèle appliqué ici la
+    // réécrirait en anglais. Le français ne pose aucune table (poserLaTable).
+    if (juce::LocalisedStrings::getCurrentMappings() == nullptr) return texte;
+    juce::StringArray lignes;
+    lignes.addLines(texte);
+    for (auto& ligne : lignes) {
+        // Le retrait d'une ligne de détail (« - ») est gardé tel quel.
+        int corps = 0;
+        while (corps < ligne.length() && (ligne[corps] == ' ' || ligne[corps] == '-')) ++corps;
+        ligne = ligne.substring(0, corps) + traduireSegments(ligne.substring(corps), 0);
+    }
+    return lignes.joinIntoString("\n");
 }
 
 } // namespace vsm::app::ui

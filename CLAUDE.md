@@ -70,6 +70,10 @@ l'ordre de marche — pas de la documentation d'accompagnement.
 - En C++20, `u8"…"` est un `char8_t[]` : `juce::String + u8"…"` et `u8"…" +
   juce::String` sont AMBIGUS et ne compilent pas. Envelopper :
   `juce::String(u8"…")`. Payé quatre fois dans la même journée.
+  Cinquième fois le 10/09 (D89), sous une autre forme : un tableau de
+  `const char*` initialisé par des `u8"…"` — déclarer les champs en
+  `const char8_t*`. Et une commande de mesure qui ENCHAÎNE une compilation
+  doit s'arrêter sur son échec : sinon elle mesure l'ancien binaire.
 - En zsh, `grep --include=*.cpp` est un glob que le shell mange (« no
   matches found ») : quoter `--include='*.cpp'`, ou passer par `find`.
 - `VSM_MENU=libellé` prend le PREMIER libellé exact tous menus confondus

@@ -72,4 +72,11 @@ juce::String tr(const juce::String& texte);
 /// reconnaît à son modèle ; les autres sont des chaînes de la table.
 juce::String trGeste(const juce::String& libelle);
 
+/// D89 : une PHRASE fabriquée par le moteur (`interchange/`) ou par l'application
+/// à partir de données -- « Piste 2 (Oubliee) : aucun instrument… » --, traduite à
+/// l'AFFICHAGE par modèles. Les arguments sont des données et passent intacts ;
+/// un résumé composé se traduit segment par segment, et ce qu'aucun modèle ne
+/// reconnaît passe tel quel. En français, rend son argument sans y toucher.
+juce::String trPhrase(const juce::String& texte);
+
 } // namespace vsm::app::ui

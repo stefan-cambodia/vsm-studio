@@ -128,6 +128,9 @@ public:
     /// compris, écrite sur la sortie d'erreur TELLE QU'ELLE S'AFFICHE dans la
     /// langue courante. Un menu déroulant ne se photographie pas.
     void listMenusForCapture();
+    /// D89 : VSM_RAPPORT_LISTE=1 -- ce que le volet de rapport AFFICHE, ligne par
+    /// ligne, dans la langue courante (VSM_OUVERTURE dit les lignes brutes).
+    void listReportForCapture();
     bool runKeyForCapture(const juce::String& description) {
         const juce::KeyPress touche = juce::KeyPress::createFromDescription(description);
         if (!touche.isValid()) return false;

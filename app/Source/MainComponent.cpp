@@ -1254,6 +1254,16 @@ void MainComponent::listMenusForCapture() {
     for (const auto& [nom, menu] : arrangement_.menusPourCapture()) parcourir(menu, nom);
 }
 
+void MainComponent::listReportForCapture() {
+    // D89 : `VSM_OUVERTURE` écrit les lignes BRUTES, les mêmes que `vsm-render` ;
+    // celle-ci écrit ce que l'utilisateur LIT dans le volet, dans sa langue.
+    if (!importReport_.hasReport()) return;
+    juce::StringArray lignes;
+    lignes.addLines(importReport_.reportText());
+    for (const auto& ligne : lignes)
+        std::fputs(("VSM_RAPPORT : " + ligne + "\n").toRawUTF8(), stderr);
+}
+
 void MainComponent::applyViewCommand(const juce::String& nom) {
     // Les MÊMES identifiants que le menu : tester autre chose que ce que
     // l'utilisateur clique ne testerait rien.
@@ -5356,7 +5366,8 @@ void MainComponent::afficherRapportDOuverture(bool montrerLeVolet) {
                         || ligne.contains(juce::String::fromUTF8("inconnu"))
                         || ligne.contains(juce::String::fromUTF8("indisponible"))   // D75
                         || ligne.contains(juce::String::fromUTF8("silencieuse"));
-        lignes.add({ligne, perte ? Ton::perte : Ton::info});
+        // D89 : le ton est lu sur le français (la donnée) ; ce qui s'affiche est traduit.
+        lignes.add({vsm::app::ui::trPhrase(ligne), perte ? Ton::perte : Ton::info});
     }
     importReport_.showLines(tr(u8"Projet ouvert, avec des réserves"),
                              dossierRapportOuverture_, lignes, montrerLeVolet);

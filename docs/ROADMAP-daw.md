@@ -12279,3 +12279,95 @@ filtrage — la manière dont JUCE l'entend.
 >
 > Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
 > 172 Python, ruff et mypy — tout vert.
+
+### Phase D89 — A9 : les phrases du moteur, dans le rapport d'ouverture (10/09/2026, 22:15)
+
+**CE QUI RESTE LE PLUS VISIBLE D'A9.** Le volet du rapport d'ouverture a un
+titre anglais et des lignes françaises : « Piste 2 (Oubliee) : aucun
+instrument, elle restera silencieuse ». Ces phrases sont fabriquées dans
+`interchange/` — 117 appels dans 14 fichiers — et par l'application pour les
+réserves d'effet. Elles doivent RESTER françaises là où elles naissent :
+`vsm-render` les écrit sur sa sortie d'erreur, la chaîne d'analyse les lit, et
+D75 a fait des deux lecteurs d'un dossier deux voix qui disent la même chose au
+mot près.
+
+**LA DÉCISION : TRADUIRE À L'AFFICHAGE, PAR MODÈLES.** Un traducteur de phrases
+(`trPhrase`) essaie d'abord la table, puis une liste de modèles
+(« Piste %1 (%2) : aucun instrument, elle restera silencieuse » ↔ « Track %1
+(%2): no instrument, it will stay silent »). Les arguments sont des DONNÉES —
+noms de pistes, identifiants d'effets, chemins — et passent intacts : une
+piste nommée « Batterie » ne doit pas devenir « Drums ». Les résumés composés
+(« 9 paramètre(s) appliqué(s), 1 non pris en charge : … ») se traduisent
+segment par segment, et un segment qu'aucun modèle ne reconnaît passe tel quel
+plutôt que d'être deviné. Le ton de chaque ligne (perte, information) reste lu
+sur le français, qui est la donnée.
+
+**LA MESURE, AVANT LE TRADUCTEUR.** `VSM_RAPPORT_LISTE` écrit ce que le volet
+AFFICHE, ligne par ligne ; elle est compilée seule d'abord, et le relevé
+« avant » est pris avec ce binaire-là. Trois projets : l'abîmé de D75 (cinq
+lignes), une copie de `sky-v4` (les notes douteuses), et un projet neuf qui
+déclenche les autres familles (réglage d'effet inconnu, bus de départ inconnu,
+paramètre de preset non pris en charge, échantillon manquant, piste décrite
+sans MIDI).
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (10/09/2026, 22:15).**
+>
+> 1. **En anglais, les lignes du rapport sont en anglais** : sur les trois
+>    projets, le compte des lignes identiques en français et en anglais
+>    tombe, et chaque ligne qui reste identique est nommée, avec sa raison.
+> 2. **Le français ne change pas d'un caractère** : le texte affiché en
+>    français est identique avant et après, ligne pour ligne.
+> 3. **Les données passent intactes** : noms de pistes, identifiants et
+>    chemins se retrouvent tels quels dans la ligne anglaise.
+> 4. **`vsm-render` et `VSM_OUVERTURE` ne changent pas** : le texte brut reste
+>    celui de D75.
+
+> **D89 EST FAITE (10/09/2026, 22:27), ET LES QUATRE ATTENDUS SONT TENUS — AU
+> TROISIÈME ESSAI.** Le relevé « avant » a été pris par le binaire qui ne
+> portait que la commande de liste ; celui d'après, par le binaire de D89, dans
+> les mêmes conditions (`HOME` isolé, préférences de l'utilisateur intactes).
+>
+> | projet | lignes du volet identiques FR / EN, avant | après |
+> |---|---|---|
+> | l'abîmé de D75 | 8 / 10 | **3 / 10** |
+> | copie de `sky-v4` | 4 / 6 | **3 / 6** |
+> | le projet neuf (cinq familles de phrases) | 10 / 12 | **3 / 12** |
+>
+> Les trois lignes qui restent identiques sont, dans chaque projet, **le nom du
+> dossier et deux lignes vides** : rien à traduire. Une recherche des mots
+> français (« piste », « échantillon », « réglage », « inconnu »…) dans les
+> lignes anglaises ne rend **rien**. Le texte affiché en français est
+> **identique** avant et après, sur les trois projets ; les lignes brutes
+> (`VSM_OUVERTURE`) aussi, et `vsm-render` n'a pas été touché — `interchange/`
+> ne l'a pas été. Les données passent intactes : « Oubliee »,
+> `com.autre.editeur.synth-absent`, `filter.9.cutoff`, les chemins.
+>
+> **LES DEUX ESSAIS QUI N'ONT PAS COMPTÉ, ET POURQUOI ILS SONT ÉCRITS.**
+> 1. **La première compilation a échoué**, et le relevé a tourné quand même,
+>    sur l'ancien binaire : ses chiffres ne mesuraient rien de D89. La table
+>    des modèles déclarait des `const char*` initialisés par des `u8"…"` —
+>    le piège C++20 que `CLAUDE.md` décrit pour `juce::String`, sous une autre
+>    forme. La commande de mesure s'arrête désormais sur un échec de
+>    compilation, au lieu de l'afficher et de continuer.
+> 2. **Le deuxième essai a produit des lignes à moitié traduites** —
+>    « Track 1: 9 paramètre(s) appliqué(s), 1 unsupported: … » — que le compte
+>    des lignes identiques ne pouvait pas voir, puisqu'elles n'étaient plus
+>    identiques. Un segment comme « %1 non pris en charge : %2 » reconnaissait
+>    la ligne ENTIÈRE, son « %1 » avalant le préfixe français, recopié comme
+>    une donnée. Les nombres ont désormais leur marqueur (`%#N`, capturé par
+>    `[0-9]+`) : 21 arguments en portent un. **La leçon : un compte de lignes
+>    identiques ne suffit pas à prouver une traduction — il faut aussi
+>    chercher le français qui reste DANS les lignes qui ont changé.**
+>
+> **CE QUE LE MÉCANISME COUVRE, ET CE QU'IL NE COUVRE PAS ENCORE.** 29 modèles :
+> les phrases du chargement (preset introuvable ou illisible, prises, pistes
+> décrites contre MIDI, tronçons écartés), les phrases d'instrument de D75, les
+> réserves d'effet et de bus, les résumés de preset et d'échantillons segment
+> par segment, les notes douteuses. Il ne sert encore que le **rapport
+> d'ouverture** : les messages d'export (avertissements du rendu), les réserves
+> d'un preset appliqué à la main, le rapport d'import d'un autre DAW et celui
+> de reconstruction affichent toujours le français du moteur. Le traducteur est
+> là ; les brancher, et compléter ses modèles, est la suite d'A9.
+>
+> Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
+> 172 Python, ruff et mypy — tout vert.
