@@ -621,7 +621,7 @@ MainComponent::MainComponent()
             juce::MessageBoxIconType::NoIcon);
         fenetre->addTextEditor("nom", juce::String(clip->name), u8"Nom :");
         fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
-        fenetre->addButton("Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+        fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
         fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
             [this, piste, clipId, fenetre](int resultat) {
                 if (resultat != 1) return;
@@ -647,7 +647,7 @@ MainComponent::MainComponent()
             juce::MessageBoxIconType::NoIcon);
         fenetre->addTextEditor("mesures", "4", u8"Mesures :");
         fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
-        fenetre->addButton("Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+        fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
         fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
             [this, piste, clipId, fenetre](int resultat) {
                 if (resultat != 1 || piste >= project_.tracks.size()) return;
@@ -3767,7 +3767,7 @@ void MainComponent::loadClapPluginOnSelectedTrack() {
             noms.add(juce::String(info.name) + " -- " + juce::String(info.vendor));
         fenetre->addComboBox("plugin", noms, u8"Plugin");
         fenetre->addButton(u8"Charger", 1, juce::KeyPress(juce::KeyPress::returnKey));
-        fenetre->addButton(u8"Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+        fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
         fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
             [fenetre, trouves, poser](int resultat) {
                 const int choix = fenetre->getComboBoxComponent("plugin")->getSelectedId();
@@ -3855,7 +3855,7 @@ void MainComponent::chooseInstrumentFromCatalogue() {
                  + "  [" + juce::String(plugin.format) + "]");
     fenetre->addComboBox("plugin", noms, u8"Instrument");
     fenetre->addButton(u8"Charger", 1, juce::KeyPress(juce::KeyPress::returnKey));
-    fenetre->addButton(u8"Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
     fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
         [this, fenetre, instruments, piste](int resultat) {
             const int choix = fenetre->getComboBoxComponent("plugin")->getSelectedId();
@@ -3966,7 +3966,7 @@ void MainComponent::chooseThirdPartyEffect(std::function<void(std::string)> quan
         noms.add(juce::String(u8"Parcourir un fichier..."));
         fenetre->addComboBox("effet", noms, u8"Effet");
         fenetre->addButton(u8"Inserer", 1, juce::KeyPress(juce::KeyPress::returnKey));
-        fenetre->addButton(u8"Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+        fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
         fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
             [this, fenetre, effetsConnus, quandChoisi](int resultat) {
                 const int choix = fenetre->getComboBoxComponent("effet")->getSelectedId();
@@ -4131,7 +4131,7 @@ void MainComponent::loadVst3PluginOnSelectedTrack() {
             noms.add(juce::String(info.name) + " -- " + juce::String(info.vendor));
         fenetre->addComboBox("plugin", noms, u8"Instrument");
         fenetre->addButton(u8"Charger", 1, juce::KeyPress(juce::KeyPress::returnKey));
-        fenetre->addButton(u8"Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+        fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
         fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
             [fenetre, instruments, poser](int resultat) {
                 const int choix = fenetre->getComboBoxComponent("plugin")->getSelectedId();
@@ -4153,13 +4153,15 @@ void MainComponent::exportAudioFile() {
     // en silence, et exporter huit mesures obligeait à exporter tout puis à
     // couper ailleurs.
     auto fenetre = std::make_shared<juce::AlertWindow>(
-        u8"Exporter en audio", u8"Ce qui sera rendu :", juce::AlertWindow::NoIcon);
+        tr(u8"Exporter en audio"), tr(u8"Ce qui sera rendu :"), juce::AlertWindow::NoIcon);
 
     juce::StringArray plages;
-    plages.add(u8"Le morceau entier");
-    plages.add(u8"La boucle");
-    plages.add(u8"La selection");
-    fenetre->addComboBox("plage", plages, u8"Plage");
+    // D90 : TOUT PAR `tr()`, ET LES ACCENTS RENDUS -- ce français était écrit
+    // sans (« La selection », « Crete a -1 dBFS »).
+    plages.add(tr(u8"Le morceau entier"));
+    plages.add(tr(u8"La boucle"));
+    plages.add(tr(u8"La sélection"));
+    fenetre->addComboBox("plage", plages, tr(u8"Plage"));
     // CE QUI N'EXISTE PAS NE SE PROPOSE PAS : une boucle absente ou une
     // sélection vide donneraient un fichier vide sans rien expliquer.
     vsm::midi::Tick selDebut = 0, selFin = 0;
@@ -4177,7 +4179,7 @@ void MainComponent::exportAudioFile() {
     frequences.add(u8"88200 Hz");
     frequences.add(u8"96000 Hz");
     frequences.add(u8"192000 Hz");
-    fenetre->addComboBox("frequence", frequences, u8"Frequence");
+    fenetre->addComboBox("frequence", frequences, tr(u8"Fréquence"));
     // LE DÉFAUT EST CELLE DE LA SESSION, pas 48 kHz : exporter à une fréquence
     // autre que celle qu'on vient d'entendre est un choix, jamais un accident.
     const double sessionHz = audioEngine_.currentSampleRate() > 0.0
@@ -4191,16 +4193,16 @@ void MainComponent::exportAudioFile() {
     }
 
     juce::StringArray profondeurs;
-    profondeurs.add(u8"16 bits entiers");
-    profondeurs.add(u8"24 bits entiers");
-    profondeurs.add(u8"32 bits flottants");
-    fenetre->addComboBox("profondeur", profondeurs, u8"Profondeur");
+    profondeurs.add(tr(u8"16 bits entiers"));
+    profondeurs.add(tr(u8"24 bits entiers"));
+    profondeurs.add(tr(u8"32 bits flottants"));
+    fenetre->addComboBox("profondeur", profondeurs, tr(u8"Profondeur"));
     if (auto* box = fenetre->getComboBoxComponent("profondeur"))
         box->setSelectedId(2, juce::dontSendNotification);
 
     // LA QUEUE EST EN SECONDES ET SE RÈGLE : deux secondes suffisent à une
     // pièce sèche et coupent net une grande réverbération, ce qui s'entend.
-    fenetre->addTextEditor("queue", "2.0", u8"Queue (secondes)");
+    fenetre->addTextEditor("queue", "2.0", tr(u8"Queue (secondes)"));
 
     // D6.5 : L'OPTION EST EXPLICITE ET JAMAIS COCHÉE D'AVANCE. Les machines de
     // ce projet sont déterministes : un rendu accéléré leur donne exactement
@@ -4208,29 +4210,29 @@ void MainComponent::exportAudioFile() {
     // mieux que neuf minutes rendues en neuf minutes. Un plugin qui EXIGE le
     // temps réel l'obtient de lui-même, sans que personne ait à cocher quoi que
     // ce soit -- et le rendu le dit alors dans ses avertissements.
-    fenetre->addTextBlock(u8"Rendu en temps réel : uniquement si un plugin l'exige "
-                          u8"(il le demande alors lui-même). Cocher ci-dessous force "
-                          u8"le rendu a la vitesse du morceau.");
+    fenetre->addTextBlock(tr(u8"Rendu en temps réel : uniquement si un plugin l'exige "
+                             u8"(il le demande alors lui-même). Cocher ci-dessous force "
+                             u8"le rendu à la vitesse du morceau."));
     juce::StringArray vitesses;
-    vitesses.add(u8"Aussi vite que possible (identique au bit pres)");
-    vitesses.add(u8"Au pas du temps reel");
-    fenetre->addComboBox("vitesse", vitesses, u8"Vitesse de rendu");
+    vitesses.add(tr(u8"Aussi vite que possible (identique au bit près)"));
+    vitesses.add(tr(u8"Au pas du temps réel"));
+    fenetre->addComboBox("vitesse", vitesses, tr(u8"Vitesse de rendu"));
     if (auto* box = fenetre->getComboBoxComponent("vitesse"))
         box->setSelectedId(1, juce::dontSendNotification);
 
     // D21.5 : LE NIVEAU. Tel quel par défaut -- normaliser est un choix, jamais
     // un accident -- ; la crête ou une sonie cible, mesurées sur le rendu.
     juce::StringArray niveaux;
-    niveaux.add(u8"Tel quel (le niveau du mixage)");
-    niveaux.add(u8"Crete a -1 dBFS");
-    niveaux.add(u8"-14 LUFS (diffusion en flux)");
-    niveaux.add(u8"-23 LUFS (radiodiffusion)");
-    fenetre->addComboBox("niveau", niveaux, u8"Niveau");
+    niveaux.add(tr(u8"Tel quel (le niveau du mixage)"));
+    niveaux.add(tr(u8"Crête à -1 dBFS"));
+    niveaux.add(tr(u8"-14 LUFS (diffusion en flux)"));
+    niveaux.add(tr(u8"-23 LUFS (radiodiffusion)"));
+    fenetre->addComboBox("niveau", niveaux, tr(u8"Niveau"));
     if (auto* box = fenetre->getComboBoxComponent("niveau"))
         box->setSelectedId(1, juce::dontSendNotification);
 
-    fenetre->addButton(u8"Exporter...", 1, juce::KeyPress(juce::KeyPress::returnKey));
-    fenetre->addButton(u8"Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    fenetre->addButton(tr(u8"Exporter..."), 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
     fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
         [this, fenetre, aBoucle, aSelection, selDebut, selFin](int resultat) {
         const int plage = fenetre->getComboBoxComponent("plage")->getSelectedId();
@@ -4291,32 +4293,36 @@ vsm::interchange::LoadedBundle MainComponent::bundleFromSession() {
 
 void MainComponent::exportStems() {
     auto fenetre = std::make_shared<juce::AlertWindow>(
-        u8"Exporter les stems", u8"Un fichier WAV par piste, dans un dossier.\n"
-        u8"La tranche master n'y est PAS : leur somme redonne le mixage tel qu'il\n"
-        u8"arrive au master. C'est ce qu'on attend de stems.",
+        tr(u8"Exporter les stems"),
+        // D90 : SANS RETOUR À LA LIGNE FORCÉ. Coupé à la main pour une largeur que
+        // l'échelle de 150 % n'a pas, le texte laissait « qu'il » seul sur sa
+        // ligne ; la fenêtre coupe elle-même, à sa largeur, dans les deux langues.
+        tr(u8"Un fichier WAV par piste, dans un dossier. La tranche master n'y est PAS : "
+           u8"leur somme redonne le mixage tel qu'il arrive au master. C'est ce qu'on "
+           u8"attend de stems."),
         juce::AlertWindow::NoIcon);
 
     juce::StringArray granularites;
-    granularites.add(u8"Une piste par fichier");
-    granularites.add(u8"Un groupe par fichier");
-    fenetre->addComboBox("granularite", granularites, u8"Decoupage");
+    granularites.add(tr(u8"Une piste par fichier"));
+    granularites.add(tr(u8"Un groupe par fichier"));
+    fenetre->addComboBox("granularite", granularites, tr(u8"Découpage"));
     if (auto* box = fenetre->getComboBoxComponent("granularite"))
         box->setSelectedId(1, juce::dontSendNotification);
 
     juce::StringArray profondeurs;
-    profondeurs.add(u8"16 bits entiers");
-    profondeurs.add(u8"24 bits entiers");
-    profondeurs.add(u8"32 bits flottants");
-    fenetre->addComboBox("profondeur", profondeurs, u8"Profondeur");
+    profondeurs.add(tr(u8"16 bits entiers"));
+    profondeurs.add(tr(u8"24 bits entiers"));
+    profondeurs.add(tr(u8"32 bits flottants"));
+    fenetre->addComboBox("profondeur", profondeurs, tr(u8"Profondeur"));
     // 24 BITS PAR DÉFAUT, comme pour le mixage : des stems destinés à être
     // ADDITIONNÉS ailleurs perdent à passer par 16 bits, où le bruit de
     // quantification de chaque fichier s'additionne aussi.
     if (auto* box = fenetre->getComboBoxComponent("profondeur"))
         box->setSelectedId(2, juce::dontSendNotification);
 
-    fenetre->addTextEditor("queue", "2.0", u8"Queue (secondes)");
-    fenetre->addButton(u8"Choisir le dossier...", 1, juce::KeyPress(juce::KeyPress::returnKey));
-    fenetre->addButton(u8"Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    fenetre->addTextEditor("queue", "2.0", tr(u8"Queue (secondes)"));
+    fenetre->addButton(tr(u8"Choisir le dossier..."), 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
     fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
         [this, fenetre](int resultat) {
         const int decoupage = fenetre->getComboBoxComponent("granularite")->getSelectedId();
@@ -4338,7 +4344,7 @@ void MainComponent::exportStems() {
                                                  : vsm::interchange::StemGranularity::Tracks;
 
         auto chooser = std::make_shared<juce::FileChooser>(
-            u8"Dossier des stems...", juce::File(), "");
+            tr(u8"Dossier des stems..."), juce::File(), "");
         chooser->launchAsync(juce::FileBrowserComponent::saveMode
                                  | juce::FileBrowserComponent::canSelectDirectories,
                               [this, chooser, options, granularite](const juce::FileChooser& fc) {
@@ -4349,8 +4355,8 @@ void MainComponent::exportStems() {
             const bool fait = exportStemsToFolder(dossier, options, granularite, message);
             juce::AlertWindow::showMessageBoxAsync(fait ? juce::AlertWindow::InfoIcon
                                                         : juce::AlertWindow::WarningIcon,
-                                                     fait ? u8"Export des stems terminé"
-                                                          : u8"Erreur d'export des stems",
+                                                     fait ? tr(u8"Export des stems terminé")
+                                                          : tr(u8"Erreur d'export des stems"),
                                                      message);
         });
     }), false);
@@ -4365,7 +4371,7 @@ bool MainComponent::exportStemsToFolder(const juce::File& dossier,
     const auto sortie = vsm::interchange::renderStemsToFolder(
         bundle, dossier.getFullPathName().toStdString(), granularite, options);
     if (!sortie.success) {
-        message = juce::String(sortie.error);
+        message = vsm::app::ui::trPhrase(juce::String(sortie.error));   // D90
         return false;
     }
     // CHAQUE STEM DIT SA CRÊTE (D50), comme le mixage exporté dit la sienne.
@@ -4374,28 +4380,33 @@ bool MainComponent::exportStemsToFolder(const juce::File& dossier,
     // redonnait plus le mixage -- ce qui est pourtant toute la raison d'être
     // d'un jeu de stems.
     const bool entier = options.format != vsm::audio::io::SampleFormat::Float32;
-    message = juce::String(sortie.stems.size())
-            + juce::String(u8" stems écrits dans :\n") + dossier.getFullPathName() + "\n";
+    // D90 : LES PHRASES PAR `tr()`, en modèles remplis APRÈS traduction -- le nom
+    // du stem en dernier, pour qu'un « %2 » dans un nom de piste reste un nom ;
+    // celles du moteur par `trPhrase`.
+    message = tr(u8"%1 stems écrits dans :").replace("%1", juce::String(sortie.stems.size()))
+            + "\n" + dossier.getFullPathName() + "\n";
     for (const auto& stem : sortie.stems) {
-        message += "\n" + juce::String(stem.name) + ".wav";
+        juce::String ligne;
         if (stem.peakLevel > 1e-9) {
             // LE SIGNE EST ÉCRIT : « crête 0,36 dBFS » se lit comme un niveau
             // SOUS l'échelle pleine, alors que c'est exactement l'inverse qui
             // fait perdre des échantillons.
             const double dbfs = 20.0 * std::log10(static_cast<double>(stem.peakLevel));
-            message += juce::String(u8" — crête ") + (dbfs > 0.0 ? "+" : "")
-                     + juce::String(dbfs, 2) + " dBFS";
             // ET LA LIGNE RESTE VRAIE DU FICHIER QU'ELLE NOMME. C'est la leçon
             // de D49 : annoncer la crête du RENDU en face d'un nom de fichier
             // que le format entier a borné à 0 dBFS, c'est répéter l'intention
             // au lieu de décrire ce qui a été écrit.
-            if (stem.peakLevel > 1.0f && entier)
-                message += juce::String(u8", bornée à 0 dBFS par ce format");
+            ligne = (stem.peakLevel > 1.0f && entier)
+                        ? tr(u8"%1.wav — crête %2 dBFS, bornée à 0 dBFS par ce format")
+                        : tr(u8"%1.wav — crête %2 dBFS");
+            ligne = ligne.replace("%2", juce::String(dbfs > 0.0 ? "+" : "") + juce::String(dbfs, 2));
         } else {
-            message += juce::String(u8" — silencieux");
+            ligne = tr(u8"%1.wav — silencieux");
         }
+        message += "\n" + ligne.replace("%1", juce::String(stem.name));
     }
-    for (const auto& warning : sortie.warnings) message += "\n\n" + juce::String(warning);
+    for (const auto& warning : sortie.warnings)
+        message += "\n\n" + vsm::app::ui::trPhrase(juce::String(warning));
     return true;
 }
 
@@ -4427,7 +4438,7 @@ void MainComponent::exportAudioWithOptions(const vsm::interchange::RenderOptions
     // n'est pas dans JUCE, et la règle n° 2 du § 0 interdit une dépendance à
     // télécharger.
     auto chooser = std::make_shared<juce::FileChooser>(
-        u8"Exporter en audio (WAV, FLAC ou OGG)...", juce::File(), "*.wav;*.flac;*.ogg");
+        tr(u8"Exporter en audio (WAV, FLAC ou OGG)..."), juce::File(), "*.wav;*.flac;*.ogg");
 
     chooser->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
                           [this, chooser, options, niveau](const juce::FileChooser& fc) {
@@ -4437,7 +4448,7 @@ void MainComponent::exportAudioWithOptions(const vsm::interchange::RenderOptions
         juce::String message;
         const bool fait = exportProjectToFile(file, options, message, niveau);
         juce::AlertWindow::showMessageBoxAsync(fait ? juce::AlertWindow::InfoIcon : juce::AlertWindow::WarningIcon,
-                                                 fait ? u8"Export audio terminé" : u8"Erreur d'export audio",
+                                                 fait ? tr(u8"Export audio terminé") : tr(u8"Erreur d'export audio"),
                                                  message);
     });
 }
@@ -4479,7 +4490,7 @@ bool MainComponent::exportProjectToFile(const juce::File& file, const vsm::inter
     const auto rendered = vsm::interchange::renderBundleToWav(
         bundle, wav.getFullPathName().toStdString(), optionsRendu);
     if (!rendered.success) {
-        message = juce::String(rendered.error);
+        message = vsm::app::ui::trPhrase(juce::String(rendered.error));   // D90
         return false;
     }
 
@@ -4490,16 +4501,19 @@ bool MainComponent::exportProjectToFile(const juce::File& file, const vsm::inter
     if (niveau == ExportLevel::PeakMinus1) {
         const double crete = static_cast<double>(rendered.peakLevel);
         if (crete > 1e-6) gain = std::pow(10.0, -1.0 / 20.0) / crete;
-        niveauDit = juce::String(u8"crête ramenée à -1 dBFS (") + juce::String(20.0 * std::log10(std::max(1e-9, gain)), 1) + " dB)";
+        niveauDit = tr(u8"crête ramenée à -1 dBFS (%1 dB)")
+                        .replace("%1", juce::String(20.0 * std::log10(std::max(1e-9, gain)), 1));
     } else if (niveau == ExportLevel::Lufs14 || niveau == ExportLevel::Lufs23) {
         const double cible = niveau == ExportLevel::Lufs14 ? -14.0 : -23.0;
         const double mesuree = measureLufsOf(wav);
         if (mesuree > -100.0) {
             gain = std::pow(10.0, (cible - mesuree) / 20.0);
-            niveauDit = juce::String(u8"sonie ") + juce::String(cible, 0) + juce::String(u8" LUFS (mesurée ")
-                        + juce::String(mesuree, 1) + ", " + juce::String(cible - mesuree, 1) + " dB)";
+            niveauDit = tr(u8"sonie %1 LUFS (mesurée %2, %3 dB)")
+                            .replace("%1", juce::String(cible, 0))
+                            .replace("%2", juce::String(mesuree, 1))
+                            .replace("%3", juce::String(cible - mesuree, 1));
         } else {
-            niveauDit = juce::String(u8"sonie non mesurable (silence) : niveau laissé tel quel");
+            niveauDit = tr(u8"sonie non mesurable (silence) : niveau laissé tel quel");
         }
     }
     if (reecrire) {
@@ -4516,14 +4530,17 @@ bool MainComponent::exportProjectToFile(const juce::File& file, const vsm::inter
     // piste muette ou saute un effet doit le dire au moment où il le fait.
     const bool flottant = options.format == vsm::audio::io::SampleFormat::Float32;
     const juce::String profondeur =
-        flac ? juce::String(options.format == vsm::audio::io::SampleFormat::Int16 ? u8"16 bits" : u8"24 bits")
-             : ogg ? juce::String(u8"Ogg Vorbis, qualité maximale (compression avec perte)")
-                   : juce::String(options.format == vsm::audio::io::SampleFormat::Int16 ? u8"16 bits"
-                                  : flottant ? u8"32 bits flottants" : u8"24 bits");
-    message = juce::String(u8"Rendu écrit :\n") + file.getFullPathName() + "\n\n"
-              + juce::String(rendered.renderedSeconds, 1) + juce::String(u8" s, ")
-              + juce::String(options.sampleRate / 1000.0, 1) + juce::String(u8" kHz, ") + profondeur
-              + juce::String(u8", crête ") + juce::String(static_cast<double>(rendered.peakLevel) * gain, 3) + ".";
+        flac ? tr(options.format == vsm::audio::io::SampleFormat::Int16 ? u8"16 bits" : u8"24 bits")
+             : ogg ? tr(u8"Ogg Vorbis, qualité maximale (compression avec perte)")
+                   : tr(options.format == vsm::audio::io::SampleFormat::Int16 ? u8"16 bits"
+                        : flottant ? u8"32 bits flottants" : u8"24 bits");
+    // D90 : un modèle rempli après traduction ; la profondeur, déjà traduite, en dernier.
+    message = tr(u8"Rendu écrit :") + "\n" + file.getFullPathName() + "\n\n"
+              + tr(u8"%1 s, %2 kHz, %3, crête %4.")
+                    .replace("%4", juce::String(static_cast<double>(rendered.peakLevel) * gain, 3))
+                    .replace("%1", juce::String(rendered.renderedSeconds, 1))
+                    .replace("%2", juce::String(options.sampleRate / 1000.0, 1))
+                    .replace("%3", profondeur);
     if (niveauDit.isNotEmpty()) message += "\n" + niveauDit;
     // CE QUI SERA ÉCRÊTÉ EST DIT, ET SEULEMENT QUAND ÇA L'EST.
     //
@@ -4538,15 +4555,14 @@ bool MainComponent::exportProjectToFile(const juce::File& file, const vsm::inter
     // ce même menu.
     const double cretePubliee = static_cast<double>(rendered.peakLevel) * gain;
     if (cretePubliee > 1.0 && !flottant)
-        message += juce::String::fromUTF8(u8"\n\nATTENTION : la crête dépasse 0 dBFS (")
-                 + juce::String(20.0 * std::log10(cretePubliee), 1)
-                 + juce::String::fromUTF8(u8" dBFS). Ce format ne peut pas la porter et l'a bornée. "
-                                           u8"« Niveau : crête à -1 dBFS » à l'export l'évite, "
-                                           u8"ou un export en 32 bits flottants la conserve.");
+        message += "\n\n" + tr(u8"ATTENTION : la crête dépasse 0 dBFS (%1 dBFS). Ce format ne peut pas "
+                               u8"la porter et l'a bornée. « Niveau : crête à -1 dBFS » à l'export "
+                               u8"l'évite, ou un export en 32 bits flottants la conserve.")
+                                .replace("%1", juce::String(20.0 * std::log10(cretePubliee), 1));
     if (flac && flottant)
-        message += juce::String(u8"\nFLAC ne porte pas de flottants : le rendu 32 bits a été écrit en 24 bits.");
+        message += "\n" + tr(u8"FLAC ne porte pas de flottants : le rendu 32 bits a été écrit en 24 bits.");
     for (const auto& warning : rendered.warnings)
-        message += "\n" + juce::String(warning);
+        message += "\n" + vsm::app::ui::trPhrase(juce::String(warning));   // D90
     return true;
 }
 
@@ -4580,7 +4596,7 @@ bool MainComponent::transcodeRenderedWav(const juce::File& wav, const juce::File
     std::unique_ptr<juce::AudioFormatReader> lecteur(
         formatWav.createReaderFor(new juce::FileInputStream(wav), true));
     if (!lecteur) {
-        erreur = juce::String(u8"Le rendu n'a pas pu être relu : ") + wav.getFullPathName();
+        erreur = tr(u8"Le rendu n'a pas pu être relu : %1").replace("%1", wav.getFullPathName());
         return false;
     }
     // Vers un fichier PROVISOIRE quand la sortie est le rendu lui-même (un WAV
@@ -4590,7 +4606,7 @@ bool MainComponent::transcodeRenderedWav(const juce::File& wav, const juce::File
     cible.deleteFile();
     std::unique_ptr<juce::FileOutputStream> flux(cible.createOutputStream());
     if (!flux || !flux->openedOk()) {
-        erreur = juce::String(u8"Impossible d'écrire ") + cible.getFullPathName();
+        erreur = tr(u8"Impossible d'écrire %1").replace("%1", cible.getFullPathName());
         return false;
     }
     std::unique_ptr<juce::AudioFormatWriter> ecrivain;
@@ -4616,8 +4632,9 @@ bool MainComponent::transcodeRenderedWav(const juce::File& wav, const juce::File
                                                   lecteur->numChannels, bits, {}, 0));
     }
     if (!ecrivain) {
-        erreur = juce::String(u8"L'encodeur ") + (flac ? "FLAC" : ogg ? "Ogg Vorbis" : "WAV")
-                 + juce::String(u8" n'a pas pu être créé pour ") + cible.getFileName();
+        erreur = tr(u8"L'encodeur %1 n'a pas pu être créé pour %2")
+                     .replace("%1", flac ? "FLAC" : ogg ? "Ogg Vorbis" : "WAV")
+                     .replace("%2", cible.getFileName());
         return false;
     }
     flux.release();   // l'écrivain possède le flux et le ferme
@@ -4635,14 +4652,14 @@ bool MainComponent::transcodeRenderedWav(const juce::File& wav, const juce::File
     ecrivain.reset();
     lecteur.reset();
     if (!ecrit) {
-        erreur = juce::String(u8"L'encodage ") + (flac ? "FLAC" : ogg ? "Ogg Vorbis" : "WAV") + juce::String(u8" a échoué.");
+        erreur = tr(u8"L'encodage %1 a échoué.").replace("%1", flac ? "FLAC" : ogg ? "Ogg Vorbis" : "WAV");
         cible.deleteFile();
         return false;
     }
     if (surPlace) {
         wav.deleteFile();
         if (!cible.moveFileTo(sortie)) {
-            erreur = juce::String(u8"Impossible de remplacer ") + sortie.getFullPathName();
+            erreur = tr(u8"Impossible de remplacer %1").replace("%1", sortie.getFullPathName());
             return false;
         }
     }
@@ -5557,7 +5574,7 @@ void MainComponent::filesDropped(const juce::StringArray& files, int, int) {
         juce::AlertWindow::showOkCancelBox(
             juce::AlertWindow::QuestionIcon,
             juce::String::fromUTF8(u8"Poser sur une piste ?"), detail,
-            juce::String::fromUTF8(u8"Poser"), "Annuler", this,
+            juce::String::fromUTF8(u8"Poser"), vsm::app::ui::trSelon("bouton", u8"Annuler"), this,
             juce::ModalCallbackFunction::create([this](int resultat) {
                 if (resultat == 1) placeDroppedAudioOnTracks();
                 pendingDroppedAudio_ = juce::File();
@@ -5572,7 +5589,7 @@ void MainComponent::filesDropped(const juce::StringArray& files, int, int) {
         juce::AlertWindow::QuestionIcon,
         juce::String::fromUTF8(u8"Que faire de ce fichier ?"), detail,
         juce::String::fromUTF8(u8"Poser sur une piste"),
-        juce::String::fromUTF8(u8"Reconstruire"), "Annuler", this,
+        juce::String::fromUTF8(u8"Reconstruire"), vsm::app::ui::trSelon("bouton", u8"Annuler"), this,
         juce::ModalCallbackFunction::create([this](int resultat) {
             if (resultat == 1) placeDroppedAudioOnTracks();
             else if (resultat == 2 && pendingDroppedAudio_ != juce::File())
@@ -5932,7 +5949,7 @@ void MainComponent::showPlayOrder() {
                     + juce::String(static_cast<int>(ordre.size()))
                     + juce::String(u8" sections). C'est annulable tant que la session est "
                                     u8"ouverte, et définitif ensuite."),
-                u8"Aplatir", "Annuler", nullptr,
+                u8"Aplatir", vsm::app::ui::trSelon("bouton", u8"Annuler"), nullptr,
                 juce::ModalCallbackFunction::create([this, ordre](int choix) {
                     if (choix == 0) return;
                     beginProjectEdit(u8"Aplatir l'ordre de jeu");
@@ -7680,7 +7697,7 @@ void MainComponent::bounceSelectedTrack() {
             + juce::String(u8" » seront remplacés par leur rendu. C'est annulable tant que "
                             u8"la session est ouverte, et définitif ensuite.\n\nPour un "
                             u8"allègement réversible, préférez GELER la piste."),
-        u8"Reporter", "Annuler", nullptr,
+        u8"Reporter", vsm::app::ui::trSelon("bouton", u8"Annuler"), nullptr,
         juce::ModalCallbackFunction::create([this, index](int choix) {
             if (choix == 0) return;
             performBounce(index);
@@ -9030,7 +9047,7 @@ void MainComponent::promptRenameTracksInSeries() {
         juce::AlertWindow::QuestionIcon);
     fenetre->addTextEditor("motif", "Piste #", juce::String::fromUTF8(u8"Motif"));
     fenetre->addButton(juce::String::fromUTF8(u8"Renommer"), 1);
-    fenetre->addButton(juce::String::fromUTF8(u8"Annuler"), 0);
+    fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0);
     fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
         [this, fenetre](int choix) {
             if (choix == 1) renameTracksInSeries(fenetre->getTextEditorContents("motif"));
@@ -9667,7 +9684,7 @@ void MainComponent::promptGoToBar() {
                                             + juce::String(static_cast<long long>(ici.beat + 1)),
                             u8"Position :");
     fenetre->addButton("Aller", 1, juce::KeyPress(juce::KeyPress::returnKey));
-    fenetre->addButton("Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
     fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
         [this, fenetre](int resultat) {
             if (resultat != 1) return;
@@ -9847,7 +9864,7 @@ void MainComponent::promptMidiProgram() {
     fenetre->addTextEditor("programme", track.midiProgram >= 0 ? juce::String(track.midiProgram + 1) : juce::String(), u8"Programme :");
     fenetre->addTextEditor("banque", track.midiBank >= 0 ? juce::String(track.midiBank) : juce::String(), u8"Banque :");
     fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
-    fenetre->addButton("Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
     fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
         [this, fenetre](int resultat) {
             if (resultat != 1) return;
@@ -10036,7 +10053,7 @@ void MainComponent::promptSaveTrackPreset() {
     fenetre->addTextEditor("nom", juce::String(track.name.empty() ? "Piste " + std::to_string(piste + 1)
                                                                   : track.name), u8"Nom :");
     fenetre->addButton("Enregistrer", 1, juce::KeyPress(juce::KeyPress::returnKey));
-    fenetre->addButton("Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
     fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
         [this, fenetre](int resultat) {
             if (resultat != 1) return;
@@ -10240,7 +10257,7 @@ void MainComponent::requestMarker(vsm::midi::Tick tick) {
         u8"Poser un repère", u8"Nom du repère :", juce::AlertWindow::NoIcon);
     fenetre->addTextEditor("nom", "", "");
     fenetre->addButton("Poser", 1, juce::KeyPress(juce::KeyPress::returnKey));
-    fenetre->addButton("Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
     fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
         [this, tick, fenetre](int resultat) {
             const juce::String nom = fenetre->getTextEditorContents("nom").trim();
@@ -10263,7 +10280,7 @@ void MainComponent::renameMarker(size_t index) {
         u8"Renommer le repère", u8"Nom du repère :", juce::AlertWindow::NoIcon);
     fenetre->addTextEditor("nom", juce::String(project_.markers[index].name), "");
     fenetre->addButton("OK", 1, juce::KeyPress(juce::KeyPress::returnKey));
-    fenetre->addButton("Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
     fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
         [this, index, fenetre](int resultat) {
             const juce::String nom = fenetre->getTextEditorContents("nom").trim();

@@ -12371,3 +12371,124 @@ sans MIDI).
 >
 > Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
 > 172 Python, ruff et mypy — tout vert.
+
+### Phase D90 — A9 : l'export audio et l'export par stems, en anglais (10/09/2026)
+
+**CE QUE LE TÉMOIN MONTRE.** En anglais, le compte rendu d'un export est
+entièrement français. Sur l'abîmé de D75, ce que la boîte « Export audio
+terminé » affiche (`VSM_EXPORT`, qui écrit le même message) : « Rendu écrit : »,
+« 3.6 s, 44.1 kHz, 24 bits, crête 0.415. », « Piste 2 (Oubliee) : aucun
+instrument, elle restera silencieuse », « Piste 7 : effet « chorus-de-1987 »
+inconnu, non appliqué » ; et pour les stems (`VSM_EXPORT_STEMS`) : « 7 stems
+écrits dans : », « 02 - Oubliee.wav — silencieux », « la tranche master n'est
+pas dans les stems (c'est voulu) : … ». Les deux fenêtres d'options — « Exporter
+en audio », « Exporter les stems » — n'appellent pas `tr()` du tout, et leur
+français est écrit SANS ACCENTS (« Crete a -1 dBFS », « La selection »,
+« Frequence », « Decoupage », « au bit pres », « a la vitesse »), et cela dès
+leur écriture : `git log -S` les trouve sans accents, et déjà en `u8"…"`, dans
+les commits qui les ont introduits (D6.1, D6.2, D21.5) — dont les titres
+évitaient eux-mêmes les accents. Aucune panne n'est à l'origine ; c'était une
+précaution, et `tr()` la rend inutile.
+
+**LA DÉCISION.** Les phrases de l'APPLICATION (l'en-tête, la ligne de format, le
+niveau, l'avertissement d'écrêtage, les lignes de stems) passent par `tr()`, en
+modèles `%1` remplis après traduction ; celles du MOTEUR (avertissements et
+erreurs du rendu, venus d'`interchange/`) passent par `trPhrase`, avec les
+modèles qui leur manquent. `interchange/` n'est pas touché : `vsm-render` et la
+chaîne d'analyse lisent toujours le français (D89). Les accents reviennent dans
+les deux fenêtres, puisque `tr()` lit l'UTF-8 : c'est le SEUL changement voulu
+du français.
+
+**LA MESURE.** Le témoin est le binaire de D89 (`temoin-d90`, dans le dossier
+de construction, `HOME` isolé), mesuré avec les mêmes commandes : `VSM_EXPORT` et
+`VSM_EXPORT_STEMS` sur l'abîmé de D75 et sur le projet de démonstration de D77 ;
+les deux fenêtres ouvertes par `VSM_MENU` et photographiées par
+`VSM_CAPTURE_PANNEAUX`, qui prend aussi les boîtes d'alerte.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (10/09/2026).**
+>
+> 1. **En anglais, les comptes rendus d'export sont en anglais** : les lignes
+>    identiques en français et en anglais tombent à celles qui n'ont rien à
+>    traduire (chemins, lignes vides), chacune nommée ; et aucun mot français
+>    ne reste DANS les lignes anglaises qui ont changé (la leçon de D89).
+> 2. **Le compte rendu français ne change pas d'un caractère**, sur les deux
+>    projets, mixage et stems.
+> 3. **Les fichiers rendus sont identiques octet pour octet** — témoin, après
+>    en français, après en anglais : la langue ne touche que les mots.
+> 4. **Les deux fenêtres, photographiées** : en anglais, plus un mot français ;
+>    en français, les seules différences avec le témoin sont les accents rendus
+>    aux six libellés nommés plus haut.
+> 5. **`interchange/` et `vsm-render` ne changent pas.**
+>
+> **COMPLÉTÉ APRÈS LES PHOTOS DU TÉMOIN, AVANT TOUTE MESURE D'APRÈS.** La photo
+> française du témoin montre deux choses que l'attendu 4 n'avait pas vues : un
+> **septième** libellé sans accent (« Au pas du temps reel »), et le texte de la
+> fenêtre des stems, coupé à la main par des retours à la ligne, qui laisse
+> « qu'il » **seul sur sa ligne** à 150 %. Les retours forcés sont retirés : la
+> fenêtre coupe elle-même, à sa largeur. L'attendu 4 devient donc : en français,
+> les seules différences avec le témoin sont les accents des **sept** libellés,
+> et la coupe des lignes du texte des stems — les mots, eux, inchangés.
+
+> **D90 EST FAITE (10/09/2026), ET LES CINQ ATTENDUS SONT TENUS — APRÈS UNE
+> PHOTO QUI A MONTRÉ CE QU'AUCUN COMPTE NE VOYAIT.** Témoin et après dans les
+> mêmes conditions (`HOME` isolé, préférences de l'utilisateur intactes à
+> chaque série).
+>
+> | compte rendu (mixage et stems) | lignes identiques FR / EN, témoin | après |
+> |---|---|---|
+> | l'abîmé de D75 | 18 / 18 | **5 / 18** |
+> | le projet de démonstration de D77 | 11 / 11 | **5 / 11** |
+>
+> Les cinq lignes qui restent identiques sont, dans les deux projets, **les deux
+> chemins** (le fichier, le dossier des stems) **et trois lignes vides**. La
+> recherche des mots français dans les lignes anglaises qui ont changé rend une
+> seule ligne, « 03 - Inconnue.wav — silent » : « Inconnue » est le nom d'une
+> piste, une donnée. Le compte rendu français est **identique au témoin**,
+> caractère pour caractère, sur les deux projets. Les **11 fichiers rendus**
+> (2 mixages, 9 stems) sont **identiques octet pour octet** entre le témoin,
+> l'après en français et l'après en anglais. `interchange/` et `vsm-render` ne
+> sont pas touchés.
+>
+> **LES FENÊTRES.** En français, « Exporter en audio » diffère du témoin de
+> **18 pixels**, dans les accents des trois libellés visibles sur la photo
+> (« Fréquence », « à la vitesse », « près ») ; les quatre autres (« La
+> sélection », « Crête à », « temps réel ») sont dans des listes fermées, et
+> leur texte se vérifie dans le code, pas à l'image. « Exporter les stems »
+> passe de 496 × 348 à **419 × 332** : la fenêtre coupe elle-même son texte en
+> trois lignes, et « qu'il » n'est plus seul. En anglais, les deux fenêtres ne
+> portent plus un mot français. Vu sans être traité : dans « Exporter en
+> audio », un vide sépare le texte du rendu en temps réel de la liste qui le
+> suit, dans les deux langues, et déjà sur le témoin.
+>
+> **CE QUE LA PHOTO A MONTRÉ, ET PAS LE COMPTE.** La première série d'après
+> donnait, en anglais, un bouton **« Undo »** là où il fallait « Cancel ». La
+> table traduit « Annuler » par « Undo », ce qui est juste dans le menu
+> Édition et faux sur le bouton d'une boîte : le français met deux sens sous un
+> seul mot, et la table, indexée par le français, n'en porte qu'un. Le défaut
+> n'était pas né avec D90 : **quatre boîtes traduites plus tôt (plugin CLAP,
+> catalogue d'instruments, effets tiers) et la fenêtre de reconstruction (D87)
+> disaient déjà « Undo »** pour « Cancel » — établi par le code et la table,
+> ces fenêtres n'ayant pas été photographiées en anglais. Remède :
+> `trSelon(contexte, texte)` cherche d'abord « Annuler@bouton », et rend la
+> traduction ordinaire à défaut ; en français, le texte seul. Les **20**
+> boutons d'annulation des boîtes passent par lui : les 7 qui disaient « Undo »
+> (dont les 2 de cette phase), et 13 qui restaient en français faute de
+> `tr()`. Le bouton du piano roll et son menu gardent « Undo », qui est leur
+> sens. Vérifié à l'image sur trois boîtes : les deux d'export, et « Renommer
+> les pistes en série », dont le bouton dit « Cancel » en anglais et
+> « Annuler » en français — **et dont tout le reste est encore français** : ces
+> treize boîtes-là n'ont que leur bouton de traduit.
+>
+> **CE QUI RESTE D'A9.** Les treize boîtes dont seul le bouton est traduit
+> (renommer un clip, des pistes en série, un marqueur ; aller à une mesure ;
+> programme MIDI ; preset de piste ; aplatir l'assemblage ; geler ;
+> reconstruire un morceau déposé ; une boîte de la chaîne d'effets) ; les
+> réserves d'un preset appliqué à la main ; les rapports d'import d'un autre
+> DAW et de reconstruction ; le message d'import audio ; les descriptions des
+> machines et la source « Parc VSM » du navigateur ; « RÉGLAGES », titre de
+> section des façades. Table à **746** paires, **44** modèles de
+> phrases — 30 de D89 et 14 de D90 : le « 29 modèles » écrit par D89 était
+> faux d'un, compté à la main ; celui-ci est compté sur le fichier.
+>
+> Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels,
+> 172 Python, ruff et mypy — tout vert.

@@ -10,7 +10,7 @@ ReconstructionWindow::ReconstructionWindow() {
     addAndMakeVisible(titre_);
 
     etape_.setText(tr(u8"Démarrage..."), juce::dontSendNotification);
-    bouton_.setButtonText(tr(u8"Annuler"));   // D87 : l'en-tête l'initialisait en français
+    bouton_.setButtonText(vsm::app::ui::trSelon("bouton", u8"Annuler"));   // D87 : l'en-tête l'initialisait en français
     etape_.setFont(juce::Font(juce::FontOptions(15.0f)));
     addAndMakeVisible(etape_);
 

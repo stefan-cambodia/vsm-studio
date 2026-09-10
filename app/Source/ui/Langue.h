@@ -67,6 +67,13 @@ juce::String tr(const char* texte);
 juce::String tr(const char8_t* texte);   ///< littéraux `u8"…"` du C++20
 juce::String tr(const juce::String& texte);
 
+/// D90 : une chaîne dont le français a DEUX sens. « Annuler » est « Undo » dans
+/// le menu Édition et « Cancel » sur le bouton d'une boîte : la table, indexée
+/// par le français, ne peut pas porter les deux sous la même clé. La clé porte
+/// donc son contexte (« Annuler@bouton ») ; en français, ou sans traduction pour
+/// ce contexte, c'est la traduction ordinaire du texte qui ressort.
+juce::String trSelon(const char* contexte, const char8_t* texte);
+
 /// D82 : le NOM D'UN GESTE, tel que l'historique le garde (en français), traduit
 /// à l'affichage. Un seul nom est fabriqué -- « Signature 3/4 » -- et il se
 /// reconnaît à son modèle ; les autres sont des chaînes de la table.

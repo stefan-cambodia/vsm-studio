@@ -773,7 +773,7 @@ void EffectChainComponent::savePresetOf(size_t index) {
         juce::AlertWindow::NoIcon);
     fenetre->addTextEditor("nom", "", "");
     fenetre->addButton("Enregistrer", 1, juce::KeyPress(juce::KeyPress::returnKey));
-    fenetre->addButton("Annuler", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
     fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
         [this, description, fenetre](int resultat) {
             const juce::String nom = fenetre->getTextEditorContents("nom").trim();
