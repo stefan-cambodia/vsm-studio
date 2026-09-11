@@ -16034,3 +16034,27 @@ tronçons, qui ne s'ouvre pas sur ce projet (vraisemblablement faute de
 prise) ; la fenêtre flottante de l'arrangement, cachée dans la disposition
 en panneaux flottants.
 
+### Phase D129 — A9 : les infobulles des soixante-cinq façades, relevées à l'écran (11/09/2026)
+
+**CE QUE PORTE UNE INFOBULLE DE FAÇADE, lu dans le code.** Un seul point en
+pose (`MachinePanelComponent.cpp:155`) : la légende de la commande
+(`spec.caption`, à défaut le nom du paramètre), écrite par `toJuce`, sans
+`tr()`. C'est la sérigraphie de la machine — anglaise par convention, et D115
+n'en a trouvé qu'une française sur 163 titres de section. Les boutons à
+bascule n'en ont pas.
+
+**LE BANC.** Pas de projet à soixante-trois façades (celui de D67 n'existe
+plus) : chaque machine enregistrée — 65 — est posée sur la piste choisie du
+projet de D91 par le geste de la ligne de piste (`machine:<id>`, le même
+chemin que la liste des machines), une par lancement, en anglais ;
+`VSM_TEXTES_LISTE` relève les infobulles de la fenêtre, où le rack montre la
+façade de la piste choisie. Le filtre de D118 sur les infobulles absentes du
+relevé de la machine d'origine (le TB-303 du projet).
+
+**ATTENDU, écrit avant la mesure.** **0 à 2 infobulles françaises** sur
+l'ensemble des façades — la convention est l'anglais, et le seul écart connu
+(« RÉGLAGES ») est un titre de section, pas une légende. Une machine dont le
+lancement ne rend aucune infobulle nouvelle est nommée : soit sa façade n'a
+que des bascules, soit le geste n'a pas posé la machine, et le journal dit
+laquelle des deux.
+
