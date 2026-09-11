@@ -15661,7 +15661,7 @@ préférence `dossierChaineAnalyse` pointée sur un dossier sans
    français ; le français identique au témoin, mot pour mot.
 3. **Suites vertes**, préférences intactes.
 
-**RÉSULTAT (11/09, 22:50) — les trois attendus tiennent.** Témoin : le
+**RÉSULTAT (11/09, 22:49, heure du commit) — les trois attendus tiennent.** Témoin : le
 binaire de D123 (22:35:18) ; après : celui du correctif (22:43:32), compilé
 à `-j 2` pendant l'épreuve Children. Chaque cas a donné sa photo au premier
 essai, dans les deux séries.
@@ -15698,4 +15698,67 @@ de la ligne la plus longue, et c'est ce qui garde « minutes. » avec sa ligne.
 encore (`showMessageBoxAsync` et consorts) n'ont pas été relevées par D119 et
 ne sont pas réputées bien coupées : elles le seront quand un audit les
 montrera.
+
+### Phase D125 — le vingt-cinquième audit : D119 a regardé une boîte statique, la famille en compte 113 (11/09/2026)
+
+**LA LUNETTE.** D124 a fermé A13 en écrivant que les autres boîtes statiques
+de JUCE « ne sont pas réputées bien coupées ». C'est la faute que D71
+nommait : réparer l'exemplaire trouvé, pas la famille. La famille, comptée
+dans le code : `montrerBoite` — **103 appels** —, `demanderOuiNon` — 1 —, et
+**9 appels directs** de `showMessageBoxAsync` / `showOkCancelBox` (export des
+stems, export audio, choix du dossier de chaîne, deux d'« Assembler les
+prises », aplatir l'ordre de jeu, reporter la piste en audio, l'erreur
+d'« Aller à la mesure », l'échec d'écriture d'un preset d'effet) : **113
+sites**. D119 en a photographié UN, « Que faire de ce fichier ? », et il
+coupait mal en français.
+
+**CE QUE FAIT LA BOÎTE STATIQUE, lu dans JUCE** (`AlertWindow::updateLayout`) :
+la largeur de mise en page vient du texte ENTIER mesuré comme une seule
+ligne — `w = min(300 + 2·√(h × largeur), 0,7 × parent)` —, puis
+`createLayoutWithBalancedLineLengths` à cette largeur ; l'icône (80 px)
+s'ajoute après. Rien n'y regarde les paragraphes : un paragraphe à peine plus
+long que `w` y laisse son dernier mot seul — le « minutes. » de D119.
+
+**LE BANC.** Treize boîtes de la famille qu'un banc atteint sans souris sur le
+projet de D91 : les six de `VSM_BOITE_ESSAI` (notes perdues, mesure
+impossible, rien n'est revenu, latence mesurée, disque trop lent,
+reconstruction indisponible), cinq par le menu (statistiques du projet,
+enregistrer comme modèle, extraire le groove, créer un clip d'une mesure,
+geler la piste), deux par le menu d'un clip audio importé (rogner au son,
+découper aux transitoires). Français et anglais, binaire de D124, `HOME` de
+brouillon, jusqu'à quatre essais par photo ; une boîte qui ne vient pas est
+nommée, pas comptée. Laissées de côté, et dites : « Transcrire en MIDI »,
+qui lancerait un processus Python pendant l'épreuve Children ; « Chaîne
+d'analyse » (un dossier de chaîne invalide), que son sélecteur, qui ne passe
+pas par `prendreLeFichierDeBanc`, rend inatteignable au banc.
+
+**CE QUI COMPTE COMME UNE MAUVAISE COUPURE** : la définition de D119, inchangée
+— (a) une ligne d'un seul mot dans un paragraphe de plusieurs lignes ; (b)
+une coupure à l'intérieur d'un terme entre guillemets ; (c) entre un nombre
+et son unité, ou dans un raccourci clavier ; un titre ou un bouton coupé
+compte aussi ; une donnée longue (un chemin) coupée ne compte pas, et se dit.
+
+**ATTENDU, écrit avant la mesure.** Sur les boîtes qui viennent (treize au
+plus par langue) : **3 à 7 boîtes mal coupées en français, 1 à 4 en
+anglais** — le français est plus long, et D119 l'a trouvé touché trois fois
+sur quatre.
+
+- **Si le français en compte 3 ou plus**, le défaut est un trait de la
+  famille et non d'une phrase : D126 fera passer `montrerBoite` et
+  `demanderOuiNon` par `BoiteLisible` (un geste, 104 sites) et remesurera
+  LES MÊMES treize boîtes ; les 9 appels directs suivront, un par un.
+- **S'il en compte 2 ou moins**, « Que faire de ce fichier ? » était
+  l'exception, et les boîtes fautives se retouchent une à une.
+
+**Cette phase mesure et nomme ; elle ne corrige rien.**
+
+**TROUVÉ EN LISANT LE CODE, avant le banc.** La boîte « Chaîne d'analyse »
+(`MainComponent.cpp:5786`) a son titre sans `tr()`, et sa raison et son
+remède sans `trPhrase` : en anglais, les trois resteraient français. C'est
+le défaut que D124 a corrigé dans la boîte du dépôt. L'inventaire de la
+langue ne la compte pas à ÉCRAN, et c'est un FAUX TABLE, comme ceux de
+D96 : « Chaîne d'analyse » est une clé de la table (`Langue.cpp:341`, le
+libellé du menu), et la règle TABLE — « traduite ailleurs, par une variable »
+— la tient pour traduite (`T MainComponent.cpp:5788`). Écrite par
+`fromUTF8`, elle ne passe par aucun `tr()`.
 
