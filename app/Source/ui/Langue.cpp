@@ -2729,6 +2729,27 @@ const Paire kAnglais[] = {
       "high wood block" },
     { "wood block grave",
       "low wood block" },
+    // --- D110 : LE DÉPART D'UNE PRISE -----------------------------------------------
+    { "Aucune piste armée",
+      "No armed track" },
+    { "Aucune carte son",
+      "No sound card" },
+    { "Armez au moins une piste (bouton R dans la liste des pistes) : sans elle, la prise n'aurait nulle part où aller.",
+      "Arm at least one track (R button in the track list): without it, the take would have nowhere to go." },
+    { "Sans carte son ouverte, le transport n'avance pas et aucun clavier MIDI n'est écouté. Voir Fichier > Réglages audio.",
+      "Without an open sound card, the transport does not move and no MIDI keyboard is heard. See File > Audio settings." },
+    { "Plusieurs pistes audio armées",
+      "Several audio tracks armed" },
+    { "Une seule entrée, une seule prise : n'armez qu'une piste audio à la fois. Écrire le même signal dans deux fichiers ne ferait que doubler la place occupée.",
+      "One input, one take: arm only one audio track at a time. Writing the same signal to two files would only double the space used." },
+    { "Une prise audio est un FICHIER, et le format range les fichiers d'un projet par chemin relatif à son dossier -- c'est ce qui permet d'ouvrir le projet sur une autre machine. Enregistrez d'abord le projet (Ctrl+S), la prise ira dans son sous-dossier audio/.",
+      "An audio take is a FILE, and the format stores a project's files by path relative to its folder -- that is what lets the project open on another machine. Save the project first (Ctrl+S); the take will go into its audio/ subfolder." },
+    { "Enregistrement audio impossible",
+      "Cannot record audio" },
+    { "Aucune entrée audio ouverte : la carte n'en donne pas. Voir Fichier > Réglages audio.",
+      "No audio input open: the card provides none. See File > Audio settings." },
+    { "Fréquence ou nombre de canaux invalide.",
+      "Invalid sample rate or channel count." },
 };
 
 constexpr int kNombreDePaires = static_cast<int>(sizeof(kAnglais) / sizeof(kAnglais[0]));
@@ -3016,6 +3037,9 @@ const ModeleDePhrase kModeles[] = {
     { u8"enregistrement trop long pour tenir en mémoire (%1 min)", u8"recording too long to fit in memory (%1 min)" },
     { u8"lecteur WAV du moteur : %P1", u8"engine WAV reader: %P1" },
     { u8"lecteur JUCE : %P1", u8"JUCE reader: %P1" },
+    // D110 : les erreurs du rédacteur de prise (DiskRecorder)
+    { u8"Impossible d'écrire %1", u8"Cannot write %1" },
+    { u8"Format WAV refusé pour %1 canal/canaux à %2 Hz.", u8"WAV format refused for %1 channel(s) at %2 Hz." },
     { u8"Piste %#1 : %P2", u8"Track %1: %P2" },
 };
 

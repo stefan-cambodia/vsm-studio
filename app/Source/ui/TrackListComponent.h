@@ -107,6 +107,14 @@ public:
     bool choisirMachine(const juce::String& pluginId);
     /// D37.2 : règle le volume par le chemin du curseur.
     void reglerVolume(float valeur);
+    /// D110 : armer la piste comme le bouton R le fait -- son état basculé, puis
+    /// son `onClick`, TOUT DE SUITE. `triggerClick()` passe par la file des
+    /// messages : le geste agissait APRÈS la touche F9 qui le suivait, et le
+    /// bouton Rec était encore gris (premier témoin de D110, 0 boîte sur 4).
+    void armerPourCapture() {
+        armButton_.setToggleState(!armButton_.getToggleState(), juce::dontSendNotification);
+        if (armButton_.onClick) armButton_.onClick();
+    }
 
     void setSelected(bool selected) { selected_ = selected; repaint(); }
     /// Réaffiche le fichier de la piste (sans effet sur une piste MIDI).
@@ -278,6 +286,8 @@ public:
     /// D37 : les deux autres gestes qu'aucun menu ne porte.
     void renommer(size_t index, const juce::String& nom);
     bool choisirMachine(size_t index, const juce::String& pluginId);
+    /// D110 : le bouton R de la ligne `index`, par son clic (geste de banc « armer »).
+    void armer(size_t index);
     void reglerVolume(size_t index, float valeur);
     /// D36.7 : relit le muet et le solo de toutes les lignes.
     void refreshMuteSolo();

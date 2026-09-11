@@ -632,6 +632,11 @@ void TrackListComponent::refreshFromTracks() {
     for (auto* row : rows_) { row->refreshName(); row->refreshMix(); row->refreshMuteSolo(); }
 }
 
+void TrackListComponent::armer(size_t index) {
+    // D110 : ce que fait la souris sur le bouton R -- ni plus, ni moins.
+    if (index < static_cast<size_t>(rows_.size())) rows_[static_cast<int>(index)]->armerPourCapture();
+}
+
 void TrackListComponent::basculerMuet(size_t index) {
     if (index >= static_cast<size_t>(rows_.size()) || project_ == nullptr) return;
     const std::set<size_t> cible = selectionPourUnGesteSur(index);

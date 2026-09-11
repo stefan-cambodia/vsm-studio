@@ -161,6 +161,8 @@ public:
     bool runTrackGestureForCapture(const juce::String& geste) {
         const size_t piste = trackList_.selectedTrackIndex();
         if (geste.equalsIgnoreCase("muet")) { trackList_.basculerMuet(piste); return true; }
+        // D110 : armer, comme le bouton R -- pour les boîtes du départ d'une prise.
+        if (geste.equalsIgnoreCase("armer")) { trackList_.armer(piste); return true; }
         if (geste.startsWithIgnoreCase("renommer:")) {
             trackList_.renommer(piste, geste.fromFirstOccurrenceOf(":", false, false));
             return true;

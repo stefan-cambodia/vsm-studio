@@ -342,8 +342,8 @@ bool AudioEngine::startAudioRecording(const juce::File& fichier, double punchSec
                                        juce::String& erreur) {
     const int canaux = juce::jlimit(0, 2, currentInputChannels_.load(std::memory_order_acquire));
     if (canaux <= 0) {
-        erreur = "Aucune entree audio ouverte : la carte n'en donne pas. "
-                 "Voir Fichier > Reglages audio.";
+        erreur = juce::String(u8"Aucune entrée audio ouverte : la carte n'en donne pas. "
+                              u8"Voir Fichier > Réglages audio.");
         return false;
     }
     const double frequence = currentSampleRate_.load(std::memory_order_acquire);

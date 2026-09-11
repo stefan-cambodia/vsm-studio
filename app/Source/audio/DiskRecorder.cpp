@@ -23,7 +23,7 @@ bool DiskRecorder::start(const juce::File& fichier, double sampleRate, int chann
     erreur.clear();
 
     if (sampleRate <= 0.0 || channels <= 0) {
-        erreur = "Frequence ou nombre de canaux invalide.";
+        erreur = juce::String(u8"Fréquence ou nombre de canaux invalide.");
         return false;
     }
     fichier.getParentDirectory().createDirectory();
@@ -34,7 +34,7 @@ bool DiskRecorder::start(const juce::File& fichier, double sampleRate, int chann
 
     auto flux = std::unique_ptr<juce::FileOutputStream>(fichier.createOutputStream());
     if (flux == nullptr) {
-        erreur = "Impossible d'ecrire " + fichier.getFullPathName();
+        erreur = juce::String(u8"Impossible d'écrire %1").replace("%1", fichier.getFullPathName());
         return false;
     }
 
@@ -47,8 +47,9 @@ bool DiskRecorder::start(const juce::File& fichier, double sampleRate, int chann
     auto* redacteur = format.createWriterFor(flux.get(), sampleRate,
                                               static_cast<unsigned int>(channels), 24, {}, 0);
     if (redacteur == nullptr) {
-        erreur = "Format WAV refuse pour " + juce::String(channels) + " canal/canaux a "
-                 + juce::String(sampleRate, 0) + " Hz.";
+        erreur = juce::String(u8"Format WAV refusé pour %1 canal/canaux à %2 Hz.")
+                     .replace("%1", juce::String(channels))
+                     .replace("%2", juce::String(sampleRate, 0));
         return false;
     }
     flux.release(); // le rédacteur possède désormais le flux

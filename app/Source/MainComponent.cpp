@@ -8517,14 +8517,14 @@ void MainComponent::startRecording() {
         // Le bouton est censé être désactivé dans ces deux cas ; si on arrive
         // quand même ici, on le DIT plutôt que d'enregistrer dans le vide.
         transportBar_.setRecording(false);
-        juce::AlertWindow::showMessageBoxAsync(
+        montrerBoite(
             juce::AlertWindow::InfoIcon,
-            armees.empty() ? juce::String(u8"Aucune piste armée") : juce::String("Aucune carte son"),
+            armees.empty() ? tr(u8"Aucune piste armée") : tr("Aucune carte son"),
             armees.empty()
-                ? "Armez au moins une piste (bouton R dans la liste des pistes) : "
-                  u8"sans elle, la prise n'aurait nulle part où aller."
-                : "Sans carte son ouverte, le transport n'avance pas et aucun clavier "
-                  u8"MIDI n'est écouté. Voir Fichier > Réglages audio.");
+                ? tr(u8"Armez au moins une piste (bouton R dans la liste des pistes) : "
+                     u8"sans elle, la prise n'aurait nulle part où aller.")
+                : tr(u8"Sans carte son ouverte, le transport n'avance pas et aucun clavier "
+                     u8"MIDI n'est écouté. Voir Fichier > Réglages audio."));
         return;
     }
     if (recordPhase_ != RecordPhase::Off) return;
@@ -8558,9 +8558,9 @@ void MainComponent::startRecording() {
     auto armeesAudio = armedTrackIndices(Track::Kind::Audio);
     if (armeesAudio.size() > 1) {
         transportBar_.setRecording(false);
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Plusieurs pistes audio armées",
-            juce::String(u8"Une seule entrée, une seule prise : n'armez qu'une piste audio à "
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Plusieurs pistes audio armées"),
+            tr(u8"Une seule entrée, une seule prise : n'armez qu'une piste audio à "
                           u8"la fois. Écrire le même signal dans deux fichiers ne ferait que "
                           u8"doubler la place occupée."));
         return;
@@ -8568,9 +8568,9 @@ void MainComponent::startRecording() {
     if (!armeesAudio.empty()) {
         if (currentProjectFolder_ == juce::File()) {
             transportBar_.setRecording(false);
-            juce::AlertWindow::showMessageBoxAsync(
-                juce::AlertWindow::InfoIcon, u8"Projet jamais enregistré",
-                juce::String(u8"Une prise audio est un FICHIER, et le format range les fichiers "
+            montrerBoite(
+                juce::AlertWindow::InfoIcon, tr(u8"Projet jamais enregistré"),
+                tr(u8"Une prise audio est un FICHIER, et le format range les fichiers "
                               u8"d'un projet par chemin relatif à son dossier -- c'est ce qui "
                               u8"permet d'ouvrir le projet sur une autre machine. Enregistrez "
                               u8"d'abord le projet (Ctrl+S), la prise ira dans son sous-dossier "
@@ -8583,8 +8583,9 @@ void MainComponent::startRecording() {
         juce::String erreur;
         if (!audioEngine_.startAudioRecording(audioTakeFile_, punchSeconds_, erreur)) {
             transportBar_.setRecording(false);
-            juce::AlertWindow::showMessageBoxAsync(
-                juce::AlertWindow::WarningIcon, u8"Enregistrement audio impossible", erreur);
+            montrerBoite(
+                juce::AlertWindow::WarningIcon, tr(u8"Enregistrement audio impossible"),
+                vsm::app::ui::trPhrase(erreur));
             return;
         }
         audioTakeTrack_ = index;

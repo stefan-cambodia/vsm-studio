@@ -14440,3 +14440,104 @@ La table passe à **1 326** paires (+25). `VintageSynthMidiStudio` et
 suites C++ vertes (330 cœur, 1 291 audio, 297 interchange, 25 CLAP, 11
 panneaux). `MainComponent` : 34 chaînes à l'inventaire (inchangé).
 
+### Phase D110 — A9 : les boîtes du départ d'une prise (11/09/2026)
+
+**LE LOT.** `startRecording` et ses quatre boîtes — aucune piste armée /
+aucune carte son ; plusieurs pistes audio armées ; projet jamais enregistré,
+le dernier des faux TABLE que D96 avait nommés ; enregistrement audio
+impossible —, avec les erreurs que la dernière montre : celle du moteur
+(« Aucune entree audio ouverte… », `audio/AudioEngine.cpp`) et les trois du
+rédacteur de prise (`audio/DiskRecorder.cpp`), du français écrit sans ses
+accents. À l'inventaire : 9 ÉCRAN et 1 TABLE (stricte), 12 et 1 (large).
+
+**LE BANC, SANS SON.** La mesure de latence et une prise véritable jouent et
+enregistrent du son : pas de banc pour elles tant que l'utilisateur peut être
+devant la machine. Mais deux des boîtes refusent AVANT tout décompte et toute
+capture : deux pistes audio armées ; une piste audio armée dans un projet
+jamais enregistré. Projet neuf, pistes audio ajoutées par le menu, armées par
+un geste de banc neuf (`VSM_GESTE_PISTE=armer` : le bouton R de la ligne, par
+son clic, ce que fait la souris), puis F9. L'écoute de l'entrée reste
+manuelle — les préférences du banc ne portent pas `monitoringMode`, et en
+mode manuel armer ne l'allume pas (`applyMonitoringMode`) : le micro ne va
+pas aux haut-parleurs. Témoin : le geste et les boîtes par `montrerBoite()`,
+sans traduction.
+
+**LES DÉCISIONS.**
+
+1. **Les accents rendus** au moteur et au rédacteur (« entrée »,
+   « Réglages », « Fréquence », « écrire », « refusé », « à ») — différence
+   française déclarée ; aucune de ces phrases ne passe au banc.
+2. **Leurs phrases composées deviennent des phrases entières** à `%1`, `%2`,
+   comme en D108 : le modèle est le littéral lui-même.
+3. **« Aucune piste armée » et « Aucune carte son » sont des gardes** : le
+   bouton Rec est grisé dans ces deux cas, et F9 ne fait que l'écrire au
+   terminal. Traduites, vérifiées par le code.
+
+**ATTENDU, écrit avant la mesure.**
+
+1. **L'inventaire** : 0 ÉCRAN dans le lot ; stricte ÉCRAN **45 → 36**, TABLE
+   221 → 224 ; large ÉCRAN **74 → 62**, TABLE 255 → 258 — « Projet jamais
+   enregistré » passe par `tr()` et quitte TABLE ; les quatre phrases du
+   moteur et du rédacteur y entrent, comme clés ou modèles.
+2. **Les boîtes** : 1 et 1, dans les deux langues, témoin et D110. En
+   anglais : « Several audio tracks armed : One input, one take: … »,
+   « Project never saved : An audio take is a FILE, … ».
+3. **Le français** : identique au témoin.
+
+**PREMIER TÉMOIN (D110), écrit avant la mesure d'après : 0 boîte sur 4.**
+Dans les quatre lancements, F9 a trouvé le bouton Rec gris (« Enregistrer
+(F9) : le bouton Rec est grisé -- pas de carte son ouverte, ou aucune piste
+armée »). La carte était ouverte (« 48.0 kHz »), les pistes créées
+(« Bass », « Audio », « Audio 2 ») : c'est l'armement qui manquait. Le geste
+de banc passait par `Button::triggerClick()`, qui POSTE le clic dans la file
+des messages — il agissait après la touche F9 qui le suivait dans le même
+tour du banc. **Correction de l'outil** (témoin et après) : basculer l'état
+du bouton R puis appeler son `onClick`, tout de suite — ce que fait un clic,
+sans la file. Le témoin est reconstruit et relancé.
+
+**SECOND TÉMOIN (11/09, 16:50) : 4 boîtes sur 4.** Binaire du 11/09 14:57
+(l'outil corrigé, les chaînes d'avant) : « Plusieurs pistes audio armées :
+Une seule entrée, une seule prise… » pour les deux pistes armées, « Projet
+jamais enregistré : Une prise audio est un FICHIER… » pour la piste seule —
+en français dans les deux langues, ce qu'on attend d'un témoin sans
+traduction. Plus aucun « bouton Rec grisé ». Préférences de l'utilisateur
+intactes (`cmp` contre une copie prise juste avant la série).
+
+*Précision de lieu, qui compte ce jour-là* : `AudioEngine.cpp` et
+`DiskRecorder.cpp` sont ceux d'`app/Source/audio/`, pas du moteur `audio/`.
+L'épreuve *Children* (CDC multipiste § 12) court pendant cette phase sur
+`build/tools/vsm-render` ; `moteur_perime` ne regarde que `audio/`, `core/`
+et `interchange/` — D110 ne périme donc pas le moteur qu'elle mesure, et la
+compilation se fait à `-j 2`, la cible de l'application seule.
+
+**LE RÉSULTAT, ATTENDU PAR ATTENDU (11/09/2026, 16:55).** Binaire du 11/09
+16:52:28 (code 0), même banc, même outil que le second témoin.
+
+1. **L'inventaire — TENU au chiffre** : stricte ÉCRAN **45 → 36**, TABLE
+   221 → 224 ; large ÉCRAN **74 → 62**, TABLE 255 → 258. Plus aucune ligne
+   de `startRecording`, de `DiskRecorder.cpp` ni de l'erreur du moteur à
+   l'inventaire.
+2. **Les boîtes — TENU** : 1 et 1 dans les deux langues. En anglais :
+   « Several audio tracks armed : One input, one take: arm only one audio
+   track at a time. Writing the same signal to two files would only double
+   the space used. » et « Project never saved : An audio take is a FILE, and
+   the format stores a project's files by path relative to its folder… Save
+   the project first (Ctrl+S); the take will go into its audio/ subfolder. »
+   Aucun mot français restant (filtre de `analyse-d110.py`).
+3. **Le français — TENU** : les deux boîtes identiques au témoin, et les
+   textes de la fenêtre aussi (188 et 160 lignes, dans les deux langues).
+   Préférences de l'utilisateur intactes.
+
+La photo (`jamais-en.png`) montre la fenêtre en anglais — « A/B monitoring:
+no original », « (no file — arm and record) » — sans la boîte : c'est
+attendu, une boîte se lit par `VSM_BOITE` au moment où elle est demandée,
+et la photo ne prend que la fenêtre principale.
+
+La table passe à **1 336** paires (+10) et **97** modèles (+2 : « Impossible
+d'écrire %1 », « Format WAV refusé pour %1 canal/canaux à %2 Hz. »).
+`VintageSynthMidiStudio` et suites C++ vertes, compilées à `-j 2` pendant
+l'épreuve (330 cœur, 1 291 audio, 297 interchange, 25 CLAP, 11 panneaux) ;
+`build/tools/vsm-render` n'a pas été touché. `MainComponent` : **34 → 27**
+chaînes à l'inventaire. Le dernier des faux TABLE nommés par D96 (« Projet
+jamais enregistré ») passe par `tr()`.
+
