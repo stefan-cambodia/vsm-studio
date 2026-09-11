@@ -17013,3 +17013,27 @@ le report), et `rebuildFromProject` la réapplique. C'est une panne muette —
 la règle du projet l'interdit. **INDEX, A23 ; le remède, décidé plus haut,
 est la phase suivante.**
 
+### Phase D144 — A23 : le MASTER porté par chaque pas d'annulation, et ses gestes annulables (12/09/2026)
+
+**LE REMÈDE, celui que D143 a décidé avant sa mesure, et où il se branche.**
+
+1. Au début de chaque pas (`beginProjectEdit`), le MASTER du moteur est
+   recopié dans le modèle : la photo du pas porte le MASTER de CET instant.
+2. Avant chaque annulation ou rétablissement (`PianoRollComponent::undo` /
+   `redo`, un rappel `onAvantHistorique`), la même recopie : la photo que le
+   rétablissement gardera est juste, elle aussi.
+3. Un bouton du MASTER ouvre son pas au début du geste (`onDragStart`, que
+   JUCE appelle aussi pour un double-clic) et le modèle suit la valeur : le
+   geste s'annule comme un geste de tranche.
+
+**LE BANC.** Celui de D143, et deux cas de plus : (d) double-clic sur le LOW,
+puis Ctrl+Z — le geste du MASTER lui-même annulé ; (e) la même chose, puis
+Ctrl+Maj+Z — rétabli. Témoin : le binaire de D142 (04:43:43).
+
+**ATTENDU, écrit avant le témoin.** Au témoin : (a) 0.00 ; (b) **6.00** ;
+(c) 6.00 ; (d) **0.00** — le geste du MASTER n'ouvre aucun pas, Ctrl+Z n'a
+rien à annuler ; (e) 0.00. **Après** : (a) 0.00 ; (b) **0.00**, la piste à
+-0.9 dB — annuler un geste de piste ne touche plus au MASTER ; (c) 6.00 ;
+(d) **6.00**, bouton 6.0 dB — le geste du MASTER annulé ; (e) **0.00** —
+rétabli. Suites vertes, préférences intactes.
+
