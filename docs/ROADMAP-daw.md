@@ -12883,12 +12883,20 @@ piano roll dont le nom porte un nombre.
   juste après les avoir cachés. La fonction se règle désormais sur l'état
   (`derniereRaisonSon_`, « ? » = jamais posée). L'image ne le montrait pas ;
   la liste, si — c'est pour cela qu'il faut les deux.
-- **Un défaut plus ancien, laissé à sa phase.** Ces deux témoins vides et
-  visibles sont PLACÉS par `disposer()` : 216 px à la largeur de cet écran
-  (lu dans le code, pas mesuré), pris à une barre dont A6 dit qu'elle se
-  replie sur deux rangées faute de ~1 400 px. Les cacher changerait la
-  disposition française, ce que D94 s'interdit : à mesurer dans une phase à
-  elle.
+- **Un défaut plus ancien — et une piste qui NE TIENT PAS (rectifié le
+  11/09).** La première version de ce paragraphe, poussée avec D94, disait
+  ces deux témoins PLACÉS par `disposer()`, 216 px pris à la barre d'A6 —
+  lu dans le code, pas mesuré. **L'image le dément.** Calculée à cette
+  largeur (1 248 px utiles), la première rangée AVEC les deux témoins finit
+  « 4/4 » à 1 001, pose « SANS SON » de 1 009 à 1 099 et les craquements
+  jusqu'à 1 217, et renvoie « CPU » à la ligne ; SANS eux, « CPU » va de
+  1 009 à 1 085, « Exporter MIDI… » tient sur la rangée et seul « Ouvrir
+  MIDI… » passe à la suivante. Les quatre captures de D94 (D93 et D94,
+  français et anglais) montrent la seconde : « CPU » à 8 px de « 4/4 ».
+  Visibles pour la liste, les deux témoins n'étaient pas dans la dernière
+  disposition. La piste d'A6 est retirée ; reste un défaut de code — un
+  `setVisible(false)` défait trois lignes plus bas — sans effet mesuré à
+  l'écran.
 - **Un écran verrouillé fait lister zéro texte.** La série de ce matin a
   tourné pendant que la session était verrouillée (`LockedHint=yes`) : la
   liste a rendu **0 texte** sur trois lancements, pendant que l'autoportrait
