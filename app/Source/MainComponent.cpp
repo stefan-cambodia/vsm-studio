@@ -185,6 +185,11 @@ MainComponent::MainComponent()
     // fois -- au second changement de langue, on chercherait « Effects » dans
     // une table indexée par « Effets ».
     nomsDesOnglets_ = { "Mixer", "Automation", "Effets", "MIDI CC", "Liste", "Tempo" };
+    // D122 : les boutons des zones de la fenêtre unique (placés par la disposition).
+    for (int i = 0; i < 4; ++i) {
+        addChildComponent(boutonsDeZone_[i]);
+        boutonsDeZone_[i].onClick = [this, i] { basculerZoneAgrandie(i); };
+    }
     bottomTabs_.addTab(tr("Mixer"), vsm::ui::Palette::panel, &mixer_, false);
     bottomTabs_.addTab(tr("Automation"), vsm::ui::Palette::panel, &automation_, false);
     bottomTabs_.addTab(tr("Effets"), vsm::ui::Palette::panel, &effectChain_, false);
@@ -1204,9 +1209,23 @@ void MainComponent::resized() {
         return;
     }
     transportBar_.setBounds(area);
+    placerLesBoutonsDeZone();   // D122 : hors de la fenêtre unique, ils se cachent
 }
 
 void MainComponent::layoutDockedPanels(juce::Rectangle<int> area) {
+    // D122 : UNE ZONE AGRANDIE PREND TOUTE L'AIRE sous la barre de transport ; les
+    // autres ont été cachées par `basculerZoneAgrandie`, et leurs poignées aussi.
+    if (zoneAgrandie_ >= 0) {
+        sepBas_.setVisible(false);
+        sepGauche_.setVisible(false);
+        sepDroite_.setVisible(false);
+        if (zoneAgrandie_ == 0) trackList_.setBounds(area);
+        else if (zoneAgrandie_ == 1) synthRack_.setBounds(area);
+        else if (zoneAgrandie_ == 2) bottomTabs_.setBounds(area);
+        else { arrangement_.setBounds(area); pianoRollPanel_.setBounds(area); }
+        placerLesBoutonsDeZone();
+        return;
+    }
     // La géométrie de l'ancienne disposition flottante, repliée dans une seule
     // fenêtre : pistes à gauche, console en bas, rack à droite, le morceau au
     // centre. Chaque volet ne prend sa place que s'il est VISIBLE -- le menu
@@ -1252,6 +1271,99 @@ void MainComponent::layoutDockedPanels(juce::Rectangle<int> area) {
     }
     arrangement_.setBounds(area);
     pianoRollPanel_.setBounds(area);
+    placerLesBoutonsDeZone();
+}
+
+void MainComponent::BoutonDeZone::paintButton(juce::Graphics& g, bool survol, bool enfonce) {
+    // DESSINÉ, PAS UN GLYPHE (D122) : D117 a vu ce qu'un caractère inhabituel peut
+    // devenir à l'écran. Quatre flèches vers les coins pour agrandir, vers le
+    // centre pour rendre.
+    auto r = getLocalBounds().toFloat().reduced(1.0f);
+    g.setColour(vsm::ui::Palette::panel.brighter(enfonce ? 0.35f : (survol ? 0.22f : 0.12f)));
+    g.fillRoundedRectangle(r, 4.0f);
+    g.setColour(vsm::ui::Palette::textSecondary.brighter(survol ? 0.4f : 0.0f));
+    const auto c = r.reduced(r.getWidth() * 0.22f);
+    const float l = c.getWidth() * 0.36f;   // longueur d'un bras de coin
+    juce::Path p;
+    auto coin = [&](juce::Point<float> sommet, float dx, float dy) {
+        // un « L » dont l'angle est au sommet donné ; dx, dy orientent ses bras
+        p.startNewSubPath(sommet.translated(dx * l, 0.0f));
+        p.lineTo(sommet);
+        p.lineTo(sommet.translated(0.0f, dy * l));
+    };
+    if (!agrandie) {
+        coin(c.getTopLeft(), 1.0f, 1.0f);
+        coin(c.getTopRight(), -1.0f, 1.0f);
+        coin(c.getBottomLeft(), 1.0f, -1.0f);
+        coin(c.getBottomRight(), -1.0f, -1.0f);
+    } else {
+        // les angles tournés vers le centre : « revenir »
+        const auto m = c.getCentre();
+        const float e = c.getWidth() * 0.12f;
+        coin({m.x - e, m.y - e}, -1.0f, -1.0f);
+        coin({m.x + e, m.y - e}, 1.0f, -1.0f);
+        coin({m.x - e, m.y + e}, -1.0f, 1.0f);
+        coin({m.x + e, m.y + e}, 1.0f, 1.0f);
+    }
+    g.strokePath(p, juce::PathStrokeType(1.8f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+}
+
+void MainComponent::placerLesBoutonsDeZone() {
+    // D122 : un bouton dans le coin haut droit de chaque zone VISIBLE de la
+    // fenêtre unique. En mode flottant, aucun : chaque fenêtre y a le sien.
+    juce::Component* zones[4] = { &trackList_, &synthRack_, &bottomTabs_,
+                                  centerShowsArrangement_ ? static_cast<juce::Component*>(&arrangement_)
+                                                          : static_cast<juce::Component*>(&pianoRollPanel_) };
+    const bool dansLaFenetreUnique = singleWindow_ && trackList_.getParentComponent() == this;
+    for (int i = 0; i < 4; ++i) {
+        auto& b = boutonsDeZone_[i];
+        const bool montre = dansLaFenetreUnique && zones[i]->isVisible()
+                            && (zoneAgrandie_ < 0 || zoneAgrandie_ == i);
+        b.setVisible(montre);
+        if (!montre) continue;
+        b.agrandie = zoneAgrandie_ == i;
+        b.setTooltip(b.agrandie ? tr(u8"Revenir à la disposition d'avant")
+                                : tr(u8"Agrandir ce volet : il prend toute la place (un clic pour revenir)"));
+        const auto z = zones[i]->getBounds();
+        if (i == 0)   // la liste des pistes : toujours au bout de la ligne du filtre
+            b.setBounds(trackList_.placeDuBoutonDeZone(kTailleBoutonDeZone) + z.getPosition());
+        else
+            b.setBounds(z.getRight() - kTailleBoutonDeZone - 4, z.getY() + 4, kTailleBoutonDeZone, kTailleBoutonDeZone);
+        b.toFront(false);
+        b.repaint();
+    }
+    // Là où le coin est occupé, la zone réserve la place du bouton.
+    trackList_.setReserveDroite(boutonsDeZone_[0].isVisible() ? kTailleBoutonDeZone + 6 : 0);
+    pianoRollPanel_.setReserveDroite(boutonsDeZone_[3].isVisible() && !centerShowsArrangement_
+                                         ? kTailleBoutonDeZone + 6 : 0);
+}
+
+void MainComponent::basculerZoneAgrandie(int zone) {
+    if (zone < 0 || zone > 3 || !singleWindow_) return;
+    if (zoneAgrandie_ == zone) { rendreLesZones(); return; }
+    if (zoneAgrandie_ >= 0) rendreLesZones();
+    avantAgrandir_ = { trackList_.isVisible(), synthRack_.isVisible(), bottomTabs_.isVisible() };
+    zoneAgrandie_ = zone;
+    trackList_.setVisible(zone == 0);
+    synthRack_.setVisible(zone == 1);
+    bottomTabs_.setVisible(zone == 2);
+    // le centre : caché si une autre zone prend la place, rendu tel qu'il était sinon
+    arrangement_.setVisible(zone == 3 && centerShowsArrangement_);
+    pianoRollPanel_.setVisible(zone == 3 && !centerShowsArrangement_);
+    resized();
+    menuItemsChanged();
+}
+
+void MainComponent::rendreLesZones() {
+    if (zoneAgrandie_ < 0) return;
+    zoneAgrandie_ = -1;
+    trackList_.setVisible(avantAgrandir_.pistes);
+    synthRack_.setVisible(avantAgrandir_.rack);
+    bottomTabs_.setVisible(avantAgrandir_.bas);
+    arrangement_.setVisible(centerShowsArrangement_);
+    pianoRollPanel_.setVisible(!centerShowsArrangement_);
+    resized();
+    menuItemsChanged();
 }
 
 bool MainComponent::runMenuEntryForCapture(const juce::String& libelle) {
@@ -1477,6 +1589,27 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     else if (nom == "historique")  menuItemSelected(kMenuViewHistory, 5);   // D11 : la fenêtre d'historique, pour la photographier
     else if (nom == "spectre")     menuItemSelected(kMenuViewSpectrum, 5);  // D15.3 : l'analyseur, pour le photographier
     else if (nom == "notes")       menuItemSelected(kMenuViewProjectNotes, 5);  // D18.6
+    // D122 : plein:<fenêtre> -- setFullScreen sur un des cinq panneaux flottants,
+    // ce que fait le bouton agrandir ; deux fois, il rend la fenêtre.
+    else if (nom.startsWith("plein:")) {
+        const juce::String cle = nom.fromFirstOccurrenceOf(":", false, false);
+        PanelWindow* fenetres[] = { &trackListWindow_, &pianoRollWindow_, &synthRackWindow_,
+                                    &mixerWindow_, &arrangementWindow_ };
+        bool trouvee = false;
+        for (auto* w : fenetres)
+            if (w->getName() == tr(cle) || w->getName() == cle) {
+                w->setFullScreen(!w->isFullScreen());
+                trouvee = true;
+            }
+        if (!trouvee) std::fputs("VSM_VUE : fenêtre flottante inconnue\n", stderr);
+    }
+    // D122 : agrandir:pistes|rack|bas|centre -- la MÊME fonction que le bouton de la zone.
+    else if (nom.startsWith("agrandir:")) {
+        const juce::String z = nom.fromFirstOccurrenceOf(":", false, false);
+        const int zone = z == "pistes" ? 0 : z == "rack" ? 1 : z == "bas" ? 2 : z == "centre" ? 3 : -1;
+        if (zone >= 0) basculerZoneAgrandie(zone);
+        else std::fputs("VSM_VUE : zone inconnue (pistes, rack, bas, centre)\n", stderr);
+    }
     else if (nom == "ordre")       menuItemSelected(kMenuViewPlayOrder, 5);     // D18.4
     else if (nom == "prises")      menuItemSelected(kMenuRecordCompTakes, 3);  // D18.2
     // D55.2 : poser un tronçon, composer, fermer, et surtout COMPTER ce que le
@@ -2034,6 +2167,7 @@ void MainComponent::dockPanels() {
 }
 
 void MainComponent::undockPanels() {
+    rendreLesZones();   // D122 : on quitte la fenêtre unique dans sa disposition normale
     trackListWindow_.setContentNonOwned(&trackList_, false);
     pianoRollWindow_.setContentNonOwned(&pianoRollPanel_, false);
     synthRackWindow_.setContentNonOwned(&synthRack_, false);
@@ -3745,10 +3879,12 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             }
             break;
         case kMenuViewTracks:
+            rendreLesZones();   // D122 : le menu agit sur la disposition normale
             if (singleWindow_) { trackList_.setVisible(!trackList_.isVisible()); resized(); }
             else togglePanel(trackListWindow_);
             break;
         case kMenuViewPianoRoll:
+            rendreLesZones();
             if (singleWindow_) {
                 // Le centre montre l'arrangement OU le piano roll ; demander
                 // l'un affiche l'un et range l'autre, comme en mode flottant
@@ -3760,14 +3896,17 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
             } else togglePanel(pianoRollWindow_);
             break;
         case kMenuViewSynthRack:
+            rendreLesZones();
             if (singleWindow_) { synthRack_.setVisible(!synthRack_.isVisible()); resized(); }
             else togglePanel(synthRackWindow_);
             break;
         case kMenuViewMixer:
+            rendreLesZones();
             if (singleWindow_) { bottomTabs_.setVisible(!bottomTabs_.isVisible()); resized(); }
             else togglePanel(mixerWindow_);
             break;
         case kMenuViewArrangement:
+            rendreLesZones();
             if (singleWindow_) {
                 centerShowsArrangement_ = true;
                 arrangement_.setVisible(true);
@@ -4138,9 +4277,12 @@ void MainComponent::openPluginEditorForSelectedTrack() {
     }
     class FenetreFacade final : public juce::DocumentWindow {
     public:
-        FenetreFacade(const juce::String& titre, std::function<void()> quandFermee)
+        FenetreFacade(const juce::String& titre, std::function<void()> quandFermee, bool agrandissable)
+            // D122 : agrandir seulement si elle se redimensionne -- une façade de
+            // taille fixe, agrandie, ne serait qu'un grand fond noir.
             : juce::DocumentWindow(titre, juce::Colours::black,
-                                    juce::DocumentWindow::closeButton),
+                                    juce::DocumentWindow::closeButton
+                                        | (agrandissable ? juce::DocumentWindow::maximiseButton : 0)),
               quandFermee_(std::move(quandFermee)) {}
         /// FERMER DÉTRUIT LE DESSIN, PAS LE SON. L'état vit dans le plugin ;
         /// la prochaine ouverture en refabrique la façade, qui le montre tel
@@ -4153,7 +4295,7 @@ void MainComponent::openPluginEditorForSelectedTrack() {
     auto fenetre = std::make_unique<FenetreFacade>(
         juce::String::fromUTF8(project_.tracks[piste].name.c_str()) + " -- "
             + juce::String::fromUTF8(machine->machineName()),
-        [this, piste] { pluginEditorWindows_.erase(piste); });
+        [this, piste] { pluginEditorWindows_.erase(piste); }, redimensionnable);
     fenetre->setUsingNativeTitleBar(true);
     fenetre->setResizable(redimensionnable, false);
     fenetre->setContentOwned(facade.release(), true);

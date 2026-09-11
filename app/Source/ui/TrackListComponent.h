@@ -288,6 +288,13 @@ public:
     bool choisirMachine(size_t index, const juce::String& pluginId);
     /// D110 : le bouton R de la ligne `index`, par son clic (geste de banc « armer »).
     void armer(size_t index);
+    /// D122 : la place, au bout de la ligne du filtre, du bouton « agrandir » de la zone.
+    void setReserveDroite(int px) { if (px != reserveDroite_) { reserveDroite_ = px; resized(); } }
+    /// D122 : où poser ce bouton, en coordonnées de la liste : au bout de la ligne
+    /// du filtre, centré sur sa hauteur.
+    juce::Rectangle<int> placeDuBoutonDeZone(int taille) const {
+        return { getWidth() - 8 - taille, kToolbarHeight + (kFilterHeight - taille) / 2, taille, taille };
+    }
     void reglerVolume(size_t index, float valeur);
     /// D36.7 : relit le muet et le solo de toutes les lignes.
     void refreshMuteSolo();
@@ -317,6 +324,7 @@ public:
 private:
     vsm::sequencer::Project* project_ = nullptr;
     juce::OwnedArray<TrackRowComponent> rows_;
+    int reserveDroite_ = 0;   ///< D122 : la place du bouton « agrandir » de la zone
     juce::Viewport viewport_;
     juce::Component rowContainer_;
     juce::TextButton addButton_ { "+ Ajouter une piste" };

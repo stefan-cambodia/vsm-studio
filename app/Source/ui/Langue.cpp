@@ -2815,6 +2815,11 @@ const Paire kAnglais[] = {
       "%1 note(s) softer than %2" },
     { "%1 note(s) plus courte(s) que %2 ticks",
       "%1 note(s) shorter than %2 ticks" },
+    // --- D122 : LE BOUTON QUI AGRANDIT UNE ZONE -------------------------------------
+    { "Revenir à la disposition d'avant",
+      "Back to the previous layout" },
+    { "Agrandir ce volet : il prend toute la place (un clic pour revenir)",
+      "Enlarge this pane: it takes all the room (one click to go back)" },
 };
 
 constexpr int kNombreDePaires = static_cast<int>(sizeof(kAnglais) / sizeof(kAnglais[0]));

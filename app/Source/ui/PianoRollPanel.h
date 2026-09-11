@@ -121,6 +121,9 @@ public:
     std::function<void(size_t)> onMarkerRenameRequested;
     std::function<void(size_t)> onMarkerRemoved;
 
+    /// D122 : la place, à droite de la barre d'outils, du bouton « agrandir » de la zone.
+    void setReserveDroite(int px) { if (px != reserveDroite_) { reserveDroite_ = px; resized(); } }
+
     void resized() override {
         auto area = getLocalBounds();
         // D61 : la barre DEMANDE sa hauteur pour la largeur qu'elle a, et le
@@ -128,16 +131,19 @@ public:
         // plus : l'éditeur est ce qu'on est venu voir. Le plancher de 92 px
         // est celui de D29.4, trois rangées, pour que rien ne change là où
         // tout tenait déjà.
-        int largeurBarre = area.getWidth();
+        // D122 : la barre laisse la place du bouton « agrandir » de la zone.
+        int largeurBarre = std::max(60, area.getWidth() - reserveDroite_);
         int voulue = toolbar_.hauteurUtile(largeurBarre);
         const int plafond = std::max(92, area.getHeight() * 2 / 5);
         if (voulue > plafond) {
             // L'ascenseur mange de la largeur, ce qui peut ajouter une rangée :
             // on remesure avec la largeur qui restera VRAIMENT.
-            largeurBarre = std::max(60, area.getWidth() - vueBarre_.getScrollBarThickness());
+            largeurBarre = std::max(60, area.getWidth() - reserveDroite_ - vueBarre_.getScrollBarThickness());
             voulue = toolbar_.hauteurUtile(largeurBarre);
         }
-        vueBarre_.setBounds(area.removeFromTop(std::min(voulue, plafond)));
+        // D122 : le CADRE aussi laisse la place du bouton, et son ascenseur avec lui
+        // -- la barre seule la laissait, et le bouton couvrait l'ascenseur.
+        vueBarre_.setBounds(area.removeFromTop(std::min(voulue, plafond)).withTrimmedRight(reserveDroite_));
         toolbar_.setSize(largeurBarre, voulue);
         statusLabel_.setBounds(area.removeFromBottom(20).reduced(8, 0));
         // D32.3 : LE CLAVIER SOUS LA LANE DE VÉLOCITÉ, tout en bas. C'est là
@@ -209,6 +215,7 @@ private:
     PianoRollComponent& pianoRoll_;
     VelocityLaneComponent& velocityLane_;
     PianoRollToolbar toolbar_;
+    int reserveDroite_ = 0;   ///< D122 : la place du bouton « agrandir » de la zone
     juce::Viewport vueBarre_;   // D61 : la barre repliée défile plutôt que de disparaître
     PianoRollRulerComponent ruler_;
     juce::Label statusLabel_;

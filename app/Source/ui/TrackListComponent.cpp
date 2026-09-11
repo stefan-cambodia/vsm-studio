@@ -831,7 +831,12 @@ void TrackListComponent::resized() {
 
     // D19.2 : SA PROPRE LIGNE plutôt que serré entre deux boutons. Entre « ça
     // tient dans la case » et « ça se lit », c'est la lisibilité qui prime.
-    filterBox_.setBounds(area.removeFromTop(kFilterHeight).reduced(8, 3));
+    // D122 : LE BOUTON « AGRANDIR » DE LA ZONE PREND SA PLACE ICI, au bout du
+    // filtre -- pris sur la barre du haut, il écrasait le bouton d'ajout jusqu'à
+    // « + Aju… » (premier essai). C'est le filtre qui cède.
+    auto ligneFiltre = area.removeFromTop(kFilterHeight).reduced(8, 3);
+    ligneFiltre.removeFromRight(reserveDroite_);
+    filterBox_.setBounds(ligneFiltre);
 
     viewport_.setBounds(area);
     // D17.4 : les pistes masquées ne comptent pas dans la hauteur totale, sans

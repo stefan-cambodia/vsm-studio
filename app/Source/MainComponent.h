@@ -1305,6 +1305,22 @@ private:
     void dockPanels();
     void undockPanels();
     void layoutDockedPanels(juce::Rectangle<int> area);
+    /// D122 : UNE ZONE DE LA FENÊTRE UNIQUE PREND TOUTE LA PLACE, ET LA REND, d'un
+    /// clic sur le bouton de son coin. 0 pistes, 1 rack, 2 onglets du bas,
+    /// 3 centre ; -1 : aucune. Les visibilités d'avant sont gardées pour le retour.
+    void basculerZoneAgrandie(int zone);
+    void rendreLesZones();
+    void placerLesBoutonsDeZone();
+    class BoutonDeZone final : public juce::Button {
+    public:
+        BoutonDeZone() : juce::Button("agrandir") { setWantsKeyboardFocus(false); }
+        bool agrandie = false;   ///< le dessin : vers les coins, ou vers le centre
+        void paintButton(juce::Graphics& g, bool survol, bool enfonce) override;
+    };
+    BoutonDeZone boutonsDeZone_[4];
+    int zoneAgrandie_ = -1;
+    struct VisibilitesAvantAgrandir { bool pistes = true, rack = true, bas = true; } avantAgrandir_;
+    static constexpr int kTailleBoutonDeZone = 24;
     bool singleWindow_ = true;
     /// D58 : vrai quand `VSM_TAILLE` a fixé la taille de la fenêtre socle ;
     /// la disposition en fenêtre unique ne la recouvre alors plus.

@@ -15518,3 +15518,38 @@ entier ; les zones agrandies et le retour comme au premier essai ; après
 `340 100 560 380` (les limites d'avant), une fois agrandie comme une fois
 agrandie puis rendue.
 
+**LE SECOND ESSAI (binaire du 11/09 19:28:52, bancs à 19:29) — TOUT TENU.**
+
+1. **Les zones** : le retour identique au pixel à la fenêtre normale, pour
+   les pistes comme pour le centre (**0 pixel** chacun) ; chaque zone
+   agrandie seule sous la barre de transport, comme au premier essai.
+2. **Rien ne se chevauche** : « + Ajouter une piste » a retrouvé la largeur
+   du témoin, le bouton de la liste est au bout de la ligne du filtre — dans
+   la disposition normale comme la liste agrandie ; l'ascenseur de la barre
+   du piano roll est entier, à gauche du bouton. La règle de l'arrangement
+   agrandi garde ses 25 px recouverts, dit plus haut.
+3. **Les fenêtres flottantes** : les cinq panneaux annoncent agrandir
+   (`0x3c`) ; après `plein:Piano Roll`, le gestionnaire de fenêtres la
+   déclare agrandie (`_NET_WM_STATE_MAXIMIZED_VERT, _HORZ`) et les
+   préférences du banc portent toujours `fenetre.Piano Roll` =
+   `340 100 560 380` ; après agrandie puis rendue, l'état est redevenu
+   normal et les limites retenues n'ont pas bougé.
+
+**Ce que le banc ne peut pas faire, dit** : cliquer le bouton du
+gestionnaire de fenêtres lui-même. Il mesure que la fenêtre l'annonce, et
+que `setFullScreen` — que ce bouton déclenche sous Linux par
+`XWindowSystem::setMaximised` — agrandit et rend sans rien retenir de faux.
+Un agrandissement demandé par le gestionnaire seul ne passe pas par
+`isFullScreen()` ; la garde géométrique (une fenêtre qui couvre presque tout
+l'écran ne se retient pas) le couvre, et elle n'est vérifiée que par le code.
+
+**Vu en passant, et laissé** : dans la disposition par défaut (180 px de
+dock à gauche), « + Ajouter une piste » s'écrit sur deux lignes minuscules
+— au témoin comme après ; le dock se tire à la souris, et la largeur
+retenue est celle de l'utilisateur.
+
+Infobulles du bouton en français et en anglais (2 paires ; inventaire strict
+inchangé, 7 ÉCRAN, 0 SANS_PAIRE). Suites C++ vertes à `-j 2` (330, 1 291,
+297, 25, 11) ; `build/tools/vsm-render` non touché ; préférences de
+l'utilisateur intactes, 22 lancements.
+
