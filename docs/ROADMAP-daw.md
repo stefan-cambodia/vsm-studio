@@ -16969,3 +16969,29 @@ l'épreuve ; `vsm-render` intact ; préférences identiques par `cmp`.
 D141 — une annulation qui ramènerait le MASTER au dernier enregistrement —
 devient mesurable. C'est la phase suivante.
 
+### Phase D143 — le soupçon de D141, mesuré : une annulation ramène-t-elle le MASTER au dernier enregistrement ? (12/09/2026)
+
+**CE QUI A CHANGÉ DEPUIS D141.** Le banc de D141 n'avait pas pu régler le
+moteur : le bouton affichait déjà la valeur d'usine, et le double-clic ne
+notifiait rien. Depuis D142, le bouton dit ce que le moteur applique, et le
+double-clic ramène le moteur à 0. La prémisse tient ; la question se pose
+enfin.
+
+**LE BANC.** Le binaire de D142 (04:43:43), sans compilation. Le projet de
+D91 avec « EQ Low Gain » enregistré à +6 dB, en anglais : (a) double-clic
+sur le LOW, puis `volume:0.5` sur la piste ; (b) la même chose, puis Ctrl+Z ;
+(c) le contrôle : `volume:0.5` puis Ctrl+Z, sans toucher au MASTER.
+
+**ATTENDU, écrit avant la mesure.** (a) moteur 0.00, piste -6.0 dB. (b)
+piste -0.9 dB (le geste de volume annulé) et **moteur 6.00** : l'annulation
+d'un geste de PISTE a ramené le MASTER au dernier enregistrement — le
+réglage du musicien perdu, sans un mot. (c) moteur 6.00, piste -0.9 dB. Si
+(b) rend 0.00, le soupçon tombe, et c'est écrit.
+
+**LE REMÈDE, s'il est confirmé, décidé ici pour ne pas être taillé sur la
+mesure** : au début de chaque pas d'annulation (`beginProjectEdit`), le
+MASTER du moteur est recopié dans le modèle, pour que la photo du pas porte
+le MASTER de CET instant ; et un geste du MASTER ouvre son propre pas et
+écrit le modèle, pour s'annuler comme un geste de tranche. Dans
+l'application seule : le modèle a son champ depuis longtemps.
+
