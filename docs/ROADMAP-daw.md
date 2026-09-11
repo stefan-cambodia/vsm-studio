@@ -15864,3 +15864,16 @@ l'après. Deux cas, en français et en anglais : « disque » par
    identiques (`cmp`).
 4. **Suites vertes.**
 
+**AJOUTÉ AVANT LE BANC, trouvé en écrivant le banc.** L'entrée « Indiquer le
+dossier de la chaîne... » n'existe que quand la chaîne est indisponible ; le
+menu Fichier montre alors, au-dessus d'elle, la raison et le remède en deux
+lignes « ↳ », elles aussi écrites par `fromUTF8`, sans `trPhrase`
+(`MainComponent.cpp:2637-2642`). Rien de ce qu'on a lu ne dit qu'une passe
+traduit les menus après coup. **Attendu 5** : au témoin, en anglais, ces deux
+lignes sont françaises (relevées par `VSM_MENU_LISTE` dans le cas
+« chaîne ») ; si c'est le cas, le second pas les passe par `trPhrase`, et
+après elles sont anglaises — « ↳ the analysis chain folder set in the
+preferences does not contain reconstruire.py (…) », « ↳ fix the path… ».
+Si elles sont déjà anglaises au témoin, l'attendu tombe et le code n'y
+touche pas.
+

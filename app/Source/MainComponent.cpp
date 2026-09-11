@@ -5766,30 +5766,34 @@ void MainComponent::refreshReconstructionChain() {
 }
 
 void MainComponent::chooseChainFolder() {
+    // D126 : CE QU'ON FAIT DU DOSSIER, DANS UNE FONCTION -- le sélecteur la
+    // rappelle, et le banc aussi (`VSM_FICHIER`, par `prendreLeFichierDeBanc`,
+    // D102) : un sélecteur ne se pilote pas sans souris ; ce qu'il rend, si.
+    auto suite = [this](const juce::File& dossier) {
+        if (dossier == juce::File()) return;
+        vsm::app::ui::UiScale::properties().setValue(
+            "dossierChaineAnalyse", dossier.getFullPathName());
+        vsm::app::ui::UiScale::properties().saveIfNeeded();
+        refreshReconstructionChain();
+        refreshPreferences();
+        // ON DIT TOUT DE SUITE SI ÇA A MARCHÉ. Enregistrer
+        // un chemin faux sans rien dire ferait chercher le
+        // problème ailleurs.
+        if (!reconstructionChain_.available)
+            juce::AlertWindow::showMessageBoxAsync(
+                juce::AlertWindow::InfoIcon,
+                juce::String::fromUTF8(u8"Chaîne d'analyse"),
+                juce::String::fromUTF8(reconstructionChain_.reason.c_str())
+                    + "\n\n"
+                    + juce::String::fromUTF8(reconstructionChain_.remedy.c_str()));
+    };
+    if (prendreLeFichierDeBanc(suite)) return;   // D126 : le banc (VSM_FICHIER)
     auto chooser = std::make_shared<juce::FileChooser>(
         tr(u8"Où se trouve le dossier analyse/ de la chaîne ?"),
         juce::File(), "");
     chooser->launchAsync(juce::FileBrowserComponent::openMode
                               | juce::FileBrowserComponent::canSelectDirectories,
-                          [this, chooser](const juce::FileChooser& fc) {
-                              const juce::File dossier = fc.getResult();
-                              if (dossier == juce::File()) return;
-                              vsm::app::ui::UiScale::properties().setValue(
-                                  "dossierChaineAnalyse", dossier.getFullPathName());
-                              vsm::app::ui::UiScale::properties().saveIfNeeded();
-                              refreshReconstructionChain();
-                              refreshPreferences();
-                              // ON DIT TOUT DE SUITE SI ÇA A MARCHÉ. Enregistrer
-                              // un chemin faux sans rien dire ferait chercher le
-                              // problème ailleurs.
-                              if (!reconstructionChain_.available)
-                                  juce::AlertWindow::showMessageBoxAsync(
-                                      juce::AlertWindow::InfoIcon,
-                                      juce::String::fromUTF8(u8"Chaîne d'analyse"),
-                                      juce::String::fromUTF8(reconstructionChain_.reason.c_str())
-                                          + "\n\n"
-                                          + juce::String::fromUTF8(reconstructionChain_.remedy.c_str()));
-                          });
+                          [chooser, suite](const juce::FileChooser& fc) { suite(fc.getResult()); });
 }
 
 void MainComponent::startReconstruction(const juce::File& audioFile) {
