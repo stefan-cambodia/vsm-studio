@@ -15208,3 +15208,38 @@ la boîte de JUCE à 150 %, pas de quelques phrases, et le remède n'est plus
 une retouche de texte ; moins de 2 dirait que D117 a traité l'essentiel.
 **Cette phase mesure et nomme ; elle ne corrige rien.**
 
+**LE RÉSULTAT (11/09/2026, banc à 18:19) — TENU : 3 boîtes, 4 photos sur 20.**
+Binaire de D117 (18:09:36 ; D118 n'a pas touché au code). Vingt photos,
+toutes au premier essai. **La boîte « Programme MIDI » n'est pas venue** :
+sur ce projet, l'entrée de menu est grisée (« Programme MIDI (aucun)... »,
+« MIDI program (none)... ») — la piste choisie n'a pas de programme ; nommée,
+non comptée.
+
+| boîte | français | anglais |
+|---|---|---|
+| Aller à la mesure | **« « » en fin de ligne, « 17.3 » » à la suivante** — (b) | une ligne, propre |
+| Que faire de ce fichier ? | **« minutes. » seul sur sa ligne** — (a) | propre |
+| Renommer les pistes en série | **« « Batterie 2 / » »** — (b) (le reste de D117) | **« “Drums / 2” »** — (b) |
+| les sept autres (preset de piste, report en audio, poser et renommer un repère, renommer un clip, mesures d'un clip, preset d'effet) | propres | propres |
+
+Le chemin de fichier coupé en trois dans « Enregistrer la piste comme
+preset » est une DONNÉE longue, pas une coupure au sens défini : non compté,
+et dit.
+
+**CE QUE L'AUDIT DÉSIGNE.** Trois des quatre mauvaises coupures tombent au
+même endroit : **l'espace qu'un guillemet français enferme** — « « 17.3 » »,
+« « Batterie 2 » » ; la typographie française met une espace après « et
+avant », et `AlertWindow` y voit une occasion de couper. Le français est
+touché trois fois sur quatre : il est plus long, et ses guillemets portent
+des espaces que l'anglais n'a pas.
+
+**L'HYPOTHÈSE POUR LA PHASE SUIVANTE, écrite ici pour ne pas être inventée
+après** : l'espace FINE insécable (U+202F), qui est la bonne espace de la
+typographie française à l'intérieur des guillemets, empêche la coupure
+comme l'insécable de D117, **sans s'afficher plus large qu'une espace
+ordinaire** — ce qui avait fait abandonner l'insécable (U+00A0), deux fois
+plus large sur la photo. À mesurer sur les trois boîtes françaises, avant
+de l'étendre à quoi que ce soit ; si elle s'affiche large elle aussi, ou en
+carré de remplacement, l'hypothèse tombe et la boîte à largeur fixe redevient
+la seule piste.
+
