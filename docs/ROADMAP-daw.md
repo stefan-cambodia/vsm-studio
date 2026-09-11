@@ -16484,3 +16484,44 @@ le banc a trouvé.** Témoin : binaire du premier pas (00:19:49) ; après :
 déclare aucun bus), et la bulle dans une fenêtre flottante (la bulle suit le
 contenu de la fenêtre du curseur ; aucune photo flottante dans ce banc).
 
+### Phase D136 — A19 : la ligne de piste au dock par défaut, où six réglages n'avaient aucune largeur (12/09/2026)
+
+**CE QUE LA MISE EN PAGE FAIT, lu dans le code.** Chaque rangée d'une ligne de
+piste pose ses éléments de gauche à droite, à largeur FIXE : nom 140 puis
+canal 50 ; instrument 170 puis muet, solo, armement (28 chacun) ; volume 170
+puis panoramique 90 et sortie 130. Le dock des pistes a ~150 px utiles par
+défaut : le premier élément de chaque rangée prend tout, et **le canal, le
+muet, le solo, l'armement, le panoramique et la sortie ont une largeur
+nulle** — les photos ne montrent, par ligne, que le nom, l'instrument et le
+volume. Le mixeur n'a ni armement ni sortie : au dock par défaut, ces deux
+fonctions ne s'atteignent nulle part à la souris. C'est la famille de D123
+(« + Ajouter une piste » écrasé) : une disposition qui suppose une largeur
+que le dock n'a pas.
+
+**LE REMÈDE, choisi avant le témoin.** Deux dispositions. **Large** (au moins
+436 px de ligne) : celle d'aujourd'hui, inchangée — qui a élargi son dock ne
+voit rien bouger. **Étroite** : le canal ancré à droite de la rangée du nom,
+qui prend le reste ; muet, solo et armement ancrés à droite de la rangée de
+l'instrument, qui prend le reste ; le volume seul sur sa rangée ; une
+QUATRIÈME rangée pour le panoramique et la sortie. La ligne passe de 88 à 114
+px ; la liste défile, comme elle le fait déjà. Raison : ne rien cacher — un
+réglage qui disparaît faute de place est un réglage qu'on cherche ; la
+hauteur, elle, défile.
+
+**LE BANC.** Projet de D91, français et anglais : le dock par défaut (photo de
+la fenêtre, et le geste `appuyer:pistes.pan`, qui depuis D135 refuse un
+curseur sans surface) ; la zone des pistes agrandie (`VSM_VUE=agrandir:pistes`,
+D122 — la disposition large). Témoin : le binaire de D135 (00:34:07).
+
+**ATTENDU, écrit avant le témoin.**
+
+1. **Au témoin**, au dock par défaut : `appuyer:pistes.pan` répond « aucun
+   curseur visible de ce nom » ; la photo montre, par ligne, le nom,
+   l'instrument et le volume, rien d'autre.
+2. **Après**, au dock par défaut : « appuyé » ; la photo montre les six
+   réglages, chacun avec une largeur (canal, M, S, R, panoramique, sortie).
+3. **La disposition large ne bouge pas** : zone des pistes agrandie, la
+   liste des pistes identique au témoin sur la photo (au pixel, hors la
+   charge CPU de la barre de transport).
+4. Suites vertes, préférences intactes.
+
