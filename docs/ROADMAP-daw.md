@@ -15013,3 +15013,27 @@ terminal à côté.
    la mesure, sans code ; un segment français en anglais, et le lot est le
    modèle qui manque — écrit dans cette même phase.
 
+**LE RÉSULTAT (11/09/2026, banc à 18:01) — LES TROIS ATTENDUS TENUS, AUCUN CODE.**
+Binaire de D115 (17:54:28), `HOME` de brouillon, deux lancements.
+
+1. **Une boîte par langue**, qui nomme les deux inconnus et compte les deux
+   bornés : « Preset de piste appliqué, avec des réserves : 22 paramètre(s)
+   appliqué(s), 2 borné(s), 2 non pris en charge : filter.1.fantome,
+   oscillator.9.level ».
+2. **L'anglais, entièrement traduit** : « Track preset applied, with
+   reservations : 22 parameter(s) applied, 2 clamped, 2 unsupported:
+   filter.1.fantome, oscillator.9.level ». La ligne `VSM_PRESET` du
+   terminal reste française dans les deux langues — c'est une donnée, comme
+   `VSM_OUVERTURE`, et c'est voulu.
+3. **Le reste est CLOS par la mesure.** Il l'était dans le code depuis D89-D90
+   ; l'INDEX le portait encore parce que personne ne l'avait passé au banc.
+   Retiré de la liste, avec ce banc pour preuve.
+
+Au passage, et c'est la même leçon que D101 dans l'autre sens : un reste
+qu'on a nommé une fois se recopie de document en document tant qu'aucune
+mesure ne le relit. Les « infobulles françaises écrites sans leurs accents »
+de la même liste n'ont plus de littéral nulle part (les onze infobulles hors
+`tr()` sont toutes calculées, et aucune règle d'inventaire, stricte ou large,
+n'y trouve de français) : je les laisse à l'INDEX avec cette réserve, faute
+d'un banc qui les lise toutes à l'écran.
+
