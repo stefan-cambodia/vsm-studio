@@ -7763,11 +7763,11 @@ void MainComponent::toggleFreezeSelectedTrack() {
     // GELER EXIGE UN DOSSIER DE PROJET, comme l'enregistrement audio et pour la
     // même raison : le format range ses fichiers par chemin relatif.
     if (currentProjectFolder_ == juce::File()) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Projet jamais enregistré",
-            juce::String(u8"Un gel est un FICHIER, et le format range les fichiers d'un projet "
-                          u8"par chemin relatif à son dossier. Enregistrez d'abord le projet "
-                          u8"(Ctrl+S) : le gel ira dans son sous-dossier gel/."));
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Projet jamais enregistré"),
+            tr(u8"Un gel est un FICHIER, et le format range les fichiers d'un projet "
+               u8"par chemin relatif à son dossier. Enregistrez d'abord le projet "
+               u8"(Ctrl+S) : le gel ira dans son sous-dossier gel/."));
         return;
     }
 
@@ -7791,8 +7791,8 @@ void MainComponent::toggleFreezeSelectedTrack() {
     vsm::audio::engine::RenderedAudio gel;
     const auto rendu = vsm::interchange::renderTrackForFreeze(bundle, index, gel, options);
     if (!rendu.success) {
-        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
-                                                 u8"Gel impossible", rendu.error);
+        montrerBoite(juce::AlertWindow::WarningIcon,
+                                                 tr(u8"Gel impossible"), rendu.error);
         return;
     }
 
@@ -7805,8 +7805,8 @@ void MainComponent::toggleFreezeSelectedTrack() {
                                                   options.format,
                                                   fichier.getFullPathName().toStdString());
     } catch (const std::exception& e) {
-        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
-                                                 u8"Gel impossible", e.what());
+        montrerBoite(juce::AlertWindow::WarningIcon,
+                                                 tr(u8"Gel impossible"), e.what());
         return;
     }
 
@@ -7825,11 +7825,11 @@ void MainComponent::bounceSelectedTrack() {
     if (project_.tracks[index].kind != Track::Kind::Midi) return;
 
     if (currentProjectFolder_ == juce::File()) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Projet jamais enregistré",
-            juce::String(u8"Un report est un FICHIER, et le format range les fichiers d'un "
-                          u8"projet par chemin relatif à son dossier. Enregistrez d'abord le "
-                          u8"projet (Ctrl+S)."));
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Projet jamais enregistré"),
+            tr(u8"Un report est un FICHIER, et le format range les fichiers d'un "
+               u8"projet par chemin relatif à son dossier. Enregistrez d'abord le "
+               u8"projet (Ctrl+S)."));
         return;
     }
 
@@ -7916,12 +7916,12 @@ void MainComponent::explodeSelectedTrackByPitch() {
     const size_t creees = vsm::sequencer::explodeTrackByPitch(project_, piste, nommer);
     rebuildFromProject(false);
 
-    juce::AlertWindow::showMessageBoxAsync(
-        juce::AlertWindow::InfoIcon, u8"Éclater par hauteur",
+    montrerBoite(
+        juce::AlertWindow::InfoIcon, tr(u8"Éclater par hauteur"),
         creees > 0
-            ? juce::String(creees) + juce::String(u8" piste(s) créée(s) — la hauteur la plus "
-                                                   u8"grave reste sur la piste d'origine.")
-            : juce::String(u8"Rien à faire : cette piste n'a qu'une seule hauteur."));
+            ? tr(u8"%1 piste(s) créée(s) — la hauteur la plus grave reste sur la piste d'origine.")
+                  .replace("%1", juce::String(creees))
+            : tr(u8"Rien à faire : cette piste n'a qu'une seule hauteur."));
 }
 
 void MainComponent::publishInstrumentOutputsOfSelectedTrack() {
@@ -7945,23 +7945,23 @@ void MainComponent::publishInstrumentOutputsOfSelectedTrack() {
     // PANNE MUETTE INTERDITE : zéro piste créée est un résultat, pas un
     // silence. Il arrive quand tout est déjà publié, et le dire évite de
     // relancer la commande en croyant qu'elle n'a pas marché.
-    juce::AlertWindow::showMessageBoxAsync(
-        juce::AlertWindow::InfoIcon, u8"Publier les sorties",
+    montrerBoite(
+        juce::AlertWindow::InfoIcon, tr(u8"Publier les sorties"),
         creees > 0
-            ? juce::String(creees) + juce::String(u8" piste(s) créée(s) — la sortie n° 0 reste "
-                                                   u8"sur la piste qui porte la machine.")
-            : juce::String(u8"Rien à faire : toutes les sorties de cette machine sont déjà "
-                            u8"publiées sur des pistes."));
+            ? tr(u8"%1 piste(s) créée(s) — la sortie n° 0 reste sur la piste qui porte la machine.")
+                  .replace("%1", juce::String(creees))
+            : tr(u8"Rien à faire : toutes les sorties de cette machine sont déjà "
+                 u8"publiées sur des pistes."));
 }
 
 void MainComponent::bounceSelectionToNewTracks() {
     if (!arrangement_.hasSelection()) return;
     if (currentProjectFolder_ == juce::File()) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Projet jamais enregistré",
-            juce::String(u8"Un report est un FICHIER, et le format range les fichiers d'un "
-                          u8"projet par chemin relatif à son dossier. Enregistrez d'abord le "
-                          u8"projet (Ctrl+S)."));
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Projet jamais enregistré"),
+            tr(u8"Un report est un FICHIER, et le format range les fichiers d'un "
+               u8"projet par chemin relatif à son dossier. Enregistrez d'abord le "
+               u8"projet (Ctrl+S)."));
         return;
     }
     vsm::midi::Tick debutTick = 0, finTick = 0;
@@ -8067,17 +8067,16 @@ void MainComponent::bounceSelectionToNewTracks() {
     // PANNE MUETTE INTERDITE : ce qui n'a pas pu être reporté est nommé, piste
     // par piste, plutôt que de laisser compter les pistes neuves.
     if (!echecs.isEmpty())
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::WarningIcon, u8"Reporter la sélection",
-            juce::String(u8"Ces pistes n'ont pas pu être reportées :\n")
-                + echecs.joinIntoString("\n"));
+        montrerBoite(
+            juce::AlertWindow::WarningIcon, tr(u8"Reporter la sélection"),
+            tr(u8"Ces pistes n'ont pas pu être reportées :") + "\n" + echecs.joinIntoString("\n"));
     else
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Reporter la sélection",
-            juce::String(static_cast<int>(neuves.size()))
-                + juce::String(neuves.size() > 1 ? u8" pistes de report posées" : u8" piste de report posée")
-                + juce::String(u8", à la place de la sélection. Les pistes d'origine n'ont pas été "
-                               u8"touchées — désactivez-les si vous voulez entendre le report seul."));
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Reporter la sélection"),
+            tr(neuves.size() > 1 ? u8"%1 pistes de report posées" : u8"%1 piste de report posée")
+                    .replace("%1", juce::String(static_cast<int>(neuves.size())))
+                + tr(u8", à la place de la sélection. Les pistes d'origine n'ont pas été "
+                     u8"touchées — désactivez-les si vous voulez entendre le report seul."));
 }
 
 void MainComponent::performBounce(size_t index) {

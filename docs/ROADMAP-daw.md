@@ -13039,3 +13039,95 @@ La table passe à **1 056** paires (+37) et **84** modèles de phrases (+9).
 Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels — verts ;
 `vsm-ui-preview`, qui compile `Langue.cpp`, construit. Aucun code Python n'a
 changé.
+
+### Phase D96 — A9 : les opérations de piste (11/09/2026)
+
+**L'ORDRE, TRANCHÉ ICI.** D95 laissait l'ordre des thèmes ouvert, et
+l'enregistrement venait en tête. Il passe après, et c'est la mesure qui en
+décide : le lancement d'une prise n'est pas dans la barre de menus,
+« Récupérer ce qui vient d'être joué » y est grisé tant que rien n'a été
+joué, et la mesure de latence ENVOIE un balayage dans les haut-parleurs —
+deux ou trois de ses quinze boîtes s'ouvriraient au banc, et l'une ferait du
+bruit chez l'utilisateur, qui travaille à côté. Les opérations de piste se
+commandent par le menu Piste et répondent par des boîtes déterministes :
+elles passent d'abord. L'enregistrement aura son banc à lui.
+
+**LE LOT, ET CE QU'IL N'EST PAS.** L'inventaire en compte 35 ; la lecture du
+code en retranche deux espèces. **Cinq opérations n'écrivent QUE sur la
+sortie d'erreur** — désactiver une piste, copier et coller une chaîne,
+réduire l'automation, reporter les effets MIDI : leur message se construit
+dans une variable, passée à `fputs` une instruction plus loin, et
+l'inventaire, qui ne lit que l'instruction où la chaîne est écrite, les
+range à l'ÉCRAN. Elles restent françaises, comme tout le terminal. Et
+**quatre chaînes sont des données** : les chemins `gel/piste-`,
+`audio/report-piste-`, `audio/report-selection-piste-`, et le nom par défaut
+« Piste N » d'une piste ajoutée, écrit dans le projet. Restent les boîtes :
+geler, reporter la piste, éclater par hauteur, publier les sorties,
+reporter la sélection — **neuf appels**, qui passent par `montrerBoite()`
+(D95).
+
+**UNE COMMANDE, DEUX NOMS ANGLAIS.** Le menu dit « Split by pitch
+(4 tracks) » ; la boîte qui répond, et le nom du geste dans l'historique,
+disaient « Explode by pitch ». **La décision : le mot du MENU, « Split by
+pitch », partout** — c'est celui qu'on vient de cliquer, et une boîte qui
+répond sous un autre nom fait douter qu'elle réponde à ce geste-là.
+
+**LE BANC.** Trois gestes, par la barre de menus : éclater par hauteur, sur
+une copie de `demo-project` ; geler, et reporter, une piste MIDI ajoutée à un
+projet NEUF — jamais enregistré, c'est ce qui ouvre leur boîte sans rendre
+un son. Français puis anglais, libellés pris dans la langue affichée ;
+témoin (D96 sans ses traductions, `montrerBoite()` en place), puis D96. HOME
+isolé, préférences de l'utilisateur vérifiées par `cmp`.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (11/09/2026).**
+>
+> 1. **L'inventaire** : dans les cinq fonctions à boîtes, ÉCRAN et SANS_PAIRE
+>    à **zéro** ; les messages du terminal et les chemins nommés comme tels.
+> 2. **Les trois boîtes du banc s'ouvrent avec le témoin et se lisent**
+>    (`VSM_BOITE`) dans les deux langues.
+> 3. **En anglais, plus un mot français dans ces trois boîtes**, hors les
+>    données ; « Split by pitch » là où « Explode by pitch » était.
+> 4. **Le français ne change pas** : les trois boîtes et la liste de la
+>    fenêtre principale sont identiques à celles du témoin.
+
+**LE RÉSULTAT, ATTENDU PAR ATTENDU (11/09/2026).** Banc : trois gestes par la
+barre de menus, français puis anglais ; témoin (D96 sans ses traductions,
+`montrerBoite()` en place) puis D96 ; HOME isolé, préférences de
+l'utilisateur intactes (`cmp`).
+
+1. **L'inventaire — tenu, et un chiffre qu'il faut corriger.** ÉCRAN
+   **226 → 206**. Dans les cinq fonctions à boîtes : **0** SANS_PAIRE et un
+   seul ÉCRAN, `audio/report-selection-piste-`, un chemin. Le thème garde 18
+   chaînes, nommées : 4 données (le nom « Piste N », trois chemins) et 14
+   messages du terminal. **Mais −20 n'est pas 20 chaînes traduites : c'en est
+   17.** « Projet jamais enregistré », devenu une clé de la table, est compté
+   TABLE aux TROIS endroits hors du lot qui l'écrivent sans `tr()` — poser un
+   échantillon, lancer une prise, importer un fichier audio (celui-là en
+   `é`) : ils restent français en anglais. La règle TABLE de
+   l'inventaire (« une clé de la table est traduite ailleurs, par une
+   variable ») est trop large pour un titre de boîte ; ces trois-là sont
+   nommés ici et viendront avec leur phase.
+2. **Les boîtes se lisent — tenu.** Chaque geste demande sa boîte (6 sur 6) :
+   « 3 piste(s) créée(s) — la hauteur la plus grave reste sur la piste
+   d'origine. », « Projet jamais enregistré : Un gel est un FICHIER… »,
+   « Projet jamais enregistré : Un report est un FICHIER… ».
+3. **L'anglais — tenu.** Aucun mot français : « Split by pitch : 3 track(s)
+   created — the lowest pitch stays on the original track. », « Project never
+   saved : A freeze is a FILE… », « … A bounce is a FILE… ». **« Split by
+   pitch » partout où « Explode by pitch » était** — le titre de la boîte et
+   le nom du geste dans l'historique disent désormais le mot du menu.
+4. **Le français — tenu.** Les trois boîtes identiques au témoin, mot pour
+   mot, et la liste de la fenêtre principale aussi : 253 textes (éclater) et
+   160 (geler, reporter), identiques.
+
+**Les boîtes que le banc n'ouvre pas** : publier les sorties (grisé — la
+machine du projet n'en a qu'une), reporter la sélection (grisé sans
+sélection), l'échec d'un gel (un rendu qui échoue), le compte rendu d'un
+report réussi (il rend du son) ; leur texte se lit dans le code et la table.
+Écran déverrouillé : les six boîtes sont aussi photographiées.
+
+La table passe à **1 070** paires (+14) ; « Éclater par hauteur » y change
+d'anglais.
+Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels — verts ;
+`vsm-ui-preview` construit. La boîte anglaise « Split by pitch » regardée :
+rien de coupé. Aucun code Python n'a changé.
