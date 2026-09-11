@@ -835,7 +835,7 @@ elles — un avertissement vrai, mais qui doit rester rare pour rester lu :
   la fin des campagnes, et le moteur se recompile alors pour les courses
   suivantes, provenance à l'appui.
 
-## 12. Épreuve *Children* — une reconstruction depuis zéro, attendus écrits AVANT (11/09/2026, 15:20)
+## 12. Épreuve *Children* — une reconstruction depuis zéro, attendus écrits AVANT (11/09/2026, commit `baf905f` à 15:07:53 ; départ des courses à 15:08:20)
 
 **UNE question** : la chaîne d'aujourd'hui rend-elle encore quatre pistes sur
 un disque réel ; et si oui, quel étage les fond ?
