@@ -14510,7 +14510,7 @@ L'épreuve *Children* (CDC multipiste § 12) court pendant cette phase sur
 et `interchange/` — D110 ne périme donc pas le moteur qu'elle mesure, et la
 compilation se fait à `-j 2`, la cible de l'application seule.
 
-**LE RÉSULTAT, ATTENDU PAR ATTENDU (11/09/2026, 16:55).** Binaire du 11/09
+**LE RÉSULTAT, ATTENDU PAR ATTENDU (11/09/2026, banc à 16:52).** Binaire du 11/09
 16:52:28 (code 0), même banc, même outil que le second témoin.
 
 1. **L'inventaire — TENU au chiffre** : stricte ÉCRAN **45 → 36**, TABLE
@@ -14583,7 +14583,7 @@ en trois sites :
    anglais, « send bus “Rev”: effect “…” unknown, not applied » avant comme
    après. Un écart dirait que le littéral réécrit n'est pas le modèle.
 
-**LE RÉSULTAT, ATTENDU PAR ATTENDU (11/09/2026, 17:05).** Binaire du 11/09
+**LE RÉSULTAT, ATTENDU PAR ATTENDU (11/09/2026, banc à 17:01 ; l'en-tête portait « 17:05 », une heure à venir).** Binaire du 11/09
 17:01:06 (code 0) contre celui de D110 (16:52:28), même banc, `HOME` de
 brouillon.
 
