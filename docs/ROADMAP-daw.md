@@ -17163,3 +17163,36 @@ donc il est permis pendant que court l'épreuve Children.
 l'appel direct ne compile pas (« est protégé dans ce contexte »). Ceux de
 `juce::Component` sont publics et virtuels : l'appel passe par la base et
 atteint le MÊME code que celui du système, sans rien simuler.
+
+### Phase D146 — A24 : un clic sur le bouton MASTER ouvre son pas d'annulation (12/09/2026)
+
+**Le remède**, décidé avant la mesure : celui de D144, appliqué au seul rappel
+qu'il n'avait pas repris. `mixer_.onMasterEnable` ouvre son pas AVANT la
+bascule — `beginProjectEdit("Master")`, qui depuis D144 recopie le MASTER du
+moteur dans le modèle, donc photographie l'activation d'AVANT —, puis recopie
+le moteur dans le modèle APRÈS, pour que le pas suivant ne parte pas d'une
+activation périmée. Trois lignes, `app/Source` seulement : ni `core/`, ni
+`audio/`, ni `interchange/`, que l'épreuve Children interdit de recompiler tant
+qu'une course tourne.
+
+**Un cas neuf, et son témoin pris d'abord.** (g) enchaîne deux annulations sur
+deux gestes : clic MASTER, puis `volume:0.5`, puis Ctrl+Z deux fois. Il n'a
+jamais été joué, donc il n'a pas de témoin dans D145 : la série 3 le mesure sur
+le binaire d'AVANT le correctif (celui de 06:10:52), et la série 4 sur celui
+d'après. Un A/B dont le témoin serait d'un autre code ne vaudrait rien.
+
+**ATTENDU, écrit avant la mesure.** Banc de D145 inchangé pour (a) à (f).
+
+| cas | témoin (D145, binaire 06:10:52) | attendu après le correctif | ce qui le réfute |
+|---|---|---|---|
+| (a) `cliquer:master.MASTER` | 0.00 | **0.00** — le clic éteint toujours | autre chose : le pas aurait remplacé la bascule |
+| (b) (a) puis Ctrl+Z | 0.00 | **1.00** — l'activation rendue | 0.00 : le remède ne prend pas |
+| (c) (a) puis `volume:0.5` puis Ctrl+Z | master 0.00, volume -0.9 dB | master **0.00**, volume **-0.9 dB** — une annulation reprend UN geste, le dernier | master 1.00 : une seule annulation en reprendrait deux |
+| (f) témoin de (c), sans annulation | volume -6.0 dB | volume **-6.0 dB** | |
+| (g) (c) puis une SECONDE annulation | *mesuré en série 3* | master **1.00**, volume **-0.9 dB** — deux gestes, deux pas | master 0.00 : le clic n'aurait pas ouvert de pas |
+| (d) contrôle D144 : `doubleclic:master.LOW` puis Ctrl+Z | 6.00 | **6.00** | |
+| (e) écoute mono au menu puis Ctrl+Z | mono 1, 0 clé mono | **mono 1**, 0 clé mono | mono 0 : un outil de séance serait devenu annulable |
+
+**Ce que la phase ne fait pas.** Elle ne touche pas à l'écoute mono : D23.5 en a
+fait un outil de séance, et D145 a vérifié qu'elle survit à l'annulation. La
+rendre annulable serait défaire une décision écrite, pas corriger un défaut.
