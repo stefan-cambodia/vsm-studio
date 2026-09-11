@@ -17390,3 +17390,58 @@ qui ne vivent pas dans le modèle et attendent la fin de l'épreuve Children. Le
 trois gestes de la ligne de piste, les six du mixeur, les sept boutons du MASTER
 et son activation s'annulent désormais tous ; l'écoute mono, elle, ne s'annule
 pas et ne doit pas l'être (D23.5).
+
+### Phase D149 — le trente et unième audit : les noms des pas d'annulation sont-ils dans la langue de l'interface ? (12/09/2026)
+
+**D'où elle vient.** D144, D146 et D148 ont ajouté trois libellés de pas
+(« Master », « Armement ») et fermé la famille de l'annulation. Un pas porte un
+NOM, que la fenêtre d'historique montre à l'utilisateur : ce nom doit suivre la
+langue de l'interface, exigence permanente du projet (interface bilingue).
+Personne ne l'avait vérifié depuis D82.
+
+**L'AUDIT DE SOURCE, fait d'abord** (script, `app/Source/**` contre la table de
+`ui/Langue.cpp`, les échappements `\uXXXX` décodés des deux côtés) :
+**88 libellés de pas distincts, UN SEUL sans traduction anglaise — « Armement »**,
+que **D148 a introduit ce matin même**. Les 87 autres sont couverts. La
+régression est donc la mienne, de quelques heures, et c'est la mesure qui la
+trouve, pas la relecture.
+
+**UNE SUSPICION ÉCRITE PUIS RÉFUTÉE AVANT TOUTE MESURE.** Neuf fenêtres de
+panneau sont construites avec un titre en littéral français brut, sans `tr`
+(`Historique des modifications`, `Analyseur de spectre`, `Raccourcis clavier`,
+`Associations MIDI`, `Reconstruction`, `Assembler les prises`, `Ordre de jeu`,
+`Notes du projet`, `Préférences`). J'ai d'abord cru à neuf titres non traduits.
+Lecture faite, c'est faux et c'est même l'inverse d'un défaut : D100 a posé que
+**le français est la CLÉ** sous laquelle la position de la fenêtre est retenue,
+que le constructeur affiche `tr(title)` et que `retraduire()` repose `tr(cle_)`
+au changement de langue (`PanelWindow.cpp:7,51`, boucle à
+`MainComponent.cpp:8103`). Traduire la clé perdrait les positions retenues.
+**Aucune anomalie n'est ouverte de ce chef** ; le banc le vérifie tout de même,
+parce qu'une lecture de code n'est pas une mesure.
+
+**Ce que le banc ne sait pas encore faire.** La fenêtre d'historique **PEINT**
+ses lignes (`paintListBoxItem`, chaque libellé passé par `trGeste`) : elles ne
+sont pas des composants de texte, et le relevé de D94, qui descend les
+composants, ne les verra jamais. D149 ajoute donc `VSM_HISTORIQUE` — les
+libellés passés par la MÊME fonction `trGeste`, au moment du relevé. C'est la
+plomberie, et elle est posée **des deux côtés de l'A/B** : le témoin doit
+pouvoir montrer « Armement » non traduit.
+
+**ATTENDU, écrit avant la mesure.** Projet de D91 ; le témoin est le binaire
+avec la plomberie seule, l'après celui qui a la traduction en plus — une seule
+variable, la table.
+
+| cas | témoin attendu | après |
+|---|---|---|
+| (a) EN, titre de la fenêtre d'historique | **« Edit history »** — traduit, aucun défaut | inchangé |
+| (b) EN, armer une piste puis ouvrir l'historique | **« Armement »** — français dans une interface anglaise | **« Arm »** |
+| (c) EN, témoin : muet puis historique | **« Mute »** — la traduction marche déjà pour les 87 autres | inchangé |
+| (d) FR, armer puis historique | **« Armement »** | **inchangé** — la clé française ne bouge pas |
+
+**Le mot choisi, et pourquoi.** « Arm », sur le modèle de « Muet » → *Mute* : un
+libellé de pas est court, et l'application dit déjà « Arm the track » et « arm a
+track with its R button ». Ce n'est pas une invention mais son propre
+vocabulaire. Ce qui réfuterait (a) : un titre français en anglais — alors D100
+serait en panne et l'anomalie s'ouvrirait. Ce qui réfuterait (c) : « Muet » en
+anglais — alors le défaut ne serait pas « un libellé oublié » mais « trGeste ne
+traduit rien », et la phase changerait de sujet.
