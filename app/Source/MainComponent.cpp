@@ -1386,6 +1386,7 @@ void MainComponent::listWindowTextsForCapture() {
                         + texte + "\n").toRawUTF8(), stderr);
         }, !visible);
         std::fputs(("VSM_FENETRE : " + nom + " -- " + juce::String(n) + juce::String(u8" texte(s)")
+                    + " -- limites " + fenetre->getBounds().toString()   // D100
                     + (visible ? juce::String() : juce::String(u8" -- NON AFFICHÉE (modale)")) + "\n")
                        .toRawUTF8(), stderr);
     }
@@ -7587,6 +7588,17 @@ void MainComponent::retraduire() {
     automation_.retraduire();
     eventList_.retraduire();
     synthRack_.retraduire();
+    // D100 : LES TITRES DES QUINZE FENÊTRES FLOTTANTES. La clé de leur position,
+    // elle, reste le titre français (PanelWindow) : un changement de langue ne
+    // doit pas faire oublier où l'utilisateur les a mises.
+    for (auto* fenetre : { &trackListWindow_, &pianoRollWindow_, &synthRackWindow_, &mixerWindow_,
+                           &arrangementWindow_ })
+        fenetre->retraduire();
+    for (auto* fenetre : { reconstructionWindow_.get(), midiLearnWindow_.get(), historyWindow_.get(),
+                           spectrumWindow_.get(), shortcutsWindow_.get(), preferencesWindow_.get(),
+                           browserWindow_.get(), takeCompWindow_.get(), playOrderWindow_.get(),
+                           projectNotesWindow_.get() })
+        if (fenetre != nullptr) fenetre->retraduire();
     refreshPreferences();             // les textes d'état, refaits par leur client
     // D93 : CHAQUE CLIENT REFAIT SON RAPPORT, volet ouvert ou fermé -- le dernier
     // à l'avoir rempli, et lui seul (D84 ne connaissait que le rapport d'ouverture).

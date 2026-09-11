@@ -13453,3 +13453,110 @@ et `vsm-ui-preview` compilent ; suites C++ vertes (330 cœur, 1 291 audio,
 297 interchange, 25 CLAP, 11 panneaux). `MainComponent` : 113 chaînes à
 l'inventaire.
 
+### Phase D100 — A9 : les titres des fenêtres flottantes (11/09/2026)
+
+**LE DÉFAUT.** Quinze fenêtres flottantes (`PanelWindow`) : cinq panneaux
+(Pistes, Piano Roll, Synth Rack, Mixer, Arrangement) et dix fenêtres ouvertes
+à la demande (Navigateur, Historique des modifications, Analyseur de spectre,
+Raccourcis clavier, Associations MIDI, Reconstruction, Assembler les prises,
+Ordre de jeu, Notes du projet, Préférences). Aucune n'a de titre traduit : en
+anglais, la barre de titre dit « Historique des modifications ». Et `tr()` à
+l'appel n'était pas la réponse : le titre EST la clé sous laquelle la fenêtre
+retient sa position (`fenetre.<titre>`), et les préférences de l'utilisateur en
+portent dix (`fenetre.Pistes`, `fenetre.Préférences`…). Traduire le titre
+aurait perdu ces positions au premier lancement en anglais, et en aurait écrit
+une seconde série sous les titres anglais.
+
+**LA DÉCISION.** `PanelWindow` sépare les deux. La clé est le titre français
+donné à la construction, gardé tel quel ; le titre affiché est sa traduction,
+reposée par `PanelWindow::retraduire()` au changement de langue — appelé par
+`MainComponent::retraduire()` pour les quinze. Les appels ne changent pas : ils
+passent le français, et c'est `PanelWindow` qui traduit. Six clés neuves (les
+titres qui n'avaient pas de paire).
+
+**LE BANC.** L'outil d'abord, au témoin comme à l'après : la ligne
+`VSM_FENETRE` dit les limites de la fenêtre (`-- limites x y l h`). HOME isolé
+dont les préférences retiennent deux positions (`fenetre.Historique des
+modifications` = 140 160 520 430, `fenetre.Analyseur de spectre` = 700 180
+640 380). Trois lancements sur un projet neuf, qui ouvrent sept fenêtres par la
+barre de menus (Navigateur, Raccourcis clavier, Historique, Analyseur, Notes
+du projet, Associations MIDI, Préférences) : `fr`, `en`, et `bascule` (en
+français, puis « English » dans le menu, fenêtres ouvertes). Les préférences
+du HOME sont copiées à la fin de chaque lancement.
+
+**ATTENDU, écrit avant la mesure.**
+
+1. **Les titres** : en anglais, les sept fenêtres ouvertes et les cinq
+   panneaux cachés portent leur titre anglais (« Edit history », « Tracks »…) ;
+   au témoin, le français.
+2. **Le changement de langue en direct** : `bascule` finit avec les titres
+   anglais ; le témoin garde les français.
+3. **Les positions** : l'historique et l'analyseur s'ouvrent aux limites
+   retenues, dans les deux langues — ou, si le gestionnaire de fenêtres en
+   décide autrement, aux MÊMES limites en français et en anglais : c'est
+   l'invariant.
+4. **Les clés** : après chaque lancement, les préférences du HOME ne portent
+   que des clés `fenetre.` françaises — aucune `fenetre.Edit history`.
+5. **Le français** : les titres, et les listes de la fenêtre principale et
+   des fenêtres ouvertes, identiques au témoin.
+6. **L'inventaire** : ÉCRAN **129 → 126** et TABLE **213 → 216** —
+   « Historique des modifications », « Notes du projet » et « Préférences »
+   deviennent des clés. Les sept autres titres échappaient déjà à l'inventaire
+   (sans accent ni mot de sa liste) ou étaient déjà des clés.
+
+**VU DANS LE TÉMOIN (D100), écrit avant la mesure d'après.** Trois
+lancements, sept menus exécutés (huit avec « English »), sept fenêtres lues et
+cinq panneaux cachés à chaque fois, préférences de l'utilisateur intactes.
+Titres français partout, anglais compris — le défaut, tel qu'annoncé. Deux
+choses précisent l'attendu :
+
+- **L'historique s'ouvre exactement à sa position retenue** (140 160 520 430).
+  **L'analyseur, retenu à x = 700, s'ouvre à x = 640** : `setDefaultSize`
+  ramène la fenêtre dans la zone utile de l'écran (sa bordure droite tombe à
+  x = 1 280, soit 640 + 640) — la règle de D15.3, pas la langue. L'attendu 3
+  se juge donc sur l'égalité français / anglais, et sur la position exacte de
+  l'historique.
+- **Chaque fenêtre ouverte écrit sa clé** (`memoriser()` à l'affichage) :
+  sept clés `fenetre.` à la fin du lancement, pas seulement les deux
+  retenues. L'attendu 4 porte sur ces sept.
+
+**LE RÉSULTAT, ATTENDU PAR ATTENDU (11/09/2026).** Témoin puis D100, trois
+lancements chacun, écran verrouillé ; préférences de l'utilisateur intactes
+(`cmp`, deux séries).
+
+1. **Les titres — tenu.** En anglais : « Browser », « Edit history »,
+   « Keyboard shortcuts », « MIDI mappings », « Preferences », « Project
+   notes », « Spectrum analyser » pour les sept fenêtres ouvertes ; « Tracks »,
+   « Piano Roll », « Synth Rack », « Mixer », « Arrangement » pour les cinq
+   panneaux cachés. Le témoin : les mêmes, en français.
+2. **Le changement de langue en direct — tenu.** `bascule` (ouvertes en
+   français, puis « English ») finit avec les douze titres anglais ; le témoin
+   les gardait français.
+3. **Les positions — tenu.** Les sept fenêtres ont les MÊMES limites en
+   français, en anglais et après la bascule, au pixel ; l'historique à sa
+   position retenue (140 160 520 430), l'analyseur ramené dans l'écran
+   (640 180 640 380) comme au témoin.
+4. **Les clés — tenu.** Après chacun des trois lancements, les préférences
+   du HOME portent les sept mêmes clés, françaises (`fenetre.Historique des
+   modifications`… `fenetre.Préférences`), aux mêmes valeurs qu'au témoin ;
+   aucune clé anglaise.
+5. **Le français — tenu.** Titres et limites identiques au témoin ; listes
+   identiques (180 textes de la fenêtre principale, 163 dans les fenêtres
+   ouvertes).
+6. **L'inventaire — tenu.** ÉCRAN **129 → 126**, TABLE **213 → 216**. Il ne
+   voit que cinq des quinze titres : six titres français lui échappent
+   (« Navigateur », « Analyseur de spectre », « Raccourcis clavier »,
+   « Associations MIDI », « Reconstruction », « Ordre de jeu »), et quatre
+   sont des mots anglais. Pièce de plus pour D101.
+
+**Ce que le banc n'ouvre pas** : « Reconstruction », « Assembler les
+prises » et « Ordre de jeu » (il faut un rapport, des prises, des sections).
+Elles passent par le même `PanelWindow`, et leur titre est une clé de la table.
+
+La table passe à **1 165** paires (+6). `VintageSynthMidiStudio` et
+`vsm-ui-preview` compilent ; suites C++ vertes (330 cœur, 1 291 audio,
+297 interchange, 25 CLAP, 11 panneaux). `MainComponent` : 110 chaînes à
+l'inventaire. **La leçon** : un titre qui sert aussi de clé se traduit là où
+il s'affiche, pas là où il est donné — sinon changer de langue fait oublier
+où l'utilisateur a mis ses fenêtres.
+

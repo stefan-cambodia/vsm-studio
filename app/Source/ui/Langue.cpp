@@ -2387,6 +2387,19 @@ const Paire kAnglais[] = {
       "JSON value expected" },
     { "en-tête RIFF/WAVE absent",
       "RIFF/WAVE header missing" },
+    // --- D100 : LES TITRES DES FENÊTRES FLOTTANTES ----------------------------
+    { "Historique des modifications",
+      "Edit history" },
+    { "Analyseur de spectre",
+      "Spectrum analyser" },
+    { "Raccourcis clavier",
+      "Keyboard shortcuts" },
+    { "Associations MIDI",
+      "MIDI mappings" },
+    { "Notes du projet",
+      "Project notes" },
+    { "Préférences",
+      "Preferences" },
 };
 
 constexpr int kNombreDePaires = static_cast<int>(sizeof(kAnglais) / sizeof(kAnglais[0]));

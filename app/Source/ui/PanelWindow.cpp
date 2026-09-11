@@ -1,10 +1,12 @@
 #include "PanelWindow.h"
 #include "LookAndFeel/VsmLookAndFeel.h"
 #include "UiScale.h"
+#include "Langue.h"
 
 PanelWindow::PanelWindow(const juce::String& title, juce::Component& content)
-    : DocumentWindow(title, vsm::ui::Palette::panel,
-                      DocumentWindow::closeButton | DocumentWindow::minimiseButton, true) {
+    : DocumentWindow(vsm::app::ui::tr(title), vsm::ui::Palette::panel,
+                      DocumentWindow::closeButton | DocumentWindow::minimiseButton, true),
+      cle_(title) {
     setUsingNativeTitleBar(true);
     setContentNonOwned(&content, true);
     setResizable(true, true);
@@ -19,7 +21,7 @@ void PanelWindow::visibilityChanged() {
 }
 
 void PanelWindow::setDefaultSize(int width, int height) {
-    const juce::String etat = vsm::app::ui::UiScale::properties().getValue("fenetre." + getName());
+    const juce::String etat = vsm::app::ui::UiScale::properties().getValue("fenetre." + cle_);
     if (etat.isNotEmpty()) {
         auto limites = juce::Rectangle<int>::fromString(etat);
         if (limites.getWidth() >= 120 && limites.getHeight() >= 80) {
@@ -42,9 +44,13 @@ void PanelWindow::resized() {
     memoriser();
 }
 
+void PanelWindow::retraduire() {
+    setName(vsm::app::ui::tr(cle_));
+}
+
 void PanelWindow::memoriser() {
     // Seulement une fenêtre visible : les limites posées avant l'affichage
     // sont la taille par défaut, pas un réglage.
     if (!isVisible() || getWidth() <= 0 || getHeight() <= 0) return;
-    vsm::app::ui::UiScale::properties().setValue("fenetre." + getName(), getBounds().toString());
+    vsm::app::ui::UiScale::properties().setValue("fenetre." + cle_, getBounds().toString());
 }

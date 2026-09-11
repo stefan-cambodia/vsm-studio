@@ -24,6 +24,11 @@ public:
     void setDefaultSize(int width, int height);
     void moved() override;
     void resized() override;
+    /// D100 : LE TITRE SUIT LA LANGUE, LA CLÉ NON. Le titre donné à la
+    /// construction (le français) est la clé sous laquelle la position est
+    /// retenue ; la barre de titre en montre la traduction, reposée ici au
+    /// changement de langue. Traduire la clé perdrait les positions retenues.
+    void retraduire();
 
     /// Notifie MainComponent qu'il faut resynchroniser la coche du menu
     /// Affichage correspondant à ce panneau.
@@ -31,4 +36,5 @@ public:
 
 private:
     void memoriser();
+    juce::String cle_;   ///< D100 : le titre français, clé de la position
 };
