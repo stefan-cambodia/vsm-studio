@@ -17227,3 +17227,65 @@ de machine, qui ne sont pas dans le modèle et attendent la fin de l'épreuve
 Children — leur remède touche `core/` et `interchange/`, que la chaîne compte
 dans l'empreinte du moteur. L'écoute mono, elle, n'est pas un reste : D23.5 en a
 fait un outil de séance, et deux mesures (D145, D146) l'ont vérifié.
+
+### Phase D147 — le trentième audit : les trois gestes de la ligne de piste s'annulent-ils ? (12/09/2026)
+
+**D'où elle vient.** D146 a fermé A24 et laissé la famille de l'annulation dans
+cet état : les gestes du mixeur ouvrent tous leur pas (`onDragStart` →
+`onMixEditStarted` → `beginProjectEdit("Mixage")` — volume, panoramique, trim,
+délai, transposition, départs), et JUCE enveloppe même le double-clic dans un
+`DragInProgress`, ce qui explique que le contrôle de D144 s'annulait. Restent
+les trois boutons de la LIGNE DE PISTE, que personne n'a mesurés.
+
+**Ce que le code dit AVANT toute mesure** (lu, pas supposé) :
+
+- muet et solo passent par `basculerMuet`/`basculerSolo`
+  (`TrackListComponent.cpp:724,737`), qui appellent `onEditStarted("Muet")` et
+  `onEditStarted("Solo")` — câblé à `beginProjectEdit` (`MainComponent.cpp:248`).
+  Un pas est donc ouvert, et pour le LOT entier (D38.2 : taire six micros de
+  batterie ne demande qu'un Ctrl+Z).
+- l'armement, lui, n'ouvre rien : `armButton_.onClick` écrit `track_.armed`
+  dans le modèle et appelle `onArmChanged` → `refreshArmedTracks()`
+  (`MainComponent.cpp:598`). Ni pas, ni photo. Or `Track::armed` EST un champ du
+  projet (`Track.h:591`), sauvé et rechargé.
+- le verbe du banc `muet-piste:` emprunte la MÊME fonction que le bouton
+  (`toggleMuteSelectedTrack` → `basculerMuet`) : il est donc honnête. Le verbe
+  `armer:`, lui, écrit directement dans le modèle et n'est PAS le chemin de
+  l'utilisateur : l'armement se mesure au bouton, avec le `cliquer:` de D145.
+
+**Ce que le banc ne sait pas encore faire.** Le relevé des pistes
+(`trackTreeForCapture`) écrit « ! » pour le muet et « * » pour le solo, et RIEN
+pour l'armement : le cas serait invérifiable. Et `VSM_VUE=pistes` écrit l'arbre
+à l'OUVERTURE, donc avant les gestes et les touches — il ne peut pas dire ce
+qu'une annulation a rendu. D147 ajoute donc la marque « R », une ligne
+`VSM_PISTES` lue au moment du relevé (comme `VSM_MONO` en D145), et nomme les
+trois boutons (`pistes.muet`, `pistes.solo`, `pistes.armement`) — le mixeur a
+lui aussi des « M » et des « S », et `cliquer:` prend le premier trouvé.
+Plomberie de banc : aucun rappel, aucun seuil, aucun chemin d'utilisateur.
+
+**ATTENDU, écrit avant la mesure.** Projet de D91, anglais, relevé `VSM_PISTES`
+après le geste et la touche.
+
+| cas | attendu | ce qui le réfute |
+|---|---|---|
+| (a) `muet-piste:0` | « ! » sur la piste 0 | pas de marque : le geste n'atterrit pas |
+| (b) (a) puis Ctrl+Z | **« ! » disparue** — le muet s'annule | marque présente : `onEditStarted("Muet")` ne servirait à rien |
+| (c) `solo-piste:0` | « * » | pas de marque |
+| (d) (c) puis Ctrl+Z | **« * » disparue** | marque présente |
+| (e) `cliquer:pistes.armement` | « R » | pas de marque : le clic n'atteint pas le bouton |
+| (f) (e) puis Ctrl+Z | **« R » RESTE** — l'armement ne s'annule pas | « R » disparue : l'hypothèse tombe, l'armement s'annulait déjà |
+| (g) contrôle : `cliquer:pistes.muet` puis Ctrl+Z | **« ! » disparue** | marque présente : alors (f) mesurerait le verbe `cliquer:`, pas l'armement |
+
+**L'hypothèse.** (f) gardera « R » : l'armement est le seul des trois gestes qui
+n'ouvre pas de pas, alors qu'il modifie un champ du projet. Le cas (g) est ce
+qui rend (f) lisible — sans lui, un « R » qui reste pourrait n'être que la
+preuve que `cliquer:` n'a rien fait. Si l'hypothèse se vérifie, l'anomalie
+s'écrit (A25) et la phase suivante la corrigera par le chemin de D146 — ouvrir
+le pas avant d'écrire —, dans `app/Source` seul, donc sans toucher à ce que
+l'épreuve Children interdit de recompiler.
+
+**Ce que la phase ne fait pas.** Elle ne juge pas l'armement « à corriger » par
+principe : un DAW peut décider qu'armer est un geste de séance, comme l'écoute
+mono (D23.5). Mais l'écoute mono, elle, n'est PAS dans le fichier du projet,
+tandis que `armed` y est écrit et rechargé — c'est cette contradiction que la
+mesure doit trancher, pas un goût.
