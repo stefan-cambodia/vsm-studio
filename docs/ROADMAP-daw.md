@@ -16170,3 +16170,57 @@ statistiques, que D97 a traduites « à la source ». **Si le compte dépasse
 et la correction se fait par un script vérifié paire par paire ; **en deçà**,
 à la main.
 
+**LA MESURE (11/09) — L'ATTENDU EST RÉFUTÉ : la table est propre, le défaut
+vit dans le code.** Sur 1 478 paires, **0** traduction anglaise n'a d'espace
+avant « : », « ; », « ? » ou « ! ». Premier passage faux, et dit : le script
+lisait les littéraux sans décoder les échappements C++ (`\u00ab`, `\u00a0`),
+et ne pouvait donc pas voir une valeur écrite ainsi ; le décodeur a été
+récrit et contrôlé sur de VRAIS échappements (`\u00ab` → «) avant de refaire
+la mesure, qui a rendu le même compte. Ce qui reste :
+
+- **3 paires anglaises à guillemets « »**, toutes des MORCEAUX de libellés :
+  « Apply the groove « » (paire MORTE : le code emploie depuis D80 le modèle
+  entier « Appliquer le groove « %1 » » → “%1”), « Export the selected track
+  as MIDI (« » et « Takes of « », dont les fermetures « » )... » et « » »
+  n'ont AUCUNE paire. L'anglais affiche donc « Export the selected track as
+  MIDI (« Acid Bass »)... ». C'est le défaut que D80 a corrigé pour le groove
+  — traduits morceau par morceau, les guillemets restent français —, resté
+  dans deux libellés.
+- **« : » collé par le code autour d'un texte traduit, dans ce qui
+  s'affiche** : la boîte des statistiques (« Tracks : 2 »), la liste des
+  pistes audio non chargées, celle des échecs de report, le preset de piste
+  illisible, et l'afficheur de valeur des façades. Les autres sites vont au
+  terminal, ou portent une DONNÉE que `trPhrase` traduit ensuite par ses 61
+  modèles « %1 : … » (les réserves d'effet), et doivent garder la forme
+  française.
+- **Deux légendes de façade** (Prophet) : « SOURCE : FILT ENV », « SOURCE :
+  OSC B » — une sérigraphie anglaise, la même dans les deux langues.
+
+**LA CORRECTION, décidée avant le témoin.**
+
+1. Une aide, `deuxPoints()`, dans `Langue` : « : » en français, « : » sans
+   espace en anglais — pour le code qui colle un libellé traduit et une
+   valeur. Employée aux sites AFFICHÉS : statistiques, pistes non chargées,
+   échecs de report (deux sites), preset illisible.
+2. Les deux libellés en MODÈLES ENTIERS, la leçon de D80 : « Exporter la
+   piste choisie en MIDI (« %1 »)... » → “%1”, « Prises de « %1 » » →
+   « Takes of “%1” » ; les trois paires-morceaux retirées.
+3. Les deux légendes : « SOURCE: FILT ENV », « SOURCE: OSC B ».
+4. **Pas ici, et dit** : l'afficheur de valeur des façades n'apparaît qu'au
+   mouvement d'un bouton, et aucun banc ne l'atteint. Il ne se corrige pas à
+   l'aveugle : il attend un geste de banc, dans une phase à lui.
+
+**LE BANC.** Projet de D91, français et anglais, `HOME` de brouillon, témoin =
+binaire de D126 : la boîte des statistiques (`VSM_MENU`, ligne `VSM_BOITE`),
+le libellé d'export MIDI de la piste choisie (`VSM_MENU_LISTE`), les légendes
+de la façade Prophet (`machine:vsm.prophet`, `VSM_TEXTES_LISTE`). La liste
+des prises ne s'affiche pas sur ce projet (aucune prise) ; les boîtes des
+pistes non chargées, des échecs de report et du preset illisible ne sont pas
+atteintes par ce banc : ces quatre sites sont vérifiés au code, et c'est dit.
+
+**ATTENDU DE LA CORRECTION, écrit avant le témoin.** En anglais, « Tracks:
+2 », « Notes: 16 »… — aucune espace avant un deux-points dans la boîte ;
+« Export the selected track as MIDI (“Acid Bass”)... » ; les deux légendes
+sans espace, dans les deux langues. En français, la boîte et le libellé
+identiques au témoin, mot pour mot. Suites vertes, préférences intactes.
+
