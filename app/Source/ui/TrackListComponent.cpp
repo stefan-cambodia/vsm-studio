@@ -28,7 +28,8 @@ std::vector<std::pair<std::string, std::string>> availableInstruments() {
 TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
                                       const std::vector<std::pair<int, std::string>>& groupes,
                                       const juce::String& sourceName)
-    : track_(track), index_(trackIndex), audio_(track.kind == Track::Kind::Audio) {
+    : track_(track), index_(trackIndex), sourceName_(sourceName),
+      audio_(track.kind == Track::Kind::Audio) {
     addAndMakeVisible(nameLabel_);
     nameLabel_.setText(track_.name.empty() ? vsm::app::ui::tr(u8"Piste %1").replace("%1", juce::String(static_cast<int>(trackIndex) + 1))
                                          : juce::String::fromUTF8(track_.name.c_str()),
@@ -53,8 +54,7 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
     // (`n % 16`) et affiché sans qu'on puisse y toucher. Un nombre de 1 à
     // 16 ; tout autre texte rend l'ancien. Le planning du moteur suit.
     if (!audio_) {
-        channelLabel_.setEditable(false, true, false);
-        channelLabel_.setTooltip(u8"Canal MIDI (1 \u00e0 16) \u2014 double-clic pour le changer");
+        channelLabel_.setEditable(false, true, false);   // l'infobulle : `poserTextes()` (D94)
         channelLabel_.onTextChange = [this] {
             const int saisi = channelLabel_.getText().retainCharacters("0123456789").getIntValue();
             if (saisi >= 1 && saisi <= 16 && saisi - 1 != static_cast<int>(track_.channel)) {
@@ -83,7 +83,7 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
         addAndMakeVisible(audioSourceLabel_);
         audioSourceLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
         audioSourceLabel_.setColour(juce::Label::textColourId, Palette::accentAmber);
-        audioSourceLabel_.setText(u8"dossier (ne joue rien)", juce::dontSendNotification);
+        // son texte : `poserTextes()` (D94)
     } else if (track_.publishesInstrumentOutput()) {
         // D18.7b : UNE PISTE QUI PUBLIE LA SORTIE D'UNE AUTRE N'A PAS
         // D'INSTRUMENT À ELLE, et le graphe ignore délibérément celui qu'on lui
@@ -93,12 +93,6 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
         addAndMakeVisible(audioSourceLabel_);
         audioSourceLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
         audioSourceLabel_.setColour(juce::Label::textColourId, Palette::accentTeal);
-        audioSourceLabel_.setText(juce::String(u8"sortie n° ")
-                                       + juce::String(track_.outputIndex)
-                                       + (sourceName.isEmpty()
-                                              ? juce::String()
-                                              : juce::String(u8" de ") + sourceName),
-                                   juce::dontSendNotification);
     } else if (track_.kind == Track::Kind::Group) {
         // UN BUS DE GROUPE N'A PAS D'INSTRUMENT NON PLUS : il additionne les
         // pistes routées vers lui. Un sélecteur « (Aucun) » lui promettait
@@ -106,7 +100,6 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
         addAndMakeVisible(audioSourceLabel_);
         audioSourceLabel_.setFont(juce::Font(juce::FontOptions(12.0f)));
         audioSourceLabel_.setColour(juce::Label::textColourId, Palette::accentAmber);
-        audioSourceLabel_.setText(u8"bus de groupe", juce::dontSendNotification);
     } else {
         addAndMakeVisible(instrumentBox_);
         instrumentBox_.addItem(vsm::app::ui::tr("(Aucun)"), 1);   // D83
@@ -132,8 +125,6 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
 
     if (track_.isFolder()) {
         addAndMakeVisible(folderButton_);
-        folderButton_.setTooltip(u8"Replier ou déployer le dossier. N'affecte que la VUE : "
-                                  u8"les pistes rangées dedans continuent de jouer.");
         auto rafraichir = [this] {
             folderButton_.setButtonText(track_.folded ? juce::String::fromUTF8(u8"▸")
                                                        : juce::String::fromUTF8(u8"▾"));
@@ -179,11 +170,6 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
         track_.armed = armButton_.getToggleState();
         if (onArmChanged) onArmChanged();
     };
-    armButton_.setTooltip(
-        audio_ ? "Armer la piste : la prochaine prise ecrit l'entree audio dans un "
-                 "fichier du dossier du projet. Une seule piste audio a la fois."
-               : "Armer la piste : elle recoit alors le clavier MIDI, "
-                 "a l'ecoute comme a l'enregistrement.");
 
     // OÙ VA CETTE PISTE (D4.2). Un groupe, lui, va toujours au master : les
     // groupes imbriqués demanderaient un ordre topologique pour un besoin que
@@ -197,7 +183,6 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
             if (groupes[i].first == track_.outputGroup) selection = static_cast<int>(i) + 2;
         }
         outputBox_.setSelectedId(selection, juce::dontSendNotification);
-        outputBox_.setTooltip("Ou va cette piste : le master, ou un groupe.");
         outputBox_.onChange = [this, groupes] {
             const int choix = outputBox_.getSelectedItemIndex();
             debutEdition(u8"Sortie de la piste");
@@ -239,6 +224,34 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
     };
 
     setInterceptsMouseClicks(true, true);
+    poserTextes();   // D94
+}
+
+void TrackRowComponent::poserTextes() {
+    using vsm::app::ui::tr;
+    if (!audio_)
+        channelLabel_.setTooltip(tr(u8"Canal MIDI (1 à 16) — double-clic pour le changer"));
+    if (audio_)
+        refreshAudioSource();
+    else if (track_.isFolder())
+        audioSourceLabel_.setText(tr(u8"dossier (ne joue rien)"), juce::dontSendNotification);
+    else if (track_.publishesInstrumentOutput())
+        audioSourceLabel_.setText((sourceName_.isEmpty() ? tr(u8"sortie n° %1") : tr(u8"sortie n° %1 de %2"))
+                                      .replace("%1", juce::String(track_.outputIndex))
+                                      .replace("%2", sourceName_),
+                                  juce::dontSendNotification);
+    else if (track_.kind == Track::Kind::Group)
+        audioSourceLabel_.setText(tr(u8"bus de groupe"), juce::dontSendNotification);
+    if (track_.isFolder())
+        folderButton_.setTooltip(tr(u8"Replier ou déployer le dossier. N'affecte que la VUE : "
+                                    u8"les pistes rangées dedans continuent de jouer."));
+    armButton_.setTooltip(
+        audio_ ? tr("Armer la piste : la prochaine prise ecrit l'entree audio dans un "
+                    "fichier du dossier du projet. Une seule piste audio a la fois.")
+               : tr("Armer la piste : elle recoit alors le clavier MIDI, "
+                    "a l'ecoute comme a l'enregistrement."));
+    if (track_.kind != Track::Kind::Group)
+        outputBox_.setTooltip(tr("Ou va cette piste : le master, ou un groupe."));
 }
 
 void TrackRowComponent::refreshMix() {
@@ -292,6 +305,7 @@ void TrackRowComponent::retraduire() {
     // sélection se lit AVANT de renommer : JUCE rend 0 pour une entrée choisie
     // dont le texte ne correspond plus (D78).
     refreshName();
+    poserTextes();   // D94 : infobulles et mentions
     if (instrumentBox_.getNumItems() > 0) {
         const bool aucune = instrumentBox_.getSelectedId() == 1;
         instrumentBox_.changeItemText(1, vsm::app::ui::tr("(Aucun)"));
@@ -327,30 +341,29 @@ void TrackRowComponent::refreshAudioSource() {
     // remplissait et que personne ne lisait. Elle se dit quand elle a lieu et
     // se tait sinon -- un « résident » écrit sur chaque ligne deviendrait un
     // meuble, et c'est le cas rare qu'il faut voir.
-    if (audioStreamed_) mention += juce::String(u8" · disque");
+    using vsm::app::ui::tr;
+    if (audioStreamed_) mention += tr(u8" · disque");
     audioSourceLabel_.setText(
-        chemin.isEmpty() ? juce::String(u8"(aucun fichier — armer et enregistrer)")
+        chemin.isEmpty() ? tr(u8"(aucun fichier — armer et enregistrer)")
                          : chemin.fromLastOccurrenceOf("/", false, false) + mention,
         juce::dontSendNotification);
     audioSourceLabel_.setTooltip(
         chemin.isEmpty()
-            ? juce::String(u8"Cette piste audio n'a pas encore de matériau.")
-            : converti ? chemin + juce::String(u8"\n\nCe fichier est enregistré à ")
-                             + juce::String(fileSampleRate_, 0)
-                             + juce::String(u8" Hz et la session tourne à ")
-                             + juce::String(sessionSampleRate_, 0)
-                             + juce::String(u8" Hz : il est rééchantillonné à la lecture "
-                                             u8"comme à l'export. Ce que vous entendez n'est "
-                                             u8"donc pas exactement le fichier posé.")
+            ? tr(u8"Cette piste audio n'a pas encore de matériau.")
+            : converti ? chemin + "\n\n"
+                             + tr(u8"Ce fichier est enregistré à %1 Hz et la session tourne à %2 Hz : "
+                                  u8"il est rééchantillonné à la lecture comme à l'export. Ce que vous "
+                                  u8"entendez n'est donc pas exactement le fichier posé.")
+                                   .replace("%1", juce::String(fileSampleRate_, 0))
+                                   .replace("%2", juce::String(sessionSampleRate_, 0))
                        : chemin);
     if (!chemin.isEmpty() && audioStreamed_)
         audioSourceLabel_.setTooltip(
-            audioSourceLabel_.getTooltip()
-            + juce::String(u8"\n\nCe mat\u00e9riau est DIFFUS\u00c9 depuis le disque (au-del\u00e0 de "
-                            u8"vingt secondes) et non tenu en m\u00e9moire : ")
-            + juce::String(static_cast<double>(audioResidentBytes_) / (1024.0 * 1024.0), 1)
-            + juce::String(u8" Mo r\u00e9sidents. Le fichier doit rester accessible pendant "
-                            u8"toute la s\u00e9ance."));
+            audioSourceLabel_.getTooltip() + "\n\n"
+            + tr(u8"Ce matériau est DIFFUSÉ depuis le disque (au-delà de vingt secondes) et non "
+                 u8"tenu en mémoire : %1 Mo résidents. Le fichier doit rester accessible pendant "
+                 u8"toute la séance.")
+                  .replace("%1", juce::String(static_cast<double>(audioResidentBytes_) / (1024.0 * 1024.0), 1)));
 }
 
 void TrackRowComponent::setAudioSourceRate(double fileRate, double sessionRate, bool streamed,
@@ -391,7 +404,7 @@ void TrackRowComponent::paint(juce::Graphics& g) {
     if (track_.locked) {
         g.setColour(Palette::accentAmber);
         g.setFont(juce::Font(juce::FontOptions(11.0f)));
-        g.drawText(u8"verrouillée", bounds.removeFromTop(18).reduced(6, 2),
+        g.drawText(vsm::app::ui::tr(u8"verrouillée"), bounds.removeFromTop(18).reduced(6, 2),
                     juce::Justification::centredRight);
     }
 
@@ -416,7 +429,7 @@ void TrackRowComponent::paintOverChildren(juce::Graphics& g) {
     g.fillRect(getLocalBounds());
     g.setColour(Palette::accentRed);
     g.setFont(juce::Font(juce::FontOptions(11.0f)));
-    g.drawText(u8"désactivée", getLocalBounds().removeFromTop(18).reduced(8, 2),
+    g.drawText(vsm::app::ui::tr(u8"désactivée"), getLocalBounds().removeFromTop(18).reduced(8, 2),
                 juce::Justification::centredRight);
 }
 
@@ -493,10 +506,6 @@ TrackListComponent::TrackListComponent() {
     addAndMakeVisible(filterBox_);
     filterBox_.setTextToShowWhenEmpty(vsm::app::ui::tr(u8"Filtrer les pistes..."), Palette::textSecondary);
     filterBox_.setFont(juce::Font(juce::FontOptions(13.0f)));
-    filterBox_.setTooltip(juce::String(
-        u8"Ne montre que les pistes dont le nom contient ce texte.\n"
-        u8"N'AFFECTE PAS LE SON : les pistes filtrées continuent de jouer. "
-        u8"Rien n'est écrit dans le projet — videz le champ et tout revient."));
     filterBox_.onTextChange = [this] { resized(); repaint(); };
 
     addAndMakeVisible(emptyLabel_);
@@ -866,9 +875,9 @@ void TrackListComponent::resized() {
     const bool rienAMontrer = filtre && visibles == 0 && !rows_.isEmpty();
     emptyLabel_.setVisible(rienAMontrer);
     if (rienAMontrer) {
-        emptyLabel_.setText(juce::String(u8"Aucune des ") + juce::String(rows_.size())
-                                + juce::String(u8" pistes ne porte ce nom.\n"
-                                                u8"Elles jouent toujours — videz le filtre."),
+        emptyLabel_.setText(vsm::app::ui::tr(u8"Aucune des %1 pistes ne porte ce nom.\n"
+                                             u8"Elles jouent toujours — videz le filtre.")
+                                .replace("%1", juce::String(rows_.size())),
                              juce::dontSendNotification);
         emptyLabel_.setBounds(viewport_.getBounds().reduced(10).withHeight(60));
     }
@@ -938,6 +947,12 @@ void TrackListComponent::retraduire() {
     removeButton_.setButtonText(vsm::app::ui::tr("Supprimer"));
     filterBox_.setTextToShowWhenEmpty(vsm::app::ui::tr(u8"Filtrer les pistes..."),
                                        Palette::textSecondary);
+    // D94 : l'infobulle du filtre, que le constructeur posait en français.
+    filterBox_.setTooltip(vsm::app::ui::tr(
+        u8"Ne montre que les pistes dont le nom contient ce texte.\n"
+        u8"N'AFFECTE PAS LE SON : les pistes filtrées continuent de jouer. "
+        u8"Rien n'est écrit dans le projet — videz le champ et tout revient."));
     for (auto* ligne : rows_) ligne->retraduire();   // D83
+    resized();   // D94 : « aucune des N pistes » se refait à la disposition
     repaint();
 }

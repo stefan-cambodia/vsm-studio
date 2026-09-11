@@ -47,7 +47,9 @@ TransportBarComponent::TransportBarComponent(vsm::audio::engine::Transport& tran
     // D22.2 : le double-clic sur la position remonte au composant (voir
     // mouseDoubleClick) ; un Label intercepte sinon les clics et ne dit rien.
     positionLabel_.setInterceptsMouseClicks(false, false);
-    positionLabel_.setTooltip(u8"Double-clic : aller à une mesure (Maj+P)");
+    // D94 : LES INFOBULLES DE CETTE BARRE SONT POSÉES PAR `retraduire()`,
+    // appelée en fin de constructeur. Posées ici, en français, la bascule de
+    // langue les laissait dans la langue du démarrage -- ce que D78 interdit.
 
     playButton_.onClick = [this] { transport_.play(); };
     stopButton_.onClick = [this] {
@@ -58,13 +60,8 @@ TransportBarComponent::TransportBarComponent(vsm::audio::engine::Transport& tran
     loopButton_.onClick = [this] {
         if (onLoopToggled) onLoopToggled(loopButton_.getToggleState());
     };
-    loopButton_.setTooltip(u8"Boucle. La région se règle en tirant sur la règle "
-                            u8"du piano roll avec Maj ; sans région, la boucle "
-                            "couvre tout le morceau.");
     metronomeButton_.setClickingTogglesState(true);
     metronomeButton_.setColour(juce::TextButton::buttonOnColourId, Palette::accentTeal);
-    metronomeButton_.setTooltip("Metronome : un clic par temps, plus aigu sur le premier "
-                                 "de la mesure. Jamais present dans un export.");
     metronomeButton_.onClick = [this] {
         if (onMetronomeToggled) onMetronomeToggled(metronomeButton_.getToggleState());
     };
@@ -84,11 +81,6 @@ TransportBarComponent::TransportBarComponent(vsm::audio::engine::Transport& tran
             if (v == 1.0) speedBox_.setSelectedId(id, juce::dontSendNotification);
             ++id;
         }
-        speedBox_.setTooltip(juce::String(
-            u8"Vitesse de lecture (varispeed) : ralentir pour relever un passage.\n"
-            u8"Le morceau et le tempo ne changent pas. Les instruments CALCULÉS gardent "
-            u8"leur hauteur ; ce qui est lu dans un fichier change de hauteur, comme une "
-            u8"bande qu'on ralentit."));
         speedBox_.onChange = [this, vitesses] {
             const int index = speedBox_.getSelectedItemIndex();
             const int nombre = static_cast<int>(sizeof(vitesses) / sizeof(vitesses[0]));
@@ -101,8 +93,6 @@ TransportBarComponent::TransportBarComponent(vsm::audio::engine::Transport& tran
         };
     }
 
-    tapButton_.setTooltip("Frapper le tempo. Deux frappes suffisent ; une pause d'une "
-                           "seconde et demie recommence le compte.");
     tapButton_.onClick = [this] {
         const double maintenant = juce::Time::getMillisecondCounterHiRes() * 0.001;
         if (!tapTimes_.isEmpty() && maintenant - tapTimes_.getLast() > 1.5)
@@ -120,7 +110,6 @@ TransportBarComponent::TransportBarComponent(vsm::audio::engine::Transport& tran
 
     // LE TEMPO S'ÉDITE. Double-clic sur la valeur, ou la frapper au bouton.
     bpmLabel_.setEditable(false, true, false);
-    bpmLabel_.setTooltip("Double-cliquer pour changer le tempo.");
     bpmLabel_.onTextChange = [this] {
         const double bpm = bpmLabel_.getText().retainCharacters("0123456789.").getDoubleValue();
         if (bpm < 20.0 || bpm > 300.0) { setBpm(dernierBpm_); return; }   // valeur refusée, pas devinée
@@ -328,13 +317,15 @@ void TransportBarComponent::setInputLevel(float peak, int channels) {
     inputPeak_ = std::max(peak, inputPeak_ * 0.82f);
     if (channels != inputChannels_) {
         inputChannels_ = channels;
-        recordButton_.setTooltip(
-            channels > 0
-                ? juce::String(channels) + " entree(s) ouverte(s). L'enregistrement "
-                  "AUDIO arrive en D3.4 ; l'enregistrement MIDI, lui, ne depend "
-                  "pas de ces entrees mais du clavier branche."
-                : "Aucune entree audio : la carte n'en donne pas. "
-                  "Voir Fichier > Reglages audio.");
+        poserInfobulleRec([channels] {
+            using vsm::app::ui::tr;
+            return channels > 0
+                ? tr("%1 entree(s) ouverte(s). L'enregistrement "
+                     "AUDIO arrive en D3.4 ; l'enregistrement MIDI, lui, ne depend "
+                     "pas de ces entrees mais du clavier branche.").replace("%1", juce::String(channels))
+                : tr("Aucune entree audio : la carte n'en donne pas. "
+                     "Voir Fichier > Reglages audio.");
+        });
     }
     repaint(inputMeterBounds_);
 }
@@ -344,18 +335,20 @@ void TransportBarComponent::setRecordAvailable(bool deviceOpen, int armedTrackCo
     // n'apprend rien ; ce qui compte est de savoir s'il manque une piste armée
     // ou une carte son, parce qu'on ne va pas chercher au même endroit.
     recordButton_.setEnabled(deviceOpen && armedTrackCount > 0);
-    if (!deviceOpen)
-        recordButton_.setTooltip("Aucune carte son ouverte : le transport n'avance pas, "
-                                  "et aucun clavier MIDI n'est ecoute. "
-                                  "Voir Fichier > Reglages audio.");
-    else if (armedTrackCount <= 0)
-        recordButton_.setTooltip("Aucune piste armee : armer une piste avec son bouton R "
-                                  "dans la liste des pistes, sinon la prise n'aurait nulle "
-                                  "part ou aller.");
-    else
-        recordButton_.setTooltip("Enregistrer sur " + juce::String(armedTrackCount)
-                                  + " piste(s) armee(s). Le decompte et le mode "
-                                    "(superposer / remplacer) sont dans le menu Enregistrement.");
+    poserInfobulleRec([deviceOpen, armedTrackCount] {
+        using vsm::app::ui::tr;
+        if (!deviceOpen)
+            return tr("Aucune carte son ouverte : le transport n'avance pas, "
+                      "et aucun clavier MIDI n'est ecoute. "
+                      "Voir Fichier > Reglages audio.");
+        if (armedTrackCount <= 0)
+            return tr("Aucune piste armee : armer une piste avec son bouton R "
+                      "dans la liste des pistes, sinon la prise n'aurait nulle "
+                      "part ou aller.");
+        return tr("Enregistrer sur %1 piste(s) armee(s). Le decompte et le mode "
+                  "(superposer / remplacer) sont dans le menu Enregistrement.")
+            .replace("%1", juce::String(armedTrackCount));
+    });
 }
 
 void TransportBarComponent::setRecording(bool active) {
@@ -398,6 +391,7 @@ void TransportBarComponent::setTimeSignature(int numerator, int denominator) {
 }
 
 void TransportBarComponent::setCpuUsage(float percent) {
+    dernierCpu_ = percent;   // D94 : refaite par `retraduire()`
     cpuLabel_.setText("CPU " + juce::String(percent, 1) + "%", juce::dontSendNotification);
     // D41.2 : UN NOMBRE GRIS NE DIT PAS LE DANGER. Trois états, parce que deux
     // ne suffisent pas : au-delà de 90 % le son craque DÉJÀ, et entre 70 et
@@ -423,10 +417,10 @@ void TransportBarComponent::setCpuUsage(float percent) {
                                                   : vsm::ui::Palette::textSecondary;
     cpuLabel_.setColour(juce::Label::textColourId, couleur);
     cpuLabel_.setTooltip(percent >= 90.0f
-        ? juce::String::fromUTF8(u8"Le moteur n'a plus le temps de calculer un bloc : le son craque. "
-                                  u8"« Piste ▸ Geler la piste » libère son instrument, "
-                                  u8"ou agrandir le tampon audio.")
-        : juce::String::fromUTF8(u8"Part du temps réel consommée par le calcul du son."));
+        ? vsm::app::ui::tr(u8"Le moteur n'a plus le temps de calculer un bloc : le son craque. "
+                           u8"« Piste ▸ Geler la piste » libère son instrument, "
+                           u8"ou agrandir le tampon audio.")
+        : vsm::app::ui::tr(u8"Part du temps réel consommée par le calcul du son."));
 }
 
 void TransportBarComponent::setAudioUnavailable(const juce::String& raison) {
@@ -438,17 +432,27 @@ void TransportBarComponent::setAudioUnavailable(const juce::String& raison) {
         return;
     }
     sansSonLabel_.setVisible(true);
-    sansSonLabel_.setText(u8"SANS SON", juce::dontSendNotification);
     sansSonLabel_.setColour(juce::Label::textColourId, Palette::accentRed);
+    poserTexteSansSon();
+    resized();
+}
+
+void TransportBarComponent::poserTexteSansSon() {
+    // SUR L'ÉTAT, PAS SUR `isVisible()` : la boucle du constructeur rend le
+    // témoin visible (vide) quel que soit le son ; s'y fier écrivait « SANS
+    // SON », raison « ? », sur une barre qui avait du son (D94, trouvé à la
+    // liste des textes). "?" = jamais posée, vide = le son est là.
+    if (derniereRaisonSon_.isEmpty() || derniereRaisonSon_ == "?") return;
+    sansSonLabel_.setText(vsm::app::ui::tr(u8"SANS SON"), juce::dontSendNotification);
     // LA RAISON DU PILOTE, TELLE QUELLE. La reformuler la rendrait plus jolie
     // et moins utile : « ALSA : device busy » se cherche dans un moteur de
-    // recherche, « le son n'est pas disponible » ne se cherche pas.
+    // recherche, « le son n'est pas disponible » ne se cherche pas. Elle est
+    // une donnée : elle passe dans la phrase traduite sans être traduite.
     sansSonLabel_.setTooltip(
-        juce::String::fromUTF8(u8"Aucun périphérique audio : l'application édite, mixe et exporte, "
-                                u8"mais ne joue rien.\n\nRaison donnée par le système : ")
-        + raison
-        + juce::String::fromUTF8(u8"\n\n« Fichier ▸ Réglages audio… » permet d'en choisir un autre."));
-    resized();
+        vsm::app::ui::tr(u8"Aucun périphérique audio : l'application édite, mixe et exporte, "
+                         u8"mais ne joue rien.\n\nRaison donnée par le système : %1\n\n"
+                         u8"« Fichier ▸ Réglages audio… » permet d'en choisir un autre.")
+            .replace("%1", derniereRaisonSon_));
 }
 
 void TransportBarComponent::setXrunCount(int count) {
@@ -459,13 +463,19 @@ void TransportBarComponent::setXrunCount(int count) {
         return;
     }
     xrunLabel_.setVisible(true);
-    xrunLabel_.setText(juce::String(count) + (count > 1 ? " craquements" : " craquement"),
-                        juce::dontSendNotification);
     xrunLabel_.setColour(juce::Label::textColourId, Palette::accentRed);
-    xrunLabel_.setTooltip(juce::String::fromUTF8(
-        u8"Le moteur n'a pas rendu un bloc à temps : ce que vous avez entendu comportait un trou. "
-        u8"Compté depuis l'ouverture du périphérique audio."));
+    poserTexteXruns();
     resized();
+}
+
+void TransportBarComponent::poserTexteXruns() {
+    if (derniersXruns_ <= 0) return;
+    using vsm::app::ui::tr;
+    xrunLabel_.setText(tr(derniersXruns_ > 1 ? u8"%1 craquements" : u8"%1 craquement")
+                           .replace("%1", juce::String(derniersXruns_)),
+                       juce::dontSendNotification);
+    xrunLabel_.setTooltip(tr(u8"Le moteur n'a pas rendu un bloc à temps : ce que vous avez entendu "
+                             u8"comportait un trou. Compté depuis l'ouverture du périphérique audio."));
 }
 
 void TransportBarComponent::setSampleRate(double sampleRate) {
@@ -503,4 +513,28 @@ void TransportBarComponent::retraduire() {
     openButton_.setButtonText(vsm::app::ui::tr("Ouvrir MIDI..."));
     exportButton_.setButtonText(vsm::app::ui::tr("Exporter MIDI..."));
     listenButton_.setTooltip(vsm::app::ui::tr(u8"Écoute A/B : reconstruction, les deux, original (touche R)"));
+    // D94 : LES INFOBULLES ET LES ÉTATS que le constructeur et les setters
+    // posaient en français -- la bascule les laissait dans la langue du démarrage.
+    using vsm::app::ui::tr;
+    positionLabel_.setTooltip(tr(u8"Double-clic : aller à une mesure (Maj+P)"));
+    loopButton_.setTooltip(tr(u8"Boucle. La région se règle en tirant sur la règle du piano roll "
+                              u8"avec Maj ; sans région, la boucle couvre tout le morceau."));
+    metronomeButton_.setTooltip(tr("Metronome : un clic par temps, plus aigu sur le premier "
+                                   "de la mesure. Jamais present dans un export."));
+    speedBox_.setTooltip(tr(u8"Vitesse de lecture (varispeed) : ralentir pour relever un passage.\n"
+                            u8"Le morceau et le tempo ne changent pas. Les instruments CALCULÉS gardent "
+                            u8"leur hauteur ; ce qui est lu dans un fichier change de hauteur, comme une "
+                            u8"bande qu'on ralentit."));
+    tapButton_.setTooltip(tr("Frapper le tempo. Deux frappes suffisent ; une pause d'une "
+                             "seconde et demie recommence le compte."));
+    bpmLabel_.setTooltip(tr("Double-cliquer pour changer le tempo."));
+    if (infobulleRec_) recordButton_.setTooltip(infobulleRec_());
+    poserTexteSansSon();
+    poserTexteXruns();
+    setCpuUsage(dernierCpu_);
+}
+
+void TransportBarComponent::poserInfobulleRec(std::function<juce::String()> fabrique) {
+    infobulleRec_ = std::move(fabrique);
+    recordButton_.setTooltip(infobulleRec_());
 }

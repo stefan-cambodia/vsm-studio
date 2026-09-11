@@ -8,7 +8,8 @@ using vsm::audio::engine::Tick;
 using namespace vsm::ui;
 
 AutomationComponent::AutomationComponent() {
-    trackLabel_.setText("Piste", juce::dontSendNotification);
+    // D94 : les trois libellés sont posés par `retraduire()`, en fin de
+    // constructeur, puis à chaque bascule de langue.
     trackLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
     trackLabel_.setFont(juce::Font(juce::FontOptions(11.0f)));
     addAndMakeVisible(trackLabel_);
@@ -18,7 +19,6 @@ AutomationComponent::AutomationComponent() {
         rebuildParamBox();
     };
 
-    paramLabel_.setText(u8"Paramètre", juce::dontSendNotification);
     paramLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
     paramLabel_.setFont(juce::Font(juce::FontOptions(11.0f)));
     addAndMakeVisible(paramLabel_);
@@ -36,12 +36,20 @@ AutomationComponent::AutomationComponent() {
         }
     };
 
-    hintLabel_.setText("Clic : ajouter  -  Glisser : deplacer  -  Clic droit : supprimer",
-                       juce::dontSendNotification);
     hintLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
     hintLabel_.setFont(juce::Font(juce::FontOptions(10.0f)));
     hintLabel_.setJustificationType(juce::Justification::centredRight);
     addAndMakeVisible(hintLabel_);
+    retraduire();
+}
+
+void AutomationComponent::retraduire() {
+    using vsm::app::ui::tr;
+    trackLabel_.setText(tr("Piste"), juce::dontSendNotification);
+    paramLabel_.setText(tr(u8"Paramètre"), juce::dontSendNotification);
+    hintLabel_.setText(tr("Clic : ajouter  -  Glisser : deplacer  -  Clic droit : supprimer"),
+                       juce::dontSendNotification);
+    repaint();
 }
 
 void AutomationComponent::setProject(vsm::sequencer::Project* project) {
@@ -239,7 +247,7 @@ void AutomationComponent::paint(juce::Graphics& g) {
 
     if (!hasSelection_) {
         g.setColour(Palette::textSecondary);
-        g.drawText("Selectionnez une piste avec un instrument pour automatiser un parametre.",
+        g.drawText(vsm::app::ui::tr("Selectionnez une piste avec un instrument pour automatiser un parametre."),
                    a, juce::Justification::centred);
         return;
     }
@@ -252,7 +260,8 @@ void AutomationComponent::paint(juce::Graphics& g) {
 
     if (editPoints_.empty()) {
         g.setColour(Palette::textSecondary.withAlpha(0.7f));
-        g.drawText("Cliquez pour ajouter des points d'automation.", a, juce::Justification::centred);
+        g.drawText(vsm::app::ui::tr("Cliquez pour ajouter des points d'automation."), a,
+                   juce::Justification::centred);
         return;
     }
 

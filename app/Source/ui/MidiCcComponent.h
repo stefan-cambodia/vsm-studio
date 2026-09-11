@@ -50,6 +50,8 @@ public:
     void setHistory(vsm::sequencer::ProjectHistory* history) { history_ = history; }
     /// Suit la piste choisie dans la liste de pistes, comme l'onglet Effets.
     void setActiveTrackIndex(size_t trackIndex);
+    /// D94 : les libellés et les noms des contrôleurs, dans la langue courante.
+    void retraduire();
 
     /// Émis après chaque édition : le projet a changé, le séquenceur doit le relire.
     std::function<void()> onCcEdited;

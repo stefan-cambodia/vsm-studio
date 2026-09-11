@@ -146,9 +146,13 @@ private:
     /// Dit qu'un geste va écrire dans la piste. Un seul chemin, pour qu'un
     /// geste ajouté plus tard n'ait pas à se souvenir de deux choses.
     void debutEdition(const juce::String& libelle);
+    /// D94 : les infobulles et les mentions que la ligne écrit une fois, dans
+    /// la langue courante -- à la construction, puis à chaque bascule.
+    void poserTextes();
 
     vsm::sequencer::Track& track_;
     size_t index_;
+    juce::String sourceName_;   ///< D94 : gardé pour refaire « sortie n° … de … »
     bool selected_ = false;
     /// Figé à la construction : la nature d'une piste ne change pas en cours de
     /// route, et la ligne est reconstruite si le projet change.

@@ -272,11 +272,13 @@ EffectChainComponent::buildChain(const std::vector<TrackEffect>& described,
         // DIRE. Un projet dont un insert saute s'ouvrait, jouait, se réécrivait
         // intact -- et sonnait sans son effet, sans un mot ; le rendu hors
         // ligne du MÊME dossier, lui, le nommait.
+        // D94 : LA PHRASE EST ÉCRITE PAR SON MODÈLE (`kModeles`, Langue.cpp), et
+        // reste française : c'est une donnée du rapport, que le terminal et les
+        // bancs relisent ; `trPhrase` la traduit à l'affichage.
         if (!fx) {
             if (rapport != nullptr)
-                rapport->push_back(juce::String(u8"effet « ")
-                                   + juce::String::fromUTF8(entry.type.c_str())
-                                   + juce::String(u8" » inconnu, non appliqué"));
+                rapport->push_back(juce::String(u8"effet « %1 » inconnu, non appliqué")
+                                       .replace("%1", juce::String::fromUTF8(entry.type.c_str())));
             continue;
         }
         // D15.1 : chaque insert vivant est enrobé pour pouvoir être contourné
@@ -287,11 +289,9 @@ EffectChainComponent::buildChain(const std::vector<TrackEffect>& described,
         const auto applique = vsm::interchange::applyEffectDescription(entry, *enrobe);
         if (rapport != nullptr)
             for (const auto& inconnu : applique.unknownParameters)
-                rapport->push_back(juce::String(u8"effet « ")
-                                   + juce::String::fromUTF8(entry.type.c_str())
-                                   + juce::String(u8" » : réglage inconnu « ")
-                                   + juce::String::fromUTF8(inconnu.c_str())
-                                   + juce::String(u8" »"));
+                rapport->push_back(juce::String(u8"effet « %1 » : réglage inconnu « %2 »")
+                                       .replace("%1", juce::String::fromUTF8(entry.type.c_str()))
+                                       .replace("%2", juce::String::fromUTF8(inconnu.c_str())));
         chain.push_back(std::move(enrobe));
     }
     return chain;
@@ -846,10 +846,11 @@ void EffectChainComponent::loadPresetInto(size_t index, const juce::File& fichie
     if (onEffectReserve && activeTrack_ >= 0)
         for (const auto& inconnu : applique.unknownParameters)
             onEffectReserve(static_cast<size_t>(activeTrack_),
-                            juce::String(u8"preset d'effet « ")
-                            + fichier.getFileNameWithoutExtension()
-                            + juce::String(u8" » : réglage inconnu « ")
-                            + juce::String::fromUTF8(inconnu.c_str()) + juce::String(u8" »"));
+                            // Le nom de FICHIER en dernier : c'est lui qui peut
+                            // porter un « %2 », pas l'identifiant du réglage.
+                            juce::String(u8"preset d'effet « %1 » : réglage inconnu « %2 »")
+                                .replace("%2", juce::String::fromUTF8(inconnu.c_str()))
+                                .replace("%1", fichier.getFileNameWithoutExtension()));
     selectedEffect_ = static_cast<int>(index);
     rebuildEffectList();
     rebuildParamControls();

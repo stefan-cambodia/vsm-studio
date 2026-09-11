@@ -12778,3 +12778,141 @@ rapport d'import photographié en anglais est un rapport refait par la bascule.
 > le même code Python ; D93 ne touche que `app/Source/` et la documentation. La
 > suite Python relancée à côté du corpus A6 a été ARRÊTÉE faute de mémoire —
 > le corpus a survécu (piège ajouté à CLAUDE.md).
+
+### Phase D94 — A9 compté pour de bon : 396 chaînes à l'écran sans tr(), et les panneaux toujours visibles traduits (11/09/2026)
+
+**CE QUE D93 A LAISSÉ CROIRE.** La ligne A9 d'`INDEX.md` nommait une dizaine de
+restes (le rack vide, « RÉGLAGES », les descriptions des machines…). Un
+inventaire du code en trouve **396** : des littéraux français qui atteignent
+l'écran sans passer par `tr()` — infobulles de la barre de transport, de la
+liste des pistes, du mixeur, de la barre du piano roll, messages d'état,
+boîtes de `MainComponent` (257 à lui seul). La liste des restes était une
+liste de ce qu'on avait VU, pas de ce qui reste.
+
+**DEUX MESURES, PARCE QU'AUCUNE NE VOIT TOUT.**
+
+- **`tools/inventaire_langue.py`** lit le CODE. Il classe chaque littéral
+  français : ÉCRAN (le chiffre d'A9), SANS_PAIRE (passé à `tr()` sans clé dans
+  la table — il reste français en anglais aussi sûrement qu'un littéral nu :
+  **2**, « Écoute A/B : … »), TERMINAL (94, voulu), TABLE (177, traduits par
+  une variable), COMMANDE (25 jetons de banc). Les règles sont écrites en tête
+  du fichier, avant de compter. **Son angle mort** : un français sans accent ni
+  mot courant (« Annuler (Ctrl+Z) ») lui échappe.
+- **`VSM_TEXTES_LISTE=1`** lit ce qui S'AFFICHE : chaque libellé, bouton,
+  liste et infobulle des composants visibles, dans la langue courante — une
+  infobulle ne se photographie pas. **Son angle mort** : une boîte fermée, un
+  panneau caché, ce que `paint()` dessine sans composant.
+
+**LE TÉMOIN (même binaire que la mesure, D94 sans ses traductions).** Sur
+`children-dream-v7`, **296 textes** affichés ; **146** textes distincts
+identiques entre un démarrage français et un démarrage anglais, dont **43**
+en français à coup sûr : 39 infobulles et 3 noms de machines dans les listes
+(« Piano (cordes frappées) »…), plus « Écoute A/B ». La bascule en anglais rend
+la même liste que le démarrage anglais — parce que ce qui n'est pas traduit
+reste français des deux côtés.
+
+**LE LOT DE D94 : LES PANNEAUX TOUJOURS VISIBLES.** Barre de transport, liste
+des pistes, barre et corps du piano roll, mixeur, voies de CC, de tempo, de
+vélocité et d'automation, arrangement, liste d'événements, chaîne d'effets,
+rack, spectre, séquenceur pas à pas, façade — seize fichiers, **environ 120**
+des 396. `MainComponent` (257), les messages des couches audio et de
+reconstruction, et les noms des machines (qui viennent du registre du moteur)
+viennent ensuite, chacun sa phase. **La décision sur les infobulles posées
+dans un constructeur** : elles passent dans le `retraduire()` de leur
+composant — sinon la bascule en direct les laisserait dans la langue du
+démarrage, ce que D78 interdit.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (11/09/2026).**
+>
+> 1. **L'inventaire** : ÉCRAN et SANS_PAIRE à **zéro** dans les seize fichiers
+>    du lot, ou chaque reste nommé avec sa raison ; le total baisse d'autant.
+> 2. **L'affichage** : parmi les textes identiques en français et en anglais,
+>    plus aucune infobulle ni aucun libellé français des panneaux du lot ; ce
+>    qui reste identique est nommé (données, noms de machines, mots neutres).
+> 3. **Le français ne change pas d'un caractère** : la liste française est
+>    identique à celle du témoin, et la capture française l'est au pixel près.
+> 4. **La bascule rend le démarrage** : la liste basculée en anglais est
+>    identique à celle d'un démarrage en anglais.
+
+**LE RÉSULTAT, ATTENDU PAR ATTENDU (11/09/2026).** Banc : `children-dream-v7`,
+HOME isolé, préférences de l'utilisateur intactes (`cmp`, copie prise juste
+avant chaque série) ; liste comparée au témoin de listage, image comparée à
+**D93 recompilé depuis le même arbre, D94 mis de côté par `git stash`**, pris
+dans les mêmes conditions (voir plus bas pourquoi il a fallu le refaire).
+
+1. **L'inventaire — tenu.** ÉCRAN **396 → 273** (−123), SANS_PAIRE **2 → 0**,
+   TABLE 177 → 202. Dans les seize fichiers du lot, **un** reste, nommé :
+   « Arrangement / règle » (`ArrangementComponent::menusPourCapture`) est le
+   nom que `VSM_MENU_LISTE` écrit sur la sortie d'erreur — un libellé de banc,
+   rendu par une fonction et écrit par une autre, que l'inventaire ne peut pas
+   relier à son `fputs`. Les réserves de la chaîne d'effets s'écrivent
+   désormais par leur modèle (`kModeles`, trois de plus) et comptent en TABLE.
+   Les 273 : `MainComponent` 257, les couches audio (7), les plugins (4), la
+   reconstruction (4) — chacun sa phase.
+2. **L'affichage — tenu.** Textes distincts identiques en français et en
+   anglais : **146 → 103**. Les 43 traduits : **42 infobulles** (barre de
+   transport, barre du piano roll, liste des pistes, mixeur) et l'unité de
+   transposition, « 0 dt » devenu « 0 st ». Aucun texte n'est devenu
+   identique. Les 103 qui restent : les mots du magnétophone (Play, Stop, Rec,
+   Tap, M / S / R / W), les sérigraphies des façades (BASS, DAMPER… — la
+   décision de D73), les noms des pistes, les nombres et leurs unités — et
+   **quatre noms de machines en français** dans les listes (« Piano (cordes
+   frappées) », « String (corde pincée / frottée) », « Wind (anche et
+   lèvres) », « Drums (batterie acoustique) »), qui viennent du registre du
+   moteur : la phase suivante.
+3. **Le français — tenu.** La liste française est **identique au témoin**,
+   296 textes sur 296. L'image française est identique à D93 **à 42 pixels
+   près, tous dans la charge du processeur** (« CPU 0.2% » contre
+   « CPU 0.1% ») : une mesure qui bouge d'un lancement à l'autre, pas un
+   texte. L'image anglaise diffère de D93 de 924 pixels, tous dans « 0 dt » →
+   « 0 st » sur les six tranches.
+4. **La bascule — tenue.** La liste basculée en anglais est identique à celle
+   du démarrage en anglais, 296 sur 296, et l'image à **0 pixel**.
+
+La table passe à **1 019** paires (+153) et **75** modèles de phrases (+3) ;
+`trGeste` reconnaît « Durée x%1 » et « Vélocité x%1 », les deux gestes du
+piano roll dont le nom porte un nombre.
+
+**CE QUE LA MESURE A TROUVÉ EN CHEMIN.**
+
+- **Une régression, attrapée par la liste.** La première passe listait deux
+  textes de trop en français : « SANS SON » et son infobulle, « Raison donnée
+  par le système : ? », sur une barre qui AVAIT du son. `poserTexteSansSon()`
+  se fiait à `isVisible()` — or la boucle du constructeur de la barre de
+  transport rend visibles le témoin sans son et le compte de craquements
+  juste après les avoir cachés. La fonction se règle désormais sur l'état
+  (`derniereRaisonSon_`, « ? » = jamais posée). L'image ne le montrait pas ;
+  la liste, si — c'est pour cela qu'il faut les deux.
+- **Un défaut plus ancien, laissé à sa phase.** Ces deux témoins vides et
+  visibles sont PLACÉS par `disposer()` : 216 px à la largeur de cet écran
+  (lu dans le code, pas mesuré), pris à une barre dont A6 dit qu'elle se
+  replie sur deux rangées faute de ~1 400 px. Les cacher changerait la
+  disposition française, ce que D94 s'interdit : à mesurer dans une phase à
+  elle.
+- **Un écran verrouillé fait lister zéro texte.** La série de ce matin a
+  tourné pendant que la session était verrouillée (`LockedHint=yes`) : la
+  liste a rendu **0 texte** sur trois lancements, pendant que l'autoportrait
+  dessinait la fenêtre entière. `isShowing()` exige que la fenêtre ne soit
+  pas minimisée, et un écran verrouillé la fait passer pour telle. Le listage
+  lit maintenant `isVisible()` en descendant depuis la racine — la même liste
+  quand la fenêtre est à l'écran — et dit son compte (`VSM_TEXTES : N`, avec
+  « fenêtre non affichée » quand c'est le cas). La fenêtre, elle, y fait
+  1264×784 au lieu de 1264×742 : l'image ne se compare qu'à un témoin pris
+  dans les mêmes conditions, d'où D93 recompilé.
+- **L'angle mort de l'inventaire, mesuré.** Il ne lit que les `.cpp`.
+  `--entetes` applique les mêmes règles aux en-têtes : **20** chaînes avant
+  ce lot, **19** après — toutes des noms de pièces de batterie
+  (`DrumVoiceNames.h`, « charleston fermé »…) ; la vingtième, l'infobulle du
+  coût de calcul d'une tranche (`MixerComponent.h`), est traduite ici. Le
+  chiffre d'A9 reste celui des `.cpp`, pour que les phases se comparent.
+- **Deux pièges de construction** (écrits dans `CLAUDE.md`) : un `using
+  vsm::app::ui::tr` local à UNE fonction ne sert pas aux autres (deux
+  fichiers ne compilaient pas) ; et `cmake --build … > log ; grep error log`
+  rend le code du grep, 0 quand il A TROUVÉ des erreurs. Trois compilations
+  lancées en arrière-plan ont été arrêtées faute de mémoire — une compilation
+  Gradle tournait à côté — ; détachées par `setsid`, elles sont passées.
+
+Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels — verts ;
+`vsm-ui-preview`, qui compile `Langue.cpp` et le spectre, construit. Aucun
+code Python de la chaîne n'a changé ; `tools/inventaire_langue.py` passe ruff
+et mypy.

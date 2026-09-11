@@ -1,4 +1,5 @@
 #include "SpectrumComponent.h"
+#include "Langue.h"
 #include "LookAndFeel/VsmLookAndFeel.h"
 #include <cmath>
 
@@ -66,8 +67,8 @@ void SpectrumComponent::paint(juce::Graphics& g) {
     g.setFont(juce::Font(juce::FontOptions(14.0f)));
     juce::String titre = juce::String::fromUTF8(u8"Master — ");
     if (!aDuSignal_ || creteDb_ <= kBasDb) titre += juce::String::fromUTF8(u8"silence");
-    else titre += juce::String::fromUTF8(u8"crête ") + juce::String(creteHz_, 1) + " Hz, "
-                  + juce::String(creteDb_, 1) + " dB";
+    else titre += tr(u8"crête %1 Hz, %2 dB").replace("%1", juce::String(creteHz_, 1))
+                                             .replace("%2", juce::String(creteDb_, 1));
     g.drawText(titre, entete, juce::Justification::centredLeft);
 
     // La grille : fréquences en décades et en 1-2-5, niveaux par 12 dB.

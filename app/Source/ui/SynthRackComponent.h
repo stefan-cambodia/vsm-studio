@@ -36,6 +36,8 @@ public:
     /// (boîtes à rythmes, TB-303). La grille de pas est une VUE sur ses notes.
     void setTrack(vsm::sequencer::Track* track);
     void setPlayheadTick(vsm::midi::Tick tick);
+    /// D94 : la mention « aucun instrument », dans la langue courante.
+    void retraduire();
     /// Le motif a été édité depuis la façade : republier le planning.
     std::function<void()> onPatternEdited;
     /// D36.3 : voir `StepSequencerComponent::onEditStarted`.

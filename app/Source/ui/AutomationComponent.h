@@ -40,6 +40,8 @@ public:
     /// toucher aux lanes. Le nom d'une piste s'affiche à sept endroits ; celui
     /// d'ici était posé une fois pour toutes et montrait l'ancien indéfiniment.
     void refreshTrackNames() { rebuildTrackBox(); }
+    /// D94 : les libellés, dans la langue courante.
+    void retraduire();
 
 private:
     void rebuildTrackBox();

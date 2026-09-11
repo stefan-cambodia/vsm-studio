@@ -1,4 +1,5 @@
 #include "MachinePanelComponent.h"
+#include "../Langue.h"
 #include <algorithm>
 #include <cstdlib>
 
@@ -521,7 +522,8 @@ void MachinePanelComponent::paint(juce::Graphics& g) {
         g.fillAll(juce::Colour(0xff17171b));
         g.setColour(juce::Colours::grey);
         g.setFont(14.0f);
-        g.drawText(u8"Aucune façade dédiée pour cette machine", getLocalBounds(), juce::Justification::centred);
+        g.drawText(vsm::app::ui::tr(u8"Aucune façade dédiée pour cette machine"), getLocalBounds(),
+                   juce::Justification::centred);
         return;
     }
 

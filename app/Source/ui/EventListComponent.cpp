@@ -11,10 +11,18 @@ namespace vsm::app::ui {
 namespace {
 constexpr int kColPosition = 1, kColNature = 2, kColCanal = 3,
               kColPremier = 4, kColSecond = 5, kColDuree = 6;
+// D94 : UNE SEULE LISTE, lue à la construction et par `retraduire()`. « N° »
+// est plus large depuis que la hauteur s'y écrit en toutes lettres (« C#2 (37) »).
+struct Colonne { int id; const char8_t* nom; int largeur; };
+constexpr Colonne kColonnes[] = {
+    { kColPosition, u8"Position", 130 }, { kColNature, u8"Nature", 120 },
+    { kColCanal, u8"Canal", 60 },        { kColPremier, u8"N°", 110 },
+    { kColSecond, u8"Valeur", 90 },      { kColDuree, u8"Durée (ticks)", 110 },
+};
 }
 
 EventListComponent::EventListComponent() {
-    titre_.setText(juce::String::fromUTF8(u8"Liste — aucune piste"), juce::dontSendNotification);
+    titre_.setText(tr(u8"Liste — %1").replace("%1", tr(u8"aucune piste")), juce::dontSendNotification);
     titre_.setFont(juce::Font(juce::FontOptions(14.0f).withStyle("Bold")));
     titre_.setColour(juce::Label::textColourId, Palette::textPrimary);
     addAndMakeVisible(titre_);
@@ -34,13 +42,8 @@ EventListComponent::EventListComponent() {
     // LES COLONNES DISENT CE QU'ELLES PORTENT, et « n° » / « valeur » plutôt
     // que des noms de famille : une même colonne montre la hauteur d'une note,
     // le numéro d'un contrôleur et celui d'un programme.
-    table_.getHeader().addColumn(juce::String::fromUTF8(u8"Position"), kColPosition, 130);
-    table_.getHeader().addColumn(juce::String::fromUTF8(u8"Nature"), kColNature, 120);
-    table_.getHeader().addColumn(juce::String::fromUTF8(u8"Canal"), kColCanal, 60);
-    // Plus large depuis que la hauteur s'y écrit en toutes lettres (« C#2 (37) »).
-    table_.getHeader().addColumn(juce::String::fromUTF8(u8"N°"), kColPremier, 110);
-    table_.getHeader().addColumn(juce::String::fromUTF8(u8"Valeur"), kColSecond, 90);
-    table_.getHeader().addColumn(juce::String::fromUTF8(u8"Durée (ticks)"), kColDuree, 110);
+    for (const auto& c : kColonnes)
+        table_.getHeader().addColumn(tr(c.nom), c.id, c.largeur);
     table_.setHeaderHeight(22);
     table_.setRowHeight(20);
     table_.setColour(juce::ListBox::backgroundColourId, Palette::panel);
@@ -61,7 +64,7 @@ void EventListComponent::refresh() { rebuild(); }
 
 void EventListComponent::rebuild() {
     lignes_.clear();
-    juce::String nom = juce::String::fromUTF8(u8"aucune piste");
+    juce::String nom = tr(u8"aucune piste");
     if (project_ != nullptr && activeTrack_ >= 0
         && static_cast<size_t>(activeTrack_) < project_->tracks.size()) {
         const auto& piste = project_->tracks[static_cast<size_t>(activeTrack_)];
@@ -75,14 +78,27 @@ void EventListComponent::rebuild() {
             for (auto& l : toutes) if (l.kind == voulue) lignes_.push_back(l);
         }
     }
-    titre_.setText(juce::String::fromUTF8(u8"Liste — ") + nom, juce::dontSendNotification);
+    titre_.setText(tr(u8"Liste — %1").replace("%1", nom), juce::dontSendNotification);
     // LE COMPTE EST ÉCRIT, toujours : c'est le premier chiffre qu'on vient
     // chercher devant une reconstruction, et « 0 » dit qu'on a bien regardé.
-    compte_.setText(juce::String(static_cast<int>(lignes_.size()))
-                        + juce::String::fromUTF8(u8" événement(s)"),
+    compte_.setText(tr(u8"%1 événement(s)").replace("%1", juce::String(static_cast<int>(lignes_.size()))),
                     juce::dontSendNotification);
     table_.updateContent();
     table_.repaint();
+}
+
+void EventListComponent::retraduire() {
+    // D94 : les colonnes et le filtre sont posés une fois ; le titre et le
+    // compte sont refaits par `rebuild()`. La sélection du filtre se lit AVANT
+    // de renommer (D78) : JUCE rend 0 pour une entrée dont le texte a changé.
+    for (const auto& c : kColonnes) table_.getHeader().setColumnName(c.id, tr(c.nom));
+    const int choisie = filtre_.getSelectedId();
+    filtre_.changeItemText(1, tr(u8"Tout"));
+    for (int k = 0; k < 6; ++k)
+        filtre_.changeItemText(k + 2, tr(juce::String::fromUTF8(
+                                          vsm::sequencer::eventKindLabel(static_cast<EventKind>(k)).c_str())));
+    filtre_.setSelectedId(choisie, juce::dontSendNotification);
+    rebuild();
 }
 
 void EventListComponent::resized() {

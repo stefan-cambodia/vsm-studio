@@ -40,32 +40,35 @@ constexpr int kMargeY = 4;
 } // namespace
 
 PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(pianoRoll) {
-    auto tool = [this](juce::TextButton& button, PianoRollComponent::Tool t, const juce::String& tip) {
-        configureButton(button, tip);
+    // D94 : LES INFOBULLES SONT POSÉES PAR `retraduire()`, appelée en fin de
+    // constructeur. Posées ici, en français, la bascule de langue les laissait
+    // dans la langue du démarrage -- ce que D78 interdit.
+    auto tool = [this](juce::TextButton& button, PianoRollComponent::Tool t) {
+        configureButton(button);
         button.onClick = [this, t] { pianoRoll_.setTool(t); refreshFromPianoRoll(); };
     };
-    tool(selectTool_, PianoRollComponent::Tool::Select, u8"Sélection / déplacement (1)");
-    tool(drawTool_,   PianoRollComponent::Tool::Draw,   "Dessiner des notes (2)");
-    tool(eraseTool_,  PianoRollComponent::Tool::Erase,  "Effacer, y compris en balayant (3)");
-    tool(splitTool_,  PianoRollComponent::Tool::Split,  "Couper une note au clic (4)");
-    tool(glueTool_,   PianoRollComponent::Tool::Glue,   u8"Coller une note à la suivante (5)");
-    tool(muteTool_,   PianoRollComponent::Tool::Mute,   "Rendre une note muette (6)");
+    tool(selectTool_, PianoRollComponent::Tool::Select);
+    tool(drawTool_,   PianoRollComponent::Tool::Draw);
+    tool(eraseTool_,  PianoRollComponent::Tool::Erase);
+    tool(splitTool_,  PianoRollComponent::Tool::Split);
+    tool(glueTool_,   PianoRollComponent::Tool::Glue);
+    tool(muteTool_,   PianoRollComponent::Tool::Mute);
 
-    configureButton(undoButton_, "Annuler (Ctrl+Z)");
+    configureButton(undoButton_);
     undoButton_.onClick = [this] { pianoRoll_.undo(); refreshFromPianoRoll(); };
-    configureButton(redoButton_, u8"Rétablir (Ctrl+Maj+Z)");
+    configureButton(redoButton_);
     redoButton_.onClick = [this] { pianoRoll_.redo(); refreshFromPianoRoll(); };
 
-    configureButton(quantizeButton_, u8"Quantifier la sélection sur la grille (Ctrl+Q)");
+    configureButton(quantizeButton_);
     quantizeButton_.onClick = [this] { pianoRoll_.quantizeSelection(1.0f, false); refreshFromPianoRoll(); };
-    configureButton(legatoButton_, u8"Étendre chaque note jusqu'à la suivante (Ctrl+L)");
+    configureButton(legatoButton_);
     legatoButton_.onClick = [this] { pianoRoll_.applyLegatoToSelection(); refreshFromPianoRoll(); };
-    configureButton(humanizeButton_, u8"Décaler légèrement timing et vélocité, de façon reproductible");
+    configureButton(humanizeButton_);
     humanizeButton_.onClick = [this] {
         pianoRoll_.humanizeSelection(static_cast<float>(pianoRoll_.gridTicks()) * 0.12f, 12.0f);
         refreshFromPianoRoll();
     };
-    configureButton(chordButton_, u8"Insérer un accord à la tête de lecture");
+    configureButton(chordButton_);
     chordButton_.onClick = [this] {
         juce::PopupMenu menu;
         const auto types = allChordTypes();
@@ -80,31 +83,29 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
                                 refreshFromPianoRoll();
                             });
     };
-    configureButton(moreButton_, u8"Toutes les opérations d'édition");
+    configureButton(moreButton_);
     moreButton_.onClick = [this] {
         pianoRoll_.buildContextMenu().showMenuAsync(
             juce::PopupMenu::Options().withTargetComponent(moreButton_),
             [this](int result) { if (result != 0) { pianoRoll_.performContextMenuAction(result); refreshFromPianoRoll(); } });
     };
 
-    configureButton(zoomInButton_, "Zoom avant (+)");
+    configureButton(zoomInButton_);
     zoomInButton_.onClick = [this] { pianoRoll_.zoomHorizontally(1.25f); };
-    configureButton(zoomOutButton_, u8"Zoom arrière (-)");
+    configureButton(zoomOutButton_);
     zoomOutButton_.onClick = [this] { pianoRoll_.zoomHorizontally(0.8f); };
-    configureButton(zoomFitButton_, "Afficher toute la piste (Ctrl+0)");
+    configureButton(zoomFitButton_);
     zoomFitButton_.onClick = [this] { pianoRoll_.zoomToFit(); };
 
     for (auto* toggle : { &snapButton_, &ghostButton_, &foldButton_, &followButton_, &scaleHighlightButton_, &stepButton_ })
         addAndMakeVisible(*toggle);
     snapButton_.setToggleState(pianoRoll_.snapEnabled(), juce::dontSendNotification);
     snapButton_.onClick = [this] { pianoRoll_.setSnapEnabled(snapButton_.getToggleState()); };
-    stepButton_.setTooltip(u8"Saisie pas à pas : chaque note jouée s'écrit à la tête de lecture, qui avance d'un pas de grille ; Entrée = silence, Retour arrière = reculer");
     stepButton_.onClick = [this] { pianoRoll_.setStepInputEnabled(stepButton_.getToggleState()); };
     ghostButton_.setToggleState(pianoRoll_.ghostNotesVisible(), juce::dontSendNotification);
     ghostButton_.onClick = [this] { pianoRoll_.setGhostNotesVisible(ghostButton_.getToggleState()); };
     // D20.2 : REPLIER. Refusé sur une piste sans note -- le bouton revient
     // alors, et le piano roll a dit pourquoi dans sa ligne d'état.
-    foldButton_.setTooltip(u8"Ne montrer que les hauteurs jouées sur la piste (Live : Fold)");
     foldButton_.onClick = [this] {
         if (!pianoRoll_.setFoldEnabled(foldButton_.getToggleState()))
             foldButton_.setToggleState(false, juce::dontSendNotification);
@@ -161,10 +162,7 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
     for (auto* e : { &debutEdit_, &dureeEdit_, &veloEdit_ }) {
         e->setEditable(false, true, false);
         e->setJustificationType(juce::Justification::centred);
-        e->setColour(juce::Label::outlineColourId, Palette::border);
-        e->setTooltip(champ == 0 ? u8"D\u00e9but : mesure.temps (\u00ab 17.3 \u00bb, \u00ab 17.3+120 \u00bb en ticks) ; double-clic pour \u00e9diter, d\u00e9place toute la s\u00e9lection"
-                    : champ == 1 ? u8"Dur\u00e9e en ticks, pos\u00e9e sur toutes les notes choisies"
-                                 : u8"V\u00e9locit\u00e9 (1-127), pos\u00e9e sur toutes les notes choisies");
+        e->setColour(juce::Label::outlineColourId, Palette::border);   // l'infobulle : `retraduire()`
         const int ce = champ;
         e->onEditorShow = [this] { infoEnEdition_ = true; };
         e->onEditorHide = [this] { infoEnEdition_ = false; };
@@ -195,8 +193,7 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
     retraduire();
 }
 
-void PianoRollToolbar::configureButton(juce::Button& button, const juce::String& tooltip) {
-    button.setTooltip(tooltip);
+void PianoRollToolbar::configureButton(juce::Button& button) {
     addAndMakeVisible(button);
 }
 
@@ -435,6 +432,31 @@ void PianoRollToolbar::retraduire() {
     gridLabel_.setText(tr("Grille"), juce::dontSendNotification);
     velocityLabel_.setText(tr(u8"Vél."), juce::dontSendNotification);
     infoLabel_.setText(tr(u8"Note :"), juce::dontSendNotification);
+    // D94 : LES INFOBULLES, que le constructeur posait en français une fois
+    // pour toutes : la bascule les laissait dans la langue du démarrage.
+    selectTool_.setTooltip(tr(u8"Sélection / déplacement (1)"));
+    drawTool_.setTooltip(tr("Dessiner des notes (2)"));
+    eraseTool_.setTooltip(tr("Effacer, y compris en balayant (3)"));
+    splitTool_.setTooltip(tr("Couper une note au clic (4)"));
+    glueTool_.setTooltip(tr(u8"Coller une note à la suivante (5)"));
+    muteTool_.setTooltip(tr("Rendre une note muette (6)"));
+    undoButton_.setTooltip(tr("Annuler (Ctrl+Z)"));
+    redoButton_.setTooltip(tr(u8"Rétablir (Ctrl+Maj+Z)"));
+    quantizeButton_.setTooltip(tr(u8"Quantifier la sélection sur la grille (Ctrl+Q)"));
+    legatoButton_.setTooltip(tr(u8"Étendre chaque note jusqu'à la suivante (Ctrl+L)"));
+    humanizeButton_.setTooltip(tr(u8"Décaler légèrement timing et vélocité, de façon reproductible"));
+    chordButton_.setTooltip(tr(u8"Insérer un accord à la tête de lecture"));
+    moreButton_.setTooltip(tr(u8"Toutes les opérations d'édition"));
+    zoomInButton_.setTooltip(tr("Zoom avant (+)"));
+    zoomOutButton_.setTooltip(tr(u8"Zoom arrière (-)"));
+    zoomFitButton_.setTooltip(tr("Afficher toute la piste (Ctrl+0)"));
+    stepButton_.setTooltip(tr(u8"Saisie pas à pas : chaque note jouée s'écrit à la tête de lecture, qui avance "
+                              u8"d'un pas de grille ; Entrée = silence, Retour arrière = reculer"));
+    foldButton_.setTooltip(tr(u8"Ne montrer que les hauteurs jouées sur la piste (Live : Fold)"));
+    debutEdit_.setTooltip(tr(u8"Début : mesure.temps (« 17.3 », « 17.3+120 » en ticks) ; double-clic pour "
+                             u8"éditer, déplace toute la sélection"));
+    dureeEdit_.setTooltip(tr(u8"Durée en ticks, posée sur toutes les notes choisies"));
+    veloEdit_.setTooltip(tr(u8"Vélocité (1-127), posée sur toutes les notes choisies"));
     // D78 : LES ENTRÉES DES SÉLECTEURS, que la bascule oubliait. D77 a trouvé
     // « Droit » sur une image basculée en anglais, là où le démarrage écrivait
     // « Straight ». `changeItemText` ne change que l'entrée, pas le texte

@@ -20,16 +20,17 @@ constexpr NamedCc kNamed[] = {
 } // namespace
 
 juce::String MidiCcComponent::controllerName(int controller) {
+    // D94 : le nom USUEL se traduit (« coupure » est « cutoff »), le numéro non.
     if (controller == kPitchBend) return juce::String::fromUTF8("Pitch bend");
-    if (controller == kChannelPressure) return juce::String::fromUTF8("Aftertouch (canal)");
+    if (controller == kChannelPressure) return vsm::app::ui::tr(u8"Aftertouch (canal)");
     for (const auto& n : kNamed)
         if (n.id == controller)
-            return juce::String(controller) + juce::String::fromUTF8(" · ") + juce::String::fromUTF8(n.name);
+            return juce::String(controller) + juce::String::fromUTF8(" · ") + vsm::app::ui::tr(n.name);
     return "CC " + juce::String(controller);
 }
 
 MidiCcComponent::MidiCcComponent() {
-    trackLabel_.setText("Piste", juce::dontSendNotification);
+    // D94 : les libellés sont posés par `retraduire()`, en fin de constructeur.
     trackLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
     addAndMakeVisible(trackLabel_);
     addAndMakeVisible(trackBox_);
@@ -38,7 +39,6 @@ MidiCcComponent::MidiCcComponent() {
         rebuildControllerBox();
     };
 
-    controllerLabel_.setText(u8"Contrôleur", juce::dontSendNotification);
     controllerLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
     addAndMakeVisible(controllerLabel_);
     addAndMakeVisible(controllerBox_);
@@ -51,12 +51,21 @@ MidiCcComponent::MidiCcComponent() {
         }
     };
 
-    hintLabel_.setText(u8"Clic : ajouter  -  Glisser : déplacer  -  Clic droit : supprimer  -  "
-                       u8"un CC vaut jusqu'au suivant",
-                       juce::dontSendNotification);
     hintLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
     hintLabel_.setJustificationType(juce::Justification::centredRight);
     addAndMakeVisible(hintLabel_);
+    retraduire();
+}
+
+void MidiCcComponent::retraduire() {
+    using vsm::app::ui::tr;
+    trackLabel_.setText(tr("Piste"), juce::dontSendNotification);
+    controllerLabel_.setText(tr(u8"Contrôleur"), juce::dontSendNotification);
+    hintLabel_.setText(tr(u8"Clic : ajouter  -  Glisser : déplacer  -  Clic droit : supprimer  -  "
+                          u8"un CC vaut jusqu'au suivant"),
+                       juce::dontSendNotification);
+    rebuildControllerBox();   // les noms usuels des contrôleurs ; garde celui qui est choisi
+    resized();                // D60 : l'aide se replie selon SA longueur
 }
 
 Track* MidiCcComponent::activeTrack() const {
@@ -326,21 +335,21 @@ void MidiCcComponent::paint(juce::Graphics& g) {
     const Track* track = activeTrack();
     if (track == nullptr) {
         g.setColour(Palette::textSecondary);
-        g.drawText(u8"Sélectionnez une piste.", a, juce::Justification::centred);
+        g.drawText(vsm::app::ui::tr(u8"Sélectionnez une piste."), a, juce::Justification::centred);
         return;
     }
 
     g.setColour(Palette::textSecondary);
     // Un bend se lit autour de son CENTRE, pas de zéro à 127.
     const bool bend = selectedController_ == kPitchBend;
-    g.drawText(bend ? "haut" : "127", a.getX() + 2, a.getY(), 40, 14, juce::Justification::topLeft);
+    g.drawText(bend ? vsm::app::ui::tr("haut") : juce::String("127"), a.getX() + 2, a.getY(), 40, 14, juce::Justification::topLeft);
     g.drawText(bend ? "centre" : "64", a.getX() + 2, valueToY(64) - 7, 48, 14, juce::Justification::centredLeft);
-    g.drawText(bend ? "bas" : "0", a.getX() + 2, a.getBottom() - 14, 40, 14, juce::Justification::bottomLeft);
+    g.drawText(bend ? vsm::app::ui::tr("bas") : juce::String("0"), a.getX() + 2, a.getBottom() - 14, 40, 14, juce::Justification::bottomLeft);
 
     if (points_.empty()) {
         g.setColour(Palette::textSecondary.withAlpha(0.7f));
-        g.drawText(controllerName(selectedController_)
-                   + juce::String::fromUTF8(" : aucun point sur cette piste — cliquez pour en poser un."),
+        g.drawText(vsm::app::ui::tr(u8"%1 : aucun point sur cette piste — cliquez pour en poser un.")
+                       .replace("%1", controllerName(selectedController_)),
                    a, juce::Justification::centred);
         return;
     }

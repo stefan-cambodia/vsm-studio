@@ -1,9 +1,11 @@
 #include "TempoLaneComponent.h"
+#include "Langue.h"
 #include <algorithm>
 #include <cmath>
 
 using vsm::midi::Tick;
 using namespace vsm::ui;
+using vsm::app::ui::tr;
 
 namespace {
 uint32_t microsecondsFromBpm(double bpm) {
@@ -20,12 +22,18 @@ TempoLaneComponent::TempoLaneComponent() {
     titleLabel_.setFont(juce::Font(juce::FontOptions(13.0f).withStyle("Bold")));
     addAndMakeVisible(titleLabel_);
 
-    hintLabel_.setText(u8"Clic : ajouter un changement  -  Glisser : déplacer  -  Clic droit : supprimer  -  Ctrl+clic ou double-clic : rampe jusqu'au suivant  -  "
-                       u8"le tempo de départ (tick 0) ne bouge qu'en valeur",
-                       juce::dontSendNotification);
     hintLabel_.setColour(juce::Label::textColourId, Palette::textSecondary);
     hintLabel_.setJustificationType(juce::Justification::centredRight);
     addAndMakeVisible(hintLabel_);
+    retraduire();   // D94 : l'aide, dans la langue courante
+}
+
+void TempoLaneComponent::retraduire() {
+    hintLabel_.setText(tr(u8"Clic : ajouter un changement  -  Glisser : déplacer  -  Clic droit : supprimer  -  Ctrl+clic ou double-clic : rampe jusqu'au suivant  -  "
+                          u8"le tempo de départ (tick 0) ne bouge qu'en valeur"),
+                       juce::dontSendNotification);
+    resized();   // D60 : l'aide se replie sur deux lignes selon SA longueur
+    repaint();
 }
 
 void TempoLaneComponent::setProject(vsm::sequencer::Project* project) {
@@ -205,7 +213,7 @@ void TempoLaneComponent::paint(juce::Graphics& g) {
                    juce::Justification::centredRight);
 
     if (project_ == nullptr) {
-        g.drawText(u8"Aucun projet.", a, juce::Justification::centred);
+        g.drawText(tr(u8"Aucun projet."), a, juce::Justification::centred);
         return;
     }
 
@@ -238,7 +246,7 @@ void TempoLaneComponent::paint(juce::Graphics& g) {
     }
     if (points_.size() <= 1) {
         g.setColour(Palette::textSecondary.withAlpha(0.7f));
-        g.drawText(u8"Un seul tempo pour tout le morceau — cliquez pour poser un changement.",
+        g.drawText(tr(u8"Un seul tempo pour tout le morceau — cliquez pour poser un changement."),
                    a.withTrimmedTop(20), juce::Justification::centredTop);
     }
 }

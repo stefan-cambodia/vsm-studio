@@ -169,16 +169,16 @@ bool PianoRollComponent::setFoldEnabled(bool enabled) {
         // RIEN À REPLIER, ET C'EST DIT : un piano roll replié sur zéro rangée
         // serait une grille vide sans explication.
         fold_ = false;
-        if (onStatusChanged) onStatusChanged(u8"Rien \u00e0 replier : cette piste n'a aucune note.");
+        if (onStatusChanged) onStatusChanged(vsm::app::ui::tr(u8"Rien \u00e0 replier : cette piste n'a aucune note."));
         repaint();
         return false;
     }
     // La rangée du haut est la plus aiguë jouée : replier montre tout.
     if (fold_) topNote_ = rangees_.front();
     if (onStatusChanged)
-        onStatusChanged(fold_ ? juce::String(u8"Repli\u00e9 sur ") + juce::String(static_cast<int>(rangees_.size()))
-                                    + juce::String(u8" hauteur(s) jou\u00e9e(s)")
-                              : juce::String(u8"D\u00e9pli\u00e9 : toutes les hauteurs"));
+        onStatusChanged(fold_ ? vsm::app::ui::tr(u8"Repli\u00e9 sur %1 hauteur(s) jou\u00e9e(s)")
+                                    .replace("%1", juce::String(static_cast<int>(rangees_.size())))
+                              : vsm::app::ui::tr(u8"D\u00e9pli\u00e9 : toutes les hauteurs"));
     updateScrollBars();
     repaint();
     return true;
@@ -649,7 +649,7 @@ void PianoRollComponent::setSelectionLengthToGrid() {
 void PianoRollComponent::scaleSelectionLength(float factor) {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    if (!beginEdit(juce::String(u8"Durée x") + juce::String(factor, 2))) return;
+    if (!beginEdit(juce::String(u8"Durée x%1").replace("%1", juce::String(factor, 2)))) return;
     scaleNoteLengths(track->notes, selectedNoteIds_, factor);
     notifyEdited();
 }
@@ -795,7 +795,7 @@ void PianoRollComponent::setSelectionVelocity(uint8_t velocity) {
 void PianoRollComponent::scaleSelectionVelocity(float factor) {
     Track* track = activeTrack();
     if (!track || selectedNoteIds_.empty()) return;
-    if (!beginEdit(juce::String(u8"Vélocité x") + juce::String(factor, 2))) return;
+    if (!beginEdit(juce::String(u8"Vélocité x%1").replace("%1", juce::String(factor, 2)))) return;
     scaleVelocity(track->notes, selectedNoteIds_, factor);
     notifyEdited();
 }
@@ -1561,7 +1561,7 @@ void PianoRollComponent::updateStatusText(juce::Point<float> mousePos, bool mous
         const Tick bar = tick / ticksPerBar + 1;
         const Tick beat = (tick % ticksPerBar) / ticksPerBeat + 1;
         const Tick rest = (tick % ticksPerBeat);
-        text << "Mes " << juce::String(static_cast<int>(bar)) << "." << juce::String(static_cast<int>(beat))
+        text << vsm::app::ui::tr("Mes ") << juce::String(static_cast<int>(bar)) << "." << juce::String(static_cast<int>(beat))
              << "." << juce::String(static_cast<int>(rest)) << "   " << noteName(note);
     }
 
@@ -1569,18 +1569,20 @@ void PianoRollComponent::updateStatusText(juce::Point<float> mousePos, bool mous
         const SelectionStats stats = computeSelectionStats(track->notes, selectedNoteIds_);
         if (stats.count > 0) {
             if (text.isNotEmpty()) text << "   |   ";
-            text << juce::String(static_cast<int>(stats.count)) << juce::String(u8" note(s) sélectionnée(s) : ")
-                 << noteName(stats.lowestNote) << " - " << noteName(stats.highestNote)
-                 << juce::String(u8", vélocité moyenne ") << juce::String(std::lround(stats.averageVelocity));
+            text << vsm::app::ui::tr(u8"%1 note(s) sélectionnée(s) : %2 - %3, vélocité moyenne %4")
+                        .replace("%1", juce::String(static_cast<int>(stats.count)))
+                        .replace("%2", noteName(stats.lowestNote))
+                        .replace("%3", noteName(stats.highestNote))
+                        .replace("%4", juce::String(std::lround(stats.averageVelocity)));
         } else {
             if (text.isNotEmpty()) text << "   |   ";
-            text << juce::String(static_cast<int>(track->notes.size())) << " note(s) sur la piste";
+            text << vsm::app::ui::tr(u8"%1 note(s) sur la piste").replace("%1", juce::String(static_cast<int>(track->notes.size())));
         }
         // Le compte des notes douteuses reste affiché tant qu'il en reste :
         // c'est le travail de relecture qu'il reste à faire, et « D » y mène.
         if (const size_t douteuses = countDoubtfulNotes(track->notes); douteuses > 0)
-            text << "   |   " << juce::String(static_cast<int>(douteuses))
-                 << juce::String(u8" douteuse(s) — D : la suivante");
+            text << "   |   " << vsm::app::ui::tr(u8"%1 douteuse(s) — D : la suivante")
+                                     .replace("%1", juce::String(static_cast<int>(douteuses)));
     }
     onStatusChanged(text);
 }
@@ -1596,7 +1598,7 @@ void PianoRollComponent::paint(juce::Graphics& g) {
     if (!project_ || !activeTrack()) {
         g.setColour(Palette::textSecondary);
         g.setFont(16.0f);
-        g.drawText(u8"Sélectionnez une piste pour éditer ses notes",
+        g.drawText(vsm::app::ui::tr(u8"Sélectionnez une piste pour éditer ses notes"),
                     getLocalBounds(), juce::Justification::centred);
         return;
     }
@@ -1609,8 +1611,8 @@ void PianoRollComponent::paint(juce::Graphics& g) {
         drawKeyboard(g);
         g.setColour(Palette::textSecondary);
         g.setFont(16.0f);
-        g.drawFittedText(u8"Bus de groupe : il additionne les pistes routées vers lui.\n"
-                         u8"Il n'a pas de notes ; ses effets et son fader se règlent dans le mixeur.",
+        g.drawFittedText(vsm::app::ui::tr(u8"Bus de groupe : il additionne les pistes routées vers lui.\n"
+                            u8"Il n'a pas de notes ; ses effets et son fader se règlent dans le mixeur."),
                          getLocalBounds().withTrimmedLeft(keyboardWidth()).reduced(24),
                          juce::Justification::centred, 3);
         return;
@@ -1620,8 +1622,8 @@ void PianoRollComponent::paint(juce::Graphics& g) {
         drawKeyboard(g);
         g.setColour(Palette::textSecondary);
         g.setFont(16.0f);
-        g.drawFittedText(u8"Piste audio : son matériau se voit et se coupe dans l'arrangement.\n"
-                         u8"Il n'y a pas de notes à éditer ici.",
+        g.drawFittedText(vsm::app::ui::tr(u8"Piste audio : son matériau se voit et se coupe dans l'arrangement.\n"
+                            u8"Il n'y a pas de notes à éditer ici."),
                          getLocalBounds().withTrimmedLeft(keyboardWidth()).reduced(24),
                          juce::Justification::centred, 3);
         return;

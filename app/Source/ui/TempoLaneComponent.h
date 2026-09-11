@@ -49,6 +49,8 @@ public:
     void setHistory(vsm::sequencer::ProjectHistory* history) { history_ = history; }
     /// Relit la carte de tempo (après un changement venu d'ailleurs : transport, annuler).
     void refresh();
+    /// D94 : l'aide, dans la langue courante (et sa hauteur, qui en dépend).
+    void retraduire();
 
     /// Émis après chaque édition : la carte de tempo a changé.
     std::function<void()> onTempoEdited;

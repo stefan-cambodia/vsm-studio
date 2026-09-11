@@ -1,24 +1,41 @@
 #include "MixerComponent.h"
+#include "Langue.h"
 #include "vsm/sequencer/AutomationEdit.h"
 #include "LookAndFeel/VsmLookAndFeel.h"
 #include <cmath>
 
 using vsm::audio::engine::MasterBus;
+using vsm::app::ui::tr;
 
 // ============================================================ ChannelStrip
 
 void ChannelStrip::setMembers(const juce::StringArray& membres) {
     if (track_.kind != vsm::sequencer::Track::Kind::Group) return;
-    juce::String texte = juce::String::fromUTF8(track_.name.c_str())
-                       + juce::String::fromUTF8(" — bus de groupe");
-    texte << (membres.isEmpty() ? juce::String::fromUTF8(" : aucune piste n'y est routée")
-                                : juce::String::fromUTF8(" : ") + membres.joinIntoString(", "));
-    nameLabel_.setTooltip(texte);
+    membres_ = membres;
+    membresConnus_ = true;
+    poserInfobulleDuNom();
+}
+
+void ChannelStrip::poserInfobulleDuNom() {
+    // LE NOM ENTIER EN INFOBULLE : une tranche de console est étroite, et
+    // « Batterie · kick+kick2 » s'y tronque en « Batterie · ki… ». Un bus de
+    // groupe y ajoute ce qu'il est, et ses membres dès qu'on les connaît.
+    const juce::String nom = juce::String::fromUTF8(track_.name.c_str());
+    if (track_.kind != vsm::sequencer::Track::Kind::Group)
+        nameLabel_.setTooltip(nom);
+    else if (!membresConnus_)
+        nameLabel_.setTooltip(tr(u8"%1 — bus de groupe : les pistes routées vers lui passent par ce fader")
+                                  .replace("%1", nom));
+    else if (membres_.isEmpty())
+        nameLabel_.setTooltip(tr(u8"%1 — bus de groupe : aucune piste n'y est routée").replace("%1", nom));
+    else
+        nameLabel_.setTooltip(tr(u8"%1 — bus de groupe : %2")
+                                  .replace("%1", nom).replace("%2", membres_.joinIntoString(", ")));
 }
 
 ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
                             const std::vector<std::string>& sendNames)
-    : track_(track), index_(index) {
+    : track_(track), index_(index), sendNames_(sendNames) {
     nameLabel_.setText(track_.name.empty() ? "Track" : track_.name, juce::dontSendNotification);
     nameLabel_.setJustificationType(juce::Justification::centred);
     nameLabel_.setColour(juce::Label::textColourId, vsm::ui::Palette::textPrimary);
@@ -26,16 +43,9 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     // UN BUS DE GROUPE SE RECONNAÎT : son nom en ambre, comme le master est à
     // part. Sans cela, « Batterie » (le bus) et « Batterie · hihat » (une
     // pièce) se ressemblaient trait pour trait, et un projet reconstruit en
-    // parité en aligne onze.
-    // LE NOM ENTIER EN INFOBULLE : une tranche de console est étroite, et
-    // « Batterie · kick+kick2 » s'y tronque en « Batterie · ki… ».
-    nameLabel_.setTooltip(juce::String::fromUTF8(track_.name.c_str()));
-    if (track_.kind == vsm::sequencer::Track::Kind::Group) {
+    // parité en aligne onze. Son infobulle : `poserInfobulleDuNom()`.
+    if (track_.kind == vsm::sequencer::Track::Kind::Group)
         nameLabel_.setColour(juce::Label::textColourId, vsm::ui::Palette::accentAmber);
-        nameLabel_.setTooltip(juce::String::fromUTF8(track_.name.c_str())
-                              + juce::String::fromUTF8(" — bus de groupe : les pistes routées vers lui "
-                                                       "passent par ce fader"));
-    }
     addAndMakeVisible(nameLabel_);
 
     volume_.setSliderStyle(juce::Slider::LinearVertical);
@@ -106,10 +116,6 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     // sur celle qui ne l'était pas -- le libellé manquait précisément là où
     // rien n'avait bougé, c'est-à-dire sur presque toutes les tranches.
     trim_.updateText();
-    trim_.setTooltip(juce::String::fromUTF8(
-        u8"Trim d'entrée : le gain AVANT les inserts. Pousse la piste dans son "
-        u8"compresseur ou sa saturation sans toucher à leur réglage. Sans insert, "
-        u8"il fait ce que ferait le fader."));
     trim_.onDragStart = [this] {
         if (onMixEditStarted) onMixEditStarted();
         ouvrirPasse("mix.trim");
@@ -135,9 +141,6 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     delay_.setDoubleClickReturnValue(true, 0.0);    // D25.3 : 0 ms
     delay_.setTextValueSuffix(" ms");
     delay_.setValue(track_.delayMs, juce::dontSendNotification);
-    delay_.setTooltip(juce::String::fromUTF8(
-        u8"Décalage de la piste, en millisecondes. Négatif : elle sonne plus tôt. "
-        u8"Ne change pas la compensation de latence."));
     delay_.onDragStart = [this] { if (onMixEditStarted) onMixEditStarted(); };
     delay_.onValueChange = [this] {
         track_.delayMs = delay_.getValue();
@@ -152,12 +155,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     transposition_.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 44, 16);
     transposition_.setRange(-48.0, 48.0, 1.0);
     transposition_.setDoubleClickReturnValue(true, 0.0);   // D25.3 : 0 demi-ton
-    transposition_.setTextValueSuffix(" dt");
-    transposition_.setValue(track_.transposeSemitones, juce::dontSendNotification);
-    transposition_.setTooltip(juce::String::fromUTF8(
-        u8"Transposition de la piste, en demi-tons, appliquée À LA LECTURE : le matériau "
-        u8"ne bouge pas, et le piano roll continue de montrer les notes écrites. Une note "
-        u8"poussée hors de 0..127 ne sonne pas, et l'application le dit."));
+    transposition_.setValue(track_.transposeSemitones, juce::dontSendNotification);   // l'unité et l'infobulle : `retraduire()`
     transposition_.onDragStart = [this] { if (onMixEditStarted) onMixEditStarted(); };
     transposition_.onValueChange = [this] {
         track_.transposeSemitones = static_cast<int>(transposition_.getValue());
@@ -174,7 +172,6 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
         s->setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
         s->setRange(0.0, 1.0, 0.01);
         s->setValue(track_.sendLevel(bus), juce::dontSendNotification);
-        s->setTooltip(juce::String("Depart vers ") + juce::String(sendNames[bus]));
         const std::string parametre = "mix.send." + std::to_string(bus + 1);
         s->onDragStart = [this, parametre] {
             if (onMixEditStarted) onMixEditStarted();
@@ -192,10 +189,6 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
 
     // LE BOUTON W (D16.8), et le mot plutôt qu'un pictogramme, comme chez
     // Cubase : trois états qui se lisent à la couleur, off → touch → latch.
-    armer_.setTooltip(juce::String::fromUTF8(
-        u8"Écrire l'automation en jouant. Un clic : Touch (la main sur un réglage écrit "
-        u8"tant qu'on la tient). Deux : Latch (elle écrit jusqu'à l'arrêt du transport). "
-        u8"Trois : éteint."));
     armer_.onClick = [this] { basculerArmement(); };
     addAndMakeVisible(armer_);
     rafraichirArmement();
@@ -205,8 +198,6 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     phase_.setClickingTogglesState(true);
     phase_.setToggleState(track_.invertPhase, juce::dontSendNotification);
     phase_.setColour(juce::TextButton::buttonOnColourId, vsm::ui::Palette::accentTeal);
-    phase_.setTooltip(u8"Polarit\u00e9 invers\u00e9e (\u00d8) : la piste et ses d\u00e9parts changent de signe. "
-                      u8"Deux micros en opposition, un bus qui creuse le mixage.");
     phase_.onClick = [this] {
         if (onMixEditStarted) onMixEditStarted();
         track_.invertPhase = phase_.getToggleState();
@@ -252,6 +243,33 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     addAndMakeVisible(solo_);
 
     addAndMakeVisible(meter_);
+    retraduire();   // D94 : infobulles et unité, dans la langue courante
+}
+
+void ChannelStrip::retraduire() {
+    poserInfobulleDuNom();
+    trim_.setTooltip(tr(u8"Trim d'entrée : le gain AVANT les inserts. Pousse la piste dans son "
+                        u8"compresseur ou sa saturation sans toucher à leur réglage. Sans insert, "
+                        u8"il fait ce que ferait le fader."));
+    delay_.setTooltip(tr(u8"Décalage de la piste, en millisecondes. Négatif : elle sonne plus tôt. "
+                         u8"Ne change pas la compensation de latence."));
+    // « dt » est une abréviation FRANÇAISE (demi-ton) : l'anglais écrit « st ».
+    transposition_.setTextValueSuffix(tr(u8" dt"));
+    transposition_.setTooltip(tr(u8"Transposition de la piste, en demi-tons, appliquée À LA LECTURE : le "
+                                 u8"matériau ne bouge pas, et le piano roll continue de montrer les notes "
+                                 u8"écrites. Une note poussée hors de 0..127 ne sonne pas, et l'application "
+                                 u8"le dit."));
+    // UN BOUTON PAR BUS DÉCLARÉ, et son infobulle dit lequel : « send A » et
+    // « send B » n'apprenaient rien.
+    for (int bus = 0; bus < sends_.size() && static_cast<size_t>(bus) < sendNames_.size(); ++bus)
+        sends_[bus]->setTooltip(tr("Depart vers %1")
+                                    .replace("%1", juce::String::fromUTF8(sendNames_[static_cast<size_t>(bus)].c_str())));
+    armer_.setTooltip(tr(u8"Écrire l'automation en jouant. Un clic : Touch (la main sur un réglage écrit "
+                         u8"tant qu'on la tient). Deux : Latch (elle écrit jusqu'à l'arrêt du transport). "
+                         u8"Trois : éteint."));
+    phase_.setTooltip(tr(u8"Polarité inversée (Ø) : la piste et ses départs changent de signe. "
+                         u8"Deux micros en opposition, un bus qui creuse le mixage."));
+    rafraichirSolo();
 }
 
 void ChannelStrip::rafraichirSolo() {
@@ -264,13 +282,12 @@ void ChannelStrip::rafraichirSolo() {
         solo_.setColour(juce::TextButton::buttonColourId, vsm::ui::Palette::accentTeal);
     else
         solo_.removeColour(juce::TextButton::buttonColourId);
-    solo_.setTooltip(juce::String::fromUTF8(
-        track_.soloSafe
-            ? u8"Solo PROTÉGÉ (Alt+clic) : le solo des autres pistes ne fait pas taire "
-              u8"celle-ci. Son propre muet reste le sien. À poser sur un retour d'effet, "
-              u8"pour qu'un solo garde sa réverbération."
-            : u8"Solo. Ctrl+clic : solo exclusif. Alt+clic : protéger cette piste du solo "
-              u8"des autres."));
+    solo_.setTooltip(track_.soloSafe
+        ? tr(u8"Solo PROTÉGÉ (Alt+clic) : le solo des autres pistes ne fait pas taire "
+             u8"celle-ci. Son propre muet reste le sien. À poser sur un retour d'effet, "
+             u8"pour qu'un solo garde sa réverbération.")
+        : tr(u8"Solo. Ctrl+clic : solo exclusif. Alt+clic : protéger cette piste du solo "
+             u8"des autres."));
     solo_.repaint();
 }
 
@@ -488,8 +505,6 @@ MasterStrip::MasterStrip() {
     // qu'on doit remarquer allumé, pas un réglage qu'on laisse.
     monoButton_.setClickingTogglesState(true);
     monoButton_.setColour(juce::TextButton::buttonOnColourId, vsm::ui::Palette::accentAmber);
-    monoButton_.setTooltip(u8"\u00c9coute en mono : L+R repli\u00e9s apr\u00e8s le limiteur, la corr\u00e9lation "
-                           u8"lue devient ce qu'on entend. Jamais dans un export.");
     monoButton_.onClick = [this] { if (onMonoListen) onMonoListen(monoButton_.getToggleState()); };
     addAndMakeVisible(monoButton_);
 
@@ -514,11 +529,24 @@ MasterStrip::MasterStrip() {
     phaseLabel_.setJustificationType(juce::Justification::centred);
     phaseLabel_.setColour(juce::Label::textColourId, vsm::ui::Palette::textSecondary);
     phaseLabel_.setFont(juce::Font(juce::FontOptions(11.0f)));
-    phaseLabel_.setTooltip("Correlation de phase : +1 en phase, 0 sans rapport, "
-                            "negatif = la piste disparait en mono.");
     addAndMakeVisible(phaseLabel_);
 
     addAndMakeVisible(meter_);
+    retraduire();   // D94
+}
+
+void MasterStrip::retraduire() {
+    monoButton_.setTooltip(tr(u8"Écoute en mono : L+R repliés après le limiteur, la corrélation "
+                              u8"lue devient ce qu'on entend. Jamais dans un export."));
+    phaseLabel_.setTooltip(tr("Correlation de phase : +1 en phase, 0 sans rapport, "
+                              "negatif = la piste disparait en mono."));
+    if (satVue_) poserInfobulleSat();
+}
+
+void MasterStrip::poserInfobulleSat() {
+    satLabel_.setTooltip(tr(u8"La sortie a dépassé 0 dBFS : ce qui part vers la carte son est écrêté. "
+                            u8"Baisser le fader master, ou activer le limiteur. Cliquez pour effacer.")
+                         + "\n\n" + phaseLabel_.getText());   // la phase reste lisible, elle cède seulement sa ligne
 }
 
 juce::Slider& MasterStrip::addKnob(vsm::audio::plugin::ParamId id, const juce::String& label,
@@ -712,6 +740,11 @@ void MixerComponent::setProject(vsm::sequencer::Project* project) {
     master_.masterParamProvider = masterParamProvider;
     master_.syncFromEngine();
     resized();
+}
+
+void MixerComponent::retraduire() {
+    for (auto* strip : strips_) strip->retraduire();
+    master_.retraduire();
 }
 
 void MixerComponent::faireVoirLaTranche(size_t trackIndex) {

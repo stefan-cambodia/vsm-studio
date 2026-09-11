@@ -175,6 +175,16 @@ private:
     juce::Label cpuLabel_;
     juce::Label sampleRateLabel_;
 
+    /// D94 : CE QUE LA BASCULE DE LANGUE DOIT REFAIRE. L'infobulle du bouton Rec
+    /// a deux auteurs (l'entrée audio, l'armement) et c'est le DERNIER qui
+    /// l'emporte ; on garde donc sa fabrique, pas son texte. Le témoin sans son,
+    /// les craquements et la charge se refont depuis leur dernière valeur.
+    std::function<juce::String()> infobulleRec_;
+    void poserInfobulleRec(std::function<juce::String()> fabrique);
+    void poserTexteSansSon();
+    void poserTexteXruns();
+    float dernierCpu_ = 0.0f;
+
     double bpm_ = 120.0;
     int tsNumerator_ = 4, tsDenominator_ = 4;
 };

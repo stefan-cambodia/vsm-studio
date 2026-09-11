@@ -351,6 +351,11 @@ public:
             // d'ouverture que le rapport de reconstruction allait remplacer.
             if (const char* liste = std::getenv("VSM_RAPPORT_LISTE"); liste != nullptr && *liste && *liste != '0')
                 content->listReportForCapture();
+            // VSM_TEXTES_LISTE=1 (D94) : les textes que la fenêtre MONTRE -- libellés,
+            // boutons, listes, infobulles des composants visibles --, dans la langue
+            // courante. Une infobulle ne se photographie pas : elle se liste.
+            if (const char* textes = std::getenv("VSM_TEXTES_LISTE"); textes != nullptr && *textes && *textes != '0')
+                content->listTextsForCapture();
             if (const char* sortie = std::getenv("VSM_CAPTURE"); sortie != nullptr && *sortie) {
                 const juce::File fichier =
                     juce::File::getCurrentWorkingDirectory().getChildFile(sortie);

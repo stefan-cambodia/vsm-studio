@@ -66,7 +66,10 @@ l'ordre de marche — pas de la documentation d'accompagnement.
 - Le code de sortie d'un tube est celui de son DERNIER maillon : `cmake
   --build … | grep …` rend 0 même quand la compilation échoue, et l'on
   vérifie alors un ancien binaire en croyant vérifier le nouveau (payé deux
-  fois le 05/09). Lire `${PIPESTATUS[0]}`, ou ne pas filtrer.
+  fois le 05/09). Lire `${PIPESTATUS[0]}`, ou ne pas filtrer. Même piège
+  SANS tube : `cmake --build … > log ; grep error log` rend le code du grep,
+  et 0 veut dire qu'il A TROUVÉ des erreurs (11/09, D94 — vu au journal, pas
+  au code). Garder `rc=$?` après le build et finir par `exit $rc`.
 - En C++20, `u8"…"` est un `char8_t[]` : `juce::String + u8"…"` et `u8"…" +
   juce::String` sont AMBIGUS et ne compilent pas. Envelopper :
   `juce::String(u8"…")`. Payé quatre fois dans la même journée.
@@ -114,6 +117,12 @@ l'ordre de marche — pas de la documentation d'accompagnement.
   l'état du disque à cet instant (parite-v2, 5 h 24 perdues au réglage final).
   `charger_tous_les_modules()` importe tout au départ depuis le 03/09 ; la
   règle reste : ce qui n'a pas été importé au départ ne se touche pas.
+- Un ÉCRAN VERROUILLÉ fait passer la fenêtre pour minimisée : `isShowing()`
+  rend faux partout, et `VSM_TEXTES_LISTE` a listé 0 texte sur trois
+  lancements (11/09, D94) pendant que `VSM_CAPTURE` dessinait la fenêtre
+  entière. Un banc qui lit l'état « affiché » d'un composant lit `isVisible()`
+  en descendant depuis la racine, et dit son compte (`VSM_TEXTES : N`). Vérifier
+  `loginctl show-session <n> -p LockedHint` avant de croire un zéro.
 - Une BOÎTE MODALE absente d'une photo (`VSM_CAPTURE_PANNEAUX`) ne prouve
   rien : c'est la course de D72, une photo sur sept au pire. Relancer avant de
   conclure. Trois ratés de suite ont failli faire écrire « le port MIDI ferme

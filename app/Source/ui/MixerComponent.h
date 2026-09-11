@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include "LookAndFeel/VsmLookAndFeel.h"
+#include "Langue.h"
 #include "vsm/audio/engine/MasterBus.h"
 #include "vsm/sequencer/Project.h"
 #include <cmath>
@@ -132,6 +133,9 @@ public:
     void setMembers(const juce::StringArray& membres);
     ChannelStrip(vsm::sequencer::Track& track, size_t index,
                   const std::vector<std::string>& sendNames);
+    /// D94 : les infobulles et l'unité de transposition, dans la langue
+    /// courante -- à la construction, puis à chaque bascule.
+    void retraduire();
     void resized() override;
     void paint(juce::Graphics&) override;
     void setMeasurement(const vsm::audio::engine::TrackMeasurement& m) {
@@ -187,12 +191,12 @@ public:
                                         : vsm::ui::Palette::textPrimary);
             repaint();
         }
-        nameLabel_.setTooltip(juce::String::fromUTF8(track_.name.c_str())
-            + juce::String::fromUTF8(u8" — calcul : ") + juce::String(micros, 0)
-            + juce::String::fromUTF8(u8" µs par bloc")
-            + (chere_ ? juce::String::fromUTF8(
-                            u8" (l'une des plus chères de ce projet : « Piste ▸ Geler la piste » "
-                            u8"la remplace par son enregistrement)")
+        // D94 : traduite ; le nom de la piste, une donnée, entre en dernier.
+        nameLabel_.setTooltip(vsm::app::ui::tr(u8"%1 — calcul : %2 µs par bloc")
+                                  .replace("%2", juce::String(micros, 0))
+                                  .replace("%1", juce::String::fromUTF8(track_.name.c_str()))
+            + (chere_ ? vsm::app::ui::tr(u8" (l'une des plus chères de ce projet : « Piste ▸ Geler la piste » "
+                                         u8"la remplace par son enregistrement)")
                       : juce::String()));
     }
     float coutMicros() const { return coutMicros_; }
@@ -300,6 +304,12 @@ private:
     /// Un bouton par bus de départ du projet. `OwnedArray` et non deux membres :
     /// leur nombre n'est plus connu à la compilation.
     juce::OwnedArray<juce::Slider> sends_;
+    /// D94 : ce que `retraduire()` refait -- les noms des bus (les infobulles
+    /// des départs) et, pour un bus de groupe, ses membres une fois connus.
+    std::vector<std::string> sendNames_;
+    juce::StringArray membres_;
+    bool membresConnus_ = false;
+    void poserInfobulleDuNom();
     juce::TextButton mute_ { "M" };
     juce::TextButton solo_ { "S" };
     /// D39.4 : dessinée comme choisie.
@@ -351,11 +361,7 @@ public:
                                   + juce::String(20.0f * std::log10(pireDepassement_), 1),
                               juce::dontSendNotification);
             satLabel_.setColour(juce::Label::textColourId, vsm::ui::Palette::accentRed);
-            satLabel_.setTooltip(juce::String::fromUTF8(
-                    u8"La sortie a dépassé 0 dBFS : ce qui part vers la carte son est écrêté. "
-                    u8"Baisser le fader master, ou activer le limiteur. Cliquez pour effacer.\n\n")
-                + phaseLabel_.getText()   // la phase reste lisible, elle cède seulement sa ligne
-                );
+            poserInfobulleSat();
             const bool apparait = !satLabel_.isVisible();
             satLabel_.setVisible(true);
             if (apparait) resized();
@@ -401,6 +407,11 @@ public:
 
     /// Synchronise l'UI depuis les valeurs courantes du bus master.
     void syncFromEngine();
+    /// D94 : les infobulles, dans la langue courante.
+    void retraduire();
+    /// D48 / D94 : l'infobulle du témoin de saturation -- la phase y reste
+    /// lisible, puisqu'il lui prend sa ligne.
+    void poserInfobulleSat();
 
 private:
     juce::Slider& addKnob(vsm::audio::plugin::ParamId id, const juce::String& label,
@@ -440,6 +451,8 @@ public:
 
     /// (Re)construit les tranches depuis le projet.
     void setProject(vsm::sequencer::Project* project);
+    /// D94 : les infobulles des tranches et du master, dans la langue courante.
+    void retraduire();
 
     /// Rafraîchit les vu-mètres (appelé par le timer du parent, thread UI).
     /// Rafraîchit tous les mètres. `trackMeasure` rend les trois mesures d'une

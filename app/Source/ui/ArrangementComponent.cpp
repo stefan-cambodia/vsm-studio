@@ -1839,9 +1839,10 @@ void ArrangementComponent::paint(juce::Graphics& g) {
             // en se demandant pourquoi rien ne change : son instrument ne
             // tourne plus, c'est son gel qu'on entend. Le mot plutôt qu'une
             // icône, parce qu'il n'y a rien à deviner.
-            juce::String nature = track.kind == Track::Kind::Audio  ? "audio"
-                                : track.kind == Track::Kind::Group ? "groupe"
-                                                                   : "midi";
+            // D94 : les mots se traduisent (« groupe », « gelé »), les données non.
+            juce::String nature = track.kind == Track::Kind::Audio  ? juce::String("audio")
+                                : track.kind == Track::Kind::Group ? vsm::app::ui::tr("groupe")
+                                                                   : juce::String("midi");
             // D27.4 : le port de sortie se lit sur la piste.
             // Avec un port, « midi » est redondant : « → VSM Studio · prog 6 »
             // tient dans l'en-tête là où « midi → VSM Studio · prog 6 » se coupait.
@@ -1851,13 +1852,13 @@ void ArrangementComponent::paint(juce::Graphics& g) {
             if (track.midiProgram >= 0 && !track.midiOutputDevice.empty())
                 nature += juce::String(u8" \u00b7 prog ") + juce::String(track.midiProgram + 1);
             if (track.midiInputChannel > 0)
-                nature += juce::String(u8" \u00b7 entr\u00e9e ch. ") + juce::String(track.midiInputChannel);
-            if (track.frozen) nature += u8" · gelé";
+                nature += vsm::app::ui::tr(u8" · entrée ch. %1").replace("%1", juce::String(track.midiInputChannel));
+            if (track.frozen) nature += vsm::app::ui::tr(u8" · gelé");
             // UNE PISTE VERROUILLÉE LE DIT AUSSI (D16.5), et pour la même
             // raison : sans cela on tirerait un clip en se demandant pourquoi
             // il ne bouge pas. Le mot, pas une icône -- il n'y a rien à
             // deviner, et un cadenas de dix pixels ne se lit pas.
-            if (track.locked) nature += u8" · verrouillé";
+            if (track.locked) nature += vsm::app::ui::tr(u8" · verrouillé");
             g.setColour(track.locked ? Palette::accentAmber
                                      : track.frozen ? Palette::accentTeal : Palette::textSecondary);
             g.setFont(juce::Font(juce::FontOptions(11.0f)));
@@ -2230,16 +2231,16 @@ void ArrangementComponent::paint(juce::Graphics& g) {
     // contre celui qui l'a basculé sans s'en souvenir.
     g.setColour(Palette::textSecondary);
     g.setFont(juce::Font(juce::FontOptions(10.0f)));
-    g.drawText((followPlayhead_ ? juce::String(u8"suit \u00b7 ") : juce::String())
-                   + juce::String(snap_ ? (aimanteALaMesure_ ? "aimant : mesure" : "aimant : grille")
-                                        : "aimant : libre")
+    g.drawText((followPlayhead_ ? vsm::app::ui::tr(u8"suit · ") : juce::String())
+                   + (snap_ ? (aimanteALaMesure_ ? vsm::app::ui::tr("aimant : mesure") : vsm::app::ui::tr("aimant : grille"))
+                                        : vsm::app::ui::tr("aimant : libre"))
                    + (automationVisible_ ? "  |  auto" : ""),
                 4, 2, kHeaderWidth - 8, kRulerHeight - 4, juce::Justification::centredRight);
 
     if (project_->tracks.empty()) {
         g.setColour(Palette::textSecondary);
         g.setFont(juce::Font(juce::FontOptions(14.0f)));
-        g.drawText(u8"Aucune piste — Piste ▸ Ajouter une piste",
+        g.drawText(vsm::app::ui::tr(u8"Aucune piste — Piste ▸ Ajouter une piste"),
                     bounds.withTrimmedLeft(kHeaderWidth), juce::Justification::centred);
     }
 

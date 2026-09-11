@@ -38,7 +38,7 @@ private:
     /// Pose (ou seulement compte) les rangées pour cette largeur. Un seul
     /// parcours sert aux deux, sans quoi la mesure et la pose divergeraient.
     int disposer(int largeurTotale, bool placer);
-    void configureButton(juce::Button& button, const juce::String& tooltip);
+    void configureButton(juce::Button& button);   // D94 : l'infobulle, c'est `retraduire()`
     void applyGridFromCombos();
     void applyScaleFromCombos();
     void timerCallback() override { refreshSelectionInfo(); }

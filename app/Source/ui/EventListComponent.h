@@ -38,6 +38,8 @@ public:
     /// ligne sélectionnée.
     void refresh();
     void setActiveTrack(int trackIndex);
+    /// D94 : les colonnes, le filtre, le titre et le compte, dans la langue courante.
+    void retraduire();
 
     /// Prévenu AVANT une suppression : c'est là que l'application prend son
     /// instantané d'annulation.

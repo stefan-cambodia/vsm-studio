@@ -1283,6 +1283,49 @@ void MainComponent::listReportForCapture() {
         std::fputs(("VSM_RAPPORT : " + ligne + "\n").toRawUTF8(), stderr);
 }
 
+void MainComponent::listTextsForCapture() {
+    // D94 : CE QUE LA FENÊTRE MONTRE, composant visible par composant visible.
+    // L'inventaire du code (tools/inventaire_langue.py) compte les chaînes
+    // écrites hors tr() ; celle-ci lit ce qui s'AFFICHE -- la leçon de D80 : la
+    // barre de menus comptée dans le code disait « 227 / 227 » quand l'écran en
+    // montrait 35 en français. Une ligne par texte : sa nature, puis le texte,
+    // ses retours à la ligne rendus par « / ». Ce que `paint()` dessine sans
+    // composant (les messages d'état vides) n'y est pas : l'image le montre.
+    //
+    // `isVisible()` ET NON `isShowing()` : le second exige aussi que la fenêtre
+    // ne soit pas minimisée, et un écran VERROUILLÉ la fait passer pour telle.
+    // La liste rendait alors 0 texte sans un mot (11/09, D94), pendant que
+    // l'autoportrait dessinait la fenêtre entière. La descente part de la racine
+    // et ne suit que des enfants visibles : c'est « visible dans la fenêtre »,
+    // la même liste que `isShowing()` quand la fenêtre est à l'écran.
+    int nombre = 0;
+    std::function<void(juce::Component&)> parcourir = [&](juce::Component& c) {
+        if (!c.isVisible()) return;
+        auto ecrire = [&nombre](const char* nature, const juce::String& texte) {
+            if (texte.trim().isEmpty()) return;
+            ++nombre;
+            juce::StringArray lignes;
+            lignes.addLines(texte);
+            std::fputs(("VSM_TEXTE : " + juce::String::fromUTF8(nature) + " : "
+                        + lignes.joinIntoString(" / ") + "\n").toRawUTF8(), stderr);
+        };
+        if (auto* bouton = dynamic_cast<juce::Button*>(&c)) ecrire("bouton", bouton->getButtonText());
+        else if (auto* libelle = dynamic_cast<juce::Label*>(&c)) ecrire("libellé", libelle->getText());
+        else if (auto* liste = dynamic_cast<juce::ComboBox*>(&c)) ecrire("liste", liste->getText());
+        if (auto* bulle = dynamic_cast<juce::SettableTooltipClient*>(&c)) ecrire("infobulle", bulle->getTooltip());
+        // Une liste déroulante porte son texte dans un libellé enfant : ne pas
+        // le compter deux fois.
+        if (dynamic_cast<juce::ComboBox*>(&c) != nullptr) return;
+        for (auto* enfant : c.getChildren()) parcourir(*enfant);
+    };
+    parcourir(*this);
+    // LE COMPTE, ET CE QUI LE REND SUSPECT : un zéro doit se lire, pas se deviner.
+    std::fputs(("VSM_TEXTES : " + juce::String(nombre) + juce::String(u8" texte(s) listé(s)")
+                + (isShowing() ? juce::String()
+                               : juce::String(u8" -- fenêtre non affichée (écran verrouillé ?)"))
+                + "\n").toRawUTF8(), stderr);
+}
+
 void MainComponent::applyViewCommand(const juce::String& nom) {
     // Les MÊMES identifiants que le menu : tester autre chose que ce que
     // l'utilisateur clique ne testerait rien.
@@ -7442,6 +7485,15 @@ void MainComponent::retraduire() {
     midiLearnPanel_.retraduire();
     refreshMidiLearnList();
     browserPanel_.retraduire();
+    // D94 : LES PANNEAUX TOUJOURS VISIBLES -- le mixeur, les trois voies, la
+    // liste d'événements et le rack. Ce que les autres DESSINENT (piano roll,
+    // arrangement, spectre) suit par le `repaint()` final.
+    mixer_.retraduire();
+    midiCc_.retraduire();
+    tempoLane_.retraduire();
+    automation_.retraduire();
+    eventList_.retraduire();
+    synthRack_.retraduire();
     refreshPreferences();             // les textes d'état, refaits par leur client
     // D93 : CHAQUE CLIENT REFAIT SON RAPPORT, volet ouvert ou fermé -- le dernier
     // à l'avoir rempli, et lui seul (D84 ne connaissait que le rapport d'ouverture).

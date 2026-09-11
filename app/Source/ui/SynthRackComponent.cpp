@@ -1,4 +1,5 @@
 #include "SynthRackComponent.h"
+#include "Langue.h"
 #include "LookAndFeel/VsmLookAndFeel.h"
 
 using namespace vsm::audio::plugin;
@@ -66,13 +67,21 @@ void SynthRackComponent::setSynth(ISynthPlugin* synth, const juce::String& track
                                   juce::dontSendNotification);
     } else {
         titleLabel_.setText("SYNTH RACK", juce::dontSendNotification);
-        machineNameLabel_.setText(juce::String::fromUTF8("(aucun instrument assigné)"),
+        machineNameLabel_.setText(vsm::app::ui::tr(u8"(aucun instrument assigné)"),
                                   juce::dontSendNotification);
     }
 
     rebuildControls();
     resized();
     repaint();
+}
+
+void SynthRackComponent::retraduire() {
+    // D94 : le seul texte que le rack écrit lui-même ; le reste vient de la
+    // machine (son nom, ses paramètres), c'est-à-dire du moteur.
+    if (!synth_)
+        machineNameLabel_.setText(vsm::app::ui::tr(u8"(aucun instrument assigné)"),
+                                  juce::dontSendNotification);
 }
 
 void SynthRackComponent::setTrack(vsm::sequencer::Track* track) {
