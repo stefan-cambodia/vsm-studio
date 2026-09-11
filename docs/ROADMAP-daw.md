@@ -15273,3 +15273,29 @@ règle des guillemets français À L'AFFICHAGE, à étendre par lots mesurés �
 pas d'un coup sur 1 300 paires. Le n° 1 réfuté : l'hypothèse tombe, et A13
 n'a plus que la boîte à largeur fixe.
 
+**LE RÉSULTAT (11/09/2026, banc à 18:24, binaire du 11/09 18:23:51) —
+l'attendu n° 1 TENU, le n° 2 RÉFUTÉ : L'HYPOTHÈSE TOMBE.**
+
+1. **La largeur — TENU.** Sur les deux photos françaises, l'espace fine
+   s'affiche ÉTROITE, comme la typographie la veut (« « 17 » »,
+   « « Batterie # » ») : ni plus large qu'une espace, ni carré de
+   remplacement. C'est ce que l'insécable de D117 ne tenait pas.
+2. **Aucune coupure dans un guillemet — RÉFUTÉ.** JUCE coupe AUSSI à
+   l'espace fine : « Mesure, ou mesure.temps (« 17 », « » en fin de ligne,
+   « 17.3 »). La première mesure est la 1. » à la suivante — la coupure du
+   témoin, au même endroit ; « « Batterie 2 / »... » de même (la boîte a
+   perdu 8 px de large, 516 contre 524). L'insécable U+00A0 empêchait la
+   coupure et s'affichait large ; la fine U+202F s'affiche juste et
+   n'empêche rien. Pourquoi la mise en page de JUCE traite les deux
+   différemment n'est pas établi ici ; ce qui l'est, ce sont les deux photos.
+3. **TENU** : les trois photos anglaises et la boîte du dépôt française
+   identiques au pixel à l'audit de D119 (0 pixel sur 4).
+
+**CE QUI RESTE DANS LE CODE : RIEN DE D120.** La règle écrite d'avance
+tranche : l'hypothèse tombe. Garder des espaces fines dans DEUX boîtes, sans
+effet sur la coupure, rendrait le français de l'application incohérent pour
+rien : les deux fichiers sont remis à leur état commité (D117), et
+l'application recompilée depuis ce source. **A13 n'a plus qu'une piste : une
+boîte qui fixe sa largeur** — un composant à nous à la place d'`AlertWindow`
+pour les messages longs —, un chantier à écrire comme tel, pas une retouche.
+
