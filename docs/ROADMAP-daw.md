@@ -16865,3 +16865,35 @@ projet (`instruments/track_NN.synth.json`). D36, qui a relevé les gestes qui
 échappent à l'annulation, a compté les champs de la piste et ne parle pas des
 réglages de machine : un trou qu'elle n'a pas vu, pas un choix. INDEX, A21.
 
+### Phase D141 — le vingt-huitième audit : une annulation ramène-t-elle le MASTER au dernier enregistrement ? (12/09/2026)
+
+**LE SOUPÇON, lu dans le code en cherchant la suite d'A21.** Les réglages du
+MASTER, eux, SONT dans le modèle (`Project::masterParameters`, écrits dans
+`project.json`). Mais un bouton MASTER n'écrit que dans le moteur
+(`onMasterParam` → `masterBus().setParameter`) ; le modèle n'est rafraîchi que
+par `captureSessionIntoProject` — à l'enregistrement, à l'export, au gel, au
+report —, jamais au début d'un pas d'annulation ; et TOUTE annulation passe
+par `rebuildFromProject`, qui réapplique `masterParameters` au moteur. D'où
+une suite plausible : un projet enregistré avec son MASTER réglé ; un bouton
+MASTER tourné ; n'importe quel geste annulable ; Ctrl+Z — et le MASTER
+reviendrait aux valeurs enregistrées, sans un mot. Une panne muette, si
+elle existe ; et les gestes du MASTER eux-mêmes ne s'annulent pas.
+
+**L'OUTIL.** Les boutons MASTER n'ont pas de texte, et la bulle (D135)
+n'apparaît qu'à l'appui, qui ne se joue pas après Ctrl+Z au banc.
+`VSM_VALEUR` : au moment du relevé des textes (après les gestes et les
+touches), une ligne par curseur NOMMÉ — `VSM_VALEUR : <nom> : <valeur
+affichée>`.
+
+**LE BANC.** Le projet de D91, avec une section `master` qui porte le LOW à
++6 dB (le reste à ses valeurs d'usine). Gestes : `doubleclic:master.LOW`
+(D140 : le moteur revient à 0 dB), puis `volume:0.5` sur la piste (un geste
+annulable) ; puis, dans un second cas, Ctrl+Z (`VSM_TOUCHE`). Anglais.
+
+**ATTENDU, écrit avant l'outil et la mesure.** Sans Ctrl+Z : LOW à 0.0 dB.
+**Avec Ctrl+Z : LOW à +6.0 dB** — le soupçon confirmé : l'annulation d'un
+geste de piste a ramené le MASTER au dernier enregistrement. Si le LOW reste
+à 0.0 dB, la lecture du code s'est trompée quelque part, et c'est écrit tel
+quel. Le remède, s'il est confirmé, a sa phase — et il se fait dans
+l'application seule, le modèle ayant déjà son champ.
+
