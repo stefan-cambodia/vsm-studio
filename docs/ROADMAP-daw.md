@@ -16393,3 +16393,52 @@ par défaut (liste des pistes, mixeur) ou dès qu'une machine n'a pas de
 façade. **INDEX, A18.** La correction a sa phase, et ses attendus s'écrivent
 avant de toucher au code.
 
+### Phase D135 — A18 : une bulle de valeur sur les commandes qui n'en montraient aucune (12/09/2026)
+
+**CE QUE JUCE OFFRE, lu avant d'écrire** (`juce_Slider.cpp`). La bulle de
+valeur (`setPopupDisplayEnabled`) s'ouvre À L'APPUI et reste tant que le
+bouton est tenu ; elle écrit `getTextFromValue` (donc le suffixe d'unité, ou
+une fonction de mise en forme). Elle est posée dans le composant qu'on lui
+donne, ou à défaut sur le bureau, comme une fenêtre transparente — que
+l'autoportrait ne voit pas, et qu'un bureau sans transparence dessine mal.
+
+**LA CORRECTION, décidée avant le témoin.**
+
+1. Une aide, `BulleDeValeur`, attachée à un curseur : elle active la bulle
+   au glissé et la pose dans le CONTENU de la fenêtre qui porte le curseur,
+   reposée quand le curseur change de fenêtre (panneaux flottants).
+2. Les quatre familles d'A18 la reçoivent, avec une mise en forme qui se lit :
+   le volume d'une ligne de piste en dB (« -0.9 dB », comme le fader du
+   mixeur, et non le gain 0,9) ; le panoramique en « C », « L 35 » / « R 35 »
+   en anglais, « G 35 » / « D 35 » en français ; un départ en dB ; les
+   boutons MASTER avec leur unité à une décimale (deux pour SAT, sans unité) ;
+   un paramètre du panneau générique comme l'afficheur des façades (deux
+   décimales sous 100, entier au-delà, et l'unité).
+3. **Le geste de banc d'abord, dans un pas séparé** (témoin du même code) :
+   ces curseurs n'ont pas d'infobulle ; ils reçoivent un NOM de composant
+   (`pistes.volume`, `pistes.pan`, `mixeur.pan`, `mixeur.depart`,
+   `master.LOW`…, `rack.parametre`), invisible à l'écran, et le geste
+   `appuyer:<nom>` (`VSM_GESTE_PISTE`) envoie un appui au premier curseur
+   visible de ce nom, sans relâcher. Effet de bord, dit : un appui ouvre
+   aussi la passe d'édition du réglage, sans conséquence sur un projet de
+   brouillon jamais enregistré.
+
+**LE BANC.** Projet de D91, français et anglais, une photo par cas :
+`pistes.volume`, `pistes.pan`, `mixeur.pan`, `master.LOW`, `master.RATIO`,
+et `rack.parametre` après `machine:vsm.testtone` (la seule machine sans
+façade décrite). Les départs ne sont pas atteints : le projet ne déclare
+aucun bus — vérifiés au code, et c'est dit.
+
+**ATTENDU, écrit avant le témoin.**
+
+1. **Au témoin** (le geste seul) : le journal dit « appuyé » pour chaque cas,
+   et aucune bulle n'est sur les photos.
+2. **Après** : une bulle près du curseur, sur chaque photo — « -0.9 dB »
+   pour le volume de la piste (gain 0,9), « C » pour les panoramiques au
+   centre, « 0.0 dB » pour LOW, « 2.0:1 » pour RATIO, la valeur du
+   paramètre du générateur de test avec son unité ; en français « C » aussi,
+   et « G »/« D » si un panoramique n'est pas au centre.
+3. Aucun texte déjà affiché ne change (le relevé des textes identique au
+   témoin, la bulle n'étant pas un libellé) ; suites vertes, préférences
+   intactes.
+
