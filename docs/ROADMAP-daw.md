@@ -17058,3 +17058,59 @@ rappels (`onMasterEnable`, `onMonoListen`), que cette phase ne touche pas —
 l'écoute mono est un réglage de SÉANCE, l'activation du bus est dans les
 paramètres que la recopie emporte.
 
+
+### Phase D145 — le vingt-neuvième audit : le bouton MASTER et l'écoute mono, les deux commandes que D144 a laissées de côté (12/09/2026)
+
+**D'où elle vient.** D144 a fermé A23 en faisant porter le MASTER par chaque pas
+d'annulation, et il a nommé lui-même ce qu'il ne touchait pas : « le bouton
+MASTER ENABLE et l'écoute mono passent par d'autres rappels (`onMasterEnable`,
+`onMonoListen`), que cette phase ne touche pas ». Ce qu'une phase nomme comme
+restant se mesure à la phase suivante, sinon la liste des restes devient une
+liste de vœux.
+
+**Ce que le code dit AVANT toute mesure** (lu, pas supposé) :
+
+- `MainComponent.cpp:325` — `mixer_.onMasterEnable` ne fait qu'une chose :
+  `masterBus().setEnabled(on)`. Ni `beginProjectEdit`, ni recopie dans
+  `project_.masterParameters`. C'est mot pour mot le défaut que D143 a mesuré
+  sur les boutons du MASTER, et que D144 n'a corrigé que pour eux.
+- `MasterBus.h:56` — l'activation EST un paramètre du bus, nommé
+  « Master Enabled » (0 à 1, défaut 0). Elle passe donc par
+  `describeMasterBus`, donc par `project.json`, donc par la photo que D144 fait
+  du MASTER à chaque pas d'annulation.
+- `MainComponent.cpp:3722` — l'écoute mono bascule le moteur et le bouton, et
+  n'écrit rien dans le projet. Elle n'est PAS dans les quatorze paramètres du
+  bus (`MasterBus.h:55-70`) : conforme à D23.5, « un outil d'écoute, jamais un
+  paramètre du bus, jamais dans le fichier ni dans un export ».
+
+**Ce que le banc ne sait pas encore faire.** `appuyer:` (D135) et `doubleclic:`
+(D140) ne cherchent que des `juce::Slider` ; `enableButton_` et `monoButton_`
+sont des `juce::TextButton` sans nom de composant. Aucune mesure n'est possible
+sans les atteindre : D145 ajoute donc un verbe `cliquer:<nom, légende ou
+infobulle>` qui presse le premier BOUTON visible et pourvu d'une surface, par le
+chemin de la souris (`mouseDown` puis `mouseUp`, comme D135), et nomme les deux
+boutons (`master.MASTER`, `master.MONO`). C'est de la plomberie de banc : aucun
+rappel, aucun seuil, aucun chemin d'utilisateur n'en change. Le relevé
+`VSM_CLIC` dit l'état du bouton AVANT et APRÈS, pour qu'un clic qui n'atterrit
+pas se voie au lieu de passer pour un défaut du logiciel.
+
+**ATTENDU, écrit avant la mesure.** Projet de D91, « Master Enabled »
+enregistré à 1 et « EQ Low Gain » à +6 dB ; anglais ; le moteur lu par
+`VSM_MASTER_MOTEUR` après le geste et la touche.
+
+| cas | attendu | ce qui le réfute |
+|---|---|---|
+| (a) `cliquer:master.MASTER` | moteur **0.00** — le bus s'éteint | toute autre valeur : le clic n'atteint pas le bouton, et rien n'est mesuré |
+| (b) (a) puis Ctrl+Z | **0.00 — RIEN N'EST ANNULÉ** | 1.00 : l'activation s'annule déjà, l'hypothèse tombe |
+| (c) (a) puis `volume:0.5` puis Ctrl+Z | master **0.00**, volume rendu | master 1.00 : un pas de PISTE ramènerait l'activation, contre ce que D144 a établi |
+| (d) contrôle du même binaire : `doubleclic:master.LOW` puis Ctrl+Z | **6.00** — le geste du MASTER s'annule (D144) | autre chose : la plomberie de D145 a cassé D144 |
+| (e) écoute mono par le menu, puis Ctrl+Z | mono **ALLUMÉ** après l'annulation, et aucune clé mono au relevé du moteur | une clé mono au relevé, ou une extinction : l'outil d'écoute serait devenu un paramètre du projet |
+
+**L'hypothèse.** (b) rendra 0.00 : l'activation du bus est un paramètre du
+projet qu'aucun pas d'annulation n'ouvre. Si elle se vérifie, l'anomalie s'écrit
+(A24) et la phase suivante la corrigera par le chemin déjà tracé en D144 — un
+`onMasterEditStarted` avant la bascule, une recopie du moteur dans le modèle
+après —, sans toucher ni à `core/` ni à `audio/`, que l'épreuve Children
+interdit de recompiler tant qu'une course tourne. (e) est l'attendu INVERSE :
+y voir l'écoute mono survivre à l'annulation est le BON comportement, et c'est
+le seul cas de la série où « rien ne bouge » est une réussite.
