@@ -15762,3 +15762,63 @@ libellé du menu), et la règle TABLE — « traduite ailleurs, par une variable
 — la tient pour traduite (`T MainComponent.cpp:5788`). Écrite par
 `fromUTF8`, elle ne passe par aucun `tr()`.
 
+**RÉSULTAT (11/09, banc de 23:00 à 23:04, dates des fichiers) — l'attendu français est RÉFUTÉ
+(0 au lieu de 3 à 7), l'anglais tient (1).** Binaire de D124 (22:43:32).
+Treize boîtes demandées par langue, toutes les photos au premier essai.
+« Reconstruction indisponible » a été relancée chaîne absente (le montage
+de D114) : sur le banc principal la chaîne est là, et la boîte n'avait que
+son titre — rien à couper. « Geler » : l'entrée de menu exécutée, aucune
+boîte ni ligne `VSM_BOITE` en quatre essais ; nommée, non comptée, et ce que
+le geste a fait n'est pas relevé ici.
+
+| boîte | français | anglais |
+|---|---|---|
+| notes perdues à l'enregistrement | propre | propre |
+| mesure impossible | propre | propre |
+| rien n'est revenu | propre | propre |
+| latence mesurée | propre | propre |
+| le disque n'a pas suivi | propre | **« it. » seul sur sa ligne** — (a) |
+| reconstruction indisponible (chaîne absente) | propre — le chemin coupé : une donnée | propre — idem |
+| statistiques du projet | propre | propre |
+| modèle de projet | propre | propre |
+| extraire le groove | propre | propre |
+| créer un clip | propre | propre |
+| rogner au son | propre | propre |
+| découper aux transitoires | propre | propre |
+
+**Douze boîtes par langue : 0 mal coupée en français, 1 en anglais.** La
+règle écrite d'avance (2 ou moins en français) désigne l'EXCEPTION : la
+famille ne bascule pas d'un geste, la boîte fautive se retouche seule.
+
+**POURQUOI LA PRÉDICTION A MANQUÉ, lu dans JUCE APRÈS la mesure**
+(`TextLayout::createLayoutWithBalancedLineLengths`). La boîte statique ne
+regarde pas les paragraphes : elle essaie des largeurs de `w` à `w/2` par pas
+de 10 px, et s'arrête dès que les DEUX DERNIÈRES lignes ont des longueurs à
+10 % près — le cas ordinaire, d'où onze boîtes propres sur douze. Quand
+aucune largeur n'y parvient, elle garde celle dont les deux dernières lignes
+sont les PLUS déséquilibrées (`prop > bestLineProportion`, avec `prop =
+longue / courte`, toujours ≥ 1) : c'est ce qui fabrique un mot seul — « it. »
+ici, « minutes. » en D119. La prédiction reposait sur les paragraphes ; le
+défaut tient aux deux dernières lignes, et il est rare.
+
+**VU HORS DE LA DÉFINITION, dit et non compté.**
+
+1. **Dans les douze boîtes à icône, le texte est dessiné PAR-DESSUS
+   l'icône** : le « i » et le « ! » de JUCE débordent du coin jusqu'à
+   ~115 px, le titre et le message commencent à 80 px. Blanc sur sarcelle ou
+   rouge sombre, cela reste lisible ; c'est pourtant un chevauchement, et il
+   vaut pour toute la famille.
+2. En anglais, un chemin de menu coupé en deux (« File ▸ New / from
+   template ») ; en français, « posez- / le », coupé au trait d'union.
+3. En anglais, les statistiques gardent l'espace française avant les
+   deux-points (« Tracks : 2 », « Notes : 16 »).
+4. La raison d'une reconstruction indisponible commence par une minuscule
+   (« le dossier… », « the analysis chain folder… ») : écrite pour suivre
+   « Reconstruction indisponible — », elle est montrée seule ici.
+
+**CE QUE L'AUDIT DÉSIGNE.** D126 : « Le disque n'a pas suivi » retouchée et
+remesurée ; « Chaîne d'analyse » traduite (titre, raison, remède), avec un
+chemin de banc jusqu'à son sélecteur pour que la traduction se voie. Le
+chevauchement de l'icône est une question à part — il touche les 113 sites,
+et c'est le style de JUCE : il se décide sur des photos, dans une phase à lui.
+
