@@ -5922,36 +5922,48 @@ void MainComponent::filesDropped(const juce::StringArray& files, int, int) {
                     u8"elle n'est pas proposée pour un lot.")
                : tr(u8"« Poser » crée une piste, tout de suite.\n"
                     u8"Reconstruction indisponible — ")
-                     + juce::String::fromUTF8(reconstructionChain_.reason.c_str()) + "\n"
-                     + juce::String::fromUTF8(reconstructionChain_.remedy.c_str()));
+                     // D124 : des DONNÉES d'interchange/, traduites à l'affichage (D114)
+                     + vsm::app::ui::trPhrase(juce::String::fromUTF8(reconstructionChain_.reason.c_str())) + "\n"
+                     + vsm::app::ui::trPhrase(juce::String::fromUTF8(reconstructionChain_.remedy.c_str())));
 
+    // D124 : LES DEUX BOÎTES PAR `BoiteLisible` (D121) -- statiques, celles de JUCE
+    // mettaient le texte en page avant la largeur, et « minutes. » restait seul
+    // sur sa ligne (D119). Mêmes boutons, même ordre, mêmes valeurs rendues que
+    // `showOkCancelBox` et `showYesNoCancelBox` (1, 2, 0) ; la ligne `VSM_BOITE`
+    // au moment de la demande (D95), comme `montrerBoite`.
     if (!reconstructible) {
-        juce::AlertWindow::showOkCancelBox(
-            juce::AlertWindow::QuestionIcon,
-            tr(u8"Poser sur une piste ?"), detail,
-            tr(u8"Poser"), vsm::app::ui::trSelon("bouton", u8"Annuler"), this,
-            juce::ModalCallbackFunction::create([this](int resultat) {
-                if (resultat == 1) placeDroppedAudioOnTracks();
-                pendingDroppedAudio_ = juce::File();
-                pendingDroppedAudios_.clear();
-            }));
+        auto* fenetre = new BoiteLisible(tr(u8"Poser sur une piste ?"), detail,
+                                         juce::MessageBoxIconType::QuestionIcon);
+        fenetre->addButton(tr(u8"Poser"), 1, juce::KeyPress(juce::KeyPress::returnKey));
+        fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0,
+                           juce::KeyPress(juce::KeyPress::escapeKey));
+        std::fputs(("VSM_BOITE : " + fenetre->getName() + " : " + detail.replace("\n", " / ")
+                    + "\n").toRawUTF8(), stderr);
+        fenetre->enterModalState(true, juce::ModalCallbackFunction::create([this](int resultat) {
+            if (resultat == 1) placeDroppedAudioOnTracks();
+            pendingDroppedAudio_ = juce::File();
+            pendingDroppedAudios_.clear();
+        }), true);
         return;
     }
     // TROIS BOUTONS quand les deux chemins sont ouverts : « Poser » en premier
     // parce que c'est le geste courant, « Reconstruire » ensuite, « Annuler »
     // au bout.
-    juce::AlertWindow::showYesNoCancelBox(
-        juce::AlertWindow::QuestionIcon,
-        tr(u8"Que faire de ce fichier ?"), detail,
-        tr(u8"Poser sur une piste"),
-        tr(u8"Reconstruire"), vsm::app::ui::trSelon("bouton", u8"Annuler"), this,
-        juce::ModalCallbackFunction::create([this](int resultat) {
-            if (resultat == 1) placeDroppedAudioOnTracks();
-            else if (resultat == 2 && pendingDroppedAudio_ != juce::File())
-                startReconstruction(pendingDroppedAudio_);
-            pendingDroppedAudio_ = juce::File();
-            pendingDroppedAudios_.clear();
-        }));
+    auto* fenetre = new BoiteLisible(tr(u8"Que faire de ce fichier ?"), detail,
+                                     juce::MessageBoxIconType::QuestionIcon);
+    fenetre->addButton(tr(u8"Poser sur une piste"), 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton(tr(u8"Reconstruire"), 2);
+    fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0,
+                       juce::KeyPress(juce::KeyPress::escapeKey));
+    std::fputs(("VSM_BOITE : " + fenetre->getName() + " : " + detail.replace("\n", " / ")
+                + "\n").toRawUTF8(), stderr);
+    fenetre->enterModalState(true, juce::ModalCallbackFunction::create([this](int resultat) {
+        if (resultat == 1) placeDroppedAudioOnTracks();
+        else if (resultat == 2 && pendingDroppedAudio_ != juce::File())
+            startReconstruction(pendingDroppedAudio_);
+        pendingDroppedAudio_ = juce::File();
+        pendingDroppedAudios_.clear();
+    }), true);
 }
 
 // --- D10.2 : le MIDI learn se voit, se défait, et se souvient --------------

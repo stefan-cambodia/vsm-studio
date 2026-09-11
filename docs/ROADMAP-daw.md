@@ -15661,3 +15661,41 @@ préférence `dossierChaineAnalyse` pointée sur un dossier sans
    français ; le français identique au témoin, mot pour mot.
 3. **Suites vertes**, préférences intactes.
 
+**RÉSULTAT (11/09, 22:50) — les trois attendus tiennent.** Témoin : le
+binaire de D123 (22:35:18) ; après : celui du correctif (22:43:32), compilé
+à `-j 2` pendant l'épreuve Children. Chaque cas a donné sa photo au premier
+essai, dans les deux séries.
+
+| cas | témoin (`showYesNoCancelBox` / `showOkCancelBox`) | après (`BoiteLisible`) |
+|---|---|---|
+| dépôt, chaîne là, FR | 646 px ; « minutes. » **seul** sur la dernière ligne ; icône « ? » | 717 px ; « … : plusieurs minutes. » sur **une** ligne ; boutons Poser sur une piste · Reconstruire · Annuler |
+| dépôt, chaîne là, EN | — | « … : several minutes. » sur une ligne ; Place on a track · Reconstruct · Cancel |
+| chaîne absente, FR | raison et remède en français ; le chemin coupé AUX TRAITS D'UNION (« claude-1000/- » / « home-stefan… », « 4dea- » / « aa2e… ») | même texte, mot pour mot ; le chemin sur sa ligne, coupé à une barre oblique |
+| chaîne absente, EN | « Reconstruction unavailable — **le dossier de la chaîne d'analyse indiqué…** / **corriger le chemin…** » : la raison et le remède en français | « Reconstruction unavailable — the analysis chain folder set in the preferences does not contain reconstruire.py (…) / fix the path, or clear it to let the application search » |
+
+1. **Attendu 1 tenu** : aucune mauvaise coupure dans la boîte à trois
+   boutons, en français comme en anglais ; les trois boutons dans l'ordre du
+   témoin.
+2. **Attendu 2 tenu** : lu sur la ligne `VSM_BOITE` (le témoin n'en écrivait
+   pas — c'est la décision 3 — la comparaison au témoin s'est donc faite sur
+   les photos) : raison et remède traduits en anglais ; le français identique
+   à celui du témoin, relu mot pour mot sur les deux photos.
+3. **Attendu 3 tenu** : suites C++ vertes (330 cœur, 1 291 audio, 297
+   interchange, 25 CLAP, 11 panneaux), compilées à `-j 2` ; les préférences
+   de l'utilisateur identiques, par `cmp`, à la copie prise juste avant
+   chacune des deux séries.
+
+**Ce qui change en passant, et qu'on n'avait pas écrit** : sur les photos
+d'après, le chemin long passe à la ligne entier et n'est coupé qu'à une barre
+oblique, là où le témoin le coupait deux fois à un trait d'union au milieu
+d'un nom — constaté sur deux photos, la règle de coupure du `TextEditor` n'a
+pas été lue dans JUCE. Les deux boîtes sont plus
+larges (717 et 896 px contre 646 et 674) : c'est la cale de D121, la largeur
+de la ligne la plus longue, et c'est ce qui garde « minutes. » avec sa ligne.
+
+**A13 est close** : les trois boîtes relevées par D119 passent désormais par
+`BoiteLisible`. Les autres boîtes STATIQUES de JUCE que l'application ouvre
+encore (`showMessageBoxAsync` et consorts) n'ont pas été relevées par D119 et
+ne sont pas réputées bien coupées : elles le seront quand un audit les
+montrera.
+
