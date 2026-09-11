@@ -512,12 +512,26 @@ int main(int argc, char* argv[]) {
         if (juce::String(argv[i]) != "--scan-plugin") continue;
 
         const juce::File fichier(juce::String::fromUTF8(argv[i + 1]));
-        // UNE SEULE LIGNE PAR PLUGIN, SUR LA SORTIE STANDARD. Le parent ignore
-        // tout ce qui n'a pas la bonne forme : un plugin qui écrit un message
-        // de licence pendant son chargement ne doit pas entrer au catalogue.
-        for (const auto& plugin : vsm::app::plugins::scanOneFileInThisProcess(fichier))
-            std::printf("%s\n", vsm::interchange::encodeScanLine(plugin).c_str());
-        std::fflush(stdout);
+        // UNE SEULE LIGNE PAR PLUGIN. Le parent ignore tout ce qui n'a pas la
+        // bonne forme : un plugin qui écrit un message de licence pendant son
+        // chargement ne doit pas entrer au catalogue.
+        //
+        // D113 : DANS LE FICHIER QUE LE PARENT DONNE (troisième argument), et
+        // plus sur la sortie standard -- le parent attend avec son délai, puis
+        // lit. Un fichier qui ne rend rien le DIT (la raison de l'hôte), et la
+        // sentinelle vient en dernier : absente, l'enfant est mort en route.
+        std::string erreur;
+        const auto trouves = vsm::app::plugins::scanOneFileInThisProcess(fichier, erreur);
+        std::string texte;
+        for (const auto& plugin : trouves) texte += vsm::interchange::encodeScanLine(plugin) + "\n";
+        if (trouves.empty() && !erreur.empty())
+            texte += std::string(vsm::app::plugins::kLigneEchecBalayage) + erreur + "\n";
+        texte += std::string(vsm::app::plugins::kLigneFinBalayage) + "\n";
+        std::FILE* flux = (i + 2 < argc) ? std::fopen(argv[i + 2], "w") : stdout;
+        if (flux == nullptr) return 2;
+        std::fputs(texte.c_str(), flux);
+        if (flux != stdout) std::fclose(flux);
+        else std::fflush(stdout);
         return 0;
     }
 

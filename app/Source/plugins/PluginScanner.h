@@ -39,7 +39,19 @@ std::vector<juce::File> findPluginFiles(const std::vector<juce::File>& folders);
 /// s'appelle que dans le processus enfant -- l'appeler dans le parent
 /// reviendrait à supprimer l'isolement qui est toute la raison d'être de cette
 /// étape.
-std::vector<vsm::interchange::CataloguedPlugin> scanOneFileInThisProcess(const juce::File& file);
+///
+/// D113 : `erreur` reçoit ce que l'hôte a dit quand le fichier ne rend rien
+/// (« chargement impossible : … »). Elle était jetée, et un fichier illisible
+/// sortait du balayage sans un mot.
+std::vector<vsm::interchange::CataloguedPlugin> scanOneFileInThisProcess(const juce::File& file,
+                                                                         std::string& erreur);
+
+/// D113 : LE PROTOCOLE DE L'ENFANT, en plus des lignes `PLUGIN` d'`interchange`.
+/// Une ligne d'échec ne peut pas passer pour un plugin (`decodeScanLine` exige
+/// son préfixe et six champs) ; la sentinelle est écrite EN DERNIER -- absente,
+/// l'enfant est mort en route, quoi que dise son code de sortie.
+inline constexpr const char* kLigneEchecBalayage = "VSM_ECHEC_BALAYAGE\t";
+inline constexpr const char* kLigneFinBalayage = "VSM_FIN_BALAYAGE";
 
 /// Où le catalogue est rangé, à côté des autres réglages de l'application.
 juce::File catalogueFile();

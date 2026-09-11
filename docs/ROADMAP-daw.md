@@ -14781,3 +14781,37 @@ témoin — mesuré par l'heure du dernier enregistrement du catalogue, que le
 balayage réécrit après chaque fichier. Les attendus n° 2 et 3 sont
 inchangés : 4 fautifs, chacun sa raison, 24 plugins.
 
+**LE RÉSULTAT, ATTENDU PAR ATTENDU (11/09/2026, banc à 17:34).** Binaire du
+11/09 17:32:57 (code 0) contre celui de D112 (17:10:07), même banc, deux
+langues, `HOME` de brouillon.
+
+1. **Le témoin** — réfuté plus haut : 0 fautif sur 4, dernier enregistrement
+   du catalogue à **+61 et +62 s**.
+2. **D113 — TENU** : 24 plugins et **4 fautifs**, chacun sa raison :
+
+   | fichier | raison écrite au catalogue | ce que la boîte dit en anglais |
+   |---|---|---|
+   | `faux-texte` | « chargement impossible : … » (le message de `dlopen`) | « cannot load: … » |
+   | `faux-vide` | « fabrique de plugins absente dans … » | « no plugin factory in … » |
+   | `faux-tombe` | « le processus de balayage est tombé sans code de sortie (un signal, le plus souvent un plantage) » | « the scanning process crashed without an exit code… » |
+   | `faux-dort` | « le plugin n'a pas répondu en 20 secondes » | « the plugin did not respond within 20 seconds » |
+
+   « 4 fichier(s) n'ont pas pu être lus » / « 4 file(s) could not be read »,
+   et aucun mot français dans la boîte anglaise, chemins mis à part.
+3. **TENU** : les 24 plugins du vrai fichier, mêmes identifiants, même
+   ordre, témoin et D113.
+4. **L'attendu ajouté — TENU** : dernier enregistrement du catalogue à
+   **+22 s** dans les deux langues, contre +61 et +62 s : le dormeur est tué
+   à 20 s.
+
+Ce que le banc ne couvre pas, dit : l'échec au LANCEMENT de l'enfant
+(« impossible de lancer le processus de balayage ») et un plugin VST3 —
+aucun faux `.vst3` n'a été écrit ; « aucun plugin VST3 dans « … » » a son
+modèle depuis D102. Table : **1 354** paires (+3), **106** modèles (+9 ;
+« chargement impossible : %1 » et le message VST3 existaient déjà, D102).
+Inventaire : stricte ÉCRAN **17 → 14**, TABLE 223 → 228 ; large 39 → 36,
+261. Il reste au balayage « Balayage des plugins », le NOM du fil
+d'exécution, qu'aucun écran ne montre. Suites C++ vertes à `-j 2` (330,
+1 291, 297, 25, 11) ; `build/tools/vsm-render` non touché ; préférences
+intactes.
+

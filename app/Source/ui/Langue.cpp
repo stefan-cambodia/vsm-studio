@@ -2782,6 +2782,13 @@ const Paire kAnglais[] = {
       "The disk did not keep up" },
     { "La prise a perdu %1 bloc(s) : le fichier a des trous. Un disque plus rapide, ou une taille de bloc audio plus grande, y remédient.",
       "The take lost %1 block(s): the file has gaps. A faster disk, or a larger audio block size, will fix it." },
+    // --- D113 : LE BALAYAGE DES PLUGINS -------------------------------------------
+    { "impossible de lancer le processus de balayage",
+      "could not start the scanning process" },
+    { "le processus de balayage est tombé sans code de sortie (un signal, le plus souvent un plantage)",
+      "the scanning process crashed without an exit code (a signal, most often a crash)" },
+    { "le fichier ne déclare aucun plugin",
+      "the file declares no plugin" },
 };
 
 constexpr int kNombreDePaires = static_cast<int>(sizeof(kAnglais) / sizeof(kAnglais[0]));
@@ -3072,6 +3079,16 @@ const ModeleDePhrase kModeles[] = {
     // D110 : les erreurs du rédacteur de prise (DiskRecorder)
     { u8"Impossible d'écrire %1", u8"Cannot write %1" },
     { u8"Format WAV refusé pour %1 canal/canaux à %2 Hz.", u8"WAV format refused for %1 channel(s) at %2 Hz." },
+    // D113 : le balayage des plugins, et ce que les hôtes disent d'un fichier illisible
+    { u8"le plugin n'a pas répondu en %1 secondes", u8"the plugin did not respond within %1 seconds" },
+    { u8"le plugin n'a pas repondu en %1 secondes", u8"the plugin did not respond within %1 seconds" },
+    { u8"le processus de balayage est tombé (code %1)", u8"the scanning process crashed (code %1)" },
+    { u8"le processus de balayage est tombe (code %1)", u8"the scanning process crashed (code %1)" },
+    { u8"symbole clap_entry introuvable dans %1", u8"clap_entry symbol not found in %1" },
+    { u8"version CLAP incompatible dans %1", u8"incompatible CLAP version in %1" },
+    { u8"clap_entry->init a échoué pour %1", u8"clap_entry->init failed for %1" },
+    { u8"fabrique de plugins absente dans %1", u8"no plugin factory in %1" },
+    { u8"aucun plugin dans %1", u8"no plugin in %1" },
     { u8"Piste %#1 : %P2", u8"Track %1: %P2" },
 };
 

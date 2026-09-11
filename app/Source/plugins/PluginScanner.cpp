@@ -72,10 +72,10 @@ std::vector<juce::File> findPluginFiles(const std::vector<juce::File>& folders) 
     return fichiers;
 }
 
-std::vector<CataloguedPlugin> scanOneFileInThisProcess(const juce::File& file) {
+std::vector<CataloguedPlugin> scanOneFileInThisProcess(const juce::File& file, std::string& erreur) {
     std::vector<CataloguedPlugin> trouves;
     const std::string chemin = file.getFullPathName().toStdString();
-    std::string erreur;
+    erreur.clear();
 
 #if VSM_WITH_VST3
     if (file.getFileName().endsWithIgnoreCase(".vst3")) {
@@ -105,7 +105,6 @@ std::vector<CataloguedPlugin> scanOneFileInThisProcess(const juce::File& file) {
         }
     }
 #endif
-    juce::ignoreUnused(erreur);
     return trouves;
 }
 
@@ -152,42 +151,69 @@ bool PluginScanner::scanInChildProcess(const juce::File& file,
                                         juce::String& outReason) {
     const juce::File moiMeme = juce::File::getSpecialLocation(juce::File::currentExecutableFile);
 
+    // D113 : LA SORTIE DE L'ENFANT PASSE PAR UN FICHIER, PLUS PAR UN TUBE. On
+    // lisait le tube par `readAllProcessOutput()` AVANT d'attendre avec le
+    // délai, et cette lecture boucle jusqu'à la fin du flux, c'est-à-dire
+    // jusqu'à la mort de l'enfant : le délai de 20 s ne s'appliquait jamais, et
+    // un plugin endormi 60 s tenait le balayage 61 s (banc de D113). Désormais
+    // on attend d'abord, avec le délai, et l'on lit ensuite ce qui a été
+    // écrit. La sortie standard de l'enfant n'est plus lue par personne : un
+    // plugin bavard ne peut plus remplir un tube et se bloquer dessus.
+    const juce::File sortie = juce::File::createTempFile(".vsmscan");
     juce::ChildProcess enfant;
     juce::StringArray commande;
     commande.add(moiMeme.getFullPathName());
     commande.add("--scan-plugin");
     commande.add(file.getFullPathName());
+    commande.add(sortie.getFullPathName());
 
-    if (!enfant.start(commande, juce::ChildProcess::wantStdOut)) {
-        outReason = "impossible de lancer le processus de balayage";
+    if (!enfant.start(commande, 0)) {
+        outReason = juce::String(u8"impossible de lancer le processus de balayage");
         return false;
     }
 
-    const juce::String sortie = enfant.readAllProcessOutput();
     if (!enfant.waitForProcessToFinish(kDelaiParFichierMs)) {
         // IL N'A JAMAIS RENDU LA MAIN. Un plugin qui attend une clé de licence
         // sur un serveur injoignable en est le cas le plus courant. On le tue :
         // le laisser vivre bloquerait le balayage pour toujours.
         enfant.kill();
-        outReason = "le plugin n'a pas repondu en "
-                    + juce::String(kDelaiParFichierMs / 1000) + " secondes";
-        return false;
-    }
-
-    const juce::uint32 code = enfant.getExitCode();
-    if (code != 0) {
-        // TOMBÉ. C'est le cas que toute cette machinerie existe pour survivre :
-        // dans un seul processus, celui-ci aurait emporté l'application.
-        outReason = "le processus de balayage est tombe (code " + juce::String(static_cast<int>(code)) + ")";
+        sortie.deleteFile();
+        outReason = juce::String(u8"le plugin n'a pas répondu en %1 secondes")
+                        .replace("%1", juce::String(kDelaiParFichierMs / 1000));
         return false;
     }
 
     juce::StringArray lignes;
-    lignes.addLines(sortie);
+    lignes.addLines(sortie.loadFileAsString());
+    sortie.deleteFile();
+
+    if (!lignes.contains(kLigneFinBalayage)) {
+        // TOMBÉ. C'est le cas que toute cette machinerie existe pour survivre :
+        // dans un seul processus, celui-ci aurait emporté l'application. La
+        // SENTINELLE le dit, pas le code de sortie : `getExitCode()` de JUCE rend
+        // 0 pour un enfant tué par un signal (il ne lit que `WIFEXITED`), et un
+        // `abort()` se lisait comme une sortie propre (banc de D113).
+        const auto code = static_cast<int>(enfant.getExitCode());
+        outReason = code != 0
+            ? juce::String(u8"le processus de balayage est tombé (code %1)").replace("%1", juce::String(code))
+            : juce::String(u8"le processus de balayage est tombé sans code de sortie "
+                           u8"(un signal, le plus souvent un plantage)");
+        return false;
+    }
+
+    juce::String echec;
     for (const auto& ligne : lignes) {
         CataloguedPlugin plugin;
         if (vsm::interchange::decodeScanLine(ligne.toStdString(), plugin))
             out.push_back(std::move(plugin));
+        else if (ligne.startsWith(kLigneEchecBalayage))
+            echec = ligne.fromFirstOccurrenceOf("\t", false, false);
+    }
+    if (out.empty()) {
+        // SIGNALÉ, PAS TU (D113) : un fichier qui ne rend aucun plugin est un
+        // fautif, avec la raison que l'hôte a donnée.
+        outReason = echec.isNotEmpty() ? echec : juce::String(u8"le fichier ne déclare aucun plugin");
+        return false;
     }
     return true;
 }
