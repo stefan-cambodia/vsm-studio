@@ -14980,3 +14980,36 @@ D115 : 17:54:28. Six lancements par série, `HOME` de brouillon.
 Table : **1 366** paires (+3). Suites C++ vertes à `-j 2` (330, 1 291, 297,
 25, 11) ; `build/tools/vsm-render` non touché ; préférences intactes.
 
+### Phase D116 — A9 : les réserves d'un preset de piste appliqué à la main — un reste de l'INDEX, vérifié plutôt que supposé (11/09/2026)
+
+**CE QUE L'INDEX DIT, ET CE QUE LE CODE DIT.** Depuis D89, l'INDEX range
+« les réserves d'un preset appliqué à la main » dans ce qui reste d'A9.
+Relu aujourd'hui, `applyTrackPresetFile` montre ces réserves par
+`montrerBoite(…, tr(u8"Preset de piste appliqué, avec des réserves"),
+trPhrase(…))`, et `trPhrase` traduit LIGNE PAR LIGNE puis segment par
+segment ; les segments de `PresetApplyReport::summary()` (« N paramètre(s)
+appliqué(s), M borné(s), K non pris en charge : … ») ont leurs modèles
+depuis D89-D90. Lu dans le code, ce reste serait déjà traduit — mais une
+lecture de code n'est pas une mesure, et D101 a montré ce qu'elle laisse
+passer.
+
+**LE BANC.** Un preset de piste ÉCRIT PAR L'APPLICATION (`VSM_PRESET_PISTE`,
+Minimoog, 22 paramètres), puis abîmé à la main : deux paramètres que la
+machine ne connaît pas (`filter.1.fantome`, `oscillator.9.level`) et deux
+valeurs hors bornes (`filter.1.cutoff` à 999 999, `envelope.1.attack` à
+−5). Posé dans `~/.config/VSM/pistes/` d'un `HOME` de brouillon, appliqué
+par le menu (« Banc-D116-abime », l'entrée qu'il y prend), en français et
+en anglais ; la boîte lue par `VSM_BOITE`, la ligne `VSM_PRESET` du
+terminal à côté.
+
+**ATTENDU, écrit avant la mesure** (binaire de D115, aucun code touché).
+
+1. **Une boîte « avec des réserves »** dans chaque langue, qui NOMME les deux
+   paramètres inconnus et compte les deux bornés.
+2. **En anglais, rien de français** hors des identifiants de paramètres :
+   titre et segments traduits (« … parameter(s) applied, 2 clamped, 2
+   unsupported: filter.1.fantome, oscillator.9.level »).
+3. **Ce que chaque issue décide** : tenu, le reste de l'INDEX est CLOS par
+   la mesure, sans code ; un segment français en anglais, et le lot est le
+   modèle qui manque — écrit dans cette même phase.
+
