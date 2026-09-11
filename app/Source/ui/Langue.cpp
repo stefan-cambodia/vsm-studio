@@ -934,6 +934,10 @@ const Paire kAnglais[] = {
       "Take " },
     { "Prises de « %1 »",   // D131 : un modèle entier (D80)
       "Takes of “%1”" },
+    { "G %1",   // D135 : le panoramique dans la bulle de valeur (gauche)
+      "L %1" },
+    { "D %1",   // D135 : (droite)
+      "R %1" },
     { "Programme",
       "Program" },
     { "Programme MIDI",

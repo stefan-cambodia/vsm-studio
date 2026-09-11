@@ -4,6 +4,7 @@
 #include <set>
 #include <JuceHeader.h>
 #include "vsm/audio/engine/Mixer.h"
+#include "BulleDeValeur.h"
 #include <string>
 #include <vector>
 #include "LookAndFeel/VsmLookAndFeel.h"
@@ -254,6 +255,7 @@ private:
     juce::Label nameLabel_;
     juce::Slider volume_;
     juce::Slider pan_;
+    vsm::app::ui::BulleDeValeur bullePan_ { pan_ };   ///< D135 (après le curseur : détruite avant)
     /// LE DÉCALAGE DE PISTE (D16.7), en millisecondes : une case où l'on TAPE
     /// un nombre, pas un bouton qu'on tourne. C'est un réglage qu'on connaît
     /// (« la basse arrive trois millisecondes trop tard »), pas un réglage
@@ -304,6 +306,8 @@ private:
     /// Un bouton par bus de départ du projet. `OwnedArray` et non deux membres :
     /// leur nombre n'est plus connu à la compilation.
     juce::OwnedArray<juce::Slider> sends_;
+    /// D135 : une bulle par départ (APRÈS `sends_` : détruites avant les curseurs).
+    std::vector<std::unique_ptr<vsm::app::ui::BulleDeValeur>> bullesDesDeparts_;
     /// D94 : ce que `retraduire()` refait -- les noms des bus (les infobulles
     /// des départs) et, pour un bus de groupe, ses membres une fois connus.
     std::vector<std::string> sendNames_;
@@ -430,6 +434,7 @@ private:
         std::unique_ptr<juce::Slider> slider;
         std::unique_ptr<juce::Label> label;
         vsm::audio::plugin::ParamId id;
+        std::unique_ptr<vsm::app::ui::BulleDeValeur> bulle;   ///< D135 (dernier : détruite d'abord)
     };
     std::vector<Knob> knobs_;
 };

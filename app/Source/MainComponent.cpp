@@ -1452,7 +1452,12 @@ bool MainComponent::appuyerPourCapture(const juce::String& nom) {
     // gauche, sans relâcher : `Slider::mouseDown` ouvre la bulle et ouvre aussi
     // la passe d'édition du réglage -- sans conséquence sur un projet de banc.
     std::function<juce::Slider*(juce::Component&)> chercher = [&](juce::Component& c) -> juce::Slider* {
-        if (auto* curseur = dynamic_cast<juce::Slider*>(&c); curseur != nullptr && curseur->getName() == nom)
+        // SANS SURFACE, PAS DE CURSEUR : un curseur « visible » au sens de JUCE peut
+        // avoir des limites vides (le panoramique d'une ligne de piste au dock par
+        // défaut) -- l'appui à son « centre » tombait sur son bord et le mettait au
+        // minimum (premier banc de D135).
+        if (auto* curseur = dynamic_cast<juce::Slider*>(&c);
+            curseur != nullptr && curseur->getName() == nom && !curseur->getLocalBounds().isEmpty())
             return curseur;
         for (auto* enfant : c.getChildren())
             if (enfant->isVisible())

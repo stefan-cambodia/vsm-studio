@@ -1,6 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include "machines/MachinePanelComponent.h"
+#include "BulleDeValeur.h"
 #include "vsm/audio/plugin/ISynthPlugin.h"
 #include <memory>
 #include <vector>
@@ -87,6 +88,7 @@ private:
         vsm::audio::plugin::ParamId id = 0;
         std::unique_ptr<juce::Slider> slider;
         std::unique_ptr<juce::Label> nameLabel;
+        std::unique_ptr<vsm::app::ui::BulleDeValeur> bulle;   ///< D135 (dernier : détruite d'abord)
     };
     std::vector<ParamControl> controls_;
 

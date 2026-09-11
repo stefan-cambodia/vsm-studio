@@ -1,6 +1,7 @@
 #pragma once
 #include <JuceHeader.h>
 #include "vsm/sequencer/Project.h"
+#include "BulleDeValeur.h"
 #include <functional>
 #include <set>
 #include <string>
@@ -188,6 +189,9 @@ private:
     juce::TextButton armButton_  { "R" };
     juce::Slider volumeSlider_;
     juce::Slider panSlider_;
+    /// D135 : leur valeur pendant le réglage (APRÈS les curseurs : détruites avant).
+    vsm::app::ui::BulleDeValeur bulleVolume_ { volumeSlider_ };
+    vsm::app::ui::BulleDeValeur bullePan_ { panSlider_ };
     /// Un glissé est EN COURS : ses `onValueChange` suivants ne rouvrent pas
     /// de pas d'historique. Un seul drapeau pour la ligne : on ne glisse
     /// qu'un curseur à la fois.

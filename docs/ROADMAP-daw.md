@@ -16442,3 +16442,45 @@ aucun bus — vérifiés au code, et c'est dit.
    témoin, la bulle n'étant pas un libellé) ; suites vertes, préférences
    intactes.
 
+**RÉSULTAT (12/09) — la bulle est là partout où un curseur existe à
+l'écran ; deux écarts à l'attendu, et l'un d'eux est un défaut de l'écran que
+le banc a trouvé.** Témoin : binaire du premier pas (00:19:49) ; après :
+00:28:51, puis 00:34:07 (le geste corrigé, voir plus bas).
+
+| cas | témoin | après |
+|---|---|---|
+| volume de la ligne de piste | « appuyé », aucune bulle | bulle **« -2.5 dB »** — et le fader du mixeur dit -2.5 dB aussi |
+| panoramique de la tranche | « appuyé », aucune bulle | bulle « C » (FR et EN) |
+| LOW du MASTER | « appuyé », aucune bulle | bulle « 0.0 dB » |
+| RATIO du MASTER | « appuyé », aucune bulle | bulle « 2.0:1 » |
+| paramètre du panneau générique (générateur de test) | « appuyé », aucune bulle | bulle « 1.00 » |
+| panoramique de la ligne de piste | « appuyé », aucune bulle | bulle « L 100 » au premier banc — puis, geste corrigé, **« aucun curseur visible de ce nom »** |
+
+1. **Attendu 1 tenu** : au témoin, douze appuis reçus, aucune bulle sur les
+   photos.
+2. **Attendu 2, deux écarts.** (a) « -0.9 dB » attendu pour le volume de la
+   piste, **-2.5 dB** obtenu : un curseur LINÉAIRE de JUCE saute à l'endroit
+   de l'appui, et le banc appuie au centre (0,75 sur 0-1,5, soit -2,5 dB).
+   La bulle dit la vérité : la valeur que l'appui vient de poser, celle que
+   le fader du mixeur montre aussi ; c'est l'attendu qui supposait un appui
+   sans effet. Les boutons ROTATIFS ne sautent pas (RATIO garde 2,0). (b) Le
+   panoramique de la ligne de piste : « L 100 » au premier banc, parce que
+   **ce curseur n'a AUCUNE largeur au dock par défaut** — la troisième rangée
+   donne 170 px au volume, puis 90 au panoramique, et le dock en fait ~180 ;
+   le geste l'a trouvé (visible au sens de JUCE) et l'a appuyé au bord, donc
+   à fond à gauche. **Défaut du banc**, corrigé : le geste ignore désormais un
+   curseur sans surface. **Défaut de l'écran**, nommé et non corrigé ici (une
+   autre variable) : INDEX, A19. Le « G »/« D » français n'a pas été vu, faute
+   de panoramique décentré dans ce banc ; « C » l'a été dans les deux langues.
+3. **Attendu 3 tenu** : les textes relevés identiques au témoin dans les
+   douze cas ; suites C++ vertes (330, 1 291, 297, 25, 11), compilées à
+   `-j 2` pendant la course 2 de l'épreuve, `vsm-render` intact ;
+   préférences identiques par `cmp`. L'inventaire de la langue passe à
+   ÉCRAN 9 : les deux chaînes nouvelles sont des NOMS de composant
+   (`pistes.volume`, `pistes.pan`) que la règle stricte lit comme du français
+   à cause de « pistes » ; elles ne s'affichent pas.
+
+**Vérifié au code seulement, et dit** : les départs (le projet de banc ne
+déclare aucun bus), et la bulle dans une fenêtre flottante (la bulle suit le
+contenu de la fenêtre du curseur ; aucune photo flottante dans ce banc).
+
