@@ -267,6 +267,16 @@ public:
                     if (t.trim().isNotEmpty() && !content->runKeyForCapture(t.trim()))
                         std::fputs("VSM_TOUCHE : touche inconnue ou sans commande\n", stderr);
             }
+            // VSM_BOITE_ESSAI=perdues;impossible;rien;latence;disque (D112) : les
+            // boîtes de l'enregistrement, par les fonctions du chemin réel, avec des
+            // chiffres fixes -- ni son émis, ni latence retenue, ni préférence écrite.
+            if (const char* boites = std::getenv("VSM_BOITE_ESSAI"); boites != nullptr && *boites) {
+                juce::StringArray suite;
+                suite.addTokens(juce::String::fromUTF8(boites), ";", "");
+                for (const auto& b : suite)
+                    if (b.trim().isNotEmpty() && !content->showRecordingBoxForCapture(b.trim()))
+                        std::fputs("VSM_BOITE_ESSAI : bo\u00eete inconnue\n", stderr);
+            }
             // VSM_EXPORT=fichier.flac : exporter le projet ouvert sans fenêtre
             // (D20.5). Un export passe par un sélecteur de fichier et une
             // boîte de dialogue, qu'aucune capture ne traverse ; le fichier

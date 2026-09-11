@@ -2173,10 +2173,7 @@ void MainComponent::timerCallback() {
         // prise incomplète, et il n'est pas permis que ça arrive en silence.
         if (audioEngine_.droppedRecordedEvents() > 0 && !recordDropReported_) {
             recordDropReported_ = true;
-            juce::AlertWindow::showMessageBoxAsync(
-                juce::AlertWindow::WarningIcon, u8"Notes perdues à l'enregistrement",
-                u8"La file de capture a débordé : des notes jouées ne sont PAS dans la "
-                u8"prise. Signalez-le -- ce n'est pas censé pouvoir arriver.");
+            boiteNotesPerdues();
         }
     }
     // Une passe empilée a changé le matériau des pistes armées : il faut le
@@ -8366,10 +8363,7 @@ bool MainComponent::applyAudioTake(size_t trackIndex, const juce::File& fichier,
 void MainComponent::measureInputLatency() {
     if (recordPhase_ != RecordPhase::Off) return;   // pas pendant une prise
     if (!audioEngine_.startLatencyMeasurement()) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Mesure impossible",
-            juce::String(u8"La carte n'ouvre aucune entrée : il n'y a rien à mesurer. "
-                          u8"Voir Fichier > Réglages audio."));
+        boiteMesureImpossible();
         return;
     }
 
@@ -8389,31 +8383,69 @@ void MainComponent::measureInputLatency() {
         // valeur inventée qu'on ne remettrait jamais en question.
         constexpr double kNetteteMinimale = 10.0;
         if (!resultat.trouve() || resultat.nettete < kNetteteMinimale || sr <= 0.0) {
-            juce::AlertWindow::showMessageBoxAsync(
-                juce::AlertWindow::WarningIcon, u8"Rien n'est revenu",
-                juce::String(u8"Le balayage émis n'a pas été retrouvé dans l'entrée "
-                              u8"(netteté ") + juce::String(resultat.nettete, 1)
-                    + juce::String(u8"). Branchez la sortie de la carte sur son entrée, ou "
-                                    u8"placez un micro devant un haut-parleur, et recommencez. "
-                                    u8"Aucune valeur n'a été retenue : mieux vaut ne pas "
-                                    u8"compenser que compenser d'un chiffre inventé."));
+            boiteRienNestRevenu(resultat.nettete);
             return;
         }
 
         const double secondes = static_cast<double>(resultat.decalageEchantillons) / sr;
         audioEngine_.setMeasuredRoundTripSeconds(secondes);
         vsm::app::ui::UiScale::properties().setValue("latenceAllerRetour", secondes);
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Latence mesurée",
-            juce::String(u8"Aller-retour : ") + juce::String(secondes * 1000.0, 2) + " ms ("
-                + juce::String(resultat.decalageEchantillons)
-                + juce::String(u8" échantillons à ") + juce::String(sr / 1000.0, 1) + " kHz)"
-                + juce::String(u8"\n\nNetteté du pic : ") + juce::String(resultat.nettete, 1)
-                + juce::String(u8"\n\nLes prises AUDIO sont désormais avancées d'autant. Les "
-                                u8"prises MIDI, elles, continuent d'employer la latence de "
-                                u8"sortie annoncée par le pilote : un clavier n'est pas dans "
-                                u8"la boucle, et cette mesure ne peut rien en dire."));
+        boiteLatenceMesuree(secondes, resultat.decalageEchantillons, sr, resultat.nettete);
     });
+}
+
+// D112 : LES BOÎTES DE L'ENREGISTREMENT, UNE FONCTION CHACUNE. Le chemin réel et
+// le banc (`VSM_BOITE_ESSAI`) passent par la même : un banc qui montrerait sa
+// propre copie de la phrase vérifierait un texte que personne ne lit. Aucune ne
+// fait autre chose que montrer -- la latence est retenue par l'appelant.
+void MainComponent::boiteNotesPerdues() {
+    montrerBoite(
+        juce::AlertWindow::WarningIcon, tr(u8"Notes perdues à l'enregistrement"),
+        tr(u8"La file de capture a débordé : des notes jouées ne sont PAS dans la "
+           u8"prise. Signalez-le -- ce n'est pas censé pouvoir arriver."));
+}
+
+void MainComponent::boiteMesureImpossible() {
+    montrerBoite(
+        juce::AlertWindow::InfoIcon, tr(u8"Mesure impossible"),
+        tr(u8"La carte n'ouvre aucune entrée : il n'y a rien à mesurer. "
+           u8"Voir Fichier > Réglages audio."));
+}
+
+void MainComponent::boiteRienNestRevenu(double nettete) {
+    montrerBoite(
+        juce::AlertWindow::WarningIcon, tr(u8"Rien n'est revenu"),
+        tr(u8"Le balayage émis n'a pas été retrouvé dans l'entrée (netteté %1). Branchez la "
+           u8"sortie de la carte sur son entrée, ou placez un micro devant un haut-parleur, et "
+           u8"recommencez. Aucune valeur n'a été retenue : mieux vaut ne pas compenser que "
+           u8"compenser d'un chiffre inventé.")
+            .replace("%1", juce::String(nettete, 1)));
+}
+
+void MainComponent::boiteLatenceMesuree(double secondes, int decalageEchantillons, double sr,
+                                        double nettete) {
+    montrerBoite(
+        juce::AlertWindow::InfoIcon, tr(u8"Latence mesurée"),
+        // Trois paragraphes, trois clés : une clé portant « \n\n » serait la seule de la table.
+        tr(u8"Aller-retour : %1 ms (%2 échantillons à %3 kHz)")
+                .replace("%1", juce::String(secondes * 1000.0, 2))
+                .replace("%2", juce::String(decalageEchantillons))
+                .replace("%3", juce::String(sr / 1000.0, 1))
+            + "\n\n" + tr(u8"Netteté du pic : %1").replace("%1", juce::String(nettete, 1))
+            + "\n\n"
+            + tr(u8"Les prises AUDIO sont désormais avancées d'autant. Les prises MIDI, elles, "
+                 u8"continuent d'employer la latence de sortie annoncée par le pilote : un clavier "
+                 u8"n'est pas dans la boucle, et cette mesure ne peut rien en dire."));
+}
+
+bool MainComponent::showRecordingBoxForCapture(const juce::String& nom) {
+    // D112 : chiffres fixes, écrits au ROADMAP -- 590 échantillons à 48 kHz.
+    if (nom == "perdues") { boiteNotesPerdues(); return true; }
+    if (nom == "impossible") { boiteMesureImpossible(); return true; }
+    if (nom == "rien") { boiteRienNestRevenu(3.2); return true; }
+    if (nom == "latence") { boiteLatenceMesuree(590.0 / 48000.0, 590, 48000.0, 42.5); return true; }
+    if (nom == "disque") { signalerDisqueTropLent(3); return true; }
+    return false;
 }
 
 void MainComponent::ouvrirLEditionDEnregistrement() {
@@ -8764,11 +8796,11 @@ void MainComponent::signalerDisqueTropLent(uint64_t blocsPerdus) {
     // déborder ; s'il a débordé, le disque n'a pas suivi et la prise a perdu des
     // échantillons -- une chose qu'on n'entend pas forcément à la première
     // écoute et qu'on découvrirait bien plus tard.
-    juce::AlertWindow::showMessageBoxAsync(
-        juce::AlertWindow::WarningIcon, u8"Le disque n'a pas suivi",
-        juce::String(u8"La prise a perdu ") + juce::String(static_cast<int>(blocsPerdus))
-            + juce::String(u8" bloc(s) : le fichier a des trous. Un disque plus rapide, "
-                            u8"ou une taille de bloc audio plus grande, y remédient."));
+    montrerBoite(
+        juce::AlertWindow::WarningIcon, tr(u8"Le disque n'a pas suivi"),
+        tr(u8"La prise a perdu %1 bloc(s) : le fichier a des trous. Un disque plus rapide, "
+           u8"ou une taille de bloc audio plus grande, y remédient.")
+            .replace("%1", juce::String(static_cast<int>(blocsPerdus))));
 }
 
 void MainComponent::quantizeLastTake() {

@@ -104,6 +104,9 @@ public:
     /// D22.2 : VSM_POSITION=17.3 -- la tête à une position saisie, sans
     /// souris ; faux et dit sur stderr si le texte n'est pas une position.
     bool goToPositionForCapture(const juce::String& texte) { return goToBarText(texte); }
+    /// D112 : VSM_BOITE_ESSAI=perdues|impossible|rien|latence|disque -- les boîtes de
+    /// l'enregistrement qu'on n'atteint qu'en jouant du son ou en débordant un tampon.
+    bool showRecordingBoxForCapture(const juce::String& nom);
     /// D22.4 : VSM_LECTURE=1 -- lancer la lecture avant la capture, pour que
     /// le voyant OUT se photographie allumé.
     void startPlaybackForCapture();
@@ -742,6 +745,12 @@ private:
     double punchOutSeconds() const;
     /// Dit qu'un débordement du tampon d'écriture a troué le fichier.
     void signalerDisqueTropLent(uint64_t blocsPerdus);
+    /// D112 : les autres boîtes de l'enregistrement, une fonction chacune --
+    /// le chemin réel et `VSM_BOITE_ESSAI` passent par la même.
+    void boiteNotesPerdues();
+    void boiteMesureImpossible();
+    void boiteRienNestRevenu(double nettete);
+    void boiteLatenceMesuree(double secondes, int decalageEchantillons, double sr, double nettete);
     /// Lance la mesure de latence par boucle physique, puis affiche et adopte
     /// le résultat -- ou le REFUSE s'il n'est pas net, ce qui veut dire que
     /// rien n'est revenu par l'entrée.

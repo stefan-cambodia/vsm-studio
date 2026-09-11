@@ -14645,3 +14645,32 @@ préférence écrite. Les boîtes passent par `montrerBoite()` (D95), qui les
 3. **Préférences intactes**, et `latenceAllerRetour` absent des préférences
    du banc après la série (le geste ne passe pas par la mesure).
 
+**LE RÉSULTAT, ATTENDU PAR ATTENDU (11/09/2026, banc à 17:12).** Témoin :
+binaire du 11/09 17:08:08 (fonctions, geste, `montrerBoite()`, phrases
+d'avant) ; D112 : 17:10:07. Même banc, `HOME` de brouillon.
+
+1. **L'inventaire — TENU** : stricte ÉCRAN **29 → 17**, `MainComponent`
+   **20 → 8**. Publiés sans promesse : TABLE 223 (inchangé), large ÉCRAN
+   55 → 39, TABLE 257 → 256, COMMANDE 25 → 26 (le jeton de refus du geste
+   neuf).
+2. **Le banc — TENU** : 5 boîtes sur 5 dans chaque langue, témoin et D112.
+   Le témoin parle français dans les deux langues ; D112 en anglais, aucun
+   mot français, **les mêmes nombres** que le français boîte pour boîte :
+   « Nothing came back : The emitted sweep was not found in the input
+   (sharpness 3.2)… », « Latency measured : Round trip: 12.29 ms (590
+   samples at 48.0 kHz) / / Peak sharpness: 42.5 / / AUDIO takes are now
+   moved earlier by that amount… », « The disk did not keep up : The take
+   lost 3 block(s)… ». Le français de D112 est identique au témoin.
+3. **TENU** : préférences de l'utilisateur intactes (`cmp`), et
+   `latenceAllerRetour` absent des préférences du banc dans les quatre
+   lancements.
+
+La table passe à **1 351** paires (+12). Suites C++ vertes à `-j 2` (330,
+1 291, 297, 25, 11) ; `build/tools/vsm-render` non touché (15:00:36).
+Des 8 chaînes de `MainComponent` qui restent, **cinq ne s'affichent pas** :
+le mot « libellé » du banc de D94, le mot « non appliqué » que le volet
+cherche pour colorer une ligne (D89 : le ton se lit sur le français), et
+trois chemins de fichiers (`gel/piste-`, `audio/report-…`). Restent le
+volet de reconstruction (« Terminé — le projet est ouvert… », « — parité
+des pistes ») et le texte d'attente des notes du projet.
+
