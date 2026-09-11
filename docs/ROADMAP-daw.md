@@ -17037,3 +17037,24 @@ rien à annuler ; (e) 0.00. **Après** : (a) 0.00 ; (b) **0.00**, la piste à
 (d) **6.00**, bouton 6.0 dB — le geste du MASTER annulé ; (e) **0.00** —
 rétabli. Suites vertes, préférences intactes.
 
+**RÉSULTAT (12/09) — LES DIX VALEURS ATTENDUES TIENNENT.** Témoin : binaire de
+D142 (04:43:43) ; après : 04:51:32. Anglais ; le moteur (« EQ Low Gain »),
+le bouton le suivant dans chaque cas.
+
+| cas | témoin | après |
+|---|---|---|
+| (a) double-clic LOW, puis `volume:0.5` | 0.00 | 0.00 |
+| (b) la même chose, puis Ctrl+Z | **6.00** — le MASTER ramené à l'enregistrement | **0.00** — la piste seule annulée (-0.9 dB) |
+| (c) contrôle : `volume:0.5`, puis Ctrl+Z | 6.00 | 6.00 |
+| (d) double-clic LOW, puis Ctrl+Z | **0.00** — rien à annuler | **6.00**, bouton 6.0 dB — le geste du MASTER annulé |
+| (e) la même chose, puis Ctrl+Maj+Z | 0.00 | **0.00** — rétabli |
+
+Suites C++ vertes (330, 1 291, 297, 25, 11), compilées à `-j 2` pendant la
+course 2 de l'épreuve ; `vsm-render` intact ; préférences identiques par
+`cmp`. **A23 se ferme.** Ce qui reste de la famille, dit : les réglages de
+machine (A21), qui ne sont pas dans le modèle et attendent la fin de
+l'épreuve ; le bouton MASTER ENABLE et l'écoute mono passent par d'autres
+rappels (`onMasterEnable`, `onMonoListen`), que cette phase ne touche pas —
+l'écoute mono est un réglage de SÉANCE, l'activation du bus est dans les
+paramètres que la recopie emporte.
+

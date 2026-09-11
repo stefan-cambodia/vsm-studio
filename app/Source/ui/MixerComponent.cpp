@@ -582,6 +582,7 @@ juce::Slider& MasterStrip::addKnob(vsm::audio::plugin::ParamId id, const juce::S
     raw->onValueChange = [this, raw, pid] {
         if (onMasterParam) onMasterParam(pid, static_cast<float>(raw->getValue()));
     };
+    raw->onDragStart = [this] { if (onMasterEditStarted) onMasterEditStarted(); };   // D144
     addAndMakeVisible(*k.slider);
 
     k.label = std::make_unique<juce::Label>();
@@ -754,6 +755,7 @@ void MixerComponent::setProject(vsm::sequencer::Project* project) {
         if (onMasterParam) onMasterParam(id, v);
     };
     master_.onMasterEnable = [this](bool on) { if (onMasterEnable) onMasterEnable(on); };
+    master_.onMasterEditStarted = [this] { if (onMasterEditStarted) onMasterEditStarted(); };   // D144
     master_.onMonoListen = [this](bool on) { if (onMonoListen) onMonoListen(on); };
     master_.masterParamProvider = masterParamProvider;
     master_.syncFromEngine();

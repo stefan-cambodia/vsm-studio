@@ -280,6 +280,7 @@ void PianoRollComponent::notifyEditState() {
 }
 
 void PianoRollComponent::undo() {
+    if (onAvantHistorique) onAvantHistorique();   // D144
     if (project_ == nullptr || history_ == nullptr || !history_->undo(*project_)) return;
     if (onProjectRestored) onProjectRestored();
     Track* track = activeTrack();
@@ -294,6 +295,7 @@ void PianoRollComponent::undo() {
 }
 
 void PianoRollComponent::redo() {
+    if (onAvantHistorique) onAvantHistorique();   // D144
     if (project_ == nullptr || history_ == nullptr || !history_->redo(*project_)) return;
     if (onProjectRestored) onProjectRestored();
     Track* track = activeTrack();

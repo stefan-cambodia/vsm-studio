@@ -162,6 +162,10 @@ public:
     /// (pistes ajoutées ou supprimées, mixage, effets), et l'application doit
     /// tout republier.
     std::function<void()> onProjectRestored;
+    /// D144 : appelé AVANT une annulation ou un rétablissement -- l'hôte y
+    /// recopie dans le modèle ce que le moteur tient seul (le MASTER), pour que
+    /// la photo que l'historique garde de l'état courant soit juste.
+    std::function<void()> onAvantHistorique;
 
     bool canUndo() const { return history_ && history_->canUndo(); }
     bool canRedo() const { return history_ && history_->canRedo(); }

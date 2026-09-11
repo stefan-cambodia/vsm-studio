@@ -315,7 +315,11 @@ MainComponent::MainComponent()
     };
     mixer_.onMasterParam = [this](vsm::audio::plugin::ParamId id, float v) {
         audioEngine_.processGraph().masterBus().setParameter(id, v);
+        // D144 : le modèle suit le moteur, pour que l'annulation d'un geste du
+        // MASTER rende la valeur d'avant et que la suivante ne l'écrase pas.
+        project_.masterParameters = vsm::interchange::describeMasterBus(audioEngine_.processGraph().masterBus());
     };
+    mixer_.onMasterEditStarted = [this] { beginProjectEdit("Master"); };   // D144 : un geste, un pas
     // D23.5 : l'écoute en mono, du bouton MONO comme du menu Mixage.
     mixer_.onMonoListen = [this](bool on) { audioEngine_.processGraph().masterBus().setMonoListen(on); };
     mixer_.onMasterEnable = [this](bool on) {
@@ -479,6 +483,11 @@ MainComponent::MainComponent()
 
     pianoRoll_.setHistory(&history_);
     pianoRoll_.onProjectRestored = [this] { rebuildFromProject(false); refreshHistoryList(); };
+    // D144 : avant un pas d'historique, le MASTER du moteur dans le modèle -- la
+    // photo que le rétablissement garde de l'état courant doit le porter.
+    pianoRoll_.onAvantHistorique = [this] {
+        project_.masterParameters = vsm::interchange::describeMasterBus(audioEngine_.processGraph().masterBus());
+    };
     pianoRoll_.setProject(&project_);
     // D16.1 : LES NOTES ÉCRITES SE MATÉRIALISENT TOUT DE SUITE. Avant, une
     // piste neuve où l'on venait d'écrire ne montrait aucun clip dans
@@ -9209,6 +9218,10 @@ void MainComponent::quantizeLastTake() {
 }
 
 void MainComponent::beginProjectEdit(const juce::String& label) {
+    // D144 : LA PHOTO DU PAS PORTE LE MASTER DE CET INSTANT. Il vit dans le
+    // moteur ; le modèle n'en avait qu'une copie du dernier enregistrement, et
+    // annuler un geste de PISTE ramenait le MASTER à cette copie (D143).
+    project_.masterParameters = vsm::interchange::describeMasterBus(audioEngine_.processGraph().masterBus());
     history_.beginEdit(project_, label.toStdString());
     refreshHistoryList();
     // TOUTES LES MODIFICATIONS ANNULABLES PASSENT PAR ICI (D10.4) : c'est

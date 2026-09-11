@@ -388,6 +388,9 @@ public:
 
     // Fournit/pousse les paramètres du bus master.
     std::function<void(vsm::audio::plugin::ParamId, float)> onMasterParam;
+    /// D144 : le début d'un geste sur un bouton du MASTER (glissé ou double-clic) :
+    /// l'hôte y ouvre un pas d'annulation, comme pour un geste de tranche.
+    std::function<void()> onMasterEditStarted;
     std::function<void(bool)> onMasterEnable;
     std::function<float(vsm::audio::plugin::ParamId)> masterParamProvider;
     /// D23.5 : l'écoute en mono, un outil d'écoute -- jamais un paramètre du
@@ -629,6 +632,9 @@ public:
     /// déposerait au prochain arrêt, longtemps après le geste.
     void closeLatchedPasses();
     std::function<void(vsm::audio::plugin::ParamId, float)> onMasterParam;
+    /// D144 : le début d'un geste sur un bouton du MASTER (glissé ou double-clic) :
+    /// l'hôte y ouvre un pas d'annulation, comme pour un geste de tranche.
+    std::function<void()> onMasterEditStarted;
     std::function<void(bool)> onMasterEnable;
     std::function<float(vsm::audio::plugin::ParamId)> masterParamProvider;
     /// D23.5 : l'écoute en mono, depuis le bouton MONO de la tranche master.
