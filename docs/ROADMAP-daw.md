@@ -16821,3 +16821,47 @@ puis double-cliquée — l'afficheur du rack (D133) dit la valeur.
    coupure à **800 Hz** (« CUT OFF FREQ: 800 Hz » en anglais).
 3. Aucun autre texte relevé ne change ; suites vertes, préférences intactes.
 
+**RÉSULTAT (12/09) — LES TROIS ATTENDUS TIENNENT.** Témoin : binaire du premier
+pas (04:22:15) ; après : 04:23:43. Les mêmes valeurs en français et en
+anglais.
+
+| double-clic sur… | témoin | après |
+|---|---|---|
+| le fader de la tranche (le contrôle) | -0.9 → **0.0 dB** | -0.9 → **0.0 dB** |
+| le volume de la ligne de piste | -0.9 dB, inchangé | -0.9 → **0.0 dB** |
+| la coupure du TB-303, réglée à 1200 Hz | 1200 Hz, inchangée | **800 Hz** — « CUT OFF FREQ: 800 Hz » |
+
+1. **Attendu 1 tenu** : le contrôle marche au témoin, et c'est ce qui rend
+   ses deux « inchangé » probants — le geste atteint bien les curseurs.
+2. **Attendu 2 tenu** : la ligne de piste et la façade reviennent à leur
+   valeur d'usine ; le volume de la ligne rejoint le fader, qui montre
+   0.0 dB des deux côtés.
+3. **Attendu 3 tenu** : tous les autres textes relevés identiques au témoin
+   dans les huit relevés ; suites C++ vertes (330, 1 291, 297, 25, 11),
+   compilées à `-j 2` pendant la course 2 ; `vsm-render` intact ;
+   préférences identiques par `cmp`.
+
+**Vérifié au code seulement, et dit** : le panoramique de la ligne, les
+départs, les boutons MASTER, le panneau générique, le swing et la vélocité
+— le même appel, qu'aucun cas de ce banc ne double-clique. Le niveau du clic
+des préférences reste sans valeur d'usine, comme décidé.
+
+**VÉRIFIÉ ENSUITE, parce que le remède l'affirmait sans l'avoir mesuré :
+« annulable comme un glissé ».** Double-clic, puis Ctrl+Z (`VSM_TOUCHE`, qui
+passe après les gestes de piste), binaire de 04:23:43 :
+
+| double-clic puis Ctrl+Z sur… | après le double-clic | après Ctrl+Z |
+|---|---|---|
+| le volume de la ligne | 0.0 dB | **-0.9 dB** — annulé |
+| le fader de la tranche | 0.0 dB | **-0.9 dB** — annulé |
+| la coupure du TB-303 (1200 Hz) | 800 Hz | **800 Hz** — PAS annulé |
+
+La phrase tient — le double-clic s'annule LÀ OÙ le glissé s'annule —, mais
+la mesure montre plus grave qu'elle : **aucun réglage de machine ne passe par
+l'historique**. Le rappel d'une commande de façade envoie la valeur au synthé
+et au MIDI Learn, sans ouvrir de pas d'annulation ; un glissé sur une façade
+ne s'annule pas davantage que ce double-clic. Or ces réglages font partie du
+projet (`instruments/track_NN.synth.json`). D36, qui a relevé les gestes qui
+échappent à l'annulation, a compté les champs de la piste et ne parle pas des
+réglages de machine : un trou qu'elle n'a pas vu, pas un choix. INDEX, A21.
+

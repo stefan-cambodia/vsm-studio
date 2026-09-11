@@ -136,6 +136,7 @@ void MachinePanelComponent::rebuild() {
                                                                    : juce::Slider::LinearHorizontal)
                     : juce::Slider::RotaryHorizontalVerticalDrag);
                 if (linear) slider->setSliderSnapsToMousePosition(false);   // D139 : suit le glissé, ne saute pas au clic
+                slider->setDoubleClickReturnValue(true, static_cast<double>(info->defaultValue));   // D140 : double-clic, valeur d'usine
                 // AUCUN afficheur sous la commande : une façade de machine
                 // n'en a pas, et douze nombres à sept décimales rendent le
                 // panneau illisible. La valeur s'affiche à la demande, dans

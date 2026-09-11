@@ -179,6 +179,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
         s->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
         s->setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
         s->setName("mixeur.depart");   // D135 : le nom par lequel le banc le désigne (appuyer:)
+        s->setDoubleClickReturnValue(true, 0.0);   // D140 : double-clic, valeur d'usine (aucun départ)
         s->textFromValueFunction = [](double v) { return vsm::app::ui::texteDecibels(v); };   // D135
         bullesDesDeparts_.push_back(std::make_unique<vsm::app::ui::BulleDeValeur>(*s));
         s->setRange(0.0, 1.0, 0.01);
@@ -571,6 +572,7 @@ juce::Slider& MasterStrip::addKnob(vsm::audio::plugin::ParamId id, const juce::S
     // D135 : l'unité existait et ne se montrait jamais ; une décimale suffit à un
     // réglage en dB ou en rapport, deux à la saturation (sans unité, 0 à 1).
     k.slider->setNumDecimalPlacesToDisplay(suffix.isEmpty() ? 2 : 1);
+    k.slider->setDoubleClickReturnValue(true, def);   // D140 : double-clic, valeur d'usine
     k.bulle = std::make_unique<vsm::app::ui::BulleDeValeur>(*k.slider);
     k.slider->setRange(min, max, (max - min) / 1000.0);
     k.slider->setValue(def, juce::dontSendNotification);

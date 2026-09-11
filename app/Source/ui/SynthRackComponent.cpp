@@ -119,6 +119,7 @@ void SynthRackComponent::rebuildControls() {
                                                        juce::Slider::NoTextBox);
         slider->setRange(static_cast<double>(info.minValue), static_cast<double>(info.maxValue), 0.0);
         slider->setName("rack.parametre");   // D135 : le nom par lequel le banc le désigne (appuyer:)
+        slider->setDoubleClickReturnValue(true, static_cast<double>(info.defaultValue));   // D140 : double-clic, valeur d'usine
         slider->textFromValueFunction = [unite = juce::String(info.unit)](double v) {   // D135
             return vsm::app::ui::texteParametre(v, unite);
         };
