@@ -14674,3 +14674,69 @@ trois chemins de fichiers (`gel/piste-`, `audio/report-…`). Restent le
 volet de reconstruction (« Terminé — le projet est ouvert… », « — parité
 des pistes ») et le texte d'attente des notes du projet.
 
+### Phase D113 — un plugin illisible disparaissait du balayage sans un mot (11/09/2026)
+
+**LE DÉFAUT, LU DANS LE CODE EN PRÉPARANT LA TRADUCTION DE SES PHRASES.**
+Le balayage ouvre chaque fichier de plugin dans un processus enfant
+(`--scan-plugin`), qui écrit une ligne par plugin trouvé. L'enfant appelle
+`scanClapFile` / `scanVst3File`, qui rendent l'ERREUR de chargement
+(« chargement impossible : … », « fabrique de plugins absente dans … ») —
+et `scanOneFileInThisProcess` la jette : `juce::ignoreUnused(erreur)`.
+L'enfant sort donc en 0 sans une ligne ; le parent y lit un succès à zéro
+plugin. Le fichier n'entre ni au catalogue, ni dans la liste des fautifs
+que la boîte « Balayage terminé » nomme. C'est exactement ce que le
+commentaire de `PluginScanner::run` dit empêcher : « SIGNALÉ, PAS TU. Un
+fichier qui disparaît du balayage sans un mot laisse l'utilisateur chercher
+pourquoi son plugin n'apparaît pas. » Seuls les deux cas extrêmes — l'enfant
+qui TOMBE, celui qui ne rend jamais la main — étaient dits.
+
+**LE BANC.** Un `HOME` de brouillon (les dossiers système de plugins sont
+vides sur ce poste), dont `~/.clap` porte quatre faux plugins écrits pour
+l'occasion (`faux.c`, 30 lignes, la structure d'entrée recopiée de la
+spécification CLAP) et un vrai :
+
+| fichier | ce qu'il fait | ce que le code prédit |
+|---|---|---|
+| `faux-texte.clap` | un fichier texte | `dlopen` refuse → « chargement impossible : … » |
+| `faux-vide.clap` | une bibliothèque, `clap_entry`, aucune fabrique | « fabrique de plugins absente dans … » |
+| `faux-tombe.clap` | `init()` appelle `abort()` | l'enfant tombe |
+| `faux-dort.clap` | `init()` dort 60 s | tué à 20 s |
+| `vsm-instruments.clap` | le vrai, copié | 24 plugins, le témoin sain |
+
+Balayage par le menu (« Rechercher les plugins installés... »), la boîte lue
+par `VSM_BOITE`, le catalogue `plugins.json` du `HOME` de brouillon relu.
+*Premier essai du témoin, sans valeur* : photo prise à 35 s, balayage pas
+fini (seule la boîte « Balayage lancé » est venue) ; délai porté à 75 s.
+
+**LES DÉCISIONS.**
+
+1. **L'enfant dit pourquoi.** Quand un fichier ne rend aucun plugin, il écrit
+   une ligne `VSM_ECHEC_BALAYAGE<tab>raison` — l'erreur de l'hôte, ou « aucun
+   plugin dans ce fichier » s'il n'y en a pas. Elle ne peut pas passer pour
+   un plugin : `decodeScanLine` exige son préfixe et six champs. Rien ne
+   change dans `interchange/` (le moteur de l'épreuve *Children* le lit).
+2. **Le parent la range dans les fautifs** : sortie en 0 et zéro plugin =
+   fautif, avec la raison de l'enfant.
+3. **Les phrases du balayage retrouvent leurs accents** (« répondu »,
+   « tombé ») et deviennent des modèles, avec celles de l'hôte CLAP
+   (« chargement impossible : %1 », « fabrique de plugins absente dans
+   %1 »…) : la raison passe déjà par `trPhrase` à l'affichage. Les anciennes
+   formes sans accents restent des modèles aussi : un catalogue écrit avant
+   D113 garde ses fautifs d'un balayage à l'autre, et ils se relisent.
+
+**ATTENDU, écrit avant la mesure.**
+
+1. **Le témoin** (binaire de D112) : 24 plugins ; **2 fautifs** —
+   `faux-tombe` (« le processus de balayage est tombe (code … ») et
+   `faux-dort` (« le plugin n'a pas repondu en 20 secondes ») ;
+   **`faux-texte` et `faux-vide` absents des deux listes** : le défaut,
+   mesuré.
+2. **D113** : 24 plugins ; **4 fautifs**, chacun avec sa raison — les deux
+   du témoin, accentués, plus « chargement impossible : … » pour
+   `faux-texte` et « fabrique de plugins absente dans … » pour `faux-vide`.
+   La boîte « Balayage terminé » dit « 4 fichier(s) n'ont pas pu être
+   lus » dans les deux langues, et en anglais les quatre raisons sont
+   traduites.
+3. **Rien d'autre ne bouge** : le vrai plugin donne les mêmes 24 entrées,
+   dans le même ordre, témoin et D113.
+
