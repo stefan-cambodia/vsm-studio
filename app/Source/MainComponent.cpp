@@ -77,6 +77,17 @@ void montrerBoite(juce::MessageBoxIconType icone, const juce::String& titre, con
     std::fputs(("VSM_BOITE : " + titre + " : " + message.replace("\n", " / ") + "\n").toRawUTF8(), stderr);
     juce::AlertWindow::showMessageBoxAsync(icone, titre, message);
 }
+
+/// D104 : UNE QUESTION À DEUX BOUTONS, lue quand elle est demandée -- comme
+/// `montrerBoite` (D95), avec ses deux réponses. Sous un écran verrouillé, JUCE
+/// ne montre pas la boîte ; sa ligne `VSM_BOITE` reste.
+void demanderOuiNon(juce::MessageBoxIconType icone, const juce::String& titre, const juce::String& message,
+                    const juce::String& oui, const juce::String& non, juce::Component* parent,
+                    juce::ModalComponentManager::Callback* suite) {
+    std::fputs(("VSM_BOITE : " + titre + " : " + message.replace("\n", " / ") + " : [" + oui + " | " + non
+                + "]\n").toRawUTF8(), stderr);
+    juce::AlertWindow::showOkCancelBox(icone, titre, message, oui, non, parent, suite);
+}
 } // namespace
 
 MainComponent::MainComponent()
@@ -5927,34 +5938,34 @@ void MainComponent::offerCrashRecovery() {
     const int minutes = static_cast<int>(
         (maintenant - reprise.record.savedAtEpochSeconds) / 60);
     const juce::String titre = reprise.record.title.empty()
-        ? juce::String::fromUTF8(u8"(projet sans titre)")
+        ? tr(u8"(projet sans titre)")
         : juce::String::fromUTF8(reprise.record.title.c_str());
-    juce::String quand = minutes <= 0
-        ? juce::String::fromUTF8(u8"il y a moins d'une minute")
-        : juce::String::fromUTF8(u8"il y a ") + juce::String(minutes)
-              + juce::String::fromUTF8(u8" minute") + (minutes > 1 ? "s" : "");
+    juce::String quand = minutes <= 0 ? tr(u8"il y a moins d'une minute")
+                       : (minutes > 1 ? tr(u8"il y a %1 minutes") : tr(u8"il y a %1 minute"))
+                             .replace("%1", juce::String(minutes));
 
-    juce::String message = titre + " — " + juce::String(reprise.record.trackCount)
-        + juce::String::fromUTF8(u8" piste(s), ") + juce::String(reprise.record.noteCount)
-        + juce::String::fromUTF8(u8" note(s), enregistré automatiquement ") + quand + ".";
+    juce::String message = tr(u8"%1 — %2 piste(s), %3 note(s), enregistré automatiquement %4.")
+        .replace("%2", juce::String(reprise.record.trackCount))
+        .replace("%3", juce::String(reprise.record.noteCount))
+        .replace("%4", quand)
+        .replace("%1", titre);
     if (reprise.record.originalFolder.empty())
-        message += juce::String::fromUTF8(
-            u8"\n\nCe projet n'avait JAMAIS été enregistré : sans cette copie, il serait perdu.");
+        message += tr(u8"\n\nCe projet n'avait JAMAIS été enregistré : sans cette copie, il serait perdu.");
     if (sessions.size() > 1)
-        message += juce::String::fromUTF8(u8"\n\n(") + juce::String(static_cast<int>(sessions.size()) - 1)
-                   + juce::String::fromUTF8(u8" autre(s) session(s) interrompue(s) seront conservées "
-                                             u8"et proposées au prochain lancement.)");
+        message += tr(u8"\n\n(%1 autre(s) session(s) interrompue(s) seront conservées et proposées "
+                      u8"au prochain lancement.)")
+                       .replace("%1", juce::String(static_cast<int>(sessions.size()) - 1));
 
     const juce::File dossier = reprise.folder;
     const juce::File origine = reprise.record.originalFolder.empty()
         ? juce::File()
         : juce::File(juce::String::fromUTF8(reprise.record.originalFolder.c_str()));
 
-    juce::AlertWindow::showOkCancelBox(
+    demanderOuiNon(
         juce::AlertWindow::QuestionIcon,
-        juce::String::fromUTF8(u8"Session interrompue"),
-        message, juce::String::fromUTF8(u8"Récupérer"),
-        juce::String::fromUTF8(u8"Ignorer et effacer"), this,
+        tr(u8"Session interrompue"),
+        message, tr(u8"Récupérer"),
+        tr(u8"Ignorer et effacer"), this,
         juce::ModalCallbackFunction::create([this, dossier, origine](int resultat) {
             if (resultat != 1) {
                 vsm::app::AutosaveService::discard(dossier);

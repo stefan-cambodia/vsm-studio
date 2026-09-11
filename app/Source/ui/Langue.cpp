@@ -2564,6 +2564,27 @@ const Paire kAnglais[] = {
       "West Coast (wavefolding and low-pass gate)" },
     { "Wind (anche et lèvres)",
       "Wind (reed and lips)" },
+    // --- D104 : LA REPRISE APRÈS UNE SESSION INTERROMPUE -------------------------
+    { "(projet sans titre)",
+      "(untitled project)" },
+    { "il y a moins d'une minute",
+      "less than a minute ago" },
+    { "il y a %1 minutes",
+      "%1 minutes ago" },
+    { "il y a %1 minute",
+      "%1 minute ago" },
+    { "%1 — %2 piste(s), %3 note(s), enregistré automatiquement %4.",
+      "%1 — %2 track(s), %3 note(s), saved automatically %4." },
+    { "\n\nCe projet n'avait JAMAIS été enregistré : sans cette copie, il serait perdu.",
+      "\n\nThis project had NEVER been saved: without this copy, it would be lost." },
+    { "\n\n(%1 autre(s) session(s) interrompue(s) seront conservées et proposées au prochain lancement.)",
+      "\n\n(%1 other interrupted session(s) will be kept and offered at the next launch.)" },
+    { "Session interrompue",
+      "Interrupted session" },
+    { "Récupérer",
+      "Recover" },
+    { "Ignorer et effacer",
+      "Ignore and delete" },
 };
 
 constexpr int kNombreDePaires = static_cast<int>(sizeof(kAnglais) / sizeof(kAnglais[0]));

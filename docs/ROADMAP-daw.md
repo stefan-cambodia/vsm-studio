@@ -13919,3 +13919,73 @@ enregistré du sampler est dans `vsm_audio`) passent : 330 cœur, 1 291 audio,
 lui, et c'est en le faisant qu'est apparu le sampler qui disait 8 à un endroit
 et 16 à l'autre.
 
+### Phase D104 — A9 : la reprise après une session interrompue (11/09/2026)
+
+**LE LOT.** `offerCrashRecovery` : la boîte « Session interrompue », ouverte au
+démarrage quand une session s'est arrêtée sans se fermer. Huit chaînes à
+l'inventaire (règle large). C'est la boîte qu'on lit au pire moment : le
+logiciel vient de tomber, et l'utilisateur doit décider de récupérer ou
+d'effacer son travail.
+
+**LE BANC.** Une session interrompue se fabrique : un dossier sous
+`recuperation/` (à côté des préférences, donc dans le HOME isolé), un
+`project.json` et une fiche `recuperation.json` (`vsm.recuperation.v1`) dont
+personne ne tient le verrou. La boîte est une QUESTION (`showOkCancelBox`) :
+sous un écran verrouillé, JUCE ne la montre pas (D95). Une fonction
+`demanderOuiNon()` l'écrit donc quand elle est demandée — titre, message, et
+ses deux réponses — au témoin comme après. Trois cas, français puis anglais :
+`jamais` (projet jamais enregistré, sauvé il y a cinq minutes, une seconde
+session en attente), `recent` (projet enregistré, sauvé à l'instant),
+`sans-titre` (titre vide).
+
+**LES DÉCISIONS.** Les deux formes de « il y a N minute(s) » restent deux clés
+(singulier, pluriel) : le français les écrivait ainsi, et il ne doit pas
+changer. Le tiret « — » est un littéral sans `u8` : s'il sort abîmé au
+témoin, c'est la classe de D99, réparée ici et déclarée.
+
+**ATTENDU, écrit avant la mesure.**
+
+1. **L'inventaire** : 0 ÉCRAN dans `offerCrashRecovery` ; ÉCRAN **105 → 98**
+   à la règle stricte (sept de ses chaînes y comptent), **149 → 141** à la
+   large.
+2. **La boîte** : une par cas, dans les deux langues, témoin et D104, avec
+   ses deux boutons. En anglais : « Interrupted session », « Recover »,
+   « Ignore and delete », « saved automatically 5 minutes ago », « less than
+   a minute ago », « (untitled project) », et le paragraphe du projet jamais
+   enregistré.
+3. **Le français** : identique au témoin (hors le tiret, s'il était abîmé).
+
+**VU DANS LE TÉMOIN (D104), écrit avant la mesure d'après.** Six lancements,
+une boîte chacun, lue par `demanderOuiNon()` avec ses deux boutons ;
+préférences intactes. Les minutes justes (330 s → « il y a 5 minutes »,
+150 s → « il y a 2 minutes », 5 s → « il y a moins d'une minute »), le
+paragraphe du projet jamais enregistré et celui de la seconde session là où
+ils doivent être. **Le tiret « — » n'est PAS abîmé** : l'exception déclarée
+ne servira pas, et le français doit sortir identique au témoin, sans réserve.
+En anglais, la boîte est entièrement française — le défaut, tel qu'annoncé.
+
+**LE RÉSULTAT, ATTENDU PAR ATTENDU (11/09/2026).** Témoin puis D104, six
+lancements chacun, écran verrouillé ; préférences de l'utilisateur intactes
+(`cmp`, deux séries).
+
+1. **L'inventaire — tenu.** 0 ÉCRAN dans `offerCrashRecovery` ; ÉCRAN
+   **105 → 98** à la règle stricte, **149 → 141** à la large, comme écrit.
+   « Ignorer et effacer » était l'une des 33 chaînes de l'angle mort (D101) :
+   il en reste 23.
+2. **La boîte — tenu.** Une par cas, dans les deux langues, témoin et D104,
+   avec ses deux boutons. En anglais : « Interrupted session : Morceau du banc
+   — 3 track(s), 42 note(s), saved automatically 5 minutes ago. / This
+   project had NEVER been saved: without this copy, it would be lost. / (1
+   other interrupted session(s) will be kept and offered at the next launch.)
+   : [Recover | Ignore and delete] » ; « … saved automatically less than a
+   minute ago. » ; « (untitled project) — … 2 minutes ago. ». Reste en
+   français le titre du projet, « Morceau du banc » : une donnée. (L'analyse
+   relevait aussi « session » et « minute(s) » : ce sont des mots anglais.)
+3. **Le français — tenu, sans réserve.** Identique au témoin dans les trois
+   cas, boîte et listes de la fenêtre principale (180 textes).
+
+La table passe à **1 256** paires (+10). `VintageSynthMidiStudio` et
+`vsm-ui-preview` compilent ;
+suites C++ vertes (330 cœur, 1 291 audio, 297 interchange, 25 CLAP, 11
+panneaux). `MainComponent` : 82 chaînes à l'inventaire strict.
+
