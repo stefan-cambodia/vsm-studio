@@ -16108,3 +16108,37 @@ ligne `VSM_FENETRE : Arrangement`), et ni ses infobulles ni ses textes ne
 contiennent de français : **0**, au filtre de D118, les lignes retenues
 relues. Si elle n'est pas lue, c'est dit, et A9 garde cette surface.
 
+**RÉSULTAT (11/09) — TENU, mais le relevé a rendu 0 texte, et ce zéro a dû
+s'expliquer avant de compter.** Binaire de D126 ; projet ouvert en place
+intact (0 fichier écrit), préférences intactes. La fenêtre « Arrangement »
+est lue au premier essai — et le relevé n'y trouve AUCUN texte. La règle
+écrite en D128 dit qu'un zéro n'est pas une absence de français ; il s'est
+expliqué par le code : `ArrangementComponent` n'a aucun composant enfant et
+aucune infobulle (`addAndMakeVisible` : 0, `setTooltip` : 0), et dessine
+tous ses textes par `g.drawText` — onze sites —, que le relevé des
+composants ne voit pas par construction. Relancé avec
+`VSM_CAPTURE_PANNEAUX=1`, la photo de la fenêtre montre, en anglais :
+« follow · snap: bar », les numéros de mesure, la nature « midi », les noms
+des pistes et des clips. Les onze sites relus : ce qui n'est pas une donnée
+passe par `tr()` (« · gelé », « · verrouillé ») ou est une unité (« dB »,
+« st ») ou un nombre. **0 texte français d'interface.**
+
+**VU, HORS INTERFACE, ET À DIRE** : les pistes s'appellent « Batterie » et
+« Voix » dans l'interface anglaise. Ce sont des DONNÉES du projet — les
+noms que la chaîne de reconstruction écrit, en français, dans
+`project.json` — et non des textes de l'application. D107 a posé qu'un nom
+fabriqué par l'application se donne dans la langue du moment ; la chaîne,
+elle, fabrique ses noms en français. Ce n'est pas A9 ; c'est écrit ici pour
+qu'une phase de la chaîne puisse le reprendre.
+
+**A9 SE FERME.** Toutes les surfaces qu'il nommait ont été lues en anglais :
+la barre de menus (D80, D81), les panneaux et leurs infobulles (D94, D118,
+D128), les fenêtres flottantes (D100, D128, D130), les façades (D115, D129),
+les rapports (D84, D92, D93) ; les boîtes, elles, PAR ÉCHANTILLON — celles
+de D91, D95 à D114, et douze de la famille statique en D125 —, et c'est
+l'inventaire du code qui couvre le reste : à la règle stricte, 7 chaînes
+françaises hors `tr()`, dont aucune ne s'affiche (jetons de banc, préfixes
+de fichiers, nom d'un fil, mots-clés de couleur). Ce qui garde la
+fermeture honnête : une chaîne neuve écrite sans `tr()` ressortira à
+l'inventaire, qui se relance à chaque phase qui touche l'interface.
+
