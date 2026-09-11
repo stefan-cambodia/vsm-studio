@@ -16572,3 +16572,32 @@ donc qu'à la largeur minimale, qui est celle où l'utilisateur a laissé son
 dock ; le code ne réécrit pas ce réglage, et c'est dit plutôt que corrigé
 par-dessus lui.
 
+### Phase D137 — A20 : la sortie d'une ligne de piste dit sa destination au survol (12/09/2026)
+
+**CE QUI RESTE, ET LE REMÈDE À SA MESURE.** À 180 px (le minimum du dock, où
+se trouve l'utilisateur), le nom de la sortie s'abrège en « -… » : trois
+boutons et le nom d'un bus ne tiennent pas dans ~150 px, et la mise en page
+n'y peut plus rien sans cacher un réglage. L'infobulle de la liste de sortie
+existe déjà, mais elle est générique (« Où va cette piste : le master, ou un
+groupe. »). Elle NOMMERA la destination — « Sortie : Master — où va cette
+piste : le master, ou un groupe. » —, reposée à chaque changement de sortie
+et au changement de langue. Le nom abrégé se lit alors au survol, à toute
+largeur.
+
+**LE BANC.** `children-dream-v12` (un bus « Batterie », vers lequel jouent les
+pièces de batterie), ouvert en place, français et anglais,
+`VSM_TEXTES_LISTE` : les infobulles des listes de sortie. Témoin : binaire de
+D136 (00:49:13).
+
+**ATTENDU, écrit avant le témoin.**
+
+1. **Au témoin** : une seule infobulle de sortie, la générique, identique
+   pour toutes les pistes.
+2. **Après** : l'infobulle nomme la destination de CHAQUE ligne — « Output:
+   Master — … » pour les pistes qui vont au master, « Output: Batterie — … »
+   pour celles qui vont au bus ; en français « Sortie : Master — … » et
+   « Sortie : Batterie — … ». Le nom du bus est une donnée : il passe tel
+   quel.
+3. Aucun autre texte relevé ne change ; le projet ouvert en place n'est pas
+   écrit ; suites vertes, préférences intactes.
+
