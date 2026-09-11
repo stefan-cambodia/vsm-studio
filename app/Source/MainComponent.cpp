@@ -8188,8 +8188,8 @@ void MainComponent::performBounce(size_t index) {
     vsm::audio::engine::RenderedAudio rendu;
     const auto resultat = vsm::interchange::renderTrackForFreeze(bundle, index, rendu, options);
     if (!resultat.success) {
-        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
-                                                 u8"Report impossible", resultat.error);
+        montrerBoite(juce::AlertWindow::WarningIcon,
+                                                 tr(u8"Report impossible"), vsm::app::ui::trPhrase(juce::String(resultat.error)));
         return;
     }
 
@@ -8202,8 +8202,8 @@ void MainComponent::performBounce(size_t index) {
                                                   options.format,
                                                   fichier.getFullPathName().toStdString());
     } catch (const std::exception& e) {
-        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
-                                                 u8"Report impossible", e.what());
+        montrerBoite(juce::AlertWindow::WarningIcon,
+                                                 tr(u8"Report impossible"), vsm::app::ui::trPhrase(juce::String(e.what())));
         return;
     }
 
@@ -8819,14 +8819,14 @@ void MainComponent::setTimeSignatureAtPlayhead(int numerator, int denominator) {
     if (numerator <= 0) {
         // RETIRER : seulement un changement posé au début de CETTE mesure.
         if (debut == 0) {
-            juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon, u8"Signature",
-                                                     u8"La signature du départ ne se retire pas : un morceau en a toujours une. Changez-la.");
+            montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Signature"),
+                                                     tr(u8"La signature du départ ne se retire pas : un morceau en a toujours une. Changez-la."));
             return;
         }
         beginProjectEdit(u8"Retirer un changement de signature");
         if (!carte.removeChangeAt(debut)) {
-            juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon, u8"Signature",
-                                                     u8"Aucun changement de signature ne commence à cette mesure.");
+            montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Signature"),
+                                                     tr(u8"Aucun changement de signature ne commence à cette mesure."));
             return;
         }
     } else {
@@ -9121,21 +9121,20 @@ void MainComponent::removeTakeFromSelectedTrack(int index) {
 
     // CE QUE CELA A COÛTÉ EST DIT, jamais subi : un tronçon d'assemblage qui
     // disparaît sans un mot ferait recomposer autre chose la fois d'après.
-    juce::String texte = juce::String::fromUTF8(u8"Prise « ")
-                       + juce::String::fromUTF8(bilan.name.c_str())
-                       + juce::String::fromUTF8(u8" » retirée du tiroir.");
+    juce::String texte = tr(u8"Prise « %1 » retirée du tiroir.")
+                             .replace("%1", juce::String::fromUTF8(bilan.name.c_str()));
     if (bilan.wasActive)
-        texte += juce::String::fromUTF8(u8" C'était celle qu'on entend : son matériau RESTE "
-                                         u8"sur la piste, il n'appartient plus à aucune passe.");
+        texte += " " + tr(u8"C'était celle qu'on entend : son matériau RESTE sur la piste, il "
+                          u8"n'appartient plus à aucune passe.");
     if (bilan.droppedSegments > 0)
-        texte += juce::String::fromUTF8(u8" ") + juce::String(static_cast<int>(bilan.droppedSegments))
-               + juce::String::fromUTF8(u8" tronçon(s) d'assemblage la désignaient : retirés.");
+        texte += " " + tr(u8"%1 tronçon(s) d'assemblage la désignaient : retirés.")
+                           .replace("%1", juce::String(static_cast<int>(bilan.droppedSegments)));
     if (bilan.shiftedSegments > 0)
-        texte += juce::String::fromUTF8(u8" ") + juce::String(static_cast<int>(bilan.shiftedSegments))
-               + juce::String::fromUTF8(u8" tronçon(s) ont reculé d'un rang.");
+        texte += " " + tr(u8"%1 tronçon(s) ont reculé d'un rang.")
+                           .replace("%1", juce::String(static_cast<int>(bilan.shiftedSegments)));
     std::fputs((texte + "\n").toRawUTF8(), stderr);
-    juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon,
-                                            juce::String::fromUTF8(u8"Retirer une prise"), texte);
+    montrerBoite(juce::AlertWindow::InfoIcon,
+                                            tr(u8"Retirer une prise"), texte);
 }
 
 bool MainComponent::exportProjectMidiForCapture(const juce::File& fichier) {
@@ -10185,17 +10184,15 @@ void MainComponent::importAudioFiles(const juce::Array<juce::File>& fichiers) {
         if (importAudioFileOnNewTrack(fichier)) ++entres;
         else refuses.add(fichier.getFileName());
     }
-    juce::String message = juce::String::fromUTF8(u8"Import audio : ")
-                           + juce::String(static_cast<int>(entres))
-                           + juce::String::fromUTF8(u8" piste(s) créée(s) sur ")
-                           + juce::String(fichiers.size())
-                           + juce::String::fromUTF8(u8" fichier(s)");
+    juce::String message = tr(u8"Import audio : %1 piste(s) créée(s) sur %2 fichier(s)")
+                               .replace("%1", juce::String(static_cast<int>(entres)))
+                               .replace("%2", juce::String(fichiers.size()));
     if (!refuses.isEmpty())
-        message += juce::String::fromUTF8(u8" ; refusé(s) : ") + refuses.joinIntoString(", ");
+        message += " ; " + tr(u8"refusé(s) : %1").replace("%1", refuses.joinIntoString(", "));
     std::fputs((message + ".\n").toRawUTF8(), stderr);
     if (!refuses.isEmpty())
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::WarningIcon, juce::String::fromUTF8(u8"Import audio"), message);
+        montrerBoite(
+            juce::AlertWindow::WarningIcon, tr(u8"Import audio"), message);
 }
 
 void MainComponent::exportSelectedTrackMidi() {
@@ -10387,10 +10384,10 @@ void MainComponent::recoverRetrospectiveTake() {
     const size_t piste = trackList_.selectedTrackIndex();
     if (piste >= project_.tracks.size() || retrospectif_.empty()) return;
     if (project_.tracks[piste].kind != vsm::sequencer::Track::Kind::Midi) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Récupérer ce qui vient d'être joué",
-            u8"Choisissez une piste MIDI : ce qui a été joué au clavier est fait de notes, "
-            u8"et une piste audio n'en porte pas.");
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Récupérer ce qui vient d'être joué"),
+            tr(u8"Choisissez une piste MIDI : ce qui a été joué au clavier est fait de notes, "
+               u8"et une piste audio n'en porte pas."));
         return;
     }
 
@@ -10421,11 +10418,12 @@ void MainComponent::recoverRetrospectiveTake() {
     pianoRollPanel_.refresh();
     arrangement_.repaint();
     refreshHistoryList();
-    juce::AlertWindow::showMessageBoxAsync(
-        juce::AlertWindow::InfoIcon, u8"Récupérer ce qui vient d'être joué",
-        juce::String(static_cast<int>(notes.size()))
-            + juce::String(notes.size() > 1 ? u8" notes posées sur « " : u8" note posée sur « ")
-            + juce::String(project_.tracks[piste].name) + juce::String(u8" », à leur place sur la ligne de temps."));
+    montrerBoite(
+        juce::AlertWindow::InfoIcon, tr(u8"Récupérer ce qui vient d'être joué"),
+        (notes.size() > 1 ? tr(u8"%1 notes posées sur « %2 », à leur place sur la ligne de temps.")
+                          : tr(u8"%1 note posée sur « %2 », à leur place sur la ligne de temps."))
+            .replace("%1", juce::String(static_cast<int>(notes.size())))
+            .replace("%2", juce::String(project_.tracks[piste].name)));
 }
 
 void MainComponent::createClipOnTrack(size_t trackIndex, vsm::midi::Tick tick) {

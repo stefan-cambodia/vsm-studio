@@ -13989,3 +13989,101 @@ La table passe à **1 256** paires (+10). `VintageSynthMidiStudio` et
 suites C++ vertes (330 cœur, 1 291 audio, 297 interchange, 25 CLAP, 11
 panneaux). `MainComponent` : 82 chaînes à l'inventaire strict.
 
+### Phase D105 — A9 : les boîtes des opérations de piste restantes (11/09/2026)
+
+**LE LOT, APRÈS TRI.** Onze fonctions de `MainComponent` totalisaient 39 chaînes
+ÉCRAN (règle large). Lues une à une, elles ne vont pas toutes à l'écran :
+
+- **16 ne vont qu'au terminal** : désactiver une piste, copier et coller une
+  chaîne d'inserts, réduire les points d'automation, reporter les effets MIDI
+  — leur message est assemblé dans une variable, puis écrit par `fputs` dans
+  une AUTRE instruction. L'inventaire ne regarde que l'instruction de la
+  chaîne : il les compte ÉCRAN. Faux positif, mesuré à part (D106).
+- **4 sont déjà traduites à l'affichage** : les réserves des bus de départ
+  (`applySendBuses`) vont au rapport d'ouverture, dont `kModeles` porte les
+  deux phrases.
+- **1 est une donnée** : le préfixe de fichier `audio/report-piste-`.
+- **18 vont à l'écran**, dans huit boîtes de cinq fonctions : la signature
+  (deux), le report en audio (deux), la prise retirée, l'import audio refusé,
+  ce qui vient d'être joué (deux). Ce sont elles, le lot.
+
+**LE BANC, ET CE QU'IL NE PEUT PAS.** La plupart de ces boîtes sont des gardes
+que l'interface ne laisse pas atteindre : les deux boîtes de la signature
+suivent une entrée de menu GRISÉE justement quand elles s'ouvriraient ; le
+report n'échoue que si le rendu ou l'écriture échoue ; l'import refusé passe
+par la boîte « Que faire de ce fichier ? » ; « ce qui vient d'être joué »
+demande qu'on ait joué. **Une seule se banc** : la prise retirée. Aucun projet
+d'exemple n'a de tiroir de prises ; le banc en fabrique un sur une copie de
+demo-project — trois prises, la deuxième entendue, un tronçon d'assemblage sur
+elle et un sur la troisième — et retire la prise entendue par le menu
+Enregistrement. Le texte dit alors ses quatre phrases : la prise retirée,
+« c'était celle qu'on entend », un tronçon retiré, un tronçon reculé d'un
+rang. Témoin : les huit boîtes par `montrerBoite()`, sans traduction.
+
+**LA DÉCISION.** Le texte d'une prise retirée et celui d'un import audio vont
+à la boîte ET à la sortie d'erreur ; ils sont traduits à la source, comme les
+statistiques de D97 — personne ne relit ces lignes au terminal.
+
+**ATTENDU, écrit avant la mesure.**
+
+1. **L'inventaire** : 0 ÉCRAN dans les cinq fonctions ; ÉCRAN **98 → 85** à
+   la règle stricte, **141 → 123** à la large (13 et 18 chaînes du lot, la
+   donnée restant ÉCRAN : c'est un chemin, pas un texte). *Corrigé avant la
+   mesure* : j'avais écrit 98 → 81, en comptant 17 chaînes à la règle stricte
+   sans lancer l'inventaire ; lancé sur le code du témoin, il en voit 13 (et
+   la donnée), les autres n'ayant ni accent ni mot de sa liste.
+2. **La boîte de la prise retirée** : une, dans les deux langues, témoin et
+   D105, avec ses quatre phrases. En anglais : « Remove a take : Take “Passe B
+   du banc” removed from the drawer. It was the one you hear: … 1 comp
+   segment(s) pointed to it: removed. 1 comp segment(s) moved back one
+   rank. »
+3. **Le français** : identique au témoin, et la liste de la fenêtre
+   principale aussi.
+
+**VU DANS LE TÉMOIN (D105), écrit avant la mesure d'après.** Deux lancements,
+préférences intactes. Le tiroir fabriqué s'ouvre, et « retirer la prise
+entendue » passe par le menu Enregistrement dans les deux langues (le libellé
+complet, suffixe compris, désigne bien l'entrée de retrait et non celle de
+choix). Une boîte, et ses quatre phrases : « Prise « Passe B du banc »
+retirée du tiroir. C'était celle qu'on entend : son matériau RESTE sur la
+piste, il n'appartient plus à aucune passe. 1 tronçon(s) d'assemblage la
+désignaient : retirés. 1 tronçon(s) ont reculé d'un rang. » Après le retrait,
+le menu liste A et C deux fois chacune (choisir, retirer) : quatre entrées,
+B partie. En anglais, la boîte est française — le défaut, tel qu'annoncé.
+
+**LE RÉSULTAT, ATTENDU PAR ATTENDU (11/09/2026).** Témoin puis D105, deux
+lancements chacun, écran verrouillé ; préférences de l'utilisateur intactes
+(`cmp`, deux séries).
+
+1. **L'inventaire — tenu, à la prévision corrigée.** ÉCRAN **98 → 85** à la
+   règle stricte, **141 → 123** à la large ; dans les cinq fonctions ne reste
+   que la donnée `audio/report-piste-`. TABLE **218 → 215** : trois titres de
+   boîte étaient déjà des clés, affichés sans `tr()` (« Retirer une prise »,
+   « Récupérer ce qui vient d'être joué » deux fois) — en anglais, ils
+   sortaient en français. Des chaînes que seule la règle large voyait, cinq
+   étaient ici : « Report impossible » deux fois et « Import audio » (trois
+   des 33 de l'angle mort : il en reste 20), et « Signature » deux fois, que
+   D101 rangeait parmi les textes identiques et qui dit ici « Time
+   signature ». Les 16 chaînes qui ne vont qu'au terminal restent comptées
+   ÉCRAN : c'est D106.
+2. **La boîte de la prise retirée — tenu.** Une, dans les deux langues,
+   témoin et D105. En anglais : « Remove a take : Take “Passe B du banc”
+   removed from the drawer. It was the one you hear: its material STAYS on
+   the track, it no longer belongs to any pass. 1 comp segment(s) pointed to
+   it: removed. 1 comp segment(s) moved back one rank. » Seul reste le nom de
+   la prise : une donnée.
+3. **Le français — tenu.** Identique au témoin, boîte et liste de la fenêtre
+   principale (177 textes).
+
+**Ce que le banc n'ouvre pas** : les deux boîtes de la signature (leur entrée
+de menu est grisée quand elles s'ouvriraient), les deux « Report impossible »
+(un rendu ou une écriture qui échoue), l'import refusé (derrière la boîte
+« Que faire de ce fichier ? »), les deux boîtes de « ce qui vient d'être
+joué » (il faut avoir joué). Leurs textes sont des clés de la table.
+
+La table passe à **1 270** paires (+14). `VintageSynthMidiStudio` et
+`vsm-ui-preview` compilent ;
+suites C++ vertes (330 cœur, 1 291 audio, 297 interchange, 25 CLAP, 11
+panneaux). `MainComponent` : 69 chaînes à l'inventaire strict, dont 16 ne
+vont qu'au terminal.
+
