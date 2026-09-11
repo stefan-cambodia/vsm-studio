@@ -16601,3 +16601,16 @@ D136 (00:49:13).
 3. Aucun autre texte relevé ne change ; le projet ouvert en place n'est pas
    écrit ; suites vertes, préférences intactes.
 
+**RECTIFIÉ AVANT LE TÉMOIN DÉFINITIF — le projet de banc était mal choisi.**
+Un premier témoin sur `children-dream-v12` a rendu quatre infobulles
+génériques identiques (l'attendu 1 tient), mais ce projet n'a AUCUN bus
+routé : ses quatre pistes (bass, other, Batterie, Voix) ont chacune une
+liste de sortie, toutes vers le master — la reconstruction d'août n'avait
+pas la parité. « Output: Batterie » n'y pouvait pas paraître : j'avais
+supposé un bus qui n'existe pas. Le banc prend donc le projet de la COURSE 1
+de l'épreuve Children (`reconstruction/travail/children-c1-defaut`), qui a un
+bus Batterie et cinq pièces qui y jouent, ouvert en place (son empreinte et
+l'absence de fichier écrit sont vérifiées), zone des pistes agrandie ; deux
+cas par langue : sans filtre (des pistes au master), et le filtre
+« Batterie » (les pièces du bus). Les attendus ne changent pas.
+
