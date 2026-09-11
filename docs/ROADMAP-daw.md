@@ -13224,3 +13224,75 @@ La table passe à **1 116** paires (+46).
 Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels — verts ;
 `vsm-ui-preview` construit. La boîte anglaise des statistiques regardée :
 quinze lignes, rien de coupé. Aucun code Python n'a changé.
+
+### Phase D98 — A9 : le groove et les presets de piste (11/09/2026)
+
+**LE LOT.** Les boîtes du groove — l'extraire d'une piste, l'appliquer à
+une sélection, l'enregistrer, le charger — et celles des presets de piste —
+l'appliquer (machine absente, réserves, fichier illisible), l'écrire. Une
+quinzaine de chaînes. **Le navigateur attend sa phase**, et c'est la mesure
+qui le décide : ses boîtes (piste déjà occupée, échantillon copié dans le
+projet, preset d'effet indisponible…) ne s'ouvrent qu'à un GLISSER depuis
+le panneau, et aucune commande du banc n'en fait un. Il lui faudra la
+sienne, comme D91 a donné `VSM_MENU_CONTEXTE` aux menus du clic droit.
+
+**LE BANC.** Trois cas : extraire le groove d'une piste de `demo-project` ;
+l'extraire puis l'ENREGISTRER — l'écriture ne passe pas par un sélecteur,
+elle va dans le dossier `grooves/` du projet, ici la copie du banc ; et
+l'extraire d'une piste MIDI neuve, sans note. Appliquer un groove demande
+une sélection de notes dans le piano roll, que le banc ne sait pas poser ;
+les presets de piste n'ouvrent de boîte qu'en cas d'échec ou de réserve :
+ces boîtes-là se lisent dans le code et la table. Français puis anglais ;
+témoin (D98 sans ses traductions, `montrerBoite()` en place), puis D98 ;
+HOME isolé, préférences de l'utilisateur vérifiées par `cmp`.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (11/09/2026).**
+>
+> 1. **L'inventaire** : dans les fonctions du lot, ÉCRAN et SANS_PAIRE à
+>    **zéro**, ou chaque reste nommé ; et, leçon de D96, aucune clé neuve
+>    qui ferait passer pour traduit un littéral écrit ailleurs sans `tr()`.
+> 2. **Les boîtes du banc s'ouvrent avec le témoin et se lisent**
+>    (`VSM_BOITE`) dans les deux langues.
+> 3. **En anglais, plus un mot français dans ces boîtes**, hors les données
+>    (le nom du groove, qui est celui de la piste ; les chemins).
+> 4. **Le français ne change pas** : les boîtes et la liste de la fenêtre
+>    principale sont identiques à celles du témoin.
+
+**LE RÉSULTAT, ATTENDU PAR ATTENDU (11/09/2026).** Banc : trois cas par la
+barre de menus, français puis anglais ; témoin (D98 sans ses traductions,
+`montrerBoite()` en place) puis D98 ; HOME isolé, préférences de
+l'utilisateur intactes (`cmp`).
+
+1. **L'inventaire — tenu.** ÉCRAN **164 → 147** (−17) ; dans les sept
+   fonctions du lot, **0** ÉCRAN et **0** SANS_PAIRE ; aucune des 12 clés
+   neuves n'est un littéral écrit ailleurs sans `tr()` — les 17 sont 17
+   chaînes traduites. TABLE baisse de 4 (218 → 214), et c'est attendu :
+   trois titres du lot étaient déjà des clés, écrits quatre fois sans passer
+   par `tr()` (« Appliquer le groove », « Appliquer un preset de piste »,
+   « Enregistrer la piste comme preset » deux fois) ; ils y passent, et
+   l'inventaire ne les compte plus. TERMINAL (98) et COMMANDE (25) ne
+   bougent pas.
+2. **Les boîtes se lisent — tenu.** Chaque cas demande ses boîtes, dans les
+   deux langues : 1, puis **2** pour « extraire puis enregistrer »
+   (l'extraction, puis « Écrit dans …/grooves/Acid Bass.groove.json »),
+   puis 1 pour la piste sans note.
+3. **L'anglais — tenu.** « Groove “Acid Bass”: 8 of 16 steps filled in. The
+   steps where the track played nothing will leave the notes alone. »,
+   « Written to …/grooves/Acid Bass.groove.json », « This track has no
+   notes: there is no timing to extract from it. » Le seul « projet » que
+   l'analyse relève est dans le CHEMIN de la copie du banc
+   (`…/projet-…/grooves/`) : une donnée.
+4. **Le français — tenu.** Les boîtes identiques au témoin, mot pour mot —
+   l'étiquette du banc ramenée à une seule forme dans le chemin écrit —, et
+   la liste de la fenêtre principale : 175 textes (160 sur le projet neuf).
+
+**Les boîtes que le banc n'ouvre pas** : appliquer un groove (il faut une
+sélection de notes), le charger (sélecteur de fichier) et son erreur, les
+trois boîtes des presets de piste (échec, machine absente, réserves) et la
+confirmation d'un preset écrit par la boîte de nom. Leur texte se lit dans
+le code et la table. Les réserves d'un preset et l'erreur d'un groove
+illisible viennent d'`interchange/` et passent par `trPhrase`.
+
+La table passe à **1 128** paires (+12). `VintageSynthMidiStudio` et
+`vsm-ui-preview` compilent ; suites C++ vertes (330 cœur, 1 291 audio,
+297 interchange, 25 CLAP, 11 panneaux).

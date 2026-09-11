@@ -2298,6 +2298,32 @@ const Paire kAnglais[] = {
       "Locators" },
     { "Placez d'abord les locateurs : la région de boucle est la plage à insérer ou à supprimer.",
       "Set the locators first: the loop region is the range to insert or delete." },
+
+    // --- D98 : LE GROOVE ET LES PRESETS DE PISTE --------------------------------
+    { "Extraire le groove",
+      "Extract the groove" },
+    { "Cette piste n'a aucune note : il n'y a pas de placement à en tirer.",
+      "This track has no notes: there is no timing to extract from it." },
+    { "Groove « %1 » : %2 pas sur 16 renseignés. Les pas où la piste ne jouait rien laisseront les notes tranquilles.",
+      "Groove “%1”: %2 of 16 steps filled in. The steps where the track played nothing will leave the notes alone." },
+    { "Aucune note n'a bougé : elles tombent toutes sur des pas dont ce groove ne dit rien, ou elles y sont déjà.",
+      "No note moved: they all fall on steps this groove says nothing about, or they are already there." },
+    { "Enregistrer le groove",
+      "Save the groove" },
+    { "Écriture impossible : %1",
+      "Cannot write: %1" },
+    { "Écrit dans %1",
+      "Written to %1" },
+    { "Charger un groove",
+      "Load a groove" },
+    { "Preset de piste appliqué sans sa machine",
+      "Track preset applied without its machine" },
+    { "La machine « %1 » n'est pas disponible : les inserts et le mixage sont appliqués, l'état de la machine non.",
+      "The machine “%1” is not available: the inserts and the mix are applied, the machine's state is not." },
+    { "Preset de piste appliqué, avec des réserves",
+      "Track preset applied, with reservations" },
+    { "Écrit : %1",
+      "Written: %1" },
 };
 
 constexpr int kNombreDePaires = static_cast<int>(sizeof(kAnglais) / sizeof(kAnglais[0]));

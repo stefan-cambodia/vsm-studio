@@ -9720,9 +9720,9 @@ void MainComponent::extractGrooveFromSelectedTrack() {
     if (piste >= project_.tracks.size()) return;
     const auto& source = project_.tracks[piste];
     if (source.notes.empty()) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Extraire le groove",
-            u8"Cette piste n'a aucune note : il n'y a pas de placement à en tirer.");
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Extraire le groove"),
+            tr(u8"Cette piste n'a aucune note : il n'y a pas de placement à en tirer."));
         return;
     }
     const auto parMesure = project_.timeSignatureMap.ticksPerBar(0, project_.ticksPerQuarterNote);
@@ -9731,12 +9731,12 @@ void MainComponent::extractGrooveFromSelectedTrack() {
                                                                         : source.name);
     size_t presents = 0;
     for (const auto& pas : grooveCourant_.steps) if (pas.present) ++presents;
-    juce::AlertWindow::showMessageBoxAsync(
-        juce::AlertWindow::InfoIcon, u8"Extraire le groove",
-        juce::String(u8"Groove \u00ab ") + juce::String(grooveCourant_.name)
-            + juce::String(u8" \u00bb : ") + juce::String(static_cast<int>(presents))
-            + juce::String(u8" pas sur 16 renseignés. Les pas où la piste ne jouait rien "
-                           u8"laisseront les notes tranquilles."));
+    montrerBoite(
+        juce::AlertWindow::InfoIcon, tr(u8"Extraire le groove"),
+        tr(u8"Groove « %1 » : %2 pas sur 16 renseignés. Les pas où la piste ne jouait rien "
+           u8"laisseront les notes tranquilles.")
+            .replace("%2", juce::String(static_cast<int>(presents)))
+            .replace("%1", juce::String(grooveCourant_.name)));
 }
 
 void MainComponent::applyGrooveToSelection() {
@@ -9750,10 +9750,10 @@ void MainComponent::applyGrooveToSelection() {
     const size_t deplacees = vsm::sequencer::applyGroove(
         essai, pianoRoll_.selectedNoteIds(), grooveCourant_, parMesure, 1.0f, false);
     if (deplacees == 0) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Appliquer le groove",
-            u8"Aucune note n'a bougé : elles tombent toutes sur des pas dont ce groove ne dit "
-            u8"rien, ou elles y sont déjà.");
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Appliquer le groove"),
+            tr(u8"Aucune note n'a bougé : elles tombent toutes sur des pas dont ce groove ne dit "
+               u8"rien, ou elles y sont déjà."));
         return;
     }
     beginProjectEdit(u8"Appliquer le groove");
@@ -9784,19 +9784,19 @@ void MainComponent::saveCurrentGroove() {
         + juce::String(vsm::interchange::kGroovePresetExtension));
     const auto texte = vsm::interchange::grooveToJson(grooveCourant_).toString();
     if (!fichier.replaceWithText(juce::String(texte))) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::WarningIcon, u8"Enregistrer le groove",
-            juce::String(u8"Écriture impossible : ") + fichier.getFullPathName());
+        montrerBoite(
+            juce::AlertWindow::WarningIcon, tr(u8"Enregistrer le groove"),
+            tr(u8"Écriture impossible : %1").replace("%1", fichier.getFullPathName()));
         return;
     }
-    juce::AlertWindow::showMessageBoxAsync(
-        juce::AlertWindow::InfoIcon, u8"Enregistrer le groove",
-        juce::String(u8"Écrit dans ") + fichier.getFullPathName());
+    montrerBoite(
+        juce::AlertWindow::InfoIcon, tr(u8"Enregistrer le groove"),
+        tr(u8"Écrit dans %1").replace("%1", fichier.getFullPathName()));
 }
 
 void MainComponent::loadGrooveFromLibrary() {
     auto chooser = std::make_shared<juce::FileChooser>(
-        juce::String::fromUTF8(u8"Charger un groove"), juce::File(), "*.groove.json");
+        tr(u8"Charger un groove"), juce::File(), "*.groove.json");
     chooser->launchAsync(juce::FileBrowserComponent::openMode
                               | juce::FileBrowserComponent::canSelectFiles,
                           [this, chooser](const juce::FileChooser& fc) {
@@ -9806,9 +9806,9 @@ void MainComponent::loadGrooveFromLibrary() {
         if (!lu.success) {
             // NOMMÉ, JAMAIS DEVINÉ : un fichier qui n'est pas un groove dit ce
             // qu'il est plutôt que de se charger vide.
-            juce::AlertWindow::showMessageBoxAsync(
-                juce::AlertWindow::WarningIcon, u8"Charger un groove",
-                juce::String(lu.error));
+            montrerBoite(
+                juce::AlertWindow::WarningIcon, tr(u8"Charger un groove"),
+                vsm::app::ui::trPhrase(juce::String(lu.error)));
             return;
         }
         grooveCourant_ = lu.groove;
@@ -10183,9 +10183,9 @@ bool MainComponent::saveSelectedTrackAsPreset(const juce::String& nom) {
         juce::File::createLegalFileName(nom.trim()) + juce::String(vsm::interchange::kTrackPresetExtension));
     const auto texte = vsm::interchange::trackPresetToJson(preset).toString();
     if (!fichier.replaceWithText(juce::String(texte))) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::WarningIcon, u8"Enregistrer la piste comme preset",
-            juce::String(u8"\u00c9criture impossible : ") + fichier.getFullPathName());
+        montrerBoite(
+            juce::AlertWindow::WarningIcon, tr(u8"Enregistrer la piste comme preset"),
+            tr(u8"Écriture impossible : %1").replace("%1", fichier.getFullPathName()));
         std::fputs(("Preset de piste : \u00e9criture impossible dans "
                     + fichier.getFullPathName().toStdString() + "\n").c_str(), stderr);
         return false;
@@ -10215,11 +10215,11 @@ void MainComponent::promptSaveTrackPreset() {
             const juce::String nom = fenetre->getTextEditorContents("nom").trim();
             if (nom.isEmpty()) return;
             if (saveSelectedTrackAsPreset(nom))
-                juce::AlertWindow::showMessageBoxAsync(
-                    juce::AlertWindow::InfoIcon, u8"Enregistrer la piste comme preset",
-                    juce::String(u8"\u00c9crit : ") + trackPresetFolder().getChildFile(
+                montrerBoite(
+                    juce::AlertWindow::InfoIcon, tr(u8"Enregistrer la piste comme preset"),
+                    tr(u8"Écrit : %1").replace("%1", trackPresetFolder().getChildFile(
                         juce::File::createLegalFileName(nom)
-                        + juce::String(vsm::interchange::kTrackPresetExtension)).getFullPathName());
+                        + juce::String(vsm::interchange::kTrackPresetExtension)).getFullPathName()));
         }), true);
 }
 
@@ -10230,9 +10230,9 @@ void MainComponent::applyTrackPresetFile(const juce::File& fichier) {
     if (!lu.success) {
         // NOMMÉ, JAMAIS DEVINÉ : un fichier qui n'est pas un preset de piste
         // dit ce qu'il est plutôt que de s'appliquer vide.
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::WarningIcon, u8"Appliquer un preset de piste",
-            fichier.getFileName() + " : " + juce::String::fromUTF8(lu.error.c_str()));
+        montrerBoite(
+            juce::AlertWindow::WarningIcon, tr(u8"Appliquer un preset de piste"),
+            fichier.getFileName() + " : " + vsm::app::ui::trPhrase(juce::String::fromUTF8(lu.error.c_str())));
         std::fputs(("Preset de piste illisible : " + lu.error + "\n").c_str(), stderr);
         return;
     }
@@ -10245,12 +10245,11 @@ void MainComponent::applyTrackPresetFile(const juce::File& fichier) {
     if (lu.preset.synth && project_.tracks[piste].kind == vsm::sequencer::Track::Kind::Midi) {
         auto* machine = audioEngine_.processGraph().trackInstrument(piste);
         if (machine == nullptr) {
-            juce::AlertWindow::showMessageBoxAsync(
-                juce::AlertWindow::WarningIcon, u8"Preset de piste appliqu\u00e9 sans sa machine",
-                juce::String::fromUTF8(u8"La machine \u00ab ")
-                    + juce::String::fromUTF8(lu.preset.instrumentId.c_str())
-                    + juce::String::fromUTF8(u8" \u00bb n'est pas disponible : les inserts et le mixage "
-                                             u8"sont appliqu\u00e9s, l'\u00e9tat de la machine non."));
+            montrerBoite(
+                juce::AlertWindow::WarningIcon, tr(u8"Preset de piste appliqué sans sa machine"),
+                tr(u8"La machine « %1 » n'est pas disponible : les inserts et le mixage sont appliqués, "
+                   u8"l'état de la machine non.")
+                    .replace("%1", juce::String::fromUTF8(lu.preset.instrumentId.c_str())));
         } else {
             // D52 : CES DEUX RAPPORTS ÉTAIENT JETÉS. `applyPreset` et
             // `applyPresetSamples` rendent chacun un compte rendu dont
@@ -10272,9 +10271,9 @@ void MainComponent::applyTrackPresetFile(const juce::File& fichier) {
             if (echantillons.aQuelqueChoseADire())
                 reserves.add(juce::String::fromUTF8(echantillons.summary().c_str()));
             if (!reserves.isEmpty()) {
-                juce::AlertWindow::showMessageBoxAsync(
-                    juce::AlertWindow::InfoIcon, u8"Preset de piste appliqué, avec des réserves",
-                    reserves.joinIntoString("\n"));
+                montrerBoite(
+                    juce::AlertWindow::InfoIcon, tr(u8"Preset de piste appliqué, avec des réserves"),
+                    vsm::app::ui::trPhrase(reserves.joinIntoString("\n")));
                 // Et sur le terminal, pour que la boîte -- qu'aucune capture ne
                 // traverse -- ne soit pas le seul endroit où la chose existe.
                 std::fputs((juce::String(u8"VSM_PRESET : réserves — ")
