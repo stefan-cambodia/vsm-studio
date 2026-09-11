@@ -15365,3 +15365,28 @@ prévu.**
 « is », dans les deux langues ; le renommage identique au premier essai à
 l'icône près (plus de chevauchement) ; le dépôt toujours identique au pixel.
 
+**LE SECOND ESSAI (binaire du 11/09 18:35:28, banc à 18:35) — LES TROIS
+ATTENDUS TENUS.**
+
+1. **« Aller à la mesure »** : « Mesure, ou mesure.temps (« 17 »,
+   « 17.3 »). La première mesure est la 1. » et « Bar, or bar.beat (“17”,
+   “17.3”). The first bar is 1. », chacun sur UNE ligne.
+2. **Le renommage** : trois lignes, l'exemple entier sur la deuxième, dans
+   les deux langues ; plus d'icône, plus de chevauchement.
+3. **Le dépôt** : 0 pixel de différence dans les deux langues.
+
+Largeurs obtenues, lues sur les photos : « Aller à la mesure » 676 px
+(français) et 457 (anglais), le renommage 578 et 485 — toutes sous les 70 %
+de l'écran que JUCE s'accorde. Le français dit mot pour mot ce qu'il disait.
+
+**A13, CE QUI RESTE.** Les deux boîtes que l'application CONSTRUIT sont
+réglées par `BoiteLisible`. Les boîtes STATIQUES de JUCE
+(`showMessageBoxAsync`, `showYesNoCancelBox`…) ne se construisent pas : la
+coupure d'« Que faire de ce fichier ? » (« minutes. » seul, D119) reste, et
+toute boîte de texte long passée par ces fonctions peut couper de même. Les y
+faire passer par `BoiteLisible` est possible boîte par boîte, avec le banc de
+D119 pour témoin — un lot à part, s'il en vaut la peine.
+
+Suites C++ vertes à `-j 2` (330, 1 291, 297, 25, 11) ;
+`build/tools/vsm-render` non touché ; préférences intactes.
+

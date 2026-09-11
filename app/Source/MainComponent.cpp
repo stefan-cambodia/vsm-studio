@@ -88,6 +88,42 @@ void demanderOuiNon(juce::MessageBoxIconType icone, const juce::String& titre, c
                 + "]\n").toRawUTF8(), stderr);
     juce::AlertWindow::showOkCancelBox(icone, titre, message, oui, non, parent, suite);
 }
+/// D121 : UNE BOÎTE DONT LE TEXTE NE DÉCIDE PLUS LA LARGEUR. `AlertWindow` met
+/// son message en page à une largeur tirée du texte lui-même (`300 + 2·√(h ×
+/// largeur)`), AVANT de s'élargir pour ses boutons et ses composants : à 150 %,
+/// « « 17.3 » » et « Batterie 2 » s'y coupaient (D119, D120). Ses BLOCS de texte,
+/// eux, sont mis en page APRÈS, à 0,8 fois la largeur finale : le texte passe
+/// donc dans un bloc, et une CALE vide impose la largeur de la ligne la plus
+/// longue, mesurée dans la police des messages. Chaque paragraphe tient alors
+/// sur une ligne. Le bloc est aligné à gauche -- c'est ce que cela change à l'œil.
+///
+/// PAS D'ICÔNE (second essai) : JUCE centre un bloc à 10 % du bord, sans l'espace
+/// qu'il réserve à l'icône pour un message -- le « ? » du renommage passait sous
+/// le texte. L'icône demandée par l'appelant est donc ignorée, et c'est dit ici.
+class BoiteLisible final : public juce::AlertWindow {
+public:
+    BoiteLisible(const juce::String& titre, const juce::String& texte, juce::MessageBoxIconType /*icone*/)
+        : juce::AlertWindow(titre, juce::String(), juce::MessageBoxIconType::NoIcon) {
+        const auto police = getLookAndFeel().getAlertWindowMessageFont();
+        float plusLongue = 0.0f;
+        juce::StringArray lignes;
+        lignes.addLines(texte);
+        for (const auto& ligne : lignes)
+            plusLongue = std::max(plusLongue, juce::GlyphArrangement::getStringWidth(police, ligne));
+        // + 8 : le bloc se met en page à « largeur − 8 » ; + 6 : le TextEditor coupe à
+        // sa largeur moins son retrait (4 à gauche, 2 à droite, `getMaximumTextWidth`)
+        // ; + 18 de marge. Le premier essai (+16) laissait « 1. » seul sur sa ligne.
+        cale_.setSize(static_cast<int>(std::ceil(plusLongue)) + 32, 1);
+        addCustomComponent(&cale_);
+        addTextBlock(texte);
+    }
+
+private:
+    // Détruite AVANT la boîte (membre d'une classe dérivée) : un composant se
+    // retire de son parent en mourant, et `AlertWindow` ne possède pas ses
+    // composants ajoutés.
+    juce::Component cale_;
+};
 } // namespace
 
 MainComponent::MainComponent()
@@ -9310,7 +9346,7 @@ size_t MainComponent::renameTracksInSeries(const juce::String& motif) {
 }
 
 void MainComponent::promptRenameTracksInSeries() {
-    auto fenetre = std::make_shared<juce::AlertWindow>(
+    auto fenetre = std::make_shared<BoiteLisible>(   // D121
         tr(u8"Renommer les pistes en série"),
         // D117 : L'EXEMPLE SUR SA PROPRE LIGNE. « Batterie # » se coupait entre ses
         // mots à 150 % ; des espaces insécables l'empêchaient, mais s'affichaient
@@ -9969,7 +10005,7 @@ bool MainComponent::goToBarText(const juce::String& texte) {
 void MainComponent::promptGoToBar() {
     const auto ici = project_.timeSignatureMap.barBeatAt(
         std::max<vsm::midi::Tick>(0, transport_.currentTick()), project_.ticksPerQuarterNote);
-    auto* fenetre = new juce::AlertWindow(
+    auto* fenetre = new BoiteLisible(   // D121
         tr(u8"Aller à la mesure"),
         tr(u8"Mesure, ou mesure.temps (« 17 », « 17.3 »). La première mesure est la 1."),
         juce::MessageBoxIconType::NoIcon);
