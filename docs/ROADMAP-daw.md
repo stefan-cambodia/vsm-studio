@@ -15553,3 +15553,39 @@ inchangé, 7 ÉCRAN, 0 SANS_PAIRE). Suites C++ vertes à `-j 2` (330, 1 291,
 297, 25, 11) ; `build/tools/vsm-render` non touché ; préférences de
 l'utilisateur intactes, 22 lancements.
 
+### Phase D123 — « + Ajouter une piste » en toutes lettres, même au dock par défaut (11/09/2026)
+
+**CE QUE D122 A VU EN PASSANT.** Dans la disposition par défaut (180 px de
+dock à gauche), le bouton d'ajout de la liste des pistes s'écrit sur deux
+lignes minuscules — « + Ajouter / une piste », « + Add a / track » —, à côté
+de « Supprimer », large de 96 px. La cause est dans JUCE
+(`LookAndFeel_V2::drawButtonText`) : un texte qui ne tient pas dans son
+bouton n'agrandit pas le bouton, il se RÉDUIT (`drawFittedText`, deux lignes
+au plus, échelle horizontale réduite). À 62 px de large, le texte le paie.
+C'est exactement ce que la règle de ce projet refuse : « entre ça tient dans
+la case et ça se lit, la lisibilité prime — agrandir la case, pas rétrécir
+le texte ».
+
+**LA DÉCISION.** Quand la barre ne peut pas tenir les deux boutons à la
+taille NATURELLE de leur texte (mesurée dans la police que JUCE leur donne,
+retraits compris), ils passent chacun sur leur ligne : l'ajout en haut, sur
+toute la largeur, la suppression dessous — la décision même de D19.2 pour le
+filtre. Au-delà, la disposition d'aujourd'hui ne change pas d'un pixel. Le
+bouton « agrandir » de D122 suit la ligne du filtre, où qu'elle tombe.
+
+**LE BANC.** `children-dream-v12`, `HOME` de brouillon, français et anglais,
+au dock par défaut (180 px) et à un dock large (320 px) ; photos de la
+fenêtre, et un agrandissement de la liste des pistes. Témoin : le binaire de
+D122.
+
+**ATTENDU, écrit avant la mesure.**
+
+1. **Au dock par défaut, dans les deux langues** : « + Ajouter une piste » et
+   « + Add a track » sur UNE ligne, à la taille de texte des autres boutons
+   de la barre ; « Supprimer » / « Delete » sur la ligne suivante ; le
+   filtre, son bouton de zone et les pistes descendus d'une ligne, rien de
+   rogné.
+2. **Au dock large** : les deux boutons côte à côte, la liste des pistes
+   identique au pixel au témoin.
+3. **Suites vertes**, préférences intactes.
+
