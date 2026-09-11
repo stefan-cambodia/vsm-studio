@@ -16562,3 +16562,13 @@ dock atteint la disposition large (436 px) — la disposition est réglable.
 C'est désormais une question de LARGEUR PAR DÉFAUT du dock, pas de mise en
 page : INDEX, A20.
 
+**MESURÉ ENSUITE, pour borner A20.** Les préférences du banc portent
+`dock.gauche` = 180 — comme celles de l'utilisateur —, et le code a pour
+défaut **300**, avec **180 pour minimum** (`jlimit(180, …)`). Relancé sans
+aucune clé `dock.*` (le vrai défaut d'un premier lancement) : la disposition
+étroite se lit ENTIÈREMENT — « TB-303-style Acid Synth », M, S, R,
+« -> Master », le volume et le panoramique. La sortie illisible n'existe
+donc qu'à la largeur minimale, qui est celle où l'utilisateur a laissé son
+dock ; le code ne réécrit pas ce réglage, et c'est dit plutôt que corrigé
+par-dessus lui.
+
