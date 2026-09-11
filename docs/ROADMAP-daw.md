@@ -15822,3 +15822,45 @@ chemin de banc jusqu'à son sélecteur pour que la traduction se voie. Le
 chevauchement de l'icône est une question à part — il touche les 113 sites,
 et c'est le style de JUCE : il se décide sur des photos, dans une phase à lui.
 
+### Phase D126 — ce que D125 désigne : « it. » seul, et une boîte qui reste française (11/09/2026)
+
+**LES DEUX DÉFAUTS, ET LE MOYEN DE CHACUN, tranchés avant la mesure.**
+
+1. **« Le disque n'a pas suivi » passe par `BoiteLisible`**, et non par une
+   retouche de son texte anglais : la coupure dépend du nombre de blocs écrit
+   dans la phrase (« 3 » ou « 127 » changent les longueurs), et un texte
+   retouché pour 3 céderait pour un autre compte ; `BoiteLisible` prend la
+   largeur de la ligne la plus longue, quel que soit le nombre. Une fonction,
+   `montrerBoiteLisible`, qui écrit sa ligne `VSM_BOITE` comme
+   `montrerBoite`. Le prix, dit d'avance : l'icône « ! » disparaît, comme en
+   D121 et D124 — le titre porte l'alerte.
+2. **« Chaîne d'analyse » passe par `montrerBoite`**, son titre par `tr()`,
+   sa raison et son remède par `trPhrase` (D114, D124). Elle gagne au passage
+   la ligne `VSM_BOITE` qu'elle n'avait pas.
+
+**LE BANC, ET UN TÉMOIN DU MÊME CODE.** Le sélecteur de dossier ne se pilote
+pas sans souris. Un PREMIER PAS, qui ne change rien pour l'utilisateur, fait
+passer `chooseChainFolder` par `prendreLeFichierDeBanc` (D102) :
+`VSM_FICHIER=<dossier>` rend le dossier, l'entrée de menu reste celle de
+l'utilisateur. Le binaire de ce premier pas est le témoin ; celui du second,
+l'après. Deux cas, en français et en anglais : « disque » par
+`VSM_BOITE_ESSAI` (le banc de D125) ; « chaîne » : le dossier sans
+`reconstruire.py` de D114, choisi par l'entrée de menu.
+
+**ATTENDU, écrit avant la mesure.**
+
+1. **Disque.** Au témoin, « it. » seul en anglais — D125 reproduit, sur le
+   binaire du premier pas. Après, aucune mauvaise coupure (au sens de D119)
+   dans les deux langues, la phrase sur une ligne ; le texte identique au
+   témoin, mot pour mot, dans les deux langues (lignes `VSM_BOITE`).
+2. **Chaîne.** Au témoin, la boîte française dans les deux langues (titre,
+   raison, remède) et aucune ligne `VSM_BOITE`. Après, en anglais,
+   « Analysis chain », et la raison et le remède anglais de D124 (« the
+   analysis chain folder set in the preferences does not contain
+   reconstruire.py (…) », « fix the path, or clear it… ») ; en français, le
+   texte du témoin, mot pour mot.
+3. **Le dossier choisi s'écrit dans les préférences du `HOME` de brouillon**
+   (c'est ce que fait le geste), et celles de l'utilisateur restent
+   identiques (`cmp`).
+4. **Suites vertes.**
+
