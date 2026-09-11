@@ -14341,3 +14341,32 @@ du moteur : %1 ») ; TABLE 214 → 221 et 248 → 255 ; la table à 1 301 paires
 4 — boîtes et ligne du menu en anglais, français identique au témoin), les
 suites C++, `vsm-ui-preview`, et le résultat écrit ici.
 
+**LE RÉSULTAT, ATTENDU PAR ATTENDU (11/09/2026).** Témoin puis D108, six
+lancements chacun, écran verrouillé ; préférences de l'utilisateur intactes
+(`cmp`, deux séries).
+
+1. **L'inventaire — tenu au chiffre près** (écrit à l'état au commit) : ÉCRAN
+   51 → 45 (stricte), 83 → 74 (large), la seule chaîne restante étant la
+   prévue ; TABLE 214 → 221, 248 → 255. Des 14 chaînes de l'angle mort,
+   quatre étaient ici (« Enregistrement illisible », « (canal gauche de
+   comparaison.wav) », « frequence d'echantillonnage… », « lecteur WAV du
+   moteur : »), toutes traduites — la dernière reste comptée à la règle
+   large, traduite par son modèle. L'angle mort passe à 10, l'ÉCRAN réel à
+   au moins 55.
+2. **Les boîtes — tenu.** 1, 1, 0, dans les deux langues, témoin et D108. En
+   anglais : « Unreadable recording : engine WAV reader: RIFF/WAVE header
+   missing / JUCE reader: unrecognised format (accepted formats: WAV file,
+   AIFF file, FLAC file, Ogg-Vorbis file, MP3 file) », puis « unrecognised
+   format (…) » seul. (L'analyse relevait « format(s) » : des mots anglais.)
+3. **La ligne du menu — tenu.** « bip.wav  --  native WAV, 48.0 kHz, mono,
+   0:00 » en anglais.
+4. **Le français — tenu.** Identique au témoin, à l'accent déclaré près
+   (« acceptes » → « acceptés », dans les deux boîtes) ; listes de la fenêtre
+   principale identiques (180 textes). « stéréo » n'est pas passé au banc :
+   `bip.wav` est mono.
+
+La table passe à **1 301** paires (+8), **95** modèles (+4).
+`VintageSynthMidiStudio` et `vsm-ui-preview` compilent ; suites C++ vertes (330 cœur, 1 291 audio,
+297 interchange, 25 CLAP, 11 panneaux). `MainComponent` : 34 chaînes à
+l'inventaire.
+
