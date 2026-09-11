@@ -16995,3 +16995,21 @@ le MASTER de CET instant ; et un geste du MASTER ouvre son propre pas et
 écrit le modèle, pour s'annuler comme un geste de tranche. Dans
 l'application seule : le modèle a son champ depuis longtemps.
 
+**RÉSULTAT (12/09) — LE SOUPÇON EST CONFIRMÉ.** Binaire de D142 (04:43:43),
+anglais :
+
+| cas | bouton LOW | moteur « EQ Low Gain » | volume de la piste |
+|---|---|---|---|
+| (a) double-clic LOW, puis `volume:0.5` | 0.0 dB | **0.00** | -6.0 dB |
+| (b) la même chose, puis Ctrl+Z | 6.0 dB | **6.00** | -0.9 dB — annulé |
+| (c) contrôle : `volume:0.5`, puis Ctrl+Z | 6.0 dB | 6.00 | -0.9 dB |
+
+Le musicien remet son LOW à 0 dB ; il annule un geste de volume sur une
+piste ; **le MASTER revient à +6 dB, la valeur du dernier enregistrement**,
+sans un mot. Le mécanisme est celui que la lecture du code désignait : la
+photo du pas d'annulation portait le MASTER du dernier enregistrement
+(`masterParameters` n'est rafraîchi qu'à l'enregistrement, l'export, le gel,
+le report), et `rebuildFromProject` la réapplique. C'est une panne muette —
+la règle du projet l'interdit. **INDEX, A23 ; le remède, décidé plus haut,
+est la phase suivante.**
+
