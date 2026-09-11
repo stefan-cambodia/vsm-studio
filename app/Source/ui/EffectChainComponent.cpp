@@ -796,6 +796,15 @@ bool EffectChainComponent::presetMenuPourCapture(size_t index, const juce::Strin
     return true;
 }
 
+bool EffectChainComponent::ajouterPourCapture(const juce::String& libelle) {
+    for (int i = 0; i < addBox_.getNumItems(); ++i)
+        if (addBox_.getItemText(i) == libelle) {
+            addBox_.setSelectedId(addBox_.getItemId(i), juce::sendNotificationSync);
+            return true;
+        }
+    return false;
+}
+
 void EffectChainComponent::savePresetOf(size_t index) {
     auto* d = activeDescription();
     if (!d || index >= d->size() || !presetSaveFolderProvider) return;

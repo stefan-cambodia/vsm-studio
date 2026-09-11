@@ -135,6 +135,9 @@ public:
     /// D91 : une entrée du menu de preset de l'effet `index`, exécutée sans souris
     /// par la même fonction que le clic (libellé exact, sinon son début).
     bool presetMenuPourCapture(size_t index, const juce::String& libelle);
+    /// D102 : une entrée de la liste « ajouter un effet », choisie sans souris par
+    /// son libellé exact -- `onChange` fait le reste, comme au clic.
+    bool ajouterPourCapture(const juce::String& libelle);
     void presetMenuAction(size_t index, int choix, const std::vector<juce::File>& fichiers);
 
 private:

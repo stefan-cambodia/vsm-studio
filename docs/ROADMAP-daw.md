@@ -13676,3 +13676,145 @@ leur rendra leurs accents, différence française déclarée d'avance.
 
 Outil : `ruff` et `mypy` propres ; aucune suite C++ concernée.
 
+### Phase D102 — A9 : les plugins (11/09/2026)
+
+**LE LOT.** Huit fonctions de `MainComponent` : `showAboutDialog`,
+`loadClapPluginOnSelectedTrack`, `scanInstalledPlugins`,
+`chooseInstrumentFromCatalogue`, `openPluginEditorForSelectedTrack`,
+`chooseThirdPartyEffect`, `browseForThirdPartyEffect`,
+`loadVst3PluginOnSelectedTrack`. À l'inventaire : 21 ÉCRAN à la règle stricte,
+31 à la règle large (D101). Une vingtaine de ces chaînes sont du français SANS
+SES ACCENTS (« Plugin charge », « Balayage termine », « facade »,
+« reglages »…), comme deux libellés du menu Piste qui les ouvrent.
+
+**LA COMMANDE DE BANC.** Trois de ces chemins passent par un sélecteur de
+fichier, qu'aucun banc ne pilote. `VSM_PLUGIN=chemin` pose le fichier que le
+PROCHAIN sélecteur de plugin rendra. Le geste qui l'ouvre reste celui de
+l'utilisateur — le menu Piste (`VSM_MENU`), ou la liste « ajouter un effet »
+de la chaîne d'effets (`VSM_MENU_CONTEXTE=ajout-effet:libellé`, nouvelle, qui
+choisit l'entrée comme la souris) ; seul le sélecteur est sauté, et c'est dit
+(`VSM_PLUGIN : sélecteur sauté, fichier …`). La suite du sélecteur devient une
+fonction locale, que le sélecteur et le banc appellent ; rien d'autre ne
+bouge.
+
+**LES DÉCISIONS.**
+
+1. **Les accents rendus.** Les chaînes du lot écrites sans accents les
+   retrouvent en français, avec les deux libellés du menu Piste
+   (« Rechercher les plugins installés... », « Instrument parmi les plugins
+   trouvés... ») et leurs clés. C'est la différence française voulue, déclarée
+   ici, et la seule.
+2. **La boîte « À propos » est traduite telle qu'elle est**, version et
+   phases comprises : la mettre à jour serait un autre travail.
+3. **Le titre de la fenêtre pendant le balayage** (« … -- balayage N/M :
+   fichier ») passe par `tr()` lui aussi.
+4. **« Pas d'interface native » ne se banc pas** : son entrée de menu est
+   grisée pour une machine du parc, et `VSM_MENU` n'exécute pas une entrée
+   grisée — c'est voulu (D7.4), et forcer le passage vérifierait un chemin
+   que personne n'emprunte.
+
+**ATTENDU, écrit avant la mesure.** HOME isolé : le catalogue des plugins vit
+sous `~/.config`, celui de l'utilisateur n'est ni lu ni écrit. Projet neuf
+(une piste MIDI). Par langue, témoin (D102 sans ses traductions : la commande
+de banc et `montrerBoite()` en place) puis D102 :
+
+| cas | geste | fichier | boîtes |
+|---|---|---|---|
+| apropos | Aide ▸ À propos | — | 1 |
+| clap-illisible | Charger un plugin CLAP | un `.clap` cassé | 1 : Plugin CLAP illisible |
+| clap-instrument | Charger un plugin CLAP | `vsm-test-gui.clap` (un instrument) | 1 : Plugin chargé |
+| clap-plusieurs | Charger un plugin CLAP | `vsm-instruments.clap` (les machines du parc) | 0 ; la fenêtre « Plusieurs plugins dans ce fichier », lue par `VSM_FENETRE` |
+| vst3-illisible | Charger un instrument VST3 | un `.vst3` cassé | 1 : Plugin VST3 illisible |
+| effet-illisible | ajouter un effet ▸ Un plugin | `vsm-instruments.clap` (que des instruments) | 1 : Effet illisible |
+| effet-clap | ajouter un effet ▸ Un plugin | `vsm-test-effect.clap` | 0 ; « Annuler : Ajouter un effet » au menu Édition |
+| balayage | Rechercher les plugins installés | — | 1 ou 2 : Balayage lancé, puis terminé s'il finit avant la photo |
+
+1. **L'inventaire** : 0 ÉCRAN et 0 SANS_PAIRE dans les huit fonctions ;
+   ÉCRAN **126 → 105** à la règle stricte, **179 → 148** à la règle large.
+2. **Les boîtes** : le compte du tableau, dans les deux langues, témoin et
+   D102 ; chaque cas dit `VSM_PLUGIN : sélecteur sauté`.
+3. **L'anglais** : aucun mot français dans les boîtes et la fenêtre « Several
+   plugins », hors des données — chemins, et les noms des machines que
+   `vsm-instruments.clap` publie (ils viennent du registre : leur lot est
+   nommé). Les erreurs des hôtes CLAP et VST3 passent par `trPhrase` ; celle
+   qui resterait française faute de modèle en reçoit un, ou est nommée.
+4. **Le français** : identique au témoin, sauf les accents de la décision 1 ;
+   la liste de la fenêtre principale identique.
+
+**VU DANS LE TÉMOIN (D102), écrit avant la mesure d'après.** Seize lancements,
+préférences intactes ; le tableau tenu cas par cas (1, 1, 1, 0, 1, 1, 0, et 2
+pour le balayage, fini avant la photo), un sélecteur sauté dans chaque cas à
+fichier, et « Annuler : Ajouter un effet » au menu Édition après `effet-clap`.
+Deux choses à écrire avant d'aller plus loin :
+
+- **La fenêtre « Plusieurs plugins dans ce fichier » n'a pas été lue** :
+  « 0 autre(s) fenêtre(s) lue(s) ; composants modaux : 0 ». L'écran est
+  verrouillé, et sous un écran verrouillé JUCE ne montre AUCUN composant
+  modal — le piège de D95. Les boîtes y échappent parce que `montrerBoite()`
+  les écrit quand elles sont demandées ; les quatre fenêtres de choix du lot
+  (plusieurs plugins, plusieurs instruments, le catalogue, les effets
+  trouvés) ne passent pas par elle. **Décision** : une fonction
+  `annoncerFenetre()` écrit leur titre et leurs textes (`VSM_CHOIX`) au moment
+  où elles sont demandées. Elle n'entre qu'au build d'après : le témoin, lui,
+  n'a rien lu de cette fenêtre, et ne peut donc pas lui servir de témoin. Son
+  français se compare au code du témoin, pas à une lecture.
+- **Les erreurs des hôtes** : « chargement impossible : …/casse.clap: en-tête
+  ELF invalide » (CLAP) et « aucun plugin VST3 dans « … » » (VST3). Deux
+  modèles de phrase de plus. La fin du premier (« en-tête ELF invalide ») est
+  le message du SYSTÈME (`dlerror()`, dans la langue de la session) : une
+  donnée, que l'application ne traduit pas.
+
+**LE RÉSULTAT, ATTENDU PAR ATTENDU (11/09/2026).** Témoin puis D102, seize
+lancements chacun, écran verrouillé ; préférences de l'utilisateur intactes
+(`cmp`, deux séries).
+
+1. **L'inventaire — tenu à la règle stricte, à une chaîne près à la large.**
+   0 ÉCRAN et 0 SANS_PAIRE dans les huit fonctions. Stricte : ÉCRAN
+   **126 → 105**, comme écrit. Large : **179 → 149**, pas 148 : le titre de
+   la boîte « À propos », « Vintage Synth MIDI Studio », reste — c'est le nom
+   de l'application, que D101 rangeait déjà parmi les textes identiques dans
+   les deux langues, et je l'avais compté parmi les partants. TABLE
+   **216 → 218** : « ce fichier ne contient que des instruments… », écrit deux
+   fois par `browseForThirdPartyEffect`, est désormais une clé, lue à l'écran
+   par `trPhrase`. Des 33 chaînes de l'angle mort (D101), neuf étaient ici
+   (l'écart large − stricte passe de 53 à 44) ; il en reste 24, dont trois
+   écrites sans leurs accents.
+2. **Les boîtes — tenu.** Le tableau, cas par cas, dans les deux langues, au
+   témoin comme après : 1, 1, 1, 0, 1, 1, 0, 2 ; un sélecteur sauté dans
+   chaque cas à fichier ; « Undo: Add an effect » après `effet-clap` — le
+   chemin d'insertion d'un effet tiers, réécrit autour de `suite`, insère
+   toujours.
+3. **L'anglais — tenu.** « Unreadable CLAP plugin : This file yielded no
+   plugin. / cannot load: …/casse.clap: en-tête ELF invalide », « Plugin
+   loaded : VSM Test GUI (CLAP) now plays on track 2. », « no VST3 plugin in
+   “…/casse.vst3” », « this file only contains instruments: put it on a
+   track, not as an insert », « Scan started », « Scan finished : 0
+   instrument(s), 0 effect(s) found. », la boîte « About ». Restent en
+   français deux données, annoncées : le message du système (`dlerror()`,
+   « en-tête ELF invalide ») et les noms des machines que
+   `vsm-instruments.clap` publie (« Additive (le spectre rang par rang) »).
+4. **Le français — tenu.** Identique au témoin aux accents déclarés près
+   (« Plugin chargé », « Balayage lancé », « Balayage terminé », la boîte
+   « À propos »), et nulle part ailleurs ; listes de la fenêtre principale
+   identiques (180 et 160 textes).
+5. **La fenêtre de choix — lue après seulement, comme décidé.** `VSM_CHOIX` :
+   « Plusieurs plugins dans ce fichier. Lequel charger ? », Charger, Annuler ;
+   « Several plugins in this file. Which one to load? », Load, Cancel. Le
+   témoin n'en a rien lu (écran verrouillé) : son français se compare au code
+   du témoin — « Plusieurs plugins dans ce fichier », « Lequel charger ? »,
+   « Charger », sans accent à rendre — et il est le même.
+
+**Ce que le banc n'ouvre pas** : « Pas d'interface native » (entrée grisée,
+décision 4), la fenêtre « Plusieurs instruments dans ce fichier » (il faudrait
+un VST3 à plusieurs instruments), le choix dans le catalogue et parmi les
+effets trouvés (il faut un catalogue non vide : le balayage du banc n'en
+trouve aucun — dossiers système vides, HOME isolé), « Pas d'instrument dans ce
+fichier » (un VST3 d'effets). Leurs textes sont des clés de la table, et les
+trois fenêtres de choix passent par `annoncerFenetre()`.
+
+La table passe à **1 199** paires (+34), et deux clés renommées avec leurs
+accents ; **91** modèles (+2). `VintageSynthMidiStudio` et `vsm-ui-preview`
+compilent ; suites C++
+vertes (330 cœur, 1 291 audio, 297 interchange, 25 CLAP, 11 panneaux).
+`MainComponent` : 89 chaînes à l'inventaire strict.
+

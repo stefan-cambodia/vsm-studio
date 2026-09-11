@@ -1272,8 +1272,10 @@ bool MainComponent::runContextMenuForCapture(const juce::String& entree) {
     const juce::String quel = entree.upToFirstOccurrenceOf(":", false, false).trim();
     const juce::String libelle = entree.fromFirstOccurrenceOf(":", false, false).trim();
     // « effets » : le premier effet de la chaîne affichée, celle de la piste choisie.
-    const bool fait = quel == "effets" ? effectChain_.presetMenuPourCapture(0, libelle)
-                                       : arrangement_.actionDeMenuPourCapture(quel, libelle);
+    // D102 : « ajout-effet » : une entrée de la liste « ajouter un effet », choisie.
+    const bool fait = quel == "effets"        ? effectChain_.presetMenuPourCapture(0, libelle)
+                    : quel == "ajout-effet"   ? effectChain_.ajouterPourCapture(libelle)
+                                              : arrangement_.actionDeMenuPourCapture(quel, libelle);
     std::fputs((juce::String("VSM_MENU_CONTEXTE : ")
                 + (fait ? juce::String(u8"« ") + libelle + juce::String(u8" » exécutée (") + quel + ")"
                         : juce::String(u8"aucune entrée « ") + libelle + juce::String(u8" » dans le menu ") + quel)
@@ -1326,6 +1328,19 @@ int parcourirLesTextes(juce::Component& racine,
     };
     parcourir(racine);
     return nombre;
+}
+
+/// D102 : UNE FENÊTRE DE CHOIX SE LIT QUAND ELLE EST DEMANDÉE, comme une boîte
+/// (D95). Sous un écran verrouillé, JUCE ne montre aucun composant modal, et la
+/// liste des fenêtres ne la voit pas : son titre et ses textes vont sur la
+/// sortie d'erreur avant `enterModalState`.
+void annoncerFenetre(juce::AlertWindow& fenetre) {
+    const juce::String titre = fenetre.getName();
+    std::fputs(("VSM_CHOIX : " + titre + "\n").toRawUTF8(), stderr);
+    parcourirLesTextes(fenetre, [&titre](const char* nature, const juce::String& texte) {
+        std::fputs(("VSM_CHOIX_TEXTE : " + titre + " : " + juce::String::fromUTF8(nature) + " : "
+                    + texte.replace("\n", " / ") + "\n").toRawUTF8(), stderr);
+    }, true);
 }
 } // namespace
 
@@ -2911,10 +2926,10 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addItem(kMenuTrackScanPlugins,
                               pluginScanner_ != nullptr
                                   ? juce::String(tr(u8"Balayage des plugins en cours..."))
-                                  : juce::String(tr(u8"Rechercher les plugins installes...")),
+                                  : juce::String(tr(u8"Rechercher les plugins installés...")),
                               pluginScanner_ == nullptr);
                 menu.addItem(kMenuTrackPluginFromCatalogue,
-                              tr(u8"Instrument parmi les plugins trouves..."),
+                              tr(u8"Instrument parmi les plugins trouvés..."),
                               !pluginCatalogue_.instruments().empty()
                                   && piste < project_.tracks.size()
                                   && project_.tracks[piste].kind == Track::Kind::Midi);
@@ -3831,10 +3846,23 @@ void MainComponent::setUiScale(float factor) {
 }
 
 void MainComponent::showAboutDialog() {
-    juce::AlertWindow::showMessageBoxAsync(
+    montrerBoite(
         juce::AlertWindow::InfoIcon, "Vintage Synth MIDI Studio",
-        "Sequenceur MIDI + rack de synthetiseurs vintage virtuels.\n\n"
-        "Version 0.1.0 -- Phases 3 et 4 faites (instruments de reference + extension).");
+        tr(u8"Séquenceur MIDI + rack de synthétiseurs vintage virtuels.\n\n"
+           u8"Version 0.1.0 -- Phases 3 et 4 faites (instruments de référence + extension)."));
+}
+
+bool MainComponent::prendreLeFichierDeBanc(const std::function<void(const juce::File&)>& suite) {
+    // D102 : LE SÉLECTEUR, ET LUI SEUL, SAUTÉ PAR LE BANC. Un sélecteur de fichier
+    // ne se pilote pas sans souris ; ce qu'il rend, si. Le reste du chemin -- le
+    // menu qui l'ouvre, ce qu'on fait du fichier -- est celui de l'utilisateur.
+    if (fichierDeBanc_ == juce::File()) return false;
+    const juce::File fichier = fichierDeBanc_;
+    fichierDeBanc_ = juce::File();
+    std::fputs((juce::String(u8"VSM_PLUGIN : sélecteur sauté, fichier ") + fichier.getFullPathName() + "\n")
+                   .toRawUTF8(), stderr);
+    suite(fichier);
+    return true;
 }
 
 void MainComponent::loadClapPluginOnSelectedTrack() {
@@ -3842,13 +3870,7 @@ void MainComponent::loadClapPluginOnSelectedTrack() {
     const size_t piste = trackList_.selectedTrackIndex();
     if (piste >= project_.tracks.size()) return;
 
-    auto chooser = std::make_shared<juce::FileChooser>(
-        u8"Choisir un plugin CLAP...", juce::File("/usr/lib/clap"), "*.clap");
-    chooser->launchAsync(juce::FileBrowserComponent::openMode
-                             | juce::FileBrowserComponent::canSelectFiles
-                             | juce::FileBrowserComponent::canSelectDirectories,
-                          [this, chooser, piste](const juce::FileChooser& fc) {
-        const juce::File fichier = fc.getResult();
+    auto suite = [this, piste](const juce::File& fichier) {
         if (fichier == juce::File()) return;
 
         // ON REGARDE CE QU'IL Y A DEDANS AVANT DE L'INSTANCIER. Un fichier
@@ -3859,10 +3881,10 @@ void MainComponent::loadClapPluginOnSelectedTrack() {
         const auto trouves = vsm::clap::scanClapFile(fichier.getFullPathName().toStdString(),
                                                       erreur);
         if (trouves.empty()) {
-            juce::AlertWindow::showMessageBoxAsync(
-                juce::AlertWindow::WarningIcon, u8"Plugin CLAP illisible",
-                juce::String(u8"Ce fichier n'a livré aucun plugin.\n\n")
-                    + juce::String(erreur));
+            montrerBoite(
+                juce::AlertWindow::WarningIcon, tr(u8"Plugin CLAP illisible"),
+                tr(u8"Ce fichier n'a livré aucun plugin.\n\n%1")
+                    .replace("%1", vsm::app::ui::trPhrase(juce::String(erreur))));
             return;
         }
 
@@ -3877,10 +3899,11 @@ void MainComponent::loadClapPluginOnSelectedTrack() {
             // sémantiques ne veulent rien dire pour celle-ci, et les appliquer
             // en silence donnerait un son que personne n'a réglé.
             rebuildFromProject();
-            juce::AlertWindow::showMessageBoxAsync(
-                juce::AlertWindow::InfoIcon, u8"Plugin charge",
-                juce::String(nomAffiche) + juce::String(u8" joue maintenant sur la piste ")
-                    + juce::String(static_cast<int>(piste) + 1) + ".");
+            montrerBoite(
+                juce::AlertWindow::InfoIcon, tr(u8"Plugin chargé"),
+                tr(u8"%1 joue maintenant sur la piste %2.")
+                    .replace("%2", juce::String(static_cast<int>(piste) + 1))
+                    .replace("%1", juce::String(nomAffiche)));
         };
 
         if (trouves.size() == 1) {
@@ -3893,14 +3916,15 @@ void MainComponent::loadClapPluginOnSelectedTrack() {
         // l'utilisateur n'a pas choisie, sans qu'il puisse s'en apercevoir
         // autrement qu'à l'oreille.
         auto fenetre = std::make_shared<juce::AlertWindow>(
-            u8"Plusieurs plugins dans ce fichier", u8"Lequel charger ?",
+            tr(u8"Plusieurs plugins dans ce fichier"), tr(u8"Lequel charger ?"),
             juce::AlertWindow::NoIcon);
         juce::StringArray noms;
         for (const auto& info : trouves)
             noms.add(juce::String(info.name) + " -- " + juce::String(info.vendor));
         fenetre->addComboBox("plugin", noms, u8"Plugin");
-        fenetre->addButton(u8"Charger", 1, juce::KeyPress(juce::KeyPress::returnKey));
+        fenetre->addButton(tr(u8"Charger"), 1, juce::KeyPress(juce::KeyPress::returnKey));
         fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+        annoncerFenetre(*fenetre);   // D102
         fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
             [fenetre, trouves, poser](int resultat) {
                 const int choix = fenetre->getComboBoxComponent("plugin")->getSelectedId();
@@ -3911,7 +3935,14 @@ void MainComponent::loadClapPluginOnSelectedTrack() {
                 poser(trouves[static_cast<size_t>(choix) - 1].id,
                        trouves[static_cast<size_t>(choix) - 1].name);
             }), false);
-    });
+    };
+    if (prendreLeFichierDeBanc(suite)) return;   // D102 : le banc
+    auto chooser = std::make_shared<juce::FileChooser>(
+        tr(u8"Choisir un plugin CLAP..."), juce::File("/usr/lib/clap"), "*.clap");
+    chooser->launchAsync(juce::FileBrowserComponent::openMode
+                             | juce::FileBrowserComponent::canSelectFiles
+                             | juce::FileBrowserComponent::canSelectDirectories,
+                          [chooser, suite](const juce::FileChooser& fc) { suite(fc.getResult()); });
 #endif
 }
 
@@ -3926,8 +3957,10 @@ void MainComponent::scanInstalledPlugins() {
     pluginScanner_->onProgress = [this](int fait, int total, const juce::String& courant) {
         juce::MessageManager::callAsync([this, fait, total, courant] {
             if (auto* fenetre = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
-                fenetre->setName("Vintage Synth MIDI Studio -- balayage " + juce::String(fait)
-                                  + "/" + juce::String(total) + " : " + courant);
+                fenetre->setName(tr(u8"Vintage Synth MIDI Studio -- balayage %1/%2 : %3")
+                                  .replace("%1", juce::String(fait))
+                                  .replace("%2", juce::String(total))
+                                  .replace("%3", courant));
         });
     };
     pluginScanner_->onFinished = [this](vsm::interchange::PluginCatalogue catalogue) {
@@ -3941,34 +3974,32 @@ void MainComponent::scanInstalledPlugins() {
             // (voir ARCHITECTURE.md § 6 bis bis) : chaque littéral accentué
             // passe par un `juce::String` explicite.
             juce::String message =
-                juce::String(pluginCatalogue_.instruments().size())
-                + juce::String(u8" instrument(s), ")
-                + juce::String(pluginCatalogue_.effects().size())
-                + juce::String(u8" effet(s) trouves.");
+                tr(u8"%1 instrument(s), %2 effet(s) trouvés.")
+                    .replace("%1", juce::String(pluginCatalogue_.instruments().size()))
+                    .replace("%2", juce::String(pluginCatalogue_.effects().size()));
             // LES FAUTIFS SONT NOMMÉS. Un fichier qui disparaît du balayage
             // sans un mot laisse l'utilisateur chercher pourquoi son plugin
             // n'apparaît nulle part.
             if (!pluginCatalogue_.faulty.empty()) {
                 message += juce::String("\n\n")
-                           + juce::String(pluginCatalogue_.faulty.size())
-                           + juce::String(u8" fichier(s) n'ont pas pu etre lus. Ils sont isoles : "
-                                          u8"ils n'ont pas fait tomber l'application, et ne "
-                                          u8"seront pas rouverts.\n");
+                           + tr(u8"%1 fichier(s) n'ont pas pu être lus. Ils sont isolés : ils n'ont pas fait "
+                                 u8"tomber l'application, et ne seront pas rouverts.\n")
+                                 .replace("%1", juce::String(pluginCatalogue_.faulty.size()));
                 for (const auto& fautif : pluginCatalogue_.faulty)
                     message += "\n" + juce::String(fautif.path) + "\n   "
-                               + juce::String(fautif.reason);
+                               + vsm::app::ui::trPhrase(juce::String(fautif.reason));
             }
-            juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon,
-                                                     u8"Balayage termine", message);
+            montrerBoite(juce::AlertWindow::InfoIcon,
+                                                     tr(u8"Balayage terminé"), message);
         });
     };
     pluginScanner_->start(false);
 
-    juce::AlertWindow::showMessageBoxAsync(
-        juce::AlertWindow::InfoIcon, u8"Balayage lance",
-        juce::String(u8"Les plugins installes sont ouverts un par un, dans un processus a "
-                     u8"part.\n\nVous pouvez continuer a travailler : un plugin qui ferait "
-                     u8"tomber son processus de balayage sera signale, pas fatal."));
+    montrerBoite(
+        juce::AlertWindow::InfoIcon, tr(u8"Balayage lancé"),
+        tr(u8"Les plugins installés sont ouverts un par un, dans un processus à part.\n\n"
+           u8"Vous pouvez continuer à travailler : un plugin qui ferait tomber son processus "
+           u8"de balayage sera signalé, pas fatal."));
 #endif
 }
 
@@ -3980,15 +4011,16 @@ void MainComponent::chooseInstrumentFromCatalogue() {
     if (instruments.empty()) return;
 
     auto fenetre = std::make_shared<juce::AlertWindow>(
-        u8"Instruments trouves sur cette machine", u8"Lequel poser sur la piste ?",
+        tr(u8"Instruments trouvés sur cette machine"), tr(u8"Lequel poser sur la piste ?"),
         juce::AlertWindow::NoIcon);
     juce::StringArray noms;
     for (const auto& plugin : instruments)
         noms.add(juce::String(plugin.name) + "  --  " + juce::String(plugin.vendor)
                  + "  [" + juce::String(plugin.format) + "]");
     fenetre->addComboBox("plugin", noms, u8"Instrument");
-    fenetre->addButton(u8"Charger", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    fenetre->addButton(tr(u8"Charger"), 1, juce::KeyPress(juce::KeyPress::returnKey));
     fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    annoncerFenetre(*fenetre);   // D102
     fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
         [this, fenetre, instruments, piste](int resultat) {
             const int choix = fenetre->getComboBoxComponent("plugin")->getSelectedId();
@@ -4048,10 +4080,10 @@ void MainComponent::openPluginEditorForSelectedTrack() {
     }
 #endif
     if (facade == nullptr) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Pas d'interface native",
-            juce::String(u8"Cette machine n'a pas de facade a elle. Ses reglages restent "
-                         u8"accessibles dans le Synth Rack."));
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Pas d'interface native"),
+            tr(u8"Cette machine n'a pas de façade à elle. Ses réglages restent accessibles dans le "
+               u8"Synth Rack."));
         return;
     }
     class FenetreFacade final : public juce::DocumentWindow {
@@ -4090,16 +4122,17 @@ void MainComponent::chooseThirdPartyEffect(std::function<void(std::string)> quan
     const auto effetsConnus = pluginCatalogue_.effects();
     if (!effetsConnus.empty()) {
         auto fenetre = std::make_shared<juce::AlertWindow>(
-            u8"Effets trouves sur cette machine", u8"Lequel inserer ?",
+            tr(u8"Effets trouvés sur cette machine"), tr(u8"Lequel insérer ?"),
             juce::AlertWindow::NoIcon);
         juce::StringArray noms;
         for (const auto& plugin : effetsConnus)
             noms.add(juce::String(plugin.name) + "  --  " + juce::String(plugin.vendor)
                      + "  [" + juce::String(plugin.format) + "]");
-        noms.add(juce::String(u8"Parcourir un fichier..."));
-        fenetre->addComboBox("effet", noms, u8"Effet");
-        fenetre->addButton(u8"Inserer", 1, juce::KeyPress(juce::KeyPress::returnKey));
+        noms.add(tr(u8"Parcourir un fichier..."));
+        fenetre->addComboBox("effet", noms, tr(u8"Effet"));
+        fenetre->addButton(tr(u8"Insérer"), 1, juce::KeyPress(juce::KeyPress::returnKey));
         fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+        annoncerFenetre(*fenetre);   // D102
         fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
             [this, fenetre, effetsConnus, quandChoisi](int resultat) {
                 const int choix = fenetre->getComboBoxComponent("effet")->getSelectedId();
@@ -4126,13 +4159,7 @@ void MainComponent::browseForThirdPartyEffect(std::function<void(std::string)> q
     // VST3 ? » ferait choisir une technologie avant de choisir un son ; le
     // filtre du sélecteur accepte les deux extensions, et c'est le fichier
     // désigné qui décide.
-    auto chooser = std::make_shared<juce::FileChooser>(
-        u8"Choisir un effet (.clap ou .vst3)...", juce::File(), "*.clap;*.vst3");
-    chooser->launchAsync(juce::FileBrowserComponent::openMode
-                             | juce::FileBrowserComponent::canSelectFiles
-                             | juce::FileBrowserComponent::canSelectDirectories,
-                          [this, chooser, quandChoisi](const juce::FileChooser& fc) {
-        const juce::File fichier = fc.getResult();
+    auto suite = [this, quandChoisi](const juce::File& fichier) {
         if (fichier == juce::File()) return;
         const std::string chemin = fichier.getFullPathName().toStdString();
 
@@ -4171,15 +4198,22 @@ void MainComponent::browseForThirdPartyEffect(std::function<void(std::string)> q
 #endif
 
         if (identifiant.empty()) {
-            juce::AlertWindow::showMessageBoxAsync(
-                juce::AlertWindow::WarningIcon, u8"Effet illisible",
-                juce::String(u8"Aucun effet n'a pu être chargé depuis ce fichier.\n\n")
-                    + juce::String(erreur));
+            montrerBoite(
+                juce::AlertWindow::WarningIcon, tr(u8"Effet illisible"),
+                tr(u8"Aucun effet n'a pu être chargé depuis ce fichier.\n\n%1")
+                    .replace("%1", vsm::app::ui::trPhrase(juce::String(erreur))));
             return;
         }
         juce::ignoreUnused(nomAffiche);
         quandChoisi(identifiant);
-    });
+    };
+    if (prendreLeFichierDeBanc(suite)) return;   // D102 : le banc
+    auto chooser = std::make_shared<juce::FileChooser>(
+        tr(u8"Choisir un effet (.clap ou .vst3)..."), juce::File(), "*.clap;*.vst3");
+    chooser->launchAsync(juce::FileBrowserComponent::openMode
+                             | juce::FileBrowserComponent::canSelectFiles
+                             | juce::FileBrowserComponent::canSelectDirectories,
+                          [chooser, suite](const juce::FileChooser& fc) { suite(fc.getResult()); });
 #else
     juce::ignoreUnused(quandChoisi);
 #endif
@@ -4201,23 +4235,17 @@ void MainComponent::loadVst3PluginOnSelectedTrack() {
     const juce::File depart("C:\\Program Files\\Common Files\\VST3");
 #endif
 
-    auto chooser = std::make_shared<juce::FileChooser>(
-        u8"Choisir un instrument VST3...", depart.isDirectory() ? depart : juce::File(),
-        "*.vst3");
-    chooser->launchAsync(juce::FileBrowserComponent::openMode
-                             | juce::FileBrowserComponent::canSelectFiles
-                             | juce::FileBrowserComponent::canSelectDirectories,
-                          [this, chooser, piste](const juce::FileChooser& fc) {
-        const juce::File fichier = fc.getResult();
+    auto suite = [this, piste](const juce::File& fichier) {
         if (fichier == juce::File()) return;
 
         std::string erreur;
         const auto trouves = vsm::vst3::scanVst3File(fichier.getFullPathName().toStdString(),
                                                       erreur);
         if (trouves.empty()) {
-            juce::AlertWindow::showMessageBoxAsync(
-                juce::AlertWindow::WarningIcon, u8"Plugin VST3 illisible",
-                juce::String(u8"Ce fichier n'a livré aucun plugin.\n\n") + juce::String(erreur));
+            montrerBoite(
+                juce::AlertWindow::WarningIcon, tr(u8"Plugin VST3 illisible"),
+                tr(u8"Ce fichier n'a livré aucun plugin.\n\n%1")
+                    .replace("%1", vsm::app::ui::trPhrase(juce::String(erreur))));
             return;
         }
 
@@ -4228,10 +4256,9 @@ void MainComponent::loadVst3PluginOnSelectedTrack() {
         for (const auto& info : trouves)
             if (info.isInstrument) instruments.push_back(info);
         if (instruments.empty()) {
-            juce::AlertWindow::showMessageBoxAsync(
-                juce::AlertWindow::WarningIcon, u8"Pas d'instrument dans ce fichier",
-                juce::String(u8"Ce fichier ne contient que des effets. Les héberger viendra "
-                             u8"avec l'etape D7.3."));
+            montrerBoite(
+                juce::AlertWindow::WarningIcon, tr(u8"Pas d'instrument dans ce fichier"),
+                tr(u8"Ce fichier ne contient que des effets. Les héberger viendra avec l'étape D7.3."));
             return;
         }
 
@@ -4245,10 +4272,11 @@ void MainComponent::loadVst3PluginOnSelectedTrack() {
             // LE PRESET DE L'ANCIENNE MACHINE NE SUIT PAS : ses identités
             // sémantiques ne veulent rien dire pour celle-ci.
             rebuildFromProject();
-            juce::AlertWindow::showMessageBoxAsync(
-                juce::AlertWindow::InfoIcon, u8"Instrument charge",
-                juce::String(nomAffiche) + juce::String(u8" joue maintenant sur la piste ")
-                    + juce::String(static_cast<int>(piste) + 1) + ".");
+            montrerBoite(
+                juce::AlertWindow::InfoIcon, tr(u8"Instrument chargé"),
+                tr(u8"%1 joue maintenant sur la piste %2.")
+                    .replace("%2", juce::String(static_cast<int>(piste) + 1))
+                    .replace("%1", juce::String(nomAffiche)));
         };
 
         if (instruments.size() == 1) {
@@ -4257,14 +4285,15 @@ void MainComponent::loadVst3PluginOnSelectedTrack() {
         }
 
         auto fenetre = std::make_shared<juce::AlertWindow>(
-            u8"Plusieurs instruments dans ce fichier", u8"Lequel charger ?",
+            tr(u8"Plusieurs instruments dans ce fichier"), tr(u8"Lequel charger ?"),
             juce::AlertWindow::NoIcon);
         juce::StringArray noms;
         for (const auto& info : instruments)
             noms.add(juce::String(info.name) + " -- " + juce::String(info.vendor));
         fenetre->addComboBox("plugin", noms, u8"Instrument");
-        fenetre->addButton(u8"Charger", 1, juce::KeyPress(juce::KeyPress::returnKey));
+        fenetre->addButton(tr(u8"Charger"), 1, juce::KeyPress(juce::KeyPress::returnKey));
         fenetre->addButton(vsm::app::ui::trSelon("bouton", u8"Annuler"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+        annoncerFenetre(*fenetre);   // D102
         fenetre->enterModalState(true, juce::ModalCallbackFunction::create(
             [fenetre, instruments, poser](int resultat) {
                 const int choix = fenetre->getComboBoxComponent("plugin")->getSelectedId();
@@ -4275,7 +4304,15 @@ void MainComponent::loadVst3PluginOnSelectedTrack() {
                 poser(instruments[static_cast<size_t>(choix) - 1].id,
                        instruments[static_cast<size_t>(choix) - 1].name);
             }), false);
-    });
+    };
+    if (prendreLeFichierDeBanc(suite)) return;   // D102 : le banc
+    auto chooser = std::make_shared<juce::FileChooser>(
+        tr(u8"Choisir un instrument VST3..."), depart.isDirectory() ? depart : juce::File(),
+        "*.vst3");
+    chooser->launchAsync(juce::FileBrowserComponent::openMode
+                             | juce::FileBrowserComponent::canSelectFiles
+                             | juce::FileBrowserComponent::canSelectDirectories,
+                          [chooser, suite](const juce::FileChooser& fc) { suite(fc.getResult()); });
 #endif
 }
 

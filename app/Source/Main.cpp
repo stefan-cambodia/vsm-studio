@@ -195,6 +195,13 @@ public:
             // prouve pas que le filtre filtre.
             if (const char* filtre = std::getenv("VSM_FILTRE"); filtre != nullptr && *filtre)
                 content->setTrackFilterForCapture(juce::String::fromUTF8(filtre));
+            // VSM_PLUGIN=chemin (D102) : le fichier que le PROCHAIN sélecteur de
+            // plugin rendra -- AVANT VSM_MENU, dont le geste l'ouvre. Seul le
+            // sélecteur est sauté ; le menu, et ce qu'on fait du fichier, restent
+            // ceux de l'utilisateur.
+            if (const char* plugin = std::getenv("VSM_PLUGIN"); plugin != nullptr && *plugin)
+                content->setPluginFileForCapture(juce::File::getCurrentWorkingDirectory().getChildFile(
+                    juce::String::fromUTF8(plugin)));
             // VSM_MENU=libellé[;libellé…] : exécuter des entrées de menu par
             // leur LIBELLÉ avant la capture (D20). Trois gestes de cet audit
             // ne vivent que dans le menu contextuel d'un clip ; leurs jumeaux

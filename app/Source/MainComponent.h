@@ -146,6 +146,10 @@ public:
     /// le dépôt sur l'arrangement (`depot`, au tick 0) d'une entrée du
     /// navigateur, sur la piste choisie, par les mêmes fonctions que la souris.
     bool runBrowserGestureForCapture(const juce::String& geste);
+    /// D102 : VSM_PLUGIN=chemin -- le fichier que le PROCHAIN sélecteur de plugin
+    /// (CLAP, VST3, effet tiers) rendra, sans ouvrir sa fenêtre. Le geste qui
+    /// l'ouvre reste celui de l'utilisateur (VSM_MENU, VSM_MENU_CONTEXTE).
+    void setPluginFileForCapture(const juce::File& fichier) { fichierDeBanc_ = fichier; }
     bool runKeyForCapture(const juce::String& description) {
         const juce::KeyPress touche = juce::KeyPress::createFromDescription(description);
         if (!touche.isValid()) return false;
@@ -659,6 +663,10 @@ private:
 
     vsm::app::ui::BrowserComponent browserPanel_;
     std::unique_ptr<PanelWindow> browserWindow_;
+    /// D102 : le fichier du prochain sélecteur de plugin, posé par le banc, et
+    /// la fonction qui le consomme à la place du sélecteur (et le dit).
+    juce::File fichierDeBanc_;
+    bool prendreLeFichierDeBanc(const std::function<void(const juce::File&)>& suite);
     /// La commande dont on attend la nouvelle touche, s'il y en a une.
     bool rebindPending_ = false;
     vsm::interchange::ShortcutId rebindTarget_{};
