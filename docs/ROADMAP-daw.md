@@ -15333,3 +15333,35 @@ le message de « Aller à la mesure », sans icône, était centré.
    touchée), et le français des deux boîtes dit la même chose qu'avant, mot
    pour mot (`VSM_TEXTES_LISTE` ne lit pas une boîte ; la photo, si).
 
+**LE PREMIER ESSAI (binaire du 11/09 18:31:22, banc à 18:31) — le renommage
+TENU, « Aller à la mesure » RÉFUTÉ, et un défaut que l'attendu n'avait pas
+prévu.**
+
+- **Renommage — TENU** : « Exemple : « Batterie # » donne « Batterie 1 »,
+  « Batterie 2 »... » et « Example: “Drums #” gives “Drums 1”, “Drums 2”... »
+  entiers, chacun sur sa ligne ; plus rien de coupé.
+- **Aller à la mesure — RÉFUTÉ** : « … La première mesure est la / 1. » et
+  « … The first bar is / 1. », « 1. » seul sur sa ligne dans les deux
+  langues. La source dit pourquoi : le `TextEditor` coupe à sa largeur MOINS
+  son retrait (`getMaximumTextWidth` : largeur visible − 4 à gauche − 2 à
+  droite), quand le bloc n'est mis en page qu'à « largeur − 8 ». La cale de
+  +16 laissait une ligne qui tombait à un pixel près.
+- **Non prévu** : dans le renommage, le bloc empiète sur le cercle de l'icône
+  « ? ». JUCE centre un bloc de texte à 10 % du bord
+  (`(getWidth() − largeur) / 2`), sans l'espace de l'icône que le message,
+  lui, réservait.
+- **Le dépôt — TENU** : 0 pixel de différence, dans les deux langues.
+
+**DÉCISIONS DU SECOND ESSAI, écrites avant de le mesurer.**
+
+1. **La cale compte le retrait du `TextEditor`, lu dans la source**, plus une
+   marge : largeur de la ligne la plus longue + 8 (la mise en page du bloc) +
+   6 (le retrait) + 18 de marge, soit **+32**. Une marge est une marge : elle
+   s'écrit avec sa raison, pas au pixel qui fait passer la photo.
+2. **Une boîte lisible n'a pas d'icône** : un bloc de texte ne la contourne
+   pas. Le « ? » du renommage disparaît — c'est un changement à l'œil, dit.
+
+**ATTENDU DU SECOND ESSAI** : « 1. » sur la même ligne que « la » et que
+« is », dans les deux langues ; le renommage identique au premier essai à
+l'icône près (plus de chevauchement) ; le dépôt toujours identique au pixel.
+
