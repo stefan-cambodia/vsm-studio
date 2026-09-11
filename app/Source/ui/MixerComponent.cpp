@@ -506,6 +506,7 @@ MasterStrip::MasterStrip() {
     // se voit à ce qu'il cache.
     addChildComponent(satLabel_);
 
+    enableButton_.setName("master.MASTER");   // D145 : le nom par lequel le banc le désigne (cliquer:)
     enableButton_.setClickingTogglesState(true);
     enableButton_.setColour(juce::TextButton::buttonOnColourId, vsm::ui::Palette::accentTeal);
     enableButton_.onClick = [this] {
@@ -515,6 +516,7 @@ MasterStrip::MasterStrip() {
 
     // D23.5 : L'ÉCOUTE EN MONO. Ambre, comme un solo : c'est un état d'écoute
     // qu'on doit remarquer allumé, pas un réglage qu'on laisse.
+    monoButton_.setName("master.MONO");   // D145 : le nom par lequel le banc le désigne (cliquer:)
     monoButton_.setClickingTogglesState(true);
     monoButton_.setColour(juce::TextButton::buttonOnColourId, vsm::ui::Palette::accentAmber);
     monoButton_.onClick = [this] { if (onMonoListen) onMonoListen(monoButton_.getToggleState()); };

@@ -131,3 +131,14 @@ l'ordre de marche — pas de la documentation d'accompagnement.
   sur 7 lancements, aucun composant modal deux secondes après le geste (D95).
   Une boîte se lit donc au moment où elle est demandée — `VSM_BOITE`, écrite
   par `montrerBoite()` — et la photo ne sert qu'à la regarder.
+- `juce::Button` REDÉCLARE `mouseDown`/`mouseUp` en PROTÉGÉ, là où `juce::Slider`
+  les laisse publics : un banc qui presse un bouton par son nom ne compile pas
+  (« est protégé dans ce contexte », 12/09, D145). Passer par la base —
+  `static_cast<juce::Component*>(bouton)->mouseDown(e)` — atteint le MÊME code
+  virtuel que le système, sans rien simuler. Et `triggerClick()` POSTE un
+  message : le relevé peut le précéder.
+- Une valeur qui REVIENT à son point de départ ne prouve rien sans le témoin qui
+  montre qu'elle en était partie : « rendu » et « jamais changé » donnent le même
+  chiffre (12/09, D145 — le cas (c) lisait -0,9 dB, et il a fallu un cas sans
+  annulation, à -6,0 dB, pour que « rendu » veuille dire quelque chose). Toute
+  mesure d'annulation porte donc son témoin sans annulation.

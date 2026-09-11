@@ -1523,6 +1523,53 @@ bool MainComponent::doubleCliquerPourCapture(const juce::String& nomOuLegende) {
     return true;
 }
 
+bool MainComponent::cliquerPourCapture(const juce::String& nomOuLegende) {
+    // D145 : LE BOUTON DÉSIGNÉ PAR SON NOM DE COMPOSANT, SON TEXTE OU SON
+    // INFOBULLE, cherché comme pour `appuyer:` (visible, avec une surface), puis
+    // pressé par le chemin de la souris : `mouseDown` puis `mouseUp`, ce que
+    // `Button` traduit en clic. `triggerClick()` POSTE un message, et le relevé
+    // pourrait le précéder ; ici tout est fait avant de rendre la main.
+    std::function<juce::Button*(juce::Component&)> chercher = [&](juce::Component& c) -> juce::Button* {
+        if (auto* bouton = dynamic_cast<juce::Button*>(&c);
+            bouton != nullptr && !bouton->getLocalBounds().isEmpty()
+            && (bouton->getName() == nomOuLegende || bouton->getButtonText() == nomOuLegende
+                || bouton->getTooltip() == nomOuLegende))
+            return bouton;
+        for (auto* enfant : c.getChildren())
+            if (enfant->isVisible())
+                if (auto* trouve = chercher(*enfant)) return trouve;
+        return nullptr;
+    };
+    juce::Button* bouton = chercher(*this);
+    for (int i = 0; bouton == nullptr && i < juce::TopLevelWindow::getNumTopLevelWindows(); ++i)
+        if (auto* fenetre = juce::TopLevelWindow::getTopLevelWindow(i); fenetre != nullptr && fenetre->isVisible())
+            bouton = chercher(*fenetre);
+    if (bouton == nullptr) {
+        std::fputs(("VSM_CLIC : " + nomOuLegende + juce::String(u8" — aucun bouton visible de ce nom")
+                    + "\n").toRawUTF8(), stderr);
+        return false;
+    }
+    // L'ÉTAT AVANT ET APRÈS : un clic qui n'atterrit pas doit se voir ici, et non
+    // passer pour un défaut du logiciel mesuré.
+    const bool avant = bouton->getToggleState();
+    const auto centre = bouton->getLocalBounds().getCentre().toFloat();
+    const auto maintenant = juce::Time::getCurrentTime();
+    const juce::MouseEvent evenement(juce::Desktop::getInstance().getMainMouseSource(), centre,
+                                     juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier), 1.0f,
+                                     0.0f, 0.0f, 0.0f, 0.0f, bouton, bouton, maintenant, centre, maintenant, 1, false);
+    // PIÈGE JUCE : `Button` REDÉCLARE les gestionnaires de souris en PROTÉGÉ, là
+    // où `Slider` les laisse publics -- l'appel direct ne compile pas. Ceux de
+    // `Component` sont publics et virtuels : passer par la base appelle le MÊME
+    // code que le système, sans rien contourner ni simuler.
+    auto* composant = static_cast<juce::Component*>(bouton);
+    composant->mouseDown(evenement);
+    composant->mouseUp(evenement);
+    std::fputs(("VSM_CLIC : " + nomOuLegende + juce::String(u8" — cliqué, bascule ")
+                + (avant ? "1" : "0") + juce::String(u8" → ") + (bouton->getToggleState() ? "1" : "0")
+                + "\n").toRawUTF8(), stderr);
+    return true;
+}
+
 bool MainComponent::runContextMenuForCapture(const juce::String& entree) {
     const juce::String quel = entree.upToFirstOccurrenceOf(":", false, false).trim();
     const juce::String libelle = entree.fromFirstOccurrenceOf(":", false, false).trim();
@@ -1719,6 +1766,11 @@ void MainComponent::listTextsForCapture() {
     for (const auto& [nom, valeur] : vsm::interchange::describeMasterBus(audioEngine_.processGraph().masterBus()))
         std::fputs(("VSM_MASTER_MOTEUR : " + juce::String::fromUTF8(nom.c_str()) + " : " + juce::String(valeur, 2)
                     + "\n").toRawUTF8(), stderr);
+    // D145 : L'ÉCOUTE MONO N'EST PAS UN PARAMÈTRE DU BUS (D23.5) -- elle n'a donc
+    // aucune clé dans le relevé ci-dessus, et sans cette ligne le cas (e) serait
+    // invérifiable. Elle se lit à part, dans le moteur, seule source de vérité.
+    std::fputs(("VSM_MONO : " + juce::String(audioEngine_.processGraph().masterBus().monoListen() ? 1 : 0)
+                + "\n").toRawUTF8(), stderr);
     // LE COMPTE, ET CE QUI LE REND SUSPECT : un zéro doit se lire, pas se deviner.
     std::fputs(("VSM_TEXTES : " + juce::String(nombre) + juce::String(u8" texte(s) listé(s)")
                 + (isShowing() ? juce::String()

@@ -217,6 +217,12 @@ public:
         // de cette infobulle (les commandes des façades n'ont qu'une légende).
         if (geste.startsWithIgnoreCase("doubleclic:"))
             return doubleCliquerPourCapture(geste.fromFirstOccurrenceOf(":", false, false));
+        // D145 : cliquer:<nom, légende ou infobulle> -- le clic de la souris sur le
+        // premier BOUTON visible qui porte ce nom. Les deux commandes du MASTER
+        // sont des boutons, et ni `appuyer:` ni `doubleclic:` ne voient autre
+        // chose que des curseurs : rien ne les atteignait.
+        if (geste.startsWithIgnoreCase("cliquer:"))
+            return cliquerPourCapture(geste.fromFirstOccurrenceOf(":", false, false));
         return false;
     }
     /// D23.3 : VSM_EXPORT_MIDI_PISTE=fichier.mid -- la piste choisie écrite
@@ -240,6 +246,8 @@ public:
     bool appuyerPourCapture(const juce::String& nom);
     /// D140 : voir le geste `doubleclic:` de `runTrackGestureForCapture`.
     bool doubleCliquerPourCapture(const juce::String& nomOuLegende);
+    /// D145 : voir le geste `cliquer:` de `runTrackGestureForCapture`.
+    bool cliquerPourCapture(const juce::String& nomOuLegende);
     /// D57 : republier le panneau d'assemblage depuis la piste choisie.
     void refreshTakeCompPanel();
     /// D24.5 : VSM_IMPORT_AUDIO=fichier.wav -- sur une piste neuve, sans boîte.

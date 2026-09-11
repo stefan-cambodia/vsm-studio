@@ -17114,3 +17114,52 @@ après —, sans toucher ni à `core/` ni à `audio/`, que l'épreuve Children
 interdit de recompiler tant qu'une course tourne. (e) est l'attendu INVERSE :
 y voir l'écoute mono survivre à l'annulation est le BON comportement, et c'est
 le seul cas de la série où « rien ne bouge » est une réussite.
+
+**RÉSULTAT (12/09) — L'HYPOTHÈSE SE VÉRIFIE, ET L'ATTENDU INVERSE AUSSI.**
+Binaire de 06:10:52 ; deux séries identiques (06:11 et 06:12), anglais, projet
+de D91 avec « Master Enabled » à 1 et « EQ Low Gain » à +6 dB. Écran VERROUILLÉ
+pendant les deux séries (`LockedHint=yes` sur les deux sessions) : sans
+conséquence ici, parce que les relevés descendent par `isVisible()` depuis D94
+et que la preuve du clic est dans le relevé lui-même (« bascule 1 → 0 »), non
+dans une photo.
+
+| cas | attendu | mesuré (séries 1 et 2, identiques) |
+|---|---|---|
+| (a) `cliquer:master.MASTER` | 0.00 | **0.00**, bascule 1 → 0 |
+| (b) (a) puis Ctrl+Z | 0.00, rien n'est annulé | **0.00** — rien n'est annulé |
+| (c) (a) puis `volume:0.5` puis Ctrl+Z | master 0.00, volume rendu | master **0.00** ; volume **-0.9 dB** |
+| (f) témoin de (c), sans Ctrl+Z | *(ajouté après la série 1)* | volume **-6.0 dB** |
+| (d) contrôle D144 : `doubleclic:master.LOW` puis Ctrl+Z | 6.00 | **6.00** |
+| (e) écoute mono au menu puis Ctrl+Z | allumée, aucune clé mono | **mono 1**, **0** clé mono au relevé du moteur |
+
+**Le cas (f) n'était pas prévu, et il a manqué de l'être.** Après la première
+série, le cas (c) lisait -0,9 dB — mais « rendu » et « jamais changé » donnent
+le MÊME chiffre, et l'on ne peut pas écrire le premier sans un témoin qui
+montre le geste atterrir. (f) le montre : -6,0 dB sans annulation. Le -0,9 dB
+de (c) est donc un vrai retour. La leçon vaut au-delà de cette phase : une
+valeur qui revient à son point de départ ne prouve rien SANS le témoin qui
+prouve qu'elle en était partie.
+
+**Ce que la mesure établit.** (b) confirme l'hypothèse : l'activation du bus
+master ne s'annule pas, alors qu'elle EST un paramètre du projet
+(« Master Enabled », sauvé dans `project.json`). Le chemin est celui que le
+code annonçait : `onMasterEnable` pose la valeur dans le moteur sans ouvrir de
+pas ni prévenir le modèle. (c) montre que le défaut ne se rattrape pas non plus
+par la bande : depuis D144, un pas de PISTE photographie le MASTER du moteur,
+donc il photographie l'activation DÉJÀ éteinte et l'annulation la laisse
+éteinte — le remède de D144 protège le MASTER des pas voisins, il ne fabrique
+pas un pas là où il n'y en a pas. (d) montre que la plomberie de D145 n'a rien
+cassé de D144. (e) est le seul cas où l'immobilité est la réussite : l'écoute
+mono reste allumée après Ctrl+Z et n'apparaît dans aucune clé du relevé —
+D23.5 tient, c'est un outil de séance et non un paramètre du projet.
+
+**A24 s'ouvre** : l'activation du bus master ne s'annule pas. Le remède est
+celui de D144, appliqué à un rappel de plus — ouvrir le pas avant la bascule,
+recopier le moteur dans le modèle après —, et il ne touche que `app/Source`,
+donc il est permis pendant que court l'épreuve Children.
+
+**Un piège JUCE payé ici, et écrit dans CLAUDE.md** : `juce::Button` REDÉCLARE
+`mouseDown`/`mouseUp` en PROTÉGÉ, là où `juce::Slider` les laisse publics —
+l'appel direct ne compile pas (« est protégé dans ce contexte »). Ceux de
+`juce::Component` sont publics et virtuels : l'appel passe par la base et
+atteint le MÊME code que celui du système, sans rien simuler.
