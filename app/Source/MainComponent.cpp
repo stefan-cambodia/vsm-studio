@@ -124,6 +124,20 @@ private:
     // composants ajoutés.
     juce::Component cale_;
 };
+
+/// D126 : `montrerBoite`, PAR `BoiteLisible`. Pour une boîte dont la coupure
+/// dépend d'un nombre écrit dans la phrase : la boîte statique de JUCE garde,
+/// faute de mieux, la largeur où les deux dernières lignes sont les PLUS
+/// déséquilibrées, et « it. » restait seul pour 3 blocs perdus (D125) --
+/// retoucher le texte pour 3 l'aurait laissé céder pour un autre compte. Même
+/// ligne `VSM_BOITE` que `montrerBoite` ; l'icône tombe, comme en D121.
+void montrerBoiteLisible(juce::MessageBoxIconType icone, const juce::String& titre, const juce::String& message) {
+    std::fputs(("VSM_BOITE : " + titre + " : " + message.replace("\n", " / ") + "\n").toRawUTF8(), stderr);
+    auto* fenetre = new BoiteLisible(titre, message, icone);
+    fenetre->addButton("OK", 0, juce::KeyPress(juce::KeyPress::returnKey),
+                       juce::KeyPress(juce::KeyPress::escapeKey));
+    fenetre->enterModalState(true, nullptr, true);
+}
 } // namespace
 
 MainComponent::MainComponent()
@@ -2634,12 +2648,13 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 menu.addItem(kMenuFileReconstruct,
                               tr(u8"Reconstruire un morceau..."), dispo);
                 if (!reconstructionChain_.available) {
+                    // D126 : raison et remède traduits à l'affichage, comme dans la boîte (D114)
                     menu.addItem(-1, tr(u8"    ↳ ")
-                                          + juce::String::fromUTF8(reconstructionChain_.reason.c_str()),
+                                          + vsm::app::ui::trPhrase(juce::String::fromUTF8(reconstructionChain_.reason.c_str())),
                                   false, false);
                     if (!reconstructionChain_.remedy.empty())
                         menu.addItem(-1, tr(u8"    ↳ ")
-                                              + juce::String::fromUTF8(reconstructionChain_.remedy.c_str()),
+                                              + vsm::app::ui::trPhrase(juce::String::fromUTF8(reconstructionChain_.remedy.c_str())),
                                       false, false);
                     menu.addItem(kMenuFileChainFolder,
                                   tr(u8"Indiquer le dossier de la chaîne..."));
@@ -5779,13 +5794,15 @@ void MainComponent::chooseChainFolder() {
         // ON DIT TOUT DE SUITE SI ÇA A MARCHÉ. Enregistrer
         // un chemin faux sans rien dire ferait chercher le
         // problème ailleurs.
+        // D126 : le titre par tr(), la raison et le remède -- des DONNÉES
+        // d'interchange/ -- traduits à l'affichage (D114) ; et la ligne
+        // `VSM_BOITE` de `montrerBoite`. Elle restait française en anglais.
         if (!reconstructionChain_.available)
-            juce::AlertWindow::showMessageBoxAsync(
-                juce::AlertWindow::InfoIcon,
-                juce::String::fromUTF8(u8"Chaîne d'analyse"),
-                juce::String::fromUTF8(reconstructionChain_.reason.c_str())
+            montrerBoite(
+                juce::AlertWindow::InfoIcon, tr(u8"Chaîne d'analyse"),
+                vsm::app::ui::trPhrase(juce::String::fromUTF8(reconstructionChain_.reason.c_str()))
                     + "\n\n"
-                    + juce::String::fromUTF8(reconstructionChain_.remedy.c_str()));
+                    + vsm::app::ui::trPhrase(juce::String::fromUTF8(reconstructionChain_.remedy.c_str())));
     };
     if (prendreLeFichierDeBanc(suite)) return;   // D126 : le banc (VSM_FICHIER)
     auto chooser = std::make_shared<juce::FileChooser>(
@@ -9000,7 +9017,7 @@ void MainComponent::signalerDisqueTropLent(uint64_t blocsPerdus) {
     // déborder ; s'il a débordé, le disque n'a pas suivi et la prise a perdu des
     // échantillons -- une chose qu'on n'entend pas forcément à la première
     // écoute et qu'on découvrirait bien plus tard.
-    montrerBoite(
+    montrerBoiteLisible(   // D126 : « it. » restait seul en anglais (D125)
         juce::AlertWindow::WarningIcon, tr(u8"Le disque n'a pas suivi"),
         tr(u8"La prise a perdu %1 bloc(s) : le fichier a des trous. Un disque plus rapide, "
            u8"ou une taille de bloc audio plus grande, y remédient.")

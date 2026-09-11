@@ -15877,3 +15877,49 @@ preferences does not contain reconstruire.py (…) », « ↳ fix the path… »
 Si elles sont déjà anglaises au témoin, l'attendu tombe et le code n'y
 touche pas.
 
+**RÉSULTAT (11/09) — quatre attendus tiennent, le premier à moitié, et la
+moitié qui manque apprend quelque chose sur `BoiteLisible`.** Témoin : le
+binaire du premier pas (23:11:42), la série REFAITE avec un banc corrigé —
+dans la première, le dossier choisi était celui que les préférences de
+départ portaient déjà, et sa trace ne prouvait rien ; le banc choisit
+désormais `pas-de-script-bis`. Après : le binaire du second pas (23:16:01).
+Toutes les photos au premier essai.
+
+| cas | témoin | après |
+|---|---|---|
+| disque, EN | « it. » seul sur sa ligne ; icône « ! » | la phrase sur UNE ligne, 845 px, sans icône |
+| disque, FR | deux lignes propres | deux lignes propres, 896 px : « … ou une taille de bloc audio / plus grande, y remédient. » — PAS une ligne |
+| chaîne, EN | « Chaîne d'analyse », raison et remède français ; aucune ligne `VSM_BOITE` | « Analysis chain », « the analysis chain folder set in the preferences does not contain reconstruire.py (…) », « fix the path, or clear it to let the application search » ; une ligne `VSM_BOITE` |
+| chaîne, FR | titre, raison, remède ; aucune ligne `VSM_BOITE` | le même texte, mot pour mot sur les deux photos ; une ligne `VSM_BOITE` |
+| menu Fichier, EN | les deux lignes « ↳ » françaises | « ↳ the analysis chain folder… », « ↳ fix the path… » |
+| menu Fichier, FR | les deux lignes « ↳ » | identiques au témoin (`diff`) |
+
+1. **Attendu 1, à moitié.** Aucune mauvaise coupure dans les deux langues,
+   et le texte identique au témoin mot pour mot (lignes `VSM_BOITE`) :
+   tenu. « La phrase sur une ligne » : tenu en anglais, PAS en français. La
+   boîte française fait 896 px, la largeur exacte de la plus large boîte de
+   D124 : c'est vraisemblablement le plafond d'`AlertWindow` lu en D125
+   (`w = min(w, 0,7 × largeur du parent)`, soit 0,7 × 1 280 px logiques à
+   150 %), que la cale de `BoiteLisible` ne franchit pas ; la phrase
+   française, plus longue, repasse alors à la ligne. La coupure est propre
+   (trois mots), mais **la promesse de `BoiteLisible` — chaque paragraphe
+   sur une ligne — ne vaut que sous ce plafond**, et D121 ne l'avait pas
+   écrit. Au-delà, c'est le `TextEditor` qui coupe, et rien ne dit qu'il ne
+   laissera jamais un mot seul.
+2. **Attendu 2 tenu.**
+3. **Attendu 3 tenu** : `pas-de-script-bis` dans les préférences du brouillon,
+   dans les deux langues ; celles de l'utilisateur identiques, par `cmp`, à
+   la copie prise juste avant chaque série.
+4. **Attendu 4 tenu** : suites C++ vertes (330 cœur, 1 291 audio, 297
+   interchange, 25 CLAP, 11 panneaux), compilées à `-j 2` pendant l'épreuve
+   Children.
+5. **Attendu 5 tenu** : au témoin, les deux lignes « ↳ » françaises en
+   anglais ; après, anglaises ; en français, identiques.
+
+**Inventaire de la langue** : TABLE 233 → 232 — le faux TABLE « Chaîne
+d'analyse » passe désormais par `tr()` ; ÉCRAN 7, inchangé.
+
+**Ce qui reste de la famille de D125** : `montrerBoite`, 103 appels (celui du
+disque parti, celui de la chaîne venu) ; 8 appels directs ; et le texte
+dessiné par-dessus l'icône, question ouverte d'A15.
+
