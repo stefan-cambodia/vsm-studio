@@ -835,6 +835,170 @@ elles — un avertissement vrai, mais qui doit rester rare pour rester lu :
   la fin des campagnes, et le moteur se recompile alors pour les courses
   suivantes, provenance à l'appui.
 
+## 12. Épreuve *Children* — une reconstruction depuis zéro, attendus écrits AVANT (11/09/2026, 15:20)
+
+**UNE question** : la chaîne d'aujourd'hui rend-elle encore quatre pistes sur
+un disque réel ; et si oui, quel étage les fond ?
+
+**L'original.** *Children* (Robert Miles, 1995), face A du vinyle 12"
+(`A. Robert Miles - Children.mp3`, 455,7 s, la version longue), lu en place
+dans `/home/stefan/robert_miles-children-vinyl-1995/` et jamais copié dans le
+dépôt. C'est le troisième original que réclame B3 (INDEX § 4) : il a un VRAI
+piano, et pas de guitare. Il a déjà été reconstruit en août (ROADMAP-fusion
+§ 5 ter, v10 à v12), par une chaîne à quatre stems, sans parité ni second
+verdict : ces chiffres-là ne se comparent à aucun de ceux-ci.
+
+**Depuis zéro, vérifié avant le départ.**
+
+- **Ce qui tourne** (`pgrep`, 14:57) : RIEN — ni le corpus A6 (parc59), ni
+  la campagne P1, dont la course `p1-sans` a un journal arrêté le 10/09 à
+  12:08 sans ligne de fin (constat, pas un geste de cette épreuve). Rien à
+  interrompre ; le parallélisme reste celui du défaut (3 rendus).
+- **Le moteur était PÉRIMÉ** : `build/tools/vsm-render` (10/09 17:18) était
+  plus ancien que `audio/plugins/sampler/SamplerSynth.cpp` (D103, 11/09
+  10:42 — le nom « Sampler (16 emplacements) », rien de sonore). Recompilé,
+  la cible seule (11/09 15:00:36, code 0), puis revérifié : aucune source
+  d'`audio/`, `core/`, `tools/`, `interchange/` n'est plus récente. Le cache
+  de rendus a pour clé l'empreinte du binaire : aucune entrée d'une course
+  antérieure ne peut être relue.
+- **Aucun stem repris** pour les courses 1 et 2 : chacune sépare elle-même,
+  dans un dossier de travail neuf (`reconstruction/travail/children-*`).
+- **Les défauts tels quels** : `htdemucs_6s` en sous-processus (shifts=0),
+  parité (les quatre découpages), second verdict 1, six machines remises au
+  mélange, trois tours de verdict, métrique v2, budget de piste 40 × 8 axes,
+  seuil de stem 0,5 %, 3 rendus de front. Aucun seuil touché, aucune variable
+  d'environnement (`VSM_PROFIL` compris : la route multisample joue le profil
+  que l'utilisateur obtient, celui que le journal nommera).
+- **Pas de graine** : `reconstruire.py` n'en a pas. La séparation est
+  déterministe (shifts=0, sha256 identiques mesurés, § 5) et le classement ne
+  dépend pas du nombre de rendus. « Même graine » est donc tenu par
+  construction, et la course 3 le vérifie en passant (voir plus bas).
+
+### 12.1 Les parties attendues
+
+Lues de deux façons, toutes deux dites. (a) L'énergie de l'original par
+bande, tranche de 8 mesures à 135 bpm (14,2 s ; tempo estimé 136), et la part
+percussive (HPSS). (b) Une transcription MIDI d'amateur du même mix
+(`nonstop2k`, 458,8 s à 135 bpm, 18 pistes) : c'est une REFAITE, pas la
+session d'origine — elle propose une orchestration plausible et des dates
+d'entrée, pas une vérité ; ses doublures (deux basses sur les mêmes 731
+notes) ne comptent pas pour deux parties.
+
+| Temps | Ce que l'énergie montre | Lecture (MIDI d'amateur) |
+|---|---|---|
+| 0 → 28 s | rien au-dessus de 1,5 kHz (−17 dB), grave-médium seul | la nappe seule (nappe dès 3,6 s) |
+| 28 s | 400-1 500 Hz +13 dB, 1,5-5 kHz +28 dB | **le piano entre** (32,0 s) |
+| 57 s | 150-400 Hz +5 dB, 5-11 kHz +16 dB | cordes (60 s), chœur (89 s) |
+| 114 s | part percussive 0,09 → 0,30, sous 60 Hz +5 dB | grosse caisse (117,3 s) |
+| 128 s | 60-150 Hz +6 dB, percussive 0,45 | basse (131,8 s) |
+| 156 → 213 s | 1,5-5 kHz +3 à +4 dB | arpège aigu (160 s), lead en scie (189 s) |
+| 213 → 270 s | médium −5 dB, 1,5-5 kHz −15 dB, 5-11 kHz à −2 dB puis remontée | **pont** : grosse caisse et basse seules, pas de charleston, puis la montée |
+| 270 → 370 s | tout revient | le thème entier |
+| 370 → 398 s | le même creux qu'à 213 s | second pont |
+| 398 → 455 s | tout revient, décroît sur les 15 dernières secondes | final |
+
+| # | Partie | Plage | Sûreté |
+|---|---|---|---|
+| 1 | **piano** (le motif) | 28 → ~370 s | sûre |
+| 2 | **nappe synthé** | 0 → ~370 s | sûre (seule dans l'intro) |
+| 3 | **nappe de cordes** | 57 → ~370 s | probable |
+| 4 | **lead synthé** (le motif doublé en scie) | ~189 → 455 s, hors ponts | probable |
+| 5 | **basse** | 128 → 455 s | sûre |
+| 6 | **grosse caisse** | 114 → 455 s, ponts compris | sûre |
+| 7 | **charleston** | ~117 → 455 s, absent à 213-256 et 370-398 | sûre |
+| 8 | **caisse claire / clap** | ~117 → 455 s, hors ponts | probable |
+| 9 | arpège aigu (C5-C#6) | 160 → 370 s | incertaine (MIDI, et +3 dB à 1,5-5 kHz) |
+| 10 | chœur « aah » | 89 → 370 s | incertaine (MIDI seul) |
+
+**Mon compte : 8 parties** (1 à 8), 10 au plus avec les deux incertaines.
+Pas de voix (la version longue est instrumentale ; la « Vocal Mix » est sur
+l'autre face), pas de guitare. Conséquence écrite d'avance : **un stem
+`vocals` ou `guitar` qui passe le seuil de 0,5 % est un stem de FUITE, et la
+piste qu'il donne est une piste INVENTÉE.**
+
+### 12.2 Les courses, et ce que chacune prédit
+
+Toutes : `analyse/.venv/bin/python -u reconstruire.py <original> --sortie
+reconstruction/travail/children-cN-…`, par un script lancé sous `setsid
+nohup`, qui s'arrête à la première course en échec.
+
+**COURSE 1 — le défaut** (`children-c1-defaut`, et `--garder-stems` pour que
+la course 3 reprenne ses stems ; ce dossier ne conditionne rien).
+
+| Étage | Prédiction |
+|---|---|
+| séparation | six stems ; **`piano` non vide (5 à 15 %) et porteur du motif** (sa transcription dans F3-G#5, à partir de ~28 s) ; `drums` le plus gros (35 à 50 %) ; `other` 15 à 30 % ; **`guitar` et `vocals` au-dessus de 0,5 %** — des fuites du lead et des arpèges |
+| `other` | FOURRE-TOUT (polyphonie ≥ 3 et ambitus ≥ 36 : nappe, cordes et lead couvrent F1-F5) ; **`registres_par_vides` ne coupe PAS** — comme sur les deux disques mesurés (H25) : pas de creux sous le quart du plus petit sommet voisin, parce que nappe et cordes remplissent l'ambitus sans trou ; `separer_en_voix` rend alors **4 voix** par k-moyennes |
+| `piano` | pas un fourre-tout (ambitus ~27 demi-tons) : **1 piste** |
+| `bass` | 1 piste |
+| batterie | **3 pièces** (kick, hihat, snare/clap) ; une quatrième (percussion) possible |
+| `vocals` | 1 piste reportée ; tête/chœurs découpé seulement si la fuite est large |
+| `guitar` | 1 piste |
+| arbitrage du `piano` | `vsm.piano` (le modèle physique) dans les trois premières ; **la route multisample n'est PAS une route piano au défaut** : sans `VSM_PROFIL`, la machine joue le PREMIER profil installé, et sur ce poste l'ordre alphabétique commence par un accordéon (`FR3-Accordion`) — le journal le dira |
+| distance | ~0,25 à 0,32 ; **ne se compare à rien** (aucun témoin de même budget) |
+| durée | 2 à 4 h |
+
+**Compte prédit : 11 pistes (9 à 13)** — bass 1, piano 1, other 4,
+batterie 3, guitar 1, vocals 1. **Fondues : au moins 2** (les registres
+d'`other` coupent par hauteur, et nappe, cordes, lead et arpège se
+recouvrent en hauteur : chaque registre en portera plusieurs). **Inventées :
+au moins 2** (`guitar`, `vocals`). Ma prédiction est donc que le défaut de
+la chaîne sur ce disque n'est PLUS le compte — c'est la COMPOSITION : trop
+de pistes par invention, et des parties encore fondues à l'intérieur.
+
+**Ce qui réfute** (écrit par l'utilisateur, repris tel quel) : **quatre
+pistes ou moins** réfute la parité sur ce disque ; **plus de dix** réfute
+l'inverse (la chaîne ne sous-découpe plus, elle fabrique). Ma prédiction
+tombe du second côté : si elle se vérifie, le chantier suivant est
+l'invention, pas la fusion.
+
+**COURSE 2 — B3, une seule variable** (`children-c2-htdemucs`) : les mêmes
+jetons, plus `--modele htdemucs`. Quatre stems ; `other` avale piano, nappe,
+cordes et lead — **part d'`other` ≥ 30 %** (sur *Us and Them*, 57,7 %) ;
+fourre-tout → 4 voix ; batterie 3 ; vocals 1. **Compte prédit : 9 (8 à 10).**
+**Distance : la course 1 (six sources) plus proche de 2 à 8 %.** Ce n'est
+pas la même mesure que le −10,4 % de H22b : la parité est allumée des deux
+côtés (c'est le défaut depuis le 04/09), elle ne l'était d'aucun. Règle
+écrite d'avance : course 2 plus loin d'au moins 2 % → **B3 confirme le
+défaut sur un troisième original**, le seul des trois qui ait les deux
+propriétés (un piano réel, pas de guitare) ; entre −2 et +2 % → neutre, le
+défaut se garde pour ce qu'il nomme ; course 2 plus proche de plus de 2 % →
+le gain des six sources NE SE RETROUVE PAS sur un morceau à piano, la
+réserve du § 4.2 s'élargit et devient l'hypothèse du chantier suivant.
+**Dans les trois cas le défaut ne change pas ici** : cette épreuve mesure,
+elle ne corrige pas.
+
+**COURSE 3 — le plafond de structure** (`children-c3-plafond`), stems de la
+course 1 repris par `--stems` (copiés d'abord dans un dossier qui ne contient
+QU'EUX : `--stems` ramasse tous les `.wav` d'un dossier, et le dossier de
+travail de la course 1 contient aussi ses rendus intermédiaires). Les
+options, chacune nommée :
+
+| Option | Sous cette forme ? | Dans la course 3 |
+|---|---|---|
+| `--voix-par-stem` | oui | `4`, explicite |
+| `--voix-par-vides` | oui | explicite |
+| `--batterie-par-piece` | oui | explicite |
+| tête/chœurs « si une voix est détectée » | **NON** : `--voix-tete-choeurs` ne DÉTECTE pas de voix, il découpe le stem nommé `vocals` s'il est large, voix ou fuite | explicite, sous sa vraie forme |
+| `--seuil-stem 0` | oui — reconstruit les stems sous 0,5 % | oui |
+| `--garder-pieces-non-isolees` | oui — joue les pièces de batterie sans frappe isolée | oui |
+| `--voix-par-stem` > 4 | existe | **non** : c'est un MAXIMUM que les k-moyennes remplissent par construction sur un fourre-tout (§ 6 bis) — le monter mesure le paramètre, pas la chaîne |
+| `--residuel N` | existe | **non** : ce n'est pas un découpage mais une boucle de reséparation, mesurée inerte (R1 : zéro soustraction sur vingt morceaux) |
+
+Les quatre premières SONT le défaut (`--parite`) : à elles seules, la course
+3 serait la course 1, au bit près. Ce qui la distingue, ce sont les deux
+suivantes. **Prédiction : course 1 + les stems refusés par le seuil + les
+pièces écartées faute de frappe isolée.** Si la course 1 n'en refuse ni n'en
+écarte aucun, la course 3 doit rendre sa distance AU BIT PRÈS — et c'est la
+preuve du déterminisme promise plus haut.
+
+Le verdict (la table parties attendues × pistes obtenues pour les trois
+courses, fondues et inventées à part, et la réponse) s'écrira ici, en
+§ 12.3, sans toucher à ce qui précède. **Rien ne se corrige dans cette
+épreuve** : un seuil qu'on baisse pour un morceau est un seuil qu'on n'a pas
+mesuré ; ce que le verdict désigne devient une hypothèse écrite pour le
+chantier suivant.
+
 ## 5. Critères d'acceptation
 
 ```
