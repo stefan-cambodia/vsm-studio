@@ -15949,3 +15949,19 @@ chevauchement est un défaut de lisibilité, et la phase suivante dessine la
 boîte sans filigrane (une `drawAlertBox` à nous). **Sinon A15 se ferme** sur ce
 chiffre : le style de JUCE reste, et c'est écrit.
 
+**RÉSULTAT (11/09) — TENU : 6,84:1 au pire, A15 se ferme.** Huit photos de
+D125, les mêmes couleurs dans chacune :
+
+| icône | texte | filigrane sous le texte | contraste sur le filigrane | sur le fond ordinaire (38, 50, 56) |
+|---|---|---|---|---|
+| « ! » (notes perdues, disque ; FR, EN) | blanc | (124, 47, 33) | **9,19:1** | 13,16:1 |
+| « i » (mesure impossible, latence ; FR, EN) | blanc | (22, 100, 107) | **6,84:1** | 13,16:1 |
+
+Les deux prédictions (~9 et ~7) tiennent. Le filigrane coûte la moitié du
+contraste sous le « i », mais le pire cas reste au-dessus du seuil AA d'un
+texte ordinaire (4,5:1), et à 0,16 du seuil AAA (7:1). **Le style de JUCE
+reste** : dessiner nos boîtes sans filigrane changerait l'allure de 103
+boîtes pour un gain de lisibilité que le chiffre ne réclame pas. Ce qui
+n'est pas mesuré ici, et le serait si l'on changeait de thème : ces nombres
+valent pour le fond sombre du thème actuel.
+
