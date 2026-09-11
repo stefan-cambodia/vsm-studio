@@ -16783,3 +16783,41 @@ linéaires des façades — le même appel, qu'aucun banc de cette phase
 n'appuie. Le double-clic qui ramène une valeur d'usine, et la saisie dans
 les zones de texte, ne sont pas touchés.
 
+### Phase D140 — une même valeur, deux commandes, deux gestes : le double-clic qui ramène la valeur d'usine partout où elle existe (12/09/2026)
+
+**LE CONSTAT, relevé dans le code.** D25.3 a donné le double-clic « valeur
+d'usine » aux curseurs de la tranche du mixeur (0 dB, centre, 0 ms, 0
+demi-ton, et le trim avec D30.4) — cinq `setDoubleClickReturnValue` en tout,
+tous dans `MixerComponent.cpp`. Le même volume et le même panoramique se
+règlent aussi dans la ligne de piste, où le même geste ne fait RIEN : une
+valeur, deux commandes, deux comportements — la faute que D37 nommait. Et
+rien non plus sur les départs, les boutons MASTER, les commandes des façades
+et du panneau générique (chaque paramètre porte pourtant sa `defaultValue`),
+le swing et la vélocité du piano roll. D25.3 ne les a pas écartés : elle
+n'en parlait pas.
+
+**LE REMÈDE, décidé avant le témoin.** Le double-clic ramène la valeur
+d'usine sur : le volume (0 dB) et le panoramique (centre) de la ligne de
+piste ; les départs (0) ; les sept boutons MASTER (la valeur que `addKnob`
+reçoit) ; chaque commande à curseur des façades et du panneau générique (la
+`defaultValue` du paramètre) ; le swing (0) et la vélocité (100) du piano
+roll. Le niveau du clic des préférences reste à part : sa valeur d'usine
+n'est écrite nulle part, et l'inventer serait décider pour l'utilisateur.
+JUCE passe le double-clic par la même notification de glissé : il est donc
+annulable comme un glissé, là où le glissé l'est.
+
+**LE BANC, EN DEUX PAS.** Un geste `doubleclic:<nom ou légende>` d'abord
+(témoin) ; puis la correction. Projet de D91, français et anglais :
+`pistes.volume` (la piste est à -0.9 dB) ; `mixeur.volume`, qui revient
+déjà à 0 dB — le CONTRÔLE, qui doit marcher des deux côtés ; la coupure de la
+façade du TB-303, réglée d'abord à 1200 Hz par le geste de D132 (défaut 800),
+puis double-cliquée — l'afficheur du rack (D133) dit la valeur.
+
+**ATTENDU, écrit avant le témoin.**
+
+1. **Au témoin** : le fader revient à 0.0 dB (le contrôle) ; le volume de la
+   ligne reste à -0.9 dB ; la coupure reste à 1200 Hz.
+2. **Après** : le fader à 0.0 dB, le volume de la ligne à **0.0 dB**, la
+   coupure à **800 Hz** (« CUT OFF FREQ: 800 Hz » en anglais).
+3. Aucun autre texte relevé ne change ; suites vertes, préférences intactes.
+
