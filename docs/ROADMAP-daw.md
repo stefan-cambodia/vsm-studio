@@ -15390,3 +15390,77 @@ D119 pour témoin — un lot à part, s'il en vaut la peine.
 Suites C++ vertes à `-j 2` (330, 1 291, 297, 25, 11) ;
 `build/tools/vsm-render` non touché ; préférences intactes.
 
+### Phase D122 — chaque fenêtre en plein écran, et retour, d'un simple clic (11/09/2026)
+
+**LA DEMANDE**, de l'utilisateur, le 11/09/2026 : « il faudrait que chaque
+fenêtre puisse s'afficher facilement en fullscreen et revenir à la normale
+d'un simple clic ». Elle vaut pour toute fenêtre à venir, pas seulement pour
+celles d'aujourd'hui.
+
+**CE QUI EXISTE, LU AVANT D'ÉCRIRE.**
+
+- **La fenêtre principale** a déjà « Affichage ▸ Plein écran (F11) », et
+  tous les boutons de sa barre de titre (`allButtons`). Sous Linux avec la
+  barre de titre du système, `setFullScreen` de JUCE demande au gestionnaire
+  de fenêtres d'AGRANDIR (`XWindowSystem::setMaximised`) : la barre de titre
+  reste, et son bouton de restauration ramène d'un clic.
+- **Les quinze fenêtres flottantes** (`PanelWindow` : les cinq panneaux du
+  mode flottant, le navigateur, l'historique, le spectre, les raccourcis,
+  les associations MIDI, la reconstruction, l'assemblage des prises, l'ordre
+  de jeu, les notes, les préférences) ne demandent que fermer et réduire :
+  **aucun bouton agrandir**. La fenêtre d'une façade n'a que fermer.
+- **La fenêtre unique** (le défaut) range quatre ZONES — les pistes à
+  gauche, le rack à droite, les onglets en bas, l'arrangement ou le piano
+  roll au centre — sans en-tête ni bouton à elles : rien ne donne toute la
+  place à l'une d'elles.
+
+**LES DÉCISIONS — le choix que la demande laisse ouvert, tranché ici.**
+« Chaque fenêtre » se lit des trois sortes de fenêtres, parce que dans la
+disposition par défaut ce que l'utilisateur voit comme des fenêtres sont des
+zones.
+
+1. **Fenêtres flottantes** : elles demandent le bouton agrandir ; le
+   gestionnaire de fenêtres dessine agrandir et restaurer — un clic chacun,
+   et le double-clic sur la barre de titre. Une fenêtre AGRANDIE n'écrase
+   pas la position retenue sous son titre (D15.3) : on retient la fenêtre
+   normale, pas son plein écran. La fenêtre d'une façade le demande
+   seulement si elle est redimensionnable : une façade de taille fixe,
+   agrandie, ne serait qu'un grand fond noir.
+2. **La fenêtre principale** : rien à ajouter, vérifié au banc.
+3. **Les quatre zones de la fenêtre unique** : un bouton dans le coin haut
+   droit de chaque zone. Un clic : la zone prend toute la place sous la barre
+   de transport, les trois autres s'effacent ; le même bouton — son dessin
+   change — rend la disposition d'avant, telle qu'elle était (zones visibles,
+   tailles). Une zone à la fois. Le bouton est DESSINÉ (quatre flèches vers
+   les coins, ou vers le centre), pas un glyphe de police : D117 a appris ce
+   qu'un caractère inhabituel peut devenir à l'écran. Son infobulle suit la
+   langue. L'état agrandi ne se retient pas d'une session à l'autre : c'est
+   un regard, pas une disposition — les tailles des zones, elles, restent
+   retenues comme avant. Là où le coin est occupé (le bouton « Supprimer » de
+   la liste des pistes, la première rangée du piano roll), la zone lui
+   réserve sa place.
+
+**LE BANC.** (a) Les zones : un geste de banc, `VSM_VUE=agrandir:pistes|
+rack|bas|centre`, qui appelle la MÊME fonction que le bouton ; une photo de
+la fenêtre normale, une par zone agrandie, une après le retour. (b) Les
+fenêtres flottantes : le clic sur le bouton du gestionnaire de fenêtres ne
+se simule pas depuis l'application ; ce qui se mesure, c'est que la fenêtre
+ANNONCE l'action (les indications `_MOTIF_WM_HINTS` que JUCE pose pour le
+gestionnaire, lues par `xprop`), et qu'agrandie puis rendue par
+`setFullScreen` — ce que fait le bouton — elle retrouve ses limites et ne
+les a pas retenues agrandies.
+
+**ATTENDU, écrit avant la mesure.**
+
+1. **Les zones** : chaque photo agrandie ne montre QUE sa zone sous la barre
+   de transport ; la photo après le retour est **identique au pixel** à la
+   photo normale. Rien ne se chevauche : le bouton ne couvre aucune
+   commande.
+2. **Les fenêtres flottantes** : au témoin, l'action agrandir n'est pas
+   annoncée pour les cinq panneaux du mode flottant ; avec D122, elle l'est ;
+   la fenêtre principale l'annonce dans les deux. Après agrandir puis
+   rendre, les limites retenues dans les préférences du banc sont celles
+   d'avant l'agrandissement.
+3. **Suites vertes**, préférences de l'utilisateur intactes, français et
+   anglais pour les infobulles.
+
