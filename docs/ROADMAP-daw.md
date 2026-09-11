@@ -15083,3 +15083,41 @@ banc relance jusqu'à quatre fois, et le dit.
    les deux autres boîtes photographiées au passage (s'il en vient)
    identiques au pixel.
 
+**LE TÉMOIN (binaire de D115, banc à 18:04) — l'attendu n° 1 TENU, et le
+défaut est plus large que D91 ne le disait.** Quatre photos, chacune venue au
+premier essai. En anglais, « pitch. » seul sur sa ligne ; EN FRANÇAIS AUSSI,
+« hauteur. » seul sur la sienne. Et l'exemple coupé dans les DEUX langues :
+« “Drums / #” », « « Batterie / # » ».
+
+**LE PREMIER ESSAI (binaire du 11/09 18:06:16, banc à 18:06) — la moitié
+tient, l'autre montre un défaut que l'attendu n'avait pas prévu.**
+
+- **La boîte des mesures — TENU** dans les deux langues : « …without
+  changing / pitch. The material's original tempo will be deduced and
+  shown. », « …sans changer de / hauteur. Le tempo d'origine du matériau
+  sera déduit et affiché. » Plus aucune ligne d'un seul mot.
+- **Le renommage — tenu au sens écrit** (aucun exemple coupé), **mais la
+  photo montre pire** : l'espace insécable s'affiche nettement PLUS LARGE
+  qu'une espace ordinaire, à peu près deux — « “Drums  #” », « «  Batterie
+  #  » ». Ce n'est pas un détail de typographie : c'est un MOTIF que
+  l'utilisateur recopie, et « Drums  # » a l'air de porter deux espaces, ce
+  qu'il ne porte pas. Une coupure de ligne gênait la lecture ; ceci induit en
+  erreur. La cause n'est pas cherchée (une glyphe de repli, vraisemblablement)
+  : le geste est abandonné, pas réparé.
+
+**DÉCISION, écrite avant la seconde mesure.** L'exemple passe sur SA PROPRE
+LIGNE : trois paragraphes — la règle, l'exemple, la restriction aux pistes
+visibles —, séparés par des retours placés aux limites de phrase, et plus
+aucun caractère spécial. Un paragraphe qui tient sur une ligne n'est pas
+coupé par `createLayoutWithBalancedLineLengths` ; l'exemple le plus long
+(« Exemple : « Batterie # » donne « Batterie 1 », « Batterie 2 »... », 63
+signes) tient dans une ligne de cette boîte, qui en montrait environ 70 sur
+la photo du témoin. La leçon des deux boîtes est la même, dans les deux
+sens : un retour forcé AU MILIEU d'une idée coupe mal, un retour ENTRE deux
+idées protège.
+
+**ATTENDU DE LA SECONDE MESURE.** La boîte du renommage montre trois lignes
+dans chaque langue, l'exemple entier sur la deuxième, avec des espaces
+ordinaires ; la boîte des mesures identique au premier essai (sa chaîne ne
+change pas).
+
