@@ -17329,3 +17329,34 @@ efface bien sa marque — donc (f) mesure l'armement et non le geste.
 Suites C++ vertes (330, 1 291, 297, 11, 25), compilées à `-j 2` pendant la
 course 3 de l'épreuve ; `vsm-render` intact ; préférences identiques par `cmp`
 après chacune des trois séries. **A25 s'ouvre.**
+
+### Phase D148 — A25 : armer une piste ouvre son pas d'annulation (12/09/2026)
+
+**Le remède**, décidé avant la mesure : le chemin de D146, appliqué à
+l'armement. `armButton_.onClick` appellera `debutEdition("Armement")` AVANT
+d'écrire `track_.armed` ; le rappel d'édition d'une rangée est déjà câblé à
+`beginProjectEdit` (`TrackListComponent.cpp:677`), si bien que la photo du pas
+portera l'armement d'AVANT. **Un seul point corrigé couvre les deux chemins** :
+`TrackListComponent::armer` (le verbe `armer` de D110) délègue à
+`armerPourCapture()`, qui bascule le bouton puis appelle son `onClick`. Une
+ligne, `app/Source` seulement — rien de ce que l'épreuve Children interdit de
+recompiler.
+
+**ATTENDU, écrit avant la mesure.** Banc de D147 inchangé ; témoin = ses séries
+2 et 3 (binaire de 06:28:22), plus la série 4 pour le cas (i), neuf, qui n'a pas
+de témoin antérieur.
+
+| cas | témoin (avant) | attendu après | ce qui le réfute |
+|---|---|---|---|
+| (e) `cliquer:pistes.armement` | `Acid Bass0R Drums0` | **inchangé** — armer arme toujours | pas de « R » : le pas aurait remplacé le geste |
+| (f) (e) puis Ctrl+Z | `Acid Bass0R Drums0` | **`Acid Bass0 Drums0`** — « R » effacée | « R » présente : le remède ne prend pas |
+| (i) (e) puis Ctrl+Z puis Ctrl+Maj+Z | *mesuré en série 4* | **`Acid Bass0R Drums0`** — rétabli | « R » absente : le rétablissement perdrait l'armement |
+| (a) à (d) muet et solo | `!` puis effacée, `*` puis effacée | **inchangés** | une marque qui bouge : le pas d'armement mordrait sur les leurs |
+| (g) contrôle : muet au bouton puis Ctrl+Z | `Acid Bass0 Drums0` | **inchangé** | |
+
+**Ce que la phase ne traite pas, et pourquoi.** Armer n'est pas un geste de LOT.
+D38.2 a posé qu'un geste de lot n'ouvre qu'un pas — taire six micros de batterie
+se défait d'un seul Ctrl+Z —, et `basculerMuet` applique cette règle par
+`selectionPourUnGesteSur`. Le bouton R, lui, arme SA piste, et D3.3 veut qu'une
+seule piste reçoive le clavier à l'écoute. Le remède ne change donc rien à ce
+sujet, et la phase ne prétend pas le traiter.
