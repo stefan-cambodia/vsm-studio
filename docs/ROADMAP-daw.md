@@ -14087,3 +14087,82 @@ suites C++ vertes (330 cœur, 1 291 audio, 297 interchange, 25 CLAP, 11
 panneaux). `MainComponent` : 69 chaînes à l'inventaire strict, dont 16 ne
 vont qu'au terminal.
 
+### Phase D106 — A9 : ce que l'inventaire comptait à l'écran, et qui ne va qu'au terminal (11/09/2026)
+
+**LE FAUX POSITIF**, vu en D105 : une chaîne assemblée dans une variable
+locale, puis écrite par `fputs` dans une AUTRE instruction, est comptée ÉCRAN
+— l'inventaire ne regarde que l'instruction de la chaîne. D105 en a lu seize,
+dans cinq fonctions (désactiver une piste, copier et coller une chaîne
+d'inserts, réduire les points d'automation, reporter les effets MIDI).
+
+**LA RÈGLE, écrite avant de compter.** `--suivi` suit la variable dans sa
+fonction. La chaîne est TERMINAL si l'instruction qui la contient affecte ou
+complète une variable LOCALE (jamais un membre, `nom_` : l'interface peut le
+montrer ailleurs), et si CHAQUE usage suivant de cette variable est un nouvel
+ajout (`v +=`, `v =`) ou une instruction qui écrit sur la sortie (la même
+expression que la règle TERMINAL). Un seul autre usage — une boîte, un
+retour, un libellé, un argument — et elle reste ÉCRAN. Option d'abord : le
+témoin est l'outil d'aujourd'hui, sans l'option.
+
+**ATTENDU.**
+
+1. **Les seize connues sortent de l'ÉCRAN** : 14 à la règle stricte (ce que
+   l'outil compte aujourd'hui dans les cinq fonctions), 16 à la large.
+2. **Ailleurs, peu d'autres** — moins de dix, des comptes rendus de même
+   forme. Chacune se vérifie en lisant sa fonction : une seule qui irait à
+   l'écran, et c'est la règle qui est fausse, pas le code.
+3. **Rien d'autre ne bouge** : SANS_PAIRE, TABLE, COMMANDE identiques ;
+   TERMINAL monte d'autant que l'ÉCRAN descend.
+4. **La décision, écrite d'avance** : si toutes les nouvelles TERMINAL sont
+   justes, `--suivi` devient le défaut, et le chiffre d'A9 est redit sous
+   elle, les deux donnés. Sinon, la règle est corrigée — et remesurée — ou
+   reste une option.
+
+**MESURE 1 (D106), écrite avant la correction.** `--suivi` passe TERMINAL
+13 chaînes à la règle stricte (ÉCRAN 85 → 72), 14 à la large (123 → 109) ;
+SANS_PAIRE, TABLE et COMMANDE ne bougent pas. Justesse : toutes les 14 sont
+bonnes — 13 des seize connues, et une inattendue, « [grisée] », que
+`listMenusForCapture` écrit sur la sortie d'erreur (la liste de menus du
+banc). **Mais l'attendu 1 n'est pas tenu** : trois des seize restent ÉCRAN
+(lignes 8899, 9075, 9078). La cause est la même pour les trois : un « ; »
+écrit DANS une chaîne (« libérés ; ses notes », « ; ») est pris pour une fin
+d'instruction, et la règle, qui cherche le début de l'instruction en
+remontant jusqu'au dernier « ; », tombe au milieu d'un littéral et ne voit
+plus l'affectation. **Correction** : les bornes des instructions et les
+usages de la variable se cherchent dans le texte dont les littéraux sont
+vidés (même longueur) — un « ; » ou un nom écrits dans une chaîne ne sont
+pas du code. Le défaut de la règle TERMINAL elle-même (même recherche du « ; »)
+n'est pas touché ici : le témoin doit rester l'outil d'aujourd'hui.
+
+**MESURE 2 ET RÉSULTAT (D106, 11/09/2026).** La règle corrigée, sur le même
+code :
+
+1. **Les seize connues — tenu.** 14 passent TERMINAL à la règle stricte, 16 à
+   la large ; aucune ne reste ÉCRAN.
+2. **Ailleurs — tenu.** Une seule autre, « [grisée] » : `listMenusForCapture`
+   la met dans une ligne que l'instruction suivante écrit sur la sortie
+   d'erreur (lu dans le code).
+3. **Rien d'autre ne bouge — tenu.** SANS_PAIRE, TABLE et COMMANDE
+   identiques ; TERMINAL monte d'autant que l'ÉCRAN descend — stricte :
+   ÉCRAN 85 → 70, TERMINAL 100 → 115 ; large : ÉCRAN 123 → 106, TERMINAL
+   105 → 122.
+4. **La décision, telle qu'écrite.** Toutes les nouvelles TERMINAL sont
+   justes : la règle devient le DÉFAUT de l'outil, `--sans-suivi` rend
+   l'ancienne. Le chiffre d'A9, les deux donnés : ÉCRAN **85** à l'ancienne
+   règle, **70** à celle d'aujourd'hui (règle stricte) ; 123 → 106 à la
+   large.
+
+**Et une correction de D101.** Deux des 33 chaînes de l'angle mort — « ».
+Sa machine et ses inserts sont revenus. » et « insert(s) de « » — ne vont
+qu'au terminal : ce sont les comptes rendus de « désactiver une piste » et de
+« copier la chaîne d'inserts », que D101 avait décrits, à tort, comme « la
+restauration d'un preset de piste ». L'angle mort français compte donc 18
+chaînes, et l'ÉCRAN réel au moins **88**.
+
+Outil : `ruff` et `mypy` propres ; aucune suite C++ concernée, aucun code de
+l'application touché. `MainComponent` : 54 chaînes à l'inventaire.
+**La leçon** : une règle qui ne regarde que l'instruction de la chaîne ne voit
+pas où va la phrase qu'on assemble ; et la première correction de la règle
+avait le même défaut qu'elle — un « ; » écrit dans une chaîne pris pour du
+code.
+

@@ -6,6 +6,7 @@
     analyse/.venv/bin/python tools/inventaire_langue.py --entetes    # les en-têtes
     analyse/.venv/bin/python tools/inventaire_langue.py --regle=large  # D101
     analyse/.venv/bin/python tools/inventaire_langue.py --machines [MACHINES]  # D103
+    analyse/.venv/bin/python tools/inventaire_langue.py --sans-suivi # D106 : l'ancienne règle
 
 LES EN-TÊTES À PART (D94). Le compte d'A9 ne lit que les `.cpp`, et c'est ce
 compte-là que les phases comparent. Mais un `.h` écrit aussi à l'écran (une
@@ -51,6 +52,15 @@ deux et compte ceux qui portent une description entre parenthèses sans avoir de
 clé -- une description comme « (batterie acoustique) » n'a ni accent ni
 mot-outil : la parenthèse est la règle, hors les noms IDENTIQUES dans les deux
 langues, nommés un par un.
+
+LE MESSAGE ASSEMBLÉ PUIS ÉCRIT AU TERMINAL (D106). La règle TERMINAL ne lit que
+l'instruction de la chaîne ; un compte rendu assemblé dans une variable, puis
+écrit par `fputs` plus loin, était compté ÉCRAN. `--suivi` suit la variable
+LOCALE dans sa fonction (`va_seulement_au_terminal`) : si tous ses usages
+suivants sont des ajouts ou des écritures au terminal, la chaîne est TERMINAL.
+Mesurée sur le code de D105 (les 16 connues passées, une seule autre, juste),
+c'est le DÉFAUT depuis D106 ; `--sans-suivi` rend l'ancienne règle, pour qu'un
+témoin reste possible.
 """
 
 from __future__ import annotations
@@ -133,7 +143,49 @@ def a_l_air_francaise(chaine: str, avant: str, regle: str) -> bool:
     return regle in ("position", "large") and bool(AFFICHAGE.search(avant)) and ressemble_a_du_texte(chaine)
 
 
-def inventaire(racine: Path = RACINE, motif: str = "*.cpp", regle: str = "stricte") -> Dict[str, List[str]]:
+AFFECTATION = re.compile(r"(?:^|[\s(;{}])(?:(?:juce::String|std::string|auto)\s+)?([A-Za-z]\w*)\s*(\+=|=)(?!=)")
+
+
+def masquer_les_chaines(texte: str) -> str:
+    """Le texte, chaque littéral vidé (même longueur) : un « ; » ou un nom écrits
+    DANS une chaîne ne sont pas du code (D106, mesure 1)."""
+    return LITTERAL.sub(lambda m: m.group(0)[:m.start(1) - m.start(0)] + " " * len(m.group(1)) + '"', texte)
+
+
+def va_seulement_au_terminal(texte: str, debut: int, masque: str = "") -> bool:
+    """D106 : la chaîne à `debut` est-elle assemblée dans une variable LOCALE que
+    la fonction n'envoie qu'au terminal ? Chaque usage de la variable après son
+    instruction doit être un nouvel ajout (`v +=`, `v =`) ou une instruction qui
+    écrit sur la sortie d'erreur ; un seul autre usage (une boîte, un retour, un
+    libellé) et la chaîne reste à l'écran. Un membre (`nom_`) n'est jamais suivi :
+    l'interface peut le montrer ailleurs. Bornes et usages se cherchent dans
+    `masque`, le texte aux littéraux vidés."""
+    code = masque or masquer_les_chaines(texte)
+    depart = max(code.rfind(c, 0, debut) for c in ";{}") + 1
+    affectations = list(AFFECTATION.finditer(code[depart:debut]))
+    if not affectations:
+        return False
+    nom = affectations[-1].group(1)
+    if nom.endswith("_") or nom in ("return", "const"):
+        return False
+    fin_de_fonction = code.find("\n}\n", debut)
+    if fin_de_fonction < 0:
+        return False
+    fin_instruction = code.find(";", debut)
+    usages = 0
+    for m in re.finditer(rf"\b{re.escape(nom)}\b", code[fin_instruction:fin_de_fonction]):
+        position = fin_instruction + m.start()
+        instruction = code[max(code.rfind(c, 0, position) for c in ";{}") + 1:code.find(";", position)]
+        if re.match(rf"\s*(?:if\s*\([^;]*\)\s*)?{re.escape(nom)}\s*(\+=|=)(?!=)", instruction):
+            continue
+        if not SORTIE.search(instruction):
+            return False
+        usages += 1
+    return usages > 0
+
+
+def inventaire(racine: Path = RACINE, motif: str = "*.cpp", regle: str = "stricte",
+               suivi: bool = True) -> Dict[str, List[str]]:
     assert regle in REGLES, regle
     cles = cles_de_la_table((racine / "ui" / "Langue.cpp").read_text(encoding="utf-8"))
     comptes: Dict[str, List[str]] = {c: [] for c in CATEGORIES}
@@ -141,6 +193,7 @@ def inventaire(racine: Path = RACINE, motif: str = "*.cpp", regle: str = "strict
         if fichier.name == "Langue.cpp" or "tools" in fichier.relative_to(racine).parts:
             continue
         texte = sans_commentaires(fichier.read_text(encoding="utf-8"))
+        masque = masquer_les_chaines(texte) if suivi else ""
         for debut, fin, brut in chaines(texte):
             chaine = decode(brut)
             avant = texte[max(texte.rfind(c, 0, debut) for c in ";{}") + 1:debut]
@@ -162,6 +215,8 @@ def inventaire(racine: Path = RACINE, motif: str = "*.cpp", regle: str = "strict
                 categorie = "TERMINAL"
             elif chaine in cles:
                 categorie = "TABLE"
+            elif suivi and va_seulement_au_terminal(texte, debut, masque):
+                categorie = "TERMINAL"   # D106 : assemblée, puis écrite au terminal
             else:
                 categorie = "ECRAN"
             ligne = texte.count("\n", 0, debut) + 1
@@ -205,7 +260,8 @@ def main() -> int:
     if regle not in REGLES:
         print(f"règle inconnue : {regle} (attendu : {', '.join(REGLES)})", file=sys.stderr)
         return 2
-    comptes = inventaire(motif="*.h" if "--entetes" in options else "*.cpp", regle=regle)
+    comptes = inventaire(motif="*.h" if "--entetes" in options else "*.cpp", regle=regle,
+                         suivi="--sans-suivi" not in options)
     print("   ".join(f"{c} {len(v)}" for c, v in comptes.items()))
     for categorie in arguments:
         for entree in comptes.get(categorie.upper(), []):
