@@ -12924,3 +12924,118 @@ Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels — verts ;
 `vsm-ui-preview`, qui compile `Langue.cpp` et le spectre, construit. Aucun
 code Python de la chaîne n'a changé ; `tools/inventaire_langue.py` passe ruff
 et mypy.
+
+### Phase D95 — A9 : les boîtes du montage (11/09/2026)
+
+**LE LOT.** Des 257 chaînes de `MainComponent` que D94 laisse, celles des
+boîtes qu'on rencontre EN MONTANT : les refus du montage, posés par le
+constructeur (piste verrouillée, dans l'arrangement et dans le piano roll ;
+jonction refusée ; changement de piste refusé ; transposition qui pousse des
+notes hors de 0..127 ; tempo d'une boucle à adopter), et les actions d'un
+clip audio (découper aux transitoires, rogner au son, transcrire en MIDI),
+avec la création d'un clip. **47** chaînes à l'inventaire. Les autres thèmes
+— l'enregistrement, les plugins, les fichiers du projet, les opérations de
+piste, le navigateur — viennent ensuite, chacun sa phase.
+
+**CE QU'IL FAUT D'ABORD DONNER À LA MESURE : LIRE UNE BOÎTE.** D91 les
+photographiait ; une photo ne se compare pas mot à mot, et D94 a montré
+qu'une liste attrape ce qu'une image ne montre pas. Or une boîte n'est pas
+un enfant de la fenêtre : c'est une AUTRE fenêtre, ouverte après le geste
+qui la demande — `VSM_TEXTES_LISTE`, qui lit la fenêtre au démarrage, ne la
+voit pas. JUCE ne rend pas le message d'une `AlertWindow` (`text` est
+privé), mais il le pose dans un libellé ACCESSIBLE, enfant visible et
+transparent de la boîte : « titre. message » (`juce_AlertWindow.cpp`,
+`setMessage`). La liste lit donc désormais, au moment de la photo, les
+textes de chaque AUTRE fenêtre visible — boîtes et panneaux flottants — avec
+la même descente que la fenêtre principale. Le témoin est ce binaire-là,
+sans les traductions.
+
+**ET LA COURSE DE D72, REVENUE EN ENTIER.** Premier témoin : **0 boîte** sur
+les six lancements — et 0 aussi pour « Aller à la mesure… », que D91 avait
+photographiée. La liste, élargie aux fenêtres cachées et au compte des
+composants modaux, a dit pourquoi : deux secondes après le geste, il y a
+**six** fenêtres de premier niveau (la principale et cinq panneaux cachés) et
+**aucun** composant modal — la boîte n'est pas cachée, elle n'est plus là.
+C'est la course que D72 a mesurée (une photo sur sept au mieux), sous un
+écran verrouillé cette fois : zéro sur sept. D72 l'a réglée pour son rapport
+en le sortant de la boîte ; ici, **la boîte se lit au moment où elle est
+demandée** : les appels du lot passent par `montrerBoite()`, qui écrit
+`VSM_BOITE : titre : message` sur la sortie d'erreur, dans la langue
+affichée, puis ouvre la boîte — le même principe que les réserves d'effet
+(D71) : un banc sans souris doit pouvoir relire la phrase. La boîte du tempo
+d'une boucle, construite à la main et que le banc n'ouvre pas, reste hors de
+ce chemin : elle se vérifie dans le code et la table. Le témoin est refait
+avec `montrerBoite()`, toujours sans les traductions.
+
+**LE BANC.** Une copie fraîche de `docs/examples/demo-project` par
+lancement (l'import COPIE le fichier dans le dossier du projet, et
+`reconstruction/` ne se touche pas), `VSM_IMPORT_AUDIO` d'un échantillon de
+`children-dream-v10`, puis `VSM_MENU_CONTEXTE=clip-audio:…` pour chacune des
+trois actions d'un clip audio ; français, puis anglais ; témoin, puis D95.
+HOME isolé, préférences de l'utilisateur vérifiées par `cmp`.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (11/09/2026).**
+>
+> 1. **L'inventaire** : ÉCRAN et SANS_PAIRE à **zéro** dans les rappels du
+>    montage et les quatre fonctions du lot, ou chaque reste nommé avec sa
+>    raison ; le total baisse d'autant.
+> 2. **Les trois boîtes du banc s'ouvrent avec le témoin et se LISENT** :
+>    titre et message, dans les deux langues.
+> 3. **En anglais, plus un mot français dans ces trois boîtes**, hors les
+>    données (noms de pistes et de fichiers, chemins, nombres).
+> 4. **Le français ne change pas** : le texte des trois boîtes et la liste de
+>    la fenêtre principale sont identiques à ceux du témoin.
+> 5. **Les boîtes que le banc n'ouvre pas sont nommées**, avec la raison ;
+>    leur texte se vérifie dans le code et dans la table.
+
+**LE RÉSULTAT, ATTENDU PAR ATTENDU (11/09/2026).** Banc : copie de
+`demo-project`, `percussion.wav` importé, les trois actions du clip, français
+puis anglais, témoin (D95 sans ses traductions, `montrerBoite()` en place)
+puis D95 ; HOME isolé, préférences de l'utilisateur intactes (`cmp`).
+
+1. **L'inventaire — tenu.** ÉCRAN **273 → 226**, soit **−47, exactement le
+   lot** ; dans les rappels du montage et les quatre fonctions, **0** ÉCRAN et
+   **0** SANS_PAIRE. TABLE 202 → 213 ; TERMINAL 94 → 98, dont les lignes de
+   compte des outils de banc (`VSM_TEXTES`, `VSM_FENETRES`). Les comptes
+   rendus qui partent AUSSI au terminal — découper, transcrire — restent
+   français, écrits par leurs modèles (`kModeles`, +9), et la boîte les
+   traduit à l'affichage par `trPhrase` : la sortie d'erreur et les bancs qui
+   la relisent ne changent pas.
+2. **Les boîtes se lisent — tenu.** Chaque lancement demande sa boîte (1 sur
+   1, six fois), lue par `VSM_BOITE` dans les deux langues : « Choisissez
+   d'abord un clip audio dans l'arrangement. » (le banc ne choisit pas de
+   clip), « Ce clip commence et finit déjà sur le son : rien à rogner. »,
+   « Choisissez d'abord un clip d'une piste AUDIO : une piste MIDI porte déjà
+   ses notes. »
+3. **L'anglais — tenu.** Aucun mot français dans les trois boîtes :
+   « First choose an audio clip in the arrangement. », « This clip already
+   starts and ends on sound: nothing to trim. », « First choose a clip on an
+   AUDIO track: a MIDI track already carries its notes. »
+4. **Le français — tenu.** Les trois boîtes sont identiques au témoin, mot
+   pour mot, et la liste de la fenêtre principale aussi : 182 textes sur 182.
+5. **Les boîtes que le banc n'ouvre pas**, et pourquoi : la transposition hors
+   plage (un réglage du mixeur qui pousse des notes au-delà de 0..127), la
+   piste verrouillée et le changement de piste refusé (des glissers), la
+   jonction refusée (deux clips choisis), le tempo d'une boucle (une boucle
+   détectée à l'import, et une boîte construite à la main, hors de
+   `montrerBoite()`), les autres branches des trois actions (un clip CHOISI,
+   que le banc ne sait pas poser ; la chaîne d'analyse en marche), et
+   « Créer un clip » (un groupe, ou un clip déjà là). Leur texte se lit dans
+   le code et dans la table : 0 ÉCRAN, 0 SANS_PAIRE. **La raison** que donne
+   `ReconstructionChain` quand la chaîne est indisponible reste française
+   dans « The analysis chain is not available: … » : elle vient de la couche
+   de reconstruction, et c'est sa phase.
+
+**CE QUE LA MESURE A MONTRÉ EN CHEMIN : L'ÉCRAN, ENCORE.** Le témoin a
+tourné sous un écran verrouillé : **0 boîte sur 7**. La série de D95 a tourné
+écran déverrouillé — l'utilisateur était revenu : les six boîtes sont des
+fenêtres AFFICHÉES, lues par la liste des fenêtres **mot pour mot comme
+`VSM_BOITE`** (« titre. message », puis « OK ») et photographiées par
+`VSM_CAPTURE_PANNEAUX` — l'anglais et le français de « Transcrire en MIDI »
+regardés côte à côte, sans rien de coupé. Les deux lectures concordent ;
+`VSM_BOITE` est la seule qui ne dépend pas de l'écran.
+
+La table passe à **1 056** paires (+37) et **84** modèles de phrases (+9).
+Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels — verts ;
+`vsm-ui-preview`, qui compile `Langue.cpp`, construit. Aucun code Python n'a
+changé.

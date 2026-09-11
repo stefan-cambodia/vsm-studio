@@ -132,6 +132,10 @@ public:
     /// ligne, dans la langue courante (VSM_OUVERTURE dit les lignes brutes).
     void listReportForCapture();
     void listTextsForCapture();   ///< D94 : VSM_TEXTES_LISTE
+    /// D95 : les textes des AUTRES fenêtres visibles -- boîtes, panneaux
+    /// flottants --, lus au moment de la photo : une boîte n'existe qu'après
+    /// le geste qui l'ouvre.
+    void listWindowTextsForCapture();
     /// D91 : VSM_MENU_CONTEXTE=quel:libellé -- une entrée d'un menu du clic droit
     /// (« regle », « clip-midi », « clip-audio », « effets »), par la même fonction
     /// que le clic. Dit sur la sortie d'erreur ce qu'elle a exécuté, ou pas.

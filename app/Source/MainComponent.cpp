@@ -63,6 +63,22 @@ using vsm::audio::engine::TransportState;
 // illisible ce qu'on lit justement pour vérifier un libellé.
 using vsm::app::ui::tr;
 
+namespace {
+/// D95 : UNE BOÎTE, ET SA PHRASE AU TERMINAL. Une boîte modale demandée au
+/// démarrage d'un banc n'est plus là au moment de la photo : c'est la course
+/// que D72 a mesurée (une photo sur sept), revenue en entier sous un écran
+/// verrouillé -- 0 boîte sur 7, six fenêtres de premier niveau et aucun
+/// composant modal deux secondes après le geste. Ce que la boîte dit s'écrit
+/// donc AUSSI sur la sortie d'erreur, au moment où elle est demandée et dans la
+/// langue affichée : `VSM_BOITE : titre : message`, retours à la ligne rendus
+/// par « / ». Même raison que les réserves d'effet (D71) : un banc sans souris
+/// doit pouvoir relire la phrase.
+void montrerBoite(juce::MessageBoxIconType icone, const juce::String& titre, const juce::String& message) {
+    std::fputs(("VSM_BOITE : " + titre + " : " + message.replace("\n", " / ") + "\n").toRawUTF8(), stderr);
+    juce::AlertWindow::showMessageBoxAsync(icone, titre, message);
+}
+} // namespace
+
 MainComponent::MainComponent()
     : transport_(audioEngine_.processGraph()),
       transportBar_(transport_),
@@ -220,14 +236,14 @@ MainComponent::MainComponent()
         // une alerte par demi-ton rendrait le réglage inutilisable, et une
         // alerte qui ne vient jamais laisserait chercher la note manquante.
         if (perdues > 0 && notesPerduesParTransposition_ == 0)
-            juce::AlertWindow::showMessageBoxAsync(
-                juce::AlertWindow::InfoIcon, u8"Transposition",
-                juce::String(static_cast<int>(perdues))
-                    + juce::String(perdues > 1 ? u8" notes ne sonneront pas" : u8" note ne sonnera pas")
-                    + juce::String(u8" : la transposition les pousse hors de la plage MIDI (0 à 127). "
-                                   u8"Elles ne sont pas repliées à l'octave — les faire sonner à une "
-                                   u8"hauteur que personne n'a demandée serait pire. Le matériau, lui, "
-                                   u8"n'a pas bougé : remettez la transposition à zéro et tout revient."));
+            montrerBoite(
+                juce::AlertWindow::InfoIcon, tr(u8"Transposition"),
+                tr(perdues > 1 ? u8"%1 notes ne sonneront pas" : u8"%1 note ne sonnera pas")
+                        .replace("%1", juce::String(static_cast<int>(perdues)))
+                    + tr(u8" : la transposition les pousse hors de la plage MIDI (0 à 127). "
+                         u8"Elles ne sont pas repliées à l'octave — les faire sonner à une "
+                         u8"hauteur que personne n'a demandée serait pire. Le matériau, lui, "
+                         u8"n'a pas bougé : remettez la transposition à zéro et tout revient."));
         notesPerduesParTransposition_ = perdues;
     };
     mixer_.onMasterParam = [this](vsm::audio::plugin::ParamId id, float v) {
@@ -418,32 +434,31 @@ MainComponent::MainComponent()
     // D16.5 : le cadenas se DIT quand il refuse. Un clip qui ne bouge pas et
     // ne dit rien laisse chercher la panne ailleurs.
     arrangement_.onLockRefused = [](size_t refuses) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Piste verrouillée",
-            juce::String(static_cast<int>(refuses))
-                + juce::String(refuses > 1 ? u8" clips appartiennent à une piste verrouillée"
-                                            : u8" clip appartient à une piste verrouillée")
-                + juce::String(u8" et n'ont pas bougé. Piste ▸ Déverrouiller la piste pour "
-                               u8"reprendre le montage. Une piste verrouillée continue de "
-                               u8"sonner et de se mixer : seul le montage est refusé."));
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Piste verrouillée"),
+            tr(refuses > 1 ? u8"%1 clips appartiennent à une piste verrouillée"
+                           : u8"%1 clip appartient à une piste verrouillée")
+                    .replace("%1", juce::String(static_cast<int>(refuses)))
+                + tr(u8" et n'ont pas bougé. Piste ▸ Déverrouiller la piste pour "
+                     u8"reprendre le montage. Une piste verrouillée continue de "
+                     u8"sonner et de se mixer : seul le montage est refusé."));
     };
     pianoRoll_.onLockRefused = [] {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Piste verrouillée",
-            juce::String(u8"Les notes de cette piste ne s'éditent pas tant qu'elle est "
-                         u8"verrouillée. Piste ▸ Déverrouiller la piste pour reprendre."));
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Piste verrouillée"),
+            tr(u8"Les notes de cette piste ne s'éditent pas tant qu'elle est "
+               u8"verrouillée. Piste ▸ Déverrouiller la piste pour reprendre."));
     };
     arrangement_.onJoinRefused = [](size_t refuses) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Joindre des clips",
-            juce::String(static_cast<int>(refuses))
-                + juce::String(refuses > 1 ? u8" jonctions n'ont pas pu se faire"
-                                            : u8" jonction n'a pas pu se faire")
-                + juce::String(u8" : deux clips ne se joignent que s'ils se touchent sur la ligne "
-                               u8"de temps ET que leur fenêtre se prolonge — c'est-à-dire si le "
-                               u8"second est exactement ce qu'une coupe aurait produit du premier. "
-                               u8"Un clip bouclé, un clip qui suit le tempo, ou deux réglages de "
-                               u8"gain, de phase ou de sens différents ne se joignent pas."));
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Joindre des clips"),
+            tr(refuses > 1 ? u8"%1 jonctions n'ont pas pu se faire" : u8"%1 jonction n'a pas pu se faire")
+                    .replace("%1", juce::String(static_cast<int>(refuses)))
+                + tr(u8" : deux clips ne se joignent que s'ils se touchent sur la ligne "
+                     u8"de temps ET que leur fenêtre se prolonge — c'est-à-dire si le "
+                     u8"second est exactement ce qu'une coupe aurait produit du premier. "
+                     u8"Un clip bouclé, un clip qui suit le tempo, ou deux réglages de "
+                     u8"gain, de phase ou de sens différents ne se joignent pas."));
     };
     // LA SAISIE PAS À PAS (D13.5) : le piano roll arme le moteur, le moteur
     // poste la note, le piano roll l'écrit. Un seul chemin pour le clavier
@@ -546,13 +561,13 @@ MainComponent::MainComponent()
     // vers une piste qui porte un autre fichier, un groupe, un genre qui ne
     // correspond pas. Le geste a fait le reste ; ceci n'est pas une erreur.
     arrangement_.onClipsRefused = [](size_t refuses) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Changement de piste",
-            juce::String(static_cast<int>(refuses))
-                + juce::String(refuses > 1 ? u8" clips n'ont pas changé de piste" : u8" clip n'a pas changé de piste")
-                + juce::String(u8" : un clip audio ne va que vers une piste audio qui porte le même fichier "
-                               u8"(ou aucun), un clip MIDI vers une piste MIDI, et un groupe ne reçoit rien. "
-                               u8"Les autres clips de la sélection ont été déplacés."));
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Changement de piste"),
+            tr(refuses > 1 ? u8"%1 clips n'ont pas changé de piste" : u8"%1 clip n'a pas changé de piste")
+                    .replace("%1", juce::String(static_cast<int>(refuses)))
+                + tr(u8" : un clip audio ne va que vers une piste audio qui porte le même fichier "
+                     u8"(ou aucun), un clip MIDI vers une piste MIDI, et un groupe ne reçoit rien. "
+                     u8"Les autres clips de la sélection ont été déplacés."));
     };
     // La grille fine de l'arrangement EST celle du piano roll, lue à l'usage :
     // deux réglages de grille dans deux vues du même morceau finiraient par se
@@ -681,16 +696,15 @@ MainComponent::MainComponent()
                 // autres restent, et la boucle joue alors au rapport un -- le
                 // court-circuit de l'étireur, pas un bit de différence.
                 auto* choix = new juce::AlertWindow(
-                    u8"Tempo du clip",
-                    juce::String(u8"Le matériau de ce clip a été enregistré à environ ")
-                        + juce::String(bpm, 1) + juce::String(u8" BPM.\n")
-                        + juce::String(u8"Il joue désormais à ")
-                        + juce::String(project_.tempoMap.bpmAt(0), 1)
-                        + juce::String(u8" BPM, sans changer de hauteur.\n\n")
-                        + juce::String(u8"Adopter ce tempo pour le projet le cale sur la boucle, qui joue alors telle quelle."),
+                    tr(u8"Tempo du clip"),
+                    tr(u8"Le matériau de ce clip a été enregistré à environ %1 BPM.\n"
+                       u8"Il joue désormais à %2 BPM, sans changer de hauteur.\n\n"
+                       u8"Adopter ce tempo pour le projet le cale sur la boucle, qui joue alors telle quelle.")
+                        .replace("%1", juce::String(bpm, 1))
+                        .replace("%2", juce::String(project_.tempoMap.bpmAt(0), 1)),
                     juce::MessageBoxIconType::InfoIcon);
-                choix->addButton(u8"Garder le tempo du projet", 0, juce::KeyPress(juce::KeyPress::escapeKey));
-                choix->addButton(u8"Adopter ce tempo pour le projet", 1, juce::KeyPress(juce::KeyPress::returnKey));
+                choix->addButton(tr(u8"Garder le tempo du projet"), 0, juce::KeyPress(juce::KeyPress::escapeKey));
+                choix->addButton(tr(u8"Adopter ce tempo pour le projet"), 1, juce::KeyPress(juce::KeyPress::returnKey));
                 choix->enterModalState(true, juce::ModalCallbackFunction::create(
                     [this, bpm](int resultat) {
                         if (resultat != 1 || bpm <= 0.0) return;
@@ -1283,6 +1297,38 @@ void MainComponent::listReportForCapture() {
         std::fputs(("VSM_RAPPORT : " + ligne + "\n").toRawUTF8(), stderr);
 }
 
+namespace {
+/// D94 / D95 : LA DESCENTE COMMUNE -- chaque texte visible de `racine` (bouton,
+/// libellé, liste, infobulle), rendu à `ecrire(nature, texte)`, ses retours à
+/// la ligne rendus par « / ». Une seule descente pour la fenêtre principale et
+/// pour les boîtes : deux copies finiraient par ne plus lire la même chose.
+int parcourirLesTextes(juce::Component& racine,
+                       const std::function<void(const char*, const juce::String&)>& ecrire,
+                       bool racineMemeCachee = false) {
+    int nombre = 0;
+    std::function<void(juce::Component&)> parcourir = [&](juce::Component& c) {
+        if (!c.isVisible() && !(racineMemeCachee && &c == &racine)) return;
+        auto noter = [&](const char* nature, const juce::String& texte) {
+            if (texte.trim().isEmpty()) return;
+            ++nombre;
+            juce::StringArray lignes;
+            lignes.addLines(texte);
+            ecrire(nature, lignes.joinIntoString(" / "));
+        };
+        if (auto* bouton = dynamic_cast<juce::Button*>(&c)) noter("bouton", bouton->getButtonText());
+        else if (auto* libelle = dynamic_cast<juce::Label*>(&c)) noter("libellé", libelle->getText());
+        else if (auto* liste = dynamic_cast<juce::ComboBox*>(&c)) noter("liste", liste->getText());
+        if (auto* bulle = dynamic_cast<juce::SettableTooltipClient*>(&c)) noter("infobulle", bulle->getTooltip());
+        // Une liste déroulante porte son texte dans un libellé enfant : ne pas
+        // le compter deux fois.
+        if (dynamic_cast<juce::ComboBox*>(&c) != nullptr) return;
+        for (auto* enfant : c.getChildren()) parcourir(*enfant);
+    };
+    parcourir(racine);
+    return nombre;
+}
+} // namespace
+
 void MainComponent::listTextsForCapture() {
     // D94 : CE QUE LA FENÊTRE MONTRE, composant visible par composant visible.
     // L'inventaire du code (tools/inventaire_langue.py) compte les chaînes
@@ -1298,31 +1344,55 @@ void MainComponent::listTextsForCapture() {
     // l'autoportrait dessinait la fenêtre entière. La descente part de la racine
     // et ne suit que des enfants visibles : c'est « visible dans la fenêtre »,
     // la même liste que `isShowing()` quand la fenêtre est à l'écran.
-    int nombre = 0;
-    std::function<void(juce::Component&)> parcourir = [&](juce::Component& c) {
-        if (!c.isVisible()) return;
-        auto ecrire = [&nombre](const char* nature, const juce::String& texte) {
-            if (texte.trim().isEmpty()) return;
-            ++nombre;
-            juce::StringArray lignes;
-            lignes.addLines(texte);
-            std::fputs(("VSM_TEXTE : " + juce::String::fromUTF8(nature) + " : "
-                        + lignes.joinIntoString(" / ") + "\n").toRawUTF8(), stderr);
-        };
-        if (auto* bouton = dynamic_cast<juce::Button*>(&c)) ecrire("bouton", bouton->getButtonText());
-        else if (auto* libelle = dynamic_cast<juce::Label*>(&c)) ecrire("libellé", libelle->getText());
-        else if (auto* liste = dynamic_cast<juce::ComboBox*>(&c)) ecrire("liste", liste->getText());
-        if (auto* bulle = dynamic_cast<juce::SettableTooltipClient*>(&c)) ecrire("infobulle", bulle->getTooltip());
-        // Une liste déroulante porte son texte dans un libellé enfant : ne pas
-        // le compter deux fois.
-        if (dynamic_cast<juce::ComboBox*>(&c) != nullptr) return;
-        for (auto* enfant : c.getChildren()) parcourir(*enfant);
-    };
-    parcourir(*this);
+    const int nombre = parcourirLesTextes(*this, [](const char* nature, const juce::String& texte) {
+        std::fputs(("VSM_TEXTE : " + juce::String::fromUTF8(nature) + " : " + texte + "\n").toRawUTF8(),
+                   stderr);
+    });
     // LE COMPTE, ET CE QUI LE REND SUSPECT : un zéro doit se lire, pas se deviner.
     std::fputs(("VSM_TEXTES : " + juce::String(nombre) + juce::String(u8" texte(s) listé(s)")
                 + (isShowing() ? juce::String()
                                : juce::String(u8" -- fenêtre non affichée (écran verrouillé ?)"))
+                + "\n").toRawUTF8(), stderr);
+}
+
+void MainComponent::listWindowTextsForCapture() {
+    // D95 : LES AUTRES FENÊTRES, et d'abord les BOÎTES. Une boîte n'est pas un
+    // enfant de cette fenêtre : c'est une fenêtre à elle, ouverte après le geste
+    // qui la demande -- d'où l'appel au moment de la photo, pas au démarrage.
+    // JUCE ne rend pas le message d'une `AlertWindow` (`text` est privé), mais il
+    // le pose dans un libellé ACCESSIBLE, enfant visible et transparent de la
+    // boîte : « titre. message ». La même descente le lit donc. Préfixe à part
+    // (`VSM_FENETRE_TEXTE`) : la liste de la fenêtre principale reste celle de D94.
+    const juce::Component* principale = getTopLevelComponent();
+    int fenetres = 0;
+    for (int i = 0; i < juce::TopLevelWindow::getNumTopLevelWindows(); ++i) {
+        auto* fenetre = juce::TopLevelWindow::getTopLevelWindow(i);
+        if (fenetre == nullptr || fenetre == principale) continue;
+        // ET CE QUI N'EST PAS AFFICHÉ, DIT (D95) : sous un écran VERROUILLÉ, la
+        // boîte « Aller à la mesure » de D91 n'était pas une fenêtre visible au
+        // moment de la photo. Une boîte MODALE non affichée se lit quand même --
+        // c'est elle que le geste a ouverte --, marquée comme telle ; une fenêtre
+        // ni visible ni modale est seulement nommée.
+        const bool visible = fenetre->isVisible();
+        const bool modale = fenetre->isCurrentlyModal(false);
+        const juce::String nom = fenetre->getName();
+        if (!visible && !modale) {
+            std::fputs(("VSM_FENETRE_CACHEE : " + nom + "\n").toRawUTF8(), stderr);
+            continue;
+        }
+        ++fenetres;
+        const int n = parcourirLesTextes(*fenetre, [&nom](const char* nature, const juce::String& texte) {
+            std::fputs(("VSM_FENETRE_TEXTE : " + nom + " : " + juce::String::fromUTF8(nature) + " : "
+                        + texte + "\n").toRawUTF8(), stderr);
+        }, !visible);
+        std::fputs(("VSM_FENETRE : " + nom + " -- " + juce::String(n) + juce::String(u8" texte(s)")
+                    + (visible ? juce::String() : juce::String(u8" -- NON AFFICHÉE (modale)")) + "\n")
+                       .toRawUTF8(), stderr);
+    }
+    std::fputs(("VSM_FENETRES : " + juce::String(fenetres) + juce::String(u8" autre(s) fenêtre(s) lue(s) sur ")
+                + juce::String(juce::TopLevelWindow::getNumTopLevelWindows())
+                + juce::String(u8" ; composants modaux : ")
+                + juce::String(juce::ModalComponentManager::getInstance()->getNumModalComponents())
                 + "\n").toRawUTF8(), stderr);
 }
 
@@ -9279,9 +9349,9 @@ void MainComponent::sliceSelectedClipsAtOnsets() {
     // fenêtre en secondes du clip audio comprise.
     const vsm::sequencer::ClipSelection selection = arrangement_.selectedClipIds();
     if (selection.empty()) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Découper aux transitoires",
-            u8"Choisissez d'abord un clip audio dans l'arrangement.");
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Découper aux transitoires"),
+            tr(u8"Choisissez d'abord un clip audio dans l'arrangement."));
         return;
     }
     const double sr = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate() : 48000.0;
@@ -9299,17 +9369,18 @@ void MainComponent::sliceSelectedClipsAtOnsets() {
         // CE QUI N'EST PAS DÉCOUPÉ EST DIT, piste par piste : un clip MIDI n'a
         // pas de transitoire à trouver, une piste verrouillée ne se coupe pas.
         if (piste.kind != vsm::sequencer::Track::Kind::Audio || piste.audio.empty()) {
-            refus.add(juce::String::fromUTF8(piste.name.c_str()) + juce::String(u8" : pas une piste audio"));
+            refus.add(juce::String(u8"%1 : pas une piste audio").replace("%1", juce::String::fromUTF8(piste.name.c_str())));
             continue;
         }
         if (piste.locked) {
-            refus.add(juce::String::fromUTF8(piste.name.c_str()) + juce::String(u8" : piste verrouillée"));
+            refus.add(juce::String(u8"%1 : piste verrouillée").replace("%1", juce::String::fromUTF8(piste.name.c_str())));
             continue;
         }
         const juce::File fichier = currentProjectFolder_.getChildFile(juce::String(piste.audio.path));
         auto charge = vsm::audio::io::loadAudioTrack(fichier.getFullPathName().toStdString(), sr);
         if (!charge.source || !charge.source->samples) {
-            refus.add(juce::String::fromUTF8(piste.name.c_str()) + juce::String(u8" : fichier illisible — ") + fichier.getFullPathName());
+            refus.add(juce::String(u8"%1 : fichier illisible — %2").replace("%2", fichier.getFullPathName())
+                                                                   .replace("%1", juce::String::fromUTF8(piste.name.c_str())));
             continue;
         }
         const auto magasin = charge.source->samples;
@@ -9320,7 +9391,7 @@ void MainComponent::sliceSelectedClipsAtOnsets() {
                                     [id](const vsm::sequencer::Clip& c) { return c.id == id; });
             if (it == piste.clips.end()) continue;
             if (it->reversed) {
-                refus.add(juce::String::fromUTF8(it->name.c_str()) + juce::String(u8" : clip à l'envers, non découpé"));
+                refus.add(juce::String(u8"%1 : clip à l'envers, non découpé").replace("%1", juce::String::fromUTF8(it->name.c_str())));
                 continue;
             }
             ++clipsAudio;
@@ -9377,21 +9448,24 @@ void MainComponent::sliceSelectedClipsAtOnsets() {
         loadAudioTracks();
         arrangement_.repaint();
     }
-    juce::String message = juce::String(coupes) + juce::String(u8" coupe(s) sur ") + juce::String(clipsAudio)
-                           + juce::String(u8" clip(s) audio.");
+    // D95 : LE MESSAGE RESTE FRANÇAIS -- la sortie d'erreur le relit, les bancs
+    // aussi -- et s'écrit par ses MODÈLES (`kModeles`, Langue.cpp) : la boîte le
+    // traduit à l'affichage, ligne par ligne, par `trPhrase`.
+    juce::String message = juce::String(u8"%#1 coupe(s) sur %#2 clip(s) audio.")
+                               .replace("%#1", juce::String(coupes)).replace("%#2", juce::String(clipsAudio));
     if (sansAttaque > 0)
-        message += "\n" + juce::String(sansAttaque) + juce::String(u8" clip(s) sans attaque trouvée, laissé(s) entier(s).");
+        message += "\n" + juce::String(u8"%#1 clip(s) sans attaque trouvée, laissé(s) entier(s).")
+                              .replace("%#1", juce::String(sansAttaque));
     for (const auto& r : refus) message += "\n" + r;
     if (aimantees > 0)
-        message += "\n" + juce::String(aimantees) + juce::String(u8" coupe(s) aimantée(s) au passage par zéro (au plus ")
-                   + juce::String(plusGrandDeplacement, 2) + " ms).";
+        message += "\n" + juce::String(u8"%#1 coupe(s) aimantée(s) au passage par zéro (au plus %2 ms).")
+                              .replace("%#1", juce::String(aimantees))
+                              .replace("%2", juce::String(plusGrandDeplacement, 2));
     if (coupes > 0)
-        message += juce::String(u8"\nLe fichier n'a pas été touché : ce sont des fenêtres, et chaque coupe s'annule.");
-    // ET SUR STDERR AUSSI : une boîte de message n'entre pas dans un
-    // autoportrait (VSM_CAPTURE), et un geste piloté par VSM_MENU dont on ne
-    // lit pas le compte rendu est un geste qu'on croit fait.
+        message += "\n" + juce::String(u8"Le fichier n'a pas été touché : ce sont des fenêtres, et chaque coupe s'annule.");
     std::fputs((juce::String(u8"Découper aux transitoires : ") + message.replace("\n", " ; ") + "\n").toRawUTF8(), stderr);
-    juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon, u8"Découper aux transitoires", message);
+    montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Découper aux transitoires"),
+                                           vsm::app::ui::trPhrase(message));
 }
 
 void MainComponent::transcribeSelectedClip() {
@@ -9401,17 +9475,17 @@ void MainComponent::transcribeSelectedClip() {
     // trouvé, dans un processus enfant : Basic Pitch met plusieurs secondes à
     // charger, et l'interface ne les attend pas.
     if (!reconstructionChain_.available) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Transcrire en MIDI",
-            juce::String(u8"La chaîne d'analyse n'est pas disponible : ")
-                + juce::String::fromUTF8(reconstructionChain_.reason.c_str())
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Transcrire en MIDI"),
+            tr(u8"La chaîne d'analyse n'est pas disponible : %1")
+                .replace("%1", juce::String::fromUTF8(reconstructionChain_.reason.c_str()))
                 + (reconstructionChain_.remedy.empty() ? juce::String()
                                                        : "\n" + juce::String::fromUTF8(reconstructionChain_.remedy.c_str())));
         return;
     }
     if (clipTranscriber_.isRunning()) {
-        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon, u8"Transcrire en MIDI",
-                                                 u8"Une transcription est déjà en cours.");
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Transcrire en MIDI"),
+                                                 tr(u8"Une transcription est déjà en cours."));
         return;
     }
     const vsm::sequencer::ClipSelection selection = arrangement_.selectedClipIds();
@@ -9424,17 +9498,17 @@ void MainComponent::transcribeSelectedClip() {
             if (selection.count(c.id) > 0) { choisi = &c; index = t; break; }
     }
     if (choisi == nullptr) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Transcrire en MIDI",
-            u8"Choisissez d'abord un clip d'une piste AUDIO : une piste MIDI porte déjà ses notes.");
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Transcrire en MIDI"),
+            tr(u8"Choisissez d'abord un clip d'une piste AUDIO : une piste MIDI porte déjà ses notes."));
         return;
     }
     const auto& piste = project_.tracks[index];
     const vsm::sequencer::Clip clip = *choisi;
     const juce::File fichier = currentProjectFolder_.getChildFile(juce::String(piste.audio.path));
     if (!fichier.existsAsFile()) {
-        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon, u8"Transcrire en MIDI",
-                                                 juce::String(u8"Le fichier de la piste est introuvable : ") + fichier.getFullPathName());
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Transcrire en MIDI"),
+                                                 tr(u8"Le fichier de la piste est introuvable : %1").replace("%1", fichier.getFullPathName()));
         return;
     }
     // LA PLAGE DU CLIP DANS LE FICHIER, en secondes : c'est ce que le
@@ -9465,8 +9539,8 @@ void MainComponent::transcribeSelectedClip() {
             lignes.addLines(journal);
             while (lignes.size() > 12) lignes.remove(0);
             std::fputs((juce::String(u8"Transcrire en MIDI : ÉCHEC\n") + journal + "\n").toRawUTF8(), stderr);
-            juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon, u8"Transcrire en MIDI",
-                                                     juce::String(u8"La transcription a échoué :\n") + lignes.joinIntoString("\n"));
+            montrerBoite(juce::AlertWindow::WarningIcon, tr(u8"Transcrire en MIDI"),
+                                                     tr(u8"La transcription a échoué :") + "\n" + lignes.joinIntoString("\n"));
             return;
         }
         const juce::var lu = juce::JSON::parse(fichierJson);
@@ -9474,8 +9548,8 @@ void MainComponent::transcribeSelectedClip() {
         const juce::var notesVar = lu.getProperty("notes", juce::var());
         const juce::Array<juce::var>* tableau = notesVar.getArray();
         if (index >= project_.tracks.size() || tableau == nullptr || tableau->isEmpty()) {
-            juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon, u8"Transcrire en MIDI",
-                                                     u8"Aucune note trouvée dans ce clip : aucune piste créée.");
+            montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Transcrire en MIDI"),
+                                                     tr(u8"Aucune note trouvée dans ce clip : aucune piste créée."));
             return;
         }
         // LES INSTANTS DU FICHIER DEVIENNENT DES TICKS PAR LA FENÊTRE DU CLIP,
@@ -9524,18 +9598,26 @@ void MainComponent::transcribeSelectedClip() {
         vsm::sequencer::moveTrack(project_, project_.tracks.size() - 1, index + 1);
         rebuildFromProject(false);
         trackList_.selectTrackIndex(index + 1);
-        juce::String message = juce::String(static_cast<int>(tableau->size())) + juce::String(u8" note(s) posée(s) sur « ")
-                               + juce::String::fromUTF8(project_.tracks[index + 1].name.c_str())
-                               + juce::String(u8" », après la piste audio");
-        if (douteuses > 0)
-            message += juce::String(u8", dont ") + juce::String(static_cast<int>(douteuses))
-                       + juce::String(u8" douteuse(s) (confiance sous ") + juce::String(vsm::sequencer::kDoubtfulNoteThreshold, 2)
-                       + juce::String(u8" — « Note douteuse suivante » les parcourt)");
-        message += juce::String(u8".\nLa piste est SANS instrument : choisissez-en un dans le rack. ")
-                   + juce::String(u8"Les vélocités viennent de l'énergie du son, comme dans la chaîne.");
-        if (plusieurs > 1) message += juce::String(u8"\nUn clip à la fois : le premier choisi a été transcrit.");
+        // D95 : français, écrit par ses modèles, traduit à l'affichage (voir
+        // « Découper aux transitoires »). Deux modèles pour la première ligne : le
+        // compte des notes douteuses change la phrase entière, pas un segment.
+        const juce::String nomNeuve = juce::String::fromUTF8(project_.tracks[index + 1].name.c_str());
+        juce::String message = douteuses > 0
+            ? juce::String(u8"%#1 note(s) posée(s) sur « %2 », après la piste audio, dont %#3 douteuse(s) "
+                           u8"(confiance sous %4 — « Note douteuse suivante » les parcourt).")
+                  .replace("%#1", juce::String(static_cast<int>(tableau->size())))
+                  .replace("%#3", juce::String(static_cast<int>(douteuses)))
+                  .replace("%4", juce::String(vsm::sequencer::kDoubtfulNoteThreshold, 2))
+                  .replace("%2", nomNeuve)
+            : juce::String(u8"%#1 note(s) posée(s) sur « %2 », après la piste audio.")
+                  .replace("%#1", juce::String(static_cast<int>(tableau->size())))
+                  .replace("%2", nomNeuve);
+        message += "\n" + juce::String(u8"La piste est SANS instrument : choisissez-en un dans le rack. "
+                                       u8"Les vélocités viennent de l'énergie du son, comme dans la chaîne.");
+        if (plusieurs > 1) message += "\n" + juce::String(u8"Un clip à la fois : le premier choisi a été transcrit.");
         std::fputs((juce::String(u8"Transcrire en MIDI : ") + message.replace("\n", " ; ") + "\n").toRawUTF8(), stderr);
-        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon, u8"Transcrire en MIDI", message);
+        montrerBoite(juce::AlertWindow::InfoIcon, tr(u8"Transcrire en MIDI"),
+                                               vsm::app::ui::trPhrase(message));
     };
     clipTranscriber_.start(commande, json);
 }
@@ -9544,10 +9626,10 @@ void MainComponent::trimClipToSound(size_t trackIndex, uint64_t clipId) {
     if (trackIndex >= project_.tracks.size()) return;
     auto& piste = project_.tracks[trackIndex];
     if (piste.kind != vsm::sequencer::Track::Kind::Audio || piste.audio.empty()) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Rogner au son",
-            u8"Cette commande cherche le silence dans un FICHIER : elle ne s'applique qu'à un "
-            u8"clip de piste audio. Sur une piste MIDI, une note qui ne sonne pas n'existe pas.");
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Rogner au son"),
+            tr(u8"Cette commande cherche le silence dans un FICHIER : elle ne s'applique qu'à un "
+               u8"clip de piste audio. Sur une piste MIDI, une note qui ne sonne pas n'existe pas."));
         return;
     }
     auto it = std::find_if(piste.clips.begin(), piste.clips.end(),
@@ -9558,10 +9640,9 @@ void MainComponent::trimClipToSound(size_t trackIndex, uint64_t clipId) {
     const double sr = audioEngine_.currentSampleRate() > 0.0 ? audioEngine_.currentSampleRate() : 48000.0;
     auto charge = vsm::audio::io::loadAudioTrack(fichier.getFullPathName().toStdString(), sr);
     if (!charge.source) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Rogner au son",
-            juce::String(u8"Le fichier de la piste n'a pas pu être relu : ")
-                + fichier.getFullPathName());
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Rogner au son"),
+            tr(u8"Le fichier de la piste n'a pas pu être relu : %1").replace("%1", fichier.getFullPathName()));
         return;
     }
 
@@ -9583,17 +9664,17 @@ void MainComponent::trimClipToSound(size_t trackIndex, uint64_t clipId) {
         },
         compte, sr);
     if (!bornes.found) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Rogner au son",
-            u8"Tout ce que ce clip joue est sous le seuil de silence : rien n'a été rogné. "
-            u8"Un clip entièrement silencieux réduit à rien disparaîtrait, et ce n'est pas "
-            u8"ce que vous avez demandé.");
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Rogner au son"),
+            tr(u8"Tout ce que ce clip joue est sous le seuil de silence : rien n'a été rogné. "
+               u8"Un clip entièrement silencieux réduit à rien disparaîtrait, et ce n'est pas "
+               u8"ce que vous avez demandé."));
         return;
     }
     if (bornes.firstFrame == 0 && bornes.lastFrame == compte) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Rogner au son",
-            u8"Ce clip commence et finit déjà sur le son : rien à rogner.");
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Rogner au son"),
+            tr(u8"Ce clip commence et finit déjà sur le son : rien à rogner."));
         return;
     }
 
@@ -9620,13 +9701,12 @@ void MainComponent::trimClipToSound(size_t trackIndex, uint64_t clipId) {
     refreshTransportSchedule();
     loadAudioTracks();
     arrangement_.repaint();
-    juce::AlertWindow::showMessageBoxAsync(
-        juce::AlertWindow::InfoIcon, u8"Rogner au son",
-        juce::String(static_cast<double>(bornes.firstFrame) / sr * 1000.0, 0)
-            + juce::String(u8" ms retirées au début, ")
-            + juce::String(static_cast<double>(compte - bornes.lastFrame) / sr * 1000.0, 0)
-            + juce::String(u8" ms à la fin. Le fichier n'a pas été touché : c'est la fenêtre du "
-                           u8"clip qui a bougé."));
+    montrerBoite(
+        juce::AlertWindow::InfoIcon, tr(u8"Rogner au son"),
+        tr(u8"%1 ms retirées au début, %2 ms à la fin. Le fichier n'a pas été touché : c'est la fenêtre du "
+           u8"clip qui a bougé.")
+            .replace("%1", juce::String(static_cast<double>(bornes.firstFrame) / sr * 1000.0, 0))
+            .replace("%2", juce::String(static_cast<double>(compte - bornes.lastFrame) / sr * 1000.0, 0)));
 }
 
 // --- D17.8 : LE GROOVE ------------------------------------------------------
@@ -10273,9 +10353,9 @@ void MainComponent::createClipOnTrack(size_t trackIndex, vsm::midi::Tick tick) {
     // feuille de route). Lui poser un clip ne jouerait rien et laisserait
     // croire le contraire.
     if (piste.kind == vsm::sequencer::Track::Kind::Group) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Créer un clip",
-            u8"Un groupe est un bus de mixage, pas une piste de matériau : il ne porte pas de clip.");
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Créer un clip"),
+            tr(u8"Un groupe est un bus de mixage, pas une piste de matériau : il ne porte pas de clip."));
         return;
     }
 
@@ -10297,11 +10377,11 @@ void MainComponent::createClipOnTrack(size_t trackIndex, vsm::midi::Tick tick) {
     const auto faite = vsm::sequencer::createClip(essai, tick, mesure, compteur,
                                                    finMateriau);
     if (faite.id == 0) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Créer un clip",
-            u8"Il y a déjà un clip à cet endroit de la piste. Deux clips qui se recouvrent "
-            u8"joueraient le même matériau deux fois : posez-le sur un espace libre, ou tirez "
-            u8"le bord du clip existant.");
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Créer un clip"),
+            tr(u8"Il y a déjà un clip à cet endroit de la piste. Deux clips qui se recouvrent "
+               u8"joueraient le même matériau deux fois : posez-le sur un espace libre, ou tirez "
+               u8"le bord du clip existant."));
         return;
     }
 
@@ -10316,7 +10396,7 @@ void MainComponent::createClipOnTrack(size_t trackIndex, vsm::midi::Tick tick) {
     // raccourci par son voisin n'est pas celui qu'on a demandé, et rien à
     // l'écran ne dirait pourquoi il fait une demi-mesure.
     if (faite.truncated)
-        juce::AlertWindow::showMessageBoxAsync(
+        montrerBoite(
             juce::AlertWindow::InfoIcon, tr(u8"Créer un clip"),
             tr(u8"Le clip s'arrête au clip suivant : il fait %1 mesure au lieu d'une.")
                 .replace("%1", juce::String(static_cast<double>(faite.length) / static_cast<double>(mesure), 2)));

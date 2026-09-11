@@ -393,6 +393,14 @@ public:
                         if (flux.openedOk())
                             juce::PNGImageFormat().writeImageToStream(image, flux);
                     }
+                    // VSM_TEXTES_LISTE (D95) : les AUTRES fenêtres -- boîtes, panneaux
+                    // flottants --, lues AU MOMENT DE LA PHOTO : une boîte ouverte
+                    // par un geste du banc n'existe qu'après lui, et la liste du
+                    // démarrage passe avant.
+                    if (const char* textes = std::getenv("VSM_TEXTES_LISTE");
+                        textes != nullptr && *textes && *textes != '0')
+                        if (auto* principal = dynamic_cast<MainComponent*>(getContentComponent()))
+                            principal->listWindowTextsForCapture();
                     // D55.2 : VSM_CAPTURE_PANNEAUX=1 photographie AUSSI chaque
                     // fenêtre flottante visible, une image par panneau.
                     //

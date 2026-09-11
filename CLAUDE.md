@@ -127,3 +127,7 @@ l'ordre de marche — pas de la documentation d'accompagnement.
   rien : c'est la course de D72, une photo sur sept au pire. Relancer avant de
   conclure. Trois ratés de suite ont failli faire écrire « le port MIDI ferme
   la boîte » (D91) ; relancée, elle est venue du premier coup, quatre fois.
+  Sous un écran VERROUILLÉ, ce n'est plus une sur sept mais AUCUNE : 0 boîte
+  sur 7 lancements, aucun composant modal deux secondes après le geste (D95).
+  Une boîte se lit donc au moment où elle est demandée — `VSM_BOITE`, écrite
+  par `montrerBoite()` — et la photo ne sert qu'à la regarder.
