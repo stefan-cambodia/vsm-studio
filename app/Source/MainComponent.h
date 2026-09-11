@@ -212,6 +212,11 @@ public:
         // l'appui et reste tant qu'on tient).
         if (geste.startsWithIgnoreCase("appuyer:"))
             return appuyerPourCapture(geste.fromFirstOccurrenceOf(":", false, false));
+        // D140 : doubleclic:<nom ou légende> -- le double-clic de la souris sur le
+        // premier curseur visible (et qui a une surface) de ce nom de composant ou
+        // de cette infobulle (les commandes des façades n'ont qu'une légende).
+        if (geste.startsWithIgnoreCase("doubleclic:"))
+            return doubleCliquerPourCapture(geste.fromFirstOccurrenceOf(":", false, false));
         return false;
     }
     /// D23.3 : VSM_EXPORT_MIDI_PISTE=fichier.mid -- la piste choisie écrite
@@ -233,6 +238,8 @@ public:
     void forceWindowSize() { tailleImposee_ = true; }
     /// D135 : voir le geste `appuyer:` de `runTrackGestureForCapture`.
     bool appuyerPourCapture(const juce::String& nom);
+    /// D140 : voir le geste `doubleclic:` de `runTrackGestureForCapture`.
+    bool doubleCliquerPourCapture(const juce::String& nomOuLegende);
     /// D57 : republier le panneau d'assemblage depuis la piste choisie.
     void refreshTakeCompPanel();
     /// D24.5 : VSM_IMPORT_AUDIO=fichier.wav -- sur une piste neuve, sans boîte.

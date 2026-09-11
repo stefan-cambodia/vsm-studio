@@ -1482,6 +1482,38 @@ bool MainComponent::appuyerPourCapture(const juce::String& nom) {
     return true;
 }
 
+bool MainComponent::doubleCliquerPourCapture(const juce::String& nomOuLegende) {
+    // D140 : le curseur désigné par son nom de composant OU par son infobulle,
+    // cherché comme pour `appuyer:` (visible, avec une surface), puis le
+    // double-clic de la souris, en son centre -- `Slider::mouseDoubleClick`, le
+    // chemin de l'utilisateur.
+    std::function<juce::Slider*(juce::Component&)> chercher = [&](juce::Component& c) -> juce::Slider* {
+        if (auto* curseur = dynamic_cast<juce::Slider*>(&c);
+            curseur != nullptr && !curseur->getLocalBounds().isEmpty()
+            && (curseur->getName() == nomOuLegende || curseur->getTooltip() == nomOuLegende))
+            return curseur;
+        for (auto* enfant : c.getChildren())
+            if (enfant->isVisible())
+                if (auto* trouve = chercher(*enfant)) return trouve;
+        return nullptr;
+    };
+    juce::Slider* curseur = chercher(*this);
+    for (int i = 0; curseur == nullptr && i < juce::TopLevelWindow::getNumTopLevelWindows(); ++i)
+        if (auto* fenetre = juce::TopLevelWindow::getTopLevelWindow(i); fenetre != nullptr && fenetre->isVisible())
+            curseur = chercher(*fenetre);
+    std::fputs(("VSM_DOUBLECLIC : " + nomOuLegende
+                + (curseur != nullptr ? juce::String(u8" — double-cliqué") : juce::String(u8" — aucun curseur visible de ce nom"))
+                + "\n").toRawUTF8(), stderr);
+    if (curseur == nullptr) return false;
+    const auto centre = curseur->getLocalBounds().getCentre().toFloat();
+    const auto maintenant = juce::Time::getCurrentTime();
+    const juce::MouseEvent clic(juce::Desktop::getInstance().getMainMouseSource(), centre,
+                                juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier), 1.0f,
+                                0.0f, 0.0f, 0.0f, 0.0f, curseur, curseur, maintenant, centre, maintenant, 2, false);
+    curseur->mouseDoubleClick(clic);
+    return true;
+}
+
 bool MainComponent::runContextMenuForCapture(const juce::String& entree) {
     const juce::String quel = entree.upToFirstOccurrenceOf(":", false, false).trim();
     const juce::String libelle = entree.fromFirstOccurrenceOf(":", false, false).trim();
