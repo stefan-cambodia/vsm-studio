@@ -15464,3 +15464,57 @@ les a pas retenues agrandies.
 3. **Suites vertes**, préférences de l'utilisateur intactes, français et
    anglais pour les infobulles.
 
+**LE TÉMOIN (binaire de D121, 18:35:28 ; banc à 19:19).** Mode flottant,
+`_MOTIF_WM_HINTS` lu par `xprop` sur les fenêtres du client (JUCE pose
+`WM_NAME`, pas `_NET_WM_NAME` : un premier relevé par ce dernier n'a rien
+trouvé, et `xprop -name` non plus — aucun chiffre n'en a été tiré) : la
+fenêtre principale **`0x3c`** (déplacer 4, réduire 8, AGRANDIR 16, fermer
+32) ; les cinq panneaux **`0x2c`**, sans agrandir. L'attendu n° 2, côté
+témoin, TENU.
+
+**LE PREMIER ESSAI (binaire du 11/09 19:22:19, bancs à 19:23).**
+
+- **Fenêtres flottantes — TENU** : les cinq panneaux annoncent `0x3c`
+  (décorations `0x7a`, le bouton agrandir compris), comme la fenêtre
+  principale.
+- **Zones — agrandir TENU** : chaque photo agrandie ne montre que sa zone
+  sous la barre de transport — la liste des pistes sur toute la largeur, le
+  rack avec sa façade agrandie, le mixeur, le piano roll, l'arrangement.
+- **Zones — le retour** : « centre » **0 pixel** de différence avec la
+  fenêtre normale ; « pistes » 42 pixels au premier passage (le libellé de la
+  charge CPU, x 1061-1067) et **1 339 au second**, dans la ligne d'état du
+  piano roll, qui disait « Prêt » et dit, après le retour, « 1638 note(s)
+  sur la piste | 876 douteuse(s) — D : la suivante » : le redimensionnement
+  a rafraîchi son CONTENU. La disposition revient au pixel ; un texte d'état
+  a changé, et c'est dit plutôt que compté comme identique.
+- **Rien ne se chevauche — RÉFUTÉ, deux fois** : (1) la place réservée au
+  bouton dans la barre de la liste des pistes ÉCRASE le bouton d'ajout, qui
+  ne montre plus que « + Aju… » — une régression de lisibilité, que ce projet
+  refuse avant tout ; (2) le bouton de la zone centrale couvre le haut de
+  l'ascenseur de la barre d'outils du piano roll : la barre lui laissait sa
+  place, pas son cadre défilant. Et, prévu : dans l'arrangement agrandi, le
+  bouton couvre l'extrémité droite de la règle, environ 25 px.
+
+**DÉCISIONS DU SECOND ESSAI, écrites avant de le mesurer.**
+
+1. **Le bouton de la liste des pistes passe au bout de la ligne du FILTRE** :
+   c'est le filtre qui cède 30 px, pas le bouton d'ajout. Le coin haut
+   droit n'est plus la règle pour cette zone — la lisibilité l'emporte sur
+   la symétrie.
+2. **Le cadre défilant de la barre du piano roll laisse la place du bouton**,
+   son ascenseur avec lui.
+3. **La règle de l'arrangement garde son recouvrement de 25 px**, dit : ses
+   derniers pixels à droite sont une position dans le temps, pas une
+   commande, et le défilement les ramène.
+4. **Le geste de banc `VSM_VUE=plein:<fenêtre>`** appelle `setFullScreen` sur
+   l'un des cinq panneaux flottants — ce que fait le bouton agrandir — pour
+   mesurer ce que l'attendu n° 2 promet : agrandie, la fenêtre ne retient
+   pas ses limites ; rendue, elle retrouve celles d'avant.
+
+**ATTENDU DU SECOND ESSAI** : le bouton d'ajout entier (« + Ajouter une
+piste » lisible, comme au témoin) ; l'ascenseur de la barre du piano roll
+entier ; les zones agrandies et le retour comme au premier essai ; après
+`plein:Piano Roll`, les préférences du banc portent `fenetre.Piano Roll` =
+`340 100 560 380` (les limites d'avant), une fois agrandie comme une fois
+agrandie puis rendue.
+
