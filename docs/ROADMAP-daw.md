@@ -15155,3 +15155,26 @@ correspondent au source). Suites C++ vertes à `-j 2` (330, 1 291, 297, 25,
 11) ; `build/tools/vsm-render` non touché ; préférences intactes, douze
 lancements.
 
+### Phase D118 — A9 : les infobulles affichées, relevées en anglais (11/09/2026)
+
+**UN RELEVÉ, PAS UNE HYPOTHÈSE TRANCHÉE — faute dite : aucun attendu n'a été
+écrit avant.** L'INDEX portait « des infobulles françaises écrites sans leurs
+accents » ; D116 a vu que les onze infobulles posées hors de `tr()` sont
+calculées et qu'aucune règle d'inventaire n'y trouve de français. Restait à
+lire ce qui S'AFFICHE. `children-dream-v12` ouvert en anglais, trois vues
+(défaut, arrangement, piano roll), `VSM_TEXTES_LISTE`, `HOME` de brouillon :
+**87, 66 et 87 infobulles listées, 60 distinctes** — barre de transport,
+barre et règle du piano roll, liste des pistes, mixeur, arrangement. Un filtre
+large (accents, guillemets français, mots-outils, « piste », « réglage »,
+« sélection »…) en retient deux, qui sont de l'anglais (« Quantize the
+selection to the grid (Ctrl+Q) », « Start: bar.beat (“17.3”…) »). **Aucune
+infobulle française à l'écran.**
+
+Ce que le relevé ne couvre pas, dit : les panneaux flottants fermés au
+démarrage, les façades des machines (une infobulle par bouton : la valeur
+lue, pas une phrase), les boîtes. Le reste de l'INDEX est retiré avec cette
+couverture écrite à côté. Un premier lancement du relevé a échoué, les trois
+lancements en code 127 : une construction `${var:+VAR=val}` que zsh — le
+shell de l'outil — prend pour un nom de commande. Aucun chiffre n'en a été
+tiré ; relancé sous `bash`.
+
