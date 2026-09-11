@@ -13560,3 +13560,119 @@ l'inventaire. **La leçon** : un titre qui sert aussi de clé se traduit là où
 il s'affiche, pas là où il est donné — sinon changer de langue fait oublier
 où l'utilisateur a mis ses fenêtres.
 
+### Phase D101 — A9 : l'angle mort de l'inventaire (11/09/2026)
+
+**LE CONSTAT.** L'inventaire (`tools/inventaire_langue.py`) ne compte une
+chaîne que si elle a l'air française : un accent, ou un mot d'une courte liste
+(le, la, piste, projet…). Deux lots de suite ont montré ce qu'il laisse
+passer : huit affichages du navigateur (D99), six titres de fenêtres sur
+quinze (D100) — des libellés courts, sans accent ni mot de la liste :
+« Navigateur », « Preset illisible », « Raccourcis clavier ». Le chiffre
+d'A9 (ÉCRAN 126) est donc un minimum, et l'on ne sait pas de combien.
+
+**DEUX RÈGLES DE PLUS, écrites avant de compter.** Mesurées séparément puis
+ensemble, sur le MÊME code, par une option de l'outil
+(`--regle=stricte|mots|position|large`) ; la règle d'aujourd'hui (`stricte`)
+reste le défaut tant que la mesure n'a pas tranché.
+
+- `mots` : des mots-outils français que l'anglais n'emploie pas (de, du, et,
+  est, pas, ne, au, aux, ce, cette, ces, qui, que, son, sa, ses, leur, leurs,
+  puis, rien, tout, tous, toute, toutes, vers, votre, vos) et les élisions
+  (l', d', n', s', c', j', qu'). **Aucun mot de contenu choisi d'après les
+  ratés connus** : une règle taillée pour retrouver ce qu'on sait déjà ne
+  mesurerait rien.
+- `position` : une chaîne qui a des lettres et n'a pas l'allure d'un
+  identifiant (sans espace, et un point, un tiret bas, une barre, deux-points
+  ou une minuscule en tête), passée dans une instruction qui affiche :
+  `montrerBoite`, `showMessageBoxAsync`, `setButtonText`, `setText`,
+  `setTooltip`, `addItem`, `addSectionHeader`, `addTab`, `drawText`,
+  `drawFittedText`, `setTitle`, `addTextEditor`, `PanelWindow`.
+- `large` : l'une ou l'autre.
+
+**ATTENDU.**
+
+1. **Le rappel, sur une vérité connue.** Le code de D98 (`17991aa`) porte
+   encore les quatorze ratés de D99 et D100 sans traduction. Dérivé des
+   règles, pas mesuré : `mots` en attrape 4 (« Preset d'effet illisible »,
+   « L'effet « … » n'est pas disponible. », « Analyseur de spectre »,
+   « Ordre de jeu ») ; `position` attrape ceux qui passent par une fonction
+   de la liste — les deux titres « Navigateur » des boîtes, « Preset
+   illisible », « Preset d'effet illisible », « Copie impossible », et les
+   titres des fenêtres créées par `std::make_unique<PanelWindow>(` —, soit
+   au moins 10 ; il manque « Parc VSM » et « Plugin tiers », écrits dans
+   une affectation, et « L'effet » passé en message. `large` : au moins 12
+   sur 14.
+2. **La taille, sur le code de D100.** `mots` ajoute entre 10 et 60 chaînes
+   ÉCRAN, `position` entre 30 et 120, `large` entre 40 et 150.
+3. **La lecture.** Chaque ajout de `large` se lit et se range : français
+   affiché (le vrai angle mort), texte identique dans les deux langues
+   (« Piano Roll », une unité), donnée ou format. J'attends au moins 70 % de
+   français.
+4. **La décision, écrite d'avance.** Si `large` tient les 70 %, elle devient
+   la règle d'A9 : le chiffre est redit sous elle, les deux donnés (126 et le
+   nouveau), et les textes identiques dans les deux langues vont dans une
+   liste nommée de l'outil, lue et non devinée. Sinon, elle reste une option,
+   et l'angle mort est donné comme un intervalle.
+
+**LE RÉSULTAT (11/09/2026).** L'outil seul : aucun code de l'application
+touché. La règle `stricte` redonne à la ligne près les comptes de l'outil de
+HEAD (ÉCRAN 126, SANS_PAIRE 0, TERMINAL 100, TABLE 216, COMMANDE 25) : le
+témoin est bien le même instrument.
+
+1. **Le rappel — tenu, au chiffre près.** Sur le code de D98 : `stricte`
+   0 / 14, `mots` 4 / 14 (les quatre prévus), `position` 12 / 14, `large`
+   12 / 14 ; les deux manqués sont ceux prévus (« Parc VSM », « Plugin
+   tiers », écrits dans une affectation). Des douze, cinq tombent en TABLE :
+   des clés affichées sans `tr()` — le faux TABLE de D96, qu'aucune de ces
+   règles ne distingue d'une clé traduite par une variable.
+2. **La taille — tenue.** Sur le code de D100, ÉCRAN : `mots` 142 (+16),
+   `position` 166 (+40), `large` 179 (+53).
+3. **La lecture — NON TENUE.** Des 53 ajouts de `large`, 33 sont du texte
+   français et 20 se lisent pareil dans les deux langues : le nom de
+   l'application, les unités (« kHz », « BPM », « dB », « -inf LUFS »,
+   « ticks »), « SYNTH RACK », « PATTERN », « Ch », « CPU », « Track »,
+   « Signature », « -> Master ». 62 %, sous les 70 % écrits. Règle par
+   règle, c'est net : `mots` 16 sur 16 français, `position` 20 sur 40 — les
+   faux sont tous à elle. `position` trouve aussi 6 SANS_PAIRE, tous des mots
+   identiques en anglais (« MIDI CC », « Transposition », « Octave + »,
+   « Octave - », « Crescendo », « Decrescendo ») : `tr()` les rend tels
+   quels, sans défaut à l'écran.
+4. **La décision, telle qu'écrite.** `large` reste une option, le défaut
+   reste `stricte`, et le chiffre d'A9 se donne en intervalle : ÉCRAN **126**
+   à la règle stricte, **au moins 159** en comptant les 33 chaînes françaises
+   lues — et le rappel dit qu'il en reste d'autres (2 ratés sur 14 connus).
+   Je n'adopte pas `mots` comme défaut, bien que ses 16 ajouts soient tous
+   français : ce serait une décision prise après la mesure, sur seize
+   chaînes. Elle se prendra avec son hypothèse, si un lot la demande.
+
+**LES 33, NOMMÉES** — ce que la mesure rapporte de plus utile, pour les lots
+d'A9 à venir :
+
+- **`MainComponent`, 27.** Les plugins (« Plugin CLAP illisible », « Plugin
+  charge », « Balayage termine », « Balayage lance », « Pas d'interface
+  native », « Effet illisible », « Plugin VST3 illisible », « Instrument
+  charge ») ; l'enregistrement et la référence (« Charger l'enregistrement
+  d'origine ( », « Enregistrement illisible », « (canal gauche de
+  comparaison.wav) », « Enregistrement audio impossible », « Report
+  impossible » deux fois, « Mesure impossible », « Rien n'est revenu »,
+  « Aller-retour : ») ; les réglages relus (« Rapport de reconstruction
+  illisible : », « Reconstruction indisponible », « Associations MIDI
+  illisibles », « Raccourcis illisibles », « Ignorer et effacer ») ; la
+  restauration d'un preset de piste (« ». Sa machine et ses inserts sont
+  revenus. », « insert(s) de « ») ; « Couleur du clip », « Import audio »,
+  et la boîte « À propos » (« Sequenceur MIDI + rack de synthetiseurs… »).
+- **`audio/`, 4** : les erreurs de `DiskRecorder` (2) et de
+  `ReferenceAudioLoader` (2), rendues à `MainComponent` — suivies jusqu'à
+  leur appelant, pas jusqu'à une image.
+- **`PianoRollComponent`, 2** : « note(s) plus faible(s) que », « note(s)
+  plus courte(s) que ».
+
+**Huit sont du français SANS SES ACCENTS** (« Plugin charge », « Balayage
+termine », « Balayage lance », « Instrument charge », « Sequenceur … de
+synthetiseurs », « Frequence ou nombre de canaux invalide. », « Impossible
+d'ecrire », « frequence d'echantillonnage… ») — écrits en ASCII, sans doute
+pour éviter le piège des `u8`. Ils sont faux en français aussi : leur lot
+leur rendra leurs accents, différence française déclarée d'avance.
+
+Outil : `ruff` et `mypy` propres ; aucune suite C++ concernée.
+

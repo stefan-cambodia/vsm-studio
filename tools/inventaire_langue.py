@@ -4,6 +4,7 @@
     analyse/.venv/bin/python tools/inventaire_langue.py              # les comptes
     analyse/.venv/bin/python tools/inventaire_langue.py ECRAN        # et la liste
     analyse/.venv/bin/python tools/inventaire_langue.py --entetes    # les en-têtes
+    analyse/.venv/bin/python tools/inventaire_langue.py --regle=large  # D101
 
 LES EN-TÊTES À PART (D94). Le compte d'A9 ne lit que les `.cpp`, et c'est ce
 compte-là que les phases comparent. Mais un `.h` écrit aussi à l'écran (une
@@ -30,6 +31,16 @@ LES RÈGLES, écrites avant de compter (D94, ROADMAP-daw.md) :
   - TERMINAL : l'instruction écrit sur stderr ou stdout ;
   - ÉCRAN : tout le reste. C'est le chiffre d'A9.
 `Langue.cpp` et `app/Source/tools/` sont hors du compte.
+
+L'ANGLE MORT (D101). Une chaîne n'entre au compte que si elle a l'air
+française : un accent ou un mot de FRANCAIS -- c'est la règle `stricte`, le
+défaut. « Navigateur » ou « Preset illisible » n'en ont pas. Deux règles de
+plus, en option tant que la mesure n'a pas tranché (`--regle=`) :
+  - `mots` : les mots-outils français que l'anglais n'emploie pas, et les
+    élisions (MOTS) -- aucun mot de contenu choisi d'après les ratés connus ;
+  - `position` : une chaîne qui a des lettres, sans allure d'identifiant,
+    passée dans une instruction qui affiche (AFFICHAGE) ;
+  - `large` : l'une ou l'autre.
 """
 
 from __future__ import annotations
@@ -44,6 +55,13 @@ FRANCAIS = re.compile(
     r"[éèêàâçùûôîïëœÉÈÊÀÇ]|\b(le|la|les|des|une|un|aucun|aucune|piste|pistes|réglage|"
     r"fichier|projet|ouvrir|enregistrer|lecture|arrêt|départ|touche|choisir|dossier|"
     r"réserve|sans|avec|pour|dans|sur)\b", re.I)
+MOTS = re.compile(
+    r"\b(de|du|et|est|pas|ne|au|aux|ce|cette|ces|qui|que|son|sa|ses|leur|leurs|puis|rien|"
+    r"tout|tous|toute|toutes|vers|votre|vos)\b|\b(?:[ldnscj]|qu)['’]\w", re.I)
+AFFICHAGE = re.compile(
+    r"\b(montrerBoite|showMessageBoxAsync|setButtonText|setText|setTooltip|addItem|addSectionHeader|"
+    r"addTab|drawText|drawFittedText|setTitle|addTextEditor|PanelWindow)\b")
+REGLES = ("stricte", "mots", "position", "large")
 LITTERAL = re.compile(r'(?:u8)?"((?:[^"\\]|\\.)*)"')
 TRADUCTION = re.compile(r"\b(tr|trSelon|trPhrase|trGeste|translate|TRANS)\s*\(\s*(u8)?\s*$")
 SORTIE = re.compile(r"fputs|stderr|stdout|std::cout|std::cerr|DBG\s*\(|printf")
@@ -87,7 +105,24 @@ def chaines(texte: str) -> List[Tuple[int, int, str]]:
     return groupes
 
 
-def inventaire(racine: Path = RACINE, motif: str = "*.cpp") -> Dict[str, List[str]]:
+def ressemble_a_du_texte(chaine: str) -> bool:
+    """D101, règle `position` : des lettres, et pas l'allure d'un identifiant."""
+    if not re.search(r"[A-Za-zÀ-ÿ]{2}", chaine):
+        return False
+    return " " in chaine or not re.search(r"[._/:]|^[a-z]", chaine)
+
+
+def a_l_air_francaise(chaine: str, avant: str, regle: str) -> bool:
+    """La chaîne entre-t-elle au compte ? `avant` : son instruction, jusqu'à elle."""
+    if FRANCAIS.search(chaine):
+        return True
+    if regle in ("mots", "large") and MOTS.search(chaine):
+        return True
+    return regle in ("position", "large") and bool(AFFICHAGE.search(avant)) and ressemble_a_du_texte(chaine)
+
+
+def inventaire(racine: Path = RACINE, motif: str = "*.cpp", regle: str = "stricte") -> Dict[str, List[str]]:
+    assert regle in REGLES, regle
     cles = cles_de_la_table((racine / "ui" / "Langue.cpp").read_text(encoding="utf-8"))
     comptes: Dict[str, List[str]] = {c: [] for c in CATEGORIES}
     for fichier in sorted(racine.rglob(motif)):
@@ -96,7 +131,8 @@ def inventaire(racine: Path = RACINE, motif: str = "*.cpp") -> Dict[str, List[st
         texte = sans_commentaires(fichier.read_text(encoding="utf-8"))
         for debut, fin, brut in chaines(texte):
             chaine = decode(brut)
-            if not FRANCAIS.search(chaine) or chaine.startswith("VSM_"):
+            avant = texte[max(texte.rfind(c, 0, debut) for c in ";{}") + 1:debut]
+            if chaine.startswith("VSM_") or not a_l_air_francaise(chaine, avant, regle):
                 continue
             if TRADUCTION.search(texte[max(0, debut - 24):debut]):
                 # trSelon(clé, contexte) et trPhrase (modèles) ont leurs propres
@@ -122,8 +158,13 @@ def inventaire(racine: Path = RACINE, motif: str = "*.cpp") -> Dict[str, List[st
 
 
 def main() -> int:
-    arguments = [a for a in sys.argv[1:] if a != "--entetes"]
-    comptes = inventaire(motif="*.h" if "--entetes" in sys.argv[1:] else "*.cpp")
+    options = [a for a in sys.argv[1:] if a.startswith("--")]
+    arguments = [a for a in sys.argv[1:] if not a.startswith("--")]
+    regle = next((o.split("=", 1)[1] for o in options if o.startswith("--regle=")), "stricte")
+    if regle not in REGLES:
+        print(f"règle inconnue : {regle} (attendu : {', '.join(REGLES)})", file=sys.stderr)
+        return 2
+    comptes = inventaire(motif="*.h" if "--entetes" in options else "*.cpp", regle=regle)
     print("   ".join(f"{c} {len(v)}" for c, v in comptes.items()))
     for categorie in arguments:
         for entree in comptes.get(categorie.upper(), []):
