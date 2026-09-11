@@ -317,6 +317,15 @@ public:
             // la boîte « Que faire de ce fichier ? » n'avait aucun autre chemin.
             if (const char* depot = std::getenv("VSM_DEPOSER"); depot != nullptr && *depot)
                 content->dropFileForCapture(juce::File::getCurrentWorkingDirectory().getChildFile(depot));
+            // VSM_NAVIGATEUR=geste:référence;… (D99) : le double-clic et le dépôt du
+            // navigateur, par les mêmes fonctions que la souris -- APRÈS VSM_MENU,
+            // qui ajoute la piste visée.
+            if (const char* nav = std::getenv("VSM_NAVIGATEUR"); nav != nullptr && *nav) {
+                juce::StringArray liste;
+                liste.addTokens(juce::String::fromUTF8(nav), ";", "");
+                for (const auto& g : liste)
+                    if (g.trim().isNotEmpty()) content->runBrowserGestureForCapture(g.trim());
+            }
             // VSM_MENU_CONTEXTE=quel:libellé;… (D91) : les menus du clic droit, par la
             // même fonction que le clic -- APRÈS l'import audio, dont le clip est
             // celui que vise « clip-audio ».

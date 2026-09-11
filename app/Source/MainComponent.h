@@ -142,6 +142,10 @@ public:
     bool runContextMenuForCapture(const juce::String& entree);
     /// D91 : VSM_DEPOSER=fichier -- un dépôt de fichier, par `filesDropped`.
     void dropFileForCapture(const juce::File& fichier);
+    /// D99 : VSM_NAVIGATEUR=geste:référence -- le double-clic (`double-clic`) ou
+    /// le dépôt sur l'arrangement (`depot`, au tick 0) d'une entrée du
+    /// navigateur, sur la piste choisie, par les mêmes fonctions que la souris.
+    bool runBrowserGestureForCapture(const juce::String& geste);
     bool runKeyForCapture(const juce::String& description) {
         const juce::KeyPress touche = juce::KeyPress::createFromDescription(description);
         if (!touche.isValid()) return false;

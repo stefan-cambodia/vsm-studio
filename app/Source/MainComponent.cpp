@@ -6163,7 +6163,7 @@ void MainComponent::refreshBrowser() {
         entree.kind = vsm::interchange::BrowserItemKind::Machine;
         entree.name = nom;
         entree.reference = identifiant;
-        entree.origin = identifiant.rfind("vsm.", 0) == 0 ? "Parc VSM" : "Plugin tiers";
+        entree.origin = (identifiant.rfind("vsm.", 0) == 0 ? tr("Parc VSM") : tr("Plugin tiers")).toStdString();
         entrees.push_back(std::move(entree));
     }
 
@@ -6171,11 +6171,11 @@ void MainComponent::refreshBrowser() {
     // ceux du morceau ouvert, donc ceux qu'on cherche en priorité.
     if (currentProjectFolder_ != juce::File())
         vsm::interchange::indexFolder(currentProjectFolder_.getFullPathName().toStdString(),
-                                       "Projet", entrees);
+                                       tr("Projet").toStdString(), entrees);
     const juce::String bibliotheque =
         vsm::app::ui::UiScale::properties().getValue("dossierBibliotheque", "");
     if (bibliotheque.isNotEmpty())
-        vsm::interchange::indexFolder(bibliotheque.toStdString(), "Bibliothèque", entrees);
+        vsm::interchange::indexFolder(bibliotheque.toStdString(), tr(u8"Bibliothèque").toStdString(), entrees);
 
     browserPanel_.setItems(std::move(entrees));
 }
@@ -6183,9 +6183,9 @@ void MainComponent::refreshBrowser() {
 void MainComponent::applyBrowserItem(const vsm::interchange::BrowserItem& item,
                                       size_t trackIndex) {
     if (trackIndex >= project_.tracks.size()) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, "Navigateur",
-            juce::String::fromUTF8(u8"Choisissez d'abord une piste."));
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr("Navigateur"),
+            tr(u8"Choisissez d'abord une piste."));
         return;
     }
     using Kind = vsm::interchange::BrowserItemKind;
@@ -6199,16 +6199,16 @@ void MainComponent::applyBrowserItem(const vsm::interchange::BrowserItem& item,
             const auto lu = vsm::interchange::parseEffectPreset(
                 juce::File(chemin).loadFileAsString().toStdString());
             if (!lu.success) {
-                juce::AlertWindow::showMessageBoxAsync(
-                    juce::AlertWindow::WarningIcon, "Preset d'effet illisible",
-                    juce::String::fromUTF8(lu.error.c_str()));
+                montrerBoite(
+                    juce::AlertWindow::WarningIcon, tr("Preset d'effet illisible"),
+                    vsm::app::ui::trPhrase(juce::String::fromUTF8(lu.error.c_str())));
                 return;
             }
             if (!vsm::audio::effect::EffectFactory::create(lu.preset.type)) {
-                juce::AlertWindow::showMessageBoxAsync(
-                    juce::AlertWindow::WarningIcon, juce::String::fromUTF8(u8"Preset d'effet non appliqué"),
-                    juce::String::fromUTF8(u8"L'effet « ") + juce::String::fromUTF8(lu.preset.type.c_str())
-                        + juce::String::fromUTF8(u8" » n'est pas disponible."));
+                montrerBoite(
+                    juce::AlertWindow::WarningIcon, tr(u8"Preset d'effet non appliqué"),
+                    tr(u8"L'effet « %1 » n'est pas disponible.")
+                        .replace("%1", juce::String::fromUTF8(lu.preset.type.c_str())));
                 return;
             }
             beginProjectEdit(juce::String::fromUTF8(u8"Ajouter un preset d'effet"));
@@ -6232,9 +6232,9 @@ void MainComponent::applyBrowserItem(const vsm::interchange::BrowserItem& item,
             const auto lu = vsm::interchange::parseSynthPreset(
                 fichier.loadFileAsString().toStdString());
             if (!lu.success) {
-                juce::AlertWindow::showMessageBoxAsync(
-                    juce::AlertWindow::WarningIcon, "Preset illisible",
-                    juce::String::fromUTF8(lu.error.c_str()));
+                montrerBoite(
+                    juce::AlertWindow::WarningIcon, tr("Preset illisible"),
+                    vsm::app::ui::trPhrase(juce::String::fromUTF8(lu.error.c_str())));
                 return;
             }
             // LE PRESET DIT SA MACHINE, ET ON LA MET SI ELLE MANQUE. Appliquer
@@ -6250,11 +6250,10 @@ void MainComponent::applyBrowserItem(const vsm::interchange::BrowserItem& item,
             }
             auto* machine = audioEngine_.processGraph().trackInstrument(trackIndex);
             if (machine == nullptr) {
-                juce::AlertWindow::showMessageBoxAsync(
-                    juce::AlertWindow::WarningIcon, "Preset non appliqué",
-                    juce::String::fromUTF8(u8"La machine « ")
-                        + juce::String::fromUTF8(lu.preset.pluginId.c_str())
-                        + juce::String::fromUTF8(u8" » n'est pas disponible."));
+                montrerBoite(
+                    juce::AlertWindow::WarningIcon, tr(u8"Preset non appliqué"),
+                    tr(u8"La machine « %1 » n'est pas disponible.")
+                        .replace("%1", juce::String::fromUTF8(lu.preset.pluginId.c_str())));
                 return;
             }
             const auto rapport = vsm::interchange::applyPreset(lu.preset, *machine,
@@ -6277,9 +6276,9 @@ void MainComponent::applyBrowserItem(const vsm::interchange::BrowserItem& item,
             if (echantillons.aQuelqueChoseADire())
                 reserves.add(juce::String::fromUTF8(echantillons.summary().c_str()));
             if (!reserves.isEmpty()) {
-                juce::AlertWindow::showMessageBoxAsync(
-                    juce::AlertWindow::InfoIcon, "Preset appliqué, avec des reserves",
-                    reserves.joinIntoString("\n"));
+                montrerBoite(
+                    juce::AlertWindow::InfoIcon, tr(u8"Preset appliqué, avec des réserves"),
+                    vsm::app::ui::trPhrase(reserves.joinIntoString("\n")));
                 std::fputs((juce::String(u8"VSM_PRESET : réserves — ")
                             + reserves.joinIntoString(" ; ") + "\n").toRawUTF8(), stderr);
             }
@@ -6292,13 +6291,11 @@ void MainComponent::applyBrowserItem(const vsm::interchange::BrowserItem& item,
             // qui est la réponse la moins surprenante -- et on rappelle où le
             // geste EXACT se fait, puisqu'il existe désormais.
             if (placeSampleOnTrack(trackIndex, 0, juce::File(chemin)))
-                juce::AlertWindow::showMessageBoxAsync(
-                    juce::AlertWindow::InfoIcon, "Navigateur",
-                    juce::String::fromUTF8(item.name.c_str())
-                        + juce::String::fromUTF8(
-                              u8" a été posé au début de la piste.\n\nPour le poser à une mesure "
-                              u8"précise, glissez-le sur l'arrangement plutôt que de "
-                              u8"double-cliquer."));
+                montrerBoite(
+                    juce::AlertWindow::InfoIcon, tr("Navigateur"),
+                    tr(u8"%1 a été posé au début de la piste.\n\nPour le poser à une mesure précise, "
+                       u8"glissez-le sur l'arrangement plutôt que de double-cliquer.")
+                        .replace("%1", juce::String::fromUTF8(item.name.c_str())));
             return;
 
         case Kind::Profile:
@@ -6307,15 +6304,13 @@ void MainComponent::applyBrowserItem(const vsm::interchange::BrowserItem& item,
             // depuis sa façade. Le dire vaut mieux que de le faire à moitié --
             // le poser sur une piste qui n'a pas cette machine ne produirait
             // rien, et rien n'expliquerait quoi.
-            juce::AlertWindow::showMessageBoxAsync(
+            montrerBoite(
                 juce::AlertWindow::InfoIcon,
-                juce::String::fromUTF8(u8"Un profil se charge depuis sa machine"),
-                juce::String::fromUTF8(item.name.c_str())
-                    + juce::String::fromUTF8(
-                          u8"\n\nUn profil multi-échantillons se charge dans la machine qui "
-                          u8"l'emploie (vsm.multisample), depuis le Synth Rack. Le navigateur "
-                          u8"sert ici à le TROUVER :\n\n")
-                    + chemin);
+                tr(u8"Un profil se charge depuis sa machine"),
+                tr(u8"%1\n\nUn profil multi-échantillons se charge dans la machine qui l'emploie "
+                   u8"(vsm.multisample), depuis le Synth Rack. Le navigateur sert ici à le TROUVER :\n\n%2")
+                    .replace("%2", chemin)
+                    .replace("%1", juce::String::fromUTF8(item.name.c_str())));
             return;
     }
 }
@@ -6350,6 +6345,35 @@ void MainComponent::applyBrowserDropAt(size_t trackIndex, vsm::midi::Tick tick,
     applyBrowserDrop(trackIndex, description);
 }
 
+bool MainComponent::runBrowserGestureForCapture(const juce::String& geste) {
+    // D99 : LE DOUBLE-CLIC ET LE DÉPÔT DU NAVIGATEUR, sans souris. La liste est
+    // refaite comme son ouverture la refait, et la référence y est CHERCHÉE : une
+    // entrée que le navigateur ne montre pas n'est pas un geste possible, et le
+    // banc ne l'invente pas.
+    const juce::String quoi = geste.upToFirstOccurrenceOf(":", false, false).trim();
+    const juce::String reference = geste.fromFirstOccurrenceOf(":", false, false).trim();
+    if (quoi != "double-clic" && quoi != "depot") {
+        std::fputs((juce::String("VSM_NAVIGATEUR : geste inconnu : ") + quoi + "\n").toRawUTF8(), stderr);
+        return false;
+    }
+    refreshBrowser();
+    const size_t piste = trackList_.selectedTrackIndex();
+    for (const auto& entree : browserPanel_.visibleItems()) {
+        if (juce::String::fromUTF8(entree.reference.c_str()) != reference) continue;
+        std::fputs((juce::String("VSM_NAVIGATEUR : ") + quoi + " " + reference + " sur la piste "
+                    + juce::String(static_cast<juce::int64>(piste)) + "\n").toRawUTF8(), stderr);
+        if (quoi == "double-clic")
+            applyBrowserItem(entree, piste);
+        else
+            applyBrowserDropAt(piste, 0, vsm::app::ui::BrowserComponent::dragDescriptionFor(entree));
+        return true;
+    }
+    std::fputs((juce::String("VSM_NAVIGATEUR : ") + reference + juce::String(u8" absent du navigateur (")
+                + juce::String(static_cast<int>(browserPanel_.visibleItems().size()))
+                + juce::String(u8" entrées)\n")).toRawUTF8(), stderr);
+    return false;
+}
+
 bool MainComponent::placeSampleOnTrack(size_t trackIndex, vsm::midi::Tick tick,
                                         const juce::File& fichier) {
     if (trackIndex >= project_.tracks.size() || !fichier.existsAsFile()) return false;
@@ -6359,12 +6383,11 @@ bool MainComponent::placeSampleOnTrack(size_t trackIndex, vsm::midi::Tick tick,
     // échantillon posé dans un projet jamais enregistré n'aurait nulle part où
     // être écrit, et le projet rouvrirait muet.
     if (currentProjectFolder_ == juce::File()) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, juce::String::fromUTF8(u8"Projet jamais enregistré"),
-            juce::String::fromUTF8(
-                u8"Un échantillon posé sur une piste est COPIÉ dans le dossier du projet : tous "
-                u8"les chemins y sont relatifs, et c'est ce qui permet de le rouvrir ailleurs.\n\n"
-                u8"Enregistrez le projet, puis reposez le fichier."));
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Projet jamais enregistré"),
+            tr(u8"Un échantillon posé sur une piste est COPIÉ dans le dossier du projet : tous "
+               u8"les chemins y sont relatifs, et c'est ce qui permet de le rouvrir ailleurs.\n\n"
+               u8"Enregistrez le projet, puis reposez le fichier."));
         return false;
     }
 
@@ -6373,13 +6396,12 @@ bool MainComponent::placeSampleOnTrack(size_t trackIndex, vsm::midi::Tick tick,
     // veut, mais ce n'est jamais ce qu'on veut sans le savoir.
     auto& piste = project_.tracks[trackIndex];
     if (piste.kind != Track::Kind::Audio && !piste.notes.empty()) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::WarningIcon, juce::String::fromUTF8(u8"Piste déjà occupée"),
-            juce::String::fromUTF8(u8"« ") + juce::String(piste.name)
-                + juce::String::fromUTF8(u8" » porte ") + juce::String(static_cast<int>(piste.notes.size()))
-                + juce::String::fromUTF8(u8" note(s) : en faire une piste audio les perdrait.\n\n"
-                                          u8"Posez l'échantillon sur une piste vide, ou sur une "
-                                          u8"piste audio."));
+        montrerBoite(
+            juce::AlertWindow::WarningIcon, tr(u8"Piste déjà occupée"),
+            tr(u8"« %1 » porte %2 note(s) : en faire une piste audio les perdrait.\n\n"
+               u8"Posez l'échantillon sur une piste vide, ou sur une piste audio.")
+                .replace("%2", juce::String(static_cast<int>(piste.notes.size())))
+                .replace("%1", juce::String(piste.name)));
         return false;
     }
 
@@ -6401,10 +6423,9 @@ bool MainComponent::placeSampleOnTrack(size_t trackIndex, vsm::midi::Tick tick,
         } while (destination.existsAsFile());
     }
     if (!destination.existsAsFile() && !fichier.copyFileTo(destination)) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::WarningIcon, juce::String::fromUTF8(u8"Copie impossible"),
-            juce::String::fromUTF8(u8"Impossible de copier ") + fichier.getFileName()
-                + juce::String::fromUTF8(u8" dans le dossier du projet."));
+        montrerBoite(
+            juce::AlertWindow::WarningIcon, tr("Copie impossible"),
+            tr("Impossible de copier %1 dans le dossier du projet.").replace("%1", fichier.getFileName()));
         return false;
     }
 
@@ -6415,9 +6436,9 @@ bool MainComponent::placeSampleOnTrack(size_t trackIndex, vsm::midi::Tick tick,
                                                               : 48000.0;
     auto lu = vsm::audio::io::loadAudioTrack(destination.getFullPathName().toStdString(), sr);
     if (!lu.success || !lu.source) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::WarningIcon, juce::String::fromUTF8(u8"Échantillon illisible"),
-            juce::String::fromUTF8(lu.error.c_str()));
+        montrerBoite(
+            juce::AlertWindow::WarningIcon, tr(u8"Échantillon illisible"),
+            vsm::app::ui::trPhrase(juce::String::fromUTF8(lu.error.c_str())));
         return false;
     }
     const double duree = static_cast<double>(lu.source->frames()) / sr;
@@ -6431,13 +6452,12 @@ bool MainComponent::placeSampleOnTrack(size_t trackIndex, vsm::midi::Tick tick,
     // chose qui n'a pas eu lieu défait le geste d'avant.
     const juce::String relatif = "audio/" + destination.getFileName();
     if (!piste.audio.empty() && piste.audio.path != relatif.toStdString()) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, juce::String::fromUTF8(u8"Piste déjà pourvue"),
-            juce::String::fromUTF8(u8"« ") + juce::String(piste.name)
-                + juce::String::fromUTF8(u8" » joue déjà ")
-                + juce::String(piste.audio.path.c_str())
-                + juce::String::fromUTF8(u8".\n\nUne piste porte UN fichier, découpé en clips : "
-                                          u8"posez celui-ci sur une autre piste."));
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Piste déjà pourvue"),
+            tr(u8"« %1 » joue déjà %2.\n\nUne piste porte UN fichier, découpé en clips : "
+               u8"posez celui-ci sur une autre piste.")
+                .replace("%2", juce::String(piste.audio.path.c_str()))
+                .replace("%1", juce::String(piste.name)));
         return false;
     }
 
@@ -7554,6 +7574,10 @@ void MainComponent::retraduire() {
     midiLearnPanel_.retraduire();
     refreshMidiLearnList();
     browserPanel_.retraduire();
+    // D99 : LES ORIGINES DES ENTRÉES sont écrites dans la langue de la liste --
+    // le filtre de recherche les lit, il doit trouver les mots qu'on voit. La
+    // liste se refait donc, si le navigateur a déjà été ouvert.
+    if (browserWindow_) refreshBrowser();
     // D94 : LES PANNEAUX TOUJOURS VISIBLES -- le mixeur, les trois voies, la
     // liste d'événements et le rack. Ce que les autres DESSINENT (piano roll,
     // arrangement, spectre) suit par le `repaint()` final.

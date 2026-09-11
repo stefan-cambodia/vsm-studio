@@ -13296,3 +13296,160 @@ illisible viennent d'`interchange/` et passent par `trPhrase`.
 La table passe à **1 128** paires (+12). `VintageSynthMidiStudio` et
 `vsm-ui-preview` compilent ; suites C++ vertes (330 cœur, 1 291 audio,
 297 interchange, 25 CLAP, 11 panneaux).
+
+### Phase D99 — A9 : le navigateur (11/09/2026)
+
+**LE LOT.** Après le groove, le groupe suivant de `MainComponent` : le
+navigateur — `refreshBrowser` (les origines des entrées), `applyBrowserItem`
+(le double-clic : huit boîtes) et `placeSampleOnTrack` (le dépôt d'un
+échantillon : cinq boîtes). Aucune de ces boîtes ne s'ouvrait depuis le banc :
+elles demandent un double-clic ou un glisser dans une fenêtre flottante.
+
+**LA COMMANDE DE BANC.** `VSM_NAVIGATEUR=geste:référence[;…]`, geste
+`double-clic` ou `depot`. Elle refait la liste du navigateur comme son
+ouverture la refait (`refreshBrowser`), y cherche l'entrée dont la référence
+est celle donnée — le chemin d'un fichier, l'identifiant d'une machine —, et
+appelle la MÊME fonction que le geste : `applyBrowserItem` (le double-clic,
+`onApply`) ou `applyBrowserDropAt` au tick 0 (le dépôt sur l'arrangement),
+sur la piste choisie. Une référence que la liste ne porte pas est dite sur la
+sortie d'erreur, jamais fabriquée : le banc ne doit pas pouvoir faire ce que
+l'utilisateur ne peut pas. Elle passe après `VSM_MENU`, qui ajoute la piste
+visée.
+
+**LES DÉCISIONS.**
+
+1. **Les origines se traduisent à la source**, dans `refreshBrowser`, pas au
+   dessin : le filtre de recherche lit l'origine, et il doit trouver les mots
+   qu'on voit. Au changement de langue, `retraduire()` refait la liste si la
+   fenêtre du navigateur existe.
+2. **Le titre de la fenêtre « Navigateur » reste hors du lot.** `PanelWindow`
+   retient sa position sous son titre (`fenetre.<titre>` dans les
+   préférences) : traduire le titre ferait perdre à l'utilisateur la position
+   qu'il a réglée, au premier changement de langue. Les neuf autres fenêtres
+   flottantes sont dans le même cas, et aucune n'a de titre traduit. D100
+   sépare la clé du titre, pour toutes à la fois.
+3. **« Preset appliqué, avec des reserves » prend son accent** : c'est la
+   seule différence française voulue, déclarée ici avant la mesure.
+4. **« Projet jamais enregistré » passe par `tr()`** dans
+   `placeSampleOnTrack` — l'un des trois faux TABLE nommés par D96. Les deux
+   autres (`startRecording`, `importAudioFileOnNewTrack`) restent à leur lot.
+
+**L'ANGLE MORT DE L'INVENTAIRE, vu dans ce lot.** L'inventaire en relève 18
+lignes ÉCRAN. Il en manque huit affichages : « Navigateur » (deux titres),
+« Preset d'effet illisible », « L'effet « … » n'est pas disponible. »,
+« Preset illisible », « Copie impossible », « Parc VSM », « Plugin tiers ».
+Aucun ne porte d'accent ni un mot de sa liste. Ils sont traduits avec le lot
+et comptés à la main ; l'angle mort sur tout `app/Source` se mesure à part
+(D101), avec son hypothèse, pour que la règle de comptage ne change pas au
+milieu d'une comparaison.
+
+**ATTENDU, écrit avant la mesure.** Banc : quatre lancements, français puis
+anglais, témoin (D99 sans ses traductions : `montrerBoite()` et la commande
+de banc en place) puis D99 ; HOME isolé dont la bibliothèque est un dossier du
+brouillon (deux échantillons, un WAV cassé, un preset illisible, un preset à
+paramètre inconnu, un preset d'effet de type inconnu, un preset d'effet
+illisible, un profil).
+
+| lancement | projet | gestes | boîtes |
+|---|---|---|---|
+| sans-piste | neuf | double-clic `vsm.tb303` | 1 : « Choisissez d'abord une piste. » |
+| jamais-enregistre | neuf + piste MIDI | dépôt `bip.wav` | 1 : « Projet jamais enregistré » |
+| presets | copie de demo-project | double-clic sur les cinq fichiers de réglage, puis dépôt de `bip.wav` sur la piste 1 (qui a des notes) | 6 : illisible, réserves, effet absent, effet illisible, profil, piste occupée |
+| echantillons | copie + piste MIDI | double-clic `bip.wav`, double-clic `bop.wav`, dépôt `casse.wav` | 3 : posé, piste déjà pourvue, échantillon illisible |
+
+1. **L'inventaire** : ÉCRAN **147 → 129** (−18) ; 0 ÉCRAN et 0 SANS_PAIRE
+   dans les trois fonctions ; TABLE **214 → 213** (« Projet jamais
+   enregistré »). Les libellés d'annulation du lot restent TABLE : ils sont
+   traduits à l'affichage par `trGeste`.
+2. **Les boîtes se lisent** : 1, 1, 6, 3, dans les deux langues. Si la
+   première ne vient pas, c'est qu'un projet neuf a déjà une piste : je le
+   dirai, sans changer de cas.
+3. **L'anglais** : aucun mot français dans les boîtes, hors des données
+   (noms de fichiers, chemins, nom d'un preset). Les messages venus
+   d'`interchange/` (erreur de lecture, réserves d'un preset) passent par
+   `trPhrase` ; celui qui resterait français faute de modèle est nommé.
+4. **Le français** : les boîtes identiques au témoin, sauf l'accent de la
+   décision 3 ; la liste de la fenêtre principale identique.
+5. **Les origines** : la fenêtre du navigateur, photographiée
+   (`VSM_MENU=Navigateur` / `Browser`, `VSM_CAPTURE_PANNEAUX`), dit
+   « Bibliothèque / presets » en français et « Library / presets » en
+   anglais.
+
+**VU DANS LE TÉMOIN, écrit avant la mesure d'après.** Le témoin a tourné
+(8 lancements, préférences intactes) ; deux choses s'y lisent, qui changent
+la lecture de l'attendu :
+
+- **`sans-piste` : 0 boîte.** Le cas prévu dans l'attendu 2 : un projet neuf
+  a déjà une piste (la 0), et le double-clic sur `vsm.tb303` y a changé la
+  machine — sans boîte, ce qui est le bon comportement. « Choisissez d'abord
+  une piste. » ne s'atteint pas depuis un projet neuf ; son texte se lit dans
+  le code et la table. Le cas reste au banc, attendu à 0 boîte dans les deux
+  langues.
+- **Le titre « Preset appliquÃ©, avec des reserves ».** Écrit en littéral
+  sans `u8`, il passe par `juce::String(const char*)`, qui ne lit pas l'UTF-8 :
+  la boîte française montrait des octets. `tr(u8"…")` le répare. C'est donc
+  une SECONDE différence française, voulue elle aussi : « appliquÃ© » →
+  « appliqué » (avec l'accent de la décision 3). « Preset non appliqué »
+  a le même défaut, mais le banc n'ouvre pas sa boîte.
+
+**LE RÉSULTAT, ATTENDU PAR ATTENDU (11/09/2026). Banc : quatre lancements**
+par langue, témoin puis D99, écran verrouillé (session `LockedHint=yes` : les
+boîtes se lisent par `VSM_BOITE`, la photo ne sert qu'aux panneaux) ; HOME
+isolé, préférences de l'utilisateur intactes (`cmp`, deux séries).
+
+1. **L'inventaire — tenu.** ÉCRAN **147 → 129** (−18), 0 ÉCRAN et 0
+   SANS_PAIRE dans les trois fonctions ; TABLE **214 → 213** (« Projet jamais
+   enregistré »). Restent TABLE dans le lot les trois libellés d'annulation,
+   traduits à l'affichage par `trGeste`. TERMINAL **98 → 100** : les deux
+   lignes que la commande de banc écrit sur la sortie d'erreur (« sur la
+   piste », « absent du navigateur (… entrées) ») — non prévues, et à leur
+   place. Les huit affichages que l'inventaire ne voit pas passent tous par
+   `tr()`, comptés à la main.
+2. **Les boîtes — tenu.** 0, 1, 6 et 3, dans les deux langues, témoin et
+   D99 : chaque geste a été joué (`VSM_NAVIGATEUR : … sur la piste N`), aucune
+   référence absente de la liste. `sans-piste` à 0, comme le témoin l'avait
+   annoncé.
+3. **L'anglais — tenu, avec un reste nommé.** Toutes les boîtes sont en
+   anglais, jusqu'aux messages d'`interchange/` et d'`audio/` : « invalid
+   JSON: '"' expected (position 2) », « JSON root: object expected »,
+   « 9 parameter(s) applied, 1 unsupported: parametre.inexistant »,
+   « unreadable audio (…/casse.wav): RIFF/WAVE header missing ». Il a fallu
+   pour cela 8 clés (les messages de l'analyseur JSON, la racine d'un preset,
+   l'en-tête WAV) et 5 modèles, et « audio illisible (%1) : %2 » est passé à
+   `%P2` : sa cause est une phrase, pas une donnée — une cause sans modèle
+   revient telle quelle. Deux mots français restent, et ce sont des données :
+   `projet` dans le chemin de la copie du banc, et **« Piste 3 »** — le nom
+   que la piste a reçu à sa création, ÉCRIT dans le projet en français alors
+   que l'interface est anglaise (la liste des pistes, elle, ne traduit
+   « Piste %1 » que pour un nom vide). Piste pour plus tard : le nom par
+   défaut d'une piste neuve est une donnée fabriquée par l'application, pas
+   par l'utilisateur.
+4. **Le français — tenu.** Les boîtes identiques au témoin sauf une, et
+   c'est la différence déclarée : « Preset appliquÃ©, avec des reserves » →
+   « Preset appliqué, avec des réserves ». Les listes de la fenêtre
+   principale identiques dans les deux langues (151, 160, 175, 182 textes).
+   Les octets abîmés ne sont pas un défaut répandu à l'écran : 0 texte abîmé
+   dans les listes des séries D98 et D99, 2 boîtes (ce titre, en français et
+   en anglais) ; la classe — un littéral accentué sans `u8` qui passe par
+   `juce::String(const char*)` — reste à compter sur tout `app/Source` avec
+   une règle propre, que le premier balayage (759 candidats, table et outils
+   compris) n'avait pas.
+5. **Les origines — tenu pour les machines.** La fenêtre du navigateur,
+   photographiée, dit « VSM machines » en anglais et « Parc VSM » en français
+   sur ses vingt premières lignes. Les entrées de la bibliothèque sont sous le
+   pli : « Library » se lit dans la table et le code, pas sur l'image. La même
+   image montre ce que D99 ne traduit pas : les descriptions des machines
+   (« Multisample (acoustique échantillonné) »), qui viennent du registre —
+   leur lot est déjà nommé.
+
+**Les boîtes que le banc n'ouvre pas** : « Choisissez d'abord une piste. »
+(un projet neuf a une piste), « Copie impossible » (il faudrait un dossier
+sans droit d'écriture), « Preset non appliqué » (une machine absente du
+parc). Leur texte se lit dans le code et la table.
+
+La table passe à **1 159** paires (+31 : 23 pour le lot, 8 pour les messages
+d'`interchange/` et d'`audio/`), **89** modèles (+5). `VintageSynthMidiStudio`
+et `vsm-ui-preview` compilent ; suites C++ vertes (330 cœur, 1 291 audio,
+297 interchange, 25 CLAP, 11 panneaux). `MainComponent` : 113 chaînes à
+l'inventaire.
+
