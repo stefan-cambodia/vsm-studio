@@ -1089,6 +1089,63 @@ les parties ne sont pas fondues DANS des registres, elles le sont dans un
 stem qu'aucun registre n'a touché. L'hypothèse pour le chantier suivant
 s'écrira au verdict final, avec les courses 2 et 3.
 
+#### La course 2 — B3, `--modele htdemucs` (12/09, code 0 à 05:51:45)
+
+**La course.** **Distance 0,2342**. **7 pistes jouantes et 1 bus**, 7 656
+notes. Temps : 11 565 s de chaîne pour 20 029 s d'horloge — l'écart (8 464 s)
+est la veille de la nuit, 01:19:27 → 03:40:28, lue au journal du système.
+
+**Ce que la séparation a fait** — part de chaque stem de `htdemucs` (quatre
+sources) dans l'énergie de chaque section (%), la bande 400 Hz-5 kHz entre
+parenthèses là où elle change la lecture :
+
+| stem | 0-28 | 28-57 | 57-114 | 114-128 | 128-213 | 213-270 | 270-370 | 370-398 | 398-456 | morceau |
+|---|---|---|---|---|---|---|---|---|---|---|
+| drums | 0,3 | 0,0 | 0,1 | 60,9 | 64,7 | 74,3 | 65,6 | 74,3 | 71,3 | 65,0 |
+| bass | **96,3** | 44,8 | 21,7 | 19,4 | 19,4 | 25,0 | 19,6 | 25,3 | 19,5 | 21,4 |
+| other | 3,4 | **55,2** (99,1) | **77,8** (99,4) | 19,4 | 15,9 | 0,7 | 14,8 | 0,3 | 9,2 | 13,6 |
+| vocals | 0,0 | 0,0 | 0,4 | 0,4 | 0,0 | 0,0 | 0,0 | 0,0 | 0,0 | **0,0** |
+
+À quatre stems, `other` prend tout le médium DÈS 28 s (99 % de la bande
+400 Hz-5 kHz de 28 à 114 s) : le piano y est avec la nappe, les cordes et le
+lead, sans le détour par un stem `piano` qui les tenait quelques secondes en
+course 1. Et **la nappe de l'intro tombe encore dans `bass`** (96,3 %),
+comme en course 1 : ce n'est donc pas le nombre de sources qui l'y met.
+
+**Les pistes.** `bass` → **`vsm.piano`** (D = 0,2288 ; F1-F5, polyphonie
+1,26) ; `other` → **`vsm.phasedist`** (D = 0,1735 ; 4 232 notes, F1-G#6,
+polyphonie 2,89) ; cinq pièces de batterie sur `vsm.tr909` (kick+kick2 932
+frappes, hihat 608, snare 178, percussion 58, **tom 10**).
+
+**La confrontation aux prédictions du § 12.2** :
+
+| prédit | obtenu | |
+|---|---|---|
+| `other` ≥ 30 % de l'énergie | **13,6 %** | réfuté — la batterie prend 65 % dès 114 s |
+| `other` fourre-tout → 4 voix | polyphonie **2,89** (< 3) : PAS fourre-tout ; `registres_par_vides` et `separer_en_voix` jamais appelés ; **1 piste** | réfuté |
+| batterie 3 pièces | 5 | réfuté (au-dessus) |
+| `vocals` 1 piste | 0,0 % d'énergie, sous le seuil de 0,5 % : **aucune** | réfuté |
+| compte 9 (8 à 10) | **7 pistes + 1 bus** | tenu, à la borne basse |
+| course 1 plus proche de 2 à 8 % | course 1 **0,1935**, course 2 **0,2342** : la course 2 est **21,0 % plus loin** (la course 1 17,4 % plus près) | direction tenue, **écart bien plus grand que prédit** |
+
+**Ce que B3 en dit.** La règle écrite d'avance : « course 2 plus loin d'au
+moins 2 % → B3 CONFIRME le défaut sur un troisième original ». L'écart est
+de 21 % : **`htdemucs_6s` par défaut est confirmé sur un troisième
+original**, celui qui a un vrai piano et pas de guitare. À noter pour la
+réserve du § 4.2 : le gain ne vient pas d'un stem `piano` qui tiendrait le
+motif — il ne le tient qu'à nu, 28 à 57 s (course 1) — mais du partage
+général, et il est ici trois fois plus grand que sur *Us and Them*.
+
+**Fondues et inventées.** `other` (`vsm.phasedist`) porte piano, nappe,
+cordes et lead : une piste pour quatre parties, une de plus qu'en course 1,
+puisque le piano n'a plus de stem à lui. `bass` (`vsm.piano` — la machine
+piano joue la BASSE et la nappe) en porte deux. Inventées : la batterie donne
+cinq pièces là où l'original en a trois, et le verdict du mélange dit le
+morceau MEILLEUR sans trois d'entre elles — hihat (0,2334 contre 0,2734),
+percussion (0,2130), snare (0,2602) —, toutes conservées parce que couper
+est une décision humaine. **Aucune piste `vocals` ni `guitar` : à quatre
+stems, les deux inventions de la course 1 disparaissent.**
+
 ## 5. Critères d'acceptation
 
 ```
