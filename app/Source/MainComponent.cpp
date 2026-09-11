@@ -323,7 +323,16 @@ MainComponent::MainComponent()
     // D23.5 : l'écoute en mono, du bouton MONO comme du menu Mixage.
     mixer_.onMonoListen = [this](bool on) { audioEngine_.processGraph().masterBus().setMonoListen(on); };
     mixer_.onMasterEnable = [this](bool on) {
+        // D146 : UN CLIC, UN PAS. Le pas s'ouvre AVANT la bascule : sa photo
+        // porte donc l'activation d'AVANT (depuis D144, `beginProjectEdit`
+        // recopie le MASTER du moteur), et Ctrl+Z la rend. Sans cela,
+        // l'activation était le seul paramètre du MASTER qu'aucune annulation ne
+        // reprenait, alors qu'elle est sauvée dans le projet (A24, mesuré D145).
+        beginProjectEdit("Master");
         audioEngine_.processGraph().masterBus().setEnabled(on);
+        // Et le modèle suit le moteur, comme pour les boutons (D144) : sans quoi
+        // le pas SUIVANT photographierait une activation périmée.
+        project_.masterParameters = vsm::interchange::describeMasterBus(audioEngine_.processGraph().masterBus());
     };
 
     // MIDI Learn : en mode learn, bouger un knob du synth rack désigne la

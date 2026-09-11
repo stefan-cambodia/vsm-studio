@@ -17196,3 +17196,34 @@ d'après. Un A/B dont le témoin serait d'un autre code ne vaudrait rien.
 **Ce que la phase ne fait pas.** Elle ne touche pas à l'écoute mono : D23.5 en a
 fait un outil de séance, et D145 a vérifié qu'elle survit à l'annulation. La
 rendre annulable serait défaire une décision écrite, pas corriger un défaut.
+
+**RÉSULTAT (12/09) — LES SEPT ATTENDUS TIENNENT.** Témoin : série 3 sur le
+binaire de D145 (06:10:52), prise JUSTE avant le correctif ; après : binaire de
+06:18:39, séries 4 et 5, identiques l'une à l'autre. Anglais, même projet, même
+banc.
+
+| cas | témoin (série 3, avant) | après (séries 4 et 5) |
+|---|---|---|
+| (a) `cliquer:master.MASTER` | 0.00 | 0.00 |
+| (b) (a) puis Ctrl+Z | 0.00 | **1.00** — l'activation rendue |
+| (c) (a) puis `volume:0.5` puis Ctrl+Z | master 0.00, volume -0.9 dB | master 0.00, volume -0.9 dB |
+| (f) témoin de (c), sans annulation | volume -6.0 dB | volume -6.0 dB |
+| (g) (c) puis une SECONDE annulation | master **0.00** | master **1.00**, volume -0.9 dB |
+| (d) contrôle D144 : `doubleclic:master.LOW` puis Ctrl+Z | 6.00 | 6.00 |
+| (e) écoute mono au menu puis Ctrl+Z | mono 1, 0 clé mono | mono 1, 0 clé mono |
+
+**Deux chiffres changent, et seulement eux** : (b) et (g) — exactement les deux
+cas où l'on annule un clic sur le bouton MASTER. (c) montre qu'une annulation
+reprend UN geste et pas deux : le volume revient, l'activation reste éteinte,
+et il faut la seconde annulation de (g) pour la rendre. C'est le comportement
+d'un DAW, pas un effet de bord : chaque geste a son pas.
+
+Suites C++ vertes (330, 1 291, 297, 11, 25), compilées à `-j 2` pendant la
+course 3 de l'épreuve ; `vsm-render` intact ; préférences de l'utilisateur
+identiques par `cmp` après chacune des cinq séries. **A24 se ferme.**
+
+**Ce qui reste de la famille du MASTER et de l'annulation** : A21, les réglages
+de machine, qui ne sont pas dans le modèle et attendent la fin de l'épreuve
+Children — leur remède touche `core/` et `interchange/`, que la chaîne compte
+dans l'empreinte du moteur. L'écoute mono, elle, n'est pas un reste : D23.5 en a
+fait un outil de séance, et deux mesures (D145, D146) l'ont vérifié.
