@@ -14740,3 +14740,44 @@ fini (seule la boîte « Balayage lancé » est venue) ; délai porté à 75 s.
 3. **Rien d'autre ne bouge** : le vrai plugin donne les mêmes 24 entrées,
    dans le même ordre, témoin et D113.
 
+**LE TÉMOIN RÉFUTE L'ATTENDU N° 1, ET DANS LE MAUVAIS SENS : 0 FAUTIF SUR 4.**
+Binaire de D112, deux langues : 24 plugins, « Balayage terminé : 24
+instrument(s), 0 effet(s) trouvés. », et le catalogue porte `faulty: []`.
+Même le plugin qui TOMBE et celui qui DORT passent pour des succès à zéro
+plugin — et le balayage a duré plus de 60 s, le temps du sommeil entier,
+quand le délai par fichier est de 20 s. Deux causes de plus que celle que
+j'avais lue, toutes deux dans JUCE (`build/_deps/juce-src`, la copie que ce
+build compile), et toutes deux vérifiées dans sa source avant d'être
+écrites :
+
+- **un enfant tué par un signal rend « 0 »** : `getExitCode()`
+  (`juce_SharedCode_posix.h:1237`) ne lit le code que si `WIFEXITED` ; sinon
+  il rend 0. `abort()` dans un plugin — le cas pour lequel « toute cette
+  machinerie existe », dit le commentaire — se lit donc comme une sortie
+  propre ;
+- **le délai de 20 s ne s'applique jamais** : `scanInChildProcess` appelle
+  `readAllProcessOutput()` AVANT `waitForProcessToFinish(20000)`, et la
+  lecture boucle sur un `fread` bloquant jusqu'à la fin du flux
+  (`juce_ChildProcess.cpp:77`), c'est-à-dire jusqu'à la mort de l'enfant. Un
+  plugin qui attend un serveur de licence injoignable bloque le balayage
+  aussi longtemps qu'il attend — pour toujours s'il le faut.
+
+**DÉCISIONS AJOUTÉES, écrites avant la correction.**
+
+4. **L'enfant écrit dans un FICHIER, plus sur un tube** :
+   `--scan-plugin <plugin> <sortie>`. Le parent attend AVEC son délai, tue
+   s'il le faut, puis lit le fichier. Plus de lecture bloquante, et plus de
+   tube qui se remplit si un plugin bavarde (sa sortie standard n'est plus
+   lue par personne).
+5. **Une sentinelle de fin, `VSM_FIN_BALAYAGE`**, écrite par l'enfant en
+   dernier. Absente, l'enfant est mort en route : « tombé », avec son code
+   s'il en a rendu un, « sans code de sortie » sinon — ce qui est, sur ce
+   système, la signature d'un signal. On ne demande plus à `getExitCode()`
+   ce qu'il ne sait pas dire.
+
+**ATTENDU AJOUTÉ** : le balayage des cinq fichiers finit en **moins de
+35 s** après le lancement (le dormeur tué à 20 s), contre plus de 60 s au
+témoin — mesuré par l'heure du dernier enregistrement du catalogue, que le
+balayage réécrit après chaque fichier. Les attendus n° 2 et 3 sont
+inchangés : 4 fautifs, chacun sa raison, 24 plugins.
+
