@@ -1693,6 +1693,23 @@ void MainComponent::listTextsForCapture() {
         std::fputs(("VSM_TEXTE : " + juce::String::fromUTF8(nature) + " : " + texte + "\n").toRawUTF8(),
                    stderr);
     });
+    // D141 : VSM_VALEUR -- la valeur AFFICHÉE de chaque curseur nommé (les noms
+    // de banc de D135 à D140). Les boutons du MASTER n'ont pas de texte, et la
+    // bulle n'apparaît qu'à l'appui : ceci les lit après les gestes et les
+    // touches, au moment du relevé.
+    std::function<void(juce::Component&)> valeurs = [&valeurs](juce::Component& c) {
+        if (!c.isVisible()) return;
+        if (auto* curseur = dynamic_cast<juce::Slider*>(&c); curseur != nullptr && curseur->getName().isNotEmpty())
+            std::fputs(("VSM_VALEUR : " + curseur->getName() + " : "
+                        + curseur->getTextFromValue(curseur->getValue()) + "\n").toRawUTF8(), stderr);
+        for (auto* enfant : c.getChildren()) valeurs(*enfant);
+    };
+    valeurs(*this);
+    // Et le MASTER tel que le MOTEUR le tient : un bouton peut afficher une
+    // valeur que le moteur n'a pas (D141, à l'ouverture) -- les deux se lisent.
+    for (const auto& [nom, valeur] : vsm::interchange::describeMasterBus(audioEngine_.processGraph().masterBus()))
+        std::fputs(("VSM_MASTER_MOTEUR : " + juce::String::fromUTF8(nom.c_str()) + " : " + juce::String(valeur, 2)
+                    + "\n").toRawUTF8(), stderr);
     // LE COMPTE, ET CE QUI LE REND SUSPECT : un zéro doit se lire, pas se deviner.
     std::fputs(("VSM_TEXTES : " + juce::String(nombre) + juce::String(u8" texte(s) listé(s)")
                 + (isShowing() ? juce::String()

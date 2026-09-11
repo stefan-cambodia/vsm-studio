@@ -16897,3 +16897,31 @@ geste de piste a ramené le MASTER au dernier enregistrement. Si le LOW reste
 quel. Le remède, s'il est confirmé, a sa phase — et il se fait dans
 l'application seule, le modèle ayant déjà son champ.
 
+**RÉSULTAT (12/09) — L'ATTENDU EST OBSERVÉ SUR LE BOUTON, POUR UNE AUTRE
+RAISON QUE CELLE ÉCRITE, et le banc a trouvé un défaut plus simple.**
+Binaire de 04:35:46 (l'outil), puis 04:38:04 (l'outil étendu au moteur :
+`VSM_MASTER_MOTEUR`, le MASTER tel que le MOTEUR le tient, parce que le
+premier relevé ne s'expliquait pas sans lui).
+
+| cas | bouton LOW | moteur « EQ Low Gain » | volume de la piste |
+|---|---|---|---|
+| ouverture du projet (LOW enregistré à +6 dB) | **0.0 dB** | **6.00** | -0.9 dB |
+| double-clic sur LOW, puis `volume:0.5` | 0.0 dB | **6.00** | -6.0 dB |
+| la même chose, puis Ctrl+Z | 6.0 dB | 6.00 | -0.9 dB — annulé |
+
+1. **À l'ouverture, le moteur a le MASTER du projet, mais le bouton montre la
+   valeur d'usine.** La cause est dans l'ordre de `rebuildFromProject` : le
+   mixeur relit la tranche MASTER dans le moteur (`mixer_.setProject`,
+   ligne 11081) AVANT que le MASTER du projet soit appliqué (ligne 11186).
+   À la reconstruction suivante — celle d'une annulation —, le moteur a déjà
+   +6 dB depuis la première, et le bouton le montre : c'est tout ce qu'a
+   fait le Ctrl+Z du troisième cas. **INDEX, A22.**
+2. **Le double-clic n'a rien fait** : le bouton affichait déjà 0, sa valeur
+   d'usine, et JUCE ne notifie pas une valeur qui ne change pas. Un
+   musicien qui lit 0 dB et double-clique pour « remettre à zéro » n'obtient
+   rien — pendant que +6 dB s'applique.
+3. **Le soupçon n'est donc NI confirmé NI réfuté** : sa prémisse — le
+   double-clic ramène le MOTEUR à 0 — était fausse, à cause du défaut 1. Il
+   ne se mesurera honnêtement qu'une fois l'affichage juste ; il reste
+   écrit ici, et c'est la phase qui suivra celle d'A22.
+
