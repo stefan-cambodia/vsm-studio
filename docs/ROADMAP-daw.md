@@ -15965,3 +15965,35 @@ boîtes pour un gain de lisibilité que le chiffre ne réclame pas. Ce qui
 n'est pas mesuré ici, et le serait si l'on changeait de thème : ces nombres
 valent pour le fond sombre du thème actuel.
 
+### Phase D128 — A9 : les infobulles des panneaux que D118 n'ouvrait pas (11/09/2026)
+
+**LE RESTE D'A9 QUI S'AFFICHE.** D118 a relevé les infobulles de trois vues
+(défaut, arrangement, piano roll) : 60 distinctes, aucune française. Il a dit
+ce qu'il ne couvrait pas : les panneaux fermés au démarrage, les fenêtres
+flottantes, les façades, les boîtes. Les boîtes n'ont pas d'infobulles (leurs
+textes se lisent depuis D95, et D125 les a photographiées). Restent les
+panneaux et les fenêtres.
+
+**LE BANC.** Le projet de D118 (`children-dream-v12`), en anglais, `HOME` de
+brouillon, un lancement par vue ouverte par `VSM_VUE` : les onglets du bas
+(automation, effets, CC MIDI), la liste d'événements et la voie de tempo, les
+courbes de l'arrangement, le clavier du piano roll ; les fenêtres flottantes
+(historique, spectre, ordre de jeu, prises, tronçons, préférences) ; la
+disposition en panneaux flottants. Relevé : `VSM_TEXTE` pour la fenêtre
+principale, `VSM_FENETRE_TEXTE` pour les autres (D95), lignes de nature
+« infobulle ». Filtre : celui de D118 — accents, guillemets français,
+mots-outils, « piste », « réglage », « sélection » —, et chaque ligne qu'il
+retient est relue à la main.
+
+**ATTENDU, écrit avant la mesure.** Des infobulles NOUVELLES, absentes des 60
+de D118 — prédiction : 30 à 80 —, dont **0 à 3 françaises**. Les panneaux ont
+été traduits infobulles comprises par D94 ; les fenêtres flottantes l'ont été
+plus tard et par morceaux (D100 : leurs titres). Chaque infobulle française
+est nommée avec son fichier ; plus de 3 dirait qu'une fenêtre entière a été
+oubliée. Une vue dont le relevé compte 0 texte n'est pas une vue sans
+français : elle est nommée et relancée.
+
+Ce que D128 ne couvre toujours pas, dit d'avance : les façades des machines
+(une infobulle par bouton, la valeur lue) — un banc à part, s'il existe un
+moyen de les lister.
+
