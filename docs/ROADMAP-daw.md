@@ -14166,3 +14166,107 @@ pas où va la phrase qu'on assemble ; et la première correction de la règle
 avait le même défaut qu'elle — un « ; » écrit dans une chaîne pris pour du
 code.
 
+### Phase D107 — A9 : les boîtes du démarrage, les titres des sélecteurs, et le nom d'une piste neuve (11/09/2026)
+
+**LE LOT** (règle large : 23 ÉCRAN et 4 TABLE ; stricte : 19 et 2) :
+
+- trois boîtes du démarrage — raccourcis illisibles, associations MIDI
+  illisibles, associations écartées (`loadShortcuts`, `loadMidiLearnMappings`) ;
+- la boîte d'un import audio dans un projet jamais enregistré
+  (`importAudioFileOnNewTrack`) — son titre, « Projet jamais enregistré », est
+  l'un des deux faux TABLE de D96 qui restaient ;
+- sept titres de sélecteurs de fichier (dossier de la bibliothèque, table des
+  raccourcis, reconstruire un morceau, dossier de la chaîne, enregistrement
+  d'origine, import audio, export MIDI d'une piste) et « Réglages audio » ;
+- la boîte d'un conflit de raccourci, l'erreur d'export MIDI d'une piste ;
+- le menu des cibles d'une association MIDI (Transport, Lecture / arrêt,
+  Arrêt, Enregistrement, Boucle, « Piste N — nom », Volume, Panoramique,
+  Muet, Solo, « Départ A ») — six de ses libellés n'ont ni accent ni mot de la
+  liste : l'inventaire ne les voit pas ;
+- le nom par défaut d'une piste neuve (« Piste N », « Groupe N », « Audio N »)
+  et celui que le rack montre pour une piste sans nom ; « Couleur du clip ».
+
+**LA DÉCISION — le nom d'une piste neuve.** C'est une donnée : écrite dans le
+projet, l'utilisateur la change. Mais c'est l'application qui la fabrique, et
+une piste créée en anglais qui s'appelle « Piste 3 » est une phrase française
+dans un projet anglais (D99 l'avait relevé). Le nom par défaut se donne donc
+dans la langue de l'interface AU MOMENT de la création — « Track 3 » en
+anglais, « Piste 3 » en français comme aujourd'hui. Une fois écrit, il ne
+suit plus la langue : un nom ne se retraduit pas.
+
+**LE BANC.** HOME isolé ; quatre lancements par langue, témoin (D107 sans ses
+traductions, les boîtes par `montrerBoite()`) puis D107 : `demarrage` (les
+préférences portent des raccourcis et des associations MIDI illisibles),
+`ecartees` (une association valide sauf son contrôleur, 200), `import` (projet
+neuf, `VSM_IMPORT_AUDIO`), `nom-piste` (projet neuf, « Ajouter une piste
+MIDI »). Le reste — sélecteurs, conflit de raccourci, erreur d'export, menu
+des cibles — ne s'ouvre pas au banc : vérifié par le code et la table.
+
+**ATTENDU, écrit avant la mesure.**
+
+1. **L'inventaire** : 0 ÉCRAN dans le lot ; règle stricte ÉCRAN **70 → 51**,
+   TABLE 215 → 213 ; règle large ÉCRAN **106 → 83**, TABLE 251 → 247.
+2. **Les boîtes** : 2, 1, 1 et 0 par lancement, dans les deux langues,
+   témoin et D107. En anglais : « Unreadable shortcuts », « Unreadable MIDI
+   mappings » (et l'erreur JSON, par son modèle), « 1 saved mapping(s) … were
+   discarded », « Project never saved ».
+3. **Le nom** : en anglais, la piste ajoutée s'appelle « Track 2 » (le
+   témoin : « Piste 2 ») ; la première piste d'un projet neuf aussi, si elle
+   naît par la même fonction. En français, « Piste 2 » des deux côtés.
+4. **Le français** : identique au témoin.
+
+**VU DANS LE TÉMOIN (D107), écrit avant la mesure d'après.** Huit lancements,
+préférences intactes. Les boîtes comme prévu — 2, 1, 1, 0 —, françaises dans
+les deux langues : « Raccourcis illisibles », « Associations MIDI
+illisibles : JSON invalide : nombre attendu », « 1 association(s)
+enregistrée(s) n'ont pas été relues… écartées plutôt que devinées »,
+« Projet jamais enregistré : Un fichier audio importé est COPIÉ… ». La piste
+ajoutée s'appelle « Piste 2 » en français ET en anglais — le défaut de la
+décision, tel qu'annoncé.
+
+**LE RÉSULTAT, ATTENDU PAR ATTENDU (11/09/2026).** Témoin puis D107, huit
+lancements chacun, écran verrouillé ; préférences de l'utilisateur intactes
+(`cmp`, deux séries).
+
+1. **L'inventaire — tenu pour l'ÉCRAN, à un près pour TABLE.** ÉCRAN
+   **70 → 51** (stricte), **106 → 83** (large) ; aucune chaîne du lot ne
+   reste. TABLE 215 → 214 (stricte, 213 attendu), 251 → 248 (large, 247
+   attendu) : les partants attendus sont partis (« Lecture / arrêt »,
+   « Projet jamais enregistré », et à la large « Transport », « Associations
+   MIDI ») ; une clé est ARRIVÉE, « Piste %1 » — celle du nom d'une piste
+   neuve, choisie DANS une alternative passée à `tr()` (`tr(groupe ? … :
+   u8"Piste %1")`). L'inventaire ne reconnaît un appel à `tr()` que juste
+   avant la chaîne : elle est traduite, et comptée TABLE. Des chaînes que
+   seule la règle large voyait, quatre étaient ici, toutes françaises
+   (« Couleur du clip », « Associations MIDI illisibles », « Raccourcis
+   illisibles », « Charger l'enregistrement d'origine ( ») : l'angle mort
+   passe à 14, l'ÉCRAN réel à au moins 65.
+2. **Les boîtes — tenu.** 2, 1, 1, 0, dans les deux langues, témoin et D107.
+   En anglais : « Unreadable MIDI mappings : invalid JSON: number expected »,
+   « Unreadable shortcuts : The custom shortcuts could not be read back: the
+   original ones are restored. », « MIDI mappings : 1 saved mapping(s) could
+   not be read back: … discarded rather than guessed. », « Project never
+   saved : An imported audio file is COPIED into the project folder. Save
+   the project first (Ctrl+S). »
+3. **Le nom — tenu pour la piste ajoutée.** « Track 2 » en anglais (le
+   témoin : « Piste 2 »), « Piste 2 » en français des deux côtés. La première
+   piste d'un projet neuf ne naît PAS de cette fonction : elle s'appelle
+   « Bass » dans les deux langues — son nom vient du projet de départ, et il
+   est le même partout.
+4. **Le français — tenu.** Identique au témoin dans les quatre cas, boîtes et
+   listes de la fenêtre principale.
+
+**Ce que le banc n'ouvre pas** : les sept sélecteurs de fichier, le conflit de
+raccourci, l'erreur d'export MIDI, le menu des cibles d'une association,
+« Couleur du clip », le nom de repli du rack. Leurs textes sont des clés.
+
+**Piste pour plus tard** : des infobulles françaises écrites SANS leurs
+accents (« Armer la piste : elle recoit… », « Aucune piste armee »,
+« Correlation de phase … disparait »). Leur anglais est juste, leur français
+est faux — la classe des huit de D101.
+
+La table passe à **1 293** paires (+23). `VintageSynthMidiStudio` et
+`vsm-ui-preview` compilent ;
+suites C++ vertes (330 cœur, 1 291 audio, 297 interchange, 25 CLAP, 11
+panneaux). `MainComponent` : 35 chaînes à l'inventaire.
+

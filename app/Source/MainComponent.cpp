@@ -736,7 +736,7 @@ MainComponent::MainComponent()
         auto* selecteur = new juce::ColourSelector(
             juce::ColourSelector::showColourAtTop | juce::ColourSelector::showSliders
                 | juce::ColourSelector::showColourspace);
-        selecteur->setName("Couleur du clip");
+        selecteur->setName(tr(u8"Couleur du clip"));
         selecteur->setCurrentColour(juce::Colour(clip->colorRgba));
         selecteur->setSize(280, 320);
         selecteur->addChangeListener(new ClipColourApplier(*this, piste, clipId));
@@ -877,24 +877,25 @@ MainComponent::MainComponent()
             choix->push_back({kind, "", slot});
             menu.addItem(static_cast<int>(choix->size()), libelle);
         };
-        menu.addSectionHeader("Transport");
-        ajouter(Kind::TransportPlay, juce::String::fromUTF8(u8"Lecture / arrêt"));
-        ajouter(Kind::TransportStop, juce::String::fromUTF8(u8"Arrêt"));
-        ajouter(Kind::TransportRecord, "Enregistrement");
-        ajouter(Kind::TransportLoop, "Boucle");
+        menu.addSectionHeader(tr("Transport"));
+        ajouter(Kind::TransportPlay, tr(u8"Lecture / arrêt"));
+        ajouter(Kind::TransportStop, tr(u8"Arrêt"));
+        ajouter(Kind::TransportRecord, tr("Enregistrement"));
+        ajouter(Kind::TransportLoop, tr("Boucle"));
 
         const size_t piste = trackList_.selectedTrackIndex();
         if (piste < project_.tracks.size()) {
-            menu.addSectionHeader(juce::String::fromUTF8(u8"Piste ") + juce::String(static_cast<int>(piste) + 1)
-                                   + " — " + juce::String::fromUTF8(project_.tracks[piste].name.c_str()));
-            ajouter(Kind::TrackVolume, "Volume");
-            ajouter(Kind::TrackPan, "Panoramique");
-            ajouter(Kind::TrackMute, "Muet");
-            ajouter(Kind::TrackSolo, "Solo");
+            menu.addSectionHeader(tr(u8"Piste %1 — %2")
+                                      .replace("%1", juce::String(static_cast<int>(piste) + 1))
+                                      .replace("%2", juce::String::fromUTF8(project_.tracks[piste].name.c_str())));
+            ajouter(Kind::TrackVolume, tr("Volume"));
+            ajouter(Kind::TrackPan, tr("Panoramique"));
+            ajouter(Kind::TrackMute, tr("Muet"));
+            ajouter(Kind::TrackSolo, tr("Solo"));
             for (size_t bus = 0; bus < project_.sends.size()
                                  && bus < vsm::audio::engine::ProcessGraph::kMaxSends; ++bus)
                 ajouter(Kind::TrackSend,
-                         juce::String::fromUTF8(u8"Départ ") + juce::String(static_cast<char>('A' + bus)),
+                         tr(u8"Départ %1").replace("%1", juce::String(static_cast<char>('A' + bus))),
                          static_cast<uint8_t>(bus));
         }
 
@@ -954,7 +955,7 @@ MainComponent::MainComponent()
     preferencesPanel_.onChooseChainFolder = [this] { chooseChainFolder(); };
     preferencesPanel_.onChooseLibraryFolder = [this] {
         auto chooser = std::make_shared<juce::FileChooser>(
-            juce::String::fromUTF8(u8"Dossier de la bibliothèque (presets, profils, échantillons)"),
+            tr(u8"Dossier de la bibliothèque (presets, profils, échantillons)"),
             juce::File(), "");
         chooser->launchAsync(juce::FileBrowserComponent::openMode
                                   | juce::FileBrowserComponent::canSelectDirectories,
@@ -1059,12 +1060,13 @@ MainComponent::MainComponent()
             juce::String qui;
             for (auto autre : conflits)
                 if (const auto* c = vsm::interchange::findShortcutCommand(autre))
-                    qui += juce::String("\n  · ") + juce::String::fromUTF8(c->label);
-            juce::AlertWindow::showMessageBoxAsync(
+                    qui += juce::String("\n  · ") + tr(juce::String::fromUTF8(c->label));
+            montrerBoite(
                 juce::AlertWindow::WarningIcon,
-                juce::String::fromUTF8(u8"Touche déjà prise"),
-                description + juce::String::fromUTF8(u8" est déjà associée à :") + qui
-                    + juce::String::fromUTF8(u8"\n\nLibérez-la d'abord, ou choisissez-en une autre."));
+                tr(u8"Touche déjà prise"),
+                tr(u8"%1 est déjà associée à :%2\n\nLibérez-la d'abord, ou choisissez-en une autre.")
+                    .replace("%2", qui)
+                    .replace("%1", description));
             return true;
         }
         shortcuts_.setKey(rebindTarget_, description.toStdString());
@@ -1074,7 +1076,7 @@ MainComponent::MainComponent()
     };
     shortcutsPanel_.onExport = [this] {
         auto chooser = std::make_shared<juce::FileChooser>(
-            juce::String::fromUTF8(u8"Enregistrer la table des raccourcis..."),
+            tr(u8"Enregistrer la table des raccourcis..."),
             juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
                 .getChildFile("raccourcis-vsm.txt"),
             "*.txt");
@@ -3450,7 +3452,7 @@ void MainComponent::menuItemSelected(int menuItemID, int /*topLevelMenuIndex*/) 
         case kMenuFileAudioSettings: showAudioSettings(); break;
         case kMenuFileReconstruct: {
             auto chooser = std::make_shared<juce::FileChooser>(
-                juce::String::fromUTF8(u8"Reconstruire un morceau (wav, mp3, flac...)"),
+                tr(u8"Reconstruire un morceau (wav, mp3, flac...)"),
                 juce::File(), "*.wav;*.mp3;*.flac;*.ogg;*.m4a;*.aiff;*.aif");
             chooser->launchAsync(juce::FileBrowserComponent::openMode
                                       | juce::FileBrowserComponent::canSelectFiles,
@@ -4877,7 +4879,7 @@ void MainComponent::showAudioSettings() {
 
     juce::DialogWindow::LaunchOptions options;
     options.content.setOwned(selector.release());
-    options.dialogTitle = u8"Réglages audio";
+    options.dialogTitle = tr(u8"Réglages audio");
     options.dialogBackgroundColour = vsm::ui::Palette::background;
     options.escapeKeyTriggersCloseButton = true;
     options.useNativeTitleBar = true;
@@ -5585,7 +5587,7 @@ void MainComponent::refreshReconstructionChain() {
 
 void MainComponent::chooseChainFolder() {
     auto chooser = std::make_shared<juce::FileChooser>(
-        juce::String::fromUTF8(u8"Où se trouve le dossier analyse/ de la chaîne ?"),
+        tr(u8"Où se trouve le dossier analyse/ de la chaîne ?"),
         juce::File(), "");
     chooser->launchAsync(juce::FileBrowserComponent::openMode
                               | juce::FileBrowserComponent::canSelectDirectories,
@@ -5786,22 +5788,21 @@ void MainComponent::loadMidiLearnMappings() {
     if (!lu.success) {
         // ON NE PERD PAS EN SILENCE. Des associations illisibles, c'est un
         // studio recâblé à la main sans savoir pourquoi.
-        juce::AlertWindow::showMessageBoxAsync(
+        montrerBoite(
             juce::AlertWindow::WarningIcon,
-            juce::String::fromUTF8(u8"Associations MIDI illisibles"),
-            juce::String::fromUTF8(lu.error.c_str()));
+            tr(u8"Associations MIDI illisibles"),
+            vsm::app::ui::trPhrase(juce::String::fromUTF8(lu.error.c_str())));
         return;
     }
     audioEngine_.setMidiLearnMap(lu.map);
     midiLearnSeenCount_ = lu.map.size();
     if (lu.discarded > 0)
-        juce::AlertWindow::showMessageBoxAsync(
+        montrerBoite(
             juce::AlertWindow::InfoIcon,
-            juce::String::fromUTF8(u8"Associations MIDI"),
-            juce::String(static_cast<int>(lu.discarded))
-                + juce::String::fromUTF8(u8" association(s) enregistrée(s) n'ont pas été relues : "
-                                          u8"elles désignent une cible que cette version ne connaît "
-                                          u8"pas. Elles ont été écartées plutôt que devinées."));
+            tr(u8"Associations MIDI"),
+            tr(u8"%1 association(s) enregistrée(s) n'ont pas été relues : elles désignent une cible "
+               u8"que cette version ne connaît pas. Elles ont été écartées plutôt que devinées.")
+                .replace("%1", juce::String(static_cast<int>(lu.discarded))));
     refreshMidiLearnList();
 }
 
@@ -6029,11 +6030,10 @@ void MainComponent::loadShortcuts() {
     if (!vsm::interchange::shortcutTableFromJson(texte.toStdString(), shortcuts_)) {
         // Illisible : on repart des défauts EN LE DISANT. Se retrouver avec les
         // raccourcis d'usine sans savoir pourquoi ferait chercher longtemps.
-        juce::AlertWindow::showMessageBoxAsync(
+        montrerBoite(
             juce::AlertWindow::WarningIcon,
-            juce::String::fromUTF8(u8"Raccourcis illisibles"),
-            juce::String::fromUTF8(u8"Les raccourcis personnalisés n'ont pas pu être relus : "
-                                    u8"ceux d'origine sont rétablis."));
+            tr(u8"Raccourcis illisibles"),
+            tr(u8"Les raccourcis personnalisés n'ont pas pu être relus : ceux d'origine sont rétablis."));
     }
     pianoRoll_.setShortcutTable(&shortcuts_);
     refreshShortcutList();
@@ -6540,7 +6540,8 @@ void MainComponent::loadReferenceAudio() {
     // la liste vient de lui, elle n'est pas recopiée ici. Proposer un format
     // qu'on refuserait ensuite serait la pire façon de le supporter.
     auto chooser = std::make_shared<juce::FileChooser>(
-        "Charger l'enregistrement d'origine (" + vsm::app::referenceAudioFormatList() + ")...",
+        tr(u8"Charger l'enregistrement d'origine (%1)...")
+            .replace("%1", juce::String(vsm::app::referenceAudioFormatList())),
         juce::File(), vsm::app::referenceAudioFilePatterns());
     const auto chooserFlags = juce::FileBrowserComponent::openMode
                             | juce::FileBrowserComponent::canSelectFiles;
@@ -7741,7 +7742,8 @@ void MainComponent::addTrack(Track::Kind kind, const std::string& nom) {
     // pas la même chose, sur le geste même — importer douze stems — que D33.1
     // venait de rendre possible.
     t.name = !nom.empty() ? nom
-           : (groupe ? "Groupe " : audio ? "Audio " : "Piste ") + std::to_string(n + 1);
+           : tr(groupe ? u8"Groupe %1" : audio ? u8"Audio %1" : u8"Piste %1")   // D107 : la langue du moment
+                 .replace("%1", juce::String(static_cast<int>(n) + 1)).toStdString();
     t.channel = static_cast<uint8_t>(n % 16);      // canaux MIDI 1..16 en boucle
     t.colorRgba = vsm::sequencer::trackColourForIndex(n);
     // Pas d'instrument par défaut : l'utilisateur le choisit dans le combo de
@@ -9963,8 +9965,8 @@ bool MainComponent::writeSelectedTrackMidi(const juce::File& fichier) {
         MidiFileWriter::writeFile(seule.toParsedFileArranged(),   // D56.1
                                    fichier.getFullPathName().toStdString());
     } catch (const std::exception& e) {
-        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
-                                               u8"Exporter la piste en MIDI", juce::String(e.what()));
+        montrerBoite(juce::AlertWindow::WarningIcon,
+                                               tr(u8"Exporter la piste en MIDI"), vsm::app::ui::trPhrase(juce::String(e.what())));
         std::fputs(("Exporter la piste en MIDI : " + std::string(e.what()) + "\n").c_str(), stderr);
         return false;
     }
@@ -10135,10 +10137,10 @@ bool MainComponent::importAudioFileOnNewTrack(const juce::File& fichier) {
         // le dossier du projet (D6.4), et sans dossier il n'y a nulle part où
         // le copier. Dit avant de créer la piste, pour ne pas laisser une piste
         // vide dans l'historique.
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Projet jamais enregistr\u00e9",
-            juce::String(u8"Un fichier audio import\u00e9 est COPI\u00c9 dans le dossier du projet. "
-                          u8"Enregistrez d'abord le projet (Ctrl+S)."));
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Projet jamais enregistr\u00e9"),
+            tr(u8"Un fichier audio import\u00e9 est COPI\u00c9 dans le dossier du projet. "
+               u8"Enregistrez d'abord le projet (Ctrl+S)."));
         std::fputs("Importer un fichier audio : projet jamais enregistr\u00e9, rien n'a \u00e9t\u00e9 fait\n", stderr);
         return false;
     }
@@ -10159,7 +10161,7 @@ bool MainComponent::importAudioFileOnNewTrack(const juce::File& fichier) {
 
 void MainComponent::importAudioFilePrompt() {
     auto chooser = std::make_shared<juce::FileChooser>(
-        juce::String::fromUTF8(u8"Importer des fichiers audio, un par piste neuve"), juce::File(),
+        tr(u8"Importer des fichiers audio, un par piste neuve"), juce::File(),
         "*.wav;*.flac;*.ogg;*.mp3;*.aif;*.aiff");
     // D33.1 : PLUSIEURS FICHIERS D'UN COUP. Une reconstruction qui rend douze
     // stems se réimportait en douze gestes ; `canSelectMultipleItems` et
@@ -10199,8 +10201,7 @@ void MainComponent::exportSelectedTrackMidi() {
     const size_t piste = trackList_.selectedTrackIndex();
     if (piste >= project_.tracks.size()) return;
     auto chooser = std::make_shared<juce::FileChooser>(
-        juce::String(u8"Exporter la piste \u00ab ") + juce::String(project_.tracks[piste].name)
-            + juce::String(u8" \u00bb en MIDI..."),
+        tr(u8"Exporter la piste « %1 » en MIDI...").replace("%1", juce::String(project_.tracks[piste].name)),
         juce::File(), "*.mid");
     chooser->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
                          [this, chooser](const juce::FileChooser& fc) {
@@ -10793,7 +10794,7 @@ void MainComponent::updateSynthRackForSelection() {
     }
     auto* synth = audioEngine_.processGraph().trackInstrument(idx);
     std::string name = project_.tracks[idx].name.empty()
-                            ? ("Piste " + std::to_string(idx + 1))
+                            ? tr(u8"Piste %1").replace("%1", juce::String(static_cast<int>(idx) + 1)).toStdString()
                             : project_.tracks[idx].name;
     synthRack_.setSynth(synth, juce::String(name), project_.tracks[idx].instrumentId);
     // La grille de pas édite directement les notes de la piste : c'est la même
