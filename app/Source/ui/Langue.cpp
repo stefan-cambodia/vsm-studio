@@ -794,6 +794,12 @@ const Paire kAnglais[] = {
       "Move the track up" },
     { "Muet",
       "Mute" },
+    // D149 : le libellé du pas d'annulation de l'armement. « Arm », comme le
+    // bouton R et comme « Arm the track » ci-dessous -- le vocabulaire de
+    // l'application, pas une invention. Introduit par D148, il était le SEUL
+    // des 88 libellés de pas sans traduction.
+    { "Armement",
+      "Arm" },
     { "Muet (piste choisie)",
       "Mute (selected track)" },
     { "Muet sur des clips",

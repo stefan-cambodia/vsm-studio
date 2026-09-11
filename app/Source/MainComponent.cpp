@@ -1784,6 +1784,18 @@ void MainComponent::listTextsForCapture() {
     // armement « R »). `VSM_VUE=pistes` l'écrit à l'OUVERTURE, donc avant les
     // gestes et les touches : il ne peut pas dire ce qu'une annulation a rendu.
     std::fputs(("VSM_PISTES : " + trackTreeForCapture() + "\n").toRawUTF8(), stderr);
+    // D149 : LES NOMS DES PAS, TELS QUE LA FENÊTRE LES PEINT. Elle dessine ses
+    // lignes (`paintListBoxItem`) au lieu de poser des composants de texte : le
+    // relevé de D94, qui descend les composants, ne les voit pas. On passe donc
+    // par la MÊME fonction qu'elle, `trGeste`, sur la MÊME source -- sans quoi ce
+    // relevé dirait autre chose que ce que l'utilisateur lit.
+    {
+        juce::String pas;
+        for (const auto& libelle : history_.undoLabels())
+            pas += (pas.isEmpty() ? "" : " | ")
+                 + vsm::app::ui::trGeste(juce::String::fromUTF8(libelle.c_str()));
+        std::fputs(("VSM_HISTORIQUE : " + pas + "\n").toRawUTF8(), stderr);
+    }
     // LE COMPTE, ET CE QUI LE REND SUSPECT : un zéro doit se lire, pas se deviner.
     std::fputs(("VSM_TEXTES : " + juce::String(nombre) + juce::String(u8" texte(s) listé(s)")
                 + (isShowing() ? juce::String()

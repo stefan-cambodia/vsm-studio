@@ -17445,3 +17445,50 @@ vocabulaire. Ce qui réfuterait (a) : un titre français en anglais — alors D1
 serait en panne et l'anomalie s'ouvrirait. Ce qui réfuterait (c) : « Muet » en
 anglais — alors le défaut ne serait pas « un libellé oublié » mais « trGeste ne
 traduit rien », et la phase changerait de sujet.
+
+**RÉSULTAT (12/09) — LES QUATRE ATTENDUS TIENNENT.** Témoin : binaire de
+06:53:42 (plomberie seule) ; après : 06:54:51 (la traduction en plus), séries 2
+et 3 identiques. Une seule variable, la table.
+
+| cas | témoin | après |
+|---|---|---|
+| (a) EN, titre de la fenêtre d'historique | **« Edit history »** | inchangé |
+| (b) EN, armer puis historique | **« Armement »** — français en interface anglaise | **« Arm »** |
+| (c) EN, témoin : muet puis historique | « Mute » | inchangé |
+| (d) FR, armer puis historique | « Armement » ; fenêtre « Historique des modifications » | inchangé |
+
+Zéro avertissement au journal dans les huit lancements. **La suspicion des neuf
+titres est réfutée par la mesure comme elle l'était par la lecture** : le titre
+est traduit, le français n'est que la clé (D100).
+
+**LA GARDE N'AURAIT PAS ATTRAPÉ CE DÉFAUT, ET C'EST MESURÉ.**
+`tools/inventaire_langue.py` a une catégorie faite pour cela — SANS_PAIRE, « la
+chaîne est passée à `trGeste()` mais la table n'a pas sa clé ». J'ai retiré la
+paire, compté, remis la paire, vérifié la restauration par `cmp` : **ECRAN 12,
+SANS_PAIRE 0 dans les deux états**, à l'identique. La règle ne reconnaît une
+traduction qu'IMMÉDIATEMENT accolée (`tr(`, `trGeste(`, regex ligne 88) ; un
+libellé confié à `debutEdition(u8"Armement")` et traduit bien plus loin, à la
+peinture, lui est invisible. Ce n'est donc pas un défaut de discipline — l'outil
+lancé après D148 n'aurait rien dit.
+
+**ET LE COMPTE D'A9 A DÉRIVÉ SANS QUE PERSONNE LE DISE.** A9 a été close à
+**ÉCRAN 7** (D130) ; D136 a noté **9** en expliquant que les deux chaînes
+nouvelles étaient des NOMS de composant (`pistes.volume`, `pistes.pan`) ;
+l'outil en compte **12** aujourd'hui. Les trois de plus sont `pistes.muet`,
+`pistes.solo` et `pistes.armement` — mes noms de banc de D147, jamais consignés.
+Ce n'est pas un défaut de traduction : un nom de composant ne s'affiche nulle
+part. C'est la règle COMMANDE qui ne l'accepte pas — elle veut « un mot ASCII
+minuscule, avec tirets ou deux-points, sans espace », et ces noms ont un POINT.
+Trois chaînes de banc comptées comme du texte d'écran, dans le chiffre même qui
+sert à juger la traduction.
+
+**Ce que D150 fera**, attendus écrits d'avance : rendre la garde capable de voir
+les libellés de pas (les fonctions qui les reçoivent, et non le seul voisinage
+de `tr(`), et rendre la règle COMMANDE capable de reconnaître un nom de
+composant pointé — puis republier le chiffre d'A9 tel qu'il est vraiment.
+Aucune anomalie n'est ouverte contre l'application : les deux défauts sont dans
+l'OUTIL DE MESURE, ce qui est plus grave et se corrige en premier.
+
+Suites C++ vertes (330, 1 291, 297, 11, 25), compilées à `-j 2` pendant la
+course 3 de l'épreuve ; `vsm-render` intact ; préférences identiques par `cmp`
+après chacune des trois séries.
