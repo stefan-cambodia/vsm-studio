@@ -236,7 +236,8 @@ void MachinePanelComponent::showValueReadout(const juce::String& caption, double
     juce::String text = std::abs(value) >= 100.0 ? juce::String(juce::roundToInt(value))
                                                   : juce::String(value, 2);
     if (unit.isNotEmpty()) text += " " + unit;
-    valueReadout_.setText(caption + " : " + text, juce::dontSendNotification);
+    // D132 : « CUTOFF: 0.50 » en anglais -- la typographie de la langue (D131).
+    valueReadout_.setText(caption + vsm::app::ui::deuxPoints() + text, juce::dontSendNotification);
 }
 
 juce::Rectangle<float> MachinePanelComponent::gridToPixels(juce::Rectangle<float> gridBounds) const {

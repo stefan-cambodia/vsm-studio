@@ -16281,3 +16281,30 @@ un libellé, il se lit comme tel.
    témoin, mot pour mot.
 3. Suites vertes, préférences intactes.
 
+**RÉSULTAT (12/09) — TENU.** Témoin : binaire du premier pas (11/09,
+23:59:55) ; après : 12/09, 00:00:54. Le geste `facade:CUT OFF FREQ=1200` sur
+le TB-303 du projet de D91 (plage 40-6 000 Hz, défaut 800 : la valeur change,
+la notification part).
+
+| | français | anglais |
+|---|---|---|
+| témoin | « CUT OFF FREQ : 1200 Hz » | « CUT OFF FREQ : 1200 Hz » — le défaut d'A16, atteint au banc |
+| après | « CUT OFF FREQ : 1200 Hz » — identique au témoin (`diff`) | « CUT OFF FREQ: 1200 Hz » |
+
+Suites C++ vertes (330, 1 291, 297, 25, 11), l'application compilée à
+`-j 2` pendant l'épreuve, `vsm-render` intact ; inventaire inchangé
+(ÉCRAN 7) ; préférences de l'utilisateur identiques par `cmp`. Le geste reste
+: il servira à toute mesure qui doit toucher une façade (MIDI Learn, valeurs
+affichées, automation depuis la façade).
+
+**VU SUR LA PHOTO, HORS ATTENDU — et c'est plus grave que l'espace.**
+L'afficheur est posé au bas de la FAÇADE (`removeFromBottom(20)`), sous le
+séquenceur ; dans la disposition par défaut (fenêtre de 1 264 × 742), la
+façade du TB-303 défile dans le rack et s'arrête à l'en-tête « PATTERN » :
+**l'afficheur est hors de la vue.** Le relevé l'a lu parce qu'il est visible
+au sens de JUCE (`isVisible()`), pas parce qu'il se voit — le piège que la
+consigne du projet décrit pour l'écran verrouillé, sous une autre forme. Un
+musicien qui tourne un bouton ne voit donc pas la valeur, à moins de faire
+défiler la façade. Ce n'est pas corrigé ici (une autre variable que la
+typographie) : INDEX, A17.
+
