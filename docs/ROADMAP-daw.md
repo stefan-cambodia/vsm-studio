@@ -14600,3 +14600,48 @@ brouillon.
 La table passe à **1 339** paires (+3). Suites C++ vertes à `-j 2` (330,
 1 291, 297, 25, 11) ; `build/tools/vsm-render` non touché (15:00:36).
 
+### Phase D112 — A9 : les boîtes de l'enregistrement qu'aucun banc n'atteignait (11/09/2026)
+
+**LE LOT.** Les douze dernières chaînes de `MainComponent` qui touchent à
+l'enregistrement, en cinq boîtes : la file de capture qui déborde (« Notes
+perdues à l'enregistrement ») ; la mesure de latence — pas d'entrée (« Mesure
+impossible »), rien de retrouvé (« Rien n'est revenu », avec sa netteté), le
+résultat (« Latence mesurée », quatre nombres en trois paragraphes) ; le
+disque qui n'a pas suivi (« La prise a perdu N bloc(s)… »).
+
+**POURQUOI UN BANC NEUF, ET LEQUEL.** D110 a laissé deux gardes « vérifiées
+par le code ». Ici ce serait les cinq boîtes : la latence ÉMET un balayage
+dans les haut-parleurs, et le débordement d'une file ou d'un disque ne se
+provoque pas. Mais ce que la boîte DIT ne dépend d'aucun son. Chaque boîte
+devient une fonction (`boiteNotesPerdues`, `boiteMesureImpossible`,
+`boiteRienNestRevenu`, `boiteLatenceMesuree`, et `signalerDisqueTropLent`
+qui l'était déjà), appelée par le chemin réel ET par un geste de banc neuf,
+`VSM_BOITE_ESSAI=perdues;impossible;rien;latence;disque`, avec des chiffres
+fixes (netteté 3,2 ; 590 échantillons à 48 kHz, netteté 42,5 ; 3 blocs).
+Le banc ne fait rien d'autre que montrer : ni son, ni latence retenue, ni
+préférence écrite. Les boîtes passent par `montrerBoite()` (D95), qui les
+écrit au terminal quand elles sont demandées.
+
+**LES DÉCISIONS.**
+
+1. **Le témoin est le même code sans la traduction** : les fonctions, le
+   geste et `montrerBoite()`, les phrases d'avant.
+2. **Les phrases composées deviennent des modèles à `%1`…`%4`** ; le
+   résultat de la latence reste trois paragraphes, chacun sa clé (« Aller-
+   retour : %1 ms (%2 échantillons à %3 kHz) », « Netteté du pic : %1 », le
+   paragraphe sur les prises MIDI) — une clé qui porterait `\n\n` serait la
+   seule de la table.
+3. **Les nombres ne changent pas de forme** d'une langue à l'autre
+   (`juce::String(double, n)`, point décimal) : l'anglais et le français
+   doivent porter les mêmes chiffres.
+
+**ATTENDU, écrit avant la mesure.**
+
+1. **L'inventaire** : stricte ÉCRAN **29 → 17**, `MainComponent` **20 → 8**.
+2. **Le banc** : 5 boîtes sur 5 dans chaque langue, témoin et D112 ; le
+   témoin en français dans les deux langues ; D112 en anglais sans mot
+   français, **mêmes nombres** qu'en français (3.2 ; 12.29 ms ; 590 ; 48.0 ;
+   42.5 ; 3) ; le français de D112 identique au témoin, boîte pour boîte.
+3. **Préférences intactes**, et `latenceAllerRetour` absent des préférences
+   du banc après la série (le geste ne passe pas par la mesure).
+
