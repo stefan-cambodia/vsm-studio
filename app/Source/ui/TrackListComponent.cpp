@@ -824,10 +824,32 @@ bool TrackListComponent::masqueeParLeFiltre(size_t index) const {
 void TrackListComponent::resized() {
     auto area = getLocalBounds();
 
-    auto toolbar = area.removeFromTop(kToolbarHeight).reduced(8, 6);
-    removeButton_.setBounds(toolbar.removeFromRight(96));
-    toolbar.removeFromRight(6);
-    addButton_.setBounds(toolbar);
+    // D123 : LES DEUX BOUTONS À LA TAILLE DE LEUR TEXTE, OU CHACUN SUR SA LIGNE.
+    // JUCE ne grandit pas un bouton trop étroit : il y RÉDUIT le texte
+    // (`drawFittedText`, deux lignes au plus) -- à 180 px de dock, « + Ajouter
+    // une piste » tombait sur deux lignes minuscules. La largeur naturelle se
+    // mesure dans la police que JUCE donne au bouton, avec ses retraits
+    // (`drawButtonText` : 0,6 × la hauteur de police de chaque côté, au plus).
+    constexpr int hauteurBouton = kToolbarHeight - 12;
+    auto largeurNaturelle = [this](juce::TextButton& bouton) {
+        const juce::Font police = getLookAndFeel().getTextButtonFont(bouton, hauteurBouton);
+        const int retrait = juce::roundToInt(police.getHeight() * 0.6f);
+        return static_cast<int>(std::ceil(juce::GlyphArrangement::getStringWidth(police, bouton.getButtonText())))
+               + 2 * retrait + 4;
+    };
+    const bool empiles = largeurNaturelle(addButton_) + 6 + std::max(96, largeurNaturelle(removeButton_))
+                         > getWidth() - 16;
+    hauteurBarre_ = empiles ? 2 * kToolbarHeight - 6 : kToolbarHeight;
+    auto toolbar = area.removeFromTop(hauteurBarre_).reduced(8, 6);
+    if (empiles) {
+        addButton_.setBounds(toolbar.removeFromTop(hauteurBouton));
+        toolbar.removeFromTop(6);
+        removeButton_.setBounds(toolbar.removeFromTop(hauteurBouton));
+    } else {
+        removeButton_.setBounds(toolbar.removeFromRight(96));
+        toolbar.removeFromRight(6);
+        addButton_.setBounds(toolbar);
+    }
 
     // D19.2 : SA PROPRE LIGNE plutôt que serré entre deux boutons. Entre « ça
     // tient dans la case » et « ça se lit », c'est la lisibilité qui prime.
@@ -963,6 +985,7 @@ void TrackListComponent::itemDropped(const SourceDetails& details) {
 void TrackListComponent::retraduire() {
     addButton_.setButtonText(vsm::app::ui::tr("+ Ajouter une piste"));
     removeButton_.setButtonText(vsm::app::ui::tr("Supprimer"));
+    resized();   // D123 : un texte d'une autre longueur peut changer la disposition de la barre
     filterBox_.setTextToShowWhenEmpty(vsm::app::ui::tr(u8"Filtrer les pistes..."),
                                        Palette::textSecondary);
     // D94 : l'infobulle du filtre, que le constructeur posait en français.

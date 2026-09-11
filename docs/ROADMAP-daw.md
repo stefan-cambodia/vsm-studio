@@ -15589,3 +15589,37 @@ D122.
    identique au pixel au témoin.
 3. **Suites vertes**, préférences intactes.
 
+**LE TÉMOIN (binaire de D122, banc à 21:57).** Au dock par défaut, « + Ajouter
+/ une piste » et « + Add a / track » sur deux lignes minuscules, à côté de
+« Supprimer » et « Delete » à taille normale ; au dock large, les deux côte à
+côte, à taille normale.
+
+**LE RÉSULTAT (binaire du 11/09 22:35:18, banc à 22:38) — LES TROIS ATTENDUS
+TENUS.**
+
+1. **Au dock par défaut** : « + Ajouter une piste » et « + Add a track » sur
+   UNE ligne, à la taille des autres boutons ; « Supprimer » / « Delete »
+   dessous ; le filtre, son bouton de zone et les pistes descendus d'une
+   ligne. Le reste de la fenêtre : **0 pixel** de différence avec le témoin,
+   dans les deux langues.
+2. **Au dock large** : la liste des pistes **identique au pixel** au témoin
+   (0 pixel), et le reste de la fenêtre aussi, en français et en anglais.
+3. **Suites vertes** (330, 1 291, 297, 25, 11, à `-j 2`) ;
+   `build/tools/vsm-render` non touché ; préférences intactes.
+
+**DEUX AFFIRMATIONS FAUSSES EN CHEMIN, DÉFAITES PAR LA MESURE — et c'est la
+leçon de la phase.** Le premier banc d'après (22:00) a rendu des photos de
+**1264×784**, contre 1264×742 au témoin (21:57). J'ai d'abord écrit, en
+cours de route, que « l'environnement avait changé » ; puis, un témoin
+recompilé à 22:34 rendant 742 et le binaire de D123 784 à 22:31, que « c'est
+D123 qui agrandit la fenêtre ». Les deux étaient faux ou non établis : le
+binaire de D123, relancé à 22:38, rend **742, quatre fois sur quatre**,
+à 2 s comme à 6 s de délai. La hauteur suit l'ÉTAT DE L'ÉCRAN au moment du
+lancement — la fenêtre unique prend `userArea.reduced(8)` —, pas le binaire ;
+et deux séries prises à des heures alternées, autour d'une mise en veille,
+ont fabriqué une corrélation parfaite sur dix lancements. **Une comparaison
+au pixel ne vaut qu'entre photos de même taille ; une corrélation sur des
+séries prises à des moments différents n'est pas un A/B.** Le banc d'après a
+été repassé à 22:38, à la taille du témoin : ce sont ses chiffres qui
+figurent ci-dessus.
+

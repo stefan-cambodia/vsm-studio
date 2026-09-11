@@ -293,7 +293,7 @@ public:
     /// D122 : où poser ce bouton, en coordonnées de la liste : au bout de la ligne
     /// du filtre, centré sur sa hauteur.
     juce::Rectangle<int> placeDuBoutonDeZone(int taille) const {
-        return { getWidth() - 8 - taille, kToolbarHeight + (kFilterHeight - taille) / 2, taille, taille };
+        return { getWidth() - 8 - taille, hauteurBarre_ + (kFilterHeight - taille) / 2, taille, taille };
     }
     void reglerVolume(size_t index, float valeur);
     /// D36.7 : relit le muet et le solo de toutes les lignes.
@@ -325,6 +325,7 @@ private:
     vsm::sequencer::Project* project_ = nullptr;
     juce::OwnedArray<TrackRowComponent> rows_;
     int reserveDroite_ = 0;   ///< D122 : la place du bouton « agrandir » de la zone
+    int hauteurBarre_ = 36;   ///< D123 : une ligne, ou deux quand les boutons s'empilent
     juce::Viewport viewport_;
     juce::Component rowContainer_;
     juce::TextButton addButton_ { "+ Ajouter une piste" };
