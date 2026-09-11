@@ -15299,3 +15299,37 @@ l'application recompilée depuis ce source. **A13 n'a plus qu'une piste : une
 boîte qui fixe sa largeur** — un composant à nous à la place d'`AlertWindow`
 pour les messages longs —, un chantier à écrire comme tel, pas une retouche.
 
+### Phase D121 — A13 : une largeur que le texte ne décide plus, dans les deux boîtes que l'application construit (11/09/2026)
+
+**CE QUE LA SOURCE DE JUCE PERMET, lu avant d'écrire une boîte à nous.**
+`AlertWindow::updateLayout` met le MESSAGE en page à sa largeur de départ
+(`300 + 2·√(h × largeur mesurée)`), puis élargit la boîte pour ses boutons,
+ses composants ajoutés (`w = max(w, largeur × 100 / 80)`) et ses blocs de
+texte — trop tard pour le message, déjà coupé. Mais les BLOCS DE TEXTE
+(`addTextBlock`) sont mis en page APRÈS, à 0,8 fois la largeur FINALE. Un
+bloc de texte est un `TextEditor` transparent — sans fond, sans cadre, en
+lecture seule, sans curseur —, qui a l'allure d'un texte.
+
+**LE GESTE.** Pour les deux boîtes que l'application construit elle-même —
+« Aller à la mesure » et « Renommer les pistes en série » ; les boîtes
+statiques de JUCE, comme « Que faire de ce fichier ? », ne se construisent
+pas et restent hors d'atteinte — : le message devient un bloc de texte, et
+une CALE — un composant vide, sans rien à dessiner — impose la largeur de sa
+ligne la plus longue, mesurée dans la police des messages. Le bloc se met
+alors en page à une largeur où chaque paragraphe tient sur une ligne. Une
+fonction, `poserLeTexteEnBloc`, pour les deux boîtes.
+
+**CE QUE CELA CHANGE À L'ŒIL, dit avant** : le bloc est aligné À GAUCHE ;
+le message de « Aller à la mesure », sans icône, était centré.
+
+**ATTENDU, écrit avant la mesure** — photos, FR et EN, le banc de D120.
+
+1. **Aucune mauvaise coupure** (au sens de D119) dans les deux boîtes, dans
+   les deux langues : « « 17.3 » » entier ; « « Batterie 2 » » et
+   « “Drums 2” » entiers ; chaque paragraphe sur une ligne.
+2. **Rien de rogné** : tout le texte visible, pas de barre de défilement dans
+   le bloc, la boîte sous 70 % de la largeur de l'écran (le plafond de JUCE).
+3. **La boîte du dépôt identique au pixel** au témoin (elle n'est pas
+   touchée), et le français des deux boîtes dit la même chose qu'avant, mot
+   pour mot (`VSM_TEXTES_LISTE` ne lit pas une boîte ; la photo, si).
+
