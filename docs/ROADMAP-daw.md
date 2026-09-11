@@ -16087,3 +16087,24 @@ l'application : des données de contrôle, pas de l'interface. Non comptées.
 **Pour A9, les façades sont lues.** Restent non lues la fenêtre des tronçons
 et la fenêtre flottante de l'arrangement (D128).
 
+### Phase D130 — A9 : la dernière fenêtre non lue, et une surface qui n'en était pas une (11/09/2026)
+
+**RECTIFIÉ AVANT DE MESURER.** D128, D129 et l'INDEX portent « la fenêtre des
+tronçons, qui ne s'ouvre pas sur ce projet (vraisemblablement faute de
+prise) ». C'est faux, et c'était une supposition écrite comme un constat :
+le jeton `troncons` de `VSM_VUE` n'ouvre AUCUNE fenêtre — c'est une sonde qui
+écrit au terminal le nombre de tronçons du panneau et de la piste
+(`MainComponent.cpp:1671`). Le panneau des tronçons est celui d'« Assembler
+les prises » (`takeCompPanel_`), qu'ouvre le jeton `prises`, et D128 l'a
+relevé (« Comp takes », 7 textes). Il ne manque donc qu'une fenêtre : celle
+de l'arrangement, cachée dans la disposition flottante.
+
+**LE BANC.** Celui de D128, un lancement : `VSM_VUE=flottant,arrangement` — la
+disposition flottante, puis l'entrée de menu qui montre l'arrangement (le
+même identifiant de menu que l'utilisateur clique).
+
+**ATTENDU, écrit avant la mesure.** La fenêtre « Arrangement » est lue (une
+ligne `VSM_FENETRE : Arrangement`), et ni ses infobulles ni ses textes ne
+contiennent de français : **0**, au filtre de D118, les lignes retenues
+relues. Si elle n'est pas lue, c'est dit, et A9 garde cette surface.
+
