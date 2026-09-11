@@ -14905,3 +14905,59 @@ l'épreuve *Children* l'occupe. Table : **1 363** paires (+9), **110**
 modèles (+4). Suites C++ vertes à `-j 2` (330, 1 291, 297, 25, 11) ;
 `build/tools/vsm-render` non touché ; préférences intactes.
 
+### Phase D115 — A9 : ce qui s'affiche encore en français et qu'aucun compte strict ne voit (11/09/2026)
+
+**LE LOT.** Après D114, l'inventaire strict ne compte plus que 7 chaînes, et
+aucune ne s'affiche. La règle large de D101 en montre 28, dont une vingtaine
+de faux déjà nommés (unités, sigles, mots anglais). Parmi le reste, trois
+textes s'affichent vraiment en français dans l'interface anglaise :
+
+- **« RÉGLAGES »**, titre d'une section de la façade du TB-303 — la seule
+  des **163** sérigraphies de section qui ne soit pas en anglais (les autres
+  recopient la machine d'origine : ENVELOPE, FILTER, OUTPUT…). Elle vit dans
+  `panels/`, hors du champ de l'inventaire, qui ne lit qu'`app/Source` :
+  aucun compte ne la voyait, l'INDEX la nommait à la main ;
+- **deux phrases d'état du piano roll** — « N note(s) plus faible(s) que V »
+  et « N note(s) plus courte(s) que T ticks », après *Sélectionner ▸ Notes
+  plus faibles que… / plus courtes que la grille* du menu du clic droit ;
+  sans accent ni mot de la liste, elles sont dans l'angle mort.
+
+Et un faux de la règle large, réécrit en passant : « Rapport de
+reconstruction illisible : … » s'affiche déjà traduit (son modèle date de
+D89), mais le source le compose par `+`.
+
+**LES DÉCISIONS.**
+
+1. **Le titre de section passe par `tr()` à l'affichage**
+   (`MachinePanelComponent`). `tr()` rend la clé quand elle n'a pas de
+   paire : les 162 sérigraphies anglaises restent telles quelles, et
+   « RÉGLAGES » devient « SETTINGS ». Rien dans `panels/`.
+2. **Les deux phrases d'état deviennent des modèles à `%1`, `%2`.**
+3. **Un geste de banc** : `VSM_MENU_CONTEXTE` gagne `pianoroll:libellé` — le
+   menu du clic droit du piano roll, par `buildContextMenu()` et
+   `performContextMenuAction()`, la paire même que la souris emprunte. La
+   recherche d'une entrée par son libellé (`entreeParLibelle`, D83) sort
+   d'`ArrangementComponent.cpp` dans un en-tête commun : deux copies
+   finiraient par ne plus lire la même chose.
+
+**LE BANC.** (a) Projet neuf, `VSM_GESTE_PISTE=machine:vsm.tb303`,
+`VSM_TEXTES_LISTE` : les titres de la façade. (b) `children-dream-v12` (la
+reconstruction d'août, pistes MIDI), la basse choisie, puis les deux entrées
+du menu du clic droit, par leur libellé DANS LA LANGUE du lancement ;
+`VSM_TEXTES_LISTE` lit la ligne d'état. Témoin : le même code — l'en-tête
+commun et le geste —, sans traduction.
+
+**ATTENDU, écrit avant la mesure.**
+
+1. **L'inventaire** : stricte **inchangé à 7** — ces textes sont dans
+   l'angle mort, c'est la raison de la phase ; large ÉCRAN **28 → 25** (les
+   deux phrases d'état, le rapport illisible).
+2. **La façade** : « RÉGLAGES » au témoin dans les deux langues ; avec D115,
+   « RÉGLAGES » en français et « SETTINGS » en anglais ; les autres titres
+   de la façade identiques d'une série à l'autre.
+3. **Le piano roll** : au témoin, la ligne d'état en français dans les deux
+   langues ; avec D115, « N note(s) softer than 64 » et « N note(s) shorter
+   than T ticks » en anglais (« softer », le mot de l'entrée de menu
+   anglaise « Notes softer than 64 »), **avec les mêmes nombres** qu'en français ; le
+   français identique au témoin.
+
