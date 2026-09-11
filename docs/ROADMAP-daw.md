@@ -16364,3 +16364,32 @@ D91, huit lancements en code 0.
 L'afficheur est écrit en `textPrimary` (le clair de la palette) et en 13 :
 c'est une valeur qu'on lit en réglant, et la lisibilité prime.
 
+### Phase D134 — le vingt-sixième audit : les commandes qu'on tourne sans voir leur valeur (12/09/2026)
+
+**UN RELEVÉ, PAS UNE HYPOTHÈSE TRANCHÉE — faute dite : le compte a été fait
+avant qu'un attendu soit écrit**, comme D118. La lunette vient de D133 et de
+la leçon de D71 : D133 a rendu visible la valeur d'UNE famille de commandes
+(la façade) ; la question est la famille entière. Relevé dans `app/Source` :
+les `juce::Slider` sans zone de texte (`NoTextBox`), et ce qui montre leur
+valeur autrement. **Aucune bulle de valeur** (`setPopupDisplayEnabled`)
+nulle part dans l'application.
+
+| surface | commande | sa valeur se voit-elle en réglant ? |
+|---|---|---|
+| liste des pistes, chaque ligne | volume (0-1,5), panoramique | **non** |
+| mixeur, chaque tranche | panoramique ; départ vers chaque bus | **non** |
+| mixeur, tranche MASTER | LOW, MID, HIGH, COMP, RATIO, SAT, CEIL | **non** — le suffixe d'unité existe (« dB », « :1 ») et n'est jamais montré |
+| rack, panneau générique (machines sans façade, plugins CLAP) | chaque paramètre | **non** — le libellé porte le nom et l'unité, pas la valeur |
+| rack, façade dédiée | chaque commande | oui, depuis D133 (bande au pied du rack) |
+| mixeur, chaque tranche | volume, trim, retard, transposition | oui (zone de texte) |
+| piano roll | swing, vélocité | oui (zone de texte) |
+| effets | chaque réglage | oui (zone de texte) |
+
+**CE QUE CELA COÛTE.** Cubase et Live montrent la valeur d'un bouton pendant
+qu'on le tourne ; ici, régler le panoramique d'une piste, un départ de
+réverbération ou le seuil du compresseur du master se fait à l'œil sur la
+position d'un curseur, sans chiffre. Quatre familles, présentes sur l'écran
+par défaut (liste des pistes, mixeur) ou dès qu'une machine n'a pas de
+façade. **INDEX, A18.** La correction a sa phase, et ses attendus s'écrivent
+avant de toucher au code.
+
