@@ -16925,3 +16925,29 @@ premier relevé ne s'expliquait pas sans lui).
    ne se mesurera honnêtement qu'une fois l'affichage juste ; il reste
    écrit ici, et c'est la phase qui suivra celle d'A22.
 
+### Phase D142 — A22 : le MASTER du projet appliqué avant que le mixeur ne le relise (12/09/2026)
+
+**LE REMÈDE, lu dans la cause.** Dans `rebuildFromProject`, les trois lignes
+qui appliquent `masterParameters` au moteur passent AVANT `mixer_.setProject`,
+qui relit la tranche MASTER dans le moteur. Elles ne touchent qu'aux
+paramètres du bus ; rien, entre leurs deux places, n'en dépend.
+
+**LE BANC.** Le projet de D91 avec « EQ Low Gain » enregistré à +6 dB : à
+l'ouverture, puis avec un double-clic sur le LOW ; et le projet de D91 sans
+section `master` (le contrôle : rien ne doit y changer). Français et anglais ;
+le bouton (`VSM_VALEUR`) et le moteur (`VSM_MASTER_MOTEUR`), pour le LOW et
+pour le RATIO (que le projet ne règle pas). Témoin : le binaire de D141
+(04:38:04).
+
+**ATTENDU, écrit avant le témoin.**
+
+1. **Au témoin**, le projet au MASTER réglé : bouton LOW 0.0 dB, moteur 6.00
+   (D141) ; après double-clic, le moteur toujours à 6.00.
+2. **Après** : à l'ouverture, bouton LOW **6.0 dB**, moteur 6.00 — le bouton
+   dit ce que le moteur applique ; après double-clic, bouton 0.0 dB et
+   moteur **0.00** — le geste fait enfin quelque chose.
+3. Le RATIO, que le projet ne règle pas, à sa valeur d'usine des deux côtés
+   (2.0:1, moteur 2.00) ; le projet sans section `master` identique au
+   témoin (LOW 0.0 dB, moteur 0.00).
+4. Suites vertes, préférences intactes.
+
