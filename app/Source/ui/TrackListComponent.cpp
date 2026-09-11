@@ -150,6 +150,9 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
     addAndMakeVisible(muteButton_);
     addAndMakeVisible(soloButton_);
     addAndMakeVisible(armButton_);
+    muteButton_.setName("pistes.muet");         // D147 : le nom par lequel le banc le désigne (cliquer:)
+    soloButton_.setName("pistes.solo");         // D147
+    armButton_.setName("pistes.armement");      // D147
     muteButton_.setClickingTogglesState(true);
     soloButton_.setClickingTogglesState(true);
     armButton_.setClickingTogglesState(true);

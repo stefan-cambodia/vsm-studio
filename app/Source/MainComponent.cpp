@@ -1780,6 +1780,10 @@ void MainComponent::listTextsForCapture() {
     // invérifiable. Elle se lit à part, dans le moteur, seule source de vérité.
     std::fputs(("VSM_MONO : " + juce::String(audioEngine_.processGraph().masterBus().monoListen() ? 1 : 0)
                 + "\n").toRawUTF8(), stderr);
+    // D147 : L'ARBRE DES PISTES AU MOMENT DU RELEVÉ (muet « ! », solo « * »,
+    // armement « R »). `VSM_VUE=pistes` l'écrit à l'OUVERTURE, donc avant les
+    // gestes et les touches : il ne peut pas dire ce qu'une annulation a rendu.
+    std::fputs(("VSM_PISTES : " + trackTreeForCapture() + "\n").toRawUTF8(), stderr);
     // LE COMPTE, ET CE QUI LE REND SUSPECT : un zéro doit se lire, pas se deviner.
     std::fputs(("VSM_TEXTES : " + juce::String(nombre) + juce::String(u8" texte(s) listé(s)")
                 + (isShowing() ? juce::String()
@@ -7726,6 +7730,12 @@ juce::String MainComponent::trackTreeForCapture() const {
                + juce::String(t.folderDepth);
         if (t.muted) texte += "!";
         if (t.solo) texte += "*";
+        // D147 : L'ARMEMENT, qui manquait. Le relevé disait le muet et le solo,
+        // et rien de la piste armée : le cas était invérifiable. La marque vient
+        // à la fin, et seulement si la piste est armée -- un projet sans piste
+        // armée rend donc le MÊME texte qu'avant, et les phases qui comparent
+        // des arbres de pistes (D35) ne bougent pas.
+        if (t.armed) texte += "R";
         texte += " ";
     }
     return texte.trim();

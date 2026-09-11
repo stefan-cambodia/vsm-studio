@@ -17289,3 +17289,43 @@ principe : un DAW peut décider qu'armer est un geste de séance, comme l'écout
 mono (D23.5). Mais l'écoute mono, elle, n'est PAS dans le fichier du projet,
 tandis que `armed` y est écrit et rechargé — c'est cette contradiction que la
 mesure doit trancher, pas un goût.
+
+**RÉSULTAT (12/09) — LES SEPT ATTENDUS TIENNENT, APRÈS UNE ERREUR DE BANC.**
+Binaire de 06:28:22 ; séries 2 et 3 identiques l'une à l'autre. Projet de D91
+(deux pistes : « Acid Bass », « Drums »), anglais, relevé `VSM_PISTES` lu après
+le geste et la touche.
+
+| cas | attendu | mesuré (séries 2 et 3) |
+|---|---|---|
+| témoin, sans geste | — | `Acid Bass0 Drums0` |
+| (a) `muet-piste:0` | « ! » | `Acid Bass0! Drums0` |
+| (b) (a) puis Ctrl+Z | effacée | `Acid Bass0 Drums0` |
+| (c) `solo-piste:0` | « * » | `Acid Bass0* Drums0` |
+| (d) (c) puis Ctrl+Z | effacée | `Acid Bass0 Drums0` |
+| (e) `cliquer:pistes.armement` | « R » | `Acid Bass0R Drums0`, bascule 0 → 1 |
+| (f) (e) puis Ctrl+Z | **« R » RESTE** | `Acid Bass0R Drums0` |
+| (g) contrôle : `cliquer:pistes.muet` puis Ctrl+Z | effacée | `Acid Bass0 Drums0`, bascule 0 → 1 |
+
+**L'ERREUR DE BANC, ET CE QU'ELLE APPREND.** La série 1 a envoyé `muet-piste:0`
+et `solo-piste:0` par `VSM_GESTE_PISTE`, alors que ces deux verbes appartiennent
+à `VSM_VUE`. Les quatre premiers cas n'ont alors rien marqué — même sans
+annulation —, et cela ressemblait trait pour trait à une réfutation : « le muet
+ne s'annule pas », alors qu'il ne s'était jamais posé. **L'application, elle,
+avait dit ce qu'il fallait** : « VSM_GESTE_PISTE : geste inconnu »
+(`Main.cpp:248`), écrit quatre fois sur la sortie d'erreur en série 1 et zéro
+fois en série 2. C'est la ligne de résumé du BANC qui ne relayait que
+`VSM_PISTES` et `VSM_CLIC`, et qui a jeté l'avertissement. **Aucune anomalie
+d'application n'est ouverte de ce chef** : la panne muette était celle du banc.
+Le banc relaie désormais tout avertissement, et la leçon est dans CLAUDE.md.
+
+**Ce que la mesure établit.** Le muet et le solo s'annulent, par le verbe (b, d)
+comme par le bouton (g) — et pour le lot entier, selon D38.2. L'armement, lui,
+ne s'annule pas (f), alors qu'il écrit `Track::armed`, champ du projet sauvé et
+rechargé : c'est exactement la contradiction que l'attendu voulait trancher, et
+elle tombe du côté du défaut, non du geste de séance. Le cas (g) porte tout le
+poids de (f) : le MÊME verbe `cliquer:`, sur le bouton voisin de la même ligne,
+efface bien sa marque — donc (f) mesure l'armement et non le geste.
+
+Suites C++ vertes (330, 1 291, 297, 11, 25), compilées à `-j 2` pendant la
+course 3 de l'épreuve ; `vsm-render` intact ; préférences identiques par `cmp`
+après chacune des trois séries. **A25 s'ouvre.**

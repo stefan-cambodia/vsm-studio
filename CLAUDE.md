@@ -142,3 +142,11 @@ l'ordre de marche — pas de la documentation d'accompagnement.
   chiffre (12/09, D145 — le cas (c) lisait -0,9 dB, et il a fallu un cas sans
   annulation, à -6,0 dB, pour que « rendu » veuille dire quelque chose). Toute
   mesure d'annulation porte donc son témoin sans annulation.
+- Un banc qui ne RELAIE pas ce que l'application avertit jette la preuve qu'elle
+  lui tend. Le 12/09 (D147), quatre cas ont semblé réfuter l'attendu — le muet
+  « ne s'annulait pas » — parce que le verbe était envoyé par `VSM_GESTE_PISTE`
+  quand il appartient à `VSM_VUE` ; l'application l'avait dit quatre fois
+  (« VSM_GESTE_PISTE : geste inconnu », `Main.cpp:248`), et c'est la ligne de
+  résumé du banc, qui ne lisait que ses deux relevés, qui l'a effacé. Tout
+  banc compte et affiche les avertissements du journal AVANT de conclure, et un
+  verbe se vérifie dans la fonction qui le dispatche, pas de mémoire.
