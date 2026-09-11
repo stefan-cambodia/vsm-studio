@@ -16641,3 +16641,40 @@ d'origine avait perdu. À 180 px, le nom abrégé de la sortie se lit
 maintenant au survol : A20 se ferme sur ce remède, le seul qui ne cache
 aucun réglage et ne réécrit pas la largeur choisie par l'utilisateur.
 
+### Phase D138 — le vingt-septième audit : ce qui est « visible » sans avoir de surface, docks au minimum (12/09/2026)
+
+**LA LUNETTE, ET POURQUOI ELLE EST NEUVE.** D123 a trouvé un bouton que la
+largeur du dock écrasait ; D136, six réglages de la ligne de piste à largeur
+NULLE — et ce dernier défaut n'a été vu que parce qu'un geste de banc a
+appuyé sur un curseur que personne ne voyait. Les deux ont la même cause :
+une disposition qui pose ses éléments à largeur fixe et suppose une place
+que le dock n'a pas. C'est la faute que D71 nommait : on a réparé deux
+exemplaires sans demander combien la famille en compte. Et aucun outil ne
+le dirait : le relevé des textes (`VSM_TEXTES_LISTE`) lit ce qui est visible
+AU SENS DE JUCE (`isVisible()`), exactement le filtre qui a laissé passer le
+panoramique sans largeur.
+
+**L'OUTIL.** `VSM_SANS_SURFACE=1` : au moment de la photo (la mise en page
+faite, les fenêtres ouvertes), la même descente que le relevé des textes, dans
+la fenêtre principale et dans les autres, et une ligne par COMMANDE (bouton,
+curseur, liste, champ de saisie, libellé qui porte un texte) visible dont la
+surface est VIDE (largeur ou hauteur nulle) : son type, son texte ou son nom,
+et le chemin de ses parents. Un compte en dernière ligne, même nul. Ce n'est
+que la moitié du défaut de D132 — un afficheur hors de la vue, sous le bord
+d'un cadre qui défile, a une surface ; le compter confondrait le défaut avec
+une liste qu'on fait défiler — et c'est dit.
+
+**LE BANC.** Projet de la course 1 de l'épreuve (dix pistes, un bus ; ouvert
+en place, vérifié non écrit) et projet de D91 (deux pistes), français et
+anglais : docks au MINIMUM que le séparateur permet (gauche 180, droite 220,
+bas au plancher — la disposition de l'utilisateur est à 180 à gauche), docks
+au défaut du code (aucune clé `dock.*`), et disposition en panneaux flottants.
+
+**ATTENDU, écrit avant d'écrire l'outil.** Au défaut, **0 à 3** commandes
+sans surface (D136 a traité la ligne de piste, la plus serrée). Docks au
+minimum : **3 à 15**, dans les panneaux dont la largeur suit le dock (rack,
+barre du piano roll, tranches du mixeur au plancher du bas). Chacune est
+nommée ; la correction viendra par famille, dans une phase à elle — cette
+phase mesure et nomme. Un compte nul partout se revérifie en provoquant un
+cas connu avant de conclure.
+
