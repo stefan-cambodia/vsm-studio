@@ -51,6 +51,9 @@ public:
     /// Le projet édité, pour ce qui n'appartient à aucune piste : les repères
     /// de la ligne de temps, que la règle dessine.
     vsm::sequencer::Project* project() const { return project_; }
+    /// D115 : une entrée du menu du clic droit, choisie par son libellé (banc,
+    /// `VSM_MENU_CONTEXTE=pianoroll:…`) -- le même menu, la même action que la souris.
+    bool actionDeMenuPourCapture(const juce::String& libelle);
 
     // --- Callbacks vers l'application ------------------------------------
     /// Les notes ont changé : reconstruire le planning de lecture.

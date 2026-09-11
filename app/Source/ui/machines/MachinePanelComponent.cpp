@@ -86,7 +86,10 @@ void MachinePanelComponent::rebuild() {
     size_t sectionIndex = 0;
     for (const auto& section : panel_->sections) {
         auto title = std::make_unique<juce::Label>();
-        title->setText(toJuce(section.title), juce::dontSendNotification);
+        // D115 : À L'AFFICHAGE, par tr() -- qui rend la clé quand elle n'a pas de
+        // paire. Les sérigraphies anglaises (ENVELOPE, FILTER…) restent telles
+        // quelles ; la seule française, « RÉGLAGES » (TB-303), se traduit.
+        title->setText(vsm::app::ui::tr(toJuce(section.title)), juce::dontSendNotification);
         title->setJustificationType(juce::Justification::centredLeft);
         title->setColour(juce::Label::textColourId, colourFrom(section.accentColour, textColour));
         title->setFont(juce::Font(juce::FontOptions(11.0f).withStyle("Bold")));

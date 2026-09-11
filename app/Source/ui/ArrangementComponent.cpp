@@ -1,4 +1,5 @@
 #include "ArrangementComponent.h"
+#include "EntreeDeMenu.h"
 #include "Langue.h"
 #include <limits>
 #include "LookAndFeel/VsmLookAndFeel.h"
@@ -579,19 +580,8 @@ void ArrangementComponent::regleMenuAction(vsm::midi::Tick tick, int survole, in
     if (choix == 3 && survole >= 0 && onMarkerRemoved) onMarkerRemoved(static_cast<size_t>(survole));
 }
 
-/// D91 : l'identifiant de l'entrée dont le libellé est `libelle` -- exact, sinon
-/// son début --, sous-menus compris ; 0 si aucune, ou si elle est grisée : une
-/// entrée grisée ne se clique pas, et le banc ne doit pas pouvoir plus que la souris.
-static int entreeParLibelle(const juce::PopupMenu& menu, const juce::String& libelle) {
-    int parDebut = 0;
-    for (juce::PopupMenu::MenuItemIterator it(menu, true); it.next();) {
-        const auto& item = it.getItem();
-        if (item.itemID == 0 || !item.isEnabled) continue;
-        if (item.text == libelle) return item.itemID;
-        if (parDebut == 0 && item.text.startsWith(libelle)) parDebut = item.itemID;
-    }
-    return parDebut;
-}
+// D115 : `entreeParLibelle` vit dans EntreeDeMenu.h, partagée avec le piano roll.
+using vsm::app::ui::entreeParLibelle;
 
 bool ArrangementComponent::actionDeMenuPourCapture(const juce::String& quel, const juce::String& libelle) {
     if (project_ == nullptr) return false;

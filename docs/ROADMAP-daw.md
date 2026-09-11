@@ -14961,3 +14961,22 @@ commun et le geste —, sans traduction.
    anglaise « Notes softer than 64 »), **avec les mêmes nombres** qu'en français ; le
    français identique au témoin.
 
+**LE RÉSULTAT, ATTENDU PAR ATTENDU (11/09/2026, banc à 17:54).** Témoin :
+binaire du 11/09 17:52:37 (l'en-tête commun, le geste, les phrases d'avant) ;
+D115 : 17:54:28. Six lancements par série, `HOME` de brouillon.
+
+1. **L'inventaire — TENU** : stricte **inchangé à 7** ; large ÉCRAN
+   **28 → 25**, TABLE 266 → 267.
+2. **La façade — TENU** : 35 libellés en capitales sur la façade du TB-303
+   dans chaque série ; en anglais, le SEUL changement est « RÉGLAGES » →
+   « SETTINGS » ; le français identique au témoin.
+3. **Le piano roll — TENU** : le geste trouve et exécute l'entrée par son
+   libellé dans chaque langue (« Notes plus faibles que 64 », « Notes softer
+   than 64 »…). Au témoin, « 12 note(s) plus faible(s) que 64 » et « 0 note(s)
+   plus courte(s) que 120 ticks » dans les deux langues ; avec D115, « 12
+   note(s) softer than 64 » et « 0 note(s) shorter than 120 ticks » en
+   anglais — mêmes nombres (12, 64 ; 0, 120) — et le français identique.
+
+Table : **1 366** paires (+3). Suites C++ vertes à `-j 2` (330, 1 291, 297,
+25, 11) ; `build/tools/vsm-render` non touché ; préférences intactes.
+

@@ -1,4 +1,5 @@
 #include "PianoRollComponent.h"
+#include "EntreeDeMenu.h"
 #include "Langue.h"
 #include "DrumVoiceNames.h"
 #include "Shortcuts.h"
@@ -475,8 +476,9 @@ void PianoRollComponent::selectBelowVelocity(uint8_t velocity) {
     if (Track* track = activeTrack())
         selectedNoteIds_ = selectNotesBelowVelocity(track->notes, velocity);
     if (onStatusChanged)
-        onStatusChanged(juce::String(static_cast<int>(selectedNoteIds_.size()))
-                        + juce::String(u8" note(s) plus faible(s) que ") + juce::String(static_cast<int>(velocity)));
+        onStatusChanged(vsm::app::ui::tr(u8"%1 note(s) plus faible(s) que %2")
+                            .replace("%1", juce::String(static_cast<int>(selectedNoteIds_.size())))
+                            .replace("%2", juce::String(static_cast<int>(velocity))));
     notifyEditState();
     repaint();
 }
@@ -485,8 +487,9 @@ void PianoRollComponent::selectShorterThan(Tick ticks) {
     if (Track* track = activeTrack())
         selectedNoteIds_ = selectNotesShorterThan(track->notes, ticks);
     if (onStatusChanged)
-        onStatusChanged(juce::String(static_cast<int>(selectedNoteIds_.size()))
-                        + juce::String(u8" note(s) plus courte(s) que ") + juce::String(static_cast<int>(ticks)) + " ticks");
+        onStatusChanged(vsm::app::ui::tr(u8"%1 note(s) plus courte(s) que %2 ticks")
+                            .replace("%1", juce::String(static_cast<int>(selectedNoteIds_.size())))
+                            .replace("%2", juce::String(static_cast<int>(ticks))));
     notifyEditState();
     repaint();
 }
@@ -1047,6 +1050,13 @@ juce::PopupMenu PianoRollComponent::buildContextMenu() const {
                      fold_ || !jouees.empty(), fold_);
     }
     return menu;
+}
+
+bool PianoRollComponent::actionDeMenuPourCapture(const juce::String& libelle) {
+    const int choix = vsm::app::ui::entreeParLibelle(buildContextMenu(), libelle);
+    if (choix == 0) return false;
+    performContextMenuAction(choix);
+    return true;
 }
 
 void PianoRollComponent::performContextMenuAction(int menuItemId) {

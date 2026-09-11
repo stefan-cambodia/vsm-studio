@@ -1286,8 +1286,10 @@ bool MainComponent::runContextMenuForCapture(const juce::String& entree) {
     const juce::String libelle = entree.fromFirstOccurrenceOf(":", false, false).trim();
     // « effets » : le premier effet de la chaîne affichée, celle de la piste choisie.
     // D102 : « ajout-effet » : une entrée de la liste « ajouter un effet », choisie.
+    // D115 : « pianoroll » : le menu du clic droit du piano roll, sur la piste montrée.
     const bool fait = quel == "effets"        ? effectChain_.presetMenuPourCapture(0, libelle)
                     : quel == "ajout-effet"   ? effectChain_.ajouterPourCapture(libelle)
+                    : quel == "pianoroll"     ? pianoRoll_.actionDeMenuPourCapture(libelle)
                                               : arrangement_.actionDeMenuPourCapture(quel, libelle);
     std::fputs((juce::String("VSM_MENU_CONTEXTE : ")
                 + (fait ? juce::String(u8"« ") + libelle + juce::String(u8" » exécutée (") + quel + ")"
@@ -5503,8 +5505,9 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
         } else {
             // Un rapport illisible est DIT : le taire laisserait croire
             // que la transcription était sûre partout.
-            rapport.add("Rapport de reconstruction illisible : "
-                        + juce::String::fromUTF8(lu.error.c_str()));
+            // D115 : le littéral EST le modèle de D89 -- la donnée ne change pas.
+            rapport.add(juce::String(u8"Rapport de reconstruction illisible : %1")
+                            .replace("%1", juce::String::fromUTF8(lu.error.c_str())));
         }
     }
 

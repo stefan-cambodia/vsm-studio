@@ -2808,6 +2808,13 @@ const Paire kAnglais[] = {
       "the transcriber could not be started" },
     { "Ce que la chaîne ne dit pas : pourquoi cette piste vient de ce stem, ce qui est une hypothèse, ce qui est coupé exprès…",
       "What the chain does not say: why this track comes from that stem, what is a hypothesis, what is cut on purpose…" },
+    // --- D115 : UN TITRE DE FAÇADE, L'ÉTAT DU PIANO ROLL -------------------------------
+    { "RÉGLAGES",
+      "SETTINGS" },
+    { "%1 note(s) plus faible(s) que %2",
+      "%1 note(s) softer than %2" },
+    { "%1 note(s) plus courte(s) que %2 ticks",
+      "%1 note(s) shorter than %2 ticks" },
 };
 
 constexpr int kNombreDePaires = static_cast<int>(sizeof(kAnglais) / sizeof(kAnglais[0]));
