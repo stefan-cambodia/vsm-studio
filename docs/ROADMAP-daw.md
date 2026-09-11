@@ -16224,3 +16224,32 @@ atteintes par ce banc : ces quatre sites sont vérifiés au code, et c'est dit.
 sans espace, dans les deux langues. En français, la boîte et le libellé
 identiques au témoin, mot pour mot. Suites vertes, préférences intactes.
 
+**RÉSULTAT (11/09) — TENU.** Témoin : binaire de D126 (23:16:01), où
+l'anglais montrait « Tracks : 2 », « Export the selected track as MIDI
+(« Acid Bass »)... », « SOURCE : FILT ENV ». Après : binaire de 23:53:42.
+Tous les relevés au premier essai.
+
+| relevé | témoin, anglais | après, anglais | français |
+|---|---|---|---|
+| boîte des statistiques | « Tracks : 2 », « Notes : 16 »… | « Tracks: 2 », « Notes: 16 », « Controllers (CC): 0 »… | identique au témoin (`diff`) |
+| export MIDI de la piste choisie | « (« Acid Bass »)... » | « (“Acid Bass”)... » | identique au témoin |
+| façade Prophet | « SOURCE : FILT ENV », « SOURCE : OSC B » | « SOURCE: FILT ENV », « SOURCE: OSC B » | idem — la sérigraphie est la même dans les deux langues |
+
+Suites C++ vertes (330, 1 291, 297, 25, 11 — celle de `panels/`
+recompilée), l'application et la suite de `panels/` compilées à `-j 2`
+pendant l'épreuve, `vsm-render` intact (15:00:36) ; inventaire inchangé
+(ÉCRAN 7) ; préférences de l'utilisateur identiques par `cmp`.
+
+**LE PIÈGE DU `u8`, PAYÉ UNE SIXIÈME FOIS** — celui que la consigne du projet
+nomme : les deux nouvelles paires étaient écrites en `u8"…"` dans une table
+de `const char*`. La compilation a échoué (quatre erreurs, code 2) AVANT le
+banc, et la commande s'est arrêtée sur son échec : aucun ancien binaire n'a
+été mesuré à la place du nouveau. Les paires de `kAnglais` sont des
+littéraux ordinaires ; le fichier est en UTF-8.
+
+**Vérifié au code seulement, et dit** : les trois boîtes dont les listes
+« nom : erreur » passent désormais par `deuxPoints()` (pistes non chargées,
+échecs de report, preset illisible) et l'en-tête « Takes of “%1” », qu'aucun
+banc de cette phase n'atteint. **Reporté** : l'afficheur de valeur des
+façades, qui colle encore « : » en anglais (INDEX, A16).
+

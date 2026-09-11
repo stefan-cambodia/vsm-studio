@@ -86,4 +86,10 @@ juce::String trGeste(const juce::String& libelle);
 /// reconnaît passe tel quel. En français, rend son argument sans y toucher.
 juce::String trPhrase(const juce::String& texte);
 
+/// D131 : LES DEUX-POINTS D'UN TEXTE QUE LE CODE ASSEMBLE, dans la typographie de
+/// la langue -- « Pistes : 2 » en français, « Tracks: 2 » en anglais. Pour coller
+/// un libellé traduit et une valeur ; une phrase entière se traduit par la table
+/// (et une DONNÉE que `trPhrase` traduira garde la forme française).
+juce::String deuxPoints();
+
 } // namespace vsm::app::ui

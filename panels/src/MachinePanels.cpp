@@ -599,8 +599,8 @@ MachinePanel makeProphet() {
     polyMod.accentColour = "#C86A4A";
     polyMod.column = 0; polyMod.row = 0; polyMod.columnSpan = 8; polyMod.rowSpan = 2;
     polyMod.controls = {
-        control("PolyMod Filt Env", "SOURCE : FILT ENV", S::Knob, 0, 0),
-        control("PolyMod Osc B", "SOURCE : OSC B", S::Knob, 1, 0),
+        control("PolyMod Filt Env", "SOURCE: FILT ENV", S::Knob, 0, 0),
+        control("PolyMod Osc B", "SOURCE: OSC B", S::Knob, 1, 0),
         control("PolyMod to Freq A", "TO FREQ A", S::Knob, 0, 1),
         control("PolyMod to PW A", "TO PW A", S::Knob, 1, 1),
         control("PolyMod to Filter", "TO FILTER", S::Knob, 2, 1),

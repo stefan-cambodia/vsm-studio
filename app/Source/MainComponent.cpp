@@ -2628,8 +2628,10 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 const size_t p = trackList_.selectedTrackIndex();
                 const bool midi = p < project_.tracks.size() && project_.tracks[p].kind == Track::Kind::Midi;
                 menu.addItem(kMenuFileExportTrackMidi,
-                             midi ? juce::String(tr(u8"Exporter la piste choisie en MIDI (\u00ab "))
-                                        + juce::String(project_.tracks[p].name) + juce::String(tr(u8" \u00bb)..."))
+                             // D131 : UN MODÈLE ENTIER (D80) -- en morceaux, la fermeture « » )... »
+                             // n'avait pas de paire, et l'anglais gardait les guillemets français.
+                             midi ? tr(u8"Exporter la piste choisie en MIDI (\u00ab %1 \u00bb)...")
+                                        .replace("%1", juce::String(project_.tracks[p].name))
                                   : juce::String(tr(u8"Exporter la piste choisie en MIDI (choisir une piste MIDI)...")),
                              midi);
             }
@@ -3254,9 +3256,8 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                 if (pisteChoisie < project_.tracks.size()
                     && !project_.tracks[pisteChoisie].takes.empty()) {
                     const auto& prises = project_.tracks[pisteChoisie].takes;
-                    menu.addSectionHeader(juce::String(tr(u8"Prises de « "))
-                                           + juce::String(project_.tracks[pisteChoisie].name)
-                                           + juce::String(tr(u8" »")));
+                    menu.addSectionHeader(tr(u8"Prises de « %1 »")   // D131 : un modèle entier (D80)
+                                              .replace("%1", juce::String(project_.tracks[pisteChoisie].name)));
                     for (size_t i = 0; i < prises.size() && i <= 63; ++i)
                         menu.addItem(kMenuRecordTakeFirst + static_cast<int>(i),
                                       juce::String(prises[i].name.empty()
@@ -7610,7 +7611,7 @@ void MainComponent::loadAudioTracks() {
         const juce::File fichier = currentProjectFolder_.getChildFile(source.path);
         auto charge = vsm::audio::io::loadAudioTrack(fichier.getFullPathName().toStdString(), sr);
         if (!charge.success || !charge.source) {
-            manquants.add(juce::String(track.name) + " : " + juce::String(charge.error));
+            manquants.add(juce::String(track.name) + vsm::app::ui::deuxPoints() + juce::String(charge.error));   // D131
             audioEngine_.processGraph().setTrackAudio(i, nullptr);
             trackList_.setAudioSourceRate(i, 0.0, 0.0);
             continue;
@@ -8312,7 +8313,8 @@ void MainComponent::bounceSelectionToNewTracks() {
         // différents finiraient par ne plus sonner pareil.
         const auto resultat = vsm::interchange::renderTrackForFreeze(bundle, index, rendu, options);
         if (!resultat.success) {
-            echecs.add(juce::String(project_.tracks[index].name) + " : " + juce::String(resultat.error));
+            echecs.add(juce::String(project_.tracks[index].name) + vsm::app::ui::deuxPoints()
+                       + juce::String(resultat.error));   // D131
             continue;
         }
 
@@ -8327,7 +8329,8 @@ void MainComponent::bounceSelectionToNewTracks() {
                                                       options.format,
                                                       fichier.getFullPathName().toStdString());
         } catch (const std::exception& e) {
-            echecs.add(juce::String(project_.tracks[index].name) + " : " + juce::String(e.what()));
+            echecs.add(juce::String(project_.tracks[index].name) + vsm::app::ui::deuxPoints()
+                       + juce::String(e.what()));   // D131
             continue;
         }
 
@@ -9571,7 +9574,7 @@ juce::String MainComponent::projectStatisticsText() const {
 
     juce::String t;
     auto ligne = [&t](const juce::String& cle, const juce::String& valeur) {
-        t += cle + " : " + valeur + "\n";
+        t += cle + vsm::app::ui::deuxPoints() + valeur + "\n";   // D131 : « Tracks: 2 » en anglais
     };
     // D97 : TRADUIT À LA SOURCE. Ce texte part aussi au terminal, mais personne
     // ne l'y relit : son seul lecteur est la boîte (ROADMAP-daw.md, D97).
@@ -10578,7 +10581,8 @@ void MainComponent::applyTrackPresetFile(const juce::File& fichier) {
         // dit ce qu'il est plutôt que de s'appliquer vide.
         montrerBoite(
             juce::AlertWindow::WarningIcon, tr(u8"Appliquer un preset de piste"),
-            fichier.getFileName() + " : " + vsm::app::ui::trPhrase(juce::String::fromUTF8(lu.error.c_str())));
+            fichier.getFileName() + vsm::app::ui::deuxPoints()   // D131
+                + vsm::app::ui::trPhrase(juce::String::fromUTF8(lu.error.c_str())));
         std::fputs(("Preset de piste illisible : " + lu.error + "\n").c_str(), stderr);
         return;
     }

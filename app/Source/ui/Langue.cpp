@@ -222,8 +222,6 @@ const Paire kAnglais[] = {
       "Apply the groove" },
     { "Appliquer le groove (aucun en mémoire)",
       "Apply the groove (none in memory)" },
-    { "Appliquer le groove « ",
-      "Apply the groove « " },
     { "Appliquer le groove « %1 »",
       "Apply the groove “%1”" },
     { "Appliquer un preset",
@@ -578,8 +576,8 @@ const Paire kAnglais[] = {
       "Export audio (WAV)..." },
     { "Exporter la piste choisie en MIDI (choisir une piste MIDI)...",
       "Export the selected track as MIDI (select a MIDI track)..." },
-    { "Exporter la piste choisie en MIDI (« ",
-      "Export the selected track as MIDI (« " },
+    { "Exporter la piste choisie en MIDI (« %1 »)...",   // D131 : un modèle entier (D80)
+      "Export the selected track as MIDI (“%1”)..." },
     { "Exporter les stems (un WAV par piste)...",
       "Export stems (one WAV per track)..." },
     { "Extraire le groove de la piste choisie",
@@ -934,8 +932,8 @@ const Paire kAnglais[] = {
       "Poly pressure" },
     { "Prise ",
       "Take " },
-    { "Prises de « ",
-      "Takes of « " },
+    { "Prises de « %1 »",   // D131 : un modèle entier (D80)
+      "Takes of “%1”" },
     { "Programme",
       "Program" },
     { "Programme MIDI",
@@ -2911,6 +2909,12 @@ juce::String tr(const char8_t* texte) {
 }
 
 juce::String tr(const juce::String& texte) { return juce::translate(texte); }
+
+juce::String deuxPoints() {
+    // D131 : l'anglais ne met pas d'espace avant les deux-points ; la table était
+    // propre (0 paire sur 1 478), c'était le code qui collait « " : " ».
+    return Langue::courante() == Langue::Choix::Anglais ? juce::String(": ") : juce::String(" : ");
+}
 
 juce::String trSelon(const char* contexte, const char8_t* texte) {
     const juce::String seul = tr(texte);
