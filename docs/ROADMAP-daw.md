@@ -16058,3 +16058,32 @@ lancement ne rend aucune infobulle nouvelle est nommée : soit sa façade n'a
 que des bascules, soit le geste n'a pas posé la machine, et le journal dit
 laquelle des deux.
 
+**RÉSULTAT (11/09) — TENU : 0 infobulle française sur 357.** Binaire de D126
+(23:16:01) ; attendus commités à 23:30:42, banc parti à 23:30:46 ; 65
+lancements, tous en code 0 ; préférences de l'utilisateur intactes (`cmp`).
+Référence : le lancement du TB-303 (la machine d'origine de la piste), 53
+infobulles, retranchées de chaque relevé.
+
+- **357 infobulles de façade distinctes**, sur 63 machines qui en apportent.
+  Le filtre n'en retient aucune ; et parce qu'un zéro de filtre se revérifie,
+  les 357 ont été relues à l'œil : ce sont des sérigraphies anglaises
+  (« CUTOFF », « ENV AMT », « LFO TO VCF », « PLUCK / BOW »…). Trois termes
+  à dire sans les compter : « CHIEN » (le chevalet bourdonnant de la vielle)
+  et « TIERCE » (le jeu d'orgue), que l'anglais emploie aussi pour ces
+  instruments ; « SOURCE : OSC B », qui garde l'espace française avant les
+  deux-points.
+- **Deux machines sans infobulle nouvelle, nommées.** `vsm.flute` : « geste
+  inconnu » — ses sources existent, mais aucun `CMakeLists.txt` ne la
+  compile ; c'est la flûte « hors build » de l'INDEX (A3). `vsm.testtone` :
+  la façade est posée (« Test Tone (reference Phase 2) » est relevé), mais
+  ses légendes figurent toutes dans le lancement de référence.
+
+**Trouvé en lisant `panels/`, et qui ne s'affiche pas** : les raisons
+françaises des paramètres absents d'une façade (`omittedParameters` —
+« réglé au mixer, comme le volume de toute autre piste »…) ne sont lues que
+par un test (`panels/tests/test_machine_panels.cpp:85`), jamais par
+l'application : des données de contrôle, pas de l'interface. Non comptées.
+
+**Pour A9, les façades sont lues.** Restent non lues la fenêtre des tronçons
+et la fenêtre flottante de l'arrangement (D128).
+
