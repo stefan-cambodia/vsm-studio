@@ -6546,11 +6546,12 @@ void MainComponent::loadReferenceAudio() {
     const auto chooserFlags = juce::FileBrowserComponent::openMode
                             | juce::FileBrowserComponent::canSelectFiles;
 
-    chooser->launchAsync(chooserFlags, [this, chooser](const juce::FileChooser& fc) {
-        const juce::File file = fc.getResult();
+    auto suite = [this](const juce::File& file) {
         if (file == juce::File()) return;
         setReferenceAudioFile(file, /*silencieuxSiIllisible=*/false);
-    });
+    };
+    if (prendreLeFichierDeBanc(suite)) return;   // D108 : le banc (VSM_FICHIER)
+    chooser->launchAsync(chooserFlags, [chooser, suite](const juce::FileChooser& fc) { suite(fc.getResult()); });
 }
 
 /// CHARGER L'ORIGINAL SANS PASSER PAR UN SÉLECTEUR (D9.4).
@@ -6575,9 +6576,10 @@ void MainComponent::setReferenceAudioFile(const juce::File& file, bool silencieu
         auto result = vsm::app::loadReferenceAudioFile(file);
         if (!result.success || result.buffer.empty()) {
             if (!silencieuxSiIllisible)
-                juce::AlertWindow::showMessageBoxAsync(
-                    juce::AlertWindow::WarningIcon, "Enregistrement illisible",
-                    result.error.isEmpty() ? juce::String("fichier sans echantillon") : result.error);
+                montrerBoite(
+                    juce::AlertWindow::WarningIcon, tr("Enregistrement illisible"),
+                    result.error.isEmpty() ? tr(u8"fichier sans échantillon")
+                                           : vsm::app::ui::trPhrase(result.error));
             return;
         }
 
@@ -6598,9 +6600,9 @@ void MainComponent::publierReference(vsm::app::ReferenceAudioResult&& result, co
                                      bool activerEcoute) {
     const double duree = static_cast<double>(result.buffer.numFrames())
                        / juce::jmax(1.0, result.buffer.sampleRate);
-    referenceDescription_ = file.getFileName() + "  --  " + result.decoder + ", "
+    referenceDescription_ = file.getFileName() + "  --  " + tr(result.decoder) + ", "
                           + juce::String(result.buffer.sampleRate / 1000.0, 1) + " kHz, "
-                          + (result.buffer.isStereo() ? "stereo, " : "mono, ")
+                          + (result.buffer.isStereo() ? tr(u8"stéréo") : tr("mono")) + ", "
                           + juce::String(static_cast<int>(duree) / 60) + ":"
                           + juce::String(static_cast<int>(duree) % 60).paddedLeft('0', 2);
 
@@ -6643,7 +6645,7 @@ void MainComponent::chargerOriginalDuProjet(const juce::File& folder) {
     if (!result.success || result.buffer.empty() || !result.buffer.isStereo()) return;
     // Gauche = original, droite = reconstruction : on ne garde que l'original.
     result.buffer.right.clear();
-    result.decoder = result.decoder + " (canal gauche de comparaison.wav)";
+    result.decoder = tr(u8"%1 (canal gauche de comparaison.wav)").replace("%1", tr(result.decoder));
     publierReference(std::move(result), comparaison, /*activerEcoute=*/false);
 }
 

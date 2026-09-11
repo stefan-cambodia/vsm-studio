@@ -2661,6 +2661,23 @@ const Paire kAnglais[] = {
       "Export the track as MIDI" },
     { "Groupe %1",
       "Group %1" },
+    // --- D108 : L'ORIGINAL DE L'ÉCOUTE A/B -------------------------------------
+    { "Enregistrement illisible",
+      "Unreadable recording" },
+    { "fichier sans échantillon",
+      "file without samples" },
+    { "enregistrement trop long pour être chargé d'un bloc",
+      "recording too long to be loaded in one block" },
+    { "fréquence d'échantillonnage absente ou invalide",
+      "sample rate missing or invalid" },
+    { "fichier sans canal audio",
+      "file without an audio channel" },
+    { "WAV natif",
+      "native WAV" },
+    { "stéréo",
+      "stereo" },
+    { "%1 (canal gauche de comparaison.wav)",
+      "%1 (left channel of comparaison.wav)" },
 };
 
 constexpr int kNombreDePaires = static_cast<int>(sizeof(kAnglais) / sizeof(kAnglais[0]));
@@ -2943,6 +2960,11 @@ const ModeleDePhrase kModeles[] = {
     // D102 : les erreurs des hôtes CLAP et VST3 (la fin du premier est celle du système)
     { u8"chargement impossible : %1", u8"cannot load: %1" },
     { u8"aucun plugin VST3 dans « %1 »", u8"no VST3 plugin in “%1”" },
+    // D108 : les erreurs du décodeur de l'original (ReferenceAudioLoader)
+    { u8"format non reconnu (formats acceptés : %1)", u8"unrecognised format (accepted formats: %1)" },
+    { u8"enregistrement trop long pour tenir en mémoire (%1 min)", u8"recording too long to fit in memory (%1 min)" },
+    { u8"lecteur WAV du moteur : %P1", u8"engine WAV reader: %P1" },
+    { u8"lecteur JUCE : %P1", u8"JUCE reader: %P1" },
     { u8"Piste %#1 : %P2", u8"Track %1: %P2" },
 };
 

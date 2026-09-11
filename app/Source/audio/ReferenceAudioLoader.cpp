@@ -30,25 +30,25 @@ ReferenceAudioResult decodeWithJuce(const juce::File& file) {
 
     std::unique_ptr<juce::AudioFormatReader> reader(formatManager().createReaderFor(file));
     if (reader == nullptr) {
-        result.error = "format non reconnu (formats acceptes : "
-                     + referenceAudioFormatList() + ")";
+        result.error = juce::String(u8"format non reconnu (formats acceptés : %1)")
+                           .replace("%1", referenceAudioFormatList());
         return result;
     }
 
     const juce::int64 frames = reader->lengthInSamples;
     if (frames <= 0) {
-        result.error = "fichier sans echantillon";
+        result.error = juce::String(u8"fichier sans échantillon");
         return result;
     }
     if (frames > static_cast<juce::int64>(std::numeric_limits<int>::max())) {
-        result.error = "enregistrement trop long pour etre charge d'un bloc";
+        result.error = juce::String(u8"enregistrement trop long pour être chargé d'un bloc");
         return result;
     }
     if (reader->sampleRate <= 0.0) {
         // Une fréquence nulle rendrait la lecture indéterminée : la piste de
         // référence rééchantillonne d'après ce champ, et le mensonge ne se
         // verrait qu'à l'oreille, sous forme de transposition.
-        result.error = "frequence d'echantillonnage absente ou invalide";
+        result.error = juce::String(u8"fréquence d'échantillonnage absente ou invalide");
         return result;
     }
 
@@ -78,9 +78,8 @@ ReferenceAudioResult decodeWithJuce(const juce::File& file) {
         // Pas de plafond arbitraire sur la durée : c'est la mémoire de la
         // machine qui tranche, et elle le dit ici plutôt que d'emporter
         // l'application.
-        result.error = "enregistrement trop long pour tenir en memoire ("
-                     + juce::String(frames / juce::jmax(1.0, reader->sampleRate) / 60.0, 1)
-                     + " min)";
+        result.error = juce::String(u8"enregistrement trop long pour tenir en mémoire (%1 min)")
+                           .replace("%1", juce::String(frames / juce::jmax(1.0, reader->sampleRate) / 60.0, 1));
         return result;
     }
 
@@ -128,10 +127,10 @@ ReferenceAudioResult loadReferenceAudioFile(const juce::File& file) {
         auto parJuce = decodeWithJuce(file);
         if (!parJuce.success) {
             const juce::String premier = natif.error.empty()
-                ? juce::String("fichier sans echantillon")
+                ? juce::String(u8"fichier sans échantillon")
                 : juce::String::fromUTF8(natif.error.c_str());
-            parJuce.error = "lecteur WAV du moteur : " + premier
-                          + "\nlecteur JUCE : " + parJuce.error;
+            parJuce.error = juce::String("lecteur WAV du moteur : %1").replace("%1", premier)
+                          + "\n" + juce::String("lecteur JUCE : %1").replace("%1", parJuce.error);
         }
         return parJuce;
     }

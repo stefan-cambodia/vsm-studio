@@ -202,6 +202,12 @@ public:
             if (const char* plugin = std::getenv("VSM_PLUGIN"); plugin != nullptr && *plugin)
                 content->setPluginFileForCapture(juce::File::getCurrentWorkingDirectory().getChildFile(
                     juce::String::fromUTF8(plugin)));
+            // VSM_FICHIER=chemin (D108) : le même crochet, sous un nom qui ne dit plus
+            // « plugin » -- tout sélecteur qui passe par `prendreLeFichierDeBanc`
+            // (l'original de l'écoute A/B, par exemple).
+            if (const char* fichier = std::getenv("VSM_FICHIER"); fichier != nullptr && *fichier)
+                content->setPluginFileForCapture(juce::File::getCurrentWorkingDirectory().getChildFile(
+                    juce::String::fromUTF8(fichier)));
             // VSM_MENU=libellé[;libellé…] : exécuter des entrées de menu par
             // leur LIBELLÉ avant la capture (D20). Trois gestes de cet audit
             // ne vivent que dans le menu contextuel d'un clip ; leurs jumeaux

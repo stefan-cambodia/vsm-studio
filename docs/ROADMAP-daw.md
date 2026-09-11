@@ -14270,3 +14270,74 @@ La table passe à **1 293** paires (+23). `VintageSynthMidiStudio` et
 suites C++ vertes (330 cœur, 1 291 audio, 297 interchange, 25 CLAP, 11
 panneaux). `MainComponent` : 35 chaînes à l'inventaire.
 
+### Phase D108 — A9 : l'original de l'écoute A/B (11/09/2026)
+
+**LE LOT.** Charger l'original qui sert de référence à l'écoute A/B : le
+sélecteur (`loadReferenceAudio`), la boîte « Enregistrement illisible »
+(`setReferenceAudioFile`), les erreurs du décodeur
+(`audio/ReferenceAudioLoader.cpp`), et la ligne que le menu Fichier montre une
+fois l'original chargé (« bip.wav  --  WAV natif, 48.0 kHz, mono, 0:00 »,
+`publierReference`, et son suffixe « canal gauche de comparaison.wav » dans
+`chargerOriginalDuProjet`). À l'inventaire : 6 ÉCRAN (stricte), 10 (large) ;
+plusieurs lui échappent (« lecteur JUCE : », « formats acceptes », « WAV
+natif »).
+
+**LE BANC.** Le sélecteur passe par le crochet de D102 (`prendreLeFichierDeBanc`),
+qu'une variable au nom juste désigne désormais : `VSM_FICHIER` (le même que
+`VSM_PLUGIN`). Le geste reste le menu Fichier. Trois cas, français puis
+anglais, témoin (D108 sans ses traductions : la boîte par `montrerBoite()`,
+le crochet en place) puis D108 : `wav-casse` (un `.wav` qui n'en est pas un :
+les deux lecteurs refusent, la boîte porte les deux refus), `flac-casse` (le
+lecteur de JUCE seul), `bon` (`bip.wav` : la ligne du menu, lue par
+`VSM_MENU_LISTE`).
+
+**LES DÉCISIONS.**
+
+1. **Les accents rendus** aux erreurs du décodeur (« formats acceptés »,
+   « fichier sans échantillon », « trop long pour être chargé », « fréquence
+   d'échantillonnage », « mémoire ») et à « stéréo » : différence française
+   voulue, déclarée ici. Ces littéraux passent par `juce::String(u8"…")` — un
+   littéral accentué lu comme `const char*` sort abîmé (D99).
+2. **Les deux phrases composées deviennent des phrases entières** avec leur
+   `%1` (« format non reconnu (formats acceptés : %1) », « … en mémoire (%1
+   min) ») : leur modèle dans `kModeles` est alors le littéral lui-même. La
+   phrase à deux lignes (« lecteur WAV du moteur : … / lecteur JUCE : … »)
+   garde deux morceaux, chacun traduit par son modèle (`%P1`).
+3. **La traduction se fait à l'affichage** (`trPhrase` dans la boîte, `tr()`
+   pour le nom du décodeur, « stéréo » et le suffixe) : le décodeur reste
+   français, les outils qui l'emploient aussi.
+
+**ATTENDU, écrit avant la mesure.**
+
+1. **L'inventaire** : ÉCRAN **51 → 45** (stricte), **83 → 74** (large) —
+   une chaîne reste à la large, « lecteur WAV du moteur : %1 », traduite par
+   son modèle `%P1` que l'inventaire ne sait pas rapprocher ; TABLE +7 aux
+   deux règles (les phrases entières du décodeur deviennent des clés ou des
+   modèles).
+2. **Les boîtes** : 1, 1, 0 ; en anglais « Unreadable recording : engine WAV
+   reader: RIFF/WAVE header missing / JUCE reader: unrecognised format
+   (accepted formats: …) », puis « unrecognised format (…) » seul.
+3. **La ligne du menu** (`bon`) : « bip.wav  --  native WAV, 48.0 kHz, mono,
+   0:00 » en anglais.
+4. **Le français** : identique au témoin, sauf « acceptes » → « acceptés »
+   dans les deux boîtes (décision 1).
+
+**VU DANS LE TÉMOIN (D108), écrit avant la mesure d'après.** Six lancements,
+un sélecteur sauté chacun, préférences intactes. `wav-casse` : une boîte,
+« Enregistrement illisible : lecteur WAV du moteur : en-tête RIFF/WAVE absent /
+lecteur JUCE : format non reconnu (formats acceptes : WAV file, AIFF file,
+FLAC file, Ogg-Vorbis file, MP3 file) » ; `flac-casse` : une boîte, le second
+refus seul ; `bon` : aucune boîte, et le menu Fichier porte « bip.wav  --  WAV
+natif, 48.0 kHz, mono, 0:00 ». En anglais, tout est français — le défaut, tel
+qu'annoncé. Les noms de formats (« WAV file »…) viennent de JUCE : ils sont
+anglais dans les deux langues, et le restent.
+
+**ÉTAT AU COMMIT (D108, 11/09/2026) — phase NON terminée.** Le correctif est
+appliqué et compile (`VintageSynthMidiStudio`, 0 erreur). L'inventaire est
+mesuré et tient l'attendu 1 au chiffre près : ÉCRAN 51 → 45 (stricte),
+83 → 74 (large), la seule chaîne restante étant celle prévue (« lecteur WAV
+du moteur : %1 ») ; TABLE 214 → 221 et 248 → 255 ; la table à 1 301 paires,
+95 modèles, sans doublon. **Restent à faire** : le banc d'après (attendus 2 à
+4 — boîtes et ligne du menu en anglais, français identique au témoin), les
+suites C++, `vsm-ui-preview`, et le résultat écrit ici.
+
