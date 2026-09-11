@@ -15178,3 +15178,33 @@ lancements en code 127 : une construction `${var:+VAR=val}` que zsh — le
 shell de l'outil — prend pour un nom de commande. Aucun chiffre n'en a été
 tiré ; relancé sous `bash`.
 
+### Phase D119 — audit : les boîtes à 150 %, et où elles coupent mal (11/09/2026)
+
+**POURQUOI.** D117 a appris deux choses qu'aucune phase ne mesurait :
+`AlertWindow` choisit sa largeur d'après son texte, et une mauvaise coupure
+se voit sur une photo, jamais au code. D91 en a vu deux EN PASSANT, sur
+onze boîtes photographiées pour autre chose. Le besoin écrit en tête du
+projet est la lisibilité à 150 % : combien de boîtes coupent mal, et où ?
+
+**CE QUI COMPTE COMME UNE MAUVAISE COUPURE**, défini avant de regarder :
+(a) une ligne d'UN seul mot dans un paragraphe de plusieurs lignes ;
+(b) une coupure À L'INTÉRIEUR d'un terme entre guillemets (« … », “…”) ;
+(c) une coupure entre un nombre et son unité, ou dans un raccourci clavier
+(« Ctrl+S »). Un titre ou un bouton coupé compte aussi. Ne compte pas : une
+ligne courte qui finit un paragraphe de plus d'un mot.
+
+**LE BANC.** Les onze boîtes de D91 (aller à la mesure, programme MIDI,
+preset de piste, renommage en série, report en audio, poser et renommer un
+repère, renommer un clip, mesures d'un clip audio, preset d'effet, dépôt
+d'un fichier), sur le projet d'épreuve de D91, en français et en anglais,
+binaire de D118, `HOME` de brouillon ; chaque photo relancée jusqu'à quatre
+fois si la boîte manque (la course de D72), et une boîte qui ne vient pas
+est nommée. Chaque photo est lue, et ce qu'elle montre est écrit.
+
+**ATTENDU, écrit avant la mesure.** Sur les 22 photos, **2 à 6 boîtes avec
+une mauvaise coupure** — dont celle du renommage, que D117 a laissée coupée
+dans l'exemple de résultat. Plus de 6 dirait que le défaut est un défaut de
+la boîte de JUCE à 150 %, pas de quelques phrases, et le remède n'est plus
+une retouche de texte ; moins de 2 dirait que D117 a traité l'essentiel.
+**Cette phase mesure et nomme ; elle ne corrige rien.**
+
