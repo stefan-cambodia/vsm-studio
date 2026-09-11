@@ -16142,3 +16142,31 @@ de fichiers, nom d'un fil, mots-clés de couleur). Ce qui garde la
 fermeture honnête : une chaîne neuve écrite sans `tr()` ressortira à
 l'inventaire, qui se relance à chaque phase qui touche l'interface.
 
+### Phase D131 — l'anglais qui garde la typographie française : « Tracks : 2 » (11/09/2026)
+
+**D'OÙ VIENT LA QUESTION.** D125 a vu, sans le compter, « Tracks : 2 »,
+« Notes : 16 » dans la boîte anglaise des statistiques, et D129 « SOURCE :
+OSC B » sur une façade : l'espace que le français met avant les deux-points,
+et que l'anglais ne met pas. La table anglaise a été écrite phrase par
+phrase à partir des modèles français (« %1 : %2 ») ; si l'espace a suivi une
+fois, elle a pu suivre souvent. Une traduction qui garde la ponctuation de
+l'original se lit comme une traduction — c'est de la finition, mais c'est
+celle qu'on remarque dans un logiciel qui se compare à Cubase.
+
+**LA MESURE.** Les paires de `Langue.cpp` (`kAnglais` et `kModeles`), côté
+anglais : une espace (ordinaire ou insécable) avant « : », « ; », « ? »,
+« ! », et les guillemets « ». Un script les compte et les nomme ; les
+chemins de menu (« File ▸ … ») et les jetons techniques (« a : b » dans un
+format de fichier cité) sont relus à la main avant d'être comptés. Puis les
+textes que le code assemble lui-même autour d'un `tr()` (« tr(…) + " : " »),
+cherchés dans `app/Source`.
+
+**ATTENDU, écrit avant la mesure.** **20 à 80 paires anglaises** avec une
+espace avant les deux-points, quelques-unes avant « ? » ou « ! », aucune
+paire anglaise avec des guillemets « » (D107 et suivantes les ont écrites en
+“ ”). Et au moins un site du code qui assemble « : » autour d'un `tr()` — les
+statistiques, que D97 a traduites « à la source ». **Si le compte dépasse
+80**, la table a été traduite en gardant la ponctuation d'un bout à l'autre,
+et la correction se fait par un script vérifié paire par paire ; **en deçà**,
+à la main.
+
