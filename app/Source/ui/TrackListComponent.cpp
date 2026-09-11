@@ -174,6 +174,13 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
     // enregistrer sur une autre n'aurait aucun sens.
     armButton_.setToggleState(track_.armed, juce::dontSendNotification);
     armButton_.onClick = [this] {
+        // D148 : UN GESTE, UN PAS. Le pas s'ouvre AVANT l'écriture : sa photo
+        // porte donc l'armement d'AVANT, et Ctrl+Z le rend. `armed` est un champ
+        // du projet, sauvé et rechargé (A25, mesuré D147) -- à la différence de
+        // l'écoute mono, qui n'est pas dans le fichier et reste un outil de
+        // séance (D23.5). Un seul point : le verbe `armer` de D110 passe par
+        // `armerPourCapture()`, qui appelle ce même `onClick`.
+        debutEdition(u8"Armement");   // comme « Muet » et « Solo » : un libellé de pas, non traduit
         track_.armed = armButton_.getToggleState();
         if (onArmChanged) onArmChanged();
     };

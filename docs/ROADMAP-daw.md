@@ -17360,3 +17360,33 @@ se défait d'un seul Ctrl+Z —, et `basculerMuet` applique cette règle par
 `selectionPourUnGesteSur`. Le bouton R, lui, arme SA piste, et D3.3 veut qu'une
 seule piste reçoive le clavier à l'écoute. Le remède ne change donc rien à ce
 sujet, et la phase ne prétend pas le traiter.
+
+**RÉSULTAT (12/09) — LES CINQ ATTENDUS TIENNENT.** Témoin : séries 2, 3 et 4 sur
+le binaire de 06:28:22, trois relevés identiques ; après : binaire de 06:39:41,
+séries 5 et 6, identiques elles aussi. Même projet, même banc, anglais.
+
+| cas | témoin (avant) | après (séries 5 et 6) |
+|---|---|---|
+| (e) `cliquer:pistes.armement` | `Acid Bass0R Drums0` | `Acid Bass0R Drums0` |
+| (f) (e) puis Ctrl+Z | `Acid Bass0R Drums0` | **`Acid Bass0 Drums0`** — « R » effacée |
+| (i) (e) puis Ctrl+Z puis Ctrl+Maj+Z | `Acid Bass0R Drums0` | `Acid Bass0R Drums0` — rétabli |
+| (a) à (d) muet et solo | « ! » puis effacée, « * » puis effacée | inchangés |
+| (g) contrôle : muet au bouton puis Ctrl+Z | `Acid Bass0 Drums0` | inchangé |
+
+**Un seul chiffre change, et c'est le bon** : (f). Le cas (i), lui, rend la même
+marque avant et après — mais pour deux raisons opposées, et c'est pourquoi il ne
+se lit pas seul : AVANT le correctif « R » restait parce que RIEN ne s'annulait ;
+APRÈS, elle revient parce que le rétablissement rejoue le pas. C'est (f) qui
+distingue les deux lectures, et sans lui (i) ne prouverait rien — la même leçon
+qu'au cas (f) de D145, sous une autre forme : une valeur identique de part et
+d'autre n'est une preuve qu'accompagnée de celle qui a bougé.
+
+Suites C++ vertes (330, 1 291, 297, 11, 25), compilées à `-j 2` pendant la
+course 3 de l'épreuve ; `vsm-render` intact ; préférences identiques par `cmp`
+après chacune des six séries. **A25 se ferme.**
+
+**Ce qui reste de la famille de l'annulation** : A21, les réglages de machine,
+qui ne vivent pas dans le modèle et attendent la fin de l'épreuve Children. Les
+trois gestes de la ligne de piste, les six du mixeur, les sept boutons du MASTER
+et son activation s'annulent désormais tous ; l'écoute mono, elle, ne s'annule
+pas et ne doit pas l'être (D23.5).
