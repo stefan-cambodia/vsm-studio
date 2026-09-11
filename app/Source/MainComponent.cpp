@@ -6079,9 +6079,9 @@ void MainComponent::showTakeComp() {
             auto essai = project_.tracks[index];
             if (!vsm::sequencer::applyCompositeTake(essai, troncons, compteur)) {
                 juce::AlertWindow::showMessageBoxAsync(
-                    juce::AlertWindow::InfoIcon, u8"Assembler les prises",
-                    u8"Ces tronçons ne prennent aucune note : vérifiez les mesures et les "
-                    u8"prises choisies.");
+                    juce::AlertWindow::InfoIcon, tr(u8"Assembler les prises"),
+                    tr(u8"Ces tronçons ne prennent aucune note : vérifiez les mesures et les "
+                       u8"prises choisies."));
                 return;
             }
             beginProjectEdit(u8"Assembler les prises");
@@ -6099,10 +6099,10 @@ void MainComponent::showTakeComp() {
             refreshHistoryList();
             refreshTakeCompPanel();   // D57 : la prise active est devenue « aucune »
             juce::AlertWindow::showMessageBoxAsync(
-                juce::AlertWindow::InfoIcon, u8"Assembler les prises",
-                juce::String(static_cast<int>(project_.tracks[index].notes.size()))
-                    + juce::String(u8" notes composées. Les passes sont conservées : on peut "
-                                    u8"recommencer autrement."));
+                juce::AlertWindow::InfoIcon, tr(u8"Assembler les prises"),
+                tr(u8"%1 notes composées. Les passes sont conservées : on peut "
+                   u8"recommencer autrement.")
+                    .replace("%1", juce::String(static_cast<int>(project_.tracks[index].notes.size()))));
         };
         takeCompWindow_ = std::make_unique<PanelWindow>(
             juce::String::fromUTF8(u8"Assembler les prises"), takeCompPanel_);
@@ -7688,11 +7688,10 @@ void MainComponent::applySendBuses() {
             // dossier écrit « Bus de départ « … » : effet « … » inconnu, non
             // appliqué » ; ici le bus devenait muet sans un mot, et un projet
             // qui envoie 40 % dans une réverbération inconnue s'ouvrait sec.
-            noterReserveDEffet(juce::String(u8"bus de départ « ")
-                               + juce::String::fromUTF8(decrit.name.c_str())
-                               + juce::String(u8" » : effet « ")
-                               + juce::String::fromUTF8(decrit.effectType.c_str())
-                               + juce::String(u8" » inconnu, non appliqué"));
+            // D111 : le littéral EST le modèle de D89 -- la donnée ne change pas d'un octet.
+            noterReserveDEffet(juce::String(u8"bus de départ « %1 » : effet « %2 » inconnu, non appliqué")
+                                   .replace("%1", juce::String::fromUTF8(decrit.name.c_str()))
+                                   .replace("%2", juce::String::fromUTF8(decrit.effectType.c_str())));
             audioEngine_.processGraph().setSendEffect(bus, nullptr);
             continue;
         }
@@ -7704,10 +7703,9 @@ void MainComponent::applySendBuses() {
         described.parameters = decrit.parameters;
         const auto applique = vsm::interchange::applyEffectDescription(described, *fx);
         for (const auto& inconnu : applique.unknownParameters)
-            noterReserveDEffet(juce::String(u8"bus de départ « ")
-                               + juce::String::fromUTF8(decrit.name.c_str())
-                               + juce::String(u8" » : réglage inconnu « ")
-                               + juce::String::fromUTF8(inconnu.c_str()) + juce::String(u8" »"));
+            noterReserveDEffet(juce::String(u8"bus de départ « %1 » : réglage inconnu « %2 »")
+                                   .replace("%1", juce::String::fromUTF8(decrit.name.c_str()))
+                                   .replace("%2", juce::String::fromUTF8(inconnu.c_str())));
         fx->prepare(sr, blockSize);
         audioEngine_.processGraph().setSendEffect(bus, std::shared_ptr<vsm::audio::effect::IAudioEffect>(std::move(fx)));
         audioEngine_.processGraph().setSendReturn(bus, decrit.returnGain);
@@ -9936,9 +9934,9 @@ void MainComponent::promptGoToBar() {
             const juce::String texte = fenetre->getTextEditorContents("position");
             if (!goToBarText(texte))
                 juce::AlertWindow::showMessageBoxAsync(
-                    juce::AlertWindow::WarningIcon, u8"Aller \u00e0 la mesure",
-                    juce::String(u8"\u00ab ") + texte + juce::String(u8" \u00bb n'est pas une position : "
-                                  u8"attendu \u00ab 17 \u00bb ou \u00ab 17.3 \u00bb (mesure.temps)."));
+                    juce::AlertWindow::WarningIcon, tr(u8"Aller à la mesure"),
+                    tr(u8"« %1 » n'est pas une position : attendu « 17 » ou « 17.3 » (mesure.temps).")
+                        .replace("%1", texte));
         }), true);
 }
 

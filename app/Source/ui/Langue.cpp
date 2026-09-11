@@ -2750,6 +2750,13 @@ const Paire kAnglais[] = {
       "No audio input open: the card provides none. See File > Audio settings." },
     { "Fréquence ou nombre de canaux invalide.",
       "Invalid sample rate or channel count." },
+    // --- D111 : LES PHRASES COMPOSÉES DE MAINCOMPONENT -------------------------------
+    { "Ces tronçons ne prennent aucune note : vérifiez les mesures et les prises choisies.",
+      "These segments take no notes: check the bars and the chosen takes." },
+    { "%1 notes composées. Les passes sont conservées : on peut recommencer autrement.",
+      "%1 notes comped. The passes are kept: you can start over differently." },
+    { "« %1 » n'est pas une position : attendu « 17 » ou « 17.3 » (mesure.temps).",
+      "“%1” is not a position: expected “17” or “17.3” (bar.beat)." },
 };
 
 constexpr int kNombreDePaires = static_cast<int>(sizeof(kAnglais) / sizeof(kAnglais[0]));

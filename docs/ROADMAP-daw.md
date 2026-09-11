@@ -14571,7 +14571,7 @@ en trois sites :
    que d'un texte tapé dans la boîte, et les deux boîtes d'assemblage d'un
    tracé de tronçons à la souris : vérifiées par le code, et dit.
 
-**ATTENDU, écrit avant la mesure (11/09/2026, 17:10).**
+**ATTENDU, écrit avant la mesure (11/09/2026, commit `0199830` à 16:58:11 — l'en-tête y portait « 17:10 », une heure à venir, rectifiée ici).**
 
 1. **L'inventaire** : stricte ÉCRAN **36 → 29**, `MainComponent` **27 →
    20** ; les autres catégories se publient, sans chiffre promis.
@@ -14582,4 +14582,21 @@ en trois sites :
    volet affiche) **identiques au témoin, dans les deux langues** — en
    anglais, « send bus “Rev”: effect “…” unknown, not applied » avant comme
    après. Un écart dirait que le littéral réécrit n'est pas le modèle.
+
+**LE RÉSULTAT, ATTENDU PAR ATTENDU (11/09/2026, 17:05).** Binaire du 11/09
+17:01:06 (code 0) contre celui de D110 (16:52:28), même banc, `HOME` de
+brouillon.
+
+1. **L'inventaire — TENU** : stricte ÉCRAN **36 → 29**, `MainComponent`
+   **27 → 20**. Publiés sans promesse : TABLE 224 → 223 (les deux titres
+   entrent dans `tr()`), large ÉCRAN 62 → 55, TABLE 258 → 257.
+2. **Le banc — TENU** : 6 lignes `VSM_OUVERTURE` et 12 lignes
+   `VSM_RAPPORT` par langue, **identiques octet pour octet** au témoin, en
+   français comme en anglais (`cmp`). La donnée : « bus de départ « Rev » :
+   effet « reverb-a-plaque-de-1974 » inconnu, non appliqué » ; l'affiché en
+   anglais : « send bus “Rev”: effect “reverb-a-plaque-de-1974” unknown, not
+   applied ». Préférences intactes.
+
+La table passe à **1 339** paires (+3). Suites C++ vertes à `-j 2` (330,
+1 291, 297, 25, 11) ; `build/tools/vsm-render` non touché (15:00:36).
 
