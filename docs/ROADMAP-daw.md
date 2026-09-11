@@ -13131,3 +13131,96 @@ d'anglais.
 Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels — verts ;
 `vsm-ui-preview` construit. La boîte anglaise « Split by pitch » regardée :
 rien de coupé. Aucun code Python n'a changé.
+
+### Phase D97 — A9 : les boîtes du projet (11/09/2026)
+
+**LE LOT.** Ce que le menu Fichier dit du PROJET : ses statistiques, le
+modèle de projet, un dossier qui ne s'ouvre pas, un enregistrement
+impossible ou incomplet, l'import et l'export MIDI (ce que le `.mid` ne
+porte pas, les rampes de tempo rendues en paliers), l'audio qui ne se charge
+pas, les locateurs absents, et les titres des sélecteurs de fichier. Le
+groove (extraire, enregistrer, charger, appliquer) aura sa phase ;
+l'enregistrement aussi, avec un banc qui ne fasse pas de bruit (D96).
+
+**LES STATISTIQUES SE TRADUISENT À LA SOURCE — ET CE N'EST PAS LA RÈGLE DE
+D95.** D95 garde en français les comptes rendus qui partent AUSSI au
+terminal, parce que des bancs les relisent. Le texte des statistiques part
+aussi au terminal, mais personne ne le relit : `projectStatisticsText()`
+n'a qu'un appel, la boîte, et aucun banc ni test ne le lit. Il se traduit
+donc là où il s'écrit, par des modèles (« %1 courbe(s), %2 point(s) »), et
+le terminal reçoit le texte de la boîte. La règle de D95 tient à la raison
+qu'elle donne, pas à la sortie d'erreur elle-même.
+
+**CE QUE L'INVENTAIRE COMPTE À TORT.** Les deux lignes du rapport
+d'ouverture que ce lot touche — « Preset pour une piste inexistante (N) :
+ignoré », « N note(s) signalée(s) comme douteuses… » — sont traduites à
+l'affichage par leurs modèles depuis D89 ; l'inventaire les range à l'écran
+parce que le code les écrit en morceaux. Elles s'écriront par leur modèle,
+comme les comptes rendus de D95 : même français, et l'inventaire les voit.
+
+**LE BANC.** Trois boîtes, sur une copie de `demo-project` : les
+statistiques et le modèle de projet, par le menu Fichier ; « Locateurs »,
+par son raccourci (`ctrl + shift + I`, via `VSM_TOUCHE`) — l'entrée du menu
+est grisée sans boucle, mais le clavier passe par la table des raccourcis et
+atteint la commande. **Corrigé avant la mesure :** la première version de ce
+paragraphe visait « Projet illisible », en ouvrant un dossier qui n'est pas
+un projet ; or `VSM_PROJET` vérifie le dossier AVANT
+`loadProjectBundleFromFolder()`, seule à ouvrir cette boîte, et se plaint au
+terminal. Elle rejoint les boîtes que le banc n'ouvre pas, et la raison d'un
+projet illisible (attendu 3) se lit dans le code et les modèles. Le reste du
+lot passe par un sélecteur de fichier ou une entrée grisée sur ce projet :
+il se lit dans le code et la table. Français puis anglais ; témoin (D97 sans ses traductions,
+`montrerBoite()` en place), puis D97 ; HOME isolé, préférences de
+l'utilisateur vérifiées par `cmp`.
+
+> **CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE (11/09/2026).**
+>
+> 1. **L'inventaire** : dans les fonctions du lot, ÉCRAN et SANS_PAIRE à
+>    **zéro**, ou chaque reste nommé avec sa raison.
+> 2. **Les trois boîtes du banc s'ouvrent avec le témoin et se lisent**
+>    (`VSM_BOITE`) dans les deux langues.
+> 3. **En anglais, plus un mot français dans ces trois boîtes**, hors les
+>    données ; la raison d'un projet illisible, qui vient d'`interchange/`,
+>    est traduite par un modèle, ou nommée.
+> 4. **Le français ne change pas** : les trois boîtes et la liste de la
+>    fenêtre principale sont identiques à celles du témoin.
+
+**LE RÉSULTAT, ATTENDU PAR ATTENDU (11/09/2026).** Banc : trois boîtes sur
+une copie de `demo-project`, français puis anglais ; témoin (D97 sans ses
+traductions, `montrerBoite()` en place) puis D97 ; HOME isolé, préférences
+de l'utilisateur intactes (`cmp`).
+
+1. **L'inventaire — tenu, et cette fois le chiffre est juste.** ÉCRAN
+   **206 → 164** (−42) ; dans les quatorze fonctions du lot, **0** ÉCRAN et
+   **0** SANS_PAIRE. La leçon de D96 vérifiée avant d'écrire : aucune des 46
+   clés neuves n'est un littéral écrit ailleurs sans `tr()` — pas de faux
+   TABLE, les 42 sont 42 chaînes traduites. Les deux lignes du rapport
+   d'ouverture s'écrivent par leur modèle de D89 : même français, et
+   l'inventaire les voit.
+2. **Les boîtes se lisent — tenu.** Chaque geste demande sa boîte (6 sur 6),
+   « Locateurs » compris : le raccourci l'atteint alors que le menu est
+   grisé.
+3. **L'anglais — tenu.** Aucun mot français : « Project statistics : Tracks :
+   2  (2 MIDI, 0 audio, 0 group(s), 0 folder(s)) / … », « The current project
+   has become the template: File ▸ New from template will open it, without a
+   path, every time. », « Locators : Set the locators first: the loop region
+   is the range to insert or delete. » Les menus cités le sont sous leur nom
+   anglais (« File ▸ New from template », « Track ▸ Track MIDI effects »).
+4. **Le français — tenu.** Les trois boîtes identiques au témoin, mot pour
+   mot, et la liste de la fenêtre principale : 175 textes sur 175.
+
+**Les boîtes que le banc n'ouvre pas** : « Projet illisible » (voir le banc),
+l'enregistrement impossible ou incomplet, l'import MIDI et son erreur,
+l'export MIDI — ce que le `.mid` ne porte pas, les rampes en paliers, son
+erreur — et l'audio qui ne se charge pas, derrière un sélecteur de fichier
+ou un fichier manquant ; les titres des quatre sélecteurs et celui de la
+fenêtre d'un projet neuf depuis le modèle. Leur texte se lit dans le code et
+la table. **Restent des données** : la raison d'un enregistrement ou d'une
+ouverture qui échoue vient d'`interchange/` et passe par `trPhrase` (ses
+modèles la traduisent quand ils la connaissent), le message d'une exception
+d'import ou d'export MIDI, les noms de fichiers et de pistes.
+
+La table passe à **1 116** paires (+46).
+Tests : 330 core, 1 291 audio, 297 interchange, 25 clap, 11 panels — verts ;
+`vsm-ui-preview` construit. La boîte anglaise des statistiques regardée :
+quinze lignes, rien de coupé. Aucun code Python n'a changé.

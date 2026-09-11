@@ -4851,7 +4851,7 @@ void MainComponent::saveAudioDeviceState() {
 
 void MainComponent::openMidiFile() {
     auto chooser = std::make_shared<juce::FileChooser>(
-        "Importer un fichier MIDI...", juce::File(), "*.mid;*.midi");
+        tr("Importer un fichier MIDI..."), juce::File(), "*.mid;*.midi");
     auto chooserFlags = juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles;
 
     chooser->launchAsync(chooserFlags, [this, chooser](const juce::FileChooser& fc) {
@@ -4867,8 +4867,8 @@ void MainComponent::openMidiFile() {
             rebuildFromProject();
             pianoRoll_.cadrerSurLesNotes();  // un projet qui arrive se regarde là où sont ses notes
         } catch (const std::exception& e) {
-            juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
-                                                     "Erreur d'import MIDI", e.what());
+            montrerBoite(juce::AlertWindow::WarningIcon,
+                                                     tr("Erreur d'import MIDI"), e.what());
         }
     });
 }
@@ -4902,7 +4902,7 @@ void MainComponent::openProjectBundle() {
     // (project.json, le MIDI, les presets, les échantillons) et pointer vers
     // l'un de ses fichiers laisserait croire qu'on peut l'ouvrir seul.
     auto chooser = std::make_shared<juce::FileChooser>(
-        "Ouvrir un dossier de projet VSM...", juce::File(), "");
+        tr("Ouvrir un dossier de projet VSM..."), juce::File(), "");
     const auto chooserFlags = juce::FileBrowserComponent::openMode
                             | juce::FileBrowserComponent::canSelectDirectories;
 
@@ -5290,9 +5290,9 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     const juce::File medias = mediaFolder == juce::File() ? folder : mediaFolder;
     auto loaded = vsm::interchange::loadProjectBundle(folder.getFullPathName().toStdString());
     if (!loaded.success) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::WarningIcon, "Projet illisible",
-            juce::String::fromUTF8(loaded.error.c_str()));
+        montrerBoite(
+            juce::AlertWindow::WarningIcon, tr("Projet illisible"),
+            vsm::app::ui::trPhrase(juce::String::fromUTF8(loaded.error.c_str())));
         return;
     }
 
@@ -5377,8 +5377,8 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
         // produit par une version antérieure. On l'IGNORE en le disant,
         // plutôt que de lire hors des bornes.
         if (index >= project_.tracks.size()) {
-            rapport.add(juce::String(u8"Preset pour une piste inexistante (")
-                        + juce::String(static_cast<int>(index) + 1) + juce::String(u8") : ignoré"));
+            rapport.add(juce::String(u8"Preset pour une piste inexistante (%#1) : ignoré")
+                            .replace("%#1", juce::String(static_cast<int>(index) + 1)));
             continue;
         }
         auto* instrument = audioEngine_.processGraph().trackInstrument(index);
@@ -5436,11 +5436,10 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
             for (const auto& piste : project_.tracks)
                 douteuses += vsm::sequencer::countDoubtfulNotes(piste.notes);
             if (douteuses > 0)
-                rapport.add(juce::String(static_cast<int>(douteuses))
-                            + juce::String(u8" note(s) signalée(s) comme douteuses sur ")
-                            + juce::String(static_cast<int>(marquees))
-                            + juce::String(u8" transcrite(s) : elles sont marquées dans le "
-                                            u8"piano roll, et la touche D y mène une par une"));
+                rapport.add(juce::String(u8"%#1 note(s) signalée(s) comme douteuses sur %#2 transcrite(s) : elles sont "
+                                         u8"marquées dans le piano roll, et la touche D y mène une par une")
+                                .replace("%#1", juce::String(static_cast<int>(douteuses)))
+                                .replace("%#2", juce::String(static_cast<int>(marquees))));
             // D53 : LA DISTANCE N'EST PAS AJOUTÉE ICI, ET LA RAISON EST
             // ÉCRITE PLUTÔT QUE TUE. Cette liste alimente la boîte « Projet
             // ouvert, avec des reserves » : une distance n'est pas une
@@ -6643,10 +6642,10 @@ void MainComponent::saveAsTemplate() {
     currentProjectFolder_ = avant;
     if (auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
         window->setName("Vintage Synth MIDI Studio" + (avant == juce::File() ? juce::String() : " -- " + avant.getFileName()));
-    juce::AlertWindow::showMessageBoxAsync(
-        ok ? juce::AlertWindow::InfoIcon : juce::AlertWindow::WarningIcon, u8"Modèle de projet",
-        ok ? juce::String(u8"Le projet courant est devenu le modèle : Fichier \u25b8 Nouveau depuis le modèle l'ouvrira, sans chemin, chaque fois.")
-           : juce::String(u8"Le modèle n'a pas pu être écrit dans ") + dossier.getFullPathName());
+    montrerBoite(
+        ok ? juce::AlertWindow::InfoIcon : juce::AlertWindow::WarningIcon, tr(u8"Modèle de projet"),
+        ok ? tr(u8"Le projet courant est devenu le modèle : Fichier ▸ Nouveau depuis le modèle l'ouvrira, sans chemin, chaque fois.")
+           : tr(u8"Le modèle n'a pas pu être écrit dans %1").replace("%1", dossier.getFullPathName()));
 }
 
 void MainComponent::newFromTemplate() {
@@ -6657,7 +6656,7 @@ void MainComponent::newFromTemplate() {
     // réécrit que par « Enregistrer comme modèle ».
     currentProjectFolder_ = juce::File();
     if (auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
-        window->setName("Vintage Synth MIDI Studio -- nouveau projet (depuis le mod\u00e8le)");
+        window->setName(tr(u8"Vintage Synth MIDI Studio -- nouveau projet (depuis le modèle)"));
 }
 
 void MainComponent::toggleFullScreen() {
@@ -7064,18 +7063,18 @@ bool MainComponent::writeProjectTo(const juce::File& folder) {
     const auto result = vsm::interchange::exportStandaloneProject(
         aEcrire, folder.getFullPathName().toStdString());
     if (!result.success) {
-        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
-                                                "Enregistrement impossible", result.error);
+        montrerBoite(juce::AlertWindow::WarningIcon,
+                                                tr("Enregistrement impossible"), vsm::app::ui::trPhrase(juce::String(result.error)));
         return false;
     }
     // CE QUI MANQUE EST DIT AU MOMENT OÙ ON ENREGISTRE, pas découvert en
     // rouvrant le projet ailleurs.
     if (!result.missing.empty()) {
-        juce::String message(u8"Le projet est enregistré, mais ces fichiers qu'il désigne "
-                             u8"sont introuvables :\n");
+        juce::String message = tr(u8"Le projet est enregistré, mais ces fichiers qu'il désigne "
+                                     u8"sont introuvables :") + "\n";
         for (const auto& manquant : result.missing) message += "\n" + juce::String(manquant);
-        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
-                                                 u8"Projet incomplet", message);
+        montrerBoite(juce::AlertWindow::WarningIcon,
+                                                 tr(u8"Projet incomplet"), message);
     }
     currentProjectFolder_ = folder;
     rememberRecentProject(folder);
@@ -7093,7 +7092,7 @@ void MainComponent::saveProject() {
 
 void MainComponent::saveProjectAs() {
     auto chooser = std::make_shared<juce::FileChooser>(
-        "Enregistrer le projet VSM (dossier)...", currentProjectFolder_);
+        tr("Enregistrer le projet VSM (dossier)..."), currentProjectFolder_);
     chooser->launchAsync(juce::FileBrowserComponent::saveMode
                              | juce::FileBrowserComponent::canSelectDirectories,
                           [this, chooser](const juce::FileChooser& fc) {
@@ -7124,15 +7123,15 @@ void MainComponent::importMidiIntoProject(const juce::File& file) {
         if (!project_.tracks.empty()) trackList_.selectTrackIndex(project_.tracks.size() - 1);
         // CE QUI EST IGNORÉ EST DIT : le tempo et les mesures du fichier.
         if (bilan.tempoChangesIgnored > 0 || bilan.timeSignaturesIgnored > 0)
-            juce::AlertWindow::showMessageBoxAsync(
-                juce::AlertWindow::InfoIcon, u8"MIDI importé",
-                juce::String(static_cast<int>(bilan.tracksAdded)) + juce::String(u8" piste(s) ajoutée(s) à la tête de lecture. ")
-                    + juce::String(u8"Le tempo et les mesures du fichier ont été ignorés (")
-                    + juce::String(static_cast<int>(bilan.tempoChangesIgnored + bilan.timeSignaturesIgnored))
-                    + juce::String(u8" changement(s)) : le projet garde les siens."));
+            montrerBoite(
+                juce::AlertWindow::InfoIcon, tr(u8"MIDI importé"),
+                tr(u8"%1 piste(s) ajoutée(s) à la tête de lecture. Le tempo et les mesures du fichier ont été "
+                   u8"ignorés (%2 changement(s)) : le projet garde les siens.")
+                    .replace("%1", juce::String(static_cast<int>(bilan.tracksAdded)))
+                    .replace("%2", juce::String(static_cast<int>(bilan.tempoChangesIgnored + bilan.timeSignaturesIgnored))));
     } catch (const std::exception& e) {
-        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
-                                                 u8"Erreur d'import MIDI", e.what());
+        montrerBoite(juce::AlertWindow::WarningIcon,
+                                                 tr(u8"Erreur d'import MIDI"), e.what());
     }
 }
 
@@ -7172,9 +7171,9 @@ void MainComponent::editTimeAtLocators(bool inserer) {
     const auto de = project_.loopStartTick;
     const auto a = project_.loopEndTick;
     if (a <= de) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, u8"Locateurs",
-            u8"Placez d'abord les locateurs : la région de boucle est la plage à insérer ou à supprimer.");
+        montrerBoite(
+            juce::AlertWindow::InfoIcon, tr(u8"Locateurs"),
+            tr(u8"Placez d'abord les locateurs : la région de boucle est la plage à insérer ou à supprimer."));
         return;
     }
     beginProjectEdit(inserer ? u8"Insérer du silence" : u8"Supprimer une plage de temps");
@@ -7324,7 +7323,7 @@ void MainComponent::loadAudioTracks() {
         // jamais enregistré --, il n'y a rien à résoudre, et le dire vaut mieux
         // que de chercher au hasard dans le dossier courant.
         if (currentProjectFolder_ == juce::File()) {
-            manquants.add(juce::String(track.name) + " (projet jamais enregistre)");
+            manquants.add(juce::String(track.name) + tr(" (projet jamais enregistre)"));
             audioEngine_.processGraph().setTrackAudio(i, nullptr);
             trackList_.setAudioSourceRate(i, 0.0, 0.0);
             continue;
@@ -7405,9 +7404,9 @@ void MainComponent::loadAudioTracks() {
     // PISTE DONT ON AURAIT BAISSÉ LE VOLUME. Elle se dit donc, une fois, au
     // lieu de laisser chercher.
     if (!manquants.isEmpty())
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::WarningIcon, u8"Audio non chargé",
-            juce::String(u8"Ces pistes audio n'ont pas pu être lues :\n\n")
+        montrerBoite(
+            juce::AlertWindow::WarningIcon, tr(u8"Audio non chargé"),
+            tr(u8"Ces pistes audio n'ont pas pu être lues :") + "\n\n"
                 + manquants.joinIntoString("\n"));
     // D51 : ET LE MÊME FAIT SUR LE TERMINAL, pour les mêmes raisons que les
     // avertissements de `vsm-render` -- une capture montre la ligne, un banc
@@ -8153,7 +8152,7 @@ void MainComponent::performBounce(size_t index) {
 
 void MainComponent::exportMidiFile() {
     auto chooser = std::make_shared<juce::FileChooser>(
-        "Exporter en MIDI...", juce::File(), "*.mid");
+        tr("Exporter en MIDI..."), juce::File(), "*.mid");
 
     chooser->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
                           [this, chooser](const juce::FileChooser& fc) {
@@ -8176,17 +8175,15 @@ void MainComponent::exportMidiFile() {
             if (const juce::StringArray divergentes = tracksWhoseMidiExportWillDiffer();
                 !divergentes.isEmpty()) {
                 const juce::String texte =
-                    juce::String::fromUTF8(u8"Le fichier .mid porte les NOTES du projet, pas ce que la "
-                                           u8"lecture en fait. Ces pistes sonneront donc autrement dans "
-                                           u8"un autre logiciel :\n\n")
-                    + divergentes.joinIntoString("\n")
-                    + juce::String::fromUTF8(u8"\n\nPour les rendre définitives : Piste ▸ Effets MIDI ▸ "
-                                             u8"« Reporter les effets MIDI dans les notes ».");
+                    tr(u8"Le fichier .mid porte les NOTES du projet, pas ce que la lecture en fait. "
+                       u8"Ces pistes sonneront donc autrement dans un autre logiciel :")
+                    + "\n\n" + divergentes.joinIntoString("\n") + "\n\n"
+                    + tr(u8"Pour les rendre définitives : Piste ▸ Effets MIDI ▸ « Reporter les effets MIDI dans les notes ».");
                 std::fputs((juce::String::fromUTF8(u8"Export MIDI — divergence : ")
                              + texte.replace("\n", " ; ") + "\n").toRawUTF8(), stderr);
-                juce::AlertWindow::showMessageBoxAsync(
+                montrerBoite(
                     juce::AlertWindow::InfoIcon,
-                    juce::String::fromUTF8(u8"Ce que le .mid ne porte pas"), texte);
+                    tr(u8"Ce que le .mid ne porte pas"), texte);
             }
             // D15.5 : le MIDI ne connaît pas les rampes ; elles partent en
             // paliers d'une noire, et on le dit plutôt que de le taire.
@@ -8194,15 +8191,15 @@ void MainComponent::exportMidiFile() {
                 const size_t paliers = project_.tempoMap.flattened(project_.ticksPerQuarterNote,
                                                                    project_.ticksPerQuarterNote).size()
                                      - project_.tempoMap.changes().size();
-                juce::AlertWindow::showMessageBoxAsync(
-                    juce::AlertWindow::InfoIcon, juce::String::fromUTF8(u8"Rampes de tempo exportées en paliers"),
-                    juce::String::fromUTF8(u8"Le format MIDI ne connaît pas les rampes : elles sont rendues en ")
-                        + juce::String(static_cast<int>(paliers))
-                        + juce::String::fromUTF8(u8" paliers d'une noire, à la durée totale près."));
+                montrerBoite(
+                    juce::AlertWindow::InfoIcon, tr(u8"Rampes de tempo exportées en paliers"),
+                    tr(u8"Le format MIDI ne connaît pas les rampes : elles sont rendues en %1 paliers "
+                       u8"d'une noire, à la durée totale près.")
+                        .replace("%1", juce::String(static_cast<int>(paliers))));
             }
         } catch (const std::exception& e) {
-            juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
-                                                     "Erreur d'export MIDI", e.what());
+            montrerBoite(juce::AlertWindow::WarningIcon,
+                                                     tr("Erreur d'export MIDI"), e.what());
         }
     });
 }
@@ -9084,11 +9081,11 @@ juce::StringArray MainComponent::tracksWhoseMidiExportWillDiffer() const {
         juce::StringArray causes;
         bool chaine = false;
         for (const auto& fx : track.midiEffects) chaine = chaine || fx.enabled;
-        if (chaine) causes.add(juce::String::fromUTF8(u8"effets MIDI"));
+        if (chaine) causes.add(tr(u8"effets MIDI"));
         // LA TRANSPOSITION DE PISTE : sa divergence existait depuis D17.5 et
         // n'avait jamais été dite avant D31.5.
         if (track.transposeSemitones != 0)
-            causes.add(juce::String::fromUTF8(u8"transposition ")
+            causes.add(tr(u8"transposition ")
                         + (track.transposeSemitones > 0 ? "+" : "")
                         + juce::String(track.transposeSemitones));
         // LE SILENCE, ET D'OÙ IL VIENT. Le muet n'est pas cuit dans le fichier
@@ -9096,17 +9093,16 @@ juce::StringArray MainComponent::tracksWhoseMidiExportWillDiffer() const {
         // écrire ferait dépendre l'export du dernier bouton pressé. Mais une
         // piste qu'on n'entend pas et qui sonnera ailleurs doit être NOMMÉE.
         if (!vsm::sequencer::trackAudible(project_.tracks, i, unSolo)) {
-            if (track.disabled) causes.add(juce::String::fromUTF8(u8"piste désactivée"));
-            else if (track.muted) causes.add(juce::String::fromUTF8(u8"piste muette"));
+            if (track.disabled) causes.add(tr(u8"piste désactivée"));
+            else if (track.muted) causes.add(tr(u8"piste muette"));
             else if (unSolo && !track.solo)
-                causes.add(juce::String::fromUTF8(u8"tue par le solo d'une autre"));
-            else causes.add(juce::String::fromUTF8(u8"tue par son dossier"));
+                causes.add(tr(u8"tue par le solo d'une autre"));
+            else causes.add(tr(u8"tue par son dossier"));
         }
         // D16.7 : le décalage de piste ne suit pas le tempo et n'a pas
         // d'équivalent dans le format.
         if (track.delayMs != 0.0)
-            causes.add(juce::String::fromUTF8(u8"décalage ") + juce::String(track.delayMs, 1)
-                        + juce::String::fromUTF8(u8" ms"));
+            causes.add(tr(u8"décalage %1 ms").replace("%1", juce::String(track.delayMs, 1)));
         if (causes.isEmpty()) continue;
         noms.add(juce::String::fromUTF8(track.name.c_str()) + " ("
                   + causes.joinIntoString(", ") + ")");
@@ -9232,35 +9228,39 @@ juce::String MainComponent::projectStatisticsText() const {
     auto ligne = [&t](const juce::String& cle, const juce::String& valeur) {
         t += cle + " : " + valeur + "\n";
     };
-    ligne(juce::String::fromUTF8(u8"Pistes"),
-          juce::String(static_cast<int>(project_.tracks.size()))
-              + juce::String::fromUTF8(u8"  (") + juce::String(static_cast<int>(midi))
-              + juce::String::fromUTF8(u8" MIDI, ") + juce::String(static_cast<int>(audio))
-              + juce::String::fromUTF8(u8" audio, ") + juce::String(static_cast<int>(groupes))
-              + juce::String::fromUTF8(u8" groupe(s), ") + juce::String(static_cast<int>(dossiers))
-              + juce::String::fromUTF8(u8" dossier(s))"));
+    // D97 : TRADUIT À LA SOURCE. Ce texte part aussi au terminal, mais personne
+    // ne l'y relit : son seul lecteur est la boîte (ROADMAP-daw.md, D97).
+    ligne(tr(u8"Pistes"),
+          tr(u8"%1  (%2 MIDI, %3 audio, %4 groupe(s), %5 dossier(s))")
+              .replace("%1", juce::String(static_cast<int>(project_.tracks.size())))
+              .replace("%2", juce::String(static_cast<int>(midi)))
+              .replace("%3", juce::String(static_cast<int>(audio)))
+              .replace("%4", juce::String(static_cast<int>(groupes)))
+              .replace("%5", juce::String(static_cast<int>(dossiers))));
     if (masquees > 0 || eteintes > 0)
-        ligne(juce::String::fromUTF8(u8"  dont"),
-              juce::String(static_cast<int>(masquees)) + juce::String::fromUTF8(u8" masquée(s), ")
-                  + juce::String(static_cast<int>(eteintes)) + juce::String::fromUTF8(u8" désactivée(s)"));
-    ligne(juce::String::fromUTF8(u8"Notes"), juce::String(static_cast<int>(notes)));
-    ligne(juce::String::fromUTF8(u8"Clips"), juce::String(static_cast<int>(clips)));
-    ligne(juce::String::fromUTF8(u8"Automation"),
-          juce::String(static_cast<int>(courbes)) + juce::String::fromUTF8(u8" courbe(s), ")
-              + juce::String(static_cast<int>(points)) + juce::String::fromUTF8(u8" point(s)"));
-    ligne(juce::String::fromUTF8(u8"Contrôleurs (CC)"), juce::String(static_cast<int>(cc)));
-    ligne(juce::String::fromUTF8(u8"Plis de hauteur"), juce::String(static_cast<int>(plis)));
-    ligne(juce::String::fromUTF8(u8"Pression polyphonique"), juce::String(static_cast<int>(poly)));
-    ligne(juce::String::fromUTF8(u8"Pression de canal"), juce::String(static_cast<int>(pression)));
-    ligne(juce::String::fromUTF8(u8"Changements de programme"), juce::String(static_cast<int>(programmes)));
-    ligne(juce::String::fromUTF8(u8"Machines employées"), juce::String(static_cast<int>(machines.size())));
+        ligne(tr(u8"  dont"),
+              tr(u8"%1 masquée(s), %2 désactivée(s)")
+                  .replace("%1", juce::String(static_cast<int>(masquees)))
+                  .replace("%2", juce::String(static_cast<int>(eteintes))));
+    ligne(tr(u8"Notes"), juce::String(static_cast<int>(notes)));
+    ligne(tr(u8"Clips"), juce::String(static_cast<int>(clips)));
+    ligne(tr(u8"Automation"),
+          tr(u8"%1 courbe(s), %2 point(s)")
+              .replace("%1", juce::String(static_cast<int>(courbes)))
+              .replace("%2", juce::String(static_cast<int>(points))));
+    ligne(tr(u8"Contrôleurs (CC)"), juce::String(static_cast<int>(cc)));
+    ligne(tr(u8"Plis de hauteur"), juce::String(static_cast<int>(plis)));
+    ligne(tr(u8"Pression polyphonique"), juce::String(static_cast<int>(poly)));
+    ligne(tr(u8"Pression de canal"), juce::String(static_cast<int>(pression)));
+    ligne(tr(u8"Changements de programme"), juce::String(static_cast<int>(programmes)));
+    ligne(tr(u8"Machines employées"), juce::String(static_cast<int>(machines.size())));
     for (const auto& [id, combien] : machines)
         ligne("   " + juce::String::fromUTF8(id.c_str()),
-              juce::String(combien) + juce::String::fromUTF8(u8" piste(s)"));
-    ligne(juce::String::fromUTF8(u8"Durée du matériau"),
-          juce::String(secondes, 2) + " s  (" + juce::String(static_cast<int>(fin))
-              + juce::String::fromUTF8(u8" ticks)"));
-    ligne(juce::String::fromUTF8(u8"Tempo au départ"),
+              tr(u8"%1 piste(s)").replace("%1", juce::String(combien)));
+    ligne(tr(u8"Durée du matériau"),
+          tr(u8"%1 s  (%2 ticks)").replace("%1", juce::String(secondes, 2))
+                                  .replace("%2", juce::String(static_cast<int>(fin))));
+    ligne(tr(u8"Tempo au départ"),
           juce::String(project_.tempoMap.bpmAt(0), 2) + " BPM");
     return t;
 }
@@ -9271,8 +9271,8 @@ void MainComponent::showProjectStatistics() {
     // un autoportrait, et un chiffre qu'on ne peut pas relire hors de l'écran
     // ne sert pas à comparer deux reconstructions.
     std::fputs((juce::String::fromUTF8(u8"Statistiques du projet —\n") + texte).toRawUTF8(), stderr);
-    juce::AlertWindow::showMessageBoxAsync(
-        juce::AlertWindow::InfoIcon, juce::String::fromUTF8(u8"Statistiques du projet"), texte);
+    montrerBoite(
+        juce::AlertWindow::InfoIcon, tr(u8"Statistiques du projet"), texte);
 }
 
 void MainComponent::hideSelectedTrack() {
