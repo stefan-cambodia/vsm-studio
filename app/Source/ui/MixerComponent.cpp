@@ -49,6 +49,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     addAndMakeVisible(nameLabel_);
 
     volume_.setSliderStyle(juce::Slider::LinearVertical);
+    volume_.setName("mixeur.volume");   // D139 : le nom par lequel le banc le désigne (appuyer:)
     volume_.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 56, 16);
     volume_.setRange(-60.0, 6.0, 0.1);
     volume_.setDoubleClickReturnValue(true, 0.0);   // D25.3 : 0 dB
@@ -95,6 +96,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     // fait cela. Automatisable comme le volume et le panoramique, d'où la
     // passe ouverte au glissé.
     trim_.setSliderStyle(juce::Slider::LinearBar);
+    trim_.setName("mixeur.trim");   // D139 : le nom par lequel le banc le désigne (appuyer:)
     trim_.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 44, 16);
     trim_.setRange(-24.0, 24.0, 0.1);
     trim_.setDoubleClickReturnValue(true, 0.0);     // D25.3 : 0 dB
