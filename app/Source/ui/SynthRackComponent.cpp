@@ -35,6 +35,15 @@ SynthRackComponent::SynthRackComponent() {
     machinePanel_.onEditStarted = [this](const juce::String& libelle) {
         if (onEditStarted) onEditStarted(libelle);
     };
+    // D133 : l'afficheur de la façade passe au pied du rack, hors de `vueFacade_`.
+    machinePanel_.setAfficheurExterne(true);
+    machinePanel_.onValueReadout = [this](const juce::String& texte) {
+        afficheur_.setText(texte, juce::dontSendNotification);
+    };
+    afficheur_.setJustificationType(juce::Justification::centredRight);
+    afficheur_.setFont(juce::Font(juce::FontOptions(13.0f)));
+    afficheur_.setColour(juce::Label::textColourId, Palette::textPrimary);
+    addChildComponent(afficheur_);
     addAndMakeVisible(viewport_);
     viewport_.setViewedComponent(&controlContainer_, false);
     viewport_.setScrollBarsShown(true, false);
@@ -54,6 +63,8 @@ void SynthRackComponent::setSynth(ISynthPlugin* synth, const juce::String& track
     machinePanel_.setPanel(panel, synth_);
     vueFacade_.setVisible(usingMachinePanel_);
     viewport_.setVisible(!usingMachinePanel_);
+    afficheur_.setVisible(usingMachinePanel_);            // D133 : le générique n'a pas d'afficheur
+    afficheur_.setText({}, juce::dontSendNotification);   // une autre machine, une autre valeur
 
     if (synth_) {
         titleLabel_.setText(trackName.isEmpty() ? juce::String("SYNTH RACK") : trackName,
@@ -152,6 +163,7 @@ void SynthRackComponent::resized() {
     area.removeFromTop(8);
 
     if (usingMachinePanel_) {
+        afficheur_.setBounds(area.removeFromBottom(20).reduced(10, 0));   // D133 : hors de ce qui défile
         // D63 : LA FAÇADE REÇOIT LA HAUTEUR QU'ELLE RÉCLAME, ET DÉFILE SOUS
         // ELLE. Elle recevait `area` telle quelle, quelle qu'en soit la
         // hauteur — pendant que la façade GÉNÉRIQUE, juste en dessous, était

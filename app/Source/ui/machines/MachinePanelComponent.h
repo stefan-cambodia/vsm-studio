@@ -37,6 +37,15 @@ public:
     /// Émis quand l'utilisateur touche une commande (MIDI Learn).
     std::function<void(vsm::audio::plugin::ParamId)> onParamTouched;
 
+    /// D133 : le texte de l'afficheur de valeur, à chaque réglage -- pour un
+    /// hôte qui le montre HORS de la façade (le rack la fait défiler, et
+    /// l'afficheur, posé au bas de la façade, défilait hors de la vue).
+    std::function<void(const juce::String& texte)> onValueReadout;
+    /// D133 : l'hôte montre l'afficheur lui-même ; la façade cache le sien, sans
+    /// quoi une façade qui tient entière en montrerait deux. La géométrie ne
+    /// change pas (la marge basse reste).
+    void setAfficheurExterne(bool externe);
+
     void paint(juce::Graphics&) override;
     void resized() override;
 
@@ -97,6 +106,7 @@ private:
     /// chiffre, mais un logiciel doit pouvoir en donner un quand on règle.
     /// Un seul emplacement, plutôt qu'un nombre sous chaque bouton.
     juce::Label valueReadout_;
+    bool afficheurExterne_ = false;   ///< D133
     StepSequencerComponent sequencer_;
     vsm::sequencer::Track* track_ = nullptr;
 };

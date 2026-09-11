@@ -76,6 +76,10 @@ private:
     /// rack, quelle qu'elle soit, pendant que la façade GÉNÉRIQUE — celle des
     /// machines sans dessin — était protégée par `viewport_` depuis toujours.
     juce::Viewport vueFacade_;
+    /// D133 : L'AFFICHEUR DE VALEUR DE LA FAÇADE, HORS DE CE QUI DÉFILE. Posé au
+    /// bas de la façade, il défilait avec elle sous le bord du rack : on réglait
+    /// sans voir la valeur. Une bande fixe au pied du rack, façade dédiée seulement.
+    juce::Label afficheur_;
 
     bool usingMachinePanel_ = false;
 

@@ -77,6 +77,7 @@ void MachinePanelComponent::rebuild() {
     // silencieuse, puisque le composant existe toujours, simplement détaché.
     removeAllChildren();
     addAndMakeVisible(valueReadout_);
+    valueReadout_.setVisible(!afficheurExterne_);   // D133 : l'hôte peut le montrer lui-même
     addAndMakeVisible(sequencer_);
     if (!panel_ || !synth_) { repaint(); return; }
 
@@ -229,6 +230,11 @@ bool MachinePanelComponent::toucherPourCapture(const juce::String& legende, doub
     return false;
 }
 
+void MachinePanelComponent::setAfficheurExterne(bool externe) {
+    afficheurExterne_ = externe;
+    valueReadout_.setVisible(!externe);
+}
+
 void MachinePanelComponent::showValueReadout(const juce::String& caption, double value,
                                               const juce::String& unit) {
     // Mise en forme sobre : deux décimales sous 100, aucune au-delà -- lire
@@ -238,6 +244,7 @@ void MachinePanelComponent::showValueReadout(const juce::String& caption, double
     if (unit.isNotEmpty()) text += " " + unit;
     // D132 : « CUTOFF: 0.50 » en anglais -- la typographie de la langue (D131).
     valueReadout_.setText(caption + vsm::app::ui::deuxPoints() + text, juce::dontSendNotification);
+    if (onValueReadout) onValueReadout(valueReadout_.getText());   // D133
 }
 
 juce::Rectangle<float> MachinePanelComponent::gridToPixels(juce::Rectangle<float> gridBounds) const {

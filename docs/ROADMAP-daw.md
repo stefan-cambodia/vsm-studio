@@ -16342,3 +16342,25 @@ disposition flottante (`VSM_VUE=flottant`, photo de la fenêtre du rack par
    (celui de la façade, caché, n'est plus « visible »).
 4. Suites vertes, préférences intactes.
 
+**RÉSULTAT (12/09) — LES QUATRE ATTENDUS TIENNENT.** Témoin : binaire de D132
+(00:00:54) ; après : 00:08:39. Le geste `facade:CUT OFF FREQ=1200`, projet de
+D91, huit lancements en code 0.
+
+| disposition | témoin (photo) | après (photo) |
+|---|---|---|
+| par défaut, EN | façade coupée à l'en-tête « PATTERN » ; **aucun afficheur** | « CUT OFF FREQ: 1200 Hz » au pied du rack, sous la façade |
+| par défaut, FR | idem | « CUT OFF FREQ : 1200 Hz », au même endroit |
+| flottante, fenêtre du rack, EN | le séquenceur à moitié ; **aucun afficheur** | « CUT OFF FREQ: 1200 Hz » au bas de la fenêtre |
+
+1. **Attendu 1 tenu** : au témoin, l'afficheur n'est sur aucune photo, et le
+   relevé le lit quand même — c'est l'écart entre `isVisible()` et l'écran.
+2. **Attendu 2 tenu** : sur les photos d'après, dans les deux dispositions.
+3. **Attendu 3 tenu** : un seul libellé portant la valeur, dans les quatre
+   relevés d'après.
+4. **Attendu 4 tenu** : suites C++ vertes (330, 1 291, 297, 25, 11),
+   l'application compilée à `-j 2` pendant l'épreuve, `vsm-render` intact
+   (15:00:36) ; inventaire inchangé ; préférences identiques par `cmp`.
+
+L'afficheur est écrit en `textPrimary` (le clair de la palette) et en 13 :
+c'est une valeur qu'on lit en réglant, et la lisibilité prime.
+
