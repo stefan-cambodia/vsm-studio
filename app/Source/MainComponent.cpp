@@ -668,7 +668,9 @@ MainComponent::MainComponent()
         if (clip == nullptr || piste >= project_.tracks.size()) return;
         auto* fenetre = new juce::AlertWindow(
             tr(u8"Le clip fait N mesures"),
-            tr(u8"Le clip s'étirera pour durer ce nombre de mesures, sans changer de hauteur.\n"
+            // D117 : UN SEUL PARAGRAPHE. Le retour forcé laissait « pitch. » seul sur
+            // sa ligne à 150 % : la mise en page équilibre mieux sans lui.
+            tr(u8"Le clip s'étirera pour durer ce nombre de mesures, sans changer de hauteur. "
                u8"Le tempo d'origine du matériau sera déduit et affiché."),
             juce::MessageBoxIconType::NoIcon);
         fenetre->addTextEditor("mesures", "4", tr(u8"Mesures :"));
@@ -9310,7 +9312,11 @@ size_t MainComponent::renameTracksInSeries(const juce::String& motif) {
 void MainComponent::promptRenameTracksInSeries() {
     auto fenetre = std::make_shared<juce::AlertWindow>(
         tr(u8"Renommer les pistes en série"),
-        tr(u8"Le « # » est remplacé par le numéro d'ordre. "
+        // D117 : L'EXEMPLE SUR SA PROPRE LIGNE. « Batterie # » se coupait entre ses
+        // mots à 150 % ; des espaces insécables l'empêchaient, mais s'affichaient
+        // deux fois plus larges -- « Drums  # » a l'air d'un motif à deux espaces.
+        // Un retour ENTRE deux idées protège ce qu'un retour au milieu coupait.
+        tr(u8"Le « # » est remplacé par le numéro d'ordre.\n"
            u8"Exemple : « Batterie # » donne « Batterie 1 », « Batterie 2 »...\n"
            u8"Seules les pistes VISIBLES sont renommées."),
         juce::AlertWindow::QuestionIcon);

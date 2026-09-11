@@ -15121,3 +15121,37 @@ dans chaque langue, l'exemple entier sur la deuxième, avec des espaces
 ordinaires ; la boîte des mesures identique au premier essai (sa chaîne ne
 change pas).
 
+**LA SECONDE MESURE (binaire du 11/09 18:09:36, banc à 18:09) — L'ATTENDU EST
+RÉFUTÉ pour le renommage, TENU pour les mesures.**
+
+- **La boîte des mesures** : identique au premier essai, **0 pixel** de
+  différence dans les deux langues (506×216 et 488×216).
+- **Le renommage** : trois lignes de texte attendues, quatre obtenues — la
+  BOÎTE S'EST RÉTRÉCIE, **442 px au lieu de 559** en anglais, **524 au lieu
+  de 625** en français, et l'exemple se coupe de nouveau, ailleurs :
+  « Example: “Drums #” gives “Drums 1”, “Drums / 2”... », « Exemple :
+  « Batterie # » donne « Batterie 1 », « Batterie 2 / »... ». Mon estimation
+  (« environ 70 signes par ligne ») venait d'une boîte dont la largeur
+  dépend elle-même du texte : `AlertWindow::updateLayout` part d'une largeur
+  `300 + 2·√(hauteur × largeur mesurée du texte)`, puis équilibre les
+  lignes — changer les paragraphes a changé la mesure. Quelle mesure JUCE
+  prend d'un texte à plusieurs lignes n'est pas établi ici ; ce qui est
+  établi, c'est la largeur obtenue, lue sur les deux photos.
+
+**CE QUI RESTE DANS LE CODE, ET POURQUOI.** Trois états mesurés du
+renommage : le témoin coupe le MOTIF (« Drums / # ») ; les espaces
+insécables ne coupent rien mais font lire deux espaces dans le motif ; le
+second essai garde le motif entier dans les deux langues — « “Drums #” »,
+« « Batterie # » » sur une seule ligne — et coupe l'exemple de RÉSULTAT
+(« Drums / 2” », « Batterie 2 / » »). Le critère qui départage est écrit plus
+haut : le motif est ce que l'utilisateur recopie. Le second essai est gardé,
+et ce qu'il laisse est dit. **La boîte du renommage n'est pas close** :
+une largeur de boîte que la mise en page de JUCE décide seule ne se règle
+pas par le texte ; la corriger vraiment demande une boîte qui fixe sa
+largeur (un composant à nous), un chantier plus grand que cette phase.
+
+Inventaire inchangé (stricte ÉCRAN 7, TABLE 233 : les clés modifiées
+correspondent au source). Suites C++ vertes à `-j 2` (330, 1 291, 297, 25,
+11) ; `build/tools/vsm-render` non touché ; préférences intactes, douze
+lancements.
+
