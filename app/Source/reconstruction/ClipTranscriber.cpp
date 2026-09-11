@@ -65,8 +65,8 @@ void ClipTranscriber::run() {
             const auto code = process_->getExitCode();
             succes = !cancelled_.load() && code == 0 && sortie_.existsAsFile();
             if (code == 0 && !sortie_.existsAsFile() && !cancelled_.load())
-                journal += juce::String::fromUTF8(u8"\n[le script est sorti en 0 sans écrire ")
-                           + sortie_.getFullPathName() + "]";
+                journal += "\n" + juce::String(u8"[le script est sorti en 0 sans écrire %1]")
+                                       .replace("%1", sortie_.getFullPathName());
             process_.reset();
         }
     }

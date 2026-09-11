@@ -160,8 +160,8 @@ void ReconstructionRunner::run() {
         if (code != 0) {
             // CE QUE LA CHAÎNE A DIT EN DERNIER, et non un code de sortie nu :
             // « [ERREUR] pas de stem vocal » se comprend, « code 2 » non.
-            juce::String raison = juce::String::fromUTF8(u8"la chaîne s'est arrêtée (code ")
-                                  + juce::String(code) + ")";
+            juce::String raison = juce::String(u8"la chaîne s'est arrêtée (code %1)")
+                                      .replace("%1", juce::String(code));
             for (int i = dernieres.size() - 1; i >= 0 && i >= dernieres.size() - 5; --i)
                 if (dernieres[i].contains("[ERREUR]")) { raison = dernieres[i]; break; }
             onFinished(false, juce::File(), raison);

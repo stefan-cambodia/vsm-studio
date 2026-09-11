@@ -270,11 +270,13 @@ public:
             // VSM_BOITE_ESSAI=perdues;impossible;rien;latence;disque (D112) : les
             // boîtes de l'enregistrement, par les fonctions du chemin réel, avec des
             // chiffres fixes -- ni son émis, ni latence retenue, ni préférence écrite.
+            // D114 : « indisponible », la boîte d'une reconstruction impossible, avec la
+            // raison que la chaîne a VRAIMENT rendue d'après les préférences.
             if (const char* boites = std::getenv("VSM_BOITE_ESSAI"); boites != nullptr && *boites) {
                 juce::StringArray suite;
                 suite.addTokens(juce::String::fromUTF8(boites), ";", "");
                 for (const auto& b : suite)
-                    if (b.trim().isNotEmpty() && !content->showRecordingBoxForCapture(b.trim()))
+                    if (b.trim().isNotEmpty() && !content->showBoxForCapture(b.trim()))
                         std::fputs("VSM_BOITE_ESSAI : bo\u00eete inconnue\n", stderr);
             }
             // VSM_EXPORT=fichier.flac : exporter le projet ouvert sans fenêtre

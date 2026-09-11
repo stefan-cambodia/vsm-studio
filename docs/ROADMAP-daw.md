@@ -14870,3 +14870,38 @@ dit.
 3. **Le texte d'attente des notes** : français au témoin dans les deux
    langues, anglais avec D114 — lu sur la photo du panneau.
 
+**LE RÉSULTAT, ATTENDU PAR ATTENDU (11/09/2026, banc à 17:44).** Témoin :
+binaire du 11/09 17:42:07 (la fonction, le jeton, `montrerBoite()`, les
+phrases d'avant) ; D114 : 17:43:58. Même banc, `HOME` de brouillon, deux
+dossiers de chaîne fabriqués pour l'occasion.
+
+1. **L'inventaire — TENU** : stricte ÉCRAN **14 → 7**, `MainComponent`
+   **8 → 5**. Les sept qui restent ne s'affichent pas : « libellé » (le
+   banc de D94), « non appliqué » (le mot que le volet cherche pour
+   colorer), `gel/piste-`, `audio/report-…` ×2 (des chemins), « Balayage des
+   plugins » (le nom d'un fil), « Arrangement / règle » (le libellé d'un
+   banc). TABLE 228 → 233 ; large ÉCRAN 36 → 28, TABLE 266.
+2. **La boîte — TENU**, 1 sur 1 par cas et par langue. Le témoin la montre
+   en français dans les deux langues ; D114 en anglais : « Reconstruction
+   unavailable : the analysis chain folder set in the preferences does not
+   contain reconstruire.py (…) / / fix the path, or clear it to let the
+   application search » et « … the chain's Python environment has not been
+   created (no .venv in …) / / python3 -m venv .venv && … » ; aucun mot
+   français hors chemins et commande ; le français de D114 identique au
+   témoin dans les deux cas. La raison est bien celle de `locate()` : elle
+   change avec la préférence, sans rien d'écrit pour le banc.
+3. **Le texte d'attente — TENU**, lu sur la photo du panneau (`VSM_CAPTURE_PANNEAUX`) :
+   « Ce que la chaîne ne dit pas : pourquoi cette piste vient de ce stem, ce
+   qui est une … » au témoin en anglais, « What the chain does not say: why
+   this track comes from that stem, what is a hypo… » avec D114. Vu en
+   passant, et laissé : ce texte est TRONQUÉ dans les deux langues — le
+   texte d'attente d'un `TextEditor` JUCE tient sur une ligne, et le
+   panneau de 520 px n'en montre que les deux tiers.
+
+Non passés au banc, dits : le volet de reconstruction (phrase de fin,
+suffixe de parité, raison d'un échec désormais traduite dans `setFinished`),
+le lanceur et le transcripteur — il faudrait lancer la chaîne, et
+l'épreuve *Children* l'occupe. Table : **1 363** paires (+9), **110**
+modèles (+4). Suites C++ vertes à `-j 2` (330, 1 291, 297, 25, 11) ;
+`build/tools/vsm-render` non touché ; préférences intactes.
+

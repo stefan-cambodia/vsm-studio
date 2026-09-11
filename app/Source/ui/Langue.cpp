@@ -2789,6 +2789,25 @@ const Paire kAnglais[] = {
       "the scanning process crashed without an exit code (a signal, most often a crash)" },
     { "le fichier ne déclare aucun plugin",
       "the file declares no plugin" },
+    // --- D114 : LA RECONSTRUCTION DEPUIS L'APPLICATION -------------------------------
+    { "Reconstruction indisponible",
+      "Reconstruction unavailable" },
+    { "corriger le chemin, ou l'effacer pour laisser l'application chercher",
+      "fix the path, or clear it to let the application search" },
+    { "la chaîne d'analyse (le dossier analyse/) est introuvable à côté de l'application",
+      "the analysis chain (the analyse/ folder) cannot be found next to the application" },
+    { "indiquer son emplacement dans Fichier ▸ Chaîne d'analyse...",
+      "set its location in File ▸ Analysis chain..." },
+    { "Terminé — le projet est ouvert, l'original en regard",
+      "Done — the project is open, the original alongside" },
+    { "%1 — parité des pistes",
+      "%1 — track parity" },
+    { "la chaîne d'analyse n'a pas pu être lancée",
+      "the analysis chain could not be started" },
+    { "le transcripteur n'a pas pu être lancé",
+      "the transcriber could not be started" },
+    { "Ce que la chaîne ne dit pas : pourquoi cette piste vient de ce stem, ce qui est une hypothèse, ce qui est coupé exprès…",
+      "What the chain does not say: why this track comes from that stem, what is a hypothesis, what is cut on purpose…" },
 };
 
 constexpr int kNombreDePaires = static_cast<int>(sizeof(kAnglais) / sizeof(kAnglais[0]));
@@ -3089,6 +3108,11 @@ const ModeleDePhrase kModeles[] = {
     { u8"clap_entry->init a échoué pour %1", u8"clap_entry->init failed for %1" },
     { u8"fabrique de plugins absente dans %1", u8"no plugin factory in %1" },
     { u8"aucun plugin dans %1", u8"no plugin in %1" },
+    // D114 : ce que ReconstructionChain, le lanceur et le transcripteur disent
+    { u8"le dossier de la chaîne d'analyse indiqué dans les préférences ne contient pas reconstruire.py (%1)", u8"the analysis chain folder set in the preferences does not contain reconstruire.py (%1)" },
+    { u8"l'environnement Python de la chaîne n'a pas été créé (aucun .venv dans %1)", u8"the chain's Python environment has not been created (no .venv in %1)" },
+    { u8"la chaîne s'est arrêtée (code %1)", u8"the chain stopped (code %1)" },
+    { u8"[le script est sorti en 0 sans écrire %1]", u8"[the script exited with 0 without writing %1]" },
     { u8"Piste %#1 : %P2", u8"Track %1: %P2" },
 };
 

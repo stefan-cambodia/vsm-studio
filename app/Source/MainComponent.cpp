@@ -5612,11 +5612,7 @@ void MainComponent::chooseChainFolder() {
 void MainComponent::startReconstruction(const juce::File& audioFile) {
     if (!reconstructionChain_.available) {
         // JAMAIS UNE ERREUR : une explication, et le moyen d'y remédier.
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon,
-            juce::String::fromUTF8(u8"Reconstruction indisponible"),
-            juce::String::fromUTF8(reconstructionChain_.reason.c_str()) + "\n\n"
-                + juce::String::fromUTF8(reconstructionChain_.remedy.c_str()));
+        boiteReconstructionIndisponible();
         return;
     }
     if (reconstructionRunner_.isRunning()) return;
@@ -5683,8 +5679,7 @@ void MainComponent::startReconstruction(const juce::File& audioFile) {
                             .getBoolValue("reconstruireEnParite", true);
     reconstructionRunner_.start(reconstructionChain_, audioFile, sortie, parite);
     if (parite)
-        reconstructionPanel_.setSource(audioFile.getFileName()
-                                       + juce::String::fromUTF8(" — parité des pistes"));
+        reconstructionPanel_.setSource(tr(u8"%1 — parité des pistes").replace("%1", audioFile.getFileName()));
     menuItemsChanged();
 }
 
@@ -6159,9 +6154,8 @@ void MainComponent::showProjectNotes() {
         projectNotesEditor_.setScrollbarsShown(true);
         projectNotesEditor_.setFont(juce::Font(juce::FontOptions(14.0f)));
         projectNotesEditor_.setTextToShowWhenEmpty(
-            juce::String::fromUTF8(
-                u8"Ce que la chaîne ne dit pas : pourquoi cette piste vient de ce stem, "
-                u8"ce qui est une hypothèse, ce qui est coupé exprès…"),
+            tr(u8"Ce que la chaîne ne dit pas : pourquoi cette piste vient de ce stem, "
+               u8"ce qui est une hypothèse, ce qui est coupé exprès…"),
             vsm::ui::Palette::textSecondary);
         // ÉCRIT DANS LE PROJET À CHAQUE FRAPPE, et marqué modifié : des notes
         // qu'il faudrait penser à valider seraient des notes perdues.
@@ -8438,13 +8432,24 @@ void MainComponent::boiteLatenceMesuree(double secondes, int decalageEchantillon
                  u8"n'est pas dans la boucle, et cette mesure ne peut rien en dire."));
 }
 
-bool MainComponent::showRecordingBoxForCapture(const juce::String& nom) {
+// D114 : la raison est celle que `ReconstructionChain::locate` a rendue -- des
+// DONNÉES, françaises à la source (interchange/).
+void MainComponent::boiteReconstructionIndisponible() {
+    montrerBoite(
+        juce::AlertWindow::InfoIcon,
+        tr(u8"Reconstruction indisponible"),
+        vsm::app::ui::trPhrase(juce::String::fromUTF8(reconstructionChain_.reason.c_str())) + "\n\n"
+            + vsm::app::ui::trPhrase(juce::String::fromUTF8(reconstructionChain_.remedy.c_str())));
+}
+
+bool MainComponent::showBoxForCapture(const juce::String& nom) {
     // D112 : chiffres fixes, écrits au ROADMAP -- 590 échantillons à 48 kHz.
     if (nom == "perdues") { boiteNotesPerdues(); return true; }
     if (nom == "impossible") { boiteMesureImpossible(); return true; }
     if (nom == "rien") { boiteRienNestRevenu(3.2); return true; }
     if (nom == "latence") { boiteLatenceMesuree(590.0 / 48000.0, 590, 48000.0, 42.5); return true; }
     if (nom == "disque") { signalerDisqueTropLent(3); return true; }
+    if (nom == "indisponible") { boiteReconstructionIndisponible(); return true; }   // D114
     return false;
 }
 
@@ -9658,8 +9663,12 @@ void MainComponent::transcribeSelectedClip() {
             lignes.addLines(journal);
             while (lignes.size() > 12) lignes.remove(0);
             std::fputs((juce::String(u8"Transcrire en MIDI : ÉCHEC\n") + journal + "\n").toRawUTF8(), stderr);
+            // D114 : les lignes du journal sont des DONNÉES (la chaîne, le lanceur) --
+            // traduites à l'affichage, ligne par ligne, comme le volet de rapport.
+            juce::StringArray affichees;
+            for (const auto& ligne : lignes) affichees.add(vsm::app::ui::trPhrase(ligne));
             montrerBoite(juce::AlertWindow::WarningIcon, tr(u8"Transcrire en MIDI"),
-                                                     tr(u8"La transcription a échoué :") + "\n" + lignes.joinIntoString("\n"));
+                                                     tr(u8"La transcription a échoué :") + "\n" + affichees.joinIntoString("\n"));
             return;
         }
         const juce::var lu = juce::JSON::parse(fichierJson);

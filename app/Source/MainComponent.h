@@ -106,7 +106,9 @@ public:
     bool goToPositionForCapture(const juce::String& texte) { return goToBarText(texte); }
     /// D112 : VSM_BOITE_ESSAI=perdues|impossible|rien|latence|disque -- les boîtes de
     /// l'enregistrement qu'on n'atteint qu'en jouant du son ou en débordant un tampon.
-    bool showRecordingBoxForCapture(const juce::String& nom);
+    /// D114 : et « indisponible », la boîte d'une reconstruction impossible, que le
+    /// menu (un sélecteur) et le dépôt (trois boutons) n'amènent pas sans souris.
+    bool showBoxForCapture(const juce::String& nom);
     /// D22.4 : VSM_LECTURE=1 -- lancer la lecture avant la capture, pour que
     /// le voyant OUT se photographie allumé.
     void startPlaybackForCapture();
@@ -751,6 +753,8 @@ private:
     void boiteMesureImpossible();
     void boiteRienNestRevenu(double nettete);
     void boiteLatenceMesuree(double secondes, int decalageEchantillons, double sr, double nettete);
+    /// D114 : « Reconstruction indisponible », sa raison et son remède.
+    void boiteReconstructionIndisponible();
     /// Lance la mesure de latence par boucle physique, puis affiche et adopte
     /// le résultat -- ou le REFUSE s'il n'est pas net, ce qui veut dire que
     /// rien n'est revenu par l'entrée.

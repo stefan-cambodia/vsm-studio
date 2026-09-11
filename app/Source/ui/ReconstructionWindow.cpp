@@ -71,7 +71,9 @@ void ReconstructionWindow::setProgress(const vsm::app::ReconstructionRunner::Pro
 
 void ReconstructionWindow::setFinished(bool succes, const juce::String& message) {
     termine_ = true;
-    etape_.setText(message, juce::dontSendNotification);
+    // D114 : le message est une DONNÉE -- la phrase de fin, la raison du lanceur,
+    // ou la dernière ligne « [ERREUR] » de la chaîne --, traduite ICI.
+    etape_.setText(trPhrase(message), juce::dontSendNotification);
     etape_.setColour(juce::Label::textColourId,
                       succes ? juce::Colours::lightgreen : juce::Colours::orangered);
     bouton_.setButtonText(tr("Fermer"));
