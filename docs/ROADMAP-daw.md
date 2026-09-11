@@ -14370,3 +14370,73 @@ La table passe à **1 301** paires (+8), **95** modèles (+4).
 297 interchange, 25 CLAP, 11 panneaux). `MainComponent` : 34 chaînes à
 l'inventaire.
 
+### Phase D109 — A9 : les noms des pièces de batterie (11/09/2026)
+
+**LE LOT.** `drumVoiceName` (`ui/DrumVoiceNames.h`) nomme la pièce qu'une note
+déclenche sur une piste de batterie — 37 noms distincts, en français
+(« grosse caisse », « charleston fermé », « conga aiguë étouffée »…), selon
+la machine (TR-808, TR-909, Drums, FM Drums, Perc) ou la convention General
+MIDI. Deux usages : le piano roll les dessine sur son clavier, et « Éclater
+par hauteur » en fait les noms des pistes qu'il crée. À l'inventaire des
+en-têtes : 19 ÉCRAN, les noms accentués ; les autres (« grosse caisse »,
+« caisse claire », « tom grave »…) n'ont ni accent ni mot de sa liste, et
+lui échappent. Aucun n'est une clé.
+
+**LES DÉCISIONS.**
+
+1. **La table reste française : c'est la clé.** La traduction se fait aux
+   deux usages — `tr()` au piano roll (il redessine à chaque peinture, donc
+   suit la bascule) ; `tr()` au nom d'une piste éclatée, donnée que
+   l'application fabrique, donc dans la langue du moment, comme en D107.
+2. **Douze noms sont les mêmes en anglais** (clap, cowbell, crash, crash 2,
+   ride, ride 2, rim, splash, maracas, claves, china, tom) : pas de clé.
+   **25 clés.**
+
+**LE BANC.** Le témoin est le binaire de HEAD, déjà construit. Copie de
+demo-project, piste « Drums » (`vsm.tr909`) choisie ; deux cas, français
+puis anglais : `eclater` (le menu Piste, la liste des pistes lue par
+`VSM_TEXTES_LISTE`, et la boîte de D96) ; `pianoroll` (`VSM_VUE=pianoroll`,
+photographié).
+
+**ATTENDU, écrit avant la mesure.**
+
+1. **L'inventaire des en-têtes** : ÉCRAN **19 → 0**, TABLE 19 → 38 ; les
+   `.cpp` ne bougent pas (ÉCRAN 45 stricte, 74 large).
+2. **`eclater`** : en anglais, les pistes créées s'appellent « snare »,
+   « closed hi-hat »… — les pièces que la piste joue ; au témoin, « caisse
+   claire », « charleston fermé ». En français, identiques.
+3. **`pianoroll`** : en anglais, le clavier de la piste de batterie dit
+   « kick », « snare »…
+4. **Le français** : identique au témoin.
+
+**VU DANS LE TÉMOIN (D109), écrit avant la mesure d'après.** Quatre
+lancements (le binaire de HEAD), préférences intactes. « Éclater par
+hauteur » crée 3 pistes ; la liste des pistes montre « grosse caisse »,
+« tom aigu », « tom grave », « clap » — en français dans les deux langues, le
+défaut tel qu'annoncé, alors que la boîte de D96 dit déjà « Split by pitch :
+3 track(s) created… ». « clap » est l'un des douze noms identiques.
+
+**LE RÉSULTAT, ATTENDU PAR ATTENDU (11/09/2026).** Témoin (le binaire de
+HEAD) puis D109, quatre lancements chacun, écran verrouillé ; préférences de
+l'utilisateur intactes (`cmp`, deux séries).
+
+1. **L'inventaire des en-têtes — tenu.** ÉCRAN **19 → 0**, TABLE 19 → 38 ;
+   les `.cpp` n'ont pas bougé (ÉCRAN 45 stricte, 74 large). Les noms sans
+   accent (« grosse caisse », « caisse claire », « tom grave »…), que
+   l'inventaire ne voyait pas, sont traduits de même : ils sont dans les
+   25 clés.
+2. **`eclater` — tenu.** En anglais, les pistes créées s'appellent « kick »,
+   « high tom », « low tom », « clap » (au témoin : « grosse caisse », « tom
+   aigu », « tom grave », « clap ») ; « clap » est l'un des douze noms
+   identiques — l'analyse le relevait à tort. En français, identiques ; la
+   boîte de D96 inchangée.
+3. **`pianoroll` — tenu.** Le clavier de la piste de batterie dit « kick » en
+   anglais, où le témoin disait « grosse caisse » — vu sur la photo.
+4. **Le français — tenu.** Identique au témoin dans les deux cas, boîte et
+   liste de la fenêtre principale.
+
+La table passe à **1 326** paires (+25). `VintageSynthMidiStudio` et
+`vsm-ui-preview` compilent ;
+suites C++ vertes (330 cœur, 1 291 audio, 297 interchange, 25 CLAP, 11
+panneaux). `MainComponent` : 34 chaînes à l'inventaire (inchangé).
+

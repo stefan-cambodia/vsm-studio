@@ -1711,7 +1711,8 @@ void PianoRollComponent::drawKeyboard(juce::Graphics& g) const {
         if (pisteDeBatterie) {
             const std::string piece = vsm::app::ui::drumVoiceName(pisteDeBatterie->instrumentId,
                                                     static_cast<uint8_t>(note));
-            if (!piece.empty() && noteHeight_ >= 9) etiquette = juce::String::fromUTF8(piece.c_str());
+            if (!piece.empty() && noteHeight_ >= 9)   // D109 : dans la langue de l'interface
+                etiquette = vsm::app::ui::tr(juce::String::fromUTF8(piece.c_str()));
         }
         // Repliée, chaque rangée est nommée : elles ne se suivent pas.
         if (etiquette.isNotEmpty() || note % 12 == 0 || noteHeight_ >= 14 || folded()) {

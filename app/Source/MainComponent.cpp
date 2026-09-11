@@ -7994,8 +7994,10 @@ void MainComponent::explodeSelectedTrackByPitch() {
     // MIDI, et le piano roll s'en sert depuis longtemps -- il n'y avait aucune
     // raison d'en écrire un second.
     const std::string machine = project_.tracks[piste].instrumentId;
+    // D109 : un nom que l'application fabrique se donne dans la langue du moment
+    // (D107) -- la table de `drumVoiceName` reste française, c'est la clé.
     auto nommer = [machine](uint8_t note) {
-        return vsm::app::ui::drumVoiceName(machine, note);
+        return tr(juce::String::fromUTF8(vsm::app::ui::drumVoiceName(machine, note).c_str())).toStdString();
     };
 
     captureSessionIntoProject();
