@@ -15623,3 +15623,41 @@ séries prises à des moments différents n'est pas un A/B.** Le banc d'après a
 été repassé à 22:38, à la taille du témoin : ce sont ses chiffres qui
 figurent ci-dessus.
 
+### Phase D124 — A13 : « Que faire de ce fichier ? » par `BoiteLisible`, et la raison d'une reconstruction impossible en anglais (11/09/2026)
+
+**LE RESTE D'A13.** La boîte du dépôt d'un fichier audio est une boîte
+STATIQUE de JUCE (`showYesNoCancelBox`) : le texte s'y met en page avant la
+largeur, et « minutes. » y reste seul sur sa ligne en français (D119). Sa
+variante à deux boutons (`showOkCancelBox`), montrée quand la reconstruction
+est indisponible, porte un second défaut, trouvé en la relisant : la RAISON
+et le REMÈDE de `ReconstructionChain` y sont collés tels quels
+(`fromUTF8`), sans `trPhrase` — en anglais, ils restent français, alors que
+D114 les traduit dans la boîte « Reconstruction indisponible ».
+
+**LES DÉCISIONS.**
+
+1. **Les deux boîtes passent par `BoiteLisible`** (D121) : mêmes titres,
+   mêmes boutons dans le même ordre, mêmes valeurs rendues au rappel (1
+   poser, 2 reconstruire, 0 annuler — celles de `showYesNoCancelBox`), Entrée
+   sur « Poser », Échap sur « Annuler ». Elles perdent l'icône « ? », comme
+   le renommage en D121.
+2. **La raison et le remède passent par `trPhrase`**, comme en D114.
+3. **Chaque boîte écrit sa ligne `VSM_BOITE`** au moment où elle est
+   demandée (D95) : le banc la lit au lieu de la deviner sur une photo.
+
+**LE BANC.** Le projet d'épreuve de D91, un WAV déposé (`VSM_DEPOSER`),
+français et anglais ; puis la même chose avec une chaîne introuvable (la
+préférence `dossierChaineAnalyse` pointée sur un dossier sans
+`reconstruire.py`, le montage de D114). Témoin : le binaire de D123.
+
+**ATTENDU, écrit avant la mesure.**
+
+1. **La boîte à trois boutons** : aucune mauvaise coupure (au sens de D119)
+   dans les deux langues — « minutes. » sur la même ligne que ce qui le
+   précède ; les trois boutons, dans le même ordre.
+2. **La boîte à deux boutons, en anglais** : raison et remède traduits
+   (« the analysis chain folder set in the preferences does not contain
+   reconstruire.py (…) », « fix the path, or clear it… ») — au témoin, en
+   français ; le français identique au témoin, mot pour mot.
+3. **Suites vertes**, préférences intactes.
+
