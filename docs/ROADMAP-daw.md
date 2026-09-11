@@ -16711,3 +16711,44 @@ Ce qu'il ne voit pas, dit une seconde fois : une commande qui a une surface
 mais que le cadre d'un défilement cache (le défaut de D132) — la confondre
 avec une liste qu'on fait défiler n'apprendrait rien.
 
+### Phase D139 — un clic sur un fader ne doit pas changer le volume : les curseurs linéaires suivent le glissé (12/09/2026)
+
+**D'OÙ VIENT LA QUESTION.** D135 l'a vu en passant : l'appui au centre du
+volume d'une ligne de piste l'a fait passer de -0.9 à -2.5 dB. Un curseur
+LINÉAIRE de JUCE saute à l'endroit du clic — son défaut
+(`setSliderSnapsToMousePosition(true)`), qu'aucun curseur de l'application ne
+change. Viser le bouton d'un fader et le manquer de quelques pixels change
+donc le volume, sans glisser ; c'est une édition par accident, et les boutons
+rotatifs, eux, ne sautent pas.
+
+**CE QUE JUCE FAIT, lu dans le code** (`handleAbsoluteDrag`) : le saut vaut
+pour `LinearHorizontal`, `LinearVertical`, `LinearBar` et `LinearBarVertical` ;
+quand il est coupé, la valeur part de celle qu'avait le curseur et suit le
+déplacement de la souris — un appui seul ne change rien. Le commentaire de
+l'en-tête JUCE (« ne s'applique qu'aux barres ») est démenti par le code.
+
+**LE REMÈDE, décidé avant le témoin.** Tous les curseurs linéaires de
+l'application suivent le glissé : le volume et le panoramique d'une ligne de
+piste, le fader, le trim, le retard et la transposition d'une tranche, le
+swing et la vélocité du piano roll, le niveau du clic des préférences, les
+curseurs des façades. Un seul comportement pour tous : qui a appris qu'un
+fader ne saute pas ne doit pas découvrir l'exception. La saisie reste (les
+zones de texte), le double-clic aussi, là où il ramène la valeur d'usine.
+Un PREMIER PAS nomme le fader, le trim et le swing (des noms de composant,
+invisibles), pour que le même geste de banc les atteigne au témoin comme
+après.
+
+**LE BANC.** Le geste `appuyer:<nom>` au centre, projet de D91, français et
+anglais : `pistes.volume` (la valeur lue dans la zone de texte du fader du
+mixeur), `pistes.pan` (la bulle de D135), `mixeur.volume`, `mixeur.trim`,
+`pianoroll.swing` (leurs zones de texte).
+
+**ATTENDU, écrit avant le témoin.**
+
+1. **Au témoin**, chaque appui déplace la valeur vers le milieu de sa course :
+   le volume de la ligne à -2.5 dB (D135), le fader à une autre valeur que
+   -0.9 dB, le trim et le swing hors de 0.
+2. **Après**, aucun appui ne change la valeur : -0.9 dB, « C », « Trim 0.0
+   dB », swing 0.00 — ce que le projet porte.
+3. Aucun autre texte relevé ne change ; suites vertes, préférences intactes.
+
