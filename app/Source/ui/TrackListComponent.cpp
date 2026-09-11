@@ -202,6 +202,7 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
     volumeSlider_.setRange(0.0, 1.5, 0.001);
     volumeSlider_.setValue(track_.volume, juce::dontSendNotification);
     volumeSlider_.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    volumeSlider_.setName("pistes.volume");   // D135 : le nom par lequel le banc le désigne (appuyer:)
     volumeSlider_.onDragStart = [this] { glisseEnCours_ = true; debutEdition("Volume"); };
     volumeSlider_.onDragEnd = [this] { glisseEnCours_ = false; };
     volumeSlider_.onValueChange = [this] {
@@ -219,6 +220,7 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
     panSlider_.setRange(-1.0, 1.0, 0.01);
     panSlider_.setValue(track_.pan, juce::dontSendNotification);
     panSlider_.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    panSlider_.setName("pistes.pan");   // D135 : le nom par lequel le banc le désigne (appuyer:)
     panSlider_.onDragStart = [this] { glisseEnCours_ = true; debutEdition(u8"Panoramique"); };
     panSlider_.onDragEnd = [this] { glisseEnCours_ = false; };
     panSlider_.onValueChange = [this] {

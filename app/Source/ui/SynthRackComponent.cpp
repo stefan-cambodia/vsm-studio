@@ -118,6 +118,7 @@ void SynthRackComponent::rebuildControls() {
         auto slider = std::make_unique<juce::Slider>(juce::Slider::RotaryHorizontalVerticalDrag,
                                                        juce::Slider::NoTextBox);
         slider->setRange(static_cast<double>(info.minValue), static_cast<double>(info.maxValue), 0.0);
+        slider->setName("rack.parametre");   // D135 : le nom par lequel le banc le désigne (appuyer:)
         slider->setValue(static_cast<double>(synth_->getParameter(info.id)), juce::dontSendNotification);
 
         ParamId paramId = info.id;

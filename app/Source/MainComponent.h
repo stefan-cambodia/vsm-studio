@@ -205,6 +205,11 @@ public:
             return synthRack_.toucherPourCapture(reste.upToLastOccurrenceOf("=", false, false),
                                                  reste.fromLastOccurrenceOf("=", false, false).getDoubleValue());
         }
+        // D135 : appuyer:<nom> -- l'appui de la souris sur le premier curseur visible
+        // qui porte ce nom de composant, sans relâcher (la bulle de valeur s'ouvre à
+        // l'appui et reste tant qu'on tient).
+        if (geste.startsWithIgnoreCase("appuyer:"))
+            return appuyerPourCapture(geste.fromFirstOccurrenceOf(":", false, false));
         return false;
     }
     /// D23.3 : VSM_EXPORT_MIDI_PISTE=fichier.mid -- la piste choisie écrite
@@ -224,6 +229,8 @@ public:
     /// depuis le 31/08 —, juste après que `Main.cpp` a posé la taille demandée.
     /// Quatre valeurs différentes rendaient la MÊME image de 1264x742.
     void forceWindowSize() { tailleImposee_ = true; }
+    /// D135 : voir le geste `appuyer:` de `runTrackGestureForCapture`.
+    bool appuyerPourCapture(const juce::String& nom);
     /// D57 : republier le panneau d'assemblage depuis la piste choisie.
     void refreshTakeCompPanel();
     /// D24.5 : VSM_IMPORT_AUDIO=fichier.wav -- sur une piste neuve, sans boîte.

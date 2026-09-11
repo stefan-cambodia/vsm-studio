@@ -1445,6 +1445,37 @@ void MainComponent::listMenusForCapture() {
     for (const auto& [nom, menu] : arrangement_.menusPourCapture()) parcourir(menu, nom);
 }
 
+bool MainComponent::appuyerPourCapture(const juce::String& nom) {
+    // D135 : LE CURSEUR DÉSIGNÉ PAR SON NOM DE COMPOSANT, cherché dans la fenêtre
+    // principale puis dans les autres (panneaux flottants), en ne descendant que
+    // dans ce qui est visible. L'appui est celui de la souris, au centre, bouton
+    // gauche, sans relâcher : `Slider::mouseDown` ouvre la bulle et ouvre aussi
+    // la passe d'édition du réglage -- sans conséquence sur un projet de banc.
+    std::function<juce::Slider*(juce::Component&)> chercher = [&](juce::Component& c) -> juce::Slider* {
+        if (auto* curseur = dynamic_cast<juce::Slider*>(&c); curseur != nullptr && curseur->getName() == nom)
+            return curseur;
+        for (auto* enfant : c.getChildren())
+            if (enfant->isVisible())
+                if (auto* trouve = chercher(*enfant)) return trouve;
+        return nullptr;
+    };
+    juce::Slider* curseur = chercher(*this);
+    for (int i = 0; curseur == nullptr && i < juce::TopLevelWindow::getNumTopLevelWindows(); ++i)
+        if (auto* fenetre = juce::TopLevelWindow::getTopLevelWindow(i); fenetre != nullptr && fenetre->isVisible())
+            curseur = chercher(*fenetre);
+    std::fputs(("VSM_APPUI : " + nom
+                + (curseur != nullptr ? juce::String(u8" — appuyé") : juce::String(u8" — aucun curseur visible de ce nom"))
+                + "\n").toRawUTF8(), stderr);
+    if (curseur == nullptr) return false;
+    const auto centre = curseur->getLocalBounds().getCentre().toFloat();
+    const auto maintenant = juce::Time::getCurrentTime();
+    const juce::MouseEvent appui(juce::Desktop::getInstance().getMainMouseSource(), centre,
+                                 juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier), 1.0f,
+                                 0.0f, 0.0f, 0.0f, 0.0f, curseur, curseur, maintenant, centre, maintenant, 1, false);
+    curseur->mouseDown(appui);
+    return true;
+}
+
 bool MainComponent::runContextMenuForCapture(const juce::String& entree) {
     const juce::String quel = entree.upToFirstOccurrenceOf(":", false, false).trim();
     const juce::String libelle = entree.fromFirstOccurrenceOf(":", false, false).trim();

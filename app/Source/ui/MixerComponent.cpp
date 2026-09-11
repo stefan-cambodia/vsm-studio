@@ -73,6 +73,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
 
     pan_.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
     pan_.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    pan_.setName("mixeur.pan");   // D135 : le nom par lequel le banc le désigne (appuyer:)
     pan_.setRange(-1.0, 1.0, 0.01);
     pan_.setDoubleClickReturnValue(true, 0.0);      // D25.3 : centre
     pan_.setValue(track_.pan, juce::dontSendNotification);
@@ -170,6 +171,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
         auto* s = new juce::Slider();
         s->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
         s->setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+        s->setName("mixeur.depart");   // D135 : le nom par lequel le banc le désigne (appuyer:)
         s->setRange(0.0, 1.0, 0.01);
         s->setValue(track_.sendLevel(bus), juce::dontSendNotification);
         const std::string parametre = "mix.send." + std::to_string(bus + 1);
@@ -556,6 +558,7 @@ juce::Slider& MasterStrip::addKnob(vsm::audio::plugin::ParamId id, const juce::S
     k.slider = std::make_unique<juce::Slider>();
     k.slider->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
     k.slider->setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    k.slider->setName("master." + label);   // D135 : le nom par lequel le banc le désigne (appuyer:)
     k.slider->setRange(min, max, (max - min) / 1000.0);
     k.slider->setValue(def, juce::dontSendNotification);
     k.slider->setTextValueSuffix(suffix);
