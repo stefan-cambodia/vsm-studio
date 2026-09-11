@@ -218,6 +218,17 @@ void MachinePanelComponent::setPlayheadTick(vsm::midi::Tick tick) {
     sequencer_.setPlayheadStep(static_cast<int>((tick % length) / stepTicks));
 }
 
+bool MachinePanelComponent::toucherPourCapture(const juce::String& legende, double valeur) {
+    for (auto& control : controls_) {
+        auto* curseur = dynamic_cast<juce::Slider*>(control.widget.get());
+        if (curseur == nullptr || curseur->getTooltip() != legende) continue;
+        curseur->setValue(curseur->getMinimum(), juce::dontSendNotification);
+        curseur->setValue(valeur, juce::sendNotificationSync);
+        return true;
+    }
+    return false;
+}
+
 void MachinePanelComponent::showValueReadout(const juce::String& caption, double value,
                                               const juce::String& unit) {
     // Mise en forme sobre : deux décimales sous 100, aucune au-delà -- lire

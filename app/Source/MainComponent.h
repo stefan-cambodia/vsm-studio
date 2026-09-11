@@ -198,6 +198,13 @@ public:
             trackList_.reglerVolume(piste, geste.fromFirstOccurrenceOf(":", false, false).getFloatValue());
             return true;
         }
+        // D132 : facade:<légende>=<valeur> -- une commande de la façade affichée,
+        // touchée comme à la souris : l'afficheur de valeur n'apparaît qu'ainsi.
+        if (geste.startsWithIgnoreCase("facade:")) {
+            const juce::String reste = geste.fromFirstOccurrenceOf(":", false, false);
+            return synthRack_.toucherPourCapture(reste.upToLastOccurrenceOf("=", false, false),
+                                                 reste.fromLastOccurrenceOf("=", false, false).getDoubleValue());
+        }
         return false;
     }
     /// D23.3 : VSM_EXPORT_MIDI_PISTE=fichier.mid -- la piste choisie écrite

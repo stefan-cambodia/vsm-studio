@@ -63,6 +63,13 @@ public:
     /// écrit.
     void mesurerSiDemande() const;
 
+    /// D132 : TOUCHER UNE COMMANDE SANS SOURIS, par sa légende (qui est aussi son
+    /// infobulle). La valeur est posée par la MÊME notification que la souris :
+    /// l'afficheur, le moteur et le MIDI Learn voient ce qu'ils verraient. JUCE ne
+    /// notifie pas une valeur inchangée -- d'où le passage au minimum, en silence,
+    /// d'abord. Rend false si aucune commande à curseur ne porte cette légende.
+    bool toucherPourCapture(const juce::String& legende, double valeur);
+
 private:
     struct Control {
         vsm::audio::plugin::ParamId paramId = 0;

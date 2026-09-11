@@ -54,6 +54,11 @@ public:
     /// seul une fois un CC lié).
     void setLearnArmed(bool armed);
     bool isLearnMode() const { return learnMode_; }
+    /// D132 : une commande de la façade DÉDIÉE touchée par le banc (voir
+    /// `MachinePanelComponent::toucherPourCapture`) ; false sur le panneau générique.
+    bool toucherPourCapture(const juce::String& legende, double valeur) {
+        return usingMachinePanel_ && machinePanel_.toucherPourCapture(legende, valeur);
+    }
 
 private:
     void rebuildControls();
