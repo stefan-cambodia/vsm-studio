@@ -196,6 +196,19 @@ private:
     /// de pas d'historique. Un seul drapeau pour la ligne : on ne glisse
     /// qu'un curseur à la fois.
     bool glisseEnCours_ = false;
+
+public:
+    /// D136 : LA LARGEUR QU'IL FAUT À LA DISPOSITION LARGE -- sa rangée la plus
+    /// longue, volume 170 + 8 + panoramique 90 + 8 + sortie 130. En deçà, la
+    /// ligne passe en quatre rangées (`dispositionEtroite`) et grandit (88 -> 120 px).
+    static constexpr int kLargeurUtileLarge = 170 + 8 + 90 + 8 + 130;
+    /// La ligne de cette largeur (retrait de dossier déduit) est-elle étroite ?
+    /// Les marges de `resized()` : 12 de chaque côté, 6 pour le bandeau.
+    static bool estEtroite(int largeurDeLigne) { return largeurDeLigne - 30 < kLargeurUtileLarge; }
+
+private:
+    void dispositionEtroite(juce::Rectangle<int> area);
+    void poserLesVisibilites();
 };
 
 /// Liste verticale de pistes (Track Editor, section 4). Reconstruit ses

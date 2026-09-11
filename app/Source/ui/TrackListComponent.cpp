@@ -445,9 +445,81 @@ void TrackRowComponent::paintOverChildren(juce::Graphics& g) {
                 juce::Justification::centredRight);
 }
 
+void TrackRowComponent::poserLesVisibilites() {
+    // D136 : les visibilités des deux dispositions, en un seul endroit.
+    const bool publie = track_.publishesInstrumentOutput(), dossier = track_.isFolder();
+    armButton_.setVisible(!publie && !dossier);
+    muteButton_.setVisible(!dossier);
+    soloButton_.setVisible(!dossier);
+    volumeSlider_.setVisible(!dossier);
+    panSlider_.setVisible(!dossier);
+    outputBox_.setVisible(!dossier && track_.kind != Track::Kind::Group);
+}
+
+void TrackRowComponent::dispositionEtroite(juce::Rectangle<int> area) {
+    // D136 : ÉTROITE, LA LIGNE NE CACHE RIEN. La disposition large pose ses
+    // éléments à largeur FIXE de gauche à droite : au dock par défaut (~150 px
+    // utiles), le premier de chaque rangée prenait tout, et le canal, le muet,
+    // le solo, l'armement, le panoramique et la sortie avaient une largeur NULLE
+    // -- l'armement et la sortie ne sont pas dans le mixeur. Ici, ce qui a une
+    // taille fixe s'ancre à droite et le texte prend le reste ; le panoramique et
+    // la sortie ont leur rangée. L'instrument s'abrège (« TB-3… ») : son nom
+    // entier reste dans l'en-tête du rack et dans sa liste, alors qu'un bouton
+    // d'armement caché ne se retrouve nulle part.
+    const bool publie = track_.publishesInstrumentOutput();
+    const bool dossier = track_.isFolder();
+
+    auto rangee = area.removeFromTop(22);
+    if (dossier) {
+        folderButton_.setBounds(rangee.removeFromLeft(24));
+        rangee.removeFromLeft(4);
+    }
+    channelLabel_.setBounds(rangee.removeFromRight(50));
+    rangee.removeFromRight(8);
+    nameLabel_.setBounds(rangee);
+
+    // L'INSTRUMENT GARDE TOUTE LA LARGEUR : c'est un nom, qui se lit. Au premier
+    // essai, muet, solo et armement posés à côté le réduisaient à « .. ».
+    area.removeFromTop(4);
+    rangee = area.removeFromTop(24);
+    if (audio_ || track_.kind == Track::Kind::Group || publie || dossier)
+        audioSourceLabel_.setBounds(rangee);
+    else instrumentBox_.setBounds(rangee);
+    if (dossier) return;
+
+    // Muet, solo, armement ; la sortie prend le reste de la rangée. Des boutons de
+    // 24 px suffisent à une lettre, et les 12 px rendus à la sortie lui laissent
+    // « -> M… » -- à 28, il ne lui restait que « .. » (deuxième essai).
+    area.removeFromTop(6);
+    rangee = area.removeFromTop(22);
+    muteButton_.setBounds(rangee.removeFromLeft(24));
+    rangee.removeFromLeft(3);
+    soloButton_.setBounds(rangee.removeFromLeft(24));
+    if (!publie) {
+        rangee.removeFromLeft(3);
+        armButton_.setBounds(rangee.removeFromLeft(24));
+    }
+    if (track_.kind != Track::Kind::Group) {
+        rangee.removeFromLeft(8);
+        outputBox_.setBounds(rangee);
+    }
+
+    // Le volume, et le panoramique à sa droite (un tiers au plus).
+    area.removeFromTop(6);
+    rangee = area.removeFromTop(20);
+    panSlider_.setBounds(rangee.removeFromRight(juce::jmin(90, rangee.getWidth() / 3)));
+    rangee.removeFromRight(8);
+    volumeSlider_.setBounds(rangee);
+}
+
 void TrackRowComponent::resized() {
     auto area = getLocalBounds().reduced(12, 8);
     area.removeFromLeft(6); // laisse la place au bandeau de couleur peint dans paint()
+    if (estEtroite(getWidth())) {   // D136 : quatre rangées, rien de caché
+        poserLesVisibilites();
+        dispositionEtroite(area);
+        return;
+    }
 
     auto topRow = area.removeFromTop(22);
     // D19.4 : le chevron du dossier prend le début de la ligne du nom.
@@ -474,12 +546,7 @@ void TrackRowComponent::resized() {
     // cesserait d'être gratuit — on ne pourrait plus replier huit micros sans
     // se demander si l'on vient de changer le mélange.
     const bool dossier = track_.isFolder();
-    armButton_.setVisible(!publie && !dossier);
-    muteButton_.setVisible(!dossier);
-    soloButton_.setVisible(!dossier);
-    volumeSlider_.setVisible(!dossier);
-    panSlider_.setVisible(!dossier);
-    outputBox_.setVisible(!dossier && track_.kind != Track::Kind::Group);
+    poserLesVisibilites();   // D136 : les mêmes, dans les deux dispositions
 
     const int largeurTexte = (publie || dossier) ? 170 + 4 + 28 : 170;
     if (audio_ || track_.kind == Track::Kind::Group || publie || dossier)
@@ -867,14 +934,25 @@ void TrackListComponent::resized() {
     viewport_.setBounds(area);
     // D17.4 : les pistes masquées ne comptent pas dans la hauteur totale, sans
     // quoi la liste garderait un blanc à leur place.
-    int visibles = 0;
+    // D136 : UNE LIGNE ÉTROITE EST PLUS HAUTE (une quatrième rangée) : la hauteur
+    // totale est la SOMME des lignes, et chacune dépend de sa largeur, retrait
+    // de dossier compris.
+    const int largeurConteneur = viewport_.getWidth() - viewport_.getScrollBarThickness();
+    auto retraitDe = [this](int i) {
+        return project_ != nullptr && static_cast<size_t>(i) < project_->tracks.size()
+                   ? std::min(4, project_->tracks[static_cast<size_t>(i)].folderDepth) * 14
+                   : 0;
+    };
+    auto hauteurDe = [largeurConteneur, &retraitDe](int i) {
+        return TrackRowComponent::estEtroite(largeurConteneur - retraitDe(i)) ? kRowHeight + 32 : kRowHeight;
+    };
+    int visibles = 0, totalHeight = 0;   // D19.2 : le compte dit aussi « aucune des N »
     for (int i = 0; i < rows_.size(); ++i)
         if (project_ == nullptr || static_cast<size_t>(i) >= project_->tracks.size()
             || (!project_->tracks[static_cast<size_t>(i)].hidden
                 && !masqueeParLeFiltre(static_cast<size_t>(i))
                 && !vsm::sequencer::hiddenByCollapsedFolder(*project_, static_cast<size_t>(i))))
-            ++visibles;
-    int totalHeight = visibles * kRowHeight;
+            { ++visibles; totalHeight += hauteurDe(i); }
     // LE DÉFILEMENT SURVIT À LA MISE EN PAGE. `setBounds(0, 0, …)` remettait le
     // conteneur en haut à chaque redimensionnement -- et chaque republication
     // du projet passe par ici : la liste sautait en haut pendant qu'on
@@ -900,7 +978,7 @@ void TrackListComponent::resized() {
                                      || masqueeParLeFiltre(static_cast<size_t>(i))
                                      || vsm::sequencer::hiddenByCollapsedFolder(
                                             *project_, static_cast<size_t>(i)));
-            const int h = masquee ? 0 : kRowHeight;
+            const int h = masquee ? 0 : hauteurDe(i);   // D136
             // D19.4 : LES PISTES D'UN DOSSIER SONT EN RETRAIT. C'est ce qui
             // rend l'arborescence lisible d'un coup d'œil, et c'est la seule
             // chose que la profondeur change à l'écran.

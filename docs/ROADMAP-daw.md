@@ -16525,3 +16525,40 @@ D122 — la disposition large). Témoin : le binaire de D135 (00:34:07).
    charge CPU de la barre de transport).
 4. Suites vertes, préférences intactes.
 
+**RÉSULTAT (12/09) — LES QUATRE ATTENDUS TIENNENT, après deux reprises de la
+disposition étroite, que les photos ont imposées.** Témoin : binaire de D135
+(00:34:07). Après : trois binaires (00:43:33, 00:47:12, 00:49:13), le même
+banc à chaque fois ; avant eux, une compilation ÉCHOUÉE et arrêtée avant tout
+banc — `visibles`, que la somme des hauteurs avait remplacé, sert encore au
+message « aucune des N pistes » du filtre ; rétabli.
+
+1. **Attendu 1 tenu** : au témoin, `appuyer:pistes.pan` refusé (« aucun
+   curseur visible de ce nom ») ; la photo montre le nom, l'instrument et le
+   volume, rien d'autre.
+2. **Attendu 2 tenu** : « appuyé » ; les six réglages sur la photo, chacun
+   avec sa largeur — « Ch 1 », M, S, R, la sortie, le panoramique, dont la
+   bulle dit « L 4 » en anglais et **« G 4 » en français** (l'appui tombe
+   juste à gauche du centre ; c'est la forme française que D135 n'avait pas
+   pu voir).
+3. **Attendu 3 tenu** : la disposition large identique au témoin, **0 pixel**
+   hors la charge CPU, en français et en anglais, aux trois binaires.
+4. **Attendu 4 tenu** : suites C++ vertes (330, 1 291, 297, 25, 11),
+   compilées à `-j 2` pendant la course 2 de l'épreuve ; `vsm-render`
+   intact ; préférences identiques par `cmp`.
+
+**LES DEUX REPRISES, ET POURQUOI.** (a) Au premier après, M, S et R posés à
+côté de l'instrument le réduisaient à « .. » — une régression de lisibilité
+que l'attendu n'avait pas prévue. La règle du projet (la lisibilité prime,
+on agrandit la case) a rendu à l'instrument TOUTE sa rangée : M, S et R
+passent sur la troisième avec la sortie, le volume et le panoramique
+partagent la quatrième, et la ligne étroite fait **120 px** (et non 114 : la
+dernière rangée aurait été rognée). (b) La sortie, alors réduite à « .. » à
+son tour : des boutons de 24 px (une lettre y tient) lui rendent 12 px — elle
+montre « -… », guère mieux.
+
+**LIMITE RESTANTE, dite et non maquillée** : au dock par défaut (~150 px
+utiles), le nom de la sortie ne se lit pas ; il se lit en entier dès que le
+dock atteint la disposition large (436 px) — la disposition est réglable.
+C'est désormais une question de LARGEUR PAR DÉFAUT du dock, pas de mise en
+page : INDEX, A20.
+
