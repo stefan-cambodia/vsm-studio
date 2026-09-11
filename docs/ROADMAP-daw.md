@@ -14541,3 +14541,45 @@ l'épreuve (330 cœur, 1 291 audio, 297 interchange, 25 CLAP, 11 panneaux) ;
 chaînes à l'inventaire. Le dernier des faux TABLE nommés par D96 (« Projet
 jamais enregistré ») passe par `tr()`.
 
+### Phase D111 — A9 : les phrases composées de `MainComponent` hors de l'enregistrement (11/09/2026)
+
+**LE LOT.** Sept des 27 chaînes de `MainComponent` à l'inventaire (stricte),
+en trois sites :
+
+- **les réserves d'effet d'un bus de départ** (`loadSendEffects`, deux
+  phrases en quatre morceaux) — « bus de départ « Rev » : effet « … »
+  inconnu, non appliqué », « … : réglage inconnu « … » ». Elles S'AFFICHENT
+  DÉJÀ traduites : D89 a posé leurs modèles, et le volet traduit la ligne à
+  l'affichage. L'inventaire les compte parce que le source les COMPOSE par
+  `+` : le littéral n'est pas la clé. C'est un faux ÉCRAN, et il ment sur ce
+  qui reste à faire ;
+- **l'erreur d'« Aller à la mesure »** (« « 17,x » n'est pas une position :
+  attendu… ») — le titre est une clé depuis D91, le message non ;
+- **les deux boîtes d'« Assembler les prises »** — tronçons sans note, et
+  « N notes composées ».
+
+**LES DÉCISIONS.**
+
+1. **Les phrases composées deviennent des phrases entières à `%1`, `%2`**
+   (comme D108, D110) : pour le bus de départ, le littéral EST le modèle de
+   D89, et la donnée écrite (`VSM_OUVERTURE`, le ton ambre) ne change pas
+   d'un octet — le ton se lit sur le français depuis D89.
+2. **Les titres passent par `tr()`** avec leurs clés existantes ; les trois
+   messages entrent dans la table (« %1 notes composées… » comme gabarit
+   rempli APRÈS `tr()`, à la manière de « Impossible d'écrire %1 »).
+3. **Pas de geste de banc neuf.** L'erreur d'« Aller à la mesure » ne naît
+   que d'un texte tapé dans la boîte, et les deux boîtes d'assemblage d'un
+   tracé de tronçons à la souris : vérifiées par le code, et dit.
+
+**ATTENDU, écrit avant la mesure (11/09/2026, 17:10).**
+
+1. **L'inventaire** : stricte ÉCRAN **36 → 29**, `MainComponent` **27 →
+   20** ; les autres catégories se publient, sans chiffre promis.
+2. **Le banc** (le projet abîmé exprès de D89 : un insert et un bus de
+   départ de type inconnu, un insert et un bus portant des réglages
+   inconnus), ouvert en français et en anglais, témoin (binaire de D110) et
+   D111 : les lignes `VSM_OUVERTURE` (la donnée) et `VSM_RAPPORT` (ce que le
+   volet affiche) **identiques au témoin, dans les deux langues** — en
+   anglais, « send bus “Rev”: effect “…” unknown, not applied » avant comme
+   après. Un écart dirait que le littéral réécrit n'est pas le modèle.
+
