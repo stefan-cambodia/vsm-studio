@@ -14815,3 +14815,58 @@ d'exécution, qu'aucun écran ne montre. Suites C++ vertes à `-j 2` (330,
 1 291, 297, 25, 11) ; `build/tools/vsm-render` non touché ; préférences
 intactes.
 
+### Phase D114 — A9 : la reconstruction lancée depuis l'application, en anglais (11/09/2026)
+
+**LE LOT.** Ce que l'application montre autour d'une reconstruction :
+
+- **« Reconstruction indisponible »** — la boîte, et les RAISONS qu'elle
+  montre, écrites par `interchange/ReconstructionChain.cpp` (« le dossier de
+  la chaîne d'analyse indiqué dans les préférences ne contient pas
+  reconstruire.py (…) », « l'environnement Python de la chaîne n'a pas été
+  créé (aucun .venv dans …) »…) avec leurs remèdes. Le titre n'est même pas
+  à l'inventaire strict : sans accent ni mot de la liste, il est dans
+  l'angle mort de D101 ;
+- **le volet de reconstruction** — « Terminé — le projet est ouvert,
+  l'original en regard », le suffixe « — parité des pistes » (collé au nom
+  du fichier, il finissait dans « Reconstruction of X — parité des
+  pistes »), et la raison d'un échec : `setFinished` affiche le texte brut ;
+- **le lanceur et le transcripteur** — « la chaîne d'analyse n'a pas pu être
+  lancée », « la chaîne s'est arrêtée (code N) », « le transcripteur n'a pas
+  pu être lancé », « [le script est sorti en 0 sans écrire …] » ;
+- **le texte d'attente des notes du projet** (« Ce que la chaîne ne dit
+  pas : … »).
+
+**RIEN DANS `interchange/`** : l'épreuve *Children* court sur le moteur, et
+`moteur_perime` regarde ce dossier. Les raisons de `ReconstructionChain`
+restent françaises à la source — ce sont des données — et se traduisent À
+L'AFFICHAGE par `trPhrase`, comme les phrases du moteur depuis D89.
+
+**LE BANC.** Aucun des deux chemins réels vers la boîte ne se passe au
+banc : le menu ouvre un sélecteur de fichier, et le dépôt une boîte à trois
+boutons. Même montage que D112 : la boîte devient une fonction,
+`boiteReconstructionIndisponible()`, appelée par `startReconstruction` ET par
+le geste `VSM_BOITE_ESSAI=indisponible` (le dispatcher de D112, renommé
+`showBoxForCapture` puisqu'il ne sert plus seulement l'enregistrement). La
+raison est la VRAIE : celle que `locate()` rend d'après les préférences du
+`HOME` de brouillon — deux cas, un dossier désigné sans `reconstruire.py`,
+et un dossier qui en a un mais pas de `.venv`. Le texte d'attente des notes
+se photographie par `VSM_VUE=notes` et `VSM_CAPTURE_PANNEAUX`. Le volet de
+reconstruction, le lanceur et le transcripteur ne se passent pas au banc
+pendant l'épreuve (il faudrait lancer la chaîne) : vérifiés par le code, et
+dit.
+
+**ATTENDU, écrit avant la mesure.**
+
+1. **L'inventaire** : stricte ÉCRAN **14 → 7**, `MainComponent` **8 → 5** —
+   les sept qui restent ne s'affichent pas (un jeton de banc, un mot cherché
+   pour colorer, trois chemins, le nom d'un fil, le libellé d'un banc).
+2. **La boîte, deux cas, deux langues** : le témoin (même code, phrases
+   d'avant) la montre en français dans les deux langues ; D114 en anglais —
+   « Reconstruction unavailable : the analysis chain folder set in the
+   preferences does not contain reconstruire.py (…) / / fix the path, or
+   clear it to let the application search », et « …the chain's Python
+   environment has not been created (no .venv in …) » —, sans mot français
+   hors chemins et commande ; le français de D114 identique au témoin.
+3. **Le texte d'attente des notes** : français au témoin dans les deux
+   langues, anglais avec D114 — lu sur la photo du panneau.
+
