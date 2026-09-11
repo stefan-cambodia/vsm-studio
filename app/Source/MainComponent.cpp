@@ -6199,7 +6199,7 @@ void MainComponent::refreshBrowser() {
          vsm::audio::plugin::PluginRegistry::instance().listAvailable()) {
         vsm::interchange::BrowserItem entree;
         entree.kind = vsm::interchange::BrowserItemKind::Machine;
-        entree.name = nom;
+        entree.name = tr(juce::String::fromUTF8(nom.c_str())).toStdString();   // D103
         entree.reference = identifiant;
         entree.origin = (identifiant.rfind("vsm.", 0) == 0 ? tr("Parc VSM") : tr("Plugin tiers")).toStdString();
         entrees.push_back(std::move(entree));

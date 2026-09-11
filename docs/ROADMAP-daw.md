@@ -13818,3 +13818,104 @@ compilent ; suites C++
 vertes (330 cœur, 1 291 audio, 297 interchange, 25 CLAP, 11 panneaux).
 `MainComponent` : 89 chaînes à l'inventaire strict.
 
+### Phase D103 — A9 : les noms des machines (11/09/2026)
+
+**LE DÉFAUT.** Le parc compte 65 machines ; 48 de leurs noms portent une
+description française entre parenthèses (« Multisample (acoustique
+échantillonné) », « Terrain (le chemin fait le timbre) »). En anglais, on les
+lit en français dans la liste des instruments de chaque piste, en tête du
+Synth Rack et dans le navigateur — là où l'on choisit une machine. Aucune règle
+de l'inventaire ne les voit : ils viennent du moteur (`audio/plugins/`), pas
+d'`app/Source`, et une description comme « Drums (batterie acoustique) » n'a
+ni accent ni mot-outil. Deux sources de noms, d'ailleurs : le nom
+ENREGISTRÉ (`VSM_REGISTER_SYNTH_PLUGIN`), que montrent la liste des pistes et le
+navigateur, et `machineName()`, que montre le rack. Elles concordent pour 63
+machines sur 65.
+
+**LES DÉCISIONS.**
+
+1. **La traduction se fait à l'affichage**, par des clés : le nom complet en
+   français est la clé, le nom complet en anglais la valeur. Le nom avant la
+   parenthèse est déjà celui de la machine dans les deux langues ; seule la
+   description se traduit. Les deux « Test Tone (reference…) » sont déjà
+   anglais : pas de clé. Donc **47 clés**.
+2. **Trois points d'affichage** : la liste des instruments de la ligne de
+   piste, l'étiquette du rack, les noms du navigateur (traduits à la source,
+   comme ses origines en D99 : le filtre lit ce qu'on voit). La liste de la
+   ligne de piste et l'étiquette du rack suivent la bascule de langue ; elles
+   ne la suivaient pas (seule l'entrée « (Aucun) » était reposée).
+3. **« Sampler (8 emplacements) » est faux** : le sampler a 16 emplacements
+   (`kSlotCount = 16`), et son `machineName()` le dit. Le nom enregistré est
+   aligné sur la machine : le navigateur et la liste des pistes disaient 8, le
+   rack 16. Différence française voulue, déclarée ici.
+4. **Un compte de plus à l'inventaire**, écrit avant de compter :
+   `--machines` lit les noms enregistrés et les `machineName()` des machines,
+   et compte ceux qui portent une parenthèse sans avoir de clé — hors une
+   liste nommée de noms identiques dans les deux langues (les deux « Test
+   Tone »). Sans lui, une machine ajoutée demain s'afficherait en français
+   sans que rien ne le dise.
+
+**ATTENDU, écrit avant la mesure.** Le témoin est le binaire de HEAD (D102),
+déjà construit : il n'y a pas d'outil de banc à ajouter. HOME isolé, copie de
+demo-project. Trois cas, français puis anglais, témoin puis D103 :
+`modal` (la piste 1 reçoit `vsm.modal` par `VSM_GESTE_PISTE`, navigateur
+ouvert et photographié), `sampler` (la piste 1 reçoit `vsm.sampler`),
+`bascule` (en français, `vsm.modal`, puis « English » dans le menu).
+
+1. **L'inventaire des machines** : 47 noms sans clé → 0. Les comptes
+   d'`app/Source` ne bougent pas (règle stricte : ÉCRAN 105).
+2. **L'anglais** : la liste de la piste et l'étiquette du rack disent
+   « Modal (the struck object) », « Sampler (16 slots) » ; au témoin, le
+   français.
+3. **La bascule** : `bascule` finit avec les noms anglais — au témoin, la
+   liste et le rack gardaient le français.
+4. **Le français** : identique au témoin, sauf « Sampler (8 emplacements) » →
+   « Sampler (16 emplacements) » dans la liste de la piste (décision 3).
+5. **Le navigateur** photographié en anglais : les noms des machines visibles
+   en anglais.
+
+**VU DANS LE TÉMOIN (D103), écrit avant la mesure d'après.** Cinq lancements,
+préférences intactes. Le défaut, tel qu'annoncé : en anglais, la liste de la
+piste et l'étiquette du rack disent « Modal (l'objet frappé) » ; pour le
+sampler, la liste dit « Sampler (8 emplacements) » et le rack « Sampler (16
+emplacements) », dans les deux langues. Deux corrections à l'attendu :
+
+- **`--machines` compte 48 noms sans clé au témoin, pas 47** : le quarante-
+  huitième est le nom faux du sampler, « (8 emplacements) », compté à côté du
+  juste. Après D103, attendu : 47 décrits, 0 sans clé.
+- **Un test garde « Sampler (8 emplacements) »** (`interchange/tests/
+  test_preset_samples.cpp`) : c'est le nom de machine NOTÉ dans un preset de
+  test (`preset.machineName`), une donnée, pas le nom enregistré. Il reste tel
+  quel ; le garde-fou du correctif, qui refusait d'écrire, ne regarde plus que
+  le code hors des tests.
+
+**LE RÉSULTAT, ATTENDU PAR ATTENDU (11/09/2026).** Témoin (le binaire de
+HEAD) puis D103, cinq lancements chacun, écran verrouillé ; préférences de
+l'utilisateur intactes (`cmp`, deux séries).
+
+1. **L'inventaire des machines — tenu, compté juste.** `--machines` : 48 noms
+   décrits sans clé au témoin (les 47, plus le nom faux du sampler), **0**
+   après, sur 47 décrits — 66 noms en tout, le nom faux parti. Les comptes
+   d'`app/Source` ne bougent pas (ÉCRAN 105 à la règle stricte, 149 à la
+   large).
+2. **L'anglais — tenu.** Liste de la piste et étiquette du rack : « Modal (the
+   struck object) », « Sampler (16 slots) » ; au témoin, le français.
+3. **La bascule — tenu.** `bascule` finit sur « Modal (the struck object) »
+   dans la liste de la piste et dans le rack ; le témoin gardait le français
+   aux deux endroits.
+4. **Le français — tenu.** Identique au témoin, sauf la ligne déclarée : la
+   liste de la piste dit « Sampler (16 emplacements) », comme le rack ; les
+   autres textes identiques (175 et 298).
+5. **Le navigateur — tenu.** En anglais, les vingt lignes visibles :
+   « Multisample (sampled acoustic) », « Terrain (the path makes the
+   timbre) », « Sampler (16 slots) », « Reed (the free reed) », « Additive
+   (the spectrum, partial by partial) »…, origine « VSM machines ».
+
+La table passe à **1 246** paires (+47). `VintageSynthMidiStudio` et
+`vsm-ui-preview` compilent ; les cibles de test RECONSTRUITES (le nom
+enregistré du sampler est dans `vsm_audio`) passent : 330 cœur, 1 291 audio,
+297 interchange, 25 CLAP, 11 panneaux. **La leçon** : un nom qui n'est pas dans
+`app/Source` échappe à tout inventaire de l'interface — il fallait un compte à
+lui, et c'est en le faisant qu'est apparu le sampler qui disait 8 à un endroit
+et 16 à l'autre.
+

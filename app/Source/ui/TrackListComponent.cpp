@@ -107,10 +107,14 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
         int selectedId = 1;
         for (int i = 0; i < static_cast<int>(instruments.size()); ++i) {
             const auto& [pluginId, displayName] = instruments[static_cast<size_t>(i)];
-            instrumentBox_.addItem(displayName, i + 2); // id JUCE 1-based, 1 = "(Aucun)"
+            // D103 : le nom de la machine dans la langue de l'interface ; la clé
+            // est le nom enregistré, en français.
+            instrumentBox_.addItem(vsm::app::ui::tr(juce::String::fromUTF8(displayName.c_str())),
+                                   i + 2); // id JUCE 1-based, 1 = "(Aucun)"
             if (pluginId == track_.instrumentId) selectedId = i + 2;
         }
         instrumentBox_.setSelectedId(selectedId, juce::dontSendNotification);
+        instruments_ = instruments;   // D103 : pour reposer les noms à la bascule
         instrumentBox_.onChange = [this, instruments] {
             int idx = instrumentBox_.getSelectedItemIndex();
             std::string pluginId = (idx <= 0 || idx > static_cast<int>(instruments.size()))
@@ -307,9 +311,13 @@ void TrackRowComponent::retraduire() {
     refreshName();
     poserTextes();   // D94 : infobulles et mentions
     if (instrumentBox_.getNumItems() > 0) {
-        const bool aucune = instrumentBox_.getSelectedId() == 1;
+        // D103 : les noms des machines aussi, et la sélection relue AVANT.
+        const int choisie = instrumentBox_.getSelectedId();
         instrumentBox_.changeItemText(1, vsm::app::ui::tr("(Aucun)"));
-        if (aucune) instrumentBox_.setSelectedId(1, juce::dontSendNotification);
+        for (size_t i = 0; i < instruments_.size(); ++i)
+            instrumentBox_.changeItemText(static_cast<int>(i) + 2, vsm::app::ui::tr(
+                juce::String::fromUTF8(instruments_[i].second.c_str())));
+        instrumentBox_.setSelectedId(choisie, juce::dontSendNotification);
     }
 }
 

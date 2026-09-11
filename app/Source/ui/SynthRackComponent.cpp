@@ -63,8 +63,8 @@ void SynthRackComponent::setSynth(ISynthPlugin* synth, const juce::String& track
         // Le défaut se voyait sur toute machine dont le nom porte un accent —
         // `vsm.modal` (« l'objet frappé ») et `vsm.plate` — et aucun des
         // 1 361 tests ne pouvait l'attraper : il n'apparaît qu'à l'écran.
-        machineNameLabel_.setText(juce::String::fromUTF8(synth_->machineName()),
-                                  juce::dontSendNotification);
+        machineNameLabel_.setText(vsm::app::ui::tr(juce::String::fromUTF8(synth_->machineName())),
+                                  juce::dontSendNotification);   // D103
     } else {
         titleLabel_.setText("SYNTH RACK", juce::dontSendNotification);
         machineNameLabel_.setText(vsm::app::ui::tr(u8"(aucun instrument assigné)"),
@@ -81,6 +81,9 @@ void SynthRackComponent::retraduire() {
     // machine (son nom, ses paramètres), c'est-à-dire du moteur.
     if (!synth_)
         machineNameLabel_.setText(vsm::app::ui::tr(u8"(aucun instrument assigné)"),
+                                  juce::dontSendNotification);
+    else   // D103 : le nom de la machine suit la bascule
+        machineNameLabel_.setText(vsm::app::ui::tr(juce::String::fromUTF8(synth_->machineName())),
                                   juce::dontSendNotification);
 }
 

@@ -161,6 +161,9 @@ private:
     juce::Label nameLabel_;
     juce::Label channelLabel_;
     juce::ComboBox instrumentBox_; // rempli depuis PluginRegistry::listAvailable()
+    /// D103 : (identifiant, nom enregistré) des entrées de `instrumentBox_`, dans
+    /// leur ordre -- de quoi reposer leurs noms au changement de langue.
+    std::vector<std::pair<std::string, std::string>> instruments_;
     juce::Label audioSourceLabel_; // à sa place, sur une piste audio
     /// D51 : fréquence du FICHIER et fréquence de la SESSION, telles que le
     /// chargeur les a mesurées. Zéro = rien à dire.

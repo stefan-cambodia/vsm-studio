@@ -241,6 +241,6 @@ void SamplerSynth::process(const MidiNoteEvent* events, int numEvents,
     }
 }
 
-VSM_REGISTER_SYNTH_PLUGIN("vsm.sampler", "Sampler (8 emplacements)", SamplerSynth);
+VSM_REGISTER_SYNTH_PLUGIN("vsm.sampler", "Sampler (16 emplacements)", SamplerSynth);
 
 } // namespace vsm::plugins::sampler

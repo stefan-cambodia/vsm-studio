@@ -5,6 +5,7 @@
     analyse/.venv/bin/python tools/inventaire_langue.py ECRAN        # et la liste
     analyse/.venv/bin/python tools/inventaire_langue.py --entetes    # les en-têtes
     analyse/.venv/bin/python tools/inventaire_langue.py --regle=large  # D101
+    analyse/.venv/bin/python tools/inventaire_langue.py --machines [MACHINES]  # D103
 
 LES EN-TÊTES À PART (D94). Le compte d'A9 ne lit que les `.cpp`, et c'est ce
 compte-là que les phases comparent. Mais un `.h` écrit aussi à l'écran (une
@@ -41,6 +42,15 @@ plus, en option tant que la mesure n'a pas tranché (`--regle=`) :
   - `position` : une chaîne qui a des lettres, sans allure d'identifiant,
     passée dans une instruction qui affiche (AFFICHAGE) ;
   - `large` : l'une ou l'autre.
+
+LES NOMS DES MACHINES (D103). Ils ne sont pas dans `app/Source` : le moteur les
+donne (`audio/plugins/`), par deux voies -- le nom ENREGISTRÉ
+(`VSM_REGISTER_SYNTH_PLUGIN`), que montrent la liste des pistes et le
+navigateur, et `machineName()`, que montre le rack. `--machines` les lit tous
+deux et compte ceux qui portent une description entre parenthèses sans avoir de
+clé -- une description comme « (batterie acoustique) » n'a ni accent ni
+mot-outil : la parenthèse est la règle, hors les noms IDENTIQUES dans les deux
+langues, nommés un par un.
 """
 
 from __future__ import annotations
@@ -51,6 +61,7 @@ from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
 RACINE = Path(__file__).resolve().parents[1] / "app" / "Source"
+MACHINES = Path(__file__).resolve().parents[1] / "audio" / "plugins"
 FRANCAIS = re.compile(
     r"[éèêàâçùûôîïëœÉÈÊÀÇ]|\b(le|la|les|des|une|un|aucun|aucune|piste|pistes|réglage|"
     r"fichier|projet|ouvrir|enregistrer|lecture|arrêt|départ|touche|choisir|dossier|"
@@ -62,6 +73,7 @@ AFFICHAGE = re.compile(
     r"\b(montrerBoite|showMessageBoxAsync|setButtonText|setText|setTooltip|addItem|addSectionHeader|"
     r"addTab|drawText|drawFittedText|setTitle|addTextEditor|PanelWindow)\b")
 REGLES = ("stricte", "mots", "position", "large")
+IDENTIQUES = {"Test Tone (reference)", "Test Tone (reference Phase 2)"}
 LITTERAL = re.compile(r'(?:u8)?"((?:[^"\\]|\\.)*)"')
 TRADUCTION = re.compile(r"\b(tr|trSelon|trPhrase|trGeste|translate|TRANS)\s*\(\s*(u8)?\s*$")
 SORTIE = re.compile(r"fputs|stderr|stdout|std::cout|std::cerr|DBG\s*\(|printf")
@@ -157,9 +169,38 @@ def inventaire(racine: Path = RACINE, motif: str = "*.cpp", regle: str = "strict
     return comptes
 
 
+def noms_de_machines(plugins: Path = MACHINES) -> List[Tuple[str, str]]:
+    """D103 : (dossier, nom) -- les noms enregistrés et les `machineName()` des machines."""
+    noms: Set[Tuple[str, str]] = set()
+    for fichier in sorted(plugins.rglob("*.[ch]*")):
+        texte = fichier.read_text(encoding="utf-8", errors="replace")
+        dossier = fichier.relative_to(plugins).parts[0]
+        for motif in (r'VSM_REGISTER_SYNTH_PLUGIN\(\s*"[^"]+"\s*,\s*"((?:[^"\\]|\\.)*)"',
+                      r'machineName\(\)\s*const[^{;]*\{\s*return\s*"((?:[^"\\]|\\.)*)"'):
+            for m in re.finditer(motif, texte):
+                noms.add((dossier, decode(m.group(1)).replace("\\'", "'")))
+    return sorted(noms)
+
+
+def machines_sans_cle(racine: Path = RACINE, plugins: Path = MACHINES
+                      ) -> Tuple[List[Tuple[str, str]], List[Tuple[str, str]], List[Tuple[str, str]]]:
+    """D103 : (tous les noms, ceux qui portent une description, ceux-là sans clé)."""
+    cles = cles_de_la_table((racine / "ui" / "Langue.cpp").read_text(encoding="utf-8"))
+    tous = noms_de_machines(plugins)
+    decrits = [(d, n) for d, n in tous if "(" in n and n not in IDENTIQUES]
+    return tous, decrits, [(d, n) for d, n in decrits if n not in cles]
+
+
 def main() -> int:
     options = [a for a in sys.argv[1:] if a.startswith("--")]
     arguments = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if "--machines" in options:
+        tous, decrits, sans = machines_sans_cle()
+        print(f"MACHINES {len(tous)} noms   DECRITS {len(decrits)}   SANS_CLE {len(sans)}")
+        if "MACHINES" in arguments:
+            for dossier, nom in sans:
+                print(f"  M {dossier}: {nom}")
+        return 0
     regle = next((o.split("=", 1)[1] for o in options if o.startswith("--regle=")), "stricte")
     if regle not in REGLES:
         print(f"règle inconnue : {regle} (attendu : {', '.join(REGLES)})", file=sys.stderr)
