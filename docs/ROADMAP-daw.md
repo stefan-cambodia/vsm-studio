@@ -16253,3 +16253,31 @@ littéraux ordinaires ; le fichier est en UTF-8.
 banc de cette phase n'atteint. **Reporté** : l'afficheur de valeur des
 façades, qui colle encore « : » en anglais (INDEX, A16).
 
+### Phase D132 — A16 : l'afficheur de valeur des façades, atteint par un geste de banc avant d'être corrigé (11/09/2026)
+
+**POURQUOI UN GESTE D'ABORD.** L'afficheur n'apparaît qu'au mouvement d'une
+commande (`onValueChange`), et aucun banc ne touche une façade : D131 a
+refusé de le corriger à l'aveugle. Un PREMIER PAS ajoute le geste de ligne de
+piste `facade:<légende>=<valeur>` (`VSM_GESTE_PISTE`, après `machine:…`) : il
+retrouve la commande à curseur par sa légende — qui est aussi son
+infobulle — et lui pose la valeur par la MÊME notification que la souris,
+donc l'afficheur, le moteur et le MIDI Learn voient ce qu'ils verraient.
+JUCE ne notifie pas une valeur inchangée : le geste passe d'abord au minimum
+en silence, puis à la valeur demandée. Rien ne change pour l'utilisateur ;
+ce binaire est le témoin. Le SECOND PAS fait passer l'afficheur par
+`deuxPoints()` (D131).
+
+**LE BANC.** Projet de D91 (le TB-303 sur la piste choisie), une commande de
+sa façade touchée, français et anglais, `VSM_TEXTES_LISTE` : l'afficheur est
+un libellé, il se lit comme tel.
+
+**ATTENDU, écrit avant le témoin.**
+
+1. **Le geste marche** : au témoin, le libellé de l'afficheur porte la
+   légende et la valeur (« <LÉGENDE> : <valeur> ») dans les deux langues —
+   avec l'espace en anglais, le défaut d'A16. Un geste refusé (légende
+   introuvable) écrit « geste inconnu », et c'est dit, pas contourné.
+2. **Après** : en anglais « <LÉGENDE>: <valeur> » ; en français identique au
+   témoin, mot pour mot.
+3. Suites vertes, préférences intactes.
+
