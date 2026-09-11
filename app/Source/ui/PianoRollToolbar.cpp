@@ -145,6 +145,7 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
 
     addAndMakeVisible(swingSlider_);
     swingSlider_.setRange(0.0, 0.75, 0.01);
+    swingSlider_.setSliderSnapsToMousePosition(false);   // D139 : suit le glissé, ne saute pas au clic
     swingSlider_.setName("pianoroll.swing");   // D139 : le nom par lequel le banc le désigne (appuyer:)
     swingSlider_.setValue(0.0, juce::dontSendNotification);
     swingSlider_.setTextBoxStyle(juce::Slider::TextBoxRight, false, 44, 18);
@@ -152,6 +153,7 @@ PianoRollToolbar::PianoRollToolbar(PianoRollComponent& pianoRoll) : pianoRoll_(p
 
     addAndMakeVisible(velocitySlider_);
     velocitySlider_.setRange(1.0, 127.0, 1.0);
+    velocitySlider_.setSliderSnapsToMousePosition(false);   // D139 : suit le glissé, ne saute pas au clic
     velocitySlider_.setValue(100.0, juce::dontSendNotification);
     velocitySlider_.setTextBoxStyle(juce::Slider::TextBoxRight, false, 44, 18);
     // D29.4 : LA LIGNE D'INFORMATION. Trois champs éditables, relus huit fois

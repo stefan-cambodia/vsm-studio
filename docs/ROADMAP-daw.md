@@ -16752,3 +16752,34 @@ mixeur), `pistes.pan` (la bulle de D135), `mixeur.volume`, `mixeur.trim`,
    dB », swing 0.00 — ce que le projet porte.
 3. Aucun autre texte relevé ne change ; suites vertes, préférences intactes.
 
+**RÉSULTAT (12/09) — TENU, sauf un curseur qui ne sautait déjà pas.** Témoin :
+binaire du premier pas (04:13:25) ; après : 04:15:18. Chaque cas en français
+et en anglais, les mêmes valeurs dans les deux langues.
+
+| appui au centre de… | sans appui | témoin | après |
+|---|---|---|---|
+| volume de la ligne de piste | -0.9 dB | **-2.6 dB** | -0.9 dB |
+| panoramique de la ligne (bulle) | C | **« L 4 »** | « C » |
+| fader de la tranche | -0.9 dB | **-60.0 dB** — un clic coupait la piste | -0.9 dB |
+| trim de la tranche | Trim 0.0 dB | Trim 0.0 dB | Trim 0.0 dB |
+| swing du piano roll | 0.00 | **0.71** | 0.00 |
+
+1. **Attendu 1, à quatre curseurs sur cinq.** Le trim ne sautait PAS au
+   témoin : JUCE ne fait pas glisser une barre dont la zone de texte est
+   éditable quand on clique dedans (`mouseDrag`, la condition sur
+   `LinearBar` et `valueBox->isEditable()`) — c'était lisible dans le code
+   lu avant d'écrire l'attendu, et je ne l'ai pas vu. Les quatre autres
+   sautaient ; le fader, jusqu'en bas de sa course (-60 dB) : l'appui tombait
+   sous sa glissière, et un clic suffisait à couper la piste.
+2. **Attendu 2 tenu** : après, aucun appui ne change aucune valeur.
+3. **Attendu 3 tenu** : tous les autres textes relevés identiques à ceux du
+   projet sans appui, dans les douze relevés ; suites C++ vertes (330,
+   1 291, 297, 25, 11), compilées à `-j 2` pendant la course 2 de l'épreuve ;
+   `vsm-render` intact ; préférences identiques par `cmp`.
+
+**Vérifié au code seulement, et dit** : le retard, la transposition, la
+vélocité du piano roll, le niveau du clic des préférences et les curseurs
+linéaires des façades — le même appel, qu'aucun banc de cette phase
+n'appuie. Le double-clic qui ramène une valeur d'usine, et la saisie dans
+les zones de texte, ne sont pas touchés.
+

@@ -39,6 +39,7 @@ PreferencesWindow::PreferencesWindow() {
     ligne(libelleClic_, juce::String());
     addAndMakeVisible(libelleClic_);
     niveauClic_.setRange(0.0, 1.0, 0.01);
+    niveauClic_.setSliderSnapsToMousePosition(false);   // D139 : suit le glissé, ne saute pas au clic
     niveauClic_.setTextValueSuffix("");
     niveauClic_.setNumDecimalPlacesToDisplay(2);
     niveauClic_.onValueChange = [this] {

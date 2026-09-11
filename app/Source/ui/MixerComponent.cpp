@@ -49,6 +49,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     addAndMakeVisible(nameLabel_);
 
     volume_.setSliderStyle(juce::Slider::LinearVertical);
+    volume_.setSliderSnapsToMousePosition(false);   // D139 : suit le glissé, ne saute pas au clic
     volume_.setName("mixeur.volume");   // D139 : le nom par lequel le banc le désigne (appuyer:)
     volume_.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 56, 16);
     volume_.setRange(-60.0, 6.0, 0.1);
@@ -96,6 +97,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     // fait cela. Automatisable comme le volume et le panoramique, d'où la
     // passe ouverte au glissé.
     trim_.setSliderStyle(juce::Slider::LinearBar);
+    trim_.setSliderSnapsToMousePosition(false);   // D139 : suit le glissé, ne saute pas au clic
     trim_.setName("mixeur.trim");   // D139 : le nom par lequel le banc le désigne (appuyer:)
     trim_.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 44, 16);
     trim_.setRange(-24.0, 24.0, 0.1);
@@ -140,6 +142,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     // corrige plus un temps de réaction, on déplace la partie -- et cela se
     // fait au clip, où l'on VOIT ce qu'on déplace.
     delay_.setSliderStyle(juce::Slider::LinearBar);
+    delay_.setSliderSnapsToMousePosition(false);   // D139 : suit le glissé, ne saute pas au clic
     delay_.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 44, 16);
     delay_.setRange(-200.0, 200.0, 0.1);
     delay_.setDoubleClickReturnValue(true, 0.0);    // D25.3 : 0 ms
@@ -156,6 +159,7 @@ ChannelStrip::ChannelStrip(vsm::sequencer::Track& track, size_t index,
     // de part et d'autre couvrent tout ce qu'un clavier peut demander, et
     // au-delà toute note sortirait de la plage MIDI de toute façon.
     transposition_.setSliderStyle(juce::Slider::LinearBar);
+    transposition_.setSliderSnapsToMousePosition(false);   // D139 : suit le glissé, ne saute pas au clic
     transposition_.setTextBoxStyle(juce::Slider::TextBoxLeft, false, 44, 16);
     transposition_.setRange(-48.0, 48.0, 1.0);
     transposition_.setDoubleClickReturnValue(true, 0.0);   // D25.3 : 0 demi-ton

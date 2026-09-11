@@ -200,6 +200,7 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
 
     addAndMakeVisible(volumeSlider_);
     volumeSlider_.setSliderStyle(juce::Slider::LinearHorizontal);
+    volumeSlider_.setSliderSnapsToMousePosition(false);   // D139 : suit le glissé, ne saute pas au clic
     volumeSlider_.setRange(0.0, 1.5, 0.001);
     volumeSlider_.setValue(track_.volume, juce::dontSendNotification);
     volumeSlider_.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
@@ -219,6 +220,7 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
 
     addAndMakeVisible(panSlider_);
     panSlider_.setSliderStyle(juce::Slider::LinearHorizontal);
+    panSlider_.setSliderSnapsToMousePosition(false);   // D139 : suit le glissé, ne saute pas au clic
     panSlider_.setRange(-1.0, 1.0, 0.01);
     panSlider_.setValue(track_.pan, juce::dontSendNotification);
     panSlider_.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
