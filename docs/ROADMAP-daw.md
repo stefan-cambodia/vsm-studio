@@ -16308,3 +16308,37 @@ musicien qui tourne un bouton ne voit donc pas la valeur, à moins de faire
 défiler la façade. Ce n'est pas corrigé ici (une autre variable que la
 typographie) : INDEX, A17.
 
+### Phase D133 — A17 : l'afficheur de valeur sort de ce qui défile (12/09/2026)
+
+**LA CAUSE, lue dans le code.** La façade pose son afficheur dans ses propres
+limites (`removeFromBottom(20)`), et le rack lui donne toute la hauteur
+qu'elle réclame dans une vue qui défile (D63) : l'afficheur défile avec elle,
+sous le bord.
+
+**LE REMÈDE, choisi avant le témoin.** L'afficheur sort de ce qui défile : le
+rack lui réserve une BANDE FIXE à son pied, hors de `vueFacade_`, et la
+façade hébergée par le rack cache le sien (un rappel `onValueReadout` lui
+transmet le texte) — sans quoi, dans une grande fenêtre où la façade tient
+entière, deux afficheurs identiques se verraient. Raison du choix : l'idée
+d'origine (« un afficheur unique, en bas de façade ») est gardée et devient
+vraie à toute hauteur ; l'en-tête du rack, déjà chargé (piste, machine,
+MIDI LEARN), n'est pas encombré. La géométrie de la façade ne change pas (sa
+marge basse de 22 px reste) ; la vue du rack cède 20 px. Le panneau
+générique, qui n'a pas d'afficheur, ne reçoit pas de bande.
+
+**LE BANC.** Le geste de D132 (`facade:CUT OFF FREQ=1200`), projet de D91,
+français et anglais : la disposition par défaut (photo de la fenêtre), et la
+disposition flottante (`VSM_VUE=flottant`, photo de la fenêtre du rack par
+`VSM_CAPTURE_PANNEAUX`). Témoin : le binaire de D132.
+
+**ATTENDU, écrit avant le témoin.**
+
+1. **Au témoin**, dans la disposition par défaut, l'afficheur n'est pas sur
+   la photo (ce que D132 a vu) ; le relevé des textes, lui, le lit.
+2. **Après**, l'afficheur est SUR LA PHOTO, au pied du rack, dans les deux
+   dispositions : « CUT OFF FREQ: 1200 Hz » en anglais, « CUT OFF FREQ :
+   1200 Hz » en français.
+3. **Un seul afficheur** : le relevé ne lit qu'un libellé portant la valeur
+   (celui de la façade, caché, n'est plus « visible »).
+4. Suites vertes, préférences intactes.
+
