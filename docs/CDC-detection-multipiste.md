@@ -999,6 +999,96 @@ courses, fondues et inventées à part, et la réponse) s'écrira ici, en
 mesuré ; ce que le verdict désigne devient une hypothèse écrite pour le
 chantier suivant.
 
+### 12.3 Le verdict — course 1 (12/09, écrit à la fin de la course 1 ; les courses 2 et 3 suivent)
+
+**La course.** Code 0, le 12/09 à 00:17:55. **Distance 0,1935** (métrique v2,
+budget 20). **9 pistes jouantes et 1 bus** (Batterie) — les « 10 piste(s) »
+du journal comptent le bus —, 9 224 notes. Temps : 24 609 s de chaîne pour
+32 975 s d'horloge, et l'écart est EXACTEMENT la somme des quatre veilles du
+poste pendant la course, lues au journal du système (16:04-16:32,
+20:17-21:44, 21:52-21:55, 22:02-22:23 : 8 366 s). La chaîne a donc travaillé
+**6 h 50 min éveillée**, pour 2 à 4 h prédites.
+
+**Ce que la séparation a fait** — part de chaque stem de `htdemucs_6s` dans
+l'énergie de chaque section (%), mesurée sur les stems gardés par la course :
+
+| stem | 0-28 | 28-57 | 57-114 | 114-128 | 128-213 | 213-270 | 270-370 | 370-398 | 398-456 | morceau |
+|---|---|---|---|---|---|---|---|---|---|---|
+| drums | 0,1 | 0,0 | 0,1 | 67,9 | 66,8 | 74,6 | 67,2 | 74,8 | 72,1 | 66,9 |
+| bass | **92,9** | 54,3 | 32,9 | 22,6 | 19,6 | 24,8 | 20,6 | 24,9 | 19,9 | 22,2 |
+| other | 6,9 | 15,7 | 40,2 | 6,7 | 13,2 | 0,4 | 11,4 | 0,2 | 8,0 | 9,5 |
+| piano | 0,0 | **29,1** | 8,1 | 1,7 | **0,1** | 0,0 | 0,4 | 0,1 | 0,0 | 0,7 |
+| guitar | 0,0 | 0,9 | **18,3** | 0,2 | 0,0 | 0,2 | 0,2 | 0,0 | 0,0 | 0,6 |
+| vocals | 0,0 | 0,0 | 0,3 | 0,8 | 0,3 | 0,0 | 0,3 | 0,0 | 0,0 | 0,2 |
+
+Lu : **le piano n'est dans le stem `piano` que tant qu'il est à nu** — de 28
+à 57 s il y porte 29,1 % de l'énergie et 78,8 % de la bande 400 Hz-5 kHz ;
+dès l'entrée des cordes (57 s) il passe à `other` et à `guitar`, et après
+128 s le stem `piano` n'en garde rien (0,1 %), alors que le piano joue
+jusqu'à ~370 s. **La nappe de l'intro, seule de 0 à 28 s, est dans `bass`**
+(92,9 %). Les cordes et le chœur, à leur entrée, vont pour un quart à
+`guitar` (25,7 % de la bande 400 Hz-5 kHz à 57-114 s).
+
+**La confrontation, étage par étage** (les prédictions du § 12.2, telles
+qu'écrites) :
+
+| étage | prédit | obtenu | |
+|---|---|---|---|
+| séparation | `piano` 5 à 15 %, porteur du motif | 0,7 % ; porteur de 28 à 57 s seulement | réfuté |
+| | `drums` 35 à 50 % | 66,9 % | réfuté (au-dessus) |
+| | `other` 15 à 30 % | 9,5 % | réfuté |
+| | `guitar` et `vocals` au-dessus de 0,5 % | 0,6 % et 0,2 % : `vocals` sous le seuil, aucune piste | à moitié |
+| `other` | fourre-tout ; `registres_par_vides` ne coupe pas ; 4 voix | polyphonie moyenne **2,58** (< 3), ambitus 67 : PAS fourre-tout. La chaîne n'appelle `registres_par_vides` et `separer_en_voix` QUE sur un fourre-tout (`reconstruire.py`, `if args.voix_par_vides and plainte`) : **ni l'un ni l'autre n'a été essayé** ; 1 piste | réfuté |
+| `piano` | 1 piste | 1 piste | tenu |
+| `bass` | 1 piste | 1 piste (C1-F5, 53 demi-tons, polyphonie 1,26) | tenu |
+| batterie | 3 pièces, une quatrième possible | 5 : kick+kick2, hihat, tom, percussion, snare | réfuté (au-dessus) |
+| arbitrage du `piano` | `vsm.piano` dans les trois premiers ; multisample joue `FR3-Accordion` par défaut, le journal le dira | `vsm.piano` au **rang 163** (0,537) ; le journal nomme bien `FR3-Accordion` comme profil par défaut, et l'arbitrage met tous les profils en concurrence : `multisample[FR3-Saw-Lead]` 0,260 ; le verdict du mélange change ensuite la machine (tour 1) : **`vsm.tb303`**, D = 0,2278 | réfuté |
+| distance | 0,25 à 0,32 | **0,1935** | hors de la fourchette (plus proche) ; ne se compare à rien |
+| durée | 2 à 4 h | 6 h 50 min éveillée | réfuté |
+| compte | 11 (9 à 13) | **9 pistes** (+ 1 bus) | tenu, à la borne basse |
+
+**Parties attendues × pistes de la course 1** (§ 12.1 ; « porte » : la piste
+en contient une part, lue sur l'énergie des stems par section — lecture, pas
+preuve, pour les parties que rien d'autre ne sépare) :
+
+| # | partie | piste(s) qui la portent |
+|---|---|---|
+| 1 | piano (le motif) | `piano` de 28 à 57 s seulement ; ensuite `other` |
+| 2 | nappe synthé | `bass` (l'intro), puis `other` |
+| 3 | nappe de cordes | `other` ; `guitar` à son entrée (57-114 s) |
+| 4 | lead en scie | `other` (seul stem présent dans 1,5-5 kHz à 156-213 s, hors batterie) |
+| 5 | basse | `bass` |
+| 6 | grosse caisse | `Batterie · kick+kick2` (959 frappes) |
+| 7 | charleston | `Batterie · hihat` (575) |
+| 8 | caisse claire / clap | `Batterie · snare` (41 — maigre) |
+| 9 | arpège aigu (incertaine) | `other` |
+| 10 | chœur (incertaine) | `other`, `guitar` |
+
+**Fondues** : `other` (`vsm.sitar`, 3 651 notes sur F1-C7) porte le piano
+après 57 s, la nappe, les cordes, le lead — deux parties sûres et deux
+probables sur UNE piste ; `bass` (`vsm.hurdygurdy`) porte la basse ET la
+nappe de l'intro. **Inventées** : `Batterie · tom` (183 frappes ; l'original
+n'a pas de tom, et le verdict du mélange dit le morceau MEILLEUR sans elle,
+0,2027 contre 0,2103) ; `guitar` n'est pas une invention pure — elle porte
+une part des cordes à leur entrée — mais l'original n'a pas de guitare, et
+elle joue un clavicorde sur 0,6 % de l'énergie ; `Batterie · percussion`
+(52 frappes), douteuse.
+
+**Ce que la course 1 répond, en attendant les deux autres.** La chaîne ne
+rend plus quatre pistes : neuf, et la parité n'est pas réfutée (ni quatre
+ou moins, ni plus de dix). Mais le compte cache la composition : les
+parties se fondent dans DEUX étages, dans cet ordre. **(1) La séparation** :
+`htdemucs_6s` ne garde le piano dans son stem que tant qu'il est à nu, puis
+le verse dans `other` ; il met la nappe de l'intro dans `bass`. **(2) La
+porte du fourre-tout** (polyphonie moyenne ≥ 3 ET ambitus ≥ 36) : `other`
+n'y atteint pas (2,58), et c'est elle qui décide si le découpage est même
+essayé. Ma prédiction attendait l'inverse — trop de pistes par invention,
+des parties fondues à l'intérieur des registres — ; elle tombe sur le premier
+point (deux inventions, pas quatre) et se vérifie, en pire, sur le second :
+les parties ne sont pas fondues DANS des registres, elles le sont dans un
+stem qu'aucun registre n'a touché. L'hypothèse pour le chantier suivant
+s'écrira au verdict final, avec les courses 2 et 3.
+
 ## 5. Critères d'acceptation
 
 ```
