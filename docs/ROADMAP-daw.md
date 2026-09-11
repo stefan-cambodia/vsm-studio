@@ -15037,3 +15037,49 @@ de la même liste n'ont plus de littéral nulle part (les onze infobulles hors
 n'y trouve de français) : je les laisse à l'INDEX avec cette réserve, faute
 d'un banc qui les lise toutes à l'écran.
 
+### Phase D117 — deux boîtes qui coupent mal à 150 % : un mot orphelin, un exemple coupé en deux (11/09/2026)
+
+**CE QUE D91 A VU SANS LE TRAITER.** « Deux textes gardent des retours à la
+ligne forcés qui coupent mal à 150 % : « pitch. » seul sur sa ligne dans
+« Clip is N bars », et « Drums # » coupé entre deux lignes dans le renommage
+en série — comme « Batterie # » en français. » Les retirer changeait l'image
+française, que D91 devait laisser intacte : un geste à part. Le voici — et
+c'est un geste de LISIBILITÉ, le besoin écrit en tête de ce projet (150 %
+par défaut), pas une traduction.
+
+**DEUX DÉFAUTS DIFFÉRENTS, DEUX GESTES.**
+
+1. **« Le clip fait N mesures »** : le message force un `\n` entre deux
+   phrases. `AlertWindow` compose avec `createLayoutWithBalancedLineLengths`,
+   paragraphe par paragraphe : la première phrase, à peine plus longue que la
+   boîte, laisse son dernier mot seul. **Décision** : un seul paragraphe, les
+   deux phrases à la suite — le retour forcé n'apportait rien que la mise en
+   page ne sache faire.
+2. **« Renommer les pistes en série »** : l'exemple « Batterie # » est coupé
+   ENTRE ses mots — le retour forcé n'y est pour rien, c'est l'espace
+   ordinaire qui cède. **Décision** : des espaces INSÉCABLES (U+00A0) dans les
+   exemples entre guillemets, en français à l'intérieur des « … » comme le
+   veut la typographie, en anglais entre « Drums » et « # ». Le retour forcé
+   avant « Seules les pistes VISIBLES… » reste : c'est une vraie seconde
+   idée. Vérifié dans la source du JUCE de ce build avant de l'écrire :
+   `CharacterFunctions::isWhitespace` s'en remet à `iswspace`, qui ne tient
+   pas U+00A0 pour un blanc.
+
+**LE BANC** — celui de D91, repris : le projet d'épreuve de D91, la boîte du
+renommage par le menu, celle des mesures par l'import d'un WAV puis le menu
+du clic droit du clip audio ; chaque boîte photographiée par
+`VSM_CAPTURE_PANNEAUX`, en français et en anglais, témoin (binaire de D115)
+puis D117. Une photo de boîte modale peut manquer (la course de D72) : le
+banc relance jusqu'à quatre fois, et le dit.
+
+**ATTENDU, écrit avant la mesure** — lu sur les photos, dit mot pour mot.
+
+1. **Le témoin reproduit D91** : « pitch. » seul sur sa ligne en anglais ;
+   « Drums # » ou « Batterie # » coupé en deux dans au moins une langue.
+2. **D117** : aucune ligne d'un seul mot dans la boîte des mesures, dans
+   aucune langue ; aucun exemple entre guillemets coupé dans la boîte du
+   renommage, dans aucune langue.
+3. **Rien d'autre ne bouge** : mêmes titres, mêmes champs, mêmes boutons ;
+   les deux autres boîtes photographiées au passage (s'il en vient)
+   identiques au pixel.
+
