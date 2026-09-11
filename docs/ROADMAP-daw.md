@@ -15923,3 +15923,29 @@ d'analyse » passe désormais par `tr()` ; ÉCRAN 7, inchangé.
 disque parti, celui de la chaîne venu) ; 8 appels directs ; et le texte
 dessiné par-dessus l'icône, question ouverte d'A15.
 
+### Phase D127 — A15 : le texte par-dessus l'icône, tranché par un chiffre plutôt qu'à l'œil (11/09/2026)
+
+**CE QUE DESSINE JUCE, lu avant de mesurer** (`LookAndFeel_V4::drawAlertBox`).
+L'icône n'est pas posée à côté du texte : c'est un FILIGRANE — un carré de
+`min(130, hauteur + 20)` px décalé d'un dixième hors du coin supérieur
+gauche, un triangle rouge à 40 % d'opacité (`0x66ff2a00`) ou un disque
+sarcelle à 40 % (`0xff00b0b9`, alpha 0,4), et le texte commence à 80 px. Le
+chevauchement relevé par D125 est donc voulu par le style, pas un calcul
+raté. La seule question pour ce projet : nuit-il à la lecture à 150 % ?
+
+**LA MESURE.** Sur les photos de D125 (binaire de D124) : le contraste WCAG
+entre la couleur du texte et celle du filigrane sous lui, comparé au contraste
+sur le fond ordinaire — pour le « ! » (notes perdues, disque) et le « i »
+(mesure impossible, latence), en français et en anglais. Couleur du texte :
+le pixel le plus clair du titre ; filigrane : la couleur la plus fréquente,
+hors fond, de la bande de l'icône à gauche du texte (x < 80) ; fond : la
+couleur la plus fréquente d'une zone vide.
+
+**ATTENDU, écrit avant la mesure.** Sur le filigrane, le contraste reste
+**≥ 4,5:1** — le seuil WCAG AA d'un texte ordinaire — pour les deux icônes ;
+prédiction : de l'ordre de 7:1 sur le « i » et de 9:1 sur le « ! », contre
+une douzaine sur le fond ordinaire. **Si l'une passe sous 4,5:1**, le
+chevauchement est un défaut de lisibilité, et la phase suivante dessine la
+boîte sans filigrane (une `drawAlertBox` à nous). **Sinon A15 se ferme** sur ce
+chiffre : le style de JUCE reste, et c'est écrit.
+
