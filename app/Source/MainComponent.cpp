@@ -1,6 +1,7 @@
 #include <filesystem>
 #include "vsm/audio/plugin/ISampleLoader.h"
 #include "MainComponent.h"
+#include <cxxabi.h>
 #include "vsm/sequencer/ClipEdit.h"
 #include "vsm/sequencer/NoteEdit.h"
 #include "vsm/sequencer/PlayOrder.h"
@@ -1545,6 +1546,54 @@ int parcourirLesTextes(juce::Component& racine,
     return nombre;
 }
 
+/// D138 : le nom de classe d'un composant, sans espace de noms -- pour qu'une
+/// ligne du relevé dise OÙ est la commande sans surface.
+juce::String nomDeClasse(const juce::Component& c) {
+    int etat = 0;
+    const char* brut = typeid(c).name();
+    char* lisible = abi::__cxa_demangle(brut, nullptr, nullptr, &etat);
+    const juce::String nom(etat == 0 && lisible != nullptr ? lisible : brut);
+    std::free(lisible);
+    return nom.fromLastOccurrenceOf("::", false, false);
+}
+
+/// D138 : CE QUI EST « VISIBLE » SANS AVOIR DE SURFACE. La même descente que
+/// `parcourirLesTextes` -- elle ne suit que les enfants visibles --, et une
+/// ligne par COMMANDE dont la surface est vide : `isVisible()` dit vrai, et
+/// personne ne peut la voir ni la toucher (le panoramique de la ligne de piste,
+/// D136). Les enfants d'une liste ou d'un curseur sont les leurs : non suivis.
+/// Rend le nombre de lignes écrites.
+int listerSansSurface(juce::Component& racine, const juce::String& fenetre) {
+    int nombre = 0;
+    std::function<void(juce::Component&, const juce::StringArray&)> parcourir =
+        [&](juce::Component& c, const juce::StringArray& chemin) {
+            if (!c.isVisible()) return;
+            juce::StringArray ici(chemin);
+            ici.add(nomDeClasse(c));
+            juce::String nature, texte;
+            if (auto* bouton = dynamic_cast<juce::Button*>(&c)) { nature = "bouton"; texte = bouton->getButtonText(); }
+            else if (auto* curseur = dynamic_cast<juce::Slider*>(&c)) { nature = "curseur"; texte = curseur->getName(); }
+            else if (auto* liste = dynamic_cast<juce::ComboBox*>(&c)) { nature = "liste"; texte = liste->getText(); }
+            else if (auto* saisie = dynamic_cast<juce::TextEditor*>(&c)) { nature = "saisie"; texte = saisie->getText(); }
+            else if (auto* libelle = dynamic_cast<juce::Label*>(&c); libelle != nullptr && libelle->getText().trim().isNotEmpty()) {
+                nature = "libelle";
+                texte = libelle->getText();
+            }
+            if (nature.isNotEmpty() && c.getLocalBounds().isEmpty()) {
+                ++nombre;
+                juce::StringArray fin;   // les quatre derniers parents suffisent à situer
+                for (int i = std::max(0, ici.size() - 5); i < ici.size(); ++i) fin.add(ici[i]);
+                std::fputs(("VSM_SANS_SURFACE : " + fenetre + " : " + nature + " : "
+                            + texte.replace("\n", " / ") + " : " + c.getBounds().toString() + " : "
+                            + fin.joinIntoString("/") + "\n").toRawUTF8(), stderr);
+            }
+            if (dynamic_cast<juce::ComboBox*>(&c) != nullptr || dynamic_cast<juce::Slider*>(&c) != nullptr) return;
+            for (auto* enfant : c.getChildren()) parcourir(*enfant, ici);
+        };
+    parcourir(racine, {});
+    return nombre;
+}
+
 /// D102 : UNE FENÊTRE DE CHOIX SE LIT QUAND ELLE EST DEMANDÉE, comme une boîte
 /// (D95). Sous un écran verrouillé, JUCE ne montre aucun composant modal, et la
 /// liste des fenêtres ne la voit pas : son titre et ses textes vont sur la
@@ -1558,6 +1607,40 @@ void annoncerFenetre(juce::AlertWindow& fenetre) {
     }, true);
 }
 } // namespace
+
+void MainComponent::listerSansSurfacePourCapture() {
+    // D138 : la fenêtre principale, puis les autres (panneaux flottants, boîtes)
+    // qui sont affichées ; le COMPTE toujours, même nul -- un zéro doit se lire.
+    // LE CONTRÔLE DE L'OUTIL (VSM_SANS_SURFACE=controle). Seize configurations ont
+    // rendu 0 ; un zéro se revérifie sur un cas CONNU : trois commandes visibles
+    // sans surface, et trois qui ne doivent pas compter (une commande qui a une
+    // surface, une commande cachée, un libellé vide).
+    if (const char* mode = std::getenv("VSM_SANS_SURFACE"); mode != nullptr && juce::String(mode) == "controle") {
+        juce::Component racine;
+        juce::TextButton sansLargeur("zero-width"), normal("normal"), cache("hidden");
+        juce::Slider curseurPlat;
+        juce::Label sansHauteur({}, "zero-height"), vide;
+        juce::Component* enfants[] = { &sansLargeur, &normal, &cache, &curseurPlat, &sansHauteur, &vide };
+        racine.setBounds(0, 0, 200, 100);
+        for (auto* enfant : enfants) racine.addAndMakeVisible(enfant);
+        sansLargeur.setBounds(10, 10, 0, 20);
+        normal.setBounds(10, 40, 60, 20);
+        cache.setVisible(false);
+        curseurPlat.setBounds(80, 10, 50, 0);
+        sansHauteur.setBounds(80, 40, 50, 0);
+        racine.setVisible(true);
+        const int obtenu = listerSansSurface(racine, "controle");
+        std::fputs(("VSM_SANS_SURFACE_CONTROLE : 3 attendus, " + juce::String(obtenu) + " obtenus\n").toRawUTF8(), stderr);
+    }
+    int total = listerSansSurface(*this, "principale");
+    const juce::Component* principale = getTopLevelComponent();
+    for (int i = 0; i < juce::TopLevelWindow::getNumTopLevelWindows(); ++i) {
+        auto* fenetre = juce::TopLevelWindow::getTopLevelWindow(i);
+        if (fenetre == nullptr || fenetre == principale || !fenetre->isVisible()) continue;
+        total += listerSansSurface(*fenetre, fenetre->getName());
+    }
+    std::fputs(("VSM_SANS_SURFACE_TOTAL : " + juce::String(total) + "\n").toRawUTF8(), stderr);
+}
 
 void MainComponent::listTextsForCapture() {
     // D94 : CE QUE LA FENÊTRE MONTRE, composant visible par composant visible.

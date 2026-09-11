@@ -141,6 +141,8 @@ public:
     /// flottants --, lus au moment de la photo : une boîte n'existe qu'après
     /// le geste qui l'ouvre.
     void listWindowTextsForCapture();
+    /// D138 : VSM_SANS_SURFACE -- les commandes visibles dont la surface est vide.
+    void listerSansSurfacePourCapture();
     /// D91 : VSM_MENU_CONTEXTE=quel:libellé -- une entrée d'un menu du clic droit
     /// (« regle », « clip-midi », « clip-audio », « effets »), par la même fonction
     /// que le clic. Dit sur la sortie d'erreur ce qu'elle a exécuté, ou pas.

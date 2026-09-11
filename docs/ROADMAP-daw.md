@@ -16678,3 +16678,36 @@ nommée ; la correction viendra par famille, dans une phase à elle — cette
 phase mesure et nomme. Un compte nul partout se revérifie en provoquant un
 cas connu avant de conclure.
 
+**RÉSULTAT (12/09) — L'ATTENDU EST RÉFUTÉ : 0 PARTOUT, et le zéro a été
+vérifié avant d'être écrit.** Binaire de 04:03:56 (l'outil), puis 04:08:04
+(son contrôle) ; le projet de la course 1 intact (empreintes de tous ses
+fichiers, aucun fichier écrit) ; préférences identiques par `cmp`.
+
+| configuration | commandes visibles sans surface |
+|---|---|
+| course 1 et D91 × docks au minimum (180 / 220 / plancher) × FR, EN | **0** (4 relevés) |
+| course 1 et D91 × docks au défaut (aucune clé `dock.*`) × FR, EN | **0** (4 relevés) |
+| course 1 et D91 × panneaux flottants × FR, EN | **0** (4 relevés) |
+| docks au minimum, fenêtre demandée à 800 × 600 et 640 × 480 | **0** — l'application remonte toute fenêtre au plancher de 900 × 660 (`setResizeLimits`) |
+| chacune des quatre zones agrandies (D122) | **0** — les zones rabattues sont CACHÉES, pas réduites à rien |
+
+**LE CONTRÔLE DE L'OUTIL, parce qu'un zéro ne prouve rien tant que l'outil
+n'a pas montré qu'il voit.** `VSM_SANS_SURFACE=controle` bâtit une petite
+arborescence connue : trois commandes visibles sans surface (un bouton sans
+largeur, un curseur et un libellé sans hauteur) et trois qui ne doivent pas
+compter (une commande qui a sa surface, une commande cachée, un libellé
+vide). Rendu : **3 attendus, 3 obtenus**, et ce sont les trois bonnes. Les
+seize zéros sont donc de vrais zéros.
+
+**CE QUE L'AUDIT DIT.** La famille de D123 et D136 n'a plus de membre dans
+les dispositions qu'un utilisateur peut obtenir : à la fenêtre la plus
+petite, docks au plus étroit, en panneaux flottants ou une zone agrandie,
+aucune commande n'est « visible » sans pouvoir se voir. Ma prédiction
+supposait des panneaux qui suivent la largeur du dock sans se replier ; ils
+se replient (la barre du piano roll défile depuis D122, le rack fait
+défiler sa façade depuis D63). **L'outil reste**, comme le témoin de D70 :
+`VSM_SANS_SURFACE=1` se relance à chaque phase qui touche une disposition.
+Ce qu'il ne voit pas, dit une seconde fois : une commande qui a une surface
+mais que le cadre d'un défilement cache (le défaut de D132) — la confondre
+avec une liste qu'on fait défiler n'apprendrait rien.
+

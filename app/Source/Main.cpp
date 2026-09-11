@@ -435,6 +435,12 @@ public:
                         textes != nullptr && *textes && *textes != '0')
                         if (auto* principal = dynamic_cast<MainComponent*>(getContentComponent()))
                             principal->listWindowTextsForCapture();
+                    // D138 : VSM_SANS_SURFACE=1 -- les commandes « visibles » sans surface,
+                    // au moment de la photo : la mise en page est faite, les fenêtres ouvertes.
+                    if (const char* surface = std::getenv("VSM_SANS_SURFACE");
+                        surface != nullptr && *surface && *surface != '0')
+                        if (auto* principal = dynamic_cast<MainComponent*>(getContentComponent()))
+                            principal->listerSansSurfacePourCapture();
                     // D55.2 : VSM_CAPTURE_PANNEAUX=1 photographie AUSSI chaque
                     // fenêtre flottante visible, une image par panneau.
                     //
