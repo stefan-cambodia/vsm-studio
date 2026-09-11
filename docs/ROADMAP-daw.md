@@ -15997,3 +15997,40 @@ Ce que D128 ne couvre toujours pas, dit d'avance : les façades des machines
 (une infobulle par bouton, la valeur lue) — un banc à part, s'il existe un
 moyen de les lister.
 
+**RÉSULTAT (11/09) — « 0 à 3 françaises » TENU (0) ; « 30 à 80 nouvelles »
+RÉFUTÉ (1).** Binaire de D126 (23:16:01). Quatorze lancements, tous en code
+0, écran non verrouillé (`LockedHint=no`) ; le projet ouvert en place
+n'a pas bougé (empreinte de `project.json` identique, 0 fichier écrit), les
+préférences de l'utilisateur non plus (`cmp`).
+
+| vue | fenêtre principale : textes / infobulles | autres fenêtres lues |
+|---|---|---|
+| automation, effets, CC MIDI, tempo | 176-179 / 61 | — |
+| liste, courbes, clavier | 252 / 91 | — |
+| historique | 252 / 91 | « Edit history », 1 texte |
+| spectre | 252 / 91 | « Spectrum analyser », 0 texte (tout y est dessiné) |
+| ordre de jeu | 252 / 91 | « Play order », 8 textes |
+| prises | 252 / 91 | « Comp takes », 7 textes |
+| préférences | 252 / 91 | « Preferences », 25 textes |
+| tronçons | 252 / 91 | **aucune fenêtre ouverte** — nommée, non comptée |
+| panneaux flottants | 25 / 9 | « Tracks » 43, « Piano Roll » 58, « Synth Rack » 37, « Mixer » 84 ; « Arrangement » cachée |
+
+**61 infobulles distinctes en tout, dont UNE absente des 60 de D118** — celle
+du bouton de zone que D122 a ajouté aujourd'hui (« Enlarge this pane: it
+takes all the room (one click to go back) »). Aucune retenue par le filtre.
+
+**Pourquoi la prédiction a manqué.** Elle supposait que les panneaux fermés
+portent leurs propres infobulles ; ils n'en portent presque pas. Les onglets
+du bas et les fenêtres flottantes ont des libellés et des boutons, pas
+d'infobulles : les infobulles vivent dans les barres toujours visibles
+(transport, piano roll, pistes, mixeur), que D118 relevait déjà.
+
+**Hors attendu, et dit comme tel** : le même filtre appliqué à TOUS les
+textes affichés de ces vues et fenêtres — libellés, boutons, listes — que
+D118 n'avait pas lus : 53 textes nouveaux, aucun retenu.
+
+**Ce qui reste non lu, pour A9** : les façades des machines ; la fenêtre des
+tronçons, qui ne s'ouvre pas sur ce projet (vraisemblablement faute de
+prise) ; la fenêtre flottante de l'arrangement, cachée dans la disposition
+en panneaux flottants.
+
