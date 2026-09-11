@@ -16951,3 +16951,21 @@ pour le RATIO (que le projet ne règle pas). Témoin : le binaire de D141
    témoin (LOW 0.0 dB, moteur 0.00).
 4. Suites vertes, préférences intactes.
 
+**RÉSULTAT (12/09) — LES QUATRE ATTENDUS TIENNENT.** Témoin : binaire de D141
+(04:38:04) ; après : 04:43:43. Les mêmes valeurs en français et en anglais.
+
+| cas | témoin : bouton LOW / moteur | après : bouton LOW / moteur |
+|---|---|---|
+| projet au LOW enregistré à +6 dB, ouverture | 0.0 dB / **6.00** | **6.0 dB / 6.00** |
+| le même, double-clic sur le LOW | 0.0 dB / **6.00** — sans effet | 0.0 dB / **0.00** |
+| projet sans section `master`, ouverture | 0.0 dB / 0.00 | 0.0 dB / 0.00 |
+
+Le RATIO, que le projet ne règle pas : 2.0:1 et 2.00 partout. Tous les
+textes relevés identiques au témoin dans les six relevés ; suites C++ vertes
+(330, 1 291, 297, 25, 11), compilées à `-j 2` pendant la course 2 de
+l'épreuve ; `vsm-render` intact ; préférences identiques par `cmp`.
+
+**Ce que cela ouvre** : le double-clic règle enfin le moteur, et le soupçon de
+D141 — une annulation qui ramènerait le MASTER au dernier enregistrement —
+devient mesurable. C'est la phase suivante.
+

@@ -11078,6 +11078,15 @@ void MainComponent::rebuildFromProject(bool stopPlayback) {
                                 ? 0
                                 : std::min(pianoRoll_.activeTrackIndex(), project_.tracks.size() - 1);
     trackList_.loadProject(project_);
+    // D142 : LE MASTER DU PROJET AVANT QUE LE MIXEUR NE LE RELISE. Appliqué après
+    // `mixer_.setProject`, il allait au moteur pendant que la tranche MASTER
+    // affichait les valeurs d'usine lues juste avant (D141 : bouton 0.0 dB,
+    // moteur 6.00) -- et un double-clic « remettre à zéro » ne faisait rien, le
+    // bouton étant déjà à 0. L'affichage ne se rattrapait qu'à la reconstruction
+    // suivante.
+    if (!project_.masterParameters.empty())
+        vsm::interchange::applyMasterDescription(project_.masterParameters,
+                                                  audioEngine_.processGraph().masterBus());
     mixer_.setProject(&project_);
     automation_.setProject(&project_);
     midiCc_.setProject(&project_);
@@ -11183,9 +11192,6 @@ void MainComponent::rebuildFromProject(bool stopPlayback) {
     pianoRollPanel_.setPunchRegion(project_.punchStartTick, project_.punchEndTick,
                                     project_.punchEnabled);
 
-    if (!project_.masterParameters.empty())
-        vsm::interchange::applyMasterDescription(project_.masterParameters,
-                                                  audioEngine_.processGraph().masterBus());
     adoptDefaultSendsIfNeeded();
     applySendBuses();
     loadAudioTracks();
