@@ -209,6 +209,7 @@ public:
 private:
     void dispositionEtroite(juce::Rectangle<int> area);
     void poserLesVisibilites();
+    void poserInfobulleDeSortie();   ///< D137
 };
 
 /// Liste verticale de pistes (Track Editor, section 4). Reconstruit ses

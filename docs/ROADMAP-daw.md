@@ -16614,3 +16614,30 @@ l'absence de fichier écrit sont vérifiées), zone des pistes agrandie ; deux
 cas par langue : sans filtre (des pistes au master), et le filtre
 « Batterie » (les pièces du bus). Les attendus ne changent pas.
 
+**RÉSULTAT (12/09) — LES TROIS ATTENDUS TIENNENT.** Témoin définitif : binaire
+de D136 (00:49:13), sur le projet de la course 1 ; après : 01:01:14 — deux
+compilations ÉCHOUÉES avant lui, arrêtées avant tout banc, et dites : la paire
+de la table remplacée sans sa virgule finale, puis `tr` appelé sans
+qualification dans une fonction où ce fichier écrit `vsm::app::ui::tr`.
+
+| relevé | témoin | après |
+|---|---|---|
+| sans filtre, EN | 9 × « Where this track goes: the master, or a group. » | 4 × « Output: Master — … » (basse, guitare, other, piano), 5 × « Output: Batterie — … » (les pièces) |
+| sans filtre, FR | 9 × « Ou va cette piste : … » | 4 × « Sortie : Master — … », 5 × « Sortie : Batterie — … » |
+| filtre « Batterie », EN / FR | 5 × l'infobulle générique | 5 × « Output: Batterie — … » / « Sortie : Batterie — … » |
+
+1. **Attendu 1 tenu** : au témoin, une seule infobulle générique pour toutes
+   les lignes, dans les deux langues.
+2. **Attendu 2 tenu** : chaque ligne nomme sa destination ; « Batterie », le
+   nom du bus, passe tel quel.
+3. **Attendu 3 tenu** : tous les autres textes relevés identiques au témoin
+   dans les quatre relevés ; le projet de la course 1 intact (empreintes de
+   tous ses fichiers, aucun fichier écrit) ; suites C++ vertes (330, 1 291,
+   297, 25, 11), compilées à `-j 2` pendant la course 2 ; préférences
+   identiques par `cmp`.
+
+En passant, l'infobulle française retrouve l'accent de « Où », que la clé
+d'origine avait perdu. À 180 px, le nom abrégé de la sortie se lit
+maintenant au survol : A20 se ferme sur ce remède, le seul qui ne cache
+aucun réglage et ne réécrit pas la largeur choisie par l'utilisateur.
+

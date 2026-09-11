@@ -1933,8 +1933,8 @@ const Paire kAnglais[] = {
       "Arm the track: the next take writes the audio input to a file in the project folder. One audio track at a time." },
     { "Armer la piste : elle recoit alors le clavier MIDI, a l'ecoute comme a l'enregistrement.",
       "Arm the track: it then receives the MIDI keyboard, when monitoring as when recording." },
-    { "Ou va cette piste : le master, ou un groupe.",
-      "Where this track goes: the master, or a group." },
+    { "Sortie : %1 — où va cette piste : le master, ou un groupe.",   // D137 : la destination nommée
+      "Output: %1 — where this track goes: the master, or a group." },
     { "(aucun fichier — armer et enregistrer)",
       "(no file — arm and record)" },
     { " · disque",

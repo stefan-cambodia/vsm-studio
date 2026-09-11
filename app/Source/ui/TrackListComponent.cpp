@@ -194,6 +194,7 @@ TrackRowComponent::TrackRowComponent(Track& track, size_t trackIndex,
                                      ? -1
                                      : groupes[static_cast<size_t>(choix - 1)].first;
             if (onOutputChanged) onOutputChanged();
+            poserInfobulleDeSortie();   // D137 : la destination a changé
         };
     }
 
@@ -258,8 +259,16 @@ void TrackRowComponent::poserTextes() {
                     "fichier du dossier du projet. Une seule piste audio a la fois.")
                : tr("Armer la piste : elle recoit alors le clavier MIDI, "
                     "a l'ecoute comme a l'enregistrement."));
-    if (track_.kind != Track::Kind::Group)
-        outputBox_.setTooltip(tr("Ou va cette piste : le master, ou un groupe."));
+    if (track_.kind != Track::Kind::Group) poserInfobulleDeSortie();
+}
+
+void TrackRowComponent::poserInfobulleDeSortie() {
+    // D137 : L'INFOBULLE NOMME LA DESTINATION. Au dock le plus étroit (180 px),
+    // le nom de la sortie s'abrège en « -… » (D136, A20) ; le survol le rend
+    // lisible. Le nom du bus est une donnée : il passe tel quel.
+    const juce::String destination = outputBox_.getText().fromFirstOccurrenceOf("-> ", false, false);
+    outputBox_.setTooltip(vsm::app::ui::tr(u8"Sortie : %1 — où va cette piste : le master, ou un groupe.")
+                              .replace("%1", destination.isNotEmpty() ? destination : outputBox_.getText()));
 }
 
 void TrackRowComponent::refreshMix() {
