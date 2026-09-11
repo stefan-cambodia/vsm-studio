@@ -15243,3 +15243,33 @@ de l'étendre à quoi que ce soit ; si elle s'affiche large elle aussi, ou en
 carré de remplacement, l'hypothèse tombe et la boîte à largeur fixe redevient
 la seule piste.
 
+### Phase D120 — l'hypothèse de D119 : l'espace fine insécable dans les guillemets français (11/09/2026)
+
+**LE GESTE, ET SA LIMITE, dits avant.** Dans les deux messages français où
+une coupure tombe dans l'espace d'un guillemet — « Aller à la mesure »
+(« « 17 », « 17.3 » ») et le renommage en série (« « # », « Batterie # »,
+« Batterie 1 », « Batterie 2 » ») —, les espaces INTÉRIEURES aux guillemets
+deviennent des espaces fines insécables (U+202F, écrites `\u202f` dans le
+source ET dans la clé de la table). Rien d'autre : l'espace ENTRE
+« Batterie » et « 2 » reste ordinaire (elle n'est pas typographique, elle
+est dans le motif), l'anglais ne change pas (ses guillemets n'enferment pas
+d'espace), et l'orphelin « minutes. » de « Que faire de ce fichier ? » n'est
+pas un guillemet : il n'est pas de ce lot. Témoin : l'audit de D119, même
+binaire à la photo près.
+
+**ATTENDU, écrit avant la mesure.**
+
+1. **La largeur** — le point qui a fait tomber l'insécable de D117 : sur
+   les photos, l'espace fine est PLUS ÉTROITE qu'une espace ordinaire (ou
+   égale), jamais plus large, et jamais un carré de remplacement.
+2. **Aucune coupure dans l'espace d'un guillemet** dans les deux boîtes
+   françaises. Une coupure ailleurs reste possible — entre « Batterie » et
+   « 2 », par exemple — : elle sera comptée, pas cachée.
+3. **L'anglais identique au pixel** au témoin (il ne change pas), et
+   « Que faire de ce fichier ? » identique aussi.
+
+**Ce que chaque issue décide.** Les deux tenus : l'espace fine devient la
+règle des guillemets français À L'AFFICHAGE, à étendre par lots mesurés —
+pas d'un coup sur 1 300 paires. Le n° 1 réfuté : l'hypothèse tombe, et A13
+n'a plus que la boîte à largeur fixe.
+
