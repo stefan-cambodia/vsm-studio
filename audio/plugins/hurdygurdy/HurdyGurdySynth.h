@@ -94,6 +94,9 @@ public:
         float wheelSpeed = 0.5f;
         float wheelPressure = 0.55f;
         float damping = 0.2f;
+        /// D26/A3 : le pli de la molette, en demi-tons, ajouté à la note là où
+        /// la corde calcule sa fréquence — donc une note TENUE se plie.
+        float bendSemitones = 0.0f;
     };
 
     void prepare(double sampleRate) {
@@ -122,7 +125,8 @@ public:
 
     float render(const Params& p, float roue) {
         if (!isActive()) return 0.0f;
-        const float hz = 440.0f * std::exp2f((static_cast<float>(note_) - 69.0f) / 12.0f);
+        const float hz =
+            440.0f * std::exp2f((static_cast<float>(note_) - 69.0f + p.bendSemitones) / 12.0f);
         // Touche levée : le sautereau quitte la corde, qui meurt vite -- la
         // roue continue, mais elle ne frotte plus CETTE longueur de corde.
         chanterelle_.setTuning(hz, p.damping, enfoncee_ ? 4.0f : 0.15f);
@@ -171,6 +175,8 @@ private:
     double sampleRate_ = 48000.0;
     vsm::audio::plugin::ParameterList parameterList_;
     mutable std::array<std::atomic<float>, kOutputLevel + 1> params_{};
+    /// D26/A3 : le pli courant, en demi-tons, tel que la molette l'a posé.
+    std::atomic<float> bendSemitones_{0.0f};
     vsm::audio::engine::VoiceManager<HurdyGurdyVoice, kMaxVoices> voiceManager_;
     WheelString bourdonGrave_, mouche_, trompette_;
     vsm::audio::dsp::StateVariableFilter filtre_;

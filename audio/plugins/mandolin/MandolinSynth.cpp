@@ -30,9 +30,18 @@ void MandolinSynth::initialize(double sampleRate, int /*maxBlockSize*/) {
     voiceManager_.forEachVoice([&](MandolinVoice& voice) { voice.prepare(sampleRate_, graine++); });
 }
 
-bool MandolinSynth::handleControlEvent(const MidiControlEvent&) {
-    // Deux cordes frettées ne se tirent pas ensemble : pas de molette. Refusé.
-    return false;
+bool MandolinSynth::handleControlEvent(const MidiControlEvent& event) {
+    // D26/A3 : LA MOLETTE EST LE GESTE DU MUSICIEN, PAS UN MÉCANISME DE
+    // L'INSTRUMENT. Ce refus était écrit ici en connaissance de cause ; la
+    // feuille de route (phase D26, recadrée le 06/09) range cette machine parmi
+    // les six « où un musicien plie la hauteur », et c'est elle qui tranche. Ce
+    // qui décide, c'est d'où vient le geste : d'une molette de clavier maître,
+    // pas d'une pièce de l'instrument modélisé. Un studio où cinq machines
+    // jettent en silence ce que le musicien pousse perd son geste — la famille
+    // de défauts que l'INDEX nomme en tête de liste.
+    if (event.kind != MidiControlEvent::Kind::PitchBend) return false;
+    bendSemitones_.store(event.value, std::memory_order_relaxed);
+    return true;
 }
 
 void MandolinSynth::applyNoteEvent(const MidiNoteEvent& event) {
@@ -54,6 +63,7 @@ void MandolinSynth::process(const MidiNoteEvent* events, int numEvents,
     p.pickHardness = params_[kPickHardness].load(std::memory_order_relaxed);
     p.decay = params_[kDecay].load(std::memory_order_relaxed);
     p.damping = params_[kDamping].load(std::memory_order_relaxed);
+    p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
     p.velocitySensitivity = params_[kVelocitySensitivity].load(std::memory_order_relaxed);
     const float outputLevel = params_[kOutputLevel].load(std::memory_order_relaxed);
     const int retardB = static_cast<int>(std::max(0.0f, p.strumSpread) * 0.001f * static_cast<float>(sampleRate_));

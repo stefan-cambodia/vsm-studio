@@ -53,6 +53,9 @@ public:
         float velocitySensitivity = 0.7f;
         float pickupMix = 0.5f;          // 0 manche, 1 chevalet
         bool pickupDifference = false;   // A − B au lieu de A + B
+        /// D26/A3 : le pli de la molette, en demi-tons, ajouté à la note là où
+        /// la corde calcule sa fréquence — donc une note TENUE se plie.
+        float bendSemitones = 0.0f;
     };
 
     void prepare(double sampleRate, uint64_t seed) {
@@ -91,7 +94,8 @@ public:
 
     float render(const Params& p) {
         if (!isActive()) return 0.0f;
-        const float hzTenue = 440.0f * std::exp2f((static_cast<float>(note_) - 69.0f) / 12.0f);
+        const float hzTenue =
+            440.0f * std::exp2f((static_cast<float>(note_) - 69.0f + p.bendSemitones) / 12.0f);
         // Tenue : la longueur enclume-chevalet. Lâchée : la corde ENTIÈRE,
         // plus longue de la part derrière l'embout, donc plus basse.
         const float hz = tenue_ ? hzTenue : hzTenue / (1.0f + std::clamp(p.stringBehind, 0.0f, 1.0f));
@@ -189,6 +193,8 @@ private:
     double sampleRate_ = 48000.0;
     vsm::audio::plugin::ParameterList parameterList_;
     mutable std::array<std::atomic<float>, kOutputLevel + 1> params_{};
+    /// D26/A3 : le pli courant, en demi-tons, tel que la molette l'a posé.
+    std::atomic<float> bendSemitones_{0.0f};
     vsm::audio::engine::VoiceManager<ClavinetVoice, kMaxVoices> voiceManager_;
     vsm::audio::dsp::StateVariableFilter filtre_;
 };

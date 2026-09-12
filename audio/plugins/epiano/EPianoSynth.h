@@ -81,6 +81,12 @@ public:
         float velocitySensitivity = 0.8f;
         float toneBass = 0.0f;
         float toneTreble = 0.0f;
+        /// D26/A3 : LE PLI DE LA MOLETTE, en demi-tons. Il s'ajoute à la note à
+        /// CHAQUE échantillon, là où la lame calcule déjà sa fréquence — un
+        /// piano électrique dont la tine se plie n'existe pas dans le monde
+        /// réel, mais la molette EST le geste par lequel un claviériste plie la
+        /// note sur un Rhodes de scène, par le pitch bend de son clavier maître.
+        float bendSemitones = 0.0f;
     };
 
     float render(const Params& p);
@@ -112,6 +118,13 @@ public:
 
     EPianoSynth();
 
+    /// D26/A3 : LA MOLETTE DE HAUTEUR. Cette machine n'avait aucun
+    /// `handleControlEvent` : elle rendait `false` par le défaut de l'interface,
+    /// c'est-à-dire qu'elle jetait silencieusement tout ce qui n'était pas une
+    /// note. Mesuré par `test_molette_hauteur.cpp` : la note pliée d'un demi-ton
+    /// doit sortir à la fréquence de la note du dessus, à 1 % près.
+    bool handleControlEvent(const vsm::audio::plugin::MidiControlEvent& event) override;
+
     void initialize(double sampleRate, int maxBlockSize) override;
     void process(const vsm::audio::plugin::MidiNoteEvent* events, int numEvents,
                  float* outputL, float* outputR, int numSamples) override;
@@ -129,6 +142,9 @@ private:
     double sampleRate_ = 48000.0;
     vsm::audio::plugin::ParameterList parameterList_;
     mutable std::array<std::atomic<float>, kOutputLevel + 1> params_{};
+    /// D26/A3 : le pli de la molette, en demi-tons, tel que le dernier
+    /// événement l'a posé. Relu à chaque bloc, comme les paramètres.
+    std::atomic<float> bendSemitones_{0.0f};
     vsm::audio::engine::VoiceManager<EPianoVoice, kMaxVoices> voiceManager_;
     double tremoloPhase_ = 0.0;
     vsm::audio::dsp::Biquad bassShelf_, trebleShelf_;

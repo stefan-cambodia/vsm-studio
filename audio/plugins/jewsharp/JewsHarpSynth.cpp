@@ -52,6 +52,7 @@ void JewsHarpSynth::process(const MidiNoteEvent* events, int numEvents,
     p.formantHigh = params_[kFormantHigh].load(std::memory_order_relaxed);
     p.formantQ = params_[kFormantQ].load(std::memory_order_relaxed);
     p.twang = params_[kTwang].load(std::memory_order_relaxed);
+    p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
     p.velocitySensitivity = params_[kVelocitySensitivity].load(std::memory_order_relaxed);
 
     const AdsrSettings env{

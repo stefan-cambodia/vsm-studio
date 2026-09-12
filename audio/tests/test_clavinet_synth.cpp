@@ -213,10 +213,20 @@ VSM_TEST(clavinet_parameter_list_size) {
     VSM_ASSERT_EQ(synth->parameterList().size(), size_t{11});
 }
 
-VSM_TEST(clavinet_refuses_pitch_bend) {
+VSM_TEST(clavinet_accepte_la_molette) {
+    // D26/A3 (12/09/2026) : CE TEST GARDAIT UN REFUS, IL GARDE MAINTENANT
+    // L'ACCEPTATION — et le renversement est écrit, pas glissé. Le refus était
+    // une décision de facture d'instrument (« la corde ne se tire pas ») ;
+    // l'INDEX classe l'absence de molette comme l'anomalie A3 et la phase D26
+    // range cette machine parmi les six « où un musicien plie la hauteur ».
+    // Ce qui tranche : la molette est le geste du MUSICIEN à son clavier, pas
+    // une pièce de l'instrument modélisé, et un studio qui la jette en silence
+    // perd ce geste. La hauteur rendue est mesurée par
+    // `test_molette_hauteur.cpp`, qui vérifie le critère de D26 sur le SON —
+    // accepter l'événement ne prouve rien tout seul.
     auto synth = makeClav();
     MidiControlEvent bend;
     bend.kind = MidiControlEvent::Kind::PitchBend;
     bend.value = 2.0f;
-    VSM_ASSERT(!synth->handleControlEvent(bend));
+    VSM_ASSERT(synth->handleControlEvent(bend));
 }

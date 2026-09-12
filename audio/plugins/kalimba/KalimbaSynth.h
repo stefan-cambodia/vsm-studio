@@ -55,6 +55,12 @@ public:
         float hardness = 0.6f;           // ongle (1) ou pulpe (0)
         float buzz = 0.35f;              // rapproche la barre : 0 = jamais de contact
         float velocitySensitivity = 0.7f;
+        /// D26/A3 : le pli de la molette, en demi-tons. Il ne peut PAS entrer
+        /// dans `pincer()`, qui ne tourne qu'au pincement : la lame y fixe ses
+        /// trois modes une fois pour toutes. Il multiplie donc l'incrément de
+        /// phase à chaque échantillon — ce qui plie une note DÉJÀ pincée, comme
+        /// un pouce qui appuie la lame contre la barre.
+        float bendSemitones = 0.0f;
     };
 
     void prepare(double sampleRate, uint64_t seed) {
@@ -87,10 +93,14 @@ public:
         if (!active_) return 0.0f;
         if (pendingPluck_) { pincer(p); pendingPluck_ = false; }
         float x = 0.0f, reste = 0.0f;
+        // D26/A3 : le pli, appliqué à l'incrément et non à la fréquence de
+        // pincement — les trois modes montent ensemble, en gardant leurs
+        // rapports de poutre (1 · 6,267 · 17,55).
+        const double pli = std::pow(2.0, static_cast<double>(p.bendSemitones) / 12.0);
         for (auto& m : modes_) {
             if (m.amplitude < 1e-6f) continue;
             x += static_cast<float>(std::sin(m.phase)) * m.amplitude;
-            m.phase += m.increment;
+            m.phase += m.increment * pli;
             if (m.phase > vsm::audio::dsp::kTwoPi) m.phase -= vsm::audio::dsp::kTwoPi;
             m.amplitude *= m.damping;
             reste += m.amplitude;
@@ -221,6 +231,8 @@ private:
     vsm::audio::engine::VoiceManager<KalimbaVoice, kMaxVoices> voiceManager_;
     Caisse helmholtz_, table_;
     std::atomic<float> molette_{0.0f}, pression_{0.0f};
+    /// D26/A3 : le pli courant, en demi-tons, tel que la molette l'a posé.
+    std::atomic<float> bendSemitones_{0.0f};
     float couvertLisse_ = 0.0f;
 };
 

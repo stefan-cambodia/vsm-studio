@@ -141,7 +141,17 @@ VSM_TEST(jewsharp_the_note_moves_the_formant) {
     VSM_ASSERT(aigu > grave * 1.8);
 }
 
-VSM_TEST(jewsharp_refuses_pitch_bend_and_says_so) {
+VSM_TEST(jewsharp_accepte_la_molette_qui_deplace_son_formant) {
+    // D26/A3 (12/09/2026) : CE TEST GARDAIT UN REFUS, IL GARDE MAINTENANT
+    // L'ACCEPTATION — et le renversement est écrit, pas glissé. Le refus était
+    // une décision de facture d'instrument (« la corde ne se tire pas ») ;
+    // l'INDEX classe l'absence de molette comme l'anomalie A3 et la phase D26
+    // range cette machine parmi les six « où un musicien plie la hauteur ».
+    // Ce qui tranche : la molette est le geste du MUSICIEN à son clavier, pas
+    // une pièce de l'instrument modélisé, et un studio qui la jette en silence
+    // perd ce geste. La hauteur rendue est mesurée par
+    // `test_molette_hauteur.cpp`, qui vérifie le critère de D26 sur le SON —
+    // accepter l'événement ne prouve rien tout seul.
     // Une guimbarde n'a aucun geste de hauteur : sa lame est en acier, on ne
     // la plie pas en jouant. Le refus est donc un choix, et le moteur le
     // compte (`ignoredControlEvents`) pour que l'interface puisse dire
@@ -150,7 +160,7 @@ VSM_TEST(jewsharp_refuses_pitch_bend_and_says_so) {
     MidiControlEvent bend;
     bend.kind = MidiControlEvent::Kind::PitchBend;
     bend.value = 2.0f;
-    VSM_ASSERT(!synth->handleControlEvent(bend));
+    VSM_ASSERT(synth->handleControlEvent(bend));
 }
 
 VSM_TEST(jewsharp_is_deterministic) {

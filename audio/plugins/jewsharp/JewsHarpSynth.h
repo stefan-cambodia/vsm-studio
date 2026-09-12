@@ -57,6 +57,18 @@ public:
         float formantHigh = 3000.0f; // celui de la plus aiguë
         float formantQ = 0.9f;
         float twang = 0.6f;          // richesse du bourdon
+        /// D26/A3 : LE PLI DE LA MOLETTE, en demi-tons — ET IL DÉPLACE LE
+        /// FORMANT, PAS LA LAME.
+        ///
+        /// C'est la seule lecture fidèle, et elle se déduit de l'instrument :
+        /// une guimbarde a une lame d'acier dont la fréquence ne bouge pas (82
+        /// Hz ici, quelle que soit la note — mesuré). Plier ce bourdon ferait de
+        /// cette machine un synthétiseur au timbre de guimbarde, ce que l'en-tête
+        /// de ce fichier refuse depuis son écriture. Ce qu'un joueur fait bouger,
+        /// c'est sa CAVITÉ BUCCALE, donc le formant — et la note ne fait rien
+        /// d'autre. La molette prolonge donc le geste de la note, en continu là
+        /// où le clavier va par demi-tons.
+        float bendSemitones = 0.0f;
         float decay = 1.6f;
         float velocitySensitivity = 0.5f;
     };
@@ -122,7 +134,14 @@ public:
         // logarithmique du grave à l'aigu du clavier, ce qui correspond à la
         // façon dont une bouche s'ouvre.
         const float t = std::clamp((static_cast<float>(note_) - 36.0f) / 48.0f, 0.0f, 1.0f);
-        const float f1 = p.formantLow * std::pow(p.formantHigh / p.formantLow, t);
+        // D26/A3 : la molette déplace le formant du même intervalle qu'aurait
+        // fait la note, mais en continu (voir `Params::bendSemitones`).
+        // Le pli suit la MÊME correspondance que le clavier (le balayage va du
+        // grave à l'aigu en 48 demi-tons) : plier de douze demi-tons donne donc
+        // exactement le formant de la note douze demi-tons plus haut, et c'est
+        // ce que le banc mesure.
+        const float tPlie = std::clamp(t + p.bendSemitones / 48.0f, 0.0f, 1.0f);
+        const float f1 = p.formantLow * std::pow(p.formantHigh / p.formantLow, tPlie);
         formant1_.setCutoffHz(std::clamp(f1, 80.0f, 12000.0f));
         formant2_.setCutoffHz(std::clamp(f1 * 1.62f, 80.0f, 14000.0f));
         const float q = std::clamp(p.formantQ, 0.0f, 0.95f);
@@ -172,7 +191,15 @@ public:
     /// jouant. La refuser plutôt que de l'appliquer à un formant serait mentir
     /// deux fois — le moteur compte le refus (`ignoredControlEvents`), et
     /// l'interface pourra dire pourquoi la modulation ne s'entend pas.
-    bool handleControlEvent(const vsm::audio::plugin::MidiControlEvent&) override { return false; }
+    /// D26/A3 : LA MOLETTE DÉPLACE LE FORMANT (voir `Params::bendSemitones`).
+    /// Cette machine rendait `false` à tout : elle jetait en silence le geste du
+    /// musicien, alors qu'elle a, plus que toute autre du parc, un geste continu
+    /// à offrir — c'est celui dont elle porte le nom.
+    bool handleControlEvent(const vsm::audio::plugin::MidiControlEvent& event) override {
+        if (event.kind != vsm::audio::plugin::MidiControlEvent::Kind::PitchBend) return false;
+        bendSemitones_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
     const vsm::audio::plugin::ParameterList& parameterList() const override { return parameterList_; }
     vsm::audio::plugin::PresetState saveState() const override;
     void loadState(const vsm::audio::plugin::PresetState& state) override;
@@ -185,6 +212,8 @@ private:
     double sampleRate_ = 48000.0;
     vsm::audio::plugin::ParameterList parameterList_;
     mutable std::array<std::atomic<float>, kOutputLevel + 1> params_{};
+    /// D26/A3 : le pli courant, en demi-tons, tel que la molette l'a posé.
+    std::atomic<float> bendSemitones_{0.0f};
     vsm::audio::engine::VoiceManager<JewsHarpVoice, kMaxVoices> voiceManager_;
 };
 

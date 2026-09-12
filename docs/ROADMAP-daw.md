@@ -18143,3 +18143,70 @@ tue l'application.
 (vst3), 25 (clap) — **1 973 tests, tous verts**. Inventaire de langue inchangé
 (ÉCRAN 7, SANS_PAIRE 0) ; le libellé « Réglage de machine » a sa paire anglaise
 (« Machine setting »). Préférences de l'utilisateur intactes par `diff -rq`.
+
+### D26 est FAITE — les six machines plient, et deux d'entre elles ont réfuté la phase qui les nommait (12/09/2026)
+
+**CE QUI EST LIVRÉ.** Les six machines d'A3 honorent la molette de hauteur, et
+chacune est mesurée SUR LE RENDU par le critère que D26 avait écrit — « une note
+pliée d'un demi-ton sort à la fréquence de la note du dessus, à 1 % près » —
+dans un banc neuf, `audio/tests/test_molette_hauteur.cpp`.
+
+| machine | où le pli entre | mesure |
+|---|---|---|
+| `vsm.epiano` | la lame recalcule sa fréquence à chaque échantillon | **PASSE** |
+| `vsm.clavinet` | la corde, à chaque échantillon | **PASSE** |
+| `vsm.hurdygurdy` | la chanterelle, à chaque échantillon | **PASSE** |
+| `vsm.mandolin` | les deux cordes du chœur, à chaque échantillon | **PASSE** |
+| `vsm.kalimba` | l'INCRÉMENT DE PHASE des trois modes (la lame fixe les siens au pincement) | **PASSE** |
+| `vsm.jewsharp` | le FORMANT, pas la lame — critère à part, ci-dessous | **PASSE** |
+
+**LE BANC MESURE LE SON, ET C'EST TOUTE LA DIFFÉRENCE.** Les tests de machine
+existants vérifiaient que `handleControlEvent` REND VRAI — par exemple
+`banjo_honours_pitch_bend`, qui envoie un pli et n'écoute rien. Une machine peut
+accepter l'événement, le ranger dans un membre et ne jamais s'en servir : le test
+passerait. Le banc neuf rend une note, mesure sa hauteur par autocorrélation, et
+porte son TÉMOIN — la même note sans pli, qui doit tomber juste — plus un
+CONTRÔLE pris dans le lot qui pliait déjà (`vsm.minimoog`) : si la mesure était
+en cause, c'est lui qui tomberait.
+
+**DEUX MACHINES ONT RÉFUTÉ CE QUE LA PHASE SUPPOSAIT D'ELLES.**
+
+1. **L'e-piano ne joue pas faux — c'est la mesure qui ne sait pas lire une
+   lame.** Le témoin le donnait à **−52 cents à TOUTES les notes** (45, 52, 57,
+   64, 69), et à deux octaves sous la note aux aiguës. Ses partiels tombent à
+   4,75 et 10,6 fois le fondamental : un timbre INHARMONIQUE n'a pas de période,
+   et l'autocorrélation s'accroche à un sous-multiple. Rendu avec ses partiels
+   harmoniques (`Character` = 1), il tombe à **0 cent**, aux trois notes
+   essayées. La justesse se mesure donc là où elle a un sens, et la borne de
+   recherche du banc est resserrée à quatre demi-tons autour de la hauteur
+   attendue — assez large pour que la faute traquée (un pli ignoré, donc un
+   demi-ton trop bas) tombe dedans.
+2. **La guimbarde ne peut pas satisfaire le critère de D26, et ce n'est pas un
+   défaut.** Mesurée : elle rend **82,00 Hz aux cinq notes essayées** — le
+   bourdon de sa lame d'acier, que la note ne bouge pas. Son en-tête le dit
+   depuis son écriture : « la seule machine du parc qui REFUSE de suivre le
+   clavier », le joueur change sa cavité buccale, donc le FORMANT. Plier son
+   bourdon en ferait un synthétiseur au timbre de guimbarde. **Décision écrite
+   ici** : sa molette déplace le formant, sur la MÊME correspondance que le
+   clavier (300 Hz à 3 000 Hz en 48 demi-tons), et son critère devient exact —
+   *plier de douze demi-tons sonne comme la note douze demi-tons plus haut*,
+   mesuré au taux de passages par zéro, témoin compris.
+
+**LE RENVERSEMENT EST DIT, PAS GLISSÉ.** Cinq machines REFUSAIENT la molette par
+une décision écrite dans leur code et **gardée par cinq tests**
+(`clavinet_refuses_pitch_bend`, `hurdygurdy_refuses_pitch_bend_knowingly`,
+`mandolin_refuses_pitch_bend`, `kalimba_refuses_pitch_bend`,
+`jewsharp_refuses_pitch_bend_and_says_so`), chacune avec sa raison de facture :
+« une touche tient la corde contre une enclume », « une vielle se joue à la
+manivelle », « deux cordes frettées ne se tirent pas ensemble ». **Les documents
+se contredisaient donc**, et c'est l'INDEX qui tranche : il classe l'absence de
+molette comme l'ANOMALIE A3, et D26 range ces machines parmi celles « où un
+musicien plie la hauteur ». Ce qui décide, écrit ici pour qu'on puisse le
+défaire : **la molette est le geste du MUSICIEN à son clavier maître, pas une
+pièce de l'instrument modélisé**. Les cinq tests sont retournés, renommés, et
+portent la raison du renversement.
+
+**Ce qui ne change pas** : au repos, le pli vaut zéro et aucun rendu ne bouge —
+les empreintes de régression des 59 machines sont identiques. Suites : **1 298**
+(audio), 330 (core), 297 (interchange), 11 (panels), 19 (vst3), 25 (clap), toutes
+vertes, l'application compilée.

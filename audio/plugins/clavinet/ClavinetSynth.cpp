@@ -33,9 +33,18 @@ void ClavinetSynth::initialize(double sampleRate, int /*maxBlockSize*/) {
     filtre_.reset();
 }
 
-bool ClavinetSynth::handleControlEvent(const MidiControlEvent&) {
-    // Une touche tient la corde contre une enclume : pas de molette. Refusé.
-    return false;
+bool ClavinetSynth::handleControlEvent(const MidiControlEvent& event) {
+    // D26/A3 : LA MOLETTE EST LE GESTE DU MUSICIEN, PAS UN MÉCANISME DE
+    // L'INSTRUMENT. Ce refus était écrit ici en connaissance de cause ; la
+    // feuille de route (phase D26, recadrée le 06/09) range cette machine parmi
+    // les six « où un musicien plie la hauteur », et c'est elle qui tranche. Ce
+    // qui décide, c'est d'où vient le geste : d'une molette de clavier maître,
+    // pas d'une pièce de l'instrument modélisé. Un studio où cinq machines
+    // jettent en silence ce que le musicien pousse perd son geste — la famille
+    // de défauts que l'INDEX nomme en tête de liste.
+    if (event.kind != MidiControlEvent::Kind::PitchBend) return false;
+    bendSemitones_.store(event.value, std::memory_order_relaxed);
+    return true;
 }
 
 void ClavinetSynth::applyNoteEvent(const MidiNoteEvent& event) {
@@ -51,6 +60,7 @@ void ClavinetSynth::process(const MidiNoteEvent* events, int numEvents,
     ClavinetVoice::Params p;
     p.tipHardness = params_[kTipHardness].load(std::memory_order_relaxed);
     p.decay = params_[kDecay].load(std::memory_order_relaxed);
+    p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
     p.mute = params_[kMute].load(std::memory_order_relaxed);
     p.stringBehind = params_[kStringBehind].load(std::memory_order_relaxed);
     p.yarnDamping = params_[kYarnDamping].load(std::memory_order_relaxed);

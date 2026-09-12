@@ -134,6 +134,7 @@ if (VSM_BUILD_TESTS)
         tests/test_plugin_registry.cpp
         tests/test_testtone_synth.cpp
         tests/test_minimoog_synth.cpp
+        tests/test_molette_hauteur.cpp
         tests/test_tb303_synth.cpp
         tests/test_chorus.cpp
         tests/test_juno106_synth.cpp

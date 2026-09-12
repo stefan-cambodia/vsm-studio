@@ -19,7 +19,10 @@ float EPianoVoice::render(const Params& p) {
     if (!amp_.isActive()) return 0.0f;
 
     const float driftSemis = drift_.nextValue() * 0.03f; // très faible : ce n'est pas un VCO
-    const float baseHz = noteToHz(note_, driftSemis);
+    // D26/A3 : le pli s'ajoute ICI, au même endroit que la dérive analogique —
+    // la lame recalcule sa fréquence à chaque échantillon, si bien qu'une note
+    // TENUE se plie, et pas seulement la suivante.
+    const float baseHz = noteToHz(note_, driftSemis + p.bendSemitones);
     const float envelope = amp_.nextSample();
 
     // Vélocité : elle agit surtout sur le TIMBRE, pas seulement sur le volume.
@@ -141,6 +144,15 @@ void EPianoSynth::applyNoteEvent(const MidiNoteEvent& event) {
         voiceManager_.noteOff(event.channel, event.note, event.velocity);
 }
 
+bool EPianoSynth::handleControlEvent(const MidiControlEvent& event) {
+    // D26/A3 : SEULE LA MOLETTE DE HAUTEUR, et elle rend `true` pour elle seule.
+    // Rendre `true` sur tout ferait croire au moteur que la machine honore la
+    // modulation et l'aftertouch, qu'elle ne fait pas.
+    if (event.kind != MidiControlEvent::Kind::PitchBend) return false;
+    bendSemitones_.store(event.value, std::memory_order_relaxed);
+    return true;
+}
+
 void EPianoSynth::process(const MidiNoteEvent* events, int numEvents,
                            float* outputL, float* outputR, int numSamples) {
     ScopedNoDenormals noDenormals;
@@ -152,6 +164,7 @@ void EPianoSynth::process(const MidiNoteEvent* events, int numEvents,
     p.pickupDrive = params_[kPickupDrive].load(std::memory_order_relaxed);
     p.character = params_[kCharacter].load(std::memory_order_relaxed);
     p.velocitySensitivity = params_[kVelocitySensitivity].load(std::memory_order_relaxed);
+    p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
 
     // Le maintien d'une lame N'A PAS de palier : elle décroît continûment
     // jusqu'à l'étouffoir. On modélise donc le decay par un sustain nul et une

@@ -35,6 +35,15 @@ void KalimbaSynth::initialize(double sampleRate, int /*maxBlockSize*/) {
 bool KalimbaSynth::handleControlEvent(const MidiControlEvent& event) {
     // LES DOIGTS SUR LES TROUS : la molette de modulation et la pression de
     // canal bouchent la caisse — c'est le geste du kalimba, le « wah ».
+    // D26/A3 : ET LA MOLETTE DE HAUTEUR. Le « wah » des doigts sur les trous
+    // reste ce qu'il était (CC 1 et pression de canal, juste dessous) ; le pli
+    // s'ajoute sans le remplacer, parce qu'un pouce qui appuie la lame contre la
+    // barre monte bien la note — c'est le geste de l'instrument, pas une
+    // invention de clavier.
+    if (event.kind == MidiControlEvent::Kind::PitchBend) {
+        bendSemitones_.store(event.value, std::memory_order_relaxed);
+        return true;
+    }
     if (event.kind == MidiControlEvent::Kind::ControlChange && event.index == 1) {
         molette_.store(std::clamp(event.value, 0.0f, 1.0f), std::memory_order_relaxed);
         return true;
@@ -63,6 +72,7 @@ void KalimbaSynth::process(const MidiNoteEvent* events, int numEvents,
     p.decayTilt = params_[kDecayTilt].load(std::memory_order_relaxed);
     p.hardness = params_[kHardness].load(std::memory_order_relaxed);
     p.buzz = params_[kBuzz].load(std::memory_order_relaxed);
+    p.bendSemitones = bendSemitones_.load(std::memory_order_relaxed);
     p.velocitySensitivity = params_[kVelocitySensitivity].load(std::memory_order_relaxed);
     const float resonance = params_[kBodyResonance].load(std::memory_order_relaxed);
     const float bodyLevel = std::clamp(params_[kBodyLevel].load(std::memory_order_relaxed), 0.0f, 1.0f);
