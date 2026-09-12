@@ -18457,3 +18457,67 @@ endroits.
 
 Vérifié à l'écran dans les deux langues (photos de la fenêtre des raccourcis) et
 au relevé pour les menus. Inventaire de langue inchangé : **SANS_PAIRE 0**.
+
+### Phase D158 — le trente-sixième audit : la latence, que tout musicien regarde et que la boîte ne dit pas (13/09/2026)
+
+**D'OÙ VIENT CET AUDIT.** Avant de jouer une note, un musicien choisit sa carte
+son et règle son tampon ; et ce qu'il lit alors, dans Cubase comme dans Live,
+c'est **la latence en millisecondes**. C'est le seul chiffre qui dise si l'on
+pourra jouer.
+
+**CE QUE LE CODE DIT AVANT TOUTE MESURE.** `Fichier > Réglages audio…` ouvre un
+`juce::AudioDeviceSelectorComponent` (`MainComponent.cpp:5410`) : périphérique,
+taux d'échantillonnage, taille de tampon, entrées MIDI. C'est la boîte de JUCE,
+honnête et complète pour ce qu'elle fait — **et elle affiche la taille du tampon
+en ÉCHANTILLONS, jamais en millisecondes**. Or 512 échantillons ne disent rien à
+personne : à 44 100 Hz ils font 11,6 ms, à 96 000 Hz 5,3 ms, et c'est cela qu'on
+choisit.
+
+**CE QUE J'ATTENDS, ÉCRIT AVANT LA MESURE.** La boîte ne porte **aucune** mention
+de millisecondes, et le mot « latence » n'y figure pas. **Réfutée si** un seul
+texte de la fenêtre contient « ms » ou « latence » — JUCE l'afficherait alors
+quelque part et il n'y aurait rien à ajouter.
+
+**LA MESURE.** `VSM_MENU=Réglages audio...` ouvre la boîte, `VSM_TEXTES_LISTE`
+lit tout ce qu'elle montre, et l'on compte.
+
+**RÉSULTAT (13/09) — L'ATTENDU EST RÉFUTÉ, ET LA MESURE A TROUVÉ AUTRE CHOSE DE
+BIEN PIRE.**
+
+**1. La latence EST affichée**, et mon attendu était faux : la boîte écrit
+**« 512 samples (11.6 ms) »** dans le choix de la taille de tampon. JUCE fait
+donc déjà ce que je lui reprochais de ne pas faire, et il n'y a rien à ajouter.
+
+**2. ET L'APPLICATION TOMBE EN QUITTANT AVEC CETTE BOÎTE OUVERTE.** Le banc l'a
+dit sans qu'on le lui demande : **code de sortie 139** là où tous les autres
+rendent 0. La pile, prise au débogueur, nomme le coupable en cinq lignes :
+
+```
+juce::ChangeBroadcaster::removeChangeListener        ← SIGSEGV
+juce::AudioDeviceSelectorComponent::~AudioDeviceSelectorComponent
+juce::ResizableWindow::clearContentComponent
+juce::DialogWindow::~DialogWindow
+```
+
+**Le mécanisme.** `options.launchAsync()` rend une fenêtre **qui se possède
+elle-même** — le commentaire d'alors le disait en toutes lettres, « gère lui-même
+la durée de vie de la fenêtre ». Elle survit donc à `MainComponent`, donc au
+moteur audio qu'elle RÉFÉRENCE : son destructeur se désabonne d'un gestionnaire
+de périphériques déjà détruit. Ce n'est pas un défaut de JUCE, c'est un ordre de
+destruction que personne n'avait fixé.
+
+**Le remède, et sa mesure.** Un pointeur sûr suit la fenêtre
+(`fenetreReglagesAudio_`) et le destructeur la referme **avant** que le moteur ne
+parte. Trois essais après : **code 0**, les douze textes de la boîte toujours
+lus ; témoin sans ouvrir la boîte : code 0 aussi. C'est exactement le genre de
+faute qu'un audit d'interface attrape sans la chercher — l'instrument disait 139
+depuis le début, il fallait le lire.
+
+**3. ET LA BOÎTE EST ENTIÈREMENT EN ANGLAIS.** Les douze textes relevés le sont :
+« Active MIDI inputs: », « Output: », « Input: », « Active output channels: »,
+« Sample rate: », « Audio buffer size: », « Test », « Plays a test tone ». C'est
+le composant de JUCE, et l'inventaire de langue ne peut pas le voir : il compte
+les chaînes de `app/Source`, et celles-ci n'y sont pas. Un musicien français
+règle donc sa carte son en anglais. **Ouvert comme A26 à l'INDEX** — le remède
+est `juce::LocalisedStrings`, qui traduit les composants de JUCE eux-mêmes, et
+c'est un chantier à part.

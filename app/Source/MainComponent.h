@@ -1388,6 +1388,17 @@ private:
     /// L'annulation du DAW : elle porte sur le PROJET, donc sur tout ce que
     /// l'utilisateur peut modifier -- notes, mixage, effets, pistes, repères,
     /// clips -- et non sur les seules notes de la piste affichée.
+    /// D158 : LA BOÎTE DES RÉGLAGES AUDIO, TENUE PLUTÔT QU'ABANDONNÉE.
+    ///
+    /// `launchAsync()` rend une fenêtre qui se possède elle-même et survit donc
+    /// à ce composant — c'est-à-dire au moteur audio qu'elle RÉFÉRENCE. Mesuré
+    /// le 13/09 : quitter l'application avec cette boîte ouverte la fait tomber
+    /// sur une faute de segmentation, dans
+    /// `AudioDeviceSelectorComponent::~AudioDeviceSelectorComponent` →
+    /// `ChangeBroadcaster::removeChangeListener`, le gestionnaire de
+    /// périphériques étant déjà détruit. Un pointeur SÛR la suit, et le
+    /// destructeur la referme AVANT que le moteur ne parte.
+    juce::Component::SafePointer<juce::DialogWindow> fenetreReglagesAudio_;
     vsm::sequencer::ProjectHistory history_;
     /// D154 : CE QUE LA PHOTO DES RÉGLAGES COÛTE, relevé par
     /// `VSM_PHOTO_REGLAGES`. Elle tombe à chaque début de glissé ; l'attendu (d)

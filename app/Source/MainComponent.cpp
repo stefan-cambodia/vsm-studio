@@ -1206,6 +1206,11 @@ MainComponent::~MainComponent() {
     // prochain lancement, signalera un plantage. L'effacer ici est donc la
     // seule chose qui distingue « on a quitté » de « on est mort ».
     if (autosave_) autosave_->endCleanly();
+    // D158 : LA BOÎTE DES RÉGLAGES AUDIO PART LA PREMIÈRE. Elle se possède
+    // elle-même (`launchAsync`) et serait détruite APRÈS ce composant, donc
+    // après le moteur qu'elle référence — mesuré : faute de segmentation dans
+    // le destructeur de `AudioDeviceSelectorComponent`.
+    if (auto* boite = fenetreReglagesAudio_.getComponent()) delete boite;
     // AVANT d'arrêter le moteur : une fois le périphérique fermé, il n'y a plus
     // d'état à écrire.
     saveAudioDeviceState();
@@ -5424,7 +5429,10 @@ void MainComponent::showAudioSettings() {
     options.escapeKeyTriggersCloseButton = true;
     options.useNativeTitleBar = true;
     options.resizable = false;
-    options.launchAsync(); // gère lui-même la durée de vie de la fenêtre
+    // D158 : RETENUE, et non abandonnée. Voir `fenetreReglagesAudio_` : cette
+    // fenêtre référence le gestionnaire de périphériques, et lui survivre la
+    // fait tomber à la fermeture.
+    fenetreReglagesAudio_ = options.launchAsync();
 }
 
 void MainComponent::saveAudioDeviceState() {
