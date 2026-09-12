@@ -115,6 +115,70 @@ _deja_dit: Dict[str, Tuple[float, float]] = {}
 
 TrackState = Tuple[str, Dict[str, float], float, str, List[ExportNote]]
 
+
+def piste_jouante(track: ExportTrack) -> bool:
+    """Cette piste met-elle du son dans le melange par elle-meme ?
+
+    H27 (CDC multipiste § 12.4). Le temoin de coupure etait pose DANS la boucle
+    des alternatives, si bien qu'une piste sans machine suivante -- une piste
+    AUDIO n'a pas de machine, donc pas de suivante -- sortait du verdict tout
+    entier. Mesure de l'epreuve Children, course 3 : deux pistes audio (la voix
+    reportee, tete et choeurs) sont entrees au melange, l'ont degrade de 2,39 %
+    (0,1935 -> 0,1982), et AUCUNE ligne ne l'a dit.
+
+    UN BUS N'EST PAS UNE PISTE JOUANTE : le couper couperait ses membres, dont
+    chacun a deja son propre temoin -- le chiffre compterait deux fois la meme
+    chose et ne designerait rien a couper.
+    """
+    if track.is_group:
+        return False
+    if track.audio_path:
+        return True
+    return bool(track.machine) and bool(track.notes)
+
+
+def _temoin_de_coupure(track: ExportTrack, distance_du_projet) -> float:
+    """LE TEMOIN DE COUPURE, MESURE ET PUBLIE, JAMAIS JOUE.
+
+    Ce que vaut le morceau sans cette piste du tout. Il n'entre pas en
+    concurrence avec les autres, et c'est delibere : une chaine autorisee a
+    supprimer une piste optimiserait la metrique en abandonnant le morceau --
+    elle rendrait un *Sky and Sand* sans basse, qu'aucune oreille n'accepterait.
+    La decision de couper reste humaine ; ce qui ne peut pas rester tu, c'est le
+    CHIFFRE.
+
+    Il ne coute rien a etablir et il manquait cruellement : mesure apres coup
+    (§ 5 decies), la basse publiee de *Sky and Sand* valait 0,2933 quand le
+    morceau SANS elle valait 0,2781. La chaine ajoutait un instrument qui la
+    degradait de 5,5 %, et aucune piece n'etait en mesure de le remarquer, faute
+    de ce repere-la.
+
+    H27 : ICI plutot que dans la boucle des alternatives, pour que les deux
+    chemins -- avec et sans machine suivante -- mesurent la MEME chose.
+    """
+    volume_retenu = float(track.volume)
+    track.volume = 0.0
+    muet = distance_du_projet()
+    track.volume = volume_retenu
+    return muet
+
+
+def _dire_si_meilleur_sans(nom: str, muet: float, reference: float) -> None:
+    """La phrase du journal, ecrite en UN seul endroit (H27).
+
+    Deux chemins l'emettent desormais ; deux copies auraient fini par ne plus
+    dire la meme chose.
+    """
+    if muet >= reference - 1e-6:
+        return
+    chiffres = (round(muet, 4), round(reference, 4))
+    if _deja_dit.get(nom) == chiffres:
+        return
+    _deja_dit[nom] = chiffres
+    print(f"      {nom:8s} : ATTENTION — le morceau est MEILLEUR "
+          f"sans cette piste ({muet:.4f} contre {reference:.4f}). "
+          f"Elle est conservée : couper est une décision humaine.")
+
 # Le meilleur en lice : libellé, distance du MÉLANGE, état à remettre en place
 # si on l'abandonne, distance de PISTE (inconnue pour le réglage courant, qui
 # n'a pas concouru sur la piste) et volumes de toutes les pistes.
@@ -319,9 +383,26 @@ def keep_what_helps_the_mix(
             return float("inf")
         return float(mesurer(rendu))
 
+    # H27 : la distance du projet TELLE QU'IL EST à la fin de la derniere
+    # iteration. Elle sert de reference aux pistes sans alternative, qui n'ont
+    # rien a departager : sans elle, il faudrait un rendu de plus par piste pour
+    # remesurer un chiffre que l'on vient d'etablir.
+    derniere_distance: Optional[float] = None
     for track in tracks:
         propositions = list(alternatives.get(track.name) or ())
         if not propositions:
+            # H27 : PAS DE MACHINE SUIVANTE N'EST PAS PAS DE VERDICT. Une piste
+            # qui met du son dans le melange recoit son temoin de coupure meme
+            # si rien ne lui est propose -- c'est le chiffre, pas le choix, qui
+            # manquait au musicien.
+            if not piste_jouante(track):
+                continue
+            reference = derniere_distance if derniere_distance is not None else distance_du_projet()
+            derniere_distance = reference
+            muet = _temoin_de_coupure(track, distance_du_projet)
+            _dire_si_meilleur_sans(track.name, muet, reference)
+            decisions.append(MixDecision(track.name, "inchangée (aucune machine suivante)",
+                                          reference, [], None, muet))
             continue
 
         etat_courant = (track.machine, dict(track.parameters), float(track.volume),
@@ -363,33 +444,11 @@ def keep_what_helps_the_mix(
         if track.machine != etat_courant[0]:
             track.machine_display_name = ""
 
-        # LE TÉMOIN DE COUPURE, MESURÉ ET PUBLIÉ, JAMAIS JOUÉ.
-        #
-        # Ce que vaut le morceau sans cette piste du tout. Il n'entre pas en
-        # concurrence avec les autres, et c'est délibéré : une chaîne autorisée
-        # à supprimer une piste optimiserait la métrique en abandonnant le
-        # morceau -- elle rendrait un *Sky and Sand* sans basse, qu'aucune
-        # oreille n'accepterait. La décision de couper reste humaine ; ce qui
-        # ne peut pas rester tu, c'est le CHIFFRE.
-        #
-        # Il ne coûte rien à établir et il manquait cruellement : mesuré après
-        # coup (§ 5 decies), la basse publiée de *Sky and Sand* valait 0,2933
-        # quand le morceau SANS elle valait 0,2781. La chaîne ajoutait un
-        # instrument qui la dégradait de 5,5 %, et aucune pièce n'était en
-        # mesure de le remarquer, faute de ce repère-là.
-        volume_retenu = float(track.volume)
-        track.volume = 0.0
-        muet = distance_du_projet()
-        track.volume = volume_retenu
-        if muet < meilleur[1] - 1e-6:
-            chiffres = (round(muet, 4), round(meilleur[1], 4))
-            if _deja_dit.get(track.name) != chiffres:
-                _deja_dit[track.name] = chiffres
-                print(f"      {track.name:8s} : ATTENTION — le morceau est MEILLEUR "
-                      f"sans cette piste ({muet:.4f} contre {meilleur[1]:.4f}). "
-                      f"Elle est conservée : couper est une décision humaine.")
+        muet = _temoin_de_coupure(track, distance_du_projet)
+        _dire_si_meilleur_sans(track.name, muet, meilleur[1])
 
         decisions.append(MixDecision(track.name, meilleur[0], meilleur[1], ecartees,
                                      meilleur[3], muet))
+        derniere_distance = meilleur[1]
 
     return decisions

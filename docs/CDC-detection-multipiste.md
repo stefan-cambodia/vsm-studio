@@ -1360,6 +1360,51 @@ leur critère de réfutation, avant tout travail.**
 > 0,1935 contre 0,1982. **Réfutée si** la phrase ne sort pas, ou sort avec
 > d'autres chiffres que ceux-là.
 
+### 12.5 H27 tenue — le témoin de coupure couvre les pistes qu'aucune machine ne joue (12/09)
+
+**CE QUI A CHANGÉ.** Le témoin de coupure était posé DANS la boucle des
+alternatives (`vsm_mix_verdict.py`, `if not propositions: continue`) : une piste
+sans machine suivante — une piste AUDIO n'a pas de machine, donc pas de
+suivante — sortait du verdict du mélange tout entier. Il est désormais établi
+pour toute **piste jouante** : `piste_jouante()` répond oui à une piste audio et
+à une piste qui a machine ET notes, non à un BUS (le couper couperait ses
+membres, dont chacun a déjà son témoin : le chiffre compterait deux fois la même
+chose et ne désignerait rien à couper). La mesure et la phrase du journal vivent
+maintenant dans deux fonctions uniques, lues par les deux chemins — deux copies
+auraient fini par ne plus dire la même chose.
+
+**CE QUE CELA COÛTE** : un rendu de plus par piste sans alternative. La
+référence, elle, n'est pas remesurée — c'est la distance du projet telle que
+l'itération précédente l'a laissée.
+
+**LES CHIFFRES DE LA COURSE 3, MESURÉS DE BOUT EN BOUT** (projet final rendu par
+`vsm-render`, chaque piste mise à 0 tour à tour, distance v2 contre l'original) :
+
+| rendu | distance v2 |
+|---|---|
+| le projet tel quel | 0,1982 |
+| sans `Voix · tête` | **0,1950** |
+| sans `Voix · chœurs` | **0,1978** |
+| sans les deux | **0,19353157517211156** — la distance publiée de la course 1, au dernier chiffre |
+
+Les deux lignes qui manquaient au journal sont donc, mot pour mot :
+« `Voix · tête` : ATTENTION — le morceau est MEILLEUR sans cette piste (0,1950
+contre 0,1982) » et « `Voix · chœurs` … (0,1978 contre 0,1982) ».
+
+**ET L'ATTENDU DE H27 ÉTAIT IMPRÉCIS SUR DEUX POINTS, que la mesure corrige.**
+Il annonçait « 0,1935 contre 0,1982 » : c'est le chiffre des deux pistes
+coupées ENSEMBLE, alors que le témoin coupe UNE piste à la fois — d'où 0,1950 et
+0,1978. Et ces chiffres sont ceux du projet FINAL, le seul état que le musicien
+ouvre ; la ligne imprimée PENDANT une course se mesure contre l'état du mélange
+à cet instant (0,2103 au verdict de la course 3), ce qui dit le même fait sur une
+autre référence. Que le témoin soit aussi établi sur le projet final est une
+question ouverte, nommée ici et non tranchée.
+
+**CE QUI LE GARDE** : quatre tests (`analyse/tests/test_temoin_de_coupure.py`),
+dont le cas de la course 3 — deux pistes, aucune alternative, le rendu remplacé
+par une fonction, parce que ce qui est mesuré est la DÉCISION de mesurer et non
+le moteur. La suite Python entière est verte (179), ruff et mypy aussi.
+
 ## 5. Critères d'acceptation
 
 ```
