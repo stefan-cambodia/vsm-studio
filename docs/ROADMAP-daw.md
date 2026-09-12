@@ -17882,3 +17882,43 @@ même mouvement : `ROADMAP-interop.md` est soldée (P2 à P10 « Fait », phases
 à 6 terminées), `ROADMAP-apprentissage.md` ne nomme que A5.3, « écoute et
 correction dans le DAW », qui demande une oreille humaine, et le § 8 de
 `CDC-machines-manquantes.md` a toutes ses cases cochées.
+
+### Vérification — les quatre boîtes à rythmes, mesurées à l'échelle de l'utilisateur (12/09/2026)
+
+**Une méprise, dite avant son résultat.** Cherchant un élément non bloqué par
+l'épreuve Children, j'ai pris la table « CE QUI RESTE, ET POURQUOI ON NE LE
+TOUCHE PAS À LA LÉGÈRE » (`vsm.sampler` 11 px, `vsm.tr909` 6 boutons sous 18 px,
+`vsm.perc` 11, `vsm.fmdrums` 16) pour du travail à faire — elle se termine par
+« Nommé, chiffré, non fait ». C'est l'état **AVANT** de D67 : le récapitulatif de
+clôture, trente lignes plus bas, dit « boutons sous 18 px, parc entier : **98 →
+0** » et donne les quatre machines corrigées (11 → 26, 15 → 24, 15 → 26,
+15 → 21). J'ai confondu un tableau historique avec une liste de tâches.
+
+**Ce que la vérification apporte tout de même, et qui est neuf.** Les chiffres
+publiés ont été mesurés à l'échelle d'interface par DÉFAUT. L'utilisateur
+travaille à **150 %** (`uiScale = 1.5`), et personne n'avait mesuré là. Fait
+maintenant, avec le relevé qui existe déjà dans le code — `VSM_MESURE_FACADE`,
+que `MachinePanelComponent::mesurerSiDemande()` écrit à chaque mise en page —
+sur une COPIE des préférences de l'utilisateur (vérifiées intactes par `cmp`),
+fenêtre 1280x742, passes dégénérées (`0x0`, `0x470`) écartées :
+
+| machine | façade | boutons | plus petit | sous 18 px |
+|---|---|---|---|---|
+| `vsm.sampler` | 616x680 | 64 | **26 px** | **0** |
+| `vsm.tr909` | 616x610 | 20 | **39 px** | **0** |
+| `vsm.perc` | 616x610 | 21 | **39 px** | **0** |
+| `vsm.fmdrums` | 616x610 | 27 | **36 px** | **0** |
+
+Aucun bouton sous le plancher, sur les quatre machines, à l'échelle où
+l'utilisateur travaille. Le sampler retombe exactement sur le 26 px publié ; les
+trois autres sont PLUS grands que les chiffres de clôture (24, 26, 21), ce qui
+s'explique : à 150 % la façade occupe 616 px de large contre 471 au défaut.
+
+**Deux enseignements de méthode.** D'abord, un premier balayage a mesuré à
+l'échelle par défaut sans que je m'en aperçoive : le `HOME` de banc n'a
+simplement **aucune clé `uiScale`**, et un banc qui ne copie pas les réglages de
+l'utilisateur ne mesure pas ce que l'utilisateur voit. Ensuite, j'ai failli
+reposer un témoin qui existe déjà — le document dit « le témoin … puis a été
+retiré » d'un témoin ANTÉRIEUR, auquel `mesurerSiDemande()` a succédé. Chercher
+l'outil avant d'en écrire un second, c'est la même règle que D150 (« un script
+jeté après usage n'est pas une garde »), vue de l'autre côté.
