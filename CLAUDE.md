@@ -163,3 +163,10 @@ l'ordre de marche — pas de la documentation d'accompagnement.
   ligne : une phrase repliée par le retour à la ligne rend « 0 occurrence » et
   laisse croire que l'écriture a échoué (12/09, D150). Chercher un fragment
   court, ou recoller les lignes (`tr '\n' ' '`).
+- Un panneau qui PEINT ses lignes (`g.drawText`) est INVISIBLE au relevé de
+  textes, qui descend les composants : la fenêtre d'historique (12/09, D149)
+  puis le volet « Projet ouvert, avec des réserves » (D152) ont tous deux failli
+  faire écrire « la phrase ne s'affiche pas » alors qu'elle s'affichait en grand,
+  au centre de l'écran. Quand `VSM_TEXTES_LISTE` ne trouve rien, REGARDER LA
+  PHOTO avant de conclure — ou ajouter un relevé qui lise la même source que la
+  peinture.

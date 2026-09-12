@@ -17717,3 +17717,48 @@ signale pas**. Si elle se vérifie, l'anomalie s'écrit (A26) : un projet
 reconstruit peut contenir des pistes inertes sans que rien ne le dise d'un coup
 d'œil, et le musicien cherche un son qui ne viendra jamais. Le remède
 appartiendra à la phase suivante ; celle-ci mesure.
+
+**RÉSULTAT (12/09) — L'HYPOTHÈSE EST RÉFUTÉE, ET C'EST LA PHOTO QUI L'A DIT.**
+Binaire de 07:13:41 ; projet d'essai à 11 pistes (10 de la course 1, plus
+« Voix · chœurs » sans machine et sans note, avec sa piste MIDI vide) ; deux
+lancements, français, l'un sans geste et l'autre avec cette piste choisie.
+
+| cas | attendu | mesuré |
+|---|---|---|
+| (a) avertissement pistes/MIDI | aucun | **aucun**, et zéro boîte : l'essai est fidèle |
+| (b) le sélecteur de la piste vide | « (Aucun) » | **« (Aucun) »**, une fois exactement |
+| (c) un compte de notes dans sa ligne | rien | **rien** |
+| (d) le rack, cette piste choisie | « (aucun instrument assigné) » | **présent au second lancement SEULEMENT** — ce qui prouve du même coup que la sélection a pris |
+| (e) le piano roll, cette piste choisie | « 0 note(s) sur la piste » | **NON OBSERVABLE par ce banc** — voir plus bas |
+
+**CE QUE L'APPLICATION FAIT, ET QUE JE N'AVAIS PAS PRÉDIT.** À l'ouverture, un
+volet s'ouvre au centre de la fenêtre, par-dessus tout le reste : « **Projet
+ouvert, avec des réserves** », « 1 réserve à l'ouverture », et en rouge
+« **Piste 11 (Voix · chœurs) : aucun instrument, elle restera silencieuse** »,
+avec « Copier » et « Fermer ». Le ton de perte n'est pas un hasard :
+`MainComponent.cpp` classe la ligne comme telle dès qu'elle contient
+« silencieuse ». **Le musicien est donc averti, nommément, avant même de
+regarder ses pistes.** L'anomalie A26 que l'attendu prévoyait d'ouvrir **ne
+s'ouvre pas** : il n'y a pas de défaut ici.
+
+**DEUX CORRECTIONS QUE JE ME FAIS, ET LEURS RAISONS.**
+
+1. **(e) n'est pas « réfuté », il est non observable par ce banc.** La ligne
+   d'état du piano roll est un relevé de SOURIS : `updateStatusText(mousePos,
+   mouseInside)` n'est appelée que depuis trois gestionnaires de souris
+   (`PianoRollComponent.cpp:1416, 1445, 1450`), jamais à l'ouverture ni au
+   changement de piste. Écrire « le piano roll se tait » aurait été faux. Ce
+   qui est vrai, et qui reste : **le seul compte de notes de toute l'interface
+   exige de survoler le piano roll avec cette piste active.**
+2. **« La phrase n'apparaît dans aucun texte affiché » était sans fondement.**
+   Le volet PEINT ses lignes (`ImportReportComponent::Liste::paint` →
+   `g.drawText`) : le relevé de textes, qui descend les composants, ne peut pas
+   les voir — quoi qu'il affiche. C'est le piège de la fenêtre d'historique de
+   D149, payé une seconde fois en trois heures. Seule la photo pouvait
+   trancher, et elle l'a fait.
+
+**Ce qui demeure vrai de l'attendu** : ni la ligne de piste ni l'arrangement ne
+disent combien de notes porte une piste (cas c, vérifié en listant toutes les
+occurrences de « notes » dans les quatre fichiers). Mais cela ne fait plus une
+anomalie, puisque l'inertie d'une piste est annoncée ailleurs, et mieux : par
+son nom, à l'ouverture, en rouge.
