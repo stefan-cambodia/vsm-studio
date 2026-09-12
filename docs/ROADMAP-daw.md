@@ -17762,3 +17762,46 @@ disent combien de notes porte une piste (cas c, vérifié en listant toutes les
 occurrences de « notes » dans les quatre fichiers). Mais cela ne fait plus une
 anomalie, puisque l'inertie d'une piste est annoncée ailleurs, et mieux : par
 son nom, à l'ouverture, en rouge.
+
+### Phase D153 — une phase ABANDONNÉE avant d'être ouverte, et la vérification qui la remplace (12/09/2026)
+
+**Le soupçon.** La photo de D152 montrait, dans la barre de transport, « Écoute
+A/B : pas d'original ». Or l'écoute A/B est l'étape B2 de l'épreuve Children :
+comparer la reconstruction à l'enregistrement. J'allais en faire une phase.
+
+**Pourquoi elle n'a pas lieu d'être.** Lecture faite,
+`MainComponent::chargerOriginalDuProjet` (7086-7112), appelé à chaque ouverture
+de projet, fait déjà exactement ce qu'il faut, dans cet ordre : `rapport.json`
+→ `provenance.source`, et si ce fichier existe encore il devient la référence
+A/B ; sinon le **canal gauche de `comparaison.wav`** (l'original y est à gauche,
+la reconstruction à droite) ; sinon rien, « un projet ouvert à la main n'a pas
+forcément d'original, et c'est normal ». Le commentaire vise nommément les
+projets « reconstruits en ligne de commande — ceux des campagnes » (D9.4).
+
+**Mon soupçon venait de mon propre projet d'essai.** Celui de D152 ne contenait
+ni `rapport.json` ni `comparaison.wav` — je n'avais copié que `project.json`,
+`instruments/`, `midi/` et `samples/`. « Pas d'original » y était donc la BONNE
+réponse, et ne disait rien du cas réel. Un banc amputé ne réfute rien.
+
+**La vérification qui la remplace** (attendu écrit avant : le bouton nommera
+l'écoute au lieu de dire « pas d'original »). Sur le VRAI dossier de la course 1
+de l'épreuve, ouvert depuis une copie dont les deux gros fichiers sont des liens
+symboliques — pour ne toucher à aucune sortie :
+
+| relevé | mesuré |
+|---|---|
+| bouton d'écoute | **« Écoute : reconstruction »** |
+| son infobulle | « Écoute A/B : reconstruction, les deux, original (touche R) » |
+| ligne d'ouverture | « 5 140 note(s) signalée(s) comme douteuses sur 7 414 transcrite(s) » |
+| sorties de l'épreuve | `rapport.json` **inchangé** (sha256 identique avant/après) |
+| préférences de l'utilisateur | intactes par `cmp` |
+
+L'original de la provenance existe toujours
+(`…/A. Robert Miles - Children.mp3`, 445 095 octets). **L'étape B2 est donc
+vérifiée d'avance** : ouvrir un dossier de course charge l'enregistrement tout
+seul, et la touche R fait basculer reconstruction / les deux / original.
+
+**Ce que cette phase laisse comme leçon** : un soupçon né d'un banc doit
+d'abord être vérifié CONTRE LE BANC. Trois heures plus tôt (D152), une photo
+avait déjà corrigé une conclusion tirée d'un relevé incomplet ; ici c'est le
+projet d'essai lui-même qui était incomplet, et le code qui l'a dit.
