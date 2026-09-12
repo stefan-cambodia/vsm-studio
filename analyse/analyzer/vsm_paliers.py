@@ -209,3 +209,91 @@ def voix_par_paliers(notes, audio: np.ndarray, sample_rate: int):
     for groupe in groupes:
         groupe.sort(key=lambda n: float(n.start))
     return [g for g in groupes if g]
+
+
+def voix_par_paliers_et_registres(notes, audio: np.ndarray, sample_rate: int,
+                                  maximum: int = 4):
+    """H31 : la HAUTEUR a l'interieur de chaque palier, puis l'APPARIEMENT.
+
+    POURQUOI LES DEUX DIMENSIONS, MESURE A L'APPUI. Couper par la hauteur seule
+    rend quatre voix qui jouent 68 a 94 % du morceau (§ 12.11) ; couper par le
+    temps seul rend quatre SECTIONS qui couvrent l'ambitus entier (§ 12.12).
+    Aucune ne suffit, parce qu'une partie est precisement ce qui a UNE hauteur
+    ET UNE presence : un registre qui apparait, dure, et disparait.
+
+    COMMENT. Chaque palier — une periode ou la texture est stable — est decoupe
+    par registres : la, les registres sont ceux des parties qui jouent ALORS, et
+    non une moyenne de tout le morceau. Les sous-voix de tous les paliers sont
+    ensuite APPARIEES par la proximite de leur hauteur mediane : une partie est
+    la chaine de ses apparitions.
+
+    CE QUE CELA NE SAIT PAS FAIRE, ET QUI EST MESURE : separer deux parties qui
+    partagent le MEME registre AU MEME MOMENT. C'est le cas de `other` sur
+    *Children*, et le § 12.13 en porte les chiffres — trois voix d'ambitus 24, 17
+    et **43** demi-tons, de support 94, 63 et 86 %. Le critere de H31 (ambitus
+    sous 30) tombe sur la troisieme, et le decoupage ne vaut pas mieux que celui
+    par registres seuls.
+
+    CETTE FONCTION N'EST DONC PAS APPELEE PAR LA CHAINE. Elle est gardee, avec
+    ses mesures, parce qu'un resultat negatif se publie : sur ce disque les
+    quatre parties se recouvrent DANS LES DEUX DIMENSIONS, et aucun decoupage au
+    niveau des NOTES ne peut les separer. Ce qui le pourrait est en amont — une
+    meilleure separation de sources, chantier C1 de l'INDEX.
+    """
+    from .vsm_reconstruct import separer_en_voix
+
+    fenetres, medians = timbres_et_medians(audio, sample_rate)
+    if len(medians) < 2 or maximum <= 1:
+        return [list(notes)]
+
+    par_fenetre = {}
+    for index, profil in fenetres:
+        par_fenetre[index] = int(np.argmin([float(np.abs(profil - m).sum()) for m in medians]))
+
+    # 1) les notes, rangees par palier (la fenetre ou elles COMMENCENT)
+    segments: List[List] = [[] for _ in medians]
+    for note in notes:
+        index = int(float(note.start) // FENETRE_SECONDES)
+        timbre = par_fenetre.get(index)
+        if timbre is None:
+            voisines = sorted(par_fenetre, key=lambda k: abs(k - index))
+            timbre = par_fenetre[voisines[0]] if voisines else 0
+        segments[timbre].append(note)
+
+    # 2) la hauteur A L'INTERIEUR de chaque palier
+    sous_voix: List[Tuple[float, List]] = []
+    for segment in segments:
+        if len(segment) < 2:
+            if segment:
+                sous_voix.append((float(segment[0].note), list(segment)))
+            continue
+        for groupe in separer_en_voix(segment, maximum, justifie=True):
+            if groupe:
+                mediane = float(np.median([float(n.note) for n in groupe]))
+                sous_voix.append((mediane, list(groupe)))
+    if not sous_voix:
+        return [list(notes)]
+
+    # 3) L'APPARIEMENT : les sous-voix se rassemblent par proximite de hauteur.
+    #    Le nombre de parties est celui du palier le plus riche — il n'est pas
+    #    impose : un morceau ou chaque palier porte deux registres n'en aura pas
+    #    quatre parce qu'il y a quatre paliers.
+    sous_voix.sort(key=lambda mv: mv[0])
+    medianes = np.array([m for m, _ in sous_voix], dtype=np.float64)
+    # Regroupement par SEUIL plutot que par k fixe : deux sous-voix appartiennent
+    # a la meme partie si leurs medianes sont a moins d'une octave. Un seuil dit
+    # ce qu'il fait ; un k impose le nombre de parties avant de les avoir vues.
+    parties: List[List] = []
+    courante: List = list(sous_voix[0][1])
+    ancre = medianes[0]
+    for (mediane, groupe) in sous_voix[1:]:
+        if mediane - ancre <= 12.0:
+            courante.extend(groupe)
+        else:
+            parties.append(courante)
+            courante = list(groupe)
+            ancre = mediane
+    parties.append(courante)
+    for partie in parties:
+        partie.sort(key=lambda n: float(n.start))
+    return [p for p in parties if p]

@@ -1731,6 +1731,53 @@ hauteur ET UNE présence : un registre qui apparaît, dure, et disparaît.
 > les distingue ; il y faudrait une séparation de sources, c'est-à-dire le
 > chantier C1.
 
+### 12.13 H31 — les deux dimensions ensemble ne suffisent pas non plus, et B9 se conclut (12/09)
+
+**LA MESURE**, sur `other` de *Children*, les trois découpages côte à côte :
+
+| découpage | voix | ambitus (demi-tons) | support réel |
+|---|---|---|---|
+| par REGISTRES seuls (§ 12.11) | 4 | 24, 10, 12, 12 | 77, 89, 68, 94 % |
+| par PALIERS seuls (§ 12.12) | 4 | 48, 67, 48, 60 | 15, 55, 12, 18 % |
+| **H31 : paliers PUIS registres, appariés** | **3** | **24, 17, 43** | **94, 63, 86 %** |
+
+**LE CRITÈRE TOMBE SUR LA TROISIÈME VOIX** : 43 demi-tons, là où l'attendu
+demandait moins de 30. Et le découpage combiné ne fait pas mieux que celui par
+registres seuls — il fait moins de voix, pour des ambitus comparables.
+
+**ET LE SECOND VOLET DE MON CRITÈRE ÉTAIT MAL CHOISI, pour la deuxième fois de
+la journée.** J'attendais « un support nettement sous 100 % ». Le § 12.1, écrit
+avant toute mesure, dit pourtant ce que les vraies parties font : la nappe synthé
+joue de 0 à ~370 s (81 % du morceau), le piano de 28 à ~370 s (75 %), les cordes
+de 57 à ~370 s (69 %). **Les parties de ce disque jouent presque tout du temps** :
+le support ne pouvait pas les distinguer, et un critère qui contredit la vérité
+écrite trois cents lignes plus haut ne mesure rien. Comme le seuil de 60 % du
+§ 12.10, il est remplacé par ce qui répond — l'ambitus — et l'erreur reste écrite.
+
+**CE QUE QUATRE MESURES DE SUITE ÉTABLISSENT, ET C'EST LA CONCLUSION DE B9.**
+
+1. **La DÉTECTION marche.** Le compte de timbres installés sépare proprement ce
+   que la dispersion confondait : 4 pour `other`, 3 pour `bass`, 1 pour `piano`,
+   **0 pour les deux stems de fuite** (§ 12.9). La porte du fourre-tout peut donc
+   voir ce que la polyphonie ne voit pas, et c'est acquis.
+2. **Le DÉCOUPAGE ne marche pas, et il ne peut pas.** Par la hauteur, les voix
+   jouent partout ; par le temps, elles contiennent tout ; par les deux, l'une
+   d'elles reprend l'ambitus de la moitié du stem. La raison est dans le
+   matériau : sur ce disque, les quatre parties d'`other` se recouvrent **dans
+   les deux dimensions à la fois** — la nappe, les cordes et le lead partagent le
+   médium pendant la même moitié du morceau.
+3. **Donc le remède n'est pas dans le découpage des NOTES.** Il est en amont, là
+   où la composition se perd : la séparation de sources, qui verse le piano dans
+   `other` dès qu'il n'est plus à nu (§ 12.4). C'est le chantier **C1** de
+   l'INDEX, que celui-ci nomme déjà « le vrai plafond du projet ».
+
+**CE QUI RESTE DU CHANTIER, ET QUI EST GARDÉ.** `analyse/analyzer/vsm_paliers.py`
+et ses huit tests : le compte de timbres installés (une DÉTECTION mesurée, que la
+porte `--porte-paliers` peut armer) et les deux découpeurs, conservés avec leurs
+chiffres et la phrase qui dit pourquoi la chaîne ne les appelle pas. Un résultat
+négatif se publie — c'est la règle qui a valu à la flûte de rester au dépôt sans
+être compilée.
+
 ## 5. Critères d'acceptation
 
 ```
