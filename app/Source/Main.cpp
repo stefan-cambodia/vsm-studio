@@ -1,5 +1,7 @@
 #include <JuceHeader.h>
+#include <algorithm>
 #include <cstdlib>
+#include <vector>
 #include "MainComponent.h"
 #include "vsm/audio/plugin/BuiltInPlugins.h"
 #include "ui/UiScale.h"
@@ -32,6 +34,71 @@
 /// « Affichage ▸ Taille de l'interface ».
 inline constexpr int kLargeurMinimale = 900;
 inline constexpr int kHauteurMinimale = 660;
+
+namespace {
+/// D163 : CHRONOMÉTRER UN DESSIN, par le chemin que le système emprunte.
+///
+/// POURQUOI IL A FALLU L'ÉCRIRE. `VSM_CAPTURE` dessine UNE fois et écrit un PNG :
+/// cette unique passe paye l'allocation de l'image, le premier remplissage des
+/// caches de police et de glyphes, et le dessin lui-même, sans les distinguer.
+/// Un chiffre de réactivité demande le contraire -- la même surface repeinte N
+/// fois dans une image allouée une seule fois, et la MÉDIANE publiée avec son
+/// minimum et son maximum.
+///
+/// `paintEntireComponent` est exactement ce que JUCE appelle quand le système
+/// demande une image : rien n'est simulé ici, et c'est la seule raison pour
+/// laquelle le chiffre veut dire quelque chose.
+void chronometrerPeinture(juce::Component* cible, const juce::String& nom, int passes) {
+    if (cible == nullptr || cible->getWidth() <= 0 || cible->getHeight() <= 0) return;
+    juce::Image image(juce::Image::ARGB, cible->getWidth(), cible->getHeight(), true);
+    std::vector<double> millisecondes;
+    millisecondes.reserve(static_cast<size_t>(passes));
+    for (int i = 0; i < passes; ++i) {
+        const double depart = juce::Time::getMillisecondCounterHiRes();
+        {
+            juce::Graphics g(image);
+            cible->paintEntireComponent(g, true);
+        }
+        millisecondes.push_back(juce::Time::getMillisecondCounterHiRes() - depart);
+    }
+    std::vector<double> triees = millisecondes;
+    std::sort(triees.begin(), triees.end());
+    const double mediane = triees[triees.size() / 2];
+    std::fputs(("VSM_PEINTURE : " + nom.toStdString() + " " + std::to_string(cible->getWidth()) + "x"
+                + std::to_string(cible->getHeight()) + " : m\u00e9diane "
+                + juce::String(mediane, 2).toStdString() + " ms (min "
+                + juce::String(triees.front(), 2).toStdString() + ", max "
+                + juce::String(triees.back(), 2).toStdString() + ", 1re passe "
+                + juce::String(millisecondes.front(), 2).toStdString() + ") sur "
+                + std::to_string(passes) + " passes\n").c_str(), stderr);
+}
+
+/// La fenêtre socle PUIS chaque fenêtre flottante visible -- même parcours que
+/// `VSM_CAPTURE_PANNEAUX` (D55.2), pour que ce qui est chronométré soit ce que
+/// la photo montre.
+void chronometrerToutesLesPeintures(juce::Component* socle, int passes) {
+    // `juce::String(const char*)` lit ses octets en LATIN-1 (voir ui/Langue.h) :
+    // le premier essai a écrit « fenÃªtre » au journal. Le nom passe donc par
+    // `fromUTF8`, comme tout texte accentué de ce dépôt.
+    chronometrerPeinture(socle, juce::String::fromUTF8("fen\u00eatre"), passes);
+    for (int i = 0; i < juce::TopLevelWindow::getNumTopLevelWindows(); ++i) {
+        auto* fenetre = juce::TopLevelWindow::getTopLevelWindow(i);
+        if (fenetre == nullptr || !fenetre->isVisible()) continue;
+        juce::Component* contenu = fenetre;
+        if (auto* doc = dynamic_cast<juce::DocumentWindow*>(fenetre))
+            if (auto* c = doc->getContentComponent()) contenu = c;
+        if (contenu == socle) continue;
+        chronometrerPeinture(contenu, fenetre->getName(), passes);
+    }
+}
+
+/// Le nombre de passes demandé, et le délai d'attente, lus une seule fois.
+int passesDePeinture() {
+    const char* peinture = std::getenv("VSM_PEINTURE");
+    if (peinture == nullptr || *peinture == 0 || *peinture == '0') return 0;
+    return juce::jmax(3, juce::String(peinture).getIntValue());
+}
+} // namespace
 
 class VintageSynthMidiStudioApplication : public juce::JUCEApplication {
 public:
@@ -481,6 +548,25 @@ public:
                                         + "\n").c_str(), stderr);
                         }
                     }
+                    // D163 : VSM_PEINTURE=N -- le chronométrage des dessins, ICI
+                    // et pas dans un bloc à part : le quit de l'autoportrait
+                    // tombe à la même échéance, et un second minuteur posé
+                    // après lui ne se déclencherait jamais.
+                    if (const int passes = passesDePeinture(); passes > 0)
+                        if (auto* c = getContentComponent())
+                            chronometrerToutesLesPeintures(c, passes);
+                    juce::JUCEApplication::getInstance()->systemRequestedQuit();
+                });
+            }
+            // D163 : VSM_PEINTURE SANS autoportrait -- son propre minuteur, le
+            // même délai, et c'est lui qui ferme l'application.
+            else if (const int passes = passesDePeinture(); passes > 0) {
+                int delai = 2000;
+                if (const char* d = std::getenv("VSM_DELAI"); d != nullptr && *d)
+                    delai = juce::jmax(500, juce::String(d).getIntValue());
+                juce::Timer::callAfterDelay(delai, [this, passes] {
+                    if (auto* c = getContentComponent())
+                        chronometrerToutesLesPeintures(c, passes);
                     juce::JUCEApplication::getInstance()->systemRequestedQuit();
                 });
             }

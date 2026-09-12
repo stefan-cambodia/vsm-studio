@@ -18822,3 +18822,102 @@ effet à la relecture (le deuxième enregistrement est identique au premier).
 qu'on fait ne se perd pas* — est **tenu sur le cas le plus exigeant dont le dépôt
 dispose**, et il n'avait jamais été vérifié à l'échelle d'un projet entier : A10
 (D76) avait mesuré l'enregistrement, jamais l'aller-retour.
+
+### D163 (attendus) — le trente-neuvième audit : combien de temps pour DESSINER un projet de neuf mille notes ? (13/09/2026)
+
+**POURQUOI CE CHIFFRE, ET POURQUOI IL MANQUE.** D161 a mesuré le temps
+d'OUVERTURE — 0,26 s à vide, 2,44 s pour douze pistes. Mais un studio ne se juge
+pas à son démarrage : il se juge au moment où l'on fait défiler une piste de sept
+mille notes et où l'image doit suivre la main. Ce temps-là n'est écrit nulle part,
+et aucun des trente-huit audits ne l'a relevé. Cubase et Live redessinent leur
+arrangement à la fréquence de l'écran ; un panneau qui met 80 ms à se peindre
+donne une interface qui « accroche » sans que rien ne plante — exactement le mode
+de défaillance silencieuse que ce projet traque.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** Sur `children-c3-plafond`
+(12 pistes, 9 224 notes, la piste la plus dense en portant 3 651, 452 s de
+matériau), à l'échelle d'interface par défaut (150 %) :
+
+1. **La fenêtre entière se repeint en moins de 33 ms** (30 images par seconde —
+   le seuil au-dessous duquel un défilement reste lisible).
+2. **Chaque panneau pris seul se repeint en moins de 16 ms** (60 images par
+   seconde), piano roll de la piste la plus dense compris.
+
+**Réfuté si l'un des deux dépasse**, et le chiffre sera publié tel quel, panneau
+par panneau — y compris si tout va bien, pour que la prochaine fois qu'on ajoute
+un dessin on sache à quoi le comparer.
+
+**L'INSTRUMENT, ET POURQUOI IL FAUT EN ÉCRIRE UN.** Aucun banc existant ne sait
+chronométrer un dessin : `VSM_CAPTURE` en fait UN, une fois, et écrit un PNG —
+une mesure unique mélange l'allocation de l'image, le premier remplissage des
+caches de police et le dessin lui-même. `VSM_PEINTURE=N` (D163) répète N fois
+`paintEntireComponent` dans une image allouée UNE SEULE FOIS, sur la fenêtre
+socle puis sur chaque fenêtre flottante visible, et publie la **médiane** avec son
+minimum et son maximum : c'est le MÊME code que celui que le système appelle —
+aucune simulation —, et la médiane de N passes écarte le premier dessin, qui paye
+les caches.
+
+### Phase D163 — les DEUX attendus sont RÉFUTÉS : 47 ms pour dessiner un projet ajusté à la fenêtre (13/09/2026)
+
+**LES CHIFFRES, médiane de 15 passes, `children-c3-plafond` ouvert, la piste la
+plus dense (3 651 notes) choisie, échelle d'interface 150 %.**
+
+| cas | attendu | **mesuré** |
+|---|---|---|
+| fenêtre entière, zoom d'ouverture | < 33 ms | **18,93 ms** ✔ |
+| fenêtre entière, **tout ajusté à la fenêtre (Ctrl+0)** | < 33 ms | **46,86 ms** ✘ |
+| vue arrangement seule, ajustée | < 33 ms | **30,49 ms** (juste sous) |
+| chaque panneau, zoom d'ouverture | < 16 ms | max **5,36 ms** (le mixeur) ✔ |
+| chaque panneau, **ajusté** | < 16 ms | **30,98 ms** (le piano roll) ✘ |
+
+**LE TÉMOIN QUI DIT CE QUE LE PROJET COÛTE.** La même fenêtre, même code, même
+disposition, **projet vide** : **10,09 ms**. Les douze pistes et leurs 9 224 notes
+en ajoutent donc 8,8 ms au zoom d'ouverture — et 36,8 ms une fois ajustées.
+
+**L'A/B QUI DÉSIGNE LE COUPABLE, UNE SEULE VARIABLE.** En disposition flottante,
+chaque panneau est chronométré à part ; la seule différence entre les deux
+colonnes est la frappe `Ctrl+0` :
+
+| panneau | sans Ctrl+0 | avec Ctrl+0 |
+|---|---|---|
+| fenêtre socle (barre de transport) | 2,28 ms | 2,27 ms |
+| Pistes | 0,91 ms | 0,90 ms |
+| **Piano Roll** (560 × 380) | **2,56 ms** | **30,98 ms** |
+| Synth Rack | 1,97 ms | 1,97 ms |
+| Mixer (1260 × 300) | 5,36 ms | 5,49 ms |
+
+**Tout le surcoût est dans le piano roll, et il est multiplié par douze.** Les
+quatre autres panneaux ne bougent pas d'un dixième de milliseconde : ce n'est pas
+la charge de la machine, c'est un dessin.
+
+**CE QU'IL DESSINE, ET POURQUOI C'EST CHER.** Ajusté à la fenêtre, le matériau
+fait 452 s dans 560 px : une note de croche mesure **moins d'un pixel** de large,
+et le code la dessine à la largeur plancher de 2 px. Pour chacune des
+3 651 notes : un `fillRoundedRectangle` de rayon 2,5 px, un
+`drawRoundedRectangle` de contour — et, pour les **5 140 notes sur 7 414 que le
+rapport signale comme douteuses** (69 % de ce morceau), un second liseré arrondi
+plus une barre verticale. Un rectangle de 2 px de large avec des coins de 2,5 px
+de rayon est une figure DÉGÉNÉRÉE : les coins consomment toute la forme, le
+rasteriseur paye un chemin courbe complet, et l'œil reçoit un pâté de deux
+pixels. **On paye une géométrie qu'on ne peut pas voir.**
+
+**CE QUE L'AUDIT NE MET PAS EN CAUSE.** L'élagage existe et fonctionne
+(`drawNotes` saute toute note hors du rectangle visible, en x comme en y) : le
+coût n'est pas un balayage de notes invisibles, ce sont bien les notes visibles.
+Et au zoom d'ouverture, tout tient largement : **le défaut n'apparaît qu'au geste
+« Ajuster à la fenêtre »**, qui est précisément celui qu'on fait pour voir son
+morceau en entier.
+
+**L'ANOMALIE EST OUVERTE SOUS A27** ; le remède est D164, et il est borné
+d'avance : sous un seuil de largeur, un rectangle plein remplace la figure
+arrondie et son contour, les notes larges gardant exactement le chemin
+d'aujourd'hui (donc la même image, au pixel).
+
+**ET UNE RECTIFICATION DE BANC, dite plutôt que tue.** Le 12/09, un audit des
+statistiques de projet a été abandonné en écrivant que la boîte modale « Projet
+ouvert, avec des réserves » empêchait `VSM_MENU` d'agir. **C'est faux, vérifié
+aujourd'hui** : sur ce même projet, qui s'ouvre avec sa réserve (5 140 notes
+douteuses), `VSM_MENU=Statistiques du projet` s'exécute et publie ses dix-sept
+lignes. « Projet ouvert, avec des réserves » est un VOLET, pas une modale — D152
+le disait déjà, et je l'avais oublié en le relisant. Aucune limite de banc à
+inscrire.
