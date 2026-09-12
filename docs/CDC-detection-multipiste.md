@@ -1778,6 +1778,50 @@ chiffres et la phrase qui dit pourquoi la chaîne ne les appelle pas. Un résult
 négatif se publie — c'est la règle qui a valu à la flûte de rester au dépôt sans
 être compilée.
 
+## 13. « B4 Wuz Then » — le morceau demandé par l'utilisateur, reconstruit de bout en bout (13/09/2026)
+
+**LA DEMANDE.** « analyse et reconstruit ce morceau à la perfection »,
+`~/Téléchargements/B4 Wuz Then.mp4`. Course lancée à 02:08, terminée à 05:30 —
+**12 110 s, code 0** —, avec `--parite`, `--reverb-melange`, `--garder-stems` et
+six rendus parallèles, sur le moteur de `build/tools/vsm-render` figé au départ.
+
+**LE RÉSULTAT.**
+
+| | |
+|---|---|
+| **distance globale** | **0,1688** (métrique v2, budget 20 itérations ; l'original au silence vaut 1,0) |
+| pistes | **8** — 7 jouées + le bus de groupe « Batterie » |
+| machines | `vsm.clavinet` × 2 (bass, guitar), `vsm.multisample` × 1 (other, patch *FR3-Accordion*), `vsm.tr808` × 4 (hihat, kick+kick2, snare, percussion) |
+| notes | 6 252, dont **2 600 signalées douteuses sur 3 568** transcrites |
+| durée du matériau | 351,28 s |
+| écoute A/B | `reconstruction/travail/b4wuzthen/comparaison.wav` (gauche = original, droite = reconstruction) |
+
+**CE QUE LA CHAÎNE A REFUSÉ, ET C'EST AUSSI UN RÉSULTAT.**
+
+- **La réverbération de mélange a été cherchée et REFUSÉE** : le témoin sans
+  réverbération vaut **0,16880**, et le meilleur point de la grille **0,16920**
+  (+0,24 %). L'option était demandée ; la mesure a dit non, et le rapport porte
+  la grille entière.
+- **Deux stems n'ont pas été reconstruits** : `piano` (0,0 % de l'énergie) et
+  `vocals` (0,1 %), sous le seuil de 0,5 % — des résidus de séparation, pas des
+  parties. `--seuil-stem 0` les forcerait.
+- **Deux témoins de coupure sont publiés** : le morceau mesuré est **meilleur
+  SANS** `Batterie · hihat` (0,1679 contre 0,1889) et **sans**
+  `Batterie · percussion` (0,1691 contre 0,1889). Les deux pistes sont
+  **conservées** : couper reste une décision humaine, et c'est au musicien de
+  trancher à l'oreille.
+- Un changement de machine au second verdict : `guitar` passe de `vsm.sitar` à
+  `vsm.clavinet` (0,1688 contre 0,1691).
+
+**LE PROJET S'OUVRE DANS LE DAW, vérifié plutôt que supposé.** Ouvert par
+`VSM_PROJET`, il rend **une seule réserve** — les 2 600 notes douteuses, qui sont
+une information, pas un défaut —, ses huit tranches sont au mixeur, la façade du
+Clavinet est au rack, et « Statistiques du projet » confirme 8 pistes, 6 252
+notes, 7 clips, 3 machines, 351,28 s. *La première ouverture en avait rendu DEUX,
+dont « profil FR3-Accordion introuvable » : c'était le brouillon de banc
+(`HOME` neuf) qui n'a pas les profils installés de l'utilisateur, pas le projet.
+Vérifié en listant `~/.local/share/vsm-studio/profils`, où le profil est bien là.*
+
 ## 5. Critères d'acceptation
 
 ```
