@@ -1677,6 +1677,60 @@ rien : celui-ci est remplacé par ceux-là, et l'erreur reste écrite.
 > s'en trouve dégradée de plus de 10 % — la parité prime sur la ressemblance
 > (§ 0), mais pas à ce prix-là.
 
+### 12.12 H30 — le découpeur de temps tient son critère et rate son but (12/09)
+
+**LA MESURE**, sur `other` de *Children* (3 651 notes, 4 timbres installés,
+456 s). « Support réel » = la part du morceau où la voix joue VRAIMENT, comptée
+par fenêtres de 5 s occupées — et non de la première à la dernière note, qui
+compterait les silences comme du jeu :
+
+| découpage | voix | notes | ambitus | support réel |
+|---|---|---|---|---|
+| **par registres** (la hauteur) | 1 | 1 032 | MIDI 72-96 | 77 % |
+| | 2 | 1 300 | MIDI 60-70 | 89 % |
+| | 3 | 501 | MIDI 46-58 | 68 % |
+| | 4 | 818 | MIDI 29-41 | 94 % |
+| **par paliers** (le temps) | 1 | 156 | MIDI 29-77 | **15 %** |
+| | 2 | 2 447 | MIDI 29-96 | **55 %** |
+| | 3 | 345 | MIDI 29-77 | **12 %** |
+| | 4 | 703 | MIDI 29-89 | **18 %** |
+
+**LE CRITÈRE DE H30 EST TENU.** Les voix se concentrent : 15, 55, 12 et 18 % de
+support, contre 68 à 94 % pour le découpage par registres. La première tient
+l'intro (1 → 75 s), la troisième un pont (225 → 280 s). La carte des entrées et
+des sorties est donc exacte, et le découpage la suit.
+
+**ET LE BUT EST MANQUÉ, par un chiffre que le critère ne regardait pas :
+L'AMBITUS.** Chacune des quatre voix temporelles couvre **MIDI 29 à 96**, soit
+l'ambitus entier du stem. C'est mécanique et c'était prévisible : une voix
+temporelle contient TOUT ce qui joue pendant sa période — la nappe, les cordes et
+le lead ensemble. Ce ne sont pas des PARTIES, ce sont des **SECTIONS**. Leur
+donner une machine chacune ferait CHANGER DE MACHINE un même instrument d'une
+section à l'autre : un piano qui devient un sitar au pont. C'est pire que le
+fourre-tout qu'on soigne, et la chaîne n'appellera donc pas ce découpeur.
+
+**CE QUE DEUX RÉFUTATIONS DE SUITE ONT APPRIS, ET QUI VAUT MIEUX QU'UNE
+CONFIRMATION.** Couper par la HAUTEUR donne quatre tranches qui jouent partout ;
+couper par le TEMPS donne quatre sections qui contiennent tout. Aucune des deux
+dimensions ne suffit **seule**, parce qu'une partie est précisément ce qui a UNE
+hauteur ET UNE présence : un registre qui apparaît, dure, et disparaît.
+
+> **H31 — DÉCOUPER DANS LES DEUX DIMENSIONS, PUIS APPARIER (écrite ici, non
+> mesurée).** Découper par la hauteur À L'INTÉRIEUR de chaque palier — là où la
+> texture est stable, les registres sont ceux des parties qui jouent ALORS —,
+> puis APPARIER les voix d'un palier à l'autre par la proximité de leur registre
+> et de leur timbre, pour en faire des parties continues. **Attendu** : sur
+> `other` de *Children*, des voix dont l'ambitus reste sous 30 demi-tons (comme
+> les registres, qui rendent 9 à 28) ET dont le support est nettement sous 100 %
+> (comme les paliers), avec un compte de parties tenues seules qui passe de 3 à
+> au moins 5 (§ 12.4). **Réfutée si** les voix retombent sur l'un des deux
+> défauts déjà mesurés : ambitus de tout le stem, ou support de tout le morceau.
+>
+> Ce que ni H30 ni H31 ne sauront faire, et qui est dit : séparer deux parties
+> qui partagent le MÊME registre AU MÊME MOMENT. Aucune des deux dimensions ne
+> les distingue ; il y faudrait une séparation de sources, c'est-à-dire le
+> chantier C1.
+
 ## 5. Critères d'acceptation
 
 ```

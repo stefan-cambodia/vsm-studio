@@ -93,3 +93,44 @@ def paliers_la_plainte_nomme_ou_les_parties_entrent():
     phrase = plainte_de_paliers(3, [(0.0, 40.0), (100.0, 30.0), (200.0, 25.0)])
     assert_true("3 timbres" in phrase, "le compte est dit")
     assert_true("0-40 s" in phrase and "100-130 s" in phrase, "les plages sont nommées")
+
+
+@test
+def paliers_le_decoupeur_de_temps_concentre_les_voix():
+    """H30 : chaque voix se concentre dans SA periode, au lieu de couvrir tout.
+
+    Deux timbres qui se succedent : le decoupeur doit rendre deux voix, dont
+    chacune ne joue que pendant son palier. C'est ce que le decoupage par
+    REGISTRES ne sait pas faire — mesure du § 12.11 : ses voix couvrent 68 a
+    94 % du morceau.
+    """
+    from analyzer.vsm_paliers import voix_par_paliers
+
+    class Note:
+        def __init__(self, note, start):
+            self.note, self.start, self.duration, self.velocity = note, start, 0.4, 100
+
+    audio = np.concatenate([_ton(150.0, 40.0), _ton(3000.0, 40.0)])
+    notes = ([Note(40, t) for t in np.arange(1.0, 39.0, 2.0)]
+             + [Note(80, t) for t in np.arange(41.0, 79.0, 2.0)])
+    voix = voix_par_paliers(notes, audio, TAUX)
+    assert_equal(len(voix), 2, "deux voix, une par timbre installé")
+    for groupe in voix:
+        debuts = [n.start for n in groupe]
+        assert_true(max(debuts) - min(debuts) < 45.0,
+                    "chaque voix tient dans sa période, pas sur tout le morceau")
+
+
+@test
+def paliers_un_seul_timbre_ne_se_decoupe_pas():
+    """Sans deux timbres installés, le découpeur rend le stem tel quel — il ne
+    fabrique pas de voix là où rien ne s'est installé."""
+    from analyzer.vsm_paliers import voix_par_paliers
+
+    class Note:
+        def __init__(self, note, start):
+            self.note, self.start, self.duration, self.velocity = note, start, 0.4, 100
+
+    audio = _ton(220.0, 60.0)
+    notes = [Note(60, t) for t in np.arange(1.0, 59.0, 2.0)]
+    assert_equal(len(voix_par_paliers(notes, audio, TAUX)), 1, "une seule voix")

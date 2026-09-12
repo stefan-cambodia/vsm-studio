@@ -112,3 +112,100 @@ def plainte_de_paliers(nombre: int, plages: List[Tuple[float, float]]) -> str:
             f"y entrent et en sortent ({ou}"
             f"{', …' if len(plages) > 5 else ''}). La polyphonie ne les voit pas : "
             f"deux parties qui ne sonnent pas ensemble ne la font pas monter.")
+
+
+def timbres_et_medians(audio: np.ndarray, sample_rate: int):
+    """Les timbres installes ET leurs profils medians, pour classer ensuite.
+
+    Meme calcul que `timbres_installes`, dont c'est la version qui rend de quoi
+    travailler. Les deux partagent leur code pour qu'un seuil ne puisse pas
+    diverger entre la porte et le decoupeur.
+    """
+    n = int(FENETRE_SECONDES * sample_rate)
+    if n <= 0 or audio.size < n:
+        return [], []
+    fenetres: List[Tuple[int, np.ndarray]] = []
+    for k, debut in enumerate(range(0, audio.size - n + 1, n)):
+        bloc = audio[debut:debut + n]
+        rms = float(np.sqrt(np.mean(np.square(bloc, dtype=np.float64))))
+        if rms <= 0.0 or 20.0 * np.log10(rms) < PLANCHER_DB:
+            continue
+        fenetres.append((k, profil_de_bandes(bloc, sample_rate)))
+    if not fenetres:
+        return [], []
+    groupes: List[List[Tuple[int, np.ndarray]]] = []
+    courant = [fenetres[0]]
+    for precedent, suivant in zip(fenetres, fenetres[1:], strict=False):
+        if (suivant[0] != precedent[0] + 1
+                or float(np.abs(suivant[1] - precedent[1]).sum()) >= SEUIL_L1):
+            groupes.append(courant)
+            courant = []
+        courant.append(suivant)
+    groupes.append(courant)
+    medians: List[np.ndarray] = []
+    for groupe in groupes:
+        if len(groupe) < DUREE_MINIMALE:
+            continue
+        median = np.median(np.vstack([p for _, p in groupe]), axis=0)
+        if all(float(np.abs(median - d).sum()) >= SEUIL_L1 for d in medians):
+            medians.append(median)
+    return fenetres, medians
+
+
+def voix_par_paliers(notes, audio: np.ndarray, sample_rate: int):
+    """H30 : DECOUPER PAR LE TEMPS, la ou le decoupeur de registres coupe la hauteur.
+
+    POURQUOI CE DECOUPEUR EXISTE, MESURE A L'APPUI. Sur `other` de *Children*,
+    le decoupage par registres rend quatre voix qui jouent chacune 81 a 99 % du
+    morceau et touchent trois a cinq paliers sur cinq (§ 12.11) : elles sont
+    toutes partout, alors que les parties ENTRENT ET SORTENT. Un decoupeur de
+    hauteur ne peut pas separer des parties qui se succedent — ce n'est pas un
+    reglage a trouver, c'est la mauvaise dimension.
+
+    CE QU'IL REND EST UNE SECTION, PAS UNE PARTIE — ET C'EST POURQUOI LA CHAINE
+    NE L'APPELLE PAS. Mesure du 12/09 sur `other` de *Children* (§ 12.12) : les
+    quatre voix se concentrent bien dans le temps (support reel 15 %, 55 %, 12 %,
+    18 %, contre 68 a 94 % pour le decoupage par registres) — le critere de H30
+    est tenu. Mais chacune couvre MIDI 29-96, l'ambitus ENTIER : une voix
+    temporelle contient TOUT ce qui joue pendant sa periode. Donner une machine a
+    chacune ferait CHANGER DE MACHINE un meme instrument d'une section a l'autre,
+    ce qui est pire que le fourre-tout qu'on soigne.
+
+    CE MODULE RESTE DONC UNE BRIQUE, ET PAS UN DECOUPEUR DE PISTES. Ce qu'il
+    apporte est la CARTE des entrees et des sorties ; ce qu'il faudrait est
+    decouper par la HAUTEUR a l'interieur de chaque palier, puis APPARIER les
+    voix d'un palier a l'autre par leur timbre pour en faire des parties
+    continues (H31, § 12.12). Il est garde par des tests et publie ici pour cela.
+
+    Chaque fenetre SONORE est rangee sous le timbre installe dont elle est la
+    plus proche ; une note appartient a la fenetre ou elle COMMENCE. Les voix
+    rendues suivent l'ordre des timbres, et une voix vide n'est pas rendue.
+    """
+    fenetres, medians = timbres_et_medians(audio, sample_rate)
+    if len(medians) < 2:
+        return [list(notes)]
+    par_fenetre = {}
+    for index, profil in fenetres:
+        distances = [float(np.abs(profil - m).sum()) for m in medians]
+        par_fenetre[index] = int(np.argmin(distances))
+    groupes: List[List] = [[] for _ in medians]
+    orphelines: List = []
+    for note in notes:
+        index = int(float(note.start) // FENETRE_SECONDES)
+        timbre = par_fenetre.get(index)
+        if timbre is None:
+            orphelines.append(note)      # note tombee dans une fenetre SILENCIEUSE
+            continue
+        groupes[timbre].append(note)
+    # LES ORPHELINES NE SE PERDENT PAS : une note qui commence dans une fenetre
+    # jugee silencieuse (une attaque juste avant le seuil) rejoint le timbre de
+    # la fenetre voisine la plus proche dans le temps. Les jeter serait une panne
+    # muette ; leur ouvrir une voix serait inventer une partie.
+    for note in orphelines:
+        index = int(float(note.start) // FENETRE_SECONDES)
+        voisines = sorted(par_fenetre, key=lambda k: abs(k - index))
+        if voisines:
+            groupes[par_fenetre[voisines[0]]].append(note)
+    for groupe in groupes:
+        groupe.sort(key=lambda n: float(n.start))
+    return [g for g in groupes if g]
