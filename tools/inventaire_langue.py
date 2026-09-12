@@ -28,8 +28,18 @@ LES RÈGLES, écrites avant de compter (D94, ROADMAP-daw.md) :
     « Écoute A/B : … » et « Annuler (Ctrl+Z) » étaient dans ce cas) ;
   - TABLE : la chaîne est une clé de kAnglais ou un modèle de kModeles --
     traduite ailleurs, par une variable ;
-  - COMMANDE : un mot ASCII minuscule, avec tirets ou deux-points, sans espace
-    (« monter-piste ») -- un jeton de banc, pas un texte ;
+  - COMMANDE : un mot ASCII minuscule, avec tirets, deux-points ou POINTS, sans
+    espace (« monter-piste », « pistes.muet ») -- un jeton de banc, pas un
+    texte. Le point est venu avec D150 : les noms de composant que les bancs
+    désignent (D135, D145, D147) tombaient dans ÉCRAN, c'est-à-dire dans le
+    chiffre même qui sert à juger la traduction ;
+  - LIBELLÉ DE PAS (D150) : une chaîne confiée à `debutEdition()`,
+    `onEditStarted()` ou `beginProjectEdit()` est le nom d'un pas d'annulation.
+    La fenêtre d'historique le traduit BIEN PLUS LOIN, à la peinture, par
+    `trGeste` : il n'est donc voisin d'aucun `tr(`. TABLE s'il a sa clé,
+    SANS_PAIRE sinon. Testé AVANT le filtre « a l'air français », qui écarte un
+    mot seul et capitalisé -- « Armement » n'était dans AUCUNE catégorie, et
+    D149 l'a mesuré : la paire retirée, les cinq comptes ne bougeaient pas ;
   - TERMINAL : l'instruction écrit sur stderr ou stdout ;
   - ÉCRAN : tout le reste. C'est le chiffre d'A9.
 `Langue.cpp` et `app/Source/tools/` sont hors du compte.
@@ -86,6 +96,9 @@ REGLES = ("stricte", "mots", "position", "large")
 IDENTIQUES = {"Test Tone (reference)", "Test Tone (reference Phase 2)"}
 LITTERAL = re.compile(r'(?:u8)?"((?:[^"\\]|\\.)*)"')
 TRADUCTION = re.compile(r"\b(tr|trSelon|trPhrase|trGeste|translate|TRANS)\s*\(\s*(u8)?\s*$")
+# D150 : les fonctions qui reçoivent le NOM D'UN PAS d'annulation. Traduit à la
+# peinture de la fenêtre d'historique (`trGeste`), donc jamais accolé à `tr(`.
+LIBELLE_DE_PAS = re.compile(r"\b(debutEdition|onEditStarted|beginProjectEdit)\s*\(\s*(u8)?\s*$")
 SORTIE = re.compile(r"fputs|stderr|stdout|std::cout|std::cerr|DBG\s*\(|printf")
 CATEGORIES = ("ECRAN", "SANS_PAIRE", "TERMINAL", "TABLE", "COMMANDE")
 
@@ -197,6 +210,12 @@ def inventaire(racine: Path = RACINE, motif: str = "*.cpp", regle: str = "strict
         for debut, fin, brut in chaines(texte):
             chaine = decode(brut)
             avant = texte[max(texte.rfind(c, 0, debut) for c in ";{}") + 1:debut]
+            # D150 : LE NOM D'UN PAS, avant tout filtre. Voir l'en-tête.
+            if LIBELLE_DE_PAS.search(texte[max(0, debut - 32):debut]):
+                ligne = texte.count("\n", 0, debut) + 1
+                comptes["TABLE" if chaine in cles else "SANS_PAIRE"].append(
+                    f"{fichier.relative_to(racine)}:{ligne}: {chaine[:100]}")
+                continue
             if chaine.startswith("VSM_") or not a_l_air_francaise(chaine, avant, regle):
                 continue
             if TRADUCTION.search(texte[max(0, debut - 24):debut]):
@@ -209,7 +228,7 @@ def inventaire(racine: Path = RACINE, motif: str = "*.cpp", regle: str = "strict
                         f"{fichier.relative_to(racine)}:{ligne}: {chaine[:100]}")
                 continue
             instruction = texte[texte.rfind(";", 0, debut) + 1:texte.find(";", fin)]
-            if re.fullmatch(r"[a-z0-9\-:]+", chaine):
+            if re.fullmatch(r"[a-z0-9\-:.]+", chaine):   # D150 : le point, pour « pistes.muet »
                 categorie = "COMMANDE"
             elif SORTIE.search(instruction):
                 categorie = "TERMINAL"

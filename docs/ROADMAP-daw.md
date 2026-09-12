@@ -17561,3 +17561,35 @@ examiné, ce qu'un silence ne dit pas.
 | TABLE | **252** (250 + les deux sites de « Master ») | un autre chiffre |
 | ECRAN | **7**, inchangé | tout changement : la paire ne touche pas à ce compte |
 | COMMANDE | **31**, inchangée | idem |
+
+**RÉSULTAT (12/09) — TROIS ATTENDUS TENUS, DEUX RÉFUTÉS, ET LES DEUX RÉFUTATIONS
+SONT CE QUE LA PHASE RAPPORTE DE PLUS UTILE.**
+
+| mesure | attendu | mesuré |
+|---|---|---|
+| ECRAN | 7 | **7** — le compte auquel D130 avait fermé A9, retrouvé |
+| COMMANDE | 31 | **31** |
+| TABLE | 233 | **250** — RÉFUTÉ : dix-huit libellés de pas étaient invisibles, pas un |
+| SANS_PAIRE, paire en place | 0 | **2** — RÉFUTÉ : « Master », deux sites (`MainComponent.cpp:322,331`) |
+| SANS_PAIRE, paire RETIRÉE | 1, « Armement » nommé | **3**, « Armement » nommé — la garde voit |
+
+Puis la paire « Master » ajoutée, les quatre attendus complémentaires tiennent :
+**ECRAN 7, SANS_PAIRE 0, TABLE 252, COMMANDE 31**. Restauration du fichier
+vérifiée par `cmp` après chaque comptage à blanc ; `ruff` sans signalement sur
+l'outil ; compilation verte ; suites C++ vertes (330, 1 291, 297, 11, 25).
+
+**Ce que les deux réfutations apprennent.** (1) TABLE à 250 dit que l'angle mort
+ne concernait pas « Armement » en particulier : **tous** les libellés de pas
+échappaient à l'inventaire, y compris ceux qui avaient leur clé — « Muet »,
+« Solo », « Mixage », « Tempo », « Enregistrement », les trois du tempo, ceux des
+clips. Ils étaient traduits par chance, non par contrôle. (2) SANS_PAIRE à 2 a
+trouvé « Master », que le script de D149 ne pouvait pas voir : sa regex disait
+`u8?"` au lieu de `(?:u8)?"` et sautait tout littéral sans préfixe. **Un outil
+relu et rejoué bat un script jeté après usage**, et c'est la justification même
+de cette phase.
+
+**A9 reste close, et son chiffre est de nouveau 7.** La dérive à 12 était un
+défaut de comptage — cinq noms de composant pointés (`pistes.volume`,
+`pistes.pan` de D135 ; `pistes.muet`, `pistes.solo`, `pistes.armement` de D147)
+pris pour du texte d'écran —, non une régression de traduction. Le dire
+supposait de le mesurer : c'est fait, dans les deux sens.

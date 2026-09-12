@@ -150,3 +150,16 @@ l'ordre de marche — pas de la documentation d'accompagnement.
   résumé du banc, qui ne lisait que ses deux relevés, qui l'a effacé. Tout
   banc compte et affiche les avertissements du journal AVANT de conclure, et un
   verbe se vérifie dans la fonction qui le dispatche, pas de mémoire.
+- `u8?"` n'est pas `(?:u8)?"` : le premier veut « un `u`, puis un `8`
+  facultatif » et saute TOUT littéral écrit sans le préfixe. Payé le 12/09
+  (D149) : un inventaire de libellés bâti sur ce motif a rendu « 88 chaînes,
+  une seule sans traduction », là où l'outil du dépôt en trouvait deux et
+  dix-huit invisibles. Toute regex qui trie du code se valide sur un cas de
+  CHAQUE forme avant de servir de mesure.
+- Un script d'analyse écrit pour une phase n'est pas une garde : il n'est ni
+  relu, ni rejoué, ni corrigé. Ce qui doit empêcher une régression va dans
+  `tools/`, avec sa règle écrite dans son en-tête (12/09, D150).
+- Une vérification par `grep` d'un texte qu'on vient d'écrire doit tenir sur UNE
+  ligne : une phrase repliée par le retour à la ligne rend « 0 occurrence » et
+  laisse croire que l'écriture a échoué (12/09, D150). Chercher un fragment
+  court, ou recoller les lignes (`tr '\n' ' '`).

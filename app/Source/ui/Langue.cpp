@@ -800,6 +800,12 @@ const Paire kAnglais[] = {
     // des 88 libellés de pas sans traduction.
     { "Armement",
       "Arm" },
+    // D150 : « Master » n'avait aucune clé — la garde corrigée l'a trouvé là où
+    // le script de D149 ne pouvait pas le voir (sa regex sautait les littéraux
+    // sans préfixe u8). Le mot est le même dans les deux langues ; la paire le
+    // DÉCLARE, là où le silence laissait un doute.
+    { "Master",
+      "Master" },
     { "Muet (piste choisie)",
       "Mute (selected track)" },
     { "Muet sur des clips",
