@@ -17492,3 +17492,44 @@ l'OUTIL DE MESURE, ce qui est plus grave et se corrige en premier.
 Suites C++ vertes (330, 1 291, 297, 11, 25), compilées à `-j 2` pendant la
 course 3 de l'épreuve ; `vsm-render` intact ; préférences identiques par `cmp`
 après chacune des trois séries.
+
+### Phase D150 — la garde de la langue, rendue capable de voir ce qu'elle a laissé passer (12/09/2026)
+
+**D'où elle vient.** D149 a mesuré deux angles morts de
+`tools/inventaire_langue.py`, l'outil qui sert à juger la traduction :
+
+1. **Un libellé de pas est invisible à TOUTES les catégories.** Il est confié à
+   `debutEdition()`, `onEditStarted()` ou `beginProjectEdit()`, puis traduit
+   bien plus loin, à la peinture de la fenêtre d'historique (`trGeste`). Il
+   n'est donc pas voisin de `tr(` — la règle SANS_PAIRE ne le voit pas (regex
+   ligne 88) — et « Armement », mot seul et capitalisé, n'a pas « l'air
+   français » au sens du filtre qui précède toutes les règles : il sortait au
+   `continue` de la ligne 200. C'est pourquoi, paire retirée ou remise, les cinq
+   comptes de D149 étaient identiques au chiffre près.
+2. **Un nom de composant POINTÉ est compté comme du texte d'écran.** La règle
+   COMMANDE veut « un mot ASCII minuscule, avec tirets ou deux-points, sans
+   espace » (`[a-z0-9\-:]+`, ligne 212) ; `pistes.muet` a un POINT et tombe donc
+   dans ECRAN, le chiffre même qui sert à juger la traduction.
+
+**Le remède**, décidé avant la mesure : (a) un test des libellés de pas placé
+AVANT le filtre « a l'air français » — TABLE si la clé existe, SANS_PAIRE sinon ;
+(b) le point admis dans la règle COMMANDE. `tools/` seulement : ni `analyse/`,
+ni `core/`, ni `audio/`, ni `interchange/` — rien de ce que l'épreuve Children
+interdit de toucher pendant une course, et rien que la chaîne importe.
+
+**ATTENDU, écrit avant la mesure.** Comptes actuels : ECRAN 12, SANS_PAIRE 0,
+TERMINAL 121, TABLE 232, COMMANDE 26.
+
+| mesure | attendu | ce qui le réfute |
+|---|---|---|
+| ECRAN, après | **7** — les cinq noms pointés (`pistes.muet`, `pistes.solo`, `pistes.armement`, `pistes.volume`, `pistes.pan`) rejoignent COMMANDE | un autre chiffre : ma lecture de la règle est fausse |
+| COMMANDE, après | **31** | idem |
+| TABLE, après | **233** — « Armement » enfin compté, sa clé existant depuis D149 | 232 : le test des libellés ne s'applique pas |
+| SANS_PAIRE, après, paire en place | **0** | autre chose : un libellé sans clé traînerait ailleurs, et il faudrait le nommer |
+| SANS_PAIRE, après, paire RETIRÉE le temps d'un comptage | **1, « Armement » nommé** | 0 : la garde resterait aveugle, et le remède serait à refaire |
+
+**Ce que ce chiffre veut dire pour A9.** Si ECRAN revient à 7, c'est exactement
+le compte auquel D130 a fermé A9 : la dérive à 12 n'était pas une régression de
+traduction mais un défaut de comptage, et le dire suppose de le MESURER, pas de
+le supposer. Si le chiffre n'est pas 7, la différence se nomme ligne à ligne
+avant toute conclusion.
