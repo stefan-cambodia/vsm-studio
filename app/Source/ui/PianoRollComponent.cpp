@@ -351,6 +351,19 @@ void PianoRollComponent::setLoopRegion(Tick start, Tick end, bool active) {
 }
 
 void PianoRollComponent::setPlayheadTick(Tick tick) {
+    // D168 (A28) : RENDRE LA MAIN QUAND RIEN N'A BOUGÉ.
+    //
+    // Le minuteur de `MainComponent` bat à 30 Hz et pousse la position de
+    // lecture dans les trois vues à chaque tour, que le transport joue ou non.
+    // L'arrangement se protège depuis toujours (`ArrangementComponent.cpp`,
+    // « if (tick == playhead_) return; ») et le panneau de machine aussi, par son
+    // numéro de pas ; le piano roll, lui, appelait `repaint()` inconditionnellement
+    // -- soit trente redessins par seconde d'une tête de lecture immobile.
+    // Mesuré par D167 : 23,30 % d'un cœur au repos, dont 21,45 sur le fil des
+    // messages, et le même chiffre sur un projet VIDE -- ce n'était pas le
+    // contenu qu'on redessinait, c'était la surface. Sur un portable, c'est de
+    // l'autonomie dépensée à refaire une image identique à la précédente.
+    if (tick == playheadTick_) return;
     playheadTick_ = tick;
     if (followPlayhead_) {
         // Défilement par "pages" plutôt que centré en continu : un curseur qui

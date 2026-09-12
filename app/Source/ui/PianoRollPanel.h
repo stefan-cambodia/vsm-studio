@@ -104,7 +104,20 @@ public:
     /// Rafraîchit règle et barre d'outils (appelé quand la tête de lecture
     /// bouge ou qu'un projet est chargé).
     void refresh() {
-        ruler_.repaint();
+        // D169 : LA RÈGLE NE SE REDESSINE QUE SI CE QU'ELLE MONTRE A BOUGÉ.
+        // Appelée trente fois par seconde par le minuteur de `MainComponent`,
+        // elle repeignait la règle à chaque tour pour une tête de lecture
+        // immobile. Ce que la règle lit DIRECTEMENT dans le piano roll, c'est
+        // la tête et les repères du projet ; sa boucle et sa région de punch
+        // passent par des setters qui repeignent d'eux-mêmes.
+        const auto tete = pianoRoll_.playheadTick();
+        const size_t reperes = pianoRoll_.project() != nullptr
+                                 ? pianoRoll_.project()->markers.size() : 0u;
+        if (tete != derniereTeteRegle_ || reperes != derniersReperes_) {
+            derniereTeteRegle_ = tete;
+            derniersReperes_ = reperes;
+            ruler_.repaint();
+        }
         toolbar_.refreshFromPianoRoll();
     }
 
@@ -212,6 +225,9 @@ public:
     }
 
 private:
+    vsm::midi::Tick derniereTeteRegle_ = -1;
+    size_t derniersReperes_ = 0;
+
     PianoRollComponent& pianoRoll_;
     VelocityLaneComponent& velocityLane_;
     PianoRollToolbar toolbar_;

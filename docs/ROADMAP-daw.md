@@ -19133,3 +19133,164 @@ entière est à **17,6 ms en vue arrangement** et **21,9 ms en vue piano roll** 
 partout sous les 33 ms visés, contre 46,9 avant D164. Le plus gros poste restant
 est `MixerComponent` (4,87 ms pour douze tranches), suivi du volet de rapport
 d'ouverture (4,91 ms, et il disparaît dès qu'on le ferme).
+
+### D167 (attendus) — le quarante et unième audit : que consomme le logiciel quand personne n'y touche ? (13/09/2026)
+
+**POURQUOI CETTE MESURE, ET POURQUOI ELLE EST DE CELLES QU'ON OUBLIE.** D163 à
+D166 ont chiffré le COÛT d'un dessin. Reste la question qui décide de l'autonomie
+d'un portable : **combien de dessins le logiciel demande-t-il quand on ne fait
+rien ?** Un DAW ouvert sur un projet, transport à l'arrêt, ne devrait presque rien
+consommer. Aucun audit ne l'a mesuré, et c'est typiquement ce qui se dégrade sans
+bruit : il suffit d'un `repaint()` posé dans un minuteur pour qu'une fenêtre se
+redessine soixante fois par seconde à vide.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** Fenêtre ouverte sur
+`children-c3-plafond`, transport à l'arrêt, aucune entrée, pendant 15 s :
+
+1. **Moins de 5 % d'un cœur** en moyenne (temps processeur du processus divisé
+   par le temps écoulé). C'est la borne d'un logiciel qui n'a rien à faire.
+2. **Le projet vide et le projet de douze pistes se tiennent à moins de 3 points
+   l'un de l'autre** : ce qui tourne à vide ne doit pas dépendre du contenu.
+
+**Réfuté si** l'un des deux dépasse, et le chiffre sera publié tel quel. La mesure
+est prise sur `/proc/<pid>/stat` (utime + stime, en tics), deux relevés espacés,
+pendant que la machine porte déjà une reconstruction — donc dans des conditions
+défavorables, ce qui rend un chiffre BAS d'autant plus solide et un chiffre haut
+discutable.
+
+### Phase D167 — au repos, le logiciel brûle un quart de cœur à redessiner ce qui n'a pas bougé (13/09/2026)
+
+**L'ATTENDU N° 1 EST RÉFUTÉ, ET LARGEMENT.** Fenêtre ouverte, transport à
+l'arrêt, aucune entrée, 20 s de mesure après 25 s de repos (le temps que le cache
+d'aperçu des deux pistes audio finisse — une première mesure prise à 5 s donnait
+des chiffres qui sautaient de 6 à 58 %, et c'était lui) :
+
+| cas | attendu | **mesuré** |
+|---|---|---|
+| projet de 12 pistes, disposition par défaut | < 5 % d'un cœur | **23,30 %** ✘ |
+| projet vide (témoin) | à moins de 3 points | **22,25 %** ✔ (1,05 point) |
+
+**L'attendu n° 2 tient, et il est ACCABLANT plutôt que rassurant** : ce qui tourne
+ne dépend pas du projet. Un projet VIDE coûte autant qu'un projet de douze pistes
+et 9 224 notes. Ce n'est donc pas le contenu qu'on redessine : c'est la surface.
+
+**OÙ CELA PASSE, MESURÉ PAR FIL D'EXÉCUTION.** `/proc/<pid>/task/*/stat`, mêmes
+20 s :
+
+| fil | % d'un cœur |
+|---|---|
+| **fil principal (messages, interface)** | **21,45 %** |
+| « VSM MIDI out » | 1,25 % |
+| `data-loop.0` | 0,90 % |
+| trois autres | 1,50 % au total |
+
+Ce n'est donc **ni l'audio ni l'horloge de secours** — c'est l'interface.
+
+**LA CAUSE, LUE DANS LE CODE APRÈS QUE LE CHIFFRE L'A DÉSIGNÉE.** Le minuteur de
+`MainComponent` bat à **30 Hz** (`MainComponent.cpp:1201`) et pousse à chaque tour
+la position de lecture dans les trois vues. Deux d'entre elles se protègent,
+la troisième non :
+
+```
+ArrangementComponent::setPlayheadTick :  if (tick == playhead_) return;   // gardée
+MachinePanelComponent::setPlayheadTick : passe par setPlayheadStep         // gardée
+PianoRollComponent::setPlayheadTick :    … ; repaint();                    // JAMAIS gardée
+```
+
+**Le piano roll se redessine donc trente fois par seconde pour afficher une tête
+de lecture qui n'a pas bougé d'un tick.** C'est exactement le défaut de D166 —
+un dessin recopié d'un composant à l'autre en perdant sa garde —, mais pris par
+l'autre bout : ici c'est la garde qui manque, pas le seuil.
+
+**POURQUOI CELA COMPTE ICI PLUS QU'AILLEURS.** Ce logiciel tourne sur un portable.
+Un quart de cœur en permanence, fenêtre ouverte et rien à faire, c'est de
+l'autonomie et du ventilateur payés pour redessiner une image identique à la
+précédente. **Ouvert comme A28** ; le remède est D168.
+
+### D168 (attendus) — A28 : la garde qui manquait au piano roll (13/09/2026)
+
+**LE REMÈDE, D'UNE LIGNE, ET IL EXISTE DÉJÀ DANS LE DÉPÔT.**
+`PianoRollComponent::setPlayheadTick` prend la garde de
+`ArrangementComponent::setPlayheadTick`, écrite trente phases plus tôt : rendre la
+main sans rien redessiner quand le tick est le même.
+
+**LES ATTENDUS, ÉCRITS AVANT LA MESURE.**
+
+1. **Au repos, moins de 5 % d'un cœur** avec le projet de douze pistes (23,30 %
+   aujourd'hui). Réfuté sinon.
+2. **L'image ne change pas** : la fenêtre photographiée au repos, avant et après,
+   **identique au pixel** hors l'afficheur de charge CPU.
+3. **LA TÊTE DE LECTURE BOUGE ENCORE**, et c'est l'attendu qui compte vraiment —
+   une garde mal posée transformerait une économie en panne muette. Deux captures
+   pendant une LECTURE, prises à deux instants différents (`VSM_LECTURE`), doivent
+   **différer** dans le piano roll. Réfuté si elles sont identiques : ce serait
+   dire que le piano roll ne suit plus la lecture.
+
+### Phase D168 — la garde du piano roll : 4 points sur 18, et ce n'était pas fini (13/09/2026)
+
+La garde de l'arrangement, posée sur `PianoRollComponent::setPlayheadTick`, donne
+**23,30 % → 19,25 %** d'un cœur au repos. **L'attendu n° 1 (< 5 %) est donc
+RÉFUTÉ** : le redessin complet du piano roll trente fois par seconde ne valait que
+quatre points. Il restait à trouver d'où venaient les quinze autres.
+
+**L'A/B QUI A DÉSIGNÉ LE RESTE, une seule variable.** La même mesure, en **vue
+arrangement** — c'est-à-dire le panneau du piano roll caché, tout le reste
+identique : **6,00 %**. Treize points étaient donc dans ce panneau, et la garde
+de D168 n'en avait pris que quatre : le reste ne venait pas du piano roll
+lui-même, mais de ses VOISINS dans le panneau.
+
+### Phase D169 — A28 : la règle et la barre d'outils redessinées trente fois par seconde pour rien (13/09/2026)
+
+**CE QUI RESTAIT.** `MainComponent::timerCallback` appelle
+`pianoRollPanel_.refresh()` à chaque tour, c'est-à-dire trente fois par seconde,
+et cette fonction tenait en deux lignes :
+
+```cpp
+void refresh() {
+    ruler_.repaint();                   // inconditionnel
+    toolbar_.refreshFromPianoRoll();    // et qui finit par repaint(), inconditionnel aussi
+}
+```
+
+**Les deux remèdes sont des gardes, comme D168, et chacune est locale.** La règle
+ne se repeint que si la tête de lecture a bougé ou si le nombre de repères a
+changé — sa boucle et sa région de punch passent par des setters qui repeignent
+d'eux-mêmes, vérifié dans `PianoRollRulerComponent.cpp`. La barre d'outils tient
+tout ce qu'elle montre dans un tuple de six états (repli, outil courant, annuler,
+rétablir, sélection, aimant) : identique, elle rend la main sans rien faire ; les
+six `setToggleState`/`setEnabled` qu'elle exécutait étaient déjà gardés par JUCE,
+c'est le `repaint()` final qui ne l'était pas.
+
+**LE RÉSULTAT, ET IL EST GRAND.**
+
+| état | % d'un cœur au repos |
+|---|---|
+| avant D168 | **23,30 %** |
+| après D168 (garde du piano roll) | 19,25 % |
+| **après D169 (règle + barre d'outils)** | **5,50 %** |
+
+**× 4,2**, et le fil des messages n'est plus le poste principal.
+
+**L'ATTENDU DE 5 % EST MANQUÉ DE 0,5 POINT, et c'est dit.** Le plancher restant
+n'est plus un redessin : les quatre autres minuteurs de l'application ont été
+relus un par un et **tous gardent déjà leur affichage** — la barre de transport
+(30 Hz) passe par `Label::setText` et `setToggleState`, qui ne repeignent que si
+le texte ou l'état change ; le panneau de machine (15 Hz) compare chaque valeur au
+moteur avant de la poser ; son séquenceur rend la main quand le pas est le même ;
+les vumètres du mixeur ne repeignent qu'au-delà d'un seuil de variation. Ce qui
+reste est le TRAVAIL du minuteur de 30 Hz lui-même — horloge, transport,
+vumètres, autosauvegarde, contrôles appris —, pas un dessin.
+
+**LA DÉCISION, ÉCRITE PLUTÔT QUE LAISSÉE OUVERTE.** On ne descend pas le minuteur
+sous 30 Hz : c'est lui qui rend la tête de lecture fluide pendant la lecture, et
+l'économie porterait sur le seul cas où l'utilisateur regarde l'écran bouger. **A28
+se ferme sur ce qu'elle nommait** — « redessiner ce qui n'a pas changé » —, qui a
+disparu du chemin au repos ; le plancher de 5,5 % est inscrit comme repère.
+
+**LA TÊTE DE LECTURE BOUGE ENCORE — l'attendu qui comptait vraiment.** Une garde
+mal posée aurait transformé l'économie en panne muette. Deux captures prises
+pendant une LECTURE, à 4 s et à 12 s : **2 244 pixels de différence** sur 937 888,
+répartis de (75, 40) à (1257, 731) — la tête a traversé la fenêtre et les
+compteurs ont suivi. Et l'image au repos ne peut pas changer par construction :
+ces trois phases ne touchent que le MOMENT où l'on repeint, jamais le dessin, et
+une capture repeint de toute façon.

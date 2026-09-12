@@ -1,4 +1,7 @@
 #pragma once
+
+#include <optional>
+#include <tuple>
 #include <JuceHeader.h>
 #include "PianoRollComponent.h"
 
@@ -35,6 +38,16 @@ public:
     void refreshSelectionInfo();
 
 private:
+    /// D169 : CE QUE LA BARRE MONTRE, pour ne pas la redessiner quand rien n'a
+    /// changé. `refreshFromPianoRoll()` est appelée trente fois par seconde par
+    /// le minuteur de `MainComponent` (par `PianoRollPanel::refresh`), et elle
+    /// finissait par un `repaint()` inconditionnel : l'application dépensait un
+    /// dixième de cœur à redessiner six boutons identiques (D167, D169). Tous
+    /// les états affichés tiennent ici ; si le tuple ne bouge pas, l'image non
+    /// plus.
+    using EtatAffiche = std::tuple<bool, PianoRollComponent::Tool, bool, bool, bool, bool>;
+    std::optional<EtatAffiche> dernierEtat_;
+
     /// Pose (ou seulement compte) les rangées pour cette largeur. Un seul
     /// parcours sert aux deux, sans quoi la mesure et la pose divergeraient.
     int disposer(int largeurTotale, bool placer);

@@ -225,6 +225,16 @@ void PianoRollToolbar::applyScaleFromCombos() {
 }
 
 void PianoRollToolbar::refreshFromPianoRoll() {
+    // D169 : RIEN À FAIRE QUAND RIEN N'A CHANGÉ. Voir `dernierEtat_` dans
+    // l'en-tête : tous les états que cette barre affiche sont dans ce tuple, et
+    // les six `setToggleState`/`setEnabled` ci-dessous n'en dépendent que de
+    // lui. Le `repaint()` final, lui, n'était gardé par rien.
+    const EtatAffiche etat { pianoRoll_.foldEnabled(), pianoRoll_.tool(),
+                             pianoRoll_.canUndo(), pianoRoll_.canRedo(),
+                             pianoRoll_.hasSelection(), pianoRoll_.snapEnabled() };
+    if (dernierEtat_.has_value() && *dernierEtat_ == etat) return;
+    dernierEtat_ = etat;
+
     foldButton_.setToggleState(pianoRoll_.foldEnabled(), juce::dontSendNotification);
     const auto currentTool = pianoRoll_.tool();
     auto mark = [](juce::TextButton& b, bool active) {
