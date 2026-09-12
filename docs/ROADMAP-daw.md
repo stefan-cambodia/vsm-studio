@@ -19389,3 +19389,58 @@ deux composants), et la bande demandée va de **x − 2 à x + 3** — l'ancien 
 donc entièrement dans la zone repeinte, fond, grille et notes compris. Les seuls
 dessins plus larges que la bande (le fanion triangulaire de la tête, ±5 px) sont
 dans la RÈGLE, qui se repeint entière. Dit ici plutôt que présenté comme mesuré.
+
+### D172 (attendus) — le quarante-troisième audit : combien de mémoire, et que coûte l'annulation ? (13/09/2026)
+
+**POURQUOI CE CHIFFRE.** Depuis D144 et D154, **chaque pas d'annulation
+photographie le projet ENTIER** — les notes, les clips, le MASTER, et les tables
+de réglages des machines. Sur un projet de 9 224 notes et 9 machines, cela veut
+dire qu'un simple glissé de fader recopie tout. Le coût en TEMPS a été mesuré
+(36 µs pour la photo des machines, D154) ; le coût en MÉMOIRE ne l'a jamais été,
+et c'est lui qui décide si l'on peut travailler une heure sans que la machine
+pagine.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** `children-c3-plafond`, relevé sur
+`VmRSS` de `/proc/<pid>/status` :
+
+1. **À l'ouverture, moins de 800 Mo.** Les 63 machines sont enregistrées au
+   démarrage et deux pistes audio de 40 Mo sont décodées en mémoire : c'est déjà
+   beaucoup, et la borne est large exprès.
+2. **Trente gestes annulables ajoutent moins de 100 Mo**, soit moins de 3,3 Mo
+   par pas d'annulation. Réfuté sinon — et le chiffre par pas sera publié, parce
+   que c'est lui qui dit si la profondeur d'historique actuelle est tenable.
+3. Le **témoin** : les mêmes trente gestes sur un projet VIDE, qui donnent le
+   coût d'un pas d'annulation quand il n'y a rien à photographier.
+
+### Phase D172 — la mémoire : 223 Mo pour douze pistes, 0,23 Mo par pas d'annulation (13/09/2026)
+
+**LES DEUX ATTENDUS SONT TENUS.** `VmRSS` relevé 20 s après l'ouverture :
+
+| cas | attendu | **mesuré** |
+|---|---|---|
+| `children-c3-plafond` ouvert | < 800 Mo | **223 Mo** ✔ |
+| + 30 gestes annulables | + 100 Mo au plus | **+ 7 Mo**, soit **0,23 Mo par pas** ✔ |
+| projet vide (témoin) | — | **55 Mo** |
+| projet vide + 30 gestes (témoin) | — | **56 Mo** (0,03 Mo par pas) |
+
+**D'OÙ VIENNENT LES 223 Mo, et pourquoi c'est rassurant.** 55 Mo d'application —
+les 63 machines enregistrées, JUCE, la fenêtre — et **160 Mo de son** : les deux
+pistes audio font 20 097 792 trames chacune, décodées en flottant, soit 80 Mo
+par piste. La mémoire de ce projet est donc, à 97 %, **le son lui-même**. Rien
+n'est gaspillé par le modèle.
+
+**LE PAS D'ANNULATION EST BON MARCHÉ, et c'est une surprise agréable.** Chaque pas
+recopie le projet ENTIER — 9 224 notes, 11 clips, le MASTER, les tables de
+réglages des neuf machines (D144, D154) — pour **0,23 Mo**. À la profondeur
+d'historique configurée (**128 pas**, `SnapshotHistory` par défaut), l'historique
+plein coûterait **29 Mo** : moins qu'une seule des deux pistes audio. La décision
+de D10.4 — photographier le PROJET plutôt que le seul vecteur de notes, « il coûte
+plus cher en mémoire, et c'est le seul prix » — se paye donc 29 Mo au pire. Le
+prix est juste.
+
+**ET LA MESURE SE PROUVE ELLE-MÊME.** Un doute légitime : les trente `volume:`
+consécutifs sur la même piste ont-ils vraiment ouvert trente pas, ou ont-ils été
+fusionnés en un seul ? Le chiffre répond sans qu'il faille ouvrir la fenêtre
+d'historique : **un seul pas aurait coûté 0,2 Mo, on en mesure 7**. Et le code le
+confirme — `SnapshotHistory::beginEdit` empile sans jamais comparer le libellé au
+précédent.
