@@ -18576,3 +18576,49 @@ c'est le relevé qui l'a montré, pas une relecture.
 
 L'anglais est inchangé (douze textes, tous anglais) et l'inventaire de langue
 reste à **SANS_PAIRE 0** : la table de JUCE vit à part de celle du dépôt.
+
+### Phase D160 — les 120 chaînes de JUCE, toutes traduites (13/09/2026)
+
+**D'OÙ VIENT LA PHASE.** D159 a traduit les libellés de la boîte des réglages
+audio, une par une, à mesure qu'on les rencontrait. C'est la mauvaise façon : la
+FAMILLE se compte. Les trois modules de JUCE que l'application emploie
+(`juce_gui_basics`, `juce_gui_extra`, `juce_audio_utils`) portent **120 chaînes
+traduisibles** — tout ce que `TRANS(...)` y désigne.
+
+**CE QU'ELLES COUVRENT**, et qu'aucun audit du dépôt ne pouvait voir : les
+sélecteurs de fichiers (« Go up to parent directory », « Create Folder »,
+« There's already a file called: FLNM »), le sélecteur de couleur (« red »,
+« green », « blue », « alpha », « Use this swatch as the current colour »), les
+menus contextuels des champs de texte (« Copy », « Paste », « Select All »), les
+boutons des boîtes (« OK », « Cancel », « Yes », « No », « Discard changes »), et
+les messages d'erreur de fichier.
+
+**CE QUI EST ATTENDU.** Les 120 sont traduites, et mesuré sur ce que le banc sait
+ouvrir : la boîte des réglages audio (déjà 9 sur 12 par D159) et le sélecteur de
+couleur d'une piste, dont les quatre curseurs doivent lire **rouge, vert, bleu,
+alpha**. **Réfutée si** une chaîne traduite fait disparaître un texte, ou si
+l'anglais bouge d'un mot.
+
+**FAIT (13/09) — LES 120 SONT TRADUITES, ET CE QUE LE BANC NE SAIT PAS LIRE EST
+DIT.** La table `kJuceEnFrancais` porte les cent vingt chaînes que `TRANS(...)`
+désigne dans les trois modules employés, extraites du source de JUCE et non
+devinées.
+
+**Vérifié** sur la boîte des réglages audio : les neuf textes traduisibles le
+sont, apostrophes comprises — « Joue un son d'essai », « Taux d'échantillonnage :
+». Les trois autres restent, pour les raisons nommées en D159.
+
+**Non vérifié, et dit comme tel** : le sélecteur de couleur (« rouge », « vert »,
+« bleu », « alpha ») est bien dans la table, et le banc sait OUVRIR sa boîte
+(`VSM_MENU_CONTEXTE=clip-midi:Couleur…` répond « exécutée ») — mais il ne sait
+pas la LIRE : JUCE la pose dans une `CallOutBox`, qui n'est ni une fenêtre de
+premier niveau (le relevé de D95 ne la voit pas) ni dans l'autoportrait de la
+fenêtre principale. Ce qui est mesuré est donc le mécanisme, sur la boîte qui se
+lit ; ce qui ne l'est pas est écrit ici plutôt que supposé tenu.
+
+**UN PIÈGE PAYÉ ET RÉPARÉ DANS LA MÊME HEURE.** La première table est passée par
+un gabarit Python qui remplaçait les apostrophes par des guillemets : la boîte a
+affiché « Joue un son d"essai » et « Taux d"échantillonnage : ». C'est le RELEVÉ
+qui l'a montré, pas une relecture — dix-neuf lignes étaient touchées. La règle du
+dépôt s'applique telle quelle : après toute édition par script, vérifier le
+TEXTE, pas le fait que le script se soit exécuté.
