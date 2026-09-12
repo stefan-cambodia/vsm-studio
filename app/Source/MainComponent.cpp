@@ -7702,6 +7702,50 @@ void MainComponent::rafraichirTitre() {
     if (window->getName() != voulu) window->setName(voulu);
 }
 
+// ---------------------------------------------------------------------------
+// D175 (A30) : QUITTER DEMANDE.
+//
+// `systemRequestedQuit()` appelait `quit()` sans un mot : fermer la fenêtre avec
+// des modifications non enregistrées les abandonnait. Le filet existait --
+// l'autosauvegarde toutes les 30 s et la boîte de reprise de D104 --, mais aucun
+// des trois logiciels de référence ne ferme sans demander, et un filet n'est pas
+// une réponse à « voulez-vous enregistrer ? ».
+//
+// REND `true` SI LA QUESTION A ÉTÉ POSÉE : l'appelant ne doit alors PAS quitter,
+// c'est la réponse qui décidera. `false` quand il n'y a rien à demander -- et
+// c'est le cas ordinaire, projet intact.
+//
+// SI L'ENREGISTREMENT ÉCHOUE, ON NE QUITTE PAS. `saveProject()` montre déjà sa
+// boîte (D173) ; la marque du titre reste, et l'application reste ouverte : c'est
+// le seul comportement qui ne perde rien. Même chose quand le projet n'a pas
+// encore de dossier -- `saveProjectAs()` ouvre un sélecteur, la réponse viendra
+// plus tard, et l'on ne quitte pas dans son dos.
+bool MainComponent::demanderAvantDeQuitter(std::function<void()> quandOnPeutQuitter) {
+    if (!projetNonEnregistre()) return false;
+    const juce::String titre = tr(u8"Quitter sans enregistrer ?");
+    const juce::String message =
+        tr(u8"Ce projet porte des modifications qui ne sont pas enregistrées.");
+    const juce::String oui = tr("Enregistrer");
+    const juce::String non = tr(u8"Quitter sans enregistrer");
+    const juce::String annuler = vsm::app::ui::trSelon("bouton", u8"Annuler");
+    // D95 : la boîte se lit au moment où elle est DEMANDÉE, pas sur une photo.
+    std::fputs(("VSM_BOITE : " + titre + " : " + message + " : [" + oui + " | " + non + " | "
+                + annuler + "]\n").toRawUTF8(), stderr);
+    juce::AlertWindow::showYesNoCancelBox(
+        juce::AlertWindow::WarningIcon, titre, message, oui, non, annuler, this,
+        juce::ModalCallbackFunction::create([this, quandOnPeutQuitter](int reponse) {
+            if (reponse == 1) {
+                saveProject();
+                if (projetNonEnregistre()) return;   // refusé ou différé : on reste
+                quandOnPeutQuitter();
+            } else if (reponse == 2) {
+                quandOnPeutQuitter();
+            }
+            // reponse == 0 : Annuler. On ne quitte pas, et l'on ne dit rien de plus.
+        }));
+    return true;
+}
+
 bool MainComponent::writeProjectTo(const juce::File& folder) {
     captureSessionIntoProject();
 

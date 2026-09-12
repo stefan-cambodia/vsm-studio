@@ -19542,3 +19542,56 @@ par ce chemin**, et une boîte modale les ferait tous expirer. La sortie du banc
 devra donc appeler `quit()` directement (c'est une fin de course, pas un geste
 d'utilisateur), et un verbe neuf déclenchera la vraie fermeture pour que la
 question, elle, soit photographiable.
+
+### D175 (attendus) — A30 : quitter demande, et le banc ne s'y pend pas (13/09/2026)
+
+**LE REMÈDE, ET LA PRÉCAUTION QUI LE REND POSSIBLE.** `systemRequestedQuit()`
+demande d'abord — trois réponses : **Enregistrer**, **Quitter sans enregistrer**,
+**Annuler** — et ne quitte que sur la réponse. Mais **tous les bancs de ce dépôt
+finissent par ce chemin** (`VSM_CAPTURE` quitte après sa photo) : une boîte
+modale les ferait tous expirer, et l'on perdrait l'outil qui sert à tout
+vérifier. La fin d'une course de banc n'est pas un geste d'utilisateur : elle
+appelle donc `quit()` directement. Et pour que la question reste VÉRIFIABLE, un
+verbe neuf, `VSM_FERMER=1`, déclenche la vraie fermeture juste avant la photo.
+
+**LES ATTENDUS, ÉCRITS AVANT LA MESURE.**
+
+1. **Projet modifié + `VSM_FERMER=1`** : la ligne `VSM_BOITE` porte la question
+   et ses trois réponses. Réfuté sinon.
+2. **Projet NON modifié + `VSM_FERMER=1`** : **aucune** boîte — on ne demande rien
+   quand il n'y a rien à perdre.
+3. **Les bancs existants ne changent pas d'un pixel** : une capture de contrôle,
+   projet modifié, SANS `VSM_FERMER`, doit se terminer normalement et rendre la
+   même image qu'avant le changement. C'est l'attendu qui protège l'outillage.
+
+### Phase D175 — A30 se ferme : quitter demande, et les bancs tiennent (13/09/2026)
+
+**LES TROIS ATTENDUS SONT TENUS.**
+
+| cas | attendu | **mesuré** |
+|---|---|---|
+| projet modifié + `VSM_FERMER=1` | la question et ses trois réponses | ✔ `VSM_BOITE : Quitter sans enregistrer ? : Ce projet porte des modifications qui ne sont pas enregistrées. : [Enregistrer \| Quitter sans enregistrer \| Annuler]` |
+| projet **non** modifié + `VSM_FERMER=1` | aucune boîte | ✔ **aucune ligne `VSM_BOITE`** |
+| témoin : projet modifié, **sans** `VSM_FERMER` | la course se termine, image inchangée | ✔ elle se termine ; **41 pixels** de différence avec la capture d'avant le changement, tous dans un rectangle de 7 × 10 px que la photo montre être le NOM DU DOSSIER (« rw » contre « rw3 », deux copies différentes du même projet) |
+
+**CE QUE LA RÉPONSE FAIT.** *Enregistrer* écrit puis quitte — **sauf si
+l'enregistrement échoue** : la boîte de D173 s'affiche, la marque de D174 reste,
+et l'application reste OUVERTE. C'est le seul comportement qui ne perde rien, et
+il vaut aussi quand le projet n'a pas encore de dossier : le sélecteur s'ouvre, la
+réponse viendra plus tard, et l'on ne quitte pas dans son dos. *Quitter sans
+enregistrer* quitte. *Annuler* ne fait rien, et ne dit rien de plus.
+
+**LA PRÉCAUTION QUI SAUVE L'OUTILLAGE, et elle méritait d'être écrite.** Les trois
+sorties du bloc `VSM_CAPTURE` appelaient `systemRequestedQuit()` : avec la
+question, **tous les bancs du dépôt auraient expiré** — et ce sont eux qui
+vérifient tout le reste. Elles appellent maintenant `quit()` directement, parce
+que la fin d'une course de banc n'est pas un geste d'utilisateur. Et pour que la
+question ne devienne pas invérifiable du même coup, `VSM_FERMER=1` déclenche la
+VRAIE fermeture juste avant la photo : la boîte s'ouvre, sa ligne s'écrit, et la
+course se termine quand même — personne n'est là pour cliquer, et une course qui
+n'en finit pas ne vérifie rien.
+
+**A30 SE FERME.** Le premier critère du § 2 — *ce qu'on fait ne se perd pas* — est
+désormais tenu de bout en bout : l'aller-retour ne perd rien (D162), un
+enregistrement refusé le dit et ne détruit rien (D173), la fenêtre montre en
+permanence si le travail est à l'abri (D174), et fermer demande (D175).

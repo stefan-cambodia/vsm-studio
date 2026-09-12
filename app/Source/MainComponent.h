@@ -647,6 +647,14 @@ private:
     void poserTitreDeBase(const juce::String& titre);
     void rafraichirTitre();
     bool projetNonEnregistre() const;
+
+public:
+    /// D175 (A30) : pose la question « quitter sans enregistrer ? » quand il y a
+    /// quelque chose à perdre. Rend `true` si la question est posée -- l'appelant
+    /// ne quitte alors PAS, c'est la réponse qui décide.
+    bool demanderAvantDeQuitter(std::function<void()> quandOnPeutQuitter);
+
+private:
     /// L'heure de la dernière photo. La cadence est de trente secondes : le
     /// critère dit « pas plus d'une minute », et une marge de deux vaut mieux
     /// qu'une marge nulle sur un disque qui hésite.

@@ -170,7 +170,22 @@ public:
 
     void shutdown() override { mainWindow = nullptr; }
 
-    void systemRequestedQuit() override { quit(); }
+    // D175 (A30) : ON DEMANDE AVANT DE QUITTER, quand il y a quelque chose à
+    // perdre. `MainComponent::demanderAvantDeQuitter` rend `true` quand la
+    // question est posée : c'est alors sa réponse qui appellera `quit()`.
+    //
+    // CE CHEMIN EST CELUI DE L'UTILISATEUR -- le bouton de fermeture, « Quitter »
+    // du menu, le gestionnaire de fenêtres. La fin d'une course de BANC, elle,
+    // n'est pas un geste d'utilisateur : elle appelle `quit()` directement (voir
+    // la fin du bloc `VSM_CAPTURE`), sans quoi la boîte modale ferait expirer
+    // tous les bancs du dépôt.
+    void systemRequestedQuit() override {
+        if (mainWindow != nullptr)
+            if (auto* principal = dynamic_cast<MainComponent*>(mainWindow->getContentComponent()))
+                if (principal->demanderAvantDeQuitter([this] { quit(); }))
+                    return;
+        quit();
+    }
     void anotherInstanceStarted(const juce::String&) override {}
 
     class MainWindow : public juce::DocumentWindow {
@@ -516,6 +531,16 @@ public:
                     // depuis D174, la marque « non enregistré » : sans cette
                     // ligne, cette marque serait invérifiable.
                     std::fputs(("VSM_TITRE : " + getName().toStdString() + "\n").c_str(), stderr);
+                    // D175 : VSM_FERMER=1 -- la VRAIE fermeture, celle de
+                    // l'utilisateur, déclenchée AVANT la photo pour que sa
+                    // question s'écrive (`VSM_BOITE`) et figure sur les images
+                    // des panneaux. La course se termine quand même : le banc
+                    // n'a personne pour cliquer, et une course qui n'en finit
+                    // pas ne vérifie rien.
+                    if (const char* fermer = std::getenv("VSM_FERMER");
+                        fermer != nullptr && *fermer && *fermer != '0')
+                        if (auto* principal = dynamic_cast<MainComponent*>(getContentComponent()))
+                            principal->demanderAvantDeQuitter([] {});
                     if (auto* c = getContentComponent()) {
                         auto image = c->createComponentSnapshot(c->getLocalBounds());
                         // D58 : CE QU'ON A DEMANDÉ ET CE QU'ON A OBTENU, tous
@@ -604,7 +629,7 @@ public:
                     if (const int passes = passesDePeinture(); passes > 0)
                         if (auto* c = getContentComponent())
                             chronometrerToutesLesPeintures(c, passes);
-                    juce::JUCEApplication::getInstance()->systemRequestedQuit();
+                    juce::JUCEApplication::getInstance()->quit();   // D175 : fin de course de BANC, pas un geste d'utilisateur
                 });
             }
             // D163 : VSM_PEINTURE SANS autoportrait -- son propre minuteur, le
@@ -616,13 +641,13 @@ public:
                 juce::Timer::callAfterDelay(delai, [this, passes] {
                     if (auto* c = getContentComponent())
                         chronometrerToutesLesPeintures(c, passes);
-                    juce::JUCEApplication::getInstance()->systemRequestedQuit();
+                    juce::JUCEApplication::getInstance()->quit();   // D175 : fin de course de BANC, pas un geste d'utilisateur
                 });
             }
         }
 
         void closeButtonPressed() override {
-            juce::JUCEApplication::getInstance()->systemRequestedQuit();
+            juce::JUCEApplication::getInstance()->quit();   // D175 : fin de course de BANC, pas un geste d'utilisateur
         }
     };
 
