@@ -17836,3 +17836,30 @@ propre transcripteur dit quelque chose de l'étage de transcription, pas de
 l'affichage. J'avais d'abord comparé à des seuils choisis au hasard (0,5 → 4 095,
 0,6 → 6 206) et cru à un désaccord : il n'y avait qu'un seuil que je n'avais pas
 encore lu.
+
+### L'élément suivant est nommé, et il est BLOQUÉ — dit ici plutôt que contourné (12/09/2026)
+
+Après D153, la série des audits d'interface a fait le tour de ce qu'elle pouvait
+trancher dans `app/Source` seul : la famille de l'annulation est close (sauf
+A21), l'inventaire de la langue est propre sous les deux règles et en-têtes
+compris, et D152 comme D153 se sont conclus par une hypothèse réfutée, sans
+anomalie à ouvrir.
+
+**Ce que le document nomme comme suite est D18.7b — la publication sur des
+pistes** (§ 3, encadré de D18.7) : « elle demande de dire dans le MODÈLE qu'une
+piste porte la sortie n° k d'une autre, et de le faire suivre au FICHIER, à la
+CONSOLE et au RENDU HORS LIGNE ». C'est `core/` (le modèle), `interchange/` (le
+fichier) et `audio/` (le graphe et `tools/vsm-render`).
+
+**Ce sont exactement les dossiers que l'épreuve Children interdit de toucher
+tant qu'une course tourne** : le cache de rendus a pour clé l'empreinte du
+binaire, et recompiler `vsm-render` au milieu de la course 3 la ferait travailler
+sur un autre moteur que la course 1 — ou la tuerait. D18.7b attend donc la fin
+de l'épreuve, au même titre qu'A21 (les réglages de machine).
+
+**Deux éléments bloqués, une raison unique, et aucun substitut inventé.** Le
+reste de la liste de travail de l'INDEX (B1, B5, B6, B7) est fait de campagnes,
+que la même règle interdit. Ce qui reste faisable sans rien recompiler, c'est
+l'épreuve elle-même : son verdict, son écoute A/B — dont D153 vient de vérifier
+qu'elle chargera l'original toute seule — et les clôtures qu'elle commande
+(B3 à l'INDEX, ROADMAP-fusion).
