@@ -18921,3 +18921,158 @@ douteuses), `VSM_MENU=Statistiques du projet` s'exécute et publie ses dix-sept
 lignes. « Projet ouvert, avec des réserves » est un VOLET, pas une modale — D152
 le disait déjà, et je l'avais oublié en le relisant. Aucune limite de banc à
 inscrire.
+
+### D164 (attendus) — A27 : sous quatre pixels de large, un rectangle plein (13/09/2026)
+
+**LE REMÈDE, ET SON UNIQUE VARIABLE.** Dans `drawNoteRectangle`, une note dont le
+rectangle est plus étroit que **4 px** est dessinée par un `fillRect` : ni coin
+arrondi, ni contour. Le seuil n'est pas choisi au hasard — le rayon de coin est de
+**2,5 px**, donc à 5 px de large la figure est DÉJÀ entièrement faite de coins. Au
+delà du seuil, rien ne change : le même code, les mêmes appels, dans le même
+ordre.
+
+**CE QUI RESTE SUR LE CHEMIN RAPIDE, parce que c'est ce qui se voit.** La barre
+verticale ambre d'une note douteuse (`fillRect`, et le commentaire du code dit
+déjà qu'elle est « ce qui rend le marquage visible sur une note très courte »), et
+les hachures d'une note muette. Ce qui tombe est le liseré arrondi réduit d'un
+pixel, qui sur une note de 2 px a une largeur NULLE : il ne dessine rien
+aujourd'hui. Une note SÉLECTIONNÉE ou SURVOLÉE garde le chemin ordinaire quelle
+que soit sa largeur — il y en a quelques-unes, jamais trois mille.
+
+**LES ATTENDUS, ÉCRITS AVANT LA MESURE.**
+
+1. **Le piano roll ajusté passe sous 16 ms** (mesuré à 30,98 ms). Réfuté sinon.
+2. **La fenêtre entière ajustée passe sous 33 ms** (mesurée à 46,86 ms). Réfuté
+   sinon.
+3. **Au zoom d'ouverture, l'image est identique AU PIXEL** — c'est le témoin du
+   remède : à ce zoom les notes font plus de 4 px et ne prennent pas le chemin
+   rapide. **Réfuté si un seul pixel diffère.**
+4. **Ajusté, l'image CHANGE, et c'est voulu** : les pâtés de deux pixels
+   deviennent des traits nets. La différence sera chiffrée et REGARDÉE, pas
+   cachée. Attendu qualitatif, écrit d'avance : la couleur de vélocité devient
+   plus lisible, parce qu'aujourd'hui le contour sombre recouvre les deux pixels
+   de la note et mange la teinte qui porte la vélocité.
+
+### Phase D164 — le remède que j'avais supposé était à côté : 0,07 ms sur 30 (13/09/2026)
+
+**CE QUI ÉTAIT ATTENDU, ET CE QUI EST ARRIVÉ.** Le rectangle plein sous 4 px a
+été écrit, compilé, mesuré. Les deux attendus sont **RÉFUTÉS** :
+
+| | attendu | **mesuré** |
+|---|---|---|
+| piano roll ajusté | < 16 ms (depuis 30,98) | **29,73 ms** ✘ |
+| fenêtre entière ajustée | < 33 ms (depuis 46,86) | **46,20 ms** ✘ |
+
+Le gain est de **1,25 ms sur 31**, soit 4 %. Le remède n'était pas faux — il n'était
+pas au bon endroit.
+
+**CE QUI L'A MONTRÉ : CHRONOMÉTRER LES ÉTAPES, PUIS LES ENFANTS.** Une mesure
+temporaire posée dans `PianoRollComponent::paint` a donné la somme de ses six
+étapes : **grille 1,10 ms, boucle 0,00, fantômes 0,33, NOTES 0,07, tête 0,00,
+clavier 0,11 — 1,6 ms en tout**, quand le panneau entier en coûte 30. *Les notes,
+que j'avais accusées, valent 0,07 ms.* Le coût était chez un VOISIN, et aucun
+chiffre ne pouvait le dire : `VSM_PEINTURE` ne descendait pas sous la fenêtre.
+
+**L'INSTRUMENT A DONC ÉTÉ ÉTENDU** — `VSM_PEINTURE_ENFANTS=N` descend de N niveaux
+dans les enfants visibles, chacun nommé par sa CLASSE (beaucoup de composants
+internes n'ont pas de `getName()`, et un chiffre sans nom ne désigne rien). Le
+panneau « Piano Roll », ajusté, se décompose alors sans ambiguïté :
+
+| composant | taille | **médiane** |
+|---|---|---|
+| **VelocityLaneComponent** | 560 × 110 | **18,06 ms** |
+| **PianoRollRulerComponent** | 560 × 22 | **8,29 ms** |
+| Viewport (barre d'outils) | 560 × 152 | 1,78 ms |
+| PianoRollComponent | 560 × 76 | 1,55 ms |
+| Label, barres de défilement | — | 0,04 ms |
+| *total* | | *29,7 ms, et le panneau en mesure 30,35* |
+
+**La voie de vélocité coûte douze fois le piano roll, et la RÈGLE — vingt-deux
+pixels de haut — en coûte cinq.** Voilà pourquoi 4 %.
+
+**LE RECTANGLE PLEIN EST GARDÉ, et pour une raison mesurée** : il fait passer
+`PianoRollComponent` de ~2,8 à **1,55 ms** — 45 % de son propre dessin. Ce gain ne
+se voit pas dans le total parce que deux voisins le noient ; il se verra quand ils
+seront corrigés. Garder un remède de 4 % serait indéfendable ; garder un remède qui
+divise par deux le composant qu'il visait, et le dire, ne l'est pas.
+
+**LA LEÇON, PAYÉE ICI.** J'ai choisi le coupable en LISANT le code — une figure
+géométriquement dégénérée, un raisonnement juste — au lieu de le faire désigner par
+un chiffre. Le raisonnement était exact et le coupable mineur. *Un profil se
+mesure ; il ne se déduit pas d'une lecture, même bonne.* Et l'instrument qui
+manquait pour le mesurer a coûté vingt lignes.
+
+### D165 (attendus) — A27 : la règle qui empile 226 numéros dans 560 pixels, et la voie de vélocité (13/09/2026)
+
+**CE QUE LA RÈGLE FAIT, LU DANS SON CODE APRÈS QUE LE CHIFFRE L'A DÉSIGNÉE.** Sa
+boucle des mesures n'a **aucune garde de zoom** : elle dessine un trait ET un
+numéro par mesure, quelle que soit la distance entre eux. Ajusté, le morceau
+compte **226 mesures dans 560 px** — deux pixels et demi l'une de l'autre — et
+chaque numéro est écrit dans une boîte de 40 px de large. **Ce n'est pas seulement
+lent, c'est ILLISIBLE** : 226 nombres empilés les uns sur les autres. La grille du
+piano roll, juste en dessous, a pourtant trois niveaux gardés par leur
+espacement — « sous ~3 px d'écart, une grille devient une bouillie grise », dit son
+commentaire. La règle n'a jamais reçu la même attention.
+
+**CE QUE LA VOIE DE VÉLOCITÉ FAIT.** Une barre par note : `fillRect` plus
+`drawRect` d'un demi-pixel. Ajusté, la barre fait 3 px de large — le plancher — et
+le contour d'un demi-pixel en recouvre la moitié ; 3 651 barres se pressent dans
+480 px utiles, soit **7,6 barres par colonne de pixels**.
+
+**LES ATTENDUS, ÉCRITS AVANT LA MESURE.**
+
+1. **La règle ne numérote que ce qui se lit** : un numéro tous les N mesures, N
+   choisi pour laisser au moins 34 px entre deux, et un trait de mesure seulement
+   au-delà de 3 px d'écart (le seuil de la grille voisine, par cohérence).
+   Attendu : **sous 2 ms** (depuis 8,29).
+2. **La voie de vélocité ne trace pas un contour qui recouvre sa barre** : sous
+   4 px de large, la barre est pleine, sans contour. Attendu : **sous 9 ms**
+   (depuis 18,06) — la moitié, puisque le contour est quatre arêtes antialiassées
+   contre un seul remplissage.
+3. **Le panneau entier ajusté passe sous 16 ms**, et **la fenêtre entière sous
+   33 ms**. Réfuté sinon, et les chiffres publiés tels quels.
+4. **Au zoom d'ouverture, l'image est identique AU PIXEL** : les mesures y sont
+   espacées de plus de 34 px et les barres de vélocité larges de plus de 4 px —
+   aucun des deux chemins rapides ne s'y déclenche. C'est le témoin.
+5. **Ajusté, l'image CHANGE, et en mieux** : une règle lisible au lieu d'un
+   amas de chiffres. Sera regardée, pas seulement chiffrée.
+
+### Phase D165 — A27 se ferme : de 21 à 46 images par seconde, et une règle qu'on peut enfin lire (13/09/2026)
+
+**LES CINQ ATTENDUS SONT TENUS.** Médiane de 10 passes, même projet, même
+disposition, même échelle.
+
+| | avant | **après** | attendu | rapport |
+|---|---|---|---|---|
+| `PianoRollRulerComponent` (560 × 22) | 8,29 ms | **0,08 ms** | < 2 ms ✔ | **× 104** |
+| `VelocityLaneComponent` (560 × 110) | 18,06 ms | **2,76 ms** | < 9 ms ✔ | × 6,5 |
+| panneau « Piano Roll » ajusté | 30,35 ms | **6,38 ms** | < 16 ms ✔ | × 4,8 |
+| **fenêtre entière ajustée** | 46,86 ms | **21,95 ms** | < 33 ms ✔ | **21 → 46 im/s** |
+| fenêtre entière, zoom d'ouverture | 18,93 ms | **17,96 ms** | — | inchangée |
+
+**LE TÉMOIN, AU PIXEL.** Le panneau « Piano Roll » au zoom d'ouverture, avant et
+après : **0 pixel de différence sur 212 800**. La fenêtre entière au même zoom :
+**42 pixels sur 937 888**, tous dans un rectangle de 7 × 10 px que la photo montre
+être « CPU 0.2% » devenu « CPU 0.1% » — la seule surface variable de
+l'application, déjà nommée par D94. Les deux chemins rapides ne se déclenchent pas
+à ce zoom, et la preuve n'est pas un raisonnement : c'est une image.
+
+**CE QUE L'ŒIL GAGNE, et c'est la moitié du résultat.** Ajusté, la règle
+montrait 226 numéros empilés dans 560 px : un bandeau gris où aucun chiffre ne se
+lisait. Elle montre maintenant **1, 33, 65, 97, 129, 161, 193, 225** — une mesure
+sur 32, choisie pour laisser 34 px entre deux numéros. Et la voie de vélocité,
+débarrassée d'un contour qui recouvrait la moitié de chaque barre de 3 px, rend
+enfin la TEINTE qui porte la vélocité : le vert est clair et lisible là où il
+était terne. *La vitesse et la lisibilité venaient du même défaut ; les corriger
+était le même geste.*
+
+**A27 SE FERME.** Reste noté, sans être une anomalie : la fenêtre entière ajustée
+tient 21,95 ms, dont le mixeur 5,37 ms et la liste des pistes 0,93 ms — le
+prochain gros poste, si on en cherche un, est `MixerComponent` (4,50 ms pour douze
+tranches).
+
+**ET L'INSTRUMENT RESTE.** `VSM_PEINTURE=N` et `VSM_PEINTURE_ENFANTS=N` sont
+désormais dans le banc : tout composant de l'application se chronomètre par le
+chemin que le système emprunte, nommé par sa classe. C'est ce qui manquait pour
+que D163 ne se trompe pas de coupable, et c'est ce qui permettra de mesurer le
+prochain dessin qu'on ajoute au lieu de le supposer léger.

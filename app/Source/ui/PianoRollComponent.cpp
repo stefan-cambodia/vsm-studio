@@ -15,6 +15,11 @@ using namespace vsm::ui;
 
 namespace {
 
+/// D164 (A27) : la largeur sous laquelle une note se dessine en rectangle PLEIN.
+/// Égale à deux fois le rayon de coin du chemin ordinaire (2,5 px) : au-dessous,
+/// la figure arrondie est entièrement faite de coins et ne rend qu'un pâté.
+constexpr float kLargeurMinimaleArrondie = 4.0f;
+
 bool isBlackKey(int noteInOctave) {
     static const bool black[12] = { false, true, false, true, false, false, true, false, true, false, true, false };
     return black[((noteInOctave % 12) + 12) % 12];
@@ -1835,6 +1840,47 @@ void PianoRollComponent::drawNoteRectangle(juce::Graphics& g, const Note& note, 
     const float brightness = 0.45f + 0.55f * (static_cast<float>(note.velocity) / 127.0f);
     juce::Colour fill = base.withMultipliedBrightness(brightness);
     if (note.muted) fill = fill.withSaturation(0.05f).withAlpha(0.35f);
+
+    // D164 (A27) : SOUS QUATRE PIXELS DE LARGE, UN RECTANGLE PLEIN.
+    //
+    // POURQUOI. Ajusté à la fenêtre, un morceau de 452 s tient dans 560 px : une
+    // note mesure moins d'un pixel de large et se dessine à la largeur plancher
+    // de 2 px. Un rectangle de 2 px avec des coins de 2,5 px de rayon est une
+    // figure DÉGÉNÉRÉE -- les coins consomment toute la forme, le rasteriseur
+    // paye un chemin courbe complet, et l'œil reçoit un pâté de deux pixels.
+    // D163 l'a chiffré : 30,98 ms pour le seul piano roll, contre 2,56 ms au zoom
+    // d'ouverture, les quatre autres panneaux inchangés.
+    //
+    // LE SEUIL EST LE RAYON, PAS UN GOÛT : à 5 px de large la figure est déjà
+    // entièrement faite de coins. Au-delà du seuil, le chemin ordinaire reprend
+    // à l'identique -- c'est le témoin du remède, et l'image au zoom d'ouverture
+    // doit rester la même au pixel.
+    //
+    // CE QUI RESTE ICI, parce que c'est ce qui se voit sur deux pixels : la barre
+    // ambre d'une note douteuse (le commentaire du chemin ordinaire le dit
+    // lui-même) et les hachures d'une note muette. Ce qui tombe est le liseré
+    // arrondi réduit d'un pixel, dont la largeur est NULLE à cette échelle : il
+    // ne dessinait rien. Une note sélectionnée ou survolée garde le chemin
+    // ordinaire quelle que soit sa largeur : il y en a quelques-unes, jamais
+    // trois mille.
+    if (rect.getWidth() < kLargeurMinimaleArrondie && !selected && note.id != hoveredNoteId_) {
+        g.setColour(fill);
+        g.fillRect(rect);
+        if (note.muted) {
+            g.setColour(Palette::background.withAlpha(0.5f));
+            for (float x = rect.getX(); x < rect.getRight(); x += 5.0f)
+                g.drawLine(x, rect.getY(), x + rect.getHeight(), rect.getBottom(), 1.0f);
+        }
+        if (note.confidence < kDoubtfulNoteThreshold) {
+            const float force = juce::jlimit(
+                0.7f, 1.0f, (kDoubtfulNoteThreshold - note.confidence) / kDoubtfulNoteThreshold + 0.4f);
+            g.setColour(Palette::accentAmber.withAlpha(force));
+            const float largeur = std::min(3.0f, rect.getWidth() * 0.5f);
+            g.fillRect(juce::Rectangle<float>(rect.getX(), rect.getY() + 1.0f,
+                                              largeur, rect.getHeight() - 2.0f));
+        }
+        return;
+    }
 
     g.setColour(fill);
     g.fillRoundedRectangle(rect, 2.5f);

@@ -61,13 +61,46 @@ void PianoRollRulerComponent::paint(juce::Graphics& g) {
         }
     }
 
+    // D165 (A27) : LA RÈGLE NE DESSINE QUE CE QUI SE LIT.
+    //
+    // CE QU'ELLE FAISAIT : un trait ET un numéro par mesure, sans aucune garde de
+    // zoom. Sur un morceau de 452 s ajusté à la fenêtre, cela fait 226 mesures
+    // dans 560 px -- deux pixels et demi l'une de l'autre -- et 226 nombres écrits
+    // chacun dans une boîte de 40 px, donc empilés. Ce n'était pas seulement lent
+    // (8,29 ms mesurés par D164, cinq fois le piano roll qu'elle surmonte) :
+    // c'était ILLISIBLE. La grille du piano roll, juste dessous, garde depuis
+    // toujours ses trois niveaux par leur espacement -- « sous ~3 px d'écart, une
+    // grille devient une bouillie grise » ; la règle n'avait jamais reçu la même
+    // attention.
+    //
+    // CE QU'ELLE FAIT : le trait au-delà de 3 px d'écart (le seuil de la grille
+    // voisine, par cohérence), et le numéro une mesure sur N, N étant le plus
+    // petit pas qui laisse 34 px entre deux numéros -- la largeur qu'occupe
+    // « 226 » dans cette police, plus l'air nécessaire pour ne pas les coller.
+    // Au zoom d'ouverture, où les mesures sont espacées de bien plus que cela,
+    // N vaut 1 et l'image ne change pas d'un pixel.
+    const double pxParMesure = static_cast<double>(barTicks) * pxPerTick;
+    const bool traitsVisibles = pxParMesure > 3.0;
+    int pasDuNumero = 1;
+    if (pxParMesure > 0.0)
+        while (pasDuNumero * pxParMesure < 34.0 && pasDuNumero < 1024) pasDuNumero *= 2;
     g.setFont(11.0f);
     for (Tick t = (startTick / barTicks) * barTicks; t <= endTick; t += barTicks) {
         const float x = pianoRoll_.tickToX(t);
-        g.setColour(Palette::gridLineStrong);
-        g.drawLine(x, 0.0f, x, static_cast<float>(bounds.getHeight()), 1.2f);
+        const int numero = static_cast<int>(t / barTicks) + 1;
+        if (traitsVisibles) {
+            g.setColour(Palette::gridLineStrong);
+            g.drawLine(x, 0.0f, x, static_cast<float>(bounds.getHeight()), 1.2f);
+        }
+        if ((numero - 1) % pasDuNumero != 0) continue;
+        // Le trait d'une mesure NUMÉROTÉE se dessine même quand les autres sont
+        // tombées : un numéro sans sa graduation ne se rattache à rien.
+        if (!traitsVisibles) {
+            g.setColour(Palette::gridLineStrong);
+            g.drawLine(x, 0.0f, x, static_cast<float>(bounds.getHeight()), 1.2f);
+        }
         g.setColour(Palette::textSecondary);
-        g.drawText(juce::String(static_cast<int>(t / barTicks) + 1),
+        g.drawText(juce::String(numero),
                     static_cast<int>(x) + 3, 1, 40, bounds.getHeight() - 2,
                     juce::Justification::centredLeft, false);
     }

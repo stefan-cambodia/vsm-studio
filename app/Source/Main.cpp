@@ -1,5 +1,6 @@
 #include <JuceHeader.h>
 #include <algorithm>
+#include <cxxabi.h>
 #include <cstdlib>
 #include <vector>
 #include "MainComponent.h"
@@ -73,6 +74,45 @@ void chronometrerPeinture(juce::Component* cible, const juce::String& nom, int p
                 + std::to_string(passes) + " passes\n").c_str(), stderr);
 }
 
+/// `VSM_PEINTURE_ENFANTS=N` : la profondeur à laquelle descendre dans les
+/// enfants (0 par défaut -- les fenêtres seules, comme au premier relevé).
+int profondeurDesEnfants() {
+    const char* p = std::getenv("VSM_PEINTURE_ENFANTS");
+    if (p == nullptr || *p == 0) return 0;
+    return juce::jlimit(0, 6, juce::String(p).getIntValue());
+}
+
+/// D163 (suite) : LE NOM DE CLASSE D'UN COMPOSANT, pour pouvoir nommer celui qui
+/// coûte. Beaucoup de composants n'ont pas de `getName()` -- un panneau interne
+/// n'a aucune raison d'en porter un --, et un chiffre sans nom ne désigne rien.
+juce::String nomDeClasse(juce::Component* c) {
+    const char* brut = typeid(*c).name();
+    int statut = 0;
+    char* lisible = abi::__cxa_demangle(brut, nullptr, nullptr, &statut);
+    const juce::String nom = (statut == 0 && lisible != nullptr) ? juce::String(lisible) : juce::String(brut);
+    std::free(lisible);
+    return nom.fromLastOccurrenceOf("::", false, false).isNotEmpty()
+             ? nom.fromLastOccurrenceOf("::", false, false)
+             : nom;
+}
+
+/// Les enfants visibles d'un composant, chronométrés un par un jusqu'à une
+/// profondeur donnée. C'est ce qui a manqué au premier relevé de D163 : le
+/// panneau « Piano Roll » coûtait 30 ms quand la somme des étapes de
+/// `PianoRollComponent::paint` n'en faisait que 1,6 -- le coût était chez un
+/// VOISIN, et aucun chiffre ne pouvait le dire.
+void chronometrerEnfants(juce::Component* parent, const juce::String& prefixe, int passes, int profondeur) {
+    if (profondeur <= 0) return;
+    for (int i = 0; i < parent->getNumChildComponents(); ++i) {
+        auto* enfant = parent->getChildComponent(i);
+        if (enfant == nullptr || !enfant->isVisible()) continue;
+        if (enfant->getWidth() <= 0 || enfant->getHeight() <= 0) continue;
+        const juce::String nom = prefixe + "/" + nomDeClasse(enfant);
+        chronometrerPeinture(enfant, nom, passes);
+        chronometrerEnfants(enfant, nom, passes, profondeur - 1);
+    }
+}
+
 /// La fenêtre socle PUIS chaque fenêtre flottante visible -- même parcours que
 /// `VSM_CAPTURE_PANNEAUX` (D55.2), pour que ce qui est chronométré soit ce que
 /// la photo montre.
@@ -81,6 +121,7 @@ void chronometrerToutesLesPeintures(juce::Component* socle, int passes) {
     // le premier essai a écrit « fenÃªtre » au journal. Le nom passe donc par
     // `fromUTF8`, comme tout texte accentué de ce dépôt.
     chronometrerPeinture(socle, juce::String::fromUTF8("fen\u00eatre"), passes);
+    chronometrerEnfants(socle, juce::String::fromUTF8("fen\u00eatre"), passes, profondeurDesEnfants());
     for (int i = 0; i < juce::TopLevelWindow::getNumTopLevelWindows(); ++i) {
         auto* fenetre = juce::TopLevelWindow::getTopLevelWindow(i);
         if (fenetre == nullptr || !fenetre->isVisible()) continue;
@@ -89,6 +130,7 @@ void chronometrerToutesLesPeintures(juce::Component* socle, int passes) {
             if (auto* c = doc->getContentComponent()) contenu = c;
         if (contenu == socle) continue;
         chronometrerPeinture(contenu, fenetre->getName(), passes);
+        chronometrerEnfants(contenu, fenetre->getName(), passes, profondeurDesEnfants());
     }
 }
 

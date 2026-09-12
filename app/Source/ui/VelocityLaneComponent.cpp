@@ -66,8 +66,20 @@ void VelocityLaneComponent::paint(juce::Graphics& g) {
 
         g.setColour(colour);
         g.fillRect(bar);
-        g.setColour(selected ? Palette::accentAmber : colour.darker(0.6f));
-        g.drawRect(bar, selected ? 1.5f : 0.5f);
+        // D165 (A27) : SOUS QUATRE PIXELS DE LARGE, PAS DE CONTOUR.
+        //
+        // Un `drawRect` d'un demi-pixel sur une barre de 3 px -- la largeur
+        // plancher, celle qu'on atteint dès que le morceau est ajusté à la
+        // fenêtre -- en recouvre la moitié : la barre prend la couleur de son
+        // contour, et la teinte qui PORTE la vélocité disparaît. On payait quatre
+        // arêtes antialiassées par note (18,06 ms pour 3 651 notes, mesurés par
+        // D164) pour effacer l'information qu'on voulait montrer. Une barre
+        // sélectionnée garde son contour ambre quelle que soit sa largeur : c'est
+        // lui qui dit la sélection, et elles sont peu nombreuses.
+        if (selected || barWidth >= 4.0f) {
+            g.setColour(selected ? Palette::accentAmber : colour.darker(0.6f));
+            g.drawRect(bar, selected ? 1.5f : 0.5f);
+        }
     }
 
     g.setColour(Palette::border);
