@@ -18686,3 +18686,139 @@ et deux secondes et demie pour un projet de douze pistes : le studio s'ouvre plu
 vite qu'on ne décide de l'ouvrir. L'audit ne trouve rien à corriger ; il inscrit
 un repère, pour que la prochaine fois qu'on ajoute quelque chose au démarrage on
 sache à quoi le comparer.
+
+### D162 (attendus) — le trente-huitième audit : un projet reconstruit, enregistré par l'application puis rouvert, est-il le même ? (13/09/2026)
+
+**POURQUOI CET AUDIT, ET POURQUOI MAINTENANT.** Le § 2 range en **premier**
+critère du « digne de Cubase » : *ce qu'on fait ne se perd pas — le projet se
+sauvegarde et se rouvre à l'identique*. Trente-sept audits ont regardé la langue,
+la coupure des boîtes, les bulles de valeur, l'annulation, les raccourcis, la
+latence et le temps d'ouverture. **Aucun n'a jamais rouvert un projet enregistré
+par l'application pour le comparer à ce qu'il était.** A10 (D76) a trouvé que
+l'enregistrement *détruisait* des réglages, et l'a corrigé ; mais il comptait des
+réglages de machine, pas le projet entier — et il mesurait l'ENREGISTREMENT, pas
+l'aller-retour.
+
+Le sujet est le projet que la chaîne vient d'écrire : c'est le cas d'usage réel
+du logiciel (on reconstruit, puis on travaille dedans), et c'est le plus exigeant
+— douze pistes, neuf machines, deux pistes audio, 9 224 notes, onze clips.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** Trois propositions, dont une
+négative qu'il faut dire d'avance pour ne pas la présenter ensuite comme une
+découverte :
+
+1. **`project.json` n'est PAS attendu octet pour octet.** Deux rédacteurs
+   différents l'écrivent — `analyse/` en Python, l'application par
+   `interchange/` —, et rien n'a jamais exigé qu'ils produisent le même texte.
+   Une différence de mise en forme ou d'ordre de clés ne sera donc pas comptée
+   comme une perte ; ce qui compte est ce que le projet DIT.
+2. **Le relevé du projet est attendu IDENTIQUE après l'aller-retour** : pistes
+   (12, dont 9 MIDI, 2 audio, 1 groupe), notes (9 224), clips (11), automation,
+   CC, plis de hauteur, machines employées (5, avec le même compte par machine),
+   durée du matériau (452,16 s) et tempo de départ (120,00 BPM) — le digest que
+   « Statistiques du projet » publie au terminal. **Réfuté si un seul de ces
+   nombres bouge.**
+3. **Le deuxième enregistrement est attendu octet pour octet égal au premier.**
+   Ouvrir le projet déjà enregistré par l'application et le réenregistrer sans
+   aucun geste doit converger : c'est le seul critère qui distingue « rien n'est
+   perdu » de « on perd un peu à chaque passage ». **Réfuté si un fichier
+   diffère**, et la dérive sera nommée fichier par fichier.
+
+**Et une quatrième chose, regardée sans attendu chiffré** : ce que le volet
+d'ouverture dit du projet réenregistré. S'il ouvrait « avec des réserves » ce que
+l'application vient d'écrire, ce serait l'application qui se contredit.
+
+**LA MESURE.** Le projet est RECOPIÉ dans un brouillon (jamais mesuré en place :
+l'enregistrement écrirait dans le dossier d'une course), ouvert par
+`VSM_PROJET`, enregistré par `VSM_MENU=Enregistrer` — le libellé vaut exactement
+« Enregistrer » dès qu'un dossier de projet est connu —, et l'application quitte
+après sa photo. `diff -r` nomme ce qui a bougé, `cmp` tranche chaque fichier, et
+le relevé des statistiques est relu au terminal avant et après.
+
+### Phase D162 — le trente-huitième audit : rien n'est perdu à l'aller-retour, et trois choses sont GAGNÉES (13/09/2026)
+
+**LE CAS.** Le projet de la course 3 (`children-c3-plafond`), recopié dans un
+brouillon : 12 pistes (9 MIDI, 2 audio, 1 groupe), 9 machines, 9 224 notes,
+11 clips, 452,16 s de matériau. Ouvert par `VSM_PROJET`, enregistré par
+`VSM_MENU=Enregistrer` (le libellé est exactement « Enregistrer » — la ligne du
+journal le confirme, et c'est elle qui prouve qu'un dossier de projet était
+connu : sans lui, JUCE aurait affiché « Enregistrer... » et ouvert un
+sélecteur).
+
+**LES TROIS ATTENDUS, TRANCHÉS.**
+
+| | attendu écrit avant | **mesuré** |
+|---|---|---|
+| 1 | `project.json` n'est PAS octet pour octet | **tenu** — il diffère, et ce qui diffère est nommé ci-dessous |
+| 2 | le relevé du projet est identique après l'aller-retour | **tenu** — les 17 lignes de « Statistiques du projet » identiques au caractère près |
+| 3 | le deuxième enregistrement converge | **tenu** — `diff -r` du dossier enregistré deux fois : **aucune différence** |
+
+**AUCUN FICHIER CRÉÉ, AUCUN PERDU** : 22 fichiers avant, 22 après, mêmes noms.
+Onze diffèrent (les 9 presets de machine, le `.mid`, `project.json`), et chacun a
+été comparé non pas octet à octet mais **champ par champ**, parce qu'un `diff`
+qui dit « différent » ne dit pas ce qui a bougé.
+
+**CE QUE L'APPLICATION AJOUTE — et c'est la découverte de l'audit.** Elle
+n'enlève rien ; elle écrit trois choses que la chaîne ne savait pas écrire :
+
+1. **La section `master`** (14 paramètres : égaliseur, compresseur, limiteur,
+   largeur stéréo). La chaîne n'en écrit aucune ; le projet ouvrait donc sur les
+   valeurs d'usine, sans que le fichier le dise. Depuis D142 et D144 le MASTER
+   appartient au projet : l'enregistrement l'inscrit.
+2. **Onze clips**, un par piste sonnante. `start = 0`, `length = 0`,
+   `sourceLength = 0` — et **ce sont des valeurs pleines de sens, non des
+   trous** : `Track.h` définit `sourceLength = 0` comme « jusqu'à la fin du
+   matériau » et `length = 0` comme « la durée de la fenêtre ». Un clip qui
+   couvre toute la piste s'écrit ainsi. *J'ai failli publier ici une anomalie —
+   « tous les clips sont enregistrés avec une longueur nulle » — avant de lire
+   la définition du champ.*
+3. **Les confiances de transcription, dans le `.mid`.** Quatre blocs privés
+   0x7F (13 388, 9 476, 29 220 et 7 276 octets) que la chaîne n'écrit pas : elle
+   laisse ses confiances dans `rapport.json`, et l'application les repose sur les
+   notes à l'ouverture (`applyNoteConfidences`, D6.3). En enregistrant, elle les
+   met **dans le fichier MIDI**, d'où elles ressortiront même si le projet est
+   déplacé sans son rapport. Le flux joué ne change pas : les 0x7F sont ignorés
+   de tout autre logiciel.
+
+**LE `.mid` : LES 18 448 ÉVÉNEMENTS DE NOTE SONT LES MÊMES.** Comparés tick par
+tick, canal, hauteur et vélocité compris : multisets identiques sur les douze
+pistes. Sur les **quatre pistes polyphoniques**, l'ORDRE de deux événements
+partageant le même tick change — et rien d'autre. *Le premier relevé disait
+« notes non identiques » et montrait 34 → 46, 37 → 49, 29 → 56 : une
+transposition, crue une seconde. C'était la comparaison qui était fausse — elle
+lisait des listes ordonnées là où il fallait comparer des multisets.* Ajoutés :
+une signature rythmique (4/4, que la chaîne omet) et les quatre blocs privés.
+
+**LE SEUL VRAI COÛT, ET IL EST CHIFFRÉ : LA PRÉCISION DES NOMBRES.** La chaîne
+écrit en double (`8.38673675793443`), l'application en **8 chiffres
+significatifs** (`8.386737`). Sur les **140 paramètres** des neuf machines et les
+12 volumes de piste :
+
+| | pire écart mesuré | repère |
+|---|---|---|
+| erreur **relative** sur un paramètre | **6,50 × 10⁻⁸** (`drum.snare.decay`, 0,5129166666 → 0,5129167) | quantum 24 bits : 5,96 × 10⁻⁸ ; **16 bits : 1,53 × 10⁻⁵** |
+| erreur **absolue** sur un paramètre | **6,15 × 10⁻⁵ Hz** (coupure 1549,1933384829654 → 1549,1934 Hz) | 0,06 millihertz sur 1,5 kHz |
+| erreur relative sur un **volume** de piste | **2,15 × 10⁻⁸** (0,74295558 → 0,74295557) | −0,0000002 dB |
+
+**Pourquoi ce chiffre compte ici plus qu'ailleurs** : ces nombres sont le
+RÉSULTAT d'une optimisation — la chaîne a dépensé des heures à les trouver, et le
+projet mesure des distances à la quatrième décimale. La réponse est que l'écart
+introduit est **au niveau du quantum 24 bits et 230 fois sous celui du 16 bits** :
+enregistrer depuis l'application ne déplace pas une distance de reconstruction.
+Le dire en chiffres valait mieux que de le supposer.
+
+**DEUX DIVERGENCES DE FORME, dites pour qu'on ne les retrouve pas comme des
+anomalies.** Le champ `machineName` d'un preset est documenté « nom lisible »
+(`SynthPreset.h:32`) : la chaîne y écrit l'identifiant (`vsm.hurdygurdy`),
+l'application le nom d'usage (« Hurdy-Gurdy (la vielle à roue) »). L'identifiant
+vrai est `pluginId`, identique de part et d'autre, et c'est lui que tout le code
+lit — **le fichier ne dépend donc pas de la langue de l'interface**, vérifié au
+code : le préset prend `plugin.machineName()` sans passer par `tr()`. Et
+l'application écrit un bloc `audio` vide sur la piste de GROUPE (`file: ""`,
+`frames: 0`), plus deux blocs `instrument` vides : du bruit dans le fichier, sans
+effet à la relecture (le deuxième enregistrement est identique au premier).
+
+**CE QUE L'AUDIT NE TROUVE PAS.** Aucune perte. Le premier critère du § 2 — *ce
+qu'on fait ne se perd pas* — est **tenu sur le cas le plus exigeant dont le dépôt
+dispose**, et il n'avait jamais été vérifié à l'échelle d'un projet entier : A10
+(D76) avait mesuré l'enregistrement, jamais l'aller-retour.
