@@ -17967,3 +17967,67 @@ synthés et ne sont capturés qu'à l'enregistrement ou à la recréation d'une
 machine, si bien qu'un pas d'annulation copie un modèle qui ne les porte pas.
 Le remède les fait porter par le modèle, `core/` et `interchange/` — ce que
 l'épreuve interdisait et ne borne plus.
+
+### D154 (attendus) — les réglages de machine portés par le modèle, comme le MASTER depuis D144 (12/09/2026)
+
+**LE DÉFAUT, MESURÉ PAR D140 ET NON SUPPOSÉ** (A21 à l'INDEX) : la coupure d'une
+façade réglée à 800 Hz reste à 800 Hz après Ctrl+Z, là où le volume de la ligne
+et le fader reviennent. Un glissé sur une façade ne s'annule pas davantage. Ces
+réglages font partie du projet — ils s'écrivent dans
+`instruments/track_NN.synth.json` — et aucun pas d'annulation ne les porte.
+
+**LA CAUSE, LUE DANS LE CODE.** Les réglages vivent dans les INSTANCES de
+machines tenues par le graphe. `MainComponent::rebuildFromProject` ne les capture
+(`capturePreset`) que pour les machines qu'il va DÉTRUIRE, afin de les reposer
+sur celles qu'il recrée (`reglagesGardes_`, D76) ; une machine GARDÉE — le cas
+d'une annulation, où la piste et son `instrumentId` ne changent pas — n'est même
+pas photographiée : son état courant persiste, c'est-à-dire l'état d'APRÈS le
+geste qu'on vient d'annuler. La photo du pas d'annulation, elle, copie le modèle,
+et le modèle ne porte pas ces valeurs. C'est exactement le défaut de D143 pour le
+MASTER — « un pas qui photographie un modèle qui ne porte pas ce que l'oreille
+entend » — et il se soigne par le même remède que D144.
+
+**LE PIÈGE QUE LE CODE INTERDIT D'AVANCE, ET IL FAUT LE DIRE ICI.**
+`core/include/vsm/sequencer/Track.h:697` porte l'épitaphe d'un champ `presetId`
+retiré par D36.5 : « cinq endroits l'effaçaient, aucun ne l'écrivait … une
+seconde façon de le désigner aurait fini par le désigner autrement ». Ce qui
+manque au modèle n'est donc PAS un nom ni un chemin de preset — c'est la table
+des VALEURS, celle que la piste porte déjà pour ses EFFETS dans la même
+structure (`EffectDescription` : `parameters`, `nativeState`, et l'insert
+s'annule correctement depuis toujours). **Décision écrite : l'instrument d'une
+piste portera ce que ses inserts portent déjà, aux mêmes noms et pour les mêmes
+raisons** — valeurs sémantiques en unités réelles, état natif pour les machines
+tierces, chemins d'échantillons relatifs au dossier de projet. Le fichier
+`*.synth.json` reste la seule façon de DÉSIGNER un son ; le modèle en porte le
+CONTENU, comme pour un effet.
+
+**DEUXIÈME DÉCISION, ET C'EST CELLE QUI COÛTE : photographier TOUTES les pistes à
+chaque pas, pas seulement celle qu'on touche.** Ne photographier que la piste
+éditée rendrait, à l'annulation, les réglages des AUTRES pistes tels qu'ils
+étaient à leur dernière photo — c'est-à-dire le défaut de D143 transposé, un pas
+qui ramène en arrière ce que personne n'a demandé. La photo se prend donc pour
+toutes les pistes, depuis le moteur, à l'instant du geste, là où le MASTER se
+prend déjà (`beginProjectEdit`). `capturePreset` ne touche AUCUN fichier (vérifié
+dans `interchange/src/SynthPreset.cpp` : lecture de paramètres, `saveNativeState`
+et chemins d'échantillons, pas d'écriture), mais il est appelé à chaque DÉBUT DE
+GLISSÉ, et c'est ce coût qu'il faut borner.
+
+**LES ATTENDUS, ÉCRITS AVANT LA MESURE.**
+
+| # | ce qui est attendu | le chiffre qui le tranche |
+|---|---|---|
+| a | **une coupure annulée revient** — réglée de 1200 à 800 Hz, Ctrl+Z rend 1200 Hz au MOTEUR, Ctrl+Maj+Z rend 800 | 800 → **1200** → 800 |
+| b | **le témoin sans annulation** — la même série sans Ctrl+Z laisse 800. Sans lui, « rendu » et « jamais changé » donneraient le même chiffre : la leçon de D145 | 800 → **800** |
+| c | **le fichier ne bouge pas** — un projet écrit avant l'étape se relit et se réécrit octet pour octet, et un projet écrit après se relit dans l'ancien lecteur sans perdre autre chose que les réglages | `cmp` : **0 octet de différence** |
+| d | **le coût d'un début de glissé reste invisible** — photographier N machines à chaque pas. Mesuré sur un projet à 12 pistes pourvues (celui de la course 3 de l'épreuve) | `beginProjectEdit` **sous 5 ms** |
+| e | **aucune panne muette** — un réglage qui ne peut être reposé (profil absent, échantillon manquant, machine d'un autre identifiant) le DIT au journal, et le banc COMPTE ce que le journal avertit avant de conclure (leçon de D147) | **0 avertissement** inattendu, et le compte affiché |
+
+**Si (d) échoue**, la décision se réécrit ICI avant d'être codée — une photo
+paresseuse (ne capturer que ce qui a changé depuis la dernière, par un compteur
+de modifications côté machine) plutôt qu'une photo partielle par piste, qui
+rouvrirait D143. Le choix ne se tranchera pas dans le code.
+
+**Ce que ce pas ne fait pas.** Il ne rend pas annulable le CHOIX d'une machine
+(déjà un pas, « Machine de la piste ») ni l'automation (D30). Il ne touche pas
+au rack : les façades envoient déjà leurs valeurs au moteur, et c'est le moteur
+qui sera photographié — aucune façade n'a à se souvenir de quoi que ce soit.
