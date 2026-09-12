@@ -17663,3 +17663,57 @@ langues. Elles le sont désormais par DÉCLARATION, et la garde de D150 signaler
 toute régression : si l'une d'elles change de texte sans que sa paire suive, la
 règle large la nommera. L'inventaire est propre sous les deux règles, en-têtes
 compris (ECRAN 0).
+
+### Phase D152 — le trente-deuxième audit : une piste sans machine et sans note, telle que le musicien la voit (12/09/2026)
+
+**D'où elle vient.** L'épreuve Children va livrer exactement ce cas : la course 3
+a découpé le stem `vocals` (0,2 % de l'énergie du morceau) en « Voix · tête » et
+« Voix · chœurs », et son journal les déclare toutes deux « volume non calé
+(piste sans machine ou sans note) ». Le musicien ouvrira donc un projet dont
+deux lignes ne peuvent rien jouer. La question n'est pas de savoir si la chaîne
+a eu raison — l'épreuve ne corrige rien — mais **ce que l'interface en dit**.
+
+**Ce que le code dit AVANT toute mesure** (lu, pas supposé) :
+
+- la ligne de piste n'affiche **aucun compte de notes**. Vérifié en listant
+  TOUTES les occurrences de « notes » dans les quatre fichiers concernés :
+  `TrackListComponent.cpp` (2 : deux commentaires), `TrackListComponent.h` (1 :
+  un commentaire), `ArrangementComponent.cpp` (5, dont le seul usage réel —
+  `track.notes` à la ligne 380, pour calculer où finit la bande),
+  `ArrangementComponent.h` (2 : des commentaires). Rien n'est affiché ;
+- le sélecteur d'instrument porte une entrée « (Aucun) » (D83) : une piste sans
+  machine devrait donc l'afficher ;
+- le rack écrit « (aucun instrument assigné) » (`SynthRackComponent.cpp:81`),
+  mais pour la piste CHOISIE seulement ;
+- le piano roll écrit « %1 note(s) sur la piste » (`PianoRollComponent.cpp:1591`),
+  là encore pour la piste choisie seulement ;
+- l'arrangement ne dit rien : une piste vide y est une bande vide.
+
+**Le projet d'essai, et pourquoi il doit être FIDÈLE.** Les pistes du projet et
+celles du MIDI s'apparient **par rang** (`ProjectDocument.cpp:456`, `min` des
+deux comptes), et un écart fait sonner « Le projet décrit %1 piste(s) mais le
+MIDI en contient %2 » (ligne 449). Un essai qui ajouterait une piste au projet
+sans ajouter sa piste MIDI mesurerait cet avertissement au lieu de mesurer
+l'interface. Le projet d'essai porte donc **une piste MIDI vide en plus**, comme
+le vrai projet de la course 3. (Le fichier MIDI d'une course est bien réel :
+75 167 octets, format 1, 10 pistes pour la course 1 — un premier relevé à
+« 167 octets » venait d'un listage mal découpé de ma part, et non du fichier.)
+
+**ATTENDU, écrit avant la mesure.** Ouverture en français d'un projet d'essai à
+11 pistes, dont la dernière sans machine et sans note.
+
+| cas | attendu | ce qui le réfute |
+|---|---|---|
+| (a) avertissement pistes/MIDI | **aucun** | un avertissement : l'essai est infidèle et la mesure ne vaut rien |
+| (b) le sélecteur de la piste vide | **« (Aucun) »** | autre chose : le sélecteur mentirait sur l'état de la piste |
+| (c) un compte de notes dans sa ligne | **rien** | un compte : ma lecture du code est fausse, et c'est elle qu'il faut corriger |
+| (d) le rack, cette piste choisie | **« (aucun instrument assigné) »** | autre chose |
+| (e) le piano roll, cette piste choisie | **« 0 note(s) sur la piste »** | autre chose |
+
+**L'hypothèse.** Une piste sans machine et sans note ne se distingue d'une piste
+normale **que si on la choisit** (le rack et le piano roll parlent alors) ou si
+l'on va lire son sélecteur d'instrument ; **la vue d'ensemble, elle, ne la
+signale pas**. Si elle se vérifie, l'anomalie s'écrit (A26) : un projet
+reconstruit peut contenir des pistes inertes sans que rien ne le dise d'un coup
+d'œil, et le musicien cherche un son qui ne viendra jamais. Le remède
+appartiendra à la phase suivante ; celle-ci mesure.
