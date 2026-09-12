@@ -17533,3 +17533,31 @@ le compte auquel D130 a fermé A9 : la dérive à 12 n'était pas une régressio
 traduction mais un défaut de comptage, et le dire suppose de le MESURER, pas de
 le supposer. Si le chiffre n'est pas 7, la différence se nomme ligne à ligne
 avant toute conclusion.
+
+**RECTIFICATION DE D149, ÉCRITE AVANT LA SUITE.** La garde corrigée signale
+**deux** libellés sans clé, pas un : « Armement » (`TrackListComponent.cpp:183`)
+et « **Master** » (`MainComponent.cpp:322` et `331`, introduit par D144). Or
+D149 a écrit « 88 libellés, UN SEUL sans traduction ». **Mon script de D149
+était faux**, et voici en quoi : sa regex disait `u8?"`, c'est-à-dire « un `u`,
+puis un `8` facultatif » — elle n'attrapait que les littéraux préfixés `u8`, et
+sautait en silence tous les autres, dont `beginProjectEdit("Master")`. Le bon
+motif était `(?:u8)?"`. Le compte de 88 était donc un sous-ensemble, et le
+« UN SEUL » une conséquence de l'angle mort, non une mesure.
+
+C'est l'argument même de cette phase : **un script jeté après usage n'est pas
+une garde**. L'outil du dépôt, lui, est relu, corrigé et rejoué ; il vient de
+trouver ce que mon script ne pouvait pas voir. Vérification faite dans
+`ui/Langue.cpp` : aucune occurrence de `"Master` — ni clé, ni traduction.
+
+**ATTENDU COMPLÉMENTAIRE, écrit avant la mesure.** La paire manquante s'ajoute :
+« Master » → « Master », le mot étant le même dans les deux langues (c'est le
+terme universel des consoles, et l'application l'écrit déjà ainsi sur la tranche).
+Une paire identique n'est pas une redondance : elle DÉCLARE que le cas a été
+examiné, ce qu'un silence ne dit pas.
+
+| mesure | attendu | ce qui le réfute |
+|---|---|---|
+| SANS_PAIRE | **0** | autre chose : un troisième libellé traînerait, et il faudrait le nommer |
+| TABLE | **252** (250 + les deux sites de « Master ») | un autre chiffre |
+| ECRAN | **7**, inchangé | tout changement : la paire ne touche pas à ce compte |
+| COMMANDE | **31**, inchangée | idem |
