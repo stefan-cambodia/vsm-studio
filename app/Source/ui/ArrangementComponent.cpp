@@ -1731,15 +1731,36 @@ void ArrangementComponent::paint(juce::Graphics& g) {
     const vsm::midi::Tick parMesure =
         project_->timeSignatureMap.ticksPerBar(0, project_->ticksPerQuarterNote);
     if (parMesure > 0) {
+        // D166 (A27, suite) : LA MÊME GARDE QUE LA RÈGLE DU PIANO ROLL (D165).
+        //
+        // Cette boucle n'en avait aucune, et son trait descend sur TOUTE la
+        // hauteur : sur un morceau de 452 s ajusté à la fenêtre, elle traçait
+        // 226 traits pleine hauteur et écrivait 226 numéros dans 570 px, dans des
+        // boîtes de 40 px -- illisibles, et 15,48 ms mesurées par D166. Le
+        // commentaire des repères, vingt lignes plus bas, dit « même dessin que la
+        // règle du piano roll » : le défaut avait voyagé avec le dessin, la garde
+        // arrive derrière lui.
+        const double pxParMesure = static_cast<double>(parMesure) * pixelsPerTick_;
+        const bool traitsVisibles = pxParMesure > 3.0;
+        int pasDuNumero = 1;
+        if (pxParMesure > 0.0)
+            while (pasDuNumero * pxParMesure < 34.0 && pasDuNumero < 4096) pasDuNumero *= 2;
         const vsm::midi::Tick premier = (scrollTick_ / parMesure) * parMesure;
+        g.setFont(juce::Font(juce::FontOptions(11.0f)));
         for (vsm::midi::Tick t = premier; tickToX(t) < bounds.getWidth(); t += parMesure) {
             const float x = tickToX(t);
             if (x < kHeaderWidth) continue;
-            g.setColour(Palette::border);
-            g.drawLine(x, 0.0f, x, static_cast<float>(bounds.getHeight()), 1.0f);
+            const int numero = static_cast<int>(t / parMesure) + 1;
+            const bool numerote = (numero - 1) % pasDuNumero == 0;
+            // Le trait d'une mesure numérotée se dessine même quand les autres
+            // tombent : un numéro sans sa graduation ne se rattache à rien.
+            if (traitsVisibles || numerote) {
+                g.setColour(Palette::border);
+                g.drawLine(x, 0.0f, x, static_cast<float>(bounds.getHeight()), 1.0f);
+            }
+            if (!numerote) continue;
             g.setColour(Palette::textSecondary);
-            g.setFont(juce::Font(juce::FontOptions(11.0f)));
-            g.drawText(juce::String(static_cast<int>(t / parMesure) + 1),
+            g.drawText(juce::String(numero),
                         static_cast<int>(x) + 3, 2, 40, kRulerHeight - 4,
                         juce::Justification::centredLeft);
         }

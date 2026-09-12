@@ -19076,3 +19076,60 @@ désormais dans le banc : tout composant de l'application se chronomètre par le
 chemin que le système emprunte, nommé par sa classe. C'est ce qui manquait pour
 que D163 ne se trompe pas de coupable, et c'est ce qui permettra de mesurer le
 prochain dessin qu'on ajoute au lieu de le supposer léger.
+
+### D166 (attendus) — le quarantième audit : la même règle, le même défaut, dans l'arrangement ? (13/09/2026)
+
+**D'OÙ VIENT LA QUESTION.** D165 a corrigé la règle du piano roll : elle
+dessinait un trait et un numéro par mesure sans garde de zoom. Le commentaire de
+l'arrangement dit lui-même que ses repères sont dessinés « **même dessin que la
+règle du piano roll, mêmes** [conventions] ». Un défaut copié d'un composant à
+l'autre est le cas le plus ordinaire qui soit, et le vérifier coûte une mesure.
+
+**CE QUE LA LECTURE DU CODE MONTRE, AVANT DE MESURER.** La boucle des mesures de
+`ArrangementComponent::paint` n'a **aucune garde** elle non plus — et son trait
+ne s'arrête pas à la règle : il descend sur **toute la hauteur** du composant.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.**
+
+1. `ArrangementComponent`, tout ajusté, coûte **plus de 8 ms** (la règle du piano
+   roll en coûtait 8,29 pour 22 px de haut ; celle-ci trace en pleine hauteur).
+2. Sa règle est **illisible** au même titre : 226 numéros dans la largeur.
+3. Après le même remède — trait au-delà de 3 px, numéro tous les N avec 34 px
+   d'écart —, elle passe **sous 3 ms**, et l'image au zoom d'ouverture est
+   **identique au pixel**.
+
+**Réfuté si** l'arrangement est déjà gardé, ou si le remède ne rend pas ces
+chiffres. Dans les deux cas ils seront publiés.
+
+### Phase D166 — le défaut avait voyagé avec le dessin : la même règle, dans l'arrangement (13/09/2026)
+
+**LES TROIS ATTENDUS SONT TENUS.** Médiane de 10 passes, `children-c3-plafond`,
+vue arrangement, échelle 150 %.
+
+| | avant | **après** | attendu |
+|---|---|---|---|
+| `ArrangementComponent` (570 × 326), ajusté | **15,48 ms** | **1,22 ms** | > 8 puis < 3 ✔ — **× 12,7** |
+| fenêtre entière en vue arrangement, ajustée | 34,69 ms | **17,63 ms** | — |
+| fenêtre entière, zoom d'ouverture | 17,45 ms | **17,20 ms** | inchangée |
+
+**LE TÉMOIN, AU PIXEL** : au zoom d'ouverture, **42 pixels de différence sur
+937 888**, dans le même rectangle de 7 × 10 px que D165 — l'afficheur de charge
+CPU, « 0.2% » devenu « 0.1% ». Rien d'autre n'a bougé.
+
+**ET L'IMAGE DIT LE RESTE.** Avant, la règle de l'arrangement était un bandeau
+gris de 226 numéros superposés, et ses 226 traits PLEINE HAUTEUR hachuraient les
+clips au point qu'on ne distinguait plus leur couleur. Après : **1, 33, 65, 97,
+129, 161, 193**, des traits qui respirent, et des clips qu'on voit.
+
+**LA LEÇON, ET ELLE EST GÉNÉRALE.** Le commentaire des repères de l'arrangement
+dit, depuis D16.4 : « même dessin que la règle du piano roll ». C'était vrai — le
+DÉFAUT aussi avait été copié. Un dessin qu'on recopie d'un composant à l'autre
+emporte ce qui lui manque ; la garde arrive derrière lui, avec un audit de retard.
+Le quarantième audit a coûté une mesure et une boucle, parce que le trente-neuvième
+avait construit l'instrument.
+
+**L'ÉTAT DU DESSIN, APRÈS TROIS PHASES.** Sur ce projet, ajusté, la fenêtre
+entière est à **17,6 ms en vue arrangement** et **21,9 ms en vue piano roll** —
+partout sous les 33 ms visés, contre 46,9 avant D164. Le plus gros poste restant
+est `MixerComponent` (4,87 ms pour douze tranches), suivi du volet de rapport
+d'ouverture (4,91 ms, et il disparaît dès qu'on le ferme).
