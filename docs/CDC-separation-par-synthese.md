@@ -731,6 +731,49 @@ coût.)*
 > ENTIER ; si elle est identique, les cinq morceaux restants complètent le lot
 > sans réserve, et le § 7.4 se lira sur dix.
 
+> **MESURÉ LE 13/09 — L'ATTENDU EST RÉFUTÉ, ET LE LOT SE REFERA EN ENTIER.**
+>
+> | course | distance globale | durée |
+> |---|---|---|
+> | 06/09, code d'alors | **0,1825703072613801** | 761 s |
+> | 13/09, première fois | **0,17714643105629915** | 1 903 s |
+> | 13/09, **seconde fois, à l'identique** | **0,17714643105629915** | 1 872 s |
+>
+> **LA CHAÎNE EST DÉTERMINISTE, et c'est le témoin qui le prouve** : deux
+> courses lancées aujourd'hui avec la même commande rendent le même chiffre **au
+> bit près**, seizième décimale comprise. L'écart de 5,4e-03 (−3,0 %) avec le
+> 06/09 vient donc du CODE, pas du hasard — et mon affirmation « aucun des trois
+> changements ne touche le projet rendu » était fausse.
+>
+> **OÙ LES DEUX COURSES DIVERGENT, lu au journal.** Les décisions par piste sont
+> identiques, chiffre pour chiffre (arbitrages, patchs réglés, machines
+> gagnantes) ; les tours du verdict du mélange le sont aussi, avec les mêmes
+> pistes changées à chaque tour. La divergence naît au **réglage au mélange** :
+> la basse part de 0,3109 des deux côtés et arrive à 0,2751 le 06/09, 0,2815
+> aujourd'hui. Et le journal du 06/09 porte une **discontinuité** que celui
+> d'aujourd'hui n'a pas — la basse y finit à 0,2751 et la guitare y repart de
+> 0,2942, alors qu'aujourd'hui la seconde reprend exactement où la première
+> s'arrête.
+>
+> **CE QUI N'EST PAS ÉTABLI, ET QUI NE SERA PAS DEVINÉ.** Cinq commits ont
+> touché `analyse/` entre les deux dates — le témoin de coupure étendu aux
+> pistes sans machine (H27), `vsm.fmdrums` retirée des candidates mélodiques
+> (A6.3, une candidate en moins sur 59), la fraîcheur du classifieur, un
+> nettoyage `ruff` de 54 signalements, et un chemin relatif qui coûtait la
+> séparation. Attribuer les −3 % à l'un d'eux demande de rejouer le morceau une
+> fois par commit, à une demi-heure la course ; ce n'est pas fait, et cela
+> s'écrit ici plutôt que de se supposer.
+>
+> **CE QUE CELA COÛTE, MESURÉ AUSSI** : 1 903 s contre 761, soit **2,5 fois plus
+> long**. Le témoin de coupure ajoute un rendu par piste sans alternative, et ce
+> lot en compte beaucoup (les pièces de batterie, les pistes du résidu). Une
+> campagne qui reprend ce lot doit compter 2,5 fois le temps d'alors.
+>
+> **CONSÉQUENCE, APPLIQUÉE** : le lot forcé ne se reprend pas, il **se refait en
+> entier** avec le code d'aujourd'hui — c'est ce que l'attendu disait, et la
+> mesure l'a tranché avant qu'une seule heure de campagne soit dépensée sur un
+> lot mélangé.
+
 ### 7.5 La décision — annoncée, en attente du lot forcé pour être signée
 
 Ce que `r1` établit suffit à la moitié de la décision : **la boucle
