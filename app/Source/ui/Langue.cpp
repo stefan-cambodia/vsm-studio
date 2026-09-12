@@ -2978,6 +2978,55 @@ juce::String trSelon(const char* contexte, const char8_t* texte) {
     return traduit != cle ? traduit : seul;
 }
 
+juce::String toucheLisible(const juce::String& description) {
+    // D157 : les NOMS DE TOUCHES, dans les deux langues. La table de JUCE est en
+    // anglais et technique (« spacebar ») ; celle-ci est celle des claviers.
+    struct Nom { const char* juce; const char* fr; const char* en; };
+    static const Nom noms[] = {
+        {"spacebar",  "Espace",  "Space"},
+        {"escape",    "\u00c9chap",  "Esc"},
+        {"delete",    "Suppr",   "Delete"},
+        {"backspace", "Retour arri\u00e8re", "Backspace"},
+        {"home",      "D\u00e9but",   "Home"},
+        {"end",       "Fin",     "End"},
+        {"return",    "Entr\u00e9e",  "Enter"},
+        {"tab",       "Tab",     "Tab"},
+        {"page up",   "Page pr\u00e9c.", "Page Up"},
+        {"page down", "Page suiv.", "Page Down"},
+        {"insert",    "Inser",   "Insert"},
+        {"cursor up",    "\u2191", "\u2191"},
+        {"cursor down",  "\u2193", "\u2193"},
+        {"cursor left",  "\u2190", "\u2190"},
+        {"cursor right", "\u2192", "\u2192"},
+        {"ctrl",      "Ctrl",    "Ctrl"},
+        {"shift",     "Maj",     "Shift"},
+        {"alt",       "Alt",     "Alt"},
+        {"command",   "Cmd",     "Cmd"},
+    };
+    const bool francais = Langue::courante() == Langue::Choix::Francais;
+    juce::StringArray morceaux;
+    for (const auto& brut : juce::StringArray::fromTokens(description, "+", ""))
+    {
+        const juce::String propre = brut.trim();
+        if (propre.isEmpty()) continue;
+        const juce::String bas = propre.toLowerCase();
+        juce::String rendu = propre;
+        for (const auto& nom : noms)
+            if (bas == juce::String(nom.juce)) {
+                rendu = juce::String::fromUTF8(francais ? nom.fr : nom.en);
+                break;
+            }
+        // Une lettre seule s'affiche en MAJUSCULE : « ctrl + s » se lit Ctrl+S.
+        if (rendu.length() == 1 && juce::CharacterFunctions::isLetter(rendu[0]))
+            rendu = rendu.toUpperCase();
+        morceaux.add(rendu);
+    }
+    // LE SÉPARATEUR EST « + » SANS ESPACES : c'est ainsi que toute application
+    // l'écrit, et les espaces de JUCE faisaient de « ctrl + shift + S » une
+    // phrase là où il faut un signe.
+    return morceaux.joinIntoString("+");
+}
+
 juce::String trGeste(const juce::String& libelle) {
     // LES NOMS FABRIQUÉS se reconnaissent à leur modèle : un préfixe fixe, puis
     // une donnée -- « Signature 3/4 » (D82), « Durée x1.50 » et « Vélocité

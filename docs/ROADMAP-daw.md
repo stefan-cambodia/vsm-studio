@@ -18399,3 +18399,61 @@ remède est une fonction unique — `toucheLisible()` — qui rende « Espace »
 « Échap », « Suppr », « Ctrl+Maj+S », dans la langue de l'interface, et que la
 page comme les menus emploient. Une seule fonction, deux endroits, et le compte
 se refait.
+
+### Phase D157 — les touches écrites dans la langue du musicien, et non dans celle de JUCE (13/09/2026)
+
+**LA MESURE QUI OUVRE LA PHASE.** Sur les **56 touches** de la table :
+
+| ce qu'elles portent | combien |
+|---|---|
+| un mot ANGLAIS (`spacebar`, `escape`, `delete`, `home`, `end`, `cursor …`) | **13** |
+| la syntaxe de JUCE (« ctrl + shift + S », avec ses espaces) | **32** |
+| ni l'un ni l'autre (une lettre, un chiffre, `F11`, `/`, `=`) | 19 |
+
+Treize touches sur cinquante-six sont donc illisibles pour un francophone — dont
+les plus employées de toutes : **`spacebar`** pour Lecture / arrêt, **`delete`**
+pour Supprimer, **`escape`** pour Ne rien sélectionner, et les huit flèches
+(`alt + cursor down`). Et trente-deux portent une syntaxe qu'aucune autre
+application n'affiche.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LE REMÈDE.** Une fonction unique,
+`toucheLisible(description)`, employée par la page des raccourcis ET par les
+menus (câblés par D155), qui rende :
+
+- en français : **Espace**, **Suppr**, **Échap**, **Début**, **Fin**,
+  **Ctrl+Maj+S**, **Alt+↓** ;
+- en anglais : **Space**, **Delete**, **Esc**, **Home**, **End**, **Ctrl+Shift+S**,
+  **Alt+↓**.
+
+**Mesuré après** par le même relevé : **zéro** touche portant un mot anglais dans
+l'interface française, et le compte des touches affichées inchangé (58 sur la
+page, 9 aux menus) — le remède ne doit RIEN faire disparaître. **Réfutée si** une
+touche se perd, ou si la traduction change la touche elle-même (Ctrl+Maj+S doit
+rester Ctrl+Maj+S, pas devenir autre chose).
+
+**FAIT (13/09) — LES DEUX ATTENDUS SONT TENUS.** `toucheLisible()`
+(`app/Source/ui/Langue.cpp`) réécrit la description de JUCE dans la langue de
+l'interface, et la page comme les menus l'emploient — une seule fonction, deux
+endroits.
+
+| | avant | après (français) | après (anglais) |
+|---|---|---|---|
+| Lecture / arrêt | `spacebar` | **Espace** | **Space** |
+| Ne rien sélectionner | `escape` | **Échap** | **Esc** |
+| Supprimer la sélection | `delete` | **Suppr** | **Delete** |
+| Enregistrer sous | `ctrl + shift + S` | **Ctrl+Maj+S** | **Ctrl+Shift+S** |
+| Piste suivante | `alt + cursor down` | **Alt+↓** | **Alt+↓** |
+
+- **Zéro** touche portant un mot anglais dans l'interface française (13 avant) ;
+- **zéro** touche portant la syntaxe « x + y » (32 avant) — le séparateur est
+  désormais « + » sans espaces, comme partout ailleurs ;
+- le compte n'a pas bougé : **58 touches** sur la page, **9** aux menus, et les
+  neuf entrées de menu affichent maintenant `Ctrl+S`, `Ctrl+Maj+S`, `Ctrl+Maj+I`,
+  `Maj+P`… au lieu de la syntaxe brute ;
+- **la touche elle-même n'a pas changé** : ce qui s'écrit dans les préférences
+  reste la description de JUCE, et seule son ÉCRITURE est traduite. Les flèches
+  deviennent des symboles (`↑ ↓ ← →`), ce qu'aucune langue n'a besoin de
+  traduire.
+
+Vérifié à l'écran dans les deux langues (photos de la fenêtre des raccourcis) et
+au relevé pour les menus. Inventaire de langue inchangé : **SANS_PAIRE 0**.

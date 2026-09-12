@@ -40,9 +40,13 @@ public:
             addAndMakeVisible(*libelle);
 
             const std::string touche = table->keyFor(commande.id);
+            // D157 : ÉCRITE DANS LA LANGUE DU MUSICIEN. La table transporte la
+            // syntaxe de JUCE (« spacebar », « ctrl + shift + S ») ; ce qui
+            // s'affiche doit être « Espace » et « Ctrl+Maj+S ». La touche
+            // elle-même ne change pas — seule son écriture.
             auto bouton = std::make_unique<juce::TextButton>(
                 touche.empty() ? tr(u8"(désactivé)")
-                               : juce::String::fromUTF8(touche.c_str()));
+                               : toucheLisible(juce::String::fromUTF8(touche.c_str())));
             const auto id = commande.id;
             bouton->onClick = [rebind, id] { if (rebind) rebind(id); };
             addAndMakeVisible(*bouton);

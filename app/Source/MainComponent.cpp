@@ -2854,8 +2854,11 @@ void ajouterAvecRaccourci(juce::PopupMenu& menu, int identifiant, const juce::St
     entree.isTicked = coche;
     const juce::String touche = juce::String(table.keyFor(commande));
     if (touche.isNotEmpty()) {
-        const juce::KeyPress lue = juce::KeyPress::createFromDescription(touche);
-        if (lue.isValid()) entree.shortcutKeyDescription = lue.getTextDescriptionWithIcons();
+        // D157 : la description de JUCE (« ctrl + shift + S ») réécrite dans la
+        // langue de l'interface. `getTextDescriptionWithIcons()` rendait la
+        // syntaxe brute, qu'aucune autre application n'affiche.
+        if (juce::KeyPress::createFromDescription(touche).isValid())
+            entree.shortcutKeyDescription = vsm::app::ui::toucheLisible(touche);
     }
     menu.addItem(std::move(entree));
 }

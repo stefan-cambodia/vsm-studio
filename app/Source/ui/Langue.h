@@ -79,6 +79,21 @@ juce::String trSelon(const char* contexte, const char8_t* texte);
 /// reconnaît à son modèle ; les autres sont des chaînes de la table.
 juce::String trGeste(const juce::String& libelle);
 
+/// D157 : UNE TOUCHE ÉCRITE DANS LA LANGUE DU MUSICIEN, et non dans celle de
+/// JUCE.
+///
+/// CE QUI EXISTAIT, MESURÉ. La table transporte la syntaxe de JUCE — c'est son
+/// rôle, son en-tête le dit : « cette couche ne l'interprète pas ». La page des
+/// raccourcis et les menus la RECOPIAIENT, si bien qu'un musicien français lisait
+/// **spacebar**, **escape**, **delete**, **home**, **end**, **alt + cursor down**
+/// — treize touches sur cinquante-six —, plus trente-deux écrites « ctrl + shift
+/// + S » là où toute application affiche « Ctrl+Maj+S ».
+///
+/// CE QU'ELLE NE FAIT PAS : changer la touche. « ctrl + shift + S » reste
+/// Ctrl+Maj+S ; seule son ÉCRITURE change, et seulement pour l'affichage — ce
+/// qui est enregistré dans les préférences reste la description de JUCE.
+juce::String toucheLisible(const juce::String& description);
+
 /// D89 : une PHRASE fabriquée par le moteur (`interchange/`) ou par l'application
 /// à partir de données -- « Piste 2 (Oubliee) : aucun instrument… » --, traduite à
 /// l'AFFICHAGE par modèles. Les arguments sont des données et passent intacts ;
