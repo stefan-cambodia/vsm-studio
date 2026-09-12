@@ -1627,6 +1627,7 @@ def reconstruire_stem_melodique(ctx: Contexte, nom: str, chemin: Path,
     # (recherche ou non) : elle vivait après la recherche note à note, qui est
     # SAUTÉE par défaut depuis le § 5 undecies — elle ne s'imprimait donc
     # jamais en course réelle.
+    justifie_par_paliers = False
     plainte = stem_fourre_tout(densite_du_stem(notes))
     if plainte:
         print(f"      {nom:8s} : {plainte}")
@@ -1647,6 +1648,7 @@ def reconstruire_stem_melodique(ctx: Contexte, nom: str, chemin: Path,
         if seconde:
             print(f"      {nom:8s} : {seconde}")
             plainte = seconde
+            justifie_par_paliers = True
 
     if args.voix_par_vides and plainte:
         registres = registres_par_vides(notes)
@@ -1664,7 +1666,8 @@ def reconstruire_stem_melodique(ctx: Contexte, nom: str, chemin: Path,
                 lo, hi = min(n.note for n in registre), max(n.note for n in registre)
                 sous_nom = f"{nom} · {nom_de_note(lo)}-{nom_de_note(hi)}"
                 sous_voix = ([list(registre)] if args.voix_par_stem <= 1
-                             else separer_en_voix(list(registre), args.voix_par_stem))
+                             else separer_en_voix(list(registre), args.voix_par_stem,
+                                                   justifie=justifie_par_paliers))
                 if len(sous_voix) > 1:
                     print(f"      {sous_nom:8s} : encore un fourre-tout, partagé en "
                           f"{len(sous_voix)} voix par registres")
@@ -1677,7 +1680,11 @@ def reconstruire_stem_melodique(ctx: Contexte, nom: str, chemin: Path,
         print(f"      {nom:8s} : aucun vide dans la transcription, rien à découper par les vides")
 
     if args.voix_par_stem > 1 and plainte:
-        voix = separer_en_voix(notes, args.voix_par_stem)
+        # H26 : la justification VOYAGE avec la plainte. Sans elle, le
+        # découpeur rejugerait la densité que la porte des paliers vient
+        # d'écarter, et l'option n'aurait aucun effet (mesuré : `other` restait
+        # à UNE voix pour 3 651 notes).
+        voix = separer_en_voix(notes, args.voix_par_stem, justifie=justifie_par_paliers)
         if len(voix) > 1:
             # LE DÉCOUPAGE EST DIT, registre par registre : c'est une décision
             # qui change le nombre de pistes du résultat, pas un détail.

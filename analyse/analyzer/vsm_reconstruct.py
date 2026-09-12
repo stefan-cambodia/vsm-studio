@@ -285,7 +285,8 @@ def registres_par_vides(notes: List["StemNote"], lissage: float = 2.0,
     return voix
 
 
-def separer_en_voix(notes: List["StemNote"], maximum: int) -> List[List["StemNote"]]:
+def separer_en_voix(notes: List["StemNote"], maximum: int,
+                    justifie: bool = False) -> List[List["StemNote"]]:
     """Sépare un stem FOURRE-TOUT en voix, par REGISTRES de hauteur.
 
     C'est le mécanisme de H23 (ROADMAP-fusion § 5 quaterdecies), et
@@ -328,7 +329,23 @@ def separer_en_voix(notes: List["StemNote"], maximum: int) -> List[List["StemNot
     l'initialisation aux quantiles ne tire rien au sort, et les égalités de
     distance se tranchent par l'indice du centre.
     """
-    if maximum <= 1 or len(notes) < 2 or not stem_fourre_tout(densite_du_stem(notes)):
+    # H26 (12/09) : `justifie` DIT QUE L'APPELANT A ÉTABLI LE FOURRE-TOUT
+    # AUTREMENT, et c'est la seule façon d'entrer sans la densité.
+    #
+    # POURQUOI CETTE PORTE S'OUVRE MAINTENANT, ET PAS PLUS GRAND. Le garde-fou
+    # ci-dessus rejugeait la MÊME densité que l'appelant : une porte ouverte sur
+    # le temps (`--porte-paliers`, § 12.8) menait donc à une seconde porte
+    # fermée, et l'option était INERTE — mesuré le 12/09 sur `other` de
+    # *Children*, qui restait à UNE voix pour 3 651 notes.
+    #
+    # Ce que `justifie` ne relâche PAS : l'appelant doit avoir MESURÉ quelque
+    # chose. La seule justification écrite à ce jour est le compte de timbres
+    # installés (`vsm_paliers`), qui rend 0 sur un résidu de séparation et 4 sur
+    # ce stem — c'est-à-dire qu'il refuse précisément les cas que ce garde-fou
+    # protégeait (« une mélodie qui saute d'octave, une nappe d'accords serrés »).
+    if maximum <= 1 or len(notes) < 2:
+        return [list(notes)]
+    if not justifie and not stem_fourre_tout(densite_du_stem(notes)):
         return [list(notes)]
 
     # --- k-moyennes 1-D, pondérées par la durée --------------------------

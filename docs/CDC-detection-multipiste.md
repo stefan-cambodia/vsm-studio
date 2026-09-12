@@ -1620,6 +1620,63 @@ paliers au lieu de s'y concentrer : j'attends **aucune voix concentrée** —
 une majorité des voix se concentre : le découpeur de hauteur recouvrerait alors
 la structure de temps par accident, et il n'y aurait rien à écrire de plus.
 
+### 12.11 H26 — la mesure a d'abord buté sur une SECONDE porte, et ce qu'elle dit ensuite (12/09)
+
+**CE QUI A BLOQUÉ LA MESURE, ET QUI EST UN RÉSULTAT.** `--porte-paliers` déclare
+`other` fourre-tout ; le découpage n'a quand même pas eu lieu. La cause est dans
+`separer_en_voix` : sa première ligne **rejuge la densité** —
+`if not stem_fourre_tout(densite_du_stem(notes)): return [list(notes)]` — et sa
+documentation revendique ce garde-fou comme « le plus important », posé LÀ plutôt
+que chez l'appelant. La porte du temps ouvrait donc sur une seconde porte fermée,
+et **l'option était INERTE** : mesuré, `other` restait à UNE voix pour 3 651
+notes.
+
+**CE QUI A ÉTÉ CHANGÉ, ET CE QUI NE L'A PAS ÉTÉ.** `separer_en_voix` accepte
+désormais un argument `justifie`, qui dit que l'appelant a établi le fourre-tout
+AUTREMENT. Il ne relâche pas le garde-fou pour tout le monde : la seule
+justification écrite à ce jour est le compte de timbres installés, qui rend **0
+sur un résidu de séparation** et 4 sur ce stem — c'est-à-dire qu'il refuse
+précisément les cas que le garde-fou protégeait (« une mélodie qui saute
+d'octave, une nappe d'accords serrés »).
+
+**LA MESURE, ENFIN ATTEIGNABLE.** `other` de *Children*, 3 651 notes, aucun vide
+de hauteur (`registres_par_vides` rend 1 registre), puis quatre voix par
+k-moyennes sur la hauteur :
+
+| voix | notes | registre | joue de… à | part du morceau | paliers touchés |
+|---|---|---|---|---|---|
+| 1 | 1 032 | MIDI 72-96 | 56 → 452 s | 87 % | 4/5 |
+| 2 | 1 300 | MIDI 60-70 | 2 → 452 s | **99 %** | 5/5 |
+| 3 | 501 | MIDI 46-58 | 3 → 373 s | 81 % | 3/5 |
+| 4 | 818 | MIDI 29-41 | 1 → 444 s | 97 % | 5/5 |
+
+**LE DÉCOUPEUR DE HAUTEUR NE RECOUVRE PAS LES PARTIES.** Les quatre voix jouent
+chacune sur 81 à 99 % du morceau et touchent trois à cinq paliers sur cinq :
+elles sont toutes présentes presque partout, quand les parties, elles, ENTRENT ET
+SORTENT (le piano à 28 s, le lead vers 189 s). Découper par la hauteur un stem
+dont les parties se succèdent donne quatre tranches du même gâteau — exactement
+ce que le § 5 quaterdecies reprochait à la séparation par continuité, sous une
+autre forme.
+
+**ET MON CRITÈRE ÉTAIT MAL CHOISI, ce qui se dit.** L'attendu du § 12.10
+demandait « aucune voix concentrée à 60 % dans un seul palier ». Il est tenu
+(18 %, 15 %, 14 %, 9 %) — mais il ne POUVAIT pas ne pas l'être : les cinq paliers
+couvrent **25 % du morceau**, si bien qu'aucune voix jouant tout du long ne peut
+y loger 60 % de ses notes. Ce sont les DURÉES et les paliers touchés, mesurés
+après coup, qui répondent vraiment. Un critère qui ne peut pas échouer ne mesure
+rien : celui-ci est remplacé par ceux-là, et l'erreur reste écrite.
+
+> **H30 — IL FAUT UN DÉCOUPEUR DE TEMPS, pas seulement une porte (écrite ici,
+> non mesurée).** Les paliers disent OÙ les timbres s'installent ; le découpage
+> devrait suivre ces frontières au lieu de couper des registres. Attendu, quand
+> il sera écrit : sur `other` de *Children*, des voix dont chacune se concentre
+> dans SES paliers (part dominante ≥ 60 % de sa durée utile, mesurée sur la
+> couverture réelle et non sur le morceau entier), et un compte de parties tenues
+> seules qui passe de 3 à au moins 5 (§ 12.4). **Réfutée si** les voix obtenues
+> couvrent encore le morceau entier, ou si la distance du morceau reconstruit
+> s'en trouve dégradée de plus de 10 % — la parité prime sur la ressemblance
+> (§ 0), mais pas à ce prix-là.
+
 ## 5. Critères d'acceptation
 
 ```
