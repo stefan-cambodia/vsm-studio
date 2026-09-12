@@ -18647,3 +18647,42 @@ correspondu à la chaîne de JUCE, donc quatre traductions mortes sans le dire.
 Réparées. La leçon tient en une ligne : **un signal indirect (« une table est-elle
 posée ? ») mesure autre chose que ce qu'il croit dès qu'on change ce qui le
 produit.**
+
+### Phase D161 — le trente-septième audit : combien de temps pour ouvrir ? (13/09/2026)
+
+**POURQUOI CE CHIFFRE.** Un musicien juge un studio à ce qu'il attend. Cubase et
+Live ouvrent en quelques secondes ; au-delà d'une dizaine, on hésite à lancer le
+logiciel pour essayer une idée. Aucun audit n'a mesuré ce temps-ci, et il n'est
+écrit nulle part.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** Le démarrage à vide reste **sous
+3 s** (la fenêtre construite, les 63 machines enregistrées, le périphérique
+audio ouvert) ; l'ouverture du projet de la course 3 — **12 pistes, 9 machines,
+deux pistes audio de 40 Mo** — reste **sous 10 s**. **Réfutée si** l'un des deux
+dépasse, et le chiffre sera publié tel quel.
+
+**LA MESURE.** Le banc lance l'application avec `VSM_DELAI` au minimum et
+`VSM_CAPTURE` : le temps mesuré est celui du processus entier, délai compris, et
+l'on soustrait le délai. Trois lancements par cas, le médian publié — un
+démarrage isolé mesure aussi le cache disque.
+
+**RÉSULTAT (13/09) — LES DEUX ATTENDUS SONT TENUS, ET DE LOIN.** Trois
+lancements par cas, médiane publiée, sur le poste de l'utilisateur pendant
+qu'une reconstruction tournait (donc dans les pires conditions de charge) :
+
+| cas | attendu | **mesuré** (médiane de 3) |
+|---|---|---|
+| démarrage à vide | < 3 s | **0,26 s** |
+| ouverture du projet de la course 3 (12 pistes, 9 machines, deux pistes audio de 40 Mo) | < 10 s | **2,44 s** |
+
+**CE QUE LE CHIFFRE CONTIENT, ET QUI LE REND PRUDENT.** Le temps mesuré est celui
+du PROCESSUS ENTIER, délai de capture déduit : lancement, enregistrement des 63
+machines, ouverture du périphérique audio, construction de la fenêtre, lecture du
+projet, création des neuf machines, chargement des deux pistes audio, photo, PUIS
+fermeture. Le démarrage seul est donc plus court encore que ces chiffres.
+
+**C'est une force, et elle n'était écrite nulle part.** Un quart de seconde à vide
+et deux secondes et demie pour un projet de douze pistes : le studio s'ouvre plus
+vite qu'on ne décide de l'ouvrir. L'audit ne trouve rien à corriger ; il inscrit
+un repère, pour que la prochaine fois qu'on ajoute quelque chose au démarrage on
+sache à quoi le comparer.
