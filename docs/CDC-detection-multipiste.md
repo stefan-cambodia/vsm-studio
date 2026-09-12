@@ -1597,6 +1597,29 @@ composition d'un stem ; savoir si découper `other` en quatre sur ce disque
 rapproche ou éloigne le morceau demande une course, avec son témoin. C'est le
 chantier B9, et son attendu s'écrira avant elle.
 
+### 12.10 H26 — la porte ouvre, mais SUR QUOI ? (attendu écrit avant la mesure, 12/09)
+
+**LA QUESTION QUE LA PORTE NE RÉSOUT PAS.** `--porte-paliers` déclare `other`
+fourre-tout (4 timbres installés) là où la polyphonie ne le voyait pas. Ce qui
+suit dans la chaîne, en revanche, n'a pas changé : `registres_par_vides` coupe
+par les CREUX DE HAUTEUR, et `separer_en_voix` par k-moyennes **sur la
+hauteur**. Or ce que les paliers ont trouvé est une structure de TEMPS — le piano
+entre à 28 s, le lead vers 189 s. Ouvrir la porte sur une structure temporelle
+pour la donner à un découpeur de hauteur peut ne rien recouvrer du tout.
+
+**LA MESURE, ET POURQUOI ELLE NE COÛTE PAS UNE COURSE.** La question ne demande
+ni rendu ni arbitrage : elle se tranche sur les NOTES. On transcrit `other` une
+fois, on lui applique les deux découpeurs dans l'ordre où la chaîne les applique,
+et on regarde OÙ tombent les notes de chaque voix obtenue — dans quel palier, et
+dans quelle proportion. Dix minutes au lieu de dix heures.
+
+**CE QUE J'ATTENDS, ET CE QUI LE RÉFUTE.** Les parties étant successives, un
+découpage par la hauteur doit produire des voix qui s'ÉTALENT sur tous les
+paliers au lieu de s'y concentrer : j'attends **aucune voix concentrée** —
+« concentrée » = 60 % ou plus de ses notes dans un seul palier. **Réfutée si**
+une majorité des voix se concentre : le découpeur de hauteur recouvrerait alors
+la structure de temps par accident, et il n'y aurait rien à écrire de plus.
+
 ## 5. Critères d'acceptation
 
 ```
