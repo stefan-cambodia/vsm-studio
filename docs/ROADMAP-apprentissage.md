@@ -1348,3 +1348,61 @@ distinguent par la FORME de leur nuage plutôt que par des seuils indépendants 
 > si** l'attracteur revient, ou si le top 1 reste sous 77 % : il faudrait alors
 > chercher dans les descripteurs eux-mêmes, que cette phase n'a jamais mis en
 > cause.
+
+### A6.6 — H29 TENUE : le classifieur change de famille, et le critère A1.1 tombe enfin sur 58 machines (12/09/2026)
+
+**LES DEUX CRITÈRES ÉCRITS D'AVANCE SONT TENUS.** Les dix plus proches voisins,
+pondérés par la distance, recherche exhaustive (en 43 dimensions les arbres de
+recherche dégénèrent — le produit de matrices est plus rapide, et le choix est
+écrit dans le code) :
+
+| | top 1 | top 3 | top 1 **hors** indistinguables | top 3 hors indist. | critère A1.1 |
+|---|---|---|---|---|---|
+| `hgb` (boosting), 58 machines | 17,8 % | 20,4 % | 21,7 % | 24,3 % | **non atteint** |
+| `hgb`, budget ×3 (H28) | 17,8 % | 20,4 % | 21,7 % | 24,3 % | **non atteint** |
+| **`knn` (10 voisins), 58 machines** | **83,6 %** | **93,4 %** | **96,3 %** | **99,5 %** | **ATTEINT** |
+
+1. **Au-dessus du plancher** : 83,6 % contre les 77,0 % qu'un 1-NN à 40 000
+   exemples avait établis — et au-dessus de 77 % était le critère.
+2. **Aucune classe attracteur** : la plus prédite est `vsm.vector` à **2,4 %**
+   des prédictions pour 1,8 % de part réelle (le critère bornait à 3 %), là où
+   le boosting laissait `vsm.clavichord` en absorber **15,6 %**.
+
+**ET LE CRITÈRE A1.1 DE LA PHASE TOMBE POUR LA PREMIÈRE FOIS SUR LE PARC
+ENTIER** : top 3 ≥ 95 % hors indistinguables, mesuré à **99,5 %** sur 58
+machines. Il n'avait jamais été atteint que sur 20.
+
+**LES CONFUSIONS CHANGENT DE NATURE, et c'est le signe le plus parlant.** Avec le
+boosting, neuf des quinze pires paires pointaient vers une seule machine. Avec
+les voisins, les pires paires sont musicales et petites : `kalimba` → `musicbox`
+14 %, `supersaw` → `obx` 14 %, `membrane` ↔ `modal` 12 et 9 %, `sh101` →
+`arpodyssey` 10 %, `minimoog` → `prophet` 10 %. Ce sont des familles voisines,
+pas un effondrement.
+
+**CE QUI RESTE VRAI DE L'ATTENDU 2, ET IL FAUT LE DIRE.** Le top 1 restreint aux
+20 anciennes classes vaut **78,9 %**, contre 93,8 % pour l'ancien modèle et une
+borne écrite à 85 % : **l'attendu 2 reste réfuté**. Mais il l'est maintenant pour
+la raison qu'il envisageait — les trente-huit machines ajoutées coûtent 15 points
+sur les vingt anciennes — et non par un effondrement. Le prix est mesuré, pas
+supposé.
+
+**UNE DÉCOUVERTE QUI N'ÉTAIT PAS CHERCHÉE : LE BON ESTIMATEUR DÉPEND DU NOMBRE DE
+CLASSES.** Sur les 20 machines d'origine, le boosting fait **94,6 %** et les
+voisins **79,0 %** — le boosting gagne nettement. Sur 58, il fait 17,8 % et les
+voisins 83,6 %. Le choix d'estimateur du 28/08 n'était donc pas mauvais : il
+était juste pour le parc d'alors, et il ne se transporte pas.
+
+**LA DÉCISION, ÉCRITE ET APPLIQUÉE.** `modeles/classifieur.joblib` devient le
+modèle à 58 machines ; l'ancien est conservé sous
+`modeles/classifieur-20-hgb.joblib`, jamais supprimé. **Ce que cela ne change
+pas** : la chaîne ne charge aucun classifieur par défaut
+(`--preselection-apprise 0`, et A1.3 ne le recommande pas), donc aucune
+reconstruction ne bouge sans drapeau explicite. **Ce que cela coûte** : 78 Mo
+contre 15 — un k plus proches voisins emporte ses exemples, c'est sa nature, et
+le § 4 (« petit et CPU ») est tenu côté calcul (52 s d'entraînement, une requête
+en millisecondes) mais pas côté taille. Si la taille devenait gênante, le remède
+mesurable est de réduire le corpus de référence, pas de revenir au boosting.
+
+**CE QUE CELA ROUVRE.** A5.2 — « la présélection apprise sert-elle la
+reconstruction ? » — avait été mesurée avec un modèle qui ignorait deux tiers du
+parc. La question redevient posable, et c'est l'élément suivant de B1.

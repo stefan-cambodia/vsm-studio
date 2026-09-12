@@ -100,6 +100,7 @@ def entrainer(arguments) -> int:
 
     print("[2/3] Entraînement")
     classifieur, mesures = entraine(corpus, graine=arguments.graine, iterations=arguments.iterations,
+                                    famille=arguments.estimateur, voisins=arguments.voisins,
                                      part_epreuve=arguments.part_epreuve,
                                      seuil_abstention=arguments.seuil,
                                      progression=lambda m: print(f"      {m}"))
@@ -203,6 +204,16 @@ def main() -> int:
     analyseur.add_argument("--sortie", type=Path, default=None,
                             help="où écrire le modèle (défaut : ne pas l'écrire)")
     analyseur.add_argument("--graine", type=int, default=20260823)
+    analyseur.add_argument("--estimateur", choices=("hgb", "knn"), default="hgb",
+                            help="famille de l'estimateur : hgb (gradient boosting, le "
+                                 "choix d'origine) ou knn (k plus proches voisins, qui "
+                                 "compare à des EXEMPLES au lieu de découper en seuils). "
+                                 "H29 de ROADMAP-apprentissage.md")
+    analyseur.add_argument("--voisins", type=int, default=10,
+                            help="nombre de voisins pour --estimateur knn (défaut 10). "
+                                 "Un seul voisin ne sait pas classer au-delà du top 1 ; "
+                                 "dix donnent un classement utilisable et une probabilité "
+                                 "que le seuil d'abstention peut lire")
     analyseur.add_argument("--iterations", type=int, default=200,
                             help="itérations du gradient boosting (défaut 200). "
                                  "UN ARBRE PAR CLASSE ET PAR ITÉRATION : à 58 machines, "

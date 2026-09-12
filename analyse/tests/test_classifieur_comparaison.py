@@ -56,3 +56,39 @@ def une_machine_commune_sans_exemple_d_epreuve_ne_compte_pas_pour_juste():
     restreint, complet, n = top1_restreint(probabilites, np.array([0, 1]), NOMS, ["vsm.c"])
     assert_equal(n, 0)
     assert_true(math.isnan(restreint) and math.isnan(complet), "NaN attendu")
+
+
+@test
+def estimateur_la_famille_se_choisit_et_le_defaut_ne_bouge_pas():
+    """H29 : la famille d'estimateur est une OPTION, et son défaut est celui d'hier.
+
+    Ce que ce test verrouille est une mesure, pas une préférence. Sur les 58
+    machines du corpus `parc59`, le gradient boosting rend 17,8 % de top 1 avec
+    une classe qui absorbe 15,6 % des prédictions ; les dix plus proches voisins
+    rendent 83,6 % sans attracteur (classe la plus prédite : 2,4 % pour 1,8 % de
+    part réelle). Le choix ne peut donc pas redevenir une constante cachée.
+    """
+    from sklearn.ensemble import HistGradientBoostingClassifier
+    from sklearn.neighbors import KNeighborsClassifier
+
+    from analyzer.vsm_classifier import estimateur_de
+
+    defaut = estimateur_de("hgb", graine=1, iterations=200, voisins=10)
+    assert_true(isinstance(defaut, HistGradientBoostingClassifier),
+                "hgb reste le gradient boosting")
+    assert_equal(defaut.max_iter, 200, "le budget passe bien à l'estimateur")
+
+    voisins = estimateur_de("knn", graine=1, iterations=200, voisins=10)
+    assert_true(isinstance(voisins, KNeighborsClassifier), "knn est bien un k-NN")
+    assert_equal(voisins.n_neighbors, 10, "le nombre de voisins passe")
+    assert_equal(voisins.weights, "distance", "pondérés par la distance")
+    # En 43 dimensions, les arbres de recherche dégénèrent : le produit de
+    # matrices est plus rapide, et ce choix se lit dans le code comme ici.
+    assert_equal(voisins.algorithm, "brute", "recherche exhaustive, assumée")
+
+    try:
+        estimateur_de("perceptron", graine=1, iterations=200, voisins=10)
+    except ValueError as erreur:
+        assert_true("perceptron" in str(erreur), "une famille inconnue se DIT")
+    else:
+        raise AssertionError("une famille inconnue doit être refusée, pas devinée")

@@ -340,11 +340,41 @@ def _versions() -> Dict[str, str]:
 QUANTILE_RAYON = 0.90
 
 
+def estimateur_de(famille: str, graine: int, iterations: int, voisins: int):
+    """L'estimateur, par FAMILLE — et le choix se mesure (H29).
+
+    `hgb` : gradient boosting par histogrammes, le choix d'origine. Il découpe
+    chaque descripteur en SEUILS, et il entraîne un arbre par classe et par
+    itération. Mesuré le 12/09 sur 58 machines : **17,8 %** de top 1, avec une
+    classe attracteur qui absorbe 15,6 % des prédictions — et tripler son budget
+    ne change pas une décimale (H28 réfutée, A6.5).
+
+    `knn` : les k plus proches voisins, pondérés par la distance. Il ne découpe
+    rien : il COMPARE À DES EXEMPLES, c'est-à-dire qu'il lit la forme du nuage
+    d'une machine au lieu de la découper en tranches. Un 1-NN à 40 000 exemples
+    atteignait déjà 77,0 % là où `hgb` en fait 17,8 sur le corpus entier.
+
+    `algorithm="brute"` EST UN CHOIX, pas un défaut : en 43 dimensions, les
+    arbres de recherche (KD, ball) dégénèrent et deviennent plus lents que le
+    produit de matrices, que BLAS mène à plusieurs cœurs.
+    """
+    if famille == "knn":
+        from sklearn.neighbors import KNeighborsClassifier
+        return KNeighborsClassifier(n_neighbors=voisins, weights="distance",
+                                     algorithm="brute", n_jobs=-1)
+    if famille != "hgb":
+        raise ValueError(f"famille d'estimateur inconnue : « {famille} » (hgb ou knn)")
+    from sklearn.ensemble import HistGradientBoostingClassifier
+    # H28 : LE BUDGET EST UNE OPTION, PAS UNE CONSTANTE CACHÉE (voir plus bas).
+    return HistGradientBoostingClassifier(random_state=graine, max_iter=iterations,
+                                           early_stopping=False)
+
+
 def entraine(corpus: CorpusCharge, graine: int = 20260823, part_epreuve: float = 0.2,
              seuil_abstention: float = 0.20, quantile_rayon: float = QUANTILE_RAYON,
-             progression=None, iterations: int = 200) -> Tuple[Classifieur, Dict[str, Any]]:
+             progression=None, iterations: int = 200, famille: str = "hgb",
+             voisins: int = 10) -> Tuple[Classifieur, Dict[str, Any]]:
     """Entraîne et MESURE. Rend le classifieur et le rapport de son épreuve."""
-    from sklearn.ensemble import HistGradientBoostingClassifier
 
     indices_entrainement, indices_epreuve = coupe_par_patch(corpus, part_epreuve, graine)
     X_entrainement = corpus.X[indices_entrainement].astype(np.float64)
@@ -363,14 +393,7 @@ def entraine(corpus: CorpusCharge, graine: int = 20260823, part_epreuve: float =
     # Gradient boosting par histogrammes : rapide sur CPU, sans réglage à
     # trouver, et il accepte des descripteurs d'échelles très différentes. Le
     # § 4 impose « petit et CPU » ; celui-ci s'entraîne en dizaines de secondes.
-    # H28 : LE BUDGET EST UNE OPTION, PAS UNE CONSTANTE CACHÉE. Ce modèle
-    # entraîne UN ARBRE PAR CLASSE ET PAR ITÉRATION : à 20 classes, 200
-    # itérations donnent 4 000 arbres ; à 58, la frontière à tracer est trois
-    # fois plus grande pour le même nombre d'itérations. Le chiffre conditionne
-    # donc le résultat, et tout ce qui conditionne un résultat se passe en ligne
-    # de commande et s'inscrit au rapport (§ « Mesure » de CLAUDE.md).
-    modele = HistGradientBoostingClassifier(random_state=graine, max_iter=iterations,
-                                             early_stopping=False)
+    modele = estimateur_de(famille, graine, iterations, voisins)
     modele.fit((X_entrainement - moyenne) / echelle, y_entrainement)
 
     probabilites = modele.predict_proba((X_epreuve - moyenne) / echelle)
