@@ -1434,3 +1434,42 @@ sortie softmax de boosting peut saturer à 1,00 sur un seul côté d'une fronti�
 sous 18/20 : adopter le modèle aurait alors rendu la pire faute du projet plus
 probable, et il faudrait revenir en arrière — le modèle précédent est conservé
 pour cela (`modeles/classifieur-20-hgb.joblib`).
+
+### A6.8 — A5.2 rejouée : la désignation confiante a DISPARU, et mon attendu était à moitié faux (12/09/2026)
+
+**LE TÉMOIN D'ABORD.** Le même protocole, le même extrait audio, joué sur
+l'ANCIEN modèle reproduit la mesure du 29/08 : 18 abstentions sur 20,
+`vsm.sh101` retenu à **0,99** — la désignation confiante sur un piano acoustique
+que A5.2 nommait comme son échec. La comparaison porte donc sur la seule
+variable qui change, le modèle.
+
+| | abstentions | retenues | **confiantes (≥ 0,90)** | distance médiane |
+|---|---|---|---|---|
+| ancien — 20 machines, boosting | **18/20 (90 %)** | 2 | **1 — `vsm.sh101` à 0,99** | 5,57 |
+| adopté — 58 machines, voisins | 15/20 (79 %) | 4 | **0** | 5,43 |
+
+**CE QUE L'ATTENDU AVAIT PRÉVU, ET CE QU'IL AVAIT MANQUÉ.** J'attendais deux
+choses : que les désignations confiantes BAISSENT, et que l'abstention reste
+**≥ 90 %**. La première est tenue — et de la meilleure façon, puisqu'il n'en
+reste AUCUNE. **La seconde est réfutée** : l'abstention tombe à 79 % des extraits
+classés. Mon raisonnement — « le rayon est une propriété du corpus, il n'a bougé
+que de 3,77 à 3,91 » — était juste sur le rayon et faux sur ce qu'il mesure : le
+corpus de 58 machines COUVRE PLUS D'ESPACE que celui de 20, si bien que des sons
+qui tombaient au-delà tombent maintenant dedans. Ce n'est pas un relâchement du
+garde-fou, c'est un parc qui produit davantage de timbres.
+
+**ET LES QUATRE RETENUES DISENT LA DIFFÉRENCE DE NATURE.** L'ancien modèle
+retenait `vsm.sh101` **à 0,99** — une certitude. Le nouveau retient
+`vsm.bagpipe` 0,69, `vsm.prophet` 0,70, `vsm.jupiter8` 0,50 et **`vsm.piano`
+0,61** : aucune certitude, et l'une des quatre est la réponse la moins fausse
+qu'on puisse donner sur un piano. Un vote entre dix voisins ne sait pas dire
+« certainement » d'un son qu'il n'a jamais entendu ; une sortie softmax, si.
+
+**A5.2 EST DONC ATTEINTE POUR LE MODÈLE, ET PLUS SEULEMENT POUR LA CHAÎNE.** La
+clause qui la tranche — « aucune machine de caractère *confiante* sur un
+instrument d'orchestre » — est tenue pour la première fois par le modèle
+lui-même, là où le 29/08 c'était le rayon, et lui seul, qui sauvait le verdict.
+La réserve est écrite à côté du résultat : une source acoustique sur cinq reçoit
+maintenant une désignation tiède au lieu d'une abstention. **L'adoption du modèle
+est donc confirmée par la mesure qui pouvait la défaire**, et non par le seul
+chiffre de top 1 qui l'avait motivée.
