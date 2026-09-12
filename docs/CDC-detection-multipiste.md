@@ -1514,6 +1514,48 @@ apparaît et se MAINTIENT — une marche, pas une oscillation. Une statistique d
 palier (segmentation en plages stables, puis compte des plages dont le profil
 diffère durablement) reste à écrire et à mesurer ; elle n'est pas promise ici.
 
+### 12.8 H26, deuxième forme — le PALIER plutôt que la dispersion (attendu écrit avant la mesure, 12/09)
+
+**CE QUE LA RÉFUTATION DU § 12.7 A APPRIS.** La dispersion d'un profil de bandes
+mesure l'INSTABILITÉ DE TIMBRE, et trois causes la produisent sans qu'elle sache
+les distinguer : plusieurs parties qui entrent et sortent, un résidu de
+séparation qui n'a pas de timbre, une batterie dont chaque frappe a le sien. Les
+deux stems de FUITE de *Children* dominaient ainsi le vrai fourre-tout.
+
+**CE QUI LES SÉPARE, ET QUI N'A PAS ENCORE ÉTÉ MESURÉ : LA PERSISTANCE.** Une
+partie qui entre fait une MARCHE — un profil neuf qui s'installe et DURE. Un
+résidu de séparation fait une oscillation : chaque fenêtre diffère de la
+suivante, et rien ne s'installe. La statistique proposée compte donc des
+PALIERS, pas de l'écart :
+
+1. Fenêtres de 5 s, silence sous −50 dBFS écarté et compté (comme au § 12.6).
+2. Profil de 8 bandes logarithmiques 60 Hz-16 kHz, normalisé à somme 1.
+3. Deux fenêtres CONSÉCUTIVES appartiennent au même palier si leur distance L1
+   est **sous 0,30** — le quart de l'écart maximal observé au § 12.7 entre deux
+   stems différents, donc « le même timbre » au sens large.
+4. Un palier COMPTE s'il dure au moins **4 fenêtres (20 s)** : ce qui ne dure pas
+   n'est pas une partie, c'est un accident de séparation.
+5. La statistique est le **nombre de paliers comptés dont les profils médians
+   sont mutuellement distants de plus de 0,30** — c'est-à-dire le nombre de
+   timbres différents qui se sont INSTALLÉS dans le stem.
+
+**CE QUI EST ATTENDU, ET CE QUI RÉFUTE.** Les compositions écrites au § 12.1 et
+mesurées au § 12.3 :
+
+| stem de *Children* | ce qu'il porte | attendu |
+|---|---|---|
+| `other` | piano (après 57 s), nappe, cordes, lead — **4 parties**, qui entrent et sortent | **≥ 2 paliers** |
+| `bass` | la basse ET la nappe de l'intro (seule de 0 à 28 s) | **≥ 2 paliers** |
+| `drums` | une famille de frappes, présente et stable | **1 palier** |
+| `piano` | le piano, à nu de 28 à 57 s seulement | **1 palier** (il ne joue qu'une fois) |
+| `guitar`, `vocals` | résidus de séparation, 23 % et 29 % de fenêtres sonores | **0 ou 1 palier** — rien ne s'y installe |
+
+**RÉFUTÉE si** un stem de fuite atteint le compte d'`other`, ou si `other` n'a
+qu'un palier : dans le premier cas la statistique confond encore résidu et
+composition ; dans le second elle ne voit pas ce qu'elle prétend voir. Aucun
+seuil ne sera déplacé après la mesure — les deux (0,30 et 4 fenêtres) sont posés
+ici, avant elle, et s'ils sont mauvais c'est l'hypothèse qui tombe.
+
 ## 5. Critères d'acceptation
 
 ```
