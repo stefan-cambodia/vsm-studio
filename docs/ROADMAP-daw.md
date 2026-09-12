@@ -18521,3 +18521,58 @@ les chaînes de `app/Source`, et celles-ci n'y sont pas. Un musicien français
 règle donc sa carte son en anglais. **Ouvert comme A26 à l'INDEX** — le remède
 est `juce::LocalisedStrings`, qui traduit les composants de JUCE eux-mêmes, et
 c'est un chantier à part.
+
+### Phase D159 — A26 : les composants de JUCE parlent enfin français (13/09/2026)
+
+**LE CONSTAT, MESURÉ PAR D158.** Les douze textes de `Fichier > Réglages audio…`
+sont en anglais dans l'interface française — « Sample rate: », « Audio buffer
+size: », « Plays a test tone ». Ce ne sont pas des chaînes du dépôt : elles
+viennent de `juce::AudioDeviceSelectorComponent`, et l'inventaire de langue ne
+peut structurellement pas les voir.
+
+**LE MÉCANISME EXISTE DANS JUCE, ET IL EST FAIT POUR ÇA.** Les composants de JUCE
+passent leurs libellés par `TRANS(...)`, qui consulte
+`juce::LocalisedStrings::getCurrentMappings()`. Poser une table de traductions
+suffit donc : aucune modification de JUCE, aucun contournement.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** En français, les douze textes de
+la boîte sont français, et le compte reste **douze** — traduire ne doit rien
+faire disparaître. En anglais, ils restent anglais (la table n'est posée que pour
+le français). **Réfutée si** un texte se perd, ou si l'anglais change.
+
+**FAIT (13/09) — LA BOÎTE PARLE FRANÇAIS, ET CE QUI RESTE EST NOMMÉ.** Une table
+de l'anglais vers le français (`kJuceEnFrancais`, vingt paires) est posée quand
+la langue est le français ; les chaînes du dépôt, qui sont françaises, n'y
+figurent pas et la traversent inchangées.
+
+| texte de la boîte | avant | après |
+|---|---|---|
+| `Active MIDI inputs:` | anglais | **Entrées MIDI actives :** |
+| `Output:` / `Input:` | anglais | **Sortie : / Entrée :** |
+| `Active output channels:` | anglais | **Canaux de sortie actifs :** |
+| `Sample rate:` | anglais | **Taux d'échantillonnage :** |
+| `Audio buffer size:` | anglais | **Taille du tampon audio :** |
+| `Test` / `Plays a test tone` | anglais | **Essai / Joue un son d'essai** |
+| `<< none >>` | anglais | **<< aucune >>** |
+
+**Neuf textes sur douze sont traduits, et les trois autres ne peuvent pas
+l'être** — c'est dit plutôt que caché :
+
+1. **« Default ALSA Output (currently PipeWire Media Server) »** est le nom que
+   le SYSTÈME donne au périphérique ; le traduire serait le renommer.
+2. **« 44100 Hz »** est une valeur.
+3. **« 512 samples (11.6 ms) »** est composée par JUCE **sans passer par
+   `TRANS`** — `String (bs) + " samples (" + … + " ms)"`,
+   `juce_AudioDeviceSelectorComponent.cpp:807`. Aucune table ne peut l'atteindre :
+   il faudrait modifier JUCE, ce que ce dépôt ne fait pas.
+
+Et **« channel 1 + 2 »** vient du pilote, par le même chemin que le nom du
+périphérique : `getNameForChannelPair` assemble deux noms que la carte fournit.
+
+**UN PIÈGE ÉVITÉ, parce qu'il était mesuré.** Traduire « << none >> » ne faisait
+rien : JUCE compose `"<< " + TRANS ("none") + " >>"` (ligne 217), donc la clé est
+le mot SEUL. La première table portait la phrase entière et restait sans effet —
+c'est le relevé qui l'a montré, pas une relecture.
+
+L'anglais est inchangé (douze textes, tous anglais) et l'inventaire de langue
+reste à **SANS_PAIRE 0** : la table de JUCE vit à part de celle du dépôt.

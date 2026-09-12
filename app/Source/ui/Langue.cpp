@@ -2889,12 +2889,58 @@ Langue::Choix depuisLeTexte(const juce::String& texte, Langue::Choix defaut) {
     return defaut;
 }
 
-/// Installe (ou retire) la table de JUCE. Le français ne pose AUCUNE table :
-/// `juce::translate` rend alors son argument, ce qui est exactement le
-/// comportement voulu et ne coûte pas une recherche.
+/// D159 (A26) : LES LIBELLÉS DE JUCE LUI-MÊME, EN FRANÇAIS.
+///
+/// POURQUOI ILS ÉCHAPPAIENT À TOUT. Le dépôt est écrit en français et la table
+/// `kAnglais` traduit vers l'anglais ; en français, aucune table n'était posée,
+/// ce qui est juste pour les chaînes du dépôt (elles sont déjà françaises) et
+/// FAUX pour celles de JUCE, qui sont anglaises et passaient telles quelles.
+/// Mesuré par D158 : les douze textes de `Fichier > Réglages audio…` étaient
+/// anglais dans l'interface française, et l'inventaire de langue ne pouvait pas
+/// les voir — il compte les chaînes de `app/Source`, et celles-ci n'y sont pas.
+///
+/// Les composants de JUCE passent leurs libellés par `TRANS(...)` : poser une
+/// table de l'anglais vers le français suffit, sans toucher à JUCE. Les chaînes
+/// du dépôt, elles, n'y figurent pas et traversent inchangées.
+const Paire kJuceEnFrancais[] = {
+    {"Output:",                 "Sortie :"},
+    {"Input:",                  "Entrée :"},
+    {"Device:",                 "Périphérique :"},
+    {"Type:",                   "Type :"},
+    {"Active output channels:", "Canaux de sortie actifs :"},
+    {"Active input channels:",  "Canaux d'entrée actifs :"},
+    {"Active MIDI inputs:",     "Entrées MIDI actives :"},
+    {"MIDI Output:",            "Sortie MIDI :"},
+    {"Sample rate:",            "Taux d'échantillonnage :"},
+    {"Audio buffer size:",      "Taille du tampon audio :"},
+    {"Test",                    "Essai"},
+    {"Plays a test tone",       "Joue un son d'essai"},
+    {"Show advanced settings...", "Afficher les réglages avancés..."},
+    {"Reset Device",            "Réinitialiser le périphérique"},
+    {"Control Panel",           "Panneau de configuration"},
+    {"(no audio output channels found)", "(aucun canal de sortie audio)"},
+    {"(no audio input channels found)",  "(aucun canal d'entrée audio)"},
+    // JUCE compose « << none >> » comme "<< " + TRANS("none") + " >>" : la clé
+    // est le mot SEUL, et traduire la phrase entière ne servait à rien
+    // (`juce_AudioDeviceSelectorComponent.cpp:217`).
+    {"none",                    "aucune"},
+    {"Cancel",                  "Annuler"},
+    {"Close",                   "Fermer"},
+};
+
+/// Installe la table de JUCE. Elle sert dans LES DEUX SENS, et c'est ce que
+/// D159 a changé : vers l'anglais pour les chaînes du dépôt, vers le français
+/// pour celles de JUCE.
 void poserLaTable(Langue::Choix choix) {
+    auto echappe = [](const char* brut) {
+        return juce::String::fromUTF8(brut).replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n");
+    };
     if (choix == Langue::Choix::Francais) {
-        juce::LocalisedStrings::setCurrentMappings(nullptr);
+        juce::String texte;
+        texte << "language: French\n" << "countries: fr be ch ca\n\n";
+        for (const auto& paire : kJuceEnFrancais)
+            texte << "\"" << echappe(paire.fr) << "\" = \"" << echappe(paire.en) << "\"\n";
+        juce::LocalisedStrings::setCurrentMappings(new juce::LocalisedStrings(texte, false));
         return;
     }
     juce::String texte;
@@ -2904,9 +2950,6 @@ void poserLaTable(Langue::Choix choix) {
         // littéraux entre guillemets sur une ligne, et un guillemet ou un
         // retour à la ligne DANS le texte doit être échappé -- sans quoi la
         // ligne se coupe en silence et la traduction disparaît sans erreur.
-        auto echappe = [](const char* brut) {
-            return juce::String::fromUTF8(brut).replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n");
-        };
         texte << "\"" << echappe(paire.fr) << "\" = \"" << echappe(paire.en) << "\"\n";
     }
     juce::LocalisedStrings::setCurrentMappings(new juce::LocalisedStrings(texte, false));
