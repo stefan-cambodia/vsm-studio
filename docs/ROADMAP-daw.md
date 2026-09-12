@@ -18210,3 +18210,33 @@ portent la raison du renversement.
 les empreintes de régression des 59 machines sont identiques. Suites : **1 298**
 (audio), 330 (core), 297 (interchange), 11 (panels), 19 (vst3), 25 (clap), toutes
 vertes, l'application compilée.
+
+### Phase D155 — le trente-troisième audit : un raccourci que rien n'affiche est un raccourci que personne n'apprend (13/09/2026)
+
+**D'OÙ VIENT CET AUDIT.** La série des audits d'interface avait fait le tour de
+ce qu'elle pouvait trancher dans `app/Source` seul ; A21 et A3 l'ont rouverte
+côté moteur et machines, et les deux sont closes. Celui-ci change de dimension :
+non plus ce que l'application AFFICHE mal, mais ce qu'elle ne dit pas du tout.
+
+**CE QUE LE CODE DIT AVANT TOUTE MESURE** (lu, pas supposé) :
+
+- `interchange/src/ShortcutTable.cpp` porte **55 commandes**, et chacune connaît
+  déjà son menu, son libellé, sa touche et parfois une variante :
+  `{ShortcutId::FileSave, "file.save", "Fichier", "Enregistrer", "ctrl + S", ""}`.
+  La table est donc complète — elle sait exactement ce qu'il faudrait afficher ;
+- les menus, eux, se construisent par **159 appels à `addItem(id, libellé)`**
+  (`MainComponent::getMenuForIndex`), la forme la plus simple de JUCE : elle ne
+  porte AUCUNE touche. `juce::PopupMenu::Item` a pourtant un champ
+  `shortcutKeyDescription`, que JUCE dessine à droite de l'entrée.
+
+**CE QUE J'ATTENDS, ÉCRIT AVANT LA MESURE.** **Zéro** entrée de menu affichant
+son raccourci, sur les 159. Un musicien de Cubase ou de Live lit « Enregistrer
+Ctrl+S » dans le menu et l'apprend sans le chercher ; ici, il faut lire le code
+ou deviner. **Réfutée si** une seule entrée en affiche un — le mécanisme
+existerait alors quelque part, et il faudrait comprendre pourquoi il n'est pas
+général.
+
+**LA MESURE.** `VSM_MENU_LISTE=1` écrit chaque entrée de la barre de menus,
+sous-menus compris, TELLE QU'ELLE S'AFFICHE (D80). On compte les entrées dont le
+texte porte une touche (`Ctrl`, `Maj`, `Alt`, une touche seule), et on les
+compare aux 55 que la table connaît.
