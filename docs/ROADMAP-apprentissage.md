@@ -1313,3 +1313,38 @@ maquiller en victoire.
 > de 77 %** — le plancher que le plus proche voisin vient d'établir. **Réfutée
 > si** le top 1 reste sous 77 % : la cause serait alors dans les descripteurs ou
 > dans la coupure, et non dans le budget de l'estimateur.
+
+### A6.5 — H28 RÉFUTÉE : tripler le budget ne change pas un chiffre (12/09/2026)
+
+**LA MESURE.** `--iterations 600` contre 200, tout le reste identique (même
+corpus, même graine, même coupure par patch). Le temps d'entraînement PASSE DE
+248 À 537 SECONDES — le budget a donc bien atteint l'estimateur — et le résultat
+ne bouge d'aucune décimale :
+
+| budget | temps | top 1 | top 3 | top 1 sur les 20 anciennes |
+|---|---|---|---|---|
+| 200 itérations | 248 s | 17,8 % | 20,4 % | 15,6 % |
+| **600 itérations** | **537 s** | **17,8 %** | **20,4 %** | **15,6 %** |
+
+**Le critère écrit d'avance — « dépasser les 77 % du plus proche voisin » — n'est
+pas approché ; H28 est réfutée.** Le nombre d'arbres n'est pas ce qui manque.
+
+**CE QUE CETTE RÉFUTATION APPREND, et c'est plus intéressant que ne l'aurait été
+sa confirmation.** Quatre cents itérations de plus n'ajoutent RIEN : le modèle a
+donc fini d'apprendre bien avant la deux-centième, c'est-à-dire qu'il a déjà
+épuisé ce qu'il sait tirer de ces descripteurs — et il s'arrête à 17,8 % là où un
+plus proche voisin, dans le MÊME espace, atteint 77,0 %. Ce n'est pas un manque
+de capacité, c'est une inadéquation : le gradient boosting par histogrammes
+découpe chaque descripteur en seuils, et une famille de machines qui se
+distinguent par la FORME de leur nuage plutôt que par des seuils indépendants lui
+échappe. Le plus proche voisin, lui, lit la forme.
+
+> **H29 — le classifieur de machine doit changer de famille, pas de budget
+> (écrite ici, non mesurée).** Un estimateur qui compare à des EXEMPLES (plus
+> proche voisin, k plus proches voisins, ou un noyau) plutôt qu'à des seuils
+> tient les 58 classes. **Attendu** : au-dessus de 77 % — le plancher qu'un 1-NN
+> à 40 000 exemples vient d'établir — et surtout sans classe attracteur (aucune
+> classe au-delà de 3 % des prédictions pour 1,7 % de part réelle). **Réfutée
+> si** l'attracteur revient, ou si le top 1 reste sous 77 % : il faudrait alors
+> chercher dans les descripteurs eux-mêmes, que cette phase n'a jamais mis en
+> cause.

@@ -342,7 +342,7 @@ QUANTILE_RAYON = 0.90
 
 def entraine(corpus: CorpusCharge, graine: int = 20260823, part_epreuve: float = 0.2,
              seuil_abstention: float = 0.20, quantile_rayon: float = QUANTILE_RAYON,
-             progression=None) -> Tuple[Classifieur, Dict[str, Any]]:
+             progression=None, iterations: int = 200) -> Tuple[Classifieur, Dict[str, Any]]:
     """Entraîne et MESURE. Rend le classifieur et le rapport de son épreuve."""
     from sklearn.ensemble import HistGradientBoostingClassifier
 
@@ -363,7 +363,13 @@ def entraine(corpus: CorpusCharge, graine: int = 20260823, part_epreuve: float =
     # Gradient boosting par histogrammes : rapide sur CPU, sans réglage à
     # trouver, et il accepte des descripteurs d'échelles très différentes. Le
     # § 4 impose « petit et CPU » ; celui-ci s'entraîne en dizaines de secondes.
-    modele = HistGradientBoostingClassifier(random_state=graine, max_iter=200,
+    # H28 : LE BUDGET EST UNE OPTION, PAS UNE CONSTANTE CACHÉE. Ce modèle
+    # entraîne UN ARBRE PAR CLASSE ET PAR ITÉRATION : à 20 classes, 200
+    # itérations donnent 4 000 arbres ; à 58, la frontière à tracer est trois
+    # fois plus grande pour le même nombre d'itérations. Le chiffre conditionne
+    # donc le résultat, et tout ce qui conditionne un résultat se passe en ligne
+    # de commande et s'inscrit au rapport (§ « Mesure » de CLAUDE.md).
+    modele = HistGradientBoostingClassifier(random_state=graine, max_iter=iterations,
                                              early_stopping=False)
     modele.fit((X_entrainement - moyenne) / echelle, y_entrainement)
 

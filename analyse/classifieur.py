@@ -99,7 +99,7 @@ def entrainer(arguments) -> int:
     print(f"      {secs} secs, {len(corpus.augmentations) - secs} augmentés")
 
     print("[2/3] Entraînement")
-    classifieur, mesures = entraine(corpus, graine=arguments.graine,
+    classifieur, mesures = entraine(corpus, graine=arguments.graine, iterations=arguments.iterations,
                                      part_epreuve=arguments.part_epreuve,
                                      seuil_abstention=arguments.seuil,
                                      progression=lambda m: print(f"      {m}"))
@@ -203,6 +203,11 @@ def main() -> int:
     analyseur.add_argument("--sortie", type=Path, default=None,
                             help="où écrire le modèle (défaut : ne pas l'écrire)")
     analyseur.add_argument("--graine", type=int, default=20260823)
+    analyseur.add_argument("--iterations", type=int, default=200,
+                            help="itérations du gradient boosting (défaut 200). "
+                                 "UN ARBRE PAR CLASSE ET PAR ITÉRATION : à 58 machines, "
+                                 "200 itérations laissent chaque classe au budget qu'elle "
+                                 "avait à 20 (H28 de ROADMAP-apprentissage.md)")
     analyseur.add_argument("--part-epreuve", type=float, default=0.2)
     analyseur.add_argument("--seuil", type=float, default=0.20,
                             help="score maximal en deçà duquel le modèle s'abstient")
