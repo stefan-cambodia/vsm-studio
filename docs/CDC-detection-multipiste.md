@@ -1146,6 +1146,96 @@ percussion (0,2130), snare (0,2602) —, toutes conservées parce que couper
 est une décision humaine. **Aucune piste `vocals` ni `guitar` : à quatre
 stems, les deux inventions de la course 1 disparaissent.**
 
+#### La course 3 — le plafond de structure (12/09, code 0 à 12:29:19)
+
+**La course.** **Distance 0,1982** (0,19816). **11 pistes jouantes et 1 bus**,
+9 224 notes. Temps : 19 695 s de chaîne pour 23 854 s d'horloge, et l'écart
+(4 159 s) est la somme des DEUX veilles du poste — 08:10:10 → 09:14:30 et
+09:15:00 → 09:20:00, soit 4 160 s au journal du système —, à la seconde près.
+La séparation n'a pas eu lieu : les six stems de la course 1 ont été repris par
+`--stems`, et le partage relu est le même au dixième (drums 66,9 %, bass
+22,2 %, other 9,5 %, piano 0,7 %, guitar 0,6 %, vocals 0,2 %).
+
+**Ce que chaque option a fait, séparément.**
+
+| option | effet mesuré |
+|---|---|
+| `--voix-par-stem 4`, `--voix-par-vides`, `--batterie-par-piece`, `--voix-tete-choeurs` | aucun : elles SONT le défaut, et le journal le dit en tête — « `--parite` : rien à allumer, tout était déjà demandé » |
+| `--garder-pieces-non-isolees` | **aucun** : la course 1 n'avait écarté AUCUNE pièce faute de frappe isolée. Les deux courses trouvent 6 pièces et 1 810 frappes (kick 816, hihat 575, tom 183, kick2 143, percussion 52, snare 41), et les éclatent en 5 pistes, à l'identique |
+| `--seuil-stem 0` | **le seul qui agit** : le stem `vocals`, refusé en course 1 (0,2 % de l'énergie, sous le seuil de 0,5 %), est repris ; `--voix-tete-choeurs` le coupe par le champ stéréo en tête 64 % et chœurs 36 % (part latérale 0,26), somme égale au stem exactement → **deux pistes de plus** |
+
+**Le déterminisme, prouvé plus fort que promis.** Le § 12.2 écrivait : « si la
+course 1 n'en refuse ni n'en écarte aucun, la course 3 doit rendre sa distance
+AU BIT PRÈS ». La condition n'est pas remplie — un stem a été refusé —, et ce
+qui a été obtenu vaut mieux : **toutes les décisions des deux courses sont
+identiques, au dernier chiffre**. Les quatorze lignes de décision du journal se
+superposent (arbitrage de piste, réglage, arbitrage de batterie, verdict du
+mélange en 2 tours sur les mêmes pistes, second verdict jusqu'à 0,1935), les
+distances de stem du rapport sont égales à la quinzième décimale (`bass`
+0,306785487606432 des deux côtés), et les machines finales sont les mêmes :
+`bass` → `vsm.hurdygurdy`, `guitar` → `vsm.clavichord`, `other` → `vsm.sitar`,
+`piano` → `vsm.tb303`, batterie → `vsm.tr909`. Douze heures d'intervalle, même
+moteur, même résultat.
+
+**L'intégrité de l'épreuve, vérifiée et non supposée.** Les trois courses
+portent trois commits différents en provenance (073a133, 1153a05, 64ab0fe) :
+entre le premier et le dernier, `git diff --name-only` ne montre que `app/`
+(16 fichiers), `docs/`, `CLAUDE.md` et `tools/inventaire_langue.py` — **ni
+`core/`, ni `audio/`, ni `interchange/`, ni `analyse/`**. Et le binaire de
+rendu porte encore l'horodatage que le journal de l'épreuve a relevé à son
+départ (`build/tools/vsm-render`, 2026-09-11 15:00:36,814600964). Les trois
+courses ont donc tourné sur UN moteur ; la règle qui a bloqué D18.7b et A21
+treize jours durant a tenu.
+
+**Alors d'où vient l'écart de distance ?** 0,19353 en course 1, 0,19816 en
+course 3 : **+2,39 %**, pour deux pistes dont le journal dit « volume non calé
+(piste sans machine ou sans note) ». Cette phrase se lit comme « la piste est
+vide » ; elle ne l'est pas. Mesuré, et non supposé : la différence des deux
+rendus (`reconstruit.wav`, 20 028 612 trames chacun) régressée sur la somme des
+deux pistes de voix.
+
+| mesure | valeur |
+|---|---|
+| gain de moindres carrés | **0,6364** |
+| `R²`, part de la différence expliquée | **1,000000** |
+| résidu | **−118,7 dB** sous la différence — l'arrondi de `float32` |
+| énergie ajoutée au rendu | **0,072 %** |
+
+0,6364, c'est 0,9/√2 : le volume d'usine d'une piste, et la loi de panoramique
+centrée du moteur. **L'écart entier tient donc aux deux pistes de voix, et à
+rien d'autre** — le reste du rendu est identique à l'arrondi près, ce qui
+achève la preuve de déterminisme ci-dessus.
+
+**Ce que ces deux pistes sont.** `reporter_voix` (`analyse/reconstruire.py`)
+pose le stem vocal sur une piste AUDIO : « la voix ne se synthétise pas »,
+décision écrite de longue date et assumée pour ce qu'elle est. Ce sont donc
+deux pistes qui REJOUENT le stem, pas deux pistes inventées par une machine.
+
+**Ce qui est un défaut, en revanche, et qui est neuf.** Le calage des volumes
+(`analyse/analyzer/vsm_levels.py:109`) ne sait caler qu'une piste qui a une
+machine ET des notes : une piste audio sort de l'étage à son volume d'usine
+0,9, que la loi de panoramique ramène à 0,636 — alors que tête + chœurs
+redonnent le stem EXACTEMENT, c'est-à-dire qu'elles devraient entrer au gain
+1,0 pour rendre au mélange la part que la séparation lui a retirée. La chaîne
+pose la voix 3,9 dB trop bas, et l'annonce par une phrase qui laisse croire
+qu'elle ne la pose pas.
+
+**ATTENDU DE LA MESURE QUI SUIT, ÉCRIT AVANT ELLE (12/09, 13:56).** Deux
+lectures restent possibles, une seule survivra. **(a)** Le stem `vocals` d'un
+morceau INSTRUMENTAL est de la fuite — de l'énergie que les autres stems
+portent déjà — et la rejouer la compte DEUX FOIS : la distance croît alors avec
+le gain dès 0, son minimum est en g = 0, et c'est `--seuil-stem 0` qui
+fabrique. **(b)** Le stem manque vraiment au mélange et la distance a son
+minimum vers g = 1,0 : le défaut est alors le CALAGE, pas le seuil, et la
+course 3 paie 2,39 % pour une piste posée 3,9 dB trop bas. **Je parie sur
+(a)** : le § 12.1 écrit d'avance que ce disque est instrumental, et un stem à
+0,2 % d'énergie sur un disque sans voix est un résidu de séparation. Ce qui
+tranche : la distance v2 de l'original au rendu de la course 1 augmenté de
+g·(tête + chœurs), pour g = 0, 0,3, 0,6364, 1,0 et 1,4142. **Les deux témoins
+font partie de la mesure** : g = 0 doit retomber sur 0,19353 et g = 0,6364 sur
+0,19816, sans quoi un chiffre qui bouge ne dira pas s'il mesure le mélange ou
+mon outil.
+
 ## 5. Critères d'acceptation
 
 ```
