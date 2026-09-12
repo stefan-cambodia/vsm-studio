@@ -2951,7 +2951,7 @@ const Paire kJuceEnFrancais[] = {
     {"Control Panel", "Panneau de configuration"},
     {"Copies the currently selected text to the clipboard.", "Copie le texte choisi dans le presse-papiers."},
     {"Copy", "Copier"},
-    {"Couldn\"t create the folder!", "Impossible de créer le dossier !"},
+    {"Couldn't create the folder!", "Impossible de créer le dossier !"},
     {"Create Folder", "Créer un dossier"},
     {"Cut", "Couper"},
     {"Delete", "Supprimer"},
@@ -2990,7 +2990,7 @@ const Paire kJuceEnFrancais[] = {
     {"OK", "OK"},
     {"On", "Marche"},
     {"Open", "Ouvrir"},
-    {"Opens the device\"s own control panel", "Ouvre le panneau de configuration du périphérique"},
+    {"Opens the device's own control panel", "Ouvre le panneau de configuration du périphérique"},
     {"Output:", "Sortie :"},
     {"Overwrite", "Écraser"},
     {"Paste", "Coller"},
@@ -3024,9 +3024,9 @@ const Paire kJuceEnFrancais[] = {
     {"Show icons and descriptions", "Afficher icônes et descriptions"},
     {"Show icons only", "N'afficher que les icônes"},
     {"Test", "Essai"},
-    {"The file doesn\"t exist", "Le fichier n'existe pas"},
+    {"The file doesn't exist", "Le fichier n'existe pas"},
     {"There was an error while trying to load the file: FLNM", "Erreur au chargement du fichier : FLNM"},
-    {"There\"s already a file called: FLNM", "Un fichier porte déjà ce nom : FLNM"},
+    {"There's already a file called: FLNM", "Un fichier porte déjà ce nom : FLNM"},
     {"Undo", "Annuler"},
     {"Use circular dragging", "Glissé circulaire"},
     {"Use left-right dragging", "Glissé gauche-droite"},
@@ -3124,7 +3124,13 @@ juce::String deuxPoints() {
 
 juce::String trSelon(const char* contexte, const char8_t* texte) {
     const juce::String seul = tr(texte);
-    if (juce::LocalisedStrings::getCurrentMappings() == nullptr) return seul;
+    // D160 : LA LANGUE SE DEMANDE, elle ne se DEVINE plus à la présence d'une
+    // table. Ce test lisait « aucune table installée » comme « on est en
+    // français » — vrai jusqu'à ce que le français en pose une pour traduire
+    // les libellés de JUCE (D159). La conséquence s'est vue à l'écran : une
+    // ligne du rapport de reconstruction s'affichait en ANGLAIS dans
+    // l'interface française.
+    if (Langue::courante() == Langue::Choix::Francais) return seul;
     const juce::String cle = juce::String::fromUTF8(reinterpret_cast<const char*>(texte))
                              + "@" + juce::String(contexte);
     const juce::String traduit = juce::translate(cle);
@@ -3473,8 +3479,10 @@ juce::String traduireSegments(const juce::String& texte, int profondeur) {
 
 juce::String trPhrase(const juce::String& texte) {
     // EN FRANÇAIS, RIEN : la phrase EST le français, et un modèle appliqué ici la
-    // réécrirait en anglais. Le français ne pose aucune table (poserLaTable).
-    if (juce::LocalisedStrings::getCurrentMappings() == nullptr) return texte;
+    // réécrirait en anglais. D160 : ce test demandait « une table est-elle
+    // posée ? », ce qui revenait au même TANT QUE le français n'en posait
+    // aucune ; depuis qu'il en pose une pour JUCE, il faut demander la langue.
+    if (Langue::courante() == Langue::Choix::Francais) return texte;
     juce::StringArray lignes;
     lignes.addLines(texte);
     for (auto& ligne : lignes) {

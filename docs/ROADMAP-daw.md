@@ -18622,3 +18622,28 @@ affiché « Joue un son d"essai » et « Taux d"échantillonnage : ». C'est le 
 qui l'a montré, pas une relecture — dix-neuf lignes étaient touchées. La règle du
 dépôt s'applique telle quelle : après toute édition par script, vérifier le
 TEXTE, pas le fait que le script se soit exécuté.
+
+**ET UNE RÉGRESSION INTRODUITE PAR D159, TROUVÉE EN REGARDANT L'ÉCRAN.** En
+ouvrant un projet reconstruit pour tout autre chose, la photo a montré une ligne
+du rapport **en anglais dans l'interface française** :
+« percussion: vsm.tr909 has no such voice; the spectrum gives it as “snare” ».
+
+**La cause était écrite dans le code, en toutes lettres, avant que je ne la
+casse.** `trPhrase` portait ce commentaire : « EN FRANÇAIS, RIEN : la phrase EST
+le français… **Le français ne pose aucune table (poserLaTable)** », et testait
+donc `getCurrentMappings() == nullptr` pour reconnaître le français. C'était vrai
+tant que le français n'installait rien ; D159 lui a fait installer une table pour
+JUCE, et le test est devenu faux — deux fonctions (`trSelon`, `trPhrase`) se sont
+mises à traduire vers l'anglais des phrases déjà françaises.
+
+**Le remède : la langue se DEMANDE.** Les deux tests interrogent maintenant
+`Langue::courante()`. Vérifié : la ligne est redevenue « vsm.tr909 n'a pas cette
+voix ; le spectre la donne pour « snare », jouée sur « clap » », l'anglais rend
+toujours sa version anglaise, et la boîte des réglages audio reste française.
+
+**Et quatre clés anglaises étaient encore abîmées** par le même gabarit —
+`Couldn\"t`, `device\"s`, `doesn\"t`, `There\"s` : des clés qui n'auraient JAMAIS
+correspondu à la chaîne de JUCE, donc quatre traductions mortes sans le dire.
+Réparées. La leçon tient en une ligne : **un signal indirect (« une table est-elle
+posée ? ») mesure autre chose que ce qu'il croit dès qu'on change ce qui le
+produit.**
