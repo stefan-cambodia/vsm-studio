@@ -181,4 +181,8 @@ l'ordre de marche — pas de la documentation d'accompagnement.
   « D18.7b reste à faire » (« D18.7b EST FAITE » suivait, avec ses quatre
   attendus tenus et 1 808 tests verts). Avant d'ouvrir un chantier nommé par un
   document, `grep` « EST FAITE », « CLOS » et le nom de l'élément dans le même
-  fichier.
+  fichier. **Et cela vaut d'abord pour `docs/INDEX.md`**, qu'on lit en premier :
+  ses lignes dérivent derrière les cahiers des charges qu'elles citent. Le 12/09,
+  TROIS de ses éléments étaient déjà faits — les boutons sous 18 px, D18.7b, et
+  A4 dont le § 4.4 publiait trois mesures. Avant de travailler une ligne de
+  l'INDEX, ouvrir le § qu'elle nomme.
