@@ -17863,3 +17863,22 @@ que la même règle interdit. Ce qui reste faisable sans rien recompiler, c'est
 l'épreuve elle-même : son verdict, son écoute A/B — dont D153 vient de vérifier
 qu'elle chargera l'original toute seule — et les clôtures qu'elle commande
 (B3 à l'INDEX, ROADMAP-fusion).
+
+**Le blocage, PROUVÉ et non supposé (12/09).** Écrire « D18.7b et les machines
+sont bloqués » sans le mesurer serait exactement ce que ce document reproche
+ailleurs. Deux preuves :
+
+- `interchange/CMakeLists.txt:37` — `target_link_libraries(vsm_interchange
+  PUBLIC vsm_audio vsm_core)` : la couche d'échange entraîne la bibliothèque
+  audio, et `tools/vsm-render` se lie à `vsm_interchange`.
+- `nm -C build/tools/vsm-render` trouve **75 symboles** de classes de machines
+  (`MinimoogSynth`, `TR909Synth`) DANS le binaire : les machines y sont
+  compilées en dur, pas chargées à côté.
+
+Toucher `audio/plugins/<machine>/`, `core/` ou `interchange/` recompile donc le
+binaire de rendu — ce que le premier piège payé du dépôt interdit pendant
+qu'une reconstruction tourne. Les autres feuilles ont été vérifiées dans le
+même mouvement : `ROADMAP-interop.md` est soldée (P2 à P10 « Fait », phases 1
+à 6 terminées), `ROADMAP-apprentissage.md` ne nomme que A5.3, « écoute et
+correction dans le DAW », qui demande une oreille humaine, et le § 8 de
+`CDC-machines-manquantes.md` a toutes ses cases cochées.
