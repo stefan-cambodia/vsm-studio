@@ -1160,3 +1160,56 @@ sur les exemples d'épreuve des vingt machines communes,
 `--confusions N` imprime les N paires les plus confondues au lieu de douze :
 l'attendu 3 demande de publier les paires, pas seulement leur compte. Trois
 tests tiennent la règle du calcul (`test_classifieur_comparaison.py`).
+
+### A6.2 — Le corpus s'est arrêté une SECONDE fois, et la reprise a demandé une preuve, pas une lecture de commits (12/09/2026)
+
+**CE QUI S'EST PASSÉ, ENCORE.** La reprise du 11/09 (A6.1) s'est arrêtée à
+**06:03**, sur `vsm.vocal` — dossier créé, aucun lot écrit —, exactement la même
+forme que l'arrêt sur `vsm.glass` la veille : **48 machines complètes sur 59**,
+aucun manifeste, et l'INDEX qui disait toujours « EN COURS » pendant qu'aucun
+processus ne tournait. La règle du dépôt est vérifiée une fois de plus :
+`pgrep` avant de croire un journal.
+
+**POURQUOI LA VÉRIFICATION D'A6.1 NE SUFFISAIT PLUS.** Le 11/09, reprendre était
+honnête parce qu'aucun commit n'avait touché `audio/` depuis le départ du
+corpus. Cette fois, **le binaire de rendu A ÉTÉ RECOMPILÉ pendant l'intervalle**
+(`build/tools/vsm-render`, 11/09 à 15:00:36, contre un corpus dont le dernier lot
+date de 06:03). Lire les commits ne suffit donc plus : il faut MESURER que le
+binaire rend la même chose, sans quoi le corpus mêlerait deux moteurs et la
+phrase « la seule variable est le nombre de machines » serait fausse.
+
+**LA MESURE, ET LE PIÈGE OÙ ELLE EST TOMBÉE D'ABORD.** J'ai régénéré une machine
+déjà au corpus (`vsm.psg`, 300 patchs, même graine) avec le binaire d'aujourd'hui
+et comparé les descripteurs. Résultat apparent : **61,7 % des entrées
+différentes**, écart relatif médian 3 %. Lu vite, cela disait « le moteur a
+changé ». Il n'en était rien : **mon témoin changeait DEUX variables**. Généré
+SEUL (`--machines vsm.psg`), le vivier de fuite — bâti au départ à partir des six
+premières machines de la liste, la machine en cours retirée — était **VIDE**, et
+l'augmentation « fuite » n'existait pas. Le corpus en porte 324 exemples ; le
+témoin, zéro. Le tirage entier des augmentations s'en trouvait décalé.
+
+| | corpus | témoin généré seul |
+|---|---|---|
+| augmentations présentes | egaliseur, reverberation, compression, bruit, desaccord, **fuite** | les cinq premières, **sans fuite** |
+| exemples « fuite » | **324** | **0** |
+
+**CE QUI EST COMPARABLE, ET CE QU'IL DIT.** Les exemples SECS, appariés par
+numéro de patch ET par note — 993 paires : **993 identiques au bit près, écart
+maximal 0,0000e+00**. Le moteur recompilé rend donc exactement le même son, ce
+qui était attendu : le seul commit touchant `audio/` depuis le départ du corpus
+change le NOM affiché du sampler (« Sampler (8 emplacements) » → « (16
+emplacements) »), et `vsm.sampler` n'est pas dans le corpus mélodique.
+
+**LA LEÇON, QUI VAUT POUR TOUT A/B DE CORPUS.** `--machines` n'est pas un filtre
+sans conséquence : il change la composition du vivier de fuite, donc le tirage
+des augmentations, donc les descripteurs de TOUS les exemples — y compris ceux
+qu'on croyait secs, car ils ne tombent plus sur les mêmes patchs. Un A/B sur un
+corpus garde la LISTE DE MACHINES identique, ou ne compare que ce qui est
+apparié par patch et par note.
+
+**LA REPRISE EST DONC HONNÊTE, et pour une raison qui se vérifie** : le vivier
+de fuite est reconstruit au départ de chaque exécution, à partir des six
+premières machines de la liste et d'un rendu neuf — il ne dépend pas de ce qui
+est sauté. Les onze machines restantes reçoivent le même vivier que les
+quarante-huit déjà écrites. Relancée le 12/09 à 17:14, journal
+`corpus/journaux/parc59-reprise2.log`.
