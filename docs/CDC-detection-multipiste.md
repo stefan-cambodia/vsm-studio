@@ -1556,6 +1556,47 @@ composition ; dans le second elle ne voit pas ce qu'elle prétend voir. Aucun
 seuil ne sera déplacé après la mesure — les deux (0,30 et 4 fenêtres) sont posés
 ici, avant elle, et s'ils sont mauvais c'est l'hypothèse qui tombe.
 
+### 12.9 H26, deuxième forme — elle SURVIT, et elle sépare ce que la première confondait (12/09)
+
+**LA MESURE**, avec les seuils du § 12.8, posés avant elle et non retouchés
+(0,30 de distance L1, 4 fenêtres de durée minimale) :
+
+| stem de *Children* | ce qu'il porte | attendu | **timbres installés** | paliers longs |
+|---|---|---|---|---|
+| `other` | 4 parties qui entrent et sortent | ≥ 2 | **4** | 5 |
+| `bass` | basse + nappe de l'intro | ≥ 2 | **3** | 9 |
+| `piano` | une partie, à nu 29 s | 1 | **1** | 1 |
+| `guitar` | résidu (0,6 % de l'énergie) | 0 ou 1 | **0** | 0 |
+| `vocals` | résidu (0,2 %) | 0 ou 1 | **0** | 0 |
+| `drums` | une famille de frappes | 1 | **2** | 7 |
+
+**LES DEUX CRITÈRES DE RÉFUTATION SONT TENUS.** Aucun stem de fuite n'approche
+le compte d'`other` — ils sont à **zéro**, là où la dispersion du § 12.7 les
+mettait EN TÊTE —, et `other` en a quatre. La persistance fait donc ce que
+l'écart ne savait pas : **un résidu de séparation oscille sans rien installer**
+(23 % et 29 % de fenêtres sonores, aucune suite de quatre qui se ressemble),
+**une partie qui entre s'installe**.
+
+**ET LE COMPTE TOMBE SUR LA COMPOSITION ÉCRITE.** `other` : quatre timbres, pour
+quatre parties (piano après 57 s, nappe, cordes, lead) — le § 12.1 les avait
+nommées avant toute mesure. `bass` : trois, pour deux parties écrites, avec les
+plages qui le disent (un palier de 0 à 40 s, la nappe de l'intro ; un autre de
+150 à 210 s ; un troisième après). `piano` : un seul palier, à 60 s, et c'est
+exactement la fenêtre où le § 12.3 a mesuré que le piano est à nu.
+
+**CE QUI EST MANQUÉ, ET QUI SE DIT.** `drums` rend **2** là où l'attendu disait
+1. Une batterie change bel et bien de timbre entre l'intro sans charleston et le
+plein kit, et la statistique le voit ; ce n'est pas un défaut de la mesure, c'est
+une limite de l'attendu, qui supposait un stem de frappes uniforme. Sans
+conséquence pour la porte : la batterie a son propre chemin de découpage
+(`--batterie-par-piece`) et ne passe pas par le fourre-tout.
+
+**CE QUE CELA NE PROUVE PAS ENCORE.** Que la porte ainsi armée AMÉLIORE la
+reconstruction. Le compte de timbres installés est une bonne mesure de la
+composition d'un stem ; savoir si découper `other` en quatre sur ce disque
+rapproche ou éloigne le morceau demande une course, avec son témoin. C'est le
+chantier B9, et son attendu s'écrira avant elle.
+
 ## 5. Critères d'acceptation
 
 ```
