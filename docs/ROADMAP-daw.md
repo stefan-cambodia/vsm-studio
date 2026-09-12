@@ -17593,3 +17593,45 @@ défaut de comptage — cinq noms de composant pointés (`pistes.volume`,
 `pistes.pan` de D135 ; `pistes.muet`, `pistes.solo`, `pistes.armement` de D147)
 pris pour du texte d'écran —, non une régression de traduction. Le dire
 supposait de le mesurer : c'est fait, dans les deux sens.
+
+### Phase D151 — six chaînes traduites par chance : les déclarer (12/09/2026)
+
+**D'où elle vient.** Après D150, deux mesures de complétude, faites et dites :
+les **en-têtes** sont sains (`--entetes` : ECRAN 0, SANS_PAIRE 0, TABLE 38,
+COMMANDE 1), et la **règle large** (D101) donne ECRAN **25**, exactement le
+dernier chiffre publié — aucune dérive. Mais cette règle montre **SANS_PAIRE
+6**, un chiffre que personne n'avait publié : seul l'ECRAN de la règle large
+l'avait été. Ces six sont ANTÉRIEURES à D150 — la branche « chaîne accolée à
+`tr()` sans clé » n'a pas été touchée par cette phase.
+
+**Les six, et ce qu'elles sont** (toutes affichées, toutes passées à `tr()`) :
+
+| chaîne | site | ce que l'utilisateur en voit |
+|---|---|---|
+| « MIDI CC » | `MainComponent.cpp:211` | un onglet du bas, voisin de « Mixer », « Automation », « Effets » |
+| « Transposition » | `MainComponent.cpp:307` | le titre d'une boîte |
+| « Octave + », « Octave - » | `PianoRollComponent.cpp:975,976` | deux entrées du menu contextuel des hauteurs |
+| « Crescendo », « Decrescendo » | `PianoRollComponent.cpp:1007,1008` | deux entrées du menu des nuances |
+
+**Le défaut, et sa vraie taille.** `tr()` sans clé rend la clé : ces six restent
+donc françaises en anglais. Mais elles s'écrivent de la même façon dans les deux
+langues — « MIDI CC », « Octave + », « Crescendo » —, si bien que l'utilisateur
+anglais lit le bon texte PAR CHANCE. C'est précisément ce que D150 a fait pour
+« Master » : une paire identique n'est pas une redondance, elle DÉCLARE que le
+cas a été examiné. La chance ne se maintient pas toute seule ; une déclaration,
+si.
+
+**ATTENDU, écrit avant la mesure.** Les six paires ajoutées, à l'identique
+(« Transposition » est aussi le mot anglais, et c'est un TITRE de boîte, non
+l'action « Transpose »).
+
+| mesure | attendu | ce qui le réfute |
+|---|---|---|
+| large SANS_PAIRE | 6 → **0** | autre chose : une septième chaîne traînerait, à nommer |
+| large ECRAN | **25**, inchangé | tout changement : la déclaration ne déplace rien vers l'écran |
+| large TABLE | **283**, inchangé | un autre chiffre : la branche `tr()` rend la main sans compter |
+| stricte, les cinq comptes | **7 / 0 / 121 / 252 / 31**, inchangés | tout changement : la règle stricte écarte ces six avant de les classer |
+| banc : l'onglet en anglais | « MIDI CC » **avant comme après** | un texte différent : la déclaration aurait changé l'affichage, ce qu'elle ne doit pas faire |
+
+Le dernier cas est le contrôle qui donne son sens aux quatre autres : une phase
+qui ne change RIEN à l'écran doit le prouver à l'écran.
