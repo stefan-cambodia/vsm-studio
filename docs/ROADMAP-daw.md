@@ -17922,3 +17922,48 @@ reposer un témoin qui existe déjà — le document dit « le témoin … puis 
 retiré » d'un témoin ANTÉRIEUR, auquel `mesurerSiDemande()` a succédé. Chercher
 l'outil avant d'en écrire un second, c'est la même règle que D150 (« un script
 jeté après usage n'est pas une garde »), vue de l'autre côté.
+
+### L'épreuve est terminée, et l'élément qu'elle bloquait était déjà fait (12/09/2026)
+
+**L'épreuve Children a fini le 12/09 à 12:29:19**, code 0 sur ses trois courses
+(`reconstruction/travail/epreuve-children.log` : « ÉPREUVE TERMINÉE »), et le
+garde de veille a rendu la veille au poste à 12:29:54. Vérifié après le
+redémarrage du poste — `pgrep` ne trouve aucun rendu, aucune séparation, aucun
+Python de la chaîne —, conformément à la règle du dépôt : vérifier `pgrep` avant
+de croire un journal. Son verdict est écrit au § 12.3 et § 12.4 de
+[`CDC-detection-multipiste.md`](CDC-detection-multipiste.md) ; B3 est clos, et
+deux hypothèses (H26, H27) en sortent avec leur critère de réfutation.
+
+**Le blocage est donc levé** : A21 (aucun réglage de machine ne s'annule), les
+campagnes de l'INDEX et tout ce qui touche `core/`, `audio/` ou `interchange/`
+sont de nouveau permis. L'intégrité de l'épreuve a d'ailleurs été vérifiée et
+non supposée : entre le commit de la course 1 et celui de la course 3, `git diff
+--name-only` ne montre que `app/`, `docs/`, `CLAUDE.md` et un outil de `tools/` —
+et `build/tools/vsm-render` porte encore l'horodatage relevé au départ de
+l'épreuve. La discipline a tenu treize jours.
+
+**ET D18.7b, QUE LA SECTION PRÉCÉDENTE NOMMAIT COMME SUITE, EST FAITE DEPUIS LE
+05/09.** Sa clôture est dans le MÊME encadré que le « reste à faire » que j'ai lu
+— trente lignes plus bas : « **D18.7b EST FAITE (05/09/2026, 08:55), et les
+quatre attendus sont tenus** », avec sa table de mesures (−143,4 dBFS pour un
+projet publié contre un projet simple, rapport de crête 2,0000 pour deux pistes
+sur la même sortie, écart 0,0 au bit près quand personne ne publie) et ses 1 808
+tests C++ verts. La section du 12/09 a donc nommé « élément suivant, et bloqué »
+un travail livré une semaine plus tôt.
+
+**C'est la DEUXIÈME fois dans la même journée.** Quelques heures avant, la table
+« CE QUI RESTE … Nommé, chiffré, non fait » des boutons sous 18 px avait été
+prise pour du travail restant, alors que le récapitulatif de clôture disait
+trente lignes plus bas « parc entier : 98 → 0 ». Même forme exactement : un
+encadré d'attente lu sans sa clôture, qui se trouve plus bas dans le même bloc.
+La règle qui en sort, écrite ici et dans `CLAUDE.md` : **un passage qui annonce
+du travail restant se lit jusqu'au bout de son bloc avant d'être cru** — et la
+vérification coûte un `grep` (« EST FAITE », « CLOS », « 98 → 0 ») sur le même
+encadré.
+
+**L'élément suivant, les documents relus, est donc A21** — aucun réglage de
+machine ne s'annule (INDEX § A) : les réglages vivent dans les instances des
+synthés et ne sont capturés qu'à l'enregistrement ou à la recréation d'une
+machine, si bien qu'un pas d'annulation copie un modèle qui ne les porte pas.
+Le remède les fait porter par le modèle, `core/` et `interchange/` — ce que
+l'épreuve interdisait et ne borne plus.

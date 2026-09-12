@@ -170,3 +170,11 @@ l'ordre de marche — pas de la documentation d'accompagnement.
   au centre de l'écran. Quand `VSM_TEXTES_LISTE` ne trouve rien, REGARDER LA
   PHOTO avant de conclure — ou ajouter un relevé qui lise la même source que la
   peinture.
+- Un encadré qui annonce du travail RESTANT se lit jusqu'au bout de son bloc
+  avant d'être cru : sa clôture est souvent trente lignes plus bas, dans le même
+  encadré. Payé DEUX FOIS le 12/09 — la table « Nommé, chiffré, non fait » des
+  boutons sous 18 px (le récapitulatif disait « parc entier : 98 → 0 »), puis
+  « D18.7b reste à faire » (« D18.7b EST FAITE » suivait, avec ses quatre
+  attendus tenus et 1 808 tests verts). Avant d'ouvrir un chantier nommé par un
+  document, `grep` « EST FAITE », « CLOS » et le nom de l'élément dans le même
+  fichier.
