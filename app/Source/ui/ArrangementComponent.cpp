@@ -29,6 +29,8 @@ void ArrangementComponent::setProject(Project* project) {
 
 void ArrangementComponent::setPlayheadTick(vsm::midi::Tick tick) {
     if (tick == playhead_) return;
+    const vsm::midi::Tick ancienneTete = playhead_;
+    const vsm::midi::Tick ancienDefilement = scrollTick_;
     playhead_ = tick;
     // D11.3 : PAR PAGES, pas centré en continu — un fond qui glisse à chaque
     // image fatigue et empêche de lire les positions (même règle qu'au piano
@@ -41,7 +43,21 @@ void ArrangementComponent::setPlayheadTick(vsm::midi::Tick tick) {
             scrollTick_ = std::max<vsm::midi::Tick>(0, tick - static_cast<vsm::midi::Tick>(visibles * 0.15));
         }
     }
-    repaint();
+    // D171 : DEUX BANDES, PAS UNE FENÊTRE -- le même remède qu'au piano roll, et
+    // pour la même raison : en lecture, la tête change à chaque tour du minuteur
+    // de 30 Hz, et redessiner tout l'arrangement pour déplacer un trait coûtait
+    // à lui seul plusieurs points de processeur (D170, D171). Quand la page
+    // tourne, le défilement change et tout l'écran avec : là, redessin complet.
+    if (scrollTick_ != ancienDefilement) {
+        repaint();
+        return;
+    }
+    const auto bande = [this](vsm::midi::Tick t) {
+        const int x = static_cast<int>(std::floor(tickToX(t)));
+        return juce::Rectangle<int>(x - 2, 0, 5, getHeight());
+    };
+    repaint(bande(ancienneTete));
+    repaint(bande(playhead_));
 }
 
 float ArrangementComponent::tickToX(vsm::midi::Tick tick) const {

@@ -19294,3 +19294,98 @@ répartis de (75, 40) à (1257, 731) — la tête a traversé la fenêtre et les
 compteurs ont suivi. Et l'image au repos ne peut pas changer par construction :
 ces trois phases ne touchent que le MOMENT où l'on repeint, jamais le dessin, et
 une capture repeint de toute façon.
+
+### D170 (attendus) — le quarante-deuxième audit : et pendant qu'il JOUE ? (13/09/2026)
+
+**LA SUITE NATURELLE DE D167.** On sait ce que coûte le logiciel au repos
+(5,50 % d'un cœur depuis D169). On ne sait pas ce qu'il coûte en LECTURE — et
+c'est le chiffre qui décide si un projet reconstruit s'écoute sans décrochage sur
+la machine de son auteur. Un DAW qui dépasse un cœur en lecture rend un son
+haché ; celui-ci n'a jamais été mesuré sur un vrai projet.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** `children-c3-plafond` — 12 pistes,
+**9 machines** simultanées, 2 pistes audio, 9 224 notes — en lecture, mesuré 20 s
+après un départ, pendant qu'une reconstruction occupe déjà la machine :
+
+1. **Le processus entier reste sous 100 % d'un cœur.** Au-delà, le rendu ne suit
+   plus le temps réel et le son décroche. Réfuté sinon.
+2. **Le fil de l'interface reste sous 15 %** : jouer ne doit pas rendre l'édition
+   poisseuse.
+3. Le relevé par fil dira **ce que coûte le moteur** (le fil audio ou son horloge
+   de secours) séparément de l'interface — c'est le partage qu'aucun chiffre du
+   dépôt ne donne aujourd'hui.
+
+### Phase D170 — pendant qu'il joue : 32 % d'un cœur, et le partage enfin écrit (13/09/2026)
+
+**LES CHIFFRES.** `children-c3-plafond` en lecture, 20 s de mesure, pendant
+qu'une reconstruction occupait déjà la machine :
+
+| | attendu | **mesuré** |
+|---|---|---|
+| processus entier | < 100 % d'un cœur | **32,20 %** ✔ |
+| fil de l'interface | < 15 % | **15,40 %** ✘ (manqué de 0,4 point) |
+| le reste (moteur : 11 fils de rendu, MIDI, horloge) | — | **16,80 %** |
+
+**LE PARTAGE, QUI N'ÉTAIT ÉCRIT NULLE PART.** Jouer douze pistes et neuf machines
+coûte **17 % d'un cœur de moteur** — et presque autant d'INTERFACE. La moitié du
+coût de la lecture est donc du dessin, pas du son. C'est ce que la garde de D168
+laisse passer à bon droit : pendant la lecture, la tête bouge à chaque tour, et le
+piano roll se redessine **en entier** trente fois par seconde pour un trait
+vertical qui a avancé de quelques pixels.
+
+**L'attendu n° 2 est manqué de 0,4 point, et il désigne le remède** : redessiner
+la fenêtre entière pour déplacer une ligne. D171.
+
+### D171 (attendus) — deux bandes au lieu d'une fenêtre (13/09/2026)
+
+**LE REMÈDE.** `setPlayheadTick` ne repeint plus tout : il demande **deux bandes
+étroites** — là où la tête ÉTAIT, là où elle EST. JUCE découpe le dessin sur la
+zone sale, et seules les notes qui croisent ces quelques pixels sont redessinées.
+Quand le défilement suit la tête (`followPlayhead_`) et que la page tourne, la
+vue entière change : là, et seulement là, le redessin reste complet.
+
+**LES ATTENDUS, ÉCRITS AVANT LA MESURE.**
+
+1. **Le fil de l'interface pendant la lecture passe sous 8 %** (15,40 %
+   aujourd'hui). Réfuté sinon.
+2. **La tête de lecture reste visible et continue**, sans traînée : deux captures
+   pendant une lecture doivent différer, et l'image ne doit garder **aucune trace
+   de l'ancienne position** — c'est le risque propre à un redessin partiel, et
+   c'est lui qu'il faut regarder.
+3. **Au repos, le chiffre de D169 ne bouge pas** (5,50 %) : la garde du tick
+   inchangé passe avant.
+
+### Phase D171 — deux bandes au lieu d'une fenêtre : l'interface perd 30 % de son coût en lecture (13/09/2026)
+
+| | avant | **après** | attendu |
+|---|---|---|---|
+| **fil de l'interface, en lecture** | 15,40 % | **10,80 %** | < 8 % ✘ |
+| processus entier, en lecture | 32,20 % | **27,75 %** | — |
+| au repos | 5,50 % | **5,45 %** | inchangé ✔ |
+
+**L'attendu n° 1 est manqué de 2,8 points, et le remède a pourtant fait ce qu'il
+promettait** : le redessin complet du piano roll à chaque avance de la tête
+disparaît, et l'interface perd **30 % de son coût en lecture**. Le même remède
+posé sur l'arrangement n'a rien donné de plus (10,90 % — dans l'épaisseur du
+bruit) : dans la disposition par défaut, l'arrangement n'est pas à l'écran. Il est
+gardé quand même, parce qu'il sert dès qu'on ouvre cette vue, et c'est le même
+défaut.
+
+**CE QUI RESTE, NOMMÉ.** Les 10,8 % sont maintenant du dessin qui BOUGE VRAIMENT :
+les vumètres des douze tranches et du master (qui ne se repeignent qu'au-delà d'un
+seuil de variation, mais pendant la lecture ils varient), le compteur de position
+de la barre de transport, la règle du piano roll (0,08 ms × 30 par seconde, soit
+0,24 %), et les deux bandes elles-mêmes. **Mon attendu de 8 % avait été écrit sans
+savoir ce que coûtent les afficheurs qui bougent à bon droit** ; descendre plus bas
+demanderait de figer des affichages que le musicien regarde précisément parce
+qu'ils bougent. On s'arrête là, et le chiffre est inscrit.
+
+**L'ATTENDU N° 2, ET LA LIMITE DE BANC QUI VA AVEC.** Un redessin PARTIEL risque
+la traînée : l'ancienne position restée à l'écran. Ce risque ne se photographie
+pas — `createComponentSnapshot` repeint tout, donc une capture montrerait une image
+propre même si l'écran ne l'était pas. Ce qui se vérifie, et qui a été vérifié dans
+le code : la tête est un trait de **1,5 px** (`drawLine(x, 0, x, h, 1.5f)`, dans les
+deux composants), et la bande demandée va de **x − 2 à x + 3** — l'ancien trait est
+donc entièrement dans la zone repeinte, fond, grille et notes compris. Les seuls
+dessins plus larges que la bande (le fanion triangulaire de la tête, ±5 px) sont
+dans la RÈGLE, qui se repeint entière. Dit ici plutôt que présenté comme mesuré.

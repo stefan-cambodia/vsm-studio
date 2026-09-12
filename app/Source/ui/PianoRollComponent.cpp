@@ -364,6 +364,8 @@ void PianoRollComponent::setPlayheadTick(Tick tick) {
     // contenu qu'on redessinait, c'était la surface. Sur un portable, c'est de
     // l'autonomie dépensée à refaire une image identique à la précédente.
     if (tick == playheadTick_) return;
+    const Tick ancienneTete = playheadTick_;
+    const Tick ancienDefilement = scrollTick_;
     playheadTick_ = tick;
     if (followPlayhead_) {
         // Défilement par "pages" plutôt que centré en continu : un curseur qui
@@ -377,7 +379,29 @@ void PianoRollComponent::setPlayheadTick(Tick tick) {
             updateScrollBars();
         }
     }
-    repaint();
+    // D171 : DEUX BANDES, PAS UNE FENÊTRE.
+    //
+    // D170 a mesuré le prix du trait qui avance : en lecture, l'interface coûte
+    // 15,40 % d'un cœur, presque autant que le moteur qui fabrique le son, parce
+    // que déplacer une ligne verticale de quelques pixels redessinait le piano
+    // roll ENTIER trente fois par seconde. On ne demande donc que les deux
+    // bandes où la tête était et où elle est : JUCE découpe le dessin sur la
+    // zone sale, et seules les notes qui croisent ces quelques pixels sont
+    // repeintes.
+    //
+    // SAUF QUAND LA PAGE TOURNE. Si `followPlayhead_` a déplacé le défilement,
+    // tout ce qui est à l'écran a changé de place : la vue entière se redessine,
+    // et c'est le seul cas où elle le doit.
+    if (scrollTick_ != ancienDefilement) {
+        repaint();
+        return;
+    }
+    const auto bande = [this](Tick t) {
+        const int x = static_cast<int>(std::floor(tickToX(t)));
+        return juce::Rectangle<int>(x - 2, 0, 5, getHeight());
+    };
+    repaint(bande(ancienneTete));
+    repaint(bande(playheadTick_));
 }
 
 // ---------------------------------------------------------------------------
