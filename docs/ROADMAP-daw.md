@@ -18342,3 +18342,60 @@ touches, et un clic modifié n'en est pas une.
 anglaise, et l'inventaire est revenu à **SANS_PAIRE 0** — il était passé à 4 le
 temps que je les écrive. Vérifié dans les deux langues : « Save as... [ctrl +
 shift + S] », « Go to bar… (double-click the position) [shift + P] ».
+
+### Phase D156 — le trente-quatrième audit : la page des raccourcis dit-elle tout ce que la table sait ? (13/09/2026)
+
+**D'OÙ VIENT CET AUDIT.** D155 vient d'établir que **52 des 56 commandes n'ont
+aucune entrée de menu** : ce sont les gestes du piano roll et du transport. Elles
+ne peuvent donc être découvertes que par **`Affichage > Raccourcis clavier…`**,
+la page que D10.3 avait promise — « une page les liste tous ». Si cette page
+ment, ou tait quelque chose, ces cinquante-deux commandes sont invisibles pour
+de bon.
+
+**CE QUE LA TABLE CONTIENT** (lu, pas supposé) : **56 commandes** réassignables
+(`shortcutCommands()`) et un second lot de **touches fixes** (`fixedShortcuts()`)
+— les flèches, dont « le sens EST leur direction », et que l'en-tête du fichier
+dit inscrites « plutôt qu'omises » précisément pour qu'une page qui prétend tout
+lister ne mente pas.
+
+**CE QUE J'ATTENDS, ÉCRIT AVANT LA MESURE.**
+
+1. La page affiche les **56** commandes réassignables, chacune avec sa touche
+   EFFECTIVE (celle de la table de l'utilisateur, pas la valeur d'usine).
+2. Elle affiche AUSSI les touches fixes, marquées comme telles.
+3. Aucune commande n'y manque, et aucune ligne n'y figure que la table ne
+   connaisse pas — le compte des deux côtés doit tomber juste.
+
+**Réfutée si** le compte diffère, ou si une touche affichée n'est pas celle que
+la table donne.
+
+**RÉSULTAT (13/09) — LES TROIS ATTENDUS SONT TENUS, ET C'EST RARE ASSEZ POUR
+ÊTRE DIT.** La page ouvre sa propre fenêtre ; le relevé y lit **133 textes**, dont
+**75 libellés** et **58 touches**.
+
+| ce qui est vérifié | mesuré |
+|---|---|
+| commandes de la table absentes de la page | **0 sur 56** |
+| touches affichées ne correspondant pas à la table | **0 sur 56** |
+| touches fixes présentes et marquées | oui — section « Navigation (non modifiable) » |
+
+La promesse de D10.3 — « une page les liste tous » — est donc tenue au chiffre
+près, et la photo montre une page propre : familles en tête de section, touches
+alignées à droite dans leur cadre, « Enregistrer la table… » et « Tout rétablir »
+au pied.
+
+**ET LA PHOTO MONTRE CE QUE LE RELEVÉ NE POUVAIT PAS VOIR : LES TOUCHES SONT EN
+ANGLAIS.** La page — et, depuis D155, les menus — affichent la description de
+JUCE telle quelle : **« spacebar », « escape », « delete », « ctrl + shift + S »**.
+Un musicien français lit donc « spacebar » dans une interface française, et
+« ctrl + shift + S » là où toute application écrit « Ctrl+Maj+S ». Ce n'est pas
+un défaut de la table (elle transporte la syntaxe de JUCE, et c'est son rôle :
+l'en-tête le dit, « cette couche ne l'interprète pas ») mais de l'affichage, qui
+la recopie au lieu de la traduire.
+
+**C'est le trente-cinquième audit qui s'ouvre là, et il porte sa mesure** : sur
+les 56 touches, combien contiennent un mot anglais ou la syntaxe de JUCE ? Le
+remède est une fonction unique — `toucheLisible()` — qui rende « Espace »,
+« Échap », « Suppr », « Ctrl+Maj+S », dans la langue de l'interface, et que la
+page comme les menus emploient. Une seule fonction, deux endroits, et le compte
+se refait.
