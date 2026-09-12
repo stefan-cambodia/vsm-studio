@@ -93,6 +93,12 @@ private:
     };
 
     void rebuild();
+    /// D154 : ouvre le pas d'annulation d'un réglage de machine. Un seul point,
+    /// pour les trois chemins qui écrivent un paramètre (bouton, début de
+    /// glissé, valeur posée hors glissé) : le libellé ne peut pas diverger.
+    void ouvrirPasDeReglage() {
+        if (onEditStarted) onEditStarted(juce::String(u8"Réglage de machine"));
+    }
     void showValueReadout(const juce::String& caption, double value, const juce::String& unit);
     void timerCallback() override; ///< resynchronise l'affichage avec le moteur
     juce::Rectangle<float> gridToPixels(juce::Rectangle<float> gridBounds) const;
@@ -109,4 +115,11 @@ private:
     bool afficheurExterne_ = false;   ///< D133
     StepSequencerComponent sequencer_;
     vsm::sequencer::Track* track_ = nullptr;
+    /// D154 : UN GLISSÉ EST UN SEUL PAS D'ANNULATION. `onValueChange` tombe à
+    /// chaque pixel parcouru ; ouvrir un pas à chacun remplirait l'historique
+    /// de centaines d'entrées pour un geste. Le pas s'ouvre au DÉBUT du glissé,
+    /// et `onValueChange` ne l'ouvre que hors glissé (un double-clic, un geste
+    /// de banc, une valeur posée au clavier). C'est exactement ce que fait la
+    /// ligne de piste depuis D10.4.
+    bool glisseEnCours_ = false;
 };

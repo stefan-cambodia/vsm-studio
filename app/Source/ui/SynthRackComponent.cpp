@@ -129,7 +129,13 @@ void SynthRackComponent::rebuildControls() {
         ParamId paramId = info.id;
         ISynthPlugin* synthPtr = synth_;
         juce::Slider* sliderPtr = slider.get();
+        // D154 : LE PANNEAU GÉNÉRIQUE AUSSI. Il sert les machines sans façade —
+        // et une machine tierce n'a que lui. Un glissé = UN pas, ouvert à son
+        // début, comme sur une façade et comme la ligne de piste depuis D10.4.
+        slider->onDragStart = [this] { glisseEnCours_ = true; ouvrirPasDeReglage(); };
+        slider->onDragEnd = [this] { glisseEnCours_ = false; };
         slider->onValueChange = [this, sliderPtr, synthPtr, paramId] {
+            if (!glisseEnCours_) ouvrirPasDeReglage();
             synthPtr->setParameter(paramId, static_cast<float>(sliderPtr->getValue()));
             if (learnMode_ && onParamTouched) onParamTouched(paramId);
         };

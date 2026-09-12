@@ -23,7 +23,8 @@ namespace fs = std::filesystem;
 // (`loadProjectBundle`).
 //
 // SA VALEUR N'EST PAS DANS CE QU'IL A TROUVÉ LE JOUR OÙ IL A ÉTÉ ÉCRIT — rien :
-// 120 champs sur 122 conservés, et les deux autres volontairement absents. Elle
+// 120 champs sur 122 conservés, et les deux autres volontairement absents (D154
+// en ajoute deux, également absents : 122 sur 124). Elle
 // est dans le PROCHAIN champ ajouté au modèle et oublié dans le sérialiseur.
 // C'était le défaut de D51, puis celui de D53 : deux fois le même, et personne
 // ne l'a vu avant qu'un utilisateur ne le cherche.
@@ -36,6 +37,14 @@ namespace fs = std::filesystem;
 //                    piège, pas un service. Le test l'AFFIRME au lieu de le
 //                    taire : si l'armement se mettait à survivre, il faudrait
 //                    que ce soit une décision et non un effet de bord.
+//   `Track::instrumentState` et `instrumentNativeState` (D154) — les réglages de
+//                    la machine, portés par le modèle pour que l'ANNULATION les
+//                    rende (A21). Ils ne vont PAS dans le fichier : le son d'une
+//                    piste s'y écrit déjà, une fois, dans
+//                    `instruments/track_NN.synth.json`. Les écrire deux fois
+//                    ferait deux sources pour une même valeur, et l'une des deux
+//                    finirait par mentir — c'est mot pour mot ce que l'épitaphe
+//                    de `presetId` (D36.5) reproche à un second champ.
 //   `Clip::id`     — une poignée de séance (sélection, `clipById`) que rien dans
 //                    le fichier ne référence et que `assignClipIds()` repose à
 //                    l'ouverture. Le LIEN entre deux clips, lui, ne passe pas
@@ -97,6 +106,10 @@ Project projetDistinctif() {
     // installation n'a pas est DÉLIBÉRÉMENT écartée à la lecture (et signalée),
     // et le banc mesurerait alors cette décision-là au lieu du champ.
     t.instrumentId = "vsm.minimoog";
+    // D154 : les réglages de machine du modèle, valeurs distinctives — le test
+    // ci-dessous vérifie qu'ils NE survivent PAS au disque, et c'est voulu.
+    t.instrumentState[42u] = 0.4242f;
+    t.instrumentNativeState = "etat-natif-d-audit";
     t.midiOutputDevice = "Port virtuel";
     t.midiProgram = 12; t.midiBank = 5; t.midiInputChannel = 7;
     MidiEffect me;
@@ -343,12 +356,28 @@ VSM_TEST(aller_retour_disque_champ_par_champ) {
 VSM_TEST(deux_champs_de_seance_ne_survivent_pas_et_c_est_voulu) {
     const Project p = projetDistinctif();
     VSM_ASSERT(p.tracks[0].armed);
+    VSM_ASSERT(!p.tracks[0].instrumentState.empty());
+    VSM_ASSERT(!p.tracks[0].instrumentNativeState.empty());
     const fs::path dossier = dossierNeuf("seance");
     VSM_ASSERT(saveProjectBundle(p, dossier.string()).success);
     const auto relu = loadProjectBundle(dossier.string());
     VSM_ASSERT(relu.success);
     // L'ARMEMENT est un état de séance (D22.5) : il ne revient pas.
     VSM_ASSERT(!relu.bundle.project.tracks[0].armed);
+    // D154 : LES RÉGLAGES DE MACHINE DU MODÈLE NE VONT PAS AU FICHIER. Ils
+    // servent au pas d'annulation, dans la séance ; le son s'écrit une fois, et
+    // une seule, dans `instruments/track_NN.synth.json`.
+    VSM_ASSERT(relu.bundle.project.tracks[0].instrumentState.empty());
+    VSM_ASSERT(relu.bundle.project.tracks[0].instrumentNativeState.empty());
+    // ET PAS UNE TRACE DANS LE TEXTE : un champ absent du modèle relu pourrait
+    // tout de même avoir été ÉCRIT puis ignoré à la lecture.
+    {
+        std::ifstream flux(dossier / "project.json");
+        const std::string texte((std::istreambuf_iterator<char>(flux)),
+                                 std::istreambuf_iterator<char>());
+        VSM_ASSERT(texte.find("instrumentState") == std::string::npos);
+        VSM_ASSERT(texte.find("etat-natif-d-audit") == std::string::npos);
+    }
     // L'IDENTIFIANT d'un clip est une poignée de séance : rien dans le fichier
     // ne le référence, et il est reposé à l'ouverture.
     Project rouvert = relu.bundle.project;

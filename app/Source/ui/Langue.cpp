@@ -800,6 +800,11 @@ const Paire kAnglais[] = {
     // des 88 libellés de pas sans traduction.
     { "Armement",
       "Arm" },
+    // D154 : le libellé du pas d'annulation d'un réglage de machine, posé par
+    // la façade comme par le panneau générique. « Machine setting » : le mot de
+    // l'application pour ce que le musicien tourne sur une façade.
+    { "Réglage de machine",
+      "Machine setting" },
     // D150 : « Master » n'avait aucune clé — la garde corrigée l'a trouvé là où
     // le script de D149 ne pouvait pas le voir (sa regex sautait les littéraux
     // sans préfixe u8). Le mot est le même dans les deux langues ; la paire le

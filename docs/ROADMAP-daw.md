@@ -18031,3 +18031,115 @@ rouvrirait D143. Le choix ne se tranchera pas dans le code.
 (déjà un pas, « Machine de la piste ») ni l'automation (D30). Il ne touche pas
 au rack : les façades envoient déjà leurs valeurs au moteur, et c'est le moteur
 qui sera photographié — aucune façade n'a à se souvenir de quoi que ce soit.
+
+### Phase D154 — les réglages de machine s'annulent, et A21 est close (12/09/2026)
+
+**LE BANC.** Le projet de D91 (`docs/examples/demo-project` : TB-303 « Acid
+Bass », TR-909 « Drums »), cinq cas, **un seul binaire** — la variable est le
+Ctrl+Z, rien d'autre. Le geste est celui de D132 (`facade:CUT OFF FREQ=1200`,
+la commande touchée comme à la souris), la touche celle de D39.1.
+
+**L'OUTIL QUI MANQUAIT.** Les commandes d'une façade n'ont pas de nom de
+composant : `VSM_VALEUR` (D141) ne les voit pas, et l'afficheur du rack (D133)
+ne dit que la dernière valeur TOUCHÉE — après un Ctrl+Z, il ne dit rien. Sans
+relevé, l'attendu était invérifiable. **`VSM_MACHINE_MOTEUR : <piste> :
+<machine> : <paramètre> : <valeur>`** lit donc les machines comme le MOTEUR les
+tient, au moment du relevé, pour la même raison que `VSM_MASTER_MOTEUR` : le
+moteur est la seule source de vérité. Et **`VSM_PHOTO_REGLAGES`** dit ce que la
+photo a coûté — un chiffre qu'on ne relève pas est un chiffre qu'on suppose.
+
+**RÉSULTAT — LES CINQ ATTENDUS TIENNENT.** Binaire du 12/09, cinq lancements,
+code 0 partout.
+
+| cas | geste | Cutoff au moteur | pas d'annulation relevés |
+|---|---|---|---|
+| a | `facade:CUT OFF FREQ=1200` | **1200** | « Réglage de machine » |
+| b | le même, puis **Ctrl+Z** | **480** — annulé | (vide : le pas a été consommé) |
+| c | le même, Ctrl+Z, **Ctrl+Maj+Z** | **1200** — rétabli | « Réglage de machine » |
+| d | aucun geste — LE TÉMOIN | **480** | (vide) |
+| e | façade **puis** `volume:0.5`, un seul Ctrl+Z | **1200** — intact | « Réglage de machine » |
+
+1. **(a) tenu** : le geste atteint la machine, et il ouvre désormais un pas —
+   c'est la ligne « Réglage de machine » de `VSM_HISTORIQUE`, qui n'existait
+   pas avant ce pas.
+2. **(b) tenu, ET L'ATTENDU ÉTAIT MAL ÉCRIT.** J'avais écrit « Ctrl+Z rend
+   800 Hz ». La mesure rend **480**, et c'est l'attendu qui se trompait : 800 est
+   la valeur d'usine du PARAMÈTRE (`TB303Synth.cpp:18`), 480 celle du PROJET,
+   lue dans `instruments/track_00.synth.json`. Une annulation rend l'état
+   d'avant le geste, donc 480. **C'est le témoin (d) qui l'a rendu lisible** —
+   il n'avait été mis là que pour prouver que la valeur était partie, et c'est
+   lui qui dit d'où elle partait. La leçon de D145, vérifiée une fois de plus.
+3. **(c) tenu** : le rétablissement rend 1200, et le pas revient dans la liste.
+4. **(e) tenu, et c'est le cas qui compte le plus.** Annuler un geste de PISTE
+   ne touche pas la machine : le volume revient à -0,9 dB et la coupure reste à
+   1200. C'était le risque nommé dans les attendus — le défaut de D143
+   transposé, un pas qui ramène en arrière ce que personne n'a demandé — et la
+   décision de photographier TOUTES les pistes à CHAQUE pas est ce qui l'écarte.
+5. **(d) le coût — 139 fois sous la borne.** `VSM_PHOTO_REGLAGES` : **11 µs au
+   pire** sur le projet de D91 (2 machines), et **36 µs au pire** sur le projet
+   à 12 pistes de la course 3 de l'épreuve Children (9 machines pourvues), pour
+   un attendu qui bornait à 5 ms. La décision de la photo intégrale ne se
+   réécrit donc pas.
+6. **(e) aucune panne muette** : 0 avertissement `VSM_REGLAGE`, 0 verbe inconnu,
+   et `VSM_MACHINES` dit le chemin pris — « 2 gardée(s) … **2 réglage(s) du pas
+   reposé(s)** » au cas (b), 9 sur le projet de la course 3. C'est exactement le
+   trou que D76 laissait ouvert : une machine GARDÉE n'était jamais remise à
+   l'état du pas.
+7. **(c) le fichier ne bouge pas**, et c'est un test qui le garde, pas une
+   photo : le banc d'aller-retour de D55.1 — celui qui prend TOUS les champs du
+   modèle — porte maintenant les deux champs neufs et AFFIRME qu'ils ne
+   survivent pas au disque, avec les deux qui y étaient déjà (armement,
+   identifiant de clip) : 122 champs conservés sur 124, quatre volontairement
+   absents. Il vérifie aussi qu'aucune trace n'est ÉCRITE dans `project.json` —
+   un champ peut être écrit puis ignoré à la lecture, et le modèle relu ne le
+   dirait pas.
+
+**CE QUE LE MODÈLE PORTE, ET POURQUOI CE N'EST PAS LA TABLE SÉMANTIQUE.**
+L'attendu disait « valeurs sémantiques en unités réelles, comme les inserts ».
+La lecture du code avant d'écrire a réfuté ce choix, et la décision réécrite est
+dans `Track.h` : le modèle porte la table de la MACHINE
+(`ISynthPlugin::saveState`, `ParamId → valeur`). Deux raisons, dont une de
+correction :
+
+- `capturePreset` **saute tout paramètre sans identité sémantique**
+  (`if (descriptor.semanticId.empty()) continue;`) : une annulation bâtie sur
+  elle ne rendrait pas ce que l'utilisateur vient de changer, sans un mot.
+- `buildSemanticProfile` **instancie une machine neuve** à chaque appel
+  (`PluginRegistry::create` + `initialize`) pour y lire des noms de paramètres.
+  La photo tombe à chaque début de glissé : ce serait douze synthés créés par
+  geste.
+- Et le fichier garde UNE seule écriture du son, dans
+  `instruments/track_NN.synth.json` : le modèle ne le désigne pas une seconde
+  fois, ce que l'épitaphe de `presetId` (D36.5) interdit.
+
+**UN GLISSÉ EST UN SEUL PAS.** `onValueChange` tombe à chaque pixel parcouru ;
+le pas s'ouvre donc au DÉBUT du glissé (`onDragStart`), et hors glissé pour un
+double-clic, un geste de banc ou une valeur posée au clavier — la règle de la
+ligne de piste depuis D10.4, appliquée à la façade et au panneau générique.
+
+**CE QUE CE PAS NE COUVRE PAS, DIT PLUTÔT QUE TU.**
+
+- **L'automation**, qui écrit dans les mêmes paramètres pendant la lecture
+  (`applyAutomationFromProject` : un nom sans préfixe connu EST un réglage de
+  machine). Une photo prise pendant qu'une courbe joue capture la valeur de cet
+  instant. C'est borné — l'automation réécrit la valeur à la lecture suivante —
+  mais ce n'est pas rien, et cela s'écrit ici plutôt que de se découvrir.
+- **Les échantillons d'un sampler** : ils ne sont pas dans la table de la
+  machine, et le réglage gardé de D76 continue de les porter à la recréation.
+  Charger un échantillon reste non annulable ; A21 ne le nommait pas.
+- **Le MIDI Learn et les contrôleurs**, qui ne sont pas des gestes d'édition :
+  un contrôleur tourné pendant qu'on joue n'a pas à remplir l'historique.
+
+**UNE LEÇON DE BANC, PAYÉE CINQ FOIS EN UNE MINUTE.** Le premier jet lançait
+l'application sous `env -i` (environnement dépouillé) pour protéger les
+préférences : **faute de segmentation, code 139, cinq cas sur cinq**, avant
+toute fenêtre. Lue vite, cette série disait « le correctif fait tomber
+l'application ». Le même binaire, avec l'environnement de session et le seul
+`HOME` détourné, rend code 0 partout. Détourner `HOME` suffit à protéger les
+préférences (vérifié par `diff -rq` : intactes) ; dépouiller l'environnement
+tue l'application.
+
+**Suites** : 330 (core), 1 291 (audio), 297 (interchange), 11 (panels), 19
+(vst3), 25 (clap) — **1 973 tests, tous verts**. Inventaire de langue inchangé
+(ÉCRAN 7, SANS_PAIRE 0) ; le libellé « Réglage de machine » a sa paire anglaise
+(« Machine setting »). Préférences de l'utilisateur intactes par `diff -rq`.

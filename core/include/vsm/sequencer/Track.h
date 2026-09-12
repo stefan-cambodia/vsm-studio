@@ -694,6 +694,43 @@ public:
     /// chaque ajout de piste et à chaque annulation. 0 = pas encore donnée
     /// (`Project::assignTrackUids`).
     uint64_t uid = 0;
+    /// D154 : LES RÉGLAGES DE LA MACHINE, PORTÉS PAR LA PISTE POUR LA SESSION —
+    /// jamais écrits dans le fichier, comme `uid` juste au-dessus.
+    ///
+    /// POURQUOI CE CHAMP EXISTE. Les réglages vivaient dans la seule INSTANCE
+    /// de machine tenue par le graphe. Un pas d'annulation copie le projet ;
+    /// le projet ne les portait pas ; et `rebuildFromProject` ne capture une
+    /// machine que lorsqu'il va la DÉTRUIRE (D76). Une annulation, qui GARDE la
+    /// machine, laissait donc son état d'APRÈS le geste qu'on venait
+    /// d'annuler : aucun réglage de machine ne s'annulait (A21, mesuré par
+    /// D140 — coupure à 800 Hz, Ctrl+Z, toujours 800 Hz). C'est le défaut que
+    /// D143 avait trouvé pour le MASTER, et le remède est celui de D144 : la
+    /// photo du pas porte ce que le moteur applique.
+    ///
+    /// LA TABLE EST CELLE DE LA MACHINE (`ISynthPlugin::saveState`,
+    /// `ParamId -> valeur`), PAS LA TABLE SÉMANTIQUE, et c'est une décision
+    /// mesurée, pas un raccourci. La table sémantique
+    /// (`interchange::capturePreset`) a deux propriétés qui la disqualifient
+    /// ici : elle SAUTE tout paramètre sans identité sémantique (« jamais
+    /// inventé »), si bien qu'une annulation bâtie sur elle ne rendrait pas ce
+    /// que l'utilisateur vient de changer ; et elle INSTANCIE une machine
+    /// neuve à chaque appel (`buildSemanticProfile` → `PluginRegistry::create`
+    /// + `initialize`) pour y lire des noms de paramètres, alors que cette
+    /// photo se prend à CHAQUE début de glissé.
+    ///
+    /// ET CE N'EST PAS UNE SECONDE FAÇON DE DÉSIGNER UN PRESET — l'écueil que
+    /// l'épitaphe ci-dessous décrit. Le son d'une piste se DÉSIGNE toujours par
+    /// `instruments/track_NN.synth.json`, que le fichier référence par son
+    /// chemin ; ce champ-ci ne désigne rien, ne s'écrit nulle part, et ne sert
+    /// qu'à rendre au moteur l'état d'un instant de la session.
+    std::map<uint32_t, float> instrumentState;
+    /// D154 : l'état NATIF d'une machine tierce (VST3, CLAP), tel que
+    /// `ISynthPlugin::saveNativeState()` le rend — du texte, en pratique du
+    /// base64. Vide pour les machines du parc, dont le son EST leur table de
+    /// paramètres. Même raison d'être que `EffectDescription::nativeState` :
+    /// sans lui, annuler un geste sur une machine tierce rendrait une table de
+    /// flottants juste et un son faux.
+    std::string instrumentNativeState;
     /// UN CHAMP `presetId` A VÉCU ICI, ET IL EST PARTI (D36.5). Cinq endroits
     /// l'effaçaient, aucun ne l'écrivait, et `project.json` ne le portait pas :
     /// c'était un nom de preset que rien ne nommait. Le preset d'une piste vit

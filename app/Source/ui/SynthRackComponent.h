@@ -63,6 +63,15 @@ public:
 
 private:
     void rebuildControls();
+    /// D154 : ouvre le pas d'annulation d'un réglage de machine, pour le
+    /// panneau GÉNÉRIQUE (celui des machines sans façade dessinée, et le seul
+    /// que voit une machine tierce). Même libellé que la façade : c'est le même
+    /// geste pour le musicien.
+    void ouvrirPasDeReglage() {
+        if (onEditStarted) onEditStarted(juce::String(u8"Réglage de machine"));
+    }
+    /// D154 : voir `MachinePanelComponent::glisseEnCours_` — un glissé est UN pas.
+    bool glisseEnCours_ = false;
 
     vsm::audio::plugin::ISynthPlugin* synth_ = nullptr;
 

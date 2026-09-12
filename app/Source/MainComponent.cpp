@@ -496,6 +496,7 @@ MainComponent::MainComponent()
     // photo que le rétablissement garde de l'état courant doit le porter.
     pianoRoll_.onAvantHistorique = [this] {
         project_.masterParameters = vsm::interchange::describeMasterBus(audioEngine_.processGraph().masterBus());
+        photographierReglagesDeMachines();   // D154 : et les réglages des machines
     };
     pianoRoll_.setProject(&project_);
     // D16.1 : LES NOTES ÉCRITES SE MATÉRIALISENT TOUT DE SUITE. Avant, une
@@ -1775,6 +1776,32 @@ void MainComponent::listTextsForCapture() {
     for (const auto& [nom, valeur] : vsm::interchange::describeMasterBus(audioEngine_.processGraph().masterBus()))
         std::fputs(("VSM_MASTER_MOTEUR : " + juce::String::fromUTF8(nom.c_str()) + " : " + juce::String(valeur, 2)
                     + "\n").toRawUTF8(), stderr);
+    // D154 : LES MACHINES TELLES QUE LE MOTEUR LES TIENT. Les commandes d'une
+    // façade n'ont pas de nom de composant : `VSM_VALEUR` ci-dessus ne les voit
+    // pas, et l'afficheur du rack (D133) ne dit que la DERNIÈRE valeur touchée —
+    // après un Ctrl+Z, il ne dit rien du tout. Sans ce relevé, l'attendu d'A21
+    // serait invérifiable. Même raison d'être que `VSM_MASTER_MOTEUR` juste
+    // en dessous : le moteur est la seule source de vérité.
+    {
+        auto& graphe = audioEngine_.processGraph();
+        for (size_t i = 0; i < project_.tracks.size(); ++i) {
+            auto* machine = graphe.trackInstrument(i);
+            if (machine == nullptr) continue;
+            for (const auto& info : machine->parameterList())
+                std::fputs(("VSM_MACHINE_MOTEUR : " + juce::String(static_cast<int>(i)) + " : "
+                            + juce::String::fromUTF8(graphe.trackInstrumentId(i).c_str()) + " : "
+                            + juce::String::fromUTF8(info.name.c_str()) + " : "
+                            + juce::String(machine->getParameter(info.id), 4) + "\n").toRawUTF8(), stderr);
+        }
+    }
+    // D154 : CE QUE LA PHOTO DES RÉGLAGES A COÛTÉ. Elle tombe à chaque début de
+    // glissé : l'attendu (d) la borne à 5 ms, et un chiffre qu'on ne relève pas
+    // est un chiffre qu'on suppose.
+    std::fputs(("VSM_PHOTO_REGLAGES : " + juce::String(static_cast<int>(photosDeReglages_))
+                + " appel(s), max " + juce::String(maxPhotoReglagesUs_, 1) + " us, total "
+                + juce::String(totalPhotoReglagesUs_, 1) + " us, "
+                + juce::String(static_cast<int>(dernieresPistesPhotographiees_))
+                + " piste(s) au dernier appel\n").toRawUTF8(), stderr);
     // D145 : L'ÉCOUTE MONO N'EST PAS UN PARAMÈTRE DU BUS (D23.5) -- elle n'a donc
     // aucune clé dans le relevé ci-dessus, et sans cette ligne le cas (e) serait
     // invérifiable. Elle se lit à part, dans le moteur, seule source de vérité.
@@ -9300,11 +9327,50 @@ void MainComponent::quantizeLastTake() {
     pianoRollPanel_.refresh();
 }
 
+size_t MainComponent::photographierReglagesDeMachines() {
+    // D154 : MÊME RAISON QUE LE MASTER DE D144, POUR LES MACHINES. Les réglages
+    // vivent dans les instances du graphe ; `rebuildFromProject` n'en capture
+    // que celles qu'il va détruire (D76), si bien qu'une annulation — qui GARDE
+    // la machine — laissait son état d'APRÈS le geste annulé.
+    //
+    // TOUTES LES PISTES, PAS SEULEMENT CELLE QU'ON TOUCHE. Ne photographier que
+    // la piste éditée rendrait, à l'annulation, les réglages des AUTRES tels
+    // qu'ils étaient à leur dernière photo : le défaut de D143 transposé, un pas
+    // qui ramène en arrière ce que personne n'a demandé.
+    //
+    // `saveState()` ET NON `capturePreset` : la table de la machine ne saute
+    // aucun paramètre et ne crée aucune instance (voir `Track::instrumentState`).
+    const double depart = juce::Time::getMillisecondCounterHiRes();
+    auto& graphe = audioEngine_.processGraph();
+    size_t photographiees = 0;
+    for (size_t i = 0; i < project_.tracks.size(); ++i) {
+        auto& piste = project_.tracks[i];
+        auto* machine = graphe.trackInstrument(i);
+        // L'EMPLACEMENT DOIT PORTER LA MACHINE QUE LA PISTE DEMANDE. Entre un
+        // changement de machine et la reconstruction qui le réalise, le graphe
+        // tient encore l'ANCIENNE : la photographier écrirait l'état d'une
+        // machine dans le champ d'une autre.
+        if (machine == nullptr || graphe.trackInstrumentId(i) != piste.instrumentId) continue;
+        const auto etat = machine->saveState();
+        piste.instrumentState.clear();
+        for (const auto& [id, valeur] : etat.parameterValues) piste.instrumentState[id] = valeur;
+        piste.instrumentNativeState = machine->saveNativeState();
+        ++photographiees;
+    }
+    const double microsecondes = (juce::Time::getMillisecondCounterHiRes() - depart) * 1000.0;
+    ++photosDeReglages_;
+    totalPhotoReglagesUs_ += microsecondes;
+    maxPhotoReglagesUs_ = std::max(maxPhotoReglagesUs_, microsecondes);
+    dernieresPistesPhotographiees_ = photographiees;
+    return photographiees;
+}
+
 void MainComponent::beginProjectEdit(const juce::String& label) {
     // D144 : LA PHOTO DU PAS PORTE LE MASTER DE CET INSTANT. Il vit dans le
     // moteur ; le modèle n'en avait qu'une copie du dernier enregistrement, et
     // annuler un geste de PISTE ramenait le MASTER à cette copie (D143).
     project_.masterParameters = vsm::interchange::describeMasterBus(audioEngine_.processGraph().masterBus());
+    photographierReglagesDeMachines();   // D154 : et les réglages des machines
     history_.beginEdit(project_, label.toStdString());
     refreshHistoryList();
     // TOUTES LES MODIFICATIONS ANNULABLES PASSENT PAR ICI (D10.4) : c'est
@@ -11267,12 +11333,54 @@ void MainComponent::rebuildFromProject(bool stopPlayback) {
         }
     }
     maxAssignedTracks_ = std::max(maxAssignedTracks_, project_.tracks.size());
+
+    // D154 : LES RÉGLAGES DU MODÈLE, REPOSÉS EN DERNIER SUR TOUTE PISTE QUI EN
+    // PORTE — y compris celles dont la machine a été GARDÉE, qui sont le cas
+    // d'une annulation et que rien ne remettait à l'état du pas.
+    //
+    // APRÈS la boucle ci-dessus, et c'est délibéré : une machine recréée reçoit
+    // d'abord son réglage gardé (D76, qui porte les ÉCHANTILLONS et le profil
+    // multi-échantillons, que le modèle ne porte pas), puis les valeurs de
+    // l'instant que le pas demande. L'ordre inverse ferait gagner la photo de
+    // destruction — l'état d'APRÈS le geste — sur celle du pas.
+    //
+    // UN CHAMP VIDE NE TOUCHE À RIEN : un projet qui vient du disque n'a pas
+    // encore été photographié, et ses machines portent ce que leur
+    // `*.synth.json` leur a donné.
+    size_t reposees = 0, sansMachine = 0;
+    for (size_t i = 0; i < project_.tracks.size(); ++i) {
+        const auto& piste = project_.tracks[i];
+        if (piste.instrumentState.empty() && piste.instrumentNativeState.empty()) continue;
+        auto* machine = graphe.trackInstrument(i);
+        if (machine == nullptr || graphe.trackInstrumentId(i) != piste.instrumentId) {
+            // PANNE MUETTE INTERDITE : une piste qui porte un réglage et dont la
+            // machine n'est pas là perd ce réglage, et cela se DIT.
+            ++sansMachine;
+            std::fputs(("VSM_REGLAGE : " + vsm::interchange::libellePiste(i)
+                        + " : reglage du pas non repose (machine absente ou autre)\n").c_str(), stderr);
+            continue;
+        }
+        vsm::audio::plugin::PresetState etat;
+        etat.pluginTypeId = piste.instrumentId;
+        for (const auto& [id, valeur] : piste.instrumentState) etat.parameterValues[id] = valeur;
+        machine->loadState(etat);
+        if (!piste.instrumentNativeState.empty() && !machine->loadNativeState(piste.instrumentNativeState))
+            std::fputs(("VSM_REGLAGE : " + vsm::interchange::libellePiste(i)
+                        + " : etat natif refuse par la machine\n").c_str(), stderr);
+        ++reposees;
+    }
+
     // LE CHEMIN PRIS SE DIT : sans cette ligne, un banc vérifierait un
     // résultat en croyant vérifier un chemin.
     std::fputs((juce::String("VSM_MACHINES : ") + juce::String(static_cast<int>(gardees))
                 + juce::String(u8" gardée(s), ") + juce::String(static_cast<int>(recreees))
                 + juce::String(u8" recréée(s) avec leur réglage, ") + juce::String(static_cast<int>(neuves))
-                + juce::String(u8" neuve(s)\n")).toRawUTF8(), stderr);
+                + juce::String(u8" neuve(s), ") + juce::String(static_cast<int>(reposees))
+                + juce::String(u8" réglage(s) du pas reposé(s)")
+                + (sansMachine > 0 ? juce::String(u8", ") + juce::String(static_cast<int>(sansMachine))
+                                         + juce::String(u8" sans machine")
+                                   : juce::String())
+                + juce::String(u8"\n")).toRawUTF8(), stderr);
 
     // Les chaînes d'inserts sont refabriquées EN BLOC depuis les descriptions
     // des pistes : après une suppression, aucune ne peut rester accrochée à un

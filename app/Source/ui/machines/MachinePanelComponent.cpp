@@ -121,6 +121,10 @@ void MachinePanelComponent::rebuild() {
                 const float low = info->minValue, high = info->maxValue;
                 auto* raw = button.get();
                 button->onClick = [this, paramId, low, high, raw] {
+                    // D154 : LE PAS D'ANNULATION AVANT L'ÉCRITURE. Le modèle se
+                    // photographie à l'ouverture du pas : ouvert après, il
+                    // porterait déjà la valeur neuve et n'annulerait rien.
+                    ouvrirPasDeReglage();
                     synth_->setParameter(paramId, raw->getToggleState() ? high : low);
                     if (onParamTouched) onParamTouched(paramId);
                 };
@@ -156,7 +160,12 @@ void MachinePanelComponent::rebuild() {
                 const juce::String unit = juce::String(info->unit);
                 auto* raw = slider.get();
                 raw->setTooltip(readoutCaption);
+                // D154 : un glissé = UN pas, ouvert à son début (voir
+                // `glisseEnCours_`).
+                slider->onDragStart = [this] { glisseEnCours_ = true; ouvrirPasDeReglage(); };
+                slider->onDragEnd = [this] { glisseEnCours_ = false; };
                 slider->onValueChange = [this, paramId, raw, readoutCaption, unit] {
+                    if (!glisseEnCours_) ouvrirPasDeReglage();
                     synth_->setParameter(paramId, static_cast<float>(raw->getValue()));
                     showValueReadout(readoutCaption, raw->getValue(), unit);
                     if (onParamTouched) onParamTouched(paramId);

@@ -1073,6 +1073,12 @@ private:
     void rebuildFromProject(bool stopPlayback = true);
     /// Prend l'instantané d'annulation du projet, avec le nom du geste.
     void beginProjectEdit(const juce::String& label);
+    /// D154 : LES RÉGLAGES DES MACHINES DU MOTEUR DANS LE MODÈLE, à l'instant
+    /// du geste. Appelée par `beginProjectEdit` et avant tout pas d'historique,
+    /// exactement là où le MASTER se photographie depuis D144 : la photo du pas
+    /// doit porter ce que le moteur applique, sans quoi l'annulation rend un
+    /// projet juste et un son d'après. Rend le nombre de pistes photographiées.
+    size_t photographierReglagesDeMachines();
     /// LES REPÈRES (D16.4) : posés, renommés, retirés depuis les DEUX règles
     /// (piano roll et arrangement) par les mêmes trois fonctions, et les deux
     /// vues rafraîchies ensemble.
@@ -1383,6 +1389,14 @@ private:
     /// l'utilisateur peut modifier -- notes, mixage, effets, pistes, repères,
     /// clips -- et non sur les seules notes de la piste affichée.
     vsm::sequencer::ProjectHistory history_;
+    /// D154 : CE QUE LA PHOTO DES RÉGLAGES COÛTE, relevé par
+    /// `VSM_PHOTO_REGLAGES`. Elle tombe à chaque début de glissé ; l'attendu (d)
+    /// la borne à 5 ms, et ce compteur est ce qui permet de le vérifier au lieu
+    /// de l'affirmer.
+    size_t photosDeReglages_ = 0;
+    double totalPhotoReglagesUs_ = 0.0;
+    double maxPhotoReglagesUs_ = 0.0;
+    size_t dernieresPistesPhotographiees_ = 0;
     size_t maxAssignedTracks_ = 0; // plus haut nombre de pistes déjà assignées au ProcessGraph (pour nettoyer les slots après suppression)
     AudioEngine audioEngine_;
     // DÉCLARÉ APRÈS `audioEngine_`, ET CE N'EST PAS UN DÉTAIL DE STYLE : il
