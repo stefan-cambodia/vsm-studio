@@ -17805,3 +17805,34 @@ seul, et la touche R fait basculer reconstruction / les deux / original.
 d'abord être vérifié CONTRE LE BANC. Trois heures plus tôt (D152), une photo
 avait déjà corrigé une conclusion tirée d'un relevé incomplet ; ici c'est le
 projet d'essai lui-même qui était incomplet, et le code qui l'a dit.
+
+**Le chiffre des notes douteuses, vérifié de bout en bout (12/09).** La ligne
+d'ouverture annonçait « 5 140 note(s) signalée(s) comme douteuses sur 7 414
+transcrite(s) ». Deux contrôles, parce qu'un chiffre lu sur un écran n'est pas
+un chiffre vérifié :
+
+1. **7 414 est bien la population mélodique** : 1 672 (bass) + 1 183 (guitar) +
+   3 651 (other) + 908 (piano) = 7 414. Les 9 224 notes du journal de la course
+   ajoutent les 1 810 frappes de batterie, qui ne passent pas par la
+   transcription note à note.
+2. **5 140 se retrouve depuis le rapport**, au seuil que le code emploie —
+   `kDoubtfulNoteThreshold = 0,55` (`core/include/vsm/sequencer/NoteEdit.h:227`),
+   comparaison STRICTEMENT inférieure (« une note pile au seuil n'est PAS
+   douteuse », test de `core`). Recompté sur les confiances note par note de
+   `rapport.json` : **5 140 sur 7 414, soit 69,3 %**. Le rapport de la chaîne et
+   les notes que le DAW charge disent donc la même chose, note pour note.
+
+| course | notes mélodiques | douteuses | part | par stem |
+|---|---|---|---|---|
+| 1 (défaut) | 7 414 | **5 140** | **69,3 %** | bass 54,5 %, guitar 68,7 %, other 74,7 %, piano 75,9 % |
+| 2 (`htdemucs`) | 5 870 | **4 224** | **72,0 %** | bass 53,5 %, other 79,1 % |
+
+**Ce que cela vaut.** Ce n'est pas un défaut de l'interface — c'est la chaîne
+qui se dénonce elle-même, et le DAW qui le relaie dès l'ouverture, marque les
+notes dans le piano roll et donne la touche D pour les parcourir une par une.
+Le chiffre appartient au verdict de l'épreuve (§ 12.3 du CDC multipiste) : une
+reconstruction dont **sept notes sur dix** sont déclarées douteuses par son
+propre transcripteur dit quelque chose de l'étage de transcription, pas de
+l'affichage. J'avais d'abord comparé à des seuils choisis au hasard (0,5 → 4 095,
+0,6 → 6 206) et cru à un désaccord : il n'y avait qu'un seuil que je n'avais pas
+encore lu.
