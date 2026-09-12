@@ -78,6 +78,7 @@ from analyzer.vsm_mix_verdict import (MixAlternative, install_alternative,  # no
 from analyzer.vsm_offline_render import render_tracks_offline  # noqa: E402
 from analyzer.vsm_project_export import (DEFAULT_TRACK_VOLUME, ExportNote, ExportTrack,  # noqa: E402
                                           write_project_bundle)
+from analyzer.vsm_paliers import plainte_de_paliers, timbres_installes
 from analyzer.vsm_reconstruct import (StemNote, StemReconstruction, densite_du_stem,  # noqa: E402
                                       melodic_machines, reconstruct_stem,
                                       nom_de_note, reconstruction_distance, registres_par_vides,
@@ -425,6 +426,7 @@ def provenance(args: argparse.Namespace, classifieur, frappes,
             "axesPiste": args.axes_piste,
             "finalistes": args.finalistes,
             "preselectionApprise": args.preselection_apprise,
+            "portePaliers": args.porte_paliers,
             # Le vivier conditionne le résultat : il va dans la provenance,
             # sans quoi deux rapports ne seraient pas comparables (§ « Mesure »
             # du cahier des charges).
@@ -616,6 +618,14 @@ def construire_parseur() -> argparse.ArgumentParser:
                               "batterie ne sont pas touchées. Option : le gain mesuré est petit "
                               "(−2,45 %% au mieux) et l'oreille n'a pas jugé une traîne de "
                               "plusieurs secondes à 4 %%")
+    parseur.add_argument("--porte-paliers", action="store_true",
+                         help="OUVRIR LE FOURRE-TOUT SUR LE TEMPS et pas seulement sur la "
+                              "hauteur : un stem où PLUSIEURS TIMBRES S'INSTALLENT (des "
+                              "parties qui entrent et sortent) est déclaré fourre-tout même "
+                              "si sa polyphonie moyenne reste sous 3. Mesuré sur Children : "
+                              "« other » porte 4 timbres installés pour 2,58 de polyphonie, "
+                              "et la porte d'aujourd'hui ne l'essaie même pas "
+                              "(docs/CDC-detection-multipiste.md § 12.8-12.9)")
     parseur.add_argument("--voix-par-vides", action="store_true",
                          help="AVANT le partage en N voix, découper un stem fourre-tout là "
                               "où sa transcription laisse des VIDES (au moins deux demi-tons "
@@ -1620,6 +1630,23 @@ def reconstruire_stem_melodique(ctx: Contexte, nom: str, chemin: Path,
     plainte = stem_fourre_tout(densite_du_stem(notes))
     if plainte:
         print(f"      {nom:8s} : {plainte}")
+
+    # H26 : LA SECONDE PORTE, CELLE DU TEMPS (§ 12.8-12.9 du CDC multipiste).
+    #
+    # La première lit les NOTES (polyphonie et ambitus) et ne voit que ce qui se
+    # superpose. Sur *Children*, `other` porte quatre parties à 2,58 de
+    # polyphonie : elle ne s'ouvre pas, et le découpage n'est jamais ESSAYÉ.
+    # Celle-ci lit l'AUDIO et compte les timbres qui s'installent — mesuré : 4
+    # pour `other`, 3 pour `bass`, 1 pour `piano`, 0 pour les deux stems de
+    # fuite. Elle est derrière une option parce que son EFFET sur la
+    # reconstruction n'est pas encore mesuré : l'A/B veut une seule variable, et
+    # le témoin doit être le même code.
+    if args.porte_paliers and not plainte:
+        nombre, plages = timbres_installes(audio, SAMPLE_RATE)
+        seconde = plainte_de_paliers(nombre, plages)
+        if seconde:
+            print(f"      {nom:8s} : {seconde}")
+            plainte = seconde
 
     if args.voix_par_vides and plainte:
         registres = registres_par_vides(notes)
