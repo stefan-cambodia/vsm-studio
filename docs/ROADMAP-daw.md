@@ -18240,3 +18240,105 @@ général.
 sous-menus compris, TELLE QU'ELLE S'AFFICHE (D80). On compte les entrées dont le
 texte porte une touche (`Ctrl`, `Maj`, `Alt`, une touche seule), et on les
 compare aux 55 que la table connaît.
+
+**RÉSULTAT (13/09) — L'ATTENDU EST RÉFUTÉ, ET CE QU'ON TROUVE À LA PLACE EST
+PIRE QUE ZÉRO.** Sur **345 entrées** de la barre de menus, **neuf** affichent un
+raccourci clavier. *(Mon premier compte en disait quatre : le motif de recherche
+exigeait une parenthèse en FIN de libellé et ratait « Note douteuse suivante (D)
+», « Aller à la mesure… (Maj+P, double-clic…) ». Le compte juste est neuf, et
+l'erreur est dite plutôt que corrigée en silence — c'est la leçon de D149, où
+une regex trop étroite avait fait écrire « une seule chaîne sans traduction » là
+où il y en avait deux.)* Les quatre premières :
+
+| entrée | ce qu'elle affiche |
+|---|---|
+| `Fichier > Enregistrer...` | **(Ctrl+S)** |
+| `Édition > Aller à la mesure…` | **(Maj+P, double-clic sur la position)** |
+| `Édition > Tout sélectionner dans l'arrangement` | **(Ctrl+A)** |
+| `Affichage > Plein écran` | **(F11)** |
+
+Quatre sur **cinquante-cinq** que la table connaît. Et les quatre sont écrites
+**À LA MAIN DANS LE LIBELLÉ**, pas par le mécanisme de JUCE
+(`PopupMenu::Item::shortcutKeyDescription`, dessiné à droite de l'entrée). Trois
+conséquences, toutes vérifiables :
+
+1. **le raccourci doit être TRADUIT** comme du texte ordinaire — il passe par
+   `tr()` avec le reste du libellé, et une clé de traduction porte donc « Ctrl+S »
+   dans les deux langues, ce qui n'a aucun sens ;
+2. **il n'est pas aligné** : JUCE range les descriptions de touches à droite de
+   la colonne, les parenthèses d'un libellé suivent le texte ;
+3. **le banc en dépend** : `VSM_MENU=libellé` prend le PREMIER libellé exact, et
+   le libellé inclut maintenant la parenthèse.
+
+**Et quatorze autres entrées portent une parenthèse qui N'EST PAS un raccourci** —
+« Effets MIDI de la piste (0) », « Petite (24 px) », « Automatique (8 threads
+auxiliaires ici) », « Solo exclusif (Ctrl+clic sur Solo) ». La parenthèse sert
+donc déjà à trois choses différentes (un compte, une unité, un geste de souris),
+et y ajouter les raccourcis achèverait de la rendre illisible.
+
+**ET LE REMÈDE QUE J'IMAGINAIS N'EXISTE PAS, parce que les deux mondes sont
+PRESQUE DISJOINTS.** J'allais « brancher la table sur les 345 entrées ». La
+mesure dit autre chose : en appariant non par le libellé (trompeur — il range
+« Copier la chaîne d'inserts » sous *Copier*) mais par **l'action que chacune
+appelle**, les 56 commandes de la table et les 345 entrées de menu ne se
+recouvrent que **quatre fois** :
+
+| entrée de menu | commande | touche | l'affiche-t-elle ? |
+|---|---|---|---|
+| `Fichier > Enregistrer...` | `FileSave` | Ctrl+S | **oui**, à la main |
+| `Fichier > Enregistrer sous...` | `FileSaveAs` | Ctrl+Maj+S | **NON** |
+| `Fichier > Basculer l'écoute A/B` | `ReferenceCycle` | R | **oui**, à la main (« touche R ») |
+| `Affichage > Plein écran` | `ViewFullScreen` | F11 | **oui**, à la main |
+
+Les cinquante-deux autres commandes n'ont AUCUNE entrée de menu : ce sont les
+gestes du piano roll et du transport (les outils 1 à 6, la tête de lecture, les
+locateurs, le legato, l'aimantation). Elles ne peuvent donc pas être découvertes
+par un menu — et c'est pour elles qu'existe **`Affichage > Raccourcis
+clavier…`**, la page que D10.3 avait promise et qui est bien là.
+
+**CE QUI RESTE À FAIRE EST DONC PETIT ET PRÉCIS**, et c'est ce qui rend l'audit
+utile : une seule entrée sur quatre n'affiche pas sa touche, et les trois qui
+l'affichent le font DANS LEUR LIBELLÉ — donc dans leur clé de traduction, sans
+l'alignement que JUCE donne, et en obligeant le banc à connaître la parenthèse.
+Le remède : les quatre passent par `PopupMenu::Item::shortcutKeyDescription`,
+alimenté par la table de l'utilisateur (une touche réassignée s'affichera
+réassignée), et leurs parenthèses écrites à la main disparaissent.
+
+**FAIT (13/09) — NEUF ENTRÉES PORTENT LEUR TOUCHE, DESSINÉE PAR JUCE.** Le
+périmètre s'est révélé plus large que les quatre commandes appariées par
+l'action : trois entrées du menu Édition (les locateurs) et deux autres portaient
+leur touche dans le libellé alors que la table les connaît. Toutes passent
+maintenant par `PopupMenu::Item::shortcutKeyDescription`, alimenté par la table
+de **l'utilisateur** (`shortcuts_.keyFor`) — un raccourci réassigné s'affichera
+réassigné.
+
+| entrée | touche affichée |
+|---|---|
+| `Fichier > Enregistrer...` | ctrl + S |
+| `Fichier > Enregistrer sous...` | **ctrl + shift + S** (elle n'affichait rien) |
+| `Fichier > Basculer l'écoute A/B` | R |
+| `Édition > Insérer du silence entre les locateurs` | ctrl + shift + I |
+| `Édition > Supprimer le temps entre les locateurs` | ctrl + shift + K |
+| `Édition > Locateurs sur la sélection` | P |
+| `Édition > Aller à la mesure…` | shift + P |
+| `Édition > Tout sélectionner dans l'arrangement` | ctrl + A |
+| `Affichage > Plein écran` | F11 |
+
+**LE RELEVÉ A DÛ APPRENDRE À VOIR.** `VSM_MENU_LISTE` ne lisait que `item.text` —
+or c'est tout l'intérêt de `shortcutKeyDescription` de n'y être PAS. Un relevé
+qui ne lit que le texte aurait conclu « aucun raccourci affiché » sur des entrées
+qui en affichent un ; il écrit maintenant `[touche …]` à côté de chaque entrée
+qui en porte une. C'est la leçon de D149, appliquée avant de se tromper.
+
+**CE QUI RESTE DANS LES LIBELLÉS, ET POURQUOI.** Deux entrées du piano roll
+(« Note douteuse suivante (D) », « … précédente (Maj+D) ») gardent leur touche
+écrite : elles vivent dans `PianoRollComponent`, qui n'a pas la table de
+l'utilisateur — la lui passer est un pas à part, non fait. Et les GESTES DE
+SOURIS restent où ils sont (« Solo exclusif (Ctrl+clic sur Solo) », « Région de
+punch (Alt sur la règle) ») : `shortcutKeyDescription` ne sait dire que des
+touches, et un clic modifié n'en est pas une.
+
+**Langue** : les quatre libellés dont la touche est sortie ont leur paire
+anglaise, et l'inventaire est revenu à **SANS_PAIRE 0** — il était passé à 4 le
+temps que je les écrive. Vérifié dans les deux langues : « Save as... [ctrl +
+shift + S] », « Go to bar… (double-click the position) [shift + P] ».

@@ -805,6 +805,19 @@ const Paire kAnglais[] = {
     // l'application pour ce que le musicien tourne sur une façade.
     { "Réglage de machine",
       "Machine setting" },
+    // D155 : LES QUATRE LIBELLÉS DONT LA TOUCHE EST SORTIE DU TEXTE. Elle est
+    // maintenant dessinée par JUCE à droite de l'entrée
+    // (`shortcutKeyDescription`), et le libellé n'a plus à la porter — ni à la
+    // traduire. Les anciennes clés (« … (Ctrl+Maj+I) », « … (F11) ») ne sont
+    // plus employées ; celles-ci les remplacent.
+    { "Insérer du silence entre les locateurs",
+      "Insert silence between the locators" },
+    { "Supprimer le temps entre les locateurs",
+      "Delete the time between the locators" },
+    { "Aller à la mesure… (double-clic sur la position)",
+      "Go to bar… (double-click the position)" },
+    { "Tout sélectionner dans l'arrangement",
+      "Select all in the arrangement" },
     // D150 : « Master » n'avait aucune clé — la garde corrigée l'a trouvé là où
     // le script de D149 ne pouvait pas le voir (sa regex sautait les littéraux
     // sans préfixe u8). Le mot est le même dans les deux langues ; la paire le

@@ -65,6 +65,15 @@ mkdir -p "$(dirname "$JOURNAL")"
 
 dire() { echo "$(date '+%d/%m %H:%M:%S') $*" >> "$JOURNAL"; }
 
+# UN FICHIER D'ARRÊT RESTÉ LÀ NE DOIT PAS TUER L'INSTANCE SUIVANTE. Payé le
+# 13/09 : poser l'arrêt pour relever une garde, puis lancer la neuve, et la
+# neuve lit le même fichier — elle s'arrête dans la seconde, en le disant, mais
+# le poste reste sans garde. Le drapeau est donc CONSOMMÉ au départ.
+if [ -e "$ARRET" ]; then
+  rm -f "$ARRET"
+  dire "un fichier d'arrêt trainait ($ARRET) : consommé au départ, il ne vaut que pour l'instance qui le voit VIVRE"
+fi
+
 tenu=0
 endormi=0
 fin=$(( $(date +%s) + HEURES * 3600 ))

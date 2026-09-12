@@ -1453,7 +1453,16 @@ void MainComponent::listMenusForCapture() {
             for (juce::PopupMenu::MenuItemIterator it(menu, false); it.next();) {
                 const auto& item = it.getItem();
                 if (item.isSeparator) continue;
+                // D155 : LA TOUCHE, QUAND JUCE LA DESSINE. Elle n'est PAS dans
+                // `item.text` — c'est tout l'intérêt de `shortcutKeyDescription`,
+                // qui la range à droite au lieu de la coller au libellé. Un
+                // relevé qui ne lit que le texte ne verrait donc rien de ce que
+                // l'utilisateur voit, et conclurait « aucun raccourci affiché »
+                // sur une entrée qui en affiche un (la leçon de D149).
                 const juce::String ligne = chemin + " > " + item.text
+                    + (item.shortcutKeyDescription.isNotEmpty()
+                           ? juce::String(u8" [touche ") + item.shortcutKeyDescription + "]"
+                           : juce::String())
                     + (item.isSectionHeader ? juce::String(" [titre]")
                                             : !item.isEnabled ? juce::String(u8" [grisée]") : juce::String());
                 std::fputs(("VSM_MENU_LISTE : " + ligne + "\n").toRawUTF8(), stderr);
@@ -2817,6 +2826,42 @@ juce::StringArray MainComponent::getMenuBarNames() {
     return { tr("Fichier"), tr(u8"Édition"), tr("Piste"), tr("Enregistrement"), tr("Mixage"), tr("Affichage"), tr("Aide") };
 }
 
+namespace {
+
+/// D155 : LA TOUCHE D'UNE ENTRÉE DE MENU, DESSINÉE PAR JUCE ET NON ÉCRITE DANS
+/// LE LIBELLÉ.
+///
+/// CE QUI EXISTAIT, ET CE QUE LA MESURE EN A DIT. Quatre commandes seulement
+/// vivent des deux côtés — dans un menu ET dans la table des raccourcis, appariées
+/// par l'ACTION qu'elles appellent et non par leur libellé, qui trompe. Trois
+/// affichaient leur touche EN DUR dans le texte (« Enregistrer (Ctrl+S) »,
+/// « Plein écran (F11) », « … (touche R) ») et la quatrième pas du tout. Écrire
+/// la touche dans le libellé a trois conséquences, toutes mesurées : elle part
+/// dans la clé de TRADUCTION, elle perd l'alignement à droite que JUCE donne, et
+/// le banc (`VSM_MENU=libellé`) doit connaître la parenthèse.
+///
+/// CE QUE CETTE FONCTION FAIT : elle lit la touche EFFECTIVE — celle de la table
+/// de l'utilisateur, pas la valeur d'usine —, si bien qu'un raccourci réassigné
+/// s'affiche réassigné. Une commande sans touche rend une chaîne vide, et
+/// l'entrée s'affiche comme avant.
+void ajouterAvecRaccourci(juce::PopupMenu& menu, int identifiant, const juce::String& libelle,
+                          const vsm::interchange::ShortcutTable& table,
+                          vsm::interchange::ShortcutId commande, bool actif = true,
+                          bool coche = false) {
+    juce::PopupMenu::Item entree(libelle);
+    entree.itemID = identifiant;
+    entree.isEnabled = actif;
+    entree.isTicked = coche;
+    const juce::String touche = juce::String(table.keyFor(commande));
+    if (touche.isNotEmpty()) {
+        const juce::KeyPress lue = juce::KeyPress::createFromDescription(touche);
+        if (lue.isValid()) entree.shortcutKeyDescription = lue.getTextDescriptionWithIcons();
+    }
+    menu.addItem(std::move(entree));
+}
+
+} // namespace
+
 juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce::String&) {
     juce::PopupMenu menu;
     switch (topLevelMenuIndex) {
@@ -2863,10 +2908,12 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                          tr(u8"Reconstruire en visant la parité des pistes (le défaut de la chaîne)"), true,
                          vsm::app::ui::UiScale::properties()
                              .getBoolValue(tr("reconstruireEnParite"), true));
-            menu.addItem(kMenuFileSave, tr("Enregistrer") +
-                          juce::String(currentProjectFolder_ == juce::File() ? "..." : "")
-                          + tr(" (Ctrl+S)"));
-            menu.addItem(kMenuFileSaveAs, tr("Enregistrer sous..."));
+            ajouterAvecRaccourci(menu, kMenuFileSave,
+                                 tr("Enregistrer")
+                                     + juce::String(currentProjectFolder_ == juce::File() ? "..." : ""),
+                                 shortcuts_, vsm::interchange::ShortcutId::FileSave);
+            ajouterAvecRaccourci(menu, kMenuFileSaveAs, tr("Enregistrer sous..."),
+                                 shortcuts_, vsm::interchange::ShortcutId::FileSaveAs);
             menu.addSeparator();
             // D11.6 : LE MODÈLE. Un seul, dans le dossier des préférences : le
             // projet qu'on ouvre pour commencer (pistes, machines, routage,
@@ -2897,7 +2944,9 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                               mode == Mode::Mix);
                 menu.addItem(kMenuFileReferenceSolo, tr(u8"Écoute : original"), aUneReference,
                               mode == Mode::Solo);
-                menu.addItem(kMenuFileReferenceCycle, tr(u8"Basculer l'écoute A/B (touche R)"), aUneReference);
+                ajouterAvecRaccourci(menu, kMenuFileReferenceCycle, tr(u8"Basculer l'écoute A/B"),
+                                     shortcuts_, vsm::interchange::ShortcutId::ReferenceCycle,
+                                     aUneReference);
             }
             menu.addItem(kMenuFileExport, tr("Exporter MIDI..."));
             // D24.5 : un fichier audio sur une piste neuve, sans passer par le
@@ -2989,23 +3038,33 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
             // le morceau, qui n'ont pas leur place dans le piano roll -- elles
             // déplacent aussi les clips, les repères et le tempo.
             menu.addSeparator();
-            menu.addItem(kMenuEditInsertTimeAtLocators,
-                         tr(u8"Insérer du silence entre les locateurs (Ctrl+Maj+I)"),
-                         project_.loopEndTick > project_.loopStartTick);
-            menu.addItem(kMenuEditDeleteTimeAtLocators,
-                         tr(u8"Supprimer le temps entre les locateurs (Ctrl+Maj+K)"),
-                         project_.loopEndTick > project_.loopStartTick);
-            menu.addItem(kMenuEditLocatorsFromSelection, tr(u8"Locateurs sur la s\u00e9lection (P)"),
-                         arrangement_.hasSelection() || pianoRoll_.hasSelection());
+            ajouterAvecRaccourci(menu, kMenuEditInsertTimeAtLocators,
+                                 tr(u8"Insérer du silence entre les locateurs"), shortcuts_,
+                                 vsm::interchange::ShortcutId::EditInsertTimeAtLocators,
+                                 project_.loopEndTick > project_.loopStartTick);
+            ajouterAvecRaccourci(menu, kMenuEditDeleteTimeAtLocators,
+                                 tr(u8"Supprimer le temps entre les locateurs"), shortcuts_,
+                                 vsm::interchange::ShortcutId::EditDeleteTimeAtLocators,
+                                 project_.loopEndTick > project_.loopStartTick);
+            ajouterAvecRaccourci(menu, kMenuEditLocatorsFromSelection,
+                                 tr(u8"Locateurs sur la s\u00e9lection"), shortcuts_,
+                                 vsm::interchange::ShortcutId::EditLocatorsFromSelection,
+                                 arrangement_.hasSelection() || pianoRoll_.hasSelection());
             // D22.2 : ALLER À UNE MESURE. La position se lisait (D11.3) et ne
             // se saisissait pas : rejoindre la mesure 57 se faisait à la
             // souris, en zoomant.
-            menu.addItem(kMenuEditGoToBar, tr(u8"Aller \u00e0 la mesure\u2026 (Maj+P, double-clic sur la position)"));
+            // Le double-clic sur la position reste DANS le libellé : c'est un
+            // geste de souris, que `shortcutKeyDescription` ne sait pas dire.
+            ajouterAvecRaccourci(menu, kMenuEditGoToBar,
+                                 tr(u8"Aller \u00e0 la mesure\u2026 (double-clic sur la position)"),
+                                 shortcuts_, vsm::interchange::ShortcutId::NavGoToBar);
             // D20.1 : RÉPÉTER LA SÉLECTION de l'arrangement, jumeau du menu
             // contextuel du clip -- ici pour qu'il s'atteigne sans souris.
             menu.addSeparator();
-            menu.addItem(kMenuEditSelectAllClips, tr(u8"Tout s\u00e9lectionner dans l'arrangement (Ctrl+A)"),
-                         !project_.tracks.empty());
+            ajouterAvecRaccourci(menu, kMenuEditSelectAllClips,
+                                 tr(u8"Tout s\u00e9lectionner dans l'arrangement"), shortcuts_,
+                                 vsm::interchange::ShortcutId::EditSelectAll,
+                                 !project_.tracks.empty());
             // D34.5 : DESSINER UNE AUTOMATION PAR UNE FORME. Un balayage de
             // filtre sur seize mesures se posait point par point, et un
             // trémolo régulier ne se posait pas du tout.
@@ -3667,8 +3726,10 @@ juce::PopupMenu MainComponent::getMenuForIndex(int topLevelMenuIndex, const juce
                          true, computerKeyboard_);
             {
                 auto* fenetre = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent());
-                menu.addItem(kMenuViewFullScreen, tr(u8"Plein \u00e9cran (F11)"), fenetre != nullptr,
-                              fenetre != nullptr && fenetre->isFullScreen());
+                ajouterAvecRaccourci(menu, kMenuViewFullScreen, tr(u8"Plein \u00e9cran"),
+                                     shortcuts_, vsm::interchange::ShortcutId::ViewFullScreen,
+                                     fenetre != nullptr,
+                                     fenetre != nullptr && fenetre->isFullScreen());
             }
             menu.addSeparator();
             menu.addItem(kMenuViewTracks, tr("Pistes"), true,
