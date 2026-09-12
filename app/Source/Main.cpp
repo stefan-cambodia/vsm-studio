@@ -509,6 +509,13 @@ public:
                 if (const char* d = std::getenv("VSM_DELAI"); d != nullptr && *d)
                     delai = std::max(500, juce::String(d).getIntValue());
                 juce::Timer::callAfterDelay(delai, [this, fichier, tailleDemandee] {
+                    // D174 : LE TITRE DE LA FENÊTRE, AU MOMENT DE LA PHOTO. Il
+                    // n'est le texte d'aucun composant -- c'est le gestionnaire
+                    // de fenêtres qui le dessine --, donc ni l'autoportrait ni
+                    // `VSM_TEXTES_LISTE` ne le voient. Or c'est lui qui porte,
+                    // depuis D174, la marque « non enregistré » : sans cette
+                    // ligne, cette marque serait invérifiable.
+                    std::fputs(("VSM_TITRE : " + getName().toStdString() + "\n").c_str(), stderr);
                     if (auto* c = getContentComponent()) {
                         auto image = c->createComponentSnapshot(c->getLocalBounds());
                         // D58 : CE QU'ON A DEMANDÉ ET CE QU'ON A OBTENU, tous

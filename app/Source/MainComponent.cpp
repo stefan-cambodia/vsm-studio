@@ -2698,6 +2698,7 @@ void MainComponent::timerCallback() {
         }
     }
     pianoRollPanel_.refresh(); // règle + barre d'outils suivent la tête de lecture et l'historique
+    rafraichirTitre();   // D174 : la marque « non enregistré » suit l'historique
 
     autosaveIfNeeded();
 
@@ -5559,9 +5560,8 @@ bool MainComponent::applyDawImport(const juce::File& fichier) {
     project_ = resultat.project;
     oublierLesMachines();   // D76
     currentProjectFolder_ = juce::File();   // un import n'a pas de dossier à réécrire
-    if (auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
-        window->setName(juce::String::fromUTF8("Vintage Synth MIDI Studio -- ")
-                        + fichier.getFileNameWithoutExtension());
+    poserTitreDeBase(juce::String::fromUTF8("Vintage Synth MIDI Studio -- ")
+                     + fichier.getFileNameWithoutExtension());
     rebuildFromProject();
     pianoRoll_.cadrerSurLesNotes();  // un projet qui arrive se regarde là où sont ses notes
 
@@ -5929,8 +5929,7 @@ void MainComponent::loadProjectBundleFromFolder(const juce::File& folder,
     // récupérée dans sa copie de travail la perdrait au prochain lancement.
     currentProjectFolder_ = medias;
     rememberRecentProject(medias);
-    if (auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
-        window->setName("Vintage Synth MIDI Studio -- " + medias.getFileName());
+    poserTitreDeBase("Vintage Synth MIDI Studio -- " + medias.getFileName());
     // rebuildFromProject() assigne les instruments d'après le projet : les
     // machines n'existent donc PAS avant cet appel, et appliquer les
     // presets plus tôt reviendrait à les appliquer à rien.
@@ -7273,8 +7272,8 @@ void MainComponent::saveAsTemplate() {
     dossier.createDirectory();
     const bool ok = writeProjectTo(dossier);
     currentProjectFolder_ = avant;
-    if (auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
-        window->setName("Vintage Synth MIDI Studio" + (avant == juce::File() ? juce::String() : " -- " + avant.getFileName()));
+    poserTitreDeBase("Vintage Synth MIDI Studio"
+                     + (avant == juce::File() ? juce::String() : " -- " + avant.getFileName()));
     montrerBoite(
         ok ? juce::AlertWindow::InfoIcon : juce::AlertWindow::WarningIcon, tr(u8"Modèle de projet"),
         ok ? tr(u8"Le projet courant est devenu le modèle : Fichier ▸ Nouveau depuis le modèle l'ouvrira, sans chemin, chaque fois.")
@@ -7288,8 +7287,7 @@ void MainComponent::newFromTemplate() {
     // Un projet NEUF : pas de chemin, Ctrl+S demandera où. Le modèle ne se
     // réécrit que par « Enregistrer comme modèle ».
     currentProjectFolder_ = juce::File();
-    if (auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
-        window->setName(tr(u8"Vintage Synth MIDI Studio -- nouveau projet (depuis le modèle)"));
+    poserTitreDeBase(tr(u8"Vintage Synth MIDI Studio -- nouveau projet (depuis le modèle)"));
 }
 
 void MainComponent::toggleFullScreen() {
@@ -7668,6 +7666,42 @@ void MainComponent::applyAutomationFromProject() {
     tempoLane_.setProject(&project_);
 }
 
+// ---------------------------------------------------------------------------
+// D174 (A29) : LA MARQUE « NON ENREGISTRÉ » DANS LE TITRE.
+//
+// CE QUI MANQUAIT, mesuré par D173 : l'application n'a JAMAIS dit qu'un projet
+// portait des modifications non enregistrées. Le titre ne montrait que le nom du
+// dossier, posé au dernier enregistrement ou à la dernière ouverture, et
+// `projectDirty_` -- le seul drapeau existant -- ne sert qu'à
+// l'autosauvegarde, qui le remet à faux toutes les trente secondes. Le musicien
+// n'avait donc aucun moyen de savoir si son travail était à l'abri.
+//
+// LA MARQUE SE DÉDUIT, ELLE NE SE DÉCLARE PAS, et c'est la leçon déjà payée par
+// l'autosauvegarde (voir `autosaveIfNeeded`) : « un pas d'historique EST la
+// preuve qu'on a modifié le projet ; le déduire ne peut pas s'oublier, alors que
+// le déclarer s'est oublié quatre fois ». On compare donc la profondeur de la
+// pile d'annulation à celle du dernier enregistrement -- `!=` et non `>`, parce
+// qu'annuler modifie aussi le projet et fait décroître la pile.
+void MainComponent::poserTitreDeBase(const juce::String& titre) {
+    titreDeBase_ = titre;
+    rafraichirTitre();
+}
+
+bool MainComponent::projetNonEnregistre() const {
+    return history_.undoDepth() != profondeurAuDernierEnregistrement_;
+}
+
+void MainComponent::rafraichirTitre() {
+    auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent());
+    if (window == nullptr) return;
+    // L'ASTÉRISQUE APRÈS LE NOM : c'est la convention de Cubase, de Live et de
+    // tout éditeur de texte. Un mot (« modifié ») aurait dû être traduit et
+    // aurait allongé un titre déjà long ; l'astérisque se lit dans les deux
+    // langues et dans la barre des tâches, où le titre est tronqué.
+    const juce::String voulu = titreDeBase_ + (projetNonEnregistre() ? " *" : "");
+    if (window->getName() != voulu) window->setName(voulu);
+}
+
 bool MainComponent::writeProjectTo(const juce::File& folder) {
     captureSessionIntoProject();
 
@@ -7713,8 +7747,12 @@ bool MainComponent::writeProjectTo(const juce::File& folder) {
     rememberRecentProject(folder);
     // Le nom du dossier passe dans le titre de la fenêtre : c'est le retour
     // qu'attend un Ctrl+S, et il ne demande pas de cliquer pour disparaître.
-    if (auto* window = dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent()))
-        window->setName("Vintage Synth MIDI Studio -- " + folder.getFileName());
+    poserTitreDeBase("Vintage Synth MIDI Studio -- " + folder.getFileName());
+    // D174 : ENREGISTRÉ, DONC PLUS DE MARQUE. La profondeur d'historique de cet
+    // instant devient la référence : tout ce qui s'ajoute après est « non
+    // enregistré », et l'annulation, qui la fait décroître, compte aussi.
+    profondeurAuDernierEnregistrement_ = history_.undoDepth();
+    rafraichirTitre();
     return true;
 }
 

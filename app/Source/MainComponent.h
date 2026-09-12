@@ -639,6 +639,14 @@ private:
 
     std::unique_ptr<vsm::app::AutosaveService> autosave_;
     bool projectDirty_ = false;
+    /// D174 (A29) : la profondeur d'annulation au dernier enregistrement réussi.
+    /// La marque « non enregistré » du titre se déduit de l'écart avec la
+    /// profondeur courante, plutôt que d'un drapeau qu'on oublie de poser.
+    size_t profondeurAuDernierEnregistrement_ = 0;
+    juce::String titreDeBase_ { "Vintage Synth MIDI Studio" };
+    void poserTitreDeBase(const juce::String& titre);
+    void rafraichirTitre();
+    bool projetNonEnregistre() const;
     /// L'heure de la dernière photo. La cadence est de trente secondes : le
     /// critère dit « pas plus d'une minute », et une marge de deux vaut mieux
     /// qu'une marge nulle sur un disque qui hésite.

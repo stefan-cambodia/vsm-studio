@@ -19444,3 +19444,101 @@ fusionnés en un seul ? Le chiffre répond sans qu'il faille ouvrir la fenêtre
 d'historique : **un seul pas aurait coûté 0,2 Mo, on en mesure 7**. Et le code le
 confirme — `SnapshotHistory::beginEdit` empile sans jamais comparer le libellé au
 précédent.
+
+### D173 (attendus) — le quarante-quatrième audit : enregistrer là où l'on ne peut pas écrire (13/09/2026)
+
+**POURQUOI CE CAS.** D162 a montré qu'un aller-retour ne perd rien **quand tout
+va bien**. Reste le cas qui coûte vraiment du travail : l'enregistrement qui
+ÉCHOUE. Un dossier de projet sur une clé retirée, un disque plein, un dossier
+appartenant à quelqu'un d'autre — et le musicien qui, ayant fait Ctrl+S, ferme
+la fenêtre en croyant son travail à l'abri. Le § « panne muette interdite » du
+projet vise exactement cela, et personne ne l'a éprouvé sur l'enregistrement.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** Une copie du projet dont le
+dossier est mis en LECTURE SEULE, ouverte, puis « Enregistrer » :
+
+1. **Une boîte le dit**, lisible au journal par `VSM_BOITE` (D95), et elle nomme
+   le dossier. **Réfuté si rien n'est écrit** : ce serait une panne muette sur le
+   chemin le plus coûteux qui soit.
+2. **Le projet reste marqué MODIFIÉ** — un titre de fenêtre ou un état interne
+   qui dit « enregistré » après un échec est le piège lui-même.
+3. **Rien n'est détruit** : les fichiers déjà présents dans le dossier sont
+   inchangés, `cmp` à l'appui. Un enregistrement qui échoue à mi-chemin après
+   avoir effacé l'ancien serait pire que pas d'enregistrement du tout.
+
+### Phase D173 — un enregistrement qui échoue le DIT ; mais rien ne disait jamais qu'un projet était modifié (13/09/2026)
+
+**LE CAS.** Une copie de `children-c3-plafond` dont tous les dossiers sont en
+`r-x` et tous les fichiers en `r--`, ouverte, puis « Enregistrer ».
+
+| attendu | **mesuré** |
+|---|---|
+| 1. une boîte le dit, et nomme le fichier | ✔ **`VSM_BOITE : Enregistrement impossible : écriture MIDI impossible : …/midi/arrangement.mid`** |
+| 2. le projet reste marqué modifié | ✘ — **et pour une raison pire que prévue** |
+| 3. rien n'est détruit | ✔ `md5sum -c` sur `project.json` et les presets : identiques |
+
+**L'ATTENDU N° 2 NE POUVAIT PAS ÊTRE TENU : LA MARQUE N'EXISTAIT PAS.** En
+cherchant où l'application remet le projet à « enregistré », on ne trouve rien —
+parce qu'elle ne dit **jamais** qu'un projet porte des modifications non
+enregistrées. Le titre de la fenêtre ne porte que le nom du dossier, posé au
+dernier enregistrement ou à la dernière ouverture. Le seul drapeau existant,
+`projectDirty_`, sert à l'autosauvegarde, **qui le remet à faux toutes les
+trente secondes** : il ne peut donc rien indiquer à personne.
+
+Un musicien n'avait aucun moyen de savoir si son travail était à l'abri — ni
+avant, ni après un enregistrement raté. Cubase, Live et FL Studio marquent tous
+le titre. **Ouvert comme A29.**
+
+**ET LE FILET EXISTE, mesuré plutôt que supposé** : l'autosauvegarde écrit une
+session de secours toutes les **30 s** (`kAutosaveIntervalSeconds`), et D104 a
+posé la boîte qui la repropose au démarrage suivant. Le risque n'est donc pas la
+perte du travail : c'est de **croire enregistré** ce qui ne l'est pas.
+
+### Phase D174 — A29 : l'astérisque qui dit « non enregistré » (13/09/2026)
+
+**LA MARQUE SE DÉDUIT, ELLE NE SE DÉCLARE PAS.** C'est la leçon que
+l'autosauvegarde avait déjà payée quatre fois, écrite dans son propre code : « un
+pas d'historique EST la preuve qu'on a modifié le projet ; le déduire ne peut pas
+s'oublier, alors que le déclarer s'est oublié quatre fois ». Le titre compare donc
+la profondeur de la pile d'annulation à celle du dernier enregistrement RÉUSSI —
+`!=` et non `>`, parce qu'annuler modifie aussi le projet et fait décroître la
+pile. Aucun appelant n'a rien à déclarer, et les gestes du piano roll, qui
+poussent leur instantané sans passer par `beginProjectEdit`, sont couverts comme
+les autres.
+
+**L'INSTRUMENT QU'IL A FALLU ÉCRIRE.** Le titre d'une fenêtre n'est le texte
+d'AUCUN composant — c'est le gestionnaire de fenêtres qui le dessine —, si bien
+que ni l'autoportrait ni `VSM_TEXTES_LISTE` ne le voient : `VSM_TEXTES_LISTE` sur
+un projet ouvert ne rend pas une seule ligne contenant « Vintage Synth MIDI
+Studio ». Sans instrument, cette marque aurait été **invérifiable**, ce que ce
+dépôt s'interdit. `VSM_TITRE : <titre>` est donc écrit au moment de la photo.
+
+**LES QUATRE CAS, MESURÉS.**
+
+| geste | **titre relevé** |
+|---|---|
+| projet ouvert, aucun geste | `Vintage Synth MIDI Studio -- rw` |
+| + un geste annulable | `Vintage Synth MIDI Studio -- rw` **`*`** |
+| geste **puis** Ctrl+S (dossier accessible) | `Vintage Synth MIDI Studio -- rw2` — la marque tombe |
+| geste **puis** Ctrl+S (dossier **en lecture seule**) | `Vintage Synth MIDI Studio -- ro` **`*`** — la marque RESTE, à côté de la boîte d'échec |
+
+**Le quatrième cas est celui qui compte** : un enregistrement refusé laisse la
+marque, donc le musicien voit que son travail n'est pas à l'abri même s'il a
+cliqué « OK » sur la boîte sans la lire. **A29 se ferme.**
+
+**UN EFFET DE BORD, DIT PLUTÔT QUE TU** : le titre se recompose à chaque tour du
+minuteur à partir d'un titre de BASE mémorisé, et n'est réécrit que s'il change.
+Cela répare au passage un défaut qui n'avait pas de ligne : la fin d'un balayage
+de plugins reposait le titre nu (« Vintage Synth MIDI Studio », `MainComponent.cpp`
+ligne 4526), effaçant le nom du projet ouvert jusqu'à l'enregistrement suivant.
+
+**CE QUI RESTE, ET QUI EST NOMMÉ : QUITTER NE DEMANDE RIEN.**
+`systemRequestedQuit()` appelle `quit()` sans un mot (`Main.cpp:173`) : fermer la
+fenêtre avec des modifications non enregistrées les abandonne, au filet de
+l'autosauvegarde près (30 s). **Ouvert comme A30**, et le remède est déjà conçu :
+une question à trois réponses (Enregistrer / Quitter sans enregistrer / Annuler),
+avec une précaution que le banc impose — **tous les bancs de ce dépôt quittent
+par ce chemin**, et une boîte modale les ferait tous expirer. La sortie du banc
+devra donc appeler `quit()` directement (c'est une fin de course, pas un geste
+d'utilisateur), et un verbe neuf déclenchera la vraie fermeture pour que la
+question, elle, soit photographiable.
