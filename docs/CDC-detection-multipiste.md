@@ -1236,6 +1236,130 @@ font partie de la mesure** : g = 0 doit retomber sur 0,19353 et g = 0,6364 sur
 0,19816, sans quoi un chiffre qui bouge ne dira pas s'il mesure le mélange ou
 mon outil.
 
+**LA MESURE, ET CE QU'ELLE RÉFUTE (12/09, 14:05).** Les deux témoins retombent
+EXACTEMENT sur les chiffres publiés — g = 0 rend 0,19353157517211156 et
+g = 0,6364 rend 0,19816082615353953, écart 0,000e+00 des deux côtés : l'outil
+mesure le mélange, et pas lui-même.
+
+| g | distance v2 | contre la course 1 |
+|---|---|---|
+| **0,0** — la course 1 | 0,193532 | — |
+| 0,1 | 0,195449 | +0,99 % |
+| 0,2 | 0,196201 | +1,38 % |
+| 0,3 | 0,196769 | +1,67 % |
+| 0,4 | 0,197241 | +1,92 % |
+| 0,5 | 0,197662 | +2,13 % |
+| **0,6364** — la course 3 | 0,198161 | +2,39 % |
+| 0,8 | 0,198697 | +2,67 % |
+| **1,0** — le stem exact | 0,199270 | +2,96 % |
+| 1,2 | 0,199776 | +3,23 % |
+| 1,4142 | 0,200265 | +3,48 % |
+
+**(a) survit, (b) est réfutée — et c'est MA lecture de l'heure précédente qui
+tombe.** La distance croît sans minimum intérieur sur tout l'intervalle : le
+minimum est en g = 0. Caler la piste audio à 1,0 — le « remède » que le manque
+de `vsm_levels.py` semblait appeler — aurait coûté **+2,96 %** au lieu de
++2,39 %. Le manque est réel (une piste audio ne passe par aucun calage) et le
+corriger AGGRAVERAIT ce morceau : il ne sera donc pas corrigé sur la foi d'un
+raisonnement. Le seuil de 0,5 %, lui, est justifié par la mesure : à 0,2 %
+d'énergie, le stem `vocals` de ce disque instrumental est bien le résidu de
+séparation que le journal annonce, et la chaîne a eu raison de le refuser.
+
+**La forme de la courbe dit où le défaut n'est pas.** 41 % du coût total (0,99
+des 2,39 points) est payé au PREMIER dixième de gain : la métrique réagit à la
+PRÉSENCE du résidu bien plus qu'à son niveau. Ce n'est pas une affaire de
+dosage, et aucun calage ne la rattrapera.
+
+**LE DÉFAUT QUE CETTE MESURE DÉSIGNE, ET IL EST NEUF.** Le témoin de coupure —
+« le morceau est MEILLEUR sans cette piste », le chiffre que la chaîne doit dire
+sans jamais couper elle-même — n'a jamais été établi pour ces deux pistes. Il
+est posé DANS la boucle des alternatives (`analyse/analyzer/vsm_mix_verdict.py`,
+`for track in tracks:` puis `if not propositions: continue`), si bien qu'une
+piste sans alternative — une piste AUDIO n'a pas de machine, donc pas de machine
+suivante — sort du verdict du mélange tout entier, témoin de coupure compris. La
+phrase qui manque au journal de la course 3 est : « Voix · tête, Voix · chœurs :
+le morceau est MEILLEUR sans ces pistes (0,1935 contre 0,1982) ». C'est la panne
+muette que ce dépôt s'interdit — ce qui est ajouté au mélange sans être mesuré —
+et c'est précisément celle que le témoin de coupure avait été écrit pour fermer
+(§ 5 decies de `ROADMAP-fusion.md`, la basse de *Sky and Sand* à +5,5 %). Le
+trou restait ouvert pour les pistes qu'aucune machine ne joue.
+
+### 12.4 Le verdict de l'épreuve — les trois courses côte à côte (12/09)
+
+|  | course 1 — le défaut | course 2 — B3 | course 3 — le plafond |
+|---|---|---|---|
+| séparation | `htdemucs_6s`, 6 stems | `htdemucs`, 4 stems | stems de la course 1, repris |
+| distance v2 (budget 20) | **0,1935** | 0,2342 | 0,1982 |
+| pistes jouantes | 9 | 7 | 11 |
+| bus | 1 (Batterie) | 1 | 1 |
+| notes | 9 224 | 7 656 | 9 224 |
+| chaîne / horloge | 24 609 s / 32 975 s | 11 565 s / 20 029 s | 19 695 s / 23 854 s |
+| **parties portées par une piste à elles seules** (sur 8 sûres ou probables) | **3** | **3** | **3** |
+| pistes qui fondent plusieurs parties | `other` (4 parties), `bass` (2) | `other` (4), `bass` (2) | les mêmes |
+| pistes que l'original n'a pas | `guitar`, `Batterie · tom`, `Batterie · percussion` | 2 pièces de batterie de trop | les mêmes + `Voix · tête`, `Voix · chœurs` |
+| machine du piano | `vsm.tb303` (au verdict) | `vsm.piano` — sur la BASSE | `vsm.tb303` |
+
+**La ligne qui porte le verdict est celle du milieu.** Le compte de pistes va de
+7 à 11 d'une course à l'autre, la distance de 0,1935 à 0,2342 — et le nombre de
+parties qu'une piste porte SEULE ne bouge pas : **trois, et les trois sont des
+pièces de batterie** (grosse caisse, charleston, caisse claire), les seules que
+la chaîne découpe par un chemin qui lui est propre. Les cinq parties mélodiques
+(piano, nappe synthé, nappe de cordes, lead en scie, basse) se partagent deux
+pistes dans les trois courses. **Le compte de pistes n'est donc pas une mesure
+de la parité** : il monte quand la chaîne ajoute, pas quand elle sépare.
+
+**La réponse aux règles de réfutation écrites par l'utilisateur** (§ 12.2) :
+« quatre pistes ou moins réfute la parité sur ce disque ; plus de dix réfute
+l'inverse — la chaîne ne sous-découpe plus, elle fabrique ». Les courses 1 (9) et
+2 (7) ne franchissent ni l'une ni l'autre. **La course 3 franchit la seconde :
+11 pistes jouantes**, et les deux qui font passer la barre sont les deux pistes
+de voix d'un disque instrumental, dont la mesure ci-dessus montre qu'elles
+coûtent 2,39 %. Sur ce disque, la chaîne ne sous-découpe plus ET elle fabrique ;
+les deux défauts tiennent ensemble, et le second est le prix du premier — on
+ajoute des pistes là où l'on ne sait pas séparer.
+
+**Les trois étages où la composition se perd, dans l'ordre où ils agissent.**
+
+1. **La séparation décide avant que la chaîne ne puisse rien.** `htdemucs_6s` ne
+   garde le piano dans son stem que tant qu'il est à nu (28 à 57 s : 29,1 % de
+   l'énergie de la section, 0,7 % du morceau), puis le verse dans `other` ; la
+   nappe de l'intro part dans `bass` (92,9 % de 0 à 28 s), et cela ne dépend pas
+   du nombre de sources — la course 2 à quatre stems l'y met aussi (96,3 %).
+2. **La porte du fourre-tout ne s'ouvre jamais.** Le découpage en voix n'est
+   ESSAYÉ que sur un stem déclaré fourre-tout (polyphonie moyenne ≥ 3 ET ambitus
+   ≥ 36). `other` mesure 2,58 en course 1 et 2,89 en course 2 : dans les deux
+   cas, `registres_par_vides` et `separer_en_voix` n'ont pas été appelés une
+   seule fois. Les quatre parties d'`other` ne sont pas fondues DANS des
+   registres mal choisis — elles le sont dans un stem qu'aucun découpage n'a
+   touché.
+3. **Ce que la chaîne ajoute sans machine échappe au verdict.** Démontré par la
+   course 3 : deux pistes audio entrent au mélange, le dégradent de 2,39 %, et
+   aucune ligne ne le dit.
+
+**CE QUE L'ÉPREUVE DÉSIGNE POUR LA SUITE — deux hypothèses écrites ici, avec
+leur critère de réfutation, avant tout travail.**
+
+> **H26 — un fourre-tout se reconnaît dans le TEMPS autant que dans la hauteur.**
+> `other` porte quatre parties à 2,58 de polyphonie moyenne parce que ces
+> parties sont SUCCESSIVES autant que superposées : le piano entre à 28 s, le
+> lead vers 189 s, les ponts les coupent. Une porte qui ne lit que la polyphonie
+> et l'ambitus ne peut pas voir cela, et le tableau de partage par sections que
+> la chaîne calcule DÉJÀ (§ 12.3) le voit à l'œil nu. Hypothèse : une porte qui
+> compare le profil spectral du stem entre ses sections déclare `other`
+> fourre-tout sur *Children*, et le découpage qui s'ensuit porte le nombre de
+> parties tenues seules au-dessus de trois. **Réfutée si** le découpage par
+> entrées et sorties ne fait pas passer ce nombre de 3 à 5 au moins sur ce
+> disque — la distance, elle, est publiée dans les deux cas, la parité primant
+> sur la ressemblance (§ 0).
+>
+> **H27 — le témoin de coupure doit couvrir les pistes sans machine.** Le
+> déplacer hors de la boucle des alternatives, pour qu'il soit établi pour
+> TOUTE piste jouante. **Attendu, chiffré d'avance et vérifiable sans nouvelle
+> course** : rejoué sur le projet de la course 3, le verdict imprime « Voix ·
+> tête », « Voix · chœurs » et « le morceau est MEILLEUR sans cette piste » avec
+> 0,1935 contre 0,1982. **Réfutée si** la phrase ne sort pas, ou sort avec
+> d'autres chiffres que ceux-là.
+
 ## 5. Critères d'acceptation
 
 ```
