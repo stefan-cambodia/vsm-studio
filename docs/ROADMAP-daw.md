@@ -19595,3 +19595,63 @@ n'en finit pas ne vérifie rien.
 désormais tenu de bout en bout : l'aller-retour ne perd rien (D162), un
 enregistrement refusé le dit et ne détruit rien (D173), la fenêtre montre en
 permanence si le travail est à l'abri (D174), et fermer demande (D175).
+
+### D176 (attendus) — le quarante-cinquième audit : le filet de sécurité, éprouvé plutôt que cité (13/09/2026)
+
+**POURQUOI CET AUDIT EXISTE.** D173 et D175 se sont appuyés sur l'autosauvegarde
+pour borner ce qu'une fermeture brutale coûte — « le filet existe ». Je l'ai
+écrit après avoir lu une constante (`kAutosaveIntervalSeconds = 30`) et le nom
+d'une classe. **Ce n'est pas une mesure**, et ce dépôt ne s'accorde pas ce
+raccourci : un filet qu'on cite sans l'avoir éprouvé est une supposition qui
+porte le poids d'une preuve.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** Un projet ouvert, un geste
+annulable, **plus de 30 s d'attente**, puis le processus **tué par SIGKILL** — la
+coupure la plus brutale qui soit, sans `shutdown()`, sans destructeur :
+
+1. **Une session de secours est sur le disque** sous le dossier de l'utilisateur,
+   et elle contient le projet. Réfuté si rien n'est écrit.
+2. **Au lancement suivant, une boîte la propose** (`VSM_BOITE`, D104). Réfuté si
+   l'application démarre comme si de rien n'était.
+3. Ce que le banc NE PEUT PAS faire sera dit : personne n'est là pour cliquer
+   « Récupérer », donc la RESTAURATION elle-même n'est pas mesurée ici — seulement
+   l'existence de la copie et l'offre.
+
+### Phase D176 — le filet tient, et il porte le TRAVAIL, pas seulement une copie (13/09/2026)
+
+**LE PROTOCOLE.** `children-c3-plafond` ouvert, un geste annulable (volume de la
+piste 0 porté à **0,42**), 45 s d'attente, puis **`kill -9`** — pas de
+`shutdown()`, pas de destructeur, pas de dernière chance.
+
+**LES TROIS POINTS, TRANCHÉS.**
+
+1. **La session de secours est là** :
+   `~/VintageSynthMidiStudio/recuperation/<uuid>/` — `project.json`,
+   `midi/arrangement.mid`, les **neuf** presets de machine, et un descripteur
+   `recuperation.json` qui porte le titre, le dossier d'origine, l'heure, et
+   **12 pistes / 9 224 notes**.
+2. **Elle porte le geste, et c'est plus que ce que l'attendu demandait.** Dans la
+   copie de secours, la piste 0 est à **0,42** ; dans le projet resté sur le
+   disque, à **0,3128126262672365**. Ce n'est donc pas une copie périmée du
+   fichier : c'est l'état de la SÉANCE, celui qu'on aurait perdu.
+3. **Au lancement suivant, la boîte le propose**, et elle dit ce qu'elle a :
+   `VSM_BOITE : Session interrompue : A. Robert Miles - Children — 12 piste(s),
+   9224 note(s), enregistré automatiquement il y a moins d'une minute. :
+   [Récupérer | Ignorer et effacer]`.
+
+**CE QUE LE BANC NE MESURE PAS, ET QUI EST DIT** : personne n'est là pour cliquer
+« Récupérer », donc la restauration elle-même n'est pas éprouvée ici — seulement
+l'existence de la copie, son CONTENU, et l'offre.
+
+**UNE LIMITE DU FILET, TROUVÉE EN LE PESANT.** La session de secours fait
+**196 Ko** là où le projet en fait 308 Mo : elle n'emporte **pas les échantillons
+ni les pistes audio**, elle garde le chemin du dossier d'origine
+(`originalFolder`). C'est le bon choix — recopier 160 Mo toutes les trente
+secondes serait pire que le mal —, mais cela veut dire qu'une récupération suppose
+le dossier d'origine encore là. À écrire le jour où quelqu'un récupérera une
+séance dont la clé USB est partie avec.
+
+**ET LA LEÇON DE MÉTHODE.** D173 et D175 s'appuyaient sur ce filet en l'ayant
+seulement LU — une constante et un nom de classe. Le citer comme une preuve était
+un raccourci ; il est maintenant éprouvé, et il tient mieux que je ne l'avais
+écrit.
