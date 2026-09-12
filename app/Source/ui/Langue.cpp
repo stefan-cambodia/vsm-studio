@@ -806,6 +806,25 @@ const Paire kAnglais[] = {
     // DÉCLARE, là où le silence laissait un doute.
     { "Master",
       "Master" },
+    // D151 : six chaînes passées à `tr()` dont la table n'avait pas la clé —
+    // signalées par la règle large de l'inventaire (SANS_PAIRE), donc rendues
+    // en français dans l'interface anglaise. Elles s'écrivent de la même façon
+    // dans les deux langues : l'anglais lisait le bon texte par chance. La
+    // paire identique le déclare. « Transposition » est un TITRE de boîte, et
+    // le mot existe tel quel en anglais (l'action, elle, se dit « Transpose »
+    // et a déjà ses propres clés).
+    { "MIDI CC",
+      "MIDI CC" },
+    { "Transposition",
+      "Transposition" },
+    { "Octave +",
+      "Octave +" },
+    { "Octave -",
+      "Octave -" },
+    { "Crescendo",
+      "Crescendo" },
+    { "Decrescendo",
+      "Decrescendo" },
     { "Muet (piste choisie)",
       "Mute (selected track)" },
     { "Muet sur des clips",

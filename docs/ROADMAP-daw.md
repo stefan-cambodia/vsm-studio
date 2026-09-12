@@ -17635,3 +17635,31 @@ l'action « Transpose »).
 
 Le dernier cas est le contrôle qui donne son sens aux quatre autres : une phase
 qui ne change RIEN à l'écran doit le prouver à l'écran.
+
+**RÉSULTAT (12/09) — LES CINQ ATTENDUS TIENNENT, Y COMPRIS CELUI QUI EXIGE QUE
+RIEN NE CHANGE.** Témoin : binaire de 07:04:44 ; après : 07:13:41. Même projet,
+même banc, anglais.
+
+| mesure | attendu | mesuré |
+|---|---|---|
+| large SANS_PAIRE | 0 | **0** (6 avant) |
+| large ECRAN | 25, inchangé | **25** |
+| large TABLE | 283, inchangé | **283** |
+| stricte, les cinq comptes | 7 / 0 / 121 / 252 / 31 | **7 / 0 / 121 / 252 / 31** |
+| banc : l'onglet en anglais | identique | **identique** |
+
+**Le contrôle vaut plus que les quatre chiffres.** Déclarer six paires
+identiques ne doit RIEN changer à l'écran : c'est facile à affirmer et facile à
+rater — une clé mal recopiée, un accent, un espace, et l'onglet devient autre
+chose. Les cinq onglets lisent « Tempo, MIDI CC, Effects, Automation, Mixer »
+des deux côtés, et surtout **les 184 textes relevés sont identiques LIGNE À
+LIGNE** (`diff` vide, code 0). Préférences de l'utilisateur intactes par `cmp` ;
+suites C++ vertes (330, 1 291, 297, 11, 25), compilées à `-j 2` pendant la
+course 3 de l'épreuve ; `vsm-render` intact.
+
+**Ce que la phase laisse derrière elle.** Les six chaînes étaient lues
+correctement en anglais par CHANCE — les mots s'écrivent pareil dans les deux
+langues. Elles le sont désormais par DÉCLARATION, et la garde de D150 signalera
+toute régression : si l'une d'elles change de texte sans que sa paire suive, la
+règle large la nommera. L'inventaire est propre sous les deux règles, en-têtes
+compris (ECRAN 0).
