@@ -1405,6 +1405,49 @@ dont le cas de la course 3 — deux pistes, aucune alternative, le rendu remplac
 par une fonction, parce que ce qui est mesuré est la DÉCISION de mesurer et non
 le moteur. La suite Python entière est verte (179), ruff et mypy aussi.
 
+### 12.6 H26, premier pas — la statistique qui doit reconnaître un fourre-tout dans le TEMPS (attendu écrit avant la mesure, 12/09 16:10)
+
+**CE QUE LA PORTE ACTUELLE NE PEUT PAS VOIR.** `stem_fourre_tout()`
+(`vsm_reconstruct.py`) demande polyphonie moyenne ≥ 3 **et** ambitus ≥ 36
+demi-tons. Sur *Children*, `other` porte quatre parties à **2,58** de polyphonie
+(course 1) et **2,89** (course 2) : la porte ne s'ouvre pas, et
+`registres_par_vides` comme `separer_en_voix` ne sont jamais APPELÉS. Les
+parties n'y sont pas fondues dans des registres mal choisis — elles le sont dans
+un stem qu'aucun découpage n'a touché. La raison est écrite au § 12.4 : dans ce
+morceau, les parties sont SUCCESSIVES autant que superposées (le piano entre à
+28 s, le lead vers 189 s, les ponts les coupent), et deux parties qui ne sonnent
+pas en même temps ne font pas monter la polyphonie moyenne.
+
+**LA STATISTIQUE PROPOSÉE, ET ELLE SE MESURE SUR L'AUDIO, PAS SUR LES NOTES.**
+La transcription est le maillon le plus faible de la chaîne (C2 à l'INDEX :
+F1 = 0,367) ; une porte bâtie sur elle hériterait de ses erreurs. Le stem, lui,
+est là.
+
+1. Le stem est découpé en fenêtres de **5 s**.
+2. Les fenêtres sous **−50 dBFS** (silence) sont écartées, et leur nombre est dit.
+3. Chaque fenêtre donne un profil de **8 bandes** logarithmiques de 60 Hz à
+   16 kHz, normalisé à somme 1 — un profil de TIMBRE, insensible au niveau.
+4. La statistique est la **dispersion** : distance L1 moyenne entre le profil de
+   chaque fenêtre et le profil MÉDIAN du stem, dans [0, 2].
+
+Un stem qui porte UNE partie garde son timbre : dispersion basse. Un stem où des
+parties entrent et sortent change de profil selon le passage : dispersion haute.
+
+**CE QUI EST ATTENDU, ET CE QUI RÉFUTE.** Les cas dont la composition est ÉCRITE
+(§ 12.1 et § 12.3) :
+
+| stem | ce qu'il porte | attendu |
+|---|---|---|
+| `other` de *Children* | piano (après 57 s), nappe, cordes, lead — **4 parties** | le plus haut des stems mélodiques |
+| `bass` de *Children* | la basse **et** la nappe de l'intro — 2 parties | haut |
+| `piano` de *Children* | le piano, et seulement de 28 à 57 s — 1 partie | bas |
+| `drums` | une famille de frappes, dense mais stable | bas — et s'il est haut, la statistique mesure la densité, pas la composition |
+
+**RÉFUTÉE si** `other` ne dépasse pas `piano`, ou si `drums` se classe avec
+`other` : dans le premier cas la statistique ne voit pas ce qu'elle prétend
+voir ; dans le second elle mesure autre chose. Aucun seuil n'est posé avant ces
+chiffres — le poser d'abord et mesurer ensuite serait le tordre.
+
 ## 5. Critères d'acceptation
 
 ```
