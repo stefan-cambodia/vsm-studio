@@ -1213,3 +1213,103 @@ premières machines de la liste et d'un rendu neuf — il ne dépend pas de ce q
 est sauté. Les onze machines restantes reçoivent le même vivier que les
 quarante-huit déjà écrites. Relancée le 12/09 à 17:14, journal
 `corpus/journaux/parc59-reprise2.log`.
+
+### A6.3 — Une machine au manifeste avec ZÉRO exemple, et l'attendu 4 qui l'interdisait (12/09/2026)
+
+**CE QUE LE CORPUS FINI CONTENAIT.** 59 machines, 273 061 exemples… et
+`vsm.fmdrums` **à 0 exemple**, présente au manifeste, avec deux lots vides sur le
+disque. L'attendu 4 de cette phase l'interdit en toutes lettres : « une machine
+qui ne rend rien doit être NOMMÉE au journal et absente du manifeste, jamais
+présente avec un lot vide ». C'est l'entraînement qui l'a révélé, en mourant
+dessus : `np.concatenate` refusait un tableau de dimension 1 là où les autres en
+ont deux, sans nommer la machine — une panne muette devenue un message de numpy.
+
+**POURQUOI ELLE NE REND RIEN, MESURÉ.** 300 patchs × 16 notes = **4 800 rendus,
+4 800 inaudibles** (RMS < 1e-4). `vsm.fmdrums` est une boîte à rythmes (« FM
+Drums, percussions métalliques ») : elle ne répond qu'aux notes de sa table de
+frappes, et les notes mélodiques du corpus la laissent muette. Elle n'a rien à
+faire dans les candidates MÉLODIQUES — au même titre que `vsm.tr808`,
+`vsm.tr909`, `vsm.drums` et `vsm.sampler`, déjà écartées. **Le compte juste des
+candidates mélodiques est donc 58, et non 59.**
+
+**TROIS CORRECTIONS, ET AUCUNE N'EST UN CONTOURNEMENT.**
+
+1. `_NON_MELODIC` reçoit `vsm.fmdrums` (`vsm_reconstruct.py`), sur la mesure et
+   non sur son nom. Conséquence pour la chaîne : elle cesse de la faire
+   concourir sur chaque stem mélodique, où elle ne rendait rien.
+2. `corpus.py` **n'écrit plus un lot vide**, et une machine sans aucun exemple
+   est **nommée INJOUABLE et retirée du manifeste** — la lettre de l'attendu 4.
+3. `charge_corpus` **dit et saute** un lot vide au lieu d'y mourir, pour qu'un
+   corpus écrit par une version antérieure reste lisible ; et une machine dont
+   TOUS les lots sont vides est refusée par un message qui la nomme.
+
+**CE QUI RESTE, ET QUI EST DIT.** `vsm.perc` rend 2 400 exemples sur 4 800 et
+`vsm.reed` 2 033 : elles sonnent, à moitié moins souvent que les autres. C'est
+une remarque sur leur espace de recherche — la moitié des patchs tirés ne
+produit aucun son — et non sur leur famille. Elles restent candidates.
+
+### A6.4 — Le verdict : le corpus est bon, le MODÈLE s'effondre (12/09/2026)
+
+**LES CHIFFRES, sur 58 machines, 273 061 exemples, patchs jamais vus à
+l'entraînement :**
+
+| | top 1 | top 3 | indistinguables |
+|---|---|---|---|
+| modèle à 58 machines | **17,8 %** | 20,4 % | 27,3 % |
+| hors indistinguables | 21,7 % | 24,3 % | — |
+| critère A1.1 (top 3 ≥ 95 % hors indistinguables) | **NON ATTEINT** | | |
+
+**L'ATTENDU 2 EST RÉFUTÉ, et il l'est très largement** : le top 1 restreint aux
+20 anciennes classes vaut **15,6 %**, contre 93,8 % pour l'ancien modèle et une
+borne écrite d'avance à **85 %**. L'attendu prévoyait ce cas — « en dessous, ce
+sont les nouvelles machines qui brouillent les anciennes, et il faudra le
+dire » — mais une chute d'un facteur six demandait d'en chercher la cause avant
+de l'écrire.
+
+**DEUX TÉMOINS ÉCARTENT LES DEUX PREMIÈRES EXPLICATIONS.**
+
+| témoin | top 1 |
+|---|---|
+| le code d'AUJOURD'HUI sur l'ANCIEN corpus (20 machines) | **93,8 %** — le chiffre publié, reproduit exactement |
+| le corpus parc59 **restreint aux 20 mêmes machines** | **94,6 %** — mieux que l'ancien |
+
+Ni le code, ni les descripteurs, ni les données du corpus neuf ne sont en cause :
+sur les vingt machines d'origine, le corpus neuf fait légèrement MIEUX que celui
+du 28/08. Ce qui s'effondre apparaît avec les trente-huit machines ajoutées.
+
+**ET CE N'EST PAS LE PARC QUI EST INDISTINGUABLE — C'EST LE MODÈLE QUI
+S'EFFONDRE.** Trois mesures le disent ensemble :
+
+1. **L'ambiguïté au plus proche voisin n'a presque pas bougé** : 26,3 % sur 20
+   classes, **27,3 %** sur 58. Si les nouvelles machines sonnaient comme les
+   anciennes, ce chiffre-là aurait explosé.
+2. **Une seule classe absorbe les prédictions.** `vsm.clavichord` est prédite
+   **8 530 fois sur 54 641 (15,6 %)** pour une part réelle de 1,8 % — **8,9 fois
+   sa part** —, et neuf des quinze pires confusions pointent vers elle
+   (`piano` → `clavichord` 72 %, `sitar` 62 %, `plate` 61 %, `harpsichord`
+   58 %, `banjo` 45 %, `clavinet` 40 %, `carillon` 39 %, `vibraphone` 23 %,
+   `vector` 20 %).
+3. **Un simple PLUS PROCHE VOISIN fait 77,0 %** sur les mêmes 58 classes, la
+   même coupure par patch, avec **40 000 exemples d'apprentissage seulement**
+   (le modèle en a eu 218 420) — et ses prédictions sont réparties (classe la
+   plus prédite : 2,4 %, pour 1,7 % de part égale). Les descripteurs SÉPARENT
+   donc les 58 machines ; c'est l'estimateur qui ne le fait pas.
+
+**LA DÉCISION, ÉCRITE ICI.** `modeles/classifieur.joblib` **n'est pas
+remplacé** : un modèle à 17,8 % dégraderait chaque arbitrage de la chaîne. Le
+modèle à 58 machines est conservé sous `modeles/classifieur-parc59.joblib`
+comme pièce de mesure, et la chaîne continue de ne connaître que 20 machines —
+ce que l'attendu 1 voulait clore reste ouvert, et cela se dit plutôt que de se
+maquiller en victoire.
+
+> **H28 — L'ESTIMATEUR NE MONTE PAS À 58 CLASSES (hypothèse écrite avant sa
+> mesure).** `HistGradientBoostingClassifier(max_iter=200, early_stopping=False)`
+> entraîne **un arbre par classe et par itération** : à 20 classes, 200
+> itérations donnent 4 000 arbres ; à 58, les mêmes 200 itérations laissent
+> chaque classe avec le même budget d'arbres qu'avant alors que la frontière à
+> tracer est trois fois plus grande, et le modèle se replie sur la classe
+> centrale. **Attendu** : à budget augmenté (max_iter 600, ou un estimateur qui
+> ne paie pas le nombre de classes), le top 1 sur 58 classes passe **au-dessus
+> de 77 %** — le plancher que le plus proche voisin vient d'établir. **Réfutée
+> si** le top 1 reste sous 77 % : la cause serait alors dans les descripteurs ou
+> dans la coupure, et non dans le budget de l'estimateur.

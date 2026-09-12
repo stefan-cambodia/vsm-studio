@@ -44,7 +44,11 @@ l'ordre de marche — pas de la documentation d'accompagnement.
 - JAMAIS de build complet pendant qu'une reconstruction tourne : remplacer
   build/tools/vsm-render tue la course. Compiler des cibles précises.
 - `pkill -f "Vintage Synth"` tue le shell qui porte le motif dans sa propre
-  ligne de commande : passer par un script fichier.
+  ligne de commande : passer par un script fichier. Même piège avec `pgrep -f`
+  dans une ATTENTE : `until ! pgrep -f "corpus.py --sortie"` ne se termine
+  JAMAIS, la boucle se trouvant elle-même (12/09 — la course était finie depuis
+  vingt minutes et deux surveillances la croyaient en cours). Attendre par PID
+  (`while kill -0 $PID`), jamais par motif.
 - Une campagne lancée depuis le shell de l'outil MEURT avec la session, même
   sous nohup (S1, 04/09 : 1 h 44 de course perdues à la reprise). Lancer par
   `setsid nohup script.sh > x.log 2>&1 < /dev/null & disown`, et à chaque

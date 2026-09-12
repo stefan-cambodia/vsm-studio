@@ -78,12 +78,25 @@ def charge_corpus(dossier: Path) -> CorpusCharge:
         lots = sorted((dossier / machine).glob("lot-*.npz"))
         if not lots:
             raise ValueError(f"aucun lot pour « {machine} » : corpus incomplet")
+        avant = len(X)
         for chemin in lots:
             lot = LotDeCorpus.relit(chemin)
+            # A6.3 : UN LOT VIDE SE DIT ET SE SAUTE. Un corpus écrit par une
+            # version antérieure peut en contenir (`vsm.fmdrums`, 4 800 rendus
+            # inaudibles) ; son tableau est de dimension 1 là où les autres en
+            # ont deux, et `np.concatenate` mourait sur « all the input arrays
+            # must have same number of dimensions », sans nommer la machine.
+            if lot.X.ndim != 2 or len(lot.X) == 0:
+                print(f"  {machine} : lot vide ({chemin.name}) IGNORÉ — "
+                      f"cette machine n'a rendu aucun son exploitable")
+                continue
             X.append(lot.X)
             machines.append(np.full(len(lot.X), index, dtype=np.int32))
             patchs.append(lot.patchs)
             augmentations.extend(lot.augmentations)
+        if len(X) == avant:
+            raise ValueError(f"« {machine} » n'a que des lots vides : elle ne peut pas "
+                             f"être une classe du modèle (voir A6.3)")
     return CorpusCharge(np.concatenate(X), np.concatenate(machines),
                         np.concatenate(patchs), noms, augmentations, manifeste)
 

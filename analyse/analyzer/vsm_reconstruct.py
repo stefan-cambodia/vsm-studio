@@ -52,7 +52,20 @@ if TYPE_CHECKING:  # le classifieur est optionnel à l'exécution ; son type
 # Elle n'est PAS écrite en dur au sens où on l'entend d'habitude : elle est
 # filtrée à partir de ce que le moteur déclare savoir instancier, si bien
 # qu'une machine ajoutée au DAW entre automatiquement dans le choix.
-_NON_MELODIC = {"vsm.testtone", "vsm.tr808", "vsm.tr909", "vsm.sampler", "vsm.drums"}
+# LES MACHINES QUI NE JOUENT PAS DE MÉLODIE. `vsm.fmdrums` y est entrée le
+# 12/09/2026 sur une MESURE et non sur son nom : au corpus du classifieur, ses
+# 300 patchs × 16 notes ont rendu **4 800 sons inaudibles sur 4 800** (RMS
+# < 1e-4), zéro exemple. Une boîte à rythmes (« FM Drums, percussions
+# métalliques ») ne répond qu'aux notes de sa table de frappes ; sur les notes
+# mélodiques du corpus, elle est muette. La laisser dans les candidates la
+# faisait concourir sur chaque stem mélodique en ne rendant rien, et remplissait
+# le corpus d'un lot vide (A6.3 de ROADMAP-apprentissage.md).
+#
+# `vsm.perc` (2 400 exemples sur 4 800) et `vsm.reed` (2 033) RESTENT : elles
+# sonnent, à moitié moins souvent que les autres, ce qui dit quelque chose de
+# leur espace de recherche et non de leur famille.
+_NON_MELODIC = {"vsm.testtone", "vsm.tr808", "vsm.tr909", "vsm.sampler", "vsm.drums",
+                "vsm.fmdrums"}
 
 
 @dataclass

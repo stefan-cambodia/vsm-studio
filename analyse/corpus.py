@@ -189,12 +189,34 @@ def main() -> int:
                                      if autre != machine],
                     decalage_patch=numero * arguments.taille_lot,
                     progression=lambda message: print(f"      {message}", end="\r", flush=True))
-                lot.enregistre(chemin)
+                # A6.3 : UN LOT VIDE NE S'ÉCRIT PAS. `vsm.fmdrums` en a écrit
+                # deux — 4 800 rendus, 4 800 inaudibles — puis est entrée au
+                # manifeste avec 0 exemple, ce que l'attendu 4 de la phase A6
+                # interdit en toutes lettres (« jamais présente avec un lot
+                # vide »). Le fichier portait un tableau de dimension 1 là où
+                # tous les autres en ont deux, et `charge_corpus` mourait sur un
+                # message de numpy au lieu de nommer la machine.
+                if len(lot.X) == 0:
+                    print(f"      {machine:20s} lot {numero} VIDE — aucun son "
+                          f"exploitable, rien n'est écrit")
+                else:
+                    lot.enregistre(chemin)
                 exemples += len(lot.X)
                 secondes += lot.seconds
                 engendres += len(lot.X)
                 for raison, compte in lot.rejets.items():
                     rejets[raison] = rejets.get(raison, 0) + compte
+            if exemples == 0:
+                # A6.3 : NOMMÉE ET ABSENTE DU MANIFESTE, jamais présente à zéro.
+                detail = ", ".join(f"{raison} ×{compte}"
+                                   for raison, compte in sorted(rejets.items(),
+                                                                key=lambda kv: -kv[1])[:3])
+                print(f"      {machine:20s} INJOUABLE — 0 exemple sur "
+                      f"{arguments.patchs * grille.rendus_par_patch()} rendus"
+                      + (f" ({detail})" if detail else "")
+                      + " ; ABSENTE du manifeste")
+                manifeste.empreintes.pop(machine, None)
+                continue
             manifeste.exemples[machine] = exemples
             manifeste.secondes[machine] = round(secondes, 1)
             engendres_total += engendres
