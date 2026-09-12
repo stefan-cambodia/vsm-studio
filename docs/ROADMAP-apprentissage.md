@@ -1406,3 +1406,31 @@ mesurable est de réduire le corpus de référence, pas de revenir au boosting.
 **CE QUE CELA ROUVRE.** A5.2 — « la présélection apprise sert-elle la
 reconstruction ? » — avait été mesurée avec un modèle qui ignorait deux tiers du
 parc. La question redevient posable, et c'est l'élément suivant de B1.
+
+### A6.7 — A5.2 rejouée sur le modèle adopté : ce qu'il faut vérifier AVANT de s'en servir (attendu écrit avant la mesure, 12/09/2026)
+
+**POURQUOI CETTE MESURE EST DUE MAINTENANT.** A5.2 a été mesurée le 29/08 sur le
+modèle à 20 machines et conclue ainsi : « atteinte pour la CHAÎNE et pas pour le
+MODÈLE » — le modèle désignait `vsm.sh101` à **1,00** sur un piano acoustique,
+et c'est le RAYON DE NOUVEAUTÉ, pas la qualité du classement, qui protégeait le
+verdict. Adopter un modèle d'une autre famille sans reposer cette question
+reviendrait à changer la pièce qui produit exactement la faute que le § 4 du
+cahier appelle la pire du projet.
+
+**LE PROTOCOLE, celui du 29/08, repris sans le modifier** : vingt extraits d'une
+seconde également répartis sur l'enregistrement de piano seul (le canal GAUCHE de
+`reconstruction/travail/cdl-a5/comparaison.wav`, qui EST l'original), classés par
+`classifieur.py --eprouver`. « Confiante » = score ≥ 0,90. Le rayon de nouveauté
+du modèle adopté vaut 3,91 (celui du 29/08 : 3,77).
+
+**CE QUE J'ATTENDS, ET CE QUI LE RÉFUTE.** Le rayon est une propriété du CORPUS,
+pas de l'estimateur, et il a à peine bougé : le taux d'abstention devrait donc
+rester au moins aussi haut qu'au 29/08, soit **≥ 90 % (18/20)**. Sur les
+désignations confiantes, j'attends une BAISSE : le score d'un k plus proches
+voisins est un vote pondéré entre dix exemples — pour atteindre 0,90 il faut que
+neuf ou dix des dix plus proches appartiennent à la même machine —, là où une
+sortie softmax de boosting peut saturer à 1,00 sur un seul côté d'une frontière.
+**Réfutée si** les désignations confiantes augmentent, ou si l'abstention passe
+sous 18/20 : adopter le modèle aurait alors rendu la pire faute du projet plus
+probable, et il faudrait revenir en arrière — le modèle précédent est conservé
+pour cela (`modeles/classifieur-20-hgb.joblib`).
