@@ -1448,6 +1448,72 @@ parties entrent et sortent change de profil selon le passage : dispersion haute.
 voir ; dans le second elle mesure autre chose. Aucun seuil n'est posé avant ces
 chiffres — le poser d'abord et mesurer ensuite serait le tordre.
 
+### 12.7 H26, premier pas — RÉFUTÉ deux fois, et ce que les chiffres apprennent (12/09)
+
+**LA MESURE DE LA FORME SIMPLE** (§ 12.6 : fenêtres de 5 s, silence sous
+−50 dBFS écarté et compté, 8 bandes log 60 Hz-16 kHz normalisées, distance L1
+moyenne au profil médian). Deux jeux de stems : *Children* séparé en six sources
+(la course 1 de l'épreuve, dont la composition est ÉCRITE au § 12.1) et les six
+stems d'un autre disque déjà sur le poste, dont la composition ne l'est pas.
+
+| stem | *Children* | part sonore | autre disque |
+|---|---|---|---|
+| `bass` (2 parties : basse **et** nappe de l'intro) | 0,4294 | 99 % | 0,3319 |
+| `drums` | 0,4575 | 75 % | 0,3028 |
+| `guitar` (fuite : 0,6 % de l'énergie) | **0,6577** | 23 % | 0,7471 |
+| `other` (**4 parties**) | 0,6176 | 90 % | 0,3827 |
+| `piano` (1 partie, et à nu 29 s seulement) | 0,4946 | 35 % | 0,4197 |
+| `vocals` (fuite : 0,2 %) | **0,6401** | 29 % | 0,6632 |
+
+**Les deux critères écrits d'avance sont tenus** — `other` (0,6176) dépasse
+`piano` (0,4946), et `drums` (0,4575) ne se classe pas avec `other`. **Et la
+statistique est inutilisable quand même**, pour un cas que l'attendu n'avait pas
+nommé : **les deux stems de FUITE la dominent tous les deux**. Une porte bâtie
+là-dessus déclarerait fourre-tout un résidu de séparation à 0,2 % d'énergie et
+le partagerait en quatre voix — c'est-à-dire qu'elle fabriquerait des pistes,
+précisément le défaut que la course 3 a mesuré. Les parts sonores disent
+pourquoi : 23 % et 29 % de fenêtres au-dessus du plancher, contre 90 % pour
+`other`. Un stem rare et erratique n'a pas de timbre stable parce qu'il n'a pas
+de timbre.
+
+**LA FORME PONDÉRÉE (H26b), écrite après ce constat et avant sa mesure** : la
+médiane ET la moyenne pondérées par l'énergie de chaque fenêtre, pour qu'une
+fenêtre presque silencieuse ne pèse pas autant qu'un tutti ; la part sonore
+publiée à côté. **Réfutée si** `other` ne repasse pas au-dessus des deux fuites,
+ou si `drums` la rejoint.
+
+| stem | *Children*, pondérée | part sonore | autre disque, pondérée |
+|---|---|---|---|
+| `bass` | 0,3213 | 99 % | 0,2662 |
+| `drums` | **0,4457** | 75 % | 0,2859 |
+| `guitar` | 0,3387 | 23 % | 0,6458 |
+| `other` | 0,3770 | 90 % | 0,2796 |
+| `piano` | 0,2048 | 35 % | 0,2966 |
+| `vocals` | **0,5732** | 29 % | 0,5389 |
+
+**RÉFUTÉE, sur ses deux critères à la fois.** La pondération remet `guitar`
+(0,3387) sous `other` (0,3770) — et `vocals` reste au-dessus (0,5732), et
+`drums` passe DEVANT (0,4457). Sur l'autre disque, `other` (0,2796) est sous
+`drums` (0,2859) et à côté de `bass` (0,2662) : aucune séparation.
+
+**CE QUE CES DEUX MESURES APPRENNENT, ET C'EST UTILE.** La dispersion d'un
+profil de bandes mesure l'INSTABILITÉ DE TIMBRE, et l'instabilité de timbre a au
+moins trois causes que ce chiffre ne sait pas distinguer : plusieurs parties qui
+entrent et sortent, un résidu de séparation qui n'a pas de timbre, et une
+batterie dont chaque frappe a le sien. Aucun seuil sur un tel chiffre ne peut
+séparer la première des deux autres, et en poser un serait tordre la mesure
+après coup. **La porte du fourre-tout reste donc celle d'aujourd'hui**, et H26
+n'a pas trouvé sa statistique ici.
+
+**LA PISTE QUE CES CHIFFRES DÉSIGNENT, NON MESURÉE ET DITE POUR CE QU'ELLE
+EST.** Ce qui distingue `other` des deux fuites dans ces tableaux n'est pas la
+dispersion — c'est la PART SONORE (90 % contre 23 % et 29 %) croisée avec la
+part d'énergie du stem (9,5 % contre 0,6 % et 0,2 %). Et ce qui distinguerait
+une partie qui ENTRE d'un timbre qui change, c'est un profil de bandes qui
+apparaît et se MAINTIENT — une marche, pas une oscillation. Une statistique de
+palier (segmentation en plages stables, puis compte des plages dont le profil
+diffère durablement) reste à écrire et à mesurer ; elle n'est pas promise ici.
+
 ## 5. Critères d'acceptation
 
 ```
