@@ -710,6 +710,27 @@ coût.)*
 > cohérent avec une soustraction qui retire peu. Les chiffres du § 7.4 se
 > liront sur les dix, pas sur cinq.
 
+> **REPRISE DU 12/09/2026 — ET CE QU'ELLE DOIT PROUVER AVANT DE COMPTER.** Les
+> cinq morceaux mesurés ont couru le 06/09 ; les cinq qui restent courront avec
+> le code d'aujourd'hui. Un lot à deux états du code n'est honnête que si l'on
+> montre que le code n'a pas bougé POUR CE QU'IL MESURE. Trois changements sont
+> intervenus dans la chaîne depuis :
+>
+> 1. **le témoin de coupure couvre les pistes sans machine** (H27, § 12.5 du CDC
+>    multipiste) : il MESURE et n'installe rien — le volume de la piste est
+>    restauré après l'essai ;
+> 2. `separer_en_voix` accepte un argument `justifie`, **dont le défaut est
+>    `False`** : sans lui, le code emprunté est celui d'avant, ligne pour ligne ;
+> 3. la **porte des paliers** existe derrière `--porte-paliers`, **éteinte par
+>    défaut**.
+>
+> Aucun des trois ne change le PROJET rendu, et c'est une affirmation qui se
+> mesure. **Attendu, écrit avant** : rejoué avec le code d'aujourd'hui, le
+> morceau 1 doit rendre sa distance globale du 06/09, **0,1825703072613801**.
+> Si elle diffère d'un millionième, le lot est mélangé et il se refait EN
+> ENTIER ; si elle est identique, les cinq morceaux restants complètent le lot
+> sans réserve, et le § 7.4 se lira sur dix.
+
 ### 7.5 La décision — annoncée, en attente du lot forcé pour être signée
 
 Ce que `r1` établit suffit à la moitié de la décision : **la boucle
