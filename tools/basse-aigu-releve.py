@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import tempfile
 from pathlib import Path
 
@@ -29,7 +30,7 @@ import numpy as np
 import soundfile as sf
 
 RACINE = Path(__file__).resolve().parent.parent
-LOT = RACINE / "reconstruction/travail/r1f-13sep"
+LOT = Path(os.environ.get("VSM_LOT", str(RACINE / "reconstruction/travail/r1f-13sep")))
 SRC = RACINE / "reconstruction/travail/s1-sec"
 TOLERANCE = 0.06
 COUPURE = 300.0
@@ -70,7 +71,18 @@ def mesurer(gain_db: float, passe_haut_hz: float = 0.0) -> dict[str, int]:
     from basic_pitch.inference import predict
 
     c = {"juste": 0, "bas": 0, "haut": 0, "autre": 0, "inventee": 0, "total": 0}
+    # VSM_MORCEAUX : restreindre à une MOITIÉ du corpus, pour régler sur l'une et
+    # valider sur l'autre.
+    #
+    # POURQUOI IL LE FAUT (13/09/2026). Il n'existe pas de « lot témoin » pour
+    # cette mesure : `r1-sec-banc`, `r1-prod-banc` et `r1f-13sep` séparent tous
+    # les MÊMES dix morceaux de `s1-sec`, et demucs est déterministe — leurs stems
+    # de basse sont IDENTIQUES au md5. Valider un réglage sur un autre lot, c'est
+    # le valider sur les mêmes données ; j'ai failli publier exactement cela.
+    choisis = [m.strip() for m in os.environ.get("VSM_MORCEAUX", "").split(",") if m.strip()]
     for d in sorted(LOT.glob("morceau-*")):
+        if choisis and d.name not in choisis:
+            continue
         stem = d / "stems-separes" / "stems" / "bass.wav"
         verite = SRC / d.name / "verite.json"
         if not (stem.is_file() and verite.is_file()):

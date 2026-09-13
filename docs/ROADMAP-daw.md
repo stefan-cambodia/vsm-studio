@@ -25081,3 +25081,52 @@ fait descendre le transcripteur d'une octave (D278, jusqu'à 75 % de ses notes) 
 retirer ce grave fait remonter la justesse (ici). Le maillon qui manquait à
 D279 — *le grave ajouté est-il tonal ou un simple grondement ?* — est tranché par
 l'effet : **un grondement ne se laisserait pas retirer avec ce résultat-là.**
+
+**ET LA VALIDATION ÉCHOUE. Le remède ne généralise pas.**
+
+D'abord une découverte de méthode, qui a failli coûter cher : **il n'existe PAS de
+lot témoin pour cette mesure.** `r1-sec-banc`, `r1-prod-banc` et `r1f-13sep`
+séparent tous les MÊMES dix morceaux de `s1-sec`, et `htdemucs` est déterministe —
+leurs stems de basse sont **identiques au md5** (`a7054e25…`). Valider un réglage
+sur « un autre lot » revenait à le valider sur les mêmes données, et le banc rendait
+les mêmes chiffres au dernier digit. C'est ce qui l'a trahi.
+
+Le corpus a donc été coupé en deux : **régler sur les morceaux 1 à 5, valider sur
+6 à 10**, jamais regardés pour choisir la coupure.
+
+| moitié A — RÉGLAGE | écrites | justes | 8ve bas | bonne hauteur |
+|---|---|---|---|---|
+| témoin | 397 | 89 | 69 | 37,6 % |
+| 40 Hz | 389 | 105 | 59 | 42,9 % |
+| **60 Hz** | 306 | **111** | **31** | **51,6 %** |
+| 80 Hz | 277 | 68 | 21 | 34,3 % |
+
+Sur A, 60 Hz est franchement le meilleur : **+14 points** de bonne hauteur, les
+justes de 89 à 111, les octaves basses de 69 à 31. Le choix se fait là, sans avoir
+vu B.
+
+| moitié B — VALIDATION | écrites | justes | 8ve bas | bonne hauteur |
+|---|---|---|---|---|
+| témoin | 326 | **151** | 26 | **72,2 %** |
+| **60 Hz** | 282 | **137** | 22 | **69,9 %** |
+
+**Sur B, le remède fait PERDRE 2,3 points** et coûte 14 notes justes. Le rapport
+bas/haut y empire même (5,2× → 5,5×).
+
+**POURQUOI, ET C'EST INSTRUCTIF.** Le témoin de B est déjà à **72,2 %** quand celui
+de A est à 37,6 % : **les morceaux de B n'ont presque pas le défaut**, et leur
+retirer du grave ne peut donc que coûter. La bonne coupure n'est pas une constante
+du modèle de séparation — elle dépend du REGISTRE de la basse du morceau, et une
+basse qui joue bas perd sa fondamentale là où une autre ne perd que le grondement.
+
+**CE QUE CELA ÉTABLIT, ET CE QUE CELA NE RÉFUTE PAS.** Le mécanisme reste mesuré et
+solide : la séparation empile du grave (D280, 5,2 % → 49,8 %), et un grave fort
+fait descendre l'octave (D278, 0 → 75 %). **C'est le remède à COUPURE FIXE qui est
+réfuté**, et le gain de +6,5 points lu sur les dix morceaux était bien ce que
+D270 avait appris à craindre : un réglage choisi sur les données qui l'affichent.
+
+**LA SUITE, ÉCRITE AVANT DE LA TENTER** : une coupure ADAPTÉE au morceau — posée
+sous la note la plus grave que la transcription trouve, plutôt qu'à un nombre fixe.
+Attendu : elle doit gagner sur A **sans rien perdre sur B** (bonne hauteur au moins
+égale au témoin, à un point près). Sans cette seconde condition, on retomberait
+dans le même piège.
