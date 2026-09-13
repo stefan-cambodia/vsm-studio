@@ -22491,3 +22491,27 @@ OK   modale       fenêtre modale ouverte   OK   textes       VSM_TEXTES :
 C'est la troisième garde de `tools/` posée aujourd'hui, avec `--doublons` (D216) et
 `apres-campagne.sh`. Toutes trois suivent la règle de D150 : ce qui doit empêcher
 une régression vit dans `tools/`, avec sa raison écrite dans son en-tête.
+
+### Phase D230 — le premier lancement, regardé comme un nouveau venu le verrait (13/09/2026)
+
+Un `HOME` vierge, aucun projet, aucune préférence : ce que voit quelqu'un qui
+ouvre l'application pour la première fois. La photo montre un logiciel **complet
+dès l'ouverture** — une piste « Bass » sur un Minimoog-style Monosynth, le piano
+roll avec sa grille et son clip, la façade de la machine à droite, la console en
+bas avec sa tranche et son master, le transport en haut. Rien ne manque, rien
+n'est vide, et le titre ne ment pas.
+
+**UNE SUSPICION LEVÉE, ET C'EST POURQUOI ON REGARDE.** La dernière rangée de la
+barre du piano roll (« Chromatique | Gamme | Fantômes | Replier | Suivre »)
+apparaît **coupée en deux** par la règle. À première vue, un défaut de mise en
+page — et un défaut qui compterait, puisque la fenêtre est **bornée à 1 280 × 742
+par l'écran divisé par l'échelle de 150 %** : c'est la taille que l'utilisateur a
+vraiment, et non un artefact de banc (`VSM_TAILLE : 1600x1000 demandé, 1280x742
+obtenu — BORNÉ par l'écran divisé par l'échelle d'interface`).
+
+Ce n'en est pas un : la barre vit dans un cadre défilant (D61), plafonné à deux
+cinquièmes de la hauteur du panneau — « l'éditeur est ce qu'on est venu voir » —,
+et **l'ascenseur est là, visible sur la photo**, son curseur occupant les deux
+tiers de sa glissière : un tiers de la barre attend sous le bord. Une rangée
+à moitié visible est même ce qui l'annonce. La décision de D61 tient ; ce qui
+manquait était le regard qui la confirme.
