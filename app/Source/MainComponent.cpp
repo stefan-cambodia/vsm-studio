@@ -1637,6 +1637,9 @@ bool MainComponent::runContextMenuForCapture(const juce::String& entree) {
                     : quel == "pianoroll"     ? pianoRoll_.actionDeMenuPourCapture(libelle)
                     : quel == "regle-pianoroll" ? pianoRollPanel_.actionDuMenuDeRegle(libelle)
                                               : arrangement_.actionDeMenuPourCapture(quel, libelle);
+    // D227 : « ? » ne fait RIEN, et ne dit donc pas « exécutée » -- la ligne du
+    // listing suffit, et « « ? » exécutée » laissait croire à un geste.
+    if (libelle == "?") return fait;
     std::fputs((juce::String("VSM_MENU_CONTEXTE : ")
                 + (fait ? juce::String(u8"« ") + libelle + juce::String(u8" » exécutée (") + quel + ")"
                         : juce::String(u8"aucune entrée « ") + libelle + juce::String(u8" » dans le menu ") + quel)
