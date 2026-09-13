@@ -458,9 +458,25 @@ class Generateur:
     """
 
     def __init__(self, engine: VsmEngine, machines: Optional[Sequence[str]] = None,
+                 borne_hauteur: float = 0.0,
                  rendre: Optional[Callable[..., np.ndarray]] = None,
                  journal: Optional[Callable[[str], None]] = None):
         self.engine = engine
+        # D277 / B5 : DE COMBIEN UN PATCH TIRÉ PEUT-IL DÉSACCORDER LA HAUTEUR ?
+        #
+        # 0 (le défaut) : sans borne, c'est-à-dire le corpus d'avant, au bit près.
+        # Une valeur en demi-tons borne les paramètres de hauteur du patch, ce que
+        # le § 7 bis du cahier des charges demande pour le corpus SUIVANT : sans
+        # borne, une partie peut sonner huit demi-tons à côté de ses notes, et
+        # `morceau-0001-g1` l'est ENTIÈREMENT — son F1 vaut 0,027 ou 0,567 selon
+        # la hauteur qu'on compare, dernier des dix ou premier.
+        #
+        # BORNER CHANGE CE QUE LE CORPUS ÉPROUVE, et c'est assumé : un musicien
+        # désaccorde ses oscillateurs, parfois beaucoup. Mais le corpus sert
+        # d'ÉTALON, pas d'épreuve — sa vérité doit être fiable avant d'être
+        # difficile, et un morceau dont le F1 dépend de la convention de lecture
+        # ne mesure rien, si réaliste soit-il.
+        self.borne_hauteur = float(borne_hauteur)
         self.machines = list(machines) if machines else machines_melodiques_du_banc(engine)
         if not self.machines:
             raise VsmEngineError("aucune machine mélodique cherchable : le moteur est-il vivant ?")
@@ -473,6 +489,41 @@ class Generateur:
         if machine not in self._espaces:
             self._espaces[machine] = search_space_for_machine(machine, self.engine, max_dimensions=10 ** 6)
         return self._espaces[machine]
+
+    def borner_les_hauteurs(self, machine: str, vecteur: np.ndarray) -> np.ndarray:
+        """Ramène les composantes de HAUTEUR du vecteur dans la borne demandée.
+
+        ON BORNE LE VECTEUR, PAS LE PATCH, et c'est ce qui fait tenir l'ensemble :
+        `verite.json` garde le vecteur tiré, et le patch s'en déduit. Écrêter le
+        patch après coup les ferait mentir l'un sur l'autre, et un corpus
+        reproductible ne l'est plus si son vecteur ne rend pas son patch.
+
+        Les dimensions LOGARITHMIQUES sont laissées telles quelles : aucun
+        paramètre de hauteur du parc n'en est (un désaccord se lit en demi-tons
+        ou en cents, jamais en décades), et remapper une échelle log sans cas
+        d'essai serait deviner.
+        """
+        if self.borne_hauteur <= 0.0:
+            return vecteur
+        borne = self.borne_hauteur
+        sortie = np.array(vecteur, dtype=float, copy=True)
+        for i, dimension in enumerate(self.espace(machine)):
+            if dimension.unit not in ("st", "cents") or dimension.logarithmic:
+                continue
+            en_st = 1.0 if dimension.unit == "st" else 0.01
+            bas, haut = dimension.low * en_st, dimension.high * en_st
+            if haut <= bas:
+                continue
+            # La fenêtre de tirage qui respecte la borne, exprimée en 0-1.
+            t_bas = max(0.0, (-borne - bas) / (haut - bas))
+            t_haut = min(1.0, (borne - bas) / (haut - bas))
+            if t_haut <= t_bas:
+                # La dimension entière est hors borne (elle ne peut pas être
+                # accordée) : on prend le point le plus proche de zéro.
+                sortie[i] = 0.0 if abs(bas) < abs(haut) else 1.0
+                continue
+            sortie[i] = t_bas + float(sortie[i]) * (t_haut - t_bas)
+        return sortie
 
     def desaccords_de_hauteur(self, machine: str, patch: Dict[str, float]) -> Dict[str, float]:
         """Les paramètres du patch qui DÉPLACENT la hauteur, en demi-tons.
@@ -504,7 +555,7 @@ class Generateur:
         espace = self.espace(machine)
         rejets = 0
         for _ in range(TIRAGES_DE_PATCH):
-            vecteur = rng.random(len(espace))
+            vecteur = self.borner_les_hauteurs(machine, rng.random(len(espace)))
             patch = _vector_to_parameters(espace, vecteur)
             try:
                 sonde = self.rendre(machine, patch, [Note(note_sonde, 100, 0.0, 0.75)], 1.0)

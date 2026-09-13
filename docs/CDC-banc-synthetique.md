@@ -795,6 +795,15 @@ ici est donc de BORNER, et de le dire** — avec deux raisons :
 **Et le désaccord résiduel reste ÉCRIT** (D277, `desaccords_demi_tons`) : borné ne
 veut pas dire nul, et ce qui subsiste doit rester lisible par les outils.
 
+**FAIT LE 13/09/2026** : `morceaux.py --borner-hauteur 2` borne le tirage. Le
+défaut est **0**, c'est-à-dire le corpus d'avant au bit près — un corpus ne change
+pas de règle en douce, et `s1-sec` doit rester reproductible tant qu'on s'en sert.
+La borne agit sur le VECTEUR tiré et non sur le patch : `verite.json` garde le
+vecteur, le patch s'en déduit, et écrêter le patch après coup les ferait mentir
+l'un sur l'autre. Les dimensions logarithmiques sont laissées telles quelles —
+aucun paramètre de hauteur du parc n'en est, et remapper une échelle log sans cas
+d'essai serait deviner.
+
 ### 7 bis.3 Ce que le corpus suivant doit rejouer pour être cru
 
 Trois mesures se rejouent sur le corpus neuf AVANT qu'on s'y fie, et elles

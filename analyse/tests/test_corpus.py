@@ -325,3 +325,56 @@ def le_desaccord_de_hauteur_est_ecrit_dans_la_verite():
     trouves = Generateur.desaccords_de_hauteur(faux, "vsm.essai", patch)
     assert_near(trouves["oscillator.autre.detune"], 0.3715, 1e-9,
                 "37,15 cents valent 0,3715 demi-ton, et sont retenus")
+
+
+@test
+def borner_la_hauteur_ramene_les_desaccords_sous_la_borne():
+    """B5 / § 7 bis : un patch tiré ne doit plus sonner huit demi-tons à côté.
+
+    ON BORNE LE VECTEUR, PAS LE PATCH : `verite.json` garde le vecteur tiré et le
+    patch s'en déduit. Écrêter le patch après coup les ferait mentir l'un sur
+    l'autre, et un corpus reproductible ne l'est plus si son vecteur ne rend pas
+    son patch. Le test vérifie donc les DEUX : la borne tenue, et l'accord entre
+    le vecteur et le patch qu'il engendre.
+    """
+    import types
+
+    import numpy as np
+
+    from analyzer.vsm_engine import SearchDimension
+    from analyzer.vsm_morceaux import Generateur
+    from analyzer.vsm_patch_optimizer import _vector_to_parameters
+
+    espace = [
+        SearchDimension(semantic_id="oscillator.2.detune", low=-12.0, high=12.0, unit="st"),
+        SearchDimension(semantic_id="sample.1.tune", low=-24.0, high=24.0, unit="st"),
+        SearchDimension(semantic_id="osc.cents", low=0.0, high=50.0, unit="cents"),
+        SearchDimension(semantic_id="filter.1.cutoff", low=20.0, high=20000.0,
+                        logarithmic=True, unit="Hz"),
+    ]
+    faux = types.SimpleNamespace(_espaces={"vsm.essai": espace}, borne_hauteur=2.0)
+    faux.espace = lambda machine: faux._espaces[machine]
+
+    # Les deux extrêmes et le milieu : une borne qui ne tiendrait qu'au centre ne
+    # servirait à rien, puisque c'est aux bords que le tirage désaccorde.
+    for brut in (0.0, 0.5, 1.0):
+        vecteur = Generateur.borner_les_hauteurs(faux, "vsm.essai", np.full(len(espace), brut))
+        patch = _vector_to_parameters(espace, vecteur)
+        assert_true(abs(patch["oscillator.2.detune"]) <= 2.0 + 1e-9,
+                    f"detune borné à 2 demi-tons (obtenu {patch['oscillator.2.detune']})")
+        assert_true(abs(patch["sample.1.tune"]) <= 2.0 + 1e-9,
+                    f"tune borné à 2 demi-tons (obtenu {patch['sample.1.tune']})")
+        assert_true(abs(patch["osc.cents"]) <= 200.0 + 1e-9,
+                    f"cents bornés à 2 demi-tons = 200 cents (obtenu {patch['osc.cents']})")
+
+    # LE TÉMOIN : sans borne, rien ne bouge — le corpus d'avant, au bit près.
+    faux.borne_hauteur = 0.0
+    vecteur = np.full(len(espace), 1.0)
+    assert_true(np.array_equal(Generateur.borner_les_hauteurs(faux, "vsm.essai", vecteur), vecteur),
+                "borne nulle : le vecteur tiré n'est pas touché")
+
+    # ET LA DIMENSION QUI N'EST PAS UNE HAUTEUR n'est jamais remappée : borner le
+    # filtre changerait le timbre du corpus sans que personne ne l'ait demandé.
+    faux.borne_hauteur = 2.0
+    vecteur = Generateur.borner_les_hauteurs(faux, "vsm.essai", np.full(len(espace), 1.0))
+    assert_near(float(vecteur[3]), 1.0, 1e-12, "la fréquence de coupure n'est pas bornée")

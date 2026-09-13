@@ -44,6 +44,14 @@ def main() -> int:
     ap.add_argument("--parties", type=int, default=None, help="imposer le nombre de parties (défaut : 2 à 12, tiré)")
     ap.add_argument("--machines", default="",
                     help="restreindre le vivier mélodique (liste séparée par des virgules) ; défaut : le parc de recherche")
+    ap.add_argument("--borner-hauteur", type=float, default=0.0, metavar="DEMI-TONS",
+                    help="B5 / § 7 bis du cahier des charges : borner les paramètres du patch qui "
+                         "DÉPLACENT la hauteur (détune d'oscillateur, accord d'échantillon). Sans "
+                         "borne, une partie tirée peut sonner huit demi-tons à côté des notes que "
+                         "sa vérité annonce : 9,9 %% des notes de s1-sec sont dans ce cas et "
+                         "morceau-0001-g1 l'est ENTIÈREMENT, son F1 valant 0,027 ou 0,567 selon la "
+                         "hauteur qu'on compare. Le corpus suivant se tire à 2. "
+                         "0 (le défaut) : le corpus d'avant, au bit près")
     ap.add_argument("--moteur", default=None, help="chemin de vsm-render")
     args = ap.parse_args()
 
@@ -55,7 +63,8 @@ def main() -> int:
     code = 0
     try:
         with VsmEngine(binary=args.moteur, sample_rate=44100) as moteur:
-            generateur = Generateur(moteur, machines=machines, journal=print)
+            generateur = Generateur(moteur, machines=machines, journal=print,
+                                    borne_hauteur=args.borner_hauteur)
             print(f"vivier mélodique : {len(generateur.machines)} machines")
             for indice in range(args.nombre):
                 graine = args.graine + indice
