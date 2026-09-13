@@ -347,6 +347,7 @@ analyse/.venv/bin/python tools/inventaire_langue.py --doublons # une clé écrit
 tools/comparer-rendus.sh <projet>                    # l'export de l'application contre vsm-render
 tools/apres-campagne.sh <lot>                        # les trois gestes qui attendent la fin d'une course
 analyse/.venv/bin/python tools/confiance-contre-verite.py <lot> # la confiance prédit-elle une note juste ?
+analyse/.venv/bin/python tools/tables-markdown.py     # les tables Markdown ont-elles toutes leurs cellules ?
 ```
 
 Chacune rend un code de sortie non nul quand elle trouve quelque chose, et
