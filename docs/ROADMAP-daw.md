@@ -20983,6 +20983,10 @@ son coût (l'ouverture d'un fichier de plugin) est écrit dans son en-tête avec
 l'endroit où l'appeler — au chargement d'un projet, une fois par piste, jamais
 dans un rappel d'affichage.
 
+**LES 1 961 TESTS DU DÉPÔT SONT VERTS** après le changement — core 330, audio
+1 298, interchange 297, clap 25, panels 11 —, et c'est utile de le dire ici : le
+correctif touche un en-tête inclus par presque tout le moteur.
+
 **ET LA DIVERGENCE QUE CE CORRECTIF REND VISIBLE, nommée plutôt que découverte
 plus tard.** L'application héberge les plugins tiers ; **`vsm-render` non**, et
 il le dit (« instrument indisponible »). Un projet qui en utilise un se rend donc
