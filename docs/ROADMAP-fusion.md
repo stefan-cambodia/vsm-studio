@@ -3931,3 +3931,10 @@ second verdict, qui nomme les morceaux concernés :
 vérité l'écrit**, et un seul les porte toutes. La garde imprime
 `MORCEAUX_INUTILISABLES 1` : le jour où le corpus sera réengendré (B5), ce compte
 devra tomber à zéro, et c'est ce chiffre-là qui le dira.
+
+**ET LA MESURE ELLE-MÊME EST DEVENUE UNE GARDE.** `tools/f1-sonnant.py` rejoue les
+deux colonnes sur n'importe quel lot, en six secondes et sans course : il imprime
+l'écart par morceau, l'agrégat calculé sur les COMPTES du lot (jamais une moyenne
+de F1, qui n'est pas un F1), et conclut lui-même — aujourd'hui, **« ÉCART
+INSTABLE : la correction dépend du corpus — l'ancien F1 se garde à côté »**. Le
+jour où le corpus sera réengendré, c'est cette phrase-là qui devra changer.
