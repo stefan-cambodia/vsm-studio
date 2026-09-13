@@ -167,6 +167,15 @@ l'ordre de marche — pas de la documentation d'accompagnement.
   ligne : une phrase repliée par le retour à la ligne rend « 0 occurrence » et
   laisse croire que l'écriture a échoué (12/09, D150). Chercher un fragment
   court, ou recoller les lignes (`tr '\n' ' '`).
+- LE BROUILLON DE SESSION EST UN `tmpfs` — c'est-à-dire de la RAM, 7,7 Go
+  partagés avec tout le reste. Le 13/09, neuf copies d'un projet de 308 Mo et
+  deux jeux de stems flottants y ont rempli `/tmp` : la campagne du lot forcé est
+  morte sur `OSError: [Errno 28] No space left on device` au bout de 985 s, et
+  l'outil lui-même ne pouvait plus écrire la sortie de ses commandes. `/home`
+  avait 168 Go libres. Donc : le brouillon pour les petits fichiers (captures,
+  journaux, scripts) ; **tout ce qui pèse plus de quelques dizaines de mégaoctets
+  — copies de projets, rendus, stems — va sur `/home`**, dans un dossier qu'on
+  nettoie derrière soi. Et `df -h /tmp` avant de copier un projet, pas après.
 - Un panneau qui PEINT ses lignes (`g.drawText`) est INVISIBLE au relevé de
   textes, qui descend les composants : la fenêtre d'historique (12/09, D149)
   puis le volet « Projet ouvert, avec des réserves » (D152) ont tous deux failli

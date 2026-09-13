@@ -19918,3 +19918,49 @@ toujours.
 son projet dans une copie interrompue sait ainsi **combien** il a perdu, et un
 `project.json` tronqué se répare parfois à la main ; une erreur qui dit seulement
 « illisible » ne le permettrait pas.
+
+### D182 (attendus) — le cinquantième audit : la somme des stems, avec un bus de groupe (13/09/2026)
+
+**LA PROMESSE, ET CE QU'ELLE N'A JAMAIS COUVERT.** L'aide de `vsm-render` écrit :
+« la somme des stems redonne le mixage avant la tranche master ». D47 l'a
+éprouvée sur `children-dream-v7` — six pistes, 232,53 s, **aucun bus de groupe**
+— et y a trouvé un vrai défaut : le graveur bornait le flottant 32 bits à ±1, ce
+qui écrêtait 602 échantillons sur 20,5 millions. Corrigé, la somme retrouvait le
+mixage à **−148,7 dB**.
+
+**UN BUS DE GROUPE EST EXACTEMENT CE QUI PEUT CASSER CETTE PROMESSE.** Sur
+`children-c3-plafond`, cinq pistes de batterie sont routées vers un bus
+« Batterie » qui les additionne avant le master. Si l'export par piste comptait
+AUSSI le bus, chaque coup de caisse serait compté deux fois ; s'il comptait le
+bus SEUL, les réglages de la tranche de groupe manqueraient.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.**
+
+1. **Par piste** : la somme des stems retrouve le mixage à **−140 dB** ou mieux
+   (D47 a mesuré −148,7 dB sur un cas plus simple). Réfuté au-dessus de −140 dB,
+   et un écart autour de **−6 dB** signerait un double comptage.
+2. **Par groupe** (`--stems-par groupe`) : même égalité, même borne.
+3. **Le compte des fichiers** : un stem par piste sonnante d'un côté, un par
+   groupe de l'autre — et les deux sommes valent le même mixage.
+
+### D183 (attendus) — le cinquante et unième audit : le projet dont le `.mid` a disparu (13/09/2026)
+
+**CE QUI RESTE DE LA SÉRIE.** D178 a éprouvé la machine absente, D179/D180 le
+fichier audio manquant, D181 le `project.json` abîmé. Reste **le fichier qui
+porte la musique** : `midi/arrangement.mid`. C'est le seul des quatre dont la
+perte efface ce qu'on a JOUÉ, et c'est le moins souvent regardé parce qu'il est
+petit et qu'on l'oublie en copiant un dossier.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** Deux cas sur une copie de
+`children-c3-plafond` : (a) le `.mid` retiré, (b) le `.mid` tronqué à 400 octets.
+
+1. **L'application le DIT**, en nommant le fichier — au terminal et à l'écran.
+   Réfuté si le projet s'ouvre en silence avec zéro note, ce qui ressemblerait à
+   un projet vide qu'on aurait soi-même vidé.
+2. **Le reste du projet survit** : les 12 pistes, leurs machines, leurs réglages,
+   leurs volumes. Perdre les notes ne doit pas coûter le reste.
+3. **L'ENREGISTREMENT NE RÉÉCRIT PAS UN `.mid` VIDE PAR-DESSUS.** Pour le cas
+   (b) surtout : un fichier tronqué garde peut-être des notes récupérables à la
+   main, et un Ctrl+S qui écrit 0 note par-dessus les détruirait. **Réfuté si le
+   fichier abîmé est remplacé** — ou, si l'application choisit délibérément de le
+   réécrire, il faudra qu'elle l'ait DIT avant.
