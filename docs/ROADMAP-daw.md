@@ -24177,3 +24177,68 @@ La machine en cause passe le banc : elle joue juste quand on la crée avec ses
 réglages par défaut. L'écart vu sur le corpus vient donc d'ailleurs — le patch
 tiré, ou la banque d'échantillons installée pour la course. C'est la piste
 suivante, et elle n'est pas encore mesurée.
+
+
+### Phase D267 — `verite.json` dit les notes ÉCRITES, et le patch décide de la hauteur ENTENDUE (13/09/2026)
+
+D266 laissait une question ouverte : la machine passe le banc d'accord, d'où
+vient alors l'écart de cinq demi-tons vu sur le corpus ? **Du patch**, et la
+réponse est exacte à l'arrondi près. Le corpus tire ses patchs au hasard dans
+l'espace des paramètres de la machine, et plusieurs machines exposent un
+désaccord d'oscillateur **en demi-tons entiers** : `vsm.pcmhybrid` un « Attack
+Tune » de ±24 et un « Tone Detune » de ±12, `vsm.obx` et `vsm.arpodyssey` un
+« Osc2 Detune » de ±12.
+
+Les cinq parties du corpus dont le rendu contredisait sa propre vérité :
+
+| morceau · partie | machine | écart mesuré | paramètre qui l'explique |
+|---|---|---|---|
+| 0001 · accompagnement | `vsm.pcmhybrid` | −5 sur **84 notes sur 84** | `oscillator.1.detune` = **+4,75** |
+| 0001 · mélodie | `vsm.pcmhybrid` | +8 sur 52 de 67 | `oscillator.1.detune` = **−8,25** |
+| 0005 · mélodie | `vsm.obx` | −8 | `oscillator.2.detune` = **+7,54** |
+| 0008 · mélodie | `vsm.obx` | +3 | `oscillator.2.detune` = **−2,59** |
+| 0005 · mélodie | `vsm.arpodyssey` | +1 | `oscillator.2.detune` = **−0,74** |
+
+**Cinq sur cinq, au demi-ton près. Ni la machine ni le corpus n'ont de défaut :
+c'est la MESURE qui comparait deux choses différentes.**
+
+**CE QUE CELA CHANGE POUR TOUTE MESURE DE TRANSCRIPTION.** `verite.json` porte
+les notes que le corpus a ÉCRITES. Le transcripteur, lui, entend la hauteur
+SONNANTE. Les deux ne coïncident que si le patch n'a pas désaccordé d'oscillateur
+— ce qui est le cas de 82,4 % des parties, et pas des autres :
+
+| pire désaccord du patch | parties | notes vraies portées |
+|---|---|---|
+| moins d'un quart de ton | 61 (82,4 %) | — |
+| 0,5 à 2 demi-tons | 4 (5,4 %) | — |
+| 2 à 6 demi-tons | 4 (5,4 %) | **815 notes, 12,7 % du corpus mélodique** (seuil ≥ 2) |
+| 6 à 11 demi-tons | 3 (4,1 %) | dont **441, soit 6,9 %** (seuil ≥ 6) |
+| 11 demi-tons et plus | 2 (2,7 %) | |
+
+**12,7 % des notes mélodiques du corpus sont portées par une partie dont la
+hauteur sonnante s'écarte de deux demi-tons ou plus de la hauteur écrite.** Tout
+chiffre de « hauteur exacte » publié par ce projet compte ces notes comme fausses
+alors que le transcripteur les entend au bon endroit.
+
+**CE QUI N'EST PAS ÉTABLI, ET QUE JE N'ÉCRIRAI PAS.** La tentation était forte de
+relier ce désaccord à D256 (« 816 notes écrites dans des registres où la vérité ne
+joue jamais, aucune juste ») — le compte de 815 notes touchées est à une unité de
+816, et une partie désaccordée de +11,63 demi-tons pousse bien sa transcription
+presque une octave plus loin. **La corrélation ne le soutient pas** : entre le
+pire désaccord d'un morceau et sa part de notes hors registre, Spearman vaut
+**+0,58** et Pearson **+0,42** sur dix points — une association faible, et
+morceau-0002-g2 la contredit franchement (0,64 demi-ton de désaccord, 9,6 % de
+notes hors registre). Le désaccord CONTRIBUE peut-être ; il n'explique pas.
+
+**CE QUI EMPÊCHE LE RETOUR.** `tools/corpus-hauteurs.py` transcrit les 74 parties
+mélodiques du corpus, mesure l'écart modal de chacune, et **nomme le paramètre du
+patch qui l'explique** quand il y en a un. Il rend 0 aujourd'hui : « PARTIES 74
+CONTREDITES 0 ». Une partie dont l'écart ne s'expliquerait par aucun paramètre
+ferait rougir la garde — et ce serait alors, pour de bon, un défaut de machine.
+
+**UNE ERREUR DE PLUS, CORRIGÉE PAR LA MESURE.** La première version de cette garde
+prenait « le plus grand désaccord du patch », et laissait une partie inexpliquée :
+sur `vsm.pcmhybrid`, `sample.1.tune` valait −11,63 et `oscillator.1.detune` +4,75
+— **deux couches de la même machine, à deux hauteurs**, et le transcripteur suit
+l'une des deux. Une machine hybride n'a pas « un » désaccord ; la garde les
+regarde tous et dit lequel répond.
