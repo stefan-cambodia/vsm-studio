@@ -23248,6 +23248,12 @@ geste est une promesse, et la promesse se lit dans le fichier écrit derrière.*
 | **D243** | le miroir est exact — une seule somme, **124** = min + max | et deux de mes attendus étaient mal posés |
 | **D244** | les statistiques confrontées au fichier | **5 931 notes** des deux côtés |
 | **D245** | l'attente à l'ouverture, jamais mesurée | **3,8 s** pour onze pistes et 308 Mo |
+| **D246** | la sixième boîte d'essai rendait un corps vide | et sa phrase de repli est celle du moteur, mot pour mot |
+| **D247-D248** | **un crochet de banc se disait réussi sans rien faire**, et toute sa famille était muette | `CUTOFF=0` laissait le moteur à 2 812,6785 ; il dit maintenant « demandé 0, obtenu 20 (borné) » |
+| **D249-D251** | l'écoute A/B conduite sans souris ; un média perdu ne détruit rien ; le MIDI absent est dit deux fois | et un `grep` m'a fait croire l'inverse |
+| **D252-D254** | **l'OCTAVE est le premier défaut de la chaîne** — sur les quatre stems | 20 à 27 % des notes ; la chaîne n'invente que 0,4 à 1,2 % |
+| **D256** | 816 notes écrites dans un registre où le morceau ne joue JAMAIS | **0,0 %** de justes sous C2 comme au-dessus de C6 |
+| **D257-D258** | **trois remèdes simples éliminés par la mesure** avant d'être écrits | le registre trompe 2 fois sur 3 ; le fantôme explique 1/6 ; le contexte plafonne à 46 % |
 
 **Trois erreurs de mesure prises à temps**, toutes de la même famille — la mesure
 regardait mon idée du logiciel au lieu du logiciel : des pixels VERTS sur un
