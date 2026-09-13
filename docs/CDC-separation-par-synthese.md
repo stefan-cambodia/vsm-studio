@@ -818,6 +818,19 @@ coût.)*
 > rendu hors ligne, et la queue du gel coupée net) — remplacer ce binaire pendant
 > la campagne l'aurait tuée. **Le relier quand la course est finie**, puis
 > vérifier par un rendu que la piste gelée n'est plus « silencieuse » en stems.
+> Le chemin le plus court : geler une piste d'une copie de `children-c3-plafond`
+> depuis l'application, l'enregistrer, puis `tools/comparer-rendus.sh <copie>` —
+> il doit rendre **code 0**. Avec le binaire d'aujourd'hui il rendrait 1,
+> l'application ayant le correctif et `vsm-render` non : c'est le seul cas où le
+> verdict « ils divergent » ne désigne PAS un défaut du projet, et c'est pour cela
+> que l'outil imprime la date des deux binaires.
+>
+> **Et trois autres correctifs attendent le même relien** : D189 (le profil d'une
+> machine multi-échantillons, qui touche `capturePreset`), D200 (`canCreate`, qui
+> touche `PluginRegistry.h`) et D202. Aucun ne change ce que `vsm-render` fait sur
+> les projets de la chaîne — elle ne gèle rien, n'utilise pas de plugin tiers, et
+> ses profils passent par le fichier de preset, pas par une capture — mais le
+> binaire doit rejoindre les sources.
 
 ### 7.5 La décision — annoncée, en attente du lot forcé pour être signée
 
