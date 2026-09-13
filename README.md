@@ -334,6 +334,24 @@ ce qu'il n'a pas pu passer** — un garde-fou sauté ne garde rien. Il ne compil
 rien sans qu'on le lui demande : remplacer `build/tools/vsm-render` pendant
 qu'une reconstruction tourne tue la course.
 
+## Les gardes de `tools/`
+
+Ce qui doit empêcher une régression vit dans `tools/`, avec sa règle écrite dans
+son en-tête — un script d'analyse écrit pour une phase n'est ni relu, ni rejoué,
+ni corrigé :
+
+```bash
+tools/banc-fumee.sh                                  # les dix verbes de banc répondent-ils encore ?
+analyse/.venv/bin/python tools/inventaire_langue.py            # ECRAN / NU / SANS_PAIRE : ce qui reste français
+analyse/.venv/bin/python tools/inventaire_langue.py --doublons # une clé écrite deux fois dans la même table
+tools/comparer-rendus.sh <projet>                    # l'export de l'application contre vsm-render
+tools/apres-campagne.sh <lot>                        # les trois gestes qui attendent la fin d'une course
+analyse/.venv/bin/python tools/confiance-contre-verite.py <lot> # la confiance prédit-elle une note juste ?
+```
+
+Chacune rend un code de sortie non nul quand elle trouve quelque chose, et
+`banc-fumee.sh` comme `apres-campagne.sh` refusent de gêner une campagne en cours.
+
 ## Vérifier le Python (lint et types)
 
 Deux outils d'atelier, hors `requirements.txt` parce qu'ils ne servent pas à

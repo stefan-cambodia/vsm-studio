@@ -343,7 +343,7 @@ def main() -> int:
         doubles = doublons_de_la_table(langue)
         print(f"DOUBLONS {len(doubles)}")
         for nom, cle, lignes in doubles:
-            print(f"  D {nom} lignes {', '.join(str(l) for l in lignes)} : {cle[:90]}")
+            print(f"  D {nom} lignes {', '.join(str(ligne) for ligne in lignes)} : {cle[:90]}")
         return 1 if doubles else 0
     regle = next((o.split("=", 1)[1] for o in options if o.startswith("--regle=")), "stricte")
     if regle not in REGLES:
