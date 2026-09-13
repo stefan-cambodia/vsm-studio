@@ -23112,3 +23112,62 @@ du témoin à relever d'abord) :
 L'aléatoire, enfin, ne déplace pas la moyenne (86,0 contre 86,4) mais fait passer
 les valeurs distinctes de 55 à **82** : c'est la définition d'un bruit, et c'est le
 seul chiffre qui la vérifie.
+
+### Phase D243 — trois gestes qui touchent à la MUSIQUE, pas seulement aux nombres (13/09/2026)
+
+Les gestes mesurés jusqu'ici déplacent des octets : une hauteur, un début, une
+vélocité. Trois autres touchent à ce que le morceau DIT — le miroir, la
+rétrogradation et la contrainte à la gamme —, et leur promesse se vérifie encore
+dans le `.mid`, mais par des invariants moins évidents.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE** (`cdl`, 2 219 notes) :
+
+1. **Miroir des hauteurs** : chaque note devient son symétrique autour d'un axe. La
+   somme `hauteur + miroir(hauteur)` doit donc être **constante** — c'est la
+   définition d'une symétrie, et le seul chiffre qui la distingue d'une
+   transposition.
+2. **Rétrograder** : le morceau se lit à l'envers. Le multiensemble des hauteurs ne
+   change pas, mais l'ordre des débuts s'inverse : la première note du résultat doit
+   porter la hauteur de la DERNIÈRE note d'avant.
+3. **Contraindre à la gamme** (C chromatique par défaut, donc toutes les notes y
+   sont) : **rien ne doit changer**. Un geste qui contraindrait à une gamme qui
+   contient déjà tout et qui déplacerait quand même une note serait faux.
+
+**CE QUE LA MESURE A DIT — ET DEUX ATTENDUS QUI ÉTAIENT MAL POSÉS.**
+
+**1. Le miroir est exact, et il a fallu s'y reprendre pour le voir.** Premier
+relevé : « 61 sommes distinctes », de quoi écrire que le miroir n'en est pas un. Le
+défaut était dans l'appariement : un miroir **inverse l'ordre des hauteurs d'un
+accord**, et comparer deux listes triées de la même façon apparie la plus basse
+d'avant avec la plus basse d'après — c'est-à-dire pas son image. Repris accord par
+accord, la k-ième plus BASSE d'avant contre la k-ième plus HAUTE d'après :
+
+```
+sommes hauteur + miroir(hauteur) : une seule valeur, 124, sur les 2 219 notes
+min + max du morceau : 124
+```
+
+**Une seule somme pour 2 219 notes**, et cette somme est exactement min + max du
+morceau : l'axe du miroir est le milieu de l'ambitus, et la symétrie est parfaite.
+
+**2. La rétrogradation garde tout, mais pas ce que je croyais.** Le multiensemble
+des hauteurs est identique, l'étendue aussi (du tick 591 au tick 296 741, **296 150
+ticks avant comme après**), et le **dernier** accord du résultat est exactement le
+**premier** d'avant (`[65, 68]`). En revanche « la suite d'accords est renversée à
+l'identique » est **faux**, et c'est normal : une rétrogradation se calcule sur les
+FINS de notes — deux notes qui commençaient ensemble mais ne finissaient pas
+ensemble ne commencent plus ensemble. Le nombre d'attaques passe de **1 621 à
+1 972**. C'est la définition d'un morceau joué à l'envers, pas un défaut.
+
+**3. « Contraindre à la gamme » est GRISÉE, et c'est juste.** La gamme courante est
+chromatique : toutes les hauteurs y sont déjà, le geste n'a rien à faire, et
+l'application **refuse de faire semblant** plutôt que de réécrire 2 219 notes à
+l'identique. L'attendu (« rien ne doit changer ») est donc tenu par un chemin
+meilleur que celui que j'avais prévu.
+
+**LA LEÇON, ET C'EST LA TROISIÈME FOIS AUJOURD'HUI.** Comparer deux listes triées
+de la même façon suppose que le geste préserve l'ordre. La transposition le fait, le
+miroir non, la quantification non plus (D236), et la comparaison d'événements MIDI
+du matin non plus. **Une mesure d'édition musicale se fait sur des multiensembles,
+ou sur un appariement que le geste justifie** — jamais sur deux listes triées à
+l'aveugle.
