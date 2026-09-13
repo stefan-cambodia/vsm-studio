@@ -20037,3 +20037,48 @@ en le lançant, pas en le relisant.*
 **297 tests d'`interchange` verts** après le changement, et le témoin d'ouverture
 d'un projet SAIN par le même chemin reste propre (`VSM_TITRE : Vintage Synth MIDI
 Studio -- children-c3-plafond`, aucune boîte).
+
+### Phase D182 — la somme des stems redonne le mixage, bus de groupe compris (13/09/2026)
+
+**LES TROIS ATTENDUS SONT TENUS.** `children-c3-plafond` (12 pistes, 9 machines,
+2 pistes audio, **1 bus de groupe qui reçoit les cinq pistes de batterie**,
+452,16 s), rendu trois fois par `vsm-render` à 44,1 kHz en flottant 32 bits : le
+mixage, les stems par piste, les stems par groupe.
+
+| | attendu | **mesuré** |
+|---|---|---|
+| somme **par piste** (11 stems) | ≤ −140 dB | **−147,13 dB** sous le mixage (−164,05 dBFS), max \|d\| **1,07 × 10⁻⁷** |
+| somme **par groupe** (7 stems) | ≤ −140 dB | **−148,73 dB** sous le mixage (−165,65 dBFS), même maximum |
+| le compte des fichiers | un par piste / un par groupe | **11** et **7** — les cinq pistes de batterie se replient sur le seul `12 - Batterie.wav` |
+
+**LE DOUBLE COMPTAGE N'A PAS LIEU, et c'était la question.** Un bus de groupe est
+exactement ce qui peut casser la promesse de l'aide (« la somme des stems redonne
+le mixage avant la tranche master ») : si l'export par piste comptait AUSSI le
+bus, chaque coup de caisse claire figurerait deux fois et l'écart serait de
+l'ordre de **−6 dB**, pas de −147. Et l'export par groupe ne garde QUE le bus pour
+les cinq pistes qu'il reçoit — le compte le montre, 7 fichiers et non 12.
+
+**LE CHIFFRE EST CELUI DE D47, sur un cas deux fois plus dur.** D47 avait mesuré
+**−148,7 dB** sur six pistes sans groupe, après avoir corrigé le graveur qui
+bornait le flottant à ±1. Les deux sommes d'aujourd'hui valent −147,1 et
+−148,7 dB : la précision du flottant, c'est-à-dire l'égalité.
+
+### D185 (attendus) — le cinquante-deuxième audit : geler une piste change-t-il son son ? (13/09/2026)
+
+**CE QU'EST LE GEL, ET POURQUOI IL SE VÉRIFIE.** D5.5 a donné aux pistes le
+*freeze* de Cubase et de Live : la piste est rendue une fois en audio, son
+instrument est libéré, et c'est le fichier qui joue. Le musicien gèle pour
+récupérer du processeur, **en supposant que le son ne change pas**. Si le gel
+déplace quoi que ce soit — un niveau, un départ d'effet, la queue d'un
+compresseur —, le mixage change sous ses doigts, et il n'a aucune raison de
+regarder de ce côté.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** Sur `children-c3-plafond`, une
+piste mélodique gelée puis le projet rendu, contre le même projet non gelé :
+
+1. **Le mixage ne bouge pas** : écart RMS **≤ −100 dB** sous le signal. Réfuté
+   au-dessus, et l'on cherchera alors ce que le gel oublie.
+2. **Dégeler rend le projet d'origine** : le `project.json` revient à ce qu'il
+   était pour cette piste (plus de `frozen`, plus de `frozenAudio`).
+3. **Le gel se voit** : un musicien doit pouvoir dire d'un coup d'œil quelle
+   piste est gelée, et le banc doit pouvoir le lire.
