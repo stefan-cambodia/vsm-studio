@@ -226,13 +226,25 @@ d'usine, ni la copie d'une disposition d'écran. C'est cinq choses, et un
 logiciel qui les tient est un logiciel de studio même s'il ne ressemble à aucun
 des trois :
 
-| | Le critère | Aujourd'hui |
-|---|---|---|
-| **a** | **Ce qu'on fait ne se perd pas** : le projet se sauvegarde et se rouvre à l'identique | **non** — rien au-delà des notes n'est écrit |
-| **b** | **Le son peut entrer** : importer un fichier audio, enregistrer une entrée, jouer un clavier en temps réel | **non** — zéro entrée, pas de piste audio |
-| **c** | **On peut arranger** : des clips déplaçables sur une ligne de temps, plusieurs pistes visibles à la fois, boucles, marqueurs | **non** — pas de clip dans le modèle |
-| **d** | **On peut mixer** : bus de groupe, départs libres, égaliseur et dynamique **par piste**, chaîne latérale, compensation de latence | **partiel** — 2 départs figés, dynamique sur le master seulement, aucune PDC |
-| **e** | **Le son peut sortir** : mixage, stems, plage choisie, formats et résolutions | **partiel** — `vsm-render` le fait, l'application exporte un WAV faux (§ 1.4 n° 2) |
+| | Le critère | **Au départ** (30/08/2026) | **Au 13/09/2026**, et par quelle mesure |
+|---|---|---|---|
+| **a** | **Ce qu'on fait ne se perd pas** : le projet se sauvegarde et se rouvre à l'identique | **non** — rien au-delà des notes n'est écrit | **oui, mesuré de bout en bout.** L'aller-retour d'un projet de 12 pistes ne perd rien et le second enregistrement converge octet pour octet (D162) ; un enregistrement refusé le dit et ne détruit rien (D173) ; le titre porte une astérisque tant que le travail n'est pas à l'abri (D174) ; fermer demande (D175) ; le filet d'autosauvegarde, éprouvé par `kill -9`, porte le travail de la séance et pas une copie périmée (D176) ; une machine absente, un échantillon manquant, un `project.json` ou un `.mid` abîmé sont dits et n'écrasent rien (D178 à D184) |
+| **b** | **Le son peut entrer** : importer un fichier audio, enregistrer une entrée, jouer un clavier en temps réel | **non** — zéro entrée, pas de piste audio | **oui** (D2, D3, D17) — pistes audio, entrées ouvertes, enregistrement MIDI et audio, tampon rétrospectif |
+| **c** | **On peut arranger** : des clips déplaçables sur une ligne de temps, plusieurs pistes visibles à la fois, boucles, marqueurs | **non** — pas de clip dans le modèle | **oui** (D1, D5, D12, D13, D16) — clips, boucles, repères, suivi de tempo, gel ; et le dessin tient la charge : 21,95 ms pour la fenêtre entière d'un projet de 9 224 notes tout ajusté, contre 46,86 avant D164-D166 |
+| **d** | **On peut mixer** : bus de groupe, départs libres, égaliseur et dynamique **par piste**, chaîne latérale, compensation de latence | **partiel** — 2 départs figés, dynamique sur le master seulement, aucune PDC | **oui** (D4.4, D4.5, D15, D30) — bus de groupe, départs libres, inserts par piste, contournement, décalage de piste, PDC ; la somme des stems redonne le mixage à **−147 dB**, bus de groupe compris, sans double comptage (D182) |
+| **e** | **Le son peut sortir** : mixage, stems, plage choisie, formats et résolutions | **partiel** — `vsm-render` le fait, l'application exporte un WAV faux (§ 1.4 n° 2) | **oui, et les deux chemins rendent le même son** : export de l'application contre `vsm-render` sur un projet de 12 pistes, 2 pistes audio et un bus de groupe — corrélation **1,000000000**, écart **−127,43 dB**, le seul plancher de quantification (D177). Geler une piste ne change plus rien au son exporté, **au bit** (D185-D187) |
+
+**CE TABLEAU A ÉTÉ REFAIT LE 13/09/2026, et la colonne de départ est gardée.**
+Un document dont la première page décrit un état vieux de cent quatre-vingts
+phases fait mentir tout ce qui suit — c'est le piège que `CLAUDE.md` nomme
+(« un encadré qui annonce du travail RESTANT se lit jusqu'au bout de son bloc »).
+La colonne d'origine reste à côté de la neuve : elle dit d'où l'on part, et
+c'est la moitié de ce qu'une mesure veut dire.
+
+**CE QUI N'EST PAS DIT PAR CE TABLEAU** : « oui » veut dire *la case est tenue et
+un chiffre le montre*, pas *il n'y a plus rien à faire*. Les audits continuent
+d'en trouver — les cinq derniers ont ouvert A29 à A33, dont une piste gelée qui
+disparaissait de l'export.
 
 **Un sixième critère, propre à ce projet.** Aucun des trois logiciels cités ne
 sait prendre un enregistrement et rendre les notes **et** les patchs qui le
