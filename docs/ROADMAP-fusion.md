@@ -690,7 +690,7 @@ mesures anciennes.
 |---|---|---|
 | ~~11.1~~ | ~~Import du projet reconstruit, en un geste~~ | **fait** — menu *Fichier ▸ Ouvrir un projet VSM...* |
 | ~~11.2~~ | ~~Écoute A/B : original en piste de référence~~ | **fait** — `ReferenceTrack`, menu *Fichier* |
-| ~~11.3~~ | ~~Correction assistée : les notes douteuses mises en évidence~~ | **fait** — confiance par note, du transcripteur au piano roll |
+| ~~11.3~~ | ~~Correction assistée : les notes douteuses mises en évidence~~ | **fait** — confiance par note, du transcripteur au piano roll. **MAIS la marque désigne trop** (A39, 13/09/2026) : mesurée sur six reconstructions, elle couvre de 53 à 91 % des notes, et « une par une » ne veut plus rien dire à 2 600 notes. D223 publie la part et ajoute « Les 10 % les moins sûres » ; le seuil attend la vérité du corpus |
 | ~~11.4~~ | ~~Export en projet CLAP autonome~~ | **fait** — et sans nouveau format, voir ci-dessous |
 
 C'est ici que la fusion prend tout son sens : la reconstruction n'est pas un
