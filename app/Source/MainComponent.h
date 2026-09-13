@@ -157,6 +157,9 @@ public:
     /// (CLAP, VST3, effet tiers) rendra, sans ouvrir sa fenêtre. Le geste qui
     /// l'ouvre reste celui de l'utilisateur (VSM_MENU, VSM_MENU_CONTEXTE).
     void setPluginFileForCapture(const juce::File& fichier) { fichierDeBanc_ = fichier; }
+    /// D222 : VSM_ENREGISTRER=dossier -- « Enregistrer sous… » par sa fonction, à
+    /// la fin de la course, pour que le fichier écrit porte TOUS les gestes.
+    bool enregistrerSousPourCapture(const juce::File& dossier);
     /// D213 : VSM_FICHIER=a.wav;b.wav -- la sélection MULTIPLE que le prochain
     /// sélecteur qui en accepte plusieurs (l'import audio) rendra.
     void poserLesFichiersDeBanc(const juce::Array<juce::File>& fichiers) { fichiersDeBanc_ = fichiers; }

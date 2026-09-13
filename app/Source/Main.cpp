@@ -547,6 +547,15 @@ public:
             if (const char* sortie = std::getenv("VSM_EXPORT_MIDI"); sortie != nullptr && *sortie)
                 content->exportProjectMidiForCapture(
                     juce::File::getCurrentWorkingDirectory().getChildFile(sortie));
+            // D222 : VSM_ENREGISTRER=dossier -- le projet écrit APRÈS tous les
+            // gestes, par la fonction de « Enregistrer sous… ». `VSM_MENU` passe
+            // avant `VSM_MENU_CONTEXTE` et avant `VSM_TOUCHE` : une course qui
+            // enregistre par le menu écrit l'état d'AVANT ses gestes de clic
+            // droit, et l'on croit que le geste n'a rien fait (payé une fois sur
+            // le renommage d'un clip). Ce verbe-ci est le dernier à agir.
+            if (const char* sortie = std::getenv("VSM_ENREGISTRER"); sortie != nullptr && *sortie)
+                content->enregistrerSousPourCapture(
+                    juce::File::getCurrentWorkingDirectory().getChildFile(juce::String::fromUTF8(sortie)));
             if (const char* rapport = std::getenv("VSM_RAPPORT");
                 rapport != nullptr && *rapport)
                 content->showReconstructionReport();

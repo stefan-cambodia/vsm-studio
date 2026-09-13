@@ -616,11 +616,26 @@ bool ArrangementComponent::actionDeMenuPourCapture(const juce::String& quel, con
         if (piste.clips.empty() || (piste.kind == Track::Kind::Audio) != audio) continue;
         const uint64_t id = piste.clips.front().id;
         const juce::PopupMenu menu = menuDuClip(p, piste.clips.front(), -1);
+        // D222 : « ? » ne fait rien et LISTE. Deux libellés cherchés à la main
+        // (« Renommer… », « Le clip fait N mesures… ») n'ont pas été trouvés, et
+        // rien ne disait s'ils étaient absents, grisés ou écrits autrement. Un
+        // menu qu'on ne peut pas LIRE se devine, et se devine mal (D218).
+        if (libelle == "?") {
+            juce::StringArray libelles;
+            for (juce::PopupMenu::MenuItemIterator it(menu, true); it.next();)
+                if (it.getItem().itemID != 0)
+                    libelles.add(it.getItem().text + (it.getItem().isEnabled ? "" : juce::String(" [grisee]")));
+            std::fputs(("VSM_MENU_CONTEXTE : " + quel + " = " + libelles.joinIntoString(" | ")
+                        + "\n").toRawUTF8(), stderr);
+            return true;
+        }
         const int choix = entreeParLibelle(menu, libelle);
         if (choix == 0) return false;
         clipMenuAction(p, id, choix);
         return true;
     }
+    std::fputs(("VSM_MENU_CONTEXTE : aucune piste " + juce::String(audio ? "audio" : "MIDI")
+                + juce::String::fromUTF8(u8" ne porte de clip dans ce projet\n")).toRawUTF8(), stderr);
     return false;
 }
 

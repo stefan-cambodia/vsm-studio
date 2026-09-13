@@ -22092,3 +22092,42 @@ la mesure 17 temps 3 à 120 BPM, la même que D220 avait lue sur la photo.
 indices à partir de ZÉRO, là où toute l'interface compte à partir de 1. Une ligne
 de journal qui ne parle pas la langue de l'écran fait accuser le logiciel — et
 c'est l'inverse du service qu'on lui demande.
+
+### Phase D222 — les menus de clip, et deux verbes qui se marchaient dessus (13/09/2026)
+
+**UN VERBE DE BANC EN COUVRAIT UN AUTRE, EN SILENCE.** `ArrangementComponent`
+emploie `VSM_MENU_CONTEXTE=regle:…` depuis D115 pour SA règle (celle de la vue
+d'arrangement). D218 a posé le même mot dans `MainComponent` pour la règle du
+PIANO ROLL, et comme il est examiné en premier, il couvrait l'autre : toute course
+écrite pour l'arrangement aurait conduit le piano roll sans un mot. C'est le piège
+des libellés uniques que `CLAUDE.md` nomme pour les menus, sur un verbe cette fois.
+Le verbe de D218 devient `regle-pianoroll`, et les deux règles répondent chacune
+pour soi (vérifié dans la même course).
+
+**CE QUE LA MESURE A DIT** (projet `cdl` recopié, une piste MIDI ; une piste audio
+ajoutée par `VSM_IMPORT_AUDIO` quand il en fallait une) :
+
+| Geste | ce qu'on a posé | ce que le `project.json` écrit porte |
+|---|---|---|
+| `clip-midi:Renommer…` | `nom=Intro` | clip **`Intro`** (témoin : `melange`) |
+| `clip-audio:Le clip fait N mesures…` | `mesures=8` | clip de **15 360 ticks** = 8 mesures × 4 temps × 480 (témoin : 1 440 ticks, les 3 temps du fichier de 1,5 s à 120 BPM) |
+
+**TROIS CHOSES APPRISES EN CHEMIN, ET ELLES VALENT LA MESURE.**
+
+1. **L'ORDRE DES VERBES A FAIT MENTIR LA PREMIÈRE COURSE.** `VSM_MENU` agit avant
+   `VSM_MENU_CONTEXTE` : « Enregistrer sous… » écrivait donc le projet AVANT le
+   renommage, et les deux courses rendaient le même fichier — on conclut « le
+   geste ne fait rien » alors qu'il le fait, après. `VSM_ENREGISTRER=dossier` écrit
+   le projet **en dernier**, par la fonction de « Enregistrer sous… ».
+2. **UN MENU QU'ON NE PEUT PAS LIRE SE DEVINE, ET SE DEVINE MAL.** Deux libellés
+   cherchés à la main n'ont pas été trouvés, sans qu'on sache s'ils étaient
+   absents, grisés ou écrits autrement — et la vraie raison était ailleurs : `cdl`
+   n'a **aucune piste audio**, donc aucun menu `clip-audio`. `clip-audio:?` et
+   `clip-midi:?` listent maintenant le menu (la leçon de D218, appliquée d'elle-même
+   à la première difficulté), et l'absence de piste est DITE au lieu de se
+   confondre avec un libellé introuvable.
+3. **LA RÈGLE DE SÛRETÉ DE D219 A SERVI SANS QU'ON LA CHERCHE.** « Le clip fait N
+   mesures… » ouvre une SECONDE fenêtre derrière lui (« Tempo du clip ») ; le banc
+   n'avait pas de clef pour elle et l'a dit — « aucune clef de cette fenêtre
+   (« Tempo du clip ») parmi mesures » — au lieu de la valider à l'aveugle. Sans
+   cette règle, la course aurait répondu « oui » à une question qu'elle n'a pas lue.

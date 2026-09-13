@@ -1111,8 +1111,13 @@ juste avant la photo, pour que la question « Quitter sans enregistrer ? » (D17
 s'écrive sur `VSM_BOITE` et figure sur les images des panneaux. La fin d'une
 course de banc, elle, quitte par un autre chemin : sans cela, la boîte modale
 ferait expirer tous les bancs du dépôt.
-`VSM_MENU_CONTEXTE=regle:<libellé>` exécute une entrée du menu du clic droit de la
-RÈGLE du piano roll (les repères), et `regle:?` ne fait rien mais LISTE ce que ce
+`VSM_ENREGISTRER=dossier` écrit le projet, par la fonction de « Enregistrer
+sous… », APRÈS tous les autres verbes : `VSM_MENU` passe avant `VSM_MENU_CONTEXTE`
+et avant `VSM_TOUCHE`, si bien qu'une course qui enregistre par le menu écrit
+l'état d'AVANT ses gestes de clic droit — on croit alors que le geste n'a rien
+fait. Et `clip-audio:?` ou `clip-midi:?` listent le menu d'un clip au lieu d'agir.
+`VSM_MENU_CONTEXTE=regle-pianoroll:<libellé>` exécute une entrée du menu du clic droit de la
+RÈGLE du piano roll (les repères), et `regle-pianoroll:?` ne fait rien mais LISTE ce que ce
 menu montrerait, dans la langue courante — c'était le dernier menu de
 l'application qu'aucune course ne pouvait lire, et D217 y a trouvé trois libellés
 restés français dans l'interface anglaise.

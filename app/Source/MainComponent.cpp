@@ -1620,8 +1620,14 @@ bool MainComponent::runContextMenuForCapture(const juce::String& entree) {
     // repères), le dernier menu de l'application qu'aucune course ne pouvait lire
     // -- et c'est là que D217 a trouvé trois libellés restés français en anglais.
     // « regle:? » ne fait rien et LISTE ce que le menu montrerait.
-    if (quel == "regle" && libelle == "?") {
-        std::fputs(("VSM_MENU_CONTEXTE : regle = "
+    // D222 : « regle-pianoroll » ET NON « regle ». `ArrangementComponent` emploie
+    // « regle » depuis D115 pour SA règle (celle de la vue d'arrangement) : le
+    // verbe de D218, posé ici, la couvrait en silence, et toute course écrite pour
+    // l'arrangement aurait conduit le piano roll sans un mot. C'est le piège des
+    // libellés de menu uniques (CLAUDE.md), sur un verbe de banc cette fois --
+    // trouvé en relisant `actionDeMenuPourCapture` pour une autre raison.
+    if (quel == "regle-pianoroll" && libelle == "?") {
+        std::fputs(("VSM_MENU_CONTEXTE : regle-pianoroll = "
                     + pianoRollPanel_.libellesDuMenuDeRegle().joinIntoString(" | ")
                     + "\n").toRawUTF8(), stderr);
         return true;
@@ -1629,7 +1635,7 @@ bool MainComponent::runContextMenuForCapture(const juce::String& entree) {
     const bool fait = quel == "effets"        ? effectChain_.presetMenuPourCapture(0, libelle)
                     : quel == "ajout-effet"   ? effectChain_.ajouterPourCapture(libelle)
                     : quel == "pianoroll"     ? pianoRoll_.actionDeMenuPourCapture(libelle)
-                    : quel == "regle"         ? pianoRollPanel_.actionDuMenuDeRegle(libelle)
+                    : quel == "regle-pianoroll" ? pianoRollPanel_.actionDuMenuDeRegle(libelle)
                                               : arrangement_.actionDeMenuPourCapture(quel, libelle);
     std::fputs((juce::String("VSM_MENU_CONTEXTE : ")
                 + (fait ? juce::String(u8"« ") + libelle + juce::String(u8" » exécutée (") + quel + ")"
@@ -8127,6 +8133,15 @@ bool MainComponent::writeProjectTo(const juce::File& folder) {
 void MainComponent::saveProject() {
     if (currentProjectFolder_ == juce::File()) { saveProjectAs(); return; }
     writeProjectTo(currentProjectFolder_);
+}
+
+bool MainComponent::enregistrerSousPourCapture(const juce::File& dossier) {
+    dossier.createDirectory();
+    const bool ecrit = writeProjectTo(dossier);   // le cœur de « Enregistrer sous… »
+    std::fputs((juce::String("VSM_ENREGISTRER : ") + dossier.getFullPathName()
+                + (ecrit ? "" : juce::String::fromUTF8(u8" — ÉCHEC, rien n'a été écrit")) + "\n")
+                   .toRawUTF8(), stderr);
+    return ecrit;
 }
 
 void MainComponent::saveProjectAs() {
