@@ -23061,3 +23061,13 @@ Et la chaîne ajoutée s'écrit bien dans le projet :
 rien tant qu'on ne l'a pas réglé), et le report d'une transposition nulle laisse
 les 2 219 notes **identiques**, vérifié note pour note. Un report qui « ne fait
 rien » doit ne rien faire exactement.
+
+**ET DEUX DÉFAUTS DE LANGUE, TROUVÉS PAR LES GARDES DU MATIN.** `SANS_PAIRE` est
+passé à 1 dès la nouvelle phrase écrite — elle n'avait pas sa traduction — et
+`--doublons` (D216) a refusé ma correction dans la seconde qui a suivi : j'ajoutais
+« Reporter les effets MIDI dans les notes » à `kAnglais` **alors que la clé y était
+déjà**, quatre-vingt-onze lignes plus bas. La garde posée ce matin a attrapé ma
+propre faute avant qu'elle n'atteigne un commit. Et l'anglais employait DEUX verbes
+pour le même geste — « Bounce » dans le menu, « Bake » dans la boîte : les deux
+disent maintenant **Bake**, y compris l'avertissement de l'export MIDI qui renvoie
+à cette entrée.
