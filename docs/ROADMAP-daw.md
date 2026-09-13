@@ -20212,6 +20212,16 @@ contre le projet non gelé :
 **Geler une piste ne change plus RIEN au son exporté, au bit près.** L'invariant
 n° 3 du § 6 est rétabli pour le cas qui l'avait perdu.
 
+**ET LE SILENCE EXACT DE LA FIN EST ROGNÉ, parce que la correction avait un
+coût.** Une fois le gel taillé à la longueur du PROJET, une piste qui s'arrête à
+la trentième seconde d'un morceau de sept minutes écrirait sept minutes de
+fichier. La queue dont les DEUX canaux valent **exactement zéro** est donc
+retirée : des octets, pas du son. Mesuré : le gel de `bass` passe de 454,164 s à
+**453,426 s** (0,738 s de zéros retirés) et l'export du projet gelé reste
+**identique au bit** — corrélation 1,000000000, écart maximal **0,000**. Une piste
+qui tient jusqu'au bout n'est pas rognée d'un échantillon ; c'est précisément le
+cas mesuré ici, et le rognage n'y touche que le silence ajouté par la queue.
+
 **A32 ET A33 SE FERMENT.** Et une dette d'exploitation, dite : le correctif vit
 dans `interchange/`, donc dans `vsm-render` aussi — mais **`build/tools/vsm-render`
 n'a pas été relié**, une campagne l'utilisant en ce moment (remplacer ce binaire

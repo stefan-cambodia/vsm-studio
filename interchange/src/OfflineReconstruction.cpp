@@ -484,7 +484,16 @@ RenderResult renderTrackForFreeze(const LoadedBundle& bundle, size_t trackIndex,
     // Les deux rendus ont la même durée par construction ; on le VÉRIFIE
     // plutôt que de le supposer, parce qu'un décalage d'un échantillon entre
     // les deux canaux s'entendrait comme un déplacement de l'image stéréo.
-    const size_t taille = std::min(out.left.size(), out.right.size());
+    size_t taille = std::min(out.left.size(), out.right.size());
+    // D187 (suite) : LE SILENCE EXACT DE LA FIN EST RETIRÉ, et il ne coûte rien
+    // de le retirer. Depuis que le gel dure ce que dure le PROJET, une piste qui
+    // s'arrête à la trentième seconde d'un morceau de sept minutes écrirait sept
+    // minutes de fichier. On rogne donc la queue dont les DEUX canaux valent
+    // exactement zéro -- des octets, pas du son : le mixage reste identique au
+    // bit, la lecture rendant le silence au-delà de la fin du fichier. Une piste
+    // qui tient jusqu'au bout (une vielle à roue, un bourdon) n'est pas rognée
+    // d'un échantillon, et c'est le cas que D187 a mesuré.
+    while (taille > 1 && out.left[taille - 1] == 0.0f && out.right[taille - 1] == 0.0f) --taille;
     out.left.resize(taille);
     out.right.resize(taille);
     result.framesWritten = taille;
