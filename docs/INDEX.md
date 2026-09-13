@@ -106,18 +106,17 @@ dernier. Chaque élément porte sa source ; **aucun n'est inventé ici**.
 ### A. Ce qui est nommé, mesuré, et pas encore corrigé
 
 > **ÉTAT AU 13/09/2026 : quarante anomalies sur quarante et une sont CLOSES.**
-> **A39 est close par D224** : la vérité du corpus a tranché — la confiance SÉPARE
-> (27 → 38 → 49 → 60 % de notes justes de 0,00 à 0,65), le seuil de 0,55 tombe là
-> où la courbe croise la moitié, et il ne bouge pas ; si 73 % des notes sont
-> marquées, c'est que 73 % des notes sont douteuses. La mesure a ouvert **B14**
-> (la confiance s'inverse au-dessus de 0,65). **A6** est un
-> compromis assumé et chiffré (la barre de
+> **Quinze ont été ouvertes ET fermées le même jour** — A27 à A41 —, dont **six qui
+> détruisaient ou perdaient des données sans un mot** : la piste gelée muette à
+> l'export (A32), le profil de multi-échantillons effacé par un Ctrl+S (A34), le
+> plugin tiers qu'un projet ne retrouvait jamais (A36), les cinq entrées du menu
+> Fichier qui jetaient un projet modifié sans demander (A37), la fenêtre
+> d'historique qui s'ouvrait vide (A40) et **le premier point d'automation qui
+> effaçait toutes les courbes du projet** (A41, 606 points → 1).
+>
+> La seule qui reste, **A6**, est un compromis assumé et chiffré (la barre de
 > transport prend deux rangées faute de 1 400 px de large) — pas un défaut qui
-> attend un correctif. Douze ont été ouvertes ET fermées le 13/09 : A27 à A38,
-> dont quatre qui abîmaient un fichier ou faisaient disparaître du travail sans
-> un mot (A32 la piste gelée muette à l'export, A34 le profil effacé par un
-> Ctrl+S, A36 le plugin tiers qu'un projet ne retrouvait jamais, A37 les cinq
-> entrées du menu Fichier qui jetaient un projet modifié sans demander).
+> attend un correctif.
 
 | # | Travail | Source | Chiffre en main |
 |---|---|---|---|
