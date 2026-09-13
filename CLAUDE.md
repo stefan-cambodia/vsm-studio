@@ -50,6 +50,12 @@ d'acceptation et l'ordre de marche — pas de la documentation d'accompagnement.
   JAMAIS, la boucle se trouvant elle-même (12/09 — la course était finie depuis
   vingt minutes et deux surveillances la croyaient en cours). Attendre par PID
   (`while kill -0 $PID`), jamais par motif.
+- Une SURVEILLANCE qui cherche un motif déjà présent se déclenche tout de suite :
+  le 13/09 au soir, un `until grep -q "LOT FORCÉ TERMINÉ"` posé après avoir
+  RELANCÉ la course a trouvé la ligne de la course PRÉCÉDENTE, encore dans les
+  cinq dernières du journal, et a annoncé la fin dans la seconde. Attendre par
+  PID (`while kill -0 $PID`), toujours — c'est la même règle que pour `pgrep -f`,
+  et elle vaut aussi pour les motifs d'un journal qu'on vient de rouvrir.
 - Une campagne lancée depuis le shell de l'outil MEURT avec la session, même
   sous nohup (S1, 04/09 : 1 h 44 de course perdues à la reprise). Lancer par
   `setsid nohup script.sh > x.log 2>&1 < /dev/null & disown`, et à chaque
