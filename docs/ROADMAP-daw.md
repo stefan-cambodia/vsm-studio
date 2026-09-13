@@ -23698,3 +23698,13 @@ la mauvaise octave : ni le registre (D257), ni la présence d'une jumelle (celle
 ne les désignent. Il faudra donc l'accord — ce que les AUTRES pistes jouent au même
 instant — ou un meilleur suivi de fondamentale. Deux pistes simples éliminées en
 deux mesures, et c'est du temps que la prochaine session ne perdra pas.
+
+**ET LA TROISIÈME PISTE EST BORNÉE, ELLE AUSSI.** Sur les 1 337 erreurs d'octave à
+début exact, la VRAIE hauteur est déjà écrite quelque part dans la transcription du
+morceau — un autre stem, une autre voix — dans **46,4 %** des cas ; dans **53,6 %**
+elle n'est nulle part. Une règle qui se fonderait sur le contexte harmonique de la
+transcription ne peut donc pas dépasser **46 %** des erreurs d'octave, même parfaite
+— et il lui faudrait encore décider QUAND déplacer, ce qui n'est pas donné. **Le
+gros du remède est donc dans l'estimation de hauteur elle-même, pas dans un
+post-traitement**, et c'est ce que la prochaine session doit savoir avant de choisir
+où passer sa journée.
