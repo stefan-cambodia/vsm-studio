@@ -19720,3 +19720,57 @@ côté : « 11/12 piste(s) sonorisée(s) », la douzième étant le bus.
 d'analyse optimise contre `vsm-render` ; le musicien écoute l'application. Si les
 deux divergeaient, chaque distance publiée par ce dépôt mesurerait un son que
 personne n'entend. **Les deux rendent le même.**
+
+### D178 (attendus) — le quarante-septième audit : un projet qui réclame une machine qui n'existe pas (13/09/2026)
+
+**POURQUOI CE CAS.** Un projet voyage : d'une machine à l'autre, d'une version à
+la suivante, d'un dépôt où `vsm.cone` et `vsm.flute` sont hors build (§ 5) vers un
+autre où elles ne le sont pas. Le jour où l'application ouvre un projet dont une
+piste réclame un identifiant qu'elle ne connaît pas, trois choses peuvent
+arriver, et deux sont des pertes silencieuses.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** Une copie de
+`children-c3-plafond` dont la piste 1 réclame `vsm.machine-qui-nexiste-pas` :
+
+1. **L'application le DIT** : une réserve à l'ouverture nomme la piste et
+   l'identifiant. Réfuté si elle s'ouvre sans un mot.
+2. **Elle ne met pas une AUTRE machine à la place** sans le dire : la piste
+   reste sans instrument, ou en porte un annoncé comme substitué.
+3. **L'ENREGISTREMENT NE DÉTRUIT PAS L'IDENTIFIANT.** C'est l'attendu qui compte :
+   si, faute de machine vivante, l'enregistrement réécrit la piste sans son
+   `preferredPlugin`, alors ouvrir un projet sur un poste incomplet puis faire
+   Ctrl+S le mutile **définitivement**. C'est la famille d'A10 (D76), où ajouter
+   une piste recréait toutes les machines et remettait leurs réglages d'usine.
+   **Réfuté si l'identifiant disparaît du fichier**, et les notes de la piste
+   seront comptées aussi.
+
+### Phase D178 — une machine qui n'existe pas : dit, non remplacé, et rien n'est détruit (13/09/2026)
+
+**LES TROIS ATTENDUS SONT TENUS.** Une copie de `children-c3-plafond` dont la
+piste 2 réclame `vsm.machine-qui-nexiste-pas` (dans `project.json` ET dans son
+preset) :
+
+| attendu | **mesuré** |
+|---|---|
+| 1. l'application le dit, en nommant la piste et l'identifiant | ✔ `VSM_OUVERTURE : Piste 2 : instrument "vsm.machine-qui-nexiste-pas" indisponible`, repris comme réserve dans le volet d'ouverture |
+| 2. aucune autre machine mise à la place en silence | ✔ « Machines employées : **4** » au lieu de 5 — le clavichorde a disparu, **personne n'a pris sa place** |
+| 3. l'enregistrement ne détruit pas l'identifiant | ✔ après Ctrl+S : `preferredPlugin` = `vsm.machine-qui-nexiste-pas`, le preset est là, `pluginId` intact, **ses 8 paramètres intacts** |
+
+**ET LES NOTES NE BOUGENT PAS**, comptées piste par piste dans le `.mid`
+réenregistré contre celui du projet d'origine : `[1672, 1183, 3651, 908, 959,
+575, 183, 52, 41, 0, 0, 0]` des deux côtés — **9 224 notes**, dont les **1 183**
+de la piste orpheline.
+
+**CE QUI FAIT QUE CELA MARCHE, et il faut le nommer parce que ce n'était pas
+gratuit.** D76 (A10) avait trouvé l'inverse : ajouter une piste recréait TOUTES
+les machines et remettait leurs réglages d'usine, et le premier Ctrl+S effaçait
+les échantillons d'un sampler. Le remède d'alors — « un réglage sans machine
+vivante est GARDÉ » — est exactement ce qui protège aujourd'hui une piste dont la
+machine n'existe nulle part : l'application ne peut pas capturer ses paramètres,
+donc elle **réécrit ceux qu'elle a lus**. Un correctif posé pour un cas en couvre
+un autre qu'il ne visait pas ; c'est assez rare pour être inscrit.
+
+**Le champ `machineName` du preset reste « vsm.clavichord »** — la valeur que la
+chaîne y avait écrite (D162) : l'application ne la rafraîchit que lorsqu'une
+machine vivante peut la donner. C'est cohérent, et c'est la preuve que rien n'a
+été inventé à la place.

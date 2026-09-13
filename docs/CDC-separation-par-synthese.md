@@ -774,6 +774,35 @@ coût.)*
 > mesure l'a tranché avant qu'une seule heure de campagne soit dépensée sur un
 > lot mélangé.
 
+> **LE LOT REFAIT — ATTENDUS ÉCRITS AVANT LE DÉPART (13/09/2026, 07:5x).** Dix
+> morceaux, dossier NEUF `r1f-13sep`, code du 13/09, `--residuel 1
+> --residuel-correlation 0 --rendus-paralleles 6`. Ce que ce lot doit trancher,
+> et qui bloque la signature du § 7.5 : **soustraire quand même, même mal,
+> rend-il quelque chose à la basse ?**
+>
+> 1. **La soustraction a lieu partout** : `morceaux_avec_soustraction` = **10 sur
+>    10**. C'est vrai par construction — le garde-fou est à zéro — et ce n'est
+>    donc pas un résultat, c'est le contrôle que la course a bien fait ce qu'on
+>    lui demandait. Réfuté (et la course invalide) si un morceau ne soustrait
+>    rien.
+> 2. **Elle ne rend rien au résidu vrai** : la médiane de
+>    `montee_sdr_residu_vrai_mediane_r1` reste dans **±0,5 dB de zéro**. Sur les
+>    cinq morceaux du 06/09 elle valait **−0,00093 dB**. **Réfuté si la montée
+>    dépasse +0,5 dB** — et alors la soustraction au niveau de l'échantillon
+>    rendrait quelque chose, l'hypothèse de repli spectrale du § 7.5 ne serait
+>    PAS désignée, et il faudrait mesurer ce qu'elle donne à plein.
+> 3. **Elle ne rend rien à la basse** : `bass_sdr_au_residu_mediane_r1` reste
+>    **sous +0,21 dB**, le repère du § 7.4 (il valait **−0,54 dB** sur les cinq).
+>    Réfuté au-dessus.
+> 4. **Le coût est celui qu'on a mesuré** : ~1 900 s par morceau, soit **2,5 fois
+>    le 06/09** et environ **5 h 20** pour les dix. Publié tel quel, à ±20 %.
+>
+> **CE QUE LA RÉPONSE SIGNE.** Si 2 et 3 tiennent, la soustraction au niveau de
+> l'échantillon est réfutée **même forcée** — ce n'est pas le garde-fou de 0,5 qui
+> la rendait inerte, c'est elle-même —, et l'hypothèse de repli (soustraction sur
+> le MODULE du spectre) est DÉSIGNÉE par la mesure et non par le goût. Si l'une
+> des deux tombe, c'est le garde-fou qu'il faut rouvrir, pas la méthode.
+
 ### 7.5 La décision — annoncée, en attente du lot forcé pour être signée
 
 Ce que `r1` établit suffit à la moitié de la décision : **la boucle
