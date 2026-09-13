@@ -22975,3 +22975,36 @@ du champ **en C++**, alors que le disque écrit `pitch`. Comme les pixels verts 
 D225 et la coupe d'image de D234, la mesure regardait son idée du logiciel. **Un
 relevé qui rend « rien » se vérifie sur un cas où l'on SAIT qu'il devrait rendre
 quelque chose** — ici, le témoin aurait suffi s'il avait porté un champ.
+
+### Phase D239 — les gestes de PISTE, lus dans le projet écrit (13/09/2026)
+
+Le menu *Piste* porte soixante-quatorze entrées. Celles qui ne rendent pas d'audio
+— dupliquer, masquer, verrouiller, monter, descendre, supprimer, grouper — se
+lisent toutes dans le `project.json`. Même méthode qu'en D236 et D238, un cran plus
+haut : c'est le modèle du projet qu'on vérifie, pas un champ de clip.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE** (`b4-v4`, **4 pistes** : `bass`,
+`other`, `Batterie`, `Voix`) :
+
+1. **TÉMOIN** : 4 pistes, dans cet ordre, aucune masquée ni verrouillée.
+2. **« Dupliquer la piste sélectionnée »** : **5** pistes, la copie juste après
+   l'originale.
+3. **« Masquer la piste »** : 4 pistes, la première marquée masquée — et elle
+   **continue de sonner** (c'est ce que dit son libellé, donc rien d'autre ne
+   change).
+4. **« Descendre la piste »** : 4 pistes, `bass` en **deuxième** position.
+5. **« Supprimer la piste sélectionnée »** : **3** pistes, `bass` absente.
+
+**CE QUE LA MESURE A DIT** (`project.json` écrit, puis le `.mid` pour le matériau) :
+
+| geste | pistes | ordre et marques |
+|---|---|---|
+| **témoin** | 4 | `bass`, `other`, `Batterie`, `Voix` — aucune masquée, aucune verrouillée |
+| Dupliquer la piste | **5** | `bass`, **`bass (copie)`**, `other`, `Batterie`, `Voix` |
+| Masquer la piste | 4 | `bass` **masquée**, le reste inchangé |
+| Descendre la piste | 4 | **`other`, `bass`**, `Batterie`, `Voix` |
+| Supprimer la piste | **3** | `other`, `Batterie`, `Voix` — `bass` absente |
+
+**Les cinq attendus tiennent**, et la duplication emporte le matériau : le `.mid`
+écrit porte `bass` **798 notes** et `bass (copie)` **798 notes**, les autres pistes
+inchangées (2 407 et 2 726). Une copie qui n'aurait que le nom se verrait ici.
