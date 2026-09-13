@@ -24612,3 +24612,51 @@ chaîne d'appel, on compare pour le stem de basse :
 
 Le témoin est le stem déjà produit par le lot `r1f-13sep`, c'est-à-dire exactement
 ce que la chaîne écrit aujourd'hui.
+
+**LA MESURE, sur les cinq morceaux séparés par les trois modèles** (le témoin est
+le stem que la course a réellement écrit) :
+
+| modèle | aigu > 300 Hz | corr. aigu | corr. grave | SDR | justes | 8ve bas | 8ve haut | bas/haut |
+|---|---|---|---|---|---|---|---|---|
+| *(la partie jouée)* | **25,5 %** | — | — | — | — | — | — | — |
+| **`htdemucs_6s` (témoin)** | 2,2 % | 0,380 | 0,292 | 0,31 dB | 96 | 72 | 18 | 4,0× |
+| `htdemucs` | 3,0 % | 0,084 | 0,009 | 0,00 dB | 66 | 74 | 2 | 37,0× |
+| **`htdemucs_ft`** | 2,8 % | **0,626** | **0,649** | **1,95 dB** | **139** | 83 | 19 | 4,4× |
+
+**LA RÉPONSE À LA QUESTION POSÉE : le filtre appartient à la FAMILLE.** Aucun des
+trois modèles ne garde l'aigu — 2,2 %, 3,0 %, 2,8 %, quand la partie jouée en
+porte 25,5 % et que l'attendu demandait 8 % pour conclure autrement. **C1 ne se
+règle donc pas en changeant de modèle htdemucs**, et c'est la dernière voie facile
+qui se ferme. Le rapport bas/haut le confirme : il ne s'améliore chez personne
+(4,0× → 4,4×).
+
+**MAIS LA MESURE RAPPORTE AUTRE CHOSE, QUI N'ÉTAIT PAS DEMANDÉ.** `htdemucs_ft`
+est meilleur sur tout le reste, et nettement :
+
+* corrélation au signal vrai **0,626 / 0,649** contre 0,380 / 0,292 ;
+* **SDR 1,95 dB contre 0,31 dB**, soit **+1,6 dB** ;
+* **139 notes justes contre 96**, soit **+45 %**.
+
+Ce n'est pas l'octave qui s'améliore, c'est la basse elle-même. Et cela touche C1
+par son autre moitié — le SDR de 0,21 dB publié à l'INDEX, contre un attendu de
+6 dB.
+
+**LE PRIX, dit avec le gain.** `htdemucs_ft` est un ensemble de quatre modèles :
+il coûte environ **quatre fois** le temps de séparation, et il ne rend que
+**quatre stems** — pas de `guitar` ni de `piano` séparés, donc une perte de parité
+que la mémoire du projet place très haut. Le remède naturel n'est donc pas de
+remplacer le modèle, mais d'en appeler **deux** : `htdemucs_6s` pour la structure,
+`htdemucs_ft` pour la seule basse. `separer()` prend déjà le modèle en argument,
+et cela ne coûte qu'une passe de plus.
+
+**L'ATTENDU DU PROCHAIN ESSAI, ÉCRIT MAINTENANT** : la basse prise de
+`htdemucs_ft` et le reste de `htdemucs_6s` doit rendre le SDR de basse de
+**0,21 dB à plus de 1,5 dB** sur un lot complet, sans changer le nombre de pistes
+reconstruites de plus d'une en médiane, pour un surcoût de séparation **sous
+5×**. Réfuté si la parité bouge : la parité des pistes prime sur le SDR d'un stem.
+
+**ET UNE ERREUR DE LECTURE ÉVITÉE DE JUSTESSE.** Sur le PREMIER morceau, `htdemucs`
+gardait 8,9 % d'aigu contre 2,6 % au témoin, et j'ai failli l'écrire comme le
+résultat. Sur cinq morceaux, il rend 3,0 % — et sa corrélation s'effondre à 0,009,
+parce qu'il réussit deux morceaux et manque complètement les trois autres. **Une
+mesure sur un morceau mesure le morceau.**
