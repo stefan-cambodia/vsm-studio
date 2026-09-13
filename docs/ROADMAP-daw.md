@@ -23502,3 +23502,39 @@ CE QU'ELLES SONT :
 
 Ce qui reste vraiment faux est donc **15,7 % de hauteurs étrangères** — et c'est là
 qu'ira le travail après les octaves.
+
+
+### Phase D254 — l'octave est le PREMIER défaut de la chaîne, sur les quatre stems (13/09/2026)
+
+D253 a rangé les notes de basse par ce qu'elles sont. La même mesure sur les quatre
+stems — **13 287 notes**, trois lots, la vérité du corpus à 50 ms près :
+
+| stem | notes | **bonne hauteur** | **à l'octave** | autre hauteur | **inventée** |
+|---|---|---|---|---|---|
+| `other` | 5 731 | 64,6 % | 20,3 % | 13,9 % | **1,2 %** |
+| `guitar` | 3 074 | 61,4 % | 25,5 % | 12,7 % | **0,5 %** |
+| `piano` | 2 727 | 69,2 % | 27,5 % | 2,9 % | **0,4 %** |
+| `bass` | 1 755 | 56,9 % | 26,8 % | 15,7 % | **0,6 %** |
+
+(« bonne hauteur » = attaque exacte OU re-attaque d'une note tenue de la même
+hauteur ; « inventée » = rien de cette hauteur ne sonne à cet instant.)
+
+**TROIS FAITS, ET ILS CHANGENT L'ORDRE DU TRAVAIL.**
+
+1. **La chaîne n'invente pas** : de 0,4 à 1,2 % selon le stem. Le reproche
+   ordinaire fait aux transcriptions automatiques ne s'applique pas à celle-ci.
+2. **L'erreur d'octave est la PREMIÈRE, partout** : 20 à 27 % des notes, sur les
+   quatre stems — et non sur la seule basse comme D252 le laissait croire. Ce que
+   la basse a de particulier, c'est le SENS de l'erreur (5,4× vers le bas, quand
+   `other` est symétrique) ; l'ampleur, elle, est générale.
+3. **Corriger les octaves porterait la bonne hauteur de 57-69 % à 77-97 %** selon le
+   stem. Aucun autre chantier de la chaîne ne promet un tel gain pour un défaut
+   aussi bien cerné.
+
+**CE QUE CELA CHANGE POUR B14.** L'élément ne dit plus « la confiance s'inverse
+au-dessus de 0,65 » — c'était le symptôme. Il dit : **l'ambiguïté d'octave coûte un
+cinquième à un quart des notes de chaque stem, et c'est le premier défaut de la
+transcription.** Le travail attend la fin de la course (`analyse/analyzer/` est
+interdit tant qu'elle tourne), et son attendu s'écrit dès maintenant : *sur les
+mêmes trois lots, la part « bonne hauteur » doit passer de 64,6 / 61,4 / 69,2 /
+56,9 % à plus de 75 % sur chaque stem, sans que la part « inventée » monte.*
