@@ -23589,3 +23589,42 @@ tient donc avec le binaire d'aujourd'hui, après une journée qui a touché
 
 3. **Le tableau du lot relu** : 9 morceaux, `morceau-0001-g1` nommé comme non
    mesuré. Le § 7.4 se lira sur dix — la reprise du premier tourne.
+
+
+### Phase D256 — 816 notes écrites dans un registre où le morceau ne joue JAMAIS (13/09/2026)
+
+En cherchant où l'erreur d'octave frappe, le tableau par registre a rendu deux
+lignes à **0,0 %** — pas « peu », zéro :
+
+| registre de la note transcrite | notes | bonne hauteur | à l'octave | autre |
+|---|---|---|---|---|
+| **C0-B1** (MIDI 12-35) | **672** | **0,0 %** | 59,8 % | 40,2 % |
+| C2-B3 (36-59) | 5 616 | 69,4 % | 22,8 % | 7,8 % |
+| C4-B5 (60-83) | 6 855 | **79,4 %** | 7,6 % | 12,9 % |
+| **C6 et au-dessus** (84+) | **144** | **0,0 %** | 66,0 % | 34,0 % |
+
+Pas une seule des 816 notes écrites sous C2 ou au-dessus de C6 ne tombe juste. La
+raison se lit dans la vérité du corpus, en une ligne :
+
+```
+la VÉRITÉ du corpus : 8 298 notes, hauteurs de 36 à 84
+  sous 36 : 0 notes        36..59 : 3 699        60..83 : 4 559        84+ : 40
+```
+
+**Le corpus ne descend JAMAIS sous MIDI 36 ni ne monte au-dessus de 84.** La chaîne,
+elle, écrit 672 notes en dessous et 144 au-dessus : **816 notes, 6,1 % de tout ce
+qu'elle transcrit, sont hors du registre où le morceau joue** — donc fausses par
+construction, et pour 60 à 66 % d'entre elles à une octave près de la vraie.
+
+**CE QUE CELA DONNE COMME REMÈDE, ET CE QUE ÇA N'EST PAS.** Ce n'est PAS « borner la
+transcription à 36-84 » : un vrai morceau peut descendre plus bas (une basse à cinq
+cordes va au si 0), et une borne codée en dur mentirait sur un autre corpus. C'est
+le même défaut que D252 nomme, vu par l'autre bout : **la chaîne pose la
+fondamentale une octave trop bas**, et cela se voit d'autant mieux que la note est
+grave. Le remède est le repli d'octave vers le registre où le reste de la piste
+joue — une décision qui se prend PAR PISTE, avec les autres notes pour témoin.
+
+**L'ATTENDU, ÉCRIT AVANT LE TRAVAIL** : après correction, plus aucune note ne doit
+tomber sous le registre de sa propre piste de plus d'une octave, et la part « bonne
+hauteur » doit passer de 64,6 / 61,4 / 69,2 / 56,9 % à plus de 75 % par stem
+(D254), **sans que la part inventée (0,4 à 1,2 %) monte**.
