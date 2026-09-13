@@ -795,6 +795,11 @@ def construire_parseur() -> argparse.ArgumentParser:
                               "rend que quatre stems, et la parité des pistes prime. Coûte une "
                               "passe de séparation de plus. N'AMÉLIORE PAS l'octave : l'aigu de la "
                               "basse reste filtré quel que soit le modèle htdemucs (D273). "
+                              "ET MESURÉE PERDANTE EN BOUT DE CHAÎNE (D274) : sur un morceau "
+                              "entier, la distance du stem bass MONTE de 0,3021 à 0,3407 et la "
+                              "distance globale de 2,12 %%, parce qu'un stem plus propre est plus "
+                              "difficile à IMITER pour le parc. Gardée comme résultat négatif "
+                              "chiffré. "
                               "Vide (le défaut) : la chaîne d'aujourd'hui, au bit près")
     parseur.add_argument("--residuel", type=int, default=0, metavar="N",
                          help="LA BOUCLE RÉSIDUELLE (docs/CDC-separation-par-synthese.md), N "

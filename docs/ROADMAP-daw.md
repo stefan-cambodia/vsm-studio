@@ -24818,3 +24818,49 @@ un geste de sélection, un réglage d'écoute, une valeur déjà en place, une e
 grisée, un refus motivé, ou un champ qu'il fallait remplir. **Chaque excuse est
 écrite dans la garde avec sa raison** : la prochaine fois que l'une d'elles
 cessera d'être vraie, elle sautera.
+
+**LA MESURE, ET LE REMÈDE EST RÉFUTÉ** — `morceau-0002-g2`, mêmes options, une
+seule variable :
+
+| | témoin | essai (`--modele-basse htdemucs_ft`) | attendu |
+|---|---|---|---|
+| modèle de basse | `htdemucs_6s` | `htdemucs_ft` | — |
+| **pistes du projet** | **15** | **15** | ne recule pas — **tenu** |
+| **distance globale** | **0,152423** | **0,155650** (+2,12 %) | sous 0,1530 — **réfuté** |
+| **distance du stem `bass`** | **0,3021** | **0,3407** (+12,8 %) | doit baisser — **réfuté** |
+| machine retenue pour la basse | `vsm.scanned` | `vsm.stochastic` | — |
+| notes écrites par le stem | 166 | 148 | — |
+| **coût** | 3 658 s | **3 683 s** (1,007×) | sous 1,3× — **tenu** |
+
+**Les deux attendus de fond tombent, et dans le sens contraire à l'intuition :
+une basse MIEUX séparée donne une reconstruction MOINS bonne.** Le stem venait
+pourtant de gagner 1,6 dB de SDR et 45 % de notes justes (D273).
+
+**L'EXPLICATION, et elle vaut au-delà de ce cas.** La « distance » d'un stem ne
+mesure pas sa fidélité à la source vraie : elle mesure **à quel point une machine
+du parc sait l'IMITER**. Un stem plus propre — moins de fuites, plus de son propre
+contenu — est un stem plus RICHE, donc plus difficile à imiter avec les
+soixante-quatre machines disponibles. La preuve est dans le tableau : la machine
+retenue CHANGE, `vsm.scanned` cédant à `vsm.stochastic`, et le résultat empire de
+12,8 %. La chaîne a dû aller chercher ailleurs, et elle a moins bien trouvé.
+
+**C'est la même forme de résultat que D261**, qui montrait que la distance ne
+récompense presque pas les notes brèves : **l'objectif de la chaîne n'est pas la
+fidélité, c'est l'imitabilité**, et les deux divergent dès qu'on améliore la
+matière première. Tant que la mesure publiée sera une distance de ce genre,
+améliorer la séparation pourra faire empirer le chiffre — et il ne faudra pas en
+conclure que la séparation s'est dégradée.
+
+**CE QUE CELA DÉCIDE.** Le lot complet annoncé en D273 **ne sera pas lancé** :
+l'essai qui devait dire s'il en valait la peine a répondu non, pour 3 683 s au
+lieu de treize heures. `--modele-basse` reste dans la chaîne, vide par défaut,
+avec ses chiffres dans son aide et cette réfutation dans la feuille de route —
+c'est un résultat négatif gardé, comme la boucle résiduelle (B7) et les deux
+machines écartées du parc.
+
+**ET UNE IMPRÉCISION DE MON ATTENDU, dite plutôt que tue.** J'avais écrit « 13
+pistes » d'après la ligne du journal de campagne (« 13 pistes / 15 parties ») ; le
+`project.json` en porte **15**. Les deux comptes ne mesurent pas la même chose — le
+journal compte ce que le banc apparie, le projet ce qu'il écrit. L'attendu tient
+quand même, puisque les deux courses donnent le MÊME nombre ; mais un attendu qui
+cite un chiffre doit citer celui qu'il ira relire.
