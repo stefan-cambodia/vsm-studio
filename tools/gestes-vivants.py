@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """Un geste de menu CHANGE le projet, ou DIT pourquoi il ne le change pas.
 
-    analyse/.venv/bin/python tools/gestes-vivants.py [--menu clip-audio|clip-midi|piste]
+    analyse/.venv/bin/python tools/gestes-vivants.py
+    analyse/.venv/bin/python tools/gestes-vivants.py --menu piste --menu pianoroll
+
+HUIT MENUS, 63 entrées : clip audio, clip MIDI, piste, piano roll, les deux
+règles (arrangement et piano roll), mixage, édition.
 
 POURQUOI (13/09/2026, D275). « Découper aux transitoires » a trouvé ses quatre
 attaques et n'a rien coupé (D262), puis a coupé aux mauvais endroits (D263), sans
