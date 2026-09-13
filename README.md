@@ -356,6 +356,7 @@ analyse/.venv/bin/python tools/corpus-hauteurs.py     # le corpus sonne-t-il à 
 analyse/.venv/bin/python tools/octave-basse.py <lot>  # relire l'octave de la basse dans le mélange : témoin, correction, casse
 analyse/.venv/bin/python tools/basse-aigu-releve.py 0 12  # relever l'aigu du stem de basse rend-il l'octave ?
 analyse/.venv/bin/python tools/modeles-separation.py <dossier> --transcrire  # quel modèle garde la basse ?
+analyse/.venv/bin/python tools/gestes-vivants.py       # une entrée de menu change le projet, ou DIT pourquoi non
 ```
 
 Chacune rend un code de sortie non nul quand elle trouve quelque chose, et

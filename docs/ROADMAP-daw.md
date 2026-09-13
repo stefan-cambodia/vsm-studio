@@ -24764,3 +24764,19 @@ d'essai, écrire le projet, et comparer au témoin sans geste. Une entrée dont 
 projet est IDENTIQUE est suspecte, et trois issues seulement l'innocentent : elle
 pose une valeur qui est déjà là, elle est grisée, ou elle ne touche que la vue.
 Toute autre « identique » est un geste mort — c'est ainsi que D275 s'est trouvée.
+
+**ET LA RÈGLE EST DEVENUE UNE GARDE.** `tools/gestes-vivants.py` balaye les trois
+menus — clip audio, clip MIDI, piste — et exige de chaque entrée active qu'elle
+laisse une trace : **37 entrées, 0 geste mort**. Une entrée passe si le projet
+écrit change, ou si l'application DIT pourquoi il ne change pas ; les trois seules
+excuses (un geste de vue, une entrée grisée, une valeur déjà en place) sont
+nommées dans le fichier, avec leur raison.
+
+**LA GARDE A ÉTÉ VUE ROUGE — ET SA PREMIÈRE VERSION ÉTAIT AVEUGLE.** Correctif de
+D275 retiré, elle restait **verte** : elle comptait toute ligne `VSM_BOITE` comme
+une explication, alors qu'une fenêtre restée OUVERTE en imprime une aussi. Les
+deux formes se distinguent au journal — un refus s'écrit « titre : message », une
+modale sans réponse s'écrit « … sans réponse de banc » —, et la garde les sépare
+désormais. Avec le correctif retiré elle rend : `MORT Le clip fait N mesures… —
+modale SANS RÉPONSE`. **Une garde qui n'a jamais échoué ne prouve rien, et
+celle-ci a d'abord échoué à échouer.**
