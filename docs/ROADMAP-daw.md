@@ -20713,3 +20713,54 @@ fait ne se perd pas : ni à l'aller-retour (D162), ni sur un enregistrement refu
 (D175), ni sur une coupure brutale (D176), ni quand une machine, un échantillon,
 le `project.json` ou le `.mid` manquent (D178-D184), ni parce qu'une seconde
 fenêtre travaillait sur le même dossier sans le dire (D195).
+
+### D196 (attendus) — le cinquante-neuvième audit : la règle de l'arrangement TELLE QUE L'UTILISATEUR L'A RÉGLÉE (13/09/2026)
+
+**CE QUE SES PRÉFÉRENCES DISENT, ET CE QUE J'AI MESURÉ À CÔTÉ.**
+`~/VintageSynthMidiStudio/VintageSynthMidiStudio.settings` porte
+`regleEnTemps = 1` : **la règle de son arrangement affiche le TEMPS, pas les
+mesures**. Or D166 a corrigé — et mesuré — la branche des MESURES de cette même
+règle. La branche du temps a sa propre boucle (`rulerTimeTicks()`), et **je ne
+l'ai ni touchée ni regardée**. C'est-à-dire que la correction publiée hier porte
+sur une vue que cet utilisateur-ci n'a pas sous les yeux.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.** `children-c3-plafond`, vue
+arrangement, tout ajusté (Ctrl+0), sous une COPIE des préférences de
+l'utilisateur — échelle 150 %, dock gauche 180, fenêtre unique, règle en temps :
+
+1. **`ArrangementComponent` reste sous 3 ms**, comme la branche des mesures après
+   D166 (1,22 ms). **Réfuté au-dessus**, et le remède sera le même : une garde
+   d'espacement.
+2. **La règle est LISIBLE** sur la photo : pas de graduations empilées.
+3. **Les préférences de l'utilisateur ne bougent pas** — la mesure tourne sur une
+   COPIE, et l'original est comparé par `cmp` avant et après (règle de D77).
+
+### Phase D196 — la règle en TEMPS, celle que l'utilisateur voit, était déjà bonne (13/09/2026)
+
+**LES TROIS ATTENDUS SONT TENUS**, sous une COPIE des préférences de
+l'utilisateur — échelle 150 %, dock gauche 180 px, fenêtre unique, **règle en
+temps** —, `children-c3-plafond` tout ajusté :
+
+| attendu | **mesuré** |
+|---|---|
+| 1. `ArrangementComponent` sous 3 ms | **0,62 ms** (438 × 213 dans SA disposition) ✔ |
+| 2. la règle est lisible | ✔ **`0`, `2:00`, `4:00`, `6:00`**, régulièrement espacés, lu sur la photo |
+| 3. ses préférences ne bougent pas | ✔ `cmp` avant/après : **inchangées** |
+
+**CE QUE CET AUDIT APPREND, ET IL VAUT PLUS QUE SES CHIFFRES.** D166 a corrigé la
+branche des MESURES de la règle d'arrangement — 226 numéros empilés, 15,48 ms —
+et l'a mesurée. **L'utilisateur de cette machine a `regleEnTemps = 1` : il ne
+voit pas cette branche-là.** La correction d'hier porte sur la vue par défaut,
+pas sur la sienne ; et la sienne, `rulerTimeTicks()`, choisit son pas toute
+seule — elle était bonne depuis toujours.
+
+Les deux conclusions se tiennent ensemble : **le défaut de D166 était réel** (il
+frappe quiconque garde la règle en mesures, c'est-à-dire le défaut du logiciel),
+et **je ne l'avais pas trouvé en regardant l'écran de l'utilisateur**. Lire ses
+préférences avant de conclure « voilà ce qu'il voit » est un geste de plus, et il
+change ce qu'on peut affirmer.
+
+**LE RESTE DE SA DISPOSITION, CHIFFRÉ PENDANT QU'ON Y ÉTAIT** : la fenêtre entière
+à **15,97 ms** ajustée, dont le bandeau d'onglets 5,77 ms, le volet d'ouverture
+3,97 ms (il disparaît dès qu'on le ferme), le rack 1,31 ms et la liste des pistes
+0,37 ms à 180 px de large. Tout tient largement sous les 33 ms de D163.
