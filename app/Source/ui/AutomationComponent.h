@@ -30,6 +30,17 @@ public:
     /// (Re)lit les pistes depuis le projet. Conserve les lanes déjà éditées.
     void setProject(vsm::sequencer::Project* project);
 
+    /// D234 (A41) : LES COURBES DU PROJET, DONNÉES AU PANNEAU.
+    ///
+    /// Ce panneau ne lisait JAMAIS les courbes du projet ouvert : `lanes_` ne
+    /// contenait que ce qu'on y dessinait dans la session. Deux conséquences, et la
+    /// seconde détruit : l'onglet montrait une zone vide sur un projet qui porte
+    /// une automation, et le premier point posé publiait `lanes_` — c'est-à-dire
+    /// RIEN — par-dessus l'automation du projet. Mesuré : `cdl`, une courbe de 606
+    /// points sur `filter.1.cutoff`, un point posé, et le projet enregistré ne
+    /// portait plus que le point posé.
+    void setLanes(const std::vector<vsm::audio::engine::AutomationLane>& lanes);
+
     /// Fournit l'instrument d'une piste (pour lister ses paramètres + bornes).
     std::function<vsm::audio::plugin::ISynthPlugin*(size_t)> instrumentProvider;
 
@@ -42,6 +53,11 @@ public:
     void refreshTrackNames() { rebuildTrackBox(); }
     /// D94 : les libellés, dans la langue courante.
     void retraduire();
+    /// D234 : un point d'automation posé SANS SOURIS, par le même `mouseDown` que
+    /// la souris (la leçon de D145) — `fraction` situe le clic dans la zone
+    /// d'édition, 0 = bord gauche/haut, 1 = bord droit/bas. Rend faux si aucun
+    /// paramètre n'est choisi. Le compte de points est écrit au journal.
+    bool poserUnPointPourCapture(double fractionX, double fractionY);
 
 private:
     void rebuildTrackBox();

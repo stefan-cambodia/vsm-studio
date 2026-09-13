@@ -83,6 +83,13 @@ void AutomationComponent::rebuildTrackBox() {
     rebuildParamBox();
 }
 
+void AutomationComponent::setLanes(const std::vector<vsm::audio::engine::AutomationLane>& lanes) {
+    lanes_ = lanes;
+    // La liste des paramètres porte le nombre de points (D234) : elle se refait,
+    // et elle choisit alors le premier paramètre qui en a.
+    rebuildParamBox();
+}
+
 void AutomationComponent::rebuildParamBox() {
     paramBox_.clear(juce::dontSendNotification);
     paramEntries_.clear();
@@ -91,13 +98,34 @@ void AutomationComponent::rebuildParamBox() {
     vsm::audio::plugin::ISynthPlugin* inst =
         instrumentProvider ? instrumentProvider(selectedTrack_) : nullptr;
     if (inst != nullptr) {
+        // D234 : LES PARAMÈTRES QUI PORTENT UNE COURBE SONT MARQUÉS, ET C'EST SUR
+        // L'UN D'EUX QUE L'ONGLET S'OUVRE.
+        //
+        // La liste porte TOUS les paramètres de la machine — une vielle à roue en a
+        // une vingtaine — et l'onglet s'ouvrait sur le premier, presque toujours
+        // vide : un projet reconstruit dont UNE piste porte UNE courbe montrait
+        // « Cliquez pour ajouter des points d'automation », et il fallait fouiller la
+        // liste pour trouver la seule courbe qui existe. Le nombre de points suffit à
+        // dire où regarder, et il ne coûte qu'un parcours des lanes déjà chargées.
         int itemId = 1;
+        int premierAvecPoints = -1;
         for (const auto& info : inst->parameterList()) {
-            paramBox_.addItem(juce::String(info.name), itemId++);
+            size_t points = 0;
+            for (const auto& lane : lanes_)
+                if (lane.targetTrackIndex == selectedTrack_ && lane.targetParam == info.id)
+                    points = lane.points().size();
+            juce::String libelle = juce::String(info.name);
+            if (points > 0) {
+                libelle += juce::String::fromUTF8(u8"  ● ") + juce::String(static_cast<int>(points));
+                if (premierAvecPoints < 0) premierAvecPoints = itemId - 1;
+            }
+            paramBox_.addItem(libelle, itemId++);
             paramEntries_.push_back({info.id, info.minValue, info.maxValue});
         }
         if (paramBox_.getNumItems() > 0) {
-            paramBox_.setSelectedItemIndex(0, juce::sendNotificationSync); // déclenche onChange -> sélection
+            // déclenche onChange -> sélection
+            paramBox_.setSelectedItemIndex(premierAvecPoints >= 0 ? premierAvecPoints : 0,
+                                            juce::sendNotificationSync);
         }
     }
     repaint();
@@ -169,6 +197,26 @@ int AutomationComponent::findPointNear(juce::Point<int> p) const {
 }
 
 // ---------------------------------------------------------------- souris ---
+
+bool AutomationComponent::poserUnPointPourCapture(double fractionX, double fractionY) {
+    const auto zone = editorArea();
+    if (!hasSelection_ || zone.isEmpty()) {
+        std::fputs("VSM_AUTOMATION : aucun param\u00e8tre choisi, rien n'a \u00e9t\u00e9 pos\u00e9\n", stderr);
+        return false;
+    }
+    const juce::Point<int> ou(zone.getX() + static_cast<int>(zone.getWidth() * fractionX),
+                              zone.getY() + static_cast<int>(zone.getHeight() * fractionY));
+    const auto maintenant = juce::Time::getCurrentTime();
+    const juce::MouseEvent e(juce::Desktop::getInstance().getMainMouseSource(), ou.toFloat(),
+                             juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier), 1.0f,
+                             0.0f, 0.0f, 0.0f, 0.0f, this, this, maintenant, ou.toFloat(),
+                             maintenant, 1, false);
+    mouseDown(e);
+    mouseUp(e);
+    std::fputs(("VSM_AUTOMATION : " + juce::String(static_cast<int>(editPoints_.size()))
+                + juce::String::fromUTF8(u8" point(s) sur la courbe choisie\n")).toRawUTF8(), stderr);
+    return true;
+}
 
 void AutomationComponent::mouseDown(const juce::MouseEvent& e) {
     if (!hasSelection_ || !editorArea().contains(e.getPosition())) return;

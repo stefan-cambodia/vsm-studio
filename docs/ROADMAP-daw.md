@@ -22642,3 +22642,78 @@ Trois nombres qui se tiennent : 738 est exactement ce que le fichier MIDI porte
 sur cette piste, 74 en est le dixième, et 418 — 57 % — est la part de notes
 douteuses de CETTE piste, là où le projet entier est à 73 % (D223). Le compte du
 journal et celui du fichier disent la même chose.
+
+### Phase D234 — l'onglet Automation s'ouvre sur un paramètre vide (13/09/2026)
+
+D190 a CHRONOMÉTRÉ les six onglets du bas (5,95 ms pour le mixeur, 0,65 pour
+l'automation) ; personne n'avait regardé ce qu'ils MONTRENT. Le mixeur l'a été en
+D225 — rien à redire. L'automation, elle, pose un problème que le code confirme :
+
+```cpp
+for (const auto& info : inst->parameterList())
+    paramBox_.addItem(juce::String(info.name), itemId++);
+if (paramBox_.getNumItems() > 0)
+    paramBox_.setSelectedItemIndex(0, …);   // le PREMIER, quoi qu'il arrive
+```
+
+La liste porte **tous** les paramètres de la machine — une vielle à roue en a une
+vingtaine —, **sans dire lesquels portent une courbe**, et l'onglet s'ouvre sur le
+premier, presque toujours vide. Un musicien qui ouvre l'automation d'un projet
+reconstruit voit « Cliquez pour ajouter des points d'automation » et doit fouiller
+la liste pour trouver la seule courbe qui existe.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE** (`cdl`, dont la piste `melange`
+porte UNE courbe, `filter.1.cutoff`) :
+
+1. **Avant** : l'onglet s'ouvre sur le premier paramètre de la machine, la zone est
+   vide, et rien dans la liste ne distingue `filter.1.cutoff` des autres.
+2. **Après** : l'onglet s'ouvre sur **`filter.1.cutoff`**, sa courbe est dessinée,
+   et les paramètres qui portent des points sont **marqués dans la liste** avec leur
+   nombre.
+3. **Témoin** : sur un projet SANS aucune courbe (`b4wuzthen`, 0 sur 8 pistes),
+   l'onglet s'ouvre comme avant, sur le premier paramètre, et rien n'est marqué —
+   le changement ne doit rien inventer là où il n'y a rien.
+
+**CE QUE LA MESURE A TROUVÉ — ET CE N'ÉTAIT PAS CE QU'ON CHERCHAIT (A41).**
+
+L'attendu 1 tenait : l'onglet s'ouvre sur « Detune », zone vide, alors que le
+projet porte une courbe. Mais en lisant le code pour la corriger, une seconde chose
+est apparue : **`AutomationComponent::lanes_` n'est JAMAIS rempli depuis le
+projet.** Le moteur reçoit les courbes (`setAutomationLanes`), le disque les garde,
+le panneau ne les a jamais eues — il ne connaît que ce qu'on y dessine dans la
+session. Et comme `commit()` publie `lanes_` par `onAutomationChanged`, qui fait
+`currentAutomation_ = lanes` puis `captureSessionIntoProject()` — laquelle **vide
+`track.automation` avant de réécrire** —, le premier point posé publie le vide.
+
+**MESURÉ, AVANT CORRECTION** (`cdl`, dont la piste `melange` porte une courbe de
+**606 points** sur `filter.1.cutoff`, un point posé au centre de la zone par
+`VSM_VUE=point-automation:0.5:0.5`, qui passe par le MÊME `mouseDown` que la
+souris) :
+
+| | courbes du projet enregistré |
+|---|---|
+| projet d'origine | `filter.1.cutoff` : **606 points** |
+| après UN point posé dans l'onglet | `oscillator.supersaw.detune` : **1 point** |
+
+**Les 606 points avaient disparu.** Un geste d'un clic, dans un onglet qu'on
+consulte, efface toute l'automation d'un projet reconstruit — et rien ne le dit.
+
+**CE QUI EST POSÉ.** `setLanes()` donne au panneau les courbes du projet au moment
+où le reste de l'application les reçoit ; la liste des paramètres porte le nombre
+de points de chacun (« Filter Cutoff ● 606 ») et l'onglet s'ouvre sur le premier
+paramètre qui en a.
+
+| course | ce que le projet enregistré porte | VSM_AUTOMATION |
+|---|---|---|
+| un point posé, **après correction** | `filter.1.cutoff` : **607 points** | 607 point(s) |
+| témoin : l'onglet ouvert, aucun point posé | `filter.1.cutoff` : **606 points** | — |
+| témoin : `b4wuzthen`, projet SANS courbe, un point posé | `string.pickHardness` : 1 point | 1 point |
+
+La photo le confirme : l'onglet s'ouvre sur « Filter Cutoff ● 606 » et **dessine la
+courbe**, là où il montrait « Cliquez pour ajouter des points d'automation ».
+
+**CE QUE CELA DIT DE LA MÉTHODE.** D190 avait chronométré cet onglet à 0,65 ms —
+un chiffre juste, sur un panneau qui n'affichait rien et détruisait au premier
+clic. **Mesurer le coût d'un dessin ne dit rien de ce qu'il dessine.** C'est la
+troisième fois aujourd'hui qu'un simple regard sur un écran en marche trouve ce
+qu'aucune suite ne voyait (D225 la console, D231 l'historique, D234 l'automation).

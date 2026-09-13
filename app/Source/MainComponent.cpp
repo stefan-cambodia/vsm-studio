@@ -2092,6 +2092,15 @@ void MainComponent::applyViewCommand(const juce::String& nom) {
     // D17.7 : les courbes d'automation par-dessus les clips (la touche `A` de
     // l'arrangement), pour les photographier -- une touche ne se capture pas.
     else if (nom == "courbes") arrangement_.toggleAutomation();
+    // D234 : « point-automation:0.5:0.5 » pose un point dans l'onglet Automation, à
+    // la fraction (x, y) de la zone d'édition, par le MÊME `mouseDown` que la souris.
+    else if (nom.startsWith("point-automation:")) {
+        juce::StringArray parts;
+        parts.addTokens(nom.fromFirstOccurrenceOf(":", false, false), ":", "");
+        const double fx = parts.size() > 0 ? parts[0].getDoubleValue() : 0.5;
+        const double fy = parts.size() > 1 ? parts[1].getDoubleValue() : 0.5;
+        automation_.poserUnPointPourCapture(fx, fy);
+    }
     else if (nom.startsWith("choisir-clip:"))
         arrangement_.selectFirstClipOf(
             static_cast<size_t>(std::max(0, nom.substring(13).getIntValue())));
@@ -7986,6 +7995,10 @@ void MainComponent::applyAutomationFromProject() {
         }
     }
     audioEngine_.processGraph().setAutomationLanes(currentAutomation_);
+    // D234 (A41) : ET LE PANNEAU LES REÇOIT AUSSI. Le moteur les avait, le disque
+    // les avait, l'onglet Automation ne les a jamais eues -- et son premier point
+    // les écrasait toutes.
+    automation_.setLanes(currentAutomation_);
     automation_.setProject(&project_);
     midiCc_.setProject(&project_);
     eventList_.setProject(&project_);        // D32.2
