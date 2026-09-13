@@ -24242,3 +24242,47 @@ sur `vsm.pcmhybrid`, `sample.1.tune` valait −11,63 et `oscillator.1.detune` +4
 — **deux couches de la même machine, à deux hauteurs**, et le transcripteur suit
 l'une des deux. Une machine hybride n'a pas « un » désaccord ; la garde les
 regarde tous et dit lequel répond.
+
+
+### Phase D268 — B14 recomptée contre la hauteur ENTENDUE : deux stems sur quatre passent déjà l'attendu (13/09/2026)
+
+D267 a établi que 12,7 % des notes mélodiques du corpus sonnent à côté de ce que
+leur liste annonce, par le seul fait du patch tiré. Les catégories de D254 —
+bonne hauteur, octave, autre hauteur, inventée — comparaient la transcription à
+la hauteur ÉCRITE. Recomptées contre la hauteur ENTENDUE, sur les dix morceaux du
+lot `r1f-13sep` :
+
+| stem | notes | bonne hauteur (écrite) | **bonne hauteur (entendue)** | écart |
+|---|---|---|---|---|
+| `other` | 2 493 | 72,6 % | **83,6 %** | **+11,0** |
+| `guitar` | 1 662 | 64,1 % | **67,6 %** | +3,5 |
+| `piano` | 1 325 | 78,3 % | **79,2 %** | +0,9 |
+| `bass` | 850 | 61,6 % | **61,6 %** | **0,0** |
+
+Et la catégorie « autre hauteur » — celle qui n'est ni juste ni une octave —
+s'effondre là où la correction porte : `other` passe de **13,3 % à 4,3 %**,
+`guitar` de 13,3 % à 9,0 %. C'est la signature attendue : un désaccord de
+quelques demi-tons produit exactement une « autre hauteur », jamais une octave.
+
+**CE QUE CELA FAIT À L'ATTENDU DE B14**, qui demandait *plus de 75 % de bonne
+hauteur sur chaque stem* : **`other` (83,6 %) et `piano` (79,2 %) le tiennent
+déjà**, sans qu'une ligne de la chaîne ait changé. Ce qu'il restait à corriger
+sur ces deux stems était, pour une bonne part, une erreur de mesure.
+
+**ET CE QUI RESTE EST PLUS NET QU'AVANT.** `guitar` (67,6 %) et surtout `bass`
+(61,6 %) ne bougent pas, ou peu — la basse **pas du tout**, au dixième de point.
+Son problème n'est donc pas le patch : c'est bien l'ambiguïté d'octave que D252
+avait isolée (234 notes une octave trop bas contre 32 trop haut, un biais de
+5,4×), et la correction d'aujourd'hui la rend plus visible encore, la part
+« octave » de la basse montant de 21,8 % à **24,9 %** parce que des notes
+quittent « autre » pour « octave ».
+
+**B14 se resserre donc sur deux stems au lieu de quatre, et sur une cause au lieu
+de deux.**
+
+**LE TÉMOIN N'A PAS ÉTÉ CHANGÉ EN DOUCE.** `tools/confiance-contre-verite.py`
+compare toujours à la hauteur écrite par défaut — c'est ce que toutes les mesures
+publiées jusqu'ici comparaient. La hauteur entendue s'obtient par
+`VSM_SONNANTE=1`, et les deux colonnes se lisent côte à côte. Pour une machine
+hybride, la note vraie est acceptée à SES DEUX hauteurs (la couche
+échantillonnée et la couche synthétique), parce que les deux sonnent vraiment.

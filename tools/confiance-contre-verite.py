@@ -44,6 +44,35 @@ from pathlib import Path
 # à 25 comme à 100 ms, sans quoi la conclusion tiendrait à un réglage.
 TOLERANCE = float(os.environ.get("VSM_TOLERANCE", "0.05"))   # secondes
 
+# VSM_SONNANTE=1 (D267) : comparer à la hauteur ENTENDUE plutôt qu'à la hauteur
+# ÉCRITE. Le corpus tire ses patchs au hasard, et plusieurs machines exposent un
+# désaccord d'oscillateur en demi-tons entiers (±24 sur `vsm.pcmhybrid`, ±12 sur
+# `vsm.obx`) : une partie ainsi désaccordée SONNE à côté de ce que sa liste de
+# notes annonce, et le transcripteur a raison de l'entendre là. 12,7 % des notes
+# mélodiques du corpus sont dans ce cas. Par défaut le témoin reste la hauteur
+# écrite -- c'est ce que toutes les mesures publiées jusqu'ici comparaient, et un
+# témoin ne se change pas en douce.
+SONNANTE = os.environ.get("VSM_SONNANTE", "") not in ("", "0")
+
+
+def hauteurs_sonnantes(partie: dict, hauteur: int) -> list[int]:
+    """Les hauteurs auxquelles cette note SONNE, d'après le patch de la partie.
+
+    Plusieurs, et non une : une machine hybride a deux couches à deux hauteurs
+    (`sample.1.tune` et `oscillator.1.detune` sur `vsm.pcmhybrid`), et le
+    transcripteur en suit l'une ou l'autre. On rend donc la hauteur écrite ET
+    chaque hauteur décalée, et une note transcrite est juste si elle tombe sur
+    l'une d'elles.
+    """
+    if not SONNANTE:
+        return [hauteur]
+    sonnantes = [hauteur]
+    for clef, valeur in (partie.get("patch") or {}).items():
+        c = clef.lower()
+        if ("detune" in c or c.endswith(".tune")) and abs(valeur) > 0.25:
+            sonnantes.append(hauteur + int(round(float(valeur))))
+    return sorted(set(sonnantes))
+
 
 def verite_du_morceau(dossier: Path) -> dict[int, list[float]]:
     """Les débuts (en secondes) de chaque hauteur, triés, toutes parties confondues."""
@@ -55,7 +84,8 @@ def verite_du_morceau(dossier: Path) -> dict[int, list[float]]:
     for partie in v.get("parties", []):
         for note in partie.get("notes", []):
             hauteur, _velocite, debut = int(note[0]), note[1], float(note[2])
-            debuts.setdefault(hauteur, []).append(debut)
+            for sonnante in hauteurs_sonnantes(partie, hauteur):
+                debuts.setdefault(sonnante, []).append(debut)
     for liste in debuts.values():
         liste.sort()
     return debuts
@@ -78,7 +108,8 @@ def tenues_du_morceau(dossier: Path) -> list[tuple[float, float, int]]:
     for partie in v.get("parties", []):
         for note in partie.get("notes", []):
             hauteur, debut, duree = int(note[0]), float(note[2]), float(note[3])
-            tenues.append((debut, debut + duree, hauteur))
+            for sonnante in hauteurs_sonnantes(partie, hauteur):
+                tenues.append((debut, debut + duree, sonnante))
     tenues.sort()
     return tenues
 
