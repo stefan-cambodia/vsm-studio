@@ -505,6 +505,32 @@ ailleurs, avec ses propres attendus écrits avant leur mesure.
 - La voix : aucun rôle chanté. La chaîne a une branche voix (tête/chœurs)
   que le banc ne mesure pas.
 
+**DEUX MANQUES DE PLUS, NOMMÉS PAR LES MESURES DU 13/09/2026, et ils ne sont pas
+des souhaits : chacun a empêché une mesure d'aboutir.**
+
+- **Aucune note mélodique BRÈVE.** Sur les 8 298 notes du corpus, les 1 865 qui
+  durent moins de 150 ms sont **toutes des frappes de batterie** ; les six rôles
+  mélodiques n'en écrivent pas une seule (D264). Le générateur pose des durées
+  liées au `gate` de la partie, et ce gate ne descend jamais assez. Conséquence
+  payée : « la chaîne rate 96,7 % des notes courtes » a tenu trois phases avant
+  qu'on découvre qu'elle ne parlait que de percussion (D265). **Attendu pour le
+  prochain corpus** : au moins un cinquième des parties mélodiques porte des
+  doubles croches ou des ornements sous 120 ms, et `tools/notes-courtes.py`
+  rejoue alors l'A/B sur `minimum_note_length` — qui, sur le corpus d'aujourd'hui,
+  ne peut rien montrer.
+- **Un seul patch de basse sur neuf porte un SOUS-OSCILLATEUR.** L'hypothèse
+  « le sous-oscillateur explique l'octave de la basse » a rendu une corrélation
+  de +1,000 qui ne vaut rien : elle porte sur un point (D269). Plus
+  généralement, **le corpus tire ses patchs au hasard sans contrôler les
+  paramètres qui décident de la mesure** — c'est aussi ce qui a fait sonner cinq
+  parties à côté de leur propre vérité, par un désaccord d'oscillateur de
+  plusieurs demi-tons (D267). **Attendu pour le prochain corpus** : les
+  paramètres qui déplacent ou doublent la hauteur (`*.detune`, `*.tune`,
+  `oscillator.sub.level`) sont TIRÉS SUR UNE GRILLE CONNUE et écrits dans
+  `verite.json` comme facteurs de la mesure, au lieu d'être des nombres parmi
+  cent autres. Sans cela, toute statistique de hauteur mélange l'erreur de la
+  chaîne et le réglage du corpus.
+
 ## 8. L'usage apprenant d'H25 — SEULEMENT après S1, et sous condition
 
 > **S1 EST MESURÉE (05/09/2026, 02:23), la condition d'entrée est donc

@@ -99,20 +99,68 @@ def stems_des_modeles(racine: Path, morceau: str) -> dict[str, Path]:
     return trouves
 
 
+def octaves(chemin: Path, morceau: str) -> tuple[int, int, int]:
+    """(justes, une octave trop bas, une octave trop haut) en transcrivant ce stem.
+
+    C'est la mesure qui DÉCIDE : la part d'aigu retenue n'est qu'un indice, et
+    l'on a déjà vu (D272) qu'un aigu remonté artificiellement n'améliore rien.
+    Ce qui compte est ce que le transcripteur en fait.
+    """
+    from basic_pitch import ICASSP_2022_MODEL_PATH
+    from basic_pitch.inference import predict
+
+    f = SRC / morceau / "verite.json"
+    v = json.loads(f.read_text(encoding="utf-8"))
+    vraies = sorted((float(n[2]), int(n[0])) for p in v.get("parties", [])
+                    if p.get("role") != "batterie" for n in p.get("notes", []))
+    _, _, evts = predict(str(chemin), model_or_model_path=ICASSP_2022_MODEL_PATH)
+    juste = bas = haut = 0
+    for e in evts:
+        t, h = float(e[0]), int(e[2])
+        proches = [hv for tv, hv in vraies if abs(tv - t) <= 0.06]
+        if h in proches:
+            juste += 1
+        elif any(hv - h in (12, 24) for hv in proches):
+            bas += 1
+        elif any(hv - h in (-12, -24) for hv in proches):
+            haut += 1
+    return juste, bas, haut
+
+
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
         print(__doc__.splitlines()[2].strip(), file=sys.stderr)
         return 2
+    transcrire = "--transcrire" in argv
+    argv = [a for a in argv if a != "--transcrire"]
     racine = Path(argv[1])
     if not racine.is_dir():
         print(f"REFUS : {racine} n'existe pas — aucune reséparation à comparer")
         return 2
 
+    # LES MÊMES MORCEAUX POUR TOUS LES MODÈLES, et ce n'est pas une précaution
+    # de style. Comparé sur 9 morceaux d'un côté et 5 de l'autre, `htdemucs`
+    # semblait corrélé à 0,009 contre 0,523 au témoin — alors que les deux
+    # modèles se suivent de près sur chaque morceau pris un par un, et que les
+    # corrélations vont de 0,008 à 0,933 selon le morceau. La médiane ne
+    # mesurait que le tirage.
+    # L'UNION des modèles vus quelque part, puis les morceaux qui les portent TOUS.
+    # (Prendre l'intersection morceau par morceau donnerait le seul témoin, qui est
+    # partout — et l'on comparerait de nouveau des ensembles différents.)
+    attendus: set[str] = set()
+    for dossier in sorted(SRC.glob("morceau-*")):
+        if basse_vraie(dossier.name) is not None:
+            attendus |= set(stems_des_modeles(racine, dossier.name))
+
     par_modele: dict[str, list[tuple[float, float, float, float]]] = {}
+    mesurables = []
     for dossier in sorted(SRC.glob("morceau-*")):
         vrai = basse_vraie(dossier.name)
         if vrai is None:
             continue
+        if not attendus.issubset(set(stems_des_modeles(racine, dossier.name))):
+            continue
+        mesurables.append(dossier.name)
         v, sr = vrai
         vh, vb = bande(v, sr, bas=COUPURE), bande(v, sr, haut=COUPURE)
         for modele, chemin in stems_des_modeles(racine, dossier.name).items():
@@ -131,6 +179,8 @@ def main(argv: list[str]) -> int:
         return 1
     n_ref = len(next(iter(par_modele.values())))
     print(f"stem de basse contre la partie de basse VRAIE, coupure {COUPURE:.0f} Hz")
+    print(f"morceaux retenus (mesurés par TOUS les modèles) : {len(mesurables)} — "
+          f"{', '.join(mesurables)}")
     print(f"{'modèle':24s} {'morceaux':>9} {'aigu > 300 Hz':>14} {'corr. aigu':>11} "
           f"{'corr. grave':>12} {'SDR':>8}")
     print(f"{'(la partie jouée)':24s} {n_ref:9d} {25.5:13.1f}% {'—':>11} {'—':>12} {'—':>8}")
@@ -140,6 +190,21 @@ def main(argv: list[str]) -> int:
         cb = np.median([x[2] for x in lignes])
         s = np.median([x[3] for x in lignes])
         print(f"{modele:24s} {len(lignes):9d} {100 * a:13.1f}% {ch:11.3f} {cb:12.3f} {s:7.2f}dB")
+
+    if transcrire:
+        print(f"\n{'modèle':24s} {'justes':>8} {'8ve bas':>8} {'8ve haut':>9} {'bas/haut':>9}")
+        for modele in par_modele:
+            j = b = h = 0
+            for morceau in mesurables:
+                chemin = stems_des_modeles(racine, morceau).get(modele)
+                if chemin is None:
+                    continue
+                dj, db, dh = octaves(chemin, morceau)
+                j += dj
+                b += db
+                h += dh
+            rapport = f"{b / h:.1f}x" if h else "—"
+            print(f"{modele:24s} {j:8d} {b:8d} {h:9d} {rapport:>9}")
     return 0
 
 
