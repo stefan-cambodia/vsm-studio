@@ -1080,6 +1080,25 @@ piste et la capture montrait un résultat vraisemblable et faux.
 piste, une fois par seconde : une capture qui ne montre pas la piste la plus
 chère en ambre laisse deux explications ouvertes — la règle est fausse, ou la
 capture n'a rien attrapé — et c'est le seul moyen de les départager sans écran.
+`VSM_PEINTURE=N` chronomètre les DESSINS : N passes de `paintEntireComponent`
+dans une image allouée une seule fois, médiane publiée avec son minimum, son
+maximum et la première passe — le même code que celui que le système appelle,
+et la médiane écarte la passe qui paye les caches de police. `VSM_CAPTURE` n'en
+fait qu'un, une fois, et mélange l'allocation, les caches et le dessin.
+`VSM_PEINTURE_ENFANTS=N` descend de N niveaux dans les enfants visibles, chacun
+nommé par sa CLASSE (beaucoup de composants internes n'ont pas de nom, et un
+chiffre sans nom ne désigne rien) : c'est ce qui a permis à D164 de découvrir
+que les 30 ms d'un panneau étaient chez deux VOISINS du composant accusé.
+`VSM_TITRE` n'est pas une variable mais une LIGNE écrite au moment de la photo :
+le titre d'une fenêtre n'est le texte d'aucun composant — c'est le gestionnaire
+de fenêtres qui le dessine —, donc ni l'autoportrait ni `VSM_TEXTES_LISTE` ne le
+voient. Or il porte, depuis D174, l'astérisque qui dit qu'un projet a des
+modifications non enregistrées.
+`VSM_FERMER=1` déclenche la VRAIE fermeture — celle du bouton de la fenêtre —
+juste avant la photo, pour que la question « Quitter sans enregistrer ? » (D175)
+s'écrive sur `VSM_BOITE` et figure sur les images des panneaux. La fin d'une
+course de banc, elle, quitte par un autre chemin : sans cela, la boîte modale
+ferait expirer tous les bancs du dépôt.
 `VSM_POSITION=17.3` pose la tête à une mesure saisie (D22.2), `VSM_LECTURE=1`
 lance la lecture avant la capture (`VSM_LECTURE=4000` : après 4 s ; les voyants IN et OUT de la barre de
 transport ne s'allument que si quelque chose passe), `VSM_PRESET_PISTE=nom`
