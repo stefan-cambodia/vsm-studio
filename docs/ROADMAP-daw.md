@@ -21205,3 +21205,21 @@ répond 64 aujourd'hui et répondra 65 demain sans que personne y pense.
 appliquée du premier coup : « MIDI sequencer, rack of 64 modelled machines, and
 the chain that rebuilds a recording into a playable project. » `ECRAN 7`,
 `SANS_PAIRE 0`, inchangés.
+
+### Vérification — la garde passée sur les projets du dépôt (13/09/2026)
+
+`tools/comparer-rendus.sh` a tourné sur **quatre** projets, tous rendus par les
+deux chemins et comparés échantillon par échantillon :
+
+| projet | pistes | durée | **verdict** |
+|---|---|---|---|
+| `b4wuzthen` (le morceau de l'utilisateur, machine à profil hors du projet) | 8 | 353,3 s | **identique au bit** (écart maximal 0,000) |
+| `children-c3-plafond` (2 pistes audio, bus de groupe) | 12 | 454,2 s | **identique au bit** |
+| le même, une piste GELÉE | 12 | 454,2 s | **identique au bit** (depuis D186-D187) |
+| `sky-v4` | 4 | 534,2 s | **identique au bit** |
+
+**Quatre projets, quatre fois zéro.** Ce que cela vaut : les trois défauts de la
+journée — la piste gelée muette, sa queue coupée, le profil jamais capturé — ne
+laissent aucun résidu, et rien d'autre de cette famille ne dort dans les projets
+que le dépôt garde. Ce que cela ne vaut PAS : une preuve pour les projets à venir.
+C'est pour cela que la mesure est devenue un outil et non une ligne de rapport.
