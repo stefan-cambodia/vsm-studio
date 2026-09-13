@@ -210,6 +210,15 @@ public:
                 if (p.trim().isNotEmpty()) choix.insert(static_cast<size_t>(p.trim().getIntValue()));
             if (choix.empty()) return false;
             trackList_.setSelectedTracks(choix, *choix.begin());
+            // D248 : la piste OBTENUE, et son nom -- « choisir:1 » prend la DEUXIÈME
+            // piste (l'index part de zéro), ce qui a fait lire à D220 le menu d'une
+            // piste pour celui d'une autre.
+            const size_t apres = trackList_.selectedTrackIndex();
+            std::fputs(("VSM_GESTE : choisir : piste " + juce::String(static_cast<int>(apres))
+                        + (apres < project_.tracks.size()
+                               ? juce::String(" (") + juce::String::fromUTF8(project_.tracks[apres].name.c_str()) + ")"
+                               : juce::String::fromUTF8(u8" — hors bornes"))
+                        + ", " + juce::String(static_cast<int>(choix.size())) + " choisie(s)\n").toRawUTF8(), stderr);
             return true;
         }
         if (geste.startsWithIgnoreCase("machine:")) {
