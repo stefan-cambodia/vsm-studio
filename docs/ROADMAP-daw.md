@@ -23179,3 +23179,20 @@ miroir non, la quantification non plus (D236), et la comparaison d'événements 
 du matin non plus. **Une mesure d'édition musicale se fait sur des multiensembles,
 ou sur un appariement que le geste justifie** — jamais sur deux listes triées à
 l'aveugle.
+
+### Phase D244 — le volet de statistiques dit-il vrai ? (13/09/2026)
+
+« Fichier ▸ Statistiques du projet… » (D32.5) publie onze chiffres d'un coup. Ils
+n'avaient jamais été confrontés au FICHIER. Sur `b4-v4` :
+
+```
+Pistes : 4  (3 MIDI, 1 audio, 0 groupe(s), 0 dossier(s))
+Notes : 5931 | Clips : 4 | Automation : 1 courbe(s), 688 point(s)
+Machines employées : 3 — vsm.jupiter8, vsm.string, vsm.tr808, une piste chacune
+Durée du matériau : 351,32 s (337 270 ticks) | Tempo au départ : 120,00 BPM
+```
+
+Le `.mid` du projet, relu par `mido` en D239, porte **798 + 2 407 + 2 726 + 0 =
+5 931 notes**. Le compte du volet est donc exact **à la note près**, et les trois
+machines nommées sont celles des trois pistes MIDI. Rien à corriger — mais on le
+sait maintenant, au lieu de le supposer.
