@@ -24871,3 +24871,75 @@ pistes » d'après la ligne du journal de campagne (« 13 pistes / 15 parties »
 journal compte ce que le banc apparie, le projet ce qu'il écrit. L'attendu tient
 quand même, puisque les deux courses donnent le MÊME nombre ; mais un attendu qui
 cite un chiffre doit citer celui qu'il ira relire.
+
+
+### Phase D278 — le sous-oscillateur explique-t-il l'octave de la basse ? (13/09/2026)
+
+D269 avait posé l'hypothèse et n'avait pas pu la trancher : **une seule des neuf
+parties de basse du corpus porte un sous-oscillateur**, et la corrélation de
++1,000 qui en sortait portait sur un point. J'avais alors inscrit l'exigence n°5
+du § 7 bis — « que le corpus suivant porte six basses à sous-oscillateur de niveau
+varié » — et **c'était mal conçu** : seules **trois machines du parc** exposent un
+`oscillator.sub.level` (`vsm.generic`, `vsm.supersaw`, `vsm.sh101`), si bien
+qu'aucun tirage de corpus ne produira la variété demandée sans biaiser le choix
+des machines.
+
+**L'hypothèse n'a pas besoin d'un corpus : elle a besoin d'un TÉMOIN.** La même
+ligne de basse, la même machine, le même patch — une seule variable, le niveau du
+sous-oscillateur. C'est plus propre que ce que le corpus pourrait offrir, et cela
+coûte une minute au lieu d'une régénération.
+
+**L'ATTENDU, ÉCRIT AVANT LA MESURE.** Une ligne de basse rendue par
+`vsm.supersaw` à `oscillator.sub.level` = 0,0 / 0,2 / 0,4 / 0,6 / 0,8, transcrite
+chaque fois :
+
+1. **Si le sous-oscillateur explique l'octave**, la part de notes transcrites une
+   octave TROP BAS croît avec lui, et gagne **au moins 20 points** entre 0,0 et
+   0,8.
+2. **Contrôle indispensable** : à 0,0 cette part doit être **faible** (sous 10 %).
+   Si le transcripteur se trompe déjà sans sous-oscillateur, c'est que la cause
+   est ailleurs et la mesure ne dira rien.
+3. **Contrôle de sanité** : le nombre de notes transcrites ne s'effondre pas —
+   un sous-oscillateur fort ne doit pas rendre la ligne inaudible, sans quoi on
+   mesurerait une disparition et non un déplacement.
+
+Réfuté si la part ne croît pas, ou croît de moins de 20 points.
+
+**LA MESURE, ET L'HYPOTHÈSE EST CONFIRMÉE** — même ligne, même machine, même
+patch, une seule variable :
+
+| `oscillator.sub.level` | notes écrites | justes | **8ve trop bas** | 8ve trop haut | autre | **part 8ve bas** |
+|---|---|---|---|---|---|---|
+| **0,00 (témoin)** | 22 | **16** | **0** | 2 | 1 | **0,0 %** |
+| 0,20 | 36 | 15 | 16 | 2 | 0 | 48,5 % |
+| 0,40 | 35 | 12 | 16 | 1 | 2 | 51,6 % |
+| 0,60 | 30 | 7 | 15 | 1 | 1 | 62,5 % |
+| 0,80 | 22 | **2** | 15 | 1 | 2 | **75,0 %** |
+
+**Les trois attendus tiennent, et le premier de très loin** : la part de notes une
+octave trop bas passe de **0,0 % à 75,0 %**, soit **+75 points** là où l'attendu en
+demandait 20. Le témoin à 0,00 ne se trompe **jamais** vers le bas — la cause n'est
+donc pas ailleurs. Et le compte de notes ne s'effondre pas (22 → 36 → 35 → 30 →
+22), donc on mesure bien un DÉPLACEMENT et non une disparition.
+
+**CE QUE LA COLONNE « justes » AJOUTE, et qui n'était pas demandé** : elle tombe de
+**16 à 2**. Le transcripteur ne se contente pas d'ajouter la note du
+sous-oscillateur à côté de la bonne — **il la prend À LA PLACE**, de plus en plus
+souvent à mesure qu'elle monte. À 0,20 déjà, il écrit les deux (36 notes pour 16
+jouées) ; à 0,80, il n'écrit presque plus que la basse.
+
+**PREMIÈRE HYPOTHÈSE CONFIRMÉE APRÈS QUATRE RÉFUTATIONS** (D257, D258, D270,
+D272). Elle ne contredit aucune : celles-là cherchaient à RÉPARER l'octave en
+aval, celle-ci dit d'où elle vient quand un sous-oscillateur est là.
+
+**CE QU'ELLE N'ÉTABLIT PAS, ET QUE JE N'ÉCRIRAI PAS.** Elle n'explique pas le biais
+de 6,9× mesuré sur les stems séparés : **la plupart des basses du corpus n'ont pas
+de sous-oscillateur** — seules trois machines du parc en exposent un. Les deux
+mesures se ressemblent pourtant, et une hypothèse commune se formule sans être
+prouvée : **le transcripteur descend d'une octave quand les partielles supérieures
+de la fondamentale sont faibles devant une composante grave forte**, que cette
+composante vienne d'un sous-oscillateur (D278) ou du filtrage de la séparation
+(D269, 25,5 % → 1,7 % au-dessus de 300 Hz). Ce serait un seul mécanisme et deux
+causes. **Pour le trancher il faudrait une troisième mesure** : rendre la même
+ligne sans sous-oscillateur, puis lui retirer son aigu au filtre, et voir si
+l'octave tombe pareil. `tools/sous-oscillateur.py` est le banc où elle s'écrira.

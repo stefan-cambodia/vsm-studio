@@ -355,6 +355,7 @@ analyse/.venv/bin/python tools/notes-courtes.py 127.7 30  # le transcripteur jet
 analyse/.venv/bin/python tools/corpus-hauteurs.py     # le corpus sonne-t-il à la hauteur que sa vérité annonce ?
 #   (tools/hauteur_sonnante.py : la règle « à quelle hauteur une note SONNE », partagée)
 analyse/.venv/bin/python tools/f1-sonnant.py <lot>    # le F1 corrigé contre l'actuel, et son écart est-il STABLE ?
+analyse/.venv/bin/python tools/sous-oscillateur.py 0 0.4  # le sous-oscillateur fait-il descendre l'octave ?
 analyse/.venv/bin/python tools/octave-basse.py <lot>  # relire l'octave de la basse dans le mélange : témoin, correction, casse
 analyse/.venv/bin/python tools/basse-aigu-releve.py 0 12  # relever l'aigu du stem de basse rend-il l'octave ?
 analyse/.venv/bin/python tools/modeles-separation.py <dossier> --transcrire  # quel modèle garde la basse ?
