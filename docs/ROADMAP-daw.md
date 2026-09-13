@@ -20351,3 +20351,55 @@ trois ne se voyait à l'écran, aucun ne levait d'erreur, et chacun se mesurait 
 comparant les deux chemins sur un vrai projet. C'est ce que `VSM_EXPORT` contre
 `vsm-render` sait faire, et il faudra le refaire à chaque fois qu'une machine ou
 une propriété de piste s'ajoute.
+
+### D190 (attendus) — le cinquante-quatrième audit : les six onglets du bas, sur un projet de neuf mille notes (13/09/2026)
+
+**POURQUOI CES SURFACES.** Le bandeau du bas porte six onglets — Mixer,
+Automation, Effets, MIDI CC, **Liste**, Tempo — et l'un d'eux affiche les
+ÉVÉNEMENTS : sur `children-c3-plafond`, cela fait **9 224 notes** à présenter.
+Une liste non virtualisée de neuf mille lignes est le gel d'interface le plus
+classique qui soit, et personne ne l'a mesurée. Les autres onglets sont regardés
+dans le même mouvement parce que le banc les atteint tous par `VSM_VUE`.
+
+**CE QUI EST ATTENDU, ÉCRIT AVANT LA MESURE.**
+
+1. **Chaque onglet se peint en moins de 16 ms** (le seuil de D163). Le mixeur,
+   déjà mesuré, vaut 4,87 ms : il sert d'échelle.
+2. **Aucun onglet ne coûte plus de 500 ms à OUVRIR** — mesuré sur le temps total
+   du processus, comme D161 : ouvrir un onglet ne doit pas donner l'impression
+   que le logiciel a décroché.
+3. **La Liste ne dépend pas du nombre de notes au point de s'écrouler** : si elle
+   dépasse les deux bornes, on dira de combien, et le remède (virtualiser) sera
+   nommé.
+
+### Phase D190 — les six onglets du bas tiennent, et la liste d'événements est bien virtualisée (13/09/2026)
+
+**LES TROIS ATTENDUS SONT TENUS.** `children-c3-plafond`, médiane de 8 passes,
+chaque onglet ouvert par `VSM_VUE` :
+
+| onglet | contenu | **médiane** |
+|---|---|---|
+| Mixer | `MixerComponent` 1262 × 252 | **5,95 ms** |
+| Automation | `AutomationComponent` | 0,65 ms |
+| Effets | `EffectChainComponent` | 0,28 ms |
+| MIDI CC | `MidiCcComponent` | 1,23 ms |
+| **Liste** | `EventListComponent` | **1,80 ms** (piste `bass`, **1 672** événements) |
+| Tempo | `TempoLaneComponent` | 0,86 ms |
+
+**LA LISTE NE DÉPEND PAS DU NOMBRE D'ÉVÉNEMENTS, et c'est la mesure qui compte.**
+Reprise sur la piste la plus dense du projet — `other`, **3 651 événements**, plus
+du double —, elle peint en **1,54 ms** : le même chiffre, à l'épaisseur du bruit.
+Elle ne dessine donc que les lignes visibles, comme il faut. *Et il a fallu
+REGARDER LA PHOTO pour le savoir : l'en-tête du panneau dit « Liste — bass,
+1672 événement(s) », c'est-à-dire que la liste montre la piste CHOISIE et non les
+9 224 notes du projet. Publier « la liste tient 9 224 notes » aurait été faux ;
+c'est 3 651, et ce qui est établi est qu'elle ne grandit pas avec le compte.*
+
+**ET AUCUN ONGLET NE COÛTE À OUVRIR.** Temps total du processus, ouverture du
+projet comprise, par onglet : **5,54 s à 5,92 s** — l'écart entre le plus rapide
+et le plus lent est de 0,38 s sur des courses qui en durent cinq et demie, c'est-
+à-dire du bruit. Aucun onglet ne fait décrocher le logiciel.
+
+**CE QUE CET AUDIT INSCRIT** : le mixeur reste le plus gros poste de dessin de
+l'application (5,95 ms pour douze tranches), déjà nommé par D165, et il tient
+largement sous le seuil. Rien à corriger.
