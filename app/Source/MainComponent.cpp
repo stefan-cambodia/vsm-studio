@@ -10238,6 +10238,29 @@ void MainComponent::clearMidiEffectsOfSelectedTrack() {
 void MainComponent::bakeMidiEffectsOfSelectedTrack() {
     const size_t piste = trackList_.selectedTrackIndex();
     if (piste >= project_.tracks.size() || project_.tracks[piste].midiEffects.empty()) return;
+
+    // D241 : LE TROISIÈME GESTE « DÉFINITIF » DEMANDE, LUI AUSSI.
+    //
+    // L'application n'emploie ce mot qu'à trois endroits : « Aplatir l'ordre de
+    // jeu », « Reporter la piste en audio » et cette entrée-ci. Les deux premiers
+    // posent une question (D235) ; celui-ci réécrivait les notes d'une piste sans
+    // rien demander. Deux issues possibles : retirer le mot, ou poser la question.
+    // C'est la question, parce que le geste EST définitif une fois le projet
+    // enregistré — l'annulation ne couvre que la session.
+    demanderOuiNon(
+        juce::AlertWindow::QuestionIcon, tr(u8"Reporter les effets MIDI dans les notes"),
+        tr(u8"Les notes de « %1 » seront remplacées par ce que la chaîne d'effets en fait, et la "
+           u8"chaîne sera vidée. C'est annulable tant que la session est ouverte, et définitif "
+           u8"ensuite.")
+            .replace("%1", juce::String(project_.tracks[piste].name)),
+        tr(u8"Reporter"), vsm::app::ui::trSelon("bouton", u8"Annuler"), nullptr,
+        juce::ModalCallbackFunction::create([this, piste](int choix) {
+            if (choix == 0 || piste >= project_.tracks.size()) return;
+            bakeMidiEffectsConfirme(piste);
+        }));
+}
+
+void MainComponent::bakeMidiEffectsConfirme(size_t piste) {
     auto& track = project_.tracks[piste];
 
     vsm::sequencer::MidiEffectReport rapport;

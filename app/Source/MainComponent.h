@@ -1291,6 +1291,8 @@ private:
     /// de ce qu'est un effet, et c'est pourquoi il est nommé et annulable
     /// plutôt qu'implicite.
     void bakeMidiEffectsOfSelectedTrack();
+    /// D241 : le report lui-même, une fois la question répondue.
+    void bakeMidiEffectsConfirme(size_t piste);
     /// D31.5 : les pistes dont l'export `.mid` ne portera pas ce qu'on entend
     /// -- chaîne MIDI ou transposition de piste (D17.5). Vide : rien à dire.
     juce::StringArray tracksWhoseMidiExportWillDiffer() const;

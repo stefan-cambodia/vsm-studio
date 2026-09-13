@@ -23031,3 +23031,33 @@ condition pour qu'elle serve. Première exécution : **0 promesse rompue**.
 
 C'est la cinquième garde de `tools/` posée aujourd'hui, après `--doublons` (D216),
 `apres-campagne.sh`, `banc-fumee.sh` (D229) et `tables-markdown.py`.
+
+### Phase D241 — le troisième geste « définitif » ne demandait rien (13/09/2026)
+
+En mesurant la chaîne d'effets MIDI (ajouter une transposition, puis la reporter
+dans les notes), une asymétrie est apparue : **l'application n'emploie le mot
+« définitif » qu'à trois endroits**, et deux seulement posent une question.
+
+| entrée | rewrite | demandait ? |
+|---|---|---|
+| « Aplatir l'ordre de jeu » | notes, clips, courbes, repères du PROJET | oui (D235) |
+| « Reporter la piste en audio (définitif) » | notes, instrument, inserts d'une PISTE | oui (D235) |
+| « Reporter les effets MIDI dans les notes (définitif) » | les notes d'une piste | **non** |
+
+Deux issues possibles : retirer le mot, ou poser la question. **C'est la question**,
+parce que le geste EST définitif une fois le projet enregistré — l'annulation ne
+couvre que la session, et c'est exactement ce que disent les deux autres phrases.
+
+**CE QUE LA MESURE A DIT** (`cdl`, une transposition ajoutée puis reportée) :
+
+| course | boîte | effets MIDI de la piste, après |
+|---|---|---|
+| `VSM_CONFIRMER=oui` | « Les notes de « melange » seront remplacées par ce que la chaîne d'effets en fait… » | **aucun** — et « 2219 note(s) → 2219 » au journal |
+| `VSM_CONFIRMER=non` | la même | **la transposition est toujours là** |
+
+Et la chaîne ajoutée s'écrit bien dans le projet :
+`[{"parameters": {"Semitones": 0}, "type": "transpose"}]` — une transposition de
+**zéro** demi-ton par défaut, ce qui est le bon défaut (un effet neuf ne change
+rien tant qu'on ne l'a pas réglé), et le report d'une transposition nulle laisse
+les 2 219 notes **identiques**, vérifié note pour note. Un report qui « ne fait
+rien » doit ne rien faire exactement.
