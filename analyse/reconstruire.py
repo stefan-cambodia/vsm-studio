@@ -786,12 +786,19 @@ def construire_parseur() -> argparse.ArgumentParser:
                               "alignée sur le mélange (décalage entier + gain, publiés), "
                               "SOUSTRAITE ; le résidu est reséparé et la chaîne relancée sur "
                               "ses stems seuls. Le résidu est un objet de mesure, jamais joué. "
+                              "MESURÉE INERTE (R1, 13/09/2026, dix morceaux sur dix, garde-fou "
+                              "forcé à zéro) : elle soustrait partout et ne rend rien -- "
+                              "-0,0011 dB au résidu vrai, -0,092 dB à la basse. Gardée comme "
+                              "résultat négatif chiffré, § 7.4 du cahier des charges. "
                               "0 (le défaut) : la chaîne d'aujourd'hui, au bit près")
     parseur.add_argument("--residuel-correlation", type=float, default=0.5,
                          help="garde-fou de la boucle : une unité ne se soustrait que si son "
                               "rendu, aligné, est corrélé à son stem au moins autant (0,5 : la "
                               "soustraction retire un quart de l'énergie de la partie ; en "
-                              "deçà, la réséparation la retrouverait presque entière)")
+                              "deçà, la réséparation la retrouverait presque entière). Le seuil "
+                              "n'est PAS le coupable : la corrélation médiane mesurée vaut "
+                              "0,0163, trente fois sous lui, et l'abaisser à zéro ne rend rien "
+                              "(R1, § 7.4)")
     parseur.add_argument("--residuel-energie", type=float, default=5.0,
                          help="arrêt de la boucle : part du mélange d'origine (en %%) sous "
                               "laquelle le résidu ne contient plus rien à chercher")

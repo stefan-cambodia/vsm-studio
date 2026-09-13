@@ -33,7 +33,6 @@ import re
 import shutil
 import struct
 import subprocess
-import sys
 import tempfile
 import wave
 from pathlib import Path
@@ -113,7 +112,7 @@ def main() -> int:
     # D263 cassait, et cela ne dépend pas du tempo du projet d'essai.
     rapports = [int(tick) / float(sec) for sec, tick in coupes]
     ecart = max(rapports) - min(rapports)
-    for (sec, tick), rap in zip(coupes, rapports):
+    for (sec, tick), rap in zip(coupes, rapports, strict=True):
         print(f"  coupe à {sec} s → tick {tick}  ({rap:.1f} ticks/s)")
     # Une seconde de tolérance sur le rapport vaut moins d'un tick sur la coupe
     # la plus tardive ; le défaut D263 le faisait varier de 270 à 700.

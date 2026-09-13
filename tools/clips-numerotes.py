@@ -26,7 +26,6 @@ tests sont exclus, et la liste des exclusions est écrite ici plutôt que devin�
 from __future__ import annotations
 
 import re
-import sys
 from pathlib import Path
 
 RACINE = Path(__file__).resolve().parent.parent
@@ -53,7 +52,8 @@ def portees(lignes: list[str]) -> list[int]:
     choisi au jugé. Une fenêtre de six lignes manquait `copie.id = 0` posé huit
     lignes plus haut, et `assignClipIds()` appelé cinquante lignes plus bas.
     """
-    return [i for i, l in enumerate(lignes) if l[:1] not in ("", " ", "\t", "#", "}", "/")]
+    return [i for i, ligne in enumerate(lignes)
+            if ligne[:1] not in ("", " ", "\t", "#", "}", "/")]
 
 
 def main() -> int:

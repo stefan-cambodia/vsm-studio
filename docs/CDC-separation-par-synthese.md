@@ -683,7 +683,7 @@ Le coût, lui, se lit : les courses `r1` durent **de −3 % à −10 %** de S1
 itération qui s'arrête au garde-fou coûte le rendu des candidates et rien
 d'autre.
 
-### 7.4 Le lot forcé — INTERROMPU au sixième morceau, et il faut le dire
+### 7.4 Le lot forcé — COMPLET, dix morceaux sur dix (13/09/2026)
 
 *(à écrire à la fin de `r1f-sec` : le SDR de la basse dans le résidu après
 soustraction forcée de la batterie sur les huit morceaux qui en ont, contre
@@ -841,6 +841,20 @@ coût.)*
 > ses profils passent par le fichier de preset, pas par une capture — mais le
 > binaire doit rejoindre les sources.
 
+> **FAIT LE 13/09 À 22:00, ET VÉRIFIÉ SUR LE CAS QUI ÉCHOUAIT.** `vsm-render` a été
+> relié (22:00) après la fin de la campagne (21:34) — jamais pendant. Les deux
+> contrôles, avec ce binaire-là :
+>
+> | projet | corrélation | max &#124;d&#124; | verdict |
+> |---|---|---|---|
+> | `cdl` (311 s, sans gel) | 1,000000000 | 0,000e+00 | même son |
+> | `children-c3-plafond` avec la piste `bass` **GELÉE** (454 s) | 1,000000000 | 0,000e+00 | même son |
+>
+> Le second est le cas que D186 corrigeait : une piste gelée sortait **muette** du
+> rendu hors ligne. Un contrôle sur un projet sans gel n'aurait rien prouvé — il
+> fallait geler une piste depuis l'application, enregistrer, et comparer. Code de
+> sortie 0 des deux côtés.
+
 > **LECTURE INTERMÉDIAIRE, SUR TROIS MORCEAUX SUR DIX (13/09, 11:07) — CE N'EST
 > PAS LE VERDICT.** Le banc écrit son agrégat au fur et à mesure ; il vaut la
 > peine de le lire, à condition de dire qu'il est partiel. Sur les trois morceaux
@@ -858,7 +872,67 @@ coût.)*
 > rend rien** — ni au résidu vrai, ni à la basse. Il reste sept morceaux ; c'est
 > sur dix que le § 7.4 se lira, et sur dix que le § 7.5 se signera.
 
-### 7.5 La décision — annoncée, en attente du lot forcé pour être signée
+**LE VERDICT, SUR LES DIX MORCEAUX (13/09/2026, 21:34).** Le lot est complet :
+`reconstruction/travail/r1f-13sep/rapport.json`, `morceaux_mesures` = 10,
+`nonMesures` vide. Les quatre attendus, mis en face de ce qui est sorti :
+
+| attendu écrit avant le départ | seuil | **mesuré sur 10** | verdict |
+|---|---|---|---|
+| `morceaux_avec_soustraction` | 10 sur 10 (contrôle) | **10 sur 10** | tenu |
+| `montee_sdr_residu_vrai_mediane_r1` | dans ±0,5 dB de zéro | **−0,00113 dB** | **tenu** |
+| `bass_sdr_au_residu_mediane_r1` | sous +0,21 dB | **−0,0925 dB** | **tenu** |
+| coût par morceau | ~1 900 s, ±20 % | **médiane 3 922 s** | **réfuté** |
+
+**LES TROIS ATTENDUS DE FOND TIENNENT, ET ILS TIENNENT DANS LE SENS QUI TRANCHE.**
+La soustraction a eu lieu dans les dix morceaux — 2 sur la basse, 4 sur la
+Batterie, 4 sur `other` — et **elle n'a rien rendu** : la montée du SDR du résidu
+vrai est de −0,00113 dB (le résidu vrai est à 3,63 dB après), et la basse perd
+0,09 dB au lieu d'en gagner. Ce n'était donc pas le garde-fou de corrélation qui
+rendait la boucle inerte : **forcée à zéro, elle reste inerte**. La corrélation
+médiane du stem vaut d'ailleurs **0,0163** — le seuil publié de 0,5 est à trente
+fois plus haut, et aucun rendu ne s'en approche.
+
+**LA LECTURE PARTIELLE N'AVAIT PAS MENTI**, ce qui vaut d'être noté puisque la
+règle de ce cahier est de se méfier des lectures partielles :
+
+| | 3 morceaux (11:07) | **10 morceaux (21:34)** |
+|---|---|---|
+| `montee_sdr_residu_vrai_mediane_r1` | −0,0011 dB | −0,00113 dB |
+| `bass_sdr_au_residu_mediane_r1` | −0,175 dB | −0,0925 dB |
+| corrélation médiane du stem | 0,0126 | 0,0163 |
+
+**LE LOT EST HOMOGÈNE, et cela se vérifie plutôt que se suppose.** Les dix
+`rapport.json` portent dix commits différents — la campagne a couru pendant que le
+travail d'interface se commitait à côté. Mais `git diff 497add6 50d36a3 --
+analyse/` **ne rend rien** : la chaîne d'analyse est identique, octet pour octet,
+du premier morceau au dernier. C'est exactement le contrôle qui avait manqué au
+lot précédent, et qui l'avait envoyé à la refonte.
+
+**LE COÛT EST RÉFUTÉ, ET IL NE MESURE PAS CE QU'ON VOULAIT.** Les dix courses :
+
+| morceau | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| secondes | 2 270 | 3 658 | 4 187 | 3 363 | **10 221** | 2 793 | 5 343 | 8 380 | **1 300** | 6 852 |
+
+Médiane 3 922 s, moyenne 4 837 s, **total 13 h 26** contre les 5 h 20 annoncées.
+L'attendu est réfuté d'un facteur 2,5 — mais **ce chiffre mesure la contention de
+la machine, pas la chaîne** : la campagne a partagé le poste avec tout le travail
+d'interface de la journée. L'épisode est documenté dans `CLAUDE.md` : les mesures
+de D215, qui rendaient de l'audio hors ligne, ont porté le morceau en cours de
+**56 min (morceau 4) à 2 h 50 (morceau 5)** — les deux chiffres se lisent tels
+quels dans la table ci-dessus. Le morceau 9, couru à 1 300 s, dit ce que la chaîne
+coûte quand on lui laisse la machine. **Le coût de la boucle résiduelle ne sera
+donc pas publié à partir de ce lot** ; il demanderait une course sur un poste au
+repos, et il ne pèse sur aucune des trois décisions ci-dessus.
+
+**CE QUE LE LOT DIT ENCORE, sans que cela ait été demandé avant.** 64 pistes
+ajoutées au total, 2 stems refusés, écart de parité initial médian −2 pour 24
+pistes inventées ; les boucles s'arrêtent 8 fois sur « distance sans gain » et 2
+fois sur « itérations atteintes » (293 s par itération en médiane) — c'est-à-dire
+que **dans huit morceaux sur dix, la boucle s'est arrêtée d'elle-même faute de
+progrès**, ce qui est la même conclusion dite par un autre bout.
+
+### 7.5 La décision — SIGNÉE (13/09/2026, lot forcé complet)
 
 Ce que `r1` établit suffit à la moitié de la décision : **la boucle
 résiduelle telle qu'elle est écrite — soustraction au niveau de
@@ -867,9 +941,27 @@ qu'on lui a donné**, et elle le restera tant que le rendu d'une machine ne
 ressemblera pas à un stem séparé mieux qu'à 0,05. Elle n'entre pas dans la
 chaîne par défaut ; `--residuel` reste une option publiée, mesurée, et
 dite inerte dans son aide. L'hypothèse de repli ci-dessous est DÉSIGNÉE par
-R1 (la boucle est réfutée par la corrélation, pas par la parité) ; elle ne
-s'écrira qu'après le lot forcé, qui dit si soustraire quand même — même
-mal — rend quelque chose à la basse.
+R1 (la boucle est réfutée par la corrélation, pas par la parité).
+
+**LE LOT FORCÉ A RÉPONDU, ET LA DÉCISION EST SIGNÉE.** La question qui restait
+ouverte était : *soustraire quand même, même mal, rend-il quelque chose à la
+basse ?* Sur dix morceaux sur dix, garde-fou à zéro, la réponse est **non** —
+montée du SDR du résidu vrai **−0,00113 dB**, basse au résidu **−0,0925 dB**
+(§ 7.4). **Ce n'est donc pas le garde-fou qui rendait la boucle inerte, c'est la
+soustraction elle-même.** La décision annoncée devient définitive :
+
+1. **La boucle résiduelle n'entre pas dans la chaîne par défaut.** `--residuel`
+   reste une option publiée, mesurée, et son aide dit qu'elle est inerte. Ce
+   n'est pas un abandon : c'est un résultat négatif chiffré, gardé avec ses
+   chiffres, comme les deux machines écartées du parc.
+2. **Le garde-fou de corrélation à 0,5 n'est pas le coupable et ne se rouvre
+   pas.** La corrélation médiane mesurée est de 0,0163 ; l'abaisser n'aurait rien
+   changé, et le lot forcé le PROUVE au lieu de le supposer — c'est précisément
+   ce qu'il a été couru pour trancher.
+3. **L'hypothèse de repli est DÉSIGNÉE par la mesure**, et non par le goût : la
+   soustraction au niveau de l'échantillon est aveugle à la phase (§ 2.3), et
+   c'est la seule explication qui survit à « elle soustrait partout et ne rend
+   rien ». Elle s'écrira comme un chantier à part, avec ses propres attendus.
 
 **L'hypothèse de repli, écrite maintenant pour ne pas être inventée
 après.** Si la boucle est réfutée par la CORRÉLATION (les rendus mélodiques
@@ -879,5 +971,11 @@ aveugle à la phase (§ 2.3). L'hypothèse suivante serait une soustraction
 sur le MODULE du spectre (le rendu retire son amplitude à celle du mélange,
 bande par bande et trame par trame, la phase du mélange est gardée) —
 publiée, bornée, avec ses propres attendus, et mesurée par le même banc
-contre le même résidu vrai. Elle n'est pas dans cette phase, et elle ne
-s'écrira que si R1 la désigne.
+contre le même résidu vrai. Elle n'est pas dans cette phase.
+
+**R1 L'A DÉSIGNÉE** (13/09/2026). Elle devient donc un chantier ouvert, et non
+plus une éventualité. Ce qu'il faudra écrire avant de la mesurer, pour ne pas
+refaire l'erreur de ce cahier — un attendu de coût mêlé à trois attendus de
+fond : ses attendus portent sur ce que la soustraction REND (montée du SDR du
+résidu vrai, SDR de la basse au résidu), sur le même corpus `s1-sec`, avec le
+même banc, et le coût se mesure à part, sur une machine au repos.
