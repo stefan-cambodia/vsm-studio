@@ -9565,10 +9565,15 @@ bool MainComponent::showBoxForCapture(const juce::String& nom) {
         if (reconstructionChain_.reason.empty()) {
             const auto raison = reconstructionChain_.reason;
             const auto remede = reconstructionChain_.remedy;
+            // LES PHRASES DU MOTEUR, MOT POUR MOT (ReconstructionChain.cpp) : ce sont
+            // des DONNÉES françaises que `trPhrase` traduit à l'affichage, et une
+            // phrase inventée ici sortirait en français dans l'interface anglaise
+            // (l'inventaire l'a dit tout de suite : ECRAN 7 -> 9).
             reconstructionChain_.reason =
-                "le dossier de la cha\u00eene d'analyse n'a pas \u00e9t\u00e9 trouv\u00e9";
+                "la cha\u00eene d'analyse (le dossier analyse/) est introuvable \u00e0 c\u00f4t\u00e9 de "
+                "l'application";
             reconstructionChain_.remedy =
-                "Fichier > Dossier de la cha\u00eene d'analyse\u2026 pour le d\u00e9signer.";
+                "indiquer son emplacement dans Fichier \u25b8 Cha\u00eene d'analyse...";
             boiteReconstructionIndisponible();
             reconstructionChain_.reason = raison;
             reconstructionChain_.remedy = remede;

@@ -23275,6 +23275,15 @@ La raison réelle reste affichée quand il y en a une : la valeur de repli ne se
 que sur une machine où la chaîne fonctionne, c'est-à-dire là où la boîte ne
 s'ouvrirait jamais d'elle-même.
 
+**ET LA PHRASE DE REPLI EST CELLE DU MOTEUR, MOT POUR MOT.** Premier jet : une
+phrase écrite ici, de ma main. L'inventaire de langue l'a dit dans la minute —
+`ECRAN 7 → 9` —, et il avait raison : la raison et le remède sont des DONNÉES
+françaises de `interchange/`, que `trPhrase` traduit à l'affichage ; une phrase
+inventée dans `app/` n'a pas de clé et serait sortie en français dans l'interface
+anglaise. La valeur de repli reprend donc la phrase exacte de
+`ReconstructionChain.cpp` (« la chaîne d'analyse (le dossier analyse/) est
+introuvable à côté de l'application »), et la boîte se lit dans les deux langues.
+
 
 ### Phase D247 — un crochet de banc qui se disait réussi sans rien faire (13/09/2026)
 
